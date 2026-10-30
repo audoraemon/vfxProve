@@ -81,6 +81,12 @@ const HF_SEARCH_PACE := 0.6
 const HF_TRAIL_PACE := 1.0
 const HF_SEARCH_RELIEF_AFTER := 30.0
 const HF_SEARCH_RELIEFS := 2
+## The Inquisition's pair (ruling P5-T9-R5): once no inquisitor stands and the single reliefs are spent, while a household is still to come out or
+## walking, a pair sets out from the Temple's door this many seconds after the watch emptied (tagged "RELIEF IN" with its countdown), and again each
+## time the watch empties. It sees (and so seizes) no one for its first HF_PAIR_WARN seconds on the road: with the countdown, every seizure it can
+## make is warned 45 s out, wherever the households are when it sets out.
+const HF_PAIR_RELIEF_AFTER := 30.0
+const HF_PAIR_WARN := 15.0
 const HF_ARRIVE := 1.6
 const HF_SLIP_NEAR := 5.0
 const HF_SEARCH_SPACING := 4.0
@@ -105,6 +111,11 @@ var inquisitors: Array = []
 var _inq_base := {}
 var _inq_fallen: Array[float] = []
 var inq_reliefs := 0
+## The pairs sent after the watch emptied (R5), and the clock second it did (-1 while someone stands).
+var pair_reliefs := 0
+var _empty_at := -1.0
+## The clock second a pair sent after the watch emptied begins to see (R5).
+var _pair_blind_until := -1.0
 ## The seconds from `_eta_at` until the search reaches each listed house (INF for none), refreshed every look.
 var _eta: Array[float] = []
 var _eta_at := 0.0
@@ -215,6 +226,7 @@ func _begin() -> void:
 	timeline.fired.connect(_on_fired)
 	_appoint_inquisitors()
 	_plan_search()
+	_stand_in_file()
 	_refresh_eta()
 
 
@@ -334,6 +346,20 @@ func _appoint_inquisitors() -> void:
 		made[i].go_duty(spot)
 		inquisitors.append(made[i])
 		_inq_fallen.append(-1.0)
+
+
+## The two inquisitors at the Temple's door change places if that sets them off in file to the first stop (as _facing(): they do not cross).
+func _stand_in_file() -> void:
+	var spots: Array[Vector2] = []
+	for v: Variant in inquisitors:
+		spots.append((v as Person).ground_pos)
+	if spots.size() != 2:
+		return
+	var arranged := _facing(spots)
+	if arranged[0] != spots[0]:
+		for k in 2:
+			_set_down(inquisitors[k] as Person, arranged[k])
+			(inquisitors[k] as Person).go_duty(arranged[k])
 
 
 ## `p` in the inquisitors' cloak, his own pace remembered.
@@ -591,6 +617,80 @@ func _relieve_search() -> void:
 		inq_reliefs += 1
 		p.go_duty(temple_door)
 		rules.banner.emit("A NEW INQUISITOR COMES FROM THE TEMPLE")
+	_relieve_pair()
+
+
+## Some household is still to come out or walking.
+func _household_pending() -> bool:
+	for h: Household in households:
+		if not h.done:
+			return true
+	return false
+
+
+## No inquisitor stands, a household is still to come or walking, and the single reliefs are spent: the Inquisition sends a pair HF_PAIR_RELIEF_AFTER
+## after the watch emptied, set down apart at the Temple's door and walking the search on (the next listed house; the trail of a household that is
+## out). It sees no one for its first HF_PAIR_WARN seconds (_watching()) (ruling P5-T9-R5).
+func _relieve_pair() -> void:
+	var any := false
+	for v: Variant in inquisitors:
+		any = any or _alive(v)
+	if any or not _household_pending():
+		_empty_at = -1.0
+		return
+	if _empty_at < 0.0:
+		_empty_at = _clock
+	if inq_reliefs < HF_SEARCH_RELIEFS or _clock - _empty_at < HF_PAIR_RELIEF_AFTER:
+		return
+	var spots := _facing(pair_spots(temple_door, inquisitors.size()))
+	var sent := 0
+	for k in inquisitors.size():
+		var p := _relief_from_temple(temple_door)
+		if p == null:
+			break
+		_make_inquisitor(p)
+		_set_down(p, spots[k])
+		p.go_duty(spots[k])
+		inquisitors[k] = p
+		_inq_fallen[k] = -1.0
+		sent += 1
+	if sent > 0:
+		pair_reliefs += 1
+		_pair_blind_until = _clock + HF_PAIR_WARN
+		_empty_at = -1.0
+		_pairs.clear()
+		rules.banner.emit("THE INQUISITION SENDS A NEW PAIR FROM THE TEMPLE")
+
+
+## The pair's set-down places `spots`, ordered so that each man stands nearer his own place at the search's next stop than his fellow's: they then walk
+## off in file, not crossing each other's path 1.5 apart (ruling P5-T9-R5: the pair rules hold on every walk).
+func _facing(spots: Array[Vector2]) -> Array[Vector2]:
+	var target := _search_point()
+	if target == Vector2.INF or spots.size() != 2:
+		return spots
+	var dest := _door_spots(target, 2)
+	if spots[0].distance_to(dest[0]) + spots[1].distance_to(dest[1]) > spots[0].distance_to(dest[1]) + spots[1].distance_to(dest[0]):
+		return [spots[1], spots[0]]
+	return spots
+
+
+## A pair just sent from the Temple sees no one yet (HF_PAIR_WARN), as the base asks of a watcher: alive, out of doors, on the errand.
+func _watching(v: Variant) -> bool:
+	if _clock < _pair_blind_until and inquisitors.has(v):
+		return false
+	return super(v)
+
+
+## Seconds until the next relief sets out while no inquisitor stands (a single relief's wait, or the pair's), INF when none is coming.
+func relief_in() -> float:
+	for v: Variant in inquisitors:
+		if _alive(v):
+			return INF
+	if inq_reliefs < HF_SEARCH_RELIEFS:
+		return _relief_wait()
+	if _empty_at >= 0.0 and _household_pending():
+		return maxf(_empty_at + HF_PAIR_RELIEF_AFTER - _clock, 0.0)
+	return INF
 
 
 ## The search's stops and arrivals (MS §2): reaching a house whose household is out and not done, it takes up the trail; any other door, it
@@ -604,6 +704,14 @@ func _advance_search() -> void:
 		_search_stop = -1.0
 		_pairs.clear()
 	if _search_at >= _search.size():
+		# The list is walked: the Inquisition goes after a household that is out (ruling P5-T9-R5: a relief pair walks toward the next road).
+		for i in households.size():
+			var h: Household = households[i]
+			if h.out and not h.done and _trail < 0 and _search_near(h.door, 1.0e9):
+				_trail = i
+				_search_at = _search.size() - 1
+				rules.banner.emit("THE INQUISITION FINDS THE TRAIL")
+				break
 		return
 	var e: Dictionary = _search[_search_at]
 	if _search_stop >= 0.0:
@@ -1088,6 +1196,9 @@ func tags() -> Array[MapTag]:
 			continue
 		var color := MARK_CHARGE if int(_search[k].household) >= 0 else MARK_NOT_YET
 		out.append(MapTag.place(_search[k].door, color, "SEARCH IN %s" % UiTheme.clock(search_eta(k)), 0.0, true))
+	var coming := relief_in()
+	if coming < INF:
+		out.append(MapTag.place(temple_door, MARK_WATCHED, "RELIEF IN %s" % UiTheme.clock(coming), 0.0, true))
 	for v: Variant in inquisitors:
 		if _alive(v) and not (v as Person).inside and not _seizing(v):
 			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "INQUISITOR", true))
@@ -1137,4 +1248,5 @@ func report() -> Dictionary:
 	out["lost"] = lost()
 	out["searched"] = searched
 	out["search_reliefs"] = inq_reliefs
+	out["pair_reliefs"] = pair_reliefs
 	return out

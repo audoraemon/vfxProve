@@ -106,8 +106,8 @@ static func state(_bc, ctx: Dictionary) -> String:
 	for i in d.households.size():
 		var lead := d.lamp(i)
 		lamps.append("%.0f" % _progress(_road(ctx, d, i), (lead.man as Person).ground_pos) if lead != null and (d.households[i] as ExodusDirector.Household).out else "-")
-	return "out=%d lost=%d left=%d seizures=%d searched=%d trail=%d inquisitors=%d reliefs=%d pair=%.2f/%d doors=%s lamps=%s phase=%s" % [d.out_count(), d.lost(),
-		d.left_count(), d.seizures, d.searched, d.trail_of(), alive, d.inq_reliefs, minf(d.stopped_gap_min, 99.0), d.stopped_gaps, "/".join(doors),
+	return "out=%d lost=%d left=%d seizures=%d searched=%d trail=%d inquisitors=%d reliefs=%d+%d pair=%.2f/%d doors=%s lamps=%s phase=%s" % [d.out_count(), d.lost(),
+		d.left_count(), d.seizures, d.searched, d.trail_of(), alive, d.inq_reliefs, d.pair_reliefs, minf(d.stopped_gap_min, 99.0), d.stopped_gaps, "/".join(doors),
 		"/".join(lamps), d.hint_phase()]
 
 
@@ -288,8 +288,8 @@ static func _view(ctx: Dictionary, d: HideFaithfulDirector) -> Dictionary:
 
 ## How far ahead of his sight a watcher is answered now: `lead`, and for a stationary one (the gates' watch) LONG_LEAD once IDLE_AFTER seconds have
 ## passed with nothing cast and two or more of the gates' watch are waiting; the last one waits for his own lead until IDLE_LAST. The men who
-## move (patrols, inquisitors and their reliefs) are answered in their own lead only: killed early they leave nothing to answer later, and the night's
-## real idle is its longest wait, the one before the win included.
+## move (patrols, inquisitors and their reliefs) are answered in their own lead only: killed early they leave
+## nothing to answer later, and the night's real idle is its longest wait, the one before the win included.
 static func _lead(ctx: Dictionary, d: HideFaithfulDirector, th: Dictionary, lead: float) -> float:
 	if th.kind == "watch":
 		var idle := d._clock - float(ctx.memo.get("last_cast", 0.0))

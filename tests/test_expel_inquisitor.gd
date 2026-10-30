@@ -7,9 +7,8 @@ extends RefCounted
 
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const DT := 0.05
-## Seconds after the captain changes state (leaves a door, goes in) before the guards' places are read: they walk from the door ring to his heels.
+## Seconds after the captain leaves a door before the guards' distance FROM HIM is read (the keep-up check only; their gap is read from the first step): they walk from the door ring to his heels.
 const SETTLE := 8.0
-const STOP_SETTLE := 2.0
 const State := AssassinateDirector.State
 const HUNT := preload("res://tools/dev/routes/god_hunts/expel_inquisitor.gd")
 const GodHunts := preload("res://tools/dev/routes/god_hunts.gd")
@@ -29,6 +28,8 @@ static func run(t) -> void:
 	_eta_once(t)
 	_policies(t)
 	_door_policies(t)
+	_bloom_casts(t)
+	_no_filler_casts(t)
 	_guards_walk(t)
 	_win_beats_loss(t)
 	_lost_body(t)
@@ -640,7 +641,6 @@ static func _door_policies(t) -> void:
 	guard.ground_pos = home
 	t.check(HUNT._bloom_aim(d, memo2) != Vector2.INF, "back at the door he is (the aim is not lost for good)")
 	# The next target: after the first is out, the Bloom is for the second warden's guard, once.
-	var memo3 := {"bloom_0": true}
 	d._set_out(first)
 	Kit.done(s)
 	var n := _world()
@@ -662,10 +662,133 @@ static func _door_policies(t) -> void:
 	Kit.done(w)
 
 
+## A stand-in for Rules that records the casts the policies make (their slot, aim and extras) and casts nothing; the stand-in for behaviour_check
+## answers every key ready (the policies' own cooldown reasoning is not under test: what they choose to strike is).
+class SpyRules extends Rules:
+	var casts: Array[Dictionary] = []
+
+	func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
+		casts.append({"slot": slot, "at": ground, "extra": extra})
+		return null
+
+
+class SpyBc:
+	func _slot_ready(_rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key)
+
+
+## The slots a spy ctx gives the type's LOADOUT keys (key -> index) and the ctx the policies take.
+static func _spy_ctx(s: Dictionary, spy: SpyRules, type: String) -> Dictionary:
+	var slots := {}
+	for key: String in HUNT.LOADOUT[type]:
+		slots[key] = slots.size()
+	return {"d": s.d, "rules": spy, "slots": slots, "crowd": s.crowd, "memo": {}}
+
+
+## Everybody the night still needs answered: the position of every target not yet stopped and of each of his guards still on their feet.
+static func _needed(d: ExpelInquisitorDirector) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for q in d.quarries:
+		if q.dead or q.state == State.OUT or q.state == State.SAFE or not MissionDirector._alive(q.target):
+			continue
+		out.append((q.target as Person).ground_pos)
+		for g: Variant in q.guards:
+			if MissionDirector._alive(g):
+				out.append((g as Person).ground_pos)
+	return out
+
+
+## The guards of the waiting wardens stand at their doors, and the captain's two at the Temple's (the Kit world does not walk bodies to their posts).
+static func _guards_to_doors(d: ExpelInquisitorDirector) -> void:
+	for q in d.quarries:
+		if d._is_captain(q):
+			var pair := d._door_pair(d.hide_door)
+			for k in q.guards.size():
+				Kit.arrive(q.guards[k], pair[k % 2])
+		else:
+			for g in q.guards:
+				Kit.arrive(g, q.stop_doors[0] + Vector2(1.0, 0.0))
+
+
+## act_dominion driven itself (review of Task 11, I1; Ruling P5-T11-R7): over 40 s of looks (the first warden waits, none is out) with his guard at his door
+## and the others' wandered 20 units off, it casts the Madness Bloom ONCE, on that guard; with his guard wandered too it casts none. (Mutation: the old
+## loop `for g in _door_guards(d): rules.cast(...)` casts at every look and fails the first check.)
+static func _bloom_casts(t) -> void:
+	for wandered in [false, true]:
+		var s := _world()
+		var d := _ei(s)
+		for q in d.quarries:
+			for g in q.guards:
+				Kit.arrive(g, (d.hide_door if d._is_captain(q) else q.stop_doors[0]) + Vector2(20.0, 0.0))
+		var guard: Person = d.quarries[0].guards[0]
+		var door: Vector2 = d.quarries[0].stop_doors[0]
+		if not wandered:
+			Kit.arrive(guard, door + Vector2(1.0, 0.0))
+		var spy := SpyRules.new()
+		var ctx := _spy_ctx(s, spy, "dominion")
+		var bc := SpyBc.new()
+		for look in 80:
+			Kit.run_for(s, 0.5)
+			HUNT.act_dominion(bc, ctx)
+		if wandered:
+			t.check(spy.casts.is_empty(), "with the first warden's guard wandered past DOOR_REACH, and every other guard too, no Bloom is cast in 40 s (%d casts)" % spy.casts.size())
+		else:
+			t.check(spy.casts.size() == 1 and spy.casts[0].at.distance_to(guard.ground_pos) < 0.01 and spy.casts[0].slot == ctx.slots.madness,
+				"one Bloom in 40 s of looks, on the guard at the first warden's door, none on the wandered guards (%d casts)" % spy.casts.size())
+		spy.free()
+		Kit.done(s)
+
+
+## No filler (review of Task 11, M2, D38), by behaviour not by words: every policy is driven through three nights -- all waiting, a warden in the street, the
+## captain in the street -- and each cast it records lands within CAST_REACH of somebody the night still needs answered (a target not yet stopped, or one of his
+## guards still standing), or, for the Blight, on the Bell Tower. A cast made only to end an idle stretch has nobody there. Each type must cast at least once.
+static func _no_filler_casts(t) -> void:
+	const CAST_REACH := 9.0
+	for type: String in ["ruin", "death", "veil", "passage", "decree", "dominion"]:
+		var total := 0
+		var strays := PackedStringArray()
+		for night in 3:
+			var s := _world()
+			var d := _ei(s)
+			Kit.run_for(s, 21.0)  # (clock 21 s: the Blight wait and the last-24-s window of the Ruin prep are open; nobody is out before 44)
+			_guards_to_doors(d)
+			if night == 1:
+				_out(d, d.quarries[0])
+			elif night == 2:
+				_out(d, d.captain())
+			var spy := SpyRules.new()
+			var ctx := _spy_ctx(s, spy, type)
+			for q in d.quarries:
+				ctx.memo["street_%d" % q.index] = -10.0  # (Ruin's patience is spent: it strikes where he would be seen)
+			var bc := SpyBc.new()
+			var act := Callable(HUNT, "act_" + type)
+			for look in 4:
+				Kit.run_for(s, 0.5)
+				var before := spy.casts.size()
+				var did := String(act.call(bc, ctx))
+				t.check((did == "") == (spy.casts.size() == before), "%s night %d: what the policy returns says whether it cast (%s)" % [type, night, did])
+				t.check(not did.begins_with("fill"), "%s night %d: the cast is not worded a filler (%s)" % [type, night, did])
+			var needed := _needed(d)
+			var tower: Structure = (s.crowd as Crowd).bell.tower if (s.crowd as Crowd).bell != null else null
+			for c in spy.casts:
+				total += 1
+				var near := false
+				for at in needed:
+					near = near or (c.at as Vector2).distance_to(at) <= CAST_REACH
+				if tower != null and (c.at as Vector2).distance_to(tower.center()) <= 1.0:
+					near = true
+				if not near:
+					strays.append("night %d at %s" % [night, c.at])
+			spy.free()
+			Kit.done(s)
+		t.check(total > 0, "%s: the policy casts in the three nights (%d casts)" % [type, total])
+		t.check(strays.is_empty(), "%s: every cast lands within %.0f of somebody the night still needs answered (strays: %s)" % [type, CAST_REACH, ", ".join(strays)])
+
+
 ## The captain's two guards stay apart on his walk (review of Task 11, M3; Ruling P5-T11-R8, MS §0: one Doom or strike must not take both). The bodies
 ## are moved: the captain walks his whole round to the Citadel with his two guards ticked beside him (Person.tick; the Kit world does not step bodies),
-## and the gap between the guards is read every step. At a stop (he indoors, the two at his door) it stays over 1.6 always; on the walk it does but for
-## the turns of the road (a corner, the doubling-back at the waypoint) where a pair walking in file must pass the same ground -- at most 5 % of the steps.
+## and the gap between the guards is read every step from the one the state changes on (nothing is left out). At a stop (he indoors, the two at his door) it stays over 1.6 always; on the walk it does but for
+## the turns of the road and the first steps out of a door (a corner, the doubling-back at the waypoint, the guards falling into file) -- at most 5 % of ALL the steps (about 3.9 % measured).
 ## They also keep up with him (the farthest a guard strays from him is under 6), or "apart" would only mean "left behind".
 static func _guards_walk(t) -> void:
 	var s := _world()
@@ -699,7 +822,7 @@ static func _guards_walk(t) -> void:
 		settle += DT
 		var a: Person = cap.guards[0]
 		var b: Person = cap.guards[1]
-		if settle < (STOP_SETTLE if cap.state == State.VISITING else SETTLE) or not MissionDirector._alive(a) or not MissionDirector._alive(b) or a.inside or b.inside:
+		if not MissionDirector._alive(a) or not MissionDirector._alive(b) or a.inside or b.inside:
 			continue
 		var gap := a.ground_pos.distance_to(b.ground_pos)
 		steps += 1
@@ -710,13 +833,11 @@ static func _guards_walk(t) -> void:
 		elif cap.state == State.WALKING:
 			walk_steps += 1
 			walk_under += 1 if gap <= 1.6 else 0
-			var far_now := maxf(a.ground_pos.distance_to(cap.target.ground_pos), b.ground_pos.distance_to(cap.target.ground_pos))
-			if far_now > 5.0 and far_now > farthest:
-				print('DBG far %.1f t=%.1f leg=%d cap=%s a=%s b=%s' % [far_now, secs, cap.leg, cap.target.ground_pos, a.ground_pos, b.ground_pos])
-			farthest = maxf(farthest, far_now)
+			if settle >= SETTLE:
+				farthest = maxf(farthest, maxf(a.ground_pos.distance_to(cap.target.ground_pos), b.ground_pos.distance_to(cap.target.ground_pos)))
 	t.check(rules.finished and walk_steps > 800, "(set-up) the captain walked his round (%d steps walking, %d at stops, %.0f s)" % [walk_steps, stop_steps, secs])
 	t.check(stop_steps > 100 and stop_under == 0, "at his stops the two guards stand over 1.6 apart always (%d steps, closest %.2f)" % [stop_steps, worst_stop])
-	t.check(float(walk_under) <= 0.05 * float(walk_steps), "on his walk they are over 1.6 apart but at the turns of the road: %d of %d steps under (%.1f %%)" % [walk_under, walk_steps, 100.0 * float(walk_under) / float(maxi(walk_steps, 1))])
+	t.check(float(walk_under) <= 0.05 * float(walk_steps), "on his walk, EVERY step counted from the one he leaves the door on, they are under 1.6 apart in at most 5 %%: %d of %d steps (%.1f %%)" % [walk_under, walk_steps, 100.0 * float(walk_under) / float(maxi(walk_steps, 1))])
 	t.check(farthest < 6.0, "and they keep up with him (the farthest a guard strays from him: %.1f)" % farthest)
 	Kit.done(s)
 

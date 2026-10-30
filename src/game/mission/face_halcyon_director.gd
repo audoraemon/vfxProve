@@ -19,6 +19,11 @@ extends ExodusDirector
 ## its door has room for the file (_tail_from()), two escorts under 1.7 apart give way and the march waits for them (_give_way(), _march()), and two
 ## processions are never at one stake at a time (a second waits short of the pyre).
 ##
+## Task 13 (per-type policies, the gate; Rulings P5-T13-R1..): the PYRE IN figure never rises (_refresh_eta()), a give-way never parks an escort beyond both his place
+## and the believer (_give_way_cell()), the places of the file keep FH_APART (more than a death is seen across) round a bend (_file_places()), the escorts ahead
+## of the believer stand on the stake's own places for good (_stake_from()), the halts (forming, at the stake, waiting short of it) are measured apart from the
+## walk (halt_*) and the overlap of two companies' escorts is logged (cross_*).
+##
 ## Overrides of ExodusDirector (the MS §6 checklist): _plan() (houses, the pyre, no gates, no watch, no patrols), the tune_ vars (setup(), _tune()),
 ## _place_charge() (a bound believer in the escort; the base's _appoint_charges() serves, one a house by tune_per_house), _step_held() (replaces the
 ## Escort type's single-seizer march, which frees him the moment one seizer leaves DUTY and takes him at return_to: here the escort walks him to the pyre
@@ -70,6 +75,18 @@ const FH_CLEAR := 2.7
 const FH_MERGE := 7.0
 ## An escort within this far of his place stands at it (the pair measure).
 const FH_STOPPED := 0.6
+## How much sooner than the file's own lead reaches the road's end the lead goes to his place at the stake, so he is out of the believer's way when the fire is lit
+## and the file stands apart from the first look of the burning (Task 13).
+const FH_STAKE_LEAD := 2.5
+## Round a bend of the lane the places of the file are drawn back along the trail, by FH_BEND_STEP at a time and at most FH_BEND, until each stands FH_APART
+## clear of the one before (Task 13: two places 2.6 apart along a lane stood 1.5 apart at a hairpin). FH_APART is more than Crowd.DOOM_WITNESS (2.0), the
+## distance at which a death is seen: an escort struck down in his place is not seen by the escort beside him, only by whom stands near (the believer, a
+## bystander), so the rear of the file can fall unseen.
+const FH_BEND := 2.0
+const FH_BEND_STEP := 0.2
+const FH_APART := 2.2
+## The lead's place at the stake is no nearer the pyre than this (the believer's own spot).
+const FH_STAKE_OFF := 0.7
 ## When each procession forms up at the latest (0:30, 1:35, 2:40, 3:45 *fg*) and the chain (a rule: no wait over 45 s after the one before is
 ## freed or burned).
 const FH_PROC_AT := [30.0, 95.0, 160.0, 225.0]
@@ -124,9 +141,11 @@ class Procession:
 	var stall := 0.0
 	## Where the believer has been, oldest first (seeded with the lane behind his door): the second and third escorts walk along it.
 	var trail: Array[Vector2] = []
-	## Seconds to the pyre as last worked out, and the clock second it was worked out at (INF until then).
+	## Seconds to the pyre as last worked out, and the clock second it was worked out at (INF until then). Never above the last look's (_refresh_eta()).
 	var eta := INF
 	var eta_at := 0.0
+	## The lead's place at the stake, worked out from the road at the forming (_stake_from(); INF for none).
+	var stake := Vector2.INF
 	## How it was freed ("broken", "walls") or "" if not.
 	var freed_by := ""
 
@@ -153,6 +172,17 @@ var pair_under := 0
 var walk_min := INF
 var walk_looks := 0
 var walk_under := 0
+## Two companies' escorts within two Silent Doom radii of each other (ruling P5-T8-R7: the south-west house keeps less than 2.7 from the west and south-east
+## roads): the looks at which two escorts of different processions, both fit and out of doors, stood so, the looks with two such companies out at all, and the
+## nearest two have stood (INF until two companies were out). The scripted run prints them (Task 13). And the same for a *halt*: every look at which a
+## procession is forming up, bound to the stake or waiting short of it for another to burn, its believer standing still (halt_min, halt_looks, halt_under):
+## wave 1's rule is that escorts stand more than 1.6 apart at every stop, always (Task 13).
+var halt_min := INF
+var halt_looks := 0
+var halt_under := 0
+var cross_under := 0
+var cross_looks := 0
+var cross_min := INF
 
 
 ## The Hunt's numbers into the base's tune_ vars before the base sets up (god P5, MS H11, H12, Ruling C2): no gate shuts, no hounds, one believer
@@ -515,6 +545,7 @@ func _come_out(i: int) -> void:
 	pr.trail = _tail_from(h.door, _road(h.door))
 	if pr.trail.is_empty():
 		pr.trail = [h.door]
+	pr.stake = _stake_from(_road(h.door))
 	pr.places = _file_places(pr, h.door)
 	var spots := pr.places
 	for k in pr.escorts.size():
@@ -623,7 +654,7 @@ func _note_trail(pr: Procession, p: Person) -> void:
 	var run := 0.0
 	for k in range(pr.trail.size() - 1, 0, -1):
 		run += pr.trail[k].distance_to(pr.trail[k - 1])
-		if run > FH_BACK2 + 1.5:
+		if run > FH_BACK2 + 3.0 * FH_BEND + 0.5:
 			pr.trail = pr.trail.slice(k - 1)
 			break
 
@@ -644,7 +675,52 @@ func _file_places(pr: Procession, at: Vector2) -> Array[Vector2]:
 		if pr.trail[k].distance_to(behind.back()) > 0.05:
 			behind.append(pr.trail[k])
 	var out: Array[Vector2] = [_walkable(_along(ahead, FH_LEAD)), _walkable(_along(behind, FH_BACK1)), _walkable(_along(behind, FH_BACK2))]
+	# Round a bend of the lane two places 2.6 apart along it can stand 1.5 apart: the second is drawn back along the trail until he is clear of the lead, the
+	# third until he is clear of both (at most FH_BEND farther back each).
+	var d1 := FH_BACK1
+	while d1 < FH_BACK1 + FH_BEND and out[1].distance_to(out[0]) < FH_APART:
+		d1 += FH_BEND_STEP
+		out[1] = _walkable(_along(behind, d1))
+	var d2 := maxf(FH_BACK2, d1 + FH_BACK2 - FH_BACK1)
+	out[2] = _walkable(_along(behind, d2))
+	while d2 < FH_BACK2 + 2.0 * FH_BEND and (out[2].distance_to(out[1]) < FH_APART or out[2].distance_to(out[0]) < FH_APART):
+		d2 += FH_BEND_STEP
+		out[2] = _walkable(_along(behind, d2))
+	if pr.stake != Vector2.INF and _along_length(_road(at)) < FH_LEAD + FH_STAKE_LEAD:
+		out[0] = pr.stake
 	return out.slice(0, pr.escorts.size())
+
+
+## The lead's place at the stake (Task 13; wave 1's rule: escorts more than 1.6 apart at every stop): the road ends at the pyre and "straight on" may lie in a
+## wall (the Temple's steps are across one at Aldermere's pyre), so the lead stands, for good, on the walkable cell within reach of the pyre (FH_ESCORT_REACH
+## less the stop-short) and no nearer the pyre than FH_STAKE_OFF that lies farthest from where the second escort will stand at the stake (FH_BACK1 back from
+## the road's end), at least FH_SPACE and a stop-short from it. It depends on the road alone, so it never changes as the believer comes in (a place that
+## followed him sent the lead back and forth across him). Only reads. Vector2.INF when there is none.
+func _stake_from(road: Array[Vector2]) -> Vector2:
+	var grid: WalkGrid = crowd._grid
+	if grid == null or road.size() < 2:
+		return Vector2.INF
+	var rev: Array[Vector2] = road.duplicate()
+	rev.reverse()
+	var second := _along(rev, FH_BACK1)
+	var reach := FH_ESCORT_REACH - FH_STOP_SHORT
+	var span := ceili(reach / WalkGrid.CELL)
+	var base := grid.world_to_id(pyre_at)
+	var best := Vector2.INF
+	var best_far := 0.0
+	for dy in range(-span, span + 1):
+		for dx in range(-span, span + 1):
+			var id := base + Vector2i(dx, dy)
+			if not grid.grid.is_in_boundsv(id) or grid.grid.is_point_solid(id):
+				continue
+			var w := grid.id_to_world(id)
+			if w.distance_to(pyre_at) > reach or w.distance_to(pyre_at) < FH_STAKE_OFF:
+				continue
+			var far := w.distance_to(second)
+			if far >= FH_SPACE + FH_STOP_SHORT and far > best_far:
+				best_far = far
+				best = w
+	return best
 
 
 ## The length of polyline `line`.
@@ -680,6 +756,9 @@ func _fit(pr: Procession, k: int) -> bool:
 ## cell nearest his place that is FH_SPACE or more from the other and from every other fit escort, on the side away from the other (not through him).
 ## `target` (one place per escort) is changed for him. Only reads the world.
 func _give_way(pr: Procession, target: Array[Vector2]) -> void:
+	var believer := Vector2.INF
+	if pr.charge != null and _alive(pr.charge.man):
+		believer = (pr.charge.man as Person).ground_pos
 	var fit: Array[int] = []
 	for k in pr.escorts.size():
 		if _fit(pr, k):
@@ -698,14 +777,16 @@ func _give_way(pr: Procession, target: Array[Vector2]) -> void:
 			for k in fit:
 				if k != loser:
 					rest.append((pr.escorts[k] as Person).ground_pos)
-			var cell := _give_way_cell((pr.escorts[loser] as Person).ground_pos, target[loser], (pr.escorts[other] as Person).ground_pos, rest)
+			var cell := _give_way_cell((pr.escorts[loser] as Person).ground_pos, pr.places[loser], (pr.escorts[other] as Person).ground_pos, rest, believer)
 			if cell != Vector2.INF:
 				target[loser] = cell
 
 
-## The walkable cell nearest `place` (within FH_SPAN of it) that a man standing at `from` can step to without passing the one at `away`: FH_SPACE or more
-## from every point of `rest` (the other fit escorts), a clear line from `from`, on the far side of `from` from `away`. Vector2.INF for none.
-func _give_way_cell(from: Vector2, place: Vector2, away: Vector2, rest: Array[Vector2]) -> Vector2:
+## The walkable cell nearest `place` that a man standing at `from` can step to without passing the one at `away`: FH_SPACE or more from every point of
+## `rest` (the other fit escorts), a clear line from `from`, on the far side of `from` from `away`, and still with the procession when he stops there --
+## within FH_ESCORT_REACH less the stop-short of his `place` or of the believer at `lead` (Task 13: a give-way once parked an escort 4 units off, beyond
+## both measures, so the geometry alone could turn him unable after the grace). Vector2.INF for none.
+func _give_way_cell(from: Vector2, place: Vector2, away: Vector2, rest: Array[Vector2], lead := Vector2.INF) -> Vector2:
 	var grid: WalkGrid = crowd._grid
 	if grid == null:
 		return Vector2.INF
@@ -720,6 +801,8 @@ func _give_way_cell(from: Vector2, place: Vector2, away: Vector2, rest: Array[Ve
 				continue
 			var w := grid.id_to_world(id)
 			if w.distance_to(place) > FH_SPAN or (w - from).dot(from - away) < -0.01 or w.distance_to(away) < FH_SPACE + FH_STOP_SHORT:
+				continue
+			if w.distance_to(place) > FH_ESCORT_REACH - FH_STOP_SHORT and (lead == Vector2.INF or w.distance_to(lead) > FH_ESCORT_REACH - FH_STOP_SHORT):
 				continue
 			var fits := true
 			for q in rest:
@@ -762,6 +845,12 @@ func _note_pairs(pr: Procession) -> void:
 	for a in live.size():
 		for b in range(a + 1, live.size()):
 			low = minf(low, live[a].ground_pos.distance_to(live[b].ground_pos))
+	var at_stake := (pr.charge.man as Person).ground_pos.distance_to(pyre_at) <= FH_QUEUE and _pyre_busy(pr)
+	var halted: bool = pr.phase == Procession.Phase.FORMING or pr.phase == Procession.Phase.BURNING or (pr.phase == Procession.Phase.MARCHING and at_stake)
+	if halted:
+		halt_looks += 1
+		halt_min = minf(halt_min, low)
+		halt_under += 1 if low < 2.0 * SilentDoom.RADIUS else 0
 	walk_looks += 1
 	walk_min = minf(walk_min, low)
 	walk_under += 1 if low < 2.0 * SilentDoom.RADIUS else 0
@@ -769,6 +858,32 @@ func _note_pairs(pr: Procession) -> void:
 		pair_looks += 1
 		pair_min = minf(pair_min, low)
 		pair_under += 1 if low < 2.0 * SilentDoom.RADIUS else 0
+
+
+## Once a look (Task 13, ruling P5-T8-R7): the nearest two escorts of different processions, both fit and out of doors, are noted in cross_min, and a look at
+## which they stood under two Silent Doom radii counts in cross_under (a cast on one company would then take the other's escort too).
+func _note_cross() -> void:
+	var lows := INF
+	var companies := 0
+	for a in procs.size():
+		var fit_a: Array[Person] = []
+		for k in procs[a].escorts.size():
+			if _fit(procs[a], k):
+				fit_a.append(procs[a].escorts[k] as Person)
+		if fit_a.is_empty():
+			continue
+		companies += 1
+		for b in range(a + 1, procs.size()):
+			for k in procs[b].escorts.size():
+				if not _fit(procs[b], k):
+					continue
+				for e in fit_a:
+					lows = minf(lows, e.ground_pos.distance_to((procs[b].escorts[k] as Person).ground_pos))
+	if companies < 2:
+		return
+	cross_looks += 1
+	cross_min = minf(cross_min, lows)
+	cross_under += 1 if lows < 2.0 * SilentDoom.RADIUS else 0
 
 
 ## The believer is bound: deaf to a whisper and past fear (The Prisoner's hold, EscortDirector.BOUND_HOLD past each look).
@@ -891,6 +1006,7 @@ func _households() -> void:
 				and not _alive(pr.charge.man) and not pr.charge.escaped and not pr.charge.taken:
 			_killed(i)
 	super()
+	_note_cross()
 
 
 ## Each procession still waiting whose chained time has come forms up (MS §6); its own time is the timeline's. The base's, with this Hunt's banner.
@@ -938,7 +1054,7 @@ func pyre_in(i: int) -> float:
 			var h: Household = households[i]
 			return due_in(i) + FH_FORM + _walk_secs(h.door)
 		Procession.Phase.FORMING, Procession.Phase.MARCHING:
-			return maxf(pr.eta - (_clock - pr.eta_at), 0.0)
+			return pr.eta
 		Procession.Phase.BURNING:
 			return 0.0
 	return INF
@@ -964,8 +1080,11 @@ func _path_len(a: Vector2, b: Vector2) -> float:
 	return len
 
 
-## `pr`'s seconds to the pyre as of now: the forming time left and the believer's walk from where he stands.
+## `pr`'s seconds to the pyre as of this look: the forming time left and the believer's walk from where he stands, never above the last look's (Task 13: the
+## walk's length from where he stands jitters by a few tenths as he turns, and a stall for a straggler or a close pair held the believer while the old
+## figure grew by the wait; the countdown showed 15.9 then 16.1). A stalled march therefore holds the figure still, and it is never short of the walk left.
 func _refresh_eta(pr: Procession) -> void:
+	var was := pr.eta
 	pr.eta_at = _clock
 	pr.eta = INF
 	if pr.charge == null or not _alive(pr.charge.man):
@@ -974,9 +1093,7 @@ func _refresh_eta(pr: Procession) -> void:
 	var t := 0.0
 	if pr.phase == Procession.Phase.FORMING:
 		t += maxf(pr.form_end - _clock, 0.0)
-	pr.eta = t + _walk_secs(p.ground_pos)
-	if pr.phase == Procession.Phase.MARCHING and (_straggling(pr) or _pair_close(pr)):
-		pr.eta += maxf(FH_STRAGGLE - pr.stall, 0.0)  # the countdown counts the wait the march may be holding for
+	pr.eta = minf(t + _walk_secs(p.ground_pos), was)
 
 
 # --- The loss, the banners, the strip, the tags ----------------------------------------------------------------------------------------

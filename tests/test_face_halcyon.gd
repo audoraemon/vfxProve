@@ -8,6 +8,8 @@ extends RefCounted
 const DT := 0.05
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const Book := preload("res://tests/test_hunt_book.gd")
+const GodHunts := preload("res://tools/dev/routes/god_hunts.gd")
+const HUNT := preload("res://tools/dev/routes/god_hunts/face_halcyon.gd")
 ## One look is a TICK, and a little more so a director whose own timer is mid-way still gets one.
 const LOOK := EscortDirector.TICK * 2.0 + DT
 
@@ -22,6 +24,10 @@ static func run(t) -> void:
 	_file_places(t)
 	_house_clearance(t)
 	_body_walk(t)
+	_real_walk(t)
+	_countdown(t)
+	_give_way_reach(t)
+	_cross(t)
 	_tag_matches_rule(t)
 	_report(t)
 	_one_seizer_not_free(t)
@@ -39,6 +45,10 @@ static func run(t) -> void:
 	_straggler(t)
 	_busy(t)
 	_evacuation(t)
+	_policies(t)
+	_blows(t)
+	_pacing(t)
+	_no_filler_casts(t)
 	_wishes(t)
 
 
@@ -55,13 +65,39 @@ static func _believer(d: FaceHalcyonDirector, i: int) -> Person:
 	return d.procs[i].charge.man as Person
 
 
+## The trail a believer who had walked procession `i`'s road to `at` would have left (the lane behind the door, then the road up to `at`), oldest first; empty
+## when `at` is not on the road (within 0.6 of it).
+static func _trail_to(d: FaceHalcyonDirector, i: int, at: Vector2) -> Array[Vector2]:
+	var h: ExodusDirector.Household = d.households[i]
+	var road := d._road(h.door)
+	var out: Array[Vector2] = d._tail_from(h.door, road)
+	var best := INF
+	var run := 0.0
+	var best_run := 0.0
+	for k in range(road.size() - 1):
+		var q := Geometry2D.get_closest_point_to_segment(at, road[k], road[k + 1])
+		if q.distance_to(at) < best:
+			best = q.distance_to(at)
+			best_run = run + road[k].distance_to(q)
+		run += road[k].distance_to(road[k + 1])
+	if best > 0.6 or out.is_empty():
+		return []
+	var left := 0.0
+	var step := 0.25
+	while left < best_run:
+		out.append(FaceHalcyonDirector._along(road, left))
+		left += step
+	return out
+
+
 ## Procession `i`'s believer and his escorts set down in file round `at`, as if they had walked there (the trail behind him a straight lane west).
 static func _stand(d: FaceHalcyonDirector, i: int, at: Vector2) -> void:
 	var pr: FaceHalcyonDirector.Procession = d.procs[i]
 	Kit.arrive(pr.charge.man as Person, at)
-	pr.trail = []
-	for k in range(12, -1, -1):
-		pr.trail.append(at + Vector2(-0.5 * float(k), 0.0))
+	pr.trail = _trail_to(d, i, at)
+	if pr.trail.is_empty():
+		for k in range(12, -1, -1):
+			pr.trail.append(at + Vector2(-0.5 * float(k), 0.0))
 	pr.places = d._file_places(pr, at)
 	for k in pr.escorts.size():
 		if MissionDirector._alive(pr.escorts[k]):
@@ -455,6 +491,174 @@ static func _body_walk(t) -> void:
 	t.check(burn_at >= 45.0 and d.burned() >= 1, "the first fire comes %.1f s after the countdowns first showed (at least 45 s)" % burn_at)
 	t.check(d.pair_looks > 0 and d.walk_looks > 0 and d.walk_min >= 1.0 and d.pair_min >= 1.0 and d.walk_under * 100 <= d.walk_looks * 3,
 		"the director's own figures agree: walking %.2f/%d/%d, stopped %.2f/%d/%d (min / under 1.6 / looks)" % [d.walk_min, d.walk_under, d.walk_looks, d.pair_min, d.pair_under, d.pair_looks])
+	t.check(d.halt_looks > 100 and d.halt_under == 0 and d.halt_min > 2.0 * SilentDoom.RADIUS,
+		"and at every halt -- forming at the door, bound to the stake, waiting short of it -- the nearest two escorts stand over 1.6 apart, from the first look (halts %.2f/%d/%d: min / under 1.6 / looks)" % [d.halt_min, d.halt_under, d.halt_looks])
+	Kit.done(s)
+
+
+## Real walkers (Task 13, wave 1's rule for pairs; makes the stake place and the give-way count): each procession alone walks its road from its door to the
+## stake and burns, its believer and escorts ticked by Person.tick (not the test world's perfect walkers), every step of 0.05 s read from the first step after
+## each state change with nothing left out. At a halt (forming at the door, bound to the stake) the nearest two escorts stand over 1.6 apart ALWAYS; walking, they
+## are under 1.6 apart in at most 5 % of ALL the steps; and nobody is freed or disabled by the walk alone. (Mutation: with the lead's stake place switched off
+## he crosses the believer at the stake and the halt check fails.)
+static func _real_walk(t) -> void:
+	for only in 4:
+		var s := _world()
+		var d: FaceHalcyonDirector = s.d
+		var pr: FaceHalcyonDirector.Procession = d.procs[only]
+		d._come_out(only)
+		var halt := 0
+		var halt_under := 0
+		var halt_low := INF
+		var walk := 0
+		var walk_under := 0
+		var walk_low := INF
+		var secs := 0.0
+		var burnt := false
+		var min_able := 3
+		while secs < 120.0 and not burnt:
+			(s.crowd as Crowd).advance(DT)
+			(s.rules as Rules).advance(DT)
+			secs += DT
+			for v: Variant in [pr.charge.man] + pr.escorts:
+				if MissionDirector._alive(v):
+					(v as Person).tick(DT)
+			if pr.phase == FaceHalcyonDirector.Procession.Phase.BURNED:
+				burnt = true
+			if not pr.phase in [FaceHalcyonDirector.Procession.Phase.FORMING, FaceHalcyonDirector.Procession.Phase.MARCHING, FaceHalcyonDirector.Procession.Phase.BURNING]:
+				continue
+			min_able = mini(min_able, d.able_escort(only))
+			var low := INF
+			for a in 3:
+				for b in range(a + 1, 3):
+					low = minf(low, (pr.escorts[a] as Person).ground_pos.distance_to((pr.escorts[b] as Person).ground_pos))
+			if pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING:
+				walk += 1
+				walk_low = minf(walk_low, low)
+				walk_under += 1 if low <= 2.0 * SilentDoom.RADIUS else 0
+			else:
+				halt += 1
+				halt_low = minf(halt_low, low)
+				halt_under += 1 if low <= 2.0 * SilentDoom.RADIUS else 0
+		t.check(burnt and halt > 400 and walk > 400, "(set-up) procession %d walked to the stake and burned (%d halt steps, %d walking, %.0f s)" % [only, halt, walk, secs])
+		t.check(halt_under == 0, "procession %d: at its halts (forming, at the stake) the escorts stand over 1.6 apart always (%d steps, nearest %.2f)" % [only, halt, halt_low])
+		t.check(float(walk_under) <= 0.05 * float(walk), "procession %d: walking, EVERY step counted, under 1.6 apart in at most 5 %%: %d of %d steps (%.1f %%, nearest %.2f)" % [
+			only, walk_under, walk, 100.0 * float(walk_under) / float(maxi(walk, 1)), walk_low])
+		t.check(min_able == 3, "procession %d: the walk alone disables nobody (fewest able %d)" % [only, min_able])
+		Kit.done(s)
+
+
+## The pyre countdown never rises while he walks (Task 13; review of Task 8, Minor 1): all four processions form up and are walked by their pace, the director
+## looking every 0.25 s, and the number the tag and the strip read (pyre_in) is sampled every 0.05 s -- it never goes up, from the forming to the stake, through
+## the turns of the road (the walk's length from where he stands jitters by tenths) and the stalls for a close pair or a straggler (the old figure added the
+## wait to itself and grew by it); and it is not short of the walk he has left (he never arrives before the tag says). A forced stall is included.
+static func _countdown(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	var crowd: Crowd = s.crowd
+	_form_all(d)
+	var prev := [INF, INF, INF, INF]
+	var rises := PackedStringArray()
+	var early := PackedStringArray()
+	var samples := 0
+	var clock := 0.0
+	var held := false
+	while clock < 100.0 and d.lost_reason() == "":
+		Kit.run_for(s, DT)
+		clock += DT
+		for i in 4:
+			var pr: FaceHalcyonDirector.Procession = d.procs[i]
+			if not pr.phase in [FaceHalcyonDirector.Procession.Phase.FORMING, FaceHalcyonDirector.Procession.Phase.MARCHING]:
+				prev[i] = INF
+				continue
+			var p := pr.charge.man as Person
+			# One straggler on the first procession, for a second or two of the walk: the march holds, the figure must not grow.
+			if i == 0 and not held and pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING and clock > 15.0 and pr.places.size() == 3:
+				held = true
+				Kit.arrive(pr.escorts[0] as Person, pr.places[0] + Vector2(FaceHalcyonDirector.FH_LAG + 0.4, 0.0))
+			_walk_body(crowd, p, DT)
+			for k in pr.escorts.size():
+				if MissionDirector._alive(pr.escorts[k]):
+					_walk_body(crowd, pr.escorts[k] as Person, DT)
+			var now := d.pyre_in(i)
+			samples += 1
+			if prev[i] != INF and now > float(prev[i]) + 0.001:
+				rises.append("%d@%.2f %.2f->%.2f" % [i, clock, prev[i], now])
+			prev[i] = now
+			if pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING and now < d._walk_secs(p.ground_pos) - 0.6:
+				early.append("%d@%.2f %.2f<%.2f" % [i, clock, now, d._walk_secs(p.ground_pos)])
+	t.check(samples > 3000 and held, "the countdown was sampled through the forming and the walk of four processions, with one march held (%d samples)" % samples)
+	t.check(rises.is_empty(), "pyre_in never rises while they form and walk (%d rises: %s)" % [rises.size(), ", ".join(rises.slice(0, 6))])
+	t.check(early.is_empty(), "and it is never short of the walk he has left by more than 0.6 s (%d: %s)" % [early.size(), ", ".join(early.slice(0, 4))])
+	Kit.done(s)
+
+
+## A give-way never takes an escort out of the procession (Task 13; review of Task 8, Note): two fit escorts bunched at points along all four roads, the cell
+## the one who gives way is sent to is within reach (less the stop-short of a walker) of his place or of the believer, so the geometry alone cannot leave
+## him beyond both measures; and an escort standing in such a cell keeps his ESCORT tag and counts able past the grace, with the believer not freed.
+static func _give_way_reach(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	_form_all(d)
+	var reach := FaceHalcyonDirector.FH_ESCORT_REACH - FaceHalcyonDirector.FH_STOP_SHORT
+	var moves := 0
+	var beyond := PackedStringArray()
+	for i in 4:
+		var pr: FaceHalcyonDirector.Procession = d.procs[i]
+		var road := d._road((d.households[i] as ExodusDirector.Household).door)
+		var length := d._along_length(road)
+		var x := 5.0
+		while x < length - 2.0:
+			var at := FaceHalcyonDirector._along(road, x)
+			for pair in [[2, 1], [1, 0], [2, 0]]:
+				_stand(d, i, at)
+				var a := pr.escorts[pair[0]] as Person
+				var b := pr.escorts[pair[1]] as Person
+				Kit.arrive(a, b.ground_pos - (b.ground_pos - pr.places[pair[0]]).normalized() * 0.6)
+				var target: Array[Vector2] = pr.places.duplicate()
+				d._give_way(pr, target)
+				for k in 3:
+					if target[k] != pr.places[k]:
+						moves += 1
+						var believer := _believer(d, i).ground_pos
+						if target[k].distance_to(pr.places[k]) > reach + 0.01 and target[k].distance_to(believer) > reach + 0.01:
+							beyond.append("%d@%.0f k%d" % [i, x, k])
+			x += 2.0
+	t.check(moves > 20 and beyond.is_empty(), "%d give-ways along the four roads, none to a cell beyond reach of his place and of the believer (%s)" % [moves, ", ".join(beyond.slice(0, 5))])
+	# An escort who stands where a give-way sends him is still with the procession past the grace, tagged, and the believer is not freed.
+	_stand(d, 0, d.pyre_at + Vector2(0.0, 6.0))
+	var pr0: FaceHalcyonDirector.Procession = d.procs[0]
+	var e := pr0.escorts[1] as Person
+	var other := pr0.escorts[0] as Person
+	Kit.arrive(e, other.ground_pos + Vector2(0.5, 0.0))
+	var target0: Array[Vector2] = pr0.places.duplicate()
+	d._give_way(pr0, target0)
+	var cell := target0[1] if target0[1] != pr0.places[1] else target0[0]
+	Kit.arrive(e if target0[1] != pr0.places[1] else other, cell)
+	_look(s, 10)
+	var tagged := _labels(d).filter(func(l: Variant) -> bool: return String(l) == "ESCORT").size()
+	t.check(pr0.phase != FaceHalcyonDirector.Procession.Phase.FREED and d.able_escort(0) == 3 and tagged >= 3,
+		"an escort in the cell a give-way chose is still able and tagged ESCORT after the grace (%d able, %d tags, %s)" % [d.able_escort(0), tagged, pr0.phase])
+	Kit.done(s)
+
+
+## The overlap log (Task 13, ruling P5-T8-R7): a look with two companies out counts, and counts as under 1.6 when two escorts of different processions stand
+## so; with the companies apart it counts none.
+static func _cross(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	t.check(d.cross_looks == 0 and d.cross_min == INF, "no look is counted before two companies are out")
+	d._come_out(0)
+	_look(s, 2)
+	t.check(d.cross_looks == 0, "one company out is no overlap look (%d)" % d.cross_looks)
+	d._come_out(1)
+	_look(s, 2)
+	var apart := d.cross_looks
+	t.check(apart > 0 and d.cross_under == 0 and d.cross_min > 2.0 * SilentDoom.RADIUS, "two companies out at their own doors: looks counted (%d), none under 1.6 (nearest %.1f)" % [apart, d.cross_min])
+	Kit.arrive(d.procs[1].escorts[0] as Person, (d.procs[0].escorts[0] as Person).ground_pos + Vector2(1.0, 0.0))
+	_look(s, 2)
+	t.check(d.cross_under > 0 and d.cross_min <= 1.05 and d.cross_looks > apart, "an escort of the second beside one of the first: counted under 1.6 (%d of %d, nearest %.2f)" % [d.cross_under, d.cross_looks, d.cross_min])
+	t.check(String(GodHunts.FILES["face_halcyon"].state(null, {"d": d})).contains("cross="), "the scripted run's state line prints the overlap")
 	Kit.done(s)
 
 
@@ -975,6 +1179,186 @@ static func _report(t) -> void:
 		and int(r.freed_broken) == 0 and int(r.freed_walls) == 0, "report(): the base's keys and freed / burned / freed_broken / freed_walls (%s)" % [r])
 	t.check(d.hud_line() == "Free the believers 1 / 3, 1 burned" and d.lost_reason() == "", "the HUD line on a night still on (%s)" % d.hud_line())
 	Kit.done(s)
+
+
+# --- The scripted policies (god P5, MS §7, Task 13) ---
+
+## A stand-in for Rules that records the casts the policies make (their slot, aim and extras) and casts nothing.
+class SpyRules extends Rules:
+	var casts: Array[Dictionary] = []
+
+	func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
+		casts.append({"slot": slot, "at": ground, "extra": extra})
+		return null
+
+
+## behaviour_check's helpers the policies call, answered for the spy: every key in the slots is ready, Silent Doom is unseen, a whisper sends six units straight
+## away. (The policies' own cooldown reasoning is not under test: what they choose to strike is.)
+class SpyBc:
+	const EXODUS_MARGIN := 0.5
+
+	func _slot_ready(_rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key)
+
+	func _slot_wait(_rules, _slots: Dictionary, _key: String) -> float:
+		return 0.0
+
+	func _doom_unseen(_crowd, _at: Vector2, _spare: Array = [], _margin := 0.0) -> bool:
+		return true
+
+	func _prisoner_away(crowd: Crowd, p: Person, from: Vector2) -> Vector2:
+		var off := p.ground_pos - from
+		return MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, p.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * 6.0)
+
+
+## The slots a spy ctx gives the type's LOADOUT keys (key -> index) and the ctx the policies take.
+static func _spy_ctx(s: Dictionary, spy: SpyRules, type: String) -> Dictionary:
+	var slots := {}
+	for key: String in HUNT.LOADOUT[type]:
+		slots[key] = slots.size()
+	return {"d": s.d, "rules": spy, "slots": slots, "crowd": s.crowd, "memo": {}}
+
+
+## Every type's policy is written, drafts within the floor (MS §7: at most 3 keys, within TierBook.dp(5) Might at level 1, all in the tree at Tier 5), and no
+## policy casts a filler (D38: the words are scanned here, the casts by _no_filler_casts()).
+static func _policies(t) -> void:
+	var filled := GodHunts.filled("face_halcyon")
+	for type: String in GodHunts.TYPES:
+		t.check(filled.has(type) and GodHunts.has_policy("face_halcyon", type), "the %s policy is written (FILLED %s)" % [type, Array(filled)])
+	GodTree.dev_fill = true
+	for type: String in GodHunts.TYPES:
+		t.check(GodHunts.problems("face_halcyon", type, 5).is_empty(), "%s: the loadout is in the tree at Tier 5 and within the floor (%s)" % [type, Array(GodHunts.problems("face_halcyon", type, 5))])
+	GodTree.dev_fill = false
+	var src := FileAccess.get_file_as_string("res://tools/dev/routes/god_hunts/face_halcyon.gd")
+	t.check(not src.contains("GOD.FILL") and not src.contains("FILL +") and not src.contains('"fill:') and not src.contains("is_fill"), "no policy of the Hunt casts a filler (D38)")
+
+
+## What a blow does (the policies' _blow(): who it takes, whether the believer is among them, who would see): an escort alone in reach is taken and goes
+## unseen with nobody about; the believer within reach is flagged; a bystander in reach is counted, and one beyond it but within sight sees the fall.
+static func _blows(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	d._come_out(0)
+	_look(s, 2)
+	var pr: FaceHalcyonDirector.Procession = d.procs[0]
+	var crowd: Crowd = s.crowd
+	var p := _believer(d, 0)
+	var rear := pr.escorts[2] as Person
+	var lead := pr.escorts[0] as Person
+	var bystander: Person = null
+	for list: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for q in list:
+			if is_instance_valid(q) and not pr.escorts.has(q) and q != p:
+				if bystander == null and not q.soldier:
+					bystander = q
+				else:
+					Kit.arrive(q, q.ground_pos + Vector2(60.0, 60.0))  # (the world cleared: no bystander, no one in sight)
+	Kit.arrive(bystander, rear.ground_pos + Vector2(40.0, 40.0))
+	var alone := HUNT._blow(d, crowd, 0, rear.ground_pos, SilentDoom.RADIUS)
+	t.check((alone.hit as Array).has(rear) and int(alone.other) == 0 and not bool(alone.believer) and int(alone.seen) == 0,
+		"a blow on the rear of the file with nobody about takes him alone and goes unseen (hit %d, others %d, seen %d)" % [(alone.hit as Array).size(), int(alone.other), int(alone.seen)])
+	var near_man := HUNT._blow(d, crowd, 0, (lead.ground_pos + p.ground_pos) * 0.5, 1.2)
+	t.check(bool(near_man.believer), "a blow between the lead and the believer takes the believer too (flagged: never cast)")
+	Kit.arrive(bystander, rear.ground_pos + Vector2(0.4, 0.0))
+	var crowded := HUNT._blow(d, crowd, 0, rear.ground_pos, SilentDoom.RADIUS)
+	t.check(int(crowded.other) == 1, "a bystander in the blow's reach is counted (others %d)" % int(crowded.other))
+	Kit.arrive(bystander, rear.ground_pos + Vector2(1.6, 0.0))
+	var watched := HUNT._blow(d, crowd, 0, rear.ground_pos, SilentDoom.RADIUS)
+	t.check(int(watched.other) == 0 and int(watched.seen) == 1, "and one beyond it but within sight sees the fall (seen %d)" % int(watched.seen))
+	Kit.done(s)
+
+
+## The pacing (Silence the witness's precedent, SW_GAP): the opener is allowed at once, the cast that would finish the procession only FH_GAP seconds after it
+## (or when the fire is URGENT). Driven through act_death with a spy: the first look casts, a look 5 s on does not, one FH_GAP on does.
+static func _pacing(t) -> void:
+	var s := _world()
+	var d: FaceHalcyonDirector = s.d
+	d._come_out(0)
+	_look(s, 2)
+	var spy := SpyRules.new()
+	var ctx := _spy_ctx(s, spy, "death")
+	var bc := SpyBc.new()
+	HUNT.act_death(bc, ctx)
+	t.check(spy.casts.size() == 1, "the first look opens the procession: one Death Mark (%d casts)" % spy.casts.size())
+	(d.procs[0].escorts[2] as Person).statuses[&"frail"] = 10.0  # (the mark: frail at once)
+	t.check(d.able_escort(0) == 2, "(set-up) the marked escort no longer counts (%d able)" % d.able_escort(0))
+	Kit.run_for(s, 5.0)
+	var before := spy.casts.size()
+	HUNT.act_death(bc, ctx)
+	t.check(spy.casts.size() == before, "5 s on, the cast that would finish the procession waits (the opener is not %.0f s old)" % HUNT.FH_GAP)
+	Kit.run_for(s, HUNT.FH_GAP)
+	HUNT.act_death(bc, ctx)
+	t.check(spy.casts.size() == before + 1, "FH_GAP seconds on the finisher is cast (%d casts)" % spy.casts.size())
+	spy.free()
+	Kit.done(s)
+
+
+## No filler (D38; wave 1's rule for casts), by behaviour not by words: every type's policy is driven through four scenes -- nobody out yet and the first
+## procession a moment from forming up, the first forming, the first marching, all four out -- and each cast it records lands on something the night still needs
+## answered: an escort of a procession in custody (within the cast's reach), the Bell Tower for the Blight, the door of a house about to form for the law, the road
+## ahead of a believer for the mirror. A cast made only to end an idle stretch has nothing there. Each type casts at least once, and none ever casts on a
+## believer. (Mutation: aim a policy a few units off its escort and the check fails.)
+static func _no_filler_casts(t) -> void:
+	for type: String in GodHunts.TYPES:
+		var total := 0
+		var strays := PackedStringArray()
+		var on_believer := 0
+		for scene in 4:
+			var s := _world()
+			var d: FaceHalcyonDirector = s.d
+			var crowd: Crowd = s.crowd
+			if scene == 0:
+				Kit.run_for(s, 29.4)  # (the first procession forms up in about a second)
+			else:
+				d._come_out(0)
+				if scene == 3:
+					for i in range(1, 4):
+						d._come_out(i)
+				if scene >= 2:
+					Kit.run_for(s, FaceHalcyonDirector.FH_FORM + LOOK)
+				_look(s, 2)
+			for list: Array[Person] in [crowd.citizens, crowd.soldiers]:
+				for q in list:
+					if is_instance_valid(q) and not d.busy(q):
+						Kit.arrive(q, q.ground_pos + Vector2(60.0, 60.0))  # (no bystander: the escorts' own blows are what is under test)
+			var spy := SpyRules.new()
+			var ctx := _spy_ctx(s, spy, type)
+			var bc := SpyBc.new()
+			var act := Callable(HUNT, "act_" + type)
+			for look in 3:
+				var before := spy.casts.size()
+				var did := String(act.call(bc, ctx))
+				t.check((did == "") == (spy.casts.size() == before), "%s scene %d: what the policy returns says whether it cast (%s)" % [type, scene, did])
+				t.check(not did.begins_with("fill"), "%s scene %d: the cast is not worded a filler (%s)" % [type, scene, did])
+				_look(s)
+			var tower: Structure = crowd.bell.tower if crowd.bell != null else null
+			for c in spy.casts:
+				total += 1
+				var at: Vector2 = c.at
+				var near := false
+				for i in 4:
+					var pr: FaceHalcyonDirector.Procession = d.procs[i]
+					for k in pr.escorts.size():
+						if MissionDirector._alive(pr.escorts[k]) and at.distance_to((pr.escorts[k] as Person).ground_pos) <= 3.0:
+							near = true
+					if MissionDirector._alive(pr.charge.man) and pr.phase in [FaceHalcyonDirector.Procession.Phase.FORMING, FaceHalcyonDirector.Procession.Phase.MARCHING]:
+						if type != "passage" and type != "decree" and at.distance_to(_believer(d, i).ground_pos) < 0.5:
+							on_believer += 1
+						var road := d._road(_believer(d, i).ground_pos)
+						if type == "passage" and at.distance_to(FaceHalcyonDirector._along(road, HUNT.MIRROR_AHEAD)) < 0.5 and Walls.outside(c.extra.to):
+							near = true
+				if tower != null and at.distance_to(tower.center()) <= 1.0:
+					near = true
+				for i in d.households.size():
+					if type == "decree" and not (d.households[i] as ExodusDirector.Household).out and at.distance_to((d.households[i] as ExodusDirector.Household).door) <= 0.1:
+						near = true
+				if not near:
+					strays.append("scene %d at %s" % [scene, at])
+			spy.free()
+			Kit.done(s)
+		t.check(total > 0, "%s: the policy casts in the four scenes (%d casts)" % [type, total])
+		t.check(strays.is_empty(), "%s: every cast lands on something the night still needs answered (strays: %s)" % [type, ", ".join(strays)])
+		t.check(on_believer == 0, "%s: no cast is aimed at a believer (%d)" % [type, on_believer])
 
 
 ## Task 1's wish check for this Hunt, with its director: no wish lands on the director's own people or buildings, on nights 0-3.

@@ -34,6 +34,12 @@ var _temple := Vector2.INF
 var _saw: Array = []
 ## Seconds to the next look at the distance to the Temple.
 var _near_in := 0.0
+## The street's length from the messenger's standing place to the Temple's door, kept for the step it was found in (eta() is asked by the tag, the strip and the
+## hint every frame while he has no walk path; the grid's path is looked up once per step and place, not once per call).
+var _street_left := -1.0
+## Whom and where `_street_left` was found for.
+var _street_for: Variant = null
+var _street_at := Vector2.INF
 
 
 ## The witness walks at his share of the pace once he is sent (MS §3: `SW_WITNESS_PACE`).
@@ -78,6 +84,7 @@ func _slow(p: Person) -> void:
 ## One step: the crew held through an evacuation (the one shared rule, MissionDirector._hold_all()), the Ringer's step, then the word-in check and
 ## the warning at near_warn.
 func step(delta: float) -> void:
+	_street_left = -1.0  # (a new step: the street from where he stands is looked up afresh, once)
 	MissionDirector._hold_all(crew(), _evacuation_began())
 	super(delta)
 	if waiting or warning_dead or phase != Phase.RUN or not _alive(messenger) or messenger.inside:
@@ -96,23 +103,49 @@ func step(delta: float) -> void:
 
 
 ## Mission seconds until the messenger reaches the Temple's door at his pace (the remaining walk in real seconds times the clock's rate); INF for
-## none out of doors.
+## none walking. A witness sheltering indoors (review of Task 5, M8) still counts: the seconds until he comes out (shelter_left()) and then the street.
 func eta() -> float:
-	if waiting or warning_dead or phase == Phase.OVER or not _alive(messenger) or messenger.inside:
+	if waiting or warning_dead or phase == Phase.OVER or not _alive(messenger):
 		return INF
 	var rate := rules.clock_rate if rules != null else 1.0
-	if messenger.has_goal() and not messenger._path.is_empty():
-		return TempleReport.walk_seconds(messenger, _door()) * rate
+	if messenger.inside:
+		return (shelter_left() + street_left() / maxf(Person.PANIC_SPEED * messenger.pace, 0.05)) * rate
+	if messenger.has_goal() and not messenger._path.is_empty() and messenger.goal().distance_to(_door()) <= TempleReport.REACH:
+		return TempleReport.walk_seconds(messenger, _door()) * rate  # (his errand's walk; one run off it by a fright is timed by the street below)
 	# Standing at his door (the stare), or between two walks: the street's length, not the straight line.
-	var path := crowd._grid.path(messenger.ground_pos, _door()) if crowd._grid != null else PackedVector2Array()
+	return street_left() / maxf(Person.PANIC_SPEED * messenger.pace, 0.05) * rate
+
+
+## True while the messenger waits indoors out a fright (a shelter, not his house before he is sent): hidden and out of reach, he comes out when the danger has passed.
+func sheltering() -> bool:
+	return not waiting and not warning_dead and phase != Phase.OVER and _alive(messenger) and messenger.inside and messenger.mind == Person.Mind.SHELTER
+
+
+## Real seconds until a sheltering messenger comes out: ShelterManager.CLEAR_SECONDS less the quiet so far (more if a danger comes near again); 0 for none.
+func shelter_left() -> float:
+	if not sheltering() or crowd.shelters == null or not crowd.shelters.shelters.has(messenger.shelter):
+		return 0.0
+	return maxf(0.0, ShelterManager.CLEAR_SECONDS - float(crowd.shelters.shelters[messenger.shelter].clear))
+
+
+## The street's length from where the messenger stands to the Temple's door, looked up once per step and place (the straight line when the town has no grid).
+func street_left() -> float:
+	if not _alive(messenger):
+		return 0.0
+	if _street_left >= 0.0 and _street_for == messenger and _street_at == messenger.ground_pos:
+		return _street_left
 	var left := 0.0
 	var at := messenger.ground_pos
+	var path := crowd._grid.path(at, _door()) if crowd._grid != null else PackedVector2Array()
 	for q in path:
 		left += at.distance_to(q)
 		at = q
 	if path.is_empty():
 		left = at.distance_to(_door())
-	return left / maxf(Person.PANIC_SPEED * messenger.pace, 0.05) * rate
+	_street_left = left
+	_street_for = messenger
+	_street_at = messenger.ground_pos
+	return left
 
 
 ## Judged after his death (MS §3, the Hunt's rule): the nearest of his own able mates who saw it carries the word on; with none the word dies with
@@ -232,13 +265,17 @@ func _out_of_walls() -> bool:
 	return true
 
 
-## The map tags out of doors, most important first: the witness (gold, pointed at from the edge) with the time to the Temple, then each of his mates
-## who is out of doors (red, pointed at). No bellkeeper and no bell-tower tag (MS §3). None while they wait, or once he is stopped.
+## The map tags, most important first: the witness (gold, pointed at from the edge) with the time to the Temple -- sheltering indoors too, as
+## `WITNESS INSIDE - TEMPLE IN m:ss` (no hidden state) -- then each of his mates who is out of doors (red, pointed at). No bellkeeper and no
+## bell-tower tag (MS §3). None while they wait, or once he is stopped.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
-	if waiting or phase == Phase.OVER or warning_dead or not _alive(messenger) or messenger.inside:
+	if waiting or phase == Phase.OVER or warning_dead or not _alive(messenger):
 		return out
-	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, "WITNESS - TEMPLE IN %s" % UiTheme.clock(eta()), true))
+	var label := "WITNESS - TEMPLE IN %s" % UiTheme.clock(eta())
+	if messenger.inside:
+		label = "WITNESS INSIDE - TEMPLE IN %s" % UiTheme.clock(eta())  # (sheltering: hidden, but the tag and the strip's row go on, review M8)
+	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
 	for v: Variant in mates:
 		if _alive(v) and v != messenger and not (v as Person).inside:
 			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "MATE", true))

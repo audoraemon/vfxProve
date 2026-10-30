@@ -8,6 +8,8 @@ extends RefCounted
 
 const DT := 0.05
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
+const GodHunts := preload("res://tools/dev/routes/god_hunts.gd")
+const Policies := preload("res://tools/dev/routes/god_hunts/silence_witness.gd")
 
 
 ## A director that reports a full count and a word reaching the Temple at once (WitnessObjective's order: the win first).
@@ -39,10 +41,15 @@ static func run(t) -> void:
 	_lantern(t)
 	_no_keeper_tags(t)
 	_tags(t)
+	_sheltering(t)
+	_eta_cache(t)
+	_eta_off_road(t)
 	_evacuation(t)
 	_freed(t)
 	_texts(t)
 	_hunt_wishes(t)
+	_policies_written(t)
+	_policies_play(t)
 
 
 ## The Hunt's world: its town, Rules and director, with the watch Lantern the game gives the night (Mission builds it; test_lantern does the same).
@@ -128,7 +135,7 @@ static func _setup(t) -> void:
 	var names := []
 	for n in d.post_names:
 		names.append(n)
-	t.check(names == ["west", "south-west", "south-east", "north-east"], "one house per district, in order (%s)" % [names])
+	t.check(names == ["west", "north-east", "south-west", "south-east"], "one house per district, in the Hunt's order (west first, the south-east last: Task 10, %s)" % [names])
 	var apart := true
 	for i in d.doors.size():
 		for k in range(i + 1, d.doors.size()):
@@ -216,11 +223,11 @@ static func _chain(t) -> void:
 		and String(d.timeline.upcoming(1)[0].id) == "out_1",
 		"killed unseen by his mates, he is stopped: THE WITNESS IS SILENT  1/4; the strip shows the next within the chain (%.1f s)" % shown)
 	Kit.run_for(s, SilenceWitnessDirector.SW_CHAIN + DT * 2.0)
-	t.check(not d.ringers[1].waiting and d.ringers[2].waiting, "the south-west house sends its witness the chain (45 s) after, not at its own 1:15")
+	t.check(not d.ringers[1].waiting and d.ringers[2].waiting, "the second house sends its witness the chain (45 s) after, not at its own 1:15")
 	rules.cast_made.emit(0, "doom", d.doors[2])
 	t.check(d.ringers[2].waiting, "a quiet power by a house sends no one")
 	rules.cast_made.emit(0, "smite", d.doors[2] + Vector2(SilenceWitnessDirector.SW_POST_SIGHT - 0.5, 0.0))
-	t.check(not d.ringers[2].waiting and (s.banners as Array).has("THE SOUTH-EAST HOUSE SEES YOU"), "a loud one within 6 sends its witness at once")
+	t.check(not d.ringers[2].waiting and (s.banners as Array).has("THE SOUTH-WEST HOUSE SEES YOU"), "a loud one within 6 sends its witness at once")
 	t.check(d.out_at(3) == 185.0 * d.timeline.stretch_factor(), "the last house keeps its own time while the one before still runs (%.1f)" % d.out_at(3))
 	Kit.done(s)
 
@@ -576,6 +583,78 @@ static func _tags(t) -> void:
 	Kit.done(s)
 
 
+## Review of Task 5, M8 (a Group C director fix): a witness frightened into a shelter is hidden for a while, and the tag and the strip's row go on --
+## `WITNESS INSIDE - TEMPLE IN m:ss`, the time counted to the Temple including the seconds until he comes out. No hidden state.
+static func _sheltering(t) -> void:
+	var s := _world()
+	var d: SilenceWitnessDirector = s.d
+	var r := _out(s, 0)
+	var w := r.messenger
+	var walking := r.eta()
+	var crowd: Crowd = s.crowd
+	var house: Structure = null
+	for st: Structure in crowd.shelters.shelters.keys():
+		if house == null or st.center().distance_to(w.ground_pos) < house.center().distance_to(w.ground_pos):
+			house = st
+	w.mind = Person.Mind.SHELTER
+	w.shelter = house
+	w.shelter_door = w.ground_pos
+	crowd.shelters._enter(w, house)
+	crowd.shelters.shelters[house].inside.append(w)
+	crowd.shelters.shelters[house].clear = 2.0
+	var tag := d.tags().filter(func(m: MapTag) -> bool: return m.label.begins_with("WITNESS INSIDE - TEMPLE IN"))
+	var row := d.strip_rows()
+	t.check(w.inside and r.sheltering() and tag.size() == 1 and tag[0].edge and tag[0].color == WarningDirector.MARK_MESSENGER and d.tags()[0].label == tag[0].label,
+		"a sheltering witness keeps his tag (`WITNESS INSIDE - TEMPLE IN m:ss`, gold, edge, first) while he is hidden")
+	t.check(row.size() == 1 and absf(float(row[0]["in"]) - r.eta()) < 0.01 and r.eta() < INF and d.word_eta() == r.eta(),
+		"and his strip row `Word reaches the Temple` counts down (%s)" % [row])
+	t.check(absf(r.shelter_left() - (ShelterManager.CLEAR_SECONDS - 2.0)) < 0.01 and r.eta() > r.street_left() / (Person.PANIC_SPEED * w.pace) + 2.9,
+		"the countdown includes the %.1f s until he comes out (eta %.1f, street %.1f)" % [r.shelter_left(), r.eta(), r.street_left()])
+	t.check(r.eta() > 0.0 and walking > 0.0 and not r.in_temple and d.lost_reason() == "", "hidden indoors he cannot reach the Temple, and the night is not lost")
+	# Out again: the plain tag.
+	crowd.shelters.release(w)
+	t.check(not w.inside and d.tags().any(func(m: MapTag) -> bool: return m.label.begins_with("WITNESS - TEMPLE IN")),
+		"out again the tag is the walking witness's")
+	Kit.done(s)
+
+
+## Review of Task 5, M9 (a Group C director fix): while the witness has no walk path eta() looks the street up once per step and place, not once per call.
+static func _eta_cache(t) -> void:
+	var s := _world()
+	var r := _out(s, 0)
+	var w := r.messenger
+	Kit.arrive(w, w.ground_pos)
+	var first := r.eta()
+	var kept := r._street_left
+	# A poisoned value stands for as long as the step and the place do: eta() reads the kept street, not the grid.
+	r._street_left = kept + 10.0
+	var cached := r.eta()
+	t.check(kept >= 0.0 and cached > first + 0.1, "eta() with no walk path reads the street kept for this step (%.2f then %.2f)" % [first, cached])
+	Kit.arrive(w, w.ground_pos + Vector2(0.5, 0.0))
+	t.check(absf(r.eta() - cached) > 0.01 and r._street_left >= 0.0 and r._street_left < kept + 5.0, "a new place looks the street up again (%.2f)" % [r._street_left])
+	r._street_left = 500.0
+	r.step(DT)
+	t.check(r._street_left < 100.0, "and a new step drops what was kept (%.2f)" % [r._street_left])
+	Kit.done(s)
+
+
+## Task 10 (found by the Veil gate): a witness run off his road by a fright (a Doom on his mate) has a goal that is not the Temple's door, and the walk he is on
+## says nothing of the Temple: his time is the street from where he stands at his pace, as the tag and the strip show it (no false `TEMPLE IN 0:10`).
+static func _eta_off_road(t) -> void:
+	var s := _world()
+	var d: SilenceWitnessDirector = s.d
+	var r := _out(s, 0)
+	var w := r.messenger
+	var rate := (s.rules as Rules).clock_rate
+	var on_road := r.eta()
+	w.set_goal(d.doors[1])
+	var off := r.eta()
+	var by_street := r.street_left() / (Person.PANIC_SPEED * w.pace) * rate
+	t.check(on_road > 0.0 and absf(off - by_street) < 0.01 and not w._path.is_empty(),
+		"off his road the time is by the street (%.2f, street %.2f), on it by his walk (%.2f)" % [off, by_street, on_road])
+	Kit.done(s)
+
+
 static func _evacuation(t) -> void:
 	var s := _world()
 	var d: SilenceWitnessDirector = s.d
@@ -657,3 +736,81 @@ static func _hunt_wishes(t) -> void:
 		descent.release()
 		Kit.done(n)
 	t.check(heard > 0 and hit == 0, "Silence the witness: wishes heard (%d), none on a witness, a mate or a house (%d)" % [heard, hit])
+
+
+## What behaviour_check gives a Hunt policy (the slot test, the cooldown, the walk's length and the two whisper helpers), as the policies call them.
+class Bc:
+	extends RefCounted
+
+	func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key) and rules.refusal(int(slots[key])) == ""
+
+	func _slot_wait(rules: Rules, slots: Dictionary, key: String) -> float:
+		return rules.cooldown_left(int(slots[key])) if slots.has(key) else INF
+
+	func _walk_len(crowd: Crowd, from: Vector2, to: Vector2) -> float:
+		var path := crowd._grid.path(from, to)
+		if path.is_empty():
+			return INF
+		var n := 0.0
+		var at := from
+		for q in path:
+			n += at.distance_to(q)
+			at = q
+		return n
+
+	func _whisperable(p: Person) -> bool:
+		return WarningDirector._alive(p) and not p.soldier and not p.inside and not p.shaken() and p.mind != Person.Mind.WHISPERED
+
+	func _ringers_off(d: BellRingersDirector, p: Person, from: Vector2) -> Vector2:
+		var away := p.ground_pos - from
+		return d._walkable(p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 6.0)
+
+	func _ringers_only(_crowd: Crowd, _at: Vector2, _who: Array) -> bool:
+		return true
+
+
+## Task 10: all six types' policies are written, and none is a filler (T1R D38: a cast made only so the scripted player is not idle). The file never
+## names the filler mark; every policy's words are a real cast.
+static func _policies_written(t) -> void:
+	var file := FileAccess.get_file_as_string("res://tools/dev/routes/god_hunts/silence_witness.gd")
+	t.check(Array(GodHunts.filled("silence_witness")) == ["ruin", "death", "veil", "passage", "decree", "dominion"],
+		"all six types are filled (%s)" % [GodHunts.filled("silence_witness")])
+	t.check(not file.contains("GodT1.FILL") and not file.contains("FILL +") and not file.contains("\"fill:"), "no policy of the file keeps a filler cast (D38)")
+
+
+## Each type's policy, played on a witness who walks (the casts do nothing in this world: only the choice is checked). Every cast is a key of the type's
+## loadout, none is a filler, and by the time the witness is a few seconds out the policy has cast at least once.
+static func _policies_play(t) -> void:
+	GodTree.dev_fill = true
+	for type: String in GodHunts.TYPES:
+		var def := MissionBook.silence_witness()
+		def.default_loadout = GodHunts.loadout("silence_witness", type, 2)
+		var s := Kit.world(def)
+		var d: SilenceWitnessDirector = s.d
+		var rules: Rules = s.rules
+		var casts: Array[String] = []
+		rules.cast_made.connect(func(_slot: int, key: String, _at: Vector2) -> void: casts.append(key))
+		var slots := {}
+		for slot in rules.loadout.size():
+			if rules.key(slot) != "":
+				slots[rules.key(slot)] = slot
+		var said: Array[String] = []
+		var memo := {}
+		d._send(0)
+		var bc := Bc.new()
+		for i in roundi(30.0 / DT):
+			Kit.run_for(s, DT)
+			if i % 2 == 0:
+				var ctx := {"rules": rules, "slots": slots, "d": rules.director, "crowd": s.crowd, "memo": memo, "mission": null}
+				var did := GodHunts.act("silence_witness", type, bc, ctx)
+				if did != "":
+					said.append(did)
+		var ok := true
+		for key in casts:
+			ok = ok and def.default_loadout.has(key)
+		var fills := said.filter(func(w: String) -> bool: return GodHunts.GOD_T1.is_fill(w))
+		t.check(ok and fills.is_empty() and not casts.is_empty(),
+			"%s: the policy casts (%s), only keys of its loadout, no filler (%s)" % [type, casts, said])
+		Kit.done(s)
+	GodTree.dev_fill = false

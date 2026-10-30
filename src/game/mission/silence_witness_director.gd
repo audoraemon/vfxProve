@@ -12,11 +12,16 @@ extends BellRingersDirector
 ## copied into the base's `tune_` vars and the witnesses' vars (MS H11). This director replaces BellRingersDirector._begin() (it builds
 ## RingerDirector.new()); the posts, doors and post_names the base keeps hold the houses, their doors and their names.
 
-## Where each district's house is looked for (MS §3: one per district; the dwelling nearest, whose door the street reaches, quiet) *fg*: west,
-## south-west, south-east, north-east.
-const SW_HOUSE_POINTS := [Vector2(-11.5, 2.0), Vector2(-11.0, 12.5), Vector2(12.5, 12.0), Vector2(12.5, -11.0)]
+## Where each district's house is looked for (MS §3: one per district; the dwelling nearest, whose door the street reaches, quiet) *fg*, in the order
+## they send their witness: west, north-east, south-west, south-east. Tuning, round 1 (god P5 Task 10; the spec's order was west, south-west, south-east,
+## north-east): the last witness is the one with the shortest road out of the walls (the south-east door is 7 units of street from the east gate; the
+## north-east 34, the west 28, the south-west 22), so Mind Whisper's long walk out of the town (a whispered man walks at 0.4 units a second) ends the
+## night inside the 45 s the player may be idle (Dominion had idle 72-90 with the north-east last), and the north-east's short road (19.8 units) comes
+## second, before the Lantern burns the clock to x2 (Death lost 3/3 with it third or fourth, won 3/3 with it second). The west house stays first: the
+## camera (SW_CAMERA_AT) shows it. The streets, times and chain are untouched.
+const SW_HOUSE_POINTS := [Vector2(-11.5, 2.0), Vector2(12.5, -11.0), Vector2(-11.0, 12.5), Vector2(12.5, 12.0)]
 ## The houses' names on the banners, the strip and the tour.
-const SW_HOUSE_NAMES := ["west", "south-west", "south-east", "north-east"]
+const SW_HOUSE_NAMES := ["west", "north-east", "south-west", "south-east"]
 ## Seconds into the night each witness is sent at the latest *fg* (MS §3: 0:20, 1:15, 2:10, 3:05).
 const SW_OUT_AT := [20.0, 75.0, 130.0, 185.0]
 ## Seconds after a witness is stopped by which the next is sent (the chain rule, MS §0).

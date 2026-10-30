@@ -12,11 +12,16 @@ extends BellRingersDirector
 ## copied into the base's `tune_` vars and the witnesses' vars (MS H11). This director replaces BellRingersDirector._begin() (it builds
 ## RingerDirector.new()); the posts, doors and post_names the base keeps hold the houses, their doors and their names.
 
-## Where each district's house is looked for (MS §3: one per district; the dwelling nearest, whose door the street reaches, quiet) *fg*: west,
-## south-west, south-east, north-east.
-const SW_HOUSE_POINTS := [Vector2(-11.5, 2.0), Vector2(-11.0, 12.5), Vector2(12.5, 12.0), Vector2(12.5, -11.0)]
+## Where each district's house is looked for (MS §3: one per district; the dwelling nearest, whose door the street reaches, quiet) *fg*, in the order they send
+## their witness: west, north-east, south-west, south-east. Tuning, round 1 (god P5 Task 10, Ruling P5-T10-R1; the spec's order was west, south-west, south-east,
+## north-east). Measured on the doors (the street to the Temple's door / the walk to the nearest ground out of the walls): west 31.2 / 28.5, north-east 19.8 / 34.5,
+## south-west 27.0 / 22.1, south-east 29.2 / 7.2 units. The last witness is the one with the shortest walk out (the south-east: Mind Whisper's walk out of the town,
+## about 0.4 units a second on the west and north-east walks, ends Dominion's night inside the 45 s a player may idle -- idle 72-90 with the north-east last, 40 now),
+## and the north-east's short road comes second, before the Lantern burns the clock to x2 (Death lost 3/3 with it third, won 3/3 second). The west house stays first:
+## the camera (SW_CAMERA_AT) shows it. The streets, times and chain are untouched.
+const SW_HOUSE_POINTS := [Vector2(-11.5, 2.0), Vector2(12.5, -11.0), Vector2(-11.0, 12.5), Vector2(12.5, 12.0)]
 ## The houses' names on the banners, the strip and the tour.
-const SW_HOUSE_NAMES := ["west", "south-west", "south-east", "north-east"]
+const SW_HOUSE_NAMES := ["west", "north-east", "south-west", "south-east"]
 ## Seconds into the night each witness is sent at the latest *fg* (MS §3: 0:20, 1:15, 2:10, 3:05).
 const SW_OUT_AT := [20.0, 75.0, 130.0, 185.0]
 ## Seconds after a witness is stopped by which the next is sent (the chain rule, MS §0).
@@ -29,9 +34,9 @@ const SW_OUT_PAUSE := 3.0
 const SW_MATES := 2
 ## How far behind the witness his mates walk, and stand at the door.
 const SW_MATE_GAP := 1.2
-## How far to either side of his way they walk *fg*: the pair 1.7 apart, more than two Silent Doom radii.
-const SW_MATE_SIDE := 0.85
-## The share of his own pace the witness walks at *fg* (35-50 s to the Temple).
+## The share of his own pace the witness walks at *fg*: about 23-34 s to the Temple, measured in the stepped-body test (north-east 22.7 s, south-west 23.9, south-east 28.3,
+## west 33.8); the spec's first "35-50 s" no street of Aldermere gives (review of Task 5). SW_MATE_SIDE, the spec's side-by-side lever, is retired: the mates walk in file
+## (WitnessDirector.SW_HEEL_*, Ruling P5-T10-R3, P5-T10-R5) and stand at the door on a ring at SW_MATE_GAP.
 const SW_WITNESS_PACE := 0.65
 ## At this many mission seconds from the Temple's door the banner `A WITNESS NEARS THE TEMPLE` shows.
 const SW_NEAR_WARN := 15.0
@@ -88,7 +93,6 @@ func _begin() -> void:
 		r.reserved = reserved.duplicate()
 		r.tune_mates = SW_MATES
 		r.tune_mate_gap = SW_MATE_GAP
-		r.tune_mate_side = SW_MATE_SIDE
 		r.tune_out_pause = SW_OUT_PAUSE
 		r.walls_stop = true
 		r.witness_pace = SW_WITNESS_PACE

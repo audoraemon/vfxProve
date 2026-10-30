@@ -8,6 +8,8 @@ extends RefCounted
 
 const DT := 0.05
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
+const GodHunts := preload("res://tools/dev/routes/god_hunts.gd")
+const Policies := preload("res://tools/dev/routes/god_hunts/silence_witness.gd")
 
 
 ## A director that reports a full count and a word reaching the Temple at once (WitnessObjective's order: the win first).
@@ -29,6 +31,7 @@ static func run(t) -> void:
 	_frame(t)
 	_chain(t)
 	_mates_apart(t)
+	_mates_walk(t)
 	_relay_mate(t)
 	_no_luck(t)
 	_held_mate(t)
@@ -39,10 +42,16 @@ static func run(t) -> void:
 	_lantern(t)
 	_no_keeper_tags(t)
 	_tags(t)
+	_sheltering(t)
+	_eta_cache(t)
+	_eta_off_road(t)
 	_evacuation(t)
 	_freed(t)
 	_texts(t)
 	_hunt_wishes(t)
+	_policies_written(t)
+	_policies_play(t)
+	_aim_teeth(t)
 
 
 ## The Hunt's world: its town, Rules and director, with the watch Lantern the game gives the night (Mission builds it; test_lantern does the same).
@@ -128,7 +137,7 @@ static func _setup(t) -> void:
 	var names := []
 	for n in d.post_names:
 		names.append(n)
-	t.check(names == ["west", "south-west", "south-east", "north-east"], "one house per district, in order (%s)" % [names])
+	t.check(names == ["west", "north-east", "south-west", "south-east"], "one house per district, in the Hunt's order (west first, the south-east last: Task 10, %s)" % [names])
 	var apart := true
 	for i in d.doors.size():
 		for k in range(i + 1, d.doors.size()):
@@ -171,13 +180,13 @@ static func _frame(t) -> void:
 		and SilenceWitnessDirector.SW_POST_SIGHT == BellRingersDirector.POST_SIGHT and SilenceWitnessDirector.SW_OUT_AT == [20.0, 75.0, 130.0, 185.0]
 		and BellRingersDirector.SET_OUT_AT == [40.0, 110.0, 180.0] and RingerDirector.MATE_SIDE == 0.7,
 		"the Hunt's times and chain in the base's vars, the base's own consts untouched (%s, %s)" % [d.tune_set_out_at, d.tune_chain_wait])
-	t.check(is_equal_approx(SilenceWitnessDirector.SW_MATE_GAP, 1.2) and is_equal_approx(SilenceWitnessDirector.SW_MATE_SIDE, 0.85)
+	t.check(is_equal_approx(SilenceWitnessDirector.SW_MATE_GAP, 1.2)
 		and is_equal_approx(SilenceWitnessDirector.SW_WITNESS_PACE, 0.65) and SilenceWitnessDirector.SW_MATES == 2
 		and is_equal_approx(SilenceWitnessDirector.SW_OUT_PAUSE, 3.0) and is_equal_approx(SilenceWitnessDirector.SW_NEAR_WARN, 15.0),
-		"the spec's numbers: mates 2, gap 1.2, side 0.85, pace 0.65, pause 3, warning at 15")
+		"the spec's numbers: mates 2, gap 1.2, pace 0.65, pause 3, warning at 15 (MATE_SIDE is retired, P5-T10-R5)")
 	var s := _world()
 	var w := (s.d as SilenceWitnessDirector).ringers[0]
-	t.check(w.tune_mates == 2 and is_equal_approx(w.tune_mate_gap, 1.2) and is_equal_approx(w.tune_mate_side, 0.85)
+	t.check(w.tune_mates == 2 and is_equal_approx(w.tune_mate_gap, 1.2)
 		and is_equal_approx(w.tune_out_pause, 3.0) and is_equal_approx(w.witness_pace, 0.65) and is_equal_approx(w.near_warn, 15.0),
 		"each witness carries the Hunt's numbers")
 	Kit.done(s)
@@ -216,11 +225,11 @@ static func _chain(t) -> void:
 		and String(d.timeline.upcoming(1)[0].id) == "out_1",
 		"killed unseen by his mates, he is stopped: THE WITNESS IS SILENT  1/4; the strip shows the next within the chain (%.1f s)" % shown)
 	Kit.run_for(s, SilenceWitnessDirector.SW_CHAIN + DT * 2.0)
-	t.check(not d.ringers[1].waiting and d.ringers[2].waiting, "the south-west house sends its witness the chain (45 s) after, not at its own 1:15")
+	t.check(not d.ringers[1].waiting and d.ringers[2].waiting, "the second house sends its witness the chain (45 s) after, not at its own 1:15")
 	rules.cast_made.emit(0, "doom", d.doors[2])
 	t.check(d.ringers[2].waiting, "a quiet power by a house sends no one")
 	rules.cast_made.emit(0, "smite", d.doors[2] + Vector2(SilenceWitnessDirector.SW_POST_SIGHT - 0.5, 0.0))
-	t.check(not d.ringers[2].waiting and (s.banners as Array).has("THE SOUTH-EAST HOUSE SEES YOU"), "a loud one within 6 sends its witness at once")
+	t.check(not d.ringers[2].waiting and (s.banners as Array).has("THE SOUTH-WEST HOUSE SEES YOU"), "a loud one within 6 sends its witness at once")
 	t.check(d.out_at(3) == 185.0 * d.timeline.stretch_factor(), "the last house keeps its own time while the one before still runs (%.1f)" % d.out_at(3))
 	Kit.done(s)
 
@@ -237,6 +246,14 @@ static func _mates_apart(t) -> void:
 		near = near and not (v as Person).inside and gap > SilentDoom.RADIUS and gap <= Crowd.DOOM_WITNESS
 	t.check(near and pair > 2.0 * SilentDoom.RADIUS, "at the door: the mates beyond one Silent Doom of him, within sight, %.2f apart (> 1.6)" % pair)
 	Kit.done(s)
+	for house in 4:
+		var sd := _world()
+		var dd: SilenceWitnessDirector = sd.d
+		var rd := dd.ringers[house] as WitnessDirector
+		dd._send(house)
+		var stop := (rd.mates[0] as Person).ground_pos.distance_to((rd.mates[1] as Person).ground_pos)
+		t.check(stop > 1.6, "at the %s house's door the two mates stand %.2f apart (> 1.6)" % [dd.post_names[house], stop])
+		Kit.done(sd)
 	for i in 4:
 		var s2 := _world()
 		var d2: SilenceWitnessDirector = s2.d
@@ -251,11 +268,51 @@ static func _mates_apart(t) -> void:
 			"at his heels from the %s house (_heel()): the mates' places more than 1.6 apart, each within 2.0 of him (%.2f, %.2f / %.2f)" % [
 				d2.post_names[i], g0.distance_to(at), g1.distance_to(at), g0.distance_to(g1)])
 		if i == 0:
-			t.check(is_equal_approx(g0.distance_to(g1), 1.7), "in the open street the pair is the spec's 1.7 apart (%.2f)" % g0.distance_to(g1))
+			t.check(g0.distance_to(g1) > 2.0 and g0.distance_to(g1) <= WitnessDirector.SW_HEEL_BEHIND + WitnessDirector.SW_HEEL_AHEAD + 0.5,
+				"in file the pair is about %.1f apart, room to spare over the spec's 1.7 (%.2f)" % [WitnessDirector.SW_HEEL_BEHIND + WitnessDirector.SW_HEEL_AHEAD, g0.distance_to(g1)])
 			var slow := r2.messenger.pace
 			t.check(slow < 0.65 * Person.PACE_RANGE.y + 0.001 and slow >= 0.65 * Person.PACE_RANGE.x - 0.001,
 				"the witness walks at 0.65 of his pace (%.2f of a 0.85-1.2 pace)" % slow)
 		Kit.done(s2)
+
+
+## Review of Task 10, I3 (Ruling P5-T10-R3, MS §0, as Task 11's guards, P5-T11-R8): a witness's two mates stay more than 1.6 apart on every walk, so one Silent
+## Doom never takes both. The bodies are moved: each house sends its witness, who walks the street to the Temple's door with his mates ticked beside him
+## (Person.tick; the Kit world does not step bodies), and the gap between the mates is read every step. It holds but at the turns of the road (a pair in file
+## must pass the same corner): at most 5 % of the steps. They also keep up with him (the farthest a mate strays from the witness is under the sight of a
+## death, Crowd.DOOM_WITNESS), or "apart" would only mean "left behind".
+static func _mates_walk(t) -> void:
+	for house in 4:
+		var s := _world()
+		var d: SilenceWitnessDirector = s.d
+		var rules: Rules = s.rules
+		var r := d.ringers[house] as WitnessDirector
+		d._send(house)
+		var steps := 0
+		var under := 0
+		var worst := INF
+		var farthest := 0.0
+		var secs := 0.0
+		while secs < 70.0 and not r.in_temple and not r.warning_dead:
+			(s.crowd as Crowd).advance(DT)
+			rules.advance(DT)
+			secs += DT
+			for v: Variant in [r.messenger] + r.mates:
+				if MissionDirector._alive(v):
+					(v as Person).tick(DT)
+			if r.mates.size() < 2 or not MissionDirector._alive(r.mates[0]) or not MissionDirector._alive(r.mates[1]):
+				continue
+			var a: Person = r.mates[0]
+			var b: Person = r.mates[1]
+			var gap := a.ground_pos.distance_to(b.ground_pos)
+			steps += 1
+			under += 1 if gap <= 1.6 else 0
+			worst = minf(worst, gap)
+			farthest = maxf(farthest, maxf(a.ground_pos.distance_to(r.messenger.ground_pos), b.ground_pos.distance_to(r.messenger.ground_pos)))
+		t.check(steps > 450 and float(under) <= 0.05 * float(steps),
+			"%s house: from the first step after the send, nothing excluded, the two mates stay over 1.6 apart but at the turns: %d of %d steps under (closest %.2f; measured 0-2.9 %%)" % [d.post_names[house], under, steps, worst])
+		t.check(farthest < 4.0, "%s house: and they keep up with him (the farthest a mate strays: %.2f)" % [d.post_names[house], farthest])
+		Kit.done(s)
 
 
 static func _relay_mate(t) -> void:
@@ -576,6 +633,78 @@ static func _tags(t) -> void:
 	Kit.done(s)
 
 
+## Review of Task 5, M8 (a Group C director fix): a witness frightened into a shelter is hidden for a while, and the tag and the strip's row go on --
+## `WITNESS INSIDE - TEMPLE IN m:ss`, the time counted to the Temple including the seconds until he comes out. No hidden state.
+static func _sheltering(t) -> void:
+	var s := _world()
+	var d: SilenceWitnessDirector = s.d
+	var r := _out(s, 0)
+	var w := r.messenger
+	var walking := r.eta()
+	var crowd: Crowd = s.crowd
+	var house: Structure = null
+	for st: Structure in crowd.shelters.shelters.keys():
+		if house == null or st.center().distance_to(w.ground_pos) < house.center().distance_to(w.ground_pos):
+			house = st
+	w.mind = Person.Mind.SHELTER
+	w.shelter = house
+	w.shelter_door = w.ground_pos
+	crowd.shelters._enter(w, house)
+	crowd.shelters.shelters[house].inside.append(w)
+	crowd.shelters.shelters[house].clear = 2.0
+	var tag := d.tags().filter(func(m: MapTag) -> bool: return m.label.begins_with("WITNESS INSIDE - TEMPLE IN"))
+	var row := d.strip_rows()
+	t.check(w.inside and r.sheltering() and tag.size() == 1 and tag[0].edge and tag[0].color == WarningDirector.MARK_MESSENGER and d.tags()[0].label == tag[0].label,
+		"a sheltering witness keeps his tag (`WITNESS INSIDE - TEMPLE IN m:ss`, gold, edge, first) while he is hidden")
+	t.check(row.size() == 1 and absf(float(row[0]["in"]) - r.eta()) < 0.01 and r.eta() < INF and d.word_eta() == r.eta(),
+		"and his strip row `Word reaches the Temple` counts down (%s)" % [row])
+	t.check(absf(r.shelter_left() - (ShelterManager.CLEAR_SECONDS - 2.0)) < 0.01 and r.eta() > r.street_left() / (Person.PANIC_SPEED * w.pace) + 2.9,
+		"the countdown includes the %.1f s until he comes out (eta %.1f, street %.1f)" % [r.shelter_left(), r.eta(), r.street_left()])
+	t.check(r.eta() > 0.0 and walking > 0.0 and not r.in_temple and d.lost_reason() == "", "hidden indoors he cannot reach the Temple, and the night is not lost")
+	# Out again: the plain tag.
+	crowd.shelters.release(w)
+	t.check(not w.inside and d.tags().any(func(m: MapTag) -> bool: return m.label.begins_with("WITNESS - TEMPLE IN")),
+		"out again the tag is the walking witness's")
+	Kit.done(s)
+
+
+## Review of Task 5, M9 (a Group C director fix): while the witness has no walk path eta() looks the street up once per step and place, not once per call.
+static func _eta_cache(t) -> void:
+	var s := _world()
+	var r := _out(s, 0)
+	var w := r.messenger
+	Kit.arrive(w, w.ground_pos)
+	var first := r.eta()
+	var kept := r._street_left
+	# A poisoned value stands for as long as the step and the place do: eta() reads the kept street, not the grid.
+	r._street_left = kept + 10.0
+	var cached := r.eta()
+	t.check(kept >= 0.0 and cached > first + 0.1, "eta() with no walk path reads the street kept for this step (%.2f then %.2f)" % [first, cached])
+	Kit.arrive(w, w.ground_pos + Vector2(0.5, 0.0))
+	t.check(absf(r.eta() - cached) > 0.01 and r._street_left >= 0.0 and r._street_left < kept + 5.0, "a new place looks the street up again (%.2f)" % [r._street_left])
+	r._street_left = 500.0
+	r.step(DT)
+	t.check(r._street_left < 100.0, "and a new step drops what was kept (%.2f)" % [r._street_left])
+	Kit.done(s)
+
+
+## Task 10 (found by the Veil gate): a witness run off his road by a fright (a Doom on his mate) has a goal that is not the Temple's door, and the walk he is on
+## says nothing of the Temple: his time is the street from where he stands at his pace, as the tag and the strip show it (no false `TEMPLE IN 0:10`).
+static func _eta_off_road(t) -> void:
+	var s := _world()
+	var d: SilenceWitnessDirector = s.d
+	var r := _out(s, 0)
+	var w := r.messenger
+	var rate := (s.rules as Rules).clock_rate
+	var on_road := r.eta()
+	w.set_goal(d.doors[1])
+	var off := r.eta()
+	var by_street := r.street_left() / (Person.PANIC_SPEED * w.pace) * rate
+	t.check(on_road > 0.0 and absf(off - by_street) < 0.01 and not w._path.is_empty(),
+		"off his road the time is by the street (%.2f, street %.2f), on it by his walk (%.2f)" % [off, by_street, on_road])
+	Kit.done(s)
+
+
 static func _evacuation(t) -> void:
 	var s := _world()
 	var d: SilenceWitnessDirector = s.d
@@ -657,3 +786,149 @@ static func _hunt_wishes(t) -> void:
 		descent.release()
 		Kit.done(n)
 	t.check(heard > 0 and hit == 0, "Silence the witness: wishes heard (%d), none on a witness, a mate or a house (%d)" % [heard, hit])
+
+
+## What behaviour_check gives a Hunt policy (the slot test, the cooldown, the walk's length and the two whisper helpers), as the policies call them.
+class Bc:
+	extends RefCounted
+
+	func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key) and rules.refusal(int(slots[key])) == ""
+
+	func _slot_wait(rules: Rules, slots: Dictionary, key: String) -> float:
+		return rules.cooldown_left(int(slots[key])) if slots.has(key) else INF
+
+	func _walk_len(crowd: Crowd, from: Vector2, to: Vector2) -> float:
+		var path := crowd._grid.path(from, to)
+		if path.is_empty():
+			return INF
+		var n := 0.0
+		var at := from
+		for q in path:
+			n += at.distance_to(q)
+			at = q
+		return n
+
+	func _whisperable(p: Person) -> bool:
+		return WarningDirector._alive(p) and not p.soldier and not p.inside and not p.shaken() and p.mind != Person.Mind.WHISPERED
+
+	func _ringers_off(d: BellRingersDirector, p: Person, from: Vector2) -> Vector2:
+		var away := p.ground_pos - from
+		return d._walkable(p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 6.0)
+
+	func _ringers_only(_crowd: Crowd, _at: Vector2, _who: Array) -> bool:
+		return true
+
+
+## Task 10: all six types' policies are written, and none is a filler (T1R D38: a cast made only so the scripted player is not idle). The file never
+## names the filler mark; every policy's words are a real cast.
+static func _policies_written(t) -> void:
+	var file := FileAccess.get_file_as_string("res://tools/dev/routes/god_hunts/silence_witness.gd")
+	t.check(Array(GodHunts.filled("silence_witness")) == ["ruin", "death", "veil", "passage", "decree", "dominion"],
+		"all six types are filled (%s)" % [GodHunts.filled("silence_witness")])
+	t.check(not file.contains("GodT1.FILL") and not file.contains("FILL +") and not file.contains("\"fill:"), "no policy of the file keeps a filler cast (D38)")
+
+
+## How near a cast's aim must lie to someone the night still needs answered -- a walking witness or one of his mates, out of doors -- by power (the effect's own reach,
+## less nothing: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Madness Bloom 1.5, Leaving Is Prohibited 3.0; the wide ones by the
+## file's size: Heaven Splitter's core 1.6, Glacial Cataclysm 5, Tsunami Breaker's lane 8 from its wall's start, a thornwall and a mirror's way in a few units ahead).
+const AIM_REACH := {"doom": 1.3, "smite": 1.0, "deathmark": 1.0, "pestilence": 1.3, "discord": 1.2, "whisper": 0.8, "noleave": 3.0, "heaven": 1.6, "glacial": 3.0,
+	"tsunami": 8.0, "thorns": 6.0, "mirror": 6.0}
+
+
+## What is wrong with a cast of `key` at `at` as the night stands (review of Task 10, M1; Ruling P5-T10-R2): "" when its aim is within its reach of a walking
+## witness or a mate of his who still has to be answered, and -- for the powers that mark one man -- he is not already answered by it (a Death Mark on the frail,
+## Pestilence on the sick, Discord on the confused, a whisper on the whispered). Blight must be on the Bell Tower. A repeat or an empty cast is a filler.
+static func _aim_problem(d: SilenceWitnessDirector, key: String, at: Vector2) -> String:
+	if key == "blight":
+		return "" if at.distance_to(City.current().landmark(&"bell_tower").get_center()) <= 1.0 else "not on the Bell Tower"
+	var reach: float = float(AIM_REACH.get(key, 1.0))
+	var best: Person = null
+	var best_d := INF
+	var fresh := false
+	for r in d.running():
+		var crew: Array = [r.messenger]
+		crew.append_array((r as WitnessDirector).mates)
+		for v: Variant in crew:
+			if not MissionDirector._alive(v) or (v as Person).inside:
+				continue
+			var p := v as Person
+			var gap := p.ground_pos.distance_to(at)
+			if gap <= reach:
+				match key:
+					"deathmark": fresh = fresh or not p.statuses.has(&"frail")
+					"pestilence": fresh = fresh or p.sick_left <= 0.0
+					"discord": fresh = fresh or p.mind != Person.Mind.CONFUSED
+					"whisper": fresh = fresh or p.mind != Person.Mind.WHISPERED
+					_: fresh = true
+			if gap < best_d:
+				best_d = gap
+				best = p
+	if best == null or best_d > reach:
+		return "no witness or mate of his within %.1f (the nearest %.1f)" % [reach, best_d]
+	if not fresh:
+		return "everyone in reach is already answered by it"
+	return ""
+
+
+## Each type's policy, played on a witness who walks (the casts do nothing in this world: only the choice is checked). Every cast is a key of the type's
+## loadout, none is a filler, and by the time the witness is a few seconds out the policy has cast at least once.
+static func _policies_play(t) -> void:
+	GodTree.dev_fill = true
+	for type: String in GodHunts.TYPES:
+		var def := MissionBook.silence_witness()
+		def.default_loadout = GodHunts.loadout("silence_witness", type, 2)
+		var s := Kit.world(def)
+		var d: SilenceWitnessDirector = s.d
+		var rules: Rules = s.rules
+		var casts: Array[String] = []
+		var misses: Array[String] = []
+		rules.cast_made.connect(func(_slot: int, key: String, at: Vector2) -> void:
+			casts.append(key)
+			var why := _aim_problem(d, key, at)
+			if why != "":
+				misses.append("%s at %s: %s" % [key, at, why]))
+		var slots := {}
+		for slot in rules.loadout.size():
+			if rules.key(slot) != "":
+				slots[rules.key(slot)] = slot
+		var said: Array[String] = []
+		var memo := {}
+		d._send(0)
+		var bc := Bc.new()
+		for i in roundi(30.0 / DT):
+			Kit.run_for(s, DT)
+			if i % 2 == 0:
+				var ctx := {"rules": rules, "slots": slots, "d": rules.director, "crowd": s.crowd, "memo": memo, "mission": null}
+				var did := GodHunts.act("silence_witness", type, bc, ctx)
+				if did != "":
+					said.append(did)
+		var ok := true
+		for key in casts:
+			ok = ok and def.default_loadout.has(key)
+		var fills := said.filter(func(w: String) -> bool: return GodHunts.GOD_T1.is_fill(w))
+		t.check(ok and fills.is_empty() and not casts.is_empty(),
+			"%s: the policy casts (%s), only keys of its loadout, no filler (%s)" % [type, casts, said])
+		t.check(misses.is_empty(), "%s: every cast lands on someone the night still needs answered, within its reach, and not on one it has already answered (%s)" % [type, misses])
+		Kit.done(s)
+	GodTree.dev_fill = false
+
+
+## The aim check itself can fail (a repeat or an empty cast is told): a cast at nobody, a Discord on the confused, a Death Mark on the frail, Pestilence on the sick.
+static func _aim_teeth(t) -> void:
+	var s := _world()
+	var d: SilenceWitnessDirector = s.d
+	var r := _out(s, 0)
+	var w := r.messenger
+	t.check(_aim_problem(d, "doom", w.ground_pos) == "" and _aim_problem(d, "doom", w.ground_pos + Vector2(9.0, 0.0)) != "",
+		"a Doom on the witness is aimed; the same far from everyone is an empty cast")
+	w.mind = Person.Mind.CONFUSED
+	for v: Variant in r.mates:
+		(v as Person).ground_pos = w.ground_pos + Vector2(30.0, 0.0)
+	t.check(_aim_problem(d, "discord", w.ground_pos) != "", "a Discord on the confused is a repeat")
+	w.mind = Person.Mind.DUTY
+	w.statuses[&"frail"] = true
+	w.sick_left = 4.0
+	t.check(_aim_problem(d, "deathmark", w.ground_pos) != "" and _aim_problem(d, "pestilence", w.ground_pos) != "", "a Death Mark on the frail and Pestilence on the sick are repeats")
+	t.check(_aim_problem(d, "blight", Vector2.ZERO) != "" and _aim_problem(d, "blight", City.current().landmark(&"bell_tower").get_center()) == "", "Blight is aimed at the Bell Tower")
+	Kit.done(s)

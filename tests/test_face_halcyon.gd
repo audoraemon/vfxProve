@@ -1376,7 +1376,7 @@ static func _pacing(t) -> void:
 ## ahead of a believer for the mirror. A cast made only to end an idle stretch has nothing there. Each type casts at least once, and none ever casts on a
 ## believer. (Mutation: aim a policy a few units off its escort and the check fails.)
 ## How near an escort still able a cast of each power must land (the power's own radius, with a step's slack for the walk the bolt is led by), per key; the law,
-## the Bell Lies' area and the whisper's pick are the powers' own (NoLeaveFx.RADIUS, 1.5, MindWhisperFx.PICK_R). Blight, the mirror and the law at a door are checked
+## the Bell Lies' area and the whisper's pick are the powers' own (the law NoLeaveFx.RADIUS 3.0, the Bell Lies 1.5, the whisper MindWhisperFx.PICK_R 0.6 + slack). Blight, the mirror and the law at a door are checked
 ## by what they name (the tower, the road, the door). A Death Mark 2.5 off its escort must fail (review of Task 13, M1).
 const CAST_REACH := {"smite": 1.0, "deathmark": 1.05, "doom": 0.9, "noleave": 3.0, "belllies": 1.5, "whisper": 0.7, "discord": 1.2, "priority": 7.0}
 

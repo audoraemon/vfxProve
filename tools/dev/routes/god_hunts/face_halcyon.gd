@@ -228,6 +228,9 @@ static func _room(d: FaceHalcyonDirector, rules: Rules, bell_ruined: bool) -> fl
 ## 225 s) or 45 s after the one before is freed, and a lone cast made the moment a procession forms up frees it at once, so the next forms 45 s plus the cast's
 ## own delay after the last cast (idle 46 s); with the finisher FH_GAP after the opener the free comes at least 20 s after the forming, the next procession
 ## forms on its own clock (at 95 and 160), and the policy is never idle longer than the chain. Seconds are the mission's (the director's clock).
+## Round 3 (P5-T13-R5 as amended): a HELD real cast -- the opener kills or marks an escort when it is made, and the finisher does the same FH_GAP later; neither is a filler.
+## Without the hold (FH_GAP 0, schedule 44/109/174/239): ruin 175 / 175 / 158 s idle 45 / 45 / 44, veil 184 / 176 / 172 s idle 46 (over the bar), death unchanged
+## (its cooldown is 20 s). With it: ruin 186 / 196 / 158 idle 44-45, veil 195 / 200 / 196 idle 45.
 const FH_GAP := 20.0
 
 

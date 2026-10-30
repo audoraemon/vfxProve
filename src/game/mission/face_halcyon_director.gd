@@ -87,9 +87,10 @@ const FH_BEND_STEP := 0.2
 const FH_APART := 2.2
 ## The lead's place at the stake is no nearer the pyre than this (the believer's own spot).
 const FH_STAKE_OFF := 0.7
-## When each procession forms up at the latest (0:30, 1:35, 2:40, 3:45 *fg*) and the chain (a rule: no wait over 45 s after the one before is
-## freed or burned).
-const FH_PROC_AT := [30.0, 95.0, 160.0, 225.0]
+## When each procession forms up at the latest, and the chain (a rule: no wait over 45 s after the one before is freed or burned). The spec's *fg* times are
+## 0:30, 1:35, 2:40, 3:45. Round 3 (Task 13, Ruling P5-T13-R9, P5-C10): shifted 14 s later with the 65 s gaps kept, 0:44, 1:49, 2:54, 3:59 (the first wait stays under
+## 45 s; the fourth procession's walk and burn end near 295 of the night's 420). Pooled median of the winning runs: 164 s before (round 0), see the report after.
+const FH_PROC_AT := [44.0, 109.0, 174.0, 239.0]
 const FH_CHAIN := 45.0
 ## How long a procession forms up at its door (*fg*; MS §7 tunes it to 12) and its pace to the pyre as a fraction of a soldier's duty pace
 ## (*fg*). The believer's pace is set to it outright (not times his own), so every walk is as long as its street.

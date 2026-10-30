@@ -132,7 +132,7 @@ static func _tuned(t) -> void:
 	t.check(ExodusDirector.NEED == 10 and ExodusDirector.PER_HOUSE == 4 and ExodusDirector.SHUT_AT.size() == 3 and ExodusDirector.HOUNDS == 2,
 		"the base's own consts stand (Exodus: 10 of 12 in 4s, three gates, two hounds)")
 	t.check(FaceHalcyonDirector.FH_ESCORT == 3 and FaceHalcyonDirector.FH_ESCORT_HOLD == 2 and is_equal_approx(FaceHalcyonDirector.FH_ESCORT_REACH, 1.6)
-		and is_equal_approx(FaceHalcyonDirector.FH_CHAIN, 45.0) and FaceHalcyonDirector.FH_PROC_AT == [30.0, 95.0, 160.0, 225.0]
+		and is_equal_approx(FaceHalcyonDirector.FH_CHAIN, 45.0) and FaceHalcyonDirector.FH_PROC_AT == [44.0, 109.0, 174.0, 239.0]
 		and is_equal_approx(FaceHalcyonDirector.FH_FORM, 8.0) and is_equal_approx(FaceHalcyonDirector.FH_BURN, 12.0)
 		and is_equal_approx(FaceHalcyonDirector.FH_PYRE_REACH, 1.2) and FaceHalcyonDirector.FH_LOSE_BURNED == 2 and FaceHalcyonDirector.FH_PROC_PACE == 0.5,
 		"MS §6's numbers: 3 escorts, 2 hold, reach 1.6, chain 45, forming 8, burn 12, pyre reach 1.2, two burned lose, pace 0.5")
@@ -205,7 +205,7 @@ static func _setup(t) -> void:
 	t.check(ids == ["out_0", "out_1", "out_2", "out_3"] and labels[0] == "The west procession forms up", "the strip lists the four processions forming up, no searchers' row (%s)" % [labels])
 	var tags := _labels(d)
 	var waiting := tags.filter(func(l: Variant) -> bool: return String(l).begins_with("PROCESSION IN "))
-	t.check(waiting.size() == 4 and tags.has("PROCESSION IN %s" % UiTheme.clock(30.0)) and tags.has("PYRE") and d.tags().size() == 5,
+	t.check(waiting.size() == 4 and tags.has("PROCESSION IN %s" % UiTheme.clock(44.0)) and tags.has("PYRE") and d.tags().size() == 5,
 		"a grey PROCESSION IN tag over each waiting house and the PYRE (%s)" % [tags])
 	var edges := 0
 	for m in d.tags():
@@ -274,19 +274,25 @@ static func _frame(t) -> void:
 static func _chain(t) -> void:
 	var s := _world()
 	var d: FaceHalcyonDirector = s.d
-	t.check(absf(d.due_in(0) - 30.0) < 0.01 and absf(d.due_in(1) - 95.0) < 0.01 and absf(d.due_in(3) - 225.0) < 0.01,
-		"the processions form up at 0:30, 1:35, 2:40 and 3:45 at the latest")
+	t.check(absf(d.due_in(0) - 44.0) < 0.01 and absf(d.due_in(1) - 109.0) < 0.01 and absf(d.due_in(3) - 239.0) < 0.01,
+		"the processions form up at 0:44, 1:49, 2:54 and 3:59 at the latest (round 3)")
+	var longest := 0.0
+	for h: ExodusDirector.Household in d.households:
+		longest = maxf(longest, d._walk_secs(h.door))
+	var clock: float = HuntBook.def(MissionBook.FACE_HALCYON).clock
+	t.check(float(FaceHalcyonDirector.FH_PROC_AT[0]) < 45.0 and float(FaceHalcyonDirector.FH_PROC_AT[3]) + FaceHalcyonDirector.FH_FORM + longest + FaceHalcyonDirector.FH_BURN + 30.0 < clock,
+		"the first wait is under 45 s and the fourth procession's forming, walk (%.0f s) and burn end 30 s or more before dawn (%.0f s)" % [longest, clock])
 	# Procession 0 forms up at its time: the banner, then it is freed or burned: the next is due 45 s after.
-	Kit.run_for(s, 30.5)
+	Kit.run_for(s, 44.5)
 	t.check((d.households[0] as ExodusDirector.Household).out and (s.banners as Array).has("THE WEST PROCESSION FORMS UP") and not (d.households[1] as ExodusDirector.Household).out,
-		"at 0:30 the west procession forms up and the banner says so (%s)" % [s.banners])
+		"at 0:44 the west procession forms up and the banner says so (%s)" % [s.banners])
 	d.charges[0].escaped = true
 	_look(s)
 	var left := d.timeline.seconds_to("out_1")
 	t.check((d.households[0] as ExodusDirector.Household).done and absf(left - FaceHalcyonDirector.FH_CHAIN) < 2.0 and absf(d.due_in(1) - left) < 1.0,
 		"a procession freed: the strip and the tag show the next at the chain (%.1f s, tag %.1f)" % [left, d.due_in(1)])
 	Kit.run_for(s, FaceHalcyonDirector.FH_CHAIN + 0.5)
-	t.check((d.households[1] as ExodusDirector.Household).out and d._clock < 95.0 - 5.0 and (s.banners as Array).has("THE NORTH PROCESSION FORMS UP"),
+	t.check((d.households[1] as ExodusDirector.Household).out and d._clock < 109.0 - 5.0 and (s.banners as Array).has("THE NORTH PROCESSION FORMS UP"),
 		"it forms up %d s later, before its own time (%.0f s)" % [roundi(FaceHalcyonDirector.FH_CHAIN), d._clock])
 	# A burned procession chains the next in the same way.
 	var e: FaceHalcyonDirector = null
@@ -1308,7 +1314,7 @@ static func _no_filler_casts(t) -> void:
 			var d: FaceHalcyonDirector = s.d
 			var crowd: Crowd = s.crowd
 			if scene == 0:
-				Kit.run_for(s, 29.4)  # (the first procession forms up in about a second)
+				Kit.run_for(s, 43.4)  # (the first procession forms up in about a second)
 			else:
 				d._come_out(0)
 				if scene == 3:

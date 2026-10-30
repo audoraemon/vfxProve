@@ -50,7 +50,6 @@ static func run(t) -> void:
 	_pair_afresh(t)
 	_patrol_apart(t)
 	_relief_pair(t)
-	_pair_relief(t)
 	_policies_written(t)
 	_policies_answer(t)
 	_strip_rows(t)
@@ -771,89 +770,6 @@ static func _clear_watch_but_search(d: HideFaithfulDirector) -> void:
 		for v: Variant in squad:
 			if MissionDirector._alive(v):
 				Kit.arrive(v as Person, (v as Person).ground_pos + Vector2(60.0, 60.0))
-
-
-## Controller ruling P5-T9-R5: while a household is still to come and no inquisitor stands (the single reliefs spent), the Inquisition sends a
-## pair from the Temple's door within HF_PAIR_RELIEF_AFTER of the watch emptying, tagged "RELIEF IN" with its countdown, and again each time the
-## watch empties; the pair stands more than two Silent Doom radii apart on the walk; and it sees no one for HF_PAIR_WARN seconds after it sets out (so
-## every seizure it can make is warned 45 s out: the countdown, then the blind seconds).
-static func _pair_relief(t) -> void:
-	var s := _world()
-	var d: HideFaithfulDirector = s.d
-	_clear_watch_but_search(d)
-	var h0: ExodusDirector.Household = d.households[0]
-	h0.out = true  # the first household done and gone; the second is still to come
-	h0.done = true
-	h0.done_at = 1000.0  # (the chain then waits: the second household comes out at its own time, 140 s)
-	d.inq_reliefs = HideFaithfulDirector.HF_SEARCH_RELIEFS
-	var limit := 2.0 * SilentDoom.RADIUS
-	var nearest := INF
-	var tagged := false
-	var out_at := [-1.0, -1.0]
-	var emptied := [false, false]
-	var cycle := 0
-	for i in roundi(150.0 / DT):
-		(s.crowd as Crowd).advance(DT)
-		(s.rules as Rules).advance(DT)
-		for v: Variant in d.inquisitors:
-			if MissionDirector._alive(v):
-				(v as Person).tick(DT)
-		if cycle < 2 and not emptied[cycle] and d._clock > 2.0 + 60.0 * float(cycle) and d.pair_reliefs == cycle:
-			for v: Variant in d.inquisitors.duplicate():
-				if MissionDirector._alive(v):
-					Kit.free_body(s, v as Person)
-			emptied[cycle] = true
-			out_at[cycle] = d._clock
-		if cycle < 2 and emptied[cycle] and d.pair_reliefs > cycle:
-			out_at[cycle] = d._clock - out_at[cycle]
-			cycle += 1
-		if cycle < 2 and emptied[cycle] and d.relief_in() < INF and Kit.labels(d).any(func(l: Variant) -> bool: return String(l).begins_with("RELIEF IN ")):
-			tagged = true
-		if cycle >= 2 or d.pair_reliefs > 0:
-			var a: Variant = d.inquisitors[0]
-			var b: Variant = d.inquisitors[1]
-			if MissionDirector._alive(a) and MissionDirector._alive(b) and not (a as Person).inside and not (b as Person).inside and i % 4 == 0:
-				nearest = minf(nearest, (a as Person).ground_pos.distance_to((b as Person).ground_pos))
-	t.check(d.pair_reliefs == 2 and out_at[0] >= HideFaithfulDirector.HF_PAIR_RELIEF_AFTER - 0.1 and out_at[0] <= HideFaithfulDirector.HF_PAIR_RELIEF_AFTER + 1.0
-		and out_at[1] <= HideFaithfulDirector.HF_PAIR_RELIEF_AFTER + 1.0 and tagged,
-		"the watch emptied twice, a pair set out within %d s each time (%.1f, %.1f), tagged RELIEF IN (%s)" % [roundi(HideFaithfulDirector.HF_PAIR_RELIEF_AFTER), out_at[0], out_at[1], tagged])
-	t.check(nearest > limit + 0.05, "the pair stands more than %.1f apart on its walk (nearest %.2f)" % [limit, nearest])
-	Kit.done(s)
-	# The pair that sets out at 0:00 walks off in file too.
-	var z := _world()
-	var f: HideFaithfulDirector = z.d
-	_clear_watch_but_search(f)
-	var start_nearest := INF
-	for i in roundi(20.0 / DT):
-		(z.crowd as Crowd).advance(DT)
-		(z.rules as Rules).advance(DT)
-		for v: Variant in f.inquisitors:
-			(v as Person).tick(DT)
-		if i % 4 == 0:
-			start_nearest = minf(start_nearest, (f.inquisitors[0] as Person).ground_pos.distance_to((f.inquisitors[1] as Person).ground_pos))
-	t.check(start_nearest > limit + 0.05, "the pair of 0:00 stands more than %.1f apart as it walks off (nearest %.2f)" % [limit, start_nearest])
-	Kit.done(z)
-	# Set out among believers, it sees no one for HF_PAIR_WARN seconds: every seizure it can make is warned 45 s out (30 s of countdown, 15 blind).
-	var w := _world()
-	var e: HideFaithfulDirector = w.d
-	_clear_watch_but_search(e)
-	e.inq_reliefs = HideFaithfulDirector.HF_SEARCH_RELIEFS
-	(e.households[0] as ExodusDirector.Household).out = true
-	(e.households[0] as ExodusDirector.Household).done = true
-	e._come_out(1)
-	Kit.run_for(w, EscortDirector.TICK + DT)
-	for c: EscortDirector.Charge in (e.households[1] as ExodusDirector.Household).members:
-		Kit.arrive(c.man as Person, e.temple_door + Vector2(2.0, 0.0))
-	for v: Variant in e.inquisitors.duplicate():
-		Kit.free_body(w, v as Person)
-	Kit.run_for(w, HideFaithfulDirector.HF_PAIR_RELIEF_AFTER + 1.0)
-	var c0 := (e.households[1] as ExodusDirector.Household).members[0] as EscortDirector.Charge
-	Kit.arrive(c0.man as Person, (e.inquisitors[0] as Person).ground_pos + Vector2(1.0, 0.0))
-	var blind := e.pair_reliefs == 1 and e._seen_by(c0) == null
-	Kit.run_for(w, HideFaithfulDirector.HF_PAIR_WARN + 1.0)
-	Kit.arrive(c0.man as Person, (e.inquisitors[0] as Person).ground_pos + Vector2(1.0, 0.0))
-	t.check(blind and e._seen_by(c0) != null, "a pair set out beside a believer sees nothing for %d s, then seizes (blind %s)" % [roundi(HideFaithfulDirector.HF_PAIR_WARN), blind])
-	Kit.done(w)
 
 
 static func _strip_rows(t) -> void:

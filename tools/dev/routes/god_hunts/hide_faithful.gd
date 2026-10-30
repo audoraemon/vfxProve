@@ -70,7 +70,8 @@ const LAW_CRAWL := 40.0
 const CAGE_SLACK := 1.0
 const GUARD_LEAD := 9.0
 const GUARD_SPAN := 20.0
-## Dominion: Mind Whisper is cast on a watcher this near his sight of a believer; Discord on a tight pair the same.
+## Dominion: Mind Whisper is cast on a watcher this near his sight of a believer (it holds him some twenty seconds, so never far ahead: ruling P5-T9-R9);
+## Discord on a tight pair the same.
 const WHISPER_LEAD := 9.0
 const DISCORD_LEAD := 10.0
 ## Passage: the mirror's way in is laid this many seconds of the household's walk ahead of its lamp, its way out this far beyond the wall.
@@ -78,9 +79,6 @@ const MIRROR_AHEAD := 3.5
 const MIRROR_BEYOND := 2.5
 ## A household comes out within this many seconds: the mirror for it is laid (it lives thirty).
 const MIRROR_FOR := 22.0
-## Thornwall: from this second, laid this many seconds of the inquisitors' walk ahead of their lead, across their street.
-const THORN_AT := 10.0
-const THORN_AHEAD := 5.0
 
 
 ## The director when the night is on, else null.
@@ -555,7 +553,7 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Passage: Thornwall, Mirrorfold ---
+# --- Passage: Thornwall, Mirrorfold (Thornwall is drafted and not cast: no trail is ever taken in these runs, a wall across the search's street changed nothing) ---
 
 ## Where household `i`'s mirror lies: the way in on its road, MIRROR_AHEAD seconds of the walk beyond where its lamp is (from the door while it
 ## is inside), and the way out past the wall: the outside ground nearest the way in, pushed MIRROR_BEYOND farther out (and kept off the gates'
@@ -588,7 +586,7 @@ static func _mirror_for(bc, ctx: Dictionary, d: HideFaithfulDirector, i: int) ->
 
 ## Mirrorfold: the household about to come out (or walking) is folded out past the wall at once -- the way in laid across its road a few seconds
 ## ahead of the lamp, the way out beyond the wall, the whole file stepping on it one by one. The mirror lives 30 s and takes 54 to ready: one
-## household each.
+## household each. (The idle between the two mirrors is the first one's cooldown, 54.2 s: ruling P5-T9-R9 / P5-T11-R2.)
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := _hf(ctx)
 	if d == null:
@@ -610,27 +608,6 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 			_cast(ctx, "mirror", m["in"], {"to": m["out"]})
 			memo["folded_%d" % i] = true
 			return "mirror %s out: in at (%.1f, %.1f), out at (%.1f, %.1f)" % [h.words, m["in"].x, m["in"].y, m["out"].x, m["out"].y]
-	if _ready(bc, ctx, "thorns") and d._clock >= THORN_AT and d.trail_of() < 0 and d._search_stop < 0.0 and d._search_at < d._search.size():
-		# Across the street the search takes next, a few steps ahead of its lead, clear of every household's walk (the wall holds a believer too).
-		var view := _view(ctx, d)
-		for v: Variant in d.inquisitors:
-			if not d._watching(v) or d._seizing(v):
-				continue
-			var p := v as Person
-			var at := GOD_T1.road_ahead(p, THORN_AHEAD)
-			var along := GOD_T1.road_ahead(p, THORN_AHEAD + 0.5) - GOD_T1.road_ahead(p, THORN_AHEAD - 0.5)
-			if at.distance_to(p.ground_pos) < THORN_AHEAD * 0.5 * maxf(p.walk_speed, 0.2) or along.length() < 0.05:
-				continue
-			var clear := true
-			for e: Dictionary in view.exposed:
-				var s := 0.0
-				while s <= ThornwallFx.THORN_TIME and clear:
-					if s >= float(e.delay):
-						clear = at.distance_to(_point(e.rc, float(e.from) + float(e.speed) * (s - float(e.delay)))) > ThornwallFx.THORN_LENGTH
-					s += READ_STEP
-			if clear:
-				_cast(ctx, "thorns", at, {"dir": along.normalized().orthogonal()})
-				return "thornwall across the search's street at (%.1f, %.1f)" % [at.x, at.y]
 	return ""
 
 
@@ -780,7 +757,7 @@ static func act_dominion(bc, ctx: Dictionary) -> String:
 	var threats: Array = view.threats
 	if _ready(bc, ctx, "discord"):
 		for th: Dictionary in threats:
-			if float(th.t) > _lead(ctx, d, th, DISCORD_LEAD):
+			if float(th.t) > DISCORD_LEAD:
 				continue
 			var p: Person = th.p
 			var mid := p.ground_pos
@@ -795,7 +772,7 @@ static func act_dominion(bc, ctx: Dictionary) -> String:
 				return "discord a %s pair" % th.kind
 	if _ready(bc, ctx, "whisper"):
 		for th: Dictionary in threats:
-			if float(th.t) > _lead(ctx, d, th, WHISPER_LEAD):
+			if float(th.t) > WHISPER_LEAD:
 				continue
 			var p: Person = th.p
 			if p.shaken() or p.mind == Person.Mind.WHISPERED:

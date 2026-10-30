@@ -49,9 +49,11 @@ static func run(t) -> void:
 	_pair_door_gaps(t)
 	_pair_afresh(t)
 	_patrol_apart(t)
-	_relief_pair(t)
+	_pair_walk(t)
 	_policies_written(t)
 	_policies_answer(t)
+	_no_filler_casts(t)
+	_pair_orders(t)
 	_strip_rows(t)
 	_seize_free(t)
 	_lose_two(t)
@@ -389,8 +391,9 @@ static func _trail(t) -> void:
 	t.check(d.trail_of() == 0 and (s.banners as Array).has("THE INQUISITION FINDS THE TRAIL") and d.hint_phase() == "trail",
 		"reaching an emptied household's house the search takes up its trail: the banner, the hint's phase (%s)" % [s.banners])
 	var p := d.inquisitors[0] as Person
-	t.check(p.mind == Person.Mind.DUTY and p.anchor.distance_to((lead.man as Person).ground_pos) < 1.5 and is_equal_approx(p.pace, float(d._inq_base[p.get_instance_id()])),
-		"the inquisitors walk after the lamp at their full pace (anchor %.1f from it)" % p.anchor.distance_to((lead.man as Person).ground_pos))
+	var first := minf(p.anchor.distance_to((lead.man as Person).ground_pos), (d.inquisitors[1] as Person).anchor.distance_to((lead.man as Person).ground_pos))
+	t.check(p.mind == Person.Mind.DUTY and first < 1.5 and is_equal_approx(p.pace, float(d._inq_base[p.get_instance_id()])),
+		"the inquisitors walk after the lamp at their full pace (the first one's anchor %.1f from it)" % first)
 	var named := _labels(d).filter(func(l: Variant) -> bool: return String(l) == "INQUISITOR")
 	t.check(named.size() == 2 and Kit.edged(d, "INQUISITOR"), "each inquisitor is tagged, pointed at")
 	for c: EscortDirector.Charge in h.members:
@@ -549,12 +552,19 @@ static func _pair_in_reach(t) -> void:
 	var s := _world()
 	var d: HideFaithfulDirector = s.d
 	var far := 0.0
+	var beyond := 0
 	var from := d.temple_door
 	for e: Dictionary in d._search:
+		var near := INF
 		for spot in d.pair_spots(e.door, 2, from):
 			far = maxf(far, spot.distance_to(e.door))
+			near = minf(near, spot.distance_to(e.door))
+			beyond += 1 if spot.distance_to(e.door) > HideFaithfulDirector.HF_ARRIVE else 0
 		from = e.door
-	t.check(far <= HideFaithfulDirector.HF_ARRIVE, "every pair place at the six listed doors is within HF_ARRIVE %.1f of its door (farthest %.2f)" % [HideFaithfulDirector.HF_ARRIVE, far])
+		t.check(near <= HideFaithfulDirector.HF_ARRIVE, "a place of the pair at the door %s is within HF_ARRIVE (the stop starts) (%.2f)" % [e.door, near])
+	# Every place but one is within HF_ARRIVE of its door; the one is the second place of a door in an alley whose far side is shut (it stands up to 4.6 off).
+	t.check(beyond <= 1 and far <= 4.6, "every pair place at the six listed doors is within HF_ARRIVE %.1f of its door, bar one alley door's second place (%d beyond, farthest %.2f)" % [
+		HideFaithfulDirector.HF_ARRIVE, beyond, far])
 	Kit.done(s)
 
 
@@ -726,39 +736,78 @@ static func _policies_answer(t) -> void:
 	GodTree.dev_fill = false
 
 
-## Controller ruling P5-T9-R1: a relief inquisitor takes a place at least 1.6 from his fellow, and the pair stands more than two Silent Doom radii
-## apart at every stop -- the relief's too, who walks in from the Temple and stops a step short of his place. Walking on their own feet (the
-## people are ticked here), an inquisitor is lost early and his relief comes; at every stop the nearest the two stand to each other, once both
-## have settled at their places, is kept.
-static func _relief_pair(t) -> void:
+## The inquisitor pair walks the whole six-house list on its own feet (the people are ticked; both households done and gone, so no believer is seized and
+## marched), the gap between the two read every step of 0.05 s (Ruling P5-T9-R8, the standard of P5-T11-R9). `relief` kills one at 3 s, 50 s and 110 s so a
+## relief walks in. Returns {steps, under, walk_steps,
+## walk_under, nearest, stop_nearest, doors, stops, reliefs}: every step but the first after a change of state (a stop begins or ends, the trail) is
+## counted; `walk_*` counts only the steps when the two are not both standing at their places.
+static func _walk_metrics(relief: bool) -> Dictionary:
 	var s := _world()
 	var d: HideFaithfulDirector = s.d
 	_clear_watch_but_search(d)
 	for h: ExodusDirector.Household in d.households:
-		h.out = true  # (both households done and gone: the people here are not ticked, so no believer is seized and marched, and the search stops at every door)
+		h.out = true
 		h.done = true
-	var limit := 2.0 * SilentDoom.RADIUS
-	var nearest := INF
-	var stops := 0
-	var relieved := false
-	for i in roundi(240.0 / DT):
+	var m := {"steps": 0, "under": 0, "walk_steps": 0, "walk_under": 0, "nearest": INF, "stop_nearest": INF, "stops": 0}
+	var last_state := ""
+	var kills := [3.0, 50.0, 110.0]
+	for i in roundi(330.0 / DT):
 		(s.crowd as Crowd).advance(DT)
 		(s.rules as Rules).advance(DT)
 		for v: Variant in d.inquisitors:
 			if MissionDirector._alive(v):
 				(v as Person).tick(DT)
-		if not relieved and d._clock > 3.0:
+		if relief and not kills.is_empty() and d._clock > float(kills[0]) and MissionDirector._alive(d.inquisitors[1]):
+			kills.pop_front()
 			Kit.free_body(s, d.inquisitors[1] as Person)
-			relieved = true
-		if d._search_stop >= 0.0 and d._clock >= d._search_stop - HideFaithfulDirector.HF_SEARCH_STOP + 3.0 and i % 4 == 0 and d.inquisitors.size() == 2 				and MissionDirector._alive(d.inquisitors[0]) and MissionDirector._alive(d.inquisitors[1]):
-			var a := d.inquisitors[0] as Person
-			var b := d.inquisitors[1] as Person
-			if a.ground_pos.distance_to(a.anchor) < HideFaithfulDirector.HF_PLACE_NEAR and b.ground_pos.distance_to(b.anchor) < HideFaithfulDirector.HF_PLACE_NEAR:
-				nearest = minf(nearest, a.ground_pos.distance_to(b.ground_pos))
-				stops += 1
-	t.check(d.inq_reliefs >= 1 and stops > 10 and nearest > limit + 0.05,
-		"with a relief among them the pair stands more than %.1f apart at every stop (%d samples, %d relief, nearest %.2f)" % [limit, stops, d.inq_reliefs, nearest])
+		if d.inquisitors.size() != 2 or not MissionDirector._alive(d.inquisitors[0]) or not MissionDirector._alive(d.inquisitors[1]):
+			last_state = ""
+			continue
+		var state := "%d/%s/%d" % [d._search_at, d._search_stop >= 0.0, d._trail]
+		var a := d.inquisitors[0] as Person
+		var b := d.inquisitors[1] as Person
+		var gap := a.ground_pos.distance_to(b.ground_pos)
+		if state == last_state:
+			var settled := a.ground_pos.distance_to(a.anchor) < HideFaithfulDirector.HF_PLACE_NEAR and b.ground_pos.distance_to(b.anchor) < HideFaithfulDirector.HF_PLACE_NEAR 				and a.anchor.distance_to(b.anchor) < 6.0
+			m.steps += 1
+			m.under += 1 if gap < 1.6 else 0
+			m.nearest = minf(m.nearest, gap)
+			if settled and d._search_stop >= 0.0:
+				m.stops += 1
+				m.stop_nearest = minf(m.stop_nearest, gap)
+			if not settled:
+				m.walk_steps += 1
+				m.walk_under += 1 if gap < 1.6 else 0
+		last_state = state
+	m["doors"] = d.stopped_door_gap.duplicate()
+	m["reliefs"] = d.inq_reliefs
 	Kit.done(s)
+	return m
+
+
+## Ruling P5-T9-R8 (review of Task 9, I1): the inquisitor pair walks apart on its whole walk, not only at its stops -- the place of each by who is nearer
+## along the path, the rear man holding on leaving a stop until the gap along the path opens to HF_PAIR_FILE. The standard (P5-T11-R9): at a stop the pair
+## stands over 1.6 apart always -- at each of the six doors -- and on the walk at most 5 % of the steps are under 1.6 (corners, the first steps out of a door).
+## Measured shares are in the check message. (Mutations: places by index; no hold; both failed this before the fix, 8.0 % of the walk under 1.6 and one
+## sample at 0.01.)
+static func _pair_walk(t) -> void:
+	for relief in [false, true]:
+		var m := _walk_metrics(relief)
+		var doors: Array = m.doors
+		var noted := 0
+		var worst_door := INF
+		for g: Variant in doors:
+			noted += 1 if float(g) < INF else 0
+			worst_door = minf(worst_door, float(g))
+		var share := float(m.under) / float(maxi(m.steps, 1))
+		var walk_share := float(m.walk_under) / float(maxi(m.walk_steps, 1))
+		# (A door in an alley, or one where the rear man comes in as the stop ends, is never stood at by both: the pair's places at all six are held by
+		# _pair_apart; here every door the pair does stand at is over 1.6.)
+		t.check(m.stops > (10 if relief else 20) and float(m.stop_nearest) > 1.6 and noted >= (1 if relief else 4) and worst_door > 1.6,
+			"%s: at each door the pair stands at it is over 1.6 apart (%d samples at %d doors, nearest %.2f, per door %s)" % ["with a relief" if relief else "plain", m.stops, noted, m.stop_nearest, doors])
+		t.check(m.steps > (600 if relief else 3000) and share <= 0.05 and float(m.nearest) > 0.5,
+			"%s: on the whole walk %.1f %% of the %d steps are under 1.6 apart (%.1f %% of the %d walking steps; nearest %.2f) -- at most 5 %%" % [
+				"with a relief" if relief else "plain", 100.0 * share, m.steps, 100.0 * walk_share, m.walk_steps, m.nearest])
 
 
 ## Only the inquisitors left to search: the watch and the patrols are moved well away.
@@ -770,6 +819,168 @@ static func _clear_watch_but_search(d: HideFaithfulDirector) -> void:
 		for v: Variant in squad:
 			if MissionDirector._alive(v):
 				Kit.arrive(v as Person, (v as Person).ground_pos + Vector2(60.0, 60.0))
+
+
+## A Rules that records the casts and lands none.
+class SpyRules:
+	extends Rules
+	var casts: Array[Dictionary] = []
+
+	func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
+		casts.append({"slot": slot, "at": ground, "extra": extra})
+		return null
+
+
+## FakeBc with every power ready (the spy world has no cooldowns).
+class SpyBc:
+	extends FakeBc
+
+	func _slot_ready(_rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key)
+
+
+## Everybody the night still needs answered: each watcher, patrolman, inquisitor and watchman alive out of doors.
+static func _needed(d: HideFaithfulDirector) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for v: Variant in d._watchers():
+		if MissionDirector._alive(v) and not (v as Person).inside:
+			out.append((v as Person).ground_pos)
+	return out
+
+
+## Behavioural no-filler check (review of Task 9, M1; Ruling P5-T10-R2): every cast the six policies make, driven over three nights, lands on somebody the
+## night still needs answered (a kill, mark, plague, whisper, discord or cage within 3.5 of a living watcher; the call of the guard within 16 of the soldiers
+## it takes; the mirror's way in on a road of a household not yet out of the walls), never a cast made only to end an idle stretch. Nights: the 0:00 start, a
+## household out with a soldier on its road, and the idle night -- the first household done, the second 20 s from coming out (clock 120 s), the last cast 31 s
+## back, the side gate's watch 60 s from its sight. There Dominion casts nothing: its whisper holds a man twenty seconds and is not cast sixty ahead.
+## (Mutation: Dominion's idle lead restored in act_dominion -- it whispers the watchman at the gate at once and the idle-night check fails.)
+static func _no_filler_casts(t) -> void:
+	GodTree.dev_fill = true
+	for type: String in TYPES:
+		var total := 0
+		var strays := PackedStringArray()
+		var idle_casts := 0
+		for night in 3:
+			var def := HuntBook.def(MissionBook.HIDE_FAITHFUL)
+			def.default_loadout = Hunts.loadout("hide_faithful", type)
+			var s := Kit.world(def)
+			var d: HideFaithfulDirector = s.d
+			var slots := {}
+			for i in def.default_loadout.size():
+				slots[def.default_loadout[i]] = i
+			var spy := SpyRules.new()
+			var ctx := {"rules": spy, "slots": slots, "d": d, "crowd": s.crowd, "memo": {}, "mission": null}
+			var bc := SpyBc.new()
+			if night == 1:
+				_clear_watch(d)
+				d._come_out(0)
+				Kit.run_for(s, EscortDirector.TICK + DT)
+				var lead := d.lamp(0)
+				var line: Array = d.road(0)
+				var from_k := 0
+				var best := INF
+				for k in line.size():
+					var g := (lead.man as Person).ground_pos.distance_to(line[k])
+					if g < best:
+						best = g
+						from_k = k
+				var at: Vector2 = line[from_k]
+				var run := 0.0
+				for k in range(from_k + 1, line.size()):
+					run += (line[k - 1] as Vector2).distance_to(line[k])
+					at = line[k]
+					if run >= 6.0:
+						break
+				Kit.arrive((d.patrols[0][0] as Person), at)
+			elif night == 2:
+				var h0: ExodusDirector.Household = d.households[0]
+				h0.out = true
+				h0.done = true
+				h0.done_at = 1000.0
+				d.inq_reliefs = HideFaithfulDirector.HF_SEARCH_RELIEFS
+				for v: Variant in d.inquisitors.duplicate():
+					Kit.free_body(s, v as Person)
+				Kit.run_for(s, 120.0)
+				ctx.memo["last_cast"] = d._clock - 31.0
+			var act := Callable(Hunts.FILES["hide_faithful"], "act_" + type)
+			for look in 6:
+				Kit.run_for(s, 0.5)
+				var before := spy.casts.size()
+				var did := String(act.call(bc, ctx))
+				t.check((did == "") == (spy.casts.size() == before), "%s night %d: what the policy returns says whether it cast (%s)" % [type, night, did])
+				t.check(not Hunts.GOD_T1.is_fill(did), "%s night %d: the cast is not worded a filler (%s)" % [type, night, did])
+			var needed := _needed(d)
+			var roads: Array = []
+			for i in d.households.size():
+				if not (d.households[i] as ExodusDirector.Household).done:
+					roads.append_array(d.road(i))
+			for c in spy.casts:
+				total += 1
+				idle_casts += 1 if night == 2 else 0
+				var key := String(slots.find_key(c.slot))
+				var near := false
+				if key == "mirror":
+					for q: Vector2 in roads:
+						near = near or (c.at as Vector2).distance_to(q) <= 1.0
+				elif key == "blight":
+					var tower: Structure = (s.crowd as Crowd).bell.tower  # (the Bell Tower, so a seen death rings nothing: it ends no stretch, the tower is ruined for good)
+					near = tower != null and (c.at as Vector2).distance_to(tower.center()) <= 1.0
+				else:
+					var reach := 16.0 if key == "belllies" else 3.5
+					for at: Vector2 in needed:
+						near = near or (c.at as Vector2).distance_to(at) <= reach
+				if not near:
+					strays.append("%s night %d at %s" % [key, night, c.at])
+			spy.free()
+			Kit.done(s)
+		t.check(total > 0, "%s: the policy casts over the three nights (%d casts)" % [type, total])
+		t.check(strays.is_empty(), "%s: every cast lands on somebody the night still needs answered (strays: %s)" % [type, ", ".join(strays)])
+		if type == "dominion":
+			t.check(idle_casts == 0, "dominion: on the idle night, with the watch 60 s from its sight, it casts nothing (%d casts)" % idle_casts)
+	GodTree.dev_fill = false
+
+
+## Review of Task 9, M2: tests that fail without HF_PAIR_SLACK 0.6, the inquisitors' one pace and the pair being re-ordered together. (Mutations: slack
+## 0.5, `p.pace = HF_SEARCH_BASE_PACE` removed, `resend` per man -- each fails here.)
+static func _pair_orders(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	# One pace: the people the director picks walk at different paces of their own, and the pair share the base one.
+	var paces := {}
+	for v: Variant in d.inquisitors:
+		paces[float(d._inq_base[(v as Person).get_instance_id()])] = true
+	t.check(paces.size() == 1 and is_equal_approx(float(paces.keys()[0]), HideFaithfulDirector.HF_SEARCH_BASE_PACE),
+		"the two inquisitors share one base pace, %.1f (%s)" % [HideFaithfulDirector.HF_SEARCH_BASE_PACE, paces.keys()])
+	# The places are over HF_SEARCH_GAP + 0.6 - 0.1 = 2.3 apart at the six doors (absolute: the slack is 0.6).
+	var worst := INF
+	var from := d.temple_door
+	for e: Dictionary in d._search:
+		var sp := d.pair_spots(e.door, 2, from)
+		worst = minf(worst, sp[0].distance_to(sp[1]))
+		from = e.door
+	t.check(worst >= 2.3 and is_equal_approx(HideFaithfulDirector.HF_PAIR_SLACK, 0.6), "the pair's places at the six doors are at least 2.3 apart (nearest %.2f)" % worst)
+	# Both are re-ordered together: one far from his place, the other a hair off his own (under MOVE): both anchors come to their places.
+	_clear_watch_but_search(d)
+	for h: ExodusDirector.Household in d.households:
+		h.out = true
+		h.done = true
+	d._search_at = 3
+	var door: Vector2 = d._search[3].door
+	var spots: Array[Vector2] = d._door_spots(door, 2)
+	var a := d.inquisitors[0] as Person
+	var b := d.inquisitors[1] as Person
+	Kit.arrive(a, spots[0] + Vector2(6.0, 0.0))
+	Kit.arrive(b, spots[1] + Vector2(0.0, 0.2))
+	a.go_duty(spots[0] + Vector2(6.0, 0.0))
+	b.go_duty(spots[1] + Vector2(0.0, 0.2))
+	d._set_pace(a, HideFaithfulDirector.HF_SEARCH_PACE)  # (their walking pace already set: only the anchors can say who was sent)
+	d._set_pace(b, HideFaithfulDirector.HF_SEARCH_PACE)
+	d._order_search()
+	var anchors := [a.anchor, b.anchor]
+	var placed := (anchors[0] as Vector2).distance_to(spots[0]) < 0.05 and (anchors[1] as Vector2).distance_to(spots[1]) < 0.05 \
+		or (anchors[0] as Vector2).distance_to(spots[1]) < 0.05 and (anchors[1] as Vector2).distance_to(spots[0]) < 0.05
+	t.check(placed, "when one of the pair needs a new order both are sent: the anchors stand at the two places (%s, places %s)" % [anchors, spots])
+	Kit.done(s)
 
 
 static func _strip_rows(t) -> void:

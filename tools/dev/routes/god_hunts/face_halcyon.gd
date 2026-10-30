@@ -57,9 +57,9 @@ static func state(_bc, ctx: Dictionary) -> String:
 	for i in d.procs.size():
 		phases += "WFMBRXD"[int(d.phase_of(i))]
 		able.append(d.able_escort(i))
-	return "freed=%d (broken %d walls %d) burned=%d left=%d gaze=%d phases=%s able=%s stopped=%.2f/%d/%d walking=%.2f/%d/%d pair_min=%.2f under1.6=%.1f%% halt=%.2f/%d/%d cross=%.2f/%d/%d phase=%s" % [d.freed(),
+	return "freed=%d (broken %d walls %d) burned=%d left=%d gaze=%d phases=%s able=%s stopped=%.2f/%d/%d walking=%.2f/%d/%d under1.6=%.1f%% halt=%.2f/%d/%d cross=%.2f/%d/%d phase=%s" % [d.freed(),
 		d.freed_broken, d.freed_walls, d.burned(), d.left_count(), roundi(d.gaze.value), phases, able, minf(d.pair_min, 99.0), d.pair_under, d.pair_looks,
-		minf(d.walk_min, 99.0), d.walk_under, d.walk_looks, minf(d.walk_min, 99.0), 100.0 * float(d.walk_under) / float(maxi(d.walk_looks, 1)),
+		minf(d.walk_min, 99.0), d.walk_under, d.walk_looks, 100.0 * float(d.walk_under) / float(maxi(d.walk_looks, 1)),
 		minf(d.halt_min, 99.0), d.halt_under, d.halt_looks, minf(d.cross_min, 99.0), d.cross_under, d.cross_looks, d.hint_phase()]
 
 
@@ -224,10 +224,10 @@ static func _room(d: FaceHalcyonDirector, rules: Rules, bell_ruined: bool) -> fl
 
 
 ## The pacing every type's policy keeps (god P5 Task 13, MS §0 and §7; the precedent is Silence the witness's SW_GAP): a procession is broken by an opener and a
-## finisher at least FH_GAP seconds apart, the finisher the cast that leaves him no more than the rule allows. The Hunt's items come on the clock (30, 95, 160,
-## 225 s) or 45 s after the one before is freed, and a lone cast made the moment a procession forms up frees it at once, so the next forms 45 s plus the cast's
-## own delay after the last cast (idle 46 s); with the finisher FH_GAP after the opener the free comes at least 20 s after the forming, the next procession
-## forms on its own clock (at 95 and 160), and the policy is never idle longer than the chain. Seconds are the mission's (the director's clock).
+## finisher at least FH_GAP seconds apart, the finisher the cast that leaves him no more than the rule allows. The Hunt's items come on the clock (44, 109, 174,
+## 239 s since round 3; 30, 95, 160, 225 in the spec) or 45 s after the one before is freed, and a lone cast made the moment a procession forms up frees it at once,
+## so the next forms 45 s plus the cast's own delay after the last cast (idle 46 s); with the finisher FH_GAP after the opener the free comes at least 20 s after the
+## forming, the next procession forms on its own clock (at 109 and 174), and the policy is never idle longer than the chain. Seconds are the mission's (the director's clock).
 ## Round 3 (P5-T13-R5 as amended): a HELD real cast -- the opener kills or marks an escort when it is made, and the finisher does the same FH_GAP later; neither is a filler.
 ## Without the hold (FH_GAP 0, schedule 44/109/174/239): ruin 175 / 175 / 158 s idle 45 / 45 / 44, veil 184 / 176 / 172 s idle 46 (over the bar), death unchanged
 ## (its cooldown is 20 s). With it: ruin 186 / 196 / 158 idle 44-45, veil 195 / 200 / 196 idle 45.
@@ -379,7 +379,9 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 # --- Passage: Thornwall, Mirrorfold Passage ---------------------------------------------------------------------------------------------
 
 ## How far ahead of the believer along his road the mirror's way in is laid, and the least road he must have left for it.
-const MIRROR_AHEAD := 6.0
+## Fix round (P5-T13-R12): 1.5, clear of where the file's lead stands (1.4) and the shortest lead that frees every seed at the lowest idle; a mirror laid 6 ahead only
+## made the policy wait (win 178 s, idle 59.7; 2 ahead 166 s, idle 59; 1.5 ahead 164.6 s, idle 54 = the cooldown; 1.0: 175 s idle 60; 0.5: 253 s idle 78).
+const MIRROR_AHEAD := 1.5
 const MIRROR_ROAD := 8.0
 ## How far the way out may lie from the way in, and how far past the wall's own margin it is (so a man put there is out at the director's next look).
 const MIRROR_REACH := 24.0

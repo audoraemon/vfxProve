@@ -89,7 +89,7 @@ const FH_APART := 2.2
 const FH_STAKE_OFF := 0.7
 ## When each procession forms up at the latest, and the chain (a rule: no wait over 45 s after the one before is freed or burned). The spec's *fg* times are
 ## 0:30, 1:35, 2:40, 3:45. Round 3 (Task 13, Ruling P5-T13-R9, P5-C10): shifted 14 s later with the 65 s gaps kept, 0:44, 1:49, 2:54, 3:59 (the first wait stays under
-## 45 s; the fourth procession's walk and burn end near 295 of the night's 420). Pooled median of the winning runs: 164 s before (round 0), see the report after.
+## 45 s; the fourth procession's walk and burn end near 295 of the night's 420). Pooled median of the winning runs: 164 s before (round 0), 178 s after the shift (round 3; Passage's mirror laid 6 ahead), 165 s with the mirror laid 1.5 ahead (fix round, P5-T13-R12).
 const FH_PROC_AT := [44.0, 109.0, 174.0, 239.0]
 const FH_CHAIN := 45.0
 ## How long a procession forms up at its door (*fg*; MS §7 tunes it to 12) and its pace to the pyre as a fraction of a soldier's duty pace
@@ -736,7 +736,7 @@ func _along_length(line: Array[Vector2]) -> float:
 ## off the errand by the town) goes back to his place. The places move with the believer; two fit escorts under FH_SPACE apart give way (_give_way()).
 func _order_escorts(pr: Procession, p: Person) -> void:
 	_note_trail(pr, p)
-	pr.places = _file_places(pr, p.ground_pos)
+	pr.places = _redeal(pr, _file_places(pr, p.ground_pos))
 	var target: Array[Vector2] = pr.places.duplicate()
 	_give_way(pr, target)
 	for k in pr.escorts.size():
@@ -745,6 +745,45 @@ func _order_escorts(pr: Procession, p: Person) -> void:
 		var e := pr.escorts[k] as Person
 		if e.mind != Person.Mind.DUTY or e.anchor.distance_to(target[k]) > MOVE:
 			e.go_duty(target[k])
+
+
+## When an escort has fallen the survivors are dealt the places again (Task 13 fix round, Ruling P5-T13-R11, wave 1's rule for pairs): a lane behind a door can be
+## shorter than the file's rear place needs (3.4 units behind the west door against FH_BACK2 4.4), so the places clamp at its end and two of them stand 1.4
+## apart; with all three alive that pair is never the one in use, but with the lead dead the survivors stood there and one Silent Doom could take both. With two
+## alive that stand under FH_SPACE + FH_STOP_SHORT apart, they take the two of the file's places that stand farthest apart (the lead's and the rear's, say), each the
+## one nearer to him so that neither crosses the other. `places` has one place per escort; returned changed for the survivors only. Only reads.
+func _redeal(pr: Procession, places: Array[Vector2]) -> Array[Vector2]:
+	var live: Array[int] = []
+	for k in pr.escorts.size():
+		var v: Variant = pr.escorts[k]
+		if _alive(v) and not (v as Person).inside and not is_leaving(v):
+			live.append(k)
+	if live.size() != 2 or places.size() < 3:
+		return places
+	if places[live[0]].distance_to(places[live[1]]) >= FH_SPACE + FH_STOP_SHORT:
+		return places
+	var best_a := -1
+	var best_b := -1
+	var best_gap := -1.0
+	for a in places.size():
+		for b in range(a + 1, places.size()):
+			var gap := places[a].distance_to(places[b])
+			if gap > best_gap:
+				best_gap = gap
+				best_a = a
+				best_b = b
+	var e0 := (pr.escorts[live[0]] as Person).ground_pos
+	var e1 := (pr.escorts[live[1]] as Person).ground_pos
+	var straight := e0.distance_to(places[best_a]) + e1.distance_to(places[best_b])
+	var crossed := e0.distance_to(places[best_b]) + e1.distance_to(places[best_a])
+	var out := places.duplicate()
+	if straight <= crossed:
+		out[live[0]] = places[best_a]
+		out[live[1]] = places[best_b]
+	else:
+		out[live[0]] = places[best_b]
+		out[live[1]] = places[best_a]
+	return out
 
 
 ## Escort `k` of `pr` is fit: alive, out of doors, not being sent off, not disabled by the god (he can be sent to his place).
@@ -1225,7 +1264,7 @@ func hint_seconds() -> float:
 func tour() -> Array:
 	var out := []
 	if not households.is_empty():
-		out.append([(households[0] as Household).door, "A believer in chains waits here, three soldiers round him. At %s they march." % UiTheme.clock(
+		out.append([(households[0] as Household).door, "A believer in chains waits here, three soldiers round him. At %s the procession forms up." % UiTheme.clock(
 			float(FH_PROC_AT[0]))])
 	out.append([pyre_at, "The pyre. A believer burns %d s after he arrives. Break his escort first." % roundi(FH_BURN)])
 	return out

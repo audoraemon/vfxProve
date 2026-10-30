@@ -213,12 +213,12 @@ face_halcyon_ruin_play_3	--scenario=face_halcyon --case=play --seed=3 --god=ruin
 face_halcyon_death_play_1	--scenario=face_halcyon --case=play --seed=1 --god=death:5 --dev-tree	-536803238
 face_halcyon_death_play_2	--scenario=face_halcyon --case=play --seed=2 --god=death:5 --dev-tree	-674536623
 face_halcyon_death_play_3	--scenario=face_halcyon --case=play --seed=3 --god=death:5 --dev-tree	-200562402
-face_halcyon_veil_play_1	--scenario=face_halcyon --case=play --seed=1 --god=veil:5 --dev-tree	-507864608
+face_halcyon_veil_play_1	--scenario=face_halcyon --case=play --seed=1 --god=veil:5 --dev-tree	-252872191
 face_halcyon_veil_play_2	--scenario=face_halcyon --case=play --seed=2 --god=veil:5 --dev-tree	-77184919
 face_halcyon_veil_play_3	--scenario=face_halcyon --case=play --seed=3 --god=veil:5 --dev-tree	-116498780
-face_halcyon_passage_play_1	--scenario=face_halcyon --case=play --seed=1 --god=passage:5 --dev-tree	-999150635
-face_halcyon_passage_play_2	--scenario=face_halcyon --case=play --seed=2 --god=passage:5 --dev-tree	-246842306
-face_halcyon_passage_play_3	--scenario=face_halcyon --case=play --seed=3 --god=passage:5 --dev-tree	685065673
+face_halcyon_passage_play_1	--scenario=face_halcyon --case=play --seed=1 --god=passage:5 --dev-tree	-292548565
+face_halcyon_passage_play_2	--scenario=face_halcyon --case=play --seed=2 --god=passage:5 --dev-tree	-15922585
+face_halcyon_passage_play_3	--scenario=face_halcyon --case=play --seed=3 --god=passage:5 --dev-tree	-29640817
 face_halcyon_decree_play_1	--scenario=face_halcyon --case=play --seed=1 --god=decree:5 --dev-tree	879745885
 face_halcyon_decree_play_2	--scenario=face_halcyon --case=play --seed=2 --god=decree:5 --dev-tree	-226629477
 face_halcyon_decree_play_3	--scenario=face_halcyon --case=play --seed=3 --god=decree:5 --dev-tree	549106523

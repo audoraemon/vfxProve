@@ -25,6 +25,7 @@ static func run(t) -> void:
 	_house_clearance(t)
 	_body_walk(t)
 	_real_walk(t)
+	_survivors(t)
 	_countdown(t)
 	_give_way_reach(t)
 	_cross(t)
@@ -265,6 +266,7 @@ static func _frame(t) -> void:
 	var fits := true
 	for stop: Array in tour:
 		fits = fits and UiTheme.width(String(stop[1]), UiTheme.SIZE_BODY) + 16.0 <= Kit.VIEW.x
+	t.check(String(tour[0][1]).contains("At 0:44 the procession forms up.") and String(tour[0][1]).contains("three soldiers"), "the tour's first line says the procession forms up at 0:44 (%s)" % [tour[0][1]])
 	t.check(tour.size() == 2 and fits and tour[1][0] == d.pyre_at, "the tour: the first house, the pyre; each line within the caption's plate (%d stops)" % tour.size())
 	Kit.done(s)
 
@@ -552,6 +554,75 @@ static func _real_walk(t) -> void:
 			only, walk_under, walk, 100.0 * float(walk_under) / float(maxi(walk, 1)), walk_low])
 		t.check(min_able == 3, "procession %d: the walk alone disables nobody (fewest able %d)" % [only, min_able])
 		Kit.done(s)
+
+
+## The survivors of a fallen escort stand apart (Task 13 fix round, Ruling P5-T13-R11; wave 1's rule for pairs): the lane behind the west door of the game is
+## 3.4 units, shorter than the rear place needs, so with the lead dead the two survivors stood 1.4 apart and one Silent Doom took both. Here each procession's
+## lane is cut to 3.4 units (the last 8 points of its trail), each escort in turn is killed right after the forming, and (1) the places dealt to the two survivors
+## are over 1.6 apart, then (2) the bodies are ticked (Person.tick) through the forming, the walk and the burning with every 0.05 s step counted from the first:
+## at the halts always over 1.6 apart, walking under 1.6 in at most 5 % of ALL steps. (Mutation: with _redeal() returning the places unchanged, both fail.)
+static func _survivors(t) -> void:
+	var bad_places := PackedStringArray()
+	var cases := 0
+	for i in 4:
+		for dead in 3:
+			var s := _world()
+			var d: FaceHalcyonDirector = s.d
+			var pr: FaceHalcyonDirector.Procession = d.procs[i]
+			d._come_out(i)
+			pr.trail = pr.trail.slice(maxi(pr.trail.size() - 8, 0))
+			Kit.free_body(s, pr.escorts[dead] as Person)
+			_look(s, 2)
+			var live: Array[Person] = []
+			for k in 3:
+				if MissionDirector._alive(pr.escorts[k]):
+					live.append(pr.escorts[k] as Person)
+			var gap := pr.places[(dead + 1) % 3].distance_to(pr.places[(dead + 2) % 3])
+			cases += 1
+			if live.size() != 2 or gap <= 2.0 * SilentDoom.RADIUS:
+				bad_places.append("door %d, dead %d: places %.2f apart" % [i, dead, gap])
+			Kit.done(s)
+	t.check(cases == 12 and bad_places.is_empty(), "with each escort of each procession killed in turn, the two survivors' places are over 1.6 apart even in a 3.4-unit lane (%s)" % ", ".join(bad_places))
+	var halt_under := 0
+	var halt_low := INF
+	var halt := 0
+	var walk := 0
+	var walk_under := 0
+	var walk_low := INF
+	for i in 4:
+		for dead in 3:
+			var s := _world()
+			var d: FaceHalcyonDirector = s.d
+			var pr: FaceHalcyonDirector.Procession = d.procs[i]
+			d._come_out(i)
+			pr.trail = pr.trail.slice(maxi(pr.trail.size() - 8, 0))
+			Kit.free_body(s, pr.escorts[dead] as Person)
+			var secs := 0.0
+			while secs < 75.0 and pr.phase != FaceHalcyonDirector.Procession.Phase.BURNED and pr.phase != FaceHalcyonDirector.Procession.Phase.FREED:
+				(s.crowd as Crowd).advance(DT)
+				(s.rules as Rules).advance(DT)
+				secs += DT
+				for v: Variant in [pr.charge.man] + pr.escorts:
+					if MissionDirector._alive(v):
+						(v as Person).tick(DT)
+				if not pr.phase in [FaceHalcyonDirector.Procession.Phase.FORMING, FaceHalcyonDirector.Procession.Phase.MARCHING, FaceHalcyonDirector.Procession.Phase.BURNING]:
+					continue
+				var low := INF
+				for a in 3:
+					for b in range(a + 1, 3):
+						if MissionDirector._alive(pr.escorts[a]) and MissionDirector._alive(pr.escorts[b]):
+							low = minf(low, (pr.escorts[a] as Person).ground_pos.distance_to((pr.escorts[b] as Person).ground_pos))
+				if pr.phase == FaceHalcyonDirector.Procession.Phase.MARCHING:
+					walk += 1
+					walk_low = minf(walk_low, low)
+					walk_under += 1 if low <= 2.0 * SilentDoom.RADIUS else 0
+				else:
+					halt += 1
+					halt_low = minf(halt_low, low)
+					halt_under += 1 if low <= 2.0 * SilentDoom.RADIUS else 0
+			Kit.done(s)
+	t.check(halt > 2000 and walk > 4000 and halt_under == 0, "bodies ticked, a survivor pair at the halts is over 1.6 apart always (%d steps, nearest %.2f)" % [halt, halt_low])
+	t.check(float(walk_under) <= 0.05 * float(walk), "and walking, EVERY step counted, under 1.6 apart in at most 5 %%: %d of %d (%.1f %%, nearest %.2f)" % [walk_under, walk, 100.0 * float(walk_under) / float(maxi(walk, 1)), walk_low])
 
 
 ## The pyre countdown never rises while he walks (Task 13; review of Task 8, Minor 1): all four processions form up and are walked by their pace, the director
@@ -1304,6 +1375,12 @@ static func _pacing(t) -> void:
 ## answered: an escort of a procession in custody (within the cast's reach), the Bell Tower for the Blight, the door of a house about to form for the law, the road
 ## ahead of a believer for the mirror. A cast made only to end an idle stretch has nothing there. Each type casts at least once, and none ever casts on a
 ## believer. (Mutation: aim a policy a few units off its escort and the check fails.)
+## How near an escort still able a cast of each power must land (the power's own radius, with a step's slack for the walk the bolt is led by), per key; the law,
+## the Bell Lies' area and the whisper's pick are the powers' own (NoLeaveFx.RADIUS, 1.5, MindWhisperFx.PICK_R). Blight, the mirror and the law at a door are checked
+## by what they name (the tower, the road, the door). A Death Mark 2.5 off its escort must fail (review of Task 13, M1).
+const CAST_REACH := {"smite": 1.0, "deathmark": 1.05, "doom": 0.9, "noleave": 3.0, "belllies": 1.5, "whisper": 0.7, "discord": 1.2, "priority": 7.0}
+
+
 static func _no_filler_casts(t) -> void:
 	for type: String in GodHunts.TYPES:
 		var total := 0
@@ -1338,14 +1415,19 @@ static func _no_filler_casts(t) -> void:
 				t.check(not did.begins_with("fill"), "%s scene %d: the cast is not worded a filler (%s)" % [type, scene, did])
 				_look(s)
 			var tower: Structure = crowd.bell.tower if crowd.bell != null else null
+			var key_of := {}
+			for key: String in ctx.slots:
+				key_of[int(ctx.slots[key])] = key
 			for c in spy.casts:
 				total += 1
 				var at: Vector2 = c.at
 				var near := false
+				var key := String(key_of[int(c.slot)])
+				var reach := float(CAST_REACH.get(key, 0.0))  # (the power's own radius: the cast must land within it of an escort still able)
 				for i in 4:
 					var pr: FaceHalcyonDirector.Procession = d.procs[i]
 					for k in pr.escorts.size():
-						if MissionDirector._alive(pr.escorts[k]) and at.distance_to((pr.escorts[k] as Person).ground_pos) <= 3.0:
+						if MissionDirector._alive(pr.escorts[k]) and d._able(pr, k) and at.distance_to((pr.escorts[k] as Person).ground_pos) <= reach:
 							near = true
 					if MissionDirector._alive(pr.charge.man) and pr.phase in [FaceHalcyonDirector.Procession.Phase.FORMING, FaceHalcyonDirector.Procession.Phase.MARCHING]:
 						if type != "passage" and type != "decree" and at.distance_to(_believer(d, i).ground_pos) < 0.5:
@@ -1359,7 +1441,7 @@ static func _no_filler_casts(t) -> void:
 					if type == "decree" and not (d.households[i] as ExodusDirector.Household).out and at.distance_to((d.households[i] as ExodusDirector.Household).door) <= 0.1:
 						near = true
 				if not near:
-					strays.append("scene %d at %s" % [scene, at])
+					strays.append("%s in scene %d at %s (reach %.1f)" % [key, scene, at, reach])
 			spy.free()
 			Kit.done(s)
 		t.check(total > 0, "%s: the policy casts in the four scenes (%d casts)" % [type, total])

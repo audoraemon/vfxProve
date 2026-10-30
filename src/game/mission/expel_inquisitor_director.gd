@@ -40,6 +40,8 @@ const EI_GUARDS := [1, 1, 1, 2]
 ## When each warden sets out at the latest (the strip's seconds, MS §4 *fg*): 0:44, 1:34, 2:24; each next sooner if the one before is stopped.
 ## Round 2 of Task 11 tuning (Ruling P5-T11-R1, P5-C10 "harder"): was 20 / 70 / 120. A fast killer is bound by the first warden's time plus three
 ## chains (45 s), so the Hunt's pooled median sat at 157 s (round 1's VISIT / HIDE / FRIGHT_GAP left it there); 44 keeps the first wait under 45 s.
+## The result: pooled median of the 15 wins 181 s (round 2 and again after the captain's guards were set to walk apart), the floor of a killer
+## (Veil: 44 + 3 x 45 + the captain's strike), so there is no headroom under 180: a first warden at 43 s would drop it under the band.
 const EI_WARDEN_AT := [44.0, 94.0, 144.0]
 ## How long after one is stopped the next sets out at the latest (MS §0: no wait over 60 s; the chain is 45).
 const EI_CHAIN := 45.0
@@ -62,6 +64,15 @@ const EI_NEAR_WARN := 20.0
 ## PACE_RANGE, 1.11 mid, 1.14 at the fast end), so the tag read 0:00 about 6 s before he came. 1.15 keeps the tag at or just over the real walk
 ## (0.3 to 3.5 s over) and the window above its 45 s floor.
 const EI_WALK_SCALE := 1.15
+## The captain's trail (his guard behind him stands on it): a point every this many units, this many kept.
+const EI_TRAIL_STEP := 0.3
+const EI_TRAIL_KEEP := 40
+## The captain's guards walk at this share more than he does (their pace is set from his), so they hold their places ahead of and behind him.
+const EI_GUARD_PACE := 1.6
+## The captain's two guards stand more than this far apart (MS §0: more than two Silent Doom radii, 1.6).
+const EI_GUARD_APART := 1.7
+## The second of the captain's guards walks this far behind the first, along his trail (a 90-degree turn of the road leaves the two this far over 1.6 apart).
+const EI_GUARD_FILE := 2.4
 ## The slots on a door's ring of guards, so the captain's two guards at the Temple's door stand 1.73 apart (more than 1.6, MS §0).
 const EI_DOOR_SLOTS := 3
 ## The map tags' grey for a target waiting for his time.
@@ -86,6 +97,12 @@ var _near_told := false
 var _via := false
 ## Seconds to the next hold of the town's people (TICK).
 var _hold_in := 0.0
+## The captain's trail (_note_trail()).
+var _trail: Array[Vector2] = []
+## Where the captain last stood indoors (the door the pair of guards leave from).
+var _last_door := Vector2.INF
+## The captain's guards' two places at each door he has been at (_door_pair()).
+var _door_pairs := {}
 ## The last countdown computed and what it was computed from (the director's clock, the captain's place, state, leg, pace, slow, visit clock and
 ## the waypoint passed), so the four asks of one look share one search (captain_eta()); and how many searches have run (eta_runs(), the tests').
 var _eta := INF
@@ -136,6 +153,98 @@ func _temple() -> Structure:
 		if is_instance_valid(s) and s.role == &"temple" and not s.destroyed:
 			return s
 	return null
+
+
+## Each guard sent to his place (the base's, with the captain's two walking apart): a street ring of `guard_r` round a warden, and for the captain one
+## guard ahead of him on his road and one behind him on the road he came by (guard_r each, 1.8 apart), both walking a little faster than he does so they
+## hold their places. The base's ring put the two on one side of him, its slots snapped together in a one-cell lane, and they walked slower, so they
+## trailed him down the same lane and queued: under 1.6 apart for most of his walk (review of Task 11, M3; Ruling P5-T11-R8, MS §0: one Doom or one
+## strike must not take both).
+func _send_guards() -> void:
+	var slot := 0
+	for q in quarries:
+		var base := slot
+		slot += q.guards.size()
+		if q.dead or q.state == State.SAFE or q.state == State.OUT or not _alive(q.target):
+			continue
+		var out := not q.target.inside
+		var pair := out and _is_captain(q) and q.guards.size() == 2
+		var hurried := q.state == State.FLEEING or (_is_captain(q) and q.state == State.WALKING)
+		if _is_captain(q):
+			_note_trail(q.target, out, _door_in(q))
+		for i in q.guards.size():
+			var g: Variant = q.guards[i]
+			if not _alive(g) or reserved.has(g):
+				continue
+			var p := g as Person
+			if not _tends(p):
+				continue
+			var spot: Vector2
+			if not out and _is_captain(q) and q.guards.size() == 2:
+				spot = _door_pair(_door_in(q))[i]
+			elif not out:
+				spot = _ring_spot(_door_in(q), DOOR_GUARD_R, base + i, _guard_total, 0.5)
+			elif pair:
+				spot = _escort_spot(q.target, i == 0)
+			else:
+				spot = _ring_spot(q.target.ground_pos, guard_r, i, q.guards.size(), 0.5)
+			if pair:
+				p.pace = q.target.pace * EI_GUARD_PACE
+			if p.anchor.distance_to(spot) > GUARD_MOVE:
+				p.send_to_post(spot, false, hurried)
+
+
+## Where the captain's two guards stand at the door he is in: the two walkable points round it (a ring of DOOR_GUARD_R, then wider) farthest apart,
+## more than EI_GUARD_APART when the ground allows. The base's three-slot ring snapped two of them together at a door in a corner.
+func _door_pair(door: Vector2) -> Array[Vector2]:
+	if _door_pairs.has(door):
+		return _door_pairs[door]
+	var best: Array[Vector2] = [door, door]
+	var best_gap := -1.0
+	for r: float in [DOOR_GUARD_R, 1.3, 1.6]:
+		var pts: Array[Vector2] = []
+		for k in 24:
+			var g := door + Vector2.from_angle(TAU * float(k) / 24.0) * r
+			if crowd._grid == null or crowd._grid.walkable(g):
+				pts.append(g)
+		for a in pts.size():
+			for b in range(a + 1, pts.size()):
+				var gap := pts[a].distance_to(pts[b])
+				if gap > best_gap:
+					best_gap = gap
+					best = [pts[a], pts[b]]
+		if best_gap > EI_GUARD_APART:
+			break
+	_door_pairs[door] = best
+	return best
+
+
+## The captain's last places, newest last, a few tenths of a unit apart (cleared while he is indoors).
+func _note_trail(p: Person, out: bool, door: Vector2) -> void:
+	if not out:
+		_trail.clear()
+		_last_door = door
+		return
+	if _trail.is_empty() or _trail[_trail.size() - 1].distance_to(p.ground_pos) > EI_TRAIL_STEP:
+		_trail.append(p.ground_pos)
+		if _trail.size() > EI_TRAIL_KEEP:
+			_trail.remove_at(0)
+
+
+## Where the captain's guard stands in the street: behind him on the road he came by (his trail), the first guard_r back and the second EI_GUARD_APART
+## further, so they follow him in file and the two stay apart at any walk (one strip of the road is the road itself, so the spots are on ground he
+## walked). When the trail is not long enough yet (he has just come out), the pair's places at the door he came out of.
+func _escort_spot(p: Person, first: bool) -> Vector2:
+	var at := p.ground_pos
+	var left := guard_r if first else guard_r + EI_GUARD_FILE
+	for k in range(_trail.size() - 1, -1, -1):
+		var step: Vector2 = _trail[k]
+		var seg := at.distance_to(step)
+		if seg >= left:
+			return at.move_toward(step, left)
+		left -= seg
+		at = step
+	return _door_pair(_last_door if _last_door != Vector2.INF else p.ground_pos)[0 if first else 1]
 
 
 ## The setup: the base's (each target appointed, set down and taken indoors, guards appointed), then the door rings made three slots wide so the

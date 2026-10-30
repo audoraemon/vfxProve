@@ -38,6 +38,8 @@ const RUIN_PATIENCE := 6.0
 ## Ruin: the guard at the next man's door is struck in the last this many seconds of the wait, so the bolt that kills him (after the patience) is not
 ## 50 s after the last cast (Task 11 round 2: the first warden at 44 s printed idle 50).
 const RUIN_PREP_LEAD := 24.0
+## A guard counts as at the door when he stands within this of it (the door ring is 1 unit; the captain's guards stand up to 1.6 off).
+const DOOR_REACH := 3.0
 ## Death: the seconds either side of the fuse (MARK_TIME 10) a marked man must be out of doors for the mark to take him (a man indoors at the
 ## fuse lives), and the captain's countdown (real seconds) at or under which the Glacial burst (impact 1.2 s, radius 5) is spent on his last leg.
 const DEATH_MARGIN := 0.8
@@ -135,16 +137,36 @@ static func _rate(ctx: Dictionary) -> float:
 
 ## The guards of the next target to set out, standing out of doors at his door, while nobody is out: the men a player strikes in the wait
 ## between one stopped and the next coming out, so the target comes out alone; with a `lead`, only in its last `lead` seconds. Empty when somebody
-## is out, or the next target has none out.
-static func _door_guards(d: ExpelInquisitorDirector, lead := INF) -> Array[Person]:
+## is out, or the next target has none out. With a `reach`, only the guards standing within it of the door (the Bloom's, _bloom_aim()).
+static func _door_guards(d: ExpelInquisitorDirector, lead := INF, reach := INF) -> Array[Person]:
 	var out: Array[Person] = []
 	var next := d._next_waiting()
 	if d._anyone_out() or next == null or not MissionDirector._alive(next.target) or d.out_at(next.index) - d._clock > lead:
 		return out
+	var door: Vector2 = d.hide_door if d._is_captain(next) else next.stop_doors[0]
 	for g: Variant in next.guards:
-		if MissionDirector._alive(g) and not (g as Person).inside:
+		if MissionDirector._alive(g) and not (g as Person).inside and (g as Person).ground_pos.distance_to(door) <= reach:
 			out.append(g as Person)
 	return out
+
+
+## Where a Madness Bloom lands on the next target's guards at his door, or Vector2.INF: once for each target (`memo` keeps the ones done, _bloom_done()),
+## and only on a guard standing within DOOR_REACH of his door -- the bloom takes the men who would stand by him, not one who has wandered off. A Bloom
+## laid for any other reason is a filler (D38; review of Task 11, I1; Ruling P5-T11-R7).
+static func _bloom_aim(d: ExpelInquisitorDirector, memo: Dictionary) -> Vector2:
+	var next := d._next_waiting()
+	if next == null or memo.has("bloom_%d" % next.index):
+		return Vector2.INF
+	for g in _door_guards(d, INF, DOOR_REACH):
+		return g.ground_pos
+	return Vector2.INF
+
+
+## The Bloom for the next target has been cast.
+static func _bloom_done(d: ExpelInquisitorDirector, memo: Dictionary) -> void:
+	var next := d._next_waiting()
+	if next != null:
+		memo["bloom_%d" % next.index] = true
 
 
 ## The length of the street walk from `a` to `b` (straight when the grid finds no path).
@@ -438,7 +460,7 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 
 ## Mind Whisper in hops of WHISPER_HOP toward the way off the map along the road the grid gives, on the first man in the street who is free:
 ## a new hop when he has reached the last, always before the linger runs out, so he never turns back (Person.SHAKE_OFF); out of the walls he
-## is stopped. With no one in the street, Madness Bloom on the next target's guards at his door.
+## is stopped. With no one in the street, Madness Bloom once on the next target's guards at his door, while they stand at it (_bloom_aim()).
 static func act_dominion(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:
@@ -448,8 +470,10 @@ static func act_dominion(bc, ctx: Dictionary) -> String:
 	var crowd: Crowd = ctx.crowd
 	var street := _street(d)
 	if street.is_empty() and bc._slot_ready(rules, slots, "madness"):
-		for g in _door_guards(d):
-			rules.cast(int(slots.madness), g.ground_pos)
+		var aim := _bloom_aim(d, ctx.memo)
+		if aim != Vector2.INF:
+			_bloom_done(d, ctx.memo)
+			rules.cast(int(slots.madness), aim)
 			return "madness bloom on the guards at the door"
 	if not bc._slot_ready(rules, slots, "whisper"):
 		return ""

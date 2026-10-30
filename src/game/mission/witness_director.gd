@@ -10,18 +10,19 @@ extends RingerDirector
 ## by the god) sends that mate on as the witness (`THE MATE RUNS ON`); seen by anyone else, the word dies with him (`_relay_witness()` picks only
 ## from `mates`). The numbers come from SilenceWitnessDirector's SW_ consts, set on the vars below before setup() (C2: no const is redeclared).
 
-## The mates walk in file (_heel()): the first this far behind the witness on his trail, the second this far ahead of him on the street -- 2.4 apart in a straight
-## lane, and, since a mate walks a step off his place, more than two Silent Doom radii (1.6) apart at all but the turns of the road (MS §0).
+## The mates walk in file (_heel()): the first this far behind the witness on his trail, the second this far ahead of him on the street -- 2.6 apart in a straight
+## lane, and, since a mate walks a step off his place, more than two Silent Doom radii (1.6) apart at all but the turns of the road (MS §0). Ruling P5-T10-R3 (the
+## mates stay over 1.6 apart on every walk); the numbers below are its implementation, accepted as Ruling P5-T10-R4.
 const SW_HEEL_BEHIND := 1.6
 const SW_HEEL_AHEAD := 1.0
-## A mate is sent to a new place only when it lies this far from where he was sent.
+## A mate is sent to a new place only when it lies this far from where he was sent (Ruling P5-T10-R4, the implementation of P5-T10-R3).
 const SW_HEEL_RETARGET := 0.3
-## The trail: a place kept every SW_HEEL_STEP of his walk, this many of them.
-## A mate walks at least this many times the witness's pace, or he could not keep to his place beside a man who walks at 0.65 of a citizen's.
+## A mate walks at least this many times the witness's pace, or he could not keep to his place beside a man who walks at 0.65 of a citizen's (Ruling P5-T10-R4).
 const SW_MATE_QUICK := 2.0
+## The trail: a place kept every SW_HEEL_STEP of his walk, this many of them (Ruling P5-T10-R4).
 const SW_HEEL_STEP := 0.4
 const SW_HEEL_KEEP := 24
-## How far ahead his street is read for the way he faces.
+## How far ahead his street is read for the way he faces (Ruling P5-T10-R4).
 const SW_HEEL_LOOK := 1.5
 
 ## The share of his pace the witness walks at (SilenceWitnessDirector.SW_WITNESS_PACE), set before setup().

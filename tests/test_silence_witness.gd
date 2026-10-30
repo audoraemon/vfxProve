@@ -180,13 +180,13 @@ static func _frame(t) -> void:
 		and SilenceWitnessDirector.SW_POST_SIGHT == BellRingersDirector.POST_SIGHT and SilenceWitnessDirector.SW_OUT_AT == [20.0, 75.0, 130.0, 185.0]
 		and BellRingersDirector.SET_OUT_AT == [40.0, 110.0, 180.0] and RingerDirector.MATE_SIDE == 0.7,
 		"the Hunt's times and chain in the base's vars, the base's own consts untouched (%s, %s)" % [d.tune_set_out_at, d.tune_chain_wait])
-	t.check(is_equal_approx(SilenceWitnessDirector.SW_MATE_GAP, 1.2) and is_equal_approx(SilenceWitnessDirector.SW_MATE_SIDE, 0.85)
+	t.check(is_equal_approx(SilenceWitnessDirector.SW_MATE_GAP, 1.2)
 		and is_equal_approx(SilenceWitnessDirector.SW_WITNESS_PACE, 0.65) and SilenceWitnessDirector.SW_MATES == 2
 		and is_equal_approx(SilenceWitnessDirector.SW_OUT_PAUSE, 3.0) and is_equal_approx(SilenceWitnessDirector.SW_NEAR_WARN, 15.0),
-		"the spec's numbers: mates 2, gap 1.2, side 0.85, pace 0.65, pause 3, warning at 15")
+		"the spec's numbers: mates 2, gap 1.2, pace 0.65, pause 3, warning at 15 (MATE_SIDE is retired, P5-T10-R5)")
 	var s := _world()
 	var w := (s.d as SilenceWitnessDirector).ringers[0]
-	t.check(w.tune_mates == 2 and is_equal_approx(w.tune_mate_gap, 1.2) and is_equal_approx(w.tune_mate_side, 0.85)
+	t.check(w.tune_mates == 2 and is_equal_approx(w.tune_mate_gap, 1.2)
 		and is_equal_approx(w.tune_out_pause, 3.0) and is_equal_approx(w.witness_pace, 0.65) and is_equal_approx(w.near_warn, 15.0),
 		"each witness carries the Hunt's numbers")
 	Kit.done(s)
@@ -246,6 +246,14 @@ static func _mates_apart(t) -> void:
 		near = near and not (v as Person).inside and gap > SilentDoom.RADIUS and gap <= Crowd.DOOM_WITNESS
 	t.check(near and pair > 2.0 * SilentDoom.RADIUS, "at the door: the mates beyond one Silent Doom of him, within sight, %.2f apart (> 1.6)" % pair)
 	Kit.done(s)
+	for house in 4:
+		var sd := _world()
+		var dd: SilenceWitnessDirector = sd.d
+		var rd := dd.ringers[house] as WitnessDirector
+		dd._send(house)
+		var stop := (rd.mates[0] as Person).ground_pos.distance_to((rd.mates[1] as Person).ground_pos)
+		t.check(stop > 1.6, "at the %s house's door the two mates stand %.2f apart (> 1.6)" % [dd.post_names[house], stop])
+		Kit.done(sd)
 	for i in 4:
 		var s2 := _world()
 		var d2: SilenceWitnessDirector = s2.d
@@ -292,19 +300,17 @@ static func _mates_walk(t) -> void:
 			for v: Variant in [r.messenger] + r.mates:
 				if MissionDirector._alive(v):
 					(v as Person).tick(DT)
-			if r.phase != WarningDirector.Phase.RUN or r.mates.size() < 2 or not MissionDirector._alive(r.mates[0]) or not MissionDirector._alive(r.mates[1]):
+			if r.mates.size() < 2 or not MissionDirector._alive(r.mates[0]) or not MissionDirector._alive(r.mates[1]):
 				continue
 			var a: Person = r.mates[0]
 			var b: Person = r.mates[1]
-			if a.inside or b.inside or secs < SilenceWitnessDirector.SW_OUT_PAUSE + 3.0:
-				continue
 			var gap := a.ground_pos.distance_to(b.ground_pos)
 			steps += 1
 			under += 1 if gap <= 1.6 else 0
 			worst = minf(worst, gap)
 			farthest = maxf(farthest, maxf(a.ground_pos.distance_to(r.messenger.ground_pos), b.ground_pos.distance_to(r.messenger.ground_pos)))
-		t.check(steps > 200 and float(under) <= 0.05 * float(steps),
-			"%s house: the two mates stay over 1.6 apart on the walk but at the turns: %d of %d steps under (closest %.2f)" % [d.post_names[house], under, steps, worst])
+		t.check(steps > 450 and float(under) <= 0.05 * float(steps),
+			"%s house: from the first step after the send, nothing excluded, the two mates stay over 1.6 apart but at the turns: %d of %d steps under (closest %.2f; measured 0-2.9 %%)" % [d.post_names[house], under, steps, worst])
 		t.check(farthest < 4.0, "%s house: and they keep up with him (the farthest a mate strays: %.2f)" % [d.post_names[house], farthest])
 		Kit.done(s)
 

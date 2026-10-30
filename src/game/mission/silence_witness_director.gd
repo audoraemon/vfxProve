@@ -34,10 +34,9 @@ const SW_OUT_PAUSE := 3.0
 const SW_MATES := 2
 ## How far behind the witness his mates walk, and stand at the door.
 const SW_MATE_GAP := 1.2
-## How far to either side of his way they stand at the door *fg* (the pair 1.7 apart, more than two Silent Doom radii). On the walk they go in file instead (WitnessDirector.SW_HEEL_BEHIND / SW_HEEL_AHEAD, Ruling P5-T10-R3): abreast the pair closed in lanes.
-const SW_MATE_SIDE := 0.85
-## The share of his own pace the witness walks at *fg*: 19-31 s to the Temple (the streets are 19.8-31.2 units at 1.6 x 0.65 = 1.04 a second; the spec's first "35-50 s" no
-## street of Aldermere gives, review of Task 5).
+## The share of his own pace the witness walks at *fg*: about 23-34 s to the Temple, measured in the stepped-body test (north-east 22.7 s, south-west 23.9, south-east 28.3,
+## west 33.8); the spec's first "35-50 s" no street of Aldermere gives (review of Task 5). SW_MATE_SIDE, the spec's side-by-side lever, is retired: the mates walk in file
+## (WitnessDirector.SW_HEEL_*, Ruling P5-T10-R3, P5-T10-R5) and stand at the door on a ring at SW_MATE_GAP.
 const SW_WITNESS_PACE := 0.65
 ## At this many mission seconds from the Temple's door the banner `A WITNESS NEARS THE TEMPLE` shows.
 const SW_NEAR_WARN := 15.0
@@ -94,7 +93,6 @@ func _begin() -> void:
 		r.reserved = reserved.duplicate()
 		r.tune_mates = SW_MATES
 		r.tune_mate_gap = SW_MATE_GAP
-		r.tune_mate_side = SW_MATE_SIDE
 		r.tune_out_pause = SW_OUT_PAUSE
 		r.walls_stop = true
 		r.witness_pace = SW_WITNESS_PACE

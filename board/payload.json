@@ -7,16 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **26** to do · **90** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793450044:f>)\n• Done: God P5: the five Lantern Hunt nights\n• New: God P5: 11 decisions on the Hunts",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **26** to do · **91** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793464151:f>)\n• Done: God P5: 11 decisions on the Hunts\n• New: Hunt 1 rebuild: the second household sets out when the watch is broken",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-31T19:34:04+07:00"
+     "timestamp": "2026-10-31T23:29:11+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "161 commits not in Develop-Main · last commit today\n> docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)\n\n**To do** (5)\n• God P5: 11 decisions on the Hunts — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "161 commits not in Develop-Main · last commit today\n> docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)\n\n**To do** (5)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• Hunt 1 rebuild: the second household sets out when the watch is broken",
      "color": 5016537
     },
     {
@@ -56,7 +56,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• God P5: the five Lantern Hunt nights _(10-31)_\n• Board sweep: play the 24 non-Warning god pairs as the board version once _(10-30)_\n• Capital Tax: a Passage deputy stalls near a Thornwall _(10-30)_\n• Tier 1 routes: every god type can win every Tier 1 mission _(10-29)_\n• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) _(10-29)_\n• God P2: Lantern Notice, the Lantern Hunt and seals _(10-28)_\n• P1 Framework: save slots, god select, skill tree, Divine Power levels, Might, Faith, Endless Night loop _(10-27)_",
+     "description": "• God P5: 11 decisions on the Hunts _(10-31)_\n• God P5: the five Lantern Hunt nights _(10-31)_\n• Board sweep: play the 24 non-Warning god pairs as the board version once _(10-30)_\n• Capital Tax: a Passage deputy stalls near a Thornwall _(10-30)_\n• Tier 1 routes: every god type can win every Tier 1 mission _(10-29)_\n• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) _(10-29)_\n• God P2: Lantern Notice, the Lantern Hunt and seals _(10-28)_",
      "color": 10185686
     }
    ]

@@ -1,11 +1,11 @@
 {
- "hash": "4389d6716d55f11f",
- "updated": "2026-10-31T19:34:04+07:00",
+ "hash": "aa5fdf7696661084",
+ "updated": "2026-10-31T23:29:11+07:00",
  "changes": {
-  "date": "<t:1793450044:f>",
+  "date": "<t:1793464151:f>",
   "items": [
-   "Done: God P5: the five Lantern Hunt nights",
-   "New: God P5: 11 decisions on the Hunts"
+   "Done: God P5: 11 decisions on the Hunts",
+   "New: Hunt 1 rebuild: the second household sets out when the watch is broken"
   ]
  },
  "snapshot": {
@@ -262,13 +262,23 @@
    },
    "god-p5-decisions": {
     "title": "God P5: 11 decisions on the Hunts",
-    "status": "todo",
+    "status": "done",
     "area": "Design",
     "version": "next",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/god-progression",
     "updated": "2026-10-31",
     "order": 200
+   },
+   "god-p5-hunt1-rebuild": {
+    "title": "Hunt 1 rebuild: the second household sets out when the watch is broken",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-31",
+    "order": 201
    },
    "god-p5-hunts": {
     "title": "God P5: the five Lantern Hunt nights",

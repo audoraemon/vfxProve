@@ -180,9 +180,9 @@ static func _check_arms(t) -> void:
 	t.check(src.contains("or scenario in GOD_HUNTS.SCENARIOS"), "the Hunts join the hit-stop-off list")
 	t.check(src.contains("GodTree.outside(god_type, god_tier, drafted)"), "the outside() refusal stays")
 	# Milestone review M1: --route and --level are refused on a Hunt (each refusal prints, then quits, in the same block).
-	var route_at := src.find("a Hunt takes --god, not --route")
+	var route_at := src.find("(a Hunt takes --god, not --route)\" %")
 	t.check(route_at >= 0 and src.substr(route_at, 160).contains("quit(1)"), "--route on a Hunt id is refused and quits")
-	var level_at := src.find("a Hunt is played at level 1")
+	var level_at := src.find("(a Hunt is played at level 1)\" %")
 	t.check(level_at >= 0 and src.substr(level_at, 160).contains("quit(1)"), "--level other than 1 on a Hunt's own run is refused and quits")
 
 

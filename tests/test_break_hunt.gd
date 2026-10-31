@@ -20,6 +20,8 @@ static func run(t) -> void:
 	_reaim_pace(t)
 	_resume_march(t)
 	_reaim_walk(t)
+	_whisper_walk(t)
+	_planted_bodies(t)
 	_escorts_follow(t)
 	_walk_model(t)
 	_street_clear(t)
@@ -289,30 +291,29 @@ static func _reaim_pace(t) -> void:
 	var tried := 0
 	var bad := []
 	for i in 4:
-		for pass_no in 1:
-			var s := _world()
-			var d := _bh(s)
-			_steady(d)
-			_raise(s, i)
-			if d.bearer(i) == null:
-				Kit.done(s)
-				continue
-			var raised_pace := d.bearer(i).pace
-			d._taken[d._dest[i]] = true  # another standard planted there
-			Kit.run_for(s, LOOK)
-			var b := d.bearer(i)
-			if b == null or d._dest[i] < 0:
-				Kit.done(s)
-				continue
-			tried += 1
-			var want := minf(BreakHuntDirector.BH_BEARER_PACE, d._way(b.ground_pos, d.house_doors[d._dest[i]]) / BreakHuntDirector.BH_MARCH_MIN) / Person.PANIC_SPEED
-			differs += 1 if absf(want - raised_pace) > 0.001 else 0
-			var escorts_ok := true
-			for e: Person in _escorts(d, i):
-				escorts_ok = escorts_ok and is_equal_approx(e.pace, want * BreakHuntDirector.BH_ESCORT_PACE)
-			if absf(b.pace - want) > 0.001 or not escorts_ok or d.eta(i) < BreakHuntDirector.BH_MARCH_MIN - 2.0:
-				bad.append("%d->%d pace %.4f want %.4f eta %.1f" % [i, d._dest[i], b.pace, want, d.eta(i)])
+		var s := _world()
+		var d := _bh(s)
+		_steady(d)
+		_raise(s, i)
+		if d.bearer(i) == null:
 			Kit.done(s)
+			continue
+		var raised_pace := d.bearer(i).pace
+		d._taken[d._dest[i]] = true  # another standard planted there
+		Kit.run_for(s, LOOK)
+		var b := d.bearer(i)
+		if b == null or d._dest[i] < 0:
+			Kit.done(s)
+			continue
+		tried += 1
+		var want := minf(BreakHuntDirector.BH_BEARER_PACE, d._way(b.ground_pos, d.house_doors[d._dest[i]]) / BreakHuntDirector.BH_MARCH_MIN) / Person.PANIC_SPEED
+		differs += 1 if absf(want - raised_pace) > 0.001 else 0
+		var escorts_ok := true
+		for e: Person in _escorts(d, i):
+			escorts_ok = escorts_ok and is_equal_approx(e.pace, want * BreakHuntDirector.BH_ESCORT_PACE)
+		if absf(b.pace - want) > 0.001 or not escorts_ok or d.eta(i) < BreakHuntDirector.BH_MARCH_MIN - 2.0:
+			bad.append("%d->%d pace %.4f want %.4f eta %.1f" % [i, d._dest[i], b.pace, want, d.eta(i)])
+		Kit.done(s)
 	t.check(tried == 4 and differs >= 2 and bad.is_empty(), "a re-aimed bearer and his escorts walk the new street's pace, and its countdown shows 50 s (tried %d, %d differ from the raise's pace; bad %s)" % [tried, differs, bad])
 
 
@@ -510,10 +511,11 @@ static func _street_clear(t) -> void:
 			d._planted[i] = true
 			d._flank_ang[i] = NAN
 			Kit.arrive(d.bearer(i), d.house_doors[h])  # the bearer planted at the door
+			d._lane[i] = d._plant_posts(i, h)  # as _plant() chooses them
 			var posts := d._flanks(i)
 			d._planted[i] = false
 			var stand: Array[Vector2] = [d.bearer(i).ground_pos, posts[0], posts[1]]
-			planted_posts += 1 if posts[0].distance_to(d.house_doors[h]) < 2.0 and posts[1].distance_to(d.house_doors[h]) < 2.0 else 0
+			planted_posts += 1 if posts[0].distance_to(d.house_doors[h]) < 2.7 and posts[1].distance_to(d.house_doors[h]) < 2.7 and posts[0].distance_to(posts[1]) >= BreakHuntDirector.BH_LANE_GAP - 0.06 else 0
 			for m in d.steps.size():
 				if m == i:
 					continue
@@ -525,7 +527,7 @@ static func _street_clear(t) -> void:
 						for q in stand:
 							var gap := q.distance_to(Geometry2D.get_closest_point_to_segment(q, from, pt))
 							closest = minf(closest, gap)
-							near += 1 if gap < BreakHuntDirector.BH_FLANK_GAP else 0
+							near += 1 if gap < BreakHuntDirector.BH_FLANK_GAP + Person.GOAL_REACH else 0
 						from = pt
 	t.check(near == 0 and planted_posts == 12, "so a planted company (bearer and both escorts, at their real places beside the door: %d of 12) is never within a Doom's reach of a company on its way (%d points; closest %.2f)" % [planted_posts, near, closest])
 	Kit.done(s)
@@ -1159,7 +1161,7 @@ static func _wishes(t) -> void:
 # --- Task 12: the six types' scripted policies (tools/dev/routes/god_hunts/break_hunt.gd) -------------------------------------------------------------
 
 const GodHunts := preload("res://tools/dev/routes/god_hunts.gd")
-const Policies := preload("res://tools/dev/routes/god_hunts/break_hunt.gd")
+const Policies := preload("res://tools/dev/routes/god_hunts/break_hunt.gd")  # (its _out_spot() places the whisper in _whisper_walk)
 
 
 ## What behaviour_check gives a Hunt policy (the slot test, the cooldown, the walk's length), as the policies call them.
@@ -1193,9 +1195,10 @@ static func _policies_written(t) -> void:
 
 
 ## How near a cast's aim must lie to someone the night still has to answer -- a bearer or an escort of an unbroken standard, out of doors -- by power (the effect's
-## own reach: Silent Doom 0.8 and its walk, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Mind Whisper 0.6, Leaving Is Prohibited 3.0, Heaven
-## Splitter's core 1.6, the wall and the mirror a few units ahead of the file).
-const AIM_REACH := {"doom": 1.3, "smite": 1.0, "deathmark": 1.0, "pestilence": 1.3, "discord": 1.2, "whisper": 0.8, "noleave": 3.0, "heaven": 1.6, "thorns": 8.0, "mirror": 8.0}
+## own radius, read from the power: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Mind Whisper's pick 0.6; Leaving Is Prohibited 3.0,
+## Heaven Splitter's core 1.6, the wall and the mirror a few units ahead of the file). The test world's bodies stand, so an aim at one needs no slack.
+const AIM_REACH := {"doom": SilentDoom.RADIUS, "smite": SmiteFx.KILL_R, "deathmark": DeathMarkFx.PICK_R, "pestilence": PestilenceFx.INFECT_R, "discord": DiscordFx.DISCORD_R,
+	"whisper": MindWhisperFx.PICK_R, "noleave": 3.0, "heaven": 1.6, "thorns": 8.0, "mirror": 8.0}
 
 
 ## The Hunt's people who still have to be answered: the bearer and the escorts of every unbroken standard, alive and out of doors.
@@ -1316,3 +1319,118 @@ static func _aim_teeth(t) -> void:
 	t.check(_aim_problem(d, "discord", b.ground_pos) != "", "a Discord on the confused is a repeat")
 	t.check(_aim_problem(d, "blight", Vector2.ZERO) != "" and _aim_problem(d, "blight", City.current().landmark(&"bell_tower").get_center()) == "", "Blight is aimed at the Bell Tower")
 	Kit.done(s)
+
+
+## One frame of standard `i`'s company with bodies stepped when the bearer is walked by hand: the bearer along `route` at `speed` (a unit a second) unless `walk`
+## is false, each escort straight toward the post the director last gave him at his own pace, stopping within Person.GOAL_REACH of it as a body does; then the world
+## runs the frame. Returns the new index into `route`.
+static func _step_company(s: Dictionary, d: BreakHuntDirector, i: int, route: PackedVector2Array, k: int, speed: float, dt: float, walk := true) -> int:
+	var b := d.bearer(i)
+	if walk and b != null:
+		var left := speed * dt
+		var at := b.ground_pos
+		while left > 0.0 and k < route.size():
+			var gap := at.distance_to(route[k])
+			if gap <= left:
+				at = route[k]
+				left -= gap
+				k += 1
+			else:
+				at = at.move_toward(route[k], left)
+				left = 0.0
+		b.ground_pos = at  # (Kit.arrive() would drop the goal a whisper gave him)
+	for g: HuntDirector.Guard in d.steps[i].party:
+		if MissionDirector._alive(g.man):
+			var e: Person = g.man
+			if e.ground_pos.distance_to(g.post) > Person.GOAL_REACH:
+				e.ground_pos = e.ground_pos.move_toward(g.post, Person.PANIC_SPEED * e.pace * dt)
+	d.step(dt)  # the director alone: the world's own tick would drop the goal of a body that is moved by hand
+	return k
+
+
+## The gap between the two living escorts of standard `i`, INF with fewer than two.
+static func _pair_gap(d: BreakHuntDirector, i: int) -> float:
+	var men: Array = _escorts(d, i).filter(func(e: Variant) -> bool: return MissionDirector._alive(e))
+	return INF if men.size() < 2 else (men[0] as Person).ground_pos.distance_to((men[1] as Person).ground_pos)
+
+
+## Ruling P5-T12-R2 (review-t12 I1; the wave-1 standard): a bearer the god whispers to ground out of the walls walks another road than the street to his house, and
+## his escorts stand ahead of him along the road he is on, not along the street to the house (which runs back over his own trail: ahead and behind coincided, the two
+## escorts stood on one spot for the 110 s of the walk). Bodies stepped frame by frame along the whispered walk (the bearer at his whispered pace), every step counted
+## from the whisper on with nothing excluded: at most 5 % of the steps under 1.6, and over 1.6 at every stop.
+static func _whisper_walk(t) -> void:
+	var bc := Bc.new()
+	for i in [0, 1]:
+		var s := _world()
+		var d := _bh(s)
+		_steady(d)
+		_raise(s, i)
+		var b := d.bearer(i)
+		for f in 20:  # 2 s of the march first, so there is a trail behind him
+			var road := d.crowd._grid.path(b.ground_pos, d.house_doors[d._dest[i]])
+			_step_company(s, d, i, road, 0, Person.PANIC_SPEED * b.pace, 0.1)
+		var spot: Vector2 = Policies._out_spot(bc, d.crowd, b)
+		b.whisper(spot, 8.0)
+		var route := d.crowd._grid.path(b.ground_pos, spot)
+		var speed := b.walk_speed
+		var k := 0
+		var steps := 0
+		var low := 0
+		var closest := INF
+		# He walks the road out as far as the walls (stepped 0.25 s at a time, every step counted from the whisper on), then stands.
+		var inside := route.size()
+		for q in route.size():
+			if Walls.outside(route[q]):
+				inside = maxi(q - 1, 0)
+				break
+		while k < inside and steps < 1500 and not d.steps[i].broken:
+			k = _step_company(s, d, i, route, k, speed, 0.25)
+			var gap := _pair_gap(d, i)
+			if gap == INF:
+				break
+			steps += 1
+			closest = minf(closest, gap)
+			low += 1 if gap <= 2.0 * SilentDoom.RADIUS else 0
+		# He stands (arrived, lingering): every step of the stop is over 1.6.
+		b._goal = Vector2.INF
+		var stop_low := 0
+		for f in 40:
+			_step_company(s, d, i, route, k, speed, 0.25, false)
+			stop_low += 1 if _pair_gap(d, i) <= 2.0 * SilentDoom.RADIUS else 0
+		t.check(steps > 300 and float(low) <= 0.05 * float(steps) and stop_low == 0 and not d.steps[i].broken,
+			"standard %d whispered out: %d of %d walking steps with the escorts at 1.6 or less (5%% allowed), closest %.2f; %d of 40 at the stop" % [i, low, steps, closest, stop_low])
+		Kit.done(s)
+
+
+## Ruling P5-T12-R3 (review-t12 I2): a standard planted at a door stands its escorts more than 1.6 apart as BODIES, not only as posts: the bodies stop up to
+## Person.GOAL_REACH short of their posts, so the posts are BH_LANE_GAP (2.6) apart. At each of the three doors the standard is planted (the bearer at the door,
+## the escorts walking in from where the march left them), bodies stepped 10 s: every step of the last 5 s is over 1.6 and the least is printed.
+static func _planted_bodies(t) -> void:
+	var worst := INF
+	var bad := 0
+	var cases := 0
+	for h in 3:
+		var s := _world()
+		var d := _bh(s)
+		_steady(d)
+		var i := h
+		d._raise(i)
+		Kit.run_for(s, LOOK)
+		var door: Vector2 = d.house_doors[h]
+		d._dest[i] = h
+		Kit.arrive(d.bearer(i), door + Vector2(0.0, 0.3))
+		var first := true
+		for g: HuntDirector.Guard in d.steps[i].party:
+			Kit.arrive(g.man, door + Vector2(1.3 if first else -1.3, 0.2))
+			first = false
+		Kit.run_for(s, LOOK)
+		t.check(d._planted[i], "(set-up) the standard is planted at door %d" % h)
+		for f in 100:
+			_step_company(s, d, i, PackedVector2Array(), 0, 0.0, 0.1, false)
+			if f >= 50:
+				var gap := _pair_gap(d, i)
+				worst = minf(worst, gap)
+				bad += 1 if gap <= 2.0 * SilentDoom.RADIUS else 0
+		cases += 1
+		Kit.done(s)
+	t.check(cases == 3 and bad == 0, "planted at each door the escorts' bodies stand more than 1.6 apart for the last 5 s (%d bad steps; the least %.2f)" % [bad, worst])

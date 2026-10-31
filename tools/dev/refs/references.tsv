@@ -202,26 +202,26 @@ expel_inquisitor_dominion_play_2	--scenario=expel_inquisitor --case=play --seed=
 expel_inquisitor_dominion_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=dominion:3 --dev-tree	-364071679
 
 # god P5 Break the hunt (Task 12) -- rows below
-break_hunt_none_1	--scenario=break_hunt --case=none --seed=1	-449304472
-break_hunt_none_2	--scenario=break_hunt --case=none --seed=2	292861619
-break_hunt_none_3	--scenario=break_hunt --case=none --seed=3	274972543
-break_hunt_ruin_play_1	--scenario=break_hunt --case=play --seed=1 --god=ruin:4 --dev-tree	-114600152
-break_hunt_ruin_play_2	--scenario=break_hunt --case=play --seed=2 --god=ruin:4 --dev-tree	-451101928
+break_hunt_none_1	--scenario=break_hunt --case=none --seed=1	-211808373
+break_hunt_none_2	--scenario=break_hunt --case=none --seed=2	382402630
+break_hunt_none_3	--scenario=break_hunt --case=none --seed=3	223532881
+break_hunt_ruin_play_1	--scenario=break_hunt --case=play --seed=1 --god=ruin:4 --dev-tree	-828763245
+break_hunt_ruin_play_2	--scenario=break_hunt --case=play --seed=2 --god=ruin:4 --dev-tree	-276090186
 break_hunt_ruin_play_3	--scenario=break_hunt --case=play --seed=3 --god=ruin:4 --dev-tree	-890267405
 break_hunt_death_play_1	--scenario=break_hunt --case=play --seed=1 --god=death:4 --dev-tree	-341197675
 break_hunt_death_play_2	--scenario=break_hunt --case=play --seed=2 --god=death:4 --dev-tree	-698528197
 break_hunt_death_play_3	--scenario=break_hunt --case=play --seed=3 --god=death:4 --dev-tree	-27760033
-break_hunt_veil_play_1	--scenario=break_hunt --case=play --seed=1 --god=veil:4 --dev-tree	-316165430
-break_hunt_veil_play_2	--scenario=break_hunt --case=play --seed=2 --god=veil:4 --dev-tree	-968886992
-break_hunt_veil_play_3	--scenario=break_hunt --case=play --seed=3 --god=veil:4 --dev-tree	478315389
+break_hunt_veil_play_1	--scenario=break_hunt --case=play --seed=1 --god=veil:4 --dev-tree	-403324349
+break_hunt_veil_play_2	--scenario=break_hunt --case=play --seed=2 --god=veil:4 --dev-tree	-363568824
+break_hunt_veil_play_3	--scenario=break_hunt --case=play --seed=3 --god=veil:4 --dev-tree	204795818
 break_hunt_passage_play_1	--scenario=break_hunt --case=play --seed=1 --god=passage:4 --dev-tree	-526583743
 break_hunt_passage_play_2	--scenario=break_hunt --case=play --seed=2 --god=passage:4 --dev-tree	-612092291
 break_hunt_passage_play_3	--scenario=break_hunt --case=play --seed=3 --god=passage:4 --dev-tree	-607908839
-break_hunt_decree_play_1	--scenario=break_hunt --case=play --seed=1 --god=decree:4 --dev-tree	-489319963
-break_hunt_decree_play_2	--scenario=break_hunt --case=play --seed=2 --god=decree:4 --dev-tree	-845607851
-break_hunt_decree_play_3	--scenario=break_hunt --case=play --seed=3 --god=decree:4 --dev-tree	-644212570
-break_hunt_dominion_play_1	--scenario=break_hunt --case=play --seed=1 --god=dominion:4 --dev-tree	-295020222
-break_hunt_dominion_play_2	--scenario=break_hunt --case=play --seed=2 --god=dominion:4 --dev-tree	-191069209
-break_hunt_dominion_play_3	--scenario=break_hunt --case=play --seed=3 --god=dominion:4 --dev-tree	-900577630
+break_hunt_decree_play_1	--scenario=break_hunt --case=play --seed=1 --god=decree:4 --dev-tree	-763996936
+break_hunt_decree_play_2	--scenario=break_hunt --case=play --seed=2 --god=decree:4 --dev-tree	-47354962
+break_hunt_decree_play_3	--scenario=break_hunt --case=play --seed=3 --god=decree:4 --dev-tree	-427603008
+break_hunt_dominion_play_1	--scenario=break_hunt --case=play --seed=1 --god=dominion:4 --dev-tree	-700853132
+break_hunt_dominion_play_2	--scenario=break_hunt --case=play --seed=2 --god=dominion:4 --dev-tree	-548026041
+break_hunt_dominion_play_3	--scenario=break_hunt --case=play --seed=3 --god=dominion:4 --dev-tree	-650174615
 
 # god P5 Face Halcyon (Task 13) -- rows below

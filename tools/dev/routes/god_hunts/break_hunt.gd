@@ -288,7 +288,7 @@ const BH_MIRROR_MUSTER := 6.0
 const BH_MIRROR_BEYOND := 2.0
 ## A standard with less than this many seconds to its house is not walled (the wall holds him 25 s, but a house this near is lost before the mirror cools).
 const BH_THORN_ETA := 12.0
-## How long a thornwall stands (Thornwall's THORN_TIME).
+## Thornwall's script (it has no class name), for how long a wall stands (THORN_TIME).
 const THORN_FX := preload("res://src/fx/control/thornwall.gd")
 
 

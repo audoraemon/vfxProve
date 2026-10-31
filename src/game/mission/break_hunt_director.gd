@@ -61,6 +61,9 @@ const BH_FLANK_TURNS := 12
 const BH_FLANK_SNAP := 0.3
 ## The least two escorts stand apart (more than two Silent Doom radii, 1.6) and the furthest from the bearer one may stand and still guard.
 const BH_FLANK_GAP := 1.7
+## The company that stands -- planted at a house, or its bearer held by a power with no walk -- keeps its posts this far apart: its bodies stop up to Person.GOAL_REACH
+## short of their posts, each, and must still stand more than two Silent Doom radii apart (Ruling P5-T12-R3; review-t12 I2: posts 1.8 apart left bodies 1.1-1.5 apart).
+const BH_LANE_GAP := BH_FLANK_GAP + 2.0 * Person.GOAL_REACH
 const BH_FLANK_NEAR := 1.3
 ## On the march the escorts walk in file along the street, one this far ahead of the bearer along his road and one this far behind along the road he
 ## has walked (Ruling P5-T7-R10): in a one-wide street there is no side to stand on, and a file never crosses at a corner. 1.2 along a right-angled
@@ -132,6 +135,8 @@ var _afraid_prev: Array[bool] = []
 var _steady_until: Array[float] = []
 ## By step: the clock until which a bearer who has just taken a standard up stands and waits for his fellow to come within the guard reach (-1 for none).
 var _hold_until: Array[float] = []
+## By step: the planted company's two posts, chosen once when it plants (empty until then, or when no lane has room for a wide pair).
+var _lane: Array = []
 ## By step: the road the bearer has walked, newest last (for the escort behind him).
 var _trail: Array = []
 ## The closest the two escorts of a raised standard have stood to each other at a look (their bodies, in motion), how many looks they stood 1.6 or
@@ -175,6 +180,7 @@ func _plan() -> void:
 		_afraid_prev.append(false)
 		_steady_until.append(-1.0)
 		_hold_until.append(-1.0)
+		_lane.append([])
 		_trail.append([])
 	if houses.is_empty():
 		push_warning("BreakHuntDirector: no house; the standards have nowhere to march")
@@ -382,11 +388,16 @@ func _flanks(i: int) -> Array[Vector2]:
 	var file := _file_pair(i)
 	if not file.is_empty():
 		return file
+	if _planted[i] and not (_lane[i] as Array).is_empty():
+		var posts: Array[Vector2] = [_lane[i][0], _lane[i][1]]
+		return posts
 	var at := _bearer_pos(i)
 	var prev := _flank_ang[i]
 	if is_nan(prev):
 		prev = _heading(i).angle()  # along his road, where the file will stand
-	var found := _flank_pair(at, prev, true)
+	var found := _flank_pair(at, prev, false, true)
+	if found.is_empty():
+		found = _flank_pair(at, prev, true)  # no lane wide enough: the narrow pair, then the furthest two near him
 	if found[0] != at:
 		_flank_ang[i] = (found[0] - at).angle()
 	return found
@@ -399,6 +410,9 @@ func _file_pair(i: int) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	if _planted[i] or _dest[i] < 0 or crowd._grid == null:
 		return out
+	var held: Person = bearer(i)
+	if held != null and held.mind != Person.Mind.DUTY and not held.has_goal():
+		return out  # held where he stands by a power (a whisper that has arrived, a Discord): the lane pair, not a file along a road he is not on
 	var at := _bearer_pos(i)
 	var back := PackedVector2Array()
 	for k in range(_trail[i].size() - 1, -1, -1):
@@ -417,10 +431,19 @@ func _file_pair(i: int) -> Array[Vector2]:
 	return out
 
 
-## The point `arc` ahead of `at` along the street to step `i`'s house.
+## Where step `i`'s bearer is walking to: the goal a power set him on (a whisper's) while he walks it, else his house's door (Ruling P5-T12-R2: the file stands
+## ahead of him along the road he is on, or ahead and behind coincide on a whispered walk and the two escorts stand on one spot).
+func _walk_goal(i: int) -> Vector2:
+	var b := bearer(i)
+	if b != null and b.mind != Person.Mind.DUTY and b.has_goal():
+		return b.goal()
+	return house_doors[_dest[i]]
+
+
+## The point `arc` ahead of `at` along the street to where step `i`'s bearer is walking (_walk_goal()).
 func _ahead(i: int, at: Vector2, arc := BH_FILE_ARC) -> Vector2:
 	var road := PackedVector2Array()
-	for pt in crowd._grid.path(at, house_doors[_dest[i]]):
+	for pt in crowd._grid.path(at, _walk_goal(i)):
 		if road.is_empty() and at.distance_to(pt) < BH_FILE_SKIP:
 			continue  # the centre of the cell he stands in, as likely behind him as ahead
 		road.append(pt)
@@ -453,15 +476,15 @@ func _note_trail(i: int, at: Vector2) -> void:
 ## at the angle `prev` is kept while both its places are on the street and BH_FLANK_GAP apart; else, of the BH_FLANK_TURNS / 2 opposite pairs round
 ## him that are, the one whose line turns least from `prev`. With none (a lane too narrow or bent), the two places on the street within
 ## BH_FLANK_NEAR of him that are furthest apart when `fallback`, else an empty array.
-func _flank_pair(at: Vector2, prev: float, fallback: bool) -> Array[Vector2]:
-	var kept := _pair_at(at, prev)
+func _flank_pair(at: Vector2, prev: float, fallback: bool, wide := false) -> Array[Vector2]:
+	var kept := _pair_at(at, prev, wide)
 	if not kept.is_empty():
 		return kept
 	var best: Array[Vector2] = []
 	var best_turn := INF
 	for k in BH_FLANK_TURNS / 2:
 		var ang := TAU * float(k) / float(BH_FLANK_TURNS)
-		var pair := _pair_at(at, ang)
+		var pair := _pair_at(at, ang, wide)
 		if pair.is_empty():
 			continue
 		var turn := absf(angle_difference(ang, prev))
@@ -488,19 +511,58 @@ func _flank_pair(at: Vector2, prev: float, fallback: bool) -> Array[Vector2]:
 	return best
 
 
-## The pair of places at angle `ang` and opposite round `at`, or an empty array when either is off the street or they are under BH_FLANK_GAP apart.
-func _pair_at(at: Vector2, ang: float) -> Array[Vector2]:
-	var want_a := at + Vector2.from_angle(ang) * BH_ESCORT_OFF
-	var want_b := at - Vector2.from_angle(ang) * BH_ESCORT_OFF
-	var a := _walkable(want_a)
-	var b := _walkable(want_b)
-	var out: Array[Vector2] = []
-	var off := a.distance_to(want_a) > BH_FLANK_SNAP or b.distance_to(want_b) > BH_FLANK_SNAP
-	if off or a.distance_to(b) < BH_FLANK_GAP:
-		return out
-	out.append(a)
-	out.append(b)
+## The pair of places at angle `ang` and opposite round `at`, or an empty array when either is off the street or they are under BH_FLANK_GAP apart (`wide`: the
+## pair of a company that stands, BH_LANE_GAP apart, even or -- where the lane is short on one side -- one nearer him and one further, each place snapped at most
+## BH_FLANK_SNAP).
+func _pair_at(at: Vector2, ang: float, wide := false) -> Array[Vector2]:
+	var all := _pairs_at(at, ang, wide)
+	return all[0] if not all.is_empty() else ([] as Array[Vector2])
+
+
+## Every pair of places at angle `ang` round `at` that _pair_at() would take, the first the one it takes: the narrow pair BH_ESCORT_OFF each side; the wide pair
+## BH_LANE_GAP apart, even or -- where the lane is short on one side -- one nearer him and one further.
+func _pairs_at(at: Vector2, ang: float, wide: bool) -> Array:
+	var out: Array = []
+	var splits: Array = [[BH_LANE_GAP * 0.5, BH_LANE_GAP * 0.5], [0.9, BH_LANE_GAP - 0.9], [BH_LANE_GAP - 0.9, 0.9], [0.6, BH_LANE_GAP - 0.6], [BH_LANE_GAP - 0.6, 0.6]] 			if wide else [[BH_ESCORT_OFF, BH_ESCORT_OFF]]
+	for split: Array in splits:
+		var want_a := at + Vector2.from_angle(ang) * float(split[0])
+		var want_b := at - Vector2.from_angle(ang) * float(split[1])
+		var a := _walkable(want_a)
+		var b := _walkable(want_b)
+		var off := a.distance_to(want_a) > BH_FLANK_SNAP or b.distance_to(want_b) > BH_FLANK_SNAP
+		if not off and a.distance_to(b) >= (BH_LANE_GAP - 0.05 if wide else BH_FLANK_GAP):
+			var pair: Array[Vector2] = [a, b]
+			out.append(pair)
 	return out
+
+
+## The posts of the company planted at house `h` (bearer `i` at the door): of every wide pair round him, the one whose nearer place stands furthest from the streets the
+## other companies walk (Ruling P5-T12-R3: a planted company must not stand within a Doom's reach of a company on its way). Empty with no wide pair.
+func _plant_posts(i: int, h: int) -> Array:
+	var at := _bearer_pos(i)
+	var best: Array = []
+	var best_gap := -1.0
+	for k in BH_FLANK_TURNS:
+		for pair: Array in _pairs_at(at, TAU * float(k) / float(BH_FLANK_TURNS * 2), true):
+			var gap := minf(_stranger_gap(pair[0], i, h), _stranger_gap(pair[1], i, h))
+			if gap > best_gap + 0.001:
+				best_gap = gap
+				best = pair
+	return best
+
+
+## How near `p` stands to the streets from every other standard's muster to every house but `h`.
+func _stranger_gap(p: Vector2, i: int, h: int) -> float:
+	var best := INF
+	for m in steps.size():
+		if m == i:
+			continue
+		for g in houses.size():
+			if g == h:
+				continue
+			var route := crowd._grid.path(steps[m].spot, house_doors[g]) if crowd._grid != null else PackedVector2Array()
+			best = minf(best, _path_gap(steps[m].spot, route, p))
+	return best
 
 
 ## The way step `i`'s bearer heads: toward the next bend of the street to his house's door; the way he last headed when he stands at it.
@@ -825,11 +887,13 @@ func _look(i: int, evacuating: bool) -> void:
 	if not _planted[i]:
 		if _dest[i] < 0 or _taken[_dest[i]]:
 			_dest[i] = _pick_dest(i)
+			_set_pace(i)  # the new street has its own length, so its own pace (task 12, review-t7 M5): never faster than the 50 s a countdown needs
 		if _dest[i] >= 0:
 			if _waits(i, b):
 				_stand(b)
 			else:
 				_recall_to(b, house_doors[_dest[i]], evacuating)
+				_resume(b, house_doors[_dest[i]])
 		_refresh_eta(i)
 
 
@@ -846,6 +910,13 @@ func _waits(i: int, b: Person) -> bool:
 			return true
 	_hold_until[i] = -1.0
 	return false
+
+
+## A bearer on duty for the door `door` who has no way to walk -- a thornwall shut his street when he was sent, and has withered since -- is sent again
+## (MS §5: held by a wall, he takes the march up again; _recall_to() sends only a man whose duty is somewhere else). Task 12, Ruling P5-T12-R1.
+func _resume(b: Person, door: Vector2) -> void:
+	if b.mind == Person.Mind.DUTY and not b.has_goal() and not b.inside and b.ground_pos.distance_to(door) > BH_TAKE_REACH:
+		b.go_duty(door)
 
 
 ## `b` stands where he is, on duty (the base's resume stops a man the same way, going on duty at his own place).
@@ -873,6 +944,7 @@ func _measure_pair(i: int) -> void:
 ## Step `i`'s bearer plants the standard at house `h`: it is taken, a setback, and he stands there still breakable.
 func _plant(i: int, h: int) -> void:
 	_planted[i] = true
+	_lane[i] = _plant_posts(i, h)
 	_taken[h] = true
 	_dest[i] = h
 	_eta[i] = INF

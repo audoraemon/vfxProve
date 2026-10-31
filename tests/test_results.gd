@@ -31,6 +31,8 @@ static func run(t) -> void:
 		var title := ResultsScreen.title_for(bool(k[0]), String(k[1]))
 		t.check(title == String(k[2]), "Act II's %s reads %s (%s)" % [k[1], k[2], title])
 
+	_hunt_titles(t)
+
 	t.check(ResultsScreen.thousands(12450) == "12,450", "scores get a thousands comma (%s)" % ResultsScreen.thousands(12450))
 	t.check(ResultsScreen.thousands(999) == "999" and ResultsScreen.thousands(0) == "0", "small ones do not")
 	t.check(ResultsScreen.thousands(1234567) == "1,234,567", "and big ones get every comma (%s)" % ResultsScreen.thousands(1234567))
@@ -45,3 +47,22 @@ static func run(t) -> void:
 			missing += " %s(file)" % cue
 	t.check(missing == "", "every interface sound exists (missing:%s)" % missing)
 	t.check(UiSound.CUES.size() == 14, "fourteen of them (%d)" % UiSound.CUES.size())
+
+
+## God P5 (MS §1 R43): each Lantern Hunt's won and lost reasons have their own title line, so a won Hunt never reads THE CITY HAS FALLEN and a
+## lost one never MANIFESTATION ENDED. The reasons are the ones the five directors really end with (Hunt 1's lost_reason() "faithful_lost" is
+## the Escort objective's own "faithful_out" won; Hunt 2's WitnessObjective "witnesses"/"word"; Hunt 3's AssassinateObjective "expelled"/
+## "captain_safe"; Hunt 4's HuntObjective "standards" and lost_word "houses"; Hunt 5's "freed" and lost_reason() "burned").
+static func _hunt_titles(t) -> void:
+	for k: Array in [["faithful_out", "THE FAITHFUL ARE HIDDEN", true], ["faithful_lost", "THE INQUISITION TAKES THEM", false],
+			["witnesses", "THE WITNESSES ARE SILENT", true], ["word", "WORD REACHES THE TEMPLE", false],
+			["expelled", "THE INQUISITOR IS GONE", true], ["captain_safe", "THE CAPTAIN REACHES THE CITADEL", false],
+			["standards", "THE STANDARDS ARE BROKEN", true], ["houses", "THE HUNT TAKES THEIR HOUSES", false],
+			["freed", "THE PYRE STAYS COLD", true], ["burned", "THE PYRE BURNS", false]]:
+		var won := bool(k[2])
+		var title := ResultsScreen.title_for(won, String(k[0]))
+		t.check(title == String(k[1]), "the Hunt's %s (%s) reads %s (%s)" % [k[0], "won" if won else "lost", k[1], title])
+		t.check(title != "THE CITY HAS FALLEN" and title != "MANIFESTATION ENDED", "and is not a generic title (%s)" % title)
+	# Dawn and the Gaze keep their titles.
+	t.check(ResultsScreen.title_for(false, "dawn") == "DAWN COMES" and ResultsScreen.title_for(false, "gaze") == "THE LANTERN LOOKS",
+		"Dawn and the Gaze keep their titles (%s, %s)" % [ResultsScreen.title_for(false, "dawn"), ResultsScreen.title_for(false, "gaze")])

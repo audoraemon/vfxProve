@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_bank_leaves_save(t)
 	_load_god_forfeits(t)
 	_load_god_hunt(t)
+	_load_god_hunt_real(t)
 	_awaken_routes(t)
 	_load_god_rite(t)
 	_rite_bank_writes(t)
@@ -172,6 +173,40 @@ static func _load_god_hunt(t) -> void:
 	var again := Game.load_god(FILE)
 	t.check(again[1] == "" and again[0].sealed == want and again[0].seal_nights == 3 and again[0].notice == 50 and again[0].night == 7,
 		"opened again, nothing changes (%s)" % [again[1]])
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
+	GodTree.dev_fill = false
+
+
+## God P5 (R4, plan Ruling P5-17): a slot left mid-way through the real Tier 1 Hunt, `hide_faithful`, is a lost Hunt when it is opened: the
+## most-carried ability sealed three nights, Notice 50, the night counted, `last_mission` the Hunt (R4) -- and the file agrees.
+static func _load_god_hunt_real(t) -> void:
+	_clear()
+	GodTree.dev_fill = true
+	var type := _lantern_type()
+	if type == "":
+		t.check(false, "a god type with two starting keys exists (R3)")
+		GodTree.dev_fill = false
+		return
+	var god := GodSlot.make(1, type, 4)
+	god.notice = 100
+	god.night = 6
+	god.last_mission = "warning"
+	var keys := god.in_tree()
+	if keys.size() < 2:
+		t.check(false, "the fixture god has two keys in the tree (%s)" % [keys])
+		GodTree.dev_fill = false
+		return
+	god.carried = {keys[0]: 1, keys[1]: 4}
+	god.in_night = "hide_faithful"
+	var want := god.seal_target()
+	t.check(god.write(FILE) == OK, "the slot mid-Hunt is written")
+	var got := Game.load_god(FILE)
+	var s: GodSlot = got[0]
+	t.check(s != null and s.sealed == want and s.seal_nights == 3 and s.notice == 50 and s.night == 7 and s.in_night == "" and s.last_mission == "hide_faithful",
+		"opened, hide_faithful is a lost Hunt: %s sealed 3 nights, Notice 50, Night 7, last_mission the Hunt (R4) (%s)" % [want, [s.sealed, s.seal_nights, s.notice, s.night, s.last_mission] if s != null else "no slot"])
+	var back := GodSlot.read(FILE)
+	t.check(back != null and back.sealed == want and back.seal_nights == 3 and back.notice == 50 and back.night == 7 and back.in_night == "" and back.last_mission == "hide_faithful",
+		"and the file agrees")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(FILE))
 	GodTree.dev_fill = false
 

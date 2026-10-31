@@ -66,6 +66,8 @@ var _t := 0.0
 ## v0.11 M4: Wrath's new missions' endings, each under the mission's own reason keys.
 ## v0.11 M5: Reckoning's new missions' endings, each under the mission's own reason keys.
 ## v0.11 M6: Ascendance's new missions' endings, each under the mission's own reason keys.
+## God P5 (MS §1, R43): the Lantern Hunts' endings, won then lost for each of the five (Hide the faithful, Silence the witness, Expel the inquisitor,
+## Break the hunt, Face Halcyon), so no Hunt ends on THE CITY HAS FALLEN or MANIFESTATION ENDED. Dawn and the Gaze keep their titles.
 ## God P3 (preflight G2): an Awaken rite's endings, `shards` (the last shard, won) and `cleansed` (the shrine lost); a rite that dawn ends reads "dawn".
 const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS CLOSED", "prince": "THE PRINCE IS DEAD",
 	"sailed": "THE PRINCE HAS SAILED", "tide": "THE TIDE HAS TURNED", "held": "THE NIGHT PASSES",
@@ -87,7 +89,12 @@ const ACT_TITLES := {"festival": "THE FEAST IS BROKEN", "closed": "THE SQUARE IS
 	"eye_blind": "THE LANTERN'S EYE IS BLIND", "eye_open": "THE EYE OPENS",
 	"exodus": "THE FAITHFUL ARE OUT", "exodus_few": "TOO FEW ARE LEFT", "gates_shut": "THE GATES ARE SHUT",
 	"heart": "THE HEART OF FAITH IS BROKEN", "blessed": "THE GREAT FLAME IS BLESSED", "kindled": "THE FLAME IS KINDLED ANEW",
-	"shards": "THE RITE IS DONE", "cleansed": "THE SHRINE IS CLEANSED"}
+	"shards": "THE RITE IS DONE", "cleansed": "THE SHRINE IS CLEANSED",
+	"faithful_out": "THE FAITHFUL ARE HIDDEN", "faithful_lost": "THE INQUISITION TAKES THEM",
+	"witnesses": "THE WITNESSES ARE SILENT", "word": "WORD REACHES THE TEMPLE",
+	"expelled": "THE INQUISITOR IS GONE", "captain_safe": "THE CAPTAIN REACHES THE CITADEL",
+	"standards": "THE STANDARDS ARE BROKEN", "houses": "THE HUNT TAKES THEIR HOUSES",
+	"freed": "THE PYRE STAYS COLD", "burned": "THE PYRE BURNS"}
 
 ## The line across the top for each way a mission can end.
 static func title_for(won: bool, reason: String) -> String:

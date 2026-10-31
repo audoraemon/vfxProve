@@ -112,6 +112,14 @@ const TIER5_SHOWS := ["lantern_eye", "exodus", "heart_of_faith", "lantern_eye-hu
 ## kneeling (the shrine's ring) and `win` the third shard (the win plate). Staged by `_stage_rite()`.
 const RITE_SHOWS := ["first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk",
 	"first_taste-cleanse", "first_taste-win"]
+## The Lantern Hunts' photographs (god P5, Task 14, MS §1-§6): each Hunt as the god of its tier plays it (GodNight.def_for()). `-start` is the
+## intro's end with the banners gone; the others are staged through the director's own paths by `_stage_hunt()`: `hide_faithful-trail` the search
+## on the north-west household's trail, `silence_witness-relay` a witness killed in sight of his mate, `expel_inquisitor-captain` the captain out
+## on his round, `break_hunt-taken` a bearer at a house's door, `face_halcyon-pyre` a believer bound to the stake. `prepare-hunt-1` .. `-5` are the
+## Hunts' Prepare screens at the five tiers and `board-dev-hunts` the DEV tab's Hunt row; neither is a night.
+const HUNT_SHOWS := ["hide_faithful-start", "hide_faithful-trail", "silence_witness-start", "silence_witness-relay", "expel_inquisitor-start",
+	"expel_inquisitor-captain", "break_hunt-start", "break_hunt-taken", "face_halcyon-start", "face_halcyon-pyre"]
+const HUNT_PREPARE_SHOWS := ["prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5"]
 ## Grass: what shows between screens, the same clear colour the mission uses.
 const CLEAR := Color("6e8230")
 ## What --show=results displays: a winning run with every line of the table in use.
@@ -185,28 +193,28 @@ const SAMPLE_ENDLESS_RESULT := {
 	"god": {"divine_power": 120, "levels": [7, 8], "points": 2, "lost": 0, "capped": false, "level": 8, "bar": [20, 50], "believers": 30,
 		"faith": 30, "faith_total": 210, "notice": 0, "notice_change": 0, "night": 7, "bests": ["Fastest clear 3:21"]},
 }
-## What --show=results-hunt-won displays (god P2, spec §10.3): The Lost Lamb as the Tier 1 Hunt, won -- the main objective done, the Notice
-## back to 0 (from 100) and the Hunt's Faith bonus paid. Shaped like GodNight.bank()'s result.
+## What --show=results-hunt-won displays (god P2, spec §10.3; god P5: the real Tier 1 Hunt): Hide the faithful, won -- the main objective done, the
+## Notice back to 0 (from 100) and the Hunt's Faith bonus paid. Shaped like GodNight.bank()'s result.
 const SAMPLE_HUNT_WON := {
-	"mission": "lost_lamb", "won": true, "reason": "lamb_out", "time": 188.0, "goal": {"label": "The lamb is free", "done": true},
+	"mission": "hide_faithful", "won": true, "reason": "faithful_out", "time": 188.0, "goal": {"label": "The faithful are hidden", "done": true},
 	"bonuses": [], "best": false,
 	"descend": {"tier": 1, "main": true, "main_time": 188.0, "main_reward": 10, "ascended": false, "caught": "", "lost_text": "",
 		"earned": 10, "kept": 0, "wishes": []},
 	"god": {"divine_power": 80, "levels": [8], "points": 1, "lost": 0, "capped": false, "level": 8, "bar": [15, 50], "believers": 10,
 		"faith": 10, "faith_total": 240, "notice": 0, "notice_change": -100, "night": 7, "bests": [],
-		"hunt": {"tier": 1, "id": "lost_lamb", "title": "Hide the faithful", "won": true, "faith": 50, "sealed": "", "seal_nights": 0},
+		"hunt": {"tier": 1, "id": "hide_faithful", "title": "Hide the faithful", "won": true, "faith": 50, "sealed": "", "seal_nights": 0},
 		"unsealed": "", "hunt_next": false},
 }
-## What --show=results-hunt-lost displays (god P2, spec §10.3): the same Hunt lost -- the acolyte taken back -- the Notice set to 50 and the
+## What --show=results-hunt-lost displays (god P2, spec §10.3): the same Hunt lost -- two believers taken -- the Notice set to 50 and the
 ## most-carried ability sealed for three nights.
 const SAMPLE_HUNT_LOST := {
-	"mission": "lost_lamb", "won": false, "reason": "lamb_taken", "time": 140.0, "goal": {"label": "The lamb is free", "done": false},
+	"mission": "hide_faithful", "won": false, "reason": "faithful_lost", "time": 140.0, "goal": {"label": "The faithful are hidden", "done": false},
 	"bonuses": [], "best": false,
-	"descend": {"tier": 1, "main": false, "main_time": 0.0, "main_reward": 10, "ascended": false, "caught": "", "lost_text": "lost: the lamb was taken back",
+	"descend": {"tier": 1, "main": false, "main_time": 0.0, "main_reward": 10, "ascended": false, "caught": "", "lost_text": "lost: two believers were taken",
 		"earned": 0, "kept": 0, "wishes": []},
 	"god": {"divine_power": 0, "levels": [], "points": 0, "lost": 0, "capped": false, "level": 7, "bar": [20, 50], "believers": 0,
 		"faith": 0, "faith_total": 180, "notice": 50, "notice_change": -50, "night": 7, "bests": [],
-		"hunt": {"tier": 1, "id": "lost_lamb", "title": "Hide the faithful", "won": false, "faith": 0, "sealed": "smite", "seal_nights": 3},
+		"hunt": {"tier": 1, "id": "hide_faithful", "title": "Hide the faithful", "won": false, "faith": 0, "sealed": "smite", "seal_nights": 3},
 		"unsealed": "", "hunt_next": false},
 }
 
@@ -539,6 +547,16 @@ func _ready() -> void:
 			_show_endless(show)
 		"first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk", "first_taste-cleanse", "first_taste-win":
 			_show_endless(show)
+		"prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5", \
+		"hide_faithful-start", "hide_faithful-trail", "silence_witness-start", "silence_witness-relay", "expel_inquisitor-start", "expel_inquisitor-captain", \
+		"break_hunt-start", "break_hunt-taken", "face_halcyon-start", "face_halcyon-pyre":
+			# The Lantern Hunts' Prepare screens and nights (god P5, Task 14): the fixture god at the Hunt's tier, on the dev fill.
+			_show_endless(show)
+		"board-dev-hunts":
+			# The DEV tab with its second row, the Hunts' cards (god P5, Task 14): opens on the third, Expel the inquisitor.
+			dev = true
+			mission_id = MissionBook.EXPEL_INQUISITOR
+			go_to(Screen.BOARD)
 		"tiers-all":
 			# The board complete (v0.11 M6): every board mission cleared, the header's "All 25 cleared", for the photograph (SHOW_SAVE).
 			save.descend = DescendState.new()
@@ -557,7 +575,7 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission):
+		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission):
 			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -574,7 +592,7 @@ func _ready() -> void:
 				heart._open(1)
 				heart._raze(heart.targets[1])
 				heart._odran_comes()
-		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission) \
+		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission) \
 				and is_instance_valid(_mission._hud):
 			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
 			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)
@@ -584,6 +602,8 @@ func _ready() -> void:
 				await get_tree().process_frame
 		if show in RITE_SHOWS and is_instance_valid(_mission):
 			await _stage_rite(show)
+		if show in HUNT_SHOWS and is_instance_valid(_mission):
+			await _stage_hunt(show)
 		if show == "ascend" and is_instance_valid(_mission):
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -1219,6 +1239,7 @@ func _show_endless(show: String) -> void:
 	_in_endless = true
 	god_slot = 1
 	var rite_night := show in RITE_SHOWS
+	var hunt_id := hunt_of_show(show)
 	match show:
 		"hub-unwritten":
 			god = _show_god(20, 2)  # capped at the next cap, no rite written there yet: the dim Awaken
@@ -1230,6 +1251,10 @@ func _show_endless(show: String) -> void:
 			god = _show_god(10 if capped else 7)
 	if rite_night:
 		_show_rite_loadout(show)
+	if hunt_id != "":
+		god = _show_god(10, int(HuntBook.row(hunt_id).tier))  # the god of the Hunt's tier (god P5)
+		god.notice = GodSlot.NOTICE_MAX
+		loadout = god.loadout.duplicate()
 	_write_god()
 	match show:
 		"slots":
@@ -1334,10 +1359,26 @@ func _show_endless(show: String) -> void:
 			_open_pause()
 			if is_instance_valid(_pause):
 				_pause._set_confirm(true)
+		"prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5":
+			mission_id = hunt_id
+			loadout = god.loadout.duplicate()
+			go_to(Screen.PREPARE)
 		_:
 			if rite_night:
 				mission_id = RiteBook.FIRST_TASTE
 				go_to(Screen.MISSION)
+			elif hunt_id != "":
+				mission_id = hunt_id
+				go_to(Screen.MISSION)
+
+
+## The Hunt a --show name is about (god P5, Task 14): `prepare-hunt-<tier>` the Hunt of that tier, `<id>-<rule>` the Hunt `<id>`; "" for any other name.
+static func hunt_of_show(show: String) -> String:
+	if show in HUNT_PREPARE_SHOWS:
+		return String(HuntBook.at_tier(int(show.get_slice("-", 2))).id)
+	if show in HUNT_SHOWS:
+		return show.get_slice("-", 0)
+	return ""
 
 
 ## The god of a First Taste photograph (god P3): `six` and `modes` have six slots and six learned abilities (`modes`: Decree's, The Bell Lies last), the
@@ -1405,6 +1446,92 @@ func _stage_rite(show: String) -> void:
 		"first_taste-win":
 			for _shard in d.need():
 				d.offer(d.marked[0])  # the ending runs at 0.3 time scale: the generic wait below is short, so the plate (4 s real) is still up
+
+
+## Puts `p` down at `at` as his walk would have brought him (the tests' Kit.arrive()): standing there, no goal and no path left.
+func _put(p: Person, at: Vector2) -> void:
+	p.ground_pos = at
+	p._goal = Vector2.INF
+	p._path = PackedVector2Array()
+
+
+## The camera rests on the ground point `at` (a staged Hunt photograph looks at what it stages).
+func _look_at(at: Vector2) -> void:
+	if is_instance_valid(_mission) and _mission._bf != null:
+		_mission._bf.camera.position = Iso.ground_to_screen(at).round()
+
+
+## Stages a Lantern Hunt photograph past its intro (god P5, Task 14): the director's own paths, as `_stage_rite()` does. The mission is up and
+## started and its opening banners are gone (the caller waited them out); the `-start` shots need nothing more.
+func _stage_hunt(show: String) -> void:
+	await _until(func() -> bool: return _mission.started(), 10.0)
+	if _mission.rules() == null or not is_instance_valid(_mission._hud):
+		return
+	var dir: Variant = _mission.rules().director
+	match show:
+		"hide_faithful-trail":
+			# The search reaches the north-west household's house after the household is out: it takes up the trail (MS §2).
+			var d := dir as HideFaithfulDirector
+			d._come_out(0)
+			await get_tree().create_timer(EscortDirector.TICK * 2.0).timeout
+			d._search_at = 1
+			var door: Vector2 = d._search[1].door
+			for k in d.inquisitors.size():
+				if d.inquisitors[k] is Person and is_instance_valid(d.inquisitors[k]):
+					_put(d.inquisitors[k] as Person, door + Vector2(float(k), 0.0))
+			var h: ExodusDirector.Household = d.households[0]
+			for k in h.members.size():
+				var c: EscortDirector.Charge = h.members[k]
+				if is_instance_valid(c.man):
+					_put(c.man as Person, door + Vector2(0.0, 12.0 + 0.5 * float(k)))
+			_look_at(door)
+			await get_tree().create_timer(EscortDirector.TICK * 3.0).timeout
+		"silence_witness-relay":
+			# The first witness killed in sight of his mates: one of them runs on (MS §3).
+			var d := dir as SilenceWitnessDirector
+			d._send(0)
+			await get_tree().create_timer(SilenceWitnessDirector.SW_OUT_PAUSE + WarningDirector.RETARGET + 1.0).timeout
+			var r := d.ringers[0] as WitnessDirector
+			if is_instance_valid(r.messenger):
+				_look_at(r.messenger.ground_pos)
+				d.crowd._field.kill(r.messenger, &"doom")
+			await get_tree().create_timer(1.0).timeout
+		"expel_inquisitor-captain":
+			# The captain out on his round, set down at his first leg (MS §4).
+			var d := dir as ExpelInquisitorDirector
+			var q := d.captain()
+			d._set_out(q)
+			if is_instance_valid(q.target):
+				_put(q.target, d.hide_door)
+			_look_at(d.hide_door)
+			await get_tree().create_timer(1.5).timeout
+		"break_hunt-taken":
+			# The first standard's bearer at his house's door: the house is taken (MS §5).
+			var d := dir as BreakHuntDirector
+			d._raise(0)
+			await get_tree().create_timer(BreakHuntDirector.TICK * 2.0).timeout
+			var b := d.bearer(0)
+			if b != null:
+				_put(b, (d.house_doors[d._dest[0]] as Vector2) + Vector2(0.0, 0.9))
+				_look_at(d.house_doors[d._dest[0]])
+			await get_tree().create_timer(BreakHuntDirector.TICK * 3.0).timeout
+		"face_halcyon-pyre":
+			# The first procession's believer bound to the stake (MS §6).
+			var d := dir as FaceHalcyonDirector
+			d._come_out(0)
+			await get_tree().create_timer(FaceHalcyonDirector.FH_FORM + 1.0).timeout
+			var pr: FaceHalcyonDirector.Procession = d.procs[0]
+			var at := d.pyre_at + Vector2(0.0, 1.0)
+			_put(pr.charge.man as Person, at)
+			pr.trail = []
+			for k in range(12, -1, -1):
+				pr.trail.append(at + Vector2(-0.5 * float(k), 0.0))
+			pr.places = d._file_places(pr, at)
+			for k in pr.escorts.size():
+				if MissionDirector._alive(pr.escorts[k]):
+					_put(pr.escorts[k] as Person, pr.places[k])
+			_look_at(at)
+			await get_tree().create_timer(FaceHalcyonDirector.TICK * 3.0).timeout
 
 
 func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
@@ -2583,11 +2710,12 @@ func _flow_title_endless(step: Callable) -> void:
 ## `_flow_endless()` stopped: slot 1's god after Night 3, Notice 50%.
 ## 1. The board's ENDLESS (the board is rebuilt with `dev`, as `_flow_endless()` does), Continue on slot 1: the hub, Notice 50%, no Hunt line.
 ## 2. A fixture: Notice 75%, the first starting key carried 4 nights and the second 1 (so the Lantern's target is clear), a seed whose night
-##    is neither the last night nor the Hunt's stand-in -- and whose Hunt night, were there no Hunt, would not be the stand-in either.
+##    is neither the last night nor the Hunt (god P5: the Hunt is the real `hide_faithful`; the stand-in clauses of P2 are gone).
 ## 3. Descend, play into the night, Abandon: a lost night, Notice 100%, the hub says the Hunt is next, the file agrees; dev A is refused.
-## 4. Descend: the Hunt (its stand-in at Tier 1, its name, THE LANTERN HUNT, the stake in IF LOST); in the night the pause confirm names
-##    the stake, and Stay / Resume return to it.
-## 5. The Hunt lost (force_end): results show the Notice change and the seal; the god and its file: the key sealed 3 nights, Notice 50%,
+## 4. Descend: the real Tier 1 Hunt (`hide_faithful`, "Hide the faithful", THE LANTERN HUNT, the stake in IF LOST); in the night: the Hunt's def
+##    (Tier 1, the watch Lantern) and its director (a HideFaithfulDirector); the pause confirm names the stake, and Stay / Resume return to it.
+## 5. The Hunt lost through the real ending (`force_end(false, "dawn")`; wins are the references'): results show the Dawn's title, the Notice
+##    change and the seal; the god and its file (`last_mission == "hide_faithful"` in both, R4): the key sealed 3 nights, Notice 50%,
 ##    out of the loadout. Continue: the hub's seal line. Descend: another night, the sealed card refuses a pick and says why.
 ## 6. The title, and the board's save is what it was (C7). Ends on the board with `dev` restored.
 func _flow_lantern(step: Callable) -> void:
@@ -2617,7 +2745,7 @@ func _flow_lantern(step: Callable) -> void:
 		out.call()
 		return
 
-	# The fixture: Notice 75%, a clear target, a seed that draws neither the last night nor the Hunt's stand-in (R1, R3).
+	# The fixture: Notice 75%, a clear target, a seed that draws neither the last night nor the Hunt (R1, R3).
 	if god.in_tree().size() < 2:  # a tree whose Tier 1 holds fewer than two keys of this type: learn one more (pre-flight R3)
 		for key in GodTree.keys_for(god.type, 2):
 			if not god.learned.has(key):
@@ -2642,19 +2770,11 @@ func _flow_lantern(step: Callable) -> void:
 		var def := GodNight.def_for(god, d)
 		if d == god.last_mission or d == String(hunt0.id) or def == null or def.has_acts():
 			continue
-		god.night = night_now + 1  # the Hunt's night, were there no Hunt: it must not be the stand-in either
-		god.last_mission = d
-		god.notice = 0
-		var later := GodNight.draw(god)
-		god.night = night_now
-		god.last_mission = last_now
-		god.notice = 75
-		if later != String(hunt0.id):
-			picked = d
-			seed_used = s
-			break
+		picked = d
+		seed_used = s
+		break
 	if picked == "":
-		step.call(false, "a seed draws a single-act night that is not the Hunt's stand-in, now or on the next night")
+		step.call(false, "a seed draws a single-act night that is neither the last night nor the Hunt")
 		out.call()
 		return
 	god.seed = seed_used
@@ -2700,7 +2820,7 @@ func _flow_lantern(step: Callable) -> void:
 	hub._unhandled_input(_flow_key(KEY_A))
 	step.call(god.tier == 1 and hub.line == GodHub.AWAKEN_HUNT, "dev A while the Hunt is due is refused (tier %d, \"%s\")" % [god.tier, hub.line])
 
-	# The Hunt: its stand-in, its name, its stake.
+	# The Hunt: the real Tier 1 Hunt, its name, its stake.
 	var hunt_night := god.night
 	var faith_before := god.faith
 	var dp_before := god.divine_power
@@ -2728,8 +2848,11 @@ func _flow_lantern(step: Callable) -> void:
 		out.call()
 		return
 	var def_now := _mission.rules().mission
-	step.call(god.in_night == String(hunt0.id) and def_now.name == String(hunt0.title) and def_now.tier == 1,
-		"the Hunt is its stand-in at the god's tier, with its own name (%s, Tier %d)" % [def_now.name, def_now.tier])
+	var hunt_director: Variant = _mission.rules().director
+	step.call(god.in_night == "hide_faithful" and mission_id == "hide_faithful" and def_now.name == "Hide the faithful" and def_now.tier == 1
+		and def_now.lantern == LanternWatch.KIND_WATCH and hunt_director is HideFaithfulDirector,
+		"the Hunt is the real Hide the faithful (%s, Tier %d, the %s lantern, a %s)" % [def_now.name, def_now.tier, def_now.lantern,
+		hunt_director.get_script().get_global_name() if hunt_director != null else "no director"])
 	_open_pause()
 	ask = ""
 	if is_instance_valid(_pause):
@@ -2745,7 +2868,8 @@ func _flow_lantern(step: Callable) -> void:
 	_mission.rules().force_end(false, "dawn")
 	var decided_file: GodSlot = god_file.call()
 	step.call(screen != Screen.RESULTS and god.in_night == "" and god.night == hunt_night + 1 and decided_file != null
-		and decided_file.in_night == "" and decided_file.night == hunt_night + 1 and decided_file.sealed == target,
+		and decided_file.in_night == "" and decided_file.night == hunt_night + 1 and decided_file.sealed == target
+		and god.last_mission == "hide_faithful" and decided_file.last_mission == "hide_faithful",
 		"the Hunt is banked and written the moment it is decided, during its ending (review M1: a window closed now keeps the night)")
 	var up := await _until(func() -> bool: return screen == Screen.RESULTS, 8.0)
 	var banked: Dictionary = result.get("god", {})
@@ -2755,8 +2879,10 @@ func _flow_lantern(step: Callable) -> void:
 	var seal_at := lines.find("The Lantern seals %s for 3 nights" % name_target)
 	saved = god_file.call()
 	step.call(up and not hunt.is_empty() and not bool(hunt.get("won", true)) and String(hunt.get("sealed", "")) == target and change_at >= 0 and seal_at > change_at
-		and ResultsScreen.hunt_called(result) != "",
-		"the lost Hunt's results: the Notice change, then \"The Lantern seals %s for 3 nights\", and the Hunt named (%s)" % [name_target, ", ".join(lines)])
+		and ResultsScreen.hunt_called(result) != "" and String(hunt.get("id", "")) == "hide_faithful"
+		and ResultsScreen.title_for(false, String(result.get("reason", ""))) == "DAWN COMES",
+		"the lost Hunt's results: the Dawn's title (%s), the Notice change, then \"The Lantern seals %s for 3 nights\", and the Hunt named (%s)"
+		% [ResultsScreen.title_for(false, String(result.get("reason", ""))), name_target, ", ".join(lines)])
 	step.call(god.before_hunt == picked and saved != null and saved.before_hunt == picked,
 		"the night before the Hunt is remembered, in the file too (review M3: %s)" % god.before_hunt)
 	step.call(god.sealed == target and god.seal_nights == 3 and god.notice == 50 and god.night == hunt_night + 1 and god.last_mission == String(hunt0.id)
@@ -2785,7 +2911,7 @@ func _flow_lantern(step: Callable) -> void:
 		out.call()
 		return
 	step.call(mission_id != picked and mission_id != String(hunt0.id),
-		"the night after the Hunt is neither the Hunt's stand-in nor the night before it (review M3: %s)" % mission_id)
+		"the night after the Hunt is neither the Hunt nor the night before it (review M3: %s)" % mission_id)
 	var at_tab := -1
 	var at_card := -1
 	for i in prep.tabs().size():

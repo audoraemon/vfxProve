@@ -223,7 +223,13 @@ All were looked at. They are 1280 x 720 and sit in `.superpowers/sdd/godp5/photo
 
 ## Landing
 
-(filled by the controller after the landing gate)
+Landing gate, by hand on the milestone tree (`bfecf5ce`: the five Hunts, Task 14 and `feat/god-progression` 1b6ab0b2 merged in). `land.sh`'s trial merge is against Develop-Main and does not apply here.
+
+- **Suite:** 13955 checks, 0 failures.
+- **References:** all 508 checked, 508 OK, 0 bad. The 105 new Hunt rows reproduce on the merged tree. `digest` (`61267b7e90524d800bf1c3473a71146b`), `crowd_check` (`-935602679`) and `calm` (`-355092532`) did not move.
+- **FLOW:** the gate's two runs gave no result: the known flake under load, since the reference run had just finished. Rerun alone with no other Godot running: `FLOW result checks=209 failures=0`, 250 s. FLOW logs about 620 `Lambda capture at index 0 was freed` errors from `_until` (`game.gd`). They are older than P5: FLOW on `feat/god-progression` 1b6ab0b2 logs 623.
+- **Bench vs `kak-god-t1r`** (board versions, median of 3, fps): warning 34.5 / 34.5, miras_house 29.4 / 30.4, vigil_flame 31.3 / 31.2, procession 27.7 / 28.0, last_judgement 28.4 / 28.7. Every pair is within 1 fps. The absolute numbers are low because the machine was busy, so only the pairs count.
+- **After the milestone fix wave** (merge `7345b833`): suite 13962 checks, 0 failures. `digest`, `crowd_check` and `calm` OK, and `face_halcyon_none_*` 3/3 OK. The fix wave changed tests, tools, comments and docs only, so no game code changed and FLOW and the bench were not rerun.
 
 ## The reviews
 

@@ -327,6 +327,17 @@ Each task report ended with proposals ("Ruling:" lines or notes for the controll
 Not binding (D10, D36); listed here so nobody has to dig for them:
 
 - Capital per-type: `pass=24/30`. The Warning: Death 0/3, Passage 0/3, Veil 1/3. First Prayers: Ruin 0/3, Death 1/3, Passage median 297 s, Dominion idle 72 s.
+  After D42: `pass=22/30`; First Prayers also loses Veil (idle 52 s) and Passage (3/3, idle 81 s).
 - Short medians: The Warning Ruin and Death about 75 s, Lamb Ruin and Veil 50 s, Harvest Passage 86 s, Prayers Veil about 90 s, route B at Prayers 129 s (floor relaxed, D34).
-- A Capital Tax Passage deputy stalls near a Thornwall (seed 2, from 100 s to the end).
+- ~~A Capital Tax Passage deputy stalls near a Thornwall~~ (fixed after landing, D42).
 - Dominion x Prayers sits at exactly 45 s at seed 2 on a whisper D39 counts as play.
+
+## After landing (2026-10-29)
+
+- **D41.** Ruling: Passage's fold window at First Prayers widens from 40 s to 50 s before the door next matters -- the board version's
+  62 s wait (over the user's 60 s limit) came from the policy holding its mirror; 50 s gives 47/47/55 (gate) and 59/47/55 (board), every
+  run a win; 60 s was no better -- If wrong: the three `god_passage_prayers_play` rows move back and the board version waits 62 s again.
+- **D42.** Ruling: a Capital walker whose step overshoots a free waypoint into a building margin stops on the waypoint instead of sliding
+  -- the slide rocked across the waypoint for ever on steps under 0.1 (the Capital Tax deputy, seed 2); only the Capital passes `to`, so
+  Aldermere is untouched; the Capital per-type report goes 24/30 -> 22/30 (reported only) -- If wrong: Capital reference rows that
+  moved go back, and the deputy stalls again.

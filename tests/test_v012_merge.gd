@@ -90,6 +90,17 @@ static func _long_steps(t) -> void:
 		e.tick(0.1)
 		var want_y := -3.75 if id == &"capital" else -3.8342 + 0.144
 		t.check(absf(e.ground_pos.y - want_y) < 0.001, "%s: a long slide ends at y=%.4f (got %.4f)" % [id, want_y, e.ground_pos.y])
+		if id == &"capital":
+			# (god T1R follow-up) A short step (under twice ARRIVE) past a free waypoint into a margin stops on the waypoint: sliding,
+			# it rocked across the waypoint for ever (the Capital's Tax deputy, seed 2).
+			e.ground_pos = Vector2.ZERO
+			e._target = Vector2(0.06, 0.04)
+			e._idle = 0.0
+			e.walk_speed = 0.9
+			e.blocked = func(g: Vector2) -> bool: return g.x > 0.065
+			e.tick(0.1)
+			t.check(e.ground_pos.distance_to(Vector2(0.06, 0.04)) < 0.001,
+				"capital: a 0.09 step past a free waypoint 0.072 away, the overshoot blocked, stops on it (got %s)" % e.ground_pos)
 		e.free()
 	City.use(&"aldermere")
 

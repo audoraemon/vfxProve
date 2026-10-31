@@ -403,6 +403,12 @@ func _move(step: Vector2, to := Vector2.INF) -> void:
 	if absf(step.x - step.y) > 0.0001:
 		_facing = 1 if step.x - step.y > 0.0 else -1
 	var hit := _step_blocked(step)
+	if hit and to != Vector2.INF and to.length() <= step.length() and not _step_blocked(to):
+		# (god T1R follow-up) A step past a target it could stand on, with the overshoot in a margin: it stops on the target. Sliding
+		# instead, a step shorter than the long-step rule below (under twice ARRIVE) rocked to and fro across the target for ever
+		# (the Capital's Tax deputy, seed 2). Only the capital's walkers pass `to`.
+		ground_pos = (ground_pos + to).clamp(bounds.position, bounds.end)
+		return
 	if hit:
 		# Slide along what is in the way: a path's diagonal can clip a building's corner margin (the walk grid only
 		# looks at cell centres), and without sliding a walker pinned there never moves again.

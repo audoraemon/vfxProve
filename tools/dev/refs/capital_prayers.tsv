@@ -1,14 +1,14 @@
 # First Prayers in the Capital (v0.12 M2, Task 13): the scripted player's runs in the Capital, each how ending --city=capital (name<TAB>how<TAB>checksum).
 # none = casts nothing, play = loadout A, b_play = loadout B (--route=b), toll = the bell tolled on purpose (--case=toll).
-capital_prayers_none_1	--scenario=prayers --case=none --seed=1 --city=capital	-707611724
-capital_prayers_none_2	--scenario=prayers --case=none --seed=2 --city=capital	-309362261
-capital_prayers_none_3	--scenario=prayers --case=none --seed=3 --city=capital	-728722026
-capital_prayers_play_1	--scenario=prayers --case=play --seed=1 --city=capital	-144825210
-capital_prayers_play_2	--scenario=prayers --case=play --seed=2 --city=capital	-18332516
-capital_prayers_play_3	--scenario=prayers --case=play --seed=3 --city=capital	-591263375
-capital_prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1 --city=capital	-419694427
-capital_prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2 --city=capital	-499916886
-capital_prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3 --city=capital	-520139260
-capital_prayers_toll_1	--scenario=prayers --case=toll --seed=1 --city=capital	-422151080
-capital_prayers_toll_2	--scenario=prayers --case=toll --seed=2 --city=capital	-88612256
-capital_prayers_toll_3	--scenario=prayers --case=toll --seed=3 --city=capital	-838823374
+capital_prayers_none_1	--scenario=prayers --case=none --seed=1 --city=capital	-943292369
+capital_prayers_none_2	--scenario=prayers --case=none --seed=2 --city=capital	-761410091
+capital_prayers_none_3	--scenario=prayers --case=none --seed=3 --city=capital	-783397987
+capital_prayers_play_1	--scenario=prayers --case=play --seed=1 --city=capital	-770205219
+capital_prayers_play_2	--scenario=prayers --case=play --seed=2 --city=capital	-869957012
+capital_prayers_play_3	--scenario=prayers --case=play --seed=3 --city=capital	-870093236
+capital_prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1 --city=capital	-2001720
+capital_prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2 --city=capital	-675647730
+capital_prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3 --city=capital	-754681200
+capital_prayers_toll_1	--scenario=prayers --case=toll --seed=1 --city=capital	-539105949
+capital_prayers_toll_2	--scenario=prayers --case=toll --seed=2 --city=capital	-858201488
+capital_prayers_toll_3	--scenario=prayers --case=toll --seed=3 --city=capital	-901359472

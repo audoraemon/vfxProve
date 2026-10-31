@@ -2,7 +2,8 @@
 # The Tier 1 per-type gate over all 30 pairs (god T1R Task 7, rulings D5): each of the five Tier 1 missions x each of the six god types, the
 # type playing only its own two Tier 1 powers at level 1 (gate.sh --god=<type>:1). Prints every pair's gate, a 6 x 5 table of wins/median/idle,
 # and a last line `god_gate tier=1[ city=<id>] pass=K/N none_lost=M/P PASS|FAIL` (exit 1 on FAIL).
-# usage: bash tools/dev/god_gate.sh [--tier=1] [--city=<id>] [--only=<scenario>] [--jobs=N]      (from the project root; G= overrides Godot)
+# usage: bash tools/dev/god_gate.sh [--tier=1] [--city=<id>] [--only=<scenario>] [--board] [--jobs=N]   (from the project root; G= overrides Godot)
+#   --board            every pair plays the board version (gate.sh --board); The Warning always does
 #   --only=<scenario>  one mission only (its six pairs: pass=6/6 none_lost=1/1 on a clean run); a full run is 5 calls of this, each under 10 minutes
 #   --jobs=N           passed to gate.sh (its default is 6 runs at once; use 2 when another session runs Godot)
 # Binding in Aldermere (D5, D10): wins >= 2/3 and idle <= 45 s on every pair; the median is printed, never judged. The Capital (--city=capital)
@@ -10,12 +11,13 @@
 # The none check (doing nothing must lose 3/3) runs once per mission, on the first god type's pair (--with-none), since a none run casts nothing.
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-TIER=1; CITY=""; ONLY=""; JOBS=""
+TIER=1; CITY=""; ONLY=""; JOBS=""; BOARD=""
 for a in "$@"; do case "$a" in
   --tier=*) TIER="${a#--tier=}";;
   --city=*) CITY="${a#--city=}";;
   --only=*) ONLY="${a#--only=}";;
   --jobs=*) JOBS="${a#--jobs=}";;
+  --board) BOARD=1;;
   *) echo "god_gate.sh: unknown option $a" >&2; exit 2;;
 esac; done
 [ "$TIER" = 1 ] || { echo "god_gate.sh: only --tier=1 is built" >&2; exit 2; }
@@ -31,7 +33,7 @@ pass=0; total=0; none_ok=0; none_total=0; allok=1
 for s in $SCENARIOS; do
   for type in $TYPES; do
     args=("$s" "--god=$type:1")
-    [ "$s" = warning ] && args+=("--board")
+    { [ "$s" = warning ] || [ -n "$BOARD" ]; } && args+=("--board")
     [ -n "$CITY" ] && args+=("--city=$CITY")
     [ -n "$JOBS" ] && args+=("--jobs=$JOBS")
     [ "$type" = "$FIRST" ] && args+=("--with-none")
@@ -66,5 +68,5 @@ for type in $TYPES; do
   for s in $SCENARIOS; do printf ' | %-16s' "$(cat "$T/cell.$s.$type")"; done; echo
 done
 verdict=PASS; [ "$allok" = 1 ] || verdict=FAIL
-echo "god_gate tier=$TIER${CITY:+ city=$CITY} pass=$pass/$total none_lost=$none_ok/$none_total $verdict"
+echo "god_gate tier=$TIER${CITY:+ city=$CITY}${BOARD:+ board} pass=$pass/$total none_lost=$none_ok/$none_total $verdict"
 [ "$verdict" = PASS ]

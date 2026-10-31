@@ -1,11 +1,11 @@
 {
- "hash": "dc1b91c80be240d3",
- "updated": "2026-10-30T02:38:25+07:00",
+ "hash": "4389d6716d55f11f",
+ "updated": "2026-10-31T19:34:04+07:00",
  "changes": {
-  "date": "<t:1793302705:f>",
+  "date": "<t:1793450044:f>",
   "items": [
-   "Done: Board sweep: play the 24 non-Warning god pairs as the board version once",
-   "Done: Capital Tax: a Passage deputy stalls near a Thornwall"
+   "Done: God P5: the five Lantern Hunt nights",
+   "New: God P5: 11 decisions on the Hunts"
   ]
  },
  "snapshot": {
@@ -260,14 +260,24 @@
     "updated": "2026-10-29",
     "order": 191
    },
+   "god-p5-decisions": {
+    "title": "God P5: 11 decisions on the Hunts",
+    "status": "todo",
+    "area": "Design",
+    "version": "next",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-10-31",
+    "order": 200
+   },
    "god-p5-hunts": {
     "title": "God P5: the five Lantern Hunt nights",
-    "status": "doing",
+    "status": "done",
     "area": "Design",
     "version": "next",
     "needs_you": false,
-    "branch": "god/p5-hunts",
-    "updated": "2026-10-29",
+    "branch": "feat/god-progression",
+    "updated": "2026-10-31",
     "order": 199
    },
    "god-progression-design": {
@@ -1134,43 +1144,19 @@
   },
   "branches": [
    {
-    "name": "god/p5-t7",
-    "ahead": 121,
-    "behind": 0,
-    "date": "2026-10-30",
-    "subject": "fix: Break the hunt review round 2 -- a new bearer waits for his fellow to close up; take-up tested with bodies stepped (god P5 Hunt 4)",
-    "pushed": false
-   },
-   {
-    "name": "god/p5-t8",
-    "ahead": 120,
-    "behind": 0,
-    "date": "2026-10-30",
-    "subject": "fix: Face Halcyon -- the escorts walk in file so none bunches (review of Task 8, I1); ESCORT tag counts the rule; four houses with a lane behind the door",
-    "pushed": false
-   },
-   {
     "name": "feat/god-progression",
-    "ahead": 104,
+    "ahead": 161,
     "behind": 0,
-    "date": "2026-10-30",
-    "subject": "fix: Capital walker stops on a free waypoint instead of rocking (D42); Passage fold window 50 s at First Prayers (D41); god_gate --board",
+    "date": "2026-10-31",
+    "subject": "docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)",
     "pushed": true
    },
    {
-    "name": "god/t1r-follow",
-    "ahead": 104,
-    "behind": 0,
-    "date": "2026-10-30",
-    "subject": "fix: Capital walker stops on a free waypoint instead of rocking (D42); Passage fold window 50 s at First Prayers (D41); god_gate --board",
-    "pushed": false
-   },
-   {
     "name": "god/p5-hunts",
-    "ahead": 118,
+    "ahead": 161,
     "behind": 0,
-    "date": "2026-10-29",
-    "subject": "fix: Hide the faithful -- the two inquisitors stay more than a Silent Doom apart at every stop and on the trail (review of Task 4, Important 1)",
+    "date": "2026-10-31",
+    "subject": "docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)",
     "pushed": false
    },
    {

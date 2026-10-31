@@ -16,11 +16,16 @@ extends ExodusDirector
 ## A fallen inquisitor is replaced HF_SEARCH_RELIEF_AFTER seconds later, at most HF_SEARCH_RELIEFS a night. Nothing here gazes (Tier 1): the
 ## base keeps a Gaze meter the Hunt hides (step()).
 ##
+## The rebuild (Task 17, the user's answers of 2026-10-31): the second household sets out at once when the watch is broken (watch_broken(), ruling
+## P5-T17-R1); a seized believer is marched at least HF_MARCH_MIN before he is lost, counted down on the strip (P5-T17-R2); Decree's law holds a lay
+## inquisitor still (law_held(), P5-T17-R4); and once nothing can seize them the believers hurry (none_can_seize(), P5-T17-R7).
+##
 ## Overrides of ExodusDirector (the MS §2 checklist): _plan(), the tune_ vars (setup()), _appoint_watch() and _appoint_patrol() (soldiers),
 ## _post_to() and _takes_post() (the Escort type's send_to_post way), _step_patrols() and the patrols' first placement (HF_PATROL_GAP apart),
 ## _relieve_watch() (a no-op), _come_out() (no "The Temple sends searchers" row), _step_free() (the self-walk, the sight check before the
-## out check), _exit_reached() (out of the walls), _escape() (sent off the map), _chain()/out_due() (SLIP), the searchers in place of the
-## hounds (_step_hunters() and what it calls), lost_reason(), hud_line() (the base's), tags(), hint_phase(), strip_rows(), tour().
+## out check), _exit_reached() (out of the walls), _escape() (sent off the map), _chain()/out_due() (SLIP, the watch broken), the searchers in place
+## of the hounds (_step_hunters() and what it calls), _step_held() (the march's least time, the law), _watching() (the law), lost_reason(),
+## hud_line() (the base's), tags(), hint_phase(), strip_rows(), tour().
 ## `_watchman()` is kept as the base's, on purpose: it only puts a lay citizen in the watch's cloak, and here its one user is the inquisitors (the gate
 ## watch and the patrols are soldiers, who need no cloak, and the watch is not replaced).
 
@@ -45,7 +50,8 @@ const HF_GATES := [
 ## Tuning round 1 (Task 9): the second household 110 -> 140 and the believers' pace 0.45 -> 0.40 (ruling P5-C10: the default play won at 150-168 s, under
 ## the 180-240 s bar; later and slower is the reverse of MS §7's easier moves). Result: wins at 166-205 s, the Hunt's pooled median 186 s (final gate). The pace did the
 ## work: the chain (45 s after the first household is done, about 95 s) brings the second household out at about 140 s whichever of the two numbers is
-## used, so 140 rarely binds alone. The chain (45 s) still ends the wait.
+## used, so 140 rarely binds alone. The chain (45 s) still ends the wait. Since Task 17 the watch broken sets the second household out at once too
+## (out_due(), ruling P5-T17-R1); 140 stays the latest time.
 const HF_OUT_AT := [15.0, 140.0]
 const HF_CHAIN := 45.0
 const HF_SLIP := 30.0
@@ -92,6 +98,16 @@ const HF_SLIP_NEAR := 5.0
 const HF_SEARCH_SPACING := 4.0
 ## How far from the Temple's door the search's first stop is at least.
 const HF_SEARCH_FIRST := 8.0
+## A seized believer is marched to the Temple at least this long before he counts as lost (Task 17, the user's answer of 2026-10-31, ruling
+## P5-T17-R2): a seizure near the Temple was delivered in about 10 s, with only his tag and a banner to warn of it; now his seizer stands at the
+## Temple's door with him until the time is up, and the strip's row "A believer reaches the Temple" counts it down. What frees him meanwhile is
+## what freed him before: his seizer felled, frightened, held or turned (EscortDirector._step_held()).
+const HF_MARCH_MIN := 20.0
+## The banner when the watch breaks while the second household still waits (Task 17, ruling P5-T17-R1).
+const HF_BROKEN_BANNER := "THE WATCH IS BROKEN - THE SECOND HOUSEHOLD SETS OUT"
+## Once nothing can seize them -- the watch broken, no inquisitor standing and no relief left to come -- the believers still in the town hurry at a
+## citizen's own pace (Task 17, lever 3, ruling P5-T17-R7; First Prayers' "the poor hurry in" is the precedent), with this banner.
+const HF_HURRY_BANNER := "NO ONE IS LEFT TO SEIZE THEM - THE FAITHFUL HURRY OUT"
 ## Where the camera rests: the north-west household's door and the Temple at the top of the picture, the Main Gate below (MS §2 leaves it to
 ## the frame).
 const HF_CAMERA_AT := Vector2(-4.0, 4.0)
@@ -134,6 +150,13 @@ var _legs := {}
 var _pairs := {}
 ## The instance id of the inquisitor in front along the path (_order_search()), kept so the two do not swap places look to look.
 var _file_front := 0
+## The clock second the watch broke (watch_broken() first true; it never mends: the dead stay dead and the rallied stay at the Citadel), -1
+## until then (Task 17, ruling P5-T17-R1).
+var broken_at := -1.0
+## The clock second each marched believer was seized, by Charge (HF_MARCH_MIN).
+var _seized_at := {}
+## The believers hurry: nothing is left to seize them (ruling P5-T17-R7).
+var hurrying := false
 
 
 ## The Hunt's numbers into the base's tune_ vars and existing vars before the base sets up (god P5, MS H11, H12, Ruling C2): no gate shuts,
@@ -454,7 +477,84 @@ func out_due(i: int) -> float:
 	var k := _entry_of(i)
 	if k >= 0 and k < _eta.size() and _eta[k] < INF and not _reached(k):
 		at = minf(at, _eta_at + _eta[k] - HF_SLIP)
+	if _broken_frees(i):
+		at = minf(at, broken_at)
 	return at
+
+
+## The watch is broken (Task 17, the user's answer of 2026-10-31, ruling P5-T17-R1): no soldier of the watch stands -- each of the gates' watch and
+## the patrols is dead or rallied to the Citadel (the town's rally after its alarm: he never comes back to the night's work). One held by the god
+## (whispered, called away, caged, confused) or frightened comes back, so he still stands; the inquisitors are the Inquisition's, not the watch.
+## The player sees it: every soldier's WATCH tag gone. Only reads.
+func watch_broken() -> bool:
+	var any := false
+	for v: Variant in _soldiers():
+		any = true
+		if _alive(v) and (v as Person).mind != Person.Mind.RALLY:
+			return false
+	return any
+
+
+## Decree's law holds a lay inquisitor still (Task 17, the user's fallback of 2026-10-31, ruling P5-T17-R4): `v` is an inquisitor bound by a
+## Leaving Is Prohibited -- the bars it sets on whoever it binds are on him, for as long as it holds. Such a man stands where he is and sees no
+## one (_watching()), and one marching a believer lets him go (_step_held(): MS §2, a seizer held lets him go where he stands). Here only, never
+## in the power's shared code: the law still only confines a soldier, and no other mission's rows can move. Only reads.
+func law_held(v: Variant) -> bool:
+	if not _alive(v) or not _is_searcher(v):
+		return false
+	var p := v as Person
+	return p.badge_glyph == DecreeParts.BARS and p.badge_left > 0.0
+
+
+## An inquisitor held still by the law sees no one (ruling P5-T17-R4); everyone else as the Escort type says.
+func _watching(v: Variant) -> bool:
+	return super(v) and not law_held(v)
+
+
+## Nothing can seize a believer now or later (ruling P5-T17-R7): the watch is broken, no inquisitor stands (dead; one held or frightened still
+## stands) and no relief is left to come. Only reads.
+func none_can_seize() -> bool:
+	if not watch_broken() or inq_reliefs < HF_SEARCH_RELIEFS:
+		return false
+	for v: Variant in inquisitors:
+		if _alive(v):
+			return false
+	return true
+
+
+## The believers hurry (ruling P5-T17-R7): every one still in the town, inside or out, walks on at a citizen's own pace (his pace without
+## HF_BELIEVER_PACE), once; the banner says why.
+func _hurry() -> void:
+	hurrying = true
+	var any := false
+	for c in charges:
+		if _resolved(c) or not _alive(c.man):
+			continue
+		var p := c.man as Person
+		p.pace /= maxf(tune_believer_pace, 0.01)
+		if not p.inside and p.mind == Person.Mind.DUTY:
+			p.go_duty(p.anchor)  # his walk takes the new pace at once
+		any = true
+	if any:
+		rules.banner.emit(HF_HURRY_BANNER)
+
+
+## The believers' pace as a fraction of a citizen's: HF_BELIEVER_PACE, or a citizen's own once they hurry.
+func believer_pace() -> float:
+	return 1.0 if hurrying else HF_BELIEVER_PACE
+
+
+## The soldiers of the watch: the gates' and the patrols' (untyped: any may be freed).
+func _soldiers() -> Array:
+	var out: Array = watch.duplicate()
+	for squad: Array in patrols:
+		out.append_array(squad)
+	return out
+
+
+## Household `i` is the second, and the watch broke: it sets out then at the latest (ruling P5-T17-R1).
+func _broken_frees(i: int) -> bool:
+	return i > 0 and i == households.size() - 1 and broken_at >= 0.0
 
 
 ## The households come out when their time comes (MS §2): every one, the first included, not only the chained.
@@ -462,7 +562,7 @@ func _chain() -> void:
 	for i in households.size():
 		var h: Household = households[i]
 		if not h.out and _clock >= out_due(i):
-			rules.banner.emit(_slips_banner(i))
+			rules.banner.emit(HF_BROKEN_BANNER if _broken_frees(i) and _clock - broken_at < 1.0 else _slips_banner(i))
 			_come_out(i)
 
 
@@ -535,7 +635,39 @@ func _is_searcher(v: Variant) -> bool:
 ## An inquisitor who seizes marches at his full pace (the list is walked slowly, the Temple is not).
 func _seize(c: Charge, by: Person) -> void:
 	_set_pace(by, 1.0)
+	_seized_at[c] = _clock
 	super(c, by)
+
+
+## Seconds of believer `c`'s march still to come before he may be delivered (HF_MARCH_MIN from his seizure); 0 for one not marched.
+func march_left(c: Charge) -> float:
+	if not c.held or not _seized_at.has(c):
+		return 0.0
+	return maxf(HF_MARCH_MIN - (_clock - float(_seized_at[c])), 0.0)
+
+
+## Held (ruling P5-T17-R2): within HF_MARCH_MIN of his seizure a marched believer is not delivered. His seizer stands with him where he seized him
+## while the walk to the Temple's door would end before the march's time, then walks him there (so he reaches the door as the time runs out, and a
+## believer let go is let go on the road, not in the crowd at the Temple's door); one who gets there early stands at the door. Whatever lets him go
+## (the seizer felled, frightened, held or turned) still does, as the base's march. Then the base's (Exodus's: delivered, he goes inside).
+func _step_held(c: Charge) -> void:
+	if law_held(c.seizer):
+		_release(c)  # held still by the law, he cannot march him: he lets him go where he stands (ruling P5-T17-R4)
+		return
+	if march_left(c) > 0.0 and _alive(c.seizer) and (c.seizer as Person).mind == Person.Mind.DUTY:
+		var s := c.seizer as Person
+		var p := c.man as Person
+		var walk := _path_len(s.ground_pos, return_to) / maxf(s.walk_speed, 0.1)
+		if march_left(c) > walk + TICK and s.ground_pos.distance_to(return_to) > RETURN_REACH:
+			if s.anchor.distance_to(s.ground_pos) > MOVE:
+				s.go_duty(s.ground_pos)  # too soon to set off: he holds him here
+		elif s.anchor.distance_to(return_to) > MOVE:
+			s.go_duty(return_to)
+		if p.mind == Person.Mind.DUTY or p.mind in HOLD_FROM:
+			if p.mind != Person.Mind.DUTY or p.anchor.distance_to(s.ground_pos) > TAKE_REACH:
+				p.go_duty(s.ground_pos)
+		return
+	super(c)
 
 
 ## `p`'s pace as `factor` of his own (an inquisitor); true when it changed.
@@ -550,6 +682,11 @@ func _set_pace(p: Person, factor: float) -> bool:
 ## The searchers' look, in the hounds' place (MS §2): the fallen replaced, the stops and arrivals, the orders, the numbers, a household
 ## still inside caught up with, the loss announced.
 func _step_hunters() -> void:
+	if broken_at < 0.0 and watch_broken():
+		broken_at = _clock
+		_chain()  # the second household sets out at once, with the banner that says why
+	if not hurrying and none_can_seize():
+		_hurry()
 	_relieve_search()
 	_advance_search()
 	_order_search()
@@ -673,10 +810,16 @@ func _search_point() -> Vector2:
 
 
 ## Each inquisitor on his feet and free is sent to the search's place, HF_SEARCH_GAP apart: walking the list at HF_SEARCH_PACE, on a trail
-## at HF_TRAIL_PACE. A seizer, one held by the god or frightened or indoors is left be; one back on his feet goes on.
+## at HF_TRAIL_PACE. A seizer, one held by the god or frightened or indoors is left be; one back on his feet goes on. One under Decree's law stands
+## where he is (ruling P5-T17-R4).
 func _order_search() -> void:
 	var live: Array[Person] = []
 	for v: Variant in inquisitors:
+		if law_held(v) and not (v as Person).inside:
+			var still := v as Person
+			if still.mind != Person.Mind.DUTY or still.anchor.distance_to(still.ground_pos) > MOVE:
+				still.go_duty(still.ground_pos)  # the law holds him still where he stands (ruling P5-T17-R4)
+			continue
 		if _alive(v) and not (v as Person).inside and not _seizing(v):
 			live.append(v as Person)
 	var target := _search_point()
@@ -980,7 +1123,7 @@ func _trail_left(i: int) -> float:
 	var lead := lamp(i) if h.out else null
 	if lead != null:
 		at = (lead.man as Person).ground_pos
-	return _road_left(i, at) / (Person.PANIC_SPEED * HF_BELIEVER_PACE)
+	return _road_left(i, at) / (Person.PANIC_SPEED * believer_pace())
 
 
 ## The length of household `i`'s road (the base's cached walk to its gate's way out) still ahead of a believer at `at`: from the nearest
@@ -1002,13 +1145,14 @@ func _road_left(i: int, at: Vector2) -> float:
 	return left + (best if best < INF else 0.0)
 
 
-## Every marched believer's seconds to the Temple, from the seizer's walk (once a look, so tags() reads and never paths).
+## Every marched believer's seconds to the Temple, from the seizer's walk and the march's least time (HF_MARCH_MIN), once a look, so tags() reads and
+## never paths.
 func _refresh_march() -> void:
 	var now: Dictionary = {}
 	for c in charges:
 		if c.held and not _resolved(c) and _alive(c.seizer):
 			var s := c.seizer as Person
-			now[c] = {"eta": _path_len(s.ground_pos, return_to) / maxf(s.walk_speed, 0.1), "at": _clock}
+			now[c] = {"eta": maxf(_path_len(s.ground_pos, return_to) / maxf(s.walk_speed, 0.1), march_left(c)), "at": _clock}
 	_march = now
 
 
@@ -1100,9 +1244,16 @@ func _escape_banner() -> String:
 	return "A BELIEVER IS OUT  %d/%d" % [out_count(), tune_need]
 
 
-## The strip (MS §2): "The search reaches <household>" counting down to the listed house of each household the search has not reached yet.
+## The strip (MS §2): "The search reaches <household>" counting down to the listed house of each household the search has not reached yet; while a
+## believer is marched, "A believer reaches the Temple" counting down to the soonest delivery (ruling P5-T17-R2).
 func strip_rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	var soonest := INF
+	for c in charges:
+		if c.held and not _resolved(c) and _march.has(c):
+			soonest = minf(soonest, _temple_in(c))
+	if soonest < INF:
+		out.append({"in": soonest, "label": "A believer reaches the Temple"})  # (ruling P5-T17-R2: the march counted down where the clock is read)
 	for k in _search.size():
 		var hi := int(_search[k].household)
 		if hi < 0 or _reached(k) or k >= _eta.size() or _eta[k] == INF:
@@ -1149,7 +1300,7 @@ func tags() -> Array[MapTag]:
 			if c == lead:
 				var g := heading(i)
 				var gate := String((gates[g] as Gate).label) if g >= 0 else "GATE"
-				var eta := _road_left(i, p.ground_pos) / maxf(Person.PANIC_SPEED * HF_BELIEVER_PACE, 0.1)
+				var eta := _road_left(i, p.ground_pos) / maxf(Person.PANIC_SPEED * believer_pace(), 0.1)
 				out.append(MapTag.person(p.ground_pos, MARK_CHARGE, "BELIEVER - %s IN %s%s" % [gate, UiTheme.clock(eta), warn], true))
 			else:
 				out.append(MapTag.person(p.ground_pos, MARK_CHARGE, "BELIEVER" + warn, true))

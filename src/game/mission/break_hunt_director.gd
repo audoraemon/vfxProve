@@ -89,6 +89,10 @@ const BH_ESCORT_PACE := 1.3
 ## How long the escort who takes a standard up, and his fellow, fear nothing, in real seconds (Ruling P5-T7-R8): the death that made him bearer
 ## frightens no one into breaking it. After that the normal rules apply.
 const BH_STEADY := 5.0
+## How far past the steadiness a steadied man's fearlessness may run before it is clamped (Task 17, ruling P5-T17-R5): a look's slack, so the
+## fearlessness the steadiness gave, counting down on its own, is never touched; only a stretch (Decree's Magnify multiplies every timer a man
+## carries, review-milestone M8) is cut back.
+const BH_STEADY_SLACK := 0.25
 ## How far the street from a muster to a house must pass from every other house's door (Ruling P5-T7-R9): a planted company's two escorts stand BH_LANE_GAP
 ## apart about its bearer (it was 0.9 each side when this was ruled; P5-T12-R3), and the next company must pass it by more than two Silent Doom radii.
 const BH_DOOR_CLEAR := 2.7
@@ -138,6 +142,11 @@ var _flank_ang: Array[float] = []
 var _snap: Array = []
 var _afraid_prev: Array[bool] = []
 var _steady_until: Array[float] = []
+## By step: each steadied man's fearlessness as the steadiness gave it and the real second it was given, {Person: [given, at]}, with a third
+## entry once it was found stretched (Task 17, ruling P5-T17-R5: _clamp_steady()); and the night's real seconds, which the people's own timers
+## count.
+var _steadied: Array = []
+var _real := 0.0
 ## By step: the clock until which a bearer who has just taken a standard up stands and waits for his fellow to come within the guard reach (-1 for none).
 var _hold_until: Array[float] = []
 ## By step: the planted company's two posts, chosen once when it plants (empty until then, or when no lane has room for a wide pair).
@@ -184,6 +193,7 @@ func _plan() -> void:
 		_snap.append([])
 		_afraid_prev.append(false)
 		_steady_until.append(-1.0)
+		_steadied.append({})
 		_hold_until.append(-1.0)
 		_lane.append([])
 		_trail.append([])
@@ -752,6 +762,28 @@ func _steady_company(i: int) -> void:
 			else:
 				p.leave_shelter(false)
 		p.reassure(BH_STEADY)
+		(_steadied[i] as Dictionary)[p] = [p.fearless_left, _real]
+
+
+## A steadied man's fearlessness never outlasts the steadiness it was given, nor so the TAKEN UP tag (Task 17, review-milestone M8, ruling
+## P5-T17-R5): Decree's Magnify multiplies every timer a man carries, and on a steadied escort stretched it past the tag, a hidden state against the
+## player. At each look the fearlessness is cut back to what is left of the given (more than BH_STEADY_SLACK over it, so a fearlessness counting down
+## on its own is never touched; once cut, he is held to it exactly); the man is forgotten once it has run out. Only here, never in Person (no other mission's rows move).
+func _clamp_steady(i: int) -> void:
+	var men: Dictionary = _steadied[i]
+	for v: Variant in men.keys():
+		if not _alive(v):
+			men.erase(v)
+			continue
+		var p := v as Person
+		var left := maxf(float(men[v][0]) - (_real - float(men[v][1])), 0.0)
+		var cut: bool = (men[v] as Array).size() > 2  # stretched once: held to the given from then on
+		if p.fearless_left > left + (0.0 if cut else BH_STEADY_SLACK):
+			p.fearless_left = left
+			if not cut:
+				(men[v] as Array).append(true)
+		if left <= 0.0:
+			men.erase(v)
 
 
 ## Escort `g` of step `i` guards the bearer now (MS §5): alive, out of doors, within `guard_reach` of the bearer's place, not held by the god
@@ -803,6 +835,7 @@ func _keep_held(evacuating: bool) -> void:
 ## One step: the base's (the timeline, the chain, every look), the clock moved on to mission seconds, those the walls stopped taken off the
 ## map, and the warning for a standard nearing a house.
 func step(delta: float) -> void:
+	_real += delta
 	_step_leaving()
 	super(delta)
 	_clock += mission_delta(delta) - delta
@@ -818,6 +851,7 @@ func _keep_party(i: int, _delta: float, looking: bool, evacuating := false) -> v
 	if not looking:
 		return
 	var st := steps[i]
+	_clamp_steady(i)
 	_post_escorts(i, evacuating)
 	if not st.raised:
 		var waiting := bearer(i)

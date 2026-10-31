@@ -117,7 +117,7 @@ const RITE_SHOWS := ["first_taste-start", "first_taste-six", "first_taste-modes"
 ## on the north-west household's trail, `silence_witness-relay` a witness killed in sight of his mate, `expel_inquisitor-captain` the captain out
 ## on his round, `break_hunt-taken` a bearer at a house's door, `face_halcyon-pyre` a believer bound to the stake. `prepare-hunt-1` .. `-5` are the
 ## Hunts' Prepare screens at the five tiers and `board-dev-hunts` the DEV tab's Hunt row; neither is a night.
-const HUNT_SHOWS := ["hide_faithful-start", "hide_faithful-trail", "silence_witness-start", "silence_witness-relay", "expel_inquisitor-start",
+const HUNT_SHOWS := ["hide_faithful-start", "hide_faithful-trail", "hide_faithful-broken", "hide_faithful-march", "silence_witness-start", "silence_witness-relay", "expel_inquisitor-start",
 	"expel_inquisitor-captain", "break_hunt-start", "break_hunt-taken", "face_halcyon-start", "face_halcyon-pyre"]
 const HUNT_PREPARE_SHOWS := ["prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5"]
 ## Grass: what shows between screens, the same clear colour the mission uses.
@@ -548,7 +548,8 @@ func _ready() -> void:
 		"first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk", "first_taste-cleanse", "first_taste-win":
 			_show_endless(show)
 		"prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5", \
-		"hide_faithful-start", "hide_faithful-trail", "silence_witness-start", "silence_witness-relay", "expel_inquisitor-start", "expel_inquisitor-captain", \
+		"hide_faithful-start", "hide_faithful-trail", "hide_faithful-broken", "hide_faithful-march", "silence_witness-start", "silence_witness-relay", \
+		"expel_inquisitor-start", "expel_inquisitor-captain", \
 		"break_hunt-start", "break_hunt-taken", "face_halcyon-start", "face_halcyon-pyre":
 			# The Lantern Hunts' Prepare screens and nights (god P5, Task 14): the fixture god at the Hunt's tier, on the dev fill.
 			_show_endless(show)
@@ -1486,6 +1487,27 @@ func _stage_hunt(show: String) -> void:
 					_put(c.man as Person, door + Vector2(0.0, 12.0 + 0.5 * float(k)))
 			_look_at(door)
 			await get_tree().create_timer(EscortDirector.TICK * 3.0).timeout
+		"hide_faithful-broken":
+			# Every soldier of the watch struck down while the second household waits: the watch is broken and it sets out (Task 17, ruling P5-T17-R1).
+			var d := dir as HideFaithfulDirector
+			for v: Variant in d._soldiers():
+				if v is Person and is_instance_valid(v):
+					d.crowd._field.kill(v as Person, &"doom")
+			_look_at((d.households[1] as ExodusDirector.Household).door)
+			await get_tree().create_timer(EscortDirector.TICK * 3.0).timeout
+		"hide_faithful-march":
+			# A patrol soldier seizes the lamp of the first household: the march to the Temple counts down on his tag and the strip (Task 17, ruling
+			# P5-T17-R2).
+			var d := dir as HideFaithfulDirector
+			d._come_out(0)
+			await get_tree().create_timer(EscortDirector.TICK * 2.0).timeout
+			var lead := d.lamp(0)
+			var soldier: Variant = d.patrols[0][0] if not d.patrols.is_empty() else null
+			if lead != null and soldier is Person and is_instance_valid(soldier):
+				_put(soldier as Person, (lead.man as Person).ground_pos + Vector2(1.0, 0.0))
+				(soldier as Person).send_to_post((soldier as Person).ground_pos)
+				_look_at((lead.man as Person).ground_pos)
+			await get_tree().create_timer(EscortDirector.TICK * 6.0).timeout
 		"silence_witness-relay":
 			# The first witness killed in sight of his mates: one of them runs on (MS §3).
 			var d := dir as SilenceWitnessDirector

@@ -9,6 +9,9 @@ extends RefCounted
 ## road as it lies ahead (_view()); the type's own two powers then answer the soonest, in the lead its power needs (a kill lands within a
 ## second, a mark in ten, a law holds fifteen). A seized believer is freed by taking his seizer away (_seizers()). No policy casts only to
 ## end an idle stretch (T1R D38): every cast here is an answer to a watcher, a seizer or the search, or the type's one set-piece (the mirror).
+## Since Task 17 the night is rebuilt: the second household sets out when the watch is broken (every soldier dead or rallied), a seized believer is
+## marched at least 20 s, Decree's law holds an inquisitor still, and the believers hurry once nothing can seize them; the reading follows the search
+## onto a household's trail (_trailing()), and no kill is made ahead of its power's own lead (P5-T9-R9's idle lead retired, ruling P5-T17-R3).
 
 ## The god types whose policy is written.
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
@@ -43,14 +46,8 @@ const READ_KEEP := 0.2
 ## A killing blow lands this far (plus its radius) from a believer at the least, or it takes him too.
 const BLOW_GAP := 0.4
 
-## A gate watchman is answered this far ahead of his sight once nothing has been cast for IDLE_AFTER seconds: a power ready and a real threat to the
-## households known, so a player strikes rather than waits (and the night's real idle stays short).
-const LONG_LEAD := 70.0
-const IDLE_AFTER := 30.0
-## ...and the last of them too, once this long has passed (the wait before the win is a stretch of the night's idle like any other).
-const IDLE_LAST := 38.0
-## ...and a kill nobody was to see is made seen after this long without a cast (Silent Doom: the alarm costs less than a night's idle).
-const IDLE_RELAX := 38.0
+## (Ruling P5-T9-R9's idle lead -- a gate watchman struck up to 70 s ahead once 30-38 s passed without a cast, and Veil's seen kill after 38 s --
+## is retired by Task 17, ruling P5-T17-R3: every kill answers a watcher in its own power's lead.)
 
 ## Ruin: Smite is cast on the soonest watcher when his sight of a believer is this near (a second watcher of a pair is cast ten seconds later,
 ## so the first goes early enough for it); Silent Doom the same.
@@ -225,6 +222,10 @@ static func _along(leg: Dictionary, along: float) -> Vector2:
 ## pace and HF_SEARCH_STOP at each door; on a trail, the path he is on.
 static func _where(ctx: Dictionary, d: HideFaithfulDirector, w: Dictionary, s: float) -> Vector2:
 	var p: Person = w.p
+	if w.kind == "inquisitor" and d.trail_of() >= 0 and not p.inside:
+		var i := d.trail_of()
+		var rc := _road(ctx, d, i)
+		return _trailing(ctx, d, i, _progress(rc, p.ground_pos), s, s)
 	if w.kind != "inquisitor" or d.trail_of() >= 0 or d._search_at >= d._search.size() or p.inside:
 		return GOD_T1.road_ahead(p, s)
 	var speed := maxf(Person.PANIC_SPEED * float(d._inq_base.get(p.get_instance_id(), p.pace)) * HideFaithfulDirector.HF_SEARCH_PACE, 0.2)
@@ -245,11 +246,31 @@ static func _where(ctx: Dictionary, d: HideFaithfulDirector, w: Dictionary, s: f
 			return _along(leg, left * speed)
 		left -= run
 		at = d._search[k].door
+		# A household's house whose household is out (or will be, by SLIP, before the search gets there) and not done: the search takes up its trail
+		# there (MS §2; the strip's "The search reaches <household>" says when) and walks after its lamp at the trail's pace.
+		var hi := int(d._search[k].household)
+		if hi >= 0 and not (d.households[hi] as ExodusDirector.Household).done:
+			return _trailing(ctx, d, hi, 0.0, left, s)
 		if left <= HideFaithfulDirector.HF_SEARCH_STOP:
 			return at
 		left -= HideFaithfulDirector.HF_SEARCH_STOP
 		k += 1
 	return at
+
+
+## Where an inquisitor on household `i`'s trail stands `s` seconds on (`walk` of them on the trail), from `along` its road: he walks the road after its
+## lamp at the trail's pace and never past the lamp (the lamp walking on at the believers' pace, from its door once the household is out).
+static func _trailing(ctx: Dictionary, d: HideFaithfulDirector, i: int, along: float, walk_s: float, s: float) -> Vector2:
+	var rc := _road(ctx, d, i)
+	var h: ExodusDirector.Household = d.households[i]
+	var walk := Person.PANIC_SPEED * HideFaithfulDirector.HF_SEARCH_BASE_PACE * HideFaithfulDirector.HF_TRAIL_PACE
+	var lamp_at := 0.0
+	var lead := d.lamp(i)
+	if h.out and lead != null:
+		lamp_at = _progress(rc, (lead.man as Person).ground_pos) + Person.PANIC_SPEED * d.tune_believer_pace * s
+	elif not h.out:
+		lamp_at = Person.PANIC_SPEED * d.tune_believer_pace * maxf(s - d.due_in(i), 0.0)
+	return _point(rc, minf(along + walk * walk_s, maxf(lamp_at - 0.5, along)))
 
 
 ## Seconds until watcher `w` first comes within SIGHT of an exposed believer walking on; INF when not within READ_AHEAD.
@@ -282,21 +303,6 @@ static func _view(ctx: Dictionary, d: HideFaithfulDirector) -> Dictionary:
 		threats.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.t) < float(b.t))
 	memo.view = {"at": d._clock, "n": d.charges.size(), "exposed": exposed, "threats": threats}
 	return memo.view
-
-
-## How far ahead of his sight a watcher is answered now: `lead`, and for a stationary one (the gates' watch) LONG_LEAD once IDLE_AFTER seconds have
-## passed with nothing cast and two or more of the gates' watch are waiting; the last one waits for his own lead until IDLE_LAST. The men who
-## move (patrols, inquisitors and their reliefs) are answered in their own lead only: killed early they leave nothing to answer later, and the night's
-## real idle is its longest wait, the one before the win included.
-static func _lead(ctx: Dictionary, d: HideFaithfulDirector, th: Dictionary, lead: float) -> float:
-	if th.kind == "watch":
-		var idle := d._clock - float(ctx.memo.get("last_cast", 0.0))
-		var stationary := 0
-		for o: Dictionary in _view(ctx, d).threats:
-			stationary += 1 if o.kind == "watch" else 0
-		if (stationary >= 2 and idle >= IDLE_AFTER) or idle >= IDLE_LAST:
-			return LONG_LEAD
-	return lead
 
 
 ## The marched believers' seizers: [{c, s, b, kind}] (the charge, the seizer, the believer's person, and what the seizer is), the seizer alive.
@@ -453,7 +459,7 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 			_cast(ctx, "smite", at)
 			return "smite a %s seizer" % sz.kind
 	for th: Dictionary in _view(ctx, d).threats:
-		if float(th.t) > _lead(ctx, d, th, SMITE_LEAD):
+		if float(th.t) > SMITE_LEAD:
 			continue
 		var at := GOD_T1.road_ahead(th.p, SmiteFx.T_STRIKE)
 		if _flock_clear(bc, d, at, SmiteFx.KILL_R + BLOW_GAP):
@@ -480,7 +486,7 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	var threats: Array = _view(ctx, d).threats
 	if _ready(bc, ctx, "pestilence"):
 		for th: Dictionary in threats:
-			if float(th.t) > _lead(ctx, d, th, PLAGUE_LEAD):
+			if float(th.t) > PLAGUE_LEAD:
 				continue
 			var p: Person = th.p
 			if _doomed(p):
@@ -501,7 +507,7 @@ static func act_death(bc, ctx: Dictionary) -> String:
 			for j in range(i + 1, live.size()):
 				if float(live[j].t) - float(th.t) <= MARK_HOUR:
 					behind += 1
-			if float(th.t) <= _lead(ctx, d, th, MARK_LEAD) + 21.0 * float(behind):
+			if float(th.t) <= MARK_LEAD + 21.0 * float(behind):
 				_cast(ctx, "deathmark", (th.p as Person).ground_pos)
 				return "death mark a %s" % th.kind
 	return ""
@@ -544,10 +550,10 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 			_cast(ctx, "doom", at)
 			return "doom a %s seizer" % sz.kind
 	for th: Dictionary in _view(ctx, d).threats:
-		if float(th.t) > _lead(ctx, d, th, DOOM_LEAD):
+		if float(th.t) > DOOM_LEAD:
 			continue
 		var at := GOD_T1.road_ahead(th.p, SilentDoom.T_STRIKE)
-		if _flock_clear(bc, d, at, SilentDoom.RADIUS + BLOW_GAP) and _doom_ok(d, crowd, at, float(th.t) > 6.0 and d._clock - float(ctx.memo.get("last_cast", 0.0)) < IDLE_RELAX):
+		if _flock_clear(bc, d, at, SilentDoom.RADIUS + BLOW_GAP) and _doom_ok(d, crowd, at, float(th.t) > 6.0):
 			_cast(ctx, "doom", at)
 			return "doom a %s" % th.kind
 	return ""
@@ -651,54 +657,86 @@ static func _cage_safe(view: Dictionary, at: Vector2) -> bool:
 	return true
 
 
-## Walkable ground within 14 of `from` as far as it can be found from every household's road (at least FAR_ROAD when it can): where the guard is
-## called, so the soldiers it takes stand and then walk back a long way from the roads, not at them.
-static func _far_from_roads(ctx: Dictionary, d: HideFaithfulDirector, from: Vector2) -> Vector2:
-	var best := from
+## Where the guard is called for `targets` (soldiers): the call takes the BellLiesFx.GUARDS soldiers nearest the click, so the place must have every one
+## of them among those (else a soldier the household meets stays at his post; Task 17); of such places within 12 of the group, the one farthest from the
+## households' roads, so they stand away from the roads and walk back a long way. The group's middle when no place takes them all.
+static func _call_spot(ctx: Dictionary, d: HideFaithfulDirector, targets: Array) -> Vector2:
+	var mid := Vector2.ZERO
+	for q: Person in targets:
+		mid += q.ground_pos
+	mid /= maxf(float(targets.size()), 1.0)
+	var pool: Array[Person] = []
+	for q in (ctx.crowd as Crowd).soldiers:
+		if is_instance_valid(q) and q.is_alive() and not q.inside:
+			pool.append(q)
+	var best := mid
 	var far := -1.0
-	for dist in [6.0, 9.0, 12.0, 14.0]:
-		for k in 16:
-			var g: Vector2 = from + Vector2.from_angle(TAU * float(k) / 16.0) * float(dist)
+	for dist in [0.0, 2.0, 4.0, 6.0, 9.0, 12.0]:
+		for k in (1 if dist == 0.0 else 16):
+			var g: Vector2 = mid + Vector2.from_angle(TAU * float(k) / 16.0) * float(dist)
 			if not (ctx.crowd as Crowd)._grid.walkable(g) or Walls.outside(g):
 				continue
-			var near := INF
+			var near := pool.duplicate()
+			near.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(g) < b.ground_pos.distance_squared_to(g))
+			near = near.slice(0, BellLiesFx.GUARDS)
+			var all := true
+			for q: Person in targets:
+				all = all and near.has(q)
+			if not all:
+				continue
+			var road := INF
 			for i in d.households.size():
-				var rc := _road(ctx, d, i)
-				var pts: Array = rc.pts
-				for q in range(pts.size() - 1):
-					near = minf(near, Geometry2D.get_closest_point_to_segment(g, pts[q], pts[q + 1]).distance_to(g))
-			if near > far:
-				far = near
+				var pts: Array = _road(ctx, d, i).pts
+				for m in range(pts.size() - 1):
+					road = minf(road, Geometry2D.get_closest_point_to_segment(g, pts[m], pts[m + 1]).distance_to(g))
+			if road > far:
+				far = road
 				best = g
 	return best
 
 
 ## The Bell Lies calls the guard to the soldiers a household would meet (the call takes soldiers only: they stand away twenty seconds, blind) when
-## the first of them is near his sight, or away from a seizer. Leaving Is Prohibited cages the group that is the soonest to meet a household -- the
-## inquisitors, or a patrol -- at the edge of the circle on the side it walks from (_cage()), whenever it is ready and the cage keeps the households
-## out of reach (_cage_safe()): fifteen seconds in twenty the group stands, and walks the other five.
+## the first gate watchman is near his sight, or away from a soldier who seizes -- but while a household still has its gate's watch to pass, a patrol's
+## seizer is left to the law when the law can take him before his march ends, and the call is kept for the gate (Task 17). Leaving Is Prohibited takes
+## a marched believer's seizer first (an inquisitor bound by it lets his believer go and stands: the fallback the user approved, ruling P5-T17-R4; a
+## soldier's march stops while the cage holds), then cages the group that is the soonest to meet a household -- the inquisitors (held still and
+## blind), or a patrol (at the edge on the side it walks from, _cage()) -- whenever it is ready and the cage keeps the households out of reach
+## (_cage_safe()).
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := _hf(ctx)
 	if d == null:
 		return ""
 	var view := _view(ctx, d)
+	# A household not yet out still has its gate's watch to pass: the call is kept for that (the law holds a patrol's seizer meanwhile).
+	var gate_ahead := false
+	for h: ExodusDirector.Household in d.households:
+		if h.done:
+			continue
+		var mouth: Vector2 = (d.gates[h.gate] as ExodusDirector.Gate).mouth
+		for v: Variant in d.watch:
+			gate_ahead = gate_ahead or (d._watching(v) and (v as Person).ground_pos.distance_to(mouth) <= GATE_NEAR)
 	if _ready(bc, ctx, "belllies"):
 		for sz: Dictionary in _seizers(d):
-			_cast(ctx, "belllies", (sz.s as Person).ground_pos + Vector2(3.0, 0.0), {"mode": "guard"})
-			return "call the guard away from a %s seizer at (%.1f, %.1f)" % [sz.kind, (sz.s as Person).ground_pos.x, (sz.s as Person).ground_pos.y]
-		var group := PackedVector2Array()
+			if sz.kind == "inquisitor":
+				continue  # the call takes soldiers only: a lay inquisitor marching a believer is the law's (below)
+			var caged := float(ctx.memo.get("caged_%d" % (sz.s as Person).get_instance_id(), -INF))
+			var law_in: float = (ctx.rules as Rules).cooldown_left(int(ctx.slots.noleave)) if ctx.slots.has("noleave") else INF
+			var law_soon := law_in < d._temple_in(sz.c) - 2.0  # the law is ready before the march ends: it will take him
+			if gate_ahead and sz.kind != "watch" and (law_soon or d._clock - caged < NoLeaveFx.HOLD_TIME):
+				continue  # a gate's watch is still to pass: the law takes this seizer, the call is kept for the gate
+			var away := _call_spot(ctx, d, [sz.s])
+			_cast(ctx, "belllies", away, {"mode": "guard"})
+			return "call the guard away from a %s seizer, to (%.1f, %.1f)" % [sz.kind, away.x, away.y]
 		var first := INF
 		for th: Dictionary in view.threats:
 			if th.kind == "watch":  # the gate's watch: the one the law cannot hold (a patrol can be caged); lay inquisitors the call does not take
 				first = minf(first, float(th.t))
 		if first <= GUARD_LEAD:
+			var targets: Array = []
 			for th: Dictionary in view.threats:
 				if th.kind != "inquisitor" and float(th.t) <= first + GUARD_SPAN:
-					group.append((th.p as Person).ground_pos)
-			var mid := Vector2.ZERO
-			for g in group:
-				mid += g
-			var there := _far_from_roads(ctx, d, mid / float(group.size()))
+					targets.append(th.p)
+			var there := _call_spot(ctx, d, targets)
 			_cast(ctx, "belllies", there, {"mode": "guard"})
 			return "call the guard away from the roads, to (%.1f, %.1f)" % [there.x, there.y]
 	if _ready(bc, ctx, "noleave"):
@@ -708,6 +746,7 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 			var march := _cage(d, [sz.s, sz.b])
 			if not march.is_empty():
 				_cast(ctx, "noleave", march.at)
+				ctx.memo["caged_%d" % (sz.s as Person).get_instance_id()] = d._clock
 				return "leaving is prohibited on a %s seizer and his prisoner" % sz.kind
 		var groups: Array = []  # [{members, t, kind}] by the squad each belongs to
 		for th: Dictionary in view.threats:

@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_break_unguarded(t)
 	_guard_rules(t)
 	_take_up(t)
+	_magnify_clamp(t)
 	_out_of_walls(t)
 	_taken(t)
 	_lose_two(t)
@@ -701,6 +702,33 @@ static func _taken_up_world() -> Dictionary:
 		_walk_frame(s, d, 0, w, DT)
 		n += 1
 	return {"s": s, "d": d, "w": w, "es": es}
+
+
+## Decree's Magnify on a steadied company (Task 17, review-milestone M8, ruling P5-T17-R5): it multiplies every timer a man carries, his
+## fearlessness too, and so stretched the steadiness past the TAKEN UP tag -- a hidden state against the player. The director clamps it: a
+## steadied man's fearlessness never outlasts the steadiness it was given (the tag's time); the rest of Magnify's work is the power's own.
+static func _magnify_clamp(t) -> void:
+	var tw := _taken_up_world()
+	var s: Dictionary = tw.s
+	var d: BreakHuntDirector = tw.d
+	var up := d.bearer(0)
+	var fellow := (d.steps[0].party[0] as HuntDirector.Guard).man as Person
+	var before := up.fearless_left
+	up.magnify(3.0)
+	fellow.magnify(3.0)
+	var stretched := up.fearless_left
+	Kit.run_for(s, LOOK)
+	var tag_left := (d._steady_until[0] - d._clock) / maxf((s.rules as Rules).clock_rate, 0.01)
+	t.check(stretched > before * 2.0 and up.fearless_left <= tag_left + 0.3 and fellow.fearless_left <= tag_left + 0.3,
+		"Magnify on the new bearer and his fellow (fearless %.1f -> %.1f) is clamped at the next look to the steadiness left (%.1f, %.1f <= %.1f)" % [
+		before, stretched, up.fearless_left, fellow.fearless_left, tag_left])
+	Kit.run_for(s, BreakHuntDirector.BH_STEADY + LOOK)
+	var tagged := false
+	for l: String in Kit.labels(d):
+		tagged = tagged or l.contains("TAKEN UP")
+	t.check(not tagged and up.fearless_left <= 0.0 and fellow.fearless_left <= 0.0,
+		"when the TAKEN UP tag is gone his fearlessness is gone too (%.2f, %.2f)" % [up.fearless_left, fellow.fearless_left])
+	Kit.done(s)
 
 
 ## The take-up (Ruling P5-T7-R8): a guarded bearer struck dead is judged as he stood at the look before, so the fright his death gives his escorts does

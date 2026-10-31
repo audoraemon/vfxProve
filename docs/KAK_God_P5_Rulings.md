@@ -201,7 +201,7 @@ Each entry is tagged: **(task)** the implementer's choice, **(controller)** the 
 - **P5-T9-R6 (controller).** One try at a Decree policy (the inquisitors caged first); if it fails, report the concern to you under R40. It failed. Decree 0/3 is reported (summary item 2).
 - P5-T9-5 (task). The pair of 0:00 is set in file facing the first stop. A director change beyond the brief, needed so the pair rules hold on the walk.
 - **P5-T9-R8 (controller).** The inquisitor pair walks in file, to the same standard as Hunt 2 and Hunt 3: the nearer man goes to the farther place, and the rear man holds until the gap opens to 2.3. Measured: 0.0% of steps under 1.6 plain, 1.9% with a relief. Why: the review measured 5-8% under 1.6 on the walk. Cost: the fix changed when the search meets each household, and the gate fell from 4/6 to 0/6. Accepted: the pair rule is a hard rule, so the tree stays (summary item 4).
-- **P5-T9-R9 (controller).** Thornwall is dropped from Passage (so its idle becomes the Mirrorfold cooldown of 54 s, under P5-T11-R2). Dominion's Whisper and Discord are cast only when a believer is about to come in sight. Ruin, Death and Veil keep their idle-triggered early kills and disclose them (summary item 7). Why: the review found two filler casts. Cost: Dominion's idle went over the bar on two seeds (43/52/60).
+- **P5-T9-R9 (controller).** Thornwall is dropped from Passage (so its idle becomes the Mirrorfold cooldown of 54 s, under P5-T11-R2). Dominion's Whisper and Discord are cast only when a believer is about to come in sight. Ruin, Death and Veil keep their idle-triggered early kills and disclose them (summary item 7). Why: the review found two filler casts. Cost: Dominion's idle went over the bar on two seeds (43/52/60). **The Ruin/Death/Veil idle lead (and Veil's seen kill after 38 s) is retired by Task 17 (P5-T17-R3);** the Thornwall and Dominion parts stand.
 - P5-T9-6 (task). Two director changes beyond the brief, found by the walk test: an unreachable place sends the man to the door (a stall), and the relief and the inquisitors are kept from the Lantern Bearer.
 - Tuning rounds: round 1 moved `HF_BELIEVER_PACE` 0.45 to 0.40 and `HF_OUT_AT[1]` 110 to 140; round 2 was policy only; round 3 was reverted. Final: `hunt_gate hide_faithful tier=1 pass=0/6 none_lost=3/3 median=186 FAIL`. The 21 rows were re-recorded from this gate, losses as they fall.
 - Fix round 2 (tests and one comment): four tests that fail by mutation for the four director fixes, a behavioural no-filler test that names its target, and corrected figures.
@@ -286,3 +286,60 @@ The review of the whole branch against `feat/god-progression` found no critical 
 - **I4. P5-L-R2 (controller): Hunt 4's guarded fright.** The spec says a guarded bearer's death or fright passes the standard to an escort. The code passes it only on a death. A frightened, guarded bearer keeps the standard and runs off with it; a guarded fright "only shakes". Ruled to stand. The class doc was reworded to say so. A test (`test_break_hunt.gd:904`) already pins it. Why: this reads the spec's "a guarded standard only shakes" for the fright. Cost if wrong: reversing it moves Hunt 4's 21 rows. (Summary item 10.)
 - **Minors.** M1 (Task 3's parked tool issues), taken: `--route` is refused on a Hunt id; `--level` other than 1 is refused on a Hunt; `hunt_gate.sh --judge` requires `route=god:<type>` in the gate line; `--except` accepts only `decree`, and only on Hunts 2-4; the `exit 2` check that could not fail is replaced by a real run of the script on a two-file fixture (mutation-checked). M2 (test nits), taken. M3, taken: `tune_gate_watch` is 1 in Hunt 5, so a later change cannot divide by zero. M4 and M5 (stale docs, joined lines), taken. M6 (Hunt 1's lamp ETA ignores the man's pace), M7 (counters in Hunts 1 to 3), M8 (Magnify and steadiness) and M9 (small tidy-ups): not done, noted in the summary.
 - **Re-review (sonnet): APPROVED**, with two tiny follow-ups, both done (`559fb61c` anchors a tool-refusal test on the printed line, `e85cafb9` adds a doc line). Single suites after the wave: `test_hunt_tools` 329, `test_hunt_book` 662, `test_god_lantern` 194, `test_face_halcyon` 318, `test_break_hunt` 513, `test_hide_faithful` 334, `test_silence_witness` 452, `test_expel_inquisitor` 766, all with 0 failures. The three none rows of Hunt 5 were unchanged. The full suite and all references are the controller's, at the landing.
+
+## Hunt 1 rebuild (Task 17)
+
+Branch `god/h1-rebuild` from `kak-god-p5` (`7ee0cbb8`), from your answers of 2026-10-31 (EARLY OUT + SHORTER BAND, MARCH 20 S, Decree RETRY AFTER
+REBUILD, the Magnify CLAMP). Levers used in the brief's order; no new opposition, `HF_BELIEVER_PACE` stays 0.40, the first household stays at 0:15.
+
+- **P5-T17-R1 (task, lever 1). What "the watch is broken" means.** Every soldier of the watch -- the four at the gates and the two patrols of two --
+  is dead or has rallied to the Citadel (the town's own rally after its alarm: he never comes back to the night's work). A soldier held by a power
+  (whispered, called by the bell, caged, confused) or frightened comes back, so he still stands. The inquisitors are the Inquisition's, not the
+  watch, so they and their reliefs are what the second household still has to answer. Why: it is your own wording ("no gate watchman or patrol
+  stands"), the player sees it (every soldier's WATCH tag gone, the banner `THE WATCH IS BROKEN - THE SECOND HOUSEHOLD SETS OUT`), and it leaves
+  answers in the second walk. The alternative "only the second household's own gate's watch" is the same in every kill run (the rally takes every
+  soldier at once) and never fires for the types that do not kill. Noted once (`broken_at`, it never mends); it binds only the second household,
+  alongside 2:20, the chain and SLIP.
+- **P5-T17-R2 (task). The 20 s march.** A seized believer is not delivered before `HF_MARCH_MIN` 20 s. His seizer holds him where he seized him
+  while the walk would end before the 20 s, then walks him to the Temple's door; one who gets there early stands at the door. The strip row
+  `A believer reaches the Temple` and his `SEIZED - TEMPLE IN` tag count the same time down. (A first version made the seizer wait at the door: a
+  believer freed there was caught in the crowd at the Temple's door and stood for the rest of the night, Death seed 2. Waiting where he was seized
+  frees him on the road.) What the player can do during the march, from the code (`EscortDirector._step_held()`: the seizer dead, or in any mind
+  but DUTY, lets go) and seen in the gate runs: Ruin Smites the seizer, Death marks him (he dies in 10 s, inside the 20), Veil Dooms him, Dominion
+  whispers or Discords him, Decree calls a soldier seizer away with the bell or binds an inquisitor seizer with the law (R4). Passage at Tier 1
+  cannot free a marched believer: Thornwall across the seizer's street only delays the delivery (the march needs the door). Its policy folds the
+  households out before the watch meets them, so it is not seized in the gate runs.
+- **P5-T17-R3 (task, lever 2). P5-T9-R9's idle lead retired** for Ruin, Death and Veil: every kill answers a watcher in its power's own lead, and
+  Veil no longer accepts a seen kill after 38 s. Measured: it changed only Ruin seed 2 (idle 30 -> 54); every other run was the same. The test's idle
+  night now asserts that Ruin, Veil and Dominion cast nothing there (Death's mark queue reaches that far on its own, and is kept).
+- **P5-T17-R4 (task, your fallback).** Decree's best honest policy on the rebuilt night still won 0/3 (lost 141 / 131 / 123 s: the bell kept for soldier
+  seizers only and called where it takes them), so the law now holds
+  a lay inquisitor still: one bound by a Leaving Is Prohibited (its bars on him) stands where he is and sees no one while it lasts, and one marching a
+  believer lets him go (MS §2: a seizer held lets him go). In `HideFaithfulDirector` only (`law_held()`, `_watching()`, `_order_search()`,
+  `_step_held()`); the power's shared code is untouched, so the law still only confines a soldier. Decree with it: 0/3 (lost 104 / 131 / 123 s;
+  with the call then kept for the gate, P5-T17-2, lost 200 / 228 / 117 s, the final rows). The soldiers beat it: eight of them, a 60 s bell and a
+  20 s law; ten to sixteen seizures a night.
+- **P5-T17-R5 (task). The Magnify clamp** (review-milestone M8), in `BreakHuntDirector` only: a steadied man's fearlessness never outlasts what the
+  steadiness gave him (the TAKEN UP tag's time). At each look it is cut back when it runs more than `BH_STEADY_SLACK` 0.25 s over the given (so a
+  fearlessness counting down on its own is never touched), and once cut he is held to it exactly. Test `_magnify_clamp` (mutation: the call removed,
+  both checks fail). `--only='^break_hunt_'`: 21/21 OK, no Decree row moved (the scripted Decree never Magnifies a steadied escort).
+- **P5-T17-R6 (task). The judge's band per Hunt:** `hunt_gate.sh` judges Hunt 1's pooled median against 140-200 s and every other Hunt's against
+  180-240 s. Test `_gate_band` (Hunt 1 at 150 s passes and at 205 fails; Hunt 2 the other way round).
+- **P5-T17-R7 (task, lever 3). The hurry.** Once nothing can seize them -- the watch broken, no inquisitor alive and no relief left to come -- every
+  believer still in the town walks on at a citizen's own pace (his pace without `HF_BELIEVER_PACE`), banner `NO ONE IS LEFT TO SEIZE THEM - THE
+  FAITHFUL HURRY OUT`; the lamp's tag and the search's times use the new pace. Disclosed: it shortens the kill types' nights. Without it (round 1)
+  the pooled median was 148 s (in the band) but Veil's idle was 63 s; with it Veil passes (29/23/45) and the median is 134 s. To revert: drop the
+  `_hurry()` call in `_step_hunters()`.
+- P5-T17-1 (task, policy). The policies read the search as it will go: an inquisitor reaching a household's house that is out takes up its trail
+  and walks after its lamp at the trail's pace, never past it (`_trailing()`), so a relief coming for the second household is answered in its lead.
+- P5-T17-2 (task, policy). Decree: the bell's call is made only for a soldier seizer (it takes soldiers only), at a place that has every soldier it
+  is cast for among the twelve nearest (else one the household meets stayed at his post), as far from the roads as such a place lies; while a
+  household still has its gate's watch to pass, a patrol's seizer is left to the law when the law is ready before his march ends.
+- P5-T17-3 (task). Two `--show` names for the photographs, `hide_faithful-broken` and `hide_faithful-march` (`game.gd`).
+- Tried and dropped: a plague-safe Pestilence for Death (never where a believer walks within 6 in the next 10-60 s, or where anyone but the pair stands
+  within 1.5-3): Death won 1/3 either way (the market street is never thin), so the Task 9 rule stands.
+- Gate (final tree; dev tree, seeds 1-3; none lost 3/3 at 61-64 s): Ruin 3/3 101/188/134 s idle 38/54/57; Death 1/3 102 s (dawn 246, lost 60) idle
+  21/64/20; Veil 3/3 140/126/182 s idle 29/23/45 PASS; Passage 3/3 74/74/73 s idle 54 (the cooldown, P5-T11-R2); Decree 0/3 (lost 200/228/117 s);
+  Dominion 3/3 177/189/189 s idle 37/35/60. `hunt_gate hide_faithful tier=1 pass=1/6 none_lost=3/3 median=134 FAIL`.
+- References: Hunt 1's 21 rows re-recorded in place (18 moved; Passage's three did not). Unmoved: `digest`, `crowd_check`, `calm`, the 21
+  `break_hunt_` rows, the nine none rows of Hunts 2, 3 and 5, and the 96 god Tier 1 rows (`god_<type>_<lamb|harvest|warning|prayers|tax>_*`).

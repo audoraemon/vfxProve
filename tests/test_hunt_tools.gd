@@ -54,6 +54,7 @@ static func run(t) -> void:
 	_check_arms(t)
 	_gate_flags(t)
 	_gate_behaviour(t)
+	_gate_band(t)
 	GodTree.dev_fill = false
 	GodTree.use_table({})
 
@@ -210,6 +211,7 @@ static func _gate_flags(t) -> void:
 		t.check(line.contains("exit 2"), "the refusal `%s` exits 2 on its own line (%s)" % [msg, line.right(40)])
 	t.check(src.contains("none_lost"), "the judge line carries none_lost")
 	t.check(src.contains("180") and src.contains("240"), "the pooled median is judged against 180-240")
+	t.check(src.contains("hide_faithful) LO=140; HI=200"), "Hunt 1's band is 140-200 (Task 17, the user's answer of 2026-10-31)")
 
 
 ## hunt_gate.sh run for real (bash; skipped with a note when bash cannot be started): the judge reads only a gate line whose route is the
@@ -254,6 +256,46 @@ static func _gate_behaviour(t) -> void:
 	for name in ["ruin", "death"]:
 		DirAccess.remove_absolute("%s/hide_faithful.%s.txt" % [dir, name])
 	DirAccess.remove_absolute(dir)
+
+
+## The judge's band is per Hunt (Task 17, the user's answer of 2026-10-31, ruling P5-T17-R6): Hunt 1 (hide_faithful) 140-200, every other Hunt
+## 180-240. Six passing types whose wins all took 150 s: Hunt 1 passes, Hunt 2 fails on the median alone; 205 s fails Hunt 1 and passes Hunt 2.
+static func _gate_band(t) -> void:
+	var script := ProjectSettings.globalize_path("res://tools/dev/hunt_gate.sh")
+	var probe: Array = []
+	if OS.execute("bash", ["-c", "test -f '%s'" % script], probe) != 0:
+		t.check(true, "bash cannot be started here, or cannot see the script: the band is left to the source check")
+		return
+	var dir := "user://test_hunt_tools_band"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var judge := ProjectSettings.globalize_path(dir)
+	for case: Array in [["hide_faithful", 150, 0], ["silence_witness", 150, 1], ["hide_faithful", 205, 1], ["silence_witness", 205, 0]]:
+		_band_files(dir, String(case[0]), int(case[1]))
+		var got := _sh(script, ["--only=" + String(case[0]), "--judge=" + judge])
+		var verdict := ""
+		for row in str(got[1]).split("
+"):
+			if row.begins_with("hunt_gate "):
+				verdict = row
+		t.check(int(got[0]) == int(case[2]) and verdict.contains("median=%d" % int(case[1])) and verdict.ends_with("PASS" if int(case[2]) == 0 else "FAIL"),
+			"%s with every win at %d s: %s (exit %s, %s)" % [case[0], case[1], "PASS" if int(case[2]) == 0 else "FAIL", got[0], verdict])
+		for type in ["ruin", "death", "veil", "passage", "decree", "dominion"]:
+			DirAccess.remove_absolute("%s/%s.%s.txt" % [dir, case[0], type])
+	DirAccess.remove_absolute(dir)
+
+
+## Six passing type files for Hunt `hunt` in `dir`, every win at `time` s, the first with the none runs.
+static func _band_files(dir: String, hunt: String, time: int) -> void:
+	var first := true
+	for type in ["ruin", "death", "veil", "passage", "decree", "dominion"]:
+		var f := FileAccess.open("%s/%s.%s.txt" % [dir, hunt, type], FileAccess.WRITE)
+		var line := "%s play seed=1 won=true reason=x time=%d idle=30
+" % [hunt, time]
+		line += "gate %s route=god:%s none_lost=%s wins=3/3 median=%d idle_max=30 PASS
+" % [hunt, type, "3/3" if first else "-", time]
+		f.store_string(line)
+		f.close()
+		first = false
 
 
 ## Runs `bash <script> <args>`; returns [exit code, stdout and stderr].

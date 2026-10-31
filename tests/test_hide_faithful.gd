@@ -41,6 +41,10 @@ static func run(t) -> void:
 	_sight_first(t)
 	_slip(t)
 	_chain(t)
+	_watch_broken(t)
+	_march_min(t)
+	_law_holds(t)
+	_hurry(t)
 	_trail(t)
 	_relief(t)
 	_pair_apart(t)
@@ -371,6 +375,168 @@ static func _chain(t) -> void:
 	t.check((d.households[1] as ExodusDirector.Household).out and d._clock < float(HideFaithfulDirector.HF_OUT_AT[1]) - 5.0,
 		"it comes out %d s later, long before its own time" % roundi(HideFaithfulDirector.HF_CHAIN))
 	Kit.done(s)
+
+
+## The soldiers of the watch, the gates' and the patrols' (untyped: any may be freed).
+static func _soldiers(d: HideFaithfulDirector) -> Array:
+	var out: Array = d.watch.duplicate()
+	for squad: Array in d.patrols:
+		out.append_array(squad)
+	return out
+
+
+## The watch is broken (Task 17, the user's answer of 2026-10-31; ruling P5-T17-R1): the second household sets out the moment no soldier of the
+## watch stands -- each of the gates' watch and the patrols dead or rallied to the Citadel -- with its own banner; not while one stands at his
+## post, held or not (an inquisitor does not count); the 2:20 and the chain still bind without it.
+static func _watch_broken(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	var soldiers := _soldiers(d)
+	var h2: ExodusDirector.Household = d.households[1]
+	t.check(soldiers.size() == 8 and not d.watch_broken() and d.broken_at < 0.0 and d.out_due(1) <= float(HideFaithfulDirector.HF_OUT_AT[1]) + 0.01,
+		"at the start eight soldiers stand: the watch is not broken, and the second household is due at 2:20 at the latest (%.1f)" % d.out_due(1))
+	Kit.run_for(s, 1.0)
+	for k in soldiers.size() - 1:
+		Kit.free_body(s, soldiers[k] as Person)
+	var last := soldiers[soldiers.size() - 1] as Person
+	last.mind = Person.Mind.WHISPERED  # held by the god a while: he comes back, so he still stands
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	var broken := "THE WATCH IS BROKEN - THE SECOND HOUSEHOLD SETS OUT"
+	t.check(not d.watch_broken() and not h2.out and not (s.banners as Array).has(broken) and d.out_due(1) > d._clock + 30.0,
+		"seven soldiers dead and the last one whispered: not broken, the second household waits (due in %.1f)" % (d.out_due(1) - d._clock))
+	last.send_to_post(last.ground_pos, true)  # the town's rally: he walks to the Citadel's ring and never comes back to the night's work
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(d.watch_broken() and h2.out and (s.banners as Array).has(broken) and not (s.banners as Array).has("THE NORTH HOUSEHOLD SLIPS OUT")
+		and absf(d.broken_at - d._clock) < 1.0 and h2.out_at < float(HideFaithfulDirector.HF_OUT_AT[1]),
+		"the last soldier rallied away: the watch is broken, the second household sets out at once with its banner (%s, out at %.1f)" % [s.banners, h2.out_at])
+	var inq_alive := MissionDirector._alive(d.inquisitors[0]) and MissionDirector._alive(d.inquisitors[1])
+	t.check(inq_alive, "the inquisitors still stand: they are not the watch")
+	Kit.done(s)
+	# Broken after the second household is out: no banner (it is not what set it out).
+	var n := _world()
+	var e: HideFaithfulDirector = n.d
+	e._come_out(1)
+	Kit.run_for(n, 1.0)
+	for v: Variant in _soldiers(e):
+		Kit.free_body(n, v as Person)
+	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
+	t.check(e.watch_broken() and e.broken_at >= 0.0 and not (n.banners as Array).has(broken), "broken after the second household is out: noted, no banner (%s)" % [n.banners])
+	Kit.done(n)
+
+
+## A seized believer is marched to the Temple at least HF_MARCH_MIN (20 s) before he counts as lost (Task 17, the user's answer of 2026-10-31;
+## ruling P5-T17-R2): his seizer stands at the Temple's door with him until then; his tag and the strip row "A believer reaches the Temple" count
+## down to it; delivered after it, he is taken.
+static func _march_min(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	_clear_watch(d)
+	d._come_out(0)
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var lead := d.lamp(0)
+	var by := d.patrols[0][0] as Person
+	Kit.arrive(by, (lead.man as Person).ground_pos + Vector2(1.0, 0.0))
+	by.send_to_post(by.ground_pos)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(lead.held and lead.seizer == by, "a soldier seizes the lamp")
+	var row := _temple_row(d)
+	t.check(row.size() == 1 and float(row[0]["in"]) >= HideFaithfulDirector.HF_MARCH_MIN - 1.0,
+		"the strip has one row \"A believer reaches the Temple\", at least the march's %d s out (%s)" % [roundi(HideFaithfulDirector.HF_MARCH_MIN), row])
+	# The seizer is at the Temple's door at once: he still stands there with him until the march's time is up.
+	Kit.arrive(by, d.return_to)
+	Kit.arrive(lead.man as Person, d.return_to + Vector2(0.5, 0.0))
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	var first := float(_temple_row(d)[0]["in"]) if not _temple_row(d).is_empty() else -1.0
+	var tag := _labels(d).filter(func(l: Variant) -> bool: return String(l).begins_with("SEIZED - TEMPLE IN "))
+	t.check(lead.held and not lead.taken and d.lost() == 0 and first > 10.0 and tag.size() == 1 and String(tag[0]) != "SEIZED - TEMPLE IN 0:00",
+		"at the Temple's door within the march's time he is not taken: the row still counts %.1f s, the tag says %s" % [first, tag])
+	Kit.run_for(s, 8.0)
+	var later := float(_temple_row(d)[0]["in"]) if not _temple_row(d).is_empty() else -1.0
+	t.check(lead.held and not lead.taken and later > 0.0 and later < first - 7.0, "the row counts down (%.1f then %.1f)" % [first, later])
+	Kit.run_for(s, later + 1.0)
+	t.check(lead.taken and d.lost() == 1 and _temple_row(d).is_empty() and (s.banners as Array).has("THE INQUISITION TAKES A BELIEVER"),
+		"the march's time up at the door, he is taken: one lost, the row gone (%s)" % [s.banners])
+	Kit.done(s)
+
+
+## Decree's law holds a lay inquisitor still (Task 17, the user's fallback of 2026-10-31, ruling P5-T17-R4): one bound by a Leaving Is Prohibited
+## (its bars on him) stands where he is and sees no one while it lasts, and one marching a believer lets him go (MS §2: a seizer held lets him go
+## where he stands). A soldier under the law is only confined, as the power says; the law's end gives the inquisitor back to the search.
+static func _law_holds(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	_clear_watch(d)
+	d._come_out(0)
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var lead := d.lamp(0)
+	var lp := lead.man as Person
+	var inq := d.inquisitors[0] as Person
+	Kit.arrive(inq, lp.ground_pos + Vector2(4.0, 0.0))
+	inq.set_badge(DecreeParts.BARS, DecreeParts.GILT, 10.0)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(d.law_held(inq) and inq.anchor.distance_to(inq.ground_pos) < 0.3 and not d._watching(inq),
+		"an inquisitor under the law stands where he is and watches no one (anchor %.2f off)" % inq.anchor.distance_to(inq.ground_pos))
+	Kit.arrive(inq, lp.ground_pos + Vector2(1.0, 0.0))
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(not lead.held and d.seizures == 0, "a believer walking past him within sight is not seized (%d seizures)" % d.seizures)
+	var soldier := d.patrols[0][0] as Person
+	soldier.set_badge(DecreeParts.BARS, DecreeParts.GILT, 10.0)
+	t.check(not d.law_held(soldier), "a soldier under the law is not held still by this rule (the power only confines him)")
+	inq.clear_badge()
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(not d.law_held(inq) and d._watching(inq), "the law over, he is back at the search")
+	Kit.done(s)
+	# A marching inquisitor bound by the law lets his believer go.
+	var n := _world()
+	var e: HideFaithfulDirector = n.d
+	_clear_watch(e)
+	e._come_out(0)
+	Kit.run_for(n, EscortDirector.TICK + DT)
+	var c2 := e.lamp(0)
+	var by := e.inquisitors[0] as Person
+	Kit.arrive(by, (c2.man as Person).ground_pos + Vector2(1.0, 0.0))
+	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
+	t.check(c2.held and c2.seizer == by, "an inquisitor seizes the lamp")
+	by.set_badge(DecreeParts.BARS, DecreeParts.GILT, 10.0)
+	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
+	t.check(not c2.held and not c2.taken and (n.banners as Array).has("THE BELIEVER IS FREE"), "bound by the law, he lets the believer go (%s)" % [n.banners])
+	Kit.done(n)
+
+
+## The believers hurry once nothing can seize them (Task 17, lever 3, ruling P5-T17-R7): the watch broken, no inquisitor standing and no relief left
+## to come. Not before: an inquisitor alive (held or not) or a relief still due keeps them at their pace. Then every believer still in the town walks
+## on at a citizen's own pace, the banner says so, and the lamp's tag counts down at the new pace.
+static func _hurry(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	d._come_out(0)
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var paces := {}
+	for c in d.charges:
+		paces[c] = (c.man as Person).pace
+	for v: Variant in _soldiers(d):
+		Kit.free_body(s, v as Person)
+	Kit.free_body(s, d.inquisitors[0] as Person)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(d.watch_broken() and not d.none_can_seize() and not d.hurrying, "the watch broken but an inquisitor stands: no hurry")
+	Kit.free_body(s, d.inquisitors[1] as Person)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(not d.none_can_seize() and not d.hurrying, "no inquisitor stands but reliefs are still to come: no hurry (%d of %d came)" % [d.inq_reliefs, HideFaithfulDirector.HF_SEARCH_RELIEFS])
+	d.inq_reliefs = HideFaithfulDirector.HF_SEARCH_RELIEFS
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	var all_fast := true
+	for c in d.charges:
+		all_fast = all_fast and is_equal_approx((c.man as Person).pace, float(paces[c]) / HideFaithfulDirector.HF_BELIEVER_PACE)
+	t.check(d.none_can_seize() and d.hurrying and all_fast and (s.banners as Array).has(HideFaithfulDirector.HF_HURRY_BANNER) and is_equal_approx(d.believer_pace(), 1.0),
+		"nothing left to seize them: every believer, inside or out, walks at a citizen's own pace, with the banner (%s)" % [s.banners])
+	var lamp_tag := _labels(d).filter(func(l: Variant) -> bool: return String(l).begins_with("BELIEVER - MAIN GATE IN "))
+	t.check(lamp_tag.size() == 1, "the lamp's tag still counts down to his gate (%s)" % [lamp_tag])
+	Kit.done(s)
+
+
+## The strip rows "A believer reaches the Temple".
+static func _temple_row(d: HideFaithfulDirector) -> Array:
+	return d.strip_rows().filter(func(r: Dictionary) -> bool: return String(r.label) == "A believer reaches the Temple")
 
 
 static func _trail(t) -> void:
@@ -859,15 +1025,17 @@ static func _needed(d: HideFaithfulDirector) -> Array[Vector2]:
 ## night still needs answered (a kill, mark, plague, whisper, discord or cage within 3.5 of a living watcher; the call of the guard within 16 of the soldiers
 ## it takes; the mirror's way in on a road of a household not yet out of the walls), never a cast made only to end an idle stretch. Nights: the 0:00 start, a
 ## household out with a soldier on its road, and the idle night -- the first household done, the second 20 s from coming out (clock 120 s), the last cast 31 s
-## back, the side gate's watch 60 s from its sight. There Dominion casts nothing: its whisper holds a man twenty seconds and is not cast sixty ahead.
-## (Mutation: Dominion's idle lead restored in act_dominion -- it whispers the watchman at the gate at once and the idle-night check fails.)
+## back, the side gate's watch 60 s from its sight. There Dominion casts nothing: its whisper holds a man twenty seconds and is not cast sixty ahead; and
+## Ruin and Veil cast nothing either (Death's mark queue reaches that far on its own, below): their idle lead (ruling P5-T9-R9, a gate watchman struck up to 70 s ahead once 30-38 s passed without a cast)
+## is retired by Task 17 (ruling P5-T17-R3), so every kill answers a watcher in its own power's lead.
+## (Mutations: Dominion's idle lead restored in act_dominion -- it whispers the watchman at the gate at once; Smite's lead for the gate's watch put back
+## to P5-T9-R9's 70 s -- "ruin: ... casts nothing (6 casts)"; either fails the idle-night check.)
 static func _no_filler_casts(t) -> void:
 	GodTree.dev_fill = true
 	for type: String in TYPES:
 		var total := 0
 		var strays := PackedStringArray()
 		var idle_casts := 0
-		var idle_watch := 0
 		for night in 3:
 			var def := HuntBook.def(MissionBook.HIDE_FAITHFUL)
 			def.default_loadout = Hunts.loadout("hide_faithful", type)
@@ -925,8 +1093,8 @@ static func _no_filler_casts(t) -> void:
 					roads.append_array(d.road(i))
 			for c in spy.casts:
 				total += 1
-				idle_casts += 1 if night == 2 else 0
 				var key := String(slots.find_key(c.slot))
+				idle_casts += 1 if night == 2 and key != "blight" else 0  # (Veil's Blight on the Bell Tower is its once-a-night set-piece, cast at the first look)
 				var near := false
 				if key == "mirror":
 					for q: Vector2 in roads:
@@ -946,19 +1114,16 @@ static func _no_filler_casts(t) -> void:
 							named.append((v as Person).ground_pos)
 					for at: Vector2 in named:
 						near = near or (c.at as Vector2).distance_to(at) <= reach
-					if night == 2 and kind == "watch":
-						idle_watch += 1
 				if not near:
 					strays.append("%s night %d at %s (%s)" % [key, night, c.at, c.get("did", "")])
 			spy.free()
 			Kit.done(s)
 		t.check(total > 0, "%s: the policy casts over the three nights (%d casts)" % [type, total])
 		t.check(strays.is_empty(), "%s: every cast lands on somebody the night still needs answered (strays: %s)" % [type, ", ".join(strays)])
-		if type == "dominion":
-			t.check(idle_casts == 0, "dominion: on the idle night, with the watch 60 s from its sight, it casts nothing (%d casts)" % idle_casts)
-		if type in ["ruin", "death"]:
-			# The idle lead: a real, permanent kill, made earlier than its lead -- on the gate watchman it names, the watch 60 s from its sight.
-			t.check(idle_watch >= 1, "%s: on the idle night it kills a gate watchman 60 s ahead of his sight, and the cast lands on him (%d such casts)" % [type, idle_watch])
+		if type in ["dominion", "ruin", "veil"]:
+			t.check(idle_casts == 0, "%s: on the idle night, with the watch 60 s from its sight, it casts nothing (%d casts)" % [type, idle_casts])
+		# (Death marks there: its queue -- MARK_LEAD and twenty seconds more for each man of the same hour still to be marked, a Death Mark being
+		# ready every twenty -- reaches the side gate's pair and the patrols, four men of one hour. That is its own lead, not the idle one.)
 	GodTree.dev_fill = false
 
 
@@ -1175,7 +1340,7 @@ static func _seize_free(t) -> void:
 	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
 	Kit.arrive(by, e.return_to)
 	Kit.arrive(c2.man as Person, e.return_to + Vector2(0.5, 0.0))
-	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
+	Kit.run_for(n, HideFaithfulDirector.HF_MARCH_MIN + 2.0 * EscortDirector.TICK)  # marched at least HF_MARCH_MIN (ruling P5-T17-R2)
 	t.check(c2.taken and e.lost() == 1 and e.lost_reason() == "" and (n.banners as Array).has("THE INQUISITION TAKES A BELIEVER")
 		and (n.banners as Array).has("ONE BELIEVER LOST - ONE MORE AND THE HUNT FAILS"),
 		"delivered, a believer is taken: one lost, the night goes on, the banner warns (%s)" % [n.banners])

@@ -13,8 +13,10 @@
 #   --judge=<dir>     runs nothing: reads <dir>/<hunt>.<type>.txt for the six types and prints the 6-row table wins/median/idle and
 #                     `hunt_gate <hunt> tier=N pass=K/6 none_lost=K/3 median=S [excepted=<types>] PASS|FAIL`. PASS iff every counted type's gate
 #                     PASSed (wins at least 2/3, idle at most 45 s -- the real idle, fillers end no stretch, T1R D38), none_lost is 3/3 (some saved
-#                     type ran --with-none), and the median of all winning play runs pooled is 180-240 s (ruling C9). A type's own median is
-#                     printed and never judged (T1R D10). A missing type file, or one whose gate line is not `route=god:<that type>`, is FAIL.
+#                     type ran --with-none), and the median of all winning play runs pooled is in the Hunt's band: 180-240 s (ruling C9), but
+#                     Hunt 1 (hide_faithful) 140-200 s (Task 17, the user's answer of 2026-10-31: its second household sets out once the watch
+#                     is broken). A type's own median is printed and never judged (T1R D10). A missing type file, or one whose gate line is not
+#                     `route=god:<that type>`, is FAIL.
 #   --except=<type>,... with --judge: those types print `excepted` and do not count (Decree on Hunts 2-4 is a reported gap, MS §9 open issue 1,
 #                     ruling C9: the controller judges those three Hunts with --except=decree; never tuned around). Only `decree`, and only on
 #                     Hunts 2-4, is accepted; anything else is refused (exit 2)
@@ -36,6 +38,9 @@ for a in "$@"; do case "$a" in
   *) echo "hunt_gate.sh: unknown option $a" >&2; exit 2;;
 esac; done
 [ -n "$ONLY" ] || { echo "hunt_gate.sh: --only=<hunt> is required (one of: $HUNTS)" >&2; exit 2; }
+# The pooled median's band, per Hunt (Task 17, ruling P5-T17-R6): Hunt 1 140-200 s, every other Hunt 180-240 s.
+LO=180; HI=240
+case "$ONLY" in hide_faithful) LO=140; HI=200;; esac
 TIER=0; n=0
 for h in $HUNTS; do n=$((n + 1)); [ "$h" = "$ONLY" ] && TIER=$n; done
 [ "$TIER" != 0 ] || { echo "hunt_gate.sh: --only=$ONLY is not one of: $HUNTS" >&2; exit 2; }
@@ -112,7 +117,7 @@ fi
 echo "wins/median/idle   (hunt $ONLY, tier $TIER)"
 printf '%s' "$rows"
 [ "$none_lost" = "3/3" ] || allok=0
-{ [ "$median" = "-" ] || [ "$median" -lt 180 ] || [ "$median" -gt 240 ]; } && allok=0
+{ [ "$median" = "-" ] || [ "$median" -lt "$LO" ] || [ "$median" -gt "$HI" ]; } && allok=0
 verdict=PASS; [ "$allok" = 1 ] || verdict=FAIL
 echo "hunt_gate $ONLY tier=$TIER pass=$pass/$counted none_lost=${none_lost:-?/3} median=$median${excepted:+ excepted=$excepted} $verdict"
 [ "$verdict" = PASS ]

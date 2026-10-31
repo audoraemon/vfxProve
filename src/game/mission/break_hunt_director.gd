@@ -762,7 +762,8 @@ func _steady_company(i: int) -> void:
 			else:
 				p.leave_shelter(false)
 		p.reassure(BH_STEADY)
-		(_steadied[i] as Dictionary)[p] = [p.fearless_left, _real]
+		if not p.inside and not p.resists_mind():  # (reassure refused him: the steadiness gave him nothing to clamp -- fix round, review M5)
+			(_steadied[i] as Dictionary)[p] = [p.fearless_left, _real]
 
 
 ## A steadied man's fearlessness never outlasts the steadiness it was given, nor so the TAKEN UP tag (Task 17, review-milestone M8, ruling

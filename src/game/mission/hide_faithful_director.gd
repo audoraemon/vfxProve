@@ -98,12 +98,22 @@ const HF_SLIP_NEAR := 5.0
 const HF_SEARCH_SPACING := 4.0
 ## How far from the Temple's door the search's first stop is at least.
 const HF_SEARCH_FIRST := 8.0
-## A seized believer is marched to the Temple at least this long before he counts as lost (Task 17, the user's answer of 2026-10-31, ruling
+## A seized believer is marched to the Temple at least this long -- the user's 20 s, pinned by test_hide_faithful's _march_min -- before he counts as
+## lost (Task 17, the user's answer of 2026-10-31, ruling
 ## P5-T17-R2): a seizure near the Temple was delivered in about 10 s, with only his tag and a banner to warn of it; now his seizer stands at the
 ## Temple's door with him until the time is up, and the strip's row "A believer reaches the Temple" counts it down. What frees him meanwhile is
 ## what freed him before: his seizer felled, frightened, held or turned (EscortDirector._step_held()).
 const HF_MARCH_MIN := 20.0
 ## The banner when the watch breaks while the second household still waits (Task 17, ruling P5-T17-R1).
+## A believer walking himself out who has moved less than HF_STUCK_MOVE in HF_STUCK_AFTER seconds, away from his way out, is sent on afresh (a new
+## path); still pinned after HF_NUDGE_AFTER, he is set down a step on along his own path, on a place no one stands (HF_NUDGE_CLEAR): the town's crowd
+## packed in a narrow street held a freed believer until dawn, a loss nobody saw coming (Task 17 fix round, I2; ruling P5-T17-R8). His path is the
+## grid's, so the step is walkable and joined to where he stood.
+const HF_STUCK_MOVE := 0.5
+const HF_STUCK_AFTER := 6.0
+const HF_NUDGE_AFTER := 12.0
+const HF_NUDGE_STEP := 1.2
+const HF_NUDGE_CLEAR := 0.4
 const HF_BROKEN_BANNER := "THE WATCH IS BROKEN - THE SECOND HOUSEHOLD SETS OUT"
 ## Once nothing can seize them -- the watch broken, no inquisitor standing and no relief left to come -- the believers still in the town hurry at a
 ## citizen's own pace (Task 17, lever 3, ruling P5-T17-R7; First Prayers' "the poor hurry in" is the precedent), with this banner.
@@ -157,6 +167,10 @@ var broken_at := -1.0
 var _seized_at := {}
 ## The believers hurry: nothing is left to seize them (ruling P5-T17-R7).
 var hurrying := false
+## Each believer walking himself out: [where he stood, the clock second, sent afresh] when his progress was last marked (ruling P5-T17-R8).
+var _walk_mark := {}
+## How many times a pinned believer was set down a step on (ruling P5-T17-R8; the report's count).
+var nudges := 0
 
 
 ## The Hunt's numbers into the base's tune_ vars and existing vars before the base sets up (god P5, MS H11, H12, Ruling C2): no gate shuts,
@@ -552,9 +566,9 @@ func _soldiers() -> Array:
 	return out
 
 
-## Household `i` is the second, and the watch broke: it sets out then at the latest (ruling P5-T17-R1).
+## Household `i` is the second, the first is out, and the watch broke: it sets out then at the latest (ruling P5-T17-R1).
 func _broken_frees(i: int) -> bool:
-	return i > 0 and i == households.size() - 1 and broken_at >= 0.0
+	return i > 0 and i == households.size() - 1 and broken_at >= 0.0 and (households[0] as Household).out
 
 
 ## The households come out when their time comes (MS §2): every one, the first included, not only the chained.
@@ -657,7 +671,7 @@ func _step_held(c: Charge) -> void:
 	if march_left(c) > 0.0 and _alive(c.seizer) and (c.seizer as Person).mind == Person.Mind.DUTY:
 		var s := c.seizer as Person
 		var p := c.man as Person
-		var walk := _path_len(s.ground_pos, return_to) / maxf(s.walk_speed, 0.1)
+		var walk := _march_walk(c)
 		if march_left(c) > walk + TICK and s.ground_pos.distance_to(return_to) > RETURN_REACH:
 			if s.anchor.distance_to(s.ground_pos) > MOVE:
 				s.go_duty(s.ground_pos)  # too soon to set off: he holds him here
@@ -1152,8 +1166,16 @@ func _refresh_march() -> void:
 	for c in charges:
 		if c.held and not _resolved(c) and _alive(c.seizer):
 			var s := c.seizer as Person
-			now[c] = {"eta": maxf(_path_len(s.ground_pos, return_to) / maxf(s.walk_speed, 0.1), march_left(c)), "at": _clock}
+			now[c] = {"eta": maxf(_march_walk(c), march_left(c)), "at": _clock}
 	_march = now
+
+
+## Seconds the seizer's own walk from where he stands to the Temple's door takes (what the hold and the row read). The believer he leads may come in
+## a little after him (he is delivered only with the believer at his side), so the row can read 0:00 a few seconds before the loss: late, never
+## early. (A version reading the slower of the two moved the march's timing in every run without making a night fairer; fix round.)
+func _march_walk(c: Charge) -> float:
+	var s := c.seizer as Person
+	return _path_len(s.ground_pos, return_to) / maxf(s.walk_speed, 0.1)
 
 
 ## Seconds until marched believer `c` is delivered.
@@ -1193,12 +1215,66 @@ func _walk_on(c: Charge) -> void:
 	var in_file := bool(_in_file.get(c, false)) and lamp(i) != c and _file_spot(c) != Vector2.INF
 	if in_file:
 		return
-	var to := _open_exit_near(p.ground_pos)
+	# The way out his household's first one out took, when there is one (Exodus's _file_spot() sends him there each look too); else the nearest.
+	# (Fix round, I2: two different ways out, one here and one in the base, re-sent him every look -- a fresh path each time, so he never got
+	# past the first steps of it and stood by the Temple until dawn, Death seed 2.)
+	var h: Household = households[i]
+	var to := h.out_to if h.out_to != Vector2.INF else _open_exit_near(p.ground_pos)
 	if to == Vector2.INF:
 		return
 	c.hold_at = to
 	if p.mind != Person.Mind.DUTY or p.anchor.distance_to(to) > MOVE:
 		p.go_duty(to)
+		_walk_mark[c] = [p.ground_pos, _clock, false]
+		return
+	_keep_moving(c, to)
+
+
+## A believer walking himself out to `to` keeps moving (ruling P5-T17-R8): pinned HF_STUCK_AFTER seconds (moved less than HF_STUCK_MOVE, more than
+## ESCAPE_REACH from his way out) he is sent on afresh; pinned HF_NUDGE_AFTER, he is set down a step on along his path (_nudge_spot()).
+func _keep_moving(c: Charge, to: Vector2) -> void:
+	var p := c.man as Person
+	var mark: Array = _walk_mark.get(c, [])
+	if mark.is_empty() or p.ground_pos.distance_to(mark[0]) >= HF_STUCK_MOVE or p.ground_pos.distance_to(to) <= ESCAPE_REACH:
+		_walk_mark[c] = [p.ground_pos, _clock, false]
+		return
+	var still := _clock - float(mark[1])
+	if still >= HF_NUDGE_AFTER:
+		var spot := _nudge_spot(p)
+		if spot != Vector2.INF:
+			p.ground_pos = spot
+			nudges += 1
+		p._goal = Vector2.INF
+		p._path = PackedVector2Array()
+		p.go_duty(to)
+		_walk_mark[c] = [p.ground_pos, _clock, false]
+	elif still >= HF_STUCK_AFTER and not bool(mark[2]):
+		p._goal = Vector2.INF
+		p._path = PackedVector2Array()
+		p.go_duty(to)  # a fresh path from where he stands
+		mark[2] = true
+
+
+## Where a pinned believer is set down (ruling P5-T17-R8): the farthest point of his own path within HF_NUDGE_STEP of him that no living person
+## stands within HF_NUDGE_CLEAR of, walkable; Vector2.INF for none.
+func _nudge_spot(p: Person) -> Vector2:
+	var best := Vector2.INF
+	var at := p.ground_pos
+	var run := 0.0
+	for k in range(clampi(p._leg, 0, p._path.size()), p._path.size()):
+		var q := p._path[k]
+		run += at.distance_to(q)
+		at = q
+		if run > HF_NUDGE_STEP:
+			break
+		if crowd._grid != null and not crowd._grid.walkable(q):
+			continue
+		var clear := true
+		for e in crowd._field.in_radius(q, HF_NUDGE_CLEAR):
+			clear = clear and e == p
+		if clear:
+			best = q
+	return best
 
 
 ## A believer has reached a way out (MS §2, shared rule 1): anywhere out of the walls.
@@ -1271,7 +1347,8 @@ func _waiting_tag(i: int) -> MapTag:
 ## The map tags, most important first (MS §2): each marched believer "SEIZED - TEMPLE IN" its seconds, his seizer, the Temple's door; each
 ## lamp "BELIEVER - <GATE> IN" its seconds, blue, pointed at; each follower "BELIEVER"; a waiting house "OUT IN"; each listed house the search
 ## has not reached "SEARCH IN" its seconds (blue for a household's, grey for the others); each inquisitor "INQUISITOR", pointed at; the
-## patrols (pointed at) and the gates' watch "WATCH". After the first loss each believer's tag ends "- DO NOT KILL".
+## patrols (pointed at) and the gates' watch "WATCH" -- not a soldier rallied to the Citadel, who is gone from the night (Task 17 fix round, I1: the map
+## agrees with the broken watch's banner). After the first loss each believer's tag ends "- DO NOT KILL".
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if lost_reason() != "" or out_count() >= tune_need:
@@ -1315,12 +1392,12 @@ func tags() -> Array[MapTag]:
 	for squad: Array in patrols:
 		var named := false
 		for v: Variant in squad:
-			if _alive(v) and not (v as Person).inside and not _seizing(v):
+			if _alive(v) and not (v as Person).inside and not _seizing(v) and (v as Person).mind != Person.Mind.RALLY:  # (rallied: gone, P5-T17-R1)
 				out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "" if named else "WATCH", not named))
 				named = true
 	var posted := 0
 	for v: Variant in watch:
-		if _alive(v) and not (v as Person).inside and not _seizing(v):
+		if _alive(v) and not (v as Person).inside and not _seizing(v) and (v as Person).mind != Person.Mind.RALLY:  # (rallied: gone, P5-T17-R1)
 			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "WATCH" if posted % 2 == 0 else ""))
 		posted += 1
 	return out

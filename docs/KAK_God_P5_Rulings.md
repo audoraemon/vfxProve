@@ -343,3 +343,27 @@ REBUILD, the Magnify CLAMP). Levers used in the brief's order; no new opposition
   Dominion 3/3 177/189/189 s idle 37/35/60. `hunt_gate hide_faithful tier=1 pass=1/6 none_lost=3/3 median=134 FAIL`.
 - References: Hunt 1's 21 rows re-recorded in place (18 moved; Passage's three did not). Unmoved: `digest`, `crowd_check`, `calm`, the 21
   `break_hunt_` rows, the nine none rows of Hunts 2, 3 and 5, and the 96 god Tier 1 rows (`god_<type>_<lamb|harvest|warning|prayers|tax>_*`).
+
+### Task 17 fix round (review `review-t17.md`: CHANGES NEEDED, I1-I3 and the cheap minors)
+- **I1.** A soldier rallied to the Citadel no longer carries a WATCH tag (both tag loops), so the map agrees with the broken watch's banner, as
+  P5-T17-R1 says. Test in `_watch_broken` (a gate watchman and a patrolman rallied, no WATCH label; mutation of either loop fails it).
+- **P5-T17-R8 (task, I2). A believer walking himself out keeps moving.** The cause of Death seed 2's dawn: after his household's first one got out
+  (its `out_to`, the Main Gate), a believer nearer the Side Gate was sent by the self-walk to the nearest way out and by Exodus's file to `out_to`,
+  in turn, every look; each order was a fresh path, so he never got past its first steps. He now keeps to his household's way out. And as a net:
+  pinned 6 s (moved under 0.5, not at his way out) he is sent on afresh; pinned 12 s he is set down a step on (at most 1.2) along his own grid path
+  where no one stands within 0.4 (`_keep_moving()`, `_nudge_spot()`; First Prayers' WALK_STALL is the precedent for watching progress). Tests
+  `_keep_moving` (pinned, a body ahead: nothing before 6 s, set down by 12 s, clear, nearer the gate; the out_to case keeps his walk; mutations of the
+  set-down and of the way-out choice fail). Death seed 2 now wins (199 s).
+- **I3.** `_march_hold` (bodies stepped, a seizure 4 units from the Temple: the seizer holds him 17 s, then the believer is taken 20-28 s after the
+  seizure as the row runs out; mutation: the hold removed fails), `_hurry` gains the case "one soldier stands, no inquisitor, no relief" (mutation:
+  `watch_broken()` dropped fails), `_march_min` pins the literal 20 s.
+- Minors taken: M1 (the 20 s named in the const's doc), M2 (`_broken_frees` also needs the first household out; test), M5 in part (the clamp records
+  only a man `reassure` took), M7 (the dead check removed), M8 (the policy reads `believer_pace()`), M9 (a comment on Death's mark queue). Skipped: M3
+  (two A* calls a look per marched believer: no measurable cost at one or two marches), M4 (a law-held inquisitor and his fellow: the player's own
+  law, and a fix would move the pair logic), M5's `minf(.., BH_STEADY)` (it would cut a fearlessness the man had from elsewhere, e.g. All Is Well),
+  M6 (the broken branch reads `_soldiers()`, not `patrols[0][0]`; the march branch is guarded already).
+- Tried and dropped: the march's walk read at the slower of the seizer and his believer (truer to the second) moved the march's timing in every
+  run and turned Veil's pass into idle 63/51/52; the seizer's pace stays (the row can read 0:00 a few seconds before the loss, never after it).
+- Gate (fix round): Ruin 3/3 101/188/134 idle 57; Death **2/3** 102/199 (lost 60) idle 22 PASS; Veil 3/3 140/126/182 idle 45 PASS; Passage 74 idle 54;
+  Decree 0/3 (lost 243/214/117); Dominion 3/3 177/189/189 idle 60. `hunt_gate hide_faithful tier=1 pass=2/6 none_lost=3/3 median=137 FAIL`.
+  Rows: Death 2, Decree 1 and 2 re-recorded in place; the other 18 unchanged. FLOW alone 209/0.

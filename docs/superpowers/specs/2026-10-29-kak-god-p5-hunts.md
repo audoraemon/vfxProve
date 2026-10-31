@@ -108,9 +108,9 @@ and **he bolts** (only Dominion can move a man at Tier 1, so the households walk
 **Median clear** *fg*: household 1 out 0:15, walks ~65 s plus the work, done about 1:35; household 2 out about 1:50 (or 2:20 by the
 chain), done about 3:10. Longest timed wait: 45 s (the chain). Passage's mirror from the door may clear in ~85 s (open issue 5).
 **As rebuilt (Task 17):** a kill type's alarm rallies the town's soldiers to the Citadel at 55-110 s, which breaks the watch and sets household 2
-out at once; once its inquisitors and their two reliefs are gone too the believers hurry. Gate (the dev tree, seeds 1-3): Ruin 101/188/134 s, Death
-102 s and two losses, Veil 140/126/182 s, Passage 74 s (the mirrors), Decree 0/3, Dominion 177/189/189 s; pooled median 134 s against the
-140-200 s band (Hunt 1's, §7).
+out at once; once its inquisitors and their two reliefs are gone too the believers hurry; a believer pinned on his way is sent on, then set down a
+step on (P5-T17-R8). Gate (the dev tree, seeds 1-3, after the fix round): Ruin 101/188/134 s, Death 102/199 s and one loss, Veil 140/126/182 s,
+Passage 74 s (the mirrors), Decree 0/3, Dominion 177/189/189 s; pooled median 137 s against the 140-200 s band (Hunt 1's, §7).
 
 **Every type (Tier 1, the real tree; 2 keys):**
 

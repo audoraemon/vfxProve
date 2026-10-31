@@ -43,8 +43,10 @@ static func run(t) -> void:
 	_chain(t)
 	_watch_broken(t)
 	_march_min(t)
+	_march_hold(t)
 	_law_holds(t)
 	_hurry(t)
+	_keep_moving(t)
 	_trail(t)
 	_relief(t)
 	_pair_apart(t)
@@ -395,23 +397,41 @@ static func _watch_broken(t) -> void:
 	var h2: ExodusDirector.Household = d.households[1]
 	t.check(soldiers.size() == 8 and not d.watch_broken() and d.broken_at < 0.0 and d.out_due(1) <= float(HideFaithfulDirector.HF_OUT_AT[1]) + 0.01,
 		"at the start eight soldiers stand: the watch is not broken, and the second household is due at 2:20 at the latest (%.1f)" % d.out_due(1))
+	d._come_out(0)
 	Kit.run_for(s, 1.0)
-	for k in soldiers.size() - 1:
-		Kit.free_body(s, soldiers[k] as Person)
+	# Six dead; a gate watchman (watch[0]) still at his post and the last patrolman whispered (held by the god a while: he comes back, so he still stands).
+	var gateman := soldiers[0] as Person
 	var last := soldiers[soldiers.size() - 1] as Person
-	last.mind = Person.Mind.WHISPERED  # held by the god a while: he comes back, so he still stands
+	for k in range(1, soldiers.size() - 1):
+		Kit.free_body(s, soldiers[k] as Person)
+	last.mind = Person.Mind.WHISPERED
 	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
 	var broken := "THE WATCH IS BROKEN - THE SECOND HOUSEHOLD SETS OUT"
 	t.check(not d.watch_broken() and not h2.out and not (s.banners as Array).has(broken) and d.out_due(1) > d._clock + 30.0,
-		"seven soldiers dead and the last one whispered: not broken, the second household waits (due in %.1f)" % (d.out_due(1) - d._clock))
-	last.send_to_post(last.ground_pos, true)  # the town's rally: he walks to the Citadel's ring and never comes back to the night's work
+		"six soldiers dead, a gate watchman at his post and the last one whispered: not broken, the second household waits (due in %.1f)" % (d.out_due(1) - d._clock))
+	# The town's rally: both walk to the Citadel's ring and never come back to the night's work.
+	gateman.send_to_post(gateman.ground_pos, true)
+	last.send_to_post(last.ground_pos, true)
 	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
 	t.check(d.watch_broken() and h2.out and (s.banners as Array).has(broken) and not (s.banners as Array).has("THE NORTH HOUSEHOLD SLIPS OUT")
 		and absf(d.broken_at - d._clock) < 1.0 and h2.out_at < float(HideFaithfulDirector.HF_OUT_AT[1]),
-		"the last soldier rallied away: the watch is broken, the second household sets out at once with its banner (%s, out at %.1f)" % [s.banners, h2.out_at])
-	var inq_alive := MissionDirector._alive(d.inquisitors[0]) and MissionDirector._alive(d.inquisitors[1])
-	t.check(inq_alive, "the inquisitors still stand: they are not the watch")
+		"the last soldiers rallied away: the watch is broken, the second household sets out at once with its banner (%s, out at %.1f)" % [s.banners, h2.out_at])
+	# The map agrees with the banner (fix round, I1): a rallied soldier, of the gates' watch or a patrol, has no WATCH tag. (Mutation: either tag loop
+	# without its RALLY test -- the label comes back and this fails.)
+	var watch_tags := _labels(d).filter(func(l: Variant) -> bool: return String(l) == "WATCH")
+	t.check(watch_tags.is_empty() and MissionDirector._alive(gateman) and MissionDirector._alive(last),
+		"the two rallied soldiers live but carry no WATCH tag (%s)" % [_labels(d)])
 	Kit.done(s)
+	# Broken before the first household is out: the second does not go before it (review M2).
+	var f := _world()
+	var df: HideFaithfulDirector = f.d
+	Kit.run_for(f, 1.0)
+	for v: Variant in _soldiers(df):
+		Kit.free_body(f, v as Person)
+	Kit.run_for(f, 2.0 * EscortDirector.TICK + DT)
+	t.check(df.watch_broken() and not (df.households[0] as ExodusDirector.Household).out and not (df.households[1] as ExodusDirector.Household).out,
+		"the watch broken before the first household is out: the second waits for it")
+	Kit.done(f)
 	# Broken after the second household is out: no banner (it is not what set it out).
 	var n := _world()
 	var e: HideFaithfulDirector = n.d
@@ -428,6 +448,7 @@ static func _watch_broken(t) -> void:
 ## ruling P5-T17-R2): his seizer stands at the Temple's door with him until then; his tag and the strip row "A believer reaches the Temple" count
 ## down to it; delivered after it, he is taken.
 static func _march_min(t) -> void:
+	t.check(HideFaithfulDirector.HF_MARCH_MIN == 20.0, "the march's least time is the user's 20 s (%.1f)" % HideFaithfulDirector.HF_MARCH_MIN)
 	var s := _world()
 	var d: HideFaithfulDirector = s.d
 	_clear_watch(d)
@@ -532,6 +553,142 @@ static func _hurry(t) -> void:
 	var lamp_tag := _labels(d).filter(func(l: Variant) -> bool: return String(l).begins_with("BELIEVER - MAIN GATE IN "))
 	t.check(lamp_tag.size() == 1, "the lamp's tag still counts down to his gate (%s)" % [lamp_tag])
 	Kit.done(s)
+	# No inquisitor and no relief left, but one soldier of the watch stands: no hurry (fix round, I3b; mutation: watch_broken() dropped from
+	# none_can_seize() -- this fails).
+	var n := _world()
+	var e: HideFaithfulDirector = n.d
+	e._come_out(0)
+	Kit.run_for(n, EscortDirector.TICK + DT)
+	e.inq_reliefs = HideFaithfulDirector.HF_SEARCH_RELIEFS
+	for v: Variant in e.inquisitors.duplicate():
+		Kit.free_body(n, v as Person)
+	var soldiers := _soldiers(e)
+	for k in range(1, soldiers.size()):
+		Kit.free_body(n, soldiers[k] as Person)
+	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
+	t.check(not e.watch_broken() and not e.none_can_seize() and not e.hurrying, "one soldier of the watch still stands: no hurry")
+	Kit.done(n)
+
+
+## The hold where seized (fix round, I3a; ruling P5-T17-R2), with bodies stepped: a soldier seizes the lamp a few units from the Temple's door, away
+## from it, where the walk is shorter than the 20 s. He holds him where he seized him first (the row reads the full 20 s), then walks him in; the
+## believer is taken 20 s after the seizure or a few seconds later (the walk is read at the seizer's pace; the believer led behind him stops and
+## goes), never before, and the row has run out by then. (Mutation: the hold branch of _step_held removed -- the seizer sets off at once and the first check
+## fails.)
+static func _march_hold(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	_clear_watch(d)
+	d._come_out(0)
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var lead := d.lamp(0)
+	var lp := lead.man as Person
+	var by := d.patrols[0][0] as Person
+	var near := d.return_to
+	var path := (s.crowd as Crowd)._grid.path(d.return_to, d.households[0].door)
+	var run := 0.0
+	var prev := d.return_to
+	for q: Vector2 in path:
+		run += prev.distance_to(q)
+		prev = q
+		near = q
+		if run >= 4.5:
+			break
+	Kit.arrive(lp, near)
+	lp.go_duty(near)
+	Kit.arrive(by, near + Vector2(0.6, 0.0))
+	by.send_to_post(by.ground_pos)
+	var seized_at := -1.0
+	var hold_for := -1.0
+	var from := Vector2.INF
+	var first_row := -1.0
+	var moved_early := 0.0
+	var taken_at := -1.0
+	var row_at_take := -1.0
+	var last_row := -1.0
+	for i in roundi(40.0 / DT):
+		(s.crowd as Crowd).advance(DT)
+		(s.rules as Rules).advance(DT)
+		for q: Person in [by, lp]:
+			if MissionDirector._alive(q) and not q.inside:
+				q.tick(DT)
+		if seized_at < 0.0 and lead.held:
+			seized_at = d._clock
+			from = by.ground_pos
+			hold_for = HideFaithfulDirector.HF_MARCH_MIN - d._march_walk(lead) - EscortDirector.TICK
+		if seized_at < 0.0:
+			continue
+		var row := _temple_row(d)
+		if first_row < 0.0 and not row.is_empty():
+			first_row = float(row[0]["in"])
+		if not row.is_empty():
+			last_row = float(row[0]["in"])
+		if d._clock - seized_at < hold_for - 0.5 and MissionDirector._alive(by):
+			moved_early = maxf(moved_early, by.ground_pos.distance_to(from))
+		if lead.taken:
+			taken_at = d._clock - seized_at
+			row_at_take = last_row
+			break
+	var far := from.distance_to(d.return_to) if from != Vector2.INF else 0.0
+	t.check(seized_at >= 0.0 and far > 2.0 and hold_for >= 5.0 and moved_early < 0.5,
+		"seized %.1f from the Temple's door, the seizer holds him where he seized him for the %.1f s the walk would end early by (moved %.2f)" % [far, hold_for, moved_early])
+	t.check(first_row >= HideFaithfulDirector.HF_MARCH_MIN - 1.0, "the row starts at the march's 20 s (%.1f)" % first_row)
+	t.check(taken_at >= HideFaithfulDirector.HF_MARCH_MIN - EscortDirector.TICK and taken_at <= HideFaithfulDirector.HF_MARCH_MIN + 8.0 and row_at_take < 1.0,
+		"he is taken about 20 s after the seizure (%.1f s) as the row runs out (%.2f at the last look)" % [taken_at, row_at_take])
+	Kit.done(s)
+
+
+## A believer pinned on his way out keeps moving (fix round, I2; ruling P5-T17-R8): the town's crowd holds him (here he is never stepped, and a body
+## stands just ahead of him on his path). Within HF_STUCK_AFTER nothing is done; after it he is sent on afresh; after HF_NUDGE_AFTER he is set down a
+## step on along his path, on a place nobody stands, walkable, nearer his way out. (Mutation: the set-down in _keep_moving removed -- he stays.)
+static func _keep_moving(t) -> void:
+	var s := _world()
+	var d: HideFaithfulDirector = s.d
+	_clear_watch(d)
+	d._come_out(0)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	var lp := d.lamp(0).man as Person
+	var to := d._open_exit_near(lp.ground_pos)
+	var start := lp.ground_pos
+	var blocker: Person = null
+	for p in (s.crowd as Crowd).citizens:
+		if is_instance_valid(p) and not p.inside and not d._watchers().has(p) and d._charge_of(p) == null:
+			blocker = p
+			break
+	var ahead := lp._path[mini(lp._leg + 1, lp._path.size() - 1)] if not lp._path.is_empty() else start
+	if blocker != null:
+		Kit.arrive(blocker, ahead)
+	Kit.run_for(s, HideFaithfulDirector.HF_STUCK_AFTER - 1.0)
+	t.check(lp.ground_pos.distance_to(start) < 0.01 and d.nudges == 0, "pinned under %d s: nothing done yet" % roundi(HideFaithfulDirector.HF_STUCK_AFTER))
+	Kit.run_for(s, HideFaithfulDirector.HF_NUDGE_AFTER - HideFaithfulDirector.HF_STUCK_AFTER + 2.0)
+	var moved := lp.ground_pos.distance_to(start)
+	var crowded := false
+	for e in (s.crowd as Crowd)._field.in_radius(lp.ground_pos, HideFaithfulDirector.HF_NUDGE_CLEAR):
+		crowded = crowded or e != lp
+	t.check(d.nudges >= 1 and moved > 0.3 and moved <= HideFaithfulDirector.HF_NUDGE_STEP + 0.01 and not crowded and (s.crowd as Crowd)._grid.walkable(lp.ground_pos)
+		and d._path_len(lp.ground_pos, to) < d._path_len(start, to) - 0.3 and lp.mind == Person.Mind.DUTY and lp.anchor.distance_to(to) < 0.3,
+		"pinned %d s, he is set down %.2f on along his path, clear of the body ahead and nearer his way out, still on his way (%d nudges)" % [
+		roundi(HideFaithfulDirector.HF_NUDGE_AFTER), moved, d.nudges])
+	Kit.done(s)
+	# The cause in Death seed 2: his household's first one out had taken the Main Gate (out_to), he stood nearer the Side Gate, and the self-walk and
+	# the base's file sent him to the two in turn every look -- a fresh path each time, so he never got on. Now he keeps to out_to and is not re-sent.
+	# (Mutation: the self-walk back to the nearest way out -- his walk is restarted at the look, _leg 0.)
+	var n := _world()
+	var e: HideFaithfulDirector = n.d
+	_clear_watch(e)
+	e._come_out(0)
+	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
+	var h0: ExodusDirector.Household = e.households[0]
+	h0.out_to = (e.gates[0] as ExodusDirector.Gate).way_out
+	var w := e.lamp(0).man as Person
+	Kit.arrive(w, e._walkable(Vector2(11.0, 3.0)))
+	w.go_duty(h0.out_to)
+	Kit.run_for(n, EscortDirector.TICK + DT)
+	w._leg = 3
+	Kit.run_for(n, EscortDirector.TICK + DT)
+	t.check(e._open_exit_near(w.ground_pos) != h0.out_to and w.anchor == h0.out_to and w._leg == 3,
+		"a believer nearer the other gate keeps to his household's way out and is not re-sent each look (anchor %s, leg %d)" % [w.anchor, w._leg])
+	Kit.done(n)
 
 
 ## The strip rows "A believer reaches the Temple".

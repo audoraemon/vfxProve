@@ -180,7 +180,7 @@ static func _exposed(ctx: Dictionary, d: HideFaithfulDirector) -> Array:
 			continue
 		var rc := _road(ctx, d, i)
 		if not h.out:
-			out.append({"rc": rc, "from": 0.0, "speed": Person.PANIC_SPEED * d.tune_believer_pace, "delay": d.due_in(i), "i": i})
+			out.append({"rc": rc, "from": 0.0, "speed": Person.PANIC_SPEED * d.believer_pace(), "delay": d.due_in(i), "i": i})
 			continue
 		for c: EscortDirector.Charge in h.members:
 			if d._resolved(c) or c.held or (c.man as Person).inside:
@@ -267,9 +267,9 @@ static func _trailing(ctx: Dictionary, d: HideFaithfulDirector, i: int, along: f
 	var lamp_at := 0.0
 	var lead := d.lamp(i)
 	if h.out and lead != null:
-		lamp_at = _progress(rc, (lead.man as Person).ground_pos) + Person.PANIC_SPEED * d.tune_believer_pace * s
+		lamp_at = _progress(rc, (lead.man as Person).ground_pos) + Person.PANIC_SPEED * d.believer_pace() * s
 	elif not h.out:
-		lamp_at = Person.PANIC_SPEED * d.tune_believer_pace * maxf(s - d.due_in(i), 0.0)
+		lamp_at = Person.PANIC_SPEED * d.believer_pace() * maxf(s - d.due_in(i), 0.0)
 	return _point(rc, minf(along + walk * walk_s, maxf(lamp_at - 0.5, along)))
 
 
@@ -507,6 +507,8 @@ static func act_death(bc, ctx: Dictionary) -> String:
 			for j in range(i + 1, live.size()):
 				if float(live[j].t) - float(th.t) <= MARK_HOUR:
 					behind += 1
+			# (The queue reaches far ahead when several men are of one hour -- four of them put the first mark ~60 s before his sight. Each mark is
+			# still a real kill of a man the households must pass (a watcher in the reading), never one made only to end a wait: review of Task 17, M9.)
 			if float(th.t) <= MARK_LEAD + 21.0 * float(behind):
 				_cast(ctx, "deathmark", (th.p as Person).ground_pos)
 				return "death mark a %s" % th.kind
@@ -571,7 +573,7 @@ static func _mirror_for(bc, ctx: Dictionary, d: HideFaithfulDirector, i: int) ->
 	var from := 0.0
 	if h.out and lead != null:
 		from = _progress(rc, (lead.man as Person).ground_pos)
-	var speed := maxf(Person.PANIC_SPEED * d.tune_believer_pace, 0.3)
+	var speed := maxf(Person.PANIC_SPEED * d.believer_pace(), 0.3)
 	var way_in := _point(rc, from + MIRROR_AHEAD * speed + 2.0)
 	var spot: Vector2 = GOD_T1.outside_spot(bc, ctx, way_in, 14.0)
 	if spot == Vector2.INF:

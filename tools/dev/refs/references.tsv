@@ -153,7 +153,7 @@ first_taste_dominion_play_1	--scenario=first_taste --case=play --seed=1 --god=do
 first_taste_dominion_play_2	--scenario=first_taste --case=play --seed=2 --god=dominion:1 --dev-tree	-854083926
 first_taste_dominion_play_3	--scenario=first_taste --case=play --seed=3 --god=dominion:1 --dev-tree	-465385105
 
-# god P5 Hide the faithful (Task 9) -- rows below. Re-recorded in place by Task 17, the Hunt 1 rebuild (the watch broken, the 20 s march, Decree's law, the hurry): 18 moved, Passage's three unchanged.
+# god P5 Hide the faithful (Task 9) -- rows below. Re-recorded in place by Task 17, the Hunt 1 rebuild (the watch broken, the 20 s march, Decree's law, the hurry): 18 moved, Passage's three unchanged; the fix round (a believer keeps to his household's way out, the unstick) moved Death 2 and Decree 1-2.
 hide_faithful_none_1	--scenario=hide_faithful --case=none --seed=1	103634925
 hide_faithful_none_2	--scenario=hide_faithful --case=none --seed=2	-967766367
 hide_faithful_none_3	--scenario=hide_faithful --case=none --seed=3	-891277421
@@ -161,7 +161,7 @@ hide_faithful_ruin_play_1	--scenario=hide_faithful --case=play --seed=1 --god=ru
 hide_faithful_ruin_play_2	--scenario=hide_faithful --case=play --seed=2 --god=ruin:1 --dev-tree	-558633913
 hide_faithful_ruin_play_3	--scenario=hide_faithful --case=play --seed=3 --god=ruin:1 --dev-tree	-53271657
 hide_faithful_death_play_1	--scenario=hide_faithful --case=play --seed=1 --god=death:1 --dev-tree	-439522962
-hide_faithful_death_play_2	--scenario=hide_faithful --case=play --seed=2 --god=death:1 --dev-tree	620180265
+hide_faithful_death_play_2	--scenario=hide_faithful --case=play --seed=2 --god=death:1 --dev-tree	-230780946
 hide_faithful_death_play_3	--scenario=hide_faithful --case=play --seed=3 --god=death:1 --dev-tree	-465993393
 hide_faithful_veil_play_1	--scenario=hide_faithful --case=play --seed=1 --god=veil:1 --dev-tree	-311329655
 hide_faithful_veil_play_2	--scenario=hide_faithful --case=play --seed=2 --god=veil:1 --dev-tree	-301939286
@@ -169,8 +169,8 @@ hide_faithful_veil_play_3	--scenario=hide_faithful --case=play --seed=3 --god=ve
 hide_faithful_passage_play_1	--scenario=hide_faithful --case=play --seed=1 --god=passage:1 --dev-tree	827644946
 hide_faithful_passage_play_2	--scenario=hide_faithful --case=play --seed=2 --god=passage:1 --dev-tree	-167549906
 hide_faithful_passage_play_3	--scenario=hide_faithful --case=play --seed=3 --god=passage:1 --dev-tree	-226915842
-hide_faithful_decree_play_1	--scenario=hide_faithful --case=play --seed=1 --god=decree:1 --dev-tree	-916525746
-hide_faithful_decree_play_2	--scenario=hide_faithful --case=play --seed=2 --god=decree:1 --dev-tree	-30165223
+hide_faithful_decree_play_1	--scenario=hide_faithful --case=play --seed=1 --god=decree:1 --dev-tree	738168840
+hide_faithful_decree_play_2	--scenario=hide_faithful --case=play --seed=2 --god=decree:1 --dev-tree	-462637335
 hide_faithful_decree_play_3	--scenario=hide_faithful --case=play --seed=3 --god=decree:1 --dev-tree	-395159003
 hide_faithful_dominion_play_1	--scenario=hide_faithful --case=play --seed=1 --god=dominion:1 --dev-tree	-929497617
 hide_faithful_dominion_play_2	--scenario=hide_faithful --case=play --seed=2 --god=dominion:1 --dev-tree	-881784352

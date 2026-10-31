@@ -39,6 +39,8 @@ const UPGRADES_RECT := Rect2(548.0, 8.0, 84.0, 20.0)
 const TEST_HEADER := "TEST MODE: every tier, mission and power open"
 ## The hint under the cards.
 const HINT := "Left and Right: missions   Tab or number keys: tiers   Enter: prepare   Esc: title"
+## The hint on the DEV tab when it has a second row (god P5, review minor): Up and Down move between the rows.
+const HINT_DEV := "Up and Down: rows   Left and Right: missions   Tab or number keys: tiers   Enter: prepare   Esc: title"
 ## The DEV tab (--dev only): its tier number, past the five, and its button in the header beside the title.
 const DEV_TIER := 6
 const DEV_RECT := Rect2(112.0, 8.0, 40.0, 20.0)
@@ -146,7 +148,7 @@ func dev_hunts() -> PackedStringArray:
 ## else the Hunt's title alone. Measured with UiTheme at SIZE_SMALL; the room is the same for the five cards.
 func hunt_label(id: String) -> String:
 	var title := String(HuntBook.row(id).get("title", id))
-	var room := hunt_rect(0, 5).size.x - 2.0 * HUNT_PAD
+	var room := hunt_rect(0, maxi(dev_hunts().size(), 1)).size.x - 2.0 * HUNT_PAD
 	var full := "%s (Hunt)" % title
 	var lines := UiTheme.wrap(full, room, UiTheme.SIZE_SMALL)
 	if lines.size() > HUNT_LINES:
@@ -493,7 +495,8 @@ func _draw_ui() -> void:
 			for i in hunts.size():
 				_draw_hunt_card(hunt_rect(i, hunts.size()), hunts[i], i == selected and row2)
 	var hint_y := DEV_HINT_Y if dev and tier == DEV_TIER else 322.0
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(HINT, UiTheme.SIZE_SMALL) * 0.5), hint_y), HINT,
+	var hint := hint_text()
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), hint_y), hint,
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 
 
@@ -507,6 +510,11 @@ func _draw_hunt_card(r: Rect2, id: String, on: bool) -> void:
 	for k in lines.size():
 		UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(lines[k], UiTheme.SIZE_SMALL) * 0.5), top + UiTheme.LINE_SMALL * float(k)),
 			lines[k], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
+
+
+## The hint under the cards: HINT_DEV on the DEV tab with its Hunt row, else HINT.
+func hint_text() -> String:
+	return HINT_DEV if dev and tier == DEV_TIER and not dev_hunts().is_empty() else HINT
 
 
 ## The DEV tab's button (--dev): gold-framed while open.

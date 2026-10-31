@@ -18,7 +18,9 @@ extends SceneTree
 ##          shared plan (god_hunts/<id>.gd act_shared) with the def's own loadout; `--god=<type>:<tier> --dev-tree` plays that type's policy
 ##          (act_<type>) with the loadout the file's LOADOUT names. A tier other than the Hunt's prints
 ##          `BEHAVIOUR refused scenario=<id> god=<type>:<n> hunt_tier=<m>` and quits 1; a loadout the tree at that tier cannot draft (or over
-##          GodSlot.BASE_SLOTS keys, or over TierBook.dp(tier) Might) prints `... god=<type>:<n> missing=<...>`; both are a FAIL to gate.sh.
+##          GodSlot.BASE_SLOTS keys, or over TierBook.dp(tier) Might) prints `... god=<type>:<n> missing=<...>`; all are a FAIL to gate.sh.
+##          `--route` on a Hunt id prints `... route=<r> (a Hunt takes --god, not --route)`, and `--level` other than 1 on a Hunt's `--god` run
+##          prints `... level=<n> (a Hunt is played at level 1)`; both quit 1 (milestone review, M1).
 ##   --case=toll (v0.11.2, a Lantern night, D32): the scripted player casts nothing until the bell tolls and the Lantern turns
 ##          (LanternWatch.tolled), then plays as `play` does -- the toll case's wins are judged, not its idle or median
 ##          (tools/dev/gate.sh --case=toll). A night's scenario function takes it through _scripted() or _acts() below.
@@ -600,6 +602,11 @@ func _run() -> void:
 		push_error("behaviour_check: unknown --route=%s (a or b)" % route)
 		quit(1)
 		return
+	# God P5 (milestone review, M1): a Lantern Hunt is played with --god, never --route (a route would skip the tier and problems() refusals below).
+	if route != "" and scenario in GOD_HUNTS.SCENARIOS:
+		print("BEHAVIOUR refused scenario=%s route=%s (a Hunt takes --god, not --route)" % [scenario, route])
+		quit(1)
+		return
 	if scenario == "feast" and "--board" in args:
 		mission.mission_id = _route_id(scenario)  # v0.11.1: the board's Festival or Procession, not the campaign night
 	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
@@ -634,6 +641,11 @@ func _run() -> void:
 	if hunt_route:
 		if god_tier != GOD_HUNTS.tier_of(scenario):
 			print("BEHAVIOUR refused scenario=%s god=%s:%d hunt_tier=%d" % [scenario, god_type, god_tier, GOD_HUNTS.tier_of(scenario)])
+			quit(1)
+			return
+		# --level is applied after the Might floor, so a level above 1 would lift a Hunt's loadout past TierBook.dp(tier) (milestone review, M1).
+		if level_arg != "" and level_arg != "1":
+			print("BEHAVIOUR refused scenario=%s god=%s:%d level=%s (a Hunt is played at level 1)" % [scenario, god_type, god_tier, level_arg])
 			quit(1)
 			return
 		var hunt_problems: PackedStringArray = GOD_HUNTS.problems(scenario, god_type, god_tier)

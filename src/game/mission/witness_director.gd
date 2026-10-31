@@ -247,7 +247,8 @@ func _door_spots(at: Vector2) -> Array[Vector2]:
 	for k in DOOR_RING:
 		var g := _walkable(at + Vector2.from_angle(TAU * float(k) / float(DOOR_RING)) * tune_mate_gap)
 		var gap := g.distance_to(at)
-		if gap > SilentDoom.RADIUS and gap <= Crowd.DOOM_WITNESS - DOOR_MARGIN and not fit.has(g) 				and (crowd._grid == null or not crowd._grid.path(g, _door()).is_empty()):
+		if gap > SilentDoom.RADIUS and gap <= Crowd.DOOM_WITNESS - DOOR_MARGIN and not fit.has(g) \
+				and (crowd._grid == null or not crowd._grid.path(g, _door()).is_empty()):
 			fit.append(g)
 	var out: Array[Vector2] = []
 	out.assign(fit.slice(0, 1))

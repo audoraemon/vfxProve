@@ -1,14 +1,16 @@
 class_name BreakHuntDirector
 extends HuntDirector
 ## Break the hunt (god P5, MS §5, plan Task 7, Rulings C4, C9; Hunt 4 of the Lantern Hunts, Tier 4, the Hunt type): four standards march on three
-## of the god's believers' houses. Each is carried by a standard-bearer with two escorts walking at his sides, raised at its muster at its time
-## (or BH_CHAIN seconds after the standard before is broken, whichever is sooner) and marched to the nearest house the others are not going
+## of the god's believers' houses. Each is carried by a standard-bearer with two escorts walking in file ahead of and behind him (R10), raised at
+## its muster at its time (or BH_CHAIN seconds after the standard before is broken, whichever is sooner) and marched to the nearest house the others are not going
 ## to. A bearer who comes within BH_TAKE_REACH of an untaken house's door plants the standard there and the house is taken; two taken houses
 ## lose the night. All four standards broken wins.
 ##
-## The Hunt's own rule is that the standard is carried, not planted: there is no Structure (Ruling C4). A bearer killed or frightened (by the god
-## or by the town's own panic) while no escort guards him breaks the standard; while one does, that escort takes it up and marches on as the
-## bearer. An escort guards when he is alive, out of doors, within `guard_reach` of the bearer, not held by the god, not fighting, not frail and
+## The Hunt's own rule is that the standard is carried, not planted: there is no Structure (Ruling C4). A bearer killed while no escort guards
+## him breaks the standard; killed while one does, that escort takes it up and marches on as the bearer. A bearer frightened (by the god or by
+## the town's own panic) while no escort guards him breaks it too; frightened while one does, it only shakes him: he keeps the standard and
+## no escort takes it up (Ruling P5-L-R2; test_break_hunt pins it). An escort takes the standard up only when the bearer dies.
+## An escort guards when he is alive, out of doors, within `guard_reach` of the bearer, not held by the god, not fighting, not frail and
 ## not afraid -- judged, for a bearer struck dead or newly frightened, as the escorts stood at the look before the blow (their fear from witnessing this
 ## very death does not count), and the escort who takes it up and his fellow are then steadied for BH_STEADY seconds (Ruling P5-T7-R8). On the march
 ## the escorts walk in file ahead of him and behind him along the street (R10), and no street to a house passes within BH_DOOR_CLEAR of another house's
@@ -21,15 +23,18 @@ extends HuntDirector
 ## _relieve() (a no-op), _in_use(), _keep_held() (the bearers too), standard(), tags(), _found() (two taken), hint_phase(), strip_rows(),
 ## tour(). _shield(), _unguarded_blow(), _on_broken() and _step_of() stay as the base has them and are never reached with no Structure.
 ## Timers run in mission seconds (_clock advances by mission_delta()), so a Lantern night keeps the chain and the tags counting down like the
-## strip. Opposition stands more than 1.6 apart (MS §0): the two escorts 1.8 apart at the bearer's sides. The director's own people are held
-## through an evacuation every look (MS §0, _hold_all). Every wait is at most 45 s (the chain); no one's death loses.
+## strip. Opposition stands more than 1.6 apart (MS §0): the two escorts walk in file, 1.3 ahead of and behind the
+## bearer (BH_FILE_ARC, R10); a company that stands keeps its posts BH_LANE_GAP apart. The director's own people are held through an evacuation
+## every look (MS §0, _hold_all). Every wait is at most 45 s once a standard is broken (the chain; BH_BEARER_AT's scheduled gaps are 50 s); no one's
+## death loses.
 
 ## The three believers' houses as points: the dwelling nearest each whose door the street reaches from every muster is stone tonight (MS §5 *fg*).
 const BH_HOUSE_POINTS := [Vector2(-4.0, 4.0), Vector2(7.0, 6.0), Vector2(-2.0, 12.5)]
 ## The four musters, one per side, inside the walls (MS §5 *fg*): north, west, east, south-west; their words for the banners and the strip.
 const BH_MUSTERS := [Vector2(6.0, -13.5), Vector2(-14.0, 0.0), Vector2(14.0, -2.0), Vector2(-11.0, 14.0)]
 const BH_MUSTER_WORDS := ["the north", "the west", "the east", "the south-west"]
-## Each standard's escorts, and how far to either side of the bearer they walk (MS §5: 0.9 each, 1.8 apart).
+## Each standard's escorts, and the offset (0.9 each side of the bearer, 1.8 apart: MS §5's sketch) used for a held or stuck company's fallback pair
+## (_pair_at()) and its narrow-pair test (_street_spot()); on the march the escorts walk in file (BH_FILE_ARC, Ruling P5-T7-R10) and a planted company's posts are BH_LANE_GAP apart (P5-T12-R3).
 const BH_ESCORTS := 2
 const BH_ESCORT_OFF := 0.9
 ## When each standard is raised at the latest, in the strip's seconds: 0:20, 1:10, 2:00, 2:50 (MS §5 *fg*).
@@ -66,8 +71,8 @@ const BH_FLANK_GAP := 1.7
 const BH_LANE_GAP := BH_FLANK_GAP + 2.0 * Person.GOAL_REACH
 const BH_FLANK_NEAR := 1.3
 ## On the march the escorts walk in file along the street, one this far ahead of the bearer along his road and one this far behind along the road he
-## has walked (Ruling P5-T7-R10): in a one-wide street there is no side to stand on, and a file never crosses at a corner. 1.2 along a right-angled
-## corner is 1.7 across, so the two stay more than 1.6 apart, and 1.2 is inside the guard reach.
+## has walked (Ruling P5-T7-R10): in a one-wide street there is no side to stand on, and a file never crosses at a corner. 1.3 along a right-angled
+## corner is 1.84 across, so the two stay more than 1.6 apart, and 1.3 is inside the guard reach.
 const BH_FILE_ARC := 1.3
 ## The street's first waypoints nearer the bearer than this are the cell he stands in, and are skipped when looking ahead.
 const BH_FILE_SKIP := 0.6
@@ -84,8 +89,8 @@ const BH_ESCORT_PACE := 1.3
 ## How long the escort who takes a standard up, and his fellow, fear nothing, in real seconds (Ruling P5-T7-R8): the death that made him bearer
 ## frightens no one into breaking it. After that the normal rules apply.
 const BH_STEADY := 5.0
-## How far the street from a muster to a house must pass from every other house's door (Ruling P5-T7-R9): a planted company stands 0.9 each side
-## of its bearer, and the next company must pass it by more than two Silent Doom radii.
+## How far the street from a muster to a house must pass from every other house's door (Ruling P5-T7-R9): a planted company's two escorts stand BH_LANE_GAP
+## apart about its bearer (it was 0.9 each side when this was ruled; P5-T12-R3), and the next company must pass it by more than two Silent Doom radii.
 const BH_DOOR_CLEAR := 2.7
 ## The bearer's drawn pole and pennant (a badge over his head, no art): a pennant on a pole.
 const BH_FLAG: Array[int] = [0b11110, 0b11100, 0b10000, 0b10000, 0b10000]
@@ -523,7 +528,8 @@ func _pair_at(at: Vector2, ang: float, wide := false) -> Array[Vector2]:
 ## BH_LANE_GAP apart, even or -- where the lane is short on one side -- one nearer him and one further.
 func _pairs_at(at: Vector2, ang: float, wide: bool) -> Array:
 	var out: Array = []
-	var splits: Array = [[BH_LANE_GAP * 0.5, BH_LANE_GAP * 0.5], [0.9, BH_LANE_GAP - 0.9], [BH_LANE_GAP - 0.9, 0.9], [0.6, BH_LANE_GAP - 0.6], [BH_LANE_GAP - 0.6, 0.6]] 			if wide else [[BH_ESCORT_OFF, BH_ESCORT_OFF]]
+	var splits: Array = [[BH_LANE_GAP * 0.5, BH_LANE_GAP * 0.5], [0.9, BH_LANE_GAP - 0.9], [BH_LANE_GAP - 0.9, 0.9], [0.6, BH_LANE_GAP - 0.6], [BH_LANE_GAP - 0.6, 0.6]] \
+			if wide else [[BH_ESCORT_OFF, BH_ESCORT_OFF]]
 	for split: Array in splits:
 		var want_a := at + Vector2.from_angle(ang) * float(split[0])
 		var want_b := at - Vector2.from_angle(ang) * float(split[1])

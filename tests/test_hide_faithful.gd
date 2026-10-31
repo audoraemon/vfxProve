@@ -531,7 +531,8 @@ static func _pair_trail_behind(t) -> void:
 				var found := ""
 				for step in 10:
 					var back := HideFaithfulDirector.HF_SEARCH_GAP + HideFaithfulDirector.HF_PAIR_SLACK + 0.4 * float(step)
-					if found == "" and spots[1].distance_to(d._trail_point(h, here, back)) < 0.01 and _off_line(spots[1], line_pts) < 0.3 							and spots[0].distance_to(spots[1]) >= want and h.trail.size() > 8:
+					if found == "" and spots[1].distance_to(d._trail_point(h, here, back)) < 0.01 and _off_line(spots[1], line_pts) < 0.3 \
+							and spots[0].distance_to(spots[1]) >= want and h.trail.size() > 8:
 						found = "trail"
 					if found == "" and spots[1].distance_to(d._road_behind(i, here, back)) < 0.01:
 						found = "road"

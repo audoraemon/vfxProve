@@ -128,8 +128,8 @@ static func _tuned(t) -> void:
 	d._tune()
 	t.check(d.tune_need == FaceHalcyonDirector.FH_NEED and d.tune_per_house == 1 and d.tune_hounds == 0 and d.tune_shut_at.is_empty()
 		and is_equal_approx(d.tune_believer_pace, FaceHalcyonDirector.FH_PROC_PACE) and is_equal_approx(d.tune_chain, FaceHalcyonDirector.FH_CHAIN)
-		and d.tune_out_at == FaceHalcyonDirector.FH_PROC_AT and d.tune_beats.is_empty() and d.tune_gate_watch == 0,
-		"setup puts the Hunt's numbers into the base's tune_ vars: one believer a house, three needed, no gate shuts, no hounds (%s %s)" % [d.tune_need, d.tune_out_at])
+		and d.tune_out_at == FaceHalcyonDirector.FH_PROC_AT and d.tune_beats.is_empty() and d.tune_gate_watch == 1,
+		"setup puts the Hunt's numbers into the base's tune_ vars: one believer a house, three needed, no gate shuts, no hounds, a gate-watch divisor of 1 (never 0: ExodusDirector.gate_watched() divides by it; no watch is appointed) (%s %s)" % [d.tune_need, d.tune_out_at])
 	t.check(ExodusDirector.NEED == 10 and ExodusDirector.PER_HOUSE == 4 and ExodusDirector.SHUT_AT.size() == 3 and ExodusDirector.HOUNDS == 2,
 		"the base's own consts stand (Exodus: 10 of 12 in 4s, three gates, two hounds)")
 	t.check(FaceHalcyonDirector.FH_ESCORT == 3 and FaceHalcyonDirector.FH_ESCORT_HOLD == 2 and is_equal_approx(FaceHalcyonDirector.FH_ESCORT_REACH, 1.6)

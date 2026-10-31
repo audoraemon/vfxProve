@@ -143,7 +143,7 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> M
 	return super(r, c, t, x, n)
 
 
-## Copies the HF_ consts into the base's vars (god P5, MS H11). Public so a test can read what setup() set.
+## Copies the HF_ consts into the base's vars (god P5, MS H11). Underscore-private; setup() calls it, and the tests call it to read what it sets.
 func _tune() -> void:
 	tune_out_at = HF_OUT_AT.duplicate()
 	tune_shut_at = []

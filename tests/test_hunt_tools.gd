@@ -53,6 +53,7 @@ static func run(t) -> void:
 	_dispatch(t)
 	_check_arms(t)
 	_gate_flags(t)
+	_gate_behaviour(t)
 	GodTree.dev_fill = false
 	GodTree.use_table({})
 
@@ -178,6 +179,11 @@ static func _check_arms(t) -> void:
 	t.check(src.contains("func _god_hunt("), "behaviour_check has _god_hunt()")
 	t.check(src.contains("or scenario in GOD_HUNTS.SCENARIOS"), "the Hunts join the hit-stop-off list")
 	t.check(src.contains("GodTree.outside(god_type, god_tier, drafted)"), "the outside() refusal stays")
+	# Milestone review M1: --route and --level are refused on a Hunt (each refusal prints, then quits, in the same block).
+	var route_at := src.find("(a Hunt takes --god, not --route)\" %")
+	t.check(route_at >= 0 and src.substr(route_at, 160).contains("quit(1)"), "--route on a Hunt id is refused and quits")
+	var level_at := src.find("(a Hunt is played at level 1)\" %")
+	t.check(level_at >= 0 and src.substr(level_at, 160).contains("quit(1)"), "--level other than 1 on a Hunt's own run is refused and quits")
 
 
 ## hunt_gate.sh's shape, from its source: the flags it parses and that no path runs more than one type.
@@ -197,6 +203,61 @@ static func _gate_flags(t) -> void:
 		var between := src.substr(at, call_at - at)
 		t.check(not between.contains("for ") and not between.contains("while "), "no loop between the marker and the gate.sh call")
 	t.check(src.contains("neither --type nor --judge") or src.contains("needs --type=<type> or --judge=<dir>"), "a call with neither --type nor --judge is refused")
-	t.check(src.contains("exit 2"), "a refusal exits 2")
+	# The refusal messages and their `exit 2` sit on one line (a bare `exit 2` anywhere would satisfy a loose check).
+	for msg in ["needs --type=<type> or --judge=<dir>", "--except=$e is refused for $ONLY", "--except only goes with --judge"]:
+		var at_msg := src.find(msg)
+		var line := src.substr(at_msg, src.find("\n", at_msg) - at_msg) if at_msg >= 0 else ""
+		t.check(line.contains("exit 2"), "the refusal `%s` exits 2 on its own line (%s)" % [msg, line.right(40)])
 	t.check(src.contains("none_lost"), "the judge line carries none_lost")
 	t.check(src.contains("180") and src.contains("240"), "the pooled median is judged against 180-240")
+
+
+## hunt_gate.sh run for real (bash; skipped with a note when bash cannot be started): the judge reads only a gate line whose route is the
+## type's own (milestone review, M1), and --except takes only Decree on Hunts 2-4. The saved files are two fakes in a user:// directory.
+static func _gate_behaviour(t) -> void:
+	var script := ProjectSettings.globalize_path("res://tools/dev/hunt_gate.sh")
+	var probe: Array = []
+	if OS.execute("bash", ["-c", "test -f '%s'" % script], probe) != 0:
+		t.check(true, "bash cannot be started here, or cannot see the script: hunt_gate.sh's behaviour is left to the shell checks")
+		return
+	var dir := "user://test_hunt_tools_judge"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var ok_line := "gate hide_faithful route=god:%s none_lost=3/3 wins=3/3 median=200 idle_max=30 PASS\n"
+	# ruin.txt is right; death.txt carries the Ruin line (saved under the wrong name).
+	for pair: Array in [["ruin", "ruin"], ["death", "ruin"]]:
+		var f := FileAccess.open("%s/hide_faithful.%s.txt" % [dir, pair[0]], FileAccess.WRITE)
+		f.store_string("hide_faithful play seed=1 won=true reason=faithful_out time=200 idle=30\n" + ok_line % pair[1])
+		f.close()
+	var judge := ProjectSettings.globalize_path(dir)
+	var got := _sh(script, ["--only=hide_faithful", "--judge=" + judge])
+	var rows := str(got[1]).split("\n")
+	var ruin_row := ""
+	var death_row := ""
+	for row in rows:
+		if row.begins_with("ruin"):
+			ruin_row = row
+		elif row.begins_with("death"):
+			death_row = row
+	t.check(ruin_row.contains("3/3") and ruin_row.ends_with("PASS"), "the judge reads the right-route file (%s)" % [ruin_row])
+	t.check(death_row.contains("missing") and death_row.ends_with("FAIL"), "a file whose gate line is route=god:ruin is missing for death (%s)" % [death_row])
+	t.check(int(got[0]) == 1 and str(got[1]).contains("FAIL"), "the judge fails with the wrong-route file (%s)" % [got[0]])
+	got = _sh(script, ["--only=hide_faithful"])
+	t.check(int(got[0]) == 2, "a call with neither --type nor --judge exits 2 (%s)" % [got[0]])
+	got = _sh(script, ["--only=hide_faithful", "--judge=" + judge, "--except=decree"])
+	t.check(int(got[0]) == 2, "--except=decree on Hunt 1 is refused with exit 2 (%s)" % [got[0]])
+	got = _sh(script, ["--only=silence_witness", "--judge=" + judge, "--except=death"])
+	t.check(int(got[0]) == 2, "--except=death on Hunt 2 is refused with exit 2 (%s)" % [got[0]])
+	got = _sh(script, ["--only=face_halcyon", "--judge=" + judge, "--except=decree"])
+	t.check(int(got[0]) == 2, "--except=decree on Hunt 5 is refused with exit 2 (%s)" % [got[0]])
+	got = _sh(script, ["--only=break_hunt", "--judge=" + judge, "--except=decree"])
+	t.check(int(got[0]) != 2 and str(got[1]).contains("decree") and str(got[1]).contains("excepted"), "--except=decree on Hunt 4 is accepted (%s)" % [got[0]])
+	for name in ["ruin", "death"]:
+		DirAccess.remove_absolute("%s/hide_faithful.%s.txt" % [dir, name])
+	DirAccess.remove_absolute(dir)
+
+
+## Runs `bash <script> <args>`; returns [exit code, stdout and stderr].
+static func _sh(script: String, args: Array) -> Array:
+	var out: Array = []
+	var code := OS.execute("bash", [script] + args, out, true)
+	return [code, "".join(out)]

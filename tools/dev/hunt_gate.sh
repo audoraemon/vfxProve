@@ -14,9 +14,10 @@
 #                     `hunt_gate <hunt> tier=N pass=K/6 none_lost=K/3 median=S [excepted=<types>] PASS|FAIL`. PASS iff every counted type's gate
 #                     PASSed (wins at least 2/3, idle at most 45 s -- the real idle, fillers end no stretch, T1R D38), none_lost is 3/3 (some saved
 #                     type ran --with-none), and the median of all winning play runs pooled is 180-240 s (ruling C9). A type's own median is
-#                     printed and never judged (T1R D10). A missing type file is FAIL.
+#                     printed and never judged (T1R D10). A missing type file, or one whose gate line is not `route=god:<that type>`, is FAIL.
 #   --except=<type>,... with --judge: those types print `excepted` and do not count (Decree on Hunts 2-4 is a reported gap, MS §9 open issue 1,
-#                     ruling C9: the controller judges those three Hunts with --except=decree; never tuned around)
+#                     ruling C9: the controller judges those three Hunts with --except=decree; never tuned around). Only `decree`, and only on
+#                     Hunts 2-4, is accepted; anything else is refused (exit 2)
 #   --jobs=N          passed to gate.sh (its default is 6 runs at once; 3 here, or 2 while another session runs Godot)
 # A call with neither --type nor --judge is refused (exit 2): there is no 21-run call. Exit 1 on FAIL.
 set -u
@@ -50,6 +51,10 @@ if [ -n "$SAVE" ] && [ -z "$TYPE" ]; then echo "hunt_gate.sh: --save only goes w
 if [ "$WITHNONE" = 1 ] && [ -z "$TYPE" ]; then echo "hunt_gate.sh: --with-none only goes with --type" >&2; exit 2; fi
 for e in $(echo "$EXCEPT" | tr ',' ' '); do
   case " $TYPES " in *" $e "*) :;; *) echo "hunt_gate.sh: --except=$e is not one of: $TYPES" >&2; exit 2;; esac
+  # ruling C9: only Decree on Hunts 2-4 is a reported gap; no other type, and no other Hunt, may be excepted
+  if [ "$e" != decree ] || [ "$TIER" -lt 2 ] || [ "$TIER" -gt 4 ]; then
+    echo "hunt_gate.sh: --except=$e is refused for $ONLY: only decree on Hunts 2-4 (silence_witness, expel_inquisitor, break_hunt) may be excepted" >&2; exit 2
+  fi
 done
 
 if [ -n "$TYPE" ]; then
@@ -80,10 +85,11 @@ for jt in $TYPES; do
     continue
   fi
   counted=$((counted + 1))
-  line=$(grep -a "^gate $ONLY " "$f" 2>/dev/null | tail -1)
+  # the gate line must say route=god:<this type>: a file saved under the wrong name is not judged as another type (milestone review, M1)
+  line=$(grep -a "^gate $ONLY .*route=god:$jt " "$f" 2>/dev/null | tail -1)
   if [ -z "$line" ]; then
     allok=0
-    rows="$rows$(printf '%-9s %s' "$jt" "missing ($ONLY.$jt.txt has no gate line) FAIL")"$'\n'
+    rows="$rows$(printf '%-9s %s' "$jt" "missing ($ONLY.$jt.txt has no gate line with route=god:$jt) FAIL")"$'\n'
     continue
   fi
   wins=$(echo "$line" | grep -a -o 'wins=[0-9]*/3' | cut -d= -f2)

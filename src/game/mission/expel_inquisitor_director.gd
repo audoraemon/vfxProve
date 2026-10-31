@@ -1,7 +1,7 @@
 class_name ExpelInquisitorDirector
 extends AssassinateDirector
-## Expel the inquisitor (god P5, MS §4, plan Task 6; Hunt 3 of the Lantern Hunts, Tier 3): three lantern-wardens walk looping rounds along
-## the walls, each with a guard, then the Lantern's captain walks a round of four stops and makes for the Citadel's gate, which loses the
+## Expel the inquisitor (god P5, MS §4, plan Task 6; Hunt 3 of the Lantern Hunts, Tier 3): three lantern-wardens walk looping rounds (one along
+## the west wall, two through the interior at x 6-8: see EI_ROUNDS), each with a guard, then the Lantern's captain walks a round of four stops and makes for the Citadel's gate, which loses the
 ## night. Stop all four -- dead, out of the walls, or (the captain) frightened out. The Hunt's own rule: three frights drive the captain out
 ## of Aldermere. A fright is an alarm on the captain while he walks (a loud power near him, a guard of his felled, his mind turned afraid), at
 ## most one count every EI_FRIGHT_GAP seconds; the first two send him to hide, the third sends him running for the nearest gate and he is
@@ -11,7 +11,7 @@ extends AssassinateDirector
 ## Citadel's gate. A warden has no safe place (he hides in his own waiting house, else a house of his round, and his round loops for ever); the
 ## captain hides in the Temple, else a house of his round, and only the captain at the end of his round walks to the Citadel. The Temple down or
 ## burning therefore never turns an alarm into an escape. Guards are the base's soldiers, appointed nearest each target's first door. Opposition
-## stands more than 1.6 apart (MS §0): the captain's two guards 0.9 each side of him, the door rings three slots wide. The town's people
+## stands more than 1.6 apart (MS §0): the captain's two guards walk in file behind him on his trail (EI_GUARD_FILE, _escort_spot(); Ruling P5-T11-R8), the door rings three slots wide. The town's people
 ## are held through an evacuation every look (MS §0, _hold_all). Banners and tags are MS §4's.
 
 ## The wardens' rounds, one per warden: four stops each as spots, snapped to the dwelling nearest each whose door the street reaches
@@ -35,7 +35,7 @@ const EI_FINAL_WAYPOINT := Vector2(0.8, -14.5)
 const EI_LABELS := ["WARDEN", "WARDEN", "WARDEN", "CAPTAIN"]
 ## How many wardens there are (the captain is the quarry after them).
 const EI_WARDENS := 3
-## Each warden's guards and the captain's (MS §4: one a warden, two the captain, 0.9 off him).
+## Each warden's guards and the captain's (MS §4: one a warden, two the captain; the captain's walk behind him on his trail, not at his sides).
 const EI_GUARDS := [1, 1, 1, 2]
 ## When each warden sets out at the latest (the strip's seconds, MS §4 *fg*): 0:44, 1:34, 2:24; each next sooner if the one before is stopped.
 ## Round 2 of Task 11 tuning (Ruling P5-T11-R1, P5-C10 "harder"): was 20 / 70 / 120. A fast killer is bound by the first warden's time plus three
@@ -52,7 +52,7 @@ const EI_VISIT := 6.0
 const EI_HIDE := 12.0
 ## How near a loud power must land to alarm a walking target (the Assassinate type's own 4).
 const EI_ALARM_REACH := 4.0
-## How far a guard walks off his target (MS §4: 0.9; two guards stand 1.8 apart).
+## How far a guard walks off his target (MS §4: 0.9; the base's `guard_r`). A warden's guard rings him at this; the captain's first guard walks this far behind him on his trail.
 const EI_GUARD_OFF := 0.9
 ## How many counted frights drive the captain out, and the real seconds between two counts (8 *fg*; MS §7 tunes it to 6).
 const EI_FRIGHTS := 3
@@ -155,9 +155,9 @@ func _temple() -> Structure:
 	return null
 
 
-## Each guard sent to his place (the base's, with the captain's two walking apart): a street ring of `guard_r` round a warden, and for the captain one
-## guard ahead of him on his road and one behind him on the road he came by (guard_r each, 1.8 apart), both walking a little faster than he does so they
-## hold their places. The base's ring put the two on one side of him, its slots snapped together in a one-cell lane, and they walked slower, so they
+## Each guard sent to his place (the base's, with the captain's two walking apart): a street ring of `guard_r` round a warden, and for the captain two
+## guards in file behind him on the road he came by (his trail; _escort_spot()): the first guard_r back and the second EI_GUARD_FILE further, both
+## walking a little faster than he does so they hold their places. The base's ring put the two on one side of him, its slots snapped together in a one-cell lane, and they walked slower, so they
 ## trailed him down the same lane and queued: under 1.6 apart for most of his walk (review of Task 11, M3; Ruling P5-T11-R8, MS §0: one Doom or one
 ## strike must not take both).
 func _send_guards() -> void:
@@ -231,7 +231,7 @@ func _note_trail(p: Person, out: bool, door: Vector2) -> void:
 			_trail.remove_at(0)
 
 
-## Where the captain's guard stands in the street: behind him on the road he came by (his trail), the first guard_r back and the second EI_GUARD_APART
+## Where the captain's guard stands in the street: behind him on the road he came by (his trail), the first guard_r back and the second EI_GUARD_FILE
 ## further, so they follow him in file and the two stay apart at any walk (one strip of the road is the road itself, so the spots are on ground he
 ## walked). When the trail is not long enough yet (he has just come out), the pair's places at the door he came out of.
 func _escort_spot(p: Person, first: bool) -> Vector2:

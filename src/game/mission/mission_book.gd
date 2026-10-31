@@ -207,7 +207,7 @@ static func rite_missions() -> Array[MissionDef]:
 
 
 ## The Lantern Hunts' missions (god P5, MS §1, Ruling P5-3): reached by id from the god's draw and from the board's DEV tab; never listed on
-## the board, in the campaign, in dev_missions() or in tier_missions(). Each is on its tier's frame; its director comes with its own task.
+## the board, in the campaign, in dev_missions() or in tier_missions(). Each is on its tier's frame with its own director and objectives (its function below sets them).
 static func hunt_missions() -> Array[MissionDef]:
 	var out: Array[MissionDef] = [hide_faithful(), silence_witness(), expel_inquisitor(), break_hunt(), face_halcyon()]
 	return out
@@ -1022,8 +1022,8 @@ static func first_taste() -> MissionDef:
 
 
 ## Dresses a Hunt's frame with the strings every Hunt shares (god P5, MS §1, Ruling P5-3): its brief, goal, label and lose as the spec gives
-## them, its default loadout, its Lantern (a watch; the Gaze at Tier 5), a camera at `camera` and a do-nothing director whose only objective
-## is the dawn, so the night runs to the clock until the Hunt's own task replaces `director` and `make_objectives`.
+## them, its default loadout, its Lantern (a watch; the Gaze at Tier 5), a camera at `camera` and a base director whose only objective
+## is the dawn; each Hunt's own function (below) then replaces `director` and `make_objectives`.
 static func _hunt(m: MissionDef, goal: String, label: String, lose: String, loadout: Array, camera: Vector2, kind := LanternWatch.KIND_WATCH) -> MissionDef:
 	m.goal = goal
 	m.goal_label = label

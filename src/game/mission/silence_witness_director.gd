@@ -32,7 +32,8 @@ const SW_POST_SIGHT := 6.0
 const SW_OUT_PAUSE := 3.0
 ## How many mates walk with a witness.
 const SW_MATES := 2
-## How far behind the witness his mates walk, and stand at the door.
+## How far from the door the witness's mates stand on its ring while they wait with him (the base's tune_mate_gap). On the walk they are not placed
+## by this: they follow in file at WitnessDirector.SW_HEEL_*.
 const SW_MATE_GAP := 1.2
 ## The share of his own pace the witness walks at *fg*: about 23-34 s to the Temple, measured in the stepped-body test (north-east 22.7 s, south-west 23.9, south-east 28.3,
 ## west 33.8); the spec's first "35-50 s" no street of Aldermere gives (review of Task 5). SW_MATE_SIDE, the spec's side-by-side lever, is retired: the mates walk in file

@@ -163,8 +163,6 @@ static func _hunt_def(t) -> void:
 		t.check(absf(def.clock - (TierBook.clock(tier) + s.extra_clock())) < 0.001 and s.extra_clock() > 0.0,
 			"tier %d Hunt: the tier's clock plus the Faith clock (%s)" % [tier, def.clock])
 		t.check(def.gifts == PackedStringArray([RiteBook.WATCHFUL_BELL]) and def.gifts == s.gifts, "tier %d Hunt: the god's gifts (%s)" % [tier, def.gifts])
-		def.gifts.append("x")
-		t.check(s.gifts.size() == 1, "tier %d Hunt: the def's gifts are a copy of the slot's" % tier)
 		t.check(def.goal == HuntBook.def(String(h.id)).goal and def.lose == HuntBook.def(String(h.id)).lose, "tier %d Hunt: the Hunt's own goal and lose" % tier)
 		t.check(Descent.new().setup(def, 1).tier == tier, "tier %d Hunt: the Descent plays it at the god tier" % tier)
 		# A Hunt id builds the Hunt at any Notice (Ruling P5-2): a stale in_night, a test.

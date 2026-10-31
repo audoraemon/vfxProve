@@ -2,7 +2,7 @@ extends RefCounted
 ## The scripted policies of the five Lantern Hunts (god P5, MS §7, R37-R38, plan Task 3): behaviour_check on a scenario named in SCENARIOS
 ## plays the Hunt's shared plan (no `--god`: the def's own loadout, act_shared) or, with `--god=<type>:<tier> --dev-tree`, that type's own
 ## policy (act_<type>) with the loadout the file's LOADOUT names for it, held to the tree by problems(). One file per Hunt in god_hunts/
-## (a stub casting nothing until its Task 4-13 fills it); FILLED lists the types a file has written. (No class_name: preloaded as GOD_HUNTS
+## (each filled by its Hunt's own tasks); FILLED lists the types a file has written. (No class_name: preloaded as GOD_HUNTS
 ## by behaviour_check.gd and by the tests, as god_t1.gd is. The policy pieces every Hunt shares are god_t1.gd's: FILL, note_cast(),
 ## outside_spot(), road_ahead(), cast_mirror(), cast_bell(), plague_aim(); reached through GOD_T1, never copied -- Ruling P5-7.)
 
@@ -11,7 +11,7 @@ const GOD_T1 := preload("res://tools/dev/routes/god_t1.gd")
 
 ## The Hunts' mission ids in HuntBook.ids() order (tier 1-5). A test holds this equal to HuntBook.ids().
 const SCENARIOS := ["hide_faithful", "silence_witness", "expel_inquisitor", "break_hunt", "face_halcyon"]
-## Each Hunt's policy file (stubs until Tasks 4-13 fill them).
+## Each Hunt's policy file.
 const FILES := {
 	"hide_faithful": preload("res://tools/dev/routes/god_hunts/hide_faithful.gd"),
 	"silence_witness": preload("res://tools/dev/routes/god_hunts/silence_witness.gd"),

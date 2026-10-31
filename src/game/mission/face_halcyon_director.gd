@@ -35,16 +35,15 @@ extends ExodusDirector
 ## The processions' houses (MS §6 *fg*): the dwelling nearest each point whose door the street reaches from the pyre, with a walk of FH_WALK_MIN seconds
 ## or more and a lane behind it for the file (_best_door()): the west, the north, the south-east and the south-west (the spec's north-east (12.5, -11) has
 ## no dwelling more than 16 units from the pyre, and the north-east corner's doors are in pockets). The walk is 28-33 s estimated at pace 0.5 (the spec's
-## 25-32 units and 50-64 s do not agree: Task 13's to tune); their words and the names on the tags and banners.
+## 25-32 units and 50-64 s do not agree; Task 13 tried pace 0.4 and reverted it because the Passage route's idle then passed the mirror cooldown, Ruling P5-T13-R7, so the walks stay about half the spec's seconds); their words and the names on the tags and banners.
 const FH_HOUSE_POINTS := [Vector2(-11.5, 7.0), Vector2(3.0, -12.0), Vector2(12.0, 12.0), Vector2(-8.0, 11.0)]
 const FH_HOUSE_WORDS := ["the west procession", "the north procession", "the south-east procession", "the south-west procession"]
 const FH_HOUSE_NAMES := ["WEST", "NORTH", "SOUTH-EAST", "SOUTH-WEST"]
 ## Where the pyre stands from the Temple's door (MS §6): 2.5 south of it, snapped to walkable ground.
 const FH_PYRE_OFF := Vector2(0.0, 2.5)
-## How many soldiers escort a believer (*fg*; MS §7 tunes it to 2), how far from him they ring where there is room (1.7 apart for three), how many able
+## How many soldiers escort a believer (*fg*; MS §7 tunes it to 2), how many able
 ## escorts keep him bound (fewer frees him), and how near him -- or his place -- an escort must stand to be with the procession.
 const FH_ESCORT := 3
-const FH_ESCORT_RING := 1.0
 const FH_ESCORT_HOLD := 2
 const FH_ESCORT_REACH := 1.6
 ## Aldermere's lanes are one or two cells wide, so three escorts more than 1.6 apart cannot all stand within FH_ESCORT_REACH of the believer (two in a
@@ -193,7 +192,7 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> M
 	return super(r, c, t, x, n)
 
 
-## Copies the FH_ consts into the base's vars (god P5, MS H11). Public so a test can read what setup() set.
+## Copies the FH_ consts into the base's vars (god P5, MS H11). Underscore-private; setup() calls it, and the tests call it to read what it sets.
 func _tune() -> void:
 	tune_out_at = FH_PROC_AT.duplicate()
 	tune_shut_at = []
@@ -202,7 +201,7 @@ func _tune() -> void:
 	tune_believer_pace = FH_PROC_PACE
 	tune_need = FH_NEED
 	tune_chain = FH_CHAIN
-	tune_gate_watch = 0
+	tune_gate_watch = 1  # no watch is appointed; 1, not 0, because ExodusDirector.gate_watched() divides by it (milestone review, M3)
 	tune_beats = []
 
 

@@ -426,7 +426,7 @@ static func _hunt_def_not_due(t) -> void:
 	s.notice = 99
 	var def := GodNight.def_for(s, "lost_lamb")
 	var own := MissionBook.get_mission("lost_lamb")
-	t.check(def.name == own.name and def.intro_banner == own.intro_banner, "at 99%% the stand-in plays under its own name and banner (%s)" % def.name)
+	t.check(def.name == own.name and def.intro_banner == own.intro_banner, "at 99%% a board mission plays under its own name and banner (%s)" % def.name)
 	# A Hunt id builds the Hunt at any Notice (god P5, Ruling P5-2); any other board id is the god's ordinary night.
 	var hunt_at_99 := GodNight.def_for(s, MissionBook.HIDE_FAITHFUL)
 	t.check(hunt_at_99 != null and hunt_at_99.name == "Hide the faithful" and hunt_at_99.intro_banner == "HIDE THE FAITHFUL",
@@ -467,8 +467,7 @@ static func _after_hunt(t) -> void:
 	for tier in range(1, 6):
 		var pool := TierBook.missions(tier)
 		var hunt_id: String = GodNight.HUNTS[tier - 1].id
-		var before := ""
-		before = pool[0]
+		var before: String = pool[0]
 		for how in ["won", "lost", "abandoned"]:
 			var bad := ""
 			for seed_value in range(1, 41):
@@ -491,7 +490,7 @@ static func _after_hunt(t) -> void:
 				if s.before_hunt != "" or s.last_mission != next:
 					bad = "seed %d: after a plain night before_hunt is %s" % [seed_value, s.before_hunt]
 					break
-			t.check(before != "" and bad == "", "tier %d, a %s Hunt: the next night is neither %s nor %s, then it is forgotten (%s)" % [tier, how, hunt_id, before, bad])
+			t.check(before != "" and bad == "", "tier %d, a %s Hunt: the next night is not %s (the night before the Hunt), then it is forgotten (%s)" % [tier, how, before, bad])
 	var plain := _slot(1, 7)
 	plain.last_mission = "warning"
 	plain.before_hunt = "tax_collector"

@@ -367,3 +367,8 @@ REBUILD, the Magnify CLAMP). Levers used in the brief's order; no new opposition
 - Gate (fix round): Ruin 3/3 101/188/134 idle 57; Death **2/3** 102/199 (lost 60) idle 22 PASS; Veil 3/3 140/126/182 idle 45 PASS; Passage 74 idle 54;
   Decree 0/3 (lost 243/214/117); Dominion 3/3 177/189/189 idle 60. `hunt_gate hide_faithful tier=1 pass=2/6 none_lost=3/3 median=137 FAIL`.
   Rows: Death 2, Decree 1 and 2 re-recorded in place; the other 18 unchanged. FLOW alone 209/0.
+- **P5-T17-C1 (controller, re-review I4). The 12 s set-down stands.** The haiku re-review read the set-down as an unchecked jump (no
+  `clear_line`, it passes over the body that pins him). Kept: it walks only his own grid path legs (no wall is crossed), at most 1.2, onto a spot
+  no one stands within 0.4, toward his own way out, and only after the cause (two ways out) is fixed; it cannot make a loss, and a believer jammed
+  12 s by bodies is a crowd jam, not a threat the player answers. Disclosed here and in P5-T17-R8; `nudges` counts it. The stale `_walk_on` doc
+  comment ("the nearest way out") is fixed.

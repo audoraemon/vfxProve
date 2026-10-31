@@ -1202,7 +1202,8 @@ func _step_free(c: Charge) -> void:
 	super(c)
 
 
-## The household walks itself (MS §2): past fear, its lamp -- and any believer out of the file -- sent on to the nearest way out, wherever
+## The household walks itself (MS §2): past fear, its lamp -- and any believer out of the file -- sent on to his household's way out (the nearest
+## when none is set yet), wherever
 ## the god's hand left him once it lets go. A believer under the god's hand, or in a seizer's, is let be.
 func _walk_on(c: Charge) -> void:
 	var p := c.man as Person

@@ -1404,7 +1404,7 @@ static func _whisper_walk(t) -> void:
 
 ## Ruling P5-T12-R3 (review-t12 I2): a standard planted at a door stands its escorts more than 1.6 apart as BODIES, not only as posts: the bodies stop up to
 ## Person.GOAL_REACH short of their posts, so the posts are BH_LANE_GAP (2.6) apart. At each of the three doors the standard is planted (the bearer at the door,
-## the escorts walking in from where the march left them), bodies stepped 10 s: every step of the last 5 s is over 1.6 and the least is printed.
+## the escorts walking in from where the march left them), bodies stepped 10 s: every step is over 1.6 and the least is printed.
 static func _planted_bodies(t) -> void:
 	var worst := INF
 	var bad := 0
@@ -1427,10 +1427,9 @@ static func _planted_bodies(t) -> void:
 		t.check(d._planted[i], "(set-up) the standard is planted at door %d" % h)
 		for f in 100:
 			_step_company(s, d, i, PackedVector2Array(), 0, 0.0, 0.1, false)
-			if f >= 50:
-				var gap := _pair_gap(d, i)
-				worst = minf(worst, gap)
-				bad += 1 if gap <= 2.0 * SilentDoom.RADIUS else 0
+			var gap := _pair_gap(d, i)
+			worst = minf(worst, gap)
+			bad += 1 if gap <= 2.0 * SilentDoom.RADIUS else 0
 		cases += 1
 		Kit.done(s)
-	t.check(cases == 3 and bad == 0, "planted at each door the escorts' bodies stand more than 1.6 apart for the last 5 s (%d bad steps; the least %.2f)" % [bad, worst])
+	t.check(cases == 3 and bad == 0, "planted at each door the escorts' bodies stand more than 1.6 apart for all 10 s (%d bad steps; the least %.2f)" % [bad, worst])

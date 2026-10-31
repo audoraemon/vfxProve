@@ -195,6 +195,14 @@ static func _dev_town(t) -> void:
 	t.check(Array(board._missions_of(MissionBoard.DEV_TIER)) == want, "the DEV tab lists the sandbox, the Capital's missions, the fixture town's, then the rites (%s)" % [board._missions_of(MissionBoard.DEV_TIER)])
 	t.check(not Array(board._missions_of(MissionBoard.DEV_TIER)).any(func(id: String) -> bool: return id.ends_with("@aldermere")),
 		"Aldermere lists nothing of its own on the DEV tab")
+	# God P5 (plan Ruling C6): the Hunts are a second row, not row 1 -- row 1's list above is exact -- and on no tier tab.
+	t.check(Array(board.dev_hunts()) == Array(HuntBook.ids()), "dev_hunts() is HuntBook.ids() (%s)" % [board.dev_hunts()])
+	var on_tier := []
+	for tier in range(1, TierBook.NAMES.size() + 1):
+		for id in board._missions_of(tier):
+			if HuntBook.has(id):
+				on_tier.append("%s on tier %d" % [id, tier])
+	t.check(on_tier.is_empty(), "no tier 1-5 tab holds a Hunt id (%s)" % [on_tier])
 	board.open_tab(MissionBoard.DEV_TIER)
 	var composite := "tax_collector@fixture"
 	t.check(board._defs.has(composite) and (board._defs[composite] as MissionDef).city == FixtureCity.ID, "a town mission's def is built in its town")

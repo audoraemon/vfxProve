@@ -11,6 +11,9 @@ extends Node
 ##   D opens it. A town mission's card shows its name, the town (gold) and its type, no brief. Nothing of it shows without the flag.
 ## - God P3 (MS §1 R6, Ruling P3-7): with --dev the DEV tab ends with the Awaken rites (MissionBook.rite_missions()), titled "<name> (rite)", for
 ##   testing and the scripted check; they are on no tier tab.
+## - God P5 (MS §1, plan Ruling C6, P5-22): with --dev the DEV tab has a second row under the first, one compact card for each Lantern Hunt
+##   (HuntBook), titled "<title> (Hunt)" when that fits its card in two lines, else the title alone. Row 1 and every pin on it are unchanged;
+##   the Hunts are on no tier tab. The hint moves below row 2 on the DEV tab only. Down and Up move the selection between the rows.
 ## - With --dev, an ENDLESS button beside DEV (god P1, Ruling P14) emits "endless": Game opens Endless Night's slot select.
 
 ## "pick" (the player chose `chosen`) or "back" (Esc).
@@ -43,6 +46,15 @@ const DEV_RECT := Rect2(112.0, 8.0, 40.0, 20.0)
 ## a fake MissionDef, so it is a button. A click emits "endless".
 const ENDLESS_RECT := Rect2(158.0, 8.0, 72.0, 20.0)
 
+## The DEV tab's second row (god P5, plan Ruling C6, P5-22): the five Hunts' cards, equal across the screen under row 1 (CARD_TOP + CARD.y + 6),
+## each DEV_ROW2_H high (36: the plan's 40 left the hint touching the cards; Ruling P5-T14-1), padded HUNT_PAD at the sides. On the DEV tab the hint is drawn at DEV_HINT_Y so it clears them.
+const DEV_ROW2_TOP := CARD_TOP + 230.0 + 6.0
+const DEV_ROW2_H := 36.0
+const HUNT_PAD := 4.0
+const DEV_HINT_Y := 344.0
+## The most lines a Hunt card's label may wrap to (god P5, MS §1).
+const HUNT_LINES := 2
+
 ## The mission picked, once "pick" is emitted.
 var chosen := ""
 ## Whether the DEV tab shows (--dev, set before setup()).
@@ -50,6 +62,8 @@ var dev := false
 ## The tier whose tab is open (1-5, or DEV_TIER), and the selected card on it.
 var tier := 1
 var selected := 0
+## Whether the selection is on the DEV tab's Hunt row (god P5): `selected` then indexes dev_hunts(), else missions().
+var row2 := false
 
 var _save: SaveFile
 var _ui: Control
@@ -68,12 +82,17 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 		for id in _missions_of(DEV_TIER):
 			if not _defs.has(id):
 				_defs[id] = Mission.def_for(id, true, _state())
+		for id in dev_hunts():
+			_defs[id] = Mission.def_for(id, true, _state())
 	tier = 1
 	selected = 0
 	var at := _tier_of(current)
 	if at > 0 and _is_open(at):
 		tier = at
 		selected = maxi(_missions_of(at).find(current), 0)
+		if at == DEV_TIER and dev_hunts().has(current):  # the board reopens on the Hunt last picked (god P5)
+			row2 = true
+			selected = dev_hunts().find(current)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -109,6 +128,35 @@ static func card_rect(i: int, count: int) -> Rect2:
 	return Rect2(Vector2(left + float(i) * (size.x + CARD_GAP), CARD_TOP), size)
 
 
+## Where Hunt card `i` of `count` sits (god P5, plan Ruling C6): the DEV tab's second row, `count` equal cards across the screen less its margins,
+## CARD_GAP apart, centred on 320 as card_rect() is.
+static func hunt_rect(i: int, count: int) -> Rect2:
+	var w := floorf((640.0 - BOARD_MARGIN * 2.0 - float(maxi(count - 1, 0)) * CARD_GAP) / float(maxi(count, 1)))
+	var total := float(count) * w + float(maxi(count - 1, 0)) * CARD_GAP
+	var left := roundf(320.0 - total * 0.5)
+	return Rect2(Vector2(left + float(i) * (w + CARD_GAP), DEV_ROW2_TOP), Vector2(w, DEV_ROW2_H))
+
+
+## The DEV tab's Hunts (god P5): HuntBook's ids in tier order with --dev, else none.
+func dev_hunts() -> PackedStringArray:
+	return HuntBook.ids() if dev else PackedStringArray()
+
+
+## A Hunt card's label (god P5, plan Ruling C6): "<title> (Hunt)" when it wraps to the card's room in at most HUNT_LINES lines that each fit,
+## else the Hunt's title alone. Measured with UiTheme at SIZE_SMALL; the room is the same for the five cards.
+func hunt_label(id: String) -> String:
+	var title := String(HuntBook.row(id).get("title", id))
+	var room := hunt_rect(0, 5).size.x - 2.0 * HUNT_PAD
+	var full := "%s (Hunt)" % title
+	var lines := UiTheme.wrap(full, room, UiTheme.SIZE_SMALL)
+	if lines.size() > HUNT_LINES:
+		return title
+	for line in lines:
+		if UiTheme.width(line, UiTheme.SIZE_SMALL) > room:
+			return title
+	return full
+
+
 ## The DEV tab's button (--dev only).
 static func dev_rect() -> Rect2:
 	return DEV_RECT
@@ -137,11 +185,16 @@ func _missions_of(t: int) -> PackedStringArray:
 	return TierBook.missions(t)
 
 
-## The tab a mission is on: its tier, DEV_TIER for a dev one (--dev), or 0.
+## The tab a mission is on: its tier, DEV_TIER for a dev one or a Hunt (--dev), or 0.
 func _tier_of(id: String) -> int:
-	if dev and _missions_of(DEV_TIER).has(id):
+	if dev and (_missions_of(DEV_TIER).has(id) or dev_hunts().has(id)):
 		return DEV_TIER
 	return TierBook.tier_of(id)
+
+
+## The tab a mission is on (god P5): `_tier_of()`, public; DEV_TIER for a Hunt id with --dev.
+func tab_of(id: String) -> int:
+	return _tier_of(id)
 
 
 ## Whether tab `t` is open (god P1, ruling C3): the five tiers always, the DEV tab with --dev.
@@ -182,7 +235,7 @@ func best_line(id: String) -> String:
 func brief_lines(id: String, room: float) -> PackedStringArray:
 	var out := PackedStringArray()
 	var def: MissionDef = _defs.get(id)
-	if def != null and MissionBook.split_city(id)[1] == &"" and not RiteBook.has(id):  # a rite's card, like a town's, has no brief (god P3)
+	if def != null and MissionBook.split_city(id)[1] == &"" and not RiteBook.has(id) and not HuntBook.has(id):  # a rite's card, like a town's, has no brief (god P3)
 		for brief in def.brief:
 			out.append_array(UiTheme.wrap(brief, room, UiTheme.SIZE_BODY))
 	return out
@@ -235,11 +288,15 @@ func kind_lines(id: String) -> PackedStringArray:
 		return PackedStringArray([String(parts[1]).to_upper(), TierBook.type_of(parts[0]).to_upper()])
 	if RiteBook.has(id):
 		return PackedStringArray(["RITE"])
+	if HuntBook.has(id):
+		return PackedStringArray(["HUNT"])  # (a Hunt's compact card draws its label only; the kind is for the line a test reads, god P5)
 	return PackedStringArray([("Dev sandbox" if tier == DEV_TIER else TierBook.type_of(id)).to_upper()])
 
 
-## A card's title: the mission's name, and "<name> (rite)" for an Awaken rite (god P3, MS §1 R6).
+## A card's title: the mission's name, "<name> (rite)" for an Awaken rite (god P3, MS §1 R6), and hunt_label() for a Hunt (god P5).
 func card_title(id: String) -> String:
+	if HuntBook.has(id):
+		return hunt_label(id)
 	var def: MissionDef = _defs.get(id)
 	if def == null:
 		return id
@@ -266,6 +323,7 @@ func open_tab(t: int) -> void:
 		return
 	tier = t
 	selected = 0
+	row2 = false
 	UiSound.play(&"ui_click")
 	_redraw()
 
@@ -278,14 +336,15 @@ func choose(id: String) -> void:
 		push_warning("KAK has no board mission called " + id)
 		return
 	tier = t
-	selected = maxi(_missions_of(t).find(id), 0)
+	row2 = dev_hunts().has(id)
+	selected = maxi((dev_hunts() if row2 else _missions_of(t)).find(id), 0)
 	if _is_open(t):
 		_pick()
 	else:
 		_redraw()
 
 
-## What is under a point: "endless" (--dev only), "tab:<tier>", "card:<i>" (the open tier's), or "".
+## What is under a point: "endless" (--dev only), "tab:<tier>", "card:<i>" (the open tier's), "hunt:<i>" (the DEV tab's second row), or "".
 func hit(point: Vector2) -> String:
 	if dev and ENDLESS_RECT.has_point(point):
 		return "endless"
@@ -298,20 +357,30 @@ func hit(point: Vector2) -> String:
 	for i in ids.size():
 		if card_rect(i, ids.size()).has_point(point):
 			return "card:%d" % i
+	if dev and tier == DEV_TIER:
+		var hunts := dev_hunts()
+		for i in hunts.size():
+			if hunt_rect(i, hunts.size()).has_point(point):
+				return "hunt:%d" % i
 	return ""
 
 
 func _pick() -> void:
-	if not _is_open(tier) or missions().is_empty():
+	if not _is_open(tier) or _row().is_empty():
 		return
-	chosen = missions()[selected]
+	chosen = _row()[selected]
 	UiSound.play(&"ui_manifest")
 	_redraw()
 	action.emit("pick")
 
 
+## The row the selection is on (god P5): the DEV tab's Hunts, or the open tab's missions.
+func _row() -> PackedStringArray:
+	return dev_hunts() if row2 and tier == DEV_TIER else missions()
+
+
 func _select(i: int) -> void:
-	var ids := missions()
+	var ids := _row()
 	if ids.is_empty():
 		return
 	i = posmod(i, ids.size())
@@ -319,6 +388,26 @@ func _select(i: int) -> void:
 		selected = i
 		UiSound.play(&"ui_hover")
 		_redraw()
+
+
+## Down or Up on the DEV tab (god P5): the selection crosses to the other row, on the card nearest by x. Elsewhere, nothing.
+func _cross_rows(to_hunts: bool) -> void:
+	if not dev or tier != DEV_TIER or row2 == to_hunts or dev_hunts().is_empty() or missions().is_empty():
+		return
+	var from := _row().size()
+	var here := (hunt_rect(selected, from) if row2 else card_rect(selected, from)).get_center().x
+	var ids := dev_hunts() if to_hunts else missions()
+	var best := 0
+	var gap := INF
+	for i in ids.size():
+		var at := (hunt_rect(i, ids.size()) if to_hunts else card_rect(i, ids.size())).get_center().x
+		if absf(at - here) < gap:
+			gap = absf(at - here)
+			best = i
+	row2 = to_hunts
+	selected = best
+	UiSound.play(&"ui_hover")
+	_redraw()
 
 
 func _redraw() -> void:
@@ -334,6 +423,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			action.emit("back")
 		elif key == KEY_D and dev:
 			open_tab(DEV_TIER)
+		elif key == KEY_DOWN:
+			_cross_rows(true)
+		elif key == KEY_UP:
+			_cross_rows(false)
 		elif key == KEY_LEFT:
 			_select(selected - 1)
 		elif key == KEY_RIGHT:
@@ -352,13 +445,17 @@ func _on_gui_input(event: InputEvent) -> void:
 		if h != _hover:
 			_hover = h
 			if h.begins_with("card:"):
+				_cross_rows(false)
+				_select(int(h.substr(5)))
+			elif h.begins_with("hunt:"):
+				_cross_rows(true)
 				_select(int(h.substr(5)))
 			_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		click(event.position)
 
 
-## A left click at a screen point: ENDLESS (--dev) opens Endless Night, a tab opens, a card is picked.
+## A left click at a screen point: ENDLESS (--dev) opens Endless Night, a tab opens, a card (or a Hunt's) is picked.
 func click(point: Vector2) -> void:
 	var h := hit(point)
 	if h == "endless":
@@ -367,6 +464,11 @@ func click(point: Vector2) -> void:
 	elif h.begins_with("tab:"):
 		open_tab(int(h.substr(4)))
 	elif h.begins_with("card:"):
+		row2 = false
+		selected = int(h.substr(5))
+		_pick()
+	elif h.begins_with("hunt:"):
+		row2 = true
 		selected = int(h.substr(5))
 		_pick()
 
@@ -385,9 +487,26 @@ func _draw_ui() -> void:
 		var ids := missions()
 		var rows := best_rows()
 		for i in ids.size():
-			_draw_card(card_rect(i, ids.size()), ids[i], i == selected, rows)
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(HINT, UiTheme.SIZE_SMALL) * 0.5), 322.0), HINT,
+			_draw_card(card_rect(i, ids.size()), ids[i], i == selected and not row2, rows)
+		if dev and tier == DEV_TIER:
+			var hunts := dev_hunts()
+			for i in hunts.size():
+				_draw_hunt_card(hunt_rect(i, hunts.size()), hunts[i], i == selected and row2)
+	var hint_y := DEV_HINT_Y if dev and tier == DEV_TIER else 322.0
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(HINT, UiTheme.SIZE_SMALL) * 0.5), hint_y), HINT,
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+
+
+## One compact Hunt card on the DEV tab's second row (god P5): its label (hunt_label()) in small gold type, centred, one or two lines.
+func _draw_hunt_card(r: Rect2, id: String, on: bool) -> void:
+	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if on else UiTheme.COL_PANEL)
+	UiTheme.frame(_ui, r, on)
+	var room := r.size.x - 2.0 * HUNT_PAD
+	var lines := UiTheme.wrap(hunt_label(id), room, UiTheme.SIZE_SMALL)
+	var top := r.position.y + roundf((r.size.y - UiTheme.LINE_SMALL * float(lines.size())) * 0.5) + UiTheme.LINE_SMALL - 3.0
+	for k in lines.size():
+		UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(lines[k], UiTheme.SIZE_SMALL) * 0.5), top + UiTheme.LINE_SMALL * float(k)),
+			lines[k], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
 
 
 ## The DEV tab's button (--dev): gold-framed while open.

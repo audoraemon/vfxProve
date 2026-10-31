@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_unpick_clears(t)
 	_levels_carried(t)
 	_dev_tab_rite(t)
+	_dev_tab_hunts(t)
 
 
 static func _key(code: Key) -> InputEventKey:
@@ -301,4 +302,67 @@ static func _dev_tab_rite(t) -> void:
 		plain.tier = tier
 		seen = seen or plain.missions().has(MissionBook.FIRST_TASTE)
 	t.check(not seen, "without --dev the rite is on no tab")
+	plain.free()
+
+
+## God P5 (MS §1, plan Ruling C6, P5-22): with --dev the DEV tab has a second row of five compact Hunt cards under the first; row 1 (the
+## sandbox, the towns' missions, the rite last) is unchanged. Each card is inside the screen, under row 1's cards and above the hint (y 344), clear
+## of the others; its label is "<title> (Hunt)" when that wraps to at most two lines in the card, else the title alone; a click on a card picks it;
+## without --dev there is no Hunt on any tab.
+static func _dev_tab_hunts(t) -> void:
+	var save := SaveFile.new()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(save, "warning")
+	board.open_tab(MissionBoard.DEV_TIER)
+	var hunts := board.dev_hunts()
+	t.check(Array(hunts) == Array(HuntBook.ids()), "dev_hunts() is HuntBook.ids() (%s)" % [hunts])
+	var row1 := board.missions()
+	var in_row1 := false
+	for id in hunts:
+		in_row1 = in_row1 or row1.has(id)
+	t.check(not in_row1, "none of the five is in row 1 (%s)" % [row1])
+	t.check(board.tab_of(HuntBook.ids()[0]) == MissionBoard.DEV_TIER and board.tab_of(MissionBook.FIRST_TASTE) == MissionBoard.DEV_TIER,
+		"a Hunt id is on the DEV tab")
+	var row1_end := MissionBoard.card_rect(0, row1.size()).end.y
+	var bad := []
+	for i in hunts.size():
+		var r := MissionBoard.hunt_rect(i, hunts.size())
+		if not Rect2(0, 0, 640, 360).encloses(r) or r.position.y < row1_end or r.end.y > 344.0:
+			bad.append("card %d %s (row 1 ends %s)" % [i, r, row1_end])
+		for j in range(i + 1, hunts.size()):
+			if r.intersects(MissionBoard.hunt_rect(j, hunts.size())):
+				bad.append("cards %d and %d touch" % [i, j])
+	t.check(bad.is_empty(), "each Hunt card is on the screen, under row 1, above the hint and clear of the others (%s)" % [bad])
+	var wide := []
+	for i in hunts.size():
+		var id := String(hunts[i])
+		var label := board.hunt_label(id)
+		var title := String(HuntBook.row(id).title)
+		var room := MissionBoard.hunt_rect(i, hunts.size()).size.x - 2.0 * MissionBoard.HUNT_PAD
+		var lines := UiTheme.wrap(label, room, UiTheme.SIZE_SMALL)
+		for line in lines:
+			if UiTheme.width(line, UiTheme.SIZE_SMALL) > room:
+				wide.append("%s: %s px of %s" % [line, UiTheme.width(line, UiTheme.SIZE_SMALL), room])
+		if lines.size() > 2:
+			wide.append("%s wraps to %d lines" % [label, lines.size()])
+		t.check(label == "%s (Hunt)" % title or label == title, "the label of %s is the title, with (Hunt) or without (%s)" % [id, label])
+		t.check(board.card_title(id) == label and Array(board.kind_lines(id)) == ["HUNT"], "card_title and kind_lines of %s (%s, %s)" % [id, board.card_title(id), board.kind_lines(id)])
+	t.check(wide.is_empty(), "each label's lines fit their card in at most two lines (%s)" % [wide])
+	var picked := []
+	board.action.connect(func(what: String) -> void: picked.append(what))
+	var at := MissionBoard.hunt_rect(2, hunts.size()).get_center()
+	t.check(board.hit(at) == "hunt:2", "the centre of card 2 is hunt:2 (%s)" % board.hit(at))
+	board.click(at)
+	t.check(picked == ["pick"] and board.chosen == "expel_inquisitor" and board.tier == MissionBoard.DEV_TIER,
+		"a click on card 2 picks expel_inquisitor on the DEV tab (%s, %s, %d)" % [picked, board.chosen, board.tier])
+	board.free()
+	var plain := MissionBoard.new().setup(save, "warning")
+	t.check(plain.dev_hunts().is_empty(), "without --dev dev_hunts() is empty")
+	var seen := false
+	for tier in range(1, TierBook.NAMES.size() + 2):
+		plain.tier = tier
+		for id in HuntBook.ids():
+			seen = seen or plain.missions().has(id)
+	t.check(not seen, "without --dev no Hunt is on any tab")
 	plain.free()

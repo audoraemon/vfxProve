@@ -33,8 +33,8 @@ const BH_HOUSE_POINTS := [Vector2(-4.0, 4.0), Vector2(7.0, 6.0), Vector2(-2.0, 1
 ## The four musters, one per side, inside the walls (MS §5 *fg*): north, west, east, south-west; their words for the banners and the strip.
 const BH_MUSTERS := [Vector2(6.0, -13.5), Vector2(-14.0, 0.0), Vector2(14.0, -2.0), Vector2(-11.0, 14.0)]
 const BH_MUSTER_WORDS := ["the north", "the west", "the east", "the south-west"]
-## Each standard's escorts, and the offset (0.9 each side of the bearer, 1.8 apart: MS §5's sketch) used only for a held or stuck company's fallback pair
-## (_pair_at()); on the march the escorts walk in file (BH_FILE_ARC, Ruling P5-T7-R10) and a planted company's posts are BH_LANE_GAP apart (P5-T12-R3).
+## Each standard's escorts, and the offset (0.9 each side of the bearer, 1.8 apart: MS §5's sketch) used for a held or stuck company's fallback pair
+## (_pair_at()) and its narrow-pair test (_street_spot()); on the march the escorts walk in file (BH_FILE_ARC, Ruling P5-T7-R10) and a planted company's posts are BH_LANE_GAP apart (P5-T12-R3).
 const BH_ESCORTS := 2
 const BH_ESCORT_OFF := 0.9
 ## When each standard is raised at the latest, in the strip's seconds: 0:20, 1:10, 2:00, 2:50 (MS §5 *fg*).

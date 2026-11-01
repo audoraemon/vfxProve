@@ -7,46 +7,46 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **26** to do · **91** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793464151:f>)\n• Done: God P5: 11 decisions on the Hunts\n• New: Hunt 1 rebuild: the second household sets out when the watch is broken",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **92** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793492099:f>)\n• Done: Hunt 1 rebuild: the second household sets out when the watch is broken",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-10-31T23:29:11+07:00"
+     "timestamp": "2026-11-01T07:14:59+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "161 commits not in Develop-Main · last commit today\n> docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)\n\n**To do** (5)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**\n• Hunt 1 rebuild: the second household sets out when the watch is broken",
+     "description": "165 commits not in Develop-Main · last commit today\n> docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
-     "title": "god/p5-hunts",
-     "description": "161 commits not in Develop-Main · last commit today · local only\n> docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)\n\n_No Ledger task points at this branch._",
+     "title": "god/h1-rebuild",
+     "description": "165 commits not in Develop-Main · last commit today · local only\n> docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/town-lighting",
-     "description": "35 commits not in Develop-Main · last commit 6 days ago · local only\n> fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)\n\n_No Ledger task points at this branch._",
+     "description": "35 commits not in Develop-Main · last commit 7 days ago · local only\n> fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/vfx-ability-effects-964aca",
-     "description": "1 commit not in Develop-Main · last commit 8 days ago · local only\n> feat: Unseen Hour (Veil) and Curfew (Decree)\n\n**In progress** (1)\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area — **needs you**",
+     "description": "1 commit not in Develop-Main · last commit 9 days ago · local only\n> feat: Unseen Hour (Veil) and Curfew (Decree)\n\n**In progress** (1)\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area — **needs you**",
      "color": 7041664
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 22 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 23 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 22 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 23 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/gpt-handoff",
-     "description": "3 commits not in Develop-Main · last commit 27 days ago · local only\n> fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot\n\n_No Ledger task points at this branch._",
+     "description": "3 commits not in Develop-Main · last commit 28 days ago · local only\n> fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
@@ -56,7 +56,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• God P5: 11 decisions on the Hunts _(10-31)_\n• God P5: the five Lantern Hunt nights _(10-31)_\n• Board sweep: play the 24 non-Warning god pairs as the board version once _(10-30)_\n• Capital Tax: a Passage deputy stalls near a Thornwall _(10-30)_\n• Tier 1 routes: every god type can win every Tier 1 mission _(10-29)_\n• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) _(10-29)_\n• God P2: Lantern Notice, the Lantern Hunt and seals _(10-28)_",
+     "description": "• Hunt 1 rebuild: the second household sets out when the watch is broken _(11-01)_\n• God P5: 11 decisions on the Hunts _(10-31)_\n• God P5: the five Lantern Hunt nights _(10-31)_\n• Board sweep: play the 24 non-Warning god pairs as the board version once _(10-30)_\n• Capital Tax: a Passage deputy stalls near a Thornwall _(10-30)_\n• Tier 1 routes: every god type can win every Tier 1 mission _(10-29)_\n• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) _(10-29)_",
      "color": 10185686
     }
    ]

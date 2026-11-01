@@ -1,11 +1,10 @@
 {
- "hash": "aa5fdf7696661084",
- "updated": "2026-10-31T23:29:11+07:00",
+ "hash": "d7a58336571ff52f",
+ "updated": "2026-11-01T07:14:59+07:00",
  "changes": {
-  "date": "<t:1793464151:f>",
+  "date": "<t:1793492099:f>",
   "items": [
-   "Done: God P5: 11 decisions on the Hunts",
-   "New: Hunt 1 rebuild: the second household sets out when the watch is broken"
+   "Done: Hunt 1 rebuild: the second household sets out when the watch is broken"
   ]
  },
  "snapshot": {
@@ -272,12 +271,12 @@
    },
    "god-p5-hunt1-rebuild": {
     "title": "Hunt 1 rebuild: the second household sets out when the watch is broken",
-    "status": "todo",
+    "status": "done",
     "area": "Design",
-    "version": "next",
-    "needs_you": false,
+    "version": "kak-god-p5-h1",
+    "needs_you": true,
     "branch": "feat/god-progression",
-    "updated": "2026-10-31",
+    "updated": "2026-11-01",
     "order": 201
    },
    "god-p5-hunts": {
@@ -1155,18 +1154,18 @@
   "branches": [
    {
     "name": "feat/god-progression",
-    "ahead": 161,
+    "ahead": 165,
     "behind": 0,
-    "date": "2026-10-31",
-    "subject": "docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)",
+    "date": "2026-11-01",
+    "subject": "docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)",
     "pushed": true
    },
    {
-    "name": "god/p5-hunts",
-    "ahead": 161,
+    "name": "god/h1-rebuild",
+    "ahead": 165,
     "behind": 0,
-    "date": "2026-10-31",
-    "subject": "docs: god P5 summary -- landing gate (suite 13955/0, refs 508/0, FLOW 209/0 alone, bench pairs vs kak-god-t1r)",
+    "date": "2026-11-01",
+    "subject": "docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)",
     "pushed": false
    },
    {

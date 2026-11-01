@@ -1,11 +1,9 @@
 {
- "hash": "d7a58336571ff52f",
- "updated": "2026-11-01T07:14:59+07:00",
+ "hash": "8483a69f1a3823a6",
+ "updated": "2026-11-01T13:04:34+07:00",
  "changes": {
-  "date": "<t:1793492099:f>",
-  "items": [
-   "Done: Hunt 1 rebuild: the second household sets out when the watch is broken"
-  ]
+  "date": "<t:1793513074:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -274,7 +272,7 @@
     "status": "done",
     "area": "Design",
     "version": "kak-god-p5-h1",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/god-progression",
     "updated": "2026-11-01",
     "order": 201

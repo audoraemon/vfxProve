@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **92** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793492099:f>)\n• Done: Hunt 1 rebuild: the second household sets out when the watch is broken",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **92** done\n**7** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-01T07:14:59+07:00"
+     "timestamp": "2026-11-01T13:04:34+07:00"
     },
     {
      "title": "feat/god-progression",

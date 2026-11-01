@@ -231,6 +231,40 @@ Landing gate, by hand on the milestone tree (`bfecf5ce`: the five Hunts, Task 14
 - **Bench vs `kak-god-t1r`** (board versions, median of 3, fps): warning 34.5 / 34.5, miras_house 29.4 / 30.4, vigil_flame 31.3 / 31.2, procession 27.7 / 28.0, last_judgement 28.4 / 28.7. Every pair is within 1 fps. The absolute numbers are low because the machine was busy, so only the pairs count.
 - **After the milestone fix wave** (merge `7345b833`): suite 13962 checks, 0 failures. `digest`, `crowd_check` and `calm` OK, and `face_halcyon_none_*` 3/3 OK. The fix wave changed tests, tools, comments and docs only, so no game code changed and FLOW and the bench were not rerun.
 
+## Hunt 1 rebuild (after landing, from your answers of 2026-10-31)
+
+Branch `god/h1-rebuild`, landed on `feat/god-progression` at `a4bf1f3a` (local tag `kak-god-p5-h1`). Rulings P5-T17-R1..R8, P5-T17-1..3, P5-T17-C1.
+
+**What changed**
+- **The watch is broken.** When every soldier of the watch is dead or rallied to the Citadel, the second household sets out at once. That is 4 gate watchmen and 2 patrols of 2. The banner reads `THE WATCH IS BROKEN - THE SECOND HOUSEHOLD SETS OUT`. The chain (45 s after the first household is done) and 2:20 still bind as the latest times.
+- **The 20 s march.** A seized believer is marched at least 20 s before he counts as lost. The strip row `A believer reaches the Temple` counts it down. Killing, marking, dooming, whispering or binding his seizer frees him. Passage at Tier 1 cannot free him: Thornwall only delays the delivery.
+- **Decree's law holds a lay inquisitor still.** This is your fallback, and it lives in the Hunt 1 director only.
+- **The hurry.** Once no seizer stands and none is due, the believers walk at a citizen's pace. The banner reads `NO ONE IS LEFT TO SEIZE THEM - THE FAITHFUL HURRY OUT`.
+- **P5-T9-R9 retired:** no more idle-triggered early kills.
+- **The Magnify clamp (Hunt 4).** In BreakHuntDirector only, a steadied escort's fearlessness never outlasts his `TAKEN UP` tag. No `break_hunt_*` row moved.
+- **The hunt gate judges each Hunt on its own band.** `hide_faithful` uses 140-200 s; the others use 180-240 s.
+- **A believer walking himself out keeps to his household's way out.** Two rules used to send him to different gates, which left him stuck by the Temple until dawn (Death seed 2). As a safety net, a believer pinned 6 s gets a fresh path. Pinned 12 s, he is set down up to 1.2 further along his own path, on a spot where no one stands (P5-T17-C1).
+
+**Gate** (one type per call, 3 seeds): `hunt_gate hide_faithful tier=1 pass=2/6 none_lost=3/3 median=137 FAIL`. Before the rebuild: 0/6, median 186.
+
+| type | wins | times (s) | idle max | verdict |
+|---|---|---|---|---|
+| none | lost 3/3 | 61-64 | | |
+| Ruin | 3/3 | 101 / 188 / 134 | 57 | FAIL (idle) |
+| Death | 2/3 | 102 / 199 / lost 60 (its own Pestilence) | 22 | PASS |
+| Veil | 3/3 | 140 / 126 / 182 | 45 | PASS |
+| Passage | 3/3 | 75 / 74 / 73 | 54 (the Mirrorfold cooldown, accepted R2) | FAIL on the judge |
+| Decree | 0/3 | lost 243 / 214 / 117 | 28 | FAIL |
+| Dominion | 3/3 | 177 / 189 / 189 | 60 (the chain's wait; Dominion kills no one, so the watch never breaks) | FAIL (idle) |
+
+**Still short of the bar.** The pooled median is 137 s against the 140 s floor. Ruin's and Dominion's idle is 57-60 s against 45 s. Decree still loses 0/3, even with the fallback: the gate's soldiers seize 10-16 times a night against a 60 s bell and a 20 s law. Dropping the hurry gives a median of 148, inside the band, but Veil's idle becomes 63 and no type passes. A third tuning round was not spent, because no allowed lever moves both.
+
+**Landing gate** (on `a4bf1f3a`):
+- **Suite:** 13998 checks, 0 failures.
+- **References:** all 508 checked, 508 OK. Only `hide_faithful_*` rows were re-recorded. `digest`, `crowd_check` and `calm` did not move.
+- **FLOW:** the gate's two runs gave no result, as at the P5 landing. Rerun alone with no other Godot running: 209/0 in 248 s.
+- **Bench vs `kak-god-p5`:** warning 33.1 / 33.1, miras_house 29.8 / 29.0, vigil_flame 30.3 / 30.3, procession 26.4 / 26.6, last_judgement 27.8 / 27.8. Every pair is within 1 fps.
+
 ## The reviews
 
 - **Per task.** Every task had a review. Tasks 2, 3, 5 and 14 were approved as built (Task 14 with four small notes, taken). The rest came back CHANGES NEEDED, were fixed, and were re-reviewed: Task 1 (a gifts check that could not fail), Task 4 (the two inquisitors stood on top of each other), Task 6 (the captain's last walk warned only 17 s out), Task 7 (escorts bunched on the walk, and a planted company stood on another standard's street), Task 8 (escorts bunched), Task 9 (three rounds, ending in tests only), Task 10 (the house order, Dominion's Discord used as a timer, mates bunched), Task 11 (a Dominion filler, the guards bunched), Task 12 (the whispered file bunched 27% of the time, escorts stood too close at stops, an unproved Dominion claim) and Task 13 (survivors of a fallen escort 1.40 apart, and Passage's idle was not what the report said).

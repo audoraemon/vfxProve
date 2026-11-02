@@ -1,6 +1,6 @@
 class_name TempestFx
 extends FxTimeline
-## Tempest (Ruin, Tier V): a storm over the whole town. It gathers for T_GATHER -- clouds roll in, the light goes, the
+## Wrath of the Sky (Ruin, Tier V; key tempest): a storm over the whole town. It gathers for T_GATHER -- clouds roll in, the light goes, the
 ## wind rises, sheet lightning flickers in the ceiling, and the calm look up (the cast's danger lands at the first
 ## bolt) -- then for STORM_TIME it rains, and every VOLLEY_EVERY a volley of VOLLEY bolts falls, VOLLEY_GAP apart,
 ## somewhere in the town: a drumbeat, each volley's first bolt the hardest (hitstop, the screen torn, the camera kicked).

@@ -53,6 +53,7 @@ const POWER_KINDS := {
 	"madness": [&"frenzy"],
 	"smite": [&"lightning", &"smite"],
 	"tempest": [&"lightning", &"tempest"],
+	"scatter": [&"orbital", &"scatter"],
 	"ember": [&"fire"],
 	"deathmark": [&"deathmark"],
 	"noleave": [],

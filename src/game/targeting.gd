@@ -53,6 +53,8 @@ const AREAS := {
 	"unseen": {"shape": "circle", "r": 5.0},
 	# CurfewFx.RADIUS
 	"curfew": {"shape": "circle", "r": 4.0},
+	# ScatterStrikeFx.RADIUS: the circle its strikes are thrown into
+	"scatter": {"shape": "circle", "r": 6.5},
 	# Tempest covers the whole town: the mark is only where the click lands (where the thunder is loudest)
 	"tempest": {"shape": "circle", "r": 0.6},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())

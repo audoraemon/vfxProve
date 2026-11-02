@@ -9,11 +9,11 @@ const V07_COOLDOWNS := {
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
-	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest"]
+	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 41, "41 powers")
+	t.check(PowerBook.POWERS.size() == 42, "42 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -38,7 +38,7 @@ static func run(t) -> void:
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
-	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "wisp", "discord", "belllies", "heaven", "madness", "blight", "thorns", "tornado",
+	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "tornado",
 		"pestilence", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "priority", "verdict", "delusion",
 		"curfew", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "abolition", "tempest", "schism", "nova"],

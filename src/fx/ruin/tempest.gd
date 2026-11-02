@@ -10,7 +10,8 @@ extends FxTimeline
 ## what stands within its hit radius takes DAMAGE
 ## (damage kind tempest, never a fire of itself), and every FIRE_EVERY-th bolt sets what it struck alight (the town's
 ## fire from there). Where the bolts fall is drawn, weighted, from the god's rng: tall things draw them (a structure
-## weighs 1 + (height / HEIGHT_PER)^2, so the Bell Tower, the spire and the keep far most), people in the open weigh PERSON_W,
+## weighs 1 + (height / HEIGHT_PER)^2, so the Bell Tower, the spire and the keep far most), people in the open weigh PERSON_W
+## plus CROWD_W for every neighbour within CROWD_R (a knot of people draws the bolt, a straggler less),
 ## bare ground a share of GROUND_SHARE, and never twice within NO_REPEAT of the last. The rain sends the calm indoors
 ## (ShelterManager: a RAIN_CHANCE try every RAIN_EVERY for each calm citizen in the open), so the streets empty and the
 ## storm hunts those who must stay out. Then it breaks: T_BREAK of thinning rain and returning light. Loud: the cast
@@ -19,19 +20,22 @@ extends FxTimeline
 const T_GATHER := 5.0
 const STORM_TIME := 25.0
 const T_BREAK := 5.0
-const VOLLEY_EVERY := 1.5
-const VOLLEY := Vector2i(4, 6)
+const VOLLEY_EVERY := 1.3
+const VOLLEY := Vector2i(5, 7)
 const VOLLEY_GAP := 0.09
 const LEAD := 0.5
-## [kill radius, hit radius] of a volley's first bolt and of the rest.
-const HARD_R := Vector2(1.2, 1.4)
-const LIGHT_R := Vector2(0.8, 1.0)
+## [kill radius, hit radius] of a volley's first bolt and of the rest: the bolt reaches people farther than walls.
+const HARD_R := Vector2(1.6, 1.0)
+const LIGHT_R := Vector2(1.1, 0.7)
 const DAMAGE := 45.0
 const FIRE_EVERY := 4
 const FIRE_LEVEL := 0.4
 const HEIGHT_PER := 15.0
-const PERSON_W := 2.0
-const GROUND_SHARE := 0.15
+const PERSON_W := 4.0
+## Each neighbour within CROWD_R of a person adds this much more: the storm hunts the knot, not the straggler.
+const CROWD_R := 1.0
+const CROWD_W := 1.5
+const GROUND_SHARE := 0.05
 const NO_REPEAT := 2.0
 const RAIN_EVERY := 1.0
 const RAIN_TRIES := 40
@@ -142,9 +146,10 @@ func _pick() -> Vector2:
 		weights.append(w)
 		total += w
 	for p in DominionParts.near(ctx.field, ctx.field.bounds.get_center(), ctx.field.bounds.size.length()):
+		var w := PERSON_W + CROWD_W * float(ctx.field.in_radius(p.ground_pos, CROWD_R).size() - 1)
 		targets.append(p.ground_pos)
-		weights.append(PERSON_W)
-		total += PERSON_W
+		weights.append(w)
+		total += w
 	var ground := total * GROUND_SHARE
 	total += ground
 	for tries in 8:

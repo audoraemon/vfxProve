@@ -77,6 +77,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) `burble_02.ogg` | CC0 | rubberduck | ability/quiet/q_blight |
 | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) `cough_01.ogg` | CC0 | rubberduck | ability/quiet/q_pestilence |
 | [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) `cough_03.ogg` | CC0 | rubberduck | ability/quiet/q_pestilence |
+| [80 CC0 creature SFX](https://opengameart.org/content/80-cc0-creature-sfx) `scream_02.ogg` | CC0 | rubberduck | citizen/cit_scream_3 |
 | [80 CC0 creture SFX #2](https://opengameart.org/content/80-cc0-creture-sfx-2) `bug_07.ogg` | CC0 | rubberduck | ability/quiet/q_pestilence |
 | [80 CC0 creture SFX #2](https://opengameart.org/content/80-cc0-creture-sfx-2) `bug_10.ogg` | CC0 | rubberduck | ability/quiet/q_pestilence |
 | [80 CC0 creture SFX #2](https://opengameart.org/content/80-cc0-creture-sfx-2) `bug_12.ogg` | CC0 | rubberduck | ability/quiet/q_pestilence |
@@ -129,7 +130,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Fantasy Magic Spell](https://opengameart.org/content/fantasy-magic-spell) `fantasy_magic_button_1.mp3` | CC0 | Almitory | ability/arcane/grav_shimmer |
 | [Female Exasperated Yell](https://opengameart.org/content/female-exasperated-yell) `female_exasperated_yell.ogg` | CC0 | Nocturnal_Vanguard | citizen/crowd_panic |
 | [Female Hurt Grunts & Groans](https://opengameart.org/content/female-hurt-grunts-groans) `female_hurt_grunts_groans_1.ogg` | CC0 | Nocturnal_Vanguard | citizen/cit_death_1, citizen/cit_death_4, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2 |
-| [Female Scream 1](https://opengameart.org/content/female-scream-1) `female_scream_1.ogg` | CC0 | Nocturnal_Vanguard | citizen/cit_yelp_1, citizen/crowd_panic |
+| [Female Scream 1](https://opengameart.org/content/female-scream-1) `female_scream_1.ogg` | CC0 | Nocturnal_Vanguard | citizen/cit_scream_1, citizen/cit_scream_2, citizen/cit_yelp_1, citizen/crowd_panic |
 | [Fire Crackling](https://opengameart.org/content/fire-crackling) `fire-1.wav` | CC0 | AntumDeluge | building/lantern_burn |
 | [Fire Crackling](https://opengameart.org/content/fire-crackling) `fire-1_0.ogg` | CC0 | AntumDeluge | ability/energy/orb_embers, ability/fire/dr_breath, ability/quiet/q_ember |
 | [Fireplace Sound loop](https://opengameart.org/content/fireplace-sound-loop) `fire.wav` | CC0 | PagDev | ability/energy/laser_fire, ability/fire/cf_lava, ability/fire/dr_breath |

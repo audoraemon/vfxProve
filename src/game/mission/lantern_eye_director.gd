@@ -200,7 +200,7 @@ func _tower_near(spot: Vector2, exclude: Array) -> Structure:
 
 ## The way out of tower `tw`'s town-side face (v0.11 M6): of its four faces, the one turned most toward the town's middle.
 func _face(tw: Structure) -> Vector2:
-	var inward := tw.center().direction_to(TownLayout.MAP.get_center())
+	var inward := tw.center().direction_to(City.current().map().get_center())
 	var best := Vector2.ZERO
 	for dir: Vector2 in [Vector2.DOWN, Vector2.UP, Vector2.RIGHT, Vector2.LEFT]:
 		if best == Vector2.ZERO or dir.dot(inward) > best.dot(inward):

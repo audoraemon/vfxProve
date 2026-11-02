@@ -49,6 +49,14 @@ Open structures and yards (the market hall, the fish market, the timber, mason's
 kiln, the orchard, the vineyard, the beehives) fall to a clean low ruin instead (low_ruins(): a cleared bed, burnt
 stumps round it, two fallen beams; one look per family, timber or garden).
 
+Painted water (cut_water: the crane, the ferry landing, the dock warehouse, the wash house, the sluice; the capital
+stands them over its real river, BuildingTypes.OVER_WATER): the flat blue the painting has round its quay, posts and
+piles is cut away in all three stills (water_cut(): water_mask()'s shapes on the plot's ground, their ripples, specks
+and darker edge, the outline left along them; water_pockets(): what a pier or a raft shuts in), the posts, piles, quay
+stones and boats kept; the style match then outlines the new edge. The ruins lose the same px, and a quay set's ruins
+also the whole strip (their bed stops at the quay's edge). The strip's depth from the plot's front edge goes in the
+manifest as water_depth.
+
 No idle strips; the collapse is the engine's sink. A set whose building has a chimney gets a chimney key (its top's
 middle) so ChimneySmoke rises from it; the watchtower, the chapel and the graveyard have none.
 
@@ -169,7 +177,7 @@ FOOD_SETS = {
     "gpt_granary": dict(cell=0, L=(77, 439), F=(268, 534), R=(456, 441), k=1.0, fp=[1.21, 1.19], height=26,
                         seed=110, chimney=(281, 150), ruins=STONE, **SHOW),
     "gpt_warehouse": dict(cell=1, L=(531, 413), F=(803, 549), R=(1097, 402), k=1.0, fp=[1.9, 2.05], height=40,
-                          seed=111, chimney=(853, 7), ruins=STONE, **SHOW),
+                          seed=111, chimney=(853, 7), ruins=STONE, cut_water=True, **SHOW),
     "gpt_orchard": dict(cell=2, L=(1122, 467), F=(1382, 598), R=(1642, 467), k=1.0, fp=[1.5, 1.5], height=25,
                         seed=112, chimney=None, ruins=GARDEN, **SHOW),
     "gpt_vineyard": dict(cell=3, L=(27, 762), F=(375, 936), R=(579, 833), k=1.0, fp=[1.83, 1.08], height=14,
@@ -207,11 +215,11 @@ WATER_SETS = {
     "gpt_aqueduct": dict(cell=1, L=(722, 375), F=(932, 480), R=(993, 449), k=1.0, fp=[1.2, 0.35], height=47,
                          seed=117, chimney=None, ruins=STONE, water=True, **SHOW),
     "gpt_washhouse": dict(cell=2, L=(1111, 339), F=(1485, 526), R=(1760, 388), k=1.0, fp=[2.1, 1.55], height=20,
-                          seed=118, chimney=None, ruins=TIMBER, water=True, **SHOW),
+                          seed=118, chimney=None, ruins=TIMBER, water=True, cut_water=True, **SHOW),
     "gpt_latrine": dict(cell=3, L=(110, 787), F=(212, 838), R=(336, 776), k=1.0, fp=[0.45, 0.55], grow=1.3,
                         height=19, seed=119, chimney=None, ruins=TIMBER, **SHOW),
     "gpt_sluice": dict(cell=4, L=(623, 767), F=(776, 844), R=(1120, 672), k=1.0, fp=[0.8, 1.8], height=25,
-                       seed=120, chimney=None, ruins=STONE, water=True, **SHOW),
+                       seed=120, chimney=None, ruins=STONE, water=True, cut_water=True, **SHOW),
     "gpt_footbridge": dict(cell=5, L=(1096, 737), F=(1447, 912), R=(1775, 748), k=1.0, fp=[1.6, 1.5], grow=1.3,
                            height=18, seed=121, chimney=None, ruins=TIMBER, water=True, **SHOW),
 }
@@ -302,9 +310,9 @@ TRANSPORT_SETS = {
     "gpt_handcart": dict(cell=2, L=(1315, 390), F=(1504, 484), R=(1588, 442), k=1.0, fp=[0.9, 0.4], height=9,
                          seed=142, chimney=None, ruins=WRECK((1338, 340, 1412, 433), "left", 3, 0.4), **SHOW),
     "gpt_crane": dict(cell=3, L=(36, 728), F=(336, 878), R=(567, 763), k=1.0, fp=[1.95, 1.5], height=25, seed=143,
-                      chimney=None, ruins=TIMBER, water=True, **SHOW),
+                      chimney=None, ruins=TIMBER, water=True, cut_water=True, **SHOW),
     "gpt_ferry": dict(cell=4, L=(582, 714), F=(887, 866), R=(1149, 735), k=1.0, fp=[2.1, 1.8], height=15, seed=144,
-                      chimney=None, ruins=TIMBER, water=True, **SHOW),
+                      chimney=None, ruins=TIMBER, water=True, cut_water=True, **SHOW),
     "gpt_pens": dict(cell=5, L=(1186, 713), F=(1514, 877), R=(1713, 777), k=1.0, fp=[2.04, 1.24], height=14,
                      seed=145, chimney=None, ruins=TIMBER, **SHOW),
 }
@@ -334,6 +342,40 @@ DEFENCE_B_SMOKE = [(1285, 190, 1425, 395, "sky")]
 SMALL_SMOKE = []
 # The props laid a second time, mirrored (the showcase's MIRRORS).
 MIRRORS = ["gpt_wagon"]
+
+# Slate faces set by hand (capital polish 3): on these sets the style match's split of the slate into faces by its
+# light (style_match.slate_planes()) follows the painting's moss and mottling, so a roof that is one plane was re-drawn
+# as light and dark blobs, each a face of its own with its courses turned at a staircase edge (the user's "strange
+# roofs"; roof_bands.py scores it and flags these). Each is read off the painting instead: +1 (every slate px on a face
+# whose courses run down-right, parallel to an eave on the sprite's left: the lit face) or -1 (up-right: the shaded
+# face), or a split (p0, p1, left, right): the line through sheet px p0 and p1 (a ridge or a hip, never level), the
+# slate left of it on screen one face and right of it the other. The other sets keep the light's split.
+SLATE_FACES = {
+    # one plane each (a long face, its eave on the sprite's left; a lean-to or a porch the same way)
+    "gpt_armoury": 1, "gpt_manor": 1, "gpt_library": 1, "gpt_rowhouses": 1, "gpt_inn": 1, "gpt_weavers": 1,
+    "gpt_chapel": 1, "gpt_tannery": 1, "gpt_weighhouse": 1, "gpt_lumberyard": 1,
+    # the gable at the front-left: the face seen is the right one, its eave rising to the right (the light's split
+    # had drawn most of it lit, its courses turned against the painting's)
+    "gpt_warehouse": -1, "gpt_shophouse": -1,
+    # a hip roof: the long lit face, and the hip face right of the hip (its row of ridge caps above the right turret)
+    "gpt_drawbridge": ((905, 130), (922, 265), 1, -1),
+}
+
+
+def faces_map(name, shape, tf, origin):
+    """A SLATE_FACES set's faces on its stills' canvas (`shape`, `origin` its corner on the fitted sprite): +1 / -1
+    per px, or None for a set not in the table."""
+    f = SLATE_FACES.get(name)
+    if f is None:
+        return None
+    if isinstance(f, int):
+        return np.full(shape[:2], f, int)
+    p0, p1, left, right = f
+    q0 = tf(p0) - np.array(origin, float)
+    q1 = tf(p1) - np.array(origin, float)
+    ys, xs = np.mgrid[0:shape[0], 0:shape[1]]
+    x_line = q0[0] + (ys + 0.5 - q0[1]) * (q1[0] - q0[0]) / (q1[1] - q0[1])
+    return np.where(xs + 0.5 < x_line, left, right)
 
 # A sheet: its source (in concepts/GPT), its grid (cols, rows), the painted smoke to strip, and its sets.
 SHEETS = {
@@ -573,6 +615,125 @@ def water_mask(a):
     grown = m.copy()
     grown[1:] |= m[:-1]; grown[:-1] |= m[1:]; grown[:, 1:] |= m[:, :-1]; grown[:, :-1] |= m[:, 1:]
     return grown & (a[..., 3] > 0)
+
+
+# The painted water cut (cut_water): a water shape counts when it is at least WATER_MIN px and WATER_ON of its px lie
+# on the plot's ground (the footprint diamond grown WATER_GROW units: a banner or a slate roof does not); a speck
+# (ripple, foam, a dark fleck) of at most SPECK px with WATER_RING of its edge on water or the cut goes with it, as does
+# the water's darker edge (DARK_BLUE, DARK_STEPS); the painting's own dark outline (luminance below OUTLINE_LUM) left along the cut's outer edge goes too; then any piece
+# left floating of at most CRUMB px.
+WATER_MIN = 30
+WATER_ON = 0.9
+WATER_GROW = 0.2
+SPECK = 24
+WATER_RING = 0.7
+OUTLINE_LUM = 0.3
+OUTLINE_OPEN = 5
+CRUMB = 8
+# ...and the water's darker edge: bluish px (blue over red by DARK_BLUE, not greener than blue) up to DARK_STEPS px out
+DARK_BLUE = 12
+DARK_STEPS = 3
+WATER_DEPTH_Q = 0.02
+POCKET_MIN = 4
+# A strip this share of the plot's depth or more: the set stands wholly in the water (the sluice)
+WHOLLY_WET = 0.9
+
+
+def ground_uv(ys, xs, A):
+    """The ground offsets (u along x, v along y; both <= 0 on the plot) from the front corner `A` of the pixels at
+    (ys, xs), read as lying on the ground: +x runs (32, 16) px a unit, +y (-32, 16)."""
+    dx = xs + 0.5 - A[0]
+    dy = ys + 0.5 - A[1]
+    return (dx / 32.0 + dy / 16.0) / 2.0, (dy / 16.0 - dx / 32.0) / 2.0
+
+
+def water_depth(cut, A):
+    """How deep the cut water's strip reaches into the plot from its front (south) edge, ground units to 0.01: the
+    WATER_DEPTH_Q quantile of its px's v (a stray px or two further in does not count)."""
+    ys, xs = np.nonzero(cut)
+    _, v = ground_uv(ys, xs, A)
+    return round(float(-np.quantile(v, WATER_DEPTH_Q)), 2)
+
+
+def water_pockets(img, A, depth):
+    """Painted water the cut could not reach: pockets of it shut in by a pier, a raft or posts (bluish px, as the
+    water's darker edge, at least POCKET_MIN px, most of them on the strip the cut water took)."""
+    al = img[..., 3] > 0
+    rgb = np.asarray(img, float)[..., :3]
+    bluish = al & (rgb[..., 2] > rgb[..., 0] + DARK_BLUE) & (rgb[..., 2] >= rgb[..., 1])
+    out = np.zeros_like(al)
+    for ys, xs in _label(bluish):
+        if len(ys) < POCKET_MIN:
+            continue
+        _, v = ground_uv(ys, xs, A)
+        if (v > -depth - 0.05).mean() >= WATER_ON:
+            out[ys, xs] = True
+    return out
+
+
+def water_cut(img, A, fp):
+    """The painted water of a set standing at a quay (its flat blue round the posts, piles and quay stones) as a mask to
+    clear: water_mask()'s shapes on the plot's ground, their ripples and specks, and the outline left along their outer
+    edge. The posts, the piles, the quay and the boats stay."""
+    W, D = fp
+    al = img[..., 3] > 0
+    m = water_mask(img)
+    cut = np.zeros_like(al)
+    for ys, xs in _label(m):
+        u, v = ground_uv(ys, xs, A)
+        g = WATER_GROW
+        on = (u >= -W - g) & (u <= g) & (v >= -D - g) & (v <= g)
+        if len(ys) >= WATER_MIN and on.mean() >= WATER_ON:
+            cut[ys, xs] = True
+    if not cut.any():
+        return cut
+    h, w = al.shape
+    # the water's darker edge (its shade under a quay, the wet foot of a post): bluish px grown into from the cut
+    rgb = np.asarray(img, float)[..., :3]
+    bluish = al & (rgb[..., 2] > rgb[..., 0] + DARK_BLUE) & (rgb[..., 2] >= rgb[..., 1])
+    for _ in range(DARK_STEPS):
+        p_cut = np.pad(cut, 1)
+        grow = np.zeros_like(al)
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)):
+            grow |= p_cut[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+        cut |= grow & bluish
+
+    def ring(ys, xs):
+        """The 4-neighbours of a shape's px that lie outside it (clipped to the image), as (ys, xs)."""
+        mine = set(zip(ys.tolist(), xs.tolist()))
+        out = set()
+        for y, x in mine:
+            for yy, xx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if 0 <= yy < h and 0 <= xx < w and (yy, xx) not in mine:
+                    out.add((yy, xx))
+        if not out:
+            return np.zeros(0, int), np.zeros(0, int)
+        a = np.array(sorted(out))
+        return a[:, 0], a[:, 1]
+    for ys, xs in _label(al & ~cut):
+        if len(ys) > SPECK:
+            continue
+        ry, rx = ring(ys, xs)
+        if len(ry) and (cut[ry, rx] | ~al[ry, rx]).mean() >= WATER_RING and cut[ry, rx].any():
+            cut[ys, xs] = True
+    lum = (img[..., 0] * 0.299 + img[..., 1] * 0.587 + img[..., 2] * 0.114) / 255.0
+    for _ in range(2):
+        near_cut = np.zeros_like(al)
+        near_bg = np.zeros_like(al)
+        open_n = np.zeros(al.shape, int)
+        p_cut = np.pad(cut, 1)
+        p_bg = np.pad(~al, 1, constant_values=True)
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)):
+            c_ = p_cut[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+            b_ = p_bg[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+            near_cut |= c_
+            near_bg |= b_
+            open_n += c_ | b_
+        cut |= al & ~cut & near_cut & near_bg & (lum < OUTLINE_LUM) & (open_n >= OUTLINE_OPEN)
+    for ys, xs in _label(al & ~cut):
+        if len(ys) <= CRUMB:
+            cut[ys, xs] = True
+    return cut
 
 
 def cracks(img, A, fp, n, seed, dark=0.8, wide=2, steps=(5, 9)):
@@ -1177,7 +1338,10 @@ def nearest_base_errors(img, A, fp):
     return warehouse.corner_errors(img, A, fp)
 
 
-def make(name, out_dir, debug=None):
+def stills(name):
+    """A set's three stills before the style match pass, on one canvas cropped to them: (stills {state: RGBA float},
+    anchor, spec, transform sheet px -> canvas px, fit info, recentre shift, (canvas origin x0, y0 on the padded fit),
+    the painted water cut and its depth (None without cut_water))."""
     spec = SETS[name]
     native, A, tf, info = fit(spec)
     if spec.get("shade"):
@@ -1212,6 +1376,27 @@ def make(name, out_dir, debug=None):
         st["ruins"] = borrowed_ruins(spec["ruins"][0], spec["ruins"][1], spec["fp"], A, native.shape)
     else:
         st["ruins"] = watchtower_ruins(native, tf, A, spec["fp"])
+    depth = None
+    if spec.get("cut_water"):
+        # its painted water cut away in all three stills (the same px), so the set stands over a real river's water:
+        # the depth of the strip it took off the plot's front (v, from its south edge) goes in the manifest
+        cut = water_cut(native, A, spec["fp"])
+        depth = water_depth(cut, A)
+        cut |= water_pockets(native, A, depth)
+        strip = cut.copy()
+        if depth < spec["fp"][1] * WHOLLY_WET:
+            # (a set at a quay: its ruins' bed stops at the quay's edge too; a set standing wholly in the water, the
+            # sluice, keeps its ruins where its walls stood)
+            ys, xs = np.nonzero(np.ones(cut.shape, bool))
+            _, gv = ground_uv(ys, xs, A)
+            strip |= (gv > -depth).reshape(cut.shape)
+        st["intact"][cut] = 0
+        st["damaged"][cut] = 0
+        st["ruins"][strip] = 0
+        for v in st.values():
+            for ys, xs in _label(v[..., 3] > 0):
+                if len(ys) <= CRUMB:
+                    v[ys, xs] = 0
     al = np.zeros(native.shape[:2], bool)
     for v in st.values():
         al |= v[..., 3] > 0
@@ -1220,9 +1405,16 @@ def make(name, out_dir, debug=None):
     y1 = max(ys.max() + 1 + PAD, int(A[1]) + 11)
     crop = {k2: v[y0:y1, x0:x1] for k2, v in st.items()}
     A = (int(A[0] - x0), int(A[1] - y0))
+    return crop, A, spec, tf, info, shift, (x0, y0), (cut if depth is not None else None), depth
+
+
+def make(name, out_dir, debug=None):
+    crop, A, spec, tf, info, shift, (x0, y0), cut, depth = stills(name)
     # the final step: the style match pass (style_match.py), its knobs tuned on the intact; reused ruins are already
     # in the game's style, so they get only its palette lock, speck clean and outline
-    knobs, st_after = style_match.tune(crop["intact"])
+    # a SLATE_FACES set: its slate's faces read off the painting, not split by its light
+    faces = faces_map(name, crop["intact"].shape, tf, (x0, y0))
+    knobs, st_after = style_match.tune(crop["intact"], None if faces is None else {"faces": faces})
     # a garden has no windows: its fruit and straw would pass for lamp light
     glow = spec["ruins"] not in (GARDEN, CRACKED) and not spec.get("water")
     # painted water (a channel, a pond, a quay's stream) keeps its surface: its blue is not re-drawn as slate courses
@@ -1262,6 +1454,9 @@ def make(name, out_dir, debug=None):
     print("  nearest base pixel to the side corners:", nb)
     entry = {"size": [w, h], "footprint": spec["fp"], "anchor": list(A), "height": spec["height"],
              "seed": spec["seed"], "kind": spec["kind"], "role": spec["role"], "tag": spec["tag"]}
+    if depth is not None:
+        entry["water_depth"] = depth
+        print("  painted water cut: %d px, its strip %.2f deep" % (int(cut.sum()), depth))
     if spec["chimney"]:
         p = tf(spec["chimney"])
         entry["chimney"] = [int(round(p[0] - x0)), int(round(p[1] - y0))]

@@ -34,11 +34,12 @@ static func run(t) -> void:
 	t.check(crowd.voices_played == spent + 1, "a second later the budget has refilled (%d -> %d)" % [spent, crowd.voices_played])
 
 	var missing := ""
-	for cue: StringName in [&"cit_yelp", &"cit_shout", &"sol_rally"]:
+	for cue: StringName in [&"cit_yelp", &"cit_shout", &"cit_scream", &"sol_rally"]:
 		if not Sfx.CATALOG.has(cue):
 			missing += " %s" % cue
 	t.check(missing == "", "every crowd cue is in the catalog (missing:%s)" % missing)
-	t.check(ResourceLoader.exists("res://assets/audio/citizen/cit_yelp_4.wav") and ResourceLoader.exists("res://assets/audio/citizen/sol_rally.wav"),
+	t.check(ResourceLoader.exists("res://assets/audio/citizen/cit_yelp_4.wav") and ResourceLoader.exists("res://assets/audio/citizen/sol_rally.wav")
+		and ResourceLoader.exists("res://assets/audio/citizen/cit_scream_3.wav"),
 		"and on disk")
 
 	# The bed: silent with nobody running, full at BED_FULL, never louder.

@@ -34,6 +34,10 @@ const WARN_CLEAR := 4.5
 ## within this of it (Death Mark's fall is judged at Crowd.DOOM_WITNESS = 2.0), and Discord holds him when no such corner is within Mind Whisper's reach.
 const WARN_CLEAR_HERALD := 3.0
 const WARN_CAST_GAP := 3.5
+## A street too crowded for a WARN_CLEAR corner (the Capital's Great Market): the player takes the emptiest corner within reach instead, with this much
+## less room, never under WARN_CLEAR_HERALD (Death Mark's fall is judged at 2.0; a seen death only hands the errand to the witness). Used only when no
+## WARN_CLEAR corner exists, so a town that has one plays as before (Aldermere's rows).
+const WARN_RELAX := 1.0
 const WARN_FRESH := 5.5
 const WARN_RADII := [2.0, 3.5, 5.0, 6.5, 8.0, 9.5]
 const WARN_DIRS := 24
@@ -77,6 +81,8 @@ static func act_warning_runner(bc, ctx: Dictionary, w: WarningDirector) -> Strin
 			redo = gap < WARN_CAST_GAP or m.whispered_left() < WARN_FRESH
 		if redo:
 			var spot := _warning_spot(bc, crowd, w, m, clear)
+			if spot == Vector2.INF:
+				spot = _warning_spot(bc, crowd, w, m, maxf(clear - WARN_RELAX, WARN_CLEAR_HERALD))
 			if spot != Vector2.INF:
 				rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": spot})
 				return "whisper the carrier to (%.1f, %.1f)" % [spot.x, spot.y]
@@ -315,7 +321,7 @@ static func act_harvest(bc, ctx: Dictionary) -> String:
 		if d.razed(s) or not is_instance_valid(s):
 			continue
 		var i := d.targets.find(s)
-		var name := String(HarvestDirector.STORE_NAMES[i])
+		var name := String(d.store_names[i])
 		var left := d.grain_left(s)
 		if s.destroyed:
 			continue  # fallen: spoiled the moment the grain is in
@@ -404,7 +410,7 @@ static func act_lamb(bc, ctx: Dictionary) -> String:
 		rules.cast(slots.discord, threat.ground_pos)
 		return "discord a soldier about to see him"
 	if bc._slot_ready(rules, slots, "wisp") and lamb.mind != Person.Mind.OBSERVE:
-		var wait_at := d._walkable(d.gate_at + bc.LAMB_WAIT)
+		var wait_at := d._walkable(d.gate_at + (d.gate_at - d.exit_at).normalized() * bc.LAMB_WAIT_DIST)
 		var near_gate := lamb.ground_pos.distance_to(d.gate_at) <= EscortDirector.NEAR_GATE
 		var to := d.exit_at if near_gate and (d.watch_away or not d._watch_standing()) else wait_at
 		if to == wait_at and lamb.ground_pos.distance_to(wait_at) <= 1.0:
@@ -515,7 +521,7 @@ static func _prayers_look(bc, ctx: Dictionary) -> String:
 		if bc._slot_ready(rules, slots, "discord"):
 			rules.cast(slots.discord, watcher.ground_pos)
 			return "discord a Faithful by the door"
-	# The Wisp at the shrine's door fetches the poor from the streets (FirstPrayersDirector.FETCH_R), when the door is unwatched and the next
+	# The Wisp at the shrine's door fetches the poor from the streets (the director's fetch_r), when the door is unwatched and the next
 	# prayer, by the nearest of them to arrive, would not end in a crowded square (loadout A's _prayers_ready() rule), and no Faithful comes with them.
 	if bc._slot_ready(rules, slots, "wisp") and d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) == null:
 		var light := d._walkable(d.door)
@@ -525,7 +531,7 @@ static func _prayers_look(bc, ctx: Dictionary) -> String:
 			if not is_instance_valid(g) or not g.is_alive() or g.inside or d.believers.has(g) or not g.mind in Person.LURABLE:
 				continue
 			var gap := g.ground_pos.distance_to(light)
-			if gap > FirstPrayersDirector.FETCH_R:
+			if gap > (d as FirstPrayersDirector).fetch_r:
 				continue
 			arrive = minf(arrive, bc._walk_len(crowd, g.ground_pos, light) / maxf(g.walk_speed, 0.05))
 		for p in WillOWisp.drawn(crowd._field, light):
@@ -555,8 +561,7 @@ static func _prayers_clear(bc, d: MirasHouseDirector, arrive: float) -> bool:
 	var enter_from := now + maxf(arrive - PRAYB_JITTER, wait)
 	var start := enter_from + fp.read_seconds
 	var stop := now + maxf(arrive + PRAYB_JITTER, wait) + fp.read_seconds
-	for w: Array in [[FirstPrayersDirector.MARKET_AT, FirstPrayersDirector.MARKET_SECONDS],
-			[FirstPrayersDirector.PRIESTS_AT, FirstPrayersDirector.PRIESTS_SECONDS]]:
+	for w: Array in [[fp.market_at, fp.market_seconds], [fp.priests_at, fp.priests_seconds]]:
 		var closes := float(w[0]) + float(w[1]) + PRAYB_SLACK
 		if stop >= float(w[0]) and start <= closes:
 			return false  # it would come out among them

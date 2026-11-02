@@ -215,6 +215,143 @@ static func run(t) -> void:
 	t.near(looked, 4.0, 0.1, "observe(at, 4 s) looks for 4 s (%.2f s)" % looked)
 	looker.free()
 
+	# --- Knocked down, getting up, screaming ---------------------------------------------------------
+	var hitter := Person.new()
+	hitter.rng.seed = 41
+	hitter.bounds = TownLayout.MAP
+	hitter.setup_person(false, Vector2(2.7, 1.7), grid)
+	var downed := Person.new()
+	downed.rng.seed = 42
+	downed.bounds = TownLayout.MAP
+	downed.setup_person(false, Vector2(2.7, 2.0), grid)
+	downed.mind = Person.Mind.CALM
+	downed.hurt(0.34, hitter)
+	t.check(downed.is_down() and downed.is_alive(), "a struck bystander is knocked down")
+	var slid := 0
+	while slid < 600 and downed.state != DummyEnemy.State.WANDER:
+		downed.tick(1.0 / 60.0)
+		slid += 1
+	var lies := downed.ground_pos  # the tick that ended the slide started the lying: no creep
+	for i in int(Person.DOWN_SECONDS * 60.0) - 6:
+		downed.tick(1.0 / 60.0)
+	t.check(downed.is_down() and downed.ground_pos == lies and downed._sprite_pose()[0] == &"death",
+		"it lies still where the slide ended, on the fall's last frame")
+	for i in 10:
+		downed.tick(1.0 / 60.0)
+	t.check(downed.is_down() and downed._sprite_pose()[0] == &"getup", "then it gets up")
+	for i in int(Person.GETUP_SECONDS * 60.0) + 20:
+		downed.tick(1.0 / 60.0)
+	t.check(not downed.is_down() and (downed.mind == Person.Mind.PANIC or downed.mind == Person.Mind.FLEE),
+		"and runs from the blow once it is up (%s)" % Person.Mind.keys()[downed.mind])
+	# Thrown while down (an explosion's knock, the madness shove, a gravity pull): no longer lying there.
+	var thrown := Person.new()
+	thrown.rng.seed = 47
+	thrown.bounds = TownLayout.MAP
+	thrown.setup_person(false, Vector2(2.7, 2.0), grid)
+	thrown.mind = Person.Mind.CALM
+	thrown.hurt(0.34, hitter)
+	while thrown.state != DummyEnemy.State.WANDER:
+		thrown.tick(1.0 / 60.0)
+	t.check(thrown._down_left > 0.0, "down again to be thrown")
+	thrown.knock(Vector2(1.5, 0.0))
+	t.check(not thrown.is_down() and thrown._down_left == 0.0 and thrown._getup_left == 0.0 and not thrown._down_pending
+		and thrown._sprite_pose()[0] != &"death", "a knock on a person lying down clears the down timers and the pose")
+	var pulled := Person.new()
+	pulled.rng.seed = 48
+	pulled.bounds = TownLayout.MAP
+	pulled.setup_person(false, Vector2(2.7, 2.0), grid)
+	pulled.mind = Person.Mind.CALM
+	pulled.hurt(0.34, hitter)
+	while pulled.state != DummyEnemy.State.WANDER:
+		pulled.tick(1.0 / 60.0)
+	pulled.pull_step(pulled.ground_pos + Vector2(3.0, 0.0), 2.0, 0.0, 1.0 / 60.0)
+	t.check(pulled.state == DummyEnemy.State.PULLED and not pulled.is_down() and pulled._down_left == 0.0
+		and pulled._getup_left == 0.0 and pulled._sprite_pose()[0] != &"death",
+		"and so does a gravity pull: it is moved, not lying in the death pose")
+	thrown.free()
+	pulled.free()
+	downed.free()
+
+	var fighter := Person.new()
+	fighter.rng.seed = 43
+	fighter.bounds = TownLayout.MAP
+	fighter.setup_person(false, Vector2(2.7, 2.0), grid)
+	fighter.fight(null, 5.0, 0.3)
+	fighter.hurt(0.34, hitter)
+	for i in 120:
+		fighter.tick(1.0 / 60.0)
+		if fighter.is_down():
+			break
+	t.check(not fighter.is_down() and fighter.mind == Person.Mind.FIGHT, "a fighter struck stays on its feet")
+	fighter.free()
+	var trooper := Person.new()
+	trooper.rng.seed = 44
+	trooper.bounds = TownLayout.MAP
+	trooper.setup_person(true, Vector2(2.7, 2.0), grid)
+	trooper.hurt(0.3, hitter)
+	for i in 120:
+		trooper.tick(1.0 / 60.0)
+		if trooper.is_down():
+			break
+	t.check(not trooper.is_down(), "and so does a soldier")
+	trooper.free()
+
+	# A scream holds the spot; death, freezing and a knock-back cut it short.
+	var screamer := Person.new()
+	screamer.rng.seed = 45
+	screamer.bounds = TownLayout.MAP
+	screamer.setup_person(false, Vector2(2.7, 2.0), grid)
+	screamer.set_goal(Vector2(2.7, 8.0))
+	screamer.scream(Person.SCREAM_SECONDS)
+	var screams_at := screamer.ground_pos
+	for i in 30:
+		screamer.tick(1.0 / 60.0)
+	t.check(screamer.is_screaming() and screamer._sprite_pose()[0] == &"scream" and screamer.ground_pos == screams_at,
+		"a screaming citizen clutches its head and stays put")
+	screamer.freeze(1.0)
+	t.check(not screamer.is_screaming() and screamer._sprite_pose()[0] != &"scream", "frozen mid-scream it screams no more")
+	screamer.free()
+	var screamer2 := Person.new()
+	screamer2.rng.seed = 46
+	screamer2.bounds = TownLayout.MAP
+	screamer2.setup_person(false, Vector2(2.7, 2.0), grid)
+	screamer2.scream(Person.SCREAM_SECONDS)
+	screamer2.knock(Vector2(1.0, 0.0))
+	t.check(not screamer2.is_screaming() and screamer2._sprite_pose()[0] != &"scream", "a knock-back cuts the scream short")
+	screamer2.scream(Person.SCREAM_SECONDS)
+	screamer2.die(&"nova", Vector2.INF)
+	t.check(not screamer2.is_screaming() and screamer2._sprite_pose()[0] == &"death", "and so does death")
+	screamer2.free()
+	# Review fixes: the get-up clip plays whole; a knock-down clears a pending fright freeze; outside calls cannot drift
+	# a screaming or downed person for a tick.
+	t.check(Person.GETUP_SECONDS * PeopleArt.FPS_AT[PeopleArt.ANIMS.find(&"getup")] >= 6.99, "the get-up window shows all 7 frames")
+	var frightened := Person.new()
+	frightened.rng.seed = 49
+	frightened.bounds = TownLayout.MAP
+	frightened.setup_person(false, Vector2(2.7, 2.0), grid)
+	frightened._startle_left = 1.0
+	frightened.knock_down()
+	t.check(frightened._startle_left == 0.0, "a knock-down clears a pending fright freeze, so it does not freeze after getting up")
+	frightened.free()
+	var pinned := Person.new()
+	pinned.rng.seed = 50
+	pinned.bounds = TownLayout.MAP
+	pinned.setup_person(false, Vector2(2.7, 2.0), grid)
+	pinned.scream(Person.SCREAM_SECONDS)
+	pinned._idle = 0.0
+	var held_at := pinned.ground_pos
+	pinned.set_goal(Vector2(2.7, 8.0))
+	pinned.tick(1.0 / 60.0)
+	t.check(pinned.ground_pos == held_at and pinned._idle > 0.0, "a goal set on a screaming person moves it not at all, not for a tick")
+	pinned._scream_left = 0.0
+	pinned._down_left = 0.5
+	pinned._idle = 0.0
+	pinned.set_goal(Vector2(2.7, 8.0))
+	pinned.tick(1.0 / 60.0)
+	t.check(pinned.ground_pos == held_at and pinned._idle > 0.0, "nor one lying down")
+	pinned.free()
+	hitter.free()
+
 	var calm := Person.new()
 	calm.setup_person(false, Vector2(2.7, 2.0), grid)
 	t.check(not calm.is_running(), "a calm citizen does not run")

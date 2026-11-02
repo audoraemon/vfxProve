@@ -6,6 +6,7 @@ extends EscortDirector
 
 ## Where he hides: the north-east fountain's plaza.
 const START := Vector2(11.4, -10.0)
+const HIDEOUT_NAME := "the north-east fountain"
 ## The west gate's mouth inside the walls, and the way out past it on the south road.
 const GATE_MOUTH := Vector2(2.7, 14.4)
 const EXIT := Vector2(2.7, 17.6)
@@ -31,24 +32,39 @@ const WISP_HAND := WillOWisp.LURE_REACH
 const WISP_STARE := 5.0
 
 
-## The mission's places and numbers (v0.11 M2), from the consts above.
-func _plan() -> void:
+## The town's patrol beats (v0.12, spec 1.5): seeded from BEATS, which is Aldermere's; _plan() builds `beats` from it. The other places and
+## numbers are EscortDirector's own vars, set in _init().
+## The names a town's overrides may set (Overrides): `beat_spots` and EscortDirector's vars seeded in _init(); setup reads them (the
+## gate, exit, return and guardhouse it snaps to walkable ground) and never replaces them (the labels it assigns are not here).
+const TOWN_VARS := ["charge_start", "gate_at", "exit_at", "return_to", "guardhouse", "watch_posts", "patrol_size", "beat_spots",
+	"hunt_at", "hunt_size", "charge_pace", "hideout_name"]
+var beat_spots: Array = BEATS
+## How the tour names his hiding place ("hides by <this>."): Aldermere's words, which a town whose hiding place is another fountain
+## replaces (the game's words must stay true there).
+var hideout_name: String = HIDEOUT_NAME
+
+
+## EscortDirector's places and numbers start at the consts above (v0.12, R31): set at .new(), so a town's override survives setup.
+func _init() -> void:
 	charge_start = START
 	gate_at = GATE_MOUTH
 	exit_at = EXIT
 	return_to = TEMPLE_DOOR
 	guardhouse = GUARDHOUSE
-	for p: Vector2 in POSTS:
-		watch_posts.append(p)
-	for b: Array in BEATS:
-		var line := PackedVector2Array()
-		for at: Vector2 in b:
-			line.append(_walkable(at))
-		beats.append(line)
+	watch_posts.assign(POSTS)
 	patrol_size = PATROL_SIZE
 	hunt_at = HUNT_AT
 	hunt_size = HUNTERS
 	charge_pace = CHARGE_PACE
+
+
+## The mission's beats and labels (v0.11 M2), from the town vars.
+func _plan() -> void:
+	for b: Array in beat_spots:
+		var line := PackedVector2Array()
+		for at: Vector2 in b:
+			line.append(_walkable(at))
+		beats.append(line)
 	charge_label = "ACOLYTE"
 	exit_label = "WEST GATE"
 	return_label = "TEMPLE"
@@ -56,7 +72,7 @@ func _plan() -> void:
 
 ## The cleric nearest the north-east fountain (v0.11 M2).
 func _appoint_charge() -> Person:
-	return _citizen_near(START, CitizenProfile.Role.CLERGY)
+	return _citizen_near(charge_start, CitizenProfile.Role.CLERGY)
 
 
 ## He answers a Wisp's lure (v0.11.1): see WISP_HAND.
@@ -138,7 +154,7 @@ func _escape_banner() -> String:
 func tour() -> Array:
 	var out := []
 	if _alive(charge):
-		out.append([charge.ground_pos, "The runaway acolyte hides by the north-east fountain."])
+		out.append([charge.ground_pos, "The runaway acolyte hides by %s." % hideout_name])
 	out.append([gate_at, "The west gate. Its watch changes soon after he draws near."])
-	out.append([return_to, "The Temple. At %s it sends searchers after him." % UiTheme.clock(HUNT_AT)])
+	out.append([return_to, "The Temple. At %s it sends searchers after him." % UiTheme.clock(hunt_at)])
 	return out

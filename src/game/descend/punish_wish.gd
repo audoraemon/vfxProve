@@ -65,7 +65,7 @@ static func clergy(crowd: Crowd, taken: Array) -> Array[Person]:
 		if not MissionDirector._alive(v):
 			continue
 		var p := v as Person
-		if not p.inside and p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY and not taken.has(p):
+		if not p.inside and p.profile != null and CitizenProfile.is_clergy(p.profile.role) and not taken.has(p):
 			out.append(p)
 	return out
 

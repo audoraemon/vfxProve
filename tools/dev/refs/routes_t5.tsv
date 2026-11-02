@@ -8,9 +8,9 @@ exodus_b_play_3	--scenario=exodus --case=play --route=b --seed=3	-454784170
 heart_b_play_1	--scenario=heart --case=play --route=b --seed=1	-26823662
 heart_b_play_2	--scenario=heart --case=play --route=b --seed=2	-585177458
 heart_b_play_3	--scenario=heart --case=play --route=b --seed=3	30847832
-judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	-286514026
-judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	-631641573
-judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	-778437149
-night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	215739558
-night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	312646943
-night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	551376667
+judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	306700222
+judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	-721575751
+judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	-594002650
+night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	207366634
+night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	-913637529
+night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	718260393

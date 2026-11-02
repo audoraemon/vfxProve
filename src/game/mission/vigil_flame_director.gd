@@ -121,9 +121,9 @@ var _walk_pace := {}
 
 func _begin() -> void:
 	gaze = FlameGaze.new()
-	temple_door = _walkable(Vector2(TownLayout.TEMPLE.get_center().x, TownLayout.TEMPLE.end.y + 0.6))
+	temple_door = _walkable(Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6))
 	shrine = _walkable(MIRA_SHRINE)
-	searchlight = Searchlight.new().setup(TownLayout.TEMPLE.get_center())
+	searchlight = Searchlight.new().setup(Places.at(&"temple"))
 	_choose_faithful(FAITHFUL)
 	_start_vigil()
 	crowd._field.enemy_killed.connect(_on_killed)

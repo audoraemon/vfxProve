@@ -16,6 +16,26 @@ const SUITES := [
 	"res://tests/test_decor_sprites.gd",
 	"res://tests/test_people_art.gd",
 	"res://tests/test_town_layout.gd",
+	"res://tests/test_city.gd",
+	"res://tests/test_capital.gd",
+	"res://tests/test_capital_plots.gd",
+	"res://tests/test_capital_ground.gd",
+	"res://tests/test_capital_people.gd",
+	"res://tests/test_capital_evac.gd",
+	"res://tests/test_capital_court.gd",
+	"res://tests/test_capital_water.gd",
+	"res://tests/test_capital_polish2.gd",
+	"res://tests/test_capital_polish3.gd",
+	"res://tests/test_v012_merge.gd",
+	"res://tests/test_places.gd",
+	"res://tests/test_mission_needs.gd",
+	"res://tests/test_town_overrides.gd",
+	"res://tests/test_town_vars.gd",
+	"res://tests/test_capital_starfall.gd",
+	"res://tests/test_capital_tax.gd",
+	"res://tests/test_capital_prayers.gd",
+	"res://tests/test_frame_rate.gd",
+	"res://tests/test_building_types.gd",
 	"res://tests/test_citadel.gd",
 	"res://tests/test_town.gd",
 	"res://tests/test_power_book.gd",
@@ -111,7 +131,9 @@ const SUITES := [
 	"res://tests/test_tier1_groundwork.gd",
 	"res://tests/test_tax_collector.gd",
 	"res://tests/test_spoiled_harvest.gd",
+	"res://tests/test_capital_harvest.gd",
 	"res://tests/test_lost_lamb.gd",
+	"res://tests/test_capital_lamb.gd",
 	"res://tests/test_first_prayers.gd",
 	"res://tests/test_tier1_wishes.gd",
 	"res://tests/test_tier1_board.gd",
@@ -146,6 +168,7 @@ const SUITES := [
 	"res://tests/test_tier5_wishes.gd",
 	"res://tests/test_tier5_board.gd",
 	"res://tests/test_legend.gd",
+	"res://tests/test_hide_ui.gd",
 	"res://tests/test_soldier_minds.gd",
 	"res://tests/test_routes.gd",
 	"res://tests/test_audio_mix.gd",
@@ -168,6 +191,14 @@ func near(a: float, b: float, eps: float, msg: String) -> void:
 	check(absf(a - b) <= eps, "%s (got %f expected %f)" % [msg, a, b])
 
 
+## Aldermere's world before each suite (v0.12, C3): the active city and the crowd's two process-wide statics a capital suite sets.
+func _reset_world() -> void:
+	City.use(&"aldermere")
+	City._extra.clear()  # a fixture town a failed suite never unregistered
+	Person.frame_no = -1
+	Person.offscreen_every = Person.OFFSCREEN_EVERY
+
+
 func _initialize() -> void:
 	for path in SUITES:
 		var suite: GDScript = load(path)
@@ -175,9 +206,12 @@ func _initialize() -> void:
 			check(false, "suite failed to load: %s" % path)
 			continue
 		Hud.reset_session()  # v0.11.1: as in run_part.gd
+		_reset_world()
 		var before := checks
 		suite.run(self)
 		if checks == before:
 			check(false, "suite ran no checks (runtime error?): %s" % path)
+		# v0.12 (ruling C3): a suite that switched the city puts Aldermere back; one that did not is a failure, named.
+		check(City.current().id() == &"aldermere", "suite left a city active: %s (%s)" % [path, City.current().id()])
 	print("checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures > 0 else 0)

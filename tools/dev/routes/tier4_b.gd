@@ -348,7 +348,7 @@ static func act_sermon(bc, ctx: Dictionary) -> String:
 			rules.cast(slots.discord, keeper.ground_pos)
 			return "discord the bellkeeper"
 		if not crowd.is_bell_lying() and bc._slot_ready(rules, slots, "belllies"):
-			rules.cast(slots.belllies, TownLayout.BELL_TOWER.get_center(), {"mode": "well"})
+			rules.cast(slots.belllies, Places.at(&"bell_tower"), {"mode": "well"})
 			return "the bell lies"
 		if bc._slot_ready(rules, slots, "deathmark"):
 			rules.cast(slots.deathmark, keeper.ground_pos)

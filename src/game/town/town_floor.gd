@@ -3,6 +3,7 @@ extends Node2D
 ## Aldermere's ground after concepts/TOWN REF/Town Visual Upgrade.png, at the Scale reference's size:
 ## - outside the walls, a warm meadow in organic patches, darker under the forest, with dirt trails winding through;
 ## - dirt roads out of the gates;
+## The countryside (trails, roads, outcrops, rosettes, the forest's gaps, other water) is the active city's (CityDef).
 ## - inside, packed earth, cobbled streets, flagstones in the market and the Citadel court, and the barracks' sand;
 ## - tilled ground round the farms, and a saturated river (the south river and its west branch) with stony banks.
 ##
@@ -11,17 +12,15 @@ extends Node2D
 ## pebbles on top. It used to be ~10k rects replayed every frame. The river's glints are a small child node that
 ## redraws on its own. Without a renderer (headless) nothing is baked and the floor paints itself directly.
 
-## Drawn area: past the map so zoomed-out views rarely show the void.
-const FILL := Rect2(-34, -34, 68, 68)
+## Drawn area: past the map by this much (Aldermere: Rect2(-34, -34, 68, 68)), so zoomed-out views rarely show the
+## void. _fill() is the active city's.
+const FILL_MARGIN := 4.0
+## Screen-pixel tufts, flowers and pebbles over Aldermere's drawn area; a larger city gets as many per cell.
+const DETAIL_COUNT := 62000
+const DETAIL_AREA := 68.0 * 68.0
 ## How far out from the walls the forest ring reaches (ground units): the reference's woods fill nearly all the land
 ## its fields leave.
 const FOREST_OUT := 11.0
-## Grey rocky outcrops in the woods, as the reference's cliffs break its forest: [centre, radius] in ground units,
-## clear of the trails, fields, pastures and river.
-const OUTCROPS := [
-	[Vector2(-26.5, -22.0), 1.8], [Vector2(-25.5, -9.0), 2.0], [Vector2(8.5, -22.5), 1.4], [Vector2(25.0, -12.0), 2.0],
-	[Vector2(26.5, 21.0), 1.6],
-]
 const ROCKY := [Color("b0aca3"), Color("99958c"), Color("827e76"), Color("6a675f")]
 ## Meadow greens, light to dark, and the forest floor's.
 const GRASS := [Color("8aab4c"), Color("7a9d43"), Color("6c8f3c"), Color("5e8036"), Color("507030")]
@@ -42,35 +41,38 @@ const WATER := [Color("3a82b4"), Color("2b70a4"), Color("225f93")]
 const BANK := Color("4a4a38")
 const PEBBLE := [Color("a8a49c"), Color("8e8a82"), Color("76726c")]
 const FLOWERS := [Color("f4f0e0"), Color("f2d24a"), Color("f09a3a"), Color("e87aa0"), Color("b0d0f0")]
-## Decorative dirt trails through the meadow, forest and farms (ground units), all clear of the walls and the river.
-const TRAILS := [
-	[Vector2(-26, -19.5), Vector2(-18, -18.8), Vector2(-10, -20.2), Vector2(-2, -19.2), Vector2(6, -20.4),
-		Vector2(14, -19.0), Vector2(26, -20.0)],
-	[Vector2(-3.0, -19.4), Vector2(-3.5, -24.0), Vector2(-2.5, -29.5)],
-	[Vector2(-14.0, -19.2), Vector2(-14.8, -23.5), Vector2(-15.5, -29.5)],
-	[Vector2(-19.5, -26), Vector2(-20.2, -18), Vector2(-19.0, -10), Vector2(-20.5, -4), Vector2(-19.4, 4),
-		Vector2(-20.2, 12), Vector2(-19.2, 17.5)],
-	[Vector2(19.5, -26), Vector2(20.2, -18), Vector2(19.0, -10), Vector2(20.4, -2), Vector2(19.4, 0.6)],
-	[Vector2(-26, 29.5), Vector2(-12, 29.0), Vector2(1.5, 29.4)],
-	[Vector2(4.0, 29.4), Vector2(14, 29.0), Vector2(26, 29.6)],
-	[Vector2(17.2, 11.4), Vector2(22, 11.8), Vector2(27, 11.2)],
-]
-## Roads outside the walls, as trails: the south road to the bridge and on from its far end, the east road.
-const ROAD_TRAILS := [
-	[Vector2(2.7, 16.2), Vector2(2.7, 18.8)],
-	[Vector2(2.7, 25.8), Vector2(2.8, 27.5), Vector2(2.6, 30.0)],
-	[Vector2(16.2, 9.0), Vector2(22, 9.1), Vector2(30, 8.9)],
-]
 ## Grass painting cell (ground units) and the noise lattice spacing.
 const CELL := 0.25
 ## Shrubs over the house blocks: the spacing of their jittered grid, and the share of its points that get one.
 const SHRUB_STEP := 0.6
 const SHRUB_CHANCE := 0.8
 const LATTICE := 1.6
-## Each gate plaza's rosette (centre, radius): inside its queue fan, where no house stands, and clear of the barracks
-## yard.
-const ROSETTES := [[Vector2(2.7, 12.55), 1.49], [Vector2(12.2, 9.9), 1.3]]
-
+## The square the harbour basin's water is shaded in (_basins()).
+const BASIN_CELL := 0.125
+## The border band past the drawn fill (polish 3, CityDef.border()): its ground fades towards HAZE with distance, up to
+## HAZE_MAX at the band's outer edge, so it reads as far-off country; woods grow in BAND_WOODS-sized patches where the
+## band's own noise passes BAND_FOREST (next to the fill, within BAND_JOIN, the fill's own forest decides, so the two
+## join); its tufts are as thick as the meadow's, hashed with BAND_SALT apart from the fill's.
+const HAZE := Color("56653e")
+const HAZE_MAX := 0.5
+const BAND_WOODS := 6.0
+const BAND_FOREST := 0.5
+const BAND_JOIN := 2.5
+const BAND_SALT := 4111
+## The band's ground squares (ground units) and its tufts' share of the fill's density.
+const BAND_CELL := 0.5
+const BAND_TUFTS := 0.5
+## The band's tufts are painted into the floor texture this long after the first bake (seconds), in a second pass that
+## keeps what the first painted: the town's first frames cost what they did before the band.
+const BAND_DELAY := 1.5
+## The most ground squares and tuft samples one frame of the second pass paints.
+const BAND_STEP_CELLS := 800.0
+const BAND_STEP_TUFTS := 1000.0
+## How near the map's edge a road or trail must end to run on out through the band (border_roads()): one that reaches
+## it. (A meadow trail stopping short of the edge fades out in the band's meadow.)
+const EDGE_REACH := 0.05
+## A tuft this near the map, past its edge, keeps the zone it had before the border band (its px may reach onto the map).
+const EDGE_KEEP := 0.2
 
 ## Light glints drifting down the river, redrawn a few times a second for a stepped pixel flow.
 class RiverGlints extends Node2D:
@@ -85,19 +87,32 @@ class RiverGlints extends Node2D:
 			queue_redraw()
 
 	func _draw() -> void:
-		var r := TownLayout.RIVER
+		for r: Rect2 in glints(_time):
+			draw_rect(r, Color(0.82, 0.94, 1.0, 0.6))
+
+	## The glints at `time` (ground rects): drifting down the river from past its west end to past its east, only where
+	## the river is drawn (the border band carries it on past the map: TownFloor.drawn_area()); then the west branch's,
+	## flowing south down to the main river (a city without one, the capital, has none).
+	static func glints(time: float) -> Array[Rect2]:
+		var out: Array[Rect2] = []
+		var r := City.current().landmark(&"river")
+		var drawn := TownFloor.drawn_area()
 		for i in 200:
 			var h := (i * 7919 + 13) % 997
 			var y := r.position.y + 0.15 + float(h % 61) / 61.0 * (r.size.y - 0.3)
-			var x := r.position.x - 8.0 + fposmod(float(h) * 0.53 + _time * (0.5 + float(h % 5) * 0.1), r.size.x + 16.0)
-			draw_rect(Rect2(x, y, 0.3 + float(h % 3) * 0.12, 0.04), Color(0.82, 0.94, 1.0, 0.6))
-		# The west branch flows south, down to the main river.
-		var w := TownLayout.RIVER_WEST
+			var x := r.position.x - 8.0 + fposmod(float(h) * 0.53 + time * (0.5 + float(h % 5) * 0.1), r.size.x + 16.0)
+			var g := Rect2(x, y, 0.3 + float(h % 3) * 0.12, 0.04)
+			if g.position.x >= drawn.position.x and g.end.x <= drawn.end.x:
+				out.append(g)
+		var w := City.current().landmark(&"river_west")
+		if not w.has_area():
+			return out
 		for i in 60:
 			var h := (i * 6151 + 29) % 997
 			var x := w.position.x + 0.15 + float(h % 43) / 43.0 * (w.size.x - 0.3)
-			var y := w.position.y + fposmod(float(h) * 0.41 + _time * (0.7 + float(h % 5) * 0.1), w.size.y)
-			draw_rect(Rect2(x, y, 0.04, 0.3 + float(h % 3) * 0.12), Color(0.82, 0.94, 1.0, 0.6))
+			var y := w.position.y + fposmod(float(h) * 0.41 + time * (0.7 + float(h % 5) * 0.1), w.size.y)
+			out.append(Rect2(x, y, 0.04, 0.3 + float(h % 3) * 0.12))
+		return out
 
 
 ## Paints the ground-unit layer inside the bake viewport.
@@ -114,6 +129,29 @@ class DetailPaint extends Node2D:
 
 	func _draw() -> void:
 		floor_node.paint_detail(self)
+
+
+## Paints the border band inside the bake viewport, in its second pass (polish 3): its ground-unit layer (`ground`,
+## under the iso basis) or its tufts.
+class BandPaint extends Node2D:
+	var floor_node: TownFloor
+	## What it paints: one strip's ground (GROUND), the water, banks, cliff and roads past the fill again over it
+	## (REDRAW), or one strip's tufts (TUFTS); `strip` indexes band_strips().
+	## (`from`..`to`: the share of the strip's rows, or of its tuft samples, this piece paints)
+	enum Part { GROUND, REDRAW, TUFTS }
+	var part := Part.GROUND
+	var strip := 0
+	var from := 0.0
+	var to := 1.0
+
+	func _draw() -> void:
+		match part:
+			Part.GROUND:
+				floor_node._band_ground(self, TownFloor.band_strips()[strip], from, to)
+			Part.REDRAW:
+				floor_node.band_redraw(self)
+			Part.TUFTS:
+				floor_node.band_detail(self, strip, from, to)
 
 
 ## The world's light colour laid over the baked ground (Town.EVENING).
@@ -134,9 +172,12 @@ var _texture: Texture2D
 var _yard_rects: Array[Rect2] = []
 ## Screen position of the baked texture's top-left corner.
 var _origin := Vector2.ZERO
-## shrub_spots(), worked out on first use (TownLayout is constant).
+## shrub_spots(), worked out on first use per city (rebuilt when City.current() is another city object, as _geo()).
 static var _shrub_spots: Array[Dictionary] = []
-static var _shrubs_done := false
+static var _shrubs_city: CityDef = null
+## The active city's ground the floor asks about per cell (_geo()), read once per city.
+static var _geo_city: CityDef = null
+static var _geo_cache := {}
 
 
 func _ready() -> void:
@@ -149,7 +190,7 @@ func _ready() -> void:
 
 
 func _bake() -> void:
-	var bounds := _iso_bounds(FILL)
+	var bounds := _iso_bounds(drawn_area())
 	var vp := SubViewport.new()
 	vp.name = "FloorBake"
 	vp.size = Vector2i(ceili(bounds.size.x), ceili(bounds.size.y))
@@ -169,6 +210,56 @@ func _bake() -> void:
 	_texture = vp.get_texture()
 	_origin = bounds.position
 	queue_redraw()
+	if not band_strips().is_empty():
+		_band_pass(vp, ground, detail, bounds)
+
+
+## The bake's second pass (polish 3): BAND_DELAY after the first, the border band painted over the same texture (its
+## ground, the water, banks, cliff and roads past the fill again over it, then its tufts), the first pass's painters
+## hidden and the viewport not cleared, so only the band changes. The first pass is the fill's alone: the town's first
+## frames cost what they did before the band.
+func _band_pass(vp: SubViewport, ground: Node2D, detail: Node2D, bounds: Rect2) -> void:
+	await get_tree().create_timer(BAND_DELAY).timeout
+	if not is_instance_valid(vp) or not vp.is_inside_tree():
+		return
+	ground.visible = false
+	detail.visible = false
+	vp.render_target_clear_mode = SubViewport.CLEAR_MODE_NEVER
+	# One piece a frame, so no frame carries the whole band: each strip's ground, the redraw over them, each strip's
+	# tufts. Each is drawn into the texture once, then hidden.
+	var steps: Array = []
+	var strips := band_strips()
+	for k in strips.size():
+		var cells := strips[k].get_area() / (BAND_CELL * BAND_CELL)
+		var n := maxi(1, ceili(cells / BAND_STEP_CELLS))
+		for c in n:
+			steps.append([BandPaint.Part.GROUND, k, float(c) / n, float(c + 1) / n])
+	steps.append([BandPaint.Part.REDRAW, 0, 0.0, 1.0])
+	for k in strips.size():
+		var samples := DETAIL_COUNT * BAND_TUFTS * strips[k].get_area() / DETAIL_AREA
+		var n := maxi(1, ceili(samples / BAND_STEP_TUFTS))
+		for c in n:
+			steps.append([BandPaint.Part.TUFTS, k, float(c) / n, float(c + 1) / n])
+	var last: Node2D = null
+	for st: Array in steps:
+		if not is_instance_valid(vp) or not vp.is_inside_tree():
+			return
+		if last != null:
+			last.visible = false
+		var piece := BandPaint.new()
+		piece.floor_node = self
+		piece.part = st[0]
+		piece.strip = st[1]
+		piece.from = st[2]
+		piece.to = st[3]
+		if piece.part == BandPaint.Part.TUFTS:
+			piece.position = -bounds.position
+		else:
+			piece.transform = Transform2D.IDENTITY.translated(-bounds.position) * Iso.BASIS
+		vp.add_child(piece)
+		vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		await RenderingServer.frame_post_draw
+		last = piece
 
 
 ## F7 switched the art (ArtToggle): bake the floor again, so its baked decor and shrubs follow.
@@ -206,43 +297,59 @@ static func _iso_bounds(r: Rect2) -> Rect2:
 # --- Ground-unit layer ------------------------------------------------------------------
 
 func paint_ground(ci: CanvasItem) -> void:
+	var geo := _geo()
 	_meadow(ci)
 	# Inside the walls the lanes are cobbled; the house blocks are worn ground, and each house stands in its own small
 	# packed-earth yard, as in the reference.
-	_paving(ci, TownLayout.TOWN, COBBLE, COBBLE_MORTAR, 0.2)
-	for d: Rect2 in TownLayout.DISTRICTS:
+	_paving(ci, geo.town, COBBLE, COBBLE_MORTAR, 0.2)
+	for r: Rect2 in geo.paved:
+		_paving(ci, r, COBBLE, COBBLE_MORTAR, 0.2)
+	for d: Rect2 in geo.districts:
 		_yard(ci, d.grow(-0.12), BLOCK)
 	_yard_rects = _yards()
 	for h: Rect2 in _yard_rects:
 		_yard(ci, h, EARTH)
 	# Tilled ground round every field and farmhouse.
-	for f: Rect2 in TownLayout.FIELDS:
+	for f: Rect2 in geo.fields:
 		if not _kept_clear(f):
 			_patches(ci, f.grow(0.5), DIRT, 0.3)
-	for b: Rect2 in TownLayout.BARNS + [TownLayout.WINDMILL, TownLayout.WATERMILL]:
+	for b: Rect2 in geo.farm:
 		_patches(ci, b.grow(0.6), DIRT, 0.3)
-	for o: Array in OUTCROPS:
+	for o: Array in geo.outcrops:
 		var bare := false
 		for k: Rect2 in keep_clear:
 			bare = bare or k.grow(o[1]).has_point(o[0])
 		if not bare:
 			_outcrop(ci, o[0], o[1])
-	for tr in TRAILS:
+	for tr in geo.trails:
 		_trail(ci, tr, 0.34, true)
-	for tr in ROAD_TRAILS:
-		_trail(ci, tr, 0.5)
-	_patches(ci, TownLayout.BARRACKS_YARD, SAND, 0.3)
-	_paving(ci, TownLayout.MARKET_SQUARE, FLAG, FLAG_MORTAR, 0.42)
-	_paving(ci, TownLayout.CITADEL_COURT, FLAG, FLAG_MORTAR, 0.42)
-	_paving(ci, TownLayout.FOUNTAIN_PLAZA, FLAG, FLAG_MORTAR, 0.42)
+	for tr: Dictionary in geo.road_trails:
+		_trail(ci, tr.points, tr.width)
+	# The roads and trails leaving the map run on out through the border band.
+	for e: Array in border_roads():
+		_edge_trail(ci, e[0], e[1], e[2])
+	# A city's lawns inside the walls (the capital's royal garden) and the gravel paths across them.
+	for l: Rect2 in geo.lawns:
+		_patches(ci, l, GRASS, 0.25)
+	for p: Dictionary in geo.paths:
+		_trail(ci, p.points, p.width)
+	for y: Rect2 in geo.yards:
+		_patches(ci, y, SAND, 0.3)
+	for p: Rect2 in geo.plazas:
+		_paving(ci, p, FLAG, FLAG_MORTAR, 0.42)
 	# The ground inside each gate, where the crowd queues, is cobbled like the streets.
-	for plaza: Rect2 in TownLayout.GATE_PLAZAS:
+	var gate_plazas: Array = geo.gate_plazas
+	for plaza: Rect2 in gate_plazas:
 		_paving(ci, plaza.grow(0.3), COBBLE, COBBLE_MORTAR, 0.2)
-	# The gate plazas are the crowd's queue ground and stay open (TownLayout.queue_fans()): dressed on the floor
+	# The gate plazas are the crowd's queue ground and stay open (the city's queue_fans()): dressed on the floor
 	# instead, with a paved rosette and the ruts carts have worn towards each gate.
-	for i in TownLayout.GATE_PLAZAS.size():
-		_ruts(ci, TownLayout.GATE_PLAZAS[i], i)
-		_rosette(ci, ROSETTES[i][0], ROSETTES[i][1])
+	var rosettes: Array = geo.rosettes
+	for i in gate_plazas.size():
+		# Each plaza's rosette, by index (the city's rosettes()): only a plaza holding its rosette gets it and its ruts.
+		if i >= rosettes.size() or not (gate_plazas[i] as Rect2).has_point(rosettes[i].at):
+			continue
+		_ruts(ci, gate_plazas[i], i, rosettes[i].along_y, rosettes[i].across)
+		_rosette(ci, rosettes[i].at, rosettes[i].radius)
 	_river(ci)
 
 
@@ -251,11 +358,11 @@ static func _hash(x: int, y: int) -> int:
 
 
 ## Smooth value noise in [0, 1): a hashed lattice, bilinearly blended, plus a finer octave.
-func _noise(g: Vector2) -> float:
+static func _noise(g: Vector2) -> float:
 	return _octave(g / LATTICE, 0) * 0.7 + _octave(g / (LATTICE * 0.35), 1) * 0.3
 
 
-func _octave(p: Vector2, salt: int) -> float:
+static func _octave(p: Vector2, salt: int) -> float:
 	var x0 := floori(p.x)
 	var y0 := floori(p.y)
 	var fx := p.x - x0
@@ -276,12 +383,12 @@ func _octave(p: Vector2, salt: int) -> float:
 
 ## Meadow (or forest floor) in organic patches: noise quantized into the palette, cell by cell.
 func _meadow(ci: CanvasItem) -> void:
-	var n := int(FILL.size.x / CELL)
+	var n := int(_fill().size.x / CELL)
 	_zn = n
 	_zones.resize(n * n)
 	for j in n:
 		for i in n:
-			var g := FILL.position + Vector2(i, j) * CELL
+			var g := _fill().position + Vector2(i, j) * CELL
 			var c := g + Vector2(CELL, CELL) * 0.5
 			var forest := _forest(c)
 			_zones[j * n + i] = 2 if forest else 1
@@ -290,16 +397,26 @@ func _meadow(ci: CanvasItem) -> void:
 			ci.draw_rect(Rect2(g, Vector2(CELL, CELL)), pal[int(v * pal.size())])
 
 
-## Forest floor in a ring round the walls (farmland beyond it), north of the river and off the two roads.
-func _forest(g: Vector2) -> bool:
-	if g.y > TownLayout.RIVER.position.y:
+## Forest floor in a ring round the walls (farmland beyond it), north of the river and off the city's forest gaps (its
+## roads out of the walls: CityDef.forest_gaps()).
+static func _forest(g: Vector2) -> bool:
+	var geo := _geo()
+	if g.y > (geo.river as Rect2).position.y:
 		return false
-	var t := TownLayout.TOWN
-	if (g.x > t.end.x and absf(g.y - 9.0) < 1.5) or (g.y > t.end.y and absf(g.x - 2.7) < 1.5):
+	var t: Rect2 = geo.town
+	if in_forest_gap(g):
 		return false
 	var edge := _noise(g * 1.7) * 1.4
 	var out := maxf(maxf(t.position.x - g.x, g.x - t.end.x), maxf(t.position.y - g.y, g.y - t.end.y))
 	return out > 1.6 + edge and out < FOREST_OUT + edge
+
+
+## Whether `g` lies in one of the active city's forest gaps (CityDef.forest_gaps()), where no forest grows.
+static func in_forest_gap(g: Vector2) -> bool:
+	for gap: Rect2 in _geo().forest_gaps:
+		if gap.has_point(g):
+			return true
+	return false
 
 
 ## Organic patches of `pal` over a rect, like the meadow but confined.
@@ -317,12 +434,10 @@ func _patches(ci: CanvasItem, r: Rect2, pal: Array, cell: float) -> void:
 ## Every house's yard: its footprint grown a little (the Temple, the tavern and the blacksmith too).
 static func _yards() -> Array[Rect2]:
 	var out: Array[Rect2] = []
-	for h: Rect2 in TownLayout.houses():
+	var city := City.current()
+	for h: Rect2 in city.houses():
 		out.append(h.grow(0.22))
-	out.append_array([TownLayout.TEMPLE.grow(0.35), TownLayout.SMITHY.grow(0.3), TownLayout.WORKSHOP.grow(0.3),
-		TownLayout.CARPENTER.grow(0.3), TownLayout.CARPENTER_YARD.grow(0.2)])
-	for t: Rect2 in TownLayout.TAVERNS:
-		out.append(t.grow(0.3))
+	out.append_array(city.floor_areas().get(&"building_yards", []))
 	return out
 
 
@@ -364,26 +479,25 @@ func _rosette(ci: CanvasItem, c: Vector2, rad: float) -> void:
 	ci.draw_circle(c + Vector2(-0.05, -0.05), rad / rings * 0.55, ROCKY[1])
 
 
-## Ruts worn into the cobbles by carts: two dark tracks through the plaza towards its gate, a wheel apart. The Main
-## Gate's run north-south, the Side Gate's west-east.
-func _ruts(ci: CanvasItem, plaza: Rect2, salt: int) -> void:
+## Ruts worn into the cobbles by carts: two dark tracks through the plaza towards its gate, a wheel apart, along the
+## line `across` (x when `along_y`: they run north-south; else y, west-east). `salt` is the plaza's index.
+func _ruts(ci: CanvasItem, plaza: Rect2, salt: int, along_y: bool, across: float) -> void:
 	var rut := (COBBLE_MORTAR as Color).darkened(0.3)
-	var from := plaza.position.y - 2.0 if salt == 0 else plaza.position.x - 2.0
-	var to := plaza.end.y + 0.8 if salt == 0 else plaza.end.x + 0.8
-	var across := plaza.get_center().x if salt == 0 else 9.0
+	var from := plaza.position.y - 2.0 if along_y else plaza.position.x - 2.0
+	var to := plaza.end.y + 0.8 if along_y else plaza.end.x + 0.8
 	for side: float in [-0.32, 0.32]:
 		var t := from
 		while t < to:
 			var h := _hash(int(t * 10.0) + salt * 31, int(side * 10.0) + 50)
 			var off := across + side + sin(t * 1.3 + side * 9.0) * 0.05
-			var seg := Rect2(off - 0.08, t, 0.16, 0.2) if salt == 0 else Rect2(t, off - 0.08, 0.2, 0.16)
+			var seg := Rect2(off - 0.08, t, 0.16, 0.2) if along_y else Rect2(t, off - 0.08, 0.2, 0.16)
 			ci.draw_rect(seg, rut if h % 4 != 0 else rut.lightened(0.12))
 			t += 0.22
 
 
 ## Whether a ground point lies on one of the rocky outcrops (nothing grows there but rocks).
 static func on_outcrop(g: Vector2) -> bool:
-	for o: Array in OUTCROPS:
+	for o: Array in _geo().outcrops:
 		if g.distance_to(o[0]) < float(o[1]):
 			return true
 	return false
@@ -444,12 +558,13 @@ func _trail(ci: CanvasItem, pts: Array, width: float, clearable := false) -> voi
 
 ## Flag the meadow cells within `r` of `p` as trail, so no tuft or flower grows on it.
 func _mark_trail(p: Vector2, r: float) -> void:
-	if _zn == 0:
+	# (a road carried on through the border band reaches past the fill: those stretches mark nothing)
+	if _zn == 0 or not _fill().grow(r).has_point(p):
 		return
-	var i0 := maxi(floori((p.x - r - FILL.position.x) / CELL), 0)
-	var i1 := mini(floori((p.x + r - FILL.position.x) / CELL), _zn - 1)
-	var j0 := maxi(floori((p.y - r - FILL.position.y) / CELL), 0)
-	var j1 := mini(floori((p.y + r - FILL.position.y) / CELL), _zn - 1)
+	var i0 := maxi(floori((p.x - r - _fill().position.x) / CELL), 0)
+	var i1 := mini(floori((p.x + r - _fill().position.x) / CELL), _zn - 1)
+	var j0 := maxi(floori((p.y - r - _fill().position.y) / CELL), 0)
+	var j1 := mini(floori((p.y + r - _fill().position.y) / CELL), _zn - 1)
 	for j in range(j0, j1 + 1):
 		for i in range(i0, i1 + 1):
 			_zones[j * _zn + i] |= 4
@@ -484,25 +599,35 @@ func _paving(ci: CanvasItem, r: Rect2, pal: Array, mortar: Color, stone: float) 
 ## Water in bands, lighter at the edges and deep in the middle, with dark wet banks and pebbles along them: the
 ## south river across the whole drawn width, and the west branch from its source down to it.
 func _river(ci: CanvasItem) -> void:
-	var r := TownLayout.RIVER
-	var x0 := FILL.position.x
-	var w := FILL.size.x
+	var r := City.current().landmark(&"river")
+	# Across the whole drawn ground, the border band's too (its pebbles: the fill's run, then the band's either side).
+	var x0 := drawn_area().position.x
+	var w := drawn_area().size.x
 	ci.draw_rect(Rect2(x0, r.position.y, w, r.size.y), WATER[0])
 	ci.draw_rect(Rect2(x0, r.position.y + r.size.y * 0.15, w, r.size.y * 0.7), WATER[1])
 	ci.draw_rect(Rect2(x0, r.position.y + r.size.y * 0.35, w, r.size.y * 0.3), WATER[2])
 	ci.draw_rect(Rect2(x0, r.position.y - 0.1, w, 0.1), BANK)
 	ci.draw_rect(Rect2(x0, r.end.y, w, 0.1), BANK)
-	var b := TownLayout.RIVER_WEST
-	var bx0 := FILL.position.x
-	var bw := b.end.x - bx0
-	ci.draw_rect(Rect2(bx0, b.position.y, bw, b.size.y), WATER[0])
-	ci.draw_rect(Rect2(b.position.x + b.size.x * 0.15, b.position.y, b.size.x * 0.7, b.size.y), WATER[1])
-	ci.draw_rect(Rect2(b.position.x + b.size.x * 0.35, b.position.y, b.size.x * 0.3, b.size.y), WATER[2])
-	ci.draw_rect(Rect2(b.end.x, b.position.y, 0.1, b.size.y), BANK)
+	# Any other water of the city's (the capital's harbour basin), shaded as the river is: by distance from its shore.
+	_basins(ci)
+	var b := City.current().landmark(&"river_west")
+	if b.has_area():
+		var bx0 := drawn_area().position.x
+		var bw := b.end.x - bx0
+		ci.draw_rect(Rect2(bx0, b.position.y, bw, b.size.y), WATER[0])
+		ci.draw_rect(Rect2(b.position.x + b.size.x * 0.15, b.position.y, b.size.x * 0.7, b.size.y), WATER[1])
+		ci.draw_rect(Rect2(b.position.x + b.size.x * 0.35, b.position.y, b.size.x * 0.3, b.size.y), WATER[2])
+		ci.draw_rect(Rect2(b.end.x, b.position.y, 0.1, b.size.y), BANK)
+	var gaps: Array[float] = _geo().crossings
+	var fill := _fill()
 	for bank_y: float in [r.position.y - 0.12, r.end.y + 0.12]:
-		_pebbles(ci, Vector2(x0, bank_y), Vector2(FILL.end.x, bank_y), 2.7)
-	_pebbles(ci, Vector2(b.end.x + 0.12, b.position.y), Vector2(b.end.x + 0.12, r.position.y), -100.0)
-	_waterfall(ci, b)
+		_pebbles(ci, Vector2(fill.position.x, bank_y), Vector2(fill.end.x, bank_y), gaps)
+	if b.has_area():
+		_pebbles(ci, Vector2(b.end.x + 0.12, b.position.y), Vector2(b.end.x + 0.12, r.position.y), [] as Array[float])
+		_waterfall(ci, b)
+	for s: Array in _geo().basin_shores:
+		var n: Vector2 = s[2]
+		_pebbles(ci, (s[0] as Vector2) + n * 0.12, (s[1] as Vector2) + n * 0.12, gaps)
 
 
 ## The west branch's source: a band of grey cliff across its head, and white water falling from it into a pool.
@@ -510,7 +635,7 @@ func _waterfall(ci: CanvasItem, b: Rect2) -> void:
 	var y := b.position.y
 	for i in 26:
 		var h := _hash(i * 13 + 5, 77)
-		var p := Vector2(FILL.position.x + float(i) / 26.0 * (b.end.x + 1.2 - FILL.position.x), y - 0.35 - float(h % 5) * 0.12)
+		var p := Vector2(_fill().position.x + float(i) / 26.0 * (b.end.x + 1.2 - _fill().position.x), y - 0.35 - float(h % 5) * 0.12)
 		var rad := 0.35 + float(h % 4) * 0.12
 		ci.draw_circle(p, rad, PEBBLE[2].darkened(0.1))
 		ci.draw_circle(p + Vector2(-0.08, -0.08), rad * 0.7, PEBBLE[1])
@@ -540,17 +665,25 @@ func _waterfall(ci: CanvasItem, b: Rect2) -> void:
 		ci.draw_circle(p, 0.08 + float(h % 4) * 0.035, Color(0.95, 0.98, 1.0, 0.85) if k % 3 else Color("cfe8f4"))
 
 
-## Pebbles along a bank from a to b, leaving a gap round the bridge at x = `gap_x`.
-func _pebbles(ci: CanvasItem, a: Vector2, b: Vector2, gap_x: float) -> void:
+## Pebbles along a bank from a to b, leaving a gap round each bridge (the x of each in `gaps`, the city's crossings),
+## and none where other water (a basin) opens off the bank.
+func _pebbles(ci: CanvasItem, a: Vector2, b: Vector2, gaps: Array[float], skip_in := Rect2()) -> void:
 	var length := a.distance_to(b)
 	var d := 0.0
 	var i := 0
+	var basins: Array = _geo().basins
 	while d < length:
 		var h := _hash(i * 17, roundi((a.x + a.y) * 10.0))
 		d += 0.18 + float(h % 7) * 0.05
 		i += 1
 		var p := a.lerp(b, minf(d / length, 1.0))
-		if absf(p.x - gap_x) < 1.3:
+		var skip := false
+		for gx: float in gaps:
+			skip = skip or absf(p.x - gx) < 1.3
+		for o: Rect2 in basins:
+			skip = skip or o.has_point(p)
+		# (the band's second pass redraws only the pebbles past the fill: skip_in)
+		if skip or (skip_in.has_area() and skip_in.has_point(p)):
 			continue
 		var rad := 0.07 + float(h % 5) * 0.025
 		p += (Vector2(0, 1) if absf(b.x - a.x) > absf(b.y - a.y) else Vector2(1, 0)) * (float(h % 3) - 1.0) * 0.05
@@ -558,17 +691,474 @@ func _pebbles(ci: CanvasItem, a: Vector2, b: Vector2, gap_x: float) -> void:
 		ci.draw_circle(p + Vector2(-0.02, -0.02), rad * 0.5, (PEBBLE[h % 3] as Color).lightened(0.12))
 
 
+## The city's other water (the capital's harbour basin), shaded by distance from its shore as the river is across its
+## width (_water_band()): light water along the quays, then mid, then deep; and a dark wet bank along its quays
+## (their pebbles in _river()). Drawn in runs of BASIN_CELL squares, worked out once per city.
+func _basins(ci: CanvasItem) -> void:
+	var geo := _geo()
+	if (geo.basins as Array).is_empty():
+		return
+	if not geo.has(&"basin_runs"):
+		var runs: Array = []
+		for o: Rect2 in geo.basins:
+			var y := o.position.y
+			while y < o.end.y:
+				var x := o.position.x
+				var run_x := x
+				var run_band := -2
+				while x <= o.end.x + 0.001:
+					var band := _water_band(Vector2(x + BASIN_CELL * 0.5, y + BASIN_CELL * 0.5)) if x < o.end.x - 0.001 else -3
+					if band != run_band:
+						if run_band >= 0:
+							runs.append([Rect2(run_x, y, x - run_x, BASIN_CELL), run_band])
+						run_x = x
+						run_band = band
+					x += BASIN_CELL
+				y += BASIN_CELL
+		geo[&"basin_runs"] = runs
+	for run: Array in geo.basin_runs:
+		ci.draw_rect(run[0], WATER[run[1]])
+	for s: Array in geo.basin_shores:
+		var a: Vector2 = s[0]
+		var b: Vector2 = s[1]
+		var n: Vector2 = s[2]
+		ci.draw_rect(Rect2(a.min(b) + n.min(Vector2.ZERO) * 0.1, (b - a).abs() + n.abs() * 0.1), BANK)
+
+
+## Which band of water `g` lies in -- 0 light, 1 mid, 2 deep -- or -1 on dry land. The river's bands run across its
+## width (its outer 15% light, the next 20% mid, the middle deep); a basin's are the same widths, measured from the
+## nearest shore (its quays and the river's banks), so the two join where they meet.
+static func _water_band(g: Vector2) -> int:
+	var geo := _geo()
+	var r: Rect2 = geo.river
+	for o: Rect2 in geo.basins:
+		if o.has_point(g):
+			var d := INF
+			for s: Array in geo.shores:
+				d = minf(d, _seg_dist(g, s[0], s[1]))
+			return _band(d / r.size.y)
+	var fill: Rect2 = geo.outer
+	if g.y >= r.position.y and g.y < r.end.y and g.x >= fill.position.x and g.x < fill.end.x:
+		return _band(minf(g.y - r.position.y, r.end.y - g.y) / r.size.y)
+	return -1
+
+
+static func _band(f: float) -> int:
+	return 0 if f < 0.15 else (1 if f < 0.35 else 2)
+
+
+static func _seg_dist(g: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab := b - a
+	var t := clampf((g - a).dot(ab) / ab.length_squared(), 0.0, 1.0) if ab.length_squared() > 0.0 else 0.0
+	return g.distance_to(a + ab * t)
+
+
+## A basin's quays: each side of `o` (as drawn) not on the drawn area's edge, less where `water` opens off it, as
+## [a, b, the land side's unit normal].
+static func _shores(o: Rect2, fill: Rect2, water: Array[Rect2]) -> Array:
+	var out: Array = []
+	var sides := [
+		[Vector2(o.position.x, o.position.y), Vector2(o.end.x, o.position.y), Vector2(0, -1)],
+		[Vector2(o.position.x, o.end.y), Vector2(o.end.x, o.end.y), Vector2(0, 1)],
+		[Vector2(o.position.x, o.position.y), Vector2(o.position.x, o.end.y), Vector2(-1, 0)],
+		[Vector2(o.end.x, o.position.y), Vector2(o.end.x, o.end.y), Vector2(1, 0)],
+	]
+	for sd: Array in sides:
+		var a: Vector2 = sd[0]
+		var n: Vector2 = sd[2]
+		var on_edge := (n.x < 0.0 and a.x <= fill.position.x) or (n.x > 0.0 and a.x >= fill.end.x) \
+			or (n.y < 0.0 and a.y <= fill.position.y) or (n.y > 0.0 and a.y >= fill.end.y)
+		if not on_edge:
+			out.append_array(_cut(a, sd[1], n, water))
+	return out
+
+
+## The axis-aligned segment a-b less the stretches where any of `water` lies just past it on its land side `n`, each
+## piece as [a, b, n].
+static func _cut(a: Vector2, b: Vector2, n: Vector2, water: Array[Rect2]) -> Array:
+	var along_x := absf(b.x - a.x) > absf(b.y - a.y)
+	var pieces: Array = [[minf(a.x, b.x), maxf(a.x, b.x)] if along_x else [minf(a.y, b.y), maxf(a.y, b.y)]]
+	var probe := a + n * 0.01
+	for w: Rect2 in water:
+		var across := (w.position.y <= probe.y and probe.y <= w.end.y) if along_x \
+			else (w.position.x <= probe.x and probe.x <= w.end.x)
+		if not across:
+			continue
+		var w0 := w.position.x if along_x else w.position.y
+		var w1 := w.end.x if along_x else w.end.y
+		var next: Array = []
+		for pc: Array in pieces:
+			if w1 <= pc[0] or w0 >= pc[1]:
+				next.append(pc)
+				continue
+			if w0 > pc[0]:
+				next.append([pc[0], w0])
+			if w1 < pc[1]:
+				next.append([w1, pc[1]])
+		pieces = next
+	var out: Array = []
+	for pc: Array in pieces:
+		if pc[1] - pc[0] > 0.01:
+			out.append([Vector2(pc[0], a.y), Vector2(pc[1], a.y), n] if along_x else [Vector2(a.x, pc[0]), Vector2(a.x, pc[1]), n])
+	return out
+
+
+# --- The border band (polish 3) ---------------------------------------------------------------
+
+## The whole drawn ground: the active city's map grown by its border band (CityDef.border()), or by FILL_MARGIN when
+## that is deeper. The camera keeps its view on it (Mission.clamp_view()).
+static func drawn_area() -> Rect2:
+	return _geo().outer
+
+
+## The camera position nearest `pos` (screen px) at which a view `view` px across at `zoom` lies wholly on the drawn
+## ground: its corners' ground points inside drawn_area() (every view corner reaches the same ground distance past its
+## middle, so the middle keeps that far inside, clamped on the ground's axes). The drawn ground's middle when it is
+## too small for the view.
+static func keep_in_view(pos: Vector2, zoom: float, view: Vector2) -> Vector2:
+	var half := view * 0.5 / maxf(zoom, 0.01)
+	var reach := (half.x / 32.0 + half.y / 16.0) * 0.5
+	var outer := drawn_area()
+	var room := outer.grow(-reach)
+	var mid := outer.get_center()
+	var g := Iso.screen_to_ground(pos)
+	g.x = clampf(g.x, room.position.x, room.end.x) if room.size.x >= 0.0 else mid.x
+	g.y = clampf(g.y, room.position.y, room.end.y) if room.size.y >= 0.0 else mid.y
+	var out := Iso.ground_to_screen(g)
+	# A position already in reach stays exactly where it was (no round trip through ground units).
+	return pos if out.is_equal_approx(pos) else out
+
+
+## Whether `g` lies on the city's water as drawn: its rivers, each carried on to the drawn area's edge past every side
+## of the map it meets (the harbour basin too).
+static func wet(g: Vector2) -> bool:
+	for w: Rect2 in _geo().wet:
+		if w.has_point(g):
+			return true
+	return false
+
+
+## `rivers`, each run on from every side of `map` it meets out to that side of `outer`.
+static func _wet_rects(rivers: Array[Rect2], map: Rect2, outer: Rect2) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for r: Rect2 in rivers:
+		var e := r
+		if r.position.x <= map.position.x + 0.01:
+			e = e.expand(Vector2(outer.position.x, e.position.y))
+		if r.end.x >= map.end.x - 0.01:
+			e = e.expand(Vector2(outer.end.x, e.position.y))
+		if r.position.y <= map.position.y + 0.01:
+			e = e.expand(Vector2(e.position.x, outer.position.y))
+		if r.end.y >= map.end.y - 0.01:
+			e = e.expand(Vector2(e.position.x, outer.end.y))
+		out.append(e)
+	return out
+
+
+## The roads and trails that leave the map, run on out through the border band: each [polyline, width, beyond], from
+## the end lying within EDGE_REACH of the map's edge straight out across the band, past the drawn area's edge; `beyond`
+## is the ground past that side of the map, the only ground it is painted on (_edge_trail()).
+static func border_roads() -> Array:
+	var geo := _geo()
+	var map := City.current().map()
+	var outer: Rect2 = geo.outer
+	var out: Array = []
+	var lines: Array = []
+	for tr: Dictionary in geo.road_trails:
+		lines.append([tr.points, tr.width])
+	for tr: Array in geo.trails:
+		lines.append([tr, 0.34])
+	for line: Array in lines:
+		var pts: Array = line[0]
+		for end: Vector2 in [pts[0], pts[pts.size() - 1]]:
+			var dir := Vector2.ZERO
+			if end.x - map.position.x < EDGE_REACH:
+				dir = Vector2(-1, 0)
+			elif map.end.x - end.x < EDGE_REACH:
+				dir = Vector2(1, 0)
+			elif end.y - map.position.y < EDGE_REACH:
+				dir = Vector2(0, -1)
+			elif map.end.y - end.y < EDGE_REACH:
+				dir = Vector2(0, 1)
+			if dir == Vector2.ZERO:
+				continue
+			var reach := absf((outer.position.x if dir.x < 0.0 else outer.end.x) - end.x) if dir.x != 0.0 \
+				else absf((outer.position.y if dir.y < 0.0 else outer.end.y) - end.y)
+			var big := outer.grow(2.0)
+			var beyond := Rect2(map.end.x, big.position.y, big.end.x - map.end.x, big.size.y)
+			if dir.x < 0.0:
+				beyond = Rect2(big.position.x, big.position.y, map.position.x - big.position.x, big.size.y)
+			elif dir.y < 0.0:
+				beyond = Rect2(big.position.x, big.position.y, big.size.x, map.position.y - big.position.y)
+			elif dir.y > 0.0:
+				beyond = Rect2(big.position.x, map.end.y, big.size.x, big.end.y - map.end.y)
+			out.append([[end, end + dir * (reach + 0.5)], line[1], beyond])
+	return out
+
+
+## A road carried out through the band (border_roads()): a dirt trail as _trail() paints one, faded as the band's
+## ground, its discs cut to `beyond`, the ground past the map's edge it leaves by, so none of it reaches back onto the
+## map; its tread is marked for the detail there only.
+func _edge_trail(ci: CanvasItem, pts: Array, width: float, beyond: Rect2, mark := true) -> void:
+	var clip := PackedVector2Array([beyond.position, Vector2(beyond.end.x, beyond.position.y), beyond.end,
+		Vector2(beyond.position.x, beyond.end.y)])
+	for pass_i in 2:
+		for k in pts.size() - 1:
+			var a: Vector2 = pts[k]
+			var b: Vector2 = pts[k + 1]
+			var steps := maxi(int(a.distance_to(b) / 0.14), 1)
+			for i in steps + 1:
+				var p := a.lerp(b, float(i) / steps)
+				var h := _hash(roundi(p.x * 37.0), roundi(p.y * 41.0))
+				var r := width * (0.85 + float(h % 23) / 23.0 * 0.35)
+				var c := p if pass_i == 0 else p + Vector2(0.02, -0.02)
+				var rad := r + 0.06 if pass_i == 0 else r * 0.8
+				var col: Color = DIRT[2] if pass_i == 0 else DIRT[h % 2]
+				var disc := PackedVector2Array()
+				for q in 20:
+					disc.append(c + Vector2.from_angle(TAU * q / 20.0) * rad)
+				for poly: PackedVector2Array in Geometry2D.intersect_polygons(disc, clip):
+					ci.draw_colored_polygon(poly, col.lerp(HAZE, band_haze(c)))
+				if pass_i == 0 and mark:
+					_mark_trail_in(p, r + 0.15, beyond)
+
+
+## _mark_trail() for the fill's cells whose middles lie inside `within` only, and not within EDGE_KEEP of the map (a
+## tuft there may reach a px or two onto the map: it stays as it was).
+func _mark_trail_in(p: Vector2, r: float, within: Rect2) -> void:
+	if _zn == 0 or not _fill().grow(r).has_point(p):
+		return
+	var keep := City.current().map().grow(EDGE_KEEP)
+	var i0 := maxi(floori((p.x - r - _fill().position.x) / CELL), 0)
+	var i1 := mini(floori((p.x + r - _fill().position.x) / CELL), _zn - 1)
+	var j0 := maxi(floori((p.y - r - _fill().position.y) / CELL), 0)
+	var j1 := mini(floori((p.y + r - _fill().position.y) / CELL), _zn - 1)
+	for j in range(j0, j1 + 1):
+		for i in range(i0, i1 + 1):
+			var c := _fill().position + (Vector2(i, j) + Vector2(0.5, 0.5)) * CELL
+			if within.has_point(c) and not keep.has_point(c):
+				_zones[j * _zn + i] |= 4
+
+
+## How far `g` lies past the fill, as a share of the band's depth (0 at the fill's edge, 1 at the drawn area's).
+static func _band_depth(g: Vector2) -> float:
+	var fill := _fill()
+	var outer := drawn_area()
+	var out := maxf(maxf(fill.position.x - g.x, g.x - fill.end.x), maxf(fill.position.y - g.y, g.y - fill.end.y))
+	var deep := maxf(fill.position.x - outer.position.x, 0.01)
+	return clampf(out / deep, 0.0, 1.0)
+
+
+## How much a point of the band fades to HAZE: none at the fill's edge, HAZE_MAX at the drawn area's.
+static func band_haze(g: Vector2) -> float:
+	var d := _band_depth(g)
+	return HAZE_MAX * d * (2.0 - d)
+
+
+## Whether band point `g` is woodland: within BAND_JOIN of the fill, as the fill's forest at its nearest edge point;
+## further out, the band's own large patches; never on the water or a bank.
+static func band_forest(g: Vector2) -> bool:
+	if wet(g) or wet(g + Vector2(0.9, 0.9)) or wet(g - Vector2(0.9, 0.9)):
+		return false
+	return band_woods(g)
+
+
+## band_forest() for a point known to be off the water and its banks.
+static func band_woods(g: Vector2) -> bool:
+	var fill := _fill()
+	var edge := g.clamp(fill.position, fill.end - Vector2(0.01, 0.01))
+	if g.distance_to(edge) < BAND_JOIN:
+		return _forest(edge)
+	return _octave(g / BAND_WOODS, 7) > BAND_FOREST
+
+
+## One strip of the border band's ground: meadow or forest floor in the fill's patches, fading to HAZE with distance,
+## in BAND_CELL squares (distant ground, and a quarter of the fill's cells to paint); the water and the rest are painted
+## over it after (band_redraw()).
+func _band_ground(ci: CanvasItem, strip: Rect2, from := 0.0, to := 1.0) -> void:
+	var n := int(roundf(strip.size.x / BAND_CELL))
+	var m := int(roundf(strip.size.y / BAND_CELL))
+	for j in range(roundi(m * from), roundi(m * to)):
+		for i in n:
+			var g := strip.position + Vector2(i, j) * BAND_CELL
+			var c := g + Vector2(BAND_CELL, BAND_CELL) * 0.5
+			var pal: Array = FOREST if band_forest(c) else GRASS
+			var v := clampf(_noise(c) * 1.25 - 0.12, 0.0, 0.999)
+			ci.draw_rect(Rect2(g, Vector2(BAND_CELL, BAND_CELL)), (pal[int(v * pal.size())] as Color).lerp(HAZE, band_haze(c)))
+
+
+## The band's redraw in the bake's second pass, once its ground is down (_band_ground()): everything the first pass
+## painted past the fill again over it -- the water (cut to the band), the band's own pebbles, the west branch's cliff (and the boulders
+## of the fill's cliff that reach past it), and the roads carried out (cut to past the fill).
+func band_redraw(ci: CanvasItem) -> void:
+	var strips := band_strips()
+	if strips.is_empty():
+		return
+	var geo := _geo()
+	var fill := _fill()
+	var drawn := drawn_area()
+	var r := City.current().landmark(&"river")
+	var cut: Array = [
+		[Rect2(drawn.position.x, r.position.y, drawn.size.x, r.size.y), WATER[0]],
+		[Rect2(drawn.position.x, r.position.y + r.size.y * 0.15, drawn.size.x, r.size.y * 0.7), WATER[1]],
+		[Rect2(drawn.position.x, r.position.y + r.size.y * 0.35, drawn.size.x, r.size.y * 0.3), WATER[2]],
+		[Rect2(drawn.position.x, r.position.y - 0.1, drawn.size.x, 0.1), BANK],
+		[Rect2(drawn.position.x, r.end.y, drawn.size.x, 0.1), BANK],
+	]
+	if geo.has(&"basin_runs"):
+		for run: Array in geo.basin_runs:
+			cut.append([run[0], WATER[run[1]]])
+	for s: Array in geo.basin_shores:
+		var a: Vector2 = s[0]
+		var bb: Vector2 = s[1]
+		var n: Vector2 = s[2]
+		cut.append([Rect2(a.min(bb) + n.min(Vector2.ZERO) * 0.1, (bb - a).abs() + n.abs() * 0.1), BANK])
+	var b := City.current().landmark(&"river_west")
+	if b.has_area():
+		cut.append([Rect2(drawn.position.x, b.position.y, b.end.x - drawn.position.x, b.size.y), WATER[0]])
+	for c: Array in cut:
+		for strip: Rect2 in strips:
+			var part := (c[0] as Rect2).intersection(strip)
+			if part.has_area():
+				ci.draw_rect(part, c[1])
+	var gaps: Array[float] = geo.crossings
+	for bank_y: float in [r.position.y - 0.12, r.end.y + 0.12]:
+		_pebbles(ci, Vector2(drawn.position.x, bank_y), Vector2(fill.position.x, bank_y), gaps)
+		_pebbles(ci, Vector2(fill.end.x, bank_y), Vector2(drawn.end.x, bank_y), gaps)
+	for s: Array in geo.basin_shores:
+		var n: Vector2 = s[2]
+		_pebbles(ci, (s[0] as Vector2) + n * 0.12, (s[1] as Vector2) + n * 0.12, gaps, fill)
+	if b.has_area():
+		_cliff_edge(ci, b)
+		_band_cliff(ci, b)
+	for e: Array in border_roads():
+		_edge_trail(ci, e[0], e[1], _past_fill(e[2]), false)
+
+
+## The fill's cliff boulders (_waterfall()) whose stone reaches past the fill, drawn again over the band's ground.
+func _cliff_edge(ci: CanvasItem, b: Rect2) -> void:
+	var x0 := _fill().position.x
+	var y := b.position.y
+	for i in 26:
+		var h := _hash(i * 13 + 5, 77)
+		var p := Vector2(x0 + float(i) / 26.0 * (b.end.x + 1.2 - x0), y - 0.35 - float(h % 5) * 0.12)
+		var rad := 0.35 + float(h % 4) * 0.12
+		if p.x - rad - 0.1 > x0:
+			break
+		ci.draw_circle(p, rad, PEBBLE[2].darkened(0.1))
+		ci.draw_circle(p + Vector2(-0.08, -0.08), rad * 0.7, PEBBLE[1])
+		ci.draw_circle(p + Vector2(-0.14, -0.14), rad * 0.35, PEBBLE[0])
+
+
+## A road's ground past the map's edge (border_roads()' `beyond`) cut back to past the fill's edge.
+static func _past_fill(beyond: Rect2) -> Rect2:
+	var map := City.current().map()
+	var m := map.position.x - _fill().position.x
+	if beyond.end.x <= map.position.x + 0.01:
+		return beyond.grow_individual(0.0, 0.0, -m, 0.0)
+	if beyond.position.x >= map.end.x - 0.01:
+		return beyond.grow_individual(-m, 0.0, 0.0, 0.0)
+	if beyond.end.y <= map.position.y + 0.01:
+		return beyond.grow_individual(0.0, 0.0, 0.0, -m)
+	return beyond.grow_individual(0.0, -m, 0.0, 0.0)
+
+
+## The band past the fill as four strips: across the top and the bottom of the drawn area, then down its left and
+## right between them. None when the band is no deeper than the fill.
+static func band_strips() -> Array[Rect2]:
+	var fill := _fill()
+	var o := drawn_area()
+	if o.is_equal_approx(fill) or o.encloses(fill) == false:
+		return []
+	return [Rect2(o.position.x, o.position.y, o.size.x, fill.position.y - o.position.y),
+		Rect2(o.position.x, fill.end.y, o.size.x, o.end.y - fill.end.y),
+		Rect2(o.position.x, fill.position.y, fill.position.x - o.position.x, fill.size.y),
+		Rect2(fill.end.x, fill.position.y, o.end.x - fill.end.x, fill.size.y)]
+
+
+## The west branch's cliff carried on through the band, west of the fill (_waterfall()'s boulders end at the fill).
+func _band_cliff(ci: CanvasItem, b: Rect2) -> void:
+	var x0 := drawn_area().position.x
+	var x1 := _fill().position.x
+	if x1 - x0 < 0.5:
+		return
+	var y := b.position.y
+	var n := int((x1 - x0) / 0.32)
+	for i in n:
+		var h := _hash(i * 13 + 5, 177)
+		var p := Vector2(x0 + (float(i) + 0.5) / float(n) * (x1 - x0), y - 0.35 - float(h % 5) * 0.12)
+		var rad := 0.35 + float(h % 4) * 0.12
+		var k := band_haze(p)
+		ci.draw_circle(p, rad, (PEBBLE[2] as Color).darkened(0.1).lerp(HAZE, k))
+		ci.draw_circle(p + Vector2(-0.08, -0.08), rad * 0.7, (PEBBLE[1] as Color).lerp(HAZE, k))
+		ci.draw_circle(p + Vector2(-0.14, -0.14), rad * 0.35, (PEBBLE[0] as Color).lerp(HAZE, k))
+
+
+## The band's tufts and flowers in screen pixels, BAND_TUFTS as thick as the fill's (far-off ground): hashed inside each
+## band strip, BAND_SALT apart from the fill's, on its meadow and forest floor only, off the water and the roads carried
+## out through it, faded as its ground is. Painted in the bake's second pass (_bake()).
+func band_detail(ci: CanvasItem, only := -1, from := 0.0, to := 1.0) -> void:
+	var fill := _fill()
+	var roads := border_roads()
+	var water: Array[Rect2] = []
+	for w: Rect2 in _geo().wet:
+		water.append(w.grow(0.3))
+	var strips := band_strips()
+	for k in strips.size():
+		if only >= 0 and k != only:
+			continue
+		var strip: Rect2 = strips[k]
+		var count := roundi(DETAIL_COUNT * BAND_TUFTS * strip.get_area() / DETAIL_AREA)
+		for i in range(roundi(count * from), roundi(count * to)):
+			var hx := _hash(i * 3 + BAND_SALT + k * 7, i * 7 + 5)
+			var hy := _hash(i * 11 + 3, i * 5 + BAND_SALT + k * 13)
+			var hz := _hash(i * 13 + 7 + BAND_SALT, i * 17 + 1 + k)
+			var g := strip.position + Vector2((float(hx) + float(hz % 10) / 10.0) / 997.0 * strip.size.x,
+				(float(hy) + float(hz % 7) / 7.0) / 997.0 * strip.size.y)
+			if fill.grow(0.2).has_point(g) or _in_rects(g, water):
+				continue
+			var on_road := false
+			for e: Array in roads:
+				on_road = on_road or _near_polyline(g, e[0], float(e[1]) + 0.2)
+			if on_road:
+				continue
+			var forest := band_forest(g)
+			var fade := band_haze(g)
+			var p := Iso.ground_to_screen(g).round()
+			var pal: Array = FOREST if forest else GRASS
+			var kind := hz % 23
+			if kind < 3 and not forest:
+				var col: Color = (FLOWERS[(hx + hy) % FLOWERS.size()] as Color).lerp(HAZE, fade)
+				for q in 3:
+					var o := Vector2(float((hz + q * 5) % 5) - 2.0, float((hz + q * 3) % 3) - 1.0) * 2.0
+					ci.draw_rect(Rect2(p + o, Vector2(1, 1)), col)
+			elif kind >= 4:
+				var dark: Color = (pal[pal.size() - 1] as Color).darkened(0.1).lerp(HAZE, fade)
+				var light: Color = (pal[0] as Color).lightened(0.1).lerp(HAZE, fade)
+				ci.draw_rect(Rect2(p, Vector2(1, 2)), dark)
+				ci.draw_rect(Rect2(p + Vector2(1, -1), Vector2(1, 3)), light if hz % 2 == 0 else dark)
+				if hz % 3 == 0:
+					ci.draw_rect(Rect2(p + Vector2(2, 0), Vector2(1, 2)), dark)
+
+
+static func _in_rects(g: Vector2, rects: Array[Rect2]) -> bool:
+	for r in rects:
+		if r.has_point(g):
+			return true
+	return false
+
+
 # --- Screen-pixel layer ------------------------------------------------------------------
 
 ## Tufts, flowers and pebbles in screen pixels over the meadow and the town's earth; none on water, roads or paving.
 func paint_detail(ci: CanvasItem) -> void:
-	var count := 62000
+	var count := roundi(DETAIL_COUNT * _fill().get_area() / DETAIL_AREA)
 	for i in count:
 		var hx := _hash(i * 3 + 1, i * 7 + 5)
 		var hy := _hash(i * 11 + 3, i * 5 + 9)
 		var hz := _hash(i * 13 + 7, i * 17 + 1)
-		var g := FILL.position + Vector2((float(hx) + float(hz % 10) / 10.0) / 997.0 * FILL.size.x,
-			(float(hy) + float(hz % 7) / 7.0) / 997.0 * FILL.size.y)
+		var g := _fill().position + Vector2((float(hx) + float(hz % 10) / 10.0) / 997.0 * _fill().size.x,
+			(float(hy) + float(hz % 7) / 7.0) / 997.0 * _fill().size.y)
 		var zone := _zone(g)
 		if zone == 0:
 			continue
@@ -633,24 +1223,33 @@ func _shrubs(ci: CanvasItem) -> void:
 ## units), "seed"} each, on a jittered SHRUB_STEP grid, SHRUB_CHANCE of its points, on open meadow only (_fixed_zone
 ## 1). Deterministic; the floor bake and the plant layer both read it.
 static func shrub_spots() -> Array[Dictionary]:
-	if _shrubs_done:
+	var city := City.current()
+	if city == _shrubs_city:
 		return _shrub_spots
-	_shrubs_done = true
+	_shrubs_city = city
+	_shrub_spots = []
 	var yards := _yards()
+	var chance := city.shrub_chance()
+	var clear := city.shrub_clear()
 	var n := 0
-	for d: Rect2 in TownLayout.DISTRICTS:
+	for d: Rect2 in city.districts():
 		var nx := int(d.size.x / SHRUB_STEP)
 		var ny := int(d.size.y / SHRUB_STEP)
 		for j in ny:
 			for i in nx:
 				n += 1
 				var h := _hash(n * 7 + 3, n * 13 + 11)
-				if float(h % 100) / 100.0 > SHRUB_CHANCE:
+				if float(h % 100) / 100.0 > chance:
 					continue
 				var g := d.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * SHRUB_STEP \
 					+ (Vector2(float(h % 17) / 17.0, float(h % 13) / 13.0) - Vector2(0.5, 0.5)) * SHRUB_STEP * 0.8
 				# The house blocks lie inside the walls, where the zone does not hang on the painted meadow.
 				if _fixed_zone(g, yards) != 1:
+					continue
+				var bare := false
+				for r: Rect2 in clear:
+					bare = bare or r.has_point(g)
+				if bare:
 					continue
 				_shrub_spots.append({"base": "flowerbed" if h % 5 == 0 else "shrub", "at": g, "seed": h})
 	return _shrub_spots
@@ -792,7 +1391,7 @@ func _paint_decor(ci: CanvasItem) -> void:
 			continue
 		# The same tuning a live Decor takes: its size about its ground point, and its colour.
 		var key := String(Decor.Kind.keys()[d.kind]).to_lower()
-		var sc := ArtTuning.scale(key)
+		var sc := ArtTuning.scale(key) * float(d.get("scale", 1.0))
 		var at := Iso.ground_to_screen(d.at)
 		ci.draw_set_transform(at * (1.0 - sc), 0.0, Vector2(sc, sc))
 		# A piece from inside the walls keeps the colour it had live (see TownDecor._bake_low()).
@@ -812,8 +1411,8 @@ func _zone(g: Vector2) -> int:
 		return z
 	if _zn == 0:
 		return 2 if _forest(g) else 1
-	var i := clampi(floori((g.x - FILL.position.x) / CELL), 0, _zn - 1)
-	var j := clampi(floori((g.y - FILL.position.y) / CELL), 0, _zn - 1)
+	var i := clampi(floori((g.x - _fill().position.x) / CELL), 0, _zn - 1)
+	var j := clampi(floori((g.y - _fill().position.y) / CELL), 0, _zn - 1)
 	var c := _zones[j * _zn + i]
 	return 0 if c & 4 else (2 if c & 2 else 1)
 
@@ -821,32 +1420,124 @@ func _zone(g: Vector2) -> int:
 ## _zone() where it does not hang on the painted meadow (water, fields, roads, and everything inside the walls, with
 ## the house yards `yards`); -1 out in the meadow and the forest, where the painted cells decide.
 static func _fixed_zone(g: Vector2, yards: Array[Rect2]) -> int:
-	for river: Rect2 in TownLayout.RIVERS:
+	var geo := _geo()
+	for river: Rect2 in geo.rivers:
 		if river.grow(0.25).has_point(g):
 			return 0
-	for f: Rect2 in TownLayout.FIELDS:
+	# The water carried on past the map's edge (wet()): no tuft on it either, but for those within EDGE_KEEP of the map,
+	# which may reach a px or two onto it and stay as they were.
+	if not geo.map_keep.has_point(g):
+		for river: Rect2 in geo.wet:
+			if river.grow(0.25).has_point(g):
+				return 0
+	for f: Rect2 in geo.fields:
 		if f.grow(0.5).has_point(g):
 			return 0
-	if g.x < TownLayout.RIVER_WEST.end.x + 1.4 and absf(g.y - TownLayout.RIVER_WEST.position.y) < 1.6:
+	var west: Rect2 = geo.river_west
+	if west.has_area() and g.x < west.end.x + 1.4 and absf(g.y - west.position.y) < 1.6:
 		return 0
-	for road: Rect2 in TownLayout.ROADS:
+	for road: Rect2 in geo.roads:
 		if road.grow(0.15).has_point(g):
 			return 0
-	if TownLayout.TOWN.has_point(g):
-		if TownLayout.MARKET_SQUARE.has_point(g) or TownLayout.CITADEL_COURT.has_point(g) \
-				or TownLayout.BARRACKS_YARD.has_point(g) or TownLayout.FOUNTAIN_PLAZA.has_point(g):
-			return 0
-		for plaza: Rect2 in TownLayout.GATE_PLAZAS:
+	if (geo.town as Rect2).has_point(g) or _paved(g):
+		for open: Rect2 in geo.open:
+			if open.has_point(g):
+				return 0
+		for plaza: Rect2 in geo.gate_plazas:
 			if plaza.grow(0.3).has_point(g):
 				return 0
 		for y: Rect2 in yards:
 			if y.has_point(g):
 				return 3
-		for d: Rect2 in TownLayout.DISTRICTS:
+		for d: Rect2 in geo.districts:
 			if d.grow(-0.2).has_point(g):
 				return 1
+		# A lawn's tufts grow as the meadow's do, off its paths (the painted cells decide).
+		for l: Rect2 in geo.lawns:
+			if l.has_point(g):
+				return -1
 		return 0
 	return -1
+
+
+## The drawn area: the active city's map, FILL_MARGIN past it.
+static func _fill() -> Rect2:
+	return _geo().fill
+
+
+## Whether `g` is on the city's extra paved ground (floor_areas() &"paved": none at Aldermere).
+static func _paved(g: Vector2) -> bool:
+	for r: Rect2 in _geo().paved:
+		if r.has_point(g):
+			return true
+	return false
+
+
+## The active city's ground, as the per-cell tests read it: worked out once per city (City.current()).
+static func _geo() -> Dictionary:
+	var city := City.current()
+	if city != _geo_city:
+		_geo_city = city
+		var areas := city.floor_areas()
+		var plazas: Array = areas.get(&"plazas", [])
+		var yards: Array = areas.get(&"yards", [])
+		_geo_cache = {
+			town = city.town(), districts = city.districts(), rivers = city.rivers(), fields = city.fields(),
+			roads = city.roads(), river = city.landmark(&"river"), river_west = city.landmark(&"river_west"),
+			plazas = plazas, yards = yards, open = plazas + yards, gate_plazas = areas.get(&"gate_plazas", []),
+			farm = areas.get(&"farm", []), paved = areas.get(&"paved", []), fill = city.map().grow(FILL_MARGIN),
+			trails = city.trails(), road_trails = city.road_trails(), outcrops = city.outcrops(),
+			rosettes = city.rosettes(), forest_gaps = city.forest_gaps(), lawns = areas.get(&"lawns", []),
+			paths = areas.get(&"paths", []), outer = city.map().grow(maxf(FILL_MARGIN, city.border())),
+		}
+		var crossings: Array[float] = []
+		for c: Rect2 in areas.get(&"crossings", []):
+			crossings.append(c.get_center().x)
+		_geo_cache.crossings = crossings
+		_water_geo(_geo_cache)
+		_geo_cache.wet = _wet_rects(city.rivers(), city.map(), _geo_cache.outer)
+		_geo_cache.map_keep = city.map().grow(EDGE_KEEP)
+	return _geo_cache
+
+
+## The basins (the city's water besides the river and the west branch), each run on to the drawn area's edge where it
+## meets the map's; their quays (basin_shores, [a, b, land normal]); and every shore a basin's water is measured from
+## (shores: the quays and the river's banks, less where a basin opens off them).
+static func _water_geo(geo: Dictionary) -> void:
+	# The whole drawn ground: a basin meeting the map's edge runs on out through the border band.
+	var fill: Rect2 = geo.outer
+	var map := City.current().map()
+	var river: Rect2 = geo.river
+	var basins: Array[Rect2] = []
+	for o: Rect2 in geo.rivers:
+		if o == river or o == geo.river_west:
+			continue
+		var e := o
+		if o.position.x <= map.position.x:
+			e = e.expand(Vector2(fill.position.x, e.position.y))
+		if o.end.x >= map.end.x:
+			e = e.expand(Vector2(fill.end.x, e.position.y))
+		if o.position.y <= map.position.y:
+			e = e.expand(Vector2(e.position.x, fill.position.y))
+		if o.end.y >= map.end.y:
+			e = e.expand(Vector2(e.position.x, fill.end.y))
+		basins.append(e)
+	var band := Rect2(fill.position.x, river.position.y, fill.size.x, river.size.y)
+	var quays: Array = []
+	var shores: Array = []
+	for e: Rect2 in basins:
+		var water: Array[Rect2] = [band]
+		for other: Rect2 in basins:
+			if other != e:
+				water.append(other)
+		quays.append_array(_shores(e, fill, water))
+	if not basins.is_empty():
+		shores.append_array(quays)
+		shores.append_array(_cut(band.position, Vector2(band.end.x, band.position.y), Vector2(0, -1), basins))
+		shores.append_array(_cut(Vector2(band.position.x, band.end.y), band.end, Vector2(0, 1), basins))
+	geo.basins = basins
+	geo.basin_shores = quays
+	geo.shores = shores
 
 
 static func _near_polyline(g: Vector2, pts: Array, d: float) -> bool:

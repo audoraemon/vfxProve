@@ -2,6 +2,8 @@ class_name EnvironmentField
 extends Node
 ## Registry of destructible structures with ground-space damage queries, like EnemyField for props.
 
+const BenchProf := preload("res://src/core/bench_prof.gd")
+
 ## A structure was destroyed (any cause); the game's rules count these.
 signal structure_destroyed(s: Structure, kind: StringName)
 ## Damage landed on a structure that still stands (FireManager lights fires from it).
@@ -183,6 +185,12 @@ func _reindex() -> void:
 ## Wake every sleeping structure that has come into view (Structure.asleep): one loop here instead of every
 ## structure in town being processed each frame to find out it is still off screen.
 func _process(delta: float) -> void:
+	var t0 := BenchProf.begin()
+	_step(delta)
+	BenchProf.add(&"env_field", t0)
+
+
+func _step(delta: float) -> void:
 	# The sprites' idle strips run on this field's time: frozen with the mission, stopped with it.
 	SpriteView.tick_clock(self, delta)
 	var v := Structure.view

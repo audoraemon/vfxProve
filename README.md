@@ -77,6 +77,7 @@ The approved effects are becoming a one-mission game (spec: `docs/superpowers/sp
 | `U` | Upgrades, on the mission board (v0.11) |
 | `TAB` | more or less of the mission's text: every objective, how to win, the wishes, names on the edge arrows (v0.11.1) |
 | `H` | the legend of marks, with this night's tags; again for the second page, Esc to close; the night waits (v0.11.1) |
+| `F1` | hide or show the whole interface, to watch the town: the HUD, its tags and the aim go; the camera still pans and zooms, and no click casts while it is hidden. `F1` again, a slot key, `TAB` or `H` brings it back; the ending always shows (v0.11.2) |
 | `Esc` | cancel an aim in progress, else quit; Title from the board, the board from Prepare, pause in a mission, resume from pause, the board from Results |
 | Options (the pause menu's second row, the title's third) | opens the volume panel (v0.11.2): bars for Music, Sounds and Interface in 10 steps. Click a bar, or `Up` / `Down` to choose and `Left` / `Right` to change; `Esc` closes it and goes back to the menu (it does not resume the mission). The volumes are saved in their own file, `user://kak_settings.cfg`, apart from your progress |
 
@@ -93,6 +94,10 @@ SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture   # 
 /f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- --scenario=miras --case=play   # the campaign's nights scripted: miras, lanterns, flame (--case=none|play, --seed=) and feast (--path=festival|procession, --bell=rang); each prints its result and a checksum
 /f/Godot/Godot_v4.7.2-stable_win64_console.exe --path . --audio-driver Dummy --scene res://scenes/mission.tscn -- --mission=vigil_flame --bench --bench-beams   # times Halcyon's Searchlight with both beams lit
 ```
+
+### Towns (v0.12)
+
+The five Tier 1 missions can also be played in the Capital, as dev nights. Run the game with `--dev` (`& $godot --path . --scene res://scenes/game.tscn -- --dev`), open the Missions board and press `D`: the **DEV tab** lists the Capital Sandbox and the Capital's missions (cards marked `CAPITAL`). They have no Descent and no progress. Scripted runs take `--city=<id>` (for example `-- --scenario=tax --case=play --city=capital`, or `bash tools/dev/gate.sh tax --city=capital`); a mission a town cannot host is refused. How to add a town: `docs/KAK_Version_0.12_Summary.md`; the decisions: `docs/KAK_v012_Rulings.md`.
 
 ### Debug scene
 

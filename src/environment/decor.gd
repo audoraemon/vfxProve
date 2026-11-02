@@ -20,6 +20,9 @@ var kind := Kind.BARREL
 var at := Vector2.ZERO
 var size := Vector2.ZERO
 var seed_value := 0
+## Its own size on top of its kind's tuning (ArtTuning.scale()): 1 for nearly everything; a city's piece may set it
+## (CityDef.court_decor() "scale": the capital's practice dummies), about its ground point.
+var scale_mul := 1.0
 ## 0..1 how burnt it is.
 var char_amount := 0.0
 var down := false
@@ -208,7 +211,7 @@ func _ready() -> void:
 ## ground point; scaled with the drawing (ArtTuning).
 func _place_glow() -> void:
 	if is_instance_valid(_glow):
-		_glow.position = DecorSprites.glow_offset(kind, seed_value, size) * ArtTuning.scale(tuning_key())
+		_glow.position = DecorSprites.glow_offset(kind, seed_value, size) * ArtTuning.scale(tuning_key()) * scale_mul
 
 
 ## F7 switched the art (ArtToggle): draw again from the sprite or the polygons.
@@ -226,7 +229,7 @@ func _sync_glass() -> void:
 		return
 	var n := DecorSprites.name_for(kind, seed_value, size, at) if not down else ""
 	var r := DecorSprites.glass_rect(DecorSprites.decor_set(n), DecorSprites.flipped(kind, seed_value)) if n != "" 		else Rect2()
-	_glass.scale = Vector2.ONE * ArtTuning.scale(tuning_key())
+	_glass.scale = Vector2.ONE * ArtTuning.scale(tuning_key()) * scale_mul
 	_glass.place(r)
 
 
@@ -285,7 +288,7 @@ func hit(amount: float, damage_kind: StringName) -> void:
 
 
 func _draw() -> void:
-	var sc := ArtTuning.scale(tuning_key())
+	var sc := ArtTuning.scale(tuning_key()) * scale_mul
 	if sc != 1.0:
 		# Scaled about the ground point it stands on (this node's origin).
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))

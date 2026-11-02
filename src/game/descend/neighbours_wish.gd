@@ -80,7 +80,7 @@ func _priest_for(w: Person, crowd: Crowd, taken: Array) -> Person:
 		if not MissionDirector._alive(v) or v == w:
 			continue
 		var p := v as Person
-		if p.inside or p.profile == null or p.profile.role != CitizenProfile.Role.CLERGY or taken.has(p):
+		if p.inside or p.profile == null or not CitizenProfile.is_clergy(p.profile.role) or taken.has(p):
 			continue
 		var walk := p.ground_pos.distance_to(w.ground_pos)
 		if (reach > 0.0 and walk - WALK_SLACK > reach) or walk - WALK_SLACK >= best_walk:

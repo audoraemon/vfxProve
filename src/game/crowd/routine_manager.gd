@@ -22,6 +22,13 @@ const WEIGHTS := {
 	# The Mayor and the Prince (v0.09) are placed by The Long Night's directors; these only keep pick() whole.
 	CitizenProfile.Role.MAYOR: [0.3, 0.6, 0.1, 0.0],
 	CitizenProfile.Role.NOBLE: [0.9, 0.0, 0.1, 0.0],
+	# The capital's roles (CitizenProfile.JOBS): the baker keeps the counter, the washer the wash house, the
+	# dockworker the quay, the monk the chapel; the beggar has no work and haunts the squares, gates and chapels.
+	CitizenProfile.Role.BAKER: [0.2, 0.6, 0.15, 0.05],
+	CitizenProfile.Role.WASHER: [0.2, 0.6, 0.15, 0.05],
+	CitizenProfile.Role.DOCKWORKER: [0.15, 0.6, 0.1, 0.15],
+	CitizenProfile.Role.MONK: [0.2, 0.6, 0.2, 0.0],
+	CitizenProfile.Role.BEGGAR: [0.2, 0.0, 0.6, 0.2],
 }
 ## How long a citizen stays (seconds, min and max) at each kind of place.
 const STAY := [Vector2(10, 30), Vector2(25, 60), Vector2(8, 25), Vector2(5, 12)]

@@ -165,7 +165,7 @@ func _recruit() -> void:
 		return
 	var pool: Array[Person] = []
 	for p in _crowd.citizens:
-		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY \
+		if is_instance_valid(p) and p.is_alive() and p.profile != null and CitizenProfile.is_clergy(p.profile.role) \
 				and not p.inside and p.mind in AVAILABLE and not _called(p):
 			pool.append(p)
 	pool.sort_custom(func(a: Person, b: Person) -> bool:
@@ -200,7 +200,7 @@ func in_ring() -> int:
 func living_clergy() -> int:
 	var n := 0
 	for p in _crowd.citizens:
-		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.role == CitizenProfile.Role.CLERGY:
+		if is_instance_valid(p) and p.is_alive() and p.profile != null and CitizenProfile.is_clergy(p.profile.role):
 			n += 1
 	return n
 

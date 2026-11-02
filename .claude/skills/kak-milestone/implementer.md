@@ -22,6 +22,9 @@ Working directory: <WORKTREE> (never cd to the repo root; never touch other work
   the same commit with the reason.
 
 ## Commands (foreground only; never run_in_background, never a Monitor; each command under 10 minutes)
+- NEVER stop, kill or close a process you did not launch (no Stop-Process/taskkill/pkill by name): other sessions and the user run Godot,
+  refs_check.sh and land.sh on this machine too. Record the PID of each process you launch and stop only those; a run that looks
+  like your job is not yours unless you launched it.
 - Import after a new class_name or test file: `timeout 900 $G --headless --editor --path . --import >/dev/null 2>&1`.
 - Focused tests while iterating; before committing the whole suite: `bash tools/dev/run_suite_parallel.sh 8` (~5 min).
 - References: only the ones your change can reach, e.g. `bash tools/dev/refs_check.sh --only='^(digest|crowd_check|calm|<your scenarios>)'`.

@@ -13,7 +13,8 @@ extends Wish
 const SECONDS := 45.0
 ## How near a cast must land to the child or the soldier to engage the wish.
 const ENGAGE_REACH := 2.0
-## The Citadel's gate the child is dragged to (snapped to walkable ground), and how near counts as there.
+## Aldermere's Citadel gate (the place `citadel_gate`, which the wish reads: Places.point()), kept as data for the tests and the
+## Tiers 2-5 that stay Aldermere's; GATE_REACH is how near counts as there.
 const GATE := Vector2(-10.5, -7.6)
 const GATE_REACH := 1.0
 ## The minds that are the god's own doing (v0.11 M1): a soldier in one of them has been turned -- v0.11 M2 (M1 final review):
@@ -61,10 +62,16 @@ func choose(crowd: Crowd, _town: Town, rng: RandomNumberGenerator, taken: Array)
 	child = kid
 	soldier = guard
 	taken.append_array([wisher, child, soldier])
-	var snap := crowd._grid.nearest_walkable(GATE) if crowd._grid != null else GATE
-	_gate = snap if snap != Vector2.INF else GATE
+	_gate = gate_point(crowd._grid)
 	crowd._field.enemy_killed.connect(_on_killed)
 	return true
+
+
+## The Citadel's gate the child is dragged to: the town's place, snapped to walkable ground when there is a grid.
+static func gate_point(grid: WalkGrid) -> Vector2:
+	var gate := Places.point(&"citadel_gate")
+	var snap := grid.nearest_walkable(gate) if grid != null else gate
+	return snap if snap != Vector2.INF else gate
 
 
 ## The first of `homes` but `p` in `p`'s household, or null.

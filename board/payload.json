@@ -7,21 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **96** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793640807:f>)\n• Done: Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area\n• New: Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter (in progress)\n• New: Earthshatter (Ruin, Tier V): the ground torn open from click to click\n• New: Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle\n• New: Tempest (Ruin, Tier V): the storm over the whole town",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**9** in progress · **25** to do · **97** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793642073:f>)\n• Done: Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-03T00:33:27+07:00"
-    },
-    {
-     "title": "god/ruin-tree",
-     "description": "169 commits not in Develop-Main · last commit today · local only\n> docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven\n\n**In progress** (1)\n• Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter — **needs you**",
-     "color": 5016537
+     "timestamp": "2026-11-03T00:54:33+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "165 commits not in Develop-Main · last commit 2 days ago\n> docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "169 commits not in Develop-Main · last commit today\n> docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "god/ruin-tree",
+     "description": "169 commits not in Develop-Main · last commit today\n> docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -51,7 +51,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Earthshatter (Ruin, Tier V): the ground torn open from click to click _(11-02)_\n• Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle _(11-02)_\n• Tempest (Ruin, Tier V): the storm over the whole town _(11-02)_\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area _(11-02)_\n• Hunt 1 rebuild: the second household sets out when the watch is broken _(11-01)_\n• God P5: 11 decisions on the Hunts _(10-31)_\n• God P5: the five Lantern Hunt nights _(10-31)_\n• Board sweep: play the 24 non-Warning god pairs as the board version once _(10-30)_",
+     "description": "• Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter _(11-03)_\n• Earthshatter (Ruin, Tier V): the ground torn open from click to click _(11-02)_\n• Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle _(11-02)_\n• Tempest (Ruin, Tier V): the storm over the whole town _(11-02)_\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area _(11-02)_\n• Hunt 1 rebuild: the second household sets out when the watch is broken _(11-01)_\n• God P5: 11 decisions on the Hunts _(10-31)_\n• God P5: the five Lantern Hunt nights _(10-31)_",
      "color": 10185686
     }
    ]

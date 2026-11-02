@@ -1,10 +1,10 @@
 {
- "hash": "9d16427253f7b786",
- "updated": "2026-11-03T00:54:33+07:00",
+ "hash": "f0fd55f06bb85e1e",
+ "updated": "2026-11-03T02:14:47+07:00",
  "changes": {
-  "date": "<t:1793642073:f>",
+  "date": "<t:1793646887:f>",
   "items": [
-   "Done: Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter"
+   "New: Ruin ability levels: 5 levels + a level-5 twist for all ten powers"
   ]
  },
  "snapshot": {
@@ -308,6 +308,16 @@
     "branch": "feat/god-progression",
     "updated": "2026-10-27",
     "order": 189
+   },
+   "god-ruin-levels": {
+    "title": "Ruin ability levels: 5 levels + a level-5 twist for all ten powers",
+    "status": "todo",
+    "area": "Design",
+    "version": "god/ruin-tree",
+    "needs_you": false,
+    "branch": "god/ruin-tree",
+    "updated": "2026-11-03",
+    "order": 203
    },
    "god-ruin-tree-fill": {
     "title": "Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter",
@@ -1190,15 +1200,15 @@
   },
   "branches": [
    {
-    "name": "feat/god-progression",
-    "ahead": 169,
+    "name": "god/ruin-tree",
+    "ahead": 170,
     "behind": 0,
     "date": "2026-11-03",
-    "subject": "docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven",
+    "subject": "docs: Ruin ability levels design -- five levels and a level-5 twist for each of Ruin's ten powers (approved)",
     "pushed": true
    },
    {
-    "name": "god/ruin-tree",
+    "name": "feat/god-progression",
     "ahead": 169,
     "behind": 0,
     "date": "2026-11-03",

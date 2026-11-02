@@ -7,21 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**9** in progress · **25** to do · **97** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793642073:f>)\n• Done: Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**9** in progress · **26** to do · **97** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793646887:f>)\n• New: Ruin ability levels: 5 levels + a level-5 twist for all ten powers",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-03T00:54:33+07:00"
+     "timestamp": "2026-11-03T02:14:47+07:00"
+    },
+    {
+     "title": "god/ruin-tree",
+     "description": "170 commits not in Develop-Main · last commit today\n> docs: Ruin ability levels design -- five levels and a level-5 twist for each of Ruin's ten powers (approved)\n\n**To do** (1)\n• Ruin ability levels: 5 levels + a level-5 twist for all ten powers",
+     "color": 5016537
     },
     {
      "title": "feat/god-progression",
      "description": "169 commits not in Develop-Main · last commit today\n> docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "god/ruin-tree",
-     "description": "169 commits not in Develop-Main · last commit today\n> docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {

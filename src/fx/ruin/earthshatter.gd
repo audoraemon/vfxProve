@@ -24,6 +24,10 @@ const T_SETTLE := 2.5
 const STRETCH := 1.5
 const DEEP := Color(1.0, 0.45, 0.15)
 const CRACK_LIGHT := Color(1.0, 0.55, 0.2)
+## Level 5 twist, Fault Lines: at a third and two thirds of its run the crack forks, the first branch to the left of the run, the second to
+## the right, FORK_ANGLE off the line and FORK_LEN long; each is its own Fissure, crawls at the crack's speed and stays open.
+const FORK_ANGLE := 0.6
+const FORK_LEN := 5.0
 
 ## Where it ends, how far it has opened (ground units along the run), and what it took.
 var to := Vector2.ZERO
@@ -39,6 +43,11 @@ var _rumble_in := 0.0
 var _dust_in := 0.0
 var _stretch_at := 0.0
 var _walls_done := {}
+## The level 5 forks: where along the run each starts (empty below level 5), how many have started, and the branches (each a run, as the
+## main crack's is: from, dir, length, reach, fissure, walls).
+var _forks: Array[float] = []
+var _forks_made := 0
+var branches: Array[Dictionary] = []
 ## This cast's longest crack, fall width and crawl speed: the ability level's (PowerBook.stat()), the consts at level 1.
 var lv_max_length := MAX_LENGTH
 var lv_half := HALF
@@ -56,8 +65,13 @@ func _build() -> void:
 	length = clampf(run.length(), MIN_LENGTH, lv_max_length)
 	to = origin + run.normalized() * length
 	var crawl := length / lv_speed
-	duration = T_CRACK + crawl + T_SETTLE
-	busy = T_CRACK + crawl
+	var all_crawl := crawl
+	if PowerBook.twist_at(extra, "shatter"):
+		_forks = [length / 3.0, 2.0 * length / 3.0]
+		# The cast lasts, and keeps the slots locked, until the last branch has reached its end.
+		all_crawl = maxf(length, _forks[1] + FORK_LEN) / lv_speed
+	duration = T_CRACK + all_crawl + T_SETTLE
+	busy = T_CRACK + all_crawl
 	at(T_CRACK, _open)
 	at(T_CRACK + crawl, _settle)
 	ctx.play(&"hs_rumble", origin, 4.0)
@@ -118,52 +132,23 @@ func front() -> Vector2:
 
 
 func _fx_process(delta: float) -> void:
-	if t < T_CRACK or reach >= length:
+	if t < T_CRACK:
 		return
-	var was := reach
-	reach = minf(reach + lv_speed * delta, length)
-	if fissure != null and is_instance_valid(fissure):
-		fissure.reach = reach
-	var dir := (to - origin).normalized()
-	# Everything the front has passed since the last frame: the fall, the shove, the walls.
-	var mid := origin + dir * ((was + reach) * 0.5)
-	var step := maxf(reach - was, 0.05)
-	for e in ctx.field.in_radius(mid, lv_half + SHOVE + step):
-		var p := e as Person
-		if p != null and p.inside:
-			continue
-		var along := (e.ground_pos - origin).dot(dir)
-		if along < was - lv_half or along > reach + lv_half:
-			continue
-		var off := absf((e.ground_pos - origin).cross(dir))
-		if off <= lv_half:
-			if ctx.field.kill(e, &"pit", e.ground_pos):
-				fell += 1
-				if fissure != null and is_instance_valid(fissure):
-					fissure.crumble(e.ground_pos)
-		elif off <= lv_half + SHOVE:
-			var lateral := (e.ground_pos - origin) - dir * along  # away from the crack's line
-			e.knock((lateral.normalized() if lateral.length() > 0.01 else Vector2(-dir.y, dir.x)) * 2.0)
-	for s in ctx.env.near(front(), lv_half + WALL_REACH + 1.0):
-		if not is_instance_valid(s) or s.destroyed or _walls_done.has(s) or s.role == &"thorns":
-			continue
-		var c := s.center()
-		var along := (c - origin).dot(dir)
-		if along < -lv_half or along > reach + lv_half:
-			continue
-		if absf((c - origin).cross(dir)) <= lv_half + WALL_REACH + s.footprint.size.length() * 0.5:
-			_walls_done[s] = true
-			s.damage(WALL_DAMAGE, c, &"shatter")
-			broke += 1
-	# Barrels, carts, lamps and trees on the line go into it.
-	for d in ctx.env.decor():
-		if not is_instance_valid(d) or not d.visible:
-			continue
-		var along := (d.at - origin).dot(dir)
-		if along < was - lv_half or along > reach + lv_half:
-			continue
-		if absf((d.at - origin).cross(dir)) <= lv_half + 0.5:
-			d.visible = false
+	# Level 5: the branches the crack has forked crawl on, even after the main crack is done.
+	_start_forks()
+	for run in branches:
+		if float(run.reach) < float(run.length):
+			_crawl(run, delta)
+			if float(run.reach) >= float(run.length):
+				var arm: Variant = run.fissure
+				if is_instance_valid(arm):
+					arm.armed = true
+	if reach >= length:
+		return
+	var main := {"from": origin, "dir": (to - origin).normalized(), "length": length, "reach": reach, "fissure": fissure, "walls": _walls_done}
+	_crawl(main, delta)
+	reach = main.reach
+	var dir: Vector2 = main.dir
 	# The town is told, stretch by stretch.
 	if ctx.crowd != null and reach - _fright_at >= FRIGHT_EVERY:
 		_fright_at = reach
@@ -203,6 +188,74 @@ func _fx_process(delta: float) -> void:
 		FxParts.debris(self, Iso.ground_to_screen(here), 14, 12.0, Vector2(60, 300), FxParts.ROCK, Vector2(2, 5), true)
 		if fissure != null and is_instance_valid(fissure):
 			fissure.add_heat(here - dir * STRETCH * 0.5)
+
+
+## Level 5: a branch starts at each fork the main crack's front has passed. Left, then right of the run; no rng until a branch starts.
+func _start_forks() -> void:
+	while _forks_made < _forks.size() and reach >= _forks[_forks_made]:
+		var dir := (to - origin).normalized()
+		var where := origin + dir * _forks[_forks_made]
+		var way := dir.rotated(-FORK_ANGLE if _forks_made == 0 else FORK_ANGLE)
+		var crack := Fissure.new().setup(ctx.field, where, where + way * FORK_LEN, lv_half, ctx.rng.randi())
+		ctx.ground.add_child(crack)
+		crack.hide_rubble(ctx.env)
+		ctx.play(&"hs_fissure", where, -3.0)
+		branches.append({"from": where, "dir": way, "length": FORK_LEN, "reach": 0.0, "fissure": crack, "walls": {}})
+		_forks_made += 1
+
+
+## One frame of one run's crawl (the main crack's or a branch's; a run is {from, dir, length, reach, fissure, walls}): the front moves on
+## at the level's speed, and everything it has passed since the last frame falls, is thrown, broken or hidden. Only the main crack frightens,
+## shakes and throws dust (the caller); the branches do the same ground work quietly.
+func _crawl(run: Dictionary, delta: float) -> void:
+	var from: Vector2 = run.from
+	var dir: Vector2 = run.dir
+	var was: float = run.reach
+	var reach_to := minf(was + lv_speed * delta, float(run.length))
+	run.reach = reach_to
+	var crack: Variant = run.fissure  # may have been freed with the ground layer
+	if crack != null and is_instance_valid(crack):
+		crack.reach = reach_to
+	var walls: Dictionary = run.walls
+	# Everything the front has passed since the last frame: the fall, the shove, the walls.
+	var mid := from + dir * ((was + reach_to) * 0.5)
+	var step := maxf(reach_to - was, 0.05)
+	for e in ctx.field.in_radius(mid, lv_half + SHOVE + step):
+		var p := e as Person
+		if p != null and p.inside:
+			continue
+		var along := (e.ground_pos - from).dot(dir)
+		if along < was - lv_half or along > reach_to + lv_half:
+			continue
+		var off := absf((e.ground_pos - from).cross(dir))
+		if off <= lv_half:
+			if ctx.field.kill(e, &"pit", e.ground_pos):
+				fell += 1
+				if crack != null and is_instance_valid(crack):
+					crack.crumble(e.ground_pos)
+		elif off <= lv_half + SHOVE:
+			var lateral := (e.ground_pos - from) - dir * along  # away from the crack's line
+			e.knock((lateral.normalized() if lateral.length() > 0.01 else Vector2(-dir.y, dir.x)) * 2.0)
+	for s in ctx.env.near(from + dir * reach_to, lv_half + WALL_REACH + 1.0):
+		if not is_instance_valid(s) or s.destroyed or walls.has(s) or s.role == &"thorns":
+			continue
+		var c := s.center()
+		var along := (c - from).dot(dir)
+		if along < -lv_half or along > reach_to + lv_half:
+			continue
+		if absf((c - from).cross(dir)) <= lv_half + WALL_REACH + s.footprint.size.length() * 0.5:
+			walls[s] = true
+			s.damage(WALL_DAMAGE, c, &"shatter")
+			broke += 1
+	# Barrels, carts, lamps and trees on the line go into it.
+	for d in ctx.env.decor():
+		if not is_instance_valid(d) or not d.visible:
+			continue
+		var along := (d.at - from).dot(dir)
+		if along < was - lv_half or along > reach_to + lv_half:
+			continue
+		if absf((d.at - from).cross(dir)) <= lv_half + 0.5:
+			d.visible = false
 
 
 ## The crack in the ground, left for good: a jagged dark gash from `a` toward `b` as far as `reach`, lit from the deep

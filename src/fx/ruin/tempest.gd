@@ -2,7 +2,9 @@ class_name TempestFx
 extends FxTimeline
 ## Tempest (Ruin, Tier V): a storm over the whole town. It gathers for T_GATHER -- clouds roll in, the light goes, the
 ## wind rises, sheet lightning flickers in the ceiling, and the calm look up (the cast's danger lands at the first
-## bolt) -- then for STORM_TIME it rains, and a bolt falls every BOLT_EVERY somewhere in the town. Each bolt is a
+## bolt) -- then for STORM_TIME it rains, and every VOLLEY_EVERY a volley of VOLLEY bolts falls, VOLLEY_GAP apart,
+## somewhere in the town: a drumbeat, each volley's first bolt the hardest (hitstop, the screen torn, the camera kicked).
+## Each bolt is a
 ## Smite: whoever stands within KILL_R is struck down (damage kind lightning), what stands within HIT_R takes DAMAGE
 ## (damage kind tempest, never a fire of itself), and every FIRE_EVERY-th bolt sets what it struck alight (the town's
 ## fire from there). Where the bolts fall is drawn, weighted, from the god's rng: tall things draw them (a structure
@@ -15,7 +17,9 @@ extends FxTimeline
 const T_GATHER := 5.0
 const STORM_TIME := 25.0
 const T_BREAK := 5.0
-const BOLT_EVERY := Vector2(0.6, 1.0)
+const VOLLEY_EVERY := 2.0
+const VOLLEY := Vector2i(4, 6)
+const VOLLEY_GAP := 0.11
 const KILL_R := 0.6
 const HIT_R := 0.7
 const DAMAGE := 45.0
@@ -42,7 +46,9 @@ var sent_in := 0
 ## Where the last bolt fell.
 var last_at := Vector2.INF
 
-var _next_bolt := 0.0
+var _next_volley := 0.0
+## How many volleys have fallen.
+var volleys := 0
 var _rain_in := 0.0
 var _clouds: QuadFx
 var _rain: PixelParticles
@@ -57,7 +63,7 @@ func storming() -> bool:
 func _build() -> void:
 	duration = T_GATHER + STORM_TIME + T_BREAK
 	busy = T_GATHER
-	_next_bolt = T_GATHER
+	_next_volley = T_GATHER + 0.2
 	at(T_GATHER, _storm)
 	at(T_GATHER + STORM_TIME, _break)
 	ctx.play(&"hs_rumble", origin, 4.0)
@@ -110,9 +116,9 @@ func _fx_process(delta: float) -> void:
 		_clouds.set_param("flicker", _flicker)
 	if not storming():
 		return
-	if t >= _next_bolt:
-		_next_bolt = t + ctx.rng.randf_range(BOLT_EVERY.x, BOLT_EVERY.y)
-		_bolt(_pick())
+	if t >= _next_volley:
+		_next_volley = t + VOLLEY_EVERY
+		_volley()
 	_rain_in -= delta
 	if _rain_in <= 0.0:
 		_rain_in = RAIN_EVERY
@@ -156,8 +162,20 @@ func _pick() -> Vector2:
 	return origin
 
 
-## One bolt at `at`.
-func _bolt(at: Vector2) -> void:
+## A volley: the first bolt now and hard, the rest on its heels.
+func _volley() -> void:
+	volleys += 1
+	var n := ctx.rng.randi_range(VOLLEY.x, VOLLEY.y)
+	_bolt(_pick(), true)
+	for i in range(1, n):
+		var where := _pick()
+		at(t + VOLLEY_GAP * float(i), func() -> void:
+			if storming():
+				_bolt(where, false))
+
+
+## One bolt at `at`; `hard` for a volley's first: the blow the player feels.
+func _bolt(at: Vector2, hard: bool) -> void:
 	bolts += 1
 	last_at = at
 	for e in ctx.field.in_radius(at, KILL_R):
@@ -178,29 +196,40 @@ func _bolt(at: Vector2) -> void:
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(at)
-	var near := ctx.rng.randf() < 0.35
-	ctx.flash.call(Color(0.85, 0.92, 1.0, 0.22 if near else 0.1), 0.2)
-	ctx.shake.add_trauma(0.3 if near else 0.15)
-	if near:
-		ctx.impact.aberration(1.2, 0.15)
+	ctx.flash.call(Color(0.85, 0.92, 1.0, 0.3 if hard else 0.14), 0.22)
+	ctx.shake.add_trauma(0.45 if hard else 0.2)
+	if hard:
+		ctx.impact.hitstop(0.04)
+		ctx.impact.aberration(1.6, 0.2)
+		ctx.shake.kick(Vector2(0, 3))
 	var b := Set2Parts.bolt(self, ctx.overhead, sp + Vector2(ctx.rng.randf_range(-40.0, 40.0), -460.0), sp, 0.3, 2.0, 3, BOLT)
 	b.z_index = 12
 	var b2 := Set2Parts.bolt(self, ctx.overhead, sp + Vector2(ctx.rng.randf_range(-12.0, 12.0), -460.0), sp, 0.18, 1.2, 1, Color("f0f8ff"))
 	b2.z_index = 12
-	var glow := FxParts.bloom(self, sp + Vector2(0, -6), 30.0, LIGHT, 1.1, 0.8)
-	glow.tween_param("intensity", 1.1, 0.0, 0.35, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	glow.life = 0.37
+	var glow := FxParts.bloom(self, sp + Vector2(0, -6), 34.0 if hard else 28.0, LIGHT, 1.2, 0.8)
+	glow.tween_param("intensity", 1.2, 0.0, 0.4, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	glow.life = 0.42
+	# The blow on the ground: Smite's ring, out and gone.
+	var ring := FxParts.shockwave(self, at, 1.4 if hard else 1.0, FxParts.ION)
+	ring.set_param("thickness", 0.16)
+	ring.tween_param("progress", 0.05, 1.0, 0.28, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	ring.tween_param("fade", 1.0, 0.0, 0.18, 0.14)
+	ring.life = 0.36
 	var light := FxParts.ground_light(self, at, 2.0, LIGHT, 1.3)
 	light.tween_param("intensity", 1.3, 0.0, 0.5, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	light.life = 0.52
 	var scorch := FxParts.decal(self, at, 0.7, Color("6aa8ff"), Color("e8f4ff"))
 	scorch.tween_param("heat", 1.0, 0.0, 1.0)
 	scorch.tween_param("fade", 1.0, 0.0, 0.6, 1.0)
-	FxParts.sparks(self, ctx.overhead, sp, 12, FxParts.ION_LIFE, Vector2(60, 200), Vector2(30, 180))
+	FxParts.sparks(self, ctx.overhead, sp, 18 if hard else 10, FxParts.ION_LIFE, Vector2(60, 220), Vector2(30, 200))
+	if hard:
+		FxParts.smoke(self, sp, 5.0, 12.0, 0.5, Vector2(14, 36), Vector2(2, 4), Vector2(0.6, 1.1))
 	# Thunder: the nearer the bolt to the cast, the sooner and the louder.
 	var delay := clampf(at.distance_to(origin) / 14.0, 0.05, 1.2)
 	at(t + delay, func() -> void:
-		ctx.play(&"hs_strike", at, 0.0 if near else -6.0))
+		ctx.play(&"hs_strike", at, 0.0 if hard else -6.0)
+		if hard:
+			ctx.play(&"nova_crack", at, -3.0))
 
 
 ## The rain sends the calm indoors.

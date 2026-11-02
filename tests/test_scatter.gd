@@ -1,6 +1,7 @@
 extends RefCounted
-## Scatter Strike: ten small strikes thrown at random into a wide circle, every fifth of a second after the first,
-## each killing within its own reach, knocking those a little farther, and breaking what it lands on.
+## Scatter Strike: twelve bursts out of the ground thrown at random into a wide circle, 0.35 s apart after the first,
+## each drawing the air in first, then killing within its own reach, knocking those a little farther, and breaking
+## what stands there.
 
 
 static func run(t) -> void:
@@ -24,7 +25,7 @@ static func run(t) -> void:
 	ctx.ground = Node2D.new()
 	var at := Vector2(2.0, 3.0)
 	var fx: ScatterStrikeFx = FxTimeline.cast(load("res://src/fx/ruin/scatter_strike.gd"), ctx, at)
-	t.check(fx.points.size() == ScatterStrikeFx.BLASTS and fx.blasts == 0, "Scatter Strike: ten points are drawn at the cast, nothing has fallen")
+	t.check(fx.points.size() == ScatterStrikeFx.BLASTS and fx.blasts == 0, "Scatter Strike: twelve points are drawn at the cast, nothing has fallen")
 	var inside := true
 	var spread := 0.0
 	var pairs := 0
@@ -54,7 +55,7 @@ static func run(t) -> void:
 	t.check(pushed.is_alive() and pushed.ground_pos.distance_to(where) > 0.1, "one a little farther is thrown, alive (%.2f)" % pushed.ground_pos.distance_to(where))
 	t.check(under.hp < hp and is_equal_approx(far.hp, far.max_hp), "what it lands on is hit; what stands outside the circle is not (%.0f of %.0f)" % [under.hp, hp])
 	fx._process(ScatterStrikeFx.BLAST_GAP * float(ScatterStrikeFx.BLASTS) + 0.1)
-	t.check(fx.blasts == ScatterStrikeFx.BLASTS, "all ten fall, a fifth of a second apart (%d)" % fx.blasts)
+	t.check(fx.blasts == ScatterStrikeFx.BLASTS, "all twelve go, 0.35 s apart (%d)" % fx.blasts)
 	fx._process(3.0)
 	fx.free()
 	field.clear()

@@ -45,7 +45,7 @@ const POWERS := [
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "scatter", "name": "Scatter Strike", "path": "res://src/fx/ruin/scatter_strike.gd",
-		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "ten small strikes thrown at random over a wide circle", "authority": "ruin"},
+		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "twelve bursts from the ground, thrown at random over a wide circle, 4 s", "authority": "ruin"},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
 		"quiet": true, "alarm": 0.2, "authority": "dominion"},

@@ -96,6 +96,8 @@ const CATALOG := {
 	&"q_belllies": {"path": "res://assets/audio/ability/quiet/q_belllies.wav", "db": 1.2},
 	&"q_magnify": {"path": "res://assets/audio/ability/quiet/q_magnify.wav", "db": -1.3},
 	&"q_abolition": {"path": "res://assets/audio/ability/quiet/q_abolition.wav", "db": 1.0},
+	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
+	&"q_curfew": {"path": "res://assets/audio/ability/quiet/q_curfew.wav", "db": 0.0},
 	&"q_thorns": {"path": "res://assets/audio/ability/quiet/q_thorns.wav", "db": -0.2},
 	&"q_thorns_hit": {"path": "res://assets/audio/ability/quiet/q_thorns_hit.wav", "db": -1.6, "voices": 3, "jitter": 0.08},
 	&"q_mirror": {"path": "res://assets/audio/ability/quiet/q_mirror.wav", "db": -0.7},

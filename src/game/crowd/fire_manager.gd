@@ -200,6 +200,8 @@ func _recruit() -> void:
 		return
 	var most := _crowd.profile.fire_crew
 	for s: Structure in fires.keys():
+		if _crowd.is_veiled(s.center()):
+			continue  # a fire nobody sees (Unseen Hour) is not fought
 		var f: Dictionary = fires[s]
 		var crew: Array = f.responders.filter(func(p) -> bool:
 			return is_instance_valid(p) and p.mind == Person.Mind.ASSIST and p.assist_fire == s)

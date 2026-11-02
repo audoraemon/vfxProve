@@ -43,6 +43,8 @@ The floor for every power's cast sound is that minus 6 LU: **-21.0** (`QUIET_FLO
 | `q_ember` | -16.16 / -0.28 | -0.8 | -17.0 | `mix_q_ember.wav` | Ember, the cast: a thin hiss and crackle of a spark falling for 0.7 s. | | |
 | `q_ember_hit` | -18.75 / 0.09 | +2.8 | -15.9 | `mix_q_ember_hit.wav` | Ember lands and the building catches: a soft whump of flame (replaces the dragon's ignition cue). | | |
 | `q_noleave` | -16.54 / -0.20 | +0.5 | -16.0 | `mix_q_noleave.wav` | Leaving Is Prohibited: shackles rattling, then at 0.6 s a lock and an anvil clang as the wall seals. | | |
+| `q_unseen` | -18.02 / -3.07 | +1.0 | -17.0 | `mix_q_unseen.wav` | Unseen Hour: a cymbal drawn in backwards, a dark hush settling, and a thin shimmer over it that is all the veil lets through. | | |
+| `q_curfew` | -17.81 / -0.90 | 0.0 | -17.8 | `mix_q_curfew.wav` | Curfew: a soft drum rub, then at 0.5 s one low bell and a long sigh pitched down: the street going to sleep. | | |
 | `q_belllies` | -17.70 / -0.28 | +1.2 | -16.5 | `mix_q_belllies.wav` | The Bell Lies: a bell played backwards, swelling into an out-of-tune toll at 0.8 s. Should sound false. | | |
 | `q_magnify` | -14.69 / -0.17 | -1.3 | -16.0 | `mix_q_magnify.wav` | Magnify: a lens swell, then at 0.9 s a chime struck twice, the second an octave up. | | |
 | `q_abolition` | -16.52 / -0.43 | +1.0 | -15.5 | `mix_q_abolition.wav` | Abolition: a low swell for 1.8 s, then a gong, an anvil and breaking glass as the law is struck down. | | |

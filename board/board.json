@@ -1,9 +1,15 @@
 {
- "hash": "8483a69f1a3823a6",
- "updated": "2026-11-01T13:04:34+07:00",
+ "hash": "5e932161f2ec36b9",
+ "updated": "2026-11-03T00:33:27+07:00",
  "changes": {
-  "date": "<t:1793513074:f>",
-  "items": []
+  "date": "<t:1793640807:f>",
+  "items": [
+   "Done: Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area",
+   "New: Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter (in progress)",
+   "New: Earthshatter (Ruin, Tier V): the ground torn open from click to click",
+   "New: Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle",
+   "New: Tempest (Ruin, Tier V): the storm over the whole town"
+  ]
  },
  "snapshot": {
   "project": {
@@ -306,6 +312,16 @@
     "branch": "feat/god-progression",
     "updated": "2026-10-27",
     "order": 189
+   },
+   "god-ruin-tree-fill": {
+    "title": "Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter",
+    "status": "doing",
+    "area": "Design",
+    "version": "god/ruin-tree",
+    "needs_you": true,
+    "branch": "god/ruin-tree",
+    "updated": "2026-11-03",
+    "order": 202
    },
    "god-t1r-board-sweep": {
     "title": "Board sweep: play the 24 non-Warning god pairs as the board version once",
@@ -1076,6 +1092,15 @@
     "updated": "2026-10-03",
     "order": 3
    },
+   "vfx-earthshatter": {
+    "title": "Earthshatter (Ruin, Tier V): the ground torn open from click to click",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-11-02",
+    "order": 12
+   },
    "vfx-madness": {
     "title": "Madness Bloom (new power)",
     "status": "doing",
@@ -1102,6 +1127,15 @@
     "updated": "2026-10-03",
     "order": 2
    },
+   "vfx-scatter-strike": {
+    "title": "Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-11-02",
+    "order": 11
+   },
    "vfx-solaris": {
     "title": "Light of Solaris (new power)",
     "status": "doing",
@@ -1119,6 +1153,15 @@
     "needs_you": false,
     "updated": "2026-10-03",
     "order": 5
+   },
+   "vfx-tempest": {
+    "title": "Tempest (Ruin, Tier V): the storm over the whole town",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-11-02",
+    "order": 10
    },
    "vfx-tier34-dominion": {
     "title": "Dominion Tier III and IV (seven powers)",
@@ -1140,52 +1183,44 @@
    },
    "vfx-unseen-curfew": {
     "title": "Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area",
-    "status": "doing",
+    "status": "done",
     "area": "Design",
     "version": "vfx",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "claude/vfx-ability-effects-964aca",
-    "updated": "2026-10-23",
+    "updated": "2026-11-02",
     "order": 9
    }
   },
   "branches": [
    {
+    "name": "god/ruin-tree",
+    "ahead": 169,
+    "behind": 0,
+    "date": "2026-11-03",
+    "subject": "docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven",
+    "pushed": false
+   },
+   {
     "name": "feat/god-progression",
     "ahead": 165,
-    "behind": 0,
+    "behind": 13,
     "date": "2026-11-01",
     "subject": "docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)",
     "pushed": true
    },
    {
-    "name": "god/h1-rebuild",
-    "ahead": 165,
-    "behind": 0,
-    "date": "2026-11-01",
-    "subject": "docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)",
-    "pushed": false
-   },
-   {
     "name": "feat/town-lighting",
     "ahead": 35,
-    "behind": 0,
+    "behind": 13,
     "date": "2026-10-25",
     "subject": "fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)",
     "pushed": false
    },
    {
-    "name": "claude/vfx-ability-effects-964aca",
-    "ahead": 1,
-    "behind": 93,
-    "date": "2026-10-23",
-    "subject": "feat: Unseen Hour (Veil) and Curfew (Decree)",
-    "pushed": false
-   },
-   {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 270,
+    "behind": 283,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1193,7 +1228,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 228,
+    "behind": 241,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1201,7 +1236,7 @@
    {
     "name": "feat/gpt-handoff",
     "ahead": 3,
-    "behind": 515,
+    "behind": 528,
     "date": "2026-10-04",
     "subject": "fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot",
     "pushed": false
@@ -1209,8 +1244,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-10-24",
-   "subject": "docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)"
+   "date": "2026-11-02",
+   "subject": "feat: Earthshatter -- the heat of the deep in the crack, and more thrown about"
   }
  }
 }

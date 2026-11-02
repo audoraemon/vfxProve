@@ -7,56 +7,51 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **92** done\n**7** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **96** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793640807:f>)\n• Done: Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area\n• New: Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter (in progress)\n• New: Earthshatter (Ruin, Tier V): the ground torn open from click to click\n• New: Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle\n• New: Tempest (Ruin, Tier V): the storm over the whole town",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-01T13:04:34+07:00"
+     "timestamp": "2026-11-03T00:33:27+07:00"
     },
     {
-     "title": "feat/god-progression",
-     "description": "165 commits not in Develop-Main · last commit today\n> docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "title": "god/ruin-tree",
+     "description": "169 commits not in Develop-Main · last commit today · local only\n> docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven\n\n**In progress** (1)\n• Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter — **needs you**",
      "color": 5016537
     },
     {
-     "title": "god/h1-rebuild",
-     "description": "165 commits not in Develop-Main · last commit today · local only\n> docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)\n\n_No Ledger task points at this branch._",
+     "title": "feat/god-progression",
+     "description": "165 commits not in Develop-Main · last commit 2 days ago\n> docs: god P5 summary -- Hunt 1 rebuild section (gate 2/6 median 137, landing gate suite 13998/0, refs 508/0, FLOW 209/0 alone, bench vs kak-god-p5)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
      "title": "feat/town-lighting",
-     "description": "35 commits not in Develop-Main · last commit 7 days ago · local only\n> fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "claude/vfx-ability-effects-964aca",
-     "description": "1 commit not in Develop-Main · last commit 9 days ago · local only\n> feat: Unseen Hour (Veil) and Curfew (Decree)\n\n**In progress** (1)\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area — **needs you**",
+     "description": "35 commits not in Develop-Main · last commit 9 days ago · local only\n> fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 23 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 25 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 23 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 25 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/gpt-handoff",
-     "description": "3 commits not in Develop-Main · last commit 28 days ago · local only\n> fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot\n\n_No Ledger task points at this branch._",
+     "description": "3 commits not in Develop-Main · last commit 30 days ago · local only\n> fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-10-24\n> docs: v0.12 summary, every ruling, README Towns note (v0.12 Task 15)\n\n**In progress** (7)\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-02\n> feat: Earthshatter -- the heat of the deep in the crack, and more thrown about\n\n**In progress** (7)\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Hunt 1 rebuild: the second household sets out when the watch is broken _(11-01)_\n• God P5: 11 decisions on the Hunts _(10-31)_\n• God P5: the five Lantern Hunt nights _(10-31)_\n• Board sweep: play the 24 non-Warning god pairs as the board version once _(10-30)_\n• Capital Tax: a Passage deputy stalls near a Thornwall _(10-30)_\n• Tier 1 routes: every god type can win every Tier 1 mission _(10-29)_\n• God P3: the Awaken rite mission type and the first rite _(10-29)_\n• Fill the skill tree's 12 Tier 1 spots (and pick Ruin's and Dominion's 10) _(10-29)_",
+     "description": "• Earthshatter (Ruin, Tier V): the ground torn open from click to click _(11-02)_\n• Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle _(11-02)_\n• Tempest (Ruin, Tier V): the storm over the whole town _(11-02)_\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area _(11-02)_\n• Hunt 1 rebuild: the second household sets out when the watch is broken _(11-01)_\n• God P5: 11 decisions on the Hunts _(10-31)_\n• God P5: the five Lantern Hunt nights _(10-31)_\n• Board sweep: play the 24 non-Warning god pairs as the board version once _(10-30)_",
      "color": 10185686
     }
    ]

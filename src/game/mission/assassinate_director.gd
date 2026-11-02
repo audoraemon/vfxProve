@@ -527,7 +527,7 @@ func _on_cast(slot: int, key: String, at: Vector2) -> void:
 
 ## A loud power's danger has landed (Crowd.danger_landed, v0.11.2 spec §3.4): a walking target within `alarm_reach` of one of its
 ## points is alarmed. Quiet powers register no danger, so never alarm.
-func _on_danger(_key: String, points: Array[Vector2]) -> void:
+func _on_danger(_key: String, points: Array[Vector2], _radius := 0.0) -> void:
 	for q in quarries:
 		if q.state != State.WALKING or not _alive(q.target):
 			continue

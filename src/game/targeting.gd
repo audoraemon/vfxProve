@@ -398,17 +398,18 @@ func _whisper_held() -> bool:
 
 
 func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
-	var a := area_at(key, _rules.level_of(from_slot))
+	var level := _rules.level_of(from_slot)
+	var a := area_at(key, level)
 	if String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
-		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key)
+		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key, level)
 	elif String(a.get("shape", "")) == "path":
 		# Two clicks: from the first toward the second, as far as the power runs.
 		var run := _at - at
 		var dir := run.normalized() if run.length() > 0.01 else Vector2.RIGHT
-		_crowd.on_cast(at, dir, clampf(run.length(), float(a.get("min", 0.0)), float(a.length)), key)
+		_crowd.on_cast(at, dir, clampf(run.length(), float(a.get("min", 0.0)), float(a.length)), key, level)
 	else:
-		_crowd.on_cast(at, Vector2.ZERO, 0.0, key)
+		_crowd.on_cast(at, Vector2.ZERO, 0.0, key, level)
 	# A power that went out is on its cooldown: unfocus, so its area stops following the cursor.
 	unfocus()
 

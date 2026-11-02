@@ -5,6 +5,7 @@ extends RefCounted
 
 
 static func run(t) -> void:
+	_danger_follows_level(t)
 	# The registry: a threat lasts its time, then leaves a recent impact that is still unsafe for a while.
 	var tm := ThreatManager.new()
 	var id := tm.register(Vector2(0, 0), 2.0, 0.5, 3.0, 6.0, 9.0, &"heaven")
@@ -86,5 +87,35 @@ static func run(t) -> void:
 			break
 	t.check(not back.has_goal() or not crowd.threats.unsafe(back._goal, 1.0),
 		"going back to its day, it does not walk onto ground a danger just left")
+	crowd.clear()
+	world.free()
+
+
+## R5a: the town's danger radius follows the ability level (the area the player sees), and danger_landed carries it; level 1 is AREAS.
+static func _danger_follows_level(t) -> void:
+	t.check(is_equal_approx(Crowd._cast_radius("cinder"), 5.8) and is_equal_approx(Crowd._cast_radius("cinder", 1), 5.8)
+		and is_equal_approx(Crowd._cast_radius("cinder", 5), 7.0), "Cinder's danger radius: 5.8 at level 1, 7.0 at level 5 (%.1f, %.1f)" % [
+			Crowd._cast_radius("cinder", 1), Crowd._cast_radius("cinder", 5)])
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = TownLayout.MAP
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
+	crowd.spawn()
+	var landed := []
+	crowd.danger_landed.connect(func(_key: String, _points: Array[Vector2], radius: float) -> void: landed.append(radius))
+	var at := Vector2(0.8, 2.0)
+	crowd.on_cast(at, Vector2.ZERO, 0.0, "cinder", 5)
+	crowd.on_cast(at + Vector2(0.0, 40.0), Vector2.ZERO, 0.0, "cinder")
+	for i in int(ceilf(maxf(PowerBook.impact("cinder"), 0.1) / 0.1)) + 1:
+		crowd.advance(0.1)
+	t.check(landed.size() == 2 and is_equal_approx(landed[0], 7.0) and is_equal_approx(landed[1], 5.8),
+		"danger_landed carries the radius: a level-5 Cinder 7.0, a level-1 one 5.8 (%s)" % [landed])
+	t.check(crowd.threats.nearby(at + Vector2(6.5, 0.0), 0.0).size() == 1, "the level-5 threat covers 6.5 from the cast")
+	t.check(crowd.threats.nearby(at + Vector2(0.0, 40.0 + 6.5), 0.0).is_empty(), "and the level-1 one does not")
 	crowd.clear()
 	world.free()

@@ -14,7 +14,8 @@ signal bell_lied(at: Vector2)
 signal rallied
 ## A loud power's danger has just landed (v0.11.2, spec §3.2): at its first impact, not at its cast. `points` are the danger's
 ## points (cast_points()). Directors that judge a cast as danger read this, not Rules.cast_made.
-signal danger_landed(key: String, points: Array[Vector2])
+## `radius` is the danger's radius at the cast's ability level (on_cast()), so a director judges the number the town fled.
+signal danger_landed(key: String, points: Array[Vector2], radius: float)
 
 ## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
 const LIE_CALM := 8.0
@@ -1144,7 +1145,7 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## by how near they are -- inside its area plus Person.THREAT_MARGIN they run clear of it, within sight or earshot
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.
-func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> void:
+func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1) -> void:
 	if is_veiled(ground):
 		return  # cast where nothing is seen (Unseen Hour): no look, no danger, no unease
 	if PowerBook.is_quiet(key):
@@ -1155,7 +1156,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 			add_alarm(unease)
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
-	var radius := _cast_radius(key)
+	var radius := _cast_radius(key, level)
 	var points := cast_points(ground, dir, length, radius)
 	var impact := PowerBook.impact(key)
 	if impact <= 0.0:
@@ -1199,7 +1200,7 @@ func _land(key: String, points: Array[Vector2], radius: float, reach: Array, gro
 		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
 			StringName(key))
 	_react(points, radius, float(reach[1]), ground, StringName(key))
-	danger_landed.emit(key, points)
+	danger_landed.emit(key, points, radius)
 
 
 ## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
@@ -1235,9 +1236,10 @@ static func cast_points(ground: Vector2, dir: Vector2, length: float, radius: fl
 	return points
 
 
-## A cast's danger radius: its area on the ground (Targeting.AREAS), or v0.03's fright less the margin.
-static func _cast_radius(key: String) -> float:
-	var a: Dictionary = Targeting.AREAS.get(key, {})
+## A cast's danger radius: its area on the ground at ability level `level` (Targeting.area_at(); level 1 is Targeting.AREAS), or
+## v0.03's fright less the margin. The town's danger follows the level; PowerBook.REACH and IMPACT do not (R5a).
+static func _cast_radius(key: String, level := 1) -> float:
+	var a: Dictionary = Targeting.area_at(key, level)
 	if a.has("r"):
 		return float(a.r) + float(a.get("roam", 0.0))
 	if a.has("half"):

@@ -594,7 +594,7 @@ static func _bolts_on_smite(t) -> void:
 	_clear_watchers(d)
 	_run(s, 20.0)
 	var near: Array[Vector2] = [d.charge.ground_pos + Vector2(4.0, 0.0)]
-	(s.crowd as Crowd).danger_landed.emit("smite", near)
+	(s.crowd as Crowd).danger_landed.emit("smite", near, 0.6)
 	t.check(d.bolting and not d.led and (s.banners as Array).has("HE BOLTS FOR THE WEST GATE") and d.charge.mind == Person.Mind.DUTY
 		and d.charge.anchor.distance_to(d.exit_at) < 0.5, "a Smite's danger 4 from him at 0:20: he bolts, and is on his way at once")
 	_done(s)
@@ -603,7 +603,7 @@ static func _bolts_on_smite(t) -> void:
 	_clear_watchers(d)
 	_run(s, 20.0)
 	var far: Array[Vector2] = [d.charge.ground_pos + Vector2(7.0, 0.0)]
-	(s.crowd as Crowd).danger_landed.emit("smite", far)
+	(s.crowd as Crowd).danger_landed.emit("smite", far, 0.6)
 	_run(s, EscortDirector.TICK * 2.0)
 	t.check(not d.bolting and d.bolt_left() > 39.0, "7 from him: he does not")
 	_done(s)
@@ -692,7 +692,7 @@ static func _led_never_bolts(t) -> void:
 	_run(s, LostLambDirector.BOLT_AT)
 	t.check(not d.bolting and not (s.banners as Array).has("HE BOLTS FOR THE WEST GATE"), "past 1:00 he has not bolted")
 	var near: Array[Vector2] = [d.charge.ground_pos + Vector2(3.0, 0.0)]
-	(s.crowd as Crowd).danger_landed.emit("smite", near)
+	(s.crowd as Crowd).danger_landed.emit("smite", near, 0.6)
 	t.check(not d.bolting, "and a startle after he was led does not start him")
 	_done(s)
 	# A Wisp's own light within CHARGE_LURE_R leads him too; a Death Mark's body drawing him does not.

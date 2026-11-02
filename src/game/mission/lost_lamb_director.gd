@@ -216,7 +216,7 @@ func _startle(gap: float) -> void:
 
 
 ## A loud power's danger has landed (Crowd.danger_landed): any point of it within reach.
-func _on_danger(_key: String, points: Array[Vector2]) -> void:
+func _on_danger(_key: String, points: Array[Vector2], _radius := 0.0) -> void:
 	if not _alive(charge):
 		return
 	for at in points:

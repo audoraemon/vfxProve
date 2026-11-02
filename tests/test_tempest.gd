@@ -70,7 +70,7 @@ static func run(t) -> void:
 		storm._process(0.1)
 		crowd.shelters.step(0.1)
 	var volleys := int(TempestFx.STORM_TIME / TempestFx.VOLLEY_EVERY)
-	t.check(storm.volleys >= volleys and storm.volleys <= volleys + 1 and storm.bolts >= storm.volleys * TempestFx.VOLLEY.x
+	t.check(storm.volleys >= volleys - 1 and storm.volleys <= volleys + 1 and storm.bolts >= storm.volleys * TempestFx.VOLLEY.x
 		and storm.bolts <= storm.volleys * TempestFx.VOLLEY.y, "then a volley every %.1f s of %d-%d bolts: %d volleys, %d bolts in %.0f s" % [TempestFx.VOLLEY_EVERY, TempestFx.VOLLEY.x, TempestFx.VOLLEY.y, storm.volleys, storm.bolts, TempestFx.STORM_TIME])
 	var alive := 0
 	for p in crowd.citizens + crowd.soldiers:

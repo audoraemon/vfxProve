@@ -133,6 +133,9 @@ const POWERS := [
 		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
 			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
 			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
+	{"key": "tempest", "name": "Tempest", "path": "res://src/fx/ruin/tempest.gd",
+		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "a storm over the whole town: 25 s of bolts, the rain drives people in; once",
+		"authority": "ruin"},
 	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
 		"authority": "dominion", "modes": [
@@ -162,13 +165,15 @@ const REACH := {
 	"orbital": [9.0, 14.0, 0.7, 6.0], "cinder": [10.0, 16.0, 0.8, 8.0], "judgement": [9.0, 14.0, 0.8, 6.0],
 	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "smite": [5.0, 9.0, 0.4, 2.0], "schism": [14.0, 18.0, 0.8, 8.0],
 	"nova": [40.0, 40.0, 1.0, 4.0],
+	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
+	"tempest": [40.0, 40.0, 0.3, 2.0],
 }
 ## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
 ## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
 ## build-up until then. Quiet powers (Ember too) register no danger and have none.
 const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
-	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3,
+	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -220,7 +225,7 @@ const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
 	"deathmark": "death", "pestilence": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
-	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike",
+	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",
 	"whisper": "lead", "oath": "lead", "echo": "lead", "congregation": "lead", "priority": "lead", "voice": "lead",
 	"wisp": "draw", "delusion": "draw",

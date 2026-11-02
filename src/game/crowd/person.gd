@@ -1960,8 +1960,23 @@ func _sprite_pose_code() -> int:
 		t = _dead_time
 	elif _frozen > 0.0:
 		return facing
-	if (mind == Mind.ASLEEP or _scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0) and state == State.WANDER:
-		_idle = maxf(_idle, delta + 0.01)  # held (asleep, screaming, down): a goal set from outside cannot creep it for a tick, whatever the tick
+	elif _scream_left > 0.0 and state == State.WANDER:
+		anim = 5
+		t = _scream_total - _scream_left
+	elif _down_left > 0.0 and state == State.WANDER:
+		# Knocked down: the death fall, held on its last frame.
+		anim = 4
+		t = DOWN_SECONDS - _down_left
+	elif _getup_left > 0.0 and state == State.WANDER:
+		anim = 8
+		t = GETUP_SECONDS - _getup_left
+	elif _stumble > 0.0 or mind == Mind.ASLEEP:
+		anim = 3
+		t = STUMBLE_SECONDS - _stumble if _stumble > 0.0 else STUMBLE_SECONDS  # asleep: down, and staying down
+	elif _swing_left > 0.0 and state == State.WANDER:
+		anim = 7
+		t = SWING_SHOW - _swing_left
+		span = SWING_SHOW
 	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
 		anim = 2
 	elif _stride:

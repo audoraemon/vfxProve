@@ -33,7 +33,7 @@ var fastest := {}
 var most_wishes := {}
 
 
-## The power starts unlocked: it costs STARTING_DP or less (15 of today's 40).
+## The power starts unlocked: it costs STARTING_DP or less (15 of today's 41).
 static func starting(key: String) -> bool:
 	var p := PowerBook.get_power(key)
 	return not p.is_empty() and int(p.dp) <= STARTING_DP

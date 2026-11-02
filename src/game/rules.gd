@@ -52,6 +52,7 @@ const POWER_KINDS := {
 	"solaris": [&"solaris", &"pit"],
 	"madness": [&"frenzy"],
 	"smite": [&"lightning", &"smite"],
+	"tempest": [&"lightning", &"tempest"],
 	"ember": [&"fire"],
 	"deathmark": [&"deathmark"],
 	"noleave": [],

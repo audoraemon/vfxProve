@@ -1888,6 +1888,8 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 		return  # a bramble burnt or blasted away: no incident, nothing to flee
 	var at := s.center()
 	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
+		if s.role != &"citadel":
+			_hear_alarm(ALARM_BUILDING)
 		if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
 			_investigate(at)
 		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS

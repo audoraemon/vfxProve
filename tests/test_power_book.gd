@@ -9,11 +9,11 @@ const V07_COOLDOWNS := {
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
-	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew"]
+	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 40, "40 powers")
+	t.check(PowerBook.POWERS.size() == 41, "41 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -41,7 +41,7 @@ static func run(t) -> void:
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "wisp", "discord", "belllies", "heaven", "madness", "blight", "thorns", "tornado",
 		"pestilence", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "priority", "verdict", "delusion",
 		"curfew", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
-		"glacial", "solaris", "voice", "abolition", "schism", "nova"],
+		"glacial", "solaris", "voice", "abolition", "tempest", "schism", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
 	var quiet := []
 	for key in PowerBook.keys():

@@ -352,3 +352,10 @@ Not binding (D10, D36); listed here so nobody has to dig for them:
   Ruin's Orbital -> Tornado in Hunt 4 (never cast). Gates: silence_witness x veil 3/3 (median 193), face_halcyon x veil 3/3 (196),
   break_hunt x ruin 3/3 (123). References 507/508 held; `silence_witness_veil_play_3` moved (still a win, Nova in the fallback) and
   is re-recorded -- If wrong: revert the TABLE row and the three loadouts; the Veil Hunt 2 row goes back to -939959844.
+- **D44.** Ruling: the new Develop-Main powers fill Ruin's empty spots -- T2 Scatter Strike beside Tornado, T5 Wrath of the Sky and
+  Earthshatter (origin/feat/Develop-Main merged in, 9e7b960a; the board tests keep the god branch's no-lock board, DescendState's
+  locked count 23 -> 27). Ruin's tree now holds no dev key, so Heaven Splitter leaves the Ruin Hunts: Hunts 2 and 4 finish the
+  file with Tornado, Hunt 3 falls back on Light of Solaris, Hunt 5 drafts Smite and Ember only; Scatter Strike is in no loadout
+  (its bursts land at random: no luck). Gates 3/3 each (medians 88/160/123/186 s); four Ruin Hunt rows re-recorded; refs 508/0,
+  suite 14084/0, FLOW 209/0 alone. Break the Hunt's shared plan keeps Heaven (the mission's own loadout, not the tree) --
+  If wrong: revert 5cfa0eb6 and the TABLE row; the four rows go back.

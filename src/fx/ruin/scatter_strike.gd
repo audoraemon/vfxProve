@@ -18,6 +18,8 @@ const COMPRESS := 0.35
 const KILL_R := 0.9
 const KNOCK_R := 1.6
 const HIT_R := 1.1
+## Level 5, Seeking Bursts: as a burst draws the air in, its point moves to the nearest person in the open within SEEK_R of it.
+const SEEK_R := 1.5
 const DAMAGE := 40.0
 const FIRE_LIGHT := Color(1.0, 0.6, 0.25)
 const HOT := Color(1.0, 0.85, 0.55)
@@ -54,8 +56,25 @@ func _build() -> void:
 	zone.life = T_FIRST + BLAST_GAP * float(lv_blasts) + 0.65
 
 
+## Where a seeking burst bound for `p` falls: on the nearest living person in the open within SEEK_R of it (a tie goes to the field's order), else `p`.
+func seek(p: Vector2) -> Vector2:
+	var best := p
+	var best_d := INF
+	for e in ctx.field.in_radius(p, SEEK_R):
+		var person := e as Person
+		if person != null and person.inside:
+			continue
+		var d := e.ground_pos.distance_squared_to(p)
+		if d < best_d:
+			best_d = d
+			best = e.ground_pos
+	return best
+
+
 ## The air drawn in over the point: COMPRESS of pinch, pull and a ring closing on it.
 func _compress(i: int) -> void:
+	if PowerBook.twist_at(extra, "scatter"):
+		points[i] = seek(points[i])
 	var p := points[i]
 	ctx.play(&"grav_compress", p, 0.0)
 	if not DominionParts.staged(self):

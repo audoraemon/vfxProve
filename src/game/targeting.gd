@@ -310,6 +310,10 @@ func release(ground: Vector2) -> void:
 		_press = who.ground_pos
 		extra = {"to": MindWhisperFx.clamp_to(_crowd._grid, _press, ground), "target": who}
 	aiming = false
+	# A storm already raging may take this click as a bolt of its own (Wrath of the Sky, level 5): the slot stays focused for the next.
+	if _rules.recast(slot, _press):
+		queue_redraw()
+		return
 	_rules.cast(slot, _press, extra)
 	queue_redraw()
 
@@ -414,7 +418,7 @@ func _draw() -> void:
 	if a.is_empty():
 		return
 	# A power that cannot be cast still shows its area, in red, so the player can aim while it comes back.
-	var edge := COL_EDGE if _rules.refusal(slot) == "" else COL_BAD
+	var edge := COL_EDGE if _rules.refusal(slot) == "" or _rules.can_recast(slot) else COL_BAD
 	match String(a.shape):
 		"circle":
 			_ring(_press, float(a.r), edge)

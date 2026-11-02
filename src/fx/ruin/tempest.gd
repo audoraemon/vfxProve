@@ -37,6 +37,8 @@ const CROWD_R := 1.0
 const CROWD_W := 1.5
 const GROUND_SHARE := 0.05
 const NO_REPEAT := 2.0
+## Level 5 twist, Called Bolts: the player may call a hard bolt exactly where they click, once in CALL_EVERY, while the storm rains.
+const CALL_EVERY := 3.0
 const RAIN_EVERY := 1.0
 const RAIN_TRIES := 40
 const BOLT := Color("9fd0ff")
@@ -53,6 +55,9 @@ var fires := 0
 var sent_in := 0
 ## Where the last bolt fell.
 var last_at := Vector2.INF
+## How many bolts the player called (level 5), and when the last was.
+var called := 0
+var _last_called := -INF
 
 var _next_volley := 0.0
 ## How many volleys have fallen.
@@ -70,6 +75,23 @@ var lv_volley_every := VOLLEY_EVERY
 ## The storm's hours: gathering, storm, breaking.
 func storming() -> bool:
 	return t >= T_GATHER and t < T_GATHER + lv_storm_time
+
+
+## Whether a click would call a bolt now (the Called Bolts twist, level 5): the storm is raining and the last call is CALL_EVERY behind.
+func can_call() -> bool:
+	return PowerBook.twist_at(extra, "tempest") and storming() and t - _last_called >= CALL_EVERY
+
+
+## The player calls a bolt down at `where`: told LEAD ahead as any bolt is, then a hard one exactly there (no pick, no rng). It counts in
+## `bolts` (so in FIRE_EVERY). False -- and nothing happens -- when the twist is not this cast's or it is not the time.
+func call_bolt(where: Vector2) -> bool:
+	if not can_call():
+		return false
+	called += 1
+	_last_called = t
+	_omen(where, LEAD, true)
+	at(t + LEAD, _bolt.bind(where, true))
+	return true
 
 
 func _build() -> void:

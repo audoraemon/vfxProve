@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_save(_sign(DecreeParts.MOON, Color(1.0, 0.86, 0.45), Color(0.05, 0.03, 0.08), 96), "curfew")
 	_save(_sign([0b00010, 0b00100, 0b01110, 0b00100, 0b01000], Color(0.85, 0.92, 1.0), Color(0.08, 0.08, 0.16), 97), "tempest")
 	_save(_sign([0b10010, 0b00100, 0b10001, 0b00100, 0b01010], Color(1.0, 0.62, 0.3), Color(0.12, 0.05, 0.03), 98), "scatter")
+	_save(_sign([0b10000, 0b01000, 0b01100, 0b00010, 0b00001], Color(1.0, 0.6, 0.3), Color(0.1, 0.06, 0.05), 99), "shatter")
 	# Veil: the shut eye in dusk.
 	_save(_sign(DominionParts.SHUT_EYE, Color(0.76, 0.6, 1.0), Color(0.05, 0.02, 0.1), 95), "unseen")
 	print("wrote ", ProjectSettings.globalize_path(OUT))

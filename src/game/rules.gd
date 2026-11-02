@@ -54,6 +54,7 @@ const POWER_KINDS := {
 	"smite": [&"lightning", &"smite"],
 	"tempest": [&"lightning", &"tempest"],
 	"scatter": [&"orbital", &"scatter"],
+	"shatter": [&"pit", &"shatter"],
 	"ember": [&"fire"],
 	"deathmark": [&"deathmark"],
 	"noleave": [],

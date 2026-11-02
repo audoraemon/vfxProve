@@ -53,6 +53,8 @@ const AREAS := {
 	"unseen": {"shape": "circle", "r": 5.0},
 	# CurfewFx.RADIUS
 	"curfew": {"shape": "circle", "r": 4.0},
+	# EarthshatterFx: the run from the first click toward the second, HALF wide, MAX_LENGTH at most ("path")
+	"shatter": {"shape": "path", "half": 1.1, "length": 18.0, "min": 4.0},
 	# ScatterStrikeFx.RADIUS: the circle its strikes are thrown into
 	"scatter": {"shape": "circle", "r": 6.5},
 	# Tempest covers the whole town: the mark is only where the click lands (where the thunder is loudest)
@@ -368,6 +370,11 @@ func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
 	if String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
 		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key)
+	elif String(a.get("shape", "")) == "path":
+		# Two clicks: from the first toward the second, as far as the power runs.
+		var run := _at - at
+		var dir := run.normalized() if run.length() > 0.01 else Vector2.RIGHT
+		_crowd.on_cast(at, dir, clampf(run.length(), float(a.get("min", 0.0)), float(a.length)), key)
 	else:
 		_crowd.on_cast(at, Vector2.ZERO, 0.0, key)
 	# A power that went out is on its cooldown: unfocus, so its area stops following the cursor.
@@ -421,6 +428,16 @@ func _draw() -> void:
 					_ring(p.ground_pos, 0.18, COL_DIVINE)
 			else:
 				_place_mark(_press, edge)
+		"path":
+			# The start under the cursor until the first click sets it; then the run follows the cursor, clamped.
+			if placed:
+				var run := _press - first
+				var dir := run.normalized() if run.length() > 0.01 else Vector2.RIGHT
+				var length := clampf(run.length(), float(a.get("min", 0.0)), float(a.length))
+				_lane(first, dir, length, float(a.half), edge)
+				_ring(first, float(a.half), COL_INNER)
+			else:
+				_ring(_press, float(a.half), edge)
 		"pair":
 			# The way in under the cursor until the first click sets it; then the way out follows the cursor.
 			if placed:

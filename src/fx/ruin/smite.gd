@@ -11,12 +11,17 @@ const DAMAGE := 45.0
 const T_STRIKE := 0.35
 const BOLT := Color("9fd0ff")
 const LIGHT := Color(0.7, 0.85, 1.0)
+## Level 5, Forked Bolt: FORK_DELAY after the strike a full bolt leaps to the nearest person within FORK_R of the click.
+const FORK_R := 2.5
+const FORK_DELAY := 0.12
 
 ## How many it struck down.
 var struck := 0
 ## This cast's kill radius and building blow: the ability level's (PowerBook.stat()), the consts at level 1.
 var lv_kill_r := KILL_R
 var lv_damage := DAMAGE
+## Where the fork struck (Vector2.INF: it did not fork -- below level 5, or nobody within FORK_R).
+var forked_at := Vector2.INF
 
 
 func _build() -> void:
@@ -41,6 +46,14 @@ func _strike() -> void:
 			struck += 1
 	ctx.env.damage_radius(origin, HIT_R, lv_damage, &"smite")
 	ctx.play(&"hs_strike", origin, -3.0)
+	if PowerBook.twist_at(extra, "smite"):
+		var next := _fork_target()
+		if next != null:
+			var where := next.ground_pos
+			at(t + FORK_DELAY, _fork.bind(where))
+			if DominionParts.staged(self):
+				# The bolt runs on from the first spot to the second before it falls.
+				Set2Parts.bolt(self, ctx.overhead, Iso.ground_to_screen(origin), Iso.ground_to_screen(where), FORK_DELAY + 0.1, 1.4, 1, BOLT)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(origin)
@@ -68,3 +81,41 @@ func _strike() -> void:
 	scorch.tween_param("fade", 1.0, 0.0, 0.6, 1.2)
 	FxParts.sparks(self, ctx.overhead, sp, 18, FxParts.ION_LIFE, Vector2(60, 220), Vector2(30, 200))
 	FxParts.smoke(self, sp, 5.0, 12.0, 0.5, Vector2(14, 36), Vector2(2, 4), Vector2(0.6, 1.1))
+
+
+## The nearest living person in the open within FORK_R of the click who was not struck (the struck are dead); a tie goes to the field's order.
+func _fork_target() -> DummyEnemy:
+	var best: DummyEnemy = null
+	var best_d := INF
+	for e in ctx.field.in_radius(origin, FORK_R):
+		var p := e as Person
+		if p != null and p.inside:
+			continue
+		var d := e.ground_pos.distance_squared_to(origin)
+		if d < best_d:
+			best = e
+			best_d = d
+	return best
+
+
+## The fork lands: a full bolt where that person stood.
+func _fork(where: Vector2) -> void:
+	forked_at = where
+	for e in ctx.field.in_radius(where, lv_kill_r):
+		var p := e as Person
+		if p != null and p.inside:
+			continue
+		if ctx.field.kill(e, &"lightning", where):
+			struck += 1
+	ctx.env.damage_radius(where, HIT_R, lv_damage, &"smite")
+	ctx.play(&"hs_strike", where, -5.0)
+	if not DominionParts.staged(self):
+		return
+	var sp := Iso.ground_to_screen(where)
+	ctx.shake.add_trauma(0.2)
+	Set2Parts.bolt(self, ctx.overhead, sp + Vector2(0.0, -420.0), sp, 0.26, 1.6, 2, BOLT)
+	var ring := FxParts.shockwave(self, where, 1.0, FxParts.ION)
+	ring.set_param("thickness", 0.16)
+	ring.tween_param("progress", 0.05, 1.0, 0.24, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	ring.tween_param("fade", 1.0, 0.0, 0.16, 0.12)
+	ring.life = 0.3

@@ -135,19 +135,19 @@ static func _costs(t) -> void:
 	t.check(s.cost("deathmark") == 2 and s.cost("whisper") == 2, "a neighbour's spot costs 2 (%d, %d)" % [s.cost("deathmark"), s.cost("whisper")])
 	t.check(s.cost("doom") == 0 and s.refusal("doom") == "far", "a far type's spot is locked (%d, %s)" % [s.cost("doom"), s.refusal("doom")])
 	t.check(s.refusal("congregation") == "unknown" and s.cost("congregation") == 0, "a key in no dev spot is unknown (%s)" % s.refusal("congregation"))
-	t.check(s.spot_type("heaven") == "ruin" and s.spot_type("nosuch") == "", "spot_type() names the type or nothing")
+	t.check(s.spot_type("scatter") == "ruin" and s.spot_type("nosuch") == "", "spot_type() names the type or nothing")
 
 
 static func _tier_gate(t) -> void:
 	var s := _slot()
 	s.points = 5
-	t.check(s.refusal("heaven") == "tier", "a Tier 2 spot is refused at god tier 1 (%s)" % s.refusal("heaven"))
+	t.check(s.refusal("scatter") == "tier", "a Tier 2 spot is refused at god tier 1 (%s)" % s.refusal("scatter"))
 	s.awaken()
-	t.check(s.learn("heaven") and s.level_of("heaven") == 1 and s.points == 6, "after Awaken it is learned at 1 for a point (%d, %d)" % [s.level_of("heaven"), s.points])
+	t.check(s.learn("scatter") and s.level_of("scatter") == 1 and s.points == 6, "after Awaken it is learned at 1 for a point (%d, %d)" % [s.level_of("scatter"), s.points])
 	var hold := _slot()
 	hold.points = 5
-	hold.learned["heaven"] = 1
-	t.check(hold.refusal("heaven") == "", "raising is never tier-gated (%s)" % hold.refusal("heaven"))
+	hold.learned["scatter"] = 1
+	t.check(hold.refusal("scatter") == "", "raising is never tier-gated (%s)" % hold.refusal("scatter"))
 
 
 static func _levels(t) -> void:
@@ -276,7 +276,7 @@ static func _faith_short(t) -> void:
 static func _respec(t) -> void:
 	var s := _slot()
 	s.tier = 2
-	s.learned = {"smite": 3, "ember": 1, "heaven": 2}
+	s.learned = {"smite": 3, "ember": 1, "scatter": 2}
 	s.points = 0
 	s.faith = 100
 	t.check(s.faith_refusal("respec") == "", "respec is possible once points are spent (%s)" % s.faith_refusal("respec"))

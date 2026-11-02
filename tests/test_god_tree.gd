@@ -45,8 +45,8 @@ static func _shape(t) -> void:
 				rest_empty = rest_empty and k == ""
 	t.check(tier1_full, "every Tier 1 spot of the real table is filled")
 	t.check(rest_empty, "Tiers 2-5 of the real table are still empty, Ruin's aside")
-	t.check(GodTree.TABLE.ruin.slice(1) == [["tornado", ""], ["solaris", "dragon"], ["tsunami", "cinder"], ["", ""]],
-		"Ruin's Tiers 2-5 hold the user's picks, two spots kept for new abilities (%s)" % [GodTree.TABLE.ruin.slice(1)])
+	t.check(GodTree.TABLE.ruin.slice(1) == [["tornado", "scatter"], ["solaris", "dragon"], ["tsunami", "cinder"], ["tempest", "shatter"]],
+		"Ruin's Tiers 2-5 hold the user's picks, with Scatter Strike, Wrath of the Sky and Earthshatter in the spots kept for them (%s)" % [GodTree.TABLE.ruin.slice(1)])
 	t.check(GodTree.TABLE.ruin[0] == ["smite", "ember"] and GodTree.TABLE.death[0] == ["deathmark", "pestilence"]
 		and GodTree.TABLE.veil[0] == ["doom", "blight"] and GodTree.TABLE.passage[0] == ["thorns", "mirror"]
 		and GodTree.TABLE.decree[0] == ["noleave", "belllies"] and GodTree.TABLE.dominion[0] == ["whisper", "discord"],
@@ -111,7 +111,7 @@ static func _dev_fill(t) -> void:
 	t.check(GodTree.spot_of("smite") == {"type": "ruin", "tier": 1, "i": 0}, "spot_of(smite) (%s)" % [GodTree.spot_of("smite")])
 	t.check(GodTree.spot_of("nosuch").is_empty(), "spot_of an unplaced key is empty")
 	t.check(GodTree.starting("ruin") == PackedStringArray(["smite", "ember"]), "starting(ruin) (%s)" % [GodTree.starting("ruin")])
-	t.check(GodTree.keys_for("ruin", 2) == PackedStringArray(["smite", "ember", "tornado", "heaven"]),
+	t.check(GodTree.keys_for("ruin", 2) == PackedStringArray(["smite", "ember", "tornado", "scatter"]),
 		"keys_for(ruin, 2) (%s)" % [GodTree.keys_for("ruin", 2)])
 	t.check(GodTree.keys_for("death", 5) == PackedStringArray(["deathmark", "pestilence", "glacial", "orbital"]),
 		"empty spots are left out of keys_for (%s)" % [GodTree.keys_for("death", 5)])
@@ -123,8 +123,8 @@ static func _dev_fill(t) -> void:
 	GodTree.dev_fill = false
 	t.check(GodTree.starting("ruin") == PackedStringArray(["smite", "ember"]), "dev fill off: starting(ruin) is the real table's (%s)"
 		% [GodTree.starting("ruin")])
-	t.check(GodTree.spot("ruin", 2, 1) == "" and GodTree.spot("ruin", 2, 0) == "tornado",
-		"dev fill off: Ruin's Tier 2 holds Tornado and an empty spot")
+	t.check(GodTree.spot("ruin", 2, 1) == "scatter" and GodTree.spot("ruin", 5, 0) == "tempest" and GodTree.spot("ruin", 5, 1) == "shatter",
+		"dev fill off: Ruin's Tier 2 holds Scatter Strike, its Tier 5 Wrath of the Sky and Earthshatter")
 	GodTree.use_table(GodTree.blank())
 	t.check(GodTree.starting("ruin") == PackedStringArray() and GodTree.spot("ruin", 1, 0) == "",
 		"use_table(blank()): the tree reads empty (%s)" % [GodTree.starting("ruin")])

@@ -2,7 +2,7 @@ extends RefCounted
 ## The scripted policies of the Hunt "Expel the inquisitor" (Tier 3; god P5, MS §7, plan Tasks 3, 6, 11): the shared plan with the def's loadout
 ## (act_shared), one act_<type> per god type, and the report line (state). FILLED lists the types written. Called by god_hunts.gd (Ruling P5-7:
 ## the policies live here, behaviour_check is never edited by a Hunt task). Each type plays the "Plays" row of MS §4 with the keys of LOADOUT:
-##   ruin     Smite each warden and the captain, led ahead of his walk; Heaven Splitter along his road and Tornado on him when the bolt is cooling;
+##   ruin     Smite each warden and the captain, led ahead of his walk; Light of Solaris and Tornado on him when the bolt is cooling;
 ##            the next warden's guard is struck at his door while he waits indoors.
 ##   death    Death Mark on a man with 11 s of street left (a marked man indoors at the fuse lives); Pestilence when the mark cannot be laid;
 ##            Glacial Cataclysm on the captain's last leg; Death Mark on the next warden's guard while the warden waits.
@@ -23,7 +23,7 @@ const GOD := preload("res://tools/dev/routes/god_t1.gd")
 ## What each type drafts here (MS §7: at most 3 keys, within TierBook.dp(3) Might at level 1, all in GodTree.keys_for(type, 3)); god_hunts.gd's
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
-	"ruin": ["smite", "heaven", "tornado"],
+	"ruin": ["smite", "solaris", "tornado"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["thorns", "mirror"],
@@ -31,7 +31,6 @@ const LOADOUT := {
 	"dominion": ["whisper", "discord", "madness"],
 }
 
-const HEAVEN := preload("res://src/fx/set2/heaven_splitter.gd")
 const B := preload("res://tools/dev/routes/tier1_b.gd")
 ## Ruin: the seconds since a man first came out before a Smite is struck where he would be seen (a seen death tolls the bell).
 const RUIN_PATIENCE := 6.0
@@ -245,8 +244,10 @@ static func _heading(p: Person) -> Vector2:
 # --- Ruin ---------------------------------------------------------------------------------------------------------------------
 
 ## Smite each man in the street, the captain first, led ahead of his walk, where nobody would see him fall (a seen death tolls the bell and
-## hastens dawn) -- or once RUIN_PATIENCE seconds have passed since he first came out, or on the captain's last leg; Heaven Splitter laid along his road
-## and Tornado on him when the bolt is cooling and the patience is spent. With no one in the street, a Smite on the next warden's guard at his door.
+## hastens dawn) -- or once RUIN_PATIENCE seconds have passed since he first came out, or on the captain's last leg; Light of Solaris where he will stand
+## when its pillar opens (T_CHARGE), and Tornado on him, when the bolt is cooling and the patience is spent. With no one in the street, a Smite on the next
+## warden's guard at his door. (2026-11-02: Solaris replaces Heaven Splitter, out of Ruin's real tree; Dragonfire Parade breathes one way only and Scatter
+## Strike falls at random, so neither is drafted.)
 static func act_ruin(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:
@@ -267,9 +268,9 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 			return "smite %s" % q.label
 		if not (urgent or waited >= RUIN_PATIENCE):
 			continue
-		if bc._slot_ready(rules, slots, "heaven"):
-			rules.cast(int(slots.heaven), GOD.road_ahead(p, HEAVEN.T_STRIKE), {"dir": _heading(p)})
-			return "heaven %s" % q.label
+		if bc._slot_ready(rules, slots, "solaris"):
+			rules.cast(int(slots.solaris), GOD.road_ahead(p, LightOfSolaris.T_CHARGE))
+			return "solaris %s" % q.label
 		if bc._slot_ready(rules, slots, "tornado"):
 			rules.cast(int(slots.tornado), GOD.road_ahead(p, 1.0))
 			return "tornado %s" % q.label

@@ -6,10 +6,10 @@ extends RefCounted
 ## *tunable*, not the user's fill.
 
 ## Same shape as GodTree.TABLE: type -> five tiers of two keys, "" for a spot left empty.
-## Ruin's row mirrors the user's picks (2026-11-02) and puts Heaven Splitter, Gravity Distortion and Judgement in its empty spots;
+## Ruin's row is the user's full tree (2026-11-02): no dev key left in it (Heaven Splitter, Gravity Distortion and Judgement are out);
 ## Death's and Veil's Tier 2 take Orbital Strike and Walking Laser Grid for Light of Solaris and Tsunami Breaker, now Ruin's.
 const TABLE := {
-	"ruin": [["smite", "ember"], ["tornado", "heaven"], ["solaris", "dragon"], ["tsunami", "cinder"], ["gravity", "judgement"]],
+	"ruin": [["smite", "ember"], ["tornado", "scatter"], ["solaris", "dragon"], ["tsunami", "cinder"], ["tempest", "shatter"]],
 	"death": [["deathmark", "pestilence"], ["glacial", "orbital"], ["", ""], ["", ""], ["", ""]],
 	"veil": [["doom", "blight"], ["laser", "nova"], ["", ""], ["", ""], ["", ""]],
 	"passage": [["thorns", "mirror"], ["", ""], ["", ""], ["", ""], ["", ""]],

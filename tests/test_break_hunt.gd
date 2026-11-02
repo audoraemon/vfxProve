@@ -1224,9 +1224,9 @@ static func _policies_written(t) -> void:
 
 ## How near a cast's aim must lie to someone the night still has to answer -- a bearer or an escort of an unbroken standard, out of doors -- by power (the effect's
 ## own radius, read from the power: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Mind Whisper's pick 0.6; Leaving Is Prohibited 3.0,
-## Heaven Splitter's core 1.6, the wall and the mirror a few units ahead of the file). The test world's bodies stand, so an aim at one needs no slack.
+## Heaven Splitter's core 1.6 (the shared plan's), Tornado Tempest's fit 1.6 (its pull is 3.2), the wall and the mirror a few units ahead of the file). The test world's bodies stand, so an aim at one needs no slack.
 const AIM_REACH := {"doom": SilentDoom.RADIUS, "smite": SmiteFx.KILL_R, "deathmark": DeathMarkFx.PICK_R, "pestilence": PestilenceFx.INFECT_R, "discord": DiscordFx.DISCORD_R,
-	"whisper": MindWhisperFx.PICK_R, "noleave": 3.0, "heaven": 1.6, "thorns": 8.0, "mirror": 8.0}
+	"whisper": MindWhisperFx.PICK_R, "noleave": 3.0, "heaven": 1.6, "tornado": 1.6, "thorns": 8.0, "mirror": 8.0}
 
 
 ## The Hunt's people who still have to be answered: the bearer and the escorts of every unbroken standard, alive and out of doors.

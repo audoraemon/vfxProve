@@ -9,7 +9,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## What each type drafts here (MS §7: at most 3 keys, within TierBook.dp(2) Might at level 1, all in GodTree.keys_for(type, 2)); god_hunts.gd's
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
-	"ruin": ["smite", "heaven", "tornado"],
+	"ruin": ["smite", "tornado"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["thorns", "mirror"],
@@ -142,8 +142,9 @@ const SW_URGENT := 11.0
 ## (it takes PlagueManager.PLAGUE_LIFE and the cast's 0.4 s) and for Glacial Cataclysm (its peaks kill at 3.2 s).
 const SW_PLAGUE_ETA := 7.5
 const SW_GLACIAL_ETA := 5.0
-## Heaven Splitter's core kills within CORE_KILL (1.6) of the strike at T_STRIKE: the file must lie within this of its aim, led by that many seconds.
-const SW_HEAVEN_FIT := 1.3
+## Tornado Tempest pulls everyone within PULL_RADIUS (3.2) of its funnel into its core and flings them dead; it forms T_FORM after the cast and then roams
+## for a building: the file must lie within this of its aim, led by T_FORM, so the pull holds all of it before the funnel moves off.
+const SW_TORNADO_FIT := 1.6
 ## Glacial Cataclysm: the file must lie within this of its aim when the peaks rise (it freezes those within 5 and kills those within 1.6 of the aim).
 const SW_GLACIAL_FIT := 1.5
 const SW_GLACIAL_LEAD := 2.8
@@ -158,8 +159,8 @@ const SW_MIRROR_WAIT := 15.0
 const SW_DOM_GAP := 15.0
 ## Mind Whisper's reach, less a little for the walk's start; the longest hop it sends a witness.
 const SW_WHISPER_REACH := MindWhisperFx.REACH - 0.5
-## Heaven Splitter's effect (its consts name the strike's moment).
-const HEAVEN_FX := preload("res://src/fx/set2/heaven_splitter.gd")
+## Tornado Tempest's effect (its consts name the moment it forms and its pull).
+const TORNADO_FX := preload("res://src/fx/set2/tornado_tempest.gd")
 ## Leaving Is Prohibited (Decree): the hold lasts HOLD_TIME.
 const LEAVING_FX := preload("res://src/fx/decree/leaving_is_prohibited.gd")
 
@@ -276,11 +277,12 @@ static func _said(what: String, file: Array[Person]) -> String:
 	return "%s (file of %d)" % [what, file.size()]
 
 
-# --- Ruin: Smite, Heaven Splitter, Tornado ---
+# --- Ruin: Smite, Tornado Tempest ---
 
 ## Mates first, then the witness (the pacing above). The opener is a Smite on the nearest mate who could carry the word on, led by its T_STRIKE; the finisher
-## Heaven Splitter along the file when what is left of it fits the strike's core (SW_HEAVEN_FIT, led by T_STRIKE), else Smite again on the next mate and
-## last the witness. Cooldowns: Smite 10 s, Heaven Splitter 30 s. A witness within SW_URGENT of the Temple is struck with whatever is ready, at once.
+## Tornado Tempest on the file when what is left of it fits well inside the pull (SW_TORNADO_FIT, led by T_FORM), else Smite again on the next mate and last
+## the witness. Cooldowns: Smite 10 s, Tornado 45 s. A witness within SW_URGENT of the Temple is struck with whatever is ready, at once. (2026-11-02: Tornado
+## replaces Heaven Splitter, out of Ruin's real tree; Scatter Strike, Ruin's other Tier 2 power, falls at random and is not drafted.)
 static func act_ruin(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as SilenceWitnessDirector
 	if d == null:
@@ -292,14 +294,14 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 		var mates := _near_mates(r, SW_CLEAR)
 		var file := _file(r)
 		var urgent := _eta(r) <= SW_URGENT
-		var heaven: bool = bc._slot_ready(rules, slots, "heaven")
+		var tornado: bool = bc._slot_ready(rules, slots, "tornado")
 		var smite: bool = bc._slot_ready(rules, slots, "smite")
-		if heaven and file.size() >= 2 and _finish_ok(d, ctx.memo, r, mates.is_empty()):
-			var aim := _enclose(_led(file, HEAVEN_FX.T_STRIKE))
-			if float(aim.r) <= SW_HEAVEN_FIT:
-				rules.cast(slots.heaven, aim.at, {"dir": _heading(r, ctx)})
+		if tornado and file.size() >= 2 and _finish_ok(d, ctx.memo, r, mates.is_empty()):
+			var aim := _enclose(_led(file, TORNADO_FX.T_FORM))
+			if float(aim.r) <= SW_TORNADO_FIT:
+				rules.cast(slots.tornado, aim.at)
 				_noted(d, ctx.memo, r)
-				return _said("heaven splitter along the file", file)
+				return _said("tornado on the file", file)
 		if smite:
 			if not mates.is_empty():
 				var m := mates[0]

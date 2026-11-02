@@ -180,8 +180,8 @@ hide_faithful_dominion_play_3	--scenario=hide_faithful --case=play --seed=3 --go
 silence_witness_none_1	--scenario=silence_witness --case=none --seed=1	-290560938
 silence_witness_none_2	--scenario=silence_witness --case=none --seed=2	-868103092
 silence_witness_none_3	--scenario=silence_witness --case=none --seed=3	89419789
-silence_witness_ruin_play_1	--scenario=silence_witness --case=play --seed=1 --god=ruin:2 --dev-tree	-653907129
-silence_witness_ruin_play_2	--scenario=silence_witness --case=play --seed=2 --god=ruin:2 --dev-tree	586995741
+silence_witness_ruin_play_1	--scenario=silence_witness --case=play --seed=1 --god=ruin:2 --dev-tree	-866795991
+silence_witness_ruin_play_2	--scenario=silence_witness --case=play --seed=2 --god=ruin:2 --dev-tree	321093532
 silence_witness_ruin_play_3	--scenario=silence_witness --case=play --seed=3 --god=ruin:2 --dev-tree	-181708191
 silence_witness_death_play_1	--scenario=silence_witness --case=play --seed=1 --god=death:2 --dev-tree	-397643768
 silence_witness_death_play_2	--scenario=silence_witness --case=play --seed=2 --god=death:2 --dev-tree	152793487
@@ -203,9 +203,9 @@ silence_witness_dominion_play_3	--scenario=silence_witness --case=play --seed=3 
 expel_inquisitor_none_1	--scenario=expel_inquisitor --case=none --seed=1	-514600614
 expel_inquisitor_none_2	--scenario=expel_inquisitor --case=none --seed=2	-221146108
 expel_inquisitor_none_3	--scenario=expel_inquisitor --case=none --seed=3	57885823
-expel_inquisitor_ruin_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=ruin:3 --dev-tree	-717683787
+expel_inquisitor_ruin_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=ruin:3 --dev-tree	-185349803
 expel_inquisitor_ruin_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=ruin:3 --dev-tree	-40097210
-expel_inquisitor_ruin_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=ruin:3 --dev-tree	-280529564
+expel_inquisitor_ruin_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=ruin:3 --dev-tree	-673697728
 expel_inquisitor_death_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=death:3 --dev-tree	-281049706
 expel_inquisitor_death_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=death:3 --dev-tree	-32647347
 expel_inquisitor_death_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=death:3 --dev-tree	-251392457

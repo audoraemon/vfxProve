@@ -10,7 +10,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## What each type drafts here (MS §7: at most 3 keys, within TierBook.dp(4) Might at level 1, all in GodTree.keys_for(type, 4)); god_hunts.gd's
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
-	"ruin": ["smite", "heaven", "tornado"],
+	"ruin": ["smite", "tornado"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["thorns", "mirror"],
@@ -21,7 +21,7 @@ const LOADOUT := {
 
 ## The shared policy pieces (god T1R, Ruling P5-7): road_ahead(), reached through the Hunts' common file.
 const GOD := preload("res://tools/dev/routes/god_t1.gd")
-## Heaven Splitter's script (it has no class name), for its strike time.
+## Heaven Splitter's script (it has no class name), for its strike time: the shared plan's, which plays the def's own loadout (no god tree).
 const HEAVEN := preload("res://src/fx/set2/heaven_splitter.gd")
 ## How long a cast on a bearer holds the policy off him: the longest strike of the shared plan (Heaven Splitter's T_STRIKE) plus a look.
 const HOLD := 2.0
@@ -91,9 +91,11 @@ static func act_shared(bc, ctx: Dictionary) -> String:
 ## The seconds before a muster's raise at which its escorts are worked (they stand killable from 0:00): the idle rule's real work between two bearers
 ## (review-t7, Task 12), not a filler -- an escort felled early is a guard the bearer will not have when he marches.
 const BH_PREP := 24.0
-## How far apart the file of a marching standard must fit for one wide strike (Heaven Splitter's core is 1.6 wide; the file is the bearer between two escorts
-## 1.3 along the street each way).
-const BH_HEAVEN_FIT := 1.35
+## How far apart the file of a marching standard must fit for one wide strike (Tornado Tempest pulls all within its PULL_RADIUS, 3.2, into its core; the file is
+## the bearer between two escorts 1.3 along the street each way), led by its T_FORM so the pull holds all of it before the funnel roams off.
+const BH_TORNADO_FIT := 1.6
+## Tornado Tempest's script (it has no class name), for the moment it forms.
+const TORNADO := preload("res://src/fx/set2/tornado_tempest.gd")
 ## Death: the seconds to a house at or under which the plague is laid on the bearer and the escort beside him (it kills them PLAGUE_LIFE and a cast on): the
 ## Death Mark's 10 s fuse and 20 s cooldown are the plan, and the plague is what a player keeps for the standard that is nearly there.
 const BH_PLAGUE_ETA := 14.0
@@ -165,27 +167,28 @@ static func _said(what: String, i: int, who: String) -> String:
 	return "%s (standard %d: %s)" % [what, i, who]
 
 
-# --- Ruin: Smite, Heaven Splitter, Orbital Strike ---
+# --- Ruin: Smite, Tornado Tempest ---
 
-## Heaven Splitter across the file when the file fits its core (BH_HEAVEN_FIT, led by its T_STRIKE): the three fall together and nobody is left to take the
-## standard up. Else Smite: the escorts one by one, then the bearer (10 s apart). Between two bearers, Smite fells an escort of the muster next to be raised
-## (BH_PREP). Orbital Strike falls at random and is not cast.
+## Tornado Tempest on the file when the file fits well inside its pull (BH_TORNADO_FIT, led by its T_FORM): the three are drawn in together and nobody is left
+## to take the standard up. Else Smite: the escorts one by one, then the bearer (10 s apart). Between two bearers, Smite fells an escort of the muster next to
+## be raised (BH_PREP). (2026-11-02: Tornado replaces Heaven Splitter, out of Ruin's real tree; Scatter Strike and Cinderfall Barrage fall at random and are
+## not drafted.)
 static func act_ruin(bc, ctx: Dictionary) -> String:
 	var d := _bh(ctx)
 	if d == null:
 		return ""
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
-	var heaven: bool = bc._slot_ready(rules, slots, "heaven")
+	var tornado: bool = bc._slot_ready(rules, slots, "tornado")
 	var smite: bool = bc._slot_ready(rules, slots, "smite")
 	for i in _marching(d):
 		var file := _file(d, i)
 		var men := _men(d, i)
-		if heaven and file.size() >= 2:
-			var aim := _enclose(_led(file, HEAVEN.T_STRIKE))
-			if float(aim.r) <= BH_HEAVEN_FIT:
-				rules.cast(int(slots.heaven), aim.at, {"dir": d._heading(i)})
-				return _said("heaven splitter along the file", i, "%d of the file" % file.size())
+		if tornado and file.size() >= 2:
+			var aim := _enclose(_led(file, TORNADO.T_FORM))
+			if float(aim.r) <= BH_TORNADO_FIT:
+				rules.cast(int(slots.tornado), aim.at)
+				return _said("tornado on the file", i, "%d of the file" % file.size())
 		if smite:
 			var target: Person = _nearest(men, d.bearer(i).ground_pos) if not men.is_empty() else d.bearer(i)
 			rules.cast(int(slots.smite), GOD.road_ahead(target, SmiteFx.T_STRIKE))

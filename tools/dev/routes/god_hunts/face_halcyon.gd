@@ -23,7 +23,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## What each type drafts here (MS §7: at most 3 keys, within TierBook.dp(5) Might at level 1, all in GodTree.keys_for(type, 5)); god_hunts.gd's
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
-	"ruin": ["smite", "ember", "heaven"],
+	"ruin": ["smite", "ember"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["thorns", "mirror"],
@@ -270,7 +270,7 @@ static func _enclose(points: Array[Vector2]) -> Dictionary:
 	return best
 
 
-# --- Ruin: Smite, Ember, Heaven Splitter -----------------------------------------------------------------------------------------------
+# --- Ruin: Smite, Ember -----------------------------------------------------------------------------------------------
 
 ## The seconds to the pyre at or under which a procession is struck whatever is seen (the Gaze permitting): the fire is near, and a death seen is cheaper than a
 ## believer burned (GazeMeter.SEEN_DEATH is 10 of 100).
@@ -301,8 +301,9 @@ static func _strike(d: FaceHalcyonDirector, ctx: Dictionary, i: int, radius: flo
 	return best
 
 
-## Smite an escort (the rear of the file first, then the one nobody would see fall), led by the bolt's T_STRIKE. Heaven Splitter and Ember are not cast: the
-## splitter's fissures reach seven units and would take the believer on the same road, and a fire is no answer to an escort who walks away from it.
+## Smite an escort (the rear of the file first, then the one nobody would see fall), led by the bolt's T_STRIKE. Ember is not cast: a fire is no answer to an
+## escort who walks away from it. No wide power is drafted (2026-11-02: Heaven Splitter, never cast here, is out of Ruin's real tree): every other Ruin power
+## up to Tier 5 strikes wider than the gap between an escort and the believer he walks beside (a believer the god kills counts as burned).
 static func act_ruin(bc, ctx: Dictionary) -> String:
 	var d := _fh(ctx)
 	if d == null:

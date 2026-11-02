@@ -23,24 +23,24 @@ const TIER1_ONLY := {
 const PLAYS := {
 	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,pestilence", "veil": "doom,blight", "passage": "thorns,mirror",
 		"decree": "noleave,belllies", "dominion": "whisper,discord"},
-	"silence_witness": {"ruin": "smite,heaven,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"silence_witness": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
-	"expel_inquisitor": {"ruin": "smite,heaven,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
-	"break_hunt": {"ruin": "smite,heaven,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,turncoat"},
-	"face_halcyon": {"ruin": "smite,ember,heaven", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,priority"},
 }
 
 ## What each Hunt's loadout lacks in the Tier-1-only tree (C7), per type: the keys above Tier 1, in LOADOUT order. Passage's is empty on every
-## Hunt (its two real Tier 1 keys); the whole of Hunt 1 is empty.
+## Hunt (its two real Tier 1 keys), and so is Ruin's on Hunt 5 (Smite and Ember); the whole of Hunt 1 is empty.
 const LACKS := {
 	"hide_faithful": {"ruin": "", "death": "", "veil": "", "passage": "", "decree": "", "dominion": ""},
-	"silence_witness": {"ruin": "heaven,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
-	"expel_inquisitor": {"ruin": "heaven,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
-	"break_hunt": {"ruin": "heaven,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "turncoat"},
-	"face_halcyon": {"ruin": "heaven", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "priority"},
+	"silence_witness": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
+	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
+	"break_hunt": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "turncoat"},
+	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "priority"},
 }
 
 
@@ -147,14 +147,14 @@ static func _problems_might(t) -> void:
 	t.check(sum > TierBook.dp(2), "the fake list is heavier than Tier 2's Might (%d vs %d)" % [sum, TierBook.dp(2)])
 	var got := GodHunts.check("death", 2, heavy)
 	t.check(got == PackedStringArray(["might %d>%d" % [sum, TierBook.dp(2)]]), "the over-Might list is named by its numbers (%s)" % [got])
-	var four := PackedStringArray(["smite", "ember", "heaven", "tornado"])
+	var four := PackedStringArray(["smite", "ember", "scatter", "tornado"])
 	got = GodHunts.check("ruin", 5, four)
 	t.check(got.has("slots 4>%d" % GodSlot.BASE_SLOTS), "a fourth key is named (%s)" % [got])
-	got = GodHunts.check("ruin", 1, PackedStringArray(["smite", "heaven"]))
-	t.check(got == PackedStringArray(["heaven"]), "a key outside the tree at the tier is named alone (%s)" % [got])
+	got = GodHunts.check("ruin", 1, PackedStringArray(["smite", "tornado"]))
+	t.check(got == PackedStringArray(["tornado"]), "a key outside the tree at the tier is named alone (%s)" % [got])
 	got = GodHunts.check("ruin", 2, PackedStringArray())
 	t.check(got == PackedStringArray(["no keys"]), "no keys is a problem (%s)" % [got])
-	t.check(GodHunts.check("ruin", 2, PackedStringArray(["smite", "heaven", "tornado"])).is_empty(), "the floor Ruin plays at Tier 2 is within it")
+	t.check(GodHunts.check("ruin", 2, PackedStringArray(["smite", "tornado"])).is_empty(), "the floor Ruin plays at Tier 2 is within it")
 	t.check(GodHunts.problems("nowhere", "ruin", 1) == PackedStringArray(["no such Hunt"]), "an unknown Hunt is named")
 	GodTree.dev_fill = false
 

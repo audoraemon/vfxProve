@@ -136,6 +136,14 @@ func pull(center: Vector2, radius: float, strength: float, swirl: float, delta: 
 			e.pull_step(center, strength, swirl, delta)
 
 
+## Like pull(), but only for enemies within `radius` of `center`: one already PULLED by another funnel, wherever it is, is not touched
+## (two funnels at once must not drag each other's captives).
+func pull_near(center: Vector2, radius: float, strength: float, swirl: float, delta: float) -> void:
+	for e in alive():
+		if e.ground_pos.distance_squared_to(center) <= radius * radius:
+			e.pull_step(center, strength, swirl, delta)
+
+
 func release_all() -> void:
 	for e in alive():
 		e.release()

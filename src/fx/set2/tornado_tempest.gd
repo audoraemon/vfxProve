@@ -30,6 +30,14 @@ const LOCK_CLOSE := 1.2
 const LOCK_GRIND_SPEED := 0.45
 const IDLE_ORBIT := 1.5
 const WARM_LIGHT := Color(1.0, 0.78, 0.45)
+## Level 5, Twin Funnels: when it dies it splits in two, each running straight apart (WANDER_SPEED) for TWIN_LIFE seconds, pulling within
+## TWIN_PULL at TWIN_STRENGTH, catching within TWIN_CORE, a small funnel at TWIN_GROW.
+const TWIN_LIFE := 4.0
+const TWIN_PULL := 1.8
+const TWIN_CORE := 0.4
+const TWIN_STRENGTH := 3.0
+const TWIN_GROW := 0.45
+const TWIN_DAMAGE_R := 0.6
 
 
 ## Tornado: shader funnel volume (`tornado_funnel.gdshader`) between two debris layers, so rocks and planks
@@ -200,6 +208,18 @@ class Funnel:
 				"life": Vector2(1.0, 1.8), "size": Vector2(2.0, 6.0)})
 
 
+## One of the two funnels the tornado leaves when it dies (level 5): plain data, stepped by the tornado's _twins_step().
+class Twin:
+	extends RefCounted
+
+	var center := Vector2.ZERO
+	var heading := 0.0
+	var life := TWIN_LIFE
+	## The enemies spiralling up this twin: {e, t, a}, as the parent's.
+	var captured: Array[Dictionary] = []
+	var funnel: Funnel
+
+
 class DebrisLayer:
 	extends Node2D
 
@@ -239,6 +259,8 @@ var _path: Array[Vector2] = []
 var lv_pull_radius := PULL_RADIUS
 var lv_lifetime := LIFETIME
 var lv_t_end := T_END
+## The two funnels a level-5 tornado leaves when it dies (empty at every other level, and until then).
+var twins: Array[Twin] = []
 
 
 func _build() -> void:
@@ -246,6 +268,8 @@ func _build() -> void:
 	lv_lifetime = float(PowerBook.stat(extra, "tornado", "LIFETIME", LIFETIME))
 	lv_t_end = T_FORM + lv_lifetime
 	duration = lv_t_end + 2.8
+	if PowerBook.twist_at(extra, "tornado"):
+		duration = lv_t_end + maxf(2.8, TWIN_LIFE + 0.6)
 	_center = origin
 	_heading = ctx.rng.randf() * TAU
 	_sway_phase = ctx.rng.randf() * TAU
@@ -391,6 +415,7 @@ func _fx_process(delta: float) -> void:
 	if is_instance_valid(_pull_lines):
 		_pull_lines.spec["offset"] = sp
 	if not _pulling:
+		_twins_step(delta)
 		return
 	var strength := curve([[T_FORM, 0.5], [T_FORM + FORM_TIME, 2.6], [lv_t_end, 3.0]])
 	ctx.field.pull(_center, lv_pull_radius, strength, 1.4, delta)
@@ -440,8 +465,12 @@ func camera_focus() -> Vector2:
 
 
 func _fling(e: DummyEnemy) -> void:
-	var side := Vector2.from_angle(_heading).orthogonal() * (1.0 if _flung % 2 == 0 else -1.0)
-	ctx.field.kill(e, &"wind", _center - side)
+	_fling_from(e, _center, _heading)
+
+
+func _fling_from(e: DummyEnemy, from: Vector2, heading: float) -> void:
+	var side := Vector2.from_angle(heading).orthogonal() * (1.0 if _flung % 2 == 0 else -1.0)
+	ctx.field.kill(e, &"wind", from - side)
 	_flung += 1
 	if _flung % 3 == 0:
 		ctx.play(&"tn_gust", _center, -10.0)
@@ -483,3 +512,80 @@ func _dissipate() -> void:
 			})
 		ribbon.streak_len = 0.15
 	at(duration - 1.2, func(): ctx.impact.dim(0.0, 0.6))
+	if PowerBook.twist_at(extra, "tornado"):
+		_split()
+
+
+## Level 5: two small funnels at the place it died, running apart at right angles to its last heading. Their funnels' debris draws from
+## generators of their own, so the cast's ctx.rng is not touched.
+func _split() -> void:
+	for i in 2:
+		var tw := Twin.new()
+		tw.center = _center
+		tw.heading = _heading + (PI * 0.5 if i == 0 else -PI * 0.5)
+		var f := Funnel.new()
+		f.rng = RandomNumberGenerator.new()
+		f.rng.seed = 4242 + i
+		f.lights = ctx.lights
+		f.ground_pos = _center
+		f.position = Iso.ground_to_screen(_center).round()
+		f.setup()
+		f.grow = TWIN_GROW
+		track(f, ctx.overhead_back)
+		tw.funnel = f
+		twins.append(tw)
+	var ring := FxParts.shockwave(self, _center, 1.8, Set2Parts.WIND)
+	ring.z_index = 9
+	ring.set_param("thickness", 0.14)
+	ring.tween_param("progress", 0.05, 1.0, 0.5, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	ring.tween_param("fade", 1.0, 0.0, 0.25, 0.25)
+	ring.life = 0.55
+
+
+## The twins' frame: each runs straight, pulls only what is within TWIN_PULL of it, catches at its core and flings as the parent does,
+## until its life runs out (then its captives are flung, the stragglers it pulled are let go, the funnel fades).
+func _twins_step(delta: float) -> void:
+	if twins.is_empty():
+		return
+	for tw in twins:
+		tw.center += Vector2.from_angle(tw.heading) * WANDER_SPEED * delta
+		tw.life -= delta
+		ctx.field.pull_near(tw.center, TWIN_PULL, TWIN_STRENGTH, 1.4, delta)
+		for e in ctx.field.in_radius(tw.center, TWIN_CORE):
+			if not twins.any(func(o): return o.captured.any(func(c): return c.e == e)):
+				var rel := e.ground_pos - tw.center
+				tw.captured.append({"e": e, "t": 0.0, "a": rel.angle() if rel.length() > 0.01 else 0.0})
+		var keep: Array[Dictionary] = []
+		for c in tw.captured:
+			var e: DummyEnemy = c.e
+			if not is_instance_valid(e) or not e.is_alive():
+				continue
+			c.t += delta
+			var k: float = clampf(c.t / CAPTURE_TIME, 0.0, 1.0)
+			c.a += delta * lerpf(9.0, 4.0, k)
+			var height := k * FUNNEL_HEIGHT * 0.7
+			var r := tw.funnel.radius(height / FUNNEL_HEIGHT) * 0.8 / 36.0
+			e.ground_pos = tw.center + Vector2(cos(c.a), sin(c.a)) * r
+			e.lift_target = height
+			if k >= 1.0:
+				_fling_from(e, tw.center, tw.heading)
+			else:
+				keep.append(c)
+		tw.captured = keep
+		ctx.env.damage_radius(tw.center, TWIN_DAMAGE_R, 140.0 * delta, &"wind")
+		tw.funnel.position = Iso.ground_to_screen(tw.center).round()
+		tw.funnel.ground_pos = tw.center
+	for tw in twins.duplicate():
+		if tw.life <= 0.0:
+			_end_twin(tw)
+	if twins.is_empty():
+		ctx.field.release_all()
+
+
+func _end_twin(tw: Twin) -> void:
+	for c in tw.captured:
+		if is_instance_valid(c.e) and (c.e as DummyEnemy).is_alive():
+			_fling_from(c.e, tw.center, tw.heading)
+	tw.captured.clear()
+	create_tween().tween_property(tw.funnel, "fade", 0.0, 0.5)
+	twins.erase(tw)

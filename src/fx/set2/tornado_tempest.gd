@@ -235,15 +235,22 @@ var _speed := 0.0
 var _walked := 0.0
 var _next_scar := 0.0
 var _path: Array[Vector2] = []
+## This cast's pull radius and life, and when it dissipates: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_pull_radius := PULL_RADIUS
+var lv_lifetime := LIFETIME
+var lv_t_end := T_END
 
 
 func _build() -> void:
-	duration = T_END + 2.8
+	lv_pull_radius = float(PowerBook.stat(extra, "tornado", "PULL_RADIUS", PULL_RADIUS))
+	lv_lifetime = float(PowerBook.stat(extra, "tornado", "LIFETIME", LIFETIME))
+	lv_t_end = T_FORM + lv_lifetime
+	duration = lv_t_end + 2.8
 	_center = origin
 	_heading = ctx.rng.randf() * TAU
 	_sway_phase = ctx.rng.randf() * TAU
 	_sigil = Set2Parts.sigil(self, origin, 2.4, Color("dfeaf5"), "spiral")
-	_suction = FxParts.rings(self, origin, PULL_RADIUS, Color("cfdcea"), 3, 26.0)
+	_suction = FxParts.rings(self, origin, lv_pull_radius, Color("cfdcea"), 3, 26.0)
 	_suction.z_index = 8
 	_suction.set_param("crosshair", 0.0)
 	_suction.set_param("fill", 0.05)
@@ -258,7 +265,7 @@ func _build() -> void:
 		})
 	motes.streak_len = 0.08
 	at(T_FORM, _form)
-	at(T_END, _dissipate)
+	at(lv_t_end, _dissipate)
 
 
 func _form() -> void:
@@ -283,15 +290,15 @@ func _form() -> void:
 	ring.life = 0.65
 	# Golden dust churning around the base.
 	_dust = FxParts.emitter(self, ctx.overhead_back, Vector2.ZERO, PixelParticles.Shape.PUFF, Set2Parts.DUST_CLOUD, 44.0,
-		T_END - t + 0.3, {
+		lv_t_end - t + 0.3, {
 			"radius": 36.0, "dir": PixelParticles.Dir.OUTWARD, "speed": Vector2(40, 110), "alt": Vector2(0, 10),
 			"alt_speed": Vector2(6, 22), "life": Vector2(0.6, 1.1), "size": Vector2(3, 6), "size_end_mul": 1.7,
 		})
 	_dust.drag = 1.0
 	# Pull streak lines rushing in toward the funnel.
 	_pull_lines = FxParts.emitter(self, ctx.overhead, Vector2.ZERO, PixelParticles.Shape.STREAK, Set2Parts.WIND_LIFE, 34.0,
-		T_END - t, {
-			"radius": FxParts.particle_radius(PULL_RADIUS), "dir": PixelParticles.Dir.INWARD, "speed": Vector2(90, 170),
+		lv_t_end - t, {
+			"radius": FxParts.particle_radius(lv_pull_radius), "dir": PixelParticles.Dir.INWARD, "speed": Vector2(90, 170),
 			"alt": Vector2(2, 26), "life": Vector2(0.35, 0.7), "size": Vector2(3, 5),
 		})
 	_pull_lines.streak_len = 0.1
@@ -385,8 +392,8 @@ func _fx_process(delta: float) -> void:
 		_pull_lines.spec["offset"] = sp
 	if not _pulling:
 		return
-	var strength := curve([[T_FORM, 0.5], [T_FORM + FORM_TIME, 2.6], [T_END, 3.0]])
-	ctx.field.pull(_center, PULL_RADIUS, strength, 1.4, delta)
+	var strength := curve([[T_FORM, 0.5], [T_FORM + FORM_TIME, 2.6], [lv_t_end, 3.0]])
+	ctx.field.pull(_center, lv_pull_radius, strength, 1.4, delta)
 	# Enemies reaching the core are caught: they circle up the funnel, then get flung out.
 	for e in ctx.field.in_radius(_center, CORE_RADIUS):
 		if not _captured.any(func(c): return c.e == e):
@@ -411,7 +418,7 @@ func _fx_process(delta: float) -> void:
 			keep.append(c)
 	_captured = keep
 	ctx.env.damage_radius(_center, 1.1, 140.0 * delta, &"wind")
-	ctx.env.shake_radius(_center, PULL_RADIUS, 1.5)
+	ctx.env.shake_radius(_center, lv_pull_radius, 1.5)
 	ctx.shake.add_trauma(0.25 * delta)
 	# Scarred swirl decal and turbulence ribbons left behind every so often along the wandering path.
 	if _walked >= _next_scar:

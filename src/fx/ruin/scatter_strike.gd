@@ -27,16 +27,21 @@ const PULL := [Color(0.9, 0.85, 0.75, 0.9), Color(0.7, 0.62, 0.5, 0.8), Color(0.
 var blasts := 0
 var points: Array[Vector2] = []
 var struck := 0
+## This cast's burst count and kill radius: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_blasts := BLASTS
+var lv_kill_r := KILL_R
 
 
 func _build() -> void:
-	duration = T_FIRST + BLAST_GAP * float(BLASTS) + 2.6
-	busy = T_FIRST + BLAST_GAP * float(BLASTS)
-	for i in BLASTS:
+	lv_blasts = int(PowerBook.stat(extra, "scatter", "BLASTS", BLASTS))
+	lv_kill_r = float(PowerBook.stat(extra, "scatter", "KILL_R", KILL_R))
+	duration = T_FIRST + BLAST_GAP * float(lv_blasts) + 2.6
+	busy = T_FIRST + BLAST_GAP * float(lv_blasts)
+	for i in lv_blasts:
 		var a := ctx.rng.randf() * TAU
 		var r := RADIUS * sqrt(ctx.rng.randf())
 		points.append(origin + Vector2(cos(a), sin(a)) * r)
-	for i in BLASTS:
+	for i in lv_blasts:
 		at(T_FIRST + BLAST_GAP * float(i) - COMPRESS, _compress.bind(i))
 		at(T_FIRST + BLAST_GAP * float(i), _blast.bind(i))
 	ctx.play(&"orb_target", origin, -2.0)
@@ -45,8 +50,8 @@ func _build() -> void:
 	var zone := FxParts.rings(self, origin, RADIUS, Color("ff7a3a"), 2, 28.0)
 	zone.set_param("scan", 0.0)
 	zone.tween_param("reveal", 0.0, 1.0, T_FIRST * 0.8, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
-	zone.tween_param("fade", 1.0, 0.0, 0.6, T_FIRST + BLAST_GAP * float(BLASTS))
-	zone.life = T_FIRST + BLAST_GAP * float(BLASTS) + 0.65
+	zone.tween_param("fade", 1.0, 0.0, 0.6, T_FIRST + BLAST_GAP * float(lv_blasts))
+	zone.life = T_FIRST + BLAST_GAP * float(lv_blasts) + 0.65
 
 
 ## The air drawn in over the point: COMPRESS of pinch, pull and a ring closing on it.
@@ -85,7 +90,7 @@ func _blast(i: int) -> void:
 		var person := e as Person
 		if person != null and person.inside:
 			continue
-		if e.ground_pos.distance_to(p) <= KILL_R:
+		if e.ground_pos.distance_to(p) <= lv_kill_r:
 			if ctx.field.kill(e, &"orbital", p):
 				struck += 1
 		else:

@@ -336,6 +336,14 @@ func level_of(slot: int) -> int:
 	return clampi(int(levels.get(key(slot), 1)), 1, PowerBook.MAX_LEVEL)
 
 
+## The slot's full cooldown in seconds at its ability level (what cooldown_left() counts down from); 0.0 for an empty slot.
+func cooldown_of(slot: int) -> float:
+	var p := power(slot)
+	if p.is_empty():
+		return 0.0
+	return PowerBook.cooldown(String(p.key), level_of(slot))
+
+
 func cooldown_left(slot: int) -> float:
 	if slot < 0 or slot >= _cooldowns.size():
 		return 0.0
@@ -396,11 +404,12 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 			refused_who = who
 			cast_refused.emit(slot, "shaken")
 			return null
-	_cooldowns[slot] = float(p.cooldown)
-	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. No P1 effect reads it.
+	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
 	var told := extra.duplicate()
 	if not told.has("level"):
 		told["level"] = level_of(slot)
+	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.
+	_cooldowns[slot] = PowerBook.cooldown(String(p.key), int(told.level))
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, told)
 	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
@@ -408,6 +417,19 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	last_cast = ground
 	cast_made.emit(slot, String(p.key), ground)
 	return fx
+
+
+## The latest still-running effect cast for `key` (a valid one that has not finished), or null: what a twist that reaches into
+## its live power reads (Called Bolts). Only reads.
+func live_fx(key: String) -> FxTimeline:
+	for i in range(_casts.size() - 1, -1, -1):
+		var c: Dictionary = _casts[i]
+		if String(c.key) != key:
+			continue
+		var ref: Variant = c.fx
+		if is_instance_valid(ref) and not (ref as FxTimeline).finished:
+			return ref as FxTimeline
+	return null
 
 
 ## The effect of the latest cast (god T1R): what a director reads of the power just cast (the mode of The Bell Lies, the people Leaving

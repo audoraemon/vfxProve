@@ -16,13 +16,16 @@ const SPARK := [Color("fff6d8"), Color("ffc14a"), Color("ff6a1a"), Color(0.6, 0.
 var fuel: Structure
 ## Whether it took.
 var lit := false
+## This cast's reach and the strength of the fire it starts: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_reach := REACH
+var lv_start_level := START_LEVEL
 
 
-## What an ember at `at` would light: the nearest standing thing that burns within REACH, or null.
-static func target(env: EnvironmentField, at: Vector2) -> Structure:
+## What an ember at `at` would light: the nearest standing thing that burns within `reach`, or null.
+static func target(env: EnvironmentField, at: Vector2, reach := REACH) -> Structure:
 	var best: Structure = null
-	var best_d := REACH
-	for s in env.near(at, REACH):
+	var best_d := reach
+	for s in env.near(at, reach):
 		if not is_instance_valid(s) or s.destroyed or not FireManager.burns(s):
 			continue
 		var d := s.distance_to(at)
@@ -33,9 +36,11 @@ static func target(env: EnvironmentField, at: Vector2) -> Structure:
 
 
 func _build() -> void:
+	lv_reach = float(PowerBook.stat(extra, "ember", "REACH", REACH))
+	lv_start_level = float(PowerBook.stat(extra, "ember", "START_LEVEL", START_LEVEL))
 	duration = T_LAND + 1.6
 	busy = T_LAND
-	fuel = target(ctx.env, origin)
+	fuel = target(ctx.env, origin, lv_reach)
 	at(T_LAND, _land)
 	ctx.play(&"q_ember", origin)
 	if DominionParts.staged(self):
@@ -54,7 +59,7 @@ func _land() -> void:
 	var where := landing()
 	if fuel != null and is_instance_valid(fuel) and not fuel.destroyed:
 		if ctx.crowd != null:
-			ctx.crowd.fires.ignite(fuel, START_LEVEL)
+			ctx.crowd.fires.ignite(fuel, lv_start_level)
 			lit = ctx.crowd.fires.is_burning(fuel)
 		else:
 			# No town to keep the fire: the blow itself is fire's.

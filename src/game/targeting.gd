@@ -120,6 +120,15 @@ const AREAS := {
 	"nova": {"shape": "circle", "r": 5.0, "inner": 1.2},
 }
 
+## Which area numbers an ability level changes (Ruin ability levels): area key -> the table stat that sets it, so the preview and the
+## crowd's danger lane follow the level. "NAME*0.5" is half that stat (a lane's half-width from the wall's breadth). Scatter's circle is
+## its RADIUS, which no level changes; Wrath of the Sky's mark has no levelled stat.
+const AREA_STATS := {
+	"smite": {"r": "KILL_R"}, "ember": {"r": "REACH"}, "tornado": {"r": "PULL_RADIUS"}, "dragon": {"arc": "SWEEP_ARC"},
+	"tsunami": {"length": "LENGTH", "half": "WIDTH*0.5"}, "cinder": {"r": "RADIUS"}, "solaris": {"r": "RADIUS"},
+	"shatter": {"half": "HALF", "length": "MAX_LENGTH"},
+}
+
 ## The focused slot, or -1 when nothing is: the area is only drawn while a power is focused.
 var slot := -1
 ## A left press is in progress on a focused power; the release casts it unless something called it off.
@@ -324,13 +333,32 @@ func aim_dir() -> Vector2:
 
 
 func area() -> Dictionary:
-	var a: Dictionary = AREAS.get(_rules.key(slot), {})
+	var a := area_at(_rules.key(slot), _rules.level_of(slot))
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
 		return a
 	# A mode may cover its own ground (Divine Schism's regions).
 	var out := a.duplicate()
 	out.merge(own, true)
+	return out
+
+
+## A power's area at an ability level: AREAS[key] with each AREA_STATS number read from the level's table. Level 1 (and a power with
+## no table) is AREAS[key] as it stands.
+static func area_at(key: String, level: int) -> Dictionary:
+	var a: Dictionary = AREAS.get(key, {})
+	if level <= 1 or not AREA_STATS.has(key) or not PowerBook.has_levels(key):
+		return a
+	var out := a.duplicate()
+	var stats: Dictionary = AREA_STATS[key]
+	for field: String in stats:
+		var spec := String(stats[field])
+		var factor := 1.0
+		if spec.contains("*"):
+			factor = float(spec.get_slice("*", 1))
+			spec = spec.get_slice("*", 0)
+		if a.has(field):
+			out[field] = float(PowerBook.level_stat(key, level, spec, float(a[field]) / factor)) * factor
 	return out
 
 
@@ -365,8 +393,8 @@ func _whisper_held() -> bool:
 	return armed and is_instance_valid(_whisper_target)
 
 
-func _on_cast_made(_slot: int, key: String, at: Vector2) -> void:
-	var a: Dictionary = AREAS.get(key, {})
+func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
+	var a := area_at(key, _rules.level_of(from_slot))
 	if String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
 		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key)
@@ -500,7 +528,7 @@ func _draw() -> void:
 					_ring(who.ground_pos, 0.2, whisper_pick_color(who))
 		"ember":
 			# What it would light, or a red ring for nothing that burns in reach.
-			var burns := EmberFx.target(_crowd._env, _press)
+			var burns := EmberFx.target(_crowd._env, _press, float(area().get("r", EmberFx.REACH)))
 			if burns != null:
 				var box := burns.footprint.grow(0.08)
 				draw_polyline(PackedVector2Array([box.position, Vector2(box.end.x, box.position.y), box.end,

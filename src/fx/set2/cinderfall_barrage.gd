@@ -195,14 +195,19 @@ var _behind: Node2D
 var _plume: PixelParticles
 var _lava_voice: Node
 var _quake := 0.0
+## This cast's stone count and rain radius: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_stones := STONES
+var lv_radius := RADIUS
 
 
 func _build() -> void:
+	lv_stones = int(PowerBook.stat(extra, "cinder", "STONES", STONES))
+	lv_radius = float(PowerBook.stat(extra, "cinder", "RADIUS", RADIUS))
 	duration = 12.0
 	_center_px = Iso.ground_to_screen(origin)
 
 	_sigil = Set2Parts.sigil(self, origin, 3.2, Color("ff5a22"), "magma")
-	var outer := FxParts.rings(self, origin, RADIUS, Color("ff5a2a"), 2, 22.0)
+	var outer := FxParts.rings(self, origin, lv_radius, Color("ff5a2a"), 2, 22.0)
 	outer.z_index = 8
 	outer.set_param("crosshair", 0.0)
 	outer.set_param("fill", 0.06)
@@ -238,7 +243,7 @@ func _build() -> void:
 func _fx_process(delta: float) -> void:
 	if _quake > 0.0:
 		ctx.shake.add_trauma(_quake * delta * 2.0)
-		ctx.env.shake_radius(origin, RADIUS, _quake * 4.0)
+		ctx.env.shake_radius(origin, lv_radius, _quake * 4.0)
 	# Nothing survives inside the standing volcano: whatever wanders into its foot is burned and thrown back out.
 	if _volcano != null and is_instance_valid(_volcano) and _volcano.rise > 0.0 and _volcano.sink < 0.9:
 		for e in ctx.field.in_radius(origin, VOLCANO_RADIUS + 0.3):
@@ -406,9 +411,9 @@ func _erupt() -> void:
 func _schedule_barrage() -> void:
 	var placed: Array[Vector2] = []
 	var misses := 0
-	while placed.size() < STONES and misses < 800:
+	while placed.size() < lv_stones and misses < 800:
 		var a := ctx.rng.randf() * TAU
-		var d := lerpf(VOLCANO_RADIUS + 0.6, RADIUS, sqrt(ctx.rng.randf()))
+		var d := lerpf(VOLCANO_RADIUS + 0.6, lv_radius, sqrt(ctx.rng.randf()))
 		var g := origin + Vector2.RIGHT.rotated(a) * d
 		var ok := true
 		for q in placed:
@@ -550,7 +555,7 @@ func _sink() -> void:
 	haze.tween_param("strength", 1.6, 0.0, 1.5, 1.2)
 	haze.life = 2.8
 	FxParts.emitter(self, ctx.overhead, _center_px, PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 30.0, duration - t - 0.6, {
-		"radius": FxParts.particle_radius(RADIUS * 0.8), "alt": Vector2(0, 6), "alt_speed": Vector2(12, 40),
+		"radius": FxParts.particle_radius(lv_radius * 0.8), "alt": Vector2(0, 6), "alt_speed": Vector2(12, 40),
 		"speed": Vector2(0, 10), "life": Vector2(0.6, 1.4), "size": Vector2(1, 1),
 	})
 	at(duration - 1.3, func():

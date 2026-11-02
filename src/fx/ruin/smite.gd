@@ -14,27 +14,32 @@ const LIGHT := Color(0.7, 0.85, 1.0)
 
 ## How many it struck down.
 var struck := 0
+## This cast's kill radius and building blow: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_kill_r := KILL_R
+var lv_damage := DAMAGE
 
 
 func _build() -> void:
+	lv_kill_r = float(PowerBook.stat(extra, "smite", "KILL_R", KILL_R))
+	lv_damage = float(PowerBook.stat(extra, "smite", "DAMAGE", DAMAGE))
 	duration = 2.2
 	at(T_STRIKE, _strike)
 	ctx.play(&"orb_charge", origin, -4.0)
 	if DominionParts.staged(self):
-		var mark := FxParts.rings(self, origin, KILL_R, Color("cfe8ff"), 2, 6.0)
+		var mark := FxParts.rings(self, origin, lv_kill_r, Color("cfe8ff"), 2, 6.0)
 		mark.set_param("scan", 0.0)
 		mark.tween_param("reveal", 0.2, 1.0, T_STRIKE * 0.8, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		mark.life = T_STRIKE + 0.1
 
 
 func _strike() -> void:
-	for e in ctx.field.in_radius(origin, KILL_R):
+	for e in ctx.field.in_radius(origin, lv_kill_r):
 		var p := e as Person
 		if p != null and p.inside:
 			continue
 		if ctx.field.kill(e, &"lightning", origin):
 			struck += 1
-	ctx.env.damage_radius(origin, HIT_R, DAMAGE, &"smite")
+	ctx.env.damage_radius(origin, HIT_R, lv_damage, &"smite")
 	ctx.play(&"hs_strike", origin, -3.0)
 	if not DominionParts.staged(self):
 		return

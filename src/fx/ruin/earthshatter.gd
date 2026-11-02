@@ -39,16 +39,23 @@ var _rumble_in := 0.0
 var _dust_in := 0.0
 var _stretch_at := 0.0
 var _walls_done := {}
+## This cast's longest crack, fall width and crawl speed: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_max_length := MAX_LENGTH
+var lv_half := HALF
+var lv_speed := SPEED
 
 
 func _build() -> void:
+	lv_max_length = float(PowerBook.stat(extra, "shatter", "MAX_LENGTH", MAX_LENGTH))
+	lv_half = float(PowerBook.stat(extra, "shatter", "HALF", HALF))
+	lv_speed = float(PowerBook.stat(extra, "shatter", "SPEED", SPEED))
 	to = extra.get("to", origin + Vector2(MIN_LENGTH, 0.0))
 	var run := to - origin
 	if run.length() < 0.01:
 		run = Vector2(1.0, 0.0)
-	length = clampf(run.length(), MIN_LENGTH, MAX_LENGTH)
+	length = clampf(run.length(), MIN_LENGTH, lv_max_length)
 	to = origin + run.normalized() * length
-	var crawl := length / SPEED
+	var crawl := length / lv_speed
 	duration = T_CRACK + crawl + T_SETTLE
 	busy = T_CRACK + crawl
 	at(T_CRACK, _open)
@@ -58,7 +65,7 @@ func _build() -> void:
 	if not DominionParts.staged(self):
 		return
 	# The ground groans: the run is marked faintly, and the start cracks and glows.
-	var mark := FxParts.rings(self, origin, HALF, CRACK_LIGHT, 2, 8.0)
+	var mark := FxParts.rings(self, origin, lv_half, CRACK_LIGHT, 2, 8.0)
 	mark.set_param("scan", 0.0)
 	mark.tween_param("reveal", 0.0, 1.0, T_CRACK * 0.8, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	mark.life = T_CRACK + 0.05
@@ -73,7 +80,7 @@ func _build() -> void:
 
 ## The ground breaks at the start.
 func _open() -> void:
-	fissure = Fissure.new().setup(ctx.field, origin, to, HALF, ctx.rng.randi())
+	fissure = Fissure.new().setup(ctx.field, origin, to, lv_half, ctx.rng.randi())
 	ctx.ground.add_child(fissure)
 	fissure.hide_rubble(ctx.env)
 	ctx.play(&"hs_fissure", origin, -1.0)
@@ -86,7 +93,7 @@ func _open() -> void:
 	ctx.shake.kick(Vector2(0, 5))
 	var sp := Iso.ground_to_screen(origin)
 	FxParts.debris(self, sp, 22, 10.0, Vector2(40, 200), FxParts.ROCK, Vector2(2, 5), true)
-	var ring := FxParts.shockwave(self, origin, HALF + 1.5, FxParts.FIRE)
+	var ring := FxParts.shockwave(self, origin, lv_half + 1.5, FxParts.FIRE)
 	ring.set_param("thickness", 0.14)
 	ring.tween_param("progress", 0.05, 1.0, 0.4, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 1.0, 0.0, 0.2, 0.2)
@@ -114,37 +121,37 @@ func _fx_process(delta: float) -> void:
 	if t < T_CRACK or reach >= length:
 		return
 	var was := reach
-	reach = minf(reach + SPEED * delta, length)
+	reach = minf(reach + lv_speed * delta, length)
 	if fissure != null and is_instance_valid(fissure):
 		fissure.reach = reach
 	var dir := (to - origin).normalized()
 	# Everything the front has passed since the last frame: the fall, the shove, the walls.
 	var mid := origin + dir * ((was + reach) * 0.5)
 	var step := maxf(reach - was, 0.05)
-	for e in ctx.field.in_radius(mid, HALF + SHOVE + step):
+	for e in ctx.field.in_radius(mid, lv_half + SHOVE + step):
 		var p := e as Person
 		if p != null and p.inside:
 			continue
 		var along := (e.ground_pos - origin).dot(dir)
-		if along < was - HALF or along > reach + HALF:
+		if along < was - lv_half or along > reach + lv_half:
 			continue
 		var off := absf((e.ground_pos - origin).cross(dir))
-		if off <= HALF:
+		if off <= lv_half:
 			if ctx.field.kill(e, &"pit", e.ground_pos):
 				fell += 1
 				if fissure != null and is_instance_valid(fissure):
 					fissure.crumble(e.ground_pos)
-		elif off <= HALF + SHOVE:
+		elif off <= lv_half + SHOVE:
 			var lateral := (e.ground_pos - origin) - dir * along  # away from the crack's line
 			e.knock((lateral.normalized() if lateral.length() > 0.01 else Vector2(-dir.y, dir.x)) * 2.0)
-	for s in ctx.env.near(front(), HALF + WALL_REACH + 1.0):
+	for s in ctx.env.near(front(), lv_half + WALL_REACH + 1.0):
 		if not is_instance_valid(s) or s.destroyed or _walls_done.has(s) or s.role == &"thorns":
 			continue
 		var c := s.center()
 		var along := (c - origin).dot(dir)
-		if along < -HALF or along > reach + HALF:
+		if along < -lv_half or along > reach + lv_half:
 			continue
-		if absf((c - origin).cross(dir)) <= HALF + WALL_REACH + s.footprint.size.length() * 0.5:
+		if absf((c - origin).cross(dir)) <= lv_half + WALL_REACH + s.footprint.size.length() * 0.5:
 			_walls_done[s] = true
 			s.damage(WALL_DAMAGE, c, &"shatter")
 			broke += 1
@@ -153,14 +160,14 @@ func _fx_process(delta: float) -> void:
 		if not is_instance_valid(d) or not d.visible:
 			continue
 		var along := (d.at - origin).dot(dir)
-		if along < was - HALF or along > reach + HALF:
+		if along < was - lv_half or along > reach + lv_half:
 			continue
-		if absf((d.at - origin).cross(dir)) <= HALF + 0.5:
+		if absf((d.at - origin).cross(dir)) <= lv_half + 0.5:
 			d.visible = false
 	# The town is told, stretch by stretch.
 	if ctx.crowd != null and reach - _fright_at >= FRIGHT_EVERY:
 		_fright_at = reach
-		ctx.crowd.fright(front(), HALF + 1.0, 0.8, 6.0, 7.0, 12.0, &"shatter")
+		ctx.crowd.fright(front(), lv_half + 1.0, 0.8, 6.0, 7.0, 12.0, &"shatter")
 	if not DominionParts.staged(self):
 		return
 	# The earth shakes the whole way; the front throws dust and rock; the rumble goes on.
@@ -187,7 +194,7 @@ func _fx_process(delta: float) -> void:
 	if reach - _stretch_at >= STRETCH:
 		_stretch_at = reach
 		var here := front()
-		var ring := FxParts.shockwave(self, here, HALF + 1.6, FxParts.FIRE)
+		var ring := FxParts.shockwave(self, here, lv_half + 1.6, FxParts.FIRE)
 		ring.set_param("thickness", 0.1)
 		ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 		ring.tween_param("fade", 0.8, 0.0, 0.2, 0.15)

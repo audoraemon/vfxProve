@@ -1,7 +1,7 @@
 extends RefCounted
 ## Ability levels (god P1, spec §5.4, §6): Might rises with a power's level, a power's `levels` table is read through
 ## PowerBook.stat(), the Draft and the Rules know each pick's level, and every cast carries extra["level"] on a copy of its extra.
-## No POWERS row has a table in P1, so a fixture stands in for one.
+## Ruin's ten powers have tables (tests/test_ruin_levels.gd); a fixture stands in for a row with its own.
 
 ## A power row with a table: radius 1.0 .. 1.5, and the level-5 twist.
 const FIXTURE := {"key": "fx", "name": "Fixture", "dp": 2, "levels": [
@@ -27,14 +27,16 @@ static func _might(t) -> void:
 
 
 static func _no_tables(t) -> void:
-	var any := false
+	var ruin := ["smite", "ember", "tornado", "scatter", "solaris", "dragon", "tsunami", "cinder", "tempest", "shatter"]
+	var stray := PackedStringArray()
 	for key in PowerBook.keys():
-		any = any or PowerBook.has_levels(key)
-	t.check(not any, "no POWERS row has a levels table in P1")
-	t.check(PowerBook.level_stat("ember", 5, "radius", 1.5) == 1.5, "without a table a stat is the effect's own number")
-	t.check(PowerBook.level_change("ember", 2) == PowerBook.NO_LEVELS and PowerBook.twist("ember") == "",
+		if PowerBook.has_levels(key) != ruin.has(key):
+			stray.append(key)
+	t.check(stray.is_empty(), "no row outside Ruin's ten has a levels table, and each of the ten has one (%s)" % [stray])
+	t.check(PowerBook.level_stat("doom", 5, "radius", 1.5) == 1.5, "without a table a stat is the effect's own number")
+	t.check(PowerBook.level_change("doom", 2) == PowerBook.NO_LEVELS and PowerBook.twist("doom") == "",
 		"without a table: level_change says so and there is no twist")
-	t.check(PowerBook.stat({"level": 5}, "ember", "radius", 2.5) == 2.5 and PowerBook.stat({}, "nosuch", "radius", 7) == 7,
+	t.check(PowerBook.stat({"level": 5}, "doom", "radius", 2.5) == 2.5 and PowerBook.stat({}, "nosuch", "radius", 7) == 7,
 		"PowerBook.stat() hands back base for a power with no table, or no power")
 
 

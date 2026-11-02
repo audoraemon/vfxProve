@@ -181,9 +181,10 @@ static func tab_rect(i: int, count := PowerBook.AUTHORITIES.size()) -> Rect2:
 	return Rect2(TAB_AT + Vector2(float(i) * (w + TAB_GAP), 0.0), Vector2(w, TAB_H))
 
 
-## A power's cooldown as the cards print it: whole seconds stay whole ("20 s"), a fraction shows one decimal ("2.5 s").
-static func cooldown_text(p: Dictionary) -> String:
-	var seconds := float(p.cooldown)
+## A power's cooldown as the cards print it: whole seconds stay whole ("20 s"), a fraction shows one decimal ("2.5 s"). The
+## cooldown is the one at `level` (Ruin's ten powers shorten it as they grow); a row with no key (a fixture) prints its own.
+static func cooldown_text(p: Dictionary, level := 1) -> String:
+	var seconds := PowerBook.cooldown(String(p.key), level) if p.has("key") else float(p.cooldown)
 	return "%d s" % roundi(seconds) if is_equal_approx(seconds, roundf(seconds)) else "%.1f s" % seconds
 
 
@@ -394,9 +395,9 @@ func card_cost_text(key: String) -> String:
 		return "Sealed: %s" % GodSlot.nights_text(god.seal_nights)
 	if god != null:
 		# A god's card (god P1): the learned level and the Might at that level.
-		return "L%d  %d Might  %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p)]
+		return "L%d  %d Might  %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p, draft.level_of(key))]
 	var might := PowerBook.might(key, draft.level_of(key)) if draft.slot_of(key) > 0 else int(p.dp)
-	return "%d Might  %s" % [might, cooldown_text(p)]
+	return "%d Might  %s" % [might, cooldown_text(p, draft.level_of(key))]
 
 
 ## The power the mouse is over: a card's, or the pick in a loadout slot's (or its level badge's).
@@ -701,9 +702,9 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 	UiTheme.frame(_ui, clip_rect, true)
 	y = clip_rect.end.y + 16.0
 	var title := PowerBook.authority_title(_tab_of(key))
-	var stats := "%d Might   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)]
+	var stats := "%d Might   %s   %s" % [int(p.dp), cooldown_text(p, draft.level_of(key)), String(p.aim)]
 	if god != null:
-		stats = "L%d   %d Might   %s   %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p), String(p.aim)]
+		stats = "L%d   %d Might   %s   %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p, draft.level_of(key)), String(p.aim)]
 	UiTheme.text(_ui, Vector2(tx, y), stats, UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,

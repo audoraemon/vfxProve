@@ -22,10 +22,22 @@ const POWERS := [
 		"authority": "dominion"},
 	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
-		"authority": "ruin"},
+		"authority": "ruin",
+		"levels": [
+			{"KILL_R": 0.6, "DAMAGE": 45.0, "cooldown": 10.0},
+			{"KILL_R": 0.65, "DAMAGE": 50.0, "cooldown": 9.5},
+			{"KILL_R": 0.7, "DAMAGE": 55.0, "cooldown": 9.0},
+			{"KILL_R": 0.75, "DAMAGE": 60.0, "cooldown": 8.5},
+			{"KILL_R": 0.8, "DAMAGE": 65.0, "cooldown": 8.0, "twist": true, "twist_text": "Forked Bolt: leaps to one more nearby"}]},
 	{"key": "ember", "name": "Ember", "path": "res://src/fx/ruin/ember.gd",
 		"dp": 1, "cooldown": 15.0, "aim": "click", "shape": "one spark that sets one building alight", "quiet": true,
-		"authority": "ruin"},
+		"authority": "ruin",
+		"levels": [
+			{"START_LEVEL": 0.45, "REACH": 1.0, "cooldown": 15.0},
+			{"START_LEVEL": 0.5, "REACH": 1.0, "cooldown": 14.0},
+			{"START_LEVEL": 0.55, "REACH": 1.2, "cooldown": 13.0},
+			{"START_LEVEL": 0.6, "REACH": 1.2, "cooldown": 12.0},
+			{"START_LEVEL": 0.65, "REACH": 1.4, "cooldown": 11.0, "twist": true, "twist_text": "Leaping Spark: jumps to the next house"}]},
 	{"key": "deathmark", "name": "Death Mark", "path": "res://src/fx/death/death_mark.gd",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
 		"quiet": true, "authority": "death"},
@@ -45,7 +57,13 @@ const POWERS := [
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "scatter", "name": "Scatter Strike", "path": "res://src/fx/ruin/scatter_strike.gd",
-		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "twelve bursts from the ground, thrown at random over a wide circle, 4 s", "authority": "ruin"},
+		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "twelve bursts from the ground, thrown at random over a wide circle, 4 s", "authority": "ruin",
+		"levels": [
+			{"BLASTS": 12, "KILL_R": 0.9, "cooldown": 30.0},
+			{"BLASTS": 13, "KILL_R": 0.9, "cooldown": 29.0},
+			{"BLASTS": 14, "KILL_R": 1.0, "cooldown": 28.0},
+			{"BLASTS": 15, "KILL_R": 1.0, "cooldown": 27.0},
+			{"BLASTS": 16, "KILL_R": 1.1, "cooldown": 25.0, "twist": true, "twist_text": "Seeking Bursts: each burst finds someone near"}]},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
 		"quiet": true, "alarm": 0.2, "authority": "dominion"},
@@ -56,12 +74,24 @@ const POWERS := [
 		"dp": 2, "cooldown": 42.0, "aim": "drag", "shape": "3-unit bramble wall, 25 s", "quiet": true,
 		"authority": "passage"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
-		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin"},
+		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin",
+		"levels": [
+			{"PULL_RADIUS": 3.2, "LIFETIME": 10.0, "cooldown": 45.0},
+			{"PULL_RADIUS": 3.4, "LIFETIME": 11.0, "cooldown": 45.0},
+			{"PULL_RADIUS": 3.6, "LIFETIME": 12.0, "cooldown": 42.0},
+			{"PULL_RADIUS": 3.8, "LIFETIME": 13.0, "cooldown": 40.0},
+			{"PULL_RADIUS": 4.0, "LIFETIME": 14.0, "cooldown": 38.0, "twist": true, "twist_text": "Twin Funnels: splits in two as it dies"}]},
 	{"key": "pestilence", "name": "Pestilence", "path": "res://src/fx/curse/pestilence.gd",
 		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
 		"authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
-		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin"},
+		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin",
+		"levels": [
+			{"BREATH_TIME": 2.4, "SWEEP_ARC": 1.0, "cooldown": 54.0},
+			{"BREATH_TIME": 2.6, "SWEEP_ARC": 1.0, "cooldown": 52.0},
+			{"BREATH_TIME": 2.8, "SWEEP_ARC": 1.1, "cooldown": 50.0},
+			{"BREATH_TIME": 3.0, "SWEEP_ARC": 1.2, "cooldown": 48.0},
+			{"BREATH_TIME": 3.2, "SWEEP_ARC": 1.3, "cooldown": 46.0, "twist": true, "twist_text": "Second Breath: breathes again, back the other way"}]},
 	{"key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd",
 		"dp": 3, "cooldown": 54.0, "aim": "two clicks", "shape": "two faint mirrors: in at the first, out at the second, 30 s",
 		"quiet": true, "authority": "passage"},
@@ -108,7 +138,13 @@ const POWERS := [
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
-		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin"},
+		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin",
+		"levels": [
+			{"LENGTH": 6.5, "WIDTH": 8.0, "cooldown": 60.0},
+			{"LENGTH": 7.0, "WIDTH": 8.5, "cooldown": 58.0},
+			{"LENGTH": 7.5, "WIDTH": 9.0, "cooldown": 55.0},
+			{"LENGTH": 8.0, "WIDTH": 10.0, "cooldown": 53.0},
+			{"LENGTH": 8.5, "WIDTH": 11.0, "cooldown": 50.0, "twist": true, "twist_text": "Backwash: drags the living back"}]},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
 		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "pull field", "authority": "ruin"},
 	{"key": "laser", "name": "Walking Laser Grid", "path": "res://src/fx/walking_laser_grid.gd",
@@ -116,14 +152,26 @@ const POWERS := [
 	{"key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd",
 		"dp": 3, "cooldown": 66.0, "aim": "click", "shape": "random bombardment", "authority": "ruin"},
 	{"key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd",
-		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "volcano + stone rain", "authority": "ruin"},
+		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "volcano + stone rain", "authority": "ruin",
+		"levels": [
+			{"STONES": 20, "RADIUS": 5.8, "cooldown": 75.0},
+			{"STONES": 22, "RADIUS": 5.8, "cooldown": 72.0},
+			{"STONES": 24, "RADIUS": 6.2, "cooldown": 70.0},
+			{"STONES": 26, "RADIUS": 6.6, "cooldown": 66.0},
+			{"STONES": 28, "RADIUS": 7.0, "cooldown": 62.0, "twist": true, "twist_text": "Lava Pool: a burning pool stays 15 s"}]},
 	{"key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "8 punches + slam", "authority": "ruin"},
 	{"key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "burst + freeze + ice", "authority": "ruin"},
 	{"key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd",
 		"dp": 4, "cooldown": 105.0, "aim": "click", "shape": "5 s pillar of sunfire; leaves a pit that takes all who enter",
-		"authority": "ruin"},
+		"authority": "ruin",
+		"levels": [
+			{"RADIUS": 2.2, "BEAM_TIME": 5.0, "cooldown": 105.0},
+			{"RADIUS": 2.4, "BEAM_TIME": 5.0, "cooldown": 100.0},
+			{"RADIUS": 2.6, "BEAM_TIME": 5.5, "cooldown": 100.0},
+			{"RADIUS": 2.8, "BEAM_TIME": 6.0, "cooldown": 95.0},
+			{"RADIUS": 3.0, "BEAM_TIME": 6.5, "cooldown": 90.0, "twist": true, "twist_text": "Wandering Sun: drifts toward the crowd"}]},
 	{"key": "voice", "name": "Voice of God", "path": "res://src/fx/dominion/voice_of_god.gd",
 		"dp": 5, "cooldown": 180.0, "aim": "click", "shape": "one command the whole town obeys; Q/E picks it",
 		"quiet": true, "alarm": 6.0, "authority": "dominion", "modes": [
@@ -137,10 +185,22 @@ const POWERS := [
 			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
 	{"key": "tempest", "name": "Wrath of the Sky", "path": "res://src/fx/ruin/tempest.gd",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "a storm over the whole town: 25 s of bolts, the rain drives people in; once",
-		"authority": "ruin"},
+		"authority": "ruin",
+		"levels": [
+			{"STORM_TIME": 25.0, "VOLLEY": Vector2i(5, 7), "VOLLEY_EVERY": 1.3},
+			{"STORM_TIME": 27.0, "VOLLEY": Vector2i(5, 7), "VOLLEY_EVERY": 1.3},
+			{"STORM_TIME": 29.0, "VOLLEY": Vector2i(6, 8), "VOLLEY_EVERY": 1.3},
+			{"STORM_TIME": 31.0, "VOLLEY": Vector2i(6, 8), "VOLLEY_EVERY": 1.2},
+			{"STORM_TIME": 33.0, "VOLLEY": Vector2i(7, 9), "VOLLEY_EVERY": 1.2, "twist": true, "twist_text": "Called Bolts: click to call a bolt every 3 s"}]},
 	{"key": "shatter", "name": "Earthshatter", "path": "res://src/fx/ruin/earthshatter.gd",
 		"dp": 5, "cooldown": 999.0, "aim": "two clicks", "shape": "the ground torn open from one click to the next, slowly; the crack stays; once",
-		"authority": "ruin"},
+		"authority": "ruin",
+		"levels": [
+			{"MAX_LENGTH": 18.0, "HALF": 1.1, "SPEED": 2.0},
+			{"MAX_LENGTH": 20.0, "HALF": 1.2, "SPEED": 2.0},
+			{"MAX_LENGTH": 22.0, "HALF": 1.2, "SPEED": 2.2},
+			{"MAX_LENGTH": 24.0, "HALF": 1.3, "SPEED": 2.2},
+			{"MAX_LENGTH": 26.0, "HALF": 1.4, "SPEED": 2.5, "twist": true, "twist_text": "Fault Lines: forks twice as it runs"}]},
 	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
 		"authority": "dominion", "modes": [
@@ -202,7 +262,7 @@ static func get_power(key: String) -> Dictionary:
 const MAX_LEVEL := 5
 ## The levels at which a power costs one more Might (spec §6): reaching 3 adds 1, reaching 5 adds 1.
 const MIGHT_STEPS := [3, 5]
-## What level_change() says for a power whose row has no `levels` table yet (god P1: no row has one).
+## What level_change() says for a power whose row has no `levels` table yet (Ruin's ten powers have one; the other rows do not yet).
 const NO_LEVELS := "Level effects not set"
 ## The keys a level table holds besides stats: level 5's twist flag and its one-line text.
 const TWIST_KEYS := ["twist", "twist_text"]
@@ -256,6 +316,21 @@ static func stat(extra: Dictionary, key: String, stat_name: String, base: Varian
 	return level_stat(key, int(extra.get("level", 1)), stat_name, base)
 
 
+## A power's cooldown in seconds at `level`: the "cooldown" its table gives that level, else the row's own; 0.0 for an unknown key.
+## (Tempest and Earthshatter have no cooldown stat: they stay at the row's 999, once.)
+static func cooldown(key: String, level := 1) -> float:
+	var p := get_power(key)
+	if p.is_empty():
+		return 0.0
+	return float(stat_in(p, level, "cooldown", p.get("cooldown", 0.0)))
+
+
+## True when this cast carries a power's level-5 twist: its level is 5 and that row's level 5 has one. Level 1-4, no level and a
+## power without a table are all false -- an effect gates its twist on this before it draws a random number or schedules anything.
+static func twist_at(extra: Dictionary, key: String) -> bool:
+	return bool(stat(extra, key, "twist", false))
+
+
 ## The one-line twist a power gains at level 5, or "" for a power without one.
 static func twist(key: String) -> String:
 	return twist_in(get_power(key))
@@ -270,6 +345,17 @@ static func twist_in(entry: Dictionary) -> String:
 	if top is Dictionary and bool((top as Dictionary).get("twist", false)):
 		return String((top as Dictionary).get("twist_text", ""))
 	return ""
+
+
+## What level_change() calls a stat when it prints it: the name an effect reads -> a few plain words (R4). A stat not named here
+## prints under its own name. "<key>.<stat>" beats "<stat>" for the one name two powers use differently.
+const STAT_LABELS := {
+	"KILL_R": "kill radius", "DAMAGE": "damage", "cooldown": "cooldown", "START_LEVEL": "start fire", "REACH": "reach",
+	"PULL_RADIUS": "pull radius", "LIFETIME": "life", "BLASTS": "bursts", "RADIUS": "radius", "cinder.RADIUS": "rain radius",
+	"BEAM_TIME": "burn time", "BREATH_TIME": "breath", "SWEEP_ARC": "sweep", "LENGTH": "travel", "WIDTH": "wall width",
+	"STONES": "stones", "STORM_TIME": "storm", "VOLLEY": "bolts", "VOLLEY_EVERY": "volley every",
+	"MAX_LENGTH": "longest crack", "HALF": "fall width", "SPEED": "crawl",
+}
 
 
 ## What reaching `level` changes for a power, as the tables give it: "radius 1.5 -> 1.7, damage 40 -> 46" (level 5 ends with the
@@ -293,10 +379,23 @@ static func level_change_in(entry: Dictionary, level: int) -> String:
 		if TWIST_KEYS.has(name):
 			continue
 		if not before.has(name) or before[name] != after[name]:
-			parts.append("%s %s -> %s" % [name, str(before.get(name, "?")), str(after[name])])
+			parts.append("%s %s -> %s" % [_stat_label(entry, name), _stat_text(before.get(name, "?")), _stat_text(after[name])])
 	if lv == MAX_LEVEL and twist_in(entry) != "":
 		parts.append(twist_in(entry))
 	return ", ".join(parts)
+
+
+## The words level_change() prints for a stat of this row (STAT_LABELS, else the stat's own name).
+static func _stat_label(entry: Dictionary, name: String) -> String:
+	var own := "%s.%s" % [String(entry.get("key", "")), name]
+	return String(STAT_LABELS.get(own, STAT_LABELS.get(name, name)))
+
+
+## A stat's value as level_change() prints it: a Vector2i "5-7", anything else as str().
+static func _stat_text(v: Variant) -> String:
+	if v is Vector2i:
+		return "%d-%d" % [(v as Vector2i).x, (v as Vector2i).y]
+	return str(v)
 
 
 ## What is wrong with a row's levels table; empty when valid: MAX_LEVEL tables, every stat named in all of them with one kind of

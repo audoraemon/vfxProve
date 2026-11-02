@@ -35,23 +35,30 @@ var _burn_voice: Node
 var _sweep := 0.0
 var _breathing := false
 var _next_patch := 0.0
+## This cast's breath time and sweep, and when the dragon sinks: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_breath_time := BREATH_TIME
+var lv_sweep_arc := SWEEP_ARC
+var lv_t_sink := T_SINK
 
 
 func _build() -> void:
-	duration = 11.5
+	lv_breath_time = float(PowerBook.stat(extra, "dragon", "BREATH_TIME", BREATH_TIME))
+	lv_sweep_arc = float(PowerBook.stat(extra, "dragon", "SWEEP_ARC", SWEEP_ARC))
+	lv_t_sink = T_BREATH + lv_breath_time + 0.4
+	duration = 11.5 + (lv_t_sink - T_SINK)
 	# Standing pieces sort above buildings, under the dragon.
 	stand_layer()
 	_center_px = Iso.ground_to_screen(origin)
 	_dir = FACING
 	# Arc centered on the dragon's facing, slightly biased to its right so the jet never crosses its body.
-	_start_angle = _dir.angle() - SWEEP_ARC * 0.5 - deg_to_rad(8.0)
+	_start_angle = _dir.angle() - lv_sweep_arc * 0.5 - deg_to_rad(8.0)
 	_sigil = Set2Parts.sigil(self, origin, 2.4, Color("ff5a2a"), "dragon")
 	# Sweep arc indicator showing the coming cone.
 	var arc := FxParts.quad(self, SH_CONE, Vector2.ONE * CONE_RADIUS * 2.0, ctx.ground)
 	arc.position = origin
 	arc.z_index = 8
 	arc.set_param("start", _start_angle)
-	arc.set_param("sweep", SWEEP_ARC)
+	arc.set_param("sweep", lv_sweep_arc)
 	arc.set_param("heat", 0.35)
 	arc.set_param("fade", 0.0)
 	arc.tween_param("fade", 0.0, 0.35, 0.8)
@@ -65,7 +72,7 @@ func _build() -> void:
 	at(T_RISE, _rise)
 	at(T_INHALE, _inhale)
 	at(T_BREATH, _breathe)
-	at(T_SINK, _sink)
+	at(lv_t_sink, _sink)
 
 
 func _erupt() -> void:
@@ -94,9 +101,9 @@ func _erupt() -> void:
 		var tw := s.create_tween()
 		tw.tween_interval(i * 0.02)
 		tw.tween_property(s, "grow", 1.0, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_interval(T_SINK - T_ERUPT + ctx.rng.randf_range(0.0, 0.6))
+		tw.tween_interval(lv_t_sink - T_ERUPT + ctx.rng.randf_range(0.0, 0.6))
 		tw.tween_property(s, "shatter", 1.0, 0.6)
-		tw.tween_interval(duration - T_SINK - 2.0)
+		tw.tween_interval(duration - lv_t_sink - 2.0)
 		tw.tween_property(s, "fade", 0.0, 0.8)
 	var lava := FxParts.particles(self, ctx.overhead, _center_px, PixelParticles.Shape.SQUARE, FxParts.FIRE_LIFE)
 	lava.gravity = 360.0
@@ -123,16 +130,16 @@ func _rise() -> void:
 	var light := FxParts.ground_light(self, origin, 4.8, FIRE_LIGHT)
 	light.set_param("flicker", 1.0)
 	light.tween_param("intensity", 0.0, 1.1, RISE_TIME)
-	light.tween_param("intensity", 1.1, 0.0, 1.2, T_SINK - t)
+	light.tween_param("intensity", 1.1, 0.0, 1.2, lv_t_sink - t)
 	var bloom := FxParts.bloom(self, _center_px + Vector2(0, -90), 120.0, FIRE_LIGHT, 0.0, 1.2)
 	bloom.tween_param("intensity", 0.0, 0.75, RISE_TIME)
-	bloom.tween_param("intensity", 0.75, 0.0, 1.0, T_SINK - t)
-	bloom.life = T_SINK - t + 1.1
+	bloom.tween_param("intensity", 0.75, 0.0, 1.0, lv_t_sink - t)
+	bloom.life = lv_t_sink - t + 1.1
 	var haze := FxParts.heat_haze(self, _center_px + Vector2(0, -60), 120.0, 2.0)
-	haze.tween_param("strength", 2.0, 0.0, 1.0, T_SINK - t)
-	haze.life = T_SINK - t + 1.1
+	haze.tween_param("strength", 2.0, 0.0, 1.0, lv_t_sink - t)
+	haze.life = lv_t_sink - t + 1.1
 	FxParts.emitter(self, ctx.overhead, _center_px + Vector2(0, -60), PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 40.0,
-		T_SINK - t, {
+		lv_t_sink - t, {
 			"radius": 60.0, "alt": Vector2(0, 80), "alt_speed": Vector2(20, 60), "speed": Vector2(0, 14),
 			"life": Vector2(0.6, 1.3), "size": Vector2(1, 2),
 		})
@@ -143,7 +150,7 @@ func _rise() -> void:
 func _inhale() -> void:
 	ctx.play(&"dr_inhale", origin)
 	# Rears back and lowers its head (breath clip); a flash gathers where the fire will leave the mouth.
-	_dragon.breathe(T_BREATH - T_INHALE, BREATH_TIME, 0.4)
+	_dragon.breathe(T_BREATH - T_INHALE, lv_breath_time, 0.4)
 	var flash := FxParts.bloom(self, _center_px + _dragon.mouth_at(DragonSprite.FIRE_SEQ[0]), 20.0,
 		Color(1.0, 0.85, 0.5), 0.0)
 	flash.tween_param("intensity", 0.0, 1.4, T_BREATH - T_INHALE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
@@ -160,7 +167,7 @@ func _breathe() -> void:
 	_cone = QuadFx.new().setup(SH_CONE, Vector2.ONE * CONE_RADIUS * 2.0)
 	_cone.position = origin
 	_cone.z_index = 7
-	_cone.set_param("start", _start_angle + SWEEP_ARC)
+	_cone.set_param("start", _start_angle + lv_sweep_arc)
 	_cone.set_param("reverse", 1.0)
 	_cone.set_param("sweep", 0.0)
 	_cone.set_param("seed", ctx.rng.randf() * 20.0)
@@ -175,19 +182,19 @@ func _breathe() -> void:
 	_stream.auto_free = false
 	_stream.drag = 0.6
 	ctx.lights.register_quad(_cone, origin, 3.2, FIRE_LIGHT,
-		func(): return origin + Vector2.RIGHT.rotated(_start_angle + SWEEP_ARC - _sweep) * CONE_RADIUS * 0.6)
+		func(): return origin + Vector2.RIGHT.rotated(_start_angle + lv_sweep_arc - _sweep) * CONE_RADIUS * 0.6)
 	_cone.set_param("intensity", 0.7)
 
 
 func _fx_process(delta: float) -> void:
 	if not _breathing:
 		return
-	var k := clampf((t - T_BREATH) / BREATH_TIME, 0.0, 1.0)
-	_sweep = SWEEP_ARC * (k * k * (3.0 - 2.0 * k) * 0.5 + k * 0.5)
+	var k := clampf((t - T_BREATH) / lv_breath_time, 0.0, 1.0)
+	_sweep = lv_sweep_arc * (k * k * (3.0 - 2.0 * k) * 0.5 + k * 0.5)
 	# Sweep from the dragon's left (screen lower-left) to its right (screen right), following the head.
-	_cone.set_param("start", _start_angle + SWEEP_ARC - _sweep)
+	_cone.set_param("start", _start_angle + lv_sweep_arc - _sweep)
 	_cone.set_param("sweep", _sweep)
-	var beam_angle := _start_angle + SWEEP_ARC - _sweep
+	var beam_angle := _start_angle + lv_sweep_arc - _sweep
 	var beam_dir := Vector2.RIGHT.rotated(beam_angle)
 	var mouth := _center_px + _dragon.mouth_pos()
 	# Thick flame jet from the mouth to where it hits the ground, then puffs rolling on along the cone.

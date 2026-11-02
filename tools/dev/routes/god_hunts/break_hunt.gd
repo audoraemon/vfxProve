@@ -10,7 +10,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## What each type drafts here (MS §7: at most 3 keys, within TierBook.dp(4) Might at level 1, all in GodTree.keys_for(type, 4)); god_hunts.gd's
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
-	"ruin": ["smite", "heaven", "orbital"],
+	"ruin": ["smite", "heaven", "tornado"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["thorns", "mirror"],

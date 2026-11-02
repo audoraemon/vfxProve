@@ -31,18 +31,22 @@ static func _shape(t) -> void:
 	var last: Dictionary = GodTree.spots()[59]
 	t.check(first == {"type": "ruin", "tier": 1, "i": 0, "key": "smite"} and last.type == "dominion" and last.tier == 5 and last.i == 1,
 		"spots() runs in RING, tier, index order (%s .. %s)" % [first, last])
-	# The user's Tier 1 fill (2026-10-27): every Tier 1 spot holds a key; Tiers 2-5 are still empty.
+	# The user's Tier 1 fill (2026-10-27): every Tier 1 spot holds a key; Tiers 2-5 are still empty except Ruin's (2026-11-02).
 	var tier1_full := true
 	var rest_empty := true
 	for key: String in GodTree.TABLE.keys():
 		var tiers: Array = GodTree.TABLE[key]
 		for k: String in tiers[0]:
 			tier1_full = tier1_full and k != ""
+		if key == "ruin":
+			continue
 		for i in range(1, tiers.size()):
 			for k: String in tiers[i]:
 				rest_empty = rest_empty and k == ""
 	t.check(tier1_full, "every Tier 1 spot of the real table is filled")
-	t.check(rest_empty, "Tiers 2-5 of the real table are still empty")
+	t.check(rest_empty, "Tiers 2-5 of the real table are still empty, Ruin's aside")
+	t.check(GodTree.TABLE.ruin.slice(1) == [["tornado", ""], ["solaris", "dragon"], ["tsunami", "cinder"], ["", ""]],
+		"Ruin's Tiers 2-5 hold the user's picks, two spots kept for new abilities (%s)" % [GodTree.TABLE.ruin.slice(1)])
 	t.check(GodTree.TABLE.ruin[0] == ["smite", "ember"] and GodTree.TABLE.death[0] == ["deathmark", "pestilence"]
 		and GodTree.TABLE.veil[0] == ["doom", "blight"] and GodTree.TABLE.passage[0] == ["thorns", "mirror"]
 		and GodTree.TABLE.decree[0] == ["noleave", "belllies"] and GodTree.TABLE.dominion[0] == ["whisper", "discord"],
@@ -107,9 +111,9 @@ static func _dev_fill(t) -> void:
 	t.check(GodTree.spot_of("smite") == {"type": "ruin", "tier": 1, "i": 0}, "spot_of(smite) (%s)" % [GodTree.spot_of("smite")])
 	t.check(GodTree.spot_of("nosuch").is_empty(), "spot_of an unplaced key is empty")
 	t.check(GodTree.starting("ruin") == PackedStringArray(["smite", "ember"]), "starting(ruin) (%s)" % [GodTree.starting("ruin")])
-	t.check(GodTree.keys_for("ruin", 2) == PackedStringArray(["smite", "ember", "heaven", "tornado"]),
+	t.check(GodTree.keys_for("ruin", 2) == PackedStringArray(["smite", "ember", "tornado", "heaven"]),
 		"keys_for(ruin, 2) (%s)" % [GodTree.keys_for("ruin", 2)])
-	t.check(GodTree.keys_for("death", 5) == PackedStringArray(["deathmark", "pestilence", "glacial", "solaris"]),
+	t.check(GodTree.keys_for("death", 5) == PackedStringArray(["deathmark", "pestilence", "glacial", "orbital"]),
 		"empty spots are left out of keys_for (%s)" % [GodTree.keys_for("death", 5)])
 	t.check(GodTree.outside("ruin", 1, PackedStringArray(["smite", "doom"])) == PackedStringArray(["doom"]),
 		"outside(ruin, 1, [smite, doom]) (%s)" % [GodTree.outside("ruin", 1, PackedStringArray(["smite", "doom"]))])
@@ -119,7 +123,8 @@ static func _dev_fill(t) -> void:
 	GodTree.dev_fill = false
 	t.check(GodTree.starting("ruin") == PackedStringArray(["smite", "ember"]), "dev fill off: starting(ruin) is the real table's (%s)"
 		% [GodTree.starting("ruin")])
-	t.check(GodTree.spot("ruin", 2, 0) == "", "dev fill off: a Tier 2 spot is empty")
+	t.check(GodTree.spot("ruin", 2, 1) == "" and GodTree.spot("ruin", 2, 0) == "tornado",
+		"dev fill off: Ruin's Tier 2 holds Tornado and an empty spot")
 	GodTree.use_table(GodTree.blank())
 	t.check(GodTree.starting("ruin") == PackedStringArray() and GodTree.spot("ruin", 1, 0) == "",
 		"use_table(blank()): the tree reads empty (%s)" % [GodTree.starting("ruin")])

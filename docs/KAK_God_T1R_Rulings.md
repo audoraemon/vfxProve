@@ -341,3 +341,14 @@ Not binding (D10, D36); listed here so nobody has to dig for them:
   -- the slide rocked across the waypoint for ever on steps under 0.1 (the Capital Tax deputy, seed 2); only the Capital passes `to`, so
   Aldermere is untouched; the Capital per-type report goes 24/30 -> 22/30 (reported only) -- If wrong: Capital reference rows that
   moved go back, and the deputy stalls again.
+
+## Ruin's real tree (2026-11-02)
+
+- **D43.** Ruling: Ruin's real Tiers 2-5 are the user's picks from the Ruin Tree Picker -- T2 Tornado + (empty), T3 Light of
+  Solaris + Dragon, T4 Tsunami Breaker + Cinder, T5 (empty, empty); the empty spots wait for new powers. The dev fill moves out of
+  the way: Ruin's dev row puts Heaven Splitter, Gravity Distortion and Judgement in the empty spots; Death's Tier 2 takes Orbital
+  Strike for Solaris and Veil's Tier 2 takes Walking Laser Grid for Tsunami (a key is in one tree only). Hunt loadouts follow the
+  tree: Veil's Tsunami -> Nuclear Nova in Hunts 2 and 5 (Silence the Witness aims Nova over the led file when Doom is cooling),
+  Ruin's Orbital -> Tornado in Hunt 4 (never cast). Gates: silence_witness x veil 3/3 (median 193), face_halcyon x veil 3/3 (196),
+  break_hunt x ruin 3/3 (123). References 507/508 held; `silence_witness_veil_play_3` moved (still a win, Nova in the fallback) and
+  is re-recorded -- If wrong: revert the TABLE row and the three loadouts; the Veil Hunt 2 row goes back to -939959844.

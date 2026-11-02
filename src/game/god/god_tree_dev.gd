@@ -6,10 +6,12 @@ extends RefCounted
 ## *tunable*, not the user's fill.
 
 ## Same shape as GodTree.TABLE: type -> five tiers of two keys, "" for a spot left empty.
+## Ruin's row mirrors the user's picks (2026-11-02) and puts Heaven Splitter, Gravity Distortion and Judgement in its empty spots;
+## Death's and Veil's Tier 2 take Orbital Strike and Walking Laser Grid for Light of Solaris and Tsunami Breaker, now Ruin's.
 const TABLE := {
-	"ruin": [["smite", "ember"], ["heaven", "tornado"], ["dragon", "gravity"], ["laser", "orbital"], ["cinder", "judgement"]],
-	"death": [["deathmark", "pestilence"], ["glacial", "solaris"], ["", ""], ["", ""], ["", ""]],
-	"veil": [["doom", "blight"], ["tsunami", "nova"], ["", ""], ["", ""], ["", ""]],
+	"ruin": [["smite", "ember"], ["tornado", "heaven"], ["solaris", "dragon"], ["tsunami", "cinder"], ["gravity", "judgement"]],
+	"death": [["deathmark", "pestilence"], ["glacial", "orbital"], ["", ""], ["", ""], ["", ""]],
+	"veil": [["doom", "blight"], ["laser", "nova"], ["", ""], ["", ""], ["", ""]],
 	"passage": [["thorns", "mirror"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"decree": [["noleave", "belllies"], ["magnify", "abolition"], ["", ""], ["", ""], ["", ""]],
 	"dominion": [["whisper", "wisp"], ["discord", "madness"], ["oath", "echo"], ["turncoat", "hatred"], ["priority", "verdict"]],

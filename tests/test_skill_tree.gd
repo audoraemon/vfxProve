@@ -96,11 +96,11 @@ static func _lines(t) -> void:
 static func _locked_tier(t) -> void:
 	var s := _screen("ruin", 1, 5)
 	var why := s.learn_at(1, 2, 0)
-	t.check(why == "tier" and s._slot.level_of("heaven") == 0, "a Tier 1 god cannot learn a Tier 2 spot (%s)" % why)
+	t.check(why == "tier" and s._slot.level_of("tornado") == 0, "a Tier 1 god cannot learn a Tier 2 spot (%s)" % why)
 	t.check(s.refused_reason == "Awaken to Tier 2", "and the panel says what unlocks it (%s)" % s.refused_reason)
 	t.check(s._slot.points == 5, "a refusal spends nothing (%d)" % s._slot.points)
 	s._slot.tier = 2
-	t.check(s.learn_at(1, 2, 0) == "" and s._slot.level_of("heaven") == 1, "after Awaken to Tier 2 it can")
+	t.check(s.learn_at(1, 2, 0) == "" and s._slot.level_of("tornado") == 1, "after Awaken to Tier 2 it can")
 	s.free()
 
 
@@ -175,7 +175,7 @@ static func _header_and_detail(t) -> void:
 	t.check(lines.size() >= 2 and lines[0].begins_with("Smite") and lines[1].begins_with("Level 2: 1 point"),
 		"hovering a spot: its title line, then its next level (%s)" % [lines])
 	s._hover = "spot:1:3:0"
-	t.check(s.detail_lines()[0].begins_with("Dragon"), "another spot (%s)" % [s.detail_lines()])
+	t.check(s.detail_lines()[0].begins_with("Light of Solaris"), "another spot (%s)" % [s.detail_lines()])
 	s.free()
 
 

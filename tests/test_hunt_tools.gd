@@ -23,13 +23,13 @@ const TIER1_ONLY := {
 const PLAYS := {
 	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,pestilence", "veil": "doom,blight", "passage": "thorns,mirror",
 		"decree": "noleave,belllies", "dominion": "whisper,discord"},
-	"silence_witness": {"ruin": "smite,heaven,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,tsunami",
+	"silence_witness": {"ruin": "smite,heaven,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
 	"expel_inquisitor": {"ruin": "smite,heaven,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
-	"break_hunt": {"ruin": "smite,heaven,orbital", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"break_hunt": {"ruin": "smite,heaven,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,turncoat"},
-	"face_halcyon": {"ruin": "smite,ember,heaven", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,tsunami",
+	"face_halcyon": {"ruin": "smite,ember,heaven", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,priority"},
 }
 
@@ -37,10 +37,10 @@ const PLAYS := {
 ## Hunt (its two real Tier 1 keys); the whole of Hunt 1 is empty.
 const LACKS := {
 	"hide_faithful": {"ruin": "", "death": "", "veil": "", "passage": "", "decree": "", "dominion": ""},
-	"silence_witness": {"ruin": "heaven,tornado", "death": "glacial", "veil": "tsunami", "passage": "", "decree": "magnify", "dominion": "madness"},
+	"silence_witness": {"ruin": "heaven,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
 	"expel_inquisitor": {"ruin": "heaven,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
-	"break_hunt": {"ruin": "heaven,orbital", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "turncoat"},
-	"face_halcyon": {"ruin": "heaven", "death": "glacial", "veil": "tsunami", "passage": "", "decree": "magnify", "dominion": "priority"},
+	"break_hunt": {"ruin": "heaven,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "turncoat"},
+	"face_halcyon": {"ruin": "heaven", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "priority"},
 }
 
 
@@ -140,7 +140,7 @@ static func _loadouts_real(t) -> void:
 ## The loadout floor (C9): a list of more than GodSlot.BASE_SLOTS keys, or over TierBook.dp(tier) Might at level 1, or none, is named.
 static func _problems_might(t) -> void:
 	GodTree.dev_fill = true
-	var heavy := PackedStringArray(["pestilence", "glacial", "solaris"])
+	var heavy := PackedStringArray(["pestilence", "glacial", "orbital"])
 	var sum := 0
 	for key in heavy:
 		sum += PowerBook.might(key, 1)

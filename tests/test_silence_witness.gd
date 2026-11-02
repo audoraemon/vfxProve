@@ -831,9 +831,9 @@ static func _policies_written(t) -> void:
 
 ## How near a cast's aim must lie to someone the night still needs answered -- a walking witness or one of his mates, out of doors -- by power (the effect's own reach,
 ## less nothing: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Madness Bloom 1.5, Leaving Is Prohibited 3.0; the wide ones by the
-## file's size: Heaven Splitter's core 1.6, Glacial Cataclysm 5, Tsunami Breaker's lane 8 from its wall's start, a thornwall and a mirror's way in a few units ahead).
+## file's size: Heaven Splitter's core 1.6, Glacial Cataclysm 5, Nuclear Nova's blast 3.5 (its fit), a thornwall and a mirror's way in a few units ahead).
 const AIM_REACH := {"doom": 1.3, "smite": 1.0, "deathmark": 1.0, "pestilence": 1.3, "discord": 1.2, "whisper": 0.8, "noleave": 3.0, "heaven": 1.6, "glacial": 3.0,
-	"tsunami": 8.0, "thorns": 6.0, "mirror": 6.0}
+	"nova": 3.5, "thorns": 6.0, "mirror": 6.0}
 
 
 ## What is wrong with a cast of `key` at `at` as the night stands (review of Task 10, M1; Ruling P5-T10-R2): "" when its aim is within its reach of a walking

@@ -30,9 +30,10 @@ const FLAVOUR := {
 	"dominion": "Every mind bends.",
 }
 
-## The real tree: type -> five tiers (index 0 = Tier 1) of two PowerBook keys, "" for a spot not filled yet. Tier 1 filled by the user (2026-10-27); the rest empty.
+## The real tree: type -> five tiers (index 0 = Tier 1) of two PowerBook keys, "" for a spot not filled yet. Tier 1 filled by the user
+## (2026-10-27); Ruin's Tiers 2-5 by the user (2026-11-02, the Ruin Tree Picker), its empty spots kept for new abilities; the rest empty.
 const TABLE := {
-	"ruin": [["smite", "ember"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"ruin": [["smite", "ember"], ["tornado", ""], ["solaris", "dragon"], ["tsunami", "cinder"], ["", ""]],
 	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"passage": [["thorns", "mirror"], ["", ""], ["", ""], ["", ""], ["", ""]],

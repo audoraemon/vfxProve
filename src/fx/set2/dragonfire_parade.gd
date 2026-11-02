@@ -18,6 +18,8 @@ const FIRE_LIGHT := Color(1.0, 0.5, 0.18)
 const SH_CONE := preload("res://shaders/fire_cone.gdshader")
 const SH_STREAM := preload("res://shaders/flame_stream.gdshader")
 const JET_REACH := 0.55
+## Level 5, Second Breath: seconds between the first breath ending and the second beginning.
+const SECOND_GAP := 2.0
 ## The dragon sprite faces screen down-right (south-east); the breath is locked to that facing.
 const FACING := Vector2(1, 0)
 
@@ -34,6 +36,10 @@ var _breath_voice: Node
 var _burn_voice: Node
 var _sweep := 0.0
 var _breathing := false
+## Second Breath (level 5): the breath on its way back (right to left), when the current breath began, and how many there have been.
+var _back := false
+var _breath_start := T_BREATH
+var breaths := 0
 var _next_patch := 0.0
 ## This cast's breath time and sweep, and when the dragon sinks: the ability level's (PowerBook.stat()), the consts at level 1.
 var lv_breath_time := BREATH_TIME
@@ -45,6 +51,9 @@ func _build() -> void:
 	lv_breath_time = float(PowerBook.stat(extra, "dragon", "BREATH_TIME", BREATH_TIME))
 	lv_sweep_arc = float(PowerBook.stat(extra, "dragon", "SWEEP_ARC", SWEEP_ARC))
 	lv_t_sink = T_BREATH + lv_breath_time + 0.4
+	var second := PowerBook.twist_at(extra, "dragon")
+	if second:
+		lv_t_sink = T_BREATH + 2.0 * lv_breath_time + SECOND_GAP + 0.4
 	duration = 11.5 + (lv_t_sink - T_SINK)
 	# Standing pieces sort above buildings, under the dragon.
 	stand_layer()
@@ -72,6 +81,9 @@ func _build() -> void:
 	at(T_RISE, _rise)
 	at(T_INHALE, _inhale)
 	at(T_BREATH, _breathe)
+	if second:
+		at(T_BREATH + lv_breath_time + SECOND_GAP - (T_BREATH - T_INHALE), _inhale)
+		at(T_BREATH + lv_breath_time + SECOND_GAP, _breathe_back)
 	at(lv_t_sink, _sink)
 
 
@@ -157,7 +169,17 @@ func _inhale() -> void:
 	flash.life = T_BREATH - T_INHALE + 0.05
 
 
-func _breathe() -> void:
+## The second breath: the same set-up, sweeping the arc back from the dragon's right to its left.
+func _breathe_back() -> void:
+	_back = true
+	_next_patch = 0.0
+	_breathe(T_BREATH + lv_breath_time + SECOND_GAP)
+
+
+## A breath that begins at time `start` (the first at T_BREATH).
+func _breathe(start := T_BREATH) -> void:
+	_breath_start = start
+	breaths += 1
 	ctx.play(&"dr_ignite", origin)
 	_breath_voice = ctx.play(&"dr_breath", origin, -1.0)
 	ctx.impact.dim(0.3, 1.5)
@@ -167,8 +189,8 @@ func _breathe() -> void:
 	_cone = QuadFx.new().setup(SH_CONE, Vector2.ONE * CONE_RADIUS * 2.0)
 	_cone.position = origin
 	_cone.z_index = 7
-	_cone.set_param("start", _start_angle + lv_sweep_arc)
-	_cone.set_param("reverse", 1.0)
+	_cone.set_param("start", _start_angle if _back else _start_angle + lv_sweep_arc)
+	_cone.set_param("reverse", 0.0 if _back else 1.0)
 	_cone.set_param("sweep", 0.0)
 	_cone.set_param("seed", ctx.rng.randf() * 20.0)
 	track(_cone, ctx.ground)
@@ -182,19 +204,26 @@ func _breathe() -> void:
 	_stream.auto_free = false
 	_stream.drag = 0.6
 	ctx.lights.register_quad(_cone, origin, 3.2, FIRE_LIGHT,
-		func(): return origin + Vector2.RIGHT.rotated(_start_angle + lv_sweep_arc - _sweep) * CONE_RADIUS * 0.6)
+		func(): return origin + Vector2.RIGHT.rotated(_beam_angle()) * CONE_RADIUS * 0.6)
 	_cone.set_param("intensity", 0.7)
+
+
+## Where the beam points: from the arc's far end down to its start, and on the way back up again.
+func _beam_angle() -> float:
+	if _back:
+		return _start_angle + _sweep
+	return _start_angle + lv_sweep_arc - _sweep
 
 
 func _fx_process(delta: float) -> void:
 	if not _breathing:
 		return
-	var k := clampf((t - T_BREATH) / lv_breath_time, 0.0, 1.0)
+	var k := clampf((t - _breath_start) / lv_breath_time, 0.0, 1.0)
 	_sweep = lv_sweep_arc * (k * k * (3.0 - 2.0 * k) * 0.5 + k * 0.5)
 	# Sweep from the dragon's left (screen lower-left) to its right (screen right), following the head.
-	_cone.set_param("start", _start_angle + lv_sweep_arc - _sweep)
+	var beam_angle := _beam_angle()
+	_cone.set_param("start", _start_angle if _back else beam_angle)
 	_cone.set_param("sweep", _sweep)
-	var beam_angle := _start_angle + lv_sweep_arc - _sweep
 	var beam_dir := Vector2.RIGHT.rotated(beam_angle)
 	var mouth := _center_px + _dragon.mouth_pos()
 	# Thick flame jet from the mouth to where it hits the ground, then puffs rolling on along the cone.

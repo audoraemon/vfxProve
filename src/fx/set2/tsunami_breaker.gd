@@ -14,6 +14,11 @@ const WAVE_HEIGHT := 150.0
 ## The painted wall is drawn longer than the damage lane so it reads as a colossal wave, like the concept.
 const WAVE_VISUAL_WIDTH := 1.15
 const CARRY_BAND := 0.8
+## Level 5, Backwash: how long after the crash the water draws back, how long the draw takes, and how hard those it
+## carried are thrown clear of the start (ground units per second).
+const BACKWASH_DELAY := 0.2
+const BACKWASH_TIME := 1.6
+const BACKWASH_KNOCK := 2.5
 const WATER_LIGHT := Color(0.45, 0.75, 1.0)
 const SH_FLOOD := preload("res://shaders/flood_water.gdshader")
 
@@ -136,6 +141,11 @@ var _light: QuadFx
 ## This cast's run and wall breadth: the ability level's (PowerBook.stat()), the consts at level 1.
 var lv_length := LENGTH
 var lv_width := WIDTH
+## Backwash (level 5): the water drawing back, where its edge is, when it began, and who it has caught.
+var _backwashing := false
+var _back_front := 0.0
+var _back_t0 := 0.0
+var _dragged: Array[DummyEnemy] = []
 
 
 func _build() -> void:
@@ -224,6 +234,8 @@ func _sweep() -> void:
 
 
 func _fx_process(delta: float) -> void:
+	if _backwashing:
+		_backwash_step(delta)
 	if _wave == null or not is_instance_valid(_wave):
 		return
 	if _sweeping:
@@ -258,6 +270,11 @@ func _fx_process(delta: float) -> void:
 	if is_instance_valid(_foam):
 		_foam.spec["offset"] = mid
 		_foam.spec["radius"] = half
+	_size_flood()
+
+
+## The flood quad covers the lane as far as the water's edge reaches.
+func _size_flood() -> void:
 	if _flood != null and is_instance_valid(_flood):
 		_flood.position = origin
 		_flood.rotation = _dir.angle()
@@ -265,6 +282,50 @@ func _fx_process(delta: float) -> void:
 		_flood.size = Vector2(maxf(_front, 0.01), lv_width)
 		_flood.set_param("length", maxf(_front, 0.01))
 		_flood.queue_redraw()
+
+
+# --- Level 5: the Backwash ----------------------------------------------------
+
+## The water draws back along the lane (R12). Not lethal: whoever is alive, in the open and in the lane behind the receding edge
+## is carried with it and set down at the start, knocked clear. Nothing is hit again.
+func _backwash(start: float) -> void:
+	_backwashing = true
+	_back_t0 = start
+	_back_front = lv_length
+	ctx.play(&"ts_surge", origin + _dir * lv_length, -4.0)
+
+
+func _backwash_step(delta: float) -> void:
+	var k := clampf((t - _back_t0) / BACKWASH_TIME, 0.0, 1.0)
+	_back_front = lv_length * (1.0 - k)
+	_front = _back_front
+	for e in ctx.field.in_lane(origin, _dir, lv_width * 0.5 + 0.2, _back_front - CARRY_BAND, lv_length + 0.5):
+		var p := e as Person
+		if e in _dragged or (p != null and p.inside):
+			continue
+		_dragged.append(e)
+		e.flash(0.1)
+	for i in _dragged.size():
+		var e: DummyEnemy = _dragged[i]
+		if is_instance_valid(e) and e.is_alive():
+			var target := origin + _dir * maxf(_back_front - 0.25, 0.0) + _side * clampf((e.ground_pos - origin).dot(_side), -lv_width * 0.5, lv_width * 0.5)
+			e.ground_pos = e.ground_pos.lerp(target, minf(12.0 * delta, 1.0))
+			e.state = DummyEnemy.State.PULLED
+			e.lift_target = 12.0 + 7.0 * sin(t * 6.0 + i * 1.9)
+	_size_flood()
+	if k >= 1.0:
+		_set_down()
+
+
+## The water is back at the start: everyone it carried is put down there, on their own side of the lane, and knocked away from it.
+func _set_down() -> void:
+	_backwashing = false
+	for e in _dragged:
+		if is_instance_valid(e) and e.is_alive():
+			e.ground_pos = origin + _side * clampf((e.ground_pos - origin).dot(_side), -lv_width * 0.5, lv_width * 0.5)
+			e.release()
+			e.knock(-_dir * BACKWASH_KNOCK)
+	_dragged.clear()
 
 
 func _crash() -> void:
@@ -344,6 +405,8 @@ func _crash() -> void:
 	ctx.field.knock_from(g, 3.0, 5.0, 6.0)
 	ctx.env.damage_radius(g, 3.0, 99999.0, &"water")
 	at(t + 0.5, _aftermath)
+	if PowerBook.twist_at(extra, "tsunami"):
+		at(t + BACKWASH_DELAY, _backwash.bind(t + BACKWASH_DELAY))
 
 
 func _aftermath() -> void:

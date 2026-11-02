@@ -13,6 +13,12 @@ const T_END := T_CHARGE + BEAM_TIME
 const AFTER := 2.4
 ## How often the standing beam burns away what is under it.
 const SCOUR_EVERY := 0.1
+## Level 5, Wandering Sun: how far from the pillar it looks for a knot of people, how close neighbours must stand to make one,
+## how often it looks again, and how fast the pillar drifts toward it (ground units per second).
+const WANDER_R := 4.0
+const KNOT_R := 1.0
+const KNOT_EVERY := 0.5
+const DRIFT := 0.8
 
 const SH_COLUMN := preload("res://shaders/solar_beam.gdshader")
 const COLUMN_H := 620.0
@@ -31,16 +37,24 @@ var burned := 0
 var lv_radius := RADIUS
 var lv_beam_time := BEAM_TIME
 var lv_t_end := T_END
+## Where the pillar stands: the cast point, and at level 5 wherever the Wandering Sun has drifted to.
+var beam_at := Vector2.ZERO
 
 var _column: QuadFx
 var _halo: QuadFx
 var _glow: QuadFx
 var _light: QuadFx
 var _rays: QuadFx
+var _updraft: PixelParticles
+var _sparks: PixelParticles
 var _voices: Array[Node] = []
+## Wandering Sun: where the pillar is heading (Vector2.INF = nowhere, it stands) and when it looks for a knot again.
+var _knot_to := Vector2.INF
+var _knot_next := T_CHARGE
 
 
 func _build() -> void:
+	beam_at = origin
 	lv_radius = float(PowerBook.stat(extra, "solaris", "RADIUS", RADIUS))
 	lv_beam_time = float(PowerBook.stat(extra, "solaris", "BEAM_TIME", BEAM_TIME))
 	lv_t_end = T_CHARGE + lv_beam_time
@@ -63,14 +77,14 @@ func _staged() -> bool:
 ## Everything under the pillar: the living die and the standing fall. Returns how many people it took.
 func scour() -> int:
 	var took := 0
-	for e in ctx.field.in_radius(origin, lv_radius):
+	for e in ctx.field.in_radius(beam_at, lv_radius):
 		var p := e as Person
 		if p != null and p.inside:
 			continue  # the building round them comes down first, and puts them out
-		if ctx.field.kill(e, &"solaris", origin):
+		if ctx.field.kill(e, &"solaris", beam_at):
 			took += 1
 	burned += took
-	ctx.env.damage_radius(origin, lv_radius, 99999.0, &"solaris")
+	ctx.env.damage_radius(beam_at, lv_radius, 99999.0, &"solaris")
 	if _staged():
 		ctx.shake.add_trauma(0.075)
 	return took
@@ -78,7 +92,7 @@ func scour() -> int:
 
 ## The pillar lands, and the ground under it opens.
 func _ignite() -> void:
-	pit = SolarisPit.new().setup(ctx.field, origin, lv_radius, ctx.rng.randf() * 40.0)
+	pit = SolarisPit.new().setup(ctx.field, beam_at, lv_radius, ctx.rng.randf() * 40.0)
 	ctx.world.add_child(pit)
 	if _staged():
 		_strike()
@@ -167,18 +181,18 @@ func _strike() -> void:
 	haze.life = lv_beam_time + 1.65
 
 	# What the light lifts off the ground and burns: flecks streaming up the pillar, sparks thrown from its foot.
-	var updraft := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.STREAK, ASH_LIFE, 110.0, lv_beam_time, {
+	_updraft = FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.STREAK, ASH_LIFE, 110.0, lv_beam_time, {
 		"radius": FxParts.particle_radius(lv_radius * 0.9), "speed": Vector2(0, 10), "alt": Vector2(0, 30),
 		"alt_speed": Vector2(150, 380), "life": Vector2(0.35, 0.8), "size": Vector2(1, 3)})
-	updraft.gravity = -260.0
-	updraft.streak_len = 0.05
-	updraft.z_index = 7
-	var sparks := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.STREAK, SOLAR_LIFE, 80.0, lv_beam_time, {
+	_updraft.gravity = -260.0
+	_updraft.streak_len = 0.05
+	_updraft.z_index = 7
+	_sparks = FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.STREAK, SOLAR_LIFE, 80.0, lv_beam_time, {
 		"radius": FxParts.particle_radius(lv_radius), "speed": Vector2(90, 280), "dir": PixelParticles.Dir.OUTWARD,
 		"alt": Vector2(0, 8), "alt_speed": Vector2(40, 220), "life": Vector2(0.3, 0.7), "size": Vector2(1, 2)})
-	sparks.gravity = 320.0
-	sparks.drag = 1.2
-	sparks.z_index = 7
+	_sparks.gravity = 320.0
+	_sparks.drag = 1.2
+	_sparks.z_index = 7
 	FxParts.debris(self, sp, 34, FxParts.particle_radius(lv_radius * 0.8), Vector2(80, 260), FxParts.HOT_ROCK,
 		Vector2(1.5, 4.5), true)
 
@@ -209,8 +223,10 @@ func _fade() -> void:
 	embers.gravity = -20.0
 
 
-## The pillar's light breathes while it stands, and dies with it.
-func _fx_process(_delta: float) -> void:
+## Wandering Sun (level 5) drifts the pillar toward a knot of people; the pillar's light breathes while it stands, and dies with it.
+func _fx_process(delta: float) -> void:
+	if PowerBook.twist_at(extra, "solaris"):
+		_wander(delta)
 	if not is_instance_valid(_light):
 		return
 	var k := curve([[T_CHARGE, 0.0], [T_CHARGE + 0.15, 1.0], [lv_t_end, 1.0], [lv_t_end + 0.5, 0.35], [duration, 0.0]])
@@ -221,3 +237,63 @@ func _fx_process(_delta: float) -> void:
 		_halo.set_param("intensity", 0.55 * standing * breath)
 	if is_instance_valid(_glow):
 		_glow.set_param("intensity", 1.2 * standing * breath)
+
+
+# --- Level 5: the Wandering Sun ----------------------------------------------
+
+## The person within WANDER_R of the pillar with the most neighbours within KNOT_R (a knot, not a straggler); ties go to
+## the nearer one, then to the field's own order. Null when no one is in reach: the pillar stands.
+func _knot() -> Person:
+	var best: Person = null
+	var best_n := -1
+	var best_d := 0.0
+	for e in ctx.field.in_radius(beam_at, WANDER_R):
+		var p := e as Person
+		if p == null or p.inside:
+			continue
+		var n := ctx.field.in_radius(p.ground_pos, KNOT_R).size() - 1
+		var d := p.ground_pos.distance_to(beam_at)
+		if n > best_n or (n == best_n and d < best_d):
+			best = p
+			best_n = n
+			best_d = d
+	return best
+
+
+## While the beam stands the pillar looks for a knot every KNOT_EVERY seconds and drifts toward it at DRIFT, never past it.
+func _wander(delta: float) -> void:
+	var span := minf(t, lv_t_end) - maxf(t - delta, T_CHARGE)
+	if span <= 0.0:
+		return
+	if t >= _knot_next:
+		_knot_next = t + KNOT_EVERY
+		var knot := _knot()
+		_knot_to = knot.ground_pos if knot != null else Vector2.INF
+	if _knot_to == Vector2.INF:
+		return
+	var moved := beam_at.move_toward(_knot_to, DRIFT * span)
+	if moved == beam_at:
+		return
+	beam_at = moved
+	if is_instance_valid(pit):
+		pit.move_to(beam_at)
+	_follow()
+
+
+## The staged pieces stand where the pillar does.
+func _follow() -> void:
+	var sp := Iso.ground_to_screen(beam_at)
+	if is_instance_valid(_column):
+		_column.position = sp
+	if is_instance_valid(_halo):
+		_halo.position = sp + Vector2(0, -COLUMN_H * 0.3)
+	if is_instance_valid(_glow):
+		_glow.position = sp
+	if is_instance_valid(_light):
+		_light.position = beam_at
+	if is_instance_valid(_rays):
+		_rays.position = beam_at
+	if is_instance_valid(_updraft):
+		_updraft.position = sp
+	if is_instance_valid(_sparks):
+		_sparks.position = sp

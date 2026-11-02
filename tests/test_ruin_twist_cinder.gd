@@ -8,15 +8,6 @@ const CinderFx := preload("res://src/fx/set2/cinderfall_barrage.gd")
 const AT := Vector2(12.0, 12.0)
 
 
-## An Impact for a stage that has no frame to draw: the real one asks its viewport where a world point is on screen, and the stage's root
-## is not in the tree yet (see tests/fx_stage.gd), so the volcano's impact frames would fail on a null viewport.
-class StubImpact:
-	extends Impact
-
-	func focus_of(_screen_world_pos: Vector2) -> Vector2:
-		return Vector2(0.5, 0.5)
-
-
 static func run(t) -> void:
 	_level_five(t)
 	_level_four(t)
@@ -25,16 +16,6 @@ static func run(t) -> void:
 ## Cast at `level` on a fresh stage; the volcano is already sunk by T_SINK and the barrage over, so nothing but the pool can kill at the centre.
 static func _cast(level: int) -> Array:
 	var bf := FxStage.make(11)
-	var stub := StubImpact.new()
-	bf.add_child(stub)
-	var layer := CanvasLayer.new()
-	bf.add_child(layer)
-	var dim := Node2D.new()
-	bf.add_child(dim)
-	var cam := Camera2D.new()
-	bf.add_child(cam)
-	stub.setup(layer, dim, cam)
-	bf.ctx.impact = stub
 	var fx = FxTimeline.cast(load("res://src/fx/set2/cinderfall_barrage.gd"), bf.ctx, AT, {"level": level})
 	return [bf, fx]
 

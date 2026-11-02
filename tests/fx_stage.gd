@@ -6,6 +6,26 @@ extends RefCounted
 ## FxTimeline.cast(script, bf.ctx, at, {"level": n}) and step the effect with fx._process(dt).
 
 
+## The Impact every staged cast gets (installed by make(), freed by drop()): the real one asks its viewport where a world point is on
+## screen, and the stage's root is not ready when the suites run, and it has no post pass to drive. This one answers the screen centre
+## and does nothing for hitstop, impact frame, aberration and dim, so a cast can run to its crash and past it.
+class StageImpact extends Impact:
+	func focus_of(_p: Vector2) -> Vector2:
+		return Vector2(0.5, 0.5)
+
+	func hitstop(_s: float, _scale := 0.04) -> void:
+		pass
+
+	func impact_frame(_s := 0.05, _f := Vector2(0.5, 0.5), _a := Color.WHITE, _b := Color.BLACK) -> void:
+		pass
+
+	func aberration(_px: float, _s: float) -> void:
+		pass
+
+	func dim(_amount: float, _speed := 1.5) -> void:
+		pass
+
+
 ## A Battlefield on the tree root with the god's rng seeded and a 60x60 field around the origin.
 static func make(seed_value: int) -> Battlefield:
 	var tree := Engine.get_main_loop() as SceneTree
@@ -18,6 +38,9 @@ static func make(seed_value: int) -> Battlefield:
 	# Nothing can sound off the tree (and FxContext.play() is a no-op without a Sfx, as in every other headless test).
 	bf.ctx.sfx = null
 	bf.rng.seed = seed_value
+	var stub := StageImpact.new()
+	bf.ctx.impact = stub
+	bf.set_meta(&"stage_impact", stub)
 	bf.ctx.field.bounds = Rect2(-30.0, -30.0, 60.0, 60.0)
 	return bf
 
@@ -26,5 +49,9 @@ static func make(seed_value: int) -> Battlefield:
 static func drop(bf: Battlefield) -> void:
 	Engine.time_scale = 1.0  # a hitstop an effect started is undone by Impact._process, which a staged cast may not reach
 	if is_instance_valid(bf):
+		var stub = bf.get_meta(&"stage_impact", null)
+		if stub != null and is_instance_valid(stub):
+			bf.ctx.impact = null
+			stub.free()
 		bf.get_parent().remove_child(bf)
 		bf.free()

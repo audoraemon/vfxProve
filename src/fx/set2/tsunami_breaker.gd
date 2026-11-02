@@ -17,8 +17,10 @@ const CARRY_BAND := 0.8
 ## Level 5, Backwash: how long after the crash the water draws back, how long the draw takes, and how hard those it
 ## carried are thrown clear of the start (ground units per second).
 const BACKWASH_DELAY := 0.2
-const BACKWASH_TIME := 1.6
+const BACKWASH_TIME := 2.4
 const BACKWASH_KNOCK := 2.5
+const BACKWASH_REACH := 5.0  ## beyond the wall: the splash ring's outer edge, where the crash only knocked people (R12a)
+const BACKWASH_SIDE := 1.5  ## each side wider than the lane: the flanks the carry band missed (R12a)
 const WATER_LIGHT := Color(0.45, 0.75, 1.0)
 const SH_FLOOD := preload("res://shaders/flood_water.gdshader")
 
@@ -291,15 +293,15 @@ func _size_flood() -> void:
 func _backwash(start: float) -> void:
 	_backwashing = true
 	_back_t0 = start
-	_back_front = lv_length
+	_back_front = lv_length + BACKWASH_REACH
 	ctx.play(&"ts_surge", origin + _dir * lv_length, -4.0)
 
 
 func _backwash_step(delta: float) -> void:
 	var k := clampf((t - _back_t0) / BACKWASH_TIME, 0.0, 1.0)
-	_back_front = lv_length * (1.0 - k)
-	_front = _back_front
-	for e in ctx.field.in_lane(origin, _dir, lv_width * 0.5 + 0.2, _back_front - CARRY_BAND, lv_length + 0.5):
+	_back_front = (lv_length + BACKWASH_REACH) * (1.0 - k)
+	_front = minf(_back_front, lv_length)  # the flood and its light stay on the lane; the drag reaches further
+	for e in ctx.field.in_lane(origin, _dir, lv_width * 0.5 + BACKWASH_SIDE, _back_front - CARRY_BAND, lv_length + BACKWASH_REACH + 0.5):
 		var p := e as Person
 		if e in _dragged or (p != null and p.inside):
 			continue

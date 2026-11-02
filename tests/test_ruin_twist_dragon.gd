@@ -7,36 +7,13 @@ const DragonFx := preload("res://src/fx/set2/dragonfire_parade.gd")
 const PATH := "res://src/fx/set2/dragonfire_parade.gd"
 
 
-## The suites run before the root is in the tree, so the real Impact has no viewport to ask (focus_of) and no post pass to drive: a
-## cast that runs past its rise (T_RISE) gets this one, which takes every call and does nothing.
-class StubImpact extends Impact:
-	func focus_of(_p: Vector2) -> Vector2:
-		return Vector2(0.5, 0.5)
-
-	func hitstop(_s: float, _scale := 0.04) -> void:
-		pass
-
-	func impact_frame(_s := 0.05, _f := Vector2(0.5, 0.5), _a := Color.WHITE, _b := Color.BLACK) -> void:
-		pass
-
-	func aberration(_px: float, _s: float) -> void:
-		pass
-
-	func dim(_amount: float, _speed := 1.5) -> void:
-		pass
-
-
 static func _stage(seed_value: int) -> Battlefield:
-	var bf := FxStage.make(seed_value)
-	bf.ctx.impact = StubImpact.new()
-	return bf
+	return FxStage.make(seed_value)
 
 
 static func _drop(bf: Battlefield) -> void:
-	var stub := bf.ctx.impact
 	bf.ctx.field.clear()
 	FxStage.drop(bf)
-	stub.free()
 
 
 ## A dummy standing `dist` out from `origin` at `arc_share` (0 = the arc's start, 1 = its far end) of the dragon's arc.

@@ -20,6 +20,8 @@ const WALL_REACH := 0.6
 const WALL_DAMAGE := 400.0
 const FRIGHT_EVERY := 2.0
 const T_SETTLE := 2.5
+## Every STRETCH of crawl the ground jumps and heat is laid into the crack behind the front.
+const STRETCH := 1.5
 const DEEP := Color(1.0, 0.45, 0.15)
 const CRACK_LIGHT := Color(1.0, 0.55, 0.2)
 
@@ -35,6 +37,7 @@ var fissure: Fissure
 var _fright_at := 0.0
 var _rumble_in := 0.0
 var _dust_in := 0.0
+var _stretch_at := 0.0
 var _walls_done := {}
 
 
@@ -168,16 +171,31 @@ func _fx_process(delta: float) -> void:
 		ctx.play(&"jg_rumble", front(), 2.0)
 	_dust_in -= delta
 	if _dust_in <= 0.0:
-		_dust_in = 0.12
+		_dust_in = 0.1
 		var sp := Iso.ground_to_screen(front())
-		FxParts.debris(self, sp, 4, 6.0, Vector2(30, 140), FxParts.ROCK, Vector2(1.5, 3.5), true)
+		FxParts.debris(self, sp, 8, 8.0, Vector2(40, 260), FxParts.ROCK, Vector2(1.5, 4.5), true)
+		FxParts.debris(self, sp, 4, 6.0, Vector2(60, 220), FxParts.HOT_ROCK, Vector2(1.5, 3.0), true)
+		FxParts.sparks(self, ctx.overhead, sp, 8, FxParts.EMBER_LIFE, Vector2(40, 180), Vector2(60, 220))
 		var puff := FxParts.particles(self, ctx.overhead_back, sp, PixelParticles.Shape.PUFF, FxParts.DUST_LIFE)
-		puff.drag = 1.2
-		puff.burst(5, {"radius": 10.0, "speed": Vector2(6, 20), "alt": Vector2(0, 4), "alt_speed": Vector2(10, 30),
-			"life": Vector2(0.5, 1.0), "size": Vector2(2, 4), "size_end_mul": 1.6})
-		var light := FxParts.ground_light(self, front(), 1.6, CRACK_LIGHT, 0.9)
-		light.tween_param("intensity", 0.9, 0.0, 0.5)
+		puff.drag = 1.0
+		puff.burst(9, {"radius": 16.0, "speed": Vector2(10, 40), "dir": PixelParticles.Dir.OUTWARD, "alt": Vector2(0, 6), "alt_speed": Vector2(14, 44),
+			"life": Vector2(0.7, 1.4), "size": Vector2(2, 5), "size_end_mul": 1.8})
+		var light := FxParts.ground_light(self, front(), 2.2, CRACK_LIGHT, 1.1)
+		light.tween_param("intensity", 1.1, 0.0, 0.5)
 		light.life = 0.52
+	# Every stretch: the ground round the front jumps, and the heat of the deep is laid into the crack behind it.
+	if reach - _stretch_at >= STRETCH:
+		_stretch_at = reach
+		var here := front()
+		var ring := FxParts.shockwave(self, here, HALF + 1.6, FxParts.FIRE)
+		ring.set_param("thickness", 0.1)
+		ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+		ring.tween_param("fade", 0.8, 0.0, 0.2, 0.15)
+		ring.life = 0.37
+		ctx.shake.kick(Vector2(ctx.rng.randf_range(-2.0, 2.0), 2.0))
+		FxParts.debris(self, Iso.ground_to_screen(here), 14, 12.0, Vector2(60, 300), FxParts.ROCK, Vector2(2, 5), true)
+		if fissure != null and is_instance_valid(fissure):
+			fissure.add_heat(here - dir * STRETCH * 0.5)
 
 
 ## The crack in the ground, left for good: a jagged dark gash from `a` toward `b` as far as `reach`, lit from the deep
@@ -202,6 +220,10 @@ class Fissure extends Node2D:
 	## The crack's spine: [along, offset, half-width] every SEG along the run; and the side cracks: [along, side, length].
 	var _spine: Array = []
 	var _sides: Array = []
+	## Rubble lying on the lips: [along, side offset, size].
+	var _rubble: Array = []
+	## The heat along it: [emitter, stop_at].
+	var _heat: Array = []
 	const SEG := 0.45
 
 	func setup(field: EnemyField, from: Vector2, to_point: Vector2, half_width: float, seed_value: int) -> Fissure:
@@ -221,8 +243,11 @@ class Fissure extends Node2D:
 			along += SEG
 		along = 1.0
 		while along < length - 0.5:
-			_sides.append([along, 1.0 if _rng.randf() < 0.5 else -1.0, _rng.randf_range(0.8, 2.2)])
-			along += _rng.randf_range(1.2, 2.4)
+			_sides.append([along, 1.0 if _rng.randf() < 0.5 else -1.0, _rng.randf_range(0.8, 2.6)])
+			along += _rng.randf_range(0.8, 1.8)
+		for i in int(length * 6.0):
+			var side := 1.0 if _rng.randf() < 0.5 else -1.0
+			_rubble.append([_rng.randf_range(0.0, length), side * (half + _rng.randf_range(0.05, 1.1)), _rng.randf_range(0.06, 0.16)])
 		return self
 
 	func _process(delta: float) -> void:
@@ -231,6 +256,9 @@ class Fissure extends Node2D:
 
 	func advance(delta: float) -> void:
 		_age += delta
+		for h in _heat:
+			if is_instance_valid(h[0]) and _age >= float(h[1]):
+				(h[0] as PixelParticles).emitting = false
 		_check_in -= delta
 		if armed and _check_in <= 0.0:
 			_check_in = CHECK_EVERY
@@ -279,6 +307,38 @@ class Fissure extends Node2D:
 		# Anything fallen on the lip or over the crack is gone into it.
 		if along >= -half and along <= a.distance_to(b) + half and absf((c - a).cross(dir)) <= half + 1.0:
 			s.visible = false
+
+	## The heat of the deep at `at`, for as long as the crack is new: the air shimmers over it, embers rise out of it,
+	## and the ground about it is lit from below.
+	func add_heat(at: Vector2) -> void:
+		var sp := Iso.ground_to_screen(at)
+		var flat := Iso.BASIS.affine_inverse()
+		var haze := QuadFx.new().setup(FxParts.SH_HAZE, Vector2(70.0, 44.0))
+		haze.transform = flat * Transform2D(0.0, sp + Vector2(0, -8))
+		haze.set_param("strength", 1.4)
+		haze.tween_param("strength", 1.4, 0.0, COOL, 1.0)
+		haze.life = COOL + 1.1
+		add_child(haze)
+		var embers := PixelParticles.new()
+		embers.rng.seed = _rng.randi()
+		embers.shape = PixelParticles.Shape.SQUARE
+		embers.ramp = PackedColorArray(FxParts.EMBER_LIFE)
+		embers.transform = flat * Transform2D(0.0, sp)
+		embers.gravity = -40.0
+		embers.drag = 0.6
+		embers.rate = 14.0
+		embers.spec = {"radius": 14.0, "speed": Vector2(2, 10), "alt": Vector2(0, 4), "alt_speed": Vector2(20, 60),
+			"life": Vector2(0.8, 1.6), "size": Vector2(1, 2)}
+		embers.emitting = true
+		add_child(embers)
+		_heat.append([embers, _age + COOL * 0.7])
+		var glow := QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(1.0, 1.0) * (half + 1.2) * 2.0)
+		glow.position = at
+		glow.set_param("color", Color(1.0, 0.5, 0.2))
+		glow.set_param("intensity", 0.9)
+		glow.tween_param("intensity", 0.9, 0.0, COOL, 0.5)
+		glow.life = COOL + 0.6
+		add_child(glow)
 
 	## The lip gives way under someone: dust where they stood.
 	func crumble(at: Vector2) -> void:
@@ -339,15 +399,29 @@ class Fissure extends Node2D:
 			for i in range(core.size() - 1, -1, -1):
 				sill.append(core[i] + (left[i] - core[i]) * 0.7)
 			draw_colored_polygon(sill, Color(0.32, 0.27, 0.24, 1.0))
-		# The deep glows while it is new.
+		# The deep glows while it is new, pulsing, brightest where the crack is widest.
 		if heat > 0.0 and core.size() >= 2:
-			draw_polyline(core, Color(DEEP, 0.55 * heat), 0.35)
-			draw_polyline(core, Color(1.0, 0.8, 0.45, 0.6 * heat), 0.12)
+			var pulse := 0.8 + 0.2 * sin(_age * 6.0)
+			draw_polyline(core, Color(0.6, 0.12, 0.02, 0.7 * heat), 0.6)
+			draw_polyline(core, Color(DEEP, 0.75 * heat * pulse), 0.36)
+			draw_polyline(core, Color(1.0, 0.85, 0.5, 0.75 * heat * pulse), 0.14)
+			for i in range(0, core.size(), 2):
+				var w: float = _spine[i][2]
+				draw_circle(core[i], w * 0.35 * pulse, Color(1.0, 0.7, 0.3, 0.45 * heat))
 		# The lips, lit on one side, dark on the other.
 		if left.size() >= 2:
 			draw_polyline(left, Color(0.62, 0.56, 0.5, 1.0), 0.1)
 		if right.size() >= 2:
 			draw_polyline(right, Color(0.14, 0.11, 0.1, 1.0), 0.1)
+		# Rubble on the lips where the crack has reached.
+		for r in _rubble:
+			var along: float = r[0]
+			if along > reach:
+				continue
+			var at := a + dir * along + side * float(r[1])
+			var sz: float = r[2]
+			draw_rect(Rect2(at - Vector2(sz, sz) * 0.5, Vector2(sz, sz)), Color(0.33, 0.3, 0.3, 1.0))
+			draw_rect(Rect2(at - Vector2(sz, sz) * 0.5, Vector2(sz, sz * 0.4)), Color(0.5, 0.46, 0.42, 1.0))
 		# Side cracks, thin, where the crack has reached.
 		for sc in _sides:
 			var along: float = sc[0]

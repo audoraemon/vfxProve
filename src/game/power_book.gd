@@ -328,7 +328,7 @@ static func cooldown(key: String, level := 1) -> float:
 ## True when this cast carries a power's level-5 twist: its level is 5 and that row's level 5 has one. Level 1-4, no level and a
 ## power without a table are all false -- an effect gates its twist on this before it draws a random number or schedules anything.
 static func twist_at(extra: Dictionary, key: String) -> bool:
-	return bool(stat(extra, key, "twist", false))
+	return int(extra.get("level", 1)) == MAX_LEVEL and bool(stat(extra, key, "twist", false))
 
 
 ## The one-line twist a power gains at level 5, or "" for a power without one.

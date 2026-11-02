@@ -184,7 +184,7 @@ static func tab_rect(i: int, count := PowerBook.AUTHORITIES.size()) -> Rect2:
 ## A power's cooldown as the cards print it: whole seconds stay whole ("20 s"), a fraction shows one decimal ("2.5 s"). The
 ## cooldown is the one at `level` (Ruin's ten powers shorten it as they grow); a row with no key (a fixture) prints its own.
 static func cooldown_text(p: Dictionary, level := 1) -> String:
-	var seconds := PowerBook.cooldown(String(p.key), level) if p.has("key") else float(p.cooldown)
+	var seconds := float(PowerBook.stat_in(p, level, "cooldown", p.cooldown))
 	return "%d s" % roundi(seconds) if is_equal_approx(seconds, roundf(seconds)) else "%.1f s" % seconds
 
 

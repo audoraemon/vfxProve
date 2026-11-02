@@ -24,6 +24,7 @@ static func make(seed_value: int) -> Battlefield:
 
 ## Free a stage made by make(), and everything an effect left on it.
 static func drop(bf: Battlefield) -> void:
+	Engine.time_scale = 1.0  # a hitstop an effect started is undone by Impact._process, which a staged cast may not reach
 	if is_instance_valid(bf):
 		bf.get_parent().remove_child(bf)
 		bf.free()

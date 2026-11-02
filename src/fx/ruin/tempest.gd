@@ -4,8 +4,10 @@ extends FxTimeline
 ## wind rises, sheet lightning flickers in the ceiling, and the calm look up (the cast's danger lands at the first
 ## bolt) -- then for STORM_TIME it rains, and every VOLLEY_EVERY a volley of VOLLEY bolts falls, VOLLEY_GAP apart,
 ## somewhere in the town: a drumbeat, each volley's first bolt the hardest (hitstop, the screen torn, the camera kicked).
-## Each bolt is a
-## Smite: whoever stands within KILL_R is struck down (damage kind lightning), what stands within HIT_R takes DAMAGE
+## Every bolt is told LEAD before it falls: a thunderhead forms over the spot, flickering, and a ring marks the ground
+## (Omen), so the eye is there when it lands. Each bolt is a Smite, bigger: whoever stands within its kill radius is
+## struck down (damage kind lightning; HARD_R / LIGHT_R: a volley's first bolt is the thickest and reaches farthest),
+## what stands within its hit radius takes DAMAGE
 ## (damage kind tempest, never a fire of itself), and every FIRE_EVERY-th bolt sets what it struck alight (the town's
 ## fire from there). Where the bolts fall is drawn, weighted, from the god's rng: tall things draw them (a structure
 ## weighs 1 + (height / HEIGHT_PER)^2, so the Bell Tower, the spire and the keep far most), people in the open weigh PERSON_W,
@@ -20,8 +22,10 @@ const T_BREAK := 5.0
 const VOLLEY_EVERY := 2.0
 const VOLLEY := Vector2i(4, 6)
 const VOLLEY_GAP := 0.11
-const KILL_R := 0.6
-const HIT_R := 0.7
+const LEAD := 1.0
+## [kill radius, hit radius] of a volley's first bolt and of the rest.
+const HARD_R := Vector2(1.2, 1.4)
+const LIGHT_R := Vector2(0.8, 1.0)
 const DAMAGE := 45.0
 const FIRE_EVERY := 4
 const FIRE_LEVEL := 0.4
@@ -164,35 +168,64 @@ func _pick() -> Vector2:
 
 ## A volley: the first bolt now and hard, the rest on its heels.
 func _volley() -> void:
-	volleys += 1
 	var n := ctx.rng.randi_range(VOLLEY.x, VOLLEY.y)
-	_bolt(_pick(), true)
-	for i in range(1, n):
+	if t + LEAD + VOLLEY_GAP * float(n - 1) > T_GATHER + STORM_TIME:
+		return  # too late in the storm for a whole volley
+	volleys += 1
+	for i in n:
 		var where := _pick()
-		at(t + VOLLEY_GAP * float(i), func() -> void:
-			if storming():
-				_bolt(where, false))
+		var hard := i == 0
+		var lead := LEAD + VOLLEY_GAP * float(i)
+		_omen(where, lead, hard)
+		at(t + lead, func() -> void:
+			_bolt(where, hard))
+
+
+## The warning over `at`: a thunderhead gathering `lead` seconds ahead of the bolt, and a ring on the ground where it
+## will strike.
+func _omen(at: Vector2, lead: float, hard: bool) -> void:
+	if not DominionParts.staged(self):
+		return
+	var r := (HARD_R if hard else LIGHT_R).y
+	var mark := FxParts.rings(self, at, r, Color("e8f4ff"), 2, 10.0)
+	mark.set_param("scan", 0.0)
+	mark.tween_param("reveal", 0.0, 1.0, lead * 0.7, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	mark.life = lead + 0.05
+	# The ground under it lit from the cloud, brighter as the bolt nears.
+	var under := FxParts.ground_light(self, at, r * 1.6, LIGHT, 0.0)
+	under.tween_param("intensity", 0.0, 0.9, lead, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	under.life = lead + 0.05
+	var head := Omen.new()
+	head.fx = self
+	head.lead = lead
+	head.scale_k = 1.35 if hard else 1.0
+	head.position = Iso.ground_to_screen(at) + Vector2(0, -150)
+	head.z_index = 11
+	head.rng.seed = ctx.rng.randi()
+	track(head, ctx.overhead)
 
 
 ## One bolt at `at`; `hard` for a volley's first: the blow the player feels.
 func _bolt(at: Vector2, hard: bool) -> void:
 	bolts += 1
 	last_at = at
-	for e in ctx.field.in_radius(at, KILL_R):
+	var kill_r := (HARD_R if hard else LIGHT_R).x
+	var hit_r := (HARD_R if hard else LIGHT_R).y
+	for e in ctx.field.in_radius(at, kill_r):
 		var p := e as Person
 		if p != null and p.inside:
 			continue
 		if ctx.field.kill(e, &"lightning", at):
 			struck += 1
-	ctx.env.damage_radius(at, HIT_R, DAMAGE, &"tempest")
+	ctx.env.damage_radius(at, hit_r, DAMAGE, &"tempest")
 	if bolts % FIRE_EVERY == 0 and ctx.crowd != null:
-		for s in ctx.env.near(at, HIT_R):
+		for s in ctx.env.near(at, hit_r):
 			if is_instance_valid(s) and not s.destroyed and s.kind in FireManager.BURNABLE:
 				ctx.crowd.fires.ignite(s, FIRE_LEVEL)
 				fires += 1
 				break
 	if ctx.crowd != null:
-		ctx.crowd.fright(at, BOLT_FRIGHT[0], BOLT_FRIGHT[1], BOLT_FRIGHT[2], BOLT_FRIGHT[3], BOLT_FRIGHT[4], &"lightning")
+		ctx.crowd.fright(at, hit_r + 0.3, BOLT_FRIGHT[1], BOLT_FRIGHT[2], BOLT_FRIGHT[3], BOLT_FRIGHT[4], &"lightning")
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(at)
@@ -202,7 +235,7 @@ func _bolt(at: Vector2, hard: bool) -> void:
 		ctx.impact.hitstop(0.04)
 		ctx.impact.aberration(1.6, 0.2)
 		ctx.shake.kick(Vector2(0, 3))
-	var b := Set2Parts.bolt(self, ctx.overhead, sp + Vector2(ctx.rng.randf_range(-40.0, 40.0), -460.0), sp, 0.3, 2.0, 3, BOLT)
+	var b := Set2Parts.bolt(self, ctx.overhead, sp + Vector2(ctx.rng.randf_range(-30.0, 30.0), -460.0), sp, 0.3, 2.8 if hard else 1.8, 3, BOLT)
 	b.z_index = 12
 	var b2 := Set2Parts.bolt(self, ctx.overhead, sp + Vector2(ctx.rng.randf_range(-12.0, 12.0), -460.0), sp, 0.18, 1.2, 1, Color("f0f8ff"))
 	b2.z_index = 12
@@ -210,15 +243,15 @@ func _bolt(at: Vector2, hard: bool) -> void:
 	glow.tween_param("intensity", 1.2, 0.0, 0.4, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	glow.life = 0.42
 	# The blow on the ground: Smite's ring, out and gone.
-	var ring := FxParts.shockwave(self, at, 1.4 if hard else 1.0, FxParts.ION)
+	var ring := FxParts.shockwave(self, at, hit_r + 0.5, FxParts.ION)
 	ring.set_param("thickness", 0.16)
 	ring.tween_param("progress", 0.05, 1.0, 0.28, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 1.0, 0.0, 0.18, 0.14)
 	ring.life = 0.36
-	var light := FxParts.ground_light(self, at, 2.0, LIGHT, 1.3)
+	var light := FxParts.ground_light(self, at, hit_r * 2.0, LIGHT, 1.3)
 	light.tween_param("intensity", 1.3, 0.0, 0.5, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	light.life = 0.52
-	var scorch := FxParts.decal(self, at, 0.7, Color("6aa8ff"), Color("e8f4ff"))
+	var scorch := FxParts.decal(self, at, hit_r * 0.9, Color("6aa8ff"), Color("e8f4ff"))
 	scorch.tween_param("heat", 1.0, 0.0, 1.0)
 	scorch.tween_param("fade", 1.0, 0.0, 0.6, 1.0)
 	FxParts.sparks(self, ctx.overhead, sp, 18 if hard else 10, FxParts.ION_LIFE, Vector2(60, 220), Vector2(30, 200))
@@ -270,3 +303,56 @@ class Dim extends Node2D:
 		if a <= 0.0:
 			return
 		draw_rect(Rect2(-6000, -6000, 12000, 12000), Color(STORM_DIM, STORM_DIM.a * a * (1.0 - fx._flicker * 0.5)))
+
+
+## The thunderhead over a strike to come: a dark puff of cloud gathering out of nothing, lit from inside more and
+## more often as the bolt nears, with threads of charge reaching down from it in the last moment.
+class Omen extends Node2D:
+	var fx: TempestFx
+	var lead := 1.0
+	var scale_k := 1.0
+	var rng := RandomNumberGenerator.new()
+	var _age := 0.0
+	var _flash := 0.0
+
+	func _process(delta: float) -> void:
+		_age += delta
+		if _age >= lead + 0.25:
+			queue_free()
+			return
+		_flash = maxf(_flash - delta * 7.0, 0.0)
+		var k := clampf(_age / lead, 0.0, 1.0)
+		if rng.randf() < delta * (2.0 + 10.0 * k * k):
+			_flash = rng.randf_range(0.4, 1.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		var k := clampf(_age / lead, 0.0, 1.0)
+		var gone := clampf((_age - lead) / 0.25, 0.0, 1.0)
+		var a := minf(k * 2.0, 1.0) * (1.0 - gone)
+		var grow := (0.6 + 0.6 * k) * scale_k
+		var dark := Color(0.12, 0.11, 0.2, 0.95 * a)
+		var body := Color(0.3, 0.3, 0.42, 0.95 * a)
+		var lit := Color(0.72, 0.76, 0.92, 0.9 * a)
+		var puffs := [[Vector2(0, 0), 14.0], [Vector2(-12, 3), 10.0], [Vector2(12, 2), 11.0], [Vector2(-5, -5), 9.0],
+			[Vector2(6, -6), 8.0], [Vector2(22, 5), 7.0], [Vector2(-22, 6), 6.0]]
+		for pf in puffs:
+			var c: Vector2 = (pf[0] as Vector2) * grow
+			var r: float = float(pf[1]) * grow
+			draw_set_transform(c.round(), 0.0, Vector2(1.0, 0.55))
+			draw_circle(Vector2(0, r * 0.25), r, dark)
+			draw_circle(Vector2(0, -r * 0.1), r * 0.85, body)
+			draw_circle(Vector2(0, -r * 0.45), r * 0.5, Color(lit, lit.a * (0.5 + _flash * 0.5)))
+		draw_set_transform(Vector2.ZERO)
+		if _flash > 0.0:
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.55))
+			draw_circle(Vector2.ZERO, 30.0 * grow, Color(0.85, 0.9, 1.0, 0.5 * _flash * a))
+			draw_set_transform(Vector2.ZERO)
+		# The charge reaching down in the last third.
+		if k > 0.66:
+			var reach := (k - 0.66) / 0.34
+			for i in 3:
+				var x := (float(i) - 1.0) * 6.0 * grow + rng.randf_range(-2.0, 2.0)
+				var down := 18.0 * reach * grow * rng.randf_range(0.5, 1.0)
+				draw_line(Vector2(x, 8.0 * grow), Vector2(x + rng.randf_range(-3.0, 3.0), 8.0 * grow + down),
+					Color(0.75, 0.85, 1.0, 0.7 * a * reach), 1.0)

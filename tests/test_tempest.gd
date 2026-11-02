@@ -60,8 +60,12 @@ static func run(t) -> void:
 		"Tempest: nothing falls while it gathers, and the slots are locked for the gathering")
 	storm._process(TempestFx.T_GATHER - 0.1)
 	t.check(storm.bolts == 0, "still nothing at the end of the gathering")
+	storm._process(0.35)
+	t.check(storm.volleys == 1 and storm.bolts == 0, "the first volley is told (%d) before any bolt falls (%d)" % [storm.volleys, storm.bolts])
+	storm._process(TempestFx.LEAD)
+	t.check(storm.bolts >= 1, "and its bolts fall LEAD later (%d)" % storm.bolts)
 	# The storm, stepped as the game would, a tenth of a second at a time.
-	var steps := int(TempestFx.STORM_TIME / 0.1)
+	var steps := int((TempestFx.STORM_TIME - 0.35 - TempestFx.LEAD) / 0.1)
 	for k in steps:
 		storm._process(0.1)
 		crowd.shelters.step(0.1)

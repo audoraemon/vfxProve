@@ -60,6 +60,13 @@ func setup(field: EnemyField, at: Vector2, r: float, seed_value: float) -> Solar
 	return self
 
 
+## The Wandering Sun carries the pit with the pillar: its centre and its quad move, nothing else changes.
+func move_to(g: Vector2) -> void:
+	center = g
+	var far_rim := radius * FxParts.PX_PER_UNIT_MINOR
+	transform = Transform2D(Iso.BASIS.x, Iso.BASIS.y, Iso.ground_to_screen(g) - Vector2(0, far_rim))
+
+
 func _process(delta: float) -> void:
 	advance(delta)
 

@@ -2,6 +2,7 @@ extends RefCounted
 ## Solaris level 5 twist, Wandering Sun (Ruin ability levels, R10): the pillar drifts toward a knot of people within 4.0 of it, looking
 ## again every half second, at 0.8 u/s and never past it; the pit follows and is left where the pillar stops. Level 1-4 stands still.
 
+const FxStage := preload("res://tests/fx_stage.gd")
 const PATH := "res://src/fx/solaris/light_of_solaris.gd"
 const AT := Vector2(2.75, 11.25)  # the Main Gate's plaza
 
@@ -58,12 +59,26 @@ static func _run_to(fx: LightOfSolaris, to: float) -> void:
 		fx._process(minf(0.1, to - fx.t))
 
 
+## A stand-in for the stage's Sfx: remembers where each cue was played.
+class SfxSpy extends Node:
+	var heard := {}
+
+	func play(cue: StringName, ground_pos: Vector2, _db := 0.0) -> Node:
+		heard[cue] = ground_pos
+		return null
+
+	func fade_out(_player: Node, _seconds: float) -> void:
+		pass
+
+
 static func run(t) -> void:
 	_drift(t)
 	_reach(t)
 	_level_four(t)
 	_far_knot(t)
 	_staged_follow(t)
+	_fade_follows(t, 5)
+	_fade_follows(t, 4)
 
 
 ## A knot 3.0 east and a loner 2.0 west: the pillar (shrunk to 1.0 so nobody dies while it is measured) drifts 0.8 u/s east.
@@ -174,3 +189,34 @@ static func _staged_follow(t) -> void:
 		n.free()
 	fx.free()
 	_done(made)
+
+
+## The pillar leaves nothing behind (R10, fix wave): the closing sounds play where the pillar stands now, not where it was cast; the
+## scene light is asked for that same point (its getter); the heat haze moves with the pillar. Level 4 stands on the cast point. (The
+## suites run before the root is in the tree, so the cast does not stage itself: _strike() and _fade() are called by hand, as _lift() would.)
+static func _fade_follows(t, level: int) -> void:
+	var bf := FxStage.make(7)
+	var spy := SfxSpy.new()
+	bf.add_child(spy)
+	bf.ctx.sfx = spy
+	var fx: LightOfSolaris = FxTimeline.cast(load(PATH), bf.ctx, AT, {"level": level})
+	fx._strike()
+	if level == 5:
+		fx.beam_at = AT + Vector2(1.5, -0.5)  # where a Wandering Sun has drifted to
+		fx._follow()
+	spy.heard.clear()
+	fx._fade()
+	t.check(spy.heard.get(&"laser_powerdown") == fx.beam_at and spy.heard.get(&"nova_rumble") == fx.beam_at,
+		"level %d: the closing sounds play at the pillar (%s from the cast point)" % [level, str(fx.beam_at - AT)])
+	var found := false
+	for l in bf.ctx.lights._lights:
+		if l.quad == fx._light:
+			found = true
+			t.check(l.getter.is_valid() and l.getter.call() == fx.beam_at, "level %d: the scene light follows the pillar" % level)
+	t.check(found, "level %d: the pillar's light is registered with the scene" % level)
+	var sp := Iso.ground_to_screen(fx.beam_at)
+	t.check(fx._haze.position.is_equal_approx(sp + fx._haze_lift) and fx._column.position.is_equal_approx(sp),
+		"level %d: the heat haze and the column stand on the pillar" % level)
+	fx.free()
+	bf.ctx.field.clear()
+	FxStage.drop(bf)

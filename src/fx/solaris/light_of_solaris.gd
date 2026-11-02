@@ -45,6 +45,8 @@ var _halo: QuadFx
 var _glow: QuadFx
 var _light: QuadFx
 var _rays: QuadFx
+var _haze: QuadFx
+var _haze_lift := Vector2.ZERO
 var _updraft: PixelParticles
 var _sparks: PixelParticles
 var _voices: Array[Node] = []
@@ -161,7 +163,7 @@ func _strike() -> void:
 	FxParts.set_ramp(_column, SOLAR)
 	_column.tween_param("intensity", 0.06, 1.0, 0.22, 0.0, Tween.TRANS_BACK, Tween.EASE_OUT)
 
-	_light = FxParts.ground_light(self, origin, lv_radius * 3.4, SUN, 1.9)
+	_light = FxParts.ground_light(self, origin, lv_radius * 3.4, SUN, 1.9, func() -> Vector2: return beam_at)
 	_light.set_param("flicker", 1.0)
 	_rays = FxParts.ground_rays(self, origin, lv_radius * 3.2, SUN_HOT, 72.0)
 	_rays.tween_param("reach", 0.2, 1.0, 0.3, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
@@ -176,9 +178,10 @@ func _strike() -> void:
 	refract.set_param("strength", 8.0)
 	refract.tween_param("progress", 0.1, 1.0, 0.5, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	refract.life = 0.52
-	var haze := FxParts.heat_haze(self, sp, FxParts.particle_radius(lv_radius * 1.7), 2.6)
-	haze.tween_param("strength", 2.6, 0.0, 1.6, lv_beam_time)
-	haze.life = lv_beam_time + 1.65
+	_haze = FxParts.heat_haze(self, sp, FxParts.particle_radius(lv_radius * 1.7), 2.6)
+	_haze_lift = _haze.position - sp
+	_haze.tween_param("strength", 2.6, 0.0, 1.6, lv_beam_time)
+	_haze.life = lv_beam_time + 1.65
 
 	# What the light lifts off the ground and burns: flecks streaming up the pillar, sparks thrown from its foot.
 	_updraft = FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.STREAK, ASH_LIFE, 110.0, lv_beam_time, {
@@ -197,19 +200,20 @@ func _strike() -> void:
 		Vector2(1.5, 4.5), true)
 
 
+## The pillar lifts and the pit breathes out, where the pillar stands now (beam_at; the cast point at levels 1-4).
 func _fade() -> void:
-	var sp := Iso.ground_to_screen(origin)
+	var sp := Iso.ground_to_screen(beam_at)
 	_column.tween_param("intensity", 1.0, 0.0, 0.42, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	_column.life = _column.age + 0.44
 	_rays.tween_param("intensity", 0.55, 0.0, 0.4)
 	for v in _voices:
 		ctx.fade_out(v, 0.5)
-	ctx.play(&"laser_powerdown", origin)
-	ctx.play(&"nova_rumble", origin, -3.0)
+	ctx.play(&"laser_powerdown", beam_at)
+	ctx.play(&"nova_rumble", beam_at, -3.0)
 	ctx.impact.dim(0.0, 0.7)
 	ctx.impact.aberration(1.6, 0.3)
 	ctx.shake.add_trauma(0.5)
-	var ring := FxParts.shockwave(self, origin, lv_radius * 1.8, FxParts.DUST_RING)
+	var ring := FxParts.shockwave(self, beam_at, lv_radius * 1.8, FxParts.DUST_RING)
 	ring.set_param("thickness", 0.2)
 	ring.tween_param("progress", 0.3, 1.0, 0.6, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	ring.tween_param("fade", 1.0, 0.0, 0.4, 0.25)
@@ -293,6 +297,8 @@ func _follow() -> void:
 		_light.position = beam_at
 	if is_instance_valid(_rays):
 		_rays.position = beam_at
+	if is_instance_valid(_haze):
+		_haze.position = sp + _haze_lift
 	if is_instance_valid(_updraft):
 		_updraft.position = sp
 	if is_instance_valid(_sparks):

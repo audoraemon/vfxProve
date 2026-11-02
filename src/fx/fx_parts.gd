@@ -125,8 +125,9 @@ static func fog(fx: FxTimeline, center: Vector2, radius: float, color: Color) ->
 	return q
 
 
-## Additive light pool on the ground (lights tiles, decals; enemies stay unlit above it).
-static func ground_light(fx: FxTimeline, center: Vector2, radius: float, color: Color, intensity := 1.0) -> QuadFx:
+## Additive light pool on the ground (lights tiles, decals; enemies stay unlit above it). A `getter` (returning a ground Vector2) makes the
+## scene light follow a pool that moves; the quad itself the caller moves.
+static func ground_light(fx: FxTimeline, center: Vector2, radius: float, color: Color, intensity := 1.0, getter := Callable()) -> QuadFx:
 	var q := quad(fx, SH_LIGHT, Vector2.ONE * radius * 2.0, fx.ctx.ground)
 	q.position = center
 	q.z_index = 6
@@ -134,7 +135,7 @@ static func ground_light(fx: FxTimeline, center: Vector2, radius: float, color: 
 	q.set_param("intensity", intensity)
 	# Every light pool also lights structures and enemies.
 	if fx.ctx.lights != null:
-		fx.ctx.lights.register_quad(q, center, radius * 1.15, color)
+		fx.ctx.lights.register_quad(q, center, radius * 1.15, color, getter)
 	return q
 
 

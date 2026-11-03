@@ -1,10 +1,10 @@
 {
- "hash": "f0fd55f06bb85e1e",
- "updated": "2026-11-03T02:14:47+07:00",
+ "hash": "4ed7e5e90e2fa67b",
+ "updated": "2026-11-03T10:16:34+07:00",
  "changes": {
-  "date": "<t:1793646887:f>",
+  "date": "<t:1793675794:f>",
   "items": [
-   "New: Ruin ability levels: 5 levels + a level-5 twist for all ten powers"
+   "Done: Ruin ability levels: 5 levels + a level-5 twist for all ten powers"
   ]
  },
  "snapshot": {
@@ -311,11 +311,11 @@
    },
    "god-ruin-levels": {
     "title": "Ruin ability levels: 5 levels + a level-5 twist for all ten powers",
-    "status": "todo",
+    "status": "done",
     "area": "Design",
-    "version": "god/ruin-tree",
-    "needs_you": false,
-    "branch": "god/ruin-tree",
+    "version": "kak-god-ruin-levels",
+    "needs_you": true,
+    "branch": "feat/god-progression",
     "updated": "2026-11-03",
     "order": 203
    },
@@ -1200,20 +1200,20 @@
   },
   "branches": [
    {
-    "name": "god/ruin-tree",
-    "ahead": 170,
+    "name": "feat/god-progression",
+    "ahead": 192,
     "behind": 0,
     "date": "2026-11-03",
-    "subject": "docs: Ruin ability levels design -- five levels and a level-5 twist for each of Ruin's ten powers (approved)",
+    "subject": "docs: Ruin levels landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14688/0",
     "pushed": true
    },
    {
-    "name": "feat/god-progression",
-    "ahead": 169,
+    "name": "god/ruin-levels",
+    "ahead": 192,
     "behind": 0,
     "date": "2026-11-03",
-    "subject": "docs: D44 -- Scatter Strike, Wrath of the Sky and Earthshatter fill Ruin's empty spots; Ruin Hunts drop Heaven",
-    "pushed": true
+    "subject": "docs: Ruin levels landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14688/0",
+    "pushed": false
    },
    {
     "name": "feat/town-lighting",

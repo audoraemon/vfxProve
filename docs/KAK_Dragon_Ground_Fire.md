@@ -169,7 +169,7 @@ Task rulings (each from its report):
 
 - New: `tests/test_ground_fire.gd` (41 checks: rates, harm, dash, danger renewal, catching, clearing, first_near, renewal quiet), `tests/test_ground_fire_crew.gd` (41), `tests/test_ground_fire_sprite.gd` (26), `tests/test_dragon_ground.gd` (16). All four are registered in `tests/run_all.gd`. With the old behaviour switched back on, 8 of the fix wave's new or changed checks fail (teeth confirmed).
 - Suite counts: after Task 1 14730/0; after Task 4 14802/0 (run as parts); after Task 5 14800/0 (one shared-directory race in `test_hunt_tools`, green alone); after the fix wave 14814/0.
-- Landing: refs __ / FLOW __
+- Landing: refs 508/0 (only Dragonfire rows re-recorded) / FLOW 209/0 alone / suite 14814/0
 
 ## Open items
 
@@ -178,7 +178,7 @@ Task rulings (each from its report):
 - **Hand playtest.** No staged visual (patches, scorched soot, beaters round a patch, the light pools) has been looked at in a real window; suites and reference runs are headless. The numbers are first guesses: radius 0.7, 1.5 s kill, 40 s burn-down, 3-beater crew, the sizes of flames and light.
 - **Judgement b and night b** stay 0/3 and **lanterns a** keeps its median of 142 (all baseline, v0.11 C5): a policy problem for the scripted routes, not this feature.
 - **The bench script** lives only in the scratchpad (`dragon_bench.gd`); a `--bench-dragon` hook on the mission would make it repeatable.
-- **Final re-review** of the fix wave: not written when this note was made.
+- **Final re-review** of the fix wave: clean. Parked minors: a renewal at a veiled place orphans the old danger (lingers up to 0.5 s); the sprite cull and several fix-wave helpers have no test.
 
 ## Out of scope (ideas for later)
 

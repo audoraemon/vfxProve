@@ -72,7 +72,7 @@ const AREAS := {
 	"tempest": {"shape": "circle", "r": 0.6},
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
-	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw())
+	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw()); its ENTHRALL mode covers ENTHRALL_R
 	"wisp": {"shape": "circle", "r": 1.6, "roam": 6.0},
 	# ThornwallFx.THORN_LENGTH, SEG * 0.5; centred on the press
 	"thorns": {"shape": "lane", "length": 3.0, "half": 0.3, "centred": true},
@@ -559,7 +559,7 @@ func _draw() -> void:
 				_ring(_press, float(a.r), edge)
 			if a.has("inner"):
 				_ring(_press, float(a.inner), COL_INNER)
-			if a.has("roam"):
+			if a.has("roam") and not (_rules.key(slot) == "wisp" and String(mode().get("key", "")) == "enthrall"):
 				_ring(_press, float(a.roam), COL_FAINT)
 		"lane":
 			var dir := aim_dir()
@@ -654,8 +654,9 @@ func _draw() -> void:
 			for p in DiscordFx.taken(_crowd._field, _press):
 				_ring(p.ground_pos, 0.2, Person.COL_DISCORD)
 		"wisp":
-			# Who it would draw.
-			for p in WillOWisp.drawn(_crowd._field, _press):
+			# Who it would draw -- or, in ENTHRALL, everyone near the light it would hold.
+			var drawn := WillOWisp.enthralled(_crowd._field, _press) if String(mode().get("key", "")) == "enthrall" else WillOWisp.drawn(_crowd._field, _press)
+			for p in drawn:
 				_ring(p.ground_pos, 0.18, COL_FAINT)
 		"whisper":
 			if _order != "" and _whisper_held():

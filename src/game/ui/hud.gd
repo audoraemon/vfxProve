@@ -1607,8 +1607,11 @@ func _draw_slots(_w: float) -> void:
 		var tx := box.position.x + SLOT_SIZE + 4.0
 		var name_col := UiTheme.COL_GOLD if is_picked(i) else (UiTheme.COL_TEXT if usable else UiTheme.COL_DIM)
 		UiTheme.text(self, Vector2(tx, box.position.y + 14.0), slot_name(i), UiTheme.SIZE_SMALL, name_col)
-		UiTheme.text(self, Vector2(tx, box.position.y + 14.0 + UiTheme.LINE_SMALL),
-			PrepareScreen.cooldown_text(_rules.power(i), _rules.level_of(i)), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		var cd_text := PrepareScreen.cooldown_text(_rules.power(i), _rules.level_of(i))
+		if is_picked(i) and _aim.mode().has("cooldown"):
+			# The picked mode waits its own cooldown (Will-o'-Wisp's ENTHRALL).
+			cd_text = PrepareScreen.cooldown_text({"cooldown": _aim.mode().cooldown})
+		UiTheme.text(self, Vector2(tx, box.position.y + 14.0 + UiTheme.LINE_SMALL), cd_text, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		if state == "busy":
 			# Another power is still playing: a light shade and its seconds left, in gold.
 			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE)), Color(0, 0, 0, 0.35))

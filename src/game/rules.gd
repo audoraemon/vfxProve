@@ -167,6 +167,8 @@ var _crowd: Crowd
 var _town: Town
 ## Seconds of cooldown left per slot.
 var _cooldowns := PackedFloat32Array()
+## The full cooldown of a slot whose last cast was in a mode with its own (cooldown_of() counts down from it): slot -> seconds.
+var _mode_cooldown := {}
 ## The power now playing; no other can be cast until it finishes (busy_left()).
 var _playing: FxTimeline
 ## One entry per cast that may still be credited: {"key", "fx", "at", "buildings", "kills", "chained", "until"}.
@@ -343,6 +345,8 @@ func cooldown_of(slot: int) -> float:
 	var p := power(slot)
 	if p.is_empty():
 		return 0.0
+	if _mode_cooldown.has(slot):
+		return float(_mode_cooldown[slot])
 	return PowerBook.cooldown(String(p.key), level_of(slot))
 
 
@@ -412,6 +416,13 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		told["level"] = level_of(slot)
 	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.
 	_cooldowns[slot] = PowerBook.cooldown(String(p.key), int(told.level))
+	# A mode that carries its own cooldown (Will-o'-Wisp's ENTHRALL) waits that instead; no mode, or one without, changes nothing.
+	var own := PowerBook.mode_cooldown(String(p.key), String(told.get("mode", ""))) if told.has("mode") else -1.0
+	if own >= 0.0:
+		_cooldowns[slot] = own
+		_mode_cooldown[slot] = own
+	else:
+		_mode_cooldown.erase(slot)
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, told)
 	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,

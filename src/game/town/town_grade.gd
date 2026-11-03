@@ -101,3 +101,13 @@ static func light_step(m: float, cell: Vector2i, steps: float) -> float:
 	const B := [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 	var b := (float(B[posmod(cell.y, 4) * 4 + posmod(cell.x, 4)]) + 0.5) / 16.0
 	return floorf(m * steps + b) / steps
+
+
+## The shader's lift cap (town_grade.gdshader lift_cap) in GDScript, for the tests: what a beam or the sun glow lifts the dry
+## colour `dry` to (`lifted`) is eased so no channel passes `cap`; a channel already past it is left as it was.
+static func lift_capped(dry: Color, lifted: Color, cap: float) -> Color:
+	var out := Color(0, 0, 0, 1)
+	for i in 3:
+		var room := maxf(cap - dry[i], 1.0e-4)
+		out[i] = dry[i] + room * (1.0 - exp(-maxf(lifted[i] - dry[i], 0.0) / room))
+	return out

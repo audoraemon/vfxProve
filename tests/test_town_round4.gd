@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_proportions(t)
 	_day_unlit(t)
 	_day_props_sunlit(t)
+	_day_lift_cap(t)
 
 
 static func _src(path: String) -> String:
@@ -156,3 +157,22 @@ static func _day_props_sunlit(t) -> void:
 	t.check(night.is_equal_approx(TownLookDecor.COL_POST), "NIGHT's post sprite keeps its colour")
 	var ld_src := FileAccess.get_file_as_string("res://src/game/town/town_look_decor.gdshader")
 	t.check(ld_src.contains("sun_lit > 0.5 ? COLOR : t * COLOR"), "DAY props take their colour once (no squared sprite)")
+
+
+## Round 6: DAY's sunbeams and sun glow are a gentle lift, capped so pale ground never clips toward white.
+static func _day_lift_cap(t) -> void:
+	var atm := TownLook.atmosphere(Town.Look.DAY)
+	t.check(float(atm.get("lift_cap", 0.0)) == TownLook.LIFT_CAP and TownLook.LIFT_CAP <= 0.9, "DAY caps the beams' and glow's lift at %.2f" % TownLook.LIFT_CAP)
+	t.check(float(atm.beam) <= 0.5 and float(atm.sun) <= 0.5 and TownMist.BEAM_MAX_ALPHA <= 0.09, "DAY's beams and sun glow are gentle")
+	t.check(not TownLook.atmosphere(Town.Look.NIGHT).has("lift_cap"), "NIGHT has no lift cap")
+	var src := FileAccess.get_file_as_string("res://src/game/town/town_grade.gdshader")
+	t.check(src.contains("uniform float lift_cap") and src.contains("o = o_dry + room * (1.0 - exp(-max(o - o_dry, vec3(0.0)) / room));"),
+		"the grade eases the beams' and glow's lift under the cap")
+	var pale := Color(0.86, 0.80, 0.62)
+	var blown := TownGrade.lift_capped(pale, Color(1.0, 1.0, 1.0), TownLook.LIFT_CAP)
+	t.check(maxf(blown.r, maxf(blown.g, blown.b)) <= TownLook.LIFT_CAP + 0.0001, "a beam and the glow on pale paving stop at the cap (%s)" % blown)
+	t.check(blown.r > pale.r and blown.g > pale.g and blown.b > pale.b, "the lift still lifts")
+	var small := TownGrade.lift_capped(Color(0.3, 0.4, 0.2), Color(0.33, 0.44, 0.22), TownLook.LIFT_CAP)
+	t.near(small.g, 0.44, 0.01, "a small lift passes almost as it is")
+	var above := TownGrade.lift_capped(Color(0.97, 0.5, 0.2), Color(1.0, 0.9, 0.6), TownLook.LIFT_CAP)
+	t.near(above.r, 0.97, 0.001, "a channel already past the cap is not changed")

@@ -16,7 +16,7 @@ const WATER_FADE := 0.8
 const WATER_ALPHA := 0.6
 ## The sunbeams light open ground only: they lie in the ground plane with the mist (z 0, under everything that stands), so
 ## buildings, people and tags are never covered. Each of a stripe's three nested steps adds up to BEAM_MAX_ALPHA.
-const BEAM_MAX_ALPHA := 0.14
+const BEAM_MAX_ALPHA := 0.09
 const BEAM_Z := 0
 ## DAY mist starts lower (town_mist.gdshader floor_level; NIGHT keeps the shader's 0.28), so it is thicker.
 const DAY_FLOOR := 0.16

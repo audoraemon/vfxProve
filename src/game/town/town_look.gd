@@ -98,12 +98,17 @@ static func atmosphere(look) -> Dictionary:
 	var city := City.current()
 	var keeps := TownMist.keep_outs()
 	var out := {"vignette": 0.26, "haze": 0.45, "haze_sat": 0.85, "haze_col": Vector3(0.92, 0.89, 0.80), "haze_start": 3.0, "haze_end": city.border() + 10.0,
-		"beam": 0.75, "beam_origin": beam_origin(), "beam_slant": BEAM_SLANT, "beam_period": BEAM_PERIOD,
-		"beam_width": BEAM_WIDTH, "beam_keep": _rect4(city.town().grow(BEAM_PAD)), "sun": 0.75, "sun_at": Vector2(0.02, 0.0),
-		"sun_radius": 0.5}
+		"beam": 0.5, "beam_origin": beam_origin(), "beam_slant": BEAM_SLANT, "beam_period": BEAM_PERIOD,
+		"beam_width": BEAM_WIDTH, "beam_keep": _rect4(city.town().grow(BEAM_PAD)), "sun": 0.5, "sun_at": Vector2(0.02, 0.0),
+		"sun_radius": 0.5, "lift_cap": LIFT_CAP}
 	for i in mini(keeps.size(), 2):
 		out["keep_out" if i == 0 else "keep_out2"] = _rect4(keeps[i])
 	return out
+
+
+## DAY's lift cap (town_grade.gdshader lift_cap, round 6): the beams and the sun glow never lift a channel past this, so the
+## brightest ground stays about 10% under white and keeps its detail.
+const LIFT_CAP := 0.9
 
 
 static func _rect4(r: Rect2) -> Vector4:

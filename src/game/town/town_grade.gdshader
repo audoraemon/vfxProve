@@ -85,6 +85,10 @@ uniform vec2 sun_at = vec2(0.0, 0.0);
 uniform float sun_radius = 0.45;
 uniform vec3 sun_col = vec3(1.0, 0.86, 0.55);
 uniform float vignette = 0.0;
+// DAY's lift cap (round 6): what the beams and the sun glow add (a screen blend) is eased so no channel is lifted past this
+// level (a soft shoulder, hue kept); a pixel already past it is left as it was. Overlapping beams and the glow on pale
+// paving or grass can no longer clip toward white. 0: off.
+uniform float lift_cap = 0.0;
 
 float bayer4(vec2 p) {
 	ivec2 i = ivec2(mod(p, 4.0));
@@ -157,6 +161,7 @@ vec3 atmosphere(vec3 o, vec2 screen_uv) {
 		float l = dot(o, vec3(0.299, 0.587, 0.114));
 		o = mix(o, mix(vec3(l), o, haze_sat) * 0.45 + haze_col * 0.55, h);
 	}
+	vec3 o_dry = o;
 	if (beam > 0.0 && outside(g, beam_keep) > 0.0) {
 		float u = wp.x - beam_origin.x - (wp.y - beam_origin.y) * beam_slant;
 		float n = floor(u / beam_period + 0.5);
@@ -176,6 +181,10 @@ vec3 atmosphere(vec3 o, vec2 screen_uv) {
 		float s = sun * (exp(-r * r * 2.5) * 0.85 + 0.15 * exp(-r * 6.0));
 		s = floor(s * 24.0 + bayer4(floor(screen_uv * view_size))) / 24.0;
 		o = 1.0 - (1.0 - o) * (1.0 - sun_col * s);
+	}
+	if (lift_cap > 0.0) {
+		vec3 room = max(vec3(lift_cap) - o_dry, vec3(1.0e-4));
+		o = o_dry + room * (1.0 - exp(-max(o - o_dry, vec3(0.0)) / room));
 	}
 	if (vignette > 0.0) {
 		vec2 q = (screen_uv - 0.5) * 2.0;

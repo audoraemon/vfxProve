@@ -50,6 +50,8 @@ const PANIC := 2
 const MAD_CHANCE := 0.4
 const FROZEN_CHANCE := 0.3
 const PANIC_REPICK := Vector2(3.0, 4.0)
+## A panicked one this close to its point has arrived and picks the next at once.
+const PANIC_ARRIVED := 0.5
 ## A panicked one's next point is at least this far from where it stands.
 const PANIC_MIN_RUN := 6.0
 const MAD_RED := Color("e02828")
@@ -274,13 +276,14 @@ func _panic_point(p: Person) -> Vector2:
 	return to
 
 
-## Tumult: those running wildly pick a new far point every PANIC_REPICK seconds, until the end.
+## Tumult: those running wildly pick a new far point every PANIC_REPICK seconds, or as soon as they reach the last one
+## (within PANIC_ARRIVED), so they never stand still until the end.
 func _repick_panicked() -> void:
 	for entry: Array in _panicked:
 		var p: Person = entry[0] if is_instance_valid(entry[0]) else null
-		if p == null or not p.is_alive():
+		if p == null or not p.is_alive() or p.mind != Person.Mind.COMPELLED:
 			continue
-		if t < float(entry[1]) or p.mind != Person.Mind.COMPELLED:
+		if t < float(entry[1]) and p.ground_pos.distance_to(p.anchor) > PANIC_ARRIVED:
 			continue
 		var left := maxf(T_BREAK + DURATION - t, 0.5)
 		var glyph: Array[int] = []

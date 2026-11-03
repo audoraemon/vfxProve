@@ -130,6 +130,14 @@ static func run(t) -> void:
 	for p in frozen:
 		stayed = stayed and p.ground_pos.distance_to(spots[p]) < 1.0 and p.mind == Person.Mind.COMPELLED
 	t.check(stayed, "and they do not move over 3 s")
+	# One reaches its point early: it picks the next at once instead of standing until the re-pick.
+	var runner: Person = panic[0]
+	var reached: Vector2 = runner.anchor
+	runner.ground_pos = reached
+	fx._process(0.05)
+	t.check(runner.anchor != reached and runner.mind == Person.Mind.COMPELLED and runner.is_running(),
+		"a panicked one that reaches its point runs on to a new one at once")
+	goals[runner] = runner.anchor
 	fx._process(DivineSchismFx.PANIC_REPICK.y + 0.2)
 	var repicked := true
 	for p in panic:

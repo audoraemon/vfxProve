@@ -206,7 +206,8 @@ const POWERS := [
 		"authority": "dominion", "modes": [
 			{"key": "faction", "name": "FACTION SPLIT"}, {"key": "purge", "name": "PURGE", "area": {"r": 1.5}},
 			{"key": "custom", "name": "CUSTOM", "aim": "two clicks", "area": {"shape": "regions", "r": 5.0}},
-			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}}]},
+			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}},
+			{"key": "tumult", "name": "TUMULT"}]},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]

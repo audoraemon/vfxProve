@@ -49,6 +49,8 @@ const AREAS := {
 	"magnify": {"shape": "circle", "r": 4.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
+	# ClearMindFx.RADIUS
+	"clearmind": {"shape": "circle", "r": 5.0},
 	# UnseenHourFx.RADIUS
 	"unseen": {"shape": "circle", "r": 5.0},
 	# CurfewFx.RADIUS

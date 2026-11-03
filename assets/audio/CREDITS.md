@@ -11,7 +11,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_001.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_verdict |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_003.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
-| [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_discord |
+| [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_clearmind, ability/quiet/q_discord |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_001.ogg` | CC0 | Kenney | ability/quiet/q_oath |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_light_000.ogg` | CC0 | Kenney | citizen/sol_death_1 |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_light_002.ogg` | CC0 | Kenney | citizen/sol_death_3 |
@@ -106,9 +106,9 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_02_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_surge |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_04_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_rise |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding1.wav` | CC0 | PWL | ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_discord, ability/quiet/q_wisp |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_clearmind, ability/quiet/q_discord, ability/quiet/q_wisp |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding3.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_discord, ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_clearmind, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord |
 | [Big scary troll sounds](https://opengameart.org/content/big-scary-troll-sounds) `troll-roars_0.ogg` | CC0 | Darsycho | ability/fire/dr_roar |
 | [Cannon fire](https://opengameart.org/content/cannon-fire) `cannon_fire_0.ogg` | CC0 | Thimras | ability/fire/nova_boom |
 | [Catching fire](https://opengameart.org/content/catching-fire) `flame_0.ogg` | CC0 | themightyglider | ability/energy/laser_sizzle_1, ability/fire/cf_fall, ability/quiet/q_ember_hit, building/lantern_blind |
@@ -215,7 +215,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Teleport Spell](https://opengameart.org/content/teleport-spell) `teleport.wav` | CC0 | Ogrebane | ability/quiet/q_mirror_hit |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Smooth 2.wav` | CC0 | Zane Little Music | ability/energy/orb_target |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Space 2.wav` | CC0 | Zane Little Music | ability/energy/laser_scan |
-| [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Spirit 1.wav` | CC0 | Zane Little Music | ability/quiet/q_delusion, ability/quiet/q_madness, ability/quiet/q_unseen |
+| [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Spirit 1.wav` | CC0 | Zane Little Music | ability/quiet/q_clearmind, ability/quiet/q_delusion, ability/quiet/q_madness, ability/quiet/q_unseen |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Spirit 4.wav` | CC0 | Zane Little Music | ability/energy/laser_powerdown |
 | [Wind](https://opengameart.org/content/wind) `qubodup-megaswosh1.wav` | CC0 | IgnasD | ability/fire/dr_inhale, ability/wind/tn_gust |
 | [Wind](https://opengameart.org/content/wind) `qubodup-megaswosh2.wav` | CC0 | IgnasD | ability/fire/nova_shockwave, ability/holy/jg_windup |

@@ -22,6 +22,12 @@ const JET_REACH := 0.55
 const SECOND_GAP := 2.0
 ## The dragon sprite faces screen down-right (south-east); the breath is locked to that facing.
 const FACING := Vector2(1, 0)
+## Ground fire: patches laid a second of breath (8 over the 2.4 s breath), at what distance from the dragon they lie, and the
+## golden-ratio step that spreads a strip's patches along it without an rng.
+const PATCH_RATE := 8.0 / BREATH_TIME
+const PATCH_NEAR := 2.0
+const PATCH_FAR := 9.5
+const GOLDEN := 0.618034
 
 
 var _center_px := Vector2.ZERO
@@ -40,7 +46,12 @@ var _breathing := false
 var _back := false
 var _breath_start := T_BREATH
 var breaths := 0
-var _next_patch := 0.0
+## Ground fire: one strip (the patches of one breath) each, how many patches the dragon has laid in all, how many this breath, and how many
+## this cast's breath lays (set in _build()).
+var strips: Array = []
+var patches_laid := 0
+var _laid := 0
+var _lv_patches := 0
 ## This cast's breath time and sweep, and when the dragon sinks: the ability level's (PowerBook.stat()), the consts at level 1.
 var lv_breath_time := BREATH_TIME
 var lv_sweep_arc := SWEEP_ARC
@@ -51,6 +62,7 @@ func _build() -> void:
 	lv_breath_time = float(PowerBook.stat(extra, "dragon", "BREATH_TIME", BREATH_TIME))
 	lv_sweep_arc = float(PowerBook.stat(extra, "dragon", "SWEEP_ARC", SWEEP_ARC))
 	lv_t_sink = T_BREATH + lv_breath_time + 0.4
+	_lv_patches = roundi(PATCH_RATE * lv_breath_time)
 	var second := PowerBook.twist_at(extra, "dragon")
 	if second:
 		lv_t_sink = T_BREATH + 2.0 * lv_breath_time + SECOND_GAP + 0.4
@@ -172,7 +184,7 @@ func _inhale() -> void:
 ## The second breath: the same set-up, sweeping the arc back from the dragon's right to its left.
 func _breathe_back() -> void:
 	_back = true
-	_next_patch = 0.0
+	_laid = 0
 	_breathe(T_BREATH + lv_breath_time + SECOND_GAP)
 
 
@@ -180,6 +192,8 @@ func _breathe_back() -> void:
 func _breathe(start := T_BREATH) -> void:
 	_breath_start = start
 	breaths += 1
+	strips.append([])
+	_laid = 0
 	ctx.play(&"dr_ignite", origin)
 	_breath_voice = ctx.play(&"dr_breath", origin, -1.0)
 	ctx.impact.dim(0.3, 1.5)
@@ -252,12 +266,10 @@ func _fx_process(delta: float) -> void:
 			if rel.length() < CONE_RADIUS and absf(angle_difference(rel.angle(), beam_angle)) < BEAM_HALF_ANGLE:
 				s.damage(260.0 * delta, origin, &"fire")
 	ctx.shake.add_trauma(0.4 * delta)
-	# Residual fire patches left along the swept area.
-	if _sweep >= _next_patch:
-		_next_patch += 0.09
-		for n in 2:
-			var g := origin + Vector2.RIGHT.rotated(beam_angle + ctx.rng.randf_range(-0.1, 0.1)) * ctx.rng.randf_range(1.4, CONE_RADIUS * 0.9)
-			_fire_patch(g)
+	# Ground fire: the patches of this breath, laid as the beam passes their share of the sweep.
+	while _laid < _lv_patches and k >= (_laid + 0.5) / _lv_patches:
+		_lay(beam_angle, _laid)
+		_laid += 1
 	if k >= 1.0:
 		_breathing = false
 		ctx.fade_out(_breath_voice, 0.4)
@@ -269,25 +281,27 @@ func _fx_process(delta: float) -> void:
 		_cone.tween_param("fade", 1.0, 0.0, 2.0, duration - t - 2.1)
 
 
-func _fire_patch(g: Vector2) -> void:
-	var sp := Iso.ground_to_screen(g)
-	var flame := FlameSprite.new()
-	flame.size = ctx.rng.randf_range(0.8, 1.3)
-	flame.setup(ctx.rng, ctx.rng.randi_range(3, 5))
-	flame.position = sp.round()
-	track(flame, stand_layer())
-	var burn_out := duration - t - ctx.rng.randf_range(0.6, 2.0)
-	var tw := flame.create_tween()
-	tw.tween_property(flame, "strength", 1.0, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(maxf(burn_out - 0.9, 0.1))
-	tw.tween_property(flame, "strength", 0.0, 0.6)
-	FxParts.emitter(self, ctx.overhead, sp + Vector2(0, -14), PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 5.0, burn_out, {
-		"radius": 8.0, "alt_speed": Vector2(20, 50), "life": Vector2(0.4, 0.9), "size": Vector2(1, 1),
-	})
-	FxParts.smoke(self, sp, 6.0, 1.2, duration - t - 2.0, Vector2(14, 34), Vector2(3, 5), Vector2(1.2, 2.2))
-	var light := FxParts.ground_light(self, g, 1.2, FIRE_LIGHT, 0.7)
-	light.set_param("flicker", 1.0)
-	light.tween_param("intensity", 0.7, 0.0, 1.2, duration - t - 1.3)
+## Lays patch `i` of this breath's strip on the beam at `angle`: no rng, the distance steps by the golden ratio from the strip's phase
+## (the way back starts elsewhere). Outside the field or in a river it is skipped (the index still counts).
+func _lay(angle: float, i: int) -> void:
+	var phase := 0.0 if _back else 0.5
+	var d := PATCH_NEAR + (PATCH_FAR - PATCH_NEAR) * fposmod(phase + i * GOLDEN, 1.0)
+	var g := origin + Vector2.RIGHT.rotated(angle) * d
+	if not ctx.field.bounds.has_point(g):
+		return
+	if ctx.crowd != null:
+		for r: Rect2 in City.current().rivers():
+			if r.has_point(g):
+				return
+	var patch: GroundFire = ctx.crowd.fires.lay(g) if ctx.crowd != null else GroundFire.new(g, GroundFire.RADIUS, 1000 + patches_laid)
+	var sprite := GroundFireSprite.new().setup(patch, ctx)
+	var strip: Array = strips.back()
+	if strip.is_empty():
+		var voice := ctx.play(&"orb_embers", g, -6.0)
+		if voice != null:
+			sprite.hold_voice(voice, strip)
+	strip.append(patch)
+	patches_laid += 1
 
 
 func _sink() -> void:

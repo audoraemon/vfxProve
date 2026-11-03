@@ -82,6 +82,9 @@ const COL_CRACK := Color(0.05, 0.04, 0.05, 0.9)
 ## The contact shadow (a footprint nudged back). True in the CURRENT town look; the DAY and NIGHT looks (Town.look) turn
 ## it off, because TownShadows casts the shadow instead. Set by Town.build() before any structure is added.
 static var cast_shadows := true
+## Whether a torch or lamp throws its warm pool on the ground (_glow) and a flame its halo. True in CURRENT and NIGHT; the
+## DAY look turns it off (round 4: nobody lights a lamp by day). Set by Town.build() before any structure is added.
+static var lamp_glow := true
 static var _no_uv := PackedVector2Array()
 const SHADOW := Color(0, 0, 0, 0.25)
 static var _quad_cols := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
@@ -270,7 +273,7 @@ func _ready() -> void:
 		add_child(_flame)
 		# A warm halo round each flame, lighting the stone and timber near it as the reference's torches do. A street
 		# torch or lamp has its own pool of light (_glow) already.
-		for tip in _flame_tips() if kind != Kind.TORCH else []:
+		for tip in _flame_tips() if kind != Kind.TORCH and lamp_glow else []:
 			var halo := QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(44, 30))
 			halo.set_param("color", TORCH_LIGHT)
 			halo.set_param("falloff", 1.8)
@@ -279,7 +282,7 @@ func _ready() -> void:
 			halo.run_on_shader_clock()
 			halo.position = tip + Vector2(0, -4)
 			_flame.add_child(halo)
-	if kind == Kind.TORCH:
+	if kind == Kind.TORCH and lamp_glow:
 		# Warm pool of light on the ground around the torch; sits above the dim layer so it glows at night.
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(90, 45))
 		_glow.set_param("color", TORCH_LIGHT)

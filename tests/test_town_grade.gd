@@ -185,8 +185,11 @@ static func _lightfield_untouched(t) -> void:
 static func _day(t) -> void:
 	var parts := _build(Town.Look.DAY)
 	var town: Town = parts[0]
-	t.check(_find(town, TownGrade) != null and _find(town, TownPools) != null, "DAY has a grade and a light map")
-	t.check(TownLook.light_gain(Town.Look.DAY) < TownLook.light_gain(Town.Look.NIGHT) * 0.5, "DAY's light map is faint beside NIGHT's")
+	# Round 4: nobody lights a lamp by day; the sun grade alone makes the light.
+	var grade := _find(town, TownGrade) as TownGrade
+	t.check(grade != null and _find(town, TownPools) == null, "DAY has a grade and no light map")
+	t.check(TownLook.light_gain(Town.Look.DAY) == 0.0 and grade != null
+		and (grade.rect.material as ShaderMaterial).get_shader_parameter("light_tex") == null, "DAY's grade reads no light")
 	_free(parts)
 	var cur := _build(Town.Look.CURRENT)
 	t.check((cur[0] as Town).look_nodes().is_empty(), "CURRENT has no grade and no pools")

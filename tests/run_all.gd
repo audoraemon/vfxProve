@@ -207,6 +207,7 @@ func _reset_world() -> void:
 	SpriteView.window_boost = 0.0
 	SpriteView.look_params = {}
 	Structure.cast_shadows = true  # a town look's statics (v0.12 lighting): a suite that leaked a DAY or NIGHT town must not reach the next
+	Structure.lamp_glow = true
 	TownLook.active = Town.Look.CURRENT
 	Town._look_owner = 0
 

@@ -80,6 +80,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	TownLook.active = look
 	_look_owner = get_instance_id()
 	Structure.cast_shadows = look == Look.CURRENT
+	Structure.lamp_glow = look != Look.DAY
 	SpriteView.window_boost = TownLook.window_boost(look)
 	SpriteView.look_params = TownLook.sprite_params(look)
 	var ground_tint := TownLook.ground_tint(look)
@@ -250,11 +251,14 @@ func _build_look(ground: Node2D) -> void:
 	# world beside the decor. Before the light map, which takes a pool from each.
 	look_decor = TownLookDecor.new().setup(self, look)
 	_add_look_node(look_decor, _env.world_parent if _env.world_parent != null else null)
-	# The light map (every lamp, torch and lit window drawn into a small buffer), then the grade over the world, which
-	# multiplies the world by it: under Battlefield's glow layer.
-	var pools := TownPools.new().setup(self)
-	_add_look_node(pools)
-	_add_look_node(TownGrade.new().setup(look, pools.light_texture()))
+	# The light map (every lamp, torch and lit window drawn into a small buffer; NIGHT only: nobody lights a lamp by day,
+	# round 4), then the grade over the world, which crossfades it in: under Battlefield's glow layer.
+	var light: Texture2D = null
+	if TownLook.light_gain(look) > 0.0:
+		var pools := TownPools.new().setup(self)
+		_add_look_node(pools)
+		light = pools.light_texture()
+	_add_look_node(TownGrade.new().setup(look, light))
 	# The glow over the graded world, under Battlefield's glow layer.
 	_add_look_node(TownBloom.new().setup(look))
 
@@ -409,6 +413,7 @@ func _release_look() -> void:
 			_bf.base_ambient = 1.0
 		_look_owner = 0
 		Structure.cast_shadows = true
+		Structure.lamp_glow = true
 		SpriteView.window_boost = 0.0
 		SpriteView.look_params = {}
 		TownLook.active = Look.CURRENT

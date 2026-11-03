@@ -79,9 +79,10 @@ const SPRITES := {
 	Prop.LAMP: {"at": Vector2i(0, 0), "size": Vector2i(9, 22), "anchor": Vector2(1, 21), "glass": Rect2(5, 5, 3, 4)},
 	Prop.LANTERN: {"at": Vector2i(12, 0), "size": Vector2i(7, 15), "anchor": Vector2(1, 14), "glass": Rect2(4, 4, 3, 3)},
 }
-## The props' post colours: wood and its dark outline.
-const COL_POST := Color("6a3c1f")
-const COL_POST_DARK := Color("2a1a10")
+## The props' post colours: its sun-side wood, its shaded side and its foot (round 4: light enough not to read as a black
+## stick by DAY).
+const COL_POST := Color("9a6438")
+const COL_POST_DARK := Color("5a3620")
 const FLICKER_HZ := 10.0
 
 static var _atlas: ImageTexture
@@ -397,6 +398,11 @@ func _rects(p: Dictionary, origin: Vector2) -> Array[Rect2]:
 		top = (Iso.ground_to_screen(p.at) - Vector2(0, p.lift) - g.position - origin).round()
 	else:
 		out.append_array([Rect2(top, Vector2(sp.size)), Rect2(Vector2(sp.at), Vector2(sp.size))])
+	# The lit glass over the post's dark one (none by DAY, round 4; a bare lantern shows its dark frame then).
+	if not lit(p):
+		if p.get("bare", false):
+			out.append_array([Rect2(top + g.position, g.size), Rect2(Vector2(sp.at) + g.position, g.size)])
+		return out
 	var row := ROW_GLASS_LAMP if p.prop == Prop.LAMP else ROW_GLASS_LANTERN
 	out.append_array([Rect2(top + g.position - Vector2(GLASS_AT), cell), Rect2(Vector2(col, BAND_Y + row * CELL), cell)])
 	return out
@@ -422,9 +428,9 @@ func lights() -> Array[Dictionary]:
 	return out
 
 
-## Whether prop `p` burns: DAY's wall torches are unlit (round 3).
-func lit(p: Dictionary) -> bool:
-	return not (look == Town.Look.DAY and p.prop == Prop.TORCH)
+## Whether prop `p` burns: nothing burns by DAY (round 4: its lamps and lanterns stand unlit, their glass dark).
+func lit(_p: Dictionary) -> bool:
+	return look != Town.Look.DAY
 
 
 ## How many props of kind `prop`.

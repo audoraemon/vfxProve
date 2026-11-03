@@ -80,12 +80,12 @@ static func _bloom(t) -> void:
 		"DAY blooms from bright luminance (highlights), NIGHT from a flame's brightest channel")
 
 
-## Every house's windows: DAY and NIGHT push the glow-mask windows toward a hot lamp colour (NIGHT fully, DAY faintly),
+## Every house's windows: NIGHT pushes the glow-mask windows toward a hot lamp colour (DAY not: round 4, no lamps by day),
 ## CURRENT leaves the sprite shader's path alone, and the town puts the static back on teardown. A building whose set has
 ## no mask still lights the street from the windows painted in its art.
 static func _windows(t) -> void:
-	t.check(TownLook.window_boost(Town.Look.NIGHT) > TownLook.window_boost(Town.Look.DAY) and TownLook.window_boost(Town.Look.DAY) > 0.0
-		and TownLook.window_boost(Town.Look.CURRENT) == 0.0, "NIGHT lights every window, DAY faintly, CURRENT not at all")
+	t.check(TownLook.window_boost(Town.Look.NIGHT) > 0.0 and TownLook.window_boost(Town.Look.DAY) == 0.0
+		and TownLook.window_boost(Town.Look.CURRENT) == 0.0, "NIGHT lights every window, DAY and CURRENT not at all (round 4)")
 	var cur := _build(Town.Look.CURRENT)
 	t.check(SpriteView.window_boost == 0.0, "a CURRENT build leaves the window boost at 0")
 	var plain := true

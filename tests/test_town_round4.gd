@@ -11,6 +11,7 @@ static func run(t) -> void:
 	_night_pools(t)
 	_night_dark_between(t)
 	_proportions(t)
+	_day_unlit(t)
 
 
 static func _src(path: String) -> String:
@@ -101,3 +102,36 @@ static func _proportions(t) -> void:
 				on_tops += 1
 		t.check(on_tops == 0, "%d: no prop torches on the towers' and gatehouses' tops (their painted braziers glow; %d)" % [look, on_tops])
 		R2._free(parts)
+
+
+## DAY: nothing is lit. No light map (no pools, the grade reads none), no window boost, every prop unlit: no flame and no
+## lit glass is drawn (the posts keep their dark glass).
+static func _day_unlit(t) -> void:
+	t.check(TownLook.light_gain(Town.Look.DAY) == 0.0 and TownLook.window_boost(Town.Look.DAY) == 0.0, "DAY: no lamplight, no window boost")
+	var parts: Array = R2._build(Town.Look.DAY)
+	var town: Town = parts[0]
+	var pools_node := false
+	for n in town.look_nodes():
+		pools_node = pools_node or n is TownPools
+	t.check(not pools_node, "DAY builds no light map")
+	var ld := town.look_decor
+	var lit_rects := 0
+	for n in ld.prop_nodes():
+		var rects: Array[Rect2] = (n as TownLookDecor.PropNode).rects
+		for i in range(1, rects.size(), 2):
+			lit_rects += 1 if rects[i].position.y >= TownLookDecor.BAND_Y and rects[i].position.y < TownLookDecor.BAND_Y + TownLookDecor.ROW_BRACKET * TownLookDecor.CELL else 0
+	t.check(ld.props.size() > 0 and lit_rects == 0, "DAY: %d props stand unlit (%d flames or lit glasses drawn)" % [ld.props.size(), lit_rects])
+	t.check(ld.lights().is_empty(), "DAY: no prop sends light")
+	var glows := 0
+	var torches := 0
+	for st in (parts[1] as EnvironmentField).structures():
+		if st.kind == Structure.Kind.TORCH:
+			torches += 1
+			glows += 1 if is_instance_valid(st._glow) else 0
+	t.check(not Structure.lamp_glow and torches > 0 and glows == 0, "DAY: the town's own %d torches and lamps throw no ground glow" % torches)
+	R2._free(parts)
+	t.check(Structure.lamp_glow, "teardown lights the lamps again")
+	for look: Town.Look in [Town.Look.CURRENT, Town.Look.NIGHT]:
+		var p2: Array = R2._build(look)
+		t.check(Structure.lamp_glow, "%d: the town's lamps glow" % look)
+		R2._free(p2)

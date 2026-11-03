@@ -135,12 +135,10 @@ static func beam_u(p: Vector2, origin: Vector2) -> float:
 
 
 ## Lit windows (SpriteView.window_boost): how far a window of a building's glow mask is pushed toward a hot lamp colour.
-## NIGHT lights every one; DAY only faintly, as at dusk.
+## NIGHT lights every one; DAY none (round 4: nobody lights a lamp by day).
 static func window_boost(look) -> float:
 	if look == Town.Look.NIGHT:
 		return 1.0
-	if look == Town.Look.DAY:
-		return 0.25
 	return 0.0
 
 
@@ -167,8 +165,6 @@ static func window_pool(look) -> float:
 static func light_gain(look) -> float:
 	if look == Town.Look.NIGHT:
 		return 2.2
-	if look == Town.Look.DAY:
-		return 0.15
 	return 0.0
 
 

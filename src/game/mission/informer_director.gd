@@ -342,6 +342,8 @@ func _on_cast(slot: int, key: String, at: Vector2) -> void:
 
 
 ## The cast `key` at `at` has just reached `man` (v0.11.1): a whisper he has just heard, or a Discord that has just confused him.
+## Only a walk whisper at its full MindWhisperFx.LINGER counts: the order wheel's attack (a fight, not a word) and burn (a whisper of
+## BURN_SECS + BURN_AFTER, shorter than LINGER) never turn him -- keep BURN_SECS + BURN_AFTER below LINGER, or this reads it as a word.
 func _speaks_to(man: Person, key: String, at: Vector2) -> bool:
 	if key == "whisper":
 		return man.mind == Person.Mind.WHISPERED and man.whispered_left() >= MindWhisperFx.LINGER - 0.01 \

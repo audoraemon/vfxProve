@@ -10,7 +10,7 @@ extends RefCounted
 ## town and raise no alarm when cast (Crowd.on_cast()): Silent Doom's deaths count only if someone saw them, Blight
 ## adds one alarm; a quiet power with an "alarm" unsettles the town by that much when cast. A power with "modes" is cast
 ## in one of them (Targeting: Q and E step through them; the effect is told which in extra["mode"]); a mode may aim
-## its own way ("aim") and cover its own ground ("area").
+## its own way ("aim"), cover its own ground ("area") and wait its own cooldown ("cooldown", mode_cooldown()).
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
@@ -18,7 +18,7 @@ const POWERS := [
 		"authority": "veil"},
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
-		"shape": "send one person somewhere, then they linger 8 s; not the same one again for 20 s", "quiet": true,
+		"shape": "press a person: walk, attack or burn -- send them somewhere (8 s), set them on someone, or at a building; not the same one again for 20 s", "quiet": true,
 		"authority": "dominion"},
 	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
@@ -45,8 +45,9 @@ const POWERS := [
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
 		"quiet": true, "alarm": 0.5, "authority": "decree"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
-		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
-		"authority": "dominion"},
+		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s; or ENTHRALL holds all near the light, 30 s (cooldown 75 s); Q/E",
+		"quiet": true, "authority": "dominion", "modes": [
+			{"key": "lure", "name": "LURE"}, {"key": "enthrall", "name": "ENTHRALL", "area": {"r": 4.0, "roam": 0.0}, "cooldown": 75.0}]},
 	{"key": "discord", "name": "Discord", "path": "res://src/fx/quiet/discord.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
 		"authority": "dominion"},
@@ -206,7 +207,8 @@ const POWERS := [
 		"authority": "dominion", "modes": [
 			{"key": "faction", "name": "FACTION SPLIT"}, {"key": "purge", "name": "PURGE", "area": {"r": 1.5}},
 			{"key": "custom", "name": "CUSTOM", "aim": "two clicks", "area": {"shape": "regions", "r": 5.0}},
-			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}}]},
+			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}},
+			{"key": "tumult", "name": "TUMULT"}]},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -314,6 +316,15 @@ static func level_stat(key: String, level: int, stat: String, base: Variant) -> 
 ## extra["level"] (Rules.cast() puts it on every cast), 1 when absent. A power with no table plays exactly as it always did.
 static func stat(extra: Dictionary, key: String, stat_name: String, base: Variant) -> Variant:
 	return level_stat(key, int(extra.get("level", 1)), stat_name, base)
+
+
+## The cooldown a power's mode carries (Will-o'-Wisp's ENTHRALL), or -1.0 when the mode has none (or the power no such mode): the cast
+## then takes the power's own, at its level.
+static func mode_cooldown(key: String, mode_key: String) -> float:
+	for m: Dictionary in get_power(key).get("modes", []):
+		if String(m.get("key", "")) == mode_key and m.has("cooldown"):
+			return float(m.cooldown)
+	return -1.0
 
 
 ## A power's cooldown in seconds at `level`: the "cooldown" its table gives that level, else the row's own; 0.0 for an unknown key.

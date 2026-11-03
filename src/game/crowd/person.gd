@@ -343,6 +343,9 @@ var field: EnemyField
 ## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).
 var _whisper_left := 0.0
 var _whisper_fled := false
+## Mind Whisper's attack order (whisper_fight()) is what the fight is: when it ends he comes to as a whisper wears off (_wake()). Any other
+## fight() clears it.
+var _ordered := false
 ## Mind Whisper (v0.08.1): seconds left of shaking the last whisper off (see SHAKE_OFF); 0 for anyone never whispered.
 ## Counted down in tick(), so it runs on at any thinking rate, off screen or held still.
 var _shaken_left := 0.0
@@ -1238,6 +1241,7 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 	release_from_queue()
 	passing_gate = null
 	_held_saved = false  # a fight takes him over: nothing of an earlier hold is left to go back to
+	_ordered = false
 	mind = Mind.FIGHT
 	fight_target = target
 	_fight_left = seconds
@@ -1319,6 +1323,10 @@ func stop_fighting() -> void:
 		return
 	fight_target = null
 	_fight_left = 0.0
+	if _ordered:
+		_ordered = false
+		_wake()  # a whisper's order is over: he comes to as the whisper wears off, and shakes it off
+		return
 	if soldier:
 		send_to_post(post if post != Vector2.INF else ground_pos)
 	else:
@@ -1437,6 +1445,18 @@ func whisper(to: Vector2, linger: float) -> bool:
 	anchor = to
 	walk_speed = _mind_speed()
 	set_goal(to)
+	return true
+
+
+## Mind Whisper's attack order (the order wheel): whispered where he stands -- so the flight he owes is kept and the whisper's shake-off
+## applies -- then set on `foe` alone for `seconds`, striking `blow` of their health a swing. When the fight ends (time, or the foe gone)
+## he comes to as after a whisper (_wake()). True when the whisper took. (A soldier's hold saved by the whisper is cleared by fight(), as in
+## Voice of God's judge: afterwards he goes to his post, not back to where he held.)
+func whisper_fight(foe: Person, seconds: float, blow: float) -> bool:
+	if not whisper(ground_pos, seconds):
+		return false
+	fight(foe, seconds, blow, FightRule.TARGET_ONLY)
+	_ordered = true
 	return true
 
 

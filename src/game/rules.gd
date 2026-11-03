@@ -11,7 +11,8 @@ signal cast_made(slot: int, key: String, at: Vector2)
 ## A live storm took a click as a called bolt (Wrath of the Sky, level 5): the slot, its power key and where.
 signal recast_made(slot: int, key: String, at: Vector2)
 ## A cast could not go out: "cooldown", "busy", "empty", "over", "nobody" (v0.08: a Mind Whisper with no one to
-## whisper to) or "shaken" (v0.08.1: a Mind Whisper on someone still shaking the last one off, Person.SHAKE_OFF).
+## whisper to), "shaken" (v0.08.1: a Mind Whisper on someone still shaking the last one off, Person.SHAKE_OFF), or -- the order
+## wheel -- "foe" (an attack order with no fair foe) or "building" (a burn order with no fair building).
 signal cast_refused(slot: int, reason: String)
 ## The Temple fell and every cooldown was reset (v0.08's Divine Surge, once a mission).
 signal surged
@@ -406,6 +407,15 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 			refused_who = who
 			cast_refused.emit(slot, "shaken")
 			return null
+		if extra.has("order"):
+			# The order wheel (god/whisper-wheel): an attack with no fair foe, or a burn with no fair building, is refused too.
+			var order := String(extra.get("order"))
+			if order == "attack" and not MindWhisperFx.foe_ok(who, extra.get("foe")):
+				cast_refused.emit(slot, "foe")
+				return null
+			if order == "burn" and not MindWhisperFx.building_ok(who, extra.get("building")):
+				cast_refused.emit(slot, "building")
+				return null
 	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
 	var told := extra.duplicate()
 	if not told.has("level"):

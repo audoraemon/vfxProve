@@ -1157,6 +1157,10 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 		_flash[slot] = FLASH_SECONDS
 	if reason == "nobody":
 		push_banner("NO ONE TO WHISPER TO", true)
+	elif reason == "foe":
+		push_banner("NO ONE THERE TO ATTACK", true)
+	elif reason == "building":
+		push_banner("NOTHING THERE TO BURN", true)
 	elif reason == "shaken":
 		# v0.11 M5 (the final review): a director that knows why says so in place of the plain words, in one banner.
 		var words := _rules.director.refused_words(slot, reason) if _rules.director != null else ""

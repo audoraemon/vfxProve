@@ -50,6 +50,14 @@ static func run(t) -> void:
 	_own_stream(t)
 	_inert_when_empty(t)
 	_clear(t)
+	_clear_effects(t)
+
+
+static func _fire_danger_at(crowd: Crowd, at: Vector2) -> bool:
+	for th in crowd.threats.nearby(at, 0.0):
+		if th.kind == &"fire":
+			return true
+	return false
 
 
 static func _burns_down(t) -> void:
@@ -93,6 +101,13 @@ static func _danger(t) -> void:
 	var epoch := crowd.threats.epoch
 	fm._burn_patches(100.0)
 	t.check(p.out and not crowd.threats.is_active(id) and crowd.threats.epoch > epoch, "ground fire: its danger ends the moment it is out")
+	# Out right after a renewal: the danger before the renewal has up to 0.5 s left, and ends too.
+	var q := fm.lay(G + Vector2(6.0, 0.0))
+	for i in 12:
+		fm._burn_patches(0.25)
+	t.check(q.prev_threat_id != -1 and crowd.threats.is_active(q.prev_threat_id), "ground fire: a renewal leaves the old danger to expire")
+	fm._burn_patches(100.0)
+	t.check(q.out and not _fire_danger_at(crowd, q.at), "ground fire: out just after a renewal, no fire danger is left there")
 	_done(made)
 
 
@@ -255,6 +270,8 @@ static func _own_stream(t) -> void:
 	_done(b)
 
 
+## A patch that touches no one changes nothing around it. That an EMPTY manager equals the old code is proven by the
+## references (digest, crowd_check), not here.
 static func _inert_when_empty(t) -> void:
 	var a := _make()
 	var b := _make()
@@ -297,4 +314,24 @@ static func _clear(t) -> void:
 	t.check(crowd.threats.epoch == epoch and crowd.threats.active_count() == active, "ground fire: ending an unknown threat does nothing")
 	fm.clear_patches()
 	t.check(fm.patches.is_empty(), "ground fire: clear_patches() on none is safe")
+	_done(made)
+
+
+## Battlefield.clear_effects() puts every patch out and ends its danger (Dragonfire's ground fire is not left unseen).
+static func _clear_effects(t) -> void:
+	const FxStage := preload("res://tests/fx_stage.gd")
+	var made := _make()
+	var crowd: Crowd = made[0]
+	var fm := crowd.fires
+	var bf := FxStage.make(3)
+	bf.ctx.crowd = crowd
+	var p := fm.lay(G)
+	for i in 12:
+		fm._burn_patches(0.25)
+	t.check(_fire_danger_at(crowd, G), "ground fire: a patch is a fire danger before the stage is cleared")
+	bf.clear_effects()
+	t.check(p.out and fm.patches.is_empty() and fm._heat.is_empty() and not _fire_danger_at(crowd, G),
+		"ground fire: Battlefield.clear_effects() clears the patches and their danger")
+	bf.ctx.crowd = null
+	FxStage.drop(bf)
 	_done(made)

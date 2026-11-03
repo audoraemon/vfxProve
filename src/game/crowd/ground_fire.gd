@@ -41,6 +41,8 @@ var beaten := false
 var owned := false
 var crew: Array[Person] = []
 var threat_id := -1
+## The danger before the last renewal: it outlives the renewal by up to 0.5 s, so a patch going out ends it too.
+var prev_threat_id := -1
 var renew_in := 0.0
 ## The angle from the centre to the first beater (the ring's first slot); INF until a crew is picked.
 var base_angle := INF

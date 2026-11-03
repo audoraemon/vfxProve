@@ -105,7 +105,7 @@ func step(delta: float) -> void:
 		_step_in = 1.0 / HZ
 		_burn(1.0 / HZ)
 		_burn_patches(1.0 / HZ)
-	_harm_in -= delta
+	_harm_in = maxf(_harm_in - delta, -GroundFire.HARM_TICK)  # a stall leaves no catch-up debt
 	if _harm_in <= 0.0:
 		_harm_in += GroundFire.HARM_TICK
 		if not patches.is_empty() or not _heat.is_empty():
@@ -200,6 +200,7 @@ static func patch_catch(env: EnvironmentField, p: GroundFire, fires: Dictionary)
 ## Register (or renew) the patch's danger, a burning house's numbers; the old one is left to expire.
 func _renew_patch(p: GroundFire) -> void:
 	p.renew_in = RENEW
+	p.prev_threat_id = p.threat_id
 	p.threat_id = _crowd.threats.register(p.at, p.radius + GroundFire.THREAT_PAD, 0.5, RENEW + 0.5, 5.0, 7.0, &"fire")
 
 
@@ -210,7 +211,7 @@ func _patch_out(p: GroundFire) -> void:
 		patches_beaten += 1
 	else:
 		patches_burned_out += 1
-	_crowd.threats.end(p.threat_id)
+	_end_danger(p)
 	for b in p.crew:
 		if is_instance_valid(b) and b.mind == Person.Mind.ASSIST:
 			b.stand_down()
@@ -218,10 +219,17 @@ func _patch_out(p: GroundFire) -> void:
 	patches.erase(p)
 
 
+## Both of a patch's dangers end at once (the one before the last renewal may still have up to 0.5 s to run).
+func _end_danger(p: GroundFire) -> void:
+	_crowd.threats.end(p.threat_id)
+	_crowd.threats.end(p.prev_threat_id)
+
+
 ## Put every patch out without counting it (the stage is cleared, or the town reset).
 func clear_patches() -> void:
 	for p in patches:
 		p.out = true
+		_end_danger(p)
 	patches.clear()
 	_heat.clear()
 

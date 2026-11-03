@@ -56,8 +56,8 @@ static func _standing(env: EnvironmentField, kinds: Array) -> Structure:
 
 
 ## The deferred rebuild really runs on the next idle frame, once for any number of changes in a frame; restore, add and
-## remove schedule it too; a sprite building's silhouette turns to its ruins' still, a building without a sprite casts a
-## hull and its ruin RUIN_FACTOR of the height; the forest's trees cast silhouettes in their own green-slate group; the
+## remove schedule it too; a sprite building's mask turns to its ruins' still's, a building without a sprite casts a
+## hull and its ruin RUIN_FACTOR of the height; the forest's trees cast ellipses in their own green-slate group; the
 ## layer sits over the forest and shares its z.
 static func _deferred(t) -> void:
 	var parts := _build_day()
@@ -68,18 +68,18 @@ static func _deferred(t) -> void:
 	var a := _standing(env, [Structure.Kind.TEMPLE, Structure.Kind.BARRACKS, Structure.Kind.KEEP])
 	var b := _standing(env, [Structure.Kind.HOUSE])
 	var stills: Dictionary = a.sprite.stills
-	t.check(shadows.shadow_texture(a) == stills[&"intact"], "a standing sprite building casts its intact still's silhouette")
+	t.check(shadows.shadow_texture(a) == stills[&"intact"], "a standing sprite building casts a mask baked from its intact still")
 	var n0 := shadows.rebuilds
 	a.destroy(a.center(), &"smite")
 	b.destroy(b.center(), &"smite")
 	t.check(shadows.rebuilds == n0, "nothing is rebuilt inside the frame of a destroy")
 	await t.process_frame
 	t.check(shadows.rebuilds == n0 + 1, "two destroys in one frame cause one rebuild (%d)" % (shadows.rebuilds - n0))
-	t.check(shadows.shadow_texture(a) == stills[&"ruins"], "the deferred rebuild casts the ruins' silhouette with no hand call")
+	t.check(shadows.shadow_texture(a) == stills[&"ruins"], "the deferred rebuild casts the ruins' mask with no hand call")
 	a.restore()
 	await t.process_frame
 	t.check(shadows.rebuilds == n0 + 2 and shadows.shadow_texture(a) == stills[&"intact"],
-		"restoring a structure casts its full silhouette again")
+		"restoring a structure casts its full mask again")
 	var added := env.add_structure(Rect2(30, 30, 1, 1), 30.0, Structure.Kind.HOUSE)
 	await t.process_frame
 	t.check(shadows.has_shadow(added), "an added structure gets a shadow")
@@ -96,34 +96,84 @@ static func _deferred(t) -> void:
 	env.remove(added)
 	await t.process_frame
 	t.check(shadows.polygon_count() > 0 and not shadows._polys.has(added_id), "a removed structure's shadow is gone")
-	t.check(not town.forest.trees.is_empty() and shadows.tree_count >= town.forest.trees.size() + TownDecor.border_trees().size(),
-		"every forest and border tree casts a silhouette (%d for %d forest + %d border trees)" % [shadows.tree_count,
+	t.check(not town.forest.trees.is_empty() and shadows.tree_count >= town.forest.trees.size() + TownDecor.border_trees().size()
+		and shadows.tree_poly.polygons.size() == shadows.tree_count,
+		"every forest and border tree casts an ellipse (%d for %d forest + %d border trees)" % [shadows.tree_count,
 			town.forest.trees.size(), TownDecor.border_trees().size()])
+	var tree := _standing(env, [Structure.Kind.TREE])
+	var lamp := _standing(env, [Structure.Kind.TORCH])
+	t.check(tree != null and shadows.has_shadow(tree) and shadows.mask_texture(tree) == null
+		and _centroid(shadows.polygon_of(tree)).x > Iso.ground_to_screen(tree.footprint.get_center()).x,
+		"a town tree casts an ellipse down and to the right of its foot, no mask")
+	t.check(lamp != null and shadows.has_shadow(lamp) and shadows.mask_texture(lamp) == null
+		and _area(shadows.polygon_of(lamp)) < 60.0, "a lamp or torch post casts a small foot blob (%.0f px2)" % (
+			_area(shadows.polygon_of(lamp)) if lamp != null else -1.0))
+	t.check(shadows.mask_texture(a) != null and shadows.mask_texture(a) != shadows.shadow_texture(a),
+		"a sprite building casts a baked mask, not its still")
 	var tc := TownLook.tree_shadow_colour(Town.Look.DAY)
 	t.check(shadows.tree_group.self_modulate == tc and tc.g > tc.b and tc.g > tc.r and tc.a <= 0.5,
 		"DAY's tree shadows are a low-alpha green-slate, in a group of their own")
 	t.check(shadows.get_index() > town.forest.get_index() and shadows.z_index == town.forest.z_index
 		and shadows.get_parent() == ground, "the shadows sit over the forest on the same z, under the ground plane")
-	t.check(shadows.silhouette_textures() < 150, "the silhouettes draw from %d textures (one draw each)" % shadows.silhouette_textures())
+	t.check(shadows.silhouette_textures() < 150, "the masks draw from %d textures (one draw each)" % shadows.silhouette_textures())
 	_free_day(parts)
-	_silhouette_math(t)
+	_mask_math(t)
 	_person(t)
 	_ownership(t)
 
 
-## A silhouette quad: a texel on the base row stays put, one h px above it lands h * SHEAR away (right and down: x by h,
-## y squashed toward the base), and a mirrored sprite flips about its anchor.
-static func _silhouette_math(t) -> void:
-	var src := Rect2(0, 0, 20, 40)
-	var anchor := Vector2(5, 40)
-	var base := Vector2(100, 200)
-	var q := TownShadows.silhouette_quad(src, anchor, base, false, TownShadows.SHEAR)
-	t.check(q[3] == Vector2(95, 200) and q[2] == Vector2(115, 200), "the base row stays on the ground")
-	t.check(q[0] == Vector2(95 + 40.0 * TownShadows.SHEAR.x, 200 + 40.0 * TownShadows.SHEAR.y),
-		"the top falls h * SHEAR from the base: down and right, squashed (%s)" % str(q[0]))
-	var m := TownShadows.silhouette_quad(src, anchor, base, true, TownShadows.SHEAR)
-	t.check(m[3] == Vector2(105, 200) and m[2] == Vector2(85, 200) and m[0].x - m[3].x == q[0].x - q[3].x,
-		"a mirrored sprite flips about its anchor and still falls to the right")
+## A baked mask, from a hand-made sprite: a 1x1-cell box (its footprint's diamond, and a block of wall 40 px tall over
+## it) with a 1-px gap row in its wall. The diamond is shadowed (attached), the shadow of the box's top lands about
+## 40 * SUN right of and below its base, nothing falls up or to the left of the box, the gap leaves no hole, and the
+## quad puts the anchor texel on the base point.
+static func _mask_math(t) -> void:
+	var w := 80
+	var h := 90
+	var anchor := Vector2(40, 80)
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	var d := TownShadows.sprite_diamond(anchor, Vector2.ONE)
+	t.check(d[0] == anchor and d[1] == anchor + Vector2(-32, -16) and d[3] == anchor + Vector2(32, -16)
+		and d[2] == anchor + Vector2(0, -32), "the sprite's diamond: front at the anchor, sides 32 px out and 16 up")
+	for x in range(8, 72):
+		var base := TownShadows.diamond_y(d, x + 0.5, true)
+		for y in range(int(base) - 40, int(base)):
+			if y != int(base) - 20:
+				img.set_pixel(x, y, Color.WHITE)
+	var m := TownShadows.bake_mask(img, anchor, Vector2.ONE, Vector2.ZERO, false, TownShadows.SUN)
+	var pad := TownShadows.MASK_PAD
+	var at := func(p: Vector2) -> bool:
+		var q := Vector2i(p.floor()) + Vector2i(pad, pad)
+		return Rect2i(Vector2i.ZERO, m.get_size()).has_point(q) and m.get_pixelv(q).a > 0.5
+	t.check(at.call(anchor + Vector2(0, -16)) and at.call(anchor + Vector2(-20, -12)), "the footprint's diamond is shadowed")
+	var used := m.get_used_rect()
+	var right := float(used.end.x - pad)
+	var low := float(used.end.y - pad)
+	t.check(absf(right - (72.0 + 40.0 * TownShadows.SUN.x)) <= 2.5 and absf(low - (80.0 + 40.0 * TownShadows.SUN.y)) <= 2.5,
+		"the box's top lands 40 px * SUN from its base, no further (right edge %.0f, bottom %.0f)" % [right, low])
+	t.check(at.call(anchor + Vector2(5, 2)) and not at.call(anchor + Vector2(-40, 2)) and not at.call(Vector2(4, 30)),
+		"the shadow falls down and to the right, never up or to the left")
+	var gap := anchor + TownShadows.SUN * 20.0
+	t.check(at.call(gap), "a gap in the wall leaves no hole in the shadow")
+	var q := TownShadows.mask_quad(Rect2(Vector2.ZERO, Vector2(m.get_size())), anchor, Vector2(500, 300))
+	t.check(q[0] == Vector2(500, 300) - anchor - Vector2(pad, pad), "the quad puts the anchor texel on the base point")
+	var r := TownShadows.bake_mask(img, anchor, Vector2.ONE, Vector2.ZERO, false, TownShadows.SUN * 0.5)
+	var count := func(im: Image) -> int:
+		var n := 0
+		for y in im.get_height():
+			for x in im.get_width():
+				n += 1 if im.get_pixel(x, y).a > 0.5 else 0
+		return n
+	t.check(count.call(r) < count.call(m), "a lower sun casts a shorter shadow")
+	t.check(TownShadows.SUN.x >= 0.45 and TownShadows.SUN.x <= 0.7 and TownShadows.SUN.y > 0.0,
+		"the sun's length is moderate (%s per px of height)" % str(TownShadows.SUN))
+	var art: Dictionary = SpriteArt.sprite("tavern").duplicate()
+	var still: Texture2D = art.stills[&"intact"]
+	var m1 := TownShadows.mask_for(still, art)
+	var m2 := TownShadows.mask_for(still, art)
+	art.mirror = true
+	var m3 := TownShadows.mask_for(still, art)
+	t.check(m1.tex != null and m1.tex == m2.tex and m3.tex != m1.tex and m3.size == m1.size,
+		"a still's mask is baked once and shared; its mirrored mask is baked on its own")
 
 
 ## The foot shadow: untouched in CURRENT, the look's colour and a wider ellipse in DAY and NIGHT.
@@ -233,7 +283,7 @@ static func _destroy(t, env: EnvironmentField, shadows: TownShadows) -> void:
 	t.check(shadows._pending, "destroying a structure schedules a shadow rebuild")
 	shadows.rebuild()
 	var ruins: Texture2D = (hall.sprite.stills as Dictionary).get(&"ruins")
-	t.check(ruins != null and shadows.shadow_texture(hall) == ruins, "a destroyed building casts its ruins' silhouette")
+	t.check(ruins != null and shadows.shadow_texture(hall) == ruins, "a destroyed building casts its ruins' mask")
 
 
 static func _no_stack(t, shadows: TownShadows) -> void:
@@ -244,7 +294,7 @@ static func _no_stack(t, shadows: TownShadows) -> void:
 	var sp := shadows.group.get_node("Structures") as Polygon2D
 	var hulls := 0
 	for s in shadows._polys:
-		hulls += 0 if shadows._tex_of.has(s) else 1
+		hulls += 0 if shadows._mask_of.has(s) else 1
 	ok = ok and sp.polygons.size() == hulls and shadows.silhouette_count > 0
 	t.check(ok and shadows.group.self_modulate.a < 1.0,
 		"every shadow is white in one group that sets the alpha once: %d silhouettes, %d hulls" % [shadows.silhouette_count, hulls])

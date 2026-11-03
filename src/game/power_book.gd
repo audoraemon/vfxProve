@@ -18,7 +18,7 @@ const POWERS := [
 		"authority": "veil"},
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
-		"shape": "send one person somewhere, then they linger 8 s; not the same one again for 20 s", "quiet": true,
+		"shape": "press a person: walk, attack or burn -- send them somewhere (8 s), set them on someone, or at a building; not the same one again for 20 s", "quiet": true,
 		"authority": "dominion"},
 	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",

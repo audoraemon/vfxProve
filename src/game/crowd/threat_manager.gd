@@ -57,6 +57,17 @@ func step(delta: float) -> void:
 	_recent = kept
 
 
+## Threat `id` is over now (a ground fire put out): it moves to the recent impacts exactly as step() does at its
+## expiry. An unknown id (already expired, or -1 when the place was veiled) does nothing.
+func end(id: int) -> void:
+	if not _active.has(id):
+		return
+	var t: Dictionary = _active[id]
+	_recent.append({"at": t.at, "radius": t.radius, "until": _clock + RECENT})
+	_active.erase(id)
+	epoch += 1
+
+
 ## Every dangerous zone, active or a recent impact: [{at, radius}].
 func all_zones() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

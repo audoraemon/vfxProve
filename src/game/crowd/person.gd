@@ -74,6 +74,9 @@ const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
 const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
+## Ground fire (Dragonfire): the soot a scorched person shows, darkest at 0.45 and fading over the last 2 s.
+const SCORCH_COLOR := Color(0.12, 0.09, 0.08)
+const SCORCH_STRENGTH := 0.45
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
@@ -316,6 +319,8 @@ var compel_glyph: Array[int] = GLYPH_DIAMOND
 var badge_glyph: Array[int] = GLYPH_DIAMOND
 var badge_color := Color.WHITE
 var badge_left := 0.0
+## Seconds left that this person shows soot from a ground fire (GroundFire.SCORCH_SHOW when scorched).
+var scorched_left := 0.0
 ## Health, for blows (hurt()); set by setup_person().
 var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
@@ -516,6 +521,8 @@ func _track_stride(d: Vector2) -> void:
 func _think(delta: float) -> void:
 	if badge_left > 0.0:
 		badge_left = maxf(badge_left - delta, 0.0)
+	if scorched_left > 0.0:
+		scorched_left = maxf(scorched_left - delta, 0.0)
 	if fearless_left > 0.0:
 		fearless_left = maxf(fearless_left - delta, 0.0)
 		if fearless_left <= 0.0 and _reassured_fled:
@@ -793,7 +800,8 @@ func _drift() -> void:
 ## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. A soldier (v0.11.1) runs
 ## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
 ## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
-func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
+## `startle` false skips the freeze of a fresh fright (a person in a ground fire does not stand still in it).
+func panic(from: Vector2, radius := 1.0, kind := &"", startle := true) -> void:
 	if mind == Mind.ASLEEP and state != State.DEAD:
 		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
@@ -815,7 +823,7 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 	_threat = from
 	_threat_r = radius
 	_flee_local()
-	if from_other_mind:
+	if from_other_mind and startle:
 		# (v0.11.2) Frozen first: _idle too, as thinking is half-rate and the base tick would step on the off frame.
 		_startle_left = startle_seconds()
 		_idle = maxf(_idle, _startle_left)
@@ -2024,6 +2032,8 @@ func _sprite_tint() -> Color:
 		return Color(COL_CHAR, _char * 0.85)
 	if sick_left > 0.0 and state != State.DEAD:
 		return Color(sick_color(), SICK_CLOTH)
+	if scorched_left > 0.0 and state != State.DEAD:
+		return Color(SCORCH_COLOR, SCORCH_STRENGTH * clampf(scorched_left / 2.0, 0.0, 1.0))
 	return Color(0.0, 0.0, 0.0, 0.0)
 
 
@@ -2239,7 +2249,8 @@ func _sprite_signature() -> int:
 	var code := _sprite_pose_code()
 	var sig: int = (code >> 2 & 15) * 4 + (code & 3)
 	sig = sig * 16 + (code >> 6) % 16
-	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED:
+	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED \
+			and scorched_left <= 0.0:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
 		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
@@ -2255,7 +2266,11 @@ func _sprite_signature() -> int:
 	sig = sig * 9 + (1 + int(_anim * 3.0) % 8 if mind == Mind.CONFUSED else 0)
 	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
 	sig = sig * (SICK_STAGES + 1) + sick_stage()
-	return sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+	sig = sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+	if scorched_left > 0.0:
+		# Soot (ground fire) fades in steps; unscorched, the integer is the quiet fold's.
+		sig = sig * 5 + int(clampf(scorched_left / 2.0, 0.0, 1.0) * 4.0) + 1
+	return sig
 
 
 ## Where the watchman's lantern cap sits beside his sprite now (SPRITE_LANTERN, by facing), from his feet.

@@ -42,12 +42,26 @@ var _burning_now := false
 ## building fallen while it burned.
 var doused_out := 0
 var burned_down := 0
+## Burning ground (Dragonfire Parade, GroundFire), in lay order: a separate list from `fires`, so every reader of the
+## building fires stays right. They roll their spread on their own stream, never `_rng`, so the building fires draw
+## the same numbers with or without them.
+var patches: Array[GroundFire] = []
+var _patch_rng := RandomNumberGenerator.new()
+## DummyEnemy -> {heat, in}: seconds of fire each person has taken (GroundFire.scorch()).
+var _heat := {}
+var _harm_in := 0.0
+var _next_patch_id := 1
+## For the behaviour reports.
+var patches_laid := 0
+var patches_beaten := 0
+var patches_burned_out := 0
 
 
 func setup(crowd: Crowd, env: EnvironmentField, seed_value: int) -> FireManager:
 	_crowd = crowd
 	_env = env
 	_rng.seed = seed_value
+	_patch_rng.seed = seed_value + 1
 	env.structure_hit.connect(_on_hit)
 	return self
 
@@ -90,6 +104,12 @@ func step(delta: float) -> void:
 	if _step_in <= 0.0:
 		_step_in = 1.0 / HZ
 		_burn(1.0 / HZ)
+		_burn_patches(1.0 / HZ)
+	_harm_in -= delta
+	if _harm_in <= 0.0:
+		_harm_in += GroundFire.HARM_TICK
+		if not patches.is_empty() or not _heat.is_empty():
+			GroundFire.scorch(_crowd._field, patches, _heat, GroundFire.HARM_TICK)
 	_recruit_in -= delta
 	if _recruit_in <= 0.0:
 		_recruit_in = 1.0
@@ -126,6 +146,84 @@ func _burn(dt: float) -> void:
 					break
 	for n in catching:
 		ignite(n, START)
+
+
+## Lay a patch of burning ground at `at`, at full strength; its danger is registered at once.
+func lay(at: Vector2, radius := GroundFire.RADIUS) -> GroundFire:
+	var p := GroundFire.new(at, radius, _next_patch_id)
+	_next_patch_id += 1
+	p.owned = true
+	patches.append(p)
+	patches_laid += 1
+	_renew_patch(p)
+	return p
+
+
+## One step of the patches: burn down, renew the danger, and roll for a building catching.
+func _burn_patches(dt: float) -> void:
+	for p: GroundFire in patches.duplicate():
+		if p.out:
+			continue
+		p.burn_down(dt, _beaters(p))
+		if p.out:
+			_patch_out(p)
+			continue
+		p.renew_in -= dt
+		if p.renew_in <= 0.0:
+			_renew_patch(p)
+		if _patch_rng.randf() < spread_chance(p.strength, _windy(p.at), dt):
+			var s := patch_catch(_env, p, fires)
+			if s != null:
+				ignite(s, START)
+
+
+## How many beaters are at work on `p` (Task 2).
+func _beaters(_p: GroundFire) -> int:
+	return 0
+
+
+## A patch's chance in `dt` seconds to set a touching building alight (today's building rule).
+static func spread_chance(strength: float, windy: bool, dt: float) -> float:
+	return strength * SPREAD * (WIND_GROW if windy else 1.0) * dt
+
+
+## The building a patch would set alight: the first standing burnable within radius + TOUCH of its centre (`env.near`
+## order) that is not already burning; null when none.
+static func patch_catch(env: EnvironmentField, p: GroundFire, fires: Dictionary) -> Structure:
+	var reach := p.radius + GroundFire.TOUCH
+	for n in env.near(p.at, reach):
+		if burns(n) and not n.destroyed and not fires.has(n) and n.distance_to(p.at) <= reach:
+			return n
+	return null
+
+
+## Register (or renew) the patch's danger, a burning house's numbers; the old one is left to expire.
+func _renew_patch(p: GroundFire) -> void:
+	p.renew_in = RENEW
+	p.threat_id = _crowd.threats.register(p.at, p.radius + GroundFire.THREAT_PAD, 0.5, RENEW + 0.5, 5.0, 7.0, &"fire")
+
+
+## The patch is out (beaten, or burned out): its danger ends at once, its crew stands down, it leaves the list.
+func _patch_out(p: GroundFire) -> void:
+	p.out = true
+	if p.beaten:
+		patches_beaten += 1
+	else:
+		patches_burned_out += 1
+	_crowd.threats.end(p.threat_id)
+	for b in p.crew:
+		if is_instance_valid(b) and b.mind == Person.Mind.ASSIST:
+			b.stand_down()
+	p.crew.clear()
+	patches.erase(p)
+
+
+## Put every patch out without counting it (the stage is cleared, or the town reset).
+func clear_patches() -> void:
+	for p in patches:
+		p.out = true
+	patches.clear()
+	_heat.clear()
 
 
 func _windy(g: Vector2) -> bool:
@@ -287,3 +385,4 @@ func _edge_of(s: Structure, from: Vector2) -> Vector2:
 
 func clear() -> void:
 	fires.clear()
+	clear_patches()

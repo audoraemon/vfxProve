@@ -1,10 +1,10 @@
-# KAK second routes, Tier 2 (v0.11.1 Task 9): loadout B's three seeds of each mission (scenario --case=play --route=b). name<TAB>how<TAB>expected Re-recorded for v0.11.2 awareness (Task 5).
+# KAK second routes, Tier 2 (v0.11.1 Task 9): loadout B's three seeds of each mission (scenario --case=play --route=b). name<TAB>how<TAB>expected Re-recorded for v0.11.2 awareness (Task 5). Re-recorded for Dragonfire's burning ground (2026-11-03).
 miras_b_play_1	--scenario=miras --case=play --route=b --seed=1 --board	-461689694
 miras_b_play_2	--scenario=miras --case=play --route=b --seed=2 --board	-231486900
 miras_b_play_3	--scenario=miras --case=play --route=b --seed=3 --board	919869509
-lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	-570485431
-lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	-632882101
-lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	465629693
+lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	899943793
+lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	781100896
+lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	491577989
 ringers_b_play_1	--scenario=ringers --case=play --route=b --seed=1	-769467468
 ringers_b_play_2	--scenario=ringers --case=play --route=b --seed=2	-472362150
 ringers_b_play_3	--scenario=ringers --case=play --route=b --seed=3	-868031570

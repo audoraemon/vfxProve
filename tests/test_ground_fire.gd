@@ -45,12 +45,15 @@ static func run(t) -> void:
 	_harm_kills(t)
 	_dash_scorches(t)
 	_once_in_overlap(t)
+	_real_dash(t)
 	_inside_safe(t)
 	_catching(t)
 	_own_stream(t)
 	_inert_when_empty(t)
 	_clear(t)
 	_clear_effects(t)
+	_first_near(t)
+	_renewal_quiet(t)
 
 
 static func _fire_danger_at(crowd: Crowd, at: Vector2) -> bool:
@@ -101,11 +104,17 @@ static func _danger(t) -> void:
 	var epoch := crowd.threats.epoch
 	fm._burn_patches(100.0)
 	t.check(p.out and not crowd.threats.is_active(id) and crowd.threats.epoch > epoch, "ground fire: its danger ends the moment it is out")
-	# Out right after a renewal: the danger before the renewal has up to 0.5 s left, and ends too.
+	# A renewal extends the same danger in place: the same id, no epoch bump, its end moved on.
 	var q := fm.lay(G + Vector2(6.0, 0.0))
+	var qid := q.threat_id
+	var q_until := float(crowd.threats.get_threat(qid).until)
+	var q_epoch := crowd.threats.epoch
 	for i in 12:
+		crowd.threats.step(0.25)
 		fm._burn_patches(0.25)
-	t.check(q.prev_threat_id != -1 and crowd.threats.is_active(q.prev_threat_id), "ground fire: a renewal leaves the old danger to expire")
+	t.check(q.threat_id == qid and crowd.threats.is_active(qid) and crowd.threats.epoch == q_epoch
+		and float(crowd.threats.get_threat(qid).until) > q_until + 2.9,
+		"ground fire: a renewal extends its one danger in place (same id, no epoch bump)")
 	fm._burn_patches(100.0)
 	t.check(q.out and not _fire_danger_at(crowd, q.at), "ground fire: out just after a renewal, no fire danger is left there")
 	_done(made)
@@ -181,6 +190,33 @@ static func _once_in_overlap(t) -> void:
 		_hold(c, G + Vector2(0.15, 0.0))
 		GroundFire.scorch(field, [a, b], heat, GroundFire.HARM_TICK)
 	t.check(c.is_alive() and is_equal_approx(float(heat[c].heat), 1.4), "ground fire: in two patches a person heats once a tick")
+	t.check(c._threat == a.at, "ground fire: in two patches the first laid is the one that frightens")
+	_done(made)
+
+
+## A real dash: a person run straight through a patch's middle at PANIC_SPEED, frame by frame, with the FireManager's own
+## 10 Hz harm (not a test's held ticks), comes out alive and scorched (1.4 across at 1.6 a second: under 0.9 s inside).
+static func _real_dash(t) -> void:
+	var made := _make()
+	var crowd: Crowd = made[0]
+	var fm := crowd.fires
+	_clear_away(crowd)
+	var p := fm.lay(G)
+	var c: Person = crowd.citizens[0]
+	var dt := 1.0 / 60.0
+	var from := G - Vector2(GroundFire.RADIUS + 0.5, 0.0)
+	var to := G + Vector2(GroundFire.RADIUS + 0.5, 0.0)
+	c.ground_pos = from
+	var max_heat := 0.0
+	var frames := 0
+	while c.ground_pos.x < to.x and frames < 600:
+		c.ground_pos = c.ground_pos.move_toward(to, Person.PANIC_SPEED * dt)
+		c._goal = Vector2.INF
+		fm.step(dt)
+		max_heat = maxf(max_heat, float(fm._heat.get(c, {}).get("heat", 0.0)))
+		frames += 1
+	t.check(c.is_alive() and c.scorched_left > 0.0 and max_heat > 0.5 and not p.out,
+		"ground fire: a dash through the middle at PANIC_SPEED is survived, scorched (heat %.1f s)" % max_heat)
 	_done(made)
 
 
@@ -334,4 +370,44 @@ static func _clear_effects(t) -> void:
 		"ground fire: Battlefield.clear_effects() clears the patches and their danger")
 	bf.ctx.crowd = null
 	FxStage.drop(bf)
+	_done(made)
+
+
+## ThreatManager.first_near(): the first entry nearby() gives, or none, with its box test rejecting only the far.
+static func _first_near(t) -> void:
+	var tm := ThreatManager.new()
+	tm.register(Vector2(0.0, 0.0), 1.0, 0.5, 10.0, 5.0, 7.0, &"fire")
+	tm.register(Vector2(3.0, 0.0), 1.0, 0.5, 10.0, 5.0, 7.0, &"fire")
+	tm.register(Vector2(1.5, 0.5), 2.0, 0.5, 10.0, 5.0, 7.0, &"smoke")
+	var same := true
+	var hits := 0
+	for i in 200:
+		var g := Vector2(fmod(float(i) * 0.731, 9.0) - 3.0, fmod(float(i) * 0.457, 7.0) - 3.5)
+		var all := tm.nearby(g, 1.5)
+		var one := tm.first_near(g, 1.5)
+		same = same and (one.is_empty() if all.is_empty() else one == all[0])
+		hits += 0 if all.is_empty() else 1
+	t.check(same and hits > 20 and hits < 200, "ground fire: first_near() is nearby()'s first entry at 200 points (or none; %d near)" % hits)
+	t.check(tm.first_near(Vector2(40.0, 40.0), 1.5).is_empty() and ThreatManager.new().first_near(Vector2.ZERO, 1.0).is_empty(),
+		"ground fire: first_near() far away, or with nothing active, is empty")
+
+
+## The guard on the danger churn: 22 patches burning 30 s renew their dangers in place -- one zone each, and no epoch bump
+## (the walk grid is not re-weighed) after the laying.
+static func _renewal_quiet(t) -> void:
+	var made := _make()
+	var crowd: Crowd = made[0]
+	var fm := crowd.fires
+	_clear_away(crowd)
+	for i in 22:
+		fm.lay(FAR + Vector2(float(i % 11) * 1.6, float(i / 11) * 3.0))
+	var epoch := crowd.threats.epoch
+	for i in 120:
+		crowd.threats.step(0.25)
+		fm._burn_patches(0.25)
+	var bumps := crowd.threats.epoch - epoch
+	t.check(fm.patches.size() == 22 and bumps <= 22,
+		"ground fire: 22 patches over 30 s bump the danger epoch at most 22 times (%d)" % bumps)
+	t.check(crowd.threats.active_count() == 22 and crowd.threats.all_zones().size() == 22,
+		"ground fire: and keep one danger zone each (%d active, %d zones)" % [crowd.threats.active_count(), crowd.threats.all_zones().size()])
 	_done(made)

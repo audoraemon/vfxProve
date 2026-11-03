@@ -40,9 +40,8 @@ var beaten := false
 ## True while a FireManager keeps it (it renews its danger and catches buildings); false: its sprite steps it.
 var owned := false
 var crew: Array[Person] = []
+## Its danger (ThreatManager), renewed in place every RENEW seconds; -1 while its place is veiled.
 var threat_id := -1
-## The danger before the last renewal: it outlives the renewal by up to 0.5 s, so a patch going out ends it too.
-var prev_threat_id := -1
 var renew_in := 0.0
 ## The angle from the centre to the first beater (the ring's first slot); INF until a crew is picked.
 var base_angle := INF
@@ -78,19 +77,42 @@ func over(g: Vector2) -> bool:
 ## inside a building is safe) is in the fire this tick, once however many patches overlap; its `heat` (a dictionary
 ## `{DummyEnemy: {"heat": seconds, "in": bool}}`, insertion order) rises by `dt`, and at BURN_KILL it dies. A person
 ## entering is frightened (no startle) and shows soot; one out of the fire cools. Returns how many died.
+## One pass over the living (not one EnemyField.in_radius() a patch): a unit outside the box round the burning patches is
+## skipped at once, else it goes to the lowest-index patch it stands in, and the burning list is those buckets in patch order
+## -- the order a pass per patch gave.
 static func scorch(field: EnemyField, patches: Array, heat: Dictionary, dt: float) -> int:
 	var burning: Array = []
 	var first := {}
+	var lit: Array[GroundFire] = []
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
 	for p: GroundFire in patches:
 		if p.out:
 			continue
-		for e in field.in_radius(p.at, p.radius):
+		lit.append(p)
+		# Padded a little, so float rounding at the edge can never reject a unit the exact test would take.
+		lo = Vector2(minf(lo.x, p.at.x - p.radius - 0.01), minf(lo.y, p.at.y - p.radius - 0.01))
+		hi = Vector2(maxf(hi.x, p.at.x + p.radius + 0.01), maxf(hi.y, p.at.y + p.radius + 0.01))
+	if not lit.is_empty():
+		var buckets: Array = []
+		buckets.resize(lit.size())
+		for e in field.alive():
+			var g := e.ground_pos
+			if g.x < lo.x or g.x > hi.x or g.y < lo.y or g.y > hi.y:
+				continue
 			if e is Person and (e as Person).inside:
 				continue
-			if first.has(e):
-				continue
-			first[e] = p
-			burning.append(e)
+			for i in lit.size():
+				var p := lit[i]
+				if g.distance_squared_to(p.at) <= p.radius * p.radius:
+					first[e] = p
+					if buckets[i] == null:
+						buckets[i] = []
+					(buckets[i] as Array).append(e)
+					break
+		for b in buckets:
+			if b != null:
+				burning.append_array(b)
 	var deaths := 0
 	for e: DummyEnemy in burning:
 		var patch: GroundFire = first[e]

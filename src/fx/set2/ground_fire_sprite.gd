@@ -18,6 +18,9 @@ const SCORCH_FADE := 6.0
 const LIGHT_RADIUS := 1.2
 const LIGHT_INTENSITY := 0.7
 const DECAL_RADIUS := 1.0
+## Screen pixels (at zoom 1) round the patch's point within which it counts as on screen: more than its flames, embers and
+## smoke ever reach (about 60 across and 100 up).
+const CULL_MARGIN := 128.0
 ## Embers a second at full strength.
 const EMBER_RATE := 5.0
 const SMOKE_RATE := 1.0
@@ -103,7 +106,7 @@ func setup(p: GroundFire, c: FxContext) -> GroundFireSprite:
 	_light.set_param("flicker", 1.0)
 	ground.add_child(_light)
 	if ctx.lights != null:
-		ctx.lights.register_quad(_light, p.at, LIGHT_RADIUS * 1.15, FIRE_LIGHT)
+		ctx.lights.register_quad_at(_light, p.at, LIGHT_RADIUS * 1.15, FIRE_LIGHT)
 	return self
 
 
@@ -116,6 +119,20 @@ func hold_voice(voice: Node, strip: Array) -> void:
 
 func _process(delta: float) -> void:
 	advance(delta)
+	_cull()
+
+
+## Off screen, its flames, embers and smoke are hidden, so nobody draws what nobody sees (they still run, so they are
+## where they would be the moment it comes back into view, and showing a node redraws it).
+func _cull() -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var xf := get_global_transform_with_canvas()
+	var m := CULL_MARGIN * absf(xf.get_scale().x)
+	var size := vp.get_visible_rect().size
+	var o := xf.origin
+	visible = o.x > -m and o.y > -m and o.x < size.x + m and o.y < size.y + m
 
 
 ## Drive it by hand (tests) or from _process.

@@ -59,6 +59,9 @@ static func run(t) -> void:
 	_stand_down(t)
 	_house_first(t)
 	_real_walk(t)
+	_dead_beater(t)
+	_out_with_fright(t)
+	_no_engineer(t)
 
 
 static func _count_assist(crowd: Crowd, p: GroundFire) -> int:
@@ -199,7 +202,7 @@ static func _beat_time(n: int) -> Array:
 	for b in crew:
 		all_recover = all_recover and b.mind == Person.Mind.RECOVER and b.assist_patch == null and not b.assist_beating
 	var res := [seconds, p.out and p.beaten and fm.patches_beaten == 1 and fm.patches_burned_out == 0 and fm.patches.is_empty(),
-		all_recover, not crowd.threats.is_active(p.threat_id) and not crowd.threats.is_active(p.prev_threat_id)]
+		all_recover, not crowd.threats.is_active(p.threat_id)]
 	_done(made)
 	return res
 
@@ -311,8 +314,74 @@ static func _real_walk(t) -> void:
 		if p.full() and p.crew.size() == 3 and not crew[0].has_goal():
 			waited = true
 		for b in crew:
-			if b.is_alive() and b.mind == Person.Mind.ASSIST and G.distance_to(b.ground_pos) < p.radius:
+			if b.is_alive() and b.mind == Person.Mind.ASSIST and G.distance_to(b.ground_pos) < p.radius or fm._heat.has(b):
 				inside = true
 	t.check(waited and beat_seen, "beaters: walking for real, they wait at full strength then beat (%.1f s)" % elapsed)
 	t.check(p.out and p.beaten and not inside, "beaters: walking for real, the patch is beaten out and nobody stood in it")
+	_done(made)
+
+
+## A beater who dies stops counting at once, leaves the crew, and its slot goes to the next recruit.
+static func _dead_beater(t) -> void:
+	var made := _make()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[2]
+	var fm := crowd.fires
+	_clear_away(crowd)
+	var four := _place(crowd, G, [3.0, 4.0, 5.0, 6.0])
+	var p := fm.lay(G)
+	p.strength = GroundFire.BEAT_FROM
+	fm._recruit()
+	for i in 3:
+		_arrive(four[i])
+	fm._tend_beaters(0.0)
+	t.check(fm._beaters(p) == 3, "beaters: three beating (%d)" % fm._beaters(p))
+	var dead := four[0]
+	var slot := dead.assist_slot
+	field.kill(dead, &"fire")
+	t.check(not dead.is_alive() and fm._beaters(p) == 2, "beaters: a dead beater no longer beats (%d)" % fm._beaters(p))
+	fm._tend_beaters(0.1)
+	t.check(not dead in p.crew and dead.assist_patch == null and not dead.assist_beating, "beaters: the dead one leaves the crew at once")
+	fm._recruit()
+	t.check(four[3] in p.crew and four[3].assist_slot == slot, "beaters: the next recruit takes the dead one's slot")
+	_done(made)
+
+
+## A beater frightened in the very frame its patch goes out keeps nothing of it.
+static func _out_with_fright(t) -> void:
+	var made := _make()
+	var crowd: Crowd = made[0]
+	var fm := crowd.fires
+	_clear_away(crowd)
+	var crew := _place(crowd, G, [3.0, 4.0, 5.0])
+	var p := fm.lay(G)
+	p.strength = GroundFire.BEAT_FROM
+	fm._recruit()
+	for b in crew:
+		_arrive(b)
+	fm._tend_beaters(0.0)
+	t.check(crew[0].assist_beating and crew[0].assist_patch == p, "beaters: beating")
+	p.strength = 0.0001
+	crew[0].panic(G + Vector2(-5.0, 0.0), 1.0, &"fire")
+	fm._burn_patches(0.25)
+	t.check(p.out and crew[0].mind != Person.Mind.ASSIST and crew[0].assist_patch == null and not crew[0].assist_beating,
+		"beaters: frightened as the patch goes out, it keeps no patch and no beating")
+	t.check(crew[1].assist_patch == null and crew[1].mind == Person.Mind.RECOVER, "beaters: the others stand down as before")
+	_done(made)
+
+
+## An engineer on duty (its team mends; G8) is never taken as a beater, even recovering and nearest.
+static func _no_engineer(t) -> void:
+	var made := _make()
+	var crowd: Crowd = made[0]
+	var fm := crowd.fires
+	_clear_away(crowd)
+	var two := _place(crowd, G, [3.0, 4.0])
+	two[0].engineer_duty = true
+	two[0].mind = Person.Mind.RECOVER
+	var p := fm.lay(G)
+	fm._recruit()
+	t.check(two[0].mind == Person.Mind.RECOVER and not two[0] in p.crew and two[1] in p.crew,
+		"beaters: an engineer on duty is never taken")
+	two[0].engineer_duty = false
 	_done(made)

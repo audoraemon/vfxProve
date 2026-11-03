@@ -1341,9 +1341,9 @@ func _watch_threats() -> void:
 		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER
 				or p.mind == Person.Mind.COMPELLED):
 			continue  # the compelled keep their survival (unless held absolutely: Person.panic())
-		for t in threats.nearby(p.ground_pos, Person.THREAT_MARGIN):
+		var t := threats.first_near(p.ground_pos, Person.THREAT_MARGIN)
+		if not t.is_empty():
 			p.panic(t.at, float(t.radius), t.kind)
-			break
 
 
 ## What happened in town reaching the alarm (a collapse, a death, a hit on the Citadel): until the Bell Tower has

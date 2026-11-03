@@ -49,7 +49,8 @@ var _built_version := -1
 var _w := 0
 var _h := 0
 var _origin := Vector2i.ZERO
-var _weighted: Array[Vector2i] = []
+## The cells _weigh_danger() weighted, each once (Vector2i -> true).
+var _weighted := {}
 var _threat_epoch := -1
 var _due := 0.0
 var _at := 0
@@ -229,9 +230,15 @@ func _weigh_danger() -> void:
 		if _grid.grid.is_in_boundsv(id):
 			_grid.grid.set_point_weight_scale(id, 1.0)
 	_weighted.clear()
+	# A zone weighted once needs no second pass: a ground fire's danger and the recent impacts it leaves are the same disc.
+	var done := {}
 	for t: Dictionary in _crowd.threats.all_zones():
 		var c: Vector2 = t.at
 		var r: float = t.radius
+		var key := [c, r]
+		if done.has(key):
+			continue
+		done[key] = true
 		var c0 := _grid.world_to_id(c - Vector2(r, r))
 		var c1 := _grid.world_to_id(c + Vector2(r, r))
 		for y in range(c0.y, c1.y + 1):
@@ -239,7 +246,7 @@ func _weigh_danger() -> void:
 				var id := Vector2i(x, y)
 				if _grid.grid.is_in_boundsv(id) and _grid.id_to_world(id).distance_to(c) <= r:
 					_grid.grid.set_point_weight_scale(id, DANGER_WEIGHT)
-					_weighted.append(id)
+					_weighted[id] = true
 
 
 func _rebuild_all() -> void:

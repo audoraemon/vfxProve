@@ -103,7 +103,7 @@ static func _voice(t) -> void:
 	a.hold_voice(null, strip)
 	for i in 5:
 		a.advance(0.1)
-	t.check(true, "hold_voice(null) with no Sfx does not fail")
+	t.check(a._voice == null and not a.is_queued_for_deletion(), "hold_voice(null) with no Sfx keeps no loop and does not fail")
 	var voice := Node.new()
 	a.hold_voice(voice, strip)
 	t.check(a._voice == voice, "it keeps the loop it is handed")

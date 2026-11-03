@@ -235,6 +235,8 @@ var assist_patch: GroundFire
 var assist_beating := false
 var _beat_in := 0.0
 var assist_slot := 0
+## Seconds until a beater short of its ring spot may pick a new one (FireManager.RESPOT).
+var assist_respot_in := 0.0
 ## On an engineer team while the engineers are out (v0.09.1; EngineerManager sets it): a fright or a shelter never sends it
 ## to the gates for good, it goes back to its team once calm. Cleared when its team stands down (Crowd.off_duty()).
 var engineer_duty := false
@@ -1610,6 +1612,7 @@ func beat(patch: GroundFire) -> void:
 	assist_beating = false
 	assist_stays = false
 	_beat_in = 0.0
+	assist_respot_in = 0.0
 	walk_speed = _mind_speed()
 
 

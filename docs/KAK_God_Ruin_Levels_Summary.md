@@ -77,7 +77,7 @@ Tsunami's two names are the spec's labels swapped (R1): the numbers follow the c
 
 - New: `tests/test_ruin_levels.gd` (423 checks: shapes, level one with types, the spec's tables typed again, Might, cooldown at level, level-3 casts, twist gate, previews, tree text), the shared `tests/fx_stage.gd` helper (with `StageImpact`), and ten `tests/test_ruin_twist_<key>.gd` (at their task: smite 12, ember 15, tornado 18, scatter 13, solaris 17, dragon 9, tsunami 12, cinder 13, tempest 26, shatter 18; the fix wave added cases). `tests/test_threats.gd` gained the danger-radius cases.
 - Suite counts so far: tracks A 14578/0, B 14560/0, C 14579/0; merged suite 14661/0; after the fix wave 14688/0. Digest and crowd_check unchanged at every step.
-- Landing: refs __ / FLOW __
+- Landing: refs 508/0 (level 1 moved nothing; digest and crowd_check unchanged) / FLOW 209/0 alone / suite 14688/0
 
 ## Not done, on purpose
 

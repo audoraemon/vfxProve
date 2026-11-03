@@ -66,10 +66,14 @@ static func _twins(t) -> void:
 	var pulled := _dummy(bf.ctx.field, mid + dir * 1.5)
 	var idle := _dummy(bf.ctx.field, mid - dir * 2.5)
 	var idle_at := idle.ground_pos
+	var start_pulled := pulled.ground_pos
+	var toward: Vector2 = ((a.center if a.center.distance_to(start_pulled) < b.center.distance_to(start_pulled) else b.center) - start_pulled).normalized()
 	_run_to(fx, fx.t + 1.0)
 	var gap1: float = a.center.distance_to(b.center)
 	t.check(gap1 > gap0 + 2.0, "the twins run apart (%.2f -> %.2f in 1 s)" % [gap0, gap1])
-	t.check(pulled.state == DummyEnemy.State.PULLED or not pulled.is_alive(), "one 1.5 from a twin is pulled in")
+	var drawn: float = (pulled.ground_pos - start_pulled).dot(toward)
+	t.check(pulled.state == DummyEnemy.State.PULLED and pulled.is_alive() and drawn > 0.3,
+		"one 1.5 from a twin is pulled in, toward it (%.2f along the way, %s -> %s)" % [drawn, start_pulled, pulled.ground_pos])
 	t.check(idle.state != DummyEnemy.State.PULLED and idle.ground_pos == idle_at, "one 2.5 away is not")
 	_run_to(fx, fx.t + 0.5)
 	gap1 = a.center.distance_to(b.center)

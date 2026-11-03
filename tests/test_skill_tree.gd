@@ -68,7 +68,7 @@ static func _layout(t) -> void:
 static func _lines(t) -> void:
 	var s := _screen("ruin", 1, 0)
 	s._slot.learned["smite"] = 2
-	var want := PackedStringArray(["Smite", "2 / 5", "1 Might", "Level 3: 1 point", PowerBook.level_change("smite", 3)])
+	var want := PackedStringArray(["Smite", "2 / 5", "1 Might", "Level 3: 1 point", "kill radius 0.65 -> 0.7, damage 50.0 -> 55.0, cooldown 9.5 -> 9.0"])
 	t.check(s.spot_lines(1, 1, 0) == want, "smite learned at 2: name, pips, Might, next level, its change (%s)" % [s.spot_lines(1, 1, 0)])
 	var death := s.spot_lines(2, 1, 0)
 	t.check(death[4] == PowerBook.NO_LEVELS, "a power with no table (Death Mark) still reads Level effects not set (%s)" % [death])

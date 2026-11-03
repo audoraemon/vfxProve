@@ -307,6 +307,7 @@ static func _twist_gate(t) -> void:
 		all = all and PowerBook.twist_at({"level": 5}, key) and not PowerBook.twist_at({"level": 4}, key) \
 			and not PowerBook.twist_at({}, key) and not PowerBook.twist_at({"level": 1}, key)
 	t.check(all, "twist_at is true at level 5 of each of the ten, false at 4, 1 and with no level")
+	t.check(not PowerBook.twist_at({"level": 9}, "smite") and not PowerBook.twist_at({"level": 6}, "smite"), "and false above the top level (9, 6)")
 	t.check(not PowerBook.twist_at({"level": 5}, "doom") and not PowerBook.twist_at({"level": 5}, "nosuch"),
 		"and false for a power with no table, or no power")
 

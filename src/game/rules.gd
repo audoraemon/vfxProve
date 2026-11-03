@@ -424,13 +424,18 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 ## Whether the slot's power is running and would take a click as its own (Wrath of the Sky's Called Bolts): the same test as recast(),
 ## without acting. What the preview asks to draw its edge as ready.
 func can_recast(slot: int) -> bool:
+	if finished or busy_left() > 0.0:
+		return false
 	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
 	return fx != null and fx.has_method("can_call") and fx.can_call()
 
 
 ## The click at `at` belongs to the running power in the slot (it called a bolt): true, and recast_made is sent. False when no such power
-## runs, or it cannot take one now; the caller then casts as usual. Touches no cooldown and has no rng, so a scripted route may call it.
+## runs, or it cannot take one now (the run is over, or another power holds the busy lock, as cast() refuses them); the caller then casts
+## as usual. Touches no cooldown and has no rng, so a scripted route may call it.
 func recast(slot: int, at: Vector2) -> bool:
+	if finished or busy_left() > 0.0:
+		return false
 	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
 	if fx == null or not fx.has_method("call_bolt") or not fx.call_bolt(at):
 		return false

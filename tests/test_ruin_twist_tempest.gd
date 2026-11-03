@@ -121,11 +121,59 @@ static func _rules_route(t) -> void:
 	_free(ctx)
 
 
-## The click reaches the storm through Targeting.release(), before the cast; the preview's edge asks can_recast().
+## The click reaches the storm through a real Targeting (press / release), before the cast: a level 5 Wrath, the slot focused. While the
+## storm gathers the click is a plain cast attempt (refused, a cooldown); once it rains the click is a called bolt: recast_made fires, no
+## cast_made does, the slot stays focused and the cooldown is untouched; the very next click is refused again.
 static func _wiring(t) -> void:
-	var src := FileAccess.get_file_as_string("res://src/game/targeting.gd")
-	var rel := src.find("func release(")
-	var recast_at := src.find("_rules.recast(slot, _press)", rel)
-	var cast_at := src.find("_rules.cast(slot, _press, extra)", rel)
-	t.check(rel >= 0 and recast_at > rel and cast_at > recast_at, "Targeting.release() asks _rules.recast(slot, _press) before the plain-click cast")
-	t.check(src.contains("_rules.can_recast(slot)"), "and the preview's edge stays gold while the slot can be recast")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = TownLayout.MAP
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, WalkGrid.new().setup(env, town), world, 5)
+	var ctx := _ctx()
+	ctx.env = env
+	ctx.field = field
+	var rules := Rules.new().setup(PackedStringArray(["tempest", "smite"]), ctx, env, field, crowd, town)
+	rules.levels = {"tempest": 5}
+	var casts: Array = []
+	var called: Array = []
+	var refused: Array = []
+	rules.cast_made.connect(func(slot: int, key: String, _at: Vector2): casts.append([slot, key]))
+	rules.recast_made.connect(func(slot: int, _key: String, at: Vector2): called.append([slot, at]))
+	rules.cast_refused.connect(func(slot: int, reason: String): refused.append([slot, reason]))
+	var aim := Targeting.new().setup(rules, crowd)
+	var home := TownLayout.MARKET_SQUARE.get_center()
+	aim.pick(0)
+	aim.press(home)
+	aim.release(home)
+	var fx := rules.live_fx("tempest") as TempestFx
+	t.check(casts == [[0, "tempest"]] and fx != null and aim.slot == -1, "a first click casts the storm, and the cast unfocuses (as every cast does)")
+	var left := rules.cooldown_left(0)
+	aim.pick(0)
+	aim.press(P)
+	aim.release(P)
+	t.check(called.is_empty() and casts.size() == 1 and refused.back() == [0, "cooldown"] and aim.slot == 0,
+		"while the storm gathers a click is no bolt: it is refused as a cooldown, the slot still focused (%s)" % [refused])
+	fx._process(TempestFx.T_GATHER + 0.5)
+	aim.press(P)
+	aim.release(P)
+	t.check(called == [[0, P]] and casts.size() == 1 and aim.slot == 0 and is_equal_approx(rules.cooldown_left(0), left) and fx.called == 1,
+		"once it rains a click is a called bolt: recast_made, no cast_made, still focused, cooldown untouched (%s)" % [called])
+	var refusals := refused.size()
+	aim.press(P)
+	aim.release(P)
+	t.check(called.size() == 1 and refused.size() == refusals + 1 and refused.back() == [0, "cooldown"] and aim.slot == 0,
+		"a second click at once is refused (the call is once in CALL_EVERY seconds)")
+	# A drag power never takes the route: a different slot, even with the storm running, casts as it always did.
+	aim.pick(1)
+	aim.press(P)
+	aim.release(P)
+	t.check(called.size() == 1 and (casts.size() == 2 or refused.back()[0] == 1), "another slot's click is its own cast (or its own refusal)")
+	rules.free()
+	aim.free()
+	crowd.clear()
+	world.free()
+	_free(ctx)

@@ -11,6 +11,7 @@ const AT := Vector2(12.0, 12.0)
 static func run(t) -> void:
 	_level_five(t)
 	_level_four(t)
+	_town_pool(t)
 
 
 ## Cast at `level` on a fresh stage; the volcano is already sunk by T_SINK and the barrage over, so nothing but the pool can kill at the centre.
@@ -82,4 +83,28 @@ static func _level_four(t) -> void:
 	_step(fx, CinderFx.T_SINK + 5.0)
 	t.check(not fx.pool_open and inside.is_alive() and is_equal_approx(house.hp, house.max_hp),
 		"level 4: no pool, the dummy at 1.0 after the sink lives, the house stands untouched")
+	FxStage.drop(bf)
+
+
+## With a town keeping fires, the pool lights a burnable through the fire manager (LAVA_FIRE_LEVEL), and leaves one already burning alone.
+static func _town_pool(t) -> void:
+	var made: Array = _cast(5)
+	var bf: Battlefield = made[0]
+	var fx = made[1]
+	var crowd := Crowd.new()
+	crowd.fires = FireManager.new().setup(crowd, bf.ctx.env, 4)
+	bf.ctx.crowd = crowd
+	_step(fx, CinderFx.T_SINK - 0.15)
+	var fresh := bf.ctx.env.add_structure(Rect2(AT + Vector2(2.9, -0.3), Vector2(0.6, 0.6)), 18.0, Structure.Kind.HOUSE, &"house")
+	var lit := bf.ctx.env.add_structure(Rect2(AT + Vector2(-3.5, -0.3), Vector2(0.6, 0.6)), 18.0, Structure.Kind.HOUSE, &"house")
+	crowd.fires.ignite(lit, 0.9)
+	t.check(not crowd.fires.is_burning(fresh) and crowd.fires.is_burning(lit), "before the pool opens only the one lit by hand burns")
+	_step(fx, CinderFx.T_SINK + 0.1)
+	t.check(crowd.fires.is_burning(fresh) and is_equal_approx(crowd.fires.intensity(fresh), CinderFx.LAVA_FIRE_LEVEL),
+		"town: the house 2.9 away is set alight through the fire manager at the pool's level (%.2f)" % crowd.fires.intensity(fresh))
+	t.check(is_equal_approx(fresh.hp, fresh.max_hp) and is_equal_approx(crowd.fires.intensity(lit), 0.9),
+		"and the pool's own blow of fire is not used, and the one already burning is left alone (%.2f)" % crowd.fires.intensity(lit))
+	crowd.fires.clear()
+	bf.ctx.crowd = null
+	crowd.free()
 	FxStage.drop(bf)

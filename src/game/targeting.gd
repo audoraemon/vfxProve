@@ -151,6 +151,9 @@ var _mode := {}
 var _press := Vector2.ZERO
 ## Where the cursor is now, for the preview and the drag's direction.
 var _at := Vector2.ZERO
+## Whether the preview's edge was last drawn as ready (gold) or not (red): the cooldown, the busy lock and a storm's Called Bolts all
+## change it without the cursor moving, so _process() redraws when it flips.
+var _edge_ready := true
 
 
 func setup(rules: Rules, crowd: Crowd) -> Targeting:
@@ -414,12 +417,20 @@ func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
 	unfocus()
 
 
+func _process(_delta: float) -> void:
+	if slot < 0:
+		return
+	if (_rules.refusal(slot) == "" or _rules.can_recast(slot)) != _edge_ready:
+		queue_redraw()
+
+
 func _draw() -> void:
 	var a := area()
 	if a.is_empty():
 		return
 	# A power that cannot be cast still shows its area, in red, so the player can aim while it comes back.
-	var edge := COL_EDGE if _rules.refusal(slot) == "" or _rules.can_recast(slot) else COL_BAD
+	_edge_ready = _rules.refusal(slot) == "" or _rules.can_recast(slot)
+	var edge := COL_EDGE if _edge_ready else COL_BAD
 	match String(a.shape):
 		"circle":
 			_ring(_press, float(a.r), edge)

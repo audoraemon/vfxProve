@@ -117,5 +117,20 @@ static func _danger_follows_level(t) -> void:
 		"danger_landed carries the radius: a level-5 Cinder 7.0, a level-1 one 5.8 (%s)" % [landed])
 	t.check(crowd.threats.nearby(at + Vector2(6.5, 0.0), 0.0).size() == 1, "the level-5 threat covers 6.5 from the cast")
 	t.check(crowd.threats.nearby(at + Vector2(0.0, 40.0 + 6.5), 0.0).is_empty(), "and the level-1 one does not")
+	# The click's route: Targeting hands the slot's level to the crowd, so a level-5 Cinder cast from a real press registers the 7.0 danger.
+	var rules := Rules.new().setup(PackedStringArray(["cinder"]), null, env, field, crowd, town)
+	rules.levels = {"cinder": 5}
+	rules.caster = func(_script: GDScript, _ground: Vector2, _extra: Dictionary) -> FxTimeline:
+		return null
+	var aim := Targeting.new().setup(rules, crowd)
+	landed.clear()
+	aim.pick(0)
+	aim.press(at + Vector2(0.0, -40.0))
+	aim.release(at + Vector2(0.0, -40.0))
+	for i in int(ceilf(maxf(PowerBook.impact("cinder"), 0.1) / 0.1)) + 1:
+		crowd.advance(0.1)
+	t.check(landed.size() == 1 and is_equal_approx(landed[0], 7.0), "a level-5 Cinder cast through Targeting lands a 7.0 danger (%s)" % [landed])
+	aim.free()
+	rules.free()
 	crowd.clear()
 	world.free()

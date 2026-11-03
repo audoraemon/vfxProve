@@ -56,8 +56,9 @@ static func _standing(env: EnvironmentField, kinds: Array) -> Structure:
 
 
 ## The deferred rebuild really runs on the next idle frame, once for any number of changes in a frame; restore, add and
-## remove schedule it too; a ruin casts RUIN_FACTOR of the height; the forest's trees have blobs; the layer sits over
-## the forest and shares its z.
+## remove schedule it too; a sprite building's silhouette turns to its ruins' still, a building without a sprite casts a
+## hull and its ruin RUIN_FACTOR of the height; the forest's trees cast silhouettes in their own green-slate group; the
+## layer sits over the forest and shares its z.
 static func _deferred(t) -> void:
 	var parts := _build_day()
 	var town: Town = parts[0]
@@ -66,59 +67,63 @@ static func _deferred(t) -> void:
 	var shadows := _shadows(town)
 	var a := _standing(env, [Structure.Kind.TEMPLE, Structure.Kind.BARRACKS, Structure.Kind.KEEP])
 	var b := _standing(env, [Structure.Kind.HOUSE])
-	var before := _area(shadows.polygon_of(a))
+	var stills: Dictionary = a.sprite.stills
+	t.check(shadows.shadow_texture(a) == stills[&"intact"], "a standing sprite building casts its intact still's silhouette")
 	var n0 := shadows.rebuilds
 	a.destroy(a.center(), &"smite")
 	b.destroy(b.center(), &"smite")
 	t.check(shadows.rebuilds == n0, "nothing is rebuilt inside the frame of a destroy")
 	await t.process_frame
 	t.check(shadows.rebuilds == n0 + 1, "two destroys in one frame cause one rebuild (%d)" % (shadows.rebuilds - n0))
-	var after := _area(shadows.polygon_of(a))
-	t.check(after < before, "the deferred rebuild shrank the shadow with no hand call (%.0f to %.0f)" % [before, after])
-	# Hand-computed: footprint diamond area + hull of the sheared strip, (width + height) * ... see _hand_area().
-	var want := _hand_area(a.footprint, a.max_height * 0.15)
-	t.check(absf(_area(shadows.polygon_of(a)) - want) < 0.5 and TownShadows.RUIN_FACTOR == 0.15,
-		"a ruin casts 0.15 of its height (%.1f vs hand-computed %.1f)" % [_area(shadows.polygon_of(a)), want])
+	t.check(shadows.shadow_texture(a) == stills[&"ruins"], "the deferred rebuild casts the ruins' silhouette with no hand call")
 	a.restore()
 	await t.process_frame
-	t.check(shadows.rebuilds == n0 + 2 and absf(_area(shadows.polygon_of(a)) - before) < 0.01,
-		"restoring a structure rebuilds its full shadow")
+	t.check(shadows.rebuilds == n0 + 2 and shadows.shadow_texture(a) == stills[&"intact"],
+		"restoring a structure casts its full silhouette again")
 	var added := env.add_structure(Rect2(30, 30, 1, 1), 30.0, Structure.Kind.HOUSE)
 	await t.process_frame
 	t.check(shadows.has_shadow(added), "an added structure gets a shadow")
+	if shadows.shadow_texture(added) == null:
+		# Without a sprite: the hull, and its ruin's hull is RUIN_FACTOR of the height, by hand.
+		var before := _area(shadows.polygon_of(added))
+		added.destroy(added.center(), &"smite")
+		await t.process_frame
+		var want := _hand_area(added.footprint, added.max_height * 0.15)
+		var got := _area(shadows.polygon_of(added))
+		t.check(absf(got - want) < 0.5 and got < before and TownShadows.RUIN_FACTOR == 0.15,
+			"a ruin without a sprite casts 0.15 of its height (%.1f vs hand-computed %.1f)" % [got, want])
 	var added_id := added.get_instance_id()
 	env.remove(added)
 	await t.process_frame
 	t.check(shadows.polygon_count() > 0 and not shadows._polys.has(added_id), "a removed structure's shadow is gone")
-	t.check(not town.forest.trees.is_empty() and shadows._tree_poly.polygon.size() >= town.forest.trees.size() * 3,
-		"every forest tree has a blob (%d points for %d trees)" % [shadows._tree_poly.polygon.size(), town.forest.trees.size()])
-	t.check(shadows._tree_poly.polygons.size() >= town.forest.trees.size() + TownDecor.border_trees().size(),
-		"the border band's trees cast shadows too (%d blobs for %d forest + %d border trees)" % [shadows._tree_poly.polygons.size(), town.forest.trees.size(), TownDecor.border_trees().size()])
-	t.check(shadows.group.find_children("Trees", "Polygon2D", false, false).is_empty() and shadows.group.get_child_count() == 1,
-		"a DAY group holds only the structures' polygon (no empty Trees node)")
-	# DAY's tree shadows are soft: 2 stepped bands, low alpha, green-slate (not blue), each blob short and low (no stripes).
-	var bands := TownLook.tree_shadow_bands(Town.Look.DAY)
-	var soft := shadows.tree_bands.size() == bands.size() and bands.size() >= 2 and bands.size() <= 3
-	var green := true
-	for bd in bands:
-		var c: Color = bd.colour
-		soft = soft and c.a <= 0.25
-		green = green and c.g > c.b and c.g > c.r
-	t.check(soft and green, "DAY tree shadows: 2-3 low-alpha bands, green-slate")
-	var minp := Vector2(INF, INF)
-	var maxp := Vector2(-INF, -INF)
-	for idx: PackedInt32Array in shadows._tree_poly.polygons.slice(0, 1):
-		for i in idx:
-			var p := shadows._tree_poly.polygon[i]
-			minp = minp.min(p)
-			maxp = maxp.max(p)
-	t.check((maxp.x - minp.x) < 40.0 and (maxp.y - minp.y) < (maxp.x - minp.x) * 0.7,
-		"one tree's shadow is a short low ellipse (%.0f x %.0f)" % [maxp.x - minp.x, maxp.y - minp.y])
+	t.check(not town.forest.trees.is_empty() and shadows.tree_count >= town.forest.trees.size() + TownDecor.border_trees().size(),
+		"every forest and border tree casts a silhouette (%d for %d forest + %d border trees)" % [shadows.tree_count,
+			town.forest.trees.size(), TownDecor.border_trees().size()])
+	var tc := TownLook.tree_shadow_colour(Town.Look.DAY)
+	t.check(shadows.tree_group.self_modulate == tc and tc.g > tc.b and tc.g > tc.r and tc.a <= 0.5,
+		"DAY's tree shadows are a low-alpha green-slate, in a group of their own")
 	t.check(shadows.get_index() > town.forest.get_index() and shadows.z_index == town.forest.z_index
 		and shadows.get_parent() == ground, "the shadows sit over the forest on the same z, under the ground plane")
+	t.check(shadows.silhouette_textures() < 150, "the silhouettes draw from %d textures (one draw each)" % shadows.silhouette_textures())
 	_free_day(parts)
+	_silhouette_math(t)
 	_person(t)
 	_ownership(t)
+
+
+## A silhouette quad: a texel on the base row stays put, one h px above it lands h * SHEAR away (right and down: x by h,
+## y squashed toward the base), and a mirrored sprite flips about its anchor.
+static func _silhouette_math(t) -> void:
+	var src := Rect2(0, 0, 20, 40)
+	var anchor := Vector2(5, 40)
+	var base := Vector2(100, 200)
+	var q := TownShadows.silhouette_quad(src, anchor, base, false, TownShadows.SHEAR)
+	t.check(q[3] == Vector2(95, 200) and q[2] == Vector2(115, 200), "the base row stays on the ground")
+	t.check(q[0] == Vector2(95 + 40.0 * TownShadows.SHEAR.x, 200 + 40.0 * TownShadows.SHEAR.y),
+		"the top falls h * SHEAR from the base: down and right, squashed (%s)" % str(q[0]))
+	var m := TownShadows.silhouette_quad(src, anchor, base, true, TownShadows.SHEAR)
+	t.check(m[3] == Vector2(105, 200) and m[2] == Vector2(85, 200) and m[0].x - m[3].x == q[0].x - q[3].x,
+		"a mirrored sprite flips about its anchor and still falls to the right")
 
 
 ## The foot shadow: untouched in CURRENT, the look's colour and a wider ellipse in DAY and NIGHT.
@@ -224,21 +229,27 @@ static func _destroy(t, env: EnvironmentField, shadows: TownShadows) -> void:
 	if hall == null:
 		t.check(false, "town hall found")
 		return
-	var before := _area(shadows.polygon_of(hall))
 	hall.destroy(hall.center(), &"smite")
 	t.check(shadows._pending, "destroying a structure schedules a shadow rebuild")
 	shadows.rebuild()
-	var after := _area(shadows.polygon_of(hall))
-	t.check(after < before, "a destroyed building's shadow shrinks to its ruin (%.0f to %.0f)" % [before, after])
+	var ruins: Texture2D = (hall.sprite.stills as Dictionary).get(&"ruins")
+	t.check(ruins != null and shadows.shadow_texture(hall) == ruins, "a destroyed building casts its ruins' silhouette")
 
 
 static func _no_stack(t, shadows: TownShadows) -> void:
-	var ok := shadows.polygon_count() > 0
+	var ok := shadows.polygon_count() > 0 and shadows.group.get_child_count() == 2
 	for n in shadows.group.get_children():
-		ok = ok and n is Polygon2D and n.color == Color.WHITE
+		ok = ok and (n is Polygon2D and n.color == Color.WHITE or n is TownShadows.SilhouetteCanvas
+			and (n as CanvasItem).material == TownShadows.silhouette_material())
 	var sp := shadows.group.get_node("Structures") as Polygon2D
-	ok = ok and sp.polygons.size() == shadows.polygon_count()
-	t.check(ok and shadows.group.self_modulate.a < 1.0, "every shadow is an opaque polygon of one Polygon2D in one group that sets the alpha (%d polygons)" % sp.polygons.size())
+	var hulls := 0
+	for s in shadows._polys:
+		hulls += 0 if shadows._tex_of.has(s) else 1
+	ok = ok and sp.polygons.size() == hulls and shadows.silhouette_count > 0
+	t.check(ok and shadows.group.self_modulate.a < 1.0,
+		"every shadow is white in one group that sets the alpha once: %d silhouettes, %d hulls" % [shadows.silhouette_count, hulls])
+	var src := FileAccess.get_file_as_string("res://src/game/town/town_silhouette.gdshader")
+	t.check(src.contains("COLOR = vec4(1.0, 1.0, 1.0, step(0.5, texture(TEXTURE, UV).a));"), "a silhouette is white where its texel is opaque")
 
 
 static func _current_none(t) -> void:

@@ -58,10 +58,12 @@ static func contact_colour(look) -> Color:
 	return Color(0.10, 0.06, 0.08, 0.72)
 
 
-## DAY's soft tree shadows (TownShadows): a wide faint band, then a smaller core, each {scale, colour}; a dark green-slate
-## with low alpha, so the two add up to about 0.3 in the core.
-static func tree_shadow_bands(_look) -> Array[Dictionary]:
-	return [{"scale": 1.0, "colour": Color(0.04, 0.15, 0.12, 0.20)}, {"scale": 0.6, "colour": Color(0.04, 0.15, 0.12, 0.20)}]
+## The trees' silhouette shadows (TownShadows' tree group, round 4): DAY a dark green-slate tuned to the grass (the
+## buildings' cool slate read as blue blotches in the forest), NIGHT the buildings' faint moon shadow.
+static func tree_shadow_colour(look) -> Color:
+	if look == Town.Look.NIGHT:
+		return shadow_colour(look)
+	return Color(0.05, 0.16, 0.13, 0.42)
 
 
 ## The colour grade's uniforms for a look (TownGrade, town_grade.gdshader): lift (added), gain (multiplied), then warm

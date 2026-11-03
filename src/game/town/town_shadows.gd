@@ -1,16 +1,19 @@
 class_name TownShadows
 extends Node2D
-## The cast shadows of the DAY and NIGHT looks (Town.Look). Every standing structure throws its footprint along the sun
-## (down and to the right on screen), as long as it is tall: the footprint's diamond, plus its copy shifted by
-## height * SHEAR, plus the hull between them. The shadows are polygons in screen pixels under the ground plane's
-## transform, so they scale and pan with the art. They are all children of one CanvasGroup, drawn in an opaque colour
-## and given their darkness once by the group's self_modulate, so where shadows overlap they do not stack.
+## The cast shadows of the DAY and NIGHT looks (Town.Look). Round 4: every standing structure with a sprite, and every
+## forest tree, throws its own silhouette along the sun (down and to the right on screen): its sprite drawn a second
+## time, skewed about its base row (a texel h px above the base lands h * SHEAR from it: x shifted by h, y squashed
+## toward the base), so towers, roofs, the cathedral's spire and the tree crowns cast their real shapes. A structure
+## without a sprite casts the old hull: its footprint's diamond, its copy shifted by height * SHEAR, and the hull
+## between. Everything is in screen pixels under the ground plane's transform, so it scales and pans with the art. All of
+## it is drawn white in one CanvasGroup and given its darkness once by the group's self_modulate, so overlaps never
+## stack.
 ## The layer sits over the floor, the plants and the forest, and under everything that stands. It is rebuilt only when a
 ## structure is destroyed, restored, added or removed (deferred, once per frame at most), never per frame.
 
 ## Screen pixels of shadow per pixel of height: down and to the right, away from the sun at the upper left.
 const SHEAR := Vector2(1.0, 0.46)
-## A destroyed structure casts the shadow of its ruin: this much of its height.
+## A destroyed structure without a sprite casts the shadow of its ruin: this much of its height.
 const RUIN_FACTOR := 0.15
 ## The contact band reaches this far out from a footprint (ground units: about 2 to 4 px on screen), a tree's blob this
 ## much of its height across.
@@ -19,18 +22,27 @@ const CONTACT_TREE := 0.16
 
 var env: EnvironmentField
 var look := 0
-## The forest's baked trees (Town.build's), each a blob in the same layer.
+## The forest's baked trees (Town.build's), each a silhouette in the same group.
 var trees: Array[Dictionary] = []
 ## The one group every shadow is drawn in.
 var group: CanvasGroup
-## Structure instance id -> its shadow polygon (screen px).
+## Structure instance id -> its shadow polygon (screen px): its hull, or its silhouette's skewed quad.
 var _polys := {}
-## One Polygon2D holds every structure's shadow, one convex polygon each (its `polygons`), rebuilt on change.
+## One Polygon2D holds the hull shadow of every structure without a sprite, one convex polygon each, rebuilt on change.
 var _struct_poly: Polygon2D
-## NIGHT's tree capsules, or DAY's first soft band (null when there are no trees).
-var _tree_poly: Polygon2D
-## DAY's soft tree shadows: a wider band and a smaller core, each in a group of its own (so the two add up inside the core).
-var tree_bands: Array[CanvasGroup] = []
+## The silhouettes: one node drawing, per sprite texture, one triangle array of skewed quads, through one shared
+## material. Texture RID -> {tex, pts, uvs}. The forest's trees draw on a node of their own in a group of their own
+## (tree_group: their colour, TownLook.tree_shadow_colour()).
+var silhouettes: SilhouetteCanvas
+var tree_group: CanvasGroup
+var tree_silhouettes: SilhouetteCanvas
+var _sil := {}
+var _tree_sil := {}
+## How many silhouette quads are drawn, and how many of them are trees' (for tests).
+var silhouette_count := 0
+var tree_count := 0
+## Structure instance id -> the still its silhouette is drawn from.
+var _tex_of := {}
 ## The contact shadows: a dithered band round every structure's base and a blob under every tree, in a group of their
 ## own (darker than the cast shadows; TownLook.contact_colour()).
 var contact: CanvasGroup
@@ -38,6 +50,50 @@ var _contact_poly: Polygon2D
 var _pending := false
 ## How many times rebuild() has run (for tests).
 var rebuilds := 0
+
+static var _sil_material: ShaderMaterial
+
+
+## A silhouettes' draw node: one triangle array per texture of its quads (TownShadows.paint_silhouettes()).
+class SilhouetteCanvas extends Node2D:
+	var quads := {}
+
+	func _draw() -> void:
+		TownShadows.paint_silhouettes(self, quads)
+
+
+func _new_canvas(n: String, quads: Dictionary) -> SilhouetteCanvas:
+	var c := SilhouetteCanvas.new()
+	c.name = n
+	c.quads = quads
+	c.material = silhouette_material()
+	c.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	return c
+
+
+## The one material every silhouette draws through: white where the texel is opaque.
+static func silhouette_material() -> ShaderMaterial:
+	if _sil_material == null:
+		_sil_material = ShaderMaterial.new()
+		_sil_material.shader = preload("res://src/game/town/town_silhouette.gdshader")
+	return _sil_material
+
+
+## A sprite's shadow quad: the texture rect `src` drawn with its anchor texel `anchor` on the screen point `base`,
+## mirrored when `mirror`, then skewed about the base row: a corner h px above the base lands at x + h * shear.x,
+## base.y + h * shear.y. Returns the four corners (the texture's top left, top right, bottom right, bottom left).
+static func silhouette_quad(src: Rect2, anchor: Vector2, base: Vector2, mirror: bool, shear: Vector2) -> PackedVector2Array:
+	var m := -1.0 if mirror else 1.0
+	var out := PackedVector2Array()
+	for c: Vector2 in _corners(src):
+		var local := c - anchor
+		var h := -local.y
+		out.append(Vector2(base.x + m * local.x + h * shear.x, base.y + h * shear.y))
+	return out
+
+
+static func _corners(r: Rect2) -> Array[Vector2]:
+	return [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
 
 
 ## The shadow of a footprint `diamond` (its four corners, screen px) of `height`: the hull of the corners and the
@@ -86,10 +142,14 @@ func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] 
 	_struct_poly.name = "Structures"
 	_struct_poly.color = Color.WHITE
 	group.add_child(_struct_poly)
-	if look == Town.Look.DAY:
-		_build_soft_trees()
-	else:
-		_build_trees()
+	silhouettes = _new_canvas("Silhouettes", _sil)
+	group.add_child(silhouettes)
+	tree_group = CanvasGroup.new()
+	tree_group.name = "TreeGroup"
+	tree_group.self_modulate = TownLook.tree_shadow_colour(look)
+	add_child(tree_group)
+	tree_silhouettes = _new_canvas("TreeSilhouettes", _tree_sil)
+	tree_group.add_child(tree_silhouettes)
 	contact = CanvasGroup.new()
 	contact.name = "ContactGroup"
 	contact.self_modulate = TownLook.contact_colour(look)
@@ -123,17 +183,25 @@ func _on_change(_s = null, _k = null) -> void:
 	rebuild.call_deferred()
 
 
-## Redraws every standing structure's shadow (a destroyed one's as its ruin's), all into the one polygon node.
+## Redraws every standing structure's shadow (a destroyed one's from its ruins) and every forest tree's: silhouettes for
+## the sprites, hulls for the rest.
 func rebuild() -> void:
 	_pending = false
 	rebuilds += 1
 	if not is_instance_valid(env):
 		return
 	_polys.clear()
+	_sil.clear()
+	_tree_sil.clear()
+	_tex_of.clear()
+	silhouette_count = 0
+	tree_count = 0
 	var pts := PackedVector2Array()
 	var polys: Array = []
 	for s in env.structures():
 		if not is_instance_valid(s) or not casts(s):
+			continue
+		if _add_structure_silhouette(s):
 			continue
 		var h := s.max_height * RUIN_FACTOR if s.destroyed else s.max_height
 		var poly := cast_polygon(diamond_of(s.footprint), h, SHEAR)
@@ -143,11 +211,90 @@ func rebuild() -> void:
 			idx.append(pts.size())
 			pts.append(p)
 		polys.append(idx)
+	for d in trees:
+		_add_tree_silhouette(d)
 	# Clear before the points shrink: a stale index list must never outlive its points.
 	_struct_poly.polygons = []
 	_struct_poly.polygon = pts
 	_struct_poly.polygons = polys
+	silhouettes.queue_redraw()
+	tree_silhouettes.queue_redraw()
 	_rebuild_contact()
+
+
+## A structure's silhouette from the still it shows (its ruins once destroyed), at its footprint's front corner where
+## its sprite's anchor sits; false for one without a sprite.
+func _add_structure_silhouette(s: Structure) -> bool:
+	if not (s.sprite is Dictionary) or (s.sprite as Dictionary).is_empty():
+		return false
+	var art: Dictionary = s.sprite
+	var stills: Dictionary = art.get("stills", {})
+	var st := &"intact"
+	if s.destroyed:
+		st = &"ruins"
+	elif s.sprite_state() == &"damaged":
+		st = &"damaged"
+	var tex: Texture2D = stills.get(st, stills.get(&"intact"))
+	if tex == null:
+		return false
+	var src := Rect2(Vector2.ZERO, art.size)
+	var region: Rect2 = art.get("region", Rect2())
+	if region.has_area():
+		src = region
+	_polys[s.get_instance_id()] = _add_quad(tex, src, art.anchor, Iso.ground_to_screen(s.footprint.end),
+		bool(art.get("mirror", false)))
+	_tex_of[s.get_instance_id()] = tex
+	return true
+
+
+## A forest tree's silhouette from its sprite set (DecorSprites.tree_set, placed as DecorSprites.paint() draws it).
+func _add_tree_silhouette(d: Dictionary) -> void:
+	var tr := DecorSprites.tree_set(d.kind, d.seed, (d.size as Vector2).x)
+	if tr.is_empty() or tr.get("tex") == null:
+		return
+	var src: Rect2 = tr.get("src", Rect2(Vector2.ZERO, tr.size))
+	_add_quad(tr.tex, src, tr.anchor, Iso.ground_to_screen(d.at as Vector2).round(), false, true)
+	tree_count += 1
+
+
+func _add_quad(tex: Texture2D, src: Rect2, anchor: Vector2, base: Vector2, mirror: bool, tree := false) -> PackedVector2Array:
+	var quad := silhouette_quad(src, anchor, base, mirror, SHEAR)
+	var key := tex.get_rid()
+	var bucket := _tree_sil if tree else _sil
+	if not bucket.has(key):
+		bucket[key] = {"tex": tex, "pts": PackedVector2Array(), "uvs": PackedVector2Array()}
+	var g: Dictionary = bucket[key]
+	var size := Vector2(tex.get_size())
+	var pts: PackedVector2Array = g.pts
+	var uvs: PackedVector2Array = g.uvs
+	pts.append_array(quad)
+	for c: Vector2 in _corners(src):
+		uvs.append(c / size)
+	g.pts = pts
+	g.uvs = uvs
+	silhouette_count += 1
+	return quad
+
+
+## Every silhouette of `quads`, one triangle array per texture (one draw each).
+static func paint_silhouettes(c: CanvasItem, quads: Dictionary) -> void:
+	for key in quads:
+		var g: Dictionary = quads[key]
+		var pts: PackedVector2Array = g.pts
+		var idx := PackedInt32Array()
+		for q in pts.size() / 4:
+			var o := q * 4
+			idx.append_array([o, o + 1, o + 2, o, o + 2, o + 3])
+		var cols := PackedColorArray()
+		cols.resize(pts.size())
+		cols.fill(Color.WHITE)
+		RenderingServer.canvas_item_add_triangle_array(c.get_canvas_item(), idx, pts, cols, g.uvs, PackedInt32Array(),
+			PackedFloat32Array(), (g.tex as Texture2D).get_rid())
+
+
+## How many textures the silhouettes draw from (one draw call each), buildings' and trees'.
+func silhouette_textures() -> int:
+	return _sil.size() + _tree_sil.size()
 
 
 ## The contact band of every structure that casts (a ruin's too: it still sits on the ground), as quads from its
@@ -197,39 +344,7 @@ func contact_count() -> int:
 	return _contact_poly.polygons.size() if _contact_poly != null else 0
 
 
-## One capsule per baked forest tree, all in a single multi-polygon node.
-func _build_trees() -> void:
-	var pts := PackedVector2Array()
-	var polys: Array = []
-	for d in trees:
-		var tall: float = (d.size as Vector2).x if (d.size as Vector2).x > 0.0 else 52.0
-		var base := Iso.ground_to_screen(d.at as Vector2)
-		var rx := tall * 0.2
-		var ring := PackedVector2Array()
-		for i in 8:
-			var a := TAU * float(i) / 8.0
-			var e := Vector2(cos(a) * rx, sin(a) * rx * 0.5)
-			ring.append(base + e)
-			ring.append(base + e + SHEAR * tall * 0.9)
-		var hull := Geometry2D.convex_hull(ring)
-		if hull.size() > 1:
-			hull.remove_at(hull.size() - 1)
-		var idx := PackedInt32Array()
-		for p in hull:
-			idx.append(pts.size())
-			pts.append(p)
-		polys.append(idx)
-	if pts.is_empty():
-		return
-	_tree_poly = Polygon2D.new()
-	_tree_poly.name = "Trees"
-	_tree_poly.color = Color.WHITE
-	group.add_child(_tree_poly)
-	_tree_poly.polygon = pts
-	_tree_poly.polygons = polys
-
-
-## The shadow polygon of a structure (empty if it casts none).
+## The shadow polygon of a structure (empty if it casts none): its hull, or its silhouette's skewed quad.
 func polygon_of(s: Structure) -> PackedVector2Array:
 	return _polys.get(s.get_instance_id(), PackedVector2Array())
 
@@ -242,35 +357,6 @@ func polygon_count() -> int:
 	return _polys.size()
 
 
-## DAY's tree shadows: per tree a short low ellipse a little down and to the right, in two stepped bands (a wide faint one
-## and a smaller core), a dark green-slate tuned to the grass. They never stripe: nothing is sheared.
-func _build_soft_trees() -> void:
-	var bands := TownLook.tree_shadow_bands(look)
-	for k in bands.size():
-		var scale: float = bands[k].scale
-		var pts := PackedVector2Array()
-		var polys: Array = []
-		for d in trees:
-			var tall: float = (d.size as Vector2).x if (d.size as Vector2).x > 0.0 else 52.0
-			var c := Iso.ground_to_screen(d.at as Vector2) + SHEAR * tall * 0.14
-			var rx := tall * 0.26 * scale
-			var idx := PackedInt32Array()
-			for i in 10:
-				var a := TAU * float(i) / 10.0
-				idx.append(pts.size())
-				pts.append((c + Vector2(cos(a) * rx, sin(a) * rx * 0.5)).round())
-			polys.append(idx)
-		var grp := CanvasGroup.new()
-		grp.name = "TreeBand%d" % k
-		grp.self_modulate = bands[k].colour
-		var poly := Polygon2D.new()
-		poly.name = "Trees"
-		poly.color = Color.WHITE
-		if not pts.is_empty():
-			poly.polygon = pts
-			poly.polygons = polys
-		grp.add_child(poly)
-		add_child(grp)
-		tree_bands.append(grp)
-		if k == 0:
-			_tree_poly = poly
+## The still a structure's silhouette is drawn from, or null (no silhouette: a hull, or none).
+func shadow_texture(s: Structure) -> Texture2D:
+	return _tex_of.get(s.get_instance_id())

@@ -155,16 +155,18 @@ static func sprite_params(look) -> Dictionary:
 	return {}
 
 
-## A window's pool on the ground in front (TownPools) against its round-2 strength: NIGHT's windows throw a brighter fan.
+## A window's pool on the ground in front (TownPools) against its round-2 strength.
+## Round 4: the windows themselves are the warm accents (the sprite's hot window core); their fan on the ground is small.
 static func window_pool(look) -> float:
-	return 1.7 if look == Town.Look.NIGHT else 1.0
+	return 1.0
 
 
-## The light map (TownPools' buffer, multiplied in by TownGrade): how strongly it lights the art, and its warm colour. At
-## NIGHT the lamps, torches and windows light what stands near them; by DAY they only warm their own doorsteps a touch.
+## The light map (TownPools' buffer, crossfaded in by TownGrade): how strongly it lights the art (the crossfade is
+## 1 - exp(-light * gain)), and its warm colour. At NIGHT the lamps, torches and windows light what stands near them. DAY
+## has no light map (round 4: nobody lights a lamp by day; the sun grade alone makes the light).
 static func light_gain(look) -> float:
 	if look == Town.Look.NIGHT:
-		return 3.0
+		return 2.2
 	if look == Town.Look.DAY:
 		return 0.15
 	return 0.0
@@ -172,18 +174,19 @@ static func light_gain(look) -> float:
 
 static func light_warm(look) -> Vector3:
 	if look == Town.Look.NIGHT:
-		# Deep lamp orange, as the reference's lit streets.
-		return Vector3(1.0, 0.62, 0.30)
+		# Lamp amber, as the concept's lit streets (round 4: yellower; the deep orange read as fire).
+		return Vector3(1.0, 0.74, 0.42)
 	return Vector3(1.0, 0.86, 0.66)
 
 
-## How the light map's light meets the graded colour (town_grade.gdshader light_replace, light_mono, light_floor; round
-## 3): NIGHT's lamplight replaces the cool moon grade where it falls and lights the luminance, so stone reads amber, not
-## pink. DAY: none (the shader's defaults, off).
+## How the light map's light meets the graded colour (town_grade.gdshader light_replace, light_mono, light_floor):
+## NIGHT's lamplight crossfades the cool moon grade to amber where it falls and lights the luminance, so stone reads
+## amber, not pink. Round 4: a smooth falloff (light_steps 0, no dither blotches), steepened (light_pow) so the pools stay
+## small and the streets between them dark. DAY: none (the shader's defaults, off).
 static func light_mix(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
-		return {"light_replace": 0.8, "light_mono": 0.55, "light_floor": 0.16, "light_boost": 2.4,
-			"light_knee": 0.62, "light_bend": 1.6, "light_pow": 2.0}
+		return {"light_replace": 0.92, "light_mono": 0.55, "light_floor": 0.14, "light_boost": 2.2,
+			"light_knee": 0.6, "light_bend": 1.6, "light_pow": 2.0, "light_steps": 0.0}
 	return {}
 
 

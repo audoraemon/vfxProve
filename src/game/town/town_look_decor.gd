@@ -35,17 +35,24 @@ const DAY_NEAR := 1.2
 const TOWN_PAD := 1.5
 ## The buildings that get a lantern by their door.
 const LANTERN_KINDS := [Structure.Kind.HOUSE, Structure.Kind.MARKET_STALL, Structure.Kind.TEMPLE, Structure.Kind.BARRACKS]
-## A house's lantern stands LANTERN_OUT off its face.
+## A house's lantern stands LANTERN_OUT off its face, and none where the town's own lantern (a decor lamp) stands within
+## LANTERN_GAP (round 4: two lanterns at one door doubled its pool).
 const LANTERN_OUT := 0.14
+const LANTERN_GAP := 1.5
 ## A prop on a building sorts this far (screen px) below its building's sort point: just after it.
 const SORT_AFTER := 0.01
 
 ## The light each prop sends to the light map (TownPools): its pool's radius (screen px, x semi-axis), strength and flicker.
+## Round 4: small pools, so the lights are points in a dark town: a lantern about 1.2 cells (Iso.radius_to_screen), a
+## street lamp or torch about 2 cells, each full only near its middle.
 const LIGHT := {
-	Prop.TORCH: {"radius": 64.0, "alpha": 3.0, "flicker": 1.0},
-	Prop.LAMP: {"radius": 88.0, "alpha": 4.0, "flicker": 0.5},
-	Prop.LANTERN: {"radius": 60.0, "alpha": 4.0, "flicker": 0.5},
+	Prop.TORCH: {"radius": 56.0, "alpha": 0.8, "flicker": 1.0},
+	Prop.LAMP: {"radius": 80.0, "alpha": 1.0, "flicker": 0.5},
+	Prop.LANTERN: {"radius": 46.0, "alpha": 0.8, "flicker": 0.5},
 }
+## A market stall's bare lantern's pool: a point on its counter.
+const BARE_RADIUS := 24.0
+const BARE_ALPHA := 0.5
 
 ## The atlas: the three sprites on its top rows, then the animated band from BAND_Y: rows of four CELL x CELL frames.
 const ATLAS := Vector2i(112, 128)
@@ -117,9 +124,12 @@ static func plan(town: Town) -> Array[Dictionary]:
 			feet.append(s.footprint)
 		if s.kind == Structure.Kind.TORCH:
 			taken.append(s.footprint.get_center())
+	var own_lamps := PackedVector2Array()
 	for d in town._decor:
 		if is_instance_valid(d):
 			taken.append(d.at)
+			if not TownPools.lamp_pool(d).is_empty():
+				own_lamps.append(d.at)
 	var roads: Array = city.roads()
 	var day: bool = town.look == Town.Look.DAY
 	var mains: Array[Rect2] = []
@@ -159,6 +169,8 @@ static func plan(town: Town) -> Array[Dictionary]:
 			out[out.size() - 1].bare = true
 			continue
 		var g := _lantern_spot(s.footprint, roads, out.size())
+		if _near(own_lamps, g, LANTERN_GAP):
+			continue
 		_put(out, Prop.LANTERN, g, 0.0, s)
 		taken.append(g)
 	# Street lamps along both sides of every road, then round every square.
@@ -429,9 +441,13 @@ func lights() -> Array[Dictionary]:
 		var l: Dictionary = LIGHT[p.prop]
 		var host: Structure = p.host
 		# A house's (church's, barracks') lantern lights its front too (round 3, TownPools.face_of()).
-		var face := TownPools.face_of(host) if p.prop == Prop.LANTERN and host != null and host.kind in TownPools.FACE_KINDS 			else PackedVector2Array()
-		out.append({"pos": Iso.ground_to_screen(p.at) - Vector2(0, p.lift), "radius": l.radius, "color": Structure.TORCH_LIGHT,
-			"flicker": l.flicker, "alpha": l.alpha, "structure": host, "look_decor": true, "face": face})
+		var bare: bool = p.get("bare", false)
+		var face := TownPools.face_of(host) if p.prop == Prop.LANTERN and not bare and host != null \
+			and host.kind in TownPools.FACE_KINDS else PackedVector2Array()
+		# A stall's bare lantern is a point: a small pool on its counter (round 4: the market read as one lit sheet).
+		out.append({"pos": Iso.ground_to_screen(p.at) - Vector2(0, p.lift), "radius": BARE_RADIUS if bare else l.radius,
+			"color": Structure.TORCH_LIGHT, "flicker": l.flicker, "alpha": BARE_ALPHA if bare else l.alpha, "structure": host,
+			"look_decor": true, "face": face})
 	return out
 
 

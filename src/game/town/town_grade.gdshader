@@ -30,29 +30,30 @@ uniform vec3 local_cool = vec3(1.0);
 uniform float saturation = 1.0;
 uniform float contrast = 1.0;
 uniform float pivot = 0.45;
-// The light map (TownPools' buffer, the view at half resolution): every lamp, torch and lit window's light. It lights the
-// ungraded colour (lit = graded + base * light * light_warm * light_gain), so near a lamp a wall, a roof or a person turns
-// warm while its dark side, dark in the art, stays dark.
+// The light map (TownPools' buffer, the view at half resolution; NIGHT only): every lamp, torch and lit window's light.
+// Where it reaches, the pixel crossfades from its graded colour to its lamplit one (fragment()), so near a lamp a wall, a
+// roof or a person turns warm while its dark side, dark in the art, stays dark. light_gain 0: off (DAY, CURRENT).
 uniform sampler2D light_tex : hint_default_black, filter_linear;
 uniform float light_gain = 0.0;
 uniform vec3 light_warm = vec3(1.0);
-// Round 3 (NIGHT): saturated amber on stone, not pink. Where the light falls it replaces up to light_replace of the cool
-// moonlit grade (so orange is not added onto blue), it lights the colour's luminance (light_mono of the way) rather than
-// its own hue (pinkish paving), and never less than light_floor (dark timber still takes the light). All 0: off (DAY).
+// NIGHT: saturated amber on stone, not pink. Where the light falls it replaces up to light_replace of the cool moonlit
+// grade, it lights the colour's luminance (light_mono of the way) rather than its own hue (pinkish paving), and never
+// less than light_floor (dark timber still takes the light).
 uniform float light_replace = 0.0;
 uniform float light_mono = 0.0;
 uniform float light_floor = 0.0;
-// ... and that light is light_boost times as bright (it no longer adds onto the moonlit grade). 1: off.
+// ... and that lamplit colour is light_boost times as bright as the art. 1: off.
 uniform float light_boost = 1.0;
 // A luminance shoulder on that light (hue kept): its luminance y becomes light_knee * (1 - exp(-y * light_bend)), so the
 // pools stay saturated amber and under the glow's threshold instead of blowing out. 0: off.
 uniform float light_knee = 0.0;
 uniform float light_bend = 2.2;
-// The light's falloff is steepened to this power (pools concentrated round their lamps, cool dark between). 1: off.
+// The crossfade's falloff is steepened to this power (pools concentrated round their lamps, cool dark between). 1: off.
 uniform float light_pow = 1.0;
 // The view (TownGrade.follow_view): the viewport's size and its canvas transform (origin, zoom), so the light map is read
 // once per world pixel and cut into light_steps levels through a 4x4 Bayer dither locked to the world: crisp pixels, no
-// rings. Below zoom 1 a dither cell is ceil(1 / zoom) world pixels, at least one screen pixel.
+// rings. Below zoom 1 a dither cell is ceil(1 / zoom) world pixels, at least one screen pixel. light_steps 0: no steps, a
+// smooth falloff (round 4: the dither read as blotches where pools fade).
 uniform vec2 view_size = vec2(640.0, 360.0);
 uniform vec2 view_origin = vec2(0.0);
 uniform float view_zoom = 1.0;
@@ -98,6 +99,9 @@ vec3 light_at(vec2 screen_uv) {
 	vec2 cell = floor(wp / k);
 	vec2 uv = ((cell + 0.5) * k * view_zoom + view_origin) / view_size;
 	vec3 l = texture(light_tex, uv).rgb;
+	if (light_steps <= 0.0) {
+		return l;
+	}
 	float m = max(l.r, max(l.g, l.b));
 	if (m <= 0.0) {
 		return vec3(0.0);
@@ -199,22 +203,24 @@ void fragment() {
 	float blueness = smoothstep(0.08, 0.22, c.b - max(c.r, c.g));
 	float dark = 1.0 - smoothstep(0.55, 0.95, lum);
 	g = mix(g, vec3(glum) * vec3(0.92, 1.0, 1.1), calm * blueness * dark);
-	// Soft roll-off: two lights overlapping warm the art more, but never blow it to white.
-	vec3 lg = light_at(SCREEN_UV) * light_gain;
-	vec3 ll = lg / (1.0 + 1.0 * lg);
-	// The moon grade gives way wherever any lamplight reaches (measured before the falloff is steepened): orange on blue
-	// reads pink.
-	float reach = max(ll.r, max(ll.g, ll.b));
-	if (light_pow != 1.0) {
-		ll = pow(ll, vec3(light_pow));
+	// The light map (round 4, NIGHT): each pixel crossfades from its moonlit grade to its lamplit colour by how much light
+	// reaches it, a = 1 - exp(-light * light_gain) (overlapping pools add up smoothly toward 1, never past it), steepened
+	// to light_pow and scaled by light_replace. Between the lights a stays 0: the town keeps the moon's dark blue-grey.
+	// A crossfade, not an add, so a pool's fringe passes from blue-grey through brown to amber, never pink.
+	if (light_gain > 0.0) {
+		vec3 lmap = light_at(SCREEN_UV);
+		float m = max(lmap.r, max(lmap.g, lmap.b));
+		if (m > 0.0) {
+			float a = pow(1.0 - exp(-m * light_gain), light_pow) * light_replace;
+			// One amber for every light (the pools' own colours are all warm; tinting by them twice read red).
+			vec3 lit = max(mix(c, vec3(lum), light_mono), vec3(light_floor)) * light_boost * light_warm;
+			if (light_knee > 0.0) {
+				float ly = max(dot(lit, vec3(0.299, 0.587, 0.114)), 1.0e-4);
+				lit *= light_knee * (1.0 - exp(-ly * light_bend)) / ly;
+			}
+			g = mix(g, lit, a);
+		}
 	}
-	vec3 lb = max(mix(c, vec3(lum), light_mono), vec3(light_floor)) * light_boost;
-	vec3 lit = lb * ll * light_warm;
-	if (light_knee > 0.0) {
-		float ly = max(dot(lit, vec3(0.299, 0.587, 0.114)), 1.0e-4);
-		lit *= light_knee * (1.0 - exp(-ly * light_bend)) / ly;
-	}
-	g = g * (1.0 - light_replace * reach) + lit;
 	float ember = smoothstep(0.6, 0.9, c.r) * smoothstep(0.2, 0.45, c.r - c.b) * keep_lit;
 	// Clamped as TownGrade.grade_pixel() is (the framebuffer would clamp it anyway).
 	vec3 o = clamp(mix(g, c, ember), 0.0, 1.0);

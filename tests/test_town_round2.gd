@@ -187,7 +187,8 @@ static func _props(t, city: StringName) -> void:
 			var round1 := TownPools.pools_for(town).size()
 			TownLook.active = look
 			town.look_decor = ld
-			t.check(pools.size() >= 3 * round1, "%s NIGHT: light sources %d >= 3x round 1's %d" % [city, pools.size(), round1])
+			# Round 4: fewer, smaller lights (points in a dark town), still well over round 1's.
+			t.check(pools.size() * 2 >= 3 * round1, "%s NIGHT: light sources %d >= 1.5x round 1's %d" % [city, pools.size(), round1])
 			# A wall's torches hide while it is down.
 			var wall: Structure = null
 			for p in ld.props:

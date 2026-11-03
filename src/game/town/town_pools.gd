@@ -12,19 +12,21 @@ extends Node
 
 ## The light buffer's resolution against the game's (half).
 const BUFFER_SCALE := 0.5
-## The pool texture's size: a 2:1 ellipse with a smooth falloff to its edge (TownGrade cuts it into dithered steps of
-## world pixels, so it never shows rings).
+## The pool texture's size: a 2:1 ellipse with a smooth falloff that reaches zero at its edge.
 const TEX := Vector2i(96, 48)
 ## A torch's pool, against its light's radius in screen pixels (the light's own falloff reaches further).
 const TORCH_REACH := 1.0
+## ... and never wider than this (screen px, x semi-axis; round 4: about 2 cells, a torch lights its own corner).
+const TORCH_MAX := 72.0
 ## A torch pool's strength (its light's flicker scales it).
 const TORCH_ALPHA := 0.8
 const WINDOW_COLOUR := Color(1.0, 0.72, 0.34)
 ## A window pool's strength: a little gentler than a torch's (0.5).
-const WINDOW_ALPHA := 0.7
-## Window pool radius (screen px, x semi-axis): per lit pixel, clamped to this range.
-const WINDOW_MIN := 22.0
-const WINDOW_MAX := 64.0
+const WINDOW_ALPHA := 0.55
+## Window pool radius (screen px, x semi-axis): per lit pixel, clamped to this range. Round 4: small, a fan at the door;
+## the windows themselves are the warm accents.
+const WINDOW_MIN := 18.0
+const WINDOW_MAX := 30.0
 ## A decor lamp's pool (a house lantern, a lamp post, anything with a "glow" in the decor manifest): the radius (screen px,
 ## x semi-axis; its own light quad is 23) and strength.
 const LAMP_RADIUS := 48.0
@@ -36,19 +38,20 @@ const LAMP_SETS := ["lamp_post", "lamp_house"]
 const SCALE_STEP := 1.0 / 48.0
 ## The light on what stands round a pool: a second, rounder pool WALL_W as wide and WALL_H as tall, raised WALL_RISE of
 ## the ground pool's height, at WALL_ALPHA of its strength.
-## Round 3: taller than wide (a vertical ellipse from the ground up past the eaves), so a lamp at a house front reaches
-## up its wall, not just the ground.
-const WALL_W := 0.55
-const WALL_H := 2.6
-const WALL_RISE := 2.0
-const WALL_ALPHA := 0.6
+## Round 3: taller than wide, so a lamp at a house front reaches up its wall, not just the ground. Round 4: only the
+## nearby wall face, not past the eaves.
+const WALL_W := 0.5
+const WALL_H := 1.4
+const WALL_RISE := 1.0
+const WALL_ALPHA := 0.45
 ## Round 3: a light tied to a building (its windows, its lantern) also lights that building's front: a face-shaped
 ## polygon over its two seen faces (face_of()), FACE_ALPHA of the pool's strength at the foot fading to FACE_TOP of that
-## at the eaves, FACE_RISE of its height (at most FACE_MAX px) up.
-const FACE_ALPHA := 0.9
-const FACE_TOP := 0.5
-const FACE_RISE := 1.15
-const FACE_MAX := 72.0
+## at the eaves, FACE_RISE of its height (at most FACE_MAX px) up. Round 4: a faint warmth only (the whole front lit read
+## as an orange wash), and only from a lantern, not from the windows' fan.
+const FACE_ALPHA := 0.22
+const FACE_TOP := 0.3
+const FACE_RISE := 0.8
+const FACE_MAX := 40.0
 ## The kinds whose front a light tied to them lights.
 const FACE_KINDS := [Structure.Kind.HOUSE, Structure.Kind.TEMPLE, Structure.Kind.BARRACKS, Structure.Kind.KEEP, Structure.Kind.TOWER,
 	Structure.Kind.BLOCK]
@@ -91,7 +94,8 @@ class PoolCanvas extends Node2D:
 		owner_pools._paint(self)
 
 
-## The pool texture, built once: white, its alpha a smooth falloff (1 - d)^2.5 out to the ellipse's edge.
+## The pool texture, built once: white, its alpha a smooth falloff (1 - d^2)^2 out to the ellipse's edge (round 4: full
+## near the middle, near zero well before the edge, so a pool's size is its rect's).
 static func texture() -> ImageTexture:
 	if _texture != null:
 		return _texture
@@ -99,7 +103,7 @@ static func texture() -> ImageTexture:
 	for y in TEX.y:
 		for x in TEX.x:
 			var d := Vector2((x + 0.5) / TEX.x * 2.0 - 1.0, (y + 0.5) / TEX.y * 2.0 - 1.0).length()
-			var a := pow(maxf(1.0 - d, 0.0), 2.5)
+			var a := pow(maxf(1.0 - d * d, 0.0), 2.0)
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_texture = ImageTexture.create_from_image(img)
 	return _texture
@@ -207,7 +211,7 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 	if env.lights != null:
 		for l: Dictionary in env.lights._lights:
 			if l.get("static", false):
-				out.append({"pos": Iso.ground_to_screen(l.pos), "radius": Iso.radius_to_screen(l.radius).x * TORCH_REACH,
+				out.append({"pos": Iso.ground_to_screen(l.pos), "radius": minf(Iso.radius_to_screen(l.radius).x * TORCH_REACH, TORCH_MAX),
 					"color": l.color, "flicker": float(l.flicker), "light": l})
 	# The decor lamps (the capital's street lamps, the houses' lanterns): LightField knows none of them.
 	for d: Decor in town._decor:
@@ -227,8 +231,7 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 			continue
 		var front := Iso.ground_to_screen(s.footprint.end)
 		out.append({"pos": front + Vector2(0, 3), "radius": clampf(sqrt(float(lit)) * 2.8, WINDOW_MIN, WINDOW_MAX),
-			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA * TownLook.window_pool(town.look), "structure": s,
-			"face": face_of(s) if s.kind in FACE_KINDS else PackedVector2Array()})
+			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA * TownLook.window_pool(town.look), "structure": s})
 	return out
 
 
@@ -240,6 +243,8 @@ func setup(town: Town) -> TownPools:
 	buffer.disable_3d = true
 	buffer.transparent_bg = true
 	buffer.size = Vector2i(320, 180)
+	# Float light (round 4): overlapping pools add up past 1 and the grade caps the sum smoothly (1 - exp(-light)).
+	buffer.use_hdr_2d = true
 	buffer.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(buffer)
 	_canvas = PoolCanvas.new()

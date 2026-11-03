@@ -38,8 +38,9 @@ static func _night_colour(t) -> void:
 static func _sprite_params(t) -> void:
 	t.check(TownLook.sprite_params(Town.Look.CURRENT).is_empty(), "CURRENT has no sprite look settings")
 	t.check(float(TownLook.sprite_params(Town.Look.NIGHT).get("window_hot", 0.0)) > 0.0, "NIGHT's windows burn hot")
-	t.check(TownLook.window_pool(Town.Look.NIGHT) > 1.0 and TownLook.window_pool(Town.Look.DAY) == 1.0,
-		"NIGHT's windows throw a brighter fan on the ground")
+	# Round 4: the windows themselves are the accents; their fan on the ground stays small (round 3's 1.7x is gone).
+	t.check(TownLook.window_pool(Town.Look.NIGHT) <= 1.0 and TownPools.WINDOW_MAX <= 36.0,
+		"NIGHT's windows throw a small fan on the ground")
 	var src := _src("res://src/environment/art/structure_sprite.gdshader")
 	t.check(src.contains("uniform float window_hot = 0.0;") and src.contains("if (window_hot > 0.0)"),
 		"the sprite shader's hot windows are off by default")

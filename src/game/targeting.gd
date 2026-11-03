@@ -73,6 +73,7 @@ const AREAS := {
 	# Blight.REACH; the structure it would ruin is outlined (_draw())
 	"blight": {"shape": "circle", "r": 1.0},
 	# WillOWisp.RING (where the drawn stand) and LURE_REACH; who it would draw is ringed (_draw()); its ENTHRALL mode covers ENTHRALL_R
+	# and has no roam ring (its book entry's area says "roam": 0)
 	"wisp": {"shape": "circle", "r": 1.6, "roam": 6.0},
 	# ThornwallFx.THORN_LENGTH, SEG * 0.5; centred on the press
 	"thorns": {"shape": "lane", "length": 3.0, "half": 0.3, "centred": true},
@@ -255,6 +256,9 @@ func hover(ground: Vector2) -> void:
 	# Mission calls this every frame. A preview that has not moved is not redrawn: this node sits on the ground
 	# plane, and redrawing it re-batches the layer the whole town is drawn in.
 	# A held whisper is the exception: its line starts on someone walking, so it follows them every frame.
+	if (_wheel or _order != "") and not _whisper_hears():
+		# The one the wheel (or the pick) is set on has died, gone in or been taken: it can no longer hear, so it is over -- once.
+		_end_stale_whisper()
 	var held := _whisper_held()
 	if ground.is_equal_approx(_at) and not held:
 		return
@@ -288,7 +292,16 @@ func press(ground: Vector2) -> void:
 		# still shaking the last whisper off -- nothing is armed. A slot that could not cast anyway names its own
 		# reason first, as a release would.
 		var who := MindWhisperFx.pick(_crowd._field, ground)
+		if _wheel and who == null:
+			# A press away from the open wheel on nobody closes it, quietly: the player has turned from that person.
+			_end_wheel()
+			armed = false
+			aiming = false
+			queue_redraw()
+			return
 		if who == null or who.shaken():
+			if _wheel:
+				_end_wheel()  # a press elsewhere on someone who cannot be whispered still leaves the old wheel
 			var why := _rules.refusal(slot)
 			_rules.refuse(slot, why if why != "" else ("nobody" if who == null else "shaken"), who)
 			queue_redraw()
@@ -464,6 +477,17 @@ func _end_wheel() -> void:
 	_order = ""
 
 
+## The wheel or the pick step is set on someone who can no longer hear it (died, went in, resists): it is called off and the player told
+## "nobody" (the slot's own refusal first), whether or not the button is down.
+func _end_stale_whisper() -> void:
+	_end_wheel()
+	armed = false
+	aiming = false
+	var why := _rules.refusal(slot) if slot >= 0 else ""
+	_rules.refuse(slot, why if why != "" else "nobody")
+	queue_redraw()
+
+
 ## The order wheel is up around a citizen (the button may be down or up).
 func wheel_open() -> bool:
 	return _wheel
@@ -518,6 +542,9 @@ func _order_extra(who: Person) -> Dictionary:
 				return {"target": who, "order": "burn", "building": house}
 			_rules.refuse(slot, why if why != "" else "building")
 		_:
+			if why != "":
+				_rules.refuse(slot, why)  # as attack and burn: the slot's own reason, and the pick goes on
+				return {}
 			return {"to": MindWhisperFx.clamp_to(_crowd._grid, who.ground_pos, _pick_at), "target": who}
 	return {}
 
@@ -559,7 +586,7 @@ func _draw() -> void:
 				_ring(_press, float(a.r), edge)
 			if a.has("inner"):
 				_ring(_press, float(a.inner), COL_INNER)
-			if a.has("roam") and not (_rules.key(slot) == "wisp" and String(mode().get("key", "")) == "enthrall"):
+			if float(a.get("roam", 0.0)) > 0.0:
 				_ring(_press, float(a.roam), COL_FAINT)
 		"lane":
 			var dir := aim_dir()

@@ -230,6 +230,7 @@ static func _targeting(t, made: Array) -> void:
 	who.ground_pos = grid.nearest_walkable(stone.center() + Vector2(2.0, 0.0), 6)
 	aim.press(stone.center())
 	aim.release(stone.center())
+	t.check(MindWhisperFx.building_at(env, stone.center()) == stone, "the click did find the stone building")
 	t.check(refused == [[0, "building"]] and casts.is_empty(), "burn: a building that does not burn is refused")
 	who.ground_pos = spot_h
 	refused.clear()
@@ -262,8 +263,80 @@ static func _targeting(t, made: Array) -> void:
 	aim.pick(1)
 	aim.pick(0)
 	t.check(not aim.wheel_open() and not aim.armed, "and so does picking another power")
+	_stale(t, made, aim, rules, casts, refused, who)
 	aim.free()
 	rules.free()
+
+
+## Review I2 and M6: a wheel or pick step does not outlive its person, a press away from the wheel starts over or closes it, and the
+## walk pick refuses on the slot's own reason as attack and burn do.
+static func _stale(t, made: Array, aim: Targeting, rules: Rules, casts: Array, refused: Array, who: Person) -> void:
+	var crowd: Crowd = made[0]
+	var base := who.ground_pos
+	var other: Person = crowd.citizens[46]
+	other.ground_pos = base + Vector2(0.0, -3.0)
+	var empty_ground := base + Vector2(0.0, 5.0)
+	rules._cooldowns[0] = 0.0
+	casts.clear()
+	refused.clear()
+	if aim.slot != 0:
+		aim.pick(0)
+	# A press outside the open wheel on another person moves the wheel there.
+	aim.press(base)
+	aim.release(base + Vector2(0.1, 0.0))
+	t.check(aim.wheel_open() and aim._whisper_target == who, "I2: the wheel is open on the first person")
+	aim.press(other.ground_pos)
+	t.check(aim.wheel_open() and aim._whisper_target == other and aim.armed and refused.is_empty(), "a press away from the wheel on another person opens a wheel on him")
+	aim.release(other.ground_pos + Vector2(0.1, 0.0))
+	# A press on bare ground closes the wheel, quietly.
+	aim.press(empty_ground)
+	t.check(not aim.wheel_open() and not aim.armed and aim.slot == 0 and refused.is_empty() and casts.is_empty(),
+		"a press on nobody outside an open wheel closes it silently (%s)" % [refused])
+	aim.release(empty_ground)
+	t.check(refused.is_empty() and casts.is_empty(), "and its release does nothing")
+	# The one it is set on dies or goes in: the next hover ends the wheel, once, with "nobody".
+	aim.press(base)
+	aim.release(base + Vector2(0.1, 0.0))
+	t.check(aim.wheel_open(), "the wheel is open again")
+	who.inside = true
+	aim.hover(base + Vector2(1.0, 1.0))
+	t.check(not aim.wheel_open() and aim.slot == 0 and refused == [[0, "nobody"]], "I2: a hover after he went in closes the wheel and refuses nobody (%s)" % [refused])
+	aim.hover(base + Vector2(1.5, 1.0))
+	t.check(refused == [[0, "nobody"]], "and only once")
+	who.inside = false
+	# The same for the pick step.
+	refused.clear()
+	aim.press(base)
+	aim.release(base + Targeting.wheel_dir("attack") * 0.8)
+	t.check(aim.picking_order() == "attack", "the attack pick is up")
+	who.inside = true
+	aim.hover(base + Vector2(0.5, 0.5))
+	t.check(aim.picking_order() == "" and refused == [[0, "nobody"]], "a hover after he went in ends the pick step too (%s)" % [refused])
+	who.inside = false
+	# And with the button held on the wheel: no second refusal at the release.
+	refused.clear()
+	aim.press(base)
+	t.check(aim.armed and aim.wheel_open(), "the button is held on the wheel")
+	who.inside = true
+	aim.hover(base + Vector2(0.3, 0.0))
+	aim.release(base + Vector2(0.3, 0.0))
+	t.check(not aim.armed and refused == [[0, "nobody"]] and casts.is_empty(), "the release after it is closed refuses nothing more (%s)" % [refused])
+	who.inside = false
+	# M6: a walk pick on a slot that cannot cast refuses with its own reason and goes on, as attack and burn do.
+	refused.clear()
+	aim.press(base)
+	aim.release(base + Targeting.wheel_dir("walk") * 0.8)
+	t.check(aim.picking_order() == "walk", "the walk pick is up")
+	rules._cooldowns[0] = 5.0
+	var to := base + Vector2(0.0, 4.0)
+	aim.press(to)
+	aim.release(to)
+	t.check(refused == [[0, "cooldown"]] and casts.is_empty() and aim.picking_order() == "walk", "M6: the walk pick refuses on the cooldown and goes on (%s)" % [refused])
+	rules._cooldowns[0] = 0.0
+	aim.press(to)
+	aim.release(to)
+	t.check(casts.size() == 1 and aim.slot == -1, "and casts once the slot is ready")
+	rules._cooldowns[0] = 0.0
 
 
 static func _rules(t, made: Array) -> void:
@@ -456,6 +529,8 @@ static func _burn(t, made: Array) -> void:
 		fx._process(0.1)
 	t.check(fires.is_burning(house) and is_equal_approx(fires.intensity(house), EmberFx.START_LEVEL),
 		"after 3 s the house burns at Ember's START_LEVEL (%.2f)" % fires.intensity(house))
+	t.check(MindWhisperFx.BURN_AFTER >= 1.0 and who.whispered_left() >= 0.5 and who.mind == Person.Mind.WHISPERED,
+		"M1: the match is struck with the whisper still on them (%.2f s left)" % who.whispered_left())
 	for k in 10:
 		who._think(0.1)
 		fx._process(0.1)
@@ -502,6 +577,26 @@ static func _burn(t, made: Array) -> void:
 	t.check(not fires.is_burning(h3), "one frightened off the order lights nothing")
 	fx3.free()
 
+	# M2: a walk that ran out short of the building lights nothing, and the order ends.
+	var h4: Structure = null
+	for s in env.structures():
+		if s != house and s != h2 and s != h3 and not s.destroyed and not s.walkable and s.kind == Structure.Kind.HOUSE and FireManager.burns(s):
+			h4 = s
+			break
+	var s4: Person = crowd.citizens[65]
+	s4.ground_pos = grid.nearest_walkable(h4.center() + Vector2(3.0, 0.0), 6)
+	var fx6 := FxTimeline.cast(MindWhisperFx, ctx, s4.ground_pos, {"target": s4, "order": "burn", "building": h4})
+	fx6._process(0.1)
+	s4.ground_pos = grid.nearest_walkable(h4.center() + Vector2(0.0, 5.0), 6)
+	t.check(h4.distance_to(s4.ground_pos) > MindWhisperFx.BURN_NEAR, "M2: stopped %.1f from the building" % h4.distance_to(s4.ground_pos))
+	s4._goal = Vector2.INF
+	s4._path = PackedVector2Array()
+	for k in 45:
+		s4._think(0.1)
+		fx6._process(0.1)
+	t.check(not fires.is_burning(h4) and fx6.finished, "a walk that stopped short lights nothing and the order ends")
+	fx6.free()
+
 	# No town to keep fires: nothing happens, nothing breaks.
 	var ctx2 := _fx_ctx(made, false)
 	var w2: Person = crowd.citizens[63]
@@ -521,7 +616,7 @@ static func _burn(t, made: Array) -> void:
 	var to := grid.nearest_walkable(c.ground_pos + Vector2(3.0, 0.0))
 	var fx5 := FxTimeline.cast(MindWhisperFx, ctx, c.ground_pos, {"to": to, "target": c})
 	fx5._process(0.1)
-	t.check(c.mind == Person.Mind.WHISPERED and c.goal().distance_to(to) < 0.01 and c.whispered_left() > MindWhisperFx.LINGER - 0.5,
+	t.check(c.mind == Person.Mind.WHISPERED and c.goal().distance_to(to) < 0.01 and is_equal_approx(c.whispered_left(), MindWhisperFx.LINGER),
 		"walk: a cast with {to, target} whispers with the 8 s linger as ever (%.1f)" % c.whispered_left())
 	t.check(not fx5.finished and ctx.ground.get_child_count() >= 2, "and marks the spot")
 	fx5.free()

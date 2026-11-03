@@ -43,6 +43,8 @@ static func run(t) -> void:
 	_modes(t)
 	_cooldowns(t)
 	_enthrall(t)
+	_end_now(t)
+	_lured_charge(t)
 	_lure(t)
 
 
@@ -191,7 +193,7 @@ static func _enthrall(t) -> void:
 	for p in group + [walker, charge_near, posted]:
 		dup[_key(p.anchor)] = true
 	t.check(dup.size() == 43, "on a spot of its own (%d distinct of 43)" % dup.size())
-	t.check(fx.busy >= 0.0 and fx.busy < 5.0, "it locks the other slots only a moment, like the wisp")
+	t.check(is_equal_approx(fx.busy, 1.0), "it locks the other slots one second, like the wisp")
 
 	# The end lifts it; the dead stay dead.
 	victim.state = DummyEnemy.State.DEAD
@@ -201,9 +203,84 @@ static func _enthrall(t) -> void:
 		if p != victim:
 			released = released and p.mind != Person.Mind.COMPELLED
 	t.check(released and walker.mind != Person.Mind.COMPELLED and charge_near.mind != Person.Mind.COMPELLED
-		and posted.mind != Person.Mind.COMPELLED and victim.state == DummyEnemy.State.DEAD,
-		"at 30 s every one still held is released, and the dead stay dead")
+		and posted.mind != Person.Mind.COMPELLED and victim.mind == Person.Mind.COMPELLED,
+		"at 30 s every one still held is released, and the dead one is left as he was (no release is called on him)")
 	t.check(fx.finished, "and the light goes out")
+	fx.free()
+	S._done(made)
+
+
+## Cutting the light short (end_now(): an act of the night ends with it playing) lets go of everyone held at once.
+static func _end_now(t) -> void:
+	var made := S._setup()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var ctx: FxContext = made[5]
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	S._scatter(crowd)
+	var group: Array = crowd.citizens.slice(0, 8)
+	_place(group, at, 3.0)
+	var fx := _cast(ctx, at, {"mode": "enthrall"})
+	var held := 0
+	for p in group:
+		held += 1 if p.mind == Person.Mind.COMPELLED else 0
+	t.check(held == 8, "end_now: eight held under the light (%d)" % held)
+	fx._process(1.0)
+	fx.end_now()
+	var freed := 0
+	for p in group:
+		freed += 1 if p.mind != Person.Mind.COMPELLED else 0
+	t.check(freed == 8 and fx.finished, "cutting the light short releases all of them (%d freed)" % freed)
+	fx.free()
+	S._done(made)
+
+
+## Review I1: a director's lure (Lost Lamb's, the Prisoner's: Person.lure() from the charge's own place, whatever the distance) pulls its
+## charge in to the light; ENTHRALL's look must not then hold him for the rest of the burn -- not while he stares, nor after the lure ends.
+static func _lured_charge(t) -> void:
+	var made := S._setup()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var field: EnemyField = made[3]
+	var ctx: FxContext = made[5]
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	S._scatter(crowd)
+	var group: Array = crowd.citizens.slice(0, 4)
+	_place(group, at, 3.0)
+	var charge: Person = group[0]
+	var plain: Person = group[1]
+	var own_road: Person = group[2]
+	charge.ground_pos = at + Vector2(5.0, 0.0)
+	charge.answers_lure = true
+	charge.mind = Person.Mind.DUTY
+	own_road.ground_pos = at + Vector2(0.0, 5.0)
+	own_road.answers_lure = true
+	own_road.mind = Person.Mind.DUTY
+	var fx := _cast(ctx, at, {"mode": "enthrall"})
+	t.check(charge.mind == Person.Mind.DUTY and plain.mind == Person.Mind.COMPELLED, "I1: the charge at 5 is not taken, a bystander is")
+	# The director's lure: from his own place, to the near side of the light's ring (as Lost Lamb's _on_light).
+	t.check(charge.lure(at + Vector2(WillOWisp.RING.x, 0.0), WillOWisp.WISP_TIME - 0.5, charge.ground_pos), "the director's lure takes the charge")
+	# He is drawn in to 3 -- inside the circle, but staring at a light a director sent him to.
+	charge.ground_pos = at + Vector2(3.0, 0.0)
+	var preview := WillOWisp.enthralled(field, at)
+	t.check(charge not in preview, "the preview leaves out a charge staring at a light")
+	fx._process(WillOWisp.ENTHRALL_SCAN)
+	t.check(charge.mind != Person.Mind.COMPELLED and charge.lured(), "the look leaves him staring, not held")
+	# Another charge walking in on his own road (unlured) joins, as the brief wants.
+	own_road.ground_pos = at + Vector2(0.0, 2.5)
+	fx._process(WillOWisp.ENTHRALL_SCAN)
+	t.check(own_road.mind == Person.Mind.COMPELLED, "a charge walking in on his own road joins")
+	# The lure runs out; he is on duty at the light, well inside 4 -- and still never taken, for the whole burn.
+	var ticks := 0
+	while charge.lured() and ticks < 400:
+		charge.tick(0.1)
+		ticks += 1
+	t.check(not charge.lured() and charge.mind != Person.Mind.COMPELLED, "the lure ends and he is free (%s, %d ticks)" % [Person.Mind.keys()[charge.mind], ticks])
+	charge.ground_pos = at + Vector2(1.0, 0.5)
+	for k in 30:
+		fx._process(0.5)
+	t.check(charge.mind != Person.Mind.COMPELLED, "15 s on, a charge the light's director drew is still not held (%s)" % Person.Mind.keys()[charge.mind])
+	fx._process(WillOWisp.ENTHRALL_TIME)
 	fx.free()
 	S._done(made)
 

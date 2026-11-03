@@ -7,8 +7,9 @@ extends FxTimeline
 ## Its second mode, ENTHRALL: the light burns brighter for ENTHRALL_TIME, and everyone living in the open within ENTHRALL_R of it --
 ## calm, frightened or fleeing, however many -- walks to a spot on a ring round it and stands there, held by a will nothing breaks
 ## (Person.compel(), as Voice of God's GATHER); every ENTHRALL_SCAN seconds those who have come within reach since join at once.
-## A director's charge joins only within its lure reach, as in LURE; a soldier only at his post or holding, and not hurrying; the
-## fighting, the sleeping and those indoors are left alone. When the light goes out the held are released and go back to their day.
+## A director's charge joins only within its lure reach, as in LURE, and never while a director has him staring at a light (Person.lured(),
+## which would be his being pulled in from afar): one seen so is left alone for the whole of the burn; a soldier only at his post or
+## holding, and not hurrying; the fighting, the sleeping and those indoors are left alone. When the light goes out the held are released and go back to their day.
 ## It waits 75 s (the mode's own cooldown). Quiet, like the lure.
 
 const WISP_TIME := 12.0
@@ -27,7 +28,8 @@ const ENTHRALL_SCAN := 0.5
 const ENTHRALL_RING0 := 0.8
 const ENTHRALL_RING_STEP := 0.6
 const ENTHRALL_SPACING := 0.6
-const ENTHRALL_RINGS := 60
+## Eight rings reach 5.0 from the light (ENTHRALL_R + 1); past them a person takes the nearest free ground to the edge of the circle on his side.
+const ENTHRALL_RINGS := 8
 const GLOW := [Color("e8fff4"), Color("9fe8d0"), Color("5cb8a8"), Color("2a6a6a")]
 const LIGHT := Color(0.6, 1.0, 0.85)
 
@@ -35,6 +37,10 @@ var _light: QuadFx
 var _enthrall := false
 ## ENTHRALL: the held, person -> ring spot; the seconds since the last look; the ring spots made so far (ring by ring).
 var _held := {}
+## ENTHRALL: those seen staring at a light (lured()) -- a director's pull, not a walk in on his own road -- and so never taken; person -> true.
+var _skipped := {}
+## ENTHRALL: where in `_spots` the take now under way looks next (everything before it is used or unwalkable).
+var _cursor := 0
 var _scan := 0.0
 var _spots: Array[Vector2] = []
 var _rings_made := 0
@@ -59,14 +65,18 @@ static func drawn(field: EnemyField, at: Vector2) -> Array[Person]:
 
 ## Who ENTHRALL would take from `at` that is not in `skip` (a Dictionary keyed by person): the living in the open within ENTHRALL_R,
 ## nearest first (ties in field order). Not a fighter, a sleeper or one who resists; a charge only within its lure_reach; a soldier
-## only at his post or holding, and not hurrying.
-static func enthralled(field: EnemyField, at: Vector2, skip := {}) -> Array[Person]:
+## only at his post or holding, and not hurrying; not one staring at a light (Person.lured(): a director has pulled him in from afar,
+## v0.11.1) -- such a one is put in `lured_out` (a Dictionary the caller keeps) and left out from then on, even when the lure ends.
+static func enthralled(field: EnemyField, at: Vector2, skip := {}, lured_out := {}) -> Array[Person]:
 	var found: Array = []
 	var order := 0
 	for e in field.in_radius(at, ENTHRALL_R):
 		var p := e as Person
-		if p == null or skip.has(p) or not p.is_alive() or p.inside or p.resists_mind() \
+		if p == null or skip.has(p) or lured_out.has(p) or not p.is_alive() or p.inside or p.resists_mind() \
 				or p.mind == Person.Mind.FIGHT or p.mind == Person.Mind.ASLEEP:
+			continue
+		if p.lured():
+			lured_out[p] = true
 			continue
 		var d := p.ground_pos.distance_to(at)
 		if p.answers_lure:
@@ -120,32 +130,45 @@ func _build_enthrall() -> void:
 ## Take everyone newly within reach: each walks to the next free ring spot and stands there for as long as the light burns.
 func _take() -> void:
 	var left := maxf(duration - t, 0.5)
-	for p in enthralled(ctx.field, origin, _held):
-		var spot := _next_spot(p)
-		if spot == Vector2.INF:
-			continue
-		if p.compel(spot, left, Person.WILL_ABSOLUTE, GLOW[1], false, &""):
-			_held[p] = spot
-
-
-## The nearest free spot on the rings round the light that `p` can stand on: rings grow outward, each spot used once.
-func _next_spot(p: Person) -> Vector2:
 	var used := {}
 	for q in _held:
 		if is_instance_valid(q) and q.mind == Person.Mind.COMPELLED:
 			used[_held[q]] = true
-	var i := 0
+	_cursor = 0
+	for p in enthralled(ctx.field, origin, _held, _skipped):
+		var spot := _next_spot(p, used)
+		if spot == Vector2.INF:
+			continue
+		if p.compel(spot, left, Person.WILL_ABSOLUTE, GLOW[1], false, &""):
+			_held[p] = spot
+			used[spot] = true
+
+
+## The nearest free spot on the rings round the light that `p` can stand on: rings grow outward, each spot used once (`used`); the
+## rings are made only as they are needed and the look goes on from where the last one left off. With the rings full, the nearest
+## free ground to the circle's edge on his side of the light (else nothing: he is tried again at the next look).
+func _next_spot(p: Person, used: Dictionary) -> Vector2:
 	while true:
-		while i >= _spots.size():
+		while _cursor >= _spots.size():
 			if _rings_made >= ENTHRALL_RINGS:
-				return Vector2.INF
+				return _edge_spot(p, used)
 			_make_ring()
-		var spot := _spots[i]
-		i += 1
+		var spot := _spots[_cursor]
 		if used.has(spot) or (p.grid != null and not p.grid.walkable(spot)):
+			_cursor += 1
 			continue
 		return spot
 	return Vector2.INF
+
+
+func _edge_spot(p: Person, used: Dictionary) -> Vector2:
+	if p.grid == null:
+		return Vector2.INF
+	var dir := (p.ground_pos - origin).normalized()
+	if dir == Vector2.ZERO:
+		dir = Vector2.RIGHT
+	var spot: Vector2 = p.grid.nearest_walkable(origin + dir * ENTHRALL_R, 6)
+	return Vector2.INF if spot == Vector2.INF or used.has(spot) else spot
 
 
 func _make_ring() -> void:

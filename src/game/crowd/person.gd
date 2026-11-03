@@ -1432,7 +1432,8 @@ func whisper(to: Vector2, linger: float) -> bool:
 
 ## Mind Whisper's attack order (the order wheel): whispered where he stands -- so the flight he owes is kept and the whisper's shake-off
 ## applies -- then set on `foe` alone for `seconds`, striking `blow` of their health a swing. When the fight ends (time, or the foe gone)
-## he comes to as after a whisper (_wake()). True when the whisper took.
+## he comes to as after a whisper (_wake()). True when the whisper took. (A soldier's hold saved by the whisper is cleared by fight(), as in
+## Voice of God's judge: afterwards he goes to his post, not back to where he held.)
 func whisper_fight(foe: Person, seconds: float, blow: float) -> bool:
 	if not whisper(ground_pos, seconds):
 		return false

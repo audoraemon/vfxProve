@@ -34,7 +34,10 @@ const ATTACK_R := 6.0
 const BURN_R := 6.0
 const ATTACK_SECS := 10.0
 const BURN_SECS := 3.0
-const BURN_AFTER := 0.5
+## (A full second, not a flicker: people off screen think in lumps, and the match is struck while the whisper still holds them.)
+const BURN_AFTER := 1.0
+## How near the building they must stand to strike the match: a walk that ran out short of it lights nothing.
+const BURN_NEAR := 1.0
 const CIVIL_BLOW := 0.25
 ## How near a click must be to a building to pick it.
 const BUILDING_PICK_R := 0.6
@@ -87,9 +90,17 @@ static func clamp_to(grid: WalkGrid, from: Vector2, to: Vector2) -> Vector2:
 
 
 ## Whom a click at `at` would set the whispered one on: the nearest living person out in the open within PICK_R, or null. The
-## whispered one may be the answer (foe_ok() refuses it).
+## whispered one may be the answer (foe_ok() refuses it). Unlike pick(), a mind that resists a whisper is no bar: only the attacker's
+## mind is touched, the foe is only struck.
 static func foe_at(field: EnemyField, at: Vector2) -> Person:
-	return pick(field, at)
+	var best: Person = null
+	for e in field.in_radius(at, PICK_R):
+		var p := e as Person
+		if p == null or p.inside or not p.is_alive():
+			continue
+		if best == null or p.ground_pos.distance_squared_to(at) < best.ground_pos.distance_squared_to(at):
+			best = p
+	return best
 
 
 ## Whether `foe` is a fair target for `who`'s attack order: another living person out in the open within ATTACK_R.
@@ -213,13 +224,18 @@ func _fx_process(_delta: float) -> void:
 		_halo.set_param("alpha", fade * (1.0 - PULSE_DEPTH - PULSE_DEPTH * beat))
 
 
-## Burn: note when they get there (the whisper's linger counts only from then), and BURN_SECS later light the building -- if they
-## are still under the whisper, and it still stands and burns (FireManager.ignite() checks that).
+## Burn: note when they get there (the whisper's linger counts only from then; a walk that ended more than BURN_NEAR from the building
+## ends the order), and BURN_SECS later light the building -- if they are still under the whisper, and it still stands and burns
+## (FireManager.ignite() checks that).
 func _burn_step() -> void:
 	if _lit or not _holds():
 		return
 	if _arrived < 0.0:
 		if _target.goal() == Vector2.INF:
+			if _building.distance_to(_target.ground_pos) > BURN_NEAR:
+				_lit = true  # the walk ran out short of the building: no match is struck from here
+				duration = minf(duration, t + 0.4)
+				return
 			_arrived = t
 		return
 	if t - _arrived < BURN_SECS:

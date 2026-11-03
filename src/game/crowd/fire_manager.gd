@@ -115,6 +115,7 @@ func step(delta: float) -> void:
 		_recruit_in = 1.0
 		_recruit()
 	_tend_responders(delta)
+	_tend_beaters(delta)
 
 
 func _burn(dt: float) -> void:
@@ -177,9 +178,14 @@ func _burn_patches(dt: float) -> void:
 				ignite(s, START)
 
 
-## How many beaters are at work on `p` (Task 2).
-func _beaters(_p: GroundFire) -> int:
-	return 0
+## How many beaters are at work on `p`: its crew members beating, within reach of the beat ring.
+func _beaters(p: GroundFire) -> int:
+	var n := 0
+	for b in p.crew:
+		if is_instance_valid(b) and b.mind == Person.Mind.ASSIST and b.assist_patch == p and b.assist_beating \
+				and b.ground_pos.distance_to(p.at) <= p.radius + GroundFire.BEAT_GAP + Person.GOAL_REACH:
+			n += 1
+	return n
 
 
 ## A patch's chance in `dt` seconds to set a touching building alight (today's building rule).
@@ -213,7 +219,7 @@ func _patch_out(p: GroundFire) -> void:
 		patches_burned_out += 1
 	_end_danger(p)
 	for b in p.crew:
-		if is_instance_valid(b) and b.mind == Person.Mind.ASSIST:
+		if is_instance_valid(b) and b.mind == Person.Mind.ASSIST and b.assist_patch == p:
 			b.stand_down()
 	p.crew.clear()
 	patches.erase(p)
@@ -302,7 +308,7 @@ func nearest_water(g: Vector2) -> Structure:
 func _recruit() -> void:
 	# The brigade turns out from the profile's stage (ResponseProfile.fire_from), until the town evacuates.
 	var stage := _crowd.alarms.stage
-	if stage >= AlarmManager.Stage.EVACUATION or stage < _crowd.profile.fire_from or fires.is_empty():
+	if stage >= AlarmManager.Stage.EVACUATION or stage < _crowd.profile.fire_from:
 		return
 	var most := _crowd.profile.fire_crew
 	for s: Structure in fires.keys():
@@ -326,6 +332,88 @@ func _recruit() -> void:
 			pool[k].assist(s)
 			crew.append(pool[k])
 			_go_to_water(pool[k], s)
+	_recruit_patches()
+
+
+## The beaters (GS section 8): each burning patch short of `mini(CREW, profile.fire_crew)` beaters takes the nearest calm
+## citizens, after the buildings have had theirs. They go to the wait ring while the patch is at full strength, else to the
+## beat ring.
+func _recruit_patches() -> void:
+	var most := mini(GroundFire.CREW, _crowd.profile.fire_crew)
+	for p in patches.duplicate():
+		if p.out or _crowd.is_veiled(p.at):
+			continue
+		var crew: Array[Person] = []
+		for b in p.crew:
+			if is_instance_valid(b) and b.mind == Person.Mind.ASSIST and b.assist_patch == p:
+				crew.append(b)
+		p.crew = crew
+		if crew.size() >= most:
+			continue
+		var pool: Array = []
+		for i in _crowd.citizens.size():
+			var c: Person = _crowd.citizens[i]
+			if is_instance_valid(c) and c.is_alive() and c.profile != null and not c.inside \
+					and (c.mind == Person.Mind.CALM or c.mind == Person.Mind.RECOVER) \
+					and c.ground_pos.distance_to(p.at) <= RECRUIT_REACH and not _in_a_patch(c.ground_pos):
+				pool.append([c.ground_pos.distance_to(p.at), i, c])
+		pool.sort_custom(func(a: Array, b: Array) -> bool:
+			return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+		var gap := GroundFire.WAIT_GAP if p.full() else GroundFire.BEAT_GAP
+		for entry in pool:
+			if crew.size() >= most:
+				break
+			var c: Person = entry[2]
+			if p.base_angle == INF or crew.is_empty():
+				p.base_angle = (c.ground_pos - p.at).angle()
+			var slot := _free_slot(crew)
+			var spot := _patch_spot(p, slot, gap)
+			if spot == Vector2.INF:
+				continue
+			c.beat(p)
+			if c.mind != Person.Mind.ASSIST or c.assist_patch != p:
+				continue  # refused (held by a will)
+			c.assist_slot = slot
+			crew.append(c)
+			c.walk_to(spot)
+
+
+## Whether the ground point `g` lies in any burning patch.
+func _in_a_patch(g: Vector2) -> bool:
+	for q in patches:
+		if not q.out and q.over(g):
+			return true
+	return false
+
+
+## The lowest ring slot no one on `crew` holds.
+func _free_slot(crew: Array) -> int:
+	for k in GroundFire.CREW:
+		var taken := false
+		for b: Person in crew:
+			taken = taken or b.assist_slot == k
+		if not taken:
+			return k
+	return crew.size() % GroundFire.CREW
+
+
+## A walkable spot on the ring `gap` outside the patch's edge for crew slot `slot`: the angle is `base_angle` plus the slot's
+## share of the circle, turned by an eighth up to eight times if the spot is bad (not walkable near the ring, or within
+## radius + 0.2 of a burning patch). Vector2.INF when none is good: no goal is ever inside a patch.
+func _patch_spot(p: GroundFire, slot: int, gap: float) -> Vector2:
+	var base := p.base_angle + float(slot) * TAU / float(GroundFire.CREW)
+	for turn in 8:
+		var dir := Vector2.RIGHT.rotated(base + float(turn) * TAU / 8.0)
+		var spot := _crowd._spot_near(p.at + dir * (p.radius + gap), 0.1)
+		if spot.distance_to(p.at) > p.radius + gap + 0.3:
+			continue
+		var clear := true
+		for q in patches:
+			if not q.out and spot.distance_to(q.at) <= q.radius + 0.2:
+				clear = false
+		if clear:
+			return spot
+	return Vector2.INF
 
 
 ## A rescue squad's soldier (RescueManager, v0.07), or an engineer with nothing to mend (EngineerManager, v0.08.2),
@@ -372,6 +460,56 @@ func _tend_responders(delta: float) -> void:
 				p.walk_to(_edge_of(s, p.ground_pos))
 			else:
 				_go_to_water(p, s)
+
+
+## Each beater's round: walk to the ring, wait a step back while the patch is at full strength, then beat it, swinging
+## every BEAT_SWING. Out of the crew when its mind changed; stood down for the evacuation.
+func _tend_beaters(delta: float) -> void:
+	var evacuating := _crowd.alarms.stage >= AlarmManager.Stage.EVACUATION
+	for p in patches.duplicate():
+		if p.out:
+			continue
+		for b: Person in p.crew.duplicate():
+			if not is_instance_valid(b) or b.mind != Person.Mind.ASSIST or b.assist_patch != p:
+				if is_instance_valid(b) and b.assist_patch == p:
+					b.assist_patch = null  # frightened off (or taken for another job): no longer on this patch
+					b.assist_beating = false
+				p.crew.erase(b)
+				continue
+			if evacuating and not b.assist_stays:
+				b.stand_down()
+				p.crew.erase(b)
+				continue
+			if b.has_goal():
+				continue
+			var slot: int = b.assist_slot
+			if p.full():
+				b.assist_beating = false
+				# At the wait spot when it last walked to one and stands there.
+				var waiting: bool = b.ground_pos.distance_to(b.anchor) <= Person.GOAL_REACH \
+						and b.anchor.distance_to(p.at) > p.radius + GroundFire.BEAT_GAP + 0.3
+				if not waiting:
+					var spot := _patch_spot(p, slot, GroundFire.WAIT_GAP)
+					if spot == Vector2.INF:
+						b.stand_down()
+						p.crew.erase(b)
+					else:
+						b.walk_to(spot)
+				continue
+			if b.ground_pos.distance_to(p.at) > p.radius + GroundFire.BEAT_GAP + Person.GOAL_REACH:
+				b.assist_beating = false
+				var spot := _patch_spot(p, slot, GroundFire.BEAT_GAP)
+				if spot == Vector2.INF:
+					b.stand_down()
+					p.crew.erase(b)
+				else:
+					b.walk_to(spot)
+				continue
+			b.assist_beating = true
+			b._beat_in -= delta
+			if b._beat_in <= 0.0:
+				b._beat_in = GroundFire.BEAT_SWING
+				b.swing_at(p.at)
 
 
 func _go_to_water(p: Person, s: Structure) -> void:

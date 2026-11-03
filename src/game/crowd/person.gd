@@ -229,6 +229,12 @@ var assist_wait := 0.0
 ## Kept on its fire through the evacuation (v0.08.2): an engineer, who works on while the town leaves, unlike the
 ## fire brigade.
 var assist_stays := false
+## Beating out a patch of burning ground (Dragonfire Parade; FireManager runs the round): the patch, whether it stands at
+## its beat spot, seconds to its next swing, and its slot on the patch's ring.
+var assist_patch: GroundFire
+var assist_beating := false
+var _beat_in := 0.0
+var assist_slot := 0
 ## On an engineer team while the engineers are out (v0.09.1; EngineerManager sets it): a fright or a shelter never sends it
 ## to the gates for good, it goes back to its team once calm. Cleared when its team stands down (Crowd.off_duty()).
 var engineer_duty := false
@@ -1060,6 +1066,8 @@ func _hold_begin() -> void:
 			assist_full = false
 			assist_at_water = false
 			assist_stays = false
+			assist_patch = null
+			assist_beating = false
 		_:
 			_held_mind = mind
 			_held_anchor = anchor
@@ -1585,12 +1593,37 @@ func assist(s: Structure, force := false, stays := false) -> void:
 	assist_at_water = false
 	assist_full = false
 	assist_wait = 0.0
+	assist_patch = null
+	assist_beating = false
 	walk_speed = _mind_speed()
+
+
+## Turn out to beat out the patch of burning ground `patch` (FireManager sends it to the ring): a citizen's work, under the
+## same refusals as assist(). It carries no water, and a threat does not frighten it while it works.
+func beat(patch: GroundFire) -> void:
+	if soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+		return
+	_held_saved = false
+	mind = Mind.ASSIST
+	assist_patch = patch
+	assist_fire = null
+	assist_beating = false
+	assist_stays = false
+	_beat_in = 0.0
+	walk_speed = _mind_speed()
+
+
+## Swing at the ground point `g`: face it, as the fight does, and show the blow.
+func swing_at(g: Vector2) -> void:
+	_facing = 1 if g.x - g.y > ground_pos.x - ground_pos.y else -1
+	_swing_left = SWING_SHOW
 
 
 ## Stop fighting a fire: wait a moment, then back to its day (a soldier goes back to its post).
 func stand_down() -> void:
 	assist_fire = null
+	assist_patch = null
+	assist_beating = false
 	assist_full = false
 	assist_at_water = false
 	assist_stays = false

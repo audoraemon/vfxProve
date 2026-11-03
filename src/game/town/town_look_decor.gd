@@ -83,6 +83,18 @@ const SPRITES := {
 ## stick by DAY).
 const COL_POST := Color("9a6438")
 const COL_POST_DARK := Color("5a3620")
+## DAY's own sprites (round 6), beside the NIGHT ones in the atlas, shifted by DAY_SHIFT px: sunlit wood and iron in the
+## palette of the art's lamp_house (lit orange-brown wood, dark brown shade, grey-brown iron), a 1 px lit left edge, and
+## glass that shows a pale sky, not a black pane. NIGHT's sprites and colours are untouched.
+const DAY_SHIFT := Vector2i(24, 0)
+const DAY_WOOD_LIT := Color("b4702a")
+const DAY_WOOD_SHADE := Color("6a3a18")
+const DAY_WOOD_FOOT := Color("4a2c14")
+const DAY_IRON := Color("5e4e46")
+const DAY_IRON_LIT := Color("9a8470")
+const DAY_IRON_SHADE := Color("4a3c36")
+const DAY_SKY := Color("a8cce2")
+const DAY_SKY_HIGHLIGHT := Color("eaf5ff")
 const FLICKER_HZ := 10.0
 
 static var _atlas: ImageTexture
@@ -270,6 +282,7 @@ static func atlas() -> ImageTexture:
 	for k: int in SPRITES:
 		var sp: Dictionary = SPRITES[k]
 		_post(img, sp)
+		_post_day(img, sp)
 	var fl: Array = Structure.COL_FLAME
 	for f in 4:
 		var step: int = [0, 1, 2, 1][f]
@@ -319,6 +332,30 @@ static func _post(img: Image, sp: Dictionary) -> void:
 	_fill(img, o, g.grow(-1), Color("4a3a2a"))
 
 
+## DAY's lamp or lantern post at its SPRITES entry shifted by DAY_SHIFT: lit wood on the left, shade on the right, a 1 px
+## highlight along the post's top edge and the arm, an iron cap and foot, and a glass of pale sky between iron sides.
+static func _post_day(img: Image, sp: Dictionary) -> void:
+	var o: Vector2i = Vector2i(sp.at) + DAY_SHIFT
+	var size: Vector2i = sp.size
+	var g := Rect2i(sp.glass)
+	var top := 1
+	_fill(img, o, Rect2i(0, top, 2, size.y - top), DAY_WOOD_LIT)
+	_fill(img, o, Rect2i(1, top, 1, size.y - top), DAY_WOOD_SHADE)
+	_fill(img, o, Rect2i(0, size.y - 1, 3, 1), DAY_WOOD_FOOT)
+	_fill(img, o, Rect2i(0, top - 1, g.end.x, 1), DAY_WOOD_SHADE)
+	_fill(img, o, Rect2i(0, top, g.end.x - 1, 1), DAY_WOOD_LIT)
+	_fill(img, o, Rect2i(0, top - 1, 1, 1), DAY_WOOD_LIT.lightened(0.35))
+	_fill(img, o, Rect2i(g.position.x + g.size.x / 2, top + 1, 1, g.position.y - top - 1), DAY_IRON)
+	# The glass: an iron cap and base, a lit iron edge, the pale sky pane, a shaded iron edge; a highlight at the pane's top.
+	_fill(img, o, g, DAY_IRON)
+	var pane := Rect2i(g.position.x + 1, g.position.y + 1, g.size.x - 2, g.size.y - 2)
+	_fill(img, o, Rect2i(g.position.x, pane.position.y, 1, pane.size.y), DAY_IRON_LIT)
+	_fill(img, o, Rect2i(g.end.x - 1, pane.position.y, 1, pane.size.y), DAY_IRON_SHADE)
+	_fill(img, o, pane, DAY_SKY)
+	if pane.size.y > 1:
+		_fill(img, o, Rect2i(pane.position, Vector2i(1, 1)), DAY_SKY_HIGHLIGHT)
+
+
 static func _fill(img: Image, o: Vector2i, r: Rect2i, c: Color) -> void:
 	img.fill_rect(Rect2i(o + r.position, r.size), c)
 
@@ -344,6 +381,7 @@ static func _set_look(look_value) -> void:
 	var m := material()
 	m.set_shader_parameter("self_lit", SELF_LIT if look_value == Town.Look.NIGHT else Color(0, 0, 0, 0))
 	m.set_shader_parameter("post_zoom", POST_ZOOM)
+	m.set_shader_parameter("sun_lit", 1.0 if look_value == Town.Look.DAY else 0.0)
 
 
 func setup(town: Town, look_value) -> TownLookDecor:
@@ -392,16 +430,17 @@ func _rects(p: Dictionary, origin: Vector2) -> Array[Rect2]:
 		return out
 	var sp: Dictionary = SPRITES[p.prop]
 	var g: Rect2 = sp.glass
+	var src_at := Vector2(sp.at) + (Vector2(DAY_SHIFT) if look == Town.Look.DAY else Vector2.ZERO)
 	var top := (Iso.ground_to_screen(p.at) - Vector2(0, p.lift) - (sp.anchor as Vector2) - origin).round()
 	if p.get("bare", false):
 		# Its glass alone, hanging just under the point it is given.
 		top = (Iso.ground_to_screen(p.at) - Vector2(0, p.lift) - g.position - origin).round()
 	else:
-		out.append_array([Rect2(top, Vector2(sp.size)), Rect2(Vector2(sp.at), Vector2(sp.size))])
+		out.append_array([Rect2(top, Vector2(sp.size)), Rect2(src_at, Vector2(sp.size))])
 	# The lit glass over the post's dark one (none by DAY, round 4; a bare lantern shows its dark frame then).
 	if not lit(p):
 		if p.get("bare", false):
-			out.append_array([Rect2(top + g.position, g.size), Rect2(Vector2(sp.at) + g.position, g.size)])
+			out.append_array([Rect2(top + g.position, g.size), Rect2(src_at + g.position, g.size)])
 		return out
 	var row := ROW_GLASS_LAMP if p.prop == Prop.LAMP else ROW_GLASS_LANTERN
 	out.append_array([Rect2(top + g.position - Vector2(GLASS_AT), cell), Rect2(Vector2(col, BAND_Y + row * CELL), cell)])

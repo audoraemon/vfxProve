@@ -14,6 +14,9 @@ uniform float cell_u = 0.125;
 uniform float hz = 10.0;
 uniform vec4 self_lit = vec4(0.0);
 uniform vec2 post_zoom = vec2(0.0);
+// DAY (round 6): a post takes its colour once. Godot's COLOR already holds texture * modulate, so NIGHT's `t * COLOR` squares
+// it (dark, which NIGHT's look is tuned to); DAY's props are drawn from their own sunlit sprites and must not be squared.
+uniform float sun_lit = 0.0;
 
 varying float post_alpha;
 
@@ -31,7 +34,7 @@ void fragment() {
 		COLOR = texture(TEXTURE, uv);
 	} else {
 		vec4 t = texture(TEXTURE, uv);
-		vec4 c = t * COLOR;
+		vec4 c = sun_lit > 0.5 ? COLOR : t * COLOR;
 		c.rgb = mix(c.rgb, t.rgb * self_lit.rgb, self_lit.a);
 		c.a *= post_alpha;
 		COLOR = c;

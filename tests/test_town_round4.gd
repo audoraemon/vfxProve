@@ -12,6 +12,7 @@ static func run(t) -> void:
 	_night_dark_between(t)
 	_proportions(t)
 	_day_unlit(t)
+	_day_props_sunlit(t)
 
 
 static func _src(path: String) -> String:
@@ -135,3 +136,23 @@ static func _day_unlit(t) -> void:
 		var p2: Array = R2._build(look)
 		t.check(Structure.lamp_glow, "%d: the town's lamps glow" % look)
 		R2._free(p2)
+
+
+## Round 6: DAY's lamp posts and lanterns are drawn from their own sunlit sprites (not near-black iron): the post's wood is a
+## warm brown, its left edge lit, its glass shows a pale sky, and the shader no longer squares a DAY post's colour. NIGHT's
+## sprites (the atlas rows at the SPRITES entries) keep their colours.
+static func _day_props_sunlit(t) -> void:
+	var img := TownLookDecor.atlas().get_image()
+	var lamp: Dictionary = TownLookDecor.SPRITES[TownLookDecor.Prop.LAMP]
+	var at: Vector2i = Vector2i(lamp.at) + TownLookDecor.DAY_SHIFT
+	var lit := img.get_pixel(at.x, at.y + 10)
+	var shade := img.get_pixel(at.x + 1, at.y + 10)
+	t.check(lit.get_luminance() > 0.35 and lit.r > lit.b * 1.5, "DAY lamp post: lit wood is a warm brown (%s)" % lit)
+	t.check(shade.get_luminance() < lit.get_luminance(), "DAY lamp post: a darker right side, the lit left edge reads")
+	var g := Rect2i(lamp.glass)
+	var pane := img.get_pixel(at.x + g.position.x + 1, at.y + g.end.y - 2)
+	t.check(pane.b > pane.r and pane.get_luminance() > 0.6, "DAY lamp glass shows a pale sky, not a black pane (%s)" % pane)
+	var night := img.get_pixel(int(lamp.at.x), int(lamp.at.y) + 10)
+	t.check(night.is_equal_approx(TownLookDecor.COL_POST), "NIGHT's post sprite keeps its colour")
+	var ld_src := FileAccess.get_file_as_string("res://src/game/town/town_look_decor.gdshader")
+	t.check(ld_src.contains("sun_lit > 0.5 ? COLOR : t * COLOR"), "DAY props take their colour once (no squared sprite)")

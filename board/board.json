@@ -1,10 +1,10 @@
 {
- "hash": "ddec6f03d3b9aade",
- "updated": "2026-11-03T16:37:51+07:00",
+ "hash": "b954687b60294ad3",
+ "updated": "2026-11-04T04:44:30+07:00",
  "changes": {
-  "date": "<t:1793698671:f>",
+  "date": "<t:1793742270:f>",
   "items": [
-   "Done: Divine Schism TUMULT mode: mad, frozen or panicked for 25 s"
+   "New: Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL"
   ]
  },
  "snapshot": {
@@ -201,6 +201,16 @@
     "needs_you": false,
     "updated": "2026-10-23",
     "order": 183
+   },
+   "dominion-whisper-wisp": {
+    "title": "Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL",
+    "status": "done",
+    "area": "Design",
+    "version": "god/dominion-ideas",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-04",
+    "order": 205
    },
    "eng-followups": {
     "title": "Decide: engineers' fire duty follow-ups",
@@ -1211,40 +1221,40 @@
   "branches": [
    {
     "name": "god/dragon-ground",
-    "ahead": 198,
-    "behind": 0,
-    "date": "2026-11-03",
-    "subject": "feat: ground fire -- calm citizens gather round a patch and beat it out",
-    "pushed": false
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 194,
-    "behind": 0,
-    "date": "2026-11-03",
-    "subject": "fix: Schism TUMULT -- a panicked one that reaches its point runs on at once",
-    "pushed": true
-   },
-   {
-    "name": "god/schism-tumult",
-    "ahead": 194,
-    "behind": 0,
-    "date": "2026-11-03",
-    "subject": "fix: Schism TUMULT -- a panicked one that reaches its point runs on at once",
+    "ahead": 204,
+    "behind": 1,
+    "date": "2026-11-04",
+    "subject": "docs: Dragonfire ground fire summary and rulings",
     "pushed": false
    },
    {
     "name": "feat/town-lighting",
-    "ahead": 39,
-    "behind": 13,
-    "date": "2026-11-03",
-    "subject": "feat(round4): shader-made shadows: every sprite building and forest tree casts its own silhouette",
+    "ahead": 42,
+    "behind": 14,
+    "date": "2026-11-04",
+    "subject": "fix(round6): DAY ground no longer blows out: gentler sunbeams and sun glow, and a cap on what they add",
     "pushed": true
+   },
+   {
+    "name": "feat/god-progression",
+    "ahead": 199,
+    "behind": 1,
+    "date": "2026-11-03",
+    "subject": "fix: dominion review wave -- ENTHRALL never holds a lured charge; stale wheel/pick closes; burn lights with the whisper still on; ring cap, one-pass spots, walk-pick refusal, roam as data",
+    "pushed": true
+   },
+   {
+    "name": "god/dominion-ideas",
+    "ahead": 199,
+    "behind": 1,
+    "date": "2026-11-03",
+    "subject": "fix: dominion review wave -- ENTHRALL never holds a lured charge; stale wheel/pick closes; burn lights with the whisper still on; ring cap, one-pass spots, walk-pick refusal, roam as data",
+    "pushed": false
    },
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 283,
+    "behind": 284,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1252,24 +1262,16 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 241,
+    "behind": 242,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
-   },
-   {
-    "name": "feat/gpt-handoff",
-    "ahead": 3,
-    "behind": 528,
-    "date": "2026-10-04",
-    "subject": "fix: bell tower without arch frames; its ruins are the approved town tower ruins scaled to its plot",
-    "pushed": false
    }
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-02",
-   "subject": "feat: Earthshatter -- the heat of the deep in the crack, and more thrown about"
+   "date": "2026-11-03",
+   "subject": "feat: Clear Mind (Dominion, Tier III) -- everyone in the circle senses nothing special"
   }
  }
 }

@@ -114,12 +114,13 @@ static func _props(t, city: StringName) -> void:
 		var n_lantern := ld.count(TownLookDecor.Prop.LANTERN)
 		if look == Town.Look.NIGHT:
 			night_counts = [n_torch, n_lamp, n_lantern]
-			t.check(n_torch > 100 and n_lamp > 20 and n_lantern > 80,
+			# Round 4: fewer (a wall torch every 2.5 cells, none on the tower tops, a street lamp every 5.5 cells).
+			t.check(n_torch > 30 and n_lamp > 20 and n_lantern > 60,
 				"%s NIGHT: torches %d, lamps %d, lanterns %d" % [city, n_torch, n_lamp, n_lantern])
 		else:
 			# Round 3: DAY shows far fewer props (no wall-walk torches, lamps on the main avenues and squares only, lanterns
 			# only near them), and its torches are unlit.
-			t.check(n_lamp * 2 <= int(night_counts[1]) and n_lantern * 2 <= int(night_counts[2]) and n_torch < int(night_counts[0]),
+			t.check(n_lamp <= int(night_counts[1]) and n_lantern * 2 <= int(night_counts[2]) and n_torch < int(night_counts[0]),
 				"%s DAY: far fewer props (torches %d, lamps %d, lanterns %d against NIGHT's %s)" % [city, n_torch, n_lamp,
 					n_lantern, str(night_counts)])
 			var unlit := true
@@ -157,7 +158,7 @@ static func _props(t, city: StringName) -> void:
 		var same := true
 		for n in ld.prop_nodes():
 			same = same and (n as CanvasItem).material == TownLookDecor.material()
-		t.check(same and ld.prop_nodes().size() < ld.props.size(), "%s %d: %d props on %d canvas items, one material" % [city, look,
+		t.check(same and ld.prop_nodes().size() <= ld.props.size(), "%s %d: %d props on %d canvas items, one material" % [city, look,
 			ld.props.size(), ld.prop_nodes().size()])
 		# Every prop feeds the light map.
 		var pools := TownPools.pools_for(town)

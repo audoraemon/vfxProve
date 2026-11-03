@@ -9,7 +9,6 @@ const R2 := preload("res://tests/test_town_round2.gd")
 static func run(t) -> void:
 	_night_colour(t)
 	_sprite_params(t)
-	_tower_decks(t)
 
 
 static func _src(path: String) -> String:
@@ -75,23 +74,3 @@ static func _a_sprite(env: EnvironmentField) -> Structure:
 		if s.sprite is Dictionary and SpriteArt.window_mask(s.sprite) != null:
 			return s
 	return null
-
-
-## A sprite tower's torches stand on its top deck (its sprite's top), not halfway up its face at its structure's height
-## (most sprite towers stand well over it; a few match it already).
-static func _tower_decks(t) -> void:
-	var parts: Array = R2._build(Town.Look.NIGHT)
-	var town: Town = parts[0]
-	var raised := 0
-	var towers := 0
-	for s in (parts[1] as EnvironmentField).structures():
-		if s.kind == Structure.Kind.KEEP and s.sprite is Dictionary and not (s.sprite as Dictionary).is_empty():
-			towers += 1
-			raised += 1 if TownLookDecor.deck_height(s) > s.height + 8.0 else 0
-	var on_deck := true
-	for p in town.look_decor.props:
-		var h: Structure = p.host
-		if p.prop == TownLookDecor.Prop.TORCH and h.kind == Structure.Kind.KEEP:
-			on_deck = on_deck and is_equal_approx(float(p.lift), TownLookDecor.deck_height(h))
-	t.check(towers > 0 and raised * 3 >= towers * 2 and on_deck, "sprite towers' torches stand on their decks (%d of %d raised)" % [raised, towers])
-	R2._free(parts)

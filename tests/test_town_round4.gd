@@ -1,6 +1,7 @@
 extends RefCounted
 ## Lighting trial round 4 (DAY and NIGHT only; CURRENT untouched), after the user's playtest: NIGHT is dark between its
-## lights (small pools, a smooth crossfade from the moon grade, no dither).
+## lights (small pools, a smooth crossfade from the moon grade, no dither), the props are drawn at the house art's scale
+## with small flames, and no extra crown of torches on the towers.
 
 
 const R2 := preload("res://tests/test_town_round2.gd")
@@ -8,6 +9,8 @@ const R2 := preload("res://tests/test_town_round2.gd")
 
 static func run(t) -> void:
 	_night_pools(t)
+	_night_dark_between(t)
+	_proportions(t)
 
 
 static func _src(path: String) -> String:
@@ -48,3 +51,53 @@ static func _night_pools(t) -> void:
 			windows_faced += 1
 	t.check(windows_faced == 0, "a window's fan does not light the whole front (%d did)" % windows_faced)
 	R2._free(parts)
+
+
+## The town's ground between the lights stays dark: under half of the walled town lies inside any pool's lit core (70%
+## of its radius, where the crossfade passes about a quarter).
+static func _night_dark_between(t) -> void:
+	var parts: Array = R2._build(Town.Look.NIGHT)
+	var town: Town = parts[0]
+	var pools := TownPools.pools_for(town)
+	var rect := City.current().town()
+	var lit := 0
+	var all := 0
+	var g := rect.position
+	while g.y < rect.end.y:
+		g.x = rect.position.x
+		while g.x < rect.end.x:
+			var p := Iso.ground_to_screen(g)
+			all += 1
+			for q in pools:
+				var r: float = float(q.radius) * 0.7
+				var d: Vector2 = p - (q.pos as Vector2)
+				if (d.x * d.x) / (r * r) + (d.y * d.y) / (r * r * 0.25) <= 1.0:
+					lit += 1
+					break
+			g.x += 0.5
+		g.y += 0.5
+	var share := float(lit) / maxf(all, 1)
+	t.check(share < 0.5, "NIGHT: %.0f%% of the walled town lies in a pool's lit core (the rest stays moonlit)" % (share * 100.0))
+	R2._free(parts)
+
+
+## The props at the house art's scale: a street lamp a little over a person's height, a lantern a short post, small
+## flames, lamps every 5-6 cells, and no prop torches on a tower or gatehouse top.
+static func _proportions(t) -> void:
+	var sp: Dictionary = TownLookDecor.SPRITES
+	t.check((sp[TownLookDecor.Prop.LAMP].size as Vector2i).y <= 24 and (sp[TownLookDecor.Prop.LANTERN].size as Vector2i).y <= 16,
+		"a street lamp stands at most 24 px, a lantern 16 px (the art's stood 41 and 38)")
+	t.check(TownLookDecor.LAMP_STEP >= 5.0 and TownLookDecor.LAMP_STEP <= 6.0, "a street lamp every 5-6 cells")
+	t.check(_src("res://src/game/town/town_look_decor.gd").contains("BAND_Y + ROW_FLAME_SMALL * CELL), cell)])")
+		and not _src("res://src/game/town/town_look_decor.gd").contains("BAND_Y + ROW_FLAME * CELL), cell)])"),
+		"every prop torch burns the small flame (the art's own torch flames' size)")
+	for look: Town.Look in [Town.Look.NIGHT, Town.Look.DAY]:
+		var parts: Array = R2._build(look)
+		var town: Town = parts[0]
+		var on_tops := 0
+		for p in town.look_decor.props:
+			var h: Structure = p.host
+			if p.prop == TownLookDecor.Prop.TORCH and h != null and h.kind != Structure.Kind.CASTLE_WALL:
+				on_tops += 1
+		t.check(on_tops == 0, "%d: no prop torches on the towers' and gatehouses' tops (their painted braziers glow; %d)" % [look, on_tops])
+		R2._free(parts)

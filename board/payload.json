@@ -7,12 +7,22 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**9** in progress · **25** to do · **98** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793675794:f>)\n• Done: Ruin ability levels: 5 levels + a level-5 twist for all ten powers",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **25** to do · **98** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793698394:f>)\n• New: Divine Schism TUMULT mode: mad, frozen or panicked for 25 s (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-03T10:16:34+07:00"
+     "timestamp": "2026-11-03T16:33:14+07:00"
+    },
+    {
+     "title": "god/dragon-ground",
+     "description": "198 commits not in Develop-Main · last commit today · local only\n> feat: ground fire -- calm citizens gather round a patch and beat it out\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "god/schism-tumult",
+     "description": "194 commits not in Develop-Main · last commit today · local only\n> fix: Schism TUMULT -- a panicked one that reaches its point runs on at once\n\n**In progress** (1)\n• Divine Schism TUMULT mode: mad, frozen or panicked for 25 s — **needs you**",
+     "color": 5016537
     },
     {
      "title": "feat/god-progression",
@@ -20,14 +30,9 @@
      "color": 5016537
     },
     {
-     "title": "god/ruin-levels",
-     "description": "192 commits not in Develop-Main · last commit today · local only\n> docs: Ruin levels landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14688/0\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
      "title": "feat/town-lighting",
-     "description": "35 commits not in Develop-Main · last commit 9 days ago · local only\n> fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)\n\n_No Ledger task points at this branch._",
-     "color": 7041664
+     "description": "39 commits not in Develop-Main · last commit today\n> feat(round4): shader-made shadows: every sprite building and forest tree casts its own silhouette\n\n_No Ledger task points at this branch._",
+     "color": 5016537
     },
     {
      "title": "fix/evac-recalm",

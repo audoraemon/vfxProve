@@ -1,10 +1,10 @@
 {
- "hash": "4ed7e5e90e2fa67b",
- "updated": "2026-11-03T10:16:34+07:00",
+ "hash": "ae17464ef21dc3fc",
+ "updated": "2026-11-03T16:33:14+07:00",
  "changes": {
-  "date": "<t:1793675794:f>",
+  "date": "<t:1793698394:f>",
   "items": [
-   "Done: Ruin ability levels: 5 levels + a level-5 twist for all ten powers"
+   "New: Divine Schism TUMULT mode: mad, frozen or panicked for 25 s (in progress)"
   ]
  },
  "snapshot": {
@@ -618,6 +618,16 @@
     "updated": "2026-10-03",
     "order": 0
    },
+   "schism-tumult": {
+    "title": "Divine Schism TUMULT mode: mad, frozen or panicked for 25 s",
+    "status": "doing",
+    "area": "Design",
+    "version": "god/schism-tumult",
+    "needs_you": true,
+    "branch": "god/schism-tumult",
+    "updated": "2026-11-03",
+    "order": 204
+   },
    "sfxr-ability": {
     "title": "The powers' 78 sounds remade (recordings, not sfxr)",
     "status": "done",
@@ -1200,6 +1210,22 @@
   },
   "branches": [
    {
+    "name": "god/dragon-ground",
+    "ahead": 198,
+    "behind": 0,
+    "date": "2026-11-03",
+    "subject": "feat: ground fire -- calm citizens gather round a patch and beat it out",
+    "pushed": false
+   },
+   {
+    "name": "god/schism-tumult",
+    "ahead": 194,
+    "behind": 0,
+    "date": "2026-11-03",
+    "subject": "fix: Schism TUMULT -- a panicked one that reaches its point runs on at once",
+    "pushed": false
+   },
+   {
     "name": "feat/god-progression",
     "ahead": 192,
     "behind": 0,
@@ -1208,20 +1234,12 @@
     "pushed": true
    },
    {
-    "name": "god/ruin-levels",
-    "ahead": 192,
-    "behind": 0,
-    "date": "2026-11-03",
-    "subject": "docs: Ruin levels landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14688/0",
-    "pushed": false
-   },
-   {
     "name": "feat/town-lighting",
-    "ahead": 35,
+    "ahead": 39,
     "behind": 13,
-    "date": "2026-10-25",
-    "subject": "fix(round3): tower and gatehouse torches stand on the sprite's top deck, not halfway up its face (item 1 follow-up)",
-    "pushed": false
+    "date": "2026-11-03",
+    "subject": "feat(round4): shader-made shadows: every sprite building and forest tree casts its own silhouette",
+    "pushed": true
    },
    {
     "name": "fix/evac-recalm",

@@ -1,0 +1,4 @@
+{"length": 2.2, "rms_db": -17.0, "reverb": {"rt60": 2.0, "mix": 0.28, "predelay_ms": 16, "damp": 5000}, "eq": [["lowshelf", 160, 2.0], ["peak", 3200, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub1_v1.wav", "at": 0.0, "dur": 0.9, "lp": 320, "fade_in": 200, "fade_out": 200, "gain_db": -7},
+  {"src": "lib:oga/bell-dingschimes/bell_ding4.wav", "at": 0.5, "pitch": -12, "lp": 4000, "fade_in": 5, "fade_out": 400, "gain_db": -2},
+  {"src": "lib:oga/cure-magic/curemagic/Cure3.wav", "at": 0.7, "pitch": -12, "lp": 2500, "fade_in": 60, "fade_out": 600, "gain_db": -8}]}

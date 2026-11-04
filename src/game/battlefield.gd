@@ -186,9 +186,10 @@ func clear_effects() -> void:
 	for layer in [ctx.overhead_back, ctx.overhead, ctx.distort]:
 		for c in layer.get_children():
 			c.queue_free()
-	for c in ctx.world.get_children():
-		if c.is_in_group(SolarisPit.GROUP):
-			c.queue_free()
+	for layer in [ctx.world, ctx.ground]:
+		for c in layer.get_children():
+			if c.is_in_group(SolarisPit.GROUP):
+				c.queue_free()  # the Light of Solaris's pit, Earthshatter's crack
 
 
 ## End every power still playing (v0.09, between the acts of a night): each effect is cut short, freeing what it made,

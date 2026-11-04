@@ -72,6 +72,9 @@ func call_keeper() -> void:
 func _send() -> void:
 	if not _keeper_ok():
 		return
+	if keeper.fearless_left > 0.0:
+		_wait()  # a keeper who sees nothing to fear (entranced) does not go to the rope; tried again later
+		return
 	keeper.go_ring(foot)
 	state = State.CALLED
 

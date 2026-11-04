@@ -9,6 +9,7 @@ const FROM := {
 	"smite": ["T_STRIKE"], "heaven": ["T_STRIKE"], "tornado": ["T_FORM"], "dragon": ["T_ERUPT"], "tsunami": ["T_SWEEP"],
 	"gravity": ["T_PULL"], "laser": ["T_WALK"], "orbital": ["T_SALVO_START", "AIM_TIME"], "cinder": ["T_RISE"],
 	"judgement": ["T_RISE"], "glacial": ["T_ERUPT"], "solaris": ["T_CHARGE"], "schism": ["T_BREAK"], "nova": ["T_IMPACT"],
+	"tempest": ["T_GATHER"], "scatter": ["T_FIRST"], "shatter": ["T_CRACK"],
 }
 
 
@@ -77,7 +78,7 @@ static func _table(t) -> void:
 		for name: String in FROM[key]:
 			want += float(c.get(name, 99.0))
 		t.check(is_equal_approx(float(PowerBook.IMPACT[key]), want), "%s: impact %.2f = its script's %s (%.2f)" % [key, PowerBook.IMPACT[key], FROM[key], want])
-	t.check(PowerBook.IMPACT.size() == FROM.size(), "fourteen loud powers")
+	t.check(PowerBook.IMPACT.size() == FROM.size(), "seventeen loud powers")
 
 
 ## v0.11.2: at the cast a Smite is a build-up: nobody is frightened, the people who see it look; at the impact the danger is

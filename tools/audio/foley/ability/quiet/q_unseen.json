@@ -1,0 +1,4 @@
+{"length": 1.6, "rms_db": -19.0, "reverb": {"rt60": 1.6, "mix": 0.2, "predelay_ms": 12, "damp": 3000}, "eq": [["lowshelf", 200, -6.0], ["peak", 4200, 2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-cresc-Short_v1.wav", "at": 0.0, "reverse": true, "dur": 0.8, "lp": 3200, "hp": 400, "fade_in": 200, "fade_out": 60, "gain_db": -6},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Darkness1.ogg", "at": 0.5, "pitch": -7, "lp": 1800, "fade_in": 120, "fade_out": 400, "gain_db": -5},
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 1.wav", "at": 0.3, "pitch": 7, "dur": 1.2, "hp": 1500, "lp": 7000, "fade_in": 300, "fade_out": 500, "gain_db": -12}]}

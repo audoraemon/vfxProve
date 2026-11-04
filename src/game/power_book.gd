@@ -44,6 +44,8 @@ const POWERS := [
 			{"key": "well", "name": "ALL IS WELL"}, {"key": "guard", "name": "CALL THE GUARD", "area": {"r": 1.5}}]},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
+	{"key": "scatter", "name": "Scatter Strike", "path": "res://src/fx/ruin/scatter_strike.gd",
+		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "twelve bursts from the ground, thrown at random over a wide circle, 4 s", "authority": "ruin"},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
 		"quiet": true, "alarm": 0.2, "authority": "dominion"},
@@ -66,6 +68,9 @@ const POWERS := [
 	{"key": "magnify", "name": "Magnify", "path": "res://src/fx/decree/magnify.gd",
 		"dp": 3, "cooldown": 75.0, "aim": "click", "shape": "doubles what is already there: fires, cracks, madness, spells",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
+	{"key": "unseen", "name": "Unseen Hour", "path": "res://src/fx/quiet/unseen_hour.gd",
+		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "for 20 s nothing in the circle is seen: no alarm, no fright, nobody comes",
+		"quiet": true, "authority": "veil"},
 	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",
 		"quiet": true, "alarm": 0.3, "authority": "dominion"},
@@ -87,6 +92,14 @@ const POWERS := [
 		"quiet": true, "alarm": 0.5, "authority": "dominion", "modes": [
 			{"key": "soldier", "name": "THE GUARD"}, {"key": "clergy", "name": "THE CLERGY"},
 			{"key": "engineer", "name": "THE ENGINEERS"}]},
+	{"key": "clearmind", "name": "Clear Mind", "path": "res://src/fx/dominion/clear_mind.gd",
+		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "everyone in the circle senses nothing special, 30 s; whoever walks in joins",
+		"quiet": true, "alarm": 0.3, "authority": "dominion"},
+	{"key": "saint", "name": "Saint or Sinner", "path": "res://src/fx/dominion/saint_or_sinner.gd",
+		"dp": 3, "cooldown": 60.0, "aim": "wheel", "shape": "one is chosen; everyone round them guards them at all cost, or kills them: the wheel picks",
+		"quiet": true, "alarm": 0.5, "authority": "dominion", "modes": [
+			{"key": "saint", "name": "SAINT", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b01110], "color": Color(1.0, 0.9, 0.6, 0.9)},
+			{"key": "sinner", "name": "SINNER", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b00100], "color": Color(1.0, 0.3, 0.25, 0.9)}]},
 	{"key": "priority", "name": "Rewrite Priority", "path": "res://src/fx/dominion/rewrite_priority.gd",
 		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "a district puts one thing above all else, 25 s; Q/E picks it",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "modes": [
@@ -99,6 +112,9 @@ const POWERS := [
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district believes a danger that is not there, or that all is well",
 		"quiet": true, "authority": "dominion", "modes": [
 			{"key": "danger", "name": "FALSE DANGER"}, {"key": "calm", "name": "ALL IS WELL", "area": {"r": 7.0}}]},
+	{"key": "curfew", "name": "Curfew", "path": "res://src/fx/decree/curfew.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
+		"quiet": true, "alarm": 1.0, "authority": "decree"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
@@ -127,6 +143,12 @@ const POWERS := [
 		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
 			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
 			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
+	{"key": "tempest", "name": "Wrath of the Sky", "path": "res://src/fx/ruin/tempest.gd",
+		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "a storm over the whole town: 25 s of bolts, the rain drives people in; once",
+		"authority": "ruin"},
+	{"key": "shatter", "name": "Earthshatter", "path": "res://src/fx/ruin/earthshatter.gd",
+		"dp": 5, "cooldown": 999.0, "aim": "two clicks", "shape": "the ground torn open from one click to the next, slowly; the crack stays; once",
+		"authority": "ruin"},
 	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
 		"authority": "dominion", "modes": [
@@ -156,13 +178,17 @@ const REACH := {
 	"orbital": [9.0, 14.0, 0.7, 6.0], "cinder": [10.0, 16.0, 0.8, 8.0], "judgement": [9.0, 14.0, 0.8, 6.0],
 	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "smite": [5.0, 9.0, 0.4, 2.0], "schism": [14.0, 18.0, 0.8, 8.0],
 	"nova": [40.0, 40.0, 1.0, 4.0],
+	"scatter": [7.0, 10.0, 0.6, 5.0],
+	"shatter": [8.0, 12.0, 0.8, 6.0],
+	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
+	"tempest": [40.0, 40.0, 0.3, 2.0],
 }
 ## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
 ## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
 ## build-up until then. Quiet powers (Ember too) register no danger and have none.
 const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
-	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3,
+	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -211,16 +237,16 @@ static func authority_title(authority: String) -> String:
 ## A power's family (v0.11.1, spec §7.1): what it does, not its Authority (Decision 25). A mission's main step has a route in
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
-	"doom": "veil", "blight": "veil",
+	"doom": "veil", "blight": "veil", "unseen": "veil",
 	"deathmark": "death", "pestilence": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
-	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike",
+	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",
-	"whisper": "lead", "oath": "lead", "echo": "lead", "congregation": "lead", "priority": "lead", "voice": "lead",
-	"wisp": "draw", "delusion": "draw",
+	"whisper": "lead", "oath": "lead", "saint": "lead", "echo": "lead", "congregation": "lead", "priority": "lead", "voice": "lead",
+	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
 	"discord": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
-	"noleave": "decree", "belllies": "decree", "magnify": "decree", "abolition": "decree",
+	"noleave": "decree", "belllies": "decree", "magnify": "decree", "curfew": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage",
 }
 

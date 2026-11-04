@@ -5,7 +5,7 @@ extends DummyEnemy
 ## at the gates on the way out. Soldiers hold a post, march to the Citadel when the rally sounds, and never flee.
 
 enum Mind { CALM, PANIC, FLEE, POST, RALLY, HOLD, OBSERVE, RECOVER, REGROUP, DUTY, ASSIST, SHELTER, CONFUSED, WHISPERED,
-	COMPELLED, FIGHT }
+	COMPELLED, FIGHT, ASLEEP }
 ## What a citizen is trying to do (v0.04), read from its mind: going about its day, stopping to look at something,
 ## running from danger nearby, evacuating through a gate, or cautiously returning once a danger has passed.
 enum Intent { ROUTINE, OBSERVE, LOCAL_FLEE, REGROUP, EVACUATE, REROUTE, RECOVER, ASSIST, SHELTER, CONFUSED, WHISPERED,
@@ -331,6 +331,8 @@ var _whisper_fled := false
 var _shaken_left := 0.0
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
+## Seconds of sleep left (Mind.ASLEEP; sleep()).
+var _sleep_left := 0.0
 ## Seconds left screaming (scream()), and how long the scream is in all: it holds the person still.
 var _scream_left := 0.0
 var _scream_total := SCREAM_SECONDS
@@ -488,8 +490,8 @@ func tick(delta: float) -> void:
 			_think(_think_accum)
 			_think_accum = 0.0
 		_think_due = not _think_due
-	if (_scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0) and state == State.WANDER:
-		_idle = maxf(_idle, 0.05)  # a goal set from outside (set_goal, flee, fight...) cannot creep a held person for a tick
+	if (mind == Mind.ASLEEP or _scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0) and state == State.WANDER:
+		_idle = maxf(_idle, delta + 0.01)  # held (asleep, screaming, down): a goal set from outside cannot creep it for a tick, whatever the tick
 	var before := ground_pos
 	super(delta)
 	_track_stride(ground_pos - before)
@@ -518,6 +520,14 @@ func _think(delta: float) -> void:
 			if mind == Mind.CALM or mind == Mind.RECOVER:
 				mind = Mind.CALM
 				flee()
+	if mind == Mind.ASLEEP:
+		# Asleep where it stands: nothing is thought, nothing planned; only a loud blow nearby, a hurt, or the end of
+		# the sleep wakes it (wake()).
+		_sleep_left = maxf(_sleep_left - delta, 0.0)
+		_idle = maxf(_idle, 0.05)
+		if _sleep_left <= 0.0:
+			wake()
+		return
 	_repath_in = maxf(_repath_in - delta, 0.0)
 	if _swing_left > 0.0:
 		_swing_left = maxf(_swing_left - delta, 0.0)
@@ -683,6 +693,8 @@ func path_crosses(r: Rect2, ahead: int) -> bool:
 
 ## Walk to `g` along the grid's path. A goal inside a building routes to its doorstep.
 func set_goal(g: Vector2) -> void:
+	if mind == Mind.ASLEEP:
+		return  # a sleeper goes nowhere (Curfew)
 	_goal = g
 	_leg = 0
 	_path = grid.path(ground_pos, g) if grid != null else PackedVector2Array()
@@ -778,6 +790,8 @@ func _drift() -> void:
 ## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
 ## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
 func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
+	if mind == Mind.ASLEEP and state != State.DEAD:
+		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
 		return
 	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
@@ -1132,6 +1146,57 @@ func magnify(k: float) -> bool:
 	return any
 
 
+## Fall asleep where it stands for `seconds` (Curfew): Mind.ASLEEP, down on the ground, thinking nothing. Whatever it
+## was doing is dropped -- a queue, a fight, a flight -- and the day is picked up again on waking. Woken early by a
+## loud blow nearby (Crowd._react()), by a hurt, or by anything that takes the mind (a compulsion). Anyone inside and
+## the dead do not sleep. True when it took.
+func sleep(seconds: float) -> bool:
+	if inside or state == State.DEAD or seconds <= 0.0:
+		return false
+	_hold_begin()
+	release_from_queue()
+	passing_gate = null
+	fight_target = null
+	_fight_left = 0.0
+	_panic_left = 0.0
+	_startle_left = 0.0
+	mind = Mind.ASLEEP
+	_sleep_left = seconds
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	return true
+
+
+## Wakes: a soldier goes back to his post, anyone else looks about and takes up its day.
+func wake() -> void:
+	if mind != Mind.ASLEEP:
+		return
+	_sleep_left = 0.0
+	if soldier:
+		send_to_post(post if post != Vector2.INF else ground_pos)
+	else:
+		_recover(rng.randf_range(0.5, 1.5))
+
+
+func is_asleep() -> bool:
+	return mind == Mind.ASLEEP
+
+
+## Hypnotized for `seconds` (Clear Mind): it senses nothing special -- no danger frightens it, nothing makes it look,
+## no evacuation calls it (fearless_left) -- and goes on with what it was doing. A fright it was in is dropped for its
+## day (a soldier's, his post); unlike reassure() it does not go when the trance ends: it never knew. True when it took.
+func entrance(seconds: float) -> bool:
+	if inside or state == State.DEAD or resists_mind():
+		return false
+	fearless_left = maxf(fearless_left, seconds)
+	_reassured_fled = false
+	if mind in [Mind.PANIC, Mind.FLEE, Mind.OBSERVE, Mind.REGROUP, Mind.RECOVER]:
+		release_from_queue()
+		passing_gate = null
+		_recover(rng.randf_range(0.5, 1.5))
+	return true
+
+
 ## A badge over the head for `seconds`: `glyph` in `color` (a side's mark, the silenced, the condemned).
 func set_badge(glyph: Array[int], color: Color, seconds: float) -> void:
 	badge_glyph = glyph
@@ -1321,6 +1386,8 @@ func _fight_step(delta: float) -> void:
 func hurt(amount: float, by: Person) -> void:
 	if state == State.DEAD:
 		return
+	if mind == Mind.ASLEEP:
+		wake()
 	health -= amount
 	if statuses.has(&"frail"):
 		health = 0.0  # the frail fall to any blow (Death Mark)
@@ -1606,7 +1673,7 @@ func is_running() -> bool:
 
 
 func is_stumbling() -> bool:
-	return _stumble > 0.0
+	return _stumble > 0.0 or mind == Mind.ASLEEP
 
 
 ## Head for the nearest exit there is still a route to. The plan itself is staggered, so a town-wide panic
@@ -1811,6 +1878,8 @@ func _draw_body(lift: int, top_only: int) -> void:
 ## and a ring of the same light at the feet) and, above that, a badge. Each on a dark plate, to read on any ground.
 func _draw_marks(lift: int) -> void:
 	var y := (-25 if soldier else -22) + lift - (int(_anim * 2.0) % 2)
+	if mind == Mind.ASLEEP:
+		_draw_sleep(lift)
 	if mind == Mind.COMPELLED:
 		_glyph(compel_glyph, y, compel_mark)
 		draw_set_transform(_draw_origin, 0.0, Vector2(1.0, 0.5))
@@ -1822,6 +1891,19 @@ func _draw_marks(lift: int) -> void:
 
 
 ## A five-by-five glyph centred over the head at height `y`, on a dark plate.
+## Asleep: two small z's drifting up off the head.
+func _draw_sleep(lift: int) -> void:
+	var k := fmod(_anim * 0.8, 1.0)
+	for i in 2:
+		var kk := fmod(k + 0.5 * float(i), 1.0)
+		var x := 3 + int(kk * 4.0)
+		var y := -10 + lift - int(kk * 9.0)
+		var col := Color(0.95, 0.9, 1.0, 1.0 - kk * 0.7)
+		_px(x, y, 3, 1, col)
+		_px(x + 1, y + 1, 1, 1, col)
+		_px(x, y + 2, 3, 1, col)
+
+
 func _glyph(rows: Array[int], y: int, col: Color) -> void:
 	_px(-3, y - 3, 7, 7, COL_MARK_EDGE)
 	for r in 5:
@@ -1833,7 +1915,7 @@ func _glyph(rows: Array[int], y: int, col: Color) -> void:
 
 ## What the marks add to the redraw signature.
 func _mark_signature() -> int:
-	var marked := mind == Mind.COMPELLED or badge_left > 0.0
+	var marked := mind == Mind.COMPELLED or badge_left > 0.0 or mind == Mind.ASLEEP
 	return (1 if mind == Mind.COMPELLED else 0) + (2 if mind == Mind.FIGHT else 0) + (4 if badge_left > 0.0 else 0) \
 		+ (8 if compel_pose == &"kneel" else 0) + 16 * (side % 3) + (64 if marked and int(_anim * 2.0) % 2 == 1 else 0)
 
@@ -1918,9 +2000,9 @@ func _sprite_pose_code() -> int:
 	elif _getup_left > 0.0 and state == State.WANDER:
 		anim = 8
 		t = GETUP_SECONDS - _getup_left
-	elif _stumble > 0.0:
+	elif _stumble > 0.0 or mind == Mind.ASLEEP:
 		anim = 3
-		t = STUMBLE_SECONDS - _stumble
+		t = STUMBLE_SECONDS - _stumble if _stumble > 0.0 else STUMBLE_SECONDS  # asleep: down, and staying down
 	elif _swing_left > 0.0 and state == State.WANDER:
 		anim = 7
 		t = SWING_SHOW - _swing_left
@@ -2168,7 +2250,7 @@ func _art_signature() -> int:
 	var walk := int(_anim * rate) % 2 * 2 + (1 if _facing > 0 else 0)
 	# A confused citizen is never running, so 4 never adds to the others' 3: pose stays under the next term's 7. A
 	# whispered one (v0.08) neither runs nor stumbles (whisper() stands it up), so 5 is free too.
-	var pose := (1 if running else 0) + (2 if _stumble > 0.0 else 0) + (4 if mind == Mind.CONFUSED else 0) \
+	var pose := (1 if running else 0) + (2 if is_stumbling() else 0) + (4 if mind == Mind.CONFUSED else 0) \
 		+ (5 if mind == Mind.WHISPERED else 0)
 	# Sickness (v0.06) above the walk frames, by stage (v0.07.1), so the sprite redraws as it turns from green to red.
 	return (walk + 4 * (sick_stage() if sick_left > 0.0 else 0)) * SIG_WALK + int(state) * SIG_STATE + (int(_draw_origin.y) + 64) * 7 + pose \

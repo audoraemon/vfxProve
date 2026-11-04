@@ -79,7 +79,7 @@ uniform float beam_period = 150.0;
 uniform float beam_width = 40.0;
 uniform vec4 beam_keep = vec4(0.0);
 uniform vec3 beam_col = vec3(1.0, 0.9, 0.62);
-// A sun glow in the screen's top left corner (screen space), and a vignette (both looks; NIGHT's a little stronger).
+// A smooth sun glow in the screen's top left corner (screen space), and a vignette (both looks; NIGHT's a little stronger).
 uniform float sun = 0.0;
 uniform vec2 sun_at = vec2(0.0, 0.0);
 uniform float sun_radius = 0.45;
@@ -178,8 +178,9 @@ vec3 atmosphere(vec3 o, vec2 screen_uv) {
 	if (sun > 0.0) {
 		vec2 q = (screen_uv - sun_at) * vec2(view_size.x / view_size.y, 1.0);
 		float r = length(q) / sun_radius;
+		// Smooth (round 7): it was cut into 24 steps through a dither fixed to the screen, so every pan slid the roofs
+		// under the pattern and their pixels flickered (glints). A smooth screen-space glow changes by a hair per pixel.
 		float s = sun * (exp(-r * r * 2.5) * 0.85 + 0.15 * exp(-r * 6.0));
-		s = floor(s * 24.0 + bayer4(floor(screen_uv * view_size))) / 24.0;
 		o = 1.0 - (1.0 - o) * (1.0 - sun_col * s);
 	}
 	if (lift_cap > 0.0) {

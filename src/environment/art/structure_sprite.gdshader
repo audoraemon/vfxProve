@@ -56,6 +56,12 @@ uniform float rim_amt = 0.0;
 uniform vec3 rim_col = vec3(1.0);
 uniform vec2 rim_dir = vec2(-1.0, -1.0);
 
+// Round 7 (NIGHT, SpriteView.look_params): a glowing pixel with at most one glowing neighbour (4-way) on a still (no idle
+// strip: a forge's or a tower's flames play one) is the art's warm highlight (an eave's orange pixel), not a light: it is
+// dimmed with the rest, so the night grade does not save it as a bright speck on the dark roof. Window pixels of the mask
+// still burn (the flicker relights them). false (CURRENT, DAY): off, the path unchanged.
+uniform bool lone_glow_off = false;
+
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
 const vec3 MOLTEN = vec3(1.0, 0.690196, 0.25098);
@@ -77,6 +83,11 @@ bool glows(vec3 c) {
 	float mx = max(c.r, max(c.g, c.b));
 	float mn = min(c.r, min(c.g, c.b));
 	return c.r >= mx && mx > 0.93 && (mx - mn) / mx > 0.55 && c.g > 0.45;
+}
+
+// 1 if a texel is opaque and glows (the importer bleeds colour into clear texels: those never count).
+float lit_at(vec4 t) {
+	return t.a > 0.5 && glows(t.rgb) ? 1.0 : 0.0;
 }
 
 // The draw's modulate (the blight's tint, a fade) alone: the fragment's COLOR comes in already multiplied by the
@@ -102,6 +113,15 @@ void fragment() {
 	vec3 c = px.rgb;
 	// Classed before the flicker, so a dimmed window never drops into the lit, dimmed and charred path.
 	bool glow = glows(c);
+	// Round 7: a lone glowing texel (at most one glowing 4-way neighbour) is a highlight, not a light. Window pixels of the
+	// mask, and their halo, are lit again by the flicker below.
+	if (lone_glow_off && glow && idle_frames <= 1) {
+		float n = lit_at(texture(TEXTURE, uv + vec2(TEXTURE_PIXEL_SIZE.x, 0.0)))
+			+ lit_at(texture(TEXTURE, uv - vec2(TEXTURE_PIXEL_SIZE.x, 0.0)))
+			+ lit_at(texture(TEXTURE, uv + vec2(0.0, TEXTURE_PIXEL_SIZE.y)))
+			+ lit_at(texture(TEXTURE, uv - vec2(0.0, TEXTURE_PIXEL_SIZE.y)));
+		glow = n > 1.5;
+	}
 	if (window_flicker) {
 		// The pixel inside the drawn frame: a still's (or a held strip frame's) texel less its frame's origin; a playing
 		// strip draws frame 0's rect (frame_origin 0), so the unshifted UV is already inside frame 0, the same pixel

@@ -154,7 +154,9 @@ static func window_boost(look) -> float:
 ## Nothing in CURRENT.
 static func sprite_params(look) -> Dictionary:
 	if look == Town.Look.NIGHT:
-		return {"window_hot": 0.9, "rim_amt": 0.35, "rim_col": Vector3(0.50, 0.60, 0.85)}
+		# Round 7: lone_glow_off dims the art's lone warm highlights (eave pixels), which the grade's keep_lit saved as
+		# bright specks on the dark roofs.
+		return {"window_hot": 0.9, "rim_amt": 0.35, "rim_col": Vector3(0.50, 0.60, 0.85), "lone_glow_off": true}
 	if look == Town.Look.DAY:
 		return {"rim_amt": 0.55, "rim_col": Vector3(1.0, 0.88, 0.58)}
 	return {}

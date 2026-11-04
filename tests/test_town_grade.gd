@@ -304,7 +304,8 @@ static func _one_draw(t) -> void:
 		for step in 40:
 			pools._process(TownPools.FLICKER_STEP)
 			moved = moved or absf(pools.pool_alpha(first) - a0) > 0.01
-		t.check(moved, "the strength flickers over time")
+		# Round 10: pools hold steady (TownPools.POOL_FLICKER 0): a flickering pool made the roofs it overlaps wink.
+		t.check(moved == (TownPools.POOL_FLICKER > 0.0), "the strength flickers over time only while POOL_FLICKER is on")
 	# Culling: with a view that holds no pool nothing is drawn; with a view over the first pool that one is.
 	var old_view := Structure.view
 	Structure.view = Rect2(1.0e6, 1.0e6, 10, 10)

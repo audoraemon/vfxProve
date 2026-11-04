@@ -367,9 +367,16 @@ func _set_structure(s: Structure, shown: int) -> void:
 		_canvas.queue_redraw()
 
 
+## How much of its light's flicker a pool shows (round 10: none). The light map lies over everything on screen, so a pool
+## that overlaps a roof made it wink; the flames themselves still flicker.
+const POOL_FLICKER := 0.0
+
+
 ## The live strength of pool p now.
 func _strength(p: Dictionary) -> float:
 	var base: float = p.alpha
+	if POOL_FLICKER <= 0.0:
+		return base
 	var l = p.light
 	if l != null:
 		return base * clampf(float(l.intensity) / maxf(float(l.base), 0.001), 0.0, 1.2)

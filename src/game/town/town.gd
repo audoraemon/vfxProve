@@ -81,6 +81,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	_look_owner = get_instance_id()
 	Structure.cast_shadows = look == Look.CURRENT
 	Structure.lamp_glow = look != Look.DAY
+	Structure.steady_light = look == Look.NIGHT
 	SpriteView.window_boost = TownLook.window_boost(look)
 	SpriteView.look_params = TownLook.sprite_params(look)
 	var ground_tint := TownLook.ground_tint(look)
@@ -418,6 +419,7 @@ func _release_look() -> void:
 		_look_owner = 0
 		Structure.cast_shadows = true
 		Structure.lamp_glow = true
+		Structure.steady_light = false
 		SpriteView.window_boost = 0.0
 		SpriteView.look_params = {}
 		TownLook.active = Look.CURRENT

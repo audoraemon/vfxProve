@@ -121,7 +121,9 @@ func _process(delta: float) -> void:
 
 ## Summed light color at a ground point (quadratic falloff to zero at each light's radius). with_static false leaves
 ## out the torches and lamps (the DAY look's unlit lamps).
-func sample(g: Vector2, with_static := true) -> Color:
+## steady takes each static light at its base intensity, without its flicker (the NIGHT look's buildings: the flicker
+## blinked on their roofs).
+func sample(g: Vector2, with_static := true, steady := false) -> Color:
 	var r := 0.0
 	var gr := 0.0
 	var b := 0.0
@@ -134,7 +136,7 @@ func sample(g: Vector2, with_static := true) -> Color:
 			gr += l.color.g * w
 			b += l.color.b * w
 	for l in _static_near(g) if with_static else _EMPTY:
-		var w := _weight(l, g)
+		var w := _weight(l, g, steady)
 		if w > 0.0:
 			r += l.color.r * w
 			gr += l.color.g * w
@@ -143,11 +145,11 @@ func sample(g: Vector2, with_static := true) -> Color:
 
 
 ## Weighted ground direction from `g` toward the lights (not normalized; length ~ strength).
-func sample_dir(g: Vector2, with_static := true) -> Vector2:
+func sample_dir(g: Vector2, with_static := true, steady := false) -> Vector2:
 	var dir := Vector2.ZERO
 	for list: Array[Dictionary] in _lists_at(g, with_static):
 		for l in list:
-			var w := _weight(l, g)
+			var w := _weight(l, g, steady)
 			if w > 0.0:
 				var to: Vector2 = l.pos - g
 				dir += (to.normalized() if to.length() > 0.01 else Vector2.ZERO) * w
@@ -156,14 +158,14 @@ func sample_dir(g: Vector2, with_static := true) -> Vector2:
 
 ## Quantized light color and direction at `g` folded into one int: equal values shade a Structure
 ## identically. One pass over the lights and no allocation, because every building asks every frame.
-func sample_signature(g: Vector2, color_steps: float, dir_steps: float, with_static := true) -> int:
+func sample_signature(g: Vector2, color_steps: float, dir_steps: float, with_static := true, steady := false) -> int:
 	var r := 0.0
 	var gr := 0.0
 	var b := 0.0
 	var dir := Vector2.ZERO
 	for list: Array[Dictionary] in _lists_at(g, with_static):
 		for l in list:
-			var intensity: float = l.intensity
+			var intensity: float = l.base if steady and l.get("static", false) else l.intensity
 			if intensity <= 0.0:
 				continue
 			var to: Vector2 = l.pos - g
@@ -186,8 +188,8 @@ func sample_signature(g: Vector2, color_steps: float, dir_steps: float, with_sta
 	return sig * 1021 + int(dir.y * dir_steps)
 
 
-func _weight(l: Dictionary, g: Vector2) -> float:
-	var intensity: float = l.intensity
+func _weight(l: Dictionary, g: Vector2, steady := false) -> float:
+	var intensity: float = l.base if steady and l.get("static", false) else l.intensity
 	if intensity <= 0.0:
 		return 0.0
 	var radius: float = l.radius

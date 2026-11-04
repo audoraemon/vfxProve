@@ -8,6 +8,7 @@ static func run(t) -> void:
 	_sun_smooth(t)
 	_lone_glow(t)
 	_day_lamps_dark(t)
+	_night_lamps_steady(t)
 
 
 static func _src(path: String) -> String:
@@ -52,5 +53,29 @@ static func _day_lamps_dark(t) -> void:
 	t.check(lf.sample(g, false).r > 0.0, "a spell's moving light still reaches it in DAY")
 	lf.free()
 	var src := _src("res://src/environment/structure.gd")
-	t.check(src.contains("lights.sample(center(), lamp_glow)") and src.contains("SIG_DIR_STEPS, lamp_glow)"),
+	t.check(src.contains("lights.sample(center(), lamp_glow, steady_light)") and src.contains("SIG_DIR_STEPS, lamp_glow, steady_light)"),
 		"buildings drop the static lights when the lamps are unlit (DAY)")
+
+
+## NIGHT (round 10): a building beside a flickering torch takes its light at the torch's base intensity, steady, so its
+## roof no longer winks; only NIGHT sets steady_light.
+static func _night_lamps_steady(t) -> void:
+	var lf := LightField.new()
+	var g := Vector2(100, 100)
+	lf.add_static(g + Vector2(20, 0), 80.0, Color(1.0, 0.6, 0.2), 1.0, 1.0)
+	var sigs := {}
+	var live := {}
+	for i in 20:
+		lf._process(0.037)
+		sigs[lf.sample_signature(g, 24.0, 4.0, true, true)] = true
+		live[lf.sample_signature(g, 24.0, 4.0)] = true
+	t.check(sigs.size() == 1 and live.size() > 1, "steady: one light for a building beside a flickering torch (%d), flickering without (%d)" % [sigs.size(), live.size()])
+	t.check(lf.sample(g, true, true).r > 0.0, "steady still lights it warm")
+	lf.free()
+	var parts: Array = preload("res://tests/test_town_round2.gd")._build(Town.Look.NIGHT)
+	t.check(Structure.steady_light, "a NIGHT town sets steady_light")
+	preload("res://tests/test_town_round2.gd")._free(parts)
+	t.check(not Structure.steady_light, "freeing it puts steady_light back")
+	parts = preload("res://tests/test_town_round2.gd")._build(Town.Look.DAY)
+	t.check(not Structure.steady_light, "DAY leaves it off")
+	preload("res://tests/test_town_round2.gd")._free(parts)

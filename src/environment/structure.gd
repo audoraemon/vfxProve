@@ -837,7 +837,7 @@ func _step(delta: float) -> void:
 func _light_signature() -> int:
 	var sig := int((lights.ambient if lights else 1.0) * 48.0)
 	if lights != null:
-		sig = sig * 1021 + lights.sample_signature(center(), SIG_COLOR_STEPS, SIG_DIR_STEPS)
+		sig = sig * 1021 + lights.sample_signature(center(), SIG_COLOR_STEPS, SIG_DIR_STEPS, lamp_glow)
 	if kind == Kind.TOWER or kind == Kind.BLOCK:
 		sig = sig * 1021 + int(_time * 8.0)
 	return sig
@@ -914,8 +914,10 @@ func _draw() -> void:
 
 
 func _draw_all() -> void:
-	var light := lights.sample(center()) if lights else Color.BLACK
-	var dir := lights.sample_dir(center()) if lights else Vector2.ZERO
+	# DAY's lamps are unlit (lamp_glow false): their flickering light must not reach the buildings, where the sprite
+	# shader's gain made it blink on the roofs.
+	var light := lights.sample(center(), lamp_glow) if lights else Color.BLACK
+	var dir := lights.sample_dir(center(), lamp_glow) if lights else Vector2.ZERO
 	if not sprite.is_empty():
 		_draw_sprite_frame(light)
 		return

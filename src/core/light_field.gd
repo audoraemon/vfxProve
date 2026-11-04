@@ -84,10 +84,11 @@ func _static_near(g: Vector2) -> Array[Dictionary]:
 	return _cells.get(_cell(g), _EMPTY)
 
 
-## The moving lights and the static ones in g's cell, in a list reused between calls (never kept by a caller).
-func _lists_at(g: Vector2) -> Array:
+## The moving lights and (with_static) the static ones in g's cell, in a list reused between calls (never kept by a
+## caller).
+func _lists_at(g: Vector2, with_static := true) -> Array:
 	_pair[0] = _dynamic
-	_pair[1] = _static_near(g)
+	_pair[1] = _static_near(g) if with_static else _EMPTY
 	return _pair
 
 
@@ -118,8 +119,9 @@ func _process(delta: float) -> void:
 	_dynamic = moving
 
 
-## Summed light color at a ground point (quadratic falloff to zero at each light's radius).
-func sample(g: Vector2) -> Color:
+## Summed light color at a ground point (quadratic falloff to zero at each light's radius). with_static false leaves
+## out the torches and lamps (the DAY look's unlit lamps).
+func sample(g: Vector2, with_static := true) -> Color:
 	var r := 0.0
 	var gr := 0.0
 	var b := 0.0
@@ -131,7 +133,7 @@ func sample(g: Vector2) -> Color:
 			r += l.color.r * w
 			gr += l.color.g * w
 			b += l.color.b * w
-	for l in _static_near(g):
+	for l in _static_near(g) if with_static else _EMPTY:
 		var w := _weight(l, g)
 		if w > 0.0:
 			r += l.color.r * w
@@ -141,9 +143,9 @@ func sample(g: Vector2) -> Color:
 
 
 ## Weighted ground direction from `g` toward the lights (not normalized; length ~ strength).
-func sample_dir(g: Vector2) -> Vector2:
+func sample_dir(g: Vector2, with_static := true) -> Vector2:
 	var dir := Vector2.ZERO
-	for list: Array[Dictionary] in _lists_at(g):
+	for list: Array[Dictionary] in _lists_at(g, with_static):
 		for l in list:
 			var w := _weight(l, g)
 			if w > 0.0:
@@ -154,12 +156,12 @@ func sample_dir(g: Vector2) -> Vector2:
 
 ## Quantized light color and direction at `g` folded into one int: equal values shade a Structure
 ## identically. One pass over the lights and no allocation, because every building asks every frame.
-func sample_signature(g: Vector2, color_steps: float, dir_steps: float) -> int:
+func sample_signature(g: Vector2, color_steps: float, dir_steps: float, with_static := true) -> int:
 	var r := 0.0
 	var gr := 0.0
 	var b := 0.0
 	var dir := Vector2.ZERO
-	for list: Array[Dictionary] in _lists_at(g):
+	for list: Array[Dictionary] in _lists_at(g, with_static):
 		for l in list:
 			var intensity: float = l.intensity
 			if intensity <= 0.0:

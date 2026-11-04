@@ -189,7 +189,7 @@ static func _quiet_cues(t) -> void:
 			t.check(not plays_it, "%s is still pending but already plays %s: take it off PENDING_QUIET" % [key, cue])
 		else:
 			t.check(Sfx.CATALOG.has(cue) and plays_it, "%s plays its own cue %s" % [key, cue])
-	t.check(quiet == 27, "twenty-seven quiet powers (got %d)" % quiet)
+	t.check(quiet == 28, "twenty-eight quiet powers (got %d)" % quiet)
 	var owner_of := {}
 	var shared := ""
 	for cue in Sfx.CATALOG:

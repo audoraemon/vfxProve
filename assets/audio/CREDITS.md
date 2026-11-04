@@ -106,8 +106,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_02_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_surge |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_04_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_rise |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding1.wav` | CC0 | PWL | ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_clearmind, ability/quiet/q_discord, ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding3.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_discord, ability/quiet/q_wisp |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_clearmind, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding3.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_clearmind, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord |
 | [Big scary troll sounds](https://opengameart.org/content/big-scary-troll-sounds) `troll-roars_0.ogg` | CC0 | Darsycho | ability/fire/dr_roar |
 | [Cannon fire](https://opengameart.org/content/cannon-fire) `cannon_fire_0.ogg` | CC0 | Thimras | ability/fire/nova_boom |
@@ -120,7 +120,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Correct Bell](https://opengameart.org/content/correct-bell) `bell.wav` | CC0 | Fupi | ability/quiet/q_priority |
 | [Crowd Shouting/Speaking Ambience](https://opengameart.org/content/crowd-shoutingspeaking-ambience) `crowd_shouting_0.ogg` | CC0 | StarNinjas | ability/quiet/q_congregation, ability/quiet/q_hatred, citizen/crowd_panic |
 | [Cure Magic](https://opengameart.org/content/cure-magic) `Cure1.wav` | CC0 | Someoneman | ability/quiet/q_voice |
-| [Cure Magic](https://opengameart.org/content/cure-magic) `Cure3.wav` | CC0 | Someoneman | ability/quiet/q_curfew, ability/quiet/q_delusion |
+| [Cure Magic](https://opengameart.org/content/cure-magic) `Cure3.wav` | CC0 | Someoneman | ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_saint |
 | [Dripping water loop](https://opengameart.org/content/dripping-water-loop) `atmosbasement.mp3_.flac` | CC0 | qubodup | ability/water/ts_drip |
 | [Earth Element Magic Spell](https://opengameart.org/content/earth-element-magic-spell) `Earth Element Magic Spell_0.flac` | CC0 | qubodup | ability/holy/jg_hands |
 | [Earth Element Magic Spell](https://opengameart.org/content/earth-element-magic-spell) `Earth Element Magic Spell_3.ogg` | CC0 | qubodup | ability/quiet/q_oath |
@@ -238,7 +238,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_p.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark_hit |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `susCymb1-cresc-Long_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition, building/lantern_flare |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `susCymb1-cresc-Median_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_magnify |
-| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `susCymb1-cresc-Short_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_doom, ability/quiet/q_unseen |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `susCymb1-cresc-Short_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_doom, ability/quiet/q_saint, ability/quiet/q_unseen |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `vibraring_v1_rr1.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark, ability/quiet/q_mirror |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `vibraring_v1_rr2.wav` | CC0 | Versilian Studios | ability/quiet/q_magnify |
 | [25822 heigh-hoo peace-bell-hiroshima.wav](https://commons.wikimedia.org/wiki/File:25822_heigh-hoo_peace-bell-hiroshima.wav) `25822_heigh-hoo_peace-bell-hiroshima.wav` | CC0 | Heigh-hoo | building/lantern_blind, building/lantern_flare |

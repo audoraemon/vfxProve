@@ -9,11 +9,11 @@ const V07_COOLDOWNS := {
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
-	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind"]
+	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 44, "44 powers")
+	t.check(PowerBook.POWERS.size() == 45, "45 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -23,7 +23,7 @@ static func run(t) -> void:
 		keys[p.key] = true
 		if not ResourceLoader.exists(p.path):
 			problems.append("missing effect %s" % p.path)
-		if not p.aim in ["click", "drag", "whisper", "two clicks"]:
+		if not p.aim in ["click", "drag", "whisper", "two clicks", "wheel"]:
 			problems.append("bad aim for %s" % p.key)
 		if p.dp <= 0 or p.cooldown <= 0.0:
 			problems.append("bad cost or cooldown for %s" % p.key)
@@ -39,7 +39,7 @@ static func run(t) -> void:
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "tornado",
-		"pestilence", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "priority", "verdict", "delusion",
+		"pestilence", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion",
 		"curfew", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "abolition", "tempest", "shatter", "schism", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
@@ -48,7 +48,7 @@ static func run(t) -> void:
 		if PowerBook.is_quiet(key):
 			quiet.append(key)
 	t.check(quiet == ["doom", "whisper", "ember", "deathmark", "noleave", "wisp", "discord", "belllies", "madness", "blight", "thorns", "pestilence", "mirror", "magnify", "unseen", "congregation", "oath", "echo",
-		"turncoat", "hatred", "clearmind", "priority", "verdict", "delusion", "curfew", "voice", "abolition"],
+		"turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion", "curfew", "voice", "abolition"],
 		"the quiet powers: no danger for the town to see (%s)" % [quiet])
 	var authorities_ok := true
 	for p: Dictionary in PowerBook.POWERS:
@@ -78,7 +78,7 @@ static func run(t) -> void:
 		and String(whisper.aim) == "whisper" and PowerBook.is_quiet("whisper") and whisper.name == "Mind Whisper",
 		"Mind Whisper: Dominion, 1 DP, 8 s, its own aim, quiet (%s)" % [whisper])
 	t.check(Array(PowerBook.of_authority("dominion")) == ["whisper", "wisp", "discord", "madness", "congregation", "oath",
-		"echo", "turncoat", "hatred", "clearmind", "priority", "verdict", "delusion", "voice", "schism"],
+		"echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion", "voice", "schism"],
 		"Dominion holds the powers over minds, what was Disorder's among them (%s)" % [PowerBook.of_authority("dominion")])
 	t.check(PowerBook.icon("kettle") == null and PowerBook.hud_icon("kettle") == null,
 		"an icon that is not painted is null, not a load error")

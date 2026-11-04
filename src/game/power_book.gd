@@ -95,6 +95,11 @@ const POWERS := [
 	{"key": "clearmind", "name": "Clear Mind", "path": "res://src/fx/dominion/clear_mind.gd",
 		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "everyone in the circle senses nothing special, 30 s; whoever walks in joins",
 		"quiet": true, "alarm": 0.3, "authority": "dominion"},
+	{"key": "saint", "name": "Saint or Sinner", "path": "res://src/fx/dominion/saint_or_sinner.gd",
+		"dp": 3, "cooldown": 60.0, "aim": "wheel", "shape": "one is chosen; everyone round them guards them at all cost, or kills them: the wheel picks",
+		"quiet": true, "alarm": 0.5, "authority": "dominion", "modes": [
+			{"key": "saint", "name": "SAINT", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b01110], "color": Color(1.0, 0.9, 0.6, 0.9)},
+			{"key": "sinner", "name": "SINNER", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b00100], "color": Color(1.0, 0.3, 0.25, 0.9)}]},
 	{"key": "priority", "name": "Rewrite Priority", "path": "res://src/fx/dominion/rewrite_priority.gd",
 		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "a district puts one thing above all else, 25 s; Q/E picks it",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "modes": [
@@ -237,7 +242,7 @@ const FAMILY := {
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",
-	"whisper": "lead", "oath": "lead", "echo": "lead", "congregation": "lead", "priority": "lead", "voice": "lead",
+	"whisper": "lead", "oath": "lead", "saint": "lead", "echo": "lead", "congregation": "lead", "priority": "lead", "voice": "lead",
 	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
 	"discord": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",

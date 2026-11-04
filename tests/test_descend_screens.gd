@@ -69,7 +69,7 @@ static func _upgrades(t) -> void:
 		var r := UpgradesScreen.cell_rect(i)
 		if not Rect2(0, 0, 640, 316).encloses(r) or r.intersects(UpgradesScreen.DP_RECT) or r.intersects(UpgradesScreen.SLOT_RECT):
 			bad += 1
-	t.check(up.powers.size() == 28 and bad == 0, "the 28 locked powers' grid fits beside the upgrades (%d)" % bad)
+	t.check(up.powers.size() == 29 and bad == 0, "the 29 locked powers' grid fits beside the upgrades (%d)" % bad)
 	var emitted := []
 	up.action.connect(func(what: String) -> void: emitted.append(what))
 	up.click(up.button_rect("dp").get_center())

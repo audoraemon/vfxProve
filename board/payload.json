@@ -7,31 +7,26 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**9** in progress · **25** to do · **100** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1793742270:f>)\n• New: Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**9** in progress · **25** to do · **102** done\n**5** active branches besides Develop-Main\n\n**Since the last update** (<t:1793800115:f>)\n• New: Dragonfire leaves burning ground that townsfolk beat out\n• New: Clear Mind (Dominion, Tier III): the circle senses nothing special",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-04T04:44:30+07:00"
+     "timestamp": "2026-11-04T20:48:35+07:00"
     },
     {
-     "title": "god/dragon-ground",
-     "description": "204 commits not in Develop-Main · last commit today · local only\n> docs: Dragonfire ground fire summary and rulings\n\n_No Ledger task points at this branch._",
+     "title": "feat/god-progression",
+     "description": "213 commits not in Develop-Main · last commit today\n> docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "god/dg-merge",
+     "description": "213 commits not in Develop-Main · last commit today · local only\n> docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/town-lighting",
      "description": "42 commits not in Develop-Main · last commit today\n> fix(round6): DAY ground no longer blows out: gentler sunbeams and sun glow, and a cap on what they add\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/god-progression",
-     "description": "199 commits not in Develop-Main · last commit yesterday\n> fix: dominion review wave -- ENTHRALL never holds a lured charge; stale wheel/pick closes; burn lights with the whisper still on; ring cap, one-pass…\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "god/dominion-ideas",
-     "description": "199 commits not in Develop-Main · last commit yesterday · local only\n> fix: dominion review wave -- ENTHRALL never holds a lured charge; stale wheel/pick closes; burn lights with the whisper still on; ring cap, one-pass…\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -51,7 +46,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL _(11-04)_\n• Divine Schism TUMULT mode: mad, frozen or panicked for 25 s _(11-03)_\n• Ruin ability levels: 5 levels + a level-5 twist for all ten powers _(11-03)_\n• Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter _(11-03)_\n• Earthshatter (Ruin, Tier V): the ground torn open from click to click _(11-02)_\n• Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle _(11-02)_\n• Tempest (Ruin, Tier V): the storm over the whole town _(11-02)_\n• Unseen Hour (Veil) and Curfew (Decree): the illusion area and the sleep area _(11-02)_",
+     "description": "• Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL _(11-04)_\n• Dragonfire leaves burning ground that townsfolk beat out _(11-04)_\n• Divine Schism TUMULT mode: mad, frozen or panicked for 25 s _(11-03)_\n• Ruin ability levels: 5 levels + a level-5 twist for all ten powers _(11-03)_\n• Ruin's real tree Tiers 2-5 + new Scatter Strike, Wrath of the Sky, Earthshatter _(11-03)_\n• Clear Mind (Dominion, Tier III): the circle senses nothing special _(11-03)_\n• Earthshatter (Ruin, Tier V): the ground torn open from click to click _(11-02)_\n• Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle _(11-02)_",
      "color": 10185686
     }
    ]

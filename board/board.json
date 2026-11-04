@@ -1,10 +1,11 @@
 {
- "hash": "b954687b60294ad3",
- "updated": "2026-11-04T04:44:30+07:00",
+ "hash": "9e2fecb71600f13b",
+ "updated": "2026-11-04T20:48:35+07:00",
  "changes": {
-  "date": "<t:1793742270:f>",
+  "date": "<t:1793800115:f>",
   "items": [
-   "New: Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL"
+   "New: Dragonfire leaves burning ground that townsfolk beat out",
+   "New: Clear Mind (Dominion, Tier III): the circle senses nothing special"
   ]
  },
  "snapshot": {
@@ -238,6 +239,16 @@
     "needs_you": false,
     "updated": "2026-10-04",
     "order": 20
+   },
+   "god-dragon-ground": {
+    "title": "Dragonfire leaves burning ground that townsfolk beat out",
+    "status": "done",
+    "area": "Design",
+    "version": "kak-god-dragon-ground",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-04",
+    "order": 204
    },
    "god-level-tables-1": {
     "title": "Level tables, batch 1: five levels and the level-5 twist",
@@ -1109,6 +1120,15 @@
     "updated": "2026-10-05",
     "order": 8
    },
+   "vfx-clear-mind": {
+    "title": "Clear Mind (Dominion, Tier III): the circle senses nothing special",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-11-03",
+    "order": 13
+   },
    "vfx-congregation": {
     "title": "Divine Congregation (new power)",
     "status": "doing",
@@ -1220,11 +1240,19 @@
   },
   "branches": [
    {
-    "name": "god/dragon-ground",
-    "ahead": 204,
+    "name": "feat/god-progression",
+    "ahead": 213,
     "behind": 1,
     "date": "2026-11-04",
-    "subject": "docs: Dragonfire ground fire summary and rulings",
+    "subject": "docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean",
+    "pushed": true
+   },
+   {
+    "name": "god/dg-merge",
+    "ahead": 213,
+    "behind": 1,
+    "date": "2026-11-04",
+    "subject": "docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean",
     "pushed": false
    },
    {
@@ -1234,22 +1262,6 @@
     "date": "2026-11-04",
     "subject": "fix(round6): DAY ground no longer blows out: gentler sunbeams and sun glow, and a cap on what they add",
     "pushed": true
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 199,
-    "behind": 1,
-    "date": "2026-11-03",
-    "subject": "fix: dominion review wave -- ENTHRALL never holds a lured charge; stale wheel/pick closes; burn lights with the whisper still on; ring cap, one-pass spots, walk-pick refusal, roam as data",
-    "pushed": true
-   },
-   {
-    "name": "god/dominion-ideas",
-    "ahead": 199,
-    "behind": 1,
-    "date": "2026-11-03",
-    "subject": "fix: dominion review wave -- ENTHRALL never holds a lured charge; stale wheel/pick closes; burn lights with the whisper still on; ring cap, one-pass spots, walk-pick refusal, roam as data",
-    "pushed": false
    },
    {
     "name": "fix/evac-recalm",

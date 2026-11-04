@@ -251,6 +251,10 @@ func _build_look(ground: Node2D) -> void:
 	# world beside the decor. Before the light map, which takes a pool from each.
 	look_decor = TownLookDecor.new().setup(self, look)
 	_add_look_node(look_decor, _env.world_parent if _env.world_parent != null else null)
+	# Its lamp and lantern posts cast shadows too (round 9).
+	for n in _look_nodes:
+		if n is TownShadows:
+			(n as TownShadows).add_look_props(look_decor)
 	# The light map (every lamp, torch and lit window drawn into a small buffer; NIGHT only: nobody lights a lamp by day,
 	# round 4), then the grade over the world, which crossfades it in: under Battlefield's glow layer.
 	var light: Texture2D = null

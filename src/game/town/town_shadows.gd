@@ -34,6 +34,14 @@ const RUIN_FACTOR := 0.15
 ## much of its height across.
 const CONTACT_GROW := 0.2
 const CONTACT_TREE := 0.16
+## Round 9: the small decor that stands (barrels, crates, benches, tables, carts, logs, goods piles, signposts, lamps,
+## animals, rocks, bushes) casts a mask baked from its sprite as a building does, so it no longer floats. Runs other
+## than benches (fences, bunting), plants, trees and the water's decor cast none.
+const DECOR_CASTS := [Decor.Kind.BARREL, Decor.Kind.CRATES, Decor.Kind.BENCH, Decor.Kind.TABLE, Decor.Kind.CART,
+	Decor.Kind.LOGS, Decor.Kind.SCARECROW, Decor.Kind.SIGNPOST, Decor.Kind.LAMP, Decor.Kind.SHEEP, Decor.Kind.COW,
+	Decor.Kind.ROCK, Decor.Kind.BUSH]
+## A decor piece's footprint for its bake: a square whose diamond is this share of its sprite's width across.
+const DECOR_FP := 0.7
 
 var env: EnvironmentField
 var look := 0
@@ -53,9 +61,12 @@ var silhouettes: SilhouetteCanvas
 var tree_group: CanvasGroup
 var tree_poly: Polygon2D
 var _sil := {}
-## How many mask quads are drawn, and how many forest trees cast an ellipse (for tests).
+## How many mask quads are drawn, how many forest trees cast an ellipse, and how many decor masks (for tests).
 var silhouette_count := 0
 var tree_count := 0
+var decor_count := 0
+## The look's lamps and lanterns, cast again on every rebuild (add_look_props()).
+var _look_props: TownLookDecor
 ## Structure instance id -> the still its mask is baked from.
 var _tex_of := {}
 ## Structure instance id -> its mask's texture.
@@ -71,6 +82,8 @@ var rebuilds := 0
 static var _sil_material: ShaderMaterial
 ## Baked masks, shared by every town: key (still, mirror, set) -> {tex: ImageTexture, size: Vector2i}.
 static var _masks := {}
+## Baked decor masks, shared by every town: "set|flip" -> {tex, size}, or {} for a set with no image.
+static var _decor_masks := {}
 
 
 ## The masks' draw node: one triangle array per texture of its quads (TownShadows.paint_silhouettes()).
@@ -318,6 +331,9 @@ func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] 
 	env.structure_restored.connect(_on_change)
 	env.structure_added.connect(_on_change)
 	env.structure_removed.connect(_on_change)
+	for dec in env.decor():
+		if is_instance_valid(dec):
+			dec.fell.connect(_on_change)
 	rebuild()
 	return self
 
@@ -328,6 +344,9 @@ func _exit_tree() -> void:
 		for sig: Signal in [env.structure_destroyed, env.structure_restored, env.structure_added, env.structure_removed]:
 			if sig.is_connected(_on_change):
 				sig.disconnect(_on_change)
+		for dec in env.decor():
+			if is_instance_valid(dec) and dec.fell.is_connected(_on_change):
+				dec.fell.disconnect(_on_change)
 
 
 func _on_change(_s = null, _k = null) -> void:
@@ -378,6 +397,9 @@ func rebuild() -> void:
 	tree_poly.polygons = []
 	tree_poly.polygon = tpts
 	tree_poly.polygons = tpolys
+	_add_decor_masks()
+	if is_instance_valid(_look_props):
+		add_look_props(_look_props)
 	silhouettes.queue_redraw()
 	_rebuild_contact()
 
@@ -453,6 +475,116 @@ func _add_structure_mask(s: Structure) -> bool:
 	_tex_of[s.get_instance_id()] = tex
 	_mask_of[s.get_instance_id()] = mask.tex
 	return true
+
+
+## Every standing decor piece of DECOR_CASTS (a pile's parts each) casts its sprite's mask, placed and scaled as the
+## piece draws (Decor._draw(), DecorSprites.paint()). Fallen pieces and stand-ins cast none.
+func _add_decor_masks() -> void:
+	decor_count = 0
+	for dec in env.decor():
+		if not is_instance_valid(dec) or dec.down or dec.sprite_only:
+			continue
+		var sc := ArtTuning.scale(dec.tuning_key()) * dec.scale_mul
+		var origin := Iso.ground_to_screen(dec.at)
+		if dec.kind == Decor.Kind.PILE:
+			for p: Dictionary in dec.parts:
+				_add_decor_piece(p.kind, p.at, p.size, p.seed, origin, sc)
+		else:
+			_add_decor_piece(dec.kind, dec.at, dec.size, dec.seed_value, origin, sc)
+
+
+func _add_decor_piece(kind: int, at: Vector2, size: Vector2, seed_value: int, origin: Vector2, sc: float) -> void:
+	if not kind in DECOR_CASTS:
+		return
+	var n := DecorSprites.name_for(kind, seed_value, size, at)
+	if n == "":
+		return
+	var d := DecorSprites.decor_set(n)
+	if d.is_empty():
+		return
+	var flip := DecorSprites.flipped(kind, seed_value)
+	var mask := decor_mask(n, d, flip)
+	if mask.is_empty():
+		return
+	var anchor: Vector2 = d.anchor
+	if flip:
+		anchor.x = (d.size as Vector2).x - anchor.x
+	var src := Rect2(Vector2.ZERO, mask.size)
+	var feet: Array[Vector2] = []
+	if kind in DecorSprites.RUNS and float(d.segment) > 0.0:
+		# A bench run's tiles, as DecorSprites.paint() lays them.
+		var length := size.length()
+		if length <= 0.0:
+			return
+		var dir := size / length
+		var start := at
+		if (dir.x < 0.0) if absf(dir.x) >= absf(dir.y) else (dir.y < 0.0):
+			start = at + size
+			dir = -dir
+		for i in ceili(length / float(d.segment) - 0.001):
+			feet.append(Iso.ground_to_screen(start + dir * float(d.segment) * float(i)))
+	else:
+		feet.append(Iso.ground_to_screen(at))
+	for g in feet:
+		var base := origin + (g - origin) * sc
+		var quad := mask_quad(src, anchor, base)
+		if sc != 1.0:
+			for i in quad.size():
+				quad[i] = base + (quad[i] - base) * sc
+		_add_quad(mask.tex, src, quad)
+		decor_count += 1
+
+
+## The look's own street lamps and house lanterns (TownLookDecor, built after this layer: Town calls this once it is)
+## cast their posts' masks as decor does. Wall torches stand on walls and cast none. Static: they never fall.
+func add_look_props(ld: TownLookDecor) -> void:
+	var atlas := TownLookDecor.atlas()
+	var img := atlas.get_image() if atlas != null else null
+	if img == null:
+		return
+	for p: Dictionary in ld.props:
+		if not TownLookDecor.SPRITES.has(p.prop) or float(p.lift) > 0.0:
+			continue
+		var sp: Dictionary = TownLookDecor.SPRITES[p.prop]
+		var key := "look_prop_%d" % int(p.prop)
+		if not _decor_masks.has(key):
+			var piece := img.get_region(Rect2i(Vector2i(sp.at), Vector2i(sp.size)))
+			piece.convert(Image.FORMAT_RGBA8)
+			var fp := Vector2.ONE * (3.0 / float(Iso.CELL_W))
+			var m := bake_mask(piece, sp.anchor, fp, Vector2.ZERO, false, SUN)
+			_decor_masks[key] = {"tex": ImageTexture.create_from_image(m), "size": Vector2(m.get_size())}
+		var mask: Dictionary = _decor_masks[key]
+		var src := Rect2(Vector2.ZERO, mask.size)
+		_add_quad(mask.tex, src, mask_quad(src, sp.anchor, Iso.ground_to_screen(p.at).round()))
+		decor_count += 1
+	_look_props = ld
+	silhouettes.queue_redraw()
+
+
+## The shadow mask of decor set `n` (`d`, DecorSprites.decor_set(); its first frame, flipped when the piece is), baked
+## as a building's with a square footprint DECOR_FP of its width across, front corner on its anchor. Cached.
+static func decor_mask(n: String, d: Dictionary, flip: bool) -> Dictionary:
+	var key := "%s|%s" % [n, flip]
+	if _decor_masks.has(key):
+		return _decor_masks[key]
+	var tex: Texture2D = d.tex
+	var img := tex.get_image() if tex != null else null
+	if img == null:
+		_decor_masks[key] = {}
+		return {}
+	if img.is_compressed():
+		img.decompress()
+	img = img.get_region(Rect2i(d.get("src", Rect2(Vector2.ZERO, d.size))))
+	img.convert(Image.FORMAT_RGBA8)
+	var anchor: Vector2 = d.anchor
+	if flip:
+		img.flip_x()
+		anchor.x = img.get_width() - anchor.x
+	var fp := Vector2.ONE * (float(img.get_width()) * DECOR_FP / float(Iso.CELL_W))
+	var m := bake_mask(img, anchor, fp, Vector2.ZERO, false, SUN)
+	var out := {"tex": ImageTexture.create_from_image(m), "size": Vector2(m.get_size())}
+	_decor_masks[key] = out
+	return out
 
 
 func _add_quad(tex: Texture2D, src: Rect2, quad: PackedVector2Array) -> void:

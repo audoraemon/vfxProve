@@ -1,12 +1,11 @@
 {
- "hash": "d8932af71fcd6b6f",
- "updated": "2026-11-05T18:49:33+07:00",
+ "hash": "18aeb0e2b1db521d",
+ "updated": "2026-11-06T00:23:42+07:00",
  "changes": {
-  "date": "<t:1793879373:f>",
+  "date": "<t:1793899422:f>",
   "items": [
-   "New: Town dogs and cats (Discord idea Animals) (in progress)",
-   "New: Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed",
-   "New: Sacred Sanctuary (Dominion, Tier IV): the wall of people"
+   "New: Discord god-progression changelog (in progress)",
+   "New: Endless Night: random DAY/NIGHT missions, night rules (in progress)"
   ]
  },
  "snapshot": {
@@ -250,6 +249,15 @@
     "updated": "2026-10-04",
     "order": 20
    },
+   "god-discord-changelog": {
+    "title": "Discord god-progression changelog",
+    "status": "doing",
+    "area": "Tools",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-06",
+    "order": 207
+   },
    "god-dragon-ground": {
     "title": "Dragonfire leaves burning ground that townsfolk beat out",
     "status": "done",
@@ -269,6 +277,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-10-27",
     "order": 192
+   },
+   "god-night-play": {
+    "title": "Endless Night: random DAY/NIGHT missions, night rules",
+    "status": "doing",
+    "area": "Gameplay",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-06",
+    "order": 206
    },
    "god-p2-lantern": {
     "title": "God P2: Lantern Notice, the Lantern Hunt and seals",
@@ -1297,18 +1314,18 @@
   "branches": [
    {
     "name": "god/night-play",
-    "ahead": 221,
+    "ahead": 222,
     "behind": 2,
     "date": "2026-11-05",
-    "subject": "ci: post feat/god-progression work to its own Discord channel (secret DISCORD_GOD_WEBHOOK)",
+    "subject": "chore: night rules tidy -- eligible() continuation line, observe() backstop comment",
     "pushed": false
    },
    {
     "name": "feat/animals",
-    "ahead": 1,
+    "ahead": 3,
     "behind": 2,
     "date": "2026-11-05",
-    "subject": "feat: town dogs and cats (Discord idea \"Animals\")",
+    "subject": "fix: animals get a thin outline in a dark tint of their coat, side neighbours only",
     "pushed": true
    },
    {

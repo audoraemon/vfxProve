@@ -21,7 +21,7 @@ const PALETTE := {
 	Breed.BLACK_CAT: [Color("2c2832"), Color("18161c"), Color("4a4652")],
 	Breed.GREY_CAT: [Color("8a8a92"), Color("4a4a52"), Color("d4d4dc")],
 }
-const OUTLINE := Color(0.08, 0.06, 0.06, 0.85)
+const OUTLINE := Color(0.08, 0.06, 0.06, 0.6)
 ## Pixel shapes facing right, the feet on the last row: B body, D dark (ears, underside), L light (back, muzzle), K eye
 ## and nose, S / s the saddle (a shepherd's dark back; else light / body). Two walking frames differ only in the legs.
 const DOG_BODY := [
@@ -269,15 +269,25 @@ func _draw_rows(rows: Array, pal: Array, lying: bool, tint: Color) -> void:
 				continue
 			_row(rows[y], ox, -2 + y / 2, pal, saddle, tint, true)
 		return
-	# Outline first: one dark pixel round every filled pixel, then the fill.
-	for y in h:
-		var s: String = rows[y]
-		for x in w:
-			if s[x] != ".":
-				var px := _px(ox + x)
-				draw_rect(Rect2(px - 1, y - h - 1, 3, 3), OUTLINE)
+	# A thin outline: an empty pixel beside (not diagonal to) a filled one, in a dark tint of its own coat, so the
+	# gaps between the legs stay open.
+	var line: Color = (pal[1] as Color).darkened(0.55)
+	line.a = OUTLINE.a
+	for y in range(-1, h + 1):
+		for x in range(-1, w + 1):
+			if _filled(rows, x, y):
+				continue
+			if _filled(rows, x - 1, y) or _filled(rows, x + 1, y) or _filled(rows, x, y - 1) or _filled(rows, x, y + 1):
+				draw_rect(Rect2(_px(ox + x), y - h, 1, 1), line)
 	for y in h:
 		_row(rows[y], ox, y - h, pal, saddle, tint, false)
+
+
+func _filled(rows: Array, x: int, y: int) -> bool:
+	if y < 0 or y >= rows.size():
+		return false
+	var s: String = rows[y]
+	return x >= 0 and x < s.length() and s[x] != "."
 
 
 func _row(s: String, ox: int, y: int, pal: Array, saddle: Color, tint: Color, dull: bool) -> void:

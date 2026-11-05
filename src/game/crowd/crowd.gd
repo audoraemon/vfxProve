@@ -135,6 +135,10 @@ var profile := ResponseProfile.for_tier(ResponseProfile.DEFAULT)
 ## sets 1.2 on a later night; Mission sets it from the def's gifts before spawn()). Exactly 1.0 otherwise, so `x * 1.0` leaves every
 ## climb, and every reference, as it was. The stand-in's ESCORT_CLIMB stacks on top; the Herald's descent is not a climb and never reads it.
 var climb_scale := 1.0
+## How far the town sees (NightRules): every sight reach -- the calm turning to look at a cast's build-up, a collapse's sight, the
+## witness of a quiet death -- is this many times what it is by day. Mission sets NightRules.NIGHT_SIGHT at NIGHT; exactly 1.0 otherwise,
+## so `x * 1.0` leaves every CURRENT reach, and every reference, as it was. Hearing never reads it.
+var sight_scale := 1.0
 ## Sturdy buildings people take cover in (v0.04 P2); made by spawn().
 var shelters: ShelterManager
 var _stage_in := 0.0
@@ -1166,7 +1170,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", lev
 	# who can see the build-up stop and look at it.
 	_held_dangers.append({"at": _clock + impact, "points": points, "radius": radius, "reach": reach, "key": key,
 		"ground": ground})
-	_look(points, float(reach[0]))
+	_look(points, float(reach[0]) * sight_scale)
 
 
 ## Danger held for the impact (on_cast()): how many casts are still building up.
@@ -1904,7 +1908,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 		if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
 			_investigate(at)
 		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
-		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
+		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale, COLLAPSE_SOUND, &"collapse")
 		var points: Array[Vector2] = [at]
 		_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
 	if is_instance_valid(_town) and s in _town.bridges:
@@ -1944,12 +1948,18 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	_hear_alarm(ALARM_KILL)
 
 
+## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night. The directors that read Crowd.DOOM_WITNESS
+## directly keep the day's distance.
+func doom_witness() -> float:
+	return DOOM_WITNESS * sight_scale
+
+
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
 ## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
 ## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too.
 func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best: Person = null
-	var best_d := DOOM_WITNESS
+	var best_d := doom_witness()
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside:
@@ -1978,7 +1988,7 @@ func _settle_doom() -> void:
 		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
-		threats.register(at, 0.6, 0.3, 3.0, DOOM_WITNESS, DOOM_WITNESS + 1.0, &"doom")
+		threats.register(at, 0.6, 0.3, 3.0, doom_witness(), DOOM_WITNESS + 1.0, &"doom")
 		seen_at.append(at)
 		if alarms.incident(at):
 			_investigate(at)

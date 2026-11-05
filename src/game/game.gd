@@ -721,6 +721,7 @@ func go_to(to: int) -> void:
 			elif _in_endless and god != null:
 				# Endless Night's night (god P1, spec §9.1): the drawn mission as this god plays it, drafting from what it has learned.
 				prep.god = god
+				prep.look = GodNight.look_for(god, mission_id)
 				prep.setup(GodNight.def_for(god, mission_id), loadout, save.difficulty)
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
@@ -952,6 +953,7 @@ func _build_mission() -> Mission:
 		mission.night_def = func() -> MissionDef: return GodNight.def_for(god, mission_id)
 		mission.levels = god.learned.duplicate()
 		mission.wish_seed = GodNight.wish_seed(god, mission_id)
+		mission.look_override = GodNight.look_for(god, mission_id)  # the night's roll: DAY or NIGHT (NightRules)
 		mission.restart_locked = true
 		mission.report_on_decision = true  # the night banks when it is decided, not after its ending (review M1)
 		mission.clock_started.connect(_on_clock_started.bind(mission))

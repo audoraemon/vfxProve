@@ -37,6 +37,30 @@ uniform bool window_flicker = false;
 uniform float window_amp = 0.12;
 // One frame's size (px): the mask's.
 uniform vec2 frame_size = vec2(1.0);
+// The town's DAY and NIGHT looks (SpriteView.window_boost): a window pixel of the mask is pushed this far toward a hot lamp
+// colour and glows (skips the dim). 0 (CURRENT): the path is unchanged.
+uniform float window_boost = 0.0;
+const vec3 WINDOW_HOT = vec3(1.0, 0.80, 0.42);
+// Round 3 (NIGHT, SpriteView.look_params): a window's hot core (window_hot of the way to WINDOW_CORE) and a one-pixel
+// warm halo round it on the wall (WINDOW_HALO, window_hot of the way), so a house with a mask reads as glowing.
+// Both stay saturated (red well over blue), so the NIGHT grade's keep_lit saves them whole.
+// 0 (CURRENT, DAY): off.
+uniform float window_hot = 0.0;
+const vec3 WINDOW_CORE = vec3(1.0, 0.86, 0.42);
+const vec3 WINDOW_HALO = vec3(0.95, 0.58, 0.26);
+
+// Round 3 (DAY and NIGHT, SpriteView.look_params): a one-pixel rim on the silhouette facing the light: an opaque pixel
+// on the silhouette toward rim_dir (texels; toward the sun, up-left on screen, mirrored with the sprite) is pulled up
+// toward rim_col by rim_amt (DAY a warm sun rim, NIGHT a faint cool moon rim). 0 (CURRENT): off, the path unchanged.
+uniform float rim_amt = 0.0;
+uniform vec3 rim_col = vec3(1.0);
+uniform vec2 rim_dir = vec2(-1.0, -1.0);
+
+// Round 7 (NIGHT, SpriteView.look_params): a glowing pixel with at most one glowing neighbour (4-way) on a still (no idle
+// strip: a forge's or a tower's flames play one) is the art's warm highlight (an eave's orange pixel), not a light: it is
+// dimmed with the rest, so the night grade does not save it as a bright speck on the dark roof. Window pixels of the mask
+// still burn (the flicker relights them). false (CURRENT, DAY): off, the path unchanged.
+uniform bool lone_glow_off = false;
 
 const vec3 CHAR = vec3(0.078431, 0.066667, 0.070588);
 const vec3 FROST = vec3(0.62, 0.78, 0.92);
@@ -59,6 +83,11 @@ bool glows(vec3 c) {
 	float mx = max(c.r, max(c.g, c.b));
 	float mn = min(c.r, min(c.g, c.b));
 	return c.r >= mx && mx > 0.93 && (mx - mn) / mx > 0.55 && c.g > 0.45;
+}
+
+// 1 if a texel is opaque and glows (the importer bleeds colour into clear texels: those never count).
+float lit_at(vec4 t) {
+	return t.a > 0.5 && glows(t.rgb) ? 1.0 : 0.0;
 }
 
 // The draw's modulate (the blight's tint, a fade) alone: the fragment's COLOR comes in already multiplied by the
@@ -84,6 +113,15 @@ void fragment() {
 	vec3 c = px.rgb;
 	// Classed before the flicker, so a dimmed window never drops into the lit, dimmed and charred path.
 	bool glow = glows(c);
+	// Round 7: a lone glowing texel (at most one glowing 4-way neighbour) is a highlight, not a light. Window pixels of the
+	// mask, and their halo, are lit again by the flicker below.
+	if (lone_glow_off && glow && idle_frames <= 1) {
+		float n = lit_at(texture(TEXTURE, uv + vec2(TEXTURE_PIXEL_SIZE.x, 0.0)))
+			+ lit_at(texture(TEXTURE, uv - vec2(TEXTURE_PIXEL_SIZE.x, 0.0)))
+			+ lit_at(texture(TEXTURE, uv + vec2(0.0, TEXTURE_PIXEL_SIZE.y)))
+			+ lit_at(texture(TEXTURE, uv - vec2(0.0, TEXTURE_PIXEL_SIZE.y)));
+		glow = n > 1.5;
+	}
 	if (window_flicker) {
 		// The pixel inside the drawn frame: a still's (or a held strip frame's) texel less its frame's origin; a playing
 		// strip draws frame 0's rect (frame_origin 0), so the unshifted UV is already inside frame 0, the same pixel
@@ -98,6 +136,22 @@ void fragment() {
 			// Never above the pixel's brightest channel x (1 + window_amp), nor past white.
 			float cap = min(max(px.r, max(px.g, px.b)) * (1.0 + window_amp), 1.0);
 			c = min(c * (1.0 + window_amp * f), vec3(cap));
+			if (window_boost > 0.0) {
+				c = mix(c, max(c, WINDOW_HOT * (0.9 + 0.1 * f)), window_boost);
+				glow = true;
+			}
+			if (window_hot > 0.0) {
+				c = mix(c, min(max(c, WINDOW_CORE) * (1.0 + 0.3 * f), vec3(1.0)), window_hot);
+			}
+		} else if (window_hot > 0.0) {
+			float n = texture(glow_mask, (local + vec2(1.5, 0.5)) / frame_size).a
+				+ texture(glow_mask, (local + vec2(-0.5, 0.5)) / frame_size).a
+				+ texture(glow_mask, (local + vec2(0.5, 1.5)) / frame_size).a
+				+ texture(glow_mask, (local + vec2(0.5, -0.5)) / frame_size).a;
+			if (n > 0.5) {
+				c = mix(c, WINDOW_HALO, min(window_hot, 1.0));
+				glow = true;
+			}
 		}
 	}
 	if (!glow) {
@@ -111,6 +165,16 @@ void fragment() {
 		c = min(c * ambient * (1.0 + lit * gain) + lit * add, vec3(1.0));
 		c = mix(c, CHAR, scorch * 0.65);
 		c = mix(c, FROST, frost * 0.35) * tint;
+	}
+	if (rim_amt > 0.0 && !glow && px.a > 0.5) {
+		// The art's dark outline is the silhouette's first pixel: the rim lights the pixel inside it (its neighbour
+		// opaque, the next one clear) fully, and the outline itself half.
+		float a1 = texture(TEXTURE, uv + rim_dir * TEXTURE_PIXEL_SIZE).a;
+		float a2 = texture(TEXTURE, uv + 2.0 * rim_dir * TEXTURE_PIXEL_SIZE).a;
+		float k = a1 < 0.5 ? 0.5 : (a2 < 0.5 ? 1.0 : 0.0);
+		if (k > 0.0) {
+			c = mix(c, max(c, rim_col), rim_amt * k);
+		}
 	}
 	if (cut_mode == -1 && p.y < line + 2.0) {
 		c = mix(c, MOLTEN, molten);

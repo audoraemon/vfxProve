@@ -27,6 +27,13 @@ func _reset_world() -> void:
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
 	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
 	GodTree.use_table({})  # Tier 1 fill: a test of an empty tree sets its own
+	SpriteView.window_boost = 0.0
+	SpriteView.look_params = {}
+	Structure.cast_shadows = true  # a town look's statics (v0.12 lighting): a suite that leaked a DAY or NIGHT town must not reach the next
+	Structure.lamp_glow = true
+	Structure.steady_light = false
+	TownLook.active = Town.Look.CURRENT
+	Town._look_owner = 0
 
 
 func _initialize() -> void:
@@ -48,7 +55,8 @@ func _initialize() -> void:
 		Hud.reset_session()  # v0.11.1: no suite depends on the display state an earlier one left in this process
 		_reset_world()
 		var before := checks
-		suite.run(self)
+		# A suite may be a coroutine (await t.process_frame): the tree is only live after the first frame.
+		await suite.run(self)
 		if checks == before:
 			check(false, "suite ran no checks (runtime error?): %s" % path)
 		# v0.12 (ruling C3): a suite that switched the city puts Aldermere back; one that did not is a failure, named.

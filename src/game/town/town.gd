@@ -27,6 +27,12 @@ const GROUND_EVENING := Color(1.06, 0.92, 0.74)
 ## The dock's health (v0.05): a wooden pier, weaker than the stone bridge's kind default.
 const DOCK_HP := 80.0
 
+## The town's lighting look (TownLook). CURRENT is today's build with no extra nodes; DAY and NIGHT are the lighting
+## proof: a neutral ground bake, then the look's shadows, grade, pools and mist.
+enum Look { CURRENT, DAY, NIGHT }
+## Chosen before build(); a rebuild in another look is teardown() then build() again.
+var look: Look = Look.CURRENT
+
 var citadel: Citadel
 ## The last bridge built (Aldermere's one bridge; the capital's third bridge).
 var bridge: Structure
@@ -57,14 +63,38 @@ var sfx: Sfx
 var keep_clear: Array[Rect2] = []
 
 var _env: EnvironmentField
+## The Battlefield the town was built under (its ground plane's parent), or null.
+var _bf: Battlefield
+## The nodes a non-CURRENT look added (all in group TownLook.GROUP); teardown() frees them.
+var _look_nodes: Array[Node] = []
+## The look's extra lights (TownLookDecor; DAY and NIGHT only, null in CURRENT).
+var look_decor: TownLookDecor
+## The instance id of the town whose look currently owns the statics (Structure.cast_shadows, TownLook.active): a
+## town freed or torn down puts them back only while it is still the owner, so an older town never undoes a newer one's.
+static var _look_owner := 0
 
 
 ## ground: the battlefield's ground plane, or null for no floor. shake: camera the Citadel shakes when parts fall.
 func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = null) -> void:
 	_env = env
+	TownLook.active = look
+	_look_owner = get_instance_id()
+	Structure.cast_shadows = look == Look.CURRENT
+	Structure.lamp_glow = look != Look.DAY
+	Structure.steady_light = look == Look.NIGHT
+	SpriteView.window_boost = TownLook.window_boost(look)
+	SpriteView.look_params = TownLook.sprite_params(look)
+	var ground_tint := TownLook.ground_tint(look)
+	var light_tint := TownLook.light_tint(look)
 	env.structure_destroyed.connect(_on_structure_destroyed)
 	if env.lights != null:
-		env.lights.tint = EVENING
+		env.lights.tint = light_tint
+		if look != Look.CURRENT:
+			env.lights.ambient = TownLook.ambient(look)
+	# Battlefield rewrites the ambient every frame from the dim: hand it the look's own as the base.
+	_battlefield_of(ground)
+	if _bf != null:
+		_bf.base_ambient = TownLook.ambient(look)
 	var city := City.current()
 	for d in city.structures():
 		var s := env.add_structure(d.rect, d.height, d.kind, d.role, d.tag)
@@ -134,7 +164,13 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		if (s.kind == Structure.Kind.HOUSE and s.role == &"house") \
 				or (s.role == CapitalPlots.ROLE and bool(BuildingTypes.info(s.art_tag).get("smokes", false))):
 			houses.append(s)
+	if look != Look.CURRENT:
+		# The looks smoke from every chimney a sprite has (an armoury, a monastery), not only the houses'.
+		for s in _built:
+			if not houses.has(s) and s.sprite is Dictionary and not (s.sprite as Dictionary).is_empty() 					and s.sprite.get("chimney", Vector2.INF) != Vector2.INF and not s.sprite.get("own_smoke", false):
+				houses.append(s)
 	smoke = ChimneySmoke.new().setup(houses)
+	smoke.tall = look != Look.CURRENT
 	smoke.name = "ChimneySmoke"
 	smoke.lights = env.lights
 	if env.fx_back != null:
@@ -161,7 +197,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		# Pieces drawn live while sprites are on (an animated set, and the baked pieces painted over it): each gets a
 		# live stand-in, and the floor, the plant layer and the forest leave it out while it shows.
 		TownFloor.mark_live(baked)
-		var lit := Color(GROUND_EVENING.r / EVENING.r, GROUND_EVENING.g / EVENING.g, GROUND_EVENING.b / EVENING.b)
+		var lit := Color(ground_tint.r / light_tint.r, ground_tint.g / light_tint.g, ground_tint.b / light_tint.b)
 		for d in baked:
 			if d.get("live", false):
 				_stand_in(d, lit * (d.get("tint", Color.WHITE) as Color))
@@ -170,7 +206,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		floor_node.baked_decor = flat
 		floor_node.shrubs = shrubs
 		floor_node.keep_clear = keep_clear
-		floor_node.tint = GROUND_EVENING
+		floor_node.tint = ground_tint
 		ground.add_child(floor_node)
 		ground.move_child(floor_node, 0)
 		plants.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -179,7 +215,7 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		plant_layer.name = "Plants"
 		plant_layer.plants = plants
 		# Lit as the floor's texture is: the baked plants took its tint.
-		plant_layer.modulate = GROUND_EVENING
+		plant_layer.modulate = ground_tint
 		ground.add_child(plant_layer)
 		ground.move_child(plant_layer, 1)
 		forest = ForestLayer.new()
@@ -187,9 +223,73 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 		forest.trees = trees
 		forest.border = true
 		# Lit as the floor's texture is: the baked trees took its tint.
-		forest.modulate = GROUND_EVENING
+		forest.modulate = ground_tint
 		ground.add_child(forest)
 		ground.move_child(forest, 2)
+	if look != Look.CURRENT:
+		_build_look(ground)
+
+
+## The nodes of a non-CURRENT look: the shadow layer, the mist, the light map and the grade, each through
+## _add_look_node().
+func _build_look(ground: Node2D) -> void:
+	if ground != null:
+		# Over the floor, the plants and the forest, under everything that stands.
+		# The forest's baked trees and the border band's (ForestLayer adds those later; they stand in the same woods).
+		var shaded: Array[Dictionary] = []
+		if forest != null:
+			shaded.append_array(forest.trees)
+			if forest.border:
+				shaded.append_array(TownDecor.border_trees())
+		var shadows := TownShadows.new().setup(_env, look, shaded)
+		_add_look_node(shadows, ground)
+		ground.move_child(shadows, mini(3, ground.get_child_count() - 1))
+		# The mist (and DAY's sunbeams) on the ground over the shadows, under everything that stands.
+		var mist := TownMist.new().setup(look)
+		_add_look_node(mist, ground)
+		ground.move_child(mist, mini(4, ground.get_child_count() - 1))
+	# The look's extra lights (round 2, visual only): wall-walk torches, house lanterns, street lamps, y-sorted in the
+	# world beside the decor. Before the light map, which takes a pool from each.
+	look_decor = TownLookDecor.new().setup(self, look)
+	_add_look_node(look_decor, _env.world_parent if _env.world_parent != null else null)
+	# Its lamp and lantern posts cast shadows too (round 9).
+	for n in _look_nodes:
+		if n is TownShadows:
+			(n as TownShadows).add_look_props(look_decor)
+	# The light map (every lamp, torch and lit window drawn into a small buffer; NIGHT only: nobody lights a lamp by day,
+	# round 4), then the grade over the world, which crossfades it in: under Battlefield's glow layer.
+	var light: Texture2D = null
+	if TownLook.light_gain(look) > 0.0:
+		var pools := TownPools.new().setup(self)
+		_add_look_node(pools)
+		light = pools.light_texture()
+	_add_look_node(TownGrade.new().setup(look, light))
+	# The glow over the graded world, under Battlefield's glow layer.
+	_add_look_node(TownBloom.new().setup(look))
+
+
+## Adds a look node under `parent` (the town itself if null) and remembers it, so teardown() frees exactly these.
+func _add_look_node(n: Node, parent: Node = null) -> void:
+	n.add_to_group(TownLook.GROUP)
+	_look_nodes.append(n)
+	(parent if parent != null else self).add_child(n)
+
+
+## The nodes this town's look added (none in CURRENT).
+func look_nodes() -> Array[Node]:
+	return _look_nodes
+
+
+## `--look=day|night|current` among the command-line arguments; anything else is CURRENT.
+static func look_from_args(args: PackedStringArray) -> Look:
+	for a in args:
+		if a.begins_with("--look="):
+			match a.substr(7):
+				"day":
+					return Look.DAY
+				"night":
+					return Look.NIGHT
+	return Look.CURRENT
 
 
 ## Whether `r` touches the ground kept bare (keep_clear).
@@ -250,6 +350,13 @@ func teardown() -> void:
 	fountain = null
 	if _env.lights != null:
 		_env.lights.tint = Color.WHITE
+		if look != Look.CURRENT:
+			_env.lights.ambient = 1.0
+	for n in _look_nodes:
+		_free(n)
+	_look_nodes.clear()
+	look_decor = null
+	_release_look()
 	_env.clear_decor()
 	for d in _decor:
 		_free(d)
@@ -296,6 +403,27 @@ func _free(n: Node) -> void:
 
 func _exit_tree() -> void:
 	_free_floor()
+	_release_look()
+
+
+func _battlefield_of(ground: Node2D) -> void:
+	_bf = ground.get_parent() as Battlefield if ground != null else null
+
+
+## A town freed without teardown() must not leave its look's statics behind. Only while its look is still set: a town
+## torn down has put them back already, and a newer town may own them now.
+func _release_look() -> void:
+	if _look_owner == get_instance_id():
+		if is_instance_valid(_bf):
+			_bf.base_ambient = 1.0
+		_look_owner = 0
+		Structure.cast_shadows = true
+		Structure.lamp_glow = true
+		Structure.steady_light = false
+		SpriteView.window_boost = 0.0
+		SpriteView.look_params = {}
+		TownLook.active = Look.CURRENT
+	_bf = null
 
 
 func _notification(what: int) -> void:
@@ -303,6 +431,7 @@ func _notification(what: int) -> void:
 	# hand whichever way the town goes away — including a town that never entered the scene tree.
 	if what == NOTIFICATION_PREDELETE:
 		_free_floor()
+		_release_look()
 		# Decor that never entered a tree (headless) would leak otherwise.
 		for d in _decor:
 			if is_instance_valid(d) and not d.is_inside_tree():

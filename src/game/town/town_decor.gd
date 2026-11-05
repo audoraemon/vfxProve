@@ -668,8 +668,9 @@ static func _bake_low(out: Array[Dictionary], built: Array[Dictionary]) -> void:
 		out[i].bake = true
 	var index := _live_index(out, built, true)
 	low.sort_custom(func(a: int, b: int) -> bool: return _sort_y(out[a].at) < _sort_y(out[b].at))
-	var lit := Color(Town.EVENING.r / Town.GROUND_EVENING.r, Town.EVENING.g / Town.GROUND_EVENING.g,
-		Town.EVENING.b / Town.GROUND_EVENING.b)
+	var light_tint := TownLook.light_tint(TownLook.active)
+	var ground_tint := TownLook.ground_tint(TownLook.active)
+	var lit := Color(light_tint.r / ground_tint.r, light_tint.g / ground_tint.g, light_tint.b / ground_tint.b)
 	for i in low:
 		var d := out[i]
 		var box := _box(d)

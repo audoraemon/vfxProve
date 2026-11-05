@@ -1,0 +1,5 @@
+{"length": 2.2, "rms_db": -17.5, "reverb": {"rt60": 2.2, "mix": 0.32, "predelay_ms": 16, "damp": 6000}, "layers": [
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 1.wav", "at": 0.0, "pitch": 3, "lp": 5000, "fade_in": 350, "fade_out": 700, "gain_db": -5},
+  {"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.15, "reverse": true, "dur": 1.4, "gain_db": -4, "fade_in": 20, "fade_out": 80},
+  {"src": "lib:oga/bell-dingschimes/bell_ding4.wav", "at": 1.1, "pitch": 7, "gain_db": -9, "lp": 6000, "fade_out": 500},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_heavy_002.ogg", "at": 1.05, "gain_db": -12, "lp": 5000}]}

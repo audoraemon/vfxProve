@@ -1207,6 +1207,21 @@ func is_asleep() -> bool:
 	return mind == Mind.ASLEEP
 
 
+## Hypnotized for `seconds` (Clear Mind): it senses nothing special -- no danger frightens it, nothing makes it look,
+## no evacuation calls it (fearless_left) -- and goes on with what it was doing. A fright it was in is dropped for its
+## day (a soldier's, his post); unlike reassure() it does not go when the trance ends: it never knew. True when it took.
+func entrance(seconds: float) -> bool:
+	if inside or state == State.DEAD or resists_mind():
+		return false
+	fearless_left = maxf(fearless_left, seconds)
+	_reassured_fled = false
+	if mind in [Mind.PANIC, Mind.FLEE, Mind.OBSERVE, Mind.REGROUP, Mind.RECOVER]:
+		release_from_queue()
+		passing_gate = null
+		_recover(rng.randf_range(0.5, 1.5))
+	return true
+
+
 ## A badge over the head for `seconds`: `glyph` in `color` (a side's mark, the silenced, the condemned).
 func set_badge(glyph: Array[int], color: Color, seconds: float) -> void:
 	badge_glyph = glyph
@@ -1976,10 +1991,25 @@ func _mark_signature() -> int:
 ## With the people sprites, the shadow comes from the atlas's white square: an untextured rect between two atlas draws
 ## would split the crowd into a draw batch a person (+~190 calls in the mission bench).
 func _draw_shadow(r: Rect2, c: Color) -> void:
+	# CURRENT (the contact shadow on): as given, with no look array built per draw.
+	if not Structure.cast_shadows:
+		var look_shadow := foot_shadow(r, c)
+		r = look_shadow[0]
+		c = look_shadow[1]
 	if SpriteArt.on() and PeopleArt.ready():
 		draw_texture_rect_region(PeopleArt.atlas(), r, PeopleArt.white_rect(), c)
 	else:
 		super(r, c)
+
+
+## The rect and colour of a foot shadow: as given, or in the DAY and NIGHT looks (Structure.cast_shadows off) a small
+## ellipse of the look's cast-shadow colour, leaning with the sun.
+static func foot_shadow(r: Rect2, c: Color) -> Array:
+	if not Structure.cast_shadows:
+		r = Rect2(r.position + Vector2(1, 0), r.size + Vector2(2, 0))
+		c = TownLook.shadow_colour(TownLook.active)
+		c.a = minf(c.a * 1.6, 0.6)
+	return [r, c]
 
 
 ## A death with no effect of its own (the quiet powers, the plague): with the people sprites, the body falls and lies

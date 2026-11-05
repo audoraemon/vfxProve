@@ -29,6 +29,8 @@ their mask lookup would stretch.
 Usage (from the project root):
   python tools/dev/ref_convert/window_glow.py <set> [<set> ...]          writes the masks, prints pixels and clusters
   python tools/dev/ref_convert/window_glow.py <set> [<set> ...] --dry    prints only
+  python tools/dev/ref_convert/window_glow.py <set> [<set> ...] --look   writes glow_mask_look.png: a mask SpriteArt
+                                                                         uses only when TownLook.active is DAY or NIGHT
 """
 import argparse
 import json
@@ -206,6 +208,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sets", nargs="+")
     ap.add_argument("--dry", action="store_true")
+    ap.add_argument("--look", action="store_true",
+                    help="write glow_mask_look.png (used only in the DAY and NIGHT looks) instead of glow_mask.png")
     args = ap.parse_args()
     man = json.loads((B / "manifest.json").read_text())
     for s in args.sets:             # every name is checked before any file is written
@@ -223,7 +227,7 @@ def main():
             continue
         o = np.zeros((h, w, 4), np.uint8)
         o[m] = (255, 255, 255, 255)
-        Image.fromarray(o, "RGBA").save(B / s / "glow_mask.png")
+        Image.fromarray(o, "RGBA").save(B / s / ("glow_mask_look.png" if args.look else "glow_mask.png"))
 
 
 if __name__ == "__main__":

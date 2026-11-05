@@ -4,15 +4,20 @@ extends Node2D
 ## camera with shake, positional sound, lights, destructible buildings, units, screen glow, impact post and
 ## screen flash, all wired into one FxContext. The VFX sandbox and the KAK game each add one as a child.
 
+## Canvas layers: the town's look puts its grade (lit by TownPools' light map) at 1 (TownGrade), so the glow, the post
+## and the flash (and the HUD) stay above them and spell glows stay bright at night.
+const GLOW_LAYER := 3
 const BenchProf := preload("res://src/core/bench_prof.gd")
 
 var ctx := FxContext.new()
 ## Seeds unit spawns and effect randomness; reseeded by reset().
 var rng := RandomNumberGenerator.new()
 var camera: CameraShake
+## A town look's own ambient (TownLook.ambient; Town sets it): the effects' dim scales it. 1.0 in CURRENT.
+var base_ambient := 1.0
 ## Transform Iso.BASIS: floors and ground previews added here are authored in ground units.
 var ground_plane: Node2D
-## CanvasLayer 5 for HUD controls (empty until the owner adds some).
+## CanvasLayer 6 for HUD controls (empty until the owner adds some).
 var hud_layer: CanvasLayer
 
 var _flash_rect: ColorRect
@@ -84,12 +89,12 @@ func _ready() -> void:
 
 	hud_layer = CanvasLayer.new()
 	hud_layer.name = "HudLayer"
-	hud_layer.layer = 5
+	hud_layer.layer = 6
 	add_child(hud_layer)
 
 	# Glow sits above the world and effects, below the impact post and flash.
 	var glow_layer := CanvasLayer.new()
-	glow_layer.layer = 2
+	glow_layer.layer = GLOW_LAYER
 	add_child(glow_layer)
 	var glow := ColorRect.new()
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -100,7 +105,7 @@ func _ready() -> void:
 	glow_layer.add_child(glow)
 
 	var post_layer := CanvasLayer.new()
-	post_layer.layer = 3
+	post_layer.layer = 4
 	add_child(post_layer)
 	var impact := Impact.new()
 	impact.name = "Impact"
@@ -108,7 +113,7 @@ func _ready() -> void:
 	impact.setup(post_layer, dim_layer, camera)
 
 	var flash_layer := CanvasLayer.new()
-	flash_layer.layer = 4
+	flash_layer.layer = 5
 	add_child(flash_layer)
 	_flash_rect = ColorRect.new()
 	_flash_rect.color = Color(1, 1, 1, 0)
@@ -147,7 +152,7 @@ const VIEW_MARGIN := 48.0
 
 
 func _process(_delta: float) -> void:
-	ctx.lights.ambient = 1.0 - ctx.impact.dim_level() * 0.85
+	ctx.lights.ambient = base_ambient * (1.0 - ctx.impact.dim_level() * 0.85)
 	var size := get_viewport().get_visible_rect().size / camera.zoom
 	Person.view = Rect2(camera.get_screen_center_position() - size * 0.5, size).grow(VIEW_MARGIN)
 	Structure.view = Person.view

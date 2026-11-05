@@ -79,6 +79,14 @@ const SIG_DIR_STEPS := 8.0
 ## The cracks drawn up a damaged building's walls.
 const COL_CRACK := Color(0.05, 0.04, 0.05, 0.9)
 ## Scratch buffers for _quad() and _fan(); canvas drawing is single-threaded, so one shared set is enough.
+## The contact shadow (a footprint nudged back). True in the CURRENT town look; the DAY and NIGHT looks (Town.look) turn
+## it off, because TownShadows casts the shadow instead. Set by Town.build() before any structure is added.
+static var cast_shadows := true
+## Whether a torch or lamp throws its warm pool on the ground (_glow) and a flame its halo. True in CURRENT and NIGHT; the
+## DAY look turns it off (round 4: nobody lights a lamp by day). Set by Town.build() before any structure is added.
+static var lamp_glow := true
+## NIGHT (round 10): buildings take the lamps' light without its flicker, which blinked on their roofs.
+static var steady_light := false
 static var _no_uv := PackedVector2Array()
 const SHADOW := Color(0, 0, 0, 0.25)
 static var _quad_cols := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
@@ -267,7 +275,7 @@ func _ready() -> void:
 		add_child(_flame)
 		# A warm halo round each flame, lighting the stone and timber near it as the reference's torches do. A street
 		# torch or lamp has its own pool of light (_glow) already.
-		for tip in _flame_tips() if kind != Kind.TORCH else []:
+		for tip in _flame_tips() if kind != Kind.TORCH and lamp_glow else []:
 			var halo := QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(44, 30))
 			halo.set_param("color", TORCH_LIGHT)
 			halo.set_param("falloff", 1.8)
@@ -276,7 +284,7 @@ func _ready() -> void:
 			halo.run_on_shader_clock()
 			halo.position = tip + Vector2(0, -4)
 			_flame.add_child(halo)
-	if kind == Kind.TORCH:
+	if kind == Kind.TORCH and lamp_glow:
 		# Warm pool of light on the ground around the torch; sits above the dim layer so it glows at night.
 		_glow = QuadFx.new().setup(FxParts.SH_LIGHT, Vector2(90, 45))
 		_glow.set_param("color", TORCH_LIGHT)
@@ -642,7 +650,7 @@ func _new_view() -> SpriteView:
 ## the sprite; see _sync_sprite()).
 func _draw_sprite_frame(light: Color) -> void:
 	# Fields lie flat and cast none, as the procedural ones.
-	if not destroyed and kind != Kind.FARM_FIELD:
+	if not destroyed and kind != Kind.FARM_FIELD and cast_shadows:
 		_quad(_sprite_shadow(), SHADOW)
 	var amb := lights.ambient if lights else 1.0
 	var t := lights.tint if lights else Color.WHITE
@@ -831,7 +839,7 @@ func _step(delta: float) -> void:
 func _light_signature() -> int:
 	var sig := int((lights.ambient if lights else 1.0) * 48.0)
 	if lights != null:
-		sig = sig * 1021 + lights.sample_signature(center(), SIG_COLOR_STEPS, SIG_DIR_STEPS)
+		sig = sig * 1021 + lights.sample_signature(center(), SIG_COLOR_STEPS, SIG_DIR_STEPS, lamp_glow, steady_light)
 	if kind == Kind.TOWER or kind == Kind.BLOCK:
 		sig = sig * 1021 + int(_time * 8.0)
 	return sig
@@ -908,8 +916,10 @@ func _draw() -> void:
 
 
 func _draw_all() -> void:
-	var light := lights.sample(center()) if lights else Color.BLACK
-	var dir := lights.sample_dir(center()) if lights else Vector2.ZERO
+	# DAY's lamps are unlit (lamp_glow false): their flickering light must not reach the buildings, where the sprite
+	# shader's gain made it blink on the roofs.
+	var light := lights.sample(center(), lamp_glow, steady_light) if lights else Color.BLACK
+	var dir := lights.sample_dir(center(), lamp_glow, steady_light) if lights else Vector2.ZERO
 	if not sprite.is_empty():
 		_draw_sprite_frame(light)
 		return
@@ -921,14 +931,14 @@ func _draw_all() -> void:
 	var rubble_top := _collapse >= 0.0
 	var art_drawn := not destroyed and not rubble_top and kind in ART_KINDS
 	# Ground shadow toward the back (fields lie flat and cast none). Drawn art carries it in its own first batch.
-	if kind != Kind.FARM_FIELD and not art_drawn:
+	if kind != Kind.FARM_FIELD and not art_drawn and cast_shadows:
 		_quad(_shadow(), SHADOW)
 	if art_drawn:
 		var key := _art_key_now()
 		_light_art(light, dir)
 		if key != _art_key or _art_cache.is_empty():
 			# This once, the shadow goes down on its own: the recording only takes it in once it is made.
-			if kind != Kind.FARM_FIELD:
+			if kind != Kind.FARM_FIELD and cast_shadows:
 				_quad(_shadow(), SHADOW)
 			ArtKit.record()
 			match kind:
@@ -944,7 +954,7 @@ func _draw_all() -> void:
 			if kind == Kind.HOUSE:
 				# A house's layers are few and its lines many: flattened, it is one fill call and one line call.
 				_art_cache = ArtKit.flatten(_art_cache)
-			if kind != Kind.FARM_FIELD:
+			if kind != Kind.FARM_FIELD and cast_shadows:
 				_art_cache = _with_shadow(_art_cache)
 			_art_key = key
 		else:

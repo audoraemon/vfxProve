@@ -60,6 +60,10 @@ const AREAS := {
 	"magnify": {"shape": "circle", "r": 4.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
+	# SaintFx.PICK_R: whom it would choose is ringed (_draw()); then the wheel
+	"saint": {"shape": "circle", "r": 1.0},
+	# ClearMindFx.RADIUS
+	"clearmind": {"shape": "circle", "r": 5.0},
 	# UnseenHourFx.RADIUS
 	"unseen": {"shape": "circle", "r": 5.0},
 	# CurfewFx.RADIUS
@@ -267,6 +271,11 @@ func hover(ground: Vector2) -> void:
 		_press = _whisper_target.ground_pos
 	elif not aiming:
 		_press = ground
+	if _is_wheel() and placed:
+		# The option under the cursor is the picked mode: the HUD's chips show it.
+		var over := wheel_pick(ground)
+		if over >= 0:
+			_mode[_rules.key(slot)] = over
 	queue_redraw()
 
 
@@ -328,6 +337,29 @@ func release(ground: Vector2) -> void:
 	var extra := {}
 	if not modes().is_empty():
 		extra["mode"] = String(mode().key)
+	if _is_wheel():
+		if not placed:
+			# Someone to choose, or nothing is armed.
+			var who := SaintFx.target_at(_crowd._field, ground)
+			if who == null:
+				var why := _rules.refusal(slot)
+				_rules.refuse(slot, why if why != "" else "nobody")
+				queue_redraw()
+				return
+			placed = true
+			first = who.ground_pos
+			queue_redraw()
+			return
+		placed = false
+		var pick := wheel_pick(ground)
+		if pick < 0:
+			queue_redraw()
+			return  # off the wheel: called off
+		_mode[_rules.key(slot)] = pick
+		extra["mode"] = String(mode().key)
+		_rules.cast(slot, first, extra)
+		queue_redraw()
+		return
 	if _is_twice():
 		if not placed:
 			placed = true
@@ -443,6 +475,37 @@ func _is_drag() -> bool:
 
 func _is_twice() -> bool:
 	return _aim_kind() == "two clicks"
+
+
+## A wheel power (v0.13): the first click picks someone, then a wheel of the power's modes opens round them and the
+## second click picks one and casts. A click away from the wheel calls the cast off.
+func _is_wheel() -> bool:
+	return _aim_kind() == "wheel"
+
+
+## Where the wheel's options sit round `first`, in ground units: spread on a screen circle of WHEEL_PX, the first
+## to the left.
+func wheel_spots() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var m := modes()
+	var centre := Iso.ground_to_screen(first)
+	for i in m.size():
+		var ang := PI + TAU * float(i) / float(m.size())
+		out.append(Iso.screen_to_ground(centre + Vector2(cos(ang), sin(ang) * 0.6) * WHEEL_PX + Vector2(0, -WHEEL_UP)))
+	return out
+
+
+## The wheel option nearest `ground`, or -1 when the click is off the wheel.
+func wheel_pick(ground: Vector2) -> int:
+	var best := -1
+	var best_d := WHEEL_REACH
+	var spots := wheel_spots()
+	for i in spots.size():
+		var d := spots[i].distance_to(ground)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
 
 
 func _is_whisper() -> bool:
@@ -641,7 +704,14 @@ func _draw() -> void:
 				draw_line(first, out, COL_FAINT, -1.0)
 			else:
 				_oval(_press, float(a.wide), float(a.deep), edge)
+	if _is_wheel() and placed:
+		_draw_wheel()
 	match _rules.key(slot):
+		"saint":
+			if not placed:
+				var who := SaintFx.target_at(_crowd._field, _press)
+				if who != null:
+					_ring(who.ground_pos, 0.3, COL_DIVINE)
 		"doom":
 			# Who it would take.
 			for v in SilentDoom.victims_at(_crowd._field, _press):
@@ -739,6 +809,11 @@ func _draw() -> void:
 ## Every preview line is drawn twice: a dark stroke a hair outside, then the bright one. Hairlines are all
 ## this project draws (a pixel line cannot be made thicker), and one gold hairline vanishes over lit stone.
 const SHADE := Color(0.05, 0.04, 0.02, 0.75)
+## The wheel: its options' screen radius round the chosen, how far up, and how near a click must land on one.
+const WHEEL_PX := 44.0
+const WHEEL_UP := 26.0
+const WHEEL_REACH := 1.3
+const WHEEL_FILL := Color(0.05, 0.04, 0.02, 0.8)
 ## How far outside the bright line the dark one sits, in ground units (about two pixels).
 const SHADE_GAP := 0.05
 ## Mind Whisper's dotted line, in dashes.
@@ -751,6 +826,29 @@ func _ring(at: Vector2, r: float, col: Color) -> void:
 
 
 ## A translucent disc with an edge (Divine Congregation's circle), in ground units.
+## The wheel round the chosen: a disc per mode with its sign, the one under the cursor lit.
+func _draw_wheel() -> void:
+	_ring(first, 0.35, COL_DIVINE)
+	var m := modes()
+	var spots := wheel_spots()
+	var over := mode_index()
+	var flat := Iso.BASIS.affine_inverse()
+	for i in spots.size():
+		var sp := Iso.ground_to_screen(spots[i])
+		var lit := i == over
+		draw_set_transform_matrix(flat * Transform2D(0.0, sp))
+		draw_circle(Vector2.ZERO, 13.0, WHEEL_FILL)
+		draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 24, COL_DIVINE if lit else COL_FAINT, 1.5 if lit else 1.0)
+		var glyph: Array = (m[i] as Dictionary).get("glyph", DominionParts.RINGS)
+		var col: Color = (m[i] as Dictionary).get("color", COL_DIVINE)
+		for r in 5:
+			for c in 5:
+				if int(glyph[r]) & (1 << (4 - c)):
+					draw_rect(Rect2(Vector2(c - 2.5, r - 2.5) * 3.0, Vector2(3, 3)), col if lit else Color(col, 0.6))
+		draw_set_transform_matrix(Transform2D())
+		draw_line(first, spots[i], COL_FAINT, -1.0)
+
+
 func _disc(at: Vector2, r: float, fill: Color, edge: Color) -> void:
 	var pts := PackedVector2Array()
 	for i in 48:

@@ -1621,9 +1621,9 @@ func _investigate(at: Vector2) -> void:
 	var pool: Array[Person] = []
 	for i in range(first, mini(first + post_counts[3], soldiers.size())):
 		var p := soldiers[i]
-		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST \
+		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST and p.fearless_left <= 0.0 \
 				and p.corps != Person.Corps.KNIGHT and not (escorts != null and escorts.guarding(p)):
-			pool.append(p)
+			pool.append(p)  # one who fears nothing (entranced, reassured) sees nothing to look into
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(at) < b.ground_pos.distance_to(at))
 	var spot := at if _grid.walkable(at) else _grid.nearest_walkable(at)
 	if spot == Vector2.INF:

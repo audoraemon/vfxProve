@@ -45,6 +45,7 @@ static func run(t) -> void:
 	_bonfires(t)
 	_banners(t)
 	_window_mask(t)
+	_look_masks(t)
 	_gpt_showcase(t)
 	_showcase_where(t)
 	SpriteArt.set_enabled(true)
@@ -1440,3 +1441,34 @@ static func _final_z(n: Node) -> int:
 			break
 		c = c.get_parent()
 	return z
+
+
+## The look-only masks (round 2, window_glow.py --look): a set without a glow_mask.png may carry a glow_mask_look.png, which
+## window_mask() hands out only when the town's look is DAY or NIGHT. CURRENT's lookup for it is none.
+const LOOK_MASK_SETS := ["watermill", "gpt_warehouse"]
+
+
+static func _look_masks(t) -> void:
+	var was = TownLook.active
+	for n: String in LOOK_MASK_SETS:
+		var s := SpriteArt.sprite(n)
+		t.check(s.glow_mask == null and s.get("glow_mask_look") != null, "%s has only a look mask" % n)
+		if s.get("glow_mask_look") == null:
+			continue
+		t.check(Vector2(s.glow_mask_look.get_size()) == Vector2(s.size), "%s's look mask is one frame in size" % n)
+		TownLook.active = Town.Look.CURRENT
+		t.check(SpriteArt.window_mask(s) == null, "%s: CURRENT's mask lookup is none" % n)
+		TownLook.active = Town.Look.DAY
+		t.check(SpriteArt.window_mask(s) == s.glow_mask_look, "%s: DAY's mask lookup is the look mask" % n)
+		TownLook.active = Town.Look.NIGHT
+		t.check(SpriteArt.window_mask(s) == s.glow_mask_look, "%s: NIGHT's mask lookup is the look mask" % n)
+	# A set with a regular mask keeps it in every look.
+	var c := SpriteArt.sprite("cottage_red")
+	for look in [Town.Look.CURRENT, Town.Look.DAY, Town.Look.NIGHT]:
+		TownLook.active = look
+		t.check(SpriteArt.window_mask(c) == c.glow_mask and c.glow_mask != null, "cottage_red keeps its mask in look %d" % look)
+	TownLook.active = Town.Look.CURRENT
+	var v := SpriteView.new().setup(SpriteArt.sprite("watermill"), Vector2(-30.4, -15.2), Vector2(24.0, -12.0))
+	t.check((v.material as ShaderMaterial).get_shader_parameter("window_flicker") != true, "CURRENT: no flicker on a look-masked set")
+	v.free()
+	TownLook.active = was

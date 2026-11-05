@@ -21,6 +21,8 @@ const ROOF: Array[int] = [0b00100, 0b01010, 0b10001, 0b10001, 0b11111]
 const ARROW: Array[int] = [0b00100, 0b00010, 0b11111, 0b00010, 0b00100]
 const SHUT_EYE: Array[int] = [0b00000, 0b00000, 0b11111, 0b01110, 0b00000]
 const FLAME: Array[int] = [0b00100, 0b01100, 0b01110, 0b11111, 0b01110]
+const HALO: Array[int] = [0b01110, 0b10001, 0b01110, 0b00100, 0b01110]
+const NOOSE: Array[int] = [0b01110, 0b10001, 0b01110, 0b00100, 0b00100]
 
 
 ## Whether there is a stage to play on (a headless test hands an effect only the field and the ground).

@@ -64,6 +64,8 @@ const POWER_KINDS := {
 	"belllies": [],
 	"magnify": [&"magnify"],
 	"unseen": [],
+	"clearmind": [],
+	"saint": [&"frenzy"],
 	"curfew": [],
 	"abolition": [],
 	"voice": [&"frenzy"],

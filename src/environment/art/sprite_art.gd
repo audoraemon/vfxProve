@@ -280,6 +280,10 @@ static func sprite(n: String) -> Dictionary:
 	# flicker.
 	var mask_path := DIR + n + "/glow_mask.png"
 	var glow_mask: Texture2D = load(mask_path) if ResourceLoader.exists(mask_path) else null
+	# The look-only mask (window_glow.py --look): a lit-window mask for a set that has none; window_mask() hands it out
+	# only in the DAY and NIGHT looks, so CURRENT's windows stay exactly as they were.
+	var look_path := DIR + n + "/glow_mask_look.png"
+	var glow_mask_look: Texture2D = load(look_path) if glow_mask == null and ResourceLoader.exists(look_path) else null
 	var size := Vector2(m.size[0], m.size[1])
 	var fp := Vector2(m.footprint[0], m.footprint[1])
 	var idle_path := DIR + n + "/idle.png"
@@ -313,6 +317,7 @@ static func sprite(n: String) -> Dictionary:
 		"keep_flames": bool(m.get("keep_flames", false)),
 		# Its window mask (structure_sprite.gdshader's glow_mask), or null.
 		"glow_mask": glow_mask,
+		"glow_mask_look": glow_mask_look,
 		# A street torch's bowl rim (the procedural flame's base) or a street lamp's lantern glass (the procedural glow),
 		# in sprite px; damaged_shift: where they move to on the damaged still (its post leans). INF / Rect2(): none.
 		"flame": Vector2(m.flame[0], m.flame[1]) if m.has("flame") else Vector2.INF,
@@ -331,6 +336,19 @@ static func generated_collapse() -> bool:
 
 ## The sprite set drawn for `s`, or {} when sprites are off or it has none. A sprite drawn for a wide footprint stands
 ## mirrored on a deep one: mirroring an iso picture swaps its ground axes.
+## The window mask a set's pixels flicker and light the street by: its glow_mask in every look, else (only when the
+## town's look is not CURRENT) its glow_mask_look, else null.
+static func window_mask(sprite) -> Texture2D:
+	if not (sprite is Dictionary):
+		return null
+	var m: Texture2D = sprite.get("glow_mask")
+	if m != null:
+		return m
+	if TownLook.active != Town.Look.CURRENT:
+		return sprite.get("glow_mask_look")
+	return null
+
+
 static func set_for(s: Structure) -> Dictionary:
 	if not on():
 		return {}

@@ -47,6 +47,13 @@ var playing := false
 var phase := 0.0
 ## The window flicker last handed to the shader (_set_flicker()): on for the intact still or its strip with a mask.
 var _flicker := false
+## How far lit windows (the glow mask) are pushed toward a hot lamp colour in every view made from now on: 0 in CURRENT
+## (the shader's path is then unchanged); the town's DAY and NIGHT looks set it (TownLook.window_boost) for their build.
+static var window_boost := 0.0
+## The town look's other sprite-shader settings for every view made from now on (round 3, TownLook.sprite_params(): the
+## windows' hot core and halo, the rim light): {uniform name: value}. Empty in CURRENT, so no parameter is ever set and
+## the shader runs its defaults (off).
+static var look_params := {}
 
 
 ## `left` and `right`: the footprint's left and right corners relative to its front corner, in the structure's space
@@ -66,6 +73,13 @@ func setup(sprite_set: Dictionary, left: Vector2, right: Vector2) -> SpriteView:
 	_mat.set_shader_parameter("anchor", sprite.anchor)
 	_mat.set_shader_parameter("window_amp", WINDOW_AMP)
 	_mat.set_shader_parameter("frame_size", sprite.size)
+	if window_boost > 0.0:
+		_mat.set_shader_parameter("window_boost", window_boost)
+	for k: String in look_params:
+		_mat.set_shader_parameter(k, look_params[k])
+	if look_params.has("rim_amt"):
+		# Toward the sun (up-left on screen): in a mirrored sprite's own texels that is up-right.
+		_mat.set_shader_parameter("rim_dir", Vector2(-m, -1.0))
 	return self
 
 
@@ -136,7 +150,7 @@ func _set_flicker(on: bool) -> void:
 		return
 	_flicker = on
 	if on:
-		_mat.set_shader_parameter("glow_mask", sprite.glow_mask)
+		_mat.set_shader_parameter("glow_mask", SpriteArt.window_mask(sprite))
 	_mat.set_shader_parameter("window_flicker", on)
 
 
@@ -147,7 +161,7 @@ func _stop() -> void:
 
 
 func _show(st: StringName, frame_index: int) -> void:
-	_set_flicker(st == &"intact" and sprite.get("glow_mask") != null)
+	_set_flicker(st == &"intact" and SpriteArt.window_mask(sprite) != null)
 	var n := frame_count(st)
 	var f := 0
 	if n > 1:

@@ -35,7 +35,8 @@ static func eligible(p: Variant, reserved: Array, director: MissionDirector = nu
 	return c.is_alive() and not c.soldier and not c.inside and c.profile != null and c.mind == Person.Mind.CALM \
 		and c.corps == Person.Corps.NONE and c.profile.faith == CitizenProfile.Faith.NONE \
 		and not c.profile.role in Wish.NOT_LAY and not c.answers_lure and not c.engineer_duty and not c.chained \
-		and not c.has_goal() and c.statuses.is_empty() and not reserved.has(c) 		and c.stay_left < HOLD_STAY and not (director != null and director.busy(c))
+		and not c.has_goal() and c.statuses.is_empty() and not reserved.has(c) \
+		and c.stay_left < HOLD_STAY and not (director != null and director.busy(c))
 
 
 ## The citizens kept indoors: NIGHT_INDOORS of the eligible ones, chosen by a generator of its own seeded from `seed_value` (never the crowd's).

@@ -140,7 +140,7 @@ static func _sweeps(t, m: Mission) -> void:
 		t.check(j.mind == Person.Mind.FLEE and q.mind == Person.Mind.CALM, "a household with a member indoors is not held for him")
 	else:
 		t.check(false, "someone outdoors regrouped to test the household with")
-	# Fright and fire recruiting skip them too.
+	# observe() is the backstop the fright spread and fire recruiting go through.
 	q.observe(Vector2.ZERO)
 	t.check(q.mind == Person.Mind.CALM, "fright (observe) does not reach them")
 

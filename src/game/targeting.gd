@@ -759,7 +759,7 @@ func _draw() -> void:
 			if _order != "" and _whisper_held():
 				_draw_pick()
 			elif _wheel and _whisper_held():
-				_draw_wheel()
+				_draw_whisper_wheel()
 				if armed:
 					_whisper_line(_press, _at)
 			elif _whisper_held():
@@ -901,7 +901,7 @@ func _whisper_line(from: Vector2, to: Vector2, col := COL_EDGE, reach := true) -
 
 ## The order wheel around the citizen: three slices in their tints (the one under the held cursor brighter), the hub, and each
 ## slice's word upright on the screen.
-func _draw_wheel() -> void:
+func _draw_whisper_wheel() -> void:
 	var c := _whisper_target.ground_pos
 	var under := wheel_slice(_at - c) if armed else ""
 	var half := deg_to_rad(60.0)

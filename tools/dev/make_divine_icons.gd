@@ -42,6 +42,7 @@ func _initialize() -> void:
 	_save(_sign([0b10000, 0b01000, 0b01100, 0b00010, 0b00001], Color(1.0, 0.6, 0.3), Color(0.1, 0.06, 0.05), 99), "shatter")
 	_save(_sign(ClearMindFx.TRANCE, Color(0.78, 0.84, 1.0), Color(0.06, 0.07, 0.14), 100), "clearmind")
 	_save(_sign(DominionParts.HALO, Color(1.0, 0.88, 0.55), Color(0.1, 0.07, 0.04), 101), "saint")
+	_save(_sign(SacredSanctuaryFx.SHIELD, Color(1.0, 0.9, 0.6), Color(0.09, 0.07, 0.04), 102), "sanctuary")
 	# Veil: the shut eye in dusk.
 	_save(_sign(DominionParts.SHUT_EYE, Color(0.76, 0.6, 1.0), Color(0.05, 0.02, 0.1), 95), "unseen")
 	print("wrote ", ProjectSettings.globalize_path(OUT))

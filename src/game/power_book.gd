@@ -112,6 +112,10 @@ const POWERS := [
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district believes a danger that is not there, or that all is well",
 		"quiet": true, "authority": "dominion", "modes": [
 			{"key": "danger", "name": "FALSE DANGER"}, {"key": "calm", "name": "ALL IS WELL", "area": {"r": 7.0}}]},
+	{"key": "sanctuary", "name": "Sacred Sanctuary", "path": "res://src/fx/dominion/sacred_sanctuary.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "two clicks", "shape": "the people at the first click wall the place at the second and set on whoever enters, 40 s; right-click: shape",
+		"quiet": true, "alarm": 1.0, "authority": "dominion", "alt_steps_mode": true, "modes": [
+			{"key": "circle", "name": "CIRCLE"}, {"key": "rect", "name": "RECTANGLE"}]},
 	{"key": "curfew", "name": "Curfew", "path": "res://src/fx/decree/curfew.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
@@ -244,7 +248,7 @@ const FAMILY := {
 	"ember": "fire", "dragon": "fire", "cinder": "fire",
 	"whisper": "lead", "oath": "lead", "saint": "lead", "echo": "lead", "congregation": "lead", "priority": "lead", "voice": "lead",
 	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
-	"discord": "hold",
+	"discord": "hold", "sanctuary": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
 	"noleave": "decree", "belllies": "decree", "magnify": "decree", "curfew": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage",

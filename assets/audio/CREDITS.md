@@ -107,8 +107,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_04_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_rise |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding1.wav` | CC0 | PWL | ability/quiet/q_wisp |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_clearmind, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding3.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_clearmind, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding3.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_sanctuary, ability/quiet/q_wisp |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_clearmind, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord, ability/quiet/q_sanctuary |
 | [Big scary troll sounds](https://opengameart.org/content/big-scary-troll-sounds) `troll-roars_0.ogg` | CC0 | Darsycho | ability/fire/dr_roar |
 | [Cannon fire](https://opengameart.org/content/cannon-fire) `cannon_fire_0.ogg` | CC0 | Thimras | ability/fire/nova_boom |
 | [Catching fire](https://opengameart.org/content/catching-fire) `flame_0.ogg` | CC0 | themightyglider | ability/energy/laser_sizzle_1, ability/fire/cf_fall, ability/quiet/q_ember_hit, building/lantern_blind |
@@ -120,7 +120,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Correct Bell](https://opengameart.org/content/correct-bell) `bell.wav` | CC0 | Fupi | ability/quiet/q_priority |
 | [Crowd Shouting/Speaking Ambience](https://opengameart.org/content/crowd-shoutingspeaking-ambience) `crowd_shouting_0.ogg` | CC0 | StarNinjas | ability/quiet/q_congregation, ability/quiet/q_hatred, citizen/crowd_panic |
 | [Cure Magic](https://opengameart.org/content/cure-magic) `Cure1.wav` | CC0 | Someoneman | ability/quiet/q_voice |
-| [Cure Magic](https://opengameart.org/content/cure-magic) `Cure3.wav` | CC0 | Someoneman | ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_saint |
+| [Cure Magic](https://opengameart.org/content/cure-magic) `Cure3.wav` | CC0 | Someoneman | ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_saint, ability/quiet/q_sanctuary |
 | [Dripping water loop](https://opengameart.org/content/dripping-water-loop) `atmosbasement.mp3_.flac` | CC0 | qubodup | ability/water/ts_drip |
 | [Earth Element Magic Spell](https://opengameart.org/content/earth-element-magic-spell) `Earth Element Magic Spell_0.flac` | CC0 | qubodup | ability/holy/jg_hands |
 | [Earth Element Magic Spell](https://opengameart.org/content/earth-element-magic-spell) `Earth Element Magic Spell_3.ogg` | CC0 | qubodup | ability/quiet/q_oath |
@@ -231,7 +231,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BrakeDrum1_Hammer_v2_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_noleave |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `Guiro-Slow_v1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_thorns |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `TB_hit_C4_v4_rr1.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark_hit |
-| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub1_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_curfew, ability/quiet/q_noleave |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub1_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_curfew, ability/quiet/q_noleave, ability/quiet/q_sanctuary |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub2_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub3_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_f.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition |

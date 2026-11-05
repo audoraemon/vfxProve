@@ -6,6 +6,9 @@ Three kinds of post:
   --tag kak-v011-m6         milestone: the tag's message + every change since the previous tag
   --range OLD..NEW          push: a short "landed on Develop-Main" summary of those commits
 
+Another branch's channel (e.g. feat/god-progression) adds --name for the post titles, --exclude for commits it merged
+in from elsewhere (e.g. origin/feat/Develop-Main), and --tag-glob for its own tag family (e.g. kak-god-*).
+
 The webhook URL comes from the DISCORD_WEBHOOK environment variable.
 Without it (or with --dry-run) the Discord payload is printed instead of sent.
 Standard library only, so it runs on any GitHub runner or a dev machine.
@@ -59,9 +62,21 @@ def git(*args):
                           text=True, encoding="utf-8").stdout.strip()
 
 
+EXCLUDE = []  # refs whose commits are never listed (--exclude): another branch's work merged in
+
+
 def subjects(rev_range):
-    out = git("log", "--no-merges", "--reverse", "--format=%s", rev_range)
+    out = git("log", "--no-merges", "--reverse", "--format=%s", rev_range, *[f"^{r}" for r in EXCLUDE])
     return [s for s in out.splitlines() if s.strip()]
+
+
+def ref_exists(ref):
+    try:
+        git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+        return True
+    except subprocess.CalledProcessError:
+        print(f"--exclude {ref}: no such ref here; not excluded.")
+        return False
 
 
 def previous_tag(tag, glob):
@@ -143,9 +158,9 @@ def fit(text):
     return "\n".join(kept) + f"\n• …and {len(lines) - len(kept)} more lines (see the link above)"
 
 
-def tag_post(tag):
+def tag_post(tag, tag_glob=ANY_TAG_GLOB):
     is_release = bool(RELEASE_TAG.match(tag))
-    prev = previous_tag(tag, RELEASE_GLOB if is_release else ANY_TAG_GLOB)
+    prev = previous_tag(tag, RELEASE_GLOB if is_release else tag_glob)
     rev_range = f"{prev}..{tag}" if prev else tag
     lines = subjects(rev_range)
     sections, quiet, _ = classify(lines)
@@ -158,7 +173,7 @@ def tag_post(tag):
                  git("log", "-1", "--format=%cI", tag))
 
 
-def push_post(rev_range, branch):
+def push_post(rev_range, branch, name=None):
     lines = subjects(rev_range)
     if not lines:
         return None
@@ -166,7 +181,7 @@ def push_post(rev_range, branch):
     if not any(sections.values()):
         return None  # only docs/tests/chores: not worth a post
     version = versions.most_common(1)[0][0] if versions else None
-    title = f"{version} in progress" if version else f"New on {branch}"
+    title = name if name else f"{version} in progress" if version else f"New on {branch}"
     title += f": {len(lines)} change" + ("s" if len(lines) != 1 else "")
     old, new = (git("rev-parse", "--short=7", f"{r}^{{commit}}") for r in rev_range.split(".."))
     url = f"{REPO_URL}/compare/{old}...{new}"
@@ -212,10 +227,14 @@ def main():
     what.add_argument("--tag", help="post a release or milestone tag, e.g. kak-v0.11.2")
     what.add_argument("--range", help="post a push summary for OLD..NEW")
     ap.add_argument("--branch", default="feat/Develop-Main", help="branch name shown on push posts")
+    ap.add_argument("--name", help="push post title in place of the version, e.g. 'God progression'")
+    ap.add_argument("--exclude", action="append", default=[], help="never list commits reachable from this ref")
+    ap.add_argument("--tag-glob", default=ANY_TAG_GLOB, help="tag family for a tag post's previous tag")
     ap.add_argument("--dry-run", action="store_true", help="print the payload, send nothing")
     args = ap.parse_args()
+    EXCLUDE.extend(r for r in args.exclude if ref_exists(r))
 
-    payload = tag_post(args.tag) if args.tag else push_post(args.range, args.branch)
+    payload = tag_post(args.tag, args.tag_glob) if args.tag else push_post(args.range, args.branch, args.name)
     if payload is None:
         print("Nothing player-facing in these commits; no post.")
         return

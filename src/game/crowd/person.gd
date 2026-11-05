@@ -246,6 +246,10 @@ var shelters: ShelterManager
 var shelter: Structure
 var shelter_door := Vector2.INF
 var inside := false
+## Kept indoors for the whole mission by a NIGHT (NightRules.apply, the only thing that sets it): hidden like `inside`, and also passed over by
+## the crowd's sweeps (regroup, evacuation, households, the spread of fright, fire recruiting) and the routine, so it stays CALM with no goal.
+## Never use a plain `inside` guard for that: rubble and ferry people are inside too, and CURRENT must not change.
+var night_indoors := false
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
@@ -856,7 +860,7 @@ func startled() -> bool:
 ## citizen does (v0.11.1: and a soldier standing at his post); the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
 ## watchman staring at the falling star), else it is OBSERVE_SECONDS at random.
 func observe(from: Vector2, seconds := -1.0) -> void:
-	if resists_mind() or state == State.DEAD or fearless_left > 0.0:
+	if night_indoors or resists_mind() or state == State.DEAD or fearless_left > 0.0:
 		return
 	if soldier:
 		if mind != Mind.POST or hurrying:
@@ -1620,7 +1624,7 @@ func leave_shelter(evacuate: bool) -> void:
 ## Turn out to fight the fire on `s` (FireManager sends it for water). A soldier only when sent by its rescue squad
 ## or its engineer team (force); `stays` keeps it on through the evacuation (an engineer, v0.08.2).
 func assist(s: Structure, force := false, stays := false) -> void:
-	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT \
+	if night_indoors or (soldier and not force) or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT \
 			or held_by_will(WILL_FIRM):
 		return
 	_held_saved = false
@@ -1680,7 +1684,7 @@ func walk_to(g: Vector2) -> void:
 
 ## City Emergency (v0.04): go home to `home` and wait there with the family until the evacuation or the danger.
 func regroup(home: Vector2) -> void:
-	if soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or fearless_left > 0.0:
+	if night_indoors or soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or fearless_left > 0.0:
 		return
 	mind = Mind.REGROUP
 	awareness = maxi(awareness, Awareness.EMERGENCY) as Awareness
@@ -1747,7 +1751,7 @@ func is_stumbling() -> bool:
 ## Head for the nearest exit there is still a route to. The plan itself is staggered, so a town-wide panic
 ## does not ask for a hundred paths in the same frame.
 func flee() -> void:
-	if soldier or mind == Mind.FLEE or state == State.DEAD or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+	if night_indoors or soldier or mind == Mind.FLEE or state == State.DEAD or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
 		return
 	if fearless_left > 0.0:
 		_reassured_fled = true  # it will go when the calm wears off

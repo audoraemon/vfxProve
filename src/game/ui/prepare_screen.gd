@@ -462,11 +462,12 @@ func header_text() -> String:
 func _draw_header() -> void:
 	var s := header_text()
 	var size := UiTheme.SIZE_BIG
-	# Body size only if the header would meet the budget text at the right.
-	if 8.0 + UiTheme.width(s, size) > 632.0 - UiTheme.width(budget_text(), UiTheme.SIZE_SMALL) - 8.0:
+	var when := look_text()
+	var tail := UiTheme.width(when, UiTheme.SIZE_SMALL) + 10.0 if when != "" else 0.0  # the look's word sits after the header
+	# Body size only if the header (and the look after it) would meet the budget text at the right.
+	if 8.0 + UiTheme.width(s, size) + tail > 632.0 - UiTheme.width(budget_text(), UiTheme.SIZE_SMALL) - 8.0:
 		size = UiTheme.SIZE_BODY
 	UiTheme.text(_ui, Vector2(8, 24), s, size, UiTheme.COL_BAD if s == HUNT_HEADER else UiTheme.COL_GOLD)
-	var when := look_text()
 	if when != "":
 		UiTheme.text(_ui, Vector2(8.0 + UiTheme.width(s, size) + 10.0, 24.0), when, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 

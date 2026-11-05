@@ -25,7 +25,8 @@ FRAMES = PEOPLE / "frames"
 # Engine state, PixelLab template (the folder the frames come in).
 STATES = [("idle", "breathing-idle"), ("walk", "walking-4-frames"), ("run", "running-4-frames"),
           ("stumble", "crouching"), ("death", "falling-back-death"), ("scream", "scream"), ("lurch", "scary-walk"),
-          ("swing", "swing"), ("getup", None)]
+          ("swing", "swing"), ("getup", None), ("pray", "pray"), ("point", "point"), ("lookup", "lookup"),
+          ("cower", "cower")]
 # A direction PixelLab was not asked for is its partner flipped left-right: SE <-> SW, NE <-> NW.
 MIRROR = {"south-east": "south-west", "south-west": "south-east", "north-east": "north-west", "north-west": "north-east"}
 DIRS = ["south-east", "south-west", "north-east", "north-west"]

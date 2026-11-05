@@ -94,3 +94,27 @@ Re-rolled with v3 under temporary names (`scream_rr`, `scream_rr2`, `swing_rr`),
 - **Still missing: escort.** The south-east take swung the spear both ways, twice, so it keeps the idle fallback.
 - **Farmer swing kept as it was.** The re-roll was whiter than the idle and dropped the pitchfork in the last frame. The
   old south-east cross-punch was deleted on PixelLab by `--replace`; the local frames are the only copy.
+
+## Phase 2 (2026-11-05): pray, point, look up, cower
+
+All 13 citizen designs have the four new rows (ANIMS 9-12), generated SE + NE with v3 (8 frames) and mirrored. Soldiers and
+stand-ins have none and keep their old look (the procedural kneel for Voice of God).
+
+When they play (drawing only; no timing changes):
+- pray: Voice of God's Kneel (compel_pose &"kneel"), and Divine Congregation (compel_pose &"pray") once standing still.
+- point / cower: the startle freeze before a run (Person.startled()); cower within COWER_REACH (3 tiles) of the threat,
+  point beyond it. The clip plays across the freeze.
+- look up: Mind.OBSERVE with look_up set; only the Falling Star watchman sets it (WarningDirector). Death Mark gawkers
+  stare at a body on the ground, so they do not look up.
+
+Prompts: pray "kneeling upright on both knees with a straight back, hands pressed together in prayer, head slightly
+bowed, not lying down" (the first prompt, "kneeling down on both knees and praying ... head bowed", often lay flat);
+point "pointing ahead with one outstretched arm clearly visible and shouting a warning"; lookup "standing still and
+looking up at the sky in awe, head tilted back"; cower "crouching low and covering the head with both arms, trembling
+in fear". Back views add ", seen from behind facing away from the viewer, back of the head visible".
+
+Generations: 8 pilot + 96 + 18 re-rolls. Kept with flaws, to re-roll later:
+- merchant_b pray back and bellkeeper pray front lie face-down (reads as prostration).
+- caregiver_b pray back kneels facing the viewer.
+- merchant_b, caregiver_b and clergy point back face the viewer.
+- clergy point front: the arm barely shows against the white robe.

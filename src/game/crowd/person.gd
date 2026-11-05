@@ -30,6 +30,8 @@ const THREAT_MARGIN := 1.5
 ## Seconds a person freezes when something turns them to PANIC from another mind (v0.11.2, spec §3.3), before they run. Each
 ## person's own value, fixed by their rng seed (startle_seconds()).
 const STARTLE := Vector2(0.4, 0.8)
+## Closer than this (tiles) to what frightened it, a startled citizen cowers; farther, it points and shouts (drawing only).
+const COWER_REACH := 3.0
 ## How long a person stops to look at something it saw or heard (seconds, min and max), and how long one waits where
 ## it ran to (or after looking) before going back to its day.
 const OBSERVE_SECONDS := Vector2(1.0, 3.0)
@@ -350,6 +352,11 @@ var _startle_left := 0.0
 ## post, never drawn from rng; -1 until first drawn).
 var _stride := false
 var _back := false
+## Seconds it has stood still (drawing only: a pray or a look-up plays from when it stops).
+var _still_t := 0.0
+## (Phase 2 people art) The thing it observes is up in the sky (the watchman's falling star): it looks up. Drawing only;
+## observe() clears it, the caller sets it after.
+var look_up := false
 var _look := -1.0
 ## The design _design() picked, its PeopleArt.info() table, and what it was picked for (manifest load, role, corps).
 var _design_key := -1
@@ -494,7 +501,7 @@ func tick(delta: float) -> void:
 		_idle = maxf(_idle, delta + 0.01)  # held (asleep, screaming, down): a goal set from outside cannot creep it for a tick, whatever the tick
 	var before := ground_pos
 	super(delta)
-	_track_stride(ground_pos - before)
+	_track_stride(ground_pos - before, delta)
 	if _down_pending and state == State.WANDER:
 		# The knock-back slide is over: it lies where it came to rest.
 		_down_pending = false
@@ -503,8 +510,9 @@ func tick(delta: float) -> void:
 
 
 ## For the people sprites only: whether it stepped this tick, and whether toward the back of the screen.
-func _track_stride(d: Vector2) -> void:
+func _track_stride(d: Vector2, delta: float) -> void:
 	_stride = d.length_squared() > 1e-10
+	_still_t = 0.0 if _stride else _still_t + delta
 	if _stride and absf(d.x + d.y) > 1e-6:
 		_back = d.x + d.y < 0.0
 
@@ -842,6 +850,7 @@ func observe(from: Vector2, seconds := -1.0) -> void:
 		return
 	_hold_begin()
 	_lured = false
+	look_up = false
 	mind = Mind.OBSERVE
 	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
 	_threat = from
@@ -1860,8 +1869,8 @@ static func _screen_box(fp: Rect2, h: float) -> Rect2:
 # --- Drawing -----------------------------------------------------------------
 
 func _draw_body(lift: int, top_only: int) -> void:
-	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD:
-		# On its knees: the body down, no legs under it.
+	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD 			and not (SpriteArt.on() and PeopleArt.ready() and _prays()):
+		# On its knees: the body down, no legs under it (unless the sprite has a pray of its own).
 		lift += 3
 		top_only = 1
 	if SpriteArt.on() and PeopleArt.ready():
@@ -2009,6 +2018,19 @@ func _sprite_pose_code() -> int:
 		span = SWING_SHOW
 	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
 		anim = 2
+	elif _startle_left > 0.0 and state == State.WANDER and _own_art(12):
+		# Frozen in fright: a threat close by, it cowers; farther off, it points and shouts (phase 2).
+		anim = 12 if ground_pos.distance_to(_threat) < COWER_REACH else 10
+		if anim == 10 and not _own_art(10):
+			anim = 12
+		span = startle_seconds()
+		t = span - _startle_left
+	elif not _stride and _prays():
+		anim = 9
+		t = _still_t
+	elif not _stride and mind == Mind.OBSERVE and look_up and _own_art(11):
+		anim = 11
+		t = _still_t
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
 		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
@@ -2026,6 +2048,18 @@ func _sprite_pose_code() -> int:
 		_design()
 		frame = mini(frame, _design_info[4][anim * 4 + facing] - 1)
 	return frame << 6 | anim << 2 | facing
+
+
+## _has_own_art(), its design table loaded first.
+func _own_art(anim: int) -> bool:
+	_design()
+	return _has_own_art(anim)
+
+
+## Praying (phase 2): on its knees by Voice of God's Kneel, or gathered by Divine Congregation (pose &"pray"), and its
+## design has the pray.
+func _prays() -> bool:
+	return mind == Mind.COMPELLED and state != State.DEAD and (compel_pose == &"kneel" or compel_pose == &"pray") 		and _own_art(9)
 
 
 ## Whether this design has art of its own for the animation (ANIMS index), not its idle standing in (the manifest's

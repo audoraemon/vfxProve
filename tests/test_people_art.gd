@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_mirror(t)
 	_fallback(t)
 	_pack(t)
+	_phase2(t)
 	t.check(_crowd_run(true) == _crowd_run(false), "people sprites on or off, the crowd does exactly the same")
 	SpriteArt.set_enabled(true)
 
@@ -255,22 +256,23 @@ static func _cached_frames(t) -> void:
 
 
 
-## The atlas has nine animations (v0.12 people animations): idle walk run stumble death scream lurch swing getup.
+## The atlas has thirteen animations: idle walk run stumble death, the v0.12 scream lurch swing getup, and phase 2's
+## pray point lookup cower.
 static func _rows(t) -> void:
-	t.check(PeopleArt.ANIMS.size() == 9, "people have nine animations")
-	t.check(PeopleArt.FPS_AT.size() == 9 and PeopleArt.ONCE_AT.size() == 9, "each has an fps and a hold flag")
+	t.check(PeopleArt.ANIMS.size() == 13, "people have thirteen animations")
+	t.check(PeopleArt.FPS_AT.size() == 13 and PeopleArt.ONCE_AT.size() == 13, "each has an fps and a hold flag")
 	var agree := true
 	for a in PeopleArt.ANIMS.size():
 		agree = agree and PeopleArt.FPS_AT[a] == PeopleArt.FPS[PeopleArt.ANIMS[a]] 			and PeopleArt.ONCE_AT[a] == PeopleArt.ONCE.has(PeopleArt.ANIMS[a])
 	t.check(agree, "FPS_AT and ONCE_AT agree with FPS and ONCE")
 
 
-## Every design's frame table holds 9 * 4 frame counts.
+## Every design's frame table holds 13 * 4 frame counts.
 static func _info_table(t) -> void:
 	var ok := true
 	for d in PeopleArt.manifest().designs.keys():
-		ok = ok and PeopleArt.info(d)[4].size() == 36
-	t.check(ok, "every design's frame table has 36 frame counts")
+		ok = ok and PeopleArt.info(d)[4].size() == 52
+	t.check(ok, "every design's frame table has 52 frame counts")
 
 
 ## "getup" is the death fall played backwards, frame for frame.
@@ -352,12 +354,12 @@ static func _fallback(t) -> void:
 ## Frame, animation and facing round-trip through the pose code for every animation.
 static func _pack(t) -> void:
 	var ok := true
-	for a in 9:
+	for a in 13:
 		for f in 4:
 			for k in 21:
 				var code := k << 6 | a << 2 | f
 				ok = ok and (code >> 2 & 15) == a and (code & 3) == f and (code >> 6) == k
-	t.check(ok, "the pose code round-trips frame, animation and facing for all nine animations")
+	t.check(ok, "the pose code round-trips frame, animation and facing for all thirteen animations")
 	# And the person's own: a held animation's code reads back through _sprite_pose().
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -374,6 +376,75 @@ static func _pack(t) -> void:
 	t.check(PeopleArt.ANIMS[code >> 2 & 15] == pose[0] and (code & 3) == pose[1] and (code >> 6) == pose[2],
 		"_sprite_pose() unpacks _sprite_pose_code()")
 	p.free()
+
+
+## Phase 2 (pray, point, lookup, cower): every citizen design has the four of its own; a kneeling or gathered person
+## prays once it stands still, a startled one cowers near the threat and points far from it, the watchman staring at the
+## falling star looks up; a soldier (no such art) keeps its old look.
+static func _phase2(t) -> void:
+	SpriteArt.set_enabled(true)
+	var all_own := true
+	for d in ["resident_a", "resident_b", "merchant_a", "merchant_b", "craft_a", "craft_b", "laborer", "clergy",
+			"caregiver_a", "caregiver_b", "farmer", "bellkeeper", "engineer"]:
+		for a in [9, 10, 11, 12]:
+			all_own = all_own and (int(PeopleArt.info(d)[5]) >> a) & 1 == 1
+	t.check(all_own, "every citizen design has its own pray, point, lookup and cower")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var p := Person.new()
+	p.rng.seed = 31
+	p.bounds = TownLayout.MAP
+	p.setup_person(false, Vector2(2.7, 2.0), grid)
+	p.compel(p.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD, false, &"kneel")
+	for i in 30:
+		p.tick(1.0 / 60.0)
+	t.check(p._sprite_pose()[0] == &"pray", "kneeling at Voice of God, it prays")
+	for i in 120:
+		p.tick(1.0 / 60.0)
+	var pose := p._sprite_pose()
+	t.check(pose[2] == PeopleArt.frame_count(p._design(), &"pray", pose[1]) - 1, "the pray holds its last frame")
+	p.release_compulsion()
+	p.compel(p.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD, false, &"pray")
+	p.tick(1.0 / 60.0)
+	t.check(p._sprite_pose()[0] == &"pray", "gathered by Divine Congregation, it prays")
+	p.release_compulsion()
+	p.compel(p.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD)
+	p.tick(1.0 / 60.0)
+	t.check(p._sprite_pose()[0] == &"idle", "another compulsion, standing, it does not pray")
+	p.release_compulsion()
+	var q := Person.new()
+	q.rng.seed = 32
+	q.bounds = TownLayout.MAP
+	q.setup_person(false, Vector2(2.7, 2.0), grid)
+	q.panic(q.ground_pos + Vector2(0.0, -1.0))
+	t.check(q.startled() and q._sprite_pose()[0] == &"cower", "startled by a threat close by, it cowers")
+	var r := Person.new()
+	r.rng.seed = 33
+	r.bounds = TownLayout.MAP
+	r.setup_person(false, Vector2(2.7, 2.0), grid)
+	r.panic(r.ground_pos + Vector2(0.0, -8.0))
+	t.check(r.startled() and r._sprite_pose()[0] == &"point", "startled by a threat far off, it points and shouts")
+	var w := Person.new()
+	w.rng.seed = 34
+	w.bounds = TownLayout.MAP
+	w.setup_person(false, Vector2(2.7, 2.0), grid)
+	w.observe(w.ground_pos + Vector2(0.0, -3.0), 4.0)
+	w.tick(1.0 / 60.0)
+	t.check(w._sprite_pose()[0] == &"idle", "observing something on the ground, it just stands")
+	w.look_up = true
+	w.tick(1.0 / 60.0)
+	t.check(w._sprite_pose()[0] == &"lookup", "staring at the sky, it looks up")
+	var g := Person.new()
+	g.rng.seed = 35
+	g.bounds = TownLayout.MAP
+	g.setup_person(true, Vector2(2.7, 2.0), grid)
+	g.compel(g.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD, false, &"kneel")
+	g.tick(1.0 / 60.0)
+	t.check(g._sprite_pose()[0] != &"pray", "a soldier has no pray: it keeps the old kneel")
+	for x in [p, q, r, w, g]:
+		x.free()
 
 
 ## Two atlas cells show the same picture: the same alpha, and the same colour where there is any. (Import fixes the colour

@@ -146,7 +146,7 @@ func _build() -> void:
 		if resists(p, ctx.rng):
 			resisted += 1
 			continue
-		if p.compel(spots[gathered.size()], DURATION - 0.5, MOVEMENT_PRIORITY, MARK):
+		if p.compel(spots[gathered.size()], DURATION - 0.5, MOVEMENT_PRIORITY, MARK, false, &"pray"):
 			gathered.append(p)
 	ctx.play(&"q_congregation", place_at)
 	if _staged():

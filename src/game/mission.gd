@@ -121,6 +121,9 @@ var levels := {}
 ## Endless Night's night (god P1, spec §9.1): when valid, `_mission_def()` returns what this gives (a GodNight.def_for()) and ignores
 ## `--mission`. Game sets it before start() for a night; unset everywhere else.
 var night_def: Callable
+## The town's look this run is given (Endless Night's roll, GodNight.look_for()): a Town.Look, or -1 for none -- then --look= or CURRENT, as
+## ever. Only Game's Endless Night sets it; the board, the campaign, the sandbox, the tests and the tools never do.
+var look_override := -1
 ## True in Endless Night (god P1, Ruling P9): the R key does nothing, so a night cannot be restarted.
 var restart_locked := false
 ## The chain's aim is up (god P3, MS §2): C was pressed in a rite with the chain ready, and the next click on the map chains the marked victim under
@@ -352,7 +355,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_bf.ctx.field.bounds = City.current().map()
 	_town = Town.new()
 	_town.name = "Town"
-	_town.look = Town.look_from_args(OS.get_cmdline_user_args())
+	_town.look = (look_override as Town.Look) if look_override >= 0 else Town.look_from_args(OS.get_cmdline_user_args())
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)
@@ -390,6 +393,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 
 	_wired.clear()
 	_build_act(powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args()))
+	_apply_night_rules(seed_value)
 	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
 	_overlay.name = "BehaviourOverlay"
 	if "--behaviour" in OS.get_cmdline_user_args():
@@ -403,6 +407,15 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_intro_left += PRAYERS_SECONDS
 	_sync_intro_hud()
 	_show_held_banners()
+
+
+## The look's rules (NightRules) once the director has appointed its people: nothing but at NIGHT. The wishes' people are kept out too.
+func _apply_night_rules(seed_value: int) -> void:
+	var kept: Array = _director.reserved.duplicate() if _director != null else []
+	if _descent != null:
+		for w in _descent.wishes:
+			kept.append_array(w.people())
+	NightRules.apply(_crowd, _town.look, kept, seed_value)
 
 
 ## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the

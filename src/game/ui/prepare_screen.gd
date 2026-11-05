@@ -64,6 +64,8 @@ var levels := {}
 ## learned level -- a tab per god type holding one (the spot decides the tab, spec §5.2), the god's slots and Might, no level
 ## picker. null for every other mission.
 var god: GodSlot = null
+## The look Endless Night rolled for this night (a Town.Look), or -1 for none: Game sets it with `god`; the header then says Day or Night.
+var look := -1
 ## The open tab: an index into tabs().
 var tab := 0
 ## Why the last pick (or MANIFEST) was refused, shown in the panel's hint line for REFUSE_SECONDS; "" for none.
@@ -464,6 +466,16 @@ func _draw_header() -> void:
 	if 8.0 + UiTheme.width(s, size) > 632.0 - UiTheme.width(budget_text(), UiTheme.SIZE_SMALL) - 8.0:
 		size = UiTheme.SIZE_BODY
 	UiTheme.text(_ui, Vector2(8, 24), s, size, UiTheme.COL_BAD if s == HUNT_HEADER else UiTheme.COL_GOLD)
+	var when := look_text()
+	if when != "":
+		UiTheme.text(_ui, Vector2(8.0 + UiTheme.width(s, size) + 10.0, 24.0), when, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+
+
+## "Day" or "Night" for an Endless Night's rolled look; "" when no look is set.
+func look_text() -> String:
+	if look == Town.Look.NIGHT:
+		return "Night"
+	return "Day" if look == Town.Look.DAY else ""
 
 
 ## True when this screen prepares an Awaken rite for a god (god P3, MS §1): the mission is a rite's and there is a god.

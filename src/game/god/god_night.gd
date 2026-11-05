@@ -55,6 +55,14 @@ static func night_seed(slot: GodSlot) -> int:
 	return hash([slot.seed, slot.night])
 
 
+## The look of mission `id` on this god's night (Endless Night's roll): DAY or NIGHT, even, from a generator of its own seeded by the god, its
+## night and the mission -- stable across a quit and a return, and it consumes no other stream. Every mission rolls, Hunts and rites too.
+static func look_for(slot: GodSlot, id: String) -> Town.Look:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([slot.seed, slot.night, id, "look"])
+	return Town.Look.NIGHT if rng.randi() % 2 == 1 else Town.Look.DAY
+
+
 ## The seed of the night's wishes for mission `id` (Ruling P17): stable for the same slot, night and mission.
 static func wish_seed(slot: GodSlot, id: String) -> int:
 	return hash([slot.seed, slot.night, id])

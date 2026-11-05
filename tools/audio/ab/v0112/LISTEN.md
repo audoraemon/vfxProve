@@ -47,6 +47,7 @@ The floor for every power's cast sound is that minus 6 LU: **-21.0** (`QUIET_FLO
 | `q_clearmind` | -13.78 / -0.26 | 0.0 | -13.8 | `mix_q_clearmind.wav` | Clear Mind: a theremin drawn up slow, a bell played backwards into it, one high chime as it takes: the wheel turning. | | |
 | `q_saint` | -14.71 / -1.78 | 0.0 | -14.7 | `mix_q_saint.wav` | Saint or Sinner: a soft cure chord, two bells one bright one low, a cymbal drawn in under them: the choosing. | | |
 | `q_sanctuary` | -15.82 / -0.28 | 0.0 | -15.8 | `mix_q_sanctuary.wav` | Sacred Sanctuary: one low bell, a cure chord rising over it, a second bell as the wall is raised: hallowed ground. | | |
+| `q_anathema` | -18.50 / -2.55 | 0.0 | -18.5 | `mix_q_anathema.wav` | Anathema: one bell an octave down, a dark breath under it, a bell played backwards at the end: a house named damned. | | |
 | `q_curfew` | -17.81 / -0.90 | 0.0 | -17.8 | `mix_q_curfew.wav` | Curfew: a soft drum rub, then at 0.5 s one low bell and a long sigh pitched down: the street going to sleep. | | |
 | `q_belllies` | -17.70 / -0.28 | +1.2 | -16.5 | `mix_q_belllies.wav` | The Bell Lies: a bell played backwards, swelling into an out-of-tune toll at 0.8 s. Should sound false. | | |
 | `q_magnify` | -14.69 / -0.17 | -1.3 | -16.0 | `mix_q_magnify.wav` | Magnify: a lens swell, then at 0.9 s a chime struck twice, the second an octave up. | | |

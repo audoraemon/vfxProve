@@ -106,9 +106,9 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_02_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_surge |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_04_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_rise |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding1.wav` | CC0 | PWL | ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_clearmind, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_anathema, ability/quiet/q_clearmind, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding3.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_sanctuary, ability/quiet/q_wisp |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_clearmind, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord, ability/quiet/q_sanctuary |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_anathema, ability/quiet/q_belllies, ability/quiet/q_clearmind, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord, ability/quiet/q_sanctuary |
 | [Big scary troll sounds](https://opengameart.org/content/big-scary-troll-sounds) `troll-roars_0.ogg` | CC0 | Darsycho | ability/fire/dr_roar |
 | [Cannon fire](https://opengameart.org/content/cannon-fire) `cannon_fire_0.ogg` | CC0 | Thimras | ability/fire/nova_boom |
 | [Catching fire](https://opengameart.org/content/catching-fire) `flame_0.ogg` | CC0 | themightyglider | ability/energy/laser_sizzle_1, ability/fire/cf_fall, ability/quiet/q_ember_hit, building/lantern_blind |
@@ -184,7 +184,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Skippy Fish Water Sound Collection](https://opengameart.org/content/skippy-fish-water-sound-collection) `bubbles.wav` | CC0 | jcpmcdonald | ability/fire/dr_sink |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Arc.ogg` | CC0 | troutsneeze | ability/arcane/grav_arc, ability/energy/laser_ignite |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Bolt2.ogg` | CC0 | troutsneeze | ability/energy/orb_charge |
-| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Darkness1.ogg` | CC0 | troutsneeze | ability/arcane/grav_field, ability/quiet/q_doom, ability/quiet/q_unseen |
+| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Darkness1.ogg` | CC0 | troutsneeze | ability/arcane/grav_field, ability/quiet/q_anathema, ability/quiet/q_doom, ability/quiet/q_unseen |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Darkness2.ogg` | CC0 | troutsneeze | ability/holy/jg_hands |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Darkness3.ogg` | CC0 | troutsneeze | ability/arcane/grav_implode |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Fire2.ogg` | CC0 | troutsneeze | ability/fire/cf_erupt |

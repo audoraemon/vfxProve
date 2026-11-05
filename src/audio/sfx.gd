@@ -98,6 +98,7 @@ const CATALOG := {
 	&"q_abolition": {"path": "res://assets/audio/ability/quiet/q_abolition.wav", "db": 1.0},
 	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
 	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind.wav", "db": 0.0},
+	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema.wav", "db": 0.0},
 	&"q_sanctuary": {"path": "res://assets/audio/ability/quiet/q_sanctuary.wav", "db": 0.0},
 	&"q_saint": {"path": "res://assets/audio/ability/quiet/q_saint.wav", "db": 0.0},
 	&"q_curfew": {"path": "res://assets/audio/ability/quiet/q_curfew.wav", "db": 0.0},

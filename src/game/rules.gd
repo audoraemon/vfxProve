@@ -64,6 +64,7 @@ const POWER_KINDS := {
 	"clearmind": [],
 	"saint": [&"frenzy"],
 	"sanctuary": [&"frenzy"],
+	"anathema": [&"collapse", &"fire"],
 	"curfew": [],
 	"abolition": [],
 	"voice": [&"frenzy"],

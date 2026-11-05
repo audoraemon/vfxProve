@@ -49,6 +49,8 @@ const AREAS := {
 	"magnify": {"shape": "circle", "r": 4.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
+	# AnathemaFx.RADIUS: the buildings it would mark are outlined (_draw())
+	"anathema": {"shape": "circle", "r": 6.0},
 	# SacredSanctuaryFx.PICK_R: who would be hypnotized is ringed; then the wall's shape at the second click ("sanctuary")
 	"sanctuary": {"shape": "sanctuary", "r": 5.0},
 	# SaintFx.PICK_R: whom it would choose is ringed (_draw()); then the wheel
@@ -545,6 +547,10 @@ func _draw() -> void:
 	if _is_wheel() and placed:
 		_draw_wheel()
 	match _rules.key(slot):
+		"anathema":
+			for s in AnathemaFx.marked_at(_crowd._env, _press):
+				var box := s.footprint.grow(0.08)
+				draw_rect(box, COL_MAD if String(mode().get("key", "")) == "cursed" else COL_DIVINE, false, -1.0)
 		"saint":
 			if not placed:
 				var who := SaintFx.target_at(_crowd._field, _press)

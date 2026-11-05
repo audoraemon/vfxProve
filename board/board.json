@@ -1,12 +1,12 @@
 {
- "hash": "c371411d1f774a21",
- "updated": "2026-11-05T13:58:28+07:00",
+ "hash": "d8932af71fcd6b6f",
+ "updated": "2026-11-05T18:49:33+07:00",
  "changes": {
-  "date": "<t:1793861908:f>",
+  "date": "<t:1793879373:f>",
   "items": [
-   "New: bread_play_3 reference mismatch on Develop-Main",
-   "New: Saint or Sinner (Dominion, Tier III): one is chosen; guard them or kill them, by wheel",
-   "New: Visual Upgrade 1.0: DAY and NIGHT town looks"
+   "New: Town dogs and cats (Discord idea Animals) (in progress)",
+   "New: Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed",
+   "New: Sacred Sanctuary (Dominion, Tier IV): the wall of people"
   ]
  },
  "snapshot": {
@@ -760,6 +760,15 @@
     "updated": "2026-10-03",
     "order": 19
    },
+   "town-animals": {
+    "title": "Town dogs and cats (Discord idea Animals)",
+    "status": "doing",
+    "area": "Crowd",
+    "needs_you": true,
+    "branch": "feat/animals",
+    "updated": "2026-11-05",
+    "order": 900
+   },
    "ui-sfxr-listen": {
     "title": "Listen to the GodotSfxr sounds in game (UI, citizens, buildings, music)",
     "status": "done",
@@ -1121,6 +1130,15 @@
     "updated": "2026-10-07",
     "order": 0
    },
+   "vfx-anathema": {
+    "title": "Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-11-05",
+    "order": 16
+   },
    "vfx-authorities-rework": {
     "title": "Authorities rework: Tier I powers, Death, Decree, the Dominion + Disorder merge",
     "status": "done",
@@ -1182,6 +1200,15 @@
     "needs_you": true,
     "updated": "2026-10-03",
     "order": 2
+   },
+   "vfx-sacred-sanctuary": {
+    "title": "Sacred Sanctuary (Dominion, Tier IV): the wall of people",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-11-05",
+    "order": 15
    },
    "vfx-saint-or-sinner": {
     "title": "Saint or Sinner (Dominion, Tier III): one is chosen; guard them or kill them, by wheel",
@@ -1269,9 +1296,33 @@
   },
   "branches": [
    {
+    "name": "god/night-play",
+    "ahead": 221,
+    "behind": 2,
+    "date": "2026-11-05",
+    "subject": "ci: post feat/god-progression work to its own Discord channel (secret DISCORD_GOD_WEBHOOK)",
+    "pushed": false
+   },
+   {
+    "name": "feat/animals",
+    "ahead": 1,
+    "behind": 2,
+    "date": "2026-11-05",
+    "subject": "feat: town dogs and cats (Discord idea \"Animals\")",
+    "pushed": true
+   },
+   {
+    "name": "feat/people-anim-2",
+    "ahead": 1,
+    "behind": 3,
+    "date": "2026-11-05",
+    "subject": "assets: people anim re-roll: 8 back-view screams and marshal/rescue spear thrusts",
+    "pushed": true
+   },
+   {
     "name": "god/dominion-t3",
     "ahead": 214,
-    "behind": 49,
+    "behind": 52,
     "date": "2026-11-04",
     "subject": "feat: Saint or Sinner (Dominion, Tier III) -- one is chosen; the wheel says guard them at all cost or kill them",
     "pushed": false
@@ -1279,7 +1330,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 213,
-    "behind": 51,
+    "behind": 54,
     "date": "2026-11-04",
     "subject": "docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean",
     "pushed": true
@@ -1287,7 +1338,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 334,
+    "behind": 337,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1295,7 +1346,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 292,
+    "behind": 295,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1304,7 +1355,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-05",
-   "subject": "chore: uid for test_town_round9"
+   "subject": "feat: Anathema (Dominion, Tier IV) -- a district's buildings are cursed, or hallowed"
   }
  }
 }

@@ -331,14 +331,21 @@ static func _fallback(t) -> void:
 	t.check(same, "and a scream it lacks is its idle")
 	# Back-view screams rejected on review (make_people_atlas.py REJECTED) show the idle, both back directions.
 	var back := true
-	for d in ["merchant_a", "craft_a", "engineer"]:
+	for d in ["caregiver_b"]:
 		for f in [PeopleArt.Facing.NE, PeopleArt.Facing.NW]:
 			back = back and PeopleArt.frame_count(d, &"scream", f) == PeopleArt.frame_count(d, &"idle", f)
 			back = back and _same_cell(img.get_region(Rect2i(PeopleArt.frame_rect(d, &"scream", f, 0))),
 				img.get_region(Rect2i(PeopleArt.frame_rect(d, &"idle", f, 0))))
 		back = back and PeopleArt.frame_count(d, &"scream", PeopleArt.Facing.SE) > PeopleArt.frame_count(d, &"idle", PeopleArt.Facing.SE)
 	t.check(back, "a rejected back-view scream is the idle, the front view keeps its art")
-	t.check((PeopleArt.info("merchant_a")[5] >> 5) & 1 == 0 and (PeopleArt.info("resident_a")[5] >> 5) & 1 == 1,
+	# Re-rolled back views (round 2) are their own art again: the back scream differs from the idle.
+	var rerolled := true
+	for d in ["merchant_a", "craft_a", "engineer"]:
+		rerolled = rerolled and (PeopleArt.info(d)[5] >> 5) & 1 == 1
+		rerolled = rerolled and not _same_cell(img.get_region(Rect2i(PeopleArt.frame_rect(d, &"scream", PeopleArt.Facing.NE, 1))),
+			img.get_region(Rect2i(PeopleArt.frame_rect(d, &"idle", PeopleArt.Facing.NE, 0))))
+	t.check(rerolled, "a re-rolled back-view scream is its own art, not the idle")
+	t.check((PeopleArt.info("caregiver_b")[5] >> 5) & 1 == 0 and (PeopleArt.info("resident_a")[5] >> 5) & 1 == 1,
 		"the own-art bit is clear for a scream with a rejected direction, set for one without")
 
 

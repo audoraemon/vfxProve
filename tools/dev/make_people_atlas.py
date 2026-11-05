@@ -32,9 +32,7 @@ DIRS = ["south-east", "south-west", "north-east", "north-west"]
 # Clips rejected on review (design, state, direction): their frames stay on disk for comparison but are not packed, so the
 # cell shows the design's idle (a still stand) until the clip is re-rolled (docs/people_anim_reroll.md). A mirrored
 # direction follows its partner, so each entry also rejects the partner.
-_REJECTED_SOURCE = [(d, "scream", "north-east") for d in
-                    ("merchant_a", "merchant_b", "craft_a", "craft_b", "clergy", "caregiver_a", "caregiver_b",
-                     "bellkeeper", "engineer")]
+_REJECTED_SOURCE = [(d, "scream", "north-east") for d in ("caregiver_b",)]
 REJECTED = set(_REJECTED_SOURCE) | {(d, s, MIRROR[x]) for d, s, x in _REJECTED_SOURCE}
 CELL = 24
 BLOCK_COLS = 8

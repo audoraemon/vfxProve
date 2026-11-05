@@ -78,3 +78,19 @@ The marshal, escort and rescue show their idle frames during a swing. Both direc
 | marshal | a3122700-f4fd-4652-84ff-098c2db4a99a |
 | escort | 549ef66a-6647-4035-9cdb-0839379a2caf |
 | rescue | 414fb657-9e17-4a36-a50d-ed44664b8c3e |
+
+## Round 2 (2026-11-05): done
+
+Re-rolled with v3 under temporary names (`scream_rr`, `scream_rr2`, `swing_rr`), staged one folder per clip and imported.
+22 generations spent.
+
+- **Back-view screams in, 8 of 9:** merchant_a, merchant_b, craft_a, craft_b, clergy, caregiver_a, bellkeeper and
+  engineer. The prompt that turned them away: `walking away from the viewer, back turned, clutching the back of the head
+  with both hands and screaming, staggering, only the back of the head visible` (or `..., seen from behind, face turned
+  away`).
+- **Still rejected: caregiver_b.** It faced the viewer twice, so it stays in `_REJECTED_SOURCE`.
+- **Spear thrusts in:** marshal and rescue, both directions. Marshal south-east is the first take with its flash frame
+  dropped (7 frames).
+- **Still missing: escort.** The south-east take swung the spear both ways, twice, so it keeps the idle fallback.
+- **Farmer swing kept as it was.** The re-roll was whiter than the idle and dropped the pitchfork in the last frame. The
+  old south-east cross-punch was deleted on PixelLab by `--replace`; the local frames are the only copy.

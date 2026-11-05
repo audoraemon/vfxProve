@@ -51,8 +51,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -73,7 +73,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "caregiver_a": {
    "block": [
@@ -122,8 +122,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -144,7 +144,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "caregiver_b": {
    "block": [
@@ -264,8 +264,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -286,7 +286,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "craft_a": {
    "block": [
@@ -335,8 +335,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -357,7 +357,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "craft_b": {
    "block": [
@@ -406,8 +406,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -428,7 +428,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "engineer": {
    "block": [
@@ -477,8 +477,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -499,7 +499,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "escort": {
    "block": [
@@ -842,10 +842,10 @@
      "north-west": 4
     },
     "swing": {
-     "south-east": 4,
-     "south-west": 4,
-     "north-east": 4,
-     "north-west": 4
+     "south-east": 7,
+     "south-west": 7,
+     "north-east": 8,
+     "north-west": 8
     },
     "getup": {
      "south-east": 7,
@@ -854,7 +854,7 @@
      "north-west": 7
     }
    },
-   "own": 287
+   "own": 415
   },
   "merchant_a": {
    "block": [
@@ -903,8 +903,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -925,7 +925,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "merchant_b": {
    "block": [
@@ -974,8 +974,8 @@
     "scream": {
      "south-east": 8,
      "south-west": 8,
-     "north-east": 4,
-     "north-west": 4
+     "north-east": 8,
+     "north-west": 8
     },
     "lurch": {
      "south-east": 8,
@@ -996,7 +996,7 @@
      "north-west": 7
     }
    },
-   "own": 479
+   "own": 511
   },
   "rescue": {
    "block": [
@@ -1055,10 +1055,10 @@
      "north-west": 4
     },
     "swing": {
-     "south-east": 4,
-     "south-west": 4,
-     "north-east": 4,
-     "north-west": 4
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     },
     "getup": {
      "south-east": 7,
@@ -1067,7 +1067,7 @@
      "north-west": 7
     }
    },
-   "own": 287
+   "own": 415
   },
   "resident_a": {
    "block": [

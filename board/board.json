@@ -1,11 +1,12 @@
 {
- "hash": "9e2fecb71600f13b",
- "updated": "2026-11-04T20:48:35+07:00",
+ "hash": "c371411d1f774a21",
+ "updated": "2026-11-05T13:58:28+07:00",
  "changes": {
-  "date": "<t:1793800115:f>",
+  "date": "<t:1793861908:f>",
   "items": [
-   "New: Dragonfire leaves burning ground that townsfolk beat out",
-   "New: Clear Mind (Dominion, Tier III): the circle senses nothing special"
+   "New: bread_play_3 reference mismatch on Develop-Main",
+   "New: Saint or Sinner (Dominion, Tier III): one is chosen; guard them or kill them, by wheel",
+   "New: Visual Upgrade 1.0: DAY and NIGHT town looks"
   ]
  },
  "snapshot": {
@@ -23,6 +24,15 @@
     "needs_you": false,
     "updated": "2026-10-07",
     "order": 1
+   },
+   "bread-play-3-ref": {
+    "title": "bread_play_3 reference mismatch on Develop-Main",
+    "status": "todo",
+    "area": "Tools",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-05",
+    "order": 201
    },
    "c01": {
     "title": "Decide: Pestilence spread after the 5 s change",
@@ -1173,6 +1183,15 @@
     "updated": "2026-10-03",
     "order": 2
    },
+   "vfx-saint-or-sinner": {
+    "title": "Saint or Sinner (Dominion, Tier III): one is chosen; guard them or kill them, by wheel",
+    "status": "done",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-11-04",
+    "order": 14
+   },
    "vfx-scatter-strike": {
     "title": "Scatter Strike (Ruin, Tier II): ten random strikes over a wide circle",
     "status": "done",
@@ -1236,37 +1255,39 @@
     "branch": "claude/vfx-ability-effects-964aca",
     "updated": "2026-11-02",
     "order": 9
+   },
+   "visual-upgrade-1-0": {
+    "title": "Visual Upgrade 1.0: DAY and NIGHT town looks",
+    "status": "done",
+    "area": "Town",
+    "version": "visual-1.0",
+    "needs_you": false,
+    "branch": "feat/town-lighting",
+    "updated": "2026-11-05",
+    "order": 200
    }
   },
   "branches": [
    {
-    "name": "feat/god-progression",
-    "ahead": 213,
-    "behind": 1,
+    "name": "god/dominion-t3",
+    "ahead": 214,
+    "behind": 49,
     "date": "2026-11-04",
-    "subject": "docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean",
-    "pushed": true
-   },
-   {
-    "name": "god/dg-merge",
-    "ahead": 213,
-    "behind": 1,
-    "date": "2026-11-04",
-    "subject": "docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean",
+    "subject": "feat: Saint or Sinner (Dominion, Tier III) -- one is chosen; the wheel says guard them at all cost or kill them",
     "pushed": false
    },
    {
-    "name": "feat/town-lighting",
-    "ahead": 42,
-    "behind": 14,
+    "name": "feat/god-progression",
+    "ahead": 213,
+    "behind": 51,
     "date": "2026-11-04",
-    "subject": "fix(round6): DAY ground no longer blows out: gentler sunbeams and sun glow, and a cap on what they add",
+    "subject": "docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean",
     "pushed": true
    },
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 284,
+    "behind": 334,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1274,7 +1295,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 242,
+    "behind": 292,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1282,8 +1303,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-03",
-   "subject": "feat: Clear Mind (Dominion, Tier III) -- everyone in the circle senses nothing special"
+   "date": "2026-11-05",
+   "subject": "chore: uid for test_town_round9"
   }
  }
 }

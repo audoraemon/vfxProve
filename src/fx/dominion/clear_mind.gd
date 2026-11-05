@@ -67,6 +67,10 @@ func _hypnotize() -> void:
 ## Whoever stands inside and is not yet entranced is taken, for what is left of the trance.
 func _join() -> void:
 	var left := maxf(T_CAST + TRANCE_TIME - t, 0.5)
+	if ctx.crowd != null and ctx.crowd.animals != null:
+		for a in ctx.crowd.animals.in_radius(origin, RADIUS):
+			if a.state != Animal.State.TRANCE:
+				a.cast(Animal.Spell.TRANCE, left)
 	for p in DominionParts.near(ctx.field, origin, RADIUS, MAX_PEOPLE):
 		if entranced.has(p):
 			continue

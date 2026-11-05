@@ -62,4 +62,6 @@ func _turn() -> void:
 		p.fight(target, left, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.OF_KIND, SIGHT, hated)
 	if is_instance_valid(first) and first.is_alive():
 		first.set_badge(DominionParts.BLADE, DominionParts.CRIMSON, left)
+	# The animals in the group's circle go for the hated too (the first of them, else the nearest).
+	AnimalPack.cast(ctx, origin, GROUP_R, Animal.Spell.ATTACK, left, first if is_instance_valid(first) and first.is_alive() else null)
 	ctx.play(&"cit_shout", origin)

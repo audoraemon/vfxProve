@@ -1330,7 +1330,7 @@ func _spread_fright() -> void:
 			continue
 		var src: Person = s[1]
 		for p in citizens:
-			if is_instance_valid(p) and p != src and p.is_alive() and p.mind == Person.Mind.CALM \
+			if is_instance_valid(p) and p != src and p.is_alive() and not p.night_indoors and p.mind == Person.Mind.CALM \
 					and p.ground_pos.distance_to(src.ground_pos) <= SPREAD_REACH:
 				p.observe(src._threat)
 
@@ -1469,6 +1469,8 @@ func _evacuate() -> void:
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
 			continue
+		if p.night_indoors:
+			continue  # kept indoors by a NIGHT (NightRules): the sweep passes them over
 		if p.mind == Person.Mind.SHELTER:
 			continue  # ShelterManager sends them to the gates
 		if p.mind == Person.Mind.DUTY:
@@ -1503,7 +1505,7 @@ func _tend_households() -> void:
 		var members: Array[Person] = []
 		var home_all := true
 		for p in citizens:
-			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.REGROUP and p.profile != null \
+			if is_instance_valid(p) and p.is_alive() and not p.night_indoors and p.mind == Person.Mind.REGROUP and p.profile != null \
 					and p.profile.family == fam:
 				members.append(p)
 				home_all = home_all and not p.has_goal() and p.ground_pos.distance_to(p.profile.home) <= HOME_REACH
@@ -1519,7 +1521,7 @@ func _tend_households() -> void:
 func _regroup() -> void:
 	for i in citizens.size():
 		var p := citizens[i]
-		if not is_instance_valid(p) or not p.is_alive() or p.profile == null:
+		if not is_instance_valid(p) or not p.is_alive() or p.profile == null or p.night_indoors:
 			continue
 		if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
 			continue
@@ -2006,7 +2008,7 @@ func _on_structure_added(s: Structure) -> void:
 		_thorn_alarm_at = _clock
 		add_alarm(THORN_ALARM)
 	for p in citizens:
-		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(s.center()) <= THORN_LOOK:
+		if is_instance_valid(p) and p.is_alive() and not p.night_indoors and p.ground_pos.distance_to(s.center()) <= THORN_LOOK:
 			p.observe(s.center())
 
 

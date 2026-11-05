@@ -415,7 +415,7 @@ func _apply_night_rules(seed_value: int) -> void:
 	if _descent != null:
 		for w in _descent.wishes:
 			kept.append_array(w.people())
-	NightRules.apply(_crowd, _town.look, kept, seed_value)
+	NightRules.apply(_crowd, _town.look, kept, seed_value, _director)
 
 
 ## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the

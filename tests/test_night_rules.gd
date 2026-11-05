@@ -7,6 +7,7 @@ const LOADOUT := ["heaven", "tsunami", "cinder", "nova"]
 static func run(t) -> void:
 	_roll(t)
 	await _missions(t)
+	await _harvest(t)
 	_sight(t)
 	_routine(t)
 	_wiring(t)
@@ -64,7 +65,7 @@ static func _missions(t) -> void:
 	var kept_out: Array = m._director.reserved.duplicate() if m._director != null else []
 	var eligible := 0
 	for p in c.citizens:
-		if p.inside or NightRules.eligible(p, kept_out):
+		if p.night_indoors or NightRules.eligible(p, kept_out, m._director):
 			eligible += 1
 	var inside := _inside(m)
 	t.check(m._town.look == Town.Look.NIGHT and c.sight_scale == NightRules.NIGHT_SIGHT and c.sight_scale == 0.6,
@@ -80,6 +81,7 @@ static func _missions(t) -> void:
 		clean = clean and not s.inside
 	t.check(clean, "those indoors are hidden ordinary citizens still in the crowd; no soldier, no named person")
 	t.check(c.citizens.size() == n, "the alive count is unchanged")
+	await _sweeps(t, m)
 	var kept := _inside(m).size()
 	for i in 60:
 		c.step_people(0.1)
@@ -101,6 +103,75 @@ static func _missions(t) -> void:
 	await t.process_frame
 
 
+## NIGHT's people indoors are passed over by the crowd's own sweeps: the alarm's regroup and evacuation, the household wait and the routine.
+static func _sweeps(t, m: Mission) -> void:
+	var c := m._crowd
+	var indoors := _inside(m)
+	var seen: Array[Person] = []
+	for p in c.citizens:
+		if not p.inside:
+			seen.append(p)
+	c._regroup()
+	c._evacuate()
+	for i in c.citizens.size():
+		c.routine.visit(i, 100.0)
+	var calm := true
+	for p in indoors:
+		calm = calm and p.inside and not p.visible and p.night_indoors and p.mind == Person.Mind.CALM and not p.has_goal()
+	t.check(not indoors.is_empty() and calm, "regroup, evacuation and the routine leave those indoors CALM, hidden and without a goal")
+	var fled := false
+	for p in seen:
+		fled = fled or p.mind == Person.Mind.FLEE or p.mind == Person.Mind.REGROUP
+	t.check(fled, "while the sweeps did send the people outdoors (so they ran)")
+	# A household with a member indoors is not held for him: the family at home leaves at once.
+	var q: Person = indoors[0]
+	var j: Person = null
+	for p in seen:
+		if p.mind == Person.Mind.REGROUP:
+			j = p
+			break
+	if j != null:
+		j.profile.family = 777777  # a family of the two of them
+		q.profile.family = 777777
+		j.ground_pos = j.profile.home
+		j._goal = Vector2.INF
+		c._households[q.profile.family] = c._clock
+		c._tend_households()
+		t.check(j.mind == Person.Mind.FLEE and q.mind == Person.Mind.CALM, "a household with a member indoors is not held for him")
+	else:
+		t.check(false, "someone outdoors regrouped to test the household with")
+	# Fright and fire recruiting skip them too.
+	q.observe(Vector2.ZERO)
+	t.check(q.mind == Person.Mind.CALM, "fright (observe) does not reach them")
+
+
+## Spoiled Harvest at NIGHT: no granary watchman is sent indoors (the director holds them in place).
+static func _harvest(t) -> void:
+	City.use(&"aldermere")
+	var m: Mission = load("res://scenes/mission.tscn").instantiate()
+	m.autostart = false
+	m.look_override = Town.Look.NIGHT
+	m.mission_id = MissionBook.SPOILED_HARVEST
+	m.board = true
+	t.root.add_child(m)
+	if not m.is_prewarmed:
+		await m.prewarmed
+	m.start(PackedStringArray(LOADOUT), 7)
+	var d := m._director as HarvestDirector
+	var men := 0
+	var out := true
+	if d != null:
+		for posts: Array in d.watches.values():
+			for w in posts:
+				if w.man != null:
+					men += 1
+					out = out and not (w.man as Person).inside and not (w.man as Person).night_indoors
+	t.check(d != null and men > 0 and out, "Spoiled Harvest at NIGHT: none of its %d granary watchmen is indoors" % men)
+	t.check(not _inside(m).is_empty(), "and others still are")
+	m.queue_free()
+	await t.process_frame
+
+
 static func _crowd() -> Crowd:
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -118,20 +189,21 @@ static func _crowd() -> Crowd:
 static func _sight(t) -> void:
 	var crowd := _crowd()
 	var p: Person = crowd.citizens[0]
-	var reach: Array = PowerBook.REACH.get("heaven", PowerBook.REACH_DEFAULT)
-	var sight := float(reach[0])
-	var at := Vector2(0.0, 0.0)
-	var cast: Array[Vector2] = [at]
+	var sight := float(PowerBook.REACH["heaven"][0])
+	t.check(sight > 0.0, "a real power with a sight reach: heaven (%.1f)" % sight)
+	var at := Vector2.ZERO
 	for scale in [1.0, 0.6]:
 		crowd.sight_scale = scale
 		for frac in [0.8, 0.5]:
 			p.ground_pos = at + Vector2(sight * frac, 0.0)
 			p.mind = Person.Mind.CALM
 			p.awareness = Person.Awareness.UNAWARE
-			crowd._look(cast, sight * crowd.sight_scale)
+			crowd.drop_held()
+			crowd.on_cast(at, Vector2.ZERO, 0.0, "heaven")
 			var saw := p.mind == Person.Mind.OBSERVE
-			t.check(saw == (frac <= scale), "at sight scale %.1f a calm person at %.1f x the power's sight %s the build-up"
+			t.check(saw == (frac <= scale), "through on_cast at sight scale %.1f a calm person at %.1f x the sight %s the build-up"
 				% [scale, frac, "looks at" if saw else "does not see"])
+	crowd.drop_held()
 	crowd.sight_scale = 1.0
 	t.check(crowd.doom_witness() == Crowd.DOOM_WITNESS, "the witness distance is DOOM_WITNESS by day")
 	crowd.sight_scale = 0.6
@@ -147,6 +219,21 @@ static func _sight(t) -> void:
 	t.check(crowd.nearest_witness(Vector2.ZERO) == p, "a kill witnessed at 1.5 counts at CURRENT")
 	crowd.sight_scale = 0.6
 	t.check(crowd.nearest_witness(Vector2.ZERO) == null, "and not at NIGHT")
+	# A fallen building: the collapse's threat is registered with its sight scaled (the real path, Crowd._on_structure_destroyed()).
+	var house: Structure = null
+	for s in crowd._env.structures():
+		if s.role == &"house":
+			house = s
+			break
+	for scale in [1.0, 0.6]:
+		crowd.sight_scale = scale
+		crowd.threats.clear()
+		crowd._on_structure_destroyed(house, &"")
+		var seen := -1.0
+		for z in crowd.threats.all_zones():
+			if z.kind == &"collapse":
+				seen = float(z.sight)
+		t.near(seen, Crowd.COLLAPSE_SIGHT * scale, 0.0001, "a collapse is seen from COLLAPSE_SIGHT x %.1f" % scale)
 
 
 static func _routine(t) -> void:
@@ -161,6 +248,18 @@ static func _routine(t) -> void:
 			if r.pick(pr, -1) == RoutineManager.Place.HOME:
 				homes[1 if night else 0] += 1
 	t.check(homes[1] > homes[0], "at night more picks are home (%d against %d)" % [homes[1], homes[0]])
+	var stays := [0.0, 0.0]
+	for night in [false, true]:
+		r.night = night
+		r._rng.seed = 9
+		stays[1 if night else 0] = r.stay_for(RoutineManager.Place.HOME)
+	t.near(stays[1], stays[0] * NightRules.HOME_STAY_X, 0.0001, "a night stay at home is 1.5 x the day's under the same seed")
+	r.night = true
+	r._rng.seed = 9
+	var work: float = r.stay_for(RoutineManager.Place.WORK)
+	r.night = false
+	r._rng.seed = 9
+	t.near(work, r.stay_for(RoutineManager.Place.WORK), 0.0001, "and a stay anywhere else is the same")
 
 
 static func _wiring(t) -> void:

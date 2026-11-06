@@ -1,11 +1,10 @@
 {
- "hash": "70731d261539ce0f",
- "updated": "2026-11-06T19:08:38+07:00",
+ "hash": "31bc977fbaabd7e7",
+ "updated": "2026-11-06T19:10:46+07:00",
  "changes": {
-  "date": "<t:1793966918:f>",
+  "date": "<t:1793967046:f>",
   "items": [
-   "Done: Dominion Tier 3: Clear Mind and Saint or Sinner",
-   "Done: Endless Night: random DAY/NIGHT missions, night rules"
+   "Done: Discord god-progression changelog"
   ]
  },
  "snapshot": {
@@ -251,9 +250,9 @@
    },
    "god-discord-changelog": {
     "title": "Discord god-progression changelog",
-    "status": "doing",
+    "status": "done",
     "area": "Tools",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/god-progression",
     "updated": "2026-11-06",
     "order": 207

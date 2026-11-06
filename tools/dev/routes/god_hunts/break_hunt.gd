@@ -15,7 +15,7 @@ const LOADOUT := {
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["thorns", "mirror"],
 	"decree": ["noleave", "belllies", "magnify"],
-	"dominion": ["whisper", "discord", "turncoat"],
+	"dominion": ["whisper", "discord", "sanctuary"],
 }
 
 
@@ -452,7 +452,9 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Dominion: Mind Whisper, Discord, Turncoat ---
+# --- Dominion: Mind Whisper, Discord (Sacred Sanctuary drafted, not cast) ---
+
+## (2026-11-06: Sacred Sanctuary replaces Turncoat, out of Dominion's real Tier 4; neither was ever cast here.)
 
 ## Mind Whisper's reach, less a little for the walk's start; the longest hop it sends a bearer.
 const BH_WHISPER_REACH := MindWhisperFx.REACH - 0.5

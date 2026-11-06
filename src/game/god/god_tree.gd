@@ -32,14 +32,15 @@ const FLAVOUR := {
 
 ## The real tree: type -> five tiers (index 0 = Tier 1) of two PowerBook keys, "" for a spot not filled yet. Tier 1 filled by the user
 ## (2026-10-27); Ruin's Tiers 2-5 by the user (2026-11-02, the Ruin Tree Picker; its empty spots then took the new Scatter Strike,
-## Wrath of the Sky and Earthshatter); Dominion's Tier 3 by the user (2026-11-04: the new Clear Mind and Saint or Sinner); the rest empty.
+## Wrath of the Sky and Earthshatter); Dominion's whole tree by the user (Tiers 2 and 5 their picks of 2026-11-03: Madness, Will-o'-Wisp, Voice of God, Divine
+## Schism; Tier 3 2026-11-04: the new Clear Mind and Saint or Sinner; Tier 4 2026-11-06: the new Sacred Sanctuary and Anathema); the rest empty.
 const TABLE := {
 	"ruin": [["smite", "ember"], ["tornado", "scatter"], ["solaris", "dragon"], ["tsunami", "cinder"], ["tempest", "shatter"]],
 	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"passage": [["thorns", "mirror"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"decree": [["noleave", "belllies"], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"dominion": [["whisper", "discord"], ["", ""], ["clearmind", "saint"], ["", ""], ["", ""]],
+	"dominion": [["whisper", "discord"], ["madness", "wisp"], ["clearmind", "saint"], ["sanctuary", "anathema"], ["voice", "schism"]],
 }
 
 ## Test and scripted play: take GodTreeDev's key for every empty real spot (Ruling P2). Both test runners reset it per suite.

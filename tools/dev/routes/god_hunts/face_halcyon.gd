@@ -28,7 +28,7 @@ const LOADOUT := {
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["thorns", "mirror"],
 	"decree": ["noleave", "belllies", "magnify"],
-	"dominion": ["whisper", "discord", "priority"],
+	"dominion": ["whisper", "discord", "voice"],
 }
 
 ## The pieces every Hunt's policy shares (god_t1.gd): road_ahead(), cast_mirror(), cast_bell().

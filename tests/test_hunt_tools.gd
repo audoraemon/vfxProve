@@ -28,9 +28,9 @@ const PLAYS := {
 	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
 		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
 	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,turncoat"},
+		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,sanctuary"},
 	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,priority"},
+		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,voice"},
 }
 
 ## What each Hunt's loadout lacks in the Tier-1-only tree (C7), per type: the keys above Tier 1, in LOADOUT order. Passage's is empty on every
@@ -39,8 +39,8 @@ const LACKS := {
 	"hide_faithful": {"ruin": "", "death": "", "veil": "", "passage": "", "decree": "", "dominion": ""},
 	"silence_witness": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
 	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
-	"break_hunt": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "turncoat"},
-	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "priority"},
+	"break_hunt": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "sanctuary"},
+	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "voice"},
 }
 
 

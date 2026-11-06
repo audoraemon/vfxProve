@@ -100,7 +100,7 @@ static func run(t) -> void:
 	t.check(not under.is_alive() and under._kind == &"stone" and beside.is_alive() and fx.crushed == 1, "it crushes whoever stands under it, and nobody a step away")
 	t.check(shed.hp < hp and not crowd.fires.is_burning(shed), "what it lands against is damaged, without a fire (%.0f of %.0f)" % [hp - shed.hp, hp])
 	t.check(fx.standing() and fx.pile.role == &"windfall" and not grid.walkable(spot), "and the pile lies there, blocking the way")
-	# The town clears it by hand: three at the pile take eight seconds.
+	# The town clears it by hand: three at the pile take fifty seconds.
 	var hands: Array[Person] = []
 	for k in 3:
 		var p: Person = crowd.citizens[4 + k]
@@ -117,7 +117,7 @@ static func run(t) -> void:
 	fx._process(1.0)
 	t.check(is_equal_approx(before - fx.work_left, 2.0), "one who is frightened does not work")
 	hands[0].mind = Person.Mind.CALM
-	for k in 10:
+	for k in 60:
 		if fx.pile != null:
 			fx._process(1.0)
 	t.check(fx.cleared and not env.structures().has(fx.pile) and grid.walkable(spot), "until it is cleared and the way is open again")

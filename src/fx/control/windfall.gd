@@ -4,9 +4,10 @@ extends FxTimeline
 ## crates and stone comes down on the click: whoever stands within KILL_R is crushed (damage kind stone), what stands
 ## within HIT_R takes DAMAGE (stone: no fire), and the pile stays where it fell -- a structure (role windfall) that
 ## closes the walk grid under it, so a street or a gate's mouth is blocked. It is the town's to clear, and it takes
-## time: an engineer team cuts it away (EngineerManager's Clear job), and until then the nearest free people -- up to
-## CLEARERS citizens or soldiers within CALL_R, called every CALL_EVERY -- come and work at it; every second each one
-## at the pile (within WORK_R, not frightened) takes a second off the CLEAR_WORK it needs. Unattended it stands LIFE.
+## time: an engineer team cuts it away (EngineerManager's Clear job, CLEAR_WEIGHT times a thorn segment's), and until
+## then the nearest free people -- up to CLEARERS citizens or soldiers within CALL_R, called every CALL_EVERY -- come and
+## work at it; every second each one at the pile (within WORK_R, not frightened; CLEARERS at most count) takes a
+## second off the CLEAR_WORK it needs. Unattended it stands LIFE.
 ## It does not fall inside a building. Loud: the fall is seen and heard (PowerBook.REACH), from the drop.
 
 const T_DROP := 0.8
@@ -15,9 +16,11 @@ const HIT_R := 0.9
 const DAMAGE := 30.0
 const SIZE := Vector2(1.2, 1.2)
 const HEIGHT := 12.0
-const LIFE := 120.0
-const CLEAR_WORK := 24.0
+const LIFE := 180.0
+const CLEAR_WORK := 150.0
 const CLEARERS := 3
+## An engineer team's Clear job on the pile takes this many times a thorn segment's time.
+const CLEAR_WEIGHT := 6.0
 const CALL_R := 6.0
 const CALL_EVERY := 3.0
 const WORK_R := 1.5
@@ -128,7 +131,7 @@ func _fx_process(delta: float) -> void:
 	_work_in -= delta
 	if _work_in <= 0.0:
 		_work_in = 1.0
-		work_left -= float(_workers().size())
+		work_left -= float(mini(_workers().size(), CLEARERS))  # only so many hands fit round it
 		if work_left <= 0.0:
 			cleared = true
 			_remove()

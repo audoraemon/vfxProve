@@ -370,7 +370,8 @@ func _work(team: Dictionary, delta: float) -> void:
 		var c: Citadel = job.target
 		c.repair(RATE * c.keep.max_hp * delta)
 	elif job.type == Job.CLEAR:
-		team.progress += delta / CLEAR_TIME
+		var s: Structure = job.target
+		team.progress += delta / (CLEAR_TIME * (WindfallFx.CLEAR_WEIGHT if s.role == &"windfall" else 1.0))
 		if team.progress >= 1.0:
 			_env.remove(job.target)
 			team.job = {}

@@ -7,16 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **26** to do · **106** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793927535:f>)\n• New: Dominion Tier 3: Clear Mind and Saint or Sinner (in progress)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **26** to do · **108** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793966918:f>)\n• Done: Dominion Tier 3: Clear Mind and Saint or Sinner\n• Done: Endless Night: random DAY/NIGHT missions, night rules",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-06T08:12:15+07:00"
+     "timestamp": "2026-11-06T19:08:38+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "223 commits not in Develop-Main · last commit today\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n**In progress** (3)\n• Discord god-progression changelog — **needs you**\n• Dominion Tier 3: Clear Mind and Saint or Sinner\n• Endless Night: random DAY/NIGHT missions, night rules\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "223 commits not in Develop-Main · last commit today\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n**In progress** (1)\n• Discord god-progression changelog — **needs you**\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
@@ -56,7 +56,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Visual Upgrade 1.0: DAY and NIGHT town looks _(11-05)_\n• Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed _(11-05)_\n• Sacred Sanctuary (Dominion, Tier IV): the wall of people _(11-05)_\n• Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL _(11-04)_\n• Dragonfire leaves burning ground that townsfolk beat out _(11-04)_\n• Saint or Sinner (Dominion, Tier III): one is chosen; guard them or kill them, by wheel _(11-04)_\n• Divine Schism TUMULT mode: mad, frozen or panicked for 25 s _(11-03)_\n• Ruin ability levels: 5 levels + a level-5 twist for all ten powers _(11-03)_",
+     "description": "• Dominion Tier 3: Clear Mind and Saint or Sinner _(11-06)_\n• Endless Night: random DAY/NIGHT missions, night rules _(11-06)_\n• Visual Upgrade 1.0: DAY and NIGHT town looks _(11-05)_\n• Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed _(11-05)_\n• Sacred Sanctuary (Dominion, Tier IV): the wall of people _(11-05)_\n• Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL _(11-04)_\n• Dragonfire leaves burning ground that townsfolk beat out _(11-04)_\n• Saint or Sinner (Dominion, Tier III): one is chosen; guard them or kill them, by wheel _(11-04)_",
      "color": 10185686
     }
    ]

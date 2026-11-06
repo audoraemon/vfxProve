@@ -1,10 +1,11 @@
 {
- "hash": "03df5fa61a5415e3",
- "updated": "2026-11-06T08:12:15+07:00",
+ "hash": "70731d261539ce0f",
+ "updated": "2026-11-06T19:08:38+07:00",
  "changes": {
-  "date": "<t:1793927535:f>",
+  "date": "<t:1793966918:f>",
   "items": [
-   "New: Dominion Tier 3: Clear Mind and Saint or Sinner (in progress)"
+   "Done: Dominion Tier 3: Clear Mind and Saint or Sinner",
+   "Done: Endless Night: random DAY/NIGHT missions, night rules"
   ]
  },
  "snapshot": {
@@ -259,7 +260,7 @@
    },
    "god-dominion-t3": {
     "title": "Dominion Tier 3: Clear Mind and Saint or Sinner",
-    "status": "doing",
+    "status": "done",
     "area": "Gameplay",
     "needs_you": false,
     "branch": "feat/god-progression",
@@ -288,7 +289,7 @@
    },
    "god-night-play": {
     "title": "Endless Night: random DAY/NIGHT missions, night rules",
-    "status": "doing",
+    "status": "done",
     "area": "Gameplay",
     "needs_you": false,
     "branch": "feat/god-progression",

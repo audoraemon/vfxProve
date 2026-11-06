@@ -87,13 +87,35 @@ def _eye_colours():
     return out
 
 
+## By source sheet: from which frame of a clip (sheet row, make_animal_sheet.ROWS) the eyes are shut, so it gets none --
+## the dog asleep in its lie clip (row 9), the cat yawning and stretching in its bark row (row 6) -- and the clips that
+## lower the head (the dog's bite lunge, row 4, and sniff, row 7), whose head is the front 35% at any height up to 75%
+## of the figure rather than its top.
+SHUT_FROM = {"hound": {9: 3}, "tabby": {6: 2}}
+HEAD_LOW_ROWS = {"hound": (4, 7), "tabby": ()}
+HEAD_LOW = (0.75, 0.65)
+
+
+## A cell's head point: the most forward opaque pixel in the top 40% of the figure, and the figure's top.
+def _head(im, cx, cy, cell):
+    a = im.crop((cx, cy, cx + cell, cy + cell)).getchannel("A")
+    box = a.getbbox()
+    if not box:
+        return None
+    x0, y0, x1, y1 = box
+    band = a.crop((0, y0, cell, y0 + max(1, int((y1 - y0) * 0.4)))).getbbox()
+    return (band[2] if band else x1, y0)
+
+
 ## Every cell's eye pixels: a dark pixel (or one already painted an eye colour, so a re-run finds it again) inside the
-## silhouette (all four neighbours filled, three of them coat, so not the outline) in the head: the top 40% of the figure and
-## its front 40% (the sprites face right). Found on the source sheet, before a recolour darkens the coat round them.
+## silhouette (all four neighbours filled, three of them coat, so not the outline) in the head: the top 40% of the
+## figure and its front 40% (the sprites face right). Found on the source sheet, before a recolour darkens the coat
+## round them. A frame where none is found (the eye touches a dark line mid-step) borrows the nearest frame's of the
+## same clip, moved as far as the head moved; the frames with the eyes shut (SHUT_FROM) get none.
 def eye_mask(im, src, cell=24):
     px = im.load()
     painted = _eye_colours()
-    found = []
+    cells = {}
     for cy in range(0, im.height, cell):
         for cx in range(0, im.width, cell):
             box = im.crop((cx, cy, cx + cell, cy + cell)).getchannel("A").getbbox()
@@ -101,8 +123,9 @@ def eye_mask(im, src, cell=24):
                 continue
             x0, y0, x1, y1 = box
             cands = []
-            for y in range(cy + y0 + 1, cy + y0 + int((y1 - y0) * 0.4) + 1):
-                for x in range(cx + x0 + int((x1 - x0) * 0.6), cx + x1 - 1):
+            top, front = HEAD_LOW if cy // cell in HEAD_LOW_ROWS.get(src, ()) else (0.4, 0.6)
+            for y in range(cy + y0 + 1, cy + y0 + int((y1 - y0) * top) + 1):
+                for x in range(cx + x0 + int((x1 - x0) * front), cx + x1 - 1):
                     c = px[x, y]
                     if c[3] == 0 or not (_dark(c) or c[:3] in painted):
                         continue
@@ -112,8 +135,37 @@ def eye_mask(im, src, cell=24):
                     if filled and bright >= 3:
                         cands.append((-bright, y - x, x, y))
             # At most MAX_EYES a cell: the most surrounded by coat, then the highest and most forward.
-            found += [(x, y) for _, _, x, y in sorted(cands)[:MAX_EYES.get(src, 1)]]
-    return found
+            cells[(cx // cell, cy // cell)] = [(x, y) for _, _, x, y in sorted(cands)[:MAX_EYES.get(src, 1)]]
+    shut = SHUT_FROM.get(src, {})
+    for (col, row) in list(cells):
+        if col >= shut.get(row, 999):
+            cells[(col, row)] = []
+    for (col, row), eyes in list(cells.items()):
+        if col >= shut.get(row, 999):
+            continue
+        if eyes:
+            continue
+        donors = sorted((abs(c - col), c) for (c, r), e in cells.items() if r == row and e)
+        if not donors:
+            continue
+        dc = donors[0][1]
+        h0 = _head(im, dc * cell, row * cell, cell)
+        h1 = _head(im, col * cell, row * cell, cell)
+        if not h0 or not h1:
+            continue
+        moved = []
+        for x, y in cells[(dc, row)]:
+            nx = x - dc * cell + col * cell + (h1[0] - h0[0])
+            ny = y + (h1[1] - h0[1])
+            # Only onto the coat inside the head, never onto the outline or off the figure: the spot, else the nearest
+            # coat pixel a step from it.
+            for ox, oy in ((0, 0), (-1, 0), (0, 1), (0, -1), (1, 0), (-1, 1), (-1, -1), (1, 1), (1, -1)):
+                q = px[nx + ox, ny + oy]
+                if q[3] > 0 and not _dark(q) or q[:3] in painted:
+                    moved.append((nx + ox, ny + oy))
+                    break
+        cells[(col, row)] = moved
+    return [p for e in cells.values() for p in e]
 
 
 def paint_eyes(im, mask, colour):

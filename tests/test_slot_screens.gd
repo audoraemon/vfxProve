@@ -210,14 +210,14 @@ static func _ring(t) -> void:
 	GodTree.use_table(GodTree.blank())
 	var screen := GodSelectScreen.new().setup()
 	var lines := screen.type_lines("ruin")
-	var want := PackedStringArray(["RUIN", GodTree.FLAVOUR.ruin, "Tier 1: Not yet chosen, Not yet chosen", "Neighbours: DOMINION, DEATH"])
+	var want := PackedStringArray(["RUIN", GodTree.FLAVOUR.ruin, "Tier 1: Not yet chosen, Not yet chosen", "Neighbours: DOMINION, PASSAGE"])
 	t.check(lines == want, "ruin's lines with an empty tree (%s)" % [lines])
 	GodTree.use_table({})
 	t.check(screen.type_lines("ruin")[2] == "Tier 1: Smite, Ember", "with the dev fill off the real fill names ruin's two (%s)" % screen.type_lines("ruin")[2])
 	GodTree.dev_fill = true
 	t.check(screen.type_lines("ruin")[2] == "Tier 1: Smite, Ember", "with the dev fill on, its Tier 1 names the two powers (%s)" % screen.type_lines("ruin")[2])
 	GodTree.dev_fill = false
-	t.check(screen.type_lines("veil")[3] == "Neighbours: DEATH, PASSAGE", "veil's neighbours are death and passage (%s)" % screen.type_lines("veil")[3])
+	t.check(screen.type_lines("veil")[3] == "Neighbours: PASSAGE, DECREE", "veil's neighbours are passage and decree (%s)" % screen.type_lines("veil")[3])
 	t.check(screen.type_lines("nonsense").is_empty(), "an unknown type has no lines")
 	screen.free()
 
@@ -250,7 +250,7 @@ static func _choose(t) -> void:
 	screen.click(GodSelectScreen.ring_rect(3).get_center())
 	t.check(screen.selected == 3 and got.is_empty(), "a click on a type selects it (%d)" % screen.selected)
 	screen.click(GodSelectScreen.CHOOSE_RECT.get_center())
-	t.check(screen.chosen_type == "passage" and got == ["chosen"], "the Choose button chooses it (%s)" % screen.chosen_type)
+	t.check(screen.chosen_type == "decree" and got == ["chosen"], "the Choose button chooses it (%s)" % screen.chosen_type)
 	screen.click(GodSelectScreen.BACK_RECT.get_center())
 	t.check(got.back() == "back", "Back emits back")
 	screen._unhandled_input(_key(KEY_ESCAPE))

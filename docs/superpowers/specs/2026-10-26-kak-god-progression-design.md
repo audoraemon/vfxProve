@@ -80,13 +80,13 @@ unlocks. Nothing about the god itself grows, and the god has no identity. The us
 
 ### 5.1 The six types
 
-The six existing Authorities (`PowerBook.AUTHORITIES`) are the god types, set on a ring **(my call: the order)**:
+The six existing Authorities (`PowerBook.AUTHORITIES`) are the god types, set on a ring **(user, 2026-11-06: the order; it was my call before)**:
 
 ```
-Ruin - Death - Veil - Passage - Decree - Dominion - (back to Ruin)
+Ruin - Passage - Veil - Decree - Death - Dominion - (back to Ruin)
 ```
 
-- Every type has two **neighbours** on the ring. Ruin's are Death and Dominion.
+- Every type has two **neighbours** on the ring. Ruin's are Passage and Dominion (before 2026-11-06: Death and Dominion).
 - **Own type:** costs 1× **(user)**.
 - **Neighbours:** cost 2× **(user)**.
 - **The three far types:** cannot be learned **(my call)**.

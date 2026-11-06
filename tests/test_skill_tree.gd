@@ -33,12 +33,12 @@ static func _click(at: Vector2) -> InputEventMouseButton:
 
 static func _columns(t) -> void:
 	var s := _screen("ruin")
-	t.check(Array(s.columns()) == ["dominion", "ruin", "death"], "a ruin god shows dominion, ruin, death (%s)" % [s.columns()])
-	t.check(s.column_title(1) == "RUIN" and s.column_title(0) == "DOMINION x2" and s.column_title(2) == "DEATH x2",
+	t.check(Array(s.columns()) == ["dominion", "ruin", "passage"], "a ruin god shows dominion, ruin, passage (%s)" % [s.columns()])
+	t.check(s.column_title(1) == "RUIN" and s.column_title(0) == "DOMINION x2" and s.column_title(2) == "PASSAGE x2",
 		"the own column is titled, each neighbour's says x2 (%s, %s, %s)" % [s.column_title(0), s.column_title(1), s.column_title(2)])
 	s.free()
 	var w := _screen("dominion")
-	t.check(Array(w.columns()) == ["decree", "dominion", "ruin"], "the ring wraps: dominion sits between decree and ruin (%s)" % [w.columns()])
+	t.check(Array(w.columns()) == ["death", "dominion", "ruin"], "the ring wraps: dominion sits between death and ruin (%s)" % [w.columns()])
 	w.free()
 
 
@@ -70,10 +70,10 @@ static func _lines(t) -> void:
 	s._slot.learned["smite"] = 2
 	var want := PackedStringArray(["Smite", "2 / 5", "1 Might", "Level 3: 1 point", "kill radius 0.65 -> 0.7, damage 50.0 -> 55.0, cooldown 9.5 -> 9.0"])
 	t.check(s.spot_lines(1, 1, 0) == want, "smite learned at 2: name, pips, Might, next level, its change (%s)" % [s.spot_lines(1, 1, 0)])
-	var death := s.spot_lines(2, 1, 0)
-	t.check(death[4] == PowerBook.NO_LEVELS, "a power with no table (Death Mark) still reads Level effects not set (%s)" % [death])
-	t.check(death[0] == "Death Mark" and death[1] == "0 / 5" and death[3] == "Learn: 2 points",
-		"a neighbour's unlearned spot costs 2 points to learn (%s)" % [death])
+	var thorns := s.spot_lines(2, 1, 0)
+	t.check(thorns[4] == PowerBook.NO_LEVELS, "a power with no table (Thornwall) still reads Level effects not set (%s)" % [thorns])
+	t.check(thorns[0] == "Thornwall" and thorns[1] == "0 / 5" and thorns[3] == "Learn: 2 points",
+		"a neighbour's unlearned spot costs 2 points to learn (%s)" % [thorns])
 	var ember := s.spot_lines(1, 1, 1)
 	t.check(ember[3] == "Level 2: 1 point", "a learned-at-1 own spot: next is level 2 for 1 point (%s)" % [ember])
 	s._slot.learned["smite"] = 5
@@ -121,9 +121,9 @@ static func _learn(t) -> void:
 	t.check(s._slot.level_of("ember") == 2 and emitted.size() == 2, "a click on a spot learns it (%d)" % s._slot.level_of("ember"))
 	# A neighbour's spot costs double.
 	s._slot.points = 1
-	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("deathmark") == 0, "a neighbour's spot needs 2 points, not 1")
+	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("thorns") == 0, "a neighbour's spot needs 2 points, not 1")
 	s._slot.points = 2
-	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("deathmark") == 1 and s._slot.points == 0, "and spends 2")
+	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("thorns") == 1 and s._slot.points == 0, "and spends 2")
 	s._slot.learned["smite"] = 5
 	s._slot.points = 3
 	t.check(s.learn_at(1, 1, 0) == "max", "level 5 is the top (max)")
@@ -150,9 +150,9 @@ static func _far_hidden(t) -> void:
 			hits += 1
 			var at := h.split(":")
 			var type: String = s.columns()[int(at[1])]
-			if not shown.has(type) or ["veil", "passage", "decree"].has(type):
+			if not shown.has(type) or ["veil", "death", "decree"].has(type):
 				far += 1
-	t.check(hits > 0 and far == 0, "no point of the screen hits a spot of veil, passage or decree (%d hits, %d far)" % [hits, far])
+	t.check(hits > 0 and far == 0, "no point of the screen hits a spot of veil, death or decree (%d hits, %d far)" % [hits, far])
 	var keys := {}
 	for col in 3:
 		for tier in range(1, 6):
@@ -160,7 +160,7 @@ static func _far_hidden(t) -> void:
 				var key := s.key_at(col, tier, i)
 				if key != "":
 					keys[GodTree.spot_of(key).type] = true
-	t.check(keys.size() == 3 and not keys.has("veil") and not keys.has("passage") and not keys.has("decree"),
+	t.check(keys.size() == 3 and not keys.has("veil") and not keys.has("death") and not keys.has("decree"),
 		"the keys on the screen belong to three types only (%s)" % [keys.keys()])
 	t.check(s.hit(Vector2(630, 5)) == "" and s.hit(SkillTreeScreen.spot_rect(2, 5, 1).get_center()) == "spot:2:5:1",
 		"hit names a spot or nothing")

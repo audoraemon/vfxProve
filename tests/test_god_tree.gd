@@ -96,10 +96,11 @@ static func _problems_found(t) -> void:
 
 
 static func _ring(t) -> void:
-	t.check(GodTree.neighbours("ruin") == PackedStringArray(["dominion", "death"])
-		and GodTree.neighbours("veil") == PackedStringArray(["death", "passage"]), "the ring")
-	t.check(GodTree.factor("ruin", "ruin") == 1 and GodTree.factor("ruin", "death") == 2 and GodTree.factor("ruin", "dominion") == 2
-		and GodTree.factor("ruin", "veil") == 0 and GodTree.factor("ruin", "passage") == 0 and GodTree.factor("ruin", "decree") == 0,
+	t.check(GodTree.RING == ["ruin", "passage", "veil", "decree", "death", "dominion"]
+		and GodTree.neighbours("ruin") == PackedStringArray(["dominion", "passage"])
+		and GodTree.neighbours("veil") == PackedStringArray(["passage", "decree"]), "the ring (the user's order, 2026-11-06)")
+	t.check(GodTree.factor("ruin", "ruin") == 1 and GodTree.factor("ruin", "passage") == 2 and GodTree.factor("ruin", "dominion") == 2
+		and GodTree.factor("ruin", "veil") == 0 and GodTree.factor("ruin", "death") == 0 and GodTree.factor("ruin", "decree") == 0,
 		"1x own, 2x neighbours, far locked")
 	t.check(GodTree.OWN_COST == 1 and GodTree.NEIGHBOUR_COST == 2 and GodTree.NOT_CHOSEN == "Not yet chosen", "the ring's constants")
 	var round_trip := true

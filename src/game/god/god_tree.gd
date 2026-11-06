@@ -6,7 +6,8 @@ extends RefCounted
 ## (PowerBook.AUTHORITIES stays as it is: Ruling P1).
 
 ## The six god types in ring order: a type's neighbours are the two beside it (spec §5.1).
-const RING := ["ruin", "death", "veil", "passage", "decree", "dominion"]
+## Order set by the user 2026-11-06 (god select layout, clockwise from the top); before that ruin, death, veil, passage, decree, dominion.
+const RING := ["ruin", "passage", "veil", "decree", "death", "dominion"]
 ## Tiers per type; the god's first tier is index 0 of a type's list.
 const TIERS := 5
 ## Spots per tier.
@@ -144,7 +145,7 @@ static func spot_of(key: String) -> Dictionary:
 	return {}
 
 
-## A type's two ring neighbours, [left, right] (ruin -> [dominion, death]); empty for an unknown type.
+## A type's two ring neighbours, [left, right] (ruin -> [dominion, passage]); empty for an unknown type.
 static func neighbours(type: String) -> PackedStringArray:
 	var at := RING.find(type)
 	if at < 0:

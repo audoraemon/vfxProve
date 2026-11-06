@@ -157,6 +157,8 @@ var _bell_lies_until := -INF
 var _freeze_left := 0.0
 ## Where nothing is seen (veil()): [{at, r, until}] on the crowd's clock.
 var _veils: Array = []
+## What the town has been told a building is (mark_structure()): Structure -> [mark, until] on the crowd's clock.
+var _struct_marks := {}
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -1381,6 +1383,25 @@ func is_veiled(at: Vector2) -> bool:
 	return false
 
 
+## The town is told what `s` is, for `seconds` (Anathema): a `mark` the managers read -- &"cursed": nobody will be
+## inside it, fight its fire or climb it; &"hallowed": everyone must be inside and stays. A later mark replaces an
+## earlier one.
+func mark_structure(s: Structure, mark: StringName, seconds: float) -> void:
+	if is_instance_valid(s):
+		_struct_marks[s] = [mark, _clock + seconds]
+
+
+## The mark on `s` now, or &"" for none (or one that has run out).
+func structure_mark(s: Structure) -> StringName:
+	if not _struct_marks.has(s):
+		return &""
+	var m: Array = _struct_marks[s]
+	if _clock >= float(m[1]):
+		_struct_marks.erase(s)
+		return &""
+	return m[0]
+
+
 ## Time stands still in the town for `seconds` (Abolition's clock): nobody alive moves or thinks, and nothing of the
 ## town's own runs -- its clock, its fires, its bell, its sickness. What a power does to it meanwhile is still done.
 func freeze(seconds: float) -> void:
@@ -1848,6 +1869,7 @@ func clear() -> void:
 	_bell_lies_until = -INF
 	_freeze_left = 0.0
 	_veils.clear()
+	_struct_marks.clear()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):

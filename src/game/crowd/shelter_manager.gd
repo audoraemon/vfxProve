@@ -73,7 +73,7 @@ func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> b
 		if not _usable(s) or s.center().distance_to(from) <= radius:
 			continue
 		var e: Dictionary = shelters[s]
-		if (e.inside as Array).size() + (e.coming as Array).size() >= capacity(s):
+		if (e.inside as Array).size() + (e.coming as Array).size() >= capacity(s) and not _hallowed(s):
 			continue
 		var d := s.distance_to(p.ground_pos)
 		if d < best_d:
@@ -88,7 +88,21 @@ func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> b
 
 func _usable(s: Structure) -> bool:
 	return is_instance_valid(s) and not s.destroyed and s.hp >= s.max_hp * FLUSH_HP \
-		and (_crowd.fires == null or not _crowd.fires.is_burning(s))
+		and (_crowd.fires == null or not _crowd.fires.is_burning(s)) and _crowd.structure_mark(s) != &"cursed"
+
+
+## A hallowed building (Anathema): everyone must be inside it, past its capacity, and stays whatever happens to it.
+func _hallowed(s: Structure) -> bool:
+	return is_instance_valid(s) and not s.destroyed and _crowd.structure_mark(s) == &"hallowed"
+
+
+## Send `p` into `s` whatever its room (a hallowed building): true when it is on its way to the door.
+func send_in(p: Person, s: Structure) -> bool:
+	if not shelters.has(s) or not is_instance_valid(p) or not p.is_alive() or p.inside:
+		return false
+	shelters[s].coming.append(p)
+	p.seek_shelter(s, _door(s, p.ground_pos))
+	return true
 
 
 func _door(s: Structure, from: Vector2) -> Vector2:
@@ -105,12 +119,13 @@ func step(delta: float) -> void:
 	var evacuating := _crowd.alarms.stage >= AlarmManager.Stage.EVACUATION
 	for s: Structure in shelters.keys():
 		var e: Dictionary = shelters[s]
+		var holy := _hallowed(s)
 		# On their way in: arrive, or give up if the shelter stopped being one.
 		var still: Array = []
 		for p in e.coming:
 			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.SHELTER or p.shelter != s:
 				continue
-			if not _usable(s) or evacuating:
+			if (not _usable(s) or evacuating) and not holy:
 				p.leave_shelter(evacuating)
 				continue
 			if not p.has_goal() and p.ground_pos.distance_to(p.shelter_door) <= DOOR_REACH:
@@ -137,6 +152,9 @@ func step(delta: float) -> void:
 			if not trapped.is_empty():
 				_crowd.rescue.trap(trapped, s)
 			e.inside = []
+			continue
+		if holy:
+			e.clear = 0.0  # nobody leaves a hallowed house: struck, burning or the town leaving, they stay
 			continue
 		if not _usable(s):
 			_flush(s, e, true)

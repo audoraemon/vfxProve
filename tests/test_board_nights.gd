@@ -36,7 +36,7 @@ static func _versions(t) -> void:
 	t.check(Mission.ascends(f) and not Mission.ascends(echo) and not Mission.ascends(g) and not Mission.ascends(up),
 		"F pressed ascends; an echo, a release or another key does not")
 	var save := SaveFile.new()
-	t.check(Game.locked_for(save, false).is_empty() and Game.locked_for(save, true).is_empty() and save.descend.locked().size() == 29,
+	t.check(Game.locked_for(save, false).is_empty() and Game.locked_for(save, true).is_empty() and save.descend.locked().size() == 31,
 		"the board's draft greys no power (god P1, C3: a test mode); the unlock economy itself stays in DescendState")
 	t.check(MissionBook.is_dev(MissionBook.CAPITAL_SANDBOX) and not MissionBook.is_dev("feast_festival")
 		and not MissionBook.is_dev("warning"), "only the dev-only missions are dev missions")

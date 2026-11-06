@@ -60,6 +60,10 @@ const AREAS := {
 	"magnify": {"shape": "circle", "r": 4.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
+	# AnathemaFx.RADIUS: the buildings it would mark are outlined (_draw())
+	"anathema": {"shape": "circle", "r": 6.0},
+	# SacredSanctuaryFx.PICK_R: who would be hypnotized is ringed; then the wall's shape at the second click ("sanctuary")
+	"sanctuary": {"shape": "sanctuary", "r": 5.0},
 	# SaintFx.PICK_R: whom it would choose is ringed (_draw()); then the wheel
 	"saint": {"shape": "circle", "r": 1.0},
 	# ClearMindFx.RADIUS
@@ -234,10 +238,22 @@ func step_mode(by: int) -> void:
 	if m.is_empty():
 		return
 	_mode[_rules.key(slot)] = posmod(mode_index() + by, m.size())
-	placed = false
-	armed = false
-	aiming = false
+	if not bool(_rules.power(slot).get("alt_steps_mode", false)):
+		# The modes may aim differently: a first place already set is dropped. (A power whose modes are only the
+		# shape of its second place -- Sacred Sanctuary -- keeps its first.)
+		placed = false
+		armed = false
+		aiming = false
 	queue_redraw()
+
+
+## The right button, for a power whose book entry says "alt_steps_mode": while its second place is being aimed it
+## steps the mode (Sacred Sanctuary's shape) instead of calling the cast off. True when it took the click.
+func alt_click() -> bool:
+	if slot < 0 or not placed or modes().is_empty() or not bool(_rules.power(slot).get("alt_steps_mode", false)):
+		return false
+	step_mode(1)
+	return true
 
 
 ## Q and E step through the focused power's modes.
@@ -695,6 +711,24 @@ func _draw() -> void:
 				_ring(first, float(a.half), COL_INNER)
 			else:
 				_ring(_press, float(a.half), edge)
+		"sanctuary":
+			# The people under the cursor until the first click takes them; then the wall's shape follows the cursor.
+			if placed:
+				_ring(first, float(a.r), COL_FAINT)
+				draw_line(first, _press, COL_FAINT, -1.0)
+				if String(mode().get("key", "circle")) == "rect":
+					var box := Rect2(_press - SacredSanctuaryFx.RECT * 0.5, SacredSanctuaryFx.RECT)
+					draw_rect(box, COL_DIVINE_FILL)
+					draw_rect(box.grow(SHADE_GAP), SHADE, false, -1.0)
+					draw_rect(box, COL_DIVINE, false, -1.0)
+				else:
+					_disc(_press, SacredSanctuaryFx.CIRCLE_R, COL_DIVINE_FILL, COL_DIVINE)
+				for p in SacredSanctuaryFx.picked_at(_crowd._field, first):
+					_ring(p.ground_pos, 0.18, COL_DIVINE)
+			else:
+				_ring(_press, float(a.r), edge)
+				for p in SacredSanctuaryFx.picked_at(_crowd._field, _press):
+					_ring(p.ground_pos, 0.18, COL_DIVINE)
 		"pair":
 			# The way in under the cursor until the first click sets it; then the way out follows the cursor.
 			if placed:
@@ -707,6 +741,10 @@ func _draw() -> void:
 	if _is_wheel() and placed:
 		_draw_wheel()
 	match _rules.key(slot):
+		"anathema":
+			for s in AnathemaFx.marked_at(_crowd._env, _press):
+				var box := s.footprint.grow(0.08)
+				draw_rect(box, COL_MAD if String(mode().get("key", "")) == "cursed" else COL_DIVINE, false, -1.0)
 		"saint":
 			if not placed:
 				var who := SaintFx.target_at(_crowd._field, _press)

@@ -1,0 +1,4 @@
+{"length": 2.2, "rms_db": -17.5, "reverb": {"rt60": 2.0, "mix": 0.3, "predelay_ms": 14, "damp": 4500}, "eq": [["lowshelf", 200, -3.0]], "layers": [
+  {"src": "lib:oga/bell-dingschimes/bell_ding4.wav", "at": 0.0, "pitch": -12, "gain_db": -2, "lp": 3500, "fade_out": 700},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Darkness1.ogg", "at": 0.25, "pitch": -4, "lp": 2600, "fade_in": 80, "fade_out": 400, "gain_db": -6},
+  {"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.9, "reverse": true, "dur": 1.1, "gain_db": -8, "fade_in": 20, "fade_out": 80}]}

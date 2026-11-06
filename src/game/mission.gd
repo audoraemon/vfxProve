@@ -1101,6 +1101,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
 		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.
 		var focused := _aim.slot >= 0
+		if _aim.alt_click():
+			# A power whose second place has a shape (Sacred Sanctuary): the right button steps it.
+			UiSound.play(&"ui_mode")
+			return
 		_end_chain_aim()  # god P3: the chain's aim goes first (it has no slot and no held press)
 		if not _aim.cancel():
 			_aim.unfocus()

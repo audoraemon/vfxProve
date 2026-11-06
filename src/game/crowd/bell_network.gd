@@ -72,8 +72,8 @@ func call_keeper() -> void:
 func _send() -> void:
 	if not _keeper_ok():
 		return
-	if keeper.fearless_left > 0.0:
-		_wait()  # a keeper who sees nothing to fear (entranced) does not go to the rope; tried again later
+	if keeper.fearless_left > 0.0 or _crowd.structure_mark(tower) == &"cursed":
+		_wait()  # a keeper who sees nothing to fear (entranced), or whose tower is cursed (Anathema), does not go to the rope
 		return
 	keeper.go_ring(foot)
 	state = State.CALLED
@@ -114,7 +114,7 @@ func step(delta: float) -> void:
 			elif not keeper.has_goal():
 				keeper.go_ring(foot)
 		State.CLIMBING:
-			if keeper.mind != Person.Mind.DUTY:
+			if keeper.mind != Person.Mind.DUTY or _crowd.structure_mark(tower) == &"cursed":
 				progress = 0.0
 				_wait()
 				return

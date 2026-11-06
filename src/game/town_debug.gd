@@ -441,19 +441,21 @@ func _stage_animals() -> void:
 		if not by_breed.has(a.breed):
 			by_breed[a.breed] = []
 		(by_breed[a.breed] as Array).append(a)
-	var i := 0
+	# A row of dogs over a row of cats, in breed order, each breed's second one sitting just below its first.
+	var order: Array = Animal.DOGS + Animal.CATS
 	for b in by_breed:
 		var list: Array = by_breed[b]
+		var i := order.find(b)
+		var spot := center + Vector2(1, -1) * (float(i % 5) - 2.0) * 0.55 + Vector2(1, 1) * (float(i / 5) - 0.5) * 1.1
 		for k in mini(list.size(), 2):
 			var a: Animal = list[k]
-			a.ground_pos = _grid.nearest_walkable(center + Vector2(-1.2 + 0.5 * float(i), 0.5 * float(i) - 1.2) + Vector2(0.6, -0.6) * float(k), 2)
+			a.ground_pos = _grid.nearest_walkable(spot + Vector2(0.3, 0.3) * float(k), 2)
 			a.goal = a.ground_pos + Vector2(0.4, 0.0)
 			a.home = a.ground_pos
 			a.state = Animal.State.WANDER
 			a.wait = 0.0 if k == 0 else 30.0
 			a.sync_position()
 			a.queue_redraw()
-		i += 1
 	var marked: Animal = _crowd.animals.living()[0]
 	marked.cast(Animal.Spell.TRANCE, 30.0)
 

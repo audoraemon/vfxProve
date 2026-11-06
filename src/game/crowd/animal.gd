@@ -7,7 +7,9 @@ extends Node2D
 ## Congregation draws it to the gathering, Clear Mind makes it sit. It never lights a fire or harms a building.
 ## AnimalPack steps it (step()); it draws itself in code, in its own small pixel shape, at the ground point.
 
-enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT }
+enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT }
+const DOGS: Array[Breed] = [Breed.HOUND, Breed.SHEPHERD, Breed.TERRIER, Breed.WOLFHOUND, Breed.SPANIEL]
+const CATS: Array[Breed] = [Breed.TABBY, Breed.BLACK_CAT, Breed.GREY_CAT, Breed.WHITE_CAT, Breed.BROWN_CAT]
 enum State { WANDER, SIT, FOLLOW, FLEE, ATTACK, GATHER, TRANCE, DEAD }
 ## What a power asks of it (cast()).
 enum Spell { ATTACK, GATHER, TRANCE }
@@ -20,6 +22,10 @@ const PALETTE := {
 	Breed.TABBY: [Color("d08a3a"), Color("7a4a1a"), Color("f0c890")],
 	Breed.BLACK_CAT: [Color("2c2832"), Color("18161c"), Color("4a4652")],
 	Breed.GREY_CAT: [Color("8a8a92"), Color("4a4a52"), Color("d4d4dc")],
+	Breed.WOLFHOUND: [Color("8a8680"), Color("4a4844"), Color("c0bcb4")],
+	Breed.SPANIEL: [Color("f0ece0"), Color("6a3a24"), Color("fffaf0")],
+	Breed.WHITE_CAT: [Color("ecebe6"), Color("a8a6a0"), Color("ffffff")],
+	Breed.BROWN_CAT: [Color("7a5a3a"), Color("3a2818"), Color("d8c0a0")],
 }
 const OUTLINE := Color(0.08, 0.06, 0.06, 0.6)
 ## Pixel shapes facing right, the feet on the last row: B body, D dark (ears, underside), L light (back, muzzle), K eye
@@ -120,7 +126,11 @@ const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png",
 	Breed.TERRIER: "res://assets/pixellab/animals/terrier.png",
 	Breed.TABBY: "res://assets/pixellab/animals/tabby.png",
 	Breed.BLACK_CAT: "res://assets/pixellab/animals/black_cat.png",
-	Breed.GREY_CAT: "res://assets/pixellab/animals/grey_cat.png"}
+	Breed.GREY_CAT: "res://assets/pixellab/animals/grey_cat.png",
+	Breed.WOLFHOUND: "res://assets/pixellab/animals/wolfhound.png",
+	Breed.SPANIEL: "res://assets/pixellab/animals/spaniel.png",
+	Breed.WHITE_CAT: "res://assets/pixellab/animals/white_cat.png",
+	Breed.BROWN_CAT: "res://assets/pixellab/animals/brown_cat.png"}
 enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE, IDLE, BARK, SNIFF, SCRATCH, LIE }
 const WALK_FPS := 8.0
 const BITE_FPS := 14.0
@@ -134,7 +144,7 @@ static var _sheets := {}
 
 
 func is_dog() -> bool:
-	return breed <= Breed.TERRIER
+	return breed in DOGS
 
 
 func is_alive() -> bool:
@@ -149,6 +159,8 @@ func speed() -> float:
 	var base := DOG_SPEED if is_dog() else CAT_SPEED
 	if breed == Breed.TERRIER:
 		base *= 0.85
+	elif breed == Breed.WOLFHOUND:
+		base *= 1.15  # long legs
 	if state in [State.FLEE, State.ATTACK]:
 		return base * RUN
 	return base

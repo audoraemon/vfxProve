@@ -1,10 +1,10 @@
 class_name AnimalPack
 extends Node
 ## The town's dogs and cats (Animal): spawned by Crowd.spawn() round the citizens' homes and haunts, about one for
-## every PER_CITIZENS citizens (MIN..MAX), dogs and cats in three breeds each, and stepped here every frame. They draw
-## from their own rng (the crowd's seed + SEED_OFFSET), never the crowd's, a power's or a person's, and touch nobody
-## unless a power turns them (cast()), so every reference stays as it was. `enabled` off (the reference tools and the
-## test runner) spawns none.
+## every PER_CITIZENS citizens (MIN..MAX), dogs and cats in five breeds each (Animal.DOGS, Animal.CATS), and stepped
+## here every frame. They draw from their own rng (the crowd's seed + SEED_OFFSET), never the crowd's, a power's or a
+## person's, and touch nobody unless a power turns them (cast()), so every reference stays as it was. `enabled` off
+## (the reference tools and the test runner) spawns none.
 
 static var enabled := true
 
@@ -86,7 +86,8 @@ func spawn(count := -1) -> void:
 			at = _near(at, 3, who.anchor)
 		var a := Animal.new()
 		var dog := rng.randf() < DOG_SHARE
-		a.breed = (rng.randi_range(0, 2) if dog else rng.randi_range(3, 5)) as Animal.Breed
+		var kinds: Array[Animal.Breed] = Animal.DOGS if dog else Animal.CATS
+		a.breed = kinds[rng.randi_range(0, kinds.size() - 1)]
 		a.ground_pos = at
 		a.home = at
 		a.goal = at

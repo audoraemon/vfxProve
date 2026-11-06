@@ -42,6 +42,10 @@ BREEDS = {
     "black_cat": ("tabby", {"hue": True, "warm": ("1e1b22", "4a4652"), "pale": ("2a2630", "5a5664"),
                             "eyes": "e8d040"}),
     "grey_cat": ("tabby", {"hue": True, "warm": ("4a4a54", "a8a8b2"), "pale": ("9a9aa4", "eeeef4")}),
+    # A white cat with pale blue eyes, and a brown tabby (its stripes a dark brown, its belly cream).
+    "white_cat": ("tabby", {"hue": True, "warm": ("b4b0aa", "f4f2ec"), "pale": ("d8d6d0", "ffffff"),
+                            "eyes": "68a8d8"}),
+    "brown_cat": ("tabby", {"hue": True, "warm": ("3a2818", "9a7450"), "pale": ("b8a080", "f0e4cc")}),
 }
 
 
@@ -71,7 +75,7 @@ def _by_hue(c, table):
 
 ## A source sheet whose eyes alone change (its own coat stays): the hound's dark eye on its dark brown head goes amber;
 ## the terrier's (dark, but missing in some PixelLab frames and blue in its back walk) is set the same in every frame.
-EYES_ONLY = {"hound": "e0a048", "terrier": "140a06"}
+EYES_ONLY = {"hound": "e0a048", "terrier": "140a06", "wolfhound": "e0a048", "spaniel": "e0a048"}
 
 
 def _dark(c):
@@ -83,13 +87,15 @@ def _dark(c):
 EYES_AT = {
     "hound": {"se": [(13, 9)], "ne": [(15, 7)]},
     "terrier": {"se": [(16, 9)], "ne": [(16, 8)]},
+    "wolfhound": {"se": [(14, 8)], "ne": [(14, 6)]},
+    "spaniel": {"se": [(14, 9)], "ne": [(16, 8)]},
     "tabby": {"se": [(13, 10), (15, 10)], "ne": []},  # turned away: no eyes show
 }
 ## Sheet rows (make_animal_sheet.ROWS) drawn from the north-east view: the back walk.
 NE_ROWS = (2,)
 ## By source sheet: from which frame of a clip (sheet row) the eyes are shut, so it gets none: the dog asleep in its lie
 ## clip (row 9), the cat yawning and stretching in its bark row (row 6).
-SHUT_FROM = {"hound": {9: 3}, "terrier": {9: 3}, "tabby": {6: 2}}
+SHUT_FROM = {"hound": {9: 3}, "terrier": {9: 3}, "wolfhound": {9: 3}, "spaniel": {9: 3}, "tabby": {6: 2}}
 ## Frames where the track is a pixel off what PixelLab drew, set by hand: (sheet row, frame) -> cell-local eye pixels.
 ## The terrier's walk away: its own (blue) eye sits at 16,7.
 OVERRIDES = {"terrier": {(2, 0): [(16, 7)], (2, 1): [(16, 7)], (2, 2): [(16, 7)], (2, 3): [(16, 7)]}}

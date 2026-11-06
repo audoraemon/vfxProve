@@ -14,6 +14,7 @@ static func run(t) -> void:
 	_danger(t)
 	_madness(t)
 	_gather_and_trance(t)
+	_stuck(t)
 	AnimalPack.enabled = false
 
 
@@ -156,4 +157,41 @@ static func _gather_and_trance(t) -> void:
 		pack.step(0.05)
 	t.check(cat.ground_pos == p0, "and it stays put")
 	fx.queue_free()
+	CM._done(made)
+
+
+## A goal behind a wall: it does not walk on the spot for ever (sliding to and fro along the wall) but gives up, and
+## standing still never shows the walk.
+static func _stuck(t) -> void:
+	var made := CM._setup()
+	var grid: WalkGrid = made[2]
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	var wall := Vector2.INF
+	for dir in [Vector2.RIGHT, Vector2.LEFT, Vector2.DOWN, Vector2.UP]:
+		for k in range(1, 40):
+			var q: Vector2 = at + dir * (k * 0.25)
+			if not grid.walkable(q):
+				wall = q + dir * 0.6
+				at = q - dir * 1.2
+				break
+		if wall != Vector2.INF:
+			break
+	t.check(wall != Vector2.INF, "there is a wall near the square to walk into")
+	var a := Animal.new()
+	a.ground_pos = grid.nearest_walkable(at)
+	var gave_up := false
+	var moving_frames := 0
+	for k in 80:
+		if a.walk_to(wall + Vector2(0.3, 0.4), 0.05, grid):
+			gave_up = true
+			break
+		a.tick_visual(0.05)
+	t.check(gave_up and a.blocked, "walking into a wall it gives up rather than walk on the spot")
+	for k in 5:
+		a.tick_visual(0.05)
+	for k in 10:
+		a.tick_visual(0.05)
+		moving_frames += 1 if a._pose_now() == &"walk" else 0
+	t.check(moving_frames == 0, "and standing still it does not show the walk")
+	a.free()
 	CM._done(made)

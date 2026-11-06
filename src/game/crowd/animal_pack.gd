@@ -33,6 +33,11 @@ const SOLDIER_KILL := 1.2
 ## The fright a maddened animal's first bite spreads: radius, severity, seconds, sight, sound.
 const BITE_THREAT := [0.7, 0.4, 5.0, 3.5, 5.0]
 const BITE_ALARM := 0.6
+## The wait poses and their chances (Animal.IDLES).
+const IDLE_WEIGHTS := [[&"sit", 0.3], [&"idle", 0.25], [&"sniff", 0.2], [&"scratch", 0.1], [&"bark", 0.1],
+	[&"lie", 0.05]]
+## A target it could not reach is left alone this long.
+const SKIP_FOR := 3.0
 
 var animals: Array[Animal] = []
 var rng := RandomNumberGenerator.new()
@@ -45,6 +50,8 @@ var _check_in := 0.0
 var _cut := {}
 ## Animals whose bites have spread a fright this spell.
 var _cried := {}
+## Animal -> [person it could not reach, seconds left].
+var _skip := {}
 
 
 func setup(crowd: Crowd, grid: WalkGrid, parent: Node2D, seed_value: int) -> AnimalPack:
@@ -93,6 +100,7 @@ func clear() -> void:
 	animals.clear()
 	_cut.clear()
 	_cried.clear()
+	_skip.clear()
 
 
 func living() -> Array[Animal]:
@@ -138,6 +146,10 @@ func step(delta: float) -> void:
 	if _check_in <= 0.0:
 		_check_in = 0.25
 		_check_threats()
+	for a in _skip.keys():
+		_skip[a][1] -= delta
+		if _skip[a][1] <= 0.0:
+			_skip.erase(a)
 	for a in animals:
 		if not is_instance_valid(a):
 			continue
@@ -181,8 +193,19 @@ func _wander(a: Animal, delta: float) -> void:
 			a.queue_redraw()
 		return
 	if a.walk_to(a.goal, delta, _grid):
-		a.wait = rng.randf_range(SIT.x, SIT.y) * (1.6 if not a.is_dog() else 1.0)
+		a.idle = _pick_idle()
+		a.wait = rng.randf_range(SIT.x, SIT.y) * (1.6 if not a.is_dog() else 1.0) * (2.0 if a.idle == &"lie" else 1.0)
 		a.queue_redraw()
+
+
+## What it does while it waits, by weight.
+func _pick_idle() -> StringName:
+	var r := rng.randf()
+	for pair in IDLE_WEIGHTS:
+		r -= float(pair[1])
+		if r < 0.0:
+			return pair[0]
+	return &"sit"
 
 
 func _next_errand(a: Animal) -> void:
@@ -214,20 +237,24 @@ func _follow(a: Animal, delta: float) -> void:
 		a.queue_redraw()
 		return
 	if a.ground_pos.distance_to(who.ground_pos) > FOLLOW_GAP:
-		a.walk_to(who.ground_pos, delta, _grid)
+		if a.walk_to(who.ground_pos, delta, _grid) and a.blocked:
+			a.wait = 0.0  # cannot reach them: stop following next step
 
 
 func _attack(a: Animal, delta: float) -> void:
 	var who := a.target
-	if who == null or not is_instance_valid(who) or not who.is_alive() or who.inside:
-		who = _nearest_person(a.ground_pos, Animal.HUNT_SIGHT, false)
+	if who == null or not is_instance_valid(who) or not who.is_alive() or who.inside or _skipped(a, who):
+		who = _nearest_person(a.ground_pos, Animal.HUNT_SIGHT, false, a)
 		a.target = who
 	if who == null:
 		a.wait = 0.5
 		return
 	a._bite_in -= delta
 	if a.ground_pos.distance_to(who.ground_pos) > Animal.REACH:
-		a.walk_to(who.ground_pos, delta, _grid)
+		if a.walk_to(who.ground_pos, delta, _grid) and a.blocked:
+			# A wall between them: go for someone else a while.
+			_skip[a] = [who, SKIP_FOR]
+			a.target = null
 	elif a._bite_in <= 0.0:
 		a._bite_in = Animal.BITE_EVERY
 		who.hurt_from(a.bite(), a.ground_pos)
@@ -253,11 +280,17 @@ func _outcry(a: Animal) -> void:
 
 
 ## The nearest living person out in the open within `reach`; `calm` for a citizen going about its day only.
-func _nearest_person(at: Vector2, reach: float, calm: bool) -> Person:
+func _skipped(a: Animal, who: Person) -> bool:
+	return _skip.has(a) and _skip[a][0] == who
+
+
+func _nearest_person(at: Vector2, reach: float, calm: bool, hunter: Animal = null) -> Person:
 	var best: Person = null
 	var best_d := reach
 	for p in _crowd.citizens:
 		if not is_instance_valid(p) or not p.is_alive() or p.inside:
+			continue
+		if hunter != null and _skipped(hunter, p):
 			continue
 		if calm and p.mind != Person.Mind.CALM:
 			continue
@@ -267,7 +300,8 @@ func _nearest_person(at: Vector2, reach: float, calm: bool) -> Person:
 			best = p
 	if not calm:
 		for p in _crowd.soldiers:
-			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best_d:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best_d \
+					and not (hunter != null and _skipped(hunter, p)):
 				best_d = p.ground_pos.distance_to(at)
 				best = p
 	return best

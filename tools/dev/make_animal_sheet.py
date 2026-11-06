@@ -4,9 +4,10 @@ Usage (from the project root):
   python tools/dev/make_animal_sheet.py --src DIR --out assets/pixellab/animals/<name>.png
 
 Rows of square cells (the character's canvas, 24 px): 0 the still poses (south-east, north-east), 1 walk south-east,
-2 walk north-east, 3 sit south-east, 4 bite south-east. The west-facing views are these mirrored in game. A missing
-row is left empty and the game falls back to the still pose. Every frame is shifted so its feet sit on the same spot
-as the south-east still pose's (PixelLab clips drift a pixel or two). Writes <out> and <out>.json (cell, foot, frame
+2 walk north-east, 3 sit, 4 bite, 5 idle, 6 bark, 7 sniff, 8 scratch, 9 lie (all south-east). The west-facing views
+are these mirrored in game. A missing row is left empty and the game falls back to the still pose. Every frame is
+shifted so its lowest pixel sits on the ground line of the south-east still pose (PixelLab clips drift a pixel or two);
+only the still poses are centred sideways too, so a clip keeps its own sideways motion (a head lowered to sniff). Writes <out> and <out>.json (cell, foot, frame
 counts).
 """
 import argparse
@@ -17,7 +18,8 @@ import os
 from PIL import Image
 
 ROWS = [("rot", ["south-east", "north-east"]), ("walk", "south-east"), ("walk", "north-east"), ("sit", "south-east"),
-        ("bite", "south-east")]
+        ("bite", "south-east"), ("idle", "south-east"), ("bark", "south-east"), ("sniff", "south-east"),
+        ("scratch", "south-east"), ("lie", "south-east")]
 
 
 def _foot(im):
@@ -49,8 +51,7 @@ def main():
                 im = im.crop((0, 0, cell, cell))
             f = _foot(im)
             dx, dy = (foot[0] - f[0], foot[1] - f[1]) if f else (0, 0)
-            # Walks and bites keep their own bob: only line up the ground (the lowest pixel), not the step.
-            if ROWS[y][0] in ("walk", "bite"):
+            if ROWS[y][0] != "rot":
                 dx = 0
             moved = Image.new("RGBA", (cell, cell), (0, 0, 0, 0))
             moved.paste(im, (dx, dy), im)  # clipped to its own cell

@@ -103,13 +103,28 @@ var _pose := &""
 var _pose_t := 0.0
 var _bite_t := 99.0
 var _shown := -1
+## What it does while it waits (AnimalPack picks one): sit, idle, sniff, scratch, bark or lie.
+var idle := &"sit"
+## Seconds since it last took a step: the walk shows only while it really moves.
+var _since_move := 99.0
+## Stuck check: the goal it is walking to, the nearest it has got, and how long it has got no nearer. `blocked` is set
+## when the last walk gave up (a wall or no progress) rather than arrived.
+var blocked := false
+var _walk_goal := Vector2.INF
+var _best_d := 0.0
+var _stuck_t := 0.0
 
 ## PixelLab sheets (tools/dev/make_animal_sheet.py) by breed; a breed without one keeps its drawn shape.
 const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png"}
-enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE }
+enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE, IDLE, BARK, SNIFF, SCRATCH, LIE }
 const WALK_FPS := 8.0
-const SIT_FPS := 8.0
 const BITE_FPS := 14.0
+## Each wait pose: its row, frames a second, and whether it plays once and holds (sit, lie) or once and then idles
+## (bark); the rest loop.
+const IDLES := {&"sit": [Row.SIT, 8.0, &"hold"], &"lie": [Row.LIE, 6.0, &"hold"], &"bark": [Row.BARK, 10.0, &"once"],
+	&"idle": [Row.IDLE, 6.0, &"loop"], &"sniff": [Row.SNIFF, 6.0, &"loop"], &"scratch": [Row.SCRATCH, 8.0, &"hold"]}
+## No nearer to its goal for this long: it gives up on it.
+const STUCK_AFTER := 1.2
 static var _sheets := {}
 
 
@@ -199,7 +214,23 @@ func walk_to(to: Vector2, delta: float, grid: WalkGrid) -> bool:
 	var d := to - ground_pos
 	var dist := d.length()
 	if dist < 0.05:
+		blocked = false
+		_walk_goal = Vector2.INF
 		return true
+	# A new goal (a chased person moves a little each frame; that is the same goal) restarts the stuck check.
+	if _walk_goal == Vector2.INF or to.distance_to(_walk_goal) > 0.5:
+		_best_d = dist
+		_stuck_t = 0.0
+	_walk_goal = to
+	if dist < _best_d - 0.1:
+		_best_d = dist
+		_stuck_t = 0.0
+	else:
+		_stuck_t += delta
+		if _stuck_t > STUCK_AFTER:
+			# Sliding to and fro along a wall: give up on this goal.
+			_give_up()
+			return true
 	var step := minf(speed() * delta, dist)
 	var next := ground_pos + d / dist * step
 	if grid != null and not grid.walkable(next):
@@ -211,6 +242,7 @@ func walk_to(to: Vector2, delta: float, grid: WalkGrid) -> bool:
 				slid = true
 				break
 		if not slid:
+			_give_up()
 			return true
 	var screen_dx := (next.x - ground_pos.x) - (next.y - ground_pos.y)
 	if absf(screen_dx) > 0.0005:
@@ -219,6 +251,7 @@ func walk_to(to: Vector2, delta: float, grid: WalkGrid) -> bool:
 	if absf(screen_dy) > 0.0005:
 		back = screen_dy < 0.0
 	ground_pos = next
+	_since_move = 0.0
 	_anim += delta * speed() * 7.0
 	var f := int(_anim) % 2
 	if f != _frame:
@@ -228,7 +261,14 @@ func walk_to(to: Vector2, delta: float, grid: WalkGrid) -> bool:
 	return false
 
 
+func _give_up() -> void:
+	blocked = true
+	_walk_goal = Vector2.INF
+	_stuck_t = 0.0
+
+
 func tick_visual(delta: float) -> void:
+	_since_move += delta
 	if _flash > 0.0:
 		_flash -= delta
 		if _flash <= 0.0:
@@ -273,10 +313,14 @@ func _pose_now() -> StringName:
 		return &"dead"
 	if _bite_t < 1.0:
 		return &"bite"
-	if _sitting():
-		return &"sit"
-	if moving():
+	if _since_move < 0.2:
 		return &"walk"
+	if state in [State.TRANCE, State.GATHER]:
+		return &"sit"
+	if state == State.FOLLOW:
+		return &"idle"
+	if state in [State.WANDER, State.SIT]:
+		return idle
 	return &"still"
 
 
@@ -293,13 +337,22 @@ func _sprite_frame(sh: Dictionary) -> int:
 				_bite_t = 99.0
 				col = 0
 				row = Row.STILL
-		&"sit":
-			row = Row.SIT
-			col = mini(int(_pose_t * SIT_FPS), int(frames[row]) - 1)
 		&"walk":
 			row = Row.WALK_NE if back else Row.WALK_SE
 			col = int(_anim * 1.2)
-	if int(frames[row]) == 0:
+		&"still", &"dead":
+			pass
+		_:
+			var spec: Array = IDLES.get(_pose, IDLES[&"sit"])
+			row = spec[0]
+			var n := int(frames[row]) if row < frames.size() else 0
+			col = int(_pose_t * float(spec[1]))
+			if n > 0 and spec[2] == &"hold":
+				col = mini(col, n - 1)
+			elif n > 0 and spec[2] == &"once" and col >= n:
+				row = Row.IDLE
+				col -= n
+	if row >= frames.size() or int(frames[row]) == 0:
 		return Row.STILL * 100 + (1 if back else 0)
 	return row * 100 + col % int(frames[row])
 

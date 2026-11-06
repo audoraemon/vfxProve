@@ -43,6 +43,7 @@ var _dir := Vector2(1, 0)
 var _call_in := 0.0
 var _work_in := 0.0
 var _landed := false
+var _seed := 0
 ## The goods as they lie: Structure -> [Decor] (the town's own decor, drawn from its sprites, in the world layer).
 var _goods := {}
 
@@ -62,6 +63,7 @@ func _build() -> void:
 	if _dir.length() < 0.01:
 		_dir = Vector2(1, 0)
 	_dir = _dir.normalized()
+	_seed = int(ctx.rng.randi() % 100000)
 	duration = T_DROP + LIFE + 0.5
 	busy = T_DROP
 	at(T_DROP, _land)
@@ -130,18 +132,16 @@ func _land() -> void:
 	ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 0.8, 0.0, 0.2, 0.15)
 	ring.life = 0.38
-	# The structures are only the obstacle: the goods themselves are the town's decor, a crate, a barrel, logs or a
-	# stone a segment, standing in the world layer as any barrel in a yard does.
+	# The structures are only the obstacle: the goods themselves are a heap a segment -- crates, barrels, logs and
+	# stone from the town's decor sprites, thrown down on each other -- standing in the world layer.
 	for i in piles.size():
 		var s := piles[i]
 		s.visible = false
-		_goods[s] = []
-		var k := piles.find(s)
-		for g in goods_for(k, s.center(), _dir, int(ctx.rng.randi() % 1000)):
-			var d := Decor.new().setup(g.kind, g.at, Vector2.ZERO, g.seed)
-			d.scale_mul = g.scale
-			track(d, ctx.world)
-			(_goods[s] as Array).append(d)
+		var h := Heap.new()
+		h.pieces = heap_for(i, s.center(), _dir, _seed + i * 97)
+		h.position = Iso.ground_to_screen(s.center())
+		track(h, ctx.world)
+		_goods[s] = [h]
 
 
 ## Whether any of the line still lies there.
@@ -250,15 +250,36 @@ func _drop_goods_of_gone() -> void:
 		_goods.erase(s)
 
 
-## The goods a segment `k` of the line holds, at its middle `c` along `dir`: [{kind, at, seed, scale}], back to front.
-## Crates and barrels mostly, logs and a stone here and there, a smaller piece tucked beside the big one.
-static func goods_for(k: int, c: Vector2, dir: Vector2, seed_value: int) -> Array:
+## The heap on segment `k` of the line, at its middle `c` along `dir`: [{kind, at, seed, scale, lift}], back to front.
+## PIECES_PER of them, thrown down on each other: crates, barrels, logs and stone (KINDS), each at its own spot within
+## the segment, its own size, and the later ones lifted onto the earlier -- a jumble, not a row. Seeded: the same heap
+## is drawn falling and lying.
+const PIECES_PER := Vector2i(4, 6)
+const KINDS: Array[Decor.Kind] = [Decor.Kind.CRATES, Decor.Kind.BARREL, Decor.Kind.BARREL, Decor.Kind.ROCK, Decor.Kind.LOGS, Decor.Kind.CRATES, Decor.Kind.ROCK]
+
+static func heap_for(k: int, c: Vector2, dir: Vector2, seed_value: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
 	var side := Vector2(-dir.y, dir.x)
-	var big: Decor.Kind = [Decor.Kind.CRATES, Decor.Kind.BARREL, Decor.Kind.LOGS, Decor.Kind.CRATES, Decor.Kind.ROCK, Decor.Kind.BARREL][k % 6]
-	var small: Decor.Kind = [Decor.Kind.BARREL, Decor.Kind.ROCK, Decor.Kind.BARREL, Decor.Kind.ROCK][k % 4]
-	var out := [{"kind": big, "at": c + side * 0.08, "seed": seed_value + k * 31, "scale": 1.0}]
-	if k % 2 == 0:
-		out.append({"kind": small, "at": c - side * 0.22 + dir * 0.12, "seed": seed_value + k * 31 + 7, "scale": 0.75})
+	var out := []
+	var n := rng.randi_range(PIECES_PER.x, PIECES_PER.y)
+	for i in n:
+		var kind: Decor.Kind = KINDS[rng.randi() % KINDS.size()]
+		var along := rng.randf_range(-0.26, 0.26)
+		var across := rng.randf_range(-0.2, 0.2)
+		var base := i < 3
+		out.append({
+			"kind": kind,
+			"at": c + dir * along + side * across,
+			"seed": seed_value + i * 13 + k,
+			"scale": rng.randf_range(0.55, 0.9) if base else rng.randf_range(0.45, 0.7),
+			"lift": 0.0 if base else rng.randf_range(5.0, 11.0),
+		})
+	# Back to front, the lifted ones last so they sit on top.
+	out.sort_custom(func(a, b) -> bool:
+		var da: Vector2 = a.at
+		var db: Vector2 = b.at
+		return da.x + da.y + float(a.lift) * 0.05 < db.x + db.y + float(b.lift) * 0.05)
 	return out
 
 
@@ -285,14 +306,34 @@ func end_now() -> void:
 	super()
 
 
-## The load on its way down: the segments' goods -- the town's own crates, barrels, logs and stones -- falling together
-## onto the marks, each with a shadow closing under it.
+## One segment's heap, lying: its pieces painted from the decor sprites, each at its own spot and size, the later ones
+## lifted onto the earlier. One node a segment in the world layer, so people sort round it.
+class Heap extends Node2D:
+	var pieces: Array = []
+
+	func _draw() -> void:
+		WindfallFx.paint_pieces(self, pieces, position, 0.0)
+
+
+## Paint `pieces` (heap_for()) on `ci`, whose node sits at screen `origin`, lifted a further `up` pixels (the fall).
+static func paint_pieces(ci: CanvasItem, pieces: Array, origin: Vector2, up: float) -> void:
+	for g in pieces:
+		var foot := Iso.ground_to_screen(g.at) - origin + Vector2(0, -float(g.lift) - up)
+		var sc: float = g.scale * ArtTuning.scale(String(Decor.Kind.keys()[g.kind]).to_lower())
+		# Scaled about its own foot: the painter is told its foot is the origin, and the transform puts it there.
+		ci.draw_set_transform(foot.round(), 0.0, Vector2(sc, sc))
+		ArtKit.begin()
+		ArtKit.color_mul = ArtTuning.tint(String(Decor.Kind.keys()[g.kind]).to_lower())
+		DecorArt.paint(g.kind, g.at, Vector2.ZERO, g.seed, Iso.ground_to_screen(g.at))
+		ArtKit.color_mul = Color.WHITE
+		ArtKit.flush(ci)
+	ci.draw_set_transform(Vector2.ZERO)
+
+
+## The load on its way down: the segments' heaps -- the same pieces they will lie as -- falling together onto the
+## marks, each with a shadow closing under it.
 class Load extends Node2D:
 	var fx: WindfallFx
-	var _seed := 0
-
-	func _ready() -> void:
-		_seed = fx.ctx.rng.randi() % 1000
 
 	func _process(_delta: float) -> void:
 		if fx.t >= T_DROP:
@@ -308,14 +349,6 @@ class Load extends Node2D:
 			var to := Iso.ground_to_screen(r.get_center())
 			draw_set_transform(to, 0.0, Vector2(1.0, 0.5))
 			draw_circle(Vector2.ZERO, 5.0 + 9.0 * k, Color(0.0, 0.0, 0.0, 0.15 + 0.3 * k))
-			draw_set_transform(Vector2.ZERO)
-		ArtKit.begin()
-		var i := 0
-		for r in rects:
-			for g in WindfallFx.goods_for(i, r.get_center(), fx._dir, _seed):
-				# Painted at its ground point, lifted: the painter is told an origin that much lower.
-				ArtKit.color_mul = ArtTuning.tint(String(Decor.Kind.keys()[g.kind]).to_lower())
-				DecorArt.paint(g.kind, g.at, Vector2.ZERO, g.seed, Vector2(0, up + 4.0 + float(i % 2) * 6.0))
-			i += 1
-		ArtKit.color_mul = Color.WHITE
-		ArtKit.flush(self)
+		draw_set_transform(Vector2.ZERO)
+		for i in rects.size():
+			WindfallFx.paint_pieces(self, WindfallFx.heap_for(i, rects[i].get_center(), fx._dir, fx._seed + i * 97), Vector2.ZERO, up + float(i % 2) * 6.0)

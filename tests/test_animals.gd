@@ -15,6 +15,7 @@ static func run(t) -> void:
 	_madness(t)
 	_gather_and_trance(t)
 	_stuck(t)
+	_night(t)
 	AnimalPack.enabled = false
 
 
@@ -194,4 +195,39 @@ static func _stuck(t) -> void:
 		moving_frames += 1 if a._pose_now() == &"walk" else 0
 	t.check(moving_frames == 0, "and standing still it does not show the walk")
 	a.free()
+	CM._done(made)
+
+
+## At night (the NIGHT look) dogs mostly lie down to sleep and keep near home; cats prowl, roaming farther than by day.
+static func _night(t) -> void:
+	var made := CM._setup()
+	var pack: AnimalPack = (made[0] as Crowd).animals
+	var dog: Animal = null
+	var cat: Animal = null
+	for a in pack.animals:
+		if a.is_dog() and dog == null:
+			dog = a
+		elif not a.is_dog() and cat == null:
+			cat = a
+	var was = TownLook.active
+	var lies := [0, 0]
+	for night in [false, true]:
+		TownLook.active = Town.Look.NIGHT if night else Town.Look.DAY
+		for k in 200:
+			lies[1 if night else 0] += 1 if pack._pick_idle(dog) == &"lie" else 0
+	t.check(AnimalPack.is_night(), "the NIGHT look is night to the animals")
+	t.check(lies[1] > 80 and lies[1] > lies[0] * 3, "at night a dog mostly lies down to sleep (%d of 200, by day %d)" % [lies[1], lies[0]])
+	var cat_lies := 0
+	for k in 200:
+		cat_lies += 1 if pack._pick_idle(cat) == &"lie" else 0
+	t.check(cat_lies < lies[1] / 2, "a cat sleeps far less at night (%d of 200)" % cat_lies)
+	var reach := [0.0, 0.0]
+	for night in [false, true]:
+		TownLook.active = Town.Look.NIGHT if night else Town.Look.DAY
+		for k in 100:
+			cat.home = cat.ground_pos
+			pack._next_errand(cat)
+			reach[1 if night else 0] = maxf(reach[1 if night else 0], cat.goal.distance_to(cat.home))
+	t.check(reach[1] > reach[0], "a cat roams farther at night (%.1f against %.1f)" % [reach[1], reach[0]])
+	TownLook.active = was
 	CM._done(made)

@@ -36,6 +36,15 @@ const BITE_ALARM := 0.6
 ## The wait poses and their chances (Animal.IDLES).
 const IDLE_WEIGHTS := [[&"sit", 0.3], [&"idle", 0.25], [&"sniff", 0.2], [&"scratch", 0.1], [&"bark", 0.1],
 	[&"lie", 0.05]]
+## At night (the NIGHT lighting look, TownLook.active): dogs sleep most of it and keep near home, cats prowl -- they
+## roam farther and rest less. The wait poses' chances by kind, the waits' length and the roam's reach, against the day.
+const NIGHT_DOG_IDLES := [[&"lie", 0.55], [&"sit", 0.2], [&"idle", 0.15], [&"sniff", 0.05], [&"bark", 0.05]]
+const NIGHT_CAT_IDLES := [[&"sit", 0.35], [&"idle", 0.25], [&"sniff", 0.25], [&"lie", 0.15]]
+const NIGHT_DOG_WAIT := 2.5
+const NIGHT_CAT_WAIT := 0.6
+const NIGHT_DOG_ROAM := 0.5
+const NIGHT_CAT_ROAM := 1.6
+const NIGHT_FOLLOW := 0.25
 ## A target it could not reach is left alone this long.
 const SKIP_FOR := 3.0
 
@@ -74,7 +83,7 @@ func spawn(count := -1) -> void:
 		var who: Person = people[rng.randi_range(0, people.size() - 1)]
 		var at := who.anchor + Vector2(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6))
 		if _grid != null:
-			at = _grid.nearest_walkable(at, 3)
+			at = _near(at, 3, who.anchor)
 		var a := Animal.new()
 		var dog := rng.randf() < DOG_SHARE
 		a.breed = (rng.randi_range(0, 2) if dog else rng.randi_range(3, 5)) as Animal.Breed
@@ -101,6 +110,18 @@ func clear() -> void:
 	_cut.clear()
 	_cried.clear()
 	_skip.clear()
+
+
+## The nearest walkable point to `to` within `cells`, else `fallback` (WalkGrid gives INF when there is none, and an
+## animal sent there would walk off for ever).
+func _near(to: Vector2, cells: int, fallback: Vector2) -> Vector2:
+	var at := _grid.nearest_walkable(to, cells)
+	return at if at.is_finite() else fallback
+
+
+## The town is lit for night (Town.Look.NIGHT).
+static func is_night() -> bool:
+	return TownLook.active == Town.Look.NIGHT
 
 
 func living() -> Array[Animal]:
@@ -193,15 +214,20 @@ func _wander(a: Animal, delta: float) -> void:
 			a.queue_redraw()
 		return
 	if a.walk_to(a.goal, delta, _grid):
-		a.idle = _pick_idle()
+		a.idle = _pick_idle(a)
 		a.wait = rng.randf_range(SIT.x, SIT.y) * (1.6 if not a.is_dog() else 1.0) * (2.0 if a.idle == &"lie" else 1.0)
+		if is_night():
+			a.wait *= NIGHT_DOG_WAIT if a.is_dog() else NIGHT_CAT_WAIT
 		a.queue_redraw()
 
 
 ## What it does while it waits, by weight.
-func _pick_idle() -> StringName:
+func _pick_idle(a: Animal) -> StringName:
+	var table: Array = IDLE_WEIGHTS
+	if is_night():
+		table = NIGHT_DOG_IDLES if a.is_dog() else NIGHT_CAT_IDLES
 	var r := rng.randf()
-	for pair in IDLE_WEIGHTS:
+	for pair in table:
 		r -= float(pair[1])
 		if r < 0.0:
 			return pair[0]
@@ -209,7 +235,7 @@ func _pick_idle() -> StringName:
 
 
 func _next_errand(a: Animal) -> void:
-	if a.is_dog() and rng.randf() < FOLLOW_CHANCE:
+	if a.is_dog() and rng.randf() < FOLLOW_CHANCE * (NIGHT_FOLLOW if is_night() else 1.0):
 		var who := _nearest_person(a.ground_pos, FOLLOW_REACH, true)
 		if who != null:
 			a.state = Animal.State.FOLLOW
@@ -217,9 +243,12 @@ func _next_errand(a: Animal) -> void:
 			a.wait = -rng.randf_range(FOLLOW_TIME.x, FOLLOW_TIME.y)  # negative: how long it tags along
 			return
 	a.state = Animal.State.WANDER
-	var to := a.home + Vector2(rng.randf_range(-ROAM, ROAM), rng.randf_range(-ROAM, ROAM))
+	var roam := ROAM
+	if is_night():
+		roam *= NIGHT_DOG_ROAM if a.is_dog() else NIGHT_CAT_ROAM
+	var to := a.home + Vector2(rng.randf_range(-roam, roam), rng.randf_range(-roam, roam))
 	if _grid != null:
-		to = _grid.nearest_walkable(to, 3)
+		to = _near(to, 3, a.ground_pos)
 		if not _grid.clear_line(a.ground_pos, to):
 			to = a.ground_pos + (to - a.ground_pos) * 0.3
 	a.goal = to
@@ -334,7 +363,7 @@ func _check_threats() -> void:
 					away = Vector2.RIGHT
 				var to := a.ground_pos + away.normalized() * FLEE_DIST
 				if _grid != null:
-					to = _grid.nearest_walkable(to, 4)
+					to = _near(to, 4, a.ground_pos)
 				a.state = Animal.State.FLEE
 				a.target = null
 				a.goal = to

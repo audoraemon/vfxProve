@@ -231,6 +231,7 @@ func _attack(a: Animal, delta: float) -> void:
 	elif a._bite_in <= 0.0:
 		a._bite_in = Animal.BITE_EVERY
 		who.hurt_from(a.bite(), a.ground_pos)
+		a.bit()
 		if not _cried.has(a):
 			_cried[a] = true
 			_outcry(a)

@@ -96,6 +96,21 @@ var _bite_in := 0.0
 var _anim := 0.0
 var _frame := 0
 var _flash := 0.0
+## Moving up the screen (the sprite shows its back view).
+var back := false
+## Sprite timing: seconds in the current pose, and since the last bite (a bite plays once).
+var _pose := &""
+var _pose_t := 0.0
+var _bite_t := 99.0
+var _shown := -1
+
+## PixelLab sheets (tools/dev/make_animal_sheet.py) by breed; a breed without one keeps its drawn shape.
+const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png"}
+enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE }
+const WALK_FPS := 8.0
+const SIT_FPS := 8.0
+const BITE_FPS := 14.0
+static var _sheets := {}
 
 
 func is_dog() -> bool:
@@ -200,6 +215,9 @@ func walk_to(to: Vector2, delta: float, grid: WalkGrid) -> bool:
 	var screen_dx := (next.x - ground_pos.x) - (next.y - ground_pos.y)
 	if absf(screen_dx) > 0.0005:
 		facing = 1 if screen_dx > 0.0 else -1
+	var screen_dy := (next.x - ground_pos.x) + (next.y - ground_pos.y)
+	if absf(screen_dy) > 0.0005:
+		back = screen_dy < 0.0
 	ground_pos = next
 	_anim += delta * speed() * 7.0
 	var f := int(_anim) % 2
@@ -215,6 +233,75 @@ func tick_visual(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			queue_redraw()
+	var sh := sheet(breed)
+	if sh.is_empty():
+		return
+	_pose_t += delta
+	_bite_t += delta
+	var pose := _pose_now()
+	if pose != _pose:
+		_pose = pose
+		_pose_t = 0.0
+	var f := _sprite_frame(sh)
+	if f != _shown:
+		_shown = f
+		queue_redraw()
+
+
+## A bite landed: the sprite plays its bite once.
+func bit() -> void:
+	_bite_t = 0.0
+
+
+## The breed's sheet: {tex, cell, foot, frames}; empty when it has none (or it is not imported).
+static func sheet(b: Breed) -> Dictionary:
+	if _sheets.has(b):
+		return _sheets[b]
+	var out := {}
+	var path: String = SHEETS.get(b, "")
+	if path != "" and ResourceLoader.exists(path) and FileAccess.file_exists(path + ".json"):
+		var meta: Variant = JSON.parse_string(FileAccess.get_file_as_string(path + ".json"))
+		if meta is Dictionary:
+			out = {"tex": load(path), "cell": int(meta.cell), "foot": Vector2(meta.foot[0], meta.foot[1]),
+				"frames": meta.frames}
+	_sheets[b] = out
+	return out
+
+
+func _pose_now() -> StringName:
+	if state == State.DEAD:
+		return &"dead"
+	if _bite_t < 1.0:
+		return &"bite"
+	if _sitting():
+		return &"sit"
+	if moving():
+		return &"walk"
+	return &"still"
+
+
+## The frame on show as row * 100 + column.
+func _sprite_frame(sh: Dictionary) -> int:
+	var frames: Array = sh.frames
+	var row := Row.STILL
+	var col := 1 if back else 0
+	match _pose:
+		&"bite":
+			row = Row.BITE
+			col = int(_bite_t * BITE_FPS)
+			if col >= int(frames[row]):
+				_bite_t = 99.0
+				col = 0
+				row = Row.STILL
+		&"sit":
+			row = Row.SIT
+			col = mini(int(_pose_t * SIT_FPS), int(frames[row]) - 1)
+		&"walk":
+			row = Row.WALK_NE if back else Row.WALK_SE
+			col = int(_anim * 1.2)
+	if int(frames[row]) == 0:
+		return Row.STILL * 100 + (1 if back else 0)
+	return row * 100 + col % int(frames[row])
 
 
 func moving() -> bool:
@@ -228,11 +315,36 @@ func _draw() -> void:
 	var look_shadow := Person.foot_shadow(shadow, sc)
 	draw_rect(look_shadow[0], look_shadow[1])
 	if state == State.DEAD:
+		var dsh := sheet(breed)
+		if not dsh.is_empty():
+			# On its side: the still pose turned over, dull.
+			var c: int = dsh.cell
+			var ft: Vector2 = dsh.foot
+			draw_set_transform(Vector2(0, -2), PI / 2.0 * facing, Vector2(0.8, 1.0))
+			draw_texture_rect_region(dsh.tex, Rect2(-ft.x, -ft.y * 0.5, c, c), Rect2(0, 0, c, c),
+					Color(0.6, 0.55, 0.55))
+			draw_set_transform(Vector2.ZERO)
+			return
 		_draw_rows(_shape_body(), pal, true, Color(0.55, 0.5, 0.5))
 		return
 	var tint := Color.WHITE if _flash <= 0.0 else Color(2.0, 2.0, 2.0)
-	_draw_rows(_shape(), pal, false, tint)
+	var sh := sheet(breed)
+	if not sh.is_empty():
+		_draw_sheet(sh, tint)
+	else:
+		_draw_rows(_shape(), pal, false, tint)
 	_draw_mark()
+
+
+## The PixelLab frame, feet on the ground point, mirrored for the west-facing views.
+func _draw_sheet(sh: Dictionary, tint: Color) -> void:
+	var f := _sprite_frame(sh)
+	var cell: int = sh.cell
+	var foot: Vector2 = sh.foot
+	var src := Rect2((f % 100) * cell, (f / 100) * cell, cell, cell)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(float(facing), 1.0))
+	draw_texture_rect_region(sh.tex, Rect2(-foot.x, -foot.y, cell, cell), src, tint)
+	draw_set_transform(Vector2.ZERO)
 
 
 func _sitting() -> bool:

@@ -42,8 +42,9 @@ var called := 0
 var _dir := Vector2(1, 0)
 var _call_in := 0.0
 var _work_in := 0.0
-var _heap: Heap
 var _landed := false
+## The goods as they lie: Structure -> [Decor] (the town's own decor, drawn from its sprites, in the world layer).
+var _goods := {}
 
 
 ## The segments' footprints for a line centred on `at` along `dir`.
@@ -129,15 +130,18 @@ func _land() -> void:
 	ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 0.8, 0.0, 0.2, 0.15)
 	ring.life = 0.38
-	if not piles.is_empty():
-		# The structures are only the obstacle: the line itself is drawn here, crates and stone as they fell.
-		for s in piles:
-			s.visible = false
-		_heap = Heap.new()
-		_heap.fx = self
-		_heap.rng.seed = ctx.rng.randi()
-		_heap.position = Iso.ground_to_screen(origin)
-		track(_heap, ctx.world)
+	# The structures are only the obstacle: the goods themselves are the town's decor, a crate, a barrel, logs or a
+	# stone a segment, standing in the world layer as any barrel in a yard does.
+	for i in piles.size():
+		var s := piles[i]
+		s.visible = false
+		_goods[s] = []
+		var k := piles.find(s)
+		for g in goods_for(k, s.center(), _dir, int(ctx.rng.randi() % 1000)):
+			var d := Decor.new().setup(g.kind, g.at, Vector2.ZERO, g.seed)
+			d.scale_mul = g.scale
+			track(d, ctx.world)
+			(_goods[s] as Array).append(d)
 
 
 ## Whether any of the line still lies there.
@@ -169,11 +173,10 @@ func _fx_process(delta: float) -> void:
 		return
 	if not standing():
 		cleared = cleared or t < T_DROP + LIFE
-		if _heap != null and is_instance_valid(_heap):
-			_heap.queue_free()
-		_heap = null
+		_drop_goods_of_gone()
 		duration = minf(duration, t + 0.5)
 		return
+	_drop_goods_of_gone()
 	if t >= T_DROP + LIFE:
 		_remove_all()
 		return
@@ -235,21 +238,44 @@ func _call() -> void:
 			need -= 1
 
 
+## The goods of a segment that is gone (cleared, cut away, smashed) go with it.
+func _drop_goods_of_gone() -> void:
+	for s in _goods.keys():
+		# Checked before the typed lookup: a segment the engineers cut away is freed, and a freed key errors in has().
+		if is_instance_valid(s) and piles.has(s):
+			continue
+		for d in _goods[s]:
+			if is_instance_valid(d):
+				d.queue_free()
+		_goods.erase(s)
+
+
+## The goods a segment `k` of the line holds, at its middle `c` along `dir`: [{kind, at, seed, scale}], back to front.
+## Crates and barrels mostly, logs and a stone here and there, a smaller piece tucked beside the big one.
+static func goods_for(k: int, c: Vector2, dir: Vector2, seed_value: int) -> Array:
+	var side := Vector2(-dir.y, dir.x)
+	var big: Decor.Kind = [Decor.Kind.CRATES, Decor.Kind.BARREL, Decor.Kind.LOGS, Decor.Kind.CRATES, Decor.Kind.ROCK, Decor.Kind.BARREL][k % 6]
+	var small: Decor.Kind = [Decor.Kind.BARREL, Decor.Kind.ROCK, Decor.Kind.BARREL, Decor.Kind.ROCK][k % 4]
+	var out := [{"kind": big, "at": c + side * 0.08, "seed": seed_value + k * 31, "scale": 1.0}]
+	if k % 2 == 0:
+		out.append({"kind": small, "at": c - side * 0.22 + dir * 0.12, "seed": seed_value + k * 31 + 7, "scale": 0.75})
+	return out
+
+
 func _take_away(s: Structure) -> void:
 	if is_instance_valid(s) and ctx.env.structures().has(s):
 		var at_pile := s.center()
 		ctx.env.remove(s)
 		if DominionParts.staged(self):
 			FxParts.debris(self, Iso.ground_to_screen(at_pile), 6, 5.0, Vector2(20, 90), WOOD, Vector2(1.5, 3.0), true)
+			FxParts.debris(self, Iso.ground_to_screen(at_pile), 4, 4.0, Vector2(20, 70), FxParts.ROCK, Vector2(1.5, 2.5), true)
 
 
 func _remove_all() -> void:
 	for s in piles.duplicate():
 		_take_away(s)
 	piles.clear()
-	if _heap != null and is_instance_valid(_heap):
-		_heap.queue_free()
-	_heap = null
+	_drop_goods_of_gone()
 	duration = minf(duration, t + 0.5)
 
 
@@ -259,10 +285,14 @@ func end_now() -> void:
 	super()
 
 
-## The load on its way down: a crate or a stone over each segment, falling together onto the marks, each with a
-## shadow closing under it.
+## The load on its way down: the segments' goods -- the town's own crates, barrels, logs and stones -- falling together
+## onto the marks, each with a shadow closing under it.
 class Load extends Node2D:
 	var fx: WindfallFx
+	var _seed := 0
+
+	func _ready() -> void:
+		_seed = fx.ctx.rng.randi() % 1000
 
 	func _process(_delta: float) -> void:
 		if fx.t >= T_DROP:
@@ -273,76 +303,19 @@ class Load extends Node2D:
 	func _draw() -> void:
 		var k := clampf(fx.t / T_DROP, 0.0, 1.0)
 		var up := FALL * (1.0 - k * k)
-		var i := 0
-		for r in WindfallFx.rects(fx.origin, fx._dir):
+		var rects := WindfallFx.rects(fx.origin, fx._dir)
+		for r in rects:
 			var to := Iso.ground_to_screen(r.get_center())
 			draw_set_transform(to, 0.0, Vector2(1.0, 0.5))
-			draw_circle(Vector2.ZERO, 4.0 + 8.0 * k, Color(0.0, 0.0, 0.0, 0.15 + 0.3 * k))
+			draw_circle(Vector2.ZERO, 5.0 + 9.0 * k, Color(0.0, 0.0, 0.0, 0.15 + 0.3 * k))
 			draw_set_transform(Vector2.ZERO)
-			var stone := i % 3 == 1
-			var col: Color = FxParts.ROCK[0] if stone else WOOD[i % 2]
-			var s := 7.0 if stone else 8.0
-			var c := to + Vector2(0, -up - 6.0 - float(i % 2) * 3.0)
-			draw_rect(Rect2(c - Vector2(s, s) * 0.5, Vector2(s, s)), col)
-			draw_rect(Rect2(c - Vector2(s, s) * 0.5, Vector2(s, 2)), col.lightened(0.25))
-			draw_rect(Rect2(c - Vector2(s, s) * 0.5 + Vector2(0, s - 2), Vector2(s, 2)), col.darkened(0.35))
+		ArtKit.begin()
+		var i := 0
+		for r in rects:
+			for g in WindfallFx.goods_for(i, r.get_center(), fx._dir, _seed):
+				# Painted at its ground point, lifted: the painter is told an origin that much lower.
+				ArtKit.color_mul = ArtTuning.tint(String(Decor.Kind.keys()[g.kind]).to_lower())
+				DecorArt.paint(g.kind, g.at, Vector2.ZERO, g.seed, Vector2(0, up + 4.0 + float(i % 2) * 6.0))
 			i += 1
-
-
-## The line as it lies: a low wall of crates and blocks along the segments that still stand, drawn in the world layer
-## so people sort round it.
-class Heap extends Node2D:
-	const STONE := [Color("8a8f9c"), Color("6a6f7c"), Color("4c505c")]
-	var fx: WindfallFx
-	var rng := RandomNumberGenerator.new()
-	var _jitter: Array = []
-
-	func _ready() -> void:
-		for i in SEGMENTS * 2:
-			_jitter.append(Vector2(rng.randf_range(-0.06, 0.06), rng.randf_range(-0.06, 0.06)))
-
-	func _process(_delta: float) -> void:
-		queue_redraw()
-
-	func _draw() -> void:
-		var cs := fx.centres()
-		if cs.is_empty():
-			return
-		# Dust under the whole line.
-		for c in cs:
-			var sp := Iso.ground_to_screen(c) - position
-			draw_set_transform(sp, 0.0, Vector2(1.0, 0.5))
-			draw_circle(Vector2.ZERO, 16.0, Color(0.0, 0.0, 0.0, 0.2))
-			draw_set_transform(Vector2.ZERO)
-		# Back to front: the segments sorted by screen depth, two pieces each.
-		var order := cs.duplicate()
-		order.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x + a.y < b.x + b.y)
-		for c in order:
-			var i := cs.find(c)
-			var j0: Vector2 = _jitter[(i * 2) % _jitter.size()]
-			var j1: Vector2 = _jitter[(i * 2 + 1) % _jitter.size()]
-			var stone := i % 3 == 1
-			_box(c + Vector2(-0.12, 0.1) + j0, 0.42, 7.0, 0.0, stone)
-			_box(c + Vector2(0.14, -0.1) + j1, 0.36, 6.0, 0.0, not stone and i % 2 == 0)
-			if i % 2 == 1:
-				_box(c + j0 * 0.5, 0.3, 5.0, 7.0, stone)
-
-	## One crate or block: a ground square of `size` at `at`, `tall` pixels high, `lift` pixels off the ground.
-	func _box(at: Vector2, size: float, tall: float, lift: float, stone: bool) -> void:
-		var h := size * 0.5
-		var e := Iso.ground_to_screen(at + Vector2(h, -h)) - position + Vector2(0, -lift)
-		var sth := Iso.ground_to_screen(at + Vector2(h, h)) - position + Vector2(0, -lift)
-		var w := Iso.ground_to_screen(at + Vector2(-h, h)) - position + Vector2(0, -lift)
-		var n := Iso.ground_to_screen(at + Vector2(-h, -h)) - position + Vector2(0, -lift)
-		var up := Vector2(0, -tall)
-		var top: Color = STONE[0] if stone else WOOD[0]
-		var lf: Color = STONE[1] if stone else WOOD[1]
-		var rf: Color = STONE[2] if stone else WOOD[2]
-		draw_colored_polygon(PackedVector2Array([w, sth, sth + up, w + up]), lf)
-		draw_colored_polygon(PackedVector2Array([sth, e, e + up, sth + up]), rf)
-		draw_colored_polygon(PackedVector2Array([n + up, e + up, sth + up, w + up]), top)
-		if not stone:
-			draw_line(w + up * 0.5, sth + up * 0.5, WOOD[3], 1.0)
-			draw_line(sth + up * 0.5, e + up * 0.5, WOOD[3], 1.0)
-		draw_polyline(PackedVector2Array([n + up, e + up, sth + up, w + up, n + up]), Color(0.1, 0.07, 0.05, 0.55), 1.0)
-		draw_line(sth, sth + up, Color(0.1, 0.07, 0.05, 0.45), 1.0)
+		ArtKit.color_mul = Color.WHITE
+		ArtKit.flush(self)

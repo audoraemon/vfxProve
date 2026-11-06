@@ -27,8 +27,10 @@ signal team_lost
 ## CLEAR (v0.06): cut down a Thornwall's segment.
 enum Job { NONE, CITADEL, ROUTE, LANDMARK, HOUSE, CLEAR }
 const PRIORITY := {Job.CITADEL: 100.0, Job.ROUTE: 80.0, Job.CLEAR: 70.0, Job.LANDMARK: 60.0, Job.HOUSE: 20.0}
-## Seconds to cut down one thorn segment.
+## Seconds to cut down one thorn segment (or clear one pile).
 const CLEAR_TIME := 5.0
+## What a Clear job takes away: Thornwall's brambles, Windfall's pile.
+const CLEARABLE := [&"thorns", &"windfall"]
 const DISTANCE_WEIGHT := 2.0
 const DAMAGED := 0.9
 ## The Citadel is a job once this share of its full health can be mended.
@@ -158,7 +160,7 @@ func jobs() -> Array:
 		if is_instance_valid(s) and not hands_off.has(s) and (s.destroyed or s.hp < s.max_hp * DAMAGED):
 			_add_job(out, Job.ROUTE, s, s.footprint, s.destroyed)
 	for s in _env.structures():
-		if is_instance_valid(s) and not s.destroyed and s.role == &"thorns":
+		if is_instance_valid(s) and not s.destroyed and s.role in CLEARABLE:
 			_add_job(out, Job.CLEAR, s, s.footprint, false)
 			continue
 		if not is_instance_valid(s) or s.destroyed or s.hp >= s.max_hp * DAMAGED or s.damage_filter.is_valid() or hands_off.has(s):

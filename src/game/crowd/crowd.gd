@@ -1906,8 +1906,8 @@ func clear() -> void:
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
-	if s.role == &"thorns":
-		return  # a bramble burnt or blasted away: no incident, nothing to flee
+	if s.role == &"thorns" or s.role == &"windfall":
+		return  # a bramble or a dropped pile burnt or blasted away: no incident, nothing to flee
 	var at := s.center()
 	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
 		if s.role != &"citadel":

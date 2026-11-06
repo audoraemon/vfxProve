@@ -86,6 +86,7 @@ const SUITES := [
 	"res://tests/test_saint.gd",
 	"res://tests/test_sanctuary.gd",
 	"res://tests/test_anathema.gd",
+	"res://tests/test_passage_t1.gd",
 	"res://tests/test_corps.gd",
 	"res://tests/test_marshals.gd",
 	"res://tests/test_escorts.gd",

@@ -58,6 +58,8 @@ const POWER_KINDS := {
 	"ember": [&"fire"],
 	"deathmark": [&"deathmark"],
 	"noleave": [],
+	"skylift": [],
+	"windfall": [&"stone"],
 	"belllies": [],
 	"magnify": [&"magnify"],
 	"unseen": [],

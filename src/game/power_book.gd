@@ -32,6 +32,12 @@ const POWERS := [
 	{"key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
 		"quiet": true, "alarm": 0.5, "authority": "decree"},
+	{"key": "skylift", "name": "Skylift", "path": "res://src/fx/control/skylift.gd",
+		"dp": 1, "cooldown": 20.0, "aim": "two clicks", "shape": "a beam takes whoever stands at the first click and sets them down at the second",
+		"quiet": true, "alarm": 0.5, "authority": "passage"},
+	{"key": "windfall", "name": "Windfall", "path": "res://src/fx/control/windfall.gd",
+		"dp": 1, "cooldown": 25.0, "aim": "click", "shape": "a load dropped from the sky: crushes what is under it, blocks the way until cleared",
+		"authority": "passage"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
 		"authority": "dominion"},
@@ -187,6 +193,7 @@ const REACH := {
 	"glacial": [8.0, 12.0, 0.7, 6.0], "solaris": [12.0, 16.0, 0.9, 6.5], "smite": [5.0, 9.0, 0.4, 2.0], "schism": [14.0, 18.0, 0.8, 8.0],
 	"nova": [40.0, 40.0, 1.0, 4.0],
 	"scatter": [7.0, 10.0, 0.6, 5.0],
+	"windfall": [5.0, 8.0, 0.5, 3.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -196,7 +203,7 @@ const REACH := {
 ## build-up until then. Quiet powers (Ember too) register no danger and have none.
 const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
-	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2,
+	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -255,7 +262,7 @@ const FAMILY := {
 	"discord": "hold", "sanctuary": "hold", "anathema": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
 	"noleave": "decree", "belllies": "decree", "magnify": "decree", "curfew": "decree", "abolition": "decree",
-	"thorns": "passage", "mirror": "passage",
+	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 }
 
 

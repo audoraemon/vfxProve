@@ -100,6 +100,7 @@ const CATALOG := {
 	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind.wav", "db": 0.0},
 	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema.wav", "db": 0.0},
 	&"q_sanctuary": {"path": "res://assets/audio/ability/quiet/q_sanctuary.wav", "db": 0.0},
+	&"q_skylift": {"path": "res://assets/audio/ability/quiet/q_skylift.wav", "db": 0.0},
 	&"q_saint": {"path": "res://assets/audio/ability/quiet/q_saint.wav", "db": 0.0},
 	&"q_curfew": {"path": "res://assets/audio/ability/quiet/q_curfew.wav", "db": 0.0},
 	&"q_thorns": {"path": "res://assets/audio/ability/quiet/q_thorns.wav", "db": -0.2},

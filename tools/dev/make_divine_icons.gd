@@ -44,6 +44,9 @@ func _initialize() -> void:
 	_save(_sign(DominionParts.HALO, Color(1.0, 0.88, 0.55), Color(0.1, 0.07, 0.04), 101), "saint")
 	_save(_sign(SacredSanctuaryFx.SHIELD, Color(1.0, 0.9, 0.6), Color(0.09, 0.07, 0.04), 102), "sanctuary")
 	_save(_sign(AnathemaFx.DAMNED, Color(0.72, 0.5, 1.0), Color(0.07, 0.03, 0.12), 103), "anathema")
+	# Passage, Tier I: the beam up, the load down.
+	_save(_sign([0b00100, 0b01110, 0b10101, 0b00100, 0b00100], Color(0.6, 0.85, 1.0), Color(0.03, 0.07, 0.13), 104), "skylift")
+	_save(_sign([0b00100, 0b00100, 0b10101, 0b01110, 0b11111], Color(0.95, 0.72, 0.4), Color(0.1, 0.07, 0.04), 105), "windfall")
 	# Veil: the shut eye in dusk.
 	_save(_sign(DominionParts.SHUT_EYE, Color(0.76, 0.6, 1.0), Color(0.05, 0.02, 0.1), 95), "unseen")
 	print("wrote ", ProjectSettings.globalize_path(OUT))

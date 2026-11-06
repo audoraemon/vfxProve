@@ -151,7 +151,7 @@ static func _floor(t, mains: Dictionary, median: float) -> void:
 	for key in PowerBook.keys():
 		if PowerBook.IMPACT.has(key):
 			loud += 1
-	t.check(loud == 17, "seventeen loud powers (got %d)" % loud)
+	t.check(loud == 18, "eighteen loud powers (got %d)" % loud)
 	t.check(not is_nan(median), "a loud median can be measured")
 	var raw := median - FLOOR_BELOW
 	t.check(QUIET_FLOOR <= raw + 0.001 and raw - QUIET_FLOOR < FLOOR_STEP + 0.001,
@@ -189,7 +189,7 @@ static func _quiet_cues(t) -> void:
 			t.check(not plays_it, "%s is still pending but already plays %s: take it off PENDING_QUIET" % [key, cue])
 		else:
 			t.check(Sfx.CATALOG.has(cue) and plays_it, "%s plays its own cue %s" % [key, cue])
-	t.check(quiet == 30, "thirty quiet powers (got %d)" % quiet)
+	t.check(quiet == 31, "thirty-one quiet powers (got %d)" % quiet)
 	var owner_of := {}
 	var shared := ""
 	for cue in Sfx.CATALOG:

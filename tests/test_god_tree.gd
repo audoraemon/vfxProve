@@ -41,10 +41,14 @@ static func _shape(t) -> void:
 		if key == "ruin":
 			continue
 		for i in range(1, tiers.size()):
+			if key == "dominion" and i == 2:
+				continue
 			for k: String in tiers[i]:
 				rest_empty = rest_empty and k == ""
 	t.check(tier1_full, "every Tier 1 spot of the real table is filled")
-	t.check(rest_empty, "Tiers 2-5 of the real table are still empty, Ruin's aside")
+	t.check(rest_empty, "Tiers 2-5 of the real table are still empty, Ruin's and Dominion's Tier 3 aside")
+	t.check(GodTree.TABLE.dominion[2] == ["clearmind", "saint"] and GodTree.TABLE.dominion[1] == ["", ""]
+		and GodTree.TABLE.dominion[3] == ["", ""], "Dominion's Tier 3 holds Clear Mind and Saint or Sinner (%s)" % [GodTree.TABLE.dominion])
 	t.check(GodTree.TABLE.ruin.slice(1) == [["tornado", "scatter"], ["solaris", "dragon"], ["tsunami", "cinder"], ["tempest", "shatter"]],
 		"Ruin's Tiers 2-5 hold the user's picks, with Scatter Strike, Wrath of the Sky and Earthshatter in the spots kept for them (%s)" % [GodTree.TABLE.ruin.slice(1)])
 	t.check(GodTree.TABLE.ruin[0] == ["smite", "ember"] and GodTree.TABLE.death[0] == ["deathmark", "pestilence"]

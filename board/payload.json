@@ -7,36 +7,36 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **26** to do · **106** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793899422:f>)\n• New: Discord god-progression changelog (in progress)\n• New: Endless Night: random DAY/NIGHT missions, night rules (in progress)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **26** to do · **106** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1793927535:f>)\n• New: Dominion Tier 3: Clear Mind and Saint or Sinner (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-06T00:23:42+07:00"
+     "timestamp": "2026-11-06T08:12:15+07:00"
     },
     {
-     "title": "god/night-play",
-     "description": "222 commits not in Develop-Main · last commit yesterday · local only\n> chore: night rules tidy -- eligible() continuation line, observe() backstop comment\n\n_No Ledger task points at this branch._",
+     "title": "feat/god-progression",
+     "description": "223 commits not in Develop-Main · last commit today\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n**In progress** (3)\n• Discord god-progression changelog — **needs you**\n• Dominion Tier 3: Clear Mind and Saint or Sinner\n• Endless Night: random DAY/NIGHT missions, night rules\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "god/dominion-t3",
+     "description": "223 commits not in Develop-Main · last commit today · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "god/dominion-t3-old",
+     "description": "215 commits not in Develop-Main · last commit today · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/people-anim-2",
+     "description": "2 commits not in Develop-Main · last commit today\n> feat: people anim phase 2: pray, point and shout, look up, cower for all 13 citizen designs\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/animals",
      "description": "3 commits not in Develop-Main · last commit yesterday\n> fix: animals get a thin outline in a dark tint of their coat, side neighbours only\n\n**In progress** (1)\n• Town dogs and cats (Discord idea Animals) — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "feat/people-anim-2",
-     "description": "1 commit not in Develop-Main · last commit yesterday\n> assets: people anim re-roll: 8 back-view screams and marshal/rescue spear thrusts\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/dominion-t3",
-     "description": "214 commits not in Develop-Main · last commit 2 days ago · local only\n> feat: Saint or Sinner (Dominion, Tier III) -- one is chosen; the wheel says guard them at all cost or kill them\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/god-progression",
-     "description": "213 commits not in Develop-Main · last commit 2 days ago\n> docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean\n\n**In progress** (2)\n• Discord god-progression changelog — **needs you**\n• Endless Night: random DAY/NIGHT missions, night rules\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {

@@ -1,11 +1,10 @@
 {
- "hash": "18aeb0e2b1db521d",
- "updated": "2026-11-06T00:23:42+07:00",
+ "hash": "03df5fa61a5415e3",
+ "updated": "2026-11-06T08:12:15+07:00",
  "changes": {
-  "date": "<t:1793899422:f>",
+  "date": "<t:1793927535:f>",
   "items": [
-   "New: Discord god-progression changelog (in progress)",
-   "New: Endless Night: random DAY/NIGHT missions, night rules (in progress)"
+   "New: Dominion Tier 3: Clear Mind and Saint or Sinner (in progress)"
   ]
  },
  "snapshot": {
@@ -257,6 +256,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-06",
     "order": 207
+   },
+   "god-dominion-t3": {
+    "title": "Dominion Tier 3: Clear Mind and Saint or Sinner",
+    "status": "doing",
+    "area": "Gameplay",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-06",
+    "order": 208
    },
    "god-dragon-ground": {
     "title": "Dragonfire leaves burning ground that townsfolk beat out",
@@ -1313,12 +1321,36 @@
   },
   "branches": [
    {
-    "name": "god/night-play",
-    "ahead": 222,
+    "name": "feat/god-progression",
+    "ahead": 223,
     "behind": 2,
-    "date": "2026-11-05",
-    "subject": "chore: night rules tidy -- eligible() continuation line, observe() backstop comment",
+    "date": "2026-11-06",
+    "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
+    "pushed": true
+   },
+   {
+    "name": "god/dominion-t3",
+    "ahead": 223,
+    "behind": 2,
+    "date": "2026-11-06",
+    "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
+   },
+   {
+    "name": "god/dominion-t3-old",
+    "ahead": 215,
+    "behind": 52,
+    "date": "2026-11-06",
+    "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
+    "pushed": false
+   },
+   {
+    "name": "feat/people-anim-2",
+    "ahead": 2,
+    "behind": 3,
+    "date": "2026-11-06",
+    "subject": "feat: people anim phase 2: pray, point and shout, look up, cower for all 13 citizen designs",
+    "pushed": true
    },
    {
     "name": "feat/animals",
@@ -1326,30 +1358,6 @@
     "behind": 2,
     "date": "2026-11-05",
     "subject": "fix: animals get a thin outline in a dark tint of their coat, side neighbours only",
-    "pushed": true
-   },
-   {
-    "name": "feat/people-anim-2",
-    "ahead": 1,
-    "behind": 3,
-    "date": "2026-11-05",
-    "subject": "assets: people anim re-roll: 8 back-view screams and marshal/rescue spear thrusts",
-    "pushed": true
-   },
-   {
-    "name": "god/dominion-t3",
-    "ahead": 214,
-    "behind": 52,
-    "date": "2026-11-04",
-    "subject": "feat: Saint or Sinner (Dominion, Tier III) -- one is chosen; the wheel says guard them at all cost or kill them",
-    "pushed": false
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 213,
-    "behind": 54,
-    "date": "2026-11-04",
-    "subject": "docs: Dragonfire ground fire landing numbers -- refs 508/0, FLOW 209/0 alone, suite 14814/0; re-review clean",
     "pushed": true
    },
    {

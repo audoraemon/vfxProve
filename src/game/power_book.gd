@@ -36,7 +36,7 @@ const POWERS := [
 		"dp": 1, "cooldown": 20.0, "aim": "two clicks", "shape": "a beam takes whoever stands at the first click and sets them down at the second",
 		"quiet": true, "alarm": 0.5, "authority": "passage"},
 	{"key": "windfall", "name": "Windfall", "path": "res://src/fx/control/windfall.gd",
-		"dp": 1, "cooldown": 25.0, "aim": "click", "shape": "a load dropped from the sky: crushes what is under it, blocks the way until cleared (slowly)",
+		"dp": 1, "cooldown": 25.0, "aim": "drag", "shape": "a line of crates and stone dropped from the sky along the drag: crushes what is under it, bars the way until cleared (slowly)",
 		"authority": "passage"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,

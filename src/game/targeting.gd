@@ -51,8 +51,8 @@ const AREAS := {
 	"abolition": {"shape": "circle", "r": 0.6},
 	# SkyliftFx.RADIUS: whom it would take is ringed at the first click; then where they are set down ("pick")
 	"skylift": {"shape": "pick", "r": 1.5},
-	# WindfallFx.HIT_R
-	"windfall": {"shape": "circle", "r": 0.9, "inner": 0.6},
+	# WindfallFx.LENGTH, SEG * 0.5; centred on the press, like Thornwall
+	"windfall": {"shape": "lane", "length": 3.6, "half": 0.3, "centred": true},
 	# AnathemaFx.RADIUS: the buildings it would mark are outlined (_draw())
 	"anathema": {"shape": "circle", "r": 6.0},
 	# SacredSanctuaryFx.PICK_R: who would be hypnotized is ringed; then the wall's shape at the second click ("sanctuary")

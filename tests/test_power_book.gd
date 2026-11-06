@@ -34,7 +34,7 @@ static func run(t) -> void:
 		if p.aim == "drag":
 			drag.append(p.key)
 	t.check(problems.is_empty(), "power book problems: %s" % [problems])
-	t.check(drag == ["heaven", "thorns", "tsunami", "laser"], "drag powers (%s)" % [drag])
+	t.check(drag == ["windfall", "heaven", "thorns", "tsunami", "laser"], "drag powers (%s)" % [drag])
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")

@@ -31,7 +31,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--alias", action="append", default=[],
+                    help="ROW=OTHER: fill a row this animal has no clip for with another clip (scratch=sit)")
     args = ap.parse_args()
+    alias = dict(a.split("=", 1) for a in args.alias)
     base = Image.open(os.path.join(args.src, "rot_south-east.png")).convert("RGBA")
     cell = base.width
     foot = _foot(base)
@@ -40,7 +43,7 @@ def main():
         if kind == "rot":
             frames = [Image.open(os.path.join(args.src, "rot_%s.png" % x)).convert("RGBA") for x in d]
         else:
-            paths = sorted(glob.glob(os.path.join(args.src, kind, "%s_*.png" % d)))
+            paths = sorted(glob.glob(os.path.join(args.src, alias.get(kind, kind), "%s_*.png" % d)))
             frames = [Image.open(p).convert("RGBA") for p in paths]
         rows.append(frames)
     cols = max(len(r) for r in rows)

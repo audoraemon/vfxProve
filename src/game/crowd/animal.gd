@@ -115,7 +115,12 @@ var _best_d := 0.0
 var _stuck_t := 0.0
 
 ## PixelLab sheets (tools/dev/make_animal_sheet.py) by breed; a breed without one keeps its drawn shape.
-const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png"}
+const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png",
+	Breed.SHEPHERD: "res://assets/pixellab/animals/shepherd.png",
+	Breed.TERRIER: "res://assets/pixellab/animals/terrier.png",
+	Breed.TABBY: "res://assets/pixellab/animals/tabby.png",
+	Breed.BLACK_CAT: "res://assets/pixellab/animals/black_cat.png",
+	Breed.GREY_CAT: "res://assets/pixellab/animals/grey_cat.png"}
 enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE, IDLE, BARK, SNIFF, SCRATCH, LIE }
 const WALK_FPS := 8.0
 const BITE_FPS := 14.0

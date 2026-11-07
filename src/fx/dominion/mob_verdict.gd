@@ -86,6 +86,11 @@ func _judge() -> void:
 		mob.append(p)
 		if links != null:
 			links.add(p, Iso.ground_to_screen(judged_at) + Vector2(0, -40), MARK)
+	# The animals in the circle join the mob: they go for the judged, or gather at the judged building.
+	if judged != null and is_instance_valid(judged) and judged.is_alive():
+		AnimalPack.cast(ctx, center, RADIUS, Animal.Spell.ATTACK, VERDICT_TIME, judged)
+	elif building != null:
+		AnimalPack.cast(ctx, center, RADIUS, Animal.Spell.GATHER, VERDICT_TIME, null, judged_at)
 	if judged != null and is_instance_valid(judged):
 		judged.set_badge(DominionParts.BLADE, DominionParts.CRIMSON, VERDICT_TIME)
 	ctx.play(&"cit_shout", judged_at)

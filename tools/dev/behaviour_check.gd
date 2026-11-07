@@ -458,6 +458,7 @@ var route := ""
 
 
 func _initialize() -> void:
+	AnimalPack.enabled = false  # the references are of the town without its animals (AnimalPack)
 	mission = load("res://scenes/mission.tscn").instantiate()
 	mission.exit_on_refusal = false
 	mission.unhosted_ok = true  # its throw-away _ready() start runs the default mission, which a non-home --city= does not host; _run() resets this

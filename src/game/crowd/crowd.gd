@@ -147,6 +147,8 @@ var ferry: RiverFerry
 var plague: PlagueManager
 ## Madness Bloom's madness (a Disorder status); made by spawn().
 var madness: MadnessManager
+## The town's dogs and cats (AnimalPack); made by spawn() when AnimalPack.enabled, else null.
+var animals: AnimalPack
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
@@ -388,6 +390,11 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+	# Last of all, so nothing made before them is numbered differently; their own rng (seed + AnimalPack.SEED_OFFSET).
+	if AnimalPack.enabled and animals == null:
+		animals = AnimalPack.new().setup(self, _grid, _parent, _seed)
+		_parent.add_child(animals)
+		animals.spawn()
 
 
 ## The drawer over the people (z 60), where short-lived effects such as the plague's puffs go; null before spawn().
@@ -1839,6 +1846,13 @@ func clear() -> void:
 				p.free()
 	citizens.clear()
 	soldiers.clear()
+	if animals != null and is_instance_valid(animals):
+		animals.clear()
+		if animals.is_inside_tree():
+			animals.queue_free()
+		else:
+			animals.free()
+	animals = null
 	threats.clear()
 	_spreads.clear()
 	_held_dangers.clear()

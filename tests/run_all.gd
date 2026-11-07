@@ -48,6 +48,7 @@ const SUITES := [
 	"res://tests/test_town_round4.gd",
 	"res://tests/test_town_round7.gd",
 	"res://tests/test_town_round9.gd",
+	"res://tests/test_animals.gd",
 	"res://tests/test_power_book.gd",
 	"res://tests/test_walk_grid.gd",
 	"res://tests/test_person.gd",
@@ -220,6 +221,7 @@ func _reset_world() -> void:
 	Structure.cast_shadows = true  # a town look's statics (v0.12 lighting): a suite that leaked a DAY or NIGHT town must not reach the next
 	Structure.lamp_glow = true
 	Structure.steady_light = false
+	AnimalPack.enabled = false  # the suite and its checksums run without the town's animals; test_animals turns them on
 	TownLook.active = Town.Look.CURRENT
 	Town._look_owner = 0
 

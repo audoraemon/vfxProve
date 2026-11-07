@@ -7,16 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **26** to do · **111** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1794055396:f>)\n• Done: Dominion's whole tree: Tiers 2, 4 and 5",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**10** in progress · **26** to do · **112** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1794055404:f>)\n• Done: God ring order: Ruin, Passage, Veil, Decree, Death, Dominion",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-07T19:43:16+07:00"
+     "timestamp": "2026-11-07T19:43:24+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "226 commits not in Develop-Main · last commit today\n> feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow\n\n**In progress** (1)\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion — **needs you**\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "226 commits not in Develop-Main · last commit today\n> feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
@@ -56,7 +56,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Town dogs and cats (Discord idea Animals) _(11-07)_\n• Dominion's whole tree: Tiers 2, 4 and 5 _(11-07)_\n• Dominion Tier 3: Clear Mind and Saint or Sinner _(11-06)_\n• Discord god-progression changelog _(11-06)_\n• Endless Night: random DAY/NIGHT missions, night rules _(11-06)_\n• Visual Upgrade 1.0: DAY and NIGHT town looks _(11-05)_\n• Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed _(11-05)_\n• Sacred Sanctuary (Dominion, Tier IV): the wall of people _(11-05)_",
+     "description": "• Town dogs and cats (Discord idea Animals) _(11-07)_\n• Dominion's whole tree: Tiers 2, 4 and 5 _(11-07)_\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion _(11-07)_\n• Dominion Tier 3: Clear Mind and Saint or Sinner _(11-06)_\n• Discord god-progression changelog _(11-06)_\n• Endless Night: random DAY/NIGHT missions, night rules _(11-06)_\n• Visual Upgrade 1.0: DAY and NIGHT town looks _(11-05)_\n• Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed _(11-05)_",
      "color": 10185686
     }
    ]

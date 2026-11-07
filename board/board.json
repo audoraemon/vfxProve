@@ -1,10 +1,10 @@
 {
- "hash": "761a0737b9bc6d55",
- "updated": "2026-11-07T19:43:16+07:00",
+ "hash": "ff022154a28805c4",
+ "updated": "2026-11-07T19:43:24+07:00",
  "changes": {
-  "date": "<t:1794055396:f>",
+  "date": "<t:1794055404:f>",
   "items": [
-   "Done: Dominion's whole tree: Tiers 2, 4 and 5"
+   "Done: God ring order: Ruin, Passage, Veil, Decree, Death, Dominion"
   ]
  },
  "snapshot": {
@@ -376,9 +376,9 @@
    },
    "god-ring-order": {
     "title": "God ring order: Ruin, Passage, Veil, Decree, Death, Dominion",
-    "status": "doing",
+    "status": "done",
     "area": "Gameplay",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/god-progression",
     "updated": "2026-11-07",
     "order": 209

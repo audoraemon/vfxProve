@@ -1,9 +1,11 @@
 {
- "hash": "e12d673ceaaca186",
- "updated": "2026-11-07T15:17:09+07:00",
+ "hash": "761a0737b9bc6d55",
+ "updated": "2026-11-07T19:43:16+07:00",
  "changes": {
-  "date": "<t:1794039429:f>",
-  "items": []
+  "date": "<t:1794055396:f>",
+  "items": [
+   "Done: Dominion's whole tree: Tiers 2, 4 and 5"
+  ]
  },
  "snapshot": {
   "project": {
@@ -266,9 +268,9 @@
    },
    "god-dominion-tree": {
     "title": "Dominion's whole tree: Tiers 2, 4 and 5",
-    "status": "doing",
+    "status": "done",
     "area": "Gameplay",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/god-progression",
     "updated": "2026-11-07",
     "order": 210

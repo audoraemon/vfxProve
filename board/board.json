@@ -1,11 +1,10 @@
 {
- "hash": "6f0aca26cd2a4117",
- "updated": "2026-11-07T07:39:14+07:00",
+ "hash": "94d04ddc775302b4",
+ "updated": "2026-11-07T14:24:24+07:00",
  "changes": {
-  "date": "<t:1794011954:f>",
+  "date": "<t:1794036264:f>",
   "items": [
-   "Done: Town dogs and cats (Discord idea Animals)",
-   "New: Skylift and Windfall (Passage, Tier I) (in progress)"
+   "New: Dominion's whole tree: Tiers 2, 4 and 5 (in progress)"
   ]
  },
  "snapshot": {
@@ -266,6 +265,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-06",
     "order": 208
+   },
+   "god-dominion-tree": {
+    "title": "Dominion's whole tree: Tiers 2, 4 and 5",
+    "status": "doing",
+    "area": "Gameplay",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-07",
+    "order": 210
    },
    "god-dragon-ground": {
     "title": "Dragonfire leaves burning ground that townsfolk beat out",
@@ -1340,35 +1348,35 @@
   },
   "branches": [
    {
-    "name": "claude/vfx-ability-effects-964aca",
-    "ahead": 6,
+    "name": "god/ring-order",
+    "ahead": 226,
     "behind": 12,
     "date": "2026-11-07",
-    "subject": "feat: Windfall lands as heaps -- four to six pieces a segment, thrown down on each other",
-    "pushed": true
-   },
-   {
-    "name": "god/dominion-t4",
-    "ahead": 225,
-    "behind": 12,
-    "date": "2026-11-06",
-    "subject": "feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled",
-    "pushed": false
-   },
-   {
-    "name": "god/ring-order",
-    "ahead": 224,
-    "behind": 14,
-    "date": "2026-11-06",
     "subject": "feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow",
     "pushed": false
    },
    {
+    "name": "claude/zen-greider-6e47c5",
+    "ahead": 8,
+    "behind": 0,
+    "date": "2026-11-07",
+    "subject": "feat: Windfall pours out of a sky portal -- pieces come down one by one, a junk yard a segment",
+    "pushed": false
+   },
+   {
+    "name": "feat/people-anim-2",
+    "ahead": 3,
+    "behind": 15,
+    "date": "2026-11-07",
+    "subject": "feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops",
+    "pushed": true
+   },
+   {
     "name": "feat/god-progression",
-    "ahead": 223,
-    "behind": 14,
+    "ahead": 225,
+    "behind": 12,
     "date": "2026-11-06",
-    "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
+    "subject": "feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled",
     "pushed": true
    },
    {
@@ -1378,14 +1386,6 @@
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
-   },
-   {
-    "name": "feat/people-anim-2",
-    "ahead": 2,
-    "behind": 15,
-    "date": "2026-11-06",
-    "subject": "feat: people anim phase 2: pray, point and shout, look up, cower for all 13 citizen designs",
-    "pushed": true
    },
    {
     "name": "fix/evac-recalm",

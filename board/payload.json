@@ -7,41 +7,36 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **26** to do · **110** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794011954:f>)\n• Done: Town dogs and cats (Discord idea Animals)\n• New: Skylift and Windfall (Passage, Tier I) (in progress)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **26** to do · **110** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1794036264:f>)\n• New: Dominion's whole tree: Tiers 2, 4 and 5 (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-07T07:39:14+07:00"
-    },
-    {
-     "title": "claude/vfx-ability-effects-964aca",
-     "description": "6 commits not in Develop-Main · last commit today\n> feat: Windfall lands as heaps -- four to six pieces a segment, thrown down on each other\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/dominion-t4",
-     "description": "225 commits not in Develop-Main · last commit yesterday · local only\n> feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled\n\n_No Ledger task points at this branch._",
-     "color": 5016537
+     "timestamp": "2026-11-07T14:24:24+07:00"
     },
     {
      "title": "god/ring-order",
-     "description": "224 commits not in Develop-Main · last commit yesterday · local only\n> feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow\n\n_No Ledger task points at this branch._",
+     "description": "226 commits not in Develop-Main · last commit today · local only\n> feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/zen-greider-6e47c5",
+     "description": "8 commits not in Develop-Main · last commit today · local only\n> feat: Windfall pours out of a sky portal -- pieces come down one by one, a junk yard a segment\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/people-anim-2",
+     "description": "3 commits not in Develop-Main · last commit today\n> feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "223 commits not in Develop-Main · last commit yesterday\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n**In progress** (1)\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion — **needs you**\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "225 commits not in Develop-Main · last commit yesterday\n> feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled\n\n**In progress** (2)\n• Dominion's whole tree: Tiers 2, 4 and 5 — **needs you**\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion — **needs you**\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
      "title": "god/dominion-t3-old",
      "description": "215 commits not in Develop-Main · last commit yesterday · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/people-anim-2",
-     "description": "2 commits not in Develop-Main · last commit yesterday\n> feat: people anim phase 2: pray, point and shout, look up, cower for all 13 citizen designs\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -58,14 +53,7 @@
      "title": "feat/Develop-Main",
      "description": "Main line · last commit 2026-11-07\n> feat: four more animal breeds: wolfhound, spaniel, white cat, brown tabby\n\n**In progress** (8)\n• Skylift and Windfall (Passage, Tier I) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (22)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
-    }
-   ]
-  },
-  {
-   "allowed_mentions": {
-    "parse": []
-   },
-   "embeds": [
+    },
     {
      "title": "Recently done",
      "description": "• Town dogs and cats (Discord idea Animals) _(11-07)_\n• Dominion Tier 3: Clear Mind and Saint or Sinner _(11-06)_\n• Discord god-progression changelog _(11-06)_\n• Endless Night: random DAY/NIGHT missions, night rules _(11-06)_\n• Visual Upgrade 1.0: DAY and NIGHT town looks _(11-05)_\n• Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed _(11-05)_\n• Sacred Sanctuary (Dominion, Tier IV): the wall of people _(11-05)_\n• Dominion: Mind Whisper order wheel + Will-o'-Wisp ENTHRALL _(11-04)_",

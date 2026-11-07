@@ -118,3 +118,32 @@ Generations: 8 pilot + 96 + 18 re-rolls. Kept with flaws, to re-roll later:
 - caregiver_b pray back kneels facing the viewer.
 - merchant_b, caregiver_b and clergy point back face the viewer.
 - clergy point front: the arm barely shows against the white robe.
+
+## Interaction (2026-11-07): talk, work, dig, douse
+
+New rows (ANIMS 13-16), SE + NE with v3 (8 frames), mirrored: talk and douse for all 17 designs, work for the 13
+citizens, dig for the 4 soldiers (guard, marshal, escort, rescue). The pose code grew to `frame << 7 | anim << 2 | facing`
+(anim mask `& 31`) to fit more than 16 rows.
+
+When they play:
+- talk: a calm citizen at a LEISURE stop. A soldier at its post talks in the pauses that fall in a TALK_WINDOW (4 s) of
+  every 8-15 s (seeded per soldier).
+- work: a calm citizen at a WORK or ERRAND stop; a fire responder filling its bucket at the water.
+- douse: a fire responder with a full bucket at the fire; the clip runs once across FireManager.ACT.
+- dig: a rescue crew member at the rubble (RescueManager sets Person.dig_shown).
+
+Gameplay change (approved): a calm citizen within STOP_REACH (1.2 tiles) of a work, errand or leisure stop, and a rescue
+digger, now stand still instead of milling (Person._at_stop(), _drift()). At home they mill as before. This moves the
+crowd, so the exact references were re-recorded.
+
+Prompts: talk "standing and chatting with a friend, gesturing with both hands while talking"; work "standing in place,
+both hands busy on a workbench at waist height, sorting goods, small movements" (the pilot's "standing at a table working
+with both hands in front, handling goods" was rejected in review); douse "throwing water forward from a wooden bucket held in both
+hands, blue water splashing from the bucket" (without the water the back view read as lifting a box); dig "bending down
+and digging through rubble, lifting heavy stones and throwing them aside". Back views add the usual suffix.
+
+Generations: 12 pilot + 90 + 7 re-rolls. Re-rolled and kept: resident_a work (both), resident_a and rescue douse back,
+marshal dig (both; the first take threw the shield apart, the re-roll adds "kneeling ... with bare hands ... weapon and
+shield set down on the ground"), merchant_b talk back. Kept with flaws, to re-roll later:
+- work: invented props (a table, a box) on merchant_b, laborer, caregiver_a, craft_a and engineer. The people stand
+  where no table is drawn.

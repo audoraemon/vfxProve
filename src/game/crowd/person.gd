@@ -32,6 +32,12 @@ const THREAT_MARGIN := 1.5
 const STARTLE := Vector2(0.4, 0.8)
 ## Closer than this (tiles) to what frightened it, a startled citizen cowers; farther, it points and shouts (drawing only).
 const COWER_REACH := 3.0
+## How often a soldier standing at its post plays its talk (seconds, min and max; drawing only).
+const TALK_EVERY := Vector2(8.0, 15.0)
+## How long, of every TALK_EVERY, a soldier at its post talks in its pauses (seconds).
+const TALK_WINDOW := 4.0
+## How near its stop a calm citizen must be to stand there instead of milling (tiles).
+const STOP_REACH := 1.2
 ## How long a person stops to look at something it saw or heard (seconds, min and max), and how long one waits where
 ## it ran to (or after looking) before going back to its day.
 const OBSERVE_SECONDS := Vector2(1.0, 3.0)
@@ -357,6 +363,10 @@ var _still_t := 0.0
 ## (Phase 2 people art) The thing it observes is up in the sky (the watchman's falling star): it looks up. Drawing only;
 ## observe() clears it, the caller sets it after.
 var look_up := false
+## Seconds left digging: RescueManager sets it while this one digs at the rubble (it stands still and shows the dig).
+var dig_shown := 0.0
+## Seconds since it was set up, for the soldier's talk at its post (drawing only, never reset).
+var _life_t := 0.0
 var _look := -1.0
 ## The design _design() picked, its PeopleArt.info() table, and what it was picked for (manifest load, role, corps).
 var _design_key := -1
@@ -513,6 +523,8 @@ func tick(delta: float) -> void:
 func _track_stride(d: Vector2, delta: float) -> void:
 	_stride = d.length_squared() > 1e-10
 	_still_t = 0.0 if _stride else _still_t + delta
+	dig_shown = maxf(dig_shown - delta, 0.0)
+	_life_t += delta
 	if _stride and absf(d.x + d.y) > 1e-6:
 		_back = d.x + d.y < 0.0
 
@@ -779,8 +791,20 @@ func _pick_target() -> void:
 	_drift()
 
 
+## A calm citizen arrived at a work, errand or leisure stop (RoutineManager.Place), within STOP_REACH of it: it stands
+## there, working or talking, until the routine sends it on. At home it mills about as before.
+func _at_stop() -> bool:
+	return mind == Mind.CALM and not soldier and (last_place == RoutineManager.Place.WORK
+		or last_place == RoutineManager.Place.ERRAND or last_place == RoutineManager.Place.LEISURE) \
+		and ground_pos.distance_to(anchor) <= STOP_REACH
+
+
 ## A small aimless step: citizens milling about their street, soldiers shifting at their post.
 func _drift() -> void:
+	if dig_shown > 0.0 or _at_stop():
+		# (Interaction art) At a work, errand or leisure stop, or digging at the rubble: it stays on its spot.
+		_target = ground_pos
+		return
 	var spread := POST_SPREAD
 	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP or mind == Mind.CONFUSED:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
@@ -1980,10 +2004,10 @@ func _design() -> String:
 ## last stepped. Stumble and death hold their last frame.
 func _sprite_pose() -> Array:
 	var code := _sprite_pose_code()
-	return [PeopleArt.ANIMS[code >> 2 & 15], code & 3, code >> 6]
+	return [PeopleArt.ANIMS[code >> 2 & 31], code & 3, code >> 7]
 
 
-## _sprite_pose() folded into one int, frame << 6 | ANIMS index << 2 | facing: every person on screen asks for it every
+## _sprite_pose() folded into one int, frame << 7 | ANIMS index << 2 | facing: every person on screen asks for it every
 ## frame (_sprite_signature()), so it allocates nothing and reads its frame counts from the cached design table.
 func _sprite_pose_code() -> int:
 	var facing: int
@@ -2031,6 +2055,18 @@ func _sprite_pose_code() -> int:
 	elif not _stride and mind == Mind.OBSERVE and look_up and _own_art(11):
 		anim = 11
 		t = _still_t
+	elif not _stride and dig_shown > 0.0 and _own_art(15):
+		anim = 15
+		t = _still_t
+	elif not _stride and mind == Mind.ASSIST and assist_fire != null and assist_full and not has_goal() \
+			and _own_art(16):
+		# At the fire's edge with a full bucket: the throw plays across the wait before the douse.
+		anim = 16
+		span = FireManager.ACT
+		t = span - clampf(assist_wait, 0.0, span)
+	elif not _stride and _interact_anim() >= 0:
+		anim = _interact_anim()
+		t = _still_t
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
 		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
@@ -2047,7 +2083,28 @@ func _sprite_pose_code() -> int:
 	elif PeopleArt.ONCE_AT[anim]:
 		_design()
 		frame = mini(frame, _design_info[4][anim * 4 + facing] - 1)
-	return frame << 6 | anim << 2 | facing
+	return frame << 7 | anim << 2 | facing
+
+
+## The talk or work this one shows standing (interaction art), or -1: a calm citizen arrived at a work or errand stop
+## works, at a leisure stop talks; filling a bucket at the water works; a soldier standing at its post talks one loop
+## every TALK_EVERY seconds (its phase from its seed, so a garrison does not move as one).
+func _interact_anim() -> int:
+	if mind == Mind.ASSIST and assist_at_water and not has_goal():
+		return 14 if _own_art(14) else -1
+	if soldier:
+		if mind != Mind.POST or hurrying or has_goal() or not _own_art(13):
+			return -1
+		var every := TALK_EVERY.x + (TALK_EVERY.y - TALK_EVERY.x) * float(posmod(rng.seed * 40503, 997)) / 996.0
+		# Its pauses between shifts are short: it talks in those that fall in a TALK_WINDOW of every `every` seconds.
+		return 13 if fmod(_life_t + float(posmod(rng.seed, 89)) / 10.0, every) < TALK_WINDOW else -1
+	if mind != Mind.CALM or has_goal():
+		return -1
+	if last_place == RoutineManager.Place.WORK or last_place == RoutineManager.Place.ERRAND:
+		return 14 if _own_art(14) else -1
+	if last_place == RoutineManager.Place.LEISURE:
+		return 13 if _own_art(13) else -1
+	return -1
 
 
 ## _has_own_art(), its design table loaded first.
@@ -2095,10 +2152,10 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 	# PeopleArt.frame_rect(), silhouette_rect() and foot(), from the design's cached table (PeopleArt.info()).
 	_design()
 	var code := _sprite_pose_code()
-	var row := (code >> 2 & 15) * 4 + (code & 3)
+	var row := (code >> 2 & 31) * 4 + (code & 3)
 	var n: int = _design_info[4][row]
 	var cell: Vector2 = _design_info[3]
-	var off := Vector2(((code >> 6) % n) * cell.x, row * cell.y)
+	var off := Vector2(((code >> 7) % n) * cell.x, row * cell.y)
 	var src := Rect2(_design_info[0] + off, cell)
 	var sil := Rect2(_design_info[1] + off, cell)
 	var foot: Vector2 = _design_info[2]
@@ -2297,8 +2354,8 @@ func _sprite_signature() -> int:
 	if state == State.DEAD:
 		return super._art_signature()
 	var code := _sprite_pose_code()
-	var sig: int = (code >> 2 & 15) * 4 + (code & 3)
-	sig = sig * 16 + (code >> 6) % 16
+	var sig: int = (code >> 2 & 31) * 4 + (code & 3)
+	sig = sig * 16 + (code >> 7) % 16
 	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).

@@ -11,7 +11,7 @@
    ],
    "sil": [
     960,
-    2496
+    3264
    ],
    "foot": [
     11,
@@ -95,9 +95,33 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "caregiver_a": {
    "block": [
@@ -106,7 +130,7 @@
    ],
    "sil": [
     0,
-    3744
+    4896
    ],
    "foot": [
     11,
@@ -190,9 +214,33 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "caregiver_b": {
    "block": [
@@ -201,7 +249,7 @@
    ],
    "sil": [
     192,
-    3744
+    4896
    ],
    "foot": [
     11,
@@ -285,9 +333,33 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8159
+   "own": 98271
   },
   "clergy": {
    "block": [
@@ -296,7 +368,7 @@
    ],
    "sil": [
     384,
-    3744
+    4896
    ],
    "foot": [
     11,
@@ -380,9 +452,33 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "craft_a": {
    "block": [
@@ -391,7 +487,7 @@
    ],
    "sil": [
     576,
-    3744
+    4896
    ],
    "foot": [
     11,
@@ -475,9 +571,33 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "craft_b": {
    "block": [
@@ -486,7 +606,7 @@
    ],
    "sil": [
     768,
-    3744
+    4896
    ],
    "foot": [
     12,
@@ -570,18 +690,42 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "engineer": {
    "block": [
     0,
-    1248
+    1632
    ],
    "sil": [
     960,
-    3744
+    4896
    ],
    "foot": [
     12,
@@ -665,18 +809,42 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "escort": {
    "block": [
     192,
-    1248
+    1632
    ],
    "sil": [
     0,
-    4992
+    6528
    ],
    "foot": [
     13,
@@ -760,18 +928,42 @@
      "south-west": 4,
      "north-east": 4,
      "north-west": 4
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "dig": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 287
+   "own": 106783
   },
   "farmer": {
    "block": [
     384,
-    1248
+    1632
    ],
    "sil": [
     192,
-    4992
+    6528
    ],
    "foot": [
     11,
@@ -855,18 +1047,42 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "guard": {
    "block": [
     576,
-    1248
+    1632
    ],
    "sil": [
     384,
-    4992
+    6528
    ],
    "foot": [
     12,
@@ -950,18 +1166,42 @@
      "south-west": 4,
      "north-east": 4,
      "north-west": 4
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "dig": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 415
+   "own": 106911
   },
   "laborer": {
    "block": [
     768,
-    1248
+    1632
    ],
    "sil": [
     576,
-    4992
+    6528
    ],
    "foot": [
     11,
@@ -1045,18 +1285,42 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "marshal": {
    "block": [
     960,
-    1248
+    1632
    ],
    "sil": [
     768,
-    4992
+    6528
    ],
    "foot": [
     11,
@@ -1140,18 +1404,42 @@
      "south-west": 4,
      "north-east": 4,
      "north-west": 4
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "dig": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 415
+   "own": 106911
   },
   "merchant_a": {
    "block": [
     0,
-    2496
+    3264
    ],
    "sil": [
     960,
-    4992
+    6528
    ],
    "foot": [
     12,
@@ -1235,18 +1523,42 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "merchant_b": {
    "block": [
     192,
-    2496
+    3264
    ],
    "sil": [
     0,
-    6240
+    8160
    ],
    "foot": [
     12,
@@ -1330,18 +1642,42 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "rescue": {
    "block": [
     384,
-    2496
+    3264
    ],
    "sil": [
     192,
-    6240
+    8160
    ],
    "foot": [
     11,
@@ -1425,18 +1761,42 @@
      "south-west": 4,
      "north-east": 4,
      "north-west": 4
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "dig": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 415
+   "own": 106911
   },
   "resident_a": {
    "block": [
     576,
-    2496
+    3264
    ],
    "sil": [
     384,
-    6240
+    8160
    ],
    "foot": [
     11,
@@ -1520,18 +1880,42 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   },
   "resident_b": {
    "block": [
     768,
-    2496
+    3264
    ],
    "sil": [
     576,
-    6240
+    8160
    ],
    "foot": [
     12,
@@ -1615,13 +1999,37 @@
      "south-west": 8,
      "north-east": 8,
      "north-west": 8
+    },
+    "talk": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "work": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
+    },
+    "dig": {
+     "south-east": 4,
+     "south-west": 4,
+     "north-east": 4,
+     "north-west": 4
+    },
+    "douse": {
+     "south-east": 8,
+     "south-west": 8,
+     "north-east": 8,
+     "north-west": 8
     }
    },
-   "own": 8191
+   "own": 98303
   }
  },
  "white": [
   768,
-  6240
+  8160
  ]
 }

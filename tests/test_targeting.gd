@@ -24,8 +24,9 @@ static func run(t) -> void:
 	t.near(float(Targeting.AREAS["nova"].r), _k(nova, "RADIUS"), 0.0001, "the Nova's circle is its RADIUS")
 	t.near(float(Targeting.AREAS["nova"].inner), _k(nova, "KILL_CORE"), 0.0001, "with its KILL_CORE inside")
 	t.near(float(Targeting.AREAS["cinder"].r), _k(cinder, "RADIUS"), 0.0001, "the Barrage's circle is its RADIUS")
-	t.check(float(Targeting.AREAS["mirror"].wide) == MirrorfoldFx.HALF_WIDE and float(Targeting.AREAS["mirror"].deep) == MirrorfoldFx.HALF_DEEP,
-		"the mirrors lie HALF_WIDE by HALF_DEEP")
+	var mr: Dictionary = Targeting.AREAS["mirror"]
+	t.check(float(mr.half) == MirrorfoldFx.HALF and float(mr.min) == MirrorfoldFx.MIN_LEN and float(mr.length) == MirrorfoldFx.MAX_LEN,
+		"the mirrors are lanes HALF wide, MIN_LEN to MAX_LEN long")
 	t.check(float(Targeting.AREAS["solaris"].r) == LightOfSolaris.RADIUS, "the Light of Solaris covers its RADIUS")
 	t.near(float(Targeting.AREAS["dragon"].r), _k(dragon, "CONE_RADIUS"), 0.0001, "the dragon's cone is its CONE_RADIUS")
 	t.near(float(Targeting.AREAS["dragon"].arc), _k(dragon, "SWEEP_ARC"), 0.0001, "over its SWEEP_ARC")
@@ -56,7 +57,7 @@ static func run(t) -> void:
 	var world := Node2D.new()
 	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
 	crowd.spawn()
-	var rules := Rules.new().setup(PackedStringArray(["nova", "tsunami", "cinder", "heaven", "mirror"]), null, env, field,
+	var rules := Rules.new().setup(PackedStringArray(["nova", "tsunami", "cinder", "heaven", "skylift", "mirror"]), null, env, field,
 		crowd, town)
 	var casts: Array = []
 	rules.caster = func(_script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
@@ -119,6 +120,43 @@ static func run(t) -> void:
 	aim.release(Vector2(2.0, 3.0))
 	t.check(aim.cancel() and not aim.placed and aim.slot == 4, "a right-click after the first place calls it off; the power stays focused")
 	aim.unfocus()
+
+	# A drag-then-click power (Mirrorfold Passage): the drag lays the way in -- a lane from the press along the drag, as
+	# long as the drag within its bounds -- and the click after casts it, told where the way out goes.
+	aim.pick(5)
+	aim.press(Vector2(2.0, 3.0))
+	t.check(aim.armed and aim.aiming, "a drag-then-click power starts aiming on press, like a drag power")
+	aim.hover(Vector2(5.0, 3.0))
+	aim.release(Vector2(5.0, 3.0))
+	t.check(casts.size() == 3 and aim.placed and aim.first == Vector2(2.0, 3.0) and not aim.aiming and aim.slot == 5,
+		"the release casts nothing: it lays the first place where the drag began and the power stays focused")
+	t.check(aim._lane_dir.is_equal_approx(Vector2(1, 0)) and is_equal_approx(aim._lane_len, 3.0),
+		"the lane runs the way it was dragged, as long as the drag (%s, %.2f)" % [aim._lane_dir, aim._lane_len])
+	aim.hover(Vector2(2.0, 9.0))
+	aim.press(Vector2(2.0, 9.0))
+	t.check(aim.armed and not aim.aiming, "the next press is a click: no drag")
+	aim.release(Vector2(2.0, 9.0))
+	t.check(casts.size() == 4 and casts[3][0] == Vector2(2.0, 3.0) and not aim.placed and aim.slot == -1,
+		"and its release casts from the first place and unfocuses (%s)" % [casts])
+	var ex: Dictionary = casts[3][1] if casts.size() == 4 else {}
+	t.check((ex.get("dir", Vector2.ZERO) as Vector2).is_equal_approx(Vector2(1, 0)) and is_equal_approx(float(ex.get("length", 0.0)), 3.0)
+		and ex.get("to") == Vector2(2.0, 9.0), "told the lane's direction and length, and where the click landed (%s)" % [ex])
+	# The lane's length is clamped: a twitch lays MIN_LEN, a drag across the town MAX_LEN.
+	rules._cooldowns[5] = 0.0
+	aim.pick(5)
+	aim.press(Vector2(0.0, 0.0))
+	aim.hover(Vector2(0.4, 0.0))
+	aim.release(Vector2(0.4, 0.0))
+	t.check(aim.placed and is_equal_approx(aim._lane_len, MirrorfoldFx.MIN_LEN) and aim._lane_dir == Targeting.DEFAULT_DIR,
+		"a twitch lays a lane MIN_LEN long the default way (%.2f)" % aim._lane_len)
+	t.check(aim.cancel() and not aim.placed and aim.slot == 5, "a right-click after the lane is laid calls it off; the power stays focused")
+	aim.press(Vector2(0.0, 0.0))
+	aim.hover(Vector2(0.0, 12.0))
+	aim.release(Vector2(0.0, 12.0))
+	t.check(aim.placed and is_equal_approx(aim._lane_len, MirrorfoldFx.MAX_LEN) and aim._lane_dir.is_equal_approx(Vector2(0, 1)),
+		"a drag across the town lays one MAX_LEN long (%.2f)" % aim._lane_len)
+	aim.unfocus()
+	t.check(not aim.placed, "unfocusing drops the laid lane")
 
 	# A lane power frightens the people along it, not only at its start.
 	var far: Person = crowd.citizens[0]

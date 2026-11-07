@@ -9,11 +9,11 @@ const V07_COOLDOWNS := {
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
-	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall"]
+	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 49, "49 powers")
+	t.check(PowerBook.POWERS.size() == 53, "53 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -23,7 +23,7 @@ static func run(t) -> void:
 		keys[p.key] = true
 		if not ResourceLoader.exists(p.path):
 			problems.append("missing effect %s" % p.path)
-		if not p.aim in ["click", "drag", "whisper", "two clicks", "wheel"]:
+		if not p.aim in ["click", "drag", "whisper", "two clicks", "wheel", "drag then click"]:
 			problems.append("bad aim for %s" % p.key)
 		if p.dp <= 0 or p.cooldown <= 0.0:
 			problems.append("bad cost or cooldown for %s" % p.key)
@@ -34,11 +34,11 @@ static func run(t) -> void:
 		if p.aim == "drag":
 			drag.append(p.key)
 	t.check(problems.is_empty(), "power book problems: %s" % [problems])
-	t.check(drag == ["windfall", "heaven", "thorns", "tsunami", "laser"], "drag powers (%s)" % [drag])
+	t.check(drag == ["windfall", "heaven", "thorns", "pilgrim", "tsunami", "laser"], "drag powers (%s)" % [drag])
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
-	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "skylift", "windfall", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "tornado",
+	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "tornado",
 		"pestilence", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion",
 		"anathema", "sanctuary", "curfew", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "abolition", "tempest", "shatter", "schism", "nova"],

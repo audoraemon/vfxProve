@@ -10,6 +10,7 @@ const FROM := {
 	"gravity": ["T_PULL"], "laser": ["T_WALK"], "orbital": ["T_SALVO_START", "AIM_TIME"], "cinder": ["T_RISE"],
 	"judgement": ["T_RISE"], "glacial": ["T_ERUPT"], "solaris": ["T_CHARGE"], "schism": ["T_BREAK"], "nova": ["T_IMPACT"],
 	"tempest": ["T_GATHER"], "scatter": ["T_FIRST"], "shatter": ["T_CRACK"], "windfall": ["T_DROP"],
+	"hellspark": ["T_OPEN"], "pilgrim": ["T_FLOW"], "deep": ["T_OPEN"], "houndgate": ["T_OPEN", "OUT_EVERY"],
 }
 
 

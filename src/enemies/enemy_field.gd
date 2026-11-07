@@ -10,6 +10,17 @@ var lights: LightField
 var look := DummyEnemy.Look.TROOPER
 
 var _enemies: Array[DummyEnemy] = []
+## The passages open in the world (Mirrorfold Passage): any Object with `carries(p: Vector2) -> bool` and
+## `across(p: Vector2) -> Vector2`. What is dropped or poured onto one arrives on its other side (through()).
+var portals: Array = []
+
+
+## Where `p` ends up after the open passages: the first portal that carries it takes it across; else `p`.
+func through(p: Vector2) -> Vector2:
+	for portal in portals:
+		if is_instance_valid(portal) and portal.carries(p):
+			return portal.across(p)
+	return p
 
 
 func spawn(count: int, parent: Node, rng: RandomNumberGenerator) -> void:

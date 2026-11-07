@@ -92,6 +92,8 @@ var ground_pos := Vector2.ZERO
 var home := Vector2.ZERO
 var facing := 1
 var health := 1.0
+## A multiplier on its pace: 1.0 for the town's own animals; a power's beast (Visitors) runs at its own speed.
+var speed_mul := 1.0
 var spell_left := 0.0
 ## Who it goes for (ATTACK) or follows (FOLLOW); null for whoever is nearest.
 var target: Person
@@ -162,8 +164,8 @@ func speed() -> float:
 	elif breed == Breed.WOLFHOUND:
 		base *= 1.15  # long legs
 	if state in [State.FLEE, State.ATTACK]:
-		return base * RUN
-	return base
+		return base * RUN * speed_mul
+	return base * speed_mul
 
 
 func bite() -> float:

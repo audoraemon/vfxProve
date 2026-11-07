@@ -33,10 +33,14 @@ const POWERS := [
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
 		"quiet": true, "alarm": 0.5, "authority": "decree"},
 	{"key": "skylift", "name": "Skylift", "path": "res://src/fx/control/skylift.gd",
-		"dp": 1, "cooldown": 20.0, "aim": "two clicks", "shape": "a beam takes whoever stands at the first click and sets them down at the second",
+		"dp": 1, "cooldown": 20.0, "aim": "two clicks", "shape": "a beam takes whatever stands at the first click -- people, goods, a stall -- and drops it at the second: the goods land as a heap that crushes and bars the way",
 		"quiet": true, "alarm": 0.5, "authority": "passage"},
 	{"key": "windfall", "name": "Windfall", "path": "res://src/fx/control/windfall.gd",
-		"dp": 1, "cooldown": 25.0, "aim": "drag", "shape": "a line of crates and stone dropped from the sky along the drag: crushes what is under it, bars the way until cleared (slowly)",
+		"dp": 1, "cooldown": 25.0, "aim": "drag", "shape": "a load dropped from the sky along the drag: crushes what is under it; STONE bars the way, OIL burns, GOODS draw looters, PLAGUE sickens who clears it; Q/E",
+		"authority": "passage", "modes": [
+			{"key": "stone", "name": "STONE"}, {"key": "oil", "name": "OIL"}, {"key": "goods", "name": "GOODS"}, {"key": "plague", "name": "PLAGUE"}]},
+	{"key": "hellspark", "name": "Hellmouth Spark", "path": "res://src/fx/control/hellmouth_spark.gd",
+		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "a small door to the furnace opens on the ground for 6 s: whoever stands within 1.5 burns, every building in reach catches",
 		"authority": "passage"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s", "quiet": true,
@@ -61,6 +65,15 @@ const POWERS := [
 	{"key": "thorns", "name": "Thornwall", "path": "res://src/fx/control/thornwall.gd",
 		"dp": 2, "cooldown": 42.0, "aim": "drag", "shape": "3-unit bramble wall, 25 s", "quiet": true,
 		"authority": "passage"},
+	{"key": "pilgrim", "name": "Pilgrim Road", "path": "res://src/fx/control/pilgrim_road.gd",
+		"dp": 2, "cooldown": 35.0, "aim": "drag", "shape": "the road itself travels: for 15 s whoever stands on the 6-long lane is carried along it at a run and thrown off its end, into whatever stands there",
+		"authority": "passage"},
+	{"key": "deep", "name": "Door to the Deep", "path": "res://src/fx/control/door_to_the_deep.gd",
+		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a door opens in the ground and black water floods a circle of 4 for 25 s: everyone in it slows to a third, every fire in it goes out, the buildings soak",
+		"authority": "passage"},
+	{"key": "houndgate", "name": "Hound Gate", "path": "res://src/fx/control/hound_gate.gd",
+		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a door opens and four hounds come through, hunting whoever is nearest for 30 s; the guard can cut them down",
+		"authority": "passage"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin"},
 	{"key": "pestilence", "name": "Pestilence", "path": "res://src/fx/curse/pestilence.gd",
@@ -69,7 +82,7 @@ const POWERS := [
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin"},
 	{"key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd",
-		"dp": 3, "cooldown": 54.0, "aim": "two clicks", "shape": "two faint mirrors: in at the first, out at the second, 30 s",
+		"dp": 3, "cooldown": 54.0, "aim": "drag then click", "shape": "a way in laid along the drag, a street wide, 2 to 6 long; a way out at the click: whoever and whatever crosses comes out there, 30 s",
 		"quiet": true, "authority": "passage"},
 	{"key": "magnify", "name": "Magnify", "path": "res://src/fx/decree/magnify.gd",
 		"dp": 3, "cooldown": 75.0, "aim": "click", "shape": "doubles what is already there: fires, cracks, madness, spells",
@@ -194,6 +207,10 @@ const REACH := {
 	"nova": [40.0, 40.0, 1.0, 4.0],
 	"scatter": [7.0, 10.0, 0.6, 5.0],
 	"windfall": [5.0, 8.0, 0.5, 3.0],
+	"hellspark": [5.0, 8.0, 0.6, 6.0],
+	"pilgrim": [6.0, 9.0, 0.4, 15.0],
+	"deep": [5.0, 8.0, 0.4, 4.0],
+	"houndgate": [6.0, 9.0, 0.6, 30.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -204,6 +221,7 @@ const REACH := {
 const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
+	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 1.2,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -263,6 +281,7 @@ const FAMILY := {
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
 	"noleave": "decree", "belllies": "decree", "magnify": "decree", "curfew": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
+	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 }
 
 

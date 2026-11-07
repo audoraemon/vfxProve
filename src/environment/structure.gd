@@ -344,7 +344,7 @@ func mark_hit(share: float, damage_kind: StringName) -> void:
 	_dirty = true
 	if damage_kind == &"ice":
 		frost = minf(frost + share * 3.0, 1.0)
-	else:
+	elif damage_kind != &"water":  # water soaks the walls (Door to the Deep); it leaves no char
 		scorch = minf(scorch + share * 0.9, 1.0)
 	_shake = maxf(_shake, 2.5)
 

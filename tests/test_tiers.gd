@@ -76,7 +76,7 @@ static func _prices(t) -> void:
 	var starting := 0
 	for key in PowerBook.keys():
 		starting += 1 if DescendState.starting(key) else 0
-	t.check(starting == 18 and s.locked().size() == PowerBook.keys().size() - 18, "the 1 and 2 DP powers start unlocked: 18")
+	t.check(starting == 22 and s.locked().size() == PowerBook.keys().size() - 22, "the 1 and 2 DP powers start unlocked: 22")
 	t.check(s.is_unlocked("doom") and s.is_unlocked("heaven") and not s.is_unlocked("tsunami"), "Heaven Splitter (2 DP) is; Tsunami (4) is not")
 	t.check(DescendState.unlock_price("tornado") == 45 and DescendState.unlock_price("tsunami") == 60
 		and DescendState.unlock_price("voice") == 75 and DescendState.unlock_price("schism") == 90, "unlocking costs 15 x its DP")

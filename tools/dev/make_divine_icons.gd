@@ -47,6 +47,11 @@ func _initialize() -> void:
 	# Passage, Tier I: the beam up, the load down.
 	_save(_sign([0b00100, 0b01110, 0b10101, 0b00100, 0b00100], Color(0.6, 0.85, 1.0), Color(0.03, 0.07, 0.13), 104), "skylift")
 	_save(_sign([0b00100, 0b00100, 0b10101, 0b01110, 0b11111], Color(0.95, 0.72, 0.4), Color(0.1, 0.07, 0.04), 105), "windfall")
+	# Passage, the second draft: the furnace door, the belt of chevrons, the door over the water, the fangs.
+	_save(_sign([0b00100, 0b01010, 0b01110, 0b11111, 0b01110], Color(1.0, 0.55, 0.2), Color(0.12, 0.03, 0.02), 106), "hellspark")
+	_save(_sign([0b01110, 0b00100, 0b01110, 0b00100, 0b01110], Color(0.95, 0.85, 0.5), Color(0.08, 0.06, 0.03), 107), "pilgrim")
+	_save(_sign([0b01110, 0b10001, 0b10001, 0b11111, 0b01010], Color(0.4, 0.7, 1.0), Color(0.02, 0.05, 0.12), 108), "deep")
+	_save(_sign([0b01010, 0b11111, 0b10101, 0b01110, 0b00100], Color(1.0, 0.35, 0.2), Color(0.08, 0.02, 0.02), 109), "houndgate")
 	# Veil: the shut eye in dusk.
 	_save(_sign(DominionParts.SHUT_EYE, Color(0.76, 0.6, 1.0), Color(0.05, 0.02, 0.1), 95), "unseen")
 	print("wrote ", ProjectSettings.globalize_path(OUT))

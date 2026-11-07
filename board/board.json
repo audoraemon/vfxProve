@@ -1,10 +1,11 @@
 {
- "hash": "80dbc6ce5b98fd3a",
- "updated": "2026-11-07T07:06:34+07:00",
+ "hash": "6f0aca26cd2a4117",
+ "updated": "2026-11-07T07:39:14+07:00",
  "changes": {
-  "date": "<t:1794009994:f>",
+  "date": "<t:1794011954:f>",
   "items": [
-   "New: God ring order: Ruin, Passage, Veil, Decree, Death, Dominion (in progress)"
+   "Done: Town dogs and cats (Discord idea Animals)",
+   "New: Skylift and Windfall (Passage, Tier I) (in progress)"
   ]
  },
  "snapshot": {
@@ -796,11 +797,11 @@
    },
    "town-animals": {
     "title": "Town dogs and cats (Discord idea Animals)",
-    "status": "doing",
+    "status": "done",
     "area": "Crowd",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/animals",
-    "updated": "2026-11-05",
+    "updated": "2026-11-07",
     "order": 900
    },
    "ui-sfxr-listen": {
@@ -1235,6 +1236,15 @@
     "updated": "2026-10-03",
     "order": 2
    },
+   "vfx-passage-t1": {
+    "title": "Skylift and Windfall (Passage, Tier I)",
+    "status": "doing",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-11-07",
+    "order": 17
+   },
    "vfx-sacred-sanctuary": {
     "title": "Sacred Sanctuary (Dominion, Tier IV): the wall of people",
     "status": "done",
@@ -1330,17 +1340,9 @@
   },
   "branches": [
    {
-    "name": "feat/animals",
-    "ahead": 12,
-    "behind": 0,
-    "date": "2026-11-07",
-    "subject": "feat: four more animal breeds: wolfhound, spaniel, white cat, brown tabby",
-    "pushed": true
-   },
-   {
     "name": "claude/vfx-ability-effects-964aca",
     "ahead": 6,
-    "behind": 0,
+    "behind": 12,
     "date": "2026-11-07",
     "subject": "feat: Windfall lands as heaps -- four to six pieces a segment, thrown down on each other",
     "pushed": true
@@ -1348,7 +1350,7 @@
    {
     "name": "god/dominion-t4",
     "ahead": 225,
-    "behind": 0,
+    "behind": 12,
     "date": "2026-11-06",
     "subject": "feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled",
     "pushed": false
@@ -1356,7 +1358,7 @@
    {
     "name": "god/ring-order",
     "ahead": 224,
-    "behind": 2,
+    "behind": 14,
     "date": "2026-11-06",
     "subject": "feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow",
     "pushed": false
@@ -1364,7 +1366,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 223,
-    "behind": 2,
+    "behind": 14,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": true
@@ -1372,7 +1374,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 52,
+    "behind": 64,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1380,7 +1382,7 @@
    {
     "name": "feat/people-anim-2",
     "ahead": 2,
-    "behind": 3,
+    "behind": 15,
     "date": "2026-11-06",
     "subject": "feat: people anim phase 2: pray, point and shout, look up, cower for all 13 citizen designs",
     "pushed": true
@@ -1388,7 +1390,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 337,
+    "behind": 349,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1396,7 +1398,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 295,
+    "behind": 307,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1404,8 +1406,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-05",
-   "subject": "feat: Anathema (Dominion, Tier IV) -- a district's buildings are cursed, or hallowed"
+   "date": "2026-11-07",
+   "subject": "feat: four more animal breeds: wolfhound, spaniel, white cat, brown tabby"
   }
  }
 }

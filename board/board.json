@@ -1,10 +1,10 @@
 {
- "hash": "31bc977fbaabd7e7",
- "updated": "2026-11-06T19:10:46+07:00",
+ "hash": "80dbc6ce5b98fd3a",
+ "updated": "2026-11-07T07:06:34+07:00",
  "changes": {
-  "date": "<t:1793967046:f>",
+  "date": "<t:1794009994:f>",
   "items": [
-   "Done: Discord god-progression changelog"
+   "New: God ring order: Ruin, Passage, Veil, Decree, Death, Dominion (in progress)"
   ]
  },
  "snapshot": {
@@ -364,6 +364,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-10-27",
     "order": 189
+   },
+   "god-ring-order": {
+    "title": "God ring order: Ruin, Passage, Veil, Decree, Death, Dominion",
+    "status": "doing",
+    "area": "Gameplay",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-07",
+    "order": 209
    },
    "god-ruin-levels": {
     "title": "Ruin ability levels: 5 levels + a level-5 twist for all ten powers",
@@ -1321,20 +1330,44 @@
   },
   "branches": [
    {
+    "name": "feat/animals",
+    "ahead": 12,
+    "behind": 0,
+    "date": "2026-11-07",
+    "subject": "feat: four more animal breeds: wolfhound, spaniel, white cat, brown tabby",
+    "pushed": true
+   },
+   {
+    "name": "claude/vfx-ability-effects-964aca",
+    "ahead": 6,
+    "behind": 0,
+    "date": "2026-11-07",
+    "subject": "feat: Windfall lands as heaps -- four to six pieces a segment, thrown down on each other",
+    "pushed": true
+   },
+   {
+    "name": "god/dominion-t4",
+    "ahead": 225,
+    "behind": 0,
+    "date": "2026-11-06",
+    "subject": "feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled",
+    "pushed": false
+   },
+   {
+    "name": "god/ring-order",
+    "ahead": 224,
+    "behind": 2,
+    "date": "2026-11-06",
+    "subject": "feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow",
+    "pushed": false
+   },
+   {
     "name": "feat/god-progression",
     "ahead": 223,
     "behind": 2,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": true
-   },
-   {
-    "name": "god/dominion-t3",
-    "ahead": 223,
-    "behind": 2,
-    "date": "2026-11-06",
-    "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
-    "pushed": false
    },
    {
     "name": "god/dominion-t3-old",
@@ -1350,14 +1383,6 @@
     "behind": 3,
     "date": "2026-11-06",
     "subject": "feat: people anim phase 2: pray, point and shout, look up, cower for all 13 citizen designs",
-    "pushed": true
-   },
-   {
-    "name": "feat/animals",
-    "ahead": 3,
-    "behind": 2,
-    "date": "2026-11-05",
-    "subject": "fix: animals get a thin outline in a dark tint of their coat, side neighbours only",
     "pushed": true
    },
    {

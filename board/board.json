@@ -1,11 +1,9 @@
 {
- "hash": "94d04ddc775302b4",
- "updated": "2026-11-07T14:24:24+07:00",
+ "hash": "e12d673ceaaca186",
+ "updated": "2026-11-07T15:17:09+07:00",
  "changes": {
-  "date": "<t:1794036264:f>",
-  "items": [
-   "New: Dominion's whole tree: Tiers 2, 4 and 5 (in progress)"
-  ]
+  "date": "<t:1794039429:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1348,6 +1346,14 @@
   },
   "branches": [
    {
+    "name": "feat/god-progression",
+    "ahead": 226,
+    "behind": 12,
+    "date": "2026-11-07",
+    "subject": "feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow",
+    "pushed": true
+   },
+   {
     "name": "god/ring-order",
     "ahead": 226,
     "behind": 12,
@@ -1369,14 +1375,6 @@
     "behind": 15,
     "date": "2026-11-07",
     "subject": "feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops",
-    "pushed": true
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 225,
-    "behind": 12,
-    "date": "2026-11-06",
-    "subject": "feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled",
     "pushed": true
    },
    {

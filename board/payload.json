@@ -7,12 +7,17 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **26** to do · **110** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1794036264:f>)\n• New: Dominion's whole tree: Tiers 2, 4 and 5 (in progress)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **26** to do · **110** done\n**7** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-07T14:24:24+07:00"
+     "timestamp": "2026-11-07T15:17:09+07:00"
+    },
+    {
+     "title": "feat/god-progression",
+     "description": "226 commits not in Develop-Main · last commit today\n> feat: the god ring is Ruin, Passage, Veil, Decree, Death, Dominion (the user's god select layout); neighbours follow\n\n**In progress** (2)\n• Dominion's whole tree: Tiers 2, 4 and 5 — **needs you**\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion — **needs you**\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "color": 5016537
     },
     {
      "title": "god/ring-order",
@@ -27,11 +32,6 @@
     {
      "title": "feat/people-anim-2",
      "description": "3 commits not in Develop-Main · last commit today\n> feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/god-progression",
-     "description": "225 commits not in Develop-Main · last commit yesterday\n> feat: Dominion's whole tree -- Tiers 2, 4 and 5 filled\n\n**In progress** (2)\n• Dominion's whole tree: Tiers 2, 4 and 5 — **needs you**\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion — **needs you**\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {

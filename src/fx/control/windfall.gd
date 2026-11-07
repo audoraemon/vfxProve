@@ -1,16 +1,17 @@
 class_name WindfallFx
 extends FxTimeline
 ## Windfall (Passage, Tier I): a load from somewhere else, dropped out of the sky in a line. Aimed by a drag: the line
-## is LENGTH long along it, centred on the press, SEG wide -- a low wall of crates and stone, SEGMENTS of them. T_DROP
-## after the cast they come down: whoever stands within KILL_R of a segment's middle is crushed (damage kind stone),
-## what stands within HIT_R of one takes DAMAGE (stone: no fire), and the segments stay where they fell -- structures
-## (role windfall) that close the walk grid under them, so a street or a gate's mouth is barred. They are the town's to
-## clear, and it takes time: an engineer team cuts a segment away (EngineerManager's Clear job, CLEAR_WEIGHT times a
-## thorn segment's), and until then the nearest free people -- up to CLEARERS citizens or soldiers within CALL_R, called
-## every CALL_EVERY -- come and work at it: every second each one at the line (within WORK_R of a segment, not
-## frightened; CLEARERS at most count) takes a second off the CLEAR_WORK it needs, and the line is taken down from
-## its ends as the work goes. Unattended it stands LIFE. A segment does not fall inside a building. Loud: the fall is
-## seen and heard (PowerBook.REACH), from the drop.
+## is LENGTH long along it, centred on the press, SEG wide -- a low wall of junk, SEGMENTS heaps of it. A portal opens
+## in the sky over the line (PORTAL_H px up) and the pieces come out of it one after another, GAP apart, each FLIGHT
+## in the air: the first lands T_DROP after the cast, and at that moment whoever stands within KILL_R of a segment's
+## middle is crushed (damage kind stone), what stands within HIT_R of one takes DAMAGE (stone: no fire), and the
+## segments are set down where they fall -- structures (role windfall) that close the walk grid under them, so a
+## street or a gate's mouth is barred. They are the town's to clear, and it takes time: an engineer team cuts a segment
+## away (EngineerManager's Clear job, CLEAR_WEIGHT times a thorn segment's), and until then the nearest free people --
+## up to CLEARERS citizens or soldiers within CALL_R, called every CALL_EVERY -- come and work at it: every second
+## each one at the line (within WORK_R of a segment, not frightened; CLEARERS at most count) takes a second off the
+## CLEAR_WORK it needs, and the line is taken down from its ends as the work goes. Unattended it stands LIFE. A
+## segment does not fall inside a building. Loud: the fall is seen and heard (PowerBook.REACH), from the drop.
 
 const T_DROP := 0.8
 const LENGTH := 3.6
@@ -28,8 +29,18 @@ const CLEAR_WEIGHT := 2.0
 const CALL_R := 6.0
 const CALL_EVERY := 3.0
 const WORK_R := 1.3
-const FALL := 380.0
+## The fall: one piece in the air FLIGHT, the next leaving the portal GAP later; the portal opens T_OPEN before the
+## first leaves and closes T_CLOSE after the last, PORTAL_H px over the line's middle, PORTAL px across (half-size).
+const FLIGHT := 0.42
+const GAP := 0.028
+const T_OPEN := 0.3
+const T_CLOSE := 0.3
+const PORTAL_H := 200.0
+const PORTAL := Vector2(96.0, 42.0)
 const WOOD := [Color("b8894a"), Color("8a6234"), Color("5a3f22"), Color("33261a")]
+const SKY := Color(0.45, 0.75, 1.0)
+const PALE := Color(0.8, 0.92, 1.0)
+const DEEP := Color(0.03, 0.05, 0.12)
 
 ## The segments still lying there (in line order), how many it crushed, and the work still needed to clear them.
 var piles: Array[Structure] = []
@@ -44,7 +55,12 @@ var _call_in := 0.0
 var _work_in := 0.0
 var _landed := false
 var _seed := 0
-## The goods as they lie: Structure -> [Decor] (the town's own decor, drawn from its sprites, in the world layer).
+## The heaps as planned, one Array of pieces (heap_for()) a segment of rects(); empty where a building stands.
+var _heaps: Array = []
+## Every piece of every heap in the order it lands, and the next one whose landing is still to be shown.
+var _order: Array = []
+var _next_down := 0
+## The heaps as they lie: Structure -> [Heap] (one node a segment in the world layer).
 var _goods := {}
 
 
@@ -58,16 +74,28 @@ static func rects(at: Vector2, dir: Vector2) -> Array[Rect2]:
 	return out
 
 
+## Where the portal hangs, on screen.
+func portal_screen() -> Vector2:
+	return Iso.ground_to_screen(origin) + Vector2(0, -PORTAL_H)
+
+
+## When the last piece lands.
+func last_land() -> float:
+	return T_DROP if _order.is_empty() else float(_order[_order.size() - 1].land_t)
+
+
 func _build() -> void:
 	_dir = extra.get("dir", Vector2(1, 0))
 	if _dir.length() < 0.01:
 		_dir = Vector2(1, 0)
 	_dir = _dir.normalized()
 	_seed = int(ctx.rng.randi() % 100000)
+	_plan()
 	duration = T_DROP + LIFE + 0.5
 	busy = T_DROP
 	at(T_DROP, _land)
-	ctx.play(&"cf_fall", origin, 6.0)
+	var opens := T_DROP - FLIGHT - T_OPEN
+	at(opens, func(): ctx.play(&"cf_fall", origin, 6.0))
 	if not DominionParts.staged(self):
 		return
 	for r in rects(origin, _dir):
@@ -75,15 +103,81 @@ func _build() -> void:
 		mark.set_param("scan", 0.0)
 		mark.tween_param("reveal", 0.0, 1.0, T_DROP * 0.7, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		mark.life = T_DROP + 0.05
+	var closes := last_land() - FLIGHT + T_CLOSE
+	var sp := portal_screen()
+	# The hole in the sky: the screen swirled into it, a glow about it, and the drawn mouth over both.
+	var swirl := FxParts.singularity(self, origin, 1.9, FxParts.ICE)
+	swirl.position = sp
+	swirl.set_param("strength", 0.0)
+	swirl.set_param("pinch", 0.0)
+	swirl.set_param("core_px", 0.0)
+	swirl.set_param("arm_alpha", 0.0)
+	swirl.set_param("rim_boost", 0.0)
+	swirl.set_param("tint", 0.4)
+	swirl.tween_param("strength", 0.0, 1.0, T_OPEN, opens, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	swirl.tween_param("pinch", 0.0, 0.5, T_OPEN, opens, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	swirl.tween_param("arm_alpha", 0.0, 0.6, T_OPEN, opens)
+	swirl.tween_param("strength", 1.0, 0.0, T_CLOSE, closes, Tween.TRANS_QUAD, Tween.EASE_IN)
+	swirl.tween_param("arm_alpha", 0.6, 0.0, T_CLOSE, closes)
+	swirl.tween_param("alpha", 1.0, 0.0, 0.1, closes + T_CLOSE - 0.1)
+	swirl.life = closes + T_CLOSE + 0.05
+	var glow := FxParts.bloom(self, sp, 130.0, SKY, 0.0, 0.6)
+	glow.z_index = 4
+	glow.tween_param("intensity", 0.0, 0.9, T_OPEN, opens, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	glow.tween_param("intensity", 0.9, 0.0, T_CLOSE, closes, Tween.TRANS_QUAD, Tween.EASE_IN)
+	glow.life = closes + T_CLOSE + 0.05
+	var mouth := Portal.new()
+	mouth.fx = self
+	mouth.opens = opens
+	mouth.closes = closes
+	mouth.position = sp
+	mouth.z_index = 5
+	track(mouth, ctx.overhead)
 	var load := Load.new()
 	load.fx = self
 	load.z_index = 6
 	track(load, ctx.overhead)
 
 
+## Lay out every heap and the order its pieces come down: the ground layer of all the heaps first, then what lies on
+## top of it, each layer in a shuffled order along the line, GAP apart.
+func _plan() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _seed
+	_heaps = []
+	var all := rects(origin, _dir)
+	var base := []
+	var top := []
+	for k in all.size():
+		var c := all[k].get_center()
+		if ctx.env.blocked(c, 0.0):
+			_heaps.append([])
+			continue
+		var heap := heap_for(k, c, _dir, _seed + k * 97)
+		_heaps.append(heap)
+		for g in heap:
+			(base if float(g.lift) == 0.0 else top).append(g)
+	_shuffle(base, rng)
+	_shuffle(top, rng)
+	_order = base + top
+	for i in _order.size():
+		var g: Dictionary = _order[i]
+		g.land_t = T_DROP + GAP * float(i)
+		g.leave_t = g.land_t - FLIGHT
+		g.spin = rng.randf_range(2.0, 4.5) * (1.0 if rng.randf() < 0.5 else -1.0)
+	_next_down = 0
+
+
+static func _shuffle(a: Array, rng: RandomNumberGenerator) -> void:
+	for i in range(a.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var held = a[i]
+		a[i] = a[j]
+		a[j] = held
+
+
 func _land() -> void:
 	_landed = true
-	var centres: Array[Vector2] = []
 	var all := rects(origin, _dir)
 	# The blows first, the whole line at once, then the segments: a segment's own blow must not break the one before.
 	for r in all:
@@ -95,7 +189,9 @@ func _land() -> void:
 			if ctx.field.kill(e, &"stone", c):
 				crushed += 1
 		ctx.env.damage_radius(c, HIT_R, DAMAGE, &"stone")
-	for r in all:
+	var placed: Array[int] = []
+	for k in all.size():
+		var r := all[k]
 		var c := r.get_center()
 		if ctx.env.blocked(c, 0.0):
 			continue  # not inside a building
@@ -111,7 +207,7 @@ func _land() -> void:
 						break
 		var s := ctx.env.add_structure(r, HEIGHT, Structure.Kind.CRATES, &"windfall")
 		piles.append(s)
-		centres.append(c)
+		placed.append(k)
 	ctx.play(&"cf_impact", origin, 0.0)
 	ctx.play(&"jg_crumble", origin, 2.0)
 	if piles.is_empty():
@@ -122,23 +218,21 @@ func _land() -> void:
 	ctx.impact.hitstop(0.04)
 	ctx.shake.add_trauma(0.4)
 	ctx.shake.kick(Vector2(0, 3))
-	for c in centres:
-		var sp := Iso.ground_to_screen(c)
-		FxParts.debris(self, sp, 6, 6.0, Vector2(40, 180), WOOD, Vector2(1.5, 3.5), true)
-		FxParts.debris(self, sp, 3, 5.0, Vector2(30, 140), FxParts.ROCK, Vector2(1.5, 3.0), true)
-		FxParts.smoke(self, sp, 6.0, 10.0, 0.5, Vector2(14, 36), Vector2(2, 5), Vector2(0.8, 1.4))
 	var ring := FxParts.shockwave(self, origin, LENGTH * 0.5 + 0.8, FxParts.FIRE)
 	ring.set_param("thickness", 0.1)
 	ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 0.8, 0.0, 0.2, 0.15)
 	ring.life = 0.38
-	# The structures are only the obstacle: the goods themselves are a heap a segment -- crates, barrels, logs and
-	# stone from the town's decor sprites, thrown down on each other -- standing in the world layer.
+	# The structures are only the obstacle: the goods themselves are a heap a segment -- crates, barrels, logs, stone,
+	# a cart, a table from the town's decor sprites, thrown down on each other -- standing in the world layer. A heap
+	# shows each piece as it lands.
 	for i in piles.size():
 		var s := piles[i]
 		s.visible = false
+		var k := placed[i]
 		var h := Heap.new()
-		h.pieces = heap_for(i, s.center(), _dir, _seed + i * 97)
+		h.fx = self
+		h.pieces = _heaps[k] if k < _heaps.size() else heap_for(k, s.center(), _dir, _seed + k * 97)
 		h.position = Iso.ground_to_screen(s.center())
 		track(h, ctx.world)
 		_goods[s] = [h]
@@ -171,6 +265,7 @@ func centres() -> Array[Vector2]:
 func _fx_process(delta: float) -> void:
 	if not _landed:
 		return
+	_show_landings()
 	if not standing():
 		cleared = cleared or t < T_DROP + LIFE
 		_drop_goods_of_gone()
@@ -197,6 +292,23 @@ func _fx_process(delta: float) -> void:
 	if _call_in <= 0.0:
 		_call_in = CALL_EVERY
 		_call()
+
+
+## Each piece as it hits: a puff of dust and splinters at its foot, a thud for every fourth, a nudge of the ground.
+func _show_landings() -> void:
+	if not DominionParts.staged(self):
+		_next_down = _order.size()
+		return
+	while _next_down < _order.size() and float(_order[_next_down].land_t) <= t:
+		var g: Dictionary = _order[_next_down]
+		var sp := Iso.ground_to_screen(g.at)
+		var bits: Array = FxParts.ROCK if g.kind == Decor.Kind.ROCK else WOOD
+		FxParts.debris(self, sp, 3, 4.0, Vector2(30, 120), bits, Vector2(1.5, 3.0), true)
+		FxParts.smoke(self, sp, 5.0, 8.0, 0.25, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 0.9))
+		ctx.shake.kick(Vector2(0, 0.6))
+		if _next_down % 4 == 0:
+			ctx.play(&"jg_crumble", g.at, -8.0)
+		_next_down += 1
 
 
 ## Those at the line and able to work: alive, outside, not frightened or fighting.
@@ -251,11 +363,17 @@ func _drop_goods_of_gone() -> void:
 
 
 ## The heap on segment `k` of the line, at its middle `c` along `dir`: [{kind, at, seed, scale, lift}], back to front.
-## PIECES_PER of them, thrown down on each other: crates, barrels, logs and stone (KINDS), each at its own spot within
-## the segment, its own size, and the later ones lifted onto the earlier -- a jumble, not a row. Seeded: the same heap
-## is drawn falling and lying.
-const PIECES_PER := Vector2i(4, 6)
-const KINDS: Array[Decor.Kind] = [Decor.Kind.CRATES, Decor.Kind.BARREL, Decor.Kind.BARREL, Decor.Kind.ROCK, Decor.Kind.LOGS, Decor.Kind.CRATES, Decor.Kind.ROCK]
+## PIECES_PER of them, a junk yard's worth thrown down on each other: crates, barrels, logs, stone, a cart, a table
+## (KINDS, SIZE each), each at its own spot within the segment, its own size, and all past the first BASE lifted onto
+## the earlier -- a jumble, not a row. Seeded: the same heap is drawn falling and lying.
+const PIECES_PER := Vector2i(8, 12)
+const BASE := 4
+const KINDS: Array[Decor.Kind] = [
+	Decor.Kind.CRATES, Decor.Kind.BARREL, Decor.Kind.ROCK, Decor.Kind.LOGS, Decor.Kind.CRATES, Decor.Kind.BARREL,
+	Decor.Kind.CART, Decor.Kind.TABLE, Decor.Kind.ROCK, Decor.Kind.CRATES, Decor.Kind.BARREL, Decor.Kind.LOGS,
+]
+## How large a kind is drawn against the others (a cart is a big thing).
+const SIZE := {Decor.Kind.CART: 0.55, Decor.Kind.TABLE: 0.75, Decor.Kind.LOGS: 0.85}
 
 static func heap_for(k: int, c: Vector2, dir: Vector2, seed_value: int) -> Array:
 	var rng := RandomNumberGenerator.new()
@@ -265,15 +383,16 @@ static func heap_for(k: int, c: Vector2, dir: Vector2, seed_value: int) -> Array
 	var n := rng.randi_range(PIECES_PER.x, PIECES_PER.y)
 	for i in n:
 		var kind: Decor.Kind = KINDS[rng.randi() % KINDS.size()]
-		var along := rng.randf_range(-0.26, 0.26)
-		var across := rng.randf_range(-0.2, 0.2)
-		var base := i < 3
+		var along := rng.randf_range(-0.28, 0.28)
+		var across := rng.randf_range(-0.22, 0.22)
+		var base := i < BASE
+		var size: float = SIZE.get(kind, 1.0)
 		out.append({
 			"kind": kind,
 			"at": c + dir * along + side * across,
 			"seed": seed_value + i * 13 + k,
-			"scale": rng.randf_range(0.55, 0.9) if base else rng.randf_range(0.45, 0.7),
-			"lift": 0.0 if base else rng.randf_range(5.0, 11.0),
+			"scale": size * (rng.randf_range(0.6, 0.9) if base else rng.randf_range(0.42, 0.7)),
+			"lift": 0.0 if base else rng.randf_range(4.0, 14.0),
 		})
 	# Back to front, the lifted ones last so they sit on top.
 	out.sort_custom(func(a, b) -> bool:
@@ -307,48 +426,122 @@ func end_now() -> void:
 
 
 ## One segment's heap, lying: its pieces painted from the decor sprites, each at its own spot and size, the later ones
-## lifted onto the earlier. One node a segment in the world layer, so people sort round it.
+## lifted onto the earlier, each shown from the moment it lands. One node a segment in the world layer, so people
+## sort round it.
 class Heap extends Node2D:
+	var fx: WindfallFx
 	var pieces: Array = []
 
+	func _process(_delta: float) -> void:
+		if fx != null and fx.t <= fx.last_land() + 0.1:
+			queue_redraw()
+
 	func _draw() -> void:
-		WindfallFx.paint_pieces(self, pieces, position, 0.0)
+		var now := fx.t if fx != null else INF
+		for g in pieces:
+			if float(g.get("land_t", 0.0)) <= now:
+				WindfallFx.paint_piece(self, g, Iso.ground_to_screen(g.at) - position + Vector2(0, -float(g.lift)), 0.0, 1.0)
+		draw_set_transform(Vector2.ZERO)
 
 
-## Paint `pieces` (heap_for()) on `ci`, whose node sits at screen `origin`, lifted a further `up` pixels (the fall).
-static func paint_pieces(ci: CanvasItem, pieces: Array, origin: Vector2, up: float) -> void:
-	for g in pieces:
-		var foot := Iso.ground_to_screen(g.at) - origin + Vector2(0, -float(g.lift) - up)
-		var sc: float = g.scale * ArtTuning.scale(String(Decor.Kind.keys()[g.kind]).to_lower())
-		# Scaled about its own foot: the painter is told its foot is the origin, and the transform puts it there.
-		ci.draw_set_transform(foot.round(), 0.0, Vector2(sc, sc))
-		ArtKit.begin()
-		ArtKit.color_mul = ArtTuning.tint(String(Decor.Kind.keys()[g.kind]).to_lower())
-		DecorArt.paint(g.kind, g.at, Vector2.ZERO, g.seed, Iso.ground_to_screen(g.at))
-		ArtKit.color_mul = Color.WHITE
-		ArtKit.flush(ci)
-	ci.draw_set_transform(Vector2.ZERO)
+## Paint one piece (heap_for()) on `ci` with its foot at `foot` (in ci's space), turned `rot` and scaled a further
+## `mul` about the foot.
+static func paint_piece(ci: CanvasItem, g: Dictionary, foot: Vector2, rot: float, mul: float) -> void:
+	var key := String(Decor.Kind.keys()[g.kind]).to_lower()
+	var sc: float = g.scale * mul * ArtTuning.scale(key)
+	# Scaled about its own foot: the painter is told its foot is the origin, and the transform puts it there.
+	ci.draw_set_transform(foot.round(), rot, Vector2(sc, sc))
+	ArtKit.begin()
+	ArtKit.color_mul = ArtTuning.tint(key)
+	DecorArt.paint(g.kind, g.at, Vector2.ZERO, g.seed, Iso.ground_to_screen(g.at))
+	ArtKit.color_mul = Color.WHITE
+	ArtKit.flush(ci)
 
 
-## The load on its way down: the segments' heaps -- the same pieces they will lie as -- falling together onto the
-## marks, each with a shadow closing under it.
+## The load on its way down: every piece from the moment it leaves the portal to the moment it lands, tumbling out
+## of the mouth small and growing as it comes, sliding across to its own foot and falling faster as it goes, a shadow
+## closing under it.
 class Load extends Node2D:
 	var fx: WindfallFx
 
 	func _process(_delta: float) -> void:
-		if fx.t >= T_DROP:
+		if fx.t >= fx.last_land() + 0.05:
 			queue_free()
 			return
 		queue_redraw()
 
 	func _draw() -> void:
-		var k := clampf(fx.t / T_DROP, 0.0, 1.0)
-		var up := FALL * (1.0 - k * k)
-		var rects := WindfallFx.rects(fx.origin, fx._dir)
-		for r in rects:
-			var to := Iso.ground_to_screen(r.get_center())
+		var from := fx.portal_screen()
+		var flying := []
+		for g in fx._order:
+			if fx.t < float(g.leave_t) or fx.t >= float(g.land_t):
+				continue
+			flying.append(g)
+		for g in flying:
+			var k := clampf((fx.t - float(g.leave_t)) / FLIGHT, 0.0, 1.0)
+			var to := Iso.ground_to_screen(g.at)
 			draw_set_transform(to, 0.0, Vector2(1.0, 0.5))
-			draw_circle(Vector2.ZERO, 5.0 + 9.0 * k, Color(0.0, 0.0, 0.0, 0.15 + 0.3 * k))
+			draw_circle(Vector2.ZERO, 3.0 + 5.0 * k, Color(0.0, 0.0, 0.0, 0.08 + 0.3 * k))
 		draw_set_transform(Vector2.ZERO)
-		for i in rects.size():
-			WindfallFx.paint_pieces(self, WindfallFx.heap_for(i, rects[i].get_center(), fx._dir, fx._seed + i * 97), Vector2.ZERO, up + float(i % 2) * 6.0)
+		for g in flying:
+			var k := clampf((fx.t - float(g.leave_t)) / FLIGHT, 0.0, 1.0)
+			var to := Iso.ground_to_screen(g.at) + Vector2(0, -float(g.lift))
+			var p := Vector2(lerpf(from.x, to.x, k), lerpf(from.y, to.y, k * k))
+			var grow := smoothstep(0.0, 0.18, k)
+			var rot := float(g.spin) * (1.0 - k) * (1.0 - k)
+			WindfallFx.paint_piece(self, g, p, rot, 0.35 + 0.65 * grow)
+		draw_set_transform(Vector2.ZERO)
+
+
+## The hole in the sky the load comes out of: a dark mouth, PORTAL half-size when open, with a pale rim, a glint
+## running round it, arcs of light turning inside, and sparks off its edge. Opens over T_OPEN from `opens`, closes
+## over T_CLOSE from `closes`.
+class Portal extends Node2D:
+	var fx: WindfallFx
+	var opens := 0.0
+	var closes := 1.0
+
+	func _process(_delta: float) -> void:
+		if fx.t >= closes + T_CLOSE:
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var age := fx.t - opens
+		if age < 0.0:
+			return
+		var k := clampf(age / T_OPEN, 0.0, 1.0)
+		var p := 1.0 - pow(1.0 - k, 3.0)
+		p *= 1.0 + 0.12 * sin(k * PI)  # a touch of overshoot as it tears open
+		if fx.t > closes:
+			p *= 1.0 - clampf((fx.t - closes) / T_CLOSE, 0.0, 1.0)
+		if p <= 0.01:
+			return
+		var w := PORTAL.x * p
+		var squash := PORTAL.y / PORTAL.x
+		var spin := age * 2.4
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, squash))
+		# The mouth: dark, deepening to the middle.
+		draw_circle(Vector2.ZERO, w, Color(DEEP, 0.85))
+		draw_circle(Vector2.ZERO, w * 0.55, Color(0.0, 0.0, 0.02, 0.95))
+		# Arcs of light turning inside.
+		for j in 4:
+			var a0 := spin * (1.0 + 0.3 * float(j)) + float(j) * 1.7
+			var r := w * (0.35 + 0.15 * float(j))
+			draw_arc(Vector2.ZERO, r, a0, a0 + 1.6 + 0.4 * float(j % 2), 20, Color(SKY, 0.35 + 0.15 * float(j % 2)), 2.0)
+		# The rim and its glint.
+		draw_arc(Vector2.ZERO, w, 0.0, TAU, 48, Color(PALE, 0.95), 3.0)
+		draw_arc(Vector2.ZERO, w + 3.0, 0.0, TAU, 48, Color(SKY, 0.35), 2.0)
+		var ga := -spin * 1.6
+		draw_arc(Vector2.ZERO, w, ga, ga + 0.9, 12, Color(1, 1, 1, 0.9), 4.0)
+		# Sparks off the edge, flickering.
+		var tick := int(age * 24.0)
+		for i in 14:
+			var a := float(i) / 14.0 * TAU + spin * 0.3
+			var h := ArtKit.hash01(i, tick)
+			if h < 0.35:
+				continue
+			var d := Vector2(cos(a), sin(a))
+			draw_line(d * (w + 2.0), d * (w + 5.0 + 10.0 * h), Color(PALE, 0.5 + 0.4 * h), 1.0)
+		draw_set_transform(Vector2.ZERO)

@@ -1495,8 +1495,18 @@ func relure(spot: Vector2) -> bool:
 	if state == State.DEAD or mind != Mind.OBSERVE or not _lured:
 		return false
 	_threat = spot
-	set_goal(spot)
+	redirect(spot)
 	return true
+
+
+## A new goal for someone already walking (Procession's light moves on): set_goal(), without the step back to the middle of the cell it stands in
+## that a fresh path begins with -- re-sent every half second, that step would hold a walker in place.
+func redirect(spot: Vector2) -> void:
+	set_goal(spot)
+	if _leg >= 1 and _leg < _path.size():
+		var first := _path[_leg - 1]
+		if (first - ground_pos).dot(_path[_leg] - first) < 0.0:
+			_pick_target()
 
 
 ## Staring at a light it was lured to (a Will-o'-Wisp's, a body's) (v0.11.1: The Bell-Ringers' relay passes such a man over -- he looks at the light, not at the road).

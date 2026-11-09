@@ -42,6 +42,9 @@ func _build() -> void:
 			continue
 		p.statuses[MadnessManager.STATUS] = lv_seed
 		afflicted.append(p)
+	if PowerBook.twist_at(extra, "madness") and ctx.crowd != null and ctx.crowd.madness != null:
+		for p in afflicted:
+			ctx.crowd.madness.direct(p)  # Directed Frenzy: the seeds frenzy at Broken, on the nearest soldier first
 	ctx.play(&"q_madness", origin)
 	if ctx.impact == null or not is_inside_tree():
 		return

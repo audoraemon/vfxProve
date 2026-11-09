@@ -1841,7 +1841,8 @@ func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 ## An ordinary guard standing at the post the town gave him (GuardJobs' "standing at his post"): alive, POST or HOLD,
 ## not in the god's hand, not re-posted, and within WATCH_REACH of it.
 func at_own_post() -> bool:
-	return soldier and state != State.DEAD and (mind == Mind.POST or mind == Mind.HOLD) and not held_by_god() 		and anchor.is_equal_approx(post) and ground_pos.distance_to(anchor) <= WATCH_REACH
+	return soldier and state != State.DEAD and (mind == Mind.POST or mind == Mind.HOLD) and not held_by_god() \
+			and anchor.is_equal_approx(post) and ground_pos.distance_to(anchor) <= WATCH_REACH
 
 
 ## Whether he counts as keeping watch for a mission (as EscortDirector's _watching): out of doors, not in the god's hand, not

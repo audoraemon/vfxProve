@@ -199,6 +199,9 @@ func _recruit() -> void:
 	if stage >= AlarmManager.Stage.EVACUATION or stage < _crowd.profile.fire_from or fires.is_empty():
 		return
 	var most := _crowd.profile.fire_crew
+	var jobs := _crowd.guard_jobs
+	if jobs.is_open():
+		jobs.prune()
 	for s: Structure in fires.keys():
 		if _crowd.is_veiled(s.center()) or _crowd.structure_mark(s) == &"cursed":
 			continue  # a fire nobody sees (Unseen Hour), or on a cursed house (Anathema), is not fought
@@ -206,20 +209,40 @@ func _recruit() -> void:
 		var crew: Array = f.responders.filter(func(p) -> bool:
 			return is_instance_valid(p) and p.mind == Person.Mind.ASSIST and p.assist_fire == s)
 		f.responders = crew
-		if crew.size() >= most or float(f.intensity) >= ABANDON or nearest_water(s.center()) == null:
+		if float(f.intensity) >= ABANDON or nearest_water(s.center()) == null:
 			continue
-		var pool: Array[Person] = []
-		for p in _crowd.citizens:
-			if is_instance_valid(p) and p.is_alive() and p.profile != null and p.fearless_left <= 0.0 \
-					and (p.mind == Person.Mind.CALM or p.mind == Person.Mind.RECOVER) \
-					and p.ground_pos.distance_to(s.center()) <= RECRUIT_REACH:
-				pool.append(p)
-		pool.sort_custom(func(a: Person, b: Person) -> bool:
-			return a.ground_pos.distance_to(s.center()) < b.ground_pos.distance_to(s.center()))
-		for k in mini(most - crew.size(), pool.size()):
-			pool[k].assist(s)
-			crew.append(pool[k])
-			_go_to_water(pool[k], s)
+		# The citizens' brigade: its cap counts the citizens (and squads), not the guards on a job.
+		var citizens_on := crew.filter(func(p) -> bool: return not jobs.on_job(p)).size()
+		if citizens_on < most:
+			var pool: Array[Person] = []
+			for p in _crowd.citizens:
+				if is_instance_valid(p) and p.is_alive() and p.profile != null and p.fearless_left <= 0.0 \
+						and (p.mind == Person.Mind.CALM or p.mind == Person.Mind.RECOVER) \
+						and p.ground_pos.distance_to(s.center()) <= RECRUIT_REACH:
+					pool.append(p)
+			pool.sort_custom(func(a: Person, b: Person) -> bool:
+				return a.ground_pos.distance_to(s.center()) < b.ground_pos.distance_to(s.center()))
+			for k in mini(most - citizens_on, pool.size()):
+				pool[k].assist(s)
+				crew.append(pool[k])
+				_go_to_water(pool[k], s)
+		# The guards: ordinary guards at their posts turn out to a fire until the rally (soldier jobs).
+		if jobs.is_open():
+			for p in jobs.pick(s.center(), RECRUIT_REACH, guards_on(s), 1 << 20):
+				enlist(p, s)
+				if p.mind == Person.Mind.ASSIST:
+					jobs.take(p, s)
+
+
+## How many of the responders on `s` are guards on a job.
+func guards_on(s: Structure) -> int:
+	if not fires.has(s):
+		return 0
+	var n := 0
+	for p in fires[s].responders:
+		if is_instance_valid(p) and p.mind == Person.Mind.ASSIST and p.assist_fire == s and _crowd.guard_jobs.job_of(p) == s:
+			n += 1
+	return n
 
 
 ## A rescue squad's soldier (RescueManager, v0.07), or an engineer with nothing to mend (EngineerManager, v0.08.2),

@@ -116,11 +116,32 @@ static func run(t) -> void:
 		if st.role == &"house" and house == null:
 			house = st
 	s.assist(house)
-	t.check(s.mind != Person.Mind.ASSIST, "a soldier is not sent to a fire unasked")
+	t.check(s.mind != Person.Mind.ASSIST, "a rescue soldier is not sent to a fire unasked")
 	s.assist(house, true)
 	t.check(s.mind == Person.Mind.ASSIST and s.assist_fire == house, "but can be, by its squad")
 	s.stand_down()
 	t.check(s.mind == Person.Mind.POST and s.anchor == s.post, "stood down, a soldier goes back to its post")
+	# An ordinary guard (corps NONE) near a fire joins the brigade until the rally; after it, a fresh fire takes none.
+	var ordinary: Person = null
+	for p in crowd.soldiers:
+		if ordinary == null and p.post_group == 0 and p.corps == Person.Corps.NONE:
+			ordinary = p
+	crowd.alarms.stage = crowd.profile.fire_from
+	var g_house: Structure = null
+	for st in (made[1] as EnvironmentField).structures():
+		if st.role == &"house" and (g_house == null or st.center().distance_to(ordinary.ground_pos) < g_house.center().distance_to(ordinary.ground_pos)):
+			g_house = st
+	crowd.fires.ignite(g_house, 0.4)
+	crowd.fires._recruit()
+	t.check(crowd.fires.guards_on(g_house) > 0, "an ordinary guard joins the brigade before the rally")
+	crowd.rally()
+	var h2: Structure = null
+	for st in (made[1] as EnvironmentField).structures():
+		if st.role == &"house" and st != g_house and not st.destroyed and h2 == null:
+			h2 = st
+	crowd.fires.ignite(h2, 0.4)
+	crowd.fires._recruit()
+	t.check(crowd.fires.guards_on(h2) == 0, "after the rally a fresh fire takes no guard")
 	_done(made)
 	_no_refill(t)
 	_garrison(t)

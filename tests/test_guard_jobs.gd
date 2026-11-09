@@ -3,6 +3,7 @@ extends RefCounted
 ## post groups keep a share at home; mission hooks claim soldiers and are dropped with the mission; the rally ends the jobs.
 
 const Corps := preload("res://tests/test_corps.gd")
+const CapPeople := preload("res://tests/test_capital_people.gd")
 
 
 static func _made() -> Array:
@@ -197,6 +198,162 @@ static func _prune(t) -> void:
 	Corps._done(made)
 
 
+## The house nearest the barracks yard, set burning (hot enough to be fought, below ABANDON).
+static func _yard_fire(crowd: Crowd, env: EnvironmentField) -> Structure:
+	var c: Vector2 = City.current().landmark(&"barracks_yard").get_center()
+	var best: Structure = null
+	for s in env.structures():
+		if s.kind == Structure.Kind.HOUSE and s.role == &"house" and not s.destroyed:
+			if best == null or s.center().distance_to(c) < best.center().distance_to(c):
+				best = s
+	crowd.fires.ignite(best, 0.4)
+	return best
+
+
+static func _on_fire(crowd: Crowd, s: Structure) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in crowd.soldiers:
+		if p.mind == Person.Mind.ASSIST and p.assist_fire == s:
+			out.append(p)
+	return out
+
+
+static func _fires(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	# Soldiers a job must leave alone: a guard sent to a spot, a re-posted one, a mission-held one, and corps soldiers.
+	var a := _guard(crowd, 0)
+	a.send_to_post(a.post + Vector2(2.0, 0.0))
+	var b := _guard(crowd, 0)
+	b.post = b.post + Vector2(1.0, 0.0)
+	b.anchor = b.post
+	var m := _guard(crowd, 0)
+	crowd.mission_holds.append(func(p: Person) -> bool: return p == m)
+	var corps_men: Array[Person] = []
+	for c in [Person.Corps.RESCUE, Person.Corps.MARSHAL, Person.Corps.ESCORT, Person.Corps.KNIGHT]:
+		var k := _guard(crowd, 0)
+		k.corps = c
+		corps_men.append(k)
+	crowd.alarms.stage = crowd.profile.fire_from
+	var house := _yard_fire(crowd, made[1])
+	var n := gj.free_near(house.center(), FireManager.RECRUIT_REACH).size()
+	t.check(n > 0, "guards stand near the burning house (%d)" % n)
+	crowd.fires._recruit()
+	var guards := 0
+	var taken: Array[Person] = []
+	for p in _on_fire(crowd, house):
+		if p.corps == Person.Corps.NONE and gj.job_of(p) == house:
+			guards += 1
+			taken.append(p)
+	t.check(guards == ceili(n * 0.5), "ordinary guards on the fire are half those near it (%d of %d)" % [guards, n])
+	t.check(crowd.fires.guards_on(house) == guards, "guards_on counts them")
+	var citizens := 0
+	for p in crowd.citizens:
+		if p.mind == Person.Mind.ASSIST and p.assist_fire == house:
+			citizens += 1
+	t.check(citizens <= crowd.profile.fire_crew, "and the citizens' brigade keeps its own cap (%d)" % citizens)
+	var kept := {}
+	for p in crowd.soldiers:
+		if gj.at_post(p):
+			kept[p.post_group] = int(kept.get(p.post_group, 0)) + 1
+	var groups_ok := true
+	for g in 4:
+		groups_ok = groups_ok and int(kept.get(g, 0)) >= GuardJobs.GROUP_KEEP
+	t.check(groups_ok, "every post group keeps a guard at his post (%s)" % [kept])
+	var stray := false
+	for p in [a, b, m] + corps_men:
+		stray = stray or (p.mind == Person.Mind.ASSIST and p.assist_fire == house) or gj.on_job(p)
+	t.check(not stray, "no sent, re-posted, mission-held or corps soldier is on the fire")
+	var safety := 0
+	while crowd.fires.is_burning(house) and safety < 100:
+		crowd.fires.douse(house)
+		safety += 1
+	gj.prune()
+	var home := true
+	for p in taken:
+		home = home and p.mind == Person.Mind.POST and p.anchor.is_equal_approx(p.post) and not gj.on_job(p)
+	t.check(not taken.is_empty() and home, "a fire put out sends its guards back to their posts")
+	crowd.clear_mission_hooks()
+	Corps._done(made)
+
+
+static func _forgo(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	crowd.forgo_rally()
+	t.check(crowd.guard_jobs.is_open(), "a leaderless town's forgo_rally leaves the job board open")
+	Corps._done(made)
+	made = _made()
+	crowd = made[0]
+	crowd.rally()
+	t.check(not crowd.guard_jobs.is_open(), "while rally() closes it")
+	Corps._done(made)
+
+
+static func _rally_clears(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var house := _yard_fire(crowd, made[1])
+	crowd.fires._recruit()
+	t.check(crowd.fires.guards_on(house) > 0, "guards are on the fire before the rally")
+	crowd.rally()
+	var left := 0
+	for p in crowd.soldiers:
+		if p.corps == Person.Corps.NONE and (p.mind == Person.Mind.ASSIST or p.assist_fire != null):
+			left += 1
+	t.check(left == 0, "the rally takes every guard off the fire (%d left)" % left)
+	crowd.fires._recruit()
+	t.check(crowd.fires.guards_on(house) == 0, "and a new recruit adds no guard")
+	Corps._done(made)
+
+
+static func _unprepared(t) -> void:
+	var made := Corps._crowd(ResponseProfile.Tier.UNPREPARED)
+	var crowd: Crowd = made[0]
+	crowd._on_stage(AlarmManager.Stage.CITY_EMERGENCY, "")
+	crowd.alarms.stage = crowd.profile.fire_from
+	var house := _yard_fire(crowd, made[1])
+	crowd.fires._recruit()
+	t.check(crowd.fires.guards_on(house) == 0, "an unprepared town's rally came first: no guard at the fire")
+	Corps._done(made)
+
+
+static func _capital_fire(t) -> void:
+	var b: Dictionary = CapPeople._build()
+	var crowd: Crowd = b.crowd
+	var env: EnvironmentField = b.env
+	var c: Vector2 = City.current().landmark(&"barracks_yard").get_center()
+	var best: Structure = null
+	for s in env.structures():
+		if not s.destroyed and FireManager.burns(s) and s.kind == Structure.Kind.HOUSE:
+			if best == null or s.center().distance_to(c) < best.center().distance_to(c):
+				best = s
+	t.check(best != null, "the capital has a plot that burns")
+	if best != null:
+		crowd.alarms.stage = crowd.profile.fire_from
+		crowd.fires.ignite(best, 0.4)
+		crowd.fires._recruit()
+		var guards := 0
+		for p in _on_fire(crowd, best):
+			if p.corps == Person.Corps.NONE:
+				guards += 1
+		t.check(guards >= 1, "capital guards turn out to its fire (%d)" % guards)
+		var kept := {}
+		for p in crowd.soldiers:
+			if crowd.guard_jobs.at_post(p):
+				kept[p.post_group] = int(kept.get(p.post_group, 0)) + 1
+		var ok := true
+		for g in kept.keys():
+			ok = ok and int(kept[g]) >= 1
+		t.check(ok and kept.size() >= 3, "every capital post group keeps a guard at his post (%s)" % [kept])
+	crowd.clear()
+	(b.world as Node).free()
+	(b.town as Node).free()
+	City.use(&"aldermere")
+
+
 static func run(t) -> void:
 	_posts_and_groups(t)
 	_on_watch(t)
@@ -206,3 +363,8 @@ static func run(t) -> void:
 	_hooks_cleared(t)
 	_close(t)
 	_prune(t)
+	_fires(t)
+	_forgo(t)
+	_rally_clears(t)
+	_unprepared(t)
+	_capital_fire(t)

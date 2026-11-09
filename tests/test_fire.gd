@@ -53,7 +53,8 @@ static func run(t) -> void:
 	var near: Person = crowd.citizens[0]
 	near.ground_pos = house.center() + Vector2(0.0, 2.0)
 	fm._recruit()
-	var crew: Array = fm.fires[house].responders
+	# The crew is the citizens' brigade; guards on a job stand beside it and are not counted against its cap.
+	var crew: Array = fm.fires[house].responders.filter(func(p) -> bool: return not crowd.guard_jobs.on_job(p))
 	t.check(crew.size() >= 1 and crew.size() <= FireManager.MAX_RESPONDERS and near in crew
 		and near.intent() == Person.Intent.ASSIST, "nearby citizens turn out to fight it (%d)" % crew.size())
 	var water := fm.nearest_water(house.center())

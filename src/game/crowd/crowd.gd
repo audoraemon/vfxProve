@@ -678,7 +678,8 @@ func _walk_loops() -> void:
 		if not is_instance_valid(e[0]):
 			continue
 		var p: Person = e[0]
-		if not p.is_alive() or _rallied or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST or p.has_goal() 				or guard_jobs.on_job(p):
+		if not p.is_alive() or _rallied or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST or p.has_goal() \
+				or guard_jobs.on_job(p):
 			continue
 		var points: Array[Vector2] = e[1]
 		if p.ground_pos.distance_to(points[e[2]]) > LOOP_REACH or _looking(p):
@@ -1838,7 +1839,6 @@ func hold_gate(g: Structure, seconds: float) -> void:
 	_held[g] = _clock + seconds
 
 
-## The leaderless town (v0.09: the Prince died unseen): the soldiers never rally on the Citadel.
 ## Whether a mission's director holds `p` (any registered hook says so; hooks whose object is gone are skipped).
 func held_by_mission(p: Person) -> bool:
 	for c in mission_holds:
@@ -1853,6 +1853,7 @@ func clear_mission_hooks() -> void:
 	mission_points.clear()
 
 
+## The leaderless town (v0.09: the Prince died unseen): the soldiers never rally on the Citadel.
 func forgo_rally() -> void:
 	_rallied = true
 

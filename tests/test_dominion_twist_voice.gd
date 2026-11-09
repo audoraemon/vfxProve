@@ -11,6 +11,7 @@ static func run(t) -> void:
 	_flee_rng(t)
 	_gather(t)
 	_judge(t)
+	_return(t)
 	_level_four(t)
 	_wiring(t)
 
@@ -140,6 +141,29 @@ static func _judge(t) -> void:
 	for p in group:
 		turned += 1 if p != victim and p.mind == Person.Mind.FIGHT and p.fight_target == victim else 0
 	t.check(turned == 3 and fx._second_judged == victim, "the others turn on the one picked at the click (%d)" % turned)
+	_end(made, fx)
+
+
+## A second-word RETURN sends a person (no home, no post) back to where they stood before the first command laid its spot.
+static func _return(t) -> void:
+	var b := _begin("gather")
+	var made: Array = b[0]
+	var fx: VoiceOfGodFx = b[1]
+	var group: Array = b[2]
+	var at: Vector2 = b[3]
+	var before := {}
+	for p in group:
+		p.profile = null
+		p.post = Vector2.INF
+		p.anchor = p.ground_pos
+		before[p] = p.ground_pos
+	fx._process(VoiceOfGodFx.T_SPEAK + 3.0)
+	t.check(fx.follow_up(at, {"mode": "return"}), "a second RETURN is taken")
+	fx._process(VoiceOfGodFx.T_SPEAK + fx.seconds + 0.1 - fx.t)
+	var home := 0
+	for p in group:
+		home += 1 if p.mind == Person.Mind.COMPELLED and p.anchor.distance_to(before[p]) < 0.01 else 0
+	t.check(home == 4, "RETURN sends each person to where they stood before the first command (%d of 4)" % home)
 	_end(made, fx)
 
 

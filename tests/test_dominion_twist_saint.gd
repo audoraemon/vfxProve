@@ -122,6 +122,18 @@ static func run(t) -> void:
 	fx.free()
 	_done(made)
 
+	# The chosen dies before the mark lands: the effect ends in _decide with no hunters, and no bystander wears a mark for nothing.
+	made = _setup()
+	ctx = made[5]
+	s = _scene(made)
+	chosen = s.chosen
+	fx = FxTimeline.cast(load("res://src/fx/dominion/saint_or_sinner.gd"), ctx, s.at, {"mode": "sinner", "level": 5})
+	_kill(made, chosen)
+	fx._process(SaintFx.T_CAST + 0.05)
+	t.check(fx.hunters == 0 and fx.passed_to == null and s.b.badge_left <= 0.0, "the chosen dead before the mark lands: nothing is passed, nobody is marked")
+	fx.free()
+	_done(made)
+
 	# Level 4: no pass.
 	made = _setup()
 	ctx = made[5]

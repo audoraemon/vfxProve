@@ -9,13 +9,14 @@ const P := Vector2(4.0, 5.0)
 ## A stand-in for an effect that takes orders.
 class Stub extends FxTimeline:
 	var open := true
+	var take := true
 	var got: Array = []
 
 	func can_follow_up() -> bool:
 		return open
 
 	func follow_up(at_pos: Vector2, extra_data: Dictionary) -> bool:
-		if not open:
+		if not open or not take:
 			return false
 		got.append([at_pos, extra_data])
 		return true
@@ -27,6 +28,7 @@ class Stub extends FxTimeline:
 static func run(t) -> void:
 	_rules(t)
 	_targeting(t)
+	_stranded(t)
 
 
 static func _world() -> Array:
@@ -126,6 +128,53 @@ static func _targeting(t) -> void:
 	t.check(aim._aim_kind() == "two clicks" and aim.area() != {"shape": "circle", "r": 1.0}, "when the stub stops taking orders the slot is its own kind again")
 	aim.free()
 	hud.free()
+	rules.free()
+	stub.free()
+	_free(made)
+
+
+## A half-placed two-click aim from the busy lock is dropped when the next click is taken as an order, and a follow-up that finds nothing is
+## refused as "nobody" (never started as a cast, never "cooldown").
+static func _stranded(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[4]
+	var rules := Rules.new().setup(PackedStringArray(["sanctuary", "doom"]), null, made[0], made[2], crowd, made[1])
+	var stub := Stub.new()
+	stub.duration = 30.0
+	stub.busy = 1.0
+	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline:
+		return stub
+	var called: Array = []
+	var refused: Array = []
+	rules.recast_made.connect(func(slot: int, _key: String, at: Vector2): called.append([slot, at]))
+	rules.cast_refused.connect(func(slot: int, why: String): refused.append([slot, why]))
+	var aim := Targeting.new().setup(rules, crowd)
+	rules.cast(0, P, {"to": P + Vector2(2.0, 0.0)})
+	stub.t = 0.2
+	aim.pick(0)
+	var old := Vector2(1.0, 1.0)
+	aim.press(old)
+	aim.release(old)
+	t.check(aim.placed and aim.first == old and not rules.can_recast(0), "under the busy lock a click places the first spot of the two")
+	stub.t = 2.0
+	aim.press(P)
+	aim.release(P)
+	t.check(called == [[0, P]] and not aim.placed, "once it can take orders the click is one, and the half-placed first spot is dropped")
+	stub.open = false
+	var fresh := Vector2(7.0, 7.0)
+	aim.press(fresh)
+	aim.release(fresh)
+	t.check(aim.placed and aim.first == fresh and refused.is_empty(), "when the follow-up closes the next click starts a fresh placement, not a second click (%s)" % [refused])
+	aim.cancel()
+	# A follow-up that finds nothing is refused as its own reason, and never falls through to a cast.
+	stub.open = true
+	stub.take = false
+	var cooldown := rules.cooldown_left(0)
+	aim.press(P)
+	aim.release(P)
+	t.check(refused == [[0, "nobody"]] and called.size() == 1 and not aim.placed and is_equal_approx(rules.cooldown_left(0), cooldown),
+		"a follow-up that finds nothing is refused as nobody, with no cast and the cooldown untouched (%s)" % [refused])
+	aim.free()
 	rules.free()
 	stub.free()
 	_free(made)

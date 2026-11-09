@@ -85,6 +85,8 @@ var _place := {}
 var _spots: Array[Vector2] = []
 ## Those it has reached, and when: [person, effect clock].
 var _reached: Array = []
+## Where each reached person was bound before the first command laid its own spot: a second word's RETURN sends them back here.
+var _homes := {}
 var _sparkle: PixelParticles
 var _sky: QuadFx
 var _halo: QuadFx
@@ -225,6 +227,7 @@ func _command(p: Person, cmd: String, place: Dictionary, secs: float, t0: float,
 		obeyed += 1
 		order = obeyed
 		_reached.append([p, t])
+		_homes[p] = p.anchor  # before the command lays its own: a second word's RETURN sends them back to this
 	else:
 		_second_n += 1
 		order = _second_n
@@ -260,7 +263,7 @@ func _command(p: Person, cmd: String, place: Dictionary, secs: float, t0: float,
 				spot = free if free != Vector2.INF else spot
 			p.compel(spot, left, will, GOLD, false, &"", glyph)
 		"return":
-			var home := p.anchor
+			var home: Vector2 = _homes.get(p, p.anchor)
 			if p.soldier and p.post != Vector2.INF:
 				home = p.post
 			elif p.profile != null and p.profile.home != Vector2.INF:

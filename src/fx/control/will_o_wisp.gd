@@ -35,6 +35,8 @@ const LIGHT := Color(0.6, 1.0, 0.85)
 ## Procession (level 5): the light drifts to a new spot at a walk, and those it holds are sent after it this often while it moves.
 const PROCESSION_SPEED := DummyEnemy.WALK_SPEED
 const REGOAL_EVERY := 0.5
+## A moving light re-paths this many slices of the held in turn.
+const REGOAL_SLICES := 4
 
 var _light: QuadFx
 var _enthrall := false
@@ -59,6 +61,8 @@ var _procession := false
 var _offsets := {}
 var _shown := Vector2.ZERO
 var _regoal_in := 0.0
+## Procession's re-path ticks so far: each tick re-paths one slice of the held (the rest keep their updated spot), all of them when the light arrives.
+var _regoal_n := 0
 var _motes: PixelParticles
 
 
@@ -257,7 +261,12 @@ func _regoal() -> void:
 	if _enthrall:
 		for i in _spots.size():
 			_spots[i] += d
+		var arrived := light_at == _dest
+		var slice := _regoal_n % REGOAL_SLICES
+		_regoal_n += 1
+		var i := -1
 		for p in _held.keys():
+			i += 1
 			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.COMPELLED:
 				continue
 			if p.anchor != _held[p]:
@@ -268,6 +277,8 @@ func _regoal() -> void:
 			var spot: Vector2 = _held[p] + d
 			_held[p] = spot
 			p.anchor = spot
+			if not arrived and i % REGOAL_SLICES != slice:
+				continue  # one A* per person every REGOAL_SLICES ticks, not every tick
 			var goal: Vector2 = p.grid.nearest_walkable(spot, 6) if p.grid != null and not p.grid.walkable(spot) else spot
 			if goal != Vector2.INF:
 				p.redirect(goal)

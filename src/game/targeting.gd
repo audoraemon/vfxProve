@@ -427,7 +427,12 @@ func release(ground: Vector2) -> void:
 	aiming = false
 	# A power already running may take this click as a follow-up order (Called Bolts, Procession, Sleepwalk, Second Word, Turn the Tide):
 	# the slot stays focused for the next.
-	if _rules.recast(slot, _press, extra):
+	if _rules.can_recast(slot):
+		# The click is the live power's order, never a place of the slot's own aim: a half-placed two-click aim from before is dropped,
+		# and a follow-up that finds nothing is refused as such, never started as a cast.
+		placed = false
+		if not _rules.recast(slot, _press, extra):
+			_rules.refuse(slot, "nobody")
 		queue_redraw()
 		return
 	_rules.cast(slot, _press, extra)

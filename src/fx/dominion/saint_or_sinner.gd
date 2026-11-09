@@ -168,7 +168,7 @@ func _guard() -> void:
 func _fx_process(delta: float) -> void:
 	if t < T_CAST or chosen == null or not is_instance_valid(chosen):
 		return
-	if mode == "sinner" and _twist and not _passed and not chosen.is_alive():
+	if mode == "sinner" and _twist and not _passed and hunters > 0 and not chosen.is_alive():
 		_pass_mark()
 	if mode != "saint":
 		return

@@ -98,8 +98,9 @@ Grows: circle `RADIUS`, trance `TRANCE_TIME`, cooldown.
 | 4 | 6.2 | 37 | 51 | 4 |
 | 5 | 6.5 | 40 | 48 | 5 |
 
-**Twist -- Forgetting:** when the trance ends, everyone who was in it forgets what scared them: their fright and alarm
-drop and they go back to calm. (My call: the town's Notice is not touched; only the people's minds.)
+**Twist -- Sleepwalk:** while the trance holds, the player can send everyone in it to a spot: they walk there calmly,
+still sensing nothing, and stay in the trance until it ends. Costs no Might and no cooldown. (The user's pick,
+2026-11-09, replacing "Forgetting", which the trance already made almost invisible.)
 
 ### Saint or Sinner (`saint`, 3 Might, quiet, `src/fx/dominion/saint_or_sinner.gd`)
 Grows: circle `RADIUS`, span `SPAN`, cooldown.
@@ -184,7 +185,7 @@ Grows: region `REGION`, fighters `MAX_FIGHTERS`, length `DURATION`. Still once a
   on the base, -133947279; it is not this work).
 - Every listed stat is read through `PowerBook.stat()` instead of the constant; stats that live outside the effect
   (Madness's manager, `Person.SHAKE_OFF`, Voice's `COMMANDS` table) need the level carried to where they are read.
-- Four twists act **while the power is still running** (Held String, Procession, Second Word, Turn the Tide): the
+- Four twists act **while the power is still running** (Procession, Sleepwalk, Second Word, Turn the Tide): the
   player gives a follow-up order to a live cast. Build one shared way for a live cast to take a follow-up, rather than
   four. What the input is (clicking again with the power, a key) is the builder's call; keep it the same for all four
   and say it on the power's tooltip.

@@ -141,6 +141,7 @@ func _ring() -> void:
 
 ## Whoever goes for the chosen is set on by the nearest guards.
 func _guard() -> void:
+	var guard_cap := people.size() if _twist else GUARDS_PER_THREAT
 	for e in ctx.field.in_radius(chosen.ground_pos, GUARD_R):
 		var foe := e as Person
 		if foe == null or foe == chosen or not foe.is_alive() or foe.inside or people.has(foe):
@@ -148,7 +149,6 @@ func _guard() -> void:
 		if not (foe.mind == Person.Mind.FIGHT and foe.fight_target == chosen):
 			continue
 		var set := 0
-		var guard_cap := people.size() if _twist else GUARDS_PER_THREAT
 		var guards := people.duplicate()
 		guards.sort_custom(func(a: Person, b: Person) -> bool:
 			return a.ground_pos.distance_squared_to(foe.ground_pos) < b.ground_pos.distance_squared_to(foe.ground_pos))

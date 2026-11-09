@@ -83,19 +83,16 @@ static func run(t) -> void:
 	var made := _setup()
 	var ctx: FxContext = made[5]
 	var s := _scene(made)
-	var chosen: Person
-	var b: Person
-	var c: Person
-	var fx: SaintFx
-	made = _setup()
-	ctx = made[5]
-	s = _scene(made)
-	chosen = s.chosen
-	b = s.b
-	c = s.c
-	fx = _sinner(ctx, s.at, 5)
+	var chosen: Person = s.chosen
+	var b: Person = s.b
+	var c: Person = s.c
+	# E: a third bystander 2.5 from B and 4.5 from where the chosen falls, so a second pass would land on E.
+	var e: Person = (made[0] as Crowd).citizens[10]
+	e.ground_pos = chosen.ground_pos + Vector2(0.0, 4.5)
+	var fx := _sinner(ctx, s.at, 5)
 	t.check(fx.people.size() >= 6 and fx.passed_to == null, "Passed Mark: the sinner mob forms as ever (%d)" % fx.people.size())
 	_bystanders(fx, b, c)
+	_bystanders(fx, e, e)
 	_kill(made, chosen)
 	fx._process(0.1)
 	var all_on_b := true
@@ -106,7 +103,7 @@ static func run(t) -> void:
 		"Passed Mark: the dead chosen's noose goes to the nearest bystander, and every living hunter is set on them")
 	_kill(made, b)
 	fx._process(0.1)
-	t.check(fx.passed_to == b and fx.chosen == b, "and it is passed once: B's death passes nothing")
+	t.check(fx.passed_to == b and fx.chosen == b and e.mind != Person.Mind.FIGHT, "and it is passed once: B's death, with E 2.5 away, passes nothing")
 	fx.free()
 	_done(made)
 
@@ -146,7 +143,6 @@ static func run(t) -> void:
 		s = _scene(made)
 		chosen = s.chosen
 		var crowd: Crowd = made[0]
-		var extra_guards: Array[Person] = []
 		for k in 2:
 			var g: Person = crowd.citizens[8 + k]
 			g.ground_pos = chosen.ground_pos + Vector2(1.0, 0.4 * float(k))

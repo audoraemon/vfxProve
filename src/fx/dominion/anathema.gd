@@ -119,7 +119,7 @@ func _spread() -> void:
 	var first := buildings.duplicate()
 	var fresh: Array[Structure] = []
 	for m in first:
-		if not is_instance_valid(m):
+		if not is_instance_valid(m) or m.destroyed:
 			continue
 		for s in ctx.env.structures():
 			if not is_instance_valid(s) or s.destroyed or not s.role in MARKED or buildings.has(s) or fresh.has(s):
@@ -138,7 +138,7 @@ func _spread() -> void:
 		var folk: Array[Person] = []
 		for e in ctx.field.alive():
 			var p := e as Person
-			if p == null:
+			if p == null or p.inside:
 				continue
 			for s in fresh:
 				if s.distance_to(p.ground_pos) <= SPREAD_R:

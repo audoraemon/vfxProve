@@ -69,6 +69,9 @@ static func run(t) -> void:
 		var cit: Structure = s.cit
 		var citizen: Person = crowd.citizens[0]
 		citizen.ground_pos = b.center() + Vector2(0.0, 2.0)
+		var indoors: Person = crowd.citizens[1]
+		indoors.ground_pos = b.center() + Vector2(0.5, 2.0)
+		indoors.inside = true
 		var fx: AnathemaFx = FxTimeline.cast(load("res://src/fx/dominion/anathema.gd"), ctx, s.click,
 			{"mode": "hallowed" if mode == "hallowed" else "cursed", "level": level})
 		fx._process(AnathemaFx.T_CAST + 0.05)
@@ -77,6 +80,7 @@ static func run(t) -> void:
 			and not fx.buildings.has(b) and not fx.buildings.has(c), "%s: the first marks are today's (A marked; B, C beyond the district)" % mode)
 		fx._process(AnathemaFx.T_CAST + AnathemaFx.SPREAD_AT - 1.1)
 		t.check(crowd.structure_mark(b) == &"" and fx.spread.is_empty(), "%s: just before the spread B is unmarked" % mode)
+		var moved_before := fx.moved
 		crowd._clock += AnathemaFx.SPREAD_AT
 		fx._process(0.2)
 		if mode == "level4":
@@ -85,7 +89,6 @@ static func run(t) -> void:
 			t.check(crowd.structure_mark(b) == kind and fx.spread.has(b) and fx.buildings.has(b), "%s: the mark leaps to B (2.5 from A) (spread %d, buildings %d, B %s)" % [mode, fx.spread.size(), fx.buildings.size(), crowd.structure_mark(b)])
 			t.check(crowd.structure_mark(c) == &"" and crowd.structure_mark(d) == &"" and crowd.structure_mark(cit) == &"",
 				"%s: not to C (3.5 off), not on to D (the spread ones do not spread), not to the Citadel" % mode)
-			crowd._clock += AnathemaFx.SPAN - AnathemaFx.SPREAD_AT - 0.6
 			var span := fx.lv_span
 			crowd._clock = span - 0.5
 			t.check(crowd.structure_mark(b) == kind and crowd.structure_mark(a) == kind, "%s: B holds until the span the first marks do" % mode)
@@ -94,5 +97,6 @@ static func run(t) -> void:
 		if mode == "hallowed":
 			t.check(citizen.compel_glyph == DominionParts.HALO and citizen.mind == Person.Mind.COMPELLED and citizen.goal().distance_to(b.center()) < 4.0,
 				"hallowed: a citizen 1.0 from B is sent to it at the spread")
+			t.check(indoors.mind != Person.Mind.COMPELLED and fx.moved - moved_before == 1, "hallowed: one already inside near B is not sent again (%d moved)" % (fx.moved - moved_before))
 		fx.free()
 		_done(made)

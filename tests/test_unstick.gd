@@ -2,7 +2,9 @@ extends RefCounted
 ## Nobody stays stuck. An animal runs the streets' way round a building (Animal.route_to()) where the straight walk
 ## (walk_to()) gives up at the wall; a hound of the other side (Visitors) chases its prey round one. A person standing
 ## in a gap the walk grid has closed, rocking against a margin on the spot, steps back onto open ground on the
-## footprints alone and walks on (Person's stuck watchdog); whoever is meant to stand still is never moved.
+## footprints alone and walks on (Person's stuck watchdog); whoever is meant to stand still is never moved. And nobody
+## walks into such a gap in the first place: every straight walk with no route (a drift about its anchor, a fleeing
+## scurry) goes only where a straight walk is open ground (Person.straight_clear()).
 
 const DT := 1.0 / 60.0
 ## Aldermere: a gap between a house and an oak, ~0.31 across, where the stall probe found a citizen rocking for 85 s on
@@ -10,6 +12,15 @@ const DT := 1.0 / 60.0
 const TRAP := Vector2(5.73, -7.37)
 const WAYPOINT := Vector2(5.75, -6.25)
 const GOAL := Vector2(10.6, -9.2)
+## The gap's east mouth, on open ground, level with the trap: walked straight west from here a body keeps clear of both
+## margins all the way into the gap.
+const MOUTH := Vector2(6.75, -7.37)
+## Open cells round the trap that drifters are anchored on.
+## Aldermere: a street spot by the tavern, and a home the stall probe saw a citizen there fail to route to.
+const TAVERN_STREET := Vector2(-4.25, 2.25)
+const SHUT_HOME := Vector2(-12.8, 14.8)
+const AROUND: Array[Vector2] = [Vector2(6.75, -7.37), Vector2(6.75, -7.25), Vector2(7.25, -7.25), Vector2(4.25, -7.75),
+	Vector2(5.75, -6.25), Vector2(5.75, -5.75)]
 
 
 static func run(t) -> void:
@@ -19,6 +30,10 @@ static func run(t) -> void:
 	var grid := WalkGrid.new().setup(env, town)
 	_route(t, env, grid)
 	_people(t, env, grid)
+	_straight(t, env, grid)
+	_drifters(t, env, grid)
+	_scurries(t, env, grid)
+	_pocket(t, env, grid)
 	town.teardown()
 	_hound(t)
 
@@ -240,3 +255,229 @@ static func _people(t, env: EnvironmentField, grid: WalkGrid) -> void:
 		"queued, held, asleep, held back at a gate or standing at a post, nobody is unstuck in 8 s (%d unsticks)" % (Person.unsticks - count))
 	for s in still:
 		s.free()
+
+
+static func _person_at(env: EnvironmentField, grid: WalkGrid, at: Vector2, seed_value: int, is_soldier := false) -> Person:
+	var p := Person.new()
+	p.rng.seed = seed_value
+	p.bounds = TownLayout.MAP
+	p.block_env = env
+	p.blocked = env.blocked
+	p.env = env
+	p.setup_person(is_soldier, at, grid)
+	return p
+
+
+const LINE := 1.5
+
+
+## The first cell centre (scanning the map) with an open straight walk LINE long east of it: no closed cell, no margin.
+static func _open_ground(env: EnvironmentField, grid: WalkGrid) -> Vector2:
+	var m := City.current().map()
+	var y := m.position.y + 4.25
+	while y < m.end.y - 4.0:
+		var x := m.position.x + 4.25
+		while x < m.end.x - 6.0:
+			var a := Vector2(x, y)
+			var ok := grid.walkable(a) and grid.clear_line(a, a + Vector2(LINE, 0.0))
+			var k := 0
+			while ok and k <= 40:
+				ok = not env.blocked(a + Vector2(LINE * float(k) / 40.0, 0.0), DummyEnemy.STEP_MARGIN)
+				k += 1
+			if ok:
+				return a
+			x += 0.5
+		y += 0.5
+	return Vector2.INF
+
+
+## A straight walk is clear only over ground a body can really cross.
+static func _straight(t, env: EnvironmentField, grid: WalkGrid) -> void:
+	var margins_clear := true
+	for k in 41:
+		margins_clear = margins_clear and not env.blocked(MOUTH.lerp(TRAP, float(k) / 40.0), DummyEnemy.STEP_MARGIN)
+	t.check(grid.walkable(MOUTH) and not env.blocked(MOUTH) and margins_clear and not grid.walkable(TRAP),
+		"the gap's mouth is open ground, and the walk from it into the trap keeps a body's margin off the house and the oak all the way (the step rule would let it in)")
+	var p := _person_at(env, grid, MOUTH, 11)
+	t.check(not p.straight_clear(TRAP), "straight_clear: from the mouth into the gap is not clear -- the walk grid has it closed")
+	t.check(not p.straight_clear(MOUTH + Vector2(-2.0, 0.0)), "nor straight through the gap and out beyond it")
+	var a := _open_ground(env, grid)
+	t.check(a != Vector2.INF, "open ground to walk on (%s)" % a)
+	if a != Vector2.INF:
+		p.ground_pos = a
+		t.check(p.straight_clear(a + Vector2(LINE, 0.0)) and p.straight_clear(a + Vector2(LINE * 0.5, 0.0)),
+			"on open ground a straight walk is clear")
+		t.check(p.straight_clear(a), "and a walk of no length (standing) is clear")
+	# Already in the gap (shoved there): it may walk out along the gap onto open ground, but not on into another closed cell.
+	p.ground_pos = TRAP
+	t.check(p.straight_clear(MOUTH), "one already standing in the gap may walk straight out of it onto open ground")
+	t.check(not p.straight_clear(TRAP + Vector2(-0.3, 0.0)), "but not on to another closed cell of it")
+	# Nothing to ask: anything goes.
+	var bare := Person.new()
+	bare.ground_pos = MOUTH
+	t.check(bare.straight_clear(TRAP), "with no grid and no field to ask, every straight walk is clear")
+	bare.free()
+	p.free()
+
+
+## People anchored all round the trap, milling about their spot for a minute, never once stand in a cell the grid has
+## closed -- and so are never stuck there.
+static func _drifters(t, env: EnvironmentField, grid: WalkGrid) -> void:
+	var before := Person.unsticks
+	var people: Array[Person] = []
+	var open := true
+	for i in AROUND.size():
+		open = open and grid.walkable(AROUND[i]) and not env.blocked(AROUND[i])
+		for s in 2:
+			people.append(_person_at(env, grid, AROUND[i], 100 + i * 7 + s))
+	t.check(open, "the drifters' anchors round the trap are open ground")
+	var in_closed := 0
+	var where := Vector2.INF
+	var moved := 0.0
+	var near_trap := INF
+	for k in roundi(60.0 / (DT * 2.0)):
+		for p in people:
+			var was := p.ground_pos
+			p.tick(DT * 2.0)
+			moved += was.distance_to(p.ground_pos)
+			near_trap = minf(near_trap, p.ground_pos.distance_to(TRAP))
+			if not grid.walkable(p.ground_pos):
+				in_closed += 1
+				where = p.ground_pos
+	t.check(moved > float(people.size()) * 5.0, "%d calm citizens anchored round the trap mill about for 60 s (%.0f units walked between them)"
+		% [people.size(), moved])
+	t.check(in_closed == 0, "and none ever stands in a cell the walk grid has closed (%d ticks in one, last at %s; came within %.2f of the trap)"
+		% [in_closed, where, near_trap])
+	t.check(Person.unsticks == before, "so the stuck watchdog never has to step one out (%d unsticks)" % (Person.unsticks - before))
+	for p in people:
+		p.free()
+
+
+## A fleeing person's scurry (a hop with no route) lands only where a straight walk gets to: never in a closed cell, never
+## across a footprint -- here with the danger behind it and the gap (or a house, or an oak) ahead, all round the trap.
+static func _scurries(t, env: EnvironmentField, grid: WalkGrid) -> void:
+	var hops := 0
+	var bad := 0
+	var stood := 0
+	var old_bad := 0
+	var n := 0
+	for at in AROUND:
+		for d in 8:
+			var away := Vector2.RIGHT.rotated(TAU * float(d) / 8.0)
+			var p := _person_at(env, grid, at, 300 + n)
+			n += 1
+			p.mind = Person.Mind.FLEE
+			p._threat = at - away
+			for i in 12:
+				p.ground_pos = at
+				p._target = at
+				var replay := RandomNumberGenerator.new()
+				replay.state = p.rng.state
+				p._scurry()
+				# The rule before: the first of the three turns whose end cell is open.
+				var dir := away.rotated(replay.randf_range(-0.8, 0.8))
+				for turn in [0.0, PI * 0.5, -PI * 0.5]:
+					var was := at + dir.rotated(turn) * Person.SCURRY
+					if grid.walkable(was):
+						old_bad += 0 if _crossable(env, grid, at, was) else 1
+						break
+				if p._target == at:
+					stood += 1
+					continue
+				hops += 1
+				bad += 0 if _crossable(env, grid, at, p._target) else 1
+			p.free()
+	t.check(old_bad > 0, "before: the old hop (only its end cell checked) went through a closed cell or a footprint %d times here" % old_bad)
+	t.check(hops > 0 and bad == 0, "a scurry hops only where a straight walk gets to: %d hops, %d through a closed cell or a footprint (%d times it kept its target)"
+		% [hops, bad, stood])
+
+
+## Every 0.02 along the walk: an open cell, outside every footprint.
+static func _crossable(env: EnvironmentField, grid: WalkGrid, a: Vector2, b: Vector2) -> bool:
+	var n := maxi(ceili(a.distance_to(b) / 0.02), 1)
+	for k in range(1, n + 1):
+		var q := a.lerp(b, float(k) / float(n))
+		if not grid.walkable(q) or env.blocked(q, 0.0):
+			return false
+	return true
+
+
+## Hemmed in (a ring of closed cells round the one it stands in): no drift is open, so it stands -- every time, with the
+## same two numbers drawn for the spot as ever.
+static func _pocket(t, env: EnvironmentField, grid: WalkGrid) -> void:
+	var a := _open_ground(env, grid)
+	if a == Vector2.INF:
+		return
+	var c := grid.world_to_id(a)
+	var closed: Array[Vector2i] = []
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			var id := c + Vector2i(dx, dy)
+			if maxi(absi(dx), absi(dy)) >= 1 and not grid.grid.is_point_solid(id):
+				grid.grid.set_point_solid(id, true)
+				closed.append(id)
+	var centre := grid.id_to_world(c)
+	var p := _person_at(env, grid, centre, 21)
+	var stood := 0
+	var would_leave := 0
+	var two_draws := true
+	var tries := 40
+	for i in tries:
+		var replay := RandomNumberGenerator.new()
+		replay.state = p.rng.state
+		p._drift()
+		var off := Vector2(replay.randf_range(-Person.CALM_SPREAD, Person.CALM_SPREAD), replay.randf_range(-Person.CALM_SPREAD, Person.CALM_SPREAD))
+		two_draws = two_draws and replay.state == p.rng.state
+		var was := grid.nearest_walkable(centre + off, 3)
+		if was != Vector2.INF and grid.world_to_id(was) != c:
+			would_leave += 1
+		if p._target == p.ground_pos:
+			stood += 1
+	t.check(would_leave > 0, "before: hemmed in, the drawn drift spot lay outside the ring %d times in %d" % [would_leave, tries])
+	t.check(stood == tries, "with no drift open, it stands where it is (%d of %d drifts)" % [stood, tries])
+	t.check(two_draws, "and every drift draws its two numbers and no more, whatever it tried")
+	var still := true
+	for k in roundi(10.0 / (DT * 2.0)):
+		p.tick(DT * 2.0)
+		still = still and p.ground_pos == centre
+	t.check(still, "ten seconds on, it has not moved off its spot")
+	p.free()
+	for id in closed:
+		grid.grid.set_point_solid(id, false)
+	# Out of its street with its home across the houses: a calm citizen walks home by the streets, never straight at it.
+	var straight := 0
+	var routed := 0
+	var wrong := 0
+	for i in 20:
+		var q := _person_at(env, grid, WAYPOINT, 40 + i)
+		q.anchor = GOAL
+		q._drift()
+		if q.has_goal():
+			routed += 1
+			wrong += 0 if q.goal() == GOAL and not q._path.is_empty() else 1
+		else:
+			straight += 1
+			wrong += 0 if q.straight_clear(q._target) and q._target.distance_to(GOAL) <= Person.CALM_SPREAD * 1.5 + 1.5 else 1
+		q.free()
+	t.check(routed > 0 and wrong == 0, "far from home with no straight way there, a calm citizen walks home by a route (%d routed, %d drifted straight, %d otherwise)"
+		% [routed, straight, wrong])
+	# Home in a corner the grid has shut off (the stall probe's: no route in from the street by the tavern): it mills
+	# about where it stands instead.
+	var street := TAVERN_STREET
+	t.check(grid.walkable(street) and grid.path(street, SHUT_HOME).is_empty(), "(no route from the street by the tavern to that home)")
+	var milled := 0
+	var held := 0
+	for i in 20:
+		var q := _person_at(env, grid, street, 70 + i)
+		q.anchor = SHUT_HOME
+		for k in 2:
+			q.ground_pos = street
+			q._drift()
+			var ok := not q.has_goal() and q.straight_clear(q._target)
+			held += 0 if ok else 1
+			# Asked once, the anchor with no route is remembered: the second drift mills about its feet straight away.
+			if ok and q._no_route_to == SHUT_HOME and q._target != q.ground_pos and q._target.distance_to(street) <= Person.CALM_SPREAD * 1.5 + 1.5:
+				milled += 1
+		q.free()
+	t.check(milled > 0 and held == 0, "with no route home, a calm citizen mills about where it stands, open ground only, holding no goal (%d of 40 drifts milled, %d otherwise)"
+		% [milled, held])

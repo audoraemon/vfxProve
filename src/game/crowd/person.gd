@@ -106,6 +106,8 @@ const DASH := Vector2(1.6, 3.2)
 const DASH_VEER := 0.6
 ## While its route out is being planned a fleeing person scurries in hops this long, without path-finding.
 const SCURRY := 0.9
+## How finely straight_clear() looks along a straight walk (ground units).
+const STRAIGHT_SAMPLE := 0.1
 ## Chance per think that a running person stumbles, and how long they are down for.
 const STUMBLE_CHANCE := 0.006
 const STUMBLE_SECONDS := 0.45
@@ -261,6 +263,10 @@ var inside := false
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
+## An anchor a calm citizen's drift found no route to, and the grid's version then (_drift()): not asked for again until
+## it has set out on another route (set_goal()) or the grid changes.
+var _no_route_to := Vector2.INF
+var _no_route_version := -1
 ## The city's water (CityDef.rivers()), read again whenever the city changes: nobody steps off dry ground into it
 ## (_step_blocked()).
 static var _rivers: Array[Rect2] = []
@@ -729,6 +735,7 @@ func set_goal(g: Vector2) -> void:
 		return  # a sleeper goes nowhere (Curfew)
 	_goal = g
 	_leg = 0
+	_no_route_to = Vector2.INF
 	_path = grid.path(ground_pos, g) if grid != null else PackedVector2Array()
 	_repath_in = REPATH
 	_idle = 0.0
@@ -808,16 +815,132 @@ func _pick_target() -> void:
 	_drift()
 
 
-## A small aimless step: citizens milling about their street, soldiers shifting at their post.
+## A small aimless step: citizens milling about their street, soldiers shifting at their post. Walked straight, with no
+## route, so it goes only where a straight walk is open ground (straight_clear()): the spot drawn about the anchor, else
+## that spot turned a quarter, a half and three quarters about the anchor, else half and then a quarter of the way to it.
+## None open: a calm citizen out of its street (farther from its anchor than twice the spread) walks back to the anchor
+## by a route (set_goal()) -- or, with no route there, mills about where it stands (the same spot and its turns, about its
+## feet); anyone else, or with nothing open, stands, and the next drift tries again. The spot is drawn as it always was (two
+## draws), so the alternatives cost the random sequence nothing.
 func _drift() -> void:
 	var spread := POST_SPREAD
 	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP or mind == Mind.CONFUSED:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
-	var to := anchor + Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
-	if grid != null:
-		var free := grid.nearest_walkable(to, 3)
-		to = free if free != Vector2.INF else ground_pos
-	_target = to
+	var off := Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
+	var to := _drift_spot(anchor + off)
+	if straight_clear(to):
+		_target = to
+		return
+	for turn in [PI * 0.5, PI, PI * 1.5]:
+		var other := _drift_spot(anchor + off.rotated(turn))
+		if straight_clear(other):
+			_target = other
+			return
+	for part in [0.5, 0.25]:
+		var short := ground_pos.lerp(to, part)
+		if straight_clear(short):
+			_target = short
+			return
+	if mind == Mind.CALM and ground_pos.distance_to(anchor) > spread * 2.0:
+		# Out of its street (a stroll, a goal given up at a doorstep) with no straight way back: home by the streets.
+		if grid == null or anchor != _no_route_to or grid.version != _no_route_version:
+			set_goal(anchor)
+			if not _path.is_empty():
+				return
+			# No route there (its anchor lies in a corner the walk grid has shut off): not asked again until it has
+			# walked a route somewhere else or the grid changes.
+			_goal = Vector2.INF
+			_no_route_to = anchor
+			_no_route_version = grid.version if grid != null else -1
+		# It mills about where it stands instead.
+		for turn in [0.0, PI * 0.5, PI, PI * 1.5]:
+			var here := _drift_spot(ground_pos + off.rotated(turn))
+			if straight_clear(here):
+				_target = here
+				return
+	_target = ground_pos
+
+
+## A drift's spot on open ground: `to`, or the nearest open cell within 3 (where it stands when there is none).
+func _drift_spot(to: Vector2) -> Vector2:
+	if grid == null:
+		return to
+	var free := grid.nearest_walkable(to, 3)
+	return free if free != Vector2.INF else ground_pos
+
+
+## Whether a straight walk from where it stands to `to` stays on ground a body can really cross: it touches no cell the
+## walk grid has closed (every cell the line passes through, corners too -- WalkGrid.clear_line()'s half-cell samples can
+## step over a corner) -- which rules out every gap beside a house or a tree the grid shuts but a building's margin lets a
+## body into -- and, looked at every STRAIGHT_SAMPLE, no building's margin as its steps see it (step_margin). One already
+## standing in a closed cell or a margin (put there by a shove, a fold, a spawn) may walk out of it, as _step_blocked()
+## lets it step out of a margin: the stretch before the walk is out of it does not count, any after does -- but on the way
+## out of a margin it never steps into a footprint it was not already in, and it must end on an open cell. A walk of no
+## length is clear. True with neither a grid nor a field to ask (each is asked only when there).
+func straight_clear(to: Vector2) -> bool:
+	var span := to - ground_pos
+	if span.length_squared() < 0.000001:
+		return true
+	if grid != null and not _cells_open(ground_pos, to):
+		return false
+	var n := maxi(ceili(span.length() / STRAIGHT_SAMPLE), 1)
+	var in_margin := block_env != null and block_env.blocked(ground_pos, step_margin)
+	var in_foot := in_margin and block_env.blocked(ground_pos, 0.0)
+	for k in range(1, n + 1):
+		var p := ground_pos + span * (float(k) / float(n))
+		if block_env != null:
+			if not block_env.blocked(p, step_margin):
+				in_margin = false
+				in_foot = false
+			elif not in_margin:
+				return false
+			elif block_env.blocked(p, 0.0):
+				if not in_foot:
+					return false
+			else:
+				in_foot = false
+	return true
+
+
+## straight_clear()'s grid half: every walk-grid cell the line from `a` to `b` passes through is open (where the line runs
+## exactly through a cell corner, both cells beside it as well), but for a first stretch of closed cells when `a` is in
+## one; and the cell of `b` is open.
+func _cells_open(a: Vector2, b: Vector2) -> bool:
+	var g := grid.grid
+	var id := grid.world_to_id(a)
+	var last := grid.world_to_id(b)
+	var off := not (g.is_in_boundsv(id) and not g.is_point_solid(id))
+	var span := b - a
+	var sx := 1 if span.x > 0.0 else -1
+	var sy := 1 if span.y > 0.0 else -1
+	var cell := WalkGrid.CELL
+	var t_x := INF if span.x == 0.0 else ((float(id.x + (1 if sx > 0 else 0)) * cell) - a.x) / span.x
+	var t_y := INF if span.y == 0.0 else ((float(id.y + (1 if sy > 0 else 0)) * cell) - a.y) / span.y
+	var d_x := INF if span.x == 0.0 else cell / absf(span.x)
+	var d_y := INF if span.y == 0.0 else cell / absf(span.y)
+	var guard := absi(last.x - id.x) + absi(last.y - id.y) + 2
+	while id != last and guard > 0:
+		guard -= 1
+		var through: Array[Vector2i] = []
+		if absf(t_x - t_y) < 0.000001:
+			through = [id + Vector2i(sx, 0), id + Vector2i(0, sy)]
+			id += Vector2i(sx, sy)
+			t_x += d_x
+			t_y += d_y
+		elif t_x < t_y:
+			id.x += sx
+			t_x += d_x
+		else:
+			id.y += sy
+			t_y += d_y
+		through.append(id)
+		for c: Vector2i in through:
+			if g.is_in_boundsv(c) and not g.is_point_solid(c):
+				off = false
+			elif not off:
+				return false
+	# Still in the closed cells at `b`: no way out along this line (nor, never reaching `b`'s cell, any line at all).
+	return not off and id == last
 
 
 ## The stuck watchdog (UNSTICK_AFTER): after the step, see whether this walker has got nearer its waypoint; stuck, it
@@ -1872,13 +1995,14 @@ func _dash() -> void:
 
 
 ## Keep running while the route out is still being planned: a short straight hop away from the danger. No
-## path-finding -- the stagger exists so a whole town does not path-find in one frame.
+## path-finding -- the stagger exists so a whole town does not path-find in one frame. Only a hop a straight walk can
+## really make (straight_clear()): away, else a quarter turn either side; none, and it keeps the target it had.
 func _scurry() -> void:
 	var away := ground_pos - _threat if _threat != Vector2.INF else Vector2.RIGHT.rotated(rng.randf() * TAU)
 	var dir := (away.normalized() if away.length() > 0.01 else Vector2.RIGHT).rotated(rng.randf_range(-0.8, 0.8))
 	for turn in [0.0, PI * 0.5, -PI * 0.5]:
 		var to := ground_pos + dir.rotated(turn) * SCURRY
-		if grid == null or grid.walkable(to):
+		if straight_clear(to):
 			_target = to
 			return
 

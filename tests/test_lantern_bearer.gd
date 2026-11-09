@@ -5,8 +5,9 @@ extends RefCounted
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const LW := preload("res://tests/test_lantern.gd")
 const DT := 0.05
-## Seconds after the set-out that escorts coming in from where they stood take to fall into file.
-const SETTLE := 4.0
+## Seconds after the set-out that escorts coming in from where they stood take to fall into file (5: an escort who starts
+## across the Bearer's line walks round him by the streets; drifts that keep off shut cells moved the starting spots, 2026-11-09).
+const SETTLE := 5.0
 
 
 static func run(t) -> void:

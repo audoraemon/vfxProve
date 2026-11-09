@@ -206,6 +206,8 @@ var _town: Town
 var _grid: WalkGrid
 var _parent: Node2D
 var _rng := RandomNumberGenerator.new()
+## True while spawn() deals the people out: _spot_near() leaves points in pockets where they fall until _onto_streets().
+var _spawning := false
 ## Gate -> the crowd clock time it may pass someone again.
 var _gate_next := {}
 ## Gate -> its queue spots, nearest the doorway first. Built when the town is first asked about, per gate.
@@ -323,6 +325,7 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 	for s in _env.structures():
 		if s.role == &"house":
 			homes.append(s)
+	_spawning = true
 	var anchors := _snapped_anchors()
 	var plan := _district_plan(City.current().spawn_roles(), citizen_count, anchors)
 	var at_home := 0
@@ -350,6 +353,8 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 	gate_interval = City.current().gate_interval()
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
+	_spawning = false
+	_onto_streets(anchors)
 	_assign_corps()
 	_start_loops()
 	var no_stalls: Array[Vector2] = []
@@ -562,14 +567,52 @@ func _job_profile(plan: Array, anchors: Dictionary) -> CitizenProfile:
 	return pr
 
 
-## Walkable ground within `spread` of `about`, or the nearest walkable point to it.
+## Walkable ground within `spread` of `about`, or the nearest walkable point to it; once the people are spawned, either
+## moved to the nearest ground with a route to the streets when it lies in a pocket the grid could not join
+## (WalkGrid.on_streets()), drawing no more numbers for that.
 func _spot_near(about: Vector2, spread: float) -> Vector2:
 	for attempt in 8:
 		var candidate := about + Vector2(_rng.randf_range(-spread, spread), _rng.randf_range(-spread, spread))
 		if _grid.walkable(candidate):
-			return candidate
+			return candidate if _spawning else _on_streets(candidate)
 	var free := _grid.nearest_walkable(about)
-	return free if free != Vector2.INF else about
+	if free == Vector2.INF:
+		return about
+	return free if _spawning else _on_streets(free)
+
+
+## The people just spawned and the city's `anchors` (as _snapped_anchors() made them), every point in a pocket the grid
+## could not join moved to the nearest ground with a route to the streets: each citizen's home, work and leisure spots,
+## each person's anchor (and where it stands, if there). Run once the spawn has dealt everyone out, so the spawn draws the
+## same numbers as it always did and only the points in pockets move.
+func _onto_streets(anchors: Dictionary) -> void:
+	for k in anchors:
+		var pts: Array[Vector2] = anchors[k]
+		for i in pts.size():
+			pts[i] = _on_streets(pts[i])
+	for p: Person in citizens + soldiers:
+		var a := _on_streets(p.anchor)
+		if a != p.anchor:
+			if p.ground_pos == p.anchor:
+				p.ground_pos = a
+				p._target = a
+			p.anchor = a
+		var pr := p.profile
+		if pr == null:
+			continue
+		pr.home = _on_streets(pr.home)
+		if pr.works():
+			pr.work = _on_streets(pr.work)
+		for i in pr.leisure.size():
+			pr.leisure[i] = _on_streets(pr.leisure[i])
+
+
+## `g`, or the nearest ground with a route to the streets when it lies in a pocket off them (`g` when there is none).
+func _on_streets(g: Vector2) -> Vector2:
+	if _grid.on_streets(g):
+		return g
+	var w := _grid.nearest_walkable(g, WalkGrid.SNAP_CELLS, true)
+	return w if w != Vector2.INF else g
 
 
 func _add_person(is_soldier: bool, at: Vector2) -> Person:

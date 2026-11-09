@@ -14,7 +14,15 @@ extends SceneTree
 ##             kept and the 40 longest printed, with what the person's plan looked like while it stood; the summary
 ##             counts the stuck watchdog's unsticks in the run (Person.unsticks).
 ## Usage: godot --headless --path . --fixed-fps 60 -s tools/dev/stall_probe.gd -- [--city=aldermere|capital]
-##        [--part=cells|hounds|people|people_plain|people_far|all] [--seconds=N]
+##        [--part=cells|hounds|people|people_plain|people_far|pockets|all] [--seconds=N]
+## A fifth part, --part=pockets, lists the walk grid's 4-connected regions of open cells (the grid takes a diagonal
+## step only where both its sides are open, so these are exactly what a route can join) other than the largest, the
+## street network: each one's size, centre and nearest structure, then every city anchor (CityDef.anchors(), raw and
+## snapped as Crowd snaps them) and every spawned person's anchor, home, work and leisure point that lies in one.
+## Its total line counts the pockets, their cells, and the points in them. WalkGrid joins every pocket it can as it is
+## set up (_join_pockets()) and leaves the rest, which the crowd keeps off (WalkGrid.on_streets()); each one it found is
+## printed first as `STALL pocket_fixed`. --unjoined builds every part's grid without that (WalkGrid.setup(.., false)):
+## the town as it was before.
 ## A fourth part, --part=spot --at=x,y [--to=x,y], prints the grid around one point (to look at a spot a part found):
 ## the 7x7 cells about it (# solid, . open, m open but its centre inside a margin, @ the point's cell), what blocks
 ## there, nearest_walkable(), and the head of the path to --to with whether a straight step to its first waypoint
@@ -68,6 +76,7 @@ var _finished := false
 var _later: Array[Node] = []
 var _spot_at := Vector2.INF
 var _spot_to := Vector2.INF
+var _join := true
 
 
 func _initialize() -> void:
@@ -82,6 +91,8 @@ func _initialize() -> void:
 			_spot_at = _vec(a.get_slice("=", 1))
 		elif a.begins_with("--to="):
 			_spot_to = _vec(a.get_slice("=", 1))
+		elif a == "--unjoined":
+			_join = false
 		elif a.begins_with("--seconds="):
 			_hound_s = float(a.get_slice("=", 1))
 			_people_s = _hound_s
@@ -99,6 +110,8 @@ func _initialize() -> void:
 		_run_hounds()
 	if "spot" in _parts:
 		_run_spot()
+	if "pockets" in _parts:
+		_run_pockets()
 	for p in _parts:
 		if p.begins_with("people_"):
 			_phases.append(p.trim_prefix("people_"))
@@ -148,7 +161,7 @@ func _build(in_tree: bool) -> Dictionary:
 	env.lights = LightField.new()
 	var town := Town.new()
 	town.build(env)
-	var grid := WalkGrid.new().setup(env, town)
+	var grid := WalkGrid.new().setup(env, town, _join)
 	var field := EnemyField.new()
 	field.env = env
 	field.lights = env.lights
@@ -656,6 +669,99 @@ func _end_people() -> void:
 	_summaries.append(line)
 	_tear_down(_w)
 	_w = {}
+
+
+# --- Pockets: open ground with no route to the streets -------------------------------------
+
+## Every point a person is sent to or kept by, as [label, point]: the city's anchors (raw and snapped) and each spawned
+## person's anchor, home, work and leisure points.
+static func people_points(grid: WalkGrid, crowd: Crowd) -> Array:
+	var out: Array = []
+	var raw := City.current().anchors()
+	for k in raw:
+		for g: Vector2 in raw[k]:
+			var w := g if grid.on_streets(g) else grid.nearest_walkable(g, WalkGrid.SNAP_CELLS, true)
+			out.append(["anchor/%s raw=(%.2f,%.2f)" % [k, g.x, g.y], w])
+	for p: Person in crowd.citizens + crowd.soldiers:
+		var who := "soldier" if p.soldier else "citizen"
+		out.append(["%s#%d anchor" % [who, p.stagger], p.anchor])
+		var pr: CitizenProfile = p.profile
+		if pr == null:
+			continue
+		out.append(["%s#%d home" % [who, p.stagger], pr.home])
+		if pr.works():
+			out.append(["%s#%d work" % [who, p.stagger], pr.work])
+		for g in pr.leisure:
+			out.append(["%s#%d leisure" % [who, p.stagger], g])
+	return out
+
+
+func _run_pockets() -> void:
+	var b := _build(false)
+	var env: EnvironmentField = b.env
+	var grid: WalkGrid = b.grid
+	var joined := 0
+	for r: Array in grid.pockets:
+		var c: Vector2 = r[1]
+		joined += 1 if int(r[2]) >= 0 else 0
+		print("STALL pocket_fixed cells=%d centre=(%.2f,%.2f) %s near=%s" % [r[0], c.x, c.y,
+			"joined links=%d" % r[2] if int(r[2]) >= 0 else "left (no way out a body fits)", _near_desc(env, c)])
+	var regs := grid.regions()
+	var main := {}
+	for id: Vector2i in regs[0]:
+		main[id] = true
+	var where := {}  # cell -> pocket index (1-based)
+	var cells := 0
+	for i in range(1, regs.size()):
+		var comp: Array = regs[i]
+		cells += comp.size()
+		var sum := Vector2.ZERO
+		var lo := Vector2(INF, INF)
+		var hi := -lo
+		for id: Vector2i in comp:
+			where[id] = i
+			var c := grid.id_to_world(id)
+			sum += c
+			lo = lo.min(c)
+			hi = hi.max(c)
+		var centre := sum / float(comp.size())
+		print("STALL pocket i=%d cells=%d centre=(%.2f,%.2f) box=(%.2f,%.2f)-(%.2f,%.2f) near=%s"
+			% [i, comp.size(), centre.x, centre.y, lo.x, lo.y, hi.x, hi.y, _near_desc(env, centre)])
+	var inside := 0
+	for r: Array in people_points(grid, b.crowd):
+		var g: Vector2 = r[1]
+		if g == Vector2.INF:
+			continue
+		var id := grid.world_to_id(g)
+		if main.has(id):
+			continue
+		inside += 1
+		print("STALL pocket_point %s at=(%.2f,%.2f) pocket=%s" % [r[0], g.x, g.y, where.get(id, "solid")])
+	# The city's anchors moved onto the grid: how far, and whether any was moved across the town wall.
+	var snap_max := 0.0
+	var snap_out := 0
+	var town := City.current().town()
+	var raw := City.current().anchors()
+	for k in raw:
+		for g: Vector2 in raw[k]:
+			var w := g if grid.on_streets(g) else grid.nearest_walkable(g, WalkGrid.SNAP_CELLS, true)
+			if w == Vector2.INF:
+				continue
+			if g.distance_to(w) > snap_max:
+				snap_max = g.distance_to(w)
+			if town.has_point(g) != town.has_point(w):
+				snap_out += 1
+				print("STALL pocket_snap_out anchor/%s raw=(%.2f,%.2f) to=(%.2f,%.2f)" % [k, g.x, g.y, w.x, w.y])
+	var exits_off := 0
+	for e: Vector2 in City.current().exits():
+		if not main.has(grid.world_to_id(grid.nearest_walkable(e))):
+			exits_off += 1
+	var line := "city=%s part=pockets regions=%d main=%d pockets=%d pocket_cells=%d points_off_main=%d exits_off_main=%d setup_joined=%d setup_left=%d anchor_snap_max=%.2f anchors_snapped_across_wall=%d" \
+		% [_city, regs.size(), regs[0].size(), regs.size() - 1, cells, inside, exits_off, joined, grid.pockets.size() - joined,
+		snap_max, snap_out]
+	print("STALL total " + line)
+	_summaries.append(line)
+	_tear_down(b)
 
 
 # --- Spot: one point looked at closely -------------------------------------------------

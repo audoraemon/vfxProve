@@ -4,7 +4,10 @@ extends RefCounted
 ## in a gap the walk grid has closed, rocking against a margin on the spot, steps back onto open ground on the
 ## footprints alone and walks on (Person's stuck watchdog); whoever is meant to stand still is never moved. And nobody
 ## walks into such a gap in the first place: every straight walk with no route (a drift about its anchor, a fleeing
-## scurry) goes only where a straight walk is open ground (Person.straight_clear()).
+## scurry) goes only where a straight walk is open ground (Person.straight_clear()). And nobody lives where there is no
+## route: the walk grid joins every pocket of open ground to the streets where a body fits through
+## (WalkGrid._join_pockets()), and the crowd places nobody in one it could not join, so no citizen's anchor, home, work or
+## leisure spot, nor a soldier's post, lies off the streets' network (Aldermere and the capital).
 
 const DT := 1.0 / 60.0
 ## Aldermere: a gap between a house and an oak, ~0.31 across, where the stall probe found a citizen rocking for 85 s on
@@ -13,14 +16,18 @@ const TRAP := Vector2(5.73, -7.37)
 const WAYPOINT := Vector2(5.75, -6.25)
 const GOAL := Vector2(10.6, -9.2)
 ## The gap's east mouth, on open ground, level with the trap: walked straight west from here a body keeps clear of both
-## margins all the way into the gap.
+## margins all the way into the gap. (A pocket with no way out a body fits through: the crowd places nobody there.)
 const MOUTH := Vector2(6.75, -7.37)
 ## Open cells round the trap that drifters are anchored on.
-## Aldermere: a street spot by the tavern, and a home the stall probe saw a citizen there fail to route to.
+## Aldermere: a street spot by the tavern, and a spot in a corner behind a garden with no route to it from there, where
+## the stall probe saw a citizen's home (the crowd places homes on the streets' side now).
 const TAVERN_STREET := Vector2(-4.25, 2.25)
 const SHUT_HOME := Vector2(-12.8, 14.8)
 const AROUND: Array[Vector2] = [Vector2(6.75, -7.37), Vector2(6.75, -7.25), Vector2(7.25, -7.25), Vector2(4.25, -7.75),
 	Vector2(5.75, -6.25), Vector2(5.75, -5.75)]
+## Aldermere: by the well in the citadel's back yard, which a garden and the oaks shut off from the streets until the grid
+## opened a way in.
+const WELL_YARD := Vector2(-10.75, -13.75)
 
 
 static func run(t) -> void:
@@ -28,14 +35,105 @@ static func run(t) -> void:
 	var town := Town.new()
 	town.build(env)
 	var grid := WalkGrid.new().setup(env, town)
+	var old := WalkGrid.new().setup(env, town, false)
 	_route(t, env, grid)
 	_people(t, env, grid)
 	_straight(t, env, grid)
 	_drifters(t, env, grid)
 	_scurries(t, env, grid)
 	_pocket(t, env, grid)
+	_joined(t, env, grid, old)
 	town.teardown()
 	_hound(t)
+	_no_pockets(t, &"aldermere")
+	_no_pockets(t, &"capital")
+	City.use(&"aldermere")
+
+
+## The pockets the grid had before it joined them: the well's yard has a route now, every way opened has room for a body
+## all along it, and the pockets left (no way out a body fits through) are off the streets for the crowd.
+static func _joined(t, env: EnvironmentField, grid: WalkGrid, old: WalkGrid) -> void:
+	var before := old.regions()
+	t.check(before.size() > 1 and old.path(TAVERN_STREET, WELL_YARD).is_empty() and old.path(TAVERN_STREET, SHUT_HOME).is_empty(),
+		"before: %d pockets off the streets, the well's yard and the home's corner among them" % (before.size() - 1))
+	var yard := grid.path(TAVERN_STREET, WELL_YARD)
+	t.check(not yard.is_empty() and grid.on_streets(WELL_YARD) and yard[yard.size() - 1].distance_to(WELL_YARD) < WalkGrid.CELL,
+		"now the well's yard behind the citadel has a route from the street by the tavern, walked right into (%d waypoints)" % yard.size())
+	var cramped := 0
+	for id in grid._links:
+		var c := grid.id_to_world(id)
+		cramped += 0 if not env.blocked(c, WalkGrid.BODY) and not grid.grid.is_point_solid(id) else 1
+	t.check(not grid._links.is_empty() and cramped == 0, "every cell opened for a way in (%d) is open, with room for a body (%d cramped)"
+		% [grid._links.size(), cramped])
+	var joined := 0
+	var longest := 0
+	for r: Array in grid.pockets:
+		joined += 1 if int(r[2]) >= 0 else 0
+		longest = maxi(longest, int(r[2]))
+	var after := grid.regions()
+	t.check(grid.pockets.size() == before.size() - 1 and joined > 0 and longest <= WalkGrid.LINK_CELLS
+		and after.size() == before.size() - joined,
+		"of the %d pockets, %d were joined (by ways in at most %d cells long); %d are left as they were"
+		% [grid.pockets.size(), joined, longest, after.size() - 1])
+	var off := true
+	for k in range(1, after.size()):
+		for id: Vector2i in after[k]:
+			off = off and not grid.on_streets(grid.id_to_world(id))
+	for id: Vector2i in after[0]:
+		off = off and grid.on_streets(grid.id_to_world(id))
+	t.check(off and grid.walkable(SHUT_HOME) and not grid.on_streets(SHUT_HOME) and not grid.on_streets(MOUTH),
+		"on the streets is exactly the largest region: the home's corner and the gap's mouth are open ground, but not on the streets")
+	var snapped := grid.nearest_walkable(SHUT_HOME, WalkGrid.SNAP_CELLS, true)
+	t.check(grid.nearest_walkable(SHUT_HOME) == SHUT_HOME and grid.on_streets(snapped) and not grid.path(TAVERN_STREET, snapped).is_empty(),
+		"snapped for the streets, a point in the corner moves to ground with a route (%s, %.1f away)" % [snapped, snapped.distance_to(SHUT_HOME)])
+
+
+## A mission's world in `city` (Mission.start()'s order): every point a person is kept by lies in the largest region of
+## open ground, the streets' -- the city's anchors as the crowd snaps them, each citizen's anchor, home, work and leisure
+## spots, each soldier's post.
+static func _no_pockets(t, city: StringName) -> void:
+	City.use(city)
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = City.current().map()
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
+	crowd.spawn()
+	var regions := grid.regions()
+	var main := {}
+	for id: Vector2i in regions[0]:
+		main[id] = true
+	var points := 0
+	var off: PackedStringArray = []
+	var anchors := City.current().anchors()
+	for k in anchors:
+		for g: Vector2 in anchors[k]:
+			var w := g if grid.on_streets(g) else grid.nearest_walkable(g, WalkGrid.SNAP_CELLS, true)
+			points += 1
+			if not main.has(grid.world_to_id(w)):
+				off.append("anchor %s %s" % [k, g])
+	for p: Person in crowd.citizens + crowd.soldiers:
+		var spots: Array[Vector2] = [p.anchor]
+		if p.profile != null:
+			spots.append(p.profile.home)
+			if p.profile.works():
+				spots.append(p.profile.work)
+			spots.append_array(p.profile.leisure)
+		for g in spots:
+			points += 1
+			if not main.has(grid.world_to_id(g)):
+				off.append("%s %s" % ["soldier" if p.soldier else "citizen", g])
+	t.check(points > crowd.citizens.size() and off.is_empty(), "%s: all %d anchors, homes, workplaces, leisure spots and posts lie in the streets' region, the postern barred (%d off: %s)"
+		% [city, points, off.size(), ", ".join(off.slice(0, 5))])
+	town.teardown()
+	crowd.clear()
+	world.free()
+	town.free()
+	crowd.free()
 
 
 ## One side of a house to the other along its middle row: the straight walk meets the wall head on.

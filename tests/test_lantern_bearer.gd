@@ -271,11 +271,13 @@ static func _relay(t) -> void:
 	_go(h, 4.0)
 	var hv := hb.carrier
 	_clear(h, hv.ground_pos, 5.0, [hv] + hb.escorts)
+	# Whispered for real (a lingering hold): a bare WHISPERED mind with no linger wears off at the escort's next think.
+	var whispered := true
 	for e: Variant in hb.escorts:
-		(e as Person).mind = Person.Mind.WHISPERED
+		whispered = (e as Person).whisper((e as Person).ground_pos, 5.0) and whispered
 	(h.crowd as Crowd)._field.kill(hv, &"fire")
 	_go(h, DT * 3.0)
-	t.check(hb.dead(), "an escort held by the god (whispered) does not take the flame")
+	t.check(whispered and hb.dead(), "an escort held by the god (whispered) does not take the flame")
 	Kit.done(h)
 
 

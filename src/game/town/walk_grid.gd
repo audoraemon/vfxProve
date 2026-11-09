@@ -11,6 +11,10 @@ const BenchProf := preload("res://src/core/bench_prof.gd")
 const BODY := 0.15
 ## How far nearest_walkable() and path() will look for a free cell beside a blocked goal.
 const SNAP_CELLS := 8
+## The most closed cells opened in a row to join a pocket of open ground to the streets (_join_pockets()).
+const LINK_CELLS := 4
+## How finely a link's steps are checked for a body's room (_room_between()).
+const LINK_SAMPLE := 0.05
 
 var grid := AStarGrid2D.new()
 ## Rises whenever a cell turns solid or free (stamp()): distance fields built on the grid rebuild on it.
@@ -22,9 +26,25 @@ var _bridges: Array[Structure] = []
 ## The city's blockers(), grown to the cells they close. Computed once: it lays out every house, garden and tree,
 ## far too slow to redo each time a building falls (a Cinderfall felling a dozen trees at once hitched ~100 ms).
 var _blockers: Array[Rect2] = []
+## The city's blockers() grown by a body only: what a body standing at a link's cell must keep out of.
+var _fences: Array[Rect2] = []
+## The solid cheeks of the passages (BuildingTypes.cheeks()): never opened for a link.
+var _cheeks: Array[Rect2] = []
+## The cells a piece of the town's decor stands in (TownDecor.spots(), baked into the floor or not): never opened for a
+## link, so decor only stands where nobody walks (decor_clear()).
+var _props := {}
+## Cells opened by _join_pockets(): put back open whenever a fall re-stamps the ground round them.
+var _links: Array[Vector2i] = []
+## What _join_pockets() did, one [cells, centre, links opened (-1: none, left as it is)] per pocket (for the stall probe).
+var pockets: Array = []
+## The cells of the pockets _join_pockets() found no way out of: open ground with no route to the streets, as the grid
+## was set up. on_streets() is false there, so the crowd places nobody in one.
+var _off := {}
 
 
-func setup(env: EnvironmentField, town: Town) -> WalkGrid:
+## `join_pockets` false leaves pockets of open ground the streets cannot reach as they are (tests of the rules for
+## ground with no route; the game always joins them, _join_pockets()).
+func setup(env: EnvironmentField, town: Town, join_pockets := true) -> WalkGrid:
 	_env = env
 	_bridges = town.bridges.duplicate()
 	var city := City.current()
@@ -41,6 +61,7 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 	# A garden or a yard closes every cell it touches, so nobody is drawn walking through its fence or props.
 	for g in city.blockers():
 		_blockers.append(g.grow(CELL * 0.5))
+		_fences.append(g.grow(BODY))
 	for g in _blockers:
 		stamp(g, true)
 	# Two passes, because a building people walk over has to win against whatever else claimed its cells: the
@@ -49,6 +70,8 @@ func setup(env: EnvironmentField, town: Town) -> WalkGrid:
 		_apply(s)
 	for s in env.structures():
 		_open(s)
+	if join_pockets:
+		_join_pockets()
 	env.structure_destroyed.connect(_on_destroyed)
 	env.structure_restored.connect(refresh)
 	env.structure_added.connect(refresh)
@@ -79,11 +102,17 @@ func clear_line(from: Vector2, to: Vector2) -> bool:
 	return true
 
 
+## Open ground with a route to the streets as the grid was set up: walkable, and not in a pocket _join_pockets() could
+## not join.
+func on_streets(g: Vector2) -> bool:
+	return walkable(g) and not _off.has(world_to_id(g))
+
+
 ## `g` itself when it is free, otherwise the centre of the nearest free cell (searched in rings), or
-## Vector2.INF when everything within max_cells is solid.
-func nearest_walkable(g: Vector2, max_cells := SNAP_CELLS) -> Vector2:
+## Vector2.INF when everything within max_cells is solid. `streets` counts a pocket's cells as solid (on_streets()).
+func nearest_walkable(g: Vector2, max_cells := SNAP_CELLS, streets := false) -> Vector2:
 	var id := world_to_id(g)
-	if grid.is_in_boundsv(id) and not grid.is_point_solid(id):
+	if grid.is_in_boundsv(id) and not grid.is_point_solid(id) and not (streets and _off.has(id)):
 		return g
 	var fallback := Vector2.INF
 	for r in range(1, max_cells + 1):
@@ -93,7 +122,7 @@ func nearest_walkable(g: Vector2, max_cells := SNAP_CELLS) -> Vector2:
 				if maxi(absi(dx), absi(dy)) != r:
 					continue
 				var c := id + Vector2i(dx, dy)
-				if not grid.is_in_boundsv(c) or grid.is_point_solid(c):
+				if not grid.is_in_boundsv(c) or grid.is_point_solid(c) or (streets and _off.has(c)):
 					continue
 				var w := id_to_world(c)
 				if fallback == Vector2.INF or w.distance_squared_to(g) < fallback.distance_squared_to(g):
@@ -178,6 +207,7 @@ func _open(s: Structure) -> void:
 	if s.role == CapitalPlots.ROLE:
 		for r: Rect2 in BuildingTypes.cheeks(s.art_tag, s.footprint):
 			stamp(r, true)
+			_cheeks.append(r)
 	if s.role == CapitalPlots.ROLE and BuildingTypes.over_water(s.art_tag):
 		for r: Rect2 in City.current().rivers():
 			if r.intersects(s.footprint):
@@ -191,6 +221,7 @@ func refresh(s: Structure) -> void:
 		_open(s)
 	else:
 		_apply(s)
+		_reopen_links(solid_rect(s.footprint))
 
 
 ## A structure taken away (a thorn wall withering, v0.06): its ground opens as a fallen building's does.
@@ -217,8 +248,185 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 	for g in _blockers:
 		if g.intersects(area):
 			stamp(g, true)
+	_reopen_links(area)
 	# ...and then open the ways through again, so a gate beside a fallen wall stays passable.
 	for other in _env.structures():
 		if other != s and is_instance_valid(other) and not other.destroyed and other.walkable \
 				and other.footprint.intersects(area):
 			_open(other)
+
+
+## Open ground the streets cannot reach (a corner behind a garden, the yard behind the citadel): every pocket of open
+## cells off the largest region, the streets, is joined to them through the fewest closed cells (at most LINK_CELLS) a
+## body has room in -- shut only by a garden's half-cell grow or a thin thing's one-cell minimum, never a footprint's
+## margin, a fence, the river, a passage's cheek or a piece of decor. A pocket with no such way out is left as it is,
+## its cells remembered (on_streets() false there), so the crowd places nobody in it. Run once, at setup; pockets joined
+## to each other first are joined as one.
+func _join_pockets() -> void:
+	var labels := PackedInt32Array()
+	var regions := _label(labels)
+	if regions.size() < 2:
+		return
+	for d: Dictionary in TownDecor.spots():
+		var ext := Rect2(d.at, d.size).abs()
+		var c0 := world_to_id(ext.position - Vector2.ONE * CELL)
+		var c1 := world_to_id(ext.end + Vector2.ONE * CELL)
+		for y in range(c0.y, c1.y + 1):
+			for x in range(c0.x, c1.x + 1):
+				if not decor_clear(Vector2i(x, y), d.at, d.size):
+					_props[Vector2i(x, y)] = true
+	var main := 0
+	for k in regions.size():
+		if regions[k].size() > regions[main].size():
+			main = k
+	var joined := {main: true}
+	var left: Array[int] = []
+	for k in regions.size():
+		if k != main:
+			left.append(k)
+	left.sort_custom(func(a: int, b: int) -> bool: return regions[a].size() > regions[b].size())
+	var grew := true
+	while grew:
+		grew = false
+		for k in left.duplicate():
+			var link := _link(regions[k], labels, joined)
+			if link.is_empty():
+				continue
+			for id: Vector2i in link:
+				grid.set_point_solid(id, false)
+				_links.append(id)
+				labels[(id.y - grid.region.position.y) * grid.region.size.x + (id.x - grid.region.position.x)] = main
+			pockets.append([regions[k].size(), _centre(regions[k]), link.size()])
+			joined[k] = true
+			left.erase(k)
+			grew = true
+	for k in left:
+		pockets.append([regions[k].size(), _centre(regions[k]), -1])
+		for id: Vector2i in regions[k]:
+			_off[id] = true
+	version += 1
+
+
+func _centre(cells: Array) -> Vector2:
+	var sum := Vector2.ZERO
+	for id: Vector2i in cells:
+		sum += id_to_world(id)
+	return sum / float(cells.size())
+
+
+## Whether a cell may be walked beside a piece of decor at `at` (TownDecor.spots()): never the cell a point-sized piece
+## stands in, and never one whose centre is within a body of a piece's ground (`size` from `at`: a bench's run). A
+## bench's end just inside a cell leaves it free while a body at its centre keeps clear of the bench.
+func decor_clear(id: Vector2i, at: Vector2, size: Vector2) -> bool:
+	if size == Vector2.ZERO and world_to_id(at) == id:
+		return false
+	var ext := Rect2(at, size).abs()
+	var c := id_to_world(id)
+	return c.clamp(ext.position, ext.end).distance_to(c) > BODY
+
+
+## Every 4-connected region of open cells (a route joins two cells only through such steps: a diagonal step needs both
+## its sides open), largest first.
+func regions() -> Array:
+	var out := _label(PackedInt32Array())
+	out.sort_custom(func(a: Array, b: Array) -> bool: return a.size() > b.size())
+	return out
+
+
+## The regions of open cells, each an Array[Vector2i], in scan order; `labels` (one per cell of the region, row by row)
+## is filled with each cell's region index, -1 where solid.
+func _label(labels: PackedInt32Array) -> Array:
+	var reg := grid.region
+	var w := reg.size.x
+	labels.resize(reg.size.x * reg.size.y)
+	labels.fill(-1)
+	var out: Array = []
+	for y in range(reg.position.y, reg.end.y):
+		for x in range(reg.position.x, reg.end.x):
+			var i := (y - reg.position.y) * w + (x - reg.position.x)
+			if labels[i] >= 0 or grid.is_point_solid(Vector2i(x, y)):
+				continue
+			var comp: Array[Vector2i] = []
+			var q: Array[Vector2i] = [Vector2i(x, y)]
+			labels[i] = out.size()
+			while not q.is_empty():
+				var c: Vector2i = q.pop_back()
+				comp.append(c)
+				for d: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
+					var n := c + d
+					if not grid.is_in_boundsv(n) or grid.is_point_solid(n):
+						continue
+					var j := (n.y - reg.position.y) * w + (n.x - reg.position.x)
+					if labels[j] < 0:
+						labels[j] = out.size()
+						q.append(n)
+			out.append(comp)
+	return out
+
+
+## The fewest closed cells (at most LINK_CELLS, a body having room all the way) leading from `comp` to a region in
+## `joined`, by a breadth-first walk over the cells a link may open; empty when there is none.
+func _link(comp: Array, labels: PackedInt32Array, joined: Dictionary) -> Array[Vector2i]:
+	var reg := grid.region
+	var from := {}
+	var frontier: Array[Vector2i] = []
+	for id: Vector2i in comp:
+		from[id] = id
+		frontier.append(id)
+	for depth in LINK_CELLS + 1:
+		var next: Array[Vector2i] = []
+		for c in frontier:
+			for d: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
+				var n := c + d
+				if from.has(n) or not grid.is_in_boundsv(n):
+					continue
+				if not grid.is_point_solid(n):
+					var lab := labels[(n.y - reg.position.y) * reg.size.x + (n.x - reg.position.x)]
+					if joined.has(lab) and depth > 0 and _room_between(id_to_world(c), id_to_world(n)):
+						var out: Array[Vector2i] = []
+						var k := c
+						while from[k] != k:
+							out.append(k)
+							k = from[k]
+						return out
+					continue
+				if depth < LINK_CELLS and not _props.has(n) and _room_at(id_to_world(n)) and _room_between(id_to_world(c), id_to_world(n)):
+					from[n] = c
+					next.append(n)
+		frontier = next
+	return [] as Array[Vector2i]
+
+
+## Whether a body may stand at `g`: clear of every standing footprint's margin, every fence, the river and the cheeks.
+func _room_at(g: Vector2) -> bool:
+	if _env.blocked(g, BODY):
+		return false
+	for r: Rect2 in _fences:
+		if r.has_point(g):
+			return false
+	for r: Rect2 in City.current().rivers():
+		if r.has_point(g):
+			return false
+	for r: Rect2 in _cheeks:
+		if r.has_point(g):
+			return false
+	return true
+
+
+## Whether a body walking straight from `a` to `b` keeps room all the way (the ends excepted: either may be open
+## ground already).
+func _room_between(a: Vector2, b: Vector2) -> bool:
+	var n := maxi(ceili(a.distance_to(b) / LINK_SAMPLE), 1)
+	for k in range(1, n):
+		if not _room_at(a.lerp(b, float(k) / float(n))):
+			return false
+	return true
+
+
+## The links inside `area` opened again, where a body still has room (a wall added since closes one for good).
+func _reopen_links(area: Rect2) -> void:
+	for id in _links:
+		var g := id_to_world(id)
+		if area.has_point(g) and grid.is_point_solid(id) and not _env.blocked(g, BODY):
+			grid.set_point_solid(id, false)
+			version += 1

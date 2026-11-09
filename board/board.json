@@ -1,12 +1,10 @@
 {
- "hash": "7d3ad6b635a6beaf",
- "updated": "2026-11-09T20:59:26+07:00",
+ "hash": "bbed4a44e59b6ee3",
+ "updated": "2026-11-10T02:02:07+07:00",
  "changes": {
-  "date": "<t:1794232766:f>",
+  "date": "<t:1794250927:f>",
   "items": [
-   "New: Dominion ability levels: puppet-master upgrades (in progress)",
-   "New: Walkers stuck in alleys (hounds, pets, people) (in progress)",
-   "New: Zoom readout (step 1 of the zoom cap)"
+   "New: Natural sound pass 2: ambience, variants, recordings only, distance"
   ]
  },
  "snapshot": {
@@ -528,6 +526,15 @@
     "needs_you": true,
     "updated": "2026-10-15",
     "order": 36
+   },
+   "natural-sound-2": {
+    "title": "Natural sound pass 2: ambience, variants, recordings only, distance",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": true,
+    "branch": "claude/sound-natural-2",
+    "updated": "2026-11-10",
+    "order": 901
    },
    "natural-sound-you": {
     "title": "Natural sound: listen, and the steps only you can do",
@@ -1352,7 +1359,7 @@
     "area": "Engine",
     "version": "vfx",
     "needs_you": true,
-    "updated": "2026-11-09",
+    "updated": "2026-11-10",
     "order": 18
    },
    "visual-upgrade-1-0": {
@@ -1377,11 +1384,35 @@
   },
   "branches": [
    {
-    "name": "god/dl-b",
-    "ahead": 235,
+    "name": "claude/zen-greider-6e47c5",
+    "ahead": 15,
+    "behind": 1,
+    "date": "2026-11-10",
+    "subject": "fix: walk-grid pockets join the streets where a body fits; nobody lives in one",
+    "pushed": false
+   },
+   {
+    "name": "pocket-fix",
+    "ahead": 15,
+    "behind": 1,
+    "date": "2026-11-10",
+    "subject": "fix: walk-grid pockets join the streets where a body fits; nobody lives in one",
+    "pushed": false
+   },
+   {
+    "name": "god/dominion-levels",
+    "ahead": 248,
     "behind": 13,
     "date": "2026-11-09",
-    "subject": "feat: Divine Schism level 5 twist, Turn the Tide -- click a fighter to move it to the other side",
+    "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
+    "pushed": false
+   },
+   {
+    "name": "god/dl-b",
+    "ahead": 236,
+    "behind": 13,
+    "date": "2026-11-09",
+    "subject": "fix: Procession leaves a held person another power has since compelled; redirect skips sleepers; Sleepwalk checks ownership",
     "pushed": false
    },
    {
@@ -1409,20 +1440,12 @@
     "pushed": true
    },
    {
-    "name": "claude/zen-greider-6e47c5",
-    "ahead": 13,
-    "behind": 1,
-    "date": "2026-11-09",
-    "subject": "fix: animals follow walk-grid routes; people stuck in a sub-cell gap step out",
-    "pushed": false
-   },
-   {
     "name": "claude/sound-natural-2",
     "ahead": 1,
     "behind": 1,
     "date": "2026-11-09",
     "subject": "feat: natural sound pass 2: ambience, variants, recordings only, distance",
-    "pushed": false
+    "pushed": true
    },
    {
     "name": "feat/people-anim-2",
@@ -1431,6 +1454,14 @@
     "date": "2026-11-07",
     "subject": "feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops",
     "pushed": true
+   },
+   {
+    "name": "feat/soldier-jobs",
+    "ahead": 4,
+    "behind": 1,
+    "date": "2026-11-07",
+    "subject": "feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops",
+    "pushed": false
    },
    {
     "name": "god/dominion-t3-old",

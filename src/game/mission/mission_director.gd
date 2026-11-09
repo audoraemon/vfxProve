@@ -50,8 +50,15 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> M
 	town = t
 	ctx = x
 	night = n
+	if c != null:
+		c.mission_holds.append(_holds_soldier)
 	_begin()
 	return self
+
+
+## Whether this director holds soldier `p` (registered in Crowd.mission_holds): reserved by it, or busy with its work. No guard job takes him.
+func _holds_soldier(p: Person) -> bool:
+	return reserved.has(p) or busy(p)
 
 
 ## Virtual: the mission's setup, once the town and its people exist.

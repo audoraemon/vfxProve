@@ -128,6 +128,12 @@ var alarms := AlarmManager.new()
 var evac: EvacuationManager
 ## Fires and the citizens fighting them (v0.04 P1); made by setup().
 var fires: FireManager
+## Which ordinary guards are away on a job (fires; piles later), and the hooks by which a mission's director claims soldiers.
+var guard_jobs: GuardJobs
+## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
+var mission_holds: Array[Callable] = []
+## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
+var mission_points: Array[Callable] = []
 ## How ready the town is (v0.05): which responses it has and how strong. Mission sets it before spawn().
 var profile := ResponseProfile.for_tier(ResponseProfile.DEFAULT)
 ## Sturdy buildings people take cover in (v0.04 P2); made by spawn().
@@ -299,6 +305,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
+	guard_jobs = GuardJobs.new().setup(self)
 	field.enemy_killed.connect(_on_killed)
 	if town.citadel != null:
 		town.citadel.health_changed.connect(_on_citadel_health)
@@ -613,6 +620,8 @@ func _assign_corps() -> void:
 	for i in soldiers.size():
 		var p := soldiers[i]
 		p.post = p.anchor
+		p.town_post = p.post
+		p.post_group = 0 if i < yard else (1 if i < yard + walls else (2 if i < patrols_from else (3 if i < patrols_from + post_counts[3] else 0)))
 		if i < yard:
 			if i < profile.rescue_squads * RESCUE_SQUAD:
 				p.corps = Person.Corps.RESCUE
@@ -669,7 +678,7 @@ func _walk_loops() -> void:
 		if not is_instance_valid(e[0]):
 			continue
 		var p: Person = e[0]
-		if not p.is_alive() or _rallied or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST or p.has_goal():
+		if not p.is_alive() or _rallied or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST or p.has_goal() 				or guard_jobs.on_job(p):
 			continue
 		var points: Array[Vector2] = e[1]
 		if p.ground_pos.distance_to(points[e[2]]) > LOOP_REACH or _looking(p):
@@ -681,6 +690,7 @@ func _walk_loops() -> void:
 			e[2] = (int(e[2]) + 1) % points.size()
 			e[4] = -1.0
 			p.post = points[e[2]]
+			p.town_post = p.post
 			p.send_to_post(p.post)
 
 
@@ -842,6 +852,7 @@ func _advance(delta: float) -> void:
 	var t_fires := BenchProf.begin()
 	fires.step(delta)
 	BenchProf.add(&"fires", t_fires)
+	guard_jobs.prune()
 	if shelters != null:
 		shelters.step(delta)
 	_stage_in -= delta
@@ -1639,7 +1650,7 @@ func _investigate(at: Vector2) -> void:
 	for i in range(first, mini(first + post_counts[3], soldiers.size())):
 		var p := soldiers[i]
 		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST and p.fearless_left <= 0.0 \
-				and p.corps != Person.Corps.KNIGHT and not (escorts != null and escorts.guarding(p)):
+				and p.corps != Person.Corps.KNIGHT and not (escorts != null and escorts.guarding(p)) and not guard_jobs.on_job(p):
 			pool.append(p)  # one who fears nothing (entranced, reassured) sees nothing to look into
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(at) < b.ground_pos.distance_to(at))
 	var spot := at if _grid.walkable(at) else _grid.nearest_walkable(at)
@@ -1669,6 +1680,7 @@ func rally() -> void:
 	if _rallied:
 		return
 	_rallied = true
+	guard_jobs.close()
 	var living: Array[Person] = []
 	for p in soldiers:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
@@ -1827,6 +1839,20 @@ func hold_gate(g: Structure, seconds: float) -> void:
 
 
 ## The leaderless town (v0.09: the Prince died unseen): the soldiers never rally on the Citadel.
+## Whether a mission's director holds `p` (any registered hook says so; hooks whose object is gone are skipped).
+func held_by_mission(p: Person) -> bool:
+	for c in mission_holds:
+		if c.is_valid() and c.call(p):
+			return true
+	return false
+
+
+## A mission ended or restarted: drop every hook (they point at its director).
+func clear_mission_hooks() -> void:
+	mission_holds.clear()
+	mission_points.clear()
+
+
 func forgo_rally() -> void:
 	_rallied = true
 
@@ -1858,6 +1884,8 @@ func clear() -> void:
 	_held_dangers.clear()
 	alarms.reset()
 	fires.clear()
+	guard_jobs.clear()
+	clear_mission_hooks()
 	if shelters != null:
 		shelters.clear()
 	_households.clear()

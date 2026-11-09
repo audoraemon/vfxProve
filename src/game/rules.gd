@@ -632,6 +632,8 @@ func teardown() -> void:
 	if director != null:
 		director.teardown()
 		director = null
+		if is_instance_valid(_crowd):
+			_crowd.clear_mission_hooks()
 	if is_instance_valid(_env) and _env.structure_destroyed.is_connected(_on_structure_destroyed):
 		_env.structure_destroyed.disconnect(_on_structure_destroyed)
 	if is_instance_valid(_env) and _env.structure_restored.is_connected(_on_structure_restored):

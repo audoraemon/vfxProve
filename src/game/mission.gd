@@ -290,6 +290,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_director.teardown()
 		if is_instance_valid(_rules):
 			_rules.director = null  # already let go: the old rules' teardown below must not do it twice
+		if is_instance_valid(_crowd):
+			_crowd.clear_mission_hooks()
 	_director = null
 	if _descent != null:
 		_descent.release()
@@ -534,6 +536,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 		_director.carry(_night)
 		_director.teardown()
 		_rules.director = null
+		if is_instance_valid(_crowd):
+			_crowd.clear_mission_hooks()
 	_director = null
 	if _descent != null:
 		_descent.next_act(_rules)  # its seconds count toward the night's time

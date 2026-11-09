@@ -193,6 +193,15 @@ var soldier := false
 ## A soldier's role (v0.07; Crowd._assign_corps()) and the post it was given at spawn, which it goes back to.
 var corps := Corps.NONE
 var post := Vector2.INF
+## The post the town gave him (soldier jobs): his spawn post, or the loop point a wall patrol last walked to. Crowd sets it;
+## a mission director never does, so `post == town_post` says nobody has re-posted him. INF for a citizen.
+var town_post := Vector2.INF
+## Which posting he belongs to (Crowd._assign_corps()): 0 yard, 1 walls, 2 citadel, 3 patrol; -1 for add_soldier() soldiers and citizens.
+var post_group := -1
+## How near his anchor a soldier must stand to count as at it (at_own_post(), on_watch()).
+const WATCH_REACH := 1.0
+## On a guard job (GuardJobs.take/release/prune/close/clear set and clear it, nobody else).
+var on_guard_job := false
 ## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
 var drill_face := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
@@ -1827,6 +1836,32 @@ func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 	hurrying = hurried
 	walk_speed = _mind_speed()
 	set_goal(at)
+
+
+## An ordinary guard standing at the post the town gave him (GuardJobs' "standing at his post"): alive, POST or HOLD,
+## not in the god's hand, not re-posted, and within WATCH_REACH of it.
+func at_own_post() -> bool:
+	return soldier and state != State.DEAD and (mind == Mind.POST or mind == Mind.HOLD) and not held_by_god() 		and anchor.is_equal_approx(post) and ground_pos.distance_to(anchor) <= WATCH_REACH
+
+
+## Whether he counts as keeping watch for a mission (as EscortDirector's _watching): out of doors, not in the god's hand, not
+## away on a guard job, and either on duty or at his station (a director-stationed soldier counts; a guard away on a fire or a
+## pile never does).
+func on_watch() -> bool:
+	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job:
+		return false
+	return mind == Mind.DUTY or ((mind == Mind.POST or mind == Mind.HOLD) and ground_pos.distance_to(anchor) <= WATCH_REACH)
+
+
+## Back to his post after a job: a soldier the god holds has his saved hold rewritten to the post (so the hold lifts into it);
+## any other is sent there.
+func back_to_post() -> void:
+	if _held_saved and held_by_god():
+		_held_mind = Mind.POST
+		_held_anchor = post if post != Vector2.INF else ground_pos
+		_held_hurrying = false
+	else:
+		send_to_post(post if post != Vector2.INF else ground_pos)
 
 
 ## Stop caring: soldiers hold the Citadel's rubble once it has fallen.

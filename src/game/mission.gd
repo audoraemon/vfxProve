@@ -82,6 +82,8 @@ const WARNING_LOOK_AT := Vector2(-12.0, 8.0)
 const WARNING_TEST_END := 45.0
 
 var _bf: Battlefield
+## The zoom readout at the screen's right edge (shown after each wheel zoom; the Discord idea "Zoom cap").
+var _zoom_readout: ZoomReadout
 var _town: Town
 var _grid: WalkGrid
 var _crowd: Crowd
@@ -162,6 +164,8 @@ func _ready() -> void:
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
 	_bf.ctx.field.bounds = City.current().map()
+	_zoom_readout = ZoomReadout.new()
+	add_child(_zoom_readout)
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
 	# up a handler for every mission the player has played.
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
@@ -941,6 +945,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
 		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
 		_pan(Vector2.ZERO)
+		if is_instance_valid(_zoom_readout):
+			_zoom_readout.show_zoom(_bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
 		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.

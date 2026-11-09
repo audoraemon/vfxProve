@@ -95,6 +95,10 @@ q_clearmind	res://assets/audio/ability/quiet/q_clearmind.wav	-13.78	-0.26
 q_anathema	res://assets/audio/ability/quiet/q_anathema.wav	-18.50	-2.55
 q_sanctuary	res://assets/audio/ability/quiet/q_sanctuary.wav	-15.82	-0.28
 q_skylift	res://assets/audio/ability/quiet/q_skylift.wav	-13.52	-1.84
+q_allroads	res://assets/audio/ability/quiet/q_allroads.wav	-16.74	-3.29
+q_yesterday	res://assets/audio/ability/quiet/q_yesterday.wav	-14.58	-0.22
+q_everydoor	res://assets/audio/ability/quiet/q_everydoor.wav	-15.14	-0.96
+q_fargate	res://assets/audio/ability/quiet/q_fargate.wav	-16.43	-3.55
 q_saint	res://assets/audio/ability/quiet/q_saint.wav	-14.71	-1.78
 q_curfew	res://assets/audio/ability/quiet/q_curfew.wav	-17.81	-0.90
 q_thorns	res://assets/audio/ability/quiet/q_thorns.wav	-16.79	-3.07

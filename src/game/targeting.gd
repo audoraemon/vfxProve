@@ -61,6 +61,14 @@ const AREAS := {
 	"deep": {"shape": "circle", "r": 4.0},
 	# HoundGateFx: the door is where the click lands; SEEK_R is how far the hounds hunt
 	"houndgate": {"shape": "circle", "r": 0.6, "roam": 8.0},
+	# AllRoadsLeadHereFx.RADIUS: the district whose roads are bent to the click
+	"allroads": {"shape": "circle", "r": 10.0},
+	# YesterdaysDoorFx.RADIUS: the district that steps back
+	"yesterday": {"shape": "circle", "r": 6.0},
+	# EveryDoorFx: the whole town; the click is only where the door of light stands
+	"everydoor": {"shape": "circle", "r": 0.6},
+	# TheFarGateFx.RADIUS: whom the door of stars draws
+	"fargate": {"shape": "circle", "r": 10.0},
 	# AnathemaFx.RADIUS: the buildings it would mark are outlined (_draw())
 	"anathema": {"shape": "circle", "r": 6.0},
 	# SacredSanctuaryFx.PICK_R: who would be hypnotized is ringed; then the wall's shape at the second click ("sanctuary")

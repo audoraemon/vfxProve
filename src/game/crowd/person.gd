@@ -388,6 +388,11 @@ var _design_info: Array
 var _path := PackedVector2Array()
 var _leg := 0
 var _goal := Vector2.INF
+## Bent roads (bend_roads()): where every route it plans leads instead (Vector2.INF when its roads are straight), for how
+## much longer, and how far about that point it mills.
+var _bend_to := Vector2.INF
+var _bend_left := 0.0
+var _bend_gather := 0.0
 ## The stuck watchdog (_watch_stuck()): the waypoint watched, the nearest it has got to it, seconds without getting
 ## nearer; and while it steps back onto open ground, the way there, the point of it walked to, and the seconds left.
 var _stuck_to := Vector2.INF
@@ -521,6 +526,10 @@ func unhurried() -> bool:
 func tick(delta: float) -> void:
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
+	if _bend_to != Vector2.INF:
+		_bend_left -= delta
+		if _bend_left <= 0.0:
+			unbend_roads()
 	if state == State.WANDER and not is_frozen():
 		_think_accum += delta
 		if _think_due:
@@ -736,7 +745,8 @@ func set_goal(g: Vector2) -> void:
 	_goal = g
 	_leg = 0
 	_no_route_to = Vector2.INF
-	_path = grid.path(ground_pos, g) if grid != null else PackedVector2Array()
+	# Bent roads (bend_roads()): the goal stays its own, the route leads to the bend.
+	_path = grid.path(ground_pos, g if _bend_to == Vector2.INF else _bend_to) if grid != null else PackedVector2Array()
 	_repath_in = REPATH
 	_idle = 0.0
 	_pick_target()
@@ -827,12 +837,17 @@ func _drift() -> void:
 	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP or mind == Mind.CONFUSED:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
 	var off := Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
-	var to := _drift_spot(anchor + off)
+	# Bent roads (bend_roads()): it mills about the bend instead, within its gather.
+	var home := anchor
+	if _bend_to != Vector2.INF:
+		home = _bend_to
+		off = off.limit_length(_bend_gather)
+	var to := _drift_spot(home + off)
 	if straight_clear(to):
 		_target = to
 		return
 	for turn in [PI * 0.5, PI, PI * 1.5]:
-		var other := _drift_spot(anchor + off.rotated(turn))
+		var other := _drift_spot(home + off.rotated(turn))
 		if straight_clear(other):
 			_target = other
 			return
@@ -841,7 +856,7 @@ func _drift() -> void:
 		if straight_clear(short):
 			_target = short
 			return
-	if mind == Mind.CALM and ground_pos.distance_to(anchor) > spread * 2.0:
+	if mind == Mind.CALM and ground_pos.distance_to(home) > spread * 2.0:
 		# Out of its street (a stroll, a goal given up at a doorstep) with no straight way back: home by the streets.
 		if grid == null or anchor != _no_route_to or grid.version != _no_route_version:
 			set_goal(anchor)
@@ -1271,6 +1286,166 @@ func fold(to: Vector2) -> bool:
 	_sync_position()
 	set_goal(bound)
 	return true
+
+
+## The roads lie (All Roads Lead Here): for `seconds`, every route it plans -- home, to its post, to a gate, away from a
+## danger, wherever any mind sends it (set_goal()) -- leads to `to` instead. Its mind and its goal stay its own: it
+## arrives, finds it is not where it meant to be, plans again, and the new route brings it back. Milling about (_drift())
+## it mills within `gather` of `to`; a gate's waiting crowd lets it go (Crowd._gates()). Walking somewhere, it takes the
+## bent road at once; one inside a building is caught when it comes out and plans its way. False when it is dead.
+func bend_roads(to: Vector2, seconds: float, gather: float) -> bool:
+	if state == State.DEAD:
+		return false
+	_bend_to = to
+	_bend_left = seconds
+	_bend_gather = gather
+	if inside:
+		return true
+	passing_gate = null
+	if queue_spot != Vector2.INF:
+		release_from_queue()  # re-plans its goal, by the bent road
+	elif _goal != Vector2.INF:
+		set_goal(_goal)
+	return true
+
+
+## The roads run true again: one walking somewhere plans its own goal anew from where it stands; one standing or milling
+## goes back to its day by its own mind (the drift about its anchor, the post, the way out).
+func unbend_roads() -> void:
+	if _bend_to == Vector2.INF:
+		return
+	_bend_to = Vector2.INF
+	_bend_left = 0.0
+	if state == State.DEAD or inside:
+		return
+	if _goal != Vector2.INF:
+		set_goal(_goal)
+
+
+## Whether its roads are bent now (bend_roads()).
+func roads_bent() -> bool:
+	return _bend_to != Vector2.INF
+
+
+## Where its bent roads lead (Vector2.INF when they run true).
+func bent_to() -> Vector2:
+	return _bend_to
+
+
+## Minds another power or one of the town's managers holds a person in (rewind()): on a duty, at a fire, taking cover,
+## regrouping with the household, confused, whispered, compelled, fighting, asleep. The hold is its owner's to end.
+const REWIND_HELD := [Mind.DUTY, Mind.ASSIST, Mind.SHELTER, Mind.REGROUP, Mind.CONFUSED, Mind.WHISPERED, Mind.COMPELLED,
+	Mind.FIGHT, Mind.ASLEEP]
+## A soldier's orders (rewind()): his post, the rally, holding the ground.
+const REWIND_ORDERS := [Mind.POST, Mind.RALLY, Mind.HOLD]
+
+
+## Turned back (Yesterday's Door; `was` is a record from TimeTrail.back()): put back where it stood then and, where that is
+## its own to take up again, doing what it did then; then it stands dazed `daze` seconds and carries on from there (a
+## danger still about frightens it again as usual). False when it is left as it is. The rules:
+##   - Only one on its feet out in the open now, and out in the open then, is turned back: the dead stay dead; one inside a
+##     building now or then, or thrown, pulled or frozen in ice now, is left. It stands on the nearest open walk-grid cell
+##     to where it stood (within 4); with none it is left. A gate's queue, a stumble, a fright's freeze, a fall, a step
+##     back onto open ground it was in are over: none of them had happened then.
+##   - A mind of its own is put back with what it was counting down: its day (CALM, RECOVER: its anchor, the stay left, the
+##     place it was walking to), a fright (PANIC: the danger, the seconds of it left, where it was running), its flight
+##     (FLEE: the way out it was making for, or a new plan at once), a look (OBSERVE: at what, and the seconds left); its
+##     awareness too.
+##   - A mind held by another power or a manager (REWIND_HELD, or staring at a lure), now or then, is kept as it is now: a
+##     hold put back without its owner would never end, and one taken away would leave its owner waiting. Only the body
+##     steps back; it walks on to where the hold sends it.
+##   - A soldier's orders (REWIND_ORDERS) are kept as they are now -- whoever gave them does not give them twice: he steps
+##     back and walks to them again. A fright or a look he was in then is put back, his orders saved under it as under
+##     any hold; one he is in now and was not then is over, and he goes back to his orders.
+func rewind(was: Dictionary, daze := 0.0) -> bool:
+	if was.is_empty() or state != State.WANDER or is_frozen() or inside or bool(was.get("inside", false)):
+		return false
+	var to: Vector2 = was.get("pos", ground_pos)
+	if grid != null and not grid.walkable(to):
+		to = grid.nearest_walkable(to, 4)
+		if to == Vector2.INF:
+			return false
+	queue_spot = Vector2.INF
+	queue_since = -1.0
+	passing_gate = null
+	wait = 0.0
+	_stumble = 0.0
+	_startle_left = 0.0
+	_get_up_now()
+	_unstick_left = 0.0
+	_unstick_way = PackedVector2Array()
+	step_margin = STEP_MARGIN
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	_velocity = Vector2.ZERO
+	ground_pos = to
+	_sync_position()
+	var then := int(was.get("mind", mind))
+	var then_lured := bool(was.get("lured", false))
+	var own_then := then in [Mind.CALM, Mind.RECOVER, Mind.PANIC, Mind.FLEE] or (then == Mind.OBSERVE and not then_lured)
+	if mind in REWIND_HELD or lured() or then in REWIND_HELD or (then == Mind.OBSERVE and then_lured):
+		_walk_on()
+	elif soldier:
+		if mind in REWIND_ORDERS and (then == Mind.PANIC or then == Mind.OBSERVE):
+			_hold_begin()
+			_take_up(was)
+		elif mind in REWIND_ORDERS or not own_then and not then in REWIND_ORDERS:
+			_walk_on()
+		elif then in REWIND_ORDERS:
+			_soldier_back()  # a fright or a look now that he was not in then: back to his orders, as the hold saved them
+		else:
+			_take_up(was)
+	elif own_then:
+		_take_up(was)
+	else:
+		_walk_on()
+	if daze > 0.0:
+		wait = maxf(wait, daze)
+		_idle = maxf(_idle, daze)
+	return true
+
+
+## rewind()'s kept mind: on to the goal it has now by a route from where it stands -- for a soldier away from the post he
+## was given, to it -- or, with none, standing where it is put.
+func _walk_on() -> void:
+	var bound := _goal
+	if bound == Vector2.INF and (mind == Mind.POST or mind == Mind.RALLY) and ground_pos.distance_to(anchor) > GOAL_REACH * 2.0:
+		bound = anchor
+	if bound != Vector2.INF:
+		set_goal(bound)
+	else:
+		_path = PackedVector2Array()
+		_leg = 0
+		_target = ground_pos
+
+
+## rewind()'s own mind taken up again from the record `was`.
+func _take_up(was: Dictionary) -> void:
+	var then := int(was.get("mind", mind)) as Mind
+	var timer := float(was.get("timer", 0.0))
+	_lured = false
+	mind = then
+	awareness = int(was.get("awareness", awareness)) as Awareness
+	if then == Mind.PANIC or then == Mind.OBSERVE:
+		_threat = was.get("threat", Vector2.INF)
+		_threat_r = float(was.get("threat_r", 1.0))
+	_panic_left = timer if then == Mind.PANIC else 0.0
+	rerouting = 0.0
+	if then == Mind.OBSERVE:
+		_observe_left = timer
+	if then == Mind.CALM or then == Mind.RECOVER:
+		anchor = was.get("anchor", anchor)
+		stay_left = timer
+	walk_speed = _mind_speed()
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	_leg = 0
+	_target = ground_pos
+	var g: Vector2 = was.get("goal", Vector2.INF)
+	if then == Mind.FLEE and g == Vector2.INF:
+		_repath_in = 0.0  # its way out planned again at once
+	elif then != Mind.OBSERVE and g != Vector2.INF:
+		set_goal(g)
 
 
 # --- Generic status and intent modifiers (Dominion, Disorder) ---------------------
@@ -2325,7 +2500,7 @@ func _sprite_pose_code() -> int:
 	var anim := 0
 	var t := _anim
 	var span := 0.0
-	if state == State.DEAD:
+	if state == State.DEAD and _kind != &"gone":  # one gone through a door of stars does not fall: it fades standing
 		anim = 4
 		t = _dead_time
 	elif _frozen > 0.0:
@@ -2386,6 +2561,8 @@ func _sprite_tint() -> Color:
 		return Color(COL_ICE, 0.6 * clampf(_frozen, 0.0, 1.0))
 	if _kind == &"gravity" and state == State.DEAD:
 		return Color(COL_VOID, _char * 0.8)
+	if _kind == &"gone" and state == State.DEAD:
+		return Color(COL_STAR, _char * 0.9)
 	if _char > 0.0:
 		return Color(COL_CHAR, _char * 0.85)
 	if sick_left > 0.0 and state != State.DEAD:

@@ -142,6 +142,12 @@ const POWERS := [
 	{"key": "curfew", "name": "Curfew", "path": "res://src/fx/decree/curfew.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
+	{"key": "allroads", "name": "All Roads Lead Here", "path": "res://src/fx/control/all_roads_lead_here.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "for 25 s every road in a district of 10 ends at the click: up to 80 people keep their own minds, but every way they take brings them here",
+		"quiet": true, "alarm": 1.0, "authority": "passage"},
+	{"key": "yesterday", "name": "Yesterday's Door", "path": "res://src/fx/control/yesterdays_door.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district of 6 steps back 10 s: everyone in it is where they stood, doing what they did, 10 seconds ago; the dead stay dead",
+		"quiet": true, "alarm": 1.0, "authority": "passage"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
@@ -176,12 +182,19 @@ const POWERS := [
 	{"key": "shatter", "name": "Earthshatter", "path": "res://src/fx/ruin/earthshatter.gd",
 		"dp": 5, "cooldown": 999.0, "aim": "two clicks", "shape": "the ground torn open from one click to the next, slowly; the crack stays; once",
 		"authority": "ruin"},
+	{"key": "everydoor", "name": "Every Door", "path": "res://src/fx/control/every_door.gd",
+		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "every door in town for 20 s: SHUT, nobody goes in or out of a building or the town; OPEN, everyone inside is thrown into the street and no building takes anyone; Q/E; once",
+		"quiet": true, "alarm": 1.0, "authority": "passage", "modes": [
+			{"key": "shut", "name": "SHUT"}, {"key": "open", "name": "OPEN"}]},
 	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
 		"authority": "dominion", "modes": [
 			{"key": "faction", "name": "FACTION SPLIT"}, {"key": "purge", "name": "PURGE", "area": {"r": 1.5}},
 			{"key": "custom", "name": "CUSTOM", "aim": "two clicks", "area": {"shape": "regions", "r": 5.0}},
 			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}}]},
+	{"key": "fargate", "name": "The Far Gate", "path": "res://src/fx/control/the_far_gate.gd",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a door of stars opens for 15 s: up to 40 people within 10 walk through it with their dogs and goods, gone for the night; soldiers resist; once a descent",
+		"quiet": true, "alarm": 1.0, "authority": "passage"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -282,6 +295,7 @@ const FAMILY := {
 	"noleave": "decree", "belllies": "decree", "magnify": "decree", "curfew": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
+	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",
 }
 
 

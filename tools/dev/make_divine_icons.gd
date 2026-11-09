@@ -52,6 +52,11 @@ func _initialize() -> void:
 	_save(_sign([0b01110, 0b00100, 0b01110, 0b00100, 0b01110], Color(0.95, 0.85, 0.5), Color(0.08, 0.06, 0.03), 107), "pilgrim")
 	_save(_sign([0b01110, 0b10001, 0b10001, 0b11111, 0b01010], Color(0.4, 0.7, 1.0), Color(0.02, 0.05, 0.12), 108), "deep")
 	_save(_sign([0b01010, 0b11111, 0b10101, 0b01110, 0b00100], Color(1.0, 0.35, 0.2), Color(0.08, 0.02, 0.02), 109), "houndgate")
+	# Passage IV-V: roads bent to one point, the hourglass, the door, the arch of stars.
+	_save(_sign([0b10101, 0b01110, 0b11011, 0b01110, 0b10101], Color(1.0, 0.82, 0.35), Color(0.1, 0.07, 0.02), 110), "allroads")
+	_save(_sign([0b11111, 0b01110, 0b00100, 0b01110, 0b11111], Color(0.9, 0.75, 0.55), Color(0.09, 0.06, 0.04), 111), "yesterday")
+	_save(_sign([0b01110, 0b10001, 0b10011, 0b10001, 0b11111], Color(0.85, 0.9, 1.0), Color(0.04, 0.05, 0.1), 112), "everydoor")
+	_save(_sign([0b01110, 0b11011, 0b10101, 0b10001, 0b10001], Color(0.7, 0.75, 1.0), Color(0.03, 0.03, 0.1), 113), "fargate")
 	# Veil: the shut eye in dusk.
 	_save(_sign(DominionParts.SHUT_EYE, Color(0.76, 0.6, 1.0), Color(0.05, 0.02, 0.1), 95), "unseen")
 	print("wrote ", ProjectSettings.globalize_path(OUT))

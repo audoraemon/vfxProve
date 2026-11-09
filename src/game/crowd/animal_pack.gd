@@ -114,6 +114,20 @@ func clear() -> void:
 	_skip.clear()
 
 
+## Takes one animal out of the town for good (a power carries it off: The Far Gate): the pack forgets it and its node is
+## freed. Nothing is left lying.
+func take(a: Animal) -> void:
+	animals.erase(a)
+	_cut.erase(a)
+	_cried.erase(a)
+	_skip.erase(a)
+	if is_instance_valid(a):
+		if a.is_inside_tree():
+			a.queue_free()
+		else:
+			a.free()
+
+
 ## The nearest walkable point to `to` within `cells`, else `fallback` (WalkGrid gives INF when there is none, and an
 ## animal sent there would walk off for ever).
 func _near(to: Vector2, cells: int, fallback: Vector2) -> Vector2:

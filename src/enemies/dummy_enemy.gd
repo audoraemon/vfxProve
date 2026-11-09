@@ -34,6 +34,9 @@ const COL_VOID := Color("b98cff")
 const COL_ICE := Color("b8e6ff")
 const COL_ICE_DEEP := Color("5aa0e8")
 const COL_ICE_HI := Color("f4fcff")
+## Gone through a door of stars (The Far Gate, kind gone): the starlight it fades into, and how long the figure takes.
+const COL_STAR := Color("e4eaff")
+const GONE_FADE := 0.7
 ## Orc horde skin: dark iron armor, red cloth, green skin.
 const ORC_DARK := Color("1e1a1c")
 const ORC_ARMOR := Color("4a3f3e")
@@ -256,6 +259,11 @@ func _tick_death(delta: float) -> void:
 					e.z - delta * 1.1)
 		&"pit":
 			_char = minf(_char + delta * 0.9, 1.0)
+		&"gone":
+			_char = minf(_char + delta / GONE_FADE, 1.0)
+			for i in _embers.size():
+				var e := _embers[i]
+				_embers[i] = Vector3(e.x + sin(_dead_time * 5.0 + i) * 5.0 * delta, e.y - 14.0 * delta, e.z - delta * 0.9)
 		_:
 			pass
 	var fade_start := 0.25 if _kind == &"gravity" else (0.35 if _kind == &"ice" else (1.0 if _kind == &"pit" else 0.6))
@@ -361,6 +369,10 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			_flash = 0.14
 			for i in 16:
 				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-15, -1), rng.randf_range(0.5, 1.2)))
+		&"gone":
+			# No body: the figure pales into starlight where it stands, and the light drifts up off it.
+			for i in 12:
+				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-16, -1), rng.randf_range(0.5, 1.2)))
 		&"pit":
 			# Drawn down toward the hole's middle (the source) as it falls, up to a body's reach away.
 			_fly = Vector2.ZERO
@@ -368,7 +380,8 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 				_fly = (Iso.ground_to_screen(source) - Iso.ground_to_screen(ground_pos)).limit_length(26.0)
 			_spin = rng.randf_range(2.0, 4.0) * (1.0 if rng.randf() < 0.5 else -1.0)
 	# Those thrown stay in the draw order; so does one falling into the pit, which is drawn over the hole (SolarisPit).
-	z_index = 0 if kind in [&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind", &"pit"] else -1
+	# So is one gone through a door of stars: it fades on its feet at the threshold, in front of the door or behind it.
+	z_index = 0 if kind in [&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind", &"pit", &"gone"] else -1
 
 
 func is_alive() -> bool:
@@ -473,6 +486,8 @@ func _tint(c: Color) -> Color:
 		return c.lerp(COL_ICE_DEEP.lerp(COL_ICE, clampf(c.get_luminance() * 1.6, 0.0, 1.0)), 0.75 * k)
 	if _kind == &"gravity" and state == State.DEAD:
 		return c.lerp(COL_VOID, _char * 0.8)
+	if _kind == &"gone" and state == State.DEAD:
+		return c.lerp(COL_STAR, _char * 0.9)
 	return c.lerp(COL_CHAR, _char * 0.85)
 
 
@@ -517,6 +532,8 @@ func _draw_all() -> void:
 				_draw_ashed()
 			&"pit":
 				_draw_fallen()
+			&"gone":
+				_draw_gone()
 			_:
 				_draw_corpse()
 		return
@@ -677,6 +694,19 @@ func _draw_ashed() -> void:
 			var c := COL_HOT if e.z > 0.7 else (COL_EMBER if e.z > 0.35 else COL_CHAR)
 			c.a = clampf(e.z * 1.5, 0.0, 1.0)
 			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), c)
+
+
+## Gone through a door of stars (The Far Gate): no body. The figure stands as it was, pales into starlight and thins
+## to nothing over GONE_FADE, and its light drifts up off it a moment longer.
+func _draw_gone() -> void:
+	var k := clampf(_dead_time / GONE_FADE, 0.0, 1.0)
+	if k < 1.0:
+		draw_set_transform(_draw_origin + Vector2(0, -roundf(k * 4.0)), 0.0, Vector2(1.0 - k * 0.7, 1.0 + k * 0.3))
+		_draw_body(0, 0)
+		draw_set_transform(_draw_origin)
+	for e in _embers:
+		if e.z > 0.0:
+			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), Color(COL_STAR, clampf(e.z, 0.0, 1.0)))
 
 
 ## Fallen into the Light of Solaris's pit: the hole takes it. It is drawn in toward the hole's middle and down, turning

@@ -6,9 +6,9 @@ the built WAVs; `assets/audio/CREDITS.md` lists every recording a recipe uses.
 
 | Folder | What | Licence | From |
 |---|---|---|---|
-| `oga/<page>/` | about 80 sound packs: breaking, debris, explosions, fire, ice, water, wind, thunder, lasers, magic, roars, voices, a crowd | CC0 (each page's licence block checked; `manifest.json` has title, author, URL) | [OpenGameArt](https://opengameart.org), CC0 search |
+| `oga/<page>/` | about 90 sound packs: breaking, debris, explosions, fire, ice, water, wind, thunder, lasers, magic, roars, voices, a crowd, birds, crickets, outdoor ambiences | CC0 (each page's licence block checked; `manifest.json` has title, author, URL) | [OpenGameArt](https://opengameart.org), CC0 search |
 | `kenney/impact-sounds/` | stone, wood, metal, glass and bell impacts | CC0 | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) |
-| `wikimedia/` | church bells (Leverkusen, Litovel, Zabuhailo), a struck bell, the Hiroshima peace bell | public domain or CC0 (`manifest.json`) | [Wikimedia Commons](https://commons.wikimedia.org) |
+| `wikimedia/` | church bells (Leverkusen, Litovel, Zabuhailo), a struck bell, the Hiroshima peace bell; a crowd at a distance and market recordings (the ambience) | public domain or CC0 (`manifest.json`) | [Wikimedia Commons](https://commons.wikimedia.org) |
 | `synth/<power>/` | `tools/audio/synth.py`'s renders, the base layer of every power's recipe | this repo | `KAK_SYNTH_OUT=<library>/synth python tools/audio/synth.py` |
 | `orchestra/sso-4.0/` | Sonatina Symphonic Orchestra 4.0 (SFZ): choir, strings, brass, organ, percussion; the music's instruments | CC Sampling Plus 1.0 (credit requested) | [peastman/sso](https://github.com/peastman/sso) |
 | `orchestra/VSCO-2-CE-1.1.0/` | VS Chamber Orchestra 2 Community Edition (SFZ; its raw percussion and organ samples also serve a few recipes: the quiet powers and the Lantern) | CC0 | [sgossner/VSCO-2-CE](https://github.com/sgossner/VSCO-2-CE) |

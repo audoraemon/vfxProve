@@ -180,9 +180,10 @@ Every sound is sorted by kind under `assets/audio/`, and every one is built from
 
 | Kind | Folder | Built from | By |
 |---|---|---|---|
-| Powers (78, shared by all 38 powers) | `ability/<element>/`: `fire`, `ice`, `water`, `wind`, `holy`, `energy`, `arcane` | recordings over `synth.py`'s render of the same cue (`tools/audio/foley/ability/<element>/<cue>.json`) | `tools/audio/foley.py` |
+| Powers | `ability/<element>/` | recordings (`tools/audio/foley/ability/<element>/<cue>.json`); `synth.py`'s render of the same cue stays underneath only where it is the power's character (lasers, the orbital, gravity, the Heaven Splitter's charge, the glacial rune, the nova's lock, swell, alarm and Geiger counter) | `tools/audio/foley.py` |
 | Citizens and soldiers (9) | `citizen/` | recordings: real yells, screams, a crowd, a cheer and a bugle (`tools/audio/foley/citizen/`) | `tools/audio/foley.py` |
 | Buildings and the town (10) | `building/` | recordings: rock, wood and debris, a church bell (`tools/audio/foley/building/`) | `tools/audio/foley.py` |
+| Ambience | `ambience/` | recordings: the town by day (distant voices, birds, a breeze) and by night (crickets, wind, the town far off), a fire bed, and bird and night calls (`tools/audio/foley/ambience/`) | `tools/audio/foley.py` |
 | Music (4 loops, stereo) | `music/` | scores (`tools/audio/music/<cue>.score.json`) played by orchestral sample libraries | `tools/audio/music_render.py` |
 | Interface (14) | `ui/` | GodotSfxr (`tools/audio/sfxr/ui/`) | `tools/audio/sfxr_bake.gd` |
 
@@ -203,6 +204,8 @@ KAK_SYNTH_OUT=C:/BURIN_NITRO/SoundLibrary/synth python tools/audio/synth.py   # 
 **Generated sounds** for what no library has: `tools/audio/sao_generate.py` runs Stable Audio Open in the local ComfyUI (models staged in `C:/BURIN_NITRO/ComfyUI/ComfyUI/models`), and `tools/audio/elevenlabs_generate.py` calls ElevenLabs with your API key; both read `tools/audio/sao_prompts.json` and put their takes in the library, to audition and use in a recipe. Running Stable Audio Open means accepting the Stability AI Community License (a copy is beside the checkpoint): free under US$1M a year in revenue, commercial use needs a free registration at https://stability.ai/community-license.
 
 A cue that varies its pitch per play (`jitter` in `Sfx.CATALOG`) varies its level too, by up to `Sfx.LEVEL_JITTER_DB`.
+
+**Natural sound, pass 2.** `Ambience` (made by `Crowd` beside its panic bed) plays the day or night bed for `TownLook.active`, dipped while the town panics, a fire bed that swells with the fires, and now and then a bird or a night call near the camera, on the Ambience bus. `Sfx` sends a sound away from the camera through `SFX_Mid` or `SFX_Far` (duller, a little room), so distance is heard. A cue with several takes never plays the same one twice in a row; the effects heard most have 4 takes and the collapses 5, evened to the same loudness. All three new buses feed SFX, so the Sounds slider rules them.
 
 ### GodotSfxr
 

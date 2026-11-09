@@ -1,5 +1,6 @@
 {"length": 0.7, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/dragon/dr_ignite.wav", "at": 0.0, "gain_db": -11, "fade_in": 0, "fade_out": 0},
-  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/ignite.ogg", "gain_db": -3, "onset": true, "at": 0.0},
-  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/spell_fire_01.ogg", "gain_db": -9, "onset": true, "at": 0.05}
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/ignite.ogg", "gain_db": -2, "onset": true, "at": 0.0},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/spell_fire_01.ogg", "gain_db": -4, "onset": true, "at": 0.03},
+  {"src": "lib:oga/fireplace-sound-loop/fire.wav", "from": 15.4, "dur": 0.68, "gain_db": -3, "hp": 120, "fade_in": 40, "fade_out": 250, "at": 0.02},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Fire2.ogg", "gain_db": -7, "onset": true, "dur": 0.65, "fade_out": 200, "at": 0.05}
 ]}

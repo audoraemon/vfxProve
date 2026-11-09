@@ -196,6 +196,8 @@ var _voice_tokens := VOICE_BUDGET
 var deaths := DeathVoices.new()
 var _bed: AudioStreamPlayer
 var _bed_level := 0.0
+## The town's sound between the events (natural sound pass 2): made with the bed, paused and stopped with it.
+var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
 ## crowd (unlike the frozen pause) keeps processing for the few frames Battlefield.quit() waits out.
 var _bed_stopped := false
@@ -760,10 +762,17 @@ static func bed_level_for(running: int) -> float:
 	return clampf(float(running) / BED_FULL, 0.0, 1.0)
 
 
+## How much the town is panicking, 0 to 1: the panic bed's own level (the ambience dips under it).
+func panic_level() -> float:
+	return _bed_level
+
+
 ## The mission paused (or the results are up over it): hold the bed where it is.
 func pause_bed(paused: bool) -> void:
 	if _bed != null:
 		_bed.stream_paused = paused
+	if _ambience != null:
+		_ambience.pause(paused)
 
 
 ## Silence the bed outright (the mission is quitting): unlike pause_bed(), nothing resumes it -- the crowd keeps
@@ -775,6 +784,8 @@ func stop_bed() -> void:
 	_bed_stopped = true
 	if _bed != null:
 		_bed.stop()
+	if _ambience != null:
+		_ambience.stop()
 
 
 func alive_citizens() -> int:
@@ -1115,6 +1126,9 @@ func _update_bed(delta: float) -> void:
 		_bed.bus = Sfx.BUS
 		_bed.stream = Sfx.load_stream(&"crowd_panic")
 		add_child(_bed)
+		_ambience = Ambience.new().setup(self)
+		_ambience.name = "Ambience"
+		add_child(_ambience)
 	if _bed_level <= 0.001:
 		if _bed.playing:
 			_bed.stop()

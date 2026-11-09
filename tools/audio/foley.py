@@ -1,6 +1,6 @@
 """Build game sounds from recordings: layer, trim, pitch, filter, fade and reverb sound files, per recipe.
 
-Recipes live in tools/audio/foley/<category>[/<group>]/<cue>.json and write the same path under assets/audio/ (16-bit mono,
+Recipes live in tools/audio/foley/<category>[/<group>]/<cue>.json and write the same path under assets/audio/ (16-bit mono, or stereo with "stereo": true,
 44.1 kHz). Recordings come from the sound library outside the repo (KAK_SOUND_LIBRARY, default
 C:/BURIN_NITRO/SoundLibrary), which keeps each source's licence in its manifest; see tools/audio/foley/SOURCES.md.
 
@@ -23,7 +23,8 @@ Recipe:
         "gain_db": -6, "normalize": true,    # normalize the layer's peak to 0 dB before its gain (default true)
         "hp": 80, "lp": 6000,  # high- and low-pass, Hz
         "fade_in": 5, "fade_out": 120,      # ms
-        "reverse": false, "dry": false}]}   # "dry": keep this layer out of the reverb
+        "reverse": false, "dry": false,      # "dry": keep this layer out of the reverb
+        "pan": 0.0}]}         # -1 left .. 1 right, in a recipe with "stereo": true (its sources keep their own channels)
 A looped recipe wraps what runs past its end back to its start, and the reverb tail with it, so the loop has no seam.
 """
 from __future__ import annotations
@@ -48,11 +49,12 @@ OUT = ROOT / "assets" / "audio"
 LIBRARY = Path(os.environ.get("KAK_SOUND_LIBRARY", "C:/BURIN_NITRO/SoundLibrary"))
 
 
-def load(src: str) -> np.ndarray:
+def load(src: str, ch: int | None = None) -> np.ndarray:
+    """A source as mono (ch None), or its channel ch (a mono source gives the same signal to every channel)."""
     kind, _, rel = src.partition(":")
     path = (LIBRARY if kind == "lib" else ROOT) / rel
     x, sr = sf.read(str(path), always_2d=True)
-    x = x.mean(axis=1)
+    x = x[:, ch] if ch is not None and ch < x.shape[1] else x.mean(axis=1)
     if sr != SR:
         r = Fraction(SR, sr).limit_denominator(1000)
         x = signal.resample_poly(x, r.numerator, r.denominator)
@@ -92,9 +94,9 @@ def fades(x: np.ndarray, fin_ms: float, fout_ms: float) -> np.ndarray:
     return x
 
 
-def layer(spec: dict) -> np.ndarray:
-    x = load(spec["src"])
-    start = onset(x) if spec.get("onset") else int(spec.get("from", 0.0) * SR)
+def layer(spec: dict, ch: int | None = None) -> np.ndarray:
+    x = load(spec["src"], ch)
+    start = onset(load(spec["src"]) if ch is not None else x) if spec.get("onset") else int(spec.get("from", 0.0) * SR)
     x = x[start:]
     if spec.get("reverse"):
         x = x[::-1]
@@ -105,17 +107,33 @@ def layer(spec: dict) -> np.ndarray:
     x = filt(x, spec.get("hp"), spec.get("lp"))
     x = fades(x, spec.get("fade_in", 3.0), spec.get("fade_out", 20.0))
     if spec.get("normalize", True):
-        peak = np.abs(x).max()
+        # A stereo recipe normalizes each layer by its mono peak, so its two channels keep their balance.
+        peak = np.abs(x).max() if ch is None else _layer_peak(spec)
         x = x / peak if peak > 0 else x
+    if ch is not None and "pan" in spec:
+        a = (float(spec["pan"]) + 1.0) * np.pi / 4.0
+        x = x * (np.cos(a) if ch == 0 else np.sin(a)) * np.sqrt(2.0)
     return x * 10 ** (spec.get("gain_db", 0.0) / 20.0)
 
 
-def impulse(spec: dict) -> np.ndarray:
-    """A reverb's impulse: a recorded one, or decaying noise with an RT60 and some high-frequency damping."""
+_PEAKS: dict = {}
+
+
+def _layer_peak(spec: dict) -> float:
+    """The peak of a layer's channels together, so both sides of a stereo layer scale by one number."""
+    key = json.dumps(spec, sort_keys=True)
+    if key not in _PEAKS:
+        _PEAKS[key] = max(np.abs(layer(dict(spec, normalize=False, gain_db=0.0), c)).max() for c in (0, 1)) or 1.0
+    return _PEAKS[key]
+
+
+def impulse(spec: dict, ch: int | None = None) -> np.ndarray:
+    """A reverb's impulse: a recorded one, or decaying noise with an RT60 and some high-frequency damping. Each channel
+    of a stereo recipe gets its own noise, so the reverb is wide."""
     if "ir" in spec:
-        ir = load(spec["ir"])
+        ir = load(spec["ir"], ch)
     else:
-        rng = np.random.default_rng(7)
+        rng = np.random.default_rng(7 + (ch or 0) * 101)
         rt60 = spec.get("rt60", 1.2)
         n = int(rt60 * 1.2 * SR)
         t = np.arange(n) / SR
@@ -144,6 +162,21 @@ def place(buf: np.ndarray, x: np.ndarray, at: int, loop: bool) -> None:
 
 
 def build(recipe: dict, skip_base: bool = False) -> np.ndarray:
+    """The finished cue: mono, or (frames, 2) for a recipe with "stereo": true."""
+    if recipe.get("stereo"):
+        out = np.stack([_build_channel(recipe, skip_base, c) for c in (0, 1)], axis=1)
+    else:
+        out = _build_channel(recipe, skip_base, None)
+    out = out - np.mean(out, axis=0)
+    peak = np.abs(out).max()
+    rms = np.sqrt(np.mean(out ** 2))
+    scale = 10 ** (recipe.get("peak_db", -1.0) / 20.0) / peak
+    if "rms_db" in recipe:
+        scale = min(10 ** (recipe["rms_db"] / 20.0) / rms, 10 ** (-0.3 / 20.0) / peak)
+    return out * scale
+
+
+def _build_channel(recipe: dict, skip_base: bool, ch: int | None) -> np.ndarray:
     n = int(round(recipe["length"] * SR))
     loop = recipe.get("loop", False)
     wet_in = np.zeros(n)
@@ -151,7 +184,7 @@ def build(recipe: dict, skip_base: bool = False) -> np.ndarray:
     for spec in recipe["layers"]:
         if skip_base and spec["src"].startswith("lib:synth/"):
             continue
-        x = layer(spec)
+        x = layer(spec, ch)
         at = int(round(spec.get("at", 0.0) * SR))
         place(dry, x, at, loop)
         if not spec.get("dry"):
@@ -159,7 +192,7 @@ def build(recipe: dict, skip_base: bool = False) -> np.ndarray:
     out = dry
     if "reverb" in recipe:
         rv = recipe["reverb"]
-        wet = signal.fftconvolve(wet_in, impulse(rv))
+        wet = signal.fftconvolve(wet_in, impulse(rv, ch))
         wet_out = np.zeros(n)
         place(wet_out, wet, 0, loop)
         mix = rv.get("mix", 0.2)
@@ -169,13 +202,7 @@ def build(recipe: dict, skip_base: bool = False) -> np.ndarray:
     if not loop:
         f = int(0.008 * SR)
         out[-f:] *= np.linspace(1, 0, f)
-    out = out - np.mean(out)
-    peak = np.abs(out).max()
-    rms = np.sqrt(np.mean(out ** 2))
-    scale = 10 ** (recipe.get("peak_db", -1.0) / 20.0) / peak
-    if "rms_db" in recipe:
-        scale = min(10 ** (recipe["rms_db"] / 20.0) / rms, 10 ** (-0.3 / 20.0) / peak)
-    return out * scale
+    return out
 
 
 def recipes() -> list[Path]:

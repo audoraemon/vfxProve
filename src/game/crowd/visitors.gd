@@ -10,13 +10,16 @@ extends RefCounted
 ## time), and at `blows` blows it dies. A visitor summoned to flinch must begin its bite again each time it is struck,
 ## so one guard holds one off; one that does not flinch bites through the blows, and a lone guard falls to it.
 ## Soldiers within the seek reach standing at their post are drawn to the nearest visitor every LURE_EVERY so they
-## come to fight. A target it cannot reach (a wall between) is left alone SKIP_FOR. recall() sends every visitor back
+## come to fight. It runs round buildings by the streets (Animal.route_to()); a target there is no way to is left alone
+## SKIP_FOR. recall() sends every visitor back
 ## to its gate, where it is freed. The owner steps it (step()) every frame and clears it (clear()) at the end; it keeps
 ## count of its kills and of the visitors slain.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
 const SKIP_FOR := 1.0
+## It runs the streets' way round to its prey (Animal.route_to()), planned again this often: the prey moves.
+const CHASE_REPATH := 0.5
 ## The guard: a soldier this near a visitor strikes it every GUARD_SWING.
 const GUARD_REACH := 0.6
 const GUARD_SWING := 0.8
@@ -164,7 +167,8 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	if who == null:
 		return  # nobody near: it stands, and looks again
 	if a.ground_pos.distance_to(who.ground_pos) > r.bite_r:
-		if a.walk_to(who.ground_pos, delta, _grid) and a.blocked:
+		# Round the buildings by the streets; only one there is no way to at all is left alone a while.
+		if a.route_to(who.ground_pos, delta, _grid, CHASE_REPATH) and a.blocked:
 			r.skip = who
 			r.skip_left = SKIP_FOR
 			a.target = null
@@ -187,7 +191,7 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 ## Recalled: back to the gate, freed there or when the time is up.
 func _go_home(a: Animal, r: Rule, delta: float) -> void:
 	r.recall_left -= delta
-	if r.recall_left <= 0.0 or a.walk_to(r.gate, delta, _grid):
+	if r.recall_left <= 0.0 or a.route_to(r.gate, delta, _grid):
 		_rules.erase(a)
 		_free(a)
 

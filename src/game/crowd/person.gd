@@ -43,6 +43,29 @@ const GOAL_REACH := 0.45
 ## Seconds before a person gives a stuck goal another try. Cinderfall repeatedly invalidates routes (fallen
 ## buildings, the bridge closing), so raised from 2.5 to spread the A* replanning out over fewer per-second calls.
 const REPATH := 4.0
+## The stuck watchdog (_watch_stuck()). A body may stand where the walk grid has a cell closed (a gap between two
+## houses wider than two margins but too narrow for a cell); from there the straight step to its waypoint can cross a
+## margin, and the slide that lets a walker graze a corner rocks it to and fro on the spot for good. One walking a path
+## to a goal, whose distance to its waypoint has not dropped by UNSTICK_GAIN for UNSTICK_AFTER, takes
+## the walk back onto open ground on its own path (_way_out(): the nearest cell of it it can reach past the footprints),
+## its step check on the footprints alone (margin 0.0: it may brush a wall, never go through one), given the walk's
+## time and UNSTICK_FOR more, then plans its way again from there.
+## Whoever is meant to stand -- queued, held, asleep, down, at its spot -- is never counted.
+const UNSTICK_AFTER := 2.0
+const UNSTICK_FOR := 1.0
+const UNSTICK_GAIN := 0.05
+## The way out is searched in steps of UNSTICK_STEP, each point UNSTICK_CLEAR off every footprint, up to UNSTICK_REACH
+## each way (_way_out()); with none, the nearest free cell within UNSTICK_CELLS. Within UNSTICK_NEAR of its end the step
+## back is done.
+const UNSTICK_STEP := 0.1
+const UNSTICK_CLEAR := 0.05
+const UNSTICK_REACH := 2.5
+const UNSTICK_CELLS := 4
+const UNSTICK_NEAR := 0.1
+const UNSTICK_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]
+## Every unstick there has been (the stall probe and the tests read it).
+static var unsticks := 0
 ## Chance per frame that a calm citizen strolls to the market or back home.
 const STROLL_CHANCE := 0.004
 ## How far a calm citizen drifts from home, and a posted soldier from its spot.
@@ -359,6 +382,14 @@ var _design_info: Array
 var _path := PackedVector2Array()
 var _leg := 0
 var _goal := Vector2.INF
+## The stuck watchdog (_watch_stuck()): the waypoint watched, the nearest it has got to it, seconds without getting
+## nearer; and while it steps back onto open ground, the way there, the point of it walked to, and the seconds left.
+var _stuck_to := Vector2.INF
+var _stuck_best := INF
+var _stuck_t := 0.0
+var _unstick_way := PackedVector2Array()
+var _unstick_leg := 0
+var _unstick_left := 0.0
 var _panic_left := 0.0
 var _repath_in := 0.0
 var _skin := Color.WHITE
@@ -495,6 +526,7 @@ func tick(delta: float) -> void:
 	var before := ground_pos
 	super(delta)
 	_track_stride(ground_pos - before)
+	_watch_stuck(delta)
 	if _down_pending and state == State.WANDER:
 		# The knock-back slide is over: it lies where it came to rest.
 		_down_pending = false
@@ -724,6 +756,11 @@ func _pick_target() -> void:
 		# DummyEnemy.tick() just set _idle before calling us, to pause at every target it reaches. That
 		# suits a calm stroll but not a sprint: cancel it so a runner never stops between waypoints.
 		_idle = 0.0
+	if _unstick_left > 0.0:
+		# Stepping back onto open ground (_watch_stuck()): that is where it walks until it is there.
+		_unstick_next()
+		_idle = 0.0
+		return
 	while _leg < _path.size():
 		var p := _path[_leg]
 		_leg += 1
@@ -781,6 +818,159 @@ func _drift() -> void:
 		var free := grid.nearest_walkable(to, 3)
 		to = free if free != Vector2.INF else ground_pos
 	_target = to
+
+
+## The stuck watchdog (UNSTICK_AFTER): after the step, see whether this walker has got nearer its waypoint; stuck, it
+## steps back onto open ground and plans again (_unstick()).
+func _watch_stuck(delta: float) -> void:
+	if _unstick_left > 0.0:
+		_unstick_left -= delta
+		if _unstick_left <= 0.0 or ground_pos.distance_to(_unstick_way[_unstick_way.size() - 1]) <= UNSTICK_NEAR:
+			_end_unstick()
+		return
+	if not _walking_a_path():
+		_stuck_to = Vector2.INF
+		_stuck_t = 0.0
+		return
+	var d := ground_pos.distance_to(_target)
+	if _target != _stuck_to or d <= _stuck_best - UNSTICK_GAIN:
+		_stuck_to = _target
+		_stuck_best = d
+		_stuck_t = 0.0
+		return
+	_stuck_t += delta
+	if _stuck_t >= UNSTICK_AFTER:
+		_unstick()
+
+
+## Out in the open on its feet, free to walk (not queued, held, asleep, down, frozen, startled, stumbling or pausing),
+## on a path to a goal it has not reached, and not standing on the waypoint it walks to -- the only walker the watchdog
+## counts. One holding a spot (a post, a door, a place to watch or work from) has its waypoint at its feet.
+func _walking_a_path() -> bool:
+	if _goal == Vector2.INF or _path.is_empty() or state != State.WANDER or inside or queue_spot != Vector2.INF:
+		return false
+	if mind == Mind.ASLEEP or mind == Mind.HOLD or is_frozen() or wait > 0.0 or _idle > 0.0:
+		return false
+	if _scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0 or _down_pending or _stumble > 0.0 or _startle_left > 0.0:
+		return false
+	return ground_pos.distance_to(_goal) > GOAL_REACH and ground_pos.distance_to(_target) > GOAL_REACH * 0.5
+
+
+## Stuck: walk the way out (_way_out()) on the footprints alone, for UNSTICK_FOR beyond the time the walk takes.
+func _unstick() -> void:
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	var way := _way_out()
+	if way.is_empty():
+		return
+	unsticks += 1
+	_unstick_way = way
+	_unstick_leg = 0
+	var length := ground_pos.distance_to(way[0])
+	for k in range(1, way.size()):
+		length += way[k - 1].distance_to(way[k])
+	_unstick_left = UNSTICK_FOR + length / maxf(walk_speed, 0.1)
+	step_margin = 0.0
+	_target = way[0]
+	_idle = 0.0
+
+
+## The next point of the way out, or the last held until the step back is done (_pick_target() while unsticking).
+func _unstick_next() -> void:
+	while _unstick_leg < _unstick_way.size() - 1 and ground_pos.distance_to(_unstick_way[_unstick_leg]) < ARRIVE * 2.0:
+		_unstick_leg += 1
+	_target = _unstick_way[_unstick_leg]
+
+
+## Back on open ground (or the time is up): the body's margin again, and the way to its goal planned from here.
+func _end_unstick() -> void:
+	_unstick_left = 0.0
+	_unstick_way = PackedVector2Array()
+	step_margin = STEP_MARGIN
+	if _goal != Vector2.INF and state != State.DEAD:
+		set_goal(_goal)
+
+
+## The way back onto open ground: the shortest walk (in UNSTICK_STEP steps, each point UNSTICK_CLEAR off every
+## footprint, within UNSTICK_REACH) to a cell of the path still ahead whose centre is clear of the margins, ending on
+## that centre -- the walk grid has the gap closed, so its own way out can lead into a pocket it has no route from.
+## With no such way, the nearest free cell clear of the margins within UNSTICK_CELLS that a straight walk reaches
+## without entering a footprint. Empty when there is neither.
+func _way_out() -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if grid == null or block_env == null:
+		return out
+	var want := {}
+	for k in range(maxi(_leg - 1, 0), _path.size()):
+		if not block_env.blocked(_path[k]):
+			want[grid.world_to_id(_path[k])] = true
+	var reach := roundi(UNSTICK_REACH / UNSTICK_STEP)
+	var from := {Vector2i.ZERO: Vector2i.ZERO}  # lattice point -> the one it was reached from
+	var queue: Array[Vector2i] = [Vector2i.ZERO]
+	var head := 0
+	while head < queue.size() and not want.is_empty():
+		var c := queue[head]
+		head += 1
+		var at := ground_pos + Vector2(c) * UNSTICK_STEP
+		var id := grid.world_to_id(at)
+		if c != Vector2i.ZERO and want.has(id):
+			var k := c
+			while k != Vector2i.ZERO:
+				out.append(ground_pos + Vector2(k) * UNSTICK_STEP)
+				k = from[k]
+			out.reverse()
+			out.append(grid.id_to_world(id))
+			return _pulled(out)
+		for dir: Vector2i in UNSTICK_DIRS:
+			var n := c + dir
+			if from.has(n) or absi(n.x) > reach or absi(n.y) > reach:
+				continue
+			var p := ground_pos + Vector2(n) * UNSTICK_STEP
+			if block_env.blocked(p, UNSTICK_CLEAR) or block_env.blocked((at + p) * 0.5, 0.0):
+				continue
+			from[n] = c
+			queue.append(n)
+	var best := Vector2.INF
+	var best_d := INF
+	var me := grid.world_to_id(ground_pos)
+	for dy in range(-UNSTICK_CELLS, UNSTICK_CELLS + 1):
+		for dx in range(-UNSTICK_CELLS, UNSTICK_CELLS + 1):
+			var c := me + Vector2i(dx, dy)
+			if not grid.grid.is_in_boundsv(c) or grid.grid.is_point_solid(c):
+				continue
+			var w := grid.id_to_world(c)
+			var d := w.distance_to(ground_pos)
+			if d < best_d and d > UNSTICK_NEAR and not block_env.blocked(w) and _footprints_clear(ground_pos, w, 0.0):
+				best = w
+				best_d = d
+	if best != Vector2.INF:
+		out.append(best)
+	return out
+
+
+## `way` with every point dropped that a straight walk between its neighbours, UNSTICK_CLEAR off every footprint, does
+## not need (a staircase of lattice steps becomes a few straight legs).
+func _pulled(way: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var at := ground_pos
+	var i := 0
+	while i < way.size():
+		var j := way.size() - 1
+		while j > i and not _footprints_clear(at, way[j], UNSTICK_CLEAR):
+			j -= 1
+		at = way[j]
+		out.append(at)
+		i = j + 1
+	return out
+
+
+## Whether a straight walk from `a` to `b` keeps `margin` off every footprint (sampled every 0.05).
+func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
+	var n := maxi(ceili(a.distance_to(b) / 0.05), 1)
+	for k in range(1, n + 1):
+		if block_env.blocked(a.lerp(b, float(k) / float(n)), margin):
+			return false
+	return true
 
 
 # --- What the town does to a person ------------------------------------------

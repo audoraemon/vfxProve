@@ -59,6 +59,10 @@ var look := Look.TROOPER
 var lift_target := 3.0
 ## Ground units per second while wandering; a brain raises it to run (Person's flee speed).
 var walk_speed := WALK_SPEED
+## How far from a building's footprint a step keeps (_step_blocked(), through block_env): a body's margin. A brain may
+## drop it to 0.0 a moment (Person's stuck watchdog): footprints only, it may brush a wall but never walk into one.
+const STEP_MARGIN := 0.15
+var step_margin := STEP_MARGIN
 
 var _velocity := Vector2.ZERO
 var _target := Vector2.ZERO
@@ -439,7 +443,7 @@ func _move(step: Vector2, to := Vector2.INF) -> void:
 ## shove, a building going up) may step anyway: its path runs through walkable cells and out.
 func _step_blocked(step: Vector2) -> bool:
 	if block_env != null:
-		return block_env.blocked(ground_pos + step) and not block_env.blocked(ground_pos)
+		return block_env.blocked(ground_pos + step, step_margin) and not block_env.blocked(ground_pos, step_margin)
 	return blocked.is_valid() and blocked.call(ground_pos + step) and not blocked.call(ground_pos)
 
 

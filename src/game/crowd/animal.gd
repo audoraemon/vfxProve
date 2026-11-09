@@ -124,6 +124,18 @@ var blocked := false
 var _walk_goal := Vector2.INF
 var _best_d := 0.0
 var _stuck_t := 0.0
+## Its route (route_to()): the walk grid's waypoints, the one it walks to, the goal they were planned for, seconds since
+## the plan, and give-ups on this plan without a waypoint reached between them.
+var _route := PackedVector2Array()
+var _route_leg := 0
+var _route_goal := Vector2.INF
+var _route_age := 0.0
+var _route_fails := 0
+## When it next looks whether the goal is in plain sight (and for a waypoint further on), the goal it last looked at,
+## and whether that one was in sight.
+var _look_in := 0.0
+var _look_goal := Vector2.INF
+var _in_sight := false
 
 ## PixelLab sheets (tools/dev/make_animal_sheet.py) by breed; a breed without one keeps its drawn shape.
 const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png",
@@ -146,6 +158,14 @@ const IDLES := {&"sit": [Row.SIT, 8.0, &"hold"], &"lie": [Row.LIE, 6.0, &"hold"]
 	&"idle": [Row.IDLE, 6.0, &"loop"], &"sniff": [Row.SNIFF, 6.0, &"loop"], &"scratch": [Row.SCRATCH, 8.0, &"hold"]}
 ## No nearer to its goal for this long: it gives up on it.
 const STUCK_AFTER := 1.2
+## route_to(): a goal that has moved this far from where the route was planned to is planned for again; the route looks
+## this many waypoints ahead for one it can run to straight (cutting the grid's corners).
+const ROUTE_MOVED := 0.5
+const ROUTE_AHEAD := 3
+## How often route_to() looks again whether the goal is in plain sight and how far along its route it can cut, and how far
+## the goal may move before it looks at once: a look is a line of grid samples, too dear for every animal every frame.
+const ROUTE_LOOK := 0.2
+const LOOK_MOVED := 0.25
 static var _sheets := {}
 
 
@@ -288,6 +308,74 @@ func _give_up() -> void:
 	blocked = true
 	_walk_goal = Vector2.INF
 	_stuck_t = 0.0
+
+
+## One step of `delta` toward `goal` by the way the town's streets go: true on arrival, or (with `blocked` set) when there
+## is no way there -- walk_to()'s contract, for a goal round a corner. With the goal in plain sight (the walk grid's
+## clear_line()), or no grid, it is walk_to() itself, so open ground walks exactly as before. Otherwise it follows the
+## grid's path (WalkGrid.path()), planned again when it has none, when the goal has moved ROUTE_MOVED from where it was
+## planned to, every `repath_every` seconds (a chase passes less: the prey moves) and when a step gives up; it walks to
+## the farthest of the next ROUTE_AHEAD waypoints it can run to straight, and from the last waypoint straight on to the
+## goal. No path at all, or two give-ups with no waypoint reached between them, is "cannot get there". Whether the goal
+## is in sight, and how far it can cut, it looks again every ROUTE_LOOK, at once when the goal moves LOOK_MOVED.
+func route_to(goal: Vector2, delta: float, grid: WalkGrid, repath_every := 1.0) -> bool:
+	if grid == null:
+		return walk_to(goal, delta, grid)
+	_look_in -= delta
+	var look := _look_in <= 0.0 or goal.distance_to(_look_goal) > LOOK_MOVED
+	if look:
+		_look_in = ROUTE_LOOK
+		_look_goal = goal
+		_in_sight = grid.clear_line(ground_pos, goal)
+	if _in_sight:
+		_route = PackedVector2Array()
+		_route_goal = Vector2.INF
+		var done := walk_to(goal, delta, grid)
+		if done and blocked:
+			_look_in = 0.0  # gave up on the straight walk: look again next time
+		return done
+	_route_age += delta
+	if _route.is_empty() or goal.distance_to(_route_goal) > ROUTE_MOVED or _route_age >= repath_every:
+		_plan_route(goal, grid)
+		look = true
+		if _route.is_empty():
+			blocked = true
+			_route_goal = Vector2.INF
+			return true
+	if _route_leg >= _route.size():
+		# Past the last waypoint (the free cell nearest the goal): straight on, as walk_to() would.
+		return walk_to(goal, delta, grid)
+	if look:
+		for k in range(mini(_route_leg + ROUTE_AHEAD, _route.size() - 1), _route_leg, -1):
+			if grid.clear_line(ground_pos, _route[k]):
+				_route_leg = k
+				break
+	if not walk_to(_route[_route_leg], delta, grid):
+		return false
+	if blocked:
+		# The step gave up (a corner it could not slide round): plan again from here, or, a second time running, it
+		# cannot get there.
+		_route_fails += 1
+		if _route_fails >= 2:
+			_route = PackedVector2Array()
+			_route_goal = Vector2.INF
+			_route_fails = 0
+			return true
+		blocked = false
+		_route = PackedVector2Array()
+		return false
+	# There: on to the next waypoint, looking at once how far along it can cut.
+	_route_fails = 0
+	_route_leg += 1
+	_look_in = 0.0
+	return false
+
+
+func _plan_route(goal: Vector2, grid: WalkGrid) -> void:
+	_route = grid.path(ground_pos, goal)
+	_route_leg = 0
+	_route_goal = goal
+	_route_age = 0.0
 
 
 func tick_visual(delta: float) -> void:

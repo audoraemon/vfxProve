@@ -2,7 +2,8 @@ class_name AnimalPack
 extends Node
 ## The town's dogs and cats (Animal): spawned by Crowd.spawn() round the citizens' homes and haunts, about one for
 ## every PER_CITIZENS citizens (MIN..MAX), dogs and cats in five breeds each (Animal.DOGS, Animal.CATS), and stepped
-## here every frame. They draw from their own rng (the crowd's seed + SEED_OFFSET), never the crowd's, a power's or a
+## here every frame. Wherever they go (an errand, a flight, a gathering, after someone) they go the streets' way round
+## the buildings (Animal.route_to()). They draw from their own rng (the crowd's seed + SEED_OFFSET), never the crowd's, a power's or a
 ## person's, and touch nobody unless a power turns them (cast()), so every reference stays as it was. `enabled` off
 ## (the reference tools and the test runner) spawns none.
 
@@ -193,14 +194,14 @@ func step(delta: float) -> void:
 			Animal.State.FOLLOW:
 				_follow(a, delta)
 			Animal.State.FLEE:
-				if a.walk_to(a.goal, delta, _grid):
+				if a.route_to(a.goal, delta, _grid):
 					a.state = Animal.State.WANDER
 					a.home = a.ground_pos
 					a.wait = rng.randf_range(SIT.x, SIT.y)
 			Animal.State.ATTACK:
 				_attack(a, delta)
 			Animal.State.GATHER:
-				if a.wait <= 0.0 and a.walk_to(a.goal, delta, _grid):
+				if a.wait <= 0.0 and a.route_to(a.goal, delta, _grid):
 					a.wait = 999.0
 					a.queue_redraw()
 			Animal.State.TRANCE:
@@ -214,7 +215,7 @@ func _wander(a: Animal, delta: float) -> void:
 			_next_errand(a)
 			a.queue_redraw()
 		return
-	if a.walk_to(a.goal, delta, _grid):
+	if a.route_to(a.goal, delta, _grid):
 		a.idle = _pick_idle(a)
 		a.wait = rng.randf_range(SIT.x, SIT.y) * (1.6 if not a.is_dog() else 1.0) * (2.0 if a.idle == &"lie" else 1.0)
 		if is_night():
@@ -267,7 +268,7 @@ func _follow(a: Animal, delta: float) -> void:
 		a.queue_redraw()
 		return
 	if a.ground_pos.distance_to(who.ground_pos) > FOLLOW_GAP:
-		if a.walk_to(who.ground_pos, delta, _grid) and a.blocked:
+		if a.route_to(who.ground_pos, delta, _grid) and a.blocked:
 			a.wait = 0.0  # cannot reach them: stop following next step
 
 
@@ -281,7 +282,7 @@ func _attack(a: Animal, delta: float) -> void:
 		return
 	a._bite_in -= delta
 	if a.ground_pos.distance_to(who.ground_pos) > Animal.REACH:
-		if a.walk_to(who.ground_pos, delta, _grid) and a.blocked:
+		if a.route_to(who.ground_pos, delta, _grid) and a.blocked:
 			# A wall between them: go for someone else a while.
 			_skip[a] = [who, SKIP_FOR]
 			a.target = null

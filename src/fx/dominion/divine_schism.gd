@@ -34,6 +34,9 @@ const RECRUIT_EVERY := 1.0
 const RECRUIT_R := 1.5
 const RECRUIT_CHANCE := 0.35
 const SPREAD_MAX := 120
+## Turn the Tide (level 5): how many fighters may be turned in all, and how near the click a fighter must stand to be the one.
+const MAX_TURNS := 10
+const TURN_PICK := 1.0
 ## Who is set on a side but runs rather than fights.
 const FLEEING_ROLES := [CitizenProfile.Role.CAREGIVER]
 const GOLD := Color("ffe9a8")
@@ -82,6 +85,9 @@ var _debug: Debug
 var lv_region := REGION
 var lv_max_fighters := MAX_FIGHTERS
 var lv_duration := DURATION
+## Turn the Tide: whether this cast has it, and how many it has turned.
+var turns := 0
+var _tide := false
 ## When each was set on its side (the effect's clock), for its thread; the sides' sparkles, by side.
 var _joined := {}
 var _sparkles: Array = [null, null, null]
@@ -117,6 +123,7 @@ func _build() -> void:
 	lv_region = float(PowerBook.stat(extra, "schism", "REGION", REGION))
 	lv_max_fighters = int(PowerBook.stat(extra, "schism", "MAX_FIGHTERS", MAX_FIGHTERS))
 	lv_duration = float(PowerBook.stat(extra, "schism", "DURATION", DURATION))
+	_tide = PowerBook.twist_at(extra, "schism")
 	mode = String(extra.get("mode", "faction"))
 	duration = T_BREAK + lv_duration + 0.5
 	busy = T_BREAK + 1.0
@@ -152,6 +159,41 @@ func _build() -> void:
 	ctx.play(&"jg_rumble", origin, -4.0)
 	if _staged():
 		_strain_show()
+
+
+## Turn the Tide: true at level 5 while the sides fight (after the busy lock, before the schism lifts), in any mode but TUMULT, until MAX_TURNS.
+func can_follow_up() -> bool:
+	return _tide and not finished and mode != "tumult" and turns < MAX_TURNS and t >= T_BREAK + 1.0 and t < T_BREAK + lv_duration
+
+
+## Turn the Tide: the member of a side nearest the click (within TURN_PICK; a tie goes to the first set on a side) goes over to the other side.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var best: Person = null
+	var best_d := TURN_PICK
+	for p in members:
+		if not is_instance_valid(p) or p.side == 0 or not p.is_alive() or p.inside:
+			continue
+		var d := p.ground_pos.distance_to(at_pos)
+		if d <= best_d and (best == null or d < best_d):
+			best = p
+			best_d = d
+	if best == null:
+		return false
+	var to := 3 - best.side
+	counts[best.side] -= 1
+	counts[to] += 1
+	best.side = to
+	best.stop_fighting()
+	_lay_side(best, to, maxf(lv_duration - (t - T_BREAK), 0.5))
+	turns += 1
+	return true
+
+
+## Turn the Tide's preview: the one fighter the click picks.
+func follow_up_area() -> Dictionary:
+	return {"shape": "circle", "r": TURN_PICK}
 
 
 func _staged() -> bool:
@@ -207,12 +249,17 @@ func _enlist(p: Person, s: int) -> void:
 	p.side = s
 	members.append(p)
 	_joined[p] = t
+	counts[s] += 1
+	_lay_side(p, s, left)
+
+
+## `p` (already on side `s` and counted) takes up its side: the mark, and the fight (or, for the condemned citizen and the one who cannot fight, the run).
+func _lay_side(p: Person, s: int, left: float) -> void:
 	var sparkle: PixelParticles = _sparkles[s]
 	if is_instance_valid(sparkle):
 		sparkle.burst(4, {"offset": Iso.ground_to_screen(p.ground_pos) - sparkle.position + Vector2(0, -8), "radius": 4.0,
 			"speed": Vector2(6, 18), "alt": Vector2(0, 6), "alt_speed": Vector2(12, 36), "life": Vector2(0.4, 0.8),
 			"size": Vector2(1, 1)})
-	counts[s] += 1
 	var condemned := mode == "purge" and s == 2
 	var glyph: Array[int] = []
 	glyph.assign(GLYPH_CONDEMNED if condemned else GLYPH_SIDES[s])

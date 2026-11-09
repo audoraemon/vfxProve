@@ -1157,6 +1157,9 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 		_flash[slot] = FLASH_SECONDS
 	if reason == "nobody":
 		push_banner("NO ONE TO WHISPER TO", true)
+	elif reason == "missed":
+		# A live power's follow-up order that found nothing at the click (a Tide click on no fighter, a second word with nobody near).
+		push_banner("NOTHING THERE TO COMMAND", true)
 	elif reason == "foe":
 		push_banner("NO ONE THERE TO ATTACK", true)
 	elif reason == "building":

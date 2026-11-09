@@ -429,10 +429,10 @@ func release(ground: Vector2) -> void:
 	# the slot stays focused for the next.
 	if _rules.can_recast(slot):
 		# The click is the live power's order, never a place of the slot's own aim: a half-placed two-click aim from before is dropped,
-		# and a follow-up that finds nothing is refused as such, never started as a cast.
+		# and a follow-up that finds nothing is refused as "missed", never started as a cast.
 		placed = false
 		if not _rules.recast(slot, _press, extra):
-			_rules.refuse(slot, "nobody")
+			_rules.refuse(slot, "missed")
 		queue_redraw()
 		return
 	_rules.cast(slot, _press, extra)

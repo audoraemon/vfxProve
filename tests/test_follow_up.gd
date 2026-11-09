@@ -134,7 +134,7 @@ static func _targeting(t) -> void:
 
 
 ## A half-placed two-click aim from the busy lock is dropped when the next click is taken as an order, and a follow-up that finds nothing is
-## refused as "nobody" (never started as a cast, never "cooldown").
+## refused as "missed" (never started as a cast, never "cooldown").
 static func _stranded(t) -> void:
 	var made := _world()
 	var crowd: Crowd = made[4]
@@ -172,7 +172,7 @@ static func _stranded(t) -> void:
 	var cooldown := rules.cooldown_left(0)
 	aim.press(P)
 	aim.release(P)
-	t.check(refused == [[0, "nobody"]] and called.size() == 1 and not aim.placed and is_equal_approx(rules.cooldown_left(0), cooldown),
+	t.check(refused == [[0, "missed"]] and called.size() == 1 and not aim.placed and is_equal_approx(rules.cooldown_left(0), cooldown),
 		"a follow-up that finds nothing is refused as nobody, with no cast and the cooldown untouched (%s)" % [refused])
 	aim.free()
 	rules.free()

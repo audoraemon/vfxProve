@@ -12,7 +12,8 @@ signal cast_made(slot: int, key: String, at: Vector2)
 signal recast_made(slot: int, key: String, at: Vector2)
 ## A cast could not go out: "cooldown", "busy", "empty", "over", "nobody" (v0.08: a Mind Whisper with no one to
 ## whisper to), "shaken" (v0.08.1: a Mind Whisper on someone still shaking the last one off, Person.SHAKE_OFF), or -- the order
-## wheel -- "foe" (an attack order with no fair foe) or "building" (a burn order with no fair building).
+## wheel -- "foe" (an attack order with no fair foe) or "building" (a burn order with no fair building); "missed" (a live
+## power's follow-up order that found nothing at the click, Targeting).
 signal cast_refused(slot: int, reason: String)
 ## The Temple fell and every cooldown was reset (v0.08's Divine Surge, once a mission).
 signal surged

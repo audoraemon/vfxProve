@@ -66,7 +66,7 @@ Ruin's Called Bolts already took an order from a live cast. This milestone made 
 
 - **To give the order:** select the power's slot again (its number key or its card; allowed while it cools), then click the ground. While the live cast can take an order, the slot aims as a plain click, whatever its own aim (Schism's two clicks, Voice's Q/E mode).
 - **What it costs:** nothing. A follow-up starts no cooldown, sends no `cast_made` (so no alarm and no `Crowd.on_cast`), and the slot stays selected.
-- **When it is refused:** while any other cast holds the busy lock, and after the run is over. A click that finds nothing (Tide misses every fighter, Judge with nobody there) is refused as "nobody", and never falls through to a real cast.
+- **When it is refused:** while any other cast holds the busy lock, and after the run is over. A click that finds nothing (Tide misses every fighter, Judge with nobody there) is refused as "missed" (the banner "NOTHING THERE TO COMMAND"), and never falls through to a real cast.
 - **How the player knows:** the HUD slot card turns gold (gold frame, gold cooldown seconds) while an order can be given; the aim preview's edge is gold and shows the follow-up's own area when it has one; the twist text says "click again" in the tree and on the Prepare card.
 - **In code:** `Rules.recast`, `Rules.can_recast` and `Rules.follow_up_area` call the live effect's `follow_up(at, extra)`, `can_follow_up()` and `follow_up_area()`. Tempest keeps `call_bolt` and `can_call` behind thin wrappers, so its tests are unchanged.
 - **Held String is not a follow-up.** Its cooldown still applies, so it is a normal new whisper (select the slot, click) through `Rules.cast`.
@@ -89,11 +89,11 @@ Ruin's Called Bolts already took an order from a live cast. This milestone made 
 - `1d57a0b7` Task 1 groundwork: tables, per-level cooldown, every stat read at its level, the shared follow-up mechanism, previews, HUD gold cue, test files.
 - Twists, one commit each: `e07ed947` Whisper, `d4e9f407` Discord, `92953fba` Madness (track A); `5e1b59db` Wisp, `dd2f8f5d` Clear Mind, `4610bfaa` Voice, `06f707ae` Schism (track B); `cb6d82fc` Saint, `dedcdcf7` Sanctuary, `4704019d` Anathema (track C).
 - Track fixes: `587c3a59` (Passed Mark's once test can fail; Spreading Mark skips people indoors), `8fbb3dd0` (Procession leaves a person another power has since compelled; redirect skips sleepers; Sleepwalk checks ownership).
-- Fix wave after the final review: `375f4888` (recast clears a half-placed two-click aim; a failed follow-up is refused as nobody; Sinner pass needs hunters; Procession re-path staggered; second-word RETURN uses the cached home).
+- Fix wave after the final review: `375f4888` (recast clears a half-placed two-click aim; a failed follow-up is refused, never cast; Sinner pass needs hunters; Procession re-path staggered; second-word RETURN uses the cached home).
 
 ## Tests
 
-- New: `tests/test_dominion_levels.gd` (442 checks: shapes, level one with types, DS's tables typed again, Might, cooldown at level, level-3 casts, previews, tree text), `tests/test_follow_up.gd` (19 at Task 1, plus the stranded-aim and "nobody" cases), and ten `tests/test_dominion_twist_<key>.gd` for whisper, discord, madness, wisp, clearmind, saint, sanctuary, anathema, voice and schism (about 10, 12, 7, 31, 15, 8+, 19, 10, 24 and 20 checks; the fix rounds added cases). Each twist has a level-4 case that shows nothing.
+- New: `tests/test_dominion_levels.gd` (442 checks: shapes, level one with types, DS's tables typed again, Might, cooldown at level, level-3 casts, previews, tree text), `tests/test_follow_up.gd` (19 at Task 1, plus the stranded-aim and "missed" cases), and ten `tests/test_dominion_twist_<key>.gd` for whisper, discord, madness, wisp, clearmind, saint, sanctuary, anathema, voice and schism (about 10, 12, 7, 31, 15, 8+, 19, 10, 24 and 20 checks; the fix rounds added cases). Each twist has a level-4 case that shows nothing.
 - Digest and crowd_check unchanged at every step. Each track's own suite part 3 printed no result under load; the suites in it were rerun in slices or one by one, all `failures=0`.
 - **Landing checks not yet run on the merged tree:** the full suite in 6 parts, all 508 reference rows (only `bread_play_3`, `-133947279`, may differ), FLOW alone (`209/0`), and one level-5 ENTHRALL Procession with a full ring profiled for frame cost.
 

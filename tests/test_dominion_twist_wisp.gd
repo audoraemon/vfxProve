@@ -11,6 +11,7 @@ const E = preload("res://tests/test_wisp_enthrall.gd")
 static func run(t) -> void:
 	_lure(t)
 	_enthrall(t)
+	_stolen(t)
 	_level_four(t)
 	_rules(t)
 
@@ -165,6 +166,32 @@ static func _enthrall(t) -> void:
 	for p in group:
 		freed = freed and p.mind != Person.Mind.COMPELLED
 	t.check(freed, "cutting it short releases them")
+	fx.free()
+	S._done(made)
+
+
+## A held person another power has since compelled elsewhere is left alone by Procession (the ownership guard of _release_all()).
+static func _stolen(t) -> void:
+	var made := S._setup()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var ctx: FxContext = made[5]
+	var at := _arena(crowd, grid)
+	S._scatter(crowd)
+	var group := _people(crowd, 3)
+	E._place(group, at, 3.0)
+	var fx := _cast(ctx, at, {"level": 5, "mode": "enthrall"})
+	var thief: Person = group[0]
+	var elsewhere := at + Vector2(-5.0, 2.0)
+	thief.compel(elsewhere, 30.0, Person.WILL_ABSOLUTE, Color.WHITE, false, &"")
+	fx.follow_up(at + Vector2.RIGHT * 4.0, {})
+	fx._process(1.0)
+	t.check(thief.anchor == elsewhere and thief.goal().distance_to(elsewhere) < 0.6 and not fx._held.has(thief),
+		"a held person re-compelled elsewhere is left alone by the moving light")
+	t.check(group[1].anchor.distance_to(fx.light_at) < 5.1 and fx._held.has(group[1]), "and the others still follow it")
+	fx._process(1.0)
+	t.check(thief.anchor == elsewhere, "and is not taken again at the next scan")
+	fx.end_now()
 	fx.free()
 	S._done(made)
 

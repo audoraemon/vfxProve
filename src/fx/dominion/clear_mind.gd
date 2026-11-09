@@ -61,7 +61,7 @@ func holding() -> bool:
 func _sendable() -> Array[Person]:
 	var out: Array[Person] = []
 	for p in entranced:
-		if is_instance_valid(p) and p.is_alive() and not p.inside and (p.mind != Person.Mind.COMPELLED or walkers.has(p)):
+		if is_instance_valid(p) and p.is_alive() and not p.inside and (p.mind != Person.Mind.COMPELLED or (walkers.has(p) and p.anchor == walkers[p])):
 			out.append(p)
 	return out
 

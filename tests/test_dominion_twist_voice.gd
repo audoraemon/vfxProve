@@ -81,6 +81,7 @@ static func _second(t) -> void:
 	fx2.follow_up(b2[3], {"mode": "halt"})
 	dead.state = DummyEnemy.State.DEAD
 	fx2._process(VoiceOfGodFx.T_SPEAK + 16.9 - fx2.t)
+	t.check(dead.compel_pose == &"kneel" and group2[2].compel_pose == &"", "the dead person is untouched by the second word (still as the first left them)")
 	t.check(inner.mind != Person.Mind.COMPELLED and group2[2].mind == Person.Mind.COMPELLED and group2[2].compel_pose == &"",
 		"a person the first never reached (inside) is not touched; the others take the second")
 	_end(b2[0], fx2)

@@ -1502,6 +1502,8 @@ func relure(spot: Vector2) -> bool:
 ## A new goal for someone already walking (Procession's light moves on): set_goal(), without the step back to the middle of the cell it stands in
 ## that a fresh path begins with -- re-sent every half second, that step would hold a walker in place.
 func redirect(spot: Vector2) -> void:
+	if mind == Mind.ASLEEP:
+		return  # a sleeper goes nowhere (set_goal's own rule)
 	set_goal(spot)
 	if _leg >= 1 and _leg < _path.size():
 		var first := _path[_leg - 1]

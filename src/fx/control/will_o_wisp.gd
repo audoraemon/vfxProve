@@ -260,6 +260,11 @@ func _regoal() -> void:
 		for p in _held.keys():
 			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.COMPELLED:
 				continue
+			if p.anchor != _held[p]:
+				# Another power has compelled them since (the same guard as _release_all()): no longer ours, and not taken again.
+				_held.erase(p)
+				_skipped[p] = true
+				continue
 			var spot: Vector2 = _held[p] + d
 			_held[p] = spot
 			p.anchor = spot

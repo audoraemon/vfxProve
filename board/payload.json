@@ -7,21 +7,26 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **26** to do · **114** done\n**13** active branches besides Develop-Main\n\n**Since the last update** (<t:1794250927:f>)\n• New: Natural sound pass 2: ambience, variants, recordings only, distance",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **26** to do · **116** done\n**11** active branches besides Develop-Main\n\n**Since the last update** (<t:1794268000:f>)\n• New: Natural sound pass 3: crowd panic redesign, ducking, humanized music\n• New: Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-10T02:02:07+07:00"
+     "timestamp": "2026-11-10T06:46:40+07:00"
     },
     {
      "title": "claude/zen-greider-6e47c5",
-     "description": "15 commits not in Develop-Main · last commit today · local only\n> fix: walk-grid pockets join the streets where a body fits; nobody lives in one\n\n_No Ledger task points at this branch._",
+     "description": "18 commits not in Develop-Main · last commit today · local only\n> fix: try_passage_45.bat path to try.bat\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
-     "title": "pocket-fix",
-     "description": "15 commits not in Develop-Main · last commit today · local only\n> fix: walk-grid pockets join the streets where a body fits; nobody lives in one\n\n_No Ledger task points at this branch._",
+     "title": "feat/soldier-jobs",
+     "description": "10 commits not in Develop-Main · last commit today · local only\n> feat: fallen buildings stay blocked ruins; people standing in a falling footprint step out\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/sound-natural-2",
+     "description": "2 commits not in Develop-Main · last commit today\n> feat: natural sound pass 3: crowd panic redesign, ducking, humanized music\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -50,13 +55,8 @@
      "color": 5016537
     },
     {
-     "title": "claude/sound-natural-2",
-     "description": "1 commit not in Develop-Main · last commit yesterday\n> feat: natural sound pass 2: ambience, variants, recordings only, distance\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/people-anim-2",
-     "description": "4 commits not in Develop-Main · last commit 3 days ago\n> feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops\n\n_No Ledger task points at this branch._",
+     "title": "god/dominion-t3-old",
+     "description": "215 commits not in Develop-Main · last commit 4 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 5016537
     }
    ]
@@ -66,16 +66,6 @@
     "parse": []
    },
    "embeds": [
-    {
-     "title": "feat/soldier-jobs",
-     "description": "4 commits not in Develop-Main · last commit 3 days ago · local only\n> feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/dominion-t3-old",
-     "description": "215 commits not in Develop-Main · last commit 4 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
     {
      "title": "fix/evac-recalm",
      "description": "1 commit not in Develop-Main · last commit 32 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
@@ -93,7 +83,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Natural sound pass 2: ambience, variants, recordings only, distance _(11-10)_\n• Zoom readout (step 1 of the zoom cap) _(11-09)_\n• Town dogs and cats (Discord idea Animals) _(11-07)_\n• Dominion's whole tree: Tiers 2, 4 and 5 _(11-07)_\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion _(11-07)_\n• Dominion Tier 3: Clear Mind and Saint or Sinner _(11-06)_\n• Discord god-progression changelog _(11-06)_\n• Endless Night: random DAY/NIGHT missions, night rules _(11-06)_",
+     "description": "• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-10)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-10)_\n• Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate _(11-10)_\n• Zoom readout (step 1 of the zoom cap) _(11-09)_\n• Town dogs and cats (Discord idea Animals) _(11-07)_\n• Dominion's whole tree: Tiers 2, 4 and 5 _(11-07)_\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion _(11-07)_\n• Dominion Tier 3: Clear Mind and Saint or Sinner _(11-06)_",
      "color": 10185686
     }
    ]

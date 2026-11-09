@@ -1,10 +1,11 @@
 {
- "hash": "bbed4a44e59b6ee3",
- "updated": "2026-11-10T02:02:07+07:00",
+ "hash": "4ef228391443bd61",
+ "updated": "2026-11-10T06:46:40+07:00",
  "changes": {
-  "date": "<t:1794250927:f>",
+  "date": "<t:1794268000:f>",
   "items": [
-   "New: Natural sound pass 2: ambience, variants, recordings only, distance"
+   "New: Natural sound pass 3: crowd panic redesign, ducking, humanized music",
+   "New: Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate"
   ]
  },
  "snapshot": {
@@ -535,6 +536,15 @@
     "branch": "claude/sound-natural-2",
     "updated": "2026-11-10",
     "order": 901
+   },
+   "natural-sound-3": {
+    "title": "Natural sound pass 3: crowd panic redesign, ducking, humanized music",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": true,
+    "branch": "claude/sound-natural-2",
+    "updated": "2026-11-10",
+    "order": 902
    },
    "natural-sound-you": {
     "title": "Natural sound: listen, and the steps only you can do",
@@ -1271,6 +1281,15 @@
     "updated": "2026-11-07",
     "order": 17
    },
+   "vfx-passage-t45": {
+    "title": "Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate",
+    "status": "done",
+    "area": "Abilities",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-11-10",
+    "order": 19
+   },
    "vfx-sacred-sanctuary": {
     "title": "Sacred Sanctuary (Dominion, Tier IV): the wall of people",
     "status": "done",
@@ -1385,19 +1404,27 @@
   "branches": [
    {
     "name": "claude/zen-greider-6e47c5",
-    "ahead": 15,
+    "ahead": 18,
     "behind": 1,
     "date": "2026-11-10",
-    "subject": "fix: walk-grid pockets join the streets where a body fits; nobody lives in one",
+    "subject": "fix: try_passage_45.bat path to try.bat",
     "pushed": false
    },
    {
-    "name": "pocket-fix",
-    "ahead": 15,
+    "name": "feat/soldier-jobs",
+    "ahead": 10,
     "behind": 1,
     "date": "2026-11-10",
-    "subject": "fix: walk-grid pockets join the streets where a body fits; nobody lives in one",
+    "subject": "feat: fallen buildings stay blocked ruins; people standing in a falling footprint step out",
     "pushed": false
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 2,
+    "behind": 1,
+    "date": "2026-11-10",
+    "subject": "feat: natural sound pass 3: crowd panic redesign, ducking, humanized music",
+    "pushed": true
    },
    {
     "name": "god/dominion-levels",
@@ -1438,30 +1465,6 @@
     "date": "2026-11-09",
     "subject": "fix: play_dev.bat refreshes the class cache before launch (stale cache: game.gd failed to parse)",
     "pushed": true
-   },
-   {
-    "name": "claude/sound-natural-2",
-    "ahead": 1,
-    "behind": 1,
-    "date": "2026-11-09",
-    "subject": "feat: natural sound pass 2: ambience, variants, recordings only, distance",
-    "pushed": true
-   },
-   {
-    "name": "feat/people-anim-2",
-    "ahead": 4,
-    "behind": 1,
-    "date": "2026-11-07",
-    "subject": "feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops",
-    "pushed": true
-   },
-   {
-    "name": "feat/soldier-jobs",
-    "ahead": 4,
-    "behind": 1,
-    "date": "2026-11-07",
-    "subject": "feat: people interaction anims: talk, work, dig, douse; citizens stand still at their stops",
-    "pushed": false
    },
    {
     "name": "god/dominion-t3-old",

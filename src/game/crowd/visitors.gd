@@ -1,7 +1,7 @@
 class_name Visitors
 extends RefCounted
 ## Visitors: hostile walkers from the other side, the god's to send (Hound Gate first; Hellmouth, Hell's Parade and The
-## Hellgate after). Each is an Animal (the hound sheet, a breed of the town's own dogs) that the town's AnimalPack
+## Hellgate after). Each is an Animal (of the breed its summoner picks: Hound Gate's is the hellhound, with its own painted sheet) that the town's AnimalPack
 ## never steps: it is summoned at a gate, hunts whoever is nearest -- citizen or soldier, alive and out in the open,
 ## within its seek reach, the nearest looked for again every RETARGET -- and bites whoever it reaches (hurt_from: a
 ## citizen falls to one bite, a soldier to two; the dead are the god's, damage kind frenzy). It fears nothing: no

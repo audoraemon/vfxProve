@@ -69,7 +69,7 @@ const POWERS := [
 		"dp": 2, "cooldown": 35.0, "aim": "drag", "shape": "the road itself travels: for 15 s whoever stands on the 6-long lane is carried along it at a run and thrown off its end, into whatever stands there",
 		"authority": "passage"},
 	{"key": "deep", "name": "Door to the Deep", "path": "res://src/fx/control/door_to_the_deep.gd",
-		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a door opens in the ground and black water floods a circle of 4 for 25 s: everyone in it slows to a third, every fire in it goes out, the buildings soak",
+		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a door opens in the ground and a whirlpool of black water turns over a circle of 4 for 25 s: everyone in it slows to a third and is drawn to the middle, where the door takes them; fires go out, buildings soak",
 		"authority": "passage"},
 	{"key": "houndgate", "name": "Hound Gate", "path": "res://src/fx/control/hound_gate.gd",
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a door opens and four hounds come through, hunting whoever is nearest for 30 s; the guard can cut them down",

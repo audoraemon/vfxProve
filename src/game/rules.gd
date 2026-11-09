@@ -62,7 +62,7 @@ const POWER_KINDS := {
 	"windfall": [&"stone", &"fire"],
 	"hellspark": [&"fire"],
 	"pilgrim": [],
-	"deep": [],
+	"deep": [&"pit"],
 	"houndgate": [&"frenzy"],
 	"belllies": [],
 	"magnify": [&"magnify"],

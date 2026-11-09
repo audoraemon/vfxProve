@@ -7,7 +7,9 @@ extends Node2D
 ## Congregation draws it to the gathering, Clear Mind makes it sit. It never lights a fire or harms a building.
 ## AnimalPack steps it (step()); it draws itself in code, in its own small pixel shape, at the ground point.
 
-enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT }
+## HELLHOUND is no town animal: a hound of the other side (Visitors, Hound Gate), half again a dog's size, never in
+## DOGS and so never in the town's pack.
+enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND }
 const DOGS: Array[Breed] = [Breed.HOUND, Breed.SHEPHERD, Breed.TERRIER, Breed.WOLFHOUND, Breed.SPANIEL]
 const CATS: Array[Breed] = [Breed.TABBY, Breed.BLACK_CAT, Breed.GREY_CAT, Breed.WHITE_CAT, Breed.BROWN_CAT]
 enum State { WANDER, SIT, FOLLOW, FLEE, ATTACK, GATHER, TRANCE, DEAD }
@@ -26,6 +28,7 @@ const PALETTE := {
 	Breed.SPANIEL: [Color("f0ece0"), Color("6a3a24"), Color("fffaf0")],
 	Breed.WHITE_CAT: [Color("ecebe6"), Color("a8a6a0"), Color("ffffff")],
 	Breed.BROWN_CAT: [Color("7a5a3a"), Color("3a2818"), Color("d8c0a0")],
+	Breed.HELLHOUND: [Color("1c1a22"), Color("0c0a10"), Color("ff7a1a")],
 }
 const OUTLINE := Color(0.08, 0.06, 0.06, 0.6)
 ## Pixel shapes facing right, the feet on the last row: B body, D dark (ears, underside), L light (back, muzzle), K eye
@@ -132,7 +135,8 @@ const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png",
 	Breed.WOLFHOUND: "res://assets/pixellab/animals/wolfhound.png",
 	Breed.SPANIEL: "res://assets/pixellab/animals/spaniel.png",
 	Breed.WHITE_CAT: "res://assets/pixellab/animals/white_cat.png",
-	Breed.BROWN_CAT: "res://assets/pixellab/animals/brown_cat.png"}
+	Breed.BROWN_CAT: "res://assets/pixellab/animals/brown_cat.png",
+	Breed.HELLHOUND: "res://assets/pixellab/animals/hellhound.png"}
 enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE, IDLE, BARK, SNIFF, SCRATCH, LIE }
 const WALK_FPS := 8.0
 const BITE_FPS := 14.0
@@ -146,7 +150,7 @@ static var _sheets := {}
 
 
 func is_dog() -> bool:
-	return breed in DOGS
+	return breed in DOGS or breed == Breed.HELLHOUND
 
 
 func is_alive() -> bool:
@@ -383,6 +387,8 @@ func moving() -> bool:
 func _draw() -> void:
 	var pal: Array = PALETTE[breed]
 	var shadow := Rect2(-5, -1, 10, 2) if is_dog() else Rect2(-4, -1, 8, 2)
+	if breed == Breed.HELLHOUND:
+		shadow = Rect2(-9, -1, 18, 3)
 	var sc := Color(0, 0, 0, 0.28)
 	var look_shadow := Person.foot_shadow(shadow, sc)
 	draw_rect(look_shadow[0], look_shadow[1])

@@ -142,12 +142,14 @@ func _release() -> void:
 		if w != Vector2.INF:
 			spot = w
 	var speed_mul := SPEED / (Animal.DOG_SPEED * Animal.RUN)
-	var a := visitors.summon(spot, Animal.Breed.HOUND, BLOWS, speed_mul, SEEK_R, BITE_R, BITE_EVERY)
+	var a := visitors.summon(spot, Animal.Breed.HELLHOUND, BLOWS, speed_mul, SEEK_R, BITE_R, BITE_EVERY)
 	a.facing = 1 if k % 2 == 0 else -1
-	a.self_modulate = COAT
-	var eyes := Eyes.new()
-	eyes.hound = a
-	a.add_child(eyes)
+	if Animal.sheet(Animal.Breed.HELLHOUND).is_empty():
+		# No painted sheet (not imported): the drawn dog shape, darkened, with ember eyes laid over it.
+		a.self_modulate = COAT
+		var eyes := Eyes.new()
+		eyes.hound = a
+		a.add_child(eyes)
 	ctx.play(&"dr_roar", spot, -3.0)
 	if not DominionParts.staged(self):
 		return

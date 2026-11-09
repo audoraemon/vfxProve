@@ -1,0 +1,6 @@
+{"length": 48.0, "loop": true, "stereo": true, "rms_db": -22.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 25, "damp": 4500}, "layers": [
+  {"src": "lib:wikimedia/360703_eguobyte_large-crowd-medium-distance-stereo.wav", "at": 0.0, "from": 4.0, "dur": 48.4, "fade_in": 400, "fade_out": 400, "hp": 150, "lp": 4000, "pitch": -0.5},
+  {"src": "lib:wikimedia/Festival_concert_people_crowd.wav", "at": 0.0, "from": 6.0, "dur": 48.4, "fade_in": 400, "fade_out": 400, "hp": 180, "lp": 2400, "pitch": -1.0, "gain_db": -7},
+  {"src": "lib:wikimedia/Church_people_walking_steps_with_reverb.wav", "at": 0.0, "from": 0.5, "dur": 29.8, "fade_in": 400, "fade_out": 1000, "hp": 250, "lp": 5000, "gain_db": -9},
+  {"src": "lib:wikimedia/Church_people_walking_steps_with_reverb.wav", "at": 28.8, "from": 3.5, "dur": 19.6, "fade_in": 1000, "fade_out": 1000, "hp": 250, "lp": 5000, "gain_db": -9}
+]}

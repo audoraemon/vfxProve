@@ -15,6 +15,21 @@ const BUS_MID := &"SFX_Mid"
 const BUS_FAR := &"SFX_Far"
 const NEAR := 0.45
 const FAR := 0.95
+## Ducking (natural sound pass 3): a big hit pulls the music and the town's beds down for a moment, so it lands with
+## room around it, then lets them back up. Each cue here ducks by its dB -- less when it is further off (DUCK_REACH by
+## bus) -- the deepest duck playing wins, held DUCK_HOLD seconds, falling at DUCK_ATTACK and rising at DUCK_RELEASE dB a
+## second. It sets the "Duck" amplify effect on each of DUCK_BUSES, so the sliders' own levels stay untouched.
+const DUCKS := {
+	&"nova_boom": -8.0, &"nova_crack": -4.0, &"grav_implode": -6.0, &"orb_hit": -3.0, &"laser_fire": -4.0,
+	&"glac_erupt": -5.0, &"glac_shatter": -5.0, &"hs_strike": -6.0, &"hs_erupt": -4.0, &"cf_erupt": -5.0,
+	&"cf_impact": -5.0, &"ts_crash": -6.0, &"jg_slam": -6.0, &"dr_erupt": -5.0, &"dr_roar": -4.0,
+	&"collapse_stone": -2.0, &"collapse_timber": -2.0, &"collapse_tree": -2.0, &"crowd_death_wave": -3.0,
+}
+const DUCK_BUSES := [&"Music", &"Ambience"]
+const DUCK_REACH := {&"SFX": 1.0, &"SFX_Mid": 0.75, &"SFX_Far": 0.5}
+const DUCK_HOLD := 0.3
+const DUCK_ATTACK := 120.0
+const DUCK_RELEASE := 6.0
 
 ## cue -> {path | variants, db, voices, jitter, loop}
 ## `variants: n` expands path "..._%d.wav" to 1..n, picked at random per play.
@@ -136,7 +151,12 @@ const CATALOG := {
 	&"cit_yelp": {"path": "res://assets/audio/citizen/cit_yelp_%d.wav", "variants": 4, "db": -9.5, "voices": 4, "jitter": 0.12},
 	&"cit_shout": {"path": "res://assets/audio/citizen/cit_shout_%d.wav", "variants": 3, "db": -10.0, "voices": 3, "jitter": 0.1},
 	&"cit_scream": {"path": "res://assets/audio/citizen/cit_scream_%d.wav", "variants": 3, "db": -8.0, "voices": 3, "jitter": 0.08},
-	&"crowd_panic": {"path": "res://assets/audio/citizen/crowd_panic.wav", "db": -7.0, "loop": true},
+	# The crowd in a panic (natural sound pass 3): three long beds the Ambience mixes by the panic level -- an uneasy
+	# murmur, people running and yelling, the whole town in chaos -- and single cries from running people near the camera.
+	&"crowd_unrest": {"path": "res://assets/audio/citizen/crowd_unrest.wav", "db": -10.0, "loop": true},
+	&"crowd_panic": {"path": "res://assets/audio/citizen/crowd_panic.wav", "db": -10.5, "loop": true},
+	&"crowd_chaos": {"path": "res://assets/audio/citizen/crowd_chaos.wav", "db": -10.4, "loop": true},
+	&"crowd_cry": {"path": "res://assets/audio/citizen/crowd_cry_%d.wav", "variants": 18, "db": -11.0, "voices": 3, "jitter": 0.06},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
 	# A death on every kill (v0.11.2, DeathVoices): a citizen's cry and fall, a soldier's grunt and mail, a quiet body's slump,
 	# and the roar of a crowd falling at once. Levels measured by tools/audio/loudness.py (spec 6.3 row 4): cit_death and sol_death at the loud median - 4, cit_fall at - 9, the wave under the median.
@@ -190,6 +210,10 @@ static var speed := 1.0
 
 var _pool: Array[AudioStreamPlayer2D] = []
 var _rng := RandomNumberGenerator.new()
+## The duck now, where it is heading, and how long it holds there (see DUCKS).
+var duck_db := 0.0
+var _duck_to := 0.0
+var _duck_held := 0.0
 
 
 static func paths_for(cue: StringName) -> PackedStringArray:
@@ -267,7 +291,17 @@ func play(cue: StringName, ground_pos: Vector2, db_offset := 0.0) -> AudioStream
 	p.set_meta(&"started", Time.get_ticks_msec())
 	p.pitch_scale = _pitch_for(p)
 	p.play()
+	if DUCKS.has(cue):
+		duck_by(float(DUCKS[cue]) * float(DUCK_REACH.get(p.bus, 1.0)))
 	return p
+
+
+## Pull the music and the beds down by `db` (negative) for a moment; a shallower duck than the one under way only
+## keeps it held.
+func duck_by(db: float) -> void:
+	if db <= _duck_to + 0.5:
+		_duck_held = DUCK_HOLD
+	_duck_to = minf(_duck_to, db)
 
 
 ## The bus a sound at this screen position plays through: SFX near the camera, SFX_Mid further out, SFX_Far off screen.
@@ -307,10 +341,33 @@ func stop_all(prefix: String) -> void:
 			p.stop()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	for p in _pool:
 		if p.playing:
 			p.pitch_scale = _pitch_for(p)
+	if _duck_held > 0.0:
+		_duck_held -= delta
+	else:
+		_duck_to = move_toward(_duck_to, 0.0, DUCK_RELEASE * delta)
+	var was := duck_db
+	duck_db = move_toward(duck_db, _duck_to, (DUCK_ATTACK if _duck_to < duck_db else DUCK_RELEASE) * delta)
+	if duck_db != was:
+		_set_duck(duck_db)
+
+
+func _exit_tree() -> void:
+	duck_db = 0.0
+	_duck_to = 0.0
+	_set_duck(0.0)
+
+
+static func _set_duck(db: float) -> void:
+	for bus: StringName in DUCK_BUSES:
+		var i := AudioServer.get_bus_index(bus)
+		for k in (AudioServer.get_bus_effect_count(i) if i >= 0 else 0):
+			var fx := AudioServer.get_bus_effect(i, k)
+			if fx is AudioEffectAmplify:
+				(fx as AudioEffectAmplify).volume_db = db
 
 
 func _pitch_for(p: AudioStreamPlayer2D) -> float:

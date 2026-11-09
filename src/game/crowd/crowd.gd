@@ -105,11 +105,11 @@ const RING_REACH := 1.0
 const VOICE_BUDGET := 4.0
 const VOICES_PER_CAST := 3
 
-## The sound of a town running: a looping bed whose level follows how many citizens are running -- silent with
-## none, full at BED_FULL -- easing at BED_EASE a second so it swells and fades instead of jumping.
+## The sound of a town running: a panic level that follows how many citizens are running -- none with nobody,
+## full at BED_FULL -- easing at BED_EASE a second so it swells and fades instead of jumping. The Ambience plays the
+## crowd's beds and cries by it (natural sound pass 3).
 const BED_FULL := 40.0
 const BED_EASE := 1.5
-const BED_DB := -8.0
 
 var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
@@ -194,9 +194,8 @@ var voices_played := 0
 var _voice_tokens := VOICE_BUDGET
 ## A death you can hear (v0.11.2): asked once for every body that falls, in _on_killed(). Pure; draws no number from any rng.
 var deaths := DeathVoices.new()
-var _bed: AudioStreamPlayer
 var _bed_level := 0.0
-## The town's sound between the events (natural sound pass 2): made with the bed, paused and stopped with it.
+## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
 ## crowd (unlike the frozen pause) keeps processing for the few frames Battlefield.quit() waits out.
@@ -769,8 +768,6 @@ func panic_level() -> float:
 
 ## The mission paused (or the results are up over it): hold the bed where it is.
 func pause_bed(paused: bool) -> void:
-	if _bed != null:
-		_bed.stream_paused = paused
 	if _ambience != null:
 		_ambience.pause(paused)
 
@@ -782,8 +779,6 @@ func pause_bed(paused: bool) -> void:
 ## a bed still playing at process exit leaks its audio playback.
 func stop_bed() -> void:
 	_bed_stopped = true
-	if _bed != null:
-		_bed.stop()
 	if _ambience != null:
 		_ambience.stop()
 
@@ -1121,21 +1116,10 @@ func _update_bed(delta: float) -> void:
 	_bed_level = move_toward(_bed_level, bed_level_for(running), BED_EASE * delta)
 	if sfx == null or DisplayServer.get_name() == "headless" or not is_inside_tree():
 		return
-	if _bed == null:
-		_bed = AudioStreamPlayer.new()
-		_bed.bus = Sfx.BUS
-		_bed.stream = Sfx.load_stream(&"crowd_panic")
-		add_child(_bed)
+	if _ambience == null:
 		_ambience = Ambience.new().setup(self)
 		_ambience.name = "Ambience"
 		add_child(_ambience)
-	if _bed_level <= 0.001:
-		if _bed.playing:
-			_bed.stop()
-		return
-	if not _bed.playing:
-		_bed.play()
-	_bed.volume_db = BED_DB + linear_to_db(_bed_level)
 
 
 ## One voice from `p`, if the budget allows it.

@@ -41,3 +41,44 @@ static func run(t) -> void:
 			Sfx.paths_for(&"cf_impact").size(), repeats, heard.size()])
 	for cue: StringName in [&"collapse_stone", &"collapse_timber", &"collapse_tree"]:
 		t.check(Sfx.paths_for(cue).size() == 5, "%s has five takes" % cue)
+
+	# The crowd in a panic (pass 3): the murmur first, the running crowd next, chaos last; cries more often the more it panics.
+	var calm := Ambience.targets(false, 0.0, 0.0)
+	t.check(calm.crowd_unrest == 0.0 and calm.crowd_panic == 0.0 and calm.crowd_chaos == 0.0, "a calm town hears no crowd (%s)" % [calm])
+	var uneasy := Ambience.targets(false, 0.2, 0.0)
+	t.check(uneasy.crowd_unrest > 0.5 and uneasy.crowd_panic < 0.1 and uneasy.crowd_chaos == 0.0,
+		"a few running: mostly the murmur (%s)" % [uneasy])
+	var stampede := Ambience.targets(false, 1.0, 0.0)
+	t.check(stampede.crowd_panic == 1.0 and stampede.crowd_chaos == 1.0 and is_equal_approx(stampede.crowd_unrest, 1.0 - Ambience.UNREST_DIP),
+		"the whole town running: the running crowd and chaos full, the murmur thinned (%s)" % [stampede])
+	var rising := true
+	for i in 10:
+		var a := Ambience.targets(false, i / 10.0, 0.0)
+		var b := Ambience.targets(false, (i + 1) / 10.0, 0.0)
+		rising = rising and b.crowd_panic >= a.crowd_panic and b.crowd_chaos >= a.crowd_chaos
+	t.check(rising, "the running crowd and chaos only swell as the panic rises")
+	for cue: StringName in [&"crowd_unrest", &"crowd_panic", &"crowd_chaos"]:
+		t.check(Sfx.CATALOG.has(cue) and bool(Sfx.CATALOG[cue].get("loop", false)), "%s is a loop in the catalog" % cue)
+	t.check(Sfx.paths_for(&"crowd_cry").size() == 18, "eighteen different cries")
+	t.check(Ambience.cry_gap(0.0) == INF and Ambience.cry_gap(Ambience.CRY_FROM) == Ambience.CRY_SLOW
+		and is_equal_approx(Ambience.cry_gap(1.0), Ambience.CRY_FAST), "no cries in a calm town, then faster as it panics")
+
+	# Ducking (pass 3): a big hit pulls the music and the beds down, then lets them back up; a small one does not.
+	for bus: StringName in Sfx.DUCK_BUSES:
+		var i := AudioServer.get_bus_index(bus)
+		var found := false
+		for k in AudioServer.get_bus_effect_count(i):
+			found = found or AudioServer.get_bus_effect(i, k) is AudioEffectAmplify
+		t.check(found, "the %s bus has the Duck effect" % bus)
+	var sfx := Sfx.new()
+	sfx.duck_by(-6.0)
+	for i in 3:
+		sfx._process(0.02)
+	t.check(sfx.duck_db <= -5.9, "a big hit ducks within a few frames (%.1f dB)" % sfx.duck_db)
+	sfx.duck_by(-2.0)
+	t.check(sfx.duck_db <= -5.9, "and a smaller one does not lift it (%.1f dB)" % sfx.duck_db)
+	for i in 200:
+		sfx._process(0.02)
+	t.check(sfx.duck_db == 0.0, "then it comes back up (%.1f dB)" % sfx.duck_db)
+	sfx.free()
+	t.check(not Sfx.DUCKS.has(&"cit_yelp") and Sfx.DUCKS.has(&"nova_boom"), "only big hits duck")

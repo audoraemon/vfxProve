@@ -1,0 +1,23 @@
+{"length": 48.0, "loop": true, "stereo": true, "rms_db": -17.0, "reverb": {"rt60": 2.0, "mix": 0.24, "predelay_ms": 30, "damp": 4000}, "layers": [
+  {"src": "lib:wikimedia/20080618KamagasakiRiot.ogg", "at": 0.0, "from": 128.0, "dur": 29.0, "fade_in": 400, "fade_out": 1500, "hp": 160, "lp": 4200},
+  {"src": "lib:wikimedia/20080618KamagasakiRiot.ogg", "at": 27.5, "from": 52.0, "dur": 20.9, "fade_in": 1500, "fade_out": 400, "hp": 160, "lp": 4200},
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "at": 0.0, "from": 5.0, "dur": 22.4, "fade_in": 400, "fade_out": 1000, "hp": 200, "lp": 4500, "pitch": 1.0, "gain_db": -7},
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "at": 21.4, "from": 8.0, "dur": 19.4, "fade_in": 1000, "fade_out": 1000, "hp": 200, "lp": 4500, "pitch": 1.0, "gain_db": -7},
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "at": 39.8, "from": 5.0, "dur": 8.6, "fade_in": 1000, "fade_out": 1000, "hp": 200, "lp": 4500, "pitch": 1.0, "gain_db": -7},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 1.93, "from": 0.05, "dur": 1.15, "pitch": -1.02, "pan": 0.15, "hp": 300, "lp": 1924, "gain_db": -18.1, "fade_out": 200},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 5.09, "from": 1.79, "dur": 0.95, "pitch": 0.54, "pan": -0.46, "hp": 300, "lp": 2644, "gain_db": -16.6, "fade_out": 200},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 7.82, "from": 3.41, "dur": 0.97, "pitch": -0.2, "pan": -0.37, "hp": 300, "lp": 2142, "gain_db": -16.5, "fade_out": 200},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 10.99, "from": 5.21, "dur": 0.75, "pitch": -0.98, "pan": -0.1, "hp": 300, "lp": 2316, "gain_db": -17.1, "fade_out": 200},
+  {"src": "lib:oga/girly-scream/wscream_2_0.wav", "at": 13.68, "from": 0.03, "dur": 0.63, "pitch": 0.7, "pan": 0.79, "hp": 300, "lp": 2657, "gain_db": -16.9, "fade_out": 200},
+  {"src": "lib:oga/female-scream-1/female_scream_1.ogg", "at": 15.28, "from": 0.63, "dur": 0.67, "pitch": -0.6, "pan": 0.41, "hp": 300, "lp": 2478, "gain_db": -16.9, "fade_out": 200},
+  {"src": "lib:wikimedia/UncleSigmund_-_ahhh_cc0_freesound_.mp3", "at": 18.19, "from": 0.0, "dur": 2.3, "pitch": -0.96, "pan": -0.53, "hp": 300, "lp": 1985, "gain_db": -14.6, "fade_out": 200},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/3yell12.wav", "at": 21.48, "from": 0.07, "dur": 0.8, "pitch": -0.93, "pan": -0.47, "hp": 300, "lp": 2246, "gain_db": -15.2, "fade_out": 200},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/yell2.wav", "at": 24.21, "from": 0.31, "dur": 1.3, "pitch": -0.68, "pan": -0.74, "hp": 300, "lp": 2496, "gain_db": -18.9, "fade_out": 200},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/yell5.wav", "at": 27.87, "from": 0.41, "dur": 1.2, "pitch": 0.76, "pan": 0.11, "hp": 300, "lp": 2705, "gain_db": -16.8, "fade_out": 200},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/2yell5.wav", "at": 30.44, "from": 0.29, "dur": 1.25, "pitch": -0.74, "pan": -0.54, "hp": 300, "lp": 2583, "gain_db": -15.8, "fade_out": 200},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/3yell14.wav", "at": 32.99, "from": 0.21, "dur": 0.9, "pitch": -0.34, "pan": -0.28, "hp": 300, "lp": 2634, "gain_db": -18.0, "fade_out": 200},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 36.7, "from": 0.05, "dur": 1.15, "pitch": -0.18, "pan": 0.6, "hp": 300, "lp": 2678, "gain_db": -14.7, "fade_out": 200},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 39.3, "from": 1.79, "dur": 0.95, "pitch": -0.5, "pan": -0.51, "hp": 300, "lp": 2662, "gain_db": -14.2, "fade_out": 200},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 42.55, "from": 3.41, "dur": 0.97, "pitch": -0.65, "pan": 0.21, "hp": 300, "lp": 1830, "gain_db": -15.0, "fade_out": 200},
+  {"src": "lib:oga/female-high-pitched-scream-sfx/screams_0.ogg", "at": 45.67, "from": 5.21, "dur": 0.75, "pitch": -0.02, "pan": -0.42, "hp": 300, "lp": 2758, "gain_db": -16.1, "fade_out": 200}
+]}

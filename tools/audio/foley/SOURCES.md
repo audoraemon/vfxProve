@@ -29,3 +29,14 @@ tool after any recipe rebuild or new cue and commit the TSV. `--table` prints th
 offset) of every power's cues and the quiet floor; `tests/test_power_sounds.gd` reads the same numbers. `--mix CUE...` renders
 `tools/audio/ab/v0112/mix_<cue>.wav` (the cue over `music_theme` at the game's music level) for `tools/audio/ab/v0112/LISTEN.md`,
 the sheet the user listens with.
+
+## Crowd panic (natural sound pass 3)
+
+- Wikimedia Commons: `20080618KamagasakiRiot.ogg` (CC0, Kamagasaki450; a real riot, under the chaos bed),
+  `Street_parade_carnival_people_yelling_kamelle_kamelle`, `Douzen_kids_on_playground`,
+  `Church_people_walking_steps_with_reverb`, `Festival_concert_people_crowd` (public domain, stephan; converted from
+  Opus to WAV with ffmpeg), `UncleSigmund - ahhh` and `NOW screaming` (CC0). The alligator scream recording was left
+  out: it holds the famous "Wilhelm scream", which players would know.
+- OpenGameArt (CC0): female-high-pitched-scream-sfx, girly-scream, female-distressed-no-no-no, plus the male yelling
+  pack already in use. Modern English lines ("please help somebody", "come on let's run") are no longer used.
+

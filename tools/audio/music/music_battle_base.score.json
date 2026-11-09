@@ -1,4 +1,4 @@
-{"length": 32.0, "bpm": 120, "loop": true, "rms_db": -14.0, "reverb": {"rt60": 2.0, "mix": 0.2}, "parts": [
+{"length": 32.0, "bpm": 120, "loop": true, "rms_db": -14.0, "reverb": {"rt60": 2.0, "mix": 0.2}, "humanize": {"timing_ms": 7.0, "rubato_ms": 6.0, "phrase": 16.0, "swell": 6.0}, "parts": [
   {"instrument": "celli_stac", "level_db": -18, "notes": [
     {"t": 0.0, "p": "D3", "hold": 0.4, "vel": 112},
     {"t": 0.5, "p": "D3", "hold": 0.4, "vel": 84},

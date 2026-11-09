@@ -1,0 +1,3 @@
+{"length": 2.05, "rms_db": -16.4, "reverb": {"rt60": 0.9, "mix": 0.14, "predelay_ms": 10, "damp": 6000}, "layers": [
+  {"src": "lib:wikimedia/NOW_screaming.ogg", "at": 0.0, "from": 0.0, "dur": 1.6, "hp": 160, "lp": 9000, "fade_in": 4, "fade_out": 140}
+]}

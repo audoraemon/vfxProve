@@ -149,7 +149,7 @@ func stamp(rect: Rect2, solid: bool) -> void:
 
 ## A standing building that blocks: its footprint, grown by a body's width, is solid.
 func _apply(s: Structure) -> void:
-	if not is_instance_valid(s) or s.destroyed or s.walkable:
+	if not is_instance_valid(s) or (s.destroyed and not s.leaves_ruin()) or s.walkable:
 		return
 	stamp(solid_rect(s.footprint), true)
 
@@ -193,17 +193,27 @@ func refresh(s: Structure) -> void:
 		_apply(s)
 
 
-## A structure taken away (a thorn wall withering, v0.06): its ground opens as a fallen building's does.
+## A structure taken away (a thorn wall withering, v0.06): its ground opens, a ruin's too.
 func _reopen(s: Structure) -> void:
-	_on_destroyed(s, &"")
+	if s in _bridges:
+		_on_destroyed(s, &"")
+		return
+	_free_ground(s)
 
 
-## A building fell: its ground opens up (rubble is walkable), except a bridge, whose fall closes the river.
+## A structure fell: a bridge closes the river; a building (leaves_ruin()) stays a blocked ruin; anything else opens
+## its ground (rubble is walkable).
 func _on_destroyed(s: Structure, _kind: StringName) -> void:
 	if s in _bridges:
 		for r: Rect2 in City.current().fallen_bridge(s.footprint):
 			stamp(r, true)
 		return
+	if s.leaves_ruin():
+		return
+	_free_ground(s)
+
+
+func _free_ground(s: Structure) -> void:
 	stamp(solid_rect(s.footprint), false)
 	# Freeing a footprint can free cells a standing neighbour or the river still needs, so put those back...
 	var area := solid_rect(s.footprint).grow(CELL)
@@ -211,7 +221,8 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 		if area.intersects(r):
 			stamp(area.intersection(r), true)
 	for other in _env.structures():
-		if other != s and is_instance_valid(other) and not other.destroyed and not other.walkable \
+		if other != s and is_instance_valid(other) and (not other.destroyed or other.leaves_ruin()) \
+				and not other.walkable \
 				and solid_rect(other.footprint).intersects(area):
 			_apply(other)
 	for g in _blockers:

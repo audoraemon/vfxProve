@@ -1002,6 +1002,18 @@ func fold(to: Vector2) -> bool:
 	return true
 
 
+## Stepped out of a falling building's footprint (Crowd.clear_ground): set down at `to` where it stands, its goal kept
+## and re-planned from there. Not for people inside somewhere.
+func step_out(to: Vector2) -> void:
+	queue_spot = Vector2.INF
+	queue_since = -1.0
+	ground_pos = to
+	_sync_position()
+	_target = ground_pos
+	if _goal != Vector2.INF:
+		set_goal(_goal)
+
+
 # --- Generic status and intent modifiers (Dominion, Disorder) ---------------------
 
 ## Whether a compulsion of at least `level` holds this person now.

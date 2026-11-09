@@ -194,7 +194,8 @@ static func _rebuild(t) -> void:
 		var st := d.targets[i]
 		var inner := st.center()
 		st.destroy(st.center(), &"smite")
-		var opened := grid.walkable(inner)
+		# A fallen barn or mill is a building: its ruin stays closed (soldier jobs, decision 4).
+		var ruin := not grid.walkable(inner)
 		var night: Array = []
 		for c: CrownsBreadDirector.Crew in d.crews[i]:
 			if not c.shift:
@@ -204,9 +205,9 @@ static func _rebuild(t) -> void:
 		Kit.run_for(s, CrownsBreadDirector.REBUILD + 1.0)
 		var half := st.destroyed and d.rebuild_left(i) > 0.0
 		Kit.run_for(s, CrownsBreadDirector.REBUILD_ONE - CrownsBreadDirector.REBUILD)
-		ok = ok and opened and half and not st.destroyed and is_equal_approx(st.hp, st.max_hp) and is_equal_approx(st.height, st.max_height) \
+		ok = ok and ruin and half and not st.destroyed and is_equal_approx(st.hp, st.max_hp) and is_equal_approx(st.height, st.max_height) \
 			and not grid.walkable(inner)
-	t.check(ok, "the barn and the watermill fall and are rebuilt by one engineer in REBUILD_ONE: standing, whole, their ground closed again (decision 92)")
+	t.check(ok, "the barn and the watermill fall and are rebuilt by one engineer in REBUILD_ONE: standing, whole, their ground closed throughout (decision 92; the ruin stays blocked)")
 	Kit.done(s)
 
 

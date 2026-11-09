@@ -277,7 +277,7 @@ func blocked(g: Vector2, margin := 0.15) -> bool:
 	var candidates: Array = _structures if margin > MAX_MARGIN \
 		else _fine.get(Vector2i(floori(g.x / FINE_CELL), floori(g.y / FINE_CELL)), _NONE)
 	for s in candidates:
-		if is_instance_valid(s) and not s.destroyed and not s.walkable and s.contains(g, margin):
+		if is_instance_valid(s) and (not s.destroyed or s.leaves_ruin()) and not s.walkable and s.contains(g, margin):
 			return true
 	return false
 

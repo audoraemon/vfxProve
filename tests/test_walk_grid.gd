@@ -34,11 +34,17 @@ static func run(t) -> void:
 	var to_temple := grid.path(Vector2(2.7, 0), TownLayout.TEMPLE.get_center())
 	t.check(to_temple.size() > 0 and not grid.walkable(TownLayout.TEMPLE.get_center()), "a goal inside a building routes beside it")
 
-	# Rubble is walkable: destroying the temple opens its ground.
+	# A fallen building stays a blocked ruin; a fallen tower's ground opens.
 	for s in env.structures():
 		if s.role == &"temple":
 			s.destroy(Vector2(0, 0), &"stone")
-	t.check(grid.walkable(TownLayout.TEMPLE.get_center()), "the temple's rubble can be walked over")
+	t.check(not grid.walkable(TownLayout.TEMPLE.get_center()), "a fallen temple stays a blocked ruin (soldier jobs, decision 4)")
+	for s in env.structures():
+		if s.role == &"tower":
+			var c := s.center()
+			s.destroy(Vector2(0, 0), &"stone")
+			t.check(grid.walkable(c), "a fallen wall tower opens its ground")
+			break
 	t.check(not grid.walkable(Vector2(0, -15.6)), "the town wall still blocks")
 
 	# The bridge is the only way south: when it falls the river closes.

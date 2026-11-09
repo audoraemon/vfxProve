@@ -1948,6 +1948,23 @@ func clear() -> void:
 	deaths.reset()
 
 
+## Everyone alive and outside standing in `r` (ground units) or on a closed cell steps to the nearest open ground
+## (a building fell and its ruin stays closed). Returns how many moved.
+func clear_ground(r: Rect2) -> int:
+	var moved := 0
+	for p in citizens + soldiers:
+		if not is_instance_valid(p) or not p.is_alive() or p.inside:
+			continue
+		if not r.has_point(p.ground_pos) and _grid.walkable(p.ground_pos):
+			continue
+		var to := _grid.nearest_walkable(p.ground_pos)
+		if to == Vector2.INF or to == p.ground_pos:
+			continue
+		p.step_out(to)
+		moved += 1
+	return moved
+
+
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if s.role == &"thorns":
 		return  # a bramble burnt or blasted away: no incident, nothing to flee
@@ -1966,6 +1983,8 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 		for p in citizens:
 			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.FLEE:
 				p.replan()
+	if s.leaves_ruin():
+		clear_ground(WalkGrid.solid_rect(s.footprint))
 
 
 ## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town nobody cries out, so the

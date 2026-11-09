@@ -214,6 +214,21 @@ var _base := Vector2.ZERO
 var _light_in := 0.0
 
 
+## ChatGPT sets of the capital that are props or open structures, not buildings: when they fall they leave walkable
+## rubble as always (soldier jobs, decision 4: only buildings leave a blocked ruin). The one place the exclusion lives.
+const NOT_BUILDINGS := [&"gpt_handcart", &"gpt_wagon", &"gpt_noticeboard", &"gpt_tiltbarrier", &"gpt_beehives",
+	&"gpt_pens", &"gpt_gallows", &"gpt_crierstage", &"gpt_grandstand", &"gpt_playstage", &"gpt_pavilion",
+	&"gpt_latrine", &"gpt_lumberyard", &"gpt_masonyard", &"gpt_crane", &"gpt_dovecote", &"gpt_graveyard"]
+## Whether its fallen body stays a blocked ruin (leaves_ruin()), computed once in setup().
+var _ruin_blocks := false
+
+
+## A building (a house, the temple, a barracks, a farm barn or mill; not a gate, wall, tower, stall, tree, bridge or
+## Citadel piece, nor a capital prop in NOT_BUILDINGS): when it falls its ground stays closed to walkers.
+func leaves_ruin() -> bool:
+	return _ruin_blocks
+
+
 func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", tag_value := &"") -> Structure:
 	role = role_value
 	art_tag = tag_value
@@ -236,6 +251,7 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", t
 			max_hp = type.hp
 			walkable = type.walkable
 			flat = type.flat
+	_ruin_blocks = k in [Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS] and not walkable and role != &"citadel" 		and not (role == CapitalPlots.ROLE and tag_value in NOT_BUILDINGS)
 	hp = max_hp
 	z_index = -1 if flat else 0
 	var g0 := rect.position

@@ -11,4 +11,7 @@ if not exist "%GODOT%" (
 	pause
 	exit /b 1
 )
+rem Refresh the class cache first: new class_name scripts are otherwise unknown and game.gd fails to parse.
+echo Refreshing the script class cache...
+start "" /wait "%GODOT%" --headless --path "%~dp0." --import
 start "" "%GODOT%" --path "%~dp0." --scene res://scenes/game.tscn -- --dev

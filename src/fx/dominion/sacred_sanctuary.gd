@@ -39,12 +39,15 @@ var sheltered := {}
 ## How many intruders the wall has been set on.
 var repelled := 0
 var raised := false
+## Level 5 (Pressed into Service): how many driven-out intruders were taken into the wall.
+var pressed := 0
 
 var _rethink_in := 0.0
 ## This cast's guard cap, pickup reach and span at its ability level (MAX_GUARDS, PICK_R and SPAN at level 1).
 var lv_max_guards := MAX_GUARDS
 var lv_pick_r := PICK_R
 var lv_span := SPAN
+var _twist := false
 
 
 ## Whether `g` lies inside a sanctuary of `kind` at `centre`.
@@ -53,6 +56,24 @@ static func inside(kind: String, centre: Vector2, g: Vector2) -> bool:
 		var d := g - centre
 		return absf(d.x) <= RECT.x * 0.5 and absf(d.y) <= RECT.y * 0.5
 	return g.distance_to(centre) <= CIRCLE_R
+
+
+## The point on the wall of a sanctuary of `kind` at `centre` nearest `g` (Pressed into Service posts a driven-out
+## intruder there): the circle's edge on the line from the centre, the rectangle's border.
+static func wall_spot(kind: String, centre: Vector2, g: Vector2) -> Vector2:
+	var d := g - centre
+	if kind == "rect":
+		var hx := RECT.x * 0.5
+		var hy := RECT.y * 0.5
+		if absf(d.x) <= hx and absf(d.y) <= hy:
+			# Inside: out to the nearest side.
+			var gaps := [hx - absf(d.x), hy - absf(d.y)]
+			if gaps[0] <= gaps[1]:
+				return centre + Vector2(hx * signf(d.x) if d.x != 0.0 else hx, d.y)
+			return centre + Vector2(d.x, hy * signf(d.y) if d.y != 0.0 else hy)
+		return centre + Vector2(clampf(d.x, -hx, hx), clampf(d.y, -hy, hy))
+	var dir := d.normalized() if d.length() > 0.001 else Vector2.RIGHT
+	return centre + dir * CIRCLE_R
 
 
 ## `n` places evenly spaced along the edge of a sanctuary of `kind` at `centre`.
@@ -97,6 +118,7 @@ func _build() -> void:
 	lv_max_guards = int(PowerBook.stat(extra, "sanctuary", "MAX_GUARDS", MAX_GUARDS))
 	lv_pick_r = float(PowerBook.stat(extra, "sanctuary", "PICK_R", PICK_R))
 	lv_span = float(PowerBook.stat(extra, "sanctuary", "SPAN", SPAN))
+	_twist = PowerBook.twist_at(extra, "sanctuary")
 	shape = String(extra.get("mode", "circle"))
 	if not shape in ["circle", "rect"]:
 		shape = "circle"
@@ -193,6 +215,8 @@ func _fx_process(delta: float) -> void:
 			var quarry := g.fight_target
 			if quarry == null or not is_instance_valid(quarry) or not quarry.is_alive() or not inside(shape, site, quarry.ground_pos):
 				g.stop_fighting()
+				if _twist and quarry != null and is_instance_valid(quarry) and quarry.is_alive():
+					_press(quarry)
 			else:
 				off += 1
 		if g.mind != Person.Mind.FIGHT and g.mind != Person.Mind.COMPELLED:
@@ -226,6 +250,20 @@ func _fx_process(delta: float) -> void:
 			repelled += 1
 			if DominionParts.staged(self):
 				DominionParts.pulse(self, p.ground_pos, 1.0, Color("ff4040"), 0.5, 0.8)
+
+
+## Pressed into Service (level 5): an intruder the wall drove out, alive, takes a place on the wall itself -- unless it is
+## a guard already, cannot be moved by a mind, or the wall is full.
+func _press(p: Person) -> void:
+	if guards.has(p) or p.resists_mind() or p.inside or guards.size() >= lv_max_guards:
+		return
+	var place := wall_spot(shape, site, p.ground_pos)
+	guards.append(p)
+	places.append(place)
+	pressed += 1
+	_post(p, place)
+	if DominionParts.staged(self):
+		DominionParts.pulse(self, p.ground_pos, 1.0, HALLOW, 0.5, 0.8)
 
 
 ## How much of the sanctuary shows: in as the wall is raised, out as it falls.

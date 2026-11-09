@@ -7,11 +7,12 @@ extends RefCounted
 ## citizen falls to one bite, a soldier to two; the dead are the god's, damage kind frenzy). It fears nothing: no
 ## threat, strike or fright ever sets it running, and it never flees. The guard cuts it down: a soldier within
 ## GUARD_REACH of one lands a blow every GUARD_SWING (the first after a swing's wait; he strikes one visitor at a
-## time), and at `blows` blows it dies; a struck visitor flinches and must begin its bite again, so one guard holds one
-## visitor off, two visitors on one guard bring him down. Soldiers within the seek reach standing at their post are
-## drawn to the nearest visitor every LURE_EVERY so they come to fight. A target it cannot reach (a wall between) is
-## left alone SKIP_FOR. recall() sends every visitor back to its gate, where it is freed. The owner steps it (step())
-## every frame and clears it (clear()) at the end; it keeps count of its kills and of the visitors slain.
+## time), and at `blows` blows it dies. A visitor summoned to flinch must begin its bite again each time it is struck,
+## so one guard holds one off; one that does not flinch bites through the blows, and a lone guard falls to it.
+## Soldiers within the seek reach standing at their post are drawn to the nearest visitor every LURE_EVERY so they
+## come to fight. A target it cannot reach (a wall between) is left alone SKIP_FOR. recall() sends every visitor back
+## to its gate, where it is freed. The owner steps it (step()) every frame and clears it (clear()) at the end; it keeps
+## count of its kills and of the visitors slain.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -55,6 +56,8 @@ class Rule extends RefCounted:
 	var skip: Person
 	var skip_left := 0.0
 	var has_bitten := false
+	## Struck, it begins its bite again (summon()'s `flinch`).
+	var flinch := true
 	var recalling := false
 	var recall_left := 0.0
 
@@ -68,10 +71,10 @@ func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> V
 
 
 ## A visitor comes through at `at`: a `breed` that takes `blows` blows, runs at `speed_mul` times its breed's run,
-## hunts within `seek_r`, bites within `bite_r` every `bite_every`. Its node is added to the parent; the Animal is
-## returned for the owner's looks (a tint, eyes).
+## hunts within `seek_r`, bites within `bite_r` every `bite_every`, and -- when `flinch` -- begins its bite again
+## each time it is struck. Its node is added to the parent; the Animal is returned for the owner's looks.
 func summon(at: Vector2, breed: Animal.Breed, blows: int, speed_mul: float, seek_r: float, bite_r: float,
-		bite_every: float) -> Animal:
+		bite_every: float, flinch := true) -> Animal:
 	var a := Animal.new()
 	a.breed = breed
 	a.ground_pos = at
@@ -89,6 +92,7 @@ func summon(at: Vector2, breed: Animal.Breed, blows: int, speed_mul: float, seek
 	r.seek_r = seek_r
 	r.bite_r = bite_r
 	r.bite_every = bite_every
+	r.flinch = flinch
 	_rules[a] = r
 	return a
 
@@ -204,7 +208,7 @@ func _nearest(at: Vector2, reach: float, skip: Person) -> Person:
 
 
 ## The guard: every soldier standing by a visitor strikes the nearest one every GUARD_SWING (the first blow after one
-## swing's wait); a struck visitor flinches, its bite begun again; at its last blow it is cut down and freed.
+## swing's wait); a struck visitor that flinches begins its bite again; at its last blow it is cut down and freed.
 func _guard(delta: float) -> void:
 	var near := {}  # soldier -> the nearest visitor within reach
 	for a in _rules.keys():
@@ -231,7 +235,8 @@ func _guard(delta: float) -> void:
 			continue
 		a.hurt(1.0)
 		var r: Rule = _rules[a]
-		r.bite_in = maxf(r.bite_in, r.bite_every)
+		if r.flinch:
+			r.bite_in = maxf(r.bite_in, r.bite_every)
 		if not a.is_alive():
 			slain += 1
 			var at := a.ground_pos

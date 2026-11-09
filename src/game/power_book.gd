@@ -72,7 +72,7 @@ const POWERS := [
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a door opens in the ground and a whirlpool of black water turns over a circle of 4 for 25 s: everyone in it slows to a third and is drawn to the middle, where the door takes them; fires go out, buildings soak",
 		"authority": "passage"},
 	{"key": "houndgate", "name": "Hound Gate", "path": "res://src/fx/control/hound_gate.gd",
-		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a door opens and four hounds come through, hunting whoever is nearest for 30 s; the guard can cut them down",
+		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a Hellgate rises and opens: four hellhounds run out and hunt whoever is nearest for 30 s; a lone soldier falls to one, two can bring one down",
 		"authority": "passage"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin"},

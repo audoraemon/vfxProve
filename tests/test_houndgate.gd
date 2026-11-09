@@ -102,8 +102,9 @@ static func run(t) -> void:
 	var alarm := crowd.alarm
 	var fx: HoundGateFx = FxTimeline.cast(load("res://src/fx/control/hound_gate.gd"), ctx, at)
 	t.check(fx.mouth == at and is_equal_approx(fx.busy, HoundGateFx.T_OPEN)
-		and is_equal_approx(fx.duration, fx.gone() + 0.3) and HoundGateFx.T_OPEN >= HoundGateFx.T_RISE + HoundGateFx.DOORS,
-		"the door is where the click lands; the cast is busy while it opens")
+		and is_equal_approx(fx.duration, fx.hunt_end() + HoundGateFx.BURN + 0.1) and HoundGateFx.T_OPEN >= HoundGateFx.T_RISE + HoundGateFx.DOORS
+		and fx.shut_at() > fx.last_out() and fx.gone() < fx.last_out() + 3.0,
+		"the gate rises where the click lands; the cast is busy while its doors open; it is gone soon after the last hound is out")
 	_run(fx, HoundGateFx.T_OPEN - 0.1)
 	t.check(fx.out == 0 and fx.visitors.living().is_empty() and victim.is_alive(), "no hound before the door opens")
 	_run(fx, 0.1 + HoundGateFx.HOUNDS * HoundGateFx.OUT_EVERY)
@@ -118,23 +119,38 @@ static func run(t) -> void:
 		"a calm citizen two steps from the door is run down and bitten dead (frenzy) within 4 s, and the gate counts him")
 	t.check(crowd.alarm > alarm, "the first bite's outcry raises the town's alarm (%.1f -> %.1f)" % [alarm, crowd.alarm])
 
-	# --- The guard: a lone soldier beside a hound cuts it down in BLOWS blows, held off meanwhile by his sword.
+	# --- The guard. A hound bites through blows (it does not flinch): a lone soldier falls to it before his BLOWS
+	# blows are done; two bring one down and lose one of their own.
 	var hounds := fx.visitors.living()
 	var one_hound: Animal = hounds[0]
-	for k in range(1, hounds.size()):
+	var two_hound: Animal = hounds[1]
+	for k in range(2, hounds.size()):
 		var a: Animal = hounds[k]
 		a.ground_pos = at + Vector2(-9.0 + float(k), 9.0)
 		a.sync_position()
+	two_hound.ground_pos = at + Vector2(9.0, -9.0)
+	two_hound.sync_position()
 	var guard: Person = crowd.soldiers[0]
-	var health := guard.health
 	guard.ground_pos = one_hound.ground_pos + Vector2(0.3, 0.0)
 	var took := 0.0
-	while is_instance_valid(one_hound) and one_hound.is_alive() and took < HoundGateFx.BLOWS * Visitors.GUARD_SWING + 1.0:
+	while guard.is_alive() and took < HoundGateFx.BLOWS * Visitors.GUARD_SWING:
 		fx._process(DT)
 		took += DT
-	t.check(not is_instance_valid(one_hound) and fx.slain() == 1 and fx.visitors.living().size() == HoundGateFx.HOUNDS - 1,
-		"a soldier beside a hound cuts it down in about BLOWS blows (%.2f s): it is slain and its node freed" % took)
-	t.check(guard.is_alive() and guard.health < health, "the hound bit him once, then his blows held it off: he lives")
+	t.check(not guard.is_alive() and is_instance_valid(one_hound) and one_hound.is_alive() and fx.slain() == 0,
+		"a lone soldier beside a hound is bitten dead (%.2f s) before his %d blows are done; the hound lives" % [took, HoundGateFx.BLOWS])
+	var pair: Array[Person] = [crowd.soldiers[1], crowd.soldiers[2]]
+	for k in 2:
+		pair[k].ground_pos = two_hound.ground_pos + Vector2(0.3, -0.15 + 0.3 * float(k))
+	took = 0.0
+	while is_instance_valid(two_hound) and two_hound.is_alive() and took < HoundGateFx.BLOWS * Visitors.GUARD_SWING + 1.0:
+		fx._process(DT)
+		took += DT
+	var fell := 0
+	for p in pair:
+		if not p.is_alive():
+			fell += 1
+	t.check(not is_instance_valid(two_hound) and fx.slain() == 1 and fell == 1,
+		"two soldiers cut a hound down (%.2f s) and one of them dies doing it (%d fell)" % [took, fell])
 
 	# --- Fear nothing: a loud danger on top of a hound does not send it running.
 	var far: Animal = fx.visitors.living()[0]
@@ -148,7 +164,7 @@ static func run(t) -> void:
 	var gone := true
 	for a in left:
 		gone = gone and not is_instance_valid(a)
-	t.check(fx.finished and fx.visitors.living().is_empty() and gone, "the hunt over, the hounds are called back through the door and none remains")
+	t.check(fx.finished and fx.visitors.living().is_empty() and gone, "the hunt over, the hounds still on their feet burn away where they stand and none remains")
 	fx.free()
 
 	# --- Cut short mid-hunt: the hounds go with it.

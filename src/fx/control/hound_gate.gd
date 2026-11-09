@@ -3,16 +3,17 @@ extends FxTimeline
 ## Hound Gate (Passage, Tier II): a Hellgate climbs out of the ground where the click lands -- or where an open passage
 ## (EnemyField.through) carries it. The paving cracks red and the gate of black stone rises out of it over T_RISE; it
 ## stands a breath, then its two iron doors swing slowly open on the fire behind (DOORS), and at T_OPEN, the doors wide,
-## HOUNDS hellhounds run out of its foot, one every OUT_EVERY. They are Visitors: each hunts whoever is nearest, citizen
-## or soldier, out in the open within SEEK_R, runs at SPEED, and bites (within BITE_R, every BITE_EVERY) -- a citizen
-## falls to one bite, a soldier to two (damage kind frenzy). They fear nothing: no danger, strike or fright turns them.
-## The guard cuts them down: a soldier beside a hound lands a blow every Visitors.GUARD_SWING and at BLOWS blows it is
-## gone in black smoke; a struck hound flinches and begins its bite again, so one guard holds one hound off and two
-## hounds on one guard bring him down; soldiers at their post within SEEK_R are drawn to the fight. The doors stand open
-## while the hounds come (a danger the town sees, kind beast) and close behind the last; the gate stays standing over
-## the hunt. HUNT after the last comes out the doors open again and the hounds run back through them (RECALL); the
-## doors close, and the gate sinks back into the ground (SINK). The gate is a sight, not a wall: nothing walks into
-## it and nothing is barred. Loud (PowerBook.REACH): the first bite is the first kill, OUT_EVERY after the doors open.
+## HOUNDS hellhounds run out of its foot, one every OUT_EVERY. Its work done, the doors close behind the last (T_SHUT)
+## and the gate sinks back into the ground (SINK): the hounds are left loose in the town. They are Visitors: each hunts
+## whoever is nearest, citizen or soldier, out in the open within SEEK_R, runs at SPEED, and bites (within BITE_R, every
+## BITE_EVERY) -- a citizen falls to one bite, a soldier to two (damage kind frenzy). They fear nothing: no danger,
+## strike or fright turns them, and a blow does not make them flinch: a hound bites through it. The guard cuts them
+## down: a soldier beside a hound lands a blow every Visitors.GUARD_SWING and at BLOWS blows it is gone in black smoke.
+## So a lone soldier falls to a hound before his blows are done; two bring one down and lose one of their own; three
+## kill it before it takes a second. Soldiers at their post within SEEK_R are drawn to the fight. The doors stand open
+## while the hounds come (a danger the town sees, kind beast). HUNT after the last comes out, the hounds still on their
+## feet burn away where they stand, back to the other side. Loud (PowerBook.REACH): the first bite is the first kill,
+## OUT_EVERY after the doors open.
 
 ## The gate climbs out of the ground over T_RISE, stands a moment, and its doors take DOORS to open: wide at T_OPEN.
 const T_RISE := 1.2
@@ -21,16 +22,16 @@ const T_OPEN := 2.6
 const HOUNDS := 4
 const OUT_EVERY := 0.4
 const HUNT := 30.0
-const BLOWS := 3
+const BLOWS := 4
 const SPEED := 2.4
 const SEEK_R := 8.0
 const BITE_R := 0.5
 const BITE_EVERY := 1.0
-## The recall: how long the hounds have to get back through the doors; then the doors close over T_SHUT and the gate
-## sinks over SINK.
-const RECALL := 3.5
+## Behind the last hound the doors close over T_SHUT, and the gate sinks over SINK.
 const T_SHUT := 0.6
 const SINK := 1.2
+## At the hunt's end the hounds burn away over BURN.
+const BURN := 0.5
 ## How the gate shows: its PixelLab sheet (the doors opening, frame 0 shut to the last wide on the fire), its cell, its
 ## foot in the cell, how large it is drawn, and the other side's colours.
 const SHEET := "res://assets/pixellab/fx/hellgate.png"
@@ -67,14 +68,18 @@ func hunt_end() -> float:
 	return T_OPEN + float(HOUNDS) * OUT_EVERY + HUNT
 
 
-## When the doors close for good, and when the gate is back under the ground.
+## When the doors close, and when the gate is back under the ground: soon after the last hound is out.
+func shut_at() -> float:
+	return last_out() + OUT_EVERY
+
+
 func gone() -> float:
-	return hunt_end() + RECALL + T_SHUT + SINK
+	return shut_at() + T_SHUT + SINK
 
 
 func _build() -> void:
 	mouth = ctx.field.through(origin)
-	duration = gone() + 0.3
+	duration = hunt_end() + BURN + 0.1
 	busy = T_OPEN
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, _grid(), parent)
@@ -87,11 +92,9 @@ func _build() -> void:
 	at(T_OPEN, _open)
 	for k in HOUNDS:
 		at(T_OPEN + float(k) * OUT_EVERY, _release)
-	at(last_out() + OUT_EVERY, _shut)
-	at(hunt_end() - DOORS, _reopen)
-	at(hunt_end(), func(): visitors.recall(RECALL))
-	at(hunt_end() + RECALL, _shut)
-	at(hunt_end() + RECALL + T_SHUT, _sink)
+	at(shut_at(), _shut)
+	at(shut_at() + T_SHUT, _sink)
+	at(hunt_end(), _burn_away)
 	if not DominionParts.staged(self):
 		return
 	_gate = Gate.new()
@@ -163,15 +166,21 @@ func _open() -> void:
 	FxParts.sparks(self, ctx.overhead, sp, 22, FxParts.EMBER_LIFE, Vector2(60, 200), Vector2(40, 160))
 
 
-## The doors open again for the recall.
-func _reopen() -> void:
-	ctx.play(&"jg_rise", mouth, -4.0)
-	if not DominionParts.staged(self):
-		return
-	_glow.tween_param("intensity", 0.3, 1.0, DOORS, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+## The hunt is over: every hound still on its feet burns away where it stands, back to the other side.
+func _burn_away() -> void:
+	var left := visitors.living()
+	for a in left:
+		_stop_trail(a)
+		if DominionParts.staged(self):
+			var sp := Iso.ground_to_screen(a.ground_pos)
+			FxParts.smoke(self, sp, 6.0, 30.0, BURN, Vector2(16, 40), Vector2(2, 5), Vector2(0.5, 1.0), Color(RIM, 0.6), PITCH)
+			FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -6), 12, FxParts.EMBER_LIFE, Vector2(30, 120), Vector2(40, 140))
+	if not left.is_empty():
+		ctx.play(&"dr_roar", left[0].ground_pos, -9.0)
+	visitors.clear()
 
 
-## The doors close (the gate draws them shut).
+## The doors close behind the last hound (the gate draws them shut).
 func _shut() -> void:
 	ctx.play(&"jg_crumble", mouth, -6.0)
 	if not DominionParts.staged(self):
@@ -204,7 +213,7 @@ func _release() -> void:
 		if w != Vector2.INF:
 			spot = w
 	var speed_mul := SPEED / (Animal.DOG_SPEED * Animal.RUN)
-	var a := visitors.summon(spot, Animal.Breed.HELLHOUND, BLOWS, speed_mul, SEEK_R, BITE_R, BITE_EVERY)
+	var a := visitors.summon(spot, Animal.Breed.HELLHOUND, BLOWS, speed_mul, SEEK_R, BITE_R, BITE_EVERY, false)
 	a.facing = 1 if k % 2 == 0 else -1
 	if Animal.sheet(Animal.Breed.HELLHOUND).is_empty():
 		# No painted sheet (not imported): the drawn dog shape, darkened, with ember eyes laid over it.
@@ -286,9 +295,9 @@ func _finish() -> void:
 
 ## The Hellgate: the PixelLab sheet drawn standing on the mouth, its foot on the ground point, in the world layer so
 ## the town sorts round it. It climbs out of the ground over T_RISE (the top of the sprite shows first, cut off at the
-## ground line, shaking as it comes), its doors open over DOORS to T_OPEN and close over T_SHUT (the sheet's frames
-## forward and back), the fire behind them flickers while they stand wide, it flares (`flare`) as a hound comes
-## through, and it sinks back the way it came. Without the sheet (not imported) it draws nothing: the light, smoke and
+## ground line, shaking as it comes), its doors open over DOORS to T_OPEN and close over T_SHUT behind the last hound
+## (the sheet's frames forward and back), the fire behind them flickers while they stand wide, it flares (`flare`) as
+## a hound comes through, and it sinks back the way it came. Without the sheet (not imported) it draws nothing: the light, smoke and
 ## sparks still show where it stands.
 class Gate extends Node2D:
 	var fx: HoundGateFx
@@ -307,17 +316,9 @@ class Gate extends Node2D:
 
 	## 0..1 how far open the doors are.
 	func doors(now: float) -> float:
-		var first := clampf((now - (T_OPEN - DOORS)) / DOORS, 0.0, 1.0)
-		var first_shut := fx.last_out() + OUT_EVERY
-		var again := fx.hunt_end() - DOORS
-		var last_shut := fx.hunt_end() + RECALL
-		if now < first_shut:
-			return first
-		if now < again:
-			return 1.0 - clampf((now - first_shut) / T_SHUT, 0.0, 1.0)
-		if now < last_shut:
-			return clampf((now - again) / DOORS, 0.0, 1.0)
-		return 1.0 - clampf((now - last_shut) / T_SHUT, 0.0, 1.0)
+		if now < fx.shut_at():
+			return clampf((now - (T_OPEN - DOORS)) / DOORS, 0.0, 1.0)
+		return 1.0 - clampf((now - fx.shut_at()) / T_SHUT, 0.0, 1.0)
 
 	static func ease_out(k: float) -> float:
 		return 1.0 - pow(1.0 - k, 3.0)
@@ -335,6 +336,8 @@ class Gate extends Node2D:
 		var now := fx.t
 		var up := risen(now)
 		if up <= 0.0:
+			if now > fx.gone():
+				queue_free()  # sunk for good
 			return
 		var open := doors(now)
 		var frame := int(round(open * float(FRAMES - 1)))

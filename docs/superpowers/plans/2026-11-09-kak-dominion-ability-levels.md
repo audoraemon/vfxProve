@@ -1,7 +1,7 @@
 # KAK Dominion Ability Levels Implementation Plan
 
 Spec: `docs/superpowers/specs/2026-11-09-kak-dominion-ability-levels-design.md` (approved 2026-11-09, "Ok let's do it"; cited
-**DS**). Model: the Ruin levels plan `docs/superpowers/plans/2026-11-03-kak-ruin-ability-levels.md` and its rulings
+**DS**; amended in `668bf981`: Clear Mind's twist is **Sleepwalk**, the user's pick, replacing Forgetting). Model: the Ruin levels plan `docs/superpowers/plans/2026-11-03-kak-ruin-ability-levels.md` and its rulings
 `docs/KAK_God_Ruin_Levels_Rulings.md` (R1-R15, R5a, R12a, the recast rule): every Ruin ruling that is not about a Ruin power
 holds here too.
 
@@ -21,7 +21,7 @@ plays exactly as today: no reference moves.
 cooldown wins: Wisp ENTHRALL 75 s); `Rules.recast()` / `can_recast()` / `live_fx()` (Ruin's Called Bolts: a click on a focused
 slot whose effect is still running goes to that effect); `Targeting.area_at()` / `AREA_STATS`; `tests/fx_stage.gd`. This plan adds:
 1. **Task 1 (groundwork):** the ten tables; every listed stat read through `PowerBook.stat()` (or `level_stat()` where the read
-   is outside the effect); level-aware previews; **the one shared follow-up mechanism** (Called Bolts generalised); three inert
+   is outside the effect); level-aware previews; **the one shared follow-up mechanism** (Called Bolts generalised); two inert
    `Person` hooks the twists call; the test files registered once.
 2. **Tasks 2-11:** one twist each, in its own effect file, behind the level-5 gate, in three parallel tracks.
 3. **Task 12:** docs.
@@ -68,8 +68,9 @@ references `tools/dev/refs_check.sh`; `tools/dev/behaviour_check.gd --level=<n>`
 - **No twist uses a random roll** (DS: "No twist is a random roll"). Twists use no rng at all; ties are broken by distance, then
   field order. No `randf()`, no wall clock, no `Time`.
 - **Twist gate:** a twist runs only when `PowerBook.twist_at(extra, "<key>")` is true (exactly level 5). A level-4 cast never shows it.
-- Per-instance stat vars are named `lv_<const in lower case>` (`lv_reach`, `lv_span`, `lv_max_guards`, ...), grep-checked unused in
-  `src`, `tools`, `tests`; set at the top of `_build()`.
+- Per-instance stat vars are named `lv_<const in lower case>` (`lv_reach`, `lv_span`, `lv_max_guards`, ...), set at the top of
+  `_build()`. Each name must be new **within its own file** (grep the file before adding it; Ruin's effects already use
+  `lv_radius`, `lv_reach`, `lv_length` in their own files, which is fine).
 - Directors, routes and `behaviour_check` keep reading the constants (they play level 1). E.g. `InformerDirector` reads
   `DiscordFx.DISCORD_TIME` as "confused with the full time left": a longer level-5 confusion still passes its `>=` test.
 - Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never `git stash` (use a WIP commit). Never push.
@@ -96,8 +97,12 @@ generalises it rather than adding a second one:**
     The recast rule stays: false when the run is `finished` or `busy_left() > 0.0`.
   - `TempestFx` gains `can_follow_up()` -> `can_call()` and `follow_up(at, _extra)` -> `call_bolt(at)` (both kept; Tempest's
     tests are unchanged and must pass).
-- Three twists use it: **Procession** (Wisp), **Second Word** (Voice), **Turn the Tide** (Schism). **Held String is not a
-  follow-up** (see R2): DS says its cooldown still applies, so it is an ordinary new whisper -- the same "select the slot, click"
+- **When it opens:** `Rules.recast()` refuses while any cast's busy lock holds, so through the real input a follow-up can be
+  given only after the effect's own `busy`: Wisp 1.0 s, Clear Mind `T_CAST` (0.9 s), Voice `T_SPEAK + 1.0` (2.6 s), Schism
+  `T_BREAK + 1.0` (2.8 s). Each effect's own window (D11, D12, D17, D18) states its start for direct calls; every test that goes
+  through Rules or Targeting clicks after the busy time.
+- Four twists use it: **Procession** (Wisp), **Sleepwalk** (Clear Mind), **Second Word** (Voice), **Turn the Tide** (Schism).
+  **Held String is not a follow-up** (see D8): DS says its cooldown still applies, so it is an ordinary new whisper -- the same "select the slot, click"
   input, through `Rules.cast()`.
 
 ## Spec gaps and rulings (binding; D1-D18)
@@ -124,8 +129,8 @@ generalises it rather than adding a second one:**
   "length"`. (`RADIUS` "radius", `REACH` "reach", `cooldown` exist.) Ruin's tree text must not change (its tests pin it).
 - **D7 Twist texts** (each under the tree's detail width, checked with `UiTheme.width` as Ruin did; the follow-up ones say
   "click again"): whisper "Held String: whisper the same one again", discord "Tangled Threads: forgetting spreads one hop",
-  madness "Directed Frenzy: the broken hunt soldiers", wisp "Procession: click again to lead the light", clearmind "Forgetting:
-  the trance wipes their fear", saint "Passed Mark: the mark outlives its bearer", sanctuary "Pressed into Service: intruders
+  madness "Directed Frenzy: the broken hunt soldiers", wisp "Procession: click again to lead the light", clearmind "Sleepwalk:
+  click again to walk the entranced", saint "Passed Mark: the mark outlives its bearer", sanctuary "Pressed into Service: intruders
   guard", anathema "Spreading Mark: spreads to buildings near", voice "Second Word: click again for a second command", schism
   "Turn the Tide: click a fighter to turn them". *(wording my call; shorten if a width check fails)*
 - **D8 Held String** — Ruling: a level-5 whisper (walk, attack or burn) leaves **no shake-off** when it wears off: `Person._wake()`
@@ -145,17 +150,24 @@ generalises it rather than adding a second one:**
   `Person.FIGHT_SIGHT` (tie: field order), else `fight(null, ...)` as today; `_outbreak()` unchanged. Once that soldier is down the
   frenzy goes on under its ANYONE rule for the rest of its time. Only the cast's seeds are directed (spreads via `afflict()` are not).
 - **D11 Procession.** `follow_up(at, _)` is true at level 5 while the light burns (`t < duration - 1.0`), any number of times,
-  each replacing the destination. The light (`var light_at := origin`) drifts toward it at `PROCESSION_SPEED :=
+  each replacing the destination. The light (`var light_at := Vector2.ZERO`, **assigned `light_at = origin` at the top of
+  `_build()`**: a member initializer runs before `origin` is set) drifts toward it at `PROCESSION_SPEED :=
   DummyEnemy.WALK_SPEED` (0.6 u/s, a walk), never past it. LURE: each lured person keeps its offset from the light (recorded at the
   lure) and is re-sent to `light_at + offset` (nearest walkable) every `REGOAL_EVERY 0.5` s while the light moves and once when it
   stops, via `Person.relure()`. ENTHRALL: `_spots` and `_held` shift with the light; a held person's `anchor` and goal follow (as
   Saint's `_ring()` moves its guards); newcomers are taken round `light_at` (`enthralled(field, light_at, ...)`, `_edge_spot`
   from `light_at`). Light, motes and the ENTHRALL ring draw at `light_at` (`FxParts.ground_light(..., getter)`). At levels 1-4
   `light_at == origin` throughout. `follow_up_area()` = `{"shape": "circle", "r": RING.y}`.
-- **D12 Forgetting** — Ruling: at `T_CAST + lv_trance_time` (only if the trance runs its time; `end_now()` does not forget), each
-  entranced person alive and not inside calls `Person.forget_fright()`: awareness to UNAWARE, `_threat` cleared, the flight it
-  owes (`_whisper_fled`, `_reassured_fled`) dropped, and if PANIC/FLEE/REGROUP/RECOVER or OBSERVE-not-lured, back to its day with a
-  fixed 1.0 s recover (no rng). DS's own call holds: the town's Notice and evacuation are not touched. See Questions Q1.
+- **D12 Sleepwalk** (DS as amended, the user's pick) — Ruling: `follow_up(at, _)` is true at level 5 while the trance holds
+  (`holding()`: `T_CAST <= t < T_CAST + lv_trance_time`) and someone entranced is alive and out in the open; any number of times,
+  each click re-sending everyone entranced now (later joiners are sent by the next click only). Each walks calmly (no run) to a spot
+  of its own at the click: `CongregationFx.spots_for(grid, CongregationFx.place_for(ctx.env, at), n)` (no rng; any past the spots
+  stand at the place), by `p.compel(spot, T_CAST + lv_trance_time - t, Person.WILL_ABSOLUTE, CALM, false, &"", TRANCE)` -- an
+  existing generic, so **no Person hook is needed**; the trance (`fearless_left`) is untouched, so they still sense nothing. They
+  stand there until the trance ends, when the compulsion runs out with it (and `_release_walkers()` at the end, and in `end_now()`,
+  releases any still COMPELLED by it and anchored at its spot). The circle and its joining stay at `origin`; a sleepwalker who leaves
+  it stays entranced (as today). `var walkers := {}` (person -> spot), `var walks := 0`. `follow_up_area()` = `{"shape": "circle",
+  "r": 1.0}`. Cost if wrong: WILL_ABSOLUTE means nothing breaks the walk (the trance already ignores danger).
 - **D13 Passed Mark (SINNER)** — Ruling: once, the first frame the chosen is dead: the mark goes to the nearest living person out
   in the open within `PASS_R 3.0` of where they fell who is **not one of the mob** (`people`) — why: the mob stands round the
   chosen, so the nearest is nearly always a hunter; a mob turning on its own is not the god's steer — cost if wrong: the jump lands
@@ -165,7 +177,8 @@ generalises it rather than adding a second one:**
   `GUARDS_PER_THREAT` is lifted to every guard not already fighting — cost if wrong: guards answer an intent, not a blow, as today.
 - **D15 Pressed into Service** — Ruling: "driven out" is the moment a guard lets go because its quarry, alive, is outside the
   wall (today's `stop_fighting()` branch). That quarry, unless already a guard or `resists_mind()`, and while `guards.size() <
-  lv_max_guards`, joins: appended to `guards` with a place on the wall nearest them (`static func wall_spot(kind, centre, g) ->
+  lv_max_guards`, joins: appended to `guards` **and its place appended to `places`** (the RETHINK loop reads `places[i]` for every guard; the two
+  arrays stay index for index), the place being the point on the wall nearest them (`static func wall_spot(kind, centre, g) ->
   Vector2`: circle `centre + dir * CIRCLE_R`; rect: the nearest point on the rect's border), `_post()`ed for what is left of the
   span, SHIELD badge, counted in `var pressed := 0`. Soldiers too. They fight later intruders as any guard.
 - **D16 Spreading Mark** — Ruling: at `T_CAST + SPREAD_AT (20.0)` (20 s after the marks are laid): every standing building of a
@@ -175,15 +188,21 @@ generalises it rather than adding a second one:**
   not in `MARKED` (assert it in a test). HALLOWED: citizens within `SPREAD_R` of a newly marked building are sent in as `_gather()`
   does (its code, restricted to the new buildings and those people).
 - **D17 Second Word** — Ruling: `follow_up(at, extra)` is true at level 5, once per cast, while the first command holds
-  (`T_SPEAK <= t < T_SPEAK + seconds`), with `extra.mode` (the Q/E command shown; default the first's); JUDGE needs someone at the
+  (`T_SPEAK + 1.0 <= t < T_SPEAK + seconds`: after the busy lock, which Rules enforces anyway), with `extra.mode` (the Q/E command shown; default the first's); JUDGE needs someone at the
   click (`judged_at(field, at)`), else false. When the first ends, every person the first reached (`_reached`) alive and out in the
   open takes the second command at once (no wave), for `float(COMMANDS[second]) * lv_command_x`; its place is **the follow-up
   click** (FLEE runs from it, GATHER walks to it, JUDGE condemns the one picked there; RETURN, KNEEL, HALT, SILENCE need no place);
-  SILENCE hushes the town for its seconds. No rng: a second GATHER sizes `spots_for()` to `mini(lv_gather_capacity, reached)` and
-  any beyond stand at the place; a second FLEE from a person exactly on the click runs `Vector2.RIGHT`. `duration` becomes
+  SILENCE hushes the town for its seconds. **No rng, and the level-1 stream unchanged:** today's `_command()` draws `ctx.rng`
+  for FLEE (a person exactly on the click: a random direction) and for GATHER past `_spots` (a random ring point). The refactor
+  `_command(p, cmd, place, secs, t0, scatter := true)` keeps those two draws, in today's order, on the `scatter` path; the first
+  command always calls it with `scatter = true`, so levels 1-5 draw exactly as today for it. The second command calls it with
+  `scatter = false`: FLEE from a person on the click runs `Vector2.RIGHT`, GATHER sizes `spots_for()` to `mini(lv_gather_capacity,
+  reached)` and anyone beyond stands at `_place.at`. A test asserts `ctx.rng.state` is the same just before and just after the
+  second command is laid. `duration` becomes
   `T_SPEAK + seconds + seconds2 + 1.0`; `busy` unchanged. `follow_up_area()` = `{}` (the Voice's own preview, which rings the
   judged for JUDGE).
-- **D18 Turn the Tide** — Ruling: `follow_up(at, _)` is true at level 5 while `T_BREAK <= t < T_BREAK + lv_duration`, mode not
+- **D18 Turn the Tide** — Ruling: `follow_up(at, _)` is true at level 5 while `T_BREAK + 1.0 <= t < T_BREAK + lv_duration`
+  (after the busy lock), mode not
   `"tumult"`, `turns < MAX_TURNS (10)`, and a member (`side != 0`, alive, not inside) stands within `TURN_PICK 1.0` of the click
   (the nearest; tie field order). It moves them to the other side through the same code as `_enlist()` (factored into
   `_lay_side(p, s, left)`; level 1 identical): counts, badge, fight re-laid (`OTHER_SIDE`) or, for PURGE, a citizen turned onto the
@@ -192,11 +211,7 @@ generalises it rather than adding a second one:**
 
 ## Questions for the user
 
-- **Q1 Forgetting is nearly invisible as written.** Clear Mind already calms the frightened when it takes them, and they never pick
-  the fright up again; during the trance nothing frightens them. So at the trance's end the only things left to forget are a
-  hidden awareness level and a whispered person's owed flight. Build it as written (D12, the default), or make it stronger (for
-  example: for 15 s after the trance they still sense nothing, so a cleared square stays calm while the god acts)? The plan builds
-  D12 unless told otherwise; changing it later touches only Task 6.
+- None open. (Q1, Forgetting, was answered on 2026-11-09: the twist is Sleepwalk, D12.)
 
 ---
 
@@ -222,7 +237,7 @@ Found by grepping `tools/dev` for each key (`"discord"` etc.); a row's name says
 | 3 | Discord: Tangled Threads | `src/fx/quiet/discord.gd`, `tests/test_dominion_twist_discord.gd` | A | 1 |
 | 4 | Madness Bloom: Directed Frenzy | `src/fx/curse/madness_bloom.gd`, `src/game/crowd/madness_manager.gd`, `tests/test_dominion_twist_madness.gd` | A | 1 |
 | 5 | Will-o'-Wisp: Procession | `src/fx/control/will_o_wisp.gd`, `tests/test_dominion_twist_wisp.gd` | B | 1 |
-| 6 | Clear Mind: Forgetting | `src/fx/dominion/clear_mind.gd`, `tests/test_dominion_twist_clearmind.gd` | A | 1 |
+| 6 | Clear Mind: Sleepwalk | `src/fx/dominion/clear_mind.gd`, `tests/test_dominion_twist_clearmind.gd` | B | 1 |
 | 7 | Saint or Sinner: Passed Mark | `src/fx/dominion/saint_or_sinner.gd`, `tests/test_dominion_twist_saint.gd` | C | 1 |
 | 8 | Sacred Sanctuary: Pressed into Service | `src/fx/dominion/sacred_sanctuary.gd`, `tests/test_dominion_twist_sanctuary.gd` | C | 1 |
 | 9 | Anathema: Spreading Mark | `src/fx/dominion/anathema.gd`, `tests/test_dominion_twist_anathema.gd` | C | 1 |
@@ -235,8 +250,9 @@ shared (`person.gd`, `rules.gd`, `targeting.gd`, `hud.gd`, `power_book.gd`, `run
 needs a file outside its row stops and reports NEEDS_CONTEXT.
 
 **Tracks** (as Ruin: three at once, each serial inside, cut from Task 1's commit, merged back into `god/dominion-levels`):
-- **A** `god/dl-a`, worktree `C:/BURIN_NITRO/Godot/GIT/vfxProve-dl-a`: Tasks 2, 3, 4, 6 (Tier 1-3 crowd twists; the ref-heavy powers).
-- **B** `god/dl-b`, worktree `C:/BURIN_NITRO/Godot/GIT/vfxProve-dl-b`: Tasks 5, 10, 11 (the three follow-up twists).
+- **A** `god/dl-a`, worktree `C:/BURIN_NITRO/Godot/GIT/vfxProve-dl-a`: Tasks 2, 3, 4 (Tier 1-2 crowd twists; the ref-heavy powers).
+- **B** `god/dl-b`, worktree `C:/BURIN_NITRO/Godot/GIT/vfxProve-dl-b`: Tasks 5, 6, 10, 11 (the four follow-up twists, so one track
+  keeps them consistent; Clear Mind's file is still its own).
 - **C** `god/dl-c`, worktree `C:/BURIN_NITRO/Godot/GIT/vfxProve-dl-c`: Tasks 7, 8, 9 (Tier 3-4 district twists).
 First command in each fresh worktree: the `--import` line. While three tracks run: per-task checks only (no full refs, no FLOW);
 `--jobs=2` for `refs_check.sh`; after a track's last task, the full suite in 6 parts.
@@ -282,9 +298,7 @@ First command in each fresh worktree: the `--import` line. While three tracks ru
   after). (D8)
 - [ ] `func relure(spot: Vector2) -> bool`: only when alive, `mind == Mind.OBSERVE and _lured`: `_threat = spot`, `set_goal(spot)`;
   true. Nothing else changes (its `_observe_left` runs on). (D11)
-- [ ] `func forget_fright() -> void` (D12): awareness UNAWARE, `_threat = Vector2.INF`, `_whisper_fled = false`, `_reassured_fled =
-  false`; if mind in PANIC/FLEE/REGROUP/RECOVER, or OBSERVE and not `_lured`: `release_from_queue()`, `passing_gate = null`,
-  `_recover(1.0)`.
+- (Sleepwalk needs no hook: it uses `Person.compel()`, D12.)
 
 **Stat reads -- every listed stat through `PowerBook.stat()`** (top of `_build()`; level 1 identical):
 - [ ] `mind_whisper.gd`: `lv_attack_secs` (`_build_order`'s `whisper_fight`); `clamp_to(grid, from, to, reach := REACH)`.
@@ -297,12 +311,14 @@ First command in each fresh worktree: the `--import` line. While three tracks ru
 - [ ] `clear_mind.gd`: `lv_radius` (`_join`, sigils, pulses, `Spiral` via `fx.lv_radius`), `lv_trance_time` (duration, `holding()`,
   `_join`'s left, ground sigil, `Spiral`'s end).
 - [ ] `saint_or_sinner.gd`: `lv_radius` (`_decide`'s people, pulse, wave), `lv_span` (duration, badges, fights, `_ring`'s left).
-- [ ] `sacred_sanctuary.gd`: `lv_max_guards`, `lv_pick_r` (`picked_at(field, at, r := PICK_R, cap := MAX_GUARDS)`, the pick sigil),
+- [ ] `sacred_sanctuary.gd`: `lv_max_guards`, `lv_pick_r` (`picked_at(field, at, r := PICK_R, cap := MAX_GUARDS)`, whose
+  `DominionParts.near()` cap becomes `cap * 2`; the pick sigil),
   `lv_span` (duration, `_post`, `_fx_process`'s end, `shown()`, `Ground` via `fx.lv_span`).
 - [ ] `anathema.gd`: `lv_radius` (`marked_at(env, at, r := RADIUS)`, `_gather`, sigils, pulse, wave), `lv_span` (duration,
   `mark_structure`, `holding()`, `_gather`'s compel, icons, `shown()`, `Shroud` via `fx.lv_span`).
 - [ ] `voice_of_god.gd`: `const COMMAND_X := 1.0`; `lv_command_x` (D3); `lv_gather_capacity` (`spots_for` count).
-- [ ] `divine_schism.gd`: `lv_region` (`_near(..., REGION)` x3, `_panic_point`), `lv_max_fighters` (the four `slice`s),
+- [ ] `divine_schism.gd`: `lv_region` (`_near(..., REGION)` x3, `_panic_point`, and the visuals that read it: the break
+  shockwave, the refract ring `REGION * 0.8`, the debug ellipse `Iso.radius_to_screen(REGION)`), `lv_max_fighters` (the four `slice`s),
   `lv_duration` (duration, `at(..., _end)`, `_enlist`/`_strike`/`_repick_panicked` lefts, the tumult and spreading gates).
 - [ ] `targeting.gd`: `AREA_STATS` additions (D5); the `_draw()` ringing passes the level's numbers to `taken`, `victims_at`,
   `drawn` (cap), and wherever `picked_at` / `marked_at` are called.
@@ -329,8 +345,8 @@ First command in each fresh worktree: the `--import` line. While three tracks ru
   - `_tree_text`: `level_change("wisp", 3)` == `"lure cap 27 -> 30, lure time 13.0 -> 14.0, enthrall 32.0 -> 34.0, cooldown 28.0 ->
     26.0"` (the table's key order); `level_change("voice", 5)` ends with D7's voice text; `level_change("smite", 2)` unchanged.
   - `_person_hooks`: a whispered person with `hold_string()` is not `shaken()` after the whisper wears off; without it, shaken for
-    20 s; `relure()` on a lured person moves its goal and is false for a calm one; `forget_fright()` takes a THREATENED fleeing
-    person to UNAWARE and out of FLEE, and leaves a COMPELLED one alone.
+    20 s; `relure()` on a lured person moves its goal and is false for a calm one; an entranced person compelled to a spot keeps
+    `fearless_left` (the Sleepwalk path needs nothing new from Person).
 - [ ] New `tests/test_follow_up.gd`: a stub `FxTimeline` script (in the test) with `can_follow_up`/`follow_up` and a Rules with a
   recording caster: `recast(slot, p, {"mode": "halt"})` hands the extra through, emits `recast_made`, leaves `cooldown_left` and
   `cast_made` untouched; false while another cast's busy lock holds or after `finished`; `follow_up_area(slot)` is the stub's;
@@ -390,7 +406,7 @@ rows (the table above).
 - Check: `test_dominion_twist_madness`, `test_madness`; refs digest|crowd_check and the madness rows.
 
 #### Task 5: Will-o'-Wisp -- Procession (`will_o_wisp.gd`; track B)
-- `can_follow_up()`, `follow_up(at, _)`, `follow_up_area()` (D11); `var light_at := origin`, `_dest`, `_offsets` (LURE, recorded
+- `can_follow_up()`, `follow_up(at, _)`, `follow_up_area()` (D11); `light_at` (assigned in `_build()`, D11), `_dest`, `_offsets` (LURE, recorded
   at the lure only at level 5), `_regoal_in`. `_fx_process` moves the light before the ENTHRALL scan; `_draw`, `_light`, motes and
   the ring use `light_at`.
 - Tests (headless): LURE level 5, three calm people drawn; `follow_up(origin + Vector2(4, 0), {})` true; after 3.0 s `light_at`
@@ -398,19 +414,28 @@ rows (the table above).
   a lured person is within 1.0 of its new ring place; a second `follow_up` replaces the destination; after the light is out (or in
   its last second) false. ENTHRALL level 5: a held person's `anchor` moves with the light; a person standing near the new spot
   (and not near the old) is taken at the next scan. Level 4: `can_follow_up()` false, `light_at == origin`. Through Rules: a
-  level-5 wisp cast then `rules.recast(slot, p)` true, `cooldown_left` unchanged, no second `cast_made`.
+  level-5 wisp cast then, at t = 1.1 (after its 1.0 s busy), `rules.recast(slot, p)` true (at t = 0.5 false), `cooldown_left` unchanged, no second `cast_made`.
 - Check: `test_dominion_twist_wisp`, `test_wisp`, `test_wisp_enthrall`, `test_follow_up`; refs digest|crowd_check and the three
   seed-1 play runs.
 
-#### Task 6: Clear Mind -- Forgetting (`clear_mind.gd`; track A)
-- Hook: `_build()` at `_twist`: `at(T_CAST + lv_trance_time, _forget)`; `_forget()` calls `forget_fright()` on each entranced
-  person alive and not inside (D12); `var forgot := 0`.
-- Tests: a THREATENED person in the circle and a whispered-while-fleeing one (owes flight): level 5, after the trance both are
-  UNAWARE and neither flees; `forgot == 2`; `end_now()` before the end forgets nobody; level 4: awareness kept.
-- Check: `test_dominion_twist_clearmind`, `test_clear_mind`; refs digest|crowd_check.
+#### Task 6: Clear Mind -- Sleepwalk (`clear_mind.gd`; track B)
+- `can_follow_up()`, `follow_up(at, _)`, `follow_up_area()`, `_release_walkers()` (D12); `var walkers := {}`, `var walks := 0`;
+  `end_now()` releases the walkers before `super`.
+- Tests (headless, the `test_clear_mind` context, a walk grid): level 5, three people entranced at `T_CAST`: before `T_CAST`
+  `can_follow_up()` false; at `T_CAST + 1.0` `follow_up(origin + Vector2(6, 0), {})` true, all three COMPELLED with goals on
+  distinct spots at the click, `fearless_left > 0` still, not running; after 12 s each is within 0.5 of its spot; a fright laid at
+  them (`Crowd.fright` at their feet) neither frightens nor stops them; a second click re-sends them; someone who joins after the
+  first click is sent only by the next; at `T_CAST + lv_trance_time + 0.1` none is COMPELLED by it (released) and `holding()` is
+  false, so `follow_up` is false; `end_now()` mid-walk releases them. Level 4: `can_follow_up()` false and nobody moves. Through
+  Rules: a level-5 Clear Mind cast, `rules.recast(slot, p)` at `T_CAST + 0.1` (after its 0.9 s busy) true, cooldown unchanged, no
+  second `cast_made`.
+- Check: `test_dominion_twist_clearmind`, `test_clear_mind`, `test_follow_up`; refs digest|crowd_check.
 
 #### Task 7: Saint or Sinner -- Passed Mark (`saint_or_sinner.gd`; track C)
-- SINNER: `_fx_process` gains a sinner branch (before today's `mode != "saint"` return) that runs the pass once (D13);
+- SINNER: `_fx_process` gains a sinner branch that runs the pass once (D13). Today's first line is one combined early return
+  (`t < T_CAST or chosen == null or not is_instance_valid(chosen) or mode != "saint"`): split it so the sinner branch runs after
+  the `t < T_CAST` / chosen checks and before the `mode != "saint"` return; for SAINT and levels 1-4 the order of checks and calls
+  stays today's;
   `var passed_to: Person`. SAINT: `_guard()`'s cap is `people.size()` at `_twist` (D14). Links/badges follow the new chosen (staged).
 - Tests (the `test_saint` context): SINNER level 5, mob of four, bystander B 2.0 from the chosen, C 3.5 away: kill the chosen ->
   `passed_to == B`, B wears the noose, every living mob member's `fight_target == B`; kill B -> no second pass; nobody within 3 ->
@@ -437,8 +462,10 @@ rows (the table above).
   call order); `can_follow_up()`, `follow_up(at, extra)` (D17); `var second := ""`, `second_at`, `_second_done`; `_fx_process`
   applies the second when `t >= T_SPEAK + seconds`.
 - Tests (headless, the `test_voice` context): level 5 KNEEL (seconds 16.8): before `T_SPEAK` `follow_up` false; at `T_SPEAK + 3.0`
-  `follow_up(p, {"mode": "halt"})` true, a second call false; at `T_SPEAK + 16.9` the reached are COMPELLED with no kneel pose,
-  holding for 16.8 s; `duration == T_SPEAK + 33.6 + 1.0`; a second GATHER walks the reached to the follow-up's place (each goal
+  `follow_up(p, {"mode": "halt"})` true (after the 2.6 s busy), a second call false; at `T_SPEAK + 0.5` (inside the busy lock)
+  `rules.recast` is false; at `T_SPEAK + 16.9` the reached are COMPELLED with no kneel pose, holding for 16.8 s;
+  `is_equal_approx(duration, T_SPEAK + 12.0 * 1.4 * 2.0 + 1.0)` (float products: never `==`); a second FLEE from a person on the
+  click leaves `ctx.rng.state` unchanged (D17); a second GATHER walks the reached to the follow-up's place (each goal
   within the place's spots); a second JUDGE with nobody near the click is false; a person the first never reached (inside) is not
   touched; level 4: `can_follow_up()` false. Through Rules + Targeting: with the Voice slot focused and Q/E on HALT, a click during
   the KNEEL is the second word (`recast_made`, no `cast_made`, cooldown untouched).
@@ -449,7 +476,7 @@ rows (the table above).
   `follow_up_area()` (D18); `var turns := 0`.
 - Tests (headless, `test_schism`'s context): FACTION level 5 after the wave: `follow_up` on a citizen (side 1) -> side 2, `counts`
   moved by one each way, crimson badge, fighting OTHER_SIDE; a click 1.5 from any member false; ten turns true, the eleventh false;
-  before `T_BREAK` and after `T_BREAK + lv_duration` false; PURGE: a turned condemned citizen fights, a turned hunter citizen runs;
+  before `T_BREAK + 1.0` (the busy lock) and after `T_BREAK + lv_duration` false; PURGE: a turned condemned citizen fights, a turned hunter citizen runs;
   TUMULT: `can_follow_up()` false; level 4: false. CUSTOM through Targeting: the focused Schism slot aims as a click while live.
 - Check: `test_dominion_twist_schism`, `test_schism`, `test_schism_tumult`, `test_follow_up`; refs digest|crowd_check.
 
@@ -462,7 +489,7 @@ After each track's last task: full suite in 6 parts `failures=0` in the track's 
 - [ ] `docs/KAK_God_Dominion_Levels_Summary.md` (short, as Ruin's): what levels do, the ten tables (stat names with the D6 words),
   the ten twists one line each, **the follow-up input** (select the slot again, click; the gold card), how to try them (the
   board's Prepare level picker; `behaviour_check --level=5`), what stays level-free (directors, routes), the test files, commits.
-- [ ] `docs/KAK_God_Dominion_Levels_Rulings.md`: D1-D18, Q1's answer, every `Ruling:` the task reports gave (with its task), the
+- [ ] `docs/KAK_God_Dominion_Levels_Rulings.md`: D1-D18 (D12 is Sleepwalk, the user's pick replacing Forgetting), every `Ruling:` the task reports gave (with its task), the
   final review's and fix wave's rulings, the open and playtest notes.
 - [ ] Update the Dev Ledger after landing (memory `kak-dev-ledger`); commit "docs: Dominion ability levels summary and rulings".
 
@@ -478,9 +505,10 @@ After each track's last task: full suite in 6 parts `failures=0` in the track's 
    static helper outside Targeting passes a level.
 2. Every DS number is in its table and read at its level: `_shapes`, `_cast_reads_level3`, `_cooldown_at_level`, `_previews`,
    ENTHRALL still 75 s, Schism still once.
-3. One follow-up mechanism, not four: Wisp, Voice and Schism go through `Rules.recast` exactly as Tempest does; a follow-up never
+3. One follow-up mechanism, not four: Wisp, Clear Mind, Voice and Schism go through `Rules.recast` exactly as Tempest does; a follow-up never
    starts a cooldown, never sends `cast_made`, is refused under another power's busy lock and after the run; the aim-as-click switch
    cannot strand a half-placed two-click aim; the HUD cue and the preview tell the player.
 4. Each twist runs at 5 and never at 4; no twist draws a random number; quiet powers stay quiet (no `Crowd.on_cast`, no fright
    from the twist itself).
-5. Person hooks are inert unless called (`hold_string`, `relure`, `forget_fright`), and `shaken()` is unchanged for everyone else.
+5. Person hooks are inert unless called (`hold_string`, `relure`), and `shaken()` is unchanged for everyone else.
+6. Voice's second command draws no rng and the first command's draws are today's (the `scatter` flag, D17).

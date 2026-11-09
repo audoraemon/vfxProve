@@ -19,7 +19,13 @@ const POWERS := [
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
 		"shape": "press a person: walk, attack or burn -- send them somewhere (8 s), set them on someone, or at a building; not the same one again for 20 s", "quiet": true,
-		"authority": "dominion"},
+		"authority": "dominion",
+		"levels": [
+			{"REACH": 10.0, "ATTACK_SECS": 10.0, "cooldown": 8.0},
+			{"REACH": 11.0, "ATTACK_SECS": 11.0, "cooldown": 7.5},
+			{"REACH": 12.0, "ATTACK_SECS": 12.0, "cooldown": 7.0},
+			{"REACH": 13.0, "ATTACK_SECS": 13.0, "cooldown": 6.5},
+			{"REACH": 14.0, "ATTACK_SECS": 14.0, "cooldown": 6.0, "twist": true, "twist_text": "Held String: whisper the same one again"}]},
 	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
 		"authority": "ruin",
@@ -47,10 +53,22 @@ const POWERS := [
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s; or ENTHRALL holds all near the light, 30 s (cooldown 75 s); Q/E",
 		"quiet": true, "authority": "dominion", "modes": [
-			{"key": "lure", "name": "LURE"}, {"key": "enthrall", "name": "ENTHRALL", "area": {"r": 4.0, "roam": 0.0}, "cooldown": 75.0}]},
+			{"key": "lure", "name": "LURE"}, {"key": "enthrall", "name": "ENTHRALL", "area": {"r": 4.0, "roam": 0.0}, "cooldown": 75.0}],
+		"levels": [
+			{"LURE_MAX": 25, "WISP_TIME": 12.0, "ENTHRALL_TIME": 30.0, "cooldown": 30.0},
+			{"LURE_MAX": 27, "WISP_TIME": 13.0, "ENTHRALL_TIME": 32.0, "cooldown": 28.0},
+			{"LURE_MAX": 30, "WISP_TIME": 14.0, "ENTHRALL_TIME": 34.0, "cooldown": 26.0},
+			{"LURE_MAX": 32, "WISP_TIME": 15.0, "ENTHRALL_TIME": 37.0, "cooldown": 25.0},
+			{"LURE_MAX": 35, "WISP_TIME": 16.0, "ENTHRALL_TIME": 40.0, "cooldown": 24.0, "twist": true, "twist_text": "Procession: click again to lead the light"}]},
 	{"key": "discord", "name": "Discord", "path": "res://src/fx/quiet/discord.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
-		"authority": "dominion"},
+		"authority": "dominion",
+		"levels": [
+			{"DISCORD_R": 1.2, "DISCORD_TIME": 15.0, "cooldown": 30.0},
+			{"DISCORD_R": 1.3, "DISCORD_TIME": 16.0, "cooldown": 28.0},
+			{"DISCORD_R": 1.4, "DISCORD_TIME": 17.0, "cooldown": 26.0},
+			{"DISCORD_R": 1.5, "DISCORD_TIME": 18.0, "cooldown": 24.0},
+			{"DISCORD_R": 1.6, "DISCORD_TIME": 20.0, "cooldown": 22.0, "twist": true, "twist_text": "Tangled Threads: forgetting spreads one hop"}]},
 	{"key": "belllies", "name": "The Bell Lies", "path": "res://src/fx/decree/the_bell_lies.gd",
 		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "the bell tolls all is well, now and for 45 s; or calls the guard to a place; Q/E",
 		"quiet": true, "authority": "decree", "modes": [
@@ -67,7 +85,13 @@ const POWERS := [
 			{"BLASTS": 16, "KILL_R": 1.1, "cooldown": 25.0, "twist": true, "twist_text": "Seeking Bursts: each burst finds someone near"}]},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
-		"quiet": true, "alarm": 0.2, "authority": "dominion"},
+		"quiet": true, "alarm": 0.2, "authority": "dominion",
+		"levels": [
+			{"RADIUS": 1.5, "SEED": 0.02, "cooldown": 40.0},
+			{"RADIUS": 1.65, "SEED": 0.04, "cooldown": 38.0},
+			{"RADIUS": 1.8, "SEED": 0.06, "cooldown": 36.0},
+			{"RADIUS": 1.95, "SEED": 0.08, "cooldown": 34.0},
+			{"RADIUS": 2.1, "SEED": 0.1, "cooldown": 32.0, "twist": true, "twist_text": "Directed Frenzy: the broken hunt soldiers"}]},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
 		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
 		"authority": "veil"},
@@ -125,12 +149,24 @@ const POWERS := [
 			{"key": "engineer", "name": "THE ENGINEERS"}]},
 	{"key": "clearmind", "name": "Clear Mind", "path": "res://src/fx/dominion/clear_mind.gd",
 		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "everyone in the circle senses nothing special, 30 s; whoever walks in joins",
-		"quiet": true, "alarm": 0.3, "authority": "dominion"},
+		"quiet": true, "alarm": 0.3, "authority": "dominion",
+		"levels": [
+			{"RADIUS": 5.0, "TRANCE_TIME": 30.0, "cooldown": 60.0},
+			{"RADIUS": 5.4, "TRANCE_TIME": 32.0, "cooldown": 57.0},
+			{"RADIUS": 5.8, "TRANCE_TIME": 34.0, "cooldown": 54.0},
+			{"RADIUS": 6.2, "TRANCE_TIME": 37.0, "cooldown": 51.0},
+			{"RADIUS": 6.5, "TRANCE_TIME": 40.0, "cooldown": 48.0, "twist": true, "twist_text": "Sleepwalk: click again to walk the entranced"}]},
 	{"key": "saint", "name": "Saint or Sinner", "path": "res://src/fx/dominion/saint_or_sinner.gd",
 		"dp": 3, "cooldown": 60.0, "aim": "wheel", "shape": "one is chosen; everyone round them guards them at all cost, or kills them: the wheel picks",
 		"quiet": true, "alarm": 0.5, "authority": "dominion", "modes": [
 			{"key": "saint", "name": "SAINT", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b01110], "color": Color(1.0, 0.9, 0.6, 0.9)},
-			{"key": "sinner", "name": "SINNER", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b00100], "color": Color(1.0, 0.3, 0.25, 0.9)}]},
+			{"key": "sinner", "name": "SINNER", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b00100], "color": Color(1.0, 0.3, 0.25, 0.9)}],
+		"levels": [
+			{"RADIUS": 6.0, "SPAN": 30.0, "cooldown": 60.0},
+			{"RADIUS": 6.4, "SPAN": 32.0, "cooldown": 57.0},
+			{"RADIUS": 6.8, "SPAN": 34.0, "cooldown": 54.0},
+			{"RADIUS": 7.2, "SPAN": 37.0, "cooldown": 51.0},
+			{"RADIUS": 7.5, "SPAN": 40.0, "cooldown": 48.0, "twist": true, "twist_text": "Passed Mark: the mark outlives its bearer"}]},
 	{"key": "priority", "name": "Rewrite Priority", "path": "res://src/fx/dominion/rewrite_priority.gd",
 		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "a district puts one thing above all else, 25 s; Q/E picks it",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "modes": [
@@ -146,11 +182,23 @@ const POWERS := [
 	{"key": "anathema", "name": "Anathema", "path": "res://src/fx/dominion/anathema.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district's buildings are cursed (nobody inside, fires left) or hallowed (everyone inside, and stays), 40 s; Q/E",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "modes": [
-			{"key": "cursed", "name": "CURSED"}, {"key": "hallowed", "name": "HALLOWED"}]},
+			{"key": "cursed", "name": "CURSED"}, {"key": "hallowed", "name": "HALLOWED"}],
+		"levels": [
+			{"RADIUS": 6.0, "SPAN": 40.0, "cooldown": 90.0},
+			{"RADIUS": 6.4, "SPAN": 44.0, "cooldown": 86.0},
+			{"RADIUS": 6.8, "SPAN": 48.0, "cooldown": 82.0},
+			{"RADIUS": 7.2, "SPAN": 52.0, "cooldown": 78.0},
+			{"RADIUS": 7.5, "SPAN": 55.0, "cooldown": 74.0, "twist": true, "twist_text": "Spreading Mark: spreads to buildings near"}]},
 	{"key": "sanctuary", "name": "Sacred Sanctuary", "path": "res://src/fx/dominion/sacred_sanctuary.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "two clicks", "shape": "the people at the first click wall the place at the second and set on whoever enters, 40 s; right-click: shape",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "alt_steps_mode": true, "modes": [
-			{"key": "circle", "name": "CIRCLE"}, {"key": "rect", "name": "RECTANGLE"}]},
+			{"key": "circle", "name": "CIRCLE"}, {"key": "rect", "name": "RECTANGLE"}],
+		"levels": [
+			{"MAX_GUARDS": 40, "SPAN": 40.0, "PICK_R": 5.0, "cooldown": 90.0},
+			{"MAX_GUARDS": 44, "SPAN": 44.0, "PICK_R": 5.25, "cooldown": 86.0},
+			{"MAX_GUARDS": 48, "SPAN": 48.0, "PICK_R": 5.5, "cooldown": 82.0},
+			{"MAX_GUARDS": 52, "SPAN": 52.0, "PICK_R": 5.75, "cooldown": 78.0},
+			{"MAX_GUARDS": 55, "SPAN": 55.0, "PICK_R": 6.0, "cooldown": 74.0, "twist": true, "twist_text": "Pressed into Service: intruders guard"}]},
 	{"key": "curfew", "name": "Curfew", "path": "res://src/fx/decree/curfew.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
@@ -194,7 +242,13 @@ const POWERS := [
 		"quiet": true, "alarm": 6.0, "authority": "dominion", "modes": [
 			{"key": "kneel", "name": "KNEEL"}, {"key": "halt", "name": "HALT"}, {"key": "flee", "name": "FLEE"},
 			{"key": "gather", "name": "GATHER"}, {"key": "return", "name": "RETURN"}, {"key": "silence", "name": "SILENCE"},
-			{"key": "judge", "name": "JUDGE"}]},
+			{"key": "judge", "name": "JUDGE"}],
+		"levels": [
+			{"COMMAND_X": 1.0, "GATHER_CAPACITY": 150, "cooldown": 180.0},
+			{"COMMAND_X": 1.1, "GATHER_CAPACITY": 160, "cooldown": 170.0},
+			{"COMMAND_X": 1.2, "GATHER_CAPACITY": 175, "cooldown": 160.0},
+			{"COMMAND_X": 1.3, "GATHER_CAPACITY": 185, "cooldown": 150.0},
+			{"COMMAND_X": 1.4, "GATHER_CAPACITY": 200, "cooldown": 140.0, "twist": true, "twist_text": "Second Word: click again for a second command"}]},
 	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law is void for 15 s: the clock (time stops), the escape limit, the ward; Q/E; once",
 		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
@@ -224,7 +278,13 @@ const POWERS := [
 			{"key": "faction", "name": "FACTION SPLIT"}, {"key": "purge", "name": "PURGE", "area": {"r": 1.5}},
 			{"key": "custom", "name": "CUSTOM", "aim": "two clicks", "area": {"shape": "regions", "r": 5.0}},
 			{"key": "spreading", "name": "SPREADING", "area": {"r": 3.0}},
-			{"key": "tumult", "name": "TUMULT"}]},
+			{"key": "tumult", "name": "TUMULT"}],
+		"levels": [
+			{"REGION": 14.0, "MAX_FIGHTERS": 140, "DURATION": 25.0},
+			{"REGION": 15.0, "MAX_FIGHTERS": 150, "DURATION": 27.0},
+			{"REGION": 16.0, "MAX_FIGHTERS": 160, "DURATION": 29.0},
+			{"REGION": 17.0, "MAX_FIGHTERS": 170, "DURATION": 32.0},
+			{"REGION": 18.0, "MAX_FIGHTERS": 180, "DURATION": 35.0, "twist": true, "twist_text": "Turn the Tide: click a fighter to turn them"}]},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -280,7 +340,7 @@ static func get_power(key: String) -> Dictionary:
 const MAX_LEVEL := 5
 ## The levels at which a power costs one more Might (spec §6): reaching 3 adds 1, reaching 5 adds 1.
 const MIGHT_STEPS := [3, 5]
-## What level_change() says for a power whose row has no `levels` table yet (Ruin's ten powers have one; the other rows do not yet).
+## What level_change() says for a power whose row has no `levels` table yet (Ruin's and Dominion's powers have one; the other rows do not yet).
 const NO_LEVELS := "Level effects not set"
 ## The keys a level table holds besides stats: level 5's twist flag and its one-line text.
 const TWIST_KEYS := ["twist", "twist_text"]
@@ -382,6 +442,11 @@ const STAT_LABELS := {
 	"BEAM_TIME": "burn time", "BREATH_TIME": "breath", "SWEEP_ARC": "sweep", "LENGTH": "travel", "WIDTH": "wall width",
 	"STONES": "stones", "STORM_TIME": "storm", "VOLLEY": "bolts", "VOLLEY_EVERY": "volley every",
 	"MAX_LENGTH": "longest crack", "HALF": "fall width", "SPEED": "crawl",
+	"whisper.REACH": "walk reach", "ATTACK_SECS": "attack", "DISCORD_R": "circle", "DISCORD_TIME": "forgetting",
+	"SEED": "starting madness", "LURE_MAX": "lure cap", "WISP_TIME": "lure time", "ENTHRALL_TIME": "enthrall",
+	"TRANCE_TIME": "trance", "SPAN": "span", "MAX_GUARDS": "guards", "PICK_R": "guard reach", "anathema.RADIUS": "district",
+	"COMMAND_X": "command length", "GATHER_CAPACITY": "gather cap", "REGION": "region", "MAX_FIGHTERS": "fighters",
+	"DURATION": "length",
 }
 
 

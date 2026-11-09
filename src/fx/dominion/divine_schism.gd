@@ -78,6 +78,10 @@ var _recruit_in := RECRUIT_EVERY
 ## Tumult: the panicked, [person, effect time of their next new point].
 var _panicked: Array = []
 var _debug: Debug
+## This cast's region, fighter cap and length at its ability level (REGION, MAX_FIGHTERS and DURATION at level 1).
+var lv_region := REGION
+var lv_max_fighters := MAX_FIGHTERS
+var lv_duration := DURATION
 ## When each was set on its side (the effect's clock), for its thread; the sides' sparkles, by side.
 var _joined := {}
 var _sparkles: Array = [null, null, null]
@@ -110,13 +114,16 @@ static func _near(field: EnemyField, at: Vector2, r: float) -> Array[Person]:
 
 
 func _build() -> void:
+	lv_region = float(PowerBook.stat(extra, "schism", "REGION", REGION))
+	lv_max_fighters = int(PowerBook.stat(extra, "schism", "MAX_FIGHTERS", MAX_FIGHTERS))
+	lv_duration = float(PowerBook.stat(extra, "schism", "DURATION", DURATION))
 	mode = String(extra.get("mode", "faction"))
-	duration = T_BREAK + DURATION + 0.5
+	duration = T_BREAK + lv_duration + 0.5
 	busy = T_BREAK + 1.0
 	match mode:
 		"purge":
 			var condemned := condemned_at(ctx.field, origin)
-			for p in _near(ctx.field, origin, REGION).slice(0, MAX_FIGHTERS):
+			for p in _near(ctx.field, origin, lv_region).slice(0, lv_max_fighters):
 				_pending.append([p, 2 if p in condemned else 1])
 		"custom":
 			var other: Vector2 = extra.get("to", origin + Vector2(CUSTOM_R * 2.0, 0.0))
@@ -126,21 +133,21 @@ func _build() -> void:
 			for p in _near(ctx.field, other, CUSTOM_R):
 				if p.ground_pos.distance_to(other) < p.ground_pos.distance_to(origin):
 					_pending.append([p, 2])
-			_pending = _pending.slice(0, MAX_FIGHTERS)
+			_pending = _pending.slice(0, lv_max_fighters)
 		"spreading":
 			var k := 0
 			for p in _near(ctx.field, origin, SEED_R):
 				_pending.append([p, 1 + k % 2])
 				k += 1
 		"tumult":
-			for p in _near(ctx.field, origin, REGION).slice(0, MAX_FIGHTERS):
+			for p in _near(ctx.field, origin, lv_region).slice(0, lv_max_fighters):
 				_pending.append([p, 0])
 		_:
 			mode = "faction"
-			for p in _near(ctx.field, origin, REGION).slice(0, MAX_FIGHTERS):
+			for p in _near(ctx.field, origin, lv_region).slice(0, lv_max_fighters):
 				_pending.append([p, 2 if p.soldier else 1])
 	at(T_BREAK, _break)
-	at(T_BREAK + DURATION, _end)
+	at(T_BREAK + lv_duration, _end)
 	ctx.play(&"hs_charge", origin, -3.0)
 	ctx.play(&"jg_rumble", origin, -4.0)
 	if _staged():
@@ -174,9 +181,9 @@ func _fx_process(delta: float) -> void:
 				_strike(p)
 			else:
 				_enlist(p, s)
-	if mode == "tumult" and t < T_BREAK + DURATION:
+	if mode == "tumult" and t < T_BREAK + lv_duration:
 		_repick_panicked()
-	if mode == "spreading" and t < T_BREAK + DURATION:
+	if mode == "spreading" and t < T_BREAK + lv_duration:
 		_recruit_in -= delta
 		if _recruit_in <= 0.0:
 			_recruit_in = RECRUIT_EVERY
@@ -196,7 +203,7 @@ static func fights(p: Person) -> bool:
 func _enlist(p: Person, s: int) -> void:
 	if p.side != 0 or p.resists_mind():
 		return
-	var left := maxf(DURATION - (t - T_BREAK), 0.5)
+	var left := maxf(lv_duration - (t - T_BREAK), 0.5)
 	p.side = s
 	members.append(p)
 	_joined[p] = t
@@ -226,7 +233,7 @@ func _enlist(p: Person, s: int) -> void:
 func _strike(p: Person) -> void:
 	if p.resists_mind():
 		return
-	var left := maxf(DURATION - (t - T_BREAK), 0.5)
+	var left := maxf(lv_duration - (t - T_BREAK), 0.5)
 	var state := FROZEN
 	if not fights(p):
 		state = FROZEN if ctx.rng.randf() < 0.5 else PANIC
@@ -266,7 +273,7 @@ func _panic_point(p: Person) -> Vector2:
 	var to := p.ground_pos
 	for attempt in 6:
 		var a := ctx.rng.randf() * TAU
-		to = origin + Vector2(cos(a), sin(a)) * REGION * sqrt(ctx.rng.randf())
+		to = origin + Vector2(cos(a), sin(a)) * lv_region * sqrt(ctx.rng.randf())
 		to = to.clamp(p.bounds.position, p.bounds.end)
 		if to.distance_to(p.ground_pos) >= PANIC_MIN_RUN:
 			break
@@ -285,7 +292,7 @@ func _repick_panicked() -> void:
 			continue
 		if t < float(entry[1]) and p.ground_pos.distance_to(p.anchor) > PANIC_ARRIVED:
 			continue
-		var left := maxf(T_BREAK + DURATION - t, 0.5)
+		var left := maxf(T_BREAK + lv_duration - t, 0.5)
 		var glyph: Array[int] = []
 		glyph.assign(GLYPHS_TUMULT[PANIC])
 		p.compel(_panic_point(p), left, Person.WILL_ABSOLUTE, PANIC_YELLOW, true, &"", glyph)
@@ -463,14 +470,14 @@ func _break_show() -> void:
 	FxParts.sparks(self, ctx.overhead, sp, 50, FxParts.FIRE_LIFE, Vector2(80, 280), Vector2(30, 240))
 	# Two rings across the region, one of each colour, and the air bending under them.
 	for k in 2:
-		var ring := FxParts.shockwave(self, origin, REGION, SOLAR if k == 0 else FIRE)
+		var ring := FxParts.shockwave(self, origin, lv_region, SOLAR if k == 0 else FIRE)
 		ring.set_param("thickness", 0.05)
 		if k == 1:
 			ring.set_param("progress", 0.0)
 		ring.tween_param("progress", 0.03, 1.0, 0.7, 0.12 * float(k), Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		ring.tween_param("fade", 1.0, 0.0, 0.3, 0.45 + 0.12 * float(k))
 		ring.life = 0.9
-	var bend := FxParts.refract_ring(self, origin, REGION * 0.8, CRIMSON)
+	var bend := FxParts.refract_ring(self, origin, lv_region * 0.8, CRIMSON)
 	bend.set_param("strength", 9.0)
 	bend.tween_param("progress", 0.05, 1.0, 0.5, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	bend.life = 0.52
@@ -561,7 +568,7 @@ class Debug extends Node2D:
 
 	func _draw() -> void:
 		var c := Iso.ground_to_screen(fx.origin)
-		var axes := Iso.radius_to_screen(REGION)
+		var axes := Iso.radius_to_screen(fx.lv_region)
 		var pts := PackedVector2Array()
 		for i in 49:
 			var a := TAU * float(i) / 48.0
@@ -574,11 +581,11 @@ class Debug extends Node2D:
 					left[fx.states[p]] += 1
 			UiTheme.text(self, c + Vector2(10, -60), "Schism (tumult): %d mad, %d frozen, %d panicked standing of %d / %d / %d, %.0f s" % [
 				left[0], left[1], left[2], fx.counts_tumult[0], fx.counts_tumult[1], fx.counts_tumult[2],
-				maxf(T_BREAK + DURATION - fx.t, 0.0)], UiTheme.SIZE_SMALL, CRIMSON)
+				maxf(T_BREAK + fx.lv_duration - fx.t, 0.0)], UiTheme.SIZE_SMALL, CRIMSON)
 			return
 		var alive := [0, 0, 0]
 		for p in fx.members:
 			if is_instance_valid(p) and p.is_alive():
 				alive[p.side] += 1
 		UiTheme.text(self, c + Vector2(10, -60), "Schism (%s): %d gold, %d crimson standing of %d / %d, %.0f s" % [fx.mode,
-			alive[1], alive[2], fx.counts[1], fx.counts[2], maxf(T_BREAK + DURATION - fx.t, 0.0)], UiTheme.SIZE_SMALL, CRIMSON)
+			alive[1], alive[2], fx.counts[1], fx.counts[2], maxf(T_BREAK + fx.lv_duration - fx.t, 0.0)], UiTheme.SIZE_SMALL, CRIMSON)

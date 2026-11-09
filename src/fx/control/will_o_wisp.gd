@@ -44,10 +44,14 @@ var _cursor := 0
 var _scan := 0.0
 var _spots: Array[Vector2] = []
 var _rings_made := 0
+## This cast's lure cap, lure time and ENTHRALL hold at its ability level (LURE_MAX, WISP_TIME, ENTHRALL_TIME at level 1).
+var lv_lure_max := LURE_MAX
+var lv_wisp_time := WISP_TIME
+var lv_enthrall_time := ENTHRALL_TIME
 
 
 ## Who it would draw from `at`: people within reach it can lure (v0.11.1: soldiers at their post too; a charge only within CHARGE_LURE_R), nearest first, LURE_MAX at most.
-static func drawn(field: EnemyField, at: Vector2) -> Array[Person]:
+static func drawn(field: EnemyField, at: Vector2, cap := LURE_MAX) -> Array[Person]:
 	var out: Array[Person] = []
 	for e in field.in_radius(at, LURE_REACH):
 		var p := e as Person
@@ -60,7 +64,7 @@ static func drawn(field: EnemyField, at: Vector2) -> Array[Person]:
 			out.append(p)
 	out.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
-	return out.slice(0, LURE_MAX)
+	return out.slice(0, cap)
 
 
 ## Who ENTHRALL would take from `at` that is not in `skip` (a Dictionary keyed by person): the living in the open within ENTHRALL_R,
@@ -94,20 +98,23 @@ static func enthralled(field: EnemyField, at: Vector2, skip := {}, lured_out := 
 
 
 func _build() -> void:
+	lv_lure_max = int(PowerBook.stat(extra, "wisp", "LURE_MAX", LURE_MAX))
+	lv_wisp_time = float(PowerBook.stat(extra, "wisp", "WISP_TIME", WISP_TIME))
+	lv_enthrall_time = float(PowerBook.stat(extra, "wisp", "ENTHRALL_TIME", ENTHRALL_TIME))
 	_enthrall = String(extra.get("mode", "")) == "enthrall"
 	if _enthrall:
 		_build_enthrall()
 		return
-	duration = WISP_TIME
+	duration = lv_wisp_time
 	busy = 1.0
 	var rng := ctx.rng
-	for p in drawn(ctx.field, origin):
+	for p in drawn(ctx.field, origin, lv_lure_max):
 		var a := rng.randf() * TAU
-		p.lure(origin + Vector2(cos(a), sin(a)) * rng.randf_range(RING.x, RING.y), WISP_TIME - 0.5, origin, p.lure_reach)
+		p.lure(origin + Vector2(cos(a), sin(a)) * rng.randf_range(RING.x, RING.y), lv_wisp_time - 0.5, origin, p.lure_reach)
 	ctx.play(&"q_wisp", origin)
 	_light = FxParts.ground_light(self, origin, 1.4, LIGHT, 0.0)
 	var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin) + Vector2(0, -14),
-		PixelParticles.Shape.SQUARE, GLOW, 6.0, WISP_TIME - 1.0,
+		PixelParticles.Shape.SQUARE, GLOW, 6.0, lv_wisp_time - 1.0,
 		{"radius": 4.0, "speed": Vector2(2, 8), "alt": Vector2(0, 4), "alt_speed": Vector2(6, 14),
 		"life": Vector2(0.8, 1.4), "size": Vector2(1, 1)})
 	motes.gravity = -8.0
@@ -115,13 +122,13 @@ func _build() -> void:
 
 ## ENTHRALL: the light burns brighter and longer, a faint ring marks how far it holds, and everyone near is taken at once.
 func _build_enthrall() -> void:
-	duration = ENTHRALL_TIME
+	duration = lv_enthrall_time
 	busy = 1.0
 	_take()
 	ctx.play(&"q_wisp", origin)
 	_light = FxParts.ground_light(self, origin, 2.2, LIGHT, 0.0)
 	var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin) + Vector2(0, -14),
-		PixelParticles.Shape.SQUARE, GLOW, 10.0, ENTHRALL_TIME - 1.0,
+		PixelParticles.Shape.SQUARE, GLOW, 10.0, lv_enthrall_time - 1.0,
 		{"radius": 5.0, "speed": Vector2(2, 8), "alt": Vector2(0, 4), "alt_speed": Vector2(6, 14),
 		"life": Vector2(0.8, 1.4), "size": Vector2(1, 1)})
 	motes.gravity = -8.0

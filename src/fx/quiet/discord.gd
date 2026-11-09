@@ -11,16 +11,23 @@ const SWIRL := [Color("f0d8ff"), Color("c890ff"), Color("8a50d0"), Color("4a2a70
 
 
 ## Who it would take at `at`: the living within reach, soldiers too.
-static func taken(field: EnemyField, at: Vector2) -> Array[Person]:
+static func taken(field: EnemyField, at: Vector2, r := DISCORD_R) -> Array[Person]:
 	var out: Array[Person] = []
-	for e in field.in_radius(at, DISCORD_R):
+	for e in field.in_radius(at, r):
 		var p := e as Person
 		if p != null and not p.resists_mind() and not p.inside:
 			out.append(p)
 	return out
 
 
+## This cast's circle and forgetting at its ability level (DISCORD_R and DISCORD_TIME at level 1).
+var lv_discord_r := DISCORD_R
+var lv_discord_time := DISCORD_TIME
+
+
 func _build() -> void:
+	lv_discord_r = float(PowerBook.stat(extra, "discord", "DISCORD_R", DISCORD_R))
+	lv_discord_time = float(PowerBook.stat(extra, "discord", "DISCORD_TIME", DISCORD_TIME))
 	duration = 1.2
 	busy = 0.6
 	ctx.play(&"q_discord", origin)
@@ -31,5 +38,5 @@ func _build() -> void:
 		"alt_speed": Vector2(4, 16), "life": Vector2(0.5, 0.9), "size": Vector2(1, 2)})
 	# Confuses at once, in the cast's own frame -- before Rules.cast_made reaches the missions: The Informer's contacts read "confused with their
 	# full DISCORD_TIME left" at that signal (InformerDirector._speaks_to()). A delay here would silently kill that route.
-	for p in taken(ctx.field, origin):
-		p.confuse(DISCORD_TIME)
+	for p in taken(ctx.field, origin, lv_discord_r):
+		p.confuse(lv_discord_time)

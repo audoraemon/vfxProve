@@ -27,6 +27,8 @@ const T_SPEAK := 1.6
 const WAVE_SPEED := 40.0
 const FLEE_RUN := 9.0
 const GATHER_CAPACITY := 150
+## A multiplier on every command's seconds in COMMANDS: the ability level's command length (1.0 at level 1).
+const COMMAND_X := 1.0
 ## Judge: how near the click the condemned must be, who turns on them and how hard a citizen strikes.
 const JUDGE_PICK := 2.0
 const JUDGE_REACH := 12.0
@@ -60,6 +62,9 @@ const GLYPHS := {
 ## The command given, and how long it holds.
 var command := "kneel"
 var seconds := 12.0
+## This cast's command length multiplier and gather cap at its ability level (COMMAND_X and GATHER_CAPACITY at level 1).
+var lv_command_x := COMMAND_X
+var lv_gather_capacity := GATHER_CAPACITY
 ## How many it has reached, and (Judge) the condemned and how many turned on them.
 var obeyed := 0
 var judged: Person
@@ -89,10 +94,12 @@ static func judged_at(field: EnemyField, at: Vector2) -> Person:
 
 
 func _build() -> void:
+	lv_command_x = float(PowerBook.stat(extra, "voice", "COMMAND_X", COMMAND_X))
+	lv_gather_capacity = int(PowerBook.stat(extra, "voice", "GATHER_CAPACITY", GATHER_CAPACITY))
 	command = String(extra.get("mode", "kneel"))
 	if not COMMANDS.has(command):
 		command = "kneel"
-	seconds = float(COMMANDS[command])
+	seconds = float(COMMANDS[command]) * lv_command_x
 	duration = T_SPEAK + seconds + 1.0
 	busy = T_SPEAK + 1.0
 	for e in ctx.field.alive():
@@ -105,7 +112,7 @@ func _build() -> void:
 		"gather":
 			_place = CongregationFx.place_for(ctx.env, origin)
 			var grid: WalkGrid = _pending[0].grid if not _pending.is_empty() else null
-			_spots = CongregationFx.spots_for(grid, _place, mini(GATHER_CAPACITY, _pending.size()))
+			_spots = CongregationFx.spots_for(grid, _place, mini(lv_gather_capacity, _pending.size()))
 		"judge":
 			judged = judged_at(ctx.field, origin)
 	at(T_SPEAK, _speak)

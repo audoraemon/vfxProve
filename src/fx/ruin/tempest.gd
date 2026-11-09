@@ -94,6 +94,16 @@ func call_bolt(where: Vector2) -> bool:
 	return true
 
 
+## The shared follow-up (Rules.recast): a click is a call while Called Bolts can be had.
+func can_follow_up() -> bool:
+	return can_call()
+
+
+## The shared follow-up (Rules.recast): the click calls a bolt.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	return call_bolt(at_pos)
+
+
 func _build() -> void:
 	lv_storm_time = float(PowerBook.stat(extra, "tempest", "STORM_TIME", STORM_TIME))
 	lv_volley = PowerBook.stat(extra, "tempest", "VOLLEY", VOLLEY) as Vector2i

@@ -27,12 +27,13 @@ static func _might(t) -> void:
 
 
 static func _no_tables(t) -> void:
-	var ruin := ["smite", "ember", "tornado", "scatter", "solaris", "dragon", "tsunami", "cinder", "tempest", "shatter"]
+	var ruin := ["smite", "ember", "tornado", "scatter", "solaris", "dragon", "tsunami", "cinder", "tempest", "shatter",
+		"whisper", "discord", "madness", "wisp", "clearmind", "saint", "sanctuary", "anathema", "voice", "schism"]
 	var stray := PackedStringArray()
 	for key in PowerBook.keys():
 		if PowerBook.has_levels(key) != ruin.has(key):
 			stray.append(key)
-	t.check(stray.is_empty(), "no row outside Ruin's ten has a levels table, and each of the ten has one (%s)" % [stray])
+	t.check(stray.is_empty(), "only Ruin's ten and Dominion's ten have a table (%s)" % [stray])
 	t.check(PowerBook.level_stat("doom", 5, "radius", 1.5) == 1.5, "without a table a stat is the effect's own number")
 	t.check(PowerBook.level_change("doom", 2) == PowerBook.NO_LEVELS and PowerBook.twist("doom") == "",
 		"without a table: level_change says so and there is no twist")

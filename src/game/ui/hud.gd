@@ -1199,7 +1199,8 @@ func _signature() -> String:
 		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
 	out += "|" + "/".join(_rite_lines)
 	for i in _rules.loadout.size():
-		out += "%s%d%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else ""]
+		out += "%s%d%s%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else "",
+			"f" if _rules.can_recast(i) else ""]  # the gold card of a power that takes a follow-up order
 	return out
 
 
@@ -1603,7 +1604,9 @@ func _draw_slots(_w: float) -> void:
 		var icon: Texture2D = _slot_icons[i] if i < _slot_icons.size() else null
 		if icon != null:
 			draw_texture_rect(icon, icon_box, false, Color.WHITE if usable else Color(0.45, 0.45, 0.5))
-		UiTheme.frame(self, box, is_picked(i))
+		# While the power runs and would take a click as a follow-up order (Rules.can_recast), its card is framed gold.
+		var follow := _rules.can_recast(i)
+		UiTheme.frame(self, box, is_picked(i) or follow)
 		if is_picked(i):
 			_draw_modes(box)
 		_plate(icon_box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
@@ -1628,7 +1631,7 @@ func _draw_slots(_w: float) -> void:
 			var frac := clampf(left / maxf(_rules.cooldown_of(i), 0.001), 0.0, 1.0)
 			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE * frac)), Color(0, 0, 0, 0.6))
 			var secs := "%d" % ceili(left)
-			UiTheme.text(self, icon_box.get_center() + Vector2(-UiTheme.width(secs) * 0.5, 4.0), secs, UiTheme.SIZE_BODY)
+			UiTheme.text(self, icon_box.get_center() + Vector2(-UiTheme.width(secs) * 0.5, 4.0), secs, UiTheme.SIZE_BODY, UiTheme.COL_GOLD if follow else UiTheme.COL_TEXT)
 
 
 ## The focused power's modes (Voice of God's commands, Divine Schism's ways to divide) in a row above its slot: the

@@ -353,6 +353,9 @@ var _ordered := false
 ## Mind Whisper (v0.08.1): seconds left of shaking the last whisper off (see SHAKE_OFF); 0 for anyone never whispered.
 ## Counted down in tick(), so it runs on at any thinking rate, off screen or held still.
 var _shaken_left := 0.0
+## Held String (Mind Whisper level 5): the whisper now on this person leaves no shake-off when it wears off (_wake()). Set by hold_string()
+## after the whisper is laid; any whisper laid (whisper()) clears it first, so a level 1-4 whisper shakes as always.
+var _held_string := false
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 ## Seconds of sleep left (Mind.ASLEEP; sleep()).
@@ -1450,6 +1453,7 @@ func hurt(amount: float, by: Person) -> void:
 func whisper(to: Vector2, linger: float) -> bool:
 	if resists_mind() or inside or state == State.DEAD or shaken():
 		return false
+	_held_string = false
 	_hold_begin()
 	if mind != Mind.WHISPERED:
 		_whisper_fled = mind == Mind.FLEE or (mind == Mind.CONFUSED and _was_fleeing)
@@ -1476,6 +1480,22 @@ func whisper_fight(foe: Person, seconds: float, blow: float) -> bool:
 		return false
 	fight(foe, seconds, blow, FightRule.TARGET_ONLY)
 	_ordered = true
+	return true
+
+
+## Held String (Mind Whisper level 5): the whisper just laid on this person leaves no shake-off when it wears off, so they can be whispered
+## again at once. Call it after whisper() / whisper_fight() took; a later whisper laid without it clears the flag.
+func hold_string() -> void:
+	_held_string = true
+
+
+## Procession (Will-o'-Wisp level 5): the light a lured person stares at has moved; their goal and the spot they watch move to `spot`.
+## Only for someone alive and still staring at a light (mind OBSERVE, lured): true when it took. Its stare (_observe_left) runs on.
+func relure(spot: Vector2) -> bool:
+	if state == State.DEAD or mind != Mind.OBSERVE or not _lured:
+		return false
+	_threat = spot
+	set_goal(spot)
 	return true
 
 
@@ -1508,7 +1528,8 @@ func whisper_resume_flee() -> void:
 ## shakes the whisper off for SHAKE_OFF seconds (v0.08.1).
 func _wake() -> void:
 	_whisper_left = 0.0
-	_shaken_left = SHAKE_OFF
+	_shaken_left = 0.0 if _held_string else SHAKE_OFF
+	_held_string = false
 	if _whisper_fled and not soldier:
 		_whisper_fled = false
 		mind = Mind.CALM

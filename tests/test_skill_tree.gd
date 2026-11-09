@@ -78,6 +78,20 @@ static func _lines(t) -> void:
 	t.check(ember[3] == "Level 2: 1 point", "a learned-at-1 own spot: next is level 2 for 1 point (%s)" % [ember])
 	s._slot.learned["smite"] = 5
 	t.check(s.spot_lines(1, 1, 0)[3] == "Level 5" and s.spot_lines(1, 1, 0)[1] == "5 / 5", "level 5 reads Level 5 (%s)" % [s.spot_lines(1, 1, 0)])
+	# A Dominion spot (a neighbour's column in a Ruin god's tree) reads its table too: level 5's line is the twist.
+	var dom := PackedStringArray()
+	s._slot.learned["whisper"] = 1
+	for i in 2:
+		if s.key_at(0, 1, i) == "whisper":
+			dom = s.spot_lines(0, 1, i)
+	t.check(not dom.is_empty() and dom[0] == "Mind Whisper" and dom[4] == "walk reach 10.0 -> 11.0, attack 10.0 -> 11.0, cooldown 8.0 -> 7.5",
+		"a Dominion spot learned at 1 shows its table's next change, not Level effects not set (%s)" % [dom])
+	s._slot.learned["whisper"] = 5
+	for i in 2:
+		if s.key_at(0, 1, i) == "whisper":
+			dom = s.spot_lines(0, 1, i)
+	t.check(dom[3] == "Level 5" and dom[4] == PowerBook.twist("whisper") and dom[4] == "Held String: whisper the same one again",
+		"and at level 5 its line is the twist (%s)" % [dom])
 	s.free()
 	GodTree.dev_fill = false
 	GodTree.use_table(GodTree.blank())

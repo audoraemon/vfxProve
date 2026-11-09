@@ -446,30 +446,43 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	return fx
 
 
-## Whether the slot's power is running and would take a click as its own (Wrath of the Sky's Called Bolts): the same test as recast(),
-## without acting. What the preview asks to draw its edge as ready.
+## Whether the slot's power is running and would take a click as its own -- a live power's follow-up (Called Bolts, Procession,
+## Second Word, Turn the Tide): the same test as recast(), without acting. What the preview asks to draw its edge as ready, and what
+## turns the HUD card gold. The effect says so with can_follow_up().
 func can_recast(slot: int) -> bool:
 	if finished or busy_left() > 0.0:
 		return false
 	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
-	return fx != null and fx.has_method("can_call") and fx.can_call()
+	return fx != null and fx.has_method("can_follow_up") and fx.can_follow_up()
 
 
-## The click at `at` belongs to the running power in the slot (it called a bolt): true, and recast_made is sent. False when no such power
-## runs, or it cannot take one now (the run is over, or another power holds the busy lock, as cast() refuses them); the caller then casts
-## as usual. Touches no cooldown and has no rng, so a scripted route may call it.
-func recast(slot: int, at: Vector2) -> bool:
+## The click at `at` belongs to the running power in the slot (a live power's follow-up: Called Bolts, Procession, Second Word, Turn
+## the Tide): `extra` (the mode the player has picked) goes to the effect's follow_up(at, extra), true if it took it, and recast_made
+## is sent. False when no such power runs, or it cannot take one now (the run is over, or another power holds the busy lock, as cast()
+## refuses them); the caller then casts as usual. Touches no cooldown and has no rng, so a scripted route may call it.
+func recast(slot: int, at: Vector2, extra := {}) -> bool:
 	if finished or busy_left() > 0.0:
 		return false
 	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
-	if fx == null or not fx.has_method("call_bolt") or not fx.call_bolt(at):
+	if fx == null or not fx.has_method("follow_up") or not fx.follow_up(at, extra):
 		return false
 	recast_made.emit(slot, key(slot), at)
 	return true
 
 
+## The area the slot's live follow-up wants drawn as its preview (a Targeting.AREAS-shaped Dictionary), or {} for the power's own:
+## the effect's follow_up_area(), when the slot can take a follow-up now.
+func follow_up_area(slot: int) -> Dictionary:
+	if not can_recast(slot):
+		return {}
+	var fx: Variant = live_fx(key(slot))
+	if fx == null or not fx.has_method("follow_up_area"):
+		return {}
+	return fx.follow_up_area()
+
+
 ## The latest still-running effect cast for `key` (a valid one that has not finished), or null: what a twist that reaches into
-## its live power reads (Called Bolts). Only reads.
+## its live power reads (a follow-up). Only reads.
 func live_fx(key: String) -> FxTimeline:
 	for i in range(_casts.size() - 1, -1, -1):
 		var c: Dictionary = _casts[i]

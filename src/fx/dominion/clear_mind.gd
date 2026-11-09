@@ -25,10 +25,15 @@ var taken := 0
 
 var _join_in := 0.0
 var _pulse_in := 0.0
+## This cast's circle and trance at its ability level (RADIUS and TRANCE_TIME at level 1).
+var lv_radius := RADIUS
+var lv_trance_time := TRANCE_TIME
 
 
 func _build() -> void:
-	duration = T_CAST + TRANCE_TIME + 0.5
+	lv_radius = float(PowerBook.stat(extra, "clearmind", "RADIUS", RADIUS))
+	lv_trance_time = float(PowerBook.stat(extra, "clearmind", "TRANCE_TIME", TRANCE_TIME))
+	duration = T_CAST + lv_trance_time + 0.5
 	busy = T_CAST
 	at(T_CAST, _hypnotize)
 	ctx.play(&"q_clearmind", origin)
@@ -38,12 +43,12 @@ func _build() -> void:
 	var icon := DominionParts.icon(self, origin, TRANCE, Color("f0f4ff"), T_CAST + 2.5, 100.0)
 	icon.px = 4
 	# The circle drawn in, held soft on the ground for as long as the trance holds.
-	DominionParts.ground_sigil(self, origin, RADIUS, CALM, T_CAST, TRANCE_TIME - 0.5)
+	DominionParts.ground_sigil(self, origin, lv_radius, CALM, T_CAST, lv_trance_time - 0.5)
 
 
 ## Whether the trance holds now.
 func holding() -> bool:
-	return t >= T_CAST and t < T_CAST + TRANCE_TIME
+	return t >= T_CAST and t < T_CAST + lv_trance_time
 
 
 func _hypnotize() -> void:
@@ -56,8 +61,8 @@ func _hypnotize() -> void:
 	spiral.position = origin
 	spiral.z_index = 4
 	track(spiral, ctx.ground)
-	DominionParts.pulse(self, origin, RADIUS, CALM, 0.6, 1.5)
-	var wave := FxParts.shockwave(self, origin, RADIUS, VoiceOfGodFx.SOLAR)
+	DominionParts.pulse(self, origin, lv_radius, CALM, 0.6, 1.5)
+	var wave := FxParts.shockwave(self, origin, lv_radius, VoiceOfGodFx.SOLAR)
 	wave.set_param("thickness", 0.05)
 	wave.tween_param("progress", 0.05, 1.0, 0.7, 0.0, Tween.TRANS_SINE, Tween.EASE_OUT)
 	wave.tween_param("fade", 0.9, 0.0, 0.3, 0.45)
@@ -66,8 +71,8 @@ func _hypnotize() -> void:
 
 ## Whoever stands inside and is not yet entranced is taken, for what is left of the trance.
 func _join() -> void:
-	var left := maxf(T_CAST + TRANCE_TIME - t, 0.5)
-	for p in DominionParts.near(ctx.field, origin, RADIUS, MAX_PEOPLE):
+	var left := maxf(T_CAST + lv_trance_time - t, 0.5)
+	for p in DominionParts.near(ctx.field, origin, lv_radius, MAX_PEOPLE):
 		if entranced.has(p):
 			continue
 		if p.entrance(left):
@@ -90,7 +95,7 @@ func _fx_process(delta: float) -> void:
 	_pulse_in -= delta
 	if _pulse_in <= 0.0:
 		_pulse_in = 4.0
-		DominionParts.pulse(self, origin, RADIUS * 0.8, CALM, 0.3, 2.0)
+		DominionParts.pulse(self, origin, lv_radius * 0.8, CALM, 0.3, 2.0)
 
 
 ## The hypnotist's wheel on the ground: three thin arcs turning slowly, one way and the other, while the trance holds.
@@ -98,17 +103,17 @@ class Spiral extends Node2D:
 	var fx: ClearMindFx
 
 	func _process(_delta: float) -> void:
-		if fx.t > T_CAST + TRANCE_TIME + 0.4:
+		if fx.t > T_CAST + fx.lv_trance_time + 0.4:
 			queue_free()
 			return
 		queue_redraw()
 
 	func _draw() -> void:
-		var a := clampf(minf((fx.t - T_CAST) / 0.6, (T_CAST + TRANCE_TIME + 0.3 - fx.t) / 0.8), 0.0, 1.0)
+		var a := clampf(minf((fx.t - T_CAST) / 0.6, (T_CAST + fx.lv_trance_time + 0.3 - fx.t) / 0.8), 0.0, 1.0)
 		if a <= 0.0:
 			return
 		for i in 3:
-			var r := RADIUS * (0.35 + 0.3 * float(i))
+			var r := fx.lv_radius * (0.35 + 0.3 * float(i))
 			var turn := fx.t * (0.3 if i % 2 == 0 else -0.22) + float(i) * 1.3
 			for k in 3:
 				var a0 := turn + TAU * float(k) / 3.0

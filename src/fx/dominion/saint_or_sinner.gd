@@ -36,6 +36,9 @@ var hunters := 0
 
 var _rethink_in := 0.0
 var _links: DominionParts.Links
+## This cast's circle and span at its ability level (RADIUS and SPAN at level 1).
+var lv_radius := RADIUS
+var lv_span := SPAN
 
 
 ## Whom a click at `at` would choose: the nearest within PICK_R, or null.
@@ -45,10 +48,12 @@ static func target_at(field: EnemyField, at: Vector2) -> Person:
 
 
 func _build() -> void:
+	lv_radius = float(PowerBook.stat(extra, "saint", "RADIUS", RADIUS))
+	lv_span = float(PowerBook.stat(extra, "saint", "SPAN", SPAN))
 	mode = String(extra.get("mode", "saint"))
 	if not mode in ["saint", "sinner"]:
 		mode = "saint"
-	duration = T_CAST + SPAN + 0.5
+	duration = T_CAST + lv_span + 0.5
 	busy = T_CAST
 	chosen = target_at(ctx.field, origin)
 	if chosen == null:
@@ -73,8 +78,8 @@ func _decide() -> void:
 	var col := HALO if mode == "saint" else NOOSE
 	var glyph: Array[int] = []
 	glyph.assign(DominionParts.HALO if mode == "saint" else DominionParts.NOOSE)
-	chosen.set_badge(glyph, col, SPAN)
-	for p in DominionParts.near(ctx.field, chosen.ground_pos, RADIUS, MAX_PEOPLE + 1):
+	chosen.set_badge(glyph, col, lv_span)
+	for p in DominionParts.near(ctx.field, chosen.ground_pos, lv_radius, MAX_PEOPLE + 1):
 		if p == chosen or p.resists_mind():
 			continue
 		if people.size() >= MAX_PEOPLE:
@@ -85,8 +90,8 @@ func _decide() -> void:
 			_ring()
 		"sinner":
 			for p in people:
-				p.fight(chosen, SPAN, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.TARGET_ONLY, GUARD_SIGHT, &"sinner")
-				p.set_badge(DominionParts.BLADE, NOOSE, SPAN)
+				p.fight(chosen, lv_span, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.TARGET_ONLY, GUARD_SIGHT, &"sinner")
+				p.set_badge(DominionParts.BLADE, NOOSE, lv_span)
 				hunters += 1
 	ctx.play(&"jg_rise", chosen.ground_pos, -8.0)
 	if not DominionParts.staged(self):
@@ -95,8 +100,8 @@ func _decide() -> void:
 	for p in people:
 		_links.add(p, chosen, col)
 		DominionParts.motes(self, p.ground_pos, DominionParts.GOLD_LIFE if mode == "saint" else [Color("ffd0d0"), NOOSE, Color("8a1010"), Color(0.3, 0.05, 0.05, 0.5)], 5)
-	DominionParts.pulse(self, chosen.ground_pos, RADIUS, col, 0.7, 1.5)
-	var wave := FxParts.shockwave(self, chosen.ground_pos, RADIUS, VoiceOfGodFx.SOLAR if mode == "saint" else FxParts.FIRE)
+	DominionParts.pulse(self, chosen.ground_pos, lv_radius, col, 0.7, 1.5)
+	var wave := FxParts.shockwave(self, chosen.ground_pos, lv_radius, VoiceOfGodFx.SOLAR if mode == "saint" else FxParts.FIRE)
 	wave.set_param("thickness", 0.06)
 	wave.tween_param("progress", 0.05, 1.0, 0.6, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	wave.tween_param("fade", 1.0, 0.0, 0.25, 0.4)
@@ -105,7 +110,7 @@ func _decide() -> void:
 
 ## The guards' places round the chosen, as they stand now; a guard not fighting is set (or set again) on its place.
 func _ring() -> void:
-	var left := maxf(T_CAST + SPAN - t, 0.5)
+	var left := maxf(T_CAST + lv_span - t, 0.5)
 	var n := people.size()
 	for i in n:
 		var p := people[i]

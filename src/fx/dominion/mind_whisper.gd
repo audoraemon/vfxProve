@@ -55,6 +55,8 @@ var _building: Structure
 ## Burn: when (the effect's own clock) they got to the building, or -1 while on the way; whether it has been lit.
 var _arrived := -1.0
 var _lit := false
+## The attack order's length at this cast's level (ATTACK_SECS at level 1).
+var lv_attack_secs := ATTACK_SECS
 
 
 ## The person (v0.11.1: a soldier too) a press at `at` whispers to: the nearest living one out in the open within PICK_R, or null. One still
@@ -72,13 +74,13 @@ static func pick(field: EnemyField, at: Vector2) -> Person:
 
 ## Where a release at `to` sends someone standing at `from`: at most REACH away, on walkable ground. A release on
 ## something solid snaps to the nearest free ground, or -- when that lies past REACH -- to the last free ground
-## short of it on the way there.
-static func clamp_to(grid: WalkGrid, from: Vector2, to: Vector2) -> Vector2:
-	var g := from + (to - from).limit_length(REACH)
+## short of it on the way there. `reach` is the slot's walk reach at its ability level (REACH at level 1).
+static func clamp_to(grid: WalkGrid, from: Vector2, to: Vector2, reach := REACH) -> Vector2:
+	var g := from + (to - from).limit_length(reach)
 	if grid == null or grid.walkable(g):
 		return g
 	var free := grid.nearest_walkable(g, 6)
-	if free != Vector2.INF and free.distance_to(from) <= REACH:
+	if free != Vector2.INF and free.distance_to(from) <= reach:
 		return free
 	var span := g - from
 	var steps := int(span.length() / (WalkGrid.CELL * 0.5))
@@ -149,6 +151,7 @@ static func stand_at(grid: WalkGrid, s: Structure, from: Vector2) -> Vector2:
 
 
 func _build() -> void:
+	lv_attack_secs = float(PowerBook.stat(extra, "whisper", "ATTACK_SECS", ATTACK_SECS))
 	duration = MAX_SHOW
 	busy = 0.3
 	var given: Variant = extra.get("target")
@@ -176,7 +179,7 @@ func _build_order() -> void:
 			_foe = extra.get("foe") if foe_ok(_target, extra.get("foe")) else null
 			if _foe != null:
 				_to = _foe.ground_pos
-				ok = _target.whisper_fight(_foe, ATTACK_SECS, Person.SOLDIER_BLOW if _target.soldier else CIVIL_BLOW)
+				ok = _target.whisper_fight(_foe, lv_attack_secs, Person.SOLDIER_BLOW if _target.soldier else CIVIL_BLOW)
 		elif ctx.crowd != null and ctx.crowd.fires != null and building_ok(_target, extra.get("building")):
 			_building = extra.get("building")
 			_to = stand_at(_target.grid, _building, _target.ground_pos)

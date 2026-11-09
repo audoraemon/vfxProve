@@ -36,20 +36,25 @@ var moved := 0
 
 var _shun_in := 0.0
 var _motes_in := 0.0
+## This cast's district and span at its ability level (RADIUS and SPAN at level 1).
+var lv_radius := RADIUS
+var lv_span := SPAN
 
 
 ## The buildings a cast at `at` would mark.
-static func marked_at(env: EnvironmentField, at: Vector2) -> Array[Structure]:
+static func marked_at(env: EnvironmentField, at: Vector2, r := RADIUS) -> Array[Structure]:
 	var out: Array[Structure] = []
-	for s in env.near(at, RADIUS):
-		if is_instance_valid(s) and not s.destroyed and s.role in MARKED and s.center().distance_to(at) <= RADIUS:
+	for s in env.near(at, r):
+		if is_instance_valid(s) and not s.destroyed and s.role in MARKED and s.center().distance_to(at) <= r:
 			out.append(s)
 	return out
 
 
 func _build() -> void:
+	lv_radius = float(PowerBook.stat(extra, "anathema", "RADIUS", RADIUS))
+	lv_span = float(PowerBook.stat(extra, "anathema", "SPAN", SPAN))
 	mark = HALLOWED if String(extra.get("mode", "cursed")) == "hallowed" else CURSED
-	duration = T_CAST + SPAN + 0.5
+	duration = T_CAST + lv_span + 0.5
 	busy = T_CAST
 	at(T_CAST, _lay)
 	ctx.play(&"q_anathema", origin)
@@ -57,7 +62,7 @@ func _build() -> void:
 		return
 	var col := HALLOW if mark == HALLOWED else CURSE
 	DominionParts.sky_sigil(self, origin, 130.0, 130.0, col, T_CAST, 2.0)
-	DominionParts.ground_sigil(self, origin, RADIUS, col, T_CAST, 1.5)
+	DominionParts.ground_sigil(self, origin, lv_radius, col, T_CAST, 1.5)
 	var glyph: Array[int] = []
 	glyph.assign(DominionParts.HALO if mark == HALLOWED else DAMNED)
 	var icon := DominionParts.icon(self, origin, glyph, Color("fff6d8") if mark == HALLOWED else Color("e0d0ff"), T_CAST + 2.5, 130.0)
@@ -65,10 +70,10 @@ func _build() -> void:
 
 
 func _lay() -> void:
-	buildings = marked_at(ctx.env, origin)
+	buildings = marked_at(ctx.env, origin, lv_radius)
 	if ctx.crowd != null:
 		for s in buildings:
-			ctx.crowd.mark_structure(s, mark, SPAN)
+			ctx.crowd.mark_structure(s, mark, lv_span)
 		if mark == HALLOWED:
 			_gather()
 	ctx.play(&"jg_rise", origin, -8.0)
@@ -83,9 +88,9 @@ func _lay() -> void:
 		shroud.rect = s.footprint.grow(0.12)
 		shroud.z_index = 3
 		track(shroud, ctx.ground)
-		DominionParts.icon(self, s.center(), glyph, col, SPAN, s.height + 16.0)
-	DominionParts.pulse(self, origin, RADIUS, col, 0.7, 1.5)
-	var wave := FxParts.shockwave(self, origin, RADIUS, VoiceOfGodFx.SOLAR if mark == HALLOWED else FxParts.VOID)
+		DominionParts.icon(self, s.center(), glyph, col, lv_span, s.height + 16.0)
+	DominionParts.pulse(self, origin, lv_radius, col, 0.7, 1.5)
+	var wave := FxParts.shockwave(self, origin, lv_radius, VoiceOfGodFx.SOLAR if mark == HALLOWED else FxParts.VOID)
 	wave.set_param("thickness", 0.06)
 	wave.tween_param("progress", 0.05, 1.0, 0.7, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	wave.tween_param("fade", 1.0, 0.0, 0.3, 0.45)
@@ -99,7 +104,7 @@ func _gather() -> void:
 	for s in buildings:
 		if ctx.crowd.shelters != null and ctx.crowd.shelters.shelters.has(s):
 			houses.append(s)
-	for p in DominionParts.near(ctx.field, origin, RADIUS):
+	for p in DominionParts.near(ctx.field, origin, lv_radius):
 		if p.soldier or p.resists_mind():
 			continue
 		var best: Structure = null
@@ -113,13 +118,13 @@ func _gather() -> void:
 		else:
 			var away := p.ground_pos - best.center()
 			var door := best.center() + (away.normalized() if away.length() > 0.01 else Vector2.DOWN) * (best.footprint.size.length() * 0.5 + 0.4)
-			p.compel(door, maxf(T_CAST + SPAN - t, 0.5), 0.8, HALLOW, true, &"kneel", DominionParts.HALO)
+			p.compel(door, maxf(T_CAST + lv_span - t, 0.5), 0.8, HALLOW, true, &"kneel", DominionParts.HALO)
 		moved += 1
 
 
 ## Whether the marks hold now.
 func holding() -> bool:
-	return t >= T_CAST and t < T_CAST + SPAN
+	return t >= T_CAST and t < T_CAST + lv_span
 
 
 func _fx_process(delta: float) -> void:
@@ -163,7 +168,7 @@ func _fx_process(delta: float) -> void:
 
 ## How much of the marks show: in as they are laid, out as they lift.
 func shown() -> float:
-	return clampf(minf((t - T_CAST) / 0.6, (T_CAST + SPAN + 0.4 - t) / 0.8), 0.0, 1.0)
+	return clampf(minf((t - T_CAST) / 0.6, (T_CAST + lv_span + 0.4 - t) / 0.8), 0.0, 1.0)
 
 
 ## The mark on one building's ground: its footprint edged and washed in the mark's colour, breathing.
@@ -172,7 +177,7 @@ class Shroud extends Node2D:
 	var rect := Rect2()
 
 	func _process(_delta: float) -> void:
-		if fx.t > T_CAST + SPAN + 0.5:
+		if fx.t > T_CAST + fx.lv_span + 0.5:
 			queue_free()
 			return
 		queue_redraw()

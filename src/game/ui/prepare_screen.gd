@@ -726,6 +726,11 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 	for line in UiTheme.wrap(String(p.shape), PANEL.size.x - 12.0, UiTheme.SIZE_SMALL):
 		UiTheme.text(_ui, Vector2(tx, y), line, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 		y += UiTheme.LINE_SMALL
+	# A power drafted at level 5 with a twist: the twist, in gold, after the shape.
+	if god != null and draft.level_of(key) == PowerBook.MAX_LEVEL and PowerBook.twist(key) != "":
+		for line in UiTheme.wrap(PowerBook.twist(key), PANEL.size.x - 12.0, UiTheme.SIZE_SMALL):
+			UiTheme.text(_ui, Vector2(tx, y), line, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+			y += UiTheme.LINE_SMALL
 
 
 func _draw_card(i: int, key: String) -> void:

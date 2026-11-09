@@ -147,6 +147,8 @@ const AREA_STATS := {
 	"smite": {"r": "KILL_R"}, "ember": {"r": "REACH"}, "tornado": {"r": "PULL_RADIUS"}, "dragon": {"arc": "SWEEP_ARC"},
 	"tsunami": {"length": "LENGTH", "half": "WIDTH*0.5"}, "cinder": {"r": "RADIUS"}, "solaris": {"r": "RADIUS"},
 	"shatter": {"half": "HALF", "length": "MAX_LENGTH"},
+	"discord": {"r": "DISCORD_R"}, "madness": {"r": "RADIUS"}, "clearmind": {"r": "RADIUS"}, "anathema": {"r": "RADIUS"},
+	"sanctuary": {"r": "PICK_R"},
 }
 
 ## The focused slot, or -1 when nothing is: the area is only drawn while a power is focused.
@@ -266,8 +268,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## How the focused power is aimed: its mode's own way when the mode has one.
+## How the focused power is aimed: its mode's own way when the mode has one. A power that is running and can take a follow-up
+## (Rules.can_recast) is aimed as a plain click, whatever its own kind: the click is the order.
 func _aim_kind() -> String:
+	if slot >= 0 and _rules.can_recast(slot):
+		return "click"
 	return String(mode().get("aim", _rules.power(slot).get("aim", "click")))
 
 
@@ -416,12 +421,13 @@ func release(ground: Vector2) -> void:
 					_wheel = false
 				queue_redraw()
 				return
-			extra = {"to": MindWhisperFx.clamp_to(_crowd._grid, who.ground_pos, ground), "target": who}
+			extra = {"to": MindWhisperFx.clamp_to(_crowd._grid, who.ground_pos, ground, _whisper_reach()), "target": who}
 		_end_wheel()
 		_press = who.ground_pos
 	aiming = false
-	# A storm already raging may take this click as a bolt of its own (Wrath of the Sky, level 5): the slot stays focused for the next.
-	if _rules.recast(slot, _press):
+	# A power already running may take this click as a follow-up order (Called Bolts, Procession, Sleepwalk, Second Word, Turn the Tide):
+	# the slot stays focused for the next.
+	if _rules.recast(slot, _press, extra):
 		queue_redraw()
 		return
 	_rules.cast(slot, _press, extra)
@@ -447,6 +453,10 @@ func aim_dir() -> Vector2:
 
 
 func area() -> Dictionary:
+	# A live power that takes a follow-up may want its own ground drawn (Procession's ring, Turn the Tide's pick).
+	var follow := _rules.follow_up_area(slot) if slot >= 0 else {}
+	if not follow.is_empty():
+		return follow
 	var a := area_at(_rules.key(slot), _rules.level_of(slot))
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
@@ -526,6 +536,16 @@ func wheel_pick(ground: Vector2) -> int:
 
 func _is_whisper() -> bool:
 	return _aim_kind() == "whisper"
+
+
+## A number of the focused power at its ability level (the table's value; `base`, the effect's constant, at level 1 and without a table).
+func _lv(key: String, stat_name: String, base: Variant) -> Variant:
+	return PowerBook.level_stat(key, _rules.level_of(slot), stat_name, base)
+
+
+## How far the focused Mind Whisper sends a person, at the slot's level (the table's REACH; MindWhisperFx.REACH at level 1).
+func _whisper_reach() -> float:
+	return float(PowerBook.level_stat("whisper", _rules.level_of(slot), "REACH", MindWhisperFx.REACH))
 
 
 ## The ring over whoever a Mind Whisper press would pick: red while they shake the last whisper off (v0.08.1).
@@ -624,7 +644,7 @@ func _order_extra(who: Person) -> Dictionary:
 			if why != "":
 				_rules.refuse(slot, why)  # as attack and burn: the slot's own reason, and the pick goes on
 				return {}
-			return {"to": MindWhisperFx.clamp_to(_crowd._grid, who.ground_pos, _pick_at), "target": who}
+			return {"to": MindWhisperFx.clamp_to(_crowd._grid, who.ground_pos, _pick_at, _whisper_reach()), "target": who}
 	return {}
 
 
@@ -723,11 +743,11 @@ func _draw() -> void:
 					draw_rect(box, COL_DIVINE, false, -1.0)
 				else:
 					_disc(_press, SacredSanctuaryFx.CIRCLE_R, COL_DIVINE_FILL, COL_DIVINE)
-				for p in SacredSanctuaryFx.picked_at(_crowd._field, first):
+				for p in SacredSanctuaryFx.picked_at(_crowd._field, first, _lv("sanctuary", "PICK_R", SacredSanctuaryFx.PICK_R), int(_lv("sanctuary", "MAX_GUARDS", SacredSanctuaryFx.MAX_GUARDS))):
 					_ring(p.ground_pos, 0.18, COL_DIVINE)
 			else:
 				_ring(_press, float(a.r), edge)
-				for p in SacredSanctuaryFx.picked_at(_crowd._field, _press):
+				for p in SacredSanctuaryFx.picked_at(_crowd._field, _press, _lv("sanctuary", "PICK_R", SacredSanctuaryFx.PICK_R), int(_lv("sanctuary", "MAX_GUARDS", SacredSanctuaryFx.MAX_GUARDS))):
 					_ring(p.ground_pos, 0.18, COL_DIVINE)
 		"pair":
 			# The way in under the cursor until the first click sets it; then the way out follows the cursor.
@@ -740,9 +760,11 @@ func _draw() -> void:
 				_oval(_press, float(a.wide), float(a.deep), edge)
 	if _is_wheel() and placed:
 		_draw_wheel()
+	if not _rules.follow_up_area(slot).is_empty():
+		return  # a live power's follow-up draws its own ground, not "who the cast would take"
 	match _rules.key(slot):
 		"anathema":
-			for s in AnathemaFx.marked_at(_crowd._env, _press):
+			for s in AnathemaFx.marked_at(_crowd._env, _press, _lv("anathema", "RADIUS", AnathemaFx.RADIUS)):
 				var box := s.footprint.grow(0.08)
 				draw_rect(box, COL_MAD if String(mode().get("key", "")) == "cursed" else COL_DIVINE, false, -1.0)
 		"saint":
@@ -778,7 +800,7 @@ func _draw() -> void:
 					_ring(p.ground_pos, 0.25, COL_CRIMSON)
 		"madness":
 			# Who it would take.
-			for p in MadnessBloomFx.victims_at(_crowd._field, _press):
+			for p in MadnessBloomFx.victims_at(_crowd._field, _press, _lv("madness", "RADIUS", MadnessBloomFx.RADIUS)):
 				_ring(p.ground_pos, 0.2, COL_MAD)
 		"pestilence":
 			# Who it would infect.
@@ -786,11 +808,11 @@ func _draw() -> void:
 				_ring(p.ground_pos, 0.2, Person.SICK_MOTE)
 		"discord":
 			# Who it would take.
-			for p in DiscordFx.taken(_crowd._field, _press):
+			for p in DiscordFx.taken(_crowd._field, _press, _lv("discord", "DISCORD_R", DiscordFx.DISCORD_R)):
 				_ring(p.ground_pos, 0.2, Person.COL_DISCORD)
 		"wisp":
 			# Who it would draw -- or, in ENTHRALL, everyone near the light it would hold.
-			var drawn := WillOWisp.enthralled(_crowd._field, _press) if String(mode().get("key", "")) == "enthrall" else WillOWisp.drawn(_crowd._field, _press)
+			var drawn := WillOWisp.enthralled(_crowd._field, _press) if String(mode().get("key", "")) == "enthrall" else WillOWisp.drawn(_crowd._field, _press, int(_lv("wisp", "LURE_MAX", WillOWisp.LURE_MAX)))
 			for p in drawn:
 				_ring(p.ground_pos, 0.18, COL_FAINT)
 		"whisper":
@@ -925,7 +947,8 @@ func _oval(at: Vector2, wide: float, deep: float, col: Color) -> void:
 ## cursor. The order wheel's pick step draws it in the order's tint, and straight to the cursor (`reach` false) for an
 ## order that goes for a person or a building.
 func _whisper_line(from: Vector2, to: Vector2, col := COL_EDGE, reach := true) -> void:
-	var spot := MindWhisperFx.clamp_to(_crowd._grid, from, to) if reach else to
+	var lv_reach := _whisper_reach()
+	var spot := MindWhisperFx.clamp_to(_crowd._grid, from, to, lv_reach) if reach else to
 	var steps := WHISPER_DASHES * 2 - 1
 	for i in range(0, steps, 2):
 		var a := from.lerp(spot, float(i) / float(steps))
@@ -933,8 +956,8 @@ func _whisper_line(from: Vector2, to: Vector2, col := COL_EDGE, reach := true) -
 		draw_line(a + Vector2(0.0, SHADE_GAP), b + Vector2(0.0, SHADE_GAP), SHADE, -1.0)
 		draw_line(a, b, col, -1.0)
 	_ring(spot, 0.25, col)
-	if reach and from.distance_to(to) > MindWhisperFx.REACH:
-		draw_line(from + (to - from).limit_length(MindWhisperFx.REACH), to, COL_BAD, -1.0)
+	if reach and from.distance_to(to) > lv_reach:
+		draw_line(from + (to - from).limit_length(lv_reach), to, COL_BAD, -1.0)
 
 
 ## The order wheel around the citizen: three slices in their tints (the one under the held cursor brighter), the hub, and each

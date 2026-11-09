@@ -41,6 +41,10 @@ var repelled := 0
 var raised := false
 
 var _rethink_in := 0.0
+## This cast's guard cap, pickup reach and span at its ability level (MAX_GUARDS, PICK_R and SPAN at level 1).
+var lv_max_guards := MAX_GUARDS
+var lv_pick_r := PICK_R
+var lv_span := SPAN
 
 
 ## Whether `g` lies inside a sanctuary of `kind` at `centre`.
@@ -79,10 +83,10 @@ static func spots(kind: String, centre: Vector2, n: int) -> Array[Vector2]:
 
 
 ## Whom a first click at `at` would hypnotize.
-static func picked_at(field: EnemyField, at: Vector2) -> Array[Person]:
+static func picked_at(field: EnemyField, at: Vector2, r := PICK_R, cap := MAX_GUARDS) -> Array[Person]:
 	var out: Array[Person] = []
-	for p in DominionParts.near(field, at, PICK_R, MAX_GUARDS * 2):
-		if out.size() >= MAX_GUARDS:
+	for p in DominionParts.near(field, at, r, cap * 2):
+		if out.size() >= cap:
 			break
 		if not p.resists_mind():
 			out.append(p)
@@ -90,13 +94,16 @@ static func picked_at(field: EnemyField, at: Vector2) -> Array[Person]:
 
 
 func _build() -> void:
+	lv_max_guards = int(PowerBook.stat(extra, "sanctuary", "MAX_GUARDS", MAX_GUARDS))
+	lv_pick_r = float(PowerBook.stat(extra, "sanctuary", "PICK_R", PICK_R))
+	lv_span = float(PowerBook.stat(extra, "sanctuary", "SPAN", SPAN))
 	shape = String(extra.get("mode", "circle"))
 	if not shape in ["circle", "rect"]:
 		shape = "circle"
 	site = extra.get("to", origin)
-	duration = T_CAST + SPAN + 0.5
+	duration = T_CAST + lv_span + 0.5
 	busy = T_CAST
-	guards = picked_at(ctx.field, origin)
+	guards = picked_at(ctx.field, origin, lv_pick_r, lv_max_guards)
 	if guards.is_empty():
 		duration = 1.0
 		return
@@ -105,7 +112,7 @@ func _build() -> void:
 	if not DominionParts.staged(self):
 		return
 	DominionParts.sky_sigil(self, site, 120.0, 120.0, HALLOW, T_CAST, 2.0)
-	DominionParts.ground_sigil(self, origin, PICK_R, HALLOW, T_CAST * 0.8, 0.6)
+	DominionParts.ground_sigil(self, origin, lv_pick_r, HALLOW, T_CAST * 0.8, 0.6)
 	var glyph: Array[int] = []
 	glyph.assign(SHIELD)
 	var icon := DominionParts.icon(self, site, glyph, Color("fff6d8"), T_CAST + 2.5, 120.0)
@@ -161,11 +168,11 @@ func _post(p: Person, place: Vector2) -> void:
 			spot = w
 	var glyph: Array[int] = []
 	glyph.assign(SHIELD)
-	p.compel(spot, maxf(T_CAST + SPAN - t, 0.5), WILL, HALLOW, true, &"", glyph)
+	p.compel(spot, maxf(T_CAST + lv_span - t, 0.5), WILL, HALLOW, true, &"", glyph)
 
 
 func _fx_process(delta: float) -> void:
-	if not raised or t >= T_CAST + SPAN:
+	if not raised or t >= T_CAST + lv_span:
 		return
 	_rethink_in -= delta
 	if _rethink_in > 0.0:
@@ -223,7 +230,7 @@ func _fx_process(delta: float) -> void:
 
 ## How much of the sanctuary shows: in as the wall is raised, out as it falls.
 func shown() -> float:
-	return clampf(minf((t - T_CAST) / 0.6, (T_CAST + SPAN + 0.4 - t) / 0.8), 0.0, 1.0)
+	return clampf(minf((t - T_CAST) / 0.6, (T_CAST + lv_span + 0.4 - t) / 0.8), 0.0, 1.0)
 
 
 ## The hallowed ground: the shape filled soft and edged in light, breathing; drawn in ground units.
@@ -231,7 +238,7 @@ class Ground extends Node2D:
 	var fx: SacredSanctuaryFx
 
 	func _process(_delta: float) -> void:
-		if fx.t > T_CAST + SPAN + 0.5:
+		if fx.t > T_CAST + fx.lv_span + 0.5:
 			queue_free()
 			return
 		queue_redraw()

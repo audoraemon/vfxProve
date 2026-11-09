@@ -7,6 +7,11 @@ extends FxTimeline
 
 const DISCORD_R := 1.2
 const DISCORD_TIME := 15.0
+## Tangled Threads (level 5): for TANGLE_TIME seconds after the cast, every TANGLE_EVERY seconds, anyone within TANGLE_R of a person this cast confused
+## who is still confused is confused for the full forgetting too. The caught pass nothing on.
+const TANGLE_TIME := 5.0
+const TANGLE_EVERY := 0.1
+const TANGLE_R := 1.0
 const SWIRL := [Color("f0d8ff"), Color("c890ff"), Color("8a50d0"), Color("4a2a70")]
 
 
@@ -23,6 +28,11 @@ static func taken(field: EnemyField, at: Vector2, r := DISCORD_R) -> Array[Perso
 ## This cast's circle and forgetting at its ability level (DISCORD_R and DISCORD_TIME at level 1).
 var lv_discord_r := DISCORD_R
 var lv_discord_time := DISCORD_TIME
+## Tangled Threads: those the cast itself confused, those the threads caught since, and when the threads last ran.
+var confused: Array[Person] = []
+var caught := {}
+var _tangle := false
+var _last_scan := 0.0
 
 
 func _build() -> void:
@@ -38,5 +48,23 @@ func _build() -> void:
 		"alt_speed": Vector2(4, 16), "life": Vector2(0.5, 0.9), "size": Vector2(1, 2)})
 	# Confuses at once, in the cast's own frame -- before Rules.cast_made reaches the missions: The Informer's contacts read "confused with their
 	# full DISCORD_TIME left" at that signal (InformerDirector._speaks_to()). A delay here would silently kill that route.
-	for p in taken(ctx.field, origin, lv_discord_r):
+	confused = taken(ctx.field, origin, lv_discord_r)
+	for p in confused:
 		p.confuse(lv_discord_time)
+	if PowerBook.twist_at(extra, "discord"):
+		_tangle = true
+		duration = TANGLE_TIME + 0.2
+
+
+func _fx_process(_delta: float) -> void:
+	if not _tangle or t >= TANGLE_TIME or t - _last_scan < TANGLE_EVERY - 0.0001:
+		return
+	_last_scan = t
+	for src in confused:
+		if not is_instance_valid(src) or src.mind != Person.Mind.CONFUSED:
+			continue
+		for p in taken(ctx.field, src.ground_pos, TANGLE_R):
+			if p in confused or caught.has(p):
+				continue
+			p.confuse(lv_discord_time)
+			caught[p] = true

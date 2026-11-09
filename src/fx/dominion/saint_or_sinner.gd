@@ -25,6 +25,8 @@ const CIVIL_BLOW := 0.34
 const RETHINK := 0.5
 const HALO := Color("ffe9a8")
 const NOOSE := Color("ff4040")
+## Passed Mark (level 5): where a fallen chosen's mark may land.
+const PASS_R := 3.0
 
 var mode := "saint"
 ## The chosen, and the people given a mind about them.
@@ -33,12 +35,16 @@ var people: Array[Person] = []
 ## How many threats the guards have been set on; how many went for the chosen.
 var repelled := 0
 var hunters := 0
+## Level 5 (Passed Mark): who took the mark when the chosen fell, if anyone did.
+var passed_to: Person
 
 var _rethink_in := 0.0
 var _links: DominionParts.Links
 ## This cast's circle and span at its ability level (RADIUS and SPAN at level 1).
 var lv_radius := RADIUS
 var lv_span := SPAN
+var _twist := false
+var _passed := false
 
 
 ## Whom a click at `at` would choose: the nearest within PICK_R, or null.
@@ -50,6 +56,7 @@ static func target_at(field: EnemyField, at: Vector2) -> Person:
 func _build() -> void:
 	lv_radius = float(PowerBook.stat(extra, "saint", "RADIUS", RADIUS))
 	lv_span = float(PowerBook.stat(extra, "saint", "SPAN", SPAN))
+	_twist = PowerBook.twist_at(extra, "saint")
 	mode = String(extra.get("mode", "saint"))
 	if not mode in ["saint", "sinner"]:
 		mode = "saint"
@@ -141,11 +148,12 @@ func _guard() -> void:
 		if not (foe.mind == Person.Mind.FIGHT and foe.fight_target == chosen):
 			continue
 		var set := 0
+		var guard_cap := people.size() if _twist else GUARDS_PER_THREAT
 		var guards := people.duplicate()
 		guards.sort_custom(func(a: Person, b: Person) -> bool:
 			return a.ground_pos.distance_squared_to(foe.ground_pos) < b.ground_pos.distance_squared_to(foe.ground_pos))
 		for g in guards:
-			if set >= GUARDS_PER_THREAT:
+			if set >= guard_cap:
 				break
 			if not is_instance_valid(g) or not g.is_alive() or g.mind == Person.Mind.FIGHT:
 				continue
@@ -158,7 +166,11 @@ func _guard() -> void:
 
 
 func _fx_process(delta: float) -> void:
-	if t < T_CAST or chosen == null or not is_instance_valid(chosen) or mode != "saint":
+	if t < T_CAST or chosen == null or not is_instance_valid(chosen):
+		return
+	if mode == "sinner" and _twist and not _passed and not chosen.is_alive():
+		_pass_mark()
+	if mode != "saint":
 		return
 	if not chosen.is_alive():
 		# The chosen is dead: the guards are released to their day.
@@ -172,3 +184,36 @@ func _fx_process(delta: float) -> void:
 		_rethink_in = RETHINK
 		_guard()
 		_ring()
+
+
+## Passed Mark (SINNER, level 5): the first frame the chosen is dead, the mark goes to the nearest living person in the
+## open within PASS_R of where they fell who is not of the mob; every living hunter is set on the new chosen. Once.
+func _pass_mark() -> void:
+	_passed = true
+	var fell := chosen.ground_pos
+	var best: Person = null
+	var best_d := INF
+	for e in ctx.field.in_radius(fell, PASS_R):
+		var p := e as Person
+		if p == null or p == chosen or not p.is_alive() or p.inside or people.has(p):
+			continue
+		var d := p.ground_pos.distance_squared_to(fell)
+		if d < best_d:
+			best_d = d
+			best = p
+	if best == null:
+		return
+	passed_to = best
+	chosen = best
+	var left := maxf(T_CAST + lv_span - t, 0.5)
+	chosen.set_badge(DominionParts.NOOSE, NOOSE, left)
+	for p in people:
+		if not is_instance_valid(p) or not p.is_alive():
+			continue
+		p.fight(chosen, left, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.TARGET_ONLY, GUARD_SIGHT, &"sinner")
+		p.set_badge(DominionParts.BLADE, NOOSE, left)
+	if DominionParts.staged(self):
+		if _links != null:
+			for p in people:
+				_links.add(p, chosen, NOOSE)
+		DominionParts.pulse(self, chosen.ground_pos, 2.0, NOOSE, 0.6, 1.2)

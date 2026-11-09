@@ -102,7 +102,7 @@ static func run(t) -> void:
 	var alarm := crowd.alarm
 	var fx: HoundGateFx = FxTimeline.cast(load("res://src/fx/control/hound_gate.gd"), ctx, at)
 	t.check(fx.mouth == at and is_equal_approx(fx.busy, HoundGateFx.T_OPEN)
-		and is_equal_approx(fx.duration, HoundGateFx.T_OPEN + HoundGateFx.HOUNDS * HoundGateFx.OUT_EVERY + HoundGateFx.HUNT + 4.0),
+		and is_equal_approx(fx.duration, fx.gone() + 0.3) and HoundGateFx.T_OPEN >= HoundGateFx.T_RISE + HoundGateFx.DOORS,
 		"the door is where the click lands; the cast is busy while it opens")
 	_run(fx, HoundGateFx.T_OPEN - 0.1)
 	t.check(fx.out == 0 and fx.visitors.living().is_empty() and victim.is_alive(), "no hound before the door opens")

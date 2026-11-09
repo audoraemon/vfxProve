@@ -176,7 +176,7 @@ func nearest_fightable(from: Vector2, reach: float) -> Structure:
 	var best_d := INF
 	for s: Structure in fires.keys():
 		if not is_instance_valid(s) or s.destroyed or float(fires[s].intensity) >= ABANDON \
-				or nearest_water(s.center()) == null:
+				or nearest_water(s.center()) == null or _crowd.structure_mark(s) == &"cursed":
 			continue
 		var d := s.center().distance_to(from)
 		if d <= reach and d < best_d:
@@ -200,8 +200,8 @@ func _recruit() -> void:
 		return
 	var most := _crowd.profile.fire_crew
 	for s: Structure in fires.keys():
-		if _crowd.is_veiled(s.center()):
-			continue  # a fire nobody sees (Unseen Hour) is not fought
+		if _crowd.is_veiled(s.center()) or _crowd.structure_mark(s) == &"cursed":
+			continue  # a fire nobody sees (Unseen Hour), or on a cursed house (Anathema), is not fought
 		var f: Dictionary = fires[s]
 		var crew: Array = f.responders.filter(func(p) -> bool:
 			return is_instance_valid(p) and p.mind == Person.Mind.ASSIST and p.assist_fire == s)
@@ -245,7 +245,7 @@ func _tend_responders(delta: float) -> void:
 		for p in fires[s].responders.duplicate():
 			if not is_instance_valid(p) or p.mind != Person.Mind.ASSIST or p.assist_fire != s:
 				continue
-			if (evacuating and not p.assist_stays) or float(fires[s].intensity) >= ABANDON:
+			if (evacuating and not p.assist_stays) or float(fires[s].intensity) >= ABANDON or _crowd.structure_mark(s) == &"cursed":
 				p.stand_down()
 				continue
 			if p.has_goal():

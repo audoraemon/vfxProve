@@ -1441,6 +1441,32 @@ func hurt(amount: float, by: Person) -> void:
 		# A bystander is frightened as before, and knocked flat: it lies there, and runs when it is up.
 		panic(by.ground_pos, 0.5, &"frenzy")
 		knock_down()
+## Bitten for `amount` of health by an animal at `from` (AnimalPack: a maddened dog or cat): a flash and a shove away
+## from it, and death (damage kind frenzy, as a frenzy's blow) at none left. A citizen is frightened and knocked flat;
+## a soldier stands (he cuts the animal down, AnimalPack).
+func hurt_from(amount: float, from: Vector2) -> void:
+	if state == State.DEAD:
+		return
+	if mind == Mind.ASLEEP:
+		wake()
+	health -= amount
+	if statuses.has(&"frail"):
+		health = 0.0
+	flash(0.08)
+	var lying := is_down()
+	if not lying:
+		var away := ground_pos - from
+		knock((away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 0.8)
+	if health <= 0.0:
+		if field != null:
+			field.kill(self, &"frenzy", from)
+		return
+	if soldier or mind == Mind.FIGHT or lying:
+		return
+	panic(from, 0.5, &"frenzy")
+	knock_down()
+
+
 ## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
 ## linger there `linger` seconds under a gold glyph, then pick up again: flight if it was fleeing, else back to its day,
 ## where a duty's manager takes it back. Anyone inside and the dead do not hear it (a soldier does, v0.11.1: he goes back to what he was doing), nor (v0.08.1) anyone still

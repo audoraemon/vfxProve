@@ -28,11 +28,17 @@ var _pulse_in := 0.0
 ## This cast's circle and trance at its ability level (RADIUS and TRANCE_TIME at level 1).
 var lv_radius := RADIUS
 var lv_trance_time := TRANCE_TIME
+## Sleepwalk (level 5): whether this cast has it; the people sent to a spot of the click's (person -> spot); how many clicks have been taken.
+var walkers := {}
+var walks := 0
+var _sleepwalk := false
+var _walkers_freed := false
 
 
 func _build() -> void:
 	lv_radius = float(PowerBook.stat(extra, "clearmind", "RADIUS", RADIUS))
 	lv_trance_time = float(PowerBook.stat(extra, "clearmind", "TRANCE_TIME", TRANCE_TIME))
+	_sleepwalk = PowerBook.twist_at(extra, "clearmind")
 	duration = T_CAST + lv_trance_time + 0.5
 	busy = T_CAST
 	at(T_CAST, _hypnotize)
@@ -49,6 +55,58 @@ func _build() -> void:
 ## Whether the trance holds now.
 func holding() -> bool:
 	return t >= T_CAST and t < T_CAST + lv_trance_time
+
+
+## Those entranced who can be sent now: alive, out in the open, and not held by another power's compulsion.
+func _sendable() -> Array[Person]:
+	var out: Array[Person] = []
+	for p in entranced:
+		if is_instance_valid(p) and p.is_alive() and not p.inside and (p.mind != Person.Mind.COMPELLED or walkers.has(p)):
+			out.append(p)
+	return out
+
+
+## Sleepwalk: true at level 5 while the trance holds and someone entranced can be sent.
+func can_follow_up() -> bool:
+	return _sleepwalk and not finished and holding() and not _sendable().is_empty()
+
+
+## Sleepwalk: everyone entranced now walks calmly to a spot of their own at the click (nearest first; no rng), and stands there until the
+## trance ends. The trance itself (fearless_left) is untouched, so they still sense nothing. Any number of clicks; later joiners wait for the next.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var list := _sendable()
+	list.sort_custom(func(a: Person, b: Person) -> bool:
+		return a.ground_pos.distance_squared_to(at_pos) < b.ground_pos.distance_squared_to(at_pos))
+	var place := CongregationFx.place_for(ctx.env, at_pos)
+	var spots := CongregationFx.spots_for(list[0].grid, place, list.size())
+	var left := maxf(T_CAST + lv_trance_time - t, 0.5)
+	for i in list.size():
+		var p := list[i]
+		var spot: Vector2 = spots[i] if i < spots.size() else place.at
+		if p.compel(spot, left, Person.WILL_ABSOLUTE, CALM, false, &"", TRANCE):
+			walkers[p] = spot
+	walks += 1
+	return true
+
+
+## Sleepwalk's preview: the single spot the click names.
+func follow_up_area() -> Dictionary:
+	return {"shape": "circle", "r": 1.0}
+
+
+## The trance ends (or is cut short): whoever it still walks or holds is let go.
+func _release_walkers() -> void:
+	for p in walkers:
+		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.COMPELLED and p.anchor == walkers[p]:
+			p.release_compulsion()
+	walkers.clear()
+
+
+func end_now() -> void:
+	_release_walkers()
+	super.end_now()
 
 
 func _hypnotize() -> void:
@@ -85,6 +143,8 @@ func _join() -> void:
 
 func _fx_process(delta: float) -> void:
 	if not holding():
+		if t >= T_CAST + lv_trance_time and not walkers.is_empty():
+			_release_walkers()
 		return
 	_join_in -= delta
 	if _join_in <= 0.0:

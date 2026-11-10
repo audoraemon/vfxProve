@@ -71,6 +71,10 @@ const FLOW := {
 	"results:faith": Screen.FAITH,
 	"pause:abandon": Screen.HUB,
 	"interlude:hub": Screen.HUB,
+	# Remembrance (Skill Tree wheel, Task 5): the tree's REMEMBRANCE button opens the free memory of the Capital for the selected power;
+	# its pause's Leave returns to the tree on the same Authority and power. Neither touches the god's file.
+	"tree:remember": Screen.MISSION,
+	"pause:leave_memory": Screen.TREE,
 }
 
 const MISSION_SCENE := "res://scenes/mission.tscn"
@@ -279,6 +283,12 @@ var _in_endless := false
 var _endless_from := Screen.BOARD
 ## A line the next hub shows once (god P1, Ruling P9, P21): "Night 3 was abandoned: a lost night." after an Abandon or a slot found mid-night.
 var _hub_line := ""
+## Remembrance (Skill Tree wheel, Task 5): the power key being remembered ("" outside it), its level, whether the memory is at night, and
+## the tree's state (centred Authority, selection) to give back when Leave returns to it. Never saved.
+var _remembering := ""
+var _memory_level := 1
+var _memory_night := false
+var _tree_state := {}
 
 
 ## The slot select's Back (god T1R, D7): to the title when Endless Night was opened from the title's first row, to the board when from the
@@ -536,7 +546,7 @@ func _ready() -> void:
 			mission_id = show.get_slice("-", 0)
 			loadout = MissionBook.get_mission(mission_id).default_loadout
 			go_to(Screen.MISSION)
-		"slots", "god-select", "hub", "hub-capped", "tree", "faith", "results-endless", "prepare-endless", "pause-endless":
+		"slots", "god-select", "hub", "hub-capped", "tree", "faith", "results-endless", "prepare-endless", "pause-endless", "remembrance":
 			# Endless Night's screens (god P1), for the photographs: a fixture god on the dev fill, in the show's own slot files.
 			_show_endless(show)
 		"hub-hunt", "hub-sealed", "prepare-hunt", "prepare-sealed", "results-hunt-won", "results-hunt-lost", "pause-hunt":
@@ -652,6 +662,8 @@ func _ready() -> void:
 ## Put up a screen, taking down whatever was there.
 func go_to(to: int) -> void:
 	_close_pause()
+	if to != Screen.MISSION:
+		_remembering = ""
 	var from := screen
 	screen = to
 	# Leaving the campaign (v0.10 M5), whichever way -- its Title, or its ending: the board's own mission and loadout come
@@ -800,7 +812,8 @@ func go_to(to: int) -> void:
 			var tree := SkillTreeScreen.new()
 			tree.name = "Tree"
 			add_child(tree)
-			tree.setup(god)
+			tree.setup(god, _tree_state)
+			_tree_state = {}  # given back once: the next open from the hub starts fresh
 			tree.action.connect(_on_tree_action)
 			_screen_node = tree
 		Screen.FAITH:
@@ -936,6 +949,8 @@ func _on_interlude_action(what: String) -> void:
 
 
 func _build_mission() -> Mission:
+	if _remembering != "":
+		return _build_memory()  # before any _in_endless branch: a memory is never the god's night
 	var mission: Mission = load(MISSION_SCENE).instantiate()
 	mission.autostart = false  # set before add_child(), so its _ready() does not start a mission of its own
 	mission.difficulty = save.difficulty
@@ -970,6 +985,43 @@ func _build_mission() -> Mission:
 	else:
 		mission.prewarmed.connect(func() -> void: mission.start(loadout, seed_value), CONNECT_ONE_SHOT)
 	return mission
+
+
+## Remembrance's mission (Skill Tree wheel, Task 5): the Capital, one power at one level, free. No night_def, no clock_started or decided
+## connection, no finished or act_over: nothing of it reaches the god's file, the Notice, the seals or the night count.
+func _build_memory() -> Mission:
+	var mission: Mission = load(MISSION_SCENE).instantiate()
+	mission.autostart = false
+	mission.difficulty = save.difficulty
+	mission.mission_id = MissionBook.REMEMBRANCE
+	mission.board = false
+	mission.remembrance = _remembering
+	mission.memory_night = _memory_night
+	mission.levels = {_remembering: _memory_level}
+	mission.restart_locked = true
+	add_child(mission)
+	mission.pause_pressed.connect(_open_pause)
+	mission.memory_night_toggled.connect(_on_memory_night)
+	var seed_value := Time.get_ticks_usec()
+	var begin := func() -> void:
+		mission.start(PackedStringArray([_remembering]), seed_value)
+		mission._aim.pick(0)  # the overlay owns keys 1-5 (the level picker), so the one slot is focused for the player
+	if mission.is_prewarmed:
+		begin.call()
+	else:
+		mission.prewarmed.connect(begin, CONNECT_ONE_SHOT)
+	return mission
+
+
+## The memory's DAY/NIGHT toggle: the same power at the same level, rebuilt with the other look.
+func _on_memory_night(night: bool) -> void:
+	if _remembering == "" or not is_instance_valid(_mission):
+		return
+	_memory_level = clampi(int(_mission.levels.get(_remembering, _memory_level)), 1, PowerBook.MAX_LEVEL)
+	_memory_night = night
+	_close_pause()
+	_mission.queue_free()
+	_mission = _build_mission()
 
 
 func _on_mission_finished(outcome: Dictionary) -> void:
@@ -1162,6 +1214,15 @@ func _on_hub_action(what: String) -> void:
 func _on_tree_action(what: String) -> void:
 	if what == "learned":
 		_write_god()
+	elif what == "remember":
+		var tree := _screen_node as SkillTreeScreen
+		if tree == null or tree.selected_key() == "":
+			return
+		_tree_state = tree.state()
+		_remembering = tree.selected_key()
+		_memory_level = tree.remember_level()
+		_memory_night = false
+		on_action("tree:remember")
 	elif what == "back":
 		on_action("tree:back")
 
@@ -1273,6 +1334,10 @@ func _show_endless(show: String) -> void:
 			go_to(Screen.HUB)
 		"tree":
 			go_to(Screen.TREE)
+		"remembrance":
+			_remembering = "wisp"
+			_memory_level = 3
+			go_to(Screen.MISSION)
 		"faith":
 			go_to(Screen.FAITH)
 		"results-endless":
@@ -1621,6 +1686,12 @@ func _open_pause() -> void:
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
+	if _remembering != "":
+		_pause.setup(false, settings, settings_path, false, false, true)  # Resume and Leave only; nothing is at stake
+		UiSound.play(&"ui_pause")
+		Music.set_ducked(true)
+		_pause.action.connect(_on_pause_action)
+		return
 	if _in_endless and god != null and god.in_night != "" and String(GodNight.hunt_for(god).get("id", "")) == mission_id:
 		_pause.hunt_stake = GodNight.hunt_stake(god)  # the Hunt: Abandon says what the Lantern would seal (god P2, Ruling P2-11)
 	if _in_endless and god != null:

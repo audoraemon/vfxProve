@@ -61,7 +61,8 @@ var _confirm := false
 ## (god P1, spec §9.1): Endless Night's rows -- no Restart, no Change powers -- and Abandon night, which asks before it emits
 ## "abandon"; `forfeits` says the clock has started, so the confirm warns that the night is lost (Ruling P9) rather than that
 ## leaving is free.
-func setup(campaign := false, settings: Settings = null, path := Settings.PATH, endless := false, forfeits := false) -> PauseMenu:
+## `memory` (Skill Tree wheel, Task 5): Remembrance's pause -- Resume and Leave, which emits "leave_memory" at once (nothing is at stake).
+func setup(campaign := false, settings: Settings = null, path := Settings.PATH, endless := false, forfeits := false, memory := false) -> PauseMenu:
 	_settings = settings if settings != null else Settings.new().load_from(path)
 	_settings_path = path
 	_endless = endless
@@ -74,7 +75,9 @@ func setup(campaign := false, settings: Settings = null, path := Settings.PATH, 
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
-	if endless:
+	if memory:
+		_menu = Menu.column(["resume", "leave_memory"], ["Resume", "Leave"], 320.0, 148.0, 140.0)
+	elif endless:
 		_menu = Menu.column(["resume", "options", "abandon"], ["Resume", "Options", "Abandon night"], 320.0, 148.0, 140.0)
 	else:
 		_menu = Menu.column(["resume", "options", "restart", "change", "campaign" if campaign else "missions"],
@@ -82,6 +85,14 @@ func setup(campaign := false, settings: Settings = null, path := Settings.PATH, 
 			320.0, 148.0, 140.0)
 	_rows = _menu
 	return self
+
+
+## The actions of the rows now shown, top to bottom (a test reads them).
+func actions() -> PackedStringArray:
+	var out := PackedStringArray()
+	for item in _menu.items:
+		out.append(String(item.action))
+	return out
 
 
 ## Abandon's confirm is up (Endless Night only).

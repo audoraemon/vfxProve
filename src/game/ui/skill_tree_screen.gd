@@ -16,7 +16,7 @@ const BUY_RECT := Rect2(528.0, 298.0, 96.0, 30.0)
 const DETAIL := TreeWheel.DETAIL
 const CLIP_BOX := Rect2(15.0, 258.0, 152.0, 86.0)
 const INFO_X := 176.0
-const INFO_W := 202.0
+const INFO_W := TreeDetail.DESCRIPTION_W
 const LEVEL_X := 387.0
 const LEVEL_W := 132.0
 ## A side panel's small icons: a 2x5 grid of MINI_PX squares.
@@ -32,6 +32,8 @@ const COL_NODE := Color("100c18")
 const COL_GREEN := Color("9fe08a")
 const COL_TWIST := Color("e9c96a")
 const NODE_NAME_PX := 9
+## A node's name label: centred under the node, this wide at most (every power name fits, none is chopped).
+const NODE_NAME_W := 84.0
 const SMALL_PX := 9
 
 ## Why the last buy learned nothing, shown for REFUSE_SECONDS; "" for none.
@@ -215,6 +217,36 @@ func side_col(side: int) -> int:
 			return c
 		seen += 1
 	return -1
+
+
+## A node's name as its label shows it: whole, else cut at a letter with "..." so the cut is visible.
+static func node_label(full: String) -> String:
+	if UiTheme.width(full, NODE_NAME_PX) <= NODE_NAME_W:
+		return full
+	var out := full
+	while out.length() > 1 and UiTheme.width(out + "...", NODE_NAME_PX) > NODE_NAME_W:
+		out = out.substr(0, out.length() - 1)
+	return out.strip_edges(false, true) + "..."
+
+
+## Where a node's name sits: under the node; else beside it on its outer side (spot 0 right, spot 1 left), else above it -- the first
+## place clear of every other node's circle.
+static func node_label_rect(tier: int, i: int, text: String) -> Rect2:
+	var p := TreeWheel.node_at(tier, i)
+	var w := UiTheme.width(text, NODE_NAME_PX)
+	var side := 1.0 if i == 0 else -1.0
+	var spots := [Rect2(p.x - w * 0.5, p.y + TreeWheel.NODE_R + 2.0, w, 9.0),
+		Rect2(p.x + side * (TreeWheel.NODE_R + 3.0) - (0.0 if side > 0.0 else w), p.y - 4.0, w, 9.0),
+		Rect2(p.x - w * 0.5, p.y - TreeWheel.NODE_R - 11.0, w, 9.0)]
+	for r: Rect2 in spots:
+		var clear := true
+		for t in range(1, GodTree.TIERS + 1):
+			for k in GodTree.PER_TIER:
+				if (t != tier or k != i) and r.intersects(Rect2(TreeWheel.node_at(t, k) - Vector2.ONE * TreeWheel.NODE_R, Vector2.ONE * TreeWheel.NODE_R * 2.0)):
+					clear = false
+		if clear:
+			return r
+	return spots[0]
 
 
 static func side_rect(side: int) -> Rect2:
@@ -512,8 +544,9 @@ func _draw_node(tier: int, i: int, hue: Color) -> void:
 		for k in PowerBook.MAX_LEVEL:
 			_ui.draw_rect(Rect2(p.x - 9.5 + float(k) * 4.0, p.y + r + 1.0, 3.0, 2.0), Color("f3d36a") if k < have else Color("3a3326"))
 	var name_col := COL_SELECT if sel else (Color("bfb49a") if state != "lock" else Color("6e6678"))
-	var short := UiTheme.fit(String(PowerBook.get_power(key).name), 60.0, NODE_NAME_PX)
-	_text_centred(p.x, p.y + r + 11.0, short, NODE_NAME_PX, name_col)
+	var short := node_label(String(PowerBook.get_power(key).name))
+	var label := node_label_rect(tier, i, short)
+	_text_centred(label.get_center().x, label.end.y - 1.0, short, NODE_NAME_PX, name_col)
 
 
 func _dashed_circle(p: Vector2, r: float, col: Color) -> void:

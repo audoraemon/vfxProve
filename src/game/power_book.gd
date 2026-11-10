@@ -18,7 +18,7 @@ const POWERS := [
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within reach struck down, unseen", "quiet": true,
 		"authority": "veil"},
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
-		"blurb": "Press a person to send them walking, set them on someone, or at a building.",
+		"blurb": "Press a person to send them walking at someone or a building.",
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
 		"shape": "press a person: walk, attack or burn -- send them somewhere (8 s), set them on someone, or at a building; not the same one again for 20 s", "quiet": true,
 		"authority": "dominion",
@@ -29,7 +29,7 @@ const POWERS := [
 			{"REACH": 13.0, "ATTACK_SECS": 13.0, "cooldown": 6.5},
 			{"REACH": 14.0, "ATTACK_SECS": 14.0, "cooldown": 6.0, "twist": true, "twist_text": "Held String: whisper the same one again"}]},
 	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
-		"blurb": "A bolt falls where you click. It kills whoever stands there and hurts a building.",
+		"blurb": "A bolt falls where you click. It kills all there and hurts a building.",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
 		"authority": "ruin",
 		"levels": [
@@ -57,7 +57,7 @@ const POWERS := [
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
 		"quiet": true, "alarm": 0.5, "authority": "decree"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
-		"blurb": "A pale light lures calm people to stand round it. ENTHRALL holds everyone near it.",
+		"blurb": "A pale light lures calm people to stand round it. ENTHRALL holds them.",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s; or ENTHRALL holds all near the light, 30 s (cooldown 75 s); Q/E",
 		"quiet": true, "authority": "dominion", "modes": [
 			{"key": "lure", "name": "LURE"}, {"key": "enthrall", "name": "ENTHRALL", "area": {"r": 4.0, "roam": 0.0}, "cooldown": 75.0}],
@@ -199,7 +199,7 @@ const POWERS := [
 		"quiet": true, "authority": "dominion", "modes": [
 			{"key": "danger", "name": "FALSE DANGER"}, {"key": "calm", "name": "ALL IS WELL", "area": {"r": 7.0}}]},
 	{"key": "anathema", "name": "Anathema", "path": "res://src/fx/dominion/anathema.gd",
-		"blurb": "A district is cursed, and nobody stays inside, or hallowed, and everyone does.",
+		"blurb": "A district is cursed so nobody stays, or hallowed so everyone does.",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district's buildings are cursed (nobody inside, fires left) or hallowed (everyone inside, and stays), 40 s; Q/E",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "modes": [
 			{"key": "cursed", "name": "CURSED"}, {"key": "hallowed", "name": "HALLOWED"}],
@@ -210,7 +210,7 @@ const POWERS := [
 			{"RADIUS": 7.2, "SPAN": 52.0, "cooldown": 78.0},
 			{"RADIUS": 7.5, "SPAN": 55.0, "cooldown": 74.0, "twist": true, "twist_text": "Spreading Mark: spreads to buildings near"}]},
 	{"key": "sanctuary", "name": "Sacred Sanctuary", "path": "res://src/fx/dominion/sacred_sanctuary.gd",
-		"blurb": "People at the first click wall off the second place and set on whoever enters.",
+		"blurb": "People at the first click wall off the second and set on who enters.",
 		"dp": 4, "cooldown": 90.0, "aim": "two clicks", "shape": "the people at the first click wall the place at the second and set on whoever enters, 40 s; right-click: shape",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "alt_steps_mode": true, "modes": [
 			{"key": "circle", "name": "CIRCLE"}, {"key": "rect", "name": "RECTANGLE"}],
@@ -252,7 +252,7 @@ const POWERS := [
 	{"key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "burst + freeze + ice", "authority": "ruin"},
 	{"key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd",
-		"blurb": "A pillar of sunfire burns the spot, then leaves a pit that takes all who enter.",
+		"blurb": "A pillar of sunfire burns the spot, then leaves a pit that takes all.",
 		"dp": 4, "cooldown": 105.0, "aim": "click", "shape": "5 s pillar of sunfire; leaves a pit that takes all who enter",
 		"authority": "ruin",
 		"levels": [
@@ -275,12 +275,13 @@ const POWERS := [
 			{"COMMAND_X": 1.3, "GATHER_CAPACITY": 185, "cooldown": 150.0},
 			{"COMMAND_X": 1.4, "GATHER_CAPACITY": 200, "cooldown": 140.0, "twist": true, "twist_text": "Second Word: click again for a second command"}]},
 	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
+		"blurb": "One law is void for 15 s: the clock, the escape limit or the ward. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law is void for 15 s: the clock (time stops), the escape limit, the ward; Q/E; once",
 		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
 			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
 			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
 	{"key": "tempest", "name": "Wrath of the Sky", "path": "res://src/fx/ruin/tempest.gd",
-		"blurb": "A storm covers the town. Bolts fall and the rain drives people in. Once only.",
+		"blurb": "A storm covers the town; bolts fall, rain drives people in. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "a storm over the whole town: 25 s of bolts, the rain drives people in; once",
 		"authority": "ruin",
 		"levels": [
@@ -290,7 +291,7 @@ const POWERS := [
 			{"STORM_TIME": 31.0, "VOLLEY": Vector2i(6, 8), "VOLLEY_EVERY": 1.2},
 			{"STORM_TIME": 33.0, "VOLLEY": Vector2i(7, 9), "VOLLEY_EVERY": 1.2, "twist": true, "twist_text": "Called Bolts: click to call a bolt every 3 s"}]},
 	{"key": "shatter", "name": "Earthshatter", "path": "res://src/fx/ruin/earthshatter.gd",
-		"blurb": "The ground tears open from one click to the next, and the crack stays. Once only.",
+		"blurb": "The ground tears open from click to click, and stays so. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "two clicks", "shape": "the ground torn open from one click to the next, slowly; the crack stays; once",
 		"authority": "ruin",
 		"levels": [

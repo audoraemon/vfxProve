@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_costs(t)
 	_layout(t)
 	_icons_loaded(t)
+	_texts_fit(t)
 	GodTree.dev_fill = false
 
 
@@ -300,3 +301,53 @@ static func _icons_loaded(t) -> void:
 	t.check(with_key > 0 and SkillTreeScreen.spot_icon("smite") != null, "smite has an icon (%d spots with a power)" % with_key)
 	t.check(missing.is_empty(), "every power in the tree has its icon loaded in setup (missing: %s)" % ", ".join(missing))
 	s.free()
+
+
+## Nothing the page writes is cut: every description fits two lines of the info column with no "...", and every node name fits its
+## label, no two labels of a wheel overlap and none leaves the screen.
+static func _texts_fit(t) -> void:
+	var cut := PackedStringArray()
+	var chopped := PackedStringArray()
+	var overlaps := PackedStringArray()
+	for type in ["ruin", "dominion", "death", "passage", "veil", "decree"]:
+		var s := _screen(type)
+		for col in 3:
+			for tier in range(1, 6):
+				for i in 2:
+					var key := s.key_at(col, tier, i)
+					if key == "":
+						continue
+					var d := TreeDetail.description(key, SkillTreeScreen.INFO_W)
+					if d.size() > 2 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
+						cut.append(key)
+		for col in 3:
+			var labels: Array[Rect2] = []
+			var owners: Array[Vector2i] = []
+			for tier in range(1, 6):
+				for i in 2:
+					var key := s.key_at(col, tier, i)
+					if key == "":
+						continue
+					var shown := SkillTreeScreen.node_label(String(PowerBook.get_power(key).name))
+					var full := String(PowerBook.get_power(key).name)
+					if shown != full and not (shown.ends_with("...") and full.begins_with(shown.trim_suffix("..."))):
+						chopped.append(key)
+					if UiTheme.width(shown, SkillTreeScreen.NODE_NAME_PX) > SkillTreeScreen.NODE_NAME_W:
+						chopped.append(key + " (too wide)")
+					labels.append(SkillTreeScreen.node_label_rect(tier, i, shown))
+					owners.append(Vector2i(tier, i))
+			for a in labels.size():
+				for tt in range(1, 6):
+					for ii in 2:
+						var circle := Rect2(TreeWheel.node_at(tt, ii) - Vector2.ONE * TreeWheel.NODE_R, Vector2.ONE * TreeWheel.NODE_R * 2.0)
+						if labels[a].intersects(circle) and Vector2i(tt, ii) != owners[a]:
+							overlaps.append("%s col %d label %d on node %d:%d" % [type, col, a, tt, ii])
+				if not Rect2(0, 0, 640, 360).encloses(labels[a]):
+					overlaps.append("%s col %d label %d off screen" % [type, col, a])
+				for b in range(a + 1, labels.size()):
+					if labels[a].intersects(labels[b]):
+						overlaps.append("%s col %d labels %d/%d" % [type, col, a, b])
+		s.free()
+	t.check(cut.is_empty(), "every description fits two lines at the info column's width, none ends in ... (%s)" % [cut])
+	t.check(chopped.is_empty(), "every node name shows whole, or visibly ellipsised within its label (%s)" % [chopped])
+	t.check(overlaps.is_empty(), "no two node labels overlap and none leaves the screen (%s)" % [overlaps])

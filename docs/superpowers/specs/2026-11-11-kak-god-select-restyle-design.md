@@ -93,7 +93,8 @@ the art.
   for them, not on a box that hides the swirl (as in mockup B).
 - **Ring shape**: all six statues are the same size, on an ellipse at 60° steps as now. The ellipse may be retuned to fit.
 - **Existing lines kept**: "A god's type is chosen once, for this slot." stays (small, under the title), because it states a
-  rule. The keys hint ("Left and Right look round the ring…") stays, small, beside Back.
+  rule. The keys hint ("Left and Right look round the ring…") stays, small, at the top right (beside Back it would run into
+  "Enter Path ›").
 - **Enter Path**: stays bottom centre, clear of Decree's nameplate. `CHOOSE_RECT` may move; `game.gd`'s dev clicks use the
   constant, so they follow.
 - **Art fallback**: each statue is its own generation (no recolouring one base). If generations run short, finish or fix by

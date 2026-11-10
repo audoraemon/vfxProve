@@ -96,6 +96,13 @@ func cells_for(s: Structure) -> Array[Vector2i]:
 	var iy0 := ceili((sr.position.y - c * 0.5) / c)
 	var iy1 := floori((sr.end.y - c * 0.5) / c)
 	var mid := _grid.world_to_id(sr.get_center())
+	# A footprint too thin to hold a cell centre: start from the midpoint cell.
+	if ix0 > ix1:
+		ix0 = mid.x
+		ix1 = mid.x
+	if iy0 > iy1:
+		iy0 = mid.y
+		iy1 = mid.y
 	var best := -1
 	var best_side := 0
 	for side in 4:

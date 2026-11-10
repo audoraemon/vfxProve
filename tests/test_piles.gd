@@ -145,8 +145,8 @@ static func _cells_valid_everywhere(t) -> void:
 		print("pile cells: %s %d of %d buildings get a pile (%.0f%%)" % [city, got, total, share * 100.0])
 		# 80% is the brief's tunable: Aldermere packs 25 of its 81 houses between gardens and fences (no open street on
 		# the chosen side), so the floor is 70% there; the Capital clears 90%.
-		var floor := 0.7 if city == &"aldermere" else 0.9
-		t.check(total > 0 and share >= floor, "%s: at least %.0f%% of buildings get a pile (%.2f)" % [city, floor * 100.0, share])
+		var min_share := 0.7 if city == &"aldermere" else 0.9
+		t.check(total > 0 and share >= min_share, "%s: at least %.0f%% of buildings get a pile (%.2f)" % [city, min_share * 100.0, share])
 		_free(made)
 	City.use(&"aldermere")
 

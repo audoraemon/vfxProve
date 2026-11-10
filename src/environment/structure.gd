@@ -1456,15 +1456,21 @@ func _build_cracks() -> void:
 
 func _build_rubble() -> void:
 	var count := int(clampf(footprint.get_area() * 10.0, 6.0, 26.0))
-	_rubble.append_array(rubble_polys(footprint.grow(0.25), _base, _palette(), count, rng))
+	# The corners as they always were computed (grow() would differ by an ulp and move the digest).
+	_rubble.append_array(_rubble_between(Vector2(footprint.position.x - 0.25, footprint.position.y - 0.25),
+		Vector2(footprint.end.x + 0.25, footprint.end.y + 0.25), _base, _palette(), count, rng))
 
 
 ## `count` chunks of rubble scattered over `area` (ground units), each [screen polygon relative to `origin`, colour from
 ## `pal`]. The one rng order a building's ruin and a street pile share: x, y, size, five (angle jitter, radius), colour.
 static func rubble_polys(area: Rect2, origin: Vector2, pal: Array, count: int, rng: RandomNumberGenerator) -> Array:
+	return _rubble_between(area.position, area.end, origin, pal, count, rng)
+
+
+static func _rubble_between(lo: Vector2, hi: Vector2, origin: Vector2, pal: Array, count: int, rng: RandomNumberGenerator) -> Array:
 	var out := []
 	for i in count:
-		var g := Vector2(rng.randf_range(area.position.x, area.end.x), rng.randf_range(area.position.y, area.end.y))
+		var g := Vector2(rng.randf_range(lo.x, hi.x), rng.randf_range(lo.y, hi.y))
 		var c := Iso.ground_to_screen(g) - origin
 		var size := rng.randf_range(2.0, 5.5)
 		var poly := PackedVector2Array()

@@ -25,10 +25,12 @@ Recipe:
         "fade_in": 5, "fade_out": 120,      # ms
         "reverse": false, "dry": false,      # "dry": keep this layer out of the reverb
         "pan": 0.0}]}         # -1 left .. 1 right, in a recipe with "stereo": true (its sources keep their own channels)
+A layer can instead be {"scatter": {...}}: many short one-shots (footsteps) spread over runners, expanded by scatter().
 A looped recipe wraps what runs past its end back to its start, and the reverb tail with it, so the loop has no seam.
 """
 from __future__ import annotations
 
+import functools
 import json
 import os
 import sys
@@ -49,8 +51,10 @@ OUT = ROOT / "assets" / "audio"
 LIBRARY = Path(os.environ.get("KAK_SOUND_LIBRARY", "C:/BURIN_NITRO/SoundLibrary"))
 
 
+@functools.lru_cache(maxsize=64)
 def load(src: str, ch: int | None = None) -> np.ndarray:
-    """A source as mono (ch None), or its channel ch (a mono source gives the same signal to every channel)."""
+    """A source as mono (ch None), or its channel ch (a mono source gives the same signal to every channel). Cached, so
+    the result is read-only."""
     kind, _, rel = src.partition(":")
     path = (LIBRARY if kind == "lib" else ROOT) / rel
     x, sr = sf.read(str(path), always_2d=True)
@@ -58,7 +62,53 @@ def load(src: str, ch: int | None = None) -> np.ndarray:
     if sr != SR:
         r = Fraction(SR, sr).limit_denominator(1000)
         x = signal.resample_poly(x, r.numerator, r.denominator)
+    x = np.ascontiguousarray(x)
+    x.setflags(write=False)
     return x
+
+
+def scatter(spec: dict) -> list[dict]:
+    """A crowd of runners as plain layers. Each runner has its own distance (gain and low-pass), pitch, pace and a pan
+    that drifts as they cross the street, and runs in bursts with short stops. Seeded, so a recipe always builds the
+    same. Keys: srcs, seed, runners, length, rate (steps/s) [lo, hi], gain_db [lo, hi] (far .. near), lp [lo, hi]
+    (far .. near, Hz), hp, pitch [lo, hi], pan [lo, hi], run [lo, hi] and stop [lo, hi] seconds, step_db, step_pitch,
+    jitter (fraction of a step)."""
+    rng = np.random.default_rng(spec.get("seed", 1))
+    lo_hi = lambda k, d: tuple(spec.get(k, d))  # noqa: E731
+    out = []
+    for _ in range(int(spec["runners"])):
+        near = rng.random()   # 0 far .. 1 near
+        g0, g1 = lo_hi("gain_db", (-16.0, -4.0))
+        f0, f1 = lo_hi("lp", (2000.0, 8000.0))
+        gain = g0 + (g1 - g0) * near
+        lp = f0 * (f1 / f0) ** near
+        pitch = rng.uniform(*lo_hi("pitch", (-2.0, 1.0)))
+        step = 1.0 / rng.uniform(*lo_hi("rate", (2.6, 3.4)))
+        p0, p1 = lo_hi("pan", (-0.9, 0.9))
+        t = rng.uniform(0.0, spec["length"])
+        end = t + spec["length"]
+        foot = rng.integers(2)
+        while t < end:
+            run = rng.uniform(*lo_hi("run", (5.0, 14.0)))
+            a, b = rng.uniform(p0, p1, 2)
+            stop_at = min(t + run, end)
+            t0 = t
+            while t < stop_at:
+                pan = a + (b - a) * (t - t0) / run
+                out.append({"src": spec["srcs"][rng.integers(len(spec["srcs"]))], "at": round(t % spec["length"], 4),
+                            "pitch": round(pitch + rng.normal(0.0, spec.get("step_pitch", 0.4)), 2),
+                            "gain_db": round(gain + rng.normal(0.0, spec.get("step_db", 2.0)) - 1.5 * foot, 2),
+                            "hp": spec.get("hp", 50), "lp": round(lp), "pan": round(float(np.clip(pan, -1, 1)), 3),
+                            "fade_in": 1, "fade_out": 30, "dry": spec.get("dry", False)})
+                foot = 1 - foot
+                t += step * (1.0 + rng.normal(0.0, spec.get("jitter", 0.06)))
+            t += rng.uniform(*lo_hi("stop", (0.5, 3.0)))
+    return out
+
+
+def layers(recipe: dict) -> list[dict]:
+    """A recipe's layers with every scatter expanded."""
+    return [x for spec in recipe["layers"] for x in (scatter(spec["scatter"]) if "scatter" in spec else [spec])]
 
 
 def onset(x: np.ndarray, floor_db: float = -30.0) -> int:
@@ -181,7 +231,7 @@ def _build_channel(recipe: dict, skip_base: bool, ch: int | None) -> np.ndarray:
     loop = recipe.get("loop", False)
     wet_in = np.zeros(n)
     dry = np.zeros(n)
-    for spec in recipe["layers"]:
+    for spec in layers(recipe):
         if skip_base and spec["src"].startswith("lib:synth/"):
             continue
         x = layer(spec, ch)
@@ -220,7 +270,7 @@ def credits() -> None:
             manifests[f"{base}/{key}"] = info
     used: dict[str, set] = {}
     for p in recipes():
-        for spec in json.loads(p.read_text(encoding="utf-8"))["layers"]:
+        for spec in layers(json.loads(p.read_text(encoding="utf-8"))):
             if spec["src"].startswith("lib:"):
                 used.setdefault(spec["src"][4:], set()).add(p.relative_to(RECIPES).with_suffix("").as_posix())
     lines = ["# Sound credits", "", "Recordings used by tools/audio/foley.py recipes, from the sound library outside the "
@@ -267,8 +317,8 @@ def main() -> None:
         if args and p.stem not in args and not set(rel.parts[:-1]) & set(args):
             continue
         recipe = json.loads(p.read_text(encoding="utf-8"))
-        if alt is not None and (not any(l["src"].startswith("lib:synth/") for l in recipe["layers"])
-                                or all(l["src"].startswith("lib:synth/") for l in recipe["layers"])):
+        if alt is not None and (not any(l["src"].startswith("lib:synth/") for l in layers(recipe))
+                                or all(l["src"].startswith("lib:synth/") for l in layers(recipe))):
             continue  # only cues that have both a synth base and recordings
         y = build(recipe, skip_base=alt is not None)
         dest = (alt if alt is not None else OUT) / rel.with_suffix(".wav")

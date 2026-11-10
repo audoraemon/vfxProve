@@ -39,4 +39,7 @@ the sheet the user listens with.
   out: it holds the famous "Wilhelm scream", which players would know.
 - OpenGameArt (CC0): female-high-pitched-scream-sfx, girly-scream, female-distressed-no-no-no, plus the male yelling
   pack already in use. Modern English lines ("please help somebody", "come on let's run") are no longer used.
+- Pass 4 (clearer, heavier): the beds keep their full range (no more 2.4-6 kHz low-pass), take less reverb, drop the
+  kids and church steps, and get a stampede: a `scatter` layer of single footsteps from OpenGameArt `footsteps-0` and
+  `footsteps-leather-cloth-armor` (CC0), each runner with its own distance, pace and crossing pan. The cries are drier.
 

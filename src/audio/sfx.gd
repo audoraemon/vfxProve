@@ -156,7 +156,7 @@ const CATALOG := {
 	&"crowd_unrest": {"path": "res://assets/audio/citizen/crowd_unrest.wav", "db": -10.0, "loop": true},
 	&"crowd_panic": {"path": "res://assets/audio/citizen/crowd_panic.wav", "db": -10.5, "loop": true},
 	&"crowd_chaos": {"path": "res://assets/audio/citizen/crowd_chaos.wav", "db": -10.4, "loop": true},
-	&"crowd_cry": {"path": "res://assets/audio/citizen/crowd_cry_%d.wav", "variants": 18, "db": -11.0, "voices": 3, "jitter": 0.06},
+	&"crowd_cry": {"path": "res://assets/audio/citizen/crowd_cry_%d.wav", "variants": 18, "db": -9.0, "voices": 4, "jitter": 0.06},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
 	# A death on every kill (v0.11.2, DeathVoices): a citizen's cry and fall, a soldier's grunt and mail, a quiet body's slump,
 	# and the roar of a crowd falling at once. Levels measured by tools/audio/loudness.py (spec 6.3 row 4): cit_death and sol_death at the loud median - 4, cit_fall at - 9, the wave under the median.

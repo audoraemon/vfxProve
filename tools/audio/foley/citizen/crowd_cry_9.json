@@ -1,3 +1,3 @@
-{"length": 1.25, "rms_db": -16.2, "reverb": {"rt60": 0.9, "mix": 0.14, "predelay_ms": 10, "damp": 6000}, "layers": [
+{"length": 1.25, "rms_db": -16.2, "reverb": {"rt60": 0.8, "mix": 0.06, "predelay_ms": 8, "damp": 7000}, "eq": [["lowshelf", 220, 3.0], ["peak", 3000, 2.5, 0.9]], "layers": [
   {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/3yell12.wav", "at": 0.0, "from": 0.07, "dur": 0.8, "hp": 160, "lp": 9000, "fade_in": 4, "fade_out": 140}
 ]}

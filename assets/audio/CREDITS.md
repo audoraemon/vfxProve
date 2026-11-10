@@ -153,6 +153,19 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Fire Crackling](https://opengameart.org/content/fire-crackling) `fire-1.wav` | CC0 | AntumDeluge | building/lantern_burn |
 | [Fire Crackling](https://opengameart.org/content/fire-crackling) `fire-1_0.ogg` | CC0 | AntumDeluge | ability/energy/orb_embers, ability/fire/dr_breath, ability/quiet/q_ember, ambience/amb_fire |
 | [Fireplace Sound loop](https://opengameart.org/content/fireplace-sound-loop) `fire.wav` | CC0 | PagDev | ability/energy/laser_fire, ability/fire/cf_lava, ability/fire/cf_rise, ability/fire/dr_breath, ability/fire/dr_ignite, ambience/amb_fire |
+| [Footsteps](https://opengameart.org/content/footsteps-0) `01-footstep_0.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps](https://opengameart.org/content/footsteps-0) `03-footstep.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps](https://opengameart.org/content/footsteps-0) `04-footstep.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps](https://opengameart.org/content/footsteps-0) `05-footstep.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps](https://opengameart.org/content/footsteps-0) `06-footstep.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth1.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth2.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth3.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth4.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth1.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth2.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth33.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth4.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
 | [Freeze Spell](https://opengameart.org/content/freeze-spell-0) `freeze.wav` | CC0 | artisticdude | ability/ice/glac_freeze |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan01.wav` | CC0 | qubodup | ability/quiet/q_madness |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan05.wav` | CC0 | qubodup | ability/quiet/q_doom |
@@ -271,8 +284,6 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [360703 eguobyte large-crowd-medium-distance-stereo.wav](https://commons.wikimedia.org/wiki/File:360703_eguobyte_large-crowd-medium-distance-stereo.wav) `360703_eguobyte_large-crowd-medium-distance-stereo.wav` | CC0 | eguobyte | ambience/amb_day, ambience/amb_night, citizen/crowd_panic, citizen/crowd_unrest |
 | [Church bells - Leverkusen, 2007.oga](https://commons.wikimedia.org/wiki/File:Church_bells_-_Leverkusen,_2007.oga) `Church_bells_-_Leverkusen_2007.wav` | Public domain | natalie | building/town_bell |
 | [Church of Saint Mark (Litovel) ringing.ogg](https://commons.wikimedia.org/wiki/File:Church_of_Saint_Mark_(Litovel)_ringing.ogg) `Church_of_Saint_Mark_Litovel_ringing.ogg` | Public domain | Gampe | building/town_bell |
-| [Church people walking steps with reverb.ogg](https://commons.wikimedia.org/wiki/File:Church_people_walking_steps_with_reverb.ogg) `Church_people_walking_steps_with_reverb.wav` | Public domain | stephan | citizen/crowd_panic, citizen/crowd_unrest |
-| [Douzen kids on playground.ogg](https://commons.wikimedia.org/wiki/File:Douzen_kids_on_playground.ogg) `Douzen_kids_on_playground.wav` | Public domain | stephan | citizen/crowd_panic |
 | [Festival concert people crowd.ogg](https://commons.wikimedia.org/wiki/File:Festival_concert_people_crowd.ogg) `Festival_concert_people_crowd.wav` | Public domain | stephan | citizen/crowd_unrest |
 | [NOW screaming.ogg](https://commons.wikimedia.org/wiki/File:NOW_screaming.ogg) `NOW_screaming.ogg` | CC0 | Ranch9613 | citizen/crowd_cry_8 |
 | [Street parade carnival people yelling kamelle kamelle.ogg](https://commons.wikimedia.org/wiki/File:Street_parade_carnival_people_yelling_kamelle_kamelle.ogg) `Street_parade_carnival_people_yelling_kamelle_kamelle.wav` | Public domain | stephan | citizen/crowd_panic |

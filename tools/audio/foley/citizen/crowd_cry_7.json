@@ -1,3 +1,3 @@
-{"length": 2.75, "rms_db": -15.7, "reverb": {"rt60": 0.9, "mix": 0.14, "predelay_ms": 10, "damp": 6000}, "layers": [
+{"length": 2.75, "rms_db": -15.7, "reverb": {"rt60": 0.8, "mix": 0.06, "predelay_ms": 8, "damp": 7000}, "eq": [["lowshelf", 220, 3.0], ["peak", 3000, 2.5, 0.9]], "layers": [
   {"src": "lib:wikimedia/UncleSigmund_-_ahhh_cc0_freesound_.mp3", "at": 0.0, "from": 0.0, "dur": 2.3, "hp": 160, "lp": 9000, "fade_in": 4, "fade_out": 140}
 ]}

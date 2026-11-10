@@ -9,6 +9,7 @@ extends Node
 ## yelling, then the whole town in chaos, each a long loop with no voice in it that stands out -- and on top of them
 ## single cries, a scream or a man's yell from a running citizen near the camera, more often the more the town panics,
 ## each heard at its own distance and side. Before, one short loop with the same screams in it played every few seconds.
+## Pass 4 made the beds full range and drier, with the feet of the running crowd under them for weight.
 ##
 ## It only listens: it reads the town's look (TownLook.active), the fires (Crowd.fires), who is running (Crowd.citizens)
 ## and how much the town panics (Crowd.panic_level()), and never touches the world; its numbers come from its own rng.
@@ -37,7 +38,7 @@ const CRY_FROM := 0.08
 const CRY_SLOW := 2.6
 const CRY_FAST := 0.35
 const CRY_SPREAD := 0.4
-const CRY_PICKS := 3
+const CRY_PICKS := 5
 ## Seconds between calls, by day and by night; none while the town panics past CALL_QUIET.
 const DAY_CALLS := Vector2(5.0, 14.0)
 const NIGHT_CALLS := Vector2(8.0, 20.0)

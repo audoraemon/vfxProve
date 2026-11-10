@@ -122,6 +122,9 @@ var loadout := PackedStringArray()
 var levels := {}
 ## The mission is over: the clock ran out, the people got away, or the city fell.
 var finished := false
+## Remembrance (the Skill Tree's free memory): casts leave no cooldown, the clock never falls and nothing ends the run -- no clock,
+## no escape, no fall. busy_left() still applies. False everywhere else.
+var free_play := false
 ## Buildings destroyed this mission, by BUILDING_ROLES.
 var buildings_down := 0
 ## How many casts chained.
@@ -244,7 +247,7 @@ func advance(delta: float) -> void:
 	_step_abolished(delta)
 	if lantern != null:
 		clock_rate = lantern.rate()  # v0.11.2: the Lantern's stage is the clock's rate
-	if not is_abolished(LAW_CLOCK):
+	if not is_abolished(LAW_CLOCK) and not free_play:
 		time_left = maxf(0.0, time_left - delta * clock_rate)
 		_mission_elapsed += delta * clock_rate
 	if _stability_dirty:
@@ -438,6 +441,9 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		_mode_cooldown[slot] = own
 	else:
 		_mode_cooldown.erase(slot)
+	if free_play:
+		_cooldowns[slot] = 0.0
+		_mode_cooldown.erase(slot)
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, told)
 	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
@@ -594,7 +600,7 @@ func _on_citadel_health(_fraction: float) -> void:
 ## Last Judgement lists the Citadel first, so a city that falls on the last tick of the clock still counts. On the tier
 ## board (v0.11 M1, spec §6) the first DONE holds the night instead (_hold()), and from then on _check_caught() decides.
 func _check_end() -> void:
-	if finished:
+	if finished or free_play:
 		return
 	if main_done:
 		_check_caught()

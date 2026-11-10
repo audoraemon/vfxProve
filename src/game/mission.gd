@@ -17,6 +17,9 @@ signal prewarmed
 ## The clock starts (god P1, Ruling P9): once at the end of each intro, a mission's or an act's. Endless Night marks the god's night
 ## open on it, and a night left after this counts as lost.
 signal clock_started
+## Remembrance's DAY/NIGHT toggle was pressed (Skill Tree wheel, ruling R2): Game rebuilds the memory with the same power and level and the
+## look flipped. `night` is the look asked for.
+signal memory_night_toggled(night: bool)
 ## The run is decided (god P2 fix wave, review M1): only when `report_on_decision`, at the start of the ending, with the very result
 ## `finished` carries after it, so Endless Night can bank the night before the 2-3 s ending a closed window would otherwise lose.
 signal decided(result: Dictionary)
@@ -100,6 +103,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## Remembrance's overlay while one is up.
+var _memory: MemoryOverlay
 ## F4: the citizens' intents, the alarm stage and the gates (v0.04 debug).
 var _overlay: BehaviourOverlay
 ## The difficulty (v0.05): Game sets it before start(); a standalone run reads --difficulty=<name>.
@@ -118,6 +123,11 @@ var wish_seed := 0
 ## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
 ## Rules is given it, and an R restart or next_act() keeps it.
 var levels := {}
+## Remembrance (Skill Tree wheel, Task 4): the power key to try, set before add_child. When non-empty the mission is the free memory of the
+## capital (MissionBook.remembrance()): loadout [key], Rules.free_play, no score, no results, `finished` never emitted, a MemoryOverlay on top.
+var remembrance := ""
+## Remembrance's look (set before start): NIGHT, with NightRules, when true; DAY otherwise.
+var memory_night := false
 ## Endless Night's night (god P1, spec §9.1): when valid, `_mission_def()` returns what this gives (a GodNight.def_for()) and ignores
 ## `--mission`. Game sets it before start() for a night; unset everywhere else.
 var night_def: Callable
@@ -309,6 +319,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		return
 	_close_legend()
 	chain_aim = false
+	if remembrance != "":
+		powers = PackedStringArray([remembrance])  # Remembrance plays its one power, whatever Game or an R restart passes
 	if powers.is_empty():
 		powers = _drafted
 	_drafted = powers
@@ -329,7 +341,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_descent.release()
 		_descent = null
 	_bf.reset(seed_value)
-	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay]:
+	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay, _memory]:
 		if is_instance_valid(n):
 			if n is Town:
 				(n as Town).teardown()
@@ -356,6 +368,8 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_town = Town.new()
 	_town.name = "Town"
 	_town.look = (look_override as Town.Look) if look_override >= 0 else Town.look_from_args(OS.get_cmdline_user_args())
+	if remembrance != "":
+		_town.look = Town.Look.NIGHT if memory_night else Town.Look.DAY
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)
@@ -399,6 +413,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	if "--behaviour" in OS.get_cmdline_user_args():
 		BehaviourOverlay.shown = true
 	add_child(_overlay)
+	_begin_memory()
 	_begin_intro(play)
 	_prayers_hold = 0.0
 	if _descent != null and not _scripted and not _descent.wishes.is_empty():
@@ -407,6 +422,34 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_intro_left += PRAYERS_SECONDS
 	_sync_intro_hud()
 	_show_held_banners()
+
+
+## Remembrance's overlay (start() ran): the level in force, the picker, the toggle. No overlay outside Remembrance.
+func _begin_memory() -> void:
+	_memory = null
+	if remembrance == "":
+		return
+	var top := PowerBook.MAX_LEVEL if PowerBook.has_levels(remembrance) else 1
+	var level := clampi(int(levels.get(remembrance, 1)), 1, top)
+	levels[remembrance] = level
+	_rules.levels = levels
+	_memory = MemoryOverlay.new().setup(String(PowerBook.get_power(remembrance).get("name", remembrance)), top, level, memory_night)
+	_memory.level_picked.connect(set_memory_level)
+	_memory.night_toggled.connect(func(night: bool) -> void: memory_night_toggled.emit(night))
+	add_child(_memory)
+
+
+## Remembrance's level picker (1-5; 1 only for a power without level tables): the level the power is cast at from now on.
+func set_memory_level(level: int) -> void:
+	if remembrance == "":
+		return
+	var top := PowerBook.MAX_LEVEL if PowerBook.has_levels(remembrance) else 1
+	var picked := clampi(level, 1, top)
+	levels[remembrance] = picked
+	if is_instance_valid(_rules):
+		_rules.levels[remembrance] = picked
+	if is_instance_valid(_memory):
+		_memory.set_level(picked)
 
 
 ## The look's rules (NightRules) once the director has appointed its people: nothing but at NIGHT. The wishes' people are kept out too.
@@ -427,6 +470,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	add_child(_rules)
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
 	_rules.levels = levels
+	_rules.free_play = remembrance != ""
 	_bf.ctx.rules = _rules
 	_rules.over.connect(_on_over)
 	# Nothing shows a banner until the HUD below is made: the director's setup and the town's responses may raise some.
@@ -550,7 +594,7 @@ func _wire_once(manager: Object) -> bool:
 
 ## The camera, the intro sweep and its banner for the mission or act about to be played.
 func _begin_intro(play: MissionDef) -> void:
-	if _scripted:
+	if _scripted or remembrance != "":
 		# The scripted runs time their casts from the first frame and frame the town the way milestone 3 did,
 		# so their captures and numbers stay comparable: no intro for them.
 		_tour = null
@@ -817,6 +861,8 @@ static func raised(stops: Array) -> Array:
 ## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08); on the board, its
 ## tier's version (v0.11 M1).
 func _mission_def(args: PackedStringArray) -> MissionDef:
+	if remembrance != "":
+		return MissionBook.remembrance()
 	if night_def.is_valid():
 		return night_def.call()
 	var wanted_mission := Battlefield.arg_value(args, "--mission") if autostart else ""
@@ -943,6 +989,8 @@ static func blight_banner(s: Structure) -> String:
 
 
 func _on_over(won: bool, reason: String) -> void:
+	if remembrance != "":
+		return  # a memory is never won or lost, scored or reported
 	if _rite_won():
 		_show_rite_win()
 	else:

@@ -46,6 +46,8 @@ const FACE_HALCYON := "face_halcyon"
 const CITY_SEP := "@"
 ## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
 const CAPITAL_SANDBOX := "capital_sandbox"
+## The Skill Tree's Remembrance (god progression): a free, endless memory of the capital for one power. Never on the board.
+const REMEMBRANCE := "remembrance"
 ## Where the sandbox's intro sweep starts: the new town's street south of the eastern stone bridge.
 const CAPITAL_INTRO_FROM := Vector2(4.0, 16.0)
 ## Seconds a completed Banishing Rite takes off the clock in The Long Night's acts (v0.09.1); every other mission keeps
@@ -86,6 +88,8 @@ static func get_mission(id: String) -> MissionDef:
 	for m in dev_missions():
 		if m.id == id:
 			return m
+	if id == REMEMBRANCE:
+		return remembrance()
 	for m in rite_missions():
 		if m.id == id:
 			return m
@@ -195,6 +199,29 @@ static func capital_sandbox() -> MissionDef:
 	m.default_loadout = PackedStringArray(Mission.DEFAULT_LOADOUT)
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [ClockObjective.new(true, "Free play")]
+		return out
+	return m
+
+
+## Remembrance (Skill Tree wheel, Task 4): the capital as the god remembers it, for one power. One slot, no objectives (so nothing is
+## won or lost), no intro sweep (the camera rests on the great market at once). Mission fills the loadout and sets Rules.free_play; the def is
+## reached by id only -- never in dev_missions(), tier_missions() or the board.
+static func remembrance() -> MissionDef:
+	var m := MissionDef.new()
+	m.id = REMEMBRANCE
+	m.name = "Remembrance"
+	m.tier = 5
+	m.brief = PackedStringArray(["A night the god remembers.", "Free to try."])
+	m.goal = "Free play"
+	m.goal_label = "Free play"
+	m.slots = 1
+	m.city = &"capital"
+	m.clock = Rules.MISSION_SECONDS
+	m.camera_at = CapitalCity.MARKET_SQUARE.get_center()
+	m.intro_from = m.camera_at
+	m.intro_banner = ""
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = []
 		return out
 	return m
 

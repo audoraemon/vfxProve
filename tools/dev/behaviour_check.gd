@@ -45,6 +45,8 @@ extends SceneTree
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
 ##          [--setup=rite|evac|cross] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
 ##          (a power that acts on walkers has some: The Folded Ward); --zoom frames a wide area (default 1.5);
+##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
+##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
 ##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
 ##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
 ##          open paving south of the market);
@@ -1258,6 +1260,10 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(2.2, -2.2))
 		extra = {"to": to, "target": who}
 		look = at.lerp(to, 0.5)
+	var look_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--look")
+	if look_arg != "":
+		var off := look_arg.split(",")
+		look = at + Vector2(float(off[0]), float(off[1]))
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
 	var zoom := Battlefield.arg_value(OS.get_cmdline_user_args(), "--zoom")

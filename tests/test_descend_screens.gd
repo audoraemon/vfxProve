@@ -65,11 +65,18 @@ static func _upgrades(t) -> void:
 	var bad := 0
 	var state := DescendState.new()
 	var up := UpgradesScreen.new().setup(state)
-	for i in up.powers.size():
-		var r := UpgradesScreen.cell_rect(i)
-		if not Rect2(0, 0, 640, 316).encloses(r) or r.intersects(UpgradesScreen.DP_RECT) or r.intersects(UpgradesScreen.SLOT_RECT):
+	var n := up.powers.size()
+	for i in n:
+		var r := UpgradesScreen.cell_rect(i, n)
+		if not Rect2(0, 0, 640, 316).encloses(r) or r.intersects(UpgradesScreen.DP_RECT) or r.intersects(UpgradesScreen.SLOT_RECT) 				or r.size.y < UpgradesScreen.MIN_CELL_H:
 			bad += 1
-	t.check(up.powers.size() == 36 and bad == 0, "the 36 locked powers' grid fits beside the upgrades (%d)" % bad)
+		for j in i:
+			if r.intersects(UpgradesScreen.cell_rect(j, n)):
+				bad += 1
+	t.check(n == 37 and bad == 0, "the 37 locked powers' grid fits beside the upgrades, no two cells overlapping (%d)" % bad)
+	t.check(UpgradesScreen.cell_height(36) == UpgradesScreen.CELL.y and UpgradesScreen.cell_height(37) < UpgradesScreen.CELL.y
+		and UpgradesScreen.cell_height(37) >= UpgradesScreen.MIN_CELL_H,
+		"the rows keep their full height while they fit and share the room when they do not (%.0f px for 37)" % UpgradesScreen.cell_height(37))
 	var emitted := []
 	up.action.connect(func(what: String) -> void: emitted.append(what))
 	up.click(up.button_rect("dp").get_center())

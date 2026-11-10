@@ -122,6 +122,13 @@ func recall(seconds: float) -> void:
 			a.target = null
 
 
+## Takes one visitor out of the town for good (a power carries it off: Heaven's Door): the pack forgets it and its node
+## is freed. It is not counted as slain.
+func take(a: Animal) -> void:
+	_rules.erase(a)
+	_free(a)
+
+
 ## Every visitor is freed at once (the owner's end).
 func clear() -> void:
 	for a in _rules.keys():

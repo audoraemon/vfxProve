@@ -71,6 +71,9 @@ const AREAS := {
 	"everydoor": {"shape": "circle", "r": 0.6},
 	# TheFarGateFx.RADIUS: whom the door of stars draws
 	"fargate": {"shape": "circle", "r": 10.0},
+	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed");
+	# CRUSH_R and SHOCK_R ringed where it lands
+	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "inner": 3.0, "outer": 7.0},
 	# AnathemaFx.RADIUS: the buildings it would mark are outlined (_draw())
 	"anathema": {"shape": "circle", "r": 6.0},
 	# SacredSanctuaryFx.PICK_R: who would be hypnotized is ringed; then the wall's shape at the second click ("sanctuary")
@@ -546,7 +549,11 @@ func _draw() -> void:
 					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5
 					draw_line(_press, _press + out, COL_FAINT, -1.0)
 		"cone":
-			_cone(_press, float(a.r), float(a.arc), edge)
+			_cone(_press, float(a.r), float(a.arc), edge, cone_start(a, aim_dir()))
+			if a.has("inner"):
+				_ring(_press, float(a.inner), COL_INNER)
+			if a.has("outer"):
+				_ring(_press, float(a.outer), COL_FAINT)
 		"square":
 			# An axis-aligned square of side 2 * half centred on the cursor (a diamond on screen).
 			var box := square(_press, float(a.half))
@@ -813,13 +820,20 @@ func _lane(from: Vector2, dir: Vector2, length: float, half: float, col: Color) 
 	draw_line(from, from + dir * length, COL_FAINT, -1.0)
 
 
-func _cone(from: Vector2, r: float, arc: float, col: Color) -> void:
-	# The dragon's own start angle: its facing, biased 8 degrees to its right so the jet misses its body.
-	var start := Vector2(1, 0).angle() - arc * 0.5 - deg_to_rad(8.0)
+## Where a "cone" area's arc starts (radians, on the ground): centred on the drag (`dir`) for an "aimed" cone; else the
+## dragon's own -- its facing, screen down-right, biased 8 degrees to its right so the jet misses its body.
+static func cone_start(a: Dictionary, dir: Vector2) -> float:
+	if bool(a.get("aimed", false)):
+		return dir.angle() - float(a.arc) * 0.5
+	return Vector2(1, 0).angle() - float(a.arc) * 0.5 - deg_to_rad(8.0)
+
+
+func _cone(from: Vector2, r: float, arc: float, col: Color, start: float) -> void:
+	var steps := 16 if arc <= 1.5 else 48  # a wide arc in finer steps, so its rim stays round
 	for pass_i in 2:
 		var grow: float = SHADE_GAP if pass_i == 0 else 0.0
 		var points := PackedVector2Array([from])
-		for i in 17:
-			points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / 16.0) * (r + grow))
+		for i in steps + 1:
+			points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / float(steps)) * (r + grow))
 		points.append(from)
 		draw_polyline(points, SHADE if pass_i == 0 else col, -1.0)

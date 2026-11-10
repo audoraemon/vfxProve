@@ -199,6 +199,9 @@ const POWERS := [
 	{"key": "fargate", "name": "The Far Gate", "path": "res://src/fx/control/the_far_gate.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a door of stars opens for 15 s: up to 40 people within 10 walk through it with their dogs and goods, gone for the night; soldiers resist; once a descent",
 		"quiet": true, "alarm": 1.0, "authority": "passage"},
+	{"key": "heavendoor", "name": "Heaven's Door", "path": "res://src/fx/control/heavens_door.gd",
+		"dp": 6, "cooldown": 999.0, "aim": "drag", "shape": "a great door falls from heaven: it crushes where it lands, then opens and for 12 s draws in everyone and everything in the half circle of 16 before it; buildings there are torn apart; drag to face it; once a descent",
+		"authority": "passage"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -228,6 +231,9 @@ const REACH := {
 	"pilgrim": [6.0, 9.0, 0.4, 15.0],
 	"deep": [5.0, 8.0, 0.4, 4.0],
 	"houndgate": [6.0, 9.0, 0.6, 30.0],
+	# Heaven's Door: a door taller than a house falling out of a shaft of light is seen and heard across the town, as the
+	# Light of Solaris is; the danger lasts its opening and its pull
+	"heavendoor": [16.0, 22.0, 0.9, 16.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -238,7 +244,7 @@ const REACH := {
 const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
-	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0,
+	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -300,7 +306,7 @@ const FAMILY := {
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",
-	"foldward": "passage",
+	"foldward": "passage", "heavendoor": "passage",
 }
 
 

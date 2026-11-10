@@ -37,6 +37,9 @@ const COL_ICE_HI := Color("f4fcff")
 ## Gone through a door of stars (The Far Gate, kind gone): the starlight it fades into, and how long the figure takes.
 const COL_STAR := Color("e4eaff")
 const GONE_FADE := 0.7
+## The light one gone (kind gone) fades into: starlight (COL_STAR) unless the power that takes it sets its own before the
+## kill (Heaven's Door: white-gold).
+var gone_light := COL_STAR
 ## Orc horde skin: dark iron armor, red cloth, green skin.
 const ORC_DARK := Color("1e1a1c")
 const ORC_ARMOR := Color("4a3f3e")
@@ -515,7 +518,7 @@ func _tint(c: Color) -> Color:
 	if _kind == &"gravity" and state == State.DEAD:
 		return c.lerp(COL_VOID, _char * 0.8)
 	if _kind == &"gone" and state == State.DEAD:
-		return c.lerp(COL_STAR, _char * 0.9)
+		return c.lerp(gone_light, _char * 0.9)
 	return c.lerp(COL_CHAR, _char * 0.85)
 
 
@@ -734,7 +737,7 @@ func _draw_gone() -> void:
 		draw_set_transform(_draw_origin)
 	for e in _embers:
 		if e.z > 0.0:
-			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), Color(COL_STAR, clampf(e.z, 0.0, 1.0)))
+			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), Color(gone_light, clampf(e.z, 0.0, 1.0)))
 
 
 ## Fallen into the Light of Solaris's pit: the hole takes it. It is drawn in toward the hole's middle and down, turning

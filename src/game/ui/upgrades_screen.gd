@@ -15,6 +15,10 @@ const GRID_AT := Vector2(216.0, 52.0)
 const CELL := Vector2(136.0, 20.0)
 const CELL_GAP := 2.0
 const COLUMNS := 3
+## The grid ends here, above the Board button: when the locked powers' rows would run past it at CELL's height, every
+## row is made shorter to share the room, down to MIN_CELL_H (still a line of small text).
+const GRID_BOTTOM := 316.0
+const MIN_CELL_H := 16.0
 const BACK_RECT := Rect2(8.0, 322.0, 100.0, 20.0)
 const REFUSE_SECONDS := 1.5
 ## What a refused purchase says, by DescendState.refusal().
@@ -45,11 +49,22 @@ func setup(state: DescendState) -> UpgradesScreen:
 	return self
 
 
-## The grid's cell `i`.
-static func cell_rect(i: int) -> Rect2:
+## The grid's cell `i` in a grid of `count` powers (0: as if they all fit at CELL's height).
+static func cell_rect(i: int, count := 0) -> Rect2:
 	var col := i % COLUMNS
 	var row := i / COLUMNS
-	return Rect2(GRID_AT + Vector2(float(col) * (CELL.x + CELL_GAP), float(row) * (CELL.y + CELL_GAP)), CELL)
+	var h := cell_height(count)
+	return Rect2(GRID_AT + Vector2(float(col) * (CELL.x + CELL_GAP), float(row) * (h + CELL_GAP)), Vector2(CELL.x, h))
+
+
+## A cell's height in a grid of `count` powers: CELL's own while its rows fit above GRID_BOTTOM, else the room shared
+## out between them (whole pixels), never under MIN_CELL_H.
+static func cell_height(count: int) -> float:
+	var rows := ceili(float(count) / float(COLUMNS))
+	if rows <= 0:
+		return CELL.y
+	var room := floorf((GRID_BOTTOM - GRID_AT.y + CELL_GAP) / float(rows)) - CELL_GAP
+	return clampf(room, MIN_CELL_H, CELL.y)
 
 
 ## What is under a point: "dp", "slot", "back", a power key, or "".
@@ -61,7 +76,7 @@ func hit(point: Vector2) -> String:
 	if BACK_RECT.has_point(point):
 		return "back"
 	for i in powers.size():
-		if cell_rect(i).has_point(point):
+		if cell_rect(i, powers.size()).has_point(point):
 			return powers[i]
 	return ""
 
@@ -76,7 +91,7 @@ func button_rect(what: String) -> Rect2:
 		"back":
 			return BACK_RECT
 	var i := powers.find(what)
-	return cell_rect(i) if i >= 0 else Rect2()
+	return cell_rect(i, powers.size()) if i >= 0 else Rect2()
 
 
 ## A left click at a screen point: Board goes back; anything else is bought if it can be.
@@ -176,7 +191,7 @@ func _draw_button(r: Rect2, title: String, line: String, what: String) -> void:
 
 ## A locked power's cell: its name cut to fit and its price; "Unlocked" once bought; dim when unaffordable.
 func _draw_cell(i: int, key: String) -> void:
-	var r := cell_rect(i)
+	var r := cell_rect(i, powers.size())
 	var owned := _state.is_unlocked(key)
 	var can := _state.refusal(key) == ""
 	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == key else UiTheme.COL_PANEL)
@@ -184,7 +199,9 @@ func _draw_cell(i: int, key: String) -> void:
 	var price := "Unlocked" if owned else "%d" % DescendState.unlock_price(key)
 	var price_w := UiTheme.width(price, UiTheme.SIZE_SMALL)
 	var power_name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - price_w - 14.0)
-	UiTheme.text(_ui, r.position + Vector2(4.0, 14.0), power_name, UiTheme.SIZE_SMALL,
+	# The line's baseline: 14 px down a full cell, kept in the middle of a shorter one.
+	var base := r.position.y + roundf(r.size.y * 0.5 + 4.0)
+	UiTheme.text(_ui, Vector2(r.position.x + 4.0, base), power_name, UiTheme.SIZE_SMALL,
 		UiTheme.COL_GOLD if owned else (UiTheme.COL_TEXT if can else UiTheme.COL_DIM))
-	UiTheme.text(_ui, Vector2(r.end.x - 4.0 - price_w, r.position.y + 14.0), price, UiTheme.SIZE_SMALL,
+	UiTheme.text(_ui, Vector2(r.end.x - 4.0 - price_w, base), price, UiTheme.SIZE_SMALL,
 		UiTheme.COL_GOLD if owned else UiTheme.COL_DIM)

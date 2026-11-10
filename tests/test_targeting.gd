@@ -35,6 +35,14 @@ static func run(t) -> void:
 	t.check(String(fw.shape) == "square" and float(fw.half) == FoldedWardFx.HALF
 		and Targeting.square(Vector2(2.0, 1.0), FoldedWardFx.HALF) == Rect2(-1.0, -2.0, 6.0, 6.0),
 		"The Folded Ward shows a square of HALF each side of the cursor, axis-aligned on the ground (a diamond on screen)")
+	var hd: Dictionary = Targeting.AREAS["heavendoor"]
+	t.check(String(hd.shape) == "cone" and float(hd.r) == HeavensDoorFx.PULL_R and is_equal_approx(float(hd.arc), HeavensDoorFx.HALF_ANGLE * 2.0)
+			and float(hd.inner) == HeavensDoorFx.CRUSH_R and float(hd.outer) == HeavensDoorFx.SHOCK_R,
+		"Heaven's Door shows the half circle of PULL_R before it, CRUSH_R and SHOCK_R ringed")
+	t.check(is_equal_approx(Targeting.cone_start(hd, Vector2(0, -1)), -PI) and is_equal_approx(Targeting.cone_start(hd, Vector2(1, 0)), -PI * 0.5),
+		"an \"aimed\" cone is centred on the drag")
+	t.check(is_equal_approx(Targeting.cone_start(Targeting.AREAS["dragon"], Vector2(0, -1)), -0.5 - deg_to_rad(8.0)),
+		"the dragon's cone keeps its own facing, whatever the drag")
 	var missing := ""
 	for key in PowerBook.keys():
 		if not Targeting.AREAS.has(key):

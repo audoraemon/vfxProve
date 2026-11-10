@@ -69,6 +69,7 @@ const POWER_KINDS := {
 	"foldward": [],
 	"everydoor": [],
 	"fargate": [&"gone"],
+	"heavendoor": [&"stone", &"gone"],
 	"belllies": [],
 	"magnify": [&"magnify"],
 	"unseen": [],

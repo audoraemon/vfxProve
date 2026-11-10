@@ -2686,7 +2686,7 @@ func _sprite_tint() -> Color:
 	if _kind == &"gravity" and state == State.DEAD:
 		return Color(COL_VOID, _char * 0.8)
 	if _kind == &"gone" and state == State.DEAD:
-		return Color(COL_STAR, _char * 0.9)
+		return Color(gone_light, _char * 0.9)
 	if _char > 0.0:
 		return Color(COL_CHAR, _char * 0.85)
 	if sick_left > 0.0 and state != State.DEAD:

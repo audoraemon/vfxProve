@@ -1,11 +1,10 @@
 {
- "hash": "4ef228391443bd61",
- "updated": "2026-11-10T06:46:40+07:00",
+ "hash": "bddd02fb1b69d37b",
+ "updated": "2026-11-10T11:22:36+07:00",
  "changes": {
-  "date": "<t:1794268000:f>",
+  "date": "<t:1794284556:f>",
   "items": [
-   "New: Natural sound pass 3: crowd panic redesign, ducking, humanized music",
-   "New: Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate"
+   "Done: Dominion ability levels: puppet-master upgrades"
   ]
  },
  "snapshot": {
@@ -260,11 +259,11 @@
    },
    "god-dominion-levels": {
     "title": "Dominion ability levels: puppet-master upgrades",
-    "status": "doing",
+    "status": "done",
     "area": "Gameplay",
     "needs_you": false,
     "branch": "feat/god-progression",
-    "updated": "2026-11-09",
+    "updated": "2026-11-10",
     "order": 210
    },
    "god-dominion-t3": {
@@ -1412,10 +1411,10 @@
    },
    {
     "name": "feat/soldier-jobs",
-    "ahead": 10,
+    "ahead": 16,
     "behind": 1,
     "date": "2026-11-10",
-    "subject": "feat: fallen buildings stay blocked ruins; people standing in a falling footprint step out",
+    "subject": "feat: Heretic Hunt, Informer and Heart of Faith judge a watch from where the guard stands",
     "pushed": false
    },
    {
@@ -1424,6 +1423,14 @@
     "behind": 1,
     "date": "2026-11-10",
     "subject": "feat: natural sound pass 3: crowd panic redesign, ducking, humanized music",
+    "pushed": true
+   },
+   {
+    "name": "feat/god-progression",
+    "ahead": 248,
+    "behind": 13,
+    "date": "2026-11-09",
+    "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
    },
    {
@@ -1459,11 +1466,11 @@
     "pushed": false
    },
    {
-    "name": "feat/god-progression",
-    "ahead": 228,
-    "behind": 13,
+    "name": "feat/people-anim-2",
+    "ahead": 5,
+    "behind": 0,
     "date": "2026-11-09",
-    "subject": "fix: play_dev.bat refreshes the class cache before launch (stale cache: game.gd failed to parse)",
+    "subject": "feat: zoom readout at the screen's right edge after each zoom",
     "pushed": true
    },
    {

@@ -1167,8 +1167,9 @@ func _flow_ascend(step: Callable) -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
 	var prep := _screen_node as PrepareScreen
 	step.call(prep != null and prep.draft.slots == 3 and prep.draft.capacity == 6 and not prep.mission.chooses_difficulty()
-		and prep.draft.locked.has("tsunami") and prep.draft.locked.size() == 23,
-		"its Prepare: Tier 1's 3 slots and 6 DP, no difficulty, the locked powers greyed")
+		and prep.draft.locked.has("tsunami") and prep.draft.locked == DescendState.new().locked(),
+		"its Prepare: Tier 1's 3 slots and 6 DP, no difficulty, the locked powers greyed (%d, a fresh god's)"
+		% (prep.draft.locked.size() if prep != null else -1))
 	prep.draft.preselect(MissionBook.warning().default_loadout)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)

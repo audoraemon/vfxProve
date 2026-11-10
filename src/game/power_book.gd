@@ -14,9 +14,11 @@ extends RefCounted
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
+		"blurb": "Everyone within reach is struck down, unseen.",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within reach struck down, unseen", "quiet": true,
 		"authority": "veil"},
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
+		"blurb": "Press a person to send them walking, set them on someone, or at a building.",
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
 		"shape": "press a person: walk, attack or burn -- send them somewhere (8 s), set them on someone, or at a building; not the same one again for 20 s", "quiet": true,
 		"authority": "dominion",
@@ -27,6 +29,7 @@ const POWERS := [
 			{"REACH": 13.0, "ATTACK_SECS": 13.0, "cooldown": 6.5},
 			{"REACH": 14.0, "ATTACK_SECS": 14.0, "cooldown": 6.0, "twist": true, "twist_text": "Held String: whisper the same one again"}]},
 	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
+		"blurb": "A bolt falls where you click. It kills whoever stands there and hurts a building.",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
 		"authority": "ruin",
 		"levels": [
@@ -36,6 +39,7 @@ const POWERS := [
 			{"KILL_R": 0.75, "DAMAGE": 60.0, "cooldown": 8.5},
 			{"KILL_R": 0.8, "DAMAGE": 65.0, "cooldown": 8.0, "twist": true, "twist_text": "Forked Bolt: leaps to one more nearby"}]},
 	{"key": "ember", "name": "Ember", "path": "res://src/fx/ruin/ember.gd",
+		"blurb": "One spark flies to a building and sets it alight.",
 		"dp": 1, "cooldown": 15.0, "aim": "click", "shape": "one spark that sets one building alight", "quiet": true,
 		"authority": "ruin",
 		"levels": [
@@ -45,12 +49,15 @@ const POWERS := [
 			{"START_LEVEL": 0.6, "REACH": 1.2, "cooldown": 12.0},
 			{"START_LEVEL": 0.65, "REACH": 1.4, "cooldown": 11.0, "twist": true, "twist_text": "Leaping Spark: jumps to the next house"}]},
 	{"key": "deathmark", "name": "Death Mark", "path": "res://src/fx/death/death_mark.gd",
+		"blurb": "One person grows frail and slow, then dies. The body draws a crowd.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
 		"quiet": true, "authority": "death"},
 	{"key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd",
+		"blurb": "Nobody in the circle can leave it for a time.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
 		"quiet": true, "alarm": 0.5, "authority": "decree"},
 	{"key": "wisp", "name": "Will-o'-Wisp", "path": "res://src/fx/control/will_o_wisp.gd",
+		"blurb": "A pale light lures calm people to stand round it. ENTHRALL holds everyone near it.",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "lures up to 25 calm people, 12 s; or ENTHRALL holds all near the light, 30 s (cooldown 75 s); Q/E",
 		"quiet": true, "authority": "dominion", "modes": [
 			{"key": "lure", "name": "LURE"}, {"key": "enthrall", "name": "ENTHRALL", "area": {"r": 4.0, "roam": 0.0}, "cooldown": 75.0}],
@@ -61,6 +68,7 @@ const POWERS := [
 			{"LURE_MAX": 32, "WISP_TIME": 15.0, "ENTHRALL_TIME": 37.0, "cooldown": 25.0},
 			{"LURE_MAX": 35, "WISP_TIME": 16.0, "ENTHRALL_TIME": 40.0, "cooldown": 24.0, "twist": true, "twist_text": "Procession: click again to lead the light"}]},
 	{"key": "discord", "name": "Discord", "path": "res://src/fx/quiet/discord.gd",
+		"blurb": "People in the circle forget their task and wander off.",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "people forget their task, 15 s", "quiet": true,
 		"authority": "dominion",
 		"levels": [
@@ -70,12 +78,14 @@ const POWERS := [
 			{"DISCORD_R": 1.5, "DISCORD_TIME": 18.0, "cooldown": 24.0},
 			{"DISCORD_R": 1.6, "DISCORD_TIME": 20.0, "cooldown": 22.0, "twist": true, "twist_text": "Tangled Threads: forgetting spreads one hop"}]},
 	{"key": "belllies", "name": "The Bell Lies", "path": "res://src/fx/decree/the_bell_lies.gd",
+		"blurb": "The bell tolls that all is well, or calls the guard to a place. Q and E pick.",
 		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "the bell tolls all is well, now and for 45 s; or calls the guard to a place; Q/E",
 		"quiet": true, "authority": "decree", "modes": [
 			{"key": "well", "name": "ALL IS WELL"}, {"key": "guard", "name": "CALL THE GUARD", "area": {"r": 1.5}}]},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "scatter", "name": "Scatter Strike", "path": "res://src/fx/ruin/scatter_strike.gd",
+		"blurb": "Bursts of fire erupt at random from the ground over a wide circle.",
 		"dp": 2, "cooldown": 30.0, "aim": "click", "shape": "twelve bursts from the ground, thrown at random over a wide circle, 4 s", "authority": "ruin",
 		"levels": [
 			{"BLASTS": 12, "KILL_R": 0.9, "cooldown": 30.0},
@@ -84,6 +94,7 @@ const POWERS := [
 			{"BLASTS": 15, "KILL_R": 1.0, "cooldown": 27.0},
 			{"BLASTS": 16, "KILL_R": 1.1, "cooldown": 25.0, "twist": true, "twist_text": "Seeking Bursts: each burst finds someone near"}]},
 	{"key": "madness", "name": "Madness Bloom", "path": "res://src/fx/curse/madness_bloom.gd",
+		"blurb": "A madness grows, spreads from mind to mind and breaks into frenzy.",
 		"dp": 2, "cooldown": 40.0, "aim": "click", "shape": "a madness that grows, spreads and breaks into frenzy",
 		"quiet": true, "alarm": 0.2, "authority": "dominion",
 		"levels": [
@@ -93,12 +104,15 @@ const POWERS := [
 			{"RADIUS": 1.95, "SEED": 0.08, "cooldown": 34.0},
 			{"RADIUS": 2.1, "SEED": 0.1, "cooldown": 32.0, "twist": true, "twist_text": "Directed Frenzy: the broken hunt soldiers"}]},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
+		"blurb": "Ruins a well, bell, gate, dock or rite.",
 		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
 		"authority": "veil"},
 	{"key": "thorns", "name": "Thornwall", "path": "res://src/fx/control/thornwall.gd",
+		"blurb": "A bramble wall rises and blocks the way for a while.",
 		"dp": 2, "cooldown": 42.0, "aim": "drag", "shape": "3-unit bramble wall, 25 s", "quiet": true,
 		"authority": "passage"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
+		"blurb": "A roaming vortex tears through the town and flings people about.",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin",
 		"levels": [
 			{"PULL_RADIUS": 3.2, "LIFETIME": 10.0, "cooldown": 45.0},
@@ -107,9 +121,11 @@ const POWERS := [
 			{"PULL_RADIUS": 3.8, "LIFETIME": 13.0, "cooldown": 40.0},
 			{"PULL_RADIUS": 4.0, "LIFETIME": 14.0, "cooldown": 38.0, "twist": true, "twist_text": "Twin Funnels: splits in two as it dies"}]},
 	{"key": "pestilence", "name": "Pestilence", "path": "res://src/fx/curse/pestilence.gd",
+		"blurb": "A fast plague spreads through the crowds.",
 		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
 		"authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
+		"blurb": "A dragon breathes a cone of fire and burns all before it.",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin",
 		"levels": [
 			{"BREATH_TIME": 2.4, "SWEEP_ARC": 1.0, "cooldown": 54.0},
@@ -118,6 +134,7 @@ const POWERS := [
 			{"BREATH_TIME": 3.0, "SWEEP_ARC": 1.2, "cooldown": 48.0},
 			{"BREATH_TIME": 3.2, "SWEEP_ARC": 1.3, "cooldown": 46.0, "twist": true, "twist_text": "Second Breath: breathes again, back the other way"}]},
 	{"key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd",
+		"blurb": "Two faint mirrors: people step in at the first and out at the second.",
 		"dp": 3, "cooldown": 54.0, "aim": "two clicks", "shape": "two faint mirrors: in at the first, out at the second, 30 s",
 		"quiet": true, "authority": "passage"},
 	{"key": "magnify", "name": "Magnify", "path": "res://src/fx/decree/magnify.gd",
@@ -148,6 +165,7 @@ const POWERS := [
 			{"key": "soldier", "name": "THE GUARD"}, {"key": "clergy", "name": "THE CLERGY"},
 			{"key": "engineer", "name": "THE ENGINEERS"}]},
 	{"key": "clearmind", "name": "Clear Mind", "path": "res://src/fx/dominion/clear_mind.gd",
+		"blurb": "Everyone in the circle senses nothing unusual. Whoever walks in joins them.",
 		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "everyone in the circle senses nothing special, 30 s; whoever walks in joins",
 		"quiet": true, "alarm": 0.3, "authority": "dominion",
 		"levels": [
@@ -157,6 +175,7 @@ const POWERS := [
 			{"RADIUS": 6.2, "TRANCE_TIME": 37.0, "cooldown": 51.0},
 			{"RADIUS": 6.5, "TRANCE_TIME": 40.0, "cooldown": 48.0, "twist": true, "twist_text": "Sleepwalk: click again to walk the entranced"}]},
 	{"key": "saint", "name": "Saint or Sinner", "path": "res://src/fx/dominion/saint_or_sinner.gd",
+		"blurb": "One is chosen. Everyone round them guards them at all cost, or kills them.",
 		"dp": 3, "cooldown": 60.0, "aim": "wheel", "shape": "one is chosen; everyone round them guards them at all cost, or kills them: the wheel picks",
 		"quiet": true, "alarm": 0.5, "authority": "dominion", "modes": [
 			{"key": "saint", "name": "SAINT", "glyph": [0b01110, 0b10001, 0b01110, 0b00100, 0b01110], "color": Color(1.0, 0.9, 0.6, 0.9)},
@@ -180,6 +199,7 @@ const POWERS := [
 		"quiet": true, "authority": "dominion", "modes": [
 			{"key": "danger", "name": "FALSE DANGER"}, {"key": "calm", "name": "ALL IS WELL", "area": {"r": 7.0}}]},
 	{"key": "anathema", "name": "Anathema", "path": "res://src/fx/dominion/anathema.gd",
+		"blurb": "A district is cursed, and nobody stays inside, or hallowed, and everyone does.",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district's buildings are cursed (nobody inside, fires left) or hallowed (everyone inside, and stays), 40 s; Q/E",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "modes": [
 			{"key": "cursed", "name": "CURSED"}, {"key": "hallowed", "name": "HALLOWED"}],
@@ -190,6 +210,7 @@ const POWERS := [
 			{"RADIUS": 7.2, "SPAN": 52.0, "cooldown": 78.0},
 			{"RADIUS": 7.5, "SPAN": 55.0, "cooldown": 74.0, "twist": true, "twist_text": "Spreading Mark: spreads to buildings near"}]},
 	{"key": "sanctuary", "name": "Sacred Sanctuary", "path": "res://src/fx/dominion/sacred_sanctuary.gd",
+		"blurb": "People at the first click wall off the second place and set on whoever enters.",
 		"dp": 4, "cooldown": 90.0, "aim": "two clicks", "shape": "the people at the first click wall the place at the second and set on whoever enters, 40 s; right-click: shape",
 		"quiet": true, "alarm": 1.0, "authority": "dominion", "alt_steps_mode": true, "modes": [
 			{"key": "circle", "name": "CIRCLE"}, {"key": "rect", "name": "RECTANGLE"}],
@@ -203,6 +224,7 @@ const POWERS := [
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
+		"blurb": "A wall of water rolls across the town and sweeps away all in its path.",
 		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin",
 		"levels": [
 			{"LENGTH": 6.5, "WIDTH": 8.0, "cooldown": 60.0},
@@ -217,6 +239,7 @@ const POWERS := [
 	{"key": "orbital", "name": "Orbital Strike", "path": "res://src/fx/orbital_strike.gd",
 		"dp": 3, "cooldown": 66.0, "aim": "click", "shape": "random bombardment", "authority": "ruin"},
 	{"key": "cinder", "name": "Cinderfall Barrage", "path": "res://src/fx/set2/cinderfall_barrage.gd",
+		"blurb": "A volcano rises and rains burning stone on the town.",
 		"dp": 4, "cooldown": 75.0, "aim": "click", "shape": "volcano + stone rain", "authority": "ruin",
 		"levels": [
 			{"STONES": 20, "RADIUS": 5.8, "cooldown": 75.0},
@@ -229,6 +252,7 @@ const POWERS := [
 	{"key": "glacial", "name": "Glacial Cataclysm", "path": "res://src/fx/set2/glacial_cataclysm.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "burst + freeze + ice", "authority": "ruin"},
 	{"key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd",
+		"blurb": "A pillar of sunfire burns the spot, then leaves a pit that takes all who enter.",
 		"dp": 4, "cooldown": 105.0, "aim": "click", "shape": "5 s pillar of sunfire; leaves a pit that takes all who enter",
 		"authority": "ruin",
 		"levels": [
@@ -238,6 +262,7 @@ const POWERS := [
 			{"RADIUS": 2.8, "BEAM_TIME": 6.0, "cooldown": 95.0},
 			{"RADIUS": 3.0, "BEAM_TIME": 6.5, "cooldown": 90.0, "twist": true, "twist_text": "Wandering Sun: drifts toward the crowd"}]},
 	{"key": "voice", "name": "Voice of God", "path": "res://src/fx/dominion/voice_of_god.gd",
+		"blurb": "One command the whole town obeys. Q and E pick the command.",
 		"dp": 5, "cooldown": 180.0, "aim": "click", "shape": "one command the whole town obeys; Q/E picks it",
 		"quiet": true, "alarm": 6.0, "authority": "dominion", "modes": [
 			{"key": "kneel", "name": "KNEEL"}, {"key": "halt", "name": "HALT"}, {"key": "flee", "name": "FLEE"},
@@ -255,6 +280,7 @@ const POWERS := [
 			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
 			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
 	{"key": "tempest", "name": "Wrath of the Sky", "path": "res://src/fx/ruin/tempest.gd",
+		"blurb": "A storm covers the town. Bolts fall and the rain drives people in. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "a storm over the whole town: 25 s of bolts, the rain drives people in; once",
 		"authority": "ruin",
 		"levels": [
@@ -264,6 +290,7 @@ const POWERS := [
 			{"STORM_TIME": 31.0, "VOLLEY": Vector2i(6, 8), "VOLLEY_EVERY": 1.2},
 			{"STORM_TIME": 33.0, "VOLLEY": Vector2i(7, 9), "VOLLEY_EVERY": 1.2, "twist": true, "twist_text": "Called Bolts: click to call a bolt every 3 s"}]},
 	{"key": "shatter", "name": "Earthshatter", "path": "res://src/fx/ruin/earthshatter.gd",
+		"blurb": "The ground tears open from one click to the next, and the crack stays. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "two clicks", "shape": "the ground torn open from one click to the next, slowly; the crack stays; once",
 		"authority": "ruin",
 		"levels": [
@@ -273,6 +300,7 @@ const POWERS := [
 			{"MAX_LENGTH": 24.0, "HALF": 1.3, "SPEED": 2.2},
 			{"MAX_LENGTH": 26.0, "HALF": 1.4, "SPEED": 2.5, "twist": true, "twist_text": "Fault Lines: forks twice as it runs"}]},
 	{"key": "schism", "name": "Divine Schism", "path": "res://src/fx/dominion/divine_schism.gd",
+		"blurb": "Two sides form, each sure the other is the enemy. Once a descent.",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "two sides, each sure the other is the enemy; once a descent",
 		"authority": "dominion", "modes": [
 			{"key": "faction", "name": "FACTION SPLIT"}, {"key": "purge", "name": "PURGE", "area": {"r": 1.5}},
@@ -341,7 +369,7 @@ const MAX_LEVEL := 5
 ## The levels at which a power costs one more Might (spec §6): reaching 3 adds 1, reaching 5 adds 1.
 const MIGHT_STEPS := [3, 5]
 ## What level_change() says for a power whose row has no `levels` table yet (Ruin's and Dominion's powers have one; the other rows do not yet).
-const NO_LEVELS := "Level effects not set"
+const NO_LEVELS := "Levels to come"
 ## The keys a level table holds besides stats: level 5's twist flag and its one-line text.
 const TWIST_KEYS := ["twist", "twist_text"]
 
@@ -456,25 +484,51 @@ static func level_change(key: String, level: int) -> String:
 	return level_change_in(get_power(key), level)
 
 
-## level_change() for a row given directly.
+## level_change() for a row given directly (built from level_rows_in(), so the two never disagree).
 static func level_change_in(entry: Dictionary, level: int) -> String:
-	var table := _table(entry)
-	if table.is_empty():
+	if _table(entry).is_empty():
 		return NO_LEVELS
 	if level < 2:
 		return ""
+	var parts := PackedStringArray()
+	for r: Dictionary in level_rows_in(entry, level):
+		parts.append("%s %s -> %s" % [r.label, r.old, r.new])
+	if mini(level, MAX_LEVEL) == MAX_LEVEL and twist_in(entry) != "":
+		parts.append(twist_in(entry))
+	return ", ".join(parts)
+
+
+## A power's short player-facing description: its row's "blurb", else its "shape" with the first letter capitalised ("" for an unknown key).
+static func blurb(key: String) -> String:
+	var p := get_power(key)
+	var b := String(p.get("blurb", ""))
+	if b != "":
+		return b
+	var shape := String(p.get("shape", ""))
+	return shape.substr(0, 1).to_upper() + shape.substr(1)
+
+
+## The stats that change on reaching `level`, as [{"label", "old", "new"}] in table order (the twist keys left out); [] at level 1 or
+## below and for a power without a table.
+static func level_rows(key: String, level: int) -> Array:
+	return level_rows_in(get_power(key), level)
+
+
+## level_rows() for a row given directly.
+static func level_rows_in(entry: Dictionary, level: int) -> Array:
+	var table := _table(entry)
+	var out := []
+	if table.is_empty() or level < 2:
+		return out
 	var lv := mini(level, table.size())
 	var before: Dictionary = table[lv - 2]
 	var after: Dictionary = table[lv - 1]
-	var parts := PackedStringArray()
 	for name: String in after:
 		if TWIST_KEYS.has(name):
 			continue
 		if not before.has(name) or before[name] != after[name]:
-			parts.append("%s %s -> %s" % [_stat_label(entry, name), _stat_text(before.get(name, "?")), _stat_text(after[name])])
-	if lv == MAX_LEVEL and twist_in(entry) != "":
-		parts.append(twist_in(entry))
-	return ", ".join(parts)
+			out.append({"label": _stat_label(entry, name), "old": _stat_text(before.get(name, "?")), "new": _stat_text(after[name])})
+	return out
 
 
 ## The words level_change() prints for a stat of this row (STAT_LABELS, else the stat's own name).

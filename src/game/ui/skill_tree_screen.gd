@@ -26,8 +26,7 @@ const BACK_RECT := Rect2(8.0, 322.0, 70.0, 24.0)
 ## How long a refusal's reason stays up.
 const REFUSE_SECONDS := 1.5
 ## What a refused click says, by GodSlot.refusal() (*my call*); "tier" takes the spot's tier.
-const REFUSALS := {"unknown": "Not yet chosen", "far": "Too far from your nature", "tier": "Awaken to Tier %d",
-	"max": "Already at level 5", "points": "Not enough ability points"}
+const REFUSALS := TreeDetail.REFUSALS
 
 ## Why the last click learned nothing, shown for REFUSE_SECONDS; "" for none.
 var refused_reason := ""

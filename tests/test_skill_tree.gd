@@ -71,7 +71,7 @@ static func _lines(t) -> void:
 	var want := PackedStringArray(["Smite", "2 / 5", "1 Might", "Level 3: 1 point", "kill radius 0.65 -> 0.7, damage 50.0 -> 55.0, cooldown 9.5 -> 9.0"])
 	t.check(s.spot_lines(1, 1, 0) == want, "smite learned at 2: name, pips, Might, next level, its change (%s)" % [s.spot_lines(1, 1, 0)])
 	var thorns := s.spot_lines(2, 1, 0)
-	t.check(thorns[4] == PowerBook.NO_LEVELS, "a power with no table (Thornwall) still reads Level effects not set (%s)" % [thorns])
+	t.check(thorns[4] == PowerBook.NO_LEVELS, "a power with no table (Thornwall) still reads Levels to come (%s)" % [thorns])
 	t.check(thorns[0] == "Thornwall" and thorns[1] == "0 / 5" and thorns[3] == "Learn: 2 points",
 		"a neighbour's unlearned spot costs 2 points to learn (%s)" % [thorns])
 	var ember := s.spot_lines(1, 1, 1)
@@ -85,7 +85,7 @@ static func _lines(t) -> void:
 		if s.key_at(0, 1, i) == "whisper":
 			dom = s.spot_lines(0, 1, i)
 	t.check(not dom.is_empty() and dom[0] == "Mind Whisper" and dom[4] == "walk reach 10.0 -> 11.0, attack 10.0 -> 11.0, cooldown 8.0 -> 7.5",
-		"a Dominion spot learned at 1 shows its table's next change, not Level effects not set (%s)" % [dom])
+		"a Dominion spot learned at 1 shows its table's next change, not Levels to come (%s)" % [dom])
 	s._slot.learned["whisper"] = 5
 	for i in 2:
 		if s.key_at(0, 1, i) == "whisper":

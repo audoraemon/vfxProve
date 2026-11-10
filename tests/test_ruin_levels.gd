@@ -348,7 +348,7 @@ static func _tree_text(t) -> void:
 		all_five = all_five and PowerBook.level_change(key, 5).ends_with(PowerBook.twist(key))
 		all_one = all_one and PowerBook.level_change(key, 1) == ""
 	t.check(all_five and all_one, "level 5's change ends with the twist text; level 1 changes nothing")
-	t.check(PowerBook.level_change("doom", 2) == PowerBook.NO_LEVELS, "a power with no table still says Level effects not set")
+	t.check(PowerBook.level_change("doom", 2) == PowerBook.NO_LEVELS, "a power with no table still says Levels to come")
 	t.check(PrepareScreen.cooldown_text(PowerBook.get_power("smite"), 5) == "8 s" and PrepareScreen.cooldown_text(PowerBook.get_power("smite"), 2) == "9.5 s"
 		and PrepareScreen.cooldown_text(PowerBook.get_power("smite")) == "10 s" and PrepareScreen.cooldown_text({"cooldown": 2.5}) == "2.5 s",
 		"the cards print the level's cooldown (8 s at level 5, 9.5 s at 2)")

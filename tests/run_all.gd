@@ -215,6 +215,7 @@ const SUITES := [
 	"res://tests/test_options.gd",
 	"res://tests/test_power_sounds.gd",
 	"res://tests/test_power_levels.gd",
+	"res://tests/test_tree_detail.gd",
 	"res://tests/test_ruin_levels.gd",
 	"res://tests/test_ruin_twist_smite.gd",
 	"res://tests/test_ruin_twist_ember.gd",

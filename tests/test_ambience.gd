@@ -88,9 +88,9 @@ static func run(t) -> void:
 		t.check(Sfx.paths_for(cue).size() >= 3, "%s has at least three takes" % cue)
 	t.check(Sfx.paths_for(&"dog_bark").size() == 10 and Sfx.paths_for(&"cat_meow").size() == 8, "ten barks, eight meows")
 	var all_pitched := true
-	for b in Animal.Breed.values():
+	for b in Animal.DOGS + Animal.CATS:
 		all_pitched = all_pitched and AnimalVoices.PITCH.has(b)
-	t.check(all_pitched, "every breed has its own voice")
+	t.check(all_pitched, "every town breed has its own voice (a visitor such as a hellhound speaks at 1.0)")
 	t.check(float(AnimalVoices.PITCH[Animal.Breed.WOLFHOUND]) < 1.0 and float(AnimalVoices.PITCH[Animal.Breed.TERRIER]) > 1.0,
 		"a wolfhound is low, a terrier high")
 	var av := AnimalVoices.new()

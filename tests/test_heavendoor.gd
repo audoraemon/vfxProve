@@ -214,8 +214,10 @@ static func _book(t) -> void:
 			and is_equal_approx(Targeting.cone_start(area, Vector2(1, 0)), -PI * 0.5)
 			and is_equal_approx(Targeting.cone_start(Targeting.AREAS["dragon"], Vector2(0, 1)), Targeting.cone_start(Targeting.AREAS["dragon"], Vector2(1, 0))),
 		"its half circle turns with the drag (the dragon's cone does not)")
-	t.check(HeavensDoorFx.facing_of({}) == Vector2(1, 0) and HeavensDoorFx.facing_of({"dir": Vector2(0, 3)}) == Vector2(0, 1),
-		"a click with no drag faces it down-right on screen; a drag faces it the drag's way")
+	t.check(HeavensDoorFx.facing_of({}) == Vector2(1, 0) and HeavensDoorFx.facing_of({"dir": Vector2(0, 3)}) == Vector2(0, 1)
+			and HeavensDoorFx.facing_of({"dir": Vector2(0.2, 3)}) == Vector2(0, 1),
+		"a click with no drag faces it down-right on screen; a drag faces it the drag's way, to the nearest of its eight")
+	t.check(int(area.get("snap", 0)) == HeavensDoorFx.DIRS.size(), "the aim's half circle turns in the same eight steps")
 
 
 # --- The pull's own rules (EnemyField) ----------------------------------------------
@@ -435,6 +437,120 @@ static func _facing(t) -> void:
 		_done(s)
 
 
+## The eight ways: whatever the drag, the door faces one of DIRS, the nearest; each is 45 degrees from the next on the
+## ground, and each draws the sheet's row that is seen that way on screen.
+static func _ways(t) -> void:
+	var one_of := true
+	var nearest := true
+	for deg in range(0, 360, 3):
+		for length: float in [0.4, 3.0]:
+			var drag := Vector2.from_angle(deg_to_rad(float(deg) + 0.37)) * length
+			var f := HeavensDoorFx.facing_of({"dir": drag})
+			one_of = one_of and f in HeavensDoorFx.DIRS
+			nearest = nearest and absf(angle_difference(f.angle(), drag.angle())) <= PI / 8.0 + 0.0001
+	t.check(one_of and nearest, "a drag at any angle faces it the nearest of the eight ways, never between")
+	var even := true
+	for k in 8:
+		var d: Vector2 = HeavensDoorFx.DIRS[k]
+		even = even and is_equal_approx(d.length(), 1.0) and is_equal_approx(d.angle_to(HeavensDoorFx.DIRS[(k + 1) % 8]), PI * 0.25)
+	t.check(even, "the eight ways are 45 degrees apart on the ground")
+	# Where each way points on screen, and the row's own label for that way: a ground way is seen as one of eight screen
+	# ways (2:1 iso: none is between two of them).
+	var labels := {}
+	for k in 8:
+		var s := Iso.ground_to_screen(HeavensDoorFx.DIRS[k])
+		var v := "south" if s.y > 0.5 else ("north" if s.y < -0.5 else "")
+		var h := "east" if s.x > 0.5 else ("west" if s.x < -0.5 else "")
+		labels[k] = v + ("-" if v != "" and h != "" else "") + h
+	t.check(labels[1] == "south" and labels[0] == "south-east" and labels[7] == "east"
+			and labels[6] == "north-east" and labels[5] == "north" and labels[4] == "north-west" and labels[3] == "west"
+			and labels[2] == "south-west",
+		"on screen: ground (1,1) points down, (1,0) down-right, (1,-1) right, (0,-1) up-right, (-1,-1) up, (-1,0) up-left, (-1,1) left, (0,1) down-left (%s)" % labels)
+	var rows_ok := true
+	for k in 8:
+		var want := String(labels[k])
+		# The sheet's front diagonals are drawn crosswise (its "south-east" row shows the front turned down-left).
+		if want == "south-east":
+			want = "south-west"
+		elif want == "south-west":
+			want = "south-east"
+		rows_ok = rows_ok and HeavensDoorFx.ROWS[HeavensDoorFx.row_of(HeavensDoorFx.DIRS[k])] == want
+	t.check(rows_ok and HeavensDoorFx.ROWS[HeavensDoorFx.row_of(Vector2(1, 1))] == "south"
+			and HeavensDoorFx.ROWS[HeavensDoorFx.row_of(Vector2(1, -1))] == "east"
+			and HeavensDoorFx.ROWS[HeavensDoorFx.row_of(Vector2(-1, -1))] == "north"
+			and HeavensDoorFx.ROWS[HeavensDoorFx.row_of(Vector2(-1, 1))] == "west",
+		"each way draws its row: screen-down the front (south), screen-right edge on (east), screen-up the back (north), screen-left (west)")
+	# The sheet itself: as laid out in its json, and each diagonal row's base runs across its facing on screen (falling
+	# to the right when the door's line on the ground does).
+	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/pixellab/fx/heavens_door.json"))
+	var img := Image.load_from_file(ProjectSettings.globalize_path(HeavensDoorFx.SHEET))
+	var laid := img != null and img.get_width() == HeavensDoorFx.CELL * HeavensDoorFx.FRAMES and img.get_height() == HeavensDoorFx.CELL * 8
+	laid = laid and int(meta.cell) == HeavensDoorFx.CELL and int(meta.frames) == HeavensDoorFx.FRAMES and str(HeavensDoorFx.ROWS) == str(meta.rows)
+	for r in 8:
+		var foot: Array = meta.foot[HeavensDoorFx.ROWS[r]]
+		laid = laid and HeavensDoorFx.FOOT[r] == Vector2(float(foot[0]), float(foot[1]))
+	t.check(laid, "the sheet is as its json says: cell, frames, rows in order, the foot of each row")
+	var slopes := true
+	var told := []
+	for k in [0, 2, 4, 6]:
+		var f: Vector2 = HeavensDoorFx.DIRS[k]
+		var r := HeavensDoorFx.row_of(f)
+		var line := Iso.ground_to_screen(f.orthogonal())
+		var falls_right := line.y / line.x > 0.0
+		var lows := _base_lows(img, r)
+		told.append("%s %d/%d" % [HeavensDoorFx.ROWS[r], lows.x, lows.y])
+		slopes = slopes and (lows.y > lows.x + 4) == falls_right and (lows.x > lows.y + 4) == (not falls_right)
+	t.check(slopes, "each diagonal row's base runs across the way it faces on screen (left/right foot: %s)" % [told])
+	t.check(HeavensDoorFx.ROWS[HeavensDoorFx.row_of(HeavensDoorFx.DEFAULT_DIR)] == "south-west",
+		"a click with no drag (screen down-right) draws the row that shows it facing down-right")
+
+
+## How low the shut door's base reaches (px in the cell) in the left quarter and the right quarter of row `r`.
+static func _base_lows(img: Image, r: int) -> Vector2i:
+	var cell := HeavensDoorFx.CELL
+	var used := img.get_region(Rect2i(0, r * cell, cell, cell)).get_used_rect()
+	var out := Vector2i(-1, -1)
+	for side in 2:
+		var x0 := used.position.x if side == 0 else used.end.x - used.size.x / 4
+		for x in range(x0, x0 + used.size.x / 4):
+			for y in range(cell - 1, -1, -1):
+				if img.get_pixel(x, r * cell + y).a > 0.5:
+					out[side] = maxi(out[side], y)
+					break
+	return out
+
+
+## The sheet's frame follows the door: shut falling, opening over T_OPEN, wide through the pull, closing over T_SHUT,
+## shut rising.
+static func _frames(t) -> void:
+	var s := _bare()
+	var fx: HeavensDoorFx = FxTimeline.cast(load(FX), s.ctx, Vector2.ZERO)
+	var last := HeavensDoorFx.FRAMES - 1
+	var opening := []
+	for i in 13:
+		opening.append(fx.frame_at(HeavensDoorFx.T_FALL + HeavensDoorFx.T_OPEN * float(i) / 12.0))
+	var closing := []
+	for i in 9:
+		closing.append(fx.frame_at(fx.shut_at() + HeavensDoorFx.T_SHUT * float(i) / 8.0))
+	var rises_up := true
+	for i in 12:
+		rises_up = rises_up and opening[i + 1] >= opening[i]
+	var falls_down := true
+	for i in 8:
+		falls_down = falls_down and closing[i + 1] <= closing[i]
+	t.check(fx.frame_at(0.0) == 0 and fx.frame_at(HeavensDoorFx.T_FALL * 0.5) == 0 and fx.frame_at(HeavensDoorFx.T_FALL - 0.01) == 0,
+		"falling out of the sky it is shut (frame 0)")
+	t.check(rises_up and opening[0] == 0 and opening[12] == last and opening[6] > 0 and opening[6] < last,
+		"over T_OPEN it opens frame by frame, 0 to %d (%s)" % [last, opening])
+	t.check(fx.frame_at(fx.open_at() + 0.1) == last and fx.frame_at(fx.open_at() + HeavensDoorFx.SPAN * 0.5) == last
+			and fx.frame_at(fx.shut_at() - 0.01) == last,
+		"through the pull it stands wide open (frame %d)" % last)
+	t.check(falls_down and closing[0] == last and closing[8] == 0 and fx.frame_at(fx.shut_at() + HeavensDoorFx.T_SHUT + HeavensDoorFx.T_RISE * 0.5) == 0,
+		"over T_SHUT it closes back to frame 0, and rises shut (%s)" % [closing])
+	fx.end_now()
+	_done(s)
+
+
 ## Beyond PULL_R in front nothing is drawn.
 static func _reach(t) -> void:
 	var s := _bare()
@@ -452,6 +568,8 @@ static func run(t) -> void:
 	_book(t)
 	_pull_rules(t)
 	_facing(t)
+	_ways(t)
+	_frames(t)
 	_reach(t)
 	var first := _scenario(t, true)
 	var second := _scenario(t, false)

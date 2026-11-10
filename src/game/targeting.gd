@@ -71,9 +71,9 @@ const AREAS := {
 	"everydoor": {"shape": "circle", "r": 0.6},
 	# TheFarGateFx.RADIUS: whom the door of stars draws
 	"fargate": {"shape": "circle", "r": 10.0},
-	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed");
-	# CRUSH_R and SHOCK_R ringed where it lands
-	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "inner": 3.0, "outer": 7.0},
+	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
+	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
+	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
 	# AnathemaFx.RADIUS: the buildings it would mark are outlined (_draw())
 	"anathema": {"shape": "circle", "r": 6.0},
 	# SacredSanctuaryFx.PICK_R: who would be hypnotized is ringed; then the wall's shape at the second click ("sanctuary")
@@ -820,12 +820,24 @@ func _lane(from: Vector2, dir: Vector2, length: float, half: float, col: Color) 
 	draw_line(from, from + dir * length, COL_FAINT, -1.0)
 
 
-## Where a "cone" area's arc starts (radians, on the ground): centred on the drag (`dir`) for an "aimed" cone; else the
-## dragon's own -- its facing, screen down-right, biased 8 degrees to its right so the jet misses its body.
+## Where a "cone" area's arc starts (radians, on the ground): centred on the drag (`dir`) for an "aimed" cone -- turned to
+## the nearest of its "snap" ways when it has them (snap_dir) --; else the dragon's own -- its facing, screen down-right,
+## biased 8 degrees to its right so the jet misses its body.
 static func cone_start(a: Dictionary, dir: Vector2) -> float:
 	if bool(a.get("aimed", false)):
-		return dir.angle() - float(a.arc) * 0.5
+		return snap_dir(dir, int(a.get("snap", 0))).angle() - float(a.arc) * 0.5
 	return Vector2(1, 0).angle() - float(a.arc) * 0.5 - deg_to_rad(8.0)
+
+
+## `dir` turned to the nearest of `ways` directions evenly round the ground, the first along +x (a unit vector); `dir`
+## itself when `ways` is 0 or less.
+static func snap_dir(dir: Vector2, ways: int) -> Vector2:
+	if ways <= 0 or dir.length() < 0.000001:
+		return dir
+	var step := TAU / float(ways)
+	var v := Vector2.from_angle(step * float(posmod(roundi(dir.angle() / step), ways)))
+	# Exactly on an axis where it should be, not a hair off it.
+	return Vector2(0.0 if absf(v.x) < 1e-6 else v.x, 0.0 if absf(v.y) < 1e-6 else v.y)
 
 
 func _cone(from: Vector2, r: float, arc: float, col: Color, start: float) -> void:

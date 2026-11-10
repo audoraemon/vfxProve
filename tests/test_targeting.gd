@@ -41,6 +41,19 @@ static func run(t) -> void:
 		"Heaven's Door shows the half circle of PULL_R before it, CRUSH_R and SHOCK_R ringed")
 	t.check(is_equal_approx(Targeting.cone_start(hd, Vector2(0, -1)), -PI) and is_equal_approx(Targeting.cone_start(hd, Vector2(1, 0)), -PI * 0.5),
 		"an \"aimed\" cone is centred on the drag")
+	var snapped := int(hd.get("snap", 0)) == HeavensDoorFx.DIRS.size()
+	for deg in range(-180, 181, 7):
+		var drag := Vector2.from_angle(deg_to_rad(float(deg))) * 3.0
+		var start := Targeting.cone_start(hd, drag)
+		var mid := Vector2.from_angle(start + PI * 0.5)
+		snapped = snapped and mid.is_equal_approx(HeavensDoorFx.facing_of({"dir": drag}))
+	t.check(snapped, "Heaven's Door's half circle turns in its door's eight steps (\"snap\": 8): it shows the facing the door will take")
+	t.check(Targeting.snap_dir(Vector2(1, 0.3), 8) == Vector2(1, 0) and Targeting.snap_dir(Vector2(0.1, -2), 8) == Vector2(0, -1)
+			and Targeting.snap_dir(Vector2(1, 0.9), 8).is_equal_approx(Vector2(1, 1).normalized())
+			and Targeting.snap_dir(Vector2(-1, 0.3), 4) == Vector2(-1, 0) and Targeting.snap_dir(Vector2(1, 0.9), 0) == Vector2(1, 0.9),
+		"a \"snap\" turns the drag to the nearest of that many ways round the ground (none: the drag as it is)")
+	var free := {"shape": "cone", "arc": PI, "aimed": true}
+	t.near(Targeting.cone_start(free, Vector2(1, 0.3)), Vector2(1, 0.3).angle() - PI * 0.5, 0.0001, "an aimed cone with no \"snap\" follows the drag exactly")
 	t.check(is_equal_approx(Targeting.cone_start(Targeting.AREAS["dragon"], Vector2(0, -1)), -0.5 - deg_to_rad(8.0)),
 		"the dragon's cone keeps its own facing, whatever the drag")
 	var missing := ""

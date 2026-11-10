@@ -3,10 +3,25 @@ extends FxTimeline
 ## Heaven's Door (Passage, Tier V): a great door falls out of the sky, crushes where it lands, and then opens and draws in
 ## everyone and everything in the half circle before it. Aimed by a drag: the press is where it lands (or where an open
 ## passage, EnemyField.through, carries it), the drag the way it faces (extra "dir"); a click with no drag faces it
-## down-right on screen, as the dragon does.
+## down-right on screen, as the dragon does. It faces one of eight ways only (DIRS), 45 degrees apart on the ground: the
+## drag turns to the nearest of them (facing_of), and the aim's half circle turns with it in the same steps. In this
+## town's 2:1 iso the eight ground ways are exactly the eight ways the door is seen on screen (Iso.ground_to_screen):
+## ground (1, 1) faces screen-down (the sheet's "south", its front to the viewer), (1, 0) screen down-right, (1, -1)
+## screen-right ("east", edge on), (0, -1) up-right, (-1, -1) screen-up ("north", seen from behind), (-1, 0) up-left,
+## (-1, 1) screen-left ("west") and (0, 1) down-left (ROW_OF).
 ##
-## The fall: for T_FALL a shaft of light stands on the place and a shadow grows under a door of white marble and gold,
-## taller than a house, that comes down out of the sky and lands upright, facing the drag.
+## The fall: for T_FALL a shaft of light stands on the place and a shadow grows under a door of white marble and gold
+## with wings over its arch, half again to twice as tall as a house, that comes down out of the sky shut and lands
+## upright, facing the drag, runes cut in its stones. It is a PixelLab sheet (SHEET; object
+## 8653883e-60ca-4576-8c76-15279b87004d, drawn in the style of b727b4fc-b1f8-46a5-bdca-8eb47a36bb48, 25 + 24
+## generations): eight rows, one for each way it is seen, nine frames each from shut to wide open on the light. The
+## rows "west" and "south-west" are the rows "east" and "south-east" mirrored. Three rows came out of PixelLab with
+## broken last frames and hold their last good open frame to the end (the json's "frame_map", baked into the sheet):
+## "south" frames 6-8 are its frame 6, "east" and "west" 5-8 are their frame 5, "north" 7-8 its frame 7; frame 8 is
+## still "wide open" in every row. The sheet's "south-east" row shows its front turned screen down-LEFT (its base runs
+## down to the right, as the "north-east" back view's does), so the two front diagonals are drawn crosswise: a door
+## facing screen down-right draws the "south-west" row, one facing down-left the "south-east" row (ROW_OF; the test
+## reads the slope off the sheet).
 ##
 ## The landing (at T_FALL, its first kill: PowerBook.IMPACT): everyone out in the open within CRUSH_R is crushed (kind
 ## stone; those inside a building are the building's to lose) and the town's dogs and cats there with them; everyone
@@ -15,8 +30,9 @@ extends FxTimeline
 ## falls). The ground shakes, a ring of dust and broken paving goes out, and the town sees and hears it far off (loud:
 ## PowerBook.REACH).
 ##
-## The opening: over T_OPEN its two leaves swing slowly open on a blinding white-gold light and clouds. Nothing is drawn
-## in before it is fully open.
+## The opening: over T_OPEN its two leaves swing slowly open on a blinding white-gold light (the sheet's frames, shut to
+## wide: frame_at()), and stand wide through the pull, the light breathing in them. Nothing is drawn in before it is
+## fully open.
 ##
 ## The pull, SPAN from fully open: everything in front of the door -- within PULL_R of it and within HALF_ANGLE either
 ## side of its facing (the half circle before it) -- is drawn straight toward the doorway, hardest at the door and
@@ -38,7 +54,8 @@ extends FxTimeline
 ## splinters. Behind the door -- the other half -- nothing is drawn: the safe side. Nothing is drawn while time stands
 ## still (Crowd.is_frozen()).
 ##
-## The end: the leaves slam shut over T_SHUT with a boom, and the door rises back into the sky over T_RISE and is gone.
+## The end: the leaves slam shut over T_SHUT with a boom (the frames back to shut), and the door rises back into the sky
+## over T_RISE, shut, and is gone.
 ## Once in a descent (the book's cooldown).
 
 const T_FALL := 1.2
@@ -73,23 +90,28 @@ const GOODS: Array[Decor.Kind] = [Decor.Kind.BARREL, Decor.Kind.CRATES, Decor.Ki
 ## The doorway is heard swallowing at most once every GULP_EVERY.
 const GULP_EVERY := 0.4
 
-## The door on screen: the doorway's width (ground units, hinge to hinge), the leaves' height, the arch over them (px),
-## the pillars' width and depth (ground units), how far up it falls from and rises to (px), and how far the leaves open.
-const OPEN_W := 2.4
-const LEAF_H := 128.0
-const LINTEL_H := 12.0
-const ARCH_H := 34.0
-const PILLAR_W := 0.42
-const PILLAR_D := 0.5
+## The eight ways it faces (ground units, 45 degrees apart: index k is the ground angle k * 45 degrees), and for each the
+## sheet's row that shows it so (see the doc block: the front diagonals are drawn crosswise).
+const DIRS: Array[Vector2] = [Vector2(1, 0), Vector2(0.7071067811865476, 0.7071067811865476), Vector2(0, 1),
+	Vector2(-0.7071067811865476, 0.7071067811865476), Vector2(-1, 0), Vector2(-0.7071067811865476, -0.7071067811865476),
+	Vector2(0, -1), Vector2(0.7071067811865476, -0.7071067811865476)]
+const ROW_OF: Array[int] = [7, 0, 1, 6, 5, 4, 3, 2]
+## How the door shows: its PixelLab sheet (a row per way it is seen, in ROWS' order; frame 0 shut to the last wide open
+## on the light), its cell, the bottom middle of its base in each row's cell, and how large it is drawn (the sprite stands
+## about 100 px of its 170: SCALE makes it some 170 px, against a cottage's 70 and a townhouse's 90).
+const SHEET := "res://assets/pixellab/fx/heavens_door.png"
+const CELL := 170
+const FRAMES := 9
+const ROWS: Array[String] = ["south", "south-east", "east", "north-east", "north", "north-west", "west", "south-west"]
+const FOOT: Array[Vector2] = [Vector2(85, 135), Vector2(84, 137), Vector2(88, 138), Vector2(85, 141), Vector2(85, 134),
+	Vector2(84, 139), Vector2(81, 138), Vector2(86, 137)]
+const SCALE := 1.7
+## Its height on screen (px), where its light is lit, and how wide it stands on the ground (ground units, for its
+## shadow); how far up it falls from and rises to (px).
+const DOOR_H := 100.0 * SCALE
+const OPEN_W := 2.6
 const FALL_PX := 560.0
 const RISE_PX := 620.0
-const SWING := deg_to_rad(105.0)
-const MARBLE := Color(0.9, 0.88, 0.83)
-const MARBLE_SHADE := Color(0.6, 0.58, 0.6)
-const GOLD := Color(0.98, 0.76, 0.26)
-const GOLD_DEEP := Color(0.66, 0.44, 0.12)
-## The dark line round its stones, to hold it off a bright street.
-const EDGE := Color(0.22, 0.15, 0.08, 0.9)
 const LIGHT := Color(1.0, 0.97, 0.86)
 const WARM := Color(1.0, 0.86, 0.5)
 ## The light one gone through it pales into.
@@ -160,10 +182,26 @@ static func before(g: Vector2, at: Vector2, dir: Vector2, r := PULL_R) -> bool:
 	return EnemyField.cone_has(g, at, dir, r, HALF_ANGLE)
 
 
-## Which way a cast faces: the drag, else DEFAULT_DIR.
+## Which way a cast faces: the drag, else DEFAULT_DIR, turned to the nearest of the eight DIRS.
 static func facing_of(extra_data: Dictionary) -> Vector2:
 	var d: Vector2 = extra_data.get("dir", DEFAULT_DIR)
-	return d.normalized() if d.length() > 0.001 else DEFAULT_DIR
+	return DIRS[way_of(d if d.length() > 0.001 else DEFAULT_DIR)]
+
+
+## Which of the eight DIRS lies nearest `dir` (its index).
+static func way_of(dir: Vector2) -> int:
+	return posmod(roundi(dir.angle() / (PI * 0.25)), DIRS.size())
+
+
+## The sheet's row that shows a door facing `dir`.
+static func row_of(dir: Vector2) -> int:
+	return ROW_OF[way_of(dir)]
+
+
+## The sheet's frame at `now`: shut (0) through the fall, opening to wide (FRAMES - 1) over T_OPEN, wide through the
+## pull, closing back to shut over T_SHUT, and shut as it rises.
+func frame_at(now: float) -> int:
+	return roundi(leaves(now) * float(FRAMES - 1))
 
 
 ## 0..1 how far the leaves stand open at `now`: shut through the fall, opening over T_OPEN, wide for the span, slammed
@@ -203,7 +241,7 @@ func _build() -> void:
 	shadow.z_index = 3
 	track(shadow, ctx.ground)
 	# The shaft of light it falls down: wide and soft, a white core, the sky's rays round it.
-	var column := Set2Parts.glow_column(self, sp, 150.0, 640.0, WARM, 0.0, T_FALL + 0.35)
+	var column := Set2Parts.glow_column(self, sp, 190.0, 640.0, WARM, 0.0, T_FALL + 0.35)
 	column.tween_param("intensity", 0.3, 2.0, T_FALL, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	column.tween_param("intensity", 2.0, 0.0, 0.35, T_FALL)
 	var core := Set2Parts.glow_column(self, sp, 40.0, 640.0, LIGHT, 0.0, T_FALL + 0.2)
@@ -300,7 +338,7 @@ func _open() -> void:
 	_roar = ctx.play(&"tn_wind", door, -1.0)
 	if not DominionParts.staged(self):
 		return
-	var sp := Iso.ground_to_screen(door) + Vector2(0, -LEAF_H * 0.5)
+	var sp := Iso.ground_to_screen(door) + Vector2(0, -DOOR_H * 0.45)
 	ctx.shake.add_trauma(0.3)
 	var flare := FxParts.bloom(self, sp, 80.0, WARM, 0.7, 1.6)
 	flare.tween_param("intensity", 0.7, 0.18, 0.8, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
@@ -536,7 +574,7 @@ func _slam() -> void:
 	ctx.shake.add_trauma(0.55)
 	ctx.flash.call(Color(1.0, 0.95, 0.8, 0.3), 0.18)
 	var sp := Iso.ground_to_screen(door)
-	var pop := FxParts.bloom(self, sp + Vector2(0, -LEAF_H * 0.5), 70.0, LIGHT, 1.2, 1.4)
+	var pop := FxParts.bloom(self, sp + Vector2(0, -DOOR_H * 0.45), 70.0, LIGHT, 1.2, 1.4)
 	pop.tween_param("intensity", 1.2, 0.0, 0.3, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	pop.life = 0.32
 	var ring := FxParts.shockwave(self, door, 3.5, GOLD_WAVE)
@@ -553,7 +591,7 @@ func _rise() -> void:
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(door)
-	var column := Set2Parts.glow_column(self, sp, 130.0, 640.0, WARM, 1.6, T_RISE)
+	var column := Set2Parts.glow_column(self, sp, 170.0, 640.0, WARM, 1.6, T_RISE)
 	column.life = T_RISE + 0.02
 	if is_instance_valid(_glow):
 		_glow.tween_param("intensity", 0.25, 0.0, T_RISE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
@@ -572,14 +610,21 @@ func _finish() -> void:
 	super()
 
 
-## The door: white marble and gold, standing upright on the ground point and facing `fx.facing`, drawn in the world
-## layer so the town sorts round it. Two pillars and a lintel with an arch of gold rays over it frame two leaves hung on
-## the pillars; the leaves swing out toward the front as it opens (fx.leaves()), on a blinding white-gold light with
-## clouds rolling in it. It comes down out of the sky through the fall and goes back up as it rises, fading.
+## The door: the PixelLab sheet drawn standing on the landing point, its foot (FOOT, per row) on the ground point, in
+## the world layer so the town sorts round it; the row for its facing (row_of), the frame for the hour (frame_at). It
+## comes down out of the sky through the fall and goes back up as it rises, fading; while it stands wide its light
+## breathes, and it flares (`flare`) as something goes through. Without the sheet (not imported) it draws nothing: the
+## light, the shadow and the dust still show where it stands.
 class Door extends Node2D:
-	const CLOUDS := 14
 	var fx: HeavensDoorFx
 	var flare := 0.0
+	var row := 0
+	var _tex: Texture2D
+
+	func _ready() -> void:
+		row = HeavensDoorFx.row_of(fx.facing)
+		if ResourceLoader.exists(SHEET):
+			_tex = load(SHEET)
 
 	func _process(delta: float) -> void:
 		flare = maxf(flare - delta * 2.5, 0.0)
@@ -588,93 +633,9 @@ class Door extends Node2D:
 		modulate = Color(1.0, 1.0, 1.0, 1.0 - k * k)
 		queue_redraw()
 
-	## A filled polygon, unless it is seen edge on (no area to fill: the triangulation would fail).
-	func _poly(pts: PackedVector2Array, col: Color) -> void:
-		var area := 0.0
-		for i in pts.size():
-			area += pts[i].cross(pts[(i + 1) % pts.size()])
-		if absf(area) > 1.0:
-			draw_colored_polygon(pts, col)
-
-	## Screen point (relative to the door's foot) of ground point `g` raised `h` px.
-	func _p(g: Vector2, h: float, lift: float) -> Vector2:
-		return Iso.ground_to_screen(g) + Vector2(0.0, -h - lift)
-
-	## A box standing on the ground: centred on `c`, `half_a` along `a` and `half_b` along `b` (unit ground vectors),
-	## from `h0` to `h1` px up; its top and the two upright faces turned to the viewer, lit from the upper left.
-	func _box(c: Vector2, a: Vector2, half_a: float, b: Vector2, half_b: float, h0: float, h1: float, col: Color, lift: float,
-			trim := Color(0, 0, 0, 0)) -> void:
-		var corners := [c - a * half_a - b * half_b, c + a * half_a - b * half_b, c + a * half_a + b * half_b, c - a * half_a + b * half_b]
-		var normals := [-b, a, b, -a]
-		var view := Vector2(1, 1).normalized()
-		for i in 4:
-			var n: Vector2 = normals[i]
-			if n.dot(view) <= 0.0:
-				continue
-			var g0: Vector2 = corners[i]
-			var g1: Vector2 = corners[(i + 1) % 4]
-			var shade := 0.6 + 0.4 * clampf(n.dot(Vector2(-1, 0.3).normalized()) * 0.5 + 0.5, 0.0, 1.0)
-			var face := PackedVector2Array([_p(g0, h0, lift), _p(g1, h0, lift), _p(g1, h1, lift), _p(g0, h1, lift)])
-			_poly(face, Color(col.r * shade, col.g * shade, col.b * shade, col.a))
-			if trim.a > 0.0:
-				draw_line(_p(g0, h1, lift), _p(g1, h1, lift), trim, 2.0)
-				draw_line(_p(g0, h0 + 2.0, lift), _p(g1, h0 + 2.0, lift), Color(trim, trim.a * 0.8), 2.0)
-			face.append(face[0])
-			draw_polyline(face, EDGE, 1.0)
-		var top := PackedVector2Array()
-		for g: Vector2 in corners:
-			top.append(_p(g, h1, lift))
-		_poly(top, col.lightened(0.08))
-		top.append(top[0])
-		draw_polyline(top, trim if trim.a > 0.0 else EDGE, 1.0)
-
-	## A leaf: hung at `hinge`, closed across to `toward` (unit, along the doorway), swung `angle` out to the front.
-	func _leaf(hinge: Vector2, toward: Vector2, angle: float, lift: float, glow: float) -> void:
-		var w := OPEN_W * 0.5
-		var edge := hinge + (toward * cos(angle) + fx.facing * sin(angle)) * w
-		var hb := _p(hinge, 0.0, lift)
-		var eb := _p(edge, 0.0, lift)
-		var et := _p(edge, LEAF_H, lift)
-		var ht := _p(hinge, LEAF_H, lift)
-		var n := (edge - hinge).orthogonal().normalized()
-		var shade := 0.62 + 0.38 * absf(n.dot(Vector2(-1, 0.3).normalized()))
-		var body := Color(MARBLE.r * shade, MARBLE.g * shade, MARBLE.b * shade)
-		# Lit from the doorway as it opens.
-		body = body.lerp(LIGHT, 0.25 * glow)
-		_poly(PackedVector2Array([hb, eb, et, ht]), body)
-		var q := func(u: float, v: float) -> Vector2:
-			return hb.lerp(eb, u).lerp(ht.lerp(et, u), v)
-		# Two sunken panels framed in gold, a gold band between them, a gold edge.
-		for panel: Array in [[0.08, 0.44], [0.54, 0.92]]:
-			var pts := PackedVector2Array([q.call(0.18, panel[0]), q.call(0.82, panel[0]), q.call(0.82, panel[1]),
-				q.call(0.18, panel[1]), q.call(0.18, panel[0])])
-			_poly(pts.slice(0, 4), Color(GOLD.r * shade, GOLD.g * shade, GOLD.b * shade, 0.6))
-			draw_polyline(pts, GOLD_DEEP, 2.0)
-			# A sun in each panel.
-			draw_circle(q.call(0.5, (panel[0] + panel[1]) * 0.5), 2.5, Color(LIGHT, 0.9))
-		draw_line(q.call(0.0, 0.49), q.call(1.0, 0.49), GOLD, 3.0)
-		draw_line(eb, et, GOLD, 2.0)
-		draw_line(hb, ht, GOLD_DEEP, 1.0)
-		draw_polyline(PackedVector2Array([hb, eb, et, ht, hb]), EDGE, 1.0)
-		var knob: Vector2 = q.call(0.88, 0.47)
-		draw_circle(knob, 2.0, GOLD)
-
-	## The gold band round the arch: between its rim and a little inside it.
-	func _arch_ring(side: Vector2, half: float, base: float, lift: float) -> PackedVector2Array:
-		var out := PackedVector2Array()
-		var outer := half + PILLAR_W * 0.6
-		var inner := outer - 0.18
-		for i in 17:
-			var ang := PI * float(i) / 16.0
-			out.append(_p(-side * cos(ang) * outer, base + sin(ang) * ARCH_H, lift))
-		for i in 17:
-			var ang := PI * float(16 - i) / 16.0
-			out.append(_p(-side * cos(ang) * inner, base + sin(ang) * (ARCH_H - 5.0), lift))
-		return out
-
 	func _draw() -> void:
 		var now := fx.t
-		if now >= fx.gone_at():
+		if _tex == null or now >= fx.gone_at():
 			return
 		var lift := 0.0
 		if now < T_FALL:
@@ -686,73 +647,17 @@ class Door extends Node2D:
 		elif now < T_FALL + 0.25:
 			# The jolt of landing.
 			lift = -sin((now - T_FALL) / 0.25 * PI) * 3.0
-		var f := fx.facing
-		var side := f.orthogonal()
-		var open := fx.leaves(now)
-		var glow := open * (1.0 + 0.5 * flare)
-		var half := OPEN_W * 0.5
-		var left := -side * half
-		var right := side * half
-		var top := LEAF_H + LINTEL_H
-		# The light in the doorway: white at the heart, gold at the edges, with clouds rolling up in it.
-		if glow > 0.0:
-			var a0 := _p(left, 0.0, lift)
-			var b0 := _p(right, 0.0, lift)
-			var b1 := _p(right, LEAF_H, lift)
-			var a1 := _p(left, LEAF_H, lift)
-			var lit := minf(glow, 1.0)
-			var inner := func(u: float, v: float) -> Vector2:
-				return a0.lerp(b0, u).lerp(a1.lerp(b1, u), v)
-			# Gold at the jambs, warmer white within, blinding at the heart: three bands of the light.
-			_poly(PackedVector2Array([a0, b0, b1, a1]), Color(GOLD, lit))
-			for band: Array in [[0.12, Color(WARM, lit)], [0.3, Color(LIGHT, lit)]]:
-				var u0: float = band[0]
-				_poly(PackedVector2Array([inner.call(u0, 0.0), inner.call(1.0 - u0, 0.0), inner.call(1.0 - u0, 0.97),
-					inner.call(u0, 0.97)]), band[1])
-			# Clouds rolling up through it, each with a gold shadow under it so it reads on the light.
-			for i in CLOUDS:
-				var u := 0.14 + 0.72 * HeavensDoorFx.hash01(i, 3)
-				var v := fposmod(HeavensDoorFx.hash01(i, 5) + now * (0.04 + 0.05 * HeavensDoorFx.hash01(i, 7)), 1.0)
-				var r := 3.5 + 5.0 * HeavensDoorFx.hash01(i, 9)
-				var c: Vector2 = inner.call(u, v * 0.92)
-				var fade := lit * sin(v * PI)
-				draw_circle(c + Vector2(0.0, 1.5), r, Color(GOLD_DEEP, 0.35 * fade))
-				draw_circle(c, r, Color(1.0, 1.0, 1.0, 0.75 * fade))
-			# Shafts of light standing in it.
-			for i in 3:
-				var u := 0.3 + 0.2 * float(i)
-				draw_line(inner.call(u, 0.02), inner.call(u + 0.04 * sin(now + float(i)), 0.95), Color(1.0, 1.0, 1.0, 0.5 * lit), 2.0)
-		var toward_viewer := f.dot(Vector2(1, 1)) > 0.0
-		# Leaves that swing away from the viewer are behind the frame; those that swing toward it are in front.
-		if not toward_viewer:
-			_leaf(left, side, open * SWING, lift, glow)
-			_leaf(right, -side, open * SWING, lift, glow)
-		# The step it stands on, the pillars, the lintel and the arch of rays over it.
-		_box(Vector2.ZERO, side, half + PILLAR_W + 0.25, f, PILLAR_D * 0.5 + 0.2, 0.0, 5.0, MARBLE_SHADE, lift, GOLD_DEEP)
-		for s in [-1.0, 1.0]:
-			var c: Vector2 = side * s * (half + PILLAR_W * 0.5)
-			_box(c, side, PILLAR_W * 0.5, f, PILLAR_D * 0.5, 5.0, top, MARBLE, lift, GOLD)
-			_box(c, side, PILLAR_W * 0.5 + 0.06, f, PILLAR_D * 0.5 + 0.06, top - 8.0, top - 2.0, GOLD, lift)
-		_box(Vector2.ZERO, side, half + PILLAR_W + 0.1, f, PILLAR_D * 0.5 + 0.08, top, top + LINTEL_H, MARBLE, lift, GOLD)
-		var arch := PackedVector2Array()
-		var base := top + LINTEL_H
-		for i in 17:
-			var ang := PI * float(i) / 16.0
-			arch.append(_p(-side * cos(ang) * (half + PILLAR_W * 0.6), base + sin(ang) * ARCH_H, lift))
-		_poly(arch, MARBLE)
-		_poly(_arch_ring(side, half, base, lift), Color(GOLD, 0.9))
-		var hub := _p(Vector2.ZERO, base, lift)
-		for i in 9:
-			var ang := PI * (float(i) + 0.5) / 9.0
-			var tip := _p(-side * cos(ang) * (half + PILLAR_W * 0.4), base + sin(ang) * (ARCH_H - 4.0), lift)
-			draw_line(hub, tip, Color(GOLD, 0.85), 1.5)
-		draw_circle(hub + Vector2(0, -3), 5.0, GOLD)
-		draw_circle(hub + Vector2(0, -3), 3.0, Color(LIGHT, 0.6 + 0.4 * glow))
-		arch.append(arch[0])
-		draw_polyline(arch, EDGE, 1.0)
-		if toward_viewer:
-			_leaf(left, side, open * SWING, lift, glow)
-			_leaf(right, -side, open * SWING, lift, glow)
+		var frame := fx.frame_at(now)
+		# Wide open, the light in it breathes; it flares as something goes through.
+		# (Gently: the canvas is not HDR, so much over 1 bleaches the marble white.)
+		var glow := 1.0 + 0.1 * flare
+		if frame == FRAMES - 1:
+			glow += 0.03 + 0.03 * sin(now * 2.6)
+		var foot: Vector2 = FOOT[row]
+		draw_set_transform(Vector2(0.0, -lift), 0.0, Vector2(SCALE, SCALE))
+		draw_texture_rect_region(_tex, Rect2(-foot, Vector2(CELL, CELL)), Rect2(frame * CELL, row * CELL, CELL, CELL),
+			Color(glow, glow, glow * 0.96))
+		draw_set_transform(Vector2.ZERO)
 
 
 ## A hash in 0..1 for drawing (no rng drawn).

@@ -1938,8 +1938,13 @@ func _flow_tour(step: Callable) -> void:
 	mission_id = MissionBook.MIRAS_HOUSE
 	loadout = MissionBook.miras_house().default_loadout
 	go_to(Screen.MISSION)
-	await _until(func() -> bool: return _mission_up(null), 10.0)
+	# Straight from the title, with no fade to hide it: the shader prewarm (81 frames) and the build take about 5 s alone, so
+	# 10 s had no margin for one slow frame. A night that never comes up fails here, not as a SCRIPT ERROR on a Nil rules().
+	var up := await _until(func() -> bool: return _mission_up(null), 20.0)
 	await get_tree().process_frame
+	if not up or not _mission.started():
+		step.call(false, "Mira's House opens on its tour (not up after 20 s)")
+		return
 	var clock0 := _mission.rules().time_left
 	step.call(_mission.touring() and _mission._hud.caption() == "", "Mira's House opens on its tour, the banner alone first (no caption)")
 	# v0.11.1: the tour waits for the opening banners, then each stop's caption shows while the camera holds there.

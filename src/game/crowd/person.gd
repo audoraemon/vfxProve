@@ -684,7 +684,8 @@ func _think(delta: float) -> void:
 
 func _mind_speed() -> float:
 	# A status may slow it too (Death Mark's "slow": the share of its pace it keeps).
-	return _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0) * float(statuses.get(&"slow", 1.0))
+	var v := _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0) * float(statuses.get(&"slow", 1.0))
+	return v * grid.pace_at(ground_pos) if grid != null else v
 
 
 func _base_speed() -> float:

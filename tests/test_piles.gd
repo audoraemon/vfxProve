@@ -39,6 +39,11 @@ static func run(t) -> void:
 	_pile_survives_neighbour(t)
 	_clear_resets(t)
 	_drawn(t)
+	_gap_rule(t)
+	_detour_no_gap(t)
+	_mission_point(t)
+	_slow_pace(t)
+	_once_per_fall(t)
 	City.use(&"aldermere")
 
 
@@ -231,4 +236,100 @@ static func _drawn(t) -> void:
 	for i in 60:
 		crowd.advance(1.0 / 60.0)
 	t.check(layer.redraws == before, "a quiet pile is not redrawn (%d new)" % (layer.redraws - before))
+	_free(made)
+
+
+const BRIDGE: Array[Vector2i] = [Vector2i(3, 44), Vector2i(4, 44), Vector2i(5, 44), Vector2i(6, 44)]
+
+
+static func _bridge_walkable(grid: WalkGrid) -> int:
+	var n := 0
+	for id in BRIDGE:
+		if grid.walkable(grid.id_to_world(id)):
+			n += 1
+	return n
+
+
+## The bridge's four cells carry the only way from the temple to the first exit: a pile on them leaves one slow crossing.
+static func _gap_rule(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var from: Vector2 = TownLayout.TEMPLE.get_center() + Vector2(0, 3)
+	var to: Vector2 = TownLayout.EXITS[0]
+	t.check(_bridge_walkable(grid) == 4, "the four bridge cells are walkable")
+	t.check(grid.reaches(from, to), "the temple reaches the exit before the pile")
+	var p := crowd.piles.place(BRIDGE.duplicate())
+	t.check(p != null and _bridge_walkable(grid) == 1, "a pile on the bridge leaves exactly one cell walkable (%d)" % _bridge_walkable(grid))
+	var gap: Vector2i = p.gap
+	t.check(gap != PileManager.NO_GAP and BRIDGE.has(gap) and grid.walkable(grid.id_to_world(gap)), "the pile names its gap")
+	t.near(grid.pace_at(grid.id_to_world(gap)), WalkGrid.SLOW_CROSSING, 0.0001, "the gap is a slow crossing")
+	t.near(grid.grid.get_point_weight_scale(gap), 1.0 / WalkGrid.SLOW_CROSSING, 0.0001, "the route weighs the gap by its slowness")
+	t.check(grid.reaches(from, to), "the temple still reaches the exit through the gap")
+	# A second pile on the gap itself is left open as a crossing too.
+	var q := crowd.piles.place([gap] as Array[Vector2i])
+	t.check(q != null and q.gap == gap and grid.walkable(grid.id_to_world(gap)), "a second pile on the gap is itself left open")
+	t.check(grid.reaches(from, to), "two piles still leave the route")
+	crowd.piles.clear_pile(q)
+	crowd.piles.clear_pile(p)
+	t.check(_bridge_walkable(grid) == 4, "clearing the pile opens every cell")
+	t.near(grid.pace_at(grid.id_to_world(gap)), 1.0, 0.0001, "the crossing is ordinary again")
+	_free(made)
+
+
+static func _detour_no_gap(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var id := grid.world_to_id(TownLayout.MARKET_SQUARE.get_center())
+	var before := crowd.piles.gap_checks
+	var p := crowd.piles.place([id] as Array[Vector2i])
+	t.check(p != null and p.gap == PileManager.NO_GAP, "a pile in an open square leaves no gap")
+	t.check(crowd.piles.gap_checks == before, "a way round needs no key-point check")
+	_free(made)
+
+
+static func _mission_point(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var pt: Vector2 = grid.id_to_world(grid.world_to_id(TownLayout.MARKET_SQUARE.get_center()))
+	var base := crowd.route_points()
+	crowd.mission_points.append(func() -> Array[Vector2]: return [pt] as Array[Vector2])
+	var got := crowd.route_points()
+	t.check(got.size() == base.size() + 1 and got.has(pt), "a mission's point joins the route points")
+	crowd.clear_mission_hooks()
+	t.check(crowd.route_points().size() == base.size(), "clear_mission_hooks() removes it")
+	_free(made)
+
+
+static func _slow_pace(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var p := crowd.piles.place(BRIDGE.duplicate())
+	var s: Person = crowd.soldiers[0]
+	s.ground_pos = grid.id_to_world(p.gap)
+	var slow := s._mind_speed()
+	s.ground_pos = grid.id_to_world(p.gap) + Vector2(0, 5)
+	var fast := s._mind_speed()
+	t.check(fast > 0.0 and absf(slow - fast * WalkGrid.SLOW_CROSSING) < 0.0001, "a soldier on the gap walks at 0.3 of his pace (%f of %f)" % [slow, fast])
+	_free(made)
+
+
+static func _once_per_fall(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var before := crowd.piles.gap_checks
+	crowd.piles.place(BRIDGE.duplicate())
+	var after := crowd.piles.gap_checks
+	t.check(after == before + 1, "the pile on the bridge cost one key-point check (%d)" % (after - before))
+	for i in 120:
+		crowd.advance(1.0 / 60.0)
+	t.check(crowd.piles.gap_checks == after, "no further checks while time passes")
 	_free(made)

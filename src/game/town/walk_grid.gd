@@ -24,6 +24,11 @@ var _bridges: Array[Structure] = []
 var _blockers: Array[Rect2] = []
 ## The street piles' cells (Vector2i -> true): solid until the guards dig them out, whatever is freed beside them.
 var _piles := {}
+## A pile's gap cells (Vector2i -> pace factor): open, but crossed at a crawl.
+var _slow := {}
+
+## The pace a person keeps crossing a pile's gap.
+const SLOW_CROSSING := 0.3
 
 
 func setup(env: EnvironmentField, town: Town) -> WalkGrid:
@@ -200,6 +205,31 @@ func set_pile(ids: Array[Vector2i], on: bool) -> void:
 
 func is_pile(id: Vector2i) -> bool:
 	return _piles.has(id)
+
+
+## Make `id` a slow crossing (factor < 1: the route costs 1/factor there, people walk at that share of their pace);
+## factor 1.0 puts it back to an ordinary cell.
+func set_slow(id: Vector2i, factor: float) -> void:
+	if not grid.is_in_boundsv(id):
+		return
+	if factor < 1.0:
+		_slow[id] = factor
+		grid.set_point_weight_scale(id, 1.0 / factor)
+	else:
+		_slow.erase(id)
+		grid.set_point_weight_scale(id, 1.0)
+
+
+## The share of his pace a person keeps standing at `g` (1.0 at once when no cell is slow).
+func pace_at(g: Vector2) -> float:
+	if _slow.is_empty():
+		return 1.0
+	return float(_slow.get(world_to_id(g), 1.0))
+
+
+## Whether there is a route from `from` to `to`.
+func reaches(from: Vector2, to: Vector2) -> bool:
+	return not path(from, to).is_empty()
 
 
 ## Stamp a standing building again: one people walk over opens its way, anything else closes its ground. For a

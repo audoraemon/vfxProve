@@ -1852,6 +1852,30 @@ func held_by_mission(p: Person) -> bool:
 	return false
 
 
+## The places a route must keep open between (the exits, the gates, the Citadel, and what a mission names), each snapped to
+## the nearest walkable ground; the piles' gap rule reads it.
+func route_points() -> Array[Vector2]:
+	var raw: Array[Vector2] = []
+	var city := City.current()
+	raw.append_array(city.exits())
+	raw.append_array(city.gate_exits())
+	for g in _town.gates:
+		if is_instance_valid(g):
+			raw.append(g.footprint.get_center())
+	var ci := city.citadel_origin()
+	if ci != Vector2.INF:
+		raw.append(ci)
+	for c in mission_points:
+		if c.is_valid():
+			raw.append_array(c.call())
+	var out: Array[Vector2] = []
+	for g in raw:
+		var w := _grid.nearest_walkable(g)
+		if w != Vector2.INF:
+			out.append(w)
+	return out
+
+
 ## A mission ended or restarted: drop every hook (they point at its director).
 func clear_mission_hooks() -> void:
 	mission_holds.clear()

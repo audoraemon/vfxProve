@@ -52,6 +52,7 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> M
 	night = n
 	if c != null:
 		c.mission_holds.append(_holds_soldier)
+		c.mission_points.append(route_points)
 	_begin()
 	return self
 
@@ -75,6 +76,18 @@ func step(_delta: float) -> void:
 ## overlap one before it is left out. None by default. Only reads: it changes nothing and draws no random numbers.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
+	return out
+
+
+## Virtual: the places the mission needs reachable (registered in Crowd.mission_points, so no street pile may seal them off): each
+## tag's point, then the centre of every place it set aside.
+func route_points() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for t in tags():
+		out.append(t.at)
+	for s in reserved_places:
+		if is_instance_valid(s):
+			out.append(s.footprint.get_center())
 	return out
 
 

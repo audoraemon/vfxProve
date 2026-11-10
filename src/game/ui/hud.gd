@@ -1593,6 +1593,18 @@ func _draw_subtitle(w: float) -> void:
 	UiTheme.text(self, Vector2(x + who_w + SUBTITLE_GAP, SUBTITLE_TOP + 13.0), text, UiTheme.SIZE_BODY, body, fade)
 
 
+## The line under a slot's name: the power's cooldown at its level (the picked mode's own when it has one), or "FREE" in Remembrance,
+## where casting costs no wait.
+func slot_cooldown_text(i: int) -> String:
+	if _rules.free_play:
+		return "FREE"
+	var cd_text := PrepareScreen.cooldown_text(_rules.power(i), _rules.level_of(i))
+	if is_picked(i) and _aim.mode().has("cooldown"):
+		# The picked mode waits its own cooldown (Will-o'-Wisp's ENTHRALL).
+		cd_text = PrepareScreen.cooldown_text({"cooldown": _aim.mode().cooldown})
+	return cd_text
+
+
 func _draw_slots(_w: float) -> void:
 	for i in _rules.loadout.size():
 		var box := slot_rect(i)
@@ -1617,11 +1629,7 @@ func _draw_slots(_w: float) -> void:
 		var tx := box.position.x + SLOT_SIZE + 4.0
 		var name_col := UiTheme.COL_GOLD if is_picked(i) else (UiTheme.COL_TEXT if usable else UiTheme.COL_DIM)
 		UiTheme.text(self, Vector2(tx, box.position.y + 14.0), slot_name(i), UiTheme.SIZE_SMALL, name_col)
-		var cd_text := PrepareScreen.cooldown_text(_rules.power(i), _rules.level_of(i))
-		if is_picked(i) and _aim.mode().has("cooldown"):
-			# The picked mode waits its own cooldown (Will-o'-Wisp's ENTHRALL).
-			cd_text = PrepareScreen.cooldown_text({"cooldown": _aim.mode().cooldown})
-		UiTheme.text(self, Vector2(tx, box.position.y + 14.0 + UiTheme.LINE_SMALL), cd_text, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		UiTheme.text(self, Vector2(tx, box.position.y + 14.0 + UiTheme.LINE_SMALL), slot_cooldown_text(i), UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 		if state == "busy":
 			# Another power is still playing: a light shade and its seconds left, in gold.
 			draw_rect(Rect2(box.position, Vector2(SLOT_W, SLOT_SIZE)), Color(0, 0, 0, 0.35))

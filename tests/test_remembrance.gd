@@ -10,6 +10,8 @@ static func run(t) -> void:
 	_level_pick(t)
 	_overlay_keys(t)
 	_night_signal(t)
+	_hud_text(t)
+	_levels_copy(t)
 
 
 static func _rules(free: bool, keys := ["heaven"]) -> Dictionary:
@@ -157,6 +159,33 @@ static func _night_signal(t) -> void:
 	t.check(nights == [true, false], "Mission re-emits the night toggle (%s)" % [nights])
 	m._memory.press(KEY_4)
 	t.check((b.rules as Rules).level_of(0) == 4, "and handles the level pick itself")
+	m._rules = null
+	m.free()
+	_drop(b)
+
+
+static func _hud_text(t) -> void:
+	for free in [true, false]:
+		var b := _rules(free, ["wisp"])
+		var hud := Hud.new().setup(b.rules, b.crowd, b.town, null)
+		var want := "FREE" if free else PrepareScreen.cooldown_text((b.rules as Rules).power(0), (b.rules as Rules).level_of(0))
+		t.check(hud.slot_cooldown_text(0) == want and (free or want.ends_with("s")),
+			"the slot's cooldown line reads '%s' (free_play %s)" % [hud.slot_cooldown_text(0), free])
+		hud.free()
+		_drop(b)
+
+
+static func _levels_copy(t) -> void:
+	var b := _rules(true, ["wisp"])
+	var god := {"wisp": 2}
+	var m := Mission.new()
+	m.remembrance = "wisp"
+	m.levels = god
+	m._rules = b.rules
+	m._begin_memory()
+	m.set_memory_level(5)
+	t.check(god == {"wisp": 2} and m.levels.get("wisp") == 5 and (b.rules as Rules).level_of(0) == 5,
+		"Mission never writes into the levels it was handed (%s)" % [god])
 	m._rules = null
 	m.free()
 	_drop(b)

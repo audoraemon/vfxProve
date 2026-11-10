@@ -430,6 +430,7 @@ func _begin_memory() -> void:
 	if remembrance == "":
 		return
 	var top := PowerBook.MAX_LEVEL if PowerBook.has_levels(remembrance) else 1
+	levels = levels.duplicate()  # never write into the dictionary Game handed over (the god's own levels)
 	var level := clampi(int(levels.get(remembrance, 1)), 1, top)
 	levels[remembrance] = level
 	_rules.levels = levels

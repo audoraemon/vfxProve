@@ -1,10 +1,10 @@
 # KAK exact references: the Herald nights' toll case (v0.11.2 Task 15, D32): the bell tolls, then the scripted player plays on against the Herald (tools/dev/behaviour_check.gd --case=toll). name<TAB>how<TAB>expected. Starfall is the board Warning on loadout B.
-warning_toll_1	--scenario=warning --case=toll --seed=1	-308413679
-warning_toll_2	--scenario=warning --case=toll --seed=2	-364742800
-warning_toll_3	--scenario=warning --case=toll --seed=3	-989289558
-starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1	-286930712
-starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2	-294363368
-starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3	-706223097
-ringers_toll_1	--scenario=ringers --case=toll --seed=1	-523952249
-ringers_toll_2	--scenario=ringers --case=toll --seed=2	-654893297
-ringers_toll_3	--scenario=ringers --case=toll --seed=3	-384488163
+warning_toll_1	--scenario=warning --case=toll --seed=1	-583587262
+warning_toll_2	--scenario=warning --case=toll --seed=2	-598090341
+warning_toll_3	--scenario=warning --case=toll --seed=3	-525787746
+starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1	-469378854
+starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2	-97988801
+starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3	340603711
+ringers_toll_1	--scenario=ringers --case=toll --seed=1	-502141212
+ringers_toll_2	--scenario=ringers --case=toll --seed=2	-720044952
+ringers_toll_3	--scenario=ringers --case=toll --seed=3	-281707048

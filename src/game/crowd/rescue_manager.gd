@@ -208,7 +208,10 @@ func _dig(sq: Dictionary, delta: float) -> void:
 	var close := false
 	for m in crew:
 		var p: Person = m
-		close = close or (not p.has_goal() and p.ground_pos.distance_to(sq.spot) <= DIG_REACH)
+		var here := not p.has_goal() and p.ground_pos.distance_to(sq.spot) <= DIG_REACH
+		close = close or here
+		if here:
+			p.dig_shown = 0.3  # he stands and digs (Person._drift(); the dig art) while he is at it
 	if not close:
 		return
 	sq.dig = float(sq.dig) + delta / DIG_TIME

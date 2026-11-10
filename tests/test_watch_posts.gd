@@ -10,6 +10,7 @@ static func run(t) -> void:
 	_judge(t, "hunt")
 	_judge(t, "informer")
 	_judge(t, "heart")
+	_placing(t)
 
 
 ## Whether director `kind` counts `at` as watched.
@@ -114,5 +115,25 @@ static func _judge(t, kind: String) -> void:
 	if kind == "heart":
 		g.corps = Person.Corps.KNIGHT
 		t.check(not _watched(kind, crowd, at), "heart: a Knight at the point still leaves it quiet")
+	crowd.clear()
+	Piles._free(made)
+
+
+## Heart of Faith's bearer placement counts a guard on a job at his town post; the player's check does not.
+static func _placing(t) -> void:
+	City.use(&"aldermere")
+	var made := Piles._crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var g := _lone(crowd)
+	var at := g.town_post + Vector2(0.3, 0.0)
+	var d := HeartOfFaithDirector.new()
+	d.crowd = crowd
+	t.check(not d._quiet(at) and not d._quiet_placing(at), "placing: a guard at his post is seen by both checks")
+	g.assist(GJ._house(env), true)
+	crowd.guard_jobs.take(g, GJ._house(env))
+	g.ground_pos = g.town_post + Vector2(20.0, 0.0)
+	t.check(d._quiet(at), "placing: a guard away on a fire job leaves the player's check quiet")
+	t.check(not d._quiet_placing(at), "placing: but bearers are placed as if he were back at his post")
 	crowd.clear()
 	Piles._free(made)

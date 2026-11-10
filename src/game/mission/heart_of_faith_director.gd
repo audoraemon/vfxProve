@@ -267,8 +267,8 @@ func _post(i: int, k: int, mates: Array) -> Vector2:
 ## A post at or near `want` for target `i` (v0.11 M6, The Crown's Bread's _spread() with POST_APART; a fourth copy, noted for a later
 ## hoist): walkable, within GUARD_REACH of the target, reached on foot from its door, and beyond POST_APART of every post in `mates`; the
 ## nearest such point on rings of POST_GAP / 2 steps round `want`, else (a small house walled in by its neighbours, whose posts along
-## its face fall out of reach) the nearest to `want` on a SCAN grid round the target -- first among points QUIET of the town's soldiers'
-## posts (_quiet(): a Knight standing among the watch could never be Doomed unseen), then among any; with none apart, the point of that
+## its face fall out of reach) the nearest to `want` on a SCAN grid round the target -- first among points QUIET of the town's on-watch
+## soldiers (_quiet(): a Knight standing among the watch could never be Doomed unseen), then among any; with none apart, the point of that
 ## grid in reach farthest from every post in `mates`; `want` made walkable when there is not even that.
 func _spread(i: int, want: Vector2, mates: Array) -> Vector2:
 	var first := _walkable(want)
@@ -374,6 +374,21 @@ func _post_fits(i: int, at: Vector2, mates: Array) -> bool:
 func _quiet(at: Vector2) -> bool:
 	for p in crowd.soldiers:
 		if is_instance_valid(p) and p.on_watch() and p.corps != Person.Corps.KNIGHT and p.ground_pos.distance_to(at) <= QUIET:
+			return false
+	return true
+
+
+## `_quiet()` for placing the litter bearers, who stand there for the rest of the mission: a guard away on a guard job (fire or pile)
+## counts as watching at his town post, since he comes back and would see a Doom there -- a placement the player could not foresee.
+## The player's own checks keep `_quiet()` (where he stands, on watch). Only reads.
+func _quiet_placing(at: Vector2) -> bool:
+	for p in crowd.soldiers:
+		if not is_instance_valid(p) or not p.is_alive() or p.corps == Person.Corps.KNIGHT:
+			continue
+		if crowd.guard_jobs.on_job(p):
+			if p.town_post != Vector2.INF and p.town_post.distance_to(at) <= QUIET:
+				return false
+		elif p.on_watch() and p.ground_pos.distance_to(at) <= QUIET:
 			return false
 	return true
 
@@ -636,14 +651,15 @@ func _flame_goes_out() -> void:
 
 ## A bearer's place at or near `want` (v0.11 M6): walkable, reached on foot from the Citadel's gate and beyond POST_APART of every place in
 ## `taken` -- a witness apart, so one Doom takes one bearer unseen; the nearest such point on rings of a quarter LITTER_SIDE round `want`,
-## first among points QUIET of the town's soldiers' posts, then among any; `want` made walkable when there is none.
+## first among points QUIET of the town's soldiers (_quiet_placing(): a guard away on a job counts at his post), then among any;
+## `want` made walkable when there is none.
 func _apart(want: Vector2, taken: Array[Vector2]) -> Vector2:
 	for quiet: bool in [true, false]:
 		for ring in 5:
 			var n := 1 if ring == 0 else 12
 			for k in n:
 				var at := _walkable(want + Vector2.from_angle(TAU * float(k) / float(n)) * LITTER_SIDE * 0.25 * float(ring))
-				if (quiet and not _quiet(at)) or (crowd._grid != null and (not crowd._grid.walkable(at) or not _reaches(at))):
+				if (quiet and not _quiet_placing(at)) or (crowd._grid != null and (not crowd._grid.walkable(at) or not _reaches(at))):
 					continue
 				var clear := true
 				for o in taken:

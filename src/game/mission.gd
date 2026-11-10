@@ -58,6 +58,10 @@ const ENDING_SECONDS := 3.0
 const ENDING_TIME_SCALE := 0.3
 ## The ascent's slow motion (v0.11 M1, spec §6: about 2 s) in place of the ending's ENDING_SECONDS, and its banner.
 const ASCEND_SECONDS := 2.0
+## The most of the ending one frame may use up (a hitch counts as 1/20 s), and what is left over that still counts as
+## done (float sums of 1/60 leave a femtosecond: 3 s must be 180 frames at 60 fps, not 181).
+const ENDING_MAX_STEP := 1.0 / 20.0
+const ENDING_EPSILON := 0.0001
 const ASCEND_BANNER := "YOU ASCEND"
 
 ## The scripted run: [seconds, slot, ground (Vector2.INF: the active city's Citadel), drag direction or Vector2.ZERO].
@@ -853,14 +857,17 @@ func _play_ending() -> void:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
 		var wait := ASCEND_SECONDS if _rules.ascended else ENDING_SECONDS
-		# Real seconds counted from now, not a SceneTreeTimer: a timer made during _process is charged that whole frame's
-		# delta at once, so one long frame before the ending (a hitch on a loaded machine: 3 s and more) used to swallow the
-		# slow motion and report the result within the same frame -- before a Restart could come, or a fade-in could end.
-		var until := Time.get_ticks_msec() + int(wait * 1000.0)
-		while Time.get_ticks_msec() < until:
+		# Frame time counted from the next frame, each frame's share capped: a SceneTreeTimer made during _process is charged
+		# that whole frame's delta at once, so one long frame before the ending (a hitch on a loaded machine: 3 s and more)
+		# used to swallow the slow motion and report within the same frame -- before a Restart could come, or a fade-in end.
+		# Frames, not the wall clock: at --fixed-fps 60 it is 180 frames (ascent 120), as the timer was, so references stay
+		# deterministic. The delta is scaled by Engine.time_scale (the ending's 0.3, a hit's dip): dividing gives the real step.
+		var left := wait
+		while left > ENDING_EPSILON:
+			await get_tree().process_frame
 			if not is_inside_tree():
 				return  # taken down during its ending: nothing to report to
-			await get_tree().process_frame
+			left -= minf(get_process_delta_time() / maxf(Engine.time_scale, 0.001), ENDING_MAX_STEP)
 		if ended != _rules:
 			# A start() or next_act() came during the slow motion (v0.09): it restored the time scale, and this ending
 			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.

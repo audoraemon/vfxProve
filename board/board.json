@@ -1,10 +1,11 @@
 {
- "hash": "788d413ea6493f8c",
- "updated": "2026-11-10T19:56:27+07:00",
+ "hash": "a52ed1224f06837d",
+ "updated": "2026-11-11T05:39:51+07:00",
  "changes": {
-  "date": "<t:1794315387:f>",
+  "date": "<t:1794350391:f>",
   "items": [
-   "New: Natural sound pass 4: clearer, heavier crowd panic"
+   "New: Natural sound pass 5: animals and soldiers (merged)",
+   "New: Heaven's Door (Passage Tier V)"
   ]
  },
  "snapshot": {
@@ -541,28 +542,37 @@
     "title": "Natural sound pass 2: ambience, variants, recordings only, distance",
     "status": "done",
     "area": "Tools",
-    "needs_you": true,
-    "branch": "claude/sound-natural-2",
-    "updated": "2026-11-10",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-11",
     "order": 901
    },
    "natural-sound-3": {
     "title": "Natural sound pass 3: crowd panic redesign, ducking, humanized music",
     "status": "done",
     "area": "Tools",
-    "needs_you": true,
-    "branch": "claude/sound-natural-2",
-    "updated": "2026-11-10",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-11",
     "order": 902
    },
    "natural-sound-4": {
     "title": "Natural sound pass 4: clearer, heavier crowd panic",
     "status": "done",
     "area": "Tools",
-    "needs_you": true,
-    "branch": "claude/sound-natural-2",
-    "updated": "2026-11-10",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-11",
     "order": 903
+   },
+   "natural-sound-5": {
+    "title": "Natural sound pass 5: animals and soldiers (merged)",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-11",
+    "order": 904
    },
    "natural-sound-you": {
     "title": "Natural sound: listen, and the steps only you can do",
@@ -1284,6 +1294,15 @@
     "updated": "2026-11-10",
     "order": 20
    },
+   "vfx-heavendoor": {
+    "title": "Heaven's Door (Passage Tier V)",
+    "status": "done",
+    "area": "Abilities",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-11-11",
+    "order": 21
+   },
    "vfx-madness": {
     "title": "Madness Bloom (new power)",
     "status": "doing",
@@ -1442,40 +1461,48 @@
   "branches": [
    {
     "name": "god/skill-tree-ui",
-    "ahead": 254,
-    "behind": 24,
-    "date": "2026-11-10",
-    "subject": "fix: the Skill Tree's texts are never cut -- blurbs fit two lines of the info column, node names whole, labels clear of other nodes",
+    "ahead": 258,
+    "behind": 30,
+    "date": "2026-11-11",
+    "subject": "fix: the Remembrance night toggle restores Engine.time_scale; Game's memory level follows the overlay's pick",
     "pushed": false
    },
    {
-    "name": "claude/zen-greider-6e47c5",
-    "ahead": 19,
-    "behind": 12,
+    "name": "claude/magical-lichterman-23d920",
+    "ahead": 250,
+    "behind": 30,
+    "date": "2026-11-11",
+    "subject": "docs: God's Paths build plan (layout, PixelLab art, art and motion, check and land)",
+    "pushed": false
+   },
+   {
+    "name": "claude/vfx-ability-effects-964aca",
+    "ahead": 21,
+    "behind": 6,
     "date": "2026-11-10",
-    "subject": "feat: The Folded Ward (Passage Tier IV) -- a square folded so its edges meet",
+    "subject": "feat: Heaven's Door (Passage Tier V) -- a great door falls from heaven and draws in the half circle before it",
+    "pushed": true
+   },
+   {
+    "name": "claude/zen-greider-6e47c5",
+    "ahead": 21,
+    "behind": 6,
+    "date": "2026-11-10",
+    "subject": "feat: Heaven's Door (Passage Tier V) -- a great door falls from heaven and draws in the half circle before it",
     "pushed": false
    },
    {
     "name": "feat/soldier-jobs",
     "ahead": 14,
-    "behind": 0,
+    "behind": 6,
     "date": "2026-11-10",
     "subject": "fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)",
     "pushed": false
    },
    {
-    "name": "claude/sound-natural-2",
-    "ahead": 3,
-    "behind": 12,
-    "date": "2026-11-10",
-    "subject": "feat: natural sound pass 4: clearer, heavier crowd panic",
-    "pushed": true
-   },
-   {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 24,
+    "behind": 30,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
@@ -1483,7 +1510,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 76,
+    "behind": 82,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1491,7 +1518,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 361,
+    "behind": 367,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1499,7 +1526,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 319,
+    "behind": 325,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1508,7 +1535,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-10",
-   "subject": "fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)"
+   "subject": "chore: drop a stray bash crash dump"
   }
  }
 }

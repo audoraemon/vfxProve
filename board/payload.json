@@ -7,57 +7,57 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **121** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794315387:f>)\n• New: Natural sound pass 4: clearer, heavier crowd panic",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **123** done\n**9** active branches besides Develop-Main\n\n**Since the last update** (<t:1794350391:f>)\n• New: Natural sound pass 5: animals and soldiers (merged)\n• New: Heaven's Door (Passage Tier V)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-10T19:56:27+07:00"
+     "timestamp": "2026-11-11T05:39:51+07:00"
     },
     {
      "title": "god/skill-tree-ui",
-     "description": "254 commits not in Develop-Main · last commit today · local only\n> fix: the Skill Tree's texts are never cut -- blurbs fit two lines of the info column, node names whole, labels clear of other nodes\n\n_No Ledger task points at this branch._",
+     "description": "258 commits not in Develop-Main · last commit today · local only\n> fix: the Remembrance night toggle restores Engine.time_scale; Game's memory level follows the overlay's pick\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/magical-lichterman-23d920",
+     "description": "250 commits not in Develop-Main · last commit today · local only\n> docs: God's Paths build plan (layout, PixelLab art, art and motion, check and land)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/vfx-ability-effects-964aca",
+     "description": "21 commits not in Develop-Main · last commit yesterday\n> feat: Heaven's Door (Passage Tier V) -- a great door falls from heaven and draws in the half circle before it\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/zen-greider-6e47c5",
-     "description": "19 commits not in Develop-Main · last commit today · local only\n> feat: The Folded Ward (Passage Tier IV) -- a square folded so its edges meet\n\n_No Ledger task points at this branch._",
+     "description": "21 commits not in Develop-Main · last commit yesterday · local only\n> feat: Heaven's Door (Passage Tier V) -- a great door falls from heaven and draws in the half circle before it\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/soldier-jobs",
-     "description": "14 commits not in Develop-Main · last commit today · local only\n> fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
-     "color": 5016537
-    },
-    {
-     "title": "claude/sound-natural-2",
-     "description": "3 commits not in Develop-Main · last commit today\n> feat: natural sound pass 4: clearer, heavier crowd panic\n\n_No Ledger task points at this branch._",
+     "description": "14 commits not in Develop-Main · last commit yesterday · local only\n> fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "248 commits not in Develop-Main · last commit yesterday\n> fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "248 commits not in Develop-Main · last commit 2 days ago\n> fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
      "title": "god/dominion-t3-old",
-     "description": "215 commits not in Develop-Main · last commit 4 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "description": "215 commits not in Develop-Main · last commit 5 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 32 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 33 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 32 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 33 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
-    },
-    {
-     "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-10\n> fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
-     "color": 3908956
     }
    ]
   },
@@ -67,8 +67,13 @@
    },
    "embeds": [
     {
+     "title": "feat/Develop-Main",
+     "description": "Main line · last commit 2026-11-10\n> chore: drop a stray bash crash dump\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "color": 3908956
+    },
+    {
      "title": "Recently done",
-     "description": "• Natural sound pass 4: clearer, heavier crowd panic _(11-10)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-10)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-10)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_\n• Dominion ability levels: puppet-master upgrades _(11-10)_\n• People animations phase 2: pray, point and shout, look up, cower _(11-10)_\n• The Folded Ward (Passage Tier IV) _(11-10)_\n• Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate _(11-10)_",
+     "description": "• Natural sound pass 5: animals and soldiers (merged) _(11-11)_\n• Natural sound pass 4: clearer, heavier crowd panic _(11-11)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-11)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-11)_\n• Heaven's Door (Passage Tier V) _(11-11)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_\n• Dominion ability levels: puppet-master upgrades _(11-10)_\n• People animations phase 2: pray, point and shout, look up, cower _(11-10)_",
      "color": 10185686
     }
    ]

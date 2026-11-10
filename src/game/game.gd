@@ -1130,6 +1130,13 @@ func _mission_up(other: Mission) -> bool:
 	return up and _mission.started() and not _fading
 
 
+## Waits until a Restart has put a fresh mission up in place of `old`. The lambda holds `old`'s id, not `old`: freed by the
+## Restart, a captured mission is handed to the lambda as null, with a "Lambda capture ... was freed" error every frame.
+func _until_restarted(old: Mission, seconds: float) -> bool:
+	var old_id := old.get_instance_id() if is_instance_valid(old) else 0
+	return await _until(func() -> bool: return _mission_up(null) and _mission.get_instance_id() != old_id, seconds)
+
+
 ## v0.11 M1 (spec §3.1-§3.2), v0.11 M2: on a fresh save the tier board opens on Whisper, its five cards; Omen is locked,
 ## its rule shown, and its missions cannot be picked. v0.11 M3: Omen's tab shows its five cards while locked. v0.11 M4: Wrath's tab
 ## shows its five cards behind three of Omen. v0.11 M5: Reckoning's tab shows its five cards behind three of Wrath. v0.11 M6: Ascendance's
@@ -1167,8 +1174,9 @@ func _flow_ascend(step: Callable) -> void:
 	(_screen_node as MissionBoard).choose(MissionBook.WARNING)
 	var prep := _screen_node as PrepareScreen
 	step.call(prep != null and prep.draft.slots == 3 and prep.draft.capacity == 6 and not prep.mission.chooses_difficulty()
-		and prep.draft.locked.has("tsunami") and prep.draft.locked.size() == 23,
-		"its Prepare: Tier 1's 3 slots and 6 DP, no difficulty, the locked powers greyed")
+		and prep.draft.locked.has("tsunami") and prep.draft.locked == DescendState.new().locked(),
+		"its Prepare: Tier 1's 3 slots and 6 DP, no difficulty, the locked powers greyed (%d, a fresh god's)"
+		% (prep.draft.locked.size() if prep != null else -1))
 	prep.draft.preselect(MissionBook.warning().default_loadout)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 10.0)
@@ -1251,7 +1259,7 @@ func _flow_results(step: Callable) -> void:
 	var old := _mission
 	_open_pause()
 	on_action("pause:restart")
-	await _until(func() -> bool: return _mission_up(old), 10.0)
+	await _until_restarted(old, 10.0)
 	await _past_intro()
 	step.call(save.descend.night == 1 and _wish_ids() == heard,
 		"a restart banks nothing and hears the same wishes (%s)" % ", ".join(heard))
@@ -1577,7 +1585,7 @@ func _flow_night(step: Callable) -> void:
 
 	# Act I wins by stopping the warning (v0.11 M1: its clock no longer wins), and the interlude after it is for that act.
 	(_mission.rules().director as WarningDirector).warning_dead = true
-	var inter := await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	var inter := await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	var card: InterludeScreen = _screen_node as InterludeScreen
 	step.call(inter and card != null and card.choices.size() == 2 and bool(result.get("won", false))
 		and is_instance_valid(_mission) and _mission.process_mode == Node.PROCESS_MODE_DISABLED,
@@ -1624,7 +1632,7 @@ func _flow_night(step: Callable) -> void:
 
 	# Act II ends on its clock: the last choice is a single line, and Prepare for Act III.
 	_mission.rules().time_left = 0.01
-	inter = await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	inter = await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	card = _screen_node as InterludeScreen
 	step.call(inter and card != null and card.choices.size() == 1 and _mission.night().results.size() == 2
 		and InterludeScreen.act_name(String(result.get("mission", ""))) == "Act II: The Festival",
@@ -1664,12 +1672,12 @@ func _flow_night(step: Callable) -> void:
 	var old := _mission
 	_open_pause()
 	on_action("pause:restart")
-	await _until(func() -> bool: return _mission_up(old), 5.0)
+	await _until_restarted(old, 5.0)
 	await _past_intro()
 	step.call(_mission != old and _mission.act() != null and _mission.act().id == "omen" and _mission.night().results.is_empty(),
 		"Restart in Act I is a fresh night, Act I again (%s)" % _mission.act().id)
 	_mission.rules().time_left = 0.01
-	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	card = _screen_node as InterludeScreen
 	card.choose("procession")
 	card.action.emit("draft")
@@ -1681,7 +1689,7 @@ func _flow_night(step: Callable) -> void:
 	old = _mission
 	_open_pause()
 	on_action("pause:restart")
-	await _until(func() -> bool: return _mission_up(old), 5.0)
+	await _until_restarted(old, 5.0)
 	await _past_intro()
 	var live := 0
 	for c: Dictionary in _mission._bf.ctx.env.structure_destroyed.get_connections():
@@ -1693,7 +1701,7 @@ func _flow_night(step: Callable) -> void:
 
 	# Review focus 2: Esc on the interlude leaves the night for the board.
 	_mission.rules().time_left = 0.01
-	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	(_screen_node as InterludeScreen).action.emit("missions")
 	await get_tree().process_frame
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission) and not _between_acts,
@@ -1770,7 +1778,7 @@ func _flow_night(step: Callable) -> void:
 ## From Act I up and running: end it on its clock, choose `path` on the card and open the re-draft with BEGIN.
 func _night_to_redraft(path: String) -> void:
 	_mission.rules().time_left = 0.01
-	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	var card := _screen_node as InterludeScreen
 	card.choose(path)
 	card.action.emit("draft")
@@ -1808,7 +1816,7 @@ func _flow_campaign(step: Callable) -> void:
 	var old := _mission
 	_open_pause()
 	on_action("pause:restart")
-	await _until(func() -> bool: return _mission_up(old), 10.0)
+	await _until_restarted(old, 10.0)
 	step.call(save.campaign.night == 0 and save.campaign.bites == 0, "Restart in a campaign night records nothing")
 	await _past_intro()
 	_open_pause()
@@ -1930,8 +1938,13 @@ func _flow_tour(step: Callable) -> void:
 	mission_id = MissionBook.MIRAS_HOUSE
 	loadout = MissionBook.miras_house().default_loadout
 	go_to(Screen.MISSION)
-	await _until(func() -> bool: return _mission_up(null), 10.0)
+	# Straight from the title, with no fade to hide it: the shader prewarm (81 frames) and the build take about 5 s alone, so
+	# 10 s had no margin for one slow frame. A night that never comes up fails here, not as a SCRIPT ERROR on a Nil rules().
+	var up := await _until(func() -> bool: return _mission_up(null), 20.0)
 	await get_tree().process_frame
+	if not up or not _mission.started():
+		step.call(false, "Mira's House opens on its tour (not up after 20 s)")
+		return
 	var clock0 := _mission.rules().time_left
 	step.call(_mission.touring() and _mission._hud.caption() == "", "Mira's House opens on its tour, the banner alone first (no caption)")
 	# v0.11.1: the tour waits for the opening banners, then each stop's caption shows while the camera holds there.
@@ -1953,7 +1966,7 @@ func _flow_tour(step: Callable) -> void:
 	var old := _mission
 	_open_pause()
 	on_action("pause:restart")
-	await _until(func() -> bool: return _mission_up(old), 10.0)
+	await _until_restarted(old, 10.0)
 	await get_tree().process_frame
 	step.call(_mission.touring() and _mission._hud.caption() == "", "a restart tours again from the top")
 	held = await _until(func() -> bool: return _mission._hud.caption() != "", 20.0)

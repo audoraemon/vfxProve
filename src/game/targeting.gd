@@ -71,6 +71,8 @@ const AREAS := {
 	"everydoor": {"shape": "circle", "r": 0.6},
 	# TheFarGateFx.RADIUS: whom the door of stars draws
 	"fargate": {"shape": "circle", "r": 10.0},
+	# DoorsOfTheDeadFx.RADIUS: the district whose doors open
+	"deaddoors": {"shape": "circle", "r": DoorsOfTheDeadFx.RADIUS},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},

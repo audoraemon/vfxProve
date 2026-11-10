@@ -15,6 +15,10 @@ extends RefCounted
 ## to its gate, where it is freed. The owner steps it (step()) every frame and clears it (clear()) at the end; it keeps
 ## count of its kills and of the visitors slain. From setup() to clear() the pack is listed in Crowd.visitors, so a power
 ## that moves whoever walks a place moves its visitors too (The Folded Ward).
+## Traits (give()) change how one goes about it: `phase` walks straight through walls and houses to its prey (a ghost),
+## `wreck` claws at buildings (a demon): every `wreck_every` it strikes the building within `wreck_reach` of it for
+## `wreck` (damage kind frenzy) -- running past one at its prey as much as standing at one -- and with nobody in
+## reach it goes for the nearest building within its seek reach instead.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -32,6 +36,8 @@ const LURE_FOR := 1.5
 signal bitten(visitor: Animal, victim: Person, first: bool)
 ## A visitor was cut down at `at` (its node is freed right after).
 signal cut_down(visitor: Animal, at: Vector2)
+## A visitor with `wreck` struck building `s`.
+signal wrecked(visitor: Animal, s: Structure)
 
 ## People bitten dead, and visitors cut down.
 var kills := 0
@@ -64,6 +70,14 @@ class Rule extends RefCounted:
 	var flinch := true
 	var recalling := false
 	var recall_left := 0.0
+	## give(): through walls; and the blow it deals buildings (0: none), how often, how near.
+	var phase := false
+	var wreck := 0.0
+	var wreck_every := 1.5
+	var wreck_reach := 0.5
+	var wreck_in := 0.0
+	## The building it is going for, with nobody to hunt.
+	var house: Structure
 
 
 func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> Visitors:
@@ -101,6 +115,18 @@ func summon(at: Vector2, breed: Animal.Breed, blows: int, speed_mul: float, seek
 	r.flinch = flinch
 	_rules[a] = r
 	return a
+
+
+## Traits for visitor `a` (summon()'s): {"phase": bool, "wreck": damage, "wreck_every": s, "wreck_reach": units}.
+func give(a: Animal, traits: Dictionary) -> void:
+	var r: Rule = _rules.get(a)
+	if r == null:
+		return
+	r.phase = bool(traits.get("phase", r.phase))
+	r.wreck = float(traits.get("wreck", r.wreck))
+	r.wreck_every = float(traits.get("wreck_every", r.wreck_every))
+	r.wreck_reach = float(traits.get("wreck_reach", r.wreck_reach))
+	r.wreck_in = r.wreck_every * 0.5
 
 
 ## The visitors still on their feet.
@@ -176,9 +202,14 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		r.retarget_in = RETARGET
 		who = _nearest(a.ground_pos, r.seek_r, r.skip)
 		a.target = who
+	if r.wreck > 0.0:
+		_wreck(a, r, delta, who == null)
 	if who == null:
-		return  # nobody near: it stands, and looks again
+		return  # nobody near: it stands (or goes at a building), and looks again
 	if a.ground_pos.distance_to(who.ground_pos) > r.bite_r:
+		if r.phase:
+			a.walk_to(who.ground_pos, delta, null)  # straight through whatever stands between
+			return
 		# Round the buildings by the streets; only one there is no way to at all is left alone a while.
 		if a.route_to(who.ground_pos, delta, _grid, CHASE_REPATH) and a.blocked:
 			r.skip = who
@@ -200,9 +231,62 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	bitten.emit(a, who, first)
 
 
+## A wrecker's claws: the building beside it is struck every wreck_every; with nobody to hunt (`idle`) it goes to the
+## nearest building within its seek reach (to the open ground at the face nearest it) and strikes that.
+func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
+	r.wreck_in -= delta
+	var env := _field.env if _field != null else null
+	if env == null:
+		return
+	var beside: Structure = null
+	var best := INF
+	for s in env.near(a.ground_pos, r.wreck_reach):
+		if _wreckable(s):
+			var d := s.distance_to(a.ground_pos)
+			if d < best:
+				best = d
+				beside = s
+	if beside != null and r.wreck_in <= 0.0:
+		r.wreck_in = r.wreck_every
+		a.facing = 1 if beside.center().x - beside.center().y > a.ground_pos.x - a.ground_pos.y else -1
+		a.bit()
+		beside.damage(r.wreck, a.ground_pos, &"frenzy")
+		wrecked.emit(a, beside)
+	if not idle or beside != null:
+		return
+	if r.house == null or not _wreckable(r.house) or r.house.distance_to(a.ground_pos) > r.seek_r:
+		r.house = null
+		best = INF
+		for s in env.near(a.ground_pos, r.seek_r):
+			if _wreckable(s):
+				var d := s.distance_to(a.ground_pos)
+				if d < best:
+					best = d
+					r.house = s
+	if r.house == null:
+		return
+	var face := a.ground_pos.clamp(r.house.footprint.position, r.house.footprint.end)
+	var out := (a.ground_pos - face)
+	var to := face + (out.normalized() if out.length() > 0.01 else Vector2.DOWN) * (r.wreck_reach * 0.5)
+	if r.phase:
+		a.walk_to(to, delta, null)
+	elif a.route_to(to, delta, _grid, 1.0) and a.blocked:
+		r.house = null
+
+
+## A building a wrecker can strike: standing, solid (not a field, rubble or the bridge), not a power's own pile.
+static func _wreckable(s: Structure) -> bool:
+	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall"])
+
+
 ## Recalled: back to the gate, freed there or when the time is up.
 func _go_home(a: Animal, r: Rule, delta: float) -> void:
 	r.recall_left -= delta
+	if r.phase:
+		if r.recall_left <= 0.0 or a.walk_to(r.gate, delta, null):
+			_rules.erase(a)
+			_free(a)
+		return
 	if r.recall_left <= 0.0 or a.route_to(r.gate, delta, _grid):
 		_rules.erase(a)
 		_free(a)

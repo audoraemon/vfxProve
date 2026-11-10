@@ -8,8 +8,11 @@ extends Node2D
 ## AnimalPack steps it (step()); it draws itself in code, in its own small pixel shape, at the ground point.
 
 ## HELLHOUND is no town animal: a hound of the other side (Visitors, Hound Gate), half again a dog's size, never in
-## DOGS and so never in the town's pack.
-enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND }
+## DOGS and so never in the town's pack. DEMON (a horned brute a head taller than a man) and GHOST (a hooded shroud that
+## hovers off the ground, half seen through) come from the same side (Visitors, Doors of the Dead): OTHER_SIDE, all
+## three run at a dog's pace before their summoner's multiplier, and none is ever in the town's pack.
+enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND, DEMON, GHOST }
+const OTHER_SIDE: Array[Breed] = [Breed.HELLHOUND, Breed.DEMON, Breed.GHOST]
 const DOGS: Array[Breed] = [Breed.HOUND, Breed.SHEPHERD, Breed.TERRIER, Breed.WOLFHOUND, Breed.SPANIEL]
 const CATS: Array[Breed] = [Breed.TABBY, Breed.BLACK_CAT, Breed.GREY_CAT, Breed.WHITE_CAT, Breed.BROWN_CAT]
 enum State { WANDER, SIT, FOLLOW, FLEE, ATTACK, GATHER, TRANCE, DEAD }
@@ -29,7 +32,13 @@ const PALETTE := {
 	Breed.WHITE_CAT: [Color("ecebe6"), Color("a8a6a0"), Color("ffffff")],
 	Breed.BROWN_CAT: [Color("7a5a3a"), Color("3a2818"), Color("d8c0a0")],
 	Breed.HELLHOUND: [Color("1c1a22"), Color("0c0a10"), Color("ff7a1a")],
+	Breed.DEMON: [Color("2a1a1e"), Color("120a0c"), Color("ff6a1a")],
+	Breed.GHOST: [Color("dfeeff"), Color("8aa8c8"), Color("ffffff")],
 }
+## A ghost hovers GHOST_HOVER px off the ground, bobbing GHOST_BOB px, and is drawn GHOST_TINT (the other side's green, a little seen through).
+const GHOST_HOVER := 4.0
+const GHOST_BOB := 1.5
+const GHOST_TINT := Color(0.62, 1.0, 0.86, 0.85)
 const OUTLINE := Color(0.08, 0.06, 0.06, 0.6)
 ## Pixel shapes facing right, the feet on the last row: B body, D dark (ears, underside), L light (back, muzzle), K eye
 ## and nose, S / s the saddle (a shepherd's dark back; else light / body). Two walking frames differ only in the legs.
@@ -118,6 +127,8 @@ var _shown := -1
 var idle := &"sit"
 ## Seconds since it last took a step: the walk shows only while it really moves.
 var _since_move := 99.0
+## A ghost's hover: seconds it has bobbed.
+var _hover_t := 0.0
 ## Stuck check: the goal it is walking to, the nearest it has got, and how long it has got no nearer. `blocked` is set
 ## when the last walk gave up (a wall or no progress) rather than arrived.
 var blocked := false
@@ -155,7 +166,9 @@ const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png",
 	Breed.SPANIEL: "res://assets/pixellab/animals/spaniel.png",
 	Breed.WHITE_CAT: "res://assets/pixellab/animals/white_cat.png",
 	Breed.BROWN_CAT: "res://assets/pixellab/animals/brown_cat.png",
-	Breed.HELLHOUND: "res://assets/pixellab/animals/hellhound.png"}
+	Breed.HELLHOUND: "res://assets/pixellab/animals/hellhound.png",
+	Breed.DEMON: "res://assets/pixellab/animals/demon.png",
+	Breed.GHOST: "res://assets/pixellab/animals/ghost.png"}
 enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE, IDLE, BARK, SNIFF, SCRATCH, LIE }
 const WALK_FPS := 8.0
 const BITE_FPS := 14.0
@@ -191,7 +204,7 @@ func hypnotized() -> bool:
 
 
 func speed() -> float:
-	var base := DOG_SPEED if is_dog() else CAT_SPEED
+	var base := DOG_SPEED if is_dog() or breed in OTHER_SIDE else CAT_SPEED
 	if breed == Breed.TERRIER:
 		base *= 0.85
 	elif breed == Breed.WOLFHOUND:
@@ -476,6 +489,9 @@ func _plan_route(goal: Vector2, grid: WalkGrid) -> void:
 
 func tick_visual(delta: float) -> void:
 	_since_move += delta
+	if breed == Breed.GHOST:
+		_hover_t += delta
+		queue_redraw()  # it bobs every frame
 	if _off_left > 0.0:
 		_off_left -= delta
 		_off_t += delta
@@ -576,7 +592,11 @@ func _draw() -> void:
 	var shadow := Rect2(-5, -1, 10, 2) if is_dog() else Rect2(-4, -1, 8, 2)
 	if breed == Breed.HELLHOUND:
 		shadow = Rect2(-9, -1, 18, 3)
-	var sc := Color(0, 0, 0, 0.28)
+	elif breed == Breed.DEMON:
+		shadow = Rect2(-8, -1, 16, 3)
+	elif breed == Breed.GHOST:
+		shadow = Rect2(-5, -1, 10, 2)
+	var sc := Color(0, 0, 0, 0.28 if breed != Breed.GHOST else 0.14)
 	var look_shadow := Person.foot_shadow(shadow, sc)
 	draw_rect(look_shadow[0], look_shadow[1])
 	if state == State.DEAD:
@@ -593,21 +613,25 @@ func _draw() -> void:
 		_draw_rows(_shape_body(), pal, true, Color(0.55, 0.5, 0.5))
 		return
 	var tint := Color.WHITE if _flash <= 0.0 else Color(2.0, 2.0, 2.0)
+	var lift := Vector2.ZERO
+	if breed == Breed.GHOST:
+		tint *= GHOST_TINT
+		lift = Vector2(0, -GHOST_HOVER - GHOST_BOB * sin(_hover_t * 3.0))
 	var sh := sheet(breed)
 	if not sh.is_empty():
-		_draw_sheet(sh, tint)
+		_draw_sheet(sh, tint, lift)
 	else:
 		_draw_rows(_shape(), pal, false, tint)
 	_draw_mark()
 
 
 ## The PixelLab frame, feet on the ground point, mirrored for the west-facing views.
-func _draw_sheet(sh: Dictionary, tint: Color) -> void:
+func _draw_sheet(sh: Dictionary, tint: Color, lift := Vector2.ZERO) -> void:
 	var f := _sprite_frame(sh)
 	var cell: int = sh.cell
 	var foot: Vector2 = sh.foot
 	var src := Rect2((f % 100) * cell, (f / 100) * cell, cell, cell)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(float(facing), 1.0))
+	draw_set_transform(lift.round(), 0.0, Vector2(float(facing), 1.0))
 	draw_texture_rect_region(sh.tex, Rect2(-foot.x, -foot.y, cell, cell), src, tint)
 	draw_set_transform(Vector2.ZERO)
 

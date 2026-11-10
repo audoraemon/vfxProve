@@ -61,6 +61,8 @@ func _initialize() -> void:
 	_save(_sign([0b01110, 0b10001, 0b10101, 0b10001, 0b01110], Color(0.86, 0.66, 1.0), Color(0.07, 0.03, 0.09), 114), "foldward")
 	# Passage V: the door of heaven, its rays fanned out from the threshold.
 	_save(_sign([0b10101, 0b01110, 0b11011, 0b11011, 0b11011], Color(1.0, 0.85, 0.4), Color(0.2, 0.26, 0.4), 115), "heavendoor")
+	# Passage V: a door with the other side's glow in it, cold light spilling from its foot.
+	_save(_sign([0b01110, 0b11011, 0b10101, 0b11011, 0b11111], Color("8dffd8"), Color(0.08, 0.04, 0.16), 121), "deaddoors")
 	# Veil: the shut eye in dusk.
 	_save(_sign(DominionParts.SHUT_EYE, Color(0.76, 0.6, 1.0), Color(0.05, 0.02, 0.1), 95), "unseen")
 	print("wrote ", ProjectSettings.globalize_path(OUT))

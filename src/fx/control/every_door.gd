@@ -142,15 +142,19 @@ func _door_spots() -> Array:
 			continue
 		if not (s.role in DOOR_ROLES):
 			continue
-		var half := s.footprint.size * 0.5
-		var c := s.center()
-		var door := c + Vector2(0.0, half.y)
-		for off: Vector2 in [Vector2(0.0, half.y), Vector2(half.x, 0.0), Vector2(0.0, -half.y), Vector2(-half.x, 0.0)]:
-			if grid == null or grid.walkable(c + off + off.normalized() * 0.3):
-				door = c + off
-				break
-		out.append([Iso.ground_to_screen(door), 1.0 if s.role == &"house" else 1.5])
+		out.append([Iso.ground_to_screen(door_of(s, grid)), 1.0 if s.role == &"house" else 1.5])
 	return out
+
+
+## Where building `s`'s door is, on the ground: the middle of the first face (front, right, back, left -- the faces the
+## eye sees first) that opens onto walkable ground on `grid`; the front face without a grid.
+static func door_of(s: Structure, grid: WalkGrid) -> Vector2:
+	var half := s.footprint.size * 0.5
+	var c := s.center()
+	for off: Vector2 in [Vector2(0.0, half.y), Vector2(half.x, 0.0), Vector2(0.0, -half.y), Vector2(-half.x, 0.0)]:
+		if grid == null or grid.walkable(c + off + off.normalized() * 0.3):
+			return c + off
+	return c + Vector2(0.0, half.y)
 
 
 ## How much of the doors' light shows: in at the flash, out as the span ends.

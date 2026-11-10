@@ -179,24 +179,34 @@ func step(delta: float) -> void:
 func throw_out(push: float) -> Array[Person]:
 	var out: Array[Person] = []
 	for s: Structure in shelters.keys():
-		var e: Dictionary = shelters[s]
-		for v in e.inside:
-			if not is_instance_valid(v):
-				continue
-			var p := v as Person
-			_exit(p, s)
-			var away := p.ground_pos - s.center()
-			var to := p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.DOWN) * push
-			if p.grid != null:
-				var w := p.grid.nearest_walkable(to)
-				if w != Vector2.INF:
-					to = w
-			p.ground_pos = to
-			p.leave_shelter(false)
-			p.knock_down()
-			out.append(p)
-		e.inside = []
-		e.clear = 0.0
+		out.append_array(throw_out_of(s, push))
+	return out
+
+
+## One building's door bursts open (Doors of the Dead): everyone sheltering in `s` is thrown out as throw_out() throws
+## them. Returns those thrown out; none when nobody is in it.
+func throw_out_of(s: Structure, push: float) -> Array[Person]:
+	var out: Array[Person] = []
+	if not shelters.has(s):
+		return out
+	var e: Dictionary = shelters[s]
+	for v in e.inside:
+		if not is_instance_valid(v):
+			continue
+		var p := v as Person
+		_exit(p, s)
+		var away := p.ground_pos - s.center()
+		var to := p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.DOWN) * push
+		if p.grid != null:
+			var w := p.grid.nearest_walkable(to)
+			if w != Vector2.INF:
+				to = w
+		p.ground_pos = to
+		p.leave_shelter(false)
+		p.knock_down()
+		out.append(p)
+	e.inside = []
+	e.clear = 0.0
 	return out
 
 

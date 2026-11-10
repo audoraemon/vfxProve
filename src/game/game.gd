@@ -1002,6 +1002,7 @@ func _build_memory() -> Mission:
 	add_child(mission)
 	mission.pause_pressed.connect(_open_pause)
 	mission.memory_night_toggled.connect(_on_memory_night)
+	mission.memory_level_picked.connect(func(level: int) -> void: _memory_level = level)
 	var seed_value := Time.get_ticks_usec()
 	var begin := func() -> void:
 		mission.start(PackedStringArray([_remembering]), seed_value)
@@ -1020,6 +1021,7 @@ func _on_memory_night(night: bool) -> void:
 	_memory_level = clampi(int(_mission.levels.get(_remembering, _memory_level)), 1, PowerBook.MAX_LEVEL)
 	_memory_night = night
 	_close_pause()
+	Engine.time_scale = 1.0  # a hit's dip is restored by the battlefield being freed here, which never happens (as go_to does)
 	_mission.queue_free()
 	_mission = _build_mission()
 

@@ -81,10 +81,16 @@ static func _remembrance_leaves_save_alone(t) -> void:
 	t.check(refusals == ["", "", ""], "three free casts, none refused (%s)" % [refusals])
 	var first_id := game._mission.get_instance_id()
 	var first: Mission = game._mission
+	first._memory.press(KEY_4)
+	t.check(game._memory_level == 4, "a level pick keeps Game's level in step (%d)" % game._memory_level)
+	Engine.time_scale = 0.2  # a hit's dip, as the toggle finds it
 	first._memory.press(KEY_N)
+	t.check(Engine.time_scale == 1.0, "the toggle restores Engine.time_scale (%f)" % Engine.time_scale)
 	await t.process_frame
+	await t.process_frame
+	t.check(not is_instance_valid(first), "the old mission is freed after the toggle")
 	await game._until(func() -> bool: return _in_memory(game) and game._mission.get_instance_id() != first_id, 30.0)
-	t.check(game._mission.get_instance_id() != first_id and game._mission.memory_night and game._mission.remembrance == key, "N rebuilds the memory at night, the same power")
+	t.check(game._mission.get_instance_id() != first_id and game._mission.memory_night and game._mission.remembrance == key and game._mission.rules().level_of(0) == 4, "N rebuilds the memory at night, the same power")
 	game._mission._memory.press(KEY_5)
 	t.check(game._mission.rules().level_of(0) == 5, "key 5 picks level 5")
 	game._open_pause()

@@ -20,6 +20,8 @@ signal clock_started
 ## Remembrance's DAY/NIGHT toggle was pressed (Skill Tree wheel, ruling R2): Game rebuilds the memory with the same power and level and the
 ## look flipped. `night` is the look asked for.
 signal memory_night_toggled(night: bool)
+## Remembrance's level was picked (Task 5 fix): Game keeps its own copy of the level in step.
+signal memory_level_picked(level: int)
 ## The run is decided (god P2 fix wave, review M1): only when `report_on_decision`, at the start of the ending, with the very result
 ## `finished` carries after it, so Endless Night can bank the night before the 2-3 s ending a closed window would otherwise lose.
 signal decided(result: Dictionary)
@@ -451,6 +453,7 @@ func set_memory_level(level: int) -> void:
 		_rules.levels[remembrance] = picked
 	if is_instance_valid(_memory):
 		_memory.set_level(picked)
+	memory_level_picked.emit(picked)
 
 
 ## The look's rules (NightRules) once the director has appointed its people: nothing but at NIGHT. The wishes' people are kept out too.

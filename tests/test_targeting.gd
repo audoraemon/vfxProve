@@ -31,6 +31,10 @@ static func run(t) -> void:
 	t.near(float(Targeting.AREAS["dragon"].r), _k(dragon, "CONE_RADIUS"), 0.0001, "the dragon's cone is its CONE_RADIUS")
 	t.near(float(Targeting.AREAS["dragon"].arc), _k(dragon, "SWEEP_ARC"), 0.0001, "over its SWEEP_ARC")
 	t.near(float(Targeting.AREAS["tornado"].roam), _k(tornado, "WANDER_RADIUS"), 0.0001, "the tornado roams its WANDER_RADIUS")
+	var fw: Dictionary = Targeting.AREAS["foldward"]
+	t.check(String(fw.shape) == "square" and float(fw.half) == FoldedWardFx.HALF
+		and Targeting.square(Vector2(2.0, 1.0), FoldedWardFx.HALF) == Rect2(-1.0, -2.0, 6.0, 6.0),
+		"The Folded Ward shows a square of HALF each side of the cursor, axis-aligned on the ground (a diamond on screen)")
 	var missing := ""
 	for key in PowerBook.keys():
 		if not Targeting.AREAS.has(key):

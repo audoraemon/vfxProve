@@ -65,6 +65,8 @@ const AREAS := {
 	"allroads": {"shape": "circle", "r": 10.0},
 	# YesterdaysDoorFx.RADIUS: the district that steps back
 	"yesterday": {"shape": "circle", "r": 6.0},
+	# FoldedWardFx.HALF: the square folded so its edges meet, centred on the click
+	"foldward": {"shape": "square", "half": 3.0},
 	# EveryDoorFx: the whole town; the click is only where the door of light stands
 	"everydoor": {"shape": "circle", "r": 0.6},
 	# TheFarGateFx.RADIUS: whom the door of stars draws
@@ -432,6 +434,11 @@ func area() -> Dictionary:
 	return out
 
 
+## A "square" area: the axis-aligned square of side 2 * `half` centred on `at`, in ground units.
+static func square(at: Vector2, half: float) -> Rect2:
+	return Rect2(at - Vector2(half, half), Vector2(half, half) * 2.0)
+
+
 ## Where a lane power's lane begins: at the cast for a power that sweeps forward from it, half a length back for
 ## one centred on it.
 static func lane_start(key: String, press: Vector2, dir: Vector2) -> Vector2:
@@ -540,6 +547,12 @@ func _draw() -> void:
 					draw_line(_press, _press + out, COL_FAINT, -1.0)
 		"cone":
 			_cone(_press, float(a.r), float(a.arc), edge)
+		"square":
+			# An axis-aligned square of side 2 * half centred on the cursor (a diamond on screen).
+			var box := square(_press, float(a.half))
+			draw_rect(box, COL_DIVINE_FILL)
+			draw_rect(box.grow(SHADE_GAP), SHADE, false, -1.0)
+			draw_rect(box, edge, false, -1.0)
 		"pick":
 			# The people at the first click, then the place the cursor is on.
 			if placed:

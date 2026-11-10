@@ -105,6 +105,7 @@ const CATALOG := {
 	&"q_yesterday": {"path": "res://assets/audio/ability/quiet/q_yesterday.wav", "db": 0.0},
 	&"q_everydoor": {"path": "res://assets/audio/ability/quiet/q_everydoor.wav", "db": 0.0},
 	&"q_fargate": {"path": "res://assets/audio/ability/quiet/q_fargate.wav", "db": 0.0},
+	&"q_foldward": {"path": "res://assets/audio/ability/quiet/q_foldward.wav", "db": 0.0},
 	&"q_saint": {"path": "res://assets/audio/ability/quiet/q_saint.wav", "db": 0.0},
 	&"q_curfew": {"path": "res://assets/audio/ability/quiet/q_curfew.wav", "db": 0.0},
 	&"q_thorns": {"path": "res://assets/audio/ability/quiet/q_thorns.wav", "db": -0.2},

@@ -91,6 +91,21 @@ func in_radius(center: Vector2, r: float) -> Array[DummyEnemy]:
 	return out
 
 
+## The living standing in `r` (edges included), without building the list of everyone alive first: cheap enough to
+## ask every frame about a small patch of a big town (The Folded Ward).
+func in_rect(r: Rect2) -> Array[DummyEnemy]:
+	var out: Array[DummyEnemy] = []
+	var lo := r.position
+	var hi := r.end
+	for e in _enemies:
+		if not is_instance_valid(e) or not e.is_alive():
+			continue
+		var g := e.ground_pos
+		if g.x >= lo.x and g.x <= hi.x and g.y >= lo.y and g.y <= hi.y:
+			out.append(e)
+	return out
+
+
 func in_lane(origin: Vector2, dir: Vector2, half_width: float, along_min: float, along_max: float) -> Array[DummyEnemy]:
 	var out: Array[DummyEnemy] = []
 	var side := dir.orthogonal()

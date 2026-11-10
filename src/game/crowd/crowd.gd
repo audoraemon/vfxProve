@@ -152,6 +152,9 @@ var plague: PlagueManager
 var madness: MadnessManager
 ## The town's dogs and cats (AnimalPack); made by spawn() when AnimalPack.enabled, else null.
 var animals: AnimalPack
+## The visitors from the other side walking the town now (Visitors.setup() adds a pack, its clear() takes it out), for
+## the powers that move whoever walks a place (The Folded Ward).
+var visitors: Array[Visitors] = []
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
@@ -1940,6 +1943,7 @@ func clear() -> void:
 		else:
 			animals.free()
 	animals = null
+	visitors.clear()
 	threats.clear()
 	_spreads.clear()
 	_held_dangers.clear()

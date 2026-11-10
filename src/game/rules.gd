@@ -66,6 +66,7 @@ const POWER_KINDS := {
 	"houndgate": [&"frenzy"],
 	"allroads": [],
 	"yesterday": [],
+	"foldward": [],
 	"everydoor": [],
 	"fargate": [&"gone"],
 	"belllies": [],

@@ -148,6 +148,10 @@ const POWERS := [
 	{"key": "yesterday", "name": "Yesterday's Door", "path": "res://src/fx/control/yesterdays_door.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a district of 6 steps back 10 s: everyone in it is where they stood, doing what they did, 10 seconds ago; the dead stay dead",
 		"quiet": true, "alarm": 1.0, "authority": "passage"},
+	{"key": "foldward", "name": "The Folded Ward", "path": "res://src/fx/control/the_folded_ward.gd",
+		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "a square of 6 folded so its edges meet, 25 s: NO WAY OUT, whoever walks out walks back in at the far side; NO WAY IN, whoever walks in walks out at the far side; Q/E",
+		"quiet": true, "alarm": 1.0, "authority": "passage", "modes": [
+			{"key": "out", "name": "NO WAY OUT"}, {"key": "in", "name": "NO WAY IN"}]},
 	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin"},
 	{"key": "gravity", "name": "Gravity Distortion", "path": "res://src/fx/gravity_distortion.gd",
@@ -296,6 +300,7 @@ const FAMILY := {
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",
+	"foldward": "passage",
 }
 
 

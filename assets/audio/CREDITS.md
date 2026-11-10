@@ -14,7 +14,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `footstep_grass_002.ogg` | CC0 | Kenney | citizen/cit_fall_4 |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_000.ogg` | CC0 | Kenney | ability/quiet/q_deathmark_hit, ability/quiet/q_yesterday, building/lantern_blind |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_001.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
-| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_verdict |
+| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_foldward, ability/quiet/q_verdict |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_003.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_clearmind, ability/quiet/q_discord |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_001.ogg` | CC0 | Kenney | ability/quiet/q_oath |
@@ -53,6 +53,9 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `glass_04.ogg` | CC0 | rubberduck | ability/quiet/q_fargate, ability/quiet/q_mirror |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `glass_05.ogg` | CC0 | rubberduck | ability/quiet/q_abolition, ability/quiet/q_mirror |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `key_open_01.ogg` | CC0 | rubberduck | ability/quiet/q_everydoor |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_01.ogg` | CC0 | rubberduck | ability/quiet/q_foldward |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_02.ogg` | CC0 | rubberduck | ability/quiet/q_foldward |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_04.ogg` | CC0 | rubberduck | ability/quiet/q_foldward |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `slam_05.ogg` | CC0 | rubberduck | ability/quiet/q_noleave |
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `bang_01.ogg` | CC0 | rubberduck | ability/energy/orb_hit_1 |
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `bang_03.ogg` | CC0 | rubberduck | ability/fire/cf_impact, ability/holy/jg_punch_1, ability/ice/glac_erupt, ability/water/ts_crash |
@@ -99,6 +102,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [80 CC0 creture SFX #2](https://opengameart.org/content/80-cc0-creture-sfx-2) `slime_03.ogg` | CC0 | rubberduck | ability/quiet/q_blight_hit |
 | [80 CC0 creture SFX #2](https://opengameart.org/content/80-cc0-creture-sfx-2) `weird_06.ogg` | CC0 | rubberduck | ability/quiet/q_madness |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `blade_02.ogg` | CC0 | rubberduck | ability/quiet/q_turncoat |
+| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_01.ogg` | CC0 | rubberduck | ability/quiet/q_foldward |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_03.ogg` | CC0 | rubberduck | ability/quiet/q_priority |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `chain_03.ogg` | CC0 | rubberduck | ability/quiet/q_noleave, ability/quiet/q_oath |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `creature_roar_03.ogg` | CC0 | rubberduck | ability/quiet/q_madness_hit |
@@ -117,11 +121,11 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `wood_03.ogg` | CC0 | rubberduck | building/collapse_timber_2, building/collapse_tree_3 |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `wood_04.ogg` | CC0 | rubberduck | ability/quiet/q_thorns, ability/quiet/q_yesterday, building/collapse_timber_1 |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `wood_05.ogg` | CC0 | rubberduck | building/collapse_timber_1, building/collapse_timber_2 |
-| [Air whoosh](https://opengameart.org/content/air-whoosh) `whoosh2_0.wav` | CC0 | pyranostudios | ability/arcane/grav_suction, ability/energy/laser_depart, ability/fire/nova_descent, ability/quiet/q_fargate, ability/quiet/q_turncoat, ability/quiet/q_whisper |
+| [Air whoosh](https://opengameart.org/content/air-whoosh) `whoosh2_0.wav` | CC0 | pyranostudios | ability/arcane/grav_suction, ability/energy/laser_depart, ability/fire/nova_descent, ability/quiet/q_fargate, ability/quiet/q_foldward, ability/quiet/q_turncoat, ability/quiet/q_whisper |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_01_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_crash |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_02_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_surge |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_04_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_rise |
-| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding1.wav` | CC0 | PWL | ability/quiet/q_wisp |
+| [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding1.wav` | CC0 | PWL | ability/quiet/q_foldward, ability/quiet/q_wisp |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding2.wav` | CC0 | PWL | ability/quiet/q_anathema, ability/quiet/q_clearmind, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding3.wav` | CC0 | PWL | ability/quiet/q_belllies, ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_sanctuary, ability/quiet/q_skylift, ability/quiet/q_wisp |
 | [Bell dings/chimes](https://opengameart.org/content/bell-dingschimes) `bell_ding4.wav` | CC0 | PWL | ability/quiet/q_anathema, ability/quiet/q_belllies, ability/quiet/q_clearmind, ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_discord, ability/quiet/q_sanctuary |

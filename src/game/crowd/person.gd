@@ -393,6 +393,12 @@ var _goal := Vector2.INF
 var _bend_to := Vector2.INF
 var _bend_left := 0.0
 var _bend_gather := 0.0
+## Held off a place (hold_off()): the ground it is kept off, for how much longer, the goal it means to take up again when
+## let in, and the spot it mills about meanwhile.
+var _off_rect := Rect2()
+var _off_left := 0.0
+var _off_goal := Vector2.INF
+var _off_home := Vector2.INF
 ## The stuck watchdog (_watch_stuck()): the waypoint watched, the nearest it has got to it, seconds without getting
 ## nearer; and while it steps back onto open ground, the way there, the point of it walked to, and the seconds left.
 var _stuck_to := Vector2.INF
@@ -530,6 +536,10 @@ func tick(delta: float) -> void:
 		_bend_left -= delta
 		if _bend_left <= 0.0:
 			unbend_roads()
+	if _off_left > 0.0:
+		_off_left -= delta
+		if _off_left <= 0.0:
+			end_hold_off()
 	if state == State.WANDER and not is_frozen():
 		_think_accum += delta
 		if _think_due:
@@ -742,6 +752,14 @@ func path_crosses(r: Rect2, ahead: int) -> bool:
 func set_goal(g: Vector2) -> void:
 	if mind == Mind.ASLEEP:
 		return  # a sleeper goes nowhere (Curfew)
+	if _off_left > 0.0 and _off_rect.has_point(g):
+		# Held off the place it means to go (hold_off()): it keeps the goal for when it is let in, and mills where it is.
+		_off_goal = g
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+		_leg = 0
+		_repath_in = REPATH
+		return
 	_goal = g
 	_leg = 0
 	_no_route_to = Vector2.INF
@@ -842,21 +860,24 @@ func _drift() -> void:
 	if _bend_to != Vector2.INF:
 		home = _bend_to
 		off = off.limit_length(_bend_gather)
+	# Held off a place (hold_off()): it mills about where it was turned away to, never onto the place.
+	if _off_left > 0.0:
+		home = _off_home
 	var to := _drift_spot(home + off)
-	if straight_clear(to):
+	if _drift_open(to):
 		_target = to
 		return
 	for turn in [PI * 0.5, PI, PI * 1.5]:
 		var other := _drift_spot(home + off.rotated(turn))
-		if straight_clear(other):
+		if _drift_open(other):
 			_target = other
 			return
 	for part in [0.5, 0.25]:
 		var short := ground_pos.lerp(to, part)
-		if straight_clear(short):
+		if _drift_open(short):
 			_target = short
 			return
-	if mind == Mind.CALM and ground_pos.distance_to(home) > spread * 2.0:
+	if mind == Mind.CALM and _off_left <= 0.0 and ground_pos.distance_to(home) > spread * 2.0:
 		# Out of its street (a stroll, a goal given up at a doorstep) with no straight way back: home by the streets.
 		if grid == null or anchor != _no_route_to or grid.version != _no_route_version:
 			set_goal(anchor)
@@ -874,6 +895,13 @@ func _drift() -> void:
 				_target = here
 				return
 	_target = ground_pos
+
+
+## A drift may go to `to`: a straight walk there is clear (straight_clear()), and it is not on a place it is held off.
+func _drift_open(to: Vector2) -> bool:
+	if _off_left > 0.0 and _off_rect.has_point(to):
+		return false
+	return straight_clear(to)
 
 
 ## A drift's spot on open ground: `to`, or the nearest open cell within 3 (where it stands when there is none).
@@ -1286,6 +1314,102 @@ func fold(to: Vector2) -> bool:
 	_sync_position()
 	set_goal(bound)
 	return true
+
+
+## Space folded under it (The Folded Ward): set down at `to` -- open ground its caller has chosen -- in mid-stride, and
+## none the wiser. Its mind is untouched. With `walk_on` it goes on where it was going: to its goal, by a way planned
+## again from `to`; with no goal, the step it was taking is carried along with it (or, where that step is not open from
+## `to`, it stands and its next step is its own). With `walk_on` false it is only stopped at `to` and its walk goes on
+## from there. A throw flies on from `to`. Either way the jump is not being stuck: the stuck watchdog starts over and a
+## step back onto open ground it was taking is over. A place held in a gate's queue is let go. False when it is dead,
+## frozen or inside somewhere, and it stays where it is.
+func wrap_to(to: Vector2, walk_on := true) -> bool:
+	if inside or state == State.DEAD or is_frozen():
+		return false
+	var shift := to - ground_pos
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	if _unstick_left > 0.0:
+		_unstick_left = 0.0
+		_unstick_way = PackedVector2Array()
+		step_margin = STEP_MARGIN
+	ground_pos = to
+	_sync_position()
+	if not walk_on:
+		return true
+	if queue_spot != Vector2.INF:
+		queue_spot = Vector2.INF
+		queue_since = -1.0
+	if _goal != Vector2.INF:
+		set_goal(_goal)
+	elif state == State.WANDER:
+		var step := _target + shift
+		_target = step if straight_clear(step) else to
+	return true
+
+
+## Turned away from a place (The Folded Ward's NO WAY IN): for `seconds` it is held off `r`. It walks on along `heading`
+## for `walk_away` seconds (as far as a straight walk is open), then mills about where it stands, never onto `r`. Any
+## route it means to take into `r` -- its goal now, a post, a street, an errand -- is kept for later and not walked
+## (set_goal()); a goal outside `r` it walks as ever (a fright sends it off as usual). When the time is up (or
+## end_hold_off()) it takes up the goal it was kept from, if any. Its mind is untouched; nothing is drawn from any rng
+## here. No path is walked while it mills, so the stuck watchdog has nothing to count. False when it is dead or inside.
+func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float) -> bool:
+	if state == State.DEAD or inside or seconds <= 0.0:
+		return false
+	var kept := _off_goal if _off_left > 0.0 else Vector2.INF
+	if _goal != Vector2.INF and r.has_point(_goal):
+		kept = _goal
+	_off_rect = r
+	_off_left = seconds
+	_off_goal = kept
+	if kept != Vector2.INF:
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+		_leg = 0
+		_repath_in = REPATH
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	# On along the heading it came out with, as far as walk_away takes it on open ground off the place.
+	var away := ground_pos
+	var dir := heading.normalized() if heading.length() > 0.0001 else Vector2.ZERO
+	for part: float in [1.0, 0.5, 0.25]:
+		var to := ground_pos + dir * walk_speed * walk_away * part
+		if not r.has_point(to) and straight_clear(to):
+			away = to
+			break
+	_off_home = away
+	if _goal == Vector2.INF and state == State.WANDER:
+		_target = away
+		_idle = 0.0
+	return true
+
+
+## Let in again: no longer held off its place; the goal it was kept from is taken up from where it stands.
+func end_hold_off() -> void:
+	if _off_left <= 0.0 and _off_goal == Vector2.INF:
+		return
+	_off_left = 0.0
+	var g := _off_goal
+	_off_goal = Vector2.INF
+	_off_home = Vector2.INF
+	if g != Vector2.INF and state != State.DEAD and not inside:
+		set_goal(g)
+
+
+## Whether it is held off a place now (hold_off()).
+func held_off() -> bool:
+	return _off_left > 0.0
+
+
+## Where it means to be: its goal; or, kept from one (hold_off()), that goal; else its anchor (a citizen's street, a
+## soldier's post).
+func bound_for() -> Vector2:
+	if _goal != Vector2.INF:
+		return _goal
+	if _off_goal != Vector2.INF:
+		return _off_goal
+	return anchor
 
 
 ## The roads lie (All Roads Lead Here): for `seconds`, every route it plans -- home, to its post, to a gate, away from a

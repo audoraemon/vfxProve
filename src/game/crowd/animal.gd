@@ -131,6 +131,13 @@ var _route_leg := 0
 var _route_goal := Vector2.INF
 var _route_age := 0.0
 var _route_fails := 0
+## Held off a place (hold_off()): the ground, seconds left, seconds since it was turned away, how long it runs on
+## along its heading first, and where that run ends.
+var _off_rect := Rect2()
+var _off_left := 0.0
+var _off_t := 0.0
+var _off_away := 0.0
+var _off_run := Vector2.INF
 ## When it next looks whether the goal is in plain sight (and for a waypoint further on), the goal it last looked at,
 ## and whether that one was in sight.
 var _look_in := 0.0
@@ -158,6 +165,8 @@ const IDLES := {&"sit": [Row.SIT, 8.0, &"hold"], &"lie": [Row.LIE, 6.0, &"hold"]
 	&"idle": [Row.IDLE, 6.0, &"loop"], &"sniff": [Row.SNIFF, 6.0, &"loop"], &"scratch": [Row.SCRATCH, 8.0, &"hold"]}
 ## No nearer to its goal for this long: it gives up on it.
 const STUCK_AFTER := 1.2
+## How far outside a place it is held off it waits (hold_off()).
+const OFF_GAP := 0.5
 ## route_to(): a goal that has moved this far from where the route was planned to is planned for again; the route looks
 ## this many waypoints ahead for one it can run to straight (cutting the grid's corners).
 const ROUTE_MOVED := 0.5
@@ -252,6 +261,85 @@ func sync_position() -> void:
 	position = Iso.ground_to_screen(ground_pos)
 
 
+## Space folded under it (The Folded Ward): set down at `to` -- open ground its caller has chosen -- and it runs on to
+## wherever it was running (its goal, its prey), its way there planned again from `to`; the stuck check starts over, the
+## jump is not being stuck. With `walk_on` false it is only stopped at `to`: its run goes on from there as it was (and
+## gives up on a goal it cannot get on toward, as any run does). False when it is dead, and it stays where it is.
+func wrap_to(to: Vector2, walk_on := true) -> bool:
+	if not is_alive():
+		return false
+	ground_pos = to
+	if not walk_on:
+		sync_position()
+		return true
+	_walk_goal = Vector2.INF
+	_stuck_t = 0.0
+	blocked = false
+	_route = PackedVector2Array()
+	_route_goal = Vector2.INF
+	_route_leg = 0
+	_look_in = 0.0
+	sync_position()
+	return true
+
+
+## Turned away from a place (The Folded Ward's NO WAY IN): for `seconds`, whenever it runs for a goal inside `r`
+## (route_to()) -- its own, or its prey's -- it runs on along `heading` for `walk_away` seconds first, then only to the
+## point just outside `r`'s edge nearest that goal, and waits there (a hound circles the place as its prey moves inside
+## it). A goal outside `r` it runs for as ever. When the time is up it runs for its goal again. Draws no number from any
+## rng. False when it is dead.
+func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float) -> bool:
+	if not is_alive() or seconds <= 0.0:
+		return false
+	_off_rect = r
+	_off_left = seconds
+	_off_t = 0.0
+	_off_away = walk_away
+	var dir := heading.normalized() if heading.length() > 0.0001 else Vector2.ZERO
+	_off_run = ground_pos + dir * speed() * walk_away
+	_walk_goal = Vector2.INF
+	_stuck_t = 0.0
+	return true
+
+
+## Let in again: it runs for its own goal as before.
+func end_hold_off() -> void:
+	_off_left = 0.0
+	_off_run = Vector2.INF
+
+
+## Whether it is held off a place now (hold_off()).
+func held_off() -> bool:
+	return _off_left > 0.0
+
+
+## Where it means to run: its prey, else its goal.
+func bound_for() -> Vector2:
+	if target != null and is_instance_valid(target) and target.is_alive():
+		return target.ground_pos
+	return goal
+
+
+## Where a run for `to` (inside the place it is held off) goes instead: on along its heading at first; then the point
+## OFF_GAP outside the place's edge nearest `to`.
+func _kept_off(to: Vector2) -> Vector2:
+	if _off_t < _off_away and _off_run != Vector2.INF:
+		return _off_run
+	var r := _off_rect.grow(OFF_GAP)
+	var c := to.clamp(r.position, r.end)
+	var out := [c.x - r.position.x, r.end.x - c.x, c.y - r.position.y, r.end.y - c.y]
+	var k := 0
+	for i in range(1, 4):
+		if out[i] < out[k]:
+			k = i
+	match k:
+		0: c.x = r.position.x
+		1: c.x = r.end.x
+		2: c.y = r.position.y
+		_: c.y = r.end.y
+	return c
+
+
 ## One step of `delta` toward `to` at its speed, on walkable ground only: true when it got there.
 func walk_to(to: Vector2, delta: float, grid: WalkGrid) -> bool:
 	var d := to - ground_pos
@@ -319,6 +407,14 @@ func _give_up() -> void:
 ## goal. No path at all, or two give-ups with no waypoint reached between them, is "cannot get there". Whether the goal
 ## is in sight, and how far it can cut, it looks again every ROUTE_LOOK, at once when the goal moves LOOK_MOVED.
 func route_to(goal: Vector2, delta: float, grid: WalkGrid, repath_every := 1.0) -> bool:
+	if _off_left > 0.0 and _off_rect.has_point(goal):
+		# Held off the place its goal lies in (hold_off()): it runs there no nearer than the place's edge, and waits.
+		var done := _route_step(_kept_off(goal), delta, grid, repath_every)
+		return done and blocked
+	return _route_step(goal, delta, grid, repath_every)
+
+
+func _route_step(goal: Vector2, delta: float, grid: WalkGrid, repath_every: float) -> bool:
 	if grid == null:
 		return walk_to(goal, delta, grid)
 	_look_in -= delta
@@ -380,6 +476,9 @@ func _plan_route(goal: Vector2, grid: WalkGrid) -> void:
 
 func tick_visual(delta: float) -> void:
 	_since_move += delta
+	if _off_left > 0.0:
+		_off_left -= delta
+		_off_t += delta
 	if _flash > 0.0:
 		_flash -= delta
 		if _flash <= 0.0:

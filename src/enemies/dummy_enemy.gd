@@ -403,6 +403,34 @@ func fold(to: Vector2) -> bool:
 	return true
 
 
+## Space folded under it (The Folded Ward): set down at `to` -- ground its caller has found open -- and it walks on as
+## though it had never moved, its step carried along with it (`walk_on`), or, with `walk_on` false, simply stopped there
+## (its walk goes on from `to`). A throw flies on from `to`. False when it is dead or frozen, and it stays where it is.
+func wrap_to(to: Vector2, walk_on := true) -> bool:
+	if state == State.DEAD or is_frozen():
+		return false
+	if walk_on:
+		_target += to - ground_pos
+	ground_pos = to
+	_sync_position()
+	return true
+
+
+## Where it means to be (Person: its goal, or its anchor): a plain unit, the spot it walks to.
+func bound_for() -> Vector2:
+	return _target
+
+
+## Turned away from a place `r` for `seconds` (Person.hold_off()). A plain unit knows no place to be held off: false.
+func hold_off(_r: Rect2, _seconds: float, _heading: Vector2, _walk_away: float) -> bool:
+	return false
+
+
+## Let in again (Person.end_hold_off()): nothing for a plain unit.
+func end_hold_off() -> void:
+	pass
+
+
 ## Whether the active city lands long steps (CityDef.long_steps()), read again whenever the city changes.
 static var _long_of: CityDef
 static var _long_rule := false

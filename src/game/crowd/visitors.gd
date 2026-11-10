@@ -13,7 +13,8 @@ extends RefCounted
 ## come to fight. It runs round buildings by the streets (Animal.route_to()); a target there is no way to is left alone
 ## SKIP_FOR. recall() sends every visitor back
 ## to its gate, where it is freed. The owner steps it (step()) every frame and clears it (clear()) at the end; it keeps
-## count of its kills and of the visitors slain.
+## count of its kills and of the visitors slain. From setup() to clear() the pack is listed in Crowd.visitors, so a power
+## that moves whoever walks a place moves its visitors too (The Folded Ward).
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -70,6 +71,8 @@ func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> V
 	_crowd = crowd
 	_grid = grid
 	_parent = parent
+	if crowd != null and not crowd.visitors.has(self):
+		crowd.visitors.append(self)
 	return self
 
 
@@ -125,6 +128,8 @@ func clear() -> void:
 		_free(a)
 	_rules.clear()
 	_swings.clear()
+	if _crowd != null and is_instance_valid(_crowd):
+		_crowd.visitors.erase(self)
 
 
 func step(delta: float) -> void:

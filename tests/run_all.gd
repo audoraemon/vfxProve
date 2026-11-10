@@ -97,6 +97,7 @@ const SUITES := [
 	"res://tests/test_yesterday.gd",
 	"res://tests/test_everydoor.gd",
 	"res://tests/test_fargate.gd",
+	"res://tests/test_foldward.gd",
 	"res://tests/test_unstick.gd",
 	"res://tests/test_corps.gd",
 	"res://tests/test_marshals.gd",

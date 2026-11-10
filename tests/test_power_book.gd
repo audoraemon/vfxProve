@@ -10,11 +10,11 @@ const V07_COOLDOWNS := {
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
 	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
-	"allroads", "yesterday", "everydoor", "fargate"]
+	"allroads", "yesterday", "everydoor", "fargate", "foldward"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 57, "57 powers")
+	t.check(PowerBook.POWERS.size() == 58, "58 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -41,7 +41,7 @@ static func run(t) -> void:
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "tornado",
 		"pestilence", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion",
-		"anathema", "sanctuary", "curfew", "allroads", "yesterday", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
+		"anathema", "sanctuary", "curfew", "allroads", "yesterday", "foldward", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "abolition", "tempest", "shatter", "everydoor", "schism", "fargate", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
 	var quiet := []
@@ -49,7 +49,7 @@ static func run(t) -> void:
 		if PowerBook.is_quiet(key):
 			quiet.append(key)
 	t.check(quiet == ["doom", "whisper", "ember", "deathmark", "noleave", "skylift", "wisp", "discord", "belllies", "madness", "blight", "thorns", "pestilence", "mirror", "magnify", "unseen", "congregation", "oath", "echo",
-		"turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion", "anathema", "sanctuary", "curfew", "allroads", "yesterday", "voice", "abolition", "everydoor", "fargate"],
+		"turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion", "anathema", "sanctuary", "curfew", "allroads", "yesterday", "foldward", "voice", "abolition", "everydoor", "fargate"],
 		"the quiet powers: no danger for the town to see (%s)" % [quiet])
 	var authorities_ok := true
 	for p: Dictionary in PowerBook.POWERS:

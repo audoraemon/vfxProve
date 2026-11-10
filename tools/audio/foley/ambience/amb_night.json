@@ -1,0 +1,9 @@
+{"length": 40.0, "loop": true, "stereo": true, "rms_db": -24.0, "layers": [
+  {"src": "lib:oga/cricket-sounds/cricketsounds090613.wav", "at": 0.0, "dur": 38.5, "fade_in": 1500, "fade_out": 1500, "gain_db": -4},
+  {"src": "lib:oga/crickets-ambient-noise-loopable/crickets_1.mp3", "at": 0.0, "dur": 11.5, "fade_in": 300, "fade_out": 300, "gain_db": -10},
+  {"src": "lib:oga/crickets-ambient-noise-loopable/crickets_1.mp3", "at": 11.0, "dur": 11.5, "fade_in": 300, "fade_out": 300, "gain_db": -10},
+  {"src": "lib:oga/crickets-ambient-noise-loopable/crickets_1.mp3", "at": 22.0, "dur": 11.5, "fade_in": 300, "fade_out": 300, "gain_db": -10},
+  {"src": "lib:oga/crickets-ambient-noise-loopable/crickets_1.mp3", "at": 33.0, "dur": 11.5, "fade_in": 300, "fade_out": 300, "gain_db": -10},
+  {"src": "lib:oga/wind1/wind1.wav", "at": 0.0, "from": 20.0, "dur": 40.4, "fade_in": 400, "fade_out": 400, "hp": 150, "gain_db": -8},
+  {"src": "lib:wikimedia/360703_eguobyte_large-crowd-medium-distance-stereo.wav", "at": 0.0, "from": 30.0, "dur": 40.4, "fade_in": 400, "fade_out": 400, "lp": 1200, "hp": 150, "gain_db": -20}
+]}

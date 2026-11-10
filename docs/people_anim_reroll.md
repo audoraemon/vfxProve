@@ -78,3 +78,72 @@ The marshal, escort and rescue show their idle frames during a swing. Both direc
 | marshal | a3122700-f4fd-4652-84ff-098c2db4a99a |
 | escort | 549ef66a-6647-4035-9cdb-0839379a2caf |
 | rescue | 414fb657-9e17-4a36-a50d-ed44664b8c3e |
+
+## Round 2 (2026-11-05): done
+
+Re-rolled with v3 under temporary names (`scream_rr`, `scream_rr2`, `swing_rr`), staged one folder per clip and imported.
+22 generations spent.
+
+- **Back-view screams in, 8 of 9:** merchant_a, merchant_b, craft_a, craft_b, clergy, caregiver_a, bellkeeper and
+  engineer. The prompt that turned them away: `walking away from the viewer, back turned, clutching the back of the head
+  with both hands and screaming, staggering, only the back of the head visible` (or `..., seen from behind, face turned
+  away`).
+- **Still rejected: caregiver_b.** It faced the viewer twice, so it stays in `_REJECTED_SOURCE`.
+- **Spear thrusts in:** marshal and rescue, both directions. Marshal south-east is the first take with its flash frame
+  dropped (7 frames).
+- **Still missing: escort.** The south-east take swung the spear both ways, twice, so it keeps the idle fallback.
+- **Farmer swing kept as it was.** The re-roll was whiter than the idle and dropped the pitchfork in the last frame. The
+  old south-east cross-punch was deleted on PixelLab by `--replace`; the local frames are the only copy.
+
+## Phase 2 (2026-11-05): pray, point, look up, cower
+
+All 13 citizen designs have the four new rows (ANIMS 9-12), generated SE + NE with v3 (8 frames) and mirrored. Soldiers and
+stand-ins have none and keep their old look (the procedural kneel for Voice of God).
+
+When they play (drawing only; no timing changes):
+- pray: Voice of God's Kneel (compel_pose &"kneel"), and Divine Congregation (compel_pose &"pray") once standing still.
+- point / cower: the startle freeze before a run (Person.startled()); cower within COWER_REACH (3 tiles) of the threat,
+  point beyond it. The clip plays across the freeze.
+- look up: Mind.OBSERVE with look_up set; only the Falling Star watchman sets it (WarningDirector). Death Mark gawkers
+  stare at a body on the ground, so they do not look up.
+
+Prompts: pray "kneeling upright on both knees with a straight back, hands pressed together in prayer, head slightly
+bowed, not lying down" (the first prompt, "kneeling down on both knees and praying ... head bowed", often lay flat);
+point "pointing ahead with one outstretched arm clearly visible and shouting a warning"; lookup "standing still and
+looking up at the sky in awe, head tilted back"; cower "crouching low and covering the head with both arms, trembling
+in fear". Back views add ", seen from behind facing away from the viewer, back of the head visible".
+
+Generations: 8 pilot + 96 + 18 re-rolls. Kept with flaws, to re-roll later:
+- merchant_b pray back and bellkeeper pray front lie face-down (reads as prostration).
+- caregiver_b pray back kneels facing the viewer.
+- merchant_b, caregiver_b and clergy point back face the viewer.
+- clergy point front: the arm barely shows against the white robe.
+
+## Interaction (2026-11-07): talk, work, dig, douse
+
+New rows (ANIMS 13-16), SE + NE with v3 (8 frames), mirrored: talk and douse for all 17 designs, work for the 13
+citizens, dig for the 4 soldiers (guard, marshal, escort, rescue). The pose code grew to `frame << 7 | anim << 2 | facing`
+(anim mask `& 31`) to fit more than 16 rows.
+
+When they play:
+- talk: a calm citizen at a LEISURE stop. A soldier at its post talks in the pauses that fall in a TALK_WINDOW (4 s) of
+  every 8-15 s (seeded per soldier).
+- work: a calm citizen at a WORK or ERRAND stop; a fire responder filling its bucket at the water.
+- douse: a fire responder with a full bucket at the fire; the clip runs once across FireManager.ACT.
+- dig: a rescue crew member at the rubble (RescueManager sets Person.dig_shown).
+
+Gameplay change (approved): a calm citizen within STOP_REACH (1.2 tiles) of a work, errand or leisure stop, and a rescue
+digger, now stand still instead of milling (Person._at_stop(), _drift()). At home they mill as before. This moves the
+crowd, so the exact references were re-recorded.
+
+Prompts: talk "standing and chatting with a friend, gesturing with both hands while talking"; work "standing in place,
+both hands busy on a workbench at waist height, sorting goods, small movements" (the pilot's "standing at a table working
+with both hands in front, handling goods" was rejected in review); douse "throwing water forward from a wooden bucket held in both
+hands, blue water splashing from the bucket" (without the water the back view read as lifting a box); dig "bending down
+and digging through rubble, lifting heavy stones and throwing them aside". Back views add the usual suffix.
+
+Generations: 12 pilot + 90 + 7 re-rolls. Re-rolled and kept: resident_a work (both), resident_a and rescue douse back,
+marshal dig (both; the first take threw the shield apart, the re-roll adds "kneeling ... with bare hands ... weapon and
+shield set down on the ground"), merchant_b talk back. Kept with flaws, to re-roll later:
+- work: invented props (a table, a box) on merchant_b, laborer, caregiver_a, craft_a and engineer. The people stand
+  where no table is drawn.

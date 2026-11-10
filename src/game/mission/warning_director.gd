@@ -151,6 +151,7 @@ func _omen() -> void:
 	rules.banner.emit("STOP THE WARNING")
 	if phase == Phase.STARE and _alive(watchman):
 		watchman.observe(gate_spot + Vector2(0.0, 0.8), STARE)
+		watchman.look_up = true  # the star is up in the sky (people art phase 2)
 
 
 ## The messenger's way: to the keeper while the keeper lives, else to the tower's foot to climb it; to the Temple's door once the bell

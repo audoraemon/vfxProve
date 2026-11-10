@@ -1,0 +1,3 @@
+{"length": 1.23, "rms_db": -17.5, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/cat-purr-meow/cat_mewpurr.wav", "at": 0.0, "from": 0.01, "dur": 0.88, "hp": 180, "lp": 10000, "fade_in": 4, "fade_out": 80}
+]}

@@ -146,7 +146,7 @@ func _build() -> void:
 		if resists(p, ctx.rng):
 			resisted += 1
 			continue
-		if p.compel(spots[gathered.size()], DURATION - 0.5, MOVEMENT_PRIORITY, MARK):
+		if p.compel(spots[gathered.size()], DURATION - 0.5, MOVEMENT_PRIORITY, MARK, false, &"pray"):
 			gathered.append(p)
 	# The dogs and cats in the circle come too and sit by the place (AnimalPack).
 	AnimalPack.cast(ctx, center, RADIUS, Animal.Spell.GATHER, DURATION - 0.5, null, place_at)

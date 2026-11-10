@@ -1,0 +1,4 @@
+{"length": 1.0, "peak_db": -0.3, "reverb": {"rt60": 1.2, "mix": 0.08, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:oga/wind-hit-time-morph/qubodup-timehitwind/qubodup-megaswosh1.wav", "gain_db": -3, "onset": true, "at": 0.0, "pitch": -0.18},
+  {"src": "lib:oga/wind/wind/wind/Wind.ogg", "gain_db": -9, "dur": 1.0, "at": 0.0, "pitch": 1.29}
+]}

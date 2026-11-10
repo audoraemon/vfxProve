@@ -1,0 +1,5 @@
+{"length": 0.55, "rms_db": -21.0, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_metal (4).ogg", "at": 0.0, "onset": true, "dur": 0.35, "hp": 150, "lp": 12000, "pitch": -0.5, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/03-footstep.ogg", "at": 0.0, "onset": true, "dur": 0.3, "hp": 50, "lp": 4000, "gain_db": -3, "fade_out": 60},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/chainmail2.wav", "at": 0.02, "from": 0.41, "dur": 0.28, "hp": 1800, "lp": 14000, "gain_db": -10, "fade_in": 10, "fade_out": 120}
+]}

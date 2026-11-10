@@ -3,9 +3,9 @@
 capital_harvest_none_1	--scenario=harvest --case=none --seed=1 --city=capital	-219611850
 capital_harvest_none_2	--scenario=harvest --case=none --seed=2 --city=capital	-376836744
 capital_harvest_none_3	--scenario=harvest --case=none --seed=3 --city=capital	-568551163
-capital_harvest_play_1	--scenario=harvest --case=play --seed=1 --city=capital	-94371480
-capital_harvest_play_2	--scenario=harvest --case=play --seed=2 --city=capital	-763025136
-capital_harvest_play_3	--scenario=harvest --case=play --seed=3 --city=capital	-34803440
-capital_harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1 --city=capital	-817019049
-capital_harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2 --city=capital	-352500916
-capital_harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3 --city=capital	-854781883
+capital_harvest_play_1	--scenario=harvest --case=play --seed=1 --city=capital	-772004065
+capital_harvest_play_2	--scenario=harvest --case=play --seed=2 --city=capital	-387742673
+capital_harvest_play_3	--scenario=harvest --case=play --seed=3 --city=capital	-854635784
+capital_harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1 --city=capital	-395787659
+capital_harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2 --city=capital	-921134931
+capital_harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3 --city=capital	-416776200

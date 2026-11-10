@@ -2,15 +2,15 @@
 miras_b_play_1	--scenario=miras --case=play --route=b --seed=1 --board	-463123980
 miras_b_play_2	--scenario=miras --case=play --route=b --seed=2 --board	-882786676
 miras_b_play_3	--scenario=miras --case=play --route=b --seed=3 --board	-285795580
-lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	300303405
-lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	-950749527
-lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	425754638
+lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	192603673
+lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	-821613970
+lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	8531406
 ringers_b_play_1	--scenario=ringers --case=play --route=b --seed=1	81873441
 ringers_b_play_2	--scenario=ringers --case=play --route=b --seed=2	-612031205
 ringers_b_play_3	--scenario=ringers --case=play --route=b --seed=3	884405525
-panic_b_play_1	--scenario=panic --case=play --route=b --seed=1	-773210567
-panic_b_play_2	--scenario=panic --case=play --route=b --seed=2	-530882496
-panic_b_play_3	--scenario=panic --case=play --route=b --seed=3	-682970174
+panic_b_play_1	--scenario=panic --case=play --route=b --seed=1	-538161937
+panic_b_play_2	--scenario=panic --case=play --route=b --seed=2	-549597494
+panic_b_play_3	--scenario=panic --case=play --route=b --seed=3	-7717583
 informer_b_play_1	--scenario=informer --case=play --route=b --seed=1	-554785632
 informer_b_play_2	--scenario=informer --case=play --route=b --seed=2	-890129507
 informer_b_play_3	--scenario=informer --case=play --route=b --seed=3	-323191246

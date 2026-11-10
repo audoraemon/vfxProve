@@ -20,14 +20,14 @@ signal prewarmed
 const DEFAULT_LOADOUT := ["heaven", "tsunami", "cinder", "nova"]
 const PEOPLE := Crowd.CITIZENS + Crowd.SOLDIERS
 const PAN_SPEED := 320.0
-## Pan limits (screen px): the map is 60 x 60 units since the town scale upgrade. The furthest zoom out: below 0.5
-## the pixel art shrinks past legibility -- cobbles shimmer and people vanish (playtest, 2026-09-27).
+## Pan limits (screen px): the map is 60 x 60 units since the town scale upgrade. The furthest zoom out: below 0.85
+## the pixel art turns jagged and tangled (the user's Discord idea "Zoom cap", 2026-11-09; was 0.5 from the 2026-09-27 playtest).
 const PAN_MIN := Vector2(-1700, -900)
 const PAN_MAX := Vector2(1700, 1000)
 ## The map width PAN_MIN..PAN_MAX are set for (Aldermere's, TownLayout.MAP: tests/test_capital.gd); a wider city's
 ## limits grow in proportion (pan_limits()).
 const PAN_MAP_WIDTH := 60.0
-const ZOOM_MIN := 0.5
+const ZOOM_MIN := 0.85
 const ZOOM_MAX := 1.6
 ## A slot's hotkey: 1-6, for up to six slots (v0.08).
 const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6]
@@ -45,8 +45,13 @@ const INTRO_FROM_ZOOM := ZOOM_MIN
 ## A board night that heard wishes ends its first intro with one last hold at the play spot (v0.11.1, spec §2), showing only
 ## the prayers plate.
 const PRAYERS_SECONDS := 3.0
-## How close the camera rests for play.
-const PLAY_ZOOM := 0.6
+## How close the camera rests for play: at the zoom-out cap, as much town as stays clean (was 0.6 before the cap).
+const PLAY_ZOOM := 0.85
+## The zoom-out cap (2026-11-09) moved the camera's zooms, not the town's: who counts as off screen (Person's slower off-screen
+## stepping, Battlefield.sim_zoom) follows the zooms before the cap -- the play zoom 0.6 and the intro's start 0.5 -- so every
+## mission plays as it was tuned and gated. A wheel step scales it with the camera's.
+const SIM_PLAY_ZOOM := 0.6
+const SIM_INTRO_ZOOM := 0.5
 ## The tour's stops sit this far below the screen's centre (v0.10 M6, screen px at PLAY_ZOOM), so a stop and its labels
 ## stay clear of the banners' bar and Cael's plate above the middle.
 const TOUR_RAISE := 50.0
@@ -164,6 +169,7 @@ func _ready() -> void:
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
 	_bf.ctx.field.bounds = City.current().map()
+	_bf.sim_zoom = SIM_PLAY_ZOOM
 	_zoom_readout = ZoomReadout.new()
 	add_child(_zoom_readout)
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
@@ -218,7 +224,7 @@ func _bench_jump(act_id: String, args: PackedStringArray) -> void:
 
 
 ## Bench aid (capital plan, Task 13; Review Focus 5): `--bench-zoom=Z` rests the camera at zoom Z where the mission
-## framed it (ZOOM_MIN, 0.5, is as far out as a player can go); `--bench-zoomed-out` frames the whole map (City.map()) at
+## framed it (ZOOM_MIN, 0.85, is as far out as a player can go); `--bench-zoomed-out` frames the whole map (City.map()) at
 ## whatever zoom fits it, every building and person in view -- the worst case for draw calls. A second is let pass first
 ## so what came into view has woken. Returns the label's suffix ("" for the mission's own view).
 func _bench_view(args: PackedStringArray) -> String:
@@ -231,9 +237,11 @@ func _bench_view(args: PackedStringArray) -> String:
 		var seen := get_viewport().get_visible_rect().size
 		_bf.camera.zoom = Vector2.ONE * minf(seen.x / box.size.x, seen.y / box.size.y)
 		_bf.camera.position = box.get_center().round()
+		_bf.sim_zoom = 0.0  # the bench's views count what the camera shows
 		suffix = "-whole"
 	elif Battlefield.arg_value(args, "--bench-zoom") != "":
 		_bf.camera.zoom = Vector2.ONE * float(Battlefield.arg_value(args, "--bench-zoom"))
+		_bf.sim_zoom = 0.0
 		suffix = "-z" + Battlefield.arg_value(args, "--bench-zoom")
 	else:
 		return suffix
@@ -508,6 +516,7 @@ func _begin_intro(play: MissionDef) -> void:
 		_tour = null
 		_intro_left = 0.0
 		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
+		_bf.sim_zoom = SIM_PLAY_ZOOM
 		var framed := Vector2(0, -2) if play.id == MissionBook.LAST_JUDGEMENT else play.camera()
 		_bf.camera.position = Iso.ground_to_screen(framed).round()
 		if is_instance_valid(_hud):
@@ -515,6 +524,7 @@ func _begin_intro(play: MissionDef) -> void:
 	else:
 		_rules.set_process(false)  # the clock waits for the camera
 		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
+		_bf.sim_zoom = SIM_INTRO_ZOOM
 		_bf.camera.position = Iso.ground_to_screen(play.intro_from).round()
 		var stops: Array = _director.tour() if _director != null else []
 		_tour = IntroTour.new().setup(play.intro_from, raised(stops), play.camera()) if not stops.is_empty() else null
@@ -652,6 +662,7 @@ func _land() -> void:
 	_tour = null
 	_bf.camera.position = Iso.ground_to_screen(play.camera()).round()
 	_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
+	_bf.sim_zoom = SIM_PLAY_ZOOM
 	if is_instance_valid(_hud):
 		_hud.set_caption("")
 		_hud.praying = false
@@ -943,6 +954,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
+		_bf.sim_zoom = _bf.camera.zoom.x * SIM_PLAY_ZOOM / PLAY_ZOOM
 		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
 		_pan(Vector2.ZERO)
 		if is_instance_valid(_zoom_readout):
@@ -1044,6 +1056,7 @@ func _process(delta: float) -> void:
 			_tour.step(step)
 			_bf.camera.position = Iso.ground_to_screen(_tour.camera()).round()
 			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, _tour.zoom_k())
+			_bf.sim_zoom = lerpf(SIM_INTRO_ZOOM, SIM_PLAY_ZOOM, _tour.zoom_k())
 			# One thing at a time (v0.11.1): a banner up means no caption (it is the HUD's one message).
 			_hud.set_caption("" if _hud.banner_up() else _tour.caption())
 		else:
@@ -1052,6 +1065,7 @@ func _process(delta: float) -> void:
 			var play: MissionDef = _act if _act != null else _def
 			_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera(), smooth)).round()
 			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
+			_bf.sim_zoom = lerpf(SIM_INTRO_ZOOM, SIM_PLAY_ZOOM, smooth)
 		if _intro_left <= 0.0:
 			_land()
 		return  # the camera is the intro's until it lands: no panning, no aiming

@@ -15,6 +15,8 @@ static func run(t) -> void:
 	_damaged(t)
 	_slot_keys(t)
 	_ring(t)
+	_hit_areas(t)
+	_info_fits(t)
 	_choose(t)
 	GodTree.dev_fill = false
 	_clear()
@@ -220,6 +222,42 @@ static func _ring(t) -> void:
 	t.check(screen.type_lines("veil")[3] == "Neighbours: PASSAGE, DECREE", "veil's neighbours are passage and decree (%s)" % screen.type_lines("veil")[3])
 	t.check(screen.type_lines("nonsense").is_empty(), "an unknown type has no lines")
 	screen.free()
+	var verbs := {"ruin": "Destroy · Collapse · Erase", "passage": "Open · Move · Close", "veil": "Conceal · Obscure · Displace",
+		"decree": "Law · Bind · Enforce", "death": "Wither · Harvest · Release", "dominion": "Control · Command · Bend"}
+	for type in verbs:
+		t.check(GodSelectScreen.verbs(type) == verbs[type], "%s's nameplate verbs (%s)" % [type, GodSelectScreen.verbs(type)])
+	t.check(GodSelectScreen.verbs("nonsense") == "", "an unknown type has no verbs")
+
+
+static func _hit_areas(t) -> void:
+	var screen := GodSelectScreen.new().setup()
+	var got := _listen(screen)
+	screen.click(GodSelectScreen.ring_rect(1).position - Vector2(6, 6))
+	t.check(screen.selected == 0 and got.is_empty(), "a click on the aura, outside every hit area, does nothing (%d)" % screen.selected)
+	var bad := 0
+	for i in GodTree.RING.size():
+		if screen.hit(GodSelectScreen.ring_rect(i).get_center()) != "ring:%d" % i:
+			bad += 1
+	t.check(bad == 0, "the centre of every ring rect hits its own type (%d wrong)" % bad)
+	screen.free()
+
+
+static func _info_fits(t) -> void:
+	GodTree.dev_fill = true
+	var screen := GodSelectScreen.new().setup()
+	var w := GodSelectScreen.INFO_RECT.size.x - 16.0
+	var bad := 0
+	for type in GodTree.RING:
+		var lines := screen.type_lines(type)
+		var flavour := UiTheme.wrap(lines[1], w, UiTheme.SIZE_BODY).size()
+		var rest := UiTheme.wrap(lines[2], w, UiTheme.SIZE_SMALL).size() + UiTheme.wrap(lines[3], w, UiTheme.SIZE_SMALL).size()
+		var h := 16.0 + 22.0 + flavour * UiTheme.LINE_BODY + 12.0 + rest * (UiTheme.LINE_SMALL + 2.0)
+		if flavour > 2 or h > GodSelectScreen.INFO_RECT.size.y:
+			bad += 1
+			print("info too tall: %s flavour rows %d height %.0f" % [type, flavour, h])
+	t.check(bad == 0, "every type's lines fit INFO_RECT, flavour in at most 2 rows (%d too big)" % bad)
+	screen.free()
+	GodTree.dev_fill = false
 
 
 static func _choose(t) -> void:

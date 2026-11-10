@@ -7,16 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **120** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794307562:f>)\n• Done: People animations phase 2: pray, point and shout, look up, cower\n• New: FLOW test fixed (ending hitch, stale lock count, fade waits)\n• New: Soldier jobs: guards at fires, rubble piles, digging, watch posts (in progress)\n• New: The Folded Ward (Passage Tier IV)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **121** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794315387:f>)\n• New: Natural sound pass 4: clearer, heavier crowd panic",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-10T17:46:02+07:00"
+     "timestamp": "2026-11-10T19:56:27+07:00"
     },
     {
      "title": "god/skill-tree-ui",
-     "description": "252 commits not in Develop-Main · last commit today · local only\n> feat: TreeDetail -- what the skill tree's panel says (blurbs, changed stats, the buy button)\n\n_No Ledger task points at this branch._",
+     "description": "254 commits not in Develop-Main · last commit today · local only\n> fix: the Skill Tree's texts are never cut -- blurbs fit two lines of the info column, node names whole, labels clear of other nodes\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -26,12 +26,12 @@
     },
     {
      "title": "feat/soldier-jobs",
-     "description": "13 commits not in Develop-Main · last commit today · local only\n> fix: Heart of Faith places bearers as if lured guards were back at their posts\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
+     "description": "14 commits not in Develop-Main · last commit today · local only\n> fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
      "color": 5016537
     },
     {
      "title": "claude/sound-natural-2",
-     "description": "2 commits not in Develop-Main · last commit today\n> feat: natural sound pass 3: crowd panic redesign, ducking, humanized music\n\n_No Ledger task points at this branch._",
+     "description": "3 commits not in Develop-Main · last commit today\n> feat: natural sound pass 4: clearer, heavier crowd panic\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -68,7 +68,7 @@
    "embeds": [
     {
      "title": "Recently done",
-     "description": "• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-10)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-10)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_\n• Dominion ability levels: puppet-master upgrades _(11-10)_\n• People animations phase 2: pray, point and shout, look up, cower _(11-10)_\n• The Folded Ward (Passage Tier IV) _(11-10)_\n• Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate _(11-10)_\n• Zoom readout (step 1 of the zoom cap) _(11-09)_",
+     "description": "• Natural sound pass 4: clearer, heavier crowd panic _(11-10)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-10)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-10)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_\n• Dominion ability levels: puppet-master upgrades _(11-10)_\n• People animations phase 2: pray, point and shout, look up, cower _(11-10)_\n• The Folded Ward (Passage Tier IV) _(11-10)_\n• Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate _(11-10)_",
      "color": 10185686
     }
    ]

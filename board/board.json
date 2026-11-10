@@ -1,13 +1,10 @@
 {
- "hash": "311ac68bf184d97e",
- "updated": "2026-11-10T17:46:02+07:00",
+ "hash": "788d413ea6493f8c",
+ "updated": "2026-11-10T19:56:27+07:00",
  "changes": {
-  "date": "<t:1794307562:f>",
+  "date": "<t:1794315387:f>",
   "items": [
-   "Done: People animations phase 2: pray, point and shout, look up, cower",
-   "New: FLOW test fixed (ending hitch, stale lock count, fade waits)",
-   "New: Soldier jobs: guards at fires, rubble piles, digging, watch posts (in progress)",
-   "New: The Folded Ward (Passage Tier IV)"
+   "New: Natural sound pass 4: clearer, heavier crowd panic"
   ]
  },
  "snapshot": {
@@ -557,6 +554,15 @@
     "branch": "claude/sound-natural-2",
     "updated": "2026-11-10",
     "order": 902
+   },
+   "natural-sound-4": {
+    "title": "Natural sound pass 4: clearer, heavier crowd panic",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": true,
+    "branch": "claude/sound-natural-2",
+    "updated": "2026-11-10",
+    "order": 903
    },
    "natural-sound-you": {
     "title": "Natural sound: listen, and the steps only you can do",
@@ -1436,10 +1442,10 @@
   "branches": [
    {
     "name": "god/skill-tree-ui",
-    "ahead": 252,
+    "ahead": 254,
     "behind": 24,
     "date": "2026-11-10",
-    "subject": "feat: TreeDetail -- what the skill tree's panel says (blurbs, changed stats, the buy button)",
+    "subject": "fix: the Skill Tree's texts are never cut -- blurbs fit two lines of the info column, node names whole, labels clear of other nodes",
     "pushed": false
    },
    {
@@ -1452,18 +1458,18 @@
    },
    {
     "name": "feat/soldier-jobs",
-    "ahead": 13,
-    "behind": 8,
+    "ahead": 14,
+    "behind": 0,
     "date": "2026-11-10",
-    "subject": "fix: Heart of Faith places bearers as if lured guards were back at their posts",
+    "subject": "fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)",
     "pushed": false
    },
    {
     "name": "claude/sound-natural-2",
-    "ahead": 2,
+    "ahead": 3,
     "behind": 12,
     "date": "2026-11-10",
-    "subject": "feat: natural sound pass 3: crowd panic redesign, ducking, humanized music",
+    "subject": "feat: natural sound pass 4: clearer, heavier crowd panic",
     "pushed": true
    },
    {

@@ -179,6 +179,8 @@ const CROWD_SHOTS := [0.5, 3.0, 10.0, 16.0, 24.0, 34.0]
 const CROWD_TEST_END := 40.0
 
 var _bf: Battlefield
+## The zoom readout at the screen's right edge (shown after each wheel zoom; the Discord idea "Zoom cap").
+var _zoom_readout: ZoomReadout
 var _town: Town
 ## The town's lighting look (L cycles CURRENT, DAY, NIGHT and rebuilds); --look=day|night starts in one.
 var _look := Town.Look.CURRENT
@@ -203,6 +205,8 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
+	_zoom_readout = ZoomReadout.new()
+	add_child(_zoom_readout)
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
 	_drag_line = Node2D.new()
 	_drag_line.name = "DragLine"
@@ -320,6 +324,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
 		_pan(Vector2.ZERO)
+		if is_instance_valid(_zoom_readout):
+			_zoom_readout.show_zoom(_bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pressing = true

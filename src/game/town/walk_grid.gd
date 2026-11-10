@@ -22,6 +22,8 @@ var _bridges: Array[Structure] = []
 ## The city's blockers(), grown to the cells they close. Computed once: it lays out every house, garden and tree,
 ## far too slow to redo each time a building falls (a Cinderfall felling a dozen trees at once hitched ~100 ms).
 var _blockers: Array[Rect2] = []
+## The street piles' cells (Vector2i -> true): solid until the guards dig them out, whatever is freed beside them.
+var _piles := {}
 
 
 func setup(env: EnvironmentField, town: Town) -> WalkGrid:
@@ -184,6 +186,22 @@ func _open(s: Structure) -> void:
 				stamp(r.intersection(s.footprint), true)
 
 
+## A street pile closes (on) or opens (off) these cells.
+func set_pile(ids: Array[Vector2i], on: bool) -> void:
+	for id in ids:
+		if on:
+			_piles[id] = true
+		else:
+			_piles.erase(id)
+		if grid.is_in_boundsv(id):
+			grid.set_point_solid(id, on)
+	version += 1
+
+
+func is_pile(id: Vector2i) -> bool:
+	return _piles.has(id)
+
+
 ## Stamp a standing building again: one people walk over opens its way, anything else closes its ground. For a
 ## fallen building rebuilt (v0.05) and a postern barred (Town.bar_postern()).
 func refresh(s: Structure) -> void:
@@ -233,3 +251,7 @@ func _free_ground(s: Structure) -> void:
 		if other != s and is_instance_valid(other) and not other.destroyed and other.walkable \
 				and other.footprint.intersects(area):
 			_open(other)
+	# ...but a street pile in the area stays closed.
+	for id: Vector2i in _piles:
+		if area.has_point(id_to_world(id)):
+			grid.set_point_solid(id, true)

@@ -128,6 +128,8 @@ var alarms := AlarmManager.new()
 var evac: EvacuationManager
 ## Fires and the citizens fighting them (v0.04 P1); made by setup().
 var fires: FireManager
+## The street piles a fallen building drops (soldier jobs).
+var piles: PileManager
 ## Which ordinary guards are away on a job (fires; piles later), and the hooks by which a mission's director claims soldiers.
 var guard_jobs: GuardJobs
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
@@ -305,6 +307,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
+	piles = PileManager.new().setup(self, env, grid)
 	guard_jobs = GuardJobs.new().setup(self)
 	field.enemy_killed.connect(_on_killed)
 	if town.citadel != null:
@@ -381,6 +384,7 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 		_ground_drawer = _response_drawer("ResponseGround", -3, true)
 	(_drawer as ResponseDrawer).crowd = self
 	(_ground_drawer as ResponseDrawer).crowd = self
+	piles.attach(_parent)
 	shelters = ShelterManager.new().setup(self, _env, _field)
 	for p in citizens:
 		p.evac = evac
@@ -878,6 +882,7 @@ func _advance(delta: float) -> void:
 		escorts.step(delta)
 	if rescue != null:
 		rescue.step(delta)
+	piles.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1885,6 +1890,8 @@ func clear() -> void:
 	_held_dangers.clear()
 	alarms.reset()
 	fires.clear()
+	piles.clear()
+	piles.free_layer()
 	guard_jobs.clear()
 	clear_mission_hooks()
 	if shelters != null:
@@ -1985,6 +1992,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 				p.replan()
 	if s.leaves_ruin():
 		clear_ground(WalkGrid.solid_rect(s.footprint))
+		piles.on_fall(s)
 
 
 ## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town nobody cries out, so the

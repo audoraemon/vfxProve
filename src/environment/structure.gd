@@ -251,7 +251,8 @@ func setup(rect: Rect2, h: float, k: Kind, seed_value: int, role_value := &"", t
 			max_hp = type.hp
 			walkable = type.walkable
 			flat = type.flat
-	_ruin_blocks = k in [Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS] and not walkable and role != &"citadel" 		and not (role == CapitalPlots.ROLE and tag_value in NOT_BUILDINGS)
+	_ruin_blocks = k in [Kind.HOUSE, Kind.TEMPLE, Kind.BARRACKS] and not walkable and role != &"citadel" \
+		and not (role == CapitalPlots.ROLE and tag_value in NOT_BUILDINGS)
 	hp = max_hp
 	z_index = -1 if flat else 0
 	var g0 := rect.position
@@ -1454,18 +1455,24 @@ func _build_cracks() -> void:
 
 
 func _build_rubble() -> void:
-	var pal := _palette()
 	var count := int(clampf(footprint.get_area() * 10.0, 6.0, 26.0))
+	_rubble.append_array(rubble_polys(footprint.grow(0.25), _base, _palette(), count, rng))
+
+
+## `count` chunks of rubble scattered over `area` (ground units), each [screen polygon relative to `origin`, colour from
+## `pal`]. The one rng order a building's ruin and a street pile share: x, y, size, five (angle jitter, radius), colour.
+static func rubble_polys(area: Rect2, origin: Vector2, pal: Array, count: int, rng: RandomNumberGenerator) -> Array:
+	var out := []
 	for i in count:
-		var g := Vector2(rng.randf_range(footprint.position.x - 0.25, footprint.end.x + 0.25),
-			rng.randf_range(footprint.position.y - 0.25, footprint.end.y + 0.25))
-		var c := Iso.ground_to_screen(g) - _base
+		var g := Vector2(rng.randf_range(area.position.x, area.end.x), rng.randf_range(area.position.y, area.end.y))
+		var c := Iso.ground_to_screen(g) - origin
 		var size := rng.randf_range(2.0, 5.5)
 		var poly := PackedVector2Array()
 		for k in 5:
 			var ang := TAU * k / 5.0 + rng.randf() * 0.6
 			poly.append(c + Vector2(cos(ang), sin(ang) * 0.7) * size * rng.randf_range(0.6, 1.0) + Vector2(0, -size * 0.4))
-		_rubble.append([poly, pal[rng.randi() % 3]])
+		out.append([poly, pal[rng.randi() % 3]])
+	return out
 
 
 # --- Effects -----------------------------------------------------------------

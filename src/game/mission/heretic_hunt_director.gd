@@ -113,10 +113,10 @@ func _cellar_house() -> Structure:
 	return first
 
 
-## Some living soldier's post lies within QUIET_R of `door` (v0.11 M4, The Informer's quiet doors). Only reads.
+## Some living soldier stands within QUIET_R of `door`, on watch (where he stands, not the post he was given) (v0.11 M4, The Informer's quiet doors). Only reads.
 func _watched(door: Vector2) -> bool:
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.is_alive() and p.post != Vector2.INF and p.post.distance_to(door) <= QUIET_R:
+		if is_instance_valid(p) and p.on_watch() and p.ground_pos.distance_to(door) <= QUIET_R:
 			return true
 	return false
 

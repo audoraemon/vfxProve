@@ -370,10 +370,10 @@ func _post_fits(i: int, at: Vector2, mates: Array) -> bool:
 	return crowd._grid == null or (crowd._grid.walkable(at) and (at.distance_to(doors[i]) <= 0.1 or not crowd._grid.path(doors[i], at).is_empty()))
 
 
-## No post of the town's own soldiers lies within QUIET of `at` (v0.11 M6): the Knights' own are left out. Only reads.
+## No on-watch soldier of the town's own stands within QUIET of `at` (v0.11 M6; where he stands, not his post): the Knights' own are left out. Only reads.
 func _quiet(at: Vector2) -> bool:
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.is_alive() and p.corps != Person.Corps.KNIGHT and p.post.distance_to(at) <= QUIET:
+		if is_instance_valid(p) and p.on_watch() and p.corps != Person.Corps.KNIGHT and p.ground_pos.distance_to(at) <= QUIET:
 			return false
 	return true
 

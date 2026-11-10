@@ -195,6 +195,14 @@ static func _prune(t) -> void:
 	h.die(&"test")
 	gj.prune()
 	t.check(not gj.on_job(h), "prune drops the dead")
+	# Final review I4: a fire fighter a director re-posts is left at that station when his record drops.
+	var r := _guard(crowd, 2)
+	r.assist(house, true)
+	gj.take(r, house)
+	var station := r.post + Vector2(2.5, 0.0)
+	r.send_to_post(station)
+	gj.prune()
+	t.check(not gj.on_job(r) and r.anchor.is_equal_approx(station), "prune leaves a re-posted fire fighter at the director's station")
 	Corps._done(made)
 
 

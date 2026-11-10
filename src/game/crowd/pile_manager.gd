@@ -71,6 +71,7 @@ func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid) -> PileManager:
 	_env = env
 	_grid = grid
 	_rng.seed = crowd._seed + 53
+	grid.on_closed = recheck
 	return self
 
 
@@ -241,6 +242,33 @@ func _leave_gap(p: Pile) -> void:
 	p.all_open = true
 
 
+## Something closed cells while piles lie in the street (a bridge fell, a thorn wall grew, a structure was restored or a
+## postern barred): the gap rule is checked again for every live pile, in placement order, once per such event (never per
+## frame). A pile with no gap yet leaves one now if it seals; one whose gap no longer saves the route opens every cell as a
+## slow crossing.
+func recheck() -> void:
+	if piles.is_empty():
+		return
+	for p in piles:
+		if p.all_open:
+			continue
+		if p.gap == NO_GAP:
+			_leave_gap(p)
+			continue
+		var shut: Array[Vector2i] = []
+		for id in p.cells:
+			if id != p.gap and _grid.is_pile(id):
+				shut.append(id)
+		if not _seals(shut, {}):
+			continue
+		for id in shut:
+			if not _held_closed(id, p):
+				_grid.set_pile([id] as Array[Vector2i], false)
+		for id in p.cells:
+			_grid.set_slow(id, WalkGrid.SLOW_CROSSING)
+		p.all_open = true
+
+
 ## Whether another pile still leaves `id` as a slow crossing.
 func _kept_slow(id: Vector2i, but: Pile) -> bool:
 	for q in piles:
@@ -296,10 +324,14 @@ func _seals(cells: Array[Vector2i], ctx: Dictionary) -> bool:
 		ctx["pts"] = pts
 		ctx["before"] = PackedInt32Array()
 		if pts.size() >= 2:
+			# "Before" is the pile's cells open on the ground under them (one a thorn wall closed meanwhile stays closed).
+			var opened: Array[Vector2i] = []
 			for id in cells:
-				g.set_point_solid(id, false)
+				if _grid.ground_open(id):
+					g.set_point_solid(id, false)
+					opened.append(id)
 			ctx["before"] = _components(pts, region)
-			for id in cells:
+			for id in opened:
 				g.set_point_solid(id, true)
 	var points: Array[Vector2i] = ctx["pts"]
 	if points.size() < 2:
@@ -539,12 +571,10 @@ func _assign() -> void:
 				continue
 			p.diggers.erase(d)
 			p.spots.erase(d)
-			if m == null:
-				continue
-			if jobs.job_of(m) == p:
+			# Whoever reaches here no longer stands at his dig spot (dead, fighting, or sent elsewhere by someone -- a
+			# director's send_to_post() wins): nobody is walked home over that order.
+			if m != null and jobs.job_of(m) == p:
 				jobs.release(m)
-			elif m.is_alive() and not m.held_by_god() and m.mind == Person.Mind.POST and not m.anchor.is_equal_approx(m.post):
-				m.back_to_post()
 	var stage := _crowd.alarms.stage
 	if not jobs.is_open() or stage < _crowd.profile.fire_from or stage >= AlarmManager.Stage.EVACUATION:
 		return
@@ -559,8 +589,8 @@ func _assign() -> void:
 			if jobs.job_of(d) == p:
 				on += 1
 		for g in jobs.pick(centre(p), REACH, on, DIGGERS - p.diggers.size()):
-			jobs.take(g, p)
 			p.spots[g] = spots[p.diggers.size() % spots.size()]
+			jobs.take(g, p, p.spots[g])
 			p.diggers.append(g)
 			g.send_to_post(p.spots[g])
 

@@ -13,6 +13,8 @@ var open := true
 var _crowd: Crowd
 ## Person -> the job he is on (a burning Structure; a pile from Task 6). Insertion order, so deterministic.
 var _jobs := {}
+## Person -> the spot his job gave him to stand at (a pile's dig spot; none for a fire, which he fights as ASSIST).
+var _spots := {}
 
 
 func setup(crowd: Crowd) -> GuardJobs:
@@ -82,8 +84,13 @@ func pick(at: Vector2, reach: float, on_here: int, cap: int) -> Array[Person]:
 	return out
 
 
-func take(p: Person, job: Variant) -> void:
+## `spot`: where the job stands him (a dig spot); a guard dropped while still anchored there walks home.
+func take(p: Person, job: Variant, spot := Vector2.INF) -> void:
 	_jobs[p] = job
+	if spot != Vector2.INF:
+		_spots[p] = spot
+	else:
+		_spots.erase(p)
 	p.on_guard_job = true
 
 
@@ -110,6 +117,7 @@ func prune() -> void:
 	for k in _jobs.keys():
 		if not is_instance_valid(k):
 			_jobs.erase(k)
+			_spots.erase(k)
 			continue
 		var p: Person = k
 		if p.is_alive() and p.held_by_god():
@@ -131,6 +139,7 @@ func close() -> void:
 				_crowd.piles.release(p)
 			_drop(p, false)
 	_jobs.clear()
+	_spots.clear()
 
 
 ## A new crowd or act: forget everything and open again.
@@ -139,6 +148,7 @@ func clear() -> void:
 		if is_instance_valid(k):
 			(k as Person).on_guard_job = false
 	_jobs.clear()
+	_spots.clear()
 	open = true
 
 
@@ -151,9 +161,13 @@ func _still_on(p: Person, job: Variant) -> bool:
 	return _crowd.piles.piles.has(pile) and spot is Vector2 and p.mind == Person.Mind.POST and p.anchor.is_equal_approx(spot)
 
 
-## Drop one record; `home`: a guard left standing off his post (a stranded digger) walks back.
+## Drop one record; `home`: a guard still anchored at the spot his job gave him (a stranded digger) walks back. One anchored
+## anywhere else was sent there by someone (a director's send_to_post()) and is left to that order.
 func _drop(p: Person, home: bool) -> void:
+	var spot: Variant = _spots.get(p)
 	_jobs.erase(p)
+	_spots.erase(p)
 	p.on_guard_job = false
-	if home and p.is_alive() and not p.held_by_god() and p.mind == Person.Mind.POST and not p.anchor.is_equal_approx(p.post):
+	if home and spot is Vector2 and p.is_alive() and not p.held_by_god() and p.mind == Person.Mind.POST \
+			and p.anchor.is_equal_approx(spot) and not p.anchor.is_equal_approx(p.post):
 		p.back_to_post()

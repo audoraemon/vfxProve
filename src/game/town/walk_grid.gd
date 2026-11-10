@@ -11,6 +11,7 @@ const BenchProf := preload("res://src/core/bench_prof.gd")
 const BODY := 0.15
 ## How far nearest_walkable() and path() will look for a free cell beside a blocked goal.
 const SNAP_CELLS := 8
+const STEPS4: Array[Vector2i] = [Vector2i(0, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1)]
 
 var grid := AStarGrid2D.new()
 ## Rises whenever a cell turns solid or free (stamp()): distance fields built on the grid rebuild on it.
@@ -22,8 +23,13 @@ var _bridges: Array[Structure] = []
 ## The city's blockers(), grown to the cells they close. Computed once: it lays out every house, garden and tree,
 ## far too slow to redo each time a building falls (a Cinderfall felling a dozen trees at once hitched ~100 ms).
 var _blockers: Array[Rect2] = []
-## The street piles' cells (Vector2i -> true): solid until the guards dig them out, whatever is freed beside them.
+## The street piles' cells, a layer over the ground (Vector2i -> whether the ground under the pile is closed): a pile cell is
+## solid until the guards dig it out; whatever stamps it meanwhile (a neighbour freed, a thorn wall, a restore) changes the
+## ground under it, which is what the cell becomes when the pile goes.
 var _piles := {}
+## Called (no arguments) after anything closes cells while the town stands: a bridge falls, a structure is added, restored
+## or barred. PileManager re-checks its gap rule on it. One callable, set by the crowd's PileManager.
+var on_closed := Callable()
 ## A pile's gap cells (Vector2i -> pace factor): open, but crossed at a crawl.
 var _slow := {}
 
@@ -114,6 +120,45 @@ func nearest_walkable(g: Vector2, max_cells := SNAP_CELLS) -> Vector2:
 	return fallback
 
 
+## The open cell to step out to from `g`, standing on a closed cell in `r` (a falling footprint, a pile cell): the nearest open
+## cell reached from `g` by going only through closed cells inside `r` grown by a cell -- so out over the footprint's own edge,
+## on the street's side, never through a fence, a garden or a wall beyond it. Searched in rings of 4-way steps (A* only
+## cuts a corner where nothing is in its way), nearest first, ties by (y, x). `g` itself when it is open; Vector2.INF when no
+## open cell borders the footprint (searched at least SNAP_CELLS steps, and across the whole of `r`).
+func step_out_of(g: Vector2, r: Rect2) -> Vector2:
+	var id := world_to_id(g)
+	if grid.is_in_boundsv(id) and not grid.is_point_solid(id):
+		return g
+	var inside := r.grow(CELL)
+	var seen := {id: true}
+	var ring: Array[Vector2i] = [id]
+	var steps := maxi(SNAP_CELLS, ceili(maxf(r.size.x, r.size.y) / CELL) + 2)
+	for step in steps:
+		var next: Array[Vector2i] = []
+		var best := Vector2i.MAX
+		var best_d := INF
+		for c in ring:
+			for d4 in STEPS4:
+				var n := c + d4
+				if seen.has(n) or not grid.is_in_boundsv(n):
+					continue
+				seen[n] = true
+				var w := id_to_world(n)
+				if not grid.is_point_solid(n):
+					var d := w.distance_squared_to(g)
+					if d < best_d or (d == best_d and (n.y < best.y or (n.y == best.y and n.x < best.x))):
+						best = n
+						best_d = d
+				elif inside.has_point(w):
+					next.append(n)
+		if best != Vector2i.MAX:
+			return id_to_world(best)
+		if next.is_empty():
+			break
+		ring = next
+	return Vector2.INF
+
+
 ## Waypoints from `from` to `to` in ground units (empty when there is no route). A goal inside a building
 ## routes to the nearest free cell beside it, so "walk home" works even though home is solid.
 func path(from: Vector2, to: Vector2) -> PackedVector2Array:
@@ -151,7 +196,10 @@ func stamp(rect: Rect2, solid: bool) -> void:
 		for x in range(c0.x, c1.x + 1):
 			var id := Vector2i(x, y)
 			if grid.is_in_boundsv(id) and rect.has_point(id_to_world(id)):
-				grid.set_point_solid(id, solid)
+				if _piles.has(id):
+					_piles[id] = solid  # under a pile: the ground changes, the pile still closes the cell
+				else:
+					grid.set_point_solid(id, solid)
 
 
 ## A standing building that blocks: its footprint, grown by a body's width, is solid.
@@ -191,20 +239,37 @@ func _open(s: Structure) -> void:
 				stamp(r.intersection(s.footprint), true)
 
 
-## A street pile closes (on) or opens (off) these cells.
+## A street pile closes (on) or opens (off) these cells. Off gives the cell back the ground under the pile: one something
+## else closed while the pile lay there (a thorn wall, a restored stall) stays closed.
 func set_pile(ids: Array[Vector2i], on: bool) -> void:
 	for id in ids:
+		if not grid.is_in_boundsv(id):
+			if on:
+				_piles[id] = true
+			else:
+				_piles.erase(id)
+			continue
 		if on:
-			_piles[id] = true
-		else:
+			if not _piles.has(id):
+				_piles[id] = grid.is_point_solid(id)
+			grid.set_point_solid(id, true)
+		elif _piles.has(id):
+			grid.set_point_solid(id, bool(_piles[id]))
 			_piles.erase(id)
-		if grid.is_in_boundsv(id):
-			grid.set_point_solid(id, on)
 	version += 1
 
 
 func is_pile(id: Vector2i) -> bool:
 	return _piles.has(id)
+
+
+## Whether the ground at `id` is open, a pile on it left aside.
+func ground_open(id: Vector2i) -> bool:
+	if not grid.is_in_boundsv(id):
+		return false
+	if _piles.has(id):
+		return not bool(_piles[id])
+	return not grid.is_point_solid(id)
 
 
 ## Make `id` a slow crossing (factor < 1: the route costs 1/factor there, people walk at that share of their pace);
@@ -239,6 +304,13 @@ func refresh(s: Structure) -> void:
 		_open(s)
 	else:
 		_apply(s)
+	_closed()
+
+
+## Cells closed after the town was laid out: tell the piles (their gap rule is re-checked once per such event).
+func _closed() -> void:
+	if on_closed.is_valid():
+		on_closed.call()
 
 
 ## A structure taken away (a thorn wall withering, v0.06): its ground opens, a ruin's too.
@@ -255,6 +327,7 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 	if s in _bridges:
 		for r: Rect2 in City.current().fallen_bridge(s.footprint):
 			stamp(r, true)
+		_closed()
 		return
 	if s.leaves_ruin():
 		return
@@ -281,7 +354,3 @@ func _free_ground(s: Structure) -> void:
 		if other != s and is_instance_valid(other) and not other.destroyed and other.walkable \
 				and other.footprint.intersects(area):
 			_open(other)
-	# ...but a street pile in the area stays closed.
-	for id: Vector2i in _piles:
-		if area.has_point(id_to_world(id)):
-			grid.set_point_solid(id, true)

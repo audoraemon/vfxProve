@@ -1979,19 +1979,24 @@ func clear() -> void:
 	deaths.reset()
 
 
-## Everyone alive and outside standing in `r` (ground units) or on a closed cell steps to the nearest open ground
-## (a building fell and its ruin stays closed). Returns how many moved.
+## Everyone alive and outside standing on a closed cell in `r` (ground units: a falling footprint, a pile cell; grown by a
+## cell, for those whose cell it closed) steps out over its edge to the nearest open ground (WalkGrid.step_out_of()); nobody
+## elsewhere in town moves. One standing in `r` itself gives up a place in a gate's queue; one only in its margin keeps it.
+## Returns how many moved.
 func clear_ground(r: Rect2) -> int:
 	var moved := 0
+	var near := r.grow(WalkGrid.CELL)
 	for p in citizens + soldiers:
 		if not is_instance_valid(p) or not p.is_alive() or p.inside:
 			continue
-		if not r.has_point(p.ground_pos) and _grid.walkable(p.ground_pos):
+		if not near.has_point(p.ground_pos) or _grid.walkable(p.ground_pos):
 			continue
-		var to := _grid.nearest_walkable(p.ground_pos)
+		var to := _grid.step_out_of(p.ground_pos, r)
+		if to == Vector2.INF:
+			to = _grid.nearest_walkable(p.ground_pos)
 		if to == Vector2.INF or to == p.ground_pos:
 			continue
-		p.step_out(to)
+		p.step_out(to, not r.has_point(p.ground_pos))
 		moved += 1
 	return moved
 

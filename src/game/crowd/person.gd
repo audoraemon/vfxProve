@@ -1004,10 +1004,11 @@ func fold(to: Vector2) -> bool:
 
 
 ## Stepped out of a falling building's footprint (Crowd.clear_ground): set down at `to` where it stands, its goal kept
-## and re-planned from there. Not for people inside somewhere.
-func step_out(to: Vector2) -> void:
-	queue_spot = Vector2.INF
-	queue_since = -1.0
+## and re-planned from there; a place in a gate's queue is given up unless `keep_queue`. Not for people inside somewhere.
+func step_out(to: Vector2, keep_queue := false) -> void:
+	if not keep_queue:
+		queue_spot = Vector2.INF
+		queue_since = -1.0
 	ground_pos = to
 	_sync_position()
 	_target = ground_pos

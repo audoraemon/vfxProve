@@ -53,6 +53,8 @@ static func run(t) -> void:
 	_island_first_point(t)
 	_all_slow_fallback(t)
 	_overlap_clear(t)
+	_ground_under_pile(t)
+	_recheck_on_close(t)
 	_guards_dig(t)
 	_one_digger(t)
 	_too_early(t)
@@ -61,6 +63,7 @@ static func run(t) -> void:
 	_stranded_digger(t)
 	_held_digger(t)
 	_taken_digger(t)
+	_reposted_digger(t)
 	_squads_after_rally(t)
 	_trapped_first(t)
 	_capital_pile(t)
@@ -449,6 +452,62 @@ static func _overlap_clear(t) -> void:
 	_free(made)
 
 
+## Final review I2: a pile is a layer over the ground. What closes a pile cell meanwhile (a thorn wall laid on it, a fallen
+## structure restored over it) still closes it when the pile is dug out; the rest of the pile opens.
+static func _ground_under_pile(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[4]
+	var open: Array[Vector2i] = []
+	var c0 := grid.world_to_id(TownLayout.MARKET_SQUARE.get_center())
+	for r in range(0, 8):
+		for dx in range(-r, r + 1):
+			var id := c0 + Vector2i(dx, r)
+			if grid.walkable(grid.id_to_world(id)) and open.size() < 4:
+				open.append(id)
+	t.check(open.size() == 4, "four open cells in the square")
+	# A block on open[2] falls (its ground opens), a pile lands on it, the block is rebuilt.
+	var w2 := grid.id_to_world(open[2])
+	var block := env.add_structure(Rect2(w2 - Vector2(0.2, 0.2), Vector2(0.4, 0.4)), 1.0, Structure.Kind.BLOCK)
+	t.check(not grid.walkable(w2), "the block closes its cell")
+	block.destroy(Vector2.ZERO, &"stone")
+	t.check(grid.walkable(w2), "the fallen block's cell is open")
+	var p := crowd.piles.place([open[0], open[1], open[2]] as Array[Vector2i])
+	t.check(p != null and p.cells.size() == 3 and p.gap == PileManager.NO_GAP, "a three-cell pile with no gap")
+	block.restore()
+	# A thorn wall laid over open[0].
+	var w0 := grid.id_to_world(open[0])
+	env.add_structure(Rect2(w0 - Vector2(0.2, 0.2), Vector2(0.4, 0.4)), 1.0, Structure.Kind.BLOCK, &"thorns")
+	t.check(grid.is_pile(open[0]) and not grid.walkable(w0), "the pile still closes the cell under the thorns")
+	crowd.piles.clear_pile(p)
+	t.check(not grid.walkable(w0), "clearing the pile leaves the thorn wall's cell closed")
+	t.check(not grid.walkable(w2), "clearing the pile leaves the restored block's cell closed")
+	t.check(grid.walkable(grid.id_to_world(open[1])) and not grid.is_pile(open[1]), "the rest of the pile opens")
+	_free(made)
+
+
+## Final review I3: a pile that left the bridge open (no gap) is re-checked when something later closes the last open bridge
+## cell: it leaves a gap then, and the route stays.
+static func _recheck_on_close(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[4]
+	var from: Vector2 = TownLayout.TEMPLE.get_center() + Vector2(0, 3)
+	var to: Vector2 = TownLayout.EXITS[0]
+	var p := crowd.piles.place([BRIDGE[0], BRIDGE[1], BRIDGE[2]] as Array[Vector2i])
+	t.check(p != null and p.gap == PileManager.NO_GAP and grid.reaches(from, to), "three bridge cells piled, one left: no gap needed")
+	var w := grid.id_to_world(BRIDGE[3])
+	env.add_structure(Rect2(w - Vector2(0.2, 0.2), Vector2(0.4, 0.4)), 1.0, Structure.Kind.BLOCK, &"thorns")
+	t.check(not grid.walkable(w), "a thorn wall closes the last bridge cell")
+	t.check(p.gap != PileManager.NO_GAP and p.cells.has(p.gap), "the pile is re-checked and leaves a gap (%s)" % [p.gap])
+	t.check(grid.reaches(from, to), "the temple still reaches the exit")
+	_free(made)
+
+
 # --- clearing: guards dig, idle rescue squads after the rally -------------------------------------------------------
 
 ## The house nearest the barracks yard that has a street beside it, with a stone pile on its cells.
@@ -622,6 +681,31 @@ static func _taken_digger(t) -> void:
 	_run(crowd, 1.2)
 	t.check(not pile.diggers.has(d) and not crowd.guard_jobs.on_job(d), "a digger taken for a duty leaves the pile")
 	t.check(pile.diggers.size() == was, "and another guard is taken in his place (%d of %d)" % [pile.diggers.size(), was])
+	Corps._done(made)
+
+
+## Final review I4: a digger a director re-posts elsewhere keeps that order when his job record drops (at the next pile tick
+## and at prune()); he is not walked back to his town post over it.
+static func _reposted_digger(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	crowd.piles.step(1.0)
+	t.check(pile.diggers.size() == 2, "two diggers")
+	_arrive(pile.diggers)
+	var d: Person = pile.diggers[0]
+	var e: Person = pile.diggers[1]
+	var station := d.ground_pos + Vector2(3.0, 0.0)
+	d.send_to_post(station)
+	_run(crowd, 1.2)
+	t.check(not crowd.guard_jobs.on_job(d) and not pile.diggers.has(d), "the re-posted digger leaves the pile")
+	t.check(d.anchor.is_equal_approx(station), "and keeps the director's station (anchor %s, station %s, post %s)" % [d.anchor, station, d.post])
+	var station2 := e.ground_pos + Vector2(0.0, 3.0)
+	e.send_to_post(station2)
+	crowd.guard_jobs.prune()
+	t.check(not crowd.guard_jobs.on_job(e) and e.anchor.is_equal_approx(station2), "prune leaves a re-posted digger at his new station")
 	Corps._done(made)
 
 

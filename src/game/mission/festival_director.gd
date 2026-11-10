@@ -141,7 +141,8 @@ func _post_guards() -> void:
 	var pool: Array[Person] = []
 	for s in crowd.soldiers:
 		if WarningDirector._alive(s) and s.corps == Person.Corps.NONE and s.mind == Person.Mind.POST \
-				and not reserved.has(s) and not Places.rect(&"market_square").has_point(s.anchor):
+				and not reserved.has(s) and not Places.rect(&"market_square").has_point(s.anchor) \
+				and not crowd.guard_jobs.on_job(s):
 			pool.append(s)
 	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(c) < b.ground_pos.distance_squared_to(c))
 	for s in pool.slice(0, GUARDS):

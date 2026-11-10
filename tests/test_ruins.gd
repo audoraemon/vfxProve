@@ -31,6 +31,8 @@ static func run(t) -> void:
 	_others_open(t)
 	_neighbour_fall(t)
 	_pushed(t)
+	_far_stays(t)
+	_margin_queue(t)
 	_capital(t)
 	City.use(&"aldermere")
 
@@ -148,6 +150,81 @@ static func _pushed(t) -> void:
 	house.destroy(Vector2.ZERO, &"stone")
 	t.check(grid.walkable(a.ground_pos), "a citizen in the falling margin is pushed onto open ground")
 	t.check(b.ground_pos == kept, "someone inside keeps their place")
+	(made[2] as Node).free()
+	(made[5] as Node).free()
+
+
+## Final review I1: a fall moves only those standing on its own closed ground, out over its edge; someone on a closed cell
+## anywhere else in town (another house's margin) stays where he is.
+static func _far_stays(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[4]
+	var house := _with_role(env, &"house")
+	var sr := WalkGrid.solid_rect(house.footprint)
+	var other: Structure = null
+	for s in env.structures():
+		if s.role == &"house" and s != house and s.center().distance_to(house.center()) > 10.0:
+			other = s
+			break
+	var a: Person = crowd.citizens[0]
+	var b: Person = crowd.citizens[1]
+	a.inside = false
+	b.inside = false
+	a.ground_pos = house.center()
+	b.ground_pos = other.center()
+	var kept := b.ground_pos
+	t.check(not grid.walkable(kept), "the far citizen stands on a closed cell")
+	house.destroy(Vector2.ZERO, &"stone")
+	t.check(b.ground_pos == kept, "a citizen on closed ground far from the fall is not moved (%s -> %s)" % [kept, b.ground_pos])
+	t.check(grid.walkable(a.ground_pos) and sr.grow(WalkGrid.CELL * 1.5).has_point(a.ground_pos),
+			"one in the footprint steps out over its edge (%s, footprint %s)" % [a.ground_pos, sr])
+	(made[2] as Node).free()
+	(made[5] as Node).free()
+
+
+## Final review I1: one in the fall's margin cell (his cell closes, he stands outside the footprint) keeps his gate-queue place;
+## one inside the footprint gives it up.
+static func _margin_queue(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[4]
+	var house: Structure = null
+	var spot := Vector2.INF
+	for s in env.structures():
+		if s.role != &"house" or not s.leaves_ruin():
+			continue
+		var sr := WalkGrid.solid_rect(s.footprint)
+		var c := sr.get_center()
+		for g: Vector2 in [Vector2(sr.end.x + 0.01, c.y), Vector2(sr.position.x - 0.01, c.y),
+				Vector2(c.x, sr.end.y + 0.01), Vector2(c.x, sr.position.y - 0.01)]:
+			if not sr.has_point(g) and sr.has_point(grid.id_to_world(grid.world_to_id(g))):
+				spot = g
+				break
+		if spot != Vector2.INF:
+			house = s
+			break
+	t.check(house != null, "a house with a margin cell whose centre is in its solid rect")
+	if house == null:
+		(made[2] as Node).free()
+		(made[5] as Node).free()
+		return
+	var a: Person = crowd.citizens[0]
+	var b: Person = crowd.citizens[1]
+	a.inside = false
+	b.inside = false
+	a.ground_pos = spot
+	b.ground_pos = house.center()
+	a.queue_spot = spot + Vector2(1.0, 0.0)
+	b.queue_spot = spot + Vector2(1.0, 0.0)
+	house.destroy(Vector2.ZERO, &"stone")
+	t.check(a.ground_pos != spot and grid.walkable(a.ground_pos), "the margin citizen steps onto open ground")
+	t.check(a.queue_spot != Vector2.INF, "and keeps his place in the gate queue")
+	t.check(b.queue_spot == Vector2.INF, "one inside the footprint gives it up")
 	(made[2] as Node).free()
 	(made[5] as Node).free()
 

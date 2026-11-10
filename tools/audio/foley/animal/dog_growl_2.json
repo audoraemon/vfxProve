@@ -1,0 +1,4 @@
+{"length": 1.1, "rms_db": -18.3, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/dog-growl/dog-growl.ogg", "at": 0.0, "from": 0.0, "dur": 0.75, "pitch": -2.5, "hp": 60, "lp": 9000, "fade_out": 120},
+  {"src": "lib:oga/dog-grunt/dog-frieda-grunt-96khz-01.flac", "at": 0.25, "from": 0.1, "dur": 0.4, "hp": 80, "lp": 9000, "gain_db": -5, "fade_out": 120}
+]}

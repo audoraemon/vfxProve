@@ -1,0 +1,5 @@
+{"length": 0.75, "rms_db": -17.8, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/battle/swing2.wav", "at": 0.0, "onset": true, "dur": 0.3, "hp": 300, "lp": 12000, "pitch": -2, "gain_db": -3, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_004.ogg", "at": 0.13, "onset": true, "hp": 60, "lp": 9000, "fade_out": 120},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_light_004.ogg", "at": 0.13, "onset": true, "hp": 400, "lp": 12000, "gain_db": -12, "fade_out": 120}
+]}

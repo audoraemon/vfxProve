@@ -194,6 +194,8 @@ var voices_played := 0
 var _voice_tokens := VOICE_BUDGET
 ## A death you can hear (v0.11.2): asked once for every body that falls, in _on_killed(). Pure; draws no number from any rng.
 var deaths := DeathVoices.new()
+## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
+var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
@@ -301,6 +303,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	field.enemy_killed.connect(_on_killed)
+	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
 		town.citadel.health_changed.connect(_on_citadel_health)
 		town.citadel.fallen.connect(_on_citadel_fallen)
@@ -1457,6 +1460,8 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			if bell != null:
 				bell.call_keeper()
 		AlarmManager.Stage.CITY_EMERGENCY:
+			if sfx != null:
+				sfx.play(&"town_horn", City.current().citadel_origin())
 			rally()
 			_regroup()
 			if rite != null:
@@ -1646,6 +1651,8 @@ func _investigate(at: Vector2) -> void:
 	for k in mini(INVESTIGATORS, pool.size()):
 		_investigating.append([pool[k], pool[k].anchor, _clock + INVESTIGATE_SECONDS])
 		pool[k].send_to_post(_spot_near(spot, 0.8))
+	if sfx != null and not pool.is_empty() and soldier_voices.order(_clock):
+		sfx.play(&"sol_order", pool[0].ground_pos)
 
 
 func _return_investigators() -> void:
@@ -1945,6 +1952,16 @@ func _voice_death(p: Person, kind: StringName) -> void:
 		return
 	for c: Array in cues:
 		sfx.play(c[0], c[1])
+
+
+## A blow you can hear (SoldierVoices): a soldier's spear or anyone else's fist, at the one struck.
+func _on_struck(e: DummyEnemy, by: DummyEnemy) -> void:
+	if sfx == null:
+		return
+	var who := by as Person
+	var cue := soldier_voices.blow(who != null and is_instance_valid(who) and who.soldier, _clock)
+	if cue != &"":
+		sfx.play(cue, e.ground_pos)
 
 
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:

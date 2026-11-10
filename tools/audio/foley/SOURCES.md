@@ -43,3 +43,15 @@ the sheet the user listens with.
   kids and church steps, and get a stampede: a `scatter` layer of single footsteps from OpenGameArt `footsteps-0` and
   `footsteps-leather-cloth-armor` (CC0), each runner with its own distance, pace and crossing pan. The cries are drier.
 
+## Animals and soldiers (natural sound pass 5)
+
+- Dogs: OpenGameArt `dog-sounds` (one clean recording of several dogs: barks big and small, yelps), `dog-growl`,
+  `dog-grunt` (CC0); Wikimedia Commons `Puppy at a night` (CC0, a whimper). `Bark (avk)` on Commons is a spoken word,
+  not a dog: not used.
+- Cats: OpenGameArt `meow`, `cat-purr-meow`, `kitten-mew` (CC0); Wikimedia Commons meows (`Meow of a Siamese cat`,
+  `MeowUSA`, a Greek recording saved as `Greek_meow_2015-11-24.flac`, `GettingOutImpatient`, `Meow of a pleading cat`),
+  `NoTrip` (yowls) and `Cat hissing - Zabuhailo` (CC0 or public domain).
+- Soldiers: mail footsteps (`footsteps-leather-cloth-armor`), boots (`footsteps-0`), chainmail and spear swings (the RPG
+  sound pack), Kenney impacts, the 150 combat pack's punches, and six low, steady yells from the male yelling pack for
+  orders. The war horn is Sonatina's horn section (CC Sampling Plus, credited), a low call and a fifth above.
+

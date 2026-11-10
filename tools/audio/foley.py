@@ -286,6 +286,9 @@ def credits() -> None:
         if rel.startswith("orchestra/VSCO-2-CE"):
             info = {"title": "VS Chamber Orchestra 2 Community Edition", "license": "CC0", "author": "Versilian Studios",
                     "url": "https://github.com/sgossner/VSCO-2-CE"}
+        if rel.startswith("orchestra/sso-4.0"):
+            info = {"title": "Sonatina Symphonic Orchestra 4.0", "license": "CC Sampling Plus 1.0 (credit requested)",
+                    "author": "Mattias Westlund and contributors", "url": "https://github.com/peastman/sso"}
         if info is None:
             info = {"title": rel, "license": "?", "author": "?", "url": ""}
         lines.append(f"| [{info['title']}]({info['url']}) `{rel.rsplit('/', 1)[-1]}` | {info['license']} | "

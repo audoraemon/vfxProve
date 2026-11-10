@@ -397,8 +397,9 @@ func clear_pile(p: Pile) -> void:
 
 
 func step(delta: float) -> void:
-	for p in piles.duplicate():
-		_dig(p, delta)
+	# Backwards: a pile worked through leaves the list.
+	for i in range(piles.size() - 1, -1, -1):
+		_dig(piles[i], delta)
 	_in -= delta
 	if _in <= 0.0:
 		_in = EVERY
@@ -461,14 +462,17 @@ func take_squad(crew: Array) -> bool:
 	var from: Vector2 = (crew[0] as Person).ground_pos
 	var best: Pile = null
 	var best_d := INF
+	var spots: Array[Vector2] = []
 	for p in needing_hands():
 		var d := centre(p).distance_to(from)
-		if d < best_d and not dig_spots(p).is_empty():
-			best = p
-			best_d = d
+		if d < best_d:
+			var here := dig_spots(p)
+			if not here.is_empty():
+				best = p
+				best_d = d
+				spots = here
 	if best == null:
 		return false
-	var spots := dig_spots(best)
 	for m: Person in crew:
 		if m.held_by_god():
 			continue  # in the god's hand: he goes back to the squad's post by himself
@@ -516,8 +520,11 @@ func _dig(p: Pile, delta: float) -> void:
 			continue
 		var m: Person = d
 		if _crowd.guard_jobs.job_of(m) == p:
-			_crowd.guard_jobs.release(m)
-		m.back_to_post()
+			_crowd.guard_jobs.release(m)  # walks a guard home by itself, unless the god holds him
+			if m.held_by_god():
+				m.back_to_post()
+		else:
+			m.back_to_post()
 
 
 ## Every EVERY seconds: diggers who left the job are dropped (and a stranded one walks home), and until the rally the
@@ -542,6 +549,8 @@ func _assign() -> void:
 	if not jobs.is_open() or stage < _crowd.profile.fire_from or stage >= AlarmManager.Stage.EVACUATION:
 		return
 	for p in piles:
+		if DIGGERS - p.diggers.size() <= 0:
+			continue
 		var spots := dig_spots(p)
 		if spots.is_empty():
 			continue

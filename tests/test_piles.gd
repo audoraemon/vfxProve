@@ -57,6 +57,7 @@ static func run(t) -> void:
 	_one_digger(t)
 	_too_early(t)
 	_fire_first(t)
+	_mission_held(t)
 	_stranded_digger(t)
 	_held_digger(t)
 	_taken_digger(t)
@@ -705,3 +706,22 @@ static func _capital_pile(t) -> void:
 	(b.world as Node).free()
 	(b.town as Node).free()
 	City.use(&"aldermere")
+
+
+## A soldier a mission's director holds is never taken for a pile, though he stands right by it.
+static func _mission_held(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	var near := crowd.guard_jobs.free_near(crowd.piles.centre(pile), PileManager.REACH)
+	t.check(near.size() >= 4, "guards stand near the pile (%d)" % near.size())
+	var held: Array[Person] = [near[0], near[1]]
+	crowd.mission_holds.append(func(p: Person) -> bool: return held.has(p))
+	_run(crowd, 3.0)
+	t.check(not pile.diggers.is_empty(), "the others dig")
+	t.check(not pile.diggers.has(held[0]) and not pile.diggers.has(held[1]) and not crowd.guard_jobs.on_job(held[0]),
+			"a mission-held soldier is never a digger")
+	crowd.clear_mission_hooks()
+	Corps._done(made)

@@ -1,10 +1,13 @@
 {
- "hash": "bddd02fb1b69d37b",
- "updated": "2026-11-10T11:22:36+07:00",
+ "hash": "311ac68bf184d97e",
+ "updated": "2026-11-10T17:46:02+07:00",
  "changes": {
-  "date": "<t:1794284556:f>",
+  "date": "<t:1794307562:f>",
   "items": [
-   "Done: Dominion ability levels: puppet-master upgrades"
+   "Done: People animations phase 2: pray, point and shout, look up, cower",
+   "New: FLOW test fixed (ending hitch, stale lock count, fade waits)",
+   "New: Soldier jobs: guards at fires, rubble piles, digging, watch posts (in progress)",
+   "New: The Folded Ward (Passage Tier IV)"
   ]
  },
  "snapshot": {
@@ -247,6 +250,16 @@
     "needs_you": false,
     "updated": "2026-10-04",
     "order": 20
+   },
+   "flow-fix-1110": {
+    "title": "FLOW test fixed (ending hitch, stale lock count, fade waits)",
+    "status": "done",
+    "area": "Tools",
+    "version": "v0.12.x",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-10",
+    "order": 300
    },
    "god-discord-changelog": {
     "title": "Discord god-progression changelog",
@@ -695,11 +708,12 @@
    },
    "people-anim-phase2": {
     "title": "People animations phase 2: pray, point and shout, look up, cower",
-    "status": "todo",
+    "status": "done",
     "area": "Crowd",
     "version": "v0.11.x",
     "needs_you": false,
-    "updated": "2026-10-24",
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-10",
     "order": 186
    },
    "people-anim-reroll": {
@@ -708,7 +722,7 @@
     "area": "Crowd",
     "version": "v0.11.x",
     "needs_you": false,
-    "updated": "2026-10-24",
+    "updated": "2026-11-10",
     "order": 185
    },
    "push-auth": {
@@ -746,6 +760,16 @@
     "needs_you": false,
     "updated": "2026-10-15",
     "order": 32
+   },
+   "soldier-jobs": {
+    "title": "Soldier jobs: guards at fires, rubble piles, digging, watch posts",
+    "status": "doing",
+    "area": "Soldiers",
+    "version": "v0.12.x",
+    "needs_you": false,
+    "branch": "feat/soldier-jobs",
+    "updated": "2026-11-10",
+    "order": 301
    },
    "t01": {
     "title": "Profile the v0.07 worst-frame bump",
@@ -1245,6 +1269,15 @@
     "updated": "2026-11-02",
     "order": 12
    },
+   "vfx-foldward": {
+    "title": "The Folded Ward (Passage Tier IV)",
+    "status": "done",
+    "area": "Abilities",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-11-10",
+    "order": 20
+   },
    "vfx-madness": {
     "title": "Madness Bloom (new power)",
     "status": "doing",
@@ -1402,25 +1435,33 @@
   },
   "branches": [
    {
-    "name": "claude/zen-greider-6e47c5",
-    "ahead": 18,
-    "behind": 1,
+    "name": "god/skill-tree-ui",
+    "ahead": 252,
+    "behind": 24,
     "date": "2026-11-10",
-    "subject": "fix: try_passage_45.bat path to try.bat",
+    "subject": "feat: TreeDetail -- what the skill tree's panel says (blurbs, changed stats, the buy button)",
+    "pushed": false
+   },
+   {
+    "name": "claude/zen-greider-6e47c5",
+    "ahead": 19,
+    "behind": 12,
+    "date": "2026-11-10",
+    "subject": "feat: The Folded Ward (Passage Tier IV) -- a square folded so its edges meet",
     "pushed": false
    },
    {
     "name": "feat/soldier-jobs",
-    "ahead": 16,
-    "behind": 1,
+    "ahead": 13,
+    "behind": 8,
     "date": "2026-11-10",
-    "subject": "feat: Heretic Hunt, Informer and Heart of Faith judge a watch from where the guard stands",
+    "subject": "fix: Heart of Faith places bearers as if lured guards were back at their posts",
     "pushed": false
    },
    {
     "name": "claude/sound-natural-2",
     "ahead": 2,
-    "behind": 1,
+    "behind": 12,
     "date": "2026-11-10",
     "subject": "feat: natural sound pass 3: crowd panic redesign, ducking, humanized music",
     "pushed": true
@@ -1428,55 +1469,15 @@
    {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 13,
+    "behind": 24,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
-    "pushed": true
-   },
-   {
-    "name": "god/dominion-levels",
-    "ahead": 248,
-    "behind": 13,
-    "date": "2026-11-09",
-    "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
-    "pushed": false
-   },
-   {
-    "name": "god/dl-b",
-    "ahead": 236,
-    "behind": 13,
-    "date": "2026-11-09",
-    "subject": "fix: Procession leaves a held person another power has since compelled; redirect skips sleepers; Sleepwalk checks ownership",
-    "pushed": false
-   },
-   {
-    "name": "god/dl-c",
-    "ahead": 235,
-    "behind": 13,
-    "date": "2026-11-09",
-    "subject": "fix: Track C review round 1 -- Passed Mark's once test can fail; Spreading Mark skips people indoors",
-    "pushed": false
-   },
-   {
-    "name": "god/dl-a",
-    "ahead": 234,
-    "behind": 13,
-    "date": "2026-11-09",
-    "subject": "feat: Madness Bloom level 5 -- Directed Frenzy, the seeds frenzy at Broken on the nearest soldier",
-    "pushed": false
-   },
-   {
-    "name": "feat/people-anim-2",
-    "ahead": 5,
-    "behind": 0,
-    "date": "2026-11-09",
-    "subject": "feat: zoom readout at the screen's right edge after each zoom",
     "pushed": true
    },
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 65,
+    "behind": 76,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1484,7 +1485,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 350,
+    "behind": 361,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1492,7 +1493,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 308,
+    "behind": 319,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1500,8 +1501,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-09",
-   "subject": "feat: zoom readout at the screen's right edge after each zoom"
+   "date": "2026-11-10",
+   "subject": "fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)"
   }
  }
 }

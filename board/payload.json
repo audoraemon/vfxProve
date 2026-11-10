@@ -7,21 +7,26 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **26** to do · **117** done\n**12** active branches besides Develop-Main\n\n**Since the last update** (<t:1794284556:f>)\n• Done: Dominion ability levels: puppet-master upgrades",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **120** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794307562:f>)\n• Done: People animations phase 2: pray, point and shout, look up, cower\n• New: FLOW test fixed (ending hitch, stale lock count, fade waits)\n• New: Soldier jobs: guards at fires, rubble piles, digging, watch posts (in progress)\n• New: The Folded Ward (Passage Tier IV)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-10T11:22:36+07:00"
+     "timestamp": "2026-11-10T17:46:02+07:00"
+    },
+    {
+     "title": "god/skill-tree-ui",
+     "description": "252 commits not in Develop-Main · last commit today · local only\n> feat: TreeDetail -- what the skill tree's panel says (blurbs, changed stats, the buy button)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
     },
     {
      "title": "claude/zen-greider-6e47c5",
-     "description": "18 commits not in Develop-Main · last commit today · local only\n> fix: try_passage_45.bat path to try.bat\n\n_No Ledger task points at this branch._",
+     "description": "19 commits not in Develop-Main · last commit today · local only\n> feat: The Folded Ward (Passage Tier IV) -- a square folded so its edges meet\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/soldier-jobs",
-     "description": "16 commits not in Develop-Main · last commit today · local only\n> feat: Heretic Hunt, Informer and Heart of Faith judge a watch from where the guard stands\n\n_No Ledger task points at this branch._",
+     "description": "13 commits not in Develop-Main · last commit today · local only\n> fix: Heart of Faith places bearers as if lured guards were back at their posts\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
      "color": 5016537
     },
     {
@@ -34,38 +39,6 @@
      "description": "248 commits not in Develop-Main · last commit yesterday\n> fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
-    {
-     "title": "god/dominion-levels",
-     "description": "248 commits not in Develop-Main · last commit yesterday · local only\n> fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/dl-b",
-     "description": "236 commits not in Develop-Main · last commit yesterday · local only\n> fix: Procession leaves a held person another power has since compelled; redirect skips sleepers; Sleepwalk checks ownership\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/dl-c",
-     "description": "235 commits not in Develop-Main · last commit yesterday · local only\n> fix: Track C review round 1 -- Passed Mark's once test can fail; Spreading Mark skips people indoors\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/dl-a",
-     "description": "234 commits not in Develop-Main · last commit yesterday · local only\n> feat: Madness Bloom level 5 -- Directed Frenzy, the seeds frenzy at Broken on the nearest soldier\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/people-anim-2",
-     "description": "5 commits not in Develop-Main · last commit yesterday\n> feat: zoom readout at the screen's right edge after each zoom\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    }
-   ]
-  },
-  {
-   "allowed_mentions": {
-    "parse": []
-   },
-   "embeds": [
     {
      "title": "god/dominion-t3-old",
      "description": "215 commits not in Develop-Main · last commit 4 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
@@ -83,12 +56,19 @@
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-09\n> feat: zoom readout at the screen's right edge after each zoom\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (22)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• People animations phase 2: pray, point and shout, look up, cower\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-10\n> fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
-    },
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "Recently done",
-     "description": "• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-10)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-10)_\n• Dominion ability levels: puppet-master upgrades _(11-10)_\n• Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate _(11-10)_\n• Zoom readout (step 1 of the zoom cap) _(11-09)_\n• Town dogs and cats (Discord idea Animals) _(11-07)_\n• Dominion's whole tree: Tiers 2, 4 and 5 _(11-07)_\n• God ring order: Ruin, Passage, Veil, Decree, Death, Dominion _(11-07)_",
+     "description": "• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-10)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-10)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_\n• Dominion ability levels: puppet-master upgrades _(11-10)_\n• People animations phase 2: pray, point and shout, look up, cower _(11-10)_\n• The Folded Ward (Passage Tier IV) _(11-10)_\n• Passage Tier IV-V: All Roads Lead Here, Yesterday's Door, Every Door, The Far Gate _(11-10)_\n• Zoom readout (step 1 of the zoom cap) _(11-09)_",
      "color": 10185686
     }
    ]

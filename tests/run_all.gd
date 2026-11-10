@@ -250,6 +250,7 @@ const SUITES := [
 	"res://tests/test_expel_inquisitor.gd",
 	"res://tests/test_break_hunt.gd",
 	"res://tests/test_face_halcyon.gd",
+	"res://tests/test_tree_wheel.gd",
 ]
 
 var failures := 0

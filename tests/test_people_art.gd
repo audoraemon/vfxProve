@@ -16,6 +16,8 @@ static func run(t) -> void:
 	_mirror(t)
 	_fallback(t)
 	_pack(t)
+	_phase2(t)
+	_interact(t)
 	t.check(_crowd_run(true) == _crowd_run(false), "people sprites on or off, the crowd does exactly the same")
 	SpriteArt.set_enabled(true)
 
@@ -255,22 +257,23 @@ static func _cached_frames(t) -> void:
 
 
 
-## The atlas has nine animations (v0.12 people animations): idle walk run stumble death scream lurch swing getup.
+## The atlas has thirteen animations: idle walk run stumble death, the v0.12 scream lurch swing getup, and phase 2's
+## pray point lookup cower.
 static func _rows(t) -> void:
-	t.check(PeopleArt.ANIMS.size() == 9, "people have nine animations")
-	t.check(PeopleArt.FPS_AT.size() == 9 and PeopleArt.ONCE_AT.size() == 9, "each has an fps and a hold flag")
+	t.check(PeopleArt.ANIMS.size() == 17, "people have seventeen animations")
+	t.check(PeopleArt.FPS_AT.size() == 17 and PeopleArt.ONCE_AT.size() == 17, "each has an fps and a hold flag")
 	var agree := true
 	for a in PeopleArt.ANIMS.size():
 		agree = agree and PeopleArt.FPS_AT[a] == PeopleArt.FPS[PeopleArt.ANIMS[a]] 			and PeopleArt.ONCE_AT[a] == PeopleArt.ONCE.has(PeopleArt.ANIMS[a])
 	t.check(agree, "FPS_AT and ONCE_AT agree with FPS and ONCE")
 
 
-## Every design's frame table holds 9 * 4 frame counts.
+## Every design's frame table holds 17 * 4 frame counts.
 static func _info_table(t) -> void:
 	var ok := true
 	for d in PeopleArt.manifest().designs.keys():
-		ok = ok and PeopleArt.info(d)[4].size() == 36
-	t.check(ok, "every design's frame table has 36 frame counts")
+		ok = ok and PeopleArt.info(d)[4].size() == 68
+	t.check(ok, "every design's frame table has 68 frame counts")
 
 
 ## "getup" is the death fall played backwards, frame for frame.
@@ -331,26 +334,33 @@ static func _fallback(t) -> void:
 	t.check(same, "and a scream it lacks is its idle")
 	# Back-view screams rejected on review (make_people_atlas.py REJECTED) show the idle, both back directions.
 	var back := true
-	for d in ["merchant_a", "craft_a", "engineer"]:
+	for d in ["caregiver_b"]:
 		for f in [PeopleArt.Facing.NE, PeopleArt.Facing.NW]:
 			back = back and PeopleArt.frame_count(d, &"scream", f) == PeopleArt.frame_count(d, &"idle", f)
 			back = back and _same_cell(img.get_region(Rect2i(PeopleArt.frame_rect(d, &"scream", f, 0))),
 				img.get_region(Rect2i(PeopleArt.frame_rect(d, &"idle", f, 0))))
 		back = back and PeopleArt.frame_count(d, &"scream", PeopleArt.Facing.SE) > PeopleArt.frame_count(d, &"idle", PeopleArt.Facing.SE)
 	t.check(back, "a rejected back-view scream is the idle, the front view keeps its art")
-	t.check((PeopleArt.info("merchant_a")[5] >> 5) & 1 == 0 and (PeopleArt.info("resident_a")[5] >> 5) & 1 == 1,
+	# Re-rolled back views (round 2) are their own art again: the back scream differs from the idle.
+	var rerolled := true
+	for d in ["merchant_a", "craft_a", "engineer"]:
+		rerolled = rerolled and (PeopleArt.info(d)[5] >> 5) & 1 == 1
+		rerolled = rerolled and not _same_cell(img.get_region(Rect2i(PeopleArt.frame_rect(d, &"scream", PeopleArt.Facing.NE, 1))),
+			img.get_region(Rect2i(PeopleArt.frame_rect(d, &"idle", PeopleArt.Facing.NE, 0))))
+	t.check(rerolled, "a re-rolled back-view scream is its own art, not the idle")
+	t.check((PeopleArt.info("caregiver_b")[5] >> 5) & 1 == 0 and (PeopleArt.info("resident_a")[5] >> 5) & 1 == 1,
 		"the own-art bit is clear for a scream with a rejected direction, set for one without")
 
 
 ## Frame, animation and facing round-trip through the pose code for every animation.
 static func _pack(t) -> void:
 	var ok := true
-	for a in 9:
+	for a in 17:
 		for f in 4:
 			for k in 21:
-				var code := k << 6 | a << 2 | f
-				ok = ok and (code >> 2 & 15) == a and (code & 3) == f and (code >> 6) == k
-	t.check(ok, "the pose code round-trips frame, animation and facing for all nine animations")
+				var code := k << 7 | a << 2 | f
+				ok = ok and (code >> 2 & 31) == a and (code & 3) == f and (code >> 7) == k
+	t.check(ok, "the pose code round-trips frame, animation and facing for all seventeen animations")
 	# And the person's own: a held animation's code reads back through _sprite_pose().
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -364,9 +374,172 @@ static func _pack(t) -> void:
 	p.tick(1.0)
 	var pose := p._sprite_pose()
 	var code := p._sprite_pose_code()
-	t.check(PeopleArt.ANIMS[code >> 2 & 15] == pose[0] and (code & 3) == pose[1] and (code >> 6) == pose[2],
+	t.check(PeopleArt.ANIMS[code >> 2 & 31] == pose[0] and (code & 3) == pose[1] and (code >> 7) == pose[2],
 		"_sprite_pose() unpacks _sprite_pose_code()")
 	p.free()
+
+
+## Phase 2 (pray, point, lookup, cower): every citizen design has the four of its own; a kneeling or gathered person
+## prays once it stands still, a startled one cowers near the threat and points far from it, the watchman staring at the
+## falling star looks up; a soldier (no such art) keeps its old look.
+static func _phase2(t) -> void:
+	SpriteArt.set_enabled(true)
+	var all_own := true
+	for d in ["resident_a", "resident_b", "merchant_a", "merchant_b", "craft_a", "craft_b", "laborer", "clergy",
+			"caregiver_a", "caregiver_b", "farmer", "bellkeeper", "engineer"]:
+		for a in [9, 10, 11, 12]:
+			all_own = all_own and (int(PeopleArt.info(d)[5]) >> a) & 1 == 1
+	t.check(all_own, "every citizen design has its own pray, point, lookup and cower")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var p := Person.new()
+	p.rng.seed = 31
+	p.bounds = TownLayout.MAP
+	p.setup_person(false, Vector2(2.7, 2.0), grid)
+	p.compel(p.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD, false, &"kneel")
+	for i in 30:
+		p.tick(1.0 / 60.0)
+	t.check(p._sprite_pose()[0] == &"pray", "kneeling at Voice of God, it prays")
+	for i in 120:
+		p.tick(1.0 / 60.0)
+	var pose := p._sprite_pose()
+	t.check(pose[2] == PeopleArt.frame_count(p._design(), &"pray", pose[1]) - 1, "the pray holds its last frame")
+	p.release_compulsion()
+	p.compel(p.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD, false, &"pray")
+	p.tick(1.0 / 60.0)
+	t.check(p._sprite_pose()[0] == &"pray", "gathered by Divine Congregation, it prays")
+	p.release_compulsion()
+	p.compel(p.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD)
+	p.tick(1.0 / 60.0)
+	t.check(p._sprite_pose()[0] == &"idle", "another compulsion, standing, it does not pray")
+	p.release_compulsion()
+	var q := Person.new()
+	q.rng.seed = 32
+	q.bounds = TownLayout.MAP
+	q.setup_person(false, Vector2(2.7, 2.0), grid)
+	q.panic(q.ground_pos + Vector2(0.0, -1.0))
+	t.check(q.startled() and q._sprite_pose()[0] == &"cower", "startled by a threat close by, it cowers")
+	var r := Person.new()
+	r.rng.seed = 33
+	r.bounds = TownLayout.MAP
+	r.setup_person(false, Vector2(2.7, 2.0), grid)
+	r.panic(r.ground_pos + Vector2(0.0, -8.0))
+	t.check(r.startled() and r._sprite_pose()[0] == &"point", "startled by a threat far off, it points and shouts")
+	var w := Person.new()
+	w.rng.seed = 34
+	w.bounds = TownLayout.MAP
+	w.setup_person(false, Vector2(2.7, 2.0), grid)
+	w.observe(w.ground_pos + Vector2(0.0, -3.0), 4.0)
+	w.tick(1.0 / 60.0)
+	t.check(w._sprite_pose()[0] == &"idle", "observing something on the ground, it just stands")
+	w.look_up = true
+	w.tick(1.0 / 60.0)
+	t.check(w._sprite_pose()[0] == &"lookup", "staring at the sky, it looks up")
+	var g := Person.new()
+	g.rng.seed = 35
+	g.bounds = TownLayout.MAP
+	g.setup_person(true, Vector2(2.7, 2.0), grid)
+	g.compel(g.ground_pos, 12.0, Person.WILL_ABSOLUTE, Color.GOLD, false, &"kneel")
+	g.tick(1.0 / 60.0)
+	t.check(g._sprite_pose()[0] != &"pray", "a soldier has no pray: it keeps the old kneel")
+	for x in [p, q, r, w, g]:
+		x.free()
+
+
+## Interaction art: every citizen has talk, work and douse, every soldier design talk, dig and douse. A calm citizen
+## standing at a leisure stop talks, at a work or errand stop works; a soldier at its post talks now and then; a
+## rescuer at the rubble digs; a fire fighter at the fire's edge with a full bucket throws it.
+static func _interact(t) -> void:
+	SpriteArt.set_enabled(true)
+	var own := true
+	for d in ["resident_a", "resident_b", "merchant_a", "merchant_b", "craft_a", "craft_b", "laborer", "clergy",
+			"caregiver_a", "caregiver_b", "farmer", "bellkeeper", "engineer"]:
+		for a in [13, 14, 16]:
+			own = own and (int(PeopleArt.info(d)[5]) >> a) & 1 == 1
+	for d in ["guard", "marshal", "escort", "rescue"]:
+		for a in [13, 15, 16]:
+			own = own and (int(PeopleArt.info(d)[5]) >> a) & 1 == 1
+	t.check(own, "citizens have talk, work, douse; soldiers talk, dig, douse")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var open := grid.nearest_walkable(TownLayout.MAP.get_center(), 6)
+	var p := Person.new()
+	p.rng.seed = 41
+	p.bounds = TownLayout.MAP
+	p.setup_person(false, open, grid)
+	var milled := 0
+	for i in 600:
+		p.tick(1.0 / 60.0)
+		milled += 1 if p._stride else 0
+	t.check(milled > 100, "with no stop yet it mills about (%d of 600 ticks stepping)" % milled)
+	var prof := CitizenProfile.new()
+	prof.home = open
+	p.profile = prof  # a day of its own: no strolling off by itself (RoutineManager sends it)
+	var shows := {}
+	for place in [RoutineManager.Place.LEISURE, RoutineManager.Place.WORK, RoutineManager.Place.ERRAND]:
+		# As RoutineManager sends it: the place, its spot as the anchor, a walk there; then it stays.
+		p.last_place = place
+		p.anchor = open
+		p.set_goal(open)
+		for i in 600:
+			p.tick(1.0 / 60.0)
+			if not p.has_goal() and not p._stride:
+				break
+		var stepped := 0
+		for i in 240:
+			p.tick(1.0 / 60.0)
+			stepped += 1 if p._stride else 0
+		shows[place] = [p._sprite_pose()[0], stepped]
+	t.check(shows[RoutineManager.Place.LEISURE][0] == &"talk" and shows[RoutineManager.Place.LEISURE][1] == 0,
+		"at a leisure stop it stands and talks (%s)" % [shows[RoutineManager.Place.LEISURE]])
+	t.check(shows[RoutineManager.Place.WORK][0] == &"work" and shows[RoutineManager.Place.WORK][1] == 0,
+		"at work it stands and works (%s)" % [shows[RoutineManager.Place.WORK]])
+	t.check(shows[RoutineManager.Place.ERRAND][0] == &"work", "at a stall on an errand it works too")
+	p.last_place = RoutineManager.Place.HOME
+	for i in 120:
+		p.tick(1.0 / 60.0)
+	t.check(p._sprite_pose()[0] != &"talk" and p._sprite_pose()[0] != &"work", "at home it neither talks nor works")
+	var fire := Structure.new()
+	p.mind = Person.Mind.ASSIST
+	p.assist_fire = fire
+	p.assist_full = true
+	for i in 120:
+		p.tick(1.0 / 60.0)
+	p.assist_wait = FireManager.ACT
+	var first := p._sprite_pose()
+	p.assist_wait = 0.0
+	var last := p._sprite_pose()
+	t.check(first[0] == &"douse" and first[2] == 0 and last[2] == PeopleArt.frame_count(p._design(), &"douse", last[1]) - 1,
+		"at the fire with a full bucket it throws it across the wait (%s, %s)" % [first, last])
+	p.assist_full = false
+	p.assist_at_water = true
+	t.check(p._sprite_pose()[0] == &"work", "filling the bucket at the water it works")
+	var g := Person.new()
+	g.rng.seed = 42
+	g.bounds = TownLayout.MAP
+	g.setup_person(true, open, grid)
+	var talked := 0
+	var idled := 0
+	for i in 60 * 40:
+		g.tick(1.0 / 60.0)
+		if g.mind == Person.Mind.POST and not g.has_goal():
+			var a: StringName = g._sprite_pose()[0]
+			talked += 1 if a == &"talk" else 0
+			idled += 1 if a == &"idle" else 0
+	t.check(talked > 30 and idled > talked, "a soldier at its post talks now and then (%d talk, %d idle frames)" % [talked, idled])
+	var dug := 0
+	for i in 180:
+		g.dig_shown = 0.3
+		g.tick(1.0 / 60.0)
+		dug += 1 if i >= 90 and g._sprite_pose()[0] == &"dig" else 0
+	t.check(dug == 90, "at the rubble it stands and digs (%d of 90)" % dug)
+	p.free()
+	g.free()
+	fire.free()
 
 
 ## Two atlas cells show the same picture: the same alpha, and the same colour where there is any. (Import fixes the colour

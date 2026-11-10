@@ -1,17 +1,17 @@
 # KAK second-route references, Tier 1 (v0.11.1 Task 8): loadout B played by tools/dev/routes/tier1_b.gd. name<TAB>how<TAB>expected Re-recorded for v0.11.2 awareness (Task 5).
 # The Warning is the board's (three stars, --board). A row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
-warning_b_play_1	--scenario=warning --case=play --route=b --board --seed=1	-427497341
-warning_b_play_2	--scenario=warning --case=play --route=b --board --seed=2	-608554927
-warning_b_play_3	--scenario=warning --case=play --route=b --board --seed=3	-522729931
-tax_b_play_1	--scenario=tax --case=play --route=b --seed=1	697083307
-tax_b_play_2	--scenario=tax --case=play --route=b --seed=2	-691852192
-tax_b_play_3	--scenario=tax --case=play --route=b --seed=3	414261813
-harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1	-941637416
-harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2	735101455
-harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3	541794606
-lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1	-898699529
-lamb_b_play_2	--scenario=lamb --case=play --route=b --seed=2	-584713426
-lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3	-326951286
-prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1	-468999569
-prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2	-643595078
-prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3	-964736122
+warning_b_play_1	--scenario=warning --case=play --route=b --board --seed=1	-216581421
+warning_b_play_2	--scenario=warning --case=play --route=b --board --seed=2	-859717805
+warning_b_play_3	--scenario=warning --case=play --route=b --board --seed=3	-76566550
+tax_b_play_1	--scenario=tax --case=play --route=b --seed=1	-886455697
+tax_b_play_2	--scenario=tax --case=play --route=b --seed=2	-680616490
+tax_b_play_3	--scenario=tax --case=play --route=b --seed=3	-488234282
+harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1	169672694
+harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2	652276923
+harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3	544660354
+lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1	-31807585
+lamb_b_play_2	--scenario=lamb --case=play --route=b --seed=2	-810938437
+lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3	-899084441
+prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1	315443389
+prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2	329554370
+prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3	157452871

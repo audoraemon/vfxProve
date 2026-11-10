@@ -3,6 +3,11 @@ extends RefCounted
 ## blocks the way until the guards dig it out.
 
 
+const Corps := preload("res://tests/test_corps.gd")
+const GJ := preload("res://tests/test_guard_jobs.gd")
+const CapPeople := preload("res://tests/test_capital_people.gd")
+
+
 static func _crowd() -> Array:
 	var env := EnvironmentField.new()
 	var town := Town.new()
@@ -44,6 +49,20 @@ static func run(t) -> void:
 	_mission_point(t)
 	_slow_pace(t)
 	_once_per_fall(t)
+	_one_route_read(t)
+	_island_first_point(t)
+	_all_slow_fallback(t)
+	_overlap_clear(t)
+	_guards_dig(t)
+	_one_digger(t)
+	_too_early(t)
+	_fire_first(t)
+	_stranded_digger(t)
+	_held_digger(t)
+	_taken_digger(t)
+	_squads_after_rally(t)
+	_trapped_first(t)
+	_capital_pile(t)
 	City.use(&"aldermere")
 
 
@@ -333,3 +352,356 @@ static func _once_per_fall(t) -> void:
 		crowd.advance(1.0 / 60.0)
 	t.check(crowd.piles.gap_checks == after, "no further checks while time passes")
 	_free(made)
+
+
+## The route points are read once per pile placed, not once per candidate gap cell.
+static func _one_route_read(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var calls := [0]
+	crowd.mission_points.append(func() -> Array[Vector2]:
+		calls[0] += 1
+		return [] as Array[Vector2])
+	var p := crowd.piles.place(BRIDGE.duplicate())
+	t.check(p != null and p.gap != PileManager.NO_GAP, "the bridge pile found its gap")
+	t.check(calls[0] == 1, "the route points were read once for the whole placement (%d)" % calls[0])
+	crowd.clear_mission_hooks()
+	_free(made)
+
+
+## The first route point sits in a closed-off island: the seal is still found between the points that share the rest of town.
+static func _island_first_point(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var first := grid.world_to_id(crowd.route_points()[0])
+	for d in PileManager.SIDES:
+		if grid.grid.is_in_boundsv(first + d):
+			grid.grid.set_point_solid(first + d, true)
+	var far := grid.id_to_world(Vector2i(4, 54))
+	crowd.mission_points.append(func() -> Array[Vector2]: return [far] as Array[Vector2])
+	var from: Vector2 = TownLayout.TEMPLE.get_center() + Vector2(0, 3)
+	t.check(not grid.reaches(grid.id_to_world(first), from), "the first route point is an island")
+	t.check(grid.reaches(far, from), "the point south of the bridge reaches the temple")
+	var p := crowd.piles.place(BRIDGE.duplicate())
+	t.check(p != null and p.gap != PileManager.NO_GAP, "the seal is found although the first point is an island")
+	t.check(grid.reaches(far, from), "the bridge is still crossable")
+	crowd.clear_mission_hooks()
+	_free(made)
+
+
+## Two rows of the bridge: no single cell opens the way, so every cell is a slow crossing and the pile is still drawn.
+static func _all_slow_fallback(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var cells: Array[Vector2i] = []
+	for id in BRIDGE:
+		cells.append(id)
+		cells.append(id + Vector2i(0, 1))
+	var from: Vector2 = TownLayout.TEMPLE.get_center() + Vector2(0, 3)
+	var p := crowd.piles.place(cells)
+	t.check(p != null and p.cells.size() == 8, "a two-row pile on the bridge")
+	var open := 0
+	var slow := 0
+	for id in p.cells:
+		if grid.walkable(grid.id_to_world(id)):
+			open += 1
+		if is_equal_approx(grid.pace_at(grid.id_to_world(id)), WalkGrid.SLOW_CROSSING):
+			slow += 1
+	t.check(open == 8 and slow == 8, "no single gap works: all cells open slow (%d open, %d slow)" % [open, slow])
+	t.check(p.gap != PileManager.NO_GAP and p.cells.has(p.gap), "the pile names a gap")
+	t.check(not p.pieces.is_empty() and PileManager.visible_pieces(p) == p.pieces.size(), "the pile is still drawn")
+	t.check(grid.reaches(from, TownLayout.EXITS[0]), "the route is open")
+	crowd.piles.clear()
+	t.check(grid._slow.is_empty(), "clear() leaves no slow cell")
+	_free(made)
+
+
+## Clearing a pile does not reopen a cell another pile still holds closed.
+static func _overlap_clear(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var open: Array[Vector2i] = []
+	var c0 := grid.world_to_id(TownLayout.MARKET_SQUARE.get_center())
+	for r in range(0, 8):
+		for dx in range(-r, r + 1):
+			var id := c0 + Vector2i(dx, r)
+			if grid.walkable(grid.id_to_world(id)) and open.size() < 6:
+				open.append(id)
+	t.check(open.size() == 6, "six open cells in the square")
+	var a := crowd.piles.place([open[0], open[1]] as Array[Vector2i])
+	var b := crowd.piles.place([open[5]] as Array[Vector2i])
+	t.check(a != null and b != null, "two piles")
+	# b also holds a's second cell (as when it was placed on a's gap).
+	b.cells.append(open[1])
+	crowd.piles.clear_pile(a)
+	t.check(not grid.walkable(grid.id_to_world(open[1])) and grid.is_pile(open[1]), "a cell another pile holds stays closed")
+	t.check(grid.walkable(grid.id_to_world(open[0])), "and the rest of the cleared pile opens")
+	crowd.piles.clear()
+	t.check(grid.walkable(grid.id_to_world(open[1])), "clear() opens it")
+	_free(made)
+
+
+# --- clearing: guards dig, idle rescue squads after the rally -------------------------------------------------------
+
+## The house nearest the barracks yard that has a street beside it, with a stone pile on its cells.
+static func _yard_pile(crowd: Crowd, env: EnvironmentField) -> PileManager.Pile:
+	var c: Vector2 = City.current().landmark(&"barracks_yard").get_center()
+	var best: Structure = null
+	for s in env.structures():
+		if s.kind == Structure.Kind.HOUSE and s.role == &"house" and not s.destroyed and not crowd.piles.cells_for(s).is_empty():
+			if best == null or s.center().distance_to(c) < best.center().distance_to(c):
+				best = s
+	return crowd.piles.place(crowd.piles.cells_for(best))
+
+
+## Everybody walking arrives at his goal.
+static func _arrive(people: Array) -> void:
+	for p: Person in people:
+		if is_instance_valid(p) and p.has_goal():
+			p.ground_pos = p.goal()
+			p._goal = Vector2.INF
+			p._path = PackedVector2Array()
+
+
+static func _run(crowd: Crowd, seconds: float) -> void:
+	for i in int(seconds * 60.0):
+		crowd.piles.step(1.0 / 60.0)
+
+
+static func _open_pile(grid: WalkGrid, pile: PileManager.Pile) -> bool:
+	for id in pile.cells:
+		if not grid.walkable(grid.id_to_world(id)):
+			return false
+	return true
+
+
+static func _guards_dig(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	var n := crowd.guard_jobs.free_near(crowd.piles.centre(pile), PileManager.REACH).size()
+	t.check(n >= 4, "guards stand near the pile (%d)" % n)
+	crowd.piles.step(1.0)
+	t.check(pile.diggers.size() == mini(PileManager.DIGGERS, ceili(n * 0.5)), "half the guards near it dig, at most two (%d of %d)" % [pile.diggers.size(), n])
+	var diggers: Array = pile.diggers.duplicate()
+	var jobs_ok := true
+	for d: Person in diggers:
+		jobs_ok = jobs_ok and d.corps == Person.Corps.NONE and crowd.guard_jobs.job_of(d) == pile and d.anchor.is_equal_approx(pile.spots[d])
+	t.check(jobs_ok, "each is an ordinary guard on the pile's job, sent to his spot")
+	_arrive(diggers)
+	_run(crowd, 1.0)
+	var shown := true
+	var posed := true
+	for d: Person in diggers:
+		shown = shown and d.dig_shown > 0.0
+		if d._own_art(15):
+			posed = posed and d._sprite_pose()[0] == &"dig"
+	t.check(shown and posed, "at their spots they dig")
+	t.check(crowd.piles.piles.size() == 1, "the pile still stands")
+	_run(crowd, PileManager.SECONDS)
+	t.check(crowd.piles.piles.is_empty() and _open_pile(grid, pile), "twenty seconds, two diggers: the pile is gone and its cells walk")
+	var home := true
+	for d: Person in diggers:
+		home = home and d.mind == Person.Mind.POST and d.anchor.is_equal_approx(d.post) and not crowd.guard_jobs.on_job(d)
+	t.check(home, "the diggers go back to their posts")
+	Corps._done(made)
+
+
+static func _one_digger(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	crowd.piles.step(1.0)
+	var keep: Person = pile.diggers[0]
+	for i in range(pile.diggers.size() - 1, 0, -1):
+		var d: Person = pile.diggers[i]
+		crowd.guard_jobs.release(d)
+		crowd.piles.release(d)
+	crowd.alarms.stage = AlarmManager.Stage.NORMAL
+	_arrive([keep])
+	_run(crowd, 21.0)
+	t.check(crowd.piles.piles.size() == 1, "one digger: still blocked at 21 s")
+	_run(crowd, 20.0)
+	t.check(crowd.piles.piles.is_empty() and _open_pile(grid, pile), "one digger: clear by 41 s")
+	Corps._done(made)
+
+
+static func _too_early(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = AlarmManager.Stage.NORMAL
+	var pile := _yard_pile(crowd, made[1])
+	_run(crowd, 3.0)
+	t.check(pile.diggers.is_empty(), "below the profile's fire stage nobody digs")
+	crowd.alarms.stage = crowd.profile.fire_from
+	_run(crowd, 1.5)
+	t.check(not pile.diggers.is_empty(), "at it they do")
+	Corps._done(made)
+
+
+static func _fire_first(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	var house := GJ._yard_fire(crowd, made[1])
+	var n0 := crowd.guard_jobs.free_near(house.center(), FireManager.RECRUIT_REACH).size()
+	crowd.fires._recruit()
+	crowd.piles.step(1.0)
+	t.check(crowd.fires.guards_on(house) == ceili(n0 * 0.5), "the fire takes its half first (%d of %d)" % [crowd.fires.guards_on(house), n0])
+	var both := false
+	for d: Person in pile.diggers:
+		both = both or d.mind == Person.Mind.ASSIST or crowd.guard_jobs.job_of(d) != pile
+	t.check(not both, "no guard is both on the fire and on the pile")
+	Corps._done(made)
+
+
+static func _stranded_digger(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	crowd.piles.step(1.0)
+	var d: Person = pile.diggers[0]
+	_arrive([d])
+	pile.spots.erase(d)
+	crowd.guard_jobs.prune()
+	t.check(not crowd.guard_jobs.on_job(d) and d.anchor.is_equal_approx(d.post), "a digger whose record drops walks back to his post")
+	Corps._done(made)
+
+
+static func _held_digger(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	crowd.piles.step(1.0)
+	_arrive(pile.diggers)
+	var h: Person = pile.diggers[0]
+	h.confuse(5.0)
+	pile.work = 1.0
+	crowd.piles.step(0.02)
+	t.check(crowd.piles.piles.is_empty(), "the pile is cleared")
+	for i in 40 * 60:
+		h.tick(1.0 / 60.0)
+		if i % 60 == 0:
+			crowd.guard_jobs.prune()
+	t.check(h.mind == Person.Mind.POST and h.anchor.is_equal_approx(h.post) and not crowd.guard_jobs.on_job(h),
+			"a digger the god held comes back to his post (mind %d, anchor %s, post %s, job %s, held %s)" % [h.mind, h.anchor, h.post, crowd.guard_jobs.on_job(h), h.held_by_god()])
+	Corps._done(made)
+
+
+static func _taken_digger(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, made[1])
+	crowd.piles.step(1.0)
+	var d: Person = pile.diggers[0]
+	var was := pile.diggers.size()
+	d.go_duty(d.ground_pos + Vector2(3.0, 0.0))
+	_run(crowd, 1.2)
+	t.check(not pile.diggers.has(d) and not crowd.guard_jobs.on_job(d), "a digger taken for a duty leaves the pile")
+	t.check(pile.diggers.size() == was, "and another guard is taken in his place (%d of %d)" % [pile.diggers.size(), was])
+	Corps._done(made)
+
+
+static func _squads_after_rally(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	crowd.alarms.stage = crowd.profile.fire_from
+	crowd.rally()
+	var pile := _yard_pile(crowd, made[1])
+	crowd.piles.step(1.0)
+	t.check(pile.diggers.is_empty(), "no guard digs once the rally has closed the jobs")
+	crowd.rescue.step(0.6)
+	var squad: Dictionary = {}
+	for sq in crowd.rescue.squads:
+		var all := not crowd.rescue._living(sq).is_empty()
+		for m in crowd.rescue._living(sq):
+			all = all and pile.diggers.has(m)
+		if all:
+			squad = sq
+	t.check(not squad.is_empty(), "an idle rescue squad takes the pile")
+	_arrive(pile.diggers)
+	for i in 21 * 60:
+		crowd.rescue.step(1.0 / 60.0)
+		crowd.piles.step(1.0 / 60.0)
+	t.check(crowd.piles.piles.is_empty() and _open_pile(grid, pile), "the squad clears it")
+	var home := true
+	for m in crowd.rescue._living(squad):
+		home = home and m.anchor.is_equal_approx(m.post)
+	t.check(home, "and goes back to its post")
+	crowd.alarms.stage = AlarmManager.Stage.EVACUATION
+	var again := _yard_pile(crowd, made[1])
+	crowd.rescue.step(0.6)
+	t.check(again != null and not again.diggers.is_empty(), "during the evacuation a new pile still gets a squad")
+	Corps._done(made)
+
+
+static func _trapped_first(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = crowd.profile.fire_from
+	crowd.rally()
+	var pile := _yard_pile(crowd, made[1])
+	crowd.rescue.step(0.6)
+	var squad: Dictionary = crowd.rescue.squads[0]
+	var crew: Array = crowd.rescue._living(squad)
+	t.check(pile.diggers.has(crew[0]), "the squad is on the pile")
+	crowd.rescue.squads = [squad]
+	var house: Structure = null
+	for s in made[1].structures():
+		if s.kind == Structure.Kind.HOUSE and s.role == &"house" and not s.destroyed:
+			house = s
+			break
+	crowd.rescue.trap([crowd.citizens[0]], house)
+	crowd.rescue.step(0.6)
+	var on_pile := false
+	for m in crew:
+		on_pile = on_pile or pile.diggers.has(m) or crowd.piles.digging(m)
+	t.check(squad.site == house and not on_pile, "a trapped person comes before a pile")
+	Corps._done(made)
+
+
+static func _capital_pile(t) -> void:
+	var b: Dictionary = CapPeople._build()
+	var crowd: Crowd = b.crowd
+	crowd.alarms.stage = crowd.profile.fire_from
+	var pile := _yard_pile(crowd, b.env)
+	t.check(pile != null, "a pile by the Capital's yard")
+	if pile != null:
+		crowd.piles.step(1.0)
+		t.check(pile.diggers.size() == 2, "two Capital guards dig (%d)" % pile.diggers.size())
+		var none := true
+		for d: Person in pile.diggers:
+			none = none and d.corps == Person.Corps.NONE
+		t.check(none, "ordinary guards")
+		_arrive(pile.diggers)
+		_run(crowd, PileManager.SECONDS + 1.0)
+		t.check(crowd.piles.piles.is_empty(), "and they clear it")
+	crowd.clear()
+	(b.world as Node).free()
+	(b.town as Node).free()
+	City.use(&"aldermere")

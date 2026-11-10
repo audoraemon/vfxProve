@@ -2,9 +2,16 @@ class_name PileManager
 extends RefCounted
 ## Street piles (soldier jobs): when a building falls (Structure.leaves_ruin()) its rubble spills onto the street beside
 ## it as a pile of one to three cells that closes the way until the guards dig it out. This file chooses the cells,
-## places and clears the piles and draws them; the digging itself is stepped here later (step()).
+## places and clears the piles, draws them, and digs them out: ordinary guards until the rally, idle rescue squads after
+## it (step()).
 
 const MAX_CELLS := 3
+## Diggers a pile works with (the work counts at most this many), the seconds it takes with that many, how near a guard
+## must stand to be taken for it, and how often the guards are given work.
+const DIGGERS := 2
+const SECONDS := 20.0
+const REACH := 10.0
+const EVERY := 1.0
 ## Half-size, in cells, of the box the local detour search stays in.
 const LOCAL_CELLS := 16
 ## A pile's gap cell when no gap has been left in it (the gap check, a later task).
@@ -16,6 +23,8 @@ const SIDES: Array[Vector2i] = [Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1),
 class Pile:
 	var cells: Array[Vector2i] = []
 	var gap := PileManager.NO_GAP
+	## Every cell was left open as a slow crossing (no single gap would do).
+	var all_open := false
 	var site: Structure
 	## Dug out so far, 0..1.
 	var work := 0.0
@@ -54,6 +63,7 @@ var _rng := RandomNumberGenerator.new()
 var _shown := {}
 ## How many times the key-point check (the whole-grid floods) ran: once per pile that needed it, never per frame.
 var gap_checks := 0
+var _in := 0.0
 
 
 func setup(crowd: Crowd, env: EnvironmentField, grid: WalkGrid) -> PileManager:
@@ -199,7 +209,9 @@ func place(cells: Array[Vector2i], site: Structure = null) -> Pile:
 ## the pile's middle, that opens the way again is left open as a slow crossing; if none does, every cell is a slow crossing
 ## (the pile stays drawn, the town is never sealed).
 func _leave_gap(p: Pile) -> void:
-	if not _seals(p.cells):
+	# The route points and the "everything open" labelling are made at most once, for the first whole-grid check.
+	var ctx := {}
+	if not _seals(p.cells, ctx):
 		return
 	var mid := Vector2.ZERO
 	for id in p.cells:
@@ -217,7 +229,7 @@ func _leave_gap(p: Pile) -> void:
 		_grid.set_slow(c, WalkGrid.SLOW_CROSSING)
 		var shut: Array[Vector2i] = p.cells.duplicate()
 		shut.erase(c)
-		if not _seals(shut):
+		if not _seals(shut, ctx):
 			p.gap = c
 			return
 		_grid.set_pile([c], true)
@@ -226,6 +238,7 @@ func _leave_gap(p: Pile) -> void:
 	for c in p.cells:
 		_grid.set_slow(c, WalkGrid.SLOW_CROSSING)
 	p.gap = order[0]
+	p.all_open = true
 
 
 ## Whether another pile still leaves `id` as a slow crossing.
@@ -238,10 +251,11 @@ func _kept_slow(id: Vector2i, but: Pile) -> bool:
 
 ## Whether the closed `cells` (a pile's, all solid now) cut a route that was open with them open. First the cheap local
 ## question: do the open cells right around the pile still join each other inside a small box (a way round)? If so, no.
-## Otherwise one whole-grid flood each way (cells open, cells closed) over the route points: a point that was in the
-## reference point's piece and no longer is, means the pile seals it. Every flood is 4-way: the grid takes a diagonal only
-## when nothing is in its way, so what A* reaches is what a 4-way flood reaches.
-func _seals(cells: Array[Vector2i]) -> bool:
+## Otherwise two whole-grid floods (`ctx` keeps the first, cells open, for the other candidates of the same pile): the
+## route points are labelled by the piece of town they are in, and it seals if two points that shared a piece with the cells
+## open are in different pieces with them closed. Every flood is 4-way: the grid takes a diagonal only when nothing is in
+## its way, so what A* reaches is what a 4-way flood reaches.
+func _seals(cells: Array[Vector2i], ctx: Dictionary) -> bool:
 	if cells.is_empty():
 		return false
 	var g := _grid.grid
@@ -272,29 +286,36 @@ func _seals(cells: Array[Vector2i]) -> bool:
 			break
 	if joined:
 		return false
-	gap_checks += 1
-	var ref := Vector2i.ZERO
-	var pts: Array[Vector2i] = []
-	var found := false
-	for w in _crowd.route_points():
-		var id := _grid.world_to_id(w)
-		if not _open_cell(id):
-			continue
-		if not found:
-			ref = id
-			found = true
-		pts.append(id)
-	if not found:
+	if ctx.is_empty():
+		gap_checks += 1
+		var pts: Array[Vector2i] = []
+		for w in _crowd.route_points():
+			var id := _grid.world_to_id(w)
+			if _open_cell(id):
+				pts.append(id)
+		ctx["pts"] = pts
+		ctx["before"] = PackedInt32Array()
+		if pts.size() >= 2:
+			for id in cells:
+				g.set_point_solid(id, false)
+			ctx["before"] = _components(pts, region)
+			for id in cells:
+				g.set_point_solid(id, true)
+	var points: Array[Vector2i] = ctx["pts"]
+	if points.size() < 2:
 		return false
-	for id in cells:
-		g.set_point_solid(id, false)
-	var before := _flood(ref, region)
-	for id in cells:
-		g.set_point_solid(id, true)
-	var after := _flood(ref, region)
-	for id in pts:
-		if before[_at(id, region)] != 0 and after[_at(id, region)] == 0:
-			return true
+	var before: PackedInt32Array = ctx["before"]
+	var after := _components(points, region)
+	var then := {}
+	for id in points:
+		var k := _at(id, region)
+		if before[k] == 0:
+			continue
+		if then.has(before[k]):
+			if int(then[before[k]]) != after[k]:
+				return true
+		else:
+			then[before[k]] = after[k]
 	return false
 
 
@@ -324,13 +345,49 @@ func _flood(start: Vector2i, box: Rect2i) -> PackedByteArray:
 	return seen
 
 
+## The 4-way pieces of open town that hold `starts`, as a number per cell of `box` (0 = not reached; 1.. = the piece of the
+## first start that reached it).
+func _components(starts: Array[Vector2i], box: Rect2i) -> PackedInt32Array:
+	var label := PackedInt32Array()
+	label.resize(box.size.x * box.size.y)
+	var next := 0
+	for start in starts:
+		if not box.has_point(start) or _grid.grid.is_point_solid(start) or label[_at(start, box)] != 0:
+			continue
+		next += 1
+		var stack: Array[Vector2i] = [start]
+		label[_at(start, box)] = next
+		while not stack.is_empty():
+			var id: Vector2i = stack.pop_back()
+			for d in SIDES:
+				var n := id + d
+				if not box.has_point(n):
+					continue
+				var k := _at(n, box)
+				if label[k] != 0 or _grid.grid.is_point_solid(n):
+					continue
+				label[k] = next
+				stack.append(n)
+	return label
+
+
 func on_fall(s: Structure) -> void:
 	if s.leaves_ruin():
 		place(cells_for(s), s)
 
 
+## Whether another pile still holds `id` as a closed cell (one placed on this pile's gap).
+func _held_closed(id: Vector2i, but: Pile) -> bool:
+	for q in piles:
+		if q != but and q.cells.has(id) and q.gap != id and not q.all_open:
+			return true
+	return false
+
+
 func clear_pile(p: Pile) -> void:
-	_grid.set_pile(p.cells, false)
+	for id in p.cells:
+		if not _held_closed(id, p):
+			_grid.set_pile([id] as Array[Vector2i], false)
 	for id in p.cells:
 		if not _kept_slow(id, p):
 			_grid.set_slow(id, 1.0)
@@ -339,7 +396,13 @@ func clear_pile(p: Pile) -> void:
 	_redraw()
 
 
-func step(_delta: float) -> void:
+func step(delta: float) -> void:
+	for p in piles.duplicate():
+		_dig(p, delta)
+	_in -= delta
+	if _in <= 0.0:
+		_in = EVERY
+		_assign()
 	var changed := false
 	for p in piles:
 		var v := visible_pieces(p)
@@ -350,6 +413,149 @@ func step(_delta: float) -> void:
 		_redraw()
 
 
+func centre(p: Pile) -> Vector2:
+	var mid := Vector2.ZERO
+	for id in p.cells:
+		mid += _grid.id_to_world(id)
+	return mid / float(maxi(p.cells.size(), 1))
+
+
+## Where a digger stands: the walkable cells 4-adjacent to the pile (not its own), nearest its middle first, ties by (y, x).
+func dig_spots(p: Pile) -> Array[Vector2]:
+	var ids: Array[Vector2i] = []
+	for c in p.cells:
+		for d in SIDES:
+			var n := c + d
+			if not p.cells.has(n) and not ids.has(n) and _open_cell(n):
+				ids.append(n)
+	var mid := centre(p)
+	ids.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da := _grid.id_to_world(a).distance_squared_to(mid)
+		var db := _grid.id_to_world(b).distance_squared_to(mid)
+		if not is_equal_approx(da, db):
+			return da < db
+		return a.y < b.y or (a.y == b.y and a.x < b.x))
+	var out: Array[Vector2] = []
+	for id in ids:
+		out.append(_grid.id_to_world(id))
+	return out
+
+
+## The piles with fewer than DIGGERS living diggers, in placement order.
+func needing_hands() -> Array[Pile]:
+	var out: Array[Pile] = []
+	for p in piles:
+		var n := 0
+		for d in p.diggers:
+			if is_instance_valid(d) and (d as Person).is_alive():
+				n += 1
+		if n < DIGGERS:
+			out.append(p)
+	return out
+
+
+## The nearest pile needing hands to `crew[0]` gets the whole crew, at a walk. False when there is none.
+func take_squad(crew: Array) -> bool:
+	if crew.is_empty():
+		return false
+	var from: Vector2 = (crew[0] as Person).ground_pos
+	var best: Pile = null
+	var best_d := INF
+	for p in needing_hands():
+		var d := centre(p).distance_to(from)
+		if d < best_d and not dig_spots(p).is_empty():
+			best = p
+			best_d = d
+	if best == null:
+		return false
+	var spots := dig_spots(best)
+	for m: Person in crew:
+		if m.held_by_god():
+			continue  # in the god's hand: he goes back to the squad's post by himself
+		best.spots[m] = spots[best.diggers.size() % spots.size()]
+		best.diggers.append(m)
+		m.send_to_post(best.spots[m])
+	return true
+
+
+func digging(p: Variant) -> bool:
+	if not is_instance_valid(p):
+		return false
+	for q in piles:
+		if q.diggers.has(p):
+			return true
+	return false
+
+
+## `p` stops digging (no walk: whoever calls this sends him).
+func release(p: Variant) -> void:
+	for q in piles:
+		q.diggers.erase(p)
+		q.spots.erase(p)
+
+
+## One frame of work on `p`: the diggers at their spots dig; a pile worked through is cleared and its diggers go back.
+func _dig(p: Pile, delta: float) -> void:
+	var counting := 0
+	for d in p.diggers:
+		if not is_instance_valid(d):
+			continue
+		var m: Person = d
+		var at: Variant = p.spots.get(m)
+		if m.is_alive() and at is Vector2 and not m.has_goal() and m.ground_pos.distance_to(at) <= RescueManager.DIG_REACH:
+			counting += 1
+			m.dig_shown = 0.3
+	if counting > 0:
+		p.work += delta / SECONDS * float(mini(counting, DIGGERS)) / float(DIGGERS)
+	if p.work < 1.0:
+		return
+	var crew: Array = p.diggers.duplicate()
+	clear_pile(p)
+	for d in crew:
+		if not is_instance_valid(d) or not (d as Person).is_alive():
+			continue
+		var m: Person = d
+		if _crowd.guard_jobs.job_of(m) == p:
+			_crowd.guard_jobs.release(m)
+		m.back_to_post()
+
+
+## Every EVERY seconds: diggers who left the job are dropped (and a stranded one walks home), and until the rally the
+## guards near each pile are taken to fill its hands.
+func _assign() -> void:
+	var jobs := _crowd.guard_jobs
+	for p in piles:
+		for d in p.diggers.duplicate():
+			var m: Person = d if is_instance_valid(d) else null
+			var at: Variant = p.spots.get(d)
+			if m != null and m.is_alive() and (m.held_by_god() or (m.mind == Person.Mind.POST and at is Vector2 and m.anchor.is_equal_approx(at))):
+				continue
+			p.diggers.erase(d)
+			p.spots.erase(d)
+			if m == null:
+				continue
+			if jobs.job_of(m) == p:
+				jobs.release(m)
+			elif m.is_alive() and not m.held_by_god() and m.mind == Person.Mind.POST and not m.anchor.is_equal_approx(m.post):
+				m.back_to_post()
+	var stage := _crowd.alarms.stage
+	if not jobs.is_open() or stage < _crowd.profile.fire_from or stage >= AlarmManager.Stage.EVACUATION:
+		return
+	for p in piles:
+		var spots := dig_spots(p)
+		if spots.is_empty():
+			continue
+		var on := 0
+		for d in p.diggers:
+			if jobs.job_of(d) == p:
+				on += 1
+		for g in jobs.pick(centre(p), REACH, on, DIGGERS - p.diggers.size()):
+			jobs.take(g, p)
+			p.spots[g] = spots[p.diggers.size() % spots.size()]
+			p.diggers.append(g)
+			g.send_to_post(p.spots[g])
+
+
 ## Every pile cell opens again, the list empties (a restart).
 func clear() -> void:
 	for p in piles:
@@ -358,6 +564,7 @@ func clear() -> void:
 			_grid.set_slow(id, 1.0)
 	piles.clear()
 	_shown.clear()
+	_in = 0.0
 	_redraw()
 
 

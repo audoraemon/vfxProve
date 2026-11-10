@@ -138,6 +138,7 @@ func _assign() -> void:
 			var m: Person = crew[i]
 			if m.mind == Person.Mind.ASSIST:
 				m.stand_down()
+			_crowd.piles.release(m)  # trapped people come before a pile
 			# At a run: the trapped have little time.
 			m.send_to_post(_crowd._spot_near(best.spot + Vector2(0.4 * float(i), 0.0), 0.15), false, true)
 	var evacuating := _crowd.alarms.stage >= AlarmManager.Stage.EVACUATION
@@ -153,6 +154,14 @@ func _assign() -> void:
 		if at_fire:
 			continue
 		var fire: Structure = null if evacuating else _nearest_fire((crew[0] as Person).ground_pos)
+		# No fire, and the guards' jobs are closed (the rally came): a squad already on a pile stays, an idle one takes the
+		# nearest pile that needs hands (also during the evacuation). Order: trapped, fire, pile.
+		if fire == null and not _crowd.guard_jobs.is_open():
+			var digging := false
+			for m in crew:
+				digging = digging or _crowd.piles.digging(m)
+			if digging or _crowd.piles.take_squad(crew):
+				continue
 		for m in crew:
 			var p: Person = m
 			if p.held_by_god():

@@ -127,6 +127,8 @@ func close() -> void:
 			var job: Variant = _jobs[k]
 			if job is Structure and p.mind == Person.Mind.ASSIST and p.assist_fire == job:
 				p.stand_down()
+			elif job is PileManager.Pile:
+				_crowd.piles.release(p)
 			_drop(p, false)
 	_jobs.clear()
 
@@ -143,7 +145,10 @@ func clear() -> void:
 func _still_on(p: Person, job: Variant) -> bool:
 	if job is Structure:
 		return p.mind == Person.Mind.ASSIST and p.assist_fire == job
-	return true  # a pile job: Task 6 decides
+	# A pile job: the pile still stands and he is at the spot it gave him.
+	var pile: PileManager.Pile = job
+	var spot: Variant = pile.spots.get(p)
+	return _crowd.piles.piles.has(pile) and spot is Vector2 and p.mind == Person.Mind.POST and p.anchor.is_equal_approx(spot)
 
 
 ## Drop one record; `home`: a guard left standing off his post (a stranded digger) walks back.

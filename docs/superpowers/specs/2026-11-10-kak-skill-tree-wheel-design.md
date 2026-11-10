@@ -1,6 +1,6 @@
 # KAK -- Skill Tree wheel and Remembrance
 
-Status: **design agreed in chat with the user (2026-11-10)**, awaiting approval of this document. Branch `god/skill-tree-ui`
+Status: **approved by the user** (2026-11-10: "Approve, build it"). Branch `god/skill-tree-ui`
 (cut from feat/god-progression c732803f). Lands on feat/god-progression, not Develop-Main.
 
 ## Intent (the user's words)

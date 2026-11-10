@@ -853,7 +853,14 @@ func _play_ending() -> void:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
 		var wait := ASCEND_SECONDS if _rules.ascended else ENDING_SECONDS
-		await get_tree().create_timer(wait, true, false, true).timeout
+		# Real seconds counted from now, not a SceneTreeTimer: a timer made during _process is charged that whole frame's
+		# delta at once, so one long frame before the ending (a hitch on a loaded machine: 3 s and more) used to swallow the
+		# slow motion and report the result within the same frame -- before a Restart could come, or a fade-in could end.
+		var until := Time.get_ticks_msec() + int(wait * 1000.0)
+		while Time.get_ticks_msec() < until:
+			if not is_inside_tree():
+				return  # taken down during its ending: nothing to report to
+			await get_tree().process_frame
 		if ended != _rules:
 			# A start() or next_act() came during the slow motion (v0.09): it restored the time scale, and this ending
 			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.

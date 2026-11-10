@@ -1577,7 +1577,7 @@ func _flow_night(step: Callable) -> void:
 
 	# Act I wins by stopping the warning (v0.11 M1: its clock no longer wins), and the interlude after it is for that act.
 	(_mission.rules().director as WarningDirector).warning_dead = true
-	var inter := await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	var inter := await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	var card: InterludeScreen = _screen_node as InterludeScreen
 	step.call(inter and card != null and card.choices.size() == 2 and bool(result.get("won", false))
 		and is_instance_valid(_mission) and _mission.process_mode == Node.PROCESS_MODE_DISABLED,
@@ -1624,7 +1624,7 @@ func _flow_night(step: Callable) -> void:
 
 	# Act II ends on its clock: the last choice is a single line, and Prepare for Act III.
 	_mission.rules().time_left = 0.01
-	inter = await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	inter = await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	card = _screen_node as InterludeScreen
 	step.call(inter and card != null and card.choices.size() == 1 and _mission.night().results.size() == 2
 		and InterludeScreen.act_name(String(result.get("mission", ""))) == "Act II: The Festival",
@@ -1669,7 +1669,7 @@ func _flow_night(step: Callable) -> void:
 	step.call(_mission != old and _mission.act() != null and _mission.act().id == "omen" and _mission.night().results.is_empty(),
 		"Restart in Act I is a fresh night, Act I again (%s)" % _mission.act().id)
 	_mission.rules().time_left = 0.01
-	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	card = _screen_node as InterludeScreen
 	card.choose("procession")
 	card.action.emit("draft")
@@ -1693,7 +1693,7 @@ func _flow_night(step: Callable) -> void:
 
 	# Review focus 2: Esc on the interlude leaves the night for the board.
 	_mission.rules().time_left = 0.01
-	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	(_screen_node as InterludeScreen).action.emit("missions")
 	await get_tree().process_frame
 	step.call(screen == Screen.BOARD and _screen_node is MissionBoard and not is_instance_valid(_mission) and not _between_acts,
@@ -1770,7 +1770,7 @@ func _flow_night(step: Callable) -> void:
 ## From Act I up and running: end it on its clock, choose `path` on the card and open the re-draft with BEGIN.
 func _night_to_redraft(path: String) -> void:
 	_mission.rules().time_left = 0.01
-	await _until(func() -> bool: return screen == Screen.INTERLUDE, 6.0)
+	await _until(func() -> bool: return screen == Screen.INTERLUDE and not _fading, 6.0)
 	var card := _screen_node as InterludeScreen
 	card.choose(path)
 	card.action.emit("draft")

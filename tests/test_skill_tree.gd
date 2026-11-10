@@ -1,26 +1,32 @@
 extends RefCounted
-## God P1 Task 8 (spec §5.2-§5.4, §12): the Skill Tree screen -- the own type between its ring neighbours, far types never shown, the
-## 30 spots laid out clear of the detail panel and Back, each spot's lines, a locked tier refused, learning spends points and emits.
+## The Skill Tree as a wheel (spec 2026-11-10): the own type between its ring neighbours, far types never shown, a click selects and only
+## the gold button spends, an Authority centres from its chip, panel, small icon or Q/E, locked and empty spots, the first open's pick,
+## the state a Remembrance returns to, and a layout whose hit areas stay on screen and apart.
 
 
 static func run(t) -> void:
 	GodTree.dev_fill = true
 	_columns(t)
-	_layout(t)
-	_lines(t)
-	_locked_tier(t)
-	_learn(t)
 	_far_hidden(t)
-	_header_and_detail(t)
-	_spot_icons(t)
+	_click_selects_only(t)
+	_buy(t)
+	_centre(t)
+	_mini(t)
+	_empty_and_locked(t)
+	_first_open(t)
+	_state_round_trip(t)
+	_learn_at_compat(t)
+	_costs(t)
+	_layout(t)
+	_icons_loaded(t)
 	GodTree.dev_fill = false
 
 
-static func _screen(type := "ruin", tier := 1, points := 0) -> SkillTreeScreen:
+static func _screen(type := "ruin", tier := 1, points := 0, p_state := {}) -> SkillTreeScreen:
 	var slot := GodSlot.make(1, type, 7)
 	slot.tier = tier
 	slot.points = points
-	return SkillTreeScreen.new().setup(slot)
+	return SkillTreeScreen.new().setup(slot, p_state)
 
 
 static func _click(at: Vector2) -> InputEventMouseButton:
@@ -31,122 +37,21 @@ static func _click(at: Vector2) -> InputEventMouseButton:
 	return e
 
 
+static func _key(code: Key) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.physical_keycode = code
+	e.pressed = true
+	return e
+
+
 static func _columns(t) -> void:
 	var s := _screen("ruin")
 	t.check(Array(s.columns()) == ["dominion", "ruin", "passage"], "a ruin god shows dominion, ruin, passage (%s)" % [s.columns()])
-	t.check(s.column_title(1) == "RUIN" and s.column_title(0) == "DOMINION x2" and s.column_title(2) == "PASSAGE x2",
-		"the own column is titled, each neighbour's says x2 (%s, %s, %s)" % [s.column_title(0), s.column_title(1), s.column_title(2)])
+	t.check(s.centred == 1, "and opens centred on its own type")
 	s.free()
 	var w := _screen("dominion")
 	t.check(Array(w.columns()) == ["death", "dominion", "ruin"], "the ring wraps: dominion sits between death and ruin (%s)" % [w.columns()])
 	w.free()
-
-
-static func _layout(t) -> void:
-	var screen := Rect2(0, 0, 640, 360)
-	var rects: Array[Rect2] = []
-	for col in 3:
-		for tier in range(1, 6):
-			for i in 2:
-				rects.append(SkillTreeScreen.spot_rect(col, tier, i))
-	t.check(rects.size() == 30, "30 spots (%d)" % rects.size())
-	var inside := true
-	var clear := true
-	var apart := true
-	for a in rects.size():
-		inside = inside and screen.encloses(rects[a])
-		clear = clear and not rects[a].intersects(SkillTreeScreen.DETAIL) and not rects[a].intersects(SkillTreeScreen.BACK_RECT)
-		for b in range(a + 1, rects.size()):
-			apart = apart and not rects[a].intersects(rects[b])
-	t.check(inside, "every spot lies inside the 640x360 screen")
-	t.check(apart, "no two spots overlap")
-	t.check(clear, "no spot touches the detail panel or Back")
-	t.check(screen.encloses(SkillTreeScreen.DETAIL) and screen.encloses(SkillTreeScreen.BACK_RECT)
-		and not SkillTreeScreen.DETAIL.intersects(SkillTreeScreen.BACK_RECT), "the detail panel and Back fit and stay apart")
-
-
-static func _lines(t) -> void:
-	var s := _screen("ruin", 1, 0)
-	s._slot.learned["smite"] = 2
-	var want := PackedStringArray(["Smite", "2 / 5", "1 Might", "Level 3: 1 point", "kill radius 0.65 -> 0.7, damage 50.0 -> 55.0, cooldown 9.5 -> 9.0"])
-	t.check(s.spot_lines(1, 1, 0) == want, "smite learned at 2: name, pips, Might, next level, its change (%s)" % [s.spot_lines(1, 1, 0)])
-	var thorns := s.spot_lines(2, 1, 0)
-	t.check(thorns[4] == PowerBook.NO_LEVELS, "a power with no table (Thornwall) still reads Levels to come (%s)" % [thorns])
-	t.check(thorns[0] == "Thornwall" and thorns[1] == "0 / 5" and thorns[3] == "Learn: 2 points",
-		"a neighbour's unlearned spot costs 2 points to learn (%s)" % [thorns])
-	var ember := s.spot_lines(1, 1, 1)
-	t.check(ember[3] == "Level 2: 1 point", "a learned-at-1 own spot: next is level 2 for 1 point (%s)" % [ember])
-	s._slot.learned["smite"] = 5
-	t.check(s.spot_lines(1, 1, 0)[3] == "Level 5" and s.spot_lines(1, 1, 0)[1] == "5 / 5", "level 5 reads Level 5 (%s)" % [s.spot_lines(1, 1, 0)])
-	# A Dominion spot (a neighbour's column in a Ruin god's tree) reads its table too: level 5's line is the twist.
-	var dom := PackedStringArray()
-	s._slot.learned["whisper"] = 1
-	for i in 2:
-		if s.key_at(0, 1, i) == "whisper":
-			dom = s.spot_lines(0, 1, i)
-	t.check(not dom.is_empty() and dom[0] == "Mind Whisper" and dom[4] == "walk reach 10.0 -> 11.0, attack 10.0 -> 11.0, cooldown 8.0 -> 7.5",
-		"a Dominion spot learned at 1 shows its table's next change, not Levels to come (%s)" % [dom])
-	s._slot.learned["whisper"] = 5
-	for i in 2:
-		if s.key_at(0, 1, i) == "whisper":
-			dom = s.spot_lines(0, 1, i)
-	t.check(dom[3] == "Level 5" and dom[4] == PowerBook.twist("whisper") and dom[4] == "Held String: whisper the same one again",
-		"and at level 5 its line is the twist (%s)" % [dom])
-	s.free()
-	GodTree.dev_fill = false
-	GodTree.use_table(GodTree.blank())
-	var bare := _screen("ruin")
-	var all_empty := true
-	for col in 3:
-		for tier in range(1, 6):
-			for i in 2:
-				all_empty = all_empty and bare.spot_lines(col, tier, i) == PackedStringArray([GodTree.NOT_CHOSEN])
-	t.check(all_empty, "with the dev fill off every spot reads Not yet chosen")
-	t.check(bare.learn_at(1, 1, 0) == "unknown", "and an empty spot cannot be learned (unknown)")
-	bare.free()
-	GodTree.use_table({})
-	GodTree.dev_fill = true
-
-
-static func _locked_tier(t) -> void:
-	var s := _screen("ruin", 1, 5)
-	var why := s.learn_at(1, 2, 0)
-	t.check(why == "tier" and s._slot.level_of("tornado") == 0, "a Tier 1 god cannot learn a Tier 2 spot (%s)" % why)
-	t.check(s.refused_reason == "Awaken to Tier 2", "and the panel says what unlocks it (%s)" % s.refused_reason)
-	t.check(s._slot.points == 5, "a refusal spends nothing (%d)" % s._slot.points)
-	s._slot.tier = 2
-	t.check(s.learn_at(1, 2, 0) == "" and s._slot.level_of("tornado") == 1, "after Awaken to Tier 2 it can")
-	s.free()
-
-
-static func _learn(t) -> void:
-	var s := _screen("ruin", 1, 1)
-	var emitted := []
-	s.action.connect(func(what: String) -> void: emitted.append(what))
-	t.check(s.learn_at(1, 1, 0) == "" and s._slot.level_of("smite") == 2 and s._slot.points == 0,
-		"one point raises smite to level 2 (%d, %d points)" % [s._slot.level_of("smite"), s._slot.points])
-	t.check(emitted == ["learned"], "and 'learned' is emitted (%s)" % [emitted])
-	t.check(s.learn_at(1, 1, 0) == "points" and s._slot.level_of("smite") == 2 and emitted == ["learned"],
-		"with no points left it is refused (points) and nothing is emitted")
-	t.check(s.refused_reason == "Not enough ability points", "the panel says why (%s)" % s.refused_reason)
-	# A real click on a spot does the same as learn_at.
-	s._slot.points = 2
-	s._on_gui_input(_click(SkillTreeScreen.spot_rect(1, 1, 1).get_center()))
-	t.check(s._slot.level_of("ember") == 2 and emitted.size() == 2, "a click on a spot learns it (%d)" % s._slot.level_of("ember"))
-	# A neighbour's spot costs double.
-	s._slot.points = 1
-	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("thorns") == 0, "a neighbour's spot needs 2 points, not 1")
-	s._slot.points = 2
-	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("thorns") == 1 and s._slot.points == 0, "and spends 2")
-	s._slot.learned["smite"] = 5
-	s._slot.points = 3
-	t.check(s.learn_at(1, 1, 0) == "max", "level 5 is the top (max)")
-	# Back.
-	var back := []
-	s.action.connect(func(what: String) -> void: back.append(what))
-	s._on_gui_input(_click(SkillTreeScreen.BACK_RECT.get_center()))
-	t.check(back.has("back"), "Back leaves the screen (%s)" % [back])
-	s.free()
 
 
 static func _far_hidden(t) -> void:
@@ -154,19 +59,23 @@ static func _far_hidden(t) -> void:
 	var shown := {}
 	for c in s.columns():
 		shown[c] = true
-	var hits := 0
 	var far := 0
+	var seen := 0
 	for x in range(0, 640, 2):
 		for y in range(0, 360, 2):
 			var h := s.hit(Vector2(x, y))
-			if not h.begins_with("spot:"):
+			var p := h.split(":")
+			var col := -1
+			if p[0] == "mini" or p[0] == "side":
+				col = int(p[1])
+			elif p[0] == "node":
+				col = s.centred
+			if col < 0:
 				continue
-			hits += 1
-			var at := h.split(":")
-			var type: String = s.columns()[int(at[1])]
-			if not shown.has(type) or ["veil", "death", "decree"].has(type):
+			seen += 1
+			if col >= s.columns().size() or not shown.has(s.columns()[col]) or ["veil", "death", "decree"].has(s.columns()[col]):
 				far += 1
-	t.check(hits > 0 and far == 0, "no point of the screen hits a spot of veil, death or decree (%d hits, %d far)" % [hits, far])
+	t.check(seen > 0 and far == 0, "no point of the screen hits a spot or panel of veil, death or decree (%d hits, %d far)" % [seen, far])
 	var keys := {}
 	for col in 3:
 		for tier in range(1, 6):
@@ -176,30 +85,209 @@ static func _far_hidden(t) -> void:
 					keys[GodTree.spot_of(key).type] = true
 	t.check(keys.size() == 3 and not keys.has("veil") and not keys.has("death") and not keys.has("decree"),
 		"the keys on the screen belong to three types only (%s)" % [keys.keys()])
-	t.check(s.hit(Vector2(630, 5)) == "" and s.hit(SkillTreeScreen.spot_rect(2, 5, 1).get_center()) == "spot:2:5:1",
-		"hit names a spot or nothing")
 	s.free()
 
 
-static func _header_and_detail(t) -> void:
-	var s := _screen("ruin", 1, 3)
-	t.check(s.header_text() == "SKILL TREE   RUIN   Ability points 3", "the header (%s)" % s.header_text())
-	t.check(s.detail_lines().size() == 1, "no spot shown: one hint line")
-	s._hover = "spot:1:1:0"
-	var lines := s.detail_lines()
-	t.check(lines.size() >= 2 and lines[0].begins_with("Smite") and lines[1].begins_with("Level 2: 1 point"),
-		"hovering a spot: its title line, then its next level (%s)" % [lines])
-	s._hover = "spot:1:3:0"
-	t.check(s.detail_lines()[0].begins_with("Light of Solaris"), "another spot (%s)" % [s.detail_lines()])
+static func _click_selects_only(t) -> void:
+	var s := _screen("ruin", 1, 5)
+	var emitted := []
+	s.action.connect(func(what: String) -> void: emitted.append(what))
+	s.click(TreeWheel.node_at(1, 0))
+	t.check(s.selected == Vector3i(1, 1, 0), "a click on a node selects it (%s)" % [s.selected])
+	t.check(s._slot.points == 5 and s._slot.level_of("smite") == 1 and emitted.is_empty(),
+		"and spends nothing (%d points, smite %d, %s)" % [s._slot.points, s._slot.level_of("smite"), emitted])
+	s._slot.learned.erase("smite")
+	s.click(TreeWheel.node_at(1, 0))
+	t.check(s._slot.level_of("smite") == 0 and s._slot.points == 5 and emitted.is_empty(), "even for an unlearned power")
 	s.free()
 
 
-## M6 (final review, spec §12): every spot with an ability draws that power's icon, small, left of the name -- inside the spot, clear of
-## the level pips under it.
-static func _spot_icons(t) -> void:
+static func _buy(t) -> void:
+	var s := _screen("ruin", 1, 5)
+	s._slot.learned.erase("smite")
+	var emitted := []
+	s.action.connect(func(what: String) -> void: emitted.append(what))
+	s.click(TreeWheel.node_at(1, 0))
+	t.check(s.hit(SkillTreeScreen.BUY_RECT.get_center()) == "buy", "the gold button is hit")
+	s._on_gui_input(_click(SkillTreeScreen.BUY_RECT.get_center()))
+	t.check(s._slot.level_of("smite") == 1 and s._slot.points == 4 and emitted == ["learned"],
+		"the buy button learns it: level 1, 4 points, 'learned' once (%d, %d, %s)" % [s._slot.level_of("smite"), s._slot.points, emitted])
+	s.click(SkillTreeScreen.BUY_RECT.get_center())
+	t.check(s._slot.level_of("smite") == 2 and s._slot.points == 3 and emitted == ["learned", "learned"], "and again raises it")
+	s._slot.learned["smite"] = 5
+	s.click(SkillTreeScreen.BUY_RECT.get_center())
+	t.check(s.refused_reason == "Already at level 5" and emitted.size() == 2, "level 5 is the top (%s)" % s.refused_reason)
+	s._slot.learned["smite"] = 2
+	s._slot.points = 0
+	s.click(SkillTreeScreen.BUY_RECT.get_center())
+	t.check(s.refused_reason == "Not enough ability points" and s._slot.level_of("smite") == 2 and emitted.size() == 2,
+		"with no points it is refused and says why (%s)" % s.refused_reason)
+	s._process(SkillTreeScreen.REFUSE_SECONDS + 0.1)
+	t.check(s.refused_reason == "", "the reason goes after REFUSE_SECONDS")
+	var back := []
+	s.action.connect(func(what: String) -> void: back.append(what))
+	s._on_gui_input(_click(SkillTreeScreen.BACK_RECT.get_center()))
+	s._unhandled_input(_key(KEY_ESCAPE))
+	t.check(back == ["back", "back"], "Back and Esc leave (%s)" % [back])
+	s.free()
+
+
+static func _centre(t) -> void:
+	var s := _screen("ruin", 1, 5)
+	s.click(s.chip_rect(0).get_center())
+	t.check(s.centred == 0, "a click on chip 0 centres the left neighbour (%d)" % s.centred)
+	s.click(TreeWheel.node_at(1, 0))
+	t.check(s.selected == Vector3i(0, 1, 0) and s.selected_key() == s.key_at(0, 1, 0) and s.selected_key() != "",
+		"and the wheel now selects that column's powers (%s, %s)" % [s.selected, s.selected_key()])
+	s._unhandled_input(_key(KEY_Q))
+	t.check(s.centred == 2, "Q wraps from the first to the last (%d)" % s.centred)
+	s._unhandled_input(_key(KEY_E))
+	t.check(s.centred == 0, "E wraps back (%d)" % s.centred)
+	s._unhandled_input(_key(KEY_E))
+	t.check(s.centred == 1, "E moves right (%d)" % s.centred)
+	var side := s.side_col(0)
+	s.click(SkillTreeScreen.side_rect(0).position + Vector2(56, 30))
+	t.check(s.centred == side, "a click on a side panel centres it (%d, wanted %d)" % [s.centred, side])
+	t.check(s.side_col(0) != s.side_col(1) and s.side_col(0) != s.centred and s.side_col(1) != s.centred,
+		"and the panels show the other two")
+	s.free()
+
+
+static func _mini(t) -> void:
+	var s := _screen("ruin", 1, 5)
+	var col := s.side_col(0)
+	var at := SkillTreeScreen.mini_rect(SkillTreeScreen.side_rect(0), 1, 0).get_center()
+	t.check(s.hit(at) == "mini:%d:1:0" % col, "a side panel's first small icon is hit (%s)" % s.hit(at))
+	s.click(at)
+	t.check(s.selected == Vector3i(col, 1, 0) and s.centred == 1, "clicking it selects that spot without centring (%s, %d)" % [s.selected, s.centred])
+	t.check(s._slot.points == 5, "and spends nothing")
+	s.free()
+
+
+static func _empty_and_locked(t) -> void:
+	var s := _screen("dominion", 1, 6)
+	var emitted := []
+	s.action.connect(func(what: String) -> void: emitted.append(what))
+	var key := s.key_at(1, 3, 0)
+	s.select(1, 3, 0)
+	t.check(s.selected_key() == key and key != "", "a tier 3 power can be selected at tier 1 (%s)" % key)
+	s.click(SkillTreeScreen.BUY_RECT.get_center())
+	t.check(s.refused_reason == "Awaken to Tier 3" and s._slot.level_of(key) == 0 and emitted.is_empty(),
+		"buying it is refused: Awaken to Tier 3 (%s)" % s.refused_reason)
+	s.click(SkillTreeScreen.REMEMBER_RECT.get_center())
+	t.check(emitted == ["remember"], "but Remembrance still opens (%s)" % [emitted])
+	s.free()
+	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
+	var d := _screen("death", 1, 6)
+	var got := []
+	d.action.connect(func(what: String) -> void: got.append(what))
+	d.select(1, 2, 0)
+	t.check(d.selected_key() == "", "an empty spot selects as no key")
+	t.check(d.hit(SkillTreeScreen.REMEMBER_RECT.get_center()) == "" and d.hit(SkillTreeScreen.BUY_RECT.get_center()) == "",
+		"and the buttons are not there")
+	d.click(SkillTreeScreen.REMEMBER_RECT.get_center())
+	d.click(SkillTreeScreen.BUY_RECT.get_center())
+	t.check(got.is_empty() and d._slot.points == 6, "so they emit and spend nothing (%s)" % [got])
+	t.check(d.learn_at(1, 2, 0) == "unknown", "learn_at on an empty spot is 'unknown'")
+	d.free()
+	GodTree.use_table({})
+	GodTree.dev_fill = true
+
+
+static func _first_open(t) -> void:
+	var slot := GodSlot.make(1, "dominion", 7)
+	slot.learned["whisper"] = 5
+	slot.learned["discord"] = 2
+	var s := SkillTreeScreen.new().setup(slot)
+	t.check(s.selected_key() == "discord" and s.selected.x == 1, "a god with whisper 5 and discord 2 opens on discord (%s)" % s.selected_key())
+	s.free()
+	var f := _screen("ruin")
+	t.check(f.selected == Vector3i(1, 1, 0), "a fresh god opens on its first spot (%s)" % [f.selected])
+	f.free()
+	var g := GodSlot.make(1, "ruin", 7)
+	g.learned.clear()
+	g.points = 3
+	var h := SkillTreeScreen.new().setup(g)
+	t.check(h.selected == Vector3i(1, 1, 0) and h.remember_level() == 1, "nothing learned: the first learnable, Remembrance starts at 1")
+	h.free()
+	var k := _screen("ruin")
+	k._slot.learned["smite"] = 3
+	k.select(1, 1, 0)
+	t.check(k.remember_level() == 3, "Remembrance starts at the learned level (%d)" % k.remember_level())
+	k.free()
+
+
+static func _state_round_trip(t) -> void:
+	var a := _screen("ruin", 2, 1)
+	a.centre(2)
+	a.select(2, 1, 1)
+	var b := _screen("ruin", 2, 1, a.state())
+	t.check(b.centred == 2 and b.selected == Vector3i(2, 1, 1), "setup restores the state (%d, %s)" % [b.centred, b.selected])
+	a.free()
+	b.free()
+
+
+static func _learn_at_compat(t) -> void:
+	var s := _screen("ruin", 1, 0)
+	var emitted := []
+	s.action.connect(func(what: String) -> void: emitted.append(what))
+	s._slot.learned.erase("smite")
+	t.check(s.learn_at(1, 1, 0) == "points" and s.refused_reason == "Not enough ability points" and emitted.is_empty(),
+		"learn_at with no points returns 'points' and says why")
+	s._slot.points = 1
+	t.check(s.learn_at(1, 1, 0) == "" and s._slot.level_of("smite") == 1 and emitted == ["learned"],
+		"with a point it learns and emits 'learned'")
+	t.check(s.learn_at(1, 2, 0) == "tier" and s.refused_reason == "Awaken to Tier 2", "a locked tier is refused (%s)" % s.refused_reason)
+	s.free()
+
+
+static func _costs(t) -> void:
+	var s := _screen("ruin", 1, 1)
+	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("thorns") == 0, "a neighbour's power needs 2 points, not 1")
+	s._slot.points = 2
+	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("thorns") == 1 and s._slot.points == 0, "and spends 2")
+	s.free()
+
+
+static func _layout(t) -> void:
+	var screen := Rect2(0, 0, 640, 360)
+	var s := _screen("ruin", 3, 4)
+	var rects := {"back": SkillTreeScreen.BACK_RECT, "remember": SkillTreeScreen.REMEMBER_RECT, "buy": SkillTreeScreen.BUY_RECT,
+		"side0": TreeWheel.SIDE_L, "side1": TreeWheel.SIDE_R, "points": s.points_rect()}
+	for c in 3:
+		rects["chip%d" % c] = s.chip_rect(c)
+	var names := rects.keys()
+	var inside := true
+	var apart := true
+	var clear := true
+	for a in names.size():
+		var ra: Rect2 = rects[names[a]]
+		inside = inside and screen.encloses(ra)
+		clear = clear and not ra.intersects(TreeWheel.WHEEL_AREA)
+		for b in range(a + 1, names.size()):
+			if ra.intersects(rects[names[b]]):
+				apart = false
+				t.check(false, "%s overlaps %s" % [names[a], names[b]])
+	t.check(inside, "every hit rect lies inside the 640x360 screen")
+	t.check(apart, "no two overlap")
+	t.check(clear, "and none touches the wheel's area")
+	t.check(TreeWheel.DETAIL.encloses(SkillTreeScreen.REMEMBER_RECT) and TreeWheel.DETAIL.encloses(SkillTreeScreen.BUY_RECT)
+		and TreeWheel.DETAIL.encloses(SkillTreeScreen.CLIP_BOX), "the buttons and the clip box sit in the detail panel")
+	var minis_ok := true
+	for side in 2:
+		for tier in range(1, 6):
+			for i in 2:
+				minis_ok = minis_ok and SkillTreeScreen.side_rect(side).encloses(
+					SkillTreeScreen.mini_rect(SkillTreeScreen.side_rect(side), tier, i))
+	t.check(minis_ok, "the small icons sit inside their side panels")
+	s.free()
+
+
+static func _icons_loaded(t) -> void:
 	var s := _screen("ruin")
-	var with_key := 0
 	var missing := PackedStringArray()
+	var with_key := 0
 	for col in 3:
 		for tier in range(1, 6):
 			for i in 2:
@@ -207,14 +295,8 @@ static func _spot_icons(t) -> void:
 				if key == "":
 					continue
 				with_key += 1
-				var spot := SkillTreeScreen.spot_rect(col, tier, i)
-				var box := SkillTreeScreen.icon_rect(col, tier, i)
-				t.check(spot.encloses(box) and box.size == Vector2(SkillTreeScreen.ICON_PX, SkillTreeScreen.ICON_PX),
-					"the icon of %s sits inside its spot (%s in %s)" % [key, box, spot])
-				t.check(box.end.x <= spot.position.x + SkillTreeScreen.NAME_X and box.end.y <= spot.position.y + 15.0,
-					"and clear of the name and the pips (%s)" % [box])
-				if SkillTreeScreen.spot_icon(key) == null:
+				if not s._icons.has(key) or s._icons[key] == null:
 					missing.append(key)
-	t.check(with_key > 0 and SkillTreeScreen.spot_icon("smite") != null, "smite has an icon to draw (%d spots with a power)" % with_key)
-	t.check(missing.is_empty(), "every power in the tree has an icon (missing: %s)" % ", ".join(missing))
+	t.check(with_key > 0 and SkillTreeScreen.spot_icon("smite") != null, "smite has an icon (%d spots with a power)" % with_key)
+	t.check(missing.is_empty(), "every power in the tree has its icon loaded in setup (missing: %s)" % ", ".join(missing))
 	s.free()

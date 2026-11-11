@@ -1,13 +1,12 @@
 extends RefCounted
-## God's Paths Task 3: the art loader, the lit/dim values, the rays that slide to the pick, and the screen without its art.
+## God's Paths Task 3: the art loader, the lit/dim values and the screen without its art.
 
 const PIECES := ["background", "statue_ruin", "statue_passage", "statue_veil", "statue_decree", "statue_death", "statue_dominion",
-	"swirl", "brazier_1", "brazier_2", "brazier_3", "brazier_4", "leaf", "rays"]
+	"brazier_1", "brazier_2", "brazier_3", "brazier_4", "leaf"]
 
 
 static func run(t) -> void:
 	_lit(t)
-	_rays(t)
 	await _art_missing(t)
 	_art_present(t)
 
@@ -21,34 +20,6 @@ static func _lit(t) -> void:
 		if i != 2 and screen.lit(i) >= screen.lit(2):
 			bad += 1
 	t.check(bad == 0, "every other statue is dimmer than the selected one (%d not)" % bad)
-	screen.free()
-
-
-static func _rays(t) -> void:
-	var screen := GodSelectScreen.new().setup()
-	var old_x := screen.ray_x
-	screen.select(1)
-	screen.advance(GodSelectScreen.RAY_TIME * 0.5)
-	var to_x := GodSelectScreen.statue_anchor(1).x
-	t.check(screen.ray_x > old_x and screen.ray_x < to_x, "half way through, the rays are between the old and new statue (%.1f)" % screen.ray_x)
-	screen.advance(GodSelectScreen.RAY_TIME)
-	t.check(absf(screen.ray_x - to_x) < 0.5, "after RAY_TIME the rays are on the new statue (%.1f)" % screen.ray_x)
-	screen.select(3)
-	screen.advance(0.01)
-	screen.select(4)
-	screen.advance(0.01)
-	screen.select(5)
-	screen.advance(GodSelectScreen.RAY_TIME)
-	t.check(absf(screen.ray_x - GodSelectScreen.statue_anchor(5).x) < 0.5, "quick picks end on the last one (%.1f)" % screen.ray_x)
-	screen.select(0)
-	screen.advance(GodSelectScreen.RAY_TIME)
-	var y0 := screen.ray_y
-	screen.select(3)
-	screen.advance(GodSelectScreen.RAY_TIME * 0.5)
-	var y_to := GodSelectScreen.ring_rect(3).end.y - GodSelectScreen.PLATE_H - 80.0
-	t.check(screen.ray_y > y0 and screen.ray_y < y_to, "Ruin to Decree: the rays' y slides, not snaps (%.1f of %.1f..%.1f)" % [screen.ray_y, y0, y_to])
-	screen.advance(GodSelectScreen.RAY_TIME)
-	t.check(absf(screen.ray_y - y_to) < 0.5, "after RAY_TIME the rays' y is on Decree's statue (%.1f)" % screen.ray_y)
 	screen.free()
 
 

@@ -20,7 +20,7 @@ Art for the god select restyle (spec `docs/superpowers/specs/2026-11-11-kak-god-
 | statue_death | 64x80 | 2104 | 868759d4-9674-4161-b261-26678e9f98aa | 9 (picked #1) | 15 |
 | statue_dominion | 64x80 | 2105 | f8901190-8932-4de4-9799-f067f92cc783 | 9 (picked #3) | 15 |
 | swirl | 120x120 | 3001 | 5a9be58e-269d-4165-81ac-4c2ca72dc062 | 4 (picked #0) | 10 |
-| brazier_1..4, leaf, rays | | | hand-drawn (Pillow, pixel by pixel) | | 0 |
+| brazier_1..4, leaf | | | hand-drawn (Pillow, pixel by pixel) | | 0 |
 | **Total** | | | | | **125** |
 
 ## Files
@@ -72,13 +72,9 @@ y = `ring_rect(i).end.y - 22`).
   3. Stone cooled to the background's moonlit blue-grey (hue 216, saturation x0.4 + 0.06, value kept) on the low-saturation,
      not-bright pixels only, so the coloured auras keep their colour.
 
-### `swirl.png`: 120x120, transparent, 31 colours
+### `swirl.png`, `rays.png`: removed in round 2
 
-An orange-gold spiral inside a thin gold ring, about 100 px across, opaque dark gaps between the arms. Prompt: "Pixel art magic
-effect seen straight from above: a glowing orange and gold spiral vortex with several curved arms turning around a bright
-yellow-white core, small gold sparks, enclosed in a thin perfectly round gold ring. Perfectly circular and centred, radially
-symmetric, dark gaps between the arms, hard pixel edges, limited palette, transparent background." Edit: moved up 1 px so the
-ring's box is exactly 10..110 on both axes (centred for rotation about the texture centre).
+The centre swirl and the light rays were dropped (statues stand on the background's platforms; emblem and power effects replace them). The files were deleted; they stay in git history. Their spend (10 generations for the swirl) stays in the budget above.
 
 ### `brazier_1.png` .. `brazier_4.png`: 18x26, transparent
 
@@ -88,8 +84,3 @@ A stone fire bowl on a short stand with its flame: four flicker frames, the bowl
 ### `leaf.png`: 8x8, transparent
 
 A red maple leaf for the drifting leaves (rotate or flip it in engine). Hand-drawn, 3 colours.
-
-### `rays.png`: 64x240, transparent
-
-Four light shafts from the top, leaning slightly right, in stepped alpha bands (max alpha 64, no smooth gradient), warm white.
-Hand-drawn. Draw it over the selected statue; scale or tint it in engine as needed.

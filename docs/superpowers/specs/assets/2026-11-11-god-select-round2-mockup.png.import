@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://7cnhkrkl152i"
-path="res://.godot/imported/swirl.png-cab1a3e0044866c7a5c8c8f0414dbfef.ctex"
+uid="uid://bu7qoj5n2txhm"
+path="res://.godot/imported/2026-11-11-god-select-round2-mockup.png-8411a551bddd95c1bd678871f4160963.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/pixellab/god_select/swirl.png"
-dest_files=["res://.godot/imported/swirl.png-cab1a3e0044866c7a5c8c8f0414dbfef.ctex"]
+source_file="res://docs/superpowers/specs/assets/2026-11-11-god-select-round2-mockup.png"
+dest_files=["res://.godot/imported/2026-11-11-god-select-round2-mockup.png-8411a551bddd95c1bd678871f4160963.ctex"]
 
 [params]
 

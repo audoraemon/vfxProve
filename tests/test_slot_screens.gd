@@ -241,7 +241,7 @@ static func _ring(t) -> void:
 	var verbs := {"ruin": "Destroy · Collapse · Erase", "passage": "Open · Move · Close", "veil": "Conceal · Obscure · Displace",
 		"decree": "Law · Bind · Enforce", "death": "Wither · Harvest · Release", "dominion": "Control · Command · Bend"}
 	for type in verbs:
-		t.check(GodSelectScreen.verbs(type) == verbs[type], "%s's nameplate verbs (%s)" % [type, GodSelectScreen.verbs(type)])
+		t.check(GodSelectScreen.verbs(type) == verbs[type], "%s's verbs (%s)" % [type, GodSelectScreen.verbs(type)])
 	t.check(GodSelectScreen.verbs("nonsense") == "", "an unknown type has no verbs")
 
 

@@ -56,7 +56,7 @@ const VERBS := {
 	"dominion": "Control · Command · Bend",
 }
 
-## Each god's colour, for its statue's aura.
+## Each god's colour: its statue's aura, its emblem's glow and pool ring, and its verbs in the top panel.
 const GOD_COL := {
 	"ruin": Color("e8602a"), "passage": Color("4a90e8"), "veil": Color("3ab8a8"),
 	"decree": Color("f0d890"), "death": Color("98d880"), "dominion": Color("a060e0"),
@@ -72,7 +72,10 @@ var selected := 0
 var _ui: Control
 var _hover := ""
 var _clock := 0.0
-var _draws := 0
+var _draws := 0  # how many times the screen has drawn to the end (tests read it)
+var _prev_scale := 0.0
+var _prev_bob := 0.0
+var _prev_frame := 0
 ## One drifting leaf each: x start, y start, fall speed, sway phase, spin speed.
 var _leaves: Array[PackedFloat32Array] = []
 ## Seconds since the current pick (restarts on a new pick, not on a repeat).
@@ -98,6 +101,8 @@ func setup() -> GodSelectScreen:
 	for k in LEAF_COUNT:
 		_leaves.append(PackedFloat32Array([rng.randf_range(0.0, 640.0), rng.randf_range(0.0, 380.0), rng.randf_range(10.0, 22.0),
 			rng.randf_range(0.0, TAU), rng.randf_range(-1.5, 1.5)]))
+	_preload_art()
+	_build_ring_points()
 	for k in SPARK_COUNT:
 		_sparks.append(PackedFloat32Array([float(k) / SPARK_COUNT + rng.randf_range(-0.04, 0.04),
 			ORBIT_RX + rng.randf_range(-3.0, 3.0), ORBIT_RY + rng.randf_range(-1.5, 1.5)]))
@@ -119,6 +124,37 @@ func advance(delta: float) -> void:
 			_prev_type = ""
 
 
+## Loads every set the screen draws once, so the first pick of a god does not stall in a draw call.
+func _preload_art() -> void:
+	GodSelectArt.frame_set("brazier")
+	for type in GodTree.RING:
+		for set_name in ["emblem_%s", "emblem_flash_%s", "emblem_spark_%s", "fx_%s_burst", "fx_%s_loop"]:
+			GodSelectArt.frame_set(set_name % type)
+
+
+## The two pool rings' pixels (rounded points, and each point's place in the dash pattern 0-1), made once.
+static var _ring_pts: Array[PackedVector2Array] = []
+static var _ring_phase: Array[PackedFloat32Array] = []
+## Per ring: half-width, half-height, dashes round it, share of each dash lit, dash turn per second, lighten amount.
+const RINGS := [[46.0, 10.0, 36.0, 0.75, 0.6, 0.3], [39.0, 8.0, 30.0, 0.5, -0.4, 0.0]]
+
+
+static func _build_ring_points() -> void:
+	if not _ring_pts.is_empty():
+		return
+	var centre := Vector2(EMBLEM_AT.x, EMBLEM_AT.y + 33.0)
+	for r in RINGS:
+		var pts := PackedVector2Array()
+		var ph := PackedFloat32Array()
+		var steps := int(r[0] * PI)
+		for n in steps:
+			var a := TAU * n / steps
+			pts.append((centre + Vector2(cos(a) * r[0], sin(a) * r[1])).round())
+			ph.append(a / TAU * r[2])
+		_ring_pts.append(pts)
+		_ring_phase.append(ph)
+
+
 ## The type whose emblem shows: the selected one.
 func emblem_type() -> String:
 	return GodTree.RING[selected]
@@ -129,10 +165,10 @@ func fx_phase() -> String:
 	return "burst" if fx_age < BURST_TIME else "loop"
 
 
-## Which of the emblem's turn frames shows now (0 when it has none).
+## Which of the emblem's turn frames shows now (0 when it has none). The turn counts from the pick, so it always enters face-on.
 func emblem_frame() -> int:
 	var n := GodSelectArt.frame_set("emblem_" + emblem_type()).size()
-	return int(_clock * EMBLEM_FPS) % n if n > 0 else 0
+	return int(fx_age * EMBLEM_FPS) % n if n > 0 else 0
 
 
 ## The emblem's scale: 0 for the first moments after a pick (the flash covers them), then a quick scale-in up to 1.0.
@@ -142,6 +178,15 @@ func entrance_scale() -> float:
 		return 0.0
 	var k := int(t / ENTRANCE_STEP)
 	return ENTRANCE_SCALES[k] if k < ENTRANCE_SCALES.size() else 1.0
+
+
+## The scale the outgoing emblem fades out at: what it had when the pick changed (0 when none is fading).
+func outgoing_scale() -> float:
+	return _prev_scale if _prev_type != "" else 0.0
+
+
+func _bob() -> float:
+	return roundf(2.0 * sin(TAU * _clock / 2.6))
 
 
 func spark_count() -> int:
@@ -214,6 +259,9 @@ func select(i: int) -> void:
 	selected = clampi(i, 0, GodTree.RING.size() - 1)
 	if selected != was:
 		_prev_type = GodTree.RING[was]
+		_prev_scale = entrance_scale()
+		_prev_bob = _bob()
+		_prev_frame = emblem_frame()
 		_prev_age = 0.0
 		fx_age = 0.0
 	_redraw()
@@ -398,13 +446,16 @@ func _draw_emblem() -> void:
 	if _prev_type != "":
 		var old := GodSelectArt.frame_set("emblem_" + _prev_type)
 		if not old.is_empty():
-			var oa := 1.0 - _prev_age / EMBLEM_FADE
-			_ui.draw_texture(old[int(_clock * EMBLEM_FPS) % old.size()], (EMBLEM_AT - Vector2(36, 36)).floor(), Color(1, 1, 1, oa))
+			if _prev_scale > 0.0:
+				var otex: Texture2D = old[_prev_frame % old.size()]
+				var osize := Vector2(otex.get_size() * _prev_scale).round().max(Vector2(2, 2))
+				_ui.draw_texture_rect(otex, Rect2((EMBLEM_AT + Vector2(0.0, _prev_bob) - osize * 0.5).floor(), osize), false,
+					Color(1, 1, 1, 1.0 - _prev_age / EMBLEM_FADE))
 	var scale := entrance_scale()
 	if scale <= 0.0:
 		_draw_flash(type)
 		return
-	var bob := roundf(2.0 * sin(TAU * _clock / 2.6))
+	var bob := _bob()
 	var pulse := 0.5 + 0.5 * sin(TAU * _clock / 1.4)
 	var glow_at := EMBLEM_AT + Vector2(0.0, bob)
 	for g in [[34.0, 0.08], [28.0, 0.1], [22.0, 0.12]]:
@@ -440,22 +491,23 @@ func _draw_flash(type: String) -> void:
 		_ui.draw_texture(flash[k], (EMBLEM_AT - flash[k].get_size() * 0.5).floor())
 
 
-## Two dashed ellipses of light on the pool under the emblem, turning slowly against each other, drawn a pixel at a time.
+## Two dashed ellipses of light on the pool under the emblem, turning slowly against each other, a pixel at a time (the points are
+## precomputed; each frame only tests which dashes are lit).
 func _draw_pool_ring(col: Color, alpha: float) -> void:
-	var centre := Vector2(EMBLEM_AT.x, EMBLEM_AT.y + 33.0)
-	var rings := [[46.0, 10.0, 36.0, 0.75, 0.6, col.lightened(0.3)], [39.0, 8.0, 30.0, 0.5, -0.4, col]]
-	for r in rings:
-		var steps := int(r[0] * PI)
-		var c: Color = r[5]
+	for k in RINGS.size():
+		var r: Array = RINGS[k]
+		var c := col.lightened(r[5]) if r[5] > 0.0 else col
 		c.a = alpha
-		for n in steps:
-			var a := TAU * n / steps
-			if fposmod(a / TAU * r[2] + _clock * r[4], 1.0) < r[3]:
-				_ui.draw_rect(Rect2((centre + Vector2(cos(a) * r[0], sin(a) * r[1])).round(), Vector2.ONE), c)
+		var pts := _ring_pts[k]
+		var ph := _ring_phase[k]
+		var turn: float = _clock * r[4]
+		for n in pts.size():
+			if fposmod(ph[n] + turn, 1.0) < r[3]:
+				_ui.draw_rect(Rect2(pts[n], Vector2.ONE), c)
 
 
 func _draw_braziers() -> void:
-	var fr := GodSelectArt.frames("brazier_")
+	var fr := GodSelectArt.frame_set("brazier")
 	if fr.is_empty():
 		return
 	for k in BRAZIERS.size():

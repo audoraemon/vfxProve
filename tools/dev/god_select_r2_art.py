@@ -834,7 +834,7 @@ def render_fx(t):
 # ---- previews --------------------------------------------------------------------------------------------------------
 
 FEET = [(324, 151), (476, 170), (521, 253), (317, 300), (118, 253), (161, 170)]
-EMBLEM_AT = (320, 200)  # recommended: the screen code has 206, which puts the emblem on Decree's head
+EMBLEM_AT = (320, 200)  # the screen's EMBLEM_AT
 
 
 def screen(sel, fx_img, emblem=None):

@@ -46,7 +46,6 @@ static func _art_missing(t) -> void:
 	screen.queue_free()
 	GodSelectArt.art_off = false
 	await host.process_frame
-	GodSelectArt.art_off = false
 	var on := GodSelectScreen.new().setup()
 	host.root.add_child(on)
 	await host.process_frame
@@ -62,7 +61,7 @@ static func _art_present(t) -> void:
 		if GodSelectArt.texture(p) == null:
 			missing.append(p)
 	t.check(missing.is_empty(), "every god select piece loads (%s missing)" % ",".join(missing))
-	t.check(GodSelectArt.frames("brazier_").size() == 4, "the brazier frames are probed (%d)" % GodSelectArt.frames("brazier_").size())
+	t.check(GodSelectArt.frame_set("brazier").size() == 4, "the brazier frames are probed (%d)" % GodSelectArt.frame_set("brazier").size())
 
 
 static func _emblem_and_fx(t) -> void:
@@ -99,6 +98,23 @@ static func _emblem_and_fx(t) -> void:
 	t.check(is_equal_approx(screen.entrance_scale(), 0.35), "0.1 s in, the scale-in is at its first step (%f)" % screen.entrance_scale())
 	screen.advance(0.5)
 	t.check(screen.entrance_scale() == 1.0, "the entrance is done after a moment (%f)" % screen.entrance_scale())
+	# the turn starts face-on at every pick, whatever the clock says
+	screen.advance(0.37)
+	screen.select(5)
+	t.check(screen.emblem_frame() == 0, "the emblem enters face-on (frame %d)" % screen.emblem_frame())
+	screen.advance(0.5)
+	screen.select(0)
+	t.check(screen.emblem_frame() == 0, "and again after another pick (frame %d)" % screen.emblem_frame())
+	# a re-pick during the scale-in fades the small emblem out, not a full-size one
+	var quick := GodSelectScreen.new().setup()
+	quick.advance(0.1)
+	var small: float = quick.entrance_scale()
+	quick.select(2)
+	t.check(small > 0.0 and small < 1.0 and quick.outgoing_scale() == small, "the outgoing emblem keeps its small scale (%f, %f)" % [small, quick.outgoing_scale()])
+	quick.advance(GodSelectScreen.EMBLEM_FADE + 0.01)
+	t.check(quick.outgoing_scale() == 0.0, "and is gone after the fade")
+	quick.free()
+	screen.select(1)
 	# sparks: split in front / behind, at known angles, and they orbit
 	var front := 0
 	for k in screen.spark_count():

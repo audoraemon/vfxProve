@@ -43,8 +43,7 @@ left and right edges, a wet stone floor with mist, six empty stone pedestals on 
 ### `statue_<type>.png` x6: 64x80, transparent
 
 Grey stone statues, front view, the same plinth and scale, light from the top left. **The plinth's bottom row is y = 79,
-centred on x = 32**: draw each with its bottom centre on the nameplate's top edge (x = `statue_anchor(i).x`,
-y = `ring_rect(i).end.y - 22`).
+centred on x = 32**: draw each with its plinth's bottom centre on `GodSelectScreen.feet(i)` (top left = `feet(i) - (32, 79)`).
 
 - Shared prompt: "Pixel art game sprite, front view, a grey stone statue of a god standing on a short square stone plinth at the
   bottom: <god>. Weathered grey stone, ... moonlight from the top left, dark outline, hard pixel edges, limited palette,
@@ -131,7 +130,7 @@ The flat 48x48 `emblem_<type>.png` files were removed (the user found them too p
 
 ## Round 2b: living emblems (Task 6b, 2026-11-11)
 
-Pre-rendered in code by `tools/dev/god_select_emblems.py` (deterministic; `--preview <dir>` also writes the sheet, a
+Pre-rendered in code by `tools/dev/god_select_emblems.py` (needs numpy and scipy) (deterministic; `--preview <dir>` also writes the sheet, a
 screen grid and GIF mock-ups). **0 PixelLab generations.** Balance before and after: **1473**.
 
 Each sign is modelled as a cast medal: its layers (body, inlays, jewels) are raised reliefs with bevels on a 4 px thick

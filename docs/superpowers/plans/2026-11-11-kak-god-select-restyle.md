@@ -260,8 +260,8 @@ stay. Global Constraints still bind.
 - Produces: `const FEET := [Vector2(324,151), Vector2(476,170), Vector2(521,253), Vector2(317,300), Vector2(118,253), Vector2(161,170)]`
   and `const NAME_AT := [Vector2(324,158), Vector2(476,177), Vector2(521,273), Vector2(317,321), Vector2(118,274), Vector2(161,177)]`
   (both in `GodTree.RING` order); `static func feet(i: int) -> Vector2` (replaces `statue_anchor`; keep `statue_anchor` as a thin
-  alias only if a caller needs it); `ring_rect(i)` = the statue's 64×80 box over `feet(i)` (top-left `feet(i) - Vector2(32, 79)`)
-  grown down to cover the carved name (to `NAME_AT[i].y + 6`). `INFO_RECT := Rect2(186, 2, 268, 66)`,
+  alias only if a caller needs it); `ring_rect(i)` = the statue's body column, 40 wide centred on `feet(i).x`, from `feet(i).y - 79` down to
+  `NAME_AT[i].y + 6` (the carved name). 40, not the sprite's 64: at 64 Death's and Dominion's boxes overlap (x 129-150, y 174-183). `INFO_RECT := Rect2(186, 2, 268, 66)`,
   `CHOOSE_RECT := Rect2(520, 334, 112, 18)`, `BACK_RECT := Rect2(8, 334, 90, 18)`. `const EMBLEM_AT := Vector2(320, 206)`.
 - Removes: the ellipse (`CENTRE`, `RADIUS`, `BOX`, `PLATE_H`), the nameplates, the rays (`ray_x`, `ray_y`, `RAY_TIME`,
   `rays.png` use) and the swirl. `swirl.png` and `rays.png` stay on disk unused (delete them in this task's commit; update the art

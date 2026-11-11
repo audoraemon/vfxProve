@@ -2,12 +2,12 @@
 procession_b_play_1	--scenario=feast --path=procession --board --case=play --route=b --seed=1	230023841
 procession_b_play_2	--scenario=feast --path=procession --board --case=play --route=b --seed=2	-106672287
 procession_b_play_3	--scenario=feast --path=procession --board --case=play --route=b --seed=3	-785653813
-bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1	650569658
-bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2	500449971
-bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3	-176731788
-armoury_b_play_1	--scenario=armoury --case=play --route=b --seed=1	-278321155
-armoury_b_play_2	--scenario=armoury --case=play --route=b --seed=2	-610357536
-armoury_b_play_3	--scenario=armoury --case=play --route=b --seed=3	-444700769
+bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1	657304712
+bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2	-869176445
+bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3	394165615
+armoury_b_play_1	--scenario=armoury --case=play --route=b --seed=1	-381381099
+armoury_b_play_2	--scenario=armoury --case=play --route=b --seed=2	-318263149
+armoury_b_play_3	--scenario=armoury --case=play --route=b --seed=3	-21468336
 sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1	-66358231
 sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2	-339588697
 sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3	-350489921

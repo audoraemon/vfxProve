@@ -5,12 +5,12 @@ eye_b_play_3	--scenario=eye --case=play --route=b --seed=3	-916158048
 exodus_b_play_1	--scenario=exodus --case=play --route=b --seed=1	560298564
 exodus_b_play_2	--scenario=exodus --case=play --route=b --seed=2	-762409651
 exodus_b_play_3	--scenario=exodus --case=play --route=b --seed=3	-940481542
-heart_b_play_1	--scenario=heart --case=play --route=b --seed=1	-299848030
-heart_b_play_2	--scenario=heart --case=play --route=b --seed=2	-744179424
-heart_b_play_3	--scenario=heart --case=play --route=b --seed=3	-987382572
-judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	-936728904
-judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	152318476
-judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	472210115
-night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	773328759
-night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	313807621
-night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	570972067
+heart_b_play_1	--scenario=heart --case=play --route=b --seed=1	-52182123
+heart_b_play_2	--scenario=heart --case=play --route=b --seed=2	-328905864
+heart_b_play_3	--scenario=heart --case=play --route=b --seed=3	-690790568
+judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	-403815656
+judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	-17874505
+judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	-626446085
+night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	90716291
+night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	810472999
+night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	-444358799

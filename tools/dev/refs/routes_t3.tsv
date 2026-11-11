@@ -3,15 +3,15 @@
 flame_b_play_1	--scenario=flame --case=play --route=b --board --seed=1	-593232898
 flame_b_play_2	--scenario=flame --case=play --route=b --board --seed=2	262687097
 flame_b_play_3	--scenario=flame --case=play --route=b --board --seed=3	388165266
-festival_b_play_1	--scenario=feast --path=festival --board --case=play --route=b --seed=1	-788270261
+festival_b_play_1	--scenario=feast --path=festival --board --case=play --route=b --seed=1	-394025560
 festival_b_play_2	--scenario=feast --path=festival --board --case=play --route=b --seed=2	-670136651
-festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	-569358374
-bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-381161946
-bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-671737885
-bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-692465020
+festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	-195151423
+bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-418125388
+bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-963681983
+bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-52211777
 prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-819587392
-prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-581384856
-prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	929292508
+prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-30989440
+prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	-942728580
 hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-329171442
 hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	-751812127
 hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	256408527

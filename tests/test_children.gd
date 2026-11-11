@@ -251,7 +251,7 @@ static func _directors(t) -> void:
 static func _look(t) -> void:
 	var R := CitizenProfile.Role
 	t.check(PeopleArt.CITIZEN.size() == R.size() and PeopleArt.wanted(false, R.CHILD, 0, 0.2) == "child_a"
-		and PeopleArt.wanted(false, R.CHILD, 0, 0.8) == "child_b", "the children wear child_a and child_b")
+		and PeopleArt.wanted(false, R.CHILD, 0, 0.4) == "child_b" and PeopleArt.wanted(false, R.CHILD, 0, 0.9) == "child_d", "the children wear child_a to child_d")
 	var d := PeopleArt.design_for(false, R.CHILD, 0, 0.2)
 	t.check(not PeopleArt.ready() or PeopleArt.has(d), "without child art a child wears a design the atlas has (%s)" % d)
 	t.check(RoutineManager.WEIGHTS.has(R.CHILD) and (RoutineManager.WEIGHTS[R.CHILD] as Array)[RoutineManager.Place.WORK] == 0.0,

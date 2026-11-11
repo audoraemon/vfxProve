@@ -1,10 +1,10 @@
 {
- "hash": "4e31927bde30a5d0",
- "updated": "2026-11-11T20:23:35+07:00",
+ "hash": "42234c5d16cb4e39",
+ "updated": "2026-11-11T21:07:23+07:00",
  "changes": {
-  "date": "<t:1794403415:f>",
+  "date": "<t:1794406043:f>",
   "items": [
-   "New: Town children (Discord idea Add children Npc) (in progress)"
+   "New: God's Paths: god select restyle (statues, emblems, power effects)"
   ]
  },
  "snapshot": {
@@ -421,6 +421,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-03",
     "order": 202
+   },
+   "god-select-gods-paths": {
+    "title": "God's Paths: god select restyle (statues, emblems, power effects)",
+    "status": "done",
+    "area": "Art",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-11",
+    "order": 211
    },
    "god-t1r-board-sweep": {
     "title": "Board sweep: play the 24 non-Warning god pairs as the board version once",
@@ -1539,10 +1548,10 @@
    },
    {
     "name": "feat/soldier-jobs",
-    "ahead": 19,
-    "behind": 30,
+    "ahead": 20,
+    "behind": 0,
     "date": "2026-11-11",
-    "subject": "fix(policy): Heart of Faith prices a seen Doom by every life in its ring",
+    "subject": "feat: interface sounds that fit the dark medieval look",
     "pushed": false
    },
    {

@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **130** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794403415:f>)\n• New: Town children (Discord idea Add children Npc) (in progress)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **131** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794406043:f>)\n• New: God's Paths: god select restyle (statues, emblems, power effects)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-11T20:23:35+07:00"
+     "timestamp": "2026-11-11T21:07:23+07:00"
     },
     {
      "title": "claude/magical-lichterman-23d920",
@@ -26,7 +26,7 @@
     },
     {
      "title": "feat/soldier-jobs",
-     "description": "19 commits not in Develop-Main · last commit today · local only\n> fix(policy): Heart of Faith prices a seen Doom by every life in its ring\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
+     "description": "20 commits not in Develop-Main · last commit today · local only\n> feat: interface sounds that fit the dark medieval look\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
      "color": 5016537
     },
     {

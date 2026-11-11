@@ -30,6 +30,14 @@ const DUCK_REACH := {&"SFX": 1.0, &"SFX_Mid": 0.75, &"SFX_Far": 0.5}
 const DUCK_HOLD := 0.3
 const DUCK_ATTACK := 120.0
 const DUCK_RELEASE := 6.0
+## A big hit's aftermath (natural sound pass 6): the impact cue -> [the debris that rains back down after it, seconds
+## later]. Keyed by the skill tree's Ruin abilities' impacts first (Earthshatter, Dragonfire, Cinderfall, Scatter Strike,
+## Smite and Wrath of the Sky, Light of Solaris, the Tornado's end), which other powers sharing a cue also get. One
+## aftermath cue sounds at most every AFTER_REST seconds, so a barrage patters instead of roaring.
+const AFTERMATH := {&"jg_crumble": [&"debris_big", 0.25], &"hs_fissure": [&"debris_big", 0.35], &"dr_erupt": [&"debris_big", 0.3],
+	&"cf_impact": [&"debris_small", 0.15], &"orb_hit": [&"debris_small", 0.15], &"hs_strike": [&"debris_small", 0.2],
+	&"nova_crack": [&"debris_small", 0.25], &"tn_dissipate": [&"debris_fall", 0.2]}
+const AFTER_REST := 0.5
 
 ## cue -> {path | variants, db, voices, jitter, loop}
 ## `variants: n` expands path "..._%d.wav" to 1..n, picked at random per play.
@@ -164,18 +172,18 @@ const CATALOG := {
 	&"crowd_chaos": {"path": "res://assets/audio/citizen/crowd_chaos.wav", "db": -10.4, "loop": true},
 	&"crowd_cry": {"path": "res://assets/audio/citizen/crowd_cry_%d.wav", "variants": 18, "db": -9.0, "voices": 4, "jitter": 0.06},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
-	# Soldiers at work (natural sound pass 5): mail on the march, a spear's thrust, a shouted order; a citizen's blow.
-	&"sol_step": {"path": "res://assets/audio/citizen/sol_step_%d.wav", "variants": 6, "db": -5.4, "voices": 4, "jitter": 0.06},
+	# Soldiers at work (natural sound pass 5): boots on the march once the alarm is up (Ambience.march_heard()), a spear's thrust, a shouted order; a citizen's blow.
+	&"sol_step": {"path": "res://assets/audio/citizen/sol_step_%d.wav", "variants": 6, "db": -7.3, "voices": 3, "jitter": 0.06},
 	&"sol_strike": {"path": "res://assets/audio/citizen/sol_strike_%d.wav", "variants": 5, "db": -0.1, "voices": 3, "jitter": 0.06},
 	&"cit_blow": {"path": "res://assets/audio/citizen/cit_blow_%d.wav", "variants": 4, "db": -2.4, "voices": 3, "jitter": 0.08},
 	&"sol_order": {"path": "res://assets/audio/citizen/sol_order_%d.wav", "variants": 6, "db": -5.4, "voices": 2, "jitter": 0.03},
 	# The town's dogs and cats (AnimalVoices): each breed speaks at its own pitch.
-	&"dog_bark": {"path": "res://assets/audio/animal/dog_bark_%d.wav", "variants": 10, "db": -4.9, "voices": 3, "jitter": 0.04},
-	&"dog_growl": {"path": "res://assets/audio/animal/dog_growl_%d.wav", "variants": 3, "db": -4.1, "voices": 2, "jitter": 0.04},
-	&"dog_yelp": {"path": "res://assets/audio/animal/dog_yelp_%d.wav", "variants": 4, "db": -5.4, "voices": 3, "jitter": 0.04},
-	&"cat_meow": {"path": "res://assets/audio/animal/cat_meow_%d.wav", "variants": 8, "db": -8.6, "voices": 2, "jitter": 0.04},
-	&"cat_hiss": {"path": "res://assets/audio/animal/cat_hiss_%d.wav", "variants": 3, "db": -7.9, "voices": 2, "jitter": 0.04},
-	&"cat_yowl": {"path": "res://assets/audio/animal/cat_yowl_%d.wav", "variants": 3, "db": -4.6, "voices": 2, "jitter": 0.04},
+	&"dog_bark": {"path": "res://assets/audio/animal/dog_bark_%d.wav", "variants": 10, "db": -0.9, "voices": 3, "jitter": 0.04},
+	&"dog_growl": {"path": "res://assets/audio/animal/dog_growl_%d.wav", "variants": 3, "db": -0.1, "voices": 2, "jitter": 0.04},
+	&"dog_yelp": {"path": "res://assets/audio/animal/dog_yelp_%d.wav", "variants": 4, "db": -1.4, "voices": 3, "jitter": 0.04},
+	&"cat_meow": {"path": "res://assets/audio/animal/cat_meow_%d.wav", "variants": 8, "db": -4.6, "voices": 2, "jitter": 0.04},
+	&"cat_hiss": {"path": "res://assets/audio/animal/cat_hiss_%d.wav", "variants": 3, "db": -3.9, "voices": 2, "jitter": 0.04},
+	&"cat_yowl": {"path": "res://assets/audio/animal/cat_yowl_%d.wav", "variants": 3, "db": -0.6, "voices": 2, "jitter": 0.04},
 	# A death on every kill (v0.11.2, DeathVoices): a citizen's cry and fall, a soldier's grunt and mail, a quiet body's slump,
 	# and the roar of a crowd falling at once. Levels measured by tools/audio/loudness.py (spec 6.3 row 4): cit_death and sol_death at the loud median - 4, cit_fall at - 9, the wave under the median.
 	&"cit_death": {"path": "res://assets/audio/citizen/cit_death_%d.wav", "variants": 5, "db": -4.4, "voices": 4, "jitter": 0.1},
@@ -203,6 +211,16 @@ const CATALOG := {
 	&"collapse_tree": {"path": "res://assets/audio/building/collapse_tree_%d.wav", "variants": 5, "db": -0.3, "voices": 4, "jitter": 0.1},
 	&"town_bell": {"path": "res://assets/audio/building/town_bell.wav", "db": -1.5},
 	&"town_horn": {"path": "res://assets/audio/building/town_horn.wav", "db": -4.4, "voices": 1},
+	# A big hit's aftermath (natural sound pass 6, AFTERMATH): debris raining back down, thinning out.
+	&"debris_big": {"path": "res://assets/audio/ability/aftermath/debris_big_%d.wav", "variants": 4, "db": -2.0, "voices": 2, "jitter": 0.05},
+	&"debris_small": {"path": "res://assets/audio/ability/aftermath/debris_small_%d.wav", "variants": 4, "db": -5.2, "voices": 2, "jitter": 0.06},
+	&"debris_fall": {"path": "res://assets/audio/ability/aftermath/debris_fall_%d.wav", "variants": 3, "db": -5.2, "voices": 1, "jitter": 0.05},
+	# Fire where it burns (natural sound pass 6, FireSounds): a burning building's loop, its catching, its timbers
+	# cracking, and the hiss of a bucket thrown on it.
+	&"fire_burn": {"path": "res://assets/audio/building/fire_burn_%d.wav", "variants": 2, "db": 1.8, "loop": true},
+	&"fire_catch": {"path": "res://assets/audio/building/fire_catch_%d.wav", "variants": 3, "db": -2.7, "voices": 2, "jitter": 0.05},
+	&"fire_crack": {"path": "res://assets/audio/building/fire_crack_%d.wav", "variants": 5, "db": 0.7, "voices": 2, "jitter": 0.06},
+	&"fire_douse": {"path": "res://assets/audio/building/fire_douse_%d.wav", "variants": 3, "db": -10.1, "voices": 2, "jitter": 0.06},
 	# The Lantern (v0.11.2, LanternWatch plays them at the Temple): the toll's flare, the burn, and the Bearer's fall.
 	&"lantern_flare": {"path": "res://assets/audio/building/lantern_flare.wav", "db": 0.6},
 	&"lantern_burn": {"path": "res://assets/audio/building/lantern_burn.wav", "db": 1.3},
@@ -211,7 +229,7 @@ const CATALOG := {
 	# the Ambience bus; and the calls now and then near the camera, birds by day, a night call by night.
 	&"amb_day": {"path": "res://assets/audio/ambience/amb_day.wav", "db": -10.0, "loop": true},
 	&"amb_night": {"path": "res://assets/audio/ambience/amb_night.wav", "db": -8.0, "loop": true},
-	&"amb_fire": {"path": "res://assets/audio/ambience/amb_fire.wav", "db": 0.0, "loop": true},
+	&"amb_fire": {"path": "res://assets/audio/ambience/amb_fire.wav", "db": -3.0, "loop": true},
 	&"amb_bird": {"path": "res://assets/audio/ambience/amb_bird_%d.wav", "variants": 4, "db": -16.0, "voices": 2, "jitter": 0.08},
 	&"amb_night_call": {"path": "res://assets/audio/ambience/amb_night_call_%d.wav", "variants": 3, "db": -16.0, "voices": 1, "jitter": 0.05},
 	# Music: real instrument samples (tools/audio/music/, rendered by tools/audio/music_render.py). Music plays these at its own level (Music.DB), so their db is not used.
@@ -233,6 +251,9 @@ var _rng := RandomNumberGenerator.new()
 var duck_db := 0.0
 var _duck_to := 0.0
 var _duck_held := 0.0
+var _after: Array = []  ## [seconds left, cue, ground position] of the aftermaths still to come
+var _after_at := {}  ## aftermath cue -> the clock it last sounded
+var _clock := 0.0
 
 
 static func paths_for(cue: StringName) -> PackedStringArray:
@@ -312,7 +333,20 @@ func play(cue: StringName, ground_pos: Vector2, db_offset := 0.0) -> AudioStream
 	p.play()
 	if DUCKS.has(cue):
 		duck_by(float(DUCKS[cue]) * float(DUCK_REACH.get(p.bus, 1.0)))
+	if AFTERMATH.has(cue):
+		follow(cue, ground_pos)
 	return p
+
+
+## Queues the aftermath of `cue` at `ground_pos` (AFTERMATH), unless the same aftermath sounded under AFTER_REST ago or is
+## already on its way.
+func follow(cue: StringName, ground_pos: Vector2) -> void:
+	var row: Array = AFTERMATH[cue]
+	var after: StringName = row[0]
+	if _clock - float(_after_at.get(after, -INF)) < AFTER_REST:
+		return
+	_after_at[after] = _clock
+	_after.append([float(row[1]), after, ground_pos])
 
 
 ## Pull the music and the beds down by `db` (negative) for a moment; a shallower duck than the one under way only
@@ -361,6 +395,16 @@ func stop_all(prefix: String) -> void:
 
 
 func _process(delta: float) -> void:
+	_clock += delta
+	if not _after.is_empty():
+		var due: Array = []
+		for a: Array in _after:
+			a[0] = float(a[0]) - delta
+			if float(a[0]) <= 0.0:
+				due.append(a)
+		for a: Array in due:
+			_after.erase(a)
+			play(a[1], a[2])
 	for p in _pool:
 		if p.playing:
 			p.pitch_scale = _pitch_for(p)

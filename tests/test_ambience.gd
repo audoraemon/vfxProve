@@ -80,6 +80,14 @@ static func run(t) -> void:
 	for i in 200:
 		sfx._process(0.02)
 	t.check(sfx.duck_db == 0.0, "then it comes back up (%.1f dB)" % sfx.duck_db)
+	sfx.follow(&"jg_crumble", Vector2.ZERO)
+	sfx.follow(&"hs_fissure", Vector2.ONE)
+	t.check(sfx._after.size() == 1 and sfx._after[0][1] == &"debris_big", "a big hit's debris is queued once, not twice at once")
+	sfx._clock += Sfx.AFTER_REST
+	sfx.follow(&"cf_impact", Vector2.ZERO)
+	t.check(sfx._after.size() == 2 and sfx._after[1][1] == &"debris_small", "a barrage's impact gets its own patter")
+	for cue: StringName in Sfx.AFTERMATH:
+		t.check(Sfx.CATALOG.has(cue) and Sfx.CATALOG.has(Sfx.AFTERMATH[cue][0]), "%s has an aftermath in the catalog" % cue)
 	sfx.free()
 	t.check(not Sfx.DUCKS.has(&"cit_yelp") and Sfx.DUCKS.has(&"nova_boom"), "only big hits duck")
 
@@ -100,6 +108,17 @@ static func run(t) -> void:
 	t.check(av.pick(3, true, AnimalVoices.Act.ANGRY) == &"dog_growl" and av.pick(4, false, AnimalVoices.Act.ANGRY) == &"cat_yowl",
 		"a turned dog growls, a turned cat yowls")
 	t.check(av.pick(5, true, AnimalVoices.Act.DIE) == &"", "the budget is spent after four")
+	av.step(2.0)
+	t.check(av.pick(6, true, AnimalVoices.Act.CALL) == &"dog_bark" and av.pick(7, false, AnimalVoices.Act.CALL) == &"cat_meow",
+		"a call near the camera is always heard: a bark or a meow")
+	# Fire where it burns (pass 6): louder as it grows; a bucket is heard.
+	t.check(FireSounds.voice_db(0.0) < FireSounds.voice_db(0.5) and FireSounds.voice_db(0.5) < FireSounds.voice_db(1.0),
+		"a burning building gets louder as its fire grows")
+	t.check(FireSounds.doused(0.6, 0.45) and not FireSounds.doused(0.6, 0.62), "a bucket's drop is a douse, growth is not")
+	for cue: StringName in [&"fire_catch", &"fire_crack", &"fire_douse"]:
+		t.check(Sfx.paths_for(cue).size() >= 3, "%s has takes" % cue)
+	t.check(bool(Sfx.CATALOG[&"fire_burn"].get("loop", false)) and Sfx.paths_for(&"fire_burn").size() == 2, "two burning loops")
+	t.check(Ambience.ANIMAL_DAY.y <= 15.0 and Ambience.ANIMAL_NIGHT.y <= 18.0, "a dog or cat calls every few seconds, day and night")
 	av.step(1.0)
 	t.check(av.pick(5, true, AnimalVoices.Act.DIE) == &"dog_yelp", "and it refills")
 	var idle := 0
@@ -132,3 +151,5 @@ static func run(t) -> void:
 		t.check(Sfx.CATALOG.has(cue), "%s is in the catalog" % cue)
 	t.check(Ambience.marching(0.1, Ambience.MARCH_EVERY) and not Ambience.marching(0.01, Ambience.MARCH_EVERY)
 		and not Ambience.marching(0.1, 0.0), "a walking soldier marches, one at its post does not")
+	t.check(not Ambience.march_heard(AlarmManager.Stage.NORMAL) and Ambience.march_heard(AlarmManager.Stage.CONCERN),
+		"a calm town's patrols are silent; the march is heard once the alarm rises")

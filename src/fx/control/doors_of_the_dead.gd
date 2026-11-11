@@ -20,6 +20,14 @@ extends FxTimeline
 ## other side calls them back: every spirit runs back to its own door (RECALL at most, then it is gone), the doors
 ## close, and the cold lifts over THAW. Loud (PowerBook.REACH): the first spirit through is the first danger.
 ## Once a descent.
+##
+## Ability levels (PowerBook "deaddoors" levels; level 1 is the numbers above): the district (RADIUS), the doors
+## (MAX_DOORS), the span (SPAN) and the spirits in all (MAX_SPIRITS) grow, read once a cast into the lv_ numbers;
+## LIVE_CAP stays at every level. Level 5's twist, Rise Again: whoever the horde kills rises RISE_AFTER later where they
+## fell, a ghost of the other side (KINDS' ghost: through walls, frightening), and hunts with it. A risen ghost stands in
+## the shared LIVE_CAP (none rises while it is full: one whose moment comes at the cap stays down) but is no spirit
+## through a door (`spirits` and MAX_SPIRITS count the doors' only; `risen` counts these). Those they kill rise too,
+## until the span ends: then the doors call every one of them back to the open door nearest where they rose.
 
 const RADIUS := 12.0
 const T_CHILL := 2.0
@@ -59,6 +67,8 @@ const EMBER := Color(1.0, 0.45, 0.1)
 const COLD := Color(0.62, 0.78, 0.95)
 const MIST := [Color(0.85, 0.95, 1.0, 0.5), Color(0.7, 0.85, 0.95, 0.35), Color(0.55, 0.7, 0.85, 0.2), Color(0.4, 0.5, 0.65, 0.0)]
 const WISP := [Color("e8fff6"), Color("8dffd8"), Color(0.3, 0.8, 0.65, 0.5), Color(0.1, 0.3, 0.3, 0.0)]
+## Rise Again (level 5): seconds from the kill to the ghost.
+const RISE_AFTER := 2.0
 const PITCH := [Color("1a1418"), Color("16121a"), Color("120f14"), Color(0.07, 0.06, 0.08, 0.8), Color(0.05, 0.04, 0.06, 0.4)]
 
 ## One door of the other side.
@@ -79,6 +89,15 @@ var spirits := 0
 var thrown := 0
 ## Buildings the demons struck, and the blows.
 var wrecks := 0
+## This cast's numbers at its ability level (the constants at level 1): the district, the doors, the span, the spirits.
+var lv_radius := RADIUS
+var lv_max_doors := MAX_DOORS
+var lv_span := SPAN
+var lv_max_spirits := MAX_SPIRITS
+## Rise Again (level 5): whether the horde's dead rise; how many have; the risen ghosts, in the order they rose.
+var rise_again := false
+var risen := 0
+var raised: Array[Animal] = []
 
 ## Who is in the cold, by instance id -> [Person, the "slow" they had before it (or null)].
 var _cold := {}
@@ -86,13 +105,16 @@ var _cold_in := 0.0
 var _trails := {}
 var _fright_in := {}
 var _recalled := false
+## Rise Again: the dead waiting to rise -- [the moment, where they fell] -- and who has been counted (instance ids).
+var _rising: Array = []
+var _fallen := {}
 var _fog: QuadFx
 var _frost: QuadFx
 var _chill: QuadFx
 
 
 func t_end() -> float:
-	return T_CHILL + WAVE + SPAN
+	return T_CHILL + WAVE + lv_span
 
 
 func closed_at() -> float:
@@ -105,6 +127,11 @@ static func first_out() -> float:
 
 
 func _build() -> void:
+	lv_radius = float(PowerBook.stat(extra, "deaddoors", "RADIUS", RADIUS))
+	lv_max_doors = int(PowerBook.stat(extra, "deaddoors", "MAX_DOORS", MAX_DOORS))
+	lv_span = float(PowerBook.stat(extra, "deaddoors", "SPAN", SPAN))
+	lv_max_spirits = int(PowerBook.stat(extra, "deaddoors", "MAX_SPIRITS", MAX_SPIRITS))
+	rise_again = PowerBook.twist_at(extra, "deaddoors")
 	duration = closed_at() + THAW + 0.1
 	busy = T_CHILL
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
@@ -112,6 +139,8 @@ func _build() -> void:
 	visitors.bitten.connect(_on_bite)
 	visitors.cut_down.connect(_on_cut_down)
 	visitors.wrecked.connect(_on_wreck)
+	if rise_again:
+		visitors.bitten.connect(_on_kill)
 	_pick_doors()
 	ctx.play(&"glac_wind", origin, -2.0)
 	at(0.2, func(): ctx.play(&"hs_rumble", origin, -6.0))
@@ -122,16 +151,16 @@ func _build() -> void:
 	if not DominionParts.staged(self):
 		return
 	# The cold comes in from the click: frost over the ground, a pale fog, the light gone grey-blue, flakes falling.
-	_frost = FxParts.frost_ground(self, origin, RADIUS)
+	_frost = FxParts.frost_ground(self, origin, lv_radius)
 	_frost.set_param("progress", 0.0)
 	_frost.tween_param("progress", 0.0, 1.0, T_CHILL, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	_fog = FxParts.fog(self, origin, RADIUS * 1.05, Color(COLD, 0.42))
+	_fog = FxParts.fog(self, origin, lv_radius * 1.05, Color(COLD, 0.42))
 	_fog.set_param("fade", 0.0)
 	_fog.tween_param("fade", 0.0, 1.0, T_CHILL, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	_chill = FxParts.ground_light(self, origin, RADIUS, Color(0.35, 0.5, 0.75), 0.0)
+	_chill = FxParts.ground_light(self, origin, lv_radius, Color(0.35, 0.5, 0.75), 0.0)
 	_chill.tween_param("intensity", 0.0, 0.35, T_CHILL, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	var sp := Iso.ground_to_screen(origin)
-	var px := Iso.radius_to_screen(RADIUS)
+	var px := Iso.radius_to_screen(lv_radius)
 	var flakes := FxParts.emitter(self, ctx.overhead, sp + Vector2(0, -60), PixelParticles.Shape.SQUARE,
 		[Color(0.95, 0.98, 1.0, 0.9), Color(0.85, 0.92, 1.0, 0.7), Color(0.7, 0.8, 0.95, 0.0)], 40.0, closed_at(),
 		{"radius": px.x * 0.85, "speed": Vector2(2, 8), "alt": Vector2(30, 90), "alt_speed": Vector2(-22, -10),
@@ -150,18 +179,19 @@ func _grid() -> WalkGrid:
 	return null
 
 
-## The MAX_DOORS nearest buildings with a door within RADIUS, nearest first, each opening in turn over WAVE.
+## The MAX_DOORS nearest buildings with a door within RADIUS (at the cast's level), nearest first, each opening in turn
+## over WAVE.
 func _pick_doors() -> void:
 	var near: Array = []
 	for s in ctx.env.structures():
 		if not is_instance_valid(s) or s.destroyed or not (s.role in EveryDoorFx.DOOR_ROLES):
 			continue
 		var d := s.distance_to(origin)
-		if d <= RADIUS:
+		if d <= lv_radius:
 			near.append([d, s])
 	near.sort_custom(func(a, b) -> bool: return float(a[0]) < float(b[0]))
 	var grid := _grid()
-	var n := mini(near.size(), MAX_DOORS)
+	var n := mini(near.size(), lv_max_doors)
 	for i in n:
 		var door := Door.new()
 		door.building = near[i][1]
@@ -222,6 +252,8 @@ func _fx_process(delta: float) -> void:
 	_tick_cold(delta)
 	if t < t_end():
 		_release_due()
+		if not _rising.is_empty():
+			_rise_due()
 	_frighten(delta)
 	if not DominionParts.staged(self):
 		return
@@ -245,7 +277,7 @@ func _release_due() -> void:
 		if not is_instance_valid(d.building) or d.building.destroyed:
 			d.open = false  # a fallen house is no door
 			continue
-		if alive >= LIVE_CAP or spirits >= MAX_SPIRITS:
+		if alive >= LIVE_CAP or spirits >= lv_max_spirits:
 			continue
 		d.released += 1
 		alive += 1
@@ -319,16 +351,15 @@ func _tick_cold(delta: float) -> void:
 	var cold := t >= T_CHILL and t < closed_at()
 	var now := {}
 	if cold:
-		for e in ctx.field.in_radius(origin, RADIUS):
+		for e in ctx.field.in_radius(origin, lv_radius):
 			var p := e as Person
 			if p == null or not p.is_alive():
 				continue
 			var id := p.get_instance_id()
 			now[id] = true
 			if not _cold.has(id):
-				_cold[id] = [p, p.statuses.get(&"slow", null)]
-				var had: Variant = _cold[id][1]
-				p.statuses[&"slow"] = minf(COLD_SLOW, float(had)) if had != null else COLD_SLOW
+				_cold[id] = [p, null]
+				p.hold_pace(get_instance_id(), COLD_SLOW)
 	for id in _cold.keys():
 		if now.has(id):
 			continue
@@ -341,10 +372,7 @@ func _warm(id: int) -> void:
 	var p: Person = held[0]
 	if not is_instance_valid(p):
 		return
-	if held[1] == null:
-		p.statuses.erase(&"slow")
-	else:
-		p.statuses[&"slow"] = held[1]
+	p.free_pace(get_instance_id())
 
 
 ## Whether `p` is in the cold now.
@@ -355,6 +383,7 @@ func chilled(p: Person) -> bool:
 ## The span is over: the other side calls its own back, each to the door it came out of.
 func _call_back() -> void:
 	_recalled = true
+	_rising.clear()  # the span is over: whoever has not risen yet stays down
 	visitors.recall(RECALL)
 	ctx.play(&"glac_wind", origin, -4.0)
 
@@ -400,6 +429,82 @@ func _on_bite(a: Animal, victim: Person, first: bool) -> void:
 	var sp := Iso.ground_to_screen(a.ground_pos) + Vector2(0, -8)
 	FxParts.sparks(self, ctx.overhead, sp, 5, WISP if a.breed == Animal.Breed.GHOST else FxParts.EMBER_LIFE,
 		Vector2(30, 90), Vector2(20, 80))
+
+
+## Rise Again (level 5): the horde's kill. One the bite left dead rises RISE_AFTER on where they fell, while the span
+## lasts; the body pales as it waits, in the other side's mist.
+func _on_kill(_a: Animal, victim: Person, _first: bool) -> void:
+	if not is_instance_valid(victim) or victim.is_alive() or _recalled or t >= t_end():
+		return
+	var id := victim.get_instance_id()
+	if _fallen.has(id):
+		return
+	_fallen[id] = true
+	var spot := victim.ground_pos
+	_rising.append([t + RISE_AFTER, spot])
+	if not DominionParts.staged(self):
+		return
+	# The body pales: a cold green-white light gathers on it and the mist of the other side rises off it.
+	var sp := Iso.ground_to_screen(spot)
+	var pale := FxParts.bloom(self, sp + Vector2(0, -3), 12.0, SPIRIT, 0.0, 0.6)
+	pale.tween_param("intensity", 0.0, 0.8, RISE_AFTER, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	pale.tween_param("intensity", 0.8, 0.0, 0.4, RISE_AFTER)
+	pale.life = RISE_AFTER + 0.45
+	var lit := FxParts.ground_light(self, spot, 0.9, SPIRIT, 0.0)
+	lit.tween_param("intensity", 0.0, 0.6, RISE_AFTER, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	lit.tween_param("intensity", 0.6, 0.0, 0.5, RISE_AFTER)
+	lit.life = RISE_AFTER + 0.55
+	FxParts.smoke(self, sp, 5.0, 8.0, RISE_AFTER, Vector2(4, 14), Vector2(2, 4), Vector2(0.6, 1.1), Color(SPIRIT, 0.2), MIST)
+
+
+## Rise Again: the dead whose moment has come rise, while there is room under LIVE_CAP; one whose moment finds it full
+## stays down (no waiting, no luck).
+func _rise_due() -> void:
+	while not _rising.is_empty() and t >= float(_rising[0][0]):
+		var spot: Vector2 = _rising.pop_front()[1]
+		if visitors.living().size() >= LIVE_CAP:
+			continue
+		_rise(spot)
+
+
+## A ghost of the other side stands up where one fell. Its gate is the open door nearest it (summoned there, then set
+## where the body lies), so the call back at the span's end takes it home through a door.
+func _rise(spot: Vector2) -> void:
+	var gate := spot
+	var best := INF
+	for d in doors:
+		if not d.open or not is_instance_valid(d.building) or d.building.destroyed:
+			continue
+		var dist := d.at.distance_to(spot)
+		if dist < best:
+			best = dist
+			gate = d.at + d.out * 0.45
+	var spec: Array = KINDS[Animal.Breed.GHOST]
+	var a := visitors.summon(gate, Animal.Breed.GHOST, int(spec[0]), float(spec[1]) / (Animal.DOG_SPEED * Animal.RUN),
+		float(spec[2]), float(spec[3]), float(spec[4]), bool(spec[5]))
+	a.ground_pos = spot
+	a.sync_position()
+	visitors.give(a, {"phase": true})
+	_fright_in[a] = FRIGHT_EVERY
+	risen += 1
+	raised.append(a)
+	ctx.play(&"q_wisp", spot, -2.0)
+	if not DominionParts.staged(self):
+		return
+	var sp := Iso.ground_to_screen(spot)
+	var burst := FxParts.bloom(self, sp + Vector2(0, -8), 22.0, SPIRIT, 1.0, 1.0)
+	burst.tween_param("intensity", 1.0, 0.0, 0.5, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	burst.life = 0.55
+	FxParts.smoke(self, sp, 6.0, 20.0, 0.25, Vector2(12, 30), Vector2(2, 4), Vector2(0.4, 0.8), Color(SPIRIT, 0.4), MIST)
+	FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -8), 10, WISP, Vector2(30, 110), Vector2(40, 130))
+	if _trails.size() >= TRAILS:
+		return
+	var trail := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, WISP, 6.0, duration - t + 8.0,
+		{"radius": 4.0, "speed": Vector2(2, 8), "alt": Vector2(2, 10), "alt_speed": Vector2(6, 20), "life": Vector2(0.4, 0.8),
+			"size": Vector2(1, 1)})
+	trail.gravity = -14.0
+	trail.drag = 1.0
+	_trails[a] = trail
 
 
 func _on_cut_down(a: Animal, at_ground: Vector2) -> void:

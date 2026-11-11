@@ -375,6 +375,8 @@ var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
 ## reads and steps it; the person only carries it, and responds to what the manager asks of it.
 var statuses := {}
+## Powers' holds on its pace, by the power's instance id -> the share kept (hold_pace()).
+var pace_holds := {}
 ## Held by a rite's Chain of the Forgotten (god P3, MS §2, Ruling P3-12): a captive being dragged to the shrine. Only RiteDirector sets it, and only
 ## NoLeaveFx reads it (a chained person is never set back by a Leaving Is Prohibited circle: the chain is stronger, R10). False for everyone else,
 ## so nothing outside a rite changes.
@@ -760,8 +762,30 @@ func _think(delta: float) -> void:
 
 
 func _mind_speed() -> float:
-	# A status may slow it too (Death Mark's "slow": the share of its pace it keeps).
-	return _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0) * float(statuses.get(&"slow", 1.0))
+	# A status may slow it too (Death Mark's "slow": the share of its pace it keeps), or a power's hold on its pace
+	# (pace_hold()): the stronger of the two.
+	return _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0) * minf(float(statuses.get(&"slow", 1.0)), pace_hold())
+
+
+## A power holds its pace (`share` of it kept, 0 for no step of its own), under its own `source` (the power's instance id):
+## several holds stack as the strongest of them, and each power lifts only its own (free_pace()). Kept apart from statuses
+## "slow", which the missions and Death Mark write as they like: a power saving and restoring that one could undo another's.
+func hold_pace(source: int, share: float) -> void:
+	pace_holds[source] = share
+	walk_speed = _mind_speed()
+
+
+func free_pace(source: int) -> void:
+	if pace_holds.erase(source):
+		walk_speed = _mind_speed()
+
+
+## The share of its pace the powers' holds leave it (1.0 for none).
+func pace_hold() -> float:
+	var m := 1.0
+	for v in pace_holds.values():
+		m = minf(m, float(v))
+	return m
 
 
 func _base_speed() -> float:

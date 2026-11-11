@@ -14,6 +14,11 @@ extends FxTimeline
 ## (a soldier back to his post); an animal still on its way goes back to its day. There is no luck in it: who is drawn
 ## and who makes it follow from distance and pace alone. Quiet, but for the book entry's "alarm": the town sees the
 ## door. Once in a descent (the book's cooldown). The door folds to a point over CLOSE after it shuts.
+## Another power may open this door for its own ends (All Roads Lead Here's The Last Mile) with extras, none of which a
+## cast of The Far Gate itself carries, so its own door is always as above: `here` (the door stands at the cast point,
+## no passage carries it), `open` and `span` (its T_OPEN and SPAN), `only` (an Array of the only people it may draw),
+## `draw_r` (its reach in place of RADIUS), `keep_drawing` (whoever of `only` comes within `draw_r` while it stands open
+## is drawn too, not only those there when it opens), `people_only` (no animals, no goods).
 
 const RADIUS := 10.0
 const MAX_PEOPLE := 40
@@ -56,6 +61,13 @@ var gone_animals := 0
 var gone_goods := 0
 ## Those still drawn when it shut: let go, dazed.
 var released: Array[Person] = []
+## The door's own numbers, or those another power's extras set (see above).
+var lv_open := T_OPEN
+var lv_span := SPAN
+var lv_draw_r := RADIUS
+var _only: Variant = null
+var _keep_drawing := false
+var _people_only := false
 
 ## Soldier -> the slow status he had before the door's (null: none).
 var _paced := {}
@@ -67,7 +79,7 @@ var _halo: QuadFx
 
 ## When the door shuts.
 func shut_at() -> float:
-	return T_OPEN + SPAN
+	return lv_open + lv_span
 
 
 ## Whom a door at `at` draws when it opens: the living people within RADIUS of it who are out in the open and not
@@ -104,15 +116,21 @@ static func goods_at(env: EnvironmentField, at: Vector2) -> Array[Decor]:
 
 
 func _build() -> void:
-	door = ctx.field.through(origin)
+	lv_open = float(extra.get("open", T_OPEN))
+	lv_span = float(extra.get("span", SPAN))
+	lv_draw_r = float(extra.get("draw_r", RADIUS))
+	_only = extra.get("only", null)
+	_keep_drawing = bool(extra.get("keep_drawing", false))
+	_people_only = bool(extra.get("people_only", false))
+	door = origin if bool(extra.get("here", false)) else ctx.field.through(origin)
 	var grid := _grid()
 	if grid != null and not grid.walkable(door):
 		var w := grid.nearest_walkable(door, 4)
 		if w != Vector2.INF:
 			door = w
 	duration = shut_at() + CLOSE + 0.2
-	busy = T_OPEN
-	at(T_OPEN, _open)
+	busy = lv_open
+	at(lv_open, _open)
 	at(shut_at(), _shut)
 	ctx.play(&"q_fargate", origin, 0.0)
 	if not DominionParts.staged(self):
@@ -130,11 +148,11 @@ func _build() -> void:
 	path.seed_value = int(ctx.rng.randi() % 100000)
 	track(path, ctx.ground)
 	_glow = FxParts.ground_light(self, door, 2.2, VIOLET, 0.0)
-	_glow.tween_param("intensity", 0.0, 0.4, T_OPEN, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	_glow.tween_param("intensity", 0.0, 0.4, lv_open, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	_halo = FxParts.bloom(self, sp + Vector2(0, -DOOR_H * 0.5), 44.0, VIOLET, 0.0, 1.5)
-	_halo.tween_param("intensity", 0.0, 0.3, T_OPEN, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	_halo.tween_param("intensity", 0.0, 0.3, lv_open, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
 	# Starlight gathers where the door will stand: motes drawn up off the paving into a line of light.
-	var motes := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, STAR_LIFE, 18.0, T_OPEN,
+	var motes := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, STAR_LIFE, 18.0, lv_open,
 		{"radius": 26.0, "speed": Vector2(2, 8), "alt": Vector2(0, 30), "alt_speed": Vector2(20, 60), "life": Vector2(0.6, 1.2),
 			"size": Vector2(1, 1)})
 	motes.gravity = -10.0
@@ -155,28 +173,21 @@ func _grid() -> WalkGrid:
 ## 0..1 how far open the door stands now (opening over T_OPEN, folding over CLOSE after it shuts).
 func openness(now: float) -> float:
 	if now < shut_at():
-		return clampf(now / T_OPEN, 0.0, 1.0)
+		return clampf(now / lv_open, 0.0, 1.0)
 	return 1.0 - clampf((now - shut_at()) / CLOSE, 0.0, 1.0)
 
 
 ## The door is open: the nearest are drawn to it, the animals turn to it, and the goods begin to slide.
 func _open() -> void:
 	opened = true
-	var hold := SPAN + 1.0  # it lets go itself at the shut (_shut); this only outlasts it
-	for p in called(ctx.field, door):
-		if p.soldier:
-			# He resists: SOLDIER_PACE of his pace, on top of whatever slows him already.
-			_paced[p] = p.statuses.get(&"slow", null)
-			p.statuses[&"slow"] = float(p.statuses.get(&"slow", 1.0)) * SOLDIER_PACE
-		if p.compel(door, hold, Person.WILL_ABSOLUTE, MARK, false, &"", STAR_GLYPH):
-			drawn.append(p)
-		else:
-			_unpace(p)
-	if ctx.crowd != null and ctx.crowd.animals != null:
+	for p in _called():
+		_draw_in(p)
+	if not _people_only and ctx.crowd != null and ctx.crowd.animals != null:
 		for a in ctx.crowd.animals.in_radius(door, RADIUS):
-			if a.cast(Animal.Spell.GATHER, hold, null, door):
+			if a.cast(Animal.Spell.GATHER, lv_span + 1.0, null, door):
 				animals.append(a)
-	goods = goods_at(ctx.env, door)
+	if not _people_only:
+		goods = goods_at(ctx.env, door)
 	ctx.play(&"q_congregation", door, -3.0)
 	if not DominionParts.staged(self):
 		return
@@ -188,12 +199,56 @@ func _open() -> void:
 	ring.tween_param("progress", 0.05, 1.0, 0.9, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	ring.life = 0.92
 	# The reach of the call, marked once on the ground as it goes out.
-	var wave := FxParts.rings(self, door, RADIUS, Color(RIM, 0.5), 2, 24.0)
+	var wave := FxParts.rings(self, door, lv_draw_r, Color(RIM, 0.5), 2, 24.0)
 	wave.set_param("scan", 0.0)
 	wave.tween_param("reveal", 0.0, 1.0, 1.0, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	wave.tween_param("alpha", 1.0, 0.0, 0.6, 1.0)
 	wave.life = 1.65
 	FxParts.sparks(self, ctx.overhead, sp, 20, STAR_LIFE, Vector2(30, 120), Vector2(10, 80))
+
+
+## Whom the door draws as it opens: called(), or, given `only`, those of them out in the open and not fighting within
+## `draw_r` of it, nearest first (ties by where they stand), MAX_PEOPLE at most.
+func _called() -> Array[Person]:
+	if _only == null:
+		return called(ctx.field, door)
+	var out: Array[Person] = []
+	for e in _only:
+		var p := e as Person
+		if p == null or not is_instance_valid(p) or not p.is_alive() or p.inside or p.mind == Person.Mind.FIGHT 				or p.ground_pos.distance_to(door) > lv_draw_r:
+			continue
+		out.append(p)
+	out.sort_custom(func(a: Person, b: Person) -> bool:
+		var da := a.ground_pos.distance_squared_to(door)
+		var db := b.ground_pos.distance_squared_to(door)
+		if da != db:
+			return da < db
+		if a.ground_pos.x != b.ground_pos.x:
+			return a.ground_pos.x < b.ground_pos.x
+		return a.ground_pos.y < b.ground_pos.y)
+	if out.size() > MAX_PEOPLE:
+		out.resize(MAX_PEOPLE)
+	return out
+
+
+## `p` is drawn to the door (a soldier at SOLDIER_PACE of his pace), until it shuts.
+func _draw_in(p: Person) -> void:
+	var hold := lv_span + 1.0  # it lets go itself at the shut (_shut); this only outlasts it
+	if p.soldier:
+		# He resists: SOLDIER_PACE of his pace, on top of whatever slows him already.
+		_paced[p] = p.statuses.get(&"slow", null)
+		p.statuses[&"slow"] = float(p.statuses.get(&"slow", 1.0)) * SOLDIER_PACE
+	if p.compel(door, hold, Person.WILL_ABSOLUTE, MARK, false, &"", STAR_GLYPH):
+		drawn.append(p)
+	else:
+		_unpace(p)
+
+
+## `keep_drawing`: whoever of `only` has come within `draw_r` since it opened is drawn too (each once).
+func _draw_more() -> void:
+	for p in _called():
+		if not drawn.has(p) and not gone_people.has(p) and p.mind != Person.Mind.COMPELLED:
+			_draw_in(p)
 
 
 ## A soldier's own pace back.
@@ -214,6 +269,8 @@ func _unpace(p: Person) -> void:
 func _fx_process(delta: float) -> void:
 	if not opened or shut:
 		return
+	if _keep_drawing and _only != null:
+		_draw_more()
 	_step_people(delta)
 	_step_animals()
 	_step_goods(delta)
@@ -305,6 +362,8 @@ func _through(at_ground: Vector2) -> void:
 
 ## The door shuts: whoever is still on the way stops, dazed, and goes back to their own business.
 func _shut() -> void:
+	if shut:
+		return
 	_let_go()
 	ctx.play(&"q_mirror", door, -2.0)
 	if not DominionParts.staged(self):
@@ -458,8 +517,8 @@ class StarPath extends Node2D:
 		var a := fx.openness(now)
 		if a <= 0.0:
 			return
-		var spread := clampf((now - T_OPEN * 0.5) / (T_OPEN * 1.5), 0.0, 1.0)
-		var rim := lerpf(1.0, RADIUS, spread)
+		var spread := clampf((now - fx.lv_open * 0.5) / (fx.lv_open * 1.5), 0.0, 1.0)
+		var rim := lerpf(minf(1.0, fx.lv_draw_r), fx.lv_draw_r, spread)
 		# The ring at the rim, dotted with stars.
 		draw_arc(Vector2.ZERO, rim, 0.0, TAU, 96, Color(RIM, 0.14 * a), 0.06)
 		for i in 48:

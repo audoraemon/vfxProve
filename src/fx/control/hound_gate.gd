@@ -14,6 +14,10 @@ extends FxTimeline
 ## while the hounds come (a danger the town sees, kind beast). HUNT after the last comes out, the hounds still on their
 ## feet burn away where they stand, back to the other side. Loud (PowerBook.REACH): the first bite is the first kill,
 ## OUT_EVERY after the doors open.
+## Levels (PowerBook "houndgate"): HOUNDS, HUNT and BLOWS grow; level 1 is the numbers below. Level 5's twist, Quarry:
+## while they hunt, a click on a person (the nearest living one out in the open within QUARRY_PICK of it) marks them,
+## and every hound runs for that one -- any distance, by the streets (Visitors.mark()) -- until they fall or go inside,
+## then hunts as before. A new mark replaces the old.
 
 ## The gate climbs out of the ground over T_RISE, stands a moment, and its doors take DOORS to open: wide at T_OPEN.
 const T_RISE := 1.2
@@ -32,6 +36,9 @@ const T_SHUT := 0.6
 const SINK := 1.2
 ## At the hunt's end the hounds burn away over BURN.
 const BURN := 0.5
+## Quarry: how near the click a person must stand to be marked.
+const QUARRY_PICK := 0.8
+const MARK := Color(1.0, 0.16, 0.08)
 ## How the gate shows: its PixelLab sheet (the doors opening, frame 0 shut to the last wide on the fire), its cell, its
 ## foot in the cell, how large it is drawn, and the other side's colours.
 const SHEET := "res://assets/pixellab/fx/hellgate.png"
@@ -54,6 +61,16 @@ var mouth := Vector2.ZERO
 var visitors: Visitors
 var out := 0
 
+## This cast's numbers at its ability level (HOUNDS, HUNT and BLOWS at level 1).
+var lv_hounds := HOUNDS
+var lv_hunt := HUNT
+var lv_blows := BLOWS
+## Quarry (level 5): whether this cast has it, the one marked last (null when none), and how many marks were made.
+var quarry: Person
+var marks := 0
+var _quarry_twist := false
+var _mark_node: QuarryMark
+
 var _gate: Gate
 var _glow: QuadFx
 var _trails := {}
@@ -61,11 +78,11 @@ var _trails := {}
 
 ## When the last hound comes out, and when the hunt ends.
 func last_out() -> float:
-	return T_OPEN + float(HOUNDS - 1) * OUT_EVERY
+	return T_OPEN + float(lv_hounds - 1) * OUT_EVERY
 
 
 func hunt_end() -> float:
-	return T_OPEN + float(HOUNDS) * OUT_EVERY + HUNT
+	return T_OPEN + float(lv_hounds) * OUT_EVERY + lv_hunt
 
 
 ## When the doors close, and when the gate is back under the ground: soon after the last hound is out.
@@ -78,6 +95,10 @@ func gone() -> float:
 
 
 func _build() -> void:
+	lv_hounds = int(PowerBook.stat(extra, "houndgate", "HOUNDS", HOUNDS))
+	lv_hunt = float(PowerBook.stat(extra, "houndgate", "HUNT", HUNT))
+	lv_blows = int(PowerBook.stat(extra, "houndgate", "BLOWS", BLOWS))
+	_quarry_twist = PowerBook.twist_at(extra, "houndgate")
 	mouth = ctx.field.through(origin)
 	duration = hunt_end() + BURN + 0.1
 	busy = T_OPEN
@@ -90,7 +111,7 @@ func _build() -> void:
 	at(T_RISE, _risen)
 	at(T_OPEN - DOORS, func(): ctx.play(&"jg_rise", mouth, 0.0))
 	at(T_OPEN, _open)
-	for k in HOUNDS:
+	for k in lv_hounds:
 		at(T_OPEN + float(k) * OUT_EVERY, _release)
 	at(shut_at(), _shut)
 	at(shut_at() + T_SHUT, _sink)
@@ -132,6 +153,48 @@ func kills() -> int:
 	return visitors.kills
 
 
+## Quarry: true at level 5 while the hounds hunt.
+func can_follow_up() -> bool:
+	return _quarry_twist and not finished and hunting()
+
+
+## Quarry: the nearest living person out in the open within QUARRY_PICK of the click is marked, and every hound goes for
+## them (replacing any earlier mark). False -- the click not taken -- when nobody stands there.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var best: Person = null
+	var best_d := INF
+	for e in ctx.field.in_radius(at_pos, QUARRY_PICK):
+		var p := e as Person
+		if p == null or p.inside or not p.is_alive():
+			continue
+		var d := p.ground_pos.distance_squared_to(at_pos)
+		if d < best_d:
+			best_d = d
+			best = p
+	if best == null:
+		return false
+	quarry = best
+	marks += 1
+	visitors.mark(best)
+	ctx.play(&"dr_roar", best.ground_pos, -6.0)
+	if DominionParts.staged(self):
+		if _mark_node != null and is_instance_valid(_mark_node):
+			_mark_node.queue_free()
+		_mark_node = QuarryMark.new()
+		_mark_node.fx = self
+		_mark_node.prey = best
+		_mark_node.position = Iso.ground_to_screen(best.ground_pos)
+		track(_mark_node, ctx.overhead)
+	return true
+
+
+## Quarry's preview: the reach about the click a person is picked from.
+func follow_up_area() -> Dictionary:
+	return {"shape": "circle", "r": QUARRY_PICK}
+
+
 func slain() -> int:
 	return visitors.slain
 
@@ -154,7 +217,7 @@ func _risen() -> void:
 ## The doors are wide: the fire behind them lights the street, and the town sees a danger while they stand open.
 func _open() -> void:
 	if ctx.crowd != null:
-		ctx.crowd.threats.register(mouth, 1.2, 0.6, float(HOUNDS) * OUT_EVERY + 1.0, 6.0, 9.0, &"beast")
+		ctx.crowd.threats.register(mouth, 1.2, 0.6, float(lv_hounds) * OUT_EVERY + 1.0, 6.0, 9.0, &"beast")
 	if not DominionParts.staged(self):
 		return
 	_glow.tween_param("intensity", 0.6, 1.0, 0.3, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
@@ -205,7 +268,7 @@ func _release() -> void:
 	var k := out
 	out += 1
 	# Out of the doorway toward the viewer (ground (+1, +1) is down the screen), spread across it.
-	var across := Vector2(0.7071, -0.7071) * (float(k) - float(HOUNDS - 1) * 0.5) * 0.22
+	var across := Vector2(0.7071, -0.7071) * (float(k) - float(lv_hounds - 1) * 0.5) * 0.22
 	var spot := mouth + Vector2(OUT_AHEAD, OUT_AHEAD) * 0.7071 + across
 	var grid := _grid()
 	if grid != null and not grid.walkable(spot):
@@ -213,7 +276,7 @@ func _release() -> void:
 		if w != Vector2.INF:
 			spot = w
 	var speed_mul := SPEED / (Animal.DOG_SPEED * Animal.RUN)
-	var a := visitors.summon(spot, Animal.Breed.HELLHOUND, BLOWS, speed_mul, SEEK_R, BITE_R, BITE_EVERY, false)
+	var a := visitors.summon(spot, Animal.Breed.HELLHOUND, lv_blows, speed_mul, SEEK_R, BITE_R, BITE_EVERY, false)
 	a.facing = 1 if k % 2 == 0 else -1
 	if Animal.sheet(Animal.Breed.HELLHOUND).is_empty():
 		# No painted sheet (not imported): the drawn dog shape, darkened, with ember eyes laid over it.
@@ -230,7 +293,7 @@ func _release() -> void:
 	_gate.flare = 1.0
 	ctx.shake.kick(Vector2(0, 0.8))
 	# Faint embers off its coat as it runs: one slow emitter a hound, moved with it.
-	var trail := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 5.0, HUNT + 8.0,
+	var trail := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 5.0, lv_hunt + 8.0,
 		{"radius": 3.0, "speed": Vector2(2, 8), "alt": Vector2(2, 8), "alt_speed": Vector2(8, 22), "life": Vector2(0.3, 0.6),
 			"size": Vector2(1, 1)})
 	trail.gravity = -20.0
@@ -352,6 +415,36 @@ class Gate extends Node2D:
 		draw_texture_rect_region(_tex, Rect2(-FOOT.x, -FOOT.y + (float(CELL) - shown), CELL, shown),
 			Rect2(frame * CELL, 0, CELL, shown), tint)
 		draw_set_transform(Vector2.ZERO)
+
+
+## Quarry's mark: a red ring at the marked one's feet, pulsing, and a red hook over their head, following them; gone
+## when the mark is (they fell, went inside, or another was marked).
+class QuarryMark extends Node2D:
+	var fx: HoundGateFx
+	var prey: Person
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if not is_instance_valid(fx) or fx.visitors == null or fx.visitors.marked() != prey:
+			queue_free()
+			return
+		position = Iso.ground_to_screen(prey.ground_pos)
+		queue_redraw()
+
+	func _draw() -> void:
+		var pulse := 0.65 + 0.35 * sin(_t * 6.0)
+		var ring := PackedVector2Array()
+		for i in 17:
+			var a := TAU * float(i) / 16.0
+			ring.append(Iso.ground_to_screen(Vector2(cos(a), sin(a)) * (0.35 + 0.04 * pulse)) - Iso.ground_to_screen(Vector2.ZERO))
+		draw_polyline(ring, Color(MARK, 0.85 * pulse), 1.0)
+		# The hook over the head: a small downward chevron.
+		var top := Vector2(0, -26 - 2.0 * pulse)
+		var c := Color(MARK, pulse)
+		draw_line(top + Vector2(-3, -3), top, c, 1.0)
+		draw_line(top + Vector2(3, -3), top, c, 1.0)
+		draw_rect(Rect2(top + Vector2(-0.5, -7), Vector2(1, 3)), c)
 
 
 ## A hound's ember eyes: two pulsing points at the head, where the hound sheet puts the eye (SE view, or the NE view

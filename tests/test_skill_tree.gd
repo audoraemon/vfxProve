@@ -70,10 +70,11 @@ static func _lines(t) -> void:
 	s._slot.learned["smite"] = 2
 	var want := PackedStringArray(["Smite", "2 / 5", "1 Might", "Level 3: 1 point", "kill radius 0.65 -> 0.7, damage 50.0 -> 55.0, cooldown 9.5 -> 9.0"])
 	t.check(s.spot_lines(1, 1, 0) == want, "smite learned at 2: name, pips, Might, next level, its change (%s)" % [s.spot_lines(1, 1, 0)])
-	var thorns := s.spot_lines(2, 1, 0)
-	t.check(thorns[4] == PowerBook.NO_LEVELS, "a power with no table (Thornwall) still reads Level effects not set (%s)" % [thorns])
-	t.check(thorns[0] == "Thornwall" and thorns[1] == "0 / 5" and thorns[3] == "Learn: 2 points",
-		"a neighbour's unlearned spot costs 2 points to learn (%s)" % [thorns])
+	var skylift := s.spot_lines(2, 1, 0)
+	t.check(skylift[0] == "Skylift" and skylift[1] == "0 / 5" and skylift[3] == "Learn: 2 points",
+		"a neighbour's unlearned spot costs 2 points to learn (%s)" % [skylift])
+	var doom := _screen("veil", 1, 0).spot_lines(1, 1, 0)
+	t.check(doom[0] == "Silent Doom" and doom[4] == PowerBook.NO_LEVELS, "a power with no table (Silent Doom) still reads Level effects not set (%s)" % [doom])
 	var ember := s.spot_lines(1, 1, 1)
 	t.check(ember[3] == "Level 2: 1 point", "a learned-at-1 own spot: next is level 2 for 1 point (%s)" % [ember])
 	s._slot.learned["smite"] = 5
@@ -135,9 +136,9 @@ static func _learn(t) -> void:
 	t.check(s._slot.level_of("ember") == 2 and emitted.size() == 2, "a click on a spot learns it (%d)" % s._slot.level_of("ember"))
 	# A neighbour's spot costs double.
 	s._slot.points = 1
-	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("thorns") == 0, "a neighbour's spot needs 2 points, not 1")
+	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("skylift") == 0, "a neighbour's spot needs 2 points, not 1")
 	s._slot.points = 2
-	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("thorns") == 1 and s._slot.points == 0, "and spends 2")
+	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("skylift") == 1 and s._slot.points == 0, "and spends 2")
 	s._slot.learned["smite"] = 5
 	s._slot.points = 3
 	t.check(s.learn_at(1, 1, 0) == "max", "level 5 is the top (max)")

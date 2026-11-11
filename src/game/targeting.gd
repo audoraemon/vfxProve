@@ -177,7 +177,13 @@ const AREA_STATS := {
 	"shatter": {"half": "HALF", "length": "MAX_LENGTH"},
 	"discord": {"r": "DISCORD_R"}, "madness": {"r": "RADIUS"}, "clearmind": {"r": "RADIUS"}, "anathema": {"r": "RADIUS"},
 	"sanctuary": {"r": "PICK_R"},
+	"skylift": {"r": "RADIUS"}, "windfall": {"length": "LENGTH"}, "hellspark": {"r": "RADIUS"}, "deep": {"r": "RADIUS"},
+	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
+	"heavendoor": {"r": "PULL_R"},
 }
+## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole
+## circle, not the half before one door.
+const AREA_TWIST := {"heavendoor": {"arc": TAU}}
 
 ## The focused slot, or -1 when nothing is: the area is only drawn while a power is focused.
 var slot := -1
@@ -545,6 +551,8 @@ static func area_at(key: String, level: int) -> Dictionary:
 			spec = spec.get_slice("*", 0)
 		if a.has(field):
 			out[field] = float(PowerBook.level_stat(key, level, spec, float(a[field]) / factor)) * factor
+	if AREA_TWIST.has(key) and level >= PowerBook.MAX_LEVEL and PowerBook.twist(key) != "":
+		out.merge(AREA_TWIST[key], true)
 	return out
 
 

@@ -132,7 +132,7 @@ static func _bad_file(t) -> void:
 static func _costs(t) -> void:
 	var s := _slot()
 	t.check(s.cost("smite") == 1, "an own-type spot costs 1 (%d)" % s.cost("smite"))
-	t.check(s.cost("thorns") == 2 and s.cost("whisper") == 2, "a neighbour's spot costs 2 (%d, %d)" % [s.cost("thorns"), s.cost("whisper")])
+	t.check(s.cost("skylift") == 2 and s.cost("whisper") == 2, "a neighbour's spot costs 2 (%d, %d)" % [s.cost("skylift"), s.cost("whisper")])
 	t.check(s.cost("doom") == 0 and s.refusal("doom") == "far", "a far type's spot is locked (%d, %s)" % [s.cost("doom"), s.refusal("doom")])
 	t.check(s.refusal("congregation") == "unknown" and s.cost("congregation") == 0, "a key in no dev spot is unknown (%s)" % s.refusal("congregation"))
 	t.check(s.spot_type("scatter") == "ruin" and s.spot_type("nosuch") == "", "spot_type() names the type or nothing")
@@ -174,12 +174,12 @@ static func _neighbour(t) -> void:
 	s.points = 10
 	var ok := true
 	for i in 5:
-		ok = ok and s.learn("thorns")
-	t.check(ok and s.level_of("thorns") == 5 and s.points == 0, "a neighbour's ability costs 2 x 5 = 10 (level %d, points %d)" % [s.level_of("thorns"), s.points])
+		ok = ok and s.learn("skylift")
+	t.check(ok and s.level_of("skylift") == 5 and s.points == 0, "a neighbour's ability costs 2 x 5 = 10 (level %d, points %d)" % [s.level_of("skylift"), s.points])
 	var short := _slot()
 	short.points = 1
-	t.check(short.refusal("mirror") == "points" and not short.learn("mirror") and short.points == 1,
-		"1 point is short of a neighbour's 2 (%s)" % short.refusal("mirror"))
+	t.check(short.refusal("windfall") == "points" and not short.learn("windfall") and short.points == 1,
+		"1 point is short of a neighbour's 2 (%s)" % short.refusal("windfall"))
 
 
 static func _xp(t) -> void:

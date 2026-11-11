@@ -27,9 +27,24 @@ extends FxTimeline
 ## shows on the wall itself: a ring drawn in where they went into it and a matching one opening on the far wall where
 ## they come out, with a soft tick. The wall stands in the town's own depth order: its two back edges behind the
 ## people inside, its two front edges before them (each edge is WALL_SEG-long pieces, each sorted on its own).
+## Its level (PowerBook) widens the square (HALF, to each side) and holds it longer (SPAN). Level 5's twist, Pocket
+## Square: when the span ends the square folds shut like paper -- its wall collapses into a crease of light standing
+## where it was -- and the god sets it down again: a click within POCKET_WAIT (the slot's follow-up) picks where,
+## anywhere in town. Everyone inside the square when it folded shut -- citizens and soldiers out in the open, the town's
+## dogs and cats, the visitors -- is held folded in it (rooted where it stands) until then, and is unfolded into a square
+## of the same size there, each at the same offset from its centre it had in it (on the nearest open ground when that
+## spot is not), dazed DAZE. With no click within POCKET_WAIT it opens where it was (they stand dazed where they were).
+## The crease unfolds into a sheet of the square's size at the new spot and fades. Under NO WAY OUT that is everyone the
+## ward caught. The dead are not carried; nobody inside a building is.
 
 const HALF := 3.0
 const SPAN := 25.0
+## Pocket Square (level 5): the wait for the click after the span, how long the wall takes to fold shut into the crease,
+## how long the sheet takes to unfold, and how long those set down stand dazed.
+const POCKET_WAIT := 4.0
+const FOLD_SHUT := 0.6
+const UNFOLD := 0.6
+const DAZE := 1.0
 const T_FOLD := 0.8
 const EDGE_IN := FoldWard.EDGE_IN
 ## NO WAY IN: how long one turned away walks on outward before it mills.
@@ -80,15 +95,34 @@ var _ripples: Array = []
 var _glow: QuadFx
 ## The wall's pieces, edge by edge round the square (WallPiece).
 var _wall: Array[WallPiece] = []
+## Its numbers at the cast's level (PowerBook.stat()).
+var lv_half := HALF
+var lv_span := SPAN
+## Pocket Square: whether it carries the square away; whether it is folded shut now (waiting for the click); where it
+## was set down (Vector2.INF until then), when, and how many it moved there.
+var pocket := false
+var pocket_shut := false
+var pocket_at := Vector2.INF
+var pocket_set_t := -1.0
+var pocket_moved := 0
+## [body, its offset from the centre] for everyone folded in it; [body, spot, seconds left] for each body held still.
+var _folded: Array = []
+var _held: Array = []
 
 
 func _build() -> void:
 	mode = IN if String(extra.get("mode", "out")) == "in" else OUT
-	duration = T_FOLD + SPAN + FADE
+	lv_half = float(PowerBook.stat(extra, "foldward", "HALF", HALF))
+	lv_span = float(PowerBook.stat(extra, "foldward", "SPAN", SPAN))
+	pocket = PowerBook.twist_at(extra, "foldward")
+	duration = T_FOLD + lv_span + (POCKET_WAIT + UNFOLD + FADE if pocket else FADE)
 	busy = T_FOLD
-	ward = FoldWard.new(origin, HALF, FoldWard.Mode.IN if mode == IN else FoldWard.Mode.OUT, _grid(), ctx.env)
+	ward = FoldWard.new(origin, lv_half, FoldWard.Mode.IN if mode == IN else FoldWard.Mode.OUT, _grid(), ctx.env)
 	at(T_FOLD, _fold)
-	at(T_FOLD + SPAN, _unfold)
+	at(T_FOLD + lv_span, _unfold)
+	if pocket:
+		at(T_FOLD + lv_span, _fold_shut)
+		at(T_FOLD + lv_span + POCKET_WAIT, func() -> void: _set_down(origin))
 	ctx.play(&"q_foldward", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
@@ -97,7 +131,7 @@ func _build() -> void:
 	crease.z_index = 4
 	track(crease, ctx.ground)
 	_build_wall()
-	_glow = FxParts.ground_light(self, origin, HALF * 1.5, colour(), 0.0)
+	_glow = FxParts.ground_light(self, origin, lv_half * 1.5, colour(), 0.0)
 
 
 ## The wall, in pieces WALL_SEG long round the square, each in the world layer at the middle of its foot so the town
@@ -105,7 +139,7 @@ func _build() -> void:
 func _build_wall() -> void:
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var corners := _corners()
-	var per := maxi(roundi(HALF * 2.0 / WALL_SEG), 1)
+	var per := maxi(roundi(lv_half * 2.0 / WALL_SEG), 1)
 	for e in 4:
 		var p := corners[e]
 		var q := corners[(e + 1) % 4]
@@ -115,7 +149,7 @@ func _build_wall() -> void:
 			piece.fx = self
 			piece.index = _wall.size()
 			piece.setup(p.lerp(q, float(k) / per), p.lerp(q, float(k + 1) / per), normal,
-				HALF * 2.0 * (float(e) + float(k) / per), k == 0)
+				lv_half * 2.0 * (float(e) + float(k) / per), k == 0)
 			track(piece, parent)
 			_wall.append(piece)
 		for j in CHEVRONS:
@@ -130,15 +164,15 @@ func _on_wall(g: Vector2) -> Array:
 	var along: float
 	if absf(d.x) >= absf(d.y):
 		e = 1 if d.x > 0.0 else 3
-		along = d.y + HALF if e == 1 else HALF - d.y
+		along = d.y + lv_half if e == 1 else lv_half - d.y
 	else:
 		e = 2 if d.y > 0.0 else 0
-		along = d.x + HALF if e == 0 else HALF - d.x
-	along = clampf(along, 0.0, HALF * 2.0)
+		along = d.x + lv_half if e == 0 else lv_half - d.x
+	along = clampf(along, 0.0, lv_half * 2.0)
 	var corners := _corners()
-	var point := corners[e].lerp(corners[(e + 1) % 4], along / (HALF * 2.0))
-	var per := maxi(roundi(HALF * 2.0 / WALL_SEG), 1)
-	return [point, e * per + clampi(int(along / (HALF * 2.0) * per), 0, per - 1)]
+	var point := corners[e].lerp(corners[(e + 1) % 4], along / (lv_half * 2.0))
+	var per := maxi(roundi(lv_half * 2.0 / WALL_SEG), 1)
+	return [point, e * per + clampi(int(along / (lv_half * 2.0) * per), 0, per - 1)]
 
 
 ## The fold takes: from now until the span is over, whoever walks across the edge the forbidden way is folded across.
@@ -146,7 +180,7 @@ func _fold() -> void:
 	holding = true
 	if not DominionParts.staged(self):
 		return
-	DominionParts.pulse(self, origin, HALF * 1.7, colour(), 0.8, 1.0)
+	DominionParts.pulse(self, origin, lv_half * 1.7, colour(), 0.8, 1.0)
 	for c in _corners():
 		DominionParts.motes(self, c, life(), 6)
 
@@ -160,15 +194,132 @@ func _unfold() -> void:
 
 func _finish() -> void:
 	_unfold()
+	if pocket_shut:
+		_set_down(origin)
+	_held.clear()
 	super()
+
+
+## Pocket Square: whether the folded square waits for the click that sets it down (the HUD's follow-up).
+func can_follow_up() -> bool:
+	return pocket_shut and not finished and t < T_FOLD + lv_span + POCKET_WAIT
+
+
+## Pocket Square: the click sets the square down at `at_pos`, anywhere in town. False when it is not waiting for one.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	_set_down(at_pos)
+	return true
+
+
+## Pocket Square's preview: a square of the ward's size.
+func follow_up_area() -> Dictionary:
+	return {"shape": "square", "half": lv_half}
+
+
+## Pocket Square: the square folds shut like paper with everyone inside it. Each is kept at its offset from the centre
+## and held where it stands until the square is set down.
+func _fold_shut() -> void:
+	pocket_shut = true
+	var r := Rect2(origin - Vector2(lv_half, lv_half), Vector2(lv_half, lv_half) * 2.0)
+	var bodies: Array = []
+	if ctx.field != null:
+		for e in ctx.field.in_rect(r):
+			var p := e as Person
+			if (p != null and p.inside) or not e.is_alive():
+				continue
+			bodies.append(e)
+	if ctx.crowd != null:
+		if ctx.crowd.animals != null and is_instance_valid(ctx.crowd.animals):
+			for a: Animal in ctx.crowd.animals.animals:
+				if is_instance_valid(a) and a.is_alive() and r.has_point(a.ground_pos):
+					bodies.append(a)
+		for pack: Visitors in ctx.crowd.visitors:
+			for a in pack.living():
+				if r.has_point(a.ground_pos):
+					bodies.append(a)
+	for body: Object in bodies:
+		var at_ground: Vector2 = body.ground_pos
+		_folded.append([body, at_ground - origin])
+		_hold(body, at_ground, POCKET_WAIT + 0.5)
+	ctx.play(&"q_mirror", origin, -3.0)
+	if not DominionParts.staged(self):
+		return
+	var sheet := Sheet.new()
+	sheet.fx = self
+	sheet.position = origin
+	sheet.z_index = 4
+	track(sheet, ctx.ground)
+
+
+## `body` held still at `spot` for `seconds`: a person rooted (its stun, and no step taken), and anything set back on the
+## spot each frame should something move it.
+func _hold(body: Object, spot: Vector2, seconds: float) -> void:
+	var p := body as Person
+	if p != null:
+		p.stun(seconds)
+	_held.append([body, spot, seconds])
+
+
+## Pocket Square: the folded square is set down at `centre` (its own place when no click came): everyone folded in it
+## is unfolded at the same offset from `centre` (on the nearest open ground when that is not), dazed DAZE.
+func _set_down(centre: Vector2) -> void:
+	if not pocket_shut:
+		return
+	pocket_shut = false
+	pocket_at = centre
+	pocket_set_t = t
+	_held.clear()
+	var moving := centre != origin
+	for f: Array in _folded:
+		var body: Object = f[0]
+		if not is_instance_valid(body) or not body.is_alive():
+			continue
+		var p := body as Person
+		if p != null and p.inside:
+			continue
+		var spot: Vector2 = origin + (f[1] as Vector2)
+		if moving:
+			var want: Vector2 = centre + (f[1] as Vector2)
+			if not ward.open_ground(want) and ward.grid != null:
+				want = ward.grid.nearest_walkable(want, 8)
+			if want != Vector2.INF and body.wrap_to(want):
+				spot = want
+				pocket_moved += 1
+		if p != null:
+			# The fold's hold lifts; the unfolding dazes.
+			p.wait = 0.0
+			p.stun(DAZE)
+			p.hesitate(DAZE)
+		_hold(body, spot, DAZE)
+	_folded.clear()
+	duration = t + UNFOLD + FADE
+	ctx.play(&"q_foldward", centre, -3.0)
+	if DominionParts.staged(self):
+		DominionParts.pulse(self, centre, lv_half * 1.7, colour(), 0.6, 0.8)
 
 
 func _fx_process(delta: float) -> void:
 	_tick_in -= delta
+	# Pocket Square: those folded in it (or just set down, dazed) stay where they are.
+	for i in range(_held.size() - 1, -1, -1):
+		var h: Array = _held[i]
+		h[2] = float(h[2]) - delta
+		var body: Object = h[0]
+		if h[2] <= 0.0 or not is_instance_valid(body) or not body.is_alive():
+			_held.remove_at(i)
+			continue
+		var p := body as Person
+		if p != null:
+			# Its stun roots its mind; this keeps its feet from the step it would take between two thoughts.
+			p._idle = maxf(p._idle, 0.1)
+		if (body.ground_pos as Vector2) != (h[1] as Vector2):
+			body.wrap_to(h[1], false)
 	if holding:
 		ward.step(ctx.field, ctx.crowd)
 		folds += ward.wrapped.size()
-		turned += ward.turn_away(T_FOLD + SPAN - t, TURN_AWAY)
+		turned += ward.turn_away(T_FOLD + lv_span - t, TURN_AWAY)
 		stops += ward.stopped.size()
 		for w: Array in ward.wrapped:
 			_ripple(w[1], w[2])
@@ -214,21 +365,51 @@ func life() -> Array:
 	return VIOLET_LIFE if mode == OUT else GOLD_LIFE
 
 
-## How much of the square shows: in as it folds, out over FADE once the span is over.
+## How much of the square shows: in as it folds, out over FADE once the span is over (Pocket Square: over FOLD_SHUT,
+## folding into the crease).
 func shown() -> float:
-	return clampf(minf(t / T_FOLD, (duration - t) / FADE), 0.0, 1.0)
+	return clampf(minf(t / T_FOLD, (_wall_gone() - t) / _wall_fade()), 0.0, 1.0)
 
 
 ## How far the wall has risen out of the ground (0..1): up as the square folds, back down over FADE at the end.
 func risen() -> float:
 	var up := clampf(t / T_FOLD, 0.0, 1.0)
-	var down := clampf((duration - t) / FADE, 0.0, 1.0)
+	var down := clampf((_wall_gone() - t) / _wall_fade(), 0.0, 1.0)
 	return minf(1.0 - (1.0 - up) * (1.0 - up), 1.0 - (1.0 - down) * (1.0 - down))
 
 
+## When the wall is gone: FADE after the span (FOLD_SHUT under Pocket Square, the wall folding into the crease).
+func _wall_gone() -> float:
+	return T_FOLD + lv_span + _wall_fade()
+
+
+func _wall_fade() -> float:
+	return FOLD_SHUT if pocket else FADE
+
+
+## Pocket Square, for the sheet: 0..1 how far the square is folded shut now (1: a crease).
+func folded() -> float:
+	var shut_t := T_FOLD + lv_span
+	if pocket_set_t < 0.0:
+		return clampf((t - shut_t) / FOLD_SHUT, 0.0, 1.0)
+	return 1.0 - clampf((t - pocket_set_t) / UNFOLD, 0.0, 1.0)
+
+
+## Pocket Square, for the sheet: where it stands (where the square was set down, or its own place).
+func sheet_at() -> Vector2:
+	return origin if pocket_at == Vector2.INF else pocket_at
+
+
+## Pocket Square, for the sheet: its alpha (it fades over FADE once unfolded).
+func sheet_alpha() -> float:
+	if pocket_set_t < 0.0:
+		return 1.0
+	return clampf(1.0 - (t - pocket_set_t - UNFOLD) / FADE, 0.0, 1.0)
+
+
 func _corners() -> Array[Vector2]:
-	return [origin + Vector2(-HALF, -HALF), origin + Vector2(HALF, -HALF), origin + Vector2(HALF, HALF),
-		origin + Vector2(-HALF, HALF)]
+	return [origin + Vector2(-lv_half, -lv_half), origin + Vector2(lv_half, -lv_half), origin + Vector2(lv_half, lv_half),
+		origin + Vector2(-lv_half, lv_half)]
 
 
 ## The town's walk grid: the crowd's, or anyone's in the field.
@@ -253,9 +434,7 @@ class Crease extends Node2D:
 	func _draw() -> void:
 		var col := fx.colour()
 		var hot := fx.hot()
-		var c := fx.origin
-		var corners: Array[Vector2] = [c + Vector2(-HALF, -HALF), c + Vector2(HALF, -HALF), c + Vector2(HALF, HALF),
-			c + Vector2(-HALF, HALF)]
+		var corners := fx._corners()
 		var ring := PackedVector2Array(corners)
 		ring.append(corners[0])
 		draw_colored_polygon(PackedVector2Array(corners), Color(col, 0.05))
@@ -319,7 +498,7 @@ class WallPiece extends Node2D:
 		var col := fx.colour()
 		var hot := fx.hot()
 		var now := fx.t
-		var round_len := HALF * 8.0
+		var round_len := fx.lv_half * 8.0
 		var gd := absf(_s - fmod(now * 0.35, 1.0) * round_len)
 		var glint := clampf(1.0 - minf(gd, round_len - gd) / 1.2, 0.0, 1.0)
 		var wave := 0.5 + 0.5 * sin(now * 1.2 - _s * 1.1)
@@ -410,3 +589,41 @@ class WallPiece extends Node2D:
 		for i in RING + 1:
 			var th := TAU * float(i) / float(RING)
 			_ring[i] = c + Iso.ground_to_screen(_along * r * cos(th)) + Vector2(0.0, -r * RIPPLE_UP * sin(th))
+
+
+## Pocket Square's paper, in ground units on the ground layer: the square as a sheet that folds shut along its middle
+## (each half swinging in to the crease, the far half in shade) into a bright crease of light the square's length, which
+## breathes while it waits for the click; set down, it stands at the new place and unfolds the other way, then fades.
+class Sheet extends Node2D:
+	var fx: FoldedWardFx
+
+	func _process(_delta: float) -> void:
+		position = fx.sheet_at()
+		queue_redraw()
+
+	func _draw() -> void:
+		var a := fx.sheet_alpha()
+		if a <= 0.0:
+			return
+		var h := fx.lv_half
+		var k := fx.folded()
+		var w := h * maxf(1.0 - k, 0.04)
+		var col := fx.colour()
+		var hot := fx.hot()
+		var deep: Color = fx.life()[2]
+		var lit := PackedVector2Array([Vector2(-w, -h), Vector2(0.0, -h), Vector2(0.0, h), Vector2(-w, h)])
+		var shade := PackedVector2Array([Vector2(0.0, -h), Vector2(w, -h), Vector2(w, h), Vector2(0.0, h)])
+		draw_colored_polygon(lit, Color(col, (0.1 + 0.12 * k) * a))
+		draw_colored_polygon(shade, Color(deep, (0.14 + 0.16 * k) * a))
+		# Its pleats, across each half.
+		for i in range(1, 4):
+			var y := -h + h * 2.0 * float(i) / 4.0
+			draw_line(Vector2(-w, y), Vector2(w, y), Color(hot, 0.12 * a * (1.0 - k)), 0.03)
+		var ring := PackedVector2Array([Vector2(-w, -h), Vector2(w, -h), Vector2(w, h), Vector2(-w, h), Vector2(-w, -h)])
+		draw_polyline(ring, Color(col, 0.5 * a), 0.06)
+		# The crease, brighter the further it is folded, breathing while it waits.
+		var beat := 0.8 + 0.2 * sin(fx.t * 5.0)
+		draw_line(Vector2(0.0, -h), Vector2(0.0, h), Color(deep, 0.6 * a * k), 0.22)
+		draw_line(Vector2(0.0, -h), Vector2(0.0, h), Color(hot, minf((0.35 + 0.6 * k * beat) * a, 1.0)), 0.07)
+		draw_circle(Vector2(0.0, -h), 0.1 * k, Color(hot, 0.8 * a))
+		draw_circle(Vector2(0.0, h), 0.1 * k, Color(hot, 0.8 * a))

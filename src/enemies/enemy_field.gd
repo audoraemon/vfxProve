@@ -123,6 +123,10 @@ func in_lane(origin: Vector2, dir: Vector2, half_width: float, along_min: float,
 func kill(e: DummyEnemy, kind: StringName, source := Vector2.INF) -> bool:
 	if not is_instance_valid(e) or not e.is_alive():
 		return false
+	if e.has_meta(&"decoy"):
+		# A decoy (Mirrorfold's glass twin) is no one: struck down it shatters, and no count, credit or director hears of it.
+		e.die(kind, source)
+		return false
 	e.die(kind, source)
 	enemy_killed.emit(e, kind)
 	return true

@@ -19,6 +19,9 @@ extends RefCounted
 ## `wreck` claws at buildings (a demon): every `wreck_every` it strikes the building within `wreck_reach` of it for
 ## `wreck` (damage kind frenzy) -- running past one at its prey as much as standing at one -- and with nobody in
 ## reach it goes for the nearest building within its seek reach instead.
+## A marked prey (mark(): Hound Gate's Quarry) is hunted by every visitor of the pack, at any distance, by the streets,
+## in place of the nearest within reach, until it falls or goes inside (the mark is dropped then) or another is marked;
+## one there is no way to is left alone SKIP_FOR like any other. With nothing marked the hunt is as above.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -57,6 +60,8 @@ var _lure_in := 0.0
 ## The field's living, taken once a step when someone first needs them (_people()).
 var _living: Array = []
 var _living_taken := false
+## The prey every visitor goes for (mark()), or null.
+var _mark: Person
 
 
 ## What one visitor is and does.
@@ -162,8 +167,27 @@ func take(a: Animal) -> void:
 	_free(a)
 
 
+## Every visitor of the pack goes for `p` (any distance, by the streets) until they fall or go inside; replaces any
+## earlier mark. null clears it.
+func mark(p: Person) -> void:
+	_mark = p
+
+
+func clear_mark() -> void:
+	_mark = null
+
+
+## The marked prey while it can still be hunted (alive, out in the open), or null -- a fallen or sheltered one's mark
+## is dropped here.
+func marked() -> Person:
+	if _mark != null and not (is_instance_valid(_mark) and _mark.is_alive() and not _mark.inside):
+		_mark = null
+	return _mark
+
+
 ## Every visitor is freed at once (the owner's end).
 func clear() -> void:
+	_mark = null
 	for a in _rules.keys():
 		_free(a)
 	_rules.clear()
@@ -204,15 +228,20 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	if r.skip != null and not is_instance_valid(r.skip):
 		r.skip = null  # the one it left alone is gone from the town (freed)
 	var who := a.target
-	if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside
-			and who.ground_pos.distance_to(a.ground_pos) <= r.seek_r):
-		who = null
-		a.target = null
-		r.retarget_in = 0.0
-	if r.retarget_in <= 0.0:
-		r.retarget_in = RETARGET
-		who = _nearest(a.ground_pos, r.seek_r, r.skip)
-		a.target = who
+	var quarry := marked()
+	if quarry != null and quarry != r.skip:
+		who = quarry  # the marked prey, wherever it is
+		a.target = quarry
+	else:
+		if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside
+				and who.ground_pos.distance_to(a.ground_pos) <= r.seek_r):
+			who = null
+			a.target = null
+			r.retarget_in = 0.0
+		if r.retarget_in <= 0.0:
+			r.retarget_in = RETARGET
+			who = _nearest(a.ground_pos, r.seek_r, r.skip)
+			a.target = who
 	if r.wreck > 0.0:
 		_wreck(a, r, delta, who == null)
 	if who == null:

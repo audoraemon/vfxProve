@@ -14,6 +14,12 @@ extends FxTimeline
 ## fire crossing throws embers off the way out. It is one way: the way out takes nobody back. Those already standing on
 ## the way in when it is laid are left alone until they step off and back on. After MIRROR_TIME both are gone. It locks
 ## the other slots only while it is cast (busy).
+##
+## Levels (PowerBook "mirror"): the longest lane (MAX_LEN) and the time it stands (MIRROR_TIME) grow, read once at the
+## cast into lv_max_len and lv_mirror_time; level 1 is the constants. Level 5's twist, Mirror Twins: everyone who goes
+## through leaves a glass twin at the way in that walks on toward where they meant to go (glass_twins.gd: a decoy the
+## town's hunters go for as for a person, which shatters when struck and cuts whoever stands by it). The passage runs on
+## past its MIRROR_TIME, a portal no more, only while its last twins walk.
 
 const MIRROR_TIME := 30.0
 ## A lane's half-width (a street), and how long the drag may lay it.
@@ -39,6 +45,7 @@ const QUAD_PX := 32.0
 const SHADER := preload("res://shaders/mirror_fold.gdshader")
 const GLASS := [Color("f0faff"), Color("b8e4ff"), Color("78b8e0"), Color(0.35, 0.6, 0.8, 0.5)]
 const GLASS_LIGHT := Color(0.6, 0.85, 1.0)
+const GlassTwins := preload("res://src/fx/control/glass_twins.gd")
 
 ## Which way the lanes run, how long they are, and where the way out starts.
 var dir := Vector2(1, 0)
@@ -47,6 +54,12 @@ var exit := Vector2.ZERO
 ## How many have been folded through, and how many fires carried across.
 var folded := 0
 var fires_crossed := 0
+## The level's numbers (PowerBook.stat(), read once at the cast).
+var lv_max_len := MAX_LEN
+var lv_mirror_time := MIRROR_TIME
+## Mirror Twins (level 5): the glass twins left at the way in; null below level 5.
+var twins: GlassTwins
+var _passage_over := false
 
 ## Who stood on the way in at the last step, by instance id: only stepping onto it folds.
 var _within := {}
@@ -124,7 +137,7 @@ static func standing_on(field: EnemyField, start: Vector2, d: Vector2, length_: 
 
 ## The passage as a portal (EnemyField.portals): whether `p` is on the way in, and where on the way out it comes down.
 func carries(p: Vector2) -> bool:
-	return on_way(origin, dir, length, p)
+	return not _passage_over and on_way(origin, dir, length, p)
 
 
 func across(p: Vector2) -> Vector2:
@@ -133,11 +146,16 @@ func across(p: Vector2) -> Vector2:
 
 
 func _build() -> void:
-	duration = MIRROR_TIME
+	lv_max_len = float(PowerBook.stat(extra, "mirror", "MAX_LEN", MAX_LEN))
+	lv_mirror_time = float(PowerBook.stat(extra, "mirror", "MIRROR_TIME", MIRROR_TIME))
+	duration = lv_mirror_time
+	if PowerBook.twist_at(extra, "mirror"):
+		twins = GlassTwins.new(self)
+		duration = lv_mirror_time + GlassTwins.TWIN_TIME
 	busy = 1.0
 	var d: Vector2 = extra.get("dir", Vector2(1, 0))
 	dir = d.normalized() if d.length() > 0.001 else Vector2(1, 0)
-	length = clampf(float(extra.get("length", 4.0)), MIN_LEN, MAX_LEN)
+	length = clampf(float(extra.get("length", 4.0)), MIN_LEN, lv_max_len)
 	exit = exit_for(origin, dir, length, extra.get("to", origin + dir * (length + MIN_APART)))
 	for e in ctx.field.alive():
 		if carries(e.ground_pos):
@@ -164,7 +182,7 @@ func _build() -> void:
 		for i in steps:
 			var g := start + dir * length * (float(i) + 0.5) / float(steps)
 			var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(g), PixelParticles.Shape.SQUARE, GLASS,
-				1.6, MIRROR_TIME - LIFT, {"radius": FxParts.particle_radius(HALF) * 0.9, "speed": Vector2(1, 4),
+				1.6, lv_mirror_time - LIFT, {"radius": FxParts.particle_radius(HALF) * 0.9, "speed": Vector2(1, 4),
 				"alt": Vector2(0, 3), "alt_speed": Vector2(5, 12), "life": Vector2(1.0, 1.8), "size": Vector2(1, 1)})
 			motes.gravity = -4.0
 			var light := FxParts.ground_light(self, g, HALF * 1.6, GLASS_LIGHT, 0.0)
@@ -173,18 +191,27 @@ func _build() -> void:
 
 
 func _fx_process(delta: float) -> void:
-	_fold_step()
-	_fire_in -= delta
-	if _fire_in <= 0.0:
-		_fire_in += FIRE_EVERY
-		_fire_step()
-	var presence := clampf(minf(t / LAY, (duration - t) / LIFT), 0.0, 1.0)
+	# The twins walk first: one left this step stands where it was left until the next.
+	if twins != null:
+		twins.step(delta)
+	if t >= lv_mirror_time and duration > lv_mirror_time:
+		# Mirror Twins: the passage itself is over; it runs on only for its twins.
+		if not _passage_over:
+			_passage_over = true
+			_unregister()
+	else:
+		_fold_step()
+		_fire_in -= delta
+		if _fire_in <= 0.0:
+			_fire_in += FIRE_EVERY
+			_fire_step()
+	var presence := clampf(minf(t / LAY, (lv_mirror_time - t) / LIFT), 0.0, 1.0)
 	# The sheen crosses once as it is laid, once as it lifts, and now and then between.
 	var shimmer := 0.0
 	if t < LAY:
 		shimmer = t / LAY
-	elif duration - t < LIFT:
-		shimmer = clampf(1.0 - (duration - t) / LIFT, 0.0, 1.0)
+	elif lv_mirror_time - t < LIFT:
+		shimmer = clampf(1.0 - (lv_mirror_time - t) / LIFT, 0.0, 1.0)
 	else:
 		var cycle := fmod(t - LAY, SHEEN_EVERY)
 		shimmer = cycle / SHEEN if cycle < SHEEN else 0.0
@@ -204,17 +231,26 @@ func _fx_process(delta: float) -> void:
 func _fold_step() -> void:
 	var now := {}
 	for e in ctx.field.alive():
-		if not carries(e.ground_pos):
-			continue
+		if not carries(e.ground_pos) or GlassTwins.is_twin(e):
+			continue  # glass twins are not carried: they walk on where they were left
 		var id := e.get_instance_id()
 		if _within.has(id):
 			now[id] = true
 			continue
 		var at := local(origin, dir, e.ground_pos)
 		var from := e.ground_pos
+		# Mirror Twins: where it meant to go (as fold() reads it) and its pace, taken before it is folded.
+		var person: Person = (e as Person) if twins != null else null
+		var aim := Vector2.INF
+		var pace := 0.0
+		if person != null:
+			aim = person._goal if person._goal != Vector2.INF else person._target
+			pace = person.walk_speed
 		if e.fold(across(e.ground_pos)):
 			folded += 1
 			_crossing(at, from, e.ground_pos)
+			if person != null:
+				twins.leave(person, from, aim, pace, dir)
 		else:
 			now[id] = true  # nowhere to set it down: it walks on across, as if nothing lay there
 	_within = now
@@ -324,12 +360,16 @@ func _fire_crossing(at: Vector2) -> void:
 ## The span ends (at MIRROR_TIME, or cut short): the passage leaves the portals.
 func _finish() -> void:
 	_unregister()
+	if twins != null:
+		twins.clear()
 	super()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		_unregister()
+		if twins != null:
+			twins.clear()
 
 
 func _unregister() -> void:

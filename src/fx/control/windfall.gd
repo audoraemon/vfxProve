@@ -26,6 +26,16 @@ extends FxTimeline
 ##   catches the plague (`infected`; PlagueManager.PLAGUE_LIFE to live).
 ## A Mirrorfold way in under the line carries the load through to its way out (EnemyField.through()): the whole line
 ## lands shifted, keeping its direction, and the portal opens over where it lands (`landing_origin`).
+##
+## Levels (PowerBook "windfall" levels): the line grows longer (LENGTH, with SEGMENTS heaps along it) and takes more
+## work to clear (CLEAR_WORK), read once a cast (lv_length, lv_segments, lv_clear_work; the consts at level 1).
+## Level 5's twist, Heart of the Fall (`heart`): when the last piece of the line is down, one great meteor comes out of
+## the portal (swollen for it) and, M_FLIGHT later, lands on the line's middle. Whoever stands within M_KILL_R of it is
+## crushed (damage kind stone), what stands within M_HIT_R takes M_DAMAGE (stone: no fire; the line's own segments are
+## spared), and it stays as a `boulder` BOULDER across -- a structure, role windfall, that bars the walk grid under it
+## and is cleared like a segment, the hands' work at it BOULDER_WORK segments' worth (cleared last, after the line) --
+## unless it lands inside a building. OIL: the meteor bursts as a barrel does (fire, not stone; nothing set down) and
+## its spot burns with the line, as a segment's does. GOODS and PLAGUE: stone.
 
 const MODES := ["stone", "oil", "goods", "plague"]
 const T_DROP := 0.8
@@ -56,6 +66,17 @@ const LOOTERS := 15
 const LOOT_R := 7.0
 const LOOT_SPAN := 30.0
 const LOOT_EVERY := 3.0
+## Heart of the Fall (level 5): the meteor's crush and blow radii and its blow, the boulder it leaves (BOULDER across,
+## BOULDER_HEIGHT tall, BOULDER_WORK segments' worth of the hands' work), how long it falls from the portal and how
+## long before it leaves the portal swells for it.
+const M_KILL_R := 1.2
+const M_HIT_R := 2.5
+const M_DAMAGE := 60.0
+const BOULDER := 1.8
+const BOULDER_HEIGHT := 14.0
+const BOULDER_WORK := 2.0
+const M_FLIGHT := 0.7
+const M_SWELL := 0.35
 ## The fall: one piece in the air FLIGHT, the next leaving the portal GAP later; the portal opens T_OPEN before the
 ## first leaves and closes T_CLOSE after the last, PORTAL_H px over the line's middle, PORTAL px across (half-size).
 const FLIGHT := 0.42
@@ -72,6 +93,17 @@ const FIRE_LIGHT := Color(1.0, 0.5, 0.18)
 const GOLD := [Color("fff6c0"), Color("ffd870"), Color("e0a030"), Color(0.6, 0.4, 0.1, 0.0)]
 ## Person.SICK_MOTE (a8d060), fading.
 const SICK := [Color("a8d060"), Color("86ab4d"), Color(0.45, 0.6, 0.25, 0.0)]
+
+## This cast's line length, segment count and clearing work at its ability level (the consts at level 1).
+var lv_length := LENGTH
+var lv_segments := SEGMENTS
+var lv_clear_work := CLEAR_WORK
+## Heart of the Fall: whether this cast drops the meteor; where it landed (INF before); how many it killed (counted in
+## `crushed` or, OIL, `burned` too); the boulder it left (null when none, or once it is gone).
+var heart := false
+var meteor_at := Vector2.INF
+var meteor_kills := 0
+var boulder: Structure = null
 
 ## The segments still lying there (in line order), how many it crushed, and the work still needed to clear them.
 var piles: Array[Structure] = []
@@ -107,14 +139,20 @@ var _light_in := 0.0
 var _loot_in := 0.0
 var _mote_in := 0.0
 var _flames: Array = []
+## Heart of the Fall: whether the meteor is still to land, when it leaves the portal, and the share of work_left that
+## is the boulder's (cleared last; 0 without one).
+var _meteor_pending := false
+var _meteor_leave := -1.0
+var _boulder_work := 0.0
 
 
-## The segments' footprints for a line centred on `at` along `dir`.
-static func rects(at: Vector2, dir: Vector2) -> Array[Rect2]:
+## The segments' footprints for a line centred on `at` along `dir`, `length` long in `segments` heaps (LENGTH and
+## SEGMENTS, or a cast's level).
+static func rects(at: Vector2, dir: Vector2, length := LENGTH, segments := SEGMENTS) -> Array[Rect2]:
 	var unit := dir.normalized() if dir.length() > 0.01 else Vector2(1, 0)
 	var out: Array[Rect2] = []
-	for k in SEGMENTS:
-		var c := at + unit * (-LENGTH * 0.5 + LENGTH * (float(k) + 0.5) / float(SEGMENTS))
+	for k in segments:
+		var c := at + unit * (-length * 0.5 + length * (float(k) + 0.5) / float(segments))
 		out.append(Rect2(c - Vector2(SEG, SEG) * 0.5, Vector2(SEG, SEG)))
 	return out
 
@@ -135,6 +173,11 @@ func burning() -> bool:
 
 
 func _build() -> void:
+	lv_length = float(PowerBook.stat(extra, "windfall", "LENGTH", LENGTH))
+	lv_segments = int(PowerBook.stat(extra, "windfall", "SEGMENTS", SEGMENTS))
+	lv_clear_work = float(PowerBook.stat(extra, "windfall", "CLEAR_WORK", CLEAR_WORK))
+	work_left = lv_clear_work
+	heart = PowerBook.twist_at(extra, "windfall")
 	_dir = extra.get("dir", Vector2(1, 0))
 	if _dir.length() < 0.01:
 		_dir = Vector2(1, 0)
@@ -145,6 +188,9 @@ func _build() -> void:
 	_seed = int(ctx.rng.randi() % 100000)
 	landing_origin = _resolve_landing()
 	_plan()
+	if heart:
+		_meteor_pending = true
+		_meteor_leave = last_land()
 	duration = T_DROP + (OIL_BURN if cargo == "oil" else LIFE) + 0.5
 	busy = T_DROP
 	at(T_DROP, _land)
@@ -152,12 +198,14 @@ func _build() -> void:
 	at(opens, func(): ctx.play(&"cf_fall", landing_origin, 6.0))
 	if not DominionParts.staged(self):
 		return
-	for r in rects(landing_origin, _dir):
+	for r in rects(landing_origin, _dir, lv_length, lv_segments):
 		var mark := FxParts.rings(self, r.get_center(), HIT_R, Color("ffb060"), 1, 6.0)
 		mark.set_param("scan", 0.0)
 		mark.tween_param("reveal", 0.0, 1.0, T_DROP * 0.7, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		mark.life = T_DROP + 0.05
 	var closes := last_land() - FLIGHT + T_CLOSE
+	if heart:
+		closes = maxf(closes, _meteor_leave + 0.1)  # it holds open for the meteor
 	var sp := portal_screen()
 	# The hole in the sky: the screen swirled into it, a glow about it, and the drawn mouth over both.
 	var swirl := FxParts.singularity(self, landing_origin, 1.9, FxParts.ICE)
@@ -191,6 +239,11 @@ func _build() -> void:
 	load.fx = self
 	load.z_index = 6
 	track(load, ctx.overhead)
+	if heart:
+		var rock := Meteor.new()
+		rock.fx = self
+		rock.z_index = 7
+		track(rock, ctx.overhead)
 
 
 ## Where the line's middle comes down: the origin, unless an open passage (EnemyField.through()) carries the origin
@@ -199,7 +252,7 @@ func _resolve_landing() -> Vector2:
 	var across := ctx.field.through(origin)
 	if across != origin:
 		return across
-	for r in rects(origin, _dir):
+	for r in rects(origin, _dir, lv_length, lv_segments):
 		var c := r.get_center()
 		var out := ctx.field.through(c)
 		if out != c:
@@ -225,7 +278,7 @@ func _plan() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _seed
 	_heaps = []
-	var all := rects(landing_origin, _dir)
+	var all := rects(landing_origin, _dir, lv_length, lv_segments)
 	var base := []
 	var top := []
 	for k in all.size():
@@ -263,7 +316,11 @@ func _land() -> void:
 	if moved != landing_origin:
 		landing_origin = moved
 		_plan()
-	var all := rects(landing_origin, _dir)
+	if heart:
+		_meteor_leave = last_land()
+		at(_meteor_leave + M_FLIGHT, _meteor)
+		at(maxf(_meteor_leave - M_SWELL, t), func(): ctx.play(&"cf_fall", landing_origin, 8.0))
+	var all := rects(landing_origin, _dir, lv_length, lv_segments)
 	_line = []
 	for r in all:
 		if not ctx.env.blocked(r.get_center(), 0.0):
@@ -310,7 +367,7 @@ func _land() -> void:
 	ctx.impact.hitstop(0.04)
 	ctx.shake.add_trauma(0.4)
 	ctx.shake.kick(Vector2(0, 3))
-	var ring := FxParts.shockwave(self, landing_origin, LENGTH * 0.5 + 0.8, FxParts.FIRE)
+	var ring := FxParts.shockwave(self, landing_origin, lv_length * 0.5 + 0.8, FxParts.FIRE)
 	ring.set_param("thickness", 0.1)
 	ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 0.8, 0.0, 0.2, 0.15)
@@ -355,7 +412,7 @@ func _burst() -> void:
 	ctx.impact.hitstop(0.04)
 	ctx.shake.add_trauma(0.45)
 	ctx.shake.kick(Vector2(0, 3))
-	var ring := FxParts.shockwave(self, landing_origin, LENGTH * 0.5 + 0.8, FxParts.FIRE)
+	var ring := FxParts.shockwave(self, landing_origin, lv_length * 0.5 + 0.8, FxParts.FIRE)
 	ring.set_param("thickness", 0.12)
 	ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 0.9, 0.0, 0.2, 0.15)
@@ -395,16 +452,155 @@ func _burst() -> void:
 			6.0, fade_at + 2.0, {"radius": 8.0, "alt_speed": Vector2(20, 55), "life": Vector2(0.4, 1.0), "size": Vector2(1, 1)})
 		embers.gravity = -10.0
 		FxParts.smoke(self, sp, 7.0, 1.6, OIL_BURN - 1.5, Vector2(14, 34), Vector2(3, 5), Vector2(1.2, 2.2), Color("c04a18"))
-	var half := Iso.radius_to_screen(LENGTH * 0.5 + 0.4)
+	var half := Iso.radius_to_screen(lv_length * 0.5 + 0.4)
 	var haze := FxParts.heat_haze(self, Iso.ground_to_screen(landing_origin) + Vector2(0, -16), half.x, 1.6)
 	haze.tween_param("strength", 1.6, 0.0, 3.0, fade_at)
 	haze.life = OIL_BURN + 0.1
 
 
+## Heart of the Fall: the meteor lands on the line's middle. Whoever stands within M_KILL_R is crushed (OIL: burned),
+## every structure within M_HIT_R -- but the line's own segments -- and every decor piece takes M_DAMAGE (stone, or
+## OIL's fire), and, on open ground, STONE / GOODS / PLAGUE leave the boulder (those who lived on its footprint pushed
+## clear) while OIL's spot burns on with the line.
+func _meteor() -> void:
+	if not _meteor_pending:
+		return  # cut short before it landed
+	_meteor_pending = false
+	var mid := landing_origin
+	meteor_at = mid
+	var oil := cargo == "oil"
+	var kind := &"fire" if oil else &"stone"
+	for e in ctx.field.in_radius(mid, M_KILL_R):
+		var p := e as Person
+		if p != null and p.inside:
+			continue
+		if ctx.field.kill(e, kind, mid):
+			meteor_kills += 1
+			if oil:
+				burned += 1
+			else:
+				crushed += 1
+	for s in ctx.env.structures().duplicate():
+		if is_instance_valid(s) and not s.destroyed and not piles.has(s) and s.distance_to(mid) <= M_HIT_R:
+			s.damage(M_DAMAGE, mid, kind)
+	for d in ctx.env.decor().duplicate():
+		if is_instance_valid(d) and d.at.distance_to(mid) <= M_HIT_R + 0.15:
+			d.hit(M_DAMAGE, kind)
+	var open := not _in_building(mid)
+	if oil:
+		if open and not _line.has(mid):
+			_line.append(mid)
+			if ctx.crowd != null:
+				ctx.crowd.threats.register(mid, BURN_R + 0.4, 0.6, maxf(T_DROP + OIL_BURN - t, 0.5), 5.0, 7.0, &"fire")
+			duration = maxf(duration, T_DROP + OIL_BURN + 0.5)
+		ctx.play(&"cf_erupt", mid, 4.0)
+	elif open:
+		var half := BOULDER * 0.5
+		for e in ctx.field.in_radius(mid, half * 1.42 + 0.15):
+			var p := e as Person
+			if (p != null and p.inside) or not e.is_alive():
+				continue
+			if not Rect2(mid - Vector2(half, half), Vector2(BOULDER, BOULDER)).grow(0.15).has_point(e.ground_pos):
+				continue
+			var off: Vector2 = e.ground_pos - mid
+			var out := off.normalized() if off.length() > 0.01 else Vector2(-_dir.y, _dir.x)
+			for d: float in [half * 1.42 + 0.3, half * 1.42 + 0.6, half * 1.42 + 0.9]:
+				if not ctx.env.blocked(mid + out * d):
+					e.ground_pos = mid + out * d
+					break
+		boulder = ctx.env.add_structure(Rect2(mid - Vector2(half, half), Vector2(BOULDER, BOULDER)), BOULDER_HEIGHT,
+			Structure.Kind.CRATES, &"windfall")
+		boulder.visible = false
+		_boulder_work = BOULDER_WORK * lv_clear_work / float(maxi(lv_segments, 1))
+		work_left += _boulder_work
+		duration = maxf(duration, T_DROP + LIFE + 0.5)
+		ctx.play(&"cf_impact", mid, 6.0)
+		ctx.play(&"jg_crumble", mid, 4.0)
+	else:
+		ctx.play(&"cf_impact", mid, 6.0)
+	if not DominionParts.staged(self):
+		return
+	_show_meteor_down(mid, oil)
+
+
+## Whether `g` lies inside a building (a standing, solid structure that is not this line's own).
+func _in_building(g: Vector2) -> bool:
+	for s in ctx.env.near(g, 0.0):
+		if is_instance_valid(s) and not s.destroyed and not s.walkable and s.role != &"windfall" and s.contains(g, 0.0):
+			return true
+	return false
+
+
+## The meteor strikes: a white flash and a jolt, a ring of shock and one of dust, the ground lit and scorched, rock and
+## splinters thrown wide, a column of dust -- and the boulder lying in it (OIL: a fireball, and the spot burns).
+func _show_meteor_down(mid: Vector2, oil: bool) -> void:
+	var sp := Iso.ground_to_screen(mid)
+	ctx.flash.call(Color(1.0, 0.75, 0.45, 0.3) if oil else Color(1.0, 0.92, 0.8, 0.26), 0.3)
+	ctx.impact.hitstop(0.08)
+	ctx.impact.aberration(3.0, 0.35)
+	ctx.shake.add_trauma(0.75)
+	ctx.shake.kick(Vector2(0, 7))
+	var ring := FxParts.shockwave(self, mid, M_HIT_R + 1.0, FxParts.FIRE)
+	ring.set_param("thickness", 0.14)
+	ring.tween_param("progress", 0.05, 1.0, 0.45, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
+	ring.tween_param("fade", 1.0, 0.0, 0.25, 0.2)
+	ring.life = 0.5
+	var dust_ring := FxParts.shockwave(self, mid, M_HIT_R + 1.8, FxParts.DUST_RING)
+	dust_ring.set_param("thickness", 0.22)
+	dust_ring.set_param("inner_heat", 0.0)
+	dust_ring.tween_param("progress", 0.05, 1.0, 0.9, 0.05, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	dust_ring.tween_param("fade", 0.9, 0.0, 0.5, 0.45)
+	dust_ring.life = 1.0
+	var flare := FxParts.bloom(self, sp + Vector2(0, -16), 90.0, Color("ffb070") if oil else Color(1.0, 0.9, 0.75), 1.6, 0.8)
+	flare.tween_param("intensity", 1.6, 0.0, 0.5, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	flare.life = 0.55
+	var light := FxParts.ground_light(self, mid, M_HIT_R * 1.4, FIRE_LIGHT, 2.2)
+	light.tween_param("intensity", 2.2, 0.0, 1.4, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	light.life = 1.45
+	var scorch := FxParts.decal(self, mid, BOULDER * 0.9, Color("ff6a1a"), Color("ffd27a"), Color(0.08, 0.06, 0.05, 0.85), 0.4)
+	scorch.tween_param("heat", 1.0, 0.1, 2.5, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	scorch.tween_param("fade", 1.0, 0.0, 2.0, 10.0)
+	scorch.life = 12.1
+	FxParts.debris(self, sp, 34, 18.0, Vector2(60, 260), FxParts.ROCK, Vector2(2.0, 5.0), true)
+	FxParts.debris(self, sp, 14, 14.0, Vector2(40, 200), WOOD, Vector2(1.5, 3.5), true)
+	FxParts.sparks(self, ctx.overhead, sp, 40, FxParts.FIRE_LIFE, Vector2(80, 320), Vector2(80, 300))
+	var plume := FxParts.particles(self, ctx.overhead_back, sp, PixelParticles.Shape.PUFF, FxParts.DUST_LIFE)
+	plume.drag = 0.5
+	plume.burst(30, {"radius": 22.0, "speed": Vector2(30, 110), "dir": PixelParticles.Dir.OUTWARD, "alt": Vector2(0, 10),
+		"alt_speed": Vector2(20, 90), "life": Vector2(1.0, 2.0), "size": Vector2(4, 8), "size_end_mul": 2.0})
+	FxParts.smoke(self, sp, 18.0, 30.0, 0.8, Vector2(30, 80), Vector2(4, 8), Vector2(1.2, 2.2), Color("ff5a1a") if oil else Color(0, 0, 0, 0))
+	if oil:
+		var fade_at := maxf(T_DROP + OIL_BURN - t - 3.0, 0.5)
+		FxParts.smoke(self, sp, 9.0, 2.0, maxf(fade_at, 0.5), Vector2(14, 34), Vector2(3, 5), Vector2(1.2, 2.2), Color("c04a18"))
+		var fire_light := FxParts.ground_light(self, mid, 1.6, FIRE_LIGHT, 1.2)
+		fire_light.set_param("flicker", 1.0)
+		fire_light.tween_param("intensity", 1.2, 0.0, 3.0, fade_at, Tween.TRANS_QUAD, Tween.EASE_IN)
+		fire_light.life = fade_at + 3.1
+		for j in 3:
+			var flame := FlameSprite.new()
+			flame.size = 1.1 + 0.2 * float(j % 2)
+			flame.setup(ctx.rng, ctx.rng.randi_range(4, 6))
+			flame.position = (sp + Vector2(-12.0 + 12.0 * float(j), -2.0 + 2.0 * float(j % 2))).round()
+			track(flame, stand_layer())
+			var tw := flame.create_tween()
+			tw.tween_property(flame, "strength", 1.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.tween_interval(fade_at)
+			tw.tween_property(flame, "strength", 0.0, 2.6)
+			_flames.append(flame)
+		return
+	if boulder == null:
+		return
+	var b := Boulder.new()
+	b.seed_value = _seed
+	b.position = sp
+	track(b, ctx.world)
+	_goods[boulder] = [b]
+
+
 ## OIL, after the burst: every BURN_EVERY the fire takes whoever stands within BURN_R of a segment; every LIGHT_EVERY it
 ## lights every burnable structure within LIGHT_R of one. Out after OIL_BURN.
 func _burn(delta: float) -> void:
-	if t >= T_DROP + OIL_BURN or _line.is_empty():
+	if t >= T_DROP + OIL_BURN or (_line.is_empty() and not _meteor_pending):
 		duration = minf(duration, t + 0.5)
 		return
 	_burn_in -= delta
@@ -427,27 +623,33 @@ func _burn(delta: float) -> void:
 						ctx.crowd.fires.ignite(s, 0.5)
 
 
-## Whether any of the line still lies there.
+## Whether any of the line (or the meteor's boulder) still lies there.
 func standing() -> bool:
 	_prune()
-	return not piles.is_empty()
+	return not piles.is_empty() or boulder != null
 
 
-## Forget segments gone by other hands (the engineers, a blast).
+## Forget segments gone by other hands (the engineers, a blast); a boulder gone so takes its share of the work with it.
 func _prune() -> void:
 	var kept: Array[Structure] = []
 	for s in piles:
 		if is_instance_valid(s) and not s.destroyed and ctx.env.structures().has(s):
 			kept.append(s)
 	piles = kept
+	if boulder != null and not (is_instance_valid(boulder) and not boulder.destroyed and ctx.env.structures().has(boulder)):
+		boulder = null
+		work_left = maxf(work_left - _boulder_work, 0.0)
+		_boulder_work = 0.0
 
 
-## The segments' middles, in line order.
+## The segments' middles, in line order (and the boulder's, last).
 func centres() -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for s in piles:
 		if is_instance_valid(s):
 			out.append(s.center())
+	if boulder != null and is_instance_valid(boulder):
+		out.append(boulder.center())
 	return out
 
 
@@ -458,7 +660,7 @@ func _fx_process(delta: float) -> void:
 	if cargo == "oil":
 		_burn(delta)
 		return
-	if not standing():
+	if not standing() and not _meteor_pending:
 		cleared = cleared or t < T_DROP + LIFE
 		_drop_goods_of_gone()
 		duration = minf(duration, t + 0.5)
@@ -474,12 +676,18 @@ func _fx_process(delta: float) -> void:
 		if cargo == "plague":
 			_sicken(hands)
 		work_left -= float(mini(hands.size(), CLEARERS))  # only so many hands fit along it
-		# The line comes down from its ends as the work goes: as many segments stand as the work left warrants.
-		var keep := int(ceil(float(SEGMENTS) * clampf(work_left / CLEAR_WORK, 0.0, 1.0)))
+		# The line comes down from its ends as the work goes: as many segments stand as the work left warrants. The
+		# boulder's share (_boulder_work) is the last of it: it goes when the work is done.
+		var seg_left := work_left - _boulder_work
+		var keep := int(ceil(float(lv_segments) * clampf(seg_left / lv_clear_work, 0.0, 1.0)))
 		while piles.size() > keep:
 			var s: Structure = piles.pop_back() if piles.size() % 2 == 0 else piles.pop_front()
 			_take_away(s)
-		if piles.is_empty():
+		if boulder != null and work_left <= 0.0:
+			_take_away(boulder)
+			boulder = null
+			_boulder_work = 0.0
+		if piles.is_empty() and boulder == null and not _meteor_pending:
 			cleared = true
 			duration = minf(duration, t + 0.5)
 			return
@@ -545,7 +753,8 @@ func _nearest_centre(p: Person) -> Vector2:
 
 func _spot_beside(c: Vector2, p: Person) -> Vector2:
 	var side := Vector2(-_dir.y, _dir.x) * (1.0 if ctx.rng.randf() < 0.5 else -1.0)
-	var spot := c + side * (SEG * 0.5 + 0.45)
+	var half := BOULDER * 0.5 if boulder != null and is_instance_valid(boulder) and c == boulder.center() else SEG * 0.5
+	var spot := c + side * (half + 0.45)
 	if p.grid != null:
 		var w := p.grid.nearest_walkable(spot)
 		if w != Vector2.INF:
@@ -594,7 +803,7 @@ func _loot() -> void:
 			need -= 1
 	ctx.play(&"q_wisp", landing_origin, -2.0)
 	if DominionParts.staged(self):
-		DominionParts.pulse(self, landing_origin, LENGTH * 0.5 + 0.6, Color("ffd870"), 0.45, 1.2)
+		DominionParts.pulse(self, landing_origin, lv_length * 0.5 + 0.6, Color("ffd870"), 0.45, 1.2)
 
 
 ## PLAGUE: every second of work, each one at the line catches it.
@@ -634,7 +843,7 @@ func _reek(delta: float) -> void:
 func _drop_goods_of_gone() -> void:
 	for s in _goods.keys():
 		# Checked before the typed lookup: a segment the engineers cut away is freed, and a freed key errors in has().
-		if is_instance_valid(s) and piles.has(s):
+		if is_instance_valid(s) and (piles.has(s) or s == boulder):
 			continue
 		for d in _goods[s]:
 			if is_instance_valid(d):
@@ -702,6 +911,11 @@ func _remove_all() -> void:
 	for s in piles.duplicate():
 		_take_away(s)
 	piles.clear()
+	if boulder != null:
+		_take_away(boulder)
+		boulder = null
+		_boulder_work = 0.0
+	_meteor_pending = false
 	_drop_goods_of_gone()
 	duration = minf(duration, t + 0.5)
 
@@ -781,6 +995,148 @@ class Load extends Node2D:
 		draw_set_transform(Vector2.ZERO)
 
 
+## Heart of the Fall: the great rock on its way down. It shows in the portal's mouth as the mouth swells (small, red
+## hot), then falls M_FLIGHT to the line's middle, growing as it comes, turning, a fiery trail behind it and its shadow
+## closing on the ground (OIL: wrapped in flame).
+class Meteor extends Node2D:
+	var fx: WindfallFx
+	var _rock := PackedVector2Array()
+
+	func _ready() -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = fx._seed + 31
+		for k in 11:
+			var a := TAU * float(k) / 11.0
+			_rock.append(Vector2(cos(a), sin(a) * 0.88) * rng.randf_range(0.78, 1.0))
+
+	func _process(_delta: float) -> void:
+		if fx.t >= fx._meteor_leave + M_FLIGHT or not fx._meteor_pending and fx.t > fx._meteor_leave:
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var leave := fx._meteor_leave
+		if fx.t < leave - M_SWELL:
+			return
+		var from := fx.portal_screen()
+		var to := Iso.ground_to_screen(fx.landing_origin)
+		var size := Iso.radius_to_screen(BOULDER * 0.5).x * 0.8
+		var oil := fx.cargo == "oil"
+		var k := clampf((fx.t - leave) / M_FLIGHT, 0.0, 1.0)
+		var emerge := smoothstep(leave - M_SWELL, leave, fx.t)
+		var p := Vector2(lerpf(from.x, to.x, k), lerpf(from.y, to.y - size * 0.5, k * k))
+		var r := size * (0.3 + 0.25 * emerge + 0.45 * smoothstep(0.0, 0.6, k))
+		# The shadow, closing on the spot.
+		if k > 0.0:
+			draw_set_transform(to, 0.0, Vector2(1.0, 0.5))
+			draw_circle(Vector2.ZERO, size * (0.4 + 0.8 * k), Color(0.0, 0.0, 0.0, 0.1 + 0.35 * k))
+			draw_set_transform(Vector2.ZERO)
+		# The trail: three layers, red to white, from the portal down to the rock, flickering.
+		var back := (from - p).normalized() if from.distance_to(p) > 1.0 else Vector2(0, -1)
+		var side := back.orthogonal()
+		var length := minf(from.distance_to(p), 160.0)
+		for layer in 3:
+			var width: float = r * [1.25, 0.9, 0.5][layer]
+			var col: Color = [Color(0.8, 0.2, 0.06, 0.55), Color(1.0, 0.5, 0.15, 0.75), Color(1.0, 0.9, 0.6, 0.9)][layer]
+			if not oil:
+				col = [Color(0.55, 0.3, 0.2, 0.45), Color(1.0, 0.55, 0.25, 0.65), Color(1.0, 0.92, 0.75, 0.85)][layer]
+			var steps := 7
+			for j in steps:
+				var f0 := float(j) / steps
+				var f1 := float(j + 1) / steps
+				var w0 := width * (1.0 - f0) * (1.0 + 0.12 * sin(fx.t * 40.0 + float(j) * 1.7 + float(layer)))
+				var w1 := width * (1.0 - f1)
+				var a := p + back * length * f0
+				var b := p + back * length * f1
+				draw_primitive(PackedVector2Array([a + side * w0, b + side * w1, b - side * w1, a - side * w0]),
+					PackedColorArray([col, col, col, col]), PackedVector2Array())
+		# A glow about it.
+		draw_circle(p, r * 1.35, Color(1.0, 0.5, 0.2, 0.28 if oil else 0.18))
+		# The rock: dark, turning, its face lit from below, molten seams across it.
+		var spin := fx.t * 3.2
+		var body := PackedVector2Array()
+		for v in _rock:
+			body.append(p + v.rotated(spin) * r)
+		draw_colored_polygon(body, Color("2c2826"))
+		var lit := PackedVector2Array()
+		for v in _rock:
+			lit.append(p + (v.rotated(spin) * 0.66 + Vector2(0.0, 0.18)) * r)
+		draw_colored_polygon(lit, Color("4d4540"))
+		for j: int in [1, 5, 8]:
+			var a: Vector2 = p + _rock[j].rotated(spin) * r * 0.92
+			var m: Vector2 = p + (_rock[j] * 0.45 + _rock[(j + 4) % 11] * 0.15).rotated(spin) * r
+			var e: Vector2 = p + _rock[(j + 2) % 11].rotated(spin) * r * 0.5
+			draw_polyline(PackedVector2Array([a, m, e]), Color("ff8a2a"), 2.0)
+			draw_polyline(PackedVector2Array([a, m, e]), Color("ffe080"), 1.0)
+		if oil:
+			for j in 4:
+				var fr: float = r * [1.15, 0.95, 0.75, 0.5][j] * (1.0 + 0.12 * sin(fx.t * 30.0 + float(j) * 1.3))
+				draw_circle(p + back * r * 0.35 * float(j), fr, Color(1.0, 0.45 + 0.1 * float(j), 0.1, 0.35))
+
+
+## Heart of the Fall: the boulder lying where the meteor came down, BOULDER across -- a great dark rock, cracked, its
+## seams still glowing for a while, sunk in a ring of shattered stone. In the world layer, so people sort round it.
+class Boulder extends Node2D:
+	var seed_value := 0
+	var _age := 0.0
+	var _rock := PackedVector2Array()
+	var _bits: Array = []
+
+	func _ready() -> void:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed_value + 53
+		for k in 12:
+			var a := TAU * float(k) / 12.0
+			_rock.append(Vector2(cos(a), sin(a)) * rng.randf_range(0.8, 1.0))
+		for k in 9:
+			var a := rng.randf() * TAU
+			var d := rng.randf_range(0.85, 1.25)
+			_bits.append([Vector2(cos(a) * d, sin(a) * d * 0.5), rng.randf_range(2.0, 4.5), rng.randi() % 4])
+
+	func _process(delta: float) -> void:
+		if _age < 6.0:
+			_age += delta
+			queue_redraw()
+
+	func _draw() -> void:
+		var half := Iso.radius_to_screen(BOULDER * 0.5)
+		var w := half.x * 0.78
+		var h := w * 0.85
+		# The pit and its shadow.
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
+		draw_circle(Vector2.ZERO, half.x * 0.95, Color(0.05, 0.04, 0.04, 0.45))
+		draw_circle(Vector2(4, 2), w * 1.0, Color(0.0, 0.0, 0.0, 0.35))
+		draw_set_transform(Vector2.ZERO)
+		# Shattered stone about it.
+		for bit in _bits:
+			var at: Vector2 = bit[0] * half.x
+			var r: float = bit[1]
+			var col: Color = FxParts.ROCK[int(bit[2])]
+			draw_colored_polygon(PackedVector2Array([at + Vector2(-r, 0), at + Vector2(-r * 0.3, -r * 0.8), at + Vector2(r, -r * 0.2), at + Vector2(r * 0.4, r * 0.5)]), col)
+		# The rock: a squat mass standing h tall, dark side, lit top, a few cracks.
+		var body := PackedVector2Array()
+		for v in _rock:
+			body.append(Vector2(v.x * w, v.y * w * 0.55 - h * 0.55 + (h * 0.35 if v.y > 0.0 else 0.0)))
+		draw_colored_polygon(body, Color("35302d"))
+		var top := PackedVector2Array()
+		for v in _rock:
+			top.append(Vector2(v.x * w * 0.8 - w * 0.08, v.y * w * 0.4 - h * 0.78))
+		draw_colored_polygon(top, Color("57504a"))
+		var rim := PackedVector2Array()
+		for v in _rock:
+			rim.append(Vector2(v.x * w * 0.45 - w * 0.2, v.y * w * 0.22 - h * 0.9))
+		draw_colored_polygon(rim, Color("6e665e"))
+		var heat := clampf(1.0 - _age / 6.0, 0.0, 1.0)
+		var crack := Color("201b19").lerp(Color("ff8a2a"), heat)
+		for j: int in [2, 6, 9]:
+			var a := body[j] * 0.95
+			var m := body[(j + 3) % 12] * 0.35 + Vector2(0, -h * 0.4)
+			draw_polyline(PackedVector2Array([a, m, m * 0.6 + a * 0.2]), crack, 1.5)
+		if heat > 0.0:
+			draw_circle(Vector2(0, -h * 0.5), w * 0.9, Color(1.0, 0.45, 0.15, 0.12 * heat))
+
+
 ## The hole in the sky the load comes out of: a dark mouth, PORTAL half-size when open, with a pale rim, a glint
 ## running round it, arcs of light turning inside, and sparks off its edge. Opens over T_OPEN from `opens`, closes
 ## over T_CLOSE from `closes`.
@@ -802,6 +1158,10 @@ class Portal extends Node2D:
 		var k := clampf(age / T_OPEN, 0.0, 1.0)
 		var p := 1.0 - pow(1.0 - k, 3.0)
 		p *= 1.0 + 0.12 * sin(k * PI)  # a touch of overshoot as it tears open
+		if fx.heart:
+			# Heart of the Fall: it tears wider for the meteor, and sags back once it is through.
+			var leave := fx._meteor_leave
+			p *= 1.0 + 0.5 * smoothstep(leave - M_SWELL, leave, fx.t) * (1.0 - smoothstep(leave, leave + 0.2, fx.t))
 		if fx.t > closes:
 			p *= 1.0 - clampf((fx.t - closes) / T_CLOSE, 0.0, 1.0)
 		if p <= 0.01:

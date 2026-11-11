@@ -68,7 +68,7 @@ const POWER_KINDS := {
 	"pilgrim": [],
 	"deep": [&"pit"],
 	"houndgate": [&"frenzy"],
-	"allroads": [],
+	"allroads": [&"gone"],  # The Last Mile (level 5): those it takes through the door of stars
 	"yesterday": [],
 	"foldward": [],
 	"everydoor": [],

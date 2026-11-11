@@ -78,7 +78,7 @@ static func run(t) -> void:
 		and PowerBook.authority_of("allroads") == "passage" and PowerBook.icon("allroads") != null
 		and PowerBook.hud_icon("allroads") != null and PowerBook.clip("allroads") != null and area.get("shape", "") == "circle"
 		and is_equal_approx(float(area.get("r", 0.0)), AllRoadsLeadHereFx.RADIUS)
-		and Rules.POWER_KINDS.get("allroads", null) == [] and PowerBook.family("allroads") == "passage",
+		and Rules.POWER_KINDS.get("allroads", null) == [&"gone"] and PowerBook.family("allroads") == "passage",
 		"All Roads Lead Here is Passage's 4 DP, quiet, a click on a circle of RADIUS, it kills nobody, with icons, clip and a family")
 
 	_selection(t)

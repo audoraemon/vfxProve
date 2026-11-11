@@ -168,12 +168,12 @@ static func run(t) -> void:
 		crowd.shelters._enter(dweller, taken)
 		(crowd.shelters.shelters[taken].inside as Array).append(dweller)
 	_run(fx, DoorsOfTheDeadFx.T_CHILL - 0.3)
-	t.check(not fx.chilled(near) and fx.spirits == 0 and float(near.statuses.get(&"slow", 1.0)) == 1.0,
+	t.check(not fx.chilled(near) and fx.spirits == 0 and near.pace_hold() == 1.0,
 		"before the cold has come in, nobody is slowed and nothing has come through")
 	var taken_hp := taken.hp
 	_run(fx, 0.6)
-	t.check(fx.chilled(near) and is_equal_approx(float(near.statuses.get(&"slow", 1.0)), DoorsOfTheDeadFx.COLD_SLOW)
-		and not fx.chilled(far) and not far.statuses.has(&"slow"),
+	t.check(fx.chilled(near) and is_equal_approx(near.pace_hold(), DoorsOfTheDeadFx.COLD_SLOW)
+		and not fx.chilled(far) and far.pace_holds.is_empty(),
 		"in the cold everyone walks at COLD_SLOW; one outside the district does not")
 	t.check(taken.hp < taken_hp and crowd.structure_mark(taken) == &"cursed",
 		"the first door opens: its building is struck and cursed (nobody shelters there) (%.0f of %.0f)" % [taken_hp - taken.hp, taken_hp])
@@ -208,7 +208,7 @@ static func run(t) -> void:
 	_run(fx, 1.0)
 	t.check(fx.spirits == at_end, "none come once the span is over")
 	_run(fx, DoorsOfTheDeadFx.RECALL + 0.3)
-	t.check(fx.visitors.living().is_empty() and not fx.chilled(near) and not near.statuses.has(&"slow"),
+	t.check(fx.visitors.living().is_empty() and not fx.chilled(near) and near.pace_holds.is_empty(),
 		"the span over, the other side is called back through the doors and the cold lifts: everyone has their pace back")
 	t.check(fx.kills() >= 0 and fx.wrecks >= 0, "kills %d, demon blows %d" % [fx.kills(), fx.wrecks])
 	fx.free()

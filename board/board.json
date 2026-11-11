@@ -1,10 +1,11 @@
 {
- "hash": "021b75132e760b17",
- "updated": "2026-11-11T12:34:08+07:00",
+ "hash": "2844d32bb19897fd",
+ "updated": "2026-11-11T13:54:24+07:00",
  "changes": {
-  "date": "<t:1794375248:f>",
+  "date": "<t:1794380064:f>",
   "items": [
-   "New: Heaven's Door: PixelLab rune door, 8 facings"
+   "New: Fire where it burns (sound)",
+   "New: Hit aftermath sounds (skill-tree Ruin abilities first) (in progress)"
   ]
  },
  "snapshot": {
@@ -786,6 +787,24 @@
     "updated": "2026-11-10",
     "order": 301
    },
+   "sound-fire-placed": {
+    "title": "Fire where it burns (sound)",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-11",
+    "order": 905
+   },
+   "sound-hit-aftermath": {
+    "title": "Hit aftermath sounds (skill-tree Ruin abilities first)",
+    "status": "doing",
+    "area": "Tools",
+    "needs_you": false,
+    "branch": "claude/sound-natural-2",
+    "updated": "2026-11-11",
+    "order": 906
+   },
    "t01": {
     "title": "Profile the v0.07 worst-frame bump",
     "status": "done",
@@ -1479,23 +1498,23 @@
    {
     "name": "god/skill-tree-ui",
     "ahead": 259,
-    "behind": 33,
+    "behind": 34,
     "date": "2026-11-11",
     "subject": "fix: final-review wave -- no Back/Raise during the fade into Remembrance; the memory's slot stays focused after a cast and Esc opens its pause; Whisper blurb; no frozen clock; Veil lavender-grey; the tree keeps its state for the session",
     "pushed": false
    },
    {
     "name": "claude/magical-lichterman-23d920",
-    "ahead": 254,
-    "behind": 33,
+    "ahead": 257,
+    "behind": 34,
     "date": "2026-11-11",
-    "subject": "feat: God's Paths art and motion -- statues lit and dimmed, rays follow the pick, swirl, flames, leaves",
+    "subject": "docs: round 2 plan -- ring_rect is a 40 px statue column (64 overlaps Death/Dominion)",
     "pushed": false
    },
    {
     "name": "claude/vfx-ability-effects-964aca",
     "ahead": 25,
-    "behind": 2,
+    "behind": 3,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
     "pushed": true
@@ -1503,23 +1522,31 @@
    {
     "name": "claude/zen-greider-6e47c5",
     "ahead": 25,
-    "behind": 2,
+    "behind": 3,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
     "pushed": false
    },
    {
     "name": "feat/soldier-jobs",
-    "ahead": 16,
-    "behind": 9,
+    "ahead": 17,
+    "behind": 10,
     "date": "2026-11-11",
-    "subject": "fix: final review (clear_ground scope, pile layer, gap re-check, guard return)",
+    "subject": "test: re-record references after final review fixes",
     "pushed": false
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 0,
+    "behind": 0,
+    "date": "2026-11-11",
+    "subject": "feat: fire where it burns: crackle, catching, cracking timbers, dousing",
+    "pushed": true
    },
    {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 33,
+    "behind": 34,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
@@ -1527,7 +1554,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 85,
+    "behind": 86,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1535,7 +1562,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 370,
+    "behind": 371,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1543,7 +1570,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 328,
+    "behind": 329,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1552,7 +1579,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-11",
-   "subject": "feat: dogs and cats call near the camera, day and night"
+   "subject": "feat: fire where it burns: crackle, catching, cracking timbers, dousing"
   }
  }
 }

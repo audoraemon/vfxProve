@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **25** to do · **124** done\n**9** active branches besides Develop-Main\n\n**Since the last update** (<t:1794375248:f>)\n• New: Heaven's Door: PixelLab rune door, 8 facings",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**14** in progress · **25** to do · **125** done\n**10** active branches besides Develop-Main\n\n**Since the last update** (<t:1794380064:f>)\n• New: Fire where it burns (sound)\n• New: Hit aftermath sounds (skill-tree Ruin abilities first) (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-11T12:34:08+07:00"
+     "timestamp": "2026-11-11T13:54:24+07:00"
     },
     {
      "title": "god/skill-tree-ui",
@@ -21,7 +21,7 @@
     },
     {
      "title": "claude/magical-lichterman-23d920",
-     "description": "254 commits not in Develop-Main · last commit today · local only\n> feat: God's Paths art and motion -- statues lit and dimmed, rays follow the pick, swirl, flames, leaves\n\n_No Ledger task points at this branch._",
+     "description": "257 commits not in Develop-Main · last commit today · local only\n> docs: round 2 plan -- ring_rect is a 40 px statue column (64 overlaps Death/Dominion)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -36,7 +36,12 @@
     },
     {
      "title": "feat/soldier-jobs",
-     "description": "16 commits not in Develop-Main · last commit today · local only\n> fix: final review (clear_ground scope, pile layer, gap re-check, guard return)\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
+     "description": "17 commits not in Develop-Main · last commit today · local only\n> test: re-record references after final review fixes\n\n**In progress** (1)\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts",
+     "color": 5016537
+    },
+    {
+     "title": "claude/sound-natural-2",
+     "description": "merged into Develop-Main · last commit today\n> feat: fire where it burns: crackle, catching, cracking timbers, dousing\n\n**In progress** (1)\n• Hit aftermath sounds (skill-tree Ruin abilities first)",
      "color": 5016537
     },
     {
@@ -53,11 +58,6 @@
      "title": "fix/evac-recalm",
      "description": "1 commit not in Develop-Main · last commit 33 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
-    },
-    {
-     "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 33 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
-     "color": 7041664
     }
    ]
   },
@@ -67,13 +67,18 @@
    },
    "embeds": [
     {
+     "title": "feat/capital-city",
+     "description": "merged into Develop-Main · last commit 33 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "color": 7041664
+    },
+    {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-11\n> feat: dogs and cats call near the camera, day and night\n\n**In progress** (10)\n• Doors of the Dead (Passage, Tier V) — **needs you**\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-11\n> feat: fire where it burns: crackle, catching, cracking timbers, dousing\n\n**In progress** (10)\n• Doors of the Dead (Passage, Tier V) — **needs you**\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Natural sound pass 5: animals and soldiers (merged) _(11-11)_\n• Natural sound pass 4: clearer, heavier crowd panic _(11-11)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-11)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-11)_\n• Heaven's Door: PixelLab rune door, 8 facings _(11-11)_\n• Heaven's Door (Passage Tier V) _(11-11)_\n• The Folded Ward (Passage Tier IV) _(11-11)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_",
+     "description": "• Fire where it burns (sound) _(11-11)_\n• Natural sound pass 5: animals and soldiers (merged) _(11-11)_\n• Natural sound pass 4: clearer, heavier crowd panic _(11-11)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-11)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-11)_\n• Heaven's Door: PixelLab rune door, 8 facings _(11-11)_\n• Heaven's Door (Passage Tier V) _(11-11)_\n• The Folded Ward (Passage Tier IV) _(11-11)_",
      "color": 10185686
     }
    ]

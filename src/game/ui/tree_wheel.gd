@@ -16,7 +16,7 @@ const COLORS := {
 	"ruin": Color("e08a5a"),
 	"death": Color("9fcf9a"),
 	"passage": Color("6fc4b8"),
-	"veil": Color("8fa6d8"),
+	"veil": Color("b4a8c8"),
 	"decree": Color("d8c27a"),
 }
 

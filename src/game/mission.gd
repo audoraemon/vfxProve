@@ -499,6 +499,10 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_aim.name = "Targeting"
 	_bf.ground_plane.add_child(_aim)
 	_aim.setup(_rules, _crowd)
+	if remembrance != "":
+		# Targeting unfocuses a slot after its cast (connected first, so this runs after): the memory's one slot goes back in focus, as
+		# keys 1-5 are the level picker's and a follow-up click ("click again") needs the slot focused.
+		_rules.cast_made.connect(func(_s: int, _k: String, _at: Vector2) -> void: focus_slot(0))
 	_aim.picked.connect(func(s: int) -> void:
 		if s >= 0:
 			UiSound.play(&"ui_focus"))
@@ -1133,7 +1137,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_end_chain_aim()
 			elif _aim.cancel():
 				UiSound.play(&"ui_back")  # a held press was called off
-			elif _aim.slot >= 0:
+			elif _aim.slot >= 0 and remembrance == "":  # the memory's one slot stays focused: Esc opens its pause at once
 				_aim.unfocus()
 				UiSound.play(&"ui_back")
 			elif autostart:
@@ -1233,6 +1237,12 @@ func _close_legend() -> void:
 
 ## Focus a slot by its key or its card. The focused one's own again lets it go (Targeting.pick), and that is the
 ## player letting go, so it sounds as Esc and a right-click do. A cast lets go too, but quietly: the power is heard.
+## Focus slot `i` and keep it so (unlike the slot key, which lets go of a slot already focused). Remembrance's one slot lives on it.
+func focus_slot(i: int) -> void:
+	if is_instance_valid(_aim) and _aim.slot != i:
+		_aim.pick(i)
+
+
 func _pick(i: int) -> void:
 	chain_aim = false  # a slot key or click lets the chain's aim go (god P3, plan P3-17)
 	if i == _aim.slot:

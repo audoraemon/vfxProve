@@ -171,6 +171,7 @@ static func _hud_text(t) -> void:
 		var want := "FREE" if free else PrepareScreen.cooldown_text((b.rules as Rules).power(0), (b.rules as Rules).level_of(0))
 		t.check(hud.slot_cooldown_text(0) == want and (free or want.ends_with("s")),
 			"the slot's cooldown line reads '%s' (free_play %s)" % [hud.slot_cooldown_text(0), free])
+		t.check(hud.clock_shown() == not free, "the night's clock is %s (free_play %s)" % ["hidden" if free else "shown", free])
 		hud.free()
 		_drop(b)
 

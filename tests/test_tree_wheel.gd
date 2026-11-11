@@ -50,6 +50,7 @@ static func _rings(t) -> void:
 
 static func _colors(t) -> void:
 	t.check(TreeWheel.color("dominion") == Color("9b7fd0"), "dominion colour")
+	t.check(TreeWheel.color("veil") == Color("b4a8c8"), "veil is a lavender-grey, not a blue beside Remembrance's")
 	t.check(TreeWheel.color("nope") == UiTheme.COL_TEXT, "unknown type falls back to COL_TEXT")
 	for k in ["dominion", "ruin", "death", "passage", "veil", "decree"]:
 		t.check(TreeWheel.COLORS.has(k), "COLORS has " + k)

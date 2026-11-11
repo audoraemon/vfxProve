@@ -289,6 +289,8 @@ var _remembering := ""
 var _memory_level := 1
 var _memory_night := false
 var _tree_state := {}
+## Whose tree state that is (slot, type, seed): a different god opens its own default.
+var _tree_state_of := ""
 
 
 ## The slot select's Back (god T1R, D7): to the title when Endless Night was opened from the title's first row, to the board when from the
@@ -812,8 +814,7 @@ func go_to(to: int) -> void:
 			var tree := SkillTreeScreen.new()
 			tree.name = "Tree"
 			add_child(tree)
-			tree.setup(god, _tree_state)
-			_tree_state = {}  # given back once: the next open from the hub starts fresh
+			tree.setup(god, _tree_state if _tree_state_of == _tree_owner() else {})  # kept for the session, for this god only
 			tree.action.connect(_on_tree_action)
 			_screen_node = tree
 		Screen.FAITH:
@@ -1006,7 +1007,7 @@ func _build_memory() -> Mission:
 	var seed_value := Time.get_ticks_usec()
 	var begin := func() -> void:
 		mission.start(PackedStringArray([_remembering]), seed_value)
-		mission._aim.pick(0)  # the overlay owns keys 1-5 (the level picker), so the one slot is focused for the player
+		mission.focus_slot(0)  # the overlay owns keys 1-5 (the level picker), so the one slot is focused for the player
 	if mission.is_prewarmed:
 		begin.call()
 	else:
@@ -1214,19 +1215,33 @@ func _on_hub_action(what: String) -> void:
 
 ## The Skill Tree: a point spent is written at once; Back is the hub.
 func _on_tree_action(what: String) -> void:
+	if _fading:
+		return  # a fade into a Remembrance is in flight: Back or Raise now would clear it and start a real night under it
 	if what == "learned":
 		_write_god()
 	elif what == "remember":
 		var tree := _screen_node as SkillTreeScreen
 		if tree == null or tree.selected_key() == "":
 			return
-		_tree_state = tree.state()
+		_keep_tree_state(tree)
 		_remembering = tree.selected_key()
 		_memory_level = tree.remember_level()
 		_memory_night = false
 		on_action("tree:remember")
 	elif what == "back":
+		var back_tree := _screen_node as SkillTreeScreen
+		if back_tree != null:
+			_keep_tree_state(back_tree)
 		on_action("tree:back")
+
+
+func _tree_owner() -> String:
+	return "%d:%s:%d" % [god_slot, god.type, god.seed] if god != null else ""
+
+
+func _keep_tree_state(tree: SkillTreeScreen) -> void:
+	_tree_state = tree.state()
+	_tree_state_of = _tree_owner()
 
 
 ## The Faith screen: a purchase is written at once; Back is the hub.

@@ -1242,7 +1242,8 @@ func _draw() -> void:
 	var w := size.x if size.x > 1.0 else get_viewport_rect().size.x
 	_frame_wishes = _build_wish_rows()  # v0.11.1: the wish rows are built once a draw, not once a plate
 	_draw_rise()
-	_draw_clock(w)
+	if clock_shown():
+		_draw_clock(w)
 	_draw_rite(w)
 	if not intro and not rite_plate_up():
 		_draw_play_plates(w)
@@ -1256,6 +1257,11 @@ func _draw() -> void:
 		_draw_chain()
 		_draw_slots(w)
 	_frame_wishes = null
+
+
+## The night's clock: not in Remembrance, which has no night to count down.
+func clock_shown() -> bool:
+	return not _rules.free_play
 
 
 func _draw_clock(w: float) -> void:

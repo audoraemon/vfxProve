@@ -18,7 +18,7 @@ const POWERS := [
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within reach struck down, unseen", "quiet": true,
 		"authority": "veil"},
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
-		"blurb": "Press a person to send them walking at someone or a building.",
+		"blurb": "Press a person: send them walking, at someone, or to burn a building.",
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
 		"shape": "press a person: walk, attack or burn -- send them somewhere (8 s), set them on someone, or at a building; not the same one again for 20 s", "quiet": true,
 		"authority": "dominion",

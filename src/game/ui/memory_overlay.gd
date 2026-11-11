@@ -2,7 +2,7 @@ class_name MemoryOverlay
 extends Node
 ## Remembrance's look and controls (Skill Tree wheel, Task 4): a pale vignette and a faint cool tint over the world (beneath the HUD), and
 ## over the HUD a top banner "REMEMBRANCE . <power> . Level n", a 1-5 level picker (keys 1-5 or a click; boxes above the power's top level
-## dim), a DAY/NIGHT toggle (key N or a click) and the "Esc . leave" hint. It only reports: level_picked(level) and night_toggled(night);
+## dim), a DAY/NIGHT toggle (key N or a click) and the "Esc . pause" hint. It only reports: level_picked(level) and night_toggled(night);
 ## Mission acts on them. Remembrance's blue is the only blue the tree uses.
 
 signal level_picked(level: int)
@@ -161,5 +161,5 @@ func _draw_ui() -> void:
 	_ui.draw_rect(NIGHT_RECT, COL_BLUE, false, 1.0)
 	var look := "N . %s" % ("NIGHT" if night else "DAY")
 	UiTheme.text(_ui, NIGHT_RECT.position + Vector2((NIGHT_RECT.size.x - UiTheme.width(look)) * 0.5, 12.0), look, UiTheme.SIZE_BODY, UiTheme.COL_TEXT)
-	var leave := "Esc . leave"
+	var leave := "Esc . pause"
 	UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(leave), 14.0), leave, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)

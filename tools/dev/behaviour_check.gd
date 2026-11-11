@@ -198,7 +198,8 @@ extends SceneTree
 ##          Ember cools); the next target within HEART_AHEAD of its time -- its standing Knights struck one at a time; a relief walking in
 ##          -- the same. A strike is Silent Doom where its death goes unseen, else Smite there, else Mind Whisper sends a lone citizen
 ##          witness HEART_HUSH units off; on a guard at the target in use, a bearer or the last guard, at last a seen Doom while the Gaze
-##          stays within HEART_GAZE_CAP (a seen death adds 10, and 20 once the flame is out). It never fells a target ahead of its time;
+##          stays within HEART_GAZE_CAP (a seen death adds 10, and 20 once the flame is out; every life in the Doom's ring counted), on
+##          the one whose Doom takes fewest lives. It never fells a target ahead of its time;
 ##          the result line gives the Gaze and the longest idle stretch). Hit-stop is off for it. --seed= as ringers.
 ##   night  (v0.09) The Long Night forced through its acts: `--path=festival|procession`, `--act1=win|lose|skip`,
 ##          `--act2=…`, `--act3=…`; each act ends as asked (skip lets it run to its clock); prints each act's result, the
@@ -2427,8 +2428,8 @@ func _heart(which: String) -> void:
 ## Strikes one of `who` (v0.11 M6, mission spec §3's "Its Gaze"): Silent Doom on the first whose death goes unseen (_doom_unseen()); else,
 ## with `smite_ok`, Smite on the first unseen; else Mind Whisper sends off the one citizen who would see a strike on one of them
 ## (_heart_hush(), its time kept in `memo`); else, with `seen_ok` (work that cannot wait: a Knight on guard at the target in use, a bearer,
-## his last guard), HEART_SETTLE after the last hush and the Gaze kept within HEART_GAZE_CAP, Silent Doom on the one fewest would see,
-## seen. "" when nothing serves.
+## his last guard), HEART_SETTLE after the last hush, Silent Doom on the one whose strike takes the fewest lives, then the one fewest would
+## see, seen -- priced as every life it takes seen (_heart_victims()), the Gaze kept within HEART_GAZE_CAP. "" when nothing serves.
 func _heart_strike(rules: Rules, slots: Dictionary, crowd: Crowd, who: Array[Person], smite_ok: bool, what: String, memo: Dictionary,
 		d: HeartOfFaithDirector, seen_ok := false) -> String:
 	var now := d._clock
@@ -2447,17 +2448,34 @@ func _heart_strike(rules: Rules, slots: Dictionary, crowd: Crowd, who: Array[Per
 			memo.hush = now
 			return did
 	var cost := HeartOfFaithDirector.FURY if d.flame_out else HeartOfFaithDirector.SEEN
-	if seen_ok and doom and now - float(memo.hush) >= HEART_SETTLE and d.gaze.value + cost <= HEART_GAZE_CAP:
+	if seen_ok and doom and now - float(memo.hush) >= HEART_SETTLE:
 		var best: Person = null
 		var fewest := 0
+		var lives := 0
 		for p in who:
+			var v := _heart_victims(crowd, p.ground_pos)
+			if d.gaze.value + cost * float(v) > HEART_GAZE_CAP:
+				continue
 			var n := _heart_seers(crowd, p).size()
-			if best == null or n < fewest:
+			if best == null or v < lives or (v == lives and n < fewest):
 				best = p
 				fewest = n
-		rules.cast(slots.doom, best.ground_pos)
-		return "doom %s, seen by %d" % [what, fewest]
+				lives = v
+		if best != null:
+			rules.cast(slots.doom, best.ground_pos)
+			return "doom %s, seen by %d" % [what, fewest]
 	return ""
+
+
+## How many alive out of doors a Silent Doom at `at` takes (v0.11 M6, soldier jobs' trace of heart_play_1): each one a seen death when
+## the strike is seen, so a player prices a seen Doom on a bearer in a crowd by every life in its ring, not one. Only reads.
+func _heart_victims(crowd: Crowd, at: Vector2) -> int:
+	var n := 0
+	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for o in group:
+			if is_instance_valid(o) and o.is_alive() and not o.inside and o.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
+				n += 1
+	return n
 
 
 ## Everyone alive out of doors but `p` within Crowd.DOOM_WITNESS of the edge of a Silent Doom on him (v0.11 M6): who would see it. Only

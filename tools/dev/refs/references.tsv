@@ -117,8 +117,8 @@ exodus_play_3	--scenario=exodus --case=play --seed=3	765564017
 heart_none_1	--scenario=heart --case=none --seed=1	-441851433
 heart_none_2	--scenario=heart --case=none --seed=2	200284545
 heart_none_3	--scenario=heart --case=none --seed=3	-9160069
-heart_play_1	--scenario=heart --case=play --seed=1	-216001356
-heart_play_2	--scenario=heart --case=play --seed=2	-463543707
+heart_play_1	--scenario=heart --case=play --seed=1	-911607702
+heart_play_2	--scenario=heart --case=play --seed=2	-712741892
 heart_play_3	--scenario=heart --case=play --seed=3	-573620346
 procession_none_1	--scenario=feast --path=procession --board --case=none --seed=1	-877144641
 procession_none_2	--scenario=feast --path=procession --board --case=none --seed=2	-87855005

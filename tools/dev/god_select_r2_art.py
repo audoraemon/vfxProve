@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""God's Paths round 2 art: the six centre-pool emblems and the six power effects, drawn in code (no AI generations).
+"""God's Paths round 2 art: the six power effects, drawn in code (no AI generations). The emblems: god_select_emblems.py.
 
 Writes into assets/pixellab/god_select/:
-  emblem_<type>.png             56x56, transparent
   fx_<type>_burst_1..8.png      112x128, transparent, play once at 12 fps (0.67 s)
   fx_<type>_loop_1..16.png      112x128, transparent, loop at 12 fps (1.33 s), seamless, burst_8 flows into loop_1
 Every effect frame is anchored at (56, 119) = the statue's feet (plinth bottom centre). The statue sprite sits at
@@ -832,280 +831,13 @@ def render_fx(t):
     return out
 
 
-# ---- emblems ---------------------------------------------------------------------------------------------------------
-
-E = 48  # emblem canvas; drawn in a 56-unit design space whose box [2, 54] maps onto pixels [3, 45)
-D0, D1, P0, PN = 2, 54, 3, 42
-
-
-def dmap(v):
-    return int(math.floor(P0 + (v - D0) * PN / (D1 - D0)))
-
-
-def dput(fr, x, y, col):
-    fr.put(dmap(x), dmap(y), col)
-
-
-def bevel(mask, pal, base=2):
-    """Fill a shape mask with a top-left lit bevel: highlight on up/left edges, shadow on down/right, a dark outline."""
-    out = Frame(None, E, E)
-    up = np.zeros_like(mask)
-    up[1:, :] = mask[:-1, :]
-    lf = np.zeros_like(mask)
-    lf[:, 1:] = mask[:, :-1]
-    dn = np.zeros_like(mask)
-    dn[:-1, :] = mask[1:, :]
-    rt = np.zeros_like(mask)
-    rt[:, :-1] = mask[:, 1:]
-    ys, xs = np.nonzero(mask)
-    for y, x in zip(ys, xs):
-        if not up[y, x] or not lf[y, x]:
-            c = pal[min(4, base + 2)]
-        elif not dn[y, x] or not rt[y, x]:
-            c = pal[max(0, base - 1)]
-        else:
-            c = pal[base]
-        out.put(x, y, c)
-    return out
-
-
-def emblem_frame(layers, pal, glow_col):
-    """layers: list of (mask, base tone index); drawn in order, then one shared dark outline and a 2 px glow."""
-    fr = Frame(None, E, E)
-    union = np.zeros((E, E), bool)
-    for m, base, *rest in layers:
-        b = bevel(m, rest[0] if rest else pal, base)
-        sel = m
-        fr.rgb[sel] = b.rgb[sel]
-        fr.a[sel] = 1.0
-        union |= m
-    ol = dilate(union, 1) & ~union
-    dark = hexc(pal[0]) * 0.55
-    fr.rgb[ol] = dark
-    fr.a[ol] = 1.0
-    body = union | ol
-    g1 = dilate(body, 1) & ~body
-    g2 = dilate(dilate(body, 1), 1) & ~dilate(body, 1)
-    fr.under(g1, glow_col, 0.5)
-    fr.under(g2, glow_col, 0.22)
-    return fr
-
-
-def canvas_mask(draw_fn, scale=1):
-    from PIL import ImageDraw
-    im = Image.new("L", (56 * scale, 56 * scale), 0)
-    draw_fn(ImageDraw.Draw(im), scale)
-    im = im.crop((D0 * scale, D0 * scale, D1 * scale, D1 * scale)).resize((PN, PN), Image.BOX)
-    m = np.zeros((E, E), bool)
-    m[P0:P0 + PN, P0:P0 + PN] = np.array(im) > 110
-    return m
-
-
-def emblem_ruin():
-    pal = PAL["ruin"]
-
-    def star(d, s):
-        c = 28 * s
-        pts = []
-        n = 12
-        for k in range(n * 2):
-            ang = -math.pi / 2 + k * math.pi / n
-            r = (26 if k % 4 == 0 else 19 if k % 2 == 0 else 12) * s
-            pts.append((c + r * math.cos(ang), c + r * math.sin(ang)))
-        d.polygon(pts, fill=255)
-
-    def core(d, s):
-        c = 28 * s
-        pts = []
-        for k in range(16):
-            ang = -math.pi / 2 + k * math.pi / 8
-            r = (11 if k % 2 == 0 else 6) * s
-            pts.append((c + r * math.cos(ang), c + r * math.sin(ang)))
-        d.polygon(pts, fill=255)
-
-    def hot(d, s):
-        c = 28 * s
-        d.ellipse((c - 3.5 * s, c - 3.5 * s, c + 3.5 * s, c + 3.5 * s), fill=255)
-
-    fr = emblem_frame([(canvas_mask(star, 4), 2), (canvas_mask(core, 4), 3), (canvas_mask(hot, 4), 4,
-                       pal[:4] + ["#ffffff"])], pal, pal[2])
-    # cracks of dark through the burst's rays
-    for (x, y) in poly_pts([(28, 12), (27, 16), (29, 19)]) + poly_pts([(40, 36), (37, 34), (36, 31)]) + \
-            poly_pts([(15, 38), (18, 36), (19, 33)]):
-        dput(fr, x, y, pal[1])
-    return fr
-
-
-def emblem_passage():
-    pal = PAL["passage"]
-
-    def caps(d, s):
-        d.rectangle((13 * s, 6 * s, 43 * s - 1, 10 * s - 1), fill=255)
-        d.rectangle((13 * s, 46 * s, 43 * s - 1, 50 * s - 1), fill=255)
-        d.rectangle((15 * s, 10 * s, 17 * s - 1, 46 * s - 1), fill=255)
-        d.rectangle((39 * s, 10 * s, 41 * s - 1, 46 * s - 1), fill=255)
-
-    def glass(d, s):
-        d.polygon([(18 * s, 11 * s), (38 * s, 11 * s), (30 * s, 27 * s), (30 * s, 29 * s), (38 * s, 45 * s),
-                   (18 * s, 45 * s), (26 * s, 29 * s), (26 * s, 27 * s)], fill=255)
-
-    def sand(d, s):
-        d.polygon([(21 * s, 18 * s), (35 * s, 18 * s), (28.5 * s, 26 * s), (27.5 * s, 26 * s)], fill=255)
-        d.polygon([(28 * s, 34 * s), (36 * s, 45 * s), (20 * s, 45 * s)], fill=255)
-        d.rectangle((27.5 * s, 26 * s, 28.5 * s, 36 * s), fill=255)
-
-    glass_pal = [pal[0], pal[0], "#163a7a", pal[1], pal[2]]
-    fr = emblem_frame([(canvas_mask(glass, 4), 2, glass_pal), (canvas_mask(sand, 4), 3),
-                       (canvas_mask(caps, 4), 2)], pal, pal[2])
-    for (x, y) in ((20, 13), (21, 14), (20, 41)):
-        dput(fr, x, y, pal[4])
-    for x in range(14, 42, 6):
-        dput(fr, x, 8, pal[4])
-        dput(fr, x, 48, pal[4])
-    return fr
-
-
-def emblem_veil():
-    pal = PAL["veil"]
-
-    def almond(d, s):
-        d.chord((4 * s, 14 * s, 52 * s, 50 * s), 200, 340, fill=255)
-        d.chord((4 * s, 6 * s, 52 * s, 42 * s), 20, 160, fill=255)
-
-    def white(d, s):
-        d.chord((9 * s, 17 * s, 47 * s, 47 * s), 205, 335, fill=255)
-        d.chord((9 * s, 9 * s, 47 * s, 39 * s), 25, 155, fill=255)
-
-    def iris(d, s):
-        d.ellipse((19 * s, 18 * s, 37 * s, 36 * s), fill=255)
-
-    def pupil(d, s):
-        d.ellipse((25 * s, 19 * s, 31 * s, 35 * s), fill=255)
-
-    def lashes(d, s):
-        for k in range(7):
-            ang = math.pi + (k + 1) * math.pi / 8
-            x0, y0 = 28 + 22 * math.cos(ang), 30 + 17 * math.sin(ang)
-            x1, y1 = 28 + 28 * math.cos(ang), 30 + 24 * math.sin(ang)
-            d.line((x0 * s, y0 * s, x1 * s, y1 * s), fill=255, width=int(2.2 * s))
-
-    whites = [pal[0], "#5a8c88", "#9cc8c0", "#c4e8e0", "#eafff8"]
-    dark = [pal[0], pal[0], "#06181a", pal[0], pal[1]]
-    fr = emblem_frame([(canvas_mask(lashes, 4), 2), (canvas_mask(almond, 4), 1), (canvas_mask(white, 4), 2, whites),
-                       (canvas_mask(iris, 4), 2), (canvas_mask(pupil, 4), 2, dark)], pal, pal[2])
-    dput(fr, 24, 22, "#ffffff")
-    dput(fr, 25, 22, "#ffffff")
-    dput(fr, 24, 23, "#ffffff")
-    return fr
-
-
-def emblem_decree():
-    pal = PAL["decree"]
-
-    def frame(d, s):
-        d.rectangle((26.5 * s, 9 * s, 29.5 * s, 46 * s), fill=255)  # pillar
-        d.polygon([(20 * s, 50 * s), (36 * s, 50 * s), (32 * s, 45 * s), (24 * s, 45 * s)], fill=255)  # foot
-        d.rectangle((6 * s, 12 * s, 50 * s, 15 * s), fill=255)  # beam
-        d.ellipse((24.5 * s, 4 * s, 31.5 * s, 11 * s), fill=255)  # finial
-        d.ellipse((4 * s, 11 * s, 9 * s, 16 * s), fill=255)
-        d.ellipse((47 * s, 11 * s, 52 * s, 16 * s), fill=255)
-
-    def chains(d, s):
-        for cx in (7, 49):
-            d.line(((cx - 0.5) * s, 15 * s, (cx - 6) * s, 34 * s), fill=255, width=int(1.3 * s))
-            d.line(((cx + 0.5) * s, 15 * s, (cx + 6) * s, 34 * s), fill=255, width=int(1.3 * s))
-
-    def pans(d, s):
-        for cx in (7, 49):
-            d.chord(((cx - 8) * s, 26 * s, (cx + 8) * s, 42 * s), 0, 180, fill=255)
-
-    fr = emblem_frame([(canvas_mask(chains, 4), 1), (canvas_mask(frame, 4), 2), (canvas_mask(pans, 4), 2)], pal,
-                      pal[2])
-    dput(fr, 27, 6, "#ffffff")
-    for x in range(8, 49, 5):
-        dput(fr, x, 13, pal[4])
-    return fr
-
-
-def emblem_death():
-    pal = PAL["death"]
-
-    def skull(d, s):
-        d.ellipse((11 * s, 5 * s, 45 * s, 38 * s), fill=255)
-        d.rectangle((17 * s, 30 * s, 39 * s, 42 * s), fill=255)
-        d.rectangle((19 * s, 40 * s, 37 * s, 50 * s), fill=255)
-
-    def holes(d, s):
-        d.ellipse((16 * s, 21 * s, 26.5 * s, 31 * s), fill=255)
-        d.ellipse((29.5 * s, 21 * s, 40 * s, 31 * s), fill=255)
-        d.polygon([(28 * s, 31 * s), (25 * s, 37 * s), (31 * s, 37 * s)], fill=255)
-        d.rectangle((17 * s, 42 * s, 39 * s, 43.5 * s), fill=255)
-        for x in (22.5, 27.5, 32.5):
-            d.rectangle((x * s, 43 * s, (x + 1.2) * s, 50 * s), fill=255)
-
-    def glint(d, s):
-        d.ellipse((19 * s, 24 * s, 23 * s, 28 * s), fill=255)
-        d.ellipse((33 * s, 24 * s, 37 * s, 28 * s), fill=255)
-
-    bone = [pal[0], "#86a888", "#bcd8b4", "#dcf0d4", "#f6fff2"]
-    m_sk = canvas_mask(skull, 4)
-    m_h = canvas_mask(holes, 4)
-    fr = emblem_frame([(m_sk & ~m_h, 2, bone)], pal, pal[2])
-    ys, xs = np.nonzero(m_h & m_sk)
-    for y, x in zip(ys, xs):
-        fr.put(x, y, "#0c1a10")
-    ys, xs = np.nonzero(canvas_mask(glint, 4))
-    for y, x in zip(ys, xs):
-        fr.put(x, y, pal[3])
-    dput(fr, 20, 25, pal[4])
-    dput(fr, 34, 25, pal[4])
-    for (x, y) in poly_pts([(30, 7), (31, 11), (29, 14), (30, 17)]):
-        dput(fr, x, y, "#86a888")
-    return fr
-
-
-def emblem_dominion():
-    pal = PAL["dominion"]
-
-    def crown(d, s):
-        d.polygon([(8 * s, 40 * s), (6 * s, 16 * s), (17 * s, 28 * s), (28 * s, 9 * s), (39 * s, 28 * s),
-                   (50 * s, 16 * s), (48 * s, 40 * s)], fill=255)
-        d.rectangle((8 * s, 39 * s, 48 * s, 47 * s), fill=255)
-
-    def orbs(d, s):
-        for (x, y, r) in ((6, 14, 3.5), (28, 7, 4), (50, 14, 3.5)):
-            d.ellipse(((x - r) * s, (y - r) * s, (x + r) * s, (y + r) * s), fill=255)
-
-    def band(d, s):
-        d.rectangle((9 * s, 40 * s, 47 * s, 46 * s), fill=255)
-
-    def gems(d, s):
-        for x in (16, 28, 40):
-            d.polygon([(x * s, 40.5 * s), ((x + 3) * s, 43 * s), (x * s, 45.5 * s), ((x - 3) * s, 43 * s)], fill=255)
-
-    band_pal = [pal[0], pal[1], "#7a44c0", pal[2], pal[3]]
-    gem_pal = [pal[0], pal[2], pal[3], pal[4], "#ffffff"]
-
-    def jewel(d, s):
-        d.polygon([(28 * s, 22 * s), (32 * s, 28 * s), (28 * s, 34 * s), (24 * s, 28 * s)], fill=255)
-
-    fr = emblem_frame([(canvas_mask(crown, 4), 2), (canvas_mask(band, 4), 2, band_pal),
-                       (canvas_mask(orbs, 4), 3), (canvas_mask(gems, 4), 2, gem_pal),
-                       (canvas_mask(jewel, 4), 2, gem_pal)], pal, pal[2])
-    return fr
-
-
-EMBLEMS = {"ruin": emblem_ruin, "passage": emblem_passage, "veil": emblem_veil, "decree": emblem_decree,
-           "death": emblem_death, "dominion": emblem_dominion}
-
-
 # ---- previews --------------------------------------------------------------------------------------------------------
 
 FEET = [(324, 151), (476, 170), (521, 253), (317, 300), (118, 253), (161, 170)]
 EMBLEM_AT = (320, 200)  # recommended: the screen code has 206, which puts the emblem on Decree's head
 
 
-def screen(sel, fx_img, emblem):
+def screen(sel, fx_img, emblem=None):
     bg = Image.open(os.path.join(ART, "background.png")).convert("RGBA")
     order = sorted(range(6), key=lambda i: FEET[i][1])
     for i in order:
@@ -1118,16 +850,16 @@ def screen(sel, fx_img, emblem):
         if i == sel and fx_img is not None:
             bg.alpha_composite(fx_img, (FEET[i][0] - AX, FEET[i][1] - AY))
     if emblem is not None:
-        bg.alpha_composite(emblem, (EMBLEM_AT[0] - E // 2, EMBLEM_AT[1] - E // 2))
+        bg.alpha_composite(emblem, (EMBLEM_AT[0] - emblem.width // 2, EMBLEM_AT[1] - emblem.height // 2))
     return bg
 
 
-def previews(out_dir, fx, emb):
+def previews(out_dir, fx):
     os.makedirs(out_dir, exist_ok=True)
     for name, pick in (("burst", lambda t: fx[t]["burst"][4]), ("loop", lambda t: fx[t]["loop"][5])):
         sheet = Image.new("RGBA", (640 * 3, 360 * 2))
         for i, t in enumerate(TYPES):
-            sheet.paste(screen(i, pick(t), emb[t]), ((i % 3) * 640, (i // 3) * 360))
+            sheet.paste(screen(i, pick(t)), ((i % 3) * 640, (i // 3) * 360))
         sheet.save(os.path.join(out_dir, "r2_sheet_%s.png" % name))
     # close-ups: every frame of every effect on the real platform, at 2x
     cw, ch = W + 16, H + 8
@@ -1144,16 +876,11 @@ def previews(out_dir, fx, emb):
                 continue
             zoom.paste(crop, (col * cw, row * ch))
     zoom.resize((zoom.width * 2, zoom.height * 2), Image.NEAREST).save(os.path.join(out_dir, "r2_sheet_frames.png"))
-    # emblems at 3x on the pool's dark
-    es = Image.new("RGBA", (6 * 56, 56), (14, 16, 24, 255))
-    for i, t in enumerate(TYPES):
-        es.alpha_composite(emb[t], (i * 56 + 4, 4))
-    es.resize((es.width * 3, es.height * 3), Image.NEAREST).save(os.path.join(out_dir, "r2_sheet_emblems.png"))
     # one GIF per god: burst once, then the loop three times, a 2x crop round the statue and the pool
     for i, t in enumerate(TYPES):
         fxp, fyp = FEET[i][0] - AX, FEET[i][1] - AY
         box = (max(0, fxp - 24), max(0, fyp - 8), min(640, fxp + W + 24), min(360, fyp + H + 16))
-        frames = [screen(i, im, emb[t]).crop(box) for im in fx[t]["burst"] + fx[t]["loop"] * 3]
+        frames = [screen(i, im).crop(box) for im in fx[t]["burst"] + fx[t]["loop"] * 3]
         frames = [f.convert("RGB").resize((f.width * 2, f.height * 2), Image.NEAREST) for f in frames]
         frames[0].save(os.path.join(out_dir, "r2_fx_%s.gif" % t), save_all=True, append_images=frames[1:],
                        duration=83, loop=0)
@@ -1161,18 +888,15 @@ def previews(out_dir, fx, emb):
 
 def main():
     fx = {}
-    emb = {}
     for t in TYPES:
         fx[t] = render_fx(t)
         for k, im in enumerate(fx[t]["burst"]):
             im.save(os.path.join(ART, "fx_%s_burst_%d.png" % (t, k + 1)))
         for k, im in enumerate(fx[t]["loop"]):
             im.save(os.path.join(ART, "fx_%s_loop_%d.png" % (t, k + 1)))
-        emb[t] = EMBLEMS[t]().image()
-        emb[t].save(os.path.join(ART, "emblem_%s.png" % t))
         print(t, "done")
     if "--preview" in sys.argv:
-        previews(sys.argv[sys.argv.index("--preview") + 1], fx, emb)
+        previews(sys.argv[sys.argv.index("--preview") + 1], fx)
 
 
 if __name__ == "__main__":

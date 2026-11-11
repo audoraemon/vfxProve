@@ -87,21 +87,15 @@ A red maple leaf for the drifting leaves (rotate or flip it in engine). Hand-dra
 
 ## Round 2: emblems and power effects (Task 6, 2026-11-11)
 
-All drawn in code, pixel by pixel: `tools/dev/god_select_r2_art.py` (deterministic; run it to rebuild every file below,
+The effects are all drawn in code, pixel by pixel: `tools/dev/god_select_r2_art.py` (deterministic; run it to rebuild every file below,
 `--preview <dir>` also writes contact sheets and GIFs). **0 PixelLab generations.** Balance before and after: **1473**.
 Each god uses five tones of its own colour (dark to light, the middle one near `GOD_COL`), plus white for the hottest
 pixels and four stone greys for Ruin's rocks. Edges are hard; the only see-through pixels are glow (a 2 px halo round the
 bright parts) and Veil's mist and veil, all snapped to eight alpha levels.
 
-### `emblem_<type>.png` x6: 48x48, transparent
+### Emblems: replaced in round 2b (below)
 
-The selected god's sign for the centre pool, in the god's colour: Ruin a 12-point burst with a white-hot core, Passage an
-hourglass with sand, Veil a lashed eye with a slit pupil, Decree the scales, Death a skull with green-lit sockets,
-Dominion a crown with orbs and gems. Bevel lit from the top left, a dark 1 px outline, a 2 px glow in the god's colour.
-The shape fills pixels 3-44; the glow reaches the canvas edge.
-- 48, not the planned 56: the free space in the pool between Ruin's platform base (y ~178) and Decree's head (y ~221) is
-  about 43 px, so **draw it centred at (320, 200)** (top left (296, 176)). At `EMBLEM_AT` (320, 206) its bottom touches
-  Decree's head.
+The flat 48x48 `emblem_<type>.png` files were removed (the user found them too plain). They are still in git history.
 
 ### `fx_<type>_burst_1..8.png` and `fx_<type>_loop_1..16.png` x6: 112x128, transparent
 
@@ -134,3 +128,38 @@ The shape fills pixels 3-44; the glow reaches the canvas edge.
   - dominion: a flash at the chest, two aura waves pulse out from behind her, threads shoot out from the hands, sparks;
     the loop: two aura waves per loop, six thin threads from the hands swaying with sparks running out along them, a
     ground wave.
+
+## Round 2b: living emblems (Task 6b, 2026-11-11)
+
+Pre-rendered in code by `tools/dev/god_select_emblems.py` (deterministic; `--preview <dir>` also writes the sheet, a
+screen grid and GIF mock-ups). **0 PixelLab generations.** Balance before and after: **1473**.
+
+Each sign is modelled as a cast medal: its layers (body, inlays, jewels) are raised reliefs with bevels on a 4 px thick
+solid. A small renderer spins it about its upright axis like a coin, lingering face-on and back-on and passing quickly
+through edge-on. It is lit from the top left, with a rim light from behind right, so the light on the edges moves with
+the turn. It renders at 4x and snaps each pixel to the god's six-tone ramp. The result is hard-edged and fully opaque,
+with a dark 1 px outline. The back face shows the sign the right way round. The god's own touch is animated inside the
+frames.
+
+| Files | Frames | Size | Centre | fps |
+|---|---|---|---|---|
+| `emblem_<type>_1..24.png` | 24 = one full turn | 72x72 | (36, 36) | 8 (3 s), loops |
+| `emblem_flash_<type>_1..6.png` | 6 | 96x96 | (48, 48) | 12 (0.5 s), once on pick |
+| `emblem_spark_<type>_1..4.png` | 4 (twinkle) | 9x9 | (4, 4) | about 10, cycled per spark |
+
+- The sign fills about 64x64 when face-on (the flames reach the top rows). It sits centred at **(320, 200)**, drawn
+  before the statues, so Decree's head covers its lower edge.
+- Frame 1 is face-on, frame 7 edge-on, frame 13 back-on and frame 19 edge-on.
+- Touches:
+  - Ruin: flames lick up off every top edge, and the core throbs.
+  - Passage: grains of sand run down through the neck.
+  - Veil: the lid blinks shut at frames 2-4, and the iris glows.
+  - Decree: the beam tips about 7 degrees each way and the pans follow; the finial jewel glows.
+  - Death: the eye sockets pulse green twice per turn, and a spark leaps at each peak.
+  - Dominion: seven jewels and orbs take turns to flash a star glint.
+- Flash: a white-hot core bursting into rays and a widening ring in the god's colours, with a soft glow. The emblem
+  should scale in under it (frames 2-4).
+- Sparks: a four-point twinkle with a white core and arms in the god's colour. They are opaque; fade them with
+  modulate alpha.
+- Left to the engine (mocked in the GIFs): the bob, the pulsing glow behind, sparks orbiting on an ellipse (the far half
+  drawn behind the emblem), the ring of light and the flipped reflection on the pool, and the scale-in.

@@ -48,7 +48,7 @@ func holding() -> bool:
 
 func _hypnotize() -> void:
 	_join()
-	ctx.play(&"grav_shimmer", origin, -8.0)
+	ctx.play(&"dom_trance", origin)
 	if not DominionParts.staged(self):
 		return
 	var spiral := Spiral.new()

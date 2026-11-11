@@ -1,0 +1,6 @@
+{"length": 3.4, "bpm": 60, "out": "tools/audio/music/render/dom_choir_voice.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 3.4, "mix": 0.34}, "humanize": false, "parts": [
+  {"instrument": "choir", "level_db": -15, "pan": 0.0, "notes": [{"t": 0, "p": "D3", "hold": 2.8, "vel": 120}, {"t": 0, "p": "D4", "hold": 2.8, "vel": 120}], "dyn": [[0, 100], [2.0, 120], [3.4, 30]]},
+  {"instrument": "trombones_sus", "level_db": -18, "pan": 0.0, "notes": [{"t": 0, "p": "D2", "hold": 2.8, "vel": 120}, {"t": 0, "p": "A2", "hold": 2.8, "vel": 120}, {"t": 0, "p": "D3", "hold": 2.8, "vel": 120}], "dyn": [[0, 110], [3.4, 30]]},
+  {"instrument": "horns", "level_db": -20, "pan": 0.0, "notes": [{"t": 0, "p": "D3", "hold": 2.8, "vel": 115}, {"t": 0, "p": "A3", "hold": 2.8, "vel": 115}], "dyn": [[0, 105], [3.4, 30]]},
+  {"instrument": "basses", "level_db": -19, "pan": 0.0, "notes": [{"t": 0, "p": "D2", "hold": 2.8, "vel": 120}]}
+]}

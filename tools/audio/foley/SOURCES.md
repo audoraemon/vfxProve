@@ -71,3 +71,13 @@ the sheet the user listens with.
 - `ui/`: the 100 CC0 pack's paper and wood, the 80 RPG pack's books and locks, the RPG sound pack's heavy cloth, Kenney
   wood impacts, OpenGameArt `bell-dingschimes` (CC0), Wikimedia Commons `Striking a bell 15cm large` and `Church bells -
   Leverkusen 2007`. The GodotSfxr originals are kept in `tools/audio/sfxr/_replaced/ui/`.
+
+## Dominion, the mind (skill-tree sound audit)
+
+- OpenGameArt (CC0): `dialog-vocal-samples` (short syllables and whispers that are not words), `creepy-incoherent-chanting`,
+  `droning-sound-effects`, `ghost-breath`, `heartbeat-sounds`; Wikimedia Commons `SingingBowl1` and `SingingBowl2` (public
+  domain, BambooBeast). Choir and brass layers rendered on Sonatina by `music_render.py` from
+  `tools/audio/music/dom_choir_*.score.json` into `tools/audio/music/render/`.
+- The Dominion powers no longer borrow Heaven Splitter, Nova or Judgement cues: each casts and takes hold with its own
+  (`q_<key>` and `dom_*` under `ability/dominion/`).
+

@@ -1,4 +1,6 @@
-{"length": 2.2, "rms_db": -17.5, "reverb": {"rt60": 2.0, "mix": 0.3, "predelay_ms": 14, "damp": 4500}, "eq": [["lowshelf", 200, -3.0]], "layers": [
-  {"src": "lib:oga/bell-dingschimes/bell_ding4.wav", "at": 0.0, "pitch": -12, "gain_db": -2, "lp": 3500, "fade_out": 700},
-  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Darkness1.ogg", "at": 0.25, "pitch": -4, "lp": 2600, "fade_in": 80, "fade_out": 400, "gain_db": -6},
-  {"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.9, "reverse": true, "dur": 1.1, "gain_db": -8, "fade_in": 20, "fade_out": 80}]}
+{"length": 3.4, "rms_db": -18.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 0.0, "from": 0.13, "dur": 3.2, "pitch": -17, "hp": 50, "lp": 4000, "fade_in": 3, "fade_out": 1300},
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 0.02, "from": 0.13, "dur": 3.0, "pitch": -16, "hp": 50, "lp": 3000, "gain_db": -6, "fade_in": 3, "fade_out": 1300},
+  {"src": "lib:oga/creepy-incoherent-chanting/chant3.wav", "at": 0.2, "from": 0.3, "dur": 3.0, "pitch": -3, "hp": 60, "lp": 4000, "gain_db": -4, "fade_in": 300, "fade_out": 900},
+  {"src": "lib:oga/dialog-vocal-samples/demon_3.ogg", "at": 0.5, "onset": true, "pitch": -5, "hp": 200, "lp": 5000, "gain_db": -10}
+]}

@@ -1,1 +1,9 @@
-{"length": 1.9, "peak_db": -1.5, "reverb": {"rt60": 1.5, "mix": 0.2, "predelay_ms": 18, "damp": 8000}, "layers": [{"src": "lib:oga/ghost-voice-pack/ghost_and_lich_voice_pack/Ghost and Lich Voice Pack/output (8).wav", "at": 0.0, "from": 0.5, "dur": 1.5, "hp": 2200, "lp": 9500, "gain_db": -4, "fade_in": 260, "fade_out": 500}, {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.05, "onset": true, "dur": 1.4, "hp": 3000, "gain_db": -9, "fade_in": 200, "fade_out": 500}]}
+{"length": 2.0, "rms_db": -19.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/dialog-vocal-samples/whisper_1.ogg", "at": 0.0, "onset": true, "pitch": -3, "hp": 600, "lp": 9000, "gain_db": -2, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.12, "onset": true, "pitch": -1, "hp": 600, "lp": 9000, "gain_db": -3, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_3.ogg", "at": 0.24, "onset": true, "pitch": -4, "hp": 600, "lp": 9000, "gain_db": -4, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 0.36, "onset": true, "pitch": -2, "hp": 600, "lp": 9000, "gain_db": -5, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_1.ogg", "at": 0.48, "onset": true, "pitch": -5, "hp": 600, "lp": 9000, "gain_db": -6, "fade_out": 80},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.3, "from": 0.2, "dur": 1.5, "pitch": -2, "hp": 300, "lp": 7000, "gain_db": -4, "fade_in": 200, "fade_out": 600},
+  {"src": "lib:oga/creepy-incoherent-chanting/chant8.wav", "at": 0.0, "from": 0.5, "dur": 1.6, "hp": 800, "lp": 10000, "gain_db": -8, "fade_in": 150, "fade_out": 500}
+]}

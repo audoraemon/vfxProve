@@ -122,8 +122,7 @@ func _staged() -> bool:
 func _speak() -> void:
 	if command == "silence" and ctx.crowd != null:
 		ctx.crowd.hush(seconds)
-	ctx.play(&"jg_rise", origin, -2.0)
-	ctx.play(&"nova_swell", origin, -4.0)
+	ctx.play(&"dom_speak", origin)
 	if _staged():
 		_speak_show()
 

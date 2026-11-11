@@ -113,8 +113,7 @@ func _build() -> void:
 				_pending.append([p, 2 if p.soldier else 1])
 	at(T_BREAK, _break)
 	at(T_BREAK + DURATION, _end)
-	ctx.play(&"hs_charge", origin, -3.0)
-	ctx.play(&"jg_rumble", origin, -4.0)
+	ctx.play(&"dom_strain", origin)
 	if _staged():
 		_strain_show()
 
@@ -125,8 +124,7 @@ func _staged() -> bool:
 
 ## The sigil breaks: from now the wave lays the sides.
 func _break() -> void:
-	ctx.play(&"hs_strike", origin)
-	ctx.play(&"nova_crack", origin, -3.0)
+	ctx.play(&"dom_break", origin)
 	if _staged():
 		_break_show()
 

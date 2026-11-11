@@ -1,0 +1,5 @@
+{"length": 2.6, "bpm": 60, "out": "tools/audio/music/render/dom_choir_split.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 3.0, "mix": 0.3}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -16, "pan": -0.6, "notes": [{"t": 0, "p": "C4", "hold": 1.9, "vel": 115}, {"t": 0, "p": "E4", "hold": 1.9, "vel": 115}, {"t": 0, "p": "G4", "hold": 1.9, "vel": 115}], "dyn": [[0, 120], [2.6, 20]]},
+  {"instrument": "choir", "level_db": -16, "pan": 0.6, "notes": [{"t": 0, "p": "C#4", "hold": 1.9, "vel": 115}, {"t": 0, "p": "F4", "hold": 1.9, "vel": 115}, {"t": 0, "p": "G#4", "hold": 1.9, "vel": 115}], "dyn": [[0, 120], [2.6, 20]]},
+  {"instrument": "trombones_sus", "level_db": -19, "pan": 0.0, "notes": [{"t": 0, "p": "C2", "hold": 1.6, "vel": 120}, {"t": 0, "p": "C#3", "hold": 1.6, "vel": 120}], "dyn": [[0, 120], [2.6, 20]]}
+]}

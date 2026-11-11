@@ -55,7 +55,10 @@ func _build() -> void:
 		duration = 1.0
 		return
 	at(T_CAST, _decide)
-	ctx.play(&"q_saint", origin)
+	if mode == "saint":
+		ctx.play(&"q_saint", origin)
+	else:
+		ctx.play(&"dom_sinner", origin)
 	if not DominionParts.staged(self):
 		return
 	var col := HALO if mode == "saint" else NOOSE
@@ -88,7 +91,7 @@ func _decide() -> void:
 				p.fight(chosen, SPAN, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.TARGET_ONLY, GUARD_SIGHT, &"sinner")
 				p.set_badge(DominionParts.BLADE, NOOSE, SPAN)
 				hunters += 1
-	ctx.play(&"jg_rise", chosen.ground_pos, -8.0)
+	ctx.play(&"dom_bind", chosen.ground_pos)
 	if not DominionParts.staged(self):
 		return
 	_links = DominionParts.links(self)

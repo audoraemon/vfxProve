@@ -1,0 +1,6 @@
+{"length": 3.0, "rms_db": -14.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/03_explosions_destruction/BreakGlass_01_s01.wav", "at": 0.0, "onset": true, "pitch": -3, "hp": 200, "lp": 12000, "fade_out": 400},
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/03_explosions_destruction/BreakGlass_03_s01.wav", "at": 0.03, "onset": true, "pitch": -6, "hp": 150, "lp": 9000, "gain_db": -3, "fade_out": 400},
+  {"src": "repo:tools/audio/music/render/dom_choir_split.wav", "at": 0.02, "from": 0.0, "dur": 2.6, "hp": 60, "lp": 11000, "fade_out": 900},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_002.ogg", "at": 0.0, "onset": true, "pitch": -12, "hp": 30, "lp": 2500, "gain_db": -4, "fade_out": 900}
+]}

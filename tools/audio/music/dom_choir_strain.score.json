@@ -1,0 +1,5 @@
+{"length": 2.2, "bpm": 60, "out": "tools/audio/music/render/dom_choir_strain.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 2.6, "mix": 0.3}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -16, "pan": 0.0, "notes": [{"t": 0, "p": "D4", "hold": 2.0, "vel": 90}, {"t": 0, "p": "Eb4", "hold": 2.0, "vel": 90}, {"t": 0, "p": "A4", "hold": 2.0, "vel": 90}], "dyn": [[0, 20], [1.8, 120], [2.2, 90]]},
+  {"instrument": "violins_trem", "level_db": -21, "pan": 0.0, "notes": [{"t": 0, "p": "D5", "hold": 2.0, "vel": 90}, {"t": 0, "p": "Eb5", "hold": 2.0, "vel": 90}], "dyn": [[0, 20], [1.8, 115]]},
+  {"instrument": "trombones_sus", "level_db": -21, "pan": 0.0, "notes": [{"t": 0.3, "p": "D2", "hold": 1.7, "vel": 100}, {"t": 0.3, "p": "Ab2", "hold": 1.7, "vel": 100}], "dyn": [[0, 20], [1.8, 115]]}
+]}

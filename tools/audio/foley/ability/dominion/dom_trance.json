@@ -1,0 +1,4 @@
+{"length": 3.0, "rms_db": -20.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.0, "from": 0.05, "dur": 2.9, "pitch": -7, "hp": 80, "lp": 6000, "fade_out": 1200},
+  {"src": "lib:oga/droning-sound-effects/drone66.wav", "at": 0.0, "from": 40.0, "dur": 2.8, "hp": 60, "lp": 1800, "gain_db": -6, "fade_in": 600, "fade_out": 1200}
+]}

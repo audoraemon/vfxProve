@@ -1,0 +1,5 @@
+{"length": 3.0, "rms_db": -19.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_amen.wav", "at": 0.0, "from": 1.6, "dur": 2.4, "hp": 120, "lp": 10000, "gain_db": -2, "fade_in": 200, "fade_out": 900},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_003.ogg", "at": 0.0, "onset": true, "pitch": -5, "hp": 40, "lp": 2500, "gain_db": -6},
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.05, "from": 0.05, "dur": 2.6, "pitch": -3, "hp": 100, "lp": 7000, "gain_db": -8, "fade_out": 1000}
+]}

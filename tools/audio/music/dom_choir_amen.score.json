@@ -1,0 +1,4 @@
+{"length": 4.0, "bpm": 60, "out": "tools/audio/music/render/dom_choir_amen.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 2.6, "mix": 0.3}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -16, "pan": 0.0, "notes": [{"t": 0, "p": "G3", "hold": 1.6, "vel": 95}, {"t": 0, "p": "B3", "hold": 1.6, "vel": 95}, {"t": 0, "p": "D4", "hold": 1.6, "vel": 95}, {"t": 0, "p": "G4", "hold": 1.6, "vel": 95}, {"t": 1.6, "p": "D4", "hold": 2.0, "vel": 100}, {"t": 1.6, "p": "F#4", "hold": 2.0, "vel": 100}, {"t": 1.6, "p": "A4", "hold": 2.0, "vel": 100}, {"t": 1.6, "p": "D5", "hold": 2.0, "vel": 100}], "dyn": [[0, 40], [1.4, 100], [1.6, 90], [3.2, 70], [4, 20]]},
+  {"instrument": "basses", "level_db": -22, "pan": 0.0, "notes": [{"t": 0, "p": "G2", "hold": 1.6, "vel": 90}, {"t": 1.6, "p": "D2", "hold": 2.0, "vel": 95}]}
+]}

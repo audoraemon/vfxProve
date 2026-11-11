@@ -1,0 +1,11 @@
+{"length": 2.1, "rms_db": -17.0, "reverb": {"rt60": 1.2, "mix": 0.18, "predelay_ms": 10, "damp": 4000}, "eq": [["lowshelf", 200, -3.0], ["peak", 1200, 2.0, 0.7]], "layers": [
+  {"src": "lib:oga/cure-magic/curemagic/Cure3.wav", "at": 0.05, "pitch": -2, "reverse": true, "lp": 3500, "fade_in": 300, "fade_out": 10, "gain_db": -3},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_000.ogg", "at": 0.24, "reverse": true, "lp": 2800, "fade_in": 200, "fade_out": 8, "gain_db": -6},
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 1.wav", "at": 0.1, "pitch": -10, "dur": 1.6, "hp": 250, "lp": 2200, "fade_in": 300, "fade_out": 400, "gain_db": -12},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_02.ogg", "at": 0.12, "reverse": true, "pitch": 3, "hp": 400, "lp": 4000, "gain_db": -9},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_01.ogg", "at": 0.3, "reverse": true, "pitch": 1, "hp": 400, "lp": 3800, "gain_db": -10},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_02.ogg", "at": 0.56, "reverse": true, "pitch": 2, "hp": 400, "lp": 3600, "gain_db": -10},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_01.ogg", "at": 0.84, "reverse": true, "pitch": 0, "hp": 400, "lp": 3400, "gain_db": -11},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_02.ogg", "at": 1.18, "reverse": true, "pitch": 0, "hp": 400, "lp": 3200, "gain_db": -12},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_light_001.ogg", "at": 1.74, "pitch": -4, "lp": 2000, "gain_db": -2},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_04.ogg", "at": 1.75, "pitch": -5, "lp": 1600, "fade_out": 150, "gain_db": -9}]}

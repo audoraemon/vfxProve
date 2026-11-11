@@ -1,7 +1,9 @@
 class_name UiSound
 extends Node
-## Interface sounds (spec §8), all made with GodotSfxr (tools/audio/sfxr/ui/, baked by
-## tools/audio/sfxr_bake.gd). They are not in the world, so they are not
+## Interface sounds (spec §8). Since natural sound pass 6 they are recordings that fit the dark medieval look --
+## parchment, books, wood, an iron latch, a wax seal, hand and church bells (tools/audio/foley/ui/, built by
+## tools/audio/foley.py); the GodotSfxr originals sit in tools/audio/sfxr/_replaced/ui/, and ui_win/ui_lose stay
+## GodotSfxr (the results now play Music's stingers instead). They are not in the world, so they are not
 ## positional, and they cannot hang off a battlefield -- the title, the draft and the results have none. One
 ## small pool of players under the scene tree's root, made the first time a sound plays and kept across every
 ## screen change, so a sting started on one screen finishes on the next.

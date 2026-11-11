@@ -1,0 +1,17 @@
+{"length": 2.8, "rms_db": -16.0, "reverb": {"rt60": 2.0, "mix": 0.26, "predelay_ms": 14, "damp": 5000}, "eq": [["lowshelf", 160, 2.0], ["peak", 3200, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.0, "dur": 2.8, "lp": 600, "fade_in": 500, "fade_out": 700, "gain_db": -9},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_134_rr1.wav", "at": 0.0, "pitch": 5, "dur": 0.75, "lp": 2400, "fade_in": 300, "fade_out": 350, "gain_db": -10},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_134_rr1.wav", "at": 0.45, "pitch": 2, "dur": 0.75, "lp": 2400, "fade_in": 300, "fade_out": 350, "gain_db": -10},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_134_rr1.wav", "at": 0.05, "pitch": -5, "dur": 0.75, "lp": 2400, "fade_in": 300, "fade_out": 350, "gain_db": -10},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_134_rr1.wav", "at": 0.5, "pitch": -2, "dur": 0.75, "lp": 2400, "fade_in": 300, "fade_out": 350, "gain_db": -10},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_146_rr1.wav", "at": 0.15, "pitch": 3, "dur": 0.8, "lp": 3000, "fade_in": 350, "fade_out": 400, "gain_db": -15},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_146_rr1.wav", "at": 0.6, "pitch": 1, "dur": 0.75, "lp": 3000, "fade_in": 300, "fade_out": 350, "gain_db": -15},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_134_rr1.wav", "at": 0.95, "dur": 1.85, "lp": 2400, "fade_in": 300, "fade_out": 700, "gain_db": -7},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_146_rr1.wav", "at": 1.0, "pitch": -5, "dur": 1.8, "lp": 2800, "fade_in": 350, "fade_out": 700, "gain_db": -11},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_146_rr1.wav", "at": 1.05, "pitch": 4, "dur": 1.75, "lp": 3000, "fade_in": 400, "fade_out": 700, "gain_db": -14},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_146_rr1.wav", "at": 1.05, "dur": 1.75, "lp": 3000, "fade_in": 400, "fade_out": 700, "gain_db": -14},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_concrete_000.ogg", "at": 0.3, "pitch": -2, "hp": 150, "lp": 2200, "gain_db": -21},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_concrete_001.ogg", "at": 0.74, "pitch": -2, "hp": 150, "lp": 2200, "gain_db": -22},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_concrete_002.ogg", "at": 1.18, "pitch": -2, "hp": 150, "lp": 2200, "gain_db": -21},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_concrete_003.ogg", "at": 1.62, "pitch": -2, "hp": 150, "lp": 2000, "gain_db": -23},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_concrete_004.ogg", "at": 2.06, "pitch": -2, "hp": 150, "lp": 1800, "gain_db": -25}]}

@@ -398,6 +398,7 @@ static func _keeper_alone(t) -> void:
 	t.check(ql.heralds[0].is_open() and ql.heralds[0].relays == 1 and ql.heralds[0].carrier == witness
 		and is_equal_approx(float(witness.statuses.get(&"slow", 1.0)), LanternWatch.HERALD_SLOW),
 		"seen: the witness takes the report on, slowed too")
+	_clear_round(q, witness, [])  # nobody by him to see him go
 	Kit.free_body(q, witness)
 	_run(q, 0.2)
 	t.check(not ql.heralds[0].is_open() and not ql.herald_running(), "a Herald whose body is gone from the town ends his report (no unwinnable night)")

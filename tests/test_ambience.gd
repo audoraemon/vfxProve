@@ -118,6 +118,10 @@ static func run(t) -> void:
 	for cue: StringName in [&"fire_catch", &"fire_crack", &"fire_douse"]:
 		t.check(Sfx.paths_for(cue).size() >= 3, "%s has takes" % cue)
 	t.check(bool(Sfx.CATALOG[&"fire_burn"].get("loop", false)) and Sfx.paths_for(&"fire_burn").size() == 2, "two burning loops")
+	# Stingers (pass 6): four orchestral cues, one-shots, each in the catalog and short.
+	for cue: StringName in Music.STINGS:
+		var st := Sfx.load_stream(cue)
+		t.check(st != null and not bool(Sfx.CATALOG[cue].get("loop", false)) and st.get_length() < 12.0, "%s is a short stinger" % cue)
 	t.check(Ambience.ANIMAL_DAY.y <= 15.0 and Ambience.ANIMAL_NIGHT.y <= 18.0, "a dog or cat calls every few seconds, day and night")
 	av.step(1.0)
 	t.check(av.pick(5, true, AnimalVoices.Act.DIE) == &"dog_yelp", "and it refills")

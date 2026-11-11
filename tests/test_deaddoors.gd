@@ -185,20 +185,28 @@ static func run(t) -> void:
 	for d in fx.doors:
 		all_open = all_open and (d.open or d.building.destroyed)
 	t.check(all_open and fx.spirits >= fx.doors.size(), "every door is open and each has let one through (%d)" % fx.spirits)
-	_run(fx, DoorsOfTheDeadFx.OUT_EVERY * float(DoorsOfTheDeadFx.PER_DOOR))
+	_run(fx, DoorsOfTheDeadFx.OUT_EVERY * 3.0)
 	var kinds := {}
 	for a in fx.visitors.living():
 		kinds[a.breed] = true
-	var want := mini(fx.doors.size() * DoorsOfTheDeadFx.PER_DOOR, DoorsOfTheDeadFx.MAX_SPIRITS)
-	t.check(fx.spirits == want and kinds.has(Animal.Breed.HELLHOUND) and kinds.has(Animal.Breed.GHOST) and kinds.has(Animal.Breed.DEMON),
-		"PER_DOOR come out of every door, MAX_SPIRITS at most, in the fixed turn: hounds, ghosts and demons (%d of %d)" % [fx.spirits, want])
+	t.check(kinds.has(Animal.Breed.HELLHOUND) and kinds.has(Animal.Breed.GHOST) and kinds.has(Animal.Breed.DEMON)
+		and fx.visitors.living().size() <= DoorsOfTheDeadFx.LIVE_CAP,
+		"the doors keep sending, in the fixed turn -- hounds, ghosts and demons -- never more than LIVE_CAP on their feet (%d out)" % fx.spirits)
 	var phases := true
 	for a in fx.visitors.living():
 		var r: Visitors.Rule = fx.visitors._rules[a]
 		phases = phases and r.phase == (a.breed == Animal.Breed.GHOST) and (r.wreck > 0.0) == (a.breed == Animal.Breed.DEMON)
 	t.check(phases, "only the ghosts go through walls and only the demons claw at buildings")
-	_run(fx, fx.t_end() - fx.t - 0.1)
-	t.check(fx.spirits == want, "no more come once each door has sent its PER_DOOR")
+	var mid := fx.spirits
+	var peak := 0
+	while fx.t < fx.t_end() - 0.1:
+		fx._process(DT)
+		peak = maxi(peak, fx.visitors.living().size())
+	t.check(fx.spirits > mid and fx.spirits <= DoorsOfTheDeadFx.MAX_SPIRITS and peak <= DoorsOfTheDeadFx.LIVE_CAP,
+		"they come for the whole span, filling back the fallen: %d through by the end (%d at the third turn), at most %d on their feet (MAX_SPIRITS %d, LIVE_CAP %d)" % [fx.spirits, mid, peak, DoorsOfTheDeadFx.MAX_SPIRITS, DoorsOfTheDeadFx.LIVE_CAP])
+	var at_end := fx.spirits
+	_run(fx, 1.0)
+	t.check(fx.spirits == at_end, "none come once the span is over")
 	_run(fx, DoorsOfTheDeadFx.RECALL + 0.3)
 	t.check(fx.visitors.living().is_empty() and not fx.chilled(near) and not near.statuses.has(&"slow"),
 		"the span over, the other side is called back through the doors and the cold lifts: everyone has their pace back")

@@ -611,7 +611,9 @@ func _finish() -> void:
 
 
 ## The door: the PixelLab sheet drawn standing on the landing point, its foot (FOOT, per row) on the ground point, in
-## the world layer so the town sorts round it; the row for its facing (row_of), the frame for the hour (frame_at). It
+## the world layer so the town sorts round it -- and whatever building stands in front of it and would hide it goes
+## see-through (SeeThrough) from just before it lands until it has risen away; the row for its facing (row_of), the
+## frame for the hour (frame_at). It
 ## comes down out of the sky through the fall and goes back up as it rises, fading; while it stands wide its light
 ## breathes, and it flares (`flare`) as something goes through. Without the sheet (not imported) it draws nothing: the
 ## light, the shadow and the dust still show where it stands.
@@ -620,6 +622,7 @@ class Door extends Node2D:
 	var flare := 0.0
 	var row := 0
 	var _tex: Texture2D
+	var _see := SeeThrough.new()
 
 	func _ready() -> void:
 		row = HeavensDoorFx.row_of(fx.facing)
@@ -632,6 +635,17 @@ class Door extends Node2D:
 		var k := clampf((fx.t - fx.shut_at() - T_SHUT) / T_RISE, 0.0, 1.0)
 		modulate = Color(1.0, 1.0, 1.0, 1.0 - k * k)
 		queue_redraw()
+		# The houses before it see-through while it stands (from just before it lands until it is half risen away).
+		var standing := fx.t >= T_FALL - 0.3 and k < 0.5
+		var rect := see_rect() if standing else Rect2()
+		_see.step(fx.ctx.env.structures() if fx.ctx.env != null else [], rect, position.y, delta)
+
+	## What it covers on screen standing (world px): its sprite's body, a little inside the cell.
+	func see_rect() -> Rect2:
+		return Rect2(position.x - DOOR_H * 0.4, position.y - DOOR_H * 1.05, DOOR_H * 0.8, DOOR_H * 1.05)
+
+	func _exit_tree() -> void:
+		_see.release()
 
 	func _draw() -> void:
 		var now := fx.t

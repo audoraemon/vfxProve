@@ -28,6 +28,8 @@ const CHASE_REPATH := 0.5
 ## The guard: a soldier this near a visitor strikes it every GUARD_SWING.
 const GUARD_REACH := 0.6
 const GUARD_SWING := 0.8
+## A wrecker looks for the building beside it this often (a look asks the town's buildings near it).
+const WRECK_LOOK := 0.2
 ## Soldiers at their post within a visitor's seek reach are drawn to it this often, for this long.
 const LURE_EVERY := 1.0
 const LURE_FOR := 1.5
@@ -52,6 +54,9 @@ var _rules := {}
 ## Person (a soldier) -> seconds to his next blow, while he stands by a visitor.
 var _swings := {}
 var _lure_in := 0.0
+## The field's living, taken once a step when someone first needs them (_people()).
+var _living: Array = []
+var _living_taken := false
 
 
 ## What one visitor is and does.
@@ -76,8 +81,10 @@ class Rule extends RefCounted:
 	var wreck_every := 1.5
 	var wreck_reach := 0.5
 	var wreck_in := 0.0
-	## The building it is going for, with nobody to hunt.
+	## The building it is going for, with nobody to hunt; the one beside it, looked for every WRECK_LOOK.
 	var house: Structure
+	var beside: Structure
+	var look_in := 0.0
 
 
 func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> Visitors:
@@ -166,6 +173,8 @@ func clear() -> void:
 
 
 func step(delta: float) -> void:
+	_living = []
+	_living_taken = false
 	for a in _rules.keys():
 		if not is_instance_valid(a):
 			_rules.erase(a)
@@ -192,6 +201,8 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		r.skip_left -= delta
 		if r.skip_left <= 0.0:
 			r.skip = null
+	if r.skip != null and not is_instance_valid(r.skip):
+		r.skip = null  # the one it left alone is gone from the town (freed)
 	var who := a.target
 	if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside
 			and who.ground_pos.distance_to(a.ground_pos) <= r.seek_r):
@@ -235,17 +246,21 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 ## nearest building within its seek reach (to the open ground at the face nearest it) and strikes that.
 func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 	r.wreck_in -= delta
+	r.look_in -= delta
 	var env := _field.env if _field != null else null
 	if env == null:
 		return
-	var beside: Structure = null
 	var best := INF
-	for s in env.near(a.ground_pos, r.wreck_reach):
-		if _wreckable(s):
-			var d := s.distance_to(a.ground_pos)
-			if d < best:
-				best = d
-				beside = s
+	if r.look_in <= 0.0 or (r.beside != null and not _wreckable(r.beside)):
+		r.look_in = WRECK_LOOK
+		r.beside = null
+		for s in env.near(a.ground_pos, r.wreck_reach):
+			if _wreckable(s):
+				var d := s.distance_to(a.ground_pos)
+				if d < best:
+					best = d
+					r.beside = s
+	var beside := r.beside
 	if beside != null and r.wreck_in <= 0.0:
 		r.wreck_in = r.wreck_every
 		a.facing = 1 if beside.center().x - beside.center().y > a.ground_pos.x - a.ground_pos.y else -1
@@ -296,30 +311,50 @@ func _go_home(a: Animal, r: Rule, delta: float) -> void:
 func _nearest(at: Vector2, reach: float, skip: Person) -> Person:
 	var best: Person = null
 	var best_d := INF
-	for e in _field.in_radius(at, reach):
+	var r2 := reach * reach
+	for e in _people():
 		var p := e as Person
-		if p == null or p.inside or p == skip:
+		# Alive asked again: one bitten earlier this step is still on the step's list.
+		if p == null or p.inside or p == skip or not p.is_alive():
 			continue
 		var d := p.ground_pos.distance_squared_to(at)
+		if d > r2:
+			continue
 		if d < best_d:
 			best_d = d
 			best = p
 	return best
 
 
+## The field's living this step, in its order (EnemyField.in_radius() builds this list on every call: a horde asking it
+## round every visitor made that the dearest thing in the frame).
+func _people() -> Array:
+	if not _living_taken:
+		_living_taken = true
+		_living = _field.alive()
+	return _living
+
+
 ## The guard: every soldier standing by a visitor strikes the nearest one every GUARD_SWING (the first blow after one
 ## swing's wait); a struck visitor that flinches begins its bite again; at its last blow it is cut down and freed.
 func _guard(delta: float) -> void:
 	var near := {}  # soldier -> the nearest visitor within reach
+	# The soldiers who can strike, once a step in the field's order (_people()).
+	var guards: Array[Person] = []
+	if not _rules.is_empty():
+		for e in _people():
+			var p := e as Person
+			if p != null and p.soldier and p.is_alive() and not p.inside and not p.is_down():
+				guards.append(p)
+	var reach2 := GUARD_REACH * GUARD_REACH
 	for a in _rules.keys():
 		if not is_instance_valid(a) or not a.is_alive():
 			continue
-		for e in _field.in_radius(a.ground_pos, GUARD_REACH):
-			var p := e as Person
-			if p == null or not p.soldier or p.inside or p.is_down():
+		for p in guards:
+			var d: float = a.ground_pos.distance_squared_to(p.ground_pos)
+			if d > reach2:
 				continue
-			if not near.has(p) or a.ground_pos.distance_squared_to(p.ground_pos) \
-					< (near[p] as Animal).ground_pos.distance_squared_to(p.ground_pos):
+			if not near.has(p) or d < (near[p] as Animal).ground_pos.distance_squared_to(p.ground_pos):
 				near[p] = a
 	for p in _swings.keys():
 		if not near.has(p):

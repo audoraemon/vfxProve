@@ -203,7 +203,7 @@ const POWERS := [
 		"dp": 6, "cooldown": 999.0, "aim": "drag", "shape": "a great door falls from heaven: it crushes where it lands, then opens and for 12 s draws in everyone and everything in the half circle of 16 before it; buildings there are torn apart; drag to face it; once a descent",
 		"authority": "passage"},
 	{"key": "deaddoors", "name": "Doors of the Dead", "path": "res://src/fx/control/doors_of_the_dead.gd",
-		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "every door in a district of 10 opens onto the other side: the air turns cold and everyone in it slows, the houses throw out whoever sheltered there, and for 20 s hellhounds, ghosts and demons pour out to hunt the town and claw at its buildings; once a descent",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "every door in a district of 12 opens onto the other side: the air turns cold and everyone in it slows, the houses throw out whoever sheltered there, and for 45 s hellhounds, ghosts and demons pour out without end to hunt the town and claw it down; once a descent",
 		"authority": "passage"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
@@ -239,7 +239,7 @@ const REACH := {
 	"heavendoor": [16.0, 22.0, 0.9, 16.0],
 	# Doors of the Dead: a district's doors burning cold and the other side pouring out of them is seen and heard far
 	# off; the danger lasts the span
-	"deaddoors": [14.0, 18.0, 0.9, 22.0],
+	"deaddoors": [16.0, 20.0, 1.0, 50.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],

@@ -8,8 +8,9 @@ extends FxTimeline
 ## within RADIUS. As a door opens, whoever shelters in that building is thrown out into the street, knocked down
 ## (ShelterManager.throw_out_of()), the building takes DOOR_HIT, frost runs up its walls, and for the rest of the span
 ## it is cursed (Crowd.mark_structure(): nobody takes shelter in it), and the town sees a danger at its door. Out of
-## every open door the other side comes, one every OUT_EVERY (the first OUT_FIRST after it opens), PER_DOOR from a door
-## and MAX_SPIRITS in all, in a fixed turn (ORDER -- no luck): hellhounds, ghosts and demons, Visitors all:
+## every open door the other side keeps coming for the whole SPAN, one every OUT_EVERY a door (the first OUT_FIRST after
+## it opens) -- a flood that fills back what the guard cuts down: never more than LIVE_CAP on their feet at once, and
+## MAX_SPIRITS through in all -- in a fixed turn (ORDER -- no luck): hellhounds, ghosts and demons, Visitors all:
 ##   hellhound  Hound Gate's hound: fast, four blows, bites through the guard's blows.
 ##   ghost      slow, half seen, drifts straight through walls and houses to its prey ("phase"); every FRIGHT_EVERY
 ##              whoever is near it is frightened; three blows, and a blow makes it begin its touch again.
@@ -20,19 +21,19 @@ extends FxTimeline
 ## close, and the cold lifts over THAW. Loud (PowerBook.REACH): the first spirit through is the first danger.
 ## Once a descent.
 
-const RADIUS := 10.0
+const RADIUS := 12.0
 const T_CHILL := 2.0
-const WAVE := 1.6
-const SPAN := 20.0
+const WAVE := 2.4
+const SPAN := 45.0
 const RECALL := 5.0
 const THAW := 2.0
 const COLD_SLOW := 0.55
 const COLD_TICK := 0.25
-const MAX_DOORS := 12
-const PER_DOOR := 3
-const MAX_SPIRITS := 30
+const MAX_DOORS := 18
+const LIVE_CAP := 70
+const MAX_SPIRITS := 160
 const OUT_FIRST := 0.6
-const OUT_EVERY := 2.4
+const OUT_EVERY := 2.5
 const DOOR_HIT := 15.0
 const THROW := 1.0
 ## The turn the other side comes through in, over every door: hounds and ghosts most, a demon every few.
@@ -40,14 +41,16 @@ const ORDER: Array[Animal.Breed] = [Animal.Breed.HELLHOUND, Animal.Breed.GHOST, 
 	Animal.Breed.GHOST, Animal.Breed.HELLHOUND, Animal.Breed.GHOST, Animal.Breed.DEMON]
 ## Each kind: [blows, pace (ground units a second), seek reach, bite reach, seconds a bite, flinches].
 const KINDS := {
-	Animal.Breed.HELLHOUND: [4, 2.4, 8.0, 0.5, 1.0, false],
-	Animal.Breed.GHOST: [3, 1.2, 9.0, 0.45, 1.6, true],
-	Animal.Breed.DEMON: [8, 1.5, 8.0, 0.6, 1.2, false],
+	Animal.Breed.HELLHOUND: [4, 2.4, 12.0, 0.5, 1.0, false],
+	Animal.Breed.GHOST: [3, 1.2, 12.0, 0.45, 1.6, true],
+	Animal.Breed.DEMON: [8, 1.5, 10.0, 0.6, 1.2, false],
 }
 const DEMON_WRECK := 20.0
 const DEMON_WRECK_EVERY := 1.5
 const DEMON_WRECK_REACH := 0.6
 const FRIGHT_EVERY := 1.0
+## Spirits that trail embers or mist at once, at most: a horde of emitters costs more than it shows.
+const TRAILS := 30
 const FRIGHT_R := 1.8
 ## The other side's light: a cold green-white spirit glow; the ember of the hounds and demons; the cold of the zone.
 const SPIRIT := Color("8dffd8")
@@ -231,16 +234,21 @@ func _fx_process(delta: float) -> void:
 			e.position = Iso.ground_to_screen(a.ground_pos) + Vector2(0, -8)
 
 
-## Every open door whose turn is up lets one through, while the other side has more to send.
+## Every open door whose turn is up lets one through, while fewer than LIVE_CAP are on their feet and the other side
+## has sent fewer than MAX_SPIRITS; a turn missed at the cap is not made up.
 func _release_due() -> void:
+	var alive := visitors.living().size()
 	for d in doors:
-		if not d.open or d.released >= PER_DOOR or spirits >= MAX_SPIRITS or t < d.next_out:
-			continue
-		if not is_instance_valid(d.building) or d.building.destroyed:
-			d.released = PER_DOOR  # a fallen house is no door
+		if not d.open or t < d.next_out:
 			continue
 		d.next_out += OUT_EVERY
+		if not is_instance_valid(d.building) or d.building.destroyed:
+			d.open = false  # a fallen house is no door
+			continue
+		if alive >= LIVE_CAP or spirits >= MAX_SPIRITS:
+			continue
 		d.released += 1
+		alive += 1
 		_release(d, ORDER[spirits % ORDER.size()])
 
 
@@ -275,6 +283,8 @@ func _release(d: Door, breed: Animal.Breed) -> void:
 	FxParts.smoke(self, sp, 5.0, 18.0, 0.2, Vector2(10, 26), Vector2(2, 4), Vector2(0.35, 0.7),
 		Color(SPIRIT, 0.4) if ghost else Color(EMBER, 0.4), MIST if ghost else PITCH)
 	FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -8), 8, WISP if ghost else FxParts.EMBER_LIFE, Vector2(30, 110), Vector2(30, 110))
+	if _trails.size() >= TRAILS:
+		return
 	var trail := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, WISP if ghost else FxParts.EMBER_LIFE,
 		6.0 if ghost else 4.0, duration - t + 8.0,  # stopped by hand (_stop_trail()): its own stop falls after the end
 		{"radius": 4.0, "speed": Vector2(2, 8), "alt": Vector2(2, 10), "alt_speed": Vector2(6, 20), "life": Vector2(0.4, 0.8),
@@ -458,6 +468,9 @@ class DoorGlow extends Node2D:
 	func _draw() -> void:
 		var age := fx.t - door.opens
 		if age < 0.0:
+			return
+		if not is_instance_valid(door.building) or door.building.destroyed:
+			queue_free()  # its house is down: no door left to burn
 			return
 		var k := clampf(age / 0.5, 0.0, 1.0)
 		if fx.t > fx.closed_at():

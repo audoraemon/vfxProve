@@ -222,9 +222,11 @@ func _draw_ui() -> void:
 	UiTheme.text(_ui, Vector2(10, 32), "CHOOSE YOUR AUTHORITY", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(_ui, Vector2(10, 45), "A god's type is chosen once,", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(_ui, Vector2(10, 56), "for this slot.", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	_ui.draw_rect(Rect2(460, 0, 180, 32), back_col)
-	UiTheme.text(_ui, Vector2(466, 14), "Left / Right look round the ring", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	UiTheme.text(_ui, Vector2(466, 26), "Enter chooses · Esc goes back", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	_ui.draw_rect(Rect2(452, 0, 188, 32), back_col)
+	var keys := ["Left / Right look round the ring", "Enter chooses · Esc goes back"]
+	var kx := minf(466.0, 634.0 - maxf(UiTheme.width(keys[0], UiTheme.SIZE_SMALL), UiTheme.width(keys[1], UiTheme.SIZE_SMALL)))
+	UiTheme.text(_ui, Vector2(kx, 14), keys[0], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(kx, 26), keys[1], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	_draw_info()
 	var choose_on := _hover == "choose:0"
 	_ui.draw_rect(CHOOSE_RECT, Color(0.1, 0.09, 0.07, 0.9) if choose_on else Color(0.04, 0.04, 0.06, 0.85))

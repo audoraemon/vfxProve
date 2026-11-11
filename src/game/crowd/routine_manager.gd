@@ -29,7 +29,11 @@ const WEIGHTS := {
 	CitizenProfile.Role.DOCKWORKER: [0.15, 0.6, 0.1, 0.15],
 	CitizenProfile.Role.MONK: [0.2, 0.6, 0.2, 0.0],
 	CitizenProfile.Role.BEGGAR: [0.2, 0.0, 0.6, 0.2],
+	# A child (Children) has no work: it plays (leisure), stays home, or tags along to the market.
+	CitizenProfile.Role.CHILD: [0.3, 0.0, 0.5, 0.2],
 }
+## A child's weights while the town is lit for night (Town.Look.NIGHT): home, mostly, and never to the market.
+const CHILD_NIGHT := [0.8, 0.0, 0.2, 0.0]
 ## How long a citizen stays (seconds, min and max) at each kind of place.
 const STAY := [Vector2(10, 30), Vector2(25, 60), Vector2(8, 25), Vector2(5, 12)]
 ## An errand is to one of this many market stalls nearest the citizen's home.
@@ -101,6 +105,8 @@ func visit(i: int, dt: float) -> void:
 ## The next kind of place by the role's weights, never the same kind twice running (unless it is the only one).
 func pick(pr: CitizenProfile, last: int) -> Place:
 	var w: Array = (WEIGHTS[pr.role] as Array).duplicate()
+	if pr.role == CitizenProfile.Role.CHILD and TownLook.active == Town.Look.NIGHT:
+		w = CHILD_NIGHT.duplicate()
 	if not pr.works():
 		w[Place.WORK] = 0.0
 	if _stalls.is_empty():

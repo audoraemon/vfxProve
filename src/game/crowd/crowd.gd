@@ -113,8 +113,10 @@ const BED_EASE := 1.5
 
 var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
-## How many were spawned, so milestone 3's stability can measure losses against the starting town.
+## How many were spawned, so milestone 3's stability can measure losses against the starting town (children too).
 var spawned_citizens := 0
+## How many of them are children (Children; spawn_children()).
+var spawned_children := 0
 ## Where calm citizens go next (v0.04); made by spawn().
 var routine: RoutineManager
 ## The dangers people know of (v0.04 local awareness).
@@ -394,11 +396,98 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+	# The children after everyone else, on their own rng (seed + Children.SEED_OFFSET): nobody before them moves.
+	if Children.enabled:
+		spawn_children(anchors)
 	# Last of all, so nothing made before them is numbered differently; their own rng (seed + AnimalPack.SEED_OFFSET).
 	if AnimalPack.enabled and animals == null:
 		animals = AnimalPack.new().setup(self, _grid, _parent, _seed)
 		_parent.add_child(animals)
 		animals.spawn()
+
+
+## The town's children (Children): Children.count_for() the grown citizens spawned, each in a family that has grown-ups
+## (the families in a stride through them, so they spread over the town), at its home with 1-3 places to play near it.
+## Drawn on a generator of their own, after every other draw, so the grown-ups and everything else keep their numbers.
+## Once only; spawn() calls it while Children.enabled (a dev stage may call it later). The new children's count.
+func spawn_children(anchors := {}) -> int:
+	if spawned_children > 0 or citizens.is_empty():
+		return 0
+	if anchors.is_empty():
+		anchors = _snapped_anchors()
+	var crng := RandomNumberGenerator.new()
+	crng.seed = _seed + Children.SEED_OFFSET
+	# Each family with a living grown-up at home, in the order its first member was spawned: [family, a member].
+	var fams: Array = []
+	var seen := {}
+	for p in citizens:
+		if not is_instance_valid(p) or p.profile == null or p.profile.family < 0 or p.profile.is_child():
+			continue
+		if not seen.has(p.profile.family):
+			seen[p.profile.family] = fams.size()
+			fams.append([p.profile.family, p])
+	if fams.is_empty():
+		return 0
+	# A shuffle on the children's own rng (Array.shuffle() would draw from the global one).
+	for i in range(fams.size() - 1, 0, -1):
+		var j := crng.randi_range(0, i)
+		var tmp: Variant = fams[i]
+		fams[i] = fams[j]
+		fams[j] = tmp
+	var n := Children.count_for(citizens.size())
+	var play_kinds: Array = Children.PLAY
+	var any_play := false
+	for k: String in play_kinds:
+		any_play = any_play or not (anchors.get(k, []) as Array).is_empty()
+	if not any_play:
+		play_kinds = CitizenProfile.LEISURE
+	var made: Array[Person] = []
+	for c in n:
+		var fam: Array = fams[c % fams.size()]
+		var elder: Person = fam[1]
+		var pr := CitizenProfile.new()
+		pr.role = CitizenProfile.Role.CHILD
+		pr.job = &"child"
+		pr.family = fam[0]
+		pr.home = elder.profile.home
+		pr.district = elder.profile.district
+		var h := pr.home
+		var near: Array[Vector2] = []
+		for k: String in play_kinds:
+			near.append_array(anchors.get(k, []))
+		near.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.distance_squared_to(h) < b.distance_squared_to(h))
+		near = near.slice(0, Children.PLAY_NEAREST)
+		for k in crng.randi_range(1, 3):
+			if not near.is_empty():
+				var g: Vector2 = near[crng.randi_range(0, near.size() - 1)]
+				if not pr.leisure.has(g):
+					pr.leisure.append(g)
+		var at := _spot_near(h, Children.START_SPREAD, crng)
+		var p := _add_person(false, at, crng)
+		p.anchor = at
+		p.profile = pr
+		p.evac = evac
+		p.shelters = shelters
+		p.stay_left = crng.randf_range(0.0, 12.0)
+		citizens.append(p)
+		made.append(p)
+	# Each child knows its family's grown-ups (Person.kin): whom it runs to when frightened.
+	for p in made:
+		for q in citizens:
+			if is_instance_valid(q) and q.profile != null and not q.profile.is_child() and q.profile.family == p.profile.family:
+				p.kin.append(q)
+	spawned_children = made.size()
+	spawned_citizens = citizens.size()
+	return made.size()
+
+
+## The children still in the roster (alive or not).
+func children() -> Array[Person]:
+	var out: Array[Person] = []
+	for p in citizens:
+		if is_instance_valid(p) and p.is_child():
+			out.append(p)
+	return out
 
 
 ## The drawer over the people (z 60), where short-lived effects such as the plague's puffs go; null before spawn().
@@ -567,20 +656,23 @@ func _job_profile(plan: Array, anchors: Dictionary) -> CitizenProfile:
 
 
 ## Walkable ground within `spread` of `about`, or the nearest walkable point to it.
-func _spot_near(about: Vector2, spread: float) -> Vector2:
+## `rng` draws the spread (the crowd's own when null).
+func _spot_near(about: Vector2, spread: float, rng: RandomNumberGenerator = null) -> Vector2:
+	var r := rng if rng != null else _rng
 	for attempt in 8:
-		var candidate := about + Vector2(_rng.randf_range(-spread, spread), _rng.randf_range(-spread, spread))
+		var candidate := about + Vector2(r.randf_range(-spread, spread), r.randf_range(-spread, spread))
 		if _grid.walkable(candidate):
 			return candidate
 	var free := _grid.nearest_walkable(about)
 	return free if free != Vector2.INF else about
 
 
-func _add_person(is_soldier: bool, at: Vector2) -> Person:
+## `seeds` draws its rng's seed (the crowd's own when null: the children's is theirs, Children).
+func _add_person(is_soldier: bool, at: Vector2, seeds: RandomNumberGenerator = null) -> Person:
 	var p := Person.new()
 	p.ticked = true
 	p.stagger = citizens.size() + soldiers.size()
-	p.rng.seed = _rng.randi()
+	p.rng.seed = (seeds if seeds != null else _rng).randi()
 	_field.add(p)
 	p.setup_person(is_soldier, at, _grid)
 	p.env = _env
@@ -1913,6 +2005,7 @@ func clear() -> void:
 	killed_citizens = 0
 	killed_soldiers = 0
 	spawned_citizens = 0
+	spawned_children = 0
 	spawned_soldiers = 0
 	_rallied = false
 	_fled_all = false

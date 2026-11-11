@@ -327,3 +327,18 @@ stay. Global Constraints still bind.
 
 As Task 4's steps 1-5: screenshots, frame rate (art on/off, 1200 frames, vsync off), full suite, show the user (they try it with this
 worktree's `play_dev.bat`), land on their yes (fast-forward `feat/god-progression`, push, #god-changelog bullet, Dev Ledger).
+
+### Task 6b: Living emblems (art) — amends Task 6 after the user's review
+
+- Replace `emblem_<type>.png` with turn frames `emblem_<type>_1..N` (N = 16 suggested; one full turn; transparent; about 64-72 px;
+  pre-rendered so pixels stay clean — no engine scaling for the turn), with the god's own touch (spec Round 2b) animated inside the
+  same frames, and edge light that follows the turn. One shared or per-god entrance set `emblem_flash_1..M` (a flash the emblem
+  bursts out of). Spark sprite(s) `emblem_spark_1..K` in each god's colour or white to tint. Record fps, sizes and centres in the
+  README. Budget: PixelLab allowed, under 40 generations; hand-drawing by the existing script is fine.
+- Contact sheet + one GIF per god of the emblem turning (with glow, sparks, ring and reflection mocked as Task 7 would draw them),
+  for the user's review.
+
+Task 7 amendments: the emblem draws behind the statues at about (320,200), playing its turn frames; the engine adds the bob
+(a few px, slow), the pulsing glow, the orbiting sparks (half drawn behind the emblem, half in front, on an ellipse), the ring of
+light and the faint flipped reflection on the pool, and the entrance (flash frames + a quick scale-in) on each new pick. Tests add:
+`emblem_frame()` advances with time; a new pick restarts the entrance; sparks split behind/in front by their orbit angle.

@@ -132,3 +132,14 @@ The user decided, from round 1's screenshots and mockups v2-v5 (the last one is 
   stamping onto the platform and rising; Death pale green soul wisps rising; Dominion purple waves pulsing out with thin threads.
   The other statues dim a little.
 - Ring order, rules and controls are unchanged.
+
+### Round 2b: the emblem as a living, 3D-feeling power (user, 2026-11-11)
+
+The statue effects are approved as made. The flat emblem is too plain. The user approved this emblem:
+- **Bigger**, about 64-72 px, hovering in the pool; drawn behind the statues, so Decree stands in front of its lower edge.
+- **Turns in 3D** like a slowly spinning coin, light catching its edges as it turns, and **floats** gently up and down.
+- **Power round it**: a pulsing glow in the god's colour behind it; sparks orbiting it, passing in front and behind (depth);
+  a ring of light and a faint reflection on the pool below.
+- **Entrance**: when a god is picked, its emblem bursts in from a flash of light.
+- **Each its own touch**: Ruin's burst licks with flames; Passage's sand flows; Veil's eye blinks; Decree's scales tip; Death's
+  skull eyes glow; Dominion's crown jewels sparkle.

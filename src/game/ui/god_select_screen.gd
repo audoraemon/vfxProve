@@ -28,12 +28,31 @@ const VERBS := {
 	"dominion": "Control · Command · Bend",
 }
 
+## How long the light rays take to slide to a newly picked statue, in seconds.
+const RAY_TIME := 0.25
+## Each god's colour, for its statue's aura.
+const GOD_COL := {
+	"ruin": Color("e8602a"), "passage": Color("4a90e8"), "veil": Color("3ab8a8"),
+	"decree": Color("f0d890"), "death": Color("98d880"), "dominion": Color("a060e0"),
+}
+## Where the four braziers stand (bottom centre of each).
+const BRAZIERS := [Vector2(22, 248), Vector2(618, 248), Vector2(222, 318), Vector2(418, 318)]
+const LEAF_COUNT := 8
+
 ## The type chosen by confirm(), or "".
 var chosen_type := ""
 ## The ring position (0-5) in the middle panel; clicks and Left/Right move it.
 var selected := 0
+## The light rays' current centre x: it eases to the selected statue's x over RAY_TIME.
+var ray_x := statue_anchor(0).x
 var _ui: Control
 var _hover := ""
+var _clock := 0.0
+var _ray_from := ray_x
+var _ray_to := ray_x
+var _ray_t := RAY_TIME
+## One drifting leaf each: x start, y start, fall speed, sway phase, spin speed.
+var _leaves: Array[PackedFloat32Array] = []
 
 
 func setup() -> GodSelectScreen:
@@ -42,10 +61,40 @@ func setup() -> GodSelectScreen:
 	add_child(layer)
 	_ui = Control.new()
 	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	for k in LEAF_COUNT:
+		_leaves.append(PackedFloat32Array([rng.randf_range(0.0, 640.0), rng.randf_range(0.0, 380.0), rng.randf_range(10.0, 22.0),
+			rng.randf_range(0.0, TAU), rng.randf_range(-1.5, 1.5)]))
 	return self
+
+
+func _process(delta: float) -> void:
+	advance(delta)
+	_redraw()
+
+
+## Steps the clock and eases `ray_x` towards the selected statue's x.
+func advance(delta: float) -> void:
+	_clock += delta
+	var target := statue_anchor(selected).x
+	if target != _ray_to:
+		_ray_from = ray_x
+		_ray_to = target
+		_ray_t = 0.0
+	_ray_t = minf(_ray_t + delta, RAY_TIME)
+	ray_x = lerpf(_ray_from, _ray_to, smoothstep(0.0, 1.0, _ray_t / RAY_TIME))
+
+
+## A statue's brightness: 1.0 selected, 0.75 under the mouse, 0.45 otherwise.
+func lit(i: int) -> float:
+	if i == selected:
+		return 1.0
+	return 0.75 if _hover == "ring:%d" % i else 0.45
 
 
 ## Type `i`'s ring point (0-5): on an ellipse around CENTRE, RING[0] at the top, then clockwise in 60 degree steps. The statue's feet stand here.
@@ -157,12 +206,31 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	var bg := GodSelectArt.texture("background")
+	if bg != null:
+		_ui.draw_texture_rect(bg, Rect2(0, 0, 640, 360), false)
+	else:
+		_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	_draw_rays()
+	var swirl := GodSelectArt.texture("swirl")
+	if swirl != null:
+		_ui.draw_set_transform(CENTRE, _clock * TAU / 20.0)
+		_ui.draw_texture(swirl, -swirl.get_size() * 0.5, Color(1, 1, 1, 0.85))
+		_ui.draw_set_transform(Vector2.ZERO)
+	for i in GodTree.RING.size():
+		_draw_statue(i)
+	_draw_braziers()
+	_draw_leaves()
+	var keys := "Left and Right look round the ring. Enter chooses. Esc goes back."
+	var kw := UiTheme.width(keys, UiTheme.SIZE_SMALL)
+	var rule := "A god's type is chosen once, for this slot."
+	var lw := maxf(UiTheme.width("GOD'S PATHS", UiTheme.SIZE_BIG), UiTheme.width(rule, UiTheme.SIZE_SMALL))
+	_ui.draw_rect(Rect2(14, 8, lw + 12, 54), Color(0, 0, 0, 0.55))
+	_ui.draw_rect(Rect2(614.0 - kw, 14, kw + 12, 18), Color(0, 0, 0, 0.55))
 	UiTheme.text(_ui, Vector2(20, 26), "GOD'S PATHS", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(20, 42), "CHOOSE YOUR AUTHORITY", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	UiTheme.text(_ui, Vector2(20, 56), "A god's type is chosen once, for this slot.", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	var keys := "Left and Right look round the ring. Enter chooses. Esc goes back."
-	UiTheme.text(_ui, Vector2(620.0 - UiTheme.width(keys, UiTheme.SIZE_SMALL), 26.0), keys, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(20, 56), rule, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(620.0 - kw, 26.0), keys, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	for i in GodTree.RING.size():
 		_draw_plate(i)
 	_draw_info()
@@ -195,6 +263,59 @@ func _draw_plate(i: int) -> void:
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 
 
+## The height of the centre text block for `flavour_rows` rows of flavour and `tail_rows` small rows.
+static func info_height(flavour_rows: int, tail_rows: int) -> float:
+	return 16.0 + 22.0 + flavour_rows * UiTheme.LINE_BODY + 12.0 + tail_rows * (UiTheme.LINE_SMALL + 2.0)
+
+
+## Light shafts from above on the picked statue, sliding with `ray_x`.
+func _draw_rays() -> void:
+	var rays := GodSelectArt.texture("rays")
+	if rays == null:
+		return
+	var top := ring_rect(selected).end.y - PLATE_H - 80.0 - 150.0
+	_ui.draw_texture_rect(rays, Rect2(roundf(ray_x) - 48.0, maxf(top, 0.0), 96.0, 240.0), false, Color(1.0, 0.95, 0.8, 0.9))
+
+
+## Type `i`'s statue, its plinth on its nameplate, dimmed unless picked, with a soft aura in the god's colour; today's box if no art.
+func _draw_statue(i: int) -> void:
+	var tex := GodSelectArt.texture("statue_" + String(GodTree.RING[i]))
+	var box := ring_rect(i)
+	if tex == null:
+		_ui.draw_rect(box, Color(0.04, 0.04, 0.06, 0.4))
+		return
+	var v := lit(i)
+	var top_left := Vector2(statue_anchor(i).x - 32.0, box.end.y - PLATE_H - 80.0)
+	var col: Color = GOD_COL.get(GodTree.RING[i], Color.WHITE)
+	_ui.draw_set_transform(top_left + Vector2(32.0, 36.0), 0.0, Vector2(1.0, 1.3))
+	for r in [30.0, 22.0, 15.0]:
+		_ui.draw_circle(Vector2.ZERO, r, Color(col.r, col.g, col.b, 0.07 * v * v))
+	_ui.draw_set_transform(Vector2.ZERO)
+	_ui.draw_texture(tex, top_left, Color(v, v, v, 1.0))
+
+
+func _draw_braziers() -> void:
+	var fr := GodSelectArt.frames("brazier_")
+	if fr.is_empty():
+		return
+	for k in BRAZIERS.size():
+		var tex: Texture2D = fr[int(_clock * 8.0 + k * 3) % fr.size()]
+		_ui.draw_texture(tex, BRAZIERS[k] - Vector2(tex.get_width() * 0.5, tex.get_height() - 1.0))
+
+
+## Red leaves drifting down and wrapping; each position is a function of the clock.
+func _draw_leaves() -> void:
+	var leaf := GodSelectArt.texture("leaf")
+	if leaf == null:
+		return
+	for l in _leaves:
+		var y := fposmod(l[1] + _clock * l[2], 380.0) - 10.0
+		var x: float = l[0] + sin(_clock * 0.8 + l[3]) * 14.0
+		_ui.draw_set_transform(Vector2(x, y), _clock * l[4] + l[3])
+		_ui.draw_texture(leaf, -leaf.get_size() * 0.5)
+	_ui.draw_set_transform(Vector2.ZERO)
+
+
 ## The selected type's four lines, centred in the middle panel and wrapped to it, on a translucent backing sized to the lines.
 func _draw_info() -> void:
 	var lines := type_lines(GodTree.RING[selected])
@@ -203,8 +324,14 @@ func _draw_info() -> void:
 	var tail := PackedStringArray()
 	for k in [2, 3]:
 		tail.append_array(UiTheme.wrap(lines[k], w, UiTheme.SIZE_SMALL))
-	var h := 16.0 + 22.0 + flavour.size() * UiTheme.LINE_BODY + 12.0 + tail.size() * (UiTheme.LINE_SMALL + 2.0)
-	_ui.draw_rect(Rect2(INFO_RECT.position, Vector2(INFO_RECT.size.x, minf(h, INFO_RECT.size.y))), Color(0, 0, 0, 0.55))
+	var widest := UiTheme.width(lines[0], UiTheme.SIZE_BIG)
+	for row in flavour:
+		widest = maxf(widest, UiTheme.width(row))
+	for row in tail:
+		widest = maxf(widest, UiTheme.width(row, UiTheme.SIZE_SMALL))
+	var h := info_height(flavour.size(), tail.size())
+	var back_w := minf(widest + 16.0, INFO_RECT.size.x)
+	_ui.draw_rect(Rect2(INFO_RECT.get_center().x - back_w * 0.5, INFO_RECT.position.y, back_w, minf(h, INFO_RECT.size.y)), Color(0, 0, 0, 0.55))
 	var x := INFO_RECT.get_center().x
 	var y := INFO_RECT.position.y + 20.0
 	UiTheme.text(_ui, Vector2(roundf(x - UiTheme.width(lines[0], UiTheme.SIZE_BIG) * 0.5), y), lines[0], UiTheme.SIZE_BIG, UiTheme.COL_GOLD)

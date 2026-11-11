@@ -251,7 +251,7 @@ static func _info_fits(t) -> void:
 		var lines := screen.type_lines(type)
 		var flavour := UiTheme.wrap(lines[1], w, UiTheme.SIZE_BODY).size()
 		var rest := UiTheme.wrap(lines[2], w, UiTheme.SIZE_SMALL).size() + UiTheme.wrap(lines[3], w, UiTheme.SIZE_SMALL).size()
-		var h := 16.0 + 22.0 + flavour * UiTheme.LINE_BODY + 12.0 + rest * (UiTheme.LINE_SMALL + 2.0)
+		var h := GodSelectScreen.info_height(flavour, rest)
 		if flavour > 2 or h > GodSelectScreen.INFO_RECT.size.y:
 			bad += 1
 			print("info too tall: %s flavour rows %d height %.0f" % [type, flavour, h])

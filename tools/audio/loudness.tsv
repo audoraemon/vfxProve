@@ -318,3 +318,7 @@ music_theme	res://assets/audio/music/music_theme.wav	-13.16	-0.37
 music_battle_base	res://assets/audio/music/music_battle_base.wav	-12.13	-0.34
 music_battle_drums	res://assets/audio/music/music_battle_drums.wav	-12.98	0.13
 music_battle_lead	res://assets/audio/music/music_battle_lead.wav	-11.97	-0.37
+music_sting_start	res://assets/audio/music/music_sting_start.wav	-12.58	0.76
+music_sting_objective	res://assets/audio/music/music_sting_objective.wav	-12.57	-1.10
+music_sting_win	res://assets/audio/music/music_sting_win.wav	-11.98	-0.37
+music_sting_lose	res://assets/audio/music/music_sting_lose.wav	-11.72	-0.31

@@ -231,6 +231,11 @@ const CATALOG := {
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},
 	&"music_battle_drums": {"path": "res://assets/audio/music/music_battle_drums.wav", "db": 0.0, "loop": true},
 	&"music_battle_lead": {"path": "res://assets/audio/music/music_battle_lead.wav", "db": 0.0, "loop": true},
+	# Stingers (natural sound pass 6, Music.sting()): the night begins, its main objective is done, won, lost.
+	&"music_sting_start": {"path": "res://assets/audio/music/music_sting_start.wav", "db": 0.0},
+	&"music_sting_objective": {"path": "res://assets/audio/music/music_sting_objective.wav", "db": 0.0},
+	&"music_sting_win": {"path": "res://assets/audio/music/music_sting_win.wav", "db": 0.0},
+	&"music_sting_lose": {"path": "res://assets/audio/music/music_sting_lose.wav", "db": 0.0},
 }
 
 static var _cache := {}

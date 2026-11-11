@@ -1,9 +1,12 @@
 {
- "hash": "b59ffd95d951f166",
- "updated": "2026-11-11T15:00:37+07:00",
+ "hash": "1db538915d913bed",
+ "updated": "2026-11-11T15:46:46+07:00",
  "changes": {
-  "date": "<t:1794384037:f>",
-  "items": []
+  "date": "<t:1794386806:f>",
+  "items": [
+   "Done: Music stingers (mission start, objective, win, lose)",
+   "New: Interface sounds to match the dark medieval look (in progress)"
+  ]
  },
  "snapshot": {
   "project": {
@@ -804,12 +807,21 @@
    },
    "sound-stingers": {
     "title": "Music stingers (mission start, objective, win, lose)",
-    "status": "doing",
+    "status": "done",
     "area": "Tools",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-11",
+    "order": 907
+   },
+   "sound-ui-medieval": {
+    "title": "Interface sounds to match the dark medieval look",
+    "status": "doing",
+    "area": "UI",
     "needs_you": false,
     "branch": "claude/sound-natural-2",
     "updated": "2026-11-11",
-    "order": 907
+    "order": 908
    },
    "t01": {
     "title": "Profile the v0.07 worst-frame bump",
@@ -1504,7 +1516,7 @@
    {
     "name": "claude/magical-lichterman-23d920",
     "ahead": 260,
-    "behind": 35,
+    "behind": 36,
     "date": "2026-11-11",
     "subject": "art: God's Paths round 2 -- six centre-pool emblems and six power effects (burst + loop), drawn in code",
     "pushed": false
@@ -1512,7 +1524,7 @@
    {
     "name": "god/skill-tree-ui",
     "ahead": 259,
-    "behind": 35,
+    "behind": 36,
     "date": "2026-11-11",
     "subject": "fix: final-review wave -- no Back/Raise during the fade into Remembrance; the memory's slot stays focused after a cast and Esc opens its pause; Whisper blurb; no frozen clock; Veil lavender-grey; the tree keeps its state for the session",
     "pushed": false
@@ -1520,7 +1532,7 @@
    {
     "name": "claude/vfx-ability-effects-964aca",
     "ahead": 26,
-    "behind": 4,
+    "behind": 5,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house",
     "pushed": true
@@ -1528,22 +1540,22 @@
    {
     "name": "claude/zen-greider-6e47c5",
     "ahead": 26,
-    "behind": 4,
+    "behind": 5,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house",
     "pushed": false
    },
    {
     "name": "feat/soldier-jobs",
-    "ahead": 17,
-    "behind": 11,
+    "ahead": 19,
+    "behind": 1,
     "date": "2026-11-11",
-    "subject": "test: re-record references after final review fixes",
+    "subject": "fix(policy): Heart of Faith prices a seen Doom by every life in its ring",
     "pushed": false
    },
    {
     "name": "claude/sound-natural-2",
-    "ahead": 1,
+    "ahead": 0,
     "behind": 0,
     "date": "2026-11-11",
     "subject": "feat: music stingers for the night's moments",
@@ -1552,7 +1564,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 35,
+    "behind": 36,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
@@ -1560,7 +1572,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 87,
+    "behind": 88,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1568,7 +1580,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 372,
+    "behind": 373,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1576,7 +1588,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 330,
+    "behind": 331,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1585,7 +1597,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-11",
-   "subject": "feat: big hits leave debris raining down (skill-tree Ruin abilities first)"
+   "subject": "feat: music stingers for the night's moments"
   }
  }
 }

@@ -84,3 +84,53 @@ A stone fire bowl on a short stand with its flame: four flicker frames, the bowl
 ### `leaf.png`: 8x8, transparent
 
 A red maple leaf for the drifting leaves (rotate or flip it in engine). Hand-drawn, 3 colours.
+
+## Round 2: emblems and power effects (Task 6, 2026-11-11)
+
+All drawn in code, pixel by pixel: `tools/dev/god_select_r2_art.py` (deterministic; run it to rebuild every file below,
+`--preview <dir>` also writes contact sheets and GIFs). **0 PixelLab generations.** Balance before and after: **1473**.
+Each god uses five tones of its own colour (dark to light, the middle one near `GOD_COL`), plus white for the hottest
+pixels and four stone greys for Ruin's rocks. Edges are hard; the only see-through pixels are glow (a 2 px halo round the
+bright parts) and Veil's mist and veil, all snapped to eight alpha levels.
+
+### `emblem_<type>.png` x6: 48x48, transparent
+
+The selected god's sign for the centre pool, in the god's colour: Ruin a 12-point burst with a white-hot core, Passage an
+hourglass with sand, Veil a lashed eye with a slit pupil, Decree the scales, Death a skull with green-lit sockets,
+Dominion a crown with orbs and gems. Bevel lit from the top left, a dark 1 px outline, a 2 px glow in the god's colour.
+The shape fills pixels 3-44; the glow reaches the canvas edge.
+- 48, not the planned 56: the free space in the pool between Ruin's platform base (y ~178) and Decree's head (y ~221) is
+  about 43 px, so **draw it centred at (320, 200)** (top left (296, 176)). At `EMBLEM_AT` (320, 206) its bottom touches
+  Decree's head.
+
+### `fx_<type>_burst_1..8.png` and `fx_<type>_loop_1..16.png` x6: 112x128, transparent
+
+| Set | Frames | fps | Length |
+|---|---|---|---|
+| `fx_<type>_burst_` | 8 | 12 | 0.67 s, once, on pick |
+| `fx_<type>_loop_` | 16 | 12 | 1.33 s, seamless loop; burst 8 flows into loop 1 |
+
+- **Anchor: (56, 119) = the statue's feet** (plinth bottom centre): frame top left = `feet(i) - (56, 119)`. The 8 rows
+  under the anchor hold what spreads onto the platform top. The statue sprite sits at (24, 40) inside the frame.
+- **Draw the frame in front of the statue, at full brightness, exactly on the anchor.** Parts that pass behind the
+  statue (the far half of rings and orbits, back mist, Dominion's aura waves) are already cut out of the statue's
+  silhouette, so they read as behind it. Normal alpha blend.
+- Veil's frames carry the statue fade themselves: a dithered teal veil over the statue's silhouette, fading in and out
+  once per loop (up to 45% mid-loop, gone at loop frame 1). No modulate needed.
+- What each one does (spec Round 2):
+  - ruin: a ground flash and shock ring, then glowing fire cracks run out over the platform and up the plinth, flames
+    flicker on their ends, rocks are thrown up; the loop: magma pulses along the cracks, flames, rising embers, three
+    small rocks lifted by the heat and crumbling.
+  - passage: a flash at both hands; three orbs spin out of the hands onto an orbit round her waist while four more spiral
+    out and fade, two rings widen out; the loop: three orbs orbiting with trails, two small orbs on a tilted inner orbit
+    the other way, a widening dashed ring every 0.67 s.
+  - veil: mist pours from the hood down the cloak and floods out over the platform, the statue veiled; the loop: mist
+    tendrils curling out round the feet and winding up round the statue, the statue fading in and out.
+  - decree: a big rune circle (rings, a hexagram, glyphs) comes down and stamps onto the platform with shards and a shock
+    ring, a ring rises off it; the loop: the circle glows and turns one glyph per loop, a ring rises up the statue, gold
+    motes.
+  - death: a green ground flash and shock ring, eight souls torn up out of the platform winding round the statue; the
+    loop: a faint soul pool with turning rim dashes, nine soul wisps (the big ones with eyes) rising with tails.
+  - dominion: a flash at the chest, two aura waves pulse out from behind her, threads shoot out from the hands, sparks;
+    the loop: two aura waves per loop, six thin threads from the hands swaying with sparks running out along them, a
+    ground wave.

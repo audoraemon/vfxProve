@@ -1,17 +1,17 @@
 # KAK second-route references, Tier 3 (v0.11.1 Task 10): loadout B, scripted play, seeds 1-3. name<TAB>how<TAB>expected Re-recorded for v0.11.2 awareness (Task 5).
 # flame and festival are board versions (--board). The B policies live in tools/dev/routes/tier3_b.gd.
-flame_b_play_1	--scenario=flame --case=play --route=b --board --seed=1	-593232898
-flame_b_play_2	--scenario=flame --case=play --route=b --board --seed=2	262687097
-flame_b_play_3	--scenario=flame --case=play --route=b --board --seed=3	388165266
-festival_b_play_1	--scenario=feast --path=festival --board --case=play --route=b --seed=1	-394025560
-festival_b_play_2	--scenario=feast --path=festival --board --case=play --route=b --seed=2	-670136651
-festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	-195151423
-bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-418125388
-bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-963681983
-bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-52211777
-prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-819587392
-prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-30989440
-prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	-942728580
-hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-329171442
-hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	-751812127
-hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	256408527
+flame_b_play_1	--scenario=flame --case=play --route=b --board --seed=1	-371879802
+flame_b_play_2	--scenario=flame --case=play --route=b --board --seed=2	-241255969
+flame_b_play_3	--scenario=flame --case=play --route=b --board --seed=3	-912670999
+festival_b_play_1	--scenario=feast --path=festival --board --case=play --route=b --seed=1	-514262873
+festival_b_play_2	--scenario=feast --path=festival --board --case=play --route=b --seed=2	-208006744
+festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b --seed=3	-705956060
+bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-576025873
+bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-183217397
+bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-59340820
+prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-403165280
+prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-925951075
+prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	414566259
+hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-152867874
+hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	791723365
+hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	-886121897

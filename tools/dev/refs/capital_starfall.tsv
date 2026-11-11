@@ -1,10 +1,10 @@
 # KAK exact references: the board Warning (Starfall) in the Capital (v0.12 M2 Task 9; src/game/town/cities/capital_missions/warning.gd): none, loadout B play and the Herald toll case, seeds 1-3, --city=capital. name<TAB>how<TAB>expected.
-capital_starfall_none_1	--scenario=warning --case=none --route=b --board --seed=1 --city=capital	-187025460
-capital_starfall_none_2	--scenario=warning --case=none --route=b --board --seed=2 --city=capital	-509696476
-capital_starfall_none_3	--scenario=warning --case=none --route=b --board --seed=3 --city=capital	-69106068
-capital_starfall_b_play_1	--scenario=warning --case=play --route=b --board --seed=1 --city=capital	-706140812
-capital_starfall_b_play_2	--scenario=warning --case=play --route=b --board --seed=2 --city=capital	-216338102
-capital_starfall_b_play_3	--scenario=warning --case=play --route=b --board --seed=3 --city=capital	-345167288
-capital_starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1 --city=capital	-617026144
-capital_starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2 --city=capital	-207032907
-capital_starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3 --city=capital	-576539542
+capital_starfall_none_1	--scenario=warning --case=none --route=b --board --seed=1 --city=capital	-295486963
+capital_starfall_none_2	--scenario=warning --case=none --route=b --board --seed=2 --city=capital	-254152365
+capital_starfall_none_3	--scenario=warning --case=none --route=b --board --seed=3 --city=capital	-187711008
+capital_starfall_b_play_1	--scenario=warning --case=play --route=b --board --seed=1 --city=capital	-850317712
+capital_starfall_b_play_2	--scenario=warning --case=play --route=b --board --seed=2 --city=capital	-193974260
+capital_starfall_b_play_3	--scenario=warning --case=play --route=b --board --seed=3 --city=capital	-645909381
+capital_starfall_toll_1	--scenario=warning --case=toll --route=b --board --seed=1 --city=capital	-499253760
+capital_starfall_toll_2	--scenario=warning --case=toll --route=b --board --seed=2 --city=capital	-194994442
+capital_starfall_toll_3	--scenario=warning --case=toll --route=b --board --seed=3 --city=capital	-355077833

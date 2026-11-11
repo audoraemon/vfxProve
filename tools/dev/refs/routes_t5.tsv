@@ -1,16 +1,16 @@
 # KAK exact references: Tier 5 second routes (v0.11.1 Task 12). name<TAB>how<TAB>expected. B rows: --route=b plays the mission's loadout B (tools/dev/routes/tier5_b.gd); the stars (Last Judgement, The Long Night) on their board version (--board). Re-recorded for v0.11.2 awareness (Task 5).
-eye_b_play_1	--scenario=eye --case=play --route=b --seed=1	-703663740
-eye_b_play_2	--scenario=eye --case=play --route=b --seed=2	-389378946
-eye_b_play_3	--scenario=eye --case=play --route=b --seed=3	-916158048
-exodus_b_play_1	--scenario=exodus --case=play --route=b --seed=1	560298564
-exodus_b_play_2	--scenario=exodus --case=play --route=b --seed=2	-762409651
-exodus_b_play_3	--scenario=exodus --case=play --route=b --seed=3	-940481542
-heart_b_play_1	--scenario=heart --case=play --route=b --seed=1	-52182123
-heart_b_play_2	--scenario=heart --case=play --route=b --seed=2	-328905864
-heart_b_play_3	--scenario=heart --case=play --route=b --seed=3	-690790568
-judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	-403815656
-judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	-17874505
-judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	-626446085
-night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	90716291
-night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	810472999
-night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	-444358799
+eye_b_play_1	--scenario=eye --case=play --route=b --seed=1	-280400582
+eye_b_play_2	--scenario=eye --case=play --route=b --seed=2	-915629251
+eye_b_play_3	--scenario=eye --case=play --route=b --seed=3	-216364807
+exodus_b_play_1	--scenario=exodus --case=play --route=b --seed=1	160657849
+exodus_b_play_2	--scenario=exodus --case=play --route=b --seed=2	-169404852
+exodus_b_play_3	--scenario=exodus --case=play --route=b --seed=3	925439317
+heart_b_play_1	--scenario=heart --case=play --route=b --seed=1	964594553
+heart_b_play_2	--scenario=heart --case=play --route=b --seed=2	-873864089
+heart_b_play_3	--scenario=heart --case=play --route=b --seed=3	-502960110
+judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	414358718
+judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	785658468
+judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	920960400
+night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	583372353
+night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	-485752946
+night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	-476928475

@@ -132,3 +132,5 @@ static func run(t) -> void:
 		t.check(Sfx.CATALOG.has(cue), "%s is in the catalog" % cue)
 	t.check(Ambience.marching(0.1, Ambience.MARCH_EVERY) and not Ambience.marching(0.01, Ambience.MARCH_EVERY)
 		and not Ambience.marching(0.1, 0.0), "a walking soldier marches, one at its post does not")
+	t.check(not Ambience.march_heard(AlarmManager.Stage.NORMAL) and Ambience.march_heard(AlarmManager.Stage.CONCERN),
+		"a calm town's patrols are silent; the march is heard once the alarm rises")

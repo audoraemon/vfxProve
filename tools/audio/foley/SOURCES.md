@@ -51,7 +51,7 @@ the sheet the user listens with.
 - Cats: OpenGameArt `meow`, `cat-purr-meow`, `kitten-mew` (CC0); Wikimedia Commons meows (`Meow of a Siamese cat`,
   `MeowUSA`, a Greek recording saved as `Greek_meow_2015-11-24.flac`, `GettingOutImpatient`, `Meow of a pleading cat`),
   `NoTrip` (yowls) and `Cat hissing - Zabuhailo` (CC0 or public domain).
-- Soldiers: mail footsteps (`footsteps-leather-cloth-armor`), boots (`footsteps-0`), chainmail and spear swings (the RPG
+- Soldiers: boots (`footsteps-0`) with a leather step (`footsteps-leather-cloth-armor`; the metal steps clanked like gunfire and are not used), a faint chainmail and spear swings (the RPG
   sound pack), Kenney impacts, the 150 combat pack's punches, and six low, steady yells from the male yelling pack for
   orders. The war horn is Sonatina's horn section (CC Sampling Plus, credited), a low call and a fifth above.
 

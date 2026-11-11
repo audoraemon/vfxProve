@@ -47,10 +47,11 @@ const CALL_QUIET := 0.35
 ## How far from the screen's centre a call can be, in screen pixels at zoom 1.
 const CALL_SPREAD := Vector2(300.0, 170.0)
 ## The soldiers' march (natural sound pass 5): every MARCH_EVERY seconds one of the MARCH_PICKS soldiers nearest the
-## screen's centre takes a step in mail, in turn, so their feet fall one after another. Only those that walk at MARCH_SPEED
+## screen's centre takes a step, in turn, so their feet fall one after another. Only those that walk at MARCH_SPEED
 ## (ground units a second) or more and stand within MARCH_REACH of the screen (a share of its centre-to-corner) count:
-## a soldier at its post is silent.
-const MARCH_EVERY := 0.16
+## a soldier at its post is silent. A calm town's patrols are silent too (march_heard()): the march is heard once the
+## alarm has risen, when the soldiers move with purpose -- a patrol's steady tread was a clatter under every quiet day.
+const MARCH_EVERY := 0.3
 const MARCH_PICKS := 2
 const MARCH_SPEED := 0.25
 const MARCH_REACH := 0.9
@@ -168,6 +169,11 @@ func _cries(delta: float, panic: float) -> void:
 	_crowd.sfx.play(&"crowd_cry", who.ground_pos)
 
 
+## Whether the soldiers' march is heard at all at this alarm stage: not in a calm town.
+static func march_heard(stage: AlarmManager.Stage) -> bool:
+	return stage != AlarmManager.Stage.NORMAL
+
+
 ## Whether a soldier that moved `moved` ground units in `seconds` is marching.
 static func marching(moved: float, seconds: float) -> bool:
 	return seconds > 0.0 and moved / seconds >= MARCH_SPEED
@@ -177,6 +183,9 @@ static func marching(moved: float, seconds: float) -> bool:
 func _march(delta: float) -> void:
 	_next_march -= delta
 	if _next_march > 0.0 or _crowd.sfx == null:
+		return
+	if not march_heard(_crowd.alarms.stage):
+		_last_at.clear()
 		return
 	_next_march = MARCH_EVERY
 	var cam := get_viewport().get_camera_2d()

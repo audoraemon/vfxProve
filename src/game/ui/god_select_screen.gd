@@ -73,7 +73,7 @@ var _ui: Control
 var _hover := ""
 var _clock := 0.0
 var _draws := 0  # how many times the screen has drawn to the end (tests read it)
-var _unloaded: Array[String] = []  # gods whose art is still to load, nearest first
+var _unloaded: Array[String] = []  # frame steps still to do (LOAD_STEPS per god), nearest god first
 var _prev_scale := 0.0
 var _prev_bob := 0.0
 var _prev_frame := 0
@@ -122,28 +122,56 @@ func advance(delta: float) -> void:
 	_clock += delta
 	fx_age += delta
 	if not _unloaded.is_empty():
-		_load_god(_unloaded[0])
+		_do_step(_unloaded.pop_front())
 	if _prev_type != "":
 		_prev_age += delta
 		if _prev_age >= EMBLEM_FADE:
 			_prev_type = ""
 
 
-## Loads one god's sets (emblem, flash, spark, burst, loop) so a pick never loads inside a draw call.
+## The frame sets one god's emblem and effect use.
+static func god_sets(type: String) -> PackedStringArray:
+	return PackedStringArray(["emblem_" + type, "emblem_flash_" + type, "emblem_spark_" + type, "fx_%s_burst" % type, "fx_%s_loop" % type])
+
+
+## The queue's steps for one god, one per advance(): the 24-frame emblem in thirds, the small sets, the 16-frame loop in halves. A
+## "@n@last" step reads that frame number and the seven after it; the last step of a set also assembles it (`frame_set`).
+const LOAD_STEPS := ["emblem_%s@1@0", "emblem_%s@9@0", "emblem_%s@17@1", "emblem_flash_%s", "emblem_spark_%s", "fx_%s_burst",
+	"fx_%s_loop@1@0", "fx_%s_loop@9@1"]
+
+
+## Does one queue step.
+static func _do_step(step: String) -> void:
+	if not step.contains("@"):
+		GodSelectArt.frame_set(step)
+		return
+	var parts := step.split("@")
+	for n in range(int(parts[1]), int(parts[1]) + 8):
+		GodSelectArt.texture("%s_%d" % [parts[0], n])
+	if parts[2] == "1":
+		GodSelectArt.frame_set(parts[0])
+
+
+## Loads all of one god's sets now (a pick never loads inside a draw call) and takes them off the queue.
 func _load_god(type: String) -> void:
-	for set_name in ["emblem_%s", "emblem_flash_%s", "emblem_spark_%s", "fx_%s_burst", "fx_%s_loop"]:
-		GodSelectArt.frame_set(set_name % type)
-	_unloaded.erase(type)
+	for set_name in god_sets(type):
+		GodSelectArt.frame_set(set_name)
+	for step in LOAD_STEPS:
+		_unloaded.erase(step % type)
 
 
-## The other five gods, nearest the selected one on the ring first; advance() loads one per call.
+## The sets of the other five gods, nearest the selected one on the ring first; advance() loads one set per call.
 func _queue_rest() -> void:
 	_unloaded.clear()
 	var n := GodTree.RING.size()
+	var order: Array[int] = []
 	for d in range(1, n / 2 + 1):
 		for i in [(selected + d) % n, (selected - d + n) % n]:
-			if not _unloaded.has(GodTree.RING[i]) and i != selected:
-				_unloaded.append(GodTree.RING[i])
+			if i != selected and not order.has(i):
+				order.append(i)
+	for i in order:
+		for step in LOAD_STEPS:
+			_unloaded.append(step % GodTree.RING[i])
 
 
 ## The two pool rings' pixels (rounded points, and each point's place in the dash pattern 0-1), made once.

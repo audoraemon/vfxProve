@@ -190,12 +190,21 @@ static func _load_order(t) -> void:
 		if g != "ruin":
 			others += loaded.call(g)
 	t.check(others == 0, "and nothing else (%d other sets loaded)" % others)
+	var per_god := GodSelectScreen.LOAD_STEPS.size()
 	screen.advance(0.016)
-	t.check(loaded.call("passage") == 5 or loaded.call("dominion") == 5, "one neighbour loads on the first advance")
-	t.check(loaded.call("decree") == 0 or loaded.call("death") == 0, "and the far gods wait")
+	t.check(loaded.call("passage") + loaded.call("dominion") == 0, "one step does not finish a set")
+	for i in per_god - 1:
+		screen.advance(0.016)
+	t.check(loaded.call("passage") == 5 and loaded.call("dominion") == 0, "the nearest god's steps finish it before the next god starts")
+	for i in 3:
+		screen.advance(0.016)
+	t.check(loaded.call("dominion") == 1, "the next god's emblem is done after its three steps (%d)" % loaded.call("dominion"))
+	t.check(loaded.call("decree") == 0, "and the far god still waits")
+	screen.select(5)
+	t.check(loaded.call("dominion") == 5, "picking a half-loaded god loads the rest of it at once")
 	screen.select(3)
 	t.check(loaded.call("decree") == 5, "picking an unloaded god loads it at once")
-	for i in 6:
+	for i in 60:
 		screen.advance(0.016)
 	var all := 0
 	for g in GodTree.RING:

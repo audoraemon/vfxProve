@@ -100,6 +100,10 @@ static func run(t) -> void:
 	t.check(av.pick(3, true, AnimalVoices.Act.ANGRY) == &"dog_growl" and av.pick(4, false, AnimalVoices.Act.ANGRY) == &"cat_yowl",
 		"a turned dog growls, a turned cat yowls")
 	t.check(av.pick(5, true, AnimalVoices.Act.DIE) == &"", "the budget is spent after four")
+	av.step(2.0)
+	t.check(av.pick(6, true, AnimalVoices.Act.CALL) == &"dog_bark" and av.pick(7, false, AnimalVoices.Act.CALL) == &"cat_meow",
+		"a call near the camera is always heard: a bark or a meow")
+	t.check(Ambience.ANIMAL_DAY.y <= 15.0 and Ambience.ANIMAL_NIGHT.y <= 18.0, "a dog or cat calls every few seconds, day and night")
 	av.step(1.0)
 	t.check(av.pick(5, true, AnimalVoices.Act.DIE) == &"dog_yelp", "and it refills")
 	var idle := 0

@@ -5,9 +5,9 @@ miras_toll_3	--scenario=miras --case=toll --route=b --seed=3 --board	225538391
 lanterns_toll_1	--scenario=lanterns --case=toll --seed=1	-62787019
 lanterns_toll_2	--scenario=lanterns --case=toll --seed=2	995128485
 lanterns_toll_3	--scenario=lanterns --case=toll --seed=3	622298056
-sermon_toll_1	--scenario=sermon --case=toll --seed=1	-443455433
-sermon_toll_2	--scenario=sermon --case=toll --seed=2	-295771457
-sermon_toll_3	--scenario=sermon --case=toll --seed=3	-979690028
+sermon_toll_1	--scenario=sermon --case=toll --seed=1	-432676387
+sermon_toll_2	--scenario=sermon --case=toll --seed=2	-635181599
+sermon_toll_3	--scenario=sermon --case=toll --seed=3	-69899333
 prayers_toll_1	--scenario=prayers --case=toll --seed=1	-708613784
 prayers_toll_2	--scenario=prayers --case=toll --seed=2	-110750216
 prayers_toll_3	--scenario=prayers --case=toll --seed=3	-946133905

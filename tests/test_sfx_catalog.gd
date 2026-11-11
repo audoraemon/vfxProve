@@ -42,8 +42,8 @@ static func run(t) -> void:
 			if not played.has(wav) or not ResourceLoader.exists(wav):
 				unbaked += " " + file
 	t.check(unbaked == "", "every source is built and in the catalog (not:%s)" % unbaked)
-	t.check(sourced.size() == 323 and from["sfxr"] == 14 and from["foley"] == 301 and from["music"] == 8,
-		"all 323 sounds have a source: 14 GodotSfxr, 301 recipes of recordings, 8 music (%d: %s)" % [sourced.size(), from])
+	t.check(sourced.size() == 323 and from["sfxr"] == 2 and from["foley"] == 313 and from["music"] == 8,
+		"all 323 sounds have a source: 2 GodotSfxr, 313 recipes of recordings, 8 music (%d: %s)" % [sourced.size(), from])
 	var orphan := ""
 	for path: String in played:
 		if not sourced.has(path):

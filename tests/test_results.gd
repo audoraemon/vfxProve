@@ -36,7 +36,7 @@ static func run(t) -> void:
 	t.check(ResultsScreen.thousands(1234567) == "1,234,567", "and big ones get every comma (%s)" % ResultsScreen.thousands(1234567))
 	t.check(ResultsScreen.thousands(-3000) == "-3,000", "a negative keeps its sign in front (%s)" % ResultsScreen.thousands(-3000))
 
-	# Every interface sound is in the catalog and on disk (made with GodotSfxr; test_sfx_catalog checks the sources).
+	# Every interface sound is in the catalog and on disk (recordings since natural sound pass 6; test_sfx_catalog checks the sources).
 	var missing := ""
 	for cue: StringName in UiSound.CUES:
 		if not Sfx.CATALOG.has(cue):

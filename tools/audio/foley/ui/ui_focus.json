@@ -1,0 +1,3 @@
+{"length": 0.3, "rms_db": -20.0, "reverb": {"rt60": 0.4, "mix": 0.05, "predelay_ms": 4, "damp": 8000}, "layers": [
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_03.ogg", "at": 0.0, "from": 0.1, "dur": 0.2, "hp": 800, "lp": 12000, "fade_in": 10, "fade_out": 80}
+]}

@@ -311,7 +311,9 @@ static func _mates_walk(t) -> void:
 			farthest = maxf(farthest, maxf(a.ground_pos.distance_to(r.messenger.ground_pos), b.ground_pos.distance_to(r.messenger.ground_pos)))
 		t.check(steps > 450 and float(under) <= 0.05 * float(steps),
 			"%s house: from the first step after the send, nothing excluded, the two mates stay over 1.6 apart but at the turns: %d of %d steps under (closest %.2f; measured 0-2.9 %%)" % [d.post_names[house], under, steps, worst])
-		t.check(farthest < 4.0, "%s house: and they keep up with him (the farthest a mate strays: %.2f)" % [d.post_names[house], farthest])
+		# 4.5, not 4.0, since Develop-Main's walks keep off ground the walk grid has shut (3c20f052): a mate rounds a shut corner
+		# a little wider (the west house's 4.38 at its last turn).
+		t.check(farthest < 4.5, "%s house: and they keep up with him (the farthest a mate strays: %.2f)" % [d.post_names[house], farthest])
 		Kit.done(s)
 
 

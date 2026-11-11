@@ -14,6 +14,7 @@ var _frame := 0
 
 
 func _initialize() -> void:
+	AnimalPack.enabled = false  # the references are of the town without its animals (AnimalPack)
 	var env := EnvironmentField.new()
 	env.lights = LightField.new()
 	var town := Town.new()

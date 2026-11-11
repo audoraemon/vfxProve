@@ -1,0 +1,16 @@
+{"length": 1.6, "rms_db": -19.2, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_09.ogg", "at": 0.506, "onset": true, "pitch": 1.89, "gain_db": -9.2, "hp": 150, "lp": 10009, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_09.ogg", "at": 0.24, "onset": true, "pitch": -0.36, "gain_db": -3.5, "hp": 150, "lp": 11169, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_13.ogg", "at": 0.609, "onset": true, "pitch": 2.49, "gain_db": -12.4, "hp": 150, "lp": 9562, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.972, "onset": true, "pitch": 0.15, "gain_db": -14.5, "hp": 150, "lp": 7975, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_09.ogg", "at": 0.274, "onset": true, "pitch": -2.09, "gain_db": -5.6, "hp": 150, "lp": 11020, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_09.ogg", "at": 1.034, "onset": true, "pitch": 0.95, "gain_db": -10.4, "hp": 150, "lp": 7705, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.806, "onset": true, "pitch": -0.03, "gain_db": -12.1, "hp": 150, "lp": 8699, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_11.ogg", "at": 0.469, "onset": true, "pitch": -1.31, "gain_db": -9.2, "hp": 150, "lp": 10171, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.624, "onset": true, "pitch": 2.63, "gain_db": -7.7, "hp": 150, "lp": 9493, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_09.ogg", "at": 0.189, "onset": true, "pitch": -1.52, "gain_db": -11.0, "hp": 150, "lp": 11392, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_12.ogg", "at": 0.295, "onset": true, "pitch": 0.53, "gain_db": 0.9, "hp": 150, "lp": 10932, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_11.ogg", "at": 0.326, "onset": true, "pitch": -2.74, "gain_db": -6.5, "hp": 150, "lp": 10796, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.059, "onset": true, "pitch": -2.46, "gain_db": -3.0, "hp": 150, "lp": 11961, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_10.ogg", "at": 0.291, "onset": true, "pitch": 0.14, "gain_db": -5.9, "hp": 150, "lp": 10947, "pan": 0.0, "fade_out": 60}
+]}

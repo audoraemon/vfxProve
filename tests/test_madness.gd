@@ -141,6 +141,8 @@ static func run(t) -> void:
 	for c in group + neighbours:
 		c.statuses.clear()
 		c.mind = Person.Mind.CALM
+		# Out of the frenzy's way below: still milling about the square, one of them could be the nearest to the madman.
+		c.ground_pos = at + Vector2(20.0, 2.0)
 	m.clear()
 
 	# A frenzy: strikes until the victim falls; the town sees a danger and a soldier at its post comes.

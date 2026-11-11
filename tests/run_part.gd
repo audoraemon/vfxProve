@@ -32,6 +32,7 @@ func _reset_world() -> void:
 	Structure.cast_shadows = true  # a town look's statics (v0.12 lighting): a suite that leaked a DAY or NIGHT town must not reach the next
 	Structure.lamp_glow = true
 	Structure.steady_light = false
+	AnimalPack.enabled = false  # the suite and its checksums run without the town's animals; test_animals turns them on
 	TownLook.active = Town.Look.CURRENT
 	Town._look_owner = 0
 
@@ -39,7 +40,10 @@ func _reset_world() -> void:
 func _initialize() -> void:
 	var part := 1
 	var of := 1
+	var only := ""
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--only="):
+			only = a.substr(7)
 		if a.begins_with("--part="):
 			part = int(a.substr(7))
 		elif a.begins_with("--of="):
@@ -47,6 +51,8 @@ func _initialize() -> void:
 	var suites: Array = ALL.SUITES
 	var size := ceili(float(suites.size()) / of)
 	var mine: Array = suites.slice((part - 1) * size, part * size)
+	if only != "":
+		mine = suites.filter(func(path: String) -> bool: return path.contains(only))  # `--only=name`: just those suites
 	for path in mine:
 		var suite: GDScript = load(path)
 		if suite == null or not suite.can_instantiate():

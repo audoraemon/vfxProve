@@ -1,5 +1,6 @@
 {"length": 1.6, "peak_db": -1.0, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
-  {"src": "lib:synth/cinder/cf_rise.wav", "at": 0.0, "gain_db": -10, "fade_in": 0, "fade_out": 0},
-  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/spell_fire_03.ogg", "gain_db": -5, "onset": true, "at": 0.0},
-  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "gain_db": -10, "dur": 1.6, "lp": 400, "from": 8.0, "at": 0.0}
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/spell_fire_03.ogg", "gain_db": -3, "onset": true, "at": 0.0},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "gain_db": -6, "dur": 1.6, "lp": 500, "from": 8.0, "at": 0.0, "fade_in": 300},
+  {"src": "lib:oga/fireplace-sound-loop/fire.wav", "from": 2.0, "dur": 1.6, "gain_db": -4, "hp": 150, "fade_in": 700, "fade_out": 200, "at": 0.0},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "onset": true, "dur": 1.5, "gain_db": -9, "hp": 300, "lp": 5000, "fade_in": 500, "fade_out": 300, "at": 0.05}
 ]}

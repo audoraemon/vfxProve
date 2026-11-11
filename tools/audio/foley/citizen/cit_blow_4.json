@@ -1,0 +1,4 @@
+{"length": 0.6, "rms_db": -17.0, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/01_combat_melee/impact_punch_medium_003_48kHz_16bit_0.36s_a434f34d_s02.wav", "at": 0.0, "onset": true, "hp": 70, "lp": 9000, "fade_out": 100},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth4.ogg", "at": 0.0, "onset": true, "hp": 200, "lp": 9000, "gain_db": -8, "fade_out": 80}
+]}

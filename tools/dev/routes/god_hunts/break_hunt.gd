@@ -339,7 +339,7 @@ static func _lands(crowd: Crowd, g: Vector2) -> bool:
 ## Walkable ground well out of the walls nearest `from` and at least a mirror's MIN_APART from it, within 30 units; INF for none.
 static func _exit_spot(crowd: Crowd, from: Vector2) -> Vector2:
 	var best := Vector2.INF
-	var dist := MirrorfoldFx.MIN_APART + 0.3
+	var dist := MirrorfoldFx.OVAL_MIN_APART + 0.3
 	while dist <= 30.0 and best == Vector2.INF:
 		for k in 36:
 			var g := from + Vector2.from_angle(TAU * float(k) / 36.0) * dist
@@ -357,7 +357,7 @@ static func _mirror_on(bc, ctx: Dictionary, line: PackedVector2Array, ahead: flo
 	if way_in == Vector2.INF or Walls.outside(way_in):
 		return false
 	var way_out := _exit_spot(ctx.crowd, way_in)
-	if way_out == Vector2.INF or way_in.distance_to(way_out) < MirrorfoldFx.MIN_APART:
+	if way_out == Vector2.INF or way_in.distance_to(way_out) < MirrorfoldFx.OVAL_MIN_APART:
 		return false
 	return GOD.cast_mirror(bc, ctx, way_in, way_out)
 

@@ -582,7 +582,7 @@ static func _mirror_for(bc, ctx: Dictionary, d: HideFaithfulDirector, i: int) ->
 	var way_out := spot
 	for k in 8:
 		var try := spot + away * (MIRROR_BEYOND + 0.5 * float(k))
-		if (ctx.crowd as Crowd)._grid.walkable(try) and Walls.outside(try + away * 1.5) and way_in.distance_to(try) >= MirrorfoldFx.MIN_APART:
+		if (ctx.crowd as Crowd)._grid.walkable(try) and Walls.outside(try + away * 1.5) and way_in.distance_to(try) >= MirrorfoldFx.OVAL_MIN_APART:
 			way_out = try
 			break
 	# Not within sight of an outer post (the fold sets the file down out of the walls, and an outer post sees them first).

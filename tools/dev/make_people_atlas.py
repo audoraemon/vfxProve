@@ -25,16 +25,15 @@ FRAMES = PEOPLE / "frames"
 # Engine state, PixelLab template (the folder the frames come in).
 STATES = [("idle", "breathing-idle"), ("walk", "walking-4-frames"), ("run", "running-4-frames"),
           ("stumble", "crouching"), ("death", "falling-back-death"), ("scream", "scream"), ("lurch", "scary-walk"),
-          ("swing", "swing"), ("getup", None)]
+          ("swing", "swing"), ("getup", None), ("pray", "pray"), ("point", "point"), ("lookup", "lookup"),
+          ("cower", "cower"), ("talk", "talk"), ("work", "work"), ("dig", "dig"), ("douse", "douse")]
 # A direction PixelLab was not asked for is its partner flipped left-right: SE <-> SW, NE <-> NW.
 MIRROR = {"south-east": "south-west", "south-west": "south-east", "north-east": "north-west", "north-west": "north-east"}
 DIRS = ["south-east", "south-west", "north-east", "north-west"]
 # Clips rejected on review (design, state, direction): their frames stay on disk for comparison but are not packed, so the
 # cell shows the design's idle (a still stand) until the clip is re-rolled (docs/people_anim_reroll.md). A mirrored
 # direction follows its partner, so each entry also rejects the partner.
-_REJECTED_SOURCE = [(d, "scream", "north-east") for d in
-                    ("merchant_a", "merchant_b", "craft_a", "craft_b", "clergy", "caregiver_a", "caregiver_b",
-                     "bellkeeper", "engineer")]
+_REJECTED_SOURCE = [(d, "scream", "north-east") for d in ("caregiver_b",)]
 REJECTED = set(_REJECTED_SOURCE) | {(d, s, MIRROR[x]) for d, s, x in _REJECTED_SOURCE}
 CELL = 24
 BLOCK_COLS = 8

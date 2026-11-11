@@ -108,6 +108,8 @@ func step(delta: float) -> void:
 			if keeper.mind != Person.Mind.DUTY:
 				_wait()
 			elif not keeper.has_goal() and keeper.ground_pos.distance_to(foot) <= FOOT_REACH:
+				if _crowd.doors() != &"":
+					return  # the tower takes nobody in while every door is shut or open (Every Door): he waits at its foot
 				state = State.CLIMBING
 				progress = 0.0
 				climbing_started.emit()
@@ -118,6 +120,12 @@ func step(delta: float) -> void:
 				progress = 0.0
 				_wait()
 				return
+			if _crowd.doors_open():
+				progress = 0.0  # every door bursts open (Every Door): the climber is put out at the foot, to start again
+				state = State.CALLED
+				return
+			if _crowd.doors_shut():
+				return  # every door shut (Every Door): nobody climbs; the climb stands where it is
 			progress += delta
 			if progress >= climb:
 				_ring()

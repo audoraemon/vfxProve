@@ -1,0 +1,6 @@
+{"length": 40.0, "loop": true, "stereo": true, "rms_db": -22.0, "layers": [
+  {"src": "lib:wikimedia/360703_eguobyte_large-crowd-medium-distance-stereo.wav", "at": 0.0, "from": 6.0, "dur": 40.4, "fade_in": 400, "fade_out": 400, "lp": 3000, "hp": 180, "gain_db": -7},
+  {"src": "lib:oga/amb-morning-sounds-perfect-loop/amb_morning.wav", "at": 0.0, "from": 12.0, "dur": 40.4, "fade_in": 400, "fade_out": 400, "hp": 500, "gain_db": -3},
+  {"src": "lib:oga/ambient-bird-sounds/birds-isaiah658_0.ogg", "at": 8.0, "dur": 30.0, "fade_in": 1500, "fade_out": 1500, "hp": 600, "gain_db": -9},
+  {"src": "lib:oga/wind1/wind1.wav", "at": 0.0, "from": 5.0, "dur": 40.4, "fade_in": 400, "fade_out": 400, "hp": 250, "gain_db": -14}
+]}

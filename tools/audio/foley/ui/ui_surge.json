@@ -1,0 +1,4 @@
+{"length": 3.0, "rms_db": -17.0, "reverb": {"rt60": 2.8, "mix": 0.24, "predelay_ms": 25, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 0.0, "from": 0.13, "dur": 2.4, "pitch": -12, "hp": 100, "lp": 6000, "fade_in": 3, "fade_out": 1200},
+  {"src": "lib:wikimedia/Church_bells_-_Leverkusen_2007.wav", "at": 0.0, "onset": true, "dur": 2.6, "pitch": -2, "hp": 120, "lp": 7000, "gain_db": -4, "fade_out": 1200}
+]}

@@ -397,7 +397,7 @@ static func _beyond(crowd: Crowd, from: Vector2) -> Vector2:
 			var g: Vector2 = crowd._grid.nearest_walkable(from + Vector2.from_angle(TAU * float(k) / 24.0) * rad, 2)
 			if g == Vector2.INF or not Walls.outside(g) or City.current().town().grow(Walls.MARGIN + MIRROR_BEYOND).has_point(g):
 				continue
-			if g.distance_to(from) >= MirrorfoldFx.MIN_APART and (best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from)):
+			if g.distance_to(from) >= MirrorfoldFx.OVAL_MIN_APART and (best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from)):
 				best = g
 		if best != Vector2.INF:
 			return best

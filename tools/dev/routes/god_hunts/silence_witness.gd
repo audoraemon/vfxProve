@@ -527,7 +527,7 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 			if live.size() <= 2 and ctx.memo.has(_key(r, "street")):
 				way_in = _street_at(ctx.memo[_key(r, "street")], SW_THORN_AHEAD + SW_MIRROR_AHEAD - 0.5)  # (shut in: beyond the wall, not at his feet)
 			var way_out := _beyond(crowd, way_in)
-			if way_in != Vector2.INF and way_out != Vector2.INF and way_in.distance_to(w.ground_pos) > MirrorfoldFx.HALF_WIDE and way_in.distance_to(way_out) >= MirrorfoldFx.MIN_APART:
+			if way_in != Vector2.INF and way_out != Vector2.INF and way_in.distance_to(w.ground_pos) > MirrorfoldFx.HALF_WIDE and way_in.distance_to(way_out) >= MirrorfoldFx.OVAL_MIN_APART:
 				rules.cast(slots.mirror, way_in, {"to": way_out})
 				ctx.memo[_key(r, "mirror")] = true
 				_noted(d, ctx.memo, r)
@@ -565,7 +565,7 @@ static func _beyond(crowd: Crowd, from: Vector2) -> Vector2:
 			var g: Vector2 = crowd._grid.nearest_walkable(from + Vector2.from_angle(TAU * float(k) / 24.0) * rad, 2)
 			if g == Vector2.INF or not Walls.outside(g) or City.current().town().grow(Walls.MARGIN + 0.8).has_point(g):
 				continue
-			if g.distance_to(from) >= MirrorfoldFx.MIN_APART and (best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from)):
+			if g.distance_to(from) >= MirrorfoldFx.OVAL_MIN_APART and (best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from)):
 				best = g
 		if best != Vector2.INF:
 			return best

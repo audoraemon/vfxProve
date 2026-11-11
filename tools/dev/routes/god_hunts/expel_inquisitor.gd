@@ -423,7 +423,7 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 		if way_in == Vector2.INF or Walls.outside(way_in):
 			continue
 		var way_out := _exit_spot(ctx, way_in)
-		if way_out == Vector2.INF or way_in.distance_to(way_out) < MirrorfoldFx.MIN_APART:
+		if way_out == Vector2.INF or way_in.distance_to(way_out) < MirrorfoldFx.OVAL_MIN_APART:
 			continue
 		if GOD.cast_mirror(bc, ctx, way_in, way_out):
 			ctx.memo[key] = _now(ctx)

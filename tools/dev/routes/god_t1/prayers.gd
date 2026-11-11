@@ -398,7 +398,7 @@ static func _bring_in(ctx: Dictionary, w: Person) -> Vector2:
 			break
 		left -= seg
 		at = step
-	return at if at.distance_to(d.door) >= MirrorfoldFx.MIN_APART + 0.2 else Vector2.INF
+	return at if at.distance_to(d.door) >= MirrorfoldFx.OVAL_MIN_APART + 0.2 else Vector2.INF
 
 
 ## Where the mirror over the door sets a walker down to hold him off: walkable ground LOOP_OUT from the door on his side of it (his way back steps
@@ -410,7 +410,7 @@ static func _loop_out(ctx: Dictionary) -> Vector2:
 	for k in 8:
 		var dir := base.rotated(float((k + 1) / 2) * (1.0 if k % 2 == 1 else -1.0) * TAU / 8.0)
 		var spot := d._walkable(d.door + dir * LOOP_OUT)
-		if grid.walkable(spot) and spot.distance_to(d.door) >= MirrorfoldFx.MIN_APART and not MirrorfoldFx.on_mirror(d.door, spot) \
+		if grid.walkable(spot) and spot.distance_to(d.door) >= MirrorfoldFx.OVAL_MIN_APART and not MirrorfoldFx.on_mirror(d.door, spot) \
 				and not grid.path(spot, d.door).is_empty() and not Walls.outside(spot):
 			return spot
 	return Vector2.INF
@@ -467,7 +467,7 @@ static func _fold_in(f: Person) -> Vector2:
 	var ahead := FOLD_AHEAD
 	while ahead <= FOLD_AHEAD_MAX:
 		var at := GodT1.road_ahead(f, ahead)
-		if MirrorfoldFx.local(at, f.ground_pos).length() > 1.3 and MirrorfoldFx.local(at, GodT1.road_ahead(f, ahead + 0.5)).length() < 1.0:
+		if MirrorfoldFx.oval_local(at, f.ground_pos).length() > 1.3 and MirrorfoldFx.oval_local(at, GodT1.road_ahead(f, ahead + 0.5)).length() < 1.0:
 			return at
 		ahead += 0.5
 	return Vector2.INF

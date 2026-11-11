@@ -1,0 +1,23 @@
+{"length": 2.3, "rms_db": -19.0, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_02.ogg", "at": 0.201, "onset": true, "pitch": -3.26, "gain_db": -6.5, "hp": 150, "lp": 8660, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_03.ogg", "at": 1.65, "onset": true, "pitch": -1.33, "gain_db": -11.7, "hp": 150, "lp": 5400, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_05.ogg", "at": 0.127, "onset": true, "pitch": -2.09, "gain_db": -4.3, "hp": 150, "lp": 8825, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_01.ogg", "at": 1.65, "onset": true, "pitch": -0.06, "gain_db": -11.0, "hp": 150, "lp": 5400, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_01.ogg", "at": 0.658, "onset": true, "pitch": -0.22, "gain_db": -6.0, "hp": 150, "lp": 7631, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_03.ogg", "at": 0.545, "onset": true, "pitch": -4.16, "gain_db": -4.3, "hp": 150, "lp": 7886, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_02.ogg", "at": 0.234, "onset": true, "pitch": -1.59, "gain_db": -4.3, "hp": 150, "lp": 8586, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_07.ogg", "at": 0.359, "onset": true, "pitch": -4.91, "gain_db": -4.7, "hp": 150, "lp": 8304, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_03.ogg", "at": 0.221, "onset": true, "pitch": -2.56, "gain_db": -3.0, "hp": 150, "lp": 8615, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 1.65, "onset": true, "pitch": -1.6, "gain_db": -18.0, "hp": 150, "lp": 6600, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.236, "onset": true, "pitch": -1.97, "gain_db": -11.5, "hp": 150, "lp": 10489, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 1.65, "onset": true, "pitch": 0.91, "gain_db": -17.6, "hp": 150, "lp": 6600, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 0.349, "onset": true, "pitch": 0.95, "gain_db": -12.0, "hp": 150, "lp": 10176, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.073, "onset": true, "pitch": -2.21, "gain_db": -9.6, "hp": 150, "lp": 10937, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.535, "onset": true, "pitch": -2.7, "gain_db": -15.8, "hp": 150, "lp": 9666, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.486, "onset": true, "pitch": 0.32, "gain_db": -12.9, "hp": 150, "lp": 9801, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.917, "onset": true, "pitch": 0.77, "gain_db": -18.8, "hp": 150, "lp": 8615, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.294, "onset": true, "pitch": -1.29, "gain_db": -10.0, "hp": 150, "lp": 10329, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 0.767, "onset": true, "pitch": 0.02, "gain_db": -12.1, "hp": 150, "lp": 9027, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.162, "onset": true, "pitch": -1.25, "gain_db": -13.4, "hp": 150, "lp": 10693, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.804, "onset": true, "pitch": -0.83, "gain_db": -14.9, "hp": 150, "lp": 8925, "pan": 0.0, "fade_out": 60}
+]}

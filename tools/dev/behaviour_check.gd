@@ -60,7 +60,11 @@ extends SceneTree
 ##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac]; --snap aims at the citizen nearest --at (a whisper always does, and sends them
+##          [--setup=rite|evac|cross] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
+##          (a power that acts on walkers has some: The Folded Ward); --zoom frames a wide area (default 1.5);
+##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
+##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
+##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
 ##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
 ##          open paving south of the market);
 ##          Prepared, the power in slot 1, cast after 20 s of calm (and the setup), PowerBook.CLIP_FRAMES frames over
@@ -480,6 +484,7 @@ var route := ""
 
 
 func _initialize() -> void:
+	AnimalPack.enabled = false  # the references are of the town without its animals (AnimalPack)
 	mission = load("res://scenes/mission.tscn").instantiate()
 	mission.exit_on_refusal = false
 	mission.unhosted_ok = true  # its throw-away _ready() start runs the default mission, which a non-home --city= does not host; _run() resets this
@@ -1317,6 +1322,12 @@ func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0), extra := {}) -> F
 	return rules.cast(slot, at, all)
 
 
+## The clip's "cross" setup: this many citizens within CROSS_R of the cast walk to CROSS_TO past it on its far side.
+const CROSSERS := 16
+const CROSS_R := 6.0
+const CROSS_TO := 4.5
+
+
 ## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
 ## spread over `seconds` (default: the effect's run), each the screen's middle at half size, as the sandbox's clips.
 func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> void:
@@ -1335,6 +1346,19 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 		crowd.add_alarm(100.0)
 		await _frames(10 * 60)
+	elif setup == "cross":
+		# The CROSSERS citizens nearest the cast set off across it, each to the far side of the cast from where it stands.
+		var near: Array[Person] = []
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < CROSS_R:
+				near.append(p)
+		near.sort_custom(func(a: Person, b: Person) -> bool:
+			return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
+		for p: Person in near.slice(0, CROSSERS):
+			var away := p.ground_pos - at
+			var to := crowd._grid.nearest_walkable(at - (away.normalized() if away.length() > 0.1 else Vector2.RIGHT) * CROSS_TO, 4)
+			if to != Vector2.INF:
+				p.walk_to(to)
 	# A Mind Whisper (v0.08) always snaps: it is cast on someone.
 	var whisper := key == "whisper"
 	var who: Person = null
@@ -1355,9 +1379,14 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(2.2, -2.2))
 		extra = {"to": to, "target": who}
 		look = at.lerp(to, 0.5)
+	var look_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--look")
+	if look_arg != "":
+		var off := look_arg.split(",")
+		look = at + Vector2(float(off[0]), float(off[1]))
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
-	bf.camera.zoom = Vector2.ONE * 1.5
+	var zoom := Battlefield.arg_value(OS.get_cmdline_user_args(), "--zoom")
+	bf.camera.zoom = Vector2.ONE * (float(zoom) if zoom != "" else 1.5)
 	bf.camera.position = (Iso.ground_to_screen(look) + Vector2(0, -10 if whisper else -16)).round()
 	bf.camera.reset_smoothing()
 	await _frames(2)

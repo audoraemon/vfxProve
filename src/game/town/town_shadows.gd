@@ -331,6 +331,7 @@ func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] 
 	env.structure_restored.connect(_on_change)
 	env.structure_added.connect(_on_change)
 	env.structure_removed.connect(_on_change)
+	env.decor_removed.connect(_on_change)  # a lifted piece (Skylift) takes its shadow with it
 	for dec in env.decor():
 		if is_instance_valid(dec):
 			dec.fell.connect(_on_change)

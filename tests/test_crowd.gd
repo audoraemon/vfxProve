@@ -47,7 +47,8 @@ static func run(t) -> void:
 		var p := crowd.citizens[i]
 		p._goal = Vector2.INF
 		crowd.routine.visit(i, 100.0)
-		if p.has_goal():
+		# Sent to the place it already stands at, it is there: nothing to walk to, no goal held.
+		if p.has_goal() or p.ground_pos.distance_to(p.anchor) <= Person.GOAL_REACH:
 			sent += 1
 			var pr: CitizenProfile = p.profile
 			routine_ok = routine_ok and (p.anchor == pr.home or p.anchor == pr.work or p.anchor in pr.leisure

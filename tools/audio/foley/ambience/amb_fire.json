@@ -1,0 +1,6 @@
+{"length": 28.0, "loop": true, "stereo": true, "rms_db": -20.0, "layers": [
+  {"src": "lib:oga/fireplace-sound-loop/fire.wav", "at": 0.0, "from": 0.5, "dur": 28.4, "fade_in": 400, "fade_out": 400, "hp": 180, "gain_db": 0},
+  {"src": "lib:oga/fire-crackling/fire-1_0.ogg", "at": 3.0, "fade_in": 30, "fade_out": 400, "hp": 400, "gain_db": -6, "pan": -0.4},
+  {"src": "lib:oga/fire-crackling/fire-1_0.ogg", "at": 11.0, "fade_in": 30, "fade_out": 400, "hp": 400, "gain_db": -6, "pan": 0.3},
+  {"src": "lib:oga/fire-crackling/fire-1_0.ogg", "at": 19.0, "fade_in": 30, "fade_out": 400, "hp": 400, "gain_db": -6, "pan": -0.1}
+]}

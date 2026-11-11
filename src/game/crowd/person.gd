@@ -30,6 +30,14 @@ const THREAT_MARGIN := 1.5
 ## Seconds a person freezes when something turns them to PANIC from another mind (v0.11.2, spec §3.3), before they run. Each
 ## person's own value, fixed by their rng seed (startle_seconds()).
 const STARTLE := Vector2(0.4, 0.8)
+## Closer than this (tiles) to what frightened it, a startled citizen cowers; farther, it points and shouts (drawing only).
+const COWER_REACH := 3.0
+## How often a soldier standing at its post plays its talk (seconds, min and max; drawing only).
+const TALK_EVERY := Vector2(8.0, 15.0)
+## How long, of every TALK_EVERY, a soldier at its post talks in its pauses (seconds).
+const TALK_WINDOW := 4.0
+## How near its stop a calm citizen must be to stand there instead of milling (tiles).
+const STOP_REACH := 1.2
 ## How long a person stops to look at something it saw or heard (seconds, min and max), and how long one waits where
 ## it ran to (or after looking) before going back to its day.
 const OBSERVE_SECONDS := Vector2(1.0, 3.0)
@@ -43,6 +51,29 @@ const GOAL_REACH := 0.45
 ## Seconds before a person gives a stuck goal another try. Cinderfall repeatedly invalidates routes (fallen
 ## buildings, the bridge closing), so raised from 2.5 to spread the A* replanning out over fewer per-second calls.
 const REPATH := 4.0
+## The stuck watchdog (_watch_stuck()). A body may stand where the walk grid has a cell closed (a gap between two
+## houses wider than two margins but too narrow for a cell); from there the straight step to its waypoint can cross a
+## margin, and the slide that lets a walker graze a corner rocks it to and fro on the spot for good. One walking a path
+## to a goal, whose distance to its waypoint has not dropped by UNSTICK_GAIN for UNSTICK_AFTER, takes
+## the walk back onto open ground on its own path (_way_out(): the nearest cell of it it can reach past the footprints),
+## its step check on the footprints alone (margin 0.0: it may brush a wall, never go through one), given the walk's
+## time and UNSTICK_FOR more, then plans its way again from there.
+## Whoever is meant to stand -- queued, held, asleep, down, at its spot -- is never counted.
+const UNSTICK_AFTER := 2.0
+const UNSTICK_FOR := 1.0
+const UNSTICK_GAIN := 0.05
+## The way out is searched in steps of UNSTICK_STEP, each point UNSTICK_CLEAR off every footprint, up to UNSTICK_REACH
+## each way (_way_out()); with none, the nearest free cell within UNSTICK_CELLS. Within UNSTICK_NEAR of its end the step
+## back is done.
+const UNSTICK_STEP := 0.1
+const UNSTICK_CLEAR := 0.05
+const UNSTICK_REACH := 2.5
+const UNSTICK_CELLS := 4
+const UNSTICK_NEAR := 0.1
+const UNSTICK_DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+	Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]
+## Every unstick there has been (the stall probe and the tests read it).
+static var unsticks := 0
 ## Chance per frame that a calm citizen strolls to the market or back home.
 const STROLL_CHANCE := 0.004
 ## How far a calm citizen drifts from home, and a posted soldier from its spot.
@@ -86,6 +117,8 @@ const DASH := Vector2(1.6, 3.2)
 const DASH_VEER := 0.6
 ## While its route out is being planned a fleeing person scurries in hops this long, without path-finding.
 const SCURRY := 0.9
+## How finely straight_clear() looks along a straight walk (ground units).
+const STRAIGHT_SAMPLE := 0.1
 ## Chance per think that a running person stumbles, and how long they are down for.
 const STUMBLE_CHANCE := 0.006
 const STUMBLE_SECONDS := 0.45
@@ -253,6 +286,10 @@ var night_indoors := false
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
+## An anchor a calm citizen's drift found no route to, and the grid's version then (_drift()): not asked for again until
+## it has set out on another route (set_goal()) or the grid changes.
+var _no_route_to := Vector2.INF
+var _no_route_version := -1
 ## The city's water (CityDef.rivers()), read again whenever the city changes: nobody steps off dry ground into it
 ## (_step_blocked()).
 static var _rivers: Array[Rect2] = []
@@ -377,6 +414,15 @@ var _startle_left := 0.0
 ## post, never drawn from rng; -1 until first drawn).
 var _stride := false
 var _back := false
+## Seconds it has stood still (drawing only: a pray or a look-up plays from when it stops).
+var _still_t := 0.0
+## (Phase 2 people art) The thing it observes is up in the sky (the watchman's falling star): it looks up. Drawing only;
+## observe() clears it, the caller sets it after.
+var look_up := false
+## Seconds left digging: RescueManager sets it while this one digs at the rubble (it stands still and shows the dig).
+var dig_shown := 0.0
+## Seconds since it was set up, for the soldier's talk at its post (drawing only, never reset).
+var _life_t := 0.0
 var _look := -1.0
 ## The design _design() picked, its PeopleArt.info() table, and what it was picked for (manifest load, role, corps).
 var _design_key := -1
@@ -386,6 +432,25 @@ var _design_info: Array
 var _path := PackedVector2Array()
 var _leg := 0
 var _goal := Vector2.INF
+## Bent roads (bend_roads()): where every route it plans leads instead (Vector2.INF when its roads are straight), for how
+## much longer, and how far about that point it mills.
+var _bend_to := Vector2.INF
+var _bend_left := 0.0
+var _bend_gather := 0.0
+## Held off a place (hold_off()): the ground it is kept off, for how much longer, the goal it means to take up again when
+## let in, and the spot it mills about meanwhile.
+var _off_rect := Rect2()
+var _off_left := 0.0
+var _off_goal := Vector2.INF
+var _off_home := Vector2.INF
+## The stuck watchdog (_watch_stuck()): the waypoint watched, the nearest it has got to it, seconds without getting
+## nearer; and while it steps back onto open ground, the way there, the point of it walked to, and the seconds left.
+var _stuck_to := Vector2.INF
+var _stuck_best := INF
+var _stuck_t := 0.0
+var _unstick_way := PackedVector2Array()
+var _unstick_leg := 0
+var _unstick_left := 0.0
 var _panic_left := 0.0
 var _repath_in := 0.0
 var _skin := Color.WHITE
@@ -511,6 +576,14 @@ func unhurried() -> bool:
 func tick(delta: float) -> void:
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
+	if _bend_to != Vector2.INF:
+		_bend_left -= delta
+		if _bend_left <= 0.0:
+			unbend_roads()
+	if _off_left > 0.0:
+		_off_left -= delta
+		if _off_left <= 0.0:
+			end_hold_off()
 	if state == State.WANDER and not is_frozen():
 		_think_accum += delta
 		if _think_due:
@@ -521,7 +594,8 @@ func tick(delta: float) -> void:
 		_idle = maxf(_idle, delta + 0.01)  # held (asleep, screaming, down): a goal set from outside cannot creep it for a tick, whatever the tick
 	var before := ground_pos
 	super(delta)
-	_track_stride(ground_pos - before)
+	_track_stride(ground_pos - before, delta)
+	_watch_stuck(delta)
 	if _down_pending and state == State.WANDER:
 		# The knock-back slide is over: it lies where it came to rest.
 		_down_pending = false
@@ -530,8 +604,11 @@ func tick(delta: float) -> void:
 
 
 ## For the people sprites only: whether it stepped this tick, and whether toward the back of the screen.
-func _track_stride(d: Vector2) -> void:
+func _track_stride(d: Vector2, delta: float) -> void:
 	_stride = d.length_squared() > 1e-10
+	_still_t = 0.0 if _stride else _still_t + delta
+	dig_shown = maxf(dig_shown - delta, 0.0)
+	_life_t += delta
 	if _stride and absf(d.x + d.y) > 1e-6:
 		_back = d.x + d.y < 0.0
 
@@ -724,9 +801,19 @@ func path_crosses(r: Rect2, ahead: int) -> bool:
 func set_goal(g: Vector2) -> void:
 	if mind == Mind.ASLEEP:
 		return  # a sleeper goes nowhere (Curfew)
+	if _off_left > 0.0 and _off_rect.has_point(g):
+		# Held off the place it means to go (hold_off()): it keeps the goal for when it is let in, and mills where it is.
+		_off_goal = g
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+		_leg = 0
+		_repath_in = REPATH
+		return
 	_goal = g
 	_leg = 0
-	_path = grid.path(ground_pos, g) if grid != null else PackedVector2Array()
+	_no_route_to = Vector2.INF
+	# Bent roads (bend_roads()): the goal stays its own, the route leads to the bend.
+	_path = grid.path(ground_pos, g if _bend_to == Vector2.INF else _bend_to) if grid != null else PackedVector2Array()
 	_repath_in = REPATH
 	_idle = 0.0
 	_pick_target()
@@ -753,6 +840,11 @@ func _pick_target() -> void:
 		# DummyEnemy.tick() just set _idle before calling us, to pause at every target it reaches. That
 		# suits a calm stroll but not a sprint: cancel it so a runner never stops between waypoints.
 		_idle = 0.0
+	if _unstick_left > 0.0:
+		# Stepping back onto open ground (_watch_stuck()): that is where it walks until it is there.
+		_unstick_next()
+		_idle = 0.0
+		return
 	while _leg < _path.size():
 		var p := _path[_leg]
 		_leg += 1
@@ -800,16 +892,315 @@ func _pick_target() -> void:
 	_drift()
 
 
-## A small aimless step: citizens milling about their street, soldiers shifting at their post.
+## A calm citizen arrived at a work, errand or leisure stop (RoutineManager.Place), within STOP_REACH of it: it stands
+## there, working or talking, until the routine sends it on. At home it mills about as before.
+func _at_stop() -> bool:
+	return mind == Mind.CALM and not soldier and (last_place == RoutineManager.Place.WORK
+		or last_place == RoutineManager.Place.ERRAND or last_place == RoutineManager.Place.LEISURE) \
+		and ground_pos.distance_to(anchor) <= STOP_REACH
+
+
+## A small aimless step: citizens milling about their street, soldiers shifting at their post. Walked straight, with no
+## route, so it goes only where a straight walk is open ground (straight_clear()): the spot drawn about the anchor, else
+## that spot turned a quarter, a half and three quarters about the anchor, else half and then a quarter of the way to it.
+## None open: a calm citizen out of its street (farther from its anchor than twice the spread) walks back to the anchor
+## by a route (set_goal()) -- or, with no route there, mills about where it stands (the same spot and its turns, about its
+## feet); anyone else, or with nothing open, stands, and the next drift tries again. The spot is drawn as it always was (two
+## draws), so the alternatives cost the random sequence nothing.
 func _drift() -> void:
+	if (dig_shown > 0.0 or _at_stop()) and _bend_to == Vector2.INF:
+		# (Interaction art) At a work, errand or leisure stop, or digging at the rubble: it stays on its spot -- unless its
+		# roads are bent (bend_roads()): then it mills about the bend like everyone caught.
+		_target = ground_pos
+		return
 	var spread := POST_SPREAD
 	if mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP or mind == Mind.CONFUSED:
 		spread = CALM_SPREAD if profile == null else PLACE_SPREAD
-	var to := anchor + Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
-	if grid != null:
-		var free := grid.nearest_walkable(to, 3)
-		to = free if free != Vector2.INF else ground_pos
-	_target = to
+	var off := Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread, spread))
+	# Bent roads (bend_roads()): it mills about the bend instead, within its gather.
+	var home := anchor
+	if _bend_to != Vector2.INF:
+		home = _bend_to
+		off = off.limit_length(_bend_gather)
+	# Held off a place (hold_off()): it mills about where it was turned away to, never onto the place.
+	if _off_left > 0.0:
+		home = _off_home
+	var to := _drift_spot(home + off)
+	if _drift_open(to):
+		_target = to
+		return
+	for turn in [PI * 0.5, PI, PI * 1.5]:
+		var other := _drift_spot(home + off.rotated(turn))
+		if _drift_open(other):
+			_target = other
+			return
+	for part in [0.5, 0.25]:
+		var short := ground_pos.lerp(to, part)
+		if _drift_open(short):
+			_target = short
+			return
+	if mind == Mind.CALM and _off_left <= 0.0 and ground_pos.distance_to(home) > spread * 2.0:
+		# Out of its street (a stroll, a goal given up at a doorstep) with no straight way back: home by the streets.
+		if grid == null or anchor != _no_route_to or grid.version != _no_route_version:
+			set_goal(anchor)
+			if not _path.is_empty():
+				return
+			# No route there (its anchor lies in a corner the walk grid has shut off): not asked again until it has
+			# walked a route somewhere else or the grid changes.
+			_goal = Vector2.INF
+			_no_route_to = anchor
+			_no_route_version = grid.version if grid != null else -1
+		# It mills about where it stands instead.
+		for turn in [0.0, PI * 0.5, PI, PI * 1.5]:
+			var here := _drift_spot(ground_pos + off.rotated(turn))
+			if straight_clear(here):
+				_target = here
+				return
+	_target = ground_pos
+
+
+## A drift may go to `to`: a straight walk there is clear (straight_clear()), and it is not on a place it is held off.
+func _drift_open(to: Vector2) -> bool:
+	if _off_left > 0.0 and _off_rect.has_point(to):
+		return false
+	return straight_clear(to)
+
+
+## A drift's spot on open ground: `to`, or the nearest open cell within 3 (where it stands when there is none).
+func _drift_spot(to: Vector2) -> Vector2:
+	if grid == null:
+		return to
+	var free := grid.nearest_walkable(to, 3)
+	return free if free != Vector2.INF else ground_pos
+
+
+## Whether a straight walk from where it stands to `to` stays on ground a body can really cross: it touches no cell the
+## walk grid has closed (every cell the line passes through, corners too -- WalkGrid.clear_line()'s half-cell samples can
+## step over a corner) -- which rules out every gap beside a house or a tree the grid shuts but a building's margin lets a
+## body into -- and, looked at every STRAIGHT_SAMPLE, no building's margin as its steps see it (step_margin). One already
+## standing in a closed cell or a margin (put there by a shove, a fold, a spawn) may walk out of it, as _step_blocked()
+## lets it step out of a margin: the stretch before the walk is out of it does not count, any after does -- but on the way
+## out of a margin it never steps into a footprint it was not already in, and it must end on an open cell. A walk of no
+## length is clear. True with neither a grid nor a field to ask (each is asked only when there).
+func straight_clear(to: Vector2) -> bool:
+	var span := to - ground_pos
+	if span.length_squared() < 0.000001:
+		return true
+	if grid != null and not _cells_open(ground_pos, to):
+		return false
+	var n := maxi(ceili(span.length() / STRAIGHT_SAMPLE), 1)
+	var in_margin := block_env != null and block_env.blocked(ground_pos, step_margin)
+	var in_foot := in_margin and block_env.blocked(ground_pos, 0.0)
+	for k in range(1, n + 1):
+		var p := ground_pos + span * (float(k) / float(n))
+		if block_env != null:
+			if not block_env.blocked(p, step_margin):
+				in_margin = false
+				in_foot = false
+			elif not in_margin:
+				return false
+			elif block_env.blocked(p, 0.0):
+				if not in_foot:
+					return false
+			else:
+				in_foot = false
+	return true
+
+
+## straight_clear()'s grid half: every walk-grid cell the line from `a` to `b` passes through is open (where the line runs
+## exactly through a cell corner, both cells beside it as well), but for a first stretch of closed cells when `a` is in
+## one; and the cell of `b` is open.
+func _cells_open(a: Vector2, b: Vector2) -> bool:
+	var g := grid.grid
+	var id := grid.world_to_id(a)
+	var last := grid.world_to_id(b)
+	var off := not (g.is_in_boundsv(id) and not g.is_point_solid(id))
+	var span := b - a
+	var sx := 1 if span.x > 0.0 else -1
+	var sy := 1 if span.y > 0.0 else -1
+	var cell := WalkGrid.CELL
+	var t_x := INF if span.x == 0.0 else ((float(id.x + (1 if sx > 0 else 0)) * cell) - a.x) / span.x
+	var t_y := INF if span.y == 0.0 else ((float(id.y + (1 if sy > 0 else 0)) * cell) - a.y) / span.y
+	var d_x := INF if span.x == 0.0 else cell / absf(span.x)
+	var d_y := INF if span.y == 0.0 else cell / absf(span.y)
+	var guard := absi(last.x - id.x) + absi(last.y - id.y) + 2
+	while id != last and guard > 0:
+		guard -= 1
+		var through: Array[Vector2i] = []
+		if absf(t_x - t_y) < 0.000001:
+			through = [id + Vector2i(sx, 0), id + Vector2i(0, sy)]
+			id += Vector2i(sx, sy)
+			t_x += d_x
+			t_y += d_y
+		elif t_x < t_y:
+			id.x += sx
+			t_x += d_x
+		else:
+			id.y += sy
+			t_y += d_y
+		through.append(id)
+		for c: Vector2i in through:
+			if g.is_in_boundsv(c) and not g.is_point_solid(c):
+				off = false
+			elif not off:
+				return false
+	# Still in the closed cells at `b`: no way out along this line (nor, never reaching `b`'s cell, any line at all).
+	return not off and id == last
+
+
+## The stuck watchdog (UNSTICK_AFTER): after the step, see whether this walker has got nearer its waypoint; stuck, it
+## steps back onto open ground and plans again (_unstick()).
+func _watch_stuck(delta: float) -> void:
+	if _unstick_left > 0.0:
+		_unstick_left -= delta
+		if _unstick_left <= 0.0 or ground_pos.distance_to(_unstick_way[_unstick_way.size() - 1]) <= UNSTICK_NEAR:
+			_end_unstick()
+		return
+	if not _walking_a_path():
+		_stuck_to = Vector2.INF
+		_stuck_t = 0.0
+		return
+	var d := ground_pos.distance_to(_target)
+	if _target != _stuck_to or d <= _stuck_best - UNSTICK_GAIN:
+		_stuck_to = _target
+		_stuck_best = d
+		_stuck_t = 0.0
+		return
+	_stuck_t += delta
+	if _stuck_t >= UNSTICK_AFTER:
+		_unstick()
+
+
+## Out in the open on its feet, free to walk (not queued, held, asleep, down, frozen, startled, stumbling or pausing),
+## on a path to a goal it has not reached, and not standing on the waypoint it walks to -- the only walker the watchdog
+## counts. One holding a spot (a post, a door, a place to watch or work from) has its waypoint at its feet.
+func _walking_a_path() -> bool:
+	if _goal == Vector2.INF or _path.is_empty() or state != State.WANDER or inside or queue_spot != Vector2.INF:
+		return false
+	if mind == Mind.ASLEEP or mind == Mind.HOLD or is_frozen() or wait > 0.0 or _idle > 0.0:
+		return false
+	if _scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0 or _down_pending or _stumble > 0.0 or _startle_left > 0.0:
+		return false
+	# Short of the waypoint by more than a step's arrival (ARRIVE), not by half a goal's reach: a walker pinned a hair
+	# short of a waypoint inside a building's margin (the step past it refused, the slide too) never arrives, and must count.
+	return ground_pos.distance_to(_goal) > GOAL_REACH and ground_pos.distance_to(_target) > ARRIVE
+
+
+## Stuck: walk the way out (_way_out()) on the footprints alone, for UNSTICK_FOR beyond the time the walk takes.
+func _unstick() -> void:
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	var way := _way_out()
+	if way.is_empty():
+		return
+	unsticks += 1
+	_unstick_way = way
+	_unstick_leg = 0
+	var length := ground_pos.distance_to(way[0])
+	for k in range(1, way.size()):
+		length += way[k - 1].distance_to(way[k])
+	_unstick_left = UNSTICK_FOR + length / maxf(walk_speed, 0.1)
+	step_margin = 0.0
+	_target = way[0]
+	_idle = 0.0
+
+
+## The next point of the way out, or the last held until the step back is done (_pick_target() while unsticking).
+func _unstick_next() -> void:
+	while _unstick_leg < _unstick_way.size() - 1 and ground_pos.distance_to(_unstick_way[_unstick_leg]) < ARRIVE * 2.0:
+		_unstick_leg += 1
+	_target = _unstick_way[_unstick_leg]
+
+
+## Back on open ground (or the time is up): the body's margin again, and the way to its goal planned from here.
+func _end_unstick() -> void:
+	_unstick_left = 0.0
+	_unstick_way = PackedVector2Array()
+	step_margin = STEP_MARGIN
+	if _goal != Vector2.INF and state != State.DEAD:
+		set_goal(_goal)
+
+
+## The way back onto open ground: the shortest walk (in UNSTICK_STEP steps, each point UNSTICK_CLEAR off every
+## footprint, within UNSTICK_REACH) to a cell of the path still ahead whose centre is clear of the margins, ending on
+## that centre -- the walk grid has the gap closed, so its own way out can lead into a pocket it has no route from.
+## With no such way, the nearest free cell clear of the margins within UNSTICK_CELLS that a straight walk reaches
+## without entering a footprint. Empty when there is neither.
+func _way_out() -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if grid == null or block_env == null:
+		return out
+	var want := {}
+	for k in range(maxi(_leg - 1, 0), _path.size()):
+		if not block_env.blocked(_path[k]):
+			want[grid.world_to_id(_path[k])] = true
+	var reach := roundi(UNSTICK_REACH / UNSTICK_STEP)
+	var from := {Vector2i.ZERO: Vector2i.ZERO}  # lattice point -> the one it was reached from
+	var queue: Array[Vector2i] = [Vector2i.ZERO]
+	var head := 0
+	while head < queue.size() and not want.is_empty():
+		var c := queue[head]
+		head += 1
+		var at := ground_pos + Vector2(c) * UNSTICK_STEP
+		var id := grid.world_to_id(at)
+		if c != Vector2i.ZERO and want.has(id):
+			var k := c
+			while k != Vector2i.ZERO:
+				out.append(ground_pos + Vector2(k) * UNSTICK_STEP)
+				k = from[k]
+			out.reverse()
+			out.append(grid.id_to_world(id))
+			return _pulled(out)
+		for dir: Vector2i in UNSTICK_DIRS:
+			var n := c + dir
+			if from.has(n) or absi(n.x) > reach or absi(n.y) > reach:
+				continue
+			var p := ground_pos + Vector2(n) * UNSTICK_STEP
+			if block_env.blocked(p, UNSTICK_CLEAR) or block_env.blocked((at + p) * 0.5, 0.0):
+				continue
+			from[n] = c
+			queue.append(n)
+	var best := Vector2.INF
+	var best_d := INF
+	var me := grid.world_to_id(ground_pos)
+	for dy in range(-UNSTICK_CELLS, UNSTICK_CELLS + 1):
+		for dx in range(-UNSTICK_CELLS, UNSTICK_CELLS + 1):
+			var c := me + Vector2i(dx, dy)
+			if not grid.grid.is_in_boundsv(c) or grid.grid.is_point_solid(c):
+				continue
+			var w := grid.id_to_world(c)
+			var d := w.distance_to(ground_pos)
+			if d < best_d and d > UNSTICK_NEAR and not block_env.blocked(w) and _footprints_clear(ground_pos, w, 0.0):
+				best = w
+				best_d = d
+	if best != Vector2.INF:
+		out.append(best)
+	return out
+
+
+## `way` with every point dropped that a straight walk between its neighbours, UNSTICK_CLEAR off every footprint, does
+## not need (a staircase of lattice steps becomes a few straight legs).
+func _pulled(way: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var at := ground_pos
+	var i := 0
+	while i < way.size():
+		var j := way.size() - 1
+		while j > i and not _footprints_clear(at, way[j], UNSTICK_CLEAR):
+			j -= 1
+		at = way[j]
+		out.append(at)
+		i = j + 1
+	return out
+
+
+## Whether a straight walk from `a` to `b` keeps `margin` off every footprint (sampled every 0.05).
+func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
+	var n := maxi(ceili(a.distance_to(b) / 0.05), 1)
+	for k in range(1, n + 1):
+		if block_env.blocked(a.lerp(b, float(k) / float(n)), margin):
+			return false
+	return true
 
 
 # --- What the town does to a person ------------------------------------------
@@ -872,6 +1263,7 @@ func observe(from: Vector2, seconds := -1.0) -> void:
 		return
 	_hold_begin()
 	_lured = false
+	look_up = false
 	mind = Mind.OBSERVE
 	awareness = maxi(awareness, Awareness.CONCERNED) as Awareness
 	_threat = from
@@ -988,6 +1380,262 @@ func fold(to: Vector2) -> bool:
 	_sync_position()
 	set_goal(bound)
 	return true
+
+
+## Space folded under it (The Folded Ward): set down at `to` -- open ground its caller has chosen -- in mid-stride, and
+## none the wiser. Its mind is untouched. With `walk_on` it goes on where it was going: to its goal, by a way planned
+## again from `to`; with no goal, the step it was taking is carried along with it (or, where that step is not open from
+## `to`, it stands and its next step is its own). With `walk_on` false it is only stopped at `to` and its walk goes on
+## from there. A throw flies on from `to`. Either way the jump is not being stuck: the stuck watchdog starts over and a
+## step back onto open ground it was taking is over. A place held in a gate's queue is let go. False when it is dead,
+## frozen or inside somewhere, and it stays where it is.
+func wrap_to(to: Vector2, walk_on := true) -> bool:
+	if inside or state == State.DEAD or is_frozen():
+		return false
+	var shift := to - ground_pos
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	if _unstick_left > 0.0:
+		_unstick_left = 0.0
+		_unstick_way = PackedVector2Array()
+		step_margin = STEP_MARGIN
+	ground_pos = to
+	_sync_position()
+	if not walk_on:
+		return true
+	if queue_spot != Vector2.INF:
+		queue_spot = Vector2.INF
+		queue_since = -1.0
+	if _goal != Vector2.INF:
+		set_goal(_goal)
+	elif state == State.WANDER:
+		var step := _target + shift
+		_target = step if straight_clear(step) else to
+	return true
+
+
+## Turned away from a place (The Folded Ward's NO WAY IN): for `seconds` it is held off `r`. It walks on along `heading`
+## for `walk_away` seconds (as far as a straight walk is open), then mills about where it stands, never onto `r`. Any
+## route it means to take into `r` -- its goal now, a post, a street, an errand -- is kept for later and not walked
+## (set_goal()); a goal outside `r` it walks as ever (a fright sends it off as usual). When the time is up (or
+## end_hold_off()) it takes up the goal it was kept from, if any. Its mind is untouched; nothing is drawn from any rng
+## here. No path is walked while it mills, so the stuck watchdog has nothing to count. False when it is dead or inside.
+func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float) -> bool:
+	if state == State.DEAD or inside or seconds <= 0.0:
+		return false
+	var kept := _off_goal if _off_left > 0.0 else Vector2.INF
+	if _goal != Vector2.INF and r.has_point(_goal):
+		kept = _goal
+	_off_rect = r
+	_off_left = seconds
+	_off_goal = kept
+	if kept != Vector2.INF:
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+		_leg = 0
+		_repath_in = REPATH
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	# On along the heading it came out with, as far as walk_away takes it on open ground off the place.
+	var away := ground_pos
+	var dir := heading.normalized() if heading.length() > 0.0001 else Vector2.ZERO
+	for part: float in [1.0, 0.5, 0.25]:
+		var to := ground_pos + dir * walk_speed * walk_away * part
+		if not r.has_point(to) and straight_clear(to):
+			away = to
+			break
+	_off_home = away
+	if _goal == Vector2.INF and state == State.WANDER:
+		_target = away
+		_idle = 0.0
+	return true
+
+
+## Let in again: no longer held off its place; the goal it was kept from is taken up from where it stands.
+func end_hold_off() -> void:
+	if _off_left <= 0.0 and _off_goal == Vector2.INF:
+		return
+	_off_left = 0.0
+	var g := _off_goal
+	_off_goal = Vector2.INF
+	_off_home = Vector2.INF
+	if g != Vector2.INF and state != State.DEAD and not inside:
+		set_goal(g)
+
+
+## Whether it is held off a place now (hold_off()).
+func held_off() -> bool:
+	return _off_left > 0.0
+
+
+## Where it means to be: its goal; or, kept from one (hold_off()), that goal; else its anchor (a citizen's street, a
+## soldier's post).
+func bound_for() -> Vector2:
+	if _goal != Vector2.INF:
+		return _goal
+	if _off_goal != Vector2.INF:
+		return _off_goal
+	return anchor
+
+
+## The roads lie (All Roads Lead Here): for `seconds`, every route it plans -- home, to its post, to a gate, away from a
+## danger, wherever any mind sends it (set_goal()) -- leads to `to` instead. Its mind and its goal stay its own: it
+## arrives, finds it is not where it meant to be, plans again, and the new route brings it back. Milling about (_drift())
+## it mills within `gather` of `to`; a gate's waiting crowd lets it go (Crowd._gates()). Walking somewhere, it takes the
+## bent road at once; one inside a building is caught when it comes out and plans its way. False when it is dead.
+func bend_roads(to: Vector2, seconds: float, gather: float) -> bool:
+	if state == State.DEAD:
+		return false
+	_bend_to = to
+	_bend_left = seconds
+	_bend_gather = gather
+	if inside:
+		return true
+	passing_gate = null
+	if queue_spot != Vector2.INF:
+		release_from_queue()  # re-plans its goal, by the bent road
+	elif _goal != Vector2.INF:
+		set_goal(_goal)
+	return true
+
+
+## The roads run true again: one walking somewhere plans its own goal anew from where it stands; one standing or milling
+## goes back to its day by its own mind (the drift about its anchor, the post, the way out).
+func unbend_roads() -> void:
+	if _bend_to == Vector2.INF:
+		return
+	_bend_to = Vector2.INF
+	_bend_left = 0.0
+	if state == State.DEAD or inside:
+		return
+	if _goal != Vector2.INF:
+		set_goal(_goal)
+
+
+## Whether its roads are bent now (bend_roads()).
+func roads_bent() -> bool:
+	return _bend_to != Vector2.INF
+
+
+## Where its bent roads lead (Vector2.INF when they run true).
+func bent_to() -> Vector2:
+	return _bend_to
+
+
+## Minds another power or one of the town's managers holds a person in (rewind()): on a duty, at a fire, taking cover,
+## regrouping with the household, confused, whispered, compelled, fighting, asleep. The hold is its owner's to end.
+const REWIND_HELD := [Mind.DUTY, Mind.ASSIST, Mind.SHELTER, Mind.REGROUP, Mind.CONFUSED, Mind.WHISPERED, Mind.COMPELLED,
+	Mind.FIGHT, Mind.ASLEEP]
+## A soldier's orders (rewind()): his post, the rally, holding the ground.
+const REWIND_ORDERS := [Mind.POST, Mind.RALLY, Mind.HOLD]
+
+
+## Turned back (Yesterday's Door; `was` is a record from TimeTrail.back()): put back where it stood then and, where that is
+## its own to take up again, doing what it did then; then it stands dazed `daze` seconds and carries on from there (a
+## danger still about frightens it again as usual). False when it is left as it is. The rules:
+##   - Only one on its feet out in the open now, and out in the open then, is turned back: the dead stay dead; one inside a
+##     building now or then, or thrown, pulled or frozen in ice now, is left. It stands on the nearest open walk-grid cell
+##     to where it stood (within 4); with none it is left. A gate's queue, a stumble, a fright's freeze, a fall, a step
+##     back onto open ground it was in are over: none of them had happened then.
+##   - A mind of its own is put back with what it was counting down: its day (CALM, RECOVER: its anchor, the stay left, the
+##     place it was walking to), a fright (PANIC: the danger, the seconds of it left, where it was running), its flight
+##     (FLEE: the way out it was making for, or a new plan at once), a look (OBSERVE: at what, and the seconds left); its
+##     awareness too.
+##   - A mind held by another power or a manager (REWIND_HELD, or staring at a lure), now or then, is kept as it is now: a
+##     hold put back without its owner would never end, and one taken away would leave its owner waiting. Only the body
+##     steps back; it walks on to where the hold sends it.
+##   - A soldier's orders (REWIND_ORDERS) are kept as they are now -- whoever gave them does not give them twice: he steps
+##     back and walks to them again. A fright or a look he was in then is put back, his orders saved under it as under
+##     any hold; one he is in now and was not then is over, and he goes back to his orders.
+func rewind(was: Dictionary, daze := 0.0) -> bool:
+	if was.is_empty() or state != State.WANDER or is_frozen() or inside or bool(was.get("inside", false)):
+		return false
+	var to: Vector2 = was.get("pos", ground_pos)
+	if grid != null and not grid.walkable(to):
+		to = grid.nearest_walkable(to, 4)
+		if to == Vector2.INF:
+			return false
+	queue_spot = Vector2.INF
+	queue_since = -1.0
+	passing_gate = null
+	wait = 0.0
+	_stumble = 0.0
+	_startle_left = 0.0
+	_get_up_now()
+	_unstick_left = 0.0
+	_unstick_way = PackedVector2Array()
+	step_margin = STEP_MARGIN
+	_stuck_to = Vector2.INF
+	_stuck_t = 0.0
+	_velocity = Vector2.ZERO
+	ground_pos = to
+	_sync_position()
+	var then := int(was.get("mind", mind))
+	var then_lured := bool(was.get("lured", false))
+	var own_then := then in [Mind.CALM, Mind.RECOVER, Mind.PANIC, Mind.FLEE] or (then == Mind.OBSERVE and not then_lured)
+	if mind in REWIND_HELD or lured() or then in REWIND_HELD or (then == Mind.OBSERVE and then_lured):
+		_walk_on()
+	elif soldier:
+		if mind in REWIND_ORDERS and (then == Mind.PANIC or then == Mind.OBSERVE):
+			_hold_begin()
+			_take_up(was)
+		elif mind in REWIND_ORDERS or not own_then and not then in REWIND_ORDERS:
+			_walk_on()
+		elif then in REWIND_ORDERS:
+			_soldier_back()  # a fright or a look now that he was not in then: back to his orders, as the hold saved them
+		else:
+			_take_up(was)
+	elif own_then:
+		_take_up(was)
+	else:
+		_walk_on()
+	if daze > 0.0:
+		wait = maxf(wait, daze)
+		_idle = maxf(_idle, daze)
+	return true
+
+
+## rewind()'s kept mind: on to the goal it has now by a route from where it stands -- for a soldier away from the post he
+## was given, to it -- or, with none, standing where it is put.
+func _walk_on() -> void:
+	var bound := _goal
+	if bound == Vector2.INF and (mind == Mind.POST or mind == Mind.RALLY) and ground_pos.distance_to(anchor) > GOAL_REACH * 2.0:
+		bound = anchor
+	if bound != Vector2.INF:
+		set_goal(bound)
+	else:
+		_path = PackedVector2Array()
+		_leg = 0
+		_target = ground_pos
+
+
+## rewind()'s own mind taken up again from the record `was`.
+func _take_up(was: Dictionary) -> void:
+	var then := int(was.get("mind", mind)) as Mind
+	var timer := float(was.get("timer", 0.0))
+	_lured = false
+	mind = then
+	awareness = int(was.get("awareness", awareness)) as Awareness
+	if then == Mind.PANIC or then == Mind.OBSERVE:
+		_threat = was.get("threat", Vector2.INF)
+		_threat_r = float(was.get("threat_r", 1.0))
+	_panic_left = timer if then == Mind.PANIC else 0.0
+	rerouting = 0.0
+	if then == Mind.OBSERVE:
+		_observe_left = timer
+	if then == Mind.CALM or then == Mind.RECOVER:
+		anchor = was.get("anchor", anchor)
+		stay_left = timer
+	walk_speed = _mind_speed()
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	_leg = 0
+	_target = ground_pos
+	var g: Vector2 = was.get("goal", Vector2.INF)
+	if then == Mind.FLEE and g == Vector2.INF:
+		_repath_in = 0.0  # its way out planned again at once
+	elif then != Mind.OBSERVE and g != Vector2.INF:
+		set_goal(g)
 
 
 # --- Generic status and intent modifiers (Dominion, Disorder) ---------------------
@@ -1423,6 +2071,8 @@ func _fight_step(delta: float) -> void:
 func hurt(amount: float, by: Person) -> void:
 	if state == State.DEAD:
 		return
+	if field != null:
+		field.enemy_struck.emit(self, by)
 	if mind == Mind.ASLEEP:
 		wake()
 	health -= amount
@@ -1445,6 +2095,32 @@ func hurt(amount: float, by: Person) -> void:
 		# A bystander is frightened as before, and knocked flat: it lies there, and runs when it is up.
 		panic(by.ground_pos, 0.5, &"frenzy")
 		knock_down()
+## Bitten for `amount` of health by an animal at `from` (AnimalPack: a maddened dog or cat): a flash and a shove away
+## from it, and death (damage kind frenzy, as a frenzy's blow) at none left. A citizen is frightened and knocked flat;
+## a soldier stands (he cuts the animal down, AnimalPack).
+func hurt_from(amount: float, from: Vector2) -> void:
+	if state == State.DEAD:
+		return
+	if mind == Mind.ASLEEP:
+		wake()
+	health -= amount
+	if statuses.has(&"frail"):
+		health = 0.0
+	flash(0.08)
+	var lying := is_down()
+	if not lying:
+		var away := ground_pos - from
+		knock((away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 0.8)
+	if health <= 0.0:
+		if field != null:
+			field.kill(self, &"frenzy", from)
+		return
+	if soldier or mind == Mind.FIGHT or lying:
+		return
+	panic(from, 0.5, &"frenzy")
+	knock_down()
+
+
 ## Mind Whisper (v0.08): drop whatever it was doing -- its day, a duty, an errand, even flight -- walk to `to` and
 ## linger there `linger` seconds under a gold glyph, then pick up again: flight if it was fleeing, else back to its day,
 ## where a duty's manager takes it back. Anyone inside and the dead do not hear it (a soldier does, v0.11.1: he goes back to what he was doing), nor (v0.08.1) anyone still
@@ -1761,13 +2437,14 @@ func _dash() -> void:
 
 
 ## Keep running while the route out is still being planned: a short straight hop away from the danger. No
-## path-finding -- the stagger exists so a whole town does not path-find in one frame.
+## path-finding -- the stagger exists so a whole town does not path-find in one frame. Only a hop a straight walk can
+## really make (straight_clear()): away, else a quarter turn either side; none, and it keeps the target it had.
 func _scurry() -> void:
 	var away := ground_pos - _threat if _threat != Vector2.INF else Vector2.RIGHT.rotated(rng.randf() * TAU)
 	var dir := (away.normalized() if away.length() > 0.01 else Vector2.RIGHT).rotated(rng.randf_range(-0.8, 0.8))
 	for turn in [0.0, PI * 0.5, -PI * 0.5]:
 		var to := ground_pos + dir.rotated(turn) * SCURRY
-		if grid == null or grid.walkable(to):
+		if straight_clear(to):
 			_target = to
 			return
 
@@ -1965,8 +2642,8 @@ static func _screen_box(fp: Rect2, h: float) -> Rect2:
 # --- Drawing -----------------------------------------------------------------
 
 func _draw_body(lift: int, top_only: int) -> void:
-	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD:
-		# On its knees: the body down, no legs under it.
+	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD 			and not (SpriteArt.on() and PeopleArt.ready() and _prays()):
+		# On its knees: the body down, no legs under it (unless the sprite has a pray of its own).
 		lift += 3
 		top_only = 1
 	if SpriteArt.on() and PeopleArt.ready():
@@ -2076,10 +2753,10 @@ func _design() -> String:
 ## last stepped. Stumble and death hold their last frame.
 func _sprite_pose() -> Array:
 	var code := _sprite_pose_code()
-	return [PeopleArt.ANIMS[code >> 2 & 15], code & 3, code >> 6]
+	return [PeopleArt.ANIMS[code >> 2 & 31], code & 3, code >> 7]
 
 
-## _sprite_pose() folded into one int, frame << 6 | ANIMS index << 2 | facing: every person on screen asks for it every
+## _sprite_pose() folded into one int, frame << 7 | ANIMS index << 2 | facing: every person on screen asks for it every
 ## frame (_sprite_signature()), so it allocates nothing and reads its frame counts from the cached design table.
 func _sprite_pose_code() -> int:
 	var facing: int
@@ -2090,7 +2767,7 @@ func _sprite_pose_code() -> int:
 	var anim := 0
 	var t := _anim
 	var span := 0.0
-	if state == State.DEAD:
+	if state == State.DEAD and _kind != &"gone":  # one gone through a door of stars does not fall: it fades standing
 		anim = 4
 		t = _dead_time
 	elif _frozen > 0.0:
@@ -2114,6 +2791,31 @@ func _sprite_pose_code() -> int:
 		span = SWING_SHOW
 	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
 		anim = 2
+	elif _startle_left > 0.0 and state == State.WANDER and _own_art(12):
+		# Frozen in fright: a threat close by, it cowers; farther off, it points and shouts (phase 2).
+		anim = 12 if ground_pos.distance_to(_threat) < COWER_REACH else 10
+		if anim == 10 and not _own_art(10):
+			anim = 12
+		span = startle_seconds()
+		t = span - _startle_left
+	elif not _stride and _prays():
+		anim = 9
+		t = _still_t
+	elif not _stride and mind == Mind.OBSERVE and look_up and _own_art(11):
+		anim = 11
+		t = _still_t
+	elif not _stride and dig_shown > 0.0 and _own_art(15):
+		anim = 15
+		t = _still_t
+	elif not _stride and mind == Mind.ASSIST and assist_fire != null and assist_full and not has_goal() \
+			and _own_art(16):
+		# At the fire's edge with a full bucket: the throw plays across the wait before the douse.
+		anim = 16
+		span = FireManager.ACT
+		t = span - clampf(assist_wait, 0.0, span)
+	elif not _stride and _interact_anim() >= 0:
+		anim = _interact_anim()
+		t = _still_t
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
 		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
@@ -2130,7 +2832,40 @@ func _sprite_pose_code() -> int:
 	elif PeopleArt.ONCE_AT[anim]:
 		_design()
 		frame = mini(frame, _design_info[4][anim * 4 + facing] - 1)
-	return frame << 6 | anim << 2 | facing
+	return frame << 7 | anim << 2 | facing
+
+
+## The talk or work this one shows standing (interaction art), or -1: a calm citizen arrived at a work or errand stop
+## works, at a leisure stop talks; filling a bucket at the water works; a soldier standing at its post talks one loop
+## every TALK_EVERY seconds (its phase from its seed, so a garrison does not move as one).
+func _interact_anim() -> int:
+	if mind == Mind.ASSIST and assist_at_water and not has_goal():
+		return 14 if _own_art(14) else -1
+	if soldier:
+		if mind != Mind.POST or hurrying or has_goal() or not _own_art(13):
+			return -1
+		var every := TALK_EVERY.x + (TALK_EVERY.y - TALK_EVERY.x) * float(posmod(rng.seed * 40503, 997)) / 996.0
+		# Its pauses between shifts are short: it talks in those that fall in a TALK_WINDOW of every `every` seconds.
+		return 13 if fmod(_life_t + float(posmod(rng.seed, 89)) / 10.0, every) < TALK_WINDOW else -1
+	if mind != Mind.CALM or has_goal():
+		return -1
+	if last_place == RoutineManager.Place.WORK or last_place == RoutineManager.Place.ERRAND:
+		return 14 if _own_art(14) else -1
+	if last_place == RoutineManager.Place.LEISURE:
+		return 13 if _own_art(13) else -1
+	return -1
+
+
+## _has_own_art(), its design table loaded first.
+func _own_art(anim: int) -> bool:
+	_design()
+	return _has_own_art(anim)
+
+
+## Praying (phase 2): on its knees by Voice of God's Kneel, or gathered by Divine Congregation (pose &"pray"), and its
+## design has the pray.
+func _prays() -> bool:
+	return mind == Mind.COMPELLED and state != State.DEAD and (compel_pose == &"kneel" or compel_pose == &"pray") 		and _own_art(9)
 
 
 ## Whether this design has art of its own for the animation (ANIMS index), not its idle standing in (the manifest's
@@ -2151,6 +2886,8 @@ func _sprite_tint() -> Color:
 		return Color(COL_ICE, 0.6 * clampf(_frozen, 0.0, 1.0))
 	if _kind == &"gravity" and state == State.DEAD:
 		return Color(COL_VOID, _char * 0.8)
+	if _kind == &"gone" and state == State.DEAD:
+		return Color(gone_light, _char * 0.9)
 	if _char > 0.0:
 		return Color(COL_CHAR, _char * 0.85)
 	if sick_left > 0.0 and state != State.DEAD:
@@ -2168,10 +2905,10 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 	# PeopleArt.frame_rect(), silhouette_rect() and foot(), from the design's cached table (PeopleArt.info()).
 	_design()
 	var code := _sprite_pose_code()
-	var row := (code >> 2 & 15) * 4 + (code & 3)
+	var row := (code >> 2 & 31) * 4 + (code & 3)
 	var n: int = _design_info[4][row]
 	var cell: Vector2 = _design_info[3]
-	var off := Vector2(((code >> 6) % n) * cell.x, row * cell.y)
+	var off := Vector2(((code >> 7) % n) * cell.x, row * cell.y)
 	var src := Rect2(_design_info[0] + off, cell)
 	var sil := Rect2(_design_info[1] + off, cell)
 	var foot: Vector2 = _design_info[2]
@@ -2370,8 +3107,8 @@ func _sprite_signature() -> int:
 	if state == State.DEAD:
 		return super._art_signature()
 	var code := _sprite_pose_code()
-	var sig: int = (code >> 2 & 15) * 4 + (code & 3)
-	sig = sig * 16 + (code >> 6) % 16
+	var sig: int = (code >> 2 & 31) * 4 + (code & 3)
+	sig = sig * 16 + (code >> 7) % 16
 	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED \
 			and scorched_left <= 0.0:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its

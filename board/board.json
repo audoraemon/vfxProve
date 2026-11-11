@@ -1,10 +1,10 @@
 {
- "hash": "42234c5d16cb4e39",
- "updated": "2026-11-11T21:07:23+07:00",
+ "hash": "86cc529e614ea20d",
+ "updated": "2026-11-12T04:17:01+07:00",
  "changes": {
-  "date": "<t:1794406043:f>",
+  "date": "<t:1794431821:f>",
   "items": [
-   "New: God's Paths: god select restyle (statues, emblems, power effects)"
+   "New: Zoom-out cap x0.85 (Discord idea 'Zoom cap')"
   ]
  },
  "snapshot": {
@@ -1519,61 +1519,62 @@
     "updated": "2026-11-05",
     "order": 200
    },
+   "zoom-cap": {
+    "title": "Zoom-out cap x0.85 (Discord idea 'Zoom cap')",
+    "status": "done",
+    "area": "UI",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-12",
+    "order": 211
+   },
    "zoom-readout": {
     "title": "Zoom readout (step 1 of the zoom cap)",
     "status": "done",
     "area": "UI",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/Develop-Main",
-    "updated": "2026-11-09",
+    "updated": "2026-11-12",
     "order": 210
    }
   },
   "branches": [
    {
-    "name": "claude/magical-lichterman-23d920",
-    "ahead": 268,
-    "behind": 65,
-    "date": "2026-11-11",
-    "subject": "fix: God's Paths art loads one small step per frame (emblem in thirds, loop in halves), nearest god first",
-    "pushed": false
+    "name": "feat/god-progression",
+    "ahead": 272,
+    "behind": 5,
+    "date": "2026-11-12",
+    "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
+    "pushed": true
    },
    {
     "name": "god/skill-tree-ui",
-    "ahead": 259,
-    "behind": 65,
+    "ahead": 280,
+    "behind": 70,
     "date": "2026-11-11",
-    "subject": "fix: final-review wave -- no Back/Raise during the fade into Remembrance; the memory's slot stays focused after a cast and Esc opens its pause; Whisper blurb; no frozen clock; Veil lavender-grey; the tree keeps its state for the session",
+    "subject": "chore: test_remembrance_game's .uid",
     "pushed": false
    },
    {
     "name": "feat/soldier-jobs",
     "ahead": 20,
-    "behind": 0,
+    "behind": 5,
     "date": "2026-11-11",
     "subject": "feat: interface sounds that fit the dark medieval look",
     "pushed": false
    },
    {
     "name": "feat/children",
-    "ahead": 5,
-    "behind": 30,
+    "ahead": 7,
+    "behind": 5,
     "date": "2026-11-11",
-    "subject": "fix: try_children.bat names the powers it loads",
-    "pushed": true
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 248,
-    "behind": 65,
-    "date": "2026-11-09",
-    "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
+    "subject": "feat: cuter children: four chibi PixelLab kids (child_a-d) drawn 15 px tall",
     "pushed": true
    },
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 117,
+    "behind": 122,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1581,7 +1582,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 402,
+    "behind": 407,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1589,7 +1590,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 360,
+    "behind": 365,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1597,8 +1598,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-11",
-   "subject": "feat: interface sounds that fit the dark medieval look"
+   "date": "2026-11-12",
+   "subject": "test: re-record the four re-aimed missions' references after merging Develop-Main"
   }
  }
 }

@@ -34,6 +34,12 @@ const COL_VOID := Color("b98cff")
 const COL_ICE := Color("b8e6ff")
 const COL_ICE_DEEP := Color("5aa0e8")
 const COL_ICE_HI := Color("f4fcff")
+## Gone through a door of stars (The Far Gate, kind gone): the starlight it fades into, and how long the figure takes.
+const COL_STAR := Color("e4eaff")
+const GONE_FADE := 0.7
+## The light one gone (kind gone) fades into: starlight (COL_STAR) unless the power that takes it sets its own before the
+## kill (Heaven's Door: white-gold).
+var gone_light := COL_STAR
 ## Orc horde skin: dark iron armor, red cloth, green skin.
 const ORC_DARK := Color("1e1a1c")
 const ORC_ARMOR := Color("4a3f3e")
@@ -59,6 +65,10 @@ var look := Look.TROOPER
 var lift_target := 3.0
 ## Ground units per second while wandering; a brain raises it to run (Person's flee speed).
 var walk_speed := WALK_SPEED
+## How far from a building's footprint a step keeps (_step_blocked(), through block_env): a body's margin. A brain may
+## drop it to 0.0 a moment (Person's stuck watchdog): footprints only, it may brush a wall but never walk into one.
+const STEP_MARGIN := 0.15
+var step_margin := STEP_MARGIN
 
 var _velocity := Vector2.ZERO
 var _target := Vector2.ZERO
@@ -252,6 +262,11 @@ func _tick_death(delta: float) -> void:
 					e.z - delta * 1.1)
 		&"pit":
 			_char = minf(_char + delta * 0.9, 1.0)
+		&"gone":
+			_char = minf(_char + delta / GONE_FADE, 1.0)
+			for i in _embers.size():
+				var e := _embers[i]
+				_embers[i] = Vector3(e.x + sin(_dead_time * 5.0 + i) * 5.0 * delta, e.y - 14.0 * delta, e.z - delta * 0.9)
 		_:
 			pass
 	var fade_start := 0.25 if _kind == &"gravity" else (0.35 if _kind == &"ice" else (1.0 if _kind == &"pit" else 0.6))
@@ -357,6 +372,10 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			_flash = 0.14
 			for i in 16:
 				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-15, -1), rng.randf_range(0.5, 1.2)))
+		&"gone":
+			# No body: the figure pales into starlight where it stands, and the light drifts up off it.
+			for i in 12:
+				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-16, -1), rng.randf_range(0.5, 1.2)))
 		&"pit":
 			# Drawn down toward the hole's middle (the source) as it falls, up to a body's reach away.
 			_fly = Vector2.ZERO
@@ -364,7 +383,8 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 				_fly = (Iso.ground_to_screen(source) - Iso.ground_to_screen(ground_pos)).limit_length(26.0)
 			_spin = rng.randf_range(2.0, 4.0) * (1.0 if rng.randf() < 0.5 else -1.0)
 	# Those thrown stay in the draw order; so does one falling into the pit, which is drawn over the hole (SolarisPit).
-	z_index = 0 if kind in [&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind", &"pit"] else -1
+	# So is one gone through a door of stars: it fades on its feet at the threshold, in front of the door or behind it.
+	z_index = 0 if kind in [&"nova", &"orbital", &"lightning", &"cinder", &"stone", &"water", &"wind", &"pit", &"gone"] else -1
 
 
 func is_alive() -> bool:
@@ -384,6 +404,34 @@ func fold(to: Vector2) -> bool:
 	ground_pos = to
 	_sync_position()
 	return true
+
+
+## Space folded under it (The Folded Ward): set down at `to` -- ground its caller has found open -- and it walks on as
+## though it had never moved, its step carried along with it (`walk_on`), or, with `walk_on` false, simply stopped there
+## (its walk goes on from `to`). A throw flies on from `to`. False when it is dead or frozen, and it stays where it is.
+func wrap_to(to: Vector2, walk_on := true) -> bool:
+	if state == State.DEAD or is_frozen():
+		return false
+	if walk_on:
+		_target += to - ground_pos
+	ground_pos = to
+	_sync_position()
+	return true
+
+
+## Where it means to be (Person: its goal, or its anchor): a plain unit, the spot it walks to.
+func bound_for() -> Vector2:
+	return _target
+
+
+## Turned away from a place `r` for `seconds` (Person.hold_off()). A plain unit knows no place to be held off: false.
+func hold_off(_r: Rect2, _seconds: float, _heading: Vector2, _walk_away: float) -> bool:
+	return false
+
+
+## Let in again (Person.end_hold_off()): nothing for a plain unit.
+func end_hold_off() -> void:
+	pass
 
 
 ## Whether the active city lands long steps (CityDef.long_steps()), read again whenever the city changes.
@@ -439,7 +487,7 @@ func _move(step: Vector2, to := Vector2.INF) -> void:
 ## shove, a building going up) may step anyway: its path runs through walkable cells and out.
 func _step_blocked(step: Vector2) -> bool:
 	if block_env != null:
-		return block_env.blocked(ground_pos + step) and not block_env.blocked(ground_pos)
+		return block_env.blocked(ground_pos + step, step_margin) and not block_env.blocked(ground_pos, step_margin)
 	return blocked.is_valid() and blocked.call(ground_pos + step) and not blocked.call(ground_pos)
 
 
@@ -469,6 +517,8 @@ func _tint(c: Color) -> Color:
 		return c.lerp(COL_ICE_DEEP.lerp(COL_ICE, clampf(c.get_luminance() * 1.6, 0.0, 1.0)), 0.75 * k)
 	if _kind == &"gravity" and state == State.DEAD:
 		return c.lerp(COL_VOID, _char * 0.8)
+	if _kind == &"gone" and state == State.DEAD:
+		return c.lerp(gone_light, _char * 0.9)
 	return c.lerp(COL_CHAR, _char * 0.85)
 
 
@@ -513,6 +563,8 @@ func _draw_all() -> void:
 				_draw_ashed()
 			&"pit":
 				_draw_fallen()
+			&"gone":
+				_draw_gone()
 			_:
 				_draw_corpse()
 		return
@@ -673,6 +725,19 @@ func _draw_ashed() -> void:
 			var c := COL_HOT if e.z > 0.7 else (COL_EMBER if e.z > 0.35 else COL_CHAR)
 			c.a = clampf(e.z * 1.5, 0.0, 1.0)
 			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), c)
+
+
+## Gone through a door of stars (The Far Gate): no body. The figure stands as it was, pales into starlight and thins
+## to nothing over GONE_FADE, and its light drifts up off it a moment longer.
+func _draw_gone() -> void:
+	var k := clampf(_dead_time / GONE_FADE, 0.0, 1.0)
+	if k < 1.0:
+		draw_set_transform(_draw_origin + Vector2(0, -roundf(k * 4.0)), 0.0, Vector2(1.0 - k * 0.7, 1.0 + k * 0.3))
+		_draw_body(0, 0)
+		draw_set_transform(_draw_origin)
+	for e in _embers:
+		if e.z > 0.0:
+			draw_rect(Rect2(Vector2(e.x, e.y).round(), Vector2.ONE), Color(gone_light, clampf(e.z, 0.0, 1.0)))
 
 
 ## Fallen into the Light of Solaris's pit: the hole takes it. It is drawn in toward the hole's middle and down, turning

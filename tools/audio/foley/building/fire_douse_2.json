@@ -1,0 +1,4 @@
+{"length": 2.3, "rms_db": -18.0, "reverb": {"rt60": 0.8, "mix": 0.08, "predelay_ms": 10, "damp": 6000}, "layers": [
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/splash_01.ogg", "at": 0.0, "onset": true, "hp": 120, "lp": 9000, "gain_db": -4, "fade_out": 200},
+  {"src": "lib:oga/steam-release-sounds/steam hisses - Marker #2.wav", "at": 0.12, "from": 0.0, "hp": 600, "lp": 12000, "fade_in": 40, "fade_out": 700}
+]}

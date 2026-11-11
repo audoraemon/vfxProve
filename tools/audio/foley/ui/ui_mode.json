@@ -1,0 +1,4 @@
+{"length": 0.3, "rms_db": -16.0, "reverb": {"rt60": 0.4, "mix": 0.05, "predelay_ms": 4, "damp": 8000}, "layers": [
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/lock_02.ogg", "at": 0.0, "onset": true, "dur": 0.15, "pitch": -2, "hp": 200, "lp": 7000, "gain_db": -5, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/wooden_01.ogg", "at": 0.0, "onset": true, "dur": 0.12, "pitch": 5, "hp": 300, "lp": 6000, "gain_db": 0, "fade_out": 40}
+]}

@@ -187,7 +187,7 @@ func _focus_camera(entry: Dictionary, fx: FxTimeline, ground: Vector2, extra: Di
 	if entry.get("lane", false):
 		focus += (extra.get("dir", Vector2(1, 0)) as Vector2).normalized() * float(entry.get("focus_along", 4.0))
 	if entry.get("pair", false):
-		focus = (ground + MirrorfoldFx.exit_for(ground, extra.get("to", ground))) * 0.5
+		focus = (ground + MirrorfoldFx.exit_for(ground, Vector2(1, 0), 4.0, extra.get("to", ground))) * 0.5
 	var target := Iso.ground_to_screen(focus) + Vector2(0, float(entry.get("focus_up", -40.0)))
 	target += entry.get("focus_px", Vector2.ZERO)
 	var zoom: float = entry.get("zoom", SETS[set_index].zoom)

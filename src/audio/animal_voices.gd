@@ -7,7 +7,7 @@ extends RefCounted
 ## same whether or not anyone listens. A token budget (TOKENS, refilled REFILL a second) and a rest per animal (REST)
 ## keep a pack from drowning the town; a death skips the chance and the rest, but not the budget.
 
-enum Act { IDLE, FLEE, ANGRY, BITE, DIE }
+enum Act { IDLE, FLEE, ANGRY, BITE, DIE, CALL }
 
 ## Per act: the dog's cue, the cat's cue, and the chance it makes a sound at all.
 const CUES := {
@@ -16,6 +16,7 @@ const CUES := {
 	Act.ANGRY: [&"dog_growl", &"cat_yowl", 1.0],
 	Act.BITE: [&"dog_bark", &"cat_hiss", 0.6],
 	Act.DIE: [&"dog_yelp", &"cat_yowl", 1.0],
+	Act.CALL: [&"dog_bark", &"cat_meow", 1.0],  # Ambience's call near the camera: always heard
 }
 ## Each breed's voice: big dogs lower, small ones higher; the cats near their own.
 const PITCH := {
@@ -23,8 +24,8 @@ const PITCH := {
 	Animal.Breed.SPANIEL: 1.08, Animal.Breed.TABBY: 1.0, Animal.Breed.BLACK_CAT: 0.94, Animal.Breed.GREY_CAT: 1.04,
 	Animal.Breed.WHITE_CAT: 1.1, Animal.Breed.BROWN_CAT: 0.97,
 }
-## A call at rest is softer than one in alarm, and a dying cry a little lower.
-const IDLE_DB := -3.0
+## A call at rest is a little softer than one in alarm, and a dying cry a little lower.
+const IDLE_DB := -1.5
 const DIE_PITCH := 0.92
 const TOKENS := 4.0
 const REFILL := 2.5
@@ -69,6 +70,6 @@ func say(sfx: Node, a: Animal, act: Act) -> void:
 	var cue := pick(a.get_instance_id(), a.is_dog(), act)
 	if cue == &"":
 		return
-	var p: AudioStreamPlayer2D = sfx.play(cue, a.ground_pos, IDLE_DB if act == Act.IDLE else 0.0)
+	var p: AudioStreamPlayer2D = sfx.play(cue, a.ground_pos, IDLE_DB if act in [Act.IDLE, Act.CALL] else 0.0)
 	if p != null:
 		sfx.set_voice_pitch(p, float(PITCH.get(a.breed, 1.0)) * (DIE_PITCH if act == Act.DIE else 1.0))

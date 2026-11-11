@@ -11,6 +11,8 @@ extends Node
 ## each heard at its own distance and side. Before, one short loop with the same screams in it played every few seconds.
 ## Pass 4 made the beds full range and drier, with the feet of the running crowd under them for weight.
 ## Pass 5 added the soldiers' march (_march()); their blows and orders are SoldierVoices, the animals AnimalVoices.
+## Pass 6 lets a dog or cat near the camera call now and then (_animal_call()), by day and by night, and places fire
+## where it burns (FireSounds): the town-wide fire bed is now the far-off part of it.
 ##
 ## It only listens: it reads the town's look (TownLook.active), the fires (Crowd.fires), who is running (Crowd.citizens)
 ## and how much the town panics (Crowd.panic_level()), and never touches the world; its numbers come from its own rng.
@@ -47,13 +49,22 @@ const CALL_QUIET := 0.35
 ## How far from the screen's centre a call can be, in screen pixels at zoom 1.
 const CALL_SPREAD := Vector2(300.0, 170.0)
 ## The soldiers' march (natural sound pass 5): every MARCH_EVERY seconds one of the MARCH_PICKS soldiers nearest the
-## screen's centre takes a step in mail, in turn, so their feet fall one after another. Only those that walk at MARCH_SPEED
+## screen's centre takes a step, in turn, so their feet fall one after another. Only those that walk at MARCH_SPEED
 ## (ground units a second) or more and stand within MARCH_REACH of the screen (a share of its centre-to-corner) count:
-## a soldier at its post is silent.
-const MARCH_EVERY := 0.16
+## a soldier at its post is silent. A calm town's patrols are silent too (march_heard()): the march is heard once the
+## alarm has risen, when the soldiers move with purpose -- a patrol's steady tread was a clatter under every quiet day.
+const MARCH_EVERY := 0.3
 const MARCH_PICKS := 2
 const MARCH_SPEED := 0.25
 const MARCH_REACH := 0.9
+## The town's dogs and cats (natural sound pass 6): every ANIMAL_DAY (by night ANIMAL_NIGHT) seconds one of the
+## ANIMAL_PICKS animals nearest the screen's centre, at random, barks or meows (AnimalVoices.Act.CALL), if it is within
+## ANIMAL_REACH of the screen (a share of its centre-to-corner; a little past the edge is heard far off, muffled). None
+## while the town panics past CALL_QUIET: the animals have their own cries then.
+const ANIMAL_DAY := Vector2(6.0, 15.0)
+const ANIMAL_NIGHT := Vector2(8.0, 18.0)
+const ANIMAL_PICKS := 3
+const ANIMAL_REACH := 1.3
 
 var _crowd: Crowd
 var _players := {}
@@ -63,8 +74,11 @@ var _next_call := 3.0
 var _next_cry := 0.0
 var _next_march := 0.0
 var _march_turn := 0
+var _next_animal := 4.0
 var _last_at := {}  ## soldier instance id -> ground position at the last march tick
 var _stopped := false
+## Fire where it burns (pass 6): the nearest burning buildings' own crackle, catching, cracking and dousing.
+var _fire: FireSounds
 
 
 func setup(crowd: Crowd) -> Ambience:
@@ -77,6 +91,8 @@ func setup(crowd: Crowd) -> Ambience:
 		p.volume_db = -80.0
 		add_child(p)
 		_players[cue] = p
+	_fire = FireSounds.new().setup(crowd)
+	add_child(_fire)
 	return self
 
 
@@ -101,6 +117,8 @@ static func cry_gap(panic: float) -> float:
 func pause(paused: bool) -> void:
 	for p: AudioStreamPlayer in _players.values():
 		p.stream_paused = paused
+	if _fire != null:
+		_fire.pause(paused)
 
 
 ## Silence for good (the mission is quitting): nothing restarts it.
@@ -108,6 +126,8 @@ func stop() -> void:
 	_stopped = true
 	for p: AudioStreamPlayer in _players.values():
 		p.stop()
+	if _fire != null:
+		_fire.stop()
 
 
 func _process(delta: float) -> void:
@@ -132,6 +152,9 @@ func _process(delta: float) -> void:
 		p.volume_db = float(Sfx.CATALOG[cue].get("db", 0.0)) + linear_to_db(_gain[cue])
 	_cries(delta, _crowd.panic_level())
 	_march(delta)
+	if _fire != null:
+		_fire.step(delta)
+	_animal_call(delta, night)
 	_next_call -= delta
 	if _next_call <= 0.0:
 		var span := NIGHT_CALLS if night else DAY_CALLS
@@ -168,6 +191,40 @@ func _cries(delta: float, panic: float) -> void:
 	_crowd.sfx.play(&"crowd_cry", who.ground_pos)
 
 
+## Now and then a dog barks or a cat meows near the camera.
+func _animal_call(delta: float, night: bool) -> void:
+	_next_animal -= delta
+	if _next_animal > 0.0:
+		return
+	var span := ANIMAL_NIGHT if night else ANIMAL_DAY
+	_next_animal = _rng.randf_range(span.x, span.y)
+	if _crowd.sfx == null or _crowd.animals == null or _crowd.panic_level() >= CALL_QUIET:
+		return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	var pool := _crowd.animals.living()
+	if pool.is_empty():
+		return
+	var centre := cam.get_screen_center_position()
+	var reach := maxf((get_viewport().get_visible_rect().size * 0.5 / cam.zoom).length(), 1.0)
+	var near: Array = []  # [screen distance, animal]
+	for a in pool:
+		var d := (Iso.ground_to_screen(a.ground_pos) - centre).length() / reach
+		if d < ANIMAL_REACH and not a.hypnotized():
+			near.append([d, a])
+	if near.is_empty():
+		return
+	near.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
+	var who: Animal = near[_rng.randi() % mini(ANIMAL_PICKS, near.size())][1]
+	_crowd.animals.voices.say(_crowd.sfx, who, AnimalVoices.Act.CALL)
+
+
+## Whether the soldiers' march is heard at all at this alarm stage: not in a calm town.
+static func march_heard(stage: AlarmManager.Stage) -> bool:
+	return stage != AlarmManager.Stage.NORMAL
+
+
 ## Whether a soldier that moved `moved` ground units in `seconds` is marching.
 static func marching(moved: float, seconds: float) -> bool:
 	return seconds > 0.0 and moved / seconds >= MARCH_SPEED
@@ -177,6 +234,9 @@ static func marching(moved: float, seconds: float) -> bool:
 func _march(delta: float) -> void:
 	_next_march -= delta
 	if _next_march > 0.0 or _crowd.sfx == null:
+		return
+	if not march_heard(_crowd.alarms.stage):
+		_last_at.clear()
 		return
 	_next_march = MARCH_EVERY
 	var cam := get_viewport().get_camera_2d()

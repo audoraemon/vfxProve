@@ -1,0 +1,5 @@
+{"length": 16.0, "loop": true, "rms_db": -18.0, "eq": [["lowshelf", 150, 2.0], ["peak", 2500, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/fireplace-sound-loop/fire.wav", "at": 0.0, "from": 12.0, "dur": 16.4, "hp": 50, "lp": 6000, "fade_in": 300, "fade_out": 300},
+  {"src": "lib:wikimedia/Bones_breaking_wood_fire_ice_crackling.wav", "at": 0.0, "from": 38.0, "dur": 16.4, "hp": 300, "lp": 12000, "gain_db": -3, "fade_in": 300, "fade_out": 300},
+  {"src": "lib:wikimedia/Dry_grass_burning_in_open_fireplace.wav", "at": 0.0, "from": 9.0, "dur": 16.4, "hp": 300, "lp": 10000, "gain_db": -8, "fade_in": 300, "fade_out": 300}
+]}

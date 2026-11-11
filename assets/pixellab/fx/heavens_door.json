@@ -1,0 +1,90 @@
+{
+ "cell": 170,
+ "frames": 9,
+ "rows": [
+  "south",
+  "south-east",
+  "east",
+  "north-east",
+  "north",
+  "north-west",
+  "west",
+  "south-west"
+ ],
+ "foot": {
+  "south": [
+   85,
+   135
+  ],
+  "south-east": [
+   84,
+   137
+  ],
+  "east": [
+   88,
+   138
+  ],
+  "north-east": [
+   85,
+   141
+  ],
+  "north": [
+   85,
+   134
+  ],
+  "north-west": [
+   84,
+   139
+  ],
+  "west": [
+   81,
+   138
+  ],
+  "south-west": [
+   86,
+   137
+  ]
+ },
+ "object": "8653883e-60ca-4576-8c76-15279b87004d",
+ "style_of": "b727b4fc-b1f8-46a5-bdca-8eb47a36bb48",
+ "mirrored": {
+  "west": "east",
+  "south-west": "south-east"
+ },
+ "frame_map": {
+  "south": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   6,
+   6
+  ],
+  "east": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   5,
+   5,
+   5
+  ],
+  "north": [
+   0,
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   7
+  ]
+ },
+ "note": "frame_map: source frames used per row (bad PixelLab endings held on the last good open frame)"
+}

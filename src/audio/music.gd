@@ -15,6 +15,11 @@ const BUS := &"Music"
 const FADE := 1.2
 ## How far the music drops while the pause menu is up.
 const DUCK_DB := -12.0
+## Stingers (natural sound pass 6): short orchestral cues for a moment -- the night begins, its main objective is done,
+## won, lost -- played over the music at STING_DB above it, while the loops dip by STING_DIP_DB so it stands clear.
+const STINGS := [&"music_sting_start", &"music_sting_objective", &"music_sting_win", &"music_sting_lose"]
+const STING_DB := 3.0
+const STING_DIP_DB := -8.0
 
 static var _node: Music
 
@@ -26,6 +31,11 @@ var _stem_gain: Array[float] = [0.0, 0.0, 0.0]
 var _want := &""
 var _intensity := 0.0
 var _ducked := false
+var _sting: AudioStreamPlayer
+## Seconds the current stinger still plays, and how far the loops sit under it now.
+var _sting_left := 0.0
+var _sting_dip := 0.0
+var _pending: AudioStream  ## a stinger asked for before the node was in the tree
 ## Latched by stop_all(): once true, _process() neither fades nor restarts a player -- without this a stem
 ## stopped for the quit path's audio-thread wait would just be started right back up next frame.
 var _stopped := false
@@ -43,6 +53,13 @@ static func set_intensity(x: float) -> void:
 	var m := _instance()
 	if m != null:
 		m._intensity = clampf(x, 0.0, 1.0)
+
+
+## Plays one of STINGS over the music (and over silence, on the results).
+static func sting(cue: StringName) -> void:
+	var m := _instance()
+	if m != null and STINGS.has(cue):
+		m._play_sting(cue)
 
 
 static func set_ducked(on: bool) -> void:
@@ -87,6 +104,12 @@ static func _instance() -> Music:
 
 
 func _ready() -> void:
+	_sting = AudioStreamPlayer.new()
+	_sting.bus = BUS
+	add_child(_sting)
+	if _pending != null:
+		_start_sting(_pending)
+		_pending = null
 	_theme = _player(THEME)
 	for cue: StringName in BATTLE:
 		_stems.append(_player(cue))
@@ -99,6 +122,25 @@ func _player(cue: StringName) -> AudioStreamPlayer:
 	p.bus = BUS
 	add_child(p)
 	return p
+
+
+func _play_sting(cue: StringName) -> void:
+	if _stopped:
+		return
+	var stream := Sfx.load_stream(cue)
+	if stream == null:
+		return
+	_sting_left = stream.get_length()
+	if _sting == null:
+		_pending = stream  # _ready() plays it
+		return
+	_start_sting(stream)
+
+
+func _start_sting(stream: AudioStream) -> void:
+	_sting.stream = stream
+	_sting.volume_db = DB + STING_DB + (DUCK_DB if _ducked else 0.0)
+	_sting.play()
 
 
 func _switch(track: StringName) -> void:
@@ -130,7 +172,9 @@ func _process(delta: float) -> void:
 		targets = stem_gains(_intensity)
 	for i in _stems.size():
 		_stem_gain[i] = move_toward(_stem_gain[i], float(targets[i]), step)
-	var duck := DUCK_DB if _ducked else 0.0
+	_sting_left = maxf(_sting_left - delta, 0.0)
+	_sting_dip = move_toward(_sting_dip, STING_DIP_DB if _sting_left > 0.5 else 0.0, 24.0 * delta if _sting_left > 0.5 else 4.0 * delta)
+	var duck := (DUCK_DB if _ducked else 0.0) + _sting_dip
 	_apply(_theme, _theme_gain, duck)
 	for i in _stems.size():
 		_apply(_stems[i], _stem_gain[i], duck)
@@ -151,5 +195,7 @@ func _stop_all() -> void:
 	_stopped = true
 	if _theme != null:
 		_theme.stop()
+	if _sting != null:
+		_sting.stop()
 	for p in _stems:
 		p.stop()

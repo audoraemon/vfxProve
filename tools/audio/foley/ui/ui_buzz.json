@@ -1,0 +1,5 @@
+{"length": 0.45, "rms_db": -16.0, "reverb": {"rt60": 0.4, "mix": 0.05, "predelay_ms": 4, "damp": 8000}, "layers": [
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/wooden_01.ogg", "at": 0.0, "onset": true, "dur": 0.2, "pitch": -7, "hp": 60, "lp": 2500, "fade_out": 80},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/wooden_01.ogg", "at": 0.12, "onset": true, "dur": 0.2, "pitch": -9, "hp": 60, "lp": 2000, "gain_db": -3, "fade_out": 100},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.0, "onset": true, "dur": 0.2, "gain_db": -9, "hp": 200, "lp": 5000, "fade_out": 40}
+]}

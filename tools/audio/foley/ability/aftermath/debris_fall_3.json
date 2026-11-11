@@ -1,0 +1,23 @@
+{"length": 2.3, "rms_db": -21.4, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_04.ogg", "at": 0.431, "onset": true, "pitch": -0.96, "gain_db": -4.8, "hp": 150, "lp": 8142, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_06.ogg", "at": 1.544, "onset": true, "pitch": -4.46, "gain_db": -15.0, "hp": 150, "lp": 5638, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_06.ogg", "at": 1.65, "onset": true, "pitch": -3.49, "gain_db": -15.9, "hp": 150, "lp": 5400, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_03.ogg", "at": 0.369, "onset": true, "pitch": -0.4, "gain_db": -3.1, "hp": 150, "lp": 8283, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_04.ogg", "at": 0.42, "onset": true, "pitch": -3.76, "gain_db": -4.9, "hp": 150, "lp": 8167, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_07.ogg", "at": 1.392, "onset": true, "pitch": -3.95, "gain_db": -11.5, "hp": 150, "lp": 5979, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_02.ogg", "at": 0.918, "onset": true, "pitch": -2.69, "gain_db": -8.5, "hp": 150, "lp": 7046, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_05.ogg", "at": 0.827, "onset": true, "pitch": -4.24, "gain_db": -8.0, "hp": 150, "lp": 7251, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_falling_03.ogg", "at": 0.055, "onset": true, "pitch": -2.1, "gain_db": -4.0, "hp": 150, "lp": 8989, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 1.65, "onset": true, "pitch": -1.13, "gain_db": -22.9, "hp": 150, "lp": 6600, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.212, "onset": true, "pitch": -0.16, "gain_db": -7.2, "hp": 150, "lp": 10553, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 1.65, "onset": true, "pitch": -0.14, "gain_db": -20.7, "hp": 150, "lp": 6600, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 0.997, "onset": true, "pitch": 0.85, "gain_db": -14.3, "hp": 150, "lp": 8394, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 0.108, "onset": true, "pitch": -2.86, "gain_db": -10.3, "hp": 150, "lp": 10841, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 0.061, "onset": true, "pitch": -0.8, "gain_db": -13.9, "hp": 150, "lp": 10970, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.838, "onset": true, "pitch": -1.92, "gain_db": -12.6, "hp": 150, "lp": 8833, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 0.737, "onset": true, "pitch": 1.44, "gain_db": -12.6, "hp": 150, "lp": 9110, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 1.65, "onset": true, "pitch": -2.65, "gain_db": -18.3, "hp": 150, "lp": 6600, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 1.375, "onset": true, "pitch": -0.7, "gain_db": -17.5, "hp": 150, "lp": 7357, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 0.905, "onset": true, "pitch": -0.74, "gain_db": -16.1, "hp": 150, "lp": 8647, "pan": 0.0, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_02.ogg", "at": 1.282, "onset": true, "pitch": -2.51, "gain_db": -20.2, "hp": 150, "lp": 7611, "pan": 0.0, "fade_out": 60}
+]}

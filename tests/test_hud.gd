@@ -109,7 +109,7 @@ static func run(t) -> void:
 		"a whisper at someone shaken flashes its slot and says so (%s)" % [hud.banners()])
 	hud.advance(Hud.BANNER_SECONDS + 0.1)
 
-	# What the HUD sounds (the GodotSfxr cues): a banner rings ui_notice as it comes on screen, not while it waits.
+	# What the HUD sounds (the interface cues): a banner rings ui_notice as it comes on screen, not while it waits.
 	UiSound.asked.clear()
 	rules.banner.emit("ONE")
 	rules.banner.emit("TWO")

@@ -62,4 +62,7 @@ the sheet the user listens with.
 - Catching: OpenGameArt `catching-fire` and `fire-crackling` with the dry-grass burst. Timbers cracking: the 75 breaking
   pack's snaps, the 80 RPG pack's wood cracks pitched down, Kenney wood impacts, `tree-creaking`. Dousing: OpenGameArt
   `steam-release-sounds` (CC0, bart) after a splash from the 100 CC0 pack.
+- A hit's aftermath (`ability/aftermath/`): the 100 CC0 pack's stones, the 75 breaking pack's hits and falls, `breaking-rock`
+  pitched down for the first chunk, `stonerockorwoodmovednotick` for the settling, the 80 RPG pack's wood for what a tornado
+  drops; dozens of hits per take, dense at first and thinning out.
 

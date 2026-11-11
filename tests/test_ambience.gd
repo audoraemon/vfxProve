@@ -80,6 +80,14 @@ static func run(t) -> void:
 	for i in 200:
 		sfx._process(0.02)
 	t.check(sfx.duck_db == 0.0, "then it comes back up (%.1f dB)" % sfx.duck_db)
+	sfx.follow(&"jg_crumble", Vector2.ZERO)
+	sfx.follow(&"hs_fissure", Vector2.ONE)
+	t.check(sfx._after.size() == 1 and sfx._after[0][1] == &"debris_big", "a big hit's debris is queued once, not twice at once")
+	sfx._clock += Sfx.AFTER_REST
+	sfx.follow(&"cf_impact", Vector2.ZERO)
+	t.check(sfx._after.size() == 2 and sfx._after[1][1] == &"debris_small", "a barrage's impact gets its own patter")
+	for cue: StringName in Sfx.AFTERMATH:
+		t.check(Sfx.CATALOG.has(cue) and Sfx.CATALOG.has(Sfx.AFTERMATH[cue][0]), "%s has an aftermath in the catalog" % cue)
 	sfx.free()
 	t.check(not Sfx.DUCKS.has(&"cit_yelp") and Sfx.DUCKS.has(&"nova_boom"), "only big hits duck")
 

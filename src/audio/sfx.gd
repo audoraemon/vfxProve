@@ -30,6 +30,14 @@ const DUCK_REACH := {&"SFX": 1.0, &"SFX_Mid": 0.75, &"SFX_Far": 0.5}
 const DUCK_HOLD := 0.3
 const DUCK_ATTACK := 120.0
 const DUCK_RELEASE := 6.0
+## A big hit's aftermath (natural sound pass 6): the impact cue -> [the debris that rains back down after it, seconds
+## later]. Keyed by the skill tree's Ruin abilities' impacts first (Earthshatter, Dragonfire, Cinderfall, Scatter Strike,
+## Smite and Wrath of the Sky, Light of Solaris, the Tornado's end), which other powers sharing a cue also get. One
+## aftermath cue sounds at most every AFTER_REST seconds, so a barrage patters instead of roaring.
+const AFTERMATH := {&"jg_crumble": [&"debris_big", 0.25], &"hs_fissure": [&"debris_big", 0.35], &"dr_erupt": [&"debris_big", 0.3],
+	&"cf_impact": [&"debris_small", 0.15], &"orb_hit": [&"debris_small", 0.15], &"hs_strike": [&"debris_small", 0.2],
+	&"nova_crack": [&"debris_small", 0.25], &"tn_dissipate": [&"debris_fall", 0.2]}
+const AFTER_REST := 0.5
 
 ## cue -> {path | variants, db, voices, jitter, loop}
 ## `variants: n` expands path "..._%d.wav" to 1..n, picked at random per play.
@@ -197,6 +205,10 @@ const CATALOG := {
 	&"collapse_tree": {"path": "res://assets/audio/building/collapse_tree_%d.wav", "variants": 5, "db": -0.3, "voices": 4, "jitter": 0.1},
 	&"town_bell": {"path": "res://assets/audio/building/town_bell.wav", "db": -1.5},
 	&"town_horn": {"path": "res://assets/audio/building/town_horn.wav", "db": -4.4, "voices": 1},
+	# A big hit's aftermath (natural sound pass 6, AFTERMATH): debris raining back down, thinning out.
+	&"debris_big": {"path": "res://assets/audio/ability/aftermath/debris_big_%d.wav", "variants": 4, "db": -2.0, "voices": 2, "jitter": 0.05},
+	&"debris_small": {"path": "res://assets/audio/ability/aftermath/debris_small_%d.wav", "variants": 4, "db": -5.2, "voices": 2, "jitter": 0.06},
+	&"debris_fall": {"path": "res://assets/audio/ability/aftermath/debris_fall_%d.wav", "variants": 3, "db": -5.2, "voices": 1, "jitter": 0.05},
 	# Fire where it burns (natural sound pass 6, FireSounds): a burning building's loop, its catching, its timbers
 	# cracking, and the hiss of a bucket thrown on it.
 	&"fire_burn": {"path": "res://assets/audio/building/fire_burn_%d.wav", "variants": 2, "db": 1.8, "loop": true},
@@ -233,6 +245,9 @@ var _rng := RandomNumberGenerator.new()
 var duck_db := 0.0
 var _duck_to := 0.0
 var _duck_held := 0.0
+var _after: Array = []  ## [seconds left, cue, ground position] of the aftermaths still to come
+var _after_at := {}  ## aftermath cue -> the clock it last sounded
+var _clock := 0.0
 
 
 static func paths_for(cue: StringName) -> PackedStringArray:
@@ -312,7 +327,20 @@ func play(cue: StringName, ground_pos: Vector2, db_offset := 0.0) -> AudioStream
 	p.play()
 	if DUCKS.has(cue):
 		duck_by(float(DUCKS[cue]) * float(DUCK_REACH.get(p.bus, 1.0)))
+	if AFTERMATH.has(cue):
+		follow(cue, ground_pos)
 	return p
+
+
+## Queues the aftermath of `cue` at `ground_pos` (AFTERMATH), unless the same aftermath sounded under AFTER_REST ago or is
+## already on its way.
+func follow(cue: StringName, ground_pos: Vector2) -> void:
+	var row: Array = AFTERMATH[cue]
+	var after: StringName = row[0]
+	if _clock - float(_after_at.get(after, -INF)) < AFTER_REST:
+		return
+	_after_at[after] = _clock
+	_after.append([float(row[1]), after, ground_pos])
 
 
 ## Pull the music and the beds down by `db` (negative) for a moment; a shallower duck than the one under way only
@@ -361,6 +389,16 @@ func stop_all(prefix: String) -> void:
 
 
 func _process(delta: float) -> void:
+	_clock += delta
+	if not _after.is_empty():
+		var due: Array = []
+		for a: Array in _after:
+			a[0] = float(a[0]) - delta
+			if float(a[0]) <= 0.0:
+				due.append(a)
+		for a: Array in due:
+			_after.erase(a)
+			play(a[1], a[2])
 	for p in _pool:
 		if p.playing:
 			p.pitch_scale = _pitch_for(p)

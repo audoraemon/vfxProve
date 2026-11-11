@@ -277,6 +277,17 @@ collapse_tree	res://assets/audio/building/collapse_tree_4.wav	-23.98	-0.99
 collapse_tree	res://assets/audio/building/collapse_tree_5.wav	-26.35	-5.88
 town_bell	res://assets/audio/building/town_bell.wav	-15.53	-0.99
 town_horn	res://assets/audio/building/town_horn.wav	-12.58	-0.99
+debris_big	res://assets/audio/ability/aftermath/debris_big_1.wav	-20.03	-0.26
+debris_big	res://assets/audio/ability/aftermath/debris_big_2.wav	-19.86	-0.25
+debris_big	res://assets/audio/ability/aftermath/debris_big_3.wav	-20.18	-0.29
+debris_big	res://assets/audio/ability/aftermath/debris_big_4.wav	-19.73	-1.59
+debris_small	res://assets/audio/ability/aftermath/debris_small_1.wav	-22.44	-0.19
+debris_small	res://assets/audio/ability/aftermath/debris_small_2.wav	-20.02	0.13
+debris_small	res://assets/audio/ability/aftermath/debris_small_3.wav	-19.13	0.56
+debris_small	res://assets/audio/ability/aftermath/debris_small_4.wav	-19.49	-1.37
+debris_fall	res://assets/audio/ability/aftermath/debris_fall_1.wav	-18.76	-0.29
+debris_fall	res://assets/audio/ability/aftermath/debris_fall_2.wav	-20.94	-0.19
+debris_fall	res://assets/audio/ability/aftermath/debris_fall_3.wav	-18.52	-1.27
 fire_burn	res://assets/audio/building/fire_burn_1.wav	-23.84	-0.26
 fire_burn	res://assets/audio/building/fire_burn_2.wav	-23.84	-0.27
 fire_catch	res://assets/audio/building/fire_catch_1.wav	-18.07	-0.25

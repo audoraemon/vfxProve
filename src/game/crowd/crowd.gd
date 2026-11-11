@@ -105,11 +105,11 @@ const RING_REACH := 1.0
 const VOICE_BUDGET := 4.0
 const VOICES_PER_CAST := 3
 
-## The sound of a town running: a looping bed whose level follows how many citizens are running -- silent with
-## none, full at BED_FULL -- easing at BED_EASE a second so it swells and fades instead of jumping.
+## The sound of a town running: a panic level that follows how many citizens are running -- none with nobody,
+## full at BED_FULL -- easing at BED_EASE a second so it swells and fades instead of jumping. The Ambience plays the
+## crowd's beds and cries by it (natural sound pass 3).
 const BED_FULL := 40.0
 const BED_EASE := 1.5
-const BED_DB := -8.0
 
 var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
@@ -203,8 +203,11 @@ var voices_played := 0
 var _voice_tokens := VOICE_BUDGET
 ## A death you can hear (v0.11.2): asked once for every body that falls, in _on_killed(). Pure; draws no number from any rng.
 var deaths := DeathVoices.new()
-var _bed: AudioStreamPlayer
+## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
+var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
+## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
+var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
 ## crowd (unlike the frozen pause) keeps processing for the few frames Battlefield.quit() waits out.
 var _bed_stopped := false
@@ -311,6 +314,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	field.enemy_killed.connect(_on_killed)
+	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
 		town.citadel.health_changed.connect(_on_citadel_health)
 		town.citadel.fallen.connect(_on_citadel_fallen)
@@ -812,10 +816,15 @@ static func bed_level_for(running: int) -> float:
 	return clampf(float(running) / BED_FULL, 0.0, 1.0)
 
 
+## How much the town is panicking, 0 to 1: the panic bed's own level (the ambience dips under it).
+func panic_level() -> float:
+	return _bed_level
+
+
 ## The mission paused (or the results are up over it): hold the bed where it is.
 func pause_bed(paused: bool) -> void:
-	if _bed != null:
-		_bed.stream_paused = paused
+	if _ambience != null:
+		_ambience.pause(paused)
 
 
 ## Silence the bed outright (the mission is quitting): unlike pause_bed(), nothing resumes it -- the crowd keeps
@@ -825,8 +834,8 @@ func pause_bed(paused: bool) -> void:
 ## a bed still playing at process exit leaks its audio playback.
 func stop_bed() -> void:
 	_bed_stopped = true
-	if _bed != null:
-		_bed.stop()
+	if _ambience != null:
+		_ambience.stop()
 
 
 func alive_citizens() -> int:
@@ -1170,18 +1179,10 @@ func _update_bed(delta: float) -> void:
 	_bed_level = move_toward(_bed_level, bed_level_for(running), BED_EASE * delta)
 	if sfx == null or DisplayServer.get_name() == "headless" or not is_inside_tree():
 		return
-	if _bed == null:
-		_bed = AudioStreamPlayer.new()
-		_bed.bus = Sfx.BUS
-		_bed.stream = Sfx.load_stream(&"crowd_panic")
-		add_child(_bed)
-	if _bed_level <= 0.001:
-		if _bed.playing:
-			_bed.stop()
-		return
-	if not _bed.playing:
-		_bed.play()
-	_bed.volume_db = BED_DB + linear_to_db(_bed_level)
+	if _ambience == null:
+		_ambience = Ambience.new().setup(self)
+		_ambience.name = "Ambience"
+		add_child(_ambience)
 
 
 ## One voice from `p`, if the budget allows it.
@@ -1549,6 +1550,8 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			if bell != null:
 				bell.call_keeper()
 		AlarmManager.Stage.CITY_EMERGENCY:
+			if sfx != null:
+				sfx.play(&"town_horn", City.current().citadel_origin())
 			rally()
 			_regroup()
 			if rite != null:
@@ -1738,6 +1741,8 @@ func _investigate(at: Vector2) -> void:
 	for k in mini(INVESTIGATORS, pool.size()):
 		_investigating.append([pool[k], pool[k].anchor, _clock + INVESTIGATE_SECONDS])
 		pool[k].send_to_post(_spot_near(spot, 0.8))
+	if sfx != null and not pool.is_empty() and soldier_voices.order(_clock):
+		sfx.play(&"sol_order", pool[0].ground_pos)
 
 
 func _return_investigators() -> void:
@@ -2039,6 +2044,16 @@ func _voice_death(p: Person, kind: StringName) -> void:
 		return
 	for c: Array in cues:
 		sfx.play(c[0], c[1])
+
+
+## A blow you can hear (SoldierVoices): a soldier's spear or anyone else's fist, at the one struck.
+func _on_struck(e: DummyEnemy, by: DummyEnemy) -> void:
+	if sfx == null:
+		return
+	var who := by as Person
+	var cue := soldier_voices.blow(who != null and is_instance_valid(who) and who.soldier, _clock)
+	if cue != &"":
+		sfx.play(cue, e.ground_pos)
 
 
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:

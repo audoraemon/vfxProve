@@ -6,9 +6,9 @@ the built WAVs; `assets/audio/CREDITS.md` lists every recording a recipe uses.
 
 | Folder | What | Licence | From |
 |---|---|---|---|
-| `oga/<page>/` | about 80 sound packs: breaking, debris, explosions, fire, ice, water, wind, thunder, lasers, magic, roars, voices, a crowd | CC0 (each page's licence block checked; `manifest.json` has title, author, URL) | [OpenGameArt](https://opengameart.org), CC0 search |
+| `oga/<page>/` | about 90 sound packs: breaking, debris, explosions, fire, ice, water, wind, thunder, lasers, magic, roars, voices, a crowd, birds, crickets, outdoor ambiences | CC0 (each page's licence block checked; `manifest.json` has title, author, URL) | [OpenGameArt](https://opengameart.org), CC0 search |
 | `kenney/impact-sounds/` | stone, wood, metal, glass and bell impacts | CC0 | [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds) |
-| `wikimedia/` | church bells (Leverkusen, Litovel, Zabuhailo), a struck bell, the Hiroshima peace bell | public domain or CC0 (`manifest.json`) | [Wikimedia Commons](https://commons.wikimedia.org) |
+| `wikimedia/` | church bells (Leverkusen, Litovel, Zabuhailo), a struck bell, the Hiroshima peace bell; a crowd at a distance and market recordings (the ambience) | public domain or CC0 (`manifest.json`) | [Wikimedia Commons](https://commons.wikimedia.org) |
 | `synth/<power>/` | `tools/audio/synth.py`'s renders, the base layer of every power's recipe | this repo | `KAK_SYNTH_OUT=<library>/synth python tools/audio/synth.py` |
 | `orchestra/sso-4.0/` | Sonatina Symphonic Orchestra 4.0 (SFZ): choir, strings, brass, organ, percussion; the music's instruments | CC Sampling Plus 1.0 (credit requested) | [peastman/sso](https://github.com/peastman/sso) |
 | `orchestra/VSCO-2-CE-1.1.0/` | VS Chamber Orchestra 2 Community Edition (SFZ; its raw percussion and organ samples also serve a few recipes: the quiet powers and the Lantern) | CC0 | [sgossner/VSCO-2-CE](https://github.com/sgossner/VSCO-2-CE) |
@@ -29,3 +29,29 @@ tool after any recipe rebuild or new cue and commit the TSV. `--table` prints th
 offset) of every power's cues and the quiet floor; `tests/test_power_sounds.gd` reads the same numbers. `--mix CUE...` renders
 `tools/audio/ab/v0112/mix_<cue>.wav` (the cue over `music_theme` at the game's music level) for `tools/audio/ab/v0112/LISTEN.md`,
 the sheet the user listens with.
+
+## Crowd panic (natural sound pass 3)
+
+- Wikimedia Commons: `20080618KamagasakiRiot.ogg` (CC0, Kamagasaki450; a real riot, under the chaos bed),
+  `Street_parade_carnival_people_yelling_kamelle_kamelle`, `Douzen_kids_on_playground`,
+  `Church_people_walking_steps_with_reverb`, `Festival_concert_people_crowd` (public domain, stephan; converted from
+  Opus to WAV with ffmpeg), `UncleSigmund - ahhh` and `NOW screaming` (CC0). The alligator scream recording was left
+  out: it holds the famous "Wilhelm scream", which players would know.
+- OpenGameArt (CC0): female-high-pitched-scream-sfx, girly-scream, female-distressed-no-no-no, plus the male yelling
+  pack already in use. Modern English lines ("please help somebody", "come on let's run") are no longer used.
+- Pass 4 (clearer, heavier): the beds keep their full range (no more 2.4-6 kHz low-pass), take less reverb, drop the
+  kids and church steps, and get a stampede: a `scatter` layer of single footsteps from OpenGameArt `footsteps-0` and
+  `footsteps-leather-cloth-armor` (CC0), each runner with its own distance, pace and crossing pan. The cries are drier.
+
+## Animals and soldiers (natural sound pass 5)
+
+- Dogs: OpenGameArt `dog-sounds` (one clean recording of several dogs: barks big and small, yelps), `dog-growl`,
+  `dog-grunt` (CC0); Wikimedia Commons `Puppy at a night` (CC0, a whimper). `Bark (avk)` on Commons is a spoken word,
+  not a dog: not used.
+- Cats: OpenGameArt `meow`, `cat-purr-meow`, `kitten-mew` (CC0); Wikimedia Commons meows (`Meow of a Siamese cat`,
+  `MeowUSA`, a Greek recording saved as `Greek_meow_2015-11-24.flac`, `GettingOutImpatient`, `Meow of a pleading cat`),
+  `NoTrip` (yowls) and `Cat hissing - Zabuhailo` (CC0 or public domain).
+- Soldiers: mail footsteps (`footsteps-leather-cloth-armor`), boots (`footsteps-0`), chainmail and spear swings (the RPG
+  sound pack), Kenney impacts, the 150 combat pack's punches, and six low, steady yells from the male yelling pack for
+  orders. The war horn is Sonatina's horn section (CC Sampling Plus, credited), a low call and a fifth above.
+

@@ -1,0 +1,3 @@
+{"length": 0.65, "rms_db": -16.0, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/dog-sounds/montageAudio-20120706@125721.mp3", "at": 0.0, "from": 7.61, "dur": 0.3, "hp": 120, "lp": 10000, "fade_in": 4, "fade_out": 80}
+]}

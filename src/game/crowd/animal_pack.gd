@@ -62,6 +62,8 @@ var _cut := {}
 var _cried := {}
 ## Animal -> [person it could not reach, seconds left].
 var _skip := {}
+## What the animals sound like (natural sound pass 5): its own rng, read by nothing else.
+var voices := AnimalVoices.new()
 
 
 func setup(crowd: Crowd, grid: WalkGrid, parent: Node2D, seed_value: int) -> AnimalPack:
@@ -169,7 +171,15 @@ static func cast(ctx: FxContext, at: Vector2, r: float, spell: Animal.Spell, sec
 	for a in ctx.crowd.animals.in_radius(at, r):
 		if a.cast(spell, seconds, who, to if to != Vector2.INF else at):
 			n += 1
+			if spell == Animal.Spell.ATTACK:
+				ctx.crowd.animals._say(a, AnimalVoices.Act.ANGRY)
 	return n
+
+
+## Lets `a` be heard doing `act` (AnimalVoices), when the crowd has sound at all.
+func _say(a: Animal, act: AnimalVoices.Act) -> void:
+	if _crowd != null and _crowd.sfx != null:
+		voices.say(_crowd.sfx, a, act)
 
 
 func _process(delta: float) -> void:
@@ -179,6 +189,7 @@ func _process(delta: float) -> void:
 
 
 func step(delta: float) -> void:
+	voices.step(delta)
 	_check_in -= delta
 	if _check_in <= 0.0:
 		_check_in = 0.25
@@ -231,6 +242,8 @@ func _wander(a: Animal, delta: float) -> void:
 		return
 	if a.route_to(a.goal, delta, _grid):
 		a.idle = _pick_idle(a)
+		if a.idle == &"bark":
+			_say(a, AnimalVoices.Act.IDLE)
 		a.wait = rng.randf_range(SIT.x, SIT.y) * (1.6 if not a.is_dog() else 1.0) * (2.0 if a.idle == &"lie" else 1.0)
 		if is_night():
 			a.wait *= NIGHT_DOG_WAIT if a.is_dog() else NIGHT_CAT_WAIT
@@ -304,6 +317,7 @@ func _attack(a: Animal, delta: float) -> void:
 		a._bite_in = Animal.BITE_EVERY
 		who.hurt_from(a.bite(), a.ground_pos)
 		a.bit()
+		_say(a, AnimalVoices.Act.BITE)
 		if not _cried.has(a):
 			_cried[a] = true
 			_outcry(a)
@@ -313,6 +327,7 @@ func _attack(a: Animal, delta: float) -> void:
 			_cut[a] = float(_cut.get(a, 0.0)) + delta
 			if float(_cut[a]) >= SOLDIER_KILL:
 				_cut.erase(a)
+				_say(a, AnimalVoices.Act.DIE)
 				a.die()
 			return
 
@@ -365,6 +380,7 @@ func _check_threats() -> void:
 		if t.kind in HARMLESS:
 			continue
 		for a in in_radius(t.at, float(t.radius) * KILL_SHARE):
+			_say(a, AnimalVoices.Act.DIE)
 			a.die()
 	for a in living():
 		if a.hypnotized() or a.state == Animal.State.FLEE:
@@ -384,4 +400,5 @@ func _check_threats() -> void:
 				a.target = null
 				a.goal = to
 				a.wait = 0.0
+				_say(a, AnimalVoices.Act.FLEE)
 				break

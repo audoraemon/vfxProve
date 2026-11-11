@@ -3,6 +3,8 @@ extends Node
 ## Registry of enemies with ground-space queries. Effects touch enemies only through this.
 
 signal enemy_killed(enemy: DummyEnemy, kind: StringName)
+## A blow landed on a person (Person.hurt()), for its sound; nothing in the simulation listens.
+signal enemy_struck(enemy: DummyEnemy, by: DummyEnemy)
 
 var bounds := Rect2(-6.5, -6.5, 13, 13)
 var env: EnvironmentField

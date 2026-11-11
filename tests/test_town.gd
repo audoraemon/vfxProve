@@ -61,7 +61,7 @@ static func run(t) -> void:
 	t.check(cues.get("TORCH/decor") == &"" and cues.get("FARM_FIELD/farm") == &"",
 		"torch and lamp posts and fields make no collapse sound")
 	for cue in [&"collapse_stone", &"collapse_timber", &"collapse_tree"]:
-		t.check(Sfx.CATALOG.has(cue) and Sfx.paths_for(cue).size() == 3, "%s has three variants" % cue)
+		t.check(Sfx.CATALOG.has(cue) and Sfx.paths_for(cue).size() == 5, "%s has five takes" % cue)
 	env.clear()
 	env.free()
 	town.free()

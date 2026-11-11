@@ -2032,6 +2032,8 @@ func _fight_step(delta: float) -> void:
 func hurt(amount: float, by: Person) -> void:
 	if state == State.DEAD:
 		return
+	if field != null:
+		field.enemy_struck.emit(self, by)
 	if mind == Mind.ASLEEP:
 		wake()
 	health -= amount

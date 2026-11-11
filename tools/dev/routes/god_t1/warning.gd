@@ -14,9 +14,8 @@ const UNSEEN := 2.0
 const MOVE_ROOM := 0.9
 ## The room a blow's neighbours are given before it lands: how far a walker covers in a Silent Doom's T_STRIKE and a little more.
 const CLUSTER_MARGIN := 0.6
-## Thornwall goes this far along his road; the mirror's way in is where he will be WAY_IN_SECONDS on.
-const THORN_AT := 2.5
-const WAY_IN_SECONDS := 2.2
+## Passage's Windfall falls across his road this far along it (beyond the reach of its crush when it lands: he walks on meanwhile).
+const WALL_AT := 4.0
 ## Ruin's and Veil's blows wait this long for a clear street, then fall with at most SEEN_FEW to see; a carrier with less than URGENT_ETA seconds to the keeper is struck whoever sees.
 const SEEN_AFTER := 5.0
 const SEEN_FEW := 2
@@ -468,36 +467,34 @@ static func _out_spot(bc, crowd: Crowd, m: Person) -> Vector2:
 	return best
 
 
-# --- Passage: Thornwall, Mirrorfold ---
+# --- Passage: Skylift, Windfall ---
 
-## A way in laid on the carrier's road a little ahead of him and a way out on the ground beyond the nearest wall (Mirrorfold keeps its goal; the next
-## look finds him outside). When the mirror is cooling and he would arrive before it can be laid, Thornwall across his road makes him go round.
+## Skylift takes the carrier where he will stand when its beam takes (SkyliftFx.T_TAKE on, along his road) and sets him down on the ground beyond
+## the nearest wall: out of the walls, the warning stops (W1). While the beam cools and he would reach the keeper first, a Windfall of stone across
+## his road ahead (WALL_AT on) bars it, so he goes round, and the beam is ready again before he arrives.
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var crowd: Crowd = ctx.crowd
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
+		if bc._slot_ready(rules, ctx.slots, "skylift"):
+			var from := GodT1.road_ahead(m, SkyliftFx.T_TAKE) if m.has_goal() else m.ground_pos
+			var to := _beyond(bc, crowd, from)
+			if to != Vector2.INF:
+				rules.cast(ctx.slots.skylift, from, {"to": to})
+				return "skylift the carrier out, from (%.1f, %.1f) to (%.1f, %.1f)" % [from.x, from.y, to.x, to.y]
 		var road := _road(ctx, m)
-		if road.size() < 2:
+		var wkey := "windfall_for_%d" % m.get_instance_id()
+		if road.size() < 2 or ctx.memo.has(wkey) or w.phase == WarningDirector.Phase.DELIVERED or not bc._slot_ready(rules, ctx.slots, "windfall"):
 			return ""
-		# Thornwall across the first of his road, just outside the post, before he sets out: a real delay.
-		var tkey := "thorns_for_%d" % m.get_instance_id()
-		if bc._slot_ready(rules, ctx.slots, "thorns") and not ctx.memo.has(tkey) and w.phase != WarningDirector.Phase.DELIVERED \
-					and _length(road) > THORN_AT + 2.0:
-			var spot: Dictionary = _along(road, THORN_AT)
-			rules.cast(ctx.slots.thorns, spot.at, {"dir": (spot.dir as Vector2).orthogonal()})
-			ctx.memo[tkey] = true
-			return "thornwall across the carrier's road"
-		# The mirror when he is on his way: a way in on the road he is walking, a moment ahead of him; a way out on the ground beyond the nearest wall.
-		var key := "mirror_for_%d" % m.get_instance_id()
-		if bc._slot_ready(rules, ctx.slots, "mirror") and not ctx.memo.has(key) and m.mind == Person.Mind.DUTY and m.has_goal():
-			var in_at := GodT1.road_ahead(m, WAY_IN_SECONDS)
-			var out_at := _beyond(bc, crowd, in_at)
-			if out_at != Vector2.INF:
-				rules.cast(ctx.slots.mirror, in_at, {"to": out_at})
-				ctx.memo[key] = true
-				return "mirror the carrier out (in %.1f, %.1f)" % [in_at.x, in_at.y]
-		return "")
+		var eta := _eta(ctx, m)
+		if bc._slot_wait(rules, ctx.slots, "skylift") + SkyliftFx.T_TAKE < eta or _length(road) < WALL_AT + 2.0:
+			return ""
+		var spot: Dictionary = _along(road, WALL_AT)
+		rules.cast(ctx.slots.windfall, spot.at, {"dir": (spot.dir as Vector2).orthogonal(), "mode": "stone"})
+		ctx.memo[wkey] = true
+		return "windfall of stone across the carrier's road (the beam cools %.0f s, he is %.0f s from the keeper)" % [
+			bc._slot_wait(rules, ctx.slots, "skylift"), eta])
 
 
 ## Walkable ground outside the walls near `from`: the nearest outside it by the straight line, 1.5 further out than the wall's margin where it can.

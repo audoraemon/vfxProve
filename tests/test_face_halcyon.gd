@@ -1377,8 +1377,10 @@ static func _pacing(t) -> void:
 ## believer. (Mutation: aim a policy a few units off its escort and the check fails.)
 ## How near an escort still able a cast of each power must land (the power's own radius, with a step's slack for the walk the bolt is led by), per key; the law,
 ## the Bell Lies' area and the whisper's pick are the powers' own (the law NoLeaveFx.RADIUS 3.0, the Bell Lies 1.5, the whisper MindWhisperFx.PICK_R 0.6 + slack). Blight, the mirror and the law at a door are checked
-## by what they name (the tower, the road, the door). A Death Mark 2.5 off its escort must fail (review of Task 13, M1).
-const CAST_REACH := {"smite": 1.0, "deathmark": 1.05, "doom": 0.9, "noleave": 3.0, "belllies": 1.5, "whisper": 0.7, "discord": 1.2, "priority": 7.0}
+## by what they name (the tower, the road, the door); a Skylift within its circle of an escort or of the believer it sets down past the walls. A Death Mark
+## 2.5 off its escort must fail (review of Task 13, M1).
+const CAST_REACH := {"smite": 1.0, "deathmark": 1.05, "doom": 0.9, "noleave": 3.0, "belllies": 1.5, "whisper": 0.7, "discord": 1.2, "priority": 7.0,
+	"skylift": SkyliftFx.RADIUS}
 
 
 static func _no_filler_casts(t) -> void:
@@ -1434,6 +1436,8 @@ static func _no_filler_casts(t) -> void:
 							on_believer += 1
 						var road := d._road(_believer(d, i).ground_pos)
 						if type == "passage" and at.distance_to(FaceHalcyonDirector._along(road, HUNT.MIRROR_AHEAD)) < 0.5 and Walls.outside(c.extra.to):
+							near = true
+						if key == "skylift" and at.distance_to(_believer(d, i).ground_pos) <= SkyliftFx.RADIUS and Walls.outside(c.extra.to):
 							near = true
 				if tower != null and at.distance_to(tower.center()) <= 1.0:
 					near = true

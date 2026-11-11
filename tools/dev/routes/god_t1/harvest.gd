@@ -5,8 +5,8 @@ extends RefCounted
 ## the granary whose turn it is, its watchmen, its carter -- and casts at most one power a look.
 ##
 ## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks the watchmen so both are gone when
-## Pestilence takes the carter (H2); Veil dooms the watchmen and Blights the full granary (H3); Passage lays a Mirrorfold on the carter's
-## road with its way out beyond the wall (H1); Decree holds the carter and calls the guard to him (H4); Dominion whispers him out of the
+## Pestilence takes the carter (H2); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts the carter out beyond the
+## wall (H1); Decree holds the carter and calls the guard to him (H4); Dominion whispers him out of the
 ## gate a step at a time (H1).
 
 ## The types whose policy is written.
@@ -19,22 +19,17 @@ const CLEAR_PRE := 20.0
 ## its cast: 20 + 10 = 30), and counts a marked watchman as gone with this much of his fuse left.
 const DEATH_LEAD := 31.0
 const MARK_GONE := 3.0
-## Passage: how many seconds of the carter's road ahead the way in is laid, and how far along the road from a door it is laid for a carter
-## who has yet to set out; the second before the grain a waiting carter's way is laid.
-const MIRROR_LEAD := 3.5
+## Decree: how far along the road from a door toward the Citadel a carter about to take a load is looked for (_step_off()).
 const MIRROR_DOOR_STEP := 3.5
-const MIRROR_WAIT := 10.0
-## Passage: how many seconds of the carter's road ahead the Thornwall is laid (beyond where the Mirrorfold will be).
-const THORN_LEAD := 7.0
-## Passage: how far past the wall the way out lies at the least (the oval is 2.4 across: a carter set down anywhere on it is out).
-const EXIT_MIN := 3.0
+## Passage: how far from where the beam takes him a carter is set down, at the least and the most (the nearest ground out of the walls).
+const EXIT_MIN := 1.0
 const EXIT_MAX := 26.0
+## Passage: how many seconds of a hauling carter's road ahead a Windfall of stone is laid across it (beyond its crush when it lands).
+const WALL_LEAD := 4.0
 ## Decree: the seconds of his road ahead the hold is laid for a walking carter (it seals 0.6 s after the cast), and the longest the call waits on
 ## the hold being laid.
 const HOLD_LEAD := 0.6
 const HOLD_PLAN := 4.0
-## Passage: with the Mirrorfold cooling, a Thornwall across the carter's road is laid once FILL_AFTER - 5 s have passed with nothing cast.
-const FILL_AFTER := 30.0
 ## Dominion: how far ahead along his road a carter is whispered (Mind Whisper's REACH is 10).
 const WHISPER_STEP := 9.0
 
@@ -93,16 +88,6 @@ static func _at_door(d: HarvestDirector, s: Structure, c: Person) -> bool:
 	return c.ground_pos.distance_to(d.doors[s]) <= 1.0 and not d._hauling.has(c.get_instance_id())
 
 
-## Where the carter will be `seconds` from now on his road: where he stands at his door (he is waiting) or, on the way to or from the door, along
-## his walk; a carter at his door about to take a load is looked for a step down the road to the Citadel.
-static func _ahead(ctx: Dictionary, d: HarvestDirector, s: Structure, c: Person, seconds: float) -> Vector2:
-	if _at_door(d, s, c):
-		return _step_off(ctx, d, s) if d.has_grain(s) or d.grain_left(s) <= MIRROR_WAIT else Vector2.INF
-	if c.goal() == Vector2.INF:
-		return Vector2.INF
-	return _god().road_ahead(c, seconds)
-
-
 ## A point MIRROR_DOOR_STEP down the road from the granary's door toward the Citadel.
 static func _step_off(ctx: Dictionary, d: HarvestDirector, s: Structure) -> Vector2:
 	var path: PackedVector2Array = ctx.crowd._grid.path(d.doors[s], d.citadel_door)
@@ -122,29 +107,16 @@ static func _god() -> GDScript:
 	return load("res://tools/dev/routes/god_t1.gd")
 
 
-## Ground beyond the wall for a Mirrorfold's way out, reached from `from`: the nearest spot (EXIT_MIN to EXIT_MAX away, round the compass) from which
-## a walker set down anywhere on the oval would land outside the walls on walkable ground (Person.fold() puts him on the nearest walkable ground
-## within 4 cells of where he would stand, or leaves him where he is). Vector2.INF for none.
+## Ground beyond the wall where Skylift sets a carter taken at `from` down: the nearest walkable spot out of the walls, EXIT_MIN to EXIT_MAX
+## away round the compass. Vector2.INF for none.
 static func _exit_spot(ctx: Dictionary, from: Vector2) -> Vector2:
 	var grid: WalkGrid = ctx.crowd._grid
-	var offs: Array[Vector2] = [Vector2.ZERO, MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE, -MirrorfoldFx.ACROSS * MirrorfoldFx.HALF_WIDE,
-		MirrorfoldFx.DOWN * MirrorfoldFx.HALF_DEEP, -MirrorfoldFx.DOWN * MirrorfoldFx.HALF_DEEP]
 	var r := EXIT_MIN
 	while r <= EXIT_MAX:
 		var best := Vector2.INF
 		for i in 24:
 			var g := from + Vector2.from_angle(TAU * float(i) / 24.0) * r
-			var ok := grid.walkable(g)
-			for o in offs:
-				if not ok:
-					break
-				var land := g + o
-				if grid.walkable(land):
-					ok = Walls.outside(land)
-				else:
-					var near := grid.nearest_walkable(land, 4)
-					ok = near != Vector2.INF and Walls.outside(near)
-			if ok and (best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from)):
+			if grid.walkable(g) and Walls.outside(g) and (best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from)):
 				best = g
 		if best != Vector2.INF:
 			return best
@@ -241,10 +213,11 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Passage: Thornwall, Mirrorfold --------------------------------------------------------------------------------------
+# --- Passage: Skylift, Windfall -----------------------------------------------------------------------------------------
 
-## H1: a Mirrorfold laid on the carter's road, its way out beyond the wall, so he is set down outside it and his granary is spoiled. While the
-## Mirrorfold cools (54 s), a Thornwall across the road ahead of the carter (42 s) is laid whenever FILL_AFTER - 5 s have passed with nothing cast.
+## H1: Skylift takes the carter of the first granary still to spoil where he will stand when the beam takes (SkyliftFx.T_TAKE on, along his road;
+## where he stands at his door) and sets him down out of the walls: his granary is spoiled at once. While the beam cools longer than a carter
+## hauling a load needs to reach the Citadel, a Windfall of stone across his road (WALL_LEAD s ahead) makes him go round.
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as HarvestDirector
 	var rules: Rules = ctx.rules
@@ -255,24 +228,33 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 		return ""
 	var s: Structure = tgt.s
 	var c: Person = tgt.c
-	var memo: Dictionary = ctx.memo
-	var now := d._clock
-	if _ready(bc, ctx, "mirror"):
-		var way_in := _ahead(ctx, d, s, c, MIRROR_LEAD)
-		if way_in != Vector2.INF:
-			var way_out := _exit_spot(ctx, way_in)
-			if way_out != Vector2.INF and _god().cast_mirror(bc, ctx, way_in, way_out):
-				memo.last = now
-				return "mirrorfold on the %s granary's carter's road" % _name(d, s)
-	elif _ready(bc, ctx, "thorns") and now - float(memo.get("last", 0.0)) >= FILL_AFTER - 5.0:
-		var ahead := _ahead(ctx, d, s, c, THORN_LEAD)
-		if ahead == Vector2.INF:
-			ahead = _step_off(ctx, d, s)
-		var way: Vector2 = (ahead - c.ground_pos).normalized() if ahead.distance_to(c.ground_pos) > 0.1 else Vector2.RIGHT
-		rules.cast(int(ctx.slots.thorns), ahead, {"dir": way.orthogonal()})
-		memo.last = now
-		return "thornwall across the %s granary's carter's road" % _name(d, s)
+	var walking := c.goal() != Vector2.INF and not _at_door(d, s, c)
+	if _ready(bc, ctx, "skylift"):
+		var from: Vector2 = _god().road_ahead(c, SkyliftFx.T_TAKE) if walking else c.ground_pos
+		var to := _exit_spot(ctx, from)
+		if to != Vector2.INF:
+			rules.cast(int(ctx.slots.skylift), from, {"to": to})
+			return "skylift the %s granary's carter out of the walls, to (%.1f, %.1f)" % [_name(d, s), to.x, to.y]
+		return ""
+	if walking and d._hauling.has(c.get_instance_id()) and _ready(bc, ctx, "windfall"):
+		var road: PackedVector2Array = ctx.crowd._grid.path(c.ground_pos, c.goal())
+		var left: float = _length_from(c.ground_pos, road) / maxf(c.walk_speed, 0.1)
+		if _cd(ctx, "skylift") + SkyliftFx.T_TAKE >= left and left > WALL_LEAD + 1.0:
+			var ahead: Vector2 = _god().road_ahead(c, WALL_LEAD)
+			var way: Vector2 = (ahead - c.ground_pos).normalized() if ahead.distance_to(c.ground_pos) > 0.1 else Vector2.RIGHT
+			rules.cast(int(ctx.slots.windfall), ahead, {"dir": way.orthogonal(), "mode": "stone"})
+			return "windfall of stone across the %s granary's carter's road (the beam cools %.0f s, the Citadel %.0f s off)" % [_name(d, s),
+				_cd(ctx, "skylift"), left]
 	return ""
+
+
+## The length of the walk `road` from `at`.
+static func _length_from(at: Vector2, road: PackedVector2Array) -> float:
+	var n := 0.0
+	for step in road:
+		n += at.distance_to(step)
+		at = step
+	return n
 
 
 # --- Decree: Leaving Is Prohibited, The Bell Lies ------------------------------------------------------------------------

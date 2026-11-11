@@ -372,3 +372,18 @@ REBUILD, the Magnify CLAMP). Levers used in the brief's order; no new opposition
   no one stands within 0.4, toward his own way out, and only after the cause (two ways out) is fixed; it cannot make a loss, and a believer jammed
   12 s by bodies is a crowd jam, not a threat the player answers. Disclosed here and in P5-T17-R8; `nudges` counts it. The stale `_walk_on` doc
   comment ("the nearest way out") is fixed.
+
+### Passage's real tree (2026-11-12): the bots draft Skylift and Windfall
+The user's Passage tree (Skylift/Windfall at Tier 1, Mirrorfold at Tier 3, Thornwall out) retired every Thornwall + Mirrorfold policy. The bots were
+rewritten onto the real keys and their refs re-recorded.
+- **P5-PT-R1 (controller). Passage's idle of 46-47 s on Hunt 1 is accepted, pending the user's word.** It is the night's own chain gap: the second
+  household sets out 45 s after the first is done, and Skylift cannot reach people indoors, so its next lift waits on the door. No watcher comes
+  within Windfall's 13 s lead in between. No filler cast and no kill ahead of its lead (P5-T17-R3). It replaces P5-T11-R2's Mirrorfold allowance on Hunt 1.
+  Gate: wins 3/3, median 62 s, idle 47/46/47. Cost if wrong: Passage's Hunt 1 row fails the 45 s bar by 1-2 s.
+- **P5-PT-G1 (reported gap). First Prayers x Passage: 2/3, idle 78 s on seed 1 (60 allowed): FAIL.** Seed 1 casts nothing for 78 s: lifting a
+  Faithful early is held while any of the poor stand near the door, and the first walker sets out 2 units from the door before the market line
+  is down. Three variants were tried (lift the walker early 0/3, no hold 1/3, hold near the shrine only 1/3); the kept policy is the best. Refs
+  re-recorded on it. Left to the user; not tuned around.
+- **P5-PT-G2 (reported). Skylift makes some nights short.** Lost Lamb about 22 s (the watch lifted off the way out, then the boy onto it), First
+  Taste 42 s, Hide the faithful 62 s, Expel 124 s, Break 112 s. The Hunts' pooled-median bands (180-240 s; Hunt 1 140-200 s) may fail in
+  `--judge` on Hunts 1, 3 and 4 because of Passage's rows. A design question for the user (Skylift's reach or cooldown), not a bot fix.

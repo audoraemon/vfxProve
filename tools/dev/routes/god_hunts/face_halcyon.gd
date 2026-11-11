@@ -9,12 +9,12 @@ extends RefCounted
 ##            used: a plague spreads to the believer, and the freeze (5 units) shatters him when it thaws (a believer the god kills counts as burned).
 ##   veil     Blight the Bell Tower early (no toll all night), Silent Doom on the escort, the rear of the file first, aimed where he stands; Tsunami Breaker is
 ##            not used (its wave would take the believer on the same road).
-##   passage  Mirrorfold Passage laid across the road ahead with its way out beyond the walls: the file walks in, is outside, and he is freed (the walls rule).
-##            The Thornwall is not cast (a wall across a lane the file must walk shuts it in: tried, all four stood at the wall until dawn).
+##   passage  Skylift one escort out past the walls (sent off), the rear of the file first, then the believer himself FH_GAP later (freed by the walls);
+##            Mirrorfold Passage laid across the road ahead, its way out beyond the walls, as the finisher while the lift cools.
 ##   decree   Leaving Is Prohibited at the door of a house in the last moment before its procession forms up (those who come out are bound at once; the bars
 ##            count as held), else round the file; The Bell Lies, CALL THE GUARD, on the file when the law is cooling.
 ##   dominion Mind Whisper sends an escort off, Discord holds one more; Rewrite Priority only when both are cooling (its seal takes a second).
-## Ruin, Veil and Death break a procession in an opener and a finisher FH_GAP apart (Silence the witness's precedent): _may_finish().
+## Ruin, Veil, Death and Passage break a procession in an opener and a finisher FH_GAP apart (Silence the witness's precedent): _may_finish().
 ## Unlike Hunts 2-4, Decree has a route here (C9: those three Hunts report it as a gap).
 
 ## The god types whose policy is written (all six).
@@ -26,7 +26,7 @@ const LOADOUT := {
 	"ruin": ["smite", "ember"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
-	"passage": ["thorns", "mirror"],
+	"passage": ["skylift", "mirror"],
 	"decree": ["noleave", "belllies", "magnify"],
 	"dominion": ["whisper", "discord", "voice"],
 }
@@ -377,16 +377,22 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Passage: Thornwall, Mirrorfold Passage ---------------------------------------------------------------------------------------------
+# --- Passage: Skylift, Mirrorfold Passage ----------------------------------------------------------------------------------------------
 
 ## How far ahead of the believer along his road the mirror's way in is laid, and the least road he must have left for it.
 ## Fix round (P5-T13-R12): 1.5, clear of where the file's lead stands (1.4) and the shortest lead that frees every seed at the lowest idle; a mirror laid 6 ahead only
-## made the policy wait (win 178 s, idle 59.7; 2 ahead 166 s, idle 59; 1.5 ahead 164.6 s, idle 54 = the cooldown; 1.0: 175 s idle 60; 0.5: 253 s idle 78).
+## made the policy wait (win 178 s, idle 59.7; 2 ahead 166 s, idle 54 = the cooldown; 1.5 ahead 164.6 s, idle 54 = the cooldown; 1.0: 175 s idle 60; 0.5: 253 s idle 78).
 const MIRROR_AHEAD := 1.5
 const MIRROR_ROAD := 8.0
 ## How far the way out may lie from the way in, and how far past the wall's own margin it is (so a man put there is out at the director's next look).
 const MIRROR_REACH := 24.0
 const MIRROR_BEYOND := 0.8
+## Skylift's opener takes one escort and nobody else of the file: he stands within the circle less LIFT_SLACK where the light takes (T_TAKE on), and the
+## believer and the other escorts beyond it by LIFT_SLACK; the aims tried, round his place out to LIFT_SHIFT.
+const LIFT_SLACK := 0.3
+const LIFT_SHIFT := [0.0, 0.5, 1.0, 1.5, 2.0]
+## A believer lifted is left alone this long: the light takes him T_TAKE after the cast, and the director's next look finds him out of the walls.
+const LIFT_HOLD := SkyliftFx.T_TAKE + 1.0
 
 
 ## Walkable ground out of the walls, a little past the wall's own margin, nearest `from` and no nearer than the mirror's MIN_APART; INF for none.
@@ -404,9 +410,28 @@ static func _beyond(crowd: Crowd, from: Vector2) -> Vector2:
 	return best
 
 
-## Mirrorfold Passage across the believer's road ahead of his file, its way out past the walls: the file walks onto it, is that instant outside, and he is
-## freed (the walls rule; an escort outside is sent off). The Thornwall is not cast: a wall across a lane the file must walk shuts it in (tried: a wall ahead of
-## the file and the mirror beyond it left all four processions standing at the wall until dawn), and nothing else in this kit helps the mirror.
+## Where a Skylift takes escort `e` of procession `i` alone (the believer and the other able escorts left standing, where all of them will be when the light
+## takes), or INF when no aim within LIFT_SHIFT of him does.
+static func _lift_one(d: FaceHalcyonDirector, i: int, e: Person) -> Vector2:
+	var at: Vector2 = GOD.road_ahead(e, SkyliftFx.T_TAKE)
+	var others: Array[Vector2] = [GOD.road_ahead(_man(d, i), SkyliftFx.T_TAKE)]
+	for o in _ables(d, i):
+		if o != e:
+			others.append(GOD.road_ahead(o, SkyliftFx.T_TAKE))
+	for shift: float in LIFT_SHIFT:
+		for k in (1 if shift == 0.0 else 12):
+			var aim := at + Vector2.from_angle(TAU * float(k) / 12.0) * shift
+			var clear := true
+			for o in others:
+				clear = clear and o.distance_to(aim) > SkyliftFx.RADIUS + LIFT_SLACK
+			if clear and at.distance_to(aim) <= SkyliftFx.RADIUS - LIFT_SLACK:
+				return aim
+	return Vector2.INF
+
+
+## An opener and a finisher FH_GAP apart (_may_finish()). The opener: Skylift one escort, the rear of the file first, out past the walls (out of the walls he is
+## sent off). The finisher: Skylift the believer where he will stand when the light takes, set down out of the walls (he is freed by the walls rule); while the
+## lift cools, Mirrorfold Passage across his road ahead of the file, its way out past the walls (the file walks onto it and is that instant outside).
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := _fh(ctx)
 	if d == null:
@@ -414,17 +439,37 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var crowd: Crowd = ctx.crowd
+	var lift: bool = bc._slot_ready(rules, slots, "skylift")
 	for i in _works(d):
 		var p := _man(d, i)
-		var road := d._road(p.ground_pos)
-		if d._along_length(road) < MIRROR_ROAD or ctx.memo.has("mirror_%d" % i):
+		if _need(d, i) > 1:
+			if not lift:
+				continue
+			for e in _ables(d, i):
+				var aim := _lift_one(d, i, e)
+				var to := _beyond(crowd, aim) if aim != Vector2.INF else Vector2.INF
+				if to != Vector2.INF:
+					rules.cast(int(slots.skylift), aim, {"to": to})
+					_opened(d, ctx, i)
+					return "skylift an escort of procession %d out past the walls" % i
 			continue
-		if bc._slot_ready(rules, slots, "mirror"):
-			var way_in := FaceHalcyonDirector._along(road, MIRROR_AHEAD)
-			var way_out := _beyond(crowd, way_in)
-			if way_out != Vector2.INF and GOD.cast_mirror(bc, ctx, way_in, way_out):
-				ctx.memo["mirror_%d" % i] = true
-				return "mirror procession %d out past the walls: in %.1f ahead of him, out at (%.1f, %.1f)" % [i, way_in.distance_to(p.ground_pos), way_out.x, way_out.y]
+		if not _may_finish(d, ctx, i) or _now(d) - float(ctx.memo.get("lift_%d" % i, -999.0)) < LIFT_HOLD:
+			continue
+		if lift:
+			var from: Vector2 = GOD.road_ahead(p, SkyliftFx.T_TAKE)
+			var out := _beyond(crowd, from)
+			if out != Vector2.INF:
+				ctx.memo["lift_%d" % i] = _now(d)
+				rules.cast(int(slots.skylift), from, {"to": out})
+				return "skylift the believer of procession %d out past the walls, to (%.1f, %.1f)" % [i, out.x, out.y]
+		var road := d._road(p.ground_pos)
+		if d._along_length(road) < MIRROR_ROAD or ctx.memo.has("mirror_%d" % i) or not bc._slot_ready(rules, slots, "mirror"):
+			continue
+		var way_in := FaceHalcyonDirector._along(road, MIRROR_AHEAD)
+		var way_out := _beyond(crowd, way_in)
+		if way_out != Vector2.INF and GOD.cast_mirror(bc, ctx, way_in, way_out):
+			ctx.memo["mirror_%d" % i] = true
+			return "mirror procession %d out past the walls: in %.1f ahead of him, out at (%.1f, %.1f)" % [i, way_in.distance_to(p.ground_pos), way_out.x, way_out.y]
 	return ""
 
 

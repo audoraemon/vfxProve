@@ -5,8 +5,8 @@ extends RefCounted
 ##
 ## The poor walk to the shrine on their own (FirstPrayersDirector, rule 3), one at a time, so the night is the door: at the two instants a
 ## walker goes in and a prayer ends (the crits, crit_in()) no Faithful may see it. Each type clears the door in its own way (spec 8.6): Ruin
-## with fire (F2), Death and Veil by killing the ones who would watch, Passage with brambles and a mirror (F3), Decree with ALL IS WELL (F5),
-## Dominion as loadout A does (Whisper and Discord).
+## with fire (F2), Death and Veil by killing the ones who would watch, Passage by lifting the watchers off it (Skylift), Decree with ALL IS
+## WELL (F5), Dominion as loadout A does (Whisper and Discord).
 
 const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
 
@@ -262,167 +262,235 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Passage: Thornwall and Mirrorfold ---
+# --- Passage: Skylift and Windfall ---
 
-## Passage (D32, F3b): brambles laid by the well hide its steps, and one who goes down hidden comes up hidden. So a wall is laid by the door
-## as each walker sets out (it stands 25 s, cools 42; the walkers come about 50 s apart), and a walker too far off to reach it while it stands
-## is mirrored to the door (the routes table: "mirror the poor to the shrine door"). A prayer begun unhidden has its coming-out hidden by a wall
-## instead. With nobody left to see, nothing needs hiding. Between, the mirror folds a Faithful walking near the shrine far off (_passage_fold(),
-## D38), so he is out of the door's watch for his long walk back. (Its real wait is still over 45 s twice a night: before the first wall, and
-## while the market's line stands at the door with nobody walking to fold -- reported to the user, D38.)
-## A wall hides the door for this many seconds after it is cast (it withers at ThornwallFx.THORN_TIME, 25).
-const WALL_TO := 23.5
-## A wall is laid from WALL_EARLY seconds before the next walker sets out (it then hides the door until his walk of about 9 s is done), where it
-## draws none of the poor by the door to look at it; at WALL_LEAD seconds before, wherever it must.
-const WALL_EARLY := 14.0
-const WALL_LEAD := 1.0
-## A walker this far from the door is mirrored to it, while a wall hides it, if he would not reach it before the wall withers.
-const BRING_FROM := 6.0
-## How far ahead of the walker, on his way, the mirror's way in is laid.
-const BRING_AHEAD := 1.2
-## How far from the door a mirror holding a walker off sets him down, and how near the door he is held (off the mirror's oval).
-const LOOP_OUT := 6.0
-const LOOP_NEAR := 5.5
+## Passage: the door is cleared by lifting its watchers off it, or the walker off the door while a line stands at it. A line (the market's four,
+## the priests' two) that will still stand at the door when the walker comes would see him: the beam takes him where he will stand when it takes,
+## clear of the Faithful, and sets him down where his walk back to the door is longest, so he comes back after it. Otherwise, as a crit nears --
+## the walker going in, a prayer ending -- Skylift takes the Faithful who would see the door then (one beam on the door takes a whole line: every
+## line spot lies within its radius), never the walker, and sets them down where their walk back is longest. While the beam cools and the walker
+## would reach a watched door first, a Windfall of stone across his way makes him go round. A report on the run (one delivered fills the Gaze)
+## is lifted where its walk to the Temple's door is longest, or, the beam cooling, crushed by a Windfall (a seen death costs the Gaze a tenth).
+## With nothing to clear now, a Faithful walking near the shrine is lifted far off (_passage_fold(), D38), out of the door's watch for his long
+## walk back.
+## The beam is cast when the crit is LIFT_LEAD seconds off or less (at LIFT_LAST when one beam cannot take them all yet); it takes those
+## standing within its radius less LIFT_EDGE (they shift on their spots), and never where the walker will stand within its radius and LIFT_CLEAR
+## when it takes. Watchers are those within SIGHT + WATCH_ROOM of the door (one a step off walks up to it), now or by the crit.
+const LIFT_LEAD := 4.0
+const LIFT_LAST := SkyliftFx.T_TAKE + 0.6
+const LIFT_EDGE := 0.15
+const LIFT_CLEAR := 0.3
+const WATCH_ROOM := 0.8
+## The walker is carried off when the line stands LINE_ROOM seconds past his coming and he is HOLD_LEAD seconds or less from the door.
+const LINE_ROOM := 2.0
+const HOLD_LEAD := 20.0
+## The Windfall falls across the walker's way when he is WALL_WHEN seconds or less from the door, WALL_AHEAD seconds ahead of him and at least
+## WALL_NEAR units off him (its crush lands T_DROP on), with none of its heaps within WALL_SPARE of anyone where they will stand when it lands.
+const WALL_WHEN := 9.0
+const WALL_AHEAD := 3.0
+const WALL_NEAR := 2.0
+const WALL_SPARE := 0.4
 
 
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
-	# A report on the run (the door was seen): a mirror over the Temple's door folds the runner away each time he comes to it, until it lifts.
-	var runners := _runners(d)
-	if not runners.is_empty() and _ready(bc, ctx, "mirror") and runners[0].ground_pos.distance_to(d.temple_door) > MirrorfoldFx.HALF_WIDE + 0.5:
-		var away := d._walkable(d.temple_door + (runners[0].ground_pos - d.temple_door).normalized() * LOOP_OUT)
-		return _cast(ctx, "mirror", d.temple_door, "mirror over the Temple's door: the runner is set down again and again", {"to": away})
-	if _faithful(d).is_empty():
-		return _passage_fold(bc, ctx)
-	var walker := d.walker if MissionDirector._alive(d.walker) and not d.walker.inside else null
-	var hides_now := d.door_hidden() and d.hidden_left() > 2.0
-	# A walker setting out, or on his way, with the door not hidden: a wall by it now.
-	var due_in := INF
-	if walker == null and d.walk_due() != INF and d.next_walker() != null:
-		due_in = maxf(d.walk_due() - d.timeline.elapsed(), 0.0) / maxf((ctx.rules as Rules).clock_rate, 0.1)
-	var coming := walker != null and walker.mind == Person.Mind.DUTY
-	if _ready(bc, ctx, "thorns") and not hides_now and (coming or due_in <= WALL_EARLY):
-		var spot := _wall_spot(bc, ctx, coming or due_in <= WALL_LEAD)
-		if spot.size() == 2:
-			return _cast(ctx, "thorns", spot[0], "thornwall by the well: the door hidden for the walker", {"dir": spot[1]})
-	# A prayer begun unhidden: a wall by the door for its coming-out.
-	var left := d.reading_left()
-	if left != INF and left <= WALL_TO - 2.0 and not _prayer_hidden(d) and not (d.door_hidden() and d.hidden_left() > left + 0.5) \
-			and _ready(bc, ctx, "thorns"):
-		var spot := _wall_spot(bc, ctx)
-		if spot.size() == 2:
-			return _cast(ctx, "thorns", spot[0], "thornwall by the well: the coming-out hidden", {"dir": spot[1]})
-	if coming and _ready(bc, ctx, "mirror"):
-		var gap := walker.ground_pos.distance_to(d.door)
-		var walk: float = bc._walk_len(ctx.crowd, walker.ground_pos, d.door) / maxf(walker.walk_speed, 0.05)
-		# The door hidden, and the walker too far to reach it while it stays so: the mirror brings him to it.
-		if hides_now and gap >= BRING_FROM and walk > d.hidden_left() - 2.0:
-			var into := _bring_in(ctx, walker)
-			if into != Vector2.INF:
-				return _cast(ctx, "mirror", into, "mirror the walker to the shrine's door", {"to": d.door})
-		# The door not hidden and no wall to hide it: the mirror over the door holds him off until one is ready.
-		if not d.door_hidden() and not _ready(bc, ctx, "thorns") and gap <= LOOP_NEAR and gap > MirrorfoldFx.HALF_WIDE + 0.3:
-			var out := _loop_out(ctx)
-			if out != Vector2.INF:
-				return _cast(ctx, "mirror", d.door, "mirror over the door: the walker is held off until a wall is ready", {"to": out})
+	var lift_ready := _ready(bc, ctx, "skylift")
+	# A report on the run (the door was seen): the beam sets the runner down where his way to the Temple is longest; cooling, a Windfall crushes him.
+	for r in _runners(d):
+		var at: Vector2 = GodT1.road_ahead(r, SkyliftFx.T_TAKE)
+		var to: Vector2 = _far_from(bc, ctx, at, d.temple_door) if lift_ready and not _takes_walker(ctx, at) else Vector2.INF
+		if to != Vector2.INF:
+			return _cast(ctx, "skylift", at, "skylift a runner to the Temple far off (%.0f to walk)" % bc._walk_len(ctx.crowd, to, d.temple_door), {"to": to})
+		if _ready(bc, ctx, "windfall"):
+			var line := _crush(ctx, r)
+			if not line.is_empty():
+				return _cast(ctx, "windfall", line[0], "windfall on a runner to the Temple", {"dir": line[1], "mode": "stone"})
+	var crit := crit_in(bc, ctx)
+	var walker: Person = d.walker if MissionDirector._alive(d.walker) and not d.walker.inside and d.walker.mind == Person.Mind.DUTY else null
+	# A line will stand at the door when he comes: the beam carries him off, clear of the Faithful, so he comes back after it.
+	if walker != null and crit <= HOLD_LEAD and _line_left(ctx, crit) > crit + LINE_ROOM:
+		var at: Vector2 = GodT1.road_ahead(walker, SkyliftFx.T_TAKE)
+		if lift_ready and at.distance_to(d.door) > MirasHouseDirector.DOOR_REACH + 0.5:
+			var to: Vector2 = _far_from(bc, ctx, at, d.door) if not _takes_faithful(ctx, at) else Vector2.INF
+			if to != Vector2.INF:
+				return _cast(ctx, "skylift", at, "skylift the walker off the door while the line stands (%.0f to walk back, the line %.0f s more)" % [
+					bc._walk_len(ctx.crowd, to, d.door), _line_left(ctx, 0.0)], {"to": to})
+		if crit <= WALL_WHEN and _ready(bc, ctx, "windfall"):
+			var wall := _wall_across(ctx, walker)
+			if not wall.is_empty():
+				return _cast(ctx, "windfall", wall[0], "windfall across the walker's way while the line stands (the beam cools %.0f s)" % [
+					bc._slot_wait(ctx.rules, ctx.slots, "skylift")], {"dir": wall[1], "mode": "stone"})
+	var eyes := _eyes_at(ctx, crit)
+	# A crit near and the door watched: the beam takes the watchers off it -- at once if one beam takes them all, else at the last moment
+	# (LIFT_LAST), when those still coming stand where they will see from.
+	if lift_ready and crit <= LIFT_LEAD and not eyes.is_empty():
+		var at := _lift_aim(ctx, eyes)
+		if at != Vector2.INF and (_taken(ctx, at, eyes) == eyes.size() or crit <= LIFT_LAST):
+			var to := _far_from(bc, ctx, at, d.door)
+			if to != Vector2.INF:
+				return _cast(ctx, "skylift", at, "skylift %d watcher(s) off the door (the crit in %.1f s)" % [_taken(ctx, at, eyes), crit], {"to": to})
+	# The walker would reach a watched door before the beam is ready: stone across his way.
+	var late: bool = bc._slot_wait(ctx.rules, ctx.slots, "skylift") + SkyliftFx.T_TAKE > crit - 0.5
+	if walker != null and not eyes.is_empty() and late and crit <= WALL_WHEN and _ready(bc, ctx, "windfall"):
+		var wall := _wall_across(ctx, walker)
+		if not wall.is_empty():
+			return _cast(ctx, "windfall", wall[0], "windfall across the walker's way (the beam cools %.0f s, the door %.0f s off)" % [
+				bc._slot_wait(ctx.rules, ctx.slots, "skylift"), crit], {"dir": wall[1], "mode": "stone"})
 	return _passage_fold(bc, ctx)
 
 
-## The one praying now (the soonest to come up) went down hidden (F3b).
-static func _prayer_hidden(d: FirstPrayersDirector) -> bool:
-	var left := d.reading_left()
-	for p: Variant in d._hidden_prayers.keys():
-		if is_instance_valid(p) and d._reading.has(p) and is_equal_approx(float(d._reading[p]), left):
+## The Faithful who would see the door `crit` seconds from now: within SIGHT + WATCH_ROOM of it now, or where their walk takes them by then.
+static func _eyes_at(ctx: Dictionary, crit: float) -> Array[Person]:
+	var d := ctx.d as FirstPrayersDirector
+	var out := d.watchers(d.door, SIGHT + WATCH_ROOM)
+	if crit == INF:
+		return out
+	for f in d.watchers(d.door, SIGHT + WATCH_ROOM + 30.0):
+		if not out.has(f) and GodT1.road_ahead(f, crit).distance_to(d.door) <= SIGHT + WATCH_ROOM:
+			out.append(f)
+	return out
+
+
+## Seconds from now that the door's line stands, if one stands there `after` seconds from now (the open one, or the market's or the priests'
+## to come, on the strip's clock); 0 when none does then.
+static func _line_left(ctx: Dictionary, after: float) -> float:
+	var d := ctx.d as FirstPrayersDirector
+	var rate := maxf((ctx.rules as Rules).clock_rate, 0.1)
+	var tl := d.timeline.elapsed()
+	var then := tl + after * rate
+	for w: Array in [[d.market_at, d.market_seconds], [d.priests_at, d.priests_seconds]]:
+		var start := float(w[0])
+		var end := start + float(w[1])
+		if then >= start and then < end:
+			return (end - tl) / rate
+	return 0.0
+
+
+## A Faithful will stand within the beam's reach (and LIFT_CLEAR) of `at` when it takes: he would be set down beside the walker and walk back with him.
+static func _takes_faithful(ctx: Dictionary, at: Vector2) -> bool:
+	for f in _faithful(ctx.d):
+		if GodT1.road_ahead(f, SkyliftFx.T_TAKE).distance_to(at) <= SkyliftFx.RADIUS + LIFT_CLEAR:
 			return true
 	return false
 
 
-## Where a wall is laid by the door, and along which way: a 3-unit line 1.0 off the door, on the side away from the walker's road, that does not
-## sit on his way in or on the shrine; [] for none. One that would draw one of the poor standing by the door to look at it (Crowd.THORN_LOOK: he
-## would be brought in, ahead of the walker, who would then wait at the door) is taken only when there is no other.
-static func _wall_spot(_bc, ctx: Dictionary, may_draw := true) -> Array:
+## A Windfall's line that crushes `r`: across his way where he will stand when it lands (T_DROP on), none of its heaps within reach of the poor
+## where they will stand; [centre, direction], or [].
+static func _crush(ctx: Dictionary, r: Person) -> Array:
+	var at: Vector2 = GodT1.road_ahead(r, WindfallFx.T_DROP)
+	var way := (at - r.ground_pos).normalized() if at.distance_to(r.ground_pos) > 0.05 else Vector2.RIGHT
+	for rect in WindfallFx.rects(at, way.orthogonal()):
+		for g in _spare(ctx.d):
+			if GodT1.road_ahead(g as Person, WindfallFx.T_DROP).distance_to(rect.get_center()) <= WindfallFx.HIT_R + WALL_SPARE:
+				return []
+	return [at, way.orthogonal()]
+
+
+## Skylift's cooldown.
+static func _lift_cool() -> float:
+	return float(PowerBook.get_power("skylift").cooldown)
+
+
+## How many of `eyes` a beam at `at` takes (where they will stand when it takes).
+static func _taken(_ctx: Dictionary, at: Vector2, eyes: Array[Person]) -> int:
+	var n := 0
+	for e in eyes:
+		n += 1 if GodT1.road_ahead(e, SkyliftFx.T_TAKE).distance_to(at) <= SkyliftFx.RADIUS - LIFT_EDGE else 0
+	return n
+
+
+## The walker on his way, or one of the poor hurrying to an empty door (D34), will stand within the beam's reach (and LIFT_CLEAR) of `at` when
+## it takes. (Others of the poor it may take: set down far off, they only walk the longer when their turn comes.)
+static func _takes_walker(ctx: Dictionary, at: Vector2) -> bool:
 	var d := ctx.d as FirstPrayersDirector
-	var next := d.next_walker()
-	var from := d.walker.ground_pos if MissionDirector._alive(d.walker) else (next.ground_pos if next != null else d.poor_spot)
-	var way: PackedVector2Array = ctx.crowd._grid.path(from, d.door)
-	var away := (d.door - from).normalized() if from.distance_to(d.door) > 0.1 else Vector2.UP
-	var by_door: Array[Person] = []
-	for g in d.grieving:
-		if MissionDirector._alive(g) and not g.inside and g != d.walker and g.ground_pos.distance_to(d.door) <= MirasHouseDirector.LURE_REACH + 0.6:
-			by_door.append(g)
-	var fallback := []
-	for k in 8:
-		var dir := away.rotated(float((k + 1) / 2) * (1.0 if k % 2 == 1 else -1.0) * TAU / 8.0)
-		var centre := d.door + dir * 1.0
-		var ok := true
-		var draws := false
-		for r in ThornwallFx.rects(centre, dir.orthogonal()):
-			if r.grow(0.45).has_point(d.door) or (d.house != null and r.intersects(d.house.footprint.grow(0.1))) or _on_way(way, from, r):
-				ok = false
-				break
-			for g in by_door:
-				draws = draws or g.ground_pos.distance_to(r.get_center()) <= Crowd.THORN_LOOK + 0.2
-		if not ok:
-			continue
-		if not draws:
-			return [centre, dir.orthogonal()]
-		if fallback.is_empty() and may_draw:
-			fallback = [centre, dir.orthogonal()]
-	return fallback
-
-
-## The way `way` from `from` passes within 0.4 of the rect.
-static func _on_way(way: PackedVector2Array, from: Vector2, r: Rect2) -> bool:
-	var at := from
-	var grown := r.grow(0.4)
-	for step in way:
-		var n := maxi(1, int(at.distance_to(step) / 0.2))
-		for i in n + 1:
-			if grown.has_point(at.lerp(step, float(i) / float(n))):
-				return true
-		at = step
+	var going: Array = d._hurrying.duplicate()
+	going.append(d.walker)
+	for g: Variant in going:
+		if MissionDirector._alive(g) and not (g as Person).inside \
+				and GodT1.road_ahead(g as Person, SkyliftFx.T_TAKE).distance_to(at) <= SkyliftFx.RADIUS + LIFT_CLEAR:
+			return true
 	return false
 
 
-## Where the mirror's way in is laid to bring `w` to the door: BRING_AHEAD along his way, at least the mirrors' MIN_APART from the door (the way
-## out); Vector2.INF for none.
-static func _bring_in(ctx: Dictionary, w: Person) -> Vector2:
+## Where one beam takes the most of `eyes` without the walker: the door, their middle, each of them, and points round the door are tried; the one
+## that takes the most (the nearest the door of equals); Vector2.INF when none takes anyone.
+static func _lift_aim(ctx: Dictionary, eyes: Array[Person]) -> Vector2:
 	var d := ctx.d as FirstPrayersDirector
-	var way: PackedVector2Array = ctx.crowd._grid.path(w.ground_pos, d.door)
-	var left := BRING_AHEAD
-	var at := w.ground_pos
-	for step in way:
-		var seg := at.distance_to(step)
-		if seg >= left:
-			at = at.move_toward(step, left)
-			break
-		left -= seg
-		at = step
-	return at if at.distance_to(d.door) >= MirrorfoldFx.OVAL_MIN_APART + 0.2 else Vector2.INF
-
-
-## Where the mirror over the door sets a walker down to hold him off: walkable ground LOOP_OUT from the door on his side of it (his way back steps
-## onto it again at once), off the mirror; Vector2.INF for none.
-static func _loop_out(ctx: Dictionary) -> Vector2:
-	var d := ctx.d as FirstPrayersDirector
-	var grid: WalkGrid = ctx.crowd._grid
-	var base := (d.walker.ground_pos - d.door).normalized()
+	var tries: Array[Vector2] = [d.door]
+	var mid := Vector2.ZERO
+	for e in eyes:
+		var at: Vector2 = GodT1.road_ahead(e, SkyliftFx.T_TAKE)
+		tries.append(at)
+		mid += at
+	tries.append(mid / float(eyes.size()))
 	for k in 8:
-		var dir := base.rotated(float((k + 1) / 2) * (1.0 if k % 2 == 1 else -1.0) * TAU / 8.0)
-		var spot := d._walkable(d.door + dir * LOOP_OUT)
-		if grid.walkable(spot) and spot.distance_to(d.door) >= MirrorfoldFx.OVAL_MIN_APART and not MirrorfoldFx.on_mirror(d.door, spot) \
-				and not grid.path(spot, d.door).is_empty() and not Walls.outside(spot):
-			return spot
-	return Vector2.INF
+		for r: float in [0.8, 1.6]:
+			tries.append(d.door + Vector2.from_angle(TAU * float(k) / 8.0) * r)
+	var best := Vector2.INF
+	var most := 0
+	for at in tries:
+		var n := _taken(ctx, at, eyes)
+		if n == 0 or _takes_walker(ctx, at):
+			continue
+		if n > most or (n == most and at.distance_to(d.door) < best.distance_to(d.door)):
+			best = at
+			most = n
+	return best
 
 
-## With nothing to hide now (D38): a Faithful walking near the shrine is folded far off -- the mirror laid on his way a step ahead of him, its way
-## out where his walk back to the door is longest -- so he is out of the door's watch for that walk (a market liner on his way to the line, a priest
-## coming to the well, one strolling by). Never where the walker, the next to set out or any of the poor would step on the way in. "" for none.
-static func _passage_fold(bc, ctx: Dictionary) -> String:
-	if _idle(ctx) < FOLD_IDLE or not _ready(bc, ctx, "mirror") or _door_due(ctx) > FOLD_LEAD:
-		return ""
+## Where a beam taking at `at` sets them down: walkable ground FOLD_FAR off it, round the compass, with the longest walk back to `home` (the
+## shrine's door, or the Temple's for a runner); Vector2.INF for none.
+static func _far_from(bc, ctx: Dictionary, at: Vector2, home: Vector2) -> Vector2:
+	var grid: WalkGrid = ctx.crowd._grid
+	var best := Vector2.INF
+	var longest := 0.0
+	for i in 16:
+		var spot := at + Vector2.from_angle(TAU * float(i) / 16.0) * FOLD_FAR
+		if not grid.walkable(spot):
+			continue
+		var back: float = bc._walk_len(ctx.crowd, spot, home)
+		if back != INF and back > longest:
+			best = spot
+			longest = back
+	return best
+
+
+## A Windfall's line across the walker's way WALL_AHEAD seconds ahead of him: [centre, direction], or [] when it would fall within WALL_NEAR of him,
+## on the shrine, or with a heap within WALL_SPARE (beyond its crush) of anyone where they will stand when it lands.
+static func _wall_across(ctx: Dictionary, w: Person) -> Array:
 	var d := ctx.d as FirstPrayersDirector
+	var at: Vector2 = GodT1.road_ahead(w, WALL_AHEAD)
+	if at.distance_to(w.ground_pos) < WALL_NEAR or at.distance_to(d.door) < SIGHT:
+		return []
+	var way := (at - w.ground_pos).normalized()
+	var along := way.orthogonal()
+	for r in WindfallFx.rects(at, along):
+		if d.house != null and r.intersects(d.house.footprint.grow(0.1)):
+			return []
+		for e in ctx.crowd._field.in_radius(r.get_center(), WindfallFx.HIT_R + WALL_SPARE + 3.0):
+			var p := e as Person
+			if p != null and not p.inside and p.is_alive() \
+					and GodT1.road_ahead(p, WindfallFx.T_DROP).distance_to(r.get_center()) <= WindfallFx.HIT_R + WALL_SPARE:
+				return []
+	return [at, along]
+
+
+## With nothing to clear now (D38): a Faithful walking near the shrine is lifted far off -- the beam where he will stand when it takes, set down
+## where his walk back to the door is longest -- so he is out of the door's watch for that walk (a market liner on his way to the line, a priest
+## coming to the well, one strolling by). Only when the beam is ready again before the next crit and the next walker sets out, and never where
+## it takes the walker or the next to set out, or lies near their way to the door. "" for none.
+static func _passage_fold(bc, ctx: Dictionary) -> String:
+	var d := ctx.d as FirstPrayersDirector
+	var out_in: float = (d.walk_due() - d.timeline.elapsed()) / maxf((ctx.rules as Rules).clock_rate, 0.1) if d.walk_due() != INF else INF
+	if _idle(ctx) < FOLD_IDLE or not _ready(bc, ctx, "skylift") or _door_due(ctx) > FOLD_LEAD \
+			or minf(crit_in(bc, ctx), out_in) < _lift_cool() + LIFT_LEAD + 1.0:
+		return ""
+	# One of the poor by the shrine who stops to look at the light is brought to its door (Mira's rule): with one there, only a beam that leaves
+	# nobody watching the door.
+	var poor_by := false
+	for g in d.grieving:
+		poor_by = poor_by or (MissionDirector._alive(g) and not g.inside and not d.believers.has(g) and g.ground_pos.distance_to(d.door) <= FOLD_POOR)
+	var watching := d.watchers(d.door, SIGHT + WATCH_ROOM)
 	var ways: Array[PackedVector2Array] = []
 	for w: Variant in [d.walker, d.next_walker()]:
 		if MissionDirector._alive(w) and not (w as Person).inside:
@@ -432,45 +500,28 @@ static func _passage_fold(bc, ctx: Dictionary) -> String:
 	for f in _faithful(d):
 		if f.ground_pos.distance_to(d.door) > FOLD_NEAR or not f.has_goal() or f.held_by_god() or d._carrying(f):
 			continue
-		var way_in := _fold_in(f)
-		if way_in == Vector2.INF or way_in.distance_to(d.door) < MirrorfoldFx.HALF_WIDE + 1.5:
-			continue
-		var clear := true
+		var at: Vector2 = GodT1.road_ahead(f, SkyliftFx.T_TAKE)
+		var clear := not _takes_walker(ctx, at)
 		for g in _spare(d):
-			clear = clear and (g as Person).ground_pos.distance_to(way_in) > FOLD_CLEAR
+			clear = clear and GodT1.road_ahead(g as Person, SkyliftFx.T_TAKE).distance_to(at) > SkyliftFx.RADIUS + LIFT_CLEAR
 		for way in ways:
-			clear = clear and not _way_near(way, way_in, MirrorfoldFx.HALF_WIDE + 1.0)
-		if not clear:
+			clear = clear and not _way_near(way, at, SkyliftFx.RADIUS + 1.0)
+		if not clear or (poor_by and _taken(ctx, at, watching) < watching.size()):
 			continue
-		var out := _fold_out(bc, ctx, way_in)
+		var out := _far_from(bc, ctx, at, d.door)
 		if out != Vector2.INF:
-			return _cast(ctx, "mirror", way_in, "mirror a Faithful off from the shrine (%.0f to walk back)" % bc._walk_len(ctx.crowd, out, d.door), {"to": out})
+			return _cast(ctx, "skylift", at, "skylift a Faithful off from the shrine (%.0f to walk back)" % bc._walk_len(ctx.crowd, out, d.door), {"to": out})
 	return ""
 
 
 ## Passage's fold (D38): with FOLD_IDLE seconds since the last cast and the door next mattering within FOLD_LEAD, a Faithful this near the door,
-## walking, is folded off; the way in is laid on his way FOLD_AHEAD seconds on or more (_fold_in()), with none of the poor within FOLD_CLEAR of
-## it; the way out is tried FOLD_FAR from the way in round the compass, the one with the longest walk back to the door.
+## walking, is lifted off FOLD_FAR, round the compass, the spot with the longest walk back to the door.
 const FOLD_IDLE := 8.0
 const FOLD_LEAD := 50.0
 const FOLD_NEAR := 10.0
-const FOLD_AHEAD := 1.5
-const FOLD_AHEAD_MAX := 5.0
-const FOLD_CLEAR := 4.0
 const FOLD_FAR := 16.0
-
-
-## Where the way in is laid to fold `f`: on his way, the first spot from FOLD_AHEAD seconds on (in half seconds, up to FOLD_AHEAD_MAX) that he
-## does not stand on now -- a mirror folds only those who step onto it, not one already on it when it is laid -- and that he walks onto;
-## Vector2.INF for none.
-static func _fold_in(f: Person) -> Vector2:
-	var ahead := FOLD_AHEAD
-	while ahead <= FOLD_AHEAD_MAX:
-		var at := GodT1.road_ahead(f, ahead)
-		if MirrorfoldFx.oval_local(at, f.ground_pos).length() > 1.3 and MirrorfoldFx.oval_local(at, GodT1.road_ahead(f, ahead + 0.5)).length() < 1.0:
-			return at
-		ahead += 0.5
-	return Vector2.INF
+## ...and with one of the poor this near the door, only when the beam takes every Faithful watching it.
+const FOLD_POOR := 6.0
 
 
 ## Seconds until the door next matters: the next walker sets out, or the market's or the priests' line is called (0 while one is open), on the
@@ -493,24 +544,6 @@ static func _way_near(way: PackedVector2Array, at: Vector2, reach: float) -> boo
 		if Geometry2D.get_closest_point_to_segment(at, way[k - 1], way[k]).distance_to(at) <= reach:
 			return true
 	return way.size() == 1 and way[0].distance_to(at) <= reach
-
-
-## The fold's way out for a way in at `way_in`: walkable ground FOLD_FAR off it, round the compass, with the longest walk back to the door;
-## Vector2.INF for none.
-static func _fold_out(bc, ctx: Dictionary, way_in: Vector2) -> Vector2:
-	var d := ctx.d as FirstPrayersDirector
-	var grid: WalkGrid = ctx.crowd._grid
-	var best := Vector2.INF
-	var longest := 0.0
-	for i in 16:
-		var spot := way_in + Vector2.from_angle(TAU * float(i) / 16.0) * FOLD_FAR
-		if not grid.walkable(spot) or MirrorfoldFx.on_mirror(way_in, spot):
-			continue
-		var back: float = bc._walk_len(ctx.crowd, spot, d.door)
-		if back != INF and back > longest:
-			best = spot
-			longest = back
-	return best
 
 
 # --- Decree: Leaving Is Prohibited and The Bell Lies ---

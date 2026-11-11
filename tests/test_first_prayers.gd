@@ -36,7 +36,7 @@ static func run(t) -> void:
 	_brambles_hide(t)
 	_hidden_prayer(t)
 	_believer_once(t)
-	_passage_walls_fit(t)
+	_passage_lift_fits(t)
 	_bramble_look(t)
 	_wall_on_door(t)
 	_waits_walking(t, &"aldermere")
@@ -737,27 +737,20 @@ static func _believer_once(t) -> void:
 	_done(s)
 
 
-## The map and numbers Passage's First Prayers policy leans on (tools/dev/routes/god_t1/prayers.gd act_passage): round the Aldermere shrine's door
-## a Thornwall can be laid 1.0 off it, along the tangent, with all five segments on open ground and within THORN_HIDE of the door; and the walkers
-## come at least a Thornwall cooldown apart (POOR_CHAIN), so one wall is ready for each. If this fails, Passage's Prayers route has lost its ground.
-static func _passage_walls_fit(t) -> void:
-	var s := _world()
-	var d: FirstPrayersDirector = s.d
-	var env: EnvironmentField = s.env
-	var clear := 0
-	var sides := PackedStringArray()
-	for k in 8:
-		var dir := Vector2.RIGHT.rotated(float(k) * TAU / 8.0)
-		var ok := true
-		for r in ThornwallFx.rects(d.door + dir, dir.orthogonal()):
-			ok = ok and not env.blocked(r.get_center(), 0.0) and not r.intersects(d.house.footprint) and r.grow(FirstPrayersDirector.THORN_HIDE).has_point(d.door)
-		clear += 1 if ok else 0
-		if ok:
-			sides.append("%d" % (k * 45))
-	t.check(clear >= 2, "Passage's First Prayers policy: a Thornwall fits by the shrine's door on %d of 8 sides (%s deg; needs 2, so one is off the walker's road)" % [clear, ",".join(sides)])
-	var cool := float(PowerBook.get_power("thorns").cooldown)
-	t.check(cool <= FirstPrayersDirector.POOR_CHAIN, "Passage's First Prayers policy: Thornwall cools %.0f s, within the walkers' POOR_CHAIN %.0f s" % [cool, FirstPrayersDirector.POOR_CHAIN])
-	_done(s)
+## The map and numbers Passage's First Prayers policy leans on (tools/dev/routes/god_t1/prayers.gd act_passage): one Skylift on the shrine's door
+## takes a whole line -- every spot of the market's (Mira's LINE_SPOTS) and the priests' (PRIEST_SPOTS) lies within the beam's radius, less the
+## policy's LIFT_EDGE, of the door -- and the beam cools within a prayer (PRAY_SECONDS), so one is ready for a going-in and again for its coming-out.
+## If this fails, Passage's Prayers route has lost its ground.
+static func _passage_lift_fits(t) -> void:
+	var policy := preload("res://tools/dev/routes/god_t1/prayers.gd")
+	var reach := SkyliftFx.RADIUS - float(policy.LIFT_EDGE)
+	var far := 0.0
+	for spot: Vector2 in MirasHouseDirector.LINE_SPOTS + FirstPrayersDirector.PRIEST_SPOTS:
+		far = maxf(far, spot.length())
+	t.check(far <= reach, "Passage's First Prayers policy: a beam on the door takes every line spot (the farthest %.2f off it, the beam %.2f)" % [far, reach])
+	var cool := float(PowerBook.get_power("skylift").cooldown)
+	t.check(cool + float(policy.LIFT_LEAD) <= FirstPrayersDirector.PRAY_SECONDS,
+		"Passage's First Prayers policy: Skylift cools %.0f s, ready again within a prayer of %.0f s" % [cool, FirstPrayersDirector.PRAY_SECONDS])
 
 
 ## Runs `seconds` with everyone out of doors walking for real (each person ticked every step, as test_capital_evac's _step: the headless suite

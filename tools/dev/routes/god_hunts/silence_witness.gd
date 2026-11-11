@@ -12,7 +12,7 @@ const LOADOUT := {
 	"ruin": ["smite", "tornado"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
-	"passage": ["thorns", "mirror"],
+	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "belllies", "magnify"],
 	"dominion": ["whisper", "discord", "madness"],
 }
@@ -148,13 +148,16 @@ const SW_TORNADO_FIT := 1.6
 ## Glacial Cataclysm: the file must lie within this of its aim when the peaks rise (it freezes those within 5 and kills those within 1.6 of the aim).
 const SW_GLACIAL_FIT := 1.5
 const SW_GLACIAL_LEAD := 2.8
-## A mirror's way in is laid this far ahead of the witness along his street, and its way out is looked for within this reach of the way in.
-const SW_MIRROR_AHEAD := 3.0
-const SW_MIRROR_REACH := 16.0
-## A thornwall goes across the street this far ahead of the file.
-const SW_THORN_AHEAD := 4.0
-## The mirror is laid this long after the thornwall (the wall holds him 25 s: the mirror, which lasts 30 s, waits for him past it).
-const SW_MIRROR_WAIT := 15.0
+## A Windfall (STONE) goes across the street this far ahead of the witness, or the first of SW_FALL_TRIES steps farther on where every segment's middle lies
+## SW_FALL_CLEAR (its HIT_R 0.7 and a margin) or more from the file and the line's middle SW_FALL_OFF or more from the witness as the crow flies (the street
+## winds): the load bars the street and hurts none of them.
+const SW_FALL_AHEAD := 4.0
+const SW_FALL_TRIES := 4
+const SW_FALL_CLEAR := 1.0
+const SW_FALL_OFF := 2.5
+## Skylift is cast this long after the Windfall (the file stands at the load or walks round it), and its landing is looked for within this reach of him.
+const SW_LIFT_WAIT := 15.0
+const SW_LIFT_REACH := 16.0
 ## The whisper that takes a witness out of the walls is cast this long after the Discord that held him (it lifts after 15 s).
 const SW_DOM_GAP := 15.0
 ## Mind Whisper's reach, less a little for the walk's start; the longest hop it sends a witness.
@@ -496,12 +499,13 @@ static func _nova_aim(file: Array[Person]) -> Dictionary:
 	return {"at": c.at}
 
 
-# --- Passage: Thornwall, Mirrorfold Passage ---
+# --- Passage: Skylift, Windfall ---
 
-## The street first, then the witness out of the walls. The opener is a Thornwall across the street ahead of the file as he stands at his door (in a lane no
-## wider than its 3 units it shuts him in until it withers, 25 s); the finisher a Mirrorfold Passage SW_MIRROR_WAIT seconds on, whose way in lies on the
-## street ahead of him (beyond the wall when he is still shut in: the street as it ran before the wall, kept in the memo) and whose way out lies on ground past
-## the wall: the file walks on, is that instant outside, and the witness is stopped (walls_stop; MS §7). Without a thornwall to cast the mirror is laid at once.
+## The street first, then the witness out of the walls. The opener is a Windfall (STONE) across the street SW_FALL_AHEAD ahead of the witness as he stands at
+## his door, laid where it crushes none of the file: the load bars the street (the town's to clear) and he stands at it or walks round. The finisher is Skylift
+## SW_LIFT_WAIT seconds on: the beam's middle on his place at the take, and he is set down on ground out of the walls, where he is stopped (walls_stop; MS §7).
+## Without a Windfall to cast, or within SW_URGENT of the Temple by a street still open (shut in by the load, he reads near as the crow flies and is not), the
+## lift is cast at once.
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as SilenceWitnessDirector
 	if d == null:
@@ -511,28 +515,49 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 	var crowd: Crowd = ctx.crowd
 	for r in _walkers(d):
 		var w := r.messenger
-		var thorn: bool = bc._slot_ready(rules, slots, "thorns")
-		if thorn and _since(d, ctx.memo, r) == INF and _eta(r) > SW_URGENT + 4.0:
-			var street := _street(crowd, w.ground_pos, d.lantern_door())
-			var spot := _street_at(street, SW_THORN_AHEAD)
-			if street.size() > 2 and spot != w.ground_pos:
-				var dir := (_street_at(street, SW_THORN_AHEAD + 1.0) - _street_at(street, SW_THORN_AHEAD - 1.0)).normalized()
-				ctx.memo[_key(r, "street")] = street
-				rules.cast(slots.thorns, spot, {"dir": dir.orthogonal() if dir.length() > 0.1 else Vector2.RIGHT})
+		var since := _since(d, ctx.memo, r)
+		if bc._slot_ready(rules, slots, "windfall") and since == INF and _eta(r) > SW_URGENT + 4.0:
+			var fall := _fall_across(crowd, d, r)
+			if not fall.is_empty():
+				rules.cast(slots.windfall, fall.at, {"dir": fall.dir})
 				_noted(d, ctx.memo, r)
-				return "thornwall across the witness's street"
-		if _since(d, ctx.memo, r) >= SW_MIRROR_WAIT and bc._slot_ready(rules, slots, "mirror") and not ctx.memo.has(_key(r, "mirror")):
-			var live := _street(crowd, w.ground_pos, d.lantern_door())
-			var way_in := _street_at(live, SW_MIRROR_AHEAD)
-			if live.size() <= 2 and ctx.memo.has(_key(r, "street")):
-				way_in = _street_at(ctx.memo[_key(r, "street")], SW_THORN_AHEAD + SW_MIRROR_AHEAD - 0.5)  # (shut in: beyond the wall, not at his feet)
-			var way_out := _beyond(crowd, way_in)
-			if way_in != Vector2.INF and way_out != Vector2.INF and way_in.distance_to(w.ground_pos) > MirrorfoldFx.HALF_WIDE and way_in.distance_to(way_out) >= MirrorfoldFx.OVAL_MIN_APART:
-				rules.cast(slots.mirror, way_in, {"to": way_out})
-				ctx.memo[_key(r, "mirror")] = true
+				return "windfall across the witness's street"
+		if bc._slot_ready(rules, slots, "skylift") and not ctx.memo.has(_key(r, "lift")) \
+				and (since == INF or since >= SW_LIFT_WAIT or (_eta(r) <= SW_URGENT and _street(crowd, w.ground_pos, d.lantern_door()).size() > 1)):
+			var at := GodT1.road_ahead(w, SkyliftFx.T_TAKE)
+			var to := _beyond(crowd, at)
+			if to != Vector2.INF:
+				rules.cast(slots.skylift, at, {"to": to})
+				ctx.memo[_key(r, "lift")] = true
 				_noted(d, ctx.memo, r)
-				return "mirror the file out past the wall"
+				return "skylift the witness out of the walls"
 	return ""
+
+
+## A Windfall across witness `r`'s street: {at, dir} SW_FALL_AHEAD along it (or up to SW_FALL_TRIES units farther), the line across the street there, with every
+## segment's middle SW_FALL_CLEAR or more from the file now and as it lands; {} when the street is too short or no place is clear.
+static func _fall_across(crowd: Crowd, d: SilenceWitnessDirector, r: WitnessDirector) -> Dictionary:
+	var w := r.messenger
+	var street := _street(crowd, w.ground_pos, d.lantern_door())
+	if street.size() <= 2:
+		return {}
+	var file := _file(r)
+	var spare: Array[Vector2] = []
+	for p in file:
+		spare.append(p.ground_pos)
+		spare.append(GodT1.road_ahead(p, WindfallFx.T_DROP))
+	for k in SW_FALL_TRIES:
+		var ahead := SW_FALL_AHEAD + float(k)
+		var spot := _street_at(street, ahead)
+		var along := (_street_at(street, ahead + 1.0) - _street_at(street, ahead - 1.0)).normalized()
+		var dir := along.orthogonal() if along.length() > 0.1 else Vector2.RIGHT
+		var clear := spot.distance_to(w.ground_pos) >= SW_FALL_OFF
+		for rect in WindfallFx.rects(spot, dir):
+			for q in spare:
+				clear = clear and rect.get_center().distance_to(q) >= SW_FALL_CLEAR
+		if clear:
+			return {"at": spot, "dir": dir}
+	return {}
 
 
 ## The street's polyline from `from` to `to` along the walk grid (the first point is `from`); just `from` when there is no way.
@@ -557,15 +582,15 @@ static func _street_at(street: PackedVector2Array, dist: float) -> Vector2:
 	return at
 
 
-## Walkable ground out of the walls, a little past the wall's own margin, nearest `from` within SW_MIRROR_REACH; INF for none.
+## Walkable ground out of the walls, a little past the wall's own margin, nearest `from` within SW_LIFT_REACH; INF for none.
 static func _beyond(crowd: Crowd, from: Vector2) -> Vector2:
 	var best := Vector2.INF
-	for rad: float in [3.0, 4.5, 6.0, 8.0, 10.0, 13.0, SW_MIRROR_REACH]:
+	for rad: float in [3.0, 4.5, 6.0, 8.0, 10.0, 13.0, SW_LIFT_REACH]:
 		for k in 24:
 			var g: Vector2 = crowd._grid.nearest_walkable(from + Vector2.from_angle(TAU * float(k) / 24.0) * rad, 2)
 			if g == Vector2.INF or not Walls.outside(g) or City.current().town().grow(Walls.MARGIN + 0.8).has_point(g):
 				continue
-			if g.distance_to(from) >= MirrorfoldFx.OVAL_MIN_APART and (best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from)):
+			if best == Vector2.INF or g.distance_squared_to(from) < best.distance_squared_to(from):
 				best = g
 		if best != Vector2.INF:
 			return best

@@ -377,18 +377,7 @@ const DISCORD_FILL_AT := 30.0
 const WHISPER_FILL_GAP := 28.0
 
 
-# --- Passage: Thornwall, Mirrorfold ---
-
-## The road's point `along` from the start of the polyline.
-static func _at_along(road: PackedVector2Array, along: float) -> Vector2:
-	var run := 0.0
-	for i in range(1, road.size()):
-		var seg := road[i - 1].distance_to(road[i])
-		if run + seg >= along:
-			return road[i - 1].move_toward(road[i], along - run)
-		run += seg
-	return road[road.size() - 1]
-
+# --- Passage: Skylift, Windfall ---
 
 ## The first `length` units of the road (at least its first point, so a probe has a segment to measure).
 static func _prefix(road: PackedVector2Array, length: float) -> PackedVector2Array:
@@ -404,17 +393,6 @@ static func _prefix(road: PackedVector2Array, length: float) -> PackedVector2Arr
 	return out
 
 
-## The whole road from his hiding place to the way out, made once.
-static func _full_road(ctx: Dictionary, d: LostLambDirector) -> PackedVector2Array:
-	var memo: Dictionary = ctx.memo
-	if not memo.has("full"):
-		var from := d._walkable(d.charge_start)
-		var road := PackedVector2Array([from])
-		road.append_array((ctx.crowd as Crowd)._grid.path(from, d.exit_at))
-		memo.full = road
-	return memo.full
-
-
 static func _length(road: PackedVector2Array) -> float:
 	var total := 0.0
 	for i in range(1, road.size()):
@@ -422,69 +400,8 @@ static func _length(road: PackedVector2Array) -> float:
 	return total
 
 
-## How far along the road it first comes within `reach` of the gate (the watch's clock starts there), or -1 for never.
-static func _zone_entry(d: LostLambDirector, road: PackedVector2Array, reach: float) -> float:
-	var total := _length(road)
-	var s := 0.0
-	while s <= total:
-		if _at_along(road, s).distance_to(d.gate_at) <= reach:
-			return s
-		s += 0.1
-	return -1.0
-
-
-## The lap (Passage): the mirror's way in lies across the whole road where it enters the zone by the gate (so he steps on it just after the
-## watch's change clock has started there, unseen), and its way out back along the road, one lap of his walk behind the place he steps on it. The
-## mirror lives 30 s: he is folded back at the start (the clock c0), walks home, is folded back again (the mirror still lives), walks home -- by
-## then it is gone, two laps after c0: when the watch has changed (c0 + 30) and walked off his road, and before it walks back (c0 + 55). So a lap is
-## half of the 30 s to the change plus the watch's time off the road (_watch_clears()). The fold sets him down where he stood on the way in,
-## relative to the way out. {"in", "out", "touch"} (touch: how far along the whole road he steps onto the way in), or an empty dictionary when
-## the road does not reach the zone.
-static func _lap(ctx: Dictionary, d: LostLambDirector) -> Dictionary:
-	var road := _full_road(ctx, d)
-	var entry := _zone_entry(d, road, LAP_ENTRY)
-	if entry < 0.0:
-		return {}
-	var centre := _at_along(road, entry + 1.6)
-	var touch := entry
-	var s := 0.0
-	while s <= entry + 4.0:
-		if MirrorfoldFx.on_mirror(centre, _at_along(road, s)):
-			touch = s
-			break
-		s += 0.1
-	var speed := maxf(d.charge.walk_speed, 0.3)
-	var offset := _at_along(road, touch) - centre
-	var lap := (EscortDirector.WATCH_CHANGE + _watch_clears(ctx, d, road, entry)) * 0.5
-	return {"in": centre, "out": _at_along(road, maxf(touch - speed * lap, 0.0)) - offset, "touch": touch}
-
-
-## Seconds after the change begins until the last watchman is off the rest of his road (from the place `from` along it): he walks his way to the
-## guardhouse at WATCH_PACE and is clear once he is farther than WATCH_CLEAR from it for good.
-static func _watch_clears(ctx: Dictionary, d: LostLambDirector, road: PackedVector2Array, from: float) -> float:
-	var rest := PackedVector2Array([_at_along(road, from)])
-	var run := 0.0
-	for i in range(1, road.size()):
-		var seg := road[i - 1].distance_to(road[i])
-		if run + seg > from:
-			rest.append(road[i])
-		run += seg
-	var worst := 0.0
-	for post: Vector2 in d.watch_posts:
-		var way := PackedVector2Array([post])
-		way.append_array((ctx.crowd as Crowd)._grid.path(post, d.guardhouse))
-		var last := 0.0
-		var walked := 0.0
-		for i in range(1, way.size()):
-			walked += way[i - 1].distance_to(way[i])
-			if _probe(rest, way[i]).x < WATCH_CLEAR:
-				last = walked
-		worst = maxf(worst, last / WATCH_PACE)
-	return worst + WATCH_SLACK
-
-
-## Where the first mirror sets a patrol down: Aldermere's north-west corner (FLING_TO, which has no way back to the streets); another town's, the
-## corner of its old town farthest from the gate.
+## Where Passage's beam sets the soldiers off the way out down: Aldermere's north-west corner (FLING_TO, which has no way back to the streets);
+## another town's, the corner of its old town farthest from the gate.
 static func _far_corner(d: LostLambDirector) -> Vector2:
 	if City.current().id() == &"aldermere":
 		return d._walkable(FLING_TO)
@@ -496,121 +413,72 @@ static func _far_corner(d: LostLambDirector) -> Vector2:
 	return d._walkable(best)
 
 
-## Where a Thornwall lies across the patrol's beat, clear of his road (a wall across it would hold him): west of where the beat meets the road, else
-## just ahead of the patrol where it walks, else the beat's middle; Vector2.INF when none keeps clear.
-static func _wall_spot(d: LostLambDirector, road: PackedVector2Array, sq: Dictionary) -> Vector2:
-	var lead: Person = sq.members[0]
-	var cands: Array[Vector2] = [_at_along(road, float(sq.along)) + Vector2(-THORN_BACK, 0.0)]
-	for k in d.patrols.size():
-		if (d.patrols[k] as Array).has(lead):
-			var beat: PackedVector2Array = d.beats[k]
-			var heading := (beat[d._beat_at[k]] - lead.ground_pos).normalized()
-			cands.append(lead.ground_pos + heading * 2.5)
-			cands.append(beat[0].lerp(beat[1], 0.5))
-	for c in cands:
-		var touches := false
-		for k in 7:
-			touches = touches or _probe(road, c + Vector2.DOWN * (float(k - 3) * 0.5)).x < THORN_OFF
-		if not touches:
-			return c
-	return Vector2.INF
-
-
-## Where the first mirror lies: just ahead of the patrol that walks across his road, on its beat, so that the patrol steps onto it within a few
-## seconds (it is set down in the far corner, which has no road back). Vector2.INF when no patrol's beat meets his road.
-static func _fling_at(d: LostLambDirector, road: PackedVector2Array) -> Vector2:
-	var best := Vector2.INF
-	var near := INF
-	for k in d.patrols.size():
-		var live := _living(d.patrols[k])
-		if live.is_empty():
-			continue
-		var beat: PackedVector2Array = d.beats[k]
-		var meets := INF
-		var cross := beat[0]
-		var len := maxf(beat[0].distance_to(beat[1]), 0.1)
-		for i in int(len / 0.5) + 2:
-			var q := beat[0].lerp(beat[1], minf(float(i) * 0.5 / len, 1.0))
-			var g := _probe(road, q).x
-			if g < meets:
-				meets = g
-				cross = q
-		if meets > BEAT_NEAR or meets >= near:
-			continue
-		var lead := live[0]
-		var to: Vector2 = beat[d._beat_at[k]]
-		var heading := (to - lead.ground_pos).normalized()
-		var ahead := lead.ground_pos + heading * FLING_AHEAD
-		if lead.ground_pos.distance_to(to) < FLING_AHEAD + 1.0:
-			ahead = to - heading * (FLING_AHEAD * 0.5)
-		near = meets
-		# Never on his road (he would be set down in the far corner himself): then the beat's middle, west of where it meets the road.
-		best = ahead if _probe(road, ahead).x >= FLING_OFF else cross + Vector2(-FLING_BACK, 0.0)
-	return best
-
-
-## Passage: the lap, a first mirror that flings patrol 1 away, and a Thornwall across its beat. Bolting, he runs the road; as he nears the
-## zone by the gate a mirror lays its way in across the road there (the clock starts when he comes near) and its way out back along the road,
-## so he is folded back and walks the road again -- home when the watch has changed.
+## Passage: Skylift clears the way out, then lifts him through it. Each soldier who would see him at the way out (watching, within SIGHT + LIFT_MARGIN
+## of it: the watch's two posts both lie within one beam of their middle) is taken by the beam and set down in the far corner (Aldermere's has no
+## way back to the streets, D25); with the way out clear, the beam takes him where he stands and sets him down on it, and he is out. Seized, his
+## seizer is crushed by a Windfall of stone laid across the seizer's way, clear of him: he is free again, and the beam takes him on.
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := _lamb(ctx, bc)
 	if d == null or d.charge.inside:
 		return ""
 	var lamb := d.charge
-	var memo: Dictionary = ctx.memo
-	var road := _road(ctx, d)
-	var speed := maxf(lamb.walk_speed, 0.3)
-	var mirror_ready := _ready(bc, ctx, "mirror")
-	if d.bolting and mirror_ready and float(memo.get("mirror_until", -1.0)) < d._clock:
-		var lap := _lap(ctx, d)
-		if not lap.is_empty():
-			var full := _full_road(ctx, d)
-			var to_touch := float(lap.touch) - _probe(full, lamb.ground_pos).y
-			if to_touch / speed <= LAP_LEAD and to_touch > 0.5:
-				_cast(ctx, "mirror", lap["in"], {"to": lap["out"]})
-				memo.mirror_until = d._clock + MirrorfoldFx.MIRROR_TIME
-				return "mirror lap: in at (%.1f, %.1f), out at (%.1f, %.1f)" % [lap["in"].x, lap["in"].y, lap["out"].x, lap["out"].y]
-	if mirror_ready and d._clock >= FLING_AT and not memo.get("flung", false) and not d.bolting:
-		var at := _fling_at(d, road)
-		if at != Vector2.INF:
-			_cast(ctx, "mirror", at, {"to": _far_corner(d)})
-			memo.flung = true
-			memo.mirror_until = d._clock + MirrorfoldFx.MIRROR_TIME
-			return "mirror across the patrol's beat at (%.1f, %.1f): flung to the far corner" % [at.x, at.y]
-	if _ready(bc, ctx, "thorns") and d._clock >= THORN_AT:
-		var full := _full_road(ctx, d)
-		for sq: Dictionary in _squads(d, full):
-			if sq.kind != "patrol":
-				continue
-			var wall := _wall_spot(d, full, sq)
-			if wall != Vector2.INF:
-				_cast(ctx, "thorns", wall, {"dir": Vector2.DOWN})
-				return "thornwall across the patrol's beat at (%.1f, %.1f)" % [wall.x, wall.y]
-	return ""
+	if d.held and WarningDirector._alive(d.seizer):
+		var s := d.seizer as Person
+		if _ready(bc, ctx, "windfall"):
+			# Where the seizer and he will stand when it lands: the line across the seizer's way there, none of its heaps within reach of the boy.
+			var at: Vector2 = _pieces().road_ahead(s, WindfallFx.T_DROP)
+			var his: Vector2 = _pieces().road_ahead(lamb, WindfallFx.T_DROP)
+			var way := (at - his).normalized() if at.distance_to(his) > 0.05 else Vector2.RIGHT
+			var clear := true
+			for r in WindfallFx.rects(at, way.orthogonal()):
+				clear = clear and r.get_center().distance_to(his) > WindfallFx.HIT_R + CRUSH_ROOM
+			if clear:
+				_cast(ctx, "windfall", at, {"dir": way.orthogonal(), "mode": "stone"})
+				return "windfall on his seizer at (%.1f, %.1f)" % [at.x, at.y]
+		return ""
+	if not _ready(bc, ctx, "skylift"):
+		return ""
+	var eyes := _eyes_on_exit(d)
+	if not eyes.is_empty():
+		var at := _lift_aim(eyes)
+		_cast(ctx, "skylift", at, {"to": _far_corner(d)})
+		return "skylift %d soldier(s) off the way out at (%.1f, %.1f) to the far corner" % [SkyliftFx.lifted_at(ctx.crowd._field, at).size(), at.x, at.y]
+	var from: Vector2 = _pieces().road_ahead(lamb, SkyliftFx.T_TAKE) if lamb.has_goal() else lamb.ground_pos
+	_cast(ctx, "skylift", from, {"to": d.exit_at})
+	return "skylift him from (%.1f, %.1f) onto the way out" % [from.x, from.y]
 
 
-## The lap's numbers: the watch walks WATCH_PACE units a second off the road once the change begins, and is clear WATCH_SLACK s after it is more than
-## WATCH_CLEAR from the rest of his road for good; the zone's reach where the clock starts (units from the gate), LAP_ENTRY; and how many seconds
-## before he steps on the way in the mirror is laid, LAP_LEAD.
-const WATCH_PACE := 1.2
-const WATCH_CLEAR := 3.2
-const WATCH_SLACK := 0.5
-const LAP_ENTRY := 4.3
-const LAP_LEAD := 3.0
-## The first mirror: laid this far west of where a patrol's beat meets his road, from this second, flinging whoever steps on it to the far corner.
-const FLING_AT := 30.0
-## ...ahead of the patrol, on its beat, this far.
-const FLING_AHEAD := 3.5
-## ...and never nearer his road than this; else this far west of where the beat meets it.
-const FLING_OFF := 3.8
-const FLING_BACK := 5.0
+## The soldiers watching for him who stand within SIGHT + LIFT_MARGIN of the way out (they would see him set down there), the nearest it first.
+static func _eyes_on_exit(d: LostLambDirector) -> Array[Person]:
+	var out: Array[Person] = []
+	for v: Variant in d._watchers():
+		if d._watching(v) and (v as Person).ground_pos.distance_to(d.exit_at) <= EscortDirector.SIGHT + LIFT_MARGIN:
+			out.append(v as Person)
+	out.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(d.exit_at) < b.ground_pos.distance_to(d.exit_at))
+	return out
+
+
+## Where one beam takes the most of `eyes` (where each will stand when it takes): their middle when all lie within its radius of it (less a margin
+## for their shifting on post), else the nearest the way out alone.
+static func _lift_aim(eyes: Array[Person]) -> Vector2:
+	var pts: Array[Vector2] = []
+	var mid := Vector2.ZERO
+	for e in eyes:
+		pts.append(_pieces().road_ahead(e, SkyliftFx.T_TAKE))
+		mid += pts.back()
+	mid /= float(pts.size())
+	for p in pts:
+		if p.distance_to(mid) > SkyliftFx.RADIUS - 0.4:
+			return pts[0]
+	return mid
+
+
+## Passage: a soldier this much beyond SIGHT of the way out is lifted off it too (he shifts about his post); a seizer is crushed only when every
+## heap of the line lands at least this much beyond its blow's reach of the boy, else the policy waits a look.
+const LIFT_MARGIN := 0.5
+const CRUSH_ROOM := 0.1
+## Where the beam sets the soldiers lifted off the way out down: Aldermere's north-west pocket.
 const FLING_TO := Vector2(-12.0, -12.0)
-## Thornwall: laid this far west of where a patrol's beat meets his road, from this second -- after the first mirror has gone, or its wall
-## would hold the patrol back from the mirror.
-const THORN_BACK := 3.5
-## ...and never nearer his road than this.
-const THORN_OFF := 1.0
-const THORN_AT := 61.0
 
 
 # --- Decree: Leaving Is Prohibited, The Bell Lies ---

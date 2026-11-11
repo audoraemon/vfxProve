@@ -14,33 +14,33 @@ const TIER1_ONLY := {
 	"ruin": [["smite", "ember"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"passage": [["thorns", "mirror"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"passage": [["skylift", "windfall"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"decree": [["noleave", "belllies"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"dominion": [["whisper", "discord"], ["", ""], ["", ""], ["", ""], ["", ""]],
 }
 
 ## The keys each Hunt's types play, written out (C7: a changed LOADOUT fails `_loadouts_real`): Hunt -> type -> keys.
 const PLAYS := {
-	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,pestilence", "veil": "doom,blight", "passage": "thorns,mirror",
+	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,pestilence", "veil": "doom,blight", "passage": "skylift,windfall",
 		"decree": "noleave,belllies", "dominion": "whisper,discord"},
 	"silence_witness": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
+		"passage": "skylift,windfall", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
 	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
+		"passage": "skylift,windfall,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
 	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,sanctuary"},
+		"passage": "skylift,windfall", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,sanctuary"},
 	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "thorns,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,voice"},
+		"passage": "skylift,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,voice"},
 }
 
-## What each Hunt's loadout lacks in the Tier-1-only tree (C7), per type: the keys above Tier 1, in LOADOUT order. Passage's is empty on every
-## Hunt (its two real Tier 1 keys), and so is Ruin's on Hunt 5 (Smite and Ember); the whole of Hunt 1 is empty.
+## What each Hunt's loadout lacks in the Tier-1-only tree (C7), per type: the keys above Tier 1, in LOADOUT order. Passage's is empty but for
+## Mirrorfold (a Tier 3 key since the user's Passage row) on Hunts 3 and 5, Ruin's is empty on Hunt 5 (Smite and Ember); the whole of Hunt 1 is empty.
 const LACKS := {
 	"hide_faithful": {"ruin": "", "death": "", "veil": "", "passage": "", "decree": "", "dominion": ""},
 	"silence_witness": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
-	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
+	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "magnify", "dominion": "madness"},
 	"break_hunt": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "sanctuary"},
-	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "voice"},
+	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "magnify", "dominion": "voice"},
 }
 
 
@@ -131,7 +131,7 @@ static func _loadouts_real(t) -> void:
 			var got := GodHunts.problems(id, type, tier)
 			t.check(got == want, "Tier 1 tree: %s x %s lacks exactly [%s] (%s)" % [id, type, LACKS[id][type], got])
 	t.check(GodHunts.problems("silence_witness", "passage", 2).is_empty(), "Passage's two real keys are enough on Hunt 2")
-	t.check(GodHunts.problems("face_halcyon", "passage", 5).is_empty(), "Passage's two real keys are enough on Hunt 5")
+	t.check(GodHunts.problems("break_hunt", "passage", 4).is_empty(), "Passage's two real Tier 1 keys are enough on Hunt 4")
 	for type: String in TYPES:
 		t.check(GodHunts.problems("hide_faithful", type, 1).is_empty(), "Tier 1 (the real tree): %s plays its own two keys (%s)" % [type, GodHunts.problems("hide_faithful", type, 1)])
 	GodTree.use_table({})

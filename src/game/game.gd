@@ -530,7 +530,7 @@ func go_to(to: int) -> void:
 			res.name = "Results"
 			add_child(res)
 			res.setup(result)
-			UiSound.play(&"ui_win" if bool(result.get("won", false)) else &"ui_lose")
+			Music.sting(&"music_sting_win" if bool(result.get("won", false)) else &"music_sting_lose")
 			res.action.connect(func(what: String) -> void: on_action(_results_action(what)))
 			_screen_node = res
 		Screen.INTERLUDE:
@@ -540,7 +540,7 @@ func go_to(to: int) -> void:
 				_mission.set_frozen(true)
 				_show_interlude(_mission.next_choices(), _mission.night())
 			if from == Screen.MISSION:
-				UiSound.play(&"ui_win" if bool(result.get("won", false)) else &"ui_lose")
+				Music.sting(&"music_sting_win" if bool(result.get("won", false)) else &"music_sting_lose")
 		Screen.CAMPAIGN:
 			var night := CampaignScreen.new()
 			night.name = "Campaign"
@@ -604,6 +604,7 @@ func _faded_into_mission() -> void:
 	_fading = true
 	await _fader.fade_out(FADE_OUT)
 	Music.play(&"battle")  # rises behind the fade
+	Music.sting(&"music_sting_start")  # the night begins
 	go_to(Screen.MISSION)
 	_fading_in = true
 	if is_instance_valid(_mission) and not _mission.started():

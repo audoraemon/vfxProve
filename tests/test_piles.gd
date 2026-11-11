@@ -55,6 +55,9 @@ static func run(t) -> void:
 	_overlap_clear(t)
 	_ground_under_pile(t)
 	_recheck_on_close(t)
+	_windfall_under_pile(t)
+	_link_under_pile(t)
+	_step_out_ends_unstick(t)
 	_guards_dig(t)
 	_one_digger(t)
 	_too_early(t)
@@ -507,6 +510,74 @@ static func _recheck_on_close(t) -> void:
 	t.check(grid.reaches(from, to), "the temple still reaches the exit")
 	_free(made)
 
+
+
+## Merge with Develop-Main: a Windfall pile (a Passage power: role windfall, added like a thorn wall) closes cells through
+## the same hook -- dropped on the last open bridge cell it has a soldier-jobs pile re-checked (I3), and dropped on a pile
+## cell it keeps that cell closed when the pile is dug out.
+static func _windfall_under_pile(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[4]
+	var from: Vector2 = TownLayout.TEMPLE.get_center() + Vector2(0, 3)
+	var to: Vector2 = TownLayout.EXITS[0]
+	var p := crowd.piles.place([BRIDGE[0], BRIDGE[1], BRIDGE[2]] as Array[Vector2i])
+	t.check(p != null and p.gap == PileManager.NO_GAP, "windfall: three bridge cells piled, no gap yet")
+	var w3 := grid.id_to_world(BRIDGE[3])
+	env.add_structure(Rect2(w3 - Vector2(0.2, 0.2), Vector2(0.4, 0.4)), 1.0, Structure.Kind.CRATES, &"windfall")
+	t.check(not grid.walkable(w3), "a windfall pile closes the last bridge cell")
+	t.check(p.gap != PileManager.NO_GAP and p.cells.has(p.gap), "the soldier-jobs pile is re-checked and leaves a gap")
+	t.check(grid.reaches(from, to), "the temple still reaches the exit")
+	var w0 := grid.id_to_world(BRIDGE[0])
+	if p.gap == BRIDGE[0]:
+		w0 = grid.id_to_world(BRIDGE[1])
+	env.add_structure(Rect2(w0 - Vector2(0.2, 0.2), Vector2(0.4, 0.4)), 1.0, Structure.Kind.CRATES, &"windfall")
+	crowd.piles.clear_pile(p)
+	t.check(not grid.walkable(w0), "digging the pile out leaves the windfall's cell closed")
+	t.check(not grid.walkable(w3), "and the windfall on the last bridge cell stays")
+	_free(made)
+
+
+## Merge with Develop-Main: a pocket link (WalkGrid._join_pockets()) re-opened under a pile changes the ground under it, not
+## the pile: the cell stays closed until the pile goes, then opens.
+static func _link_under_pile(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var id := grid.world_to_id(TownLayout.MARKET_SQUARE.get_center())
+	var w := grid.id_to_world(id)
+	t.check(grid.walkable(w), "link: an open cell in the square")
+	grid._links.append(id)
+	var p := crowd.piles.place([id] as Array[Vector2i])
+	t.check(p != null and not grid.walkable(w), "a pile closes the link cell")
+	grid._reopen_links(Rect2(w - Vector2.ONE, Vector2.ONE * 2.0))
+	t.check(not grid.walkable(w) and grid.is_pile(id), "re-opening the links leaves the pile closing it")
+	crowd.piles.clear_pile(p)
+	t.check(grid.walkable(w), "the link opens when the pile is dug out")
+	grid._links.erase(id)
+	_free(made)
+
+
+## Merge with Develop-Main: stepped out of a falling footprint (Person.step_out()), a person taking a step back onto open
+## ground (Person._unstick()) gives it up -- the two set-downs never fight -- and the stuck watchdog starts over.
+static func _step_out_ends_unstick(t) -> void:
+	City.use(&"aldermere")
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var p: Person = crowd.citizens[0]
+	p._unstick_way = PackedVector2Array([p.ground_pos + Vector2(3, 0)])
+	p._unstick_left = 5.0
+	p.step_margin = 0.0
+	p._stuck_t = 1.5
+	var to := p.ground_pos + Vector2(0.5, 0)
+	p.step_out(to)
+	t.check(p._unstick_left == 0.0 and p._unstick_way.is_empty(), "step_out ends a step back onto open ground")
+	t.check(p.step_margin == Person.STEP_MARGIN and p._stuck_t == 0.0, "its margin is back and the watchdog starts over")
+	t.check(p.ground_pos == to, "it stands where it stepped out to")
+	_free(made)
 
 # --- clearing: guards dig, idle rescue squads after the rally -------------------------------------------------------
 

@@ -1,0 +1,4 @@
+{"length": 0.3, "rms_db": -16.0, "reverb": {"rt60": 0.4, "mix": 0.05, "predelay_ms": 4, "damp": 8000}, "layers": [
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/wooden_02.ogg", "at": 0.0, "onset": true, "dur": 0.14, "pitch": 4, "hp": 300, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_04.ogg", "at": 0.0, "from": 0.1, "dur": 0.05, "hp": 2000, "lp": 12000, "gain_db": -10, "fade_in": 3, "fade_out": 40}
+]}

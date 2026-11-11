@@ -66,3 +66,8 @@ the sheet the user listens with.
   pitched down for the first chunk, `stonerockorwoodmovednotick` for the settling, the 80 RPG pack's wood for what a tornado
   drops; dozens of hits per take, dense at first and thinning out.
 
+## Interface (natural sound pass 6)
+
+- `ui/`: the 100 CC0 pack's paper and wood, the 80 RPG pack's books and locks, the RPG sound pack's heavy cloth, Kenney
+  wood impacts, OpenGameArt `bell-dingschimes` (CC0), Wikimedia Commons `Striking a bell 15cm large` and `Church bells -
+  Leverkusen 2007`. The GodotSfxr originals are kept in `tools/audio/sfxr/_replaced/ui/`.

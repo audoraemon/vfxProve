@@ -16,6 +16,9 @@ signal structure_removed(s: Structure)
 ## A structure was blighted (blight(); v0.05's Blight), or came clean again (unblight()).
 signal structure_blighted(s: Structure)
 signal structure_unblighted(s: Structure)
+## A decor piece was taken out of the town (remove_decor()); emitted before the node is freed, so the town can
+## forget it and its stand-ins (Decor.followers).
+signal decor_removed(d: Decor)
 
 ## Spatial index cell (ground units) for near() and the other area queries; blocked() uses the finer FINE_CELL
 ## index. Margins up to MAX_MARGIN are covered.
@@ -239,6 +242,29 @@ func add_decor(d: Decor) -> void:
 
 func decor() -> Array[Decor]:
 	return _decor
+
+
+## Take one decor piece out of the town for good (Skylift carries the goods off): the field forgets it, the town
+## is told (decor_removed), and the node and its stand-ins (Decor.followers) are freed. Nothing is left lying.
+func remove_decor(d: Decor) -> void:
+	if not _decor.has(d):
+		return
+	_decor.erase(d)
+	decor_removed.emit(d)
+	if not is_instance_valid(d):
+		return
+	for f in d.followers:
+		_free_node(f)
+	_free_node(d)
+
+
+static func _free_node(n: Node) -> void:
+	if not is_instance_valid(n):
+		return
+	if n.is_inside_tree():
+		n.queue_free()
+	else:
+		n.free()
 
 
 ## Forget every decor piece (the town is being torn down).

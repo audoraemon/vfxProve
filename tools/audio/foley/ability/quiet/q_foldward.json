@@ -1,0 +1,9 @@
+{"length": 2.1, "rms_db": -16.5, "reverb": {"rt60": 1.5, "mix": 0.2, "predelay_ms": 12, "damp": 5000}, "eq": [["lowshelf", 150, 1.5], ["peak", 3500, -1.5, 0.8]], "layers": [
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "from": 0.6, "dur": 0.8, "pitch": -7, "hp": 60, "lp": 1100, "fade_in": 250, "fade_out": 200, "gain_db": -9},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.62, "from": 0.6, "dur": 0.75, "pitch": -9, "reverse": true, "hp": 60, "lp": 900, "fade_in": 150, "fade_out": 300, "gain_db": -10},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_02.ogg", "at": 0.04, "onset": true, "pitch": -1, "hp": 350, "lp": 9000, "gain_db": -6},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/book_01.ogg", "at": 0.22, "onset": true, "pitch": 1, "hp": 600, "lp": 8000, "gain_db": -9},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_01.ogg", "at": 0.5, "onset": true, "pitch": -2, "hp": 300, "lp": 8000, "gain_db": -4},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_04.ogg", "at": 0.66, "onset": true, "reverse": true, "pitch": -3, "hp": 300, "lp": 6000, "gain_db": -11},
+  {"src": "lib:oga/bell-dingschimes/bell_ding1.wav", "at": 1.02, "onset": true, "pitch": -7, "dur": 1.05, "hp": 150, "lp": 2200, "fade_out": 500, "gain_db": -9},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_002.ogg", "at": 1.0, "pitch": -9, "lp": 1300, "fade_out": 300, "gain_db": -15}]}

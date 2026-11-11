@@ -25,7 +25,10 @@ static func run(t) -> void:
 			if not st.walkable and st.footprint.grow(-0.05).has_point(at):
 				no_overlap = false
 		if TownLayout.TOWN.has_point(at):
-			inside_ok = inside_ok and not grid.walkable(at)
+			# Or a cell the grid opened as a way into a pocket (WalkGrid._join_pockets()) that a body at its centre
+			# walks clear of the piece: the bench by the Citadel's back yard, its end just inside the yard's way in.
+			var id := grid.world_to_id(at)
+			inside_ok = inside_ok and (not grid.walkable(at) or (grid._links.has(id) and grid.decor_clear(id, at, d.size)))
 		else:
 			for road: Rect2 in TownLayout.ROADS:
 				outside_ok = outside_ok and not road.grow(1.0).has_point(at)
@@ -34,7 +37,7 @@ static func run(t) -> void:
 			if not Decor.ON_WATER.has(d.kind):
 				for r: Rect2 in TownLayout.RIVERS:
 					outside_ok = outside_ok and not r.has_point(at)
-	t.check(inside_ok, "decor inside the walls only stands where people already cannot walk")
+	t.check(inside_ok, "decor inside the walls only stands where people already cannot walk (or beside a way in the grid opened, clear of a body)")
 	t.check(outside_ok, "decor outside keeps off the roads, the exits and the river")
 	t.check(no_overlap, "no decor stands inside a building")
 	t.check(spots == TownDecor.spots(), "decor placement is the same every time")

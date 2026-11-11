@@ -267,6 +267,25 @@ func pile_parts_drawn() -> Array:
 	return parts.filter(func(p: Dictionary) -> bool: return not drawn_live(p))
 
 
+## Moves the piece `by` ground units over the ground, a pile's parts and its stand-ins (followers) with it (The Far
+## Gate draws the goods along the street). A decor piece bars no walk grid, so nothing else needs to know.
+func shift(by: Vector2) -> void:
+	at += by
+	position = Iso.ground_to_screen(at)
+	if not parts.is_empty():
+		# The parts are copied before they move: the town's layout may share the dictionaries.
+		var moved: Array = []
+		for p: Dictionary in parts:
+			var q := p.duplicate()
+			q.at = Vector2(p.at) + by
+			moved.append(q)
+		parts = moved
+	for f in followers:
+		if is_instance_valid(f):
+			f.shift(by)
+	queue_redraw()
+
+
 ## A blast reached it: char it, or knock it down when the hit is strong enough.
 func hit(amount: float, damage_kind: StringName) -> void:
 	if down:

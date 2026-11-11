@@ -149,11 +149,16 @@ func _ready() -> void:
 
 ## Margin (world px) round the camera's view inside which people count as on screen.
 const VIEW_MARGIN := 48.0
+## When above 0, the "on screen" view is the screen at this zoom instead of the camera's. Missions keep it at the zoom their camera
+## had before the zoom cap (2026-11-09, Mission.SIM_PLAY_ZOOM): the cap shows less town, but off-screen people still step at the
+## rate the missions were tuned and gated with. 0 (the default): the view is just what the camera shows.
+var sim_zoom := 0.0
 
 
 func _process(_delta: float) -> void:
 	ctx.lights.ambient = base_ambient * (1.0 - ctx.impact.dim_level() * 0.85)
-	var size := get_viewport().get_visible_rect().size / camera.zoom
+	var zoom := camera.zoom if sim_zoom <= 0.0 else Vector2.ONE * sim_zoom
+	var size := get_viewport().get_visible_rect().size / zoom
 	Person.view = Rect2(camera.get_screen_center_position() - size * 0.5, size).grow(VIEW_MARGIN)
 	Structure.view = Person.view
 

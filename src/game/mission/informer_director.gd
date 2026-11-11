@@ -73,7 +73,8 @@ const ALARM_REACH := 4.0
 ## left corner. Task 7's photograph moved it from (4, -2) to (3, -3): at the old spot the chandler's tag sat 9 px above the tags'
 ## frame, so the first contact showed as an arrow at the top edge with his label adrift from his company's red diamonds; now his
 ## tag is drawn over his door.
-const CAMERA_AT := Vector2(3.0, -3.0)
+## The zoom cap (2026-11-09: play zoom 0.6 -> 0.85, a smaller view) moved it from (3.0, -3.0), the nearest spot that still passes its framing checks.
+const CAMERA_AT := Vector2(3.0, -5.5)
 ## The tag of the contact to work on before word reaches him is grey (v0.11 M3); once it has, orange (MARK_PLACE).
 const MARK_WAITING := Color("9a948a")
 ## The tags of the contacts after him are pale, the same grey but faint (v0.11 M3, the controller's Task 4 ruling): warned, not

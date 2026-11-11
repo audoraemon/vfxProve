@@ -1,0 +1,6 @@
+{"length": 1.55, "rms_db": -16.0, "reverb": {"rt60": 0.8, "mix": 0.08, "predelay_ms": 10, "damp": 6000}, "layers": [
+  {"src": "lib:oga/tree-creaking/tree_creak.flac", "at": 0.0, "from": 2.86, "dur": 0.6, "hp": 200, "lp": 7000, "pitch": -3, "gain_db": -4, "fade_in": 60, "fade_out": 200},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_breaking_02.ogg", "at": 0.45, "onset": true, "hp": 400, "lp": 12000, "gain_db": -3, "fade_out": 80},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_02.ogg", "at": 0.45, "onset": true, "pitch": -5, "hp": 80, "lp": 8000, "fade_out": 250},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_001.ogg", "at": 0.46, "onset": true, "pitch": -3, "hp": 40, "lp": 3000, "gain_db": -5, "fade_out": 200}
+]}

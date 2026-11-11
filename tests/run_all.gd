@@ -5,6 +5,7 @@ const SUITES := [
 	"res://tests/test_enemy_field.gd",
 	"res://tests/test_fx_timeline.gd",
 	"res://tests/test_sfx_catalog.gd",
+	"res://tests/test_ambience.gd",
 	"res://tests/test_environment.gd",
 	"res://tests/test_freeze.gd",
 	"res://tests/test_structure_roles.gd",

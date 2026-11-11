@@ -18,6 +18,7 @@ Score format: as tools/audio/sfxr_bake.gd's (times in beats with "bpm"), plus, p
     instrument's),
     "dyn": [[beat, value], ...] the part's dynamics (MIDI CC1, 0..127), joined by straight ramps;
 per note "vel" (1..127) sets the MIDI velocity directly. The score may set "reverb": {"rt60": 3.8, "mix": 0.35},
+"humanize" (see HUMANIZE; false for none),
 "rms_db" (its level), "mono", "eq" (master EQ bands, default MASTER_EQ) and "excite" (0 = none, default 0.6). The reverb only hears 280 Hz-9 kHz, so the
 low end stays dry and tight.
 
@@ -33,6 +34,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import zlib
 from pathlib import Path
 
 import mido
@@ -65,12 +67,38 @@ def midi_of(p) -> float:
     return 12 * (octave + 1) + semis
 
 
-def part_midi(spec: dict, part: dict, cfg: dict, tail: float) -> mido.MidiFile:
+# Played, not programmed (natural sound pass 3): a score with a "bpm" is performed with small human departures, the
+# same every render (seeded by cue and part). Overrides per score in "humanize": {...}.
+#   timing_ms / perc_timing_ms: how far a note lands off the beat (standard deviation), percussion tighter;
+#   roll_ms: a chord's notes come in one after another, lowest first, up to this far apart (not percussion);
+#   vel: velocity wander (standard deviation); accent: the bar's first beat this much harder, its third half that;
+#   phrase: beats per phrase; swell: velocity rises to the middle of each phrase and falls away by this much;
+#   rubato_ms: the phrase pushes a little ahead in its first half and broadens in its second, then lands on the beat
+#     again, so a loop stays seamless and parts in separate files (the battle stems) stay together;
+#   cc_wander: the dynamics curve (CC1) breathes up and down by this much.
+HUMANIZE = {"timing_ms": 12.0, "perc_timing_ms": 4.0, "roll_ms": 14.0, "vel": 5.0, "accent": 6.0, "phrase": 8.0,
+            "swell": 8.0, "rubato_ms": 22.0, "cc_wander": 4.0}
+PERCUSSION = {"bass_drum", "low_drum", "timpani", "snare", "tamtam", "cymbals", "chimes"}
+
+
+def rubato(beats: float, h: dict) -> float:
+    """Seconds a note at this beat lands off the grid: ahead in a phrase's first half, behind in its second."""
+    x = (beats % h["phrase"]) / h["phrase"]
+    return -h["rubato_ms"] / 1000.0 * math.sin(2.0 * math.pi * x)
+
+
+def part_midi(spec: dict, part: dict, cfg: dict, tail: float, seed: str = "") -> mido.MidiFile:
     """One part as a one-track MIDI file: its program (General MIDI), its dynamics curve, its notes."""
     bpm = float(spec.get("bpm", 60))
     sec = 60.0 / bpm
     unit = sec if "bpm" in spec else 1.0
     tick = lambda beats: int(round(beats * unit / sec * TPB))
+    h = None if "bpm" not in spec or spec.get("humanize") is False else {**HUMANIZE, **spec.get("humanize", {})}
+    rng = np.random.default_rng(zlib.crc32(seed.encode()))
+    perc = cfg.get("drum") or part.get("instrument", part.get("voice", "")) in PERCUSSION
+    # A note's tick, played: its beat moved by the phrase's rubato and the player's own looseness.
+    played = lambda beats, extra=0.0: max(0, int(round((beats * sec + (rubato(beats, h) + extra if h else 0.0)) / sec * TPB)))
+    phase = rng.uniform(0, 2 * math.pi, 2)
     mid = mido.MidiFile(ticks_per_beat=TPB)
     track = mido.MidiTrack()
     mid.tracks.append(track)
@@ -86,9 +114,16 @@ def part_midi(spec: dict, part: dict, cfg: dict, tail: float) -> mido.MidiFile:
             steps = max(1, int((t1 - t0) * 8))
             for k in range(1, steps + 1):
                 t = t0 + (t1 - t0) * k / steps
-                v = int(round(v0 + (v1 - v0) * k / steps))
+                v = v0 + (v1 - v0) * k / steps
+                if h:
+                    v += h["cc_wander"] * (0.6 * math.sin(2 * math.pi * t / 11.0 + phase[0]) + 0.4 * math.sin(2 * math.pi * t / 4.7 + phase[1]))
+                v = int(round(v))
                 events.append((tick(t), 0, mido.Message("control_change", channel=ch, control=1, value=max(0, min(127, v)))))
     taken = set()
+    chord: dict[float, list[float]] = {}
+    for note in part["notes"]:
+        if "p" in note:
+            chord.setdefault(float(note.get("t", 0.0)), []).append(midi_of(note["p"]))
     for note in part["notes"]:
         t = float(note.get("t", 0.0))
         if "p" not in note:
@@ -104,9 +139,20 @@ def part_midi(spec: dict, part: dict, cfg: dict, tail: float) -> mido.MidiFile:
         hold = float(note.get("hold", cfg.get("hold", 0.25)))
         length = max((hold + float(note.get("decay", 0.0)) * cfg.get("decay_share", 0.5)) * unit, cfg.get("min_len", 0.06))
         vel = int(note["vel"]) if "vel" in note else int(cfg.get("velocity", 96) * float(note.get("gain", 1.0)))
-        vel = max(1, min(127, vel))
-        events.append((tick(t), 1, mido.Message("note_on", channel=ch, note=key, velocity=vel)))
-        events.append((tick(t) + max(1, int(round(length / sec * TPB))), 0,
+        on = tick(t)
+        if h:
+            beat_in_bar = t % 4.0
+            vel += h["accent"] if beat_in_bar < 0.05 else h["accent"] / 2 if abs(beat_in_bar - 2.0) < 0.05 else 0.0
+            vel += h["swell"] * (math.sin(math.pi * (t % h["phrase"]) / h["phrase"]) - 0.5)
+            vel += rng.normal(0.0, h["vel"])
+            loose = rng.normal(0.0, (h["perc_timing_ms"] if perc else h["timing_ms"]) / 1000.0)
+            notes_here = sorted(chord.get(t, []))
+            if not perc and len(notes_here) > 1 and "p" in note:
+                loose += notes_here.index(midi_of(note["p"])) / (len(notes_here) - 1) * h["roll_ms"] / 1000.0 * rng.uniform(0.5, 1.0)
+            on = played(t, loose)
+        vel = max(1, min(127, int(round(vel))))
+        events.append((on, 1, mido.Message("note_on", channel=ch, note=key, velocity=vel)))
+        events.append((on + max(1, int(round(length / sec * TPB))), 0,
                        mido.Message("note_off", channel=ch, note=key, velocity=0)))
     now = 0
     for at, _, msg in sorted(events, key=lambda e: (e[0], e[1])):
@@ -217,11 +263,11 @@ def main() -> None:
         send = np.zeros((frames, 2))
         full = mido.MidiFile(ticks_per_beat=TPB)
         with tempfile.TemporaryDirectory() as tmp:
-            for part in spec["parts"]:
+            for i, part in enumerate(spec["parts"]):
                 cfg = inst.get(part.get("instrument", part.get("voice", "")))
                 if cfg is None or cfg.get("skip"):
                     continue
-                mid = part_midi(spec, part, cfg, tail)
+                mid = part_midi(spec, part, cfg, tail, f"{cue}:{i}")
                 full.tracks.append(mid.tracks[0])
                 x = render_part(mid, cfg, frames, Path(tmp))
                 hp = part.get("hp", cfg.get("hp"))

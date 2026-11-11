@@ -1,11 +1,10 @@
 {
- "hash": "a52ed1224f06837d",
- "updated": "2026-11-11T05:39:51+07:00",
+ "hash": "d77d45fdcd1d190e",
+ "updated": "2026-11-11T11:09:09+07:00",
  "changes": {
-  "date": "<t:1794350391:f>",
+  "date": "<t:1794370149:f>",
   "items": [
-   "New: Natural sound pass 5: animals and soldiers (merged)",
-   "New: Heaven's Door (Passage Tier V)"
+   "New: Doors of the Dead (Passage, Tier V) (in progress)"
   ]
  },
  "snapshot": {
@@ -1276,6 +1275,15 @@
     "updated": "2026-10-03",
     "order": 3
    },
+   "vfx-deaddoors": {
+    "title": "Doors of the Dead (Passage, Tier V)",
+    "status": "doing",
+    "area": "Design",
+    "version": "vfx",
+    "needs_you": true,
+    "updated": "2026-11-11",
+    "order": 18
+   },
    "vfx-earthshatter": {
     "title": "Earthshatter (Ruin, Tier V): the ground torn open from click to click",
     "status": "done",
@@ -1462,47 +1470,47 @@
    {
     "name": "god/skill-tree-ui",
     "ahead": 258,
-    "behind": 30,
+    "behind": 31,
     "date": "2026-11-11",
     "subject": "fix: the Remembrance night toggle restores Engine.time_scale; Game's memory level follows the overlay's pick",
     "pushed": false
    },
    {
     "name": "claude/magical-lichterman-23d920",
-    "ahead": 250,
-    "behind": 30,
+    "ahead": 253,
+    "behind": 31,
     "date": "2026-11-11",
-    "subject": "docs: God's Paths build plan (layout, PixelLab art, art and motion, check and land)",
+    "subject": "art: God's Paths -- temple background, six god statues, swirl, flames, leaf, rays (PixelLab)",
     "pushed": false
    },
    {
     "name": "claude/vfx-ability-effects-964aca",
-    "ahead": 21,
-    "behind": 6,
-    "date": "2026-11-10",
-    "subject": "feat: Heaven's Door (Passage Tier V) -- a great door falls from heaven and draws in the half circle before it",
+    "ahead": 23,
+    "behind": 7,
+    "date": "2026-11-11",
+    "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
     "pushed": true
    },
    {
     "name": "claude/zen-greider-6e47c5",
-    "ahead": 21,
-    "behind": 6,
-    "date": "2026-11-10",
-    "subject": "feat: Heaven's Door (Passage Tier V) -- a great door falls from heaven and draws in the half circle before it",
+    "ahead": 23,
+    "behind": 0,
+    "date": "2026-11-11",
+    "subject": "feat: Heaven's Door gets a PixelLab rune door in 8 facings; The Folded Ward stands as a wall",
     "pushed": false
    },
    {
     "name": "feat/soldier-jobs",
-    "ahead": 14,
-    "behind": 6,
-    "date": "2026-11-10",
-    "subject": "fix: the ending counts capped frame time, not the wall clock (deterministic at fixed fps)",
+    "ahead": 16,
+    "behind": 7,
+    "date": "2026-11-11",
+    "subject": "fix: final review (clear_ground scope, pile layer, gap re-check, guard return)",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 30,
+    "behind": 31,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
@@ -1510,7 +1518,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 82,
+    "behind": 83,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1518,7 +1526,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 367,
+    "behind": 368,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1526,7 +1534,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 325,
+    "behind": 326,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1534,8 +1542,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-10",
-   "subject": "chore: drop a stray bash crash dump"
+   "date": "2026-11-11",
+   "subject": "test: breed voices cover the town's dogs and cats, so a visitor breed (hellhound) does not fail it"
   }
  }
 }

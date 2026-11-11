@@ -40,6 +40,15 @@ static func _rays(t) -> void:
 	screen.select(5)
 	screen.advance(GodSelectScreen.RAY_TIME)
 	t.check(absf(screen.ray_x - GodSelectScreen.statue_anchor(5).x) < 0.5, "quick picks end on the last one (%.1f)" % screen.ray_x)
+	screen.select(0)
+	screen.advance(GodSelectScreen.RAY_TIME)
+	var y0 := screen.ray_y
+	screen.select(3)
+	screen.advance(GodSelectScreen.RAY_TIME * 0.5)
+	var y_to := GodSelectScreen.ring_rect(3).end.y - GodSelectScreen.PLATE_H - 80.0
+	t.check(screen.ray_y > y0 and screen.ray_y < y_to, "Ruin to Decree: the rays' y slides, not snaps (%.1f of %.1f..%.1f)" % [screen.ray_y, y0, y_to])
+	screen.advance(GodSelectScreen.RAY_TIME)
+	t.check(absf(screen.ray_y - y_to) < 0.5, "after RAY_TIME the rays' y is on Decree's statue (%.1f)" % screen.ray_y)
 	screen.free()
 
 
@@ -53,6 +62,7 @@ static func _art_missing(t) -> void:
 	screen._ui.queue_redraw()
 	await host.process_frame
 	await host.process_frame
+	t.check(screen._draws > 0, "with no art the screen drew to the end (%d draws)" % screen._draws)
 	t.check(GodSelectArt.texture("background") == null, "with art_off every lookup fails")
 	var got: Array = []
 	screen.action.connect(func(n): got.append(n))
@@ -61,6 +71,14 @@ static func _art_missing(t) -> void:
 	t.check(screen.chosen_type == "decree" and got == ["chosen"], "without art the screen still chooses (%s)" % screen.chosen_type)
 	screen.queue_free()
 	GodSelectArt.art_off = false
+	await host.process_frame
+	GodSelectArt.art_off = false
+	var on := GodSelectScreen.new().setup()
+	host.root.add_child(on)
+	await host.process_frame
+	await host.process_frame
+	t.check(on._draws > 0, "with the art on the screen drew to the end (%d draws)" % on._draws)
+	on.queue_free()
 	await host.process_frame
 
 

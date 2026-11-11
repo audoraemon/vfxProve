@@ -1,7 +1,9 @@
 class_name GodSelectScreen
 extends Node
-## The god select (god P1, spec §4 and §12): the ring of six types, drawn as six boxes on an ellipse with RING[0] at the top and the
-## rest clockwise. The selected type shows in the middle its name, one line of flavour, its two Tier 1 spots ("Not yet chosen" while
+## The god select (god P1, spec §4 and §12; restyled as "God's Paths"): the ring of six types on an ellipse with RING[0] at the top and the
+## rest clockwise, each a grey stone statue (lit when picked, dimmed otherwise) standing on its nameplate, in a ruined temple with a slowly
+## turning swirl in the middle, braziers and drifting leaves; a statue's dark box stands in when its art is missing. The selected type shows
+## in the middle its name, one line of flavour, its two Tier 1 spots ("Not yet chosen" while
 ## the tree is empty) and its two neighbours. Choose, or Enter, picks it -- once, for the slot being made (spec §4) -- and Esc or Back
 ## goes back. The screen only reports; Game makes the god.
 
@@ -43,13 +45,15 @@ const LEAF_COUNT := 8
 var chosen_type := ""
 ## The ring position (0-5) in the middle panel; clicks and Left/Right move it.
 var selected := 0
-## The light rays' current centre x: it eases to the selected statue's x over RAY_TIME.
+## The light rays' current position (centre x, and top y of the shaft); it eases to the selected statue over RAY_TIME. `ray_x` is its x.
 var ray_x := statue_anchor(0).x
+var ray_y := _statue_top(0)
 var _ui: Control
 var _hover := ""
 var _clock := 0.0
-var _ray_from := ray_x
-var _ray_to := ray_x
+var _ray_from := Vector2(ray_x, ray_y)
+var _ray_to := Vector2(ray_x, ray_y)
+var _draws := 0
 var _ray_t := RAY_TIME
 ## One drifting leaf each: x start, y start, fall speed, sway phase, spin speed.
 var _leaves: Array[PackedFloat32Array] = []
@@ -78,16 +82,23 @@ func _process(delta: float) -> void:
 	_redraw()
 
 
-## Steps the clock and eases `ray_x` towards the selected statue's x.
+## The top y of type `i`'s statue (its plinth stands on its nameplate).
+static func _statue_top(i: int) -> float:
+	return ring_rect(i).end.y - PLATE_H - 80.0
+
+
+## Steps the clock and eases the rays (`ray_x`, `ray_y`) towards the selected statue.
 func advance(delta: float) -> void:
 	_clock += delta
-	var target := statue_anchor(selected).x
+	var target := Vector2(statue_anchor(selected).x, _statue_top(selected))
 	if target != _ray_to:
-		_ray_from = ray_x
+		_ray_from = Vector2(ray_x, ray_y)
 		_ray_to = target
 		_ray_t = 0.0
 	_ray_t = minf(_ray_t + delta, RAY_TIME)
-	ray_x = lerpf(_ray_from, _ray_to, smoothstep(0.0, 1.0, _ray_t / RAY_TIME))
+	var at := _ray_from.lerp(_ray_to, smoothstep(0.0, 1.0, _ray_t / RAY_TIME))
+	ray_x = at.x
+	ray_y = at.y
 
 
 ## A statue's brightness: 1.0 selected, 0.75 under the mouse, 0.45 otherwise.
@@ -211,7 +222,6 @@ func _draw_ui() -> void:
 		_ui.draw_texture_rect(bg, Rect2(0, 0, 640, 360), false)
 	else:
 		_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
-	_draw_rays()
 	var swirl := GodSelectArt.texture("swirl")
 	if swirl != null:
 		_ui.draw_set_transform(CENTRE, _clock * TAU / 20.0)
@@ -219,6 +229,7 @@ func _draw_ui() -> void:
 		_ui.draw_set_transform(Vector2.ZERO)
 	for i in GodTree.RING.size():
 		_draw_statue(i)
+	_draw_rays()
 	_draw_braziers()
 	_draw_leaves()
 	var keys := "Left and Right look round the ring. Enter chooses. Esc goes back."
@@ -245,6 +256,7 @@ func _draw_ui() -> void:
 	var back := "‹ Back"
 	UiTheme.text(_ui, Vector2(roundf(BACK_RECT.get_center().x - UiTheme.width(back) * 0.5), BACK_RECT.position.y + 14.0), back,
 		UiTheme.SIZE_BODY, UiTheme.COL_GOLD if _hover == "back:0" else UiTheme.COL_TEXT)
+	_draws += 1
 
 
 ## Type `i`'s nameplate at the bottom of its box: its title and its verbs, framed bright when selected or hovered.
@@ -268,13 +280,12 @@ static func info_height(flavour_rows: int, tail_rows: int) -> float:
 	return 16.0 + 22.0 + flavour_rows * UiTheme.LINE_BODY + 12.0 + tail_rows * (UiTheme.LINE_SMALL + 2.0)
 
 
-## Light shafts from above on the picked statue, sliding with `ray_x`.
+## A light shaft on the picked statue (native 64 px wide, the bright top of rays.png, plinth to head), sliding with `ray_x`, `ray_y`.
 func _draw_rays() -> void:
 	var rays := GodSelectArt.texture("rays")
 	if rays == null:
 		return
-	var top := ring_rect(selected).end.y - PLATE_H - 80.0 - 150.0
-	_ui.draw_texture_rect(rays, Rect2(roundf(ray_x) - 48.0, maxf(top, 0.0), 96.0, 240.0), false, Color(1.0, 0.95, 0.8, 0.9))
+	_ui.draw_texture_rect_region(rays, Rect2(roundf(ray_x) - 32.0, roundf(ray_y), 64.0, 80.0), Rect2(0, 0, 64, 80), Color(1.0, 0.95, 0.8, 1.7))
 
 
 ## Type `i`'s statue, its plinth on its nameplate, dimmed unless picked, with a soft aura in the god's colour; today's box if no art.

@@ -1,11 +1,10 @@
 {
- "hash": "1db538915d913bed",
- "updated": "2026-11-11T15:46:46+07:00",
+ "hash": "e46e5eb020a42b47",
+ "updated": "2026-11-11T17:37:56+07:00",
  "changes": {
-  "date": "<t:1794386806:f>",
+  "date": "<t:1794393476:f>",
   "items": [
-   "Done: Music stingers (mission start, objective, win, lose)",
-   "New: Interface sounds to match the dark medieval look (in progress)"
+   "Done: Interface sounds to match the dark medieval look"
   ]
  },
  "snapshot": {
@@ -816,10 +815,10 @@
    },
    "sound-ui-medieval": {
     "title": "Interface sounds to match the dark medieval look",
-    "status": "doing",
+    "status": "done",
     "area": "UI",
-    "needs_you": false,
-    "branch": "claude/sound-natural-2",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
     "updated": "2026-11-11",
     "order": 908
    },
@@ -1515,56 +1514,48 @@
   "branches": [
    {
     "name": "claude/magical-lichterman-23d920",
-    "ahead": 260,
-    "behind": 36,
+    "ahead": 262,
+    "behind": 37,
     "date": "2026-11-11",
-    "subject": "art: God's Paths round 2 -- six centre-pool emblems and six power effects (burst + loop), drawn in code",
+    "subject": "art: God's Paths round 2b -- living emblems: 24-frame coin turns with each god's touch, entrance flashes, sparks",
     "pushed": false
    },
    {
     "name": "god/skill-tree-ui",
     "ahead": 259,
-    "behind": 36,
+    "behind": 37,
     "date": "2026-11-11",
     "subject": "fix: final-review wave -- no Back/Raise during the fade into Remembrance; the memory's slot stays focused after a cast and Esc opens its pause; Whisper blurb; no frozen clock; Veil lavender-grey; the tree keeps its state for the session",
     "pushed": false
    },
    {
     "name": "claude/vfx-ability-effects-964aca",
-    "ahead": 26,
-    "behind": 5,
+    "ahead": 27,
+    "behind": 2,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house",
     "pushed": true
    },
    {
-    "name": "claude/zen-greider-6e47c5",
-    "ahead": 26,
-    "behind": 5,
-    "date": "2026-11-11",
-    "subject": "feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house",
-    "pushed": false
-   },
-   {
     "name": "feat/soldier-jobs",
     "ahead": 19,
-    "behind": 1,
+    "behind": 2,
     "date": "2026-11-11",
     "subject": "fix(policy): Heart of Faith prices a seen Doom by every life in its ring",
     "pushed": false
    },
    {
-    "name": "claude/sound-natural-2",
-    "ahead": 0,
-    "behind": 0,
+    "name": "feat/children",
+    "ahead": 3,
+    "behind": 2,
     "date": "2026-11-11",
-    "subject": "feat: music stingers for the night's moments",
-    "pushed": true
+    "subject": "test: test_children (29 checks) and the town_children close-up shot",
+    "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 36,
+    "behind": 37,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
@@ -1572,7 +1563,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 88,
+    "behind": 89,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1580,7 +1571,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 373,
+    "behind": 374,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1588,7 +1579,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 331,
+    "behind": 332,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1597,7 +1588,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-11",
-   "subject": "feat: music stingers for the night's moments"
+   "subject": "feat: interface sounds that fit the dark medieval look"
   }
  }
 }

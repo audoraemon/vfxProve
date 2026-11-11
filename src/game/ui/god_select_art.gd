@@ -42,6 +42,16 @@ static func frame_set(prefix: String) -> Array[Texture2D]:
 	return _sets[prefix]
 
 
+## True when the frame set `prefix` has been loaded (read-only; a test helper).
+static func cached(prefix: String) -> bool:
+	return _sets.has(prefix)
+
+
+## Forgets the loaded frame sets (a test of the loading order).
+static func clear_sets() -> void:
+	_sets.clear()
+
+
 static func _is_blocked(name: String) -> bool:
 	for b in blocked:
 		if name.begins_with(b):

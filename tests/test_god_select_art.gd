@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_lit(t)
 	_emblem_and_fx(t)
 	_frame_sets(t)
+	_load_order(t)
 	await _partial_art(t)
 	await _art_missing(t)
 	_art_present(t)
@@ -172,6 +173,35 @@ static func _partial_art(t) -> void:
 	screen.queue_free()
 	GodSelectArt.blocked = []
 	await host.process_frame
+
+
+static func _load_order(t) -> void:
+	GodSelectArt.clear_sets()
+	var screen := GodSelectScreen.new().setup()
+	var sets := ["emblem_%s", "emblem_flash_%s", "emblem_spark_%s", "fx_%s_burst", "fx_%s_loop"]
+	var loaded := func(type: String) -> int:
+		var n := 0
+		for s in sets:
+			n += 1 if GodSelectArt.cached(s % type) else 0
+		return n
+	t.check(loaded.call("ruin") == 5 and GodSelectArt.cached("brazier"), "setup loads the selected god's sets and the braziers")
+	var others := 0
+	for g in GodTree.RING:
+		if g != "ruin":
+			others += loaded.call(g)
+	t.check(others == 0, "and nothing else (%d other sets loaded)" % others)
+	screen.advance(0.016)
+	t.check(loaded.call("passage") == 5 or loaded.call("dominion") == 5, "one neighbour loads on the first advance")
+	t.check(loaded.call("decree") == 0 or loaded.call("death") == 0, "and the far gods wait")
+	screen.select(3)
+	t.check(loaded.call("decree") == 5, "picking an unloaded god loads it at once")
+	for i in 6:
+		screen.advance(0.016)
+	var all := 0
+	for g in GodTree.RING:
+		all += loaded.call(g)
+	t.check(all == 30, "after a few advances every god is loaded (%d of 30 sets)" % all)
+	screen.free()
 
 
 static func _frame_sets(t) -> void:

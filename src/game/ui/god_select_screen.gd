@@ -73,6 +73,7 @@ var _ui: Control
 var _hover := ""
 var _clock := 0.0
 var _draws := 0  # how many times the screen has drawn to the end (tests read it)
+var _unloaded: Array[String] = []  # gods whose art is still to load, nearest first
 var _prev_scale := 0.0
 var _prev_bob := 0.0
 var _prev_frame := 0
@@ -101,7 +102,9 @@ func setup() -> GodSelectScreen:
 	for k in LEAF_COUNT:
 		_leaves.append(PackedFloat32Array([rng.randf_range(0.0, 640.0), rng.randf_range(0.0, 380.0), rng.randf_range(10.0, 22.0),
 			rng.randf_range(0.0, TAU), rng.randf_range(-1.5, 1.5)]))
-	_preload_art()
+	GodSelectArt.frame_set("brazier")
+	_load_god(GodTree.RING[selected])
+	_queue_rest()
 	_build_ring_points()
 	for k in SPARK_COUNT:
 		_sparks.append(PackedFloat32Array([float(k) / SPARK_COUNT + rng.randf_range(-0.04, 0.04),
@@ -118,18 +121,29 @@ func _process(delta: float) -> void:
 func advance(delta: float) -> void:
 	_clock += delta
 	fx_age += delta
+	if not _unloaded.is_empty():
+		_load_god(_unloaded[0])
 	if _prev_type != "":
 		_prev_age += delta
 		if _prev_age >= EMBLEM_FADE:
 			_prev_type = ""
 
 
-## Loads every set the screen draws once, so the first pick of a god does not stall in a draw call.
-func _preload_art() -> void:
-	GodSelectArt.frame_set("brazier")
-	for type in GodTree.RING:
-		for set_name in ["emblem_%s", "emblem_flash_%s", "emblem_spark_%s", "fx_%s_burst", "fx_%s_loop"]:
-			GodSelectArt.frame_set(set_name % type)
+## Loads one god's sets (emblem, flash, spark, burst, loop) so a pick never loads inside a draw call.
+func _load_god(type: String) -> void:
+	for set_name in ["emblem_%s", "emblem_flash_%s", "emblem_spark_%s", "fx_%s_burst", "fx_%s_loop"]:
+		GodSelectArt.frame_set(set_name % type)
+	_unloaded.erase(type)
+
+
+## The other five gods, nearest the selected one on the ring first; advance() loads one per call.
+func _queue_rest() -> void:
+	_unloaded.clear()
+	var n := GodTree.RING.size()
+	for d in range(1, n / 2 + 1):
+		for i in [(selected + d) % n, (selected - d + n) % n]:
+			if not _unloaded.has(GodTree.RING[i]) and i != selected:
+				_unloaded.append(GodTree.RING[i])
 
 
 ## The two pool rings' pixels (rounded points, and each point's place in the dash pattern 0-1), made once.
@@ -258,6 +272,7 @@ func select(i: int) -> void:
 	var was := selected
 	selected = clampi(i, 0, GodTree.RING.size() - 1)
 	if selected != was:
+		_load_god(GodTree.RING[selected])
 		_prev_type = GodTree.RING[was]
 		_prev_scale = entrance_scale()
 		_prev_bob = _bob()

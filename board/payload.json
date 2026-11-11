@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**14** in progress · **25** to do · **126** done\n**10** active branches besides Develop-Main\n\n**Since the last update** (<t:1794381837:f>)\n• Done: Hit aftermath sounds (skill-tree Ruin abilities first)\n• New: Music stingers (mission start, objective, win, lose) (in progress)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**14** in progress · **25** to do · **126** done\n**10** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-11T14:23:57+07:00"
+     "timestamp": "2026-11-11T15:00:37+07:00"
     },
     {
      "title": "claude/magical-lichterman-23d920",
@@ -26,12 +26,12 @@
     },
     {
      "title": "claude/vfx-ability-effects-964aca",
-     "description": "25 commits not in Develop-Main · last commit today\n> feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side\n\n_No Ledger task points at this branch._",
+     "description": "26 commits not in Develop-Main · last commit today\n> feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/zen-greider-6e47c5",
-     "description": "25 commits not in Develop-Main · last commit today · local only\n> feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side\n\n_No Ledger task points at this branch._",
+     "description": "26 commits not in Develop-Main · last commit today · local only\n> feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -41,7 +41,7 @@
     },
     {
      "title": "claude/sound-natural-2",
-     "description": "merged into Develop-Main · last commit today\n> feat: big hits leave debris raining down (skill-tree Ruin abilities first)\n\n**In progress** (1)\n• Music stingers (mission start, objective, win, lose)",
+     "description": "1 commit not in Develop-Main · last commit today\n> feat: music stingers for the night's moments\n\n**In progress** (1)\n• Music stingers (mission start, objective, win, lose)",
      "color": 5016537
     },
     {

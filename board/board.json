@@ -1,12 +1,9 @@
 {
- "hash": "067fec10604e65e7",
- "updated": "2026-11-11T14:23:57+07:00",
+ "hash": "b59ffd95d951f166",
+ "updated": "2026-11-11T15:00:37+07:00",
  "changes": {
-  "date": "<t:1794381837:f>",
-  "items": [
-   "Done: Hit aftermath sounds (skill-tree Ruin abilities first)",
-   "New: Music stingers (mission start, objective, win, lose) (in progress)"
-  ]
+  "date": "<t:1794384037:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1522,18 +1519,18 @@
    },
    {
     "name": "claude/vfx-ability-effects-964aca",
-    "ahead": 25,
+    "ahead": 26,
     "behind": 4,
     "date": "2026-11-11",
-    "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
+    "subject": "feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house",
     "pushed": true
    },
    {
     "name": "claude/zen-greider-6e47c5",
-    "ahead": 25,
+    "ahead": 26,
     "behind": 4,
     "date": "2026-11-11",
-    "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
+    "subject": "feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house",
     "pushed": false
    },
    {
@@ -1546,10 +1543,10 @@
    },
    {
     "name": "claude/sound-natural-2",
-    "ahead": 0,
+    "ahead": 1,
     "behind": 0,
     "date": "2026-11-11",
-    "subject": "feat: big hits leave debris raining down (skill-tree Ruin abilities first)",
+    "subject": "feat: music stingers for the night's moments",
     "pushed": true
    },
    {

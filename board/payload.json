@@ -7,16 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **25** to do · **130** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794397888:f>)\n• Done: Doors of the Dead (Passage, Tier V)\n• Done: Passage, the second draft (7 powers)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**12** in progress · **25** to do · **130** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794403415:f>)\n• New: Town children (Discord idea Add children Npc) (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-11T18:51:28+07:00"
+     "timestamp": "2026-11-11T20:23:35+07:00"
     },
     {
      "title": "claude/magical-lichterman-23d920",
-     "description": "265 commits not in Develop-Main · last commit today · local only\n> fix: God's Paths Task 7 review -- tests with teeth (spark orbit, entrance, burst sets), partial-art test with a GodSelectArt block hook; report no lo…\n\n_No Ledger task points at this branch._",
+     "description": "268 commits not in Develop-Main · last commit today · local only\n> fix: God's Paths art loads one small step per frame (emblem in thirds, loop in halves), nearest god first\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -31,7 +31,7 @@
     },
     {
      "title": "feat/children",
-     "description": "3 commits not in Develop-Main · last commit today · local only\n> test: test_children (29 checks) and the town_children close-up shot\n\n_No Ledger task points at this branch._",
+     "description": "5 commits not in Develop-Main · last commit today\n> fix: try_children.bat names the powers it loads\n\n**In progress** (1)\n• Town children (Discord idea Add children Npc) — **needs you**",
      "color": 5016537
     },
     {

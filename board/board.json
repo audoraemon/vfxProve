@@ -1,11 +1,10 @@
 {
- "hash": "d9f0bc0b10654d2a",
- "updated": "2026-11-11T18:51:28+07:00",
+ "hash": "4e31927bde30a5d0",
+ "updated": "2026-11-11T20:23:35+07:00",
  "changes": {
-  "date": "<t:1794397888:f>",
+  "date": "<t:1794403415:f>",
   "items": [
-   "Done: Doors of the Dead (Passage, Tier V)",
-   "Done: Passage, the second draft (7 powers)"
+   "New: Town children (Discord idea Add children Npc) (in progress)"
   ]
  },
  "snapshot": {
@@ -915,6 +914,15 @@
     "updated": "2026-11-07",
     "order": 900
    },
+   "town-children": {
+    "title": "Town children (Discord idea Add children Npc)",
+    "status": "doing",
+    "area": "Crowd",
+    "needs_you": true,
+    "branch": "feat/children",
+    "updated": "2026-11-11",
+    "order": 901
+   },
    "ui-sfxr-listen": {
     "title": "Listen to the GodotSfxr sounds in game (UI, citizens, buildings, music)",
     "status": "done",
@@ -1515,10 +1523,10 @@
   "branches": [
    {
     "name": "claude/magical-lichterman-23d920",
-    "ahead": 265,
+    "ahead": 268,
     "behind": 65,
     "date": "2026-11-11",
-    "subject": "fix: God's Paths Task 7 review -- tests with teeth (spark orbit, entrance, burst sets), partial-art test with a GodSelectArt block hook; report no longer tracked",
+    "subject": "fix: God's Paths art loads one small step per frame (emblem in thirds, loop in halves), nearest god first",
     "pushed": false
    },
    {
@@ -1539,11 +1547,11 @@
    },
    {
     "name": "feat/children",
-    "ahead": 3,
+    "ahead": 5,
     "behind": 30,
     "date": "2026-11-11",
-    "subject": "test: test_children (29 checks) and the town_children close-up shot",
-    "pushed": false
+    "subject": "fix: try_children.bat names the powers it loads",
+    "pushed": true
    },
    {
     "name": "feat/god-progression",

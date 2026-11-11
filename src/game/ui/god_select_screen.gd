@@ -14,8 +14,30 @@ signal action(name: String)
 ## platform's front, both in `GodTree.RING` order: Ruin at the back, then clockwise.
 const FEET := [Vector2(324, 151), Vector2(476, 170), Vector2(521, 253), Vector2(317, 300), Vector2(118, 253), Vector2(161, 170)]
 const NAME_AT := [Vector2(324, 158), Vector2(476, 177), Vector2(521, 273), Vector2(317, 321), Vector2(118, 274), Vector2(161, 177)]
-## The centre pool, where the selected god's emblem goes.
-const EMBLEM_AT := Vector2(320, 206)
+## The centre pool, where the selected god's emblem turns (centre of its 72 px frames), behind the statues.
+const EMBLEM_AT := Vector2(320, 200)
+## How long the old emblem takes to fade out when the pick changes.
+const EMBLEM_FADE := 0.2
+## Frame rates: the statue effects (burst then loop), the emblem's turn, the entrance flash, the sparks' twinkle.
+const FX_FPS := 12.0
+const EMBLEM_FPS := 8.0
+const FLASH_FPS := 12.0
+const SPARK_FPS := 10.0
+## The burst set's frame count, and so how long it plays, once, after a pick.
+const BURST_FRAMES := 8
+const BURST_TIME := BURST_FRAMES / FX_FPS
+## Where the statue's feet are inside an effect frame (112x128).
+const FX_ANCHOR := Vector2(56.0, 119.0)
+## The emblem's scale-in: one value per ENTRANCE_STEP seconds, starting ENTRANCE_DELAY after the pick (the flash covers the start).
+const ENTRANCE_DELAY := 0.08
+const ENTRANCE_STEP := 0.042
+const ENTRANCE_SCALES := [0.35, 0.6, 0.85, 1.08, 1.12, 1.05]
+const SPARK_COUNT := 6
+## The sparks' orbit round the emblem: half-width, half-height, how far up from its centre; a turn takes ORBIT_TIME seconds.
+const ORBIT_RX := 44.0
+const ORBIT_RY := 14.0
+const ORBIT_UP := 4.0
+const ORBIT_TIME := 4.0
 ## The top panel the selected type's lines are drawn in, and the two buttons.
 const INFO_RECT := Rect2(186.0, 2.0, 268.0, 66.0)
 const CHOOSE_RECT := Rect2(520.0, 334.0, 112.0, 18.0)
@@ -53,6 +75,12 @@ var _clock := 0.0
 var _draws := 0
 ## One drifting leaf each: x start, y start, fall speed, sway phase, spin speed.
 var _leaves: Array[PackedFloat32Array] = []
+## Seconds since the current pick (restarts on a new pick, not on a repeat).
+var fx_age := 0.0
+var _prev_type := ""
+var _prev_age := 0.0
+## One orbiting spark each: start phase (a turn is 0-1), its ellipse's half-width and half-height.
+var _sparks: Array[PackedFloat32Array] = []
 
 
 func setup() -> GodSelectScreen:
@@ -70,6 +98,9 @@ func setup() -> GodSelectScreen:
 	for k in LEAF_COUNT:
 		_leaves.append(PackedFloat32Array([rng.randf_range(0.0, 640.0), rng.randf_range(0.0, 380.0), rng.randf_range(10.0, 22.0),
 			rng.randf_range(0.0, TAU), rng.randf_range(-1.5, 1.5)]))
+	for k in SPARK_COUNT:
+		_sparks.append(PackedFloat32Array([float(k) / SPARK_COUNT + rng.randf_range(-0.04, 0.04),
+			ORBIT_RX + rng.randf_range(-3.0, 3.0), ORBIT_RY + rng.randf_range(-1.5, 1.5)]))
 	return self
 
 
@@ -78,9 +109,59 @@ func _process(delta: float) -> void:
 	_redraw()
 
 
-## Steps the clock that drives the animated bits (braziers, leaves, and the later power effects).
+## Steps the clock that drives the animated bits (braziers, leaves, emblem, sparks and the power effect).
 func advance(delta: float) -> void:
 	_clock += delta
+	fx_age += delta
+	if _prev_type != "":
+		_prev_age += delta
+		if _prev_age >= EMBLEM_FADE:
+			_prev_type = ""
+
+
+## The type whose emblem shows: the selected one.
+func emblem_type() -> String:
+	return GodTree.RING[selected]
+
+
+## "burst" for the first BURST_TIME after a pick, then "loop".
+func fx_phase() -> String:
+	return "burst" if fx_age < BURST_TIME else "loop"
+
+
+## Which of the emblem's turn frames shows now (0 when it has none).
+func emblem_frame() -> int:
+	var n := GodSelectArt.frame_set("emblem_" + emblem_type()).size()
+	return int(_clock * EMBLEM_FPS) % n if n > 0 else 0
+
+
+## The emblem's scale: 0 for the first moments after a pick (the flash covers them), then a quick scale-in up to 1.0.
+func entrance_scale() -> float:
+	var t := fx_age - ENTRANCE_DELAY
+	if t < 0.0:
+		return 0.0
+	var k := int(t / ENTRANCE_STEP)
+	return ENTRANCE_SCALES[k] if k < ENTRANCE_SCALES.size() else 1.0
+
+
+func spark_count() -> int:
+	return _sparks.size()
+
+
+## Where spark `k` is on its orbit, in radians (0 is the right, PI/2 the front).
+func spark_angle(k: int) -> float:
+	return TAU * (_clock / ORBIT_TIME + _sparks[k][0])
+
+
+## True when spark `k` is on the near half of its orbit (drawn in front of the emblem), false on the far half (behind it).
+func spark_in_front(k: int) -> bool:
+	return sin(spark_angle(k)) >= 0.0
+
+
+## Spark `k`'s centre on the screen, given the emblem's bob.
+func spark_pos(k: int, bob: float) -> Vector2:
+	var a := spark_angle(k)
+	return EMBLEM_AT + Vector2(_sparks[k][1] * cos(a), bob + _sparks[k][2] * sin(a) - ORBIT_UP)
 
 
 ## A statue's brightness: 1.0 selected, 0.86 under the mouse, 0.72 otherwise.
@@ -129,7 +210,12 @@ func type_lines(type: String) -> PackedStringArray:
 
 ## Puts the top panel on ring position `i` (0-5); it does not choose.
 func select(i: int) -> void:
+	var was := selected
 	selected = clampi(i, 0, GodTree.RING.size() - 1)
+	if selected != was:
+		_prev_type = GodTree.RING[was]
+		_prev_age = 0.0
+		fx_age = 0.0
 	_redraw()
 
 
@@ -210,10 +296,13 @@ func _draw_ui() -> void:
 	else:
 		_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
 	_draw_braziers()
+	_draw_emblem()
 	var order := [0, 1, 2, 3, 4, 5]
 	order.sort_custom(func(a: int, b: int) -> bool: return FEET[a].y < FEET[b].y)
 	for i in order:
 		_draw_statue(i)
+		if i == selected:
+			_draw_fx(i)
 		_draw_name(i)
 	_draw_leaves()
 	var back_col := Color(0, 0, 0, 0.55)
@@ -279,6 +368,90 @@ func _draw_statue(i: int) -> void:
 		_ui.draw_circle(Vector2.ZERO, r, Color(col.r, col.g, col.b, 0.07 * v * v))
 	_ui.draw_set_transform(Vector2.ZERO)
 	_ui.draw_texture(tex, top_left, Color(v, v, v, 1.0))
+
+
+## The selected god's power effect, grown from its statue's feet: the burst frames once, then the loop frames. Skipped when its art is
+## missing.
+func _draw_fx(i: int) -> void:
+	var type: String = GodTree.RING[i]
+	var tex: Texture2D = null
+	if fx_age < BURST_TIME:
+		var burst := GodSelectArt.frame_set("fx_%s_burst" % type)
+		if not burst.is_empty():
+			tex = burst[mini(int(fx_age * FX_FPS), burst.size() - 1)]
+	else:
+		var loop := GodSelectArt.frame_set("fx_%s_loop" % type)
+		if not loop.is_empty():
+			tex = loop[int((fx_age - BURST_TIME) * FX_FPS) % loop.size()]
+	if tex != null:
+		_ui.draw_texture(tex, (feet(i) - FX_ANCHOR).floor())
+
+
+## The pool: glow, the ring of light, the emblem (turning, bobbing, with its reflection), the sparks behind and in front, and the flash on
+## a new pick. Drawn before the statues. Nothing at all when the emblem's art is missing.
+func _draw_emblem() -> void:
+	var type := emblem_type()
+	var col: Color = GOD_COL.get(type, Color.WHITE)
+	var turn := GodSelectArt.frame_set("emblem_" + type)
+	if turn.is_empty():
+		return
+	if _prev_type != "":
+		var old := GodSelectArt.frame_set("emblem_" + _prev_type)
+		if not old.is_empty():
+			var oa := 1.0 - _prev_age / EMBLEM_FADE
+			_ui.draw_texture(old[int(_clock * EMBLEM_FPS) % old.size()], (EMBLEM_AT - Vector2(36, 36)).floor(), Color(1, 1, 1, oa))
+	var scale := entrance_scale()
+	if scale <= 0.0:
+		_draw_flash(type)
+		return
+	var bob := roundf(2.0 * sin(TAU * _clock / 2.6))
+	var pulse := 0.5 + 0.5 * sin(TAU * _clock / 1.4)
+	var glow_at := EMBLEM_AT + Vector2(0.0, bob)
+	for g in [[34.0, 0.08], [28.0, 0.1], [22.0, 0.12]]:
+		_ui.draw_circle(glow_at, g[0] * minf(1.0, scale), Color(col.r, col.g, col.b, g[1] + 0.05 * pulse))
+	_draw_pool_ring(col, 0.55 + 0.3 * pulse)
+	var tex: Texture2D = turn[emblem_frame()]
+	var size := Vector2(tex.get_size() * scale).round().max(Vector2(2, 2))
+	var ry := EMBLEM_AT.y + 33.0
+	var half := Vector2(size.x, roundf(size.y * 0.5))
+	_ui.draw_texture_rect(tex, Rect2(Vector2(EMBLEM_AT.x - half.x * 0.5, ry + 3.0 + half.y).floor(), Vector2(half.x, -half.y)), false, Color(1, 1, 1, 0.2))
+	var sparks := GodSelectArt.frame_set("emblem_spark_" + type)
+	if not sparks.is_empty():
+		for k in _sparks.size():
+			if not spark_in_front(k):
+				_draw_spark(sparks, k, bob, 0.75)
+	_ui.draw_texture_rect(tex, Rect2((EMBLEM_AT + Vector2(0.0, bob) - size * 0.5).floor(), size), false)
+	if not sparks.is_empty():
+		for k in _sparks.size():
+			if spark_in_front(k):
+				_draw_spark(sparks, k, bob, 1.0)
+	_draw_flash(type)
+
+
+func _draw_spark(sparks: Array[Texture2D], k: int, bob: float, alpha: float) -> void:
+	var tex: Texture2D = sparks[(int(_clock * SPARK_FPS) + k) % sparks.size()]
+	_ui.draw_texture(tex, (spark_pos(k, bob) - tex.get_size() * 0.5).floor(), Color(1, 1, 1, alpha))
+
+
+func _draw_flash(type: String) -> void:
+	var flash := GodSelectArt.frame_set("emblem_flash_" + type)
+	var k := int(fx_age * FLASH_FPS)
+	if k < flash.size():
+		_ui.draw_texture(flash[k], (EMBLEM_AT - flash[k].get_size() * 0.5).floor())
+
+
+## Two dashed ellipses of light on the pool under the emblem, turning slowly against each other, drawn a pixel at a time.
+func _draw_pool_ring(col: Color, alpha: float) -> void:
+	var centre := Vector2(EMBLEM_AT.x, EMBLEM_AT.y + 33.0)
+	var rings := [[46.0, 10.0, 36.0, 0.75, 0.6, col.lightened(0.3)], [39.0, 8.0, 30.0, 0.5, -0.4, col]]
+	for r in rings:
+		var steps := int(r[0] * PI)
+		var c: Color = r[5]
+		c.a = alpha
+		for n in steps:
+			var a := TAU * n / steps
+			if fposmod(a / TAU * r[2] + _clock * r[4], 1.0) < r[3]:
+				_ui.draw_rect(Rect2((centre + Vector2(cos(a) * r[0], sin(a) * r[1])).round(), Vector2.ONE), c)
 
 
 func _draw_braziers() -> void:

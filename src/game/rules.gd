@@ -70,6 +70,7 @@ const POWER_KINDS := {
 	"everydoor": [],
 	"fargate": [&"gone"],
 	"heavendoor": [&"stone", &"gone"],
+	"deaddoors": [&"frenzy"],
 	"belllies": [],
 	"magnify": [&"magnify"],
 	"unseen": [],

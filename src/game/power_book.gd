@@ -202,6 +202,9 @@ const POWERS := [
 	{"key": "heavendoor", "name": "Heaven's Door", "path": "res://src/fx/control/heavens_door.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "drag", "shape": "a great door falls from heaven: it crushes where it lands, then opens and for 12 s draws in everyone and everything in the half circle of 16 before it; buildings there are torn apart; drag to face it; once a descent",
 		"authority": "passage"},
+	{"key": "deaddoors", "name": "Doors of the Dead", "path": "res://src/fx/control/doors_of_the_dead.gd",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "every door in a district of 10 opens onto the other side: the air turns cold and everyone in it slows, the houses throw out whoever sheltered there, and for 20 s hellhounds, ghosts and demons pour out to hunt the town and claw at its buildings; once a descent",
+		"authority": "passage"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -234,6 +237,9 @@ const REACH := {
 	# Heaven's Door: a door taller than a house falling out of a shaft of light is seen and heard across the town, as the
 	# Light of Solaris is; the danger lasts its opening and its pull
 	"heavendoor": [16.0, 22.0, 0.9, 16.0],
+	# Doors of the Dead: a district's doors burning cold and the other side pouring out of them is seen and heard far
+	# off; the danger lasts the span
+	"deaddoors": [14.0, 18.0, 0.9, 22.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -244,7 +250,7 @@ const REACH := {
 const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
-	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2,
+	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -306,7 +312,7 @@ const FAMILY := {
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",
-	"foldward": "passage", "heavendoor": "passage",
+	"foldward": "passage", "heavendoor": "passage", "deaddoors": "passage",
 }
 
 

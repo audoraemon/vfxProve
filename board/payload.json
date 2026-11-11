@@ -7,16 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **25** to do · **123** done\n**9** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **25** to do · **124** done\n**9** active branches besides Develop-Main\n\n**Since the last update** (<t:1794375248:f>)\n• New: Heaven's Door: PixelLab rune door, 8 facings",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-11T11:55:47+07:00"
+     "timestamp": "2026-11-11T12:34:08+07:00"
     },
     {
      "title": "god/skill-tree-ui",
-     "description": "258 commits not in Develop-Main · last commit today · local only\n> fix: the Remembrance night toggle restores Engine.time_scale; Game's memory level follows the overlay's pick\n\n_No Ledger task points at this branch._",
+     "description": "259 commits not in Develop-Main · last commit today · local only\n> fix: final-review wave -- no Back/Raise during the fade into Remembrance; the memory's slot stays focused after a cast and Esc opens its pause; Whisp…\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -26,12 +26,12 @@
     },
     {
      "title": "claude/vfx-ability-effects-964aca",
-     "description": "23 commits not in Develop-Main · last commit today\n> feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side\n\n_No Ledger task points at this branch._",
+     "description": "25 commits not in Develop-Main · last commit today\n> feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/zen-greider-6e47c5",
-     "description": "23 commits not in Develop-Main · last commit today · local only\n> feat: Heaven's Door gets a PixelLab rune door in 8 facings; The Folded Ward stands as a wall\n\n_No Ledger task points at this branch._",
+     "description": "25 commits not in Develop-Main · last commit today · local only\n> feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -68,12 +68,12 @@
    "embeds": [
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-11\n> fix: the soldiers' march no longer clatters through a calm town\n\n**In progress** (10)\n• Doors of the Dead (Passage, Tier V) — **needs you**\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-11\n> feat: dogs and cats call near the camera, day and night\n\n**In progress** (10)\n• Doors of the Dead (Passage, Tier V) — **needs you**\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Natural sound pass 5: animals and soldiers (merged) _(11-11)_\n• Natural sound pass 4: clearer, heavier crowd panic _(11-11)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-11)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-11)_\n• Heaven's Door (Passage Tier V) _(11-11)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_\n• Dominion ability levels: puppet-master upgrades _(11-10)_\n• People animations phase 2: pray, point and shout, look up, cower _(11-10)_",
+     "description": "• Natural sound pass 5: animals and soldiers (merged) _(11-11)_\n• Natural sound pass 4: clearer, heavier crowd panic _(11-11)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-11)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-11)_\n• Heaven's Door: PixelLab rune door, 8 facings _(11-11)_\n• Heaven's Door (Passage Tier V) _(11-11)_\n• The Folded Ward (Passage Tier IV) _(11-11)_\n• FLOW test fixed (ending hitch, stale lock count, fade waits) _(11-10)_",
      "color": 10185686
     }
    ]

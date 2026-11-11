@@ -110,3 +110,25 @@ the art.
 - How many leaves, how fast the swirl turns, how strong the dimming is.
 - The exact new rectangles, as long as the constraints above hold.
 - How to show the work for the user's judgement (in-game screenshots and a play through `play_dev.bat`).
+
+## Round 2 (2026-11-11, after the user tried round 1)
+
+The user decided, from round 1's screenshots and mockups v2-v5 (the last one is `assets/2026-11-11-god-select-round2-mockup.png`; its centre circle only marks the emblem spot):
+
+- **Statues stand on the background's own platforms**, centred on each platform's top. This replaces the ellipse and the wide
+  nameplates. Measured feet points (plinth bottom centre): Ruin (324,151), Passage (476,170), Veil (521,253), Decree (317,300),
+  Death (118,253), Dominion (161,170).
+- **Names are carved on the platform fronts** (light stone letters, dark outline; the selected one gold). Name centres: Ruin
+  (324,158), Passage (476,177), Veil (521,273), Decree (317,321), Death (118,274), Dominion (161,177). The verbs move to the
+  details panel.
+- **The details move to a top-centre panel**: name, the verbs in the god's colour, flavour, then Tier 1 and Neighbours on their own
+  lines. The title block stays top left (rule note on two lines); the keys hint is two short lines at top right; Enter Path moves to
+  the bottom right (Decree's platform holds the bottom centre).
+- **The swirl goes.** The centre pool shows the **selected god's emblem** in its colour: Ruin burst, Passage hourglass, Veil eye,
+  Decree scales, Death skull, Dominion crown. It changes with the selection.
+- **The sliding light rays go.** Picking a god makes **its own power grow out of its statue** with a burst, then keep playing
+  quietly while it stays picked: Ruin fire cracks up the plinth with rising embers and small rocks; Passage blue orbs spinning out
+  into widening rings; Veil teal mist pouring out and curling round, the statue fading in and out; Decree a gold rune circle
+  stamping onto the platform and rising; Death pale green soul wisps rising; Dominion purple waves pulsing out with thin threads.
+  The other statues dim a little.
+- Ring order, rules and controls are unchanged.

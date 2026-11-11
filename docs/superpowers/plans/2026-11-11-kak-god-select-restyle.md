@@ -241,3 +241,89 @@ changes. Do not push.
 Fetch; check `origin/feat/god-progression` is an ancestor of this branch (rebase onto it if not, rerun the suite); fast-forward
 `feat/god-progression` in `C:/BURIN_NITRO/Godot/GIT/vfxProve-god` to this branch; push only with the user's yes; post one dated
 bullet in #god-changelog (channel id 1568235960448188522); update the Dev Ledger task.
+
+---
+
+## Round 2 (after the user's review of Tasks 1-3)
+
+Spec: "Round 2" section of the design. Task 4 above is replaced by Task 8. Ring order, rules, controls, exact copy (except the
+keys hint, now two lines: "Left / Right look round the ring" and "Enter chooses · Esc goes back") and the public contract names
+stay. Global Constraints still bind.
+
+### Task 5: Statues on the platforms, names on the fronts, top panel
+
+**Files:**
+- Modify: `src/game/ui/god_select_screen.gd`
+- Test: `tests/test_slot_screens.gd`, `tests/test_god_select_art.gd`
+
+**Interfaces:**
+- Produces: `const FEET := [Vector2(324,151), Vector2(476,170), Vector2(521,253), Vector2(317,300), Vector2(118,253), Vector2(161,170)]`
+  and `const NAME_AT := [Vector2(324,158), Vector2(476,177), Vector2(521,273), Vector2(317,321), Vector2(118,274), Vector2(161,177)]`
+  (both in `GodTree.RING` order); `static func feet(i: int) -> Vector2` (replaces `statue_anchor`; keep `statue_anchor` as a thin
+  alias only if a caller needs it); `ring_rect(i)` = the statue's 64×80 box over `feet(i)` (top-left `feet(i) - Vector2(32, 79)`)
+  grown down to cover the carved name (to `NAME_AT[i].y + 6`). `INFO_RECT := Rect2(186, 2, 268, 66)`,
+  `CHOOSE_RECT := Rect2(520, 334, 112, 18)`, `BACK_RECT := Rect2(8, 334, 90, 18)`. `const EMBLEM_AT := Vector2(320, 206)`.
+- Removes: the ellipse (`CENTRE`, `RADIUS`, `BOX`, `PLATE_H`), the nameplates, the rays (`ray_x`, `ray_y`, `RAY_TIME`,
+  `rays.png` use) and the swirl. `swirl.png` and `rays.png` stay on disk unused (delete them in this task's commit; update the art
+  README).
+
+- [ ] **Step 1: Update the tests**
+  `_layout`: ring rects inside the frame, clear of `INFO_RECT`/`CHOOSE_RECT`/`BACK_RECT`, none overlapping (unchanged checks);
+  replace the `top.x == 320` check with: `ring_rect(0)` is the highest (smallest centre y) and the six centres, by angle around
+  `EMBLEM_AT`, run clockwise in `GodTree.RING` order. Add: `feet(i) == FEET[i]` for all six; the statue drawn for spot i has its
+  plinth bottom centre at `feet(i)` (assert the computed draw rect: `Rect2(feet(i) - Vector2(32, 79), Vector2(64, 80))`).
+  `_info_fits`: same rule against the new `INFO_RECT` (flavour at most 2 rows; Tier 1 and Neighbours each their own line).
+  `test_god_select_art`: drop the ray tests; keep `_lit`, `_art_missing`, `_art_present` (without swirl/rays).
+- [ ] **Step 2: Run, see the new checks fail** (`bash tools/dev/run_suite_parallel.sh 8`, or part 8 alone).
+- [ ] **Step 3: Implement** the layout in mockup `docs/superpowers/specs/assets/2026-11-11-god-select-round2-mockup.png`:
+  statues back to front by feet y; a small dark contact shadow under each plinth; carved names (light stone `#B2B8C8` letters
+  with a 1 px dark outline, selected one gold `COL_GOLD`, size `SIZE_SMALL` or smaller if it overflows the front face); top
+  panel as in the mockup (name `SIZE_BIG` gold, verbs small in the god's colour, flavour `SIZE_BODY`, Tier 1 and Neighbours small
+  dim, each on its own line); title block top left with the rule note on two lines; keys hint two lines top right; Back bottom
+  left; Enter Path bottom right. Dim unselected statues to about 0.72 (not 0.45); hover 0.86.
+- [ ] **Step 4: Suite green, screenshots** (Ruin, Veil, Decree picked) compared with the mockup; nothing overlaps.
+- [ ] **Step 5: Commit**.
+
+### Task 6: Emblems and power effects (art)
+
+**Files:**
+- Create: `assets/pixellab/god_select/emblem_<type>.png` ×6 (transparent, about 56×56, the god's sign in its colour, pixel art
+  that matches the statues' banner signs), and effect frames `fx_<type>_<n>.png` per god (transparent; the burst and the loop may be
+  one strip of frames or two sets: `fx_<type>_burst_<n>` and `fx_<type>_loop_<n>`; size fits the statue plus its glow, about
+  96×112, feet at the bottom centre).
+- Modify: `assets/pixellab/god_select/README.md` (tool, prompt, generations per piece).
+
+- [ ] **Step 1:** check the balance. Budget for this task: under 60 PixelLab generations; prefer the free `vfx_workbench` (animated
+  effects) and `pixelart_workbench` for the effects.
+- [ ] **Step 2:** six emblems (spec Round 2 list).
+- [ ] **Step 3:** six effects, one per god, matching the spec's Round 2 description, readable at 1× on the dark scene.
+- [ ] **Step 4:** contact sheet: the round 2 layout with each god picked in turn (six frames, or a strip) plus the emblems close
+  up; save in the scratchpad and the plan workspace. The controller shows it to the user before Task 7.
+- [ ] **Step 5:** import and commit.
+
+### Task 7: Emblem and power effects on the screen
+
+**Files:**
+- Modify: `src/game/ui/god_select_screen.gd`, `src/game/ui/god_select_art.gd` (frame-set lookup)
+- Test: `tests/test_god_select_art.gd`
+
+**Interfaces:**
+- Produces: `func emblem_type() -> String` (the type whose emblem shows; follows `selected`); `const EMBLEM_FADE := 0.2`;
+  `var fx_age: float` (seconds since the current pick); `func fx_phase() -> String` (`"burst"` while `fx_age < BURST_TIME`, then
+  `"loop"`); `const BURST_TIME := 0.6`; `GodSelectArt.frame_set(prefix: String) -> Array[Texture2D]` (probes `prefix + "_1"`… like
+  the braziers; empty when missing).
+- [ ] **Step 1: Tests**: after `select(2)`, `emblem_type() == "veil"`; `fx_age` resets to 0 on each new pick and a repeat
+  `select(2)` does not restart it; `fx_phase()` is `"burst"` at `advance(BURST_TIME * 0.5)` and `"loop"` after `advance(BURST_TIME)`;
+  quick picks (select 3, 4, 5 with tiny advances) end with the burst running for 5; with `art_off` the screen still draws
+  (`_draws > 0`) and picks still choose.
+- [ ] **Step 2:** see them fail.
+- [ ] **Step 3: Implement**: the emblem at `EMBLEM_AT`, cross-fading (old out, new in, `EMBLEM_FADE`) with a slow soft pulse; the
+  selected god's effect drawn at its feet, burst frames then loop frames (or one set played once fast then looping); the effect
+  draws behind the carved names; others dimmed (Task 5). Missing frames: skip the effect, keep the lit statue.
+- [ ] **Step 4:** suite green; screenshots of each god mid-burst and in the loop.
+- [ ] **Step 5:** commit.
+
+### Task 8: Check in the game and hand to the user (replaces Task 4)
+
+As Task 4's steps 1-5: screenshots, frame rate (art on/off, 1200 frames, vsync off), full suite, show the user (they try it with this
+worktree's `play_dev.bat`), land on their yes (fast-forward `feat/god-progression`, push, #god-changelog bullet, Dev Ledger).

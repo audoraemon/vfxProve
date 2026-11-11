@@ -7,26 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **25** to do · **128** done\n**9** active branches besides Develop-Main\n\n**Since the last update** (<t:1794393476:f>)\n• Done: Interface sounds to match the dark medieval look",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**11** in progress · **25** to do · **130** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794397888:f>)\n• Done: Doors of the Dead (Passage, Tier V)\n• Done: Passage, the second draft (7 powers)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-11T17:37:56+07:00"
+     "timestamp": "2026-11-11T18:51:28+07:00"
     },
     {
      "title": "claude/magical-lichterman-23d920",
-     "description": "262 commits not in Develop-Main · last commit today · local only\n> art: God's Paths round 2b -- living emblems: 24-frame coin turns with each god's touch, entrance flashes, sparks\n\n_No Ledger task points at this branch._",
+     "description": "265 commits not in Develop-Main · last commit today · local only\n> fix: God's Paths Task 7 review -- tests with teeth (spark orbit, entrance, burst sets), partial-art test with a GodSelectArt block hook; report no lo…\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/skill-tree-ui",
      "description": "259 commits not in Develop-Main · last commit today · local only\n> fix: final-review wave -- no Back/Raise during the fade into Remembrance; the memory's slot stays focused after a cast and Esc opens its pause; Whisp…\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "claude/vfx-ability-effects-964aca",
-     "description": "27 commits not in Develop-Main · last commit today\n> feat: Doors of the Dead becomes a doomsday; Heaven's Door is never hidden behind a house\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -58,6 +53,11 @@
      "title": "feat/capital-city",
      "description": "merged into Develop-Main · last commit 33 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
+    },
+    {
+     "title": "feat/Develop-Main",
+     "description": "Main line · last commit 2026-11-11\n> feat: interface sounds that fit the dark medieval look\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "color": 3908956
     }
    ]
   },
@@ -66,11 +66,6 @@
     "parse": []
    },
    "embeds": [
-    {
-     "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-11\n> feat: interface sounds that fit the dark medieval look\n\n**In progress** (10)\n• Doors of the Dead (Passage, Tier V) — **needs you**\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
-     "color": 3908956
-    },
     {
      "title": "Recently done",
      "description": "• Interface sounds to match the dark medieval look _(11-11)_\n• Music stingers (mission start, objective, win, lose) _(11-11)_\n• Hit aftermath sounds (skill-tree Ruin abilities first) _(11-11)_\n• Fire where it burns (sound) _(11-11)_\n• Natural sound pass 5: animals and soldiers (merged) _(11-11)_\n• Natural sound pass 4: clearer, heavier crowd panic _(11-11)_\n• Natural sound pass 3: crowd panic redesign, ducking, humanized music _(11-11)_\n• Natural sound pass 2: ambience, variants, recordings only, distance _(11-11)_",

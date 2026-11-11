@@ -15,6 +15,8 @@ static func run(t) -> void:
 	_damaged(t)
 	_slot_keys(t)
 	_ring(t)
+	_hit_areas(t)
+	_info_fits(t)
 	_choose(t)
 	GodTree.dev_fill = false
 	_clear()
@@ -96,11 +98,27 @@ static func _layout(t) -> void:
 	t.check(bad == 0, "the six ring rects sit inside the frame, clear of the info panel and buttons, none overlapping (%d)" % bad)
 	t.check(not GodSelectScreen.CHOOSE_RECT.intersects(GodSelectScreen.BACK_RECT) and FRAME.encloses(GodSelectScreen.INFO_RECT),
 		"Choose and Back do not touch, and the info panel fits")
-	var top := GodSelectScreen.ring_rect(0).get_center()
-	var right := GodSelectScreen.ring_rect(1).get_center()
-	var left := GodSelectScreen.ring_rect(5).get_center()
-	t.check(is_equal_approx(top.x, 320.0) and top.y < right.y and right.x > top.x and left.x < top.x,
-		"RING[0] is at the top and the ring runs clockwise (%s, %s, %s)" % [top, right, left])
+	var centres: Array[Vector2] = []
+	for k in GodTree.RING.size():
+		centres.append(GodSelectScreen.ring_rect(k).get_center())
+	var highest := true
+	for k in range(1, centres.size()):
+		highest = highest and centres[0].y < centres[k].y
+	t.check(highest, "RING[0] is the highest of the six (%s)" % [centres])
+	var prev := 0.0
+	var clockwise := true
+	for k in range(1, centres.size()):
+		var a := fposmod((centres[k] - GodSelectScreen.EMBLEM_AT).angle() - (centres[0] - GodSelectScreen.EMBLEM_AT).angle(), TAU)
+		clockwise = clockwise and a > prev
+		prev = a
+	t.check(clockwise, "the six run clockwise round the emblem in RING order")
+	var feet_ok := 0
+	var draw_ok := 0
+	for k in GodTree.RING.size():
+		feet_ok += 1 if GodSelectScreen.feet(k) == GodSelectScreen.FEET[k] else 0
+		var d := GodSelectScreen.statue_rect(k)
+		draw_ok += 1 if d == Rect2(GodSelectScreen.FEET[k] - Vector2(32, 79), Vector2(64, 80)) and d.position + Vector2(32, 79) == GodSelectScreen.FEET[k] else 0
+	t.check(feet_ok == 6 and draw_ok == 6, "feet(i) is FEET[i] and each statue is drawn with its plinth bottom centre on it (%d, %d)" % [feet_ok, draw_ok])
 
 
 static func _empty(t) -> void:
@@ -220,6 +238,43 @@ static func _ring(t) -> void:
 	t.check(screen.type_lines("veil")[3] == "Neighbours: PASSAGE, DECREE", "veil's neighbours are passage and decree (%s)" % screen.type_lines("veil")[3])
 	t.check(screen.type_lines("nonsense").is_empty(), "an unknown type has no lines")
 	screen.free()
+	var verbs := {"ruin": "Destroy · Collapse · Erase", "passage": "Open · Move · Close", "veil": "Conceal · Obscure · Displace",
+		"decree": "Law · Bind · Enforce", "death": "Wither · Harvest · Release", "dominion": "Control · Command · Bend"}
+	for type in verbs:
+		t.check(GodSelectScreen.verbs(type) == verbs[type], "%s's verbs (%s)" % [type, GodSelectScreen.verbs(type)])
+	t.check(GodSelectScreen.verbs("nonsense") == "", "an unknown type has no verbs")
+
+
+static func _hit_areas(t) -> void:
+	var screen := GodSelectScreen.new().setup()
+	var got := _listen(screen)
+	screen.click(GodSelectScreen.ring_rect(1).position - Vector2(6, 6))
+	t.check(screen.selected == 0 and got.is_empty(), "a click on the aura, outside every hit area, does nothing (%d)" % screen.selected)
+	var bad := 0
+	for i in GodTree.RING.size():
+		if screen.hit(GodSelectScreen.ring_rect(i).get_center()) != "ring:%d" % i:
+			bad += 1
+	t.check(bad == 0, "the centre of every ring rect hits its own type (%d wrong)" % bad)
+	screen.free()
+
+
+static func _info_fits(t) -> void:
+	GodTree.dev_fill = true
+	var screen := GodSelectScreen.new().setup()
+	var w := GodSelectScreen.INFO_RECT.size.x - 16.0
+	var bad := 0
+	for type in GodTree.RING:
+		var lines := screen.type_lines(type)
+		var flavour := UiTheme.wrap(lines[1], w, UiTheme.SIZE_BODY).size()
+		var tier := UiTheme.wrap(lines[2], w, UiTheme.SIZE_SMALL).size()
+		var beside := UiTheme.wrap(lines[3], w, UiTheme.SIZE_SMALL).size()
+		var h := GodSelectScreen.info_height(flavour, tier + beside)
+		if flavour > 2 or tier != 1 or beside != 1 or h > GodSelectScreen.INFO_RECT.size.y:
+			bad += 1
+			print("info too tall: %s flavour rows %d height %.0f" % [type, flavour, h])
+	t.check(bad == 0, "every type's lines fit INFO_RECT, flavour in at most 2 rows (%d too big)" % bad)
+	screen.free()
+	GodTree.dev_fill = false
 
 
 static func _choose(t) -> void:

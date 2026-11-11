@@ -429,8 +429,8 @@ func _sort_citizens(clergy: Array[Person], lay: Array[Person]) -> void:
 			continue
 		if CitizenProfile.is_clergy(p.profile.role):
 			clergy.append(p)
-		elif not p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
-			lay.append(p)
+		elif not p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER, CitizenProfile.Role.CHILD]:
+			lay.append(p)  # (a child, Children, is never cast)
 
 
 ## Makes `p` one of Halcyon's Faithful.

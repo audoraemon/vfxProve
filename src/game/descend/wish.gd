@@ -13,7 +13,8 @@ const WISHER_LABEL := "WISH"
 const UNANSWERED := "Their prayer goes unanswered"
 ## Roles a wisher or a target never has: the town's responders and the directors' own people.
 const NOT_LAY := [CitizenProfile.Role.CLERGY, CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER,
-	CitizenProfile.Role.WATCHMAN, CitizenProfile.Role.MAYOR, CitizenProfile.Role.NOBLE, CitizenProfile.Role.MONK]
+	CitizenProfile.Role.WATCHMAN, CitizenProfile.Role.MAYOR, CitizenProfile.Role.NOBLE, CitizenProfile.Role.MONK,
+	CitizenProfile.Role.CHILD]  # the children (Children) are never cast in a part
 
 var def: WishDef
 ## The believers it pays, at the night's multiplier (Descent.hear()).

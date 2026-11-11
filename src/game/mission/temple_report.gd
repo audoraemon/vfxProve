@@ -148,7 +148,7 @@ func _witness(crowd: Crowd, at: Vector2) -> Person:
 	var best_d := Crowd.DOOM_WITNESS
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or not p.is_alive() or p.inside or bool(skip.call(p)):
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.is_child() or bool(skip.call(p)):
 				continue
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:

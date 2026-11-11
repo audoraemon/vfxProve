@@ -210,7 +210,7 @@ func _recruit() -> void:
 			continue
 		var pool: Array[Person] = []
 		for p in _crowd.citizens:
-			if is_instance_valid(p) and p.is_alive() and p.profile != null and p.fearless_left <= 0.0 \
+			if is_instance_valid(p) and p.is_alive() and p.profile != null and p.fearless_left <= 0.0 and not p.is_child() \
 					and (p.mind == Person.Mind.CALM or p.mind == Person.Mind.RECOVER) \
 					and p.ground_pos.distance_to(s.center()) <= RECRUIT_REACH:
 				pool.append(p)

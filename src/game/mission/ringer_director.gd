@@ -148,7 +148,7 @@ func _relay_witness(at: Vector2) -> Person:
 	var best_d := Crowd.DOOM_WITNESS
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or not p.is_alive() or p.inside or others.has(p) or _passed_over(p):
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or others.has(p) or _passed_over(p) or p.is_child():
 				continue
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:

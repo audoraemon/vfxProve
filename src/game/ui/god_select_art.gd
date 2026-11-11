@@ -5,6 +5,8 @@ extends RefCounted
 const DIR := "res://assets/pixellab/god_select/"
 ## True makes every lookup fail (a test of the screen without its art).
 static var art_off := false
+## Piece-name prefixes that fail to load (a test of partial art; empty normally).
+static var blocked: Array[String] = []
 static var _cache := {}
 static var _frames := {}
 static var _sets := {}
@@ -12,7 +14,7 @@ static var _sets := {}
 
 ## One piece by name (no extension), cached; null when the file is missing or fails to load.
 static func texture(piece: String) -> Texture2D:
-	if art_off:
+	if art_off or _is_blocked(piece):
 		return null
 	if _cache.has(piece):
 		return _cache[piece]
@@ -43,7 +45,7 @@ static func frames(prefix: String) -> Array[Texture2D]:
 
 ## The numbered frames `prefix_1`, `prefix_2`, ... up to the first one missing (cached; empty when the first is missing).
 static func frame_set(prefix: String) -> Array[Texture2D]:
-	if art_off:
+	if art_off or _is_blocked(prefix + "_"):
 		return []
 	if not _sets.has(prefix):
 		var list: Array[Texture2D] = []
@@ -56,3 +58,10 @@ static func frame_set(prefix: String) -> Array[Texture2D]:
 			n += 1
 		_sets[prefix] = list
 	return _sets[prefix]
+
+
+static func _is_blocked(name: String) -> bool:
+	for b in blocked:
+		if name.begins_with(b):
+			return true
+	return false

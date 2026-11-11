@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_lit(t)
 	_emblem_and_fx(t)
 	_frame_sets(t)
+	await _partial_art(t)
 	await _art_missing(t)
 	_art_present(t)
 
@@ -78,8 +79,8 @@ static func _emblem_and_fx(t) -> void:
 	t.check(screen.fx_phase() == "loop", "after the burst time it loops")
 	screen.select(4)
 	t.check(screen.fx_age == 0.0 and screen.fx_phase() == "burst" and screen.emblem_type() == "death", "a new pick restarts the burst and the emblem")
-	t.check(is_equal_approx(GodSelectScreen.BURST_TIME, float(GodSelectArt.frame_set("fx_ruin_burst").size()) / GodSelectScreen.FX_FPS),
-		"BURST_TIME is the burst frames at the effect fps (%f)" % GodSelectScreen.BURST_TIME)
+	for g in GodTree.RING:
+		t.check(GodSelectArt.frame_set("fx_%s_burst" % g).size() == GodSelectScreen.BURST_FRAMES, "%s's burst set has BURST_FRAMES frames" % g)
 	screen.select(3)
 	screen.advance(0.01)
 	screen.select(4)
@@ -91,27 +92,31 @@ static func _emblem_and_fx(t) -> void:
 	var f0: int = screen.emblem_frame()
 	screen.advance(0.5)
 	t.check(screen.emblem_frame() != f0, "the emblem frame advances with time (%d, %d)" % [f0, screen.emblem_frame()])
-	# a new pick restarts the entrance: the scale-in is small at first and full later
+	# a new pick restarts the entrance: nothing at first, the first scale-in step soon after, full later
 	screen.select(1)
-	t.check(screen.entrance_scale() < 1.0, "the emblem scales in after a pick (%f)" % screen.entrance_scale())
+	t.check(screen.entrance_scale() == 0.0, "the emblem is hidden right after a pick (%f)" % screen.entrance_scale())
+	screen.advance(0.1)
+	t.check(is_equal_approx(screen.entrance_scale(), 0.35), "0.1 s in, the scale-in is at its first step (%f)" % screen.entrance_scale())
 	screen.advance(0.5)
 	t.check(screen.entrance_scale() == 1.0, "the entrance is done after a moment (%f)" % screen.entrance_scale())
-	# the sparks split behind / in front by their orbit angle
+	# sparks: split in front / behind, at known angles, and they orbit
 	var front := 0
-	var behind := 0
 	for k in screen.spark_count():
-		var a: float = screen.spark_angle(k)
-		t.check(screen.spark_in_front(k) == (sin(a) >= 0.0), "spark %d is in front exactly when it is on the near half of its orbit" % k)
-		if screen.spark_in_front(k):
-			front += 1
-		else:
-			behind += 1
-	t.check(screen.spark_count() > 0 and front > 0 and behind > 0, "sparks are split: %d in front, %d behind" % [front, behind])
-	screen.advance(1.0)
-	var moved := false
-	for k in screen.spark_count():
-		moved = moved or screen.spark_in_front(k) != (sin(screen.spark_angle(k) - TAU * 0.25) >= 0.0)
-	t.check(moved or screen.spark_count() > 0, "sparks orbit")
+		front += 1 if screen.spark_in_front(k) else 0
+	t.check(front > 0 and front < screen.spark_count(), "sparks are split: %d in front of %d" % [front, screen.spark_count()])
+	var fresh := GodSelectScreen.new().setup()
+	fresh._sparks[0][0] = 0.25
+	fresh._sparks[1][0] = 0.75
+	t.check(fresh.spark_in_front(0) and not fresh.spark_in_front(1), "a spark at the front of its orbit is in front, one at the back is behind")
+	var before: Array = []
+	for k in fresh.spark_count():
+		before.append(fresh.spark_angle(k))
+	fresh.advance(1.0)
+	var moved := 0
+	for k in fresh.spark_count():
+		moved += 1 if not is_equal_approx(fresh.spark_angle(k), before[k]) else 0
+	t.check(moved == fresh.spark_count(), "every spark orbits as time passes (%d moved)" % moved)
+	fresh.free()
 	t.check(GodSelectScreen.EMBLEM_AT == Vector2(320, 200), "the emblem sits at (320, 200)")
 	screen.free()
 	# with no art everything still draws and picks
@@ -122,6 +127,35 @@ static func _emblem_and_fx(t) -> void:
 	t.check(bare.emblem_type() == "decree" and bare.emblem_frame() == 0 and bare.fx_phase() == "burst", "without art the state still follows the pick")
 	bare.free()
 	GodSelectArt.art_off = false
+
+
+## Partial art: with the Decree loop and flash missing, the screen still draws, still picks, and the pieces that exist still show.
+static func _partial_art(t) -> void:
+	GodSelectArt.blocked = ["fx_decree_loop", "emblem_flash_decree"]
+	var host := Engine.get_main_loop() as SceneTree
+	var screen := GodSelectScreen.new().setup()
+	host.root.add_child(screen)
+	screen.select(3)
+	t.check(GodSelectArt.frame_set("fx_decree_loop").is_empty() and GodSelectArt.frame_set("emblem_flash_decree").is_empty(),
+		"the blocked sets read as missing")
+	t.check(not GodSelectArt.frame_set("emblem_decree").is_empty() and not GodSelectArt.frame_set("fx_decree_burst").is_empty(),
+		"the unblocked emblem and burst still load")
+	await host.process_frame
+	await host.process_frame
+	var d0: int = screen._draws
+	screen.advance(GodSelectScreen.BURST_TIME + 0.5)
+	screen._ui.queue_redraw()
+	await host.process_frame
+	await host.process_frame
+	t.check(screen._draws > d0 and screen.fx_phase() == "loop", "with the loop and flash missing the screen still draws (%d -> %d)" % [d0, screen._draws])
+	var got: Array = []
+	screen.action.connect(func(n): got.append(n))
+	screen.click(GodSelectScreen.ring_rect(4).get_center())
+	screen.click(GodSelectScreen.CHOOSE_RECT.get_center())
+	t.check(screen.chosen_type == "death" and got == ["chosen"], "a pick still chooses with partial art (%s)" % screen.chosen_type)
+	screen.queue_free()
+	GodSelectArt.blocked = []
+	await host.process_frame
 
 
 static func _frame_sets(t) -> void:

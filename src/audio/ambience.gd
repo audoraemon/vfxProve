@@ -11,7 +11,8 @@ extends Node
 ## each heard at its own distance and side. Before, one short loop with the same screams in it played every few seconds.
 ## Pass 4 made the beds full range and drier, with the feet of the running crowd under them for weight.
 ## Pass 5 added the soldiers' march (_march()); their blows and orders are SoldierVoices, the animals AnimalVoices.
-## Pass 6 lets a dog or cat near the camera call now and then (_animal_call()), by day and by night.
+## Pass 6 lets a dog or cat near the camera call now and then (_animal_call()), by day and by night, and places fire
+## where it burns (FireSounds): the town-wide fire bed is now the far-off part of it.
 ##
 ## It only listens: it reads the town's look (TownLook.active), the fires (Crowd.fires), who is running (Crowd.citizens)
 ## and how much the town panics (Crowd.panic_level()), and never touches the world; its numbers come from its own rng.
@@ -76,6 +77,8 @@ var _march_turn := 0
 var _next_animal := 4.0
 var _last_at := {}  ## soldier instance id -> ground position at the last march tick
 var _stopped := false
+## Fire where it burns (pass 6): the nearest burning buildings' own crackle, catching, cracking and dousing.
+var _fire: FireSounds
 
 
 func setup(crowd: Crowd) -> Ambience:
@@ -88,6 +91,8 @@ func setup(crowd: Crowd) -> Ambience:
 		p.volume_db = -80.0
 		add_child(p)
 		_players[cue] = p
+	_fire = FireSounds.new().setup(crowd)
+	add_child(_fire)
 	return self
 
 
@@ -112,6 +117,8 @@ static func cry_gap(panic: float) -> float:
 func pause(paused: bool) -> void:
 	for p: AudioStreamPlayer in _players.values():
 		p.stream_paused = paused
+	if _fire != null:
+		_fire.pause(paused)
 
 
 ## Silence for good (the mission is quitting): nothing restarts it.
@@ -119,6 +126,8 @@ func stop() -> void:
 	_stopped = true
 	for p: AudioStreamPlayer in _players.values():
 		p.stop()
+	if _fire != null:
+		_fire.stop()
 
 
 func _process(delta: float) -> void:
@@ -143,6 +152,8 @@ func _process(delta: float) -> void:
 		p.volume_db = float(Sfx.CATALOG[cue].get("db", 0.0)) + linear_to_db(_gain[cue])
 	_cries(delta, _crowd.panic_level())
 	_march(delta)
+	if _fire != null:
+		_fire.step(delta)
 	_animal_call(delta, night)
 	_next_call -= delta
 	if _next_call <= 0.0:

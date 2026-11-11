@@ -103,6 +103,13 @@ static func run(t) -> void:
 	av.step(2.0)
 	t.check(av.pick(6, true, AnimalVoices.Act.CALL) == &"dog_bark" and av.pick(7, false, AnimalVoices.Act.CALL) == &"cat_meow",
 		"a call near the camera is always heard: a bark or a meow")
+	# Fire where it burns (pass 6): louder as it grows; a bucket is heard.
+	t.check(FireSounds.voice_db(0.0) < FireSounds.voice_db(0.5) and FireSounds.voice_db(0.5) < FireSounds.voice_db(1.0),
+		"a burning building gets louder as its fire grows")
+	t.check(FireSounds.doused(0.6, 0.45) and not FireSounds.doused(0.6, 0.62), "a bucket's drop is a douse, growth is not")
+	for cue: StringName in [&"fire_catch", &"fire_crack", &"fire_douse"]:
+		t.check(Sfx.paths_for(cue).size() >= 3, "%s has takes" % cue)
+	t.check(bool(Sfx.CATALOG[&"fire_burn"].get("loop", false)) and Sfx.paths_for(&"fire_burn").size() == 2, "two burning loops")
 	t.check(Ambience.ANIMAL_DAY.y <= 15.0 and Ambience.ANIMAL_NIGHT.y <= 18.0, "a dog or cat calls every few seconds, day and night")
 	av.step(1.0)
 	t.check(av.pick(5, true, AnimalVoices.Act.DIE) == &"dog_yelp", "and it refills")

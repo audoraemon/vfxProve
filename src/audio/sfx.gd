@@ -197,6 +197,12 @@ const CATALOG := {
 	&"collapse_tree": {"path": "res://assets/audio/building/collapse_tree_%d.wav", "variants": 5, "db": -0.3, "voices": 4, "jitter": 0.1},
 	&"town_bell": {"path": "res://assets/audio/building/town_bell.wav", "db": -1.5},
 	&"town_horn": {"path": "res://assets/audio/building/town_horn.wav", "db": -4.4, "voices": 1},
+	# Fire where it burns (natural sound pass 6, FireSounds): a burning building's loop, its catching, its timbers
+	# cracking, and the hiss of a bucket thrown on it.
+	&"fire_burn": {"path": "res://assets/audio/building/fire_burn_%d.wav", "variants": 2, "db": 1.8, "loop": true},
+	&"fire_catch": {"path": "res://assets/audio/building/fire_catch_%d.wav", "variants": 3, "db": -2.7, "voices": 2, "jitter": 0.05},
+	&"fire_crack": {"path": "res://assets/audio/building/fire_crack_%d.wav", "variants": 5, "db": 0.7, "voices": 2, "jitter": 0.06},
+	&"fire_douse": {"path": "res://assets/audio/building/fire_douse_%d.wav", "variants": 3, "db": -10.1, "voices": 2, "jitter": 0.06},
 	# The Lantern (v0.11.2, LanternWatch plays them at the Temple): the toll's flare, the burn, and the Bearer's fall.
 	&"lantern_flare": {"path": "res://assets/audio/building/lantern_flare.wav", "db": 0.6},
 	&"lantern_burn": {"path": "res://assets/audio/building/lantern_burn.wav", "db": 1.3},
@@ -205,7 +211,7 @@ const CATALOG := {
 	# the Ambience bus; and the calls now and then near the camera, birds by day, a night call by night.
 	&"amb_day": {"path": "res://assets/audio/ambience/amb_day.wav", "db": -10.0, "loop": true},
 	&"amb_night": {"path": "res://assets/audio/ambience/amb_night.wav", "db": -8.0, "loop": true},
-	&"amb_fire": {"path": "res://assets/audio/ambience/amb_fire.wav", "db": 0.0, "loop": true},
+	&"amb_fire": {"path": "res://assets/audio/ambience/amb_fire.wav", "db": -3.0, "loop": true},
 	&"amb_bird": {"path": "res://assets/audio/ambience/amb_bird_%d.wav", "variants": 4, "db": -16.0, "voices": 2, "jitter": 0.08},
 	&"amb_night_call": {"path": "res://assets/audio/ambience/amb_night_call_%d.wav", "variants": 3, "db": -16.0, "voices": 1, "jitter": 0.05},
 	# Music: real instrument samples (tools/audio/music/, rendered by tools/audio/music_render.py). Music plays these at its own level (Music.DB), so their db is not used.

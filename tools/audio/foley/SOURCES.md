@@ -55,3 +55,11 @@ the sheet the user listens with.
   sound pack), Kenney impacts, the 150 combat pack's punches, and six low, steady yells from the male yelling pack for
   orders. The war horn is Sonatina's horn section (CC Sampling Plus, credited), a low call and a fifth above.
 
+## Fire where it burns (natural sound pass 6)
+
+- A burning building: OpenGameArt `fireplace-sound-loop` (the body) and Wikimedia Commons `Bones breaking wood fire ice
+  crackling` and `Dry grass burning in open fireplace` (public domain, stephan and ezwa; converted to WAV with ffmpeg).
+- Catching: OpenGameArt `catching-fire` and `fire-crackling` with the dry-grass burst. Timbers cracking: the 75 breaking
+  pack's snaps, the 80 RPG pack's wood cracks pitched down, Kenney wood impacts, `tree-creaking`. Dousing: OpenGameArt
+  `steam-release-sounds` (CC0, bart) after a splash from the 100 CC0 pack.
+

@@ -1,11 +1,11 @@
 {
- "hash": "2844d32bb19897fd",
- "updated": "2026-11-11T13:54:24+07:00",
+ "hash": "067fec10604e65e7",
+ "updated": "2026-11-11T14:23:57+07:00",
  "changes": {
-  "date": "<t:1794380064:f>",
+  "date": "<t:1794381837:f>",
   "items": [
-   "New: Fire where it burns (sound)",
-   "New: Hit aftermath sounds (skill-tree Ruin abilities first) (in progress)"
+   "Done: Hit aftermath sounds (skill-tree Ruin abilities first)",
+   "New: Music stingers (mission start, objective, win, lose) (in progress)"
   ]
  },
  "snapshot": {
@@ -798,12 +798,21 @@
    },
    "sound-hit-aftermath": {
     "title": "Hit aftermath sounds (skill-tree Ruin abilities first)",
+    "status": "done",
+    "area": "Tools",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-11",
+    "order": 906
+   },
+   "sound-stingers": {
+    "title": "Music stingers (mission start, objective, win, lose)",
     "status": "doing",
     "area": "Tools",
     "needs_you": false,
     "branch": "claude/sound-natural-2",
     "updated": "2026-11-11",
-    "order": 906
+    "order": 907
    },
    "t01": {
     "title": "Profile the v0.07 worst-frame bump",
@@ -1496,25 +1505,25 @@
   },
   "branches": [
    {
+    "name": "claude/magical-lichterman-23d920",
+    "ahead": 260,
+    "behind": 35,
+    "date": "2026-11-11",
+    "subject": "art: God's Paths round 2 -- six centre-pool emblems and six power effects (burst + loop), drawn in code",
+    "pushed": false
+   },
+   {
     "name": "god/skill-tree-ui",
     "ahead": 259,
-    "behind": 34,
+    "behind": 35,
     "date": "2026-11-11",
     "subject": "fix: final-review wave -- no Back/Raise during the fade into Remembrance; the memory's slot stays focused after a cast and Esc opens its pause; Whisper blurb; no frozen clock; Veil lavender-grey; the tree keeps its state for the session",
     "pushed": false
    },
    {
-    "name": "claude/magical-lichterman-23d920",
-    "ahead": 257,
-    "behind": 34,
-    "date": "2026-11-11",
-    "subject": "docs: round 2 plan -- ring_rect is a 40 px statue column (64 overlaps Death/Dominion)",
-    "pushed": false
-   },
-   {
     "name": "claude/vfx-ability-effects-964aca",
     "ahead": 25,
-    "behind": 3,
+    "behind": 4,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
     "pushed": true
@@ -1522,7 +1531,7 @@
    {
     "name": "claude/zen-greider-6e47c5",
     "ahead": 25,
-    "behind": 3,
+    "behind": 4,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
     "pushed": false
@@ -1530,7 +1539,7 @@
    {
     "name": "feat/soldier-jobs",
     "ahead": 17,
-    "behind": 10,
+    "behind": 11,
     "date": "2026-11-11",
     "subject": "test: re-record references after final review fixes",
     "pushed": false
@@ -1540,13 +1549,13 @@
     "ahead": 0,
     "behind": 0,
     "date": "2026-11-11",
-    "subject": "feat: fire where it burns: crackle, catching, cracking timbers, dousing",
+    "subject": "feat: big hits leave debris raining down (skill-tree Ruin abilities first)",
     "pushed": true
    },
    {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 34,
+    "behind": 35,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
@@ -1554,7 +1563,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 86,
+    "behind": 87,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1562,7 +1571,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 371,
+    "behind": 372,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1570,7 +1579,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 329,
+    "behind": 330,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1579,7 +1588,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-11",
-   "subject": "feat: fire where it burns: crackle, catching, cracking timbers, dousing"
+   "subject": "feat: big hits leave debris raining down (skill-tree Ruin abilities first)"
   }
  }
 }

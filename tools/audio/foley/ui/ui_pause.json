@@ -1,0 +1,4 @@
+{"length": 0.6, "rms_db": -16.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 12, "damp": 6000}, "layers": [
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/book_02.ogg", "at": 0.0, "from": 0.32, "dur": 0.3, "pitch": -2, "hp": 80, "lp": 9000, "fade_in": 4, "fade_out": 150},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.0, "onset": true, "dur": 0.25, "gain_db": -8, "hp": 150, "lp": 6000, "fade_out": 40}
+]}

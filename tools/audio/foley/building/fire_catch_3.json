@@ -1,0 +1,5 @@
+{"length": 2.4, "rms_db": -15.0, "reverb": {"rt60": 0.8, "mix": 0.08, "predelay_ms": 10, "damp": 6000}, "layers": [
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.0, "onset": true, "pitch": -3.5, "hp": 40, "lp": 8000, "fade_out": 150},
+  {"src": "lib:wikimedia/Dry_grass_burning_in_open_fireplace.wav", "at": 0.05, "from": 15.0, "dur": 1.8, "pitch": -1.75, "hp": 200, "lp": 11000, "gain_db": -2, "fade_in": 250, "fade_out": 900},
+  {"src": "lib:oga/fire-crackling/fire-1.wav", "at": 0.15, "from": 0.0, "dur": 1.6, "hp": 150, "lp": 9000, "gain_db": -4, "fade_in": 200, "fade_out": 700}
+]}

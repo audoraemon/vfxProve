@@ -69,6 +69,10 @@ const ENDING_SECONDS := 3.0
 const ENDING_TIME_SCALE := 0.3
 ## The ascent's slow motion (v0.11 M1, spec §6: about 2 s) in place of the ending's ENDING_SECONDS, and its banner.
 const ASCEND_SECONDS := 2.0
+## The most of the ending one frame may use up (a hitch counts as 1/20 s), and what is left over that still counts as
+## done (float sums of 1/60 leave a femtosecond: 3 s must be 180 frames at 60 fps, not 181).
+const ENDING_MAX_STEP := 1.0 / 20.0
+const ENDING_EPSILON := 0.0001
 const ASCEND_BANNER := "YOU ASCEND"
 ## The chain's key (god P3, MS §2, plan Task 5): C, free among the mission keys (1-6, Tab, F, H, R, Q/E, Esc, F1). Only in a rite.
 const CHAIN_KEY := KEY_C
@@ -99,6 +103,8 @@ const WARNING_LOOK_AT := Vector2(-12.0, 8.0)
 const WARNING_TEST_END := 45.0
 
 var _bf: Battlefield
+## The zoom readout at the screen's right edge (shown after each wheel zoom; the Discord idea "Zoom cap").
+var _zoom_readout: ZoomReadout
 var _town: Town
 var _grid: WalkGrid
 var _crowd: Crowd
@@ -207,6 +213,8 @@ func _ready() -> void:
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
 	_bf.ctx.field.bounds = City.current().map()
+	_zoom_readout = ZoomReadout.new()
+	add_child(_zoom_readout)
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
 	# up a handler for every mission the player has played.
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
@@ -477,6 +485,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_rules.free_play = remembrance != ""
 	_bf.ctx.rules = _rules
 	_rules.over.connect(_on_over)
+	_rules.main_won.connect(func() -> void: Music.sting(&"music_sting_objective"))
 	# Nothing shows a banner until the HUD below is made: the director's setup and the town's responses may raise some.
 	var held: Array[String] = []
 	var hold := func(text: String) -> void: held.append(text)
@@ -1046,7 +1055,17 @@ func _play_ending() -> void:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
 		var wait := ASCEND_SECONDS if _rules.ascended else (RITE_SECONDS if _rite_won() else ENDING_SECONDS)
-		await get_tree().create_timer(wait, true, false, true).timeout
+		# Frame time counted from the next frame, each frame's share capped: a SceneTreeTimer made during _process is charged
+		# that whole frame's delta at once, so one long frame before the ending (a hitch on a loaded machine: 3 s and more)
+		# used to swallow the slow motion and report within the same frame -- before a Restart could come, or a fade-in end.
+		# Frames, not the wall clock: at --fixed-fps 60 it is 180 frames (ascent 120), as the timer was, so references stay
+		# deterministic. The delta is scaled by Engine.time_scale (the ending's 0.3, a hit's dip): dividing gives the real step.
+		var left := wait
+		while left > ENDING_EPSILON:
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return  # taken down during its ending: nothing to report to
+			left -= minf(get_process_delta_time() / maxf(Engine.time_scale, 0.001), ENDING_MAX_STEP)
 		if ended != _rules:
 			# A start() or next_act() came during the slow motion (v0.09): it restored the time scale, and this ending
 			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.
@@ -1153,6 +1172,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
 		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
 		_pan(Vector2.ZERO)
+		if is_instance_valid(_zoom_readout):
+			_zoom_readout.show_zoom(_bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
 		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.

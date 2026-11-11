@@ -149,8 +149,8 @@ func step(delta: float) -> void:
 		_stop()
 		return
 	_queue()
-	if state != State.LOADING:
-		return
+	if state != State.LOADING or _crowd.doors_shut():
+		return  # (every door shut, Every Door: the crowd waits on the bank; nobody steps aboard, the ship does not sail)
 	_board_in -= delta
 	if _loading >= 0.0:
 		_loading += delta

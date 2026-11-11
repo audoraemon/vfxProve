@@ -6,7 +6,7 @@ const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
 
 ## The user's Tier 1 picks (D2).
 const PAIRS := {"ruin": ["smite", "ember"], "death": ["deathmark", "pestilence"], "veil": ["doom", "blight"],
-	"passage": ["thorns", "mirror"], "decree": ["noleave", "belllies"], "dominion": ["whisper", "discord"]}
+	"passage": ["skylift", "windfall"], "decree": ["noleave", "belllies"], "dominion": ["whisper", "discord"]}
 
 
 ## What behaviour_check hands a policy: only `_slot_ready` is used by the shared pieces.

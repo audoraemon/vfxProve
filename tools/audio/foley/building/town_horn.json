@@ -1,0 +1,6 @@
+{"length": 4.6, "stereo": true, "peak_db": -1.0, "reverb": {"rt60": 2.6, "mix": 0.22, "predelay_ms": 30, "damp": 5000}, "layers": [
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Horns/horns-sus-ff-e2-PB-loop.wav", "at": 0.0, "from": 0.0, "dur": 1.25, "hp": 50, "lp": 7000, "fade_in": 60, "fade_out": 220},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Horns/horns-sus-ff-e3-PB-loop.wav", "at": 0.0, "from": 0.0, "dur": 1.25, "hp": 50, "lp": 7000, "gain_db": -9, "fade_in": 60, "fade_out": 220},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Horns/horns-sus-ff-e2-PB-loop.wav", "at": 1.1, "from": 0.1, "dur": 2.4, "pitch": 7, "hp": 50, "lp": 7000, "fade_in": 120, "fade_out": 1000},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Horns/horns-sus-ff-e3-PB-loop.wav", "at": 1.1, "from": 0.1, "dur": 2.4, "pitch": 7, "hp": 50, "lp": 7000, "gain_db": -9, "fade_in": 120, "fade_out": 1000}
+]}

@@ -1000,8 +1000,8 @@ static func _policies_written(t) -> void:
 
 
 ## Each type answers a watcher about to see a believer, with its own two powers and no filler: a soldier set on the road a few steps ahead of
-## the lamp of a household that has come out. Ruin, Death, Veil and Dominion strike or turn him at once; Decree calls the guard off; Passage has
-## its mirror out before the household comes (the way out past the wall).
+## the lamp of a household that has come out. Ruin, Death, Veil and Dominion strike or turn him at once; Decree calls the guard off; Passage lifts
+## the file out past the wall before he sees it (Skylift, set down outside).
 static func _policies_answer(t) -> void:
 	GodTree.dev_fill = true
 	for type: String in TYPES:
@@ -1020,26 +1020,25 @@ static func _policies_answer(t) -> void:
 		var ctx := {"rules": rules, "slots": slots, "d": d, "crowd": s.crowd, "memo": {}, "mission": null}
 		var bc := FakeBc.new()
 		_clear_watch(d)
-		if type != "passage":
-			d._come_out(0)
-			Kit.run_for(s, EscortDirector.TICK + DT)
-			var lead := d.lamp(0)
-			var line: Array = d.road(0)
-			var from_k := 0
-			var best := INF
-			for k in line.size():
-				var g := (lead.man as Person).ground_pos.distance_to(line[k])
-				if g < best:
-					best = g
-					from_k = k
-			var at: Vector2 = line[from_k]
-			var run := 0.0
-			for k in range(from_k + 1, line.size()):
-				run += (line[k - 1] as Vector2).distance_to(line[k])
-				at = line[k]
-				if run >= 6.0:
-					break  # six units of road ahead of the lamp: about eight seconds of its walk
-			Kit.arrive((d.patrols[0][0] as Person), at)
+		d._come_out(0)
+		Kit.run_for(s, EscortDirector.TICK + DT)
+		var lead := d.lamp(0)
+		var line: Array = d.road(0)
+		var from_k := 0
+		var best := INF
+		for k in line.size():
+			var g := (lead.man as Person).ground_pos.distance_to(line[k])
+			if g < best:
+				best = g
+				from_k = k
+		var at: Vector2 = line[from_k]
+		var run := 0.0
+		for k in range(from_k + 1, line.size()):
+			run += (line[k - 1] as Vector2).distance_to(line[k])
+			at = line[k]
+			if run >= 6.0:
+				break  # six units of road ahead of the lamp: about eight seconds of its walk
+		Kit.arrive((d.patrols[0][0] as Person), at)
 		var words := ""
 		var said := ""
 		for look in 60:
@@ -1050,7 +1049,7 @@ static func _policies_answer(t) -> void:
 			Kit.run_for(s, 0.1)
 		t.check(words != "" and not Hunts.GOD_T1.is_fill(words) and not calls.is_empty(), "%s answers a watcher on the road with a cast of its own (%s)" % [type, words])
 		if type == "passage" and not calls.is_empty():
-			t.check(Walls.outside(calls[0].extra.to) and words.begins_with("mirror"), "Passage folds the file out past the wall: its way out is outside (%s)" % [calls[0].extra])
+			t.check(Walls.outside(calls[0].extra.to) and words.begins_with("skylift"), "Passage lifts the file out past the wall: it is set down outside (%s)" % [calls[0].extra])
 		if type == "decree" and not calls.is_empty():
 			t.check(calls[0].extra.get("mode", "") == "guard" or words.begins_with("leaving"), "Decree calls the guard off or holds a circle (%s)" % words)
 		Kit.done(s)
@@ -1180,11 +1179,12 @@ static func _needed(d: HideFaithfulDirector) -> Array[Vector2]:
 
 ## Behavioural no-filler check (review of Task 9, M1; Ruling P5-T10-R2): every cast the six policies make, driven over three nights, lands on somebody the
 ## night still needs answered (a kill, mark, plague, whisper, discord or cage within 3.5 of a living watcher; the call of the guard within 16 of the soldiers
-## it takes; the mirror's way in on a road of a household not yet out of the walls), never a cast made only to end an idle stretch. Nights: the 0:00 start, a
+## it takes; a Skylift's beam within its radius of a believer out of doors), never a cast made only to end an idle stretch. Nights: the 0:00 start, a
 ## household out with a soldier on its road, and the idle night -- the first household done, the second 20 s from coming out (clock 120 s), the last cast 31 s
 ## back, the side gate's watch 60 s from its sight. There Dominion casts nothing: its whisper holds a man twenty seconds and is not cast sixty ahead; and
 ## Ruin and Veil cast nothing either (Death's mark queue reaches that far on its own, below): their idle lead (ruling P5-T9-R9, a gate watchman struck up to 70 s ahead once 30-38 s passed without a cast)
-## is retired by Task 17 (ruling P5-T17-R3), so every kill answers a watcher in its own power's lead.
+## is retired by Task 17 (ruling P5-T17-R3), so every kill answers a watcher in its own power's lead. Passage casts nothing there too: Windfall keeps Smite's
+## lead and Skylift waits for the household to come out.
 ## (Mutations: Dominion's idle lead restored in act_dominion -- it whispers the watchman at the gate at once; Smite's lead for the gate's watch put back
 ## to P5-T9-R9's 70 s -- "ruin: ... casts nothing (6 casts)"; either fails the idle-night check.)
 static func _no_filler_casts(t) -> void:
@@ -1244,18 +1244,15 @@ static func _no_filler_casts(t) -> void:
 					spy.casts[spy.casts.size() - 1]["did"] = did  # (what the cast names: "smite a patrol", "doom a watch", ...)
 				t.check((did == "") == (spy.casts.size() == before), "%s night %d: what the policy returns says whether it cast (%s)" % [type, night, did])
 				t.check(not Hunts.GOD_T1.is_fill(did), "%s night %d: the cast is not worded a filler (%s)" % [type, night, did])
-			var roads: Array = []
-			for i in d.households.size():
-				if not (d.households[i] as ExodusDirector.Household).done:
-					roads.append_array(d.road(i))
 			for c in spy.casts:
 				total += 1
 				var key := String(slots.find_key(c.slot))
 				idle_casts += 1 if night == 2 and key != "blight" else 0  # (Veil's Blight on the Bell Tower is its once-a-night set-piece, cast at the first look)
 				var near := false
-				if key == "mirror":
-					for q: Vector2 in roads:
-						near = near or (c.at as Vector2).distance_to(q) <= 1.0
+				if key == "skylift":
+					for ch: EscortDirector.Charge in d.charges:
+						near = near or (not d._resolved(ch) and MissionDirector._alive(ch.man) and not (ch.man as Person).inside \
+							and (c.at as Vector2).distance_to((ch.man as Person).ground_pos) <= SkyliftFx.RADIUS)
 				elif key == "blight":
 					var tower: Structure = (s.crowd as Crowd).bell.tower  # (the Bell Tower, so a seen death rings nothing: it ends no stretch, the tower is ruined for good)
 					near = tower != null and (c.at as Vector2).distance_to(tower.center()) <= 1.0
@@ -1277,7 +1274,7 @@ static func _no_filler_casts(t) -> void:
 			Kit.done(s)
 		t.check(total > 0, "%s: the policy casts over the three nights (%d casts)" % [type, total])
 		t.check(strays.is_empty(), "%s: every cast lands on somebody the night still needs answered (strays: %s)" % [type, ", ".join(strays)])
-		if type in ["dominion", "ruin", "veil"]:
+		if type in ["dominion", "ruin", "veil", "passage"]:
 			t.check(idle_casts == 0, "%s: on the idle night, with the watch 60 s from its sight, it casts nothing (%d casts)" % [type, idle_casts])
 		# (Death marks there: its queue -- MARK_LEAD and twenty seconds more for each man of the same hour still to be marked, a Death Mark being
 		# ready every twenty -- reaches the side gate's pair and the patrols, four men of one hour. That is its own lead, not the idle one.)

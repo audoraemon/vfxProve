@@ -8,8 +8,8 @@ extends RefCounted
 ##            Glacial Cataclysm on the captain's last leg; Death Mark on the next warden's guard while the warden waits.
 ##   veil     Blight the Bell Tower early (a seen death then rings nothing), Silent Doom aimed to take the guard with the man (_doom_aim());
 ##            Doom on the next warden's guard while he waits.
-##   passage  Mirrorfold laid across a man's road with its way out past the wall (walls stop him); Thornwall across the captain's last leg
-##            when the mirror cannot take him.
+##   passage  Skylift a man in the street, the captain first, out past the wall (walls stop him); Mirrorfold laid across a man's road with
+##            its way out past the wall while the lift cools; a Windfall of stone crushes the next warden's guard at his door while he waits.
 ##   decree   NO ROUTE (MS §9 open issue 1): Leaving Is Prohibited over the captain on his way, to delay him; recorded, never tuned around.
 ##   dominion Mind Whisper in relayed hops toward the way off the map, wardens and captain alike; Madness Bloom on the captain's company
 ##            when the whisper is cooling.
@@ -26,7 +26,7 @@ const LOADOUT := {
 	"ruin": ["smite", "solaris", "tornado"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
-	"passage": ["thorns", "mirror"],
+	"passage": ["skylift", "windfall", "mirror"],
 	"decree": ["noleave", "belllies", "magnify"],
 	"dominion": ["whisper", "discord", "madness"],
 }
@@ -43,16 +43,19 @@ const DOOR_REACH := 3.0
 ## fuse lives), and the captain's countdown (real seconds) at or under which the Glacial burst (impact 1.2 s, radius 5) is spent on his last leg.
 const DEATH_MARGIN := 0.8
 const GLACIAL_ETA := 30.0
-## Passage: how far along his road the way in is laid, the least road ahead of him that takes it (else the road from his next door), the
-## seconds before another is laid for the same man (a mirror lasts 30), and the Thornwall's distance ahead of the captain on his last leg.
+## Passage: how far along his road the way in is laid, the least road ahead of him that takes it (else the road from his next door), and the
+## seconds before another is laid for the same man (a mirror lasts 30).
 const MIRROR_ON := 6.0
 const MIRROR_ROAD := 5.0
 const MIRROR_RETRY := 40.0
-const THORN_AHEAD := 4.0
-## Passage: how far past the wall's margin the way out lies (the oval is 2.4 across).
+## Passage: how far past the wall's margin the way out (and the Skylift's setting down) lies (the oval is 2.4 across).
 const MIRROR_BEYOND := 2.0
-## Passage: the captain's countdown (real seconds) at or under which a Thornwall is laid across his last leg when the mirror cannot take him.
-const THORN_ETA := 40.0
+## Passage: the guard at the next man's door is crushed in the last this many seconds of the wait (Ruin's RUIN_PREP_LEAD), and the Windfall line laid
+## through him keeps more than FALL_CLEAR off the door (so no heap bars the man's way out) and off the other guards.
+const FALL_PREP_LEAD := 24.0
+const FALL_CLEAR := WindfallFx.KILL_R + 0.25
+## Passage: a man lifted is left alone this long: the light takes him T_TAKE after the cast, and the director's next look finds him out of the walls.
+const LIFT_HOLD := SkyliftFx.T_TAKE + 1.0
 ## Decree: the law is laid over the captain this many seconds ahead of where he walks (NoLeaveFx.T_SEAL).
 const LAW_AHEAD := 0.6
 ## Dominion: how far a hop of the whisper goes (REACH is 10).
@@ -235,12 +238,6 @@ static func _mark_holds(ctx: Dictionary, q: AssassinateDirector.Quarry) -> bool:
 	return true
 
 
-## The unit direction `p` walks in now (along his road a few seconds on); RIGHT when he stands still.
-static func _heading(p: Person) -> Vector2:
-	var ahead: Vector2 = GOD.road_ahead(p, 2.0)
-	return (ahead - p.ground_pos).normalized() if ahead.distance_to(p.ground_pos) > 0.2 else Vector2.RIGHT
-
-
 # --- Ruin ---------------------------------------------------------------------------------------------------------------------
 
 ## Smite each man in the street, the captain first, led ahead of his walk, where nobody would see him fall (a seen death tolls the bell and
@@ -400,14 +397,28 @@ static func _mirror_in(ctx: Dictionary, q: AssassinateDirector.Quarry) -> Vector
 	return Vector2.INF
 
 
-## A Mirrorfold across the road of the first man out (the captain first) who has a road to lay it on, its way out past the wall (walls stop him
-## there); else, for the captain's last leg inside THORN_ETA seconds of the Citadel with the mirror cooling, a Thornwall across his road.
+## The Skylift for the first man in the street (the captain first): taken where he will stand when the light takes (T_TAKE on along his road), with
+## whoever walks beside him, and set down out past the wall (_exit_spot()), where the walls stop him. While the lift cools, a Mirrorfold across the
+## road of the first man out who has a road to lay it on, its way out past the wall. With nobody in the street, a Windfall of stone crushes a guard at
+## the next man's door in the last FALL_PREP_LEAD seconds of the wait (Ruin's Smite there; a guard lifted out of the walls only walks back to his post),
+## laid along the door's side so it bars no way out (_fall_dir()).
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:
 		return ""
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
+	var lift: bool = bc._slot_ready(rules, slots, "skylift")
+	var street := _street(d)
+	if lift:
+		for q in street:
+			var from: Vector2 = GOD.road_ahead(q.target, SkyliftFx.T_TAKE)
+			var to := _exit_spot(ctx, from)
+			if Walls.outside(from) or to == Vector2.INF:
+				continue
+			ctx.memo["lift_%d" % q.index] = _now(ctx)
+			rules.cast(int(slots.skylift), from, {"to": to})
+			return "skylift %s out past the wall, to (%.1f, %.1f)" % [q.label, to.x, to.y]
 	var out: Array[AssassinateDirector.Quarry] = []
 	for q in d.quarries:
 		if not q.dead and q.state in [AssassinateDirector.State.WALKING, AssassinateDirector.State.VISITING] and MissionDirector._alive(q.target):
@@ -417,24 +428,45 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 				out.append(q)
 	for q in out:
 		var key := "mirror_%d" % q.index
-		if not bc._slot_ready(rules, slots, "mirror") or _now(ctx) - float(ctx.memo.get(key, -999.0)) < MIRROR_RETRY:
+		if not bc._slot_ready(rules, slots, "mirror") or _now(ctx) - float(ctx.memo.get(key, -999.0)) < MIRROR_RETRY \
+				or _now(ctx) - float(ctx.memo.get("lift_%d" % q.index, -999.0)) < LIFT_HOLD:
 			continue
 		var way_in := _mirror_in(ctx, q)
 		if way_in == Vector2.INF or Walls.outside(way_in):
 			continue
 		var way_out := _exit_spot(ctx, way_in)
-		if way_out == Vector2.INF or way_in.distance_to(way_out) < MirrorfoldFx.MIN_APART:
+		if way_out == Vector2.INF or way_in.distance_to(way_out) < MirrorfoldFx.OVAL_MIN_APART:
 			continue
 		if GOD.cast_mirror(bc, ctx, way_in, way_out):
 			ctx.memo[key] = _now(ctx)
 			return "mirror %s: in %.1f from him, out at (%.1f, %.1f)" % [q.label, way_in.distance_to(q.target.ground_pos), way_out.x, way_out.y]
-	var cap := d.captain()
-	if cap != null and d._warned(cap) and MissionDirector._alive(cap.target) and not cap.target.inside and bc._slot_ready(rules, slots, "thorns") \
-			and d.captain_eta() / _rate(ctx) <= THORN_ETA and not bc._slot_ready(rules, slots, "mirror"):
-		var heading := _heading(cap.target)
-		rules.cast(int(slots.thorns), GOD.road_ahead(cap.target, THORN_AHEAD), {"dir": heading.orthogonal()})
-		return "thornwall across the captain's last leg"
+	if street.is_empty() and bc._slot_ready(rules, slots, "windfall"):
+		var guards := _door_guards(d, FALL_PREP_LEAD)
+		for g in guards:
+			var dir := _fall_dir(d, g, guards)
+			if dir != Vector2.ZERO:
+				rules.cast(int(slots.windfall), g.ground_pos, {"dir": dir, "mode": "stone"})
+				return "windfall on the guard at the door"
 	return ""
+
+
+## The direction of a Windfall line through guard `g` at the next man's door: across the line from the door to him, so the line keeps FALL_CLEAR off the
+## door and off the other guards `guards`; Vector2.ZERO when it cannot.
+static func _fall_dir(d: ExpelInquisitorDirector, g: Person, guards: Array[Person]) -> Vector2:
+	var next := d._next_waiting()
+	var door: Vector2 = d.hide_door if d._is_captain(next) else next.stop_doors[0]
+	var dir := (g.ground_pos - door).orthogonal().normalized()
+	if dir == Vector2.ZERO:
+		return dir
+	var clear: Array[Vector2] = [door]
+	for o in guards:
+		if o != g:
+			clear.append(o.ground_pos)
+	for c in clear:
+		var t := clampf((c - g.ground_pos).dot(dir), -WindfallFx.LENGTH * 0.5, WindfallFx.LENGTH * 0.5)
+		if c.distance_to(g.ground_pos + dir * t) <= FALL_CLEAR:
+			return Vector2.ZERO
+	return dir
 
 
 # --- Decree -------------------------------------------------------------------------------------------------------------------

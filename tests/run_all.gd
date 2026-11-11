@@ -5,6 +5,7 @@ const SUITES := [
 	"res://tests/test_enemy_field.gd",
 	"res://tests/test_fx_timeline.gd",
 	"res://tests/test_sfx_catalog.gd",
+	"res://tests/test_ambience.gd",
 	"res://tests/test_environment.gd",
 	"res://tests/test_freeze.gd",
 	"res://tests/test_structure_roles.gd",
@@ -48,6 +49,7 @@ const SUITES := [
 	"res://tests/test_town_round4.gd",
 	"res://tests/test_town_round7.gd",
 	"res://tests/test_town_round9.gd",
+	"res://tests/test_animals.gd",
 	"res://tests/test_power_book.gd",
 	"res://tests/test_walk_grid.gd",
 	"res://tests/test_person.gd",
@@ -104,6 +106,26 @@ const SUITES := [
 	"res://tests/test_saint.gd",
 	"res://tests/test_sanctuary.gd",
 	"res://tests/test_anathema.gd",
+	"res://tests/test_passage_t1.gd",
+	"res://tests/test_skylift.gd",
+	"res://tests/test_hellspark.gd",
+	"res://tests/test_pilgrim.gd",
+	"res://tests/test_deep.gd",
+	"res://tests/test_houndgate.gd",
+	"res://tests/test_allroads.gd",
+	"res://tests/test_yesterday.gd",
+	"res://tests/test_everydoor.gd",
+	"res://tests/test_fargate.gd",
+	"res://tests/test_foldward.gd",
+	"res://tests/test_heavendoor.gd",
+	"res://tests/test_deaddoors.gd",
+	"res://tests/test_passage_lv_a.gd",
+	"res://tests/test_passage_lv_b.gd",
+	"res://tests/test_passage_lv_c.gd",
+	"res://tests/test_passage_lv_d.gd",
+	"res://tests/test_passage_lv_e.gd",
+	"res://tests/test_see_through.gd",
+	"res://tests/test_unstick.gd",
 	"res://tests/test_corps.gd",
 	"res://tests/test_marshals.gd",
 	"res://tests/test_escorts.gd",
@@ -211,6 +233,7 @@ const SUITES := [
 	"res://tests/test_legend.gd",
 	"res://tests/test_skill_tree.gd",
 	"res://tests/test_hide_ui.gd",
+	"res://tests/test_zoom_readout.gd",
 	"res://tests/test_soldier_minds.gd",
 	"res://tests/test_routes.gd",
 	"res://tests/test_audio_mix.gd",
@@ -284,6 +307,7 @@ func _reset_world() -> void:
 	Structure.cast_shadows = true  # a town look's statics (v0.12 lighting): a suite that leaked a DAY or NIGHT town must not reach the next
 	Structure.lamp_glow = true
 	Structure.steady_light = false
+	AnimalPack.enabled = false  # the suite and its checksums run without the town's animals; test_animals turns them on
 	TownLook.active = Town.Look.CURRENT
 	Town._look_owner = 0
 

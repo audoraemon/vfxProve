@@ -8,6 +8,9 @@ extends FxTimeline
 
 const RADIUS := 1.5
 const SEED := 0.02
+## A dog or cat in the circle goes mad ANIMAL_DELAY seconds after the cast, for ANIMAL_RAGE seconds.
+const ANIMAL_DELAY := 1.5
+const ANIMAL_RAGE := 18.0
 const DUSK := [Color("3a1838"), Color("6a2a58"), Color("a04060"), Color(0.2, 0.05, 0.15, 0.5)]
 const DUSK_LIGHT := Color(0.45, 0.15, 0.35)
 
@@ -45,6 +48,8 @@ func _build() -> void:
 	if PowerBook.twist_at(extra, "madness") and ctx.crowd != null and ctx.crowd.madness != null:
 		for p in afflicted:
 			ctx.crowd.madness.direct(p)  # Directed Frenzy: the seeds frenzy at Broken, on the nearest soldier first
+	# Dogs and cats in the circle turn on whoever is near once the madness has had a moment (AnimalPack).
+	at(ANIMAL_DELAY, func() -> void: AnimalPack.cast(ctx, origin, lv_radius, Animal.Spell.ATTACK, ANIMAL_RAGE))
 	ctx.play(&"q_madness", origin)
 	if ctx.impact == null or not is_inside_tree():
 		return

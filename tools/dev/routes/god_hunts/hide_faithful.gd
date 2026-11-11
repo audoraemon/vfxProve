@@ -8,7 +8,7 @@ extends RefCounted
 ## inquisitors on their list. A player reads the night one way: for each watcher, when will a believer first come within sight of him, on the
 ## road as it lies ahead (_view()); the type's own two powers then answer the soonest, in the lead its power needs (a kill lands within a
 ## second, a mark in ten, a law holds fifteen). A seized believer is freed by taking his seizer away (_seizers()). No policy casts only to
-## end an idle stretch (T1R D38): every cast here is an answer to a watcher, a seizer or the search, or the type's one set-piece (the mirror).
+## end an idle stretch (T1R D38): every cast here is an answer to a watcher, a seizer or the search, or a lift of believers out of the walls (Skylift).
 ## Since Task 17 the night is rebuilt: the second household sets out when the watch is broken (every soldier dead or rallied), a seized believer is
 ## marched at least 20 s, Decree's law holds an inquisitor still, and the believers hurry once nothing can seize them; the reading follows the search
 ## onto a household's trail (_trailing()), and no kill is made ahead of its power's own lead (P5-T9-R9's idle lead retired, ruling P5-T17-R3).
@@ -22,7 +22,7 @@ const LOADOUT := {
 	"ruin": ["smite", "ember"],
 	"death": ["deathmark", "pestilence"],
 	"veil": ["doom", "blight"],
-	"passage": ["thorns", "mirror"],
+	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "belllies"],
 	"dominion": ["whisper", "discord"],
 }
@@ -71,11 +71,16 @@ const GUARD_SPAN := 20.0
 ## Discord on a tight pair the same.
 const WHISPER_LEAD := 9.0
 const DISCORD_LEAD := 10.0
-## Passage: the mirror's way in is laid this many seconds of the household's walk ahead of its lamp, its way out this far beyond the wall.
-const MIRROR_AHEAD := 3.5
-const MIRROR_BEYOND := 2.5
-## A household comes out within this many seconds: the mirror for it is laid (it lives thirty).
-const MIRROR_FOR := 22.0
+## Passage: Skylift takes whoever stands within its RADIUS of the beam's middle at the take (T_TAKE on). The believers it lifts stand within RADIUS - LIFT_FIT
+## of the middle at the take, every watcher farther than RADIUS + LIFT_PAD from it (now and at the take); the middle may lie up to LIFT_OFF off the
+## believers' own middle to leave a seizer out. Where they are set down is outside ground at least LAND_CLEAR from every watch post and living watcher.
+const LIFT_FIT := 0.4
+const LIFT_PAD := 0.4
+const LIFT_OFF := 2.0
+const LAND_CLEAR := EscortDirector.SIGHT + 2.5
+## Passage: a Windfall is laid through the soonest watcher when his sight of a believer is this near (it lands in under a second, as Smite does), and only
+## with every segment's middle at least HIT_R + BLOW_GAP from every believer.
+const FALL_LEAD := 13.0
 
 
 ## The director when the night is on, else null.
@@ -561,61 +566,150 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Passage: Thornwall, Mirrorfold (Thornwall is drafted and not cast: no trail is ever taken in these runs, a wall across the search's street changed nothing) ---
+# --- Passage: Skylift, Windfall ---
 
-## Where household `i`'s mirror lies: the way in on its road, MIRROR_AHEAD seconds of the walk beyond where its lamp is (from the door while it
-## is inside), and the way out past the wall: the outside ground nearest the way in, pushed MIRROR_BEYOND farther out (and kept off the gates'
-## outer posts), with room all round for the file. {in, out}, empty when no way out is found.
-static func _mirror_for(bc, ctx: Dictionary, d: HideFaithfulDirector, i: int) -> Dictionary:
-	var rc := _road(ctx, d, i)
-	var h: ExodusDirector.Household = d.households[i]
-	var lead := d.lamp(i)
-	var from := 0.0
-	if h.out and lead != null:
-		from = _progress(rc, (lead.man as Person).ground_pos)
-	var speed := maxf(Person.PANIC_SPEED * d.believer_pace(), 0.3)
-	var way_in := _point(rc, from + MIRROR_AHEAD * speed + 2.0)
-	var spot: Vector2 = GOD_T1.outside_spot(bc, ctx, way_in, 14.0)
-	if spot == Vector2.INF:
-		return {}
-	var away := (spot - way_in).normalized()
-	var way_out := spot
-	for k in 8:
-		var try := spot + away * (MIRROR_BEYOND + 0.5 * float(k))
-		if (ctx.crowd as Crowd)._grid.walkable(try) and Walls.outside(try + away * 1.5) and way_in.distance_to(try) >= MirrorfoldFx.MIN_APART:
-			way_out = try
-			break
-	# Not within sight of an outer post (the fold sets the file down out of the walls, and an outer post sees them first).
+## Where a Skylift takes `takes` (their places at the take) and none of `avoid` (watchers' places, now and at the take): the beam's middle, the takers'
+## own middle first and then points up to LIFT_OFF round it; Vector2.INF for none.
+static func _lift_mid(takes: Array[Vector2], avoid: Array[Vector2]) -> Vector2:
+	var centre := Vector2.ZERO
+	for q in takes:
+		centre += q
+	centre /= maxf(float(takes.size()), 1.0)
+	for k in 5:
+		var off := LIFT_OFF * float(k) / 4.0
+		for i in (1 if k == 0 else 12):
+			var c := centre + Vector2.from_angle(TAU * float(i) / 12.0) * off
+			var ok := true
+			for q in takes:
+				ok = ok and q.distance_to(c) <= SkyliftFx.RADIUS - LIFT_FIT
+			for q in avoid:
+				ok = ok and q.distance_to(c) > SkyliftFx.RADIUS + LIFT_PAD
+			if ok:
+				return c
+	return Vector2.INF
+
+
+## Where the lifted are set down: outside ground (GOD_T1.outside_spot()) near `from`, each of `offsets` from it walkable and out of the walls, and LAND_CLEAR
+## from every watch post and every living watcher (a watcher there would see them first); Vector2.INF for none.
+static func _landing(bc, ctx: Dictionary, d: HideFaithfulDirector, from: Vector2, offsets: Array[Vector2]) -> Vector2:
+	var grid: WalkGrid = (ctx.crowd as Crowd)._grid
+	var eyes: Array[Vector2] = []
 	for post: Vector2 in d.watch_posts:
-		if post.distance_to(way_out) < EscortDirector.SIGHT + 2.5:
-			return {}
-	return {"in": way_in, "out": way_out}
+		eyes.append(post)
+	for v: Variant in d._watchers():
+		if MissionDirector._alive(v) and not (v as Person).inside:
+			eyes.append((v as Person).ground_pos)
+	for reach: float in [14.0, 20.0, 28.0]:
+		var spot: Vector2 = GOD_T1.outside_spot(bc, ctx, from, reach)
+		if spot == Vector2.INF:
+			continue
+		var away := (spot - from).normalized()
+		for k in 10:
+			var c := spot + away * (1.5 + 0.5 * float(k))
+			var ok := true
+			for off in offsets:
+				ok = ok and Walls.outside(c + off) and (grid == null or grid.walkable(c + off))
+			for e in eyes:
+				ok = ok and e.distance_to(c) >= LAND_CLEAR
+			if ok:
+				return c
+	return Vector2.INF
 
 
-## Mirrorfold: the household about to come out (or walking) is folded out past the wall at once -- the way in laid across its road a few seconds
-## ahead of the lamp, the way out beyond the wall, the whole file stepping on it one by one. The mirror lives 30 s and takes 54 to ready: one
-## household each. (The idle between the two mirrors is the first one's cooldown, 54.2 s: ruling P5-T9-R9 / P5-T11-R2.)
+## A lift of `members` (believers, out of doors) out of the walls: {at, to, n}, or {} when no beam's middle leaves every watcher out or no landing is
+## clear. The middle takes them where they will stand at the take; the landing keeps each one's place round it.
+static func _lift_plan(bc, ctx: Dictionary, d: HideFaithfulDirector, members: Array[Person]) -> Dictionary:
+	if members.is_empty():
+		return {}
+	var takes: Array[Vector2] = []
+	for p in members:
+		takes.append(GOD_T1.road_ahead(p, SkyliftFx.T_TAKE))
+	var avoid: Array[Vector2] = []
+	for v: Variant in d._watchers():
+		if MissionDirector._alive(v) and not (v as Person).inside:
+			avoid.append((v as Person).ground_pos)
+			avoid.append(GOD_T1.road_ahead(v as Person, SkyliftFx.T_TAKE))
+	var mid := _lift_mid(takes, avoid)
+	if mid == Vector2.INF:
+		return {}
+	var offsets: Array[Vector2] = []
+	for q in takes:
+		offsets.append(q - mid)
+	var to := _landing(bc, ctx, d, mid, offsets)
+	if to == Vector2.INF:
+		return {}
+	return {"at": mid, "to": to, "n": members.size()}
+
+
+## The believers of household `i` out of doors and free (not seized, not resolved).
+static func _free_members(d: HideFaithfulDirector, i: int) -> Array[Person]:
+	var out: Array[Person] = []
+	for c: EscortDirector.Charge in (d.households[i] as ExodusDirector.Household).members:
+		if d._resolved(c) or c.held or not MissionDirector._alive(c.man) or (c.man as Person).inside:
+			continue
+		out.append(c.man as Person)
+	return out
+
+
+## A Windfall line through watcher `p` where he will stand as the load lands (T_DROP), turned in steps of 30 degrees until every segment's middle lies
+## HIT_R + BLOW_GAP or more from every believer (now and as it lands): the load crushes him and spares them. {at, dir}, or {} for none.
+static func _fall_on(bc, d: HideFaithfulDirector, p: Person) -> Dictionary:
+	var at := GOD_T1.road_ahead(p, WindfallFx.T_DROP)
+	var spare: Array[Vector2] = []
+	for c: EscortDirector.Charge in d.charges:
+		if d._resolved(c) or not MissionDirector._alive(c.man) or (c.man as Person).inside:
+			continue
+		spare.append((c.man as Person).ground_pos)
+		spare.append(GOD_T1.road_ahead(c.man as Person, WindfallFx.T_DROP))
+	for b: Variant in bc._exodus_flock(d):
+		spare.append((b as Person).ground_pos)
+	for k in 6:
+		var dir := Vector2.RIGHT.rotated(PI / 6.0 * float(k))
+		var clear := true
+		for r in WindfallFx.rects(at, dir):
+			for q in spare:
+				clear = clear and r.get_center().distance_to(q) >= WindfallFx.HIT_R + BLOW_GAP
+		if clear:
+			return {"at": at, "dir": dir}
+	return {}
+
+
+## Skylift takes believers out of the walls: a seized one first (the beam's middle laid off him so his seizer stays behind), then a household that is out
+## of doors -- the whole file in one beam, set down on outside ground no post or watcher sees, where it is out at once. Windfall crushes what the lift does
+## not answer: a seizer whose believer stands clear of the line, then the soonest watcher within FALL_LEAD of his sight of a believer. Loud: the kill rings
+## the alarm and the rally takes the rest of the watch.
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := _hf(ctx)
 	if d == null:
 		return ""
-	var memo: Dictionary = ctx.memo
-	if _ready(bc, ctx, "mirror"):
+	if _ready(bc, ctx, "skylift"):
+		for sz: Dictionary in _seizers(d):
+			var one: Array[Person] = [sz.b as Person]
+			var plan := _lift_plan(bc, ctx, d, one)
+			if not plan.is_empty():
+				_cast(ctx, "skylift", plan.at, {"to": plan.to})
+				return "skylift a seized believer out of a %s's hands, to (%.1f, %.1f)" % [sz.kind, plan.to.x, plan.to.y]
 		for i in d.households.size():
 			var h: ExodusDirector.Household = d.households[i]
-			if h.done or memo.get("folded_%d" % i, false):
+			if h.done or not h.out:
 				continue
-			var live := false
-			for c: EscortDirector.Charge in h.members:
-				live = live or (not d._resolved(c) and not c.held)
-			if not live or (not h.out and d.due_in(i) > MIRROR_FOR):
+			var plan := _lift_plan(bc, ctx, d, _free_members(d, i))
+			if not plan.is_empty():
+				_cast(ctx, "skylift", plan.at, {"to": plan.to})
+				return "skylift %s out (%d), to (%.1f, %.1f)" % [h.words, plan.n, plan.to.x, plan.to.y]
+	if _ready(bc, ctx, "windfall"):
+		for sz: Dictionary in _seizers(d):
+			var fall := _fall_on(bc, d, sz.s)
+			if not fall.is_empty():
+				_cast(ctx, "windfall", fall.at, {"dir": fall.dir})
+				return "windfall on a %s seizer" % sz.kind
+		for th: Dictionary in _view(ctx, d).threats:
+			if float(th.t) > FALL_LEAD:
 				continue
-			var m := _mirror_for(bc, ctx, d, i)
-			if m.is_empty():
-				continue
-			_cast(ctx, "mirror", m["in"], {"to": m["out"]})
-			memo["folded_%d" % i] = true
-			return "mirror %s out: in at (%.1f, %.1f), out at (%.1f, %.1f)" % [h.words, m["in"].x, m["in"].y, m["out"].x, m["out"].y]
+			var fall := _fall_on(bc, d, th.p)
+			if not fall.is_empty():
+				_cast(ctx, "windfall", fall.at, {"dir": fall.dir})
+				return "windfall on a %s" % th.kind
 	return ""
 
 

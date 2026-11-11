@@ -1,0 +1,3 @@
+{"length": 0.8, "rms_db": -17.0, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/dog-grunt/dog-frieda-grunt-96khz-01.flac", "at": 0.0, "from": 0.1, "dur": 0.45, "hp": 70, "lp": 10000, "fade_in": 4, "fade_out": 80, "pitch": -1.5}
+]}

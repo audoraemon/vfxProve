@@ -245,9 +245,9 @@ static func _learn_at_compat(t) -> void:
 
 static func _costs(t) -> void:
 	var s := _screen("ruin", 1, 1)
-	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("thorns") == 0, "a neighbour's power needs 2 points, not 1")
+	t.check(s.learn_at(2, 1, 0) == "points" and s._slot.level_of("skylift") == 0, "a neighbour's power needs 2 points, not 1")
 	s._slot.points = 2
-	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("thorns") == 1 and s._slot.points == 0, "and spends 2")
+	t.check(s.learn_at(2, 1, 0) == "" and s._slot.level_of("skylift") == 1 and s._slot.points == 0, "and spends 2")
 	s.free()
 
 

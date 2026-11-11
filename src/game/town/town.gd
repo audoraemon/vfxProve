@@ -87,6 +87,8 @@ func build(env: EnvironmentField, ground: Node2D = null, shake: CameraShake = nu
 	var ground_tint := TownLook.ground_tint(look)
 	var light_tint := TownLook.light_tint(look)
 	env.structure_destroyed.connect(_on_structure_destroyed)
+	if not env.decor_removed.is_connected(_on_decor_removed):
+		env.decor_removed.connect(_on_decor_removed)
 	if env.lights != null:
 		env.lights.tint = light_tint
 		if look != Look.CURRENT:
@@ -338,6 +340,8 @@ func open_postern() -> void:
 func teardown() -> void:
 	if _env.structure_destroyed.is_connected(_on_structure_destroyed):
 		_env.structure_destroyed.disconnect(_on_structure_destroyed)
+	if _env.decor_removed.is_connected(_on_decor_removed):
+		_env.decor_removed.disconnect(_on_decor_removed)
 	for s in _built:
 		if is_instance_valid(s):
 			_env.remove(s, false)
@@ -392,6 +396,15 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 
 
 ## Free a node now if it never entered the tree, else at the end of the frame.
+## A decor piece the field let go of (EnvironmentField.remove_decor(): Skylift carried it off): forgotten here too,
+## its stand-ins with it, before the field frees them.
+func _on_decor_removed(d: Decor) -> void:
+	_decor.erase(d)
+	if is_instance_valid(d):
+		for f in d.followers:
+			_decor.erase(f)
+
+
 func _free(n: Node) -> void:
 	if not is_instance_valid(n):
 		return

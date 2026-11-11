@@ -1,0 +1,3 @@
+{"length": 1.21, "rms_db": -16.6, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:oga/kitten-mew/kitten_mew-1.wav", "at": 0.0, "from": 0.03, "dur": 0.86, "hp": 180, "lp": 10000, "fade_in": 4, "fade_out": 80}
+]}

@@ -106,11 +106,11 @@ const RING_REACH := 1.0
 const VOICE_BUDGET := 4.0
 const VOICES_PER_CAST := 3
 
-## The sound of a town running: a looping bed whose level follows how many citizens are running -- silent with
-## none, full at BED_FULL -- easing at BED_EASE a second so it swells and fades instead of jumping.
+## The sound of a town running: a panic level that follows how many citizens are running -- none with nobody,
+## full at BED_FULL -- easing at BED_EASE a second so it swells and fades instead of jumping. The Ambience plays the
+## crowd's beds and cries by it (natural sound pass 3).
 const BED_FULL := 40.0
 const BED_EASE := 1.5
-const BED_DB := -8.0
 
 var citizens: Array[Person] = []
 var soldiers: Array[Person] = []
@@ -120,6 +120,9 @@ var spawned_citizens := 0
 var routine: RoutineManager
 ## The dangers people know of (v0.04 local awareness).
 var threats := ThreatManager.new()
+## The town's short memory (TimeTrail): where everyone stood and what they were doing, the last TimeTrail.KEEP seconds,
+## for the powers that turn people back (Yesterday's Door). Written at the end of the crowd's frame; it changes nothing.
+var trail := TimeTrail.new()
 ## A frightened citizen's fright reaches the calm people beside it after a moment: [due clock, person].
 var _spreads: Array = []
 var _watch_in := 0.0
@@ -156,6 +159,11 @@ var ferry: RiverFerry
 var plague: PlagueManager
 ## Madness Bloom's madness (a Disorder status); made by spawn().
 var madness: MadnessManager
+## The town's dogs and cats (AnimalPack); made by spawn() when AnimalPack.enabled, else null.
+var animals: AnimalPack
+## The visitors from the other side walking the town now (Visitors.setup() adds a pack, its clear() takes it out), for
+## the powers that move whoever walks a place (The Folded Ward).
+var visitors: Array[Visitors] = []
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
@@ -166,6 +174,9 @@ var _freeze_left := 0.0
 var _veils: Array = []
 ## What the town has been told a building is (mark_structure()): Structure -> [mark, until] on the crowd's clock.
 var _struct_marks := {}
+## The rule every door in town obeys (set_doors()): &"shut", &"open" or &"" for none, until _doors_until on the crowd's clock.
+var _doors := &""
+var _doors_until := -INF
 ## The soldiers' roles (v0.07); made by spawn().
 var marshals: MarshalManager
 ## The patrols' escorts for the responders (v0.07); made by spawn().
@@ -201,8 +212,11 @@ var voices_played := 0
 var _voice_tokens := VOICE_BUDGET
 ## A death you can hear (v0.11.2): asked once for every body that falls, in _on_killed(). Pure; draws no number from any rng.
 var deaths := DeathVoices.new()
-var _bed: AudioStreamPlayer
+## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
+var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
+## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
+var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
 ## crowd (unlike the frozen pause) keeps processing for the few frames Battlefield.quit() waits out.
 var _bed_stopped := false
@@ -213,6 +227,8 @@ var _town: Town
 var _grid: WalkGrid
 var _parent: Node2D
 var _rng := RandomNumberGenerator.new()
+## True while spawn() deals the people out: _spot_near() leaves points in pockets where they fall until _onto_streets().
+var _spawning := false
 ## Gate -> the crowd clock time it may pass someone again.
 var _gate_next := {}
 ## Gate -> its queue spots, nearest the doorway first. Built when the town is first asked about, per gate.
@@ -307,6 +323,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	field.enemy_killed.connect(_on_killed)
+	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
 		town.citadel.health_changed.connect(_on_citadel_health)
 		town.citadel.fallen.connect(_on_citadel_fallen)
@@ -330,6 +347,7 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 	for s in _env.structures():
 		if s.role == &"house":
 			homes.append(s)
+	_spawning = true
 	var anchors := _snapped_anchors()
 	var plan := _district_plan(City.current().spawn_roles(), citizen_count, anchors)
 	var at_home := 0
@@ -357,6 +375,8 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 	gate_interval = City.current().gate_interval()
 	for spot in _soldier_posts(soldier_count):
 		soldiers.append(_add_person(true, spot))
+	_spawning = false
+	_onto_streets(anchors)
 	_assign_corps()
 	_start_loops()
 	var no_stalls: Array[Vector2] = []
@@ -397,6 +417,11 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 		var first: Node = citizens[0] if not citizens.is_empty() else (soldiers[0] if not soldiers.is_empty() else null)
 		if first != null and first.get_parent() == _parent:
 			_parent.move_child(_ticker, first.get_index())
+	# Last of all, so nothing made before them is numbered differently; their own rng (seed + AnimalPack.SEED_OFFSET).
+	if AnimalPack.enabled and animals == null:
+		animals = AnimalPack.new().setup(self, _grid, _parent, _seed)
+		_parent.add_child(animals)
+		animals.spawn()
 
 
 ## The drawer over the people (z 60), where short-lived effects such as the plague's puffs go; null before spawn().
@@ -564,14 +589,52 @@ func _job_profile(plan: Array, anchors: Dictionary) -> CitizenProfile:
 	return pr
 
 
-## Walkable ground within `spread` of `about`, or the nearest walkable point to it.
+## Walkable ground within `spread` of `about`, or the nearest walkable point to it; once the people are spawned, either
+## moved to the nearest ground with a route to the streets when it lies in a pocket the grid could not join
+## (WalkGrid.on_streets()), drawing no more numbers for that.
 func _spot_near(about: Vector2, spread: float) -> Vector2:
 	for attempt in 8:
 		var candidate := about + Vector2(_rng.randf_range(-spread, spread), _rng.randf_range(-spread, spread))
 		if _grid.walkable(candidate):
-			return candidate
+			return candidate if _spawning else _on_streets(candidate)
 	var free := _grid.nearest_walkable(about)
-	return free if free != Vector2.INF else about
+	if free == Vector2.INF:
+		return about
+	return free if _spawning else _on_streets(free)
+
+
+## The people just spawned and the city's `anchors` (as _snapped_anchors() made them), every point in a pocket the grid
+## could not join moved to the nearest ground with a route to the streets: each citizen's home, work and leisure spots,
+## each person's anchor (and where it stands, if there). Run once the spawn has dealt everyone out, so the spawn draws the
+## same numbers as it always did and only the points in pockets move.
+func _onto_streets(anchors: Dictionary) -> void:
+	for k in anchors:
+		var pts: Array[Vector2] = anchors[k]
+		for i in pts.size():
+			pts[i] = _on_streets(pts[i])
+	for p: Person in citizens + soldiers:
+		var a := _on_streets(p.anchor)
+		if a != p.anchor:
+			if p.ground_pos == p.anchor:
+				p.ground_pos = a
+				p._target = a
+			p.anchor = a
+		var pr := p.profile
+		if pr == null:
+			continue
+		pr.home = _on_streets(pr.home)
+		if pr.works():
+			pr.work = _on_streets(pr.work)
+		for i in pr.leisure.size():
+			pr.leisure[i] = _on_streets(pr.leisure[i])
+
+
+## `g`, or the nearest ground with a route to the streets when it lies in a pocket off them (`g` when there is none).
+func _on_streets(g: Vector2) -> Vector2:
+	if _grid.on_streets(g):
+		return g
+	var w := _grid.nearest_walkable(g, WalkGrid.SNAP_CELLS, true)
+	return w if w != Vector2.INF else g
 
 
 func _add_person(is_soldier: bool, at: Vector2) -> Person:
@@ -762,10 +825,15 @@ static func bed_level_for(running: int) -> float:
 	return clampf(float(running) / BED_FULL, 0.0, 1.0)
 
 
+## How much the town is panicking, 0 to 1: the panic bed's own level (the ambience dips under it).
+func panic_level() -> float:
+	return _bed_level
+
+
 ## The mission paused (or the results are up over it): hold the bed where it is.
 func pause_bed(paused: bool) -> void:
-	if _bed != null:
-		_bed.stream_paused = paused
+	if _ambience != null:
+		_ambience.pause(paused)
 
 
 ## Silence the bed outright (the mission is quitting): unlike pause_bed(), nothing resumes it -- the crowd keeps
@@ -775,8 +843,8 @@ func pause_bed(paused: bool) -> void:
 ## a bed still playing at process exit leaks its audio playback.
 func stop_bed() -> void:
 	_bed_stopped = true
-	if _bed != null:
-		_bed.stop()
+	if _ambience != null:
+		_ambience.stop()
 
 
 func alive_citizens() -> int:
@@ -896,6 +964,9 @@ func _advance(delta: float) -> void:
 		_purge_in = 1.0
 		_field.purge()
 	_update_bed(delta)
+	var t_trail := BenchProf.begin()
+	trail.step(delta, citizens, soldiers)
+	BenchProf.add(&"trail", t_trail)
 
 
 ## Rows fanned out in front of a gate's doorway on the town side, starting QUEUE_DEPTH0 in (beyond the wall's
@@ -963,6 +1034,7 @@ func _gates() -> void:
 		if is_instance_valid(p) and (p.passing_gate != null or p.mind == Person.Mind.FLEE):
 			moving.append(p)
 	gate_visits = 0
+	var shut := doors_shut()  # every door shut (Every Door): no gate lets anyone through
 	for gate in _town.gates:
 		if not is_instance_valid(gate) or gate.destroyed:
 			_release_all(gate)
@@ -997,6 +1069,8 @@ func _gates() -> void:
 				and p.ground_pos.distance_to(face) <= QUEUE_DEPTH0 + QUEUE_REACH + 0.5
 			if in_front and faced and not _heading_through(p, gate, spots):
 				in_front = false
+			if in_front and p.roads_bent():
+				in_front = false  # its way out leads elsewhere (Person.bend_roads()): no place in this crowd
 			if in_front:
 				crowd_here.append(p)
 			elif spots.has(p.queue_spot):
@@ -1026,9 +1100,10 @@ func _gates() -> void:
 		# passer must be gone" condition to also satisfy, only the interval -- and that alone still limits the
 		# gate to one release per GATE_INTERVAL.
 		var first := 0
-		# A blighted gate is jammed (v0.05), a held one too (v0.09): its crowd waits, nobody passes.
+		# A blighted gate is jammed (v0.05), a held one too (v0.09), every gate while the doors are shut (Every Door):
+		# its crowd waits, nobody passes.
 		if _clock >= float(_gate_next.get(gate, -1.0)) and not gate.blighted \
-				and _clock >= float(_held.get(gate, -1.0)):
+				and _clock >= float(_held.get(gate, -1.0)) and not shut:
 			var interval := profile.postern_interval if gate.art_tag == &"postern" else gate_interval
 			# Marshals at the mouth (v0.07) let them through faster.
 			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
@@ -1079,10 +1154,11 @@ func _escapes() -> void:
 	# Rebuilt rather than erased in place: a citizen DummyEnemy frees itself when its death fade ends, and
 	# Array.erase() on an already-freed object raises a TypedArray validation error instead of removing it.
 	var remaining: Array[Person] = []
+	var shut := doors_shut()  # every door shut (Every Door): nobody leaves the town by any way out
 	for p in citizens:
 		if not is_instance_valid(p):
 			continue
-		if p.is_alive() and p.has_escaped():
+		if not shut and p.is_alive() and p.has_escaped():
 			escaped_count += 1
 			escaped.emit(p)
 			_field.remove(p)
@@ -1112,18 +1188,10 @@ func _update_bed(delta: float) -> void:
 	_bed_level = move_toward(_bed_level, bed_level_for(running), BED_EASE * delta)
 	if sfx == null or DisplayServer.get_name() == "headless" or not is_inside_tree():
 		return
-	if _bed == null:
-		_bed = AudioStreamPlayer.new()
-		_bed.bus = Sfx.BUS
-		_bed.stream = Sfx.load_stream(&"crowd_panic")
-		add_child(_bed)
-	if _bed_level <= 0.001:
-		if _bed.playing:
-			_bed.stop()
-		return
-	if not _bed.playing:
-		_bed.play()
-	_bed.volume_db = BED_DB + linear_to_db(_bed_level)
+	if _ambience == null:
+		_ambience = Ambience.new().setup(self)
+		_ambience.name = "Ambience"
+		add_child(_ambience)
 
 
 ## One voice from `p`, if the budget allows it.
@@ -1405,6 +1473,36 @@ func structure_mark(s: Structure) -> StringName:
 	return m[0]
 
 
+## Every door in town obeys one rule for `seconds` (Every Door), read where people go in and out:
+##   &"shut"  no building lets anyone in or out (ShelterManager: nobody gets into a shelter, nobody inside comes out,
+##            whatever happens to it), nobody climbs the bell tower (BellNetwork: a bell already rung goes on), and nobody
+##            leaves the town: a gate lets nobody through (its crowd waits at it), nobody escapes by any way out on foot,
+##            nobody boards the boat (RiverFerry).
+##   &"open"  no building takes anyone in (shelters, the bell tower); the ways out of town work as ever. Whoever is
+##            inside is not moved here: the caller throws them out (ShelterManager.throw_out()).
+## &"" (or 0 seconds) lifts it; a later rule replaces an earlier one.
+func set_doors(mode: StringName, seconds: float) -> void:
+	_doors = mode if seconds > 0.0 else &""
+	_doors_until = _clock + seconds if _doors != &"" else -INF
+
+
+## The doors' rule now (set_doors()), or &"" for none (or one that has run out).
+func doors() -> StringName:
+	if _doors != &"" and _clock >= _doors_until:
+		_doors = &""
+	return _doors
+
+
+## Whether every door is shut now (set_doors(&"shut")): nobody goes in or out of a building or the town.
+func doors_shut() -> bool:
+	return doors() == &"shut"
+
+
+## Whether every door stands open now (set_doors(&"open")): no building takes anyone in.
+func doors_open() -> bool:
+	return doors() == &"open"
+
+
 ## Time stands still in the town for `seconds` (Abolition's clock): nobody alive moves or thinks, and nothing of the
 ## town's own runs -- its clock, its fires, its bell, its sickness. What a power does to it meanwhile is still done.
 func freeze(seconds: float) -> void:
@@ -1467,6 +1565,8 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			if bell != null:
 				bell.call_keeper()
 		AlarmManager.Stage.CITY_EMERGENCY:
+			if sfx != null:
+				sfx.play(&"town_horn", City.current().citadel_origin())
 			rally()
 			_regroup()
 			if rite != null:
@@ -1658,6 +1758,8 @@ func _investigate(at: Vector2) -> void:
 	for k in mini(INVESTIGATORS, pool.size()):
 		_investigating.append([pool[k], pool[k].anchor, _clock + INVESTIGATE_SECONDS])
 		pool[k].send_to_post(_spot_near(spot, 0.8))
+	if sfx != null and not pool.is_empty() and soldier_voices.order(_clock):
+		sfx.play(&"sol_order", pool[0].ground_pos)
 
 
 func _return_investigators() -> void:
@@ -1856,6 +1958,14 @@ func clear() -> void:
 				p.free()
 	citizens.clear()
 	soldiers.clear()
+	if animals != null and is_instance_valid(animals):
+		animals.clear()
+		if animals.is_inside_tree():
+			animals.queue_free()
+		else:
+			animals.free()
+	animals = null
+	visitors.clear()
 	threats.clear()
 	_spreads.clear()
 	_held_dangers.clear()
@@ -1920,11 +2030,12 @@ func clear() -> void:
 	_voice_tokens = VOICE_BUDGET
 	voices_played = 0
 	deaths.reset()
+	trail.clear()
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
-	if s.role == &"thorns":
-		return  # a bramble burnt or blasted away: no incident, nothing to flee
+	if s.role == &"thorns" or s.role == &"windfall":
+		return  # a bramble or a dropped pile burnt or blasted away: no incident, nothing to flee
 	var at := s.center()
 	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
 		if s.role != &"citadel":
@@ -1952,6 +2063,16 @@ func _voice_death(p: Person, kind: StringName) -> void:
 		sfx.play(c[0], c[1])
 
 
+## A blow you can hear (SoldierVoices): a soldier's spear or anyone else's fist, at the one struck.
+func _on_struck(e: DummyEnemy, by: DummyEnemy) -> void:
+	if sfx == null:
+		return
+	var who := by as Person
+	var cue := soldier_voices.blow(who != null and is_instance_valid(who) and who.soldier, _clock)
+	if cue != &"":
+		sfx.play(cue, e.ground_pos)
+
+
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	var p := e as Person
 	if p == null:
@@ -1961,6 +2082,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 		_refill(p)
 	else:
 		killed_citizens += 1
+	if kind == &"gone":
+		return  # walked through a door of stars (The Far Gate): no cry, no body, nothing for the town to find
 	_voice_death(p, kind)
 	if is_veiled(p.ground_pos):
 		return  # a death nobody sees (Unseen Hour)

@@ -1,0 +1,11 @@
+{"length": 1.2, "peak_db": -0.3, "eq": [["lowshelf", 150, -5.0], ["peak", 3200, 3.5, 0.8], ["highshelf", 8000, 2.0]], "reverb": {"rt60": 0.8, "mix": 0.13, "predelay_ms": 10, "damp": 6000}, "layers": [
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_breaking_02.ogg", "at": 0.0, "onset": true, "gain_db": 0, "pitch": 1.27},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_breaking_01.ogg", "at": 0.092, "onset": true, "pitch": -2.13, "gain_db": -5},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_falling_01.ogg", "at": 0.118, "onset": true, "gain_db": -4, "pitch": -0.53},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_002.ogg", "at": 0.361, "onset": true, "pitch": -2.85, "gain_db": -1},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPlank_medium_003.ogg", "at": 0.35, "onset": true, "gain_db": -6, "pitch": 1.2},
+  {"src": "lib:oga/muffled-distant-explosion/NenadSimic - Muffled Distant Explosion.wav", "onset": true, "at": 0.337, "dur": 0.8, "lp": 260, "gain_db": -12, "fade_out": 300, "pitch": 0.54},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_02.ogg", "at": 0.555, "onset": true, "pitch": -0.49, "gain_db": -6.95},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_05.ogg", "at": 0.664, "onset": true, "pitch": -2.37, "gain_db": -5.846},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/wood_03.ogg", "at": 0.741, "onset": true, "pitch": -1.23, "gain_db": -6.659}
+]}

@@ -1,4 +1,4 @@
-{"length": 32.0, "bpm": 120, "loop": true, "rms_db": -15.0, "reverb": {"rt60": 2.2, "mix": 0.22}, "parts": [
+{"length": 32.0, "bpm": 120, "loop": true, "rms_db": -15.0, "reverb": {"rt60": 2.2, "mix": 0.22}, "humanize": {"timing_ms": 7.0, "rubato_ms": 6.0, "phrase": 16.0, "swell": 6.0}, "parts": [
   {"instrument": "trombones", "level_db": -15, "notes": [
     {"t": 0, "p": "D3", "hold": 1.35, "vel": 115},
     {"t": 1.5, "p": "D3", "hold": 0.45, "vel": 100},

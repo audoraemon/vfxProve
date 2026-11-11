@@ -13,7 +13,7 @@ const LOADOUT := {
 	"ruin": ["smite", "tornado"],
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
-	"passage": ["thorns", "mirror"],
+	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "belllies", "magnify"],
 	"dominion": ["whisper", "discord", "sanctuary"],
 }
@@ -279,52 +279,24 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Passage: Thornwall, Mirrorfold Passage ---
+# --- Passage: Skylift, Windfall ---
 
-## A thornwall goes across the street this far ahead of a standard's bearer; a mirror's way in is laid this far ahead (and, with a wall up, this far beyond it).
-const BH_THORN_AHEAD := 4.0
-const BH_MIRROR_AHEAD := 3.5
-## A mirror laid on a muster's street before the raise lies this far from the muster, so the company standing there (a file 2.6 long) is not already on it: whoever is on
-## the way in when it is laid is left alone until he steps off and back on.
-const BH_MIRROR_MUSTER := 6.0
-## How far past the wall's margin the mirror's way out lies (the oval is 2.4 across).
-const BH_MIRROR_BEYOND := 2.0
-## A standard with less than this many seconds to its house is not walled (the wall holds him 25 s, but a house this near is lost before the mirror cools).
-const BH_THORN_ETA := 12.0
-## Thornwall's script (it has no class name), for how long a wall stands (THORN_TIME).
-const THORN_FX := preload("res://src/fx/control/thornwall.gd")
+## How far past the wall's margin the Skylift sets a bearer down.
+const BH_LIFT_BEYOND := 2.0
+## A bearer lifted is left alone this long: the light takes him T_TAKE after the cast, and the next look finds him out of the walls.
+const BH_LIFT_HOLD := SkyliftFx.T_TAKE + 1.0
+## A Windfall on an escort of the muster leaves the bearer and the other escort standing: each stands more than this from the line (its crush, KILL_R, and a
+## step's slack).
+const BH_FALL_CLEAR := WindfallFx.KILL_R + 0.25
 
 
-## The street's polyline from `from` to `to` along the walk grid (the first point is `from`); just `from` when there is no way.
-static func _line(crowd: Crowd, from: Vector2, to: Vector2) -> PackedVector2Array:
-	var out := PackedVector2Array([from])
-	out.append_array(crowd._grid.path(from, to))
-	return out
-
-
-## The point `dist` along the polyline `line` (its end when shorter); INF for none.
-static func _line_at(line: PackedVector2Array, dist: float) -> Vector2:
-	if line.is_empty():
-		return Vector2.INF
-	var at := line[0]
-	var left := dist
-	for k in range(1, line.size()):
-		var seg := at.distance_to(line[k])
-		if seg >= left:
-			return at.move_toward(line[k], left)
-		left -= seg
-		at = line[k]
-	return at
-
-
-## `g` is out of the walls by BH_MIRROR_BEYOND more than the margin.
+## `g` is out of the walls by BH_LIFT_BEYOND more than the margin.
 static func _well_outside(g: Vector2) -> bool:
-	return not City.current().town().grow(Walls.MARGIN + BH_MIRROR_BEYOND).has_point(g)
+	return not City.current().town().grow(Walls.MARGIN + BH_LIFT_BEYOND).has_point(g)
 
 
-## Whoever steps onto the way in is set down at the way out plus his offset from the way in's middle (MirrorfoldFx._fold_step()), at the first step onto
-## it -- and left to walk on across it, for good, if that is not walkable -- so every point of the oval round the way out must be walkable ground out of
-## the walls, and its middle well out of them.
+## Whoever the Skylift takes is set down at its second click plus his offset from the first, so the ground round `g` (a mirror's oval of it, the shape the
+## mirror policy measured: MirrorfoldFx's ACROSS and DOWN) must be walkable ground out of the walls, and its middle well out of them.
 static func _lands(crowd: Crowd, g: Vector2) -> bool:
 	if not _well_outside(g):
 		return false
@@ -336,10 +308,11 @@ static func _lands(crowd: Crowd, g: Vector2) -> bool:
 	return true
 
 
-## Walkable ground well out of the walls nearest `from` and at least a mirror's MIN_APART from it, within 30 units; INF for none.
+## Walkable ground well out of the walls nearest `from` and at least a mirror's MIN_APART from it, within 30 units, where a Skylift sets a bearer down
+## (_lands()); INF for none.
 static func _exit_spot(crowd: Crowd, from: Vector2) -> Vector2:
 	var best := Vector2.INF
-	var dist := MirrorfoldFx.MIN_APART + 0.3
+	var dist := MirrorfoldFx.OVAL_MIN_APART + 0.3
 	while dist <= 30.0 and best == Vector2.INF:
 		for k in 36:
 			var g := from + Vector2.from_angle(TAU * float(k) / 36.0) * dist
@@ -351,28 +324,34 @@ static func _exit_spot(crowd: Crowd, from: Vector2) -> Vector2:
 	return best
 
 
-## A Mirrorfold laid across `line` at `ahead` along it, its way out past the wall; true when it was cast.
-static func _mirror_on(bc, ctx: Dictionary, line: PackedVector2Array, ahead: float) -> bool:
-	var way_in := _line_at(line, ahead)
-	if way_in == Vector2.INF or Walls.outside(way_in):
-		return false
-	var way_out := _exit_spot(ctx.crowd, way_in)
-	if way_out == Vector2.INF or way_in.distance_to(way_out) < MirrorfoldFx.MIN_APART:
-		return false
-	return GOD.cast_mirror(bc, ctx, way_in, way_out)
+## How far `p` stands from the Windfall line `length` long through `at` along `dir`.
+static func _off_line(p: Vector2, at: Vector2, dir: Vector2, length: float) -> float:
+	var t := clampf((p - at).dot(dir), -length * 0.5, length * 0.5)
+	return p.distance_to(at + dir * t)
 
 
-## A thornwall across `line` BH_THORN_AHEAD along it, kept in the memo under `key` with the street it shuts.
-static func _wall_on(rules: Rules, slots: Dictionary, memo: Dictionary, key: String, line: PackedVector2Array, now: float) -> void:
-	var spot := _line_at(line, BH_THORN_AHEAD)
-	var dir := (_line_at(line, BH_THORN_AHEAD + 1.0) - _line_at(line, BH_THORN_AHEAD - 1.0)).normalized()
-	memo[key] = {"t": now, "line": line}
-	rules.cast(int(slots.thorns), spot, {"dir": dir.orthogonal() if dir.length() > 0.1 else Vector2.RIGHT})
+## A Windfall line through escort `e` of the muster `n`, laid along the bearer's side (across the line from the bearer to him) so that the bearer and the other
+## escort stand clear of it (BH_FALL_CLEAR): its direction, or Vector2.ZERO when no such line spares them.
+static func _fall_dir(d: BreakHuntDirector, n: int, e: Person) -> Vector2:
+	var b := d.bearer(n)
+	var others: Array[Vector2] = []
+	if b != null:
+		others.append(b.ground_pos)
+	for m in _men(d, n):
+		if m != e:
+			others.append(m.ground_pos)
+	var across := (e.ground_pos - b.ground_pos) if b != null else Vector2.RIGHT
+	var dir := across.orthogonal().normalized() if across.length() > 0.1 else Vector2.RIGHT
+	for o in others:
+		if _off_line(o, e.ground_pos, dir, WindfallFx.LENGTH) <= BH_FALL_CLEAR:
+			return Vector2.ZERO
+	return dir
 
 
-## The street first, then the file out of the walls. Mirrorfold across the street ahead of a marching bearer (his file walks into it, comes out past the wall
-## and is stopped there: walls_stop), laid beyond a thornwall when he is shut in behind one; when the mirror is cooling, a Thornwall across his street holds
-## him (25 s) until it is ready. Between two bearers the same for the muster next to be raised: the mirror waiting on its street, or the wall that holds it.
+## The file out of the walls, in an opener and a finisher as the other types play it. The finisher: Skylift on a marching bearer where he will stand when the
+## light takes (T_TAKE on along his walk), set down past the wall: out of the walls his standard breaks. The opener, between two bearers: a Windfall of stone
+## crushes an escort of the muster next to be raised in the last BH_PREP seconds before the raise (a guard the bearer will not have), laid so it spares the
+## bearer and the other escort (_fall_dir()).
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var d := _bh(ctx)
 	if d == null:
@@ -382,38 +361,23 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 	var crowd: Crowd = ctx.crowd
 	var memo: Dictionary = ctx.memo
 	var now := _now(d)
-	var mirror: bool = bc._slot_ready(rules, slots, "mirror")
-	var thorns: bool = bc._slot_ready(rules, slots, "thorns")
-	for i in _marching(d):
-		var b := d.bearer(i)
-		var line := _line(crowd, b.ground_pos, d.house_doors[d._dest[i]])
-		var wall: Variant = memo.get("wall_%d" % i)
-		var walled: bool = wall != null and now - float(wall.t) < THORN_FX.THORN_TIME
-		if mirror and not memo.has("mirror_%d" % i):
-			var ahead := BH_MIRROR_AHEAD
-			var use := line
-			if walled:
-				use = wall.line
-				ahead = BH_THORN_AHEAD + BH_MIRROR_AHEAD
-			if _mirror_on(bc, ctx, use, ahead):
-				memo["mirror_%d" % i] = now
-				return _said("mirror the file out past the wall", i, "%.0f s from his house" % d.eta(i))
-		elif thorns and not mirror and not memo.has("wall_%d" % i) and not memo.has("mirror_%d" % i) and d.eta(i) > BH_THORN_ETA and line.size() > 2:
-			_wall_on(rules, slots, memo, "wall_%d" % i, line, now)
-			return _said("thornwall across the street", i, "until the mirror is ready")
+	if bc._slot_ready(rules, slots, "skylift"):
+		for i in _marching(d):
+			if now - float(memo.get("lift_%d" % i, -99.0)) < BH_LIFT_HOLD:
+				continue
+			var from: Vector2 = GOD.road_ahead(d.bearer(i), SkyliftFx.T_TAKE)
+			var to := _exit_spot(crowd, from)
+			if to != Vector2.INF and not Walls.outside(from):
+				memo["lift_%d" % i] = now
+				rules.cast(int(slots.skylift), from, {"to": to})
+				return _said("skylift the bearer out past the wall", i, "%.0f s from his house" % d.eta(i))
 	var n := d.next_step()
-	if n >= 0 and d.due_in(n) <= BH_PREP:
-		var door: int = d._pick_dest(n)
-		if door >= 0:
-			var line := _line(crowd, d.steps[n].spot, d.house_doors[door])
-			if mirror and not memo.has("mirror_%d" % n):
-				if _mirror_on(bc, ctx, line, BH_MIRROR_MUSTER):
-					memo["mirror_%d" % n] = now
-					return _said("mirror laid on the street of the muster", n, "before the raise")
-			elif thorns and not mirror and not memo.has("wall_%d" % n) and not memo.has("mirror_%d" % n) \
-					and bc._slot_wait(rules, slots, "mirror") > d.due_in(n) and line.size() > 2:
-				_wall_on(rules, slots, memo, "wall_%d" % n, line, now)
-				return _said("thornwall across the street of the muster", n, "to hold it until the mirror is ready")
+	if bc._slot_ready(rules, slots, "windfall") and n >= 0 and d.due_in(n) <= BH_PREP:
+		for e in _men(d, n):
+			var dir := _fall_dir(d, n, e)
+			if dir != Vector2.ZERO:
+				rules.cast(int(slots.windfall), e.ground_pos, {"dir": dir, "mode": "stone"})
+				return _said("windfall on an escort of the muster", n, "before his raise")
 	return ""
 
 

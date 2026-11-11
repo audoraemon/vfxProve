@@ -311,7 +311,9 @@ static func _mates_walk(t) -> void:
 			farthest = maxf(farthest, maxf(a.ground_pos.distance_to(r.messenger.ground_pos), b.ground_pos.distance_to(r.messenger.ground_pos)))
 		t.check(steps > 450 and float(under) <= 0.05 * float(steps),
 			"%s house: from the first step after the send, nothing excluded, the two mates stay over 1.6 apart but at the turns: %d of %d steps under (closest %.2f; measured 0-2.9 %%)" % [d.post_names[house], under, steps, worst])
-		t.check(farthest < 4.0, "%s house: and they keep up with him (the farthest a mate strays: %.2f)" % [d.post_names[house], farthest])
+		# 4.5, not 4.0, since Develop-Main's walks keep off ground the walk grid has shut (3c20f052): a mate rounds a shut corner
+		# a little wider (the west house's 4.38 at its last turn).
+		t.check(farthest < 4.5, "%s house: and they keep up with him (the farthest a mate strays: %.2f)" % [d.post_names[house], farthest])
 		Kit.done(s)
 
 
@@ -831,9 +833,10 @@ static func _policies_written(t) -> void:
 
 ## How near a cast's aim must lie to someone the night still needs answered -- a walking witness or one of his mates, out of doors -- by power (the effect's own reach,
 ## less nothing: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Madness Bloom 1.5, Leaving Is Prohibited 3.0; the wide ones by the
-## file's size: Tornado Tempest's fit 1.6 (its pull is 3.2), Glacial Cataclysm 5, Nuclear Nova's blast 3.5 (its fit), a thornwall and a mirror's way in a few units ahead).
+## file's size: Tornado Tempest's fit 1.6 (its pull is 3.2), Glacial Cataclysm 5, Nuclear Nova's blast 3.5 (its fit), a Windfall across the street a few units
+## ahead (4 to 7), Skylift's beam on the witness's place at its take, within its radius 2.5).
 const AIM_REACH := {"doom": 1.3, "smite": 1.0, "deathmark": 1.0, "pestilence": 1.3, "discord": 1.2, "whisper": 0.8, "noleave": 3.0, "tornado": 1.6, "glacial": 3.0,
-	"nova": 3.5, "thorns": 6.0, "mirror": 6.0}
+	"nova": 3.5, "windfall": 7.5, "skylift": 2.5}
 
 
 ## What is wrong with a cast of `key` at `at` as the night stands (review of Task 10, M1; Ruling P5-T10-R2): "" when its aim is within its reach of a walking

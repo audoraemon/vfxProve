@@ -8,9 +8,9 @@ god_death_tax_play_3	--scenario=tax --case=play --seed=3 --god=death:1	-68494563
 god_veil_tax_play_1	--scenario=tax --case=play --seed=1 --god=veil:1	-457274004
 god_veil_tax_play_2	--scenario=tax --case=play --seed=2 --god=veil:1	-615598005
 god_veil_tax_play_3	--scenario=tax --case=play --seed=3 --god=veil:1	-756794392
-god_passage_tax_play_1	--scenario=tax --case=play --seed=1 --god=passage:1	-790692119
-god_passage_tax_play_2	--scenario=tax --case=play --seed=2 --god=passage:1	-524120718
-god_passage_tax_play_3	--scenario=tax --case=play --seed=3 --god=passage:1	-239864817
+god_passage_tax_play_1	--scenario=tax --case=play --seed=1 --god=passage:1	-717303540
+god_passage_tax_play_2	--scenario=tax --case=play --seed=2 --god=passage:1	-92436106
+god_passage_tax_play_3	--scenario=tax --case=play --seed=3 --god=passage:1	-60490378
 god_decree_tax_play_1	--scenario=tax --case=play --seed=1 --god=decree:1	-396657666
 god_decree_tax_play_2	--scenario=tax --case=play --seed=2 --god=decree:1	-500959247
 god_decree_tax_play_3	--scenario=tax --case=play --seed=3 --god=decree:1	-599857658

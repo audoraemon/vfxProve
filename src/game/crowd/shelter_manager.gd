@@ -65,6 +65,8 @@ func total_inside() -> int:
 
 ## A citizen frightened by `kind` at `from` (radius `radius`): seek cover? True when it is on its way to a door.
 func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> bool:
+	if _crowd.doors() != &"":
+		return false  # every door shut or open (Every Door): no building takes anyone in
 	if p.rng.randf() >= (CHANCE_SEVERE if kind in SEVERE else CHANCE):
 		return false
 	var best: Structure = null
@@ -98,7 +100,7 @@ func _hallowed(s: Structure) -> bool:
 
 ## Send `p` into `s` whatever its room (a hallowed building): true when it is on its way to the door.
 func send_in(p: Person, s: Structure) -> bool:
-	if not shelters.has(s) or not is_instance_valid(p) or not p.is_alive() or p.inside:
+	if not shelters.has(s) or not is_instance_valid(p) or not p.is_alive() or p.inside or _crowd.doors() != &"":
 		return false
 	shelters[s].coming.append(p)
 	p.seek_shelter(s, _door(s, p.ground_pos))
@@ -117,6 +119,9 @@ func step(delta: float) -> void:
 	var dt := 1.0 / HZ
 	_step_in = dt
 	var evacuating := _crowd.alarms.stage >= AlarmManager.Stage.EVACUATION
+	# Every Door: shut, nobody goes in or comes out; open (or shut), nobody is taken in.
+	var barred := _crowd.doors() != &""
+	var shut := barred and _crowd.doors_shut()
 	for s: Structure in shelters.keys():
 		var e: Dictionary = shelters[s]
 		var holy := _hallowed(s)
@@ -125,7 +130,7 @@ func step(delta: float) -> void:
 		for p in e.coming:
 			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.SHELTER or p.shelter != s:
 				continue
-			if (not _usable(s) or evacuating) and not holy:
+			if barred or ((not _usable(s) or evacuating) and not holy):
 				p.leave_shelter(evacuating)
 				continue
 			if not p.has_goal() and p.ground_pos.distance_to(p.shelter_door) <= DOOR_REACH:
@@ -153,8 +158,8 @@ func step(delta: float) -> void:
 				_crowd.rescue.trap(trapped, s)
 			e.inside = []
 			continue
-		if holy:
-			e.clear = 0.0  # nobody leaves a hallowed house: struck, burning or the town leaving, they stay
+		if holy or shut:
+			e.clear = 0.0  # nobody leaves a hallowed house, nor any while every door is shut: struck, burning or the town leaving, they stay
 			continue
 		if not _usable(s):
 			_flush(s, e, true)
@@ -166,6 +171,43 @@ func step(delta: float) -> void:
 		e.clear = 0.0 if danger else float(e.clear) + dt
 		if float(e.clear) >= CLEAR_SECONDS:
 			_flush(s, e, false)
+
+
+## Every door bursts open at once (Every Door's OPEN): everyone inside every shelter is thrown `push` out of its door
+## into the street (the nearest open ground there), knocked down, and comes round as anyone leaving would. Returns
+## those thrown out.
+func throw_out(push: float) -> Array[Person]:
+	var out: Array[Person] = []
+	for s: Structure in shelters.keys():
+		out.append_array(throw_out_of(s, push))
+	return out
+
+
+## One building's door bursts open (Doors of the Dead): everyone sheltering in `s` is thrown out as throw_out() throws
+## them. Returns those thrown out; none when nobody is in it.
+func throw_out_of(s: Structure, push: float) -> Array[Person]:
+	var out: Array[Person] = []
+	if not shelters.has(s):
+		return out
+	var e: Dictionary = shelters[s]
+	for v in e.inside:
+		if not is_instance_valid(v):
+			continue
+		var p := v as Person
+		_exit(p, s)
+		var away := p.ground_pos - s.center()
+		var to := p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.DOWN) * push
+		if p.grid != null:
+			var w := p.grid.nearest_walkable(to)
+			if w != Vector2.INF:
+				to = w
+		p.ground_pos = to
+		p.leave_shelter(false)
+		p.knock_down()
+		out.append(p)
+	e.inside = []
+	e.clear = 0.0
+	return out
 
 
 ## The others sheltering in the same building as `p` (v0.06: the plague passes between them).

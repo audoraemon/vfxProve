@@ -1,0 +1,5 @@
+{"length": 2.0, "rms_db": -17.0, "reverb": {"rt60": 1.8, "mix": 0.28, "predelay_ms": 12, "damp": 8000}, "layers": [
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 1.wav", "at": 0.0, "pitch": 9, "dur": 1.4, "hp": 600, "lp": 9000, "fade_in": 250, "fade_out": 300, "gain_db": -6},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-cresc-Short_v1.wav", "at": 0.2, "dur": 1.0, "hp": 800, "lp": 9000, "fade_in": 200, "fade_out": 60, "gain_db": -8},
+  {"src": "lib:oga/cure-magic/curemagic/Cure3.wav", "at": 1.15, "pitch": 5, "gain_db": -4, "lp": 9000, "fade_out": 400},
+  {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 1.2, "pitch": 12, "gain_db": -9, "dur": 0.8, "fade_out": 300}]}

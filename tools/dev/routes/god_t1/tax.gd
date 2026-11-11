@@ -7,8 +7,8 @@ extends RefCounted
 ##   death    Death Mark a collector with 11 s of street left (a marked man indoors at the fuse lives); Pestilence on him with his guards when
 ##            the mark cannot be laid, and on the waiting deputies' guards at the door between collectors.
 ##   veil     Blight the Bell Tower first (a seen death then rings nothing), then Silent Doom on a collector in the street (A's, unseen first).
-##   passage  Mirrorfold laid across his road ahead, its way out beyond the nearest wall; a Thornwall by the counting-house's door (smoking out
-##            the next one) or along his road when nothing else is ready.
+##   passage  Skylift takes a collector in the street (and whoever walks with him) and sets him down beyond the nearest wall; a Windfall of
+##            stone by the counting-house's door smokes the next one out.
 ##   decree   The Bell Lies (CALL THE GUARD) from a spot 8+ away that takes his guards, once for each visit, as it begins or runs; Leaving Is
 ##            Prohibited over the door as he comes out: the debtors mob him.
 ##   dominion Mind Whisper relayed: a hop of 9 toward the way off the map each time the last has been reached, until he is out of the walls.
@@ -27,15 +27,8 @@ const RUIN_DOOR := 0.45
 const DEATH_STREET := 11.0
 ## Seconds with no cast after which a cast at the counting-house's door smokes the next collector out (the A policy's TAX_SMOKE_AFTER).
 const SMOKE_AFTER := 30.0
-## Passage: how many seconds ahead on his road the way in is laid, and how far beyond the wall's margin the way out is (the oval is 2.4 across).
-const MIRROR_AHEAD := 9.0
-const MIRROR_BEYOND := 3.2
-## Passage: the seconds a mirror laid for a collector has to take him (it lasts 30) before another is laid for him.
-const MIRROR_RETRY := 40.0
-## Passage: the seconds with no cast after which a Thornwall is laid along his road, so the policy acts while the mirror cools.
-const THORN_IDLE := 30.0
-## Passage: how far to the side of his road the Thornwall stands.
-const THORN_SIDE := 2.0
+## Passage: how far beyond the wall's margin Skylift sets a collector down.
+const LIFT_BEYOND := 1.0
 ## Decree: The Bell Lies calls his guards away at the first look where his visit ends between BELL_MAX and BELL_MIN seconds on (they are gone
 ## for the call's 20 s and the walk back, so he comes out unguarded), and Leaving Is Prohibited is laid over the door LIP_LEAD seconds before
 ## he comes out. A visit not yet begun counts: his walk to the door and the visit's seconds.
@@ -240,11 +233,11 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 
 # --- Passage -------------------------------------------------------------------------------------------------------------------
 
-## The way out for a mirror whose way in is at `from`: the walkable ground nearest to it that lies MIRROR_BEYOND past the wall's margin (so
-## the whole oval stands out of the walls); Vector2.INF when there is none within 30.
+## Where Skylift sets a collector taken at `from` down: the walkable ground nearest to it that lies LIFT_BEYOND past the wall's margin;
+## Vector2.INF when there is none within 30.
 static func _exit_spot(ctx: Dictionary, from: Vector2) -> Vector2:
 	var grid: WalkGrid = ctx.crowd._grid
-	var town := City.current().town().grow(Walls.MARGIN + MIRROR_BEYOND)
+	var town := City.current().town().grow(Walls.MARGIN + LIFT_BEYOND)
 	var best := Vector2.INF
 	var dist := 1.0
 	while dist <= 30.0 and best == Vector2.INF:
@@ -257,8 +250,9 @@ static func _exit_spot(ctx: Dictionary, from: Vector2) -> Vector2:
 	return best
 
 
-## The Mirrorfold laid across the road of the collector with the longest road ahead of him (his way in MIRROR_AHEAD seconds on), its way out
-## beyond the nearest wall; else, with nothing cast for THORN_IDLE seconds, a Thornwall across his road a few seconds on.
+## Skylift on the first collector in the street, where he will stand when the beam takes (SkyliftFx.T_TAKE on, along his road), set down
+## beyond the nearest wall: out of the walls, he is stopped. Between collectors, with nothing cast for SMOKE_AFTER seconds, a Windfall of stone
+## by the counting-house's door smokes the next one out.
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
@@ -267,27 +261,21 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 		return ""
 	var street := _street(d)
 	if street.is_empty():
-		# Between collectors, with nothing cast for SMOKE_AFTER seconds, a Thornwall by the counting-house's door smokes the next one out (it
-		# stands along the line out from the door, not across his way).
+		# The line lies along the way out from the door, not across it.
 		var smoke := _smoke_spot(bc, ctx)
-		if smoke != Vector2.INF and bc._slot_ready(rules, slots, "thorns"):
-			rules.cast(slots.thorns, smoke, {"dir": (smoke - d.hide_door).normalized()})
-			return _did(ctx, "thornwall by the door, smoking out the next collector")
+		if smoke != Vector2.INF and bc._slot_ready(rules, slots, "windfall"):
+			rules.cast(slots.windfall, smoke, {"dir": (smoke - d.hide_door).normalized(), "mode": "stone"})
+			return _did(ctx, "windfall by the door, smoking out the next collector")
 		return ""
-	var q: AssassinateDirector.Quarry = street[0]
-	var p: Person = q.target
-	if bc._slot_ready(rules, slots, "mirror") and _now(ctx) - float(ctx.memo.get("mirror_for_%d" % q.index, -999.0)) >= MIRROR_RETRY:
-		var way_in: Vector2 = GOD.road_ahead(p, MIRROR_AHEAD)
-		var way_out := _exit_spot(ctx, way_in)
-		if way_out != Vector2.INF and way_in.distance_to(p.ground_pos) >= 4.0 and GOD.cast_mirror(bc, ctx, way_in, way_out):
-			ctx.memo["mirror_for_%d" % q.index] = _now(ctx)
-			return _did(ctx, "mirror %s: in %.1f from him, out at (%.1f, %.1f)" % [q.label, way_in.distance_to(p.ground_pos), way_out.x, way_out.y])
-	if bc._slot_ready(rules, slots, "thorns") and _since(ctx) >= THORN_IDLE:
-		# Along the road, not across it: a wall in his way would hold him from the mirror; this one keeps him to the street.
-		var ahead: Vector2 = GOD.road_ahead(p, 5.0)
-		var heading := (ahead - p.ground_pos).normalized() if ahead.distance_to(p.ground_pos) > 0.3 else Vector2.RIGHT
-		rules.cast(slots.thorns, ahead + heading.orthogonal() * THORN_SIDE, {"dir": heading})
-		return _did(ctx, "thornwall along %s's road" % q.label)
+	if not bc._slot_ready(rules, slots, "skylift"):
+		return ""
+	for q in street:
+		var p: Person = q.target
+		var from: Vector2 = GOD.road_ahead(p, SkyliftFx.T_TAKE)
+		var to := _exit_spot(ctx, from)
+		if to != Vector2.INF:
+			rules.cast(slots.skylift, from, {"to": to})
+			return _did(ctx, "skylift %s out of the walls, from (%.1f, %.1f) to (%.1f, %.1f)" % [q.label, from.x, from.y, to.x, to.y])
 	return ""
 
 

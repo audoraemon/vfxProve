@@ -90,6 +90,8 @@ const TOWN_SHOTS := [
 	["town_edge_w.png", Vector2(-70, 0), 0.5],
 	["town_market.png", Vector2(0.8, 2.0), 1.0],
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],
+	# The town's dogs and cats, one of each breed set down by the market fountain, close up (_stage_animals()).
+	["town_animals.png", Vector2(0.8, 2.0), 3.0],
 	["town_main_gate.png", Vector2(2.7, 16.0), 1.0],
 	["town_side_gate.png", Vector2(16.0, 9.0), 1.0],
 	["town_river_farms.png", Vector2(2.0, 24.0), 0.5],
@@ -177,6 +179,8 @@ const CROWD_SHOTS := [0.5, 3.0, 10.0, 16.0, 24.0, 34.0]
 const CROWD_TEST_END := 40.0
 
 var _bf: Battlefield
+## The zoom readout at the screen's right edge (shown after each wheel zoom; the Discord idea "Zoom cap").
+var _zoom_readout: ZoomReadout
 var _town: Town
 ## The town's lighting look (L cycles CURRENT, DAY, NIGHT and rebuilds); --look=day|night starts in one.
 var _look := Town.Look.CURRENT
@@ -201,6 +205,8 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
+	_zoom_readout = ZoomReadout.new()
+	add_child(_zoom_readout)
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
 	_drag_line = Node2D.new()
 	_drag_line.name = "DragLine"
@@ -318,6 +324,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
 		_pan(Vector2.ZERO)
+		if is_instance_valid(_zoom_readout):
+			_zoom_readout.show_zoom(_bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pressing = true
@@ -428,12 +436,45 @@ func _capture_town(only := "", frames := 1) -> void:
 	await _bf.quit()
 
 
+## Dev staging for the animals shot: one animal of each breed in two rows by the camera, the second row sitting, and
+## one under a power's mark.
+func _stage_animals() -> void:
+	if not is_instance_valid(_crowd) or _crowd.animals == null:
+		return
+	var center := Iso.screen_to_ground(_bf.camera.position + Vector2(0, 30))
+	var by_breed := {}
+	for a in _crowd.animals.living():
+		if not by_breed.has(a.breed):
+			by_breed[a.breed] = []
+		(by_breed[a.breed] as Array).append(a)
+	# A row of dogs over a row of cats, in breed order, each breed's second one sitting just below its first.
+	var order: Array = Animal.DOGS + Animal.CATS
+	for b in by_breed:
+		var list: Array = by_breed[b]
+		var i := order.find(b)
+		var spot := center + Vector2(1, -1) * (float(i % 5) - 2.0) * 0.55 + Vector2(1, 1) * (float(i / 5) - 0.5) * 1.1
+		for k in mini(list.size(), 2):
+			var a: Animal = list[k]
+			a.ground_pos = _grid.nearest_walkable(spot + Vector2(0.3, 0.3) * float(k), 2)
+			a.goal = a.ground_pos + Vector2(0.4, 0.0)
+			a.home = a.ground_pos
+			a.state = Animal.State.WANDER
+			a.wait = 0.0 if k == 0 else 30.0
+			a.sync_position()
+			a.queue_redraw()
+	var marked: Animal = _crowd.animals.living()[0]
+	marked.cast(Animal.Spell.TRANCE, 30.0)
+
+
 ## Dev staging for the bridge and dock shots: a few citizens set down along the bridge's road or on the dock's planks
 ## (they walk on from there), and for the _damaged / _ruins shots the structure cracked or brought down first.
 func _stage_shot(file: String) -> void:
 	var s: Structure = null
 	if file.begins_with("town_fields"):
 		await _stage_fields(file)
+		return
+	if file.begins_with("town_animals"):
+		_stage_animals()
 		return
 	if file.begins_with("town_bridge"):
 		s = _town.bridge

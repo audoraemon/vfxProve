@@ -60,6 +60,33 @@ const AREAS := {
 	"magnify": {"shape": "circle", "r": 4.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
+	# SkyliftFx.RADIUS: what it would take is ringed at the first click; then where it is set down ("pick")
+	"skylift": {"shape": "pick", "r": 2.5},
+	# WindfallFx.LENGTH, SEG * 0.5; centred on the press, like Thornwall
+	"windfall": {"shape": "lane", "length": 3.6, "half": 0.3, "centred": true},
+	# HellmouthSparkFx.RADIUS
+	"hellspark": {"shape": "circle", "r": 1.5},
+	# PilgrimRoadFx.LENGTH, HALF: the lane runs from the press along the drag
+	"pilgrim": {"shape": "lane", "length": 6.0, "half": 0.6},
+	# DoorToTheDeepFx.RADIUS: how far the water reaches
+	"deep": {"shape": "circle", "r": 4.0},
+	# HoundGateFx: the door is where the click lands; SEEK_R is how far the hounds hunt
+	"houndgate": {"shape": "circle", "r": 0.6, "roam": 8.0},
+	# AllRoadsLeadHereFx.RADIUS: the district whose roads are bent to the click
+	"allroads": {"shape": "circle", "r": 10.0},
+	# YesterdaysDoorFx.RADIUS: the district that steps back
+	"yesterday": {"shape": "circle", "r": 6.0},
+	# FoldedWardFx.HALF: the square folded so its edges meet, centred on the click
+	"foldward": {"shape": "square", "half": 3.0},
+	# EveryDoorFx: the whole town; the click is only where the door of light stands
+	"everydoor": {"shape": "circle", "r": 0.6},
+	# TheFarGateFx.RADIUS: whom the door of stars draws
+	"fargate": {"shape": "circle", "r": 10.0},
+	# DoorsOfTheDeadFx.RADIUS: the district whose doors open
+	"deaddoors": {"shape": "circle", "r": DoorsOfTheDeadFx.RADIUS},
+	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
+	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
+	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
 	# AnathemaFx.RADIUS: the buildings it would mark are outlined (_draw())
 	"anathema": {"shape": "circle", "r": 6.0},
 	# SacredSanctuaryFx.PICK_R: who would be hypnotized is ringed; then the wall's shape at the second click ("sanctuary")
@@ -112,8 +139,9 @@ const AREAS := {
 	"madness": {"shape": "circle", "r": 1.5},
 	# CongregationFx.RADIUS: the place at the first click, the circle at the second; who it would draw is ringed
 	"congregation": {"shape": "gather", "r": 7.0},
-	# MirrorfoldFx.HALF_WIDE, HALF_DEEP: the way in at the first click, the way out at the second (MirrorfoldFx.exit_for())
-	"mirror": {"shape": "pair", "wide": 2.4, "deep": 1.0},
+	# MirrorfoldFx.HALF, MIN_LEN, MAX_LEN: the way in is a lane laid by the drag, the way out the same lane at the click
+	# that follows (MirrorfoldFx.exit_for())
+	"mirror": {"shape": "lanepick", "half": 0.6, "min": 2.0, "length": 6.0},
 	# LINE_LENGTH, LINE_HALF_WIDTH, FISSURE_LENGTH; centred: the line runs half its length each way from the cast
 	"heaven": {"shape": "lane", "length": 10.0, "half": 0.7, "fissure": 5.6, "centred": true},
 	# PULL_RADIUS, CORE_RADIUS, WANDER_RADIUS
@@ -149,7 +177,13 @@ const AREA_STATS := {
 	"shatter": {"half": "HALF", "length": "MAX_LENGTH"},
 	"discord": {"r": "DISCORD_R"}, "madness": {"r": "RADIUS"}, "clearmind": {"r": "RADIUS"}, "anathema": {"r": "RADIUS"},
 	"sanctuary": {"r": "PICK_R"},
+	"skylift": {"r": "RADIUS"}, "windfall": {"length": "LENGTH"}, "hellspark": {"r": "RADIUS"}, "deep": {"r": "RADIUS"},
+	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
+	"heavendoor": {"r": "PULL_R"},
 }
+## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole
+## circle, not the half before one door.
+const AREA_TWIST := {"heavendoor": {"arc": TAU}}
 
 ## The focused slot, or -1 when nothing is: the area is only drawn while a power is focused.
 var slot := -1
@@ -157,10 +191,14 @@ var slot := -1
 var armed := false
 ## A drag power has the button down and is being aimed.
 var aiming := false
-## A two-click power (Mirrorfold Passage) has its first place set and waits for the second click.
+## A two-click power (Skylift), or a drag-then-click one (Mirrorfold Passage), has its first place set and waits for
+## the second click.
 var placed := false
 ## That first place.
 var first := Vector2.ZERO
+## The lane a drag-then-click power's drag laid at `first`: which way, and how long (clamped to its area's min..length).
+var _lane_dir := DEFAULT_DIR
+var _lane_len := 0.0
 
 ## The citizen a held Mind Whisper press picked (v0.08), or null.
 var _whisper_target: Person
@@ -342,14 +380,16 @@ func press(ground: Vector2) -> void:
 		ground = who.ground_pos
 	_press = ground
 	armed = true
-	aiming = _is_drag() or _is_whisper()
+	# A drag-then-click power drags only its first place: once that is laid, the press is a click.
+	aiming = _is_drag() or _is_whisper() or (_is_drag_then() and not placed)
 	queue_redraw()
 
 
 ## The button came up: cast, unless the press was called off. A click power fires from where the button went
 ## down; a drag power fires from there along the way it was dragged, and is told where the drag ended ("to"); a
 ## whisper from the citizen it picked. A two-click power keeps its first click as its place (`first`) and fires from
-## there on the second, told where that one landed ("to").
+## there on the second, told where that one landed ("to"). A drag-then-click power's first release lays a lane from
+## the press along the drag (`first`, "dir", "length"); the click after casts it, told where it landed ("to").
 func release(ground: Vector2) -> void:
 	if not armed:
 		return
@@ -388,6 +428,22 @@ func release(ground: Vector2) -> void:
 			queue_redraw()
 			return
 		placed = false
+		extra["to"] = ground
+		_rules.cast(slot, first, extra)
+		queue_redraw()
+		return
+	if _is_drag_then():
+		if not placed:
+			placed = true
+			first = _press
+			_lane_dir = aim_dir()
+			_lane_len = lane_length()
+			aiming = false
+			queue_redraw()
+			return
+		placed = false
+		extra["dir"] = _lane_dir
+		extra["length"] = _lane_len
 		extra["to"] = ground
 		_rules.cast(slot, first, extra)
 		queue_redraw()
@@ -457,6 +513,13 @@ func aim_dir() -> Vector2:
 	return drag.normalized() if drag.length() >= DRAG_MIN else DEFAULT_DIR
 
 
+## How long the lane a drag-then-click power is laying would be: the drag's length, clamped to its area's "min" and
+## "length".
+func lane_length() -> float:
+	var a := area()
+	return clampf((_at - _press).length(), float(a.get("min", 0.0)), float(a.get("length", 0.0)))
+
+
 func area() -> Dictionary:
 	# A live power that takes a follow-up may want its own ground drawn (Procession's ring, Turn the Tide's pick).
 	var follow := _rules.follow_up_area(slot) if slot >= 0 else {}
@@ -488,7 +551,14 @@ static func area_at(key: String, level: int) -> Dictionary:
 			spec = spec.get_slice("*", 0)
 		if a.has(field):
 			out[field] = float(PowerBook.level_stat(key, level, spec, float(a[field]) / factor)) * factor
+	if AREA_TWIST.has(key) and level >= PowerBook.MAX_LEVEL and PowerBook.twist(key) != "":
+		out.merge(AREA_TWIST[key], true)
 	return out
+
+
+## A "square" area: the axis-aligned square of side 2 * `half` centred on `at`, in ground units.
+static func square(at: Vector2, half: float) -> Rect2:
+	return Rect2(at - Vector2(half, half), Vector2(half, half) * 2.0)
 
 
 ## Where a lane power's lane begins: at the cast for a power that sweeps forward from it, half a length back for
@@ -506,6 +576,11 @@ func _is_drag() -> bool:
 
 func _is_twice() -> bool:
 	return _aim_kind() == "two clicks"
+
+
+## A drag-then-click power (Mirrorfold Passage): the drag lays a lane, the click after it places the second lane and casts.
+func _is_drag_then() -> bool:
+	return _aim_kind() == "drag then click"
 
 
 ## A wheel power (v0.13): the first click picks someone, then a wheel of the power's modes opens round them and the
@@ -664,6 +739,9 @@ func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
 		var run := _at - at
 		var dir := run.normalized() if run.length() > 0.01 else Vector2.RIGHT
 		_crowd.on_cast(at, dir, clampf(run.length(), float(a.get("min", 0.0)), float(a.length)), key, level)
+	elif String(a.get("shape", "")) == "lanepick":
+		# The lane the drag laid.
+		_crowd.on_cast(at, _lane_dir, _lane_len, key, level)
 	else:
 		_crowd.on_cast(at, Vector2.ZERO, 0.0, key, level)
 	# A power that went out is on its cooldown: unfocus, so its area stops following the cursor.
@@ -700,7 +778,17 @@ func _draw() -> void:
 					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5
 					draw_line(_press, _press + out, COL_FAINT, -1.0)
 		"cone":
-			_cone(_press, float(a.r), float(a.arc), edge)
+			_cone(_press, float(a.r), float(a.arc), edge, cone_start(a, aim_dir()))
+			if a.has("inner"):
+				_ring(_press, float(a.inner), COL_INNER)
+			if a.has("outer"):
+				_ring(_press, float(a.outer), COL_FAINT)
+		"square":
+			# An axis-aligned square of side 2 * half centred on the cursor (a diamond on screen).
+			var box := square(_press, float(a.half))
+			draw_rect(box, COL_DIVINE_FILL)
+			draw_rect(box.grow(SHADE_GAP), SHADE, false, -1.0)
+			draw_rect(box, edge, false, -1.0)
 		"pick":
 			# The people at the first click, then the place the cursor is on.
 			if placed:
@@ -754,15 +842,20 @@ func _draw() -> void:
 				_ring(_press, float(a.r), edge)
 				for p in SacredSanctuaryFx.picked_at(_crowd._field, _press, _lv("sanctuary", "PICK_R", SacredSanctuaryFx.PICK_R), int(_lv("sanctuary", "MAX_GUARDS", SacredSanctuaryFx.MAX_GUARDS))):
 					_ring(p.ground_pos, 0.18, COL_DIVINE)
-		"pair":
-			# The way in under the cursor until the first click sets it; then the way out follows the cursor.
+		"lanepick":
+			# The way in: a lane from the press along the drag until the release lays it; then the way out, the same lane,
+			# follows the cursor, and the people standing on the way in are ringed.
 			if placed:
-				_oval(first, float(a.wide), float(a.deep), edge)
-				var out := MirrorfoldFx.exit_for(first, _press)
-				_oval(out, float(a.wide), float(a.deep), COL_INNER)
-				draw_line(first, out, COL_FAINT, -1.0)
+				_lane(first, _lane_dir, _lane_len, float(a.half), edge)
+				var out := MirrorfoldFx.exit_for(first, _lane_dir, _lane_len, _press)
+				_lane(out, _lane_dir, _lane_len, float(a.half), COL_INNER)
+				var mid := _lane_dir * _lane_len * 0.5
+				draw_line(first + mid, out + mid, COL_FAINT, -1.0)
+				for e in MirrorfoldFx.standing_on(_crowd._field, first, _lane_dir, _lane_len):
+					_ring(e.ground_pos, 0.18, COL_DIVINE)
 			else:
-				_oval(_press, float(a.wide), float(a.deep), edge)
+				var dir := aim_dir()
+				_lane(_press, dir, lane_length(), float(a.half), edge)
 	if _is_wheel() and placed:
 		_draw_wheel()
 	if not _rules.follow_up_area(slot).is_empty():
@@ -937,16 +1030,6 @@ func _place_mark(at: Vector2, col: Color) -> void:
 	draw_line(c + Vector2(-0.3, 0.3), c + Vector2(0.3, -0.3), col, -1.0)
 
 
-## An oval lying across the screen: `wide` along the screen's horizontal, `deep` along its vertical (ground units).
-func _oval(at: Vector2, wide: float, deep: float, col: Color) -> void:
-	for pass_i in 2:
-		var grow: float = SHADE_GAP if pass_i == 0 else 0.0
-		var points := PackedVector2Array()
-		for i in 49:
-			var a := TAU * float(i) / 48.0
-			points.append(at + MirrorfoldFx.ACROSS * cos(a) * (wide + grow) + MirrorfoldFx.DOWN * sin(a) * (deep + grow))
-		draw_polyline(points, SHADE if pass_i == 0 else col, -1.0)
-
 ## Mind Whisper's held aim: a dotted line of WHISPER_DASHES dashes from the citizen to where they would be sent
 ## (the release clamped to REACH and walkable ground), a ring there, and the stretch past REACH in red up to the
 ## cursor. The order wheel's pick step draws it in the order's tint, and straight to the cursor (`reach` false) for an
@@ -1034,13 +1117,32 @@ func _lane(from: Vector2, dir: Vector2, length: float, half: float, col: Color) 
 	draw_line(from, from + dir * length, COL_FAINT, -1.0)
 
 
-func _cone(from: Vector2, r: float, arc: float, col: Color) -> void:
-	# The dragon's own start angle: its facing, biased 8 degrees to its right so the jet misses its body.
-	var start := Vector2(1, 0).angle() - arc * 0.5 - deg_to_rad(8.0)
+## Where a "cone" area's arc starts (radians, on the ground): centred on the drag (`dir`) for an "aimed" cone -- turned to
+## the nearest of its "snap" ways when it has them (snap_dir) --; else the dragon's own -- its facing, screen down-right,
+## biased 8 degrees to its right so the jet misses its body.
+static func cone_start(a: Dictionary, dir: Vector2) -> float:
+	if bool(a.get("aimed", false)):
+		return snap_dir(dir, int(a.get("snap", 0))).angle() - float(a.arc) * 0.5
+	return Vector2(1, 0).angle() - float(a.arc) * 0.5 - deg_to_rad(8.0)
+
+
+## `dir` turned to the nearest of `ways` directions evenly round the ground, the first along +x (a unit vector); `dir`
+## itself when `ways` is 0 or less.
+static func snap_dir(dir: Vector2, ways: int) -> Vector2:
+	if ways <= 0 or dir.length() < 0.000001:
+		return dir
+	var step := TAU / float(ways)
+	var v := Vector2.from_angle(step * float(posmod(roundi(dir.angle() / step), ways)))
+	# Exactly on an axis where it should be, not a hair off it.
+	return Vector2(0.0 if absf(v.x) < 1e-6 else v.x, 0.0 if absf(v.y) < 1e-6 else v.y)
+
+
+func _cone(from: Vector2, r: float, arc: float, col: Color, start: float) -> void:
+	var steps := 16 if arc <= 1.5 else 48  # a wide arc in finer steps, so its rim stays round
 	for pass_i in 2:
 		var grow: float = SHADE_GAP if pass_i == 0 else 0.0
 		var points := PackedVector2Array([from])
-		for i in 17:
-			points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / 16.0) * (r + grow))
+		for i in steps + 1:
+			points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / float(steps)) * (r + grow))
 		points.append(from)
 		draw_polyline(points, SHADE if pass_i == 0 else col, -1.0)

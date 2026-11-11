@@ -147,17 +147,17 @@ const CATALOG := {
 	# The powers' sounds above are recordings over tools/audio/synth.py's renders (tools/audio/foley/ability/<element>/,
 	# built by tools/audio/foley.py). Below, the rest, sorted by kind into assets/audio/<category>/:
 	# Interface: made with GodotSfxr (tools/audio/sfxr/ui/, baked by tools/audio/sfxr_bake.gd).
-	&"ui_hover": {"path": "res://assets/audio/ui/ui_hover.wav", "db": -20.0},
-	&"ui_click": {"path": "res://assets/audio/ui/ui_click.wav", "db": -12.0},
-	&"ui_focus": {"path": "res://assets/audio/ui/ui_focus.wav", "db": -14.5},
-	&"ui_back": {"path": "res://assets/audio/ui/ui_back.wav", "db": -14.0},
-	&"ui_buzz": {"path": "res://assets/audio/ui/ui_buzz.wav", "db": -10.0},
-	&"ui_pause": {"path": "res://assets/audio/ui/ui_pause.wav", "db": -13.0},
-	&"ui_resume": {"path": "res://assets/audio/ui/ui_resume.wav", "db": -13.0},
-	&"ui_mode": {"path": "res://assets/audio/ui/ui_mode.wav", "db": -11.0},
-	&"ui_ready": {"path": "res://assets/audio/ui/ui_ready.wav", "db": -16.0},
-	&"ui_notice": {"path": "res://assets/audio/ui/ui_notice.wav", "db": -14.0},
-	&"ui_surge": {"path": "res://assets/audio/ui/ui_surge.wav", "db": -6.0},
+	&"ui_hover": {"path": "res://assets/audio/ui/ui_hover.wav", "db": -7.6},
+	&"ui_click": {"path": "res://assets/audio/ui/ui_click.wav", "db": -6.7},
+	&"ui_focus": {"path": "res://assets/audio/ui/ui_focus.wav", "db": -8.8},
+	&"ui_back": {"path": "res://assets/audio/ui/ui_back.wav", "db": -0.5},
+	&"ui_buzz": {"path": "res://assets/audio/ui/ui_buzz.wav", "db": -5.5},
+	&"ui_pause": {"path": "res://assets/audio/ui/ui_pause.wav", "db": -2.6},
+	&"ui_resume": {"path": "res://assets/audio/ui/ui_resume.wav", "db": -3.1},
+	&"ui_mode": {"path": "res://assets/audio/ui/ui_mode.wav", "db": -4.9},
+	&"ui_ready": {"path": "res://assets/audio/ui/ui_ready.wav", "db": 0.0},
+	&"ui_notice": {"path": "res://assets/audio/ui/ui_notice.wav", "db": -9.8},
+	&"ui_surge": {"path": "res://assets/audio/ui/ui_surge.wav", "db": -2.0},
 	&"ui_manifest": {"path": "res://assets/audio/ui/ui_manifest.wav", "db": 0.0},
 	&"ui_win": {"path": "res://assets/audio/ui/ui_win.wav", "db": -5.0},
 	&"ui_lose": {"path": "res://assets/audio/ui/ui_lose.wav", "db": -7.0},
@@ -237,6 +237,11 @@ const CATALOG := {
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},
 	&"music_battle_drums": {"path": "res://assets/audio/music/music_battle_drums.wav", "db": 0.0, "loop": true},
 	&"music_battle_lead": {"path": "res://assets/audio/music/music_battle_lead.wav", "db": 0.0, "loop": true},
+	# Stingers (natural sound pass 6, Music.sting()): the night begins, its main objective is done, won, lost.
+	&"music_sting_start": {"path": "res://assets/audio/music/music_sting_start.wav", "db": 0.0},
+	&"music_sting_objective": {"path": "res://assets/audio/music/music_sting_objective.wav", "db": 0.0},
+	&"music_sting_win": {"path": "res://assets/audio/music/music_sting_win.wav", "db": 0.0},
+	&"music_sting_lose": {"path": "res://assets/audio/music/music_sting_lose.wav", "db": 0.0},
 }
 
 static var _cache := {}

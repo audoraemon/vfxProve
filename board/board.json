@@ -1,11 +1,9 @@
 {
- "hash": "d77d45fdcd1d190e",
- "updated": "2026-11-11T11:09:09+07:00",
+ "hash": "3adea8fae97e285c",
+ "updated": "2026-11-11T11:55:47+07:00",
  "changes": {
-  "date": "<t:1794370149:f>",
-  "items": [
-   "New: Doors of the Dead (Passage, Tier V) (in progress)"
-  ]
+  "date": "<t:1794372947:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1470,23 +1468,23 @@
    {
     "name": "god/skill-tree-ui",
     "ahead": 258,
-    "behind": 31,
+    "behind": 32,
     "date": "2026-11-11",
     "subject": "fix: the Remembrance night toggle restores Engine.time_scale; Game's memory level follows the overlay's pick",
     "pushed": false
    },
    {
     "name": "claude/magical-lichterman-23d920",
-    "ahead": 253,
-    "behind": 31,
+    "ahead": 254,
+    "behind": 32,
     "date": "2026-11-11",
-    "subject": "art: God's Paths -- temple background, six god statues, swirl, flames, leaf, rays (PixelLab)",
+    "subject": "feat: God's Paths art and motion -- statues lit and dimmed, rays follow the pick, swirl, flames, leaves",
     "pushed": false
    },
    {
     "name": "claude/vfx-ability-effects-964aca",
     "ahead": 23,
-    "behind": 7,
+    "behind": 8,
     "date": "2026-11-11",
     "subject": "feat: Doors of the Dead (Passage Tier V) -- every door in a district opens onto the other side",
     "pushed": true
@@ -1494,7 +1492,7 @@
    {
     "name": "claude/zen-greider-6e47c5",
     "ahead": 23,
-    "behind": 0,
+    "behind": 1,
     "date": "2026-11-11",
     "subject": "feat: Heaven's Door gets a PixelLab rune door in 8 facings; The Folded Ward stands as a wall",
     "pushed": false
@@ -1502,7 +1500,7 @@
    {
     "name": "feat/soldier-jobs",
     "ahead": 16,
-    "behind": 7,
+    "behind": 8,
     "date": "2026-11-11",
     "subject": "fix: final review (clear_ground scope, pile layer, gap re-check, guard return)",
     "pushed": false
@@ -1510,7 +1508,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 248,
-    "behind": 31,
+    "behind": 32,
     "date": "2026-11-09",
     "subject": "fix: a follow-up order that finds nothing is refused as \"missed\" -- \"NOTHING THERE TO COMMAND\", not the Whisper's words",
     "pushed": true
@@ -1518,7 +1516,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 83,
+    "behind": 84,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1526,7 +1524,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 368,
+    "behind": 369,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1534,7 +1532,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 326,
+    "behind": 327,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1543,7 +1541,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-11",
-   "subject": "test: breed voices cover the town's dogs and cats, so a visitor breed (hellhound) does not fail it"
+   "subject": "fix: the soldiers' march no longer clatters through a calm town"
   }
  }
 }

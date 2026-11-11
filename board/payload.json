@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **25** to do · **123** done\n**9** active branches besides Develop-Main\n\n**Since the last update** (<t:1794370149:f>)\n• New: Doors of the Dead (Passage, Tier V) (in progress)",
+     "description": "**v0.12** is the latest release (`kak-v012-m2`)\n**13** in progress · **25** to do · **123** done\n**9** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-11T11:09:09+07:00"
+     "timestamp": "2026-11-11T11:55:47+07:00"
     },
     {
      "title": "god/skill-tree-ui",
@@ -21,7 +21,7 @@
     },
     {
      "title": "claude/magical-lichterman-23d920",
-     "description": "253 commits not in Develop-Main · last commit today · local only\n> art: God's Paths -- temple background, six god statues, swirl, flames, leaf, rays (PixelLab)\n\n_No Ledger task points at this branch._",
+     "description": "254 commits not in Develop-Main · last commit today · local only\n> feat: God's Paths art and motion -- statues lit and dimmed, rays follow the pick, swirl, flames, leaves\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -68,7 +68,7 @@
    "embeds": [
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-11\n> test: breed voices cover the town's dogs and cats, so a visitor breed (hellhound) does not fail it\n\n**In progress** (10)\n• Doors of the Dead (Passage, Tier V) — **needs you**\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-11\n> fix: the soldiers' march no longer clatters through a calm town\n\n**In progress** (10)\n• Doors of the Dead (Passage, Tier V) — **needs you**\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Passage, the second draft (7 powers) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (21)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {

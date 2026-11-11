@@ -1,10 +1,10 @@
 {
- "hash": "86cc529e614ea20d",
- "updated": "2026-11-12T04:17:01+07:00",
+ "hash": "7c05612ea6220a42",
+ "updated": "2026-11-12T04:47:25+07:00",
  "changes": {
-  "date": "<t:1794431821:f>",
+  "date": "<t:1794433645:f>",
   "items": [
-   "New: Zoom-out cap x0.85 (Discord idea 'Zoom cap')"
+   "New: Passage ability levels built (god branch)"
   ]
  },
  "snapshot": {
@@ -720,6 +720,15 @@
     "branch": "feat/capital-city",
     "updated": "2026-10-09",
     "order": 13
+   },
+   "passage-levels-built": {
+    "title": "Passage ability levels built (god branch)",
+    "status": "done",
+    "area": "Abilities",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-12",
+    "order": 1
    },
    "people-anim-madness": {
     "title": "People animations phase 1: madness",
@@ -1545,6 +1554,14 @@
     "behind": 5,
     "date": "2026-11-12",
     "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
+    "pushed": true
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 1,
+    "behind": 5,
+    "date": "2026-11-12",
+    "subject": "feat: Dominion sounds of the mind (skill-tree sound audit)",
     "pushed": true
    },
    {

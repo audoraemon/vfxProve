@@ -13,6 +13,8 @@ extends Node
 ## Pass 5 added the soldiers' march (_march()); their blows and orders are SoldierVoices, the animals AnimalVoices.
 ## Pass 6 lets a dog or cat near the camera call now and then (_animal_call()), by day and by night, and places fire
 ## where it burns (FireSounds): the town-wide fire bed is now the far-off part of it.
+## The town's children (Children) are heard too: a frightened child's cry is its own (cry_cue()), and by day one at play
+## near the camera laughs or shrieks now and then (_child_call()).
 ##
 ## It only listens: it reads the town's look (TownLook.active), the fires (Crowd.fires), who is running (Crowd.citizens)
 ## and how much the town panics (Crowd.panic_level()), and never touches the world; its numbers come from its own rng.
@@ -65,6 +67,12 @@ const ANIMAL_DAY := Vector2(6.0, 15.0)
 const ANIMAL_NIGHT := Vector2(8.0, 18.0)
 const ANIMAL_PICKS := 3
 const ANIMAL_REACH := 1.3
+## The children at play (Children): by day only, every CHILD_EVERY seconds one of the CHILD_PICKS children at play nearest
+## the screen's centre, at random, laughs or shrieks (child_play), if it is within CHILD_REACH of the screen. None while
+## the town panics past CALL_QUIET.
+const CHILD_EVERY := Vector2(7.0, 16.0)
+const CHILD_PICKS := 3
+const CHILD_REACH := 1.3
 
 var _crowd: Crowd
 var _players := {}
@@ -75,6 +83,7 @@ var _next_cry := 0.0
 var _next_march := 0.0
 var _march_turn := 0
 var _next_animal := 4.0
+var _next_child := 6.0
 var _last_at := {}  ## soldier instance id -> ground position at the last march tick
 var _stopped := false
 ## Fire where it burns (pass 6): the nearest burning buildings' own crackle, catching, cracking and dousing.
@@ -105,6 +114,16 @@ static func targets(night: bool, panic: float, fire: float) -> Dictionary:
 		"amb_fire": clampf(fire / FIRE_FULL, 0.0, 1.0),
 		"crowd_unrest": smoothstep(UNREST_IN.x, UNREST_IN.y, panic) * (1.0 - UNREST_DIP * chaos),
 		"crowd_panic": smoothstep(PANIC_IN.x, PANIC_IN.y, panic), "crowd_chaos": chaos}
+
+
+## The cry of a running person: a child's own, or a grown-up's.
+static func cry_cue(child: bool) -> StringName:
+	return &"child_cry" if child else &"crowd_cry"
+
+
+## Whether `p` is one of the town's children at play: alive, calm and out of doors where it can be seen.
+static func at_play(p: Person) -> bool:
+	return is_instance_valid(p) and p.is_alive() and p.is_child() and p.mind == Person.Mind.CALM and not p.inside and p.visible
 
 
 ## Seconds until the next cry at this panic level, before its random spread; none (INF) below CRY_FROM.
@@ -155,6 +174,7 @@ func _process(delta: float) -> void:
 	if _fire != null:
 		_fire.step(delta)
 	_animal_call(delta, night)
+	_child_call(delta, night)
 	_next_call -= delta
 	if _next_call <= 0.0:
 		var span := NIGHT_CALLS if night else DAY_CALLS
@@ -188,7 +208,34 @@ func _cries(delta: float, panic: float) -> void:
 		var p: Person = running[_rng.randi() % running.size()]
 		if who == null or p.ground_pos.distance_squared_to(centre) < who.ground_pos.distance_squared_to(centre):
 			who = p
-	_crowd.sfx.play(&"crowd_cry", who.ground_pos)
+	_crowd.sfx.play(cry_cue(who.is_child()), who.ground_pos)
+
+
+## By day, now and then a child at play near the camera laughs or shrieks.
+func _child_call(delta: float, night: bool) -> void:
+	_next_child -= delta
+	if _next_child > 0.0:
+		return
+	_next_child = _rng.randf_range(CHILD_EVERY.x, CHILD_EVERY.y)
+	if night or _crowd.sfx == null or _crowd.panic_level() >= CALL_QUIET:
+		return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	var centre := cam.get_screen_center_position()
+	var reach := maxf((get_viewport().get_visible_rect().size * 0.5 / cam.zoom).length(), 1.0)
+	var near: Array = []  # [screen distance, child]
+	for p in _crowd.citizens:
+		if not at_play(p):
+			continue
+		var d := (Iso.ground_to_screen(p.ground_pos) - centre).length() / reach
+		if d < CHILD_REACH:
+			near.append([d, p])
+	if near.is_empty():
+		return
+	near.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
+	var who: Person = near[_rng.randi() % mini(CHILD_PICKS, near.size())][1]
+	_crowd.sfx.play(&"child_play", who.ground_pos)
 
 
 ## Now and then a dog barks or a cat meows near the camera.

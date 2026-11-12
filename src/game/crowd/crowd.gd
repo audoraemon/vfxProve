@@ -2233,7 +2233,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 ## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town nobody cries out, so the
 ## fall is all that is heard (a quiet kind's cue).
 func _voice_death(p: Person, kind: StringName) -> void:
-	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() else kind, p.soldier, _clock)
+	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() else kind, p.soldier, _clock, p.is_child())
 	if sfx == null:
 		return
 	for c: Array in cues:

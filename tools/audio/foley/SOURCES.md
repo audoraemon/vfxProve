@@ -101,3 +101,11 @@ the sheet the user listens with.
   the Dragon's roar, the Tsunami's water or Cinderfall's fire: each has its own cues. The hellhounds, demons and ghosts
   that Hound Gate and Doors of the Dead let out have voices of their own (`hound_*`, `demon_*`, `ghost_*`): heard as they come
   through, while they roam (VisitorVoices), when they bite, claw or touch, and when they fall.
+
+## The town's children
+
+- `citizen/child_play_*`, `child_cry_*`, `child_death_*`: Wikimedia Commons `Short clip of girl laughing.wav` (CC0,
+  lmbubec), `Douzen kids on playground.ogg` (public domain, stephan), `Baby long wanting cry.ogg` and `Babys disappointed
+  crying.oga` (public domain, natalie; converted to WAV, pitched down a little to a small child); OpenGameArt (CC0)
+  `children-voices`, `group-giggling` (pitched up), `girly-scream`; the falls from Kenney's impact sounds. Wordless takes
+  only: laughs, shrieks, giggles and cries, never a word.

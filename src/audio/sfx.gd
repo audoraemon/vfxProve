@@ -177,6 +177,10 @@ const CATALOG := {
 	&"crowd_panic": {"path": "res://assets/audio/citizen/crowd_panic.wav", "db": -10.5, "loop": true},
 	&"crowd_chaos": {"path": "res://assets/audio/citizen/crowd_chaos.wav", "db": -10.4, "loop": true},
 	&"crowd_cry": {"path": "res://assets/audio/citizen/crowd_cry_%d.wav", "variants": 18, "db": -9.0, "voices": 4, "jitter": 0.06},
+	# The town's children (Children): a frightened child cries out in place of a grown-up's cry (Ambience._cries()), and by day one
+	# near the camera laughs or shrieks at play (Ambience._child_call()).
+	&"child_cry": {"path": "res://assets/audio/citizen/child_cry_%d.wav", "variants": 5, "db": -8.8, "voices": 3, "jitter": 0.06},
+	&"child_play": {"path": "res://assets/audio/citizen/child_play_%d.wav", "variants": 6, "db": -3.0, "voices": 2, "jitter": 0.05},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
 	# Soldiers at work (natural sound pass 5): boots on the march once the alarm is up (Ambience.march_heard()), a spear's thrust, a shouted order; a citizen's blow.
 	&"sol_step": {"path": "res://assets/audio/citizen/sol_step_%d.wav", "variants": 6, "db": -7.3, "voices": 3, "jitter": 0.06},
@@ -194,6 +198,7 @@ const CATALOG := {
 	# and the roar of a crowd falling at once. Levels measured by tools/audio/loudness.py (spec 6.3 row 4): cit_death and sol_death at the loud median - 4, cit_fall at - 9, the wave under the median.
 	&"cit_death": {"path": "res://assets/audio/citizen/cit_death_%d.wav", "variants": 5, "db": -4.4, "voices": 4, "jitter": 0.1},
 	&"cit_fall": {"path": "res://assets/audio/citizen/cit_fall_%d.wav", "variants": 4, "db": 1.8, "voices": 3, "jitter": 0.1},
+	&"child_death": {"path": "res://assets/audio/citizen/child_death_%d.wav", "variants": 3, "db": -7.2, "voices": 3, "jitter": 0.08},
 	&"sol_death": {"path": "res://assets/audio/citizen/sol_death_%d.wav", "variants": 3, "db": -4.2, "voices": 4, "jitter": 0.1},
 	&"crowd_death_wave": {"path": "res://assets/audio/citizen/crowd_death_wave_%d.wav", "variants": 2, "db": -2.0, "voices": 2, "jitter": 0.08},
 	# The quiet powers' own cast cues, part II (v0.11.2 Task 14; spec 2.3): one per power, none shared, each at a played level in [QUIET_FLOOR, loud median + 2] (tools/audio/loudness.py).
@@ -328,6 +333,11 @@ const CATALOG := {
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},
 	&"music_battle_drums": {"path": "res://assets/audio/music/music_battle_drums.wav", "db": 0.0, "loop": true},
 	&"music_battle_lead": {"path": "res://assets/audio/music/music_battle_lead.wav", "db": 0.0, "loop": true},
+	# The mission before the battle (music pass): the town's calm pieces and the tension stem in step with the battle's.
+	&"music_town_day": {"path": "res://assets/audio/music/music_town_day.wav", "db": 0.0, "loop": true},
+	&"music_town_night": {"path": "res://assets/audio/music/music_town_night.wav", "db": 0.0, "loop": true},
+	&"music_capital_day": {"path": "res://assets/audio/music/music_capital_day.wav", "db": 0.0, "loop": true},
+	&"music_tension": {"path": "res://assets/audio/music/music_tension.wav", "db": 0.0, "loop": true},
 	# Stingers (natural sound pass 6, Music.sting()): the night begins, its main objective is done, won, lost.
 	&"music_sting_start": {"path": "res://assets/audio/music/music_sting_start.wav", "db": 0.0},
 	&"music_sting_objective": {"path": "res://assets/audio/music/music_sting_objective.wav", "db": 0.0},

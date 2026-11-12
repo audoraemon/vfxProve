@@ -1,0 +1,5 @@
+{"length": 0.9, "rms_db": -16.0, "reverb": {"rt60": 0.6, "mix": 0.06, "predelay_ms": 8, "damp": 7000}, "layers": [
+  {"src": "lib:wikimedia/Babys_disappointed_crying.wav", "at": 0.0, "from": 45.7, "dur": 0.4, "pitch": -2, "hp": 180, "lp": 7000, "fade_in": 4, "fade_out": 90},
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_000.ogg", "at": 0.45, "gain_db": -9, "pitch": 3, "lp": 1100, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_grass_001.ogg", "at": 0.5, "gain_db": -14, "lp": 3000, "fade_out": 60}
+]}

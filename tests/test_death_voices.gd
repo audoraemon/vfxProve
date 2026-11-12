@@ -18,7 +18,7 @@ class Rec extends Node:
 
 ## A DeathVoices that is never heard: the control for _no_draws.
 class Deaf extends DeathVoices:
-	func heard(_at: Vector2, _kind: StringName, _soldier: bool, _now: float) -> Array:
+	func heard(_at: Vector2, _kind: StringName, _soldier: bool, _now: float, _child := false) -> Array:
 		return []
 
 
@@ -49,6 +49,10 @@ static func _one(t) -> void:
 	got = d.heard(at, &"lightning", true, 1.0)
 	t.check(got.size() == 1 and got[0][0] == &"sol_death", "a soldier's is a sol_death (%s)" % [got])
 	t.check(d.voiced == 2 and d.waves == 0, "two voiced, no wave (%d, %d)" % [d.voiced, d.waves])
+	got = d.heard(at, &"lightning", false, 2.0, true)
+	t.check(got.size() == 1 and got[0][0] == &"child_death", "a child's is a child_death (%s)" % [got])
+	got = DeathVoices.new().heard(at, &"doom", false, 0.0, true)
+	t.check(got.size() == 1 and got[0][0] == &"cit_fall", "a child's quiet death slumps with no cry (%s)" % [got])
 
 
 static func _quiet(t) -> void:

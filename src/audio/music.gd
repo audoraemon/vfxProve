@@ -2,12 +2,17 @@ class_name Music
 extends Node
 ## Background music, played by orchestral samples (tools/audio/music/, tools/audio/music_render.py): a dark choral theme on
 ## the title and the draft, and in the
-## mission a battle loop in three stems -- base, drums, lead -- layered in as the city falls. Not positional, not
+## mission a calm piece for the town as it is (CALM: by day, by night, the Capital's own), a tension stem as it starts to
+## slip, and a battle loop in three stems -- base, drums, lead -- layered in as the city falls (the music pass). Not positional, not
 ## tied to a battlefield, and alive across every screen change so one track can fade into the next. Built the way
 ## UiSound is: one node under the scene tree's root, made the first time music is asked for, silent headless.
 
 const THEME := &"music_theme"
 const BATTLE := [&"music_battle_base", &"music_battle_drums", &"music_battle_lead"]
+## The mission's calm pieces: the town by day, the town by night, the Capital by day (calm_cue()).
+const CALM := [&"music_town_day", &"music_town_night", &"music_capital_day"]
+## The dread before the fight: the battle's harmony and length, started with its stems so it stays in step.
+const TENSION := &"music_tension"
 ## The music's level under everything else (v0.11.2: -10 -> -16, the playtest's "too loud"; its own bus, so the Options slider moves it).
 const DB := -16.0
 const BUS := &"Music"
@@ -25,6 +30,10 @@ static var _node: Music
 
 var _theme: AudioStreamPlayer
 var _stems: Array[AudioStreamPlayer] = []
+var _calm: Array[AudioStreamPlayer] = []
+var _tension: AudioStreamPlayer
+var _calm_gain: Array[float] = [0.0, 0.0, 0.0]
+var _tension_gain := 0.0
 ## Current gain (0..1) of the theme and of each stem, eased toward their targets.
 var _theme_gain := 0.0
 var _stem_gain: Array[float] = [0.0, 0.0, 0.0]
@@ -76,10 +85,27 @@ static func current() -> StringName:
 	return _node._want if is_instance_valid(_node) else &""
 
 
-## Each battle stem's volume at an intensity: the base always; the drums from a third of the way, the lead from
-## two thirds, each fading in over a sixth so the music thickens rather than switches.
+## Each battle stem's volume at an intensity: the base from a fifth of the way, the drums from a third, the lead from
+## two thirds, each fading in so the music thickens rather than switches. Before the base the town's calm piece and the
+## tension stem play (calm_gain(), tension_gain()).
 static func stem_gains(intensity: float) -> Array[float]:
-	return [1.0, clampf((intensity - 0.33) / 0.17, 0.0, 1.0), clampf((intensity - 0.66) / 0.17, 0.0, 1.0)]
+	return [clampf((intensity - 0.2) / 0.13, 0.0, 1.0), clampf((intensity - 0.33) / 0.17, 0.0, 1.0),
+		clampf((intensity - 0.66) / 0.17, 0.0, 1.0)]
+
+
+## The calm piece's volume: full while the city stands, gone by the time the battle's base is in.
+static func calm_gain(intensity: float) -> float:
+	return 1.0 - smoothstep(0.08, 0.3, intensity)
+
+
+## The tension stem's volume: in as the city starts to slip, and kept under the battle after.
+static func tension_gain(intensity: float) -> float:
+	return smoothstep(0.06, 0.22, intensity)
+
+
+## Which of CALM the mission plays: the town by night, else the Capital's own by day, else the town by day.
+static func calm_cue(night: bool, capital: bool) -> StringName:
+	return CALM[1] if night else (CALM[2] if capital else CALM[0])
 
 
 ## Force every player silent at once, latched so nothing restarts it. Call this before the quit path's
@@ -113,6 +139,9 @@ func _ready() -> void:
 	_theme = _player(THEME)
 	for cue: StringName in BATTLE:
 		_stems.append(_player(cue))
+	for cue: StringName in CALM:
+		_calm.append(_player(cue))
+	_tension = _player(TENSION)
 
 
 func _player(cue: StringName) -> AudioStreamPlayer:
@@ -150,9 +179,7 @@ func _switch(track: StringName) -> void:
 	if not is_inside_tree():
 		return  # _process picks the wish up once the node is in
 	if track == &"battle":
-		# Start all three stems together, so identical lengths keep them in step for the whole mission.
-		for p in _stems:
-			p.play(0.0)
+		_start_battle()
 	elif track == &"theme" and not _theme.playing:
 		_theme.play(0.0)
 
@@ -161,8 +188,7 @@ func _process(delta: float) -> void:
 	if _theme == null or _stopped:
 		return
 	if _want == &"battle" and not _stems[0].playing:
-		for p in _stems:
-			p.play(0.0)
+		_start_battle()
 	elif _want == &"theme" and not _theme.playing:
 		_theme.play(0.0)
 	var step := delta / FADE
@@ -172,19 +198,39 @@ func _process(delta: float) -> void:
 		targets = stem_gains(_intensity)
 	for i in _stems.size():
 		_stem_gain[i] = move_toward(_stem_gain[i], float(targets[i]), step)
+	var battle := _want == &"battle"
+	var calm := calm_cue(TownLook.active == Town.Look.NIGHT, City.current().id() == &"capital") if battle else &""
+	for i in _calm.size():
+		_calm_gain[i] = move_toward(_calm_gain[i], calm_gain(_intensity) if CALM[i] == calm else 0.0, step)
+		if _calm_gain[i] > 0.0 and not _calm[i].playing:
+			_calm[i].play(0.0)
+	_tension_gain = move_toward(_tension_gain, tension_gain(_intensity) if battle else 0.0, step)
 	_sting_left = maxf(_sting_left - delta, 0.0)
 	_sting_dip = move_toward(_sting_dip, STING_DIP_DB if _sting_left > 0.5 else 0.0, 24.0 * delta if _sting_left > 0.5 else 4.0 * delta)
 	var duck := (DUCK_DB if _ducked else 0.0) + _sting_dip
 	_apply(_theme, _theme_gain, duck)
 	for i in _stems.size():
 		_apply(_stems[i], _stem_gain[i], duck)
+	for i in _calm.size():
+		_apply(_calm[i], _calm_gain[i], duck)
+		if _calm_gain[i] <= 0.0 and _calm[i].playing:
+			_calm[i].stop()
+	_apply(_tension, _tension_gain, duck)
 	# A track faded right out stops, so nothing plays silently forever -- except a battle stem while the battle
 	# is on, which must keep running to stay in step.
 	if _theme_gain <= 0.0 and _theme.playing:
 		_theme.stop()
-	if _want != &"battle" and _stem_gain.max() <= 0.0 and _stems[0].playing:
+	if _want != &"battle" and maxf(_stem_gain.max(), _tension_gain) <= 0.0 and _stems[0].playing:
 		for p in _stems:
 			p.stop()
+		_tension.stop()
+
+
+## Starts the three battle stems and the tension stem together: identical lengths keep them in step all mission.
+func _start_battle() -> void:
+	for p in _stems:
+		p.play(0.0)
+	_tension.play(0.0)
 
 
 func _apply(p: AudioStreamPlayer, gain: float, duck: float) -> void:
@@ -197,5 +243,7 @@ func _stop_all() -> void:
 		_theme.stop()
 	if _sting != null:
 		_sting.stop()
-	for p in _stems:
+	for p in _stems + _calm:
 		p.stop()
+	if _tension != null:
+		_tension.stop()

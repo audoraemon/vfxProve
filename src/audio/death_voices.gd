@@ -4,7 +4,7 @@ extends RefCounted
 ## Pure logic: it draws no random number, reads no person and changes nothing the simulation reads, so the digest and
 ## every checksum stand whether or not anyone listens. Headless it only counts (voiced, waves).
 ##
-## A cue is a cry and a fall (cit_death), a grunt, mail and a fall (sol_death), or -- for the quiet kinds -- a body's
+## A cue is a cry and a fall (cit_death; a child's own, child_death), a grunt, mail and a fall (sol_death), or -- for the quiet kinds -- a body's
 ## slump with no cry (cit_fall): an unseen death must not shout. Deaths within WAVE_WINDOW of a wave's first are one
 ## wave: the first WAVE_VOICES of them are voiced, in the order they fall, and the MASS_AT-th loud one adds one
 ## crowd_death_wave at the mean of the deaths so far. A token budget (TOKENS, refilled REFILL a second) caps the rate
@@ -33,8 +33,8 @@ var _wave_sum := Vector2.ZERO  ## ground positions of the loud deaths so far
 
 
 ## The cues to play for a death at `at` (ground position) of damage `kind`, at crowd clock `now`: [[cue, position], ...],
-## often empty.
-func heard(at: Vector2, kind: StringName, soldier: bool, now: float) -> Array:
+## often empty. `child`: one of the town's children (Children), whose cry is its own.
+func heard(at: Vector2, kind: StringName, soldier: bool, now: float, child := false) -> Array:
 	var out := []
 	if now - _wave_at > WAVE_WINDOW or now < _wave_at:
 		_wave_at = now
@@ -46,7 +46,7 @@ func heard(at: Vector2, kind: StringName, soldier: bool, now: float) -> Array:
 		_tokens -= 1.0
 		_wave_voiced += 1
 		voiced += 1
-		var cue := &"cit_fall" if quiet else (&"sol_death" if soldier else &"cit_death")
+		var cue := &"cit_fall" if quiet else (&"sol_death" if soldier else (&"child_death" if child else &"cit_death"))
 		out.append([cue, at])
 	if not quiet:
 		_wave_loud += 1

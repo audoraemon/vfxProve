@@ -1,0 +1,3 @@
+{"length": 1.1, "rms_db": -20.0, "reverb": {"rt60": 0.9, "mix": 0.1, "predelay_ms": 12, "damp": 6500}, "layers": [
+  {"src": "lib:wikimedia/Douzen_kids_on_playground.wav", "at": 0.0, "from": 27.8, "dur": 0.7, "pitch": 0, "hp": 220, "lp": 9000, "fade_in": 30, "fade_out": 200}
+]}

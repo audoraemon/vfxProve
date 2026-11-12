@@ -49,20 +49,33 @@ static func run(t) -> void:
 	t.check(Sfx.CATALOG.has(&"crowd_panic") and bool(Sfx.CATALOG[&"crowd_panic"].get("loop", false))
 		and ResourceLoader.exists("res://assets/audio/citizen/crowd_panic.wav"), "the crowd bed is a loop in the catalog and on disk")
 
-	# The music: four loops, the three battle stems exactly the same length so they stay in step.
+	# The music: the theme, the town's calm pieces, and the battle's three stems and the tension stem, all four the same
+	# length so they stay in step.
 	var lengths: Array[float] = []
-	for cue: StringName in [&"music_theme", &"music_battle_base", &"music_battle_drums", &"music_battle_lead"]:
+	for cue: StringName in [&"music_theme", &"music_battle_base", &"music_battle_drums", &"music_battle_lead", Music.TENSION]:
 		var stream := Sfx.load_stream(cue) if Sfx.CATALOG.has(cue) else null
 		lengths.append(stream.get_length() if stream != null else -1.0)
 	t.check(lengths[0] > 20.0, "the theme is a long loop (%.1f s)" % lengths[0])
-	t.check(lengths[1] > 0.0 and is_equal_approx(lengths[1], lengths[2]) and is_equal_approx(lengths[1], lengths[3]),
-		"the battle's three stems are the same length (%s)" % [lengths])
+	t.check(lengths[1] > 0.0 and is_equal_approx(lengths[1], lengths[2]) and is_equal_approx(lengths[1], lengths[3])
+		and is_equal_approx(lengths[1], lengths[4]), "the battle's three stems and the tension stem are the same length (%s)" % [lengths])
+	for cue: StringName in Music.CALM:
+		var s := Sfx.load_stream(cue) if Sfx.CATALOG.has(cue) else null
+		t.check(s != null and s.get_length() > 30.0 and bool(Sfx.CATALOG[cue].get("loop", false)), "%s is a long loop" % cue)
+	t.check(Music.calm_cue(false, false) == &"music_town_day" and Music.calm_cue(true, false) == &"music_town_night"
+		and Music.calm_cue(false, true) == &"music_capital_day" and Music.calm_cue(true, true) == &"music_town_night",
+		"the calm piece: the town by day, by night (the Capital's too), the Capital's own by day")
 
-	# The battle's layers: the base always, the drums from a third of the way down, the lead from two thirds.
+	# The layers: a standing city hears its calm piece only; as it slips the tension comes in and the calm goes; then
+	# the battle's base, the drums from a third of the way down, the lead from two thirds.
 	var calm := Music.stem_gains(0.0)
 	var half := Music.stem_gains(0.5)
 	var falling := Music.stem_gains(1.0)
-	t.check(calm[0] == 1.0 and calm[1] == 0.0 and calm[2] == 0.0, "a standing city hears only the battle's base (%s)" % [calm])
+	t.check(calm == [0.0, 0.0, 0.0] and Music.calm_gain(0.0) == 1.0 and Music.tension_gain(0.0) == 0.0,
+		"a standing city hears its calm piece and no battle (%s)" % [calm])
+	t.check(Music.tension_gain(0.2) > 0.5 and Music.calm_gain(0.2) < 0.5 and Music.stem_gains(0.2)[0] == 0.0,
+		"a city starting to slip: the tension over a fading calm, no battle yet")
+	t.check(Music.calm_gain(0.33) == 0.0 and Music.tension_gain(0.33) == 1.0 and is_equal_approx(Music.stem_gains(0.33)[0], 1.0),
+		"a third of the way down: the calm gone, the battle's base in over the tension")
 	# is_equal_approx(), not ==: (0.5 - 0.33) / 0.17 lands at 0.9999999999999999 in double precision, a hair
 	# under the clamp's ceiling, so it never hits the exact 1.0 that clamping an out-of-range value would give.
 	t.check(is_equal_approx(half[1], 1.0) and half[2] == 0.0, "half fallen adds the drums (%s)" % [half])

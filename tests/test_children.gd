@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_directors(t)
 	_look(t)
 	_capital(t)
+	_heard(t)
 	Children.enabled = was
 	City.use(&"aldermere")
 
@@ -270,3 +271,21 @@ static func _capital(t) -> void:
 		and orphans == 0, "the capital has its children too (%d for %d grown citizens), each in a family" % [kids.size(), adults])
 	_done(b)
 	City.use(&"aldermere")
+
+
+## Children are heard (Ambience): a calm child out of doors is at play (its laugh by day), a grown-up never is; a
+## frightened child cries its own cry; its death is its own (DeathVoices).
+static func _heard(t) -> void:
+	var b := _build()
+	var crowd: Crowd = b.crowd
+	var kids := _kids(crowd)
+	var out := kids.filter(func(k: Person) -> bool: return not k.inside and k.visible and k.mind == Person.Mind.CALM)
+	t.check(not out.is_empty() and out.all(func(k: Person) -> bool: return Ambience.at_play(k)),
+		"calm children out of doors are at play (%d of %d)" % [out.size(), kids.size()])
+	var grown := crowd.citizens.filter(func(p: Person) -> bool: return not p.is_child())
+	t.check(not grown.any(func(p: Person) -> bool: return Ambience.at_play(p)), "no grown-up is at play")
+	t.check(Ambience.cry_cue(true) == &"child_cry" and Ambience.cry_cue(false) == &"crowd_cry",
+		"a frightened child cries its own cry, a grown-up the crowd's")
+	for cue: StringName in [&"child_cry", &"child_play", &"child_death"]:
+		t.check(Sfx.CATALOG.has(cue) and Sfx.paths_for(cue).size() >= 3, "%s is in the catalog with its takes" % cue)
+	_done(b)

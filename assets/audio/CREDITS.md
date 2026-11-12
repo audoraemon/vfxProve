@@ -10,7 +10,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `footstep_concrete_002.ogg` | CC0 | Kenney | ability/quiet/q_allroads |
 | [Kenney impact-sounds](https://kenney.nl) `footstep_concrete_003.ogg` | CC0 | Kenney | ability/quiet/q_allroads |
 | [Kenney impact-sounds](https://kenney.nl) `footstep_concrete_004.ogg` | CC0 | Kenney | ability/quiet/q_allroads |
-| [Kenney impact-sounds](https://kenney.nl) `footstep_grass_001.ogg` | CC0 | Kenney | citizen/cit_fall_1 |
+| [Kenney impact-sounds](https://kenney.nl) `footstep_grass_001.ogg` | CC0 | Kenney | citizen/child_death_1, citizen/child_death_2, citizen/child_death_3, citizen/cit_fall_1 |
 | [Kenney impact-sounds](https://kenney.nl) `footstep_grass_002.ogg` | CC0 | Kenney | citizen/cit_fall_4 |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_000.ogg` | CC0 | Kenney | ability/quiet/q_deathmark_hit, ability/quiet/q_yesterday, building/lantern_blind |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_001.ogg` | CC0 | Kenney | ability/passage/hd_land, ability/quiet/q_belllies |
@@ -39,7 +39,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `impactPunch_heavy_002.ogg` | CC0 | Kenney | ability/passage/hg_settle, ability/ruin/smite_strike_2, citizen/sol_strike_3 |
 | [Kenney impact-sounds](https://kenney.nl) `impactPunch_heavy_003.ogg` | CC0 | Kenney | ability/passage/hm_shut, ability/ruin/smite_strike_3, citizen/sol_strike_4 |
 | [Kenney impact-sounds](https://kenney.nl) `impactPunch_heavy_004.ogg` | CC0 | Kenney | ability/passage/hd_land, ability/ruin/sky_clap, citizen/sol_strike_5 |
-| [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_000.ogg` | CC0 | Kenney | citizen/cit_death_1, citizen/cit_fall_1, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1 |
+| [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_000.ogg` | CC0 | Kenney | citizen/child_death_1, citizen/child_death_2, citizen/child_death_3, citizen/cit_death_1, citizen/cit_fall_1, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1 |
 | [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_001.ogg` | CC0 | Kenney | citizen/cit_death_2, citizen/cit_fall_2, citizen/crowd_death_wave_2, citizen/sol_death_2 |
 | [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_verdict_hit, citizen/cit_death_3, citizen/crowd_death_wave_1 |
 | [Kenney impact-sounds](https://kenney.nl) `impactSoft_heavy_003.ogg` | CC0 | Kenney | citizen/cit_death_4, citizen/cit_fall_3, citizen/crowd_death_wave_2 |
@@ -247,6 +247,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Cave In](https://opengameart.org/content/cave-in) `cave_in_-_starninjas_0.ogg` | CC0 | StarNinjas | ability/fire/cf_erupt, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/nova_rumble, ability/fire/nova_shockwave, ability/holy/hs_fissure, ability/holy/jg_crumble, ability/holy/jg_rise, ability/holy/jg_rumble, ability/holy/jg_slam, ability/ruin/quake_open, ability/ruin/quake_settle, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_4, building/collapse_stone_5 |
 | [CC0 Deep Monster Roar](https://opengameart.org/content/cc0-deep-monster-roar) `monster_roar.wav` | CC0 | trazzz123 | ability/fire/dr_roar, building/lantern_burn |
 | [Cheers](https://opengameart.org/content/cheers-0) `cheers_1.ogg` | CC0 | Nocturnal_Vanguard | ability/quiet/q_verdict_hit, citizen/sol_rally |
+| [User login](https://opengameart.org/content/children-voices) `children.wav` | CC0 | Yaroslav_Novikov | citizen/child_play_2 |
 | [Chunky Explosion](https://opengameart.org/content/chunky-explosion) `Chunky Explosion.mp3` | CC0 | Joth | ability/fire/dr_erupt, ability/holy/jg_slam, ability/ruin/scatter_boom |
 | [Correct Bell](https://opengameart.org/content/correct-bell) `bell.wav` | CC0 | Fupi | ability/quiet/q_priority |
 | [Creepy Incoherent Chanting](https://opengameart.org/content/creepy-incoherent-chanting) `chant1.wav` | CC0 | OwlishMedia | ability/dominion/dom_speak |
@@ -350,8 +351,9 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan03.wav` | CC0 | qubodup | ability/passage/ghost_moan_1, ability/passage/ghost_roam_3, building/lantern_flare |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan04.wav` | CC0 | qubodup | ability/passage/dead_recall, ability/passage/ghost_moan_2 |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan05.wav` | CC0 | qubodup | ability/passage/ghost_roam_4, ability/quiet/q_doom |
-| [Girly scream](https://opengameart.org/content/girly-scream) `wscream_2_0.wav` | CC0 | Ferk | citizen/crowd_chaos, citizen/crowd_cry_5 |
+| [Girly scream](https://opengameart.org/content/girly-scream) `wscream_2_0.wav` | CC0 | Ferk | citizen/child_cry_5, citizen/child_death_1, citizen/crowd_chaos, citizen/crowd_cry_5 |
 | [Gravity Inverter](https://opengameart.org/content/gravity-inverter) `gravity_inverter.ogg` | CC0 | fvcalderan | ability/arcane/grav_compress |
+| [Group giggling](https://opengameart.org/content/group-giggling) `group_giggling.ogg` | CC0 | Nocturnal_Vanguard | citizen/child_play_6 |
 | [grunts of male death and pain ](https://opengameart.org/content/grunts-male-death-and-pain) `death pain grunts.wav` | CC0 | thebardofblasphemy | citizen/cit_death_2, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1, citizen/sol_death_2, citizen/sol_death_3 |
 | [Heartbeat sounds](https://opengameart.org/content/heartbeat-sounds) `heartbeat_slow_0.wav` | CC0 | bart | ability/dominion/dom_bind, ability/dominion/dom_speak, ability/quiet/q_madness |
 | [High pitch scream sounds(2)](https://opengameart.org/content/high-pitch-scream-sounds2) `high_pitch_scream.mp3` | CC0 | pauliuw | citizen/cit_yelp_4 |
@@ -533,11 +535,14 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [20080618KamagasakiRiot.ogg](https://commons.wikimedia.org/wiki/File:20080618KamagasakiRiot.ogg) `20080618KamagasakiRiot.ogg` | CC0 | Kamagasaki450 | citizen/crowd_chaos |
 | [25822 heigh-hoo peace-bell-hiroshima.wav](https://commons.wikimedia.org/wiki/File:25822_heigh-hoo_peace-bell-hiroshima.wav) `25822_heigh-hoo_peace-bell-hiroshima.wav` | CC0 | Heigh-hoo | building/lantern_blind, building/lantern_flare |
 | [360703 eguobyte large-crowd-medium-distance-stereo.wav](https://commons.wikimedia.org/wiki/File:360703_eguobyte_large-crowd-medium-distance-stereo.wav) `360703_eguobyte_large-crowd-medium-distance-stereo.wav` | CC0 | eguobyte | ambience/amb_day, ambience/amb_night, citizen/crowd_panic, citizen/crowd_unrest |
+| [Baby long wanting cry.ogg](https://commons.wikimedia.org/wiki/File%3ABaby_long_wanting_cry.ogg) `Baby_long_wanting_cry.wav` | Public domain | natalie | citizen/child_cry_1, citizen/child_cry_2, citizen/child_death_3 |
+| [Babys disappointed crying.oga](https://commons.wikimedia.org/wiki/File%3ABabys_disappointed_crying.oga) `Babys_disappointed_crying.wav` | Public domain | natalie | citizen/child_cry_3, citizen/child_cry_4, citizen/child_death_2 |
 | [Bones breaking wood fire ice crackling.ogg](https://commons.wikimedia.org/wiki/File%3ABones_breaking_wood_fire_ice_crackling.ogg) `Bones_breaking_wood_fire_ice_crackling.wav` | Public domain | stephan | building/fire_burn_1, building/fire_burn_2 |
 | [Cat hissing - Zabuhailo.wav](https://commons.wikimedia.org/wiki/File%3ACat_hissing_-_Zabuhailo.wav) `Cat_hissing_-_Zabuhailo.wav` | CC0 | Zabuhailo | animal/cat_hiss_1, animal/cat_hiss_2, animal/cat_hiss_3 |
 | [Church bells - Leverkusen, 2007.oga](https://commons.wikimedia.org/wiki/File:Church_bells_-_Leverkusen,_2007.oga) `Church_bells_-_Leverkusen_2007.wav` | Public domain | natalie | ability/passage/hd_land, ability/passage/hd_shut, building/town_bell, ui/ui_surge |
 | [Church of Saint Mark (Litovel) ringing.ogg](https://commons.wikimedia.org/wiki/File:Church_of_Saint_Mark_(Litovel)_ringing.ogg) `Church_of_Saint_Mark_Litovel_ringing.ogg` | Public domain | Gampe | building/town_bell |
 | [Door handle creaking.ogg](https://commons.wikimedia.org/wiki/File%3ADoor_handle_creaking.ogg) `Door_handle_creaking.wav` | Public domain | stephan | ability/passage/dead_creak_1, ability/passage/dead_creak_2, ability/passage/dead_creak_3, ability/passage/dead_creak_4, ability/passage/dead_door, ability/passage/hg_doors |
+| [Douzen kids on playground.ogg](https://commons.wikimedia.org/wiki/File:Douzen_kids_on_playground.ogg) `Douzen_kids_on_playground.wav` | Public domain | stephan | citizen/child_play_3, citizen/child_play_4, citizen/child_play_5 |
 | [Dry grass burning in open fireplace.ogg](https://commons.wikimedia.org/wiki/File%3ADry_grass_burning_in_open_fireplace.ogg) `Dry_grass_burning_in_open_fireplace.wav` | Public domain | ezwa | building/fire_burn_1, building/fire_burn_2, building/fire_catch_1, building/fire_catch_2, building/fire_catch_3 |
 | [Earthquake.ogg](https://commons.wikimedia.org/wiki/File%3AEarthquake.ogg) `Earthquake.wav` | Public domain | igel457 | ability/passage/hg_rise, ability/passage/hg_sink, ability/passage/hm_tear, ability/ruin/quake_groan, ability/ruin/quake_run_1, ability/ruin/quake_run_2, ability/ruin/quake_run_3 |
 | [Festival concert people crowd.ogg](https://commons.wikimedia.org/wiki/File:Festival_concert_people_crowd.ogg) `Festival_concert_people_crowd.wav` | Public domain | stephan | citizen/crowd_unrest |
@@ -549,6 +554,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [NOW screaming.ogg](https://commons.wikimedia.org/wiki/File:NOW_screaming.ogg) `NOW_screaming.ogg` | CC0 | Ranch9613 | citizen/crowd_cry_8 |
 | [NoTrip.ogg](https://commons.wikimedia.org/wiki/File%3ANoTrip.ogg) `NoTrip.ogg` | Public domain | Heismark | animal/cat_yowl_1, animal/cat_yowl_2 |
 | [Puppy at a night.ogg](https://commons.wikimedia.org/wiki/File%3APuppy_at_a_night.ogg) `Puppy_at_a_night.ogg` | CC0 | Knites | animal/dog_yelp_4 |
+| [Short clip of girl laughing.wav](https://commons.wikimedia.org/wiki/File%3AShort_clip_of_girl_laughing.wav) `Short_clip_of_girl_laughing.wav` | CC0 | lmbubec | citizen/child_play_1 |
 | [SingingBowl1.ogg](https://commons.wikimedia.org/wiki/File%3ASingingBowl1.ogg) `SingingBowl1.ogg` | Public domain | BambooBeast | ability/dominion/dom_mark, ability/dominion/dom_trance, ability/dominion/dom_wall, ability/quiet/q_clearmind |
 | [SingingBowl2.ogg](https://commons.wikimedia.org/wiki/File%3ASingingBowl2.ogg) `SingingBowl2.ogg` | Public domain | BambooBeast | ability/quiet/q_discord, ability/quiet/q_saint, ability/quiet/q_wisp |
 | [Street parade carnival people yelling kamelle kamelle.ogg](https://commons.wikimedia.org/wiki/File:Street_parade_carnival_people_yelling_kamelle_kamelle.ogg) `Street_parade_carnival_people_yelling_kamelle_kamelle.wav` | Public domain | stephan | citizen/crowd_panic |

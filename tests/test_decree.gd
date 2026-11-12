@@ -37,16 +37,16 @@ static func _done(made: Array) -> void:
 
 static func run(t) -> void:
 	var problems := []
-	var prices := {"noleave": 1, "belllies": 2, "magnify": 3, "curfew": 4, "abolition": 5}
+	var prices := {"noleave": 1, "belllies": 2, "breath": 2, "magnify": 3, "redefine": 3, "bound": 3, "disorder": 3, "curfew": 4, "erase": 4,
+		"eminent": 4, "abolition": 5, "fenced": 5, "cage": 6, "sealed": 6}
+	var quiet := ["noleave", "belllies", "magnify", "curfew", "abolition", "redefine", "bound", "sealed"]
 	for key: String in prices:
 		var b := PowerBook.get_power(key)
-		if int(b.dp) != int(prices[key]) or PowerBook.icon(key) == null or PowerBook.hud_icon(key) == null or PowerBook.clip(key) == null \
-				or not ResourceLoader.exists(String(b.path)) or not Targeting.AREAS.has(key) or not Rules.POWER_KINDS.has(key) \
-				or PowerBook.authority_of(key) != "decree" or not PowerBook.is_quiet(key):
+		if int(b.dp) != int(prices[key]) or PowerBook.icon(key) == null or PowerBook.hud_icon(key) == null or PowerBook.clip(key) == null 				or not ResourceLoader.exists(String(b.path)) or not Targeting.AREAS.has(key) or not Rules.POWER_KINDS.has(key) 				or PowerBook.authority_of(key) != "decree" or PowerBook.is_quiet(key) != quiet.has(key):
 			problems.append(key)
 	t.check(problems.is_empty() and Array(PowerBook.of_authority("decree")) == ["noleave", "belllies", "breath", "magnify", "redefine", "bound", "disorder", "curfew", "erase", "eminent", "fenced", "abolition", "cage", "sealed"]
 		and PowerBook.authority_title("decree") == "DECREE",
-		"Decree holds its five old quiet powers at 1, 2, 3, 4 and 5 DP, each with its effect, icons, clip and area, and Breathing Is Prohibited, Redefine, Bound in Law, Disorder, Erasing Distance, Eminent Domain, Fenced Rule, The Closing Cage and The Sealed Verdict (%s)" % [problems])
+		"Decree holds its fourteen powers at their DP, each with its effect, icons, clip and area; the quiet ones are Leaving Is Prohibited, The Bell Lies, Magnify, Curfew, Abolition, Redefine, Bound in Law and The Sealed Verdict (%s)" % [problems])
 	var modes: Array = PowerBook.get_power("abolition").modes
 	t.check(PowerBook.get_power("belllies").modes.size() == 2 and modes.size() == 3 and String(modes[0].key) == "clock" and String(modes[1].key) == "escape" and String(modes[2].key) == "ward",
 		"Abolition's modes are the three laws")

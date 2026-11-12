@@ -27,6 +27,17 @@ const EFFECTS := [
 	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "focus_up": -10.0, "focus_px": Vector2(150, -20), "zoom": 0.8},
 	{"set": 1, "key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd", "focus_up": -16.0, "zoom": 2.2},
 	{"set": 1, "key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd", "focus_up": -20.0, "zoom": 2.2},
+	# Decree (2026-11-12): the whole tree, Tier 1 to Tier 5.
+	{"set": 1, "key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd", "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "breath", "name": "Breathing Is Prohibited", "path": "res://src/fx/decree/breathing_is_prohibited.gd", "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "redefine", "name": "Redefine", "path": "res://src/fx/decree/redefine.gd", "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "bound", "name": "Bound in Law", "path": "res://src/fx/decree/bound_in_law.gd", "pair": true, "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "erase", "name": "Erasing Distance", "path": "res://src/fx/decree/erasing_distance.gd", "lane": true, "focus_along": 4.0, "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "disorder", "name": "Disorder", "path": "res://src/fx/decree/disorder.gd", "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "eminent", "name": "Eminent Domain", "path": "res://src/fx/decree/eminent_domain.gd", "lane": true, "focus_along": 6.0, "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "fenced", "name": "Fenced Rule", "path": "res://src/fx/decree/fenced_rule.gd", "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "cage", "name": "The Closing Cage", "path": "res://src/fx/decree/the_closing_cage.gd", "focus_up": -30.0, "zoom": 1.2},
+	{"set": 1, "key": "sealed", "name": "The Sealed Verdict", "path": "res://src/fx/decree/the_sealed_verdict.gd", "focus_up": -30.0, "zoom": 1.2},
 	{"set": 2, "key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd", "focus_up": -30.0, "zoom": 0.8},
 	{"set": 2, "key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd", "pair": true, "focus_up": 0.0, "zoom": 1.0},
 ]
@@ -50,6 +61,17 @@ const CAPTURES := {
 	# The pillar gathering, landing, standing and lifting, then the pit left behind.
 	"solaris": {"target": Vector2(0, 0), "times": [0.7, 1.22, 1.45, 2.5, 4.5, 6.15, 6.5, 7.4, 8.4],
 		"after": [1.0, 1.3, 1.6, 2.0, 2.5, 4.0, 6.0, 9.0]},
+	# Decree: each cast at the middle; Bound in Law's second click and the drag powers' direction are in the plan.
+	"noleave": {"target": Vector2(0, 0), "times": [0.3, 1.5, 4.0]},
+	"breath": {"target": Vector2(0, 0), "times": [0.3, 1.5, 3.5]},
+	"redefine": {"target": Vector2(0, 0), "times": [0.3, 1.5, 4.0]},
+	"bound": {"target": Vector2(0, 0), "times": [0.3, 2.0, 6.0], "to": Vector2(1.8, 0.0)},
+	"erase": {"target": Vector2(0, 0), "times": [0.5, 1.5, 3.0], "dir": Vector2(1, 0)},
+	"disorder": {"target": Vector2(0, 0), "times": [0.3, 2.0, 5.0]},
+	"eminent": {"target": Vector2(0, 0), "times": [0.5, 1.5, 3.0], "dir": Vector2(1, 0)},
+	"fenced": {"target": Vector2(0, 0), "times": [0.3, 2.0, 5.0]},
+	"cage": {"target": Vector2(0, 0), "times": [0.5, 5.0, 15.0, 30.0]},
+	"sealed": {"target": Vector2(0, 0), "times": [0.5, 5.0, 30.0, 59.0]},
 	# The way in above, the way out below; its clip is its first seconds, not the whole half-minute it lies there.
 	"mirror": {"target": Vector2(-1.8, -1.8), "to": Vector2(1.8, 1.8), "dir": Vector2(1, 1), "times": [0.3, 0.6, 3.0, 8.0, 29.6],
 		"clip_run": 10.0},

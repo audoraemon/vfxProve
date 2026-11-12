@@ -41,21 +41,23 @@ static func _shape(t) -> void:
 		if key == "ruin":
 			continue
 		for i in range(1, tiers.size()):
-			if key == "dominion" or key == "passage":
+			if key == "dominion" or key == "passage" or key == "decree":
 				continue
 			for k: String in tiers[i]:
 				rest_empty = rest_empty and k == ""
 	t.check(tier1_full, "every Tier 1 spot of the real table is filled")
-	t.check(rest_empty, "Tiers 2-5 of the real table are still empty, Ruin's, Dominion's and Passage's aside")
+	t.check(rest_empty, "Tiers 2-5 of the real table are still empty, Ruin's, Dominion's, Passage's and Decree's aside")
 	t.check(GodTree.TABLE.dominion.slice(1) == [["madness", "wisp"], ["clearmind", "saint"], ["sanctuary", "anathema"], ["voice", "schism"]],
 		"Dominion's Tiers 2-5 hold the user's picks (%s)" % [GodTree.TABLE.dominion])
 	t.check(GodTree.TABLE.passage.slice(1) == [["houndgate", "hellspark"], ["deep", "mirror"], ["allroads", "foldward"], ["deaddoors", "heavendoor"]],
 		"Passage's Tiers 2-5 hold the user's picks (%s)" % [GodTree.TABLE.passage])
+	t.check(GodTree.TABLE.decree == [["noleave", "breath"], ["redefine", "bound"], ["erase", "disorder"], ["eminent", "fenced"], ["cage", "sealed"]],
+		"Decree's whole tree holds the user's picks (%s)" % [GodTree.TABLE.decree])
 	t.check(GodTree.TABLE.ruin.slice(1) == [["tornado", "scatter"], ["solaris", "dragon"], ["tsunami", "cinder"], ["tempest", "shatter"]],
 		"Ruin's Tiers 2-5 hold the user's picks, with Scatter Strike, Wrath of the Sky and Earthshatter in the spots kept for them (%s)" % [GodTree.TABLE.ruin.slice(1)])
 	t.check(GodTree.TABLE.ruin[0] == ["smite", "ember"] and GodTree.TABLE.death[0] == ["deathmark", "pestilence"]
 		and GodTree.TABLE.veil[0] == ["doom", "blight"] and GodTree.TABLE.passage[0] == ["skylift", "windfall"]
-		and GodTree.TABLE.decree[0] == ["noleave", "belllies"] and GodTree.TABLE.dominion[0] == ["whisper", "discord"],
+		and GodTree.TABLE.decree[0] == ["noleave", "breath"] and GodTree.TABLE.dominion[0] == ["whisper", "discord"],
 		"Tier 1 holds the user's picks")
 
 
@@ -162,7 +164,7 @@ static func _flavour(t) -> void:
 ## The real tree's Tier 1 is the user's D2 picks, in spot order (god T1R Task 7): the table the 30-pair gate plays.
 static func _tier1_real(t) -> void:
 	var want := {"ruin": ["smite", "ember"], "death": ["deathmark", "pestilence"], "veil": ["doom", "blight"],
-		"passage": ["skylift", "windfall"], "decree": ["noleave", "belllies"], "dominion": ["whisper", "discord"]}
+		"passage": ["skylift", "windfall"], "decree": ["noleave", "breath"], "dominion": ["whisper", "discord"]}
 	var real := GodTree.real()
 	for type: String in GodTree.RING:
 		t.check(Array(real[type][0]) == want[type], "real tree Tier 1 of %s is %s, in spot order (%s)" % [type, want[type], real[type][0]])

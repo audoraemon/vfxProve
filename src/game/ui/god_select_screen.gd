@@ -291,8 +291,12 @@ func type_lines(type: String) -> PackedStringArray:
 	var beside := PackedStringArray()
 	for n in GodTree.neighbours(type):
 		beside.append(PowerBook.authority_title(n))
+	# Decree's two Tier 1 names are too long for one row with the label (2026-11-12): the bare names then.
+	var tier := "Tier 1: %s" % ", ".join(names)
+	if UiTheme.width(tier, UiTheme.SIZE_SMALL) > INFO_RECT.size.x - 16.0:
+		tier = ", ".join(names)
 	return PackedStringArray([PowerBook.authority_title(type), String(GodTree.FLAVOUR.get(type, "")),
-		"Tier 1: %s" % ", ".join(names), "Neighbours: %s" % ", ".join(beside)])
+		tier, "Neighbours: %s" % ", ".join(beside)])
 
 
 ## Puts the top panel on ring position `i` (0-5); it does not choose.

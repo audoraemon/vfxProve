@@ -164,6 +164,8 @@ var animals: AnimalPack
 ## The visitors from the other side walking the town now (Visitors.setup() adds a pack, its clear() takes it out), for
 ## the powers that move whoever walks a place (The Folded Ward).
 var visitors: Array[Visitors] = []
+## Decree's laws on places (LawZone; add_law()), stepped every frame after the people (step_laws()).
+var laws: Array[LawZone] = []
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
@@ -880,6 +882,71 @@ func step_people(delta: float) -> void:
 		if is_instance_valid(p) and not (still and p.is_alive()):
 			p.frame(delta)
 	BenchProf.add(&"people", t0)
+	if not laws.is_empty():
+		step_laws(delta)
+
+
+## A law on a place holds from now (Decree; LawZone) until its seconds run out, it is lifted (remove_law()) or `holder`
+## (the effect that laid it; null for none) goes: freed, it holds no more, and leaving the tree it is lifted at once.
+func add_law(z: LawZone, holder: Node = null) -> void:
+	if z == null or laws.has(z):
+		return
+	z.hold_by(holder)
+	laws.append(z)
+	if holder != null and is_instance_valid(holder):
+		holder.tree_exiting.connect(remove_law.bind(z), CONNECT_ONE_SHOT)
+
+
+## The law is lifted: it holds no more, and lets go of everyone it held. Any other law on the same ground still holds.
+func remove_law(z: LawZone) -> void:
+	if z == null:
+		return
+	laws.erase(z)
+	z.lift()
+
+
+## Whether `p` (a person or a visitor; null or a freed body: false) stands where a law of `kind` holds now. Indoors or
+## not: the one asking decides what an indoor person makes of it.
+func in_law(p: Variant, kind: StringName) -> bool:
+	if laws.is_empty() or not is_instance_valid(p):
+		return false
+	var at: Vector2 = p.ground_pos
+	for z in laws:
+		if z.alive() and z.holds(kind) and z.contains(at):
+			return true
+	return false
+
+
+## One frame of every law on a place (step_people() calls it after the people move; tests may call it directly): time
+## runs, the ended are dropped, and NO LEAVING holds its own. Who stands about the laws is taken once for all of them.
+func step_laws(delta: float) -> void:
+	var near := Rect2()
+	var holding := false
+	_drop_ended_laws()
+	for z in laws:
+		if z.holds(LawZone.NO_LEAVING):
+			near = near.merge(z.bounds()) if holding else z.bounds()
+			holding = true
+	var people: Array = []
+	var beasts: Array = []
+	if holding:
+		people = _field.in_rect(near)
+		for pack: Visitors in visitors:
+			for a in pack.living():
+				if near.has_point(a.ground_pos):
+					beasts.append(a)
+	for z in laws:
+		z.step(delta, people, beasts)
+	_drop_ended_laws()
+
+
+## Every law whose time has run out, or whose effect is gone, is lifted.
+func _drop_ended_laws() -> void:
+	for i in range(laws.size() - 1, -1, -1):
+		if not laws[i].alive():
+			var z := laws[i]
+			laws.remove_at(i)
+			z.lift()
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
@@ -1966,6 +2033,9 @@ func clear() -> void:
 			animals.free()
 	animals = null
 	visitors.clear()
+	for z in laws:
+		z.lift()
+	laws.clear()
 	threats.clear()
 	_spreads.clear()
 	_held_dangers.clear()
@@ -2034,8 +2104,8 @@ func clear() -> void:
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
-	if s.role == &"thorns" or s.role == &"windfall":
-		return  # a bramble or a dropped pile burnt or blasted away: no incident, nothing to flee
+	if s.role == &"thorns" or s.role == &"windfall" or s.role == LawRubble.ROLE:
+		return  # a bramble, a dropped pile or law rubble burnt or blasted away: no incident, nothing to flee
 	var at := s.center()
 	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
 		if s.role != &"citadel":

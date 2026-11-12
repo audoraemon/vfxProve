@@ -29,8 +29,8 @@ enum Job { NONE, CITADEL, ROUTE, LANDMARK, HOUSE, CLEAR }
 const PRIORITY := {Job.CITADEL: 100.0, Job.ROUTE: 80.0, Job.CLEAR: 70.0, Job.LANDMARK: 60.0, Job.HOUSE: 20.0}
 ## Seconds to cut down one thorn segment (or clear one pile).
 const CLEAR_TIME := 5.0
-## What a Clear job takes away: Thornwall's brambles, Windfall's pile.
-const CLEARABLE := [&"thorns", &"windfall"]
+## What a Clear job takes away: Thornwall's brambles, Windfall's pile, a Decree's law rubble (LawRubble).
+const CLEARABLE := [&"thorns", &"windfall", &"decree"]
 const DISTANCE_WEIGHT := 2.0
 const DAMAGED := 0.9
 ## The Citadel is a job once this share of its full health can be mended.

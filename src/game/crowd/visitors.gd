@@ -320,7 +320,7 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 
 ## A building a wrecker can strike: standing, solid (not a field, rubble or the bridge), not a power's own pile.
 static func _wreckable(s: Structure) -> bool:
-	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall"])
+	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall", &"decree"])
 
 
 ## Recalled: back to the gate, freed there or when the time is up.

@@ -99,6 +99,7 @@ const SUITES := [
 	"res://tests/test_tier1.gd",
 	"res://tests/test_decree.gd",
 	"res://tests/test_law_mark.gd",
+	"res://tests/test_law_zone.gd",
 	"res://tests/test_unseen_curfew.gd",
 	"res://tests/test_tempest.gd",
 	"res://tests/test_scatter.gd",

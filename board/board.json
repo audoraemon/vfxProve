@@ -1,10 +1,10 @@
 {
- "hash": "d97b1bfc74254934",
- "updated": "2026-11-13T03:43:07+07:00",
+ "hash": "c9f366ebf83cf11f",
+ "updated": "2026-11-13T05:48:05+07:00",
  "changes": {
-  "date": "<t:1794516187:f>",
+  "date": "<t:1794523685:f>",
   "items": [
-   "New: Passage doors clean up when torn down"
+   "New: Decree authority powers built (god branch)"
   ]
  },
  "snapshot": {
@@ -275,6 +275,15 @@
     "needs_you": false,
     "updated": "2026-11-12",
     "order": 303
+   },
+   "god-decree-powers": {
+    "title": "Decree authority powers built (god branch)",
+    "status": "done",
+    "area": "Abilities",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-13",
+    "order": 1
    },
    "god-discord-changelog": {
     "title": "Discord god-progression changelog",
@@ -1622,20 +1631,12 @@
   },
   "branches": [
    {
-    "name": "god/death-powers",
-    "ahead": 26,
-    "behind": 46,
-    "date": "2026-11-13",
-    "subject": "fix: Hound Gate, Doors of the Dead and Door to the Deep clean up when torn down, and a freed victim breaks nothing",
-    "pushed": true
-   },
-   {
     "name": "god/decree-powers",
-    "ahead": 20,
+    "ahead": 49,
     "behind": 46,
     "date": "2026-11-13",
-    "subject": "dev: Harvest x Decree traps carters in the cell; Decree's gaps written down",
-    "pushed": false
+    "subject": "test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell",
+    "pushed": true
    },
    {
     "name": "claude/sound-natural-2",

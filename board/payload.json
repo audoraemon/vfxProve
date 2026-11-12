@@ -7,21 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **141** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1794516187:f>)\n• New: Passage doors clean up when torn down",
+     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **142** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794523685:f>)\n• New: Decree authority powers built (god branch)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-13T03:43:07+07:00"
-    },
-    {
-     "title": "god/death-powers",
-     "description": "26 commits not in Develop-Main · last commit today\n> fix: Hound Gate, Doors of the Dead and Door to the Deep clean up when torn down, and a freed victim breaks nothing\n\n_No Ledger task points at this branch._",
-     "color": 5016537
+     "timestamp": "2026-11-13T05:48:05+07:00"
     },
     {
      "title": "god/decree-powers",
-     "description": "20 commits not in Develop-Main · last commit today · local only\n> dev: Harvest x Decree traps carters in the cell; Decree's gaps written down\n\n_No Ledger task points at this branch._",
+     "description": "49 commits not in Develop-Main · last commit today\n> test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -56,7 +51,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_\n• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_\n• Dominion powers sound like the mind (skill-tree audit) _(11-12)_\n• God progression merged into Develop-Main _(11-12)_\n• Town children (Discord idea Add children Npc) _(11-12)_\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts _(11-12)_\n• Skill Tree wheel + Remembrance (try a power before buying) _(11-12)_",
+     "description": "• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_\n• Decree authority powers built (god branch) _(11-13)_\n• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_\n• Dominion powers sound like the mind (skill-tree audit) _(11-12)_\n• God progression merged into Develop-Main _(11-12)_\n• Town children (Discord idea Add children Npc) _(11-12)_\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts _(11-12)_",
      "color": 10185686
     }
    ]

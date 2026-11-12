@@ -59,6 +59,9 @@ static func run(t) -> void:
 	_blight_cast(t)
 	_seized(t)
 	_seized_by_law(t)
+	_held(t)
+	_held_reset(t)
+	_held_indoors(t)
 	_replaced(t)
 	_road_closed(t)
 	_roads_stay_in(t)
@@ -963,6 +966,74 @@ static func _seized_by_law(t) -> void:
 		ctx.overhead.free()
 		ctx.ground.free()
 		_done(s)
+
+
+## A NO LEAVING law laid round `at` on the crowd (as the amber cell or Fenced Rule lays one), lasting `seconds`.
+static func _law(s: Dictionary, at: Vector2, seconds := 30.0) -> LawZone:
+	var z := LawZone.circle(at, 3.0, [LawZone.NO_LEAVING], seconds)
+	(s.crowd as Crowd).add_law(z)
+	return z
+
+
+## The user's ruling (2026-11-13, H6): a carter held by a NO LEAVING law for HELD_SPOIL (6 s) spoils his granary, "held", and is sent home as a seizure
+## sends him; 5.9 s does not.
+static func _held(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	t.check(is_equal_approx(HarvestDirector.HELD_SPOIL, 6.0) and not d.razed(g), "HELD_SPOIL is 6 s; with no law nothing is held")
+	_law(s, c0.ground_pos)
+	_run(s, 5.9)
+	t.check(not d.razed(g), "held 5.9 s: his granary is not spoiled")
+	_run(s, 0.1)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "held" and not d.razed(d.targets[1]) and d.carters[g].is_empty()
+		and c0.mind != Person.Mind.DUTY and (s.banners as Array).has(HarvestDirector.HELD_BANNER),
+		"held 6.0 s: his granary is spoiled (held), he is sent home, the banner says so (%s)" % [d.spoiled_by.get(g, "")])
+	_done(s)
+
+
+## H6: the clock resets when he is free of the law -- held 4 s, freed, held 4 s again: not spoiled.
+static func _held_reset(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	var z := _law(s, c0.ground_pos)
+	_run(s, 4.0)
+	(s.crowd as Crowd).remove_law(z)
+	_run(s, 0.5)
+	_law(s, c0.ground_pos)
+	_run(s, 4.0)
+	t.check(not d.razed(g), "held 4 s, freed, held 4 s again: the clock reset, not spoiled")
+	_run(s, 2.0)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "held", "held on to 6 s in the second law: spoiled")
+	_done(s)
+
+
+## H6: a carter indoors inside the law's circle is not held (in_law reads position only).
+static func _held_indoors(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	_law(s, c0.ground_pos)
+	for i in roundi(8.0 / DT):
+		c0.inside = true
+		(s.crowd as Crowd).advance(DT)
+		(s.rules as Rules).advance(DT)
+	t.check(not d.razed(g), "a carter indoors in the law's circle for 8 s is not counted")
+	c0.inside = false
+	_done(s)
 
 
 ## H5: a carter killed is replaced RELIEF_AFTER later from the Citadel's gate, the loads as they were; killing one never spoils.

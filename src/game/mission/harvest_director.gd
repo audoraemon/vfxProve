@@ -20,7 +20,9 @@ extends RazeDirector
 ## grain is due and waits at the door (H0); a carter out of the town's walls, or sick (Pestilence) with no watchman on guard,
 ## or seized by the guard The Bell Lies calls to him, spoils his granary at once (H1, H2, H4); Blight rots a granary whose grain
 ## is in and whose watchmen are not on guard (H3); a carter who dies is replaced RELIEF_AFTER later and killing one never spoils
-## (H5). Every spoil is recorded in `spoiled_by`.
+## (H5). The user's ruling (2026-11-13, for Decree): a carter alive, out of doors and held by a NO LEAVING law (Leaving Is Prohibited's
+## amber cell, Fenced Rule's NO LEAVING) for HELD_SPOIL seconds without a break spoils his granary as a seizure does (H6). Every spoil is
+## recorded in `spoiled_by`.
 
 ## One watchman's post (v0.11 M2): a plain record, so the director holds no cycle.
 class Watch:
@@ -68,6 +70,12 @@ const SEIZE_SLACK := 0.05
 const SEIZE_RING := 2.4
 ## The called guard come and find no carter in reach (final review M7): the call is spent, and the player is told so (no hidden loss).
 const NO_CART_BANNER := "THE GUARD FIND NO CART"
+## The user's ruling (2026-11-13, H6; tunable): how long a carter held by a NO LEAVING law spoils his load -- "his time", inside the amber cell's
+## 15 s (NoLeaveFx.HOLD_TIME). The clock runs only while he is held and resets when he is free of the law. HELD_SLACK covers the float of a
+## clock summed frame by frame. The banner when it does.
+const HELD_SPOIL := 6.0
+const HELD_SLACK := 0.001
+const HELD_BANNER := "THE LAW HOLDS THE CART - THE GRAIN SPOILS"
 ## A watchman at his post while his granary burns is not frightened (Person.fearless_left): the town's ordinary flight from a
 ## fire would empty his post before he could beat the fire out. Held this many seconds past the last look; the god's own holds
 ## (a kill, a whisper, Discord) still take him (v0.11 M2).
@@ -103,12 +111,14 @@ var carters := {}
 var watches := {}
 ## Structure -> true once its grain has arrived (v0.11 M2).
 var grain := {}
-## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight" or "seized" (god T1R, for the report and the tests).
+## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight", "seized" or "held" (god T1R, for the report and the tests).
 var spoiled_by := {}
 ## Structure -> the second its first carter set out (god T1R, H0).
 var _out_at := {}
 ## Structure -> seconds since its carter was last alive (god T1R, H5: a relief is sent RELIEF_AFTER after).
 var _carter_fallen := {}
+## Instance id of a carter held by a NO LEAVING law -> seconds held without a break (H6, the user's ruling 2026-11-13).
+var _held := {}
 ## Instance ids of the sick carters the watch has already turned away (god T1R, H2: the banner shows once per carter).
 var _turned := {}
 ## The Bell Lies' CALL THE GUARD cast that may still seize a cart, and where it called them (god T1R, H4).
@@ -294,6 +304,7 @@ func step(delta: float) -> void:
 	var looking := _tick_in <= 0.0
 	if looking:
 		_tick_in = TICK
+	_held_look(delta)
 	for i in targets.size():
 		var s := targets[i]
 		if razed(s):
@@ -418,6 +429,30 @@ func _seize_look() -> void:
 				break
 	if not seized:
 		rules.banner.emit(NO_CART_BANNER)
+
+
+## A carter held by the law (H6, the user's ruling 2026-11-13): every frame, each carter alive, out of doors and inside a NO LEAVING law
+## (Crowd.in_law) adds to his clock; one free of it starts again. HELD_SPOIL seconds held spoils his granary ("held"); he is sent home as a
+## seizure sends him (_on_razed). Returns at once with no law laid (crowd_check unchanged).
+func _held_look(delta: float) -> void:
+	if crowd.laws.is_empty():
+		_held.clear()
+		return
+	var now := {}
+	for s in targets:
+		if razed(s):
+			continue
+		for c: Variant in carters.get(s, []):
+			if not _alive(c) or (c as Person).inside or not crowd.in_law(c, LawZone.NO_LEAVING):
+				continue
+			var id := (c as Person).get_instance_id()
+			now[id] = float(_held.get(id, 0.0)) + delta
+			if float(now[id]) >= HELD_SPOIL - HELD_SLACK:
+				rules.banner.emit(HELD_BANNER)
+				now.erase(id)
+				_spoil(s, "held")
+				break
+	_held = now
 
 
 ## Whether watchman `w` of `s` is on guard now (v0.11 M2): alive, out of doors, in a calm mind, and at his post.

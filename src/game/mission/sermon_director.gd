@@ -81,7 +81,8 @@ const SEEN_SHOW := 8.0
 ## Where the camera rests (v0.11 M5, the controller's ruling, checked against the real HUD stack): the pulpit below the centre, the
 ## god's house and its western sentry at the left just under the stack, the waves' sources above and to the right, the Temple's arrow
 ## on the right edge. (The ruling's ~(-11, 10.5) left the god's door at (214, 161), under the stack's 240 x 165.)
-const CAMERA_AT := Vector2(-13.0, 9.5)
+## The zoom cap (2026-11-09: play zoom 0.6 -> 0.85, a smaller view) moved it from (-13.0, 9.5), the nearest spot that still passes its framing checks.
+const CAMERA_AT := Vector2(-13.5, 9.0)
 ## How far the door's plate stands above its diamond, and how high the god's house's tag is raised over its roof (screen px; world px),
 ## so the house's label, the door's and the sentry's at it stack in three rows and none is dropped (v0.11 M5, Task 8's photograph: the
 ## door's "WATCHED" plate was dropped under the house's).

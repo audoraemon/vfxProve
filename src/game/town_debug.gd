@@ -16,7 +16,8 @@ const PAN_SPEED := 320.0
 ## Pan limits (screen px) and the furthest zoom out: the map is 60 x 60 units since the town scale upgrade.
 const PAN_MIN := Vector2(-1700, -900)
 const PAN_MAX := Vector2(1700, 1000)
-const ZOOM_MIN := 0.3
+## The zoom-out cap, the same as missions' (Mission.ZOOM_MIN; was 0.3).
+const ZOOM_MIN := Mission.ZOOM_MIN
 const ZOOM_MAX := 1.6
 const DRAG_MIN := 0.5
 ## Keys 1-9, 0 and - pick PowerBook.POWERS[0..10].

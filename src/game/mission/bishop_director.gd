@@ -65,7 +65,8 @@ const TAKEN_AT := 300.0
 ## Where the camera rests (v0.11 M5, Decision 159 moved by the controller's ruling to keep the real HUD stack clear): his house at the
 ## right, the chapter house at the top, the Temple's door and the first half of his walk across the square clear of the stack; the
 ## Citadel's gate's arrow at the top-left corner is left to M6's tag keep-out.
-const CAMERA_AT := Vector2(2.0, -3.0)
+## The zoom cap (2026-11-09: play zoom 0.6 -> 0.85, a smaller view) moved it from (2.0, -3.0), the nearest spot that still passes its framing checks.
+const CAMERA_AT := Vector2(1.0, -2.5)
 ## How hard a blow shakes a refuge he is not yet in; how far a Knight's place must move before he is sent again (v0.11 M5).
 const STONE_SHAKE := 2.0
 const MOVE := 0.3

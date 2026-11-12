@@ -55,7 +55,8 @@ const HUE_AFTER := 30.0
 const HOUNDS := 2
 ## Where the camera rests (v0.11 M4, Decision 80): the stocks and the Citadel's gate above and right of the centre; the postern's
 ## arrow on the bottom edge, left, below the HUD stack.
-const CAMERA_AT := Vector2(-9.0, -2.0)
+## The zoom cap (2026-11-09: play zoom 0.6 -> 0.85, a smaller view) moved it from (-9.0, -2.0), the nearest spot that still passes its framing checks.
+const CAMERA_AT := Vector2(-5.0, -1.0)
 ## The stocks' tag (v0.11 M4): orange, a place.
 const MARK_STOCKS := Color("ff9a3a")
 ## Screen pixels the stocks' plate stands above the usual place's, clear of the prisoner's plate over the same spot (v0.11 M4).

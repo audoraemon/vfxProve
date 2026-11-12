@@ -40,6 +40,8 @@ var pockets: Array = []
 ## The cells of the pockets _join_pockets() found no way out of: open ground with no route to the streets, as the grid
 ## was set up. on_streets() is false there, so the crowd places nobody in one.
 var _off := {}
+## Streets a power has cleared through the town (Eminent Domain, open_street()): [origin, dir, length, half] each.
+var _streets: Array = []
 
 
 ## `join_pockets` false leaves pockets of open ground the streets cannot reach as they are (tests of the rules for
@@ -229,6 +231,55 @@ func _reopen(s: Structure) -> void:
 	_on_destroyed(s, &"")
 
 
+## A strip of the town cleared for a street (Eminent Domain): `length` along `dir` from `origin`, `half` either side. Its
+## cells open -- the river and anything still standing in it excepted -- and stay open: a fall beside it that stamps the
+## town's blockers (a yard, a garden) again opens the street after them (_on_destroyed()).
+func open_street(origin: Vector2, dir: Vector2, length: float, half: float) -> void:
+	var st := [origin, dir.normalized(), length, half]
+	_streets.append(st)
+	_open_street(st, _street_box(st))
+
+
+## The box round a street's corners.
+static func _street_box(st: Array) -> Rect2:
+	var o: Vector2 = st[0]
+	var along: Vector2 = st[1] * float(st[2])
+	var across: Vector2 = (st[1] as Vector2).orthogonal() * float(st[3])
+	var box := Rect2(o + across, Vector2.ZERO).expand(o - across).expand(o + along + across).expand(o + along - across)
+	return box
+
+
+## Open the street `st`'s cells inside `area`: those whose centre lies in the strip, off the river, clear of anything
+## standing that blocks.
+func _open_street(st: Array, area: Rect2) -> void:
+	var box := _street_box(st)
+	if not box.intersects(area, true):
+		return
+	box = box.intersection(area)
+	var o: Vector2 = st[0]
+	var dir: Vector2 = st[1]
+	var side := dir.orthogonal()
+	var rivers := City.current().rivers()
+	version += 1
+	var c0 := world_to_id(box.position)
+	var c1 := world_to_id(box.end)
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			var id := Vector2i(x, y)
+			if not grid.is_in_boundsv(id):
+				continue
+			var g := id_to_world(id)
+			var rel := g - o
+			var along := rel.dot(dir)
+			if along < 0.0 or along > float(st[2]) or absf(rel.dot(side)) > float(st[3]) or _env.blocked(g, BODY):
+				continue
+			var wet := false
+			for r: Rect2 in rivers:
+				wet = wet or r.has_point(g)
+			if not wet:
+				grid.set_point_solid(id, false)
+
+
 ## A building fell: its ground opens up (rubble is walkable), except a bridge, whose fall closes the river.
 func _on_destroyed(s: Structure, _kind: StringName) -> void:
 	if s in _bridges:
@@ -245,9 +296,13 @@ func _on_destroyed(s: Structure, _kind: StringName) -> void:
 		if other != s and is_instance_valid(other) and not other.destroyed and not other.walkable \
 				and solid_rect(other.footprint).intersects(area):
 			_apply(other)
+	var stamped := area
 	for g in _blockers:
 		if g.intersects(area):
 			stamp(g, true)
+			stamped = stamped.merge(g)
+	for st: Array in _streets:
+		_open_street(st, stamped)
 	_reopen_links(area)
 	# ...and then open the ways through again, so a gate beside a fallen wall stays passable.
 	for other in _env.structures():

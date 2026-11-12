@@ -61,6 +61,8 @@ const AREAS := {
 	# EraseFx: the line runs from the press as far as the drag (MIN_LEN..MAX_LEN, "stretch"), CRUSH_W each side; THROW_W
 	# ("outer") is how far the spring back throws
 	"erase": {"shape": "lane", "length": 10.0, "half": 1.0, "min": 2.0, "stretch": true, "outer": 3.0},
+	# EminentFx.LENGTH from the press along the drag, HALF_W each side: the strip it claims
+	"eminent": {"shape": "lane", "length": 10.0, "half": 1.0},
 	# MagnifyFx.RADIUS
 	"magnify": {"shape": "circle", "r": 4.0},
 	# RedefineFx.PICK_R; whom it would name is ringed (_draw())

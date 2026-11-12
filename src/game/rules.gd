@@ -78,6 +78,8 @@ const POWER_KINDS := {
 	"belllies": [],
 	"breath": [&"choke"],
 	"erase": [&"collapse"],
+	# Eminent Domain throws and hurts, never kills
+	"eminent": [],
 	# Redefine: a man named CRIMINAL is beaten down by the guards it set on him (a fight's kill)
 	"redefine": [&"frenzy"],
 	# Bound in Law: one dead, the other dies by the bond

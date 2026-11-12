@@ -1,7 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance and Disorder.
+Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder and Eminent Domain.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -603,9 +603,84 @@ def disorder():
     finish(rgb, "disorder")
 
 
+def eminent():
+    """Eminent Domain (Decree): on an ink field, a block of town seen from above -- red-tiled roofs in rows -- with a
+    straight road cut clean through it corner to corner, its gilt edges ruled and staked; the houses it claimed split
+    down the middle, their halves thrown apart to either side with a dark crack between, and heaps of rubble lining the
+    road's two edges."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(113, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # u runs along the road (bottom left to top right), v across it.
+    c, s = math.cos(-math.pi / 4), math.sin(-math.pi / 4)
+    u = x * c + y * s
+    v = -x * s + y * c
+    town = (np.abs(u) < 33.0) & (np.abs(v) < 33.0) & (r < 41.0)
+    # The ground between the houses: dark packed earth.
+    rgb = blend(rgb, (66, 52, 42), town * (0.85 + 0.15 * n))
+    ROAD = 7.0
+
+    def roof(du, dv, hu, hv, side, lit):
+        lu = u - du
+        lv = v - dv
+        body = (np.abs(lu) < hu) & (np.abs(lv) < hv) & town
+        # Two slopes either side of the ridge, the one facing the light brighter.
+        face = np.where(lv * side > 0, 1.0, 0.72) * lit
+        col = np.stack([158 * face, 70 * face, 48 * face], axis=-1) * (0.9 + 0.2 * n[..., None])
+        out = np.where(body[..., None], col, rgb)
+        out = blend(out, (210, 132, 90), (body & (np.abs(lv) < 0.7)).astype(float) * 0.85)
+        out = blend(out, (64, 28, 22), (body & (np.abs(np.sin(lu * 1.3)) < 0.22)).astype(float) * 0.4)
+        out = blend(out, (16, 8, 14), (((np.abs(lu) < hu + 0.9) & (np.abs(lv) < hv + 0.9) & ~body) & town).astype(float) * 0.6)
+        return out
+
+    for side in (-1.0, 1.0):
+        # The far rows: whole houses.
+        for row in (1, 2):
+            v0 = side * (ROAD + 6.5 + row * 8.5)
+            for k in range(-3, 4):
+                u0 = k * 10.0 + (5.0 if row == 2 else 0.0)
+                rgb = roof(u0, v0, 3.8, 3.2, side, 0.95)
+        # The row the road claimed: each house split down the middle, its halves thrown apart and out.
+        v0 = side * (ROAD + 6.0)
+        for k in range(-3, 4):
+            u0 = k * 10.0
+            for half in (-1.0, 1.0):
+                rgb = roof(u0 + half * 2.9, v0 + side * 0.8 * (1.0 + 0.3 * half), 2.0, 3.2, side, 1.0)
+            # The torn end facing the road: splinters of timber.
+            torn = (np.abs(u - u0) < 4.2) & (np.abs(v - side * (ROAD + 2.4)) < 0.8) & (np.sin(u * 2.7) > 0.2) & town
+            rgb = blend(rgb, (122, 86, 54), torn.astype(float) * 0.9)
+    # The road: pale fresh earth, straight and clear, a faint gilt line of law down its middle.
+    road = town & (np.abs(v) < ROAD)
+    rgb = np.where(road[..., None], np.array((172, 148, 110)) * (0.9 + 0.15 * n[..., None]), rgb)
+    rgb = blend(rgb, (255, 207, 90), road * np.clip((0.7 - np.abs(v)) / 0.5, 0.0, 1.0) * 0.55 * (np.sin(u * 0.9) > -0.2))
+    # The road's edges: ink under gilt, ruled, with stakes across them.
+    for side in (-1.0, 1.0):
+        d = np.abs(v - side * ROAD)
+        rgb = blend(rgb, (10, 6, 18), town * np.clip((1.7 - d) / 0.7, 0.0, 1.0))
+        rgb = blend(rgb, (255, 207, 90), town * np.clip((0.9 - d) / 0.5, 0.0, 1.0))
+        for k in range(-3, 4):
+            stake = (np.abs(u - k * 10.0 - 5.0) < 0.7) & (d < 2.4) & town
+            rgb = blend(rgb, (255, 236, 170), stake.astype(float))
+    # Rubble heaps lining both edges, just outside them.
+    for side in (-1.0, 1.0):
+        for k in range(-6, 7):
+            hu0 = k * 5.0 + side * 1.5
+            hr = 1.9 + 0.7 * ((k * 0.618) % 1.0)
+            d = np.hypot(u - hu0, (v - side * (ROAD + 3.0)) * 1.25)
+            heap = town & (d < hr)
+            rgb = blend(rgb, (24, 18, 22), (town & (d < hr + 0.7) & ~heap).astype(float) * 0.5)
+            rgb = blend(rgb, (118, 106, 92), heap.astype(float))
+            rgb = blend(rgb, (184, 168, 142), heap * np.clip((hr - d) / hr, 0.0, 1.0) * 0.7)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "eminent")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
             "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
-            "erase": erase, "disorder": disorder}
+            "erase": erase, "disorder": disorder, "eminent": eminent}
 
 
 if __name__ == "__main__":

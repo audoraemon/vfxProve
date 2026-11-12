@@ -496,8 +496,10 @@ func _step_held(c: Charge) -> void:
 
 
 ## The first soldier set to watch for charge `c` who sees him now (v0.11 M2): _watching() and within SIGHT; else null. v0.11 M6: a
-## watcher marching another charge sees no other (vacuous with one).
+## watcher marching another charge sees no other (vacuous with one). One the law hides from the guards (LawMark: a NOBODY, an OFFICER) no one sees.
 func _seen_by(c: Charge) -> Person:
+	if LawMark.unseen_by_guards(c.man):
+		return null
 	var at := (c.man as Person).ground_pos
 	for v: Variant in _watchers():
 		if _watching(v) and not _marching_other(v, c) and (v as Person).ground_pos.distance_to(at) <= SIGHT:

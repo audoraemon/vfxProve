@@ -733,7 +733,7 @@ func witnesses(q: Quarry = null) -> Array[Person]:
 	var at := w.target.ground_pos
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if is_instance_valid(p) and p != w.target and p.is_alive() and not p.inside:
+			if is_instance_valid(p) and p != w.target and p.is_alive() and not p.inside and not LawMark.unseen_by_all(p):
 				var d := p.ground_pos.distance_to(at)
 				if d <= Crowd.DOOM_WITNESS and d > SilentDoom.RADIUS:
 					out.append(p)

@@ -377,6 +377,8 @@ var health := HEALTH_CITIZEN
 var statuses := {}
 ## Powers' holds on its pace, by the power's instance id -> the share kept (hold_pace()).
 var pace_holds := {}
+## Decree's law on it (LawMark), while one holds it; null for none. Only LawMark sets it: ask LawMark, never this.
+var law: LawMark
 ## Held by a rite's Chain of the Forgotten (god P3, MS §2, Ruling P3-12): a captive being dragged to the shrine. Only RiteDirector sets it, and only
 ## NoLeaveFx reads it (a chained person is never set back by a Leaving Is Prohibited circle: the chain is stronger, R10). False for everyone else,
 ## so nothing outside a rite changes.
@@ -576,6 +578,8 @@ func unhurried() -> bool:
 # --- Brain -------------------------------------------------------------------
 
 func tick(delta: float) -> void:
+	if law != null:
+		LawMark.step(self, delta)
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
 	if _bend_to != Vector2.INF:
@@ -2033,6 +2037,8 @@ func _fightable(p: Person) -> bool:
 		return false
 	if p.is_down() and _fight_rule != FightRule.TARGET_ONLY:
 		return false  # nobody is beaten on the ground; a mob set on one person (a verdict) still finishes it
+	if p.law != null and LawMark.spares(self, p, _fight_rule):
+		return false  # the law hides him (a NOBODY, or an OFFICER from a guard)
 	match _fight_rule:
 		FightRule.HOSTILES:
 			# A fighting citizen, or a fighter set on another side (a soldier turned).

@@ -330,7 +330,7 @@ func witnesses() -> Array[Person]:
 		return out
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if is_instance_valid(p) and p != prince and p.is_alive() and not p.inside \
+			if is_instance_valid(p) and p != prince and p.is_alive() and not p.inside and not LawMark.unseen_by_all(p) \
 					and p.ground_pos.distance_to(prince.ground_pos) <= Crowd.DOOM_WITNESS:
 				out.append(p)
 	return out

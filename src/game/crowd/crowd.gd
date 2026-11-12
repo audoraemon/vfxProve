@@ -2109,7 +2109,7 @@ func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best_d := doom_witness()
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside:
+			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p):
 				continue
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:

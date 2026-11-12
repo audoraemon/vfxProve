@@ -234,7 +234,7 @@ func witnesses() -> Array[Person]:
 	if not _alive(messenger):
 		return out
 	for v: Variant in mates:
-		if _alive(v) and v != messenger and _could_carry(v as Person, messenger.ground_pos):
+		if _alive(v) and v != messenger and _could_carry(v as Person, messenger.ground_pos) and not LawMark.unseen_by_all(v):
 			out.append(v as Person)
 	return out
 

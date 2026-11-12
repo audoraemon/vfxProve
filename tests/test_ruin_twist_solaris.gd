@@ -206,8 +206,8 @@ static func _fade_follows(t, level: int) -> void:
 		fx._follow()
 	spy.heard.clear()
 	fx._fade()
-	t.check(spy.heard.get(&"laser_powerdown") == fx.beam_at and spy.heard.get(&"nova_rumble") == fx.beam_at,
-		"level %d: the closing sounds play at the pillar (%s from the cast point)" % [level, str(fx.beam_at - AT)])
+	t.check(spy.heard.get(&"solar_fade") == fx.beam_at,
+		"level %d: the closing sound plays at the pillar (%s from the cast point)" % [level, str(fx.beam_at - AT)])
 	var found := false
 	for l in bf.ctx.lights._lights:
 		if l.quad == fx._light:

@@ -17,5 +17,10 @@
 	"marshal": "a3122700-f4fd-4652-84ff-098c2db4a99a",
 	"escort": "549ef66a-6647-4035-9cdb-0839379a2caf",
 	"rescue": "414fb657-9e17-4a36-a50d-ed44664b8c3e",
-	"_rejected": {"rescue_first": "adc96ded-c8d1-421c-bbc7-344b7117e40d"}
+	"child_a": "aa1c18a5-cae9-46ad-9a3a-a43ee90e55f9",
+	"child_b": "4f85b2dc-244b-4257-8ae7-4b6ab5e8cd61",
+	"child_c": "90fefeaa-ab32-4932-90c6-f4f759506576",
+	"child_d": "ceb1a56a-c248-4f80-ae5f-9d62f85e2639",
+	"_children_note": "standard chibi, size 16; fit with tools/dev/fit_child_frames.py --scale 0.8333 (15 px), not --import",
+	"_rejected": {"child_a_plain": "19e4e08d-a877-401e-aad7-4cddcc14bff0", "child_b_plain": "d0c4dd33-daac-48a9-835a-2b8a1ab9c2fa", "rescue_first": "adc96ded-c8d1-421c-bbc7-344b7117e40d"}
 }

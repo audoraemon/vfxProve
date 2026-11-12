@@ -93,6 +93,8 @@ const TOWN_SHOTS := [
 	["town_crowd.png", Vector2(-4.0, 6.0), 0.8],
 	# The town's dogs and cats, one of each breed set down by the market fountain, close up (_stage_animals()).
 	["town_animals.png", Vector2(0.8, 2.0), 3.0],
+	# The town's children by the market fountain with grown-ups of their families, close up (_stage_children()).
+	["town_children.png", Vector2(0.8, 2.0), 3.0],
 	["town_main_gate.png", Vector2(2.7, 16.0), 1.0],
 	["town_side_gate.png", Vector2(16.0, 9.0), 1.0],
 	["town_river_farms.png", Vector2(2.0, 24.0), 0.5],
@@ -467,6 +469,37 @@ func _stage_animals() -> void:
 	marked.cast(Animal.Spell.TRANCE, 30.0)
 
 
+## Dev staging for the children shot (Children): children on (spawned now if the town had none), and three families
+## set down by the camera, two children beside a grown-up of their own, one child walking, one running in a fright.
+func _stage_children() -> void:
+	if not is_instance_valid(_crowd):
+		return
+	Children.enabled = true
+	_crowd.spawn_children()
+	var center := Iso.screen_to_ground(_bf.camera.position + Vector2(0, 30))
+	var done := {}
+	var row := 0
+	for kid in _crowd.children():
+		if row >= 3:
+			break
+		if kid.kin.is_empty() or done.has(kid.profile.family):
+			continue
+		done[kid.profile.family] = true
+		var elder: Person = kid.kin[0]
+		var spot := center + Vector2(1, -1) * (float(row) - 1.0) * 0.9
+		elder.ground_pos = _grid.nearest_walkable(spot, 2)
+		kid.ground_pos = _grid.nearest_walkable(spot + Vector2(0.45, 0.25), 2)
+		for p: Person in [elder, kid]:
+			p.anchor = p.ground_pos
+			p.stay_left = 30.0
+			p._sync_position()
+		if row == 0:
+			kid.panic(center + Vector2(-2.5, 0.0), 0.5)  # frightened: it keeps close to its grown-up
+		elif row == 2:
+			kid.walk_to(_grid.nearest_walkable(spot + Vector2(1.2, 0.6), 2))
+		row += 1
+
+
 ## Dev staging for the bridge and dock shots: a few citizens set down along the bridge's road or on the dock's planks
 ## (they walk on from there), and for the _damaged / _ruins shots the structure cracked or brought down first.
 func _stage_shot(file: String) -> void:
@@ -476,6 +509,9 @@ func _stage_shot(file: String) -> void:
 		return
 	if file.begins_with("town_animals"):
 		_stage_animals()
+		return
+	if file.begins_with("town_children"):
+		_stage_children()
 		return
 	if file.begins_with("town_bridge"):
 		s = _town.bridge

@@ -8,8 +8,10 @@ extends RefCounted
 ## procession dresses the Prince as a noble.
 ## BAKER, WASHER, DOCKWORKER, MONK and BEGGAR (the capital) are dealt only by a city's spawn_roles()
 ## (JOBS); each wears an existing design (PeopleArt.CITIZEN).
+## CHILD (Discord idea "child population") is never dealt either: Crowd.spawn_children() adds the town's children to its
+## families after everyone else (Children). Kept last, so no other role's index moves.
 enum Role { RESIDENT, MERCHANT, CRAFT, LABORER, CLERGY, CAREGIVER, FARMER, BELLKEEPER, ENGINEER, WATCHMAN, MAYOR, NOBLE,
-	BAKER, WASHER, DOCKWORKER, MONK, BEGGAR }
+	BAKER, WASHER, DOCKWORKER, MONK, BEGGAR, CHILD }
 ## Where a citizen stands with the gods (v0.10, the campaign's Night 2): one of Halcyon's Faithful, who report the god
 ## at work; one of the grieving, who can be led to Mira's journal; or a Believer, who has read it.
 enum Faith { NONE, FAITHFUL, GRIEVING, BELIEVER }
@@ -82,6 +84,11 @@ static func role_for(i: int, n: int) -> Role:
 
 func works() -> bool:
 	return work != Vector2.INF
+
+
+## One of the town's children (Children): no work, no job, never cast in a director's part.
+func is_child() -> bool:
+	return role == Role.CHILD
 
 
 ## Whether `r` is a cleric: the clergy, or the capital's monks (clergy wherever the clergy are told apart).

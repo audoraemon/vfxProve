@@ -29,12 +29,15 @@ const DIR_NAMES := ["south-east", "south-west", "north-east", "north-west"]
 const CITIZEN := [["resident_a", "resident_b"], ["merchant_a", "merchant_b"], ["craft_a", "craft_b"], ["laborer"],
 	["clergy"], ["caregiver_a", "caregiver_b"], ["farmer"], ["bellkeeper"], ["engineer"], ["watchman"],
 	["mayor"], ["noble"], ["merchant_a", "merchant_b"], ["resident_a", "resident_b"], ["laborer"], ["clergy"],
-	["resident_b"]]
+	["resident_b"], ["child_a", "child_b", "child_c", "child_d"]]
 ## Designs not generated yet that wear another's until they are: the watchman (v0.08) the bellkeeper's dark navy coat
 ## and cap, the nearest to his dark cloak (Person draws his lantern over it); the Mayor (v0.09) a merchant's, with
 ## Person's gold chain over it, and the Prince's noble a resident's, with its crown; and the Lantern Knight (v0.10 M3)
 ## an escort's white tabard until M5's PixelLab pass.
-const STAND_INS := {"watchman": "bellkeeper", "mayor": "merchant_a", "noble": "resident_a", "knight": "escort"}
+## The children (Children) wear the residents' looks until their own designs are in the atlas; Person then draws the
+## stand-in smaller (Person.CHILD_STAND_IN_SCALE).
+const STAND_INS := {"watchman": "bellkeeper", "mayor": "merchant_a", "noble": "resident_a", "knight": "escort",
+	"child_a": "resident_a", "child_b": "resident_b", "child_c": "resident_a", "child_d": "resident_b"}
 ## Each soldier's design, in Person.Corps order.
 const SOLDIER := ["guard", "marshal", "escort", "rescue", "knight"]
 ## Stand-ins while a design is not generated yet.

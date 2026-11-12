@@ -87,7 +87,8 @@ func _appoint_watchman() -> Person:
 	for p in crowd.citizens:
 		if not _alive(p) or p.profile == null or p.inside or p == keeper or reserved.has(p):
 			continue
-		if CitizenProfile.is_clergy(p.profile.role) or p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
+		if CitizenProfile.is_clergy(p.profile.role) or p.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER,
+				CitizenProfile.Role.CHILD]:
 			continue
 		if best == null or p.ground_pos.distance_to(gate_spot) < best.ground_pos.distance_to(gate_spot):
 			best = p
@@ -355,8 +356,8 @@ func _relay_witness(at: Vector2) -> Person:
 	var best_d := Crowd.DOOM_WITNESS
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or not p.is_alive() or p.inside or on_lantern_errand(p):
-				continue
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or on_lantern_errand(p) or p.is_child():
+				continue  # (a child, Children, carries no warning)
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:
 				best = p

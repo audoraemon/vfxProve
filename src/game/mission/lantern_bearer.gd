@@ -215,8 +215,8 @@ func _pool() -> Array:
 		if not _alive(p) or (p as Person).profile == null or (p as Person).inside or p == keeper or _reserved.has(p):
 			continue
 		var q := p as Person
-		if q.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER]:
-			continue
+		if q.profile.role in [CitizenProfile.Role.ENGINEER, CitizenProfile.Role.BELLKEEPER, CitizenProfile.Role.CHILD]:
+			continue  # (a child, Children, never bears the lantern)
 		if q.mind in [Person.Mind.DUTY, Person.Mind.FLEE, Person.Mind.FIGHT] or q.held_by_god():
 			continue
 		if _skip.is_valid() and bool(_skip.call(q)):

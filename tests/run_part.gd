@@ -31,6 +31,7 @@ func _reset_world() -> void:
 	Structure.lamp_glow = true
 	Structure.steady_light = false
 	AnimalPack.enabled = false  # the suite and its checksums run without the town's animals; test_animals turns them on
+	Children.enabled = false  # nor its children; test_children turns them on
 	TownLook.active = Town.Look.CURRENT
 	Town._look_owner = 0
 

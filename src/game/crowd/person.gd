@@ -109,6 +109,9 @@ const COL_LIGHTNING_FLASH := Color("5aa8ff")
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
 const PACE_RANGE := Vector2(0.85, 1.2)
+## A child's people sprite while it wears a grown-up's design standing in for its own (PeopleArt.STAND_INS): drawn this
+## much smaller, feet on its ground point.
+const CHILD_STAND_IN_SCALE := 0.78
 ## One panicked dash: how far (ground units), and how far it may veer from straight away (radians).
 const DASH := Vector2(1.6, 3.2)
 const DASH_VEER := 0.6
@@ -253,6 +256,12 @@ var _lured := false
 var anchor := Vector2.ZERO
 ## A citizen's role and the places of its day (Crowd sets it; null for soldiers and people made on their own).
 var profile: CitizenProfile
+## A child's (Children): the grown-ups of its family, whom it runs to when frightened, and the one it is keeping close
+## to (null for none).
+var kin: Array[Person] = []
+var _guardian: Person
+## Seconds until a child keeping close may plan a new walk to its grown-up (_keep_close()).
+var _follow_in := 0.0
 ## Its routine (RoutineManager): seconds left at the place it is at, and the kind of place it last went to.
 var stay_left := 0.0
 var last_place := -1
@@ -678,6 +687,8 @@ func _think(delta: float) -> void:
 		_panic_left -= delta
 		if _panic_left <= 0.0:
 			_settle()
+		elif _guardian != null:
+			_keep_close(delta)
 	elif mind == Mind.OBSERVE:
 		_observe_left -= delta
 		if _goal == Vector2.INF:
@@ -762,7 +773,9 @@ func _base_speed() -> float:
 		Mind.FLEE, Mind.FIGHT:
 			return FLEE_SPEED * pace
 		_:
-			return PANIC_SPEED * pace if mind == Mind.POST and hurrying else WALK_SPEED * pace
+			if mind == Mind.POST and hurrying:
+				return PANIC_SPEED * pace
+			return WALK_SPEED * pace * (Children.WALK_PACE if is_child() else 1.0)
 
 
 ## Whether it is on its way somewhere (a goal it has not reached).
@@ -1209,7 +1222,9 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 	_panic_left = PANIC_SECONDS
 	_threat = from
 	_threat_r = radius
-	_flee_local()
+	# A child runs to a grown-up of its own family nearby instead, and keeps close for its fright (Children).
+	if not _run_to_kin():
+		_flee_local()
 	if from_other_mind:
 		# (v0.11.2) Frozen first: _idle too, as thinking is half-rate and the base tick would step on the off frame.
 		_startle_left = startle_seconds()
@@ -1766,7 +1781,12 @@ func _soldier_back() -> void:
 			send_to_post(at, false, hurry)
 
 
-## What it is, for the powers that tell people apart: a soldier, or its role's name (clergy, engineer, merchant...).
+## One of the town's children (Children).
+func is_child() -> bool:
+	return not soldier and profile != null and profile.role == CitizenProfile.Role.CHILD
+
+
+## What it is, for the powers that tell people apart: a soldier, or its role's name (clergy, engineer, merchant... child).
 func kind() -> StringName:
 	if soldier:
 		return &"soldier"
@@ -2192,8 +2212,67 @@ func _flee_local() -> void:
 	set_goal(to)
 
 
-## The flight is over: still inside the danger, run on; clear of it, wait where it is and then go back to its day.
+## A frightened child's grown-up (Children): the nearest of its kin within Children.FOLLOW_REACH who is out of doors,
+## alive and calm or frightened (not fleeing the town, nor held by a power); null for none.
+func _pick_guardian() -> Person:
+	var best: Person = null
+	var best_d := Children.FOLLOW_REACH
+	for q in kin:
+		if not _kin_ok(q):
+			continue
+		var d := q.ground_pos.distance_to(ground_pos)
+		if d <= best_d:
+			best = q
+			best_d = d
+	return best
+
+
+func _kin_ok(q: Person) -> bool:
+	return is_instance_valid(q) and q.is_alive() and not q.inside and q.visible and q.mind in [Mind.CALM, Mind.PANIC,
+		Mind.RECOVER, Mind.OBSERVE, Mind.REGROUP]
+
+
+## Whether it ran to a grown-up of its family (a child with one near: _pick_guardian()).
+func _run_to_kin() -> bool:
+	_guardian = _pick_guardian() if is_child() else null
+	if _guardian == null:
+		return false
+	_follow_in = 0.0
+	_keep_close()
+	return true
+
+
+## Beside its grown-up, Children.FOLLOW_GAP from them on its own side: walk there when they have moved off, else stand.
+## Its grown-up gone (dead, inside, fleeing the town): it runs from the danger on its own.
+func _keep_close(delta := 0.0) -> void:
+	_follow_in -= delta
+	if not _kin_ok(_guardian):
+		_guardian = null
+		_flee_local()
+		return
+	var at := _guardian.ground_pos
+	var d := ground_pos.distance_to(at)
+	if d <= Children.FOLLOW_GAP + 0.3:
+		if _goal == Vector2.INF:
+			_target = ground_pos
+		return
+	if _goal != Vector2.INF and (_goal.distance_to(at) <= Children.FOLLOW_GAP + 0.5 or _follow_in > 0.0):
+		return  # on its way to them still, or planned a moment ago: no path-finding every think
+	_follow_in = 0.4
+	var away := ground_pos - at
+	var spot := at + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * Children.FOLLOW_GAP
+	if grid != null:
+		var free := grid.nearest_walkable(spot, 3)
+		spot = free if free != Vector2.INF else at
+	set_goal(spot)
+
+
+## The flight is over: still inside the danger, run on; clear of it, wait where it is and then go back to its day. A
+## child keeping close to its grown-up (_keep_close()) stays by them while its fright lasts.
 func _settle() -> void:
+	if _guardian != null and _panic_left > 0.0 and _kin_ok(_guardian):
+		_target = ground_pos
+		return
 	if ground_pos.distance_to(_threat) < _threat_r + THREAT_MARGIN and _panic_left > 0.0:
 		_flee_local()
 		return
@@ -2204,6 +2283,7 @@ func _settle() -> void:
 ## ground the danger left.
 func _recover(wait: float) -> void:
 	_lured = false
+	_guardian = null
 	if soldier:
 		_soldier_back()  # a soldier's day is his post: no wait, no routine
 		return
@@ -2862,12 +2942,16 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 	var sil := Rect2(_design_info[1] + off, cell)
 	var foot: Vector2 = _design_info[2]
 	var dst := Rect2(Vector2(-foot.x, -foot.y + lift), src.size)
+	# A child in a grown-up's design (its own not in the atlas yet): smaller, its feet where they were.
+	var sk := CHILD_STAND_IN_SCALE if is_child() and not _design_name.begins_with("child") else 1.0
+	if sk != 1.0:
+		dst = Rect2(Vector2(-foot.x * sk, -foot.y * sk + lift), src.size * sk)
 	if top_only != 0:
 		# The laser's cut: only what is above the waist slides off; DummyEnemy draws the legs left standing.
 		var keep := maxf(foot.y - SPRITE_WAIST, 1.0)
 		src.size.y = keep
 		sil.size.y = keep
-		dst.size.y = keep
+		dst.size.y = keep * sk
 	var atlas := PeopleArt.atlas()
 	draw_texture_rect_region(atlas, dst, src)
 	var tint := _sprite_tint()
@@ -2912,6 +2996,9 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 	var tint := sick_color() if sick else Color.WHITE
 	var skin := _skin.lerp(tint, SICK_SKIN) if sick else _skin
 	var legs := CIT_LEGS.lerp(tint, SICK_CLOTH) if sick else CIT_LEGS
+	if role == CitizenProfile.Role.CHILD:
+		_draw_child(lift, top_only, step, running, skin, legs, tint, sick)
+		return
 	if role == CitizenProfile.Role.CLERGY or role == CitizenProfile.Role.MONK:
 		# A robe to the ground (no legs showing), a gold stole down its front.
 		var robe := CLERGY_ROBE.lerp(tint, SICK_CLOTH) if sick else CLERGY_ROBE
@@ -2979,6 +3066,40 @@ func _draw_citizen(lift: int, top_only: int) -> void:
 		# Mind Whisper's glyph: a small gold eye over the head.
 		_px(-1, -17 + lift, 3, 1, COL_WHISPER)
 		_px(0, -18 + lift, 1, 3, COL_WHISPER)
+
+
+## A child (Children), the procedural way: about three quarters of a grown-up's height (legs 3, tunic 4, head 3 against
+## 4, 6 and 3), so the head is the bigger share of it.
+func _draw_child(lift: int, top_only: int, step: int, running: bool, skin: Color, legs: Color, tint: Color,
+		sick: bool) -> void:
+	var f := _facing
+	var coat := _tunic.lerp(tint, SICK_CLOTH) if sick else _tunic
+	if top_only == 0:
+		_px(-2, -3 + lift, 2, 3 - step, legs)
+		_px(0, -3 + lift, 2, 2 + step, legs)
+	_px(-2, -7 + lift, 4, 4, coat)
+	_px(-2, -7 + lift, 4, 1, coat.lightened(0.18))
+	var arm_y := -9 if running else -7
+	_px(-3, arm_y + lift, 1, 2, skin)
+	_px(2, arm_y + lift, 1, 2, skin)
+	_px(-2, -10 + lift, 4, 3, skin)
+	_px(-2, -10 + lift, 4, 1, _hair)
+	if sick:
+		_px(2 if f > 0 else -3, -11 - int(_anim * 2.0) % 4 + lift, 1, 1, tint.lightened(0.35))
+	if state != State.DEAD or _char < 0.5:
+		_px(0 if f > 0 else -1, -9 + lift, 1, 1, COL_DARK)
+	if mind == Mind.FIGHT and state != State.DEAD:
+		_px(-3, -12 + lift, 1, 2, skin)
+		_px(2, -12 + lift, 1, 2, skin)
+		_px(0 if f > 0 else -1, -9 + lift, 1, 1, Color("ff3030"))
+	if mind == Mind.CONFUSED and _confused_swirl and state != State.DEAD:
+		var turn := int(_anim * 3.0)
+		for k in 4:
+			var a := float((turn + k) % 8) * TAU / 8.0
+			_px(roundi(cos(a) * 3.0), -14 + roundi(sin(a) * 1.0) + lift, 1, 1, COL_DISCORD)
+	if mind == Mind.WHISPERED and state != State.DEAD:
+		_px(-1, -14 + lift, 3, 1, COL_WHISPER)
+		_px(0, -15 + lift, 1, 3, COL_WHISPER)
 
 
 ## Town guard: mail, royal blue tabard, helmet, spear and shield.

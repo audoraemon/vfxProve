@@ -1,18 +1,20 @@
 {
- "hash": "94df5a909ecc5463",
- "updated": "2026-11-12T10:47:10+07:00",
+ "hash": "b9a18cee9c6310e5",
+ "updated": "2026-11-12T10:47:34+07:00",
  "changes": {
-  "date": "<t:1794455230:f>",
+  "date": "<t:1794455254:f>",
   "items": [
-   "New: Skill Tree wheel + Remembrance (try a power before buying)"
+   "Done: Soldier jobs: guards at fires, rubble piles, digging, watch posts",
+   "New: Gaze banner understates rise from multi-death strikes",
+   "New: Fix Sermon B (Capital) at 0/3 scripted wins"
   ]
  },
  "snapshot": {
   "project": {
    "version": "v0.12",
-   "tag": "kak-v012-m2",
-   "tests": 10079,
-   "updated": "2026-10-25"
+   "tag": "kak-soldier-jobs",
+   "tests": 12005,
+   "updated": "2026-11-12"
   },
   "tasks": {
    "board-objective-tags": {
@@ -257,6 +259,15 @@
     "branch": "feat/Develop-Main",
     "updated": "2026-11-10",
     "order": 300
+   },
+   "gaze-banner-multi-death": {
+    "title": "Gaze banner understates rise from multi-death strikes",
+    "status": "todo",
+    "area": "UI",
+    "version": "v0.12.x",
+    "needs_you": false,
+    "updated": "2026-11-12",
+    "order": 303
    },
    "god-discord-changelog": {
     "title": "Discord god-progression changelog",
@@ -785,6 +796,16 @@
     "updated": "2026-11-03",
     "order": 204
    },
+   "sermon-b-capital": {
+    "title": "Fix Sermon B (Capital) at 0/3 scripted wins",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.12.x",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-12",
+    "order": 302
+   },
    "sfxr-ability": {
     "title": "The powers' 78 sounds remade (recordings, not sfxr)",
     "status": "done",
@@ -805,12 +826,12 @@
    },
    "soldier-jobs": {
     "title": "Soldier jobs: guards at fires, rubble piles, digging, watch posts",
-    "status": "doing",
+    "status": "done",
     "area": "Soldiers",
     "version": "v0.12.x",
     "needs_you": false,
     "branch": "feat/soldier-jobs",
-    "updated": "2026-11-10",
+    "updated": "2026-11-12",
     "order": 301
    },
    "sound-audit-dominion": {
@@ -1580,14 +1601,6 @@
     "behind": 31,
     "date": "2026-11-12",
     "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
-    "pushed": true
-   },
-   {
-    "name": "feat/soldier-jobs",
-    "ahead": 0,
-    "behind": 0,
-    "date": "2026-11-12",
-    "subject": "test: re-record references after merging Develop-Main",
     "pushed": true
    },
    {

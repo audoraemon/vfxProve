@@ -324,7 +324,9 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 	FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -6), 14, FxParts.EMBER_LIFE, Vector2(50, 160), Vector2(30, 140))
 
 
-func _stop_trail(a: Animal) -> void:
+## Untyped: a hound another power freed (Heaven's Door takes it) is still a key here, and a freed node errors in a typed
+## parameter.
+func _stop_trail(a: Variant) -> void:
 	if _trails.has(a):
 		var e: PixelParticles = _trails[a]
 		if is_instance_valid(e):
@@ -353,6 +355,16 @@ func _fx_process(delta: float) -> void:
 func _finish() -> void:
 	if visitors != null:
 		visitors.clear()
+	super()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart): the hounds are gone all the same, Quarry's mark with
+## them, the pack only queued for freeing (its parents may be mid-teardown). After _finish there is nothing left to do here.
+func _exit_tree() -> void:
+	if visitors != null:
+		visitors.clear(true)
+	quarry = null
+	_trails.clear()
 	super()
 
 
@@ -390,11 +402,14 @@ class Gate extends Node2D:
 		return k * k * k
 
 	func _process(delta: float) -> void:
+		if not is_instance_valid(fx):
+			queue_free()  # its effect torn down first
+			return
 		flare = maxf(flare - delta * 3.0, 0.0)
 		queue_redraw()
 
 	func _draw() -> void:
-		if _tex == null:
+		if _tex == null or not is_instance_valid(fx):
 			return
 		var now := fx.t
 		var up := risen(now)
@@ -426,7 +441,8 @@ class QuarryMark extends Node2D:
 
 	func _process(delta: float) -> void:
 		_t += delta
-		if not is_instance_valid(fx) or fx.visitors == null or fx.visitors.marked() != prey:
+		# A marked one freed (they left the town) reads as null here too: checked first, before their place is read.
+		if not is_instance_valid(fx) or not is_instance_valid(prey) or fx.visitors == null or fx.visitors.marked() != prey:
 			queue_free()
 			return
 		position = Iso.ground_to_screen(prey.ground_pos)

@@ -151,3 +151,12 @@ func _finish() -> void:
 	if visitors != null:
 		visitors.clear()
 	super()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart): the spirits are gone all the same, the pack only queued for
+## freeing (its parents may be mid-teardown). After _finish there is nothing left to do here.
+func _exit_tree() -> void:
+	if visitors != null:
+		visitors.clear(true)
+	spirits.clear()
+	super()

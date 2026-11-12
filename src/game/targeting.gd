@@ -384,6 +384,7 @@ func hover(ground: Vector2) -> void:
 		_end_wheel()
 		armed = false
 		aiming = false
+		queue_redraw()  # a still cursor returns below before its redraw: the wheel must not stay drawn
 	elif (_wheel or _order != "") and not _whisper_hears():
 		# The one the wheel (or the pick) is set on has died, gone in or been taken: it can no longer hear, so it is over -- once.
 		_end_stale_whisper()

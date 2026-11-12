@@ -22,6 +22,10 @@ static func run(t) -> void:
 	_none(t, made)
 	_prey(t, made)
 	_loud(t, made)
+	_freed_mid_drag(t, made)
+	_killed_mid_drag(t, made)
+	_decoy(t, made)
+	_exit(t, made)
 	RD._done(made)
 
 
@@ -239,3 +243,94 @@ static func _loud(t, made: Array) -> void:
 		"loud: the town panics (one 7.5 off, past the arms: %s, in the pit's danger)" % Person.Mind.keys()[watcher.mind])
 	t.check(crowd.alarm > alarm, "the first soul taken raises the alarm (%.2f -> %.2f)" % [alarm, crowd.alarm])
 	fx.end_now()
+
+
+## A caught one freed mid-drag (they left the town: Crowd.escape, or another power took them "gone"): the dead reference is
+## dropped without an error, every other caught one still goes under on time, and the effect ends cleanly.
+static func _freed_mid_drag(t, made: Array) -> void:
+	_reset(made)
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	var a := _put(made, 2, at + Vector2(2.0, 0.0))
+	var gone := _put(made, 3, at + Vector2(0.0, 3.0))
+	var c := _put(made, 4, at + Vector2(-4.0, 0.0))
+	var fx := _cast(made, at)
+	RD._run(fx, TheGateBelowFx.T_OPEN + TheGateBelowFx.GRAB_EVERY * 2.0 + 0.05)
+	t.check(fx.grabbed.size() == 3 and fx._drags.size() == 3, "(three caught, all still dragged: %d, %d)" % [fx.grabbed.size(), fx._drags.size()])
+	crowd.citizens.erase(gone)
+	field.remove(gone)
+	gone.free()
+	RD._run(fx, TheGateBelowFx.DRAG + 0.1)
+	t.check(not a.is_alive() and not c.is_alive() and fx.souls == 2 and fx._drags.is_empty(),
+		"one freed mid-drag is dropped; the others still go under (%d souls, %d drags left)" % [fx.souls, fx._drags.size()])
+	t.check(c.pace_hold() == 1.0, "and nobody is left held")
+	fx.end_now()
+	t.check(fx.finished and fx._drags.is_empty() and fx.visitors.living().is_empty(), "and the effect ends cleanly")
+
+
+## A caught one killed by something else mid-drag is let go: their pace back, no soul for the pit, the arm lets go.
+static func _killed_mid_drag(t, made: Array) -> void:
+	_reset(made)
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	var p := _put(made, 2, at + Vector2(4.0, 0.0))
+	var fx := _cast(made, at)
+	RD._run(fx, TheGateBelowFx.T_OPEN + 0.3)
+	t.check(fx._drags.size() == 1 and p.pace_hold() == 0.0, "(caught and dragged)")
+	var arm = fx._drags[0].arm
+	field.kill(p, &"mob")
+	RD._run(fx, 0.1)
+	t.check(fx._drags.is_empty() and p.pace_hold() == 1.0 and fx.souls == 0,
+		"one killed by something else mid-drag is let go (pace %.2f, %d souls)" % [p.pace_hold(), fx.souls])
+	t.check(arm == null or not is_instance_valid(arm) or arm.pull_at >= 0.0, "and the arm lets go")
+	RD._run(fx, TheGateBelowFx.DRAG)
+	t.check(fx.souls == 0, "the pit never counts them")
+	fx.end_now()
+
+
+## A decoy (Mirrorfold's glass twin) is no one: the arms pass over it, as Pale Reign's do.
+static func _decoy(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	var twin := _put(made, 2, at + Vector2(1.0, 0.0))
+	twin.set_meta(&"decoy", true)
+	var real := _put(made, 3, at + Vector2(0.0, 3.0))
+	var fx := _cast(made, at)
+	RD._run(fx, TheGateBelowFx.T_OPEN + TheGateBelowFx.GRAB_EVERY * 2.0 + 0.05)
+	t.check(fx.grabbed == [real] and twin.is_alive() and twin.pace_hold() == 1.0,
+		"a decoy nearer the pit is never taken (%s)" % [_names(fx.grabbed)])
+	fx.end_now()
+	twin.remove_meta(&"decoy")
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart): every pace hold is let go and the wraiths are gone, with
+## no error; its end after that changes nothing.
+static func _exit(t, made: Array) -> void:
+	_reset(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var p := _put(made, 2, at + Vector2(4.0, 0.0))
+	var fx := _cast(made, at)
+	RD._run(fx, TheGateBelowFx.T_OPEN + 0.3)
+	t.check(p.pace_hold() == 0.0, "(one held mid-drag)")
+	fx._exit_tree()
+	t.check(p.pace_hold() == 1.0 and fx._drags.is_empty(), "freed mid-drag, the one held is let go (pace %.2f)" % p.pace_hold())
+	fx.end_now()
+	t.check(p.pace_hold() == 1.0 and fx.finished, "and its end after that changes nothing")
+	# With the wraiths up.
+	_reset(made)
+	_put(made, 2, at + Vector2(2.0, 0.0))
+	var fx2 := _cast(made, at)
+	RD._run(fx2, TheGateBelowFx.SPAN + 0.1)
+	var pack := fx2.visitors
+	var up := pack.living()
+	t.check(up.size() == 1, "(a wraith up: %d)" % up.size())
+	fx2._exit_tree()
+	var gone := true
+	for a in up:
+		gone = gone and (not is_instance_valid(a) or a.is_queued_for_deletion())
+	t.check(gone and pack.living().is_empty() and not crowd.visitors.has(pack),
+		"freed without its end, the wraiths are gone and the pack leaves the town")
+	fx2.end_now()
+	t.check(fx2.finished, "and it ends cleanly")

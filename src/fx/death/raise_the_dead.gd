@@ -74,6 +74,9 @@ var _drift_to := Vector2.INF
 var _look_in := 0.0
 var _eyes: HostEyes
 var _light: QuadFx
+## Whether the spirit is in a host now: set with `host`, but kept apart from it -- a host freed meanwhile (they left the town)
+## cannot be read, and `host != null` cannot be trusted to tell; _leave() lets go of what is left.
+var _riding := false
 
 
 func _build() -> void:
@@ -136,7 +139,7 @@ func _fx_process(delta: float) -> void:
 	visitors.step(delta)
 	if not _spirit_mode or not is_instance_valid(spirit) or t >= SPIRIT_LIFE:
 		return
-	if host != null:
+	if _riding:
 		_possess_step()
 	elif drift:
 		_drift(delta)
@@ -189,7 +192,7 @@ func _on_cut_down(_a: Animal, at_ground: Vector2) -> void:
 
 ## The time is up: a host is let go, and every one of the risen still up falls to ash (a spirit thins away).
 func _end_life() -> void:
-	if host != null:
+	if _riding:
 		_leave()
 	if visitors == null:
 		return
@@ -206,7 +209,7 @@ func _end_life() -> void:
 
 ## While the spirit lives, is in nobody, and has hosts left.
 func can_follow_up() -> bool:
-	return _spirit_mode and not finished and is_instance_valid(spirit) and spirit.is_alive() and host == null \
+	return _spirit_mode and not finished and is_instance_valid(spirit) and spirit.is_alive() and not _riding \
 		and hosts_left > 0 and t < SPIRIT_LIFE
 
 
@@ -250,11 +253,15 @@ func follow_up(at_pos: Vector2, extra_data: Dictionary) -> bool:
 		return false
 	who.hold_string()  # the spirit leaves no shake-off behind it
 	host = who
+	_riding = true
 	hosts_left -= 1
 	_since = t
 	_order = order
-	_foe = extra_data.get("foe") if order == "attack" else null
-	_building = extra_data.get("building") if order == "burn" else null
+	# Untyped until checked: assigning a freed one to a typed member errors.
+	var foe = extra_data.get("foe") if order == "attack" else null
+	var site = extra_data.get("building") if order == "burn" else null
+	_foe = foe if is_instance_valid(foe) else null
+	_building = site if is_instance_valid(site) else null
 	_to = who.anchor
 	_arrived = -1.0
 	spirit.visible = false
@@ -315,9 +322,12 @@ func _burn_step() -> void:
 
 ## The spirit comes out of its host where they stand and frightens again; the host is let go of what it laid on them.
 func _leave() -> void:
-	var was := host
+	# Untyped until checked: a host who left the town (Crowd.escape) is freed, and assigning a freed one to a Person errors.
+	var gone_from = host
 	host = null
-	if is_instance_valid(was):
+	_riding = false
+	var was: Person = gone_from if is_instance_valid(gone_from) else null
+	if was != null:
 		if _order == "attack":
 			if was.mind == Person.Mind.FIGHT and was.fight_target == _foe:
 				was.end_whisper()
@@ -330,7 +340,7 @@ func _leave() -> void:
 	_building = null
 	if not is_instance_valid(spirit):
 		return
-	if is_instance_valid(was):
+	if was != null:
 		spirit.ground_pos = was.ground_pos
 		spirit.sync_position()
 	spirit.visible = true
@@ -339,10 +349,22 @@ func _leave() -> void:
 
 
 func _finish() -> void:
-	if host != null:
+	if _riding:
 		_leave()
 	if visitors != null:
 		visitors.clear()
+	super()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart): a live possession is ended (the host let go of the order,
+## the eyes gone) and the risen are gone, the pack only queued for freeing (its parents may be mid-teardown). After _finish
+## there is nothing left to do here.
+func _exit_tree() -> void:
+	if _riding:
+		_leave()
+	if visitors != null:
+		visitors.clear(true)
+	spirit = null
 	super()
 
 

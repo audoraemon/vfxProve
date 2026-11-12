@@ -217,7 +217,8 @@ var deaths := DeathVoices.new()
 ## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
 var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
-## The town's whole dead (Death's powers raise and move them). Off unless Rules turns it on (Remains.wants()).
+## The town's whole dead (Death's powers raise and move them). Off unless Rules turns it on (Remains.wants()). Freed by clear()
+## (null after it): a reader checks it.
 var remains: Remains
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
@@ -900,7 +901,8 @@ func advance(delta: float) -> void:
 
 func _advance(delta: float) -> void:
 	_clock += delta
-	remains.step(delta)
+	if remains != null:
+		remains.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1987,6 +1989,17 @@ func clear() -> void:
 		else:
 			animals.free()
 	animals = null
+	# The ledger of bodies goes with the crowd (an R restart): cut off the field at once, so no death between this clear and the
+	# frame's end is written down, then freed; the next setup() makes a fresh one.
+	if remains != null and is_instance_valid(remains):
+		if is_instance_valid(_field) and _field.enemy_killed.is_connected(remains._on_killed):
+			_field.enemy_killed.disconnect(remains._on_killed)
+		remains.enabled = false
+		if remains.is_inside_tree():
+			remains.queue_free()
+		else:
+			remains.free()
+	remains = null
 	visitors.clear()
 	threats.clear()
 	_spreads.clear()

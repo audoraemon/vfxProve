@@ -138,4 +138,40 @@ static func run(t) -> void:
 		"Remains.wants(['smite','raise']) is true, wants(['smite']) is false")
 	var on_rules := Rules.new().setup(PackedStringArray(["smite", "raise"]), null, made[1], made[2], crowd, made[4])
 	t.check(crowd.remains.enabled, "Rules turns the ledger on for a raise loadout")
-	_done(made)
+	# Out of the tree, Crowd.clear() frees the ledger at once (an R restart must not leave it recording the next run).
+	var ledger: Remains = crowd.remains
+	var hears := Callable(ledger, "_on_killed")
+	crowd.clear()
+	t.check(crowd.remains == null and not is_instance_valid(ledger),
+		"cleared out of the tree, the crowd frees its ledger at once")
+	t.check(not (made[2] as EnemyField).enemy_killed.is_connected(hears), "and the field no longer calls it")
+	(made[3] as Node).free()
+	await _cleared_in_tree(t)
+
+
+## In the tree (a mission's R restart), Crowd.clear() queues the ledger for freeing and cuts it off the field at once: a death
+## between the clear and the frame's end records nothing, and a crowd stepped after its clear does not touch it.
+static func _cleared_in_tree(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[2]
+	var world: Node = made[3]
+	t.root.add_child(world)
+	await t.process_frame  # (the tree is only live after the first frame)
+	var ledger: Remains = crowd.remains
+	t.check(ledger.is_inside_tree(), "(the ledger is in the tree)")
+	ledger.enabled = true
+	var hears := Callable(ledger, "_on_killed")
+	t.check(field.enemy_killed.is_connected(hears), "(the ledger hears the field's deaths)")
+	var p: Person = crowd.citizens[0]
+	crowd.clear()
+	t.check(crowd.remains == null and is_instance_valid(ledger) and ledger.is_queued_for_deletion(),
+		"cleared in the tree, the ledger is queued for freeing and the crowd lets go of it")
+	t.check(not field.enemy_killed.is_connected(hears), "and it is cut off the field at once")
+	if is_instance_valid(p) and p.is_alive():
+		field.kill(p, &"mob")
+	t.check(ledger.all().is_empty(), "a death after the clear records nothing")
+	crowd._advance(0.1)
+	t.check(crowd.remains == null, "a crowd stepped after its clear does not touch a ledger")
+	t.root.remove_child(world)
+	world.free()

@@ -4,16 +4,16 @@ extends FxTimeline
 ## (the PixelLab sheet gate_below.png, grown out of a crack over T_OPEN and shrunk back into one over CLOSE: ruling R5). It is
 ## not a door to elsewhere (that is Passage's Doors of the Dead): the ground takes them down.
 ## - From T_OPEN, every GRAB_EVERY, pale arms take the nearest living person within REACH who is out in the open, not guised
-##   (Person.guised()) and not caught yet -- a tie goes to the lower instance id; no luck. A caught one is held where they
-##   stand (hold_pace 0) and dragged in a straight line to the pit's EDGE over DRAG, then pulled under: killed as &"pit", a
-##   kind that leaves no body (Remains.BODY_KINDS). Each one taken is a soul. No arm reaches out once a drag could not finish
-##   before the close (SPAN - DRAG), so every soul taken is counted by then.
+##   (Person.guised()), not a decoy (Mirrorfold's glass twin) and not caught yet -- a tie goes to the lower instance id; no
+##   luck. A caught one is held where they stand (hold_pace 0) and dragged in a straight line to the pit's EDGE over DRAG,
+##   then pulled under: killed as &"pit", a kind that leaves no body (Remains.BODY_KINDS). Each one taken is a soul. No arm
+##   reaches out once a drag could not finish before the close (SPAN - DRAG), so every soul taken is counted by then.
 ## - At SPAN the pit closes, and every soul it took climbs back out of it as a wraith (DeathParts.wraith(): a pale spirit
 ##   that goes for soldiers within DeathParts.WRAITH_SEEK, and leaves whoever it passes through at half pace for 4 s). They
 ##   are this effect's own Visitors pack, and go back into the ground WRAITH_LIFE later.
 ## Loud (PowerBook.REACH): the danger counts from the first soul under (IMPACT = T_OPEN + DRAG). From then, while the pit is
 ## open, everyone within FRIGHT_R of it flees afresh every FRIGHT_EVERY, and the first soul taken raises the alarm (as Hound
-## Gate's first bite). Cut short or over, every hold is let go and the wraiths are gone (_finish()).
+## Gate's first bite). Cut short or over, every hold is let go and the wraiths are gone (_finish(); _exit_tree() when torn down).
 
 ## The ground cracks and opens over T_OPEN; the arms reach out from then.
 const T_OPEN := 1.0
@@ -131,7 +131,7 @@ func _grab(when: float) -> void:
 	var best_d := INF
 	for e in ctx.field.in_radius(origin, REACH):
 		var p := e as Person
-		if p == null or p.inside or p.guised() or _caught.has(p.get_instance_id()):
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy") or _caught.has(p.get_instance_id()):
 			continue
 		var d := p.ground_pos.distance_squared_to(origin)
 		if d < best_d or (d == best_d and p.get_instance_id() < best.get_instance_id()):
@@ -160,15 +160,19 @@ func _grab(when: float) -> void:
 func _drag() -> void:
 	var still: Array[Dictionary] = []
 	for d in _drags:
-		var p: Person = d.p
-		var arm: Arm = d.arm
-		if not is_instance_valid(p) or not p.is_alive() or p.inside:
-			# Fallen to something else first, or put indoors by the night (a shelter's count): the arm lets go.
-			if is_instance_valid(p):
-				p.free_pace(get_instance_id())
-			if arm != null and is_instance_valid(arm):
+		# Untyped until checked: one who left the town (Crowd.escape) or was taken "gone" by another power is freed, and
+		# assigning a freed one to a Person errors.
+		var held = d.p
+		var hand = d.arm
+		var arm: Arm = hand if is_instance_valid(hand) else null
+		if not is_instance_valid(held) or not (held as Person).is_alive() or (held as Person).inside:
+			# Fallen to something else first, freed, or put indoors by the night (a shelter's count): the arm lets go.
+			if is_instance_valid(held):
+				(held as Person).free_pace(get_instance_id())
+			if arm != null:
 				arm.let_go(t)
 			continue
+		var p: Person = held
 		var k := clampf((t - float(d.at)) / DRAG, 0.0, 1.0)
 		p.ground_pos = (d.from as Vector2).lerp(d.to, k)
 		p._sync_position()
@@ -244,14 +248,28 @@ func _end_wraiths() -> void:
 
 ## Over or cut short: everyone still held is let go, the wraiths are gone.
 func _finish() -> void:
-	for d in _drags:
-		var p: Person = d.p
-		if is_instance_valid(p):
-			p.free_pace(get_instance_id())
-	_drags.clear()
+	_let_all_go()
 	if visitors != null:
 		visitors.clear()
 	super()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart): the same -- every hold let go, the wraiths gone -- the pack
+## only queued for freeing (its parents may be mid-teardown). After _finish there is nothing left to do here.
+func _exit_tree() -> void:
+	_let_all_go()
+	if visitors != null:
+		visitors.clear(true)
+	super()
+
+
+## Every caught one still held is let go (a freed one is skipped: read untyped until checked).
+func _let_all_go() -> void:
+	for d in _drags:
+		var held = d.p
+		if is_instance_valid(held):
+			(held as Person).free_pace(get_instance_id())
+	_drags.clear()
 
 
 ## 0..1 how far open the pit is at `now`: out of a crack over T_OPEN, back into one over CLOSE from SPAN.

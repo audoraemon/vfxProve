@@ -40,6 +40,7 @@ static func run(t) -> void:
 	_orders(t, made)
 	_rules(t, made)
 	_order_fx(t, made)
+	await _closed_redraws(t, made)
 	_done(made)
 
 
@@ -333,3 +334,38 @@ static func _order_fx(t, made: Array) -> void:
 	t.check(not MindWhisperFx.order(ctx, who, {"target": who, "order": "burn", "building": house}, 5.0), "and with no town fires it does not take")
 	ctx.ground.free()
 	ctx.overhead.free()
+
+
+## The effect stops taking follow-ups with the wheel up and the cursor still: the hover that closes the wheel redraws, so the wheel
+## is not left drawn where it was (a still cursor's hover otherwise returns before its redraw). The edge's colour does not change
+## here (as when the slot is ready again by the time the possession ends), so the per-frame edge check asks for no redraw: the
+## redraw counted is the hover's own.
+static func _closed_redraws(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var set := _setup(made)
+	var rules: Rules = set[0]
+	var stub: WheelStub = set[1]
+	var aim: Targeting = set[2]
+	var base := _empty(made)
+	var who: Person = crowd.citizens[44]
+	who.ground_pos = base
+	stub.from = base + Vector2(1.0, 0.0)
+	aim.pick(0)
+	aim.press(who.ground_pos)
+	aim.release(who.ground_pos + Vector2(0.1, 0.0))
+	t.check(aim.wheel_open(), "(the wheel is up)")
+	var still := who.ground_pos + Vector2(0.5, 0.5)
+	aim.hover(still)
+	t.root.add_child(aim)
+	await t.process_frame
+	await t.process_frame
+	var draws := [0]
+	aim.draw.connect(func() -> void: draws[0] += 1)
+	stub.open = false
+	aim._edge_ready = rules.refusal(0) == "" or rules.can_recast(0)
+	aim.hover(still)
+	await t.process_frame
+	await t.process_frame
+	t.check(not aim.wheel_open() and draws[0] > 0, "the hover that closes the wheel with the cursor still redraws it away (%d draws)" % draws[0])
+	t.root.remove_child(aim)
+	_free(set)

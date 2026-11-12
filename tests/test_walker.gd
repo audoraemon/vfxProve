@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_quiet(t, made)
 	_shelter_plague(t, made)
 	_hidden(t, made)
+	_exit(t, made)
 	RD._done(made)
 
 
@@ -329,3 +330,28 @@ static func _hidden(t, made: Array) -> void:
 		t.check((got as WalkingCorpseFx).laid and not r.hidden and rem.pick(from) == r, "out on the street again, seen")
 		got.end_now()
 	rules.free()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the walker is gone, and the body is put
+## back down where it had got to (the ledger still there), so it is never lost; no error, and its end after that changes nothing.
+static func _exit(t, made: Array) -> void:
+	_clear_every(made)
+	var crowd: Crowd = made[0]
+	var rem: Remains = crowd.remains
+	var at := RD._empty(made)
+	var r := RD._body(made, 60, at)
+	var to := _spot(made, at, 5.0)
+	var fx := _cast(made[5], at, to)
+	RD._run(fx, WalkingCorpseFx.T_RISE + 2.0)
+	var pack := fx.visitors
+	var up := pack.living()
+	t.check(up.size() == 1 and rem.all().is_empty() and not fx.laid, "(walking, the body off the ledger)")
+	var was := up[0].ground_pos if up.size() == 1 else at
+	fx._exit_tree()
+	t.check(RD._all_gone(up) and pack.living().is_empty() and not crowd.visitors.has(pack),
+		"freed without its end, the walker is gone and the pack leaves the town")
+	t.check(fx.laid and rem.pick(was) == r and r.pos.distance_to(was) < 0.01 and not r.hidden,
+		"and the body lies back down where it had got to (%s)" % [r.pos])
+	fx.end_now()
+	t.check(fx.finished and rem.all().size() == 1, "and its end after that changes nothing (one body, %d)" % rem.all().size())
+	rem.take(r)

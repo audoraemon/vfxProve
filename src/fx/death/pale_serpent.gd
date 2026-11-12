@@ -5,7 +5,7 @@ extends FxTimeline
 ## (LENGTH at most, MIN_LENGTH at least) over GLIDE, then loops once through the end, a circle of CIRCLE_R turned to the
 ## drag's left (Vector2.orthogonal()) over CIRCLE, and climbs away into the dark over DEPART.
 ## - Its shadow kills: each step, everyone out in the open (not indoors, not guised -- Corpse Guise hides the faithful, as
-##   The Gate Below and Pale Reign spare them) within BAND of the head's path swept that step dies at once, without a
+##   The Gate Below and Pale Reign spare them -- and no decoy, Mirrorfold's glass twin) within BAND of the head's path swept that step dies at once, without a
 ##   sound or a mark, killed as &"shadow" (a whole body: it leaves a remain, ready to rise; a quiet kind,
 ##   DeathVoices.QUIET_KINDS). No luck: everyone in the band dies, in instance-id order. A long frame is swept in steps of
 ##   STEP at most, so nobody is skipped. Houses are left standing: nothing here touches a structure.
@@ -278,8 +278,8 @@ func _shadow(a: Vector2, b: Vector2, when: float, span: float) -> void:
 	var near: Array[Person] = []
 	for e in ctx.field.in_radius((a + b) * 0.5, a.distance_to(b) * 0.5 + BAND + 0.01):
 		var p := e as Person
-		if p == null or p.inside or p.guised():
-			continue
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy"):
+			continue  # a decoy (Mirrorfold's glass twin) is no one: the shadow passes over it, as Pale Reign's does
 		if Geometry2D.get_closest_point_to_segment(p.ground_pos, a, b).distance_to(p.ground_pos) <= BAND:
 			near.append(p)
 	near.sort_custom(func(x: Person, y: Person) -> bool: return x.get_instance_id() < y.get_instance_id())

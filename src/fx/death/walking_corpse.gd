@@ -140,17 +140,23 @@ func _fx_process(delta: float) -> void:
 
 
 ## It lies down where it stands: the remain goes back on the ledger there, its clock restarted. At the building's door it goes
-## in, hidden, and a plague body infects those sheltering there.
-func _lie_down() -> void:
+## in, hidden, and a plague body infects those sheltering there. `torn_down` (the effect freed without its end): the body is
+## only put back -- no plague brought in, no dust raised, the pack only queued for freeing.
+func _lie_down(torn_down := false) -> void:
 	if laid:
 		return
 	laid = true
 	var at := walker.ground_pos if is_instance_valid(walker) else remain.pos
-	var inside := building != null and at.distance_to(dest) <= IN_DOOR_R
+	var inside := is_instance_valid(building) and at.distance_to(dest) <= IN_DOOR_R
 	if inside:
 		at = dest
-	var rem: Remains = ctx.crowd.remains
-	rem.move(remain, at, inside)
+	var rem: Remains = ctx.crowd.remains if is_instance_valid(ctx.crowd) else null
+	if is_instance_valid(rem):
+		rem.move(remain, at, inside)
+	if torn_down:
+		visitors.clear(true)
+		walker = null
+		return
 	if inside and remain.sick and shelter != null:
 		_bring_plague()
 	if DominionParts.staged(self):
@@ -182,8 +188,26 @@ func _bring_plague() -> void:
 
 ## Cut short while it walks (the act ends): it lies down where it is, so the body is never lost.
 func _finish() -> void:
-	if not laid and remain != null and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains) and is_instance_valid(walker):
+	if _can_lie_down():
 		_lie_down()
 	if visitors != null:
 		visitors.clear()
 	super()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart): the body is put back down where it had got to, as when cut
+## short, so it is never lost while the ledger is still there (a ledger already freed with its crowd takes it with it); the
+## walker is gone, the pack only queued for freeing (its parents may be mid-teardown). After _finish there is nothing left to do.
+func _exit_tree() -> void:
+	if _can_lie_down():
+		_lie_down(true)
+	if visitors != null:
+		visitors.clear(true)
+	walker = null
+	super()
+
+
+## Still walking, with a ledger to put the body back on. A walker already gone (another power carried it off) took the body.
+func _can_lie_down() -> bool:
+	return not laid and remain != null and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains) \
+		and is_instance_valid(walker)

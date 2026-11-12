@@ -125,6 +125,7 @@ static func run(t) -> void:
 	_hosts(t, made)
 	_refused_hosts(t, made)
 	_recalled(t, made)
+	_exit(t, made)
 	_done(made)
 
 
@@ -535,3 +536,63 @@ static func _recalled(t, made: Array) -> void:
 	_run(sp, 4.0, [host])
 	t.check(sp.visitors.living().is_empty() and sp.finished and host.mind != Person.Mind.WHISPERED,
 		"everything recalled by 20 s (spirit), and its host let go (%s)" % Person.Mind.keys()[host.mind])
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the risen are gone, a live possession is
+## ended (the host let go of the order, the eyes gone), nothing errors, and its end after that changes nothing.
+static func _exit(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	_clear_all(made)
+	var at := _empty(made)
+	_body(made, 50, at)
+	var fx := _cast(made, at, "zombie")
+	_run(fx, T_RISE_PLUS)
+	var pack := fx.visitors
+	var up := pack.living()
+	t.check(up.size() == 1, "(a zombie up)")
+	fx._exit_tree()
+	t.check(_all_gone(up) and pack.living().is_empty() and not crowd.visitors.has(pack),
+		"freed without its end, the zombies are gone and the pack leaves the town")
+	fx.end_now()
+	t.check(fx.finished, "and its end after that changes nothing")
+	# A spirit riding a host.
+	var got := _spirit_at(made, 51)
+	var sp: RaiseTheDeadFx = got[0]
+	var at2: Vector2 = got[1]
+	sp.drift = false
+	var host: Person = crowd.citizens[52]
+	host.ground_pos = at2 + Vector2(3.5, 0.0)
+	var to := (made[2] as WalkGrid).nearest_walkable(host.ground_pos + Vector2(0.0, 3.0))
+	t.check(sp.follow_up(host.ground_pos, {"target": host, "to": to}) and sp.host == host, "(possessed)")
+	var spirits := sp.visitors.living()
+	var eyes := sp._eyes
+	sp._exit_tree()
+	t.check(sp.host == null and host.mind != Person.Mind.WHISPERED and (eyes == null or not is_instance_valid(eyes) or eyes.is_queued_for_deletion()),
+		"freed mid-possession, the host is let go of the order (%s) and the eyes go" % Person.Mind.keys()[host.mind])
+	t.check(_all_gone(spirits) and sp.visitors.living().is_empty(), "and the spirit is gone")
+	sp.end_now()
+	t.check(sp.finished and host.mind != Person.Mind.WHISPERED, "and its end after that changes nothing")
+	# A host freed mid-possession (they left the town), then the effect torn down: no error.
+	var got3 := _spirit_at(made, 53)
+	var sp3: RaiseTheDeadFx = got3[0]
+	sp3.drift = false
+	var host3: Person = crowd.citizens[54]
+	host3.ground_pos = (got3[1] as Vector2) + Vector2(3.5, 0.0)
+	t.check(sp3.follow_up(host3.ground_pos, {"target": host3, "to": host3.ground_pos + Vector2(0.0, 1.0)}), "(possessed again)")
+	crowd.citizens.erase(host3)
+	(made[3] as EnemyField).remove(host3)
+	host3.free()
+	sp3._exit_tree()
+	t.check(sp3.visitors.living().is_empty(), "a host freed before the teardown: the spirit still goes, without an error")
+	sp3.end_now()
+	t.check(sp3.finished, "and it ends cleanly")
+
+
+const T_RISE_PLUS := RaiseTheDeadFx.T_RISE + 0.1
+
+
+static func _all_gone(nodes: Array) -> bool:
+	for a in nodes:
+		if is_instance_valid(a) and not a.is_queued_for_deletion():
+			return false
+	return true

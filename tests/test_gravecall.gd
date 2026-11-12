@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_flee(t, made)
 	_freeze(t, made)
 	_gone(t, made)
+	_exit(t, made)
 	RD._done(made)
 
 
@@ -124,3 +125,21 @@ static func _gone(t, made: Array) -> void:
 	t.check(fx.haunting and not fx.finished, "still there before the 20 s are up")
 	RD._run(fx, 1.0 + GravecallFx.FADE + 0.3)
 	t.check(fx.finished and fx.visitors.living().is_empty(), "gone after 20 s at the spot (%.1f s in)" % (fx.t - arrived))
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the spirits are gone and the pack leaves the
+## town, with no error; its end after that changes nothing.
+static func _exit(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := _spot(made)
+	var fx := _cast(made, at, at + Vector2(0.0, 3.0))
+	RD._run(fx, GravecallFx.T_RISE + 1.0)
+	var pack := fx.visitors
+	var up := pack.living()
+	t.check(up.size() == GravecallFx.SPIRITS, "(three up)")
+	fx._exit_tree()
+	t.check(RD._all_gone(up) and pack.living().is_empty() and not crowd.visitors.has(pack),
+		"freed without its end, the spirits are gone and the pack leaves the town")
+	fx.end_now()
+	t.check(fx.finished, "and its end after that changes nothing")

@@ -30,6 +30,7 @@ static func run(t) -> void:
 	_once(t, made)
 	_aim(t, made)
 	_street(t, made)
+	_decoy(t, made)
 	RD._done(made)
 
 
@@ -442,3 +443,19 @@ static func _street(t, made: Array) -> void:
 	crowd.drop_held()
 	rules.free()
 	aim.free()
+
+
+## A decoy (Mirrorfold's glass twin) is no one: the shadow passes over it, as Pale Reign's does, and takes the real one behind it.
+static func _decoy(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	var to := at + Vector2(14.0, 0.0)
+	var twin := _put(made, 0, at + Vector2(4.0, 0.0))
+	twin.set_meta(&"decoy", true)
+	var real := _put(made, 1, at + Vector2(6.0, 0.0))
+	var fx := _cast(made, at, to)
+	RD._run(fx, PaleSerpentFx.glide_end() + 0.2)
+	t.check(twin.is_alive() and not fx.taken.has(twin), "a decoy on the path is never taken")
+	t.check(not real.is_alive() and fx.taken.has(real), "and the real one past it is")
+	fx.end_now()
+	twin.remove_meta(&"decoy")

@@ -112,6 +112,8 @@ raise_wail	res://assets/audio/ability/death/raise_wail.wav	-16.62	-0.29
 gravecall_rise	res://assets/audio/ability/death/gravecall_rise.wav	-15.19	-0.29
 q_guise	res://assets/audio/ability/quiet/q_guise.wav	-20.30	-6.17
 q_walker	res://assets/audio/ability/quiet/q_walker.wav	-20.22	-2.14
+gatebelow_open	res://assets/audio/ability/death/gatebelow_open.wav	-16.76	-0.29
+gatebelow_close	res://assets/audio/ability/death/gatebelow_close.wav	-16.78	-0.29
 q_pestilence	res://assets/audio/ability/quiet/q_pestilence.wav	-18.22	-0.18
 q_ember	res://assets/audio/ability/quiet/q_ember.wav	-16.16	-0.28
 q_ember_hit	res://assets/audio/ability/quiet/q_ember_hit.wav	-18.75	0.09

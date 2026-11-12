@@ -129,6 +129,10 @@ const CATALOG := {
 	&"q_guise": {"path": "res://assets/audio/ability/quiet/q_guise.wav", "db": 0.0},
 	# Walking Corpse (Death III, quiet): a body gets up -- a shuffle of cloth and a stiff joint's creak, under the quiet floor's edge.
 	&"q_walker": {"path": "res://assets/audio/ability/quiet/q_walker.wav", "db": 0.0},
+	# The Gate Below (Death IV): the ground opening -- a deep rumble, stone grinding, a cold choir's breath -- and its closing, ground
+	# grinding shut under a wraith's wail.
+	&"gatebelow_open": {"path": "res://assets/audio/ability/death/gatebelow_open.wav", "db": 2.0},
+	&"gatebelow_close": {"path": "res://assets/audio/ability/death/gatebelow_close.wav", "db": 1.0},
 	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
 	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
 	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},

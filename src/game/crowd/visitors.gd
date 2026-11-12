@@ -242,6 +242,8 @@ func step(delta: float) -> void:
 		a.tick_visual(delta)
 		if r.recalling:
 			_go_home(a, r, delta)
+			if not _rules.has(a):
+				continue  # home, and freed: it slows nobody any more (a wraith's pass would hold a freed node's id)
 		else:
 			_hunt(a, r, delta)
 		if r.fright_r > 0.0 and not r.recalling:

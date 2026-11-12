@@ -380,6 +380,11 @@ const POWERS := [
 			{"COMMAND_X": 1.2, "GATHER_CAPACITY": 175, "cooldown": 160.0},
 			{"COMMAND_X": 1.3, "GATHER_CAPACITY": 185, "cooldown": 150.0},
 			{"COMMAND_X": 1.4, "GATHER_CAPACITY": 200, "cooldown": 140.0, "twist": true, "twist_text": "Second Word: click again for a second command"}]},
+	{"key": "gatebelow", "name": "The Gate Below", "path": "res://src/fx/death/the_gate_below.gd",
+		"blurb": "The ground opens; pale arms drag the living under, and their souls climb back out.",
+		"dp": 5, "cooldown": 90.0, "aim": "click",
+		"shape": "the ground opens into a pit of 3 ringed in bone for 12 s; every 0.5 s pale arms drag the nearest within 6 to its edge and under, leaving no body; when it closes every soul it took climbs out as a wraith that hunts soldiers for 20 s",
+		"authority": "death"},
 	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
 		"blurb": "One law is void for 15 s: the clock, the escape limit or the ward. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law is void for 15 s: the clock (time stops), the escape limit, the ward; Q/E; once",
@@ -487,6 +492,9 @@ const REACH := {
 	# Doors of the Dead: a district's doors burning cold and the other side pouring out of them is seen and heard far
 	# off; the danger lasts the span
 	"deaddoors": [16.0, 20.0, 1.0, 50.0],
+	# The Gate Below: the ground opening into a pit ringed in bone and pale arms dragging people under are seen and heard
+	# across the square; the danger lasts the pit's 12 s
+	"gatebelow": [10.0, 14.0, 0.8, 12.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -498,7 +506,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"raise": 0.8, "gravecall": 0.8,
+	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -770,7 +778,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death", "gatebelow": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

@@ -120,7 +120,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_01.ogg` | CC0 | rubberduck | ability/holy/jg_punch_2, building/collapse_stone_3, building/collapse_stone_4 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_02.ogg` | CC0 | rubberduck | ability/energy/orb_hit_1, ability/energy/orb_hit_2, building/collapse_stone_1, building/collapse_stone_3, building/collapse_stone_4, citizen/crowd_death_wave_1 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_03.ogg` | CC0 | rubberduck | ability/holy/hs_erupt_1, ability/holy/hs_erupt_2, ability/holy/hs_erupt_4, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_4, building/collapse_stone_5 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_04.ogg` | CC0 | rubberduck | ability/holy/jg_crumble, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_5, citizen/crowd_death_wave_2 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_04.ogg` | CC0 | rubberduck | ability/death/gatebelow_close, ability/holy/jg_crumble, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_5, citizen/crowd_death_wave_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_05.ogg` | CC0 | rubberduck | building/collapse_stone_2, building/collapse_stone_3 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_06.ogg` | CC0 | rubberduck | ability/holy/jg_crumble, building/collapse_stone_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_07.ogg` | CC0 | rubberduck | ability/energy/orb_hit_3 |
@@ -192,7 +192,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Cat Purr & Meow](https://opengameart.org/content/cat-purr-meow) `cat_mewpurr.wav` | CC0 | Kerzoven | animal/cat_meow_6 |
 | [Cat Purr & Meow](https://opengameart.org/content/cat-purr-meow) `cat_softmew.wav` | CC0 | Kerzoven | animal/cat_meow_5 |
 | [Catching fire](https://opengameart.org/content/catching-fire) `flame_0.ogg` | CC0 | themightyglider | ability/energy/laser_sizzle_1, ability/energy/laser_sizzle_2, ability/fire/cf_fall_1, ability/fire/cf_fall_2, ability/fire/cf_fall_3, ability/fire/cf_fall_4, ability/quiet/q_ember_hit, building/fire_catch_1, building/fire_catch_2, building/fire_catch_3, building/lantern_blind |
-| [Cave In](https://opengameart.org/content/cave-in) `cave_in_-_starninjas_0.ogg` | CC0 | StarNinjas | ability/fire/cf_erupt, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/nova_rumble, ability/fire/nova_shockwave, ability/holy/hs_fissure, ability/holy/jg_crumble, ability/holy/jg_rise, ability/holy/jg_rumble, ability/holy/jg_slam, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_4, building/collapse_stone_5 |
+| [Cave In](https://opengameart.org/content/cave-in) `cave_in_-_starninjas_0.ogg` | CC0 | StarNinjas | ability/death/gatebelow_open, ability/fire/cf_erupt, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/nova_rumble, ability/fire/nova_shockwave, ability/holy/hs_fissure, ability/holy/jg_crumble, ability/holy/jg_rise, ability/holy/jg_rumble, ability/holy/jg_slam, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_4, building/collapse_stone_5 |
 | [CC0 Deep Monster Roar](https://opengameart.org/content/cc0-deep-monster-roar) `monster_roar.wav` | CC0 | trazzz123 | ability/fire/dr_roar, building/lantern_burn |
 | [Cheers](https://opengameart.org/content/cheers-0) `cheers_1.ogg` | CC0 | Nocturnal_Vanguard | ability/quiet/q_verdict_hit, citizen/sol_rally |
 | [Chunky Explosion](https://opengameart.org/content/chunky-explosion) `Chunky Explosion.mp3` | CC0 | Joth | ability/fire/dr_erupt, ability/holy/jg_slam |
@@ -209,6 +209,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Dripping water loop](https://opengameart.org/content/dripping-water-loop) `atmosbasement.mp3_.flac` | CC0 | qubodup | ability/water/ts_drip |
 | [Earth Element Magic Spell](https://opengameart.org/content/earth-element-magic-spell) `Earth Element Magic Spell_0.flac` | CC0 | qubodup | ability/holy/jg_hands |
 | [Earth Element Magic Spell](https://opengameart.org/content/earth-element-magic-spell) `Earth Element Magic Spell_3.ogg` | CC0 | qubodup | ability/quiet/q_oath |
+| [Earthquake and Open sesame](https://opengameart.org/content/earthquake-and-open-sesame) `shake.flac` | CC0 | mieki256 | ability/death/gatebelow_open |
 | [Explosion](https://opengameart.org/content/explosion-0) `explosion.wav` | CC0 | TinyWorlds | building/lantern_burn |
 | [Explosions](https://opengameart.org/content/explosions-4) `explosion1_0.ogg` | CC0 | EZduzziteh | ability/fire/cf_erupt, ability/fire/nova_boom, ability/holy/hs_strike |
 | [Explosions](https://opengameart.org/content/explosions-4) `explosion3.ogg` | CC0 | EZduzziteh | ability/arcane/grav_implode |
@@ -234,16 +235,18 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth33.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_3 |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth4.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_4 |
 | [Freeze Spell](https://opengameart.org/content/freeze-spell-0) `freeze.wav` | CC0 | artisticdude | ability/ice/glac_freeze |
-| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/gravecall_rise, ability/death/raise_rise, ability/death/raise_wail, ability/quiet/q_guise, ability/quiet/q_walker |
+| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/gatebelow_open, ability/death/gravecall_rise, ability/death/raise_rise, ability/death/raise_wail, ability/quiet/q_guise, ability/quiet/q_walker |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan01.wav` | CC0 | qubodup | ability/quiet/q_madness |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan02.wav` | CC0 | qubodup | ability/death/raise_wail |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan03.wav` | CC0 | qubodup | ability/death/gravecall_rise |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan04.wav` | CC0 | qubodup | ability/death/gatebelow_close |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan05.wav` | CC0 | qubodup | ability/death/gravecall_rise, ability/quiet/q_doom |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (11).wav` | CC0 | Sorth | ability/quiet/q_voice |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (14).wav` | CC0 | Sorth | building/lantern_flare |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (5).wav` | CC0 | Sorth | ability/death/raise_wail |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (6).wav` | CC0 | Sorth | ability/death/gravecall_rise |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (8).wav` | CC0 | Sorth | ability/quiet/q_whisper |
+| [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (9).wav` | CC0 | Sorth | ability/death/gatebelow_close |
 | [Girly scream](https://opengameart.org/content/girly-scream) `wscream_2_0.wav` | CC0 | Ferk | citizen/crowd_chaos, citizen/crowd_cry_5 |
 | [Gravity Inverter](https://opengameart.org/content/gravity-inverter) `gravity_inverter.ogg` | CC0 | fvcalderan | ability/arcane/grav_compress |
 | [grunts of male death and pain ](https://opengameart.org/content/grunts-male-death-and-pain) `death pain grunts.wav` | CC0 | thebardofblasphemy | citizen/cit_death_2, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1, citizen/sol_death_2, citizen/sol_death_3 |
@@ -264,7 +267,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Laser Beam](https://opengameart.org/content/laser-beam) `laserbeam.wav` | CC0 | frosty ham | ability/energy/laser_fire |
 | [Laser Sound Effects](https://opengameart.org/content/laser-sound-effects) `sfx_laser_2.mp3` | CC0 | EZduzziteh | ability/fire/nova_lock |
 | [Laser Sound Effects](https://opengameart.org/content/laser-sound-effects) `sfx_laser_4.mp3` | CC0 | EZduzziteh | ability/energy/laser_ignite |
-| [Low Rumbling](https://opengameart.org/content/low-rumbling) `low-rumbling-176033.mp3` | CC0 | Musheran | ability/fire/cf_rise, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/dr_sink, ability/fire/nova_boom, ability/fire/nova_rumble, ability/holy/hs_rumble, ability/holy/jg_rumble, ability/ice/glac_peak, ability/quiet/q_hatred |
+| [Low Rumbling](https://opengameart.org/content/low-rumbling) `low-rumbling-176033.mp3` | CC0 | Musheran | ability/death/gatebelow_close, ability/death/gatebelow_open, ability/fire/cf_rise, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/dr_sink, ability/fire/nova_boom, ability/fire/nova_rumble, ability/holy/hs_rumble, ability/holy/jg_rumble, ability/ice/glac_peak, ability/quiet/q_hatred |
 | [Magic Spell SFX](https://opengameart.org/content/magic-spell-sfx) `magical_2.ogg` | CC0 | JaggedStone | ability/arcane/grav_shimmer |
 | [Magic Spell SFX](https://opengameart.org/content/magic-spell-sfx) `magical_4.ogg` | CC0 | JaggedStone | ability/holy/jg_rise |
 | [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) `1yell11.wav` | CC0 | HaelDB | citizen/sol_order_6 |
@@ -338,6 +341,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Steam release sounds](https://opengameart.org/content/steam-release-sounds) `steam hisses - Marker #1.wav` | CC0 | bart | building/fire_douse_1 |
 | [Steam release sounds](https://opengameart.org/content/steam-release-sounds) `steam hisses - Marker #2.wav` | CC0 | bart | building/fire_douse_2 |
 | [Steam release sounds](https://opengameart.org/content/steam-release-sounds) `steam hisses - Marker #3.wav` | CC0 | bart | building/fire_douse_3 |
+| [Stone Door](https://opengameart.org/content/stone-door) `stone_door.ogg` | CC0 | bonebrah | ability/death/gatebelow_close, ability/death/gatebelow_open |
 | [stone_rock_or_wood_moved_no_tick](https://opengameart.org/content/stonerockorwoodmovednotick) `stone_rock_or_wood_moved_no_tick.mp3` | CC0 | omegagreg | ability/aftermath/debris_big_1, ability/aftermath/debris_big_2, ability/aftermath/debris_big_3, ability/aftermath/debris_big_4, ability/death/gravecall_rise, ability/death/raise_rise |
 | [Teleport Spell](https://opengameart.org/content/teleport-spell) `teleport.wav` | CC0 | Ogrebane | ability/quiet/q_mirror_hit_1, ability/quiet/q_mirror_hit_2, ability/quiet/q_mirror_hit_3, ability/quiet/q_mirror_hit_4 |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Smooth 2.wav` | CC0 | Zane Little Music | ability/energy/orb_target |
@@ -387,6 +391,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chorus-female-c5.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/death/gravecall_rise |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chorus-female-e5.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/death/raise_wail |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chorus-male-a2.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/death/raise_rise |
+| [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chorus-male-c3.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/death/gatebelow_open |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `horns-sus-ff-e2-PB-loop.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | building/town_horn |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `horns-sus-ff-e3-PB-loop.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | building/town_horn |
 | [20080618KamagasakiRiot.ogg](https://commons.wikimedia.org/wiki/File:20080618KamagasakiRiot.ogg) `20080618KamagasakiRiot.ogg` | CC0 | Kamagasaki450 | citizen/crowd_chaos |

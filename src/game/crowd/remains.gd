@@ -18,7 +18,8 @@ const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy
 const WANTED_BY: Array[String] = ["raise", "walker", "gravetide"]
 
 
-## One body: values only, never a node.
+## One body: values only. `body` is a WeakRef to the dead Person, used for one thing -- hiding that node when the remain is
+## taken (a risen body leaves no corpse behind) -- and it never keeps the node alive: once the node frees it resolves null.
 class Remain:
 	var pos := Vector2.ZERO
 	var born := 0.0
@@ -29,8 +30,7 @@ class Remain:
 	var facing := 0
 	var sick := false
 	var hidden := false
-	## Set down again by a power (move()): no person's own body lies over it, so it is drawn at once.
-	var moved := false
+	var body: WeakRef
 
 
 var enabled := false
@@ -70,6 +70,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	r.design = p._design()
 	r.facing = p.remain_facing()
 	r.sick = p.sick_left > 0.0
+	r.body = weakref(p)
 	_list.append(r)
 	if _list.size() > MAX:
 		_list.erase(_oldest())
@@ -143,8 +144,12 @@ func all() -> Array[Remain]:
 	return out
 
 
-## Uses a remain up.
+## Uses a remain up. Its person's own corpse, still lying there (DummyEnemy's DEATH_FADE, Death Mark's BODY_HOLD), is hidden
+## at once: the body has got up, or gone, so it does not lie in two places. The node's own timer still frees it.
 func take(r: Remain) -> void:
+	var node := _body_node(r)
+	if node != null and node.state == DummyEnemy.State.DEAD:
+		node.visible = false
 	if _list.has(r):
 		_list.erase(r)
 		_dirty()
@@ -156,7 +161,6 @@ func move(r: Remain, to: Vector2, hidden: bool) -> void:
 	r.pos = to
 	r.hidden = hidden
 	r.born = _clock
-	r.moved = true
 	if not _list.has(r):
 		_list.append(r)
 		if _list.size() > MAX:
@@ -169,7 +173,7 @@ func _dirty() -> void:
 		queue_redraw()
 
 
-## How many remains are drawn: lying there after the person's own body has gone (Deathmark's body holds longer).
+## How many remains are drawn: lying there once the person's own corpse no longer shows (_drawn()).
 func _shown_count() -> int:
 	var n := 0
 	for r in _list:
@@ -178,11 +182,21 @@ func _shown_count() -> int:
 	return n
 
 
+## A remain lies drawn when it is not hidden and its person's own corpse no longer shows: the node has freed (after
+## DEATH_FADE, or Death Mark's BODY_HOLD) or was hidden (take()), or there never was one.
 func _drawn(r: Remain) -> bool:
-	if r.moved:
-		return not r.hidden
-	var gone := (DummyEnemy.BODY_HOLD if r.kind == &"deathmark" else 0.0) + DummyEnemy.DEATH_FADE
-	return not r.hidden and age(r) >= gone
+	if r.hidden:
+		return false
+	var node := _body_node(r)
+	return node == null or not node.visible
+
+
+## The remain's person node while it has not freed, else null.
+static func _body_node(r: Remain) -> DummyEnemy:
+	if r.body == null:
+		return null
+	var o: Variant = r.body.get_ref()
+	return o as DummyEnemy if is_instance_valid(o) else null
 
 
 ## Each remain lies as its person's own death pose, last frame. Drawn only on a stage (a headless test has none).

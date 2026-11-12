@@ -19,8 +19,10 @@ const WALK_LIFE := 40.0
 const INFECT_MOST := 3
 ## The body takes this long to get up before it walks (it rises where it lay).
 const T_RISE := 0.6
-## Within this of where it was sent, it is there.
-const ARRIVE_R := 0.4
+## Within this of where it was sent, it has got there and lies down.
+const ARRIVE := 0.1
+## Lying down within this of a building's door, it has gone in (hidden).
+const IN_DOOR_R := 0.4
 ## A second click this near a shelter's or a house's footprint (inside it is 0) sends the body in at its door.
 const DOOR_REACH := ShelterManager.DOOR_REACH
 ## The roles of the buildings it can go into (besides every shelter).
@@ -84,7 +86,9 @@ static func door_of(s: Structure, grid: WalkGrid) -> Vector2:
 func _build() -> void:
 	busy = T_RISE
 	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
-	remain = rem.pick(origin, false, true) if rem != null else null
+	# The row's "reaches_hidden": a body walked indoors can be walked back out (Rules lets the cast through on the same flag).
+	var reach_hidden := bool(PowerBook.get_power("walker").get("reaches_hidden", false))
+	remain = rem.pick(origin, false, reach_hidden) if rem != null else null
 	if remain == null:
 		duration = 0.1  # no body there: Rules refuses such a click before it comes here
 		return
@@ -131,7 +135,7 @@ func _fx_process(delta: float) -> void:
 	if t < T_RISE:
 		return
 	var done := walker.route_to(dest, delta, _grid)
-	if done or walker.ground_pos.distance_to(dest) <= ARRIVE_R * 0.25:
+	if done or walker.ground_pos.distance_to(dest) <= ARRIVE:
 		_lie_down()
 
 
@@ -142,7 +146,7 @@ func _lie_down() -> void:
 		return
 	laid = true
 	var at := walker.ground_pos if is_instance_valid(walker) else remain.pos
-	var inside := building != null and at.distance_to(dest) <= ARRIVE_R
+	var inside := building != null and at.distance_to(dest) <= IN_DOOR_R
 	if inside:
 		at = dest
 	var rem: Remains = ctx.crowd.remains

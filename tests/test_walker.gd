@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_book(t)
 	var made := RD._setup()
 	_refused(t, made)
+	_others_place(t, made)
 	_walks(t, made)
 	_walk_life(t, made)
 	_quiet(t, made)
@@ -104,12 +105,35 @@ static func _refused(t, made: Array) -> void:
 	rules.free()
 
 
+## The first-click body refusal is only for a power that needs a body: Gravecall's and Skylift's first clicks (two clicks, no
+## "needs") are still placed with no remain in town.
+static func _others_place(t, made: Array) -> void:
+	RD._clear_all(made)
+	var rules := Rules.new().setup(PackedStringArray(["gravecall", "skylift", "walker"]), null, made[1], made[3], made[0], made[6])
+	var refused: Array = []
+	rules.cast_refused.connect(func(slot: int, why: String) -> void: refused.append([slot, why]))
+	var aim := Targeting.new().setup(rules, made[0])
+	var at := RD._empty(made)
+	var placed := []
+	for slot in 2:
+		aim.pick(slot)
+		aim.press(at)
+		aim.release(at)
+		placed.append(aim.placed and aim.first == at)
+		aim.unfocus()
+	t.check(placed == [true, true] and refused.is_empty() and (made[0] as Crowd).remains.enabled,
+		"Gravecall and Skylift still place their first click with no body in town (%s, %s)" % [placed, refused])
+	aim.free()
+	rules.free()
+
+
 ## "walks to the second click and lies down there, clock restarted"
 static func _walks(t, made: Array) -> void:
 	RD._clear_all(made)
 	var crowd: Crowd = made[0]
 	var rem: Remains = crowd.remains
 	var at := RD._empty(made)
+	var corpse: Person = crowd.citizens[2]
 	var r := RD._body(made, 2, at, &"deathmark")
 	var design := r.design
 	rem.step(20.0)  # it has lain a while
@@ -117,6 +141,8 @@ static func _walks(t, made: Array) -> void:
 	t.check(r != null and to != Vector2.INF, "a body, and open ground 5 off")
 	var fx := _cast(made[5], at + Vector2(0.3, 0.0), to)
 	t.check(rem.pick(at) == null and rem.all().is_empty(), "the body is taken off the ground while it walks")
+	t.check(is_instance_valid(corpse) and not corpse.visible and rem._shown_count() == 0,
+		"its corpse is not drawn at the old spot while it walks away (Death Mark's 20 s hold too)")
 	RD._run(fx, 0.1)
 	var up: Array = fx.visitors.living() if fx.visitors != null else []
 	var w: Animal = up[0] if up.size() == 1 else null
@@ -137,7 +163,8 @@ static func _walks(t, made: Array) -> void:
 	var there := rem.pick(to)
 	t.check(there == r and r.pos.distance_to(to) < 0.3 and not r.hidden and rem.age(r) < 1.0 and rem.has_soul(r),
 		"walks to the second click and lies down there, clock restarted (%s, at %s, age %.2f)" % [there == r, r.pos, rem.age(r)])
-	t.check(rem._drawn(r), "and it is drawn lying there at once (no wait for a body that is not there)")
+	t.check(rem._drawn(r) and rem._shown_count() == 1 and not corpse.visible,
+		"and it is drawn lying there at once, and only there")
 	t.check(fx.visitors == null or fx.visitors.living().is_empty(), "the walker is gone: only the body lies there")
 	fx.end_now()
 

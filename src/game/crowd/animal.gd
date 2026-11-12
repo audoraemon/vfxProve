@@ -698,7 +698,9 @@ func _draw_zombie(tint: Color) -> void:
 		var anim := 1 if _since_move < 0.2 else 0  # walk, else idle
 		var f := _people_facing()
 		var n: int = maxi(1, info[4][anim * 4 + f])
-		var frame := int(_anim * ZOMBIE_SHAMBLE * 2.5) % n if anim == 1 else int(_hover_t * 3.0) % n
+		# One that passes for living (white, Walking Corpse) steps at a person's walk rate (PeopleArt's walk FPS); the rest shamble.
+		var rate := PeopleArt.FPS_AT[1] / maxf(7.0 * speed(), 0.001) if worn_tint == Color.WHITE else ZOMBIE_SHAMBLE * 2.5
+		var frame := int(_anim * rate) % n if anim == 1 else int(_hover_t * 3.0) % n
 		var cell: Vector2 = info[3]
 		var src := Rect2(info[0] + Vector2(frame * cell.x, (anim * 4 + f) * cell.y), cell)
 		var foot: Vector2 = info[2]

@@ -96,7 +96,21 @@ static func run(t) -> void:
 	var left := rem.pick(Vector2(-5, 5))
 	t.check(left != null and left.design == design and left.design != "",
 		"the person node freed: the remain still raises, with its design string intact")
+	t.check(rem._drawn(left), "its corpse node gone, the remain is what is drawn lying there")
 	rem.take(left)
+
+	# A risen body leaves no corpse behind: take() hides the person's own corpse at once (its timer still frees it), and the remain
+	# is drawn only where its corpse no longer shows.
+	var marked := _kill(made, 91, Vector2(-6, 6), &"deathmark")
+	var held := rem.pick(Vector2(-6, 6))
+	t.check(held != null and marked.visible and not rem._drawn(held),
+		"a Death Mark corpse lies there itself: the remain is not drawn over it")
+	rem.take(held)
+	t.check(is_instance_valid(marked) and not marked.visible and marked.state == DummyEnemy.State.DEAD,
+		"taking a Death Mark remain hides its node at once")
+	rem.move(held, Vector2(-8, 8), false)
+	t.check(rem._drawn(held) and rem._shown_count() == 1, "moved, it is drawn once, where it now lies")
+	rem.take(held)
 
 	# Rules.
 	var rules := Rules.new().setup(PackedStringArray(["smite", "deathmark"]), null, made[1], made[2], crowd, made[4])

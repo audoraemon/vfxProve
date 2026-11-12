@@ -162,10 +162,12 @@ static func _zombie(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var at := _empty(made)
 	t.check(at != Vector2.INF, "a spot with nobody near")
+	var corpse: Person = crowd.citizens[0]
 	var r := _body(made, 0, at)
 	var design := r.design
 	var fx := _cast(made, at + Vector2(0.4, 0.0), "zombie")
 	t.check(crowd.remains.pick(at) == null, "zombie mode raises the clicked remain and uses it up")
+	t.check(is_instance_valid(corpse) and not corpse.visible, "the corpse node is hidden when it rises: no body left lying behind")
 	_run(fx, RaiseTheDeadFx.T_RISE + 0.1)
 	var up := fx.visitors.living()
 	t.check(up.size() == 1 and up[0].breed == Animal.Breed.ZOMBIE and up[0].worn == design

@@ -700,14 +700,15 @@ func _households() -> void:
 
 
 ## Each household's searchers sent and not done keep walking to its lamp, a step apart (v0.11 M6, in place of the Escort type's single
-## charge's): one back on his feet goes after it again; a seizer, one held by the god or frightened is left be.
+## charge's): one back on his feet goes after it again; a seizer, one held by the god or frightened is left be. A lamp passing as the
+## walking dead (Corpse Guise) is no one to go after: they hold where they were sent until it is off.
 func _step_hunters() -> void:
 	for i in households.size():
 		var h: Household = households[i]
 		if not h.sent or h.done:
 			continue
 		var lead := lamp(i)
-		if lead == null:
+		if lead == null or (lead.man as Person).guised():
 			continue
 		var to := (lead.man as Person).ground_pos
 		for k in h.searchers.size():

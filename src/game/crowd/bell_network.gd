@@ -181,8 +181,8 @@ func _wait() -> void:
 
 
 func _ring() -> void:
-	if _crowd.is_hushed():
-		_wait()  # a silenced town's bell makes no sound: the keeper tries again
+	if _crowd.is_hushed() or _crowd.is_hushed_at(tower.center()):
+		_wait()  # a silenced town's bell (or one in a hushed place: Pale Reign) makes no sound: the keeper tries again
 		return
 	if _crowd.is_bell_lying():
 		# The bell lies: it tolls all is well, and the keeper, baffled, tries again.

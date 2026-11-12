@@ -35,11 +35,13 @@ const FLAVOUR := {
 ## (2026-10-27); Ruin's Tiers 2-5 by the user (2026-11-02, the Ruin Tree Picker; its empty spots then took the new Scatter Strike,
 ## Wrath of the Sky and Earthshatter); Dominion's whole tree by the user (Tiers 2 and 5 their picks of 2026-11-03: Madness, Will-o'-Wisp, Voice of God, Divine
 ## Schism; Tier 3 2026-11-04: the new Clear Mind and Saint or Sinner; Tier 4 2026-11-06: the new Sacred Sanctuary and Anathema);
-## Passage's whole tree by the user (2026-11-11, the Passage Tree Picker: Thornwall left Tier 1 for Skylift and Windfall);
-## Decree's whole tree by the user (2026-11-12, the Decree Tree Picker; The Bell Lies left the tree); the rest empty.
+## Passage's whole tree by the user (2026-11-11, the Passage Tree Picker: Thornwall left Tier 1 for Skylift and Windfall); Death's whole tree by the user (2026-11-12, the Death Tree Picker, https://claude.ai/artifact/AxpvpmrePhvY8tjthTgEVA, picks/death:
+## Pestilence left Tier 1 for Raise the Dead); Decree's whole tree by the user (2026-11-12, the Decree Tree Picker; The Bell Lies
+## left the tree); the rest empty.
 const TABLE := {
 	"ruin": [["smite", "ember"], ["tornado", "scatter"], ["solaris", "dragon"], ["tsunami", "cinder"], ["tempest", "shatter"]],
-	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"death": [["deathmark", "raise"], ["pestilence", "gravecall"], ["guise", "walker"], ["gatebelow", "pale"],
+		["serpent", "gravetide"]],
 	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"passage": [["skylift", "windfall"], ["houndgate", "hellspark"], ["deep", "mirror"], ["allroads", "foldward"],
 		["deaddoors", "heavendoor"]],

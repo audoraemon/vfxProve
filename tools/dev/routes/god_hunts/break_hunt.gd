@@ -11,7 +11,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
 	"ruin": ["smite", "tornado"],
-	"death": ["deathmark", "pestilence", "glacial"],
+	"death": ["deathmark", "pestilence"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "breath"],
@@ -202,12 +202,13 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence, Glacial Cataclysm ---
+# --- Death: Death Mark, Pestilence ---
 
 ## Death Mark on an escort not yet marked (he is frail and no guard at once, and dies in 10 s), the other escort next, last the bearer: a cast every 20 s. Pestilence
 ## on the bearer and the escort beside him when a standard is within BH_PLAGUE_ETA of its house (the plague takes the nearest three within 1.2 of the aim and they
-## die together PLAGUE_LIFE on). Between two bearers Death Mark falls on an escort of the muster next to be raised. Glacial Cataclysm is loud (it turns the Lantern's
-## clock) and is not cast.
+## die together PLAGUE_LIFE on). Between two bearers Death Mark falls on an escort of the muster next to be raised. Two keys are the whole answer: the quiet fuse
+## breaks every standard short of its house. The Gate Below and Pale Reign are loud (they turn the Lantern's clock) and take whoever stands near; Corpse Guise and
+## Walking Corpse answer a watch or a body, and the march has neither.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := _bh(ctx)
 	if d == null:

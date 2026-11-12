@@ -12,7 +12,7 @@ const TYPES := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## the user does not move the literal lists below (the computed check reads the live tree too).
 const TIER1_ONLY := {
 	"ruin": [["smite", "ember"], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"death": [["deathmark", "raise"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"passage": [["skylift", "windfall"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"decree": [["noleave", "breath"], ["", ""], ["", ""], ["", ""], ["", ""]],
@@ -21,15 +21,15 @@ const TIER1_ONLY := {
 
 ## The keys each Hunt's types play, written out (C7: a changed LOADOUT fails `_loadouts_real`): Hunt -> type -> keys.
 const PLAYS := {
-	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,pestilence", "veil": "doom,blight", "passage": "skylift,windfall",
+	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,raise", "veil": "doom,blight", "passage": "skylift,windfall",
 		"decree": "noleave,breath", "dominion": "whisper,discord"},
-	"silence_witness": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"silence_witness": {"ruin": "smite,tornado", "death": "deathmark,pestilence,gravecall", "veil": "doom,blight,nova",
 		"passage": "skylift,windfall", "decree": "noleave,breath", "dominion": "whisper,discord,madness"},
-	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,gravecall", "veil": "doom,blight,nova",
 		"passage": "skylift,windfall,mirror", "decree": "noleave,breath", "dominion": "whisper,discord,madness"},
-	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence", "veil": "doom,blight,nova",
 		"passage": "skylift,windfall", "decree": "noleave,breath", "dominion": "whisper,discord,sanctuary"},
-	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
+	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark", "veil": "doom,blight,nova",
 		"passage": "skylift,mirror", "decree": "noleave,breath", "dominion": "whisper,discord,voice"},
 }
 
@@ -37,10 +37,10 @@ const PLAYS := {
 ## Mirrorfold (a Tier 3 key since the user's Passage row) on Hunts 3 and 5, Ruin's is empty on Hunt 5 (Smite and Ember); the whole of Hunt 1 is empty.
 const LACKS := {
 	"hide_faithful": {"ruin": "", "death": "", "veil": "", "passage": "", "decree": "", "dominion": ""},
-	"silence_witness": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "", "dominion": "madness"},
-	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "madness"},
-	"break_hunt": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "", "dominion": "sanctuary"},
-	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "voice"},
+	"silence_witness": {"ruin": "tornado", "death": "pestilence,gravecall", "veil": "nova", "passage": "", "decree": "", "dominion": "madness"},
+	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "pestilence,gravecall", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "madness"},
+	"break_hunt": {"ruin": "tornado", "death": "pestilence", "veil": "nova", "passage": "", "decree": "", "dominion": "sanctuary"},
+	"face_halcyon": {"ruin": "", "death": "", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "voice"},
 }
 
 
@@ -140,13 +140,13 @@ static func _loadouts_real(t) -> void:
 ## The loadout floor (C9): a list of more than GodSlot.BASE_SLOTS keys, or over TierBook.dp(tier) Might at level 1, or none, is named.
 static func _problems_might(t) -> void:
 	GodTree.dev_fill = true
-	var heavy := PackedStringArray(["pestilence", "glacial", "orbital"])
+	var heavy := PackedStringArray(["pestilence", "gatebelow", "pale"])
 	var sum := 0
 	for key in heavy:
 		sum += PowerBook.might(key, 1)
-	t.check(sum > TierBook.dp(2), "the fake list is heavier than Tier 2's Might (%d vs %d)" % [sum, TierBook.dp(2)])
-	var got := GodHunts.check("death", 2, heavy)
-	t.check(got == PackedStringArray(["might %d>%d" % [sum, TierBook.dp(2)]]), "the over-Might list is named by its numbers (%s)" % [got])
+	t.check(sum > TierBook.dp(4), "the fake list is heavier than Tier 4's Might (%d vs %d)" % [sum, TierBook.dp(4)])
+	var got := GodHunts.check("death", 4, heavy)
+	t.check(got == PackedStringArray(["might %d>%d" % [sum, TierBook.dp(4)]]), "the over-Might list is named by its numbers (%s)" % [got])
 	var four := PackedStringArray(["smite", "ember", "scatter", "tornado"])
 	got = GodHunts.check("ruin", 5, four)
 	t.check(got.has("slots 4>%d" % GodSlot.BASE_SLOTS), "a fourth key is named (%s)" % [got])

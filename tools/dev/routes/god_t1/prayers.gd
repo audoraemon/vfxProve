@@ -171,29 +171,51 @@ static func _alone(d: FirstPrayersDirector, p: Person, reach: float) -> bool:
 	return true
 
 
-# --- Death: Death Mark and Pestilence ---
+# --- Death: Death Mark and Raise the Dead ---
 
-## Death (D34) takes every Faithful as fast as its two casts allow -- the market lines the door with the four nearest at 1:15, a walker comes at 1:20,
-## and two casts cannot take four in five seconds, so they must all be gone by then anyway. With the door empty the poor hurry in and pray
-## together, and the night ends about one prayer after the last death: its idle stretch (D34: up to 60 s) is that kill's fuse, the walk and the prayer.
+## Death (D34) takes every Faithful as fast as Death Mark allows, the nearest the door first -- the market lines the door with the four nearest at 1:15
+## and a walker comes at 1:20, so they must all be gone by then or kept from seeing. With the door empty the poor hurry in and pray together, and the
+## night ends about one prayer after the last death: its idle stretch (D34: up to 60 s) is that kill's fuse, the walk and the prayer. Raise the Dead
+## keeps the door blind: as a crit nears with a Faithful watching it, a SPIRIT rises from a body by the door (everyone within its fright flees it)
+## and possesses a watcher still in sight, walking him off it (the possessed see nothing); a runner to the Temple the mark cannot reach is possessed
+## and walked back the way he came.
 
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
+	var spirit: RaiseTheDeadFx = GodT1.free_spirit(ctx)
 	for c in _runners(d):
 		if _ready(bc, ctx, "deathmark") and not c.statuses.has(&"frail"):
 			return _cast(ctx, "deathmark", c.ground_pos, "death mark a runner to the Temple")
-		if _ready(bc, ctx, "pestilence") and c.sick_left <= 0.0 and _alone(d, c, 3.0):
-			return _cast(ctx, "pestilence", c.ground_pos, "pestilence on a runner to the Temple")
+		if spirit != null and c.ground_pos.distance_to(spirit.follow_up_from()) <= RaiseTheDeadFx.POSSESS_R - 0.2:
+			var back := _whisper_spot(ctx, c, c.ground_pos * 2.0 - d.temple_door, RaiseTheDeadFx.POSSESS_R - 0.5)
+			if back != Vector2.INF and GodT1.cast_possess(ctx, c, {"to": back}):
+				ctx.memo["plast"] = _t(ctx)
+				return "the spirit possesses a runner to the Temple: back the way he came"
+	# The door at a crit: a watcher within the spirit's reach is possessed and walked off; else a spirit rises from a body by the door.
+	var crit := crit_in(bc, ctx)
+	var watchers: Array[Person] = []
+	for w in _watchers(d):
+		if _fuse_left(ctx, w) > crit:
+			watchers.append(w)  # (one whose mark falls first sees nothing)
+	if crit <= LEAD and not watchers.is_empty():
+		if spirit != null:
+			var from := spirit.follow_up_from()
+			for w in watchers:
+				if w.ground_pos.distance_to(from) > RaiseTheDeadFx.POSSESS_R - 0.2 or w.shaken() or w.resists_mind():
+					continue
+				var off := _whisper_spot(ctx, w, w.ground_pos * 2.0 - d.door, RaiseTheDeadFx.POSSESS_R - 0.5)
+				if off != Vector2.INF and GodT1.cast_possess(ctx, w, {"to": off}):
+					ctx.memo["plast"] = _t(ctx)
+					return "the spirit possesses a Faithful at the door: off out of sight"
+		elif _ready(bc, ctx, "raise"):
+			var body: Vector2 = GodT1.body_near(ctx.crowd, d.door, RISE_NEAR, true)
+			if body != Vector2.INF:
+				return _cast(ctx, "raise", body, "raise a spirit by the door", {"mode": "spirit"})
 	var faithful := _faithful(d)
 	var doomed: Array[Person] = []
 	for f in faithful:
-		if not f.statuses.has(&"frail") and f.sick_left <= 0.0 and not d._carrying(f):
+		if not f.statuses.has(&"frail") and not d._carrying(f):
 			doomed.append(f)
-	# The plague takes a clustered few at once (the clergy at the Temple's door) when no one else stands by to catch it, or one alone.
-	if _ready(bc, ctx, "pestilence"):
-		var aim := _plague_on(ctx, doomed, 1)
-		if aim != Vector2.INF:
-			return _cast(ctx, "pestilence", aim, "pestilence on the Faithful")
 	# Death Mark: one at a time, the nearest the door first, each alone where he stands (seen, while the Gaze can bear it, once the night is under way).
 	if _ready(bc, ctx, "deathmark"):
 		var room := d.gaze.value + GazeMeter.SEEN_DEATH <= BEAR_GAZE and d.timeline.elapsed() > 8.0
@@ -203,31 +225,16 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-## Where Pestilence would take at least `least` of `pool` and nobody else, with no one within 1.7 (the plague spreads 1.5) to catch it.
-static func _plague_on(ctx: Dictionary, pool: Array[Person], least: int) -> Vector2:
-	var d := ctx.d as FirstPrayersDirector
-	var best := Vector2.INF
-	var most := 0
-	for f in pool:
-		var victims := PestilenceFx.victims_at(ctx.crowd._field, f.ground_pos)
-		var mine := 0
-		var clear := true
-		for v in victims:
-			if pool.has(v):
-				mine += 1
-			else:
-				clear = false
-		if not clear or mine <= most or mine < least:
-			continue
-		for group: Array[Person] in [d.crowd.citizens, d.crowd.soldiers]:
-			for o in group:
-				if is_instance_valid(o) and o.is_alive() and not o.inside and not victims.has(o) \
-						and o.ground_pos.distance_to(f.ground_pos) < 1.7:
-					clear = false
-		if clear:
-			best = f.ground_pos
-			most = mine
-	return best
+## Seconds until `p`'s Death Mark falls on him (the mark still running), INF when he wears none.
+static func _fuse_left(ctx: Dictionary, p: Person) -> float:
+	var fx := (ctx.rules as Rules).live_fx("deathmark") as DeathMarkFx
+	if fx == null or fx.marked != p or not p.statuses.has(&"frail"):
+		return INF
+	return DeathMarkFx.MARK_TIME - fx.t
+
+
+## Death: a spirit rises from a body with its soul still near within this of the door (its fright reaches FRIGHT_R about it).
+const RISE_NEAR := 4.0
 
 
 # --- Veil: Silent Doom and Blight ---

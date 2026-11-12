@@ -498,9 +498,12 @@ func _unhook_kills(handler: Callable) -> void:
 
 
 ## The nearest Faithful within `reach` of `at` who is out in the open, alive, not held by the god and not `exclude`
-## (v0.10: who sees what the god does); else null.
-func faithful_seeing(at: Vector2, reach: float, exclude: Variant = null) -> Person:
+## (v0.10: who sees what the god does); else null. `seen`, when what is seen is a person: one passing as the walking dead (Corpse
+## Guise) is seen by no one (_unseen()).
+func faithful_seeing(at: Vector2, reach: float, exclude: Variant = null, seen: Variant = null) -> Person:
 	var best: Person = null
+	if _unseen(seen):
+		return best
 	for f in faithful:
 		if _sees(f, at, reach, exclude) and (best == null or f.ground_pos.distance_to(at) < best.ground_pos.distance_to(at)):
 			best = f
@@ -508,9 +511,11 @@ func faithful_seeing(at: Vector2, reach: float, exclude: Variant = null) -> Pers
 
 
 ## Every Faithful who would see `at` from within `reach`, as faithful_seeing() judges, but `exclude`, in the order of
-## `faithful` (v0.10 M6: the watchers the HUD marks red).
-func watchers(at: Vector2, reach: float, exclude: Variant = null) -> Array[Person]:
+## `faithful` (v0.10 M6: the watchers the HUD marks red). `seen` as faithful_seeing()'s.
+func watchers(at: Vector2, reach: float, exclude: Variant = null, seen: Variant = null) -> Array[Person]:
 	var out: Array[Person] = []
+	if _unseen(seen):
+		return out
 	for f in faithful:
 		if _sees(f, at, reach, exclude):
 			out.append(f)
@@ -524,6 +529,12 @@ func watchers(at: Vector2, reach: float, exclude: Variant = null) -> Array[Perso
 func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
 	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude \
 		and f.ground_pos.distance_to(at) <= (reach if crowd == null else crowd.sight(f, at, reach)) and not LawMark.unseen_by_all(f)
+
+
+## The seen side of _sees() (BLIND is the watcher's): `seen` is a living person passing as the walking dead (Corpse Guise, Death III),
+## whom no Faithful, watchman or inquisitor sees. A Variant: null when what is seen is a place, and a body may be freed already.
+static func _unseen(seen: Variant) -> bool:
+	return seen != null and _alive(seen) and (seen as Person).guised()
 
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.

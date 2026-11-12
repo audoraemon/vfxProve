@@ -168,6 +168,8 @@ var visitors: Array[Visitors] = []
 var laws: Array[LawZone] = []
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
+## Places hushed (Pale Reign): [{at, r, until}] -- nobody inside shouts or cries out, and a bell there makes no sound.
+var _hushes: Array = []
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
 var _bell_lies_until := -INF
 ## Seconds left of time standing still (freeze()).
@@ -217,6 +219,9 @@ var deaths := DeathVoices.new()
 ## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
 var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
+## The town's whole dead (Death's powers raise and move them). Off unless Rules turns it on (Remains.wants()). Freed by clear()
+## (null after it): a reader checks it.
+var remains: Remains
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -324,6 +329,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
+	remains = Remains.new().setup(field)
+	parent.add_child(remains)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
@@ -1006,6 +1013,8 @@ func advance(delta: float) -> void:
 
 func _advance(delta: float) -> void:
 	_clock += delta
+	if remains != null:
+		remains.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1308,7 +1317,7 @@ func _update_bed(delta: float) -> void:
 
 ## One voice from `p`, if the budget allows it.
 func _voice(p: Person, cue: StringName) -> void:
-	if is_hushed():
+	if is_hushed() or is_hushed_at(p.ground_pos):
 		return
 	if _voice_tokens < 1.0:
 		return
@@ -1549,6 +1558,21 @@ func hush(seconds: float) -> void:
 
 func is_hushed() -> bool:
 	return _clock < _hush_until
+
+
+## Silence one place, within `r` of `at`, for `seconds` (Pale Reign): nobody there shouts or cries out (_voice(),
+## _voice_death()), and a bell tower there makes no sound (BellNetwork._ring(): the keeper tries again). Unlike hush(),
+## frights still pass, the alarm is still raised and the town still comes to look.
+func hush_at(at: Vector2, r: float, seconds: float) -> void:
+	_hushes = _hushes.filter(func(h: Dictionary) -> bool: return _clock < float(h.until))
+	_hushes.append({"at": at, "r": r, "until": _clock + seconds})
+
+
+func is_hushed_at(pos: Vector2) -> bool:
+	for h: Dictionary in _hushes:
+		if _clock < float(h.until) and (h.at as Vector2).distance_to(pos) <= float(h.r):
+			return true
+	return false
 
 
 ## Nothing within `r` of `at` is seen for `seconds` (Unseen Hour): no cast there is looked at or feared, no death or
@@ -2077,6 +2101,17 @@ func clear() -> void:
 		else:
 			animals.free()
 	animals = null
+	# The ledger of bodies goes with the crowd (an R restart): cut off the field at once, so no death between this clear and the
+	# frame's end is written down, then freed; the next setup() makes a fresh one.
+	if remains != null and is_instance_valid(remains):
+		if is_instance_valid(_field) and _field.enemy_killed.is_connected(remains._on_killed):
+			_field.enemy_killed.disconnect(remains._on_killed)
+		remains.enabled = false
+		if remains.is_inside_tree():
+			remains.queue_free()
+		else:
+			remains.free()
+	remains = null
 	visitors.clear()
 	for z in laws:
 		z.lift()
@@ -2094,6 +2129,7 @@ func clear() -> void:
 	_held.clear()
 	_thorn_alarm_at = -INF
 	_hush_until = -INF
+	_hushes.clear()
 	_bell_lies_until = -INF
 	_freeze_left = 0.0
 	_veils.clear()
@@ -2168,10 +2204,10 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 				p.replan()
 
 
-## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town nobody cries out, so the
-## fall is all that is heard (a quiet kind's cue).
+## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town (or a hushed place: Pale
+## Reign) nobody cries out, so the fall is all that is heard (a quiet kind's cue).
 func _voice_death(p: Person, kind: StringName) -> void:
-	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() else kind, p.soldier, _clock)
+	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() or is_hushed_at(p.ground_pos) else kind, p.soldier, _clock)
 	if sfx == null:
 		return
 	for c: Array in cues:
@@ -2218,13 +2254,14 @@ func doom_witness() -> float:
 
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
 ## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
-## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too.
+## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too. One passing as the
+## walking dead (Corpse Guise) is no witness.
 func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best: Person = null
 	var best_d := doom_witness()
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p):
+			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p) or p.guised():
 				continue
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:

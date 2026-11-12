@@ -10,9 +10,10 @@ extends RefCounted
 ## crowd_death_wave at the mean of the deaths so far. A token budget (TOKENS, refilled REFILL a second) caps the rate
 ## across waves.
 
-## The kinds of death nobody should hear cry out (Silent Doom, the Death Mark, the plague; and choking, Breathing Is
-## Prohibited: there is no air to cry with; and the Sealed Verdict's dead, who fall where they stand without a sound).
-const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"choke", &"verdict"]
+## The kinds of death nobody should hear cry out (Silent Doom, the Death Mark, the plague, Pale Reign, the Pale Serpent's shadow;
+## and choking, Breathing Is Prohibited: there is no air to cry with; and the Sealed Verdict's dead, who fall where they stand
+## without a sound).
+const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"pale", &"shadow", &"choke", &"verdict"]
 ## Deaths this close after a wave's first belong to it, seconds.
 const WAVE_WINDOW := 0.25
 ## How many bodies of one wave are voiced.

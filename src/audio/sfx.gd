@@ -119,6 +119,30 @@ const CATALOG := {
 	&"q_blight_hit": {"path": "res://assets/audio/ability/quiet/q_blight_hit_%d.wav", "variants": 4, "db": -0.2, "voices": 3, "jitter": 0.08},
 	&"q_deathmark": {"path": "res://assets/audio/ability/quiet/q_deathmark.wav", "db": -0.2},
 	&"q_deathmark_hit": {"path": "res://assets/audio/ability/quiet/q_deathmark_hit.wav", "db": -0.7},
+	# Raise the Dead (Death I, tools/audio/foley/ability/death/): the dead getting up -- bone grinding under a cold low choir's breath -- and
+	# the spirit's wail (its rising, and each possession).
+	&"raise_rise": {"path": "res://assets/audio/ability/death/raise_rise.wav", "db": 0.0},
+	&"raise_wail": {"path": "res://assets/audio/ability/death/raise_wail.wav", "db": 0.0},
+	# Gravecall (Death II): three spirits called up out of the ground -- a ghostly chorus of moans over cold breath.
+	&"gravecall_rise": {"path": "res://assets/audio/ability/death/gravecall_rise.wav", "db": 0.0},
+	# Corpse Guise (Death III, quiet): a near-inaudible cold breath, barely over the quiet floor.
+	&"q_guise": {"path": "res://assets/audio/ability/quiet/q_guise.wav", "db": 0.0},
+	# Walking Corpse (Death III, quiet): a body gets up -- a shuffle of cloth and a stiff joint's creak, under the quiet floor's edge.
+	&"q_walker": {"path": "res://assets/audio/ability/quiet/q_walker.wav", "db": 0.0},
+	# The Gate Below (Death IV): the ground opening -- a deep rumble, stone grinding, a cold choir's breath -- and its closing, ground
+	# grinding shut under a wraith's wail.
+	&"gatebelow_open": {"path": "res://assets/audio/ability/death/gatebelow_open.wav", "db": 2.0},
+	&"gatebelow_close": {"path": "res://assets/audio/ability/death/gatebelow_close.wav", "db": 1.0},
+	# Pale Reign (Death IV): the colour going out of a district -- a low choir held under a great bell's slow toll.
+	&"pale_drone": {"path": "res://assets/audio/ability/death/pale_drone.wav", "db": 0.0},
+	# The Pale Serpent (Death V): bursting up out of the ground in a gust of wind and a flurry of great wings; then the long
+	# rush of wind over feathers as it glides.
+	&"serpent_rise": {"path": "res://assets/audio/ability/death/serpent_rise.wav", "db": 1.5},
+	&"serpent_glide": {"path": "res://assets/audio/ability/death/serpent_glide.wav", "db": 0.0},
+	# Grave Tide (Death V): the town's dead getting up at once -- a deep grinding of bones under the earth's rumble and a low
+	# choir; the bone giant's heavy step, a thud and a rattle of bones.
+	&"gravetide_rise": {"path": "res://assets/audio/ability/death/gravetide_rise.wav", "db": 2.5},
+	&"giant_step": {"path": "res://assets/audio/ability/death/giant_step.wav", "db": 2.0},
 	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
 	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
 	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},

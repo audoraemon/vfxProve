@@ -497,11 +497,12 @@ func _step_held(c: Charge) -> void:
 
 ## The first soldier set to watch for charge `c` who sees him now (v0.11 M2): _watching() and within SIGHT; else null. v0.11 M6: a
 ## watcher marching another charge sees no other (vacuous with one). One the law hides from the guards (LawMark: a NOBODY, an OFFICER) no one sees.
+## Corpse Guise (Death III): a guised charge passes for the walking dead and nobody sees him; once it is off he is seen as before.
 ## A watcher standing in Decree's Disorder (LawZone) goes for the wrong man: he passes over `c` for a charge farther off in his sight.
 ## Decree's Fenced Rule (LawZone): under NO SIGHT he sees no farther than its cap (Crowd.sight()); under NO ARMS, where he or `c`
 ## stands, he seizes no one (Crowd.disarmed()).
 func _seen_by(c: Charge) -> Person:
-	if LawMark.unseen_by_guards(c.man):
+	if LawMark.unseen_by_guards(c.man) or (c.man as Person).guised():
 		return null
 	var at := (c.man as Person).ground_pos
 	var lawful := crowd != null and not crowd.laws.is_empty()
@@ -520,7 +521,8 @@ func _farther_in_sight(v: Person, c: Charge) -> bool:
 		return false
 	var d := v.ground_pos.distance_to((c.man as Person).ground_pos)
 	for o in charges:
-		if o == c or _resolved(o) or o.held or o.bound or (o.man as Person).inside or LawMark.unseen_by_guards(o.man):
+		if o == c or _resolved(o) or o.held or o.bound or (o.man as Person).inside or LawMark.unseen_by_guards(o.man) \
+				or (o.man as Person).guised():
 			continue
 		var od := v.ground_pos.distance_to((o.man as Person).ground_pos)
 		if od > d and od <= crowd.sight(v, (o.man as Person).ground_pos, SIGHT):
@@ -687,6 +689,8 @@ func _on_post(v: Variant) -> bool:
 func _hunt() -> void:
 	hunters.clear()
 	hunters = _appoint_hunters(charge, hunt_size)
+	if _alive(charge) and charge.guised():
+		return  # (Corpse Guise) passing as the walking dead, he is no one to go after: they set out once it is off (_step_hunters())
 	for h in hunters:
 		h.go_duty(charge.ground_pos)
 
@@ -694,8 +698,8 @@ func _hunt() -> void:
 ## Each searcher kept walking to where he is now (v0.11 M2; one in a mind not his own is left be). v0.11 M6: single-charge, after
 ## charges[0] (plan decision 268), and nothing once he is gone; Exodus overrides it with its households' searchers.
 func _step_hunters() -> void:
-	if not _alive(charge):
-		return
+	if not _alive(charge) or charge.guised():
+		return  # (Corpse Guise) nobody homes on one passing as the walking dead: they hold where they are until it is off
 	for v: Variant in hunters:
 		if not _alive(v) or v == seizer:
 			continue

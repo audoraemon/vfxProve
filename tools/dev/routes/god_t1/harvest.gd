@@ -4,10 +4,10 @@ extends RefCounted
 ## behaviour_check script, ctx = {rules, slots, d (the director), crowd, memo, mission} as for tier1_b.gd. Each looks the way a player does:
 ## the granary whose turn it is, its watchmen, its carter -- and casts at most one power a look.
 ##
-## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks the watchmen so both are gone when
-## Pestilence takes the carter (H2); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts the carter out beyond the
-## wall (H1); Decree holds the carter in Leaving Is Prohibited's amber cell for his time (H6, the user's ruling 2026-11-13); Dominion
-## whispers him out of the gate a step at a time (H1).
+## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks a watchman and raises his spirit, which
+## frightens the other off and has a host set the granary alight; Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts
+## the carter out beyond the wall (H1); Decree holds the carter in Leaving Is Prohibited's amber cell for his time (H6, the user's ruling
+## 2026-11-13); Dominion whispers him out of the gate a step at a time (H1).
 
 ## The types whose policy is written.
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
@@ -15,10 +15,14 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## Ruin and Veil clear a granary's watchmen when its grain is due within this many seconds (A's HARVEST_PRE: sooner, the relief walks in
 ## before the fire has burned its 10 s; Veil's Blight needs them gone at the grain, 30 s of relief after the first).
 const CLEAR_PRE := 20.0
-## Death starts marking the watchmen when Pestilence is ready within this many seconds (two marks, 20 s apart, the second falling 10 s after
-## its cast: 20 + 10 = 30), and counts a marked watchman as gone with this much of his fuse left.
-const DEATH_LEAD := 31.0
-const MARK_GONE := 3.0
+## Death marks a watchman when the grain is due within DEATH_MARK_LEAD seconds (he falls before it, his soul still near when it is in), raises
+## the spirit from his body when it is due within DEATH_RISE, and has it possess a host for the burn when it is due within DEATH_STRIKE (the
+## match is struck MindWhisperFx.BURN_SECS after the host reaches the granary's edge: the grain is in by then). DEATH_BODY_R: how near the door
+## the body lies.
+const DEATH_MARK_LEAD := 20.0
+const DEATH_RISE := 4.0
+const DEATH_STRIKE := 2.5
+const DEATH_BODY_R := 4.0
 ## Passage: how far from where the beam takes him a carter is set down, at the least and the most (the nearest ground out of the walls).
 const EXIT_MIN := 1.0
 const EXIT_MAX := 26.0
@@ -137,41 +141,73 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence ---------------------------------------------------------------------------------------
+# --- Death: Death Mark, Raise the Dead ----------------------------------------------------------------------------------
 
-## H2: the carter is sick with no watchman on guard. Death Mark the watchmen (a mark kills in 10 s, the cooldown is 20) timed to have both gone
-## as Pestilence comes ready, then Pestilence on the carter; one marked that way counts as gone with MARK_GONE of his fuse left.
+## The fire is Death's to light through a host: a watchman Death-marked to fall just before his granary's grain comes in leaves a body by
+## its door; Raise the Dead's SPIRIT rises from it as the grain is due (everyone within its fright flees it: the other watchman leaves his
+## post), and possesses one standing by -- the carter at his door first -- with Mind Whisper's burn order on the granary, the match struck
+## once the grain is in. Nobody is on guard while it burns, so it is spoiled. A watchman back on guard is marked in his turn.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as HarvestDirector
 	var rules: Rules = ctx.rules
 	if d == null:
 		return ""
-	var memo: Dictionary = ctx.memo
-	if not memo.has("marks"):
-		memo.marks = {}
 	var tgt := _target(d)
 	if tgt.is_empty():
 		return ""
 	var s: Structure = tgt.s
 	var c: Person = tgt.c
-	var left: Array[Person] = []
-	for g in d.guards(s):
-		var at: float = memo.marks.get(g.get_instance_id(), -INF)
-		if at == -INF or d._clock - at < 10.0 - MARK_GONE:
-			left.append(g)
-	if left.is_empty() and _ready(bc, ctx, "pestilence") and c.sick_left <= 0.0:
-		rules.cast(int(ctx.slots.pestilence), c.ground_pos)
-		return "pestilence on the %s granary's carter" % _name(d, s)
-	if not left.is_empty() and _cd(ctx, "pestilence") <= DEATH_LEAD and _ready(bc, ctx, "deathmark"):
-		var man := left[0]
-		for g in left:
-			if not memo.marks.has(g.get_instance_id()):
+	var god := _god()
+	var crowd: Crowd = ctx.crowd
+	var due := d.grain_left(s) if not d.has_grain(s) else 0.0
+	# The spirit is up: the match is laid by a host once nobody guards the granary and its grain is in when the match is struck.
+	var spirit: RaiseTheDeadFx = god.free_spirit(ctx)
+	if spirit != null and not d.burning(s) and not d.guarding(s) and due <= DEATH_STRIKE:
+		var host := _host(ctx, d, s, c, spirit)
+		if host != null and god.cast_possess(ctx, host, {"order": "burn", "building": s}):
+			return "the spirit possesses %s: burn the %s granary" % ["its carter" if host == c else "one standing by", _name(d, s)]
+	# A body by the door with its soul still near, as the grain is due: the spirit rises from it.
+	if _ready(bc, ctx, "raise") and due <= DEATH_RISE and not d.burning(s) and god.free_spirit(ctx) == null:
+		var body: Vector2 = god.body_near(crowd, d.doors[s], DEATH_BODY_R, true)
+		if body != Vector2.INF and rules.cast(int(ctx.slots.raise), body, {"mode": "spirit"}) != null:
+			return "raise a spirit by the %s granary's door" % _name(d, s)
+	# A watchman on guard, marked to fall before the grain comes in (the body's soul is near when the spirit is wanted); one at a time.
+	if _ready(bc, ctx, "deathmark") and due <= DEATH_MARK_LEAD and not d.burning(s):
+		var man: Person = null
+		for g in d.guards(s):
+			if not g.statuses.has(&"frail") and (man == null or g.ground_pos.distance_to(d.doors[s]) < man.ground_pos.distance_to(d.doors[s])):
 				man = g
-				break
-		memo.marks[man.get_instance_id()] = d._clock
-		rules.cast(int(ctx.slots.deathmark), man.ground_pos)
-		return "death mark a watchman of the %s granary" % _name(d, s)
+		if man != null and _marks_due(d, s) == 0:
+			rules.cast(int(ctx.slots.deathmark), man.ground_pos)
+			return "death mark a watchman of the %s granary" % _name(d, s)
 	return ""
+
+
+## Watchmen of `s` who wear a mark now.
+static func _marks_due(d: HarvestDirector, s: Structure) -> int:
+	var n := 0
+	for w in d.watchmen(s):
+		n += 1 if w.statuses.has(&"frail") else 0
+	return n
+
+
+## Whom the spirit sends to light `s`: its carter when he stands within the spirit's reach, else the nearest one within it who would hear (not one of
+## its watchmen: back from the spirit he would guard it again); either only when the granary's edge he would walk to is near enough its wall
+## to strike the match from (MindWhisperFx.stand_at(), BURN_NEAR). Null for none.
+static func _host(ctx: Dictionary, d: HarvestDirector, s: Structure, c: Person, spirit: RaiseTheDeadFx) -> Person:
+	var from := spirit.follow_up_from()
+	var mine := d.watchmen(s)
+	var best: Person = null
+	for p in DominionParts.near((ctx.crowd as Crowd)._field, from, RaiseTheDeadFx.POSSESS_R - 0.2):
+		if p.inside or p.soldier or p.resists_mind() or p.shaken() or mine.has(p) or not MindWhisperFx.building_ok(p, s):
+			continue
+		if s.distance_to(MindWhisperFx.stand_at(p.grid, s, p.ground_pos)) > MindWhisperFx.BURN_NEAR - 0.05:
+			continue  # the edge he would be sent to is too far from the wall to strike the match
+		if p == c:
+			return c
+		if best == null or p.ground_pos.distance_to(from) < best.ground_pos.distance_to(from):
+			best = p
+	return best
 
 
 # --- Veil: Silent Doom, Blight -------------------------------------------------------------------------------------------

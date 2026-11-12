@@ -12,6 +12,8 @@ const FROM := {
 	"tempest": ["T_GATHER"], "scatter": ["T_FIRST"], "shatter": ["T_CRACK"], "windfall": ["T_DROP"],
 	"hellspark": ["T_OPEN"], "pilgrim": ["T_FLOW"], "deep": ["T_OPEN"], "houndgate": ["T_OPEN", "OUT_EVERY"],
 	"heavendoor": ["T_FALL"], "deaddoors": ["T_CHILL", "OUT_FIRST"], "breath": ["T_LAND"], "erase": ["T_SEAM", "T_FOLD"], "disorder": ["T_LAND", "T_TOLL"], "eminent": ["T_TEAR"], "fenced": ["T_LAND"], "cage": ["T_LAND"],
+	"raise": ["T_RISE"], "gravecall": ["T_RISE"],
+	"gatebelow": ["T_OPEN", "DRAG"], "pale": ["EVERY"], "serpent": ["T_RISE"], "gravetide": ["T_RISE"],
 }
 
 

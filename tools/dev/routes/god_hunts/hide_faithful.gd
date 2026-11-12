@@ -20,7 +20,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
 	"ruin": ["smite", "ember"],
-	"death": ["deathmark", "pestilence"],
+	"death": ["deathmark", "raise"],
 	"veil": ["doom", "blight"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "breath"],
@@ -53,11 +53,8 @@ const BLOW_GAP := 0.4
 ## so the first goes early enough for it); Silent Doom the same.
 const SMITE_LEAD := 13.0
 const DOOM_LEAD := 13.0
-## Death: a Death Mark dies its man in ten seconds, so it is cast this long before his sight; Pestilence kills in about six (it is cast
-## PLAGUE_LEAD before, and never within PLAGUE_CLEAR of a believer).
+## Death: a Death Mark dies its man in ten seconds, so it is cast this long before his sight.
 const MARK_LEAD := 17.0
-const PLAGUE_LEAD := 13.0
-const PLAGUE_CLEAR := 6.0
 ## ...and two men are "of the same hour" when their sight of a household is this many seconds apart or fewer.
 const MARK_HOUR := 14.0
 ## Decree: the law holds a circle fifteen seconds from its seal, and a group within 40 s of its sight of a household is caged (LAW_CRAWL).
@@ -475,37 +472,85 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence ---
+# --- Death: Death Mark, Raise the Dead ---
 
-## Pestilence takes a pair whole (both within its reach -- victims_at() says so -- and nobody of the flock within PLAGUE_CLEAR) when the soonest
-## of them is within PLAGUE_LEAD of his sight; a Death Mark takes one man, MARK_LEAD before his sight (it dies him in ten seconds) and, for each man
-## of the same hour still to be marked before him, twenty seconds more (it is ready every twenty), a seizer first of all.
+## Where a spirit raised from a body can still reach a watcher: it drifts after the nearest group it finds within RaiseTheDeadFx.SEEK, and frightens
+## (a lay inquisitor) or is pressed into (anyone) whoever comes within its reach.
+const SPIRIT_NEAR := RaiseTheDeadFx.SEEK - 2.0
+## A possessed watcher is pressed only this far inside POSSESS_R of the spirit (it drifts on while the press is made).
+const POSSESS_PAD := 0.4
+
+
+## The bodies whose soul is still near (Remains.SOUL), the freshest first: what a SPIRIT can rise from.
+static func _souls(crowd: Crowd) -> Array:
+	var rem: Remains = crowd.remains
+	if rem == null:
+		return []
+	var out: Array = []
+	for r in rem.all():
+		if rem.has_soul(r):
+			out.append(r)
+	out.reverse()
+	return out
+
+
+## Raise the Dead's live SPIRIT, while it can still take a host (its follow-up); null for none.
+static func _spirit(ctx: Dictionary) -> RaiseTheDeadFx:
+	var fx := (ctx.rules as Rules).live_fx("raise") as RaiseTheDeadFx
+	return fx if fx != null and fx.can_follow_up() else null
+
+
+## The spirit goes into `p` (a seizer, or a watcher about to see a believer) and walks him off `from` for its five seconds: a seizer off his errand lets
+## his believer go, a watcher whispered away sees nobody. False when he cannot hear it or has drifted out of its reach.
+static func _possess(bc, ctx: Dictionary, fx: RaiseTheDeadFx, p: Person, from: Vector2) -> bool:
+	if p.shaken() or p.resists_mind() or p.ground_pos.distance_to(fx.follow_up_from()) > RaiseTheDeadFx.POSSESS_R - POSSESS_PAD:
+		return false
+	var to: Vector2 = bc._prisoner_away(ctx.crowd as Crowd, p, from)
+	if not (ctx.rules as Rules).recast(int(ctx.slots.raise), p.ground_pos, {"target": p, "to": to}):
+		return false
+	ctx.memo.last_cast = (ctx.d as HideFaithfulDirector)._clock
+	return true
+
+
+## Death Mark takes one man, MARK_LEAD before his sight (it dies him in ten seconds) and, for each man of the same hour still to be marked before him,
+## twenty seconds more (it is ready every twenty), a seizer first of all. Raise the Dead works the dead it leaves: a body whose soul is still near rises
+## as a SPIRIT when a seizer, or a watcher within MARK_LEAD of his sight, stands within SPIRIT_NEAR of it -- a lay inquisitor flees it, and the spirit is
+## pressed into a seizer (he lets his believer go) or a watcher within MARK_LEAD of his sight (he walks off), three in all, five seconds each.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := _hf(ctx)
 	if d == null:
 		return ""
 	var crowd: Crowd = ctx.crowd
+	var threats: Array = _view(ctx, d).threats
+	var fx := _spirit(ctx)
+	if fx != null:
+		for sz: Dictionary in _seizers(d):
+			if _possess(bc, ctx, fx, sz.s, (sz.b as Person).ground_pos):
+				return "the spirit possesses a %s seizer: he lets his believer go" % sz.kind
+		var exposed: Array = _view(ctx, d).exposed
+		for th: Dictionary in threats:
+			if float(th.t) > MARK_LEAD or exposed.is_empty():
+				continue
+			var e: Dictionary = exposed[0]
+			if _possess(bc, ctx, fx, th.p, _point(e.rc, float(e.from))):
+				return "the spirit possesses a %s and walks him off" % th.kind
 	if _ready(bc, ctx, "deathmark"):
 		for sz: Dictionary in _seizers(d):
 			if not _doomed(sz.s):
 				_cast(ctx, "deathmark", (sz.s as Person).ground_pos)
 				return "death mark a %s seizer" % sz.kind
-	var threats: Array = _view(ctx, d).threats
-	if _ready(bc, ctx, "pestilence"):
+	if _ready(bc, ctx, "raise") and fx == null:
+		var near: Array = []  # [{p, kind}]: the seizers, then the watchers within MARK_LEAD of their sight
+		for sz: Dictionary in _seizers(d):
+			near.append({"p": sz.s, "kind": "%s seizer" % sz.kind})
 		for th: Dictionary in threats:
-			if float(th.t) > PLAGUE_LEAD:
-				continue
-			var p: Person = th.p
-			if _doomed(p):
-				continue
-			for o: Dictionary in threats:
-				if o.p == p or _doomed(o.p) or (o.p as Person).ground_pos.distance_to(p.ground_pos) > PestilenceFx.INFECT_R * 2.0:
-					continue
-				var mid := (p.ground_pos + (o.p as Person).ground_pos) * 0.5
-				var taken := PestilenceFx.victims_at(crowd._field, mid)
-				if taken.has(p) and taken.has(o.p) and _flock_clear(bc, d, mid, PLAGUE_CLEAR):
-					_cast(ctx, "pestilence", mid)
-					return "pestilence on a %s pair" % th.kind
+			if float(th.t) <= MARK_LEAD:
+				near.append({"p": th.p, "kind": th.kind})
+		for r: Remains.Remain in _souls(crowd):
+			for w: Dictionary in near:
+				if (w.p as Person).ground_pos.distance_to(r.pos) <= SPIRIT_NEAR:
+					_cast(ctx, "raise", r.pos, {"mode": "spirit"})
+					return "raise a soul by a %s" % w.kind
 	if _ready(bc, ctx, "deathmark"):
 		var live: Array = threats.filter(func(th: Dictionary) -> bool: return not _doomed(th.p))
 		for i in live.size():

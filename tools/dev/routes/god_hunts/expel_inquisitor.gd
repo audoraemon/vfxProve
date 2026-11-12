@@ -5,7 +5,7 @@ extends RefCounted
 ##   ruin     Smite each warden and the captain, led ahead of his walk; Light of Solaris and Tornado on him when the bolt is cooling;
 ##            the next warden's guard is struck at his door while he waits indoors.
 ##   death    Death Mark on a man with 11 s of street left (a marked man indoors at the fuse lives); Pestilence when the mark cannot be laid;
-##            Glacial Cataclysm on the captain's last leg; Death Mark on the next warden's guard while the warden waits.
+##            Gravecall on the captain's last leg (a fright: he hides in the Temple); Death Mark on the next warden's guard while the warden waits.
 ##   veil     Blight the Bell Tower early (a seen death then rings nothing), Silent Doom aimed to take the guard with the man (_doom_aim());
 ##            Doom on the next warden's guard while he waits.
 ##   passage  Skylift a man in the street, the captain first, out past the wall (walls stop him); Mirrorfold laid across a man's road with
@@ -26,7 +26,7 @@ const GOD := preload("res://tools/dev/routes/god_t1.gd")
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
 	"ruin": ["smite", "solaris", "tornado"],
-	"death": ["deathmark", "pestilence", "glacial"],
+	"death": ["deathmark", "pestilence", "gravecall"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "windfall", "mirror"],
 	"decree": ["noleave", "breath"],
@@ -42,9 +42,9 @@ const RUIN_PREP_LEAD := 24.0
 ## A guard counts as at the door when he stands within this of it (the door ring is 1 unit; the captain's guards stand up to 1.6 off).
 const DOOR_REACH := 3.0
 ## Death: the seconds either side of the fuse (MARK_TIME 10) a marked man must be out of doors for the mark to take him (a man indoors at the
-## fuse lives), and the captain's countdown (real seconds) at or under which the Glacial burst (impact 1.2 s, radius 5) is spent on his last leg.
+## fuse lives), and the captain's countdown (real seconds) at or under which Gravecall is spent on his last leg.
 const DEATH_MARGIN := 0.8
-const GLACIAL_ETA := 30.0
+const GRAVE_ETA := 30.0
 ## Passage: how far along his road the way in is laid, the least road ahead of him that takes it (else the road from his next door), and the
 ## seconds before another is laid for the same man (a mirror lasts 30).
 const MIRROR_ON := 6.0
@@ -289,9 +289,11 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 
 # --- Death --------------------------------------------------------------------------------------------------------------------
 
-## Death Mark on a man the fuse will find out of doors (_mark_holds(): his round's visits are walked forward at the marked pace); Glacial
-## Cataclysm on the captain once his countdown reads GLACIAL_ETA or less and nothing else can take him; Pestilence on a man the mark cannot
-## take. With no one in the street, a Death Mark on the next warden's guard at his door.
+## Death Mark on a man the fuse will find out of doors (_mark_holds(): his round's visits are walked forward at the marked pace); Gravecall on
+## the captain once his countdown reads GRAVE_ETA or less and the mark cannot take him: the dead rise where he will stand at T_RISE, a loud
+## danger within his alarm reach, so it counts a fright and he runs to hide in the Temple, off the Citadel's road (his guards are frozen as
+## the spirits pass them); Pestilence on a man the mark cannot take. With no one in the street, a Death Mark on the next warden's guard at his
+## door. (Corpse Guise, Walking Corpse and Raise the Dead answer nothing here: nobody of the god's is hunted, and no body lies in a man's way.)
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:
@@ -307,9 +309,10 @@ static func act_death(bc, ctx: Dictionary) -> String:
 		if mark_ready and _mark_holds(ctx, q):
 			rules.cast(int(slots.deathmark), p.ground_pos)
 			return "death mark %s" % q.label
-		if d._is_captain(q) and d._warned(q) and d.captain_eta() / _rate(ctx) <= GLACIAL_ETA and bc._slot_ready(rules, slots, "glacial"):
-			rules.cast(int(slots.glacial), GOD.road_ahead(p, 1.2))
-			return "glacial %s on his last leg" % q.label
+		if d._is_captain(q) and d._warned(q) and d.captain_eta() / _rate(ctx) <= GRAVE_ETA and bc._slot_ready(rules, slots, "gravecall"):
+			var at: Vector2 = GOD.road_ahead(p, GravecallFx.T_RISE)
+			rules.cast(int(slots.gravecall), at, {"to": at})
+			return "gravecall %s on his last leg: a fright, and he hides" % q.label
 		if bc._slot_ready(rules, slots, "pestilence"):
 			var aim: Vector2 = GOD.plague_aim(crowd, p.ground_pos)
 			if aim != Vector2.INF and PestilenceFx.victims_at(crowd._field, aim).has(p):

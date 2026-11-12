@@ -100,9 +100,9 @@ const SPRITE_LANTERN := Vector2i(3, -8)
 const SPRITE_CHAIN := Vector2i(-1, -10)
 const SPRITE_CROWN := Vector2i(-1, -17)
 ## _sprite_signature()'s multipliers folded for its quiet case: past the frame, the tumble, lift, frost and flash terms
-## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage and whisper terms.
+## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage, whisper and guise terms.
 const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
-const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2
+const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2 * 2
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Ground fire (Dragonfire): the soot a scorched person shows, darkest at 0.45 and fading over the last 2 s.
@@ -484,6 +484,10 @@ const OFFSCREEN_EVERY := 3
 static var offscreen_every := OFFSCREEN_EVERY
 ## The frame count the LOD staggers by: the engine's (-1), or one a test sets, since the test runner never advances frames.
 static var frame_no := -1
+## The engine's count is read from here (0 in play). The test runners set it to the engine's count before each suite: a suite that
+## awaits frames advances the engine's count for every suite after it, and a calm person staggered off the frame it was left on
+## would never step again (CALM_EVERY) -- the suites after it would see a different town than they see alone.
+static var frame_base := 0
 
 ## On screen, a calm citizen or a soldier at his post is updated every this many frames, with the time it skipped:
 ## they amble or stand, and a step every other frame does not show. With ~100 people on screen at the market this
@@ -556,7 +560,7 @@ func frame(delta: float) -> void:
 		every = CALM_EVERY
 	if every > 1:
 		_offscreen_delta += delta
-		if ((frame_no if frame_no >= 0 else Engine.get_process_frames()) + stagger_key()) % every != 0:
+		if ((frame_no if frame_no >= 0 else Engine.get_process_frames() - frame_base) + stagger_key()) % every != 0:
 			return
 		delta = _offscreen_delta
 		_offscreen_delta = 0.0
@@ -1735,6 +1739,14 @@ func resists_mind() -> bool:
 	return false
 
 
+## Whether this person passes as the walking dead now (Corpse Guise, Death III: statuses[&"guise"] holds the seconds left, laid,
+## counted down and taken off by CorpseGuiseFx). The one hook the watch reads: a guised person is never seen, seized, reported
+## or witnessing (EscortDirector._seen_by(), MissionDirector.faithful_seeing(), Crowd.nearest_witness()), never chosen by a
+## soldier on the watch to fight (_fightable()), spared by Death's undead (Visitors' spare_guise), and drawn greyed, shambling head down.
+func guised() -> bool:
+	return statuses.has(&"guise")
+
+
 ## Whether the god's hand is on him now (v0.11.1): whispered, confused, compelled, or staring at a lure. A director that
 ## takes its soldiers back to their places at its looks leaves a held one be: the hold ends by itself and he is sent back
 ## (_soldier_back()).
@@ -2054,6 +2066,8 @@ func _fightable(p: Person) -> bool:
 		return false  # nobody is beaten on the ground; a mob set on one person (a verdict) still finishes it
 	if p.law != null and LawMark.spares(self, p, _fight_rule):
 		return false  # the law hides him (a NOBODY, or an OFFICER from a guard)
+	if soldier and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND) and p.guised():
+		return false  # Corpse Guise: the watch's own choice looks straight past the walking dead (a frenzy or a power's order does not)
 	match _fight_rule:
 		FightRule.HOSTILES:
 			# A fighting citizen, or a fighter set on another side (a soldier turned).
@@ -2218,6 +2232,15 @@ func whisper_fight(foe: Person, seconds: float, blow: float) -> bool:
 ## again at once. Call it after whisper() / whisper_fight() took; a later whisper laid without it clears the flag.
 func hold_string() -> void:
 	_held_string = true
+
+
+## The whisper (or the whispered fight) on this person ends now, as if it had worn off (_wake(), stop_fighting()): what lays a whisper
+## for a fixed time of its own lets them go with it (Raise the Dead's spirit leaving its host). Nothing for anyone not whispered.
+func end_whisper() -> void:
+	if mind == Mind.WHISPERED:
+		_wake()
+	elif mind == Mind.FIGHT and _ordered:
+		stop_fighting()
 
 
 ## Procession (Will-o'-Wisp level 5): the light a lured person stares at has moved; their goal and the spot they watch move to `spot`.
@@ -2792,6 +2815,13 @@ func _draw_corpse() -> void:
 		super()
 
 
+## The PeopleArt facing it lies in when it falls (a remain keeps this, Remains).
+func remain_facing() -> int:
+	if _back:
+		return PeopleArt.Facing.NE if _facing > 0 else PeopleArt.Facing.NW
+	return PeopleArt.Facing.SE if _facing > 0 else PeopleArt.Facing.SW
+
+
 ## The design it wears (PeopleArt): its role's or its corps', the look hashed once from where it lives.
 func _design() -> String:
 	if _look < 0.0:
@@ -2876,10 +2906,10 @@ func _sprite_pose_code() -> int:
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
 		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
-		if mind == Mind.FIGHT and fight_kind == &"madness":
+		if (mind == Mind.FIGHT and fight_kind == &"madness") or (anim == 1 and guised()):
 			_design()
 			if _has_own_art(6):
-				anim = 6  # the zombie lurch of a frenzy
+				anim = 6  # the zombie lurch of a frenzy; the guised shamble head down as the walking dead do
 	var frame := int(t * PeopleArt.FPS_AT[anim])
 	if span > 0.0:
 		# The whole clip plays within the window it is shown for.
@@ -2977,7 +3007,8 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 		sil.size.y = keep
 		dst.size.y = keep
 	var atlas := PeopleArt.atlas()
-	draw_texture_rect_region(atlas, dst, src)
+	# The guised (Corpse Guise) wear the walking dead's grey, as Death's zombies do (DeathParts.ZOMBIE_TINT); still one batch.
+	draw_texture_rect_region(atlas, dst, src, DeathParts.ZOMBIE_TINT if state != State.DEAD and guised() else Color.WHITE)
 	var tint := _sprite_tint()
 	if tint.a > 0.01:
 		draw_texture_rect_region(atlas, dst, sil, tint)
@@ -3171,7 +3202,7 @@ func _sprite_signature() -> int:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
 		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
-			+ (1 if mind == Mind.WHISPERED else 0)
+			+ (2 if mind == Mind.WHISPERED else 0) + (1 if guised() else 0)
 	sig = sig * 1024 + (int(_anim * 1.4 * 8.0) % 1024 if _lift > 8.0 else 0)
 	sig = sig * 97 + int(round(_lift))
 	sig = sig * 97 + int(_frozen * 8.0)
@@ -3184,6 +3215,7 @@ func _sprite_signature() -> int:
 	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
 	sig = sig * (SICK_STAGES + 1) + sick_stage()
 	sig = sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+	sig = sig * 2 + (1 if guised() else 0)  # Corpse Guise's grey
 	if scorched_left > 0.0:
 		# Soot (ground fire) fades in steps; unscorched, the integer is the quiet fold's.
 		sig = sig * 5 + int(clampf(scorched_left / 2.0, 0.0, 1.0) * 4.0) + 1

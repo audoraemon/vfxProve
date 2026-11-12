@@ -1,0 +1,7 @@
+{"length": 2.2, "rms_db": -20.8, "reverb": {"rt60": 1.4, "mix": 0.18, "predelay_ms": 16, "damp": 3600}, "eq": [["lowshelf", 160, -5.0], ["peak", 2400, 1.0, 0.9]], "layers": [
+  {"src": "lib:oga/tree-creaking/tree_creak.flac", "at": 0.0, "onset": true, "dur": 0.7, "pitch": 7, "lp": 4200, "hp": 260, "fade_in": 30, "fade_out": 260, "gain_db": -6},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth2.ogg", "at": 0.35, "onset": true, "pitch": -3, "lp": 5000, "hp": 160, "fade_out": 160, "gain_db": -2},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth3.ogg", "at": 0.95, "onset": true, "pitch": -4, "lp": 4600, "hp": 160, "fade_out": 160, "gain_db": -4},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth1.ogg", "at": 1.55, "onset": true, "pitch": -5, "lp": 4200, "hp": 160, "fade_out": 200, "gain_db": -7},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.1, "onset": true, "dur": 1.6, "pitch": -7, "lp": 2400, "hp": 200, "fade_in": 400, "fade_out": 700, "gain_db": -16}
+]}

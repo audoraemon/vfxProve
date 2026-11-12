@@ -212,4 +212,80 @@ static func run(t) -> void:
 		"the span over, the other side is called back through the doors and the cold lifts: everyone has their pace back")
 	t.check(fx.kills() >= 0 and fx.wrecks >= 0, "kills %d, demon blows %d" % [fx.kills(), fx.wrecks])
 	fx.free()
+	_freed(t, made, at)
+	_exit(t, made, at)
 	_done(made)
+
+
+## The first citizen still alive from index `from` (the horde of the main cast killed some).
+static func _alive(crowd: Crowd, from: int) -> Person:
+	for k in range(from, crowd.citizens.size()):
+		var p: Person = crowd.citizens[k]
+		if p.is_alive() and not p.inside:
+			return p
+	return null
+
+
+## One in the cold freed mid-span (they left the town: Crowd.escape, or another power took them "gone"), and a door's
+## building torn out of the map: both dropped without an error, the doors left go on sending, and the end is clean.
+static func _freed(t, made: Array, at: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[2]
+	var field: EnemyField = made[3]
+	var ctx: FxContext = made[5]
+	_clear_town(crowd)
+	var gone := _alive(crowd, 0)
+	gone.ground_pos = grid.nearest_walkable(at + Vector2(1.0, 1.0))
+	var fx: DoorsOfTheDeadFx = FxTimeline.cast(load("res://src/fx/control/doors_of_the_dead.gd"), ctx, at)
+	_run(fx, DoorsOfTheDeadFx.T_CHILL + DoorsOfTheDeadFx.WAVE + DoorsOfTheDeadFx.OUT_FIRST + 0.2)
+	var id := gone.get_instance_id()
+	var torn: DoorsOfTheDeadFx.Door = null
+	for d in fx.doors:
+		if d.open and d != fx.doors[0]:
+			torn = d
+			break
+	t.check(fx.chilled(gone) and torn != null, "(one in the cold, a door open)")
+	crowd.citizens.erase(gone)
+	field.remove(gone)
+	gone.free()
+	env.remove(torn.building)
+	var sent := fx.spirits
+	_run(fx, DoorsOfTheDeadFx.OUT_EVERY + 0.3)
+	t.check(not fx._cold.has(id) and not torn.open and fx.spirits > sent,
+		"one in the cold freed mid-span and a door's building torn down: both dropped without an error, the other doors still send")
+	fx.end_now()
+	t.check(fx.finished and fx.visitors.living().is_empty() and fx._cold.is_empty(), "and the effect ends cleanly")
+	fx.free()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the spirits are gone and the pack leaves
+## the town, everyone in the cold has their pace back, with no error; its end after that changes nothing.
+static func _exit(t, made: Array, at: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var ctx: FxContext = made[5]
+	_clear_town(crowd)
+	var cold := _alive(crowd, 0)
+	cold.ground_pos = grid.nearest_walkable(at + Vector2(-1.0, 1.0))
+	var fx: DoorsOfTheDeadFx = FxTimeline.cast(load("res://src/fx/control/doors_of_the_dead.gd"), ctx, at, {"level": 5})
+	_run(fx, DoorsOfTheDeadFx.T_CHILL + DoorsOfTheDeadFx.WAVE + DoorsOfTheDeadFx.OUT_FIRST + 0.2)
+	var pack := fx.visitors
+	var up := pack.living()
+	t.check(not up.is_empty() and crowd.visitors.has(pack) and fx.chilled(cold) and cold.pace_hold() < 1.0,
+		"(spirits up: %d, one slowed in the cold)" % up.size())
+	var wind := AudioStreamPlayer2D.new()
+	wind.set_meta(&"cue", &"glac_wind")
+	fx._winds.append(wind)
+	fx._exit_tree()
+	var gone := true
+	for a in up:
+		gone = gone and (not is_instance_valid(a) or a.is_queued_for_deletion())
+	t.check(gone and pack.living().is_empty() and not crowd.visitors.has(pack),
+		"freed without its end, the spirits are gone and the pack leaves the town")
+	t.check(not fx.chilled(cold) and cold.pace_holds.is_empty() and fx._winds.is_empty(),
+		"and nobody is left slowed by the cold, and the wind is stopped")
+	fx.end_now()
+	t.check(fx.finished and cold.pace_holds.is_empty(), "and its end after that changes nothing")
+	fx.free()
+	wind.free()

@@ -86,6 +86,7 @@ const SUITES := [
 	"res://tests/test_dominion_tiers.gd",
 	"res://tests/test_dominion_levels.gd",
 	"res://tests/test_follow_up.gd",
+	"res://tests/test_follow_up_wheel.gd",
 	"res://tests/test_dominion_twist_whisper.gd",
 	"res://tests/test_dominion_twist_discord.gd",
 	"res://tests/test_dominion_twist_madness.gd",
@@ -130,6 +131,16 @@ const SUITES := [
 	"res://tests/test_foldward.gd",
 	"res://tests/test_heavendoor.gd",
 	"res://tests/test_deaddoors.gd",
+	"res://tests/test_remains.gd",
+	"res://tests/test_death_kit.gd",
+	"res://tests/test_raise_dead.gd",
+	"res://tests/test_gravecall.gd",
+	"res://tests/test_guise.gd",
+	"res://tests/test_walker.gd",
+	"res://tests/test_gatebelow.gd",
+	"res://tests/test_pale.gd",
+	"res://tests/test_serpent.gd",
+	"res://tests/test_gravetide.gd",
 	"res://tests/test_passage_lv_a.gd",
 	"res://tests/test_passage_lv_b.gd",
 	"res://tests/test_passage_lv_c.gd",
@@ -310,6 +321,7 @@ func _reset_world() -> void:
 	City.use(&"aldermere")
 	City._extra.clear()  # a fixture town a failed suite never unregistered
 	Person.frame_no = -1
+	Person.frame_base = Engine.get_process_frames()  # a suite that awaited frames moved the engine's count: each suite steps its people as it does alone
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
 	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
 	GodTree.use_table({})  # Tier 1 fill: a test of an empty tree sets its own

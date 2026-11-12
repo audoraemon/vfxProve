@@ -4,8 +4,7 @@ extends RefCounted
 ## behaviour_check script, ctx = {rules, slots, d (the director), crowd, memo, mission} as for tier1_b.gd. Each returns what it cast, or "".
 ##   ruin     Smite where the fall goes unseen (B's, led ahead), as a last chance, or once he has been in the street a few seconds (seen: the
 ##            bell tolls, the Lantern stirs, nothing is lost); Ember on the counting-house for the last one hiding.
-##   death    Death Mark a collector with 11 s of street left (a marked man indoors at the fuse lives); Pestilence on him with his guards when
-##            the mark cannot be laid, and on the waiting deputies' guards at the door between collectors.
+##   death    Death Mark a collector with 11 s of street left (a marked man indoors at the fuse lives); Raise the Dead has no work here.
 ##   veil     Blight the Bell Tower first (a seen death then rings nothing), then Silent Doom on a collector in the street (A's, unseen first).
 ##   passage  Skylift takes a collector in the street (and whoever walks with him) and sets him down beyond the nearest wall; a Windfall of
 ##            stone by the counting-house's door smokes the next one out.
@@ -149,44 +148,24 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 # --- Death ---------------------------------------------------------------------------------------------------------------------
 
 ## Death Mark on a collector with DEATH_STREET seconds of street left at the pace a marked man walks (DeathMarkFx.SLOW of his own); a man
-## already marked is left to his fuse. Pestilence on him with his guards (the aim that takes him) when the mark cannot be laid in time or is
-## cooling, and on a waiting deputy's guards at the door when nothing else is to do (one fewer to stand round him later). A Death Mark at
-## the door smokes the next one out.
+## already marked is left to his fuse. A Death Mark at the door smokes the next one out. Raise the Dead has no work on this night: each
+## collector's round leaves him time for the mark.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var d := ctx.d as AssassinateDirector
-	var crowd: Crowd = ctx.crowd
 	if d == null:
 		return ""
 	var mark_ready: bool = bc._slot_ready(rules, slots, "deathmark")
-	var plague_ready: bool = bc._slot_ready(rules, slots, "pestilence")
 	for q in _street(d):
 		var p: Person = q.target
-		if p.statuses.has(&"frail") or p.sick_left > 0.0:
+		if p.statuses.has(&"frail"):
 			continue  # his fuse is lit
 		var road := _road(ctx, q)
 		var left := _road_seconds(q, road, p.walk_speed * DeathMarkFx.SLOW)
 		if mark_ready and left >= DEATH_STREET:
 			rules.cast(slots.deathmark, p.ground_pos)
 			return _did(ctx, "death mark %s (%.0f s of street)" % [q.label, left])
-		if plague_ready:
-			var aim: Vector2 = GOD.plague_aim(crowd, p.ground_pos)
-			if aim != Vector2.INF and PestilenceFx.victims_at(crowd._field, aim).has(p):
-				rules.cast(slots.pestilence, aim)
-				return _did(ctx, "pestilence %s and those about him" % q.label)
-	if plague_ready and _since(ctx) >= SMOKE_AFTER - 10.0:
-		var next := d._next_waiting()
-		if next != null:
-			var guards: Array[Person] = []
-			for g: Variant in next.guards:
-				if MissionDirector._alive(g) and not (g as Person).inside:
-					guards.append(g as Person)
-			if not guards.is_empty():
-				var aim: Vector2 = GOD.plague_aim(crowd, guards[0].ground_pos, [next.target])
-				if aim != Vector2.INF:
-					rules.cast(slots.pestilence, aim)
-					return _did(ctx, "pestilence the guards at the counting-house door")
 	var smoke := _smoke_spot(bc, ctx)
 	if smoke != Vector2.INF and mark_ready:
 		rules.cast(slots.deathmark, smoke)

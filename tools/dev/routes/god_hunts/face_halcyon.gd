@@ -5,8 +5,8 @@ extends RefCounted
 ## doors, with the procession, not held by the god, not frail, not afraid), so each type breaks the escort its own way, unseen where it can:
 ##   ruin     Smite the escort, the rear of the file first (nobody stands within the witness's reach of him); a Smite is loud, so a seen death costs the Gaze
 ##            (GazeMeter.SEEN_DEATH) and the bell's toll another 40: _room(). Ember lights a house the escort walks past and nothing happens to him (measured).
-##   death    Death Mark (frail at once, so counted unable at once; dead in 10 s), the rear of the file first. Pestilence and Glacial Cataclysm are not
-##            used: a plague spreads to the believer, and the freeze (5 units) shatters him when it thaws (a believer the god kills counts as burned).
+##   death    Death Mark (frail at once, so counted unable at once; dead in 10 s), the rear of the file first, and nothing else: every wider Death power
+##            would take the believer too (a believer the god kills counts as burned), and Corpse Guise would be laid on him.
 ##   veil     Blight the Bell Tower early (no toll all night), Silent Doom on the escort, the rear of the file first, aimed where he stands; Tsunami Breaker is
 ##            not used (its wave would take the believer on the same road).
 ##   passage  Skylift one escort out past the walls (sent off), the rear of the file first, then the believer himself FH_GAP later (freed by the walls);
@@ -23,7 +23,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
 	"ruin": ["smite", "ember"],
-	"death": ["deathmark", "pestilence", "glacial"],
+	"death": ["deathmark"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "mirror"],
 	"decree": ["noleave", "breath"],
@@ -323,10 +323,12 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence, Glacial Cataclysm ----------------------------------------------------------------------------------
+# --- Death: Death Mark ------------------------------------------------------------------------------------------------------------------
 
-## Death Mark on an escort not yet marked, the rear of the file first: frail at once, so counted unable at once, and dead in ten seconds. (Pestilence would
-## spread to the believer, and Glacial Cataclysm's freeze, five units wide, shatters him when it thaws: a believer the god kills counts as burned.)
+## Death Mark on an escort not yet marked, the rear of the file first: frail at once, so counted unable at once, and dead in ten seconds. Death Mark is the
+## whole loadout: Pestilence would spread to the believer, The Gate Below drags the nearest within 6 under, Pale Reign takes the weakest in a district, the
+## Serpent's shadow kills all it crosses and Grave Tide's dead hunt the nearest -- a believer the god kills counts as burned. Corpse Guise answers a watch,
+## and this procession has none: the escorts walk him to the pyre whatever they see.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := _fh(ctx)
 	if d == null:

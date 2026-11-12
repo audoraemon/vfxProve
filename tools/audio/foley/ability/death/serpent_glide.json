@@ -1,0 +1,10 @@
+{"length": 5.0, "rms_db": -13.5, "reverb": {"rt60": 2.4, "mix": 0.25, "predelay_ms": 24, "damp": 4000}, "eq": [["lowshelf", 140, 1.5], ["peak", 3000, -1.0, 0.8]], "layers": [
+  {"src": "lib:oga/wind/wind/wind/Wind.ogg", "from": 1.0, "dur": 4.9, "pitch": -3, "lp": 2800, "hp": 70, "fade_in": 700, "fade_out": 1400, "gain_db": -3},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.2, "onset": true, "dur": 4.6, "pitch": -4, "lp": 3600, "hp": 90, "fade_in": 500, "fade_out": 1400, "gain_db": -5},
+  {"src": "lib:oga/wind-whoosh-loop/wind woosh loop.ogg", "at": 0.0, "dur": 5.0, "pitch": -2, "lp": 2200, "hp": 50, "fade_in": 900, "fade_out": 1500, "gain_db": -9},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.8, "onset": true, "pitch": -9, "lp": 3200, "hp": 110, "fade_out": 200, "gain_db": -6},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 2.3, "onset": true, "pitch": -10, "lp": 3000, "hp": 110, "fade_out": 200, "gain_db": -7},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 3.6, "onset": true, "pitch": -9, "lp": 3000, "hp": 110, "fade_out": 200, "gain_db": -8},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_02.ogg", "at": 1.6, "onset": true, "pitch": -6, "lp": 4500, "hp": 400, "fade_out": 250, "gain_db": -16},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_04.ogg", "at": 3.0, "onset": true, "pitch": -6, "lp": 4500, "hp": 400, "fade_out": 250, "gain_db": -17}
+]}

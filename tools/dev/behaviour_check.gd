@@ -60,11 +60,15 @@ extends SceneTree
 ##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac|cross] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
-##          (a power that acts on walkers has some: The Folded Ward); --zoom frames a wide area (default 1.5);
+##          [--setup=rite|evac|cross|body|bodies] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
+##          (a power that acts on walkers has some: The Folded Ward); --setup=body kills the citizen nearest --at and casts
+##          on their body (Raise the Dead, --mode=); --setup=bodies kills the CLIP_BODIES citizens nearest --at and casts
+##          BODIES_CAST_OFF east of them (Grave Tide: the heap rises, its giant too, and walks to the click); --zoom frames a
+##          wide area (default 1.5);
 ##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
-##          --to=x,y gives a two-click power its second place, the citizen nearest it (Bound in Law);
+##          --mode=<key> picks a mode; --to=dx,dy sets a second click that far from the cast (Gravecall); for Bound in
+##          Law (--power=bound) --to=x,y is instead the second place itself, taken as the citizen nearest it;
 ##          --fx-clock spaces the frames on the effect's own clock, not the frame count (a long power whose moment
 ##          must be caught: The Sealed Verdict, --setup=cross --zoom=0.8 --seconds=62.6 --fx-clock);
 ##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
@@ -1329,6 +1333,9 @@ func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0), extra := {}) -> F
 const CROSSERS := 16
 const CROSS_R := 6.0
 const CROSS_TO := 4.5
+## The clip's "bodies" setup: this many fall round the cast, and the cast lands this far east of them.
+const CLIP_BODIES := 12
+const BODIES_CAST_OFF := Vector2(4.0, 0.0)
 
 
 ## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
@@ -1349,6 +1356,34 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 		crowd.add_alarm(100.0)
 		await _frames(10 * 60)
+	elif setup == "body":
+		# A body to raise (Raise the Dead): the citizen out in the open nearest the cast falls where they stand (frenzy, a whole body:
+		# the ledger is on, the power is in the loadout), and the cast lands on them a moment later.
+		var best := INF
+		var dead: Person = null
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best:
+				best = p.ground_pos.distance_to(at)
+				dead = p
+		if dead != null:
+			at = dead.ground_pos
+			crowd._field.kill(dead, &"frenzy")
+		await _frames(2 * 60)
+	elif setup == "bodies":
+		# The town's dead (Grave Tide): the CLIP_BODIES citizens out in the open nearest the cast fall where they stand (frenzy,
+		# whole bodies), and the cast lands BODIES_CAST_OFF east of them, for the horde to walk to.
+		var near: Array[Person] = []
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and not p.inside:
+				near.append(p)
+		near.sort_custom(func(a: Person, b: Person) -> bool:
+			return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
+		for p: Person in near.slice(0, CLIP_BODIES):
+			crowd._field.kill(p, &"frenzy")
+		var cast_at := crowd._grid.nearest_walkable(at + BODIES_CAST_OFF, 4)
+		if cast_at != Vector2.INF:
+			at = cast_at
+		await _frames(2 * 60)
 	elif setup == "cross":
 		# The CROSSERS citizens nearest the cast set off across it, each to the far side of the cast from where it stands.
 		var near: Array[Person] = []
@@ -1376,15 +1411,21 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 				who = p
 		at = near
 	var extra := {}
+	var mode_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--mode")
+	if mode_arg != "":
+		extra["mode"] = mode_arg  # a power with modes (Raise the Dead's ZOMBIE or SPIRIT)
+	var to_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--to")
+	if to_arg != "" and key != "bound":
+		var off := to_arg.split(",")  # a power with a second click (Gravecall): --to=dx,dy from the cast
+		extra["to"] = at + Vector2(float(off[0]), float(off[1]))
 	# The camera's ground point: the cast, or for a whisper halfway along the walk, so the walk stays in frame.
 	var look := at
 	if whisper:
 		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(2.2, -2.2))
 		extra = {"to": to, "target": who}
 		look = at.lerp(to, 0.5)
-	var to_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--to")
-	if to_arg != "":
-		# A two-click power's second place (Bound in Law): the citizen nearest it, not the one the cast is aimed at.
+	if to_arg != "" and key == "bound":
+		# Bound in Law's second place (--to=x,y, not an offset): the citizen nearest it, not the one the cast is aimed at.
 		var txy := to_arg.split(",")
 		var want := Vector2(float(txy[0]), float(txy[1]))
 		var best_to := INF
@@ -5458,12 +5499,17 @@ const FT_CLEAR := 1.2
 ## tree fails with a clear line instead of a night in which the policy silently casts nothing (C2).
 const FT_USES := {
 	"ruin": ["smite", "ember"],  # (Ember is required but never cast: Ruin wins on Smite alone; MS §3.8's Ember to draw the town is left out)
-	"death": ["deathmark", "pestilence"],
+	"death": ["deathmark", "raise"],
 	"veil": ["doom", "blight"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord"],
 }
+## Death (the user's tree, 2026-11-12: Death Mark and Raise the Dead): a dead marcher's soul is raised as a SPIRIT when what is left of his file stands within
+## FT_HAUNT_R of his body (the spirit frightens everyone within RaiseTheDeadFx.FRIGHT_R, and a frightened marcher leaves the march for good), and no captive or
+## marked lamplighter stands within FT_HAUNT_CLEAR of it (the spirit drifts after the nearest group, and would frighten them too).
+const FT_HAUNT_R := 2.6
+const FT_HAUNT_CLEAR := 6.0
 ## A breaker's sight (EscortDirector.SIGHT, 2.5) and a margin: a lamplighter nearer than this to one is already seen. A breaker within FT_ON_PATH of the
 ## captive's way ahead (within FT_AHEAD units of him) is one the drag will meet.
 const FT_SIGHT_PAD := 3.5
@@ -5507,7 +5553,7 @@ func _first_taste(which: String) -> void:
 		print("BEHAVIOUR refused scenario=first_taste god=%s missing=%s" % [type, ",".join(lacks)])
 		quit(1)
 		return
-	var memo := {"said": -INF, "type": type, "pest": {}, "lifted": 0, "blighted": false}
+	var memo := {"said": -INF, "type": type, "lifted": 0, "blighted": false}
 	await _scripted("first_taste", which, func() -> String: return _first_taste_act(rules, slots, d, crowd, memo),
 		func() -> String: return _first_taste_state(d))
 
@@ -5597,7 +5643,7 @@ func _first_taste_opening(type: String, rules: Rules, slots: Dictionary, memo: D
 	return ""
 
 
-## What the type does between breakers and marches (MS §3.8): Death marks the next Watchman ahead of the drag and sickens a muster; Passage lifts the captive
+## What the type does between breakers and marches (MS §3.8): Death raises a dead marcher's soul among his march and marks the next Watchman ahead of the drag; Passage lifts the captive
 ## past the Watch onto the shrine; every type stops a march that is near the shrine once the drag has nothing more urgent. "" when nothing.
 func _first_taste_prep(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, _crowd: Crowd, memo: Dictionary) -> String:
 	var march := _first_taste_march(d, FT_MARCH_NEAR)
@@ -5608,18 +5654,9 @@ func _first_taste_prep(type: String, rules: Rules, slots: Dictionary, d: FirstTa
 	match type:
 		"death":
 			for m in d.marches:
-				if m.done or m.walking or m.muster_left <= 0.0 or memo.pest.has(m) or not _slot_ready(rules, slots, "pestilence"):
-					continue
-				var at := Vector2.ZERO
-				var n := 0
-				for p in m.people:
-					if WarningDirector._alive(p):
-						at += (p as Person).ground_pos
-						n += 1
-				if n > 0:
-					memo.pest[m] = true
-					rules.cast(slots.pestilence, at / float(n))
-					return "pestilence on a muster of %d" % n
+				var raised := _first_taste_haunt(rules, slots, d, m)
+				if raised != "":
+					return raised
 			return _first_taste_mark_ahead(rules, slots, d)
 		"passage":
 			return _first_taste_lift(rules, slots, d, memo)
@@ -5653,6 +5690,41 @@ func _first_taste_mark_ahead(rules: Rules, slots: Dictionary, d: FirstTasteDirec
 		return ""
 	rules.cast(slots.deathmark, best.ground_pos)
 	return "death mark a watchman ahead of the drag"
+
+
+## Death: Raise the Dead's SPIRIT on a march's own dead -- a body (its soul still near) that what is left of march `m` stands round, within FT_HAUNT_R, so all
+## but one of them is frightened off the march and it breaks; never with the captive or a marked lamplighter within FT_HAUNT_CLEAR of it. "" when Raise is not
+## ready or no body lies so.
+func _first_taste_haunt(rules: Rules, slots: Dictionary, d: FirstTasteDirector, m: FirstTasteDirector.March) -> String:
+	var rem: Remains = mission._crowd.remains
+	if m.done or rem == null or not _slot_ready(rules, slots, "raise"):
+		return ""
+	var left: Array[Person] = []
+	for p: Variant in m.people:
+		if WarningDirector._alive(p):
+			left.append(p as Person)
+	if left.size() < FirstTasteDirector.CLEANSE_NEED:
+		return ""  # (a march its own dead have already broken)
+	var spare: Array[Vector2] = []
+	for v in d.marked:
+		if WarningDirector._alive(v):
+			spare.append(v.ground_pos)
+	if WarningDirector._alive(d.captive):
+		spare.append(d.captive.ground_pos)
+	for r in rem.all():
+		if not rem.has_soul(r):
+			continue
+		var near := 0
+		for p in left:
+			if p.ground_pos.distance_to(r.pos) <= FT_HAUNT_R:
+				near += 1
+		var clear := true
+		for q in spare:
+			clear = clear and q.distance_to(r.pos) > FT_HAUNT_CLEAR
+		if clear and left.size() - near < FirstTasteDirector.CLEANSE_NEED:
+			rules.cast(slots.raise, r.pos, {"mode": "spirit"})
+			return "raise a dead marcher's soul among his march (%d of %d frightened off)" % [near, left.size()]
+	return ""
 
 
 ## The marked lamplighter with the shortest way to the shrine, or null. With `avoid`, one standing within FT_SIGHT_PAD of a breaker who is free to grip
@@ -5716,6 +5788,9 @@ func _first_taste_stop(type: String, rules: Rules, slots: Dictionary, d: FirstTa
 		return ""
 	match type:
 		"death":
+			var raised := _first_taste_haunt(rules, slots, d, m)
+			if raised != "":
+				return raised
 			if _slot_ready(rules, slots, "deathmark"):
 				rules.cast(slots.deathmark, target.ground_pos)
 				return "death mark a marcher"

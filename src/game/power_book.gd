@@ -52,6 +52,13 @@ const POWERS := [
 		"blurb": "One person grows frail and slow, then dies. The body draws a crowd.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
 		"quiet": true, "authority": "death"},
+	{"key": "raise", "name": "Raise the Dead", "path": "res://src/fx/death/raise_the_dead.gd",
+		"blurb": "A body rises to attack, or its soul to terrify and possess.",
+		"dp": 1, "cooldown": 25.0, "aim": "click", "needs": "body",
+		"shape": "click a body: ZOMBIE -- it gets up for 30 s and hunts the nearest, and whoever it kills gets up too, 3 in all; SPIRIT -- its soul rises for 20 s, everyone within 3 flees, and a press on someone within 4 of it possesses them for 5 s with Mind Whisper's orders, 3 in all",
+		"authority": "death", "modes": [
+			{"key": "zombie", "name": "ZOMBIE"},
+			{"key": "spirit", "name": "SPIRIT", "needs": "soul"}]},
 	{"key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd",
 		"blurb": "Nobody in the circle can leave it for a time.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
@@ -169,6 +176,11 @@ const POWERS := [
 			{"HOUNDS": 5, "HUNT": 34.0, "BLOWS": 4, "cooldown": 37.0},
 			{"HOUNDS": 6, "HUNT": 36.0, "BLOWS": 5, "cooldown": 35.5},
 			{"HOUNDS": 6, "HUNT": 38.0, "BLOWS": 5, "cooldown": 34.0, "twist": true, "twist_text": "Quarry: click a person and every hound hunts them"}]},
+	{"key": "gravecall", "name": "Gravecall", "path": "res://src/fx/death/gravecall.gd",
+		"blurb": "Three spirits rise, and haunt where you send them.",
+		"dp": 2, "cooldown": 30.0, "aim": "two clicks",
+		"shape": "no body needed: the first click calls three pale spirits up out of the ground, the second sends them; they drift through walls and haunt a circle of 3 there for 20 s, and a soldier a spirit passes through is frozen for 3 s",
+		"authority": "death"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"blurb": "A roaming vortex tears through the town and flings people about.",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin",
@@ -182,6 +194,16 @@ const POWERS := [
 		"blurb": "A fast plague spreads through the crowds.",
 		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
 		"authority": "death"},
+	{"key": "guise", "name": "Corpse Guise", "path": "res://src/fx/death/corpse_guise.gd",
+		"blurb": "The faithful pass as the walking dead; the watch looks past them.",
+		"dp": 3, "cooldown": 50.0, "aim": "click",
+		"shape": "the 4 nearest within 2 pass as the walking dead for 25 s: soldiers, watchmen and inquisitors look straight past them, and Death's own undead leave them alone",
+		"quiet": true, "authority": "death"},
+	{"key": "walker", "name": "Walking Corpse", "path": "res://src/fx/death/walking_corpse.gd",
+		"blurb": "A body gets up and walks where you send it, and nobody looks twice.",
+		"dp": 3, "cooldown": 30.0, "aim": "two clicks", "needs": "body", "reaches_hidden": true,
+		"shape": "click a body, then where it goes: it gets up and walks there by the streets for up to 40 s, and nobody panics; it lies down there again, its clock restarted; walked into a shelter or a house it is hidden, and a plague body brings the plague in to 3 sheltering there",
+		"quiet": true, "authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"blurb": "A dragon breathes a cone of fire and burns all before it.",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin",
@@ -392,6 +414,11 @@ const POWERS := [
 			{"COMMAND_X": 1.2, "GATHER_CAPACITY": 175, "cooldown": 160.0},
 			{"COMMAND_X": 1.3, "GATHER_CAPACITY": 185, "cooldown": 150.0},
 			{"COMMAND_X": 1.4, "GATHER_CAPACITY": 200, "cooldown": 140.0, "twist": true, "twist_text": "Second Word: click again for a second command"}]},
+	{"key": "gatebelow", "name": "The Gate Below", "path": "res://src/fx/death/the_gate_below.gd",
+		"blurb": "The ground opens and drags the living under; their souls climb back out.",
+		"dp": 5, "cooldown": 90.0, "aim": "click",
+		"shape": "the ground opens into a pit of 3 ringed in bone for 12 s; every 0.5 s pale arms drag the nearest within 6 to its edge and under, leaving no body; when it closes every soul it took climbs out as a wraith that hunts soldiers for 20 s",
+		"authority": "death"},
 	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
 		"blurb": "One law is void for 15 s: the clock, the escape limit or the ward. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law is void for 15 s: the clock (time stops), the escape limit, the ward; Q/E; once",
@@ -436,6 +463,11 @@ const POWERS := [
 			{"REGION": 16.0, "MAX_FIGHTERS": 160, "DURATION": 29.0},
 			{"REGION": 17.0, "MAX_FIGHTERS": 170, "DURATION": 32.0},
 			{"REGION": 18.0, "MAX_FIGHTERS": 180, "DURATION": 35.0, "twist": true, "twist_text": "Turn the Tide: click a fighter to turn them"}]},
+	{"key": "pale", "name": "Pale Reign", "path": "res://src/fx/death/pale_reign.gd",
+		"blurb": "The colour drains from a district; the weakest die silently and rise pale.",
+		"dp": 6, "cooldown": 120.0, "aim": "click",
+		"shape": "the colour drains out of a district of 10 for 12 s, grey and silent: everyone in it crawls, its fires gutter, the bell is hushed; every 2 s the weakest one still there dies without a sound and rises as your grey-eyed servant for 20 s",
+		"authority": "death"},
 	{"key": "fargate", "name": "The Far Gate", "path": "res://src/fx/control/the_far_gate.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a door of stars opens for 15 s: up to 40 people within 10 walk through it with their dogs and goods, gone for the night; soldiers resist; once a descent",
 		"quiet": true, "alarm": 1.0, "authority": "passage"},
@@ -467,6 +499,16 @@ const POWERS := [
 		"blurb": "A district is written down; at 60 s all inside die.",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a district of 10 written into the ledger: the town sees nothing and goes on, walking in and out; at 60 s the bell strikes once and everyone inside at that moment dies where he stands, without a cry, indoors too; once a descent",
 		"quiet": true, "authority": "decree"},
+	{"key": "serpent", "name": "The Pale Serpent", "path": "res://src/fx/death/pale_serpent.gd",
+		"blurb": "A serpent glides through town; its shadow kills. Once a descent.",
+		"dp": 6, "cooldown": 999.0, "aim": "drag",
+		"shape": "a vast feathered serpent rises out of the ground and glides along the drag (14 at most) for 10 s, then loops once: whoever its shadow crosses (2 wide) dies at once without a sound and lies whole, ready to rise; houses are left standing; whoever sees it rise within 12 sickens for 20 s, slowed, and takes the plague if it is in town; drag to send it; once a descent",
+		"authority": "death"},
+	{"key": "gravetide", "name": "Grave Tide", "path": "res://src/fx/death/grave_tide.gd",
+		"blurb": "Every body in town rises and hunts the living. Once a descent.",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "needs": "any_body",
+		"shape": "every unused body in town (up to 30, the oldest first) gets up for 40 s and walks toward the click, then hunts; where 5 or more lie within 4 of each other a giant of bones bursts up: it takes 12 blows, claws down the walls in its way, fells a soldier with a blow, and the undead within 6 of it move 20% faster; the more the town has lost tonight, the bigger the tide; needs a body somewhere in town; once a descent",
+		"authority": "death"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -496,12 +538,29 @@ const REACH := {
 	"pilgrim": [6.0, 9.0, 0.4, 15.0],
 	"deep": [5.0, 8.0, 0.4, 4.0],
 	"houndgate": [6.0, 9.0, 0.6, 30.0],
+	# Raise the Dead: the dead getting up in the street is seen and heard as a hound gate's hounds are; the danger lasts the
+	# zombies' 30 s (a spirit's is its own fright)
+	"raise": [6.0, 9.0, 0.6, 30.0],
+	# Gravecall: three pale spirits rising and drifting through the street are seen and heard like a spirit's wail; the danger lasts the haunt
+	"gravecall": [5.0, 8.0, 0.5, 20.0],
 	# Heaven's Door: a door taller than a house falling out of a shaft of light is seen and heard across the town, as the
 	# Light of Solaris is; the danger lasts its opening and its pull
 	"heavendoor": [16.0, 22.0, 0.9, 16.0],
 	# Doors of the Dead: a district's doors burning cold and the other side pouring out of them is seen and heard far
 	# off; the danger lasts the span
 	"deaddoors": [16.0, 20.0, 1.0, 50.0],
+	# The Gate Below: the ground opening into a pit ringed in bone and pale arms dragging people under are seen and heard
+	# across the square; the danger lasts the pit's 12 s
+	"gatebelow": [10.0, 14.0, 0.8, 12.0],
+	# Pale Reign: a district gone grey is seen across the town, but it is silent (it hushes the town), so it is heard only
+	# near; the danger lasts its 12 s
+	"pale": [14.0, 10.0, 0.8, 12.0],
+	# The Pale Serpent: a serpent the size of a street gliding over the roofs is seen across the town and heard far (wind and
+	# feathers); the danger lasts its glide and loop
+	"serpent": [24.0, 16.0, 0.9, 14.0],
+	# Grave Tide: the dead getting up all over the town are seen far and heard (bone grinding, the giant's steps); the danger
+	# is held where the horde converges, the click, while it gathers
+	"gravetide": [20.0, 18.0, 0.9, 20.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -529,6 +588,7 @@ const IMPACT := {
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
 	"breath": 0.5, "erase": 2.1, "disorder": 0.85, "eminent": 0.8, "fenced": 0.8, "cage": 0.8,
+	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5, "pale": 2.0, "serpent": 1.0, "gravetide": 1.2,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -800,7 +860,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death", "gatebelow": "death", "pale": "death", "serpent": "death", "gravetide": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

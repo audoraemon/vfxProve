@@ -5,7 +5,7 @@ extends RefCounted
 const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
 
 ## The user's Tier 1 picks (D2).
-const PAIRS := {"ruin": ["smite", "ember"], "death": ["deathmark", "pestilence"], "veil": ["doom", "blight"],
+const PAIRS := {"ruin": ["smite", "ember"], "death": ["deathmark", "raise"], "veil": ["doom", "blight"],
 	"passage": ["skylift", "windfall"], "decree": ["noleave", "breath"], "dominion": ["whisper", "discord"]}
 
 

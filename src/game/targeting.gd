@@ -60,6 +60,8 @@ const AREAS := {
 	"breath": {"shape": "circle", "r": 2.5},
 	# MagnifyFx.RADIUS
 	"magnify": {"shape": "circle", "r": 4.0},
+	# RedefineFx.PICK_R; whom it would name is ringed (_draw())
+	"redefine": {"shape": "circle", "r": 1.5},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
 	# SkyliftFx.RADIUS: what it would take is ringed at the first click; then where it is set down ("pick")
@@ -880,6 +882,10 @@ func _draw() -> void:
 			# Whom it would bind, or start with.
 			for p in OathboundFx.bound_at(_crowd._field, first if placed else _press, 5 if _rules.key(slot) == "echo" else 4):
 				_ring(p.ground_pos, 0.2, COL_DIVINE)
+		"redefine":
+			# Whom it would name.
+			for p in RedefineFx.named_at(_crowd._field, _press):
+				_ring(p.ground_pos, 0.22, COL_CRIMSON if String(mode().get("key", "")) == "criminal" else COL_DIVINE)
 		"turncoat":
 			var turned := TurncoatFx.target_at(_crowd._field, _press)
 			if turned != null:

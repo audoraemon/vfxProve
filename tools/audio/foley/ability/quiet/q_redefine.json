@@ -1,0 +1,7 @@
+{"length": 2.0, "peak_db": -2.0, "reverb": {"rt60": 1.2, "mix": 0.14, "predelay_ms": 10, "damp": 5000}, "eq": [["lowshelf", 200, -4.0], ["peak", 4200, 1.5, 0.9]], "layers": [
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_03.ogg", "at": 0.0, "onset": true, "dur": 0.26, "pitch": 3, "hp": 2200, "lp": 9500, "fade_in": 12, "fade_out": 60, "gain_db": -2},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_04.ogg", "at": 0.24, "from": 0.08, "dur": 0.18, "pitch": 5, "hp": 2600, "lp": 9500, "fade_in": 8, "fade_out": 50, "gain_db": -3},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe2.wav", "at": 0.04, "onset": true, "dur": 0.34, "pitch": 5, "hp": 3800, "lp": 11000, "fade_in": 30, "fade_out": 120, "gain_db": -17},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/book_01.ogg", "at": 0.42, "from": 0.36, "dur": 0.2, "lp": 1600, "fade_in": 4, "fade_out": 90, "gain_db": -11},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Glock/glock_medium_G6.wav", "at": 0.46, "dur": 1.5, "lp": 7500, "fade_out": 1000, "gain_db": -9},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Glock/glock_medium_C6.wav", "at": 0.49, "dur": 1.5, "lp": 6000, "fade_out": 1000, "gain_db": -14}]}

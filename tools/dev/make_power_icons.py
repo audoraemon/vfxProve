@@ -1,7 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited.
+Breathing Is Prohibited and Redefine.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -364,8 +364,71 @@ def breath():
     finish(rgb, "breath")
 
 
+def redefine():
+    """Redefine (Decree): on an ink field, a dark figure, head and shoulders, and over his head the law's word on an ink
+    plate edged in gilt, its letters gilt; a gilt quill comes down from the top right and writes the gilt stroke under
+    the word."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(97, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (58, 38, 80), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # A warm glow behind the figure, where the law's light falls on him.
+    rgb = blend(rgb, (150, 110, 50), np.exp(-((x + 4.0) ** 2 + (y - 14.0) ** 2) / 260.0) * 0.35)
+    # The figure: a head and shoulders in shadow, edged in gilt.
+    hx, hy = -6.0, 12.0
+    head = np.hypot(x - hx, y - hy) - 8.5
+    sh = (np.hypot((x - hx) / 22.0, (y - 40.0) / 15.0) - 1.0) * 15.0
+    sd = np.minimum(head, sh)
+    rgb = blend(rgb, (64, 44, 88), np.clip(-sd, 0.0, 1.0))
+    rgb = blend(rgb, (40, 26, 58), np.clip(-sd - 3.0, 0.0, 1.0) * np.clip((x - hx + 4.0) / 10.0, 0.0, 1.0))
+    rgb = blend(rgb, (232, 180, 82), np.exp(-(sd ** 2) / 1.2) * 0.9)
+    # The plate over his head: ink, edged in gilt.
+    px0, px1, py0, py1 = -29.0, 13.0, -20.0, -6.0
+    plate = (x > px0) & (x < px1) & (y > py0) & (y < py1)
+    edge = (x > px0 - 2.0) & (x < px1 + 2.0) & (y > py0 - 2.0) & (y < py1 + 2.0) & ~plate
+    rgb = blend(rgb, (255, 207, 90), edge.astype(float))
+    rgb = blend(rgb, (14, 8, 24), plate.astype(float))
+    # Its word: five gilt letters, blocky, as the pixel font's capitals are.
+    for k in range(5):
+        lx = px0 + 4.0 + k * 7.6
+        stem = (x > lx) & (x < lx + 2.2) & (y > py0 + 3.0) & (y < py1 - 3.0)
+        top = (x > lx) & (x < lx + 5.4) & (np.abs(y - (py0 + 4.0 + (k % 2) * 3.0)) < 1.1)
+        bar = (x > lx) & (x < lx + 5.4) & (np.abs(y - (py1 - 4.0)) < 1.1) & (k % 3 != 1)
+        rgb = blend(rgb, (255, 220, 120), (stem | top | bar).astype(float))
+    # The stroke under it, being written: gilt, ink beneath it.
+    uy0 = py1 + 5.0
+    rgb = blend(rgb, (10, 6, 18), ((np.abs(y - uy0) < 2.4) & (x > px0 - 1.0) & (x < px1 + 9.0)).astype(float) * 0.7)
+    rgb = blend(rgb, (255, 207, 90), ((np.abs(y - uy0) < 1.2) & (x > px0) & (x < px1 + 7.0)).astype(float))
+    # The quill: a long gilt feather from the top right corner down to the stroke's end, its shaft pale, its nib dark.
+    ax, ay, bx, by = 44.0, -44.0, px1 + 7.0, uy0 - 1.0
+    ux, uy = bx - ax, by - ay
+    ln = math.hypot(ux, uy)
+    ux, uy = ux / ln, uy / ln
+    t = (x - ax) * ux + (y - ay) * uy
+    d = (x - ax - np.clip(t, 0.0, ln) * ux) * (-uy) + (y - ay - np.clip(t, 0.0, ln) * uy) * ux
+    k = np.clip(t / ln, 0.0, 1.0)
+    on = (t > 0.0) & (t < ln)
+    # The vane: wider on one side, as a flight feather is; tapering into the shaft well above the nib.
+    side = np.where(d > 0.0, 6.5, 4.0)
+    half = np.where(k < 0.7, side * np.sin(np.clip(k / 0.7, 0.0, 1.0) * math.pi) ** 0.5, 0.0)
+    vane = (np.abs(d) < half) & on
+    barbs = 0.7 + 0.3 * (np.sin(t * 1.9 - np.abs(d) * 1.3) > 0.0)
+    rgb = blend(rgb, (10, 6, 18), ((np.abs(d) < half + 1.3) & on & (k < 0.72)).astype(float) * 0.85)
+    rgb = blend(rgb, (236, 192, 100), vane.astype(float) * barbs)
+    shaft = (np.abs(d) < 0.9) & on & (k < 0.86)
+    rgb = blend(rgb, (10, 6, 18), ((np.abs(d) < 1.9) & on & (k > 0.6) & (k < 0.86)).astype(float) * 0.8)
+    rgb = blend(rgb, (255, 246, 208), shaft.astype(float))
+    nib = (np.abs(d) < 1.8 * (1.0 - (k - 0.86) / 0.14) + 0.3) & on & (k >= 0.86)
+    rgb = blend(rgb, (24, 14, 14), nib.astype(float))
+    rgb = blend(rgb, (255, 240, 190), np.exp(-((x - bx) ** 2 + (y - by) ** 2) / 2.5) * 0.7)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "redefine")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
-            "whisper": whisper, "breath": breath}
+            "whisper": whisper, "breath": breath, "redefine": redefine}
 
 
 if __name__ == "__main__":

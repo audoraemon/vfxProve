@@ -1,6 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
-Thornwall, Discord, Pestilence) and v0.08's Mind Whisper.
+Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
+Breathing Is Prohibited.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -321,8 +322,50 @@ def whisper():
     finish(rgb, "whisper")
 
 
+def breath():
+    """Breathing Is Prohibited (Decree): on an ink field, a gilt ring of law holding a grey-gold haze, three curls of
+    breath inside it fading away, and a red stroke of the Decree struck through them."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(83, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (52, 36, 72), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The airless haze inside the ring, grey-gold and a little darker at the heart.
+    inside = np.clip((31.0 - r) / 2.0, 0.0, 1.0)
+    rgb = blend(rgb, (150, 138, 104), inside * (0.32 + 0.12 * n))
+    rgb = blend(rgb, (60, 54, 44), np.exp(-(r / 12.0) ** 2) * 0.35)
+    # Three strands of breath rising from below and thinning out to nothing before the top.
+    for cx, ph in [(-9.0, 0.0), (0.0, 2.0), (9.0, 4.0)]:
+        sway = cx + 3.2 * np.sin(y / 4.5 + ph)
+        d = np.abs(x - sway)
+        rise = np.clip((22.0 - y) / 44.0, 0.0, 1.0)
+        fade = np.clip(1.0 - rise, 0.0, 1.0) ** 0.7 * (y < 22.0) * (y > -24.0)
+        rgb = blend(rgb, (60, 52, 40), np.exp(-(d ** 2) / 6.0) * fade * 0.5)
+        rgb = blend(rgb, (244, 236, 210), np.exp(-(d ** 2) / 1.4) * fade)
+    # The ring of law: ink under gilt, with a lighter inner edge.
+    ring = np.exp(-((r - 32.0) ** 2) / 3.0)
+    rgb = blend(rgb, (10, 6, 18), np.exp(-((r - 32.0) ** 2) / 9.0) * 0.8)
+    rgb = blend(rgb, (255, 207, 90), ring)
+    rgb = blend(rgb, (255, 246, 208), np.exp(-((r - 30.6) ** 2) / 0.6) * 0.5)
+    # Letters of law round the ring: short gilt ticks.
+    for k in range(12):
+        a = k * math.pi / 6.0 + 0.26
+        tx, ty = 36.5 * math.cos(a), 36.5 * math.sin(a)
+        rgb = blend(rgb, (255, 207, 90), np.exp(-((x - tx) ** 2 + (y - ty) ** 2) / 1.1) * 0.8)
+    # The Decree's stroke: red over ink, corner to corner through the breath.
+    ux, uy = math.cos(-math.pi / 4), math.sin(-math.pi / 4)
+    along = np.clip(x * ux + y * uy, -27.0, 27.0)
+    d = np.hypot(x - along * ux, y - along * uy)
+    rgb = blend(rgb, (18, 10, 28), np.clip((5.0 - d) / 1.2, 0.0, 1.0))
+    rgb = blend(rgb, (255, 58, 48), np.clip((3.2 - d) / 1.0, 0.0, 1.0))
+    rgb = blend(rgb, (255, 150, 120), np.clip((0.9 - np.abs(d - 0.2)) / 0.9, 0.0, 1.0) * 0.4)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "breath")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
-            "whisper": whisper}
+            "whisper": whisper, "breath": breath}
 
 
 if __name__ == "__main__":

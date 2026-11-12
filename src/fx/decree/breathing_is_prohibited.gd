@@ -159,7 +159,7 @@ func shown() -> float:
 ## over it. Over each one choking, a gilt arc that empties as his breath runs out. Its shapes are laid out once; each
 ## frame only draws them.
 class Hush extends Node2D:
-	const HAZE := Color(0.78, 0.72, 0.56, 0.16)
+	const HAZE := Color(0.5, 0.48, 0.42, 0.34)
 	const HAZE_LIGHT := Color(0.86, 0.8, 0.62)
 	const MOTES := 26
 	const LETTERS := 12
@@ -203,16 +203,16 @@ class Hush extends Node2D:
 		draw_set_transform(Vector2.ZERO, 0.0, h)
 		draw_colored_polygon(_disc, Color(HAZE, HAZE.a * a))
 		draw_set_transform(Vector2.ZERO, 0.0, h * 0.55)
-		draw_colored_polygon(_disc, Color(0.35, 0.32, 0.26, 0.08 * a))
+		draw_colored_polygon(_disc, Color(0.22, 0.2, 0.18, 0.16 * a))
 		# The shimmer: two faint rings moving out over it, over and over.
 		for k in 2:
 			var s := fposmod(now * 0.45 + float(k) * 0.5, 1.0)
 			draw_set_transform(Vector2.ZERO, 0.0, h * lerpf(0.15, 1.0, s))
-			draw_polyline(_rim, Color(HAZE_LIGHT, 0.35 * a * (1.0 - s)), -1.0)
+			draw_polyline(_rim, Color(HAZE_LIGHT, 0.55 * a * (1.0 - s)), -1.0)
 		# The rim, ink under gilt, so it reads on any ground.
 		draw_set_transform(Vector2.ZERO)
-		draw_polyline(_rim_px, Color(DecreeParts.INK, 0.45 * a), 3.0)
-		draw_polyline(_rim_px, Color(DecreeParts.GILT, 0.8 * a), 1.0)
+		draw_polyline(_rim_px, Color(DecreeParts.INK, 0.6 * a), 4.0)
+		draw_polyline(_rim_px, Color(DecreeParts.GILT, 0.95 * a), 2.0)
 		# Letters of law round the rim, turning slowly.
 		for i in LETTERS:
 			var ang := TAU * float(i) / float(LETTERS) + now * 0.08
@@ -221,14 +221,14 @@ class Hush extends Node2D:
 			for r in 4:
 				for c in 3:
 					if int(glyph[r]) & (1 << (2 - c)):
-						draw_rect(Rect2(p + Vector2(c - 1, r - 2), Vector2.ONE), Color(DecreeParts.GILT, 0.7 * a))
+						draw_rect(Rect2(p + Vector2(c - 1, r - 2), Vector2.ONE), Color(DecreeParts.GILT, 0.95 * a))
 		# The last of the air: motes laid out by order (a golden-angle spread), rising and thinning.
 		for i in MOTES:
 			var ang := TAU * fposmod(float(i) * 0.618034, 1.0)
 			var r := sqrt(fposmod(float(i) * 0.381966 + 0.11, 1.0))
 			var rise := fposmod(now * 0.35 + float(i) * 0.137, 1.0)
 			var p := Vector2(h.x * r * cos(ang), h.y * r * sin(ang) - rise * 22.0).round()
-			draw_rect(Rect2(p, Vector2.ONE), Color(HAZE_LIGHT, 0.55 * a * (1.0 - rise)))
+			draw_rect(Rect2(p, Vector2(2.0, 2.0)), Color(HAZE_LIGHT, 0.7 * a * (1.0 - rise)))
 		# Over each one choking: his breath, an arc that empties as it runs out.
 		for body: Variant in fx.choking:
 			if not is_instance_valid(body):

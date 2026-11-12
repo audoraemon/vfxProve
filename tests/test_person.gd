@@ -29,7 +29,7 @@ static func run(t) -> void:
 	odd.rng.seed = 12
 	odd.bounds = TownLayout.MAP
 	odd.setup_person(false, Vector2(2.7, 2.0), grid)
-	odd.stagger = 1 - Engine.get_process_frames() % 2
+	odd.stagger = 1 - (Engine.get_process_frames() - Person.frame_base) % 2  # the count Person staggers by
 	odd.set_goal(goal)
 	var at := odd.ground_pos
 	for i in 3:

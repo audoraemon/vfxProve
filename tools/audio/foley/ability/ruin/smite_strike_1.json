@@ -1,0 +1,7 @@
+{"length": 2.6, "rms_db": -13.4, "reverb": {"rt60": 3.6, "mix": 0.3, "predelay_ms": 40, "damp": 4000}, "layers": [
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack01.mp3.flac", "at": 0.0, "onset": true, "pitch": 6, "hp": 1500, "lp": 15000, "fade_out": 80},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/bolt.ogg", "at": 0.0, "onset": true, "dur": 0.35, "pitch": -1, "hp": 700, "lp": 12000, "gain_db": -5, "fade_out": 120},
+  {"src": "lib:oga/rain-long-thunder/rain-thunder.ogg", "at": 0.02, "from": 22.4, "dur": 2.4, "hp": 40, "lp": 6000, "gain_db": -2, "fade_in": 5, "fade_out": 900},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch01.mp3.flac", "at": 0.0, "onset": true, "pitch": -7, "hp": 40, "lp": 2500, "gain_db": -4, "fade_out": 200},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_001.ogg", "at": 0.0, "onset": true, "pitch": -8, "hp": 30, "lp": 900, "gain_db": -6, "fade_out": 60}
+]}

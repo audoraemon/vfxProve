@@ -1,0 +1,5 @@
+{"length": 1.4, "rms_db": -17.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/dog-snarl-grunt-grumble/dog/dog-growl.flac", "at": 0.0, "onset": true, "pitch": -7, "hp": 80, "lp": 5000, "fade_out": 300},
+  {"src": "lib:oga/steam-release-sounds/steam hisses - Marker #5.wav", "at": 0.15, "onset": true, "dur": 1.1, "hp": 1200, "lp": 8000, "gain_db": -8, "fade_out": 500},
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.1, "onset": true, "pitch": -8, "hp": 60, "lp": 3000, "gain_db": -10, "fade_out": 60}
+]}

@@ -85,6 +85,8 @@ class Door extends RefCounted:
 ## The doors, the spirits, how many have come through, and who was thrown out of a door.
 var doors: Array[Door] = []
 var visitors: Visitors
+## What comes through heard while it roams, and its bites, claws and touches.
+var voices := VisitorVoices.new()
 var spirits := 0
 var thrown := 0
 ## Buildings the demons struck, and the blows.
@@ -142,8 +144,7 @@ func _build() -> void:
 	if rise_again:
 		visitors.bitten.connect(_on_kill)
 	_pick_doors()
-	ctx.play(&"glac_wind", origin, -2.0)
-	at(0.2, func(): ctx.play(&"hs_rumble", origin, -6.0))
+	ctx.play(&"dead_chill", origin, -2.0)
 	for d in doors:
 		at(d.opens, _open.bind(d))
 	at(t_end(), _call_back)
@@ -217,9 +218,9 @@ func _open(d: Door) -> void:
 		ctx.crowd.threats.register(d.at, 1.2, 0.7, left, 6.0, 8.0, &"beast")
 	d.building.damage(DOOR_HIT, d.at, &"frenzy")
 	if d == doors[0]:
-		ctx.play(&"jg_slam", d.at, 4.0)  # the first door breaks open: the power's main cue
+		ctx.play(&"dead_door", d.at, 4.0)  # the first door breaks open: the power's main cue
 	else:
-		ctx.play(&"jg_crumble", d.at, -8.0)
+		ctx.play(&"dead_creak", d.at, -8.0)
 	if not DominionParts.staged(self):
 		return
 	d.building.mark_hit(0.35, &"ice")
@@ -249,6 +250,7 @@ func _open(d: Door) -> void:
 
 func _fx_process(delta: float) -> void:
 	visitors.step(delta)
+	voices.step(delta, visitors.living(), ctx.play)
 	_tick_cold(delta)
 	if t < t_end():
 		_release_due()
@@ -300,12 +302,12 @@ func _release(d: Door, breed: Animal.Breed) -> void:
 		Animal.Breed.GHOST:
 			visitors.give(a, {"phase": true})
 			_fright_in[a] = FRIGHT_EVERY
-			ctx.play(&"q_wisp", spot, -4.0)
+			ctx.play(&"ghost_moan", spot, -4.0)
 		Animal.Breed.DEMON:
 			visitors.give(a, {"wreck": DEMON_WRECK, "wreck_every": DEMON_WRECK_EVERY, "wreck_reach": DEMON_WRECK_REACH})
-			ctx.play(&"dr_roar", spot, -2.0)
+			ctx.play(&"demon_snarl", spot, -2.0)
 		_:
-			ctx.play(&"dr_roar", spot, -5.0)
+			ctx.play(&"hound_howl", spot, -5.0)
 	if not DominionParts.staged(self):
 		return
 	if d.glow != null and is_instance_valid(d.glow):
@@ -385,7 +387,7 @@ func _call_back() -> void:
 	_recalled = true
 	_rising.clear()  # the span is over: whoever has not risen yet stays down
 	visitors.recall(RECALL)
-	ctx.play(&"glac_wind", origin, -4.0)
+	ctx.play(&"dead_recall", origin, -4.0)
 
 
 ## The doors close; whoever of the other side has not made it back is gone anyway; the cold begins to lift.
@@ -397,7 +399,7 @@ func _close_all() -> void:
 		d.open = false
 	for id in _cold.keys():
 		_warm(id)
-	ctx.play(&"jg_crumble", origin, -6.0)
+	ctx.play(&"dead_close", origin, -6.0)
 	if not DominionParts.staged(self):
 		return
 	if is_instance_valid(_frost):
@@ -420,6 +422,7 @@ func _burn(a: Animal) -> void:
 
 ## A bite or a touch: the first one's outcry is the town's (a danger there, the alarm up), every one a shout.
 func _on_bite(a: Animal, victim: Person, first: bool) -> void:
+	voices.bite(a, ctx.play)
 	ctx.play(&"cit_shout", victim.ground_pos, 0.0)
 	if first and ctx.crowd != null:
 		ctx.crowd.fright(victim.ground_pos, 2.0, 0.6, 3.0, 6.0, 8.0, &"bite", true)
@@ -510,7 +513,7 @@ func _rise(spot: Vector2) -> void:
 func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 	_stop_trail(a)
 	_fright_in.erase(a)
-	ctx.play(&"dr_roar", at_ground, -8.0)
+	ctx.play(&"dead_fall", at_ground, -8.0)
 	if not DominionParts.staged(self):
 		return
 	var ghost := a.breed == Animal.Breed.GHOST
@@ -523,7 +526,8 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 ## A demon's claws on a wall: splinters, dust and a knock.
 func _on_wreck(a: Animal, s: Structure) -> void:
 	wrecks += 1
-	ctx.play(&"jg_crumble", a.ground_pos, -12.0)
+	voices.bite(a, ctx.play)
+	ctx.play(&"debris_small", a.ground_pos, -6.0)
 	if not DominionParts.staged(self):
 		return
 	var hit := a.ground_pos.clamp(s.footprint.position, s.footprint.end)

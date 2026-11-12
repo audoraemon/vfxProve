@@ -1,0 +1,4 @@
+{"length": 1.0, "rms_db": -18.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/teleport-spell/teleport.wav", "at": 0.0, "onset": true, "pitch": 2, "hp": 300, "lp": 12000, "fade_out": 300},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "onset": true, "dur": 0.6, "reverse": true, "pitch": 3, "hp": 400, "lp": 10000, "gain_db": -5, "fade_in": 100, "fade_out": 30}
+]}

@@ -1,0 +1,4 @@
+{"length": 1.3, "rms_db": -18.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/monster-snarls/monster-snarl-5.ogg", "at": 0.0, "from": 6.25, "dur": 1.0, "pitch": -5, "hp": 70, "lp": 5000, "fade_in": 40, "fade_out": 250},
+  {"src": "lib:oga/16-monster-growls/monster_-_starninjas/monster.4.ogg", "at": 0.1, "onset": true, "pitch": -9, "hp": 60, "lp": 3000, "gain_db": -8, "fade_out": 200}
+]}

@@ -1,0 +1,5 @@
+{"length": 1.4, "rms_db": -15.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/iron-door/iron_door_0.ogg", "at": 0.0, "from": 0.3, "dur": 0.6, "pitch": -6, "hp": 60, "lp": 6000, "fade_out": 200},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_003.ogg", "at": 0.12, "onset": true, "pitch": -7, "hp": 40, "lp": 4000, "gain_db": -2, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_001.ogg", "at": 0.12, "onset": true, "pitch": -9, "hp": 30, "lp": 900, "gain_db": -5, "fade_out": 60}
+]}

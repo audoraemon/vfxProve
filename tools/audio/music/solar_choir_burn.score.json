@@ -1,0 +1,5 @@
+{"length": 6.0, "bpm": 60, "out": "tools/audio/music/render/solar_choir_burn.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 2.6, "mix": 0.3}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -17, "pan": 0.0, "notes": [{"t": 0, "p": "E4", "hold": 5.8, "vel": 95}, {"t": 0, "p": "B4", "hold": 5.8, "vel": 95}, {"t": 0, "p": "E5", "hold": 5.8, "vel": 95}], "dyn": [[0, 90], [3, 105], [6, 60]]},
+  {"instrument": "violins_trem", "level_db": -23, "pan": 0.0, "notes": [{"t": 0, "p": "G#5", "hold": 5.8, "vel": 90}, {"t": 0, "p": "B5", "hold": 5.8, "vel": 90}], "dyn": [[0, 80], [3, 100], [6, 50]]},
+  {"instrument": "basses", "level_db": -22, "pan": 0.0, "notes": [{"t": 0, "p": "E2", "hold": 5.8, "vel": 90}]}
+]}

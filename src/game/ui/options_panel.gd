@@ -65,7 +65,7 @@ func _set_step(key: String, steps: int) -> void:
 		_settings.save_to(_path)  # (final review: a quit with the panel open keeps the change)
 		match key:
 			"sfx":
-				UiSound.play(&"hs_strike", -12.0, Sfx.BUS)  # one Smite crack, on the bus it is moving
+				UiSound.play(&"smite_strike", -12.0, Sfx.BUS)  # one Smite crack, on the bus it is moving
 			"ui":
 				UiSound.play(&"ui_click")
 	queue_redraw()

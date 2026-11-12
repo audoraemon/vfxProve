@@ -1,0 +1,7 @@
+{"length": 2.6, "rms_db": -13.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/breaking-rock/rock_break_0.ogg", "at": 0.0, "onset": true, "pitch": -4, "hp": 40, "lp": 7000, "fade_out": 600},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "at": 0.05, "onset": true, "pitch": -3, "hp": 40, "lp": 6000, "gain_db": -3, "fade_out": 800},
+  {"src": "lib:oga/earthquake-and-open-sesame/shake.flac", "at": 0.0, "from": 0.0, "dur": 2.5, "pitch": -3, "hp": 30, "lp": 2000, "gain_db": -4, "fade_out": 900},
+  {"src": "lib:oga/dull-explosion/explosion_dull.flac", "at": 0.0, "onset": true, "pitch": -6, "hp": 25, "lp": 800, "gain_db": -4, "fade_out": 800},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch02.mp3.flac", "at": 0.0, "onset": true, "pitch": -9, "hp": 40, "lp": 2500, "gain_db": -5, "fade_out": 60}
+]}

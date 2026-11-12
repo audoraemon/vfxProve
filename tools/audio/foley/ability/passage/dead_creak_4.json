@@ -1,0 +1,4 @@
+{"length": 1.6, "rms_db": -18.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/Door_handle_creaking.wav", "at": 0.0, "from": 0.3, "dur": 1.2, "pitch": -11, "hp": 80, "lp": 4500, "fade_in": 30, "fade_out": 300},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/door.ogg", "at": 0.0, "onset": true, "pitch": -7, "hp": 100, "lp": 6000, "gain_db": -5, "fade_out": 60}
+]}

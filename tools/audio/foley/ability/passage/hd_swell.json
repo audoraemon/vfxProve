@@ -1,0 +1,4 @@
+{"length": 3.6, "rms_db": -16.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/heaven_choir_swell.wav", "at": 0.0, "from": 0.0, "dur": 3.6, "hp": 80, "lp": 13000, "fade_out": 900},
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 0.2, "from": 0.13, "dur": 3.0, "pitch": -5, "hp": 150, "lp": 9000, "gain_db": -8, "fade_in": 3, "fade_out": 1300}
+]}

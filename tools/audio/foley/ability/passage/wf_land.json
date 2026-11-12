@@ -1,0 +1,16 @@
+{"length": 1.6, "rms_db": -14.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood01.mp3.flac", "at": 0.02, "onset": true, "pitch": -2, "hp": 80, "lp": 8000, "gain_db": -2, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood05.mp3.flac", "at": 0.05, "onset": true, "pitch": -3, "hp": 80, "lp": 8000, "gain_db": -3, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood09.mp3.flac", "at": 0.08, "onset": true, "pitch": -4, "hp": 80, "lp": 8000, "gain_db": -4, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood13.mp3.flac", "at": 0.11, "onset": true, "pitch": -2, "hp": 80, "lp": 8000, "gain_db": -5, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood17.mp3.flac", "at": 0.14, "onset": true, "pitch": -3, "hp": 80, "lp": 8000, "gain_db": -2, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood21.mp3.flac", "at": 0.17, "onset": true, "pitch": -4, "hp": 80, "lp": 8000, "gain_db": -3, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood24.mp3.flac", "at": 0.2, "onset": true, "pitch": -2, "hp": 80, "lp": 8000, "gain_db": -4, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood07.mp3.flac", "at": 0.23, "onset": true, "pitch": -3, "hp": 80, "lp": 8000, "gain_db": -5, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood15.mp3.flac", "at": 0.26, "onset": true, "pitch": -4, "hp": 80, "lp": 8000, "gain_db": -2, "fade_out": 150},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood20.mp3.flac", "at": 0.29, "onset": true, "pitch": -2, "hp": 80, "lp": 8000, "gain_db": -3, "fade_out": 150},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_001.ogg", "at": 0.08, "onset": true, "pitch": -4, "hp": 100, "lp": 7000, "gain_db": -6, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPlate_heavy_002.ogg", "at": 0.2, "onset": true, "pitch": -3, "hp": 150, "lp": 8000, "gain_db": -9, "fade_out": 60},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch03.mp3.flac", "at": 0.0, "onset": true, "pitch": -6, "hp": 40, "lp": 3000, "gain_db": -2, "fade_out": 60},
+  {"src": "lib:oga/dull-explosion/explosion_dull.flac", "at": 0.0, "onset": true, "pitch": -8, "hp": 25, "lp": 600, "gain_db": -8, "fade_out": 400}
+]}

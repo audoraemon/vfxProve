@@ -1,0 +1,7 @@
+{"length": 2.6, "rms_db": -15.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack03.mp3.flac", "at": 0.0, "onset": true, "pitch": -6, "hp": 80, "lp": 4000, "fade_out": 100},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack08.mp3.flac", "at": 0.18, "onset": true, "pitch": -7, "hp": 80, "lp": 3500, "gain_db": -3, "fade_out": 100},
+  {"src": "lib:oga/stone-door/stone_door.ogg", "at": 0.15, "from": 0.0, "dur": 1.6, "pitch": -9, "hp": 40, "lp": 2500, "fade_in": 60, "fade_out": 300},
+  {"src": "lib:wikimedia/Earthquake.wav", "at": 0.0, "from": 40.0, "dur": 2.4, "hp": 30, "lp": 1200, "gain_db": -5, "fade_in": 200, "fade_out": 800},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 10-Audio.wav", "at": 0.3, "from": 0.6, "dur": 2.0, "pitch": -6, "hp": 50, "lp": 1500, "gain_db": -8, "fade_in": 400, "fade_out": 800}
+]}

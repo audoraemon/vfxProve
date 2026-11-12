@@ -1,0 +1,6 @@
+{"length": 3.4, "bpm": 60, "out": "tools/audio/music/render/solar_choir_blaze.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 3.2, "mix": 0.32}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -15, "pan": 0.0, "notes": [{"t": 0, "p": "E4", "hold": 2.8, "vel": 125}, {"t": 0, "p": "G#4", "hold": 2.8, "vel": 125}, {"t": 0, "p": "B4", "hold": 2.8, "vel": 125}, {"t": 0, "p": "E5", "hold": 2.8, "vel": 125}], "dyn": [[0, 125], [3.4, 30]]},
+  {"instrument": "trumpet", "level_db": -20, "pan": 0.0, "notes": [{"t": 0, "p": "B4", "hold": 2.4, "vel": 120}, {"t": 0, "p": "E5", "hold": 2.4, "vel": 120}], "dyn": [[0, 120], [3.4, 30]]},
+  {"instrument": "trombones_sus", "level_db": -19, "pan": 0.0, "notes": [{"t": 0, "p": "E2", "hold": 2.6, "vel": 120}, {"t": 0, "p": "B2", "hold": 2.6, "vel": 120}, {"t": 0, "p": "E3", "hold": 2.6, "vel": 120}], "dyn": [[0, 120], [3.4, 30]]},
+  {"instrument": "cymbals", "level_db": -24, "pan": 0.0, "notes": [{"t": 0, "p": "C4", "hold": 2.0, "vel": 110}]}
+]}

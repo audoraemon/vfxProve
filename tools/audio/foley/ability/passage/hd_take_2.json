@@ -1,0 +1,4 @@
+{"length": 1.4, "rms_db": -18.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "onset": true, "dur": 0.6, "reverse": true, "pitch": 4, "hp": 400, "lp": 11000, "fade_in": 60, "fade_out": 40},
+  {"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.4, "onset": true, "pitch": 0, "hp": 400, "lp": 12000, "gain_db": -4, "fade_out": 600}
+]}

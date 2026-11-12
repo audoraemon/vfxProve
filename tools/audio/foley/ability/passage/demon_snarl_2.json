@@ -1,0 +1,4 @@
+{"length": 2.0, "rms_db": -15.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/demon-voice/DL DEMON SNARL 1.wav", "at": 0.0, "onset": true, "pitch": -2, "hp": 60, "lp": 7000, "fade_out": 300},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 4-Audio.wav", "at": 0.0, "from": 0.2, "dur": 1.2, "pitch": -6, "hp": 60, "lp": 2000, "gain_db": -10, "fade_in": 50, "fade_out": 400}
+]}

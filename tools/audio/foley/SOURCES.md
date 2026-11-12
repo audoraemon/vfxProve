@@ -81,3 +81,23 @@ the sheet the user listens with.
 - The Dominion powers no longer borrow Heaven Splitter, Nova or Judgement cues: each casts and takes hold with its own
   (`q_<key>` and `dom_*` under `ability/dominion/`).
 
+
+## Ruin and Passage (skill-tree sound audit)
+
+- Ruin (`ability/ruin/`): OpenGameArt (CC0) `35-wooden-crackshitsdestructions` (the cracks, pitched up, are the split air
+  of a bolt), `5-break-crunch-impacts`, `rain-long-thunder` and `storm-siren` (the thunder only, never the siren),
+  `100-cc0-sfx-2` thunder and stones, `earthquake-and-open-sesame`, `stone-door`, `breaking-rock`, `cave-in`,
+  `low-rumbling`, `explosions-4`, `dull-explosion`, `chunky-explosion`, `spell-sounds`, `fire-staff-sound-effects`,
+  `steam-release-sounds`, `wind1`; Wikimedia Commons `Earthquake.ogg` (public domain, igel457; converted to WAV). Choir
+  and brass for Light of Solaris from `tools/audio/music/solar_choir_*.score.json`.
+- Passage (`ability/passage/`): OpenGameArt (CC0) `iron-door`, `stone-door`, `monster-snarls` and
+  `dog-snarl-grunt-grumble` and `16-monster-growls` (the hellhounds), `demon-voice` (growls, snarls, grunts and laughter
+  only, never its words), `ghost-monster-voice-moaning-growling` (the ghosts; not the voice-line pack, whose lines are words),
+  `6-short-water-splashes`, `water-waves`, `sea-and-river-wave-sounds`, `skippy-fish-water-sound-collection`, the Monster
+  RPG 2 pack's water, door and chest, `portal-sound`, `4-space-portal-sounds`, `sick-noises`, the RPG sound pack's coins
+  and cloth; Wikimedia Commons `Door handle creaking.ogg` (public domain, stephan; converted to WAV, pitched down to a
+  door). Choir and brass for Heaven's Door from `tools/audio/music/heaven_choir_*.score.json`.
+- The Ruin and Passage powers in the skill tree no longer borrow Heaven Splitter, Judgement, Nova, the laser, the orbital,
+  the Dragon's roar, the Tsunami's water or Cinderfall's fire: each has its own cues. The hellhounds, demons and ghosts
+  that Hound Gate and Doors of the Dead let out have voices of their own (`hound_*`, `demon_*`, `ghost_*`): heard as they come
+  through, while they roam (VisitorVoices), when they bite, claw or touch, and when they fall.

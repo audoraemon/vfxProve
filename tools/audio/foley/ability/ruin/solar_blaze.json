@@ -1,0 +1,6 @@
+{"length": 3.4, "rms_db": -14.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/solar_choir_blaze.wav", "at": 0.0, "from": 0.0, "dur": 3.4, "hp": 60, "lp": 13000, "fade_out": 900},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_thunder_01.ogg", "at": 0.0, "from": 0.75, "dur": 2.5, "hp": 30, "lp": 2500, "gain_db": -3, "fade_out": 900},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 2-Audio.wav", "at": 0.0, "from": 1.0, "dur": 2.0, "hp": 100, "lp": 9000, "gain_db": -5, "fade_in": 10, "fade_out": 700},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack02.mp3.flac", "at": 0.0, "onset": true, "pitch": 4, "hp": 1500, "lp": 15000, "gain_db": -3, "fade_out": 60}
+]}

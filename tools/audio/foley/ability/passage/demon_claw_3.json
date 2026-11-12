@@ -1,0 +1,4 @@
+{"length": 1.0, "rms_db": -16.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/swipe.ogg", "at": 0.0, "onset": true, "pitch": -4, "hp": 150, "lp": 9000, "fade_out": 150},
+  {"src": "lib:oga/demon-voice/DL DEMON SNARL 3.wav", "at": 0.03, "onset": true, "pitch": -2, "hp": 60, "lp": 6000, "gain_db": -4, "fade_out": 200}
+]}

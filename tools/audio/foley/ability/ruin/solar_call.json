@@ -1,0 +1,5 @@
+{"length": 2.0, "rms_db": -17.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/solar_choir_rise.wav", "at": 0.0, "from": 0.0, "dur": 2.0, "hp": 150, "lp": 12000, "fade_out": 200},
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 1.wav", "at": 0.0, "onset": true, "dur": 1.6, "pitch": 7, "hp": 1500, "lp": 11000, "gain_db": -10, "fade_in": 600, "fade_out": 300},
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "at": 0.0, "from": 3.0, "dur": 1.9, "hp": 40, "lp": 600, "gain_db": -6, "fade_in": 800, "fade_out": 200}
+]}

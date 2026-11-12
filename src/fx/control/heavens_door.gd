@@ -267,11 +267,11 @@ func _build() -> void:
 	duration = gone_at() + 0.2
 	busy = T_FALL
 	at(T_FALL, _land)
-	at(T_FALL + 0.4, func(): ctx.play(&"nova_swell", door, -3.0))
+	at(T_FALL + 0.4, func(): ctx.play(&"hd_swell", door, -3.0))
 	at(open_at(), _open)
 	at(shut_at(), _shut)
 	at(shut_at() + T_SHUT, _rise)
-	ctx.play(&"nova_descent", door, -3.0)
+	ctx.play(&"hd_fall", door, -3.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(door)
@@ -339,8 +339,7 @@ func _land() -> void:
 			p.knock_down()
 		knocked += 1
 	ctx.env.damage_radius(door, SHOCK_R, lv_land_damage, &"stone")
-	ctx.play(&"jg_punch", door, 0.0)
-	ctx.play(&"nova_boom", door, -1.0)
+	ctx.play(&"hd_land", door, 0.0)
 	ctx.play(&"collapse_stone", door, -2.0)
 	if not DominionParts.staged(self):
 		return
@@ -391,7 +390,7 @@ func _open() -> void:
 	for d in ctx.env.decor():
 		if is_instance_valid(d) and not d.sprite_only and d.kind in GOODS and in_pull(d.at):
 			_goods.append(d)
-	_roar = ctx.play(&"tn_wind", door, -1.0)
+	_roar = ctx.play(&"hd_draw", door, -1.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(door) + Vector2(0, -DOOR_H * 0.45)
@@ -614,7 +613,7 @@ func _take_animal(a: Animal) -> void:
 func _through(at_ground: Vector2) -> void:
 	if t >= _gulp_at:
 		_gulp_at = t + GULP_EVERY
-		ctx.play(&"grav_suction", door, -4.0)
+		ctx.play(&"hd_take", door, -4.0)
 	if not DominionParts.staged(self):
 		return
 	# The door it went in by flares (Twin Doors: the one on its side).
@@ -643,7 +642,7 @@ func _shut() -> void:
 
 
 func _slam() -> void:
-	ctx.play(&"jg_slam", door, 0.0)
+	ctx.play(&"hd_shut", door, 0.0)
 	if not DominionParts.staged(self):
 		return
 	ctx.shake.add_trauma(0.55)
@@ -662,7 +661,7 @@ func _slam() -> void:
 
 ## It goes back up into the sky in its shaft of light.
 func _rise() -> void:
-	ctx.play(&"laser_depart", door, -2.0)
+	ctx.play(&"hd_rise", door, -2.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(door)
@@ -674,7 +673,7 @@ func _rise() -> void:
 
 ## The roar (a looping cue) fades over `seconds`, if it is still this door's to fade.
 func _hush(seconds: float) -> void:
-	if _roar != null and is_instance_valid(_roar) and _roar.get_meta(&"cue", &"") == &"tn_wind":
+	if _roar != null and is_instance_valid(_roar) and _roar.get_meta(&"cue", &"") == &"hd_draw":
 		ctx.fade_out(_roar, seconds)
 	_roar = null
 

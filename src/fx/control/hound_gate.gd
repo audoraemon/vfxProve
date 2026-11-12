@@ -59,6 +59,8 @@ const DUST := [Color(0.62, 0.55, 0.48, 0.55), Color(0.5, 0.44, 0.38, 0.4), Color
 ## The door, and the hounds: how many have come out.
 var mouth := Vector2.ZERO
 var visitors: Visitors
+## The hounds heard while they hunt, and their bites.
+var voices := VisitorVoices.new()
 var out := 0
 
 ## This cast's numbers at its ability level (HOUNDS, HUNT and BLOWS at level 1).
@@ -106,10 +108,9 @@ func _build() -> void:
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, _grid(), parent)
 	visitors.bitten.connect(_on_bite)
 	visitors.cut_down.connect(_on_cut_down)
-	ctx.play(&"hs_rumble", mouth, -2.0)
-	at(0.1, func(): ctx.play(&"jg_rumble", mouth, 0.0))
+	ctx.play(&"hg_rise", mouth, -2.0)
 	at(T_RISE, _risen)
-	at(T_OPEN - DOORS, func(): ctx.play(&"jg_rise", mouth, 0.0))
+	at(T_OPEN - DOORS, func(): ctx.play(&"hg_doors", mouth, 0.0))
 	at(T_OPEN, _open)
 	for k in lv_hounds:
 		at(T_OPEN + float(k) * OUT_EVERY, _release)
@@ -201,7 +202,7 @@ func slain() -> int:
 
 ## The gate is up: it settles with a thud and a ring of dust, and its doors begin to part (the gate draws them).
 func _risen() -> void:
-	ctx.play(&"jg_crumble", mouth, -6.0)
+	ctx.play(&"hg_settle", mouth, -6.0)
 	if not DominionParts.staged(self):
 		return
 	ctx.shake.kick(Vector2(0, 2.5))
@@ -239,13 +240,13 @@ func _burn_away() -> void:
 			FxParts.smoke(self, sp, 6.0, 30.0, BURN, Vector2(16, 40), Vector2(2, 5), Vector2(0.5, 1.0), Color(RIM, 0.6), PITCH)
 			FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -6), 12, FxParts.EMBER_LIFE, Vector2(30, 120), Vector2(40, 140))
 	if not left.is_empty():
-		ctx.play(&"dr_roar", left[0].ground_pos, -9.0)
+		ctx.play(&"hound_burn", left[0].ground_pos, -9.0)
 	visitors.clear()
 
 
 ## The doors close behind the last hound (the gate draws them shut).
 func _shut() -> void:
-	ctx.play(&"jg_crumble", mouth, -6.0)
+	ctx.play(&"hg_shut", mouth, -6.0)
 	if not DominionParts.staged(self):
 		return
 	_glow.tween_param("intensity", 1.0, 0.3, T_SHUT, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
@@ -253,7 +254,7 @@ func _shut() -> void:
 
 ## The gate goes back under the ground it came from.
 func _sink() -> void:
-	ctx.play(&"jg_rumble", mouth, 0.0)
+	ctx.play(&"hg_sink", mouth, 0.0)
 	if not DominionParts.staged(self):
 		return
 	_glow.tween_param("intensity", 0.3, 0.0, SINK, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
@@ -284,7 +285,7 @@ func _release() -> void:
 		var eyes := Eyes.new()
 		eyes.hound = a
 		a.add_child(eyes)
-	ctx.play(&"dr_roar", spot, -3.0)
+	ctx.play(&"hound_howl", spot, -3.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(spot)
@@ -303,6 +304,7 @@ func _release() -> void:
 
 ## A bite: the first one's outcry is the town's (a danger there, the alarm up), every one a shout.
 func _on_bite(a: Animal, victim: Person, first: bool) -> void:
+	voices.bite(a, ctx.play)
 	ctx.play(&"cit_shout", victim.ground_pos, 0.0)
 	if first and ctx.crowd != null:
 		ctx.crowd.fright(victim.ground_pos, 2.0, 0.6, 3.0, 6.0, 8.0, &"bite", true)
@@ -316,7 +318,7 @@ func _on_bite(a: Animal, victim: Person, first: bool) -> void:
 ## Cut down: it bursts into black smoke and embers (its node is freed by the Visitors).
 func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 	_stop_trail(a)
-	ctx.play(&"dr_roar", at_ground, -7.0)
+	ctx.play(&"hound_die", at_ground, -7.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(at_ground)
@@ -334,6 +336,7 @@ func _stop_trail(a: Animal) -> void:
 
 func _fx_process(delta: float) -> void:
 	visitors.step(delta)
+	voices.step(delta, visitors.living(), ctx.play)
 	if not DominionParts.staged(self):
 		return
 	# The trails follow the hounds; a hound gone takes its trail with it.

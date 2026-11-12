@@ -195,11 +195,11 @@ func _build() -> void:
 		duration = stand_end() + SOAKED_FOR + 0.3
 	busy = T_OPEN
 	at(T_OPEN, _open)
-	at(T_OPEN + 0.3, func(): ctx.play(&"ts_surge", mouth, -3.0))
-	at(T_OPEN + 0.5, func(): _roar = ctx.play(&"tn_wind", mouth, -2.0))
+	at(T_OPEN + 0.3, func(): ctx.play(&"deep_spread", mouth, -3.0))
+	at(T_OPEN + 0.5, func(): _roar = ctx.play(&"deep_swirl", mouth, -2.0))
 	var drip := T_OPEN + DRIP_EVERY
 	while drip < T_OPEN + lv_span:
-		at(drip, func(): ctx.play(&"ts_drip", mouth, 0.0))
+		at(drip, func(): ctx.play(&"deep_gulp", mouth, 0.0))
 		drip += DRIP_EVERY
 	if standing:
 		# The flood lying still: a drip now and then, until it has soaked away.
@@ -208,7 +208,7 @@ func _build() -> void:
 			at(drip, func(): ctx.play(&"ts_drip", mouth, -4.0))
 			drip += DRIP_EVERY
 	at(T_OPEN + lv_span, _drain)
-	ctx.play(&"hs_rumble", mouth, -2.0)
+	ctx.play(&"deep_open", mouth, -2.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(mouth)
@@ -306,7 +306,7 @@ func _build() -> void:
 
 ## The door is open: the water bursts out of it and begins to turn, and the circle is a danger the town knows.
 func _open() -> void:
-	ctx.play(&"ts_crash", mouth, 0.0)
+	ctx.play(&"deep_burst", mouth, 0.0)
 	if ctx.crowd != null:
 		ctx.crowd.threats.register(mouth, lv_radius, THREAT, lv_span, THREAT_SIGHT, THREAT_SOUND, &"water")
 	if not DominionParts.staged(self):
@@ -338,7 +338,7 @@ func _open() -> void:
 
 ## The span is over: the water runs back into the door, and the torrent's roar dies with it.
 func _drain() -> void:
-	ctx.play(&"ts_roar", mouth, -4.0)
+	ctx.play(&"deep_drain", mouth, -4.0)
 	_hush(DRAIN)
 	if not DominionParts.staged(self):
 		return
@@ -351,7 +351,7 @@ func _drain() -> void:
 
 ## The roar (a looping cue) fades over `seconds`, if it is still this door's to fade.
 func _hush(seconds: float) -> void:
-	if _roar != null and is_instance_valid(_roar) and _roar.get_meta(&"cue", &"") == &"tn_wind":
+	if _roar != null and is_instance_valid(_roar) and _roar.get_meta(&"cue", &"") == &"deep_swirl":
 		ctx.fade_out(_roar, seconds)
 	_roar = null
 
@@ -433,7 +433,7 @@ func _take(p: Person) -> void:
 	drowned += 1
 	if t >= _gulp_at:
 		_gulp_at = t + GULP_EVERY
-		ctx.play(&"grav_suction", mouth, -3.0)
+		ctx.play(&"deep_take", mouth, -3.0)
 	if not DominionParts.staged(self):
 		return
 	# Where they went over the lip: a splash, and a ring closing on the hole.

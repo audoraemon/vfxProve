@@ -1,0 +1,6 @@
+{"length": 2.4, "rms_db": -15.0, "reverb": {"rt60": 3.6, "mix": 0.3, "predelay_ms": 40, "damp": 4000}, "layers": [
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack03.mp3.flac", "at": 0.0, "onset": true, "pitch": 6, "hp": 1500, "lp": 15000, "fade_out": 80},
+  {"src": "lib:oga/spell-sounds/electricspell.ogg", "at": 0.0, "onset": true, "dur": 0.3, "pitch": -2, "hp": 900, "lp": 12000, "gain_db": -7, "fade_out": 100},
+  {"src": "lib:oga/storm-siren/storm_3_siren.ogg", "at": 0.03, "from": 7.6, "dur": 2.2, "hp": 40, "lp": 6000, "gain_db": -2, "fade_in": 5, "fade_out": 900},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch02.mp3.flac", "at": 0.0, "onset": true, "pitch": -8, "hp": 40, "lp": 2000, "gain_db": -6, "fade_out": 200}
+]}

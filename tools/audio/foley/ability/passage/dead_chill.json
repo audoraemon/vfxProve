@@ -1,0 +1,5 @@
+{"length": 3.0, "rms_db": -17.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/wind1/wind4.wav", "at": 0.0, "from": 30.0, "dur": 2.9, "pitch": 2, "hp": 300, "lp": 8000, "fade_in": 600, "fade_out": 900},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.3, "from": 0.2, "dur": 2.2, "pitch": -5, "hp": 200, "lp": 5000, "gain_db": -5, "fade_in": 400, "fade_out": 800},
+  {"src": "lib:oga/droning-sound-effects/drone53.wav", "at": 0.0, "from": 15.0, "dur": 2.8, "hp": 40, "lp": 800, "gain_db": -10, "fade_in": 600, "fade_out": 900}
+]}

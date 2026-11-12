@@ -1,0 +1,6 @@
+{"length": 2.0, "rms_db": -14.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/6-short-water-splashes/ezwa-water_splash/water_splash-01.flac", "at": 0.0, "onset": true, "pitch": -6, "hp": 60, "lp": 8000, "fade_out": 400},
+  {"src": "lib:oga/6-short-water-splashes/ezwa-water_splash/water_splash-04.flac", "at": 0.05, "onset": true, "pitch": -8, "hp": 50, "lp": 6000, "gain_db": -3, "fade_out": 400},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Wave.ogg", "at": 0.0, "onset": true, "pitch": -4, "hp": 60, "lp": 7000, "gain_db": -4, "fade_out": 700},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_000.ogg", "at": 0.0, "onset": true, "pitch": -10, "hp": 25, "lp": 700, "gain_db": -6, "fade_out": 60}
+]}

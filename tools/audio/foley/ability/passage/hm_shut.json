@@ -1,0 +1,5 @@
+{"length": 1.4, "rms_db": -15.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 7-Audio.wav", "at": 0.0, "from": 0.0, "dur": 0.6, "pitch": -3, "hp": 80, "lp": 7000, "fade_out": 300},
+  {"src": "lib:oga/stone-door/stone_door.ogg", "at": 0.1, "from": 0.8, "dur": 0.8, "pitch": -4, "hp": 50, "lp": 3000, "gain_db": -3, "fade_out": 200},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_003.ogg", "at": 0.55, "onset": true, "pitch": -8, "hp": 30, "lp": 1000, "gain_db": -4, "fade_out": 60}
+]}

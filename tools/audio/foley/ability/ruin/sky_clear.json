@@ -1,0 +1,4 @@
+{"length": 4.6, "rms_db": -18.0, "reverb": {"rt60": 3.6, "mix": 0.3, "predelay_ms": 40, "damp": 4000}, "layers": [
+  {"src": "lib:oga/wind1/wind3.wav", "at": 0.0, "from": 20.0, "dur": 4.4, "hp": 100, "lp": 5000, "fade_in": 50, "fade_out": 3000},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_thunder_01.ogg", "at": 0.6, "from": 0.7, "dur": 3.5, "hp": 30, "lp": 450, "gain_db": -5, "fade_out": 1500}
+]}

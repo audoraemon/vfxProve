@@ -129,7 +129,7 @@ static func _panel(t) -> void:
 	t.check(UiSound.asked.back() == &"ui_click", "changing Interface plays ui_click")
 	p.row = 1
 	p.step(1)
-	t.check(UiSound.asked.back() == &"hs_strike", "changing Sounds plays one Smite crack")
+	t.check(UiSound.asked.back() == &"smite_strike", "changing Sounds plays one Smite crack")
 	var esc := _key(KEY_ESCAPE)
 	p._unhandled_input(esc)
 	t.check(closed[0] == 1, "Esc closes once (%d)" % closed[0])

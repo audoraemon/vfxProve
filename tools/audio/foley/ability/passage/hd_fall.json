@@ -1,0 +1,5 @@
+{"length": 1.6, "rms_db": -16.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/heaven_choir_fall.wav", "at": 0.0, "from": 0.0, "dur": 1.6, "hp": 120, "lp": 12000, "fade_out": 100},
+  {"src": "lib:oga/wierd-whooshes/weird_whoosh_sounds_-_whoosh_12_0.mp3", "at": 0.0, "onset": true, "dur": 1.5, "pitch": -6, "hp": 150, "lp": 6000, "gain_db": -5, "fade_in": 200, "fade_out": 100},
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "at": 0.2, "from": 30.0, "dur": 1.4, "hp": 40, "lp": 800, "gain_db": -6, "fade_in": 600, "fade_out": 100}
+]}

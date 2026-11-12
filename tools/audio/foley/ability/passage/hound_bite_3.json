@@ -1,0 +1,4 @@
+{"length": 0.8, "rms_db": -16.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/chomp.ogg", "at": 0.0, "onset": true, "pitch": -8, "hp": 80, "lp": 7000, "fade_out": 100},
+  {"src": "lib:oga/dog-snarl-grunt-grumble/dog/dog-snarl.flac", "at": 0.02, "onset": true, "pitch": -6, "hp": 80, "lp": 5000, "gain_db": -3, "fade_out": 150}
+]}

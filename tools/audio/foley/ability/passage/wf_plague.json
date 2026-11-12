@@ -1,0 +1,5 @@
+{"length": 2.0, "rms_db": -18.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/sick-noises/sickness.wav", "at": 0.0, "from": 0.0, "dur": 1.0, "pitch": -1, "hp": 150, "lp": 8000, "fade_out": 200},
+  {"src": "lib:oga/sick-noises/sickness.wav", "at": 0.9, "from": 2.3, "dur": 1.0, "pitch": -2, "hp": 150, "lp": 7000, "gain_db": -4, "fade_out": 300},
+  {"src": "lib:oga/droning-sound-effects/drone54.wav", "at": 0.0, "from": 10.0, "dur": 2.0, "hp": 60, "lp": 1500, "gain_db": -14, "fade_in": 300, "fade_out": 600}
+]}

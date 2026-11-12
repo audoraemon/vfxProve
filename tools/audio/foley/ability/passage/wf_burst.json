@@ -1,0 +1,5 @@
+{"length": 2.0, "rms_db": -15.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/03_explosions_destruction/BreakGlass_02_s01.wav", "at": 0.0, "onset": true, "pitch": -4, "hp": 200, "lp": 12000, "fade_out": 300},
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.05, "onset": true, "pitch": -4, "hp": 60, "lp": 8000, "gain_db": -2, "fade_out": 200},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 10-Audio.wav", "at": 0.05, "from": 0.6, "dur": 1.8, "hp": 80, "lp": 8000, "gain_db": -3, "fade_in": 20, "fade_out": 700}
+]}

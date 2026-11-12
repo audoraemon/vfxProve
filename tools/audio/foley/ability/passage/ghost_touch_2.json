@@ -1,0 +1,4 @@
+{"length": 1.2, "rms_db": -18.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.6, "dur": 0.8, "reverse": true, "pitch": -3, "hp": 300, "lp": 6000, "fade_in": 200, "fade_out": 100},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/TouchofDeath.ogg", "at": 0.3, "onset": true, "pitch": -2, "hp": 500, "lp": 10000, "gain_db": -5, "fade_out": 300}
+]}

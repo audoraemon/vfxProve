@@ -245,7 +245,7 @@ static func _hits_and_lantern(t, lufs: Dictionary, median: float) -> void:
 ## The reader itself: a few known calls, so a parser that silently reads nothing cannot pass the floor by default.
 static func _sanity(t) -> void:
 	var smite := plays("res://src/fx/ruin/smite.gd")
-	t.check(smite.has([&"hs_strike", -3.0]) and smite.has([&"orb_charge", -4.0]), "reads smite's cues and offsets (%s)" % [smite])
+	t.check(smite.has([&"smite_strike", -3.0]) and smite.has([&"smite_call", -4.0]), "reads smite's cues and offsets (%s)" % [smite])
 	var hs := plays("res://src/fx/set2/heaven_splitter.gd")
 	t.check(hs.has([&"hs_erupt", -2.0]), "a conditional offset counts as its largest literal (%s)" % [hs])
 	var bare := plays("res://src/fx/set2/judgement_of_the_ancients.gd")

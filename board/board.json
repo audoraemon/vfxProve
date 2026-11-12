@@ -1,10 +1,10 @@
 {
- "hash": "d4ef94648682c9c4",
- "updated": "2026-11-13T00:34:38+07:00",
+ "hash": "d97b1bfc74254934",
+ "updated": "2026-11-13T03:43:07+07:00",
  "changes": {
-  "date": "<t:1794504878:f>",
+  "date": "<t:1794516187:f>",
   "items": [
-   "New: Death Authority: 10 powers built (god branch)"
+   "New: Passage doors clean up when torn down"
   ]
  },
  "snapshot": {
@@ -756,6 +756,15 @@
     "branch": "feat/capital-city",
     "updated": "2026-10-09",
     "order": 13
+   },
+   "passage-doors-teardown": {
+    "title": "Passage doors clean up when torn down",
+    "status": "done",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-13",
+    "order": 3
    },
    "passage-levels-built": {
     "title": "Passage ability levels built (god branch)",
@@ -1614,19 +1623,27 @@
   "branches": [
    {
     "name": "god/death-powers",
-    "ahead": 25,
+    "ahead": 26,
     "behind": 46,
     "date": "2026-11-13",
-    "subject": "test: the calm-citizen LOD check staggers by the count Person reads",
+    "subject": "fix: Hound Gate, Doors of the Dead and Door to the Deep clean up when torn down, and a freed victim breaks nothing",
     "pushed": true
    },
    {
     "name": "god/decree-powers",
-    "ahead": 18,
+    "ahead": 20,
     "behind": 46,
     "date": "2026-11-13",
-    "subject": "dev: the Decree bots play the real Decree tree (Leaving + Breathing Is Prohibited)",
+    "subject": "dev: Harvest x Decree traps carters in the cell; Decree's gaps written down",
     "pushed": false
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-13",
+    "subject": "feat: children heard in the town; calm and tension music before the battle",
+    "pushed": true
    },
    {
     "name": "feat/god-progression",

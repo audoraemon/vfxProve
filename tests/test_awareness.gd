@@ -11,7 +11,7 @@ const FROM := {
 	"judgement": ["T_RISE"], "glacial": ["T_ERUPT"], "solaris": ["T_CHARGE"], "schism": ["T_BREAK"], "nova": ["T_IMPACT"],
 	"tempest": ["T_GATHER"], "scatter": ["T_FIRST"], "shatter": ["T_CRACK"], "windfall": ["T_DROP"],
 	"hellspark": ["T_OPEN"], "pilgrim": ["T_FLOW"], "deep": ["T_OPEN"], "houndgate": ["T_OPEN", "OUT_EVERY"],
-	"heavendoor": ["T_FALL"], "deaddoors": ["T_CHILL", "OUT_FIRST"],
+	"heavendoor": ["T_FALL"], "deaddoors": ["T_CHILL", "OUT_FIRST"], "raise": ["T_RISE"],
 }
 
 

@@ -10,11 +10,11 @@ const V07_COOLDOWNS := {
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
 	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
-	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors"]
+	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors", "raise"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 60, "60 powers")
+	t.check(PowerBook.POWERS.size() == 61, "61 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -39,7 +39,7 @@ static func run(t) -> void:
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
-	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "tornado",
+	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "raise", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "tornado",
 		"pestilence", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion",
 		"anathema", "sanctuary", "curfew", "allroads", "yesterday", "foldward", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "abolition", "tempest", "shatter", "everydoor", "schism", "fargate", "heavendoor", "deaddoors", "nova"],
@@ -58,7 +58,7 @@ static func run(t) -> void:
 		"every power has a known Authority, and every Authority a title")
 	t.check(Array(PowerBook.of_authority("veil")) == ["doom", "blight", "unseen"] and PowerBook.authority_of("nova") == "ruin",
 		"powers by Authority (veil: %s)" % [PowerBook.of_authority("veil")])
-	t.check(PowerBook.authority_title("death") == "DEATH" and Array(PowerBook.of_authority("death")) == ["deathmark", "pestilence"] and PowerBook.authority_title("nope") == "",
+	t.check(PowerBook.authority_title("death") == "DEATH" and Array(PowerBook.of_authority("death")) == ["deathmark", "raise", "pestilence"] and PowerBook.authority_title("nope") == "",
 		"an Authority's title, and none for a stranger")
 
 	# v0.08 prices and cooldowns (spec §2): a price of 1 to 4 DP from the loadout budget, and a cooldown never shorter

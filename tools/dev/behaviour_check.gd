@@ -60,8 +60,9 @@ extends SceneTree
 ##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac|cross] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
-##          (a power that acts on walkers has some: The Folded Ward); --zoom frames a wide area (default 1.5);
+##          [--setup=rite|evac|cross|body] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
+##          (a power that acts on walkers has some: The Folded Ward); --setup=body kills the citizen nearest --at and casts
+##          on their body (Raise the Dead, --mode=); --zoom frames a wide area (default 1.5);
 ##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
 ##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
@@ -1346,6 +1347,19 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		crowd.alarms._city_at = crowd._clock - AlarmManager.REGROUP_SECONDS
 		crowd.add_alarm(100.0)
 		await _frames(10 * 60)
+	elif setup == "body":
+		# A body to raise (Raise the Dead): the citizen out in the open nearest the cast falls where they stand (frenzy, a whole body:
+		# the ledger is on, the power is in the loadout), and the cast lands on them a moment later.
+		var best := INF
+		var dead: Person = null
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) < best:
+				best = p.ground_pos.distance_to(at)
+				dead = p
+		if dead != null:
+			at = dead.ground_pos
+			crowd._field.kill(dead, &"frenzy")
+		await _frames(2 * 60)
 	elif setup == "cross":
 		# The CROSSERS citizens nearest the cast set off across it, each to the far side of the cast from where it stands.
 		var near: Array[Person] = []
@@ -1373,6 +1387,9 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 				who = p
 		at = near
 	var extra := {}
+	var mode_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--mode")
+	if mode_arg != "":
+		extra["mode"] = mode_arg  # a power with modes (Raise the Dead's ZOMBIE or SPIRIT)
 	# The camera's ground point: the cast, or for a whisper halfway along the walk, so the walk stays in frame.
 	var look := at
 	if whisper:

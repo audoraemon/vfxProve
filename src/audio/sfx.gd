@@ -119,6 +119,10 @@ const CATALOG := {
 	&"q_blight_hit": {"path": "res://assets/audio/ability/quiet/q_blight_hit_%d.wav", "variants": 4, "db": -0.2, "voices": 3, "jitter": 0.08},
 	&"q_deathmark": {"path": "res://assets/audio/ability/quiet/q_deathmark.wav", "db": -0.2},
 	&"q_deathmark_hit": {"path": "res://assets/audio/ability/quiet/q_deathmark_hit.wav", "db": -0.7},
+	# Raise the Dead (Death I, tools/audio/foley/ability/death/): the dead getting up -- bone grinding under a cold low choir's breath -- and
+	# the spirit's wail (its rising, and each possession).
+	&"raise_rise": {"path": "res://assets/audio/ability/death/raise_rise.wav", "db": 0.0},
+	&"raise_wail": {"path": "res://assets/audio/ability/death/raise_wail.wav", "db": 0.0},
 	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
 	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
 	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},

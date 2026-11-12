@@ -2189,6 +2189,15 @@ func hold_string() -> void:
 	_held_string = true
 
 
+## The whisper (or the whispered fight) on this person ends now, as if it had worn off (_wake(), stop_fighting()): what lays a whisper
+## for a fixed time of its own lets them go with it (Raise the Dead's spirit leaving its host). Nothing for anyone not whispered.
+func end_whisper() -> void:
+	if mind == Mind.WHISPERED:
+		_wake()
+	elif mind == Mind.FIGHT and _ordered:
+		stop_fighting()
+
+
 ## Procession (Will-o'-Wisp level 5): the light a lured person stares at has moved; their goal and the spot they watch move to `spot`.
 ## Only for someone alive and still staring at a light (mind OBSERVE, lured): true when it took. Its stare (_observe_left) runs on.
 func relure(spot: Vector2) -> bool:

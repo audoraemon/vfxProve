@@ -52,6 +52,13 @@ const POWERS := [
 		"blurb": "One person grows frail and slow, then dies. The body draws a crowd.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
 		"quiet": true, "authority": "death"},
+	{"key": "raise", "name": "Raise the Dead", "path": "res://src/fx/death/raise_the_dead.gd",
+		"blurb": "A body rises to attack, or its soul to terrify and possess.",
+		"dp": 1, "cooldown": 25.0, "aim": "click", "needs": "body",
+		"shape": "click a body: ZOMBIE -- it gets up for 30 s and hunts the nearest, and whoever it kills gets up too, 3 in all; SPIRIT -- its soul rises for 20 s, everyone within 3 flees, and a press on someone within 4 of it possesses them for 5 s with Mind Whisper's orders, 3 in all",
+		"authority": "death", "modes": [
+			{"key": "zombie", "name": "ZOMBIE"},
+			{"key": "spirit", "name": "SPIRIT", "needs": "soul"}]},
 	{"key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd",
 		"blurb": "Nobody in the circle can leave it for a time.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
@@ -454,6 +461,9 @@ const REACH := {
 	"pilgrim": [6.0, 9.0, 0.4, 15.0],
 	"deep": [5.0, 8.0, 0.4, 4.0],
 	"houndgate": [6.0, 9.0, 0.6, 30.0],
+	# Raise the Dead: the dead getting up in the street is seen and heard as a hound gate's hounds are; the danger lasts the
+	# zombies' 30 s (a spirit's is its own fright)
+	"raise": [6.0, 9.0, 0.6, 30.0],
 	# Heaven's Door: a door taller than a house falling out of a shaft of light is seen and heard across the town, as the
 	# Light of Solaris is; the danger lasts its opening and its pull
 	"heavendoor": [16.0, 22.0, 0.9, 16.0],
@@ -471,6 +481,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
+	"raise": 0.8,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -742,7 +753,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

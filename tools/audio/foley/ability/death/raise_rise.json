@@ -1,0 +1,8 @@
+{"length": 2.4, "rms_db": -15.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 3800}, "eq": [["lowshelf", 160, -3.0], ["peak", 2600, 1.5, 0.9]], "layers": [
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-male-a2.wav", "at": 0.0, "dur": 2.3, "pitch": -2, "lp": 2200, "hp": 70, "fade_in": 450, "fade_out": 800, "gain_db": -9},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.05, "dur": 1.6, "pitch": -2, "lp": 4200, "hp": 150, "fade_in": 200, "fade_out": 500, "gain_db": -9},
+  {"src": "lib:oga/stonerockorwoodmovednotick/stone_rock_or_wood_moved_no_tick.mp3", "at": 0.15, "onset": true, "dur": 1.2, "pitch": 4, "lp": 5200, "hp": 160, "fade_in": 60, "fade_out": 300, "gain_db": -4},
+  {"src": "lib:oga/tree-creaking/tree_creak_0.ogg", "at": 0.35, "onset": true, "dur": 1.0, "pitch": 3, "lp": 4800, "hp": 200, "fade_in": 40, "fade_out": 250, "gain_db": -5},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch02.mp3.flac", "at": 0.55, "onset": true, "pitch": 3, "lp": 6000, "hp": 180, "fade_out": 200, "gain_db": -4},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_wood_breaking_02.ogg", "at": 0.8, "onset": true, "dur": 0.6, "pitch": 5, "lp": 6500, "hp": 300, "fade_out": 200, "gain_db": -8}
+]}

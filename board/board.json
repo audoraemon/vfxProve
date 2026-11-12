@@ -1,12 +1,10 @@
 {
- "hash": "b9a18cee9c6310e5",
- "updated": "2026-11-12T10:47:34+07:00",
+ "hash": "a3647765541de771",
+ "updated": "2026-11-12T18:49:17+07:00",
  "changes": {
-  "date": "<t:1794455254:f>",
+  "date": "<t:1794484157:f>",
   "items": [
-   "Done: Soldier jobs: guards at fires, rubble piles, digging, watch posts",
-   "New: Gaze banner understates rise from multi-death strikes",
-   "New: Fix Sermon B (Capital) at 0/3 scripted wins"
+   "New: Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit)"
   ]
  },
  "snapshot": {
@@ -843,6 +841,15 @@
     "updated": "2026-11-12",
     "order": 909
    },
+   "sound-audit-ruin-passage": {
+    "title": "Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit)",
+    "status": "done",
+    "area": "Sound",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-12",
+    "order": 910
+   },
    "sound-fire-placed": {
     "title": "Fire where it burns (sound)",
     "status": "done",
@@ -1588,25 +1595,41 @@
   },
   "branches": [
    {
-    "name": "god/skill-tree-ui",
-    "ahead": 285,
-    "behind": 31,
+    "name": "god/death-powers",
+    "ahead": 299,
+    "behind": 42,
     "date": "2026-11-12",
-    "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
+    "subject": "feat: Pale Reign -- a district drains of colour and life; its dead rise pale",
+    "pushed": false
+   },
+   {
+    "name": "god/decree-powers",
+    "ahead": 292,
+    "behind": 42,
+    "date": "2026-11-12",
+    "subject": "assets: Breathing Is Prohibited's icon and draft clip; its haze reads on town ground",
+    "pushed": false
+   },
+   {
+    "name": "merge/god-into-dm",
+    "ahead": 286,
+    "behind": 3,
+    "date": "2026-11-12",
+    "subject": "test: re-record references after merging Develop-Main",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 272,
-    "behind": 31,
+    "behind": 42,
     "date": "2026-11-12",
     "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
     "pushed": true
    },
    {
     "name": "feat/children",
-    "ahead": 7,
-    "behind": 31,
+    "ahead": 0,
+    "behind": 35,
     "date": "2026-11-11",
     "subject": "feat: cuter children: four chibi PixelLab kids (child_a-d) drawn 15 px tall",
     "pushed": true
@@ -1614,7 +1637,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 215,
-    "behind": 148,
+    "behind": 159,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1622,7 +1645,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 433,
+    "behind": 444,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1630,7 +1653,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 391,
+    "behind": 402,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1639,7 +1662,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-12",
-   "subject": "test: re-record references after merging Develop-Main"
+   "subject": "fix: the Lantern's flare moans without words"
   }
  }
 }

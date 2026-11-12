@@ -84,6 +84,13 @@ static func _statuses(t) -> void:
 	t.check(LawMark.kind_of(a) == &"bound" and not LawMark.unseen_by_all(a) and not LawMark.unseen_by_guards(a) and not LawMark.wanted(a)
 		and seen.call() == [true, true, true, true], "BOUND changes no sight")
 	LawMark.lift(a, 3)
+	LawMark.set_law(a, &"nobody", 5.0, 7)
+	LawMark.set_law(a, &"bound", 5.0, 8)
+	t.check(LawMark.kind_of(a) == &"nobody" and LawMark.unseen_by_all(a) and seen.call() == [false, false, false, false],
+		"BOUND set over NOBODY: he is still NOBODY (BOUND never hides another law)")
+	LawMark.lift(a, 7)
+	t.check(LawMark.kind_of(a) == &"bound" and seen.call() == [true, true, true, true], "NOBODY lifted: BOUND alone, and seen")
+	LawMark.lift(a, 8)
 	LawMark.set_law(a, &"nonsense", 5.0, 4)
 	LawMark.set_law(a, &"nobody", 0.0, 5)
 	t.check(a.law == null, "an unknown kind or no time sets no law")

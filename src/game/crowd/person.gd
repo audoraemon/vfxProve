@@ -1890,6 +1890,11 @@ func is_asleep() -> bool:
 	return mind == Mind.ASLEEP
 
 
+## Seconds of sleep left (0 when awake).
+func sleep_left() -> float:
+	return _sleep_left if mind == Mind.ASLEEP else 0.0
+
+
 ## Hypnotized for `seconds` (Clear Mind): it senses nothing special -- no danger frightens it, nothing makes it look,
 ## no evacuation calls it (fearless_left) -- and goes on with what it was doing. A fright it was in is dropped for its
 ## day (a soldier's, his post); unlike reassure() it does not go when the trance ends: it never knew. True when it took.

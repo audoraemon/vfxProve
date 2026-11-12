@@ -64,6 +64,7 @@ extends SceneTree
 ##          (a power that acts on walkers has some: The Folded Ward); --zoom frames a wide area (default 1.5);
 ##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
+##          --to=x,y gives a two-click power its second place, the citizen nearest it (Bound in Law);
 ##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
 ##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
 ##          open paving south of the market);
@@ -1379,6 +1380,17 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		var to := MindWhisperFx.clamp_to(crowd._grid, at, at + Vector2(2.2, -2.2))
 		extra = {"to": to, "target": who}
 		look = at.lerp(to, 0.5)
+	var to_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--to")
+	if to_arg != "":
+		# A two-click power's second place (Bound in Law): the citizen nearest it, not the one the cast is aimed at.
+		var txy := to_arg.split(",")
+		var want := Vector2(float(txy[0]), float(txy[1]))
+		var best_to := INF
+		extra["to"] = want
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and p != who and p.ground_pos.distance_to(want) < best_to:
+				best_to = p.ground_pos.distance_to(want)
+				extra["to"] = p.ground_pos
 	var look_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--look")
 	if look_arg != "":
 		var off := look_arg.split(",")

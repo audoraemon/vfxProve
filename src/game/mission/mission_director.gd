@@ -181,6 +181,12 @@ func busy(_p: Person) -> bool:
 	return false
 
 
+## Virtual (Decree, spec 5.4): `p` is held by this director's seizure now -- seized and held or marched by a guard. Bound in Law
+## asks it to hold his partner where he stands. False by default.
+func is_seized(_p: Variant) -> bool:
+	return false
+
+
 ## The walkable point at the Temple's door, 0.6 south of its south face (v0.11.2): where a Herald runs to and the Lantern-Bearer sets out
 ## from. Named for the Lantern because several directors keep a `temple_door` variable of their own (Mira's, the Vigil Flame, Broken
 ## Lanterns, Exodus), which a method of that name would clash with; it is the same point.

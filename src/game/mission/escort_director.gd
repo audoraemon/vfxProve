@@ -547,6 +547,14 @@ func _seize(c: Charge, by: Person) -> void:
 	(c.man as Person).go_duty(by.ground_pos)
 
 
+## A charge held by his seizer (Decree, spec 5.4: Bound in Law holds his partner while he is held).
+func is_seized(p: Variant) -> bool:
+	for c in charges:
+		if c.held and is_instance_valid(c.man) and c.man == p:
+			return true
+	return false
+
+
 ## Charge `c`'s seizer lets go of him (v0.11 M2): the seizer goes back to the town's post if still on the errand, and he holds where he
 ## stands.
 func _release(c: Charge) -> void:

@@ -1,3 +1,3 @@
 @echo off
-rem Decree: Tier 1 (Leaving Is Prohibited, Breathing Is Prohibited), Tier 2 (Redefine), Magnify. (The Bell Lies, Abolition: try.bat belllies abolition.)
-call "%~dp0..\try.bat" noleave breath redefine magnify
+rem Decree: Tier 1 (Leaving Is Prohibited, Breathing Is Prohibited), Tier 2 (Redefine, Bound in Law). (The Bell Lies, Magnify, Abolition: try.bat belllies magnify abolition.)
+call "%~dp0..\try.bat" noleave breath redefine bound

@@ -52,12 +52,17 @@ static func lift(p: Variant, owner: int) -> void:
 	_settle(p as Person)
 
 
-## What the law says `p` is: the latest law still holding, &"" for none.
+## What the law says `p` is: the latest law still holding, &"" for none. BOUND changes no sight, so it is the answer only
+## when no other law holds: binding a man named NOBODY or CRIMINAL leaves him that.
 static func kind_of(p: Variant) -> StringName:
 	if not _held(p):
 		return &""
 	var laws_now: Dictionary = (p as Person).law.laws
-	return laws_now[laws_now.keys().back()][0] if not laws_now.is_empty() else &""
+	var keys := laws_now.keys()
+	for i in range(keys.size() - 1, -1, -1):
+		if laws_now[keys[i]][0] != BOUND:
+			return laws_now[keys[i]][0]
+	return BOUND if not laws_now.is_empty() else &""
 
 
 ## No guard sees `p` as a suspect: NOBODY or OFFICER.

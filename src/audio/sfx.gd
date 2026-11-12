@@ -127,6 +127,7 @@ const CATALOG := {
 	&"q_magnify": {"path": "res://assets/audio/ability/quiet/q_magnify.wav", "db": -1.3},
 	&"q_abolition": {"path": "res://assets/audio/ability/quiet/q_abolition.wav", "db": 1.0},
 	&"q_redefine": {"path": "res://assets/audio/ability/quiet/q_redefine.wav", "db": 3.5},
+	&"q_bound": {"path": "res://assets/audio/ability/quiet/q_bound.wav", "db": 0.5},
 	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
 	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind.wav", "db": 0.0},
 	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema.wav", "db": 0.0},

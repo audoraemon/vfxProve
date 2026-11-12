@@ -1,7 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited and Redefine.
+Breathing Is Prohibited, Redefine and Bound in Law.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -427,8 +427,62 @@ def redefine():
     finish(rgb, "redefine")
 
 
+def bound():
+    """Bound in Law (Decree): on an ink field, two dark figures, head and shoulders, one low at the left and one high at the
+    right, each edged in brass; a brass chain of light hangs between them at the chest, its links face-on and edge-on by
+    turns, a shackle ring round each, and a bright bead of a fate passing along it."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(53, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (58, 38, 80), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The brass light along the chain's way.
+    rgb = blend(rgb, (150, 105, 40), np.exp(-((y - 4.0 + x * 0.25) ** 2) / 90.0) * np.exp(-(x / 40.0) ** 2) * 0.35)
+    ends = [(-23.0, 2.0), (23.0, -8.0)]
+    for hx, hy in ends:
+        head = np.hypot(x - hx, y - hy) - 7.5
+        sh = (np.hypot((x - hx) / 17.0, (y - (hy + 33.0)) / 20.0) - 1.0) * 17.0
+        sd = np.minimum(head, sh)
+        rgb = blend(rgb, (30, 18, 44), np.clip(-sd, 0.0, 1.0))
+        rgb = blend(rgb, (16, 9, 26), np.clip(-sd - 3.0, 0.0, 1.0) * np.clip((x - hx + 5.0) / 10.0, 0.0, 1.0))
+        rgb = blend(rgb, (232, 180, 82), np.exp(-(sd ** 2) / 1.2) * 0.9)
+    # The chain: from one chest to the other, sagging; links alternate an open loop and a short bar.
+    (ax, ay), (bx, by) = (ends[0][0] + 9.0, ends[0][1] + 20.0), (ends[1][0] - 9.0, ends[1][1] + 20.0)
+    links = 7
+    for i in range(links):
+        k0, k1 = i / links, (i + 1) / links
+        km = (k0 + k1) / 2.0
+        cx = ax + (bx - ax) * km
+        cy = ay + (by - ay) * km + 10.0 * 4.0 * km * (1.0 - km)
+        ang = math.atan2((by - ay) + 10.0 * 4.0 * (1.0 - 2.0 * km), bx - ax)
+        ca, sa = math.cos(ang), math.sin(ang)
+        u = (x - cx) * ca + (y - cy) * sa
+        v = -(x - cx) * sa + (y - cy) * ca
+        if i % 2 == 0:
+            ring = np.abs(np.hypot(u / 4.4, v / 2.6) - 1.0) * 2.6
+            rgb = blend(rgb, (10, 6, 18), np.clip(1.8 - ring, 0.0, 1.0) * 0.8)
+            rgb = blend(rgb, (255, 226, 150), np.clip(1.0 - ring, 0.0, 1.0))
+        else:
+            bar = (np.abs(u) < 4.2) & (np.abs(v) < 1.0)
+            rgb = blend(rgb, (10, 6, 18), ((np.abs(u) < 5.0) & (np.abs(v) < 2.0)).astype(float) * 0.8)
+            rgb = blend(rgb, (217, 164, 65), bar.astype(float))
+    # A shackle ring round each one's chest end.
+    for (sx, sy) in [(ax, ay), (bx, by)]:
+        ring = np.abs(np.hypot((x - sx) / 4.5, (y - sy) / 4.5) - 1.0) * 4.5
+        rgb = blend(rgb, (10, 6, 18), np.clip(2.2 - ring, 0.0, 1.0) * 0.8)
+        rgb = blend(rgb, (217, 164, 65), np.clip(1.2 - ring, 0.0, 1.0))
+    # A fate passing: a bright bead on the chain, a third of the way along.
+    kb = 0.36
+    px, py = ax + (bx - ax) * kb, ay + (by - ay) * kb + 10.0 * 4.0 * kb * (1.0 - kb)
+    rgb = blend(rgb, (255, 246, 210), np.exp(-((x - px) ** 2 + (y - py) ** 2) / 6.0))
+    rgb = blend(rgb, (255, 207, 90), np.exp(-((x - px) ** 2 + (y - py) ** 2) / 40.0) * 0.4)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "bound")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
-            "whisper": whisper, "breath": breath, "redefine": redefine}
+            "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound}
 
 
 if __name__ == "__main__":

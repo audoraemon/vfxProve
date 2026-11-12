@@ -79,6 +79,8 @@ const POWER_KINDS := {
 	"breath": [&"choke"],
 	# Redefine: a man named CRIMINAL is beaten down by the guards it set on him (a fight's kill)
 	"redefine": [&"frenzy"],
+	# Bound in Law: one dead, the other dies by the bond
+	"bound": [&"bound"],
 	"magnify": [&"magnify"],
 	"unseen": [],
 	"clearmind": [],
@@ -444,6 +446,12 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 			if order == "burn" and not MindWhisperFx.building_ok(who, extra.get("building")):
 				cast_refused.emit(slot, "building")
 				return null
+	if String(p.key) == "bound":
+		# Bound in Law: a person at each click, within its REACH of each other -- else refused, and no cooldown starts.
+		var why := BoundFx.refusal(_field, ground, extra.get("to", Vector2.INF))
+		if why != "":
+			cast_refused.emit(slot, why)
+			return null
 	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
 	var told := extra.duplicate()
 	if not told.has("level"):

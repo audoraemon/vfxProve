@@ -88,6 +88,11 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [150 Combat Sound Effects](https://opengameart.org/content/150-combat-sound-effects) `BreakGlass_01_s01.wav` | CC0 | untamedpixels | ability/dominion/dom_break |
 | [150 Combat Sound Effects](https://opengameart.org/content/150-combat-sound-effects) `BreakGlass_02_s01.wav` | CC0 | untamedpixels | ability/passage/wf_burst |
 | [150 Combat Sound Effects](https://opengameart.org/content/150-combat-sound-effects) `BreakGlass_03_s01.wav` | CC0 | untamedpixels | ability/dominion/dom_break |
+| [16 Monster Growls](https://opengameart.org/content/16-monster-growls) `monster.10.ogg` | CC0 | StarNinjas | ability/passage/hound_roam_3 |
+| [16 Monster Growls](https://opengameart.org/content/16-monster-growls) `monster.13.ogg` | CC0 | StarNinjas | ability/passage/hound_roam_4 |
+| [16 Monster Growls](https://opengameart.org/content/16-monster-growls) `monster.16.ogg` | CC0 | StarNinjas | ability/passage/hound_roam_5 |
+| [16 Monster Growls](https://opengameart.org/content/16-monster-growls) `monster.4.ogg` | CC0 | StarNinjas | ability/passage/hound_roam_1 |
+| [16 Monster Growls](https://opengameart.org/content/16-monster-growls) `monster.7.ogg` | CC0 | StarNinjas | ability/passage/hound_roam_2 |
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `bang_01.ogg` | CC0 | rubberduck | ability/energy/orb_hit_1, ability/energy/orb_hit_2, ability/holy/hs_erupt_3 |
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `bang_03.ogg` | CC0 | rubberduck | ability/fire/cf_impact_1, ability/fire/cf_impact_2, ability/fire/cf_impact_3, ability/fire/cf_impact_4, ability/holy/hs_erupt_2, ability/holy/jg_punch_1, ability/holy/jg_punch_3, ability/ice/glac_erupt, ability/water/ts_crash |
 | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) `bang_06.ogg` | CC0 | rubberduck | ability/holy/hs_erupt_1, ability/holy/hs_erupt_4 |
@@ -253,10 +258,16 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Crow](https://opengameart.org/content/crow) `crow_0.ogg` | CC0 | fvcalderan | ambience/amb_bird_4 |
 | [Crowd Shouting/Speaking Ambience](https://opengameart.org/content/crowd-shoutingspeaking-ambience) `crowd_shouting_0.ogg` | CC0 | StarNinjas | ability/quiet/q_congregation, ability/quiet/q_hatred, citizen/crowd_chaos, citizen/crowd_panic |
 | [Cure Magic](https://opengameart.org/content/cure-magic) `Cure3.wav` | CC0 | Someoneman | ability/quiet/q_curfew, ability/quiet/q_delusion, ability/quiet/q_skylift, ability/quiet/q_yesterday |
-| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON FIGHT GRUNT 2.wav` | CC0 | Tim Rockk | ability/passage/dead_fall |
+| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON FIGHT GRUNT 1.wav` | CC0 | Tim Rockk | ability/passage/demon_claw_1 |
+| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON FIGHT GRUNT 2.wav` | CC0 | Tim Rockk | ability/passage/dead_fall, ability/passage/demon_claw_2 |
+| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON FIGHT GRUNT 3.wav` | CC0 | Tim Rockk | ability/passage/demon_roam_3 |
 | [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON GROWL 1.wav` | CC0 | Tim Rockk | ability/passage/demon_snarl_1 |
+| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON GROWL 2.wav` | CC0 | Tim Rockk | ability/passage/demon_roam_2 |
 | [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON GROWL 4.wav` | CC0 | Tim Rockk | ability/passage/demon_snarl_3 |
+| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON LAUGHS.wav` | CC0 | Tim Rockk | ability/passage/demon_roam_4 |
 | [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON SNARL 1.wav` | CC0 | Tim Rockk | ability/passage/demon_snarl_2 |
+| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON SNARL 3.wav` | CC0 | Tim Rockk | ability/passage/demon_claw_3 |
+| [demon voice](https://opengameart.org/content/demon-voice) `DL DEMON SNIGGER 1.wav` | CC0 | Tim Rockk | ability/passage/demon_roam_1 |
 | [Dialog vocal samples](https://opengameart.org/content/dialog-vocal-samples) `demon_3.ogg` | CC0 | MirceaKitsune | ability/quiet/q_anathema |
 | [Dialog vocal samples](https://opengameart.org/content/dialog-vocal-samples) `female_light_2.ogg` | CC0 | MirceaKitsune | ability/quiet/q_discord |
 | [Dialog vocal samples](https://opengameart.org/content/dialog-vocal-samples) `female_light_4.ogg` | CC0 | MirceaKitsune | ability/quiet/q_discord |
@@ -275,9 +286,9 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Dialog vocal samples](https://opengameart.org/content/dialog-vocal-samples) `whisper_4.ogg` | CC0 | MirceaKitsune | ability/quiet/q_discord, ability/quiet/q_whisper |
 | [Dog Growl](https://opengameart.org/content/dog-growl) `dog-growl.ogg` | CC0 | bonebrah | animal/dog_growl_1, animal/dog_growl_2 |
 | [Dog Grunt](https://opengameart.org/content/dog-grunt) `dog-frieda-grunt-96khz-01.flac` | CC0 | qubodup | animal/dog_growl_2, animal/dog_growl_3 |
-| [Dog Snarl Grunt Grumble](https://opengameart.org/content/dog-snarl-grunt-grumble) `dog-growl.flac` | CC0 | qubodup | ability/passage/hound_die_2, ability/passage/hound_howl_2, ability/passage/hound_howl_4 |
+| [Dog Snarl Grunt Grumble](https://opengameart.org/content/dog-snarl-grunt-grumble) `dog-growl.flac` | CC0 | qubodup | ability/passage/hound_bite_2, ability/passage/hound_die_2, ability/passage/hound_howl_2, ability/passage/hound_howl_4 |
 | [Dog Snarl Grunt Grumble](https://opengameart.org/content/dog-snarl-grunt-grumble) `dog-grumble.flac` | CC0 | qubodup | ability/passage/hound_burn, ability/passage/hound_die_1 |
-| [Dog Snarl Grunt Grumble](https://opengameart.org/content/dog-snarl-grunt-grumble) `dog-snarl.flac` | CC0 | qubodup | ability/passage/hound_howl_1, ability/passage/hound_howl_3 |
+| [Dog Snarl Grunt Grumble](https://opengameart.org/content/dog-snarl-grunt-grumble) `dog-snarl.flac` | CC0 | qubodup | ability/passage/hound_bite_1, ability/passage/hound_bite_3, ability/passage/hound_howl_1, ability/passage/hound_howl_3 |
 | [Dog sounds](https://opengameart.org/content/dog-sounds) `montageAudio-20120706@125721.mp3` | CC0 | pauliuw | animal/dog_bark_1, animal/dog_bark_10, animal/dog_bark_2, animal/dog_bark_3, animal/dog_bark_4, animal/dog_bark_5, animal/dog_bark_6, animal/dog_bark_7, animal/dog_bark_8, animal/dog_bark_9, animal/dog_yelp_1, animal/dog_yelp_2, animal/dog_yelp_3 |
 | [Dripping water loop](https://opengameart.org/content/dripping-water-loop) `atmosbasement.mp3_.flac` | CC0 | qubodup | ability/water/ts_drip |
 | [Droning Sound Effects](https://opengameart.org/content/droning-sound-effects) `drone53.wav` | CC0 | bretbernhoft | ability/passage/dead_chill |
@@ -314,7 +325,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 23-Audio.wav` | CC0 | LEGIT Audio | ability/ruin/solar_burn |
 | [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 24-Audio.wav` | CC0 | LEGIT Audio | ability/passage/hm_roar |
 | [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 25-Audio.wav` | CC0 | LEGIT Audio | ability/passage/hm_roar |
-| [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 4-Audio.wav` | CC0 | LEGIT Audio | ability/passage/demon_snarl_1, ability/passage/demon_snarl_2, ability/passage/demon_snarl_3, ability/passage/hound_howl_1, ability/passage/hound_howl_2, ability/passage/hound_howl_3, ability/passage/hound_howl_4 |
+| [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 4-Audio.wav` | CC0 | LEGIT Audio | ability/passage/demon_roam_1, ability/passage/demon_roam_2, ability/passage/demon_roam_3, ability/passage/demon_roam_4, ability/passage/demon_snarl_1, ability/passage/demon_snarl_2, ability/passage/demon_snarl_3, ability/passage/hound_howl_1, ability/passage/hound_howl_2, ability/passage/hound_howl_3, ability/passage/hound_howl_4 |
 | [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 5-Audio.wav` | CC0 | LEGIT Audio | ability/passage/hg_doors |
 | [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 6-Audio.wav` | CC0 | LEGIT Audio | ability/passage/hm_open |
 | [Fire Staff Sound Effects ](https://opengameart.org/content/fire-staff-sound-effects) `LEGIT_FIR_Fire_Staff 7-Audio.wav` | CC0 | LEGIT Audio | ability/passage/hm_shut |
@@ -333,15 +344,13 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth33.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_3 |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth4.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_4 |
 | [Freeze Spell](https://opengameart.org/content/freeze-spell-0) `freeze.wav` | CC0 | artisticdude | ability/ice/glac_freeze |
-| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/dominion/dom_bind, ability/passage/dead_chill, ability/passage/dead_fall, ability/passage/ghost_moan_1, ability/passage/ghost_moan_2, ability/passage/ghost_moan_3, ability/quiet/q_clearmind, ability/quiet/q_madness, ability/quiet/q_whisper |
-| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan01.wav` | CC0 | qubodup | ability/passage/dead_recall, ability/quiet/q_madness |
-| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan02.wav` | CC0 | qubodup | ability/passage/dead_door |
-| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan05.wav` | CC0 | qubodup | ability/quiet/q_doom |
-| [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (12).wav` | CC0 | Sorth | ability/passage/ghost_moan_3 |
+| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/dominion/dom_bind, ability/passage/dead_chill, ability/passage/dead_fall, ability/passage/ghost_moan_1, ability/passage/ghost_moan_2, ability/passage/ghost_moan_3, ability/passage/ghost_roam_1, ability/passage/ghost_roam_2, ability/passage/ghost_roam_3, ability/passage/ghost_roam_4, ability/passage/ghost_touch_1, ability/passage/ghost_touch_2, ability/quiet/q_clearmind, ability/quiet/q_madness, ability/quiet/q_whisper |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan01.wav` | CC0 | qubodup | ability/passage/dead_recall, ability/passage/ghost_roam_1, ability/quiet/q_madness |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan02.wav` | CC0 | qubodup | ability/passage/dead_door, ability/passage/ghost_moan_3, ability/passage/ghost_roam_2 |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan03.wav` | CC0 | qubodup | ability/passage/ghost_moan_1, ability/passage/ghost_roam_3 |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan04.wav` | CC0 | qubodup | ability/passage/dead_recall, ability/passage/ghost_moan_2 |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan05.wav` | CC0 | qubodup | ability/passage/ghost_roam_4, ability/quiet/q_doom |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (14).wav` | CC0 | Sorth | building/lantern_flare |
-| [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (3).wav` | CC0 | Sorth | ability/passage/ghost_moan_1 |
-| [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (7).wav` | CC0 | Sorth | ability/passage/ghost_moan_2 |
-| [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (9).wav` | CC0 | Sorth | ability/passage/dead_recall |
 | [Girly scream](https://opengameart.org/content/girly-scream) `wscream_2_0.wav` | CC0 | Ferk | citizen/crowd_chaos, citizen/crowd_cry_5 |
 | [Gravity Inverter](https://opengameart.org/content/gravity-inverter) `gravity_inverter.ogg` | CC0 | fvcalderan | ability/arcane/grav_compress |
 | [grunts of male death and pain ](https://opengameart.org/content/grunts-male-death-and-pain) `death pain grunts.wav` | CC0 | thebardofblasphemy | citizen/cit_death_2, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1, citizen/sol_death_2, citizen/sol_death_3 |
@@ -384,9 +393,10 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) `yell3.wav` | CC0 | HaelDB | citizen/sol_order_2 |
 | [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) `yell5.wav` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_cry_13 |
 | [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) `yell8.wav` | CC0 | HaelDB | citizen/sol_order_3 |
-| [Monster snarls](https://opengameart.org/content/monster-snarls) `monster-snarl-5.ogg` | CC0 | Darsycho | ability/passage/hound_howl_1, ability/passage/hound_howl_2 |
-| [Monster snarls](https://opengameart.org/content/monster-snarls) `monster-snarl-attack.ogg` | CC0 | Darsycho | ability/passage/hound_howl_3 |
-| [Monster snarls](https://opengameart.org/content/monster-snarls) `monsters-snarls-3_0.ogg` | CC0 | Darsycho | ability/passage/hound_howl_4 |
+| [Monster snarls](https://opengameart.org/content/monster-snarls) `monster-snarl-5.ogg` | CC0 | Darsycho | ability/passage/hound_howl_1, ability/passage/hound_howl_2, ability/passage/hound_roam_1, ability/passage/hound_roam_2 |
+| [Monster snarls](https://opengameart.org/content/monster-snarls) `monster-snarl-attack.ogg` | CC0 | Darsycho | ability/passage/hound_howl_3, ability/passage/hound_roam_5 |
+| [Monster snarls](https://opengameart.org/content/monster-snarls) `monster-snarls_0.ogg` | CC0 | Darsycho | ability/passage/hound_roam_4 |
+| [Monster snarls](https://opengameart.org/content/monster-snarls) `monsters-snarls-3_0.ogg` | CC0 | Darsycho | ability/passage/hound_howl_4, ability/passage/hound_roam_3 |
 | [Muffled Distant Explosion](https://opengameart.org/content/muffled-distant-explosion) `NenadSimic - Muffled Distant Explosion.wav` | CC0 | NenadSimic | ability/arcane/grav_implode, ability/fire/nova_boom, ability/holy/jg_slam, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_4, building/collapse_stone_5, building/collapse_timber_1, building/collapse_timber_2, building/collapse_timber_3, building/collapse_timber_4, building/collapse_timber_5, building/collapse_tree_1, building/collapse_tree_2, building/collapse_tree_3, building/collapse_tree_4, building/collapse_tree_5 |
 | [orc voice](https://opengameart.org/content/orc-voice) `ORC GROWL.wav` | CC0 | Tim Rockk | ability/quiet/q_hatred |
 | [Pleasing Bell Sound Effect](https://opengameart.org/content/pleasing-bell-sound-effect) `pleasing-bell.wav` | CC0 | Spring Spring | ability/quiet/q_verdict_hit |
@@ -427,12 +437,12 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Fire3.ogg` | CC0 | troutsneeze | ability/fire/dr_erupt, building/lantern_burn |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Orbit.ogg` | CC0 | troutsneeze | ability/quiet/q_magnify |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Punch.ogg` | CC0 | troutsneeze | ability/holy/jg_punch_1, ability/holy/jg_punch_3 |
-| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Rend.ogg` | CC0 | troutsneeze | ability/quiet/q_madness_hit_1, ability/quiet/q_madness_hit_2, ability/quiet/q_madness_hit_3, ability/quiet/q_madness_hit_4 |
+| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Rend.ogg` | CC0 | troutsneeze | ability/passage/demon_claw_1, ability/quiet/q_madness_hit_1, ability/quiet/q_madness_hit_2, ability/quiet/q_madness_hit_3, ability/quiet/q_madness_hit_4 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Slow.ogg` | CC0 | troutsneeze | building/lantern_blind |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Stomp.ogg` | CC0 | troutsneeze | ability/holy/jg_punch_2 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Swallow.ogg` | CC0 | troutsneeze | ability/passage/deep_take_1, ability/passage/deep_take_2, ability/passage/deep_take_3 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Thud.ogg` | CC0 | troutsneeze | ability/quiet/q_deathmark_hit, ability/quiet/q_doom_hit_1, ability/quiet/q_doom_hit_2, ability/quiet/q_doom_hit_3, ability/quiet/q_doom_hit_4 |
-| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `TouchofDeath.ogg` | CC0 | troutsneeze | ability/quiet/q_deathmark |
+| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `TouchofDeath.ogg` | CC0 | troutsneeze | ability/passage/ghost_touch_2, ability/quiet/q_deathmark |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Twister.ogg` | CC0 | troutsneeze | ability/wind/tn_form |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `UFO.ogg` | CC0 | troutsneeze | ability/energy/laser_thrusters |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Vampire.ogg` | CC0 | troutsneeze | ability/quiet/q_doom_hit_1, ability/quiet/q_doom_hit_2, ability/quiet/q_doom_hit_3, ability/quiet/q_doom_hit_4 |
@@ -443,13 +453,17 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `bolt.ogg` | CC0 | troutsneeze | ability/ruin/smite_strike_1, ability/ruin/smite_strike_2, ability/ruin/smite_strike_3 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `chest.ogg` | CC0 | troutsneeze | ability/passage/wf_loot |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `ching.ogg` | CC0 | troutsneeze | ability/quiet/q_magnify |
+| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `chomp.ogg` | CC0 | troutsneeze | ability/passage/hound_bite_1, ability/passage/hound_bite_2, ability/passage/hound_bite_3 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `door.ogg` | CC0 | troutsneeze | ability/passage/dead_creak_1, ability/passage/dead_creak_2, ability/passage/dead_creak_3, ability/passage/dead_creak_4 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `drain.ogg` | CC0 | troutsneeze | ability/passage/deep_drain |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `fire1.ogg` | CC0 | troutsneeze | ability/fire/cf_lava |
+| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `freeze.ogg` | CC0 | troutsneeze | ability/passage/ghost_touch_1 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `ignite.ogg` | CC0 | troutsneeze | ability/fire/dr_ignite, ability/quiet/q_ember_hit |
+| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `slice.ogg` | CC0 | troutsneeze | ability/passage/demon_claw_2 |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `splash.ogg` | CC0 | troutsneeze | ability/water/ts_crash |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `staff_fly.ogg` | CC0 | troutsneeze | ability/quiet/q_ember |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `suck.ogg` | CC0 | troutsneeze | ability/arcane/grav_suction, ability/quiet/q_doom_hit_1, ability/quiet/q_doom_hit_2, ability/quiet/q_doom_hit_3, ability/quiet/q_doom_hit_4 |
+| [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `swipe.ogg` | CC0 | troutsneeze | ability/passage/demon_claw_3 |
 | [Space Laser](https://opengameart.org/content/space-laser) `space laser.wav` | CC0 | bart | ability/energy/laser_depart |
 | [Space Winds](https://opengameart.org/content/space-winds) `space-wind_0.mp3` | CC0 | aquinn | ability/arcane/grav_drone, ability/passage/hd_draw, ability/passage/hd_fall, ability/passage/lift_beam, ability/ruin/solar_call, ability/wind/tn_wind |
 | [Spell sounds](https://opengameart.org/content/spell-sounds) `electricspell.ogg` | CC0 | HaelDB | ability/holy/hs_charge, ability/holy/hs_strike, ability/ruin/sky_bolt_1, ability/ruin/sky_bolt_3 |

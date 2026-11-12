@@ -1,0 +1,4 @@
+{"length": 2.0, "rms_db": -20.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan02.wav", "at": 0.0, "from": 1.5, "dur": 1.7, "pitch": 1, "hp": 300, "lp": 6500, "fade_in": 300, "fade_out": 600},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.1, "from": 0.8, "dur": 1.4, "pitch": -2, "hp": 400, "lp": 6000, "gain_db": -10, "fade_in": 300, "fade_out": 500}
+]}

@@ -282,7 +282,7 @@ const CATALOG := {
 	&"dead_chill": {"path": "res://assets/audio/ability/passage/dead_chill.wav", "db": -2.3},
 	&"dead_door": {"path": "res://assets/audio/ability/passage/dead_door.wav", "db": -2.8},
 	&"dead_creak": {"path": "res://assets/audio/ability/passage/dead_creak_%d.wav", "variants": 4, "db": 0.8, "voices": 4, "jitter": 0.08},
-	&"ghost_moan": {"path": "res://assets/audio/ability/passage/ghost_moan_%d.wav", "variants": 3, "db": -0.1, "voices": 4, "jitter": 0.08},
+	&"ghost_moan": {"path": "res://assets/audio/ability/passage/ghost_moan_%d.wav", "variants": 3, "db": 0.7, "voices": 4, "jitter": 0.08},
 	&"demon_snarl": {"path": "res://assets/audio/ability/passage/demon_snarl_%d.wav", "variants": 3, "db": 1.7, "voices": 4, "jitter": 0.08},
 	&"dead_fall": {"path": "res://assets/audio/ability/passage/dead_fall.wav", "db": 3.6},
 	&"dead_recall": {"path": "res://assets/audio/ability/passage/dead_recall.wav", "db": -3.4},
@@ -294,6 +294,13 @@ const CATALOG := {
 	&"hd_take": {"path": "res://assets/audio/ability/passage/hd_take_%d.wav", "variants": 3, "db": -1.9, "voices": 4, "jitter": 0.08},
 	&"hd_shut": {"path": "res://assets/audio/ability/passage/hd_shut.wav", "db": -2.0},
 	&"hd_rise": {"path": "res://assets/audio/ability/passage/hd_rise.wav", "db": -4.6},
+	# The visitors heard while they roam (VisitorVoices): what each says, and its bite, claws or touch.
+	&"hound_roam": {"path": "res://assets/audio/ability/passage/hound_roam_%d.wav", "variants": 5, "db": -7.4, "voices": 4, "jitter": 0.08},
+	&"hound_bite": {"path": "res://assets/audio/ability/passage/hound_bite_%d.wav", "variants": 3, "db": -4.9, "voices": 4, "jitter": 0.08},
+	&"demon_roam": {"path": "res://assets/audio/ability/passage/demon_roam_%d.wav", "variants": 4, "db": -6.6, "voices": 4, "jitter": 0.08},
+	&"demon_claw": {"path": "res://assets/audio/ability/passage/demon_claw_%d.wav", "variants": 3, "db": -5.5, "voices": 4, "jitter": 0.08},
+	&"ghost_roam": {"path": "res://assets/audio/ability/passage/ghost_roam_%d.wav", "variants": 4, "db": -5.2, "voices": 4, "jitter": 0.08},
+	&"ghost_touch": {"path": "res://assets/audio/ability/passage/ghost_touch_%d.wav", "variants": 2, "db": -6.0, "voices": 4, "jitter": 0.08},
 	&"town_horn": {"path": "res://assets/audio/building/town_horn.wav", "db": -4.4, "voices": 1},
 	# A big hit's aftermath (natural sound pass 6, AFTERMATH): debris raining back down, thinning out.
 	&"debris_big": {"path": "res://assets/audio/ability/aftermath/debris_big_%d.wav", "variants": 4, "db": -2.0, "voices": 2, "jitter": 0.05},

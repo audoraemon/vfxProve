@@ -1,0 +1,4 @@
+{"length": 1.8, "rms_db": -16.1, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/demon-voice/DL DEMON LAUGHS.wav", "at": 0.0, "from": 2.6, "dur": 1.6, "pitch": -2, "hp": 60, "lp": 7000, "fade_in": 20, "fade_out": 300},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 4-Audio.wav", "at": 0.0, "from": 0.2, "dur": 1.0, "pitch": -7, "hp": 50, "lp": 1500, "gain_db": -14, "fade_in": 50, "fade_out": 300}
+]}

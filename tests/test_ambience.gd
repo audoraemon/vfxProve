@@ -133,6 +133,60 @@ static func run(t) -> void:
 			idle += 1
 	t.check(idle > 100 and idle < 180, "a cat at rest meows most of the time, not always (%d of 200)" % idle)
 
+	# The visitors (skill-tree audit, Passage): hellhounds, demons and ghosts v_heard while they roam, and their bites.
+	var hound := Animal.new()
+	hound.breed = Animal.Breed.HELLHOUND
+	var demon := Animal.new()
+	demon.breed = Animal.Breed.DEMON
+	var ghost := Animal.new()
+	ghost.breed = Animal.Breed.GHOST
+	var dog := Animal.new()
+	var prey := Person.new()
+	hound.target = prey
+	var v_heard := []
+	var ear := func(cue: StringName, at: Vector2, db: float) -> Node:
+		v_heard.append([cue, db])
+		return null
+	var vv := VisitorVoices.new()
+	vv.step(0.1, [hound, demon, ghost, dog], ear)
+	t.check(v_heard.is_empty(), "a visitor just come through waits a full clock before it speaks")
+	for i in 80:
+		vv.step(0.1, [hound, demon, ghost, dog], ear)
+	var said := {}
+	for h in v_heard:
+		said[h[0]] = h[1]
+	t.check(said.has(&"hound_roam") and said.has(&"demon_roam") and said.has(&"ghost_roam") and said.size() == 3,
+		"each visitor speaks its own kind in eight seconds, and a town dog among them is not one (%s)" % [said.keys()])
+	t.check(float(said[&"hound_roam"]) == 0.0 and float(said[&"demon_roam"]) == VisitorVoices.WANDER_DB,
+		"a hound with prey in its sights is louder than a demon that wanders")
+	for cue: StringName in [&"hound_roam", &"hound_bite", &"demon_roam", &"demon_claw", &"ghost_roam", &"ghost_touch"]:
+		t.check(Sfx.CATALOG.has(cue), "visitor cue %s exists" % cue)
+	var pack := []
+	for i in 60:
+		var a := Animal.new()
+		a.breed = Animal.Breed.GHOST
+		pack.append(a)
+	var many := VisitorVoices.new()
+	v_heard.clear()
+	for i in 100:
+		many.step(0.1, pack, ear)
+	t.check(v_heard.size() <= int(VisitorVoices.TOKENS + VisitorVoices.REFILL * 10.0) + 1,
+		"sixty ghosts for ten seconds stay within the budget (%d v_heard)" % v_heard.size())
+	v_heard.clear()
+	var bv := VisitorVoices.new()
+	bv.bite(hound, ear)
+	bv.bite(demon, ear)
+	bv.bite(ghost, ear)
+	bv.bite(dog, ear)
+	t.check(v_heard.map(func(h: Array) -> StringName: return h[0]) == [&"hound_bite", &"demon_claw", &"ghost_touch"],
+		"a hound bites, a demon claws, a ghost touches; a town dog is not theirs to voice")
+	for i in 6:
+		bv.bite(hound, ear)
+	t.check(bv.bites < 3 + 6, "a pack's bites spend a budget too")
+	for a in pack + [hound, demon, ghost, dog]:
+		a.free()
+	prey.free()
+
 	# Soldiers (pass 5): a soldier's blow is a spear, anyone else's a fist; orders rest; the horn; the march.
 	var sv := SoldierVoices.new()
 	t.check(sv.blow(true, 0.0) == &"sol_strike" and sv.blow(false, 0.0) == &"cit_blow", "a spear for a soldier, a fist for the rest")

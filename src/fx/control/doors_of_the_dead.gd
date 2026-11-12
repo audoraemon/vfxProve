@@ -75,6 +75,8 @@ class Door extends RefCounted:
 ## The doors, the spirits, how many have come through, and who was thrown out of a door.
 var doors: Array[Door] = []
 var visitors: Visitors
+## What comes through heard while it roams, and its bites, claws and touches.
+var voices := VisitorVoices.new()
 var spirits := 0
 var thrown := 0
 ## Buildings the demons struck, and the blows.
@@ -218,6 +220,7 @@ func _open(d: Door) -> void:
 
 func _fx_process(delta: float) -> void:
 	visitors.step(delta)
+	voices.step(delta, visitors.living(), ctx.play)
 	_tick_cold(delta)
 	if t < t_end():
 		_release_due()
@@ -390,6 +393,7 @@ func _burn(a: Animal) -> void:
 
 ## A bite or a touch: the first one's outcry is the town's (a danger there, the alarm up), every one a shout.
 func _on_bite(a: Animal, victim: Person, first: bool) -> void:
+	voices.bite(a, ctx.play)
 	ctx.play(&"cit_shout", victim.ground_pos, 0.0)
 	if first and ctx.crowd != null:
 		ctx.crowd.fright(victim.ground_pos, 2.0, 0.6, 3.0, 6.0, 8.0, &"bite", true)
@@ -417,6 +421,7 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 ## A demon's claws on a wall: splinters, dust and a knock.
 func _on_wreck(a: Animal, s: Structure) -> void:
 	wrecks += 1
+	voices.bite(a, ctx.play)
 	ctx.play(&"debris_small", a.ground_pos, -6.0)
 	if not DominionParts.staged(self):
 		return

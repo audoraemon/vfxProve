@@ -52,6 +52,8 @@ const DUST := [Color(0.62, 0.55, 0.48, 0.55), Color(0.5, 0.44, 0.38, 0.4), Color
 ## The door, and the hounds: how many have come out.
 var mouth := Vector2.ZERO
 var visitors: Visitors
+## The hounds heard while they hunt, and their bites.
+var voices := VisitorVoices.new()
 var out := 0
 
 var _gate: Gate
@@ -239,6 +241,7 @@ func _release() -> void:
 
 ## A bite: the first one's outcry is the town's (a danger there, the alarm up), every one a shout.
 func _on_bite(a: Animal, victim: Person, first: bool) -> void:
+	voices.bite(a, ctx.play)
 	ctx.play(&"cit_shout", victim.ground_pos, 0.0)
 	if first and ctx.crowd != null:
 		ctx.crowd.fright(victim.ground_pos, 2.0, 0.6, 3.0, 6.0, 8.0, &"bite", true)
@@ -270,6 +273,7 @@ func _stop_trail(a: Animal) -> void:
 
 func _fx_process(delta: float) -> void:
 	visitors.step(delta)
+	voices.step(delta, visitors.living(), ctx.play)
 	if not DominionParts.staged(self):
 		return
 	# The trails follow the hounds; a hound gone takes its trail with it.

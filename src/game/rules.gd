@@ -76,6 +76,7 @@ const POWER_KINDS := {
 	"heavendoor": [&"stone", &"gone"],
 	"deaddoors": [&"frenzy"],
 	"belllies": [],
+	"breath": [&"choke"],
 	"magnify": [&"magnify"],
 	"unseen": [],
 	"clearmind": [],

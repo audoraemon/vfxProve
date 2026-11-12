@@ -9,7 +9,8 @@ extends RefCounted
 ##               held too. One carried more than CARRIED past the edge by something greater (a blast, a Mirrorfold) is
 ##               let go. One indoors, or a rite's chained captive, is left alone (the chain is stronger than the law).
 ##   no_breath, disorder, no_running, no_arms, no_doors, no_sight
-##               only asked (Crowd.in_law()): the powers and the choice points act on them.
+##               only asked (Crowd.in_law(), Crowd.law_of()): the powers and the choice points act on them (NO BREATH:
+##               Breathing Is Prohibited chokes the people; Visitors run out of it).
 ## Each zone holds its own: two laid on the same ground both hold, and lifting one leaves the other. A zone ends when
 ## its seconds run out, when it is lifted (Crowd.remove_law()), or when the effect that laid it goes (add_law()'s
 ## holder). No number is drawn from any rng.
@@ -23,6 +24,7 @@ const CARRIED := 1.5
 const EPS := 0.0001
 
 const NO_LEAVING := &"no_leaving"
+const NO_BREATH := &"no_breath"
 
 ## The kinds of law it holds.
 var kinds: Array[StringName] = []
@@ -112,6 +114,29 @@ func nearest_inside(g: Vector2) -> Vector2:
 	var n := u.orthogonal()
 	var d := g - a
 	return a + u * clampf(d.dot(u), 0.0, length) + n * clampf(d.dot(n), -radius, radius)
+
+
+## The nearest point to `g` outside the zone, `beyond` past its edge: straight out from a circle's middle (from its
+## middle itself: towards +x), or out of a lane's nearest side or end. Where one choking runs, or a visitor flees to.
+func nearest_outside(g: Vector2, beyond := 0.0) -> Vector2:
+	if not is_lane:
+		var d := g - a
+		var far := d.length()
+		var dir := d / far if far > EPS else Vector2.RIGHT
+		return a + dir * (radius + beyond)
+	var along := b - a
+	var length := along.length()
+	var u := along / length if length > 0.0 else Vector2.RIGHT
+	var n := u.orthogonal()
+	var d := g - a
+	var s := d.dot(u)
+	var w := d.dot(n)
+	var side := radius - absf(w)
+	if side <= s and side <= length - s:
+		return g + n * (signf(w) if w != 0.0 else 1.0) * (side + beyond)
+	if s <= length - s:
+		return g - u * (s + beyond)
+	return g + u * (length - s + beyond)
 
 
 ## The ground it covers, edges included.

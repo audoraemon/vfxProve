@@ -3,7 +3,7 @@ rem Try powers in the real town mission, skipping the title and the draft. The f
 rem or the two new ones with Heaven Splitter and Nuclear Nova. In the mission: 1-4 picks a slot, LMB casts (drag
 rem powers: press, drag, release), F3 shows the frame rate, F4 the behaviour overlay, Esc pauses.
 rem   try.bat                            mirror, solaris, heaven, nova
-rem   try.bat voice schism wisp doom     any keys from PowerBook (doom whisper smite ember deathmark noleave skylift windfall hellspark wisp discord belllies heaven scatter madness blight
+rem   try.bat voice schism wisp doom     any keys from PowerBook (doom whisper smite ember deathmark noleave skylift windfall hellspark wisp discord belllies breath heaven scatter madness blight
 rem                                      thorns pilgrim deep houndgate tornado pestilence dragon mirror magnify unseen congregation oath echo turncoat
 rem                                      hatred clearmind saint priority verdict delusion anathema sanctuary curfew tsunami gravity laser orbital cinder
 rem                                      judgement glacial solaris voice abolition tempest shatter schism nova)

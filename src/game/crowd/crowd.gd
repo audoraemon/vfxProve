@@ -908,13 +908,18 @@ func remove_law(z: LawZone) -> void:
 ## Whether `p` (a person or a visitor; null or a freed body: false) stands where a law of `kind` holds now. Indoors or
 ## not: the one asking decides what an indoor person makes of it.
 func in_law(p: Variant, kind: StringName) -> bool:
+	return law_of(p, kind) != null
+
+
+## The first law of `kind` holding now where `p` (a person or a visitor) stands, or null (as in_law()).
+func law_of(p: Variant, kind: StringName) -> LawZone:
 	if laws.is_empty() or not is_instance_valid(p):
-		return false
+		return null
 	var at: Vector2 = p.ground_pos
 	for z in laws:
 		if z.alive() and z.holds(kind) and z.contains(at):
-			return true
-	return false
+			return z
+	return null
 
 
 ## One frame of every law on a place (step_people() calls it after the people move; tests may call it directly): time

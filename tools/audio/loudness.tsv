@@ -266,6 +266,7 @@ q_verdict	res://assets/audio/ability/quiet/q_verdict.wav	-19.04	-0.29
 q_verdict_hit	res://assets/audio/ability/quiet/q_verdict_hit.wav	-17.87	-0.29
 q_delusion	res://assets/audio/ability/quiet/q_delusion.wav	-14.51	-1.16
 q_voice	res://assets/audio/ability/quiet/q_voice.wav	-16.08	-0.91
+br_hush	res://assets/audio/ability/decree/br_hush.wav	-18.05	-5.09
 collapse_stone	res://assets/audio/building/collapse_stone_1.wav	-18.02	-2.40
 collapse_stone	res://assets/audio/building/collapse_stone_2.wav	-19.24	-0.24
 collapse_stone	res://assets/audio/building/collapse_stone_3.wav	-17.97	-0.37

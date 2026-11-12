@@ -56,6 +56,8 @@ const AREAS := {
 	# The Bell Lies works at the Bell Tower wherever the click lands: the tower is ringed (_draw()); its Call the
 	# Guard mode marks where the soldiers are sent (the book's "area")
 	"belllies": {"shape": "circle", "r": 0.6},
+	# BreathFx.RADIUS: the ground the air goes out of
+	"breath": {"shape": "circle", "r": 2.5},
 	# MagnifyFx.RADIUS
 	"magnify": {"shape": "circle", "r": 4.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands

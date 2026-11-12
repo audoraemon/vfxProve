@@ -151,7 +151,7 @@ static func _floor(t, mains: Dictionary, median: float) -> void:
 	for key in PowerBook.keys():
 		if PowerBook.IMPACT.has(key):
 			loud += 1
-	t.check(loud == 24, "twenty-four loud powers (got %d)" % loud)
+	t.check(loud == 25, "twenty-five loud powers (got %d)" % loud)
 	t.check(not is_nan(median), "a loud median can be measured")
 	var raw := median - FLOOR_BELOW
 	t.check(QUIET_FLOOR <= raw + 0.001 and raw - QUIET_FLOOR < FLOOR_STEP + 0.001,

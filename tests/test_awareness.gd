@@ -11,7 +11,7 @@ const FROM := {
 	"judgement": ["T_RISE"], "glacial": ["T_ERUPT"], "solaris": ["T_CHARGE"], "schism": ["T_BREAK"], "nova": ["T_IMPACT"],
 	"tempest": ["T_GATHER"], "scatter": ["T_FIRST"], "shatter": ["T_CRACK"], "windfall": ["T_DROP"],
 	"hellspark": ["T_OPEN"], "pilgrim": ["T_FLOW"], "deep": ["T_OPEN"], "houndgate": ["T_OPEN", "OUT_EVERY"],
-	"heavendoor": ["T_FALL"], "deaddoors": ["T_CHILL", "OUT_FIRST"],
+	"heavendoor": ["T_FALL"], "deaddoors": ["T_CHILL", "OUT_FIRST"], "breath": ["T_LAND"],
 }
 
 
@@ -80,7 +80,7 @@ static func _table(t) -> void:
 		for name: String in FROM[key]:
 			want += float(c.get(name, 99.0))
 		t.check(is_equal_approx(float(PowerBook.IMPACT[key]), want), "%s: impact %.2f = its script's %s (%.2f)" % [key, PowerBook.IMPACT[key], FROM[key], want])
-	t.check(PowerBook.IMPACT.size() == FROM.size(), "eighteen loud powers")
+	t.check(PowerBook.IMPACT.size() == FROM.size(), "every loud power is listed (%d)" % PowerBook.IMPACT.size())
 
 
 ## v0.11.2: at the cast a Smite is a build-up: nobody is frightened, the people who see it look; at the impact the danger is

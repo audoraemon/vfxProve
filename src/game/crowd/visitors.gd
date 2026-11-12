@@ -5,7 +5,8 @@ extends RefCounted
 ## never steps: it is summoned at a gate, hunts whoever is nearest -- citizen or soldier, alive and out in the open,
 ## within its seek reach, the nearest looked for again every RETARGET -- and bites whoever it reaches (hurt_from: a
 ## citizen falls to one bite, a soldier to two; the dead are the god's, damage kind frenzy). It fears nothing: no
-## threat, strike or fright ever sets it running, and it never flees. The guard cuts it down: a soldier within
+## threat, strike or fright ever sets it running, and it never flees -- but for a law that takes the air (NO BREATH):
+## it runs out of that (_flee_law()). The guard cuts it down: a soldier within
 ## GUARD_REACH of one lands a blow every GUARD_SWING (the first after a swing's wait; he strikes one visitor at a
 ## time), and at `blows` blows it dies. A visitor summoned to flinch must begin its bite again each time it is struck,
 ## so one guard holds one off; one that does not flinch bites through the blows, and a lone guard falls to it.
@@ -28,6 +29,8 @@ const RETARGET := 0.5
 const SKIP_FOR := 1.0
 ## It runs the streets' way round to its prey (Animal.route_to()), planned again this often: the prey moves.
 const CHASE_REPATH := 0.5
+## Where the air has gone (a NO BREATH law) a visitor runs this far past the nearest edge.
+const AIR_CLEAR := 1.0
 ## The guard: a soldier this near a visitor strikes it every GUARD_SWING.
 const GUARD_REACH := 0.6
 const GUARD_SWING := 0.8
@@ -207,7 +210,7 @@ func step(delta: float) -> void:
 		a.tick_visual(delta)
 		if r.recalling:
 			_go_home(a, r, delta)
-		else:
+		elif not _flee_law(a, r, delta):
 			_hunt(a, r, delta)
 	_guard(delta)
 	_lure_in -= delta
@@ -321,6 +324,22 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 ## A building a wrecker can strike: standing, solid (not a field, rubble or the bridge), not a power's own pile.
 static func _wreckable(s: Structure) -> bool:
 	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall", &"decree"])
+
+
+## A visitor standing where the air has gone (a NO BREATH law: Breathing Is Prohibited) runs for the nearest edge,
+## AIR_CLEAR past it, instead of hunting: the other side breathes too. It never dies of it. True while it flees.
+func _flee_law(a: Animal, r: Rule, delta: float) -> bool:
+	if _crowd == null or _crowd.laws.is_empty():
+		return false
+	var z := _crowd.law_of(a, LawZone.NO_BREATH)
+	if z == null:
+		return false
+	var out := z.nearest_outside(a.ground_pos, AIR_CLEAR)
+	if r.phase:
+		a.walk_to(out, delta, null)
+	else:
+		a.route_to(out, delta, _grid, CHASE_REPATH)
+	return true
 
 
 ## Recalled: back to the gate, freed there or when the time is up.

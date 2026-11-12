@@ -204,6 +204,8 @@ const CATALOG := {
 	&"q_verdict_hit": {"path": "res://assets/audio/ability/quiet/q_verdict_hit.wav", "db": 0.0},
 	&"q_delusion": {"path": "res://assets/audio/ability/quiet/q_delusion.wav", "db": -2.5},
 	&"q_voice": {"path": "res://assets/audio/ability/quiet/q_voice.wav", "db": 0.6},
+	# Decree's loud powers (tools/audio/foley/ability/decree/): Breathing Is Prohibited's hollow, airless hush.
+	&"br_hush": {"path": "res://assets/audio/ability/decree/br_hush.wav", "db": 3.4},
 	# Buildings and the town: recordings (tools/audio/foley/building/). A building or tree coming down (Town plays them) is capped at four voices each, so a
 	# stone rain felling a dozen things at once is a roar, not a pile-up.
 	&"collapse_stone": {"path": "res://assets/audio/building/collapse_stone_%d.wav", "variants": 5, "db": -0.1, "voices": 4, "jitter": 0.08},

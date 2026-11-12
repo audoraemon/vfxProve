@@ -296,6 +296,10 @@ const POWERS := [
 	{"key": "curfew", "name": "Curfew", "path": "res://src/fx/decree/curfew.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
+	{"key": "erase", "name": "Erasing Distance", "path": "res://src/fx/decree/erasing_distance.gd",
+		"blurb": "Drag a line and the distance along it is erased: it folds to its middle and crushes all on it, then springs back.",
+		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "a line up to 10 long: within 1 crushed at its middle, buildings on it felled, within 2 cracked, within 3 thrown down; rubble left on it",
+		"authority": "decree"},
 	{"key": "allroads", "name": "All Roads Lead Here", "path": "res://src/fx/control/all_roads_lead_here.gd",
 		"blurb": "Every road in a district leads the people to one spot.",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "for 25 s every road in a district of 10 ends at the click: up to 80 people keep their own minds, but every way they take brings them here",
@@ -478,6 +482,9 @@ const REACH := {
 	"tempest": [40.0, 40.0, 0.3, 2.0],
 	# Breathing Is Prohibited: a grey-gold haze where sound dies is seen more than heard; dangerous while the air is gone
 	"breath": [6.0, 6.0, 0.6, 8.0],
+	# Erasing Distance: a street folding shut like cloth and tearing open again is seen and heard across a district;
+	# the danger lasts the fold and the spring back
+	"erase": [10.0, 14.0, 0.8, 4.0],
 }
 ## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
 ## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
@@ -486,7 +493,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"breath": 0.5,
+	"breath": 0.5, "erase": 2.1,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -766,7 +773,7 @@ const FAMILY := {
 	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
 	"discord": "hold", "sanctuary": "hold", "anathema": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
-	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "curfew": "decree", "abolition": "decree",
+	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "curfew": "decree", "erase": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",

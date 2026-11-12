@@ -1,5 +1,5 @@
 extends RefCounted
-## The power book: 63 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
+## The power book: 64 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
 
 ## v0.07's cooldowns (kak-v0.07.1), which v0.08's may lengthen but never shorten (spec §2).
 const V07_COOLDOWNS := {
@@ -9,12 +9,12 @@ const V07_COOLDOWNS := {
 }
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
-	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "breath", "belllies", "magnify", "redefine", "bound", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
+	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "breath", "belllies", "magnify", "redefine", "bound", "erase", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
 	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 63, "63 powers")
+	t.check(PowerBook.POWERS.size() == 64, "64 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -35,13 +35,13 @@ static func run(t) -> void:
 		if p.aim == "drag":
 			drag.append(p.key)
 	t.check(problems.is_empty(), "power book problems: %s" % [problems])
-	t.check(drag == ["windfall", "heaven", "thorns", "pilgrim", "tsunami", "laser", "heavendoor"], "drag powers (%s)" % [drag])
+	t.check(drag == ["windfall", "heaven", "thorns", "pilgrim", "erase", "tsunami", "laser", "heavendoor"], "drag powers (%s)" % [drag])
 	var nova := PowerBook.get_power("nova")
 	t.check(nova.dp == 4 and nova.cooldown == 120.0 and nova.name == "Nuclear Nova", "the nova entry")
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "breath", "heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "tornado",
 		"pestilence", "dragon", "mirror", "magnify", "redefine", "bound", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion",
-		"anathema", "sanctuary", "curfew", "allroads", "yesterday", "foldward", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
+		"anathema", "sanctuary", "curfew", "erase", "allroads", "yesterday", "foldward", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
 		"glacial", "solaris", "voice", "abolition", "tempest", "shatter", "everydoor", "schism", "fargate", "heavendoor", "deaddoors", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
 	var quiet := []

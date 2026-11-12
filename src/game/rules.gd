@@ -77,6 +77,7 @@ const POWER_KINDS := {
 	"deaddoors": [&"frenzy"],
 	"belllies": [],
 	"breath": [&"choke"],
+	"erase": [&"collapse"],
 	# Redefine: a man named CRIMINAL is beaten down by the guards it set on him (a fight's kill)
 	"redefine": [&"frenzy"],
 	# Bound in Law: one dead, the other dies by the bond

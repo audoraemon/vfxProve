@@ -69,10 +69,11 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `glass_04.ogg` | CC0 | rubberduck | ability/quiet/q_fargate, ability/quiet/q_mirror |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `glass_05.ogg` | CC0 | rubberduck | ability/quiet/q_abolition, ability/quiet/q_mirror |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `key_open_01.ogg` | CC0 | rubberduck | ability/quiet/q_everydoor |
-| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_01.ogg` | CC0 | rubberduck | ability/quiet/q_foldward |
-| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_02.ogg` | CC0 | rubberduck | ability/quiet/q_foldward |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_01.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_02.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_03.ogg` | CC0 | rubberduck | ability/quiet/q_redefine, ui/ui_focus |
-| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_04.ogg` | CC0 | rubberduck | ability/quiet/q_foldward, ability/quiet/q_redefine, ui/ui_click, ui/ui_hover |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_04.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward, ability/quiet/q_redefine, ui/ui_click, ui/ui_hover |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `slam_03.ogg` | CC0 | rubberduck | ability/decree/er_crash |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `slam_05.ogg` | CC0 | rubberduck | ability/quiet/q_noleave |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `splash_01.ogg` | CC0 | rubberduck | building/fire_douse_2 |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `splash_02.ogg` | CC0 | rubberduck | building/fire_douse_1, building/fire_douse_3 |
@@ -113,15 +114,15 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_hit_13.ogg` | CC0 | rubberduck | ability/aftermath/debris_small_1, ability/aftermath/debris_small_2, ability/aftermath/debris_small_3, ability/aftermath/debris_small_4 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_metal_falling_02.ogg` | CC0 | rubberduck | citizen/sol_death_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_misc_04.ogg` | CC0 | rubberduck | citizen/cit_fall_2 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_01.ogg` | CC0 | rubberduck | ability/holy/hs_fissure, ability/ice/glac_peak, building/collapse_stone_1, building/collapse_stone_4 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_01.ogg` | CC0 | rubberduck | ability/decree/er_crash, ability/holy/hs_fissure, ability/ice/glac_peak, building/collapse_stone_1, building/collapse_stone_4 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_02.ogg` | CC0 | rubberduck | ability/fire/cf_impact_1, ability/fire/cf_impact_2, ability/fire/cf_impact_3, ability/fire/cf_impact_4, building/collapse_stone_2, building/collapse_stone_5 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_03.ogg` | CC0 | rubberduck | ability/holy/jg_punch_1, ability/holy/jg_punch_3, building/collapse_stone_3 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_01.ogg` | CC0 | rubberduck | ability/holy/jg_punch_2, building/collapse_stone_3, building/collapse_stone_4 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_02.ogg` | CC0 | rubberduck | ability/energy/orb_hit_1, ability/energy/orb_hit_2, building/collapse_stone_1, building/collapse_stone_3, building/collapse_stone_4, citizen/crowd_death_wave_1 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_03.ogg` | CC0 | rubberduck | ability/holy/hs_erupt_1, ability/holy/hs_erupt_2, ability/holy/hs_erupt_4, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_4, building/collapse_stone_5 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_04.ogg` | CC0 | rubberduck | ability/holy/jg_crumble, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_5, citizen/crowd_death_wave_2 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_04.ogg` | CC0 | rubberduck | ability/decree/er_crash, ability/holy/jg_crumble, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_5, citizen/crowd_death_wave_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_05.ogg` | CC0 | rubberduck | building/collapse_stone_2, building/collapse_stone_3 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_06.ogg` | CC0 | rubberduck | ability/holy/jg_crumble, building/collapse_stone_2 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_06.ogg` | CC0 | rubberduck | ability/decree/er_crash, ability/holy/jg_crumble, building/collapse_stone_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_07.ogg` | CC0 | rubberduck | ability/energy/orb_hit_3 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_08.ogg` | CC0 | rubberduck | ability/energy/orb_hit_4, ability/holy/hs_erupt_3 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_wood_breaking_01.ogg` | CC0 | rubberduck | building/collapse_timber_1, building/collapse_timber_4, building/collapse_timber_5, building/collapse_tree_1, building/collapse_tree_2, building/fire_crack_1, building/fire_crack_5 |
@@ -171,7 +172,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `wood_03.ogg` | CC0 | rubberduck | ability/aftermath/debris_fall_2, building/collapse_timber_2, building/collapse_timber_4, building/collapse_timber_5, building/collapse_tree_3, building/fire_crack_3 |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `wood_04.ogg` | CC0 | rubberduck | ability/aftermath/debris_fall_2, ability/aftermath/debris_fall_3, ability/quiet/q_thorns, ability/quiet/q_yesterday, building/collapse_timber_1, building/fire_crack_4 |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `wood_05.ogg` | CC0 | rubberduck | ability/aftermath/debris_fall_1, building/collapse_timber_1, building/collapse_timber_2, building/collapse_timber_4, building/collapse_tree_4, building/collapse_tree_5, building/fire_crack_5 |
-| [Air whoosh](https://opengameart.org/content/air-whoosh) `whoosh2_0.wav` | CC0 | pyranostudios | ability/arcane/grav_suction, ability/decree/br_hush, ability/energy/laser_depart, ability/fire/cf_rise, ability/fire/nova_descent, ability/quiet/q_fargate, ability/quiet/q_foldward, ability/quiet/q_turncoat, ability/quiet/q_whisper |
+| [Air whoosh](https://opengameart.org/content/air-whoosh) `whoosh2_0.wav` | CC0 | pyranostudios | ability/arcane/grav_suction, ability/decree/br_hush, ability/decree/er_crash, ability/decree/er_tear, ability/energy/laser_depart, ability/fire/cf_rise, ability/fire/nova_descent, ability/quiet/q_fargate, ability/quiet/q_foldward, ability/quiet/q_turncoat, ability/quiet/q_whisper |
 | [AMB Morning Sounds (Perfect Loop)](https://opengameart.org/content/amb-morning-sounds-perfect-loop) `amb_morning.wav` | CC0 | Kresiek The Furry | ambience/amb_day |
 | [Ambient Bird Sounds](https://opengameart.org/content/ambient-bird-sounds) `birds-isaiah658_0.ogg` | CC0 | isaiah658 | ambience/amb_day |
 | [Beach Ocean Waves](https://opengameart.org/content/beach-ocean-waves) `wave_01_cc0-18363__jasinski__alkaibeach.flac` | CC0 | qubodup | ability/water/ts_crash |
@@ -193,7 +194,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Cat Purr & Meow](https://opengameart.org/content/cat-purr-meow) `cat_mewpurr.wav` | CC0 | Kerzoven | animal/cat_meow_6 |
 | [Cat Purr & Meow](https://opengameart.org/content/cat-purr-meow) `cat_softmew.wav` | CC0 | Kerzoven | animal/cat_meow_5 |
 | [Catching fire](https://opengameart.org/content/catching-fire) `flame_0.ogg` | CC0 | themightyglider | ability/energy/laser_sizzle_1, ability/energy/laser_sizzle_2, ability/fire/cf_fall_1, ability/fire/cf_fall_2, ability/fire/cf_fall_3, ability/fire/cf_fall_4, ability/quiet/q_ember_hit, building/fire_catch_1, building/fire_catch_2, building/fire_catch_3, building/lantern_blind |
-| [Cave In](https://opengameart.org/content/cave-in) `cave_in_-_starninjas_0.ogg` | CC0 | StarNinjas | ability/fire/cf_erupt, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/nova_rumble, ability/fire/nova_shockwave, ability/holy/hs_fissure, ability/holy/jg_crumble, ability/holy/jg_rise, ability/holy/jg_rumble, ability/holy/jg_slam, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_4, building/collapse_stone_5 |
+| [Cave In](https://opengameart.org/content/cave-in) `cave_in_-_starninjas_0.ogg` | CC0 | StarNinjas | ability/decree/er_crash, ability/fire/cf_erupt, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/nova_rumble, ability/fire/nova_shockwave, ability/holy/hs_fissure, ability/holy/jg_crumble, ability/holy/jg_rise, ability/holy/jg_rumble, ability/holy/jg_slam, building/collapse_stone_1, building/collapse_stone_2, building/collapse_stone_3, building/collapse_stone_4, building/collapse_stone_5 |
 | [CC0 Deep Monster Roar](https://opengameart.org/content/cc0-deep-monster-roar) `monster_roar.wav` | CC0 | trazzz123 | ability/fire/dr_roar, building/lantern_burn |
 | [Cheers](https://opengameart.org/content/cheers-0) `cheers_1.ogg` | CC0 | Nocturnal_Vanguard | ability/quiet/q_verdict_hit, citizen/sol_rally |
 | [Chunky Explosion](https://opengameart.org/content/chunky-explosion) `Chunky Explosion.mp3` | CC0 | Joth | ability/fire/dr_erupt, ability/holy/jg_slam |
@@ -259,7 +260,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Laser Beam](https://opengameart.org/content/laser-beam) `laserbeam.wav` | CC0 | frosty ham | ability/energy/laser_fire |
 | [Laser Sound Effects](https://opengameart.org/content/laser-sound-effects) `sfx_laser_2.mp3` | CC0 | EZduzziteh | ability/fire/nova_lock |
 | [Laser Sound Effects](https://opengameart.org/content/laser-sound-effects) `sfx_laser_4.mp3` | CC0 | EZduzziteh | ability/energy/laser_ignite |
-| [Low Rumbling](https://opengameart.org/content/low-rumbling) `low-rumbling-176033.mp3` | CC0 | Musheran | ability/fire/cf_rise, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/dr_sink, ability/fire/nova_boom, ability/fire/nova_rumble, ability/holy/hs_rumble, ability/holy/jg_rumble, ability/ice/glac_peak, ability/quiet/q_hatred |
+| [Low Rumbling](https://opengameart.org/content/low-rumbling) `low-rumbling-176033.mp3` | CC0 | Musheran | ability/decree/er_tear, ability/fire/cf_rise, ability/fire/cf_rumble, ability/fire/dr_rumble, ability/fire/dr_sink, ability/fire/nova_boom, ability/fire/nova_rumble, ability/holy/hs_rumble, ability/holy/jg_rumble, ability/ice/glac_peak, ability/quiet/q_hatred |
 | [Magic Spell SFX](https://opengameart.org/content/magic-spell-sfx) `magical_2.ogg` | CC0 | JaggedStone | ability/arcane/grav_shimmer |
 | [Magic Spell SFX](https://opengameart.org/content/magic-spell-sfx) `magical_4.ogg` | CC0 | JaggedStone | ability/holy/jg_rise |
 | [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) `1yell11.wav` | CC0 | HaelDB | citizen/sol_order_6 |
@@ -293,7 +294,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `sword-unsheathe3.wav` | CC0 | artisticdude | ability/quiet/q_turncoat |
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `chainmail1.wav` | CC0 | artisticdude | citizen/sol_step_1, citizen/sol_step_3, citizen/sol_step_5 |
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `chainmail2.wav` | CC0 | artisticdude | citizen/sol_step_2, citizen/sol_step_4, citizen/sol_step_6 |
-| [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `cloth-heavy.wav` | CC0 | artisticdude | ui/ui_buzz, ui/ui_manifest, ui/ui_pause |
+| [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `cloth-heavy.wav` | CC0 | artisticdude | ability/decree/er_crash, ability/decree/er_tear, ui/ui_buzz, ui/ui_manifest, ui/ui_pause |
+| [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `cloth.wav` | CC0 | artisticdude | ability/decree/er_tear |
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `metal-ringing.wav` | CC0 | artisticdude | ability/quiet/q_bound, ability/quiet/q_turncoat |
 | [Sand spell](https://opengameart.org/content/sand-spell) `sand-spell.flac` | CC0 | qubodup | ability/quiet/q_thorns |
 | [Sea and river wave sounds](https://opengameart.org/content/sea-and-river-wave-sounds) `VistulaShort_0.mp3` | CC0 | RandomMind | ability/water/ts_roar |
@@ -340,7 +342,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Space 2.wav` | CC0 | Zane Little Music | ability/energy/laser_scan |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Spirit 1.wav` | CC0 | Zane Little Music | ability/quiet/q_clearmind, ability/quiet/q_delusion, ability/quiet/q_madness, ability/quiet/q_skylift, ability/quiet/q_unseen, ability/quiet/q_yesterday |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Spirit 4.wav` | CC0 | Zane Little Music | ability/energy/laser_powerdown |
-| [Tree Creaking](https://opengameart.org/content/tree-creaking) `tree_creak.flac` | CC0 | AntumDeluge | building/fire_crack_2, building/fire_crack_4, building/fire_crack_5 |
+| [Tree Creaking](https://opengameart.org/content/tree-creaking) `tree_creak.flac` | CC0 | AntumDeluge | ability/decree/er_tear, building/fire_crack_2, building/fire_crack_4, building/fire_crack_5 |
 | [Tree Creaking](https://opengameart.org/content/tree-creaking) `tree_creak_0.ogg` | CC0 | AntumDeluge | ambience/amb_night_call_3 |
 | [Wind](https://opengameart.org/content/wind) `qubodup-megaswosh1.wav` | CC0 | IgnasD | ability/fire/dr_inhale, ability/wind/tn_gust_1, ability/wind/tn_gust_4 |
 | [Wind](https://opengameart.org/content/wind) `qubodup-megaswosh2.wav` | CC0 | IgnasD | ability/fire/nova_shockwave, ability/holy/jg_slam, ability/holy/jg_windup, ability/wind/tn_gust_2, ability/wind/tn_gust_3 |
@@ -371,6 +373,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub1_v1.wav` | CC0 | Versilian Studios | ability/decree/br_hush, ability/quiet/q_curfew, ability/quiet/q_noleave, ability/quiet/q_sanctuary |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub2_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub3_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub4_v1.wav` | CC0 | Versilian Studios | ability/decree/er_crash |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `cymbal-crash1_mp_rr1.wav` | CC0 | Versilian Studios | ability/decree/er_crash |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `cymbal-crash1_pp_rr1.wav` | CC0 | Versilian Studios | ability/decree/br_hush |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_f.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_mf.wav` | CC0 | Versilian Studios | ability/quiet/q_everydoor |

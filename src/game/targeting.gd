@@ -58,6 +58,9 @@ const AREAS := {
 	"belllies": {"shape": "circle", "r": 0.6},
 	# BreathFx.RADIUS: the ground the air goes out of
 	"breath": {"shape": "circle", "r": 2.5},
+	# EraseFx: the line runs from the press as far as the drag (MIN_LEN..MAX_LEN, "stretch"), CRUSH_W each side; THROW_W
+	# ("outer") is how far the spring back throws
+	"erase": {"shape": "lane", "length": 10.0, "half": 1.0, "min": 2.0, "stretch": true, "outer": 3.0},
 	# MagnifyFx.RADIUS
 	"magnify": {"shape": "circle", "r": 4.0},
 	# RedefineFx.PICK_R; whom it would name is ringed (_draw())
@@ -739,7 +742,8 @@ func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
 	var a := area_at(key, level)
 	if String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
-		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key, level)
+		var length := lane_length() if bool(a.get("stretch", false)) else float(a.length)
+		_crowd.on_cast(lane_start(key, at, dir), dir, length, key, level)
 	elif String(a.get("shape", "")) == "path":
 		# Two clicks: from the first toward the second, as far as the power runs.
 		var run := _at - at
@@ -778,7 +782,10 @@ func _draw() -> void:
 				_ring(_press, float(a.roam), COL_FAINT)
 		"lane":
 			var dir := aim_dir()
-			_lane(lane_start(_rules.key(slot), _press, dir), dir, float(a.length), float(a.half), edge)
+			var length := lane_length() if bool(a.get("stretch", false)) else float(a.length)
+			_lane(lane_start(_rules.key(slot), _press, dir), dir, length, float(a.half), edge)
+			if a.has("outer"):
+				_lane(lane_start(_rules.key(slot), _press, dir), dir, length, float(a.outer), COL_FAINT)
 			if a.has("fissure"):
 				for i in 8:
 					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5

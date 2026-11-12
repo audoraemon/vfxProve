@@ -1,7 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited, Redefine and Bound in Law.
+Breathing Is Prohibited, Redefine, Bound in Law and Erasing Distance.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -480,9 +480,66 @@ def bound():
     rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
     finish(rgb, "bound")
 
+def erase():
+    """Erasing Distance (Decree): on an ink field, a square of town ground -- cobbles, a road across it -- whose middle
+    has been pulled in along a gilt seam running corner to corner: the ground's edges and its creases bend in toward the
+    seam's middle where the distance along it was erased, ink in the folds, and the seam itself shortened to a bright
+    gilt stitch with a burst of gilt at its heart."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(71, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (58, 38, 80), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # u runs along the seam (bottom left to top right), v across it.
+    c, s = math.cos(-math.pi / 4), math.sin(-math.pi / 4)
+    u = x * c + y * s
+    v = -x * s + y * c
+    pinch = 1.0 - 0.62 * np.exp(-(v / 10.0) ** 2)
+    # Where each point came from before the fold: along the seam it is stretched back out.
+    u0 = u / pinch
+    cloth = (np.abs(u0) < 29.0) & (np.abs(v) < 29.0)
+    edge = (np.abs(u0) < 31.5) & (np.abs(v) < 31.5) & ~cloth
+    # The ground: warm stone with cobbles (a grid laid in the unfolded ground), a road across it.
+    cob = (np.sin(u0 * 0.95) * np.sin(v * 0.95 + 0.6 * np.floor(u0 / 3.3)))
+    ground = np.where(cob[..., None] > 0.1, np.array((132, 112, 86)), np.array((112, 94, 72)))
+    rgb = np.where(cloth[..., None], ground * (0.85 + 0.25 * n[..., None]), rgb)
+    road = cloth & (np.abs(u0 + 4.0) < 6.0)
+    rgb = blend(rgb, (164, 142, 104), road.astype(float) * 0.75)
+    rgb = blend(rgb, (10, 6, 18), edge.astype(float) * 0.9)
+    # The creases: lines of the unfolded ground's grid bent in toward the seam, inked, with a lit lip.
+    for k in range(-3, 4):
+        if k == 0:
+            continue
+        d = np.abs(u0 - k * 8.0) * pinch
+        lit = cloth & (d < 2.4)
+        rgb = blend(rgb, (24, 14, 30), np.clip((1.6 - d) / 1.2, 0.0, 1.0) * cloth * (0.5 + 0.5 * np.exp(-(v / 12.0) ** 2)))
+        rgb = blend(rgb, (200, 176, 130), lit * np.clip((d - 1.4) / 1.0, 0.0, 1.0) * 0.35)
+    # The gathered fold along the seam: shadow either side of it.
+    rgb = blend(rgb, (18, 10, 28), cloth * np.exp(-(v / 4.5) ** 2) * 0.55)
+    # The seam: shortened, ink under gilt, a white-gold core.
+    seam = np.abs(u) < 12.5
+    rgb = blend(rgb, (10, 6, 18), seam * np.clip((3.6 - np.abs(v)) / 1.2, 0.0, 1.0))
+    rgb = blend(rgb, (255, 207, 90), seam * np.clip((2.0 - np.abs(v)) / 0.9, 0.0, 1.0))
+    rgb = blend(rgb, (255, 246, 208), seam * np.clip((0.8 - np.abs(v)) / 0.6, 0.0, 1.0))
+    # Its stitches: short gilt bars across it.
+    for k in range(-2, 3):
+        bar = (np.abs(u - k * 5.0) < 0.9) & (np.abs(v) < 4.6)
+        rgb = blend(rgb, (255, 220, 120), bar.astype(float))
+    # The burst where it all gathered.
+    rgb = blend(rgb, (255, 207, 90), np.exp(-(r / 7.0) ** 2) * 0.55)
+    rgb = blend(rgb, (255, 250, 230), np.exp(-(r / 2.6) ** 2))
+    for k in range(8):
+        a = k * math.pi / 4.0 + math.pi / 8.0
+        ray = np.abs(-x * math.sin(a) + y * math.cos(a)) < 0.8
+        rgb = blend(rgb, (255, 226, 150), ray * ((x * math.cos(a) + y * math.sin(a)) > 3.0) * np.exp(-(r / 10.0) ** 2) * 0.8)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "erase")
+
 
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
-            "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound}
+            "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
+            "erase": erase}
 
 
 if __name__ == "__main__":

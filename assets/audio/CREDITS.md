@@ -225,16 +225,16 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Footsteps](https://opengameart.org/content/footsteps-0) `04-footstep.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_2, citizen/sol_step_6 |
 | [Footsteps](https://opengameart.org/content/footsteps-0) `05-footstep.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_4 |
 | [Footsteps](https://opengameart.org/content/footsteps-0) `06-footstep.ogg` | CC0 | GboxMikeFozzy | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_3 |
-| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth1.ogg` | CC0 | HaelDB | citizen/cit_blow_1, citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
-| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth2.ogg` | CC0 | HaelDB | citizen/cit_blow_2, citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
-| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth3.ogg` | CC0 | HaelDB | citizen/cit_blow_3, citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth1.ogg` | CC0 | HaelDB | ability/quiet/q_walker, citizen/cit_blow_1, citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth2.ogg` | CC0 | HaelDB | ability/quiet/q_walker, citizen/cit_blow_2, citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
+| [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth3.ogg` | CC0 | HaelDB | ability/quiet/q_walker, citizen/cit_blow_3, citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_cloth4.ogg` | CC0 | HaelDB | citizen/cit_blow_4, citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth1.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_1, citizen/sol_step_6 |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth2.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_2, citizen/sol_step_5 |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth33.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_3 |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth4.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_4 |
 | [Freeze Spell](https://opengameart.org/content/freeze-spell-0) `freeze.wav` | CC0 | artisticdude | ability/ice/glac_freeze |
-| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/gravecall_rise, ability/death/raise_rise, ability/death/raise_wail, ability/quiet/q_guise |
+| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/gravecall_rise, ability/death/raise_rise, ability/death/raise_wail, ability/quiet/q_guise, ability/quiet/q_walker |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan01.wav` | CC0 | qubodup | ability/quiet/q_madness |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan02.wav` | CC0 | qubodup | ability/death/raise_wail |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan03.wav` | CC0 | qubodup | ability/death/gravecall_rise |
@@ -344,7 +344,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Space 2.wav` | CC0 | Zane Little Music | ability/energy/laser_scan |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Spirit 1.wav` | CC0 | Zane Little Music | ability/quiet/q_clearmind, ability/quiet/q_delusion, ability/quiet/q_madness, ability/quiet/q_skylift, ability/quiet/q_unseen, ability/quiet/q_yesterday |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Spirit 4.wav` | CC0 | Zane Little Music | ability/energy/laser_powerdown |
-| [Tree Creaking](https://opengameart.org/content/tree-creaking) `tree_creak.flac` | CC0 | AntumDeluge | building/fire_crack_2, building/fire_crack_4, building/fire_crack_5 |
+| [Tree Creaking](https://opengameart.org/content/tree-creaking) `tree_creak.flac` | CC0 | AntumDeluge | ability/quiet/q_walker, building/fire_crack_2, building/fire_crack_4, building/fire_crack_5 |
 | [Tree Creaking](https://opengameart.org/content/tree-creaking) `tree_creak_0.ogg` | CC0 | AntumDeluge | ability/death/raise_rise, ambience/amb_night_call_3 |
 | [Wind](https://opengameart.org/content/wind) `qubodup-megaswosh1.wav` | CC0 | IgnasD | ability/fire/dr_inhale, ability/wind/tn_gust_1, ability/wind/tn_gust_4 |
 | [Wind](https://opengameart.org/content/wind) `qubodup-megaswosh2.wav` | CC0 | IgnasD | ability/fire/nova_shockwave, ability/holy/jg_slam, ability/holy/jg_windup, ability/wind/tn_gust_2, ability/wind/tn_gust_3 |

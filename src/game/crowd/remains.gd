@@ -29,6 +29,8 @@ class Remain:
 	var facing := 0
 	var sick := false
 	var hidden := false
+	## Set down again by a power (move()): no person's own body lies over it, so it is drawn at once.
+	var moved := false
 
 
 var enabled := false
@@ -105,13 +107,13 @@ func has_soul(r: Remain) -> bool:
 	return age(r) < SOUL
 
 
-## The nearest unhidden remain within PICK_R of `at` (one with its soul still near, if `need_soul`), or null. Ties go to the
-## older one.
-func pick(at: Vector2, need_soul := false) -> Remain:
+## The nearest unhidden remain within PICK_R of `at` (one with its soul still near, if `need_soul`; a hidden one too, if
+## `hidden_too`: Walking Corpse alone walks a hidden body back out), or null. Ties go to the older one.
+func pick(at: Vector2, need_soul := false, hidden_too := false) -> Remain:
 	var best: Remain = null
 	var best_d := PICK_R * PICK_R
 	for r in _list:
-		if r.hidden or (need_soul and not has_soul(r)):
+		if (r.hidden and not hidden_too) or (need_soul and not has_soul(r)):
 			continue
 		var d := r.pos.distance_squared_to(at)
 		if d < best_d or (best != null and d == best_d and r.born < best.born):
@@ -148,11 +150,17 @@ func take(r: Remain) -> void:
 		_dirty()
 
 
-## Moves a remain (hidden, if it is carried or buried) and restarts its clock.
+## Moves a remain (hidden, if it is carried or buried) and restarts its clock. A remain taken up meanwhile (a body walking:
+## Walking Corpse take()s it at the cast so no other power can pick it while it walks) is put back on the ledger here.
 func move(r: Remain, to: Vector2, hidden: bool) -> void:
 	r.pos = to
 	r.hidden = hidden
 	r.born = _clock
+	r.moved = true
+	if not _list.has(r):
+		_list.append(r)
+		if _list.size() > MAX:
+			_list.erase(_oldest())
 	_dirty()
 
 
@@ -171,6 +179,8 @@ func _shown_count() -> int:
 
 
 func _drawn(r: Remain) -> bool:
+	if r.moved:
+		return not r.hidden
 	var gone := (DummyEnemy.BODY_HOLD if r.kind == &"deathmark" else 0.0) + DummyEnemy.DEATH_FADE
 	return not r.hidden and age(r) >= gone
 

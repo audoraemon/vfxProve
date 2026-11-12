@@ -78,6 +78,7 @@ const POWER_KINDS := {
 	"raise": [&"frenzy"],
 	"gravecall": [],
 	"guise": [],
+	"walker": [],
 	"belllies": [],
 	"magnify": [&"magnify"],
 	"unseen": [],
@@ -416,7 +417,8 @@ func refuse(slot: int, reason: String, who: Variant = null) -> void:
 
 
 ## What a power needs of the ground it is cast on: its mode's "needs", else the row's, else "". "body" is a remain within
-## Remains.PICK_R; "soul" one whose soul is still near; "any_body" any unhidden remain in town.
+## Remains.PICK_R; "soul" one whose soul is still near; "any_body" any unhidden remain in town. A hidden remain counts only
+## for a row with "reaches_hidden" (Walking Corpse, which walks it back out).
 static func needs_of(key: String, mode: String) -> String:
 	var row := PowerBook.get_power(key)
 	for m: Dictionary in row.get("modes", []):
@@ -427,17 +429,17 @@ static func needs_of(key: String, mode: String) -> String:
 
 ## "no_dead" or "soul_gone" when the ground lacks the body the power needs, else "". Costs nothing: no cooldown is spent.
 func body_refusal(key: String, mode: String, ground: Vector2) -> String:
-	return body_check(needs_of(key, mode), ground)
+	return body_check(needs_of(key, mode), ground, bool(PowerBook.get_power(key).get("reaches_hidden", false)))
 
 
-func body_check(needs: String, ground: Vector2) -> String:
+func body_check(needs: String, ground: Vector2, hidden_too := false) -> String:
 	if needs == "" or _crowd == null or _crowd.remains == null:
 		return ""
 	var rem := _crowd.remains
 	if needs == "any_body":
 		return "" if not rem.all().is_empty() else "no_dead"
 	if needs == "body":
-		return "" if rem.pick(ground) != null else "no_dead"
+		return "" if rem.pick(ground, false, hidden_too) != null else "no_dead"
 	if needs == "soul":
 		if rem.pick(ground, true) != null:
 			return ""

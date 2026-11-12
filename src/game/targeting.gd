@@ -90,6 +90,8 @@ const AREAS := {
 	"gravecall": {"shape": "circle", "r": GravecallFx.HAUNT_R},
 	# CorpseGuiseFx.MARK_R: the circle the 4 nearest are guised within (each ringed)
 	"guise": {"shape": "circle", "r": CorpseGuiseFx.MARK_R},
+	# Remains.PICK_R: the body the first click takes (the second is where it walks)
+	"walker": {"shape": "circle", "r": Remains.PICK_R},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -471,6 +473,12 @@ func release(ground: Vector2) -> void:
 		return
 	if _is_twice():
 		if not placed:
+			# A power that needs a body at its first click (Walking Corpse) is refused there and then, not after the second.
+			var no_body := _rules.body_refusal(_rules.key(slot), String(extra.get("mode", "")), ground)
+			if no_body != "":
+				_rules.refuse(slot, no_body)
+				queue_redraw()
+				return
 			placed = true
 			first = ground
 			queue_redraw()

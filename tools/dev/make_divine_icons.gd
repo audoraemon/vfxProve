@@ -37,6 +37,8 @@ func _initialize() -> void:
 	_save(_sign([0b10101, 0b10101, 0b11111, 0b10101, 0b00000], Color(0.86, 0.95, 0.88), Color(0.04, 0.07, 0.06), 123), "gravecall")
 	# Death III: a bowed grey head, its eyes cast down, as the walking dead go.
 	_save(_sign([0b01110, 0b11111, 0b11111, 0b10101, 0b01110], Color(0.78, 0.8, 0.8), Color(0.05, 0.06, 0.06), 124), "guise")
+	# Death III: a figure striding off as if alive, pale on the grave's dark.
+	_save(_sign([0b00100, 0b01110, 0b00100, 0b01010, 0b10001], Color(0.86, 0.84, 0.78), Color(0.05, 0.06, 0.06), 125), "walker")
 	# Decree: black and gilt.
 	_save(_sign(DecreeParts.BARS, Color(1.0, 0.81, 0.35), Color(0.05, 0.03, 0.08), 91), "noleave")
 	_save(_sign(DecreeParts.BELL_DOWN, Color(1.0, 0.81, 0.35), Color(0.05, 0.03, 0.08), 92), "belllies")

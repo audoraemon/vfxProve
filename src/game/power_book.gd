@@ -195,6 +195,11 @@ const POWERS := [
 		"dp": 3, "cooldown": 50.0, "aim": "click",
 		"shape": "the 4 nearest within 2 pass as the walking dead for 25 s: soldiers, watchmen and inquisitors look straight past them, and Death's own undead leave them alone",
 		"quiet": true, "authority": "death"},
+	{"key": "walker", "name": "Walking Corpse", "path": "res://src/fx/death/walking_corpse.gd",
+		"blurb": "A body gets up and walks where you send it, and nobody looks twice.",
+		"dp": 3, "cooldown": 30.0, "aim": "two clicks", "needs": "body", "reaches_hidden": true,
+		"shape": "click a body, then where it goes: it gets up and walks there by the streets for up to 40 s, and nobody panics; it lies down there again, its clock restarted; walked into a shelter or a house it is hidden, and a plague body brings the plague in to 3 sheltering there",
+		"quiet": true, "authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"blurb": "A dragon breathes a cone of fire and burns all before it.",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin",
@@ -765,7 +770,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

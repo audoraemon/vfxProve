@@ -275,7 +275,7 @@ func _swap_step(delta: float) -> void:
 func _swap() -> void:
 	swapping = false
 	swapped = true
-	var seer := faithful_seeing(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null)
+	var seer := faithful_seeing(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null, wren)
 	if seer != null:
 		swap_seen = true
 		if _walk_pace.has(seer):
@@ -392,7 +392,7 @@ func tags() -> Array[MapTag]:
 	if going_home():
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	if with_us and not swapped:
-		for f in watchers(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null):
+		for f in watchers(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null, wren):
 			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
 	return out
 

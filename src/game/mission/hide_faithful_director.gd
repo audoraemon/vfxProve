@@ -790,13 +790,26 @@ func _advance_search() -> void:
 		return
 	_pairs.clear()  # an arrival: the pair's places are worked out afresh, on the ground as it stands now
 	var hi := int(e.household)
-	if hi >= 0 and (households[hi] as Household).out and not (households[hi] as Household).done:
+	if hi >= 0 and (households[hi] as Household).out and not (households[hi] as Household).done and _trail_seen(hi):
 		_trail = hi
 		searched += 1
 		rules.banner.emit("THE INQUISITION FINDS THE TRAIL")
 		return
 	_search_stop = _clock + HF_SEARCH_STOP
 	searched += 1
+
+
+## Household `i` leaves a trail the search can take up at its door: unless every believer of it still out of doors passes as the walking
+## dead (Corpse Guise) -- one wholly guised is passed by as any other door. With nobody guised, always (the rule as it was).
+func _trail_seen(i: int) -> bool:
+	var guised := false
+	for c: Charge in (households[i] as Household).members:
+		if _resolved(c) or (c.man as Person).inside:
+			continue
+		if not (c.man as Person).guised():
+			return true
+		guised = true
+	return not guised
 
 
 ## An inquisitor, alive, out of doors and not marching, stands within `reach` of `at`.
@@ -808,14 +821,15 @@ func _search_near(at: Vector2, reach: float) -> bool:
 
 
 ## Where the search stands or walks to now: the trailed household's lamp (else its first believer out of doors), else the listed door;
-## Vector2.INF with nowhere to go.
+## Vector2.INF with nowhere to go. A believer passing as the walking dead (Corpse Guise) is never searched out: the trail goes to one
+## the inquisitors can see, and with none it stands until a guise wears off.
 func _search_point() -> Vector2:
 	if _trail >= 0:
 		var lead := lamp(_trail)
-		if lead != null:
+		if lead != null and not (lead.man as Person).guised():
 			return (lead.man as Person).ground_pos
 		for c: Charge in (households[_trail] as Household).members:
-			if not _resolved(c) and not (c.man as Person).inside:
+			if not _resolved(c) and not (c.man as Person).inside and not (c.man as Person).guised():
 				return (c.man as Person).ground_pos
 		return Vector2.INF
 	if _search_at < _search.size():

@@ -234,7 +234,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth33.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_3 |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth4.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_4 |
 | [Freeze Spell](https://opengameart.org/content/freeze-spell-0) `freeze.wav` | CC0 | artisticdude | ability/ice/glac_freeze |
-| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/gravecall_rise, ability/death/raise_rise, ability/death/raise_wail |
+| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/gravecall_rise, ability/death/raise_rise, ability/death/raise_wail, ability/quiet/q_guise |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan01.wav` | CC0 | qubodup | ability/quiet/q_madness |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan02.wav` | CC0 | qubodup | ability/death/raise_wail |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan03.wav` | CC0 | qubodup | ability/death/gravecall_rise |
@@ -248,6 +248,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Gravity Inverter](https://opengameart.org/content/gravity-inverter) `gravity_inverter.ogg` | CC0 | fvcalderan | ability/arcane/grav_compress |
 | [grunts of male death and pain ](https://opengameart.org/content/grunts-male-death-and-pain) `death pain grunts.wav` | CC0 | thebardofblasphemy | citizen/cit_death_2, citizen/crowd_death_wave_1, citizen/crowd_death_wave_2, citizen/sol_death_1, citizen/sol_death_2, citizen/sol_death_3 |
 | [High pitch scream sounds(2)](https://opengameart.org/content/high-pitch-scream-sounds2) `high_pitch_scream.mp3` | CC0 | pauliuw | citizen/cit_yelp_4 |
+| [horror breathing](https://opengameart.org/content/horror-breathing) `horrorbreathing.wav` | CC0 | primbal | ability/quiet/q_guise |
 | [Horror Hit Soundpack 1](https://opengameart.org/content/horror-hit-soundpack-1) `Very Bassy 3.wav` | CC0 | psychhead_ | ability/quiet/q_voice |
 | [Horror scream1](https://opengameart.org/content/horror-scream1) `scream_horror1_0.mp3` | CC0 | Vinrax | ability/quiet/q_madness_hit_1, ability/quiet/q_madness_hit_2, ability/quiet/q_madness_hit_3, ability/quiet/q_madness_hit_4 |
 | [Hurt / Death sound effect for character ](https://opengameart.org/content/hurt-death-sound-effect-for-character) `12.mp3` | CC0 | Badre-Eddine | citizen/cit_death_3 |
@@ -301,7 +302,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Sand spell](https://opengameart.org/content/sand-spell) `sand-spell.flac` | CC0 | qubodup | ability/quiet/q_thorns |
 | [Sea and river wave sounds](https://opengameart.org/content/sea-and-river-wave-sounds) `VistulaShort_0.mp3` | CC0 | RandomMind | ability/water/ts_roar |
 | [Seamless Energy Emission Loop](https://opengameart.org/content/seamless-energy-emission-loop) `movingshield_sound.ogg` | CC0 | zeroisnotnull | ability/arcane/grav_drone, ability/energy/laser_hum |
-| [Short wind sound](https://opengameart.org/content/short-wind-sound) `short wind sound.wav` | CC0 | remaxim | building/collapse_tree_1, building/collapse_tree_2, building/collapse_tree_3, building/collapse_tree_4, building/collapse_tree_5 |
+| [Short wind sound](https://opengameart.org/content/short-wind-sound) `short wind sound.wav` | CC0 | remaxim | ability/quiet/q_guise, building/collapse_tree_1, building/collapse_tree_2, building/collapse_tree_3, building/collapse_tree_4, building/collapse_tree_5 |
 | [Skippy Fish Water Sound Collection](https://opengameart.org/content/skippy-fish-water-sound-collection) `bubbles.wav` | CC0 | jcpmcdonald | ability/fire/dr_sink |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Arc.ogg` | CC0 | troutsneeze | ability/arcane/grav_arc_1, ability/arcane/grav_arc_2, ability/arcane/grav_arc_3, ability/arcane/grav_arc_4, ability/energy/laser_ignite |
 | [Sound Effects from Monster RPG 2](https://opengameart.org/content/sound-effects-from-monster-rpg-2) `Bolt2.ogg` | CC0 | troutsneeze | ability/energy/orb_charge_1, ability/energy/orb_charge_2, ability/energy/orb_charge_4 |

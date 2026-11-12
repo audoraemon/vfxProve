@@ -88,6 +88,8 @@ const AREAS := {
 	"raise": {"shape": "circle", "r": Remains.PICK_R, "roam": RaiseTheDeadFx.SEEK},
 	# GravecallFx.HAUNT_R: the circle the three spirits haunt, ringed at the second click
 	"gravecall": {"shape": "circle", "r": GravecallFx.HAUNT_R},
+	# CorpseGuiseFx.MARK_R: the circle the 4 nearest are guised within (each ringed)
+	"guise": {"shape": "circle", "r": CorpseGuiseFx.MARK_R},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -183,7 +185,7 @@ const AREA_STATS := {
 	"sanctuary": {"r": "PICK_R"},
 	"skylift": {"r": "RADIUS"}, "windfall": {"length": "LENGTH"}, "hellspark": {"r": "RADIUS"}, "deep": {"r": "RADIUS"},
 	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
-	"raise": {"roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"},
+	"raise": {"roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"}, "guise": {"r": "MARK_R"},
 	"heavendoor": {"r": "PULL_R"},
 }
 ## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole
@@ -993,6 +995,10 @@ func _draw() -> void:
 			var marked := DeathMarkFx.target_at(_crowd._field, _press)
 			if marked != null:
 				_ring(marked.ground_pos, 0.25, COL_MAD)
+		"guise":
+			# Who it would guise.
+			for p in CorpseGuiseFx.marked_at(_crowd._field, _press):
+				_ring(p.ground_pos, 0.2, Color(DeathParts.BONE, 0.8))
 		"blight":
 			# What it would ruin, or a red ring for nothing in reach.
 			var mine := _rules.director.blight_target(_press) if _rules.director != null else Vector2.INF

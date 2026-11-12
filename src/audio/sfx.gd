@@ -125,6 +125,8 @@ const CATALOG := {
 	&"raise_wail": {"path": "res://assets/audio/ability/death/raise_wail.wav", "db": 0.0},
 	# Gravecall (Death II): three spirits called up out of the ground -- a ghostly chorus of moans over cold breath.
 	&"gravecall_rise": {"path": "res://assets/audio/ability/death/gravecall_rise.wav", "db": 0.0},
+	# Corpse Guise (Death III, quiet): a near-inaudible cold breath, barely over the quiet floor.
+	&"q_guise": {"path": "res://assets/audio/ability/quiet/q_guise.wav", "db": 0.0},
 	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
 	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
 	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},

@@ -389,7 +389,7 @@ func _go_home(a: Animal, r: Rule, delta: float) -> void:
 
 ## Whether visitor rule `r` may hunt `p` at all: not a guised person under spare_guise, and a soldier under prey "soldiers".
 static func _fair(r: Rule, p: Person) -> bool:
-	if r.spare_guise and p.statuses.has(&"guise"):
+	if r.spare_guise and p.guised():
 		return false
 	return not r.soldiers_only or p.soldier
 

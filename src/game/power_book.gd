@@ -190,6 +190,11 @@ const POWERS := [
 		"blurb": "A fast plague spreads through the crowds.",
 		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
 		"authority": "death"},
+	{"key": "guise", "name": "Corpse Guise", "path": "res://src/fx/death/corpse_guise.gd",
+		"blurb": "The faithful pass as the walking dead; the watch looks past them.",
+		"dp": 3, "cooldown": 50.0, "aim": "click",
+		"shape": "the 4 nearest within 2 pass as the walking dead for 25 s: soldiers, watchmen and inquisitors look straight past them, and Death's own undead leave them alone",
+		"quiet": true, "authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"blurb": "A dragon breathes a cone of fire and burns all before it.",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin",
@@ -760,7 +765,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

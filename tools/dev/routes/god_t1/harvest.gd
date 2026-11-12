@@ -6,8 +6,8 @@ extends RefCounted
 ##
 ## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks the watchmen so both are gone when
 ## Pestilence takes the carter (H2); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts the carter out beyond the
-## wall (H1); Decree has no route with Leaving and Breathing Is Prohibited (act_decree()); Dominion whispers him out of the
-## gate a step at a time (H1).
+## wall (H1); Decree holds the carter in Leaving Is Prohibited's amber cell for his time (H6, the user's ruling 2026-11-13); Dominion
+## whispers him out of the gate a step at a time (H1).
 
 ## The types whose policy is written.
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
@@ -26,6 +26,10 @@ const EXIT_MAX := 26.0
 const WALL_LEAD := 4.0
 ## Dominion: how far ahead along his road a carter is whispered (Mind Whisper's REACH is 10).
 const WHISPER_STEP := 9.0
+## Decree: a walking carter's cell is centred this many seconds of his road past where he stands as it seals (he walks into its middle,
+## not straight to its far edge), but never more than CELL_IN from that spot (he is sealed in at least RADIUS - CELL_IN inside the edge).
+const CELL_AHEAD := 2.5
+const CELL_IN := 2.0
 
 
 # --- Reading the night ---------------------------------------------------------------------------------------------------
@@ -239,12 +243,28 @@ static func _length_from(at: Vector2, road: PackedVector2Array) -> float:
 
 # --- Decree: Leaving Is Prohibited, Breathing Is Prohibited -------------------------------------------------------------
 
-## No route (reported, not tuned around): every way a granary is spoiled needs a power Decree's Tier 1 lacks -- fire or a fall (a Ruin or Veil
-## power), the carter out of the walls (a lift, a whisper), sick (Pestilence), rotted (Blight), or seized by the guard The Bell Lies calls
-## (HarvestDirector._on_cast() keeps only a CALL THE GUARD cast for the seizure). A carter held in the amber, or choked in it, is no spoil: one
-## who dies is replaced (H5). So the policy casts nothing; the night is lost as the none run's.
-static func act_decree(_bc, _ctx: Dictionary) -> String:
-	return ""
+## H6 (the user's ruling 2026-11-13): a carter held by the law HarvestDirector.HELD_SPOIL seconds spoils his granary. Leaving Is Prohibited is laid
+## on the carter of the first granary still to spoil the moment he is out and not already held: on him where he stands (waiting at his door), or,
+## walking, a little way along his road (CELL_AHEAD, CELL_IN) so he is sealed in and walks into the cell's middle. The cell (15 s) outlasts his
+## time; its cooldown (20 s) is back before the next carter is out. Breathing Is Prohibited is not needed: a dead carter spoils nothing (H5).
+static func act_decree(bc, ctx: Dictionary) -> String:
+	var d := ctx.d as HarvestDirector
+	var rules: Rules = ctx.rules
+	if d == null:
+		return ""
+	var tgt := _target(d)
+	if tgt.is_empty() or not _ready(bc, ctx, "noleave"):
+		return ""
+	var s: Structure = tgt.s
+	var c: Person = tgt.c
+	if (ctx.crowd as Crowd).in_law(c, LawZone.NO_LEAVING):
+		return ""
+	var sealed_at: Vector2 = _god().road_ahead(c, NoLeaveFx.T_SEAL)
+	var ahead: Vector2 = _god().road_ahead(c, NoLeaveFx.T_SEAL + CELL_AHEAD)
+	var at := sealed_at + (ahead - sealed_at).limit_length(CELL_IN)
+	rules.cast(int(ctx.slots.noleave), at)
+	return "leaving is prohibited round the %s granary's carter (%s): held his time, his load spoils" % [_name(d, s),
+		"at his door" if _at_door(d, s, c) else "on his road"]
 
 
 # --- Dominion: Mind Whisper, Discord -------------------------------------------------------------------------------------

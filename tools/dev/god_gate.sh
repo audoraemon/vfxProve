@@ -37,10 +37,9 @@ for s in $SCENARIOS; do
     [ -n "$CITY" ] && args+=("--city=$CITY")
     [ -n "$JOBS" ] && args+=("--jobs=$JOBS")
     [ "$type" = "$FIRST" ] && args+=("--with-none")
-    # Three pairs may idle up to 60 s, the user's no-wait limit: Harvest x Decree (ruling D12, The Bell Lies' cooldown), Prayers x Death
-    # (ruling D34, the poor hurry in once no Faithful is left) and Prayers x Passage (ruling D40, walkers come ~55 s apart and the walls need one
-    # cast each). Every other pair keeps the default 45 s.
-    { [ "$s" = harvest ] && [ "$type" = decree ]; } && args+=("--idle-max=60")
+    # Two pairs may idle up to 60 s, the user's no-wait limit: Prayers x Death (ruling D34, the poor hurry in once no Faithful is left) and
+    # Prayers x Passage (ruling D40, walkers come ~55 s apart and the walls need one cast each). Every other pair keeps the default 45 s.
+    # (Harvest x Decree's D12 allowance was for The Bell Lies' cooldown; the amber cell plays it within 45 s, 2026-11-13.)
     { [ "$s" = prayers ] && [ "$type" = death ]; } && args+=("--idle-max=60")
     { [ "$s" = prayers ] && [ "$type" = passage ]; } && args+=("--idle-max=60")
     bash "$HERE/gate.sh" "${args[@]}" > "$T/out" 2> "$T/err"

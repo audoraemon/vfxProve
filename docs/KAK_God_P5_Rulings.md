@@ -387,3 +387,17 @@ rewritten onto the real keys and their refs re-recorded.
 - **P5-PT-G2 (reported). Skylift makes some nights short.** Lost Lamb about 22 s (the watch lifted off the way out, then the boy onto it), First
   Taste 42 s, Hide the faithful 62 s, Expel 124 s, Break 112 s. The Hunts' pooled-median bands (180-240 s; Hunt 1 140-200 s) may fail in
   `--judge` on Hunts 1, 3 and 4 because of Passage's rows. A design question for the user (Skylift's reach or cooldown), not a bot fix.
+
+### Decree's real tree (2026-11-13)
+Decree's Tier 1 is now Leaving Is Prohibited (the amber cell) and Breathing Is Prohibited; The Bell Lies and Magnify left the tree.
+- **P5-DT-R1 (you, 2026-11-13). On the Harvest night the cell spoils grain.** "A carter held in Leaving Is Prohibited's amber cell for his time
+  spoils his load, like a seizure does." HarvestDirector H6: a carter alive, out of doors and inside a NO LEAVING law (the amber cell, or Fenced
+  Rule's NO LEAVING) for `HELD_SPOIL` = 6.0 s without a break (tunable; it fits inside the cell's 15 s) spoils his granary, `spoiled_by` "held",
+  and is sent home as a seizure sends him; the clock resets when he is free of the law. The Harvest x Decree bot lays the cell on each carter
+  as he sets out: gate 3/3, 80 s, idle 30, so ruling D12's 60 s idle allowance (made for The Bell Lies' cooldown) is removed from god_gate.sh.
+- **P5-DT-G1 (reported gap, your word). First Prayers x Decree: 1/3.** Seed 1 won (idle 57); seed 2 lost "few" (idle 68); seed 3 lost to the
+  Gaze (idle 86). Why: the market line holds the door for 40 s, and killing the Faithful raises the Gaze. The kept policy kills the Faithful.
+  Left as it falls; not tuned around.
+- **P5-DT-G2 (reported). Decree's Hunt medians sit under the pooled bands.** Hunt 1 101 s, Hunt 2 151, Hunt 3 166, Hunt 4 118, Hunt 5 134.
+  C9's Decree exception on Hunts 2-4 (judged with `--except=decree`) no longer applies. On Tax, the first cell at the
+  counting-house door kills the collector with 10-19 bystanders.

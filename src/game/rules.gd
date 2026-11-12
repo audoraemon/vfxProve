@@ -456,28 +456,12 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		cast_refused.emit(slot, no_body)
 		return null
 	if String(p.key) == "whisper":
-		# Mind Whisper (v0.08) with no one to whisper to, or (v0.08.1) to someone still shaking the last one off:
-		# refused, and no cooldown starts.
-		var given: Variant = extra.get("target")
-		var heard := is_instance_valid(given) and given is Person and (given as Person).is_alive() \
-			and not (given as Person).inside and not (given as Person).resists_mind()
-		var who: Person = (given as Person) if heard else MindWhisperFx.pick(_field, ground)
-		if who == null:
-			cast_refused.emit(slot, "nobody")
+		# Mind Whisper (v0.08) with no one to whisper to, or (v0.08.1) to someone still shaking the last one off, or an order with no
+		# fair target: refused, and no cooldown starts.
+		var not_heard := whisper_refusal(ground, extra)
+		if not_heard != "":
+			cast_refused.emit(slot, not_heard)
 			return null
-		if who.shaken():
-			refused_who = who
-			cast_refused.emit(slot, "shaken")
-			return null
-		if extra.has("order"):
-			# The order wheel (god/whisper-wheel): an attack with no fair foe, or a burn with no fair building, is refused too.
-			var order := String(extra.get("order"))
-			if order == "attack" and not MindWhisperFx.foe_ok(who, extra.get("foe")):
-				cast_refused.emit(slot, "foe")
-				return null
-			if order == "burn" and not MindWhisperFx.building_ok(who, extra.get("building")):
-				cast_refused.emit(slot, "building")
-				return null
 	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
 	var told := extra.duplicate()
 	if not told.has("level"):
@@ -521,10 +505,40 @@ func recast(slot: int, at: Vector2, extra := {}) -> bool:
 	if finished or busy_left() > 0.0:
 		return false
 	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
-	if fx == null or not fx.has_method("follow_up") or not fx.follow_up(at, extra):
+	if fx == null or not fx.has_method("follow_up"):
+		return false
+	# A follow-up through Mind Whisper's wheel (a possession) is read as a whisper's cast is: someone who cannot hear it, or an order with
+	# no fair target, never reaches the effect.
+	if fx.has_method("follow_up_wheel") and fx.follow_up_wheel() and whisper_refusal(at, extra) != "":
+		return false
+	if not fx.follow_up(at, extra):
 		return false
 	recast_made.emit(slot, key(slot), at)
 	return true
+
+
+## Why Mind Whisper's orders (its own cast, or a live effect's follow-up through its wheel) cannot be laid at `ground` with `extra`, or ""
+## when they can: "nobody" (the extra's "target" cannot hear -- dead, indoors, a mind that resists -- and no one who can is under the
+## press), "shaken" (v0.08.1: still shaking the last whisper off; refused_who names them), "foe" or "building" (the order wheel's attack
+## or burn with no fair target). Changes nothing else.
+func whisper_refusal(ground: Vector2, extra: Dictionary) -> String:
+	var given: Variant = extra.get("target")
+	var heard := is_instance_valid(given) and given is Person and (given as Person).is_alive() \
+		and not (given as Person).inside and not (given as Person).resists_mind()
+	var who: Person = (given as Person) if heard else MindWhisperFx.pick(_field, ground)
+	if who == null:
+		return "nobody"
+	if who.shaken():
+		refused_who = who
+		return "shaken"
+	if extra.has("order"):
+		# The order wheel (god/whisper-wheel): an attack with no fair foe, or a burn with no fair building, is refused too.
+		var order := String(extra.get("order"))
+		if order == "attack" and not MindWhisperFx.foe_ok(who, extra.get("foe")):
+			return "foe"
+		if order == "burn" and not MindWhisperFx.building_ok(who, extra.get("building")):
+			return "building"
+	return ""
 
 
 ## The area the slot's live follow-up wants drawn as its preview (a Targeting.AREAS-shaped Dictionary), or {} for the power's own:

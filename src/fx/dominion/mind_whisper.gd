@@ -10,6 +10,8 @@ extends FxTimeline
 ##   "burn"   (+ "building") they walk to the building's edge (a whisper to it), stay BURN_SECS, then light it at Ember's START_LEVEL
 ##                           (FireManager.ignite()); a building gone or no longer burnable by then, or a town with no fires, is not lit.
 ## Both stay quiet: the fire itself alarms as fires do.
+## The orders themselves are order() (Death task 4): any power that borrows the wheel (Raise the Dead's possession) lays them for its own
+## length. Targeting opens the wheel for a live effect whose follow_up_wheel() is true.
 
 ## How near the press must be to a citizen.
 const PICK_R := 0.6
@@ -150,6 +152,41 @@ static func stand_at(grid: WalkGrid, s: Structure, from: Vector2) -> Vector2:
 	return free if free != Vector2.INF else from
 
 
+## One order of the wheel laid on `who`: Mind Whisper's own cast, or any power that borrows its orders (Raise the Dead's possession).
+## `extra` holds the keys Targeting's wheel builds (Targeting._order_extra()):
+##   no "order" (or "walk")  + "to"         a whisper to that spot (Person.whisper()), lingering `seconds` there;
+##   "attack"                + "foe"        set on that person alone for `seconds` (Person.whisper_fight()), at the civil or soldier's blow;
+##   "burn"                  + "building"   a whisper to the building's edge (stand_at()), staying `seconds` there.
+## True when it took. False, and nothing changed, for a foe or building that is no fair target (foe_ok(), building_ok()), a town with no
+## fires, or someone who will not hear it (Person.whisper()). Only the person is moved: the burn's match is struck by whoever holds the
+## order, on its own clock (Mind Whisper's _burn_step()).
+static func order(ctx: FxContext, who: Person, extra: Dictionary, seconds: float) -> bool:
+	if who == null or not is_instance_valid(who):
+		return false
+	match String(extra.get("order", "")):
+		"attack":
+			var foe: Variant = extra.get("foe")
+			if not foe_ok(who, foe):
+				return false
+			return who.whisper_fight(foe as Person, seconds, Person.SOLDIER_BLOW if who.soldier else CIVIL_BLOW)
+		"burn":
+			if ctx == null or ctx.crowd == null or ctx.crowd.fires == null or not building_ok(who, extra.get("building")):
+				return false
+			return who.whisper(stand_at(who.grid, extra.get("building") as Structure, who.ground_pos), seconds)
+	return who.whisper(extra.get("to", who.ground_pos), seconds)
+
+
+## How long this cast's order holds its person: the attack's length at its level, the stay at the building and past the match, or the
+## walk's linger.
+func _seconds() -> float:
+	match _order:
+		"attack":
+			return lv_attack_secs
+		"burn":
+			return BURN_SECS + BURN_AFTER
+	return LINGER
+
+
 func _build() -> void:
 	lv_attack_secs = float(PowerBook.stat(extra, "whisper", "ATTACK_SECS", ATTACK_SECS))
 	duration = MAX_SHOW
@@ -158,40 +195,23 @@ func _build() -> void:
 	_target = given if is_instance_valid(given) and given is Person else pick(ctx.field, origin)
 	_to = extra.get("to", origin)
 	_order = String(extra.get("order", "")) if extra.has("order") else ""
-	if _order == "attack" or _order == "burn":
-		_build_order()
+	# The walk goes where the cast was told, or to the cast itself: the order is told so (it would otherwise keep them where they stand).
+	var said := extra.duplicate()
+	said["to"] = _to
+	if _target == null or not order(ctx, _target, said, _seconds()):
+		duration = 0.1  # nothing happens, as for a whisper that does not take
 		return
-	if _target == null or not _target.whisper(_to, LINGER):
-		duration = 0.1
-		return
+	# The attack and burn orders: the ring marks the foe, or the spot at the building's edge they were sent to.
+	if _order == "attack":
+		_foe = extra.get("foe")
+		_to = _foe.ground_pos
+	elif _order == "burn":
+		_building = extra.get("building")
+		_to = _target.anchor
 	if PowerBook.twist_at(extra, "whisper"):
 		_target.hold_string()  # Held String (level 5): no shake-off when it wears off
 	ctx.play(&"q_whisper", _to)
 	# A solid ring in a faint halo, no telegraph's scan or crosshair: a mark, not a threat.
-	_ring = _mark(RING_R, COL_RING, 0.25)
-	_halo = _mark(HALO_R, COL_HALO, 0.0)
-
-
-## The attack and burn orders: the whisper takes (it keeps the flight they owe and the shake-off), and the ring marks the foe or the
-## spot at the building. Nothing happens, as for a whisper that does not take, when it cannot.
-func _build_order() -> void:
-	var ok := false
-	if _target != null and is_instance_valid(_target):
-		if _order == "attack":
-			_foe = extra.get("foe") if foe_ok(_target, extra.get("foe")) else null
-			if _foe != null:
-				_to = _foe.ground_pos
-				ok = _target.whisper_fight(_foe, lv_attack_secs, Person.SOLDIER_BLOW if _target.soldier else CIVIL_BLOW)
-		elif ctx.crowd != null and ctx.crowd.fires != null and building_ok(_target, extra.get("building")):
-			_building = extra.get("building")
-			_to = stand_at(_target.grid, _building, _target.ground_pos)
-			ok = _target.whisper(_to, BURN_SECS + BURN_AFTER)
-	if not ok:
-		duration = 0.1
-		return
-	if PowerBook.twist_at(extra, "whisper"):
-		_target.hold_string()  # Held String (level 5): no shake-off when it wears off
-	ctx.play(&"q_whisper", _to)
 	_ring = _mark(RING_R, COL_RING, 0.25)
 	_halo = _mark(HALO_R, COL_HALO, 0.0)
 
@@ -235,8 +255,8 @@ func _fx_process(_delta: float) -> void:
 ## ends the order), and BURN_SECS later light the building -- if they are still under the whisper, and it still stands and burns
 ## (FireManager.ignite() checks that).
 func _burn_step() -> void:
-	if _lit or not _holds():
-		return
+	if _lit or _building == null or not _holds():
+		return  # (no building: the order never took, and the effect is ending)
 	if _arrived < 0.0:
 		if _target.goal() == Vector2.INF:
 			if _building.distance_to(_target.ground_pos) > BURN_NEAR:

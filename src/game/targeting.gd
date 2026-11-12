@@ -310,8 +310,44 @@ func _unhandled_input(event: InputEvent) -> void:
 ## (Rules.can_recast) is aimed as a plain click, whatever its own kind: the click is the order.
 func _aim_kind() -> String:
 	if slot >= 0 and _rules.can_recast(slot):
-		return "click"
+		# A follow-up through Mind Whisper's wheel (a possession) is aimed as a whisper: press, drag and release, and its wheel.
+		return "whisper" if _wheel_fx() != null else "click"
 	return String(mode().get("aim", _rules.power(slot).get("aim", "click")))
+
+
+## The focused slot's live effect when it takes its follow-up through Mind Whisper's wheel (its follow_up_wheel() is true: Raise the Dead's
+## possession), else null. Such an effect may give follow_up_reach() (how far from follow_up_from(), and how far a walk order goes;
+## Mind Whisper's REACH without it) and follow_up_from() (where that reach is measured from: the spirit; anywhere without it).
+func _wheel_fx() -> Variant:
+	if slot < 0 or not _rules.can_recast(slot):
+		return null
+	var fx: Variant = _rules.live_fx(_rules.key(slot))
+	return fx if fx != null and fx.has_method("follow_up_wheel") and fx.follow_up_wheel() else null
+
+
+## The slot's own reason it cannot cast, which a whisper's refusals name first -- none for a follow-up through the wheel, which casts
+## nothing (its slot is on its cooldown by then).
+func _why() -> String:
+	return "" if _wheel_fx() != null else _rules.refusal(slot)
+
+
+## A whisper's refusal when no one who can hear is there (`who` null) or they are still shaking the last whisper off: "nobody" or "shaken"
+## for Mind Whisper; "missed" for a follow-up through the wheel, as any follow-up that finds nothing.
+func _unheard(who: Person) -> String:
+	if _wheel_fx() != null:
+		return "missed"
+	return "nobody" if who == null else "shaken"
+
+
+## Whom a whisper press at `ground` picks (MindWhisperFx.pick()); for a follow-up through the wheel, only someone within its reach of the
+## effect's follow_up_from().
+func _whisper_pick(ground: Vector2) -> Person:
+	var who := MindWhisperFx.pick(_crowd._field, ground)
+	var fx: Variant = _wheel_fx()
+	if who != null and fx != null and fx.has_method("follow_up_from") \
+			and who.ground_pos.distance_to(fx.follow_up_from()) > _whisper_reach():
+		return null
+	return who
 
 
 ## The cursor moved. Keeps the preview where the player is looking.
@@ -319,7 +355,12 @@ func hover(ground: Vector2) -> void:
 	# Mission calls this every frame. A preview that has not moved is not redrawn: this node sits on the ground
 	# plane, and redrawing it re-batches the layer the whole town is drawn in.
 	# A held whisper is the exception: its line starts on someone walking, so it follows them every frame.
-	if (_wheel or _order != "") and not _whisper_hears():
+	if (_wheel or _order != "") and not _is_whisper():
+		# The live effect whose follow-up opened the wheel (a possession) has ended or stopped taking them: the wheel goes with it, quietly.
+		_end_wheel()
+		armed = false
+		aiming = false
+	elif (_wheel or _order != "") and not _whisper_hears():
 		# The one the wheel (or the pick) is set on has died, gone in or been taken: it can no longer hear, so it is over -- once.
 		_end_stale_whisper()
 	var held := _whisper_held()
@@ -359,7 +400,7 @@ func press(ground: Vector2) -> void:
 		# Mind Whisper: the press snaps to the citizen under it, and with nobody there -- or (v0.08.1) only someone
 		# still shaking the last whisper off -- nothing is armed. A slot that could not cast anyway names its own
 		# reason first, as a release would.
-		var who := MindWhisperFx.pick(_crowd._field, ground)
+		var who := _whisper_pick(ground)
 		if _wheel and who == null:
 			# A press away from the open wheel on nobody closes it, quietly: the player has turned from that person.
 			_end_wheel()
@@ -370,8 +411,8 @@ func press(ground: Vector2) -> void:
 		if who == null or who.shaken():
 			if _wheel:
 				_end_wheel()  # a press elsewhere on someone who cannot be whispered still leaves the old wheel
-			var why := _rules.refusal(slot)
-			_rules.refuse(slot, why if why != "" else ("nobody" if who == null else "shaken"), who)
+			var why := _why()
+			_rules.refuse(slot, why if why != "" else _unheard(who), who)
 			queue_redraw()
 			return
 		_whisper_target = who
@@ -458,8 +499,8 @@ func release(ground: Vector2) -> void:
 		aiming = false
 		if who == null:
 			_end_wheel()
-			var why := _rules.refusal(slot)
-			_rules.refuse(slot, why if why != "" else "nobody")
+			var why := _why()
+			_rules.refuse(slot, why if why != "" else _unheard(null))
 			queue_redraw()
 			return
 		if _order != "":
@@ -525,6 +566,8 @@ func area() -> Dictionary:
 	var follow := _rules.follow_up_area(slot) if slot >= 0 else {}
 	if not follow.is_empty():
 		return follow
+	if _wheel_fx() != null:
+		return AREAS["whisper"]  # a follow-up through Mind Whisper's wheel shows the whisper's pick ring
 	var a := area_at(_rules.key(slot), _rules.level_of(slot))
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
@@ -624,7 +667,11 @@ func _lv(key: String, stat_name: String, base: Variant) -> Variant:
 
 
 ## How far the focused Mind Whisper sends a person, at the slot's level (the table's REACH; MindWhisperFx.REACH at level 1).
+## A follow-up through the wheel (a possession) reaches as far as its effect says (follow_up_reach()).
 func _whisper_reach() -> float:
+	var fx: Variant = _wheel_fx()
+	if fx != null:
+		return float(fx.follow_up_reach()) if fx.has_method("follow_up_reach") else MindWhisperFx.REACH
 	return float(PowerBook.level_stat("whisper", _rules.level_of(slot), "REACH", MindWhisperFx.REACH))
 
 
@@ -659,11 +706,12 @@ func _end_wheel() -> void:
 ## The wheel or the pick step is set on someone who can no longer hear it (died, went in, resists): it is called off and the player told
 ## "nobody" (the slot's own refusal first), whether or not the button is down.
 func _end_stale_whisper() -> void:
+	var why := _why() if slot >= 0 else ""
+	var unheard := _unheard(null)
 	_end_wheel()
 	armed = false
 	aiming = false
-	var why := _rules.refusal(slot) if slot >= 0 else ""
-	_rules.refuse(slot, why if why != "" else "nobody")
+	_rules.refuse(slot, why if why != "" else unheard)
 	queue_redraw()
 
 
@@ -708,7 +756,7 @@ static func order_color(order: String) -> Color:
 ## The cast's extra for the click that names the target of the picked order (at _pick_at), or {} when it is no fair target -- then the
 ## click is refused (the slot's own reason first, as other picks refuse) and the pick goes on.
 func _order_extra(who: Person) -> Dictionary:
-	var why := _rules.refusal(slot)
+	var why := _why()
 	match _order:
 		"attack":
 			var foe := MindWhisperFx.foe_at(_crowd._field, _pick_at)
@@ -858,6 +906,13 @@ func _draw() -> void:
 				_lane(_press, dir, lane_length(), float(a.half), edge)
 	if _is_wheel() and placed:
 		_draw_wheel()
+	if _wheel_fx() != null:
+		# A follow-up through Mind Whisper's wheel (a possession): the reach round where the effect measures it from, then the whisper's own.
+		var fx: Variant = _wheel_fx()
+		if fx.has_method("follow_up_from") and not _whisper_held():
+			_ring(fx.follow_up_from(), _whisper_reach(), COL_FAINT)
+		_draw_whisper()
+		return
 	if not _rules.follow_up_area(slot).is_empty():
 		return  # a live power's follow-up draws its own ground, not "who the cast would take"
 	match _rules.key(slot):
@@ -914,19 +969,7 @@ func _draw() -> void:
 			for p in drawn:
 				_ring(p.ground_pos, 0.18, COL_FAINT)
 		"whisper":
-			if _order != "" and _whisper_held():
-				_draw_pick()
-			elif _wheel and _whisper_held():
-				_draw_whisper_wheel()
-				if armed:
-					_whisper_line(_press, _at)
-			elif _whisper_held():
-				_whisper_line(_press, _at)
-			else:
-				# Who a press here would whisper to; red while they shake the last whisper off (v0.08.1).
-				var who := MindWhisperFx.pick(_crowd._field, _press)
-				if who != null:
-					_ring(who.ground_pos, 0.2, whisper_pick_color(who))
+			_draw_whisper()
 		"ember":
 			# What it would light, or a red ring for nothing that burns in reach.
 			var burns := EmberFx.target(_crowd._env, _press, float(area().get("r", EmberFx.REACH)))
@@ -1046,6 +1089,24 @@ func _whisper_line(from: Vector2, to: Vector2, col := COL_EDGE, reach := true) -
 	_ring(spot, 0.25, col)
 	if reach and from.distance_to(to) > lv_reach:
 		draw_line(from + (to - from).limit_length(lv_reach), to, COL_BAD, -1.0)
+
+
+## Mind Whisper's aim drawn (its own, or a follow-up through its wheel): the pick step, the wheel, the held line, or who a press here would
+## whisper to.
+func _draw_whisper() -> void:
+	if _order != "" and _whisper_held():
+		_draw_pick()
+	elif _wheel and _whisper_held():
+		_draw_whisper_wheel()
+		if armed:
+			_whisper_line(_press, _at)
+	elif _whisper_held():
+		_whisper_line(_press, _at)
+	else:
+		# Who a press here would whisper to; red while they shake the last whisper off (v0.08.1).
+		var who := _whisper_pick(_press)
+		if who != null:
+			_ring(who.ground_pos, 0.2, whisper_pick_color(who))
 
 
 ## The order wheel around the citizen: three slices in their tints (the one under the held cursor brighter), the hub, and each

@@ -15,12 +15,14 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 const BEAT_NEAR := 3.2
 ## A killing blow lands this far (plus its radius) from him at the least, or it takes him too.
 const BLOW_GAP := 0.4
-## Pestilence is cast this far from him at the least: the plague can spread to him (rulings D13, spec Problem 11).
-const PLAGUE_CLEAR := 8.0
 ## His seizer is struck when he trails him by more than the blow's radius plus this.
 const SEIZER_GAP := 0.4
 ## Death Mark: how far a citizen may be from him to be marked for the run (the mark dies 10 s on, slowed, within BOLT_REACH of him).
 const MARK_NEAR := 2.0
+## Death: his run is started once no more than RUN_PATROLS patrolmen live, or at RUN_AT; a zombie rises only this far from him or more.
+const RUN_PATROLS := 2
+const RUN_AT := 40.0
+const ZOMBIE_CLEAR := RaiseTheDeadFx.SEEK
 
 
 
@@ -239,9 +241,9 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence ---
+# --- Death: Death Mark, Raise the Dead ---
 
-## The citizen nearest him within MARK_NEAR (a lay one, out of doors, not marked): Death Mark's first victim, whose death starts his run.
+## The citizen nearest him within MARK_NEAR (a lay one, out of doors, not marked): Death Mark's victim whose death starts his run.
 static func _citizen_beside(d: LostLambDirector, crowd: Crowd) -> Person:
 	var best: Person = null
 	for p in crowd.citizens:
@@ -253,8 +255,10 @@ static func _citizen_beside(d: LostLambDirector, crowd: Crowd) -> Person:
 	return best
 
 
-## Pestilence takes a squad whole (every one of its men within 1.2 of the aim) when the aim is PLAGUE_CLEAR or more from him; Death Mark
-## takes one man at a time (it dies 10 s on): a watchman, a patrol's man, a searcher, his seizer; and a citizen marked beside him starts his run.
+## Death works the soldiers ahead of him in the order he meets them. Death Mark takes one man at a time (he dies 10 s on): a patrol's man, a
+## watchman, a searcher, his seizer. Raise the Dead's ZOMBIE gets up from a soldier's body where he fell, among his own, when he is beyond its
+## sight (ZOMBIE_CLEAR): it hunts the nearest, the soldiers at their posts are drawn to it, and whoever it kills gets up too. His run is started
+## by a citizen marked beside him once the patrols are thinned (RUN_PATROLS), or at RUN_AT.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := _lamb(ctx, bc)
 	if d == null or d.charge.inside:
@@ -262,29 +266,21 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	var lamb := d.charge
 	var crowd: Crowd = ctx.crowd
 	if d.held and WarningDirector._alive(d.seizer):
-		if _ready(bc, ctx, "deathmark"):
+		if _ready(bc, ctx, "deathmark") and not (d.seizer as Person).statuses.has(&"frail"):
 			_cast(ctx, "deathmark", (d.seizer as Person).ground_pos)
 			return "death mark his seizer"
 		return ""
+	if _ready(bc, ctx, "raise"):
+		var body := _zombie_body(d, crowd)
+		if body != Vector2.INF:
+			_cast(ctx, "raise", body, {"mode": "zombie"})
+			return "raise a zombie among the soldiers (%.1f, %.1f)" % [body.x, body.y]
 	var squads := _squads(d, _road(ctx, d))
-	# The run: a citizen beside him marked, dying within reach of him in 10 s, starts it.
-	if not d.bolting and not d.led and _ready(bc, ctx, "deathmark"):
+	if not d.bolting and not d.led and _ready(bc, ctx, "deathmark") and (_patrolmen(d) <= RUN_PATROLS or d._clock >= RUN_AT):
 		var one := _citizen_beside(d, crowd)
 		if one != null:
 			_cast(ctx, "deathmark", one.ground_pos)
 			return "death mark a citizen beside him"
-	if _ready(bc, ctx, "pestilence"):
-		for sq: Dictionary in squads:
-			if (sq.members as Array).size() < 2:
-				continue  # one man is Death Mark's
-			var mid := _mid(sq.members)
-			var victims := PestilenceFx.victims_at(crowd._field, mid)
-			var whole := true
-			for m: Person in sq.members:
-				whole = whole and victims.has(m)
-			if whole and not victims.has(lamb) and lamb.ground_pos.distance_to(mid) >= PLAGUE_CLEAR:
-				_cast(ctx, "pestilence", mid)
-				return "pestilence on a %s (%d)" % [sq.kind, (sq.members as Array).size()]
 	if _ready(bc, ctx, "deathmark"):
 		for sq: Dictionary in squads:
 			var mark: Person = null
@@ -296,6 +292,28 @@ static func act_death(bc, ctx: Dictionary) -> String:
 				_cast(ctx, "deathmark", mark.ground_pos)
 				return "death mark a %s" % sq.kind
 	return ""
+
+
+## The living patrolmen.
+static func _patrolmen(d: LostLambDirector) -> int:
+	var n := 0
+	for k in d.patrols.size():
+		n += _living(d.patrols[k]).size()
+	return n
+
+
+## A soldier's body a zombie may rise from: beyond ZOMBIE_CLEAR of him, with a living soldier nearer it than any citizen (its first prey is
+## one of them). Its place, or Vector2.INF.
+static func _zombie_body(d: LostLambDirector, crowd: Crowd) -> Vector2:
+	if crowd.remains == null:
+		return Vector2.INF
+	for r in crowd.remains.all():
+		if not r.soldier or r.pos.distance_to(d.charge.ground_pos) < ZOMBIE_CLEAR:
+			continue
+		var near := DominionParts.near(crowd._field, r.pos, RaiseTheDeadFx.SEEK, 1)
+		if not near.is_empty() and near[0].soldier:
+			return r.pos
+	return Vector2.INF
 
 
 # --- Dominion: Mind Whisper, Discord ---

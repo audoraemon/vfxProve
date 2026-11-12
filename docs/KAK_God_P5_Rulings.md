@@ -387,3 +387,15 @@ rewritten onto the real keys and their refs re-recorded.
 - **P5-PT-G2 (reported). Skylift makes some nights short.** Lost Lamb about 22 s (the watch lifted off the way out, then the boy onto it), First
   Taste 42 s, Hide the faithful 62 s, Expel 124 s, Break 112 s. The Hunts' pooled-median bands (180-240 s; Hunt 1 140-200 s) may fail in
   `--judge` on Hunts 1, 3 and 4 because of Passage's rows. A design question for the user (Skylift's reach or cooldown), not a bot fix.
+
+### Death's real tree (2026-11-12): the bots draft Death Mark and Raise the Dead at Tier 1
+The user's Death tree (Death Mark/Raise the Dead at Tier 1, Pestilence at Tier 2, the dev keys glacial/orbital out) retired every
+Death Mark + Pestilence Tier 1 policy and every Glacial Hunt policy. The bots were rewritten onto the real keys and their refs re-recorded.
+- **P5-DT-R1 (controller). Death's idle of 48 s on Hunt 1 seed 1 is accepted, pending the user's word.** The same chain gap as P5-PT-R1:
+  the second household sets out 45 s after the first is done, and between them no watcher comes within any power's lead. No filler cast.
+  Gate: wins 3/3, median 191 s, idle 48/20/18. Cost if wrong: Death's Hunt 1 row fails the 45 s bar by 3 s.
+- **P5-DT-G1 (reported). Silence the witness x Death wins 2/3** (seed 2 lost at dawn: Lantern doubles the clock, a marked witness was indoors
+  when his mark fell). PASS at the 2/3 bar. Death's wins (146/154 s), Expel (139 s) sit under the pooled-median bands -- a design note.
+- **P5-DT-N1 (reported). The new powers are rarely needed by the bots.** Warning and Tax win on Death Mark alone; First Taste never fires Raise
+  on the logged seeds; Expel's Gravecall never fires on seeds 1-3 (unit-tested); Face Halcyon plays Death Mark only (every wider key would burn
+  the believer). Raise does real work on Harvest (spirit + possessed burn), Lamb (zombie), Prayers (possessed Faithful walked away) and Hunt 1.

@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_eta_once(t)
 	_policies(t)
 	_door_policies(t)
+	_death_last_leg(t)
 	_bloom_casts(t)
 	_no_filler_casts(t)
 	_guards_walk(t)
@@ -612,6 +613,34 @@ static func _policies(t) -> void:
 	var body := src.substr(from, src.find("# --- Dominion") - from)
 	t.check(body.contains("slots.noleave") and body.count("rules.cast(") == 1, "the Decree policy casts the one law (Leaving Is Prohibited), over the captain, and nothing else")
 	Kit.done(n)
+
+
+## Death on the captain's last leg (the Death tree's Gravecall in place of the dev Glacial): with the Citadel too near for a Death Mark's fuse, the
+## dead are called up where he will stand at T_RISE, both clicks there; that danger, landing within his alarm reach, is a counted fright and he runs
+## for the Temple.
+static func _death_last_leg(t) -> void:
+	var s := _world()
+	var d := _ei(s)
+	var cap := d.captain()
+	var p: Person = cap.target
+	d._set_out(cap)
+	Kit.arrive(p, d.safe_at + Vector2(0.0, 3.0))
+	cap.state = State.WALKING
+	cap.leg = cap.stops.size()
+	d._via = true
+	p.go_duty(d.safe_at)
+	var spy := SpyRules.new()
+	var ctx := _spy_ctx(s, spy, "death")
+	ctx.memo = {}
+	t.check(d._warned(cap) and d.captain_eta() / HUNT._rate(ctx) <= HUNT.GRAVE_ETA and not HUNT._mark_holds(ctx, cap),
+		"(set-up) the captain is warned, %.1f s from the Citadel: too near for the mark" % d.captain_eta())
+	var did := String(HUNT.act_death(SpyBc.new(), ctx))
+	t.check(spy.casts.size() == 1 and int(spy.casts[0].slot) == int(ctx.slots.gravecall) and (spy.casts[0].at as Vector2).distance_to(p.ground_pos) < ExpelInquisitorDirector.EI_ALARM_REACH * 0.5
+		and (spy.casts[0].extra.to as Vector2) == (spy.casts[0].at as Vector2), "Gravecall is called up on his road, both clicks where he will stand (%s)" % did)
+	d._on_danger("gravecall", [spy.casts[0].at] as Array[Vector2])
+	t.check(d.frights() == 1 and cap.state == State.FLEEING, "its danger is a counted fright, and he runs for the Temple (%d, %s)" % [d.frights(), State.keys()[cap.state]])
+	spy.free()
+	Kit.done(s)
 
 
 ## The door preps of the policies (review of Task 11, I1, M1, M2; Rulings P5-T11-R6, R7): a guard is struck at his door only in the last RUIN_PREP_LEAD seconds

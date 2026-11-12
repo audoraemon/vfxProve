@@ -10,7 +10,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
 	"ruin": ["smite", "tornado"],
-	"death": ["deathmark", "pestilence", "glacial"],
+	"death": ["deathmark", "pestilence", "gravecall"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "belllies", "magnify"],
@@ -138,16 +138,12 @@ const SW_GAP := 9.5
 const SW_SEEN_PATIENCE := 5.0
 ## Seconds to the Temple at which a finisher is cast whatever the gap (the walk is nearly out: no time to wait for the opener's effect).
 const SW_URGENT := 11.0
-## The least seconds a witness must be from the Temple for a Death Mark on a mate (the fuse is 10 s and the mate need not die before him), for Pestilence
-## (it takes PlagueManager.PLAGUE_LIFE and the cast's 0.4 s) and for Glacial Cataclysm (its peaks kill at 3.2 s).
+## The least seconds a witness must be from the Temple for a Death Mark on a mate (the fuse is 10 s and the mate need not die before him) and for Pestilence
+## (it takes PlagueManager.PLAGUE_LIFE and the cast's 0.4 s).
 const SW_PLAGUE_ETA := 7.5
-const SW_GLACIAL_ETA := 5.0
 ## Tornado Tempest pulls everyone within PULL_RADIUS (3.2) of its funnel into its core and flings them dead; it forms T_FORM after the cast and then roams
 ## for a building: the file must lie within this of its aim, led by T_FORM, so the pull holds all of it before the funnel moves off.
 const SW_TORNADO_FIT := 1.6
-## Glacial Cataclysm: the file must lie within this of its aim when the peaks rise (it freezes those within 5 and kills those within 1.6 of the aim).
-const SW_GLACIAL_FIT := 1.5
-const SW_GLACIAL_LEAD := 2.8
 ## A Windfall (STONE) goes across the street this far ahead of the witness, or the first of SW_FALL_TRIES steps farther on where every segment's middle lies
 ## SW_FALL_CLEAR (its HIT_R 0.7 and a margin) or more from the file and the line's middle SW_FALL_OFF or more from the witness as the crow flies (the street
 ## winds): the load bars the street and hurts none of them.
@@ -319,13 +315,18 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence, Glacial Cataclysm ---
+# --- Death: Death Mark, Pestilence, Gravecall ---
+
+## Gravecall's haunt holds the Temple's door at least this long after the cast (its rise and its 20 s; the spirits outrun a witness to it).
+const SW_HAUNT_HOLD := GravecallFx.T_RISE + GravecallFx.HAUNT
+
 
 ## Mates first, then the witness. The opener is a Death Mark on the nearest mate who could carry the word on (frail and slow, he falls behind the file and
 ## dies in 10 s); the finisher Pestilence on the file (the three nearest the aim catch it; they die PlagueManager.PLAGUE_LIFE later together), else, with the
-## plague cooling (48 s against a witness every 25-55), Glacial Cataclysm when the file lies within SW_GLACIAL_FIT of its aim as the peaks rise, else Death
-## Mark on a witness with no mate left. Death stirs the Lantern (every death seen turns the clock), so a second witness may come at x2: the plague is kept
-## for the witness who cannot be reached by a Glacial, and neither is cast on a witness with too little road left to wait for it.
+## plague cooling (48 s against a witness every 25-55) or too little road left to wait for it, Gravecall: its three spirits rise on the file and haunt the
+## Temple's door for 20 s, so that no one of the file can reach it, while Death Mark takes the mates and then the witness, once no mate is left who could
+## see him fall (a mate a fright sent off comes back to his heel) -- with his road, or the door's hold, longer than the mark. Death stirs the Lantern
+## (every death seen turns the clock), so a second witness may come at x2.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as SilenceWitnessDirector
 	if d == null:
@@ -333,6 +334,7 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
 	var crowd: Crowd = ctx.crowd
+	var held := float(ctx.memo.get("door_held", -INF)) - _now(d)  # the seconds the Temple's door is still haunted
 	for r in _walkers(d):
 		var w := r.messenger
 		var file := _file(r)
@@ -340,35 +342,49 @@ static func act_death(bc, ctx: Dictionary) -> String:
 		var eta := _eta(r)
 		if _sick(file):
 			continue  # the plague is on its way: the file dies together
-		if _marked(w) and mates.is_empty():
+		if _marked(w) and _able_mates(r).is_empty():
 			continue  # the witness is marked and alone: his time is the mark's
 		var ready := _finish_ok(d, ctx.memo, r, mates.is_empty())
-		if ready and bc._slot_ready(rules, slots, "pestilence") and eta >= SW_PLAGUE_ETA:
+		var plague: bool = bc._slot_ready(rules, slots, "pestilence") and eta >= SW_PLAGUE_ETA
+		if ready and plague:
 			var spot := _plague_aim(crowd, file)
 			if spot != Vector2.INF:
 				rules.cast(slots.pestilence, spot)
 				_noted(d, ctx.memo, r)
 				return _said("pestilence on the file", file)
-		if ready and bc._slot_ready(rules, slots, "glacial") and eta >= SW_GLACIAL_ETA:
-			var aim := _enclose(_led(file, SW_GLACIAL_LEAD))
-			if float(aim.r) <= SW_GLACIAL_FIT:
-				rules.cast(slots.glacial, aim.at)
-				_noted(d, ctx.memo, r)
-				return _said("glacial cataclysm on the file (the plague is cooling)", file)
+		if ready and not plague and held <= 0.0 and bc._slot_ready(rules, slots, "gravecall"):
+			rules.cast(slots.gravecall, w.ground_pos, {"to": d.lantern_door()})
+			ctx.memo.door_held = _now(d) + SW_HAUNT_HOLD
+			_noted(d, ctx.memo, r)
+			return _said("gravecall: spirits rise on the file and haunt the Temple's door (the plague is cooling)", file)
 		if bc._slot_ready(rules, slots, "deathmark"):
-			var unmarked: Array[Person] = []
-			for m in mates:
-				if not _marked(m) and m.sick_left <= 0.0:
-					unmarked.append(m)
-			if not unmarked.is_empty() and eta >= DeathMarkFx.MARK_TIME + 2.0:
-				rules.cast(slots.deathmark, unmarked[0].ground_pos)
+			var time_left := maxf(eta, held)  # (a haunted door holds the file from it)
+			var able := _able_mates(r)
+			if not able.is_empty() and time_left >= DeathMarkFx.MARK_TIME + 2.0:
+				rules.cast(slots.deathmark, able[0].ground_pos)
 				_noted(d, ctx.memo, r)
 				return "death mark on a mate who would carry the word on"
-			if mates.is_empty() and not _marked(w) and w.sick_left <= 0.0 and eta >= DeathMarkFx.MARK_TIME + 1.0:
+			if able.is_empty() and not _marked(w) and w.sick_left <= 0.0 and time_left >= DeathMarkFx.MARK_TIME + 1.0:
 				rules.cast(slots.deathmark, w.ground_pos)
 				_noted(d, ctx.memo, r)
 				return "death mark on the witness (no mate left to see)"
 	return ""
+
+
+## The witness's mates who could still carry the word on when a mark falls ten seconds on: alive, out of doors, neither marked nor sick, wherever a
+## fright has sent them (a frightened mate comes back to his heel), the nearest the witness first.
+static func _able_mates(r: WitnessDirector) -> Array[Person]:
+	var out: Array[Person] = []
+	var w := r.messenger
+	for v: Variant in r.mates:
+		if not WarningDirector._alive(v) or v == w:
+			continue
+		var m := v as Person
+		if not m.inside and not _marked(m) and m.sick_left <= 0.0:
+			out.append(m)
+	out.sort_custom(func(a: Person, b: Person) -> bool:
+		return a.ground_pos.distance_squared_to(w.ground_pos) < b.ground_pos.distance_squared_to(w.ground_pos))
+	return out
 
 
 ## `p` wears a Death Mark.

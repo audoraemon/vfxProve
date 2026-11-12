@@ -5480,12 +5480,17 @@ const FT_CLEAR := 1.2
 ## tree fails with a clear line instead of a night in which the policy silently casts nothing (C2).
 const FT_USES := {
 	"ruin": ["smite", "ember"],  # (Ember is required but never cast: Ruin wins on Smite alone; MS §3.8's Ember to draw the town is left out)
-	"death": ["deathmark", "pestilence"],
+	"death": ["deathmark", "raise"],
 	"veil": ["doom", "blight"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "belllies"],
 	"dominion": ["whisper", "discord"],
 }
+## Death (the user's tree, 2026-11-12: Death Mark and Raise the Dead): a dead marcher's soul is raised as a SPIRIT when what is left of his file stands within
+## FT_HAUNT_R of his body (the spirit frightens everyone within RaiseTheDeadFx.FRIGHT_R, and a frightened marcher leaves the march for good), and no captive or
+## marked lamplighter stands within FT_HAUNT_CLEAR of it (the spirit drifts after the nearest group, and would frighten them too).
+const FT_HAUNT_R := 2.6
+const FT_HAUNT_CLEAR := 6.0
 ## A breaker's sight (EscortDirector.SIGHT, 2.5) and a margin: a lamplighter nearer than this to one is already seen. A breaker within FT_ON_PATH of the
 ## captive's way ahead (within FT_AHEAD units of him) is one the drag will meet.
 const FT_SIGHT_PAD := 3.5
@@ -5527,7 +5532,7 @@ func _first_taste(which: String) -> void:
 		print("BEHAVIOUR refused scenario=first_taste god=%s missing=%s" % [type, ",".join(lacks)])
 		quit(1)
 		return
-	var memo := {"said": -INF, "type": type, "pest": {}, "lifted": 0, "blighted": false}
+	var memo := {"said": -INF, "type": type, "lifted": 0, "blighted": false}
 	await _scripted("first_taste", which, func() -> String: return _first_taste_act(rules, slots, d, crowd, memo),
 		func() -> String: return _first_taste_state(d))
 
@@ -5617,7 +5622,7 @@ func _first_taste_opening(type: String, rules: Rules, slots: Dictionary, memo: D
 	return ""
 
 
-## What the type does between breakers and marches (MS §3.8): Death marks the next Watchman ahead of the drag and sickens a muster; Passage lifts the captive
+## What the type does between breakers and marches (MS §3.8): Death raises a dead marcher's soul among his march and marks the next Watchman ahead of the drag; Passage lifts the captive
 ## past the Watch onto the shrine; every type stops a march that is near the shrine once the drag has nothing more urgent. "" when nothing.
 func _first_taste_prep(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, _crowd: Crowd, memo: Dictionary) -> String:
 	var march := _first_taste_march(d, FT_MARCH_NEAR)
@@ -5628,18 +5633,9 @@ func _first_taste_prep(type: String, rules: Rules, slots: Dictionary, d: FirstTa
 	match type:
 		"death":
 			for m in d.marches:
-				if m.done or m.walking or m.muster_left <= 0.0 or memo.pest.has(m) or not _slot_ready(rules, slots, "pestilence"):
-					continue
-				var at := Vector2.ZERO
-				var n := 0
-				for p in m.people:
-					if WarningDirector._alive(p):
-						at += (p as Person).ground_pos
-						n += 1
-				if n > 0:
-					memo.pest[m] = true
-					rules.cast(slots.pestilence, at / float(n))
-					return "pestilence on a muster of %d" % n
+				var raised := _first_taste_haunt(rules, slots, d, m)
+				if raised != "":
+					return raised
 			return _first_taste_mark_ahead(rules, slots, d)
 		"passage":
 			return _first_taste_lift(rules, slots, d, memo)
@@ -5673,6 +5669,41 @@ func _first_taste_mark_ahead(rules: Rules, slots: Dictionary, d: FirstTasteDirec
 		return ""
 	rules.cast(slots.deathmark, best.ground_pos)
 	return "death mark a watchman ahead of the drag"
+
+
+## Death: Raise the Dead's SPIRIT on a march's own dead -- a body (its soul still near) that what is left of march `m` stands round, within FT_HAUNT_R, so all
+## but one of them is frightened off the march and it breaks; never with the captive or a marked lamplighter within FT_HAUNT_CLEAR of it. "" when Raise is not
+## ready or no body lies so.
+func _first_taste_haunt(rules: Rules, slots: Dictionary, d: FirstTasteDirector, m: FirstTasteDirector.March) -> String:
+	var rem: Remains = mission._crowd.remains
+	if m.done or rem == null or not _slot_ready(rules, slots, "raise"):
+		return ""
+	var left: Array[Person] = []
+	for p: Variant in m.people:
+		if WarningDirector._alive(p):
+			left.append(p as Person)
+	if left.size() < FirstTasteDirector.CLEANSE_NEED:
+		return ""  # (a march its own dead have already broken)
+	var spare: Array[Vector2] = []
+	for v in d.marked:
+		if WarningDirector._alive(v):
+			spare.append(v.ground_pos)
+	if WarningDirector._alive(d.captive):
+		spare.append(d.captive.ground_pos)
+	for r in rem.all():
+		if not rem.has_soul(r):
+			continue
+		var near := 0
+		for p in left:
+			if p.ground_pos.distance_to(r.pos) <= FT_HAUNT_R:
+				near += 1
+		var clear := true
+		for q in spare:
+			clear = clear and q.distance_to(r.pos) > FT_HAUNT_CLEAR
+		if clear and left.size() - near < FirstTasteDirector.CLEANSE_NEED:
+			rules.cast(slots.raise, r.pos, {"mode": "spirit"})
+			return "raise a dead marcher's soul among his march (%d of %d frightened off)" % [near, left.size()]
+	return ""
 
 
 ## The marked lamplighter with the shortest way to the shrine, or null. With `avoid`, one standing within FT_SIGHT_PAD of a breaker who is free to grip
@@ -5736,6 +5767,9 @@ func _first_taste_stop(type: String, rules: Rules, slots: Dictionary, d: FirstTa
 		return ""
 	match type:
 		"death":
+			var raised := _first_taste_haunt(rules, slots, d, m)
+			if raised != "":
+				return raised
 			if _slot_ready(rules, slots, "deathmark"):
 				rules.cast(slots.deathmark, target.ground_pos)
 				return "death mark a marcher"

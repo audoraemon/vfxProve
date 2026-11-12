@@ -267,29 +267,22 @@ static func _cluster_aim(crowd: Crowd, m: Person, radius: float, reach: float, m
 	return best
 
 
-# --- Death: Death Mark, Pestilence ---
+# --- Death: Death Mark, Raise the Dead ---
 
 ## The gate mark (W3): Death Mark a man standing just outside the next star's gate -- a guard at his post outside it, who keeps still -- timed so he falls
 ## MARK_LANDS seconds into the watchman's stare: the body draws the watchman out to it (the postern's goes through his barred postern with its key), and
-## the walls stop the warning. Only once the star's time is known (the warning before it stopped). As before when no gate mark is up for a carrier: Pestilence
-## on him where he stands with the neighbours who would see him (the nearest three within 1.2 of its aim), so they die with him five seconds on, and Death
-## Mark on him.
+## the walls stop the warning. Only once the star's time is known (the warning before it stopped). When no gate mark is up for a carrier: Death Mark on
+## him. Raise the Dead has no work on this night: the gate marks stop every star before its carrier runs.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
-	var crowd: Crowd = ctx.crowd
 	if bc._slot_ready(rules, ctx.slots, "deathmark"):
 		var marked := _gate_mark(ctx)
 		if marked != "":
 			return marked
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
-		if m.statuses.has(&"frail") or m.sick_left > 0.0 or _mark_pending(ctx, w):
+		if m.statuses.has(&"frail") or _mark_pending(ctx, w):
 			return ""
-		if bc._slot_ready(rules, ctx.slots, "pestilence"):
-			var aim := _plague_aim(crowd, m)
-			if aim != Vector2.INF:
-				rules.cast(ctx.slots.pestilence, aim)
-				return "pestilence on the carrier and his neighbours"
 		if bc._slot_ready(rules, ctx.slots, "deathmark"):
 			rules.cast(ctx.slots.deathmark, m.ground_pos)
 			return "deathmark the carrier"
@@ -374,24 +367,6 @@ static func _mark_pending(ctx: Dictionary, w: WarningDirector) -> bool:
 	var i := d.stars.find(w)
 	var guard: Variant = ctx.memo.get("gate_mark_%d" % i, null)
 	return w.phase in [WarningDirector.Phase.OMEN, WarningDirector.Phase.STARE] and is_instance_valid(guard) and (guard as Person).is_alive() and (guard as Person).statuses.has(&"frail")
-
-
-## Where Pestilence takes the carrier and the fewest others (the plague goes on through a crowd by itself, and every death is heard by the alarm): the aim, or INF if none takes him.
-static func _plague_aim(crowd: Crowd, m: Person) -> Vector2:
-	var tries: Array[Vector2] = [m.ground_pos]
-	for e in crowd._field.in_radius(m.ground_pos, PestilenceFx.INFECT_R * 2.0):
-		var p := e as Person
-		if p != null and p != m and not p.inside:
-			tries.append(m.ground_pos.lerp(p.ground_pos, 0.5))
-			tries.append(p.ground_pos)
-	var best := Vector2.INF
-	var most := 0
-	for g in tries:
-		var victims := PestilenceFx.victims_at(crowd._field, g)
-		if victims.has(m) and (best == Vector2.INF or victims.size() < most):
-			best = g
-			most = victims.size()
-	return best
 
 
 # --- Veil: Silent Doom, Blight ---

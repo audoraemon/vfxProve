@@ -10,8 +10,8 @@ extends RefCounted
 ## crowd_death_wave at the mean of the deaths so far. A token budget (TOKENS, refilled REFILL a second) caps the rate
 ## across waves.
 
-## The kinds of death nobody should hear cry out (Silent Doom, the Death Mark, the plague).
-const QUIET_KINDS := [&"doom", &"deathmark", &"plague"]
+## The kinds of death nobody should hear cry out (Silent Doom, the Death Mark, the plague, Pale Reign).
+const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"pale"]
 ## Deaths this close after a wave's first belong to it, seconds.
 const WAVE_WINDOW := 0.25
 ## How many bodies of one wave are voiced.

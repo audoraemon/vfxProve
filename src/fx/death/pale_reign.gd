@@ -4,15 +4,19 @@ extends FxTimeline
 ## grey and silent.
 ## - Everyone inside out in the open crawls at CRAWL of their pace (hold_pace under this effect's id), let go as they leave
 ##   and when the span ends.
-## - Every second the fires inside gutter (FireManager.douse, Door to the Deep's way), and the town is hushed for the span
-##   (Crowd.hush: no shout, no alarm, no bell -- the bell is never silenced, so it rings on after if the night still calls).
-## - Every EVERY the weakest one still inside out in the open dies without a sound, killed as &"pale" (a whole body).
-##   Weakest: the sick, then the hurt (health under its full), then the frail (Death Mark's), then the nearest the middle;
-##   a tie to the lower instance id. No luck.
-## - Each of its dead rises at once as the god's pale servant: a zombie in their own look with ash-grey eyes
-##   (DeathParts.zombie, eyes ASH), in this effect's own Visitors pack, for SERVANT_LIFE from its rising; the body is taken
-##   off the ledger (Remains.take hides the corpse). The ledger is on for a Pale night (Remains.wants); were it off (a test,
-##   the sandbox), the reign keeps it on for itself and puts it back as it was at its end.
+## - Every second the fires inside gutter (FireManager.douse, Door to the Deep's way), and the district is hushed for the
+##   span (Crowd.hush_at: nobody in it shouts or cries out, and a bell tower in it makes no sound -- the bell is never
+##   silenced, so it rings on after if the night still calls). The rest of the town hears as ever; frights, the alarm and
+##   the town coming to look go on as for any loud power.
+## - Every EVERY the weakest one still inside out in the open dies without a sound, killed as &"pale" (a whole body; a quiet
+##   kind, DeathVoices.QUIET_KINDS). Weakest: the sick, then the hurt (health under their own full: a knight's is
+##   HEALTH_KNIGHT), then the frail (Death Mark's), then the nearest the middle; a tie to the lower instance id. No luck.
+##   The guised (Corpse Guise hides the faithful) and decoys (Mirrorfold's glass twins) are passed over.
+## - Every whole-body death in the district during the span (any kind the Remains ledger keeps: the reign's own, a
+##   servant's bite) rises at once as the god's pale servant, MAX_RISEN a cast at most: a zombie in their own look with
+##   ash-grey eyes (DeathParts.zombie, eyes ASH), in this effect's own Visitors pack, for SERVANT_LIFE from its rising; the
+##   body is taken off the ledger (Remains.take hides the corpse). The ledger is on for a Pale night (Remains.wants); were
+##   it off (a test, the sandbox), the reign keeps it on for itself and puts it back as it was at its end.
 ## Loud (PowerBook.REACH): the danger counts from the first death (IMPACT = EVERY). Over, or cut short, or freed without its
 ## end (_exit_tree), every pace is let go and the servants are gone.
 
@@ -22,6 +26,8 @@ const SPAN := 12.0
 const CRAWL := 0.3
 const EVERY := 2.0
 const SERVANT_LIFE := 20.0
+## At most this many of the dead rise in one reign.
+const MAX_RISEN := 12
 ## How often the fires inside are doused.
 const DOUSE_EVERY := 1.0
 ## The colour drains out over T_DRAIN and comes back over FADE once the span is over.
@@ -40,6 +46,8 @@ var visitors: Visitors
 var taken: Array[Person] = []
 var first_kill_at := -1.0
 var doused := 0
+## How many of the dead have risen.
+var risen := 0
 ## Whether the span is over (the district has its colour, pace and fires back).
 var over := false
 
@@ -51,6 +59,8 @@ var _next_kill := EVERY
 var _next_douse := 0.0
 ## Whether this effect turned the town's ledger on (it was off), to put it back.
 var _lit_ledger := false
+## The reign's own death being dealt now: its tick (a servant's 20 s count from it), else -1.
+var _reaping_at := -1.0
 var _drain: QuadFx
 
 
@@ -60,8 +70,9 @@ func _build() -> void:
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
+	ctx.field.enemy_killed.connect(_on_killed)
 	if ctx.crowd != null:
-		ctx.crowd.hush(SPAN)
+		ctx.crowd.hush_at(origin, RADIUS, SPAN)
 		if ctx.crowd.remains != null and not ctx.crowd.remains.enabled:
 			ctx.crowd.remains.enabled = true
 			_lit_ledger = true
@@ -95,7 +106,9 @@ func _fx_process(delta: float) -> void:
 		return
 	visitors.step(delta)
 	if is_instance_valid(_drain):
-		_drain.set_param("amount", shown())
+		var k := shown()
+		_drain.set_param("amount", k)
+		_drain.visible = k > 0.0  # past the fade: no screen copy for nothing
 	if not over:
 		_crawl()
 		# The fires and the deaths run on the reign's own clock, a tick at a time, so a long frame misses none.
@@ -133,10 +146,11 @@ func _crawl() -> void:
 
 
 func _let_go(id: int) -> void:
-	var p: Person = _held.get(id)
-	if is_instance_valid(p):
-		p.free_pace(get_instance_id())
+	# Untyped until checked: one who left the town (Crowd.escape) is freed, and assigning a freed one to a Person errors.
+	var p = _held.get(id)
 	_held.erase(id)
+	if is_instance_valid(p):
+		(p as Person).free_pace(get_instance_id())
 
 
 func _let_all_go() -> void:
@@ -168,7 +182,7 @@ func weakest() -> Person:
 	var best_d := INF
 	for e in ctx.field.in_radius(origin, RADIUS):
 		var p := e as Person
-		if p == null or p.inside:
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy"):
 			continue
 		var rank := _rank(p)
 		var d := p.ground_pos.distance_squared_to(origin)
@@ -184,27 +198,47 @@ func weakest() -> Person:
 static func _rank(p: Person) -> int:
 	if p.sick_left > 0.0:
 		return 0
-	if p.health < (Person.HEALTH_SOLDIER if p.soldier else Person.HEALTH_CITIZEN):
+	if p.health < full_health(p):
 		return 1
 	if p.statuses.has(&"frail"):
 		return 2
 	return 3
 
 
-## One death (the tick at `when`): the weakest dies without a sound, and rises at once as a servant.
+## A person's full health: a knight's (HEALTH_KNIGHT), a soldier's, a citizen's.
+static func full_health(p: Person) -> float:
+	if p.soldier and p.corps == Person.Corps.KNIGHT:
+		return Person.HEALTH_KNIGHT
+	return Person.HEALTH_SOLDIER if p.soldier else Person.HEALTH_CITIZEN
+
+
+## One death (the tick at `when`): the weakest dies without a sound (and rises: _on_killed()).
 func _reap(when: float) -> void:
 	var p := weakest()
 	if p == null:
 		return
 	_let_go(p.get_instance_id())
-	if not ctx.field.kill(p, &"pale", origin):
+	_reaping_at = when
+	var killed := ctx.field.kill(p, &"pale", origin)
+	_reaping_at = -1.0
+	if not killed:
 		return
 	taken.append(p)
 	if first_kill_at < 0.0:
 		first_kill_at = when
 	if DominionParts.staged(self):
 		FxParts.smoke(self, Iso.ground_to_screen(p.ground_pos), 5.0, 24.0, 0.3, Vector2(6, 16), Vector2(2, 4), Vector2(0.6, 1.2), Color(0, 0, 0, 0), DUST)
-	_rise(p, when)
+
+
+## Every whole-body death in the district during the span rises (the Remains ledger heard it first: it was connected at
+## the crowd's setup, before this): the reign's own, a servant's bite, anything that leaves a body; MAX_RISEN at most.
+func _on_killed(e: DummyEnemy, kind: StringName) -> void:
+	if over or risen >= MAX_RISEN or not Remains.BODY_KINDS.has(kind):
+		return
+	var p := e as Person
+	if p == null or p.inside or p.ground_pos.distance_to(origin) > RADIUS:
+		return
+	_rise(p, _reaping_at if _reaping_at >= 0.0 else t)
 
 
 ## `p`'s body gets up where it fell: a zombie in their own look, ash-grey eyes, for SERVANT_LIFE from `when`.
@@ -215,6 +249,7 @@ func _rise(p: Person, when: float) -> void:
 		return
 	var a := DeathParts.zombie(visitors, r, false, DeathParts.ASH)
 	rem.take(r)
+	risen += 1
 	_servants.append({"a": a, "until": when + SERVANT_LIFE})
 	if DominionParts.staged(self):
 		var sp := Iso.ground_to_screen(r.pos)
@@ -231,9 +266,10 @@ func _lift() -> void:
 func _expire() -> void:
 	var still: Array[Dictionary] = []
 	for s in _servants:
-		var a: Animal = s.a
-		if not is_instance_valid(a) or not a.is_alive():
+		# Untyped until checked: one cut down by the guard is freed by the Visitors.
+		if not is_instance_valid(s.a) or not (s.a as Animal).is_alive():
 			continue
+		var a: Animal = s.a
 		if t < float(s.until):
 			still.append(s)
 			continue
@@ -247,6 +283,7 @@ func _expire() -> void:
 
 ## Over or cut short: every pace let go, the servants gone, the ledger as it was.
 func _finish() -> void:
+	_unhear()
 	_let_all_go()
 	_servants.clear()
 	if visitors != null:
@@ -258,12 +295,18 @@ func _finish() -> void:
 ## Freed without _finish (a mission torn down mid-reign): the same, the pack only queued for freeing (its parents may be
 ## mid-teardown).
 func _exit_tree() -> void:
+	_unhear()
 	_let_all_go()
 	_servants.clear()
 	if visitors != null:
 		visitors.clear(true)
 	_put_ledger_back()
 	super()
+
+
+func _unhear() -> void:
+	if is_instance_valid(ctx.field) and ctx.field.enemy_killed.is_connected(_on_killed):
+		ctx.field.enemy_killed.disconnect(_on_killed)
 
 
 func _put_ledger_back() -> void:
@@ -278,6 +321,10 @@ class Veil extends Node2D:
 	var fx: PaleReignFx
 
 	func _process(_delta: float) -> void:
+		if not is_instance_valid(fx) or (fx.over and fx.shown() <= 0.0):
+			visible = false  # past the fade: nothing left to draw, nothing to redraw
+			set_process(false)
+			return
 		queue_redraw()
 
 	func _draw() -> void:

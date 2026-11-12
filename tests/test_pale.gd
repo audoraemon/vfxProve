@@ -1,9 +1,10 @@
 extends RefCounted
 ## Pale Reign (Death, Tier IV): a click drains the colour out of a district of 10 for 12 s; it turns grey and silent.
-## Everyone inside crawls at 0.3 pace, the fires there gutter out and the town is hushed (its bell too) for the span. Every
-## 2 s the weakest one still inside -- the sick, then the hurt, then the frail, then the nearest the middle; a tie to the
-## lower instance id -- dies without a sound (killed as pale, a whole body), and gets up at once as a grey-eyed zombie, the
-## god's pale servant, for 20 s.
+## Everyone inside crawls at 0.3 pace, the fires there gutter out and the district is hushed (a bell tower in it too) for
+## the span; the rest of the town is not. Every 2 s the weakest one still inside -- the sick, then the hurt, then the frail,
+## then the nearest the middle; a tie to the lower instance id; never a guised one or a decoy -- dies without a sound
+## (killed as pale, a whole body). Every whole-body death inside during the span gets up at once as a grey-eyed zombie, the
+## god's pale servant, for 20 s (12 at most).
 
 const RD := preload("res://tests/test_raise_dead.gd")
 const DT := 0.05
@@ -19,19 +20,26 @@ static func run(t) -> void:
 	_crawl(t, made)
 	_order(t, made)
 	_tie(t, made)
+	_spared(t, made)
+	_knight(t, made)
 	_every(t, made)
 	_risen(t, made)
+	_every_death(t, made)
 	_ledger_off(t, made)
 	_fires(t, made)
 	_loud(t, made)
+	_voices(t, made)
+	_escaped(t, made)
 	_exit(t, made)
 	_bell(t, made)
 	RD._done(made)
 
 
-## Everyone back out in the open, well and whole, then off in the corner (RD._clear_all).
+## Everyone back out in the open, well and whole, then off in the corner (RD._clear_all); the town's clock on past any
+## earlier reign's hush.
 static func _reset(made: Array) -> void:
 	var crowd: Crowd = made[0]
+	crowd._clock += PaleReignFx.SPAN + 1.0
 	for p in crowd.citizens + crowd.soldiers:
 		if is_instance_valid(p):
 			p.inside = false
@@ -147,6 +155,43 @@ static func _tie(t, made: Array) -> void:
 	fx.end_now()
 
 
+## Never a guised one (Corpse Guise hides the faithful) nor a decoy (a glass twin is no one): the tick takes the next.
+static func _spared(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	var guised := _put(made, 0, at + Vector2(1.0, 0.0))
+	guised.statuses[&"guise"] = 60.0
+	var decoy := _put(made, 1, at + Vector2(0.0, 1.5))
+	decoy.set_meta(&"decoy", true)
+	var plain := _put(made, 2, at + Vector2(-5.0, 0.0))
+	var fx := _cast(made, at)
+	RD._run(fx, PaleReignFx.EVERY + 0.05)
+	t.check(fx.taken == [plain] and guised.is_alive() and decoy.is_alive(),
+		"the guised and the decoy nearer are passed over (%s)" % [_names(fx.taken)])
+	fx.end_now()
+	guised.statuses.erase(&"guise")
+	decoy.remove_meta(&"decoy")
+
+
+## A knight is hurt below his own full health (HEALTH_KNIGHT), not a soldier's: at 4 of 6 he goes before a whole citizen nearer.
+static func _knight(t, made: Array) -> void:
+	_reset(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var near := _put(made, 0, at + Vector2(1.0, 0.0))
+	var k: Person = crowd.soldiers[0]
+	var corps := k.corps
+	k.corps = Person.Corps.KNIGHT
+	k.health = Person.HEALTH_KNIGHT - 2.0
+	k.ground_pos = at + Vector2(-6.0, 0.0)
+	t.check(PaleReignFx.full_health(k) == Person.HEALTH_KNIGHT and k.health > Person.HEALTH_SOLDIER, "(a knight at 4 of 6)")
+	var fx := _cast(made, at)
+	RD._run(fx, PaleReignFx.EVERY + 0.05)
+	t.check(fx.taken == [k] and near.is_alive(), "the wounded knight goes first (%s)" % [_names(fx.taken)])
+	fx.end_now()
+	k.corps = corps
+
+
 ## "one death every 2 s, 6 in 12 s at most": ten inside, the first at the power's impact; none after the span; the ones left
 ## have their pace back when it ends.
 static func _every(t, made: Array) -> void:
@@ -202,6 +247,35 @@ static func _risen(t, made: Array) -> void:
 	t.check(fx.visitors.living().size() == 1 and not fx.finished, "the first falls at its 20 s, the second still up")
 	RD._run(fx, PaleReignFx.EVERY + 0.3)
 	t.check(fx.visitors.living().is_empty() and fx.finished, "the last falls, and the reign is over")
+
+
+## Ruling: every whole-body death in the district during the span rises, whatever killed them (a mob's, a servant's bite);
+## not one outside it, not one after the span, and no more than MAX_RISEN in a reign.
+static func _every_death(t, made: Array) -> void:
+	_reset(made)
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	var inside := _put(made, 0, at + Vector2(4.0, 0.0))
+	var outside := _put(made, 1, at + Vector2(0.0, PaleReignFx.RADIUS + 2.0))
+	var fx := _cast(made, at)
+	RD._run(fx, 0.5)
+	field.kill(inside, &"mob")
+	t.check(fx.visitors.living().size() == 1 and fx.risen == 1 and fx.taken.is_empty(),
+		"a mob's death inside rises too (%d up)" % fx.visitors.living().size())
+	field.kill(outside, &"mob")
+	t.check(fx.visitors.living().size() == 1 and fx.risen == 1, "a death outside the district does not")
+	var also := _put(made, 1, at + Vector2(-4.0, 0.0))
+	fx.risen = PaleReignFx.MAX_RISEN
+	field.kill(also, &"mob")
+	t.check(fx.visitors.living().size() == 1, "no more than %d rise in one reign" % PaleReignFx.MAX_RISEN)
+	fx.end_now()
+	_reset(made)
+	var fx2 := _cast(made, at)
+	RD._run(fx2, PaleReignFx.SPAN + 0.1)
+	var late := _put(made, 0, at + Vector2(3.0, 0.0))
+	field.kill(late, &"mob")
+	t.check(fx2.visitors.living().is_empty(), "nor one after the span")
+	fx2.end_now()
 
 
 ## With the town's ledger off (no Death power that keeps bodies in a test's loadout), the reign keeps it on for itself: its
@@ -261,6 +335,51 @@ static func _loud(t, made: Array) -> void:
 	crowd.drop_held()
 
 
+## The district is hushed, not the town: a shout inside makes no sound, one outside does; a pale death slumps without a cry
+## (a quiet kind); the town itself is not hushed (frights, the alarm and the look go on as for any loud power).
+static func _voices(t, made: Array) -> void:
+	_reset(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var inside := _put(made, 0, at + Vector2(3.0, 0.0))
+	var outside := _put(made, 1, at + Vector2(0.0, PaleReignFx.RADIUS + 2.0))
+	var fx := _cast(made, at)
+	t.check(not crowd.is_hushed() and crowd.is_hushed_at(inside.ground_pos) and not crowd.is_hushed_at(outside.ground_pos),
+		"the district is hushed, the town is not")
+	crowd._voice_tokens = Crowd.VOICE_BUDGET
+	var played := crowd.voices_played
+	crowd._voice(inside, &"cit_shout")
+	t.check(crowd.voices_played == played, "a shout inside makes no sound")
+	crowd._voice(outside, &"cit_shout")
+	t.check(crowd.voices_played == played + 1, "a shout outside does")
+	t.check(DeathVoices.QUIET_KINDS.has(&"pale"), "a pale death is a quiet kind: a slump, no cry")
+	fx.end_now()
+
+
+## IMPORTANT 1 of the review: a held one who leaves the town mid-span (Crowd.escape frees them) is let go without an error
+## (assigning a freed one to a Person errors and would leave them held), and the reign ends cleanly.
+static func _escaped(t, made: Array) -> void:
+	_reset(made)
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	var gone := _put(made, 0, at + Vector2(3.0, 0.0))
+	var stays := _put(made, 1, at + Vector2(0.0, 6.0))
+	var fx := _cast(made, at)
+	RD._run(fx, 0.2)
+	var id := gone.get_instance_id()
+	t.check(fx._held.has(id), "(held)")
+	crowd.citizens.erase(gone)
+	field.remove(gone)
+	gone.free()
+	RD._run(fx, 0.2)
+	t.check(not fx._held.has(id) and fx._held.has(stays.get_instance_id()), "the one who left is let go, the other still held")
+	RD._run(fx, PaleReignFx.SPAN)
+	t.check(fx._held.is_empty(), "the span over, nobody held")
+	fx.end_now()
+	t.check(fx.finished, "and it ends cleanly")
+
+
 ## Freed without _finish (a mission torn down mid-reign): _exit_tree still lets every pace go and clears the pack.
 static func _exit(t, made: Array) -> void:
 	_reset(made)
@@ -280,7 +399,8 @@ static func _exit(t, made: Array) -> void:
 
 
 ## Review focus 5, "the bell is hushed 12 s, then can ring": over a burning bell tower whose keeper is on the rope, the bell
-## makes no sound for the span -- its keeper waits to try again, it is never silenced -- and rings once the span is over.
+## makes no sound for the span -- its keeper waits to try again, it is never silenced -- and rings once the span is over. A
+## reign elsewhere in town does not hush it.
 static func _bell(t, made: Array) -> void:
 	_reset(made)
 	var crowd: Crowd = made[0]
@@ -293,18 +413,28 @@ static func _bell(t, made: Array) -> void:
 	t.check(at != Vector2.INF and tower.distance_to(at) <= PaleReignFx.RADIUS, "a spot beside the bell tower")
 	if FireManager.burns(tower):
 		crowd.fires.ignite(tower, 1.0)
+	# Elsewhere in town first: a reign far from the tower does not hush its bell.
+	var far := RD._empty(made, tower.center())
+	t.check(far != Vector2.INF and tower.distance_to(far) > PaleReignFx.RADIUS + 2.0, "(a spot far from the tower)")
+	var fx0 := _cast(made, far)
+	bell.state = BellNetwork.State.CLIMBING
+	bell._ring()
+	t.check(bell.state == BellNetwork.State.RUNG, "a reign elsewhere: the bell rings (%s)" % BellNetwork.State.keys()[bell.state])
+	fx0.end_now()
+	crowd.unring_bell()
 	var fx := _cast(made, at)
-	t.check(crowd.is_hushed(), "the town is hushed at the cast")
+	t.check(crowd.is_hushed_at(tower.center()) and not crowd.is_hushed(), "the tower's district is hushed at the cast, not the town")
 	bell.state = BellNetwork.State.CLIMBING
 	bell._ring()
 	t.check(bell.state == BellNetwork.State.WAITING, "the bell makes no sound (%s)" % BellNetwork.State.keys()[bell.state])
 	_tick(made, fx, PaleReignFx.SPAN - 0.2)
-	t.check(crowd.is_hushed() and bell.state != BellNetwork.State.SILENCED, "still hushed near the end, the bell never silenced")
+	t.check(crowd.is_hushed_at(tower.center()) and bell.state != BellNetwork.State.SILENCED,
+		"still hushed near the end, the bell never silenced")
 	bell.state = BellNetwork.State.CLIMBING
 	bell._ring()
 	t.check(bell.state == BellNetwork.State.WAITING, "nor a ring at 11.8 s")
 	_tick(made, fx, 0.4)
-	t.check(not crowd.is_hushed(), "the hush lifts at 12 s")
+	t.check(not crowd.is_hushed_at(tower.center()), "the hush lifts at 12 s")
 	bell.state = BellNetwork.State.CLIMBING
 	bell._ring()
 	t.check(bell.state == BellNetwork.State.RUNG, "then the bell rings on (%s)" % BellNetwork.State.keys()[bell.state])

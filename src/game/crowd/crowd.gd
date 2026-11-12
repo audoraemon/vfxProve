@@ -166,6 +166,8 @@ var animals: AnimalPack
 var visitors: Array[Visitors] = []
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
+## Places hushed (Pale Reign): [{at, r, until}] -- nobody inside shouts or cries out, and a bell there makes no sound.
+var _hushes: Array = []
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
 var _bell_lies_until := -INF
 ## Seconds left of time standing still (freeze()).
@@ -1201,7 +1203,7 @@ func _update_bed(delta: float) -> void:
 
 ## One voice from `p`, if the budget allows it.
 func _voice(p: Person, cue: StringName) -> void:
-	if is_hushed():
+	if is_hushed() or is_hushed_at(p.ground_pos):
 		return
 	if _voice_tokens < 1.0:
 		return
@@ -1442,6 +1444,21 @@ func hush(seconds: float) -> void:
 
 func is_hushed() -> bool:
 	return _clock < _hush_until
+
+
+## Silence one place, within `r` of `at`, for `seconds` (Pale Reign): nobody there shouts or cries out (_voice(),
+## _voice_death()), and a bell tower there makes no sound (BellNetwork._ring(): the keeper tries again). Unlike hush(),
+## frights still pass, the alarm is still raised and the town still comes to look.
+func hush_at(at: Vector2, r: float, seconds: float) -> void:
+	_hushes = _hushes.filter(func(h: Dictionary) -> bool: return _clock < float(h.until))
+	_hushes.append({"at": at, "r": r, "until": _clock + seconds})
+
+
+func is_hushed_at(pos: Vector2) -> bool:
+	for h: Dictionary in _hushes:
+		if _clock < float(h.until) and (h.at as Vector2).distance_to(pos) <= float(h.r):
+			return true
+	return false
 
 
 ## Nothing within `r` of `at` is seen for `seconds` (Unseen Hour): no cast there is looked at or feared, no death or
@@ -1984,6 +2001,7 @@ func clear() -> void:
 	_held.clear()
 	_thorn_alarm_at = -INF
 	_hush_until = -INF
+	_hushes.clear()
 	_bell_lies_until = -INF
 	_freeze_left = 0.0
 	_veils.clear()
@@ -2058,10 +2076,10 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 				p.replan()
 
 
-## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town nobody cries out, so the
-## fall is all that is heard (a quiet kind's cue).
+## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town (or a hushed place: Pale
+## Reign) nobody cries out, so the fall is all that is heard (a quiet kind's cue).
 func _voice_death(p: Person, kind: StringName) -> void:
-	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() else kind, p.soldier, _clock)
+	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() or is_hushed_at(p.ground_pos) else kind, p.soldier, _clock)
 	if sfx == null:
 		return
 	for c: Array in cues:

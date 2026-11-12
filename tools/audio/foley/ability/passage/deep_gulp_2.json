@@ -1,0 +1,4 @@
+{"length": 1.0, "rms_db": -13.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/skippy-fish-water-sound-collection/eating.wav", "at": 0.0, "onset": true, "dur": 0.9, "pitch": -7, "hp": 60, "lp": 4000, "fade_out": 300},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/bubble2.wav", "at": 0.1, "onset": true, "pitch": -9, "hp": 60, "lp": 3000, "gain_db": -4, "fade_out": 60}
+]}

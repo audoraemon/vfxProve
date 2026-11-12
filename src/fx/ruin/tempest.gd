@@ -60,6 +60,8 @@ var volleys := 0
 var _rain_in := 0.0
 var _clouds: QuadFx
 var _rain: PixelParticles
+## The rain heard while the storm lasts (sky_rain, looped); faded out as the storm breaks.
+var _rain_voice: Node
 var _flicker := 0.0
 
 
@@ -74,8 +76,7 @@ func _build() -> void:
 	_next_volley = T_GATHER + 0.2
 	at(T_GATHER, _storm)
 	at(T_GATHER + STORM_TIME, _break)
-	ctx.play(&"hs_rumble", origin, 4.0)
-	ctx.play(&"tn_form", origin, -2.0)
+	ctx.play(&"sky_gather", origin)
 	if not DominionParts.staged(self):
 		return
 	var centre := Iso.ground_to_screen(ctx.field.bounds.get_center())
@@ -99,7 +100,8 @@ func _build() -> void:
 
 
 func _storm() -> void:
-	ctx.play(&"nova_crack", origin, -3.0)
+	ctx.play(&"sky_clap", origin, -3.0)
+	_rain_voice = ctx.play(&"sky_rain", origin)
 	if not DominionParts.staged(self):
 		return
 	var centre := Iso.ground_to_screen(ctx.field.bounds.get_center())
@@ -111,8 +113,10 @@ func _storm() -> void:
 
 
 func _break() -> void:
-	ctx.play(&"hs_rumble", origin, 2.0)
-	ctx.play(&"tn_dissipate", origin, -2.0)
+	ctx.play(&"sky_clear", origin)
+	if _rain_voice != null and is_instance_valid(_rain_voice):
+		ctx.fade_out(_rain_voice, T_BREAK * 0.6)
+	_rain_voice = null
 
 
 func _fx_process(delta: float) -> void:
@@ -256,9 +260,9 @@ func _bolt(at: Vector2, hard: bool) -> void:
 	# Thunder: the nearer the bolt to the cast, the sooner and the louder.
 	var delay := clampf(at.distance_to(origin) / 14.0, 0.05, 1.2)
 	at(t + delay, func() -> void:
-		ctx.play(&"hs_strike", at, 0.0 if hard else -6.0)
+		ctx.play(&"sky_bolt", at, 0.0 if hard else -6.0)
 		if hard:
-			ctx.play(&"nova_crack", at, -3.0))
+			ctx.play(&"sky_roll", at, -3.0))
 
 
 ## The rain sends the calm indoors.

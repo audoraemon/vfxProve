@@ -19,7 +19,7 @@ var struck := 0
 func _build() -> void:
 	duration = 2.2
 	at(T_STRIKE, _strike)
-	ctx.play(&"orb_charge", origin, -4.0)
+	ctx.play(&"smite_call", origin, -4.0)
 	if DominionParts.staged(self):
 		var mark := FxParts.rings(self, origin, KILL_R, Color("cfe8ff"), 2, 6.0)
 		mark.set_param("scan", 0.0)
@@ -35,7 +35,7 @@ func _strike() -> void:
 		if ctx.field.kill(e, &"lightning", origin):
 			struck += 1
 	ctx.env.damage_radius(origin, HIT_R, DAMAGE, &"smite")
-	ctx.play(&"hs_strike", origin, -3.0)
+	ctx.play(&"smite_strike", origin, -3.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(origin)

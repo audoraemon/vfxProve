@@ -91,8 +91,7 @@ func _lift() -> void:
 func _telegraph() -> void:
 	var sp := Iso.ground_to_screen(origin)
 	ctx.impact.dim(1.0, 1.6)
-	ctx.play(&"hs_charge", origin)
-	ctx.play(&"nova_lock", origin, -4.0)
+	ctx.play(&"solar_call", origin)
 	var rings := FxParts.rings(self, origin, RADIUS, GOLD, 3, 22.0)
 	rings.tween_param("reveal", 0.0, 1.0, 0.5, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	rings.tween_param("alpha", 1.0, 0.0, 0.3, T_CHARGE)
@@ -123,9 +122,8 @@ func _strike() -> void:
 	ctx.impact.aberration(3.0, 0.4)
 	ctx.shake.add_trauma(0.9)
 	ctx.shake.kick(Vector2(0, 5))
-	ctx.play(&"nova_crack", origin)
-	ctx.play(&"laser_ignite", origin, 3.0)
-	_voices = [ctx.play(&"laser_fire", origin, 4.0), ctx.play(&"dr_breath", origin, -2.0)]
+	ctx.play(&"solar_blaze", origin)
+	_voices = [ctx.play(&"solar_burn", origin)]
 
 	# Behind the pillar: a tall glow round it and a hot bloom where it stands.
 	_halo = FxParts.bloom(self, sp + Vector2(0, -COLUMN_H * 0.3), semi.x * 1.7, SUN, 0.0, 2.4)
@@ -183,8 +181,7 @@ func _fade() -> void:
 	_rays.tween_param("intensity", 0.55, 0.0, 0.4)
 	for v in _voices:
 		ctx.fade_out(v, 0.5)
-	ctx.play(&"laser_powerdown", origin)
-	ctx.play(&"nova_rumble", origin, -3.0)
+	ctx.play(&"solar_fade", origin)
 	ctx.impact.dim(0.0, 0.7)
 	ctx.impact.aberration(1.6, 0.3)
 	ctx.shake.add_trauma(0.5)

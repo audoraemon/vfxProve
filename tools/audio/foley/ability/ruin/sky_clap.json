@@ -1,0 +1,5 @@
+{"length": 4.2, "rms_db": -13.0, "reverb": {"rt60": 3.6, "mix": 0.3, "predelay_ms": 40, "damp": 4000}, "layers": [
+  {"src": "lib:oga/rain-long-thunder/rain-thunder.ogg", "at": 0.0, "from": 22.3, "dur": 4.0, "hp": 30, "lp": 8000, "fade_in": 5, "fade_out": 1500},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack09.mp3.flac", "at": 0.0, "onset": true, "pitch": 5, "hp": 1500, "lp": 15000, "gain_db": -2, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_004.ogg", "at": 0.0, "onset": true, "pitch": -10, "hp": 25, "lp": 600, "gain_db": -5, "fade_out": 60}
+]}

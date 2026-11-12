@@ -1,0 +1,4 @@
+{"length": 2.4, "rms_db": -17.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/water-waves/wave_02_cc0-11505__transitking__wavesound.flac", "at": 0.0, "onset": true, "pitch": -4, "hp": 80, "lp": 7000, "fade_out": 600},
+  {"src": "lib:oga/water-waves/wave_03_cc0-11505__transitking__wavesound.flac", "at": 0.5, "onset": true, "pitch": -5, "hp": 80, "lp": 6000, "gain_db": -3, "fade_out": 600}
+]}

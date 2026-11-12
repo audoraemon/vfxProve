@@ -1,0 +1,6 @@
+{"length": 2.8, "rms_db": -18.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/solar_choir_burn.wav", "at": 0.0, "from": 4.4, "dur": 1.6, "hp": 200, "lp": 10000, "gain_db": -3, "fade_in": 10, "fade_out": 900},
+  {"src": "lib:oga/steam-release-sounds/steam hisses - Marker #3.wav", "at": 0.1, "onset": true, "dur": 2.4, "hp": 1500, "lp": 9000, "gain_db": -6, "fade_out": 1200},
+  {"src": "lib:oga/fire-crackling/fire-1.wav", "at": 0.4, "from": 0.3, "dur": 2.2, "hp": 300, "lp": 8000, "gain_db": -10, "fade_in": 300, "fade_out": 900},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 16.0, "dur": 2.6, "hp": 30, "lp": 400, "gain_db": -6, "fade_out": 1300}
+]}

@@ -1,0 +1,6 @@
+{"length": 5.5, "rms_db": -16.0, "reverb": {"rt60": 3.6, "mix": 0.3, "predelay_ms": 40, "damp": 4000}, "layers": [
+  {"src": "lib:oga/wind1/wind2.wav", "at": 0.0, "from": 10.0, "dur": 5.4, "hp": 80, "lp": 6000, "fade_in": 3000, "fade_out": 600},
+  {"src": "lib:oga/wind/wind/wind/Wind2.ogg", "at": 1.0, "from": 0.0, "dur": 4.4, "hp": 100, "lp": 7000, "gain_db": -4, "fade_in": 2000, "fade_out": 600},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_thunder_01.ogg", "at": 1.4, "from": 0.7, "dur": 3.0, "hp": 30, "lp": 600, "gain_db": -7, "fade_out": 1200},
+  {"src": "lib:oga/storm-siren/storm_3_siren.ogg", "at": 3.6, "from": 15.0, "dur": 1.9, "hp": 30, "lp": 900, "gain_db": -8, "fade_in": 20, "fade_out": 800}
+]}

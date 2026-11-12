@@ -1,0 +1,6 @@
+{"length": 3.0, "rms_db": -13.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/heaven_choir_shut.wav", "at": 0.0, "from": 0.0, "dur": 3.0, "hp": 60, "lp": 13000, "fade_out": 900},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood08.mp3.flac", "at": 0.5, "onset": true, "pitch": -10, "hp": 30, "lp": 3000, "gain_db": -2, "fade_out": 400},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch02.mp3.flac", "at": 0.5, "onset": true, "pitch": -11, "hp": 25, "lp": 1500, "gain_db": -4, "fade_out": 60},
+  {"src": "lib:wikimedia/Church_bells_-_Leverkusen_2007.wav", "at": 0.52, "onset": true, "dur": 2.3, "pitch": -5, "hp": 80, "lp": 5000, "gain_db": -8, "fade_out": 1000}
+]}

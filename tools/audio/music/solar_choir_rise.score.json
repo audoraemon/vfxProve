@@ -1,0 +1,4 @@
+{"length": 2.0, "bpm": 60, "out": "tools/audio/music/render/solar_choir_rise.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 2.4, "mix": 0.3}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -16, "pan": 0.0, "notes": [{"t": 0, "p": "E5", "hold": 1.6, "vel": 80}, {"t": 0, "p": "B5", "hold": 1.6, "vel": 80}], "dyn": [[0, 10], [1.2, 115], [2.0, 60]]},
+  {"instrument": "violins_trem", "level_db": -22, "pan": 0.0, "notes": [{"t": 0, "p": "E6", "hold": 1.6, "vel": 80}], "dyn": [[0, 10], [1.2, 110], [2.0, 50]]}
+]}

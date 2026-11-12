@@ -1,0 +1,4 @@
+{"length": 0.45, "rms_db": -21.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "onset": true, "dur": 0.42, "reverse": true, "pitch": -2, "hp": 250, "lp": 9000, "fade_in": 60, "fade_out": 10},
+  {"src": "lib:oga/breaking-rock/rock_break_0.ogg", "at": 0.0, "onset": true, "dur": 0.42, "reverse": true, "pitch": -6, "hp": 100, "lp": 4000, "gain_db": -10, "fade_in": 80, "fade_out": 10}
+]}

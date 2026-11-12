@@ -1,0 +1,5 @@
+{"length": 0.7, "rms_db": -21.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/spell-sounds/electricspell2.ogg", "at": 0.0, "onset": true, "dur": 0.5, "hp": 1800, "lp": 12000, "gain_db": -4, "fade_in": 120, "fade_out": 120},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Bolt3.ogg", "at": 0.1, "onset": true, "dur": 0.4, "pitch": 4, "hp": 2000, "lp": 12000, "gain_db": -10, "fade_in": 150, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_thunder_01.ogg", "at": 0.0, "from": 0.8, "dur": 0.6, "hp": 40, "lp": 700, "gain_db": -12, "fade_in": 200, "fade_out": 300}
+]}

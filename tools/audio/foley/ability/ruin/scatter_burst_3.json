@@ -1,0 +1,5 @@
+{"length": 1.5, "rms_db": -16.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/explosions-4/explosion3.ogg", "at": 0.0, "onset": true, "pitch": -3, "hp": 40, "lp": 8000, "fade_out": 500},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch03.mp3.flac", "at": 0.0, "onset": true, "pitch": -4, "hp": 60, "lp": 5000, "gain_db": -4, "fade_out": 200},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.06, "onset": true, "pitch": -1, "hp": 200, "lp": 9000, "gain_db": -9, "fade_out": 200}
+]}

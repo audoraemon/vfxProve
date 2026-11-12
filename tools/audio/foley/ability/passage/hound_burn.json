@@ -1,0 +1,5 @@
+{"length": 2.0, "rms_db": -17.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/dog-snarl-grunt-grumble/dog/dog-grumble.flac", "at": 0.0, "onset": true, "pitch": -6, "hp": 80, "lp": 5000, "fade_out": 300},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 12-Audio.wav", "at": 0.0, "from": 0.1, "dur": 1.6, "pitch": -3, "hp": 80, "lp": 7000, "gain_db": -4, "fade_out": 700},
+  {"src": "lib:oga/steam-release-sounds/steam hisses - Marker #2.wav", "at": 0.2, "onset": true, "dur": 1.6, "hp": 1500, "lp": 9000, "gain_db": -8, "fade_out": 700}
+]}

@@ -1,0 +1,5 @@
+{"length": 1.4, "rms_db": -18.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.2, "dur": 1.2, "reverse": true, "pitch": -6, "hp": 150, "lp": 5000, "fade_in": 200, "fade_out": 200},
+  {"src": "lib:oga/steam-release-sounds/steam hisses - Marker #5.wav", "at": 0.3, "onset": true, "dur": 1.0, "hp": 1000, "lp": 7000, "gain_db": -8, "fade_out": 400},
+  {"src": "lib:oga/demon-voice/DL DEMON FIGHT GRUNT 2.wav", "at": 0.0, "onset": true, "pitch": -4, "hp": 80, "lp": 4000, "gain_db": -8, "fade_out": 60}
+]}

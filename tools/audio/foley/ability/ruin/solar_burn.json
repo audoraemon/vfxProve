@@ -1,0 +1,6 @@
+{"length": 6.0, "loop": true, "rms_db": -17.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/solar_choir_burn.wav", "at": 0.0, "from": 0.0, "dur": 6.0, "hp": 80, "lp": 12000, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 22-Audio.wav", "at": 0.0, "from": 5.0, "dur": 6.0, "hp": 80, "lp": 7000, "gain_db": -4, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 23-Audio.wav", "at": 0.0, "from": 5.0, "dur": 6.0, "hp": 2500, "lp": 10000, "gain_db": -12, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 14.0, "dur": 6.0, "hp": 30, "lp": 300, "gain_db": -8, "fade_in": 0, "fade_out": 0}
+]}

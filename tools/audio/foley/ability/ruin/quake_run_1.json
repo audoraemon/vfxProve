@@ -1,0 +1,5 @@
+{"length": 1.6, "rms_db": -16.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/Earthquake.wav", "at": 0.0, "from": 30.0, "dur": 1.6, "hp": 30, "lp": 2000, "fade_in": 150, "fade_out": 300},
+  {"src": "lib:oga/stone-door/stone_door.ogg", "at": 0.1, "from": 0.0, "dur": 1.4, "pitch": -6, "hp": 60, "lp": 3000, "gain_db": -6, "fade_in": 80, "fade_out": 300},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.3, "onset": true, "pitch": -4, "hp": 150, "lp": 7000, "gain_db": -10, "fade_out": 200}
+]}

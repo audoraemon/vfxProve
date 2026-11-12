@@ -1,0 +1,5 @@
+{"length": 2.4, "rms_db": -16.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "at": 0.0, "onset": true, "pitch": -5, "hp": 40, "lp": 5000, "fade_out": 900},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_03.ogg", "at": 0.2, "onset": true, "pitch": -3, "hp": 150, "lp": 8000, "gain_db": -6, "fade_out": 300},
+  {"src": "lib:oga/earthquake-and-open-sesame/shake.flac", "at": 0.0, "from": 1.5, "dur": 2.2, "pitch": -6, "hp": 30, "lp": 1200, "gain_db": -6, "fade_in": 50, "fade_out": 1000}
+]}

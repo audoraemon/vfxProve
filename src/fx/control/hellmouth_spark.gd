@@ -55,7 +55,7 @@ func _build() -> void:
 		at(T_OPEN + BURN_EVERY * float(i), _burn)
 	at(T_OPEN + 3.0, _roar_again)
 	at(T_OPEN + OPEN, _shut)
-	ctx.play(&"hs_rumble", mouth, -2.0)
+	ctx.play(&"hm_tear", mouth, -2.0)
 	if not DominionParts.staged(self):
 		return
 	# The paving rumbles and the crack tears open over T_OPEN: a dull red seam first, the ground under it warming.
@@ -88,8 +88,8 @@ func _open_door() -> void:
 	_open = true
 	if ctx.crowd != null:
 		ctx.crowd.threats.register(mouth, RADIUS + 0.5, 0.7, OPEN, 5.0, 8.0, &"fire")
-	ctx.play(&"dr_ignite", mouth, 0.0)
-	_breath = ctx.play(&"dr_breath", mouth, -6.0)
+	ctx.play(&"hm_open", mouth, 0.0)
+	_breath = ctx.play(&"hm_roar", mouth, -6.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(mouth)
@@ -157,7 +157,7 @@ func _burn() -> void:
 	for d in ctx.env.decor():
 		if is_instance_valid(d) and d.at.distance_to(mouth) <= RADIUS:
 			d.hit(HEAT, &"fire")
-	var crackle := ctx.play(&"cf_lava", mouth, 0.0)
+	var crackle := ctx.play(&"hm_pulse", mouth, 0.0)
 	ctx.fade_out(crackle, BURN_EVERY * 0.9)
 	if not DominionParts.staged(self):
 		return
@@ -170,7 +170,7 @@ func _burn() -> void:
 
 ## The roar is a loop that outlasts the door: the first voice gives way to a second halfway through.
 func _roar_again() -> void:
-	_breath2 = ctx.play(&"dr_breath", mouth, -6.0)
+	_breath2 = ctx.play(&"hm_roar", mouth, -6.0)
 	if _breath != null:
 		ctx.fade_out(_breath, 0.6)
 
@@ -178,7 +178,7 @@ func _roar_again() -> void:
 ## The door shuts: the crack closes, a last burst of sparks, smoke, and the scorch left on the paving.
 func _shut() -> void:
 	_open = false
-	ctx.play(&"cf_erupt", mouth, -3.0)
+	ctx.play(&"hm_shut", mouth, -3.0)
 	for v in [_breath, _breath2]:
 		if v != null:
 			ctx.fade_out(v, 0.5)

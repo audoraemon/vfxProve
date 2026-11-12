@@ -149,7 +149,7 @@ func _build() -> void:
 	busy = T_DROP
 	at(T_DROP, _land)
 	var opens := T_DROP - FLIGHT - T_OPEN
-	at(opens, func(): ctx.play(&"cf_fall", landing_origin, 6.0))
+	at(opens, func(): ctx.play(&"wf_portal", landing_origin, 6.0))
 	if not DominionParts.staged(self):
 		return
 	for r in rects(landing_origin, _dir):
@@ -300,8 +300,7 @@ func _land() -> void:
 		var s := ctx.env.add_structure(r, HEIGHT, Structure.Kind.CRATES, &"windfall")
 		piles.append(s)
 		placed.append(k)
-	ctx.play(&"cf_impact", landing_origin, 0.0)
-	ctx.play(&"jg_crumble", landing_origin, 2.0)
+	ctx.play(&"wf_land", landing_origin, 0.0)
 	if piles.is_empty():
 		duration = minf(duration, t + 1.5)
 	if not DominionParts.staged(self):
@@ -346,7 +345,7 @@ func _burst() -> void:
 			ctx.crowd.threats.register(c, BURN_R + 0.4, 0.6, OIL_BURN, 5.0, 7.0, &"fire")
 	_burn_in = BURN_EVERY
 	_light_in = LIGHT_EVERY
-	ctx.play(&"cf_erupt", landing_origin, 0.0)
+	ctx.play(&"wf_burst", landing_origin, 0.0)
 	if _line.is_empty():
 		duration = minf(duration, t + 1.5)
 	if not DominionParts.staged(self):
@@ -513,7 +512,7 @@ func _show_landings() -> void:
 		FxParts.smoke(self, sp, 5.0, 8.0, 0.25, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 0.9))
 		ctx.shake.kick(Vector2(0, 0.6))
 		if _next_down % 4 == 0:
-			ctx.play(&"jg_crumble", g.at, -8.0)
+			ctx.play(&"wf_settle", g.at, -8.0)
 		_next_down += 1
 
 
@@ -592,7 +591,7 @@ func _loot() -> void:
 		if p.lure(_spot_beside(nearest, p), LOOT_EVERY * 2.0):
 			looters += 1
 			need -= 1
-	ctx.play(&"q_wisp", landing_origin, -2.0)
+	ctx.play(&"wf_loot", landing_origin, -2.0)
 	if DominionParts.staged(self):
 		DominionParts.pulse(self, landing_origin, LENGTH * 0.5 + 0.6, Color("ffd870"), 0.45, 1.2)
 
@@ -602,7 +601,7 @@ func _sicken(hands: Array[Person]) -> void:
 	for p in hands:
 		if p.infect(PlagueManager.PLAGUE_LIFE):
 			if infected == 0:
-				ctx.play(&"q_pestilence", landing_origin, -3.0)
+				ctx.play(&"wf_plague", landing_origin, -3.0)
 			infected += 1
 			if DominionParts.staged(self):
 				DominionParts.motes(self, p.ground_pos, SICK, 10)

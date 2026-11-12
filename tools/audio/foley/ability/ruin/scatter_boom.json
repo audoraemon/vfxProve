@@ -1,0 +1,4 @@
+{"length": 2.0, "rms_db": -16.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/dull-explosion/explosion_dull.flac", "at": 0.0, "onset": true, "pitch": -3, "hp": 30, "lp": 2500, "fade_out": 700},
+  {"src": "lib:oga/chunky-explosion/Chunky Explosion.mp3", "at": 0.0, "onset": true, "pitch": -5, "hp": 30, "lp": 1500, "gain_db": -4, "fade_out": 700}
+]}

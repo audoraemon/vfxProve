@@ -1,0 +1,5 @@
+{"length": 3.6, "bpm": 60, "out": "tools/audio/music/render/heaven_choir_swell.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 3.2, "mix": 0.32}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -16, "pan": 0.0, "notes": [{"t": 0, "p": "F4", "hold": 3.0, "vel": 100}, {"t": 0, "p": "A4", "hold": 3.0, "vel": 100}, {"t": 0, "p": "C5", "hold": 3.0, "vel": 100}, {"t": 0, "p": "F5", "hold": 3.0, "vel": 100}], "dyn": [[0, 30], [1.4, 120], [3.6, 40]]},
+  {"instrument": "trombones_sus", "level_db": -21, "pan": 0.0, "notes": [{"t": 0, "p": "F2", "hold": 3.0, "vel": 100}, {"t": 0, "p": "C3", "hold": 3.0, "vel": 100}], "dyn": [[0, 30], [1.4, 115], [3.6, 30]]},
+  {"instrument": "chimes", "level_db": -24, "pan": 0.0, "notes": [{"t": 0.2, "p": "F5", "hold": 2.5, "vel": 85}, {"t": 0.2, "p": "C5", "hold": 2.5, "vel": 70}]}
+]}

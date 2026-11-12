@@ -1,0 +1,5 @@
+{"length": 1.6, "rms_db": -14.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.0, "onset": true, "pitch": -6, "hp": 40, "lp": 6000, "fade_out": 300},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 6-Audio.wav", "at": 0.0, "from": 0.0, "dur": 1.5, "pitch": -2, "hp": 60, "lp": 9000, "gain_db": -2, "fade_out": 600},
+  {"src": "lib:oga/iron-door/iron_door_0.ogg", "at": 0.0, "from": 0.3, "dur": 0.4, "pitch": -12, "hp": 40, "lp": 3000, "gain_db": -8, "fade_out": 150}
+]}

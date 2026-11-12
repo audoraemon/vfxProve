@@ -1,0 +1,7 @@
+{"length": 2.2, "rms_db": -14.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood02.mp3.flac", "at": 0.0, "onset": true, "pitch": -6, "hp": 40, "lp": 6000, "fade_out": 300},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack04.mp3.flac", "at": 0.0, "onset": true, "pitch": -3, "hp": 200, "lp": 9000, "gain_db": -4, "fade_out": 60},
+  {"src": "lib:wikimedia/Door_handle_creaking.wav", "at": 0.08, "from": 0.1, "dur": 1.6, "pitch": -8, "hp": 80, "lp": 4000, "gain_db": -4, "fade_out": 400},
+  {"src": "lib:oga/wind1/wind5.wav", "at": 0.05, "from": 10.0, "dur": 1.5, "hp": 200, "lp": 6000, "gain_db": -6, "fade_in": 20, "fade_out": 700},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan02.wav", "at": 0.3, "onset": true, "dur": 1.6, "pitch": -3, "hp": 200, "lp": 5000, "gain_db": -10, "fade_out": 500}
+]}

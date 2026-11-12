@@ -1,0 +1,9 @@
+{"length": 2.4, "rms_db": -15.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood06.mp3.flac", "at": 0.0, "onset": true, "pitch": -5, "hp": 50, "lp": 6000, "gain_db": -1.0, "fade_out": 200},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood10.mp3.flac", "at": 0.1, "onset": true, "pitch": -6, "hp": 50, "lp": 6000, "gain_db": -2.2, "fade_out": 200},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood14.mp3.flac", "at": 0.14, "onset": true, "pitch": -7, "hp": 50, "lp": 6000, "gain_db": -3.4, "fade_out": 200},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood19.mp3.flac", "at": 0.24, "onset": true, "pitch": -5, "hp": 50, "lp": 6000, "gain_db": -4.6, "fade_out": 200},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood22.mp3.flac", "at": 0.28, "onset": true, "pitch": -6, "hp": 50, "lp": 6000, "gain_db": -5.8, "fade_out": 200},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood25.mp3.flac", "at": 0.38, "onset": true, "pitch": -7, "hp": 50, "lp": 6000, "gain_db": -7.0, "fade_out": 200},
+  {"src": "lib:oga/wind1/wind2.wav", "at": 0.0, "from": 50.0, "dur": 0.6, "hp": 200, "lp": 6000, "gain_db": -8, "fade_in": 200, "fade_out": 60}
+]}

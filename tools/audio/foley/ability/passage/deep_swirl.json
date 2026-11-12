@@ -1,0 +1,5 @@
+{"length": 10.0, "loop": true, "rms_db": -17.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/sea-and-river-wave-sounds/VistulaShort_0.mp3", "at": 0.0, "from": 100.0, "dur": 10.0, "pitch": -5, "hp": 60, "lp": 3500, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Whirlpool.ogg", "at": 0.0, "onset": true, "dur": 10.0, "pitch": -4, "hp": 80, "lp": 5000, "gain_db": -8, "fade_in": 0, "fade_out": 0},
+  {"src": "lib:oga/droning-sound-effects/drone55.wav", "at": 0.0, "from": 20.0, "dur": 10.0, "hp": 40, "lp": 600, "gain_db": -12, "fade_in": 0, "fade_out": 0}
+]}

@@ -53,8 +53,7 @@ func _build() -> void:
 	busy = T_CRACK + crawl
 	at(T_CRACK, _open)
 	at(T_CRACK + crawl, _settle)
-	ctx.play(&"hs_rumble", origin, 4.0)
-	ctx.play(&"jg_windup", origin, 0.0)
+	ctx.play(&"quake_groan", origin)
 	if not DominionParts.staged(self):
 		return
 	# The ground groans: the run is marked faintly, and the start cracks and glows.
@@ -76,7 +75,7 @@ func _open() -> void:
 	fissure = Fissure.new().setup(ctx.field, origin, to, HALF, ctx.rng.randi())
 	ctx.ground.add_child(fissure)
 	fissure.hide_rubble(ctx.env)
-	ctx.play(&"hs_fissure", origin, -1.0)
+	ctx.play(&"quake_open", origin, -1.0)
 	if not DominionParts.staged(self):
 		return
 	ctx.flash.call(Color(1.0, 0.8, 0.6, 0.2), 0.3)
@@ -99,7 +98,7 @@ func _settle() -> void:
 	if fissure != null and is_instance_valid(fissure):
 		fissure.reach = length
 		fissure.armed = true
-	ctx.play(&"jg_crumble", to, 2.0)
+	ctx.play(&"quake_settle", to, 2.0)
 	if DominionParts.staged(self):
 		ctx.shake.add_trauma(0.4)
 		FxParts.debris(self, Iso.ground_to_screen(to), 16, 8.0, Vector2(30, 160), FxParts.ROCK, Vector2(2, 4), true)
@@ -168,7 +167,7 @@ func _fx_process(delta: float) -> void:
 	_rumble_in -= delta
 	if _rumble_in <= 0.0:
 		_rumble_in = 1.4
-		ctx.play(&"jg_rumble", front(), 2.0)
+		ctx.play(&"quake_run", front(), 2.0)
 	_dust_in -= delta
 	if _dust_in <= 0.0:
 		_dust_in = 0.1

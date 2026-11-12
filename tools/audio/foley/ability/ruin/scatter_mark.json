@@ -1,0 +1,5 @@
+{"length": 1.8, "rms_db": -19.0, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 15.0, "dur": 1.7, "hp": 30, "lp": 500, "fade_in": 250, "fade_out": 700},
+  {"src": "lib:oga/earth-element-magic-spell/Earth Element Magic Spell_3.ogg", "at": 0.05, "onset": true, "pitch": -6, "hp": 60, "lp": 3500, "gain_db": -5, "fade_out": 400},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_stones_01.ogg", "at": 0.3, "onset": true, "pitch": -3, "hp": 200, "lp": 8000, "gain_db": -14, "fade_out": 300}
+]}

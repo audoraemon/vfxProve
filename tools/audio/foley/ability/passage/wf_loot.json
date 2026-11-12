@@ -1,0 +1,7 @@
+{"length": 1.4, "rms_db": -18.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/coin.wav", "at": 0.0, "onset": true, "hp": 600, "lp": 14000, "fade_out": 100},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/coin2.wav", "at": 0.12, "onset": true, "pitch": -1, "hp": 600, "lp": 14000, "gain_db": -3, "fade_out": 100},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/coin3.wav", "at": 0.25, "onset": true, "pitch": 1, "hp": 600, "lp": 14000, "gain_db": -5, "fade_out": 100},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/beads.wav", "at": 0.35, "onset": true, "hp": 500, "lp": 12000, "gain_db": -8, "fade_out": 60},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/chest.ogg", "at": 0.0, "onset": true, "pitch": -2, "hp": 150, "lp": 8000, "gain_db": -6, "fade_out": 60}
+]}

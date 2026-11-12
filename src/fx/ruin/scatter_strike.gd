@@ -39,7 +39,7 @@ func _build() -> void:
 	for i in BLASTS:
 		at(T_FIRST + BLAST_GAP * float(i) - COMPRESS, _compress.bind(i))
 		at(T_FIRST + BLAST_GAP * float(i), _blast.bind(i))
-	ctx.play(&"orb_target", origin, -2.0)
+	ctx.play(&"scatter_mark", origin, -2.0)
 	if not DominionParts.staged(self):
 		return
 	var zone := FxParts.rings(self, origin, RADIUS, Color("ff7a3a"), 2, 28.0)
@@ -52,7 +52,7 @@ func _build() -> void:
 ## The air drawn in over the point: COMPRESS of pinch, pull and a ring closing on it.
 func _compress(i: int) -> void:
 	var p := points[i]
-	ctx.play(&"grav_compress", p, 0.0)
+	ctx.play(&"scatter_draw", p, 0.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(p)
@@ -92,9 +92,9 @@ func _blast(i: int) -> void:
 			var away := e.ground_pos - p
 			e.knock((away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * 1.8)
 	ctx.env.damage_radius(p, HIT_R, DAMAGE, &"scatter")
-	ctx.play(&"cf_impact", p, 0.0)
+	ctx.play(&"scatter_burst", p, 0.0)
 	if i % 3 == 0:
-		ctx.play(&"orb_hit", p, -1.0)
+		ctx.play(&"scatter_boom", p, -1.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(p)

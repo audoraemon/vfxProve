@@ -1,0 +1,5 @@
+{"length": 1.8, "rms_db": -10.8, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/monster-snarls/monster-snarl-attack.ogg", "at": 0.0, "from": 5.0, "dur": 1.0, "pitch": -4, "hp": 80, "lp": 7000, "fade_in": 20, "fade_out": 300},
+  {"src": "lib:oga/dog-snarl-grunt-grumble/dog/dog-snarl.flac", "at": 0.05, "onset": true, "pitch": -7, "hp": 60, "lp": 4000, "gain_db": -4, "fade_out": 60},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 4-Audio.wav", "at": 0.0, "from": 0.2, "dur": 1.2, "pitch": -5, "hp": 60, "lp": 2500, "gain_db": -12, "fade_in": 50, "fade_out": 400}
+]}

@@ -1,0 +1,5 @@
+{"length": 1.2, "rms_db": -12.8, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/6-short-water-splashes/ezwa-water_splash/water_splash-03.flac", "at": 0.0, "onset": true, "pitch": -7, "hp": 60, "lp": 7000, "fade_out": 300},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Swallow.ogg", "at": 0.05, "onset": true, "pitch": -6, "hp": 60, "lp": 5000, "gain_db": -3, "fade_out": 200},
+  {"src": "lib:oga/skippy-fish-water-sound-collection/waterReentry.wav", "at": 0.2, "onset": true, "pitch": -6, "hp": 80, "lp": 5000, "gain_db": -8, "fade_out": 300}
+]}

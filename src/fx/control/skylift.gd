@@ -173,7 +173,7 @@ func _build() -> void:
 	var motes := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, FxParts.ION_LIFE, 50.0, T_TAKE,
 		{"radius": 40.0, "speed": Vector2(10, 40), "dir": PixelParticles.Dir.INWARD, "alt": Vector2(0, 30), "alt_speed": Vector2(20, 80), "life": Vector2(0.5, 0.9), "size": Vector2(1, 2)})
 	motes.drag = 0.5
-	ctx.play(&"laser_scan", origin, -8.0)
+	ctx.play(&"lift_beam", origin, -8.0)
 	ctx.shake.add_trauma(0.1)
 
 
@@ -203,7 +203,7 @@ func _take() -> void:
 			ctx.env.remove_decor(thing)
 		elif thing is Structure:
 			ctx.env.remove(thing)  # lifted whole, not broken: no rubble, no incident
-	ctx.play(&"grav_shimmer", to, -4.0)
+	ctx.play(&"lift_take", to, -4.0)
 	if not lifted.is_empty() and _land != Vector2.INF:
 		goods = _heap_of(lifted, _land)
 		_drop(set_down)
@@ -293,7 +293,7 @@ func _drop(set_down: Array) -> void:
 	heap = ctx.env.add_structure(Rect2(_land - Vector2(HEAP, HEAP) * 0.5, Vector2(HEAP, HEAP)), HEIGHT, Structure.Kind.CRATES, &"windfall")
 	heap.visible = false
 	duration = T_TAKE + LIFE + 0.5
-	ctx.play(&"jg_crumble", _land, -4.0)
+	ctx.play(&"lift_drop", _land, -4.0)
 
 
 ## The last piece is down: the heap lies there (WindfallFx.Heap in the world layer, so people sort round it), in a

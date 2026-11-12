@@ -1,0 +1,5 @@
+{"length": 8.0, "bpm": 60, "out": "tools/audio/music/render/heaven_choir_draw.wav", "mono": true, "peak_db": -1.0, "reverb": {"rt60": 2.6, "mix": 0.3}, "humanize": false, "parts": [
+  {"instrument": "choir_mixed", "level_db": -17, "pan": 0.0, "notes": [{"t": 0, "p": "F4", "hold": 4.0, "vel": 90}, {"t": 0, "p": "A4", "hold": 4.0, "vel": 90}, {"t": 0, "p": "C5", "hold": 4.0, "vel": 90}, {"t": 4.0, "p": "D4", "hold": 4.0, "vel": 90}, {"t": 4.0, "p": "F4", "hold": 4.0, "vel": 90}, {"t": 4.0, "p": "A4", "hold": 4.0, "vel": 90}], "dyn": [[0, 85], [2, 100], [4, 85], [6, 100], [8, 85]]},
+  {"instrument": "choir", "level_db": -21, "pan": 0.0, "notes": [{"t": 0, "p": "F3", "hold": 4.0, "vel": 85}, {"t": 4.0, "p": "D3", "hold": 4.0, "vel": 85}]},
+  {"instrument": "violins_trem", "level_db": -26, "pan": 0.0, "notes": [{"t": 0, "p": "C6", "hold": 8.0, "vel": 70}, {"t": 0, "p": "F6", "hold": 8.0, "vel": 70}]}
+]}

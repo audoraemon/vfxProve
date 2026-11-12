@@ -1,11 +1,10 @@
 {
- "hash": "b1f2c536598aef80",
- "updated": "2026-11-12T20:08:41+07:00",
+ "hash": "d4ef94648682c9c4",
+ "updated": "2026-11-13T00:34:38+07:00",
  "changes": {
-  "date": "<t:1794488921:f>",
+  "date": "<t:1794504878:f>",
   "items": [
-   "Done: Town children (Discord idea Add children Npc)",
-   "New: God progression merged into Develop-Main"
+   "New: Death Authority: 10 powers built (god branch)"
   ]
  },
  "snapshot": {
@@ -193,6 +192,15 @@
     "needs_you": false,
     "updated": "2026-10-03",
     "order": 0
+   },
+   "death-authority-powers": {
+    "title": "Death Authority: 10 powers built (god branch)",
+    "status": "done",
+    "area": "Abilities",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-13",
+    "order": 2
    },
    "discord-board": {
     "title": "Discord #board: live project board",
@@ -1606,18 +1614,18 @@
   "branches": [
    {
     "name": "god/death-powers",
-    "ahead": 18,
+    "ahead": 25,
     "behind": 46,
-    "date": "2026-11-12",
-    "subject": "feat: Grave Tide -- every body in town rises; where the most lie, a giant of bones",
-    "pushed": false
+    "date": "2026-11-13",
+    "subject": "test: the calm-citizen LOD check staggers by the count Person reads",
+    "pushed": true
    },
    {
     "name": "god/decree-powers",
-    "ahead": 10,
+    "ahead": 18,
     "behind": 46,
-    "date": "2026-11-12",
-    "subject": "feat: Erasing Distance (Decree, Tier 3) -- a dragged line folds to its middle, crushes, then springs back",
+    "date": "2026-11-13",
+    "subject": "dev: the Decree bots play the real Decree tree (Leaving + Breathing Is Prohibited)",
     "pushed": false
    },
    {

@@ -117,6 +117,8 @@ gatebelow_close	res://assets/audio/ability/death/gatebelow_close.wav	-16.78	-0.2
 pale_drone	res://assets/audio/ability/death/pale_drone.wav	-14.86	-0.29
 serpent_rise	res://assets/audio/ability/death/serpent_rise.wav	-16.50	-0.29
 serpent_glide	res://assets/audio/ability/death/serpent_glide.wav	-14.54	-0.29
+gravetide_rise	res://assets/audio/ability/death/gravetide_rise.wav	-17.69	-0.29
+giant_step	res://assets/audio/ability/death/giant_step.wav	-18.99	-0.27
 q_pestilence	res://assets/audio/ability/quiet/q_pestilence.wav	-18.22	-0.18
 q_ember	res://assets/audio/ability/quiet/q_ember.wav	-16.16	-0.28
 q_ember_hit	res://assets/audio/ability/quiet/q_ember_hit.wav	-18.75	0.09

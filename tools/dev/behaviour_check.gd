@@ -60,9 +60,11 @@ extends SceneTree
 ##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac|cross|body] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
+##          [--setup=rite|evac|cross|body|bodies] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
 ##          (a power that acts on walkers has some: The Folded Ward); --setup=body kills the citizen nearest --at and casts
-##          on their body (Raise the Dead, --mode=); --zoom frames a wide area (default 1.5);
+##          on their body (Raise the Dead, --mode=); --setup=bodies kills the CLIP_BODIES citizens nearest --at and casts
+##          BODIES_CAST_OFF east of them (Grave Tide: the heap rises, its giant too, and walks to the click); --zoom frames a
+##          wide area (default 1.5);
 ##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
 ##          --mode=<key> picks a mode; --to=dx,dy sets a second click that far from the cast (Gravecall);
@@ -1328,6 +1330,9 @@ func _force_cast(slot: int, at: Vector2, dir := Vector2(1, 0), extra := {}) -> F
 const CROSSERS := 16
 const CROSS_R := 6.0
 const CROSS_TO := 4.5
+## The clip's "bodies" setup: this many fall round the cast, and the cast lands this far east of them.
+const CLIP_BODIES := 12
+const BODIES_CAST_OFF := Vector2(4.0, 0.0)
 
 
 ## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
@@ -1360,6 +1365,21 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		if dead != null:
 			at = dead.ground_pos
 			crowd._field.kill(dead, &"frenzy")
+		await _frames(2 * 60)
+	elif setup == "bodies":
+		# The town's dead (Grave Tide): the CLIP_BODIES citizens out in the open nearest the cast fall where they stand (frenzy,
+		# whole bodies), and the cast lands BODIES_CAST_OFF east of them, for the horde to walk to.
+		var near: Array[Person] = []
+		for p: Person in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and not p.inside:
+				near.append(p)
+		near.sort_custom(func(a: Person, b: Person) -> bool:
+			return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
+		for p: Person in near.slice(0, CLIP_BODIES):
+			crowd._field.kill(p, &"frenzy")
+		var cast_at := crowd._grid.nearest_walkable(at + BODIES_CAST_OFF, 4)
+		if cast_at != Vector2.INF:
+			at = cast_at
 		await _frames(2 * 60)
 	elif setup == "cross":
 		# The CROSSERS citizens nearest the cast set off across it, each to the far side of the cast from where it stands.

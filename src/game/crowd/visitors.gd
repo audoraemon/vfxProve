@@ -25,6 +25,10 @@ extends RefCounted
 ## crowd within it every FRIGHT_EVERY, as the Doors of the Dead's ghosts do), `slow` (whoever it passes through, within
 ## `slow_r`, keeps `slow` of their pace for `slow_for` seconds: hold_pace()) and `no_bite` (it comes to its prey and
 ## does not bite: a spirit passes through).
+## `march` (a ground point; Grave Tide's horde) sends it there first, by the streets (straight, with `phase`), for
+## `march_for` seconds at most: on the way it turns only on whoever comes within MARCH_SEEK of it, and once within
+## MARCH_NEAR of the point (or blocked, or out of time) it hunts as above. `bite` is what one bite takes off a person's
+## health (1 by default: a citizen falls to one, a soldier to two; Grave Tide's giant fells a soldier with one).
 ## A marked prey (mark(): Hound Gate's Quarry) is hunted by every visitor of the pack, at any distance, by the streets,
 ## in place of the nearest within reach, until it falls or goes inside (the mark is dropped then) or another is marked;
 ## one there is no way to is left alone SKIP_FOR like any other. With nothing marked the hunt is as above.
@@ -46,6 +50,9 @@ const LURE_FOR := 1.5
 const KNOCK_WINDOW := 3.0
 ## fright_r: how often the crowd round it is frightened.
 const FRIGHT_EVERY := 1.0
+## march: it is there within MARCH_NEAR of the point; on the way it turns only on whoever comes within MARCH_SEEK.
+const MARCH_NEAR := 1.5
+const MARCH_SEEK := 1.5
 
 ## A visitor bit `victim` (its first bite too: the owner spreads the outcry).
 signal bitten(visitor: Animal, victim: Person, first: bool)
@@ -113,6 +120,10 @@ class Rule extends RefCounted:
 	var slow := 1.0
 	var slow_for := 4.0
 	var slow_r := 0.5
+	## give(): what a bite takes off; the point it walks to before it hunts (INF: none) and how long it may take.
+	var bite := 1.0
+	var march := Vector2.INF
+	var march_left := 0.0
 	## knock_first: whom it has knocked down -> seconds left in which a second bite kills.
 	var knocked := {}
 
@@ -174,6 +185,10 @@ func give(a: Animal, traits: Dictionary) -> void:
 	r.slow = float(traits.get("slow", r.slow))
 	r.slow_for = float(traits.get("slow_for", r.slow_for))
 	r.slow_r = float(traits.get("slow_r", r.slow_r))
+	r.bite = float(traits.get("bite", r.bite))
+	if traits.has("march"):
+		r.march = traits.march
+		r.march_left = float(traits.get("march_for", 20.0))
 
 
 ## The visitors still on their feet.
@@ -275,6 +290,8 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 			r.knocked.erase(k)
 		else:
 			r.knocked[k] = float(r.knocked[k]) - delta
+	var marching := _marching(a, r, delta)
+	var reach := MARCH_SEEK if marching else r.seek_r
 	var who := a.target
 	var quarry := marked()
 	if quarry != null and quarry != r.skip:
@@ -282,17 +299,19 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		a.target = quarry
 	else:
 		if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside and _fair(r, who)
-				and who.ground_pos.distance_to(a.ground_pos) <= r.seek_r):
+				and who.ground_pos.distance_to(a.ground_pos) <= reach):
 			who = null
 			a.target = null
 			r.retarget_in = 0.0
 		if r.retarget_in <= 0.0:
 			r.retarget_in = RETARGET
-			who = _nearest(a.ground_pos, r.seek_r, r.skip, r)
+			who = _nearest(a.ground_pos, reach, r.skip, r)
 			a.target = who
 	if r.wreck > 0.0:
-		_wreck(a, r, delta, who == null)
+		_wreck(a, r, delta, who == null and not marching)
 	if who == null:
+		if marching:
+			_march_on(a, r, delta)
 		return  # nobody near: it stands (or goes at a building), and looks again
 	if a.ground_pos.distance_to(who.ground_pos) > r.bite_r:
 		if r.phase:
@@ -315,7 +334,7 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		who.knock_down()  # the first bite only knocks them flat; a second within KNOCK_WINDOW kills
 		r.knocked[who] = KNOCK_WINDOW
 	else:
-		who.hurt_from(1.0, a.ground_pos)
+		who.hurt_from(r.bite, a.ground_pos)
 	if r.infect and who.is_alive():
 		who.infect(PlagueManager.PLAGUE_LIFE)
 	if was and not who.is_alive():
@@ -323,6 +342,34 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	var first := not r.has_bitten
 	r.has_bitten = true
 	bitten.emit(a, who, first)
+
+
+## Whether it is still on its march: not yet within MARCH_NEAR of the point, and with time left. Ending it, it looks for
+## prey at once.
+func _marching(a: Animal, r: Rule, delta: float) -> bool:
+	if r.march == Vector2.INF:
+		return false
+	r.march_left -= delta
+	if r.march_left <= 0.0 or a.ground_pos.distance_to(r.march) <= MARCH_NEAR:
+		_end_march(a, r)
+		return false
+	return true
+
+
+func _end_march(a: Animal, r: Rule) -> void:
+	r.march = Vector2.INF
+	r.retarget_in = 0.0
+	a.target = null
+
+
+## One step of the march: by the streets (straight through, with phase); one that cannot get there hunts from here.
+func _march_on(a: Animal, r: Rule, delta: float) -> void:
+	if r.phase:
+		if a.walk_to(r.march, delta, null):
+			_end_march(a, r)
+		return
+	if a.route_to(r.march, delta, _grid) and a.blocked:
+		_end_march(a, r)
 
 
 ## A wrecker's claws: the building beside it is struck every wreck_every; with nobody to hunt (`idle`) it goes to the

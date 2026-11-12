@@ -99,6 +99,8 @@ const AREAS := {
 	# PaleSerpentFx.LENGTH, BAND, MIN_LENGTH: the head's glide from the press along the drag, as long as the drag ("follow"),
 	# its shadow BAND each side
 	# and the loop it turns at the end ("loop": CIRCLE_R, ringed to the drag's left), the head's path round it a kill zone too
+	# GraveTideFx.GIANT_AURA: where the horde walks to, ringed as wide as the giant's aura
+	"gravetide": {"shape": "circle", "r": GraveTideFx.GIANT_AURA},
 	"serpent": {"shape": "lane", "length": PaleSerpentFx.LENGTH, "half": PaleSerpentFx.BAND, "min": PaleSerpentFx.MIN_LENGTH,
 		"follow": true, "loop": PaleSerpentFx.CIRCLE_R},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
@@ -200,6 +202,7 @@ const AREA_STATS := {
 	"gatebelow": {"r": "REACH"},
 	"pale": {"r": "RADIUS"},
 	"serpent": {"length": "LENGTH"},
+	"gravetide": {"r": "GIANT_AURA"},
 	"heavendoor": {"r": "PULL_R"},
 }
 ## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole

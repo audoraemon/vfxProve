@@ -10,11 +10,11 @@ const V07_COOLDOWNS := {
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
 	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "belllies", "magnify", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
-	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors", "raise", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent"]
+	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors", "raise", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 67, "67 powers")
+	t.check(PowerBook.POWERS.size() == 68, "68 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -42,7 +42,7 @@ static func run(t) -> void:
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "raise", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "gravecall", "tornado",
 		"pestilence", "guise", "walker", "dragon", "mirror", "magnify", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion",
 		"anathema", "sanctuary", "curfew", "allroads", "yesterday", "foldward", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
-		"glacial", "solaris", "voice", "gatebelow", "abolition", "tempest", "shatter", "everydoor", "schism", "pale", "fargate", "heavendoor", "deaddoors", "serpent", "nova"],
+		"glacial", "solaris", "voice", "gatebelow", "abolition", "tempest", "shatter", "everydoor", "schism", "pale", "fargate", "heavendoor", "deaddoors", "serpent", "gravetide", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
 	var quiet := []
 	for key in PowerBook.keys():
@@ -58,7 +58,7 @@ static func run(t) -> void:
 		"every power has a known Authority, and every Authority a title")
 	t.check(Array(PowerBook.of_authority("veil")) == ["doom", "blight", "unseen"] and PowerBook.authority_of("nova") == "ruin",
 		"powers by Authority (veil: %s)" % [PowerBook.of_authority("veil")])
-	t.check(PowerBook.authority_title("death") == "DEATH" and Array(PowerBook.of_authority("death")) == ["deathmark", "raise", "gravecall", "pestilence", "guise", "walker", "gatebelow", "pale", "serpent"] and PowerBook.authority_title("nope") == "",
+	t.check(PowerBook.authority_title("death") == "DEATH" and Array(PowerBook.of_authority("death")) == ["deathmark", "raise", "gravecall", "pestilence", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide"] and PowerBook.authority_title("nope") == "",
 		"an Authority's title, and none for a stranger")
 
 	# v0.08 prices and cooldowns (spec §2): a price of 1 to 4 DP from the loadout budget, and a cooldown never shorter

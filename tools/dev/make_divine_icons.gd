@@ -45,6 +45,8 @@ func _initialize() -> void:
 	_save(_sign([0b01010, 0b10101, 0b01010, 0b00000, 0b11111], Color(0.8, 0.8, 0.8), Color(0.05, 0.05, 0.06), 127), "pale")
 	# Death V: the feathered serpent's coil, white feathers on the dark green of its scales.
 	_save(_sign([0b01110, 0b10000, 0b01110, 0b00001, 0b11110], Color(0.89, 0.93, 0.93), Color(0.04, 0.08, 0.06), 128), "serpent")
+	# Death V: the bone giant's skull over the horde of the risen, bone white on the grave's dark.
+	_save(_sign([0b01110, 0b01110, 0b00100, 0b10101, 0b10101], Color(0.85, 0.82, 0.75), Color(0.04, 0.06, 0.05), 129), "gravetide")
 	# Decree: black and gilt.
 	_save(_sign(DecreeParts.BARS, Color(1.0, 0.81, 0.35), Color(0.05, 0.03, 0.08), 91), "noleave")
 	_save(_sign(DecreeParts.BELL_DOWN, Color(1.0, 0.81, 0.35), Color(0.05, 0.03, 0.08), 92), "belllies")

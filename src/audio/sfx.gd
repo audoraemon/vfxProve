@@ -139,6 +139,10 @@ const CATALOG := {
 	# rush of wind over feathers as it glides.
 	&"serpent_rise": {"path": "res://assets/audio/ability/death/serpent_rise.wav", "db": 1.5},
 	&"serpent_glide": {"path": "res://assets/audio/ability/death/serpent_glide.wav", "db": 0.0},
+	# Grave Tide (Death V): the town's dead getting up at once -- a deep grinding of bones under the earth's rumble and a low
+	# choir; the bone giant's heavy step, a thud and a rattle of bones.
+	&"gravetide_rise": {"path": "res://assets/audio/ability/death/gravetide_rise.wav", "db": 2.5},
+	&"giant_step": {"path": "res://assets/audio/ability/death/giant_step.wav", "db": 2.0},
 	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
 	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
 	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},

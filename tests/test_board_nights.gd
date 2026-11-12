@@ -5,7 +5,7 @@ extends RefCounted
 
 const DT := 0.1
 ## The powers DescendState still locks (the unlock economy kept for later; the board greys none).
-const LOCKED := 43
+const LOCKED := 44
 
 
 static func run(t) -> void:

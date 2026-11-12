@@ -82,6 +82,7 @@ const POWER_KINDS := {
 	"gatebelow": [&"pit"],
 	"pale": [&"pale"],
 	"serpent": [&"shadow"],
+	"gravetide": [&"frenzy"],
 	"belllies": [],
 	"magnify": [&"magnify"],
 	"unseen": [],

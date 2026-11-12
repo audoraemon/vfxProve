@@ -55,6 +55,8 @@ static func _wall(t, made: Array) -> void:
 		return
 	var from := Vector2(house.footprint.position.x - 2.5, house.center().y)
 	var to := Vector2(house.footprint.end.x + 2.5, house.center().y)
+	t.check(Geometry2D.segment_intersects_segment(from, to, house.footprint.position, Vector2(house.footprint.position.x, house.footprint.end.y)) != null,
+		"the straight line from the first click to the second crosses the house footprint")
 	var fx := _cast(made, from, to)
 	RD._run(fx, GravecallFx.T_RISE + 0.1 + from.distance_to(to) / 1.0 + 1.0)
 	var ok := fx.spirits.size() == GravecallFx.SPIRITS
@@ -93,18 +95,19 @@ static func _freeze(t, made: Array) -> void:
 	var fx := _cast(made, at, to)
 	RD._run(fx, GravecallFx.T_RISE + 0.05)
 	var stunned := 0.0
-	var times := 0
-	var last := 0.0
+	var calls := 0
 	for i in roundi(8.0 / DT):
 		fx._process(DT)
-		if s.wait > last + 1.0:
-			times += 1
+		if s.wait > 0.0:
+			calls += 1  # every stun() raises the cleared wait to FREEZE, so this counts the calls
 			stunned = maxf(stunned, s.wait)
-		last = s.wait
-		s.wait = maxf(0.0, s.wait - DT)  # (the soldier is not stepped here; its hold runs down)
-		last = s.wait
-	t.check(times == 1 and is_equal_approx(stunned, GravecallFx.FREEZE),
-		"a soldier passed through is stunned 3 s once (%d stuns, up to %.2f)" % [times, stunned])
+			s.wait = 0.0
+	var passed := 0
+	for a in fx.spirits:
+		if (fx._passed[a] as Dictionary).has(s):
+			passed += 1
+	t.check(passed >= 1 and calls == passed and is_equal_approx(stunned, GravecallFx.FREEZE),
+		"a soldier passed through is stunned 3 s once per spirit (%d stuns, %d spirits passed, up to %.2f)" % [calls, passed, stunned])
 	fx.end_now()
 
 

@@ -385,6 +385,9 @@ var law: LawMark
 var chained := false
 ## The field this person is in, for blows that kill (null for one made on its own).
 var field: EnemyField
+## The crowd this person is one of (null for one made on its own): its choice points ask the laws on places it holds
+## (Crowd.in_law(); LawZone.DISORDER), never a power by name.
+var crowd: Crowd
 ## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).
 var _whisper_left := 0.0
 var _whisper_fled := false
@@ -2071,15 +2074,20 @@ func _fight_step(delta: float) -> void:
 		fight_target = null
 	if fight_target == null or _retarget_in <= 0.0:
 		_retarget_in = FIGHT_RETARGET
-		# A frenzy turns on whoever is nearest now; the rest keep the one they have until it is gone.
-		if field != null and (fight_target == null or _fight_rule == FightRule.ANYONE):
+		# A frenzy turns on whoever is nearest now; the rest keep the one they have until it is gone. Under Decree's
+		# Disorder (LawZone) every look goes wrong: he swaps the one he has for the farthest in his sight.
+		var wrong := crowd != null and crowd.in_law(self, LawZone.DISORDER)
+		if field != null and (fight_target == null or _fight_rule == FightRule.ANYONE or wrong):
 			var best: Person = fight_target
-			var best_d := best.ground_pos.distance_to(ground_pos) if best != null else INF
+			var best_d := best.ground_pos.distance_to(ground_pos) if best != null else (-INF if wrong else INF)
 			for e in field.in_radius(ground_pos, _fight_sight):
 				var q := e as Person
-				if _fightable(q) and q.ground_pos.distance_to(ground_pos) < best_d:
+				if not _fightable(q):
+					continue
+				var d := q.ground_pos.distance_to(ground_pos)
+				if d > best_d if wrong else d < best_d:
 					best = q
-					best_d = q.ground_pos.distance_to(ground_pos)
+					best_d = d
 			fight_target = best
 		if fight_target != null:
 			# A new path only when they have moved: a street of fighters must not all ask for one every look.
@@ -2264,10 +2272,12 @@ func _wake() -> void:
 ## Run to a walkable point LOCAL_FLEE beyond the threat's edge, straight away from it (or a dash when none is
 ## found).
 func _flee_local() -> void:
-	var away := ground_pos - _threat
-	var dir := away.normalized() if away.length() > 0.01 else Vector2.RIGHT.rotated(rng.randf() * TAU)
-	dir = dir.rotated(rng.randf_range(-DASH_VEER, DASH_VEER) * 0.5)
-	var to := _threat + dir * (_threat_r + LOCAL_FLEE + rng.randf_range(0.0, LOCAL_FLEE_JITTER))
+	var to := _threat  # under Decree's Disorder (LawZone) the worst way there is: into the danger's heart, no roll in it
+	if crowd == null or not crowd.in_law(self, LawZone.DISORDER):
+		var away := ground_pos - _threat
+		var dir := away.normalized() if away.length() > 0.01 else Vector2.RIGHT.rotated(rng.randf() * TAU)
+		dir = dir.rotated(rng.randf_range(-DASH_VEER, DASH_VEER) * 0.5)
+		to = _threat + dir * (_threat_r + LOCAL_FLEE + rng.randf_range(0.0, LOCAL_FLEE_JITTER))
 	if grid != null:
 		var free := grid.nearest_walkable(to, 8)
 		to = free if free != Vector2.INF else ground_pos

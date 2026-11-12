@@ -1,0 +1,7 @@
+{"length": 3.2, "rms_db": -17.5, "reverb": {"rt60": 2.0, "mix": 0.2, "predelay_ms": 18, "damp": 4200}, "eq": [["lowshelf", 160, 1.0], ["peak", 3200, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/cymbal-crash1_pp_rr1.wav", "at": 0.0, "dur": 0.55, "reverse": true, "hp": 700, "lp": 3500, "fade_in": 300, "fade_out": 20, "gain_db": -14},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-c4.wav", "at": 0.55, "onset": true, "dur": 2.6, "pitch": -5, "lp": 4200, "fade_out": 1200, "gain_db": -3},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-c4.wav", "at": 0.585, "onset": true, "dur": 2.5, "pitch": -4.4, "lp": 3600, "fade_out": 1200, "gain_db": -6},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_000.ogg", "at": 0.55, "onset": true, "pitch": -6.6, "lp": 1600, "dur": 1.9, "fade_out": 900, "gain_db": -4},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_001.ogg", "at": 1.12, "onset": true, "pitch": -8.3, "lp": 1300, "dur": 1.9, "fade_out": 1000, "gain_db": -9},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-f#3.wav", "at": 1.14, "onset": true, "dur": 2.0, "pitch": -0.6, "lp": 3000, "fade_out": 1100, "gain_db": -10}]}

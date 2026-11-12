@@ -271,6 +271,7 @@ q_voice	res://assets/audio/ability/quiet/q_voice.wav	-16.08	-0.91
 br_hush	res://assets/audio/ability/decree/br_hush.wav	-18.05	-5.09
 er_tear	res://assets/audio/ability/decree/er_tear.wav	-20.93	-2.07
 er_crash	res://assets/audio/ability/decree/er_crash.wav	-17.15	-0.97
+di_bell	res://assets/audio/ability/decree/di_bell.wav	-15.76	-1.23
 collapse_stone	res://assets/audio/building/collapse_stone_1.wav	-18.02	-2.40
 collapse_stone	res://assets/audio/building/collapse_stone_2.wav	-19.24	-0.24
 collapse_stone	res://assets/audio/building/collapse_stone_3.wav	-17.97	-0.37

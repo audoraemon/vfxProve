@@ -10,7 +10,8 @@ extends RefCounted
 ##               let go. One indoors, or a rite's chained captive, is left alone (the chain is stronger than the law).
 ##   no_breath, disorder, no_running, no_arms, no_doors, no_sight
 ##               only asked (Crowd.in_law(), Crowd.law_of()): the powers and the choice points act on them (NO BREATH:
-##               Breathing Is Prohibited chokes the people; Visitors run out of it).
+##               Breathing Is Prohibited chokes the people; Visitors run out of it. DISORDER: the town's choice points
+##               choose wrongly for whoever stands in it).
 ## Each zone holds its own: two laid on the same ground both hold, and lifting one leaves the other. A zone ends when
 ## its seconds run out, when it is lifted (Crowd.remove_law()), or when the effect that laid it goes (add_law()'s
 ## holder). No number is drawn from any rng.
@@ -25,6 +26,9 @@ const EPS := 0.0001
 
 const NO_LEAVING := &"no_leaving"
 const NO_BREATH := &"no_breath"
+## Disorder: every choice made inside goes wrong (Person._flee_local, Person's fight pick, the Escort type's watchers,
+## ShelterManager.try_shelter, EvacuationManager.choose and _recheck each ask it at the choice).
+const DISORDER := &"disorder"
 
 ## The kinds of law it holds.
 var kinds: Array[StringName] = []

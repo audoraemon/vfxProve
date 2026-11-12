@@ -67,6 +67,8 @@ func total_inside() -> int:
 func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> bool:
 	if _crowd.doors() != &"":
 		return false  # every door shut or open (Every Door): no building takes anyone in
+	if _crowd.in_law(p, LawZone.DISORDER):
+		return false  # Decree's Disorder (LawZone): the door he makes for leads back out, before any roll
 	if p.rng.randf() >= (CHANCE_SEVERE if kind in SEVERE else CHANCE):
 		return false
 	var best: Structure = null

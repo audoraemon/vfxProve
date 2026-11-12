@@ -82,6 +82,7 @@ const POWER_KINDS := {
 	"redefine": [&"frenzy"],
 	# Bound in Law: one dead, the other dies by the bond
 	"bound": [&"bound"],
+	"disorder": [],
 	"magnify": [&"magnify"],
 	"unseen": [],
 	"clearmind": [],

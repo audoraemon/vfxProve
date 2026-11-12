@@ -497,14 +497,31 @@ func _step_held(c: Charge) -> void:
 
 ## The first soldier set to watch for charge `c` who sees him now (v0.11 M2): _watching() and within SIGHT; else null. v0.11 M6: a
 ## watcher marching another charge sees no other (vacuous with one). One the law hides from the guards (LawMark: a NOBODY, an OFFICER) no one sees.
+## A watcher standing in Decree's Disorder (LawZone) goes for the wrong man: he passes over `c` for a charge farther off in his sight.
 func _seen_by(c: Charge) -> Person:
 	if LawMark.unseen_by_guards(c.man):
 		return null
 	var at := (c.man as Person).ground_pos
 	for v: Variant in _watchers():
-		if _watching(v) and not _marching_other(v, c) and (v as Person).ground_pos.distance_to(at) <= SIGHT:
+		if _watching(v) and not _marching_other(v, c) and (v as Person).ground_pos.distance_to(at) <= SIGHT \
+				and not _farther_in_sight(v as Person, c):
 			return v as Person
 	return null
+
+
+## Under Decree's Disorder only (false at once for a watcher out of it): another free charge, out of doors and not hidden by the law, stands
+## farther from `v` than `c` and still within SIGHT -- the one he goes for instead. By distance alone, no roll.
+func _farther_in_sight(v: Person, c: Charge) -> bool:
+	if crowd == null or not crowd.in_law(v, LawZone.DISORDER):
+		return false
+	var d := v.ground_pos.distance_to((c.man as Person).ground_pos)
+	for o in charges:
+		if o == c or _resolved(o) or o.held or o.bound or (o.man as Person).inside or LawMark.unseen_by_guards(o.man):
+			continue
+		var od := v.ground_pos.distance_to((o.man as Person).ground_pos)
+		if od > d and od <= SIGHT:
+			return true
+	return false
 
 
 ## `v` is marching a charge other than `c` (v0.11 M6).

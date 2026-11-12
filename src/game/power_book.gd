@@ -213,6 +213,10 @@ const POWERS := [
 		"blurb": "Click one person, then another within 10: for 20 s a brass chain joins them, and what befalls one befalls both.",
 		"dp": 3, "cooldown": 45.0, "aim": "two clicks", "shape": "two people within 10 of each other share one fate for 20 s: struck, felled, stunned, asleep, seized or dead, both are",
 		"quiet": true, "authority": "decree"},
+	{"key": "disorder", "name": "Disorder", "path": "res://src/fx/decree/disorder.gd",
+		"blurb": "For 15 s every choice in a circle goes wrong: the frightened run toward the danger, guards chase the wrong man, doors lead back out, the way out is the farthest gate.",
+		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "a circle of 5 for 15 s: the frightened run toward the danger, a guard goes for the farthest man, no shelter takes anyone in, the farthest gate",
+		"authority": "decree"},
 	{"key": "unseen", "name": "Unseen Hour", "path": "res://src/fx/quiet/unseen_hour.gd",
 		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "for 20 s nothing in the circle is seen: no alarm, no fright, nobody comes",
 		"quiet": true, "authority": "veil"},
@@ -485,6 +489,8 @@ const REACH := {
 	# Erasing Distance: a street folding shut like cloth and tearing open again is seen and heard across a district;
 	# the danger lasts the fold and the spring back
 	"erase": [10.0, 14.0, 0.8, 4.0],
+	# Disorder: a crooked bell tolling over a market is heard across a district; its danger is the toll itself, short
+	"disorder": [8.0, 12.0, 0.4, 3.0],
 }
 ## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
 ## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
@@ -493,7 +499,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"breath": 0.5, "erase": 2.1,
+	"breath": 0.5, "erase": 2.1, "disorder": 0.85,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -773,7 +779,7 @@ const FAMILY := {
 	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
 	"discord": "hold", "sanctuary": "hold", "anathema": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
-	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "curfew": "decree", "erase": "decree", "abolition": "decree",
+	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "disorder": "decree", "curfew": "decree", "erase": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",

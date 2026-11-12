@@ -125,10 +125,13 @@ func step(delta: float) -> void:
 
 ## The exit for `p` now, or Vector2.INF when none can be reached.
 func choose(p: Person) -> Vector2:
+	var wrong := _crowd.in_law(p, LawZone.DISORDER)  # Decree's Disorder (LawZone): the farthest gate he can reach
 	var best := -1
 	var best_s := INF
 	for i in exits.size():
 		var s := score(p, i)
+		if wrong and s < INF:
+			s = -float(_dist(i, p.ground_pos))
 		if s < best_s:
 			best_s = s
 			best = i
@@ -173,6 +176,8 @@ func score(p: Person, i: int) -> float:
 func _recheck(p: Person) -> void:
 	if not p.is_alive() or p.mind != Person.Mind.FLEE or p.queue_spot != Vector2.INF or p.passing_gate != null:
 		return
+	if _crowd.in_law(p, LawZone.DISORDER):
+		return  # Decree's Disorder: no second thought turns him toward a better gate while he stands in it
 	var now := exit_index(p.goal())
 	if now < 0 or _clock - p.route_since < SWITCH_WAIT:
 		return

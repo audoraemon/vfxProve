@@ -1,7 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited, Redefine, Bound in Law and Erasing Distance.
+Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance and Disorder.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -537,9 +537,75 @@ def erase():
     finish(rgb, "erase")
 
 
+def disorder():
+    """Disorder (Decree): on an ink field, a gilt ring of law that will not sit true -- dented, tilted, set off its middle
+    -- with letters of law knocked askew round it, and in it a crooked bell: a gilt bell leaning hard over, its clapper
+    swung out to the wrong side, a second faint outline of it a little off, as if it rang out of true."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(97, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The ring: off its middle, tilted, dented by two slow lobes.
+    rx, ry = x - 2.0, y + 1.5
+    tilt = 0.32
+    ex = rx * math.cos(tilt) + ry * math.sin(tilt)
+    ey = -rx * math.sin(tilt) + ry * math.cos(tilt)
+    ang = np.arctan2(ey, ex)
+    er = np.hypot(ex, ey * 1.12) / (1.0 + 0.06 * np.sin(2.0 * ang + 0.7) + 0.04 * np.sin(3.0 * ang + 2.1))
+    rgb = blend(rgb, (34, 22, 50), np.clip((31.0 - er) / 2.0, 0.0, 1.0) * 0.5)
+    rgb = blend(rgb, (10, 6, 18), np.exp(-((er - 32.0) ** 2) / 9.0) * 0.85)
+    rgb = blend(rgb, (255, 207, 90), np.exp(-((er - 32.0) ** 2) / 2.6))
+    rgb = blend(rgb, (255, 246, 208), np.exp(-((er - 30.8) ** 2) / 0.6) * 0.4)
+    # Letters of law round it, each a short gilt bar at its own wrong angle.
+    for k in range(12):
+        a = k * math.pi / 6.0 + 0.2 * math.sin(k * 1.7)
+        tx, ty = 36.5 * math.cos(a) + 1.0, 36.0 * math.sin(a) - 1.0
+        lean = a + math.pi / 2 + 0.9 * math.sin(k * 2.4)
+        ux, uy = math.cos(lean), math.sin(lean)
+        along = (x - tx) * ux + (y - ty) * uy
+        across = -(x - tx) * uy + (y - ty) * ux
+        bar = np.clip((2.4 - np.abs(along)) / 0.8, 0.0, 1.0) * np.clip((1.1 - np.abs(across)) / 0.6, 0.0, 1.0)
+        rgb = blend(rgb, (255, 207, 90), bar * 0.9)
+
+    def bell(cx, cy, lean):
+        """The bell's body (0..1) in the bell's own frame: crown at the top, flaring to a lip at the bottom."""
+        bx = (x - cx) * math.cos(lean) + (y - cy) * math.sin(lean)
+        by = -(x - cx) * math.sin(lean) + (y - cy) * math.cos(lean)
+        t = np.clip((by + 14.0) / 26.0, 0.0, 1.0)
+        half = 5.5 + 9.0 * t ** 1.8 + 2.5 * np.clip((by - 9.0) / 3.0, 0.0, 1.0)
+        body = np.clip((half - np.abs(bx)) / 1.0, 0.0, 1.0) * np.clip((by + 14.0) / 1.0, 0.0, 1.0) * np.clip((12.5 - by) / 1.0, 0.0, 1.0)
+        crown = np.clip((3.2 - np.hypot(bx, by + 16.5)) / 0.8, 0.0, 1.0)
+        return np.maximum(body, crown), bx, by, half
+
+    lean = 0.5
+    # The ghost of it a little off, as if it rang out of true.
+    ghost, _, _, _ = bell(4.0, 1.0, lean - 0.22)
+    rgb = blend(rgb, (150, 104, 40), ghost * 0.35)
+    body, bx, by, half = bell(1.0, 0.0, lean)
+    rgb = blend(rgb, (10, 6, 18), np.clip(body * 3.0, 0.0, 1.0) * 0.9)
+    shade = np.clip(0.55 + 0.45 * (-bx / np.maximum(half, 1.0)), 0.0, 1.0)
+    col = np.stack([176 + 79 * shade, 122 + 85 * shade, 28 + 62 * shade], axis=-1)
+    inner = np.clip((body - 0.5) * 2.0, 0.0, 1.0)
+    rgb = rgb * (1.0 - inner[..., None]) + col * inner[..., None]
+    # The lip: a bright rim along the bottom.
+    rgb = blend(rgb, (255, 236, 170), inner * np.clip((by - 9.5) / 1.5, 0.0, 1.0) * 0.8)
+    # The clapper swung out past the lip, to the wrong side.
+    cx, cy = 1.0 + 15.0 * math.cos(lean + 0.35), 15.0 * math.sin(lean + 0.35) + 9.0
+    rgb = blend(rgb, (10, 6, 18), np.clip((4.4 - np.hypot(x - cx, y - cy)) / 1.0, 0.0, 1.0))
+    rgb = blend(rgb, (255, 207, 90), np.clip((3.0 - np.hypot(x - cx, y - cy)) / 1.0, 0.0, 1.0))
+    # Its ring: short gilt arcs thrown off one side only.
+    for k, rad in enumerate((20.0, 25.0)):
+        arc = np.exp(-((np.hypot(x - 1.0, y) - rad) ** 2) / 1.2) * ((x - 1.0) < -6.0) * (np.abs(y) < 12.0 - 3.0 * k)
+        rgb = blend(rgb, (255, 226, 150), arc * (0.7 - 0.25 * k))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "disorder")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
             "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
-            "erase": erase}
+            "erase": erase, "disorder": disorder}
 
 
 if __name__ == "__main__":

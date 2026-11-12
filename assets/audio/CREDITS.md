@@ -12,8 +12,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `footstep_concrete_004.ogg` | CC0 | Kenney | ability/quiet/q_allroads |
 | [Kenney impact-sounds](https://kenney.nl) `footstep_grass_001.ogg` | CC0 | Kenney | citizen/cit_fall_1 |
 | [Kenney impact-sounds](https://kenney.nl) `footstep_grass_002.ogg` | CC0 | Kenney | citizen/cit_fall_4 |
-| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_000.ogg` | CC0 | Kenney | ability/quiet/q_deathmark_hit, ability/quiet/q_yesterday, building/lantern_blind |
-| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_001.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
+| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_000.ogg` | CC0 | Kenney | ability/decree/di_bell, ability/quiet/q_deathmark_hit, ability/quiet/q_yesterday, building/lantern_blind |
+| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_001.ogg` | CC0 | Kenney | ability/decree/di_bell, ability/quiet/q_belllies |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_foldward, ability/quiet/q_verdict |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_003.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_clearmind, ability/quiet/q_discord |
@@ -375,7 +375,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub3_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `bassdrum_rub4_v1.wav` | CC0 | Versilian Studios | ability/decree/er_crash |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `cymbal-crash1_mp_rr1.wav` | CC0 | Versilian Studios | ability/decree/er_crash |
-| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `cymbal-crash1_pp_rr1.wav` | CC0 | Versilian Studios | ability/decree/br_hush |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `cymbal-crash1_pp_rr1.wav` | CC0 | Versilian Studios | ability/decree/br_hush, ability/decree/di_bell |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_f.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_mf.wav` | CC0 | Versilian Studios | ability/quiet/q_everydoor |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_p.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark_hit |
@@ -389,6 +389,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `VlnEns_susVib_E4_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `horns-sus-ff-e2-PB-loop.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | building/town_horn |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `horns-sus-ff-e3-PB-loop.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | building/town_horn |
+| [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chimes-c4.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/decree/di_bell |
+| [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chimes-f#3.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/decree/di_bell |
 | [20080618KamagasakiRiot.ogg](https://commons.wikimedia.org/wiki/File:20080618KamagasakiRiot.ogg) `20080618KamagasakiRiot.ogg` | CC0 | Kamagasaki450 | citizen/crowd_chaos |
 | [25822 heigh-hoo peace-bell-hiroshima.wav](https://commons.wikimedia.org/wiki/File:25822_heigh-hoo_peace-bell-hiroshima.wav) `25822_heigh-hoo_peace-bell-hiroshima.wav` | CC0 | Heigh-hoo | building/lantern_blind, building/lantern_flare |
 | [360703 eguobyte large-crowd-medium-distance-stereo.wav](https://commons.wikimedia.org/wiki/File:360703_eguobyte_large-crowd-medium-distance-stereo.wav) `360703_eguobyte_large-crowd-medium-distance-stereo.wav` | CC0 | eguobyte | ambience/amb_day, ambience/amb_night, citizen/crowd_panic, citizen/crowd_unrest |

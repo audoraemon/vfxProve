@@ -648,6 +648,7 @@ func _add_person(is_soldier: bool, at: Vector2) -> Person:
 	p.setup_person(is_soldier, at, _grid)
 	p.env = _env
 	p.field = _field
+	p.crowd = self
 	_parent.add_child(p)
 	return p
 

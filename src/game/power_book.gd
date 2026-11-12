@@ -172,6 +172,11 @@ const POWERS := [
 			{"HOUNDS": 5, "HUNT": 34.0, "BLOWS": 4, "cooldown": 37.0},
 			{"HOUNDS": 6, "HUNT": 36.0, "BLOWS": 5, "cooldown": 35.5},
 			{"HOUNDS": 6, "HUNT": 38.0, "BLOWS": 5, "cooldown": 34.0, "twist": true, "twist_text": "Quarry: click a person and every hound hunts them"}]},
+	{"key": "gravecall", "name": "Gravecall", "path": "res://src/fx/death/gravecall.gd",
+		"blurb": "Three spirits rise, and haunt where you send them.",
+		"dp": 2, "cooldown": 30.0, "aim": "two clicks",
+		"shape": "no body needed: the first click calls three pale spirits up out of the ground, the second sends them; they drift through walls and haunt a circle of 3 there for 20 s, and a soldier a spirit passes through is frozen for 3 s",
+		"authority": "death"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"blurb": "A roaming vortex tears through the town and flings people about.",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin",
@@ -464,6 +469,8 @@ const REACH := {
 	# Raise the Dead: the dead getting up in the street is seen and heard as a hound gate's hounds are; the danger lasts the
 	# zombies' 30 s (a spirit's is its own fright)
 	"raise": [6.0, 9.0, 0.6, 30.0],
+	# Gravecall: three pale spirits rising and drifting through the street are seen and heard like a spirit's wail; the danger lasts the haunt
+	"gravecall": [5.0, 8.0, 0.5, 20.0],
 	# Heaven's Door: a door taller than a house falling out of a shaft of light is seen and heard across the town, as the
 	# Light of Solaris is; the danger lasts its opening and its pull
 	"heavendoor": [16.0, 22.0, 0.9, 16.0],
@@ -481,7 +488,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"raise": 0.8,
+	"raise": 0.8, "gravecall": 0.8,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -753,7 +760,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death", "raise": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

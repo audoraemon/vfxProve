@@ -86,6 +86,8 @@ const AREAS := {
 	"deaddoors": {"shape": "circle", "r": DoorsOfTheDeadFx.RADIUS},
 	# Remains.PICK_R: the body the click takes; RaiseTheDeadFx.SEEK is how far its zombie hunts (a spirit frightens FRIGHT_R about it)
 	"raise": {"shape": "circle", "r": Remains.PICK_R, "roam": RaiseTheDeadFx.SEEK},
+	# GravecallFx.HAUNT_R: the circle the three spirits haunt, ringed at the second click
+	"gravecall": {"shape": "circle", "r": GravecallFx.HAUNT_R},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -181,7 +183,7 @@ const AREA_STATS := {
 	"sanctuary": {"r": "PICK_R"},
 	"skylift": {"r": "RADIUS"}, "windfall": {"length": "LENGTH"}, "hellspark": {"r": "RADIUS"}, "deep": {"r": "RADIUS"},
 	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
-	"raise": {"roam": "SEEK"},
+	"raise": {"roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"},
 	"heavendoor": {"r": "PULL_R"},
 }
 ## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole

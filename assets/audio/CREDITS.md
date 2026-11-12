@@ -234,13 +234,15 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth33.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_3 |
 | [Footsteps (leather, cloth, armor)](https://opengameart.org/content/footsteps-leather-cloth-armor) `step_lth4.ogg` | CC0 | HaelDB | citizen/crowd_chaos, citizen/crowd_panic, citizen/crowd_unrest, citizen/sol_step_4 |
 | [Freeze Spell](https://opengameart.org/content/freeze-spell-0) `freeze.wav` | CC0 | artisticdude | ability/ice/glac_freeze |
-| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/raise_rise, ability/death/raise_wail |
+| [Ghost breath](https://opengameart.org/content/ghost-breath) `ghostbreath.flac` | CC0 | qubodup | ability/death/gravecall_rise, ability/death/raise_rise, ability/death/raise_wail |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan01.wav` | CC0 | qubodup | ability/quiet/q_madness |
 | [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan02.wav` | CC0 | qubodup | ability/death/raise_wail |
-| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan05.wav` | CC0 | qubodup | ability/quiet/q_doom |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan03.wav` | CC0 | qubodup | ability/death/gravecall_rise |
+| [Ghost Monster Voice Moaning & Growling](https://opengameart.org/content/ghost-monster-voice-moaning-growling) `qubodup-GhostMoan05.wav` | CC0 | qubodup | ability/death/gravecall_rise, ability/quiet/q_doom |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (11).wav` | CC0 | Sorth | ability/quiet/q_voice |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (14).wav` | CC0 | Sorth | building/lantern_flare |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (5).wav` | CC0 | Sorth | ability/death/raise_wail |
+| [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (6).wav` | CC0 | Sorth | ability/death/gravecall_rise |
 | [Ghost Voice Pack](https://opengameart.org/content/ghost-voice-pack) `output (8).wav` | CC0 | Sorth | ability/quiet/q_whisper |
 | [Girly scream](https://opengameart.org/content/girly-scream) `wscream_2_0.wav` | CC0 | Ferk | citizen/crowd_chaos, citizen/crowd_cry_5 |
 | [Gravity Inverter](https://opengameart.org/content/gravity-inverter) `gravity_inverter.ogg` | CC0 | fvcalderan | ability/arcane/grav_compress |
@@ -335,7 +337,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Steam release sounds](https://opengameart.org/content/steam-release-sounds) `steam hisses - Marker #1.wav` | CC0 | bart | building/fire_douse_1 |
 | [Steam release sounds](https://opengameart.org/content/steam-release-sounds) `steam hisses - Marker #2.wav` | CC0 | bart | building/fire_douse_2 |
 | [Steam release sounds](https://opengameart.org/content/steam-release-sounds) `steam hisses - Marker #3.wav` | CC0 | bart | building/fire_douse_3 |
-| [stone_rock_or_wood_moved_no_tick](https://opengameart.org/content/stonerockorwoodmovednotick) `stone_rock_or_wood_moved_no_tick.mp3` | CC0 | omegagreg | ability/aftermath/debris_big_1, ability/aftermath/debris_big_2, ability/aftermath/debris_big_3, ability/aftermath/debris_big_4, ability/death/raise_rise |
+| [stone_rock_or_wood_moved_no_tick](https://opengameart.org/content/stonerockorwoodmovednotick) `stone_rock_or_wood_moved_no_tick.mp3` | CC0 | omegagreg | ability/aftermath/debris_big_1, ability/aftermath/debris_big_2, ability/aftermath/debris_big_3, ability/aftermath/debris_big_4, ability/death/gravecall_rise, ability/death/raise_rise |
 | [Teleport Spell](https://opengameart.org/content/teleport-spell) `teleport.wav` | CC0 | Ogrebane | ability/quiet/q_mirror_hit_1, ability/quiet/q_mirror_hit_2, ability/quiet/q_mirror_hit_3, ability/quiet/q_mirror_hit_4 |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Smooth 2.wav` | CC0 | Zane Little Music | ability/energy/orb_target |
 | [Theremin Laser SFX](https://opengameart.org/content/theremin-laser-sfx) `Space 2.wav` | CC0 | Zane Little Music | ability/energy/laser_scan |
@@ -381,6 +383,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `ViolaEns_susvib_A3_v1_1.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `VlnEns_susVib_A3_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `VlnEns_susVib_E4_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate |
+| [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chorus-female-c5.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/death/gravecall_rise |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chorus-female-e5.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/death/raise_wail |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chorus-male-a2.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/death/raise_rise |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `horns-sus-ff-e2-PB-loop.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | building/town_horn |

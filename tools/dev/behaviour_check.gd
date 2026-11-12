@@ -65,6 +65,7 @@ extends SceneTree
 ##          on their body (Raise the Dead, --mode=); --zoom frames a wide area (default 1.5);
 ##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
+##          --mode=<key> picks a mode; --to=dx,dy sets a second click that far from the cast (Gravecall);
 ##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
 ##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
 ##          open paving south of the market);
@@ -1390,6 +1391,10 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	var mode_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--mode")
 	if mode_arg != "":
 		extra["mode"] = mode_arg  # a power with modes (Raise the Dead's ZOMBIE or SPIRIT)
+	var to_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--to")
+	if to_arg != "":
+		var off := to_arg.split(",")  # a power with a second click (Gravecall): --to=dx,dy from the cast
+		extra["to"] = at + Vector2(float(off[0]), float(off[1]))
 	# The camera's ground point: the cast, or for a whisper halfway along the walk, so the walk stays in frame.
 	var look := at
 	if whisper:

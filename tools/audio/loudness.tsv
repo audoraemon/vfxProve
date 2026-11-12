@@ -109,6 +109,7 @@ q_deathmark	res://assets/audio/ability/quiet/q_deathmark.wav	-17.32	-4.89
 q_deathmark_hit	res://assets/audio/ability/quiet/q_deathmark_hit.wav	-15.85	-1.98
 raise_rise	res://assets/audio/ability/death/raise_rise.wav	-14.68	-0.27
 raise_wail	res://assets/audio/ability/death/raise_wail.wav	-16.62	-0.29
+gravecall_rise	res://assets/audio/ability/death/gravecall_rise.wav	-15.19	-0.29
 q_pestilence	res://assets/audio/ability/quiet/q_pestilence.wav	-18.22	-0.18
 q_ember	res://assets/audio/ability/quiet/q_ember.wav	-16.16	-0.28
 q_ember_hit	res://assets/audio/ability/quiet/q_ember_hit.wav	-18.75	0.09

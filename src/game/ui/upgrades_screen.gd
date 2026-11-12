@@ -16,9 +16,9 @@ const CELL := Vector2(136.0, 20.0)
 const CELL_GAP := 2.0
 const COLUMNS := 3
 ## The grid ends here, above the Board button: when the locked powers' rows would run past it at CELL's height, every
-## row is made shorter to share the room, down to MIN_CELL_H (still a line of small text: 15 rows fit, 45 powers).
+## row is made shorter to share the room, down to MIN_CELL_H (still a line of small text: 18 rows fit, 54 powers).
 const GRID_BOTTOM := 316.0
-const MIN_CELL_H := 15.0
+const MIN_CELL_H := 12.0
 const BACK_RECT := Rect2(8.0, 322.0, 100.0, 20.0)
 const REFUSE_SECONDS := 1.5
 ## What a refused purchase says, by DescendState.refusal().

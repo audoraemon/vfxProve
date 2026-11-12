@@ -386,21 +386,28 @@ static func _noleave_skips_chained(t) -> void:
 	var d: TestRite = s.d
 	var a := _victim(d, 0, Vector2(0.0, 7.5))
 	var b := _victim(d, 1, Vector2(2.0, 7.5))
-	var fx := NoLeaveFx.new()
-	fx.origin = Vector2(0.0, 7.5)
-	fx.sealed = true
-	fx._join_in = 99.0
-	fx.bound[a] = 0.0
-	fx.bound[b] = 0.0
+	var ctx := FxContext.new()
+	ctx.env = s.env
+	ctx.field = s.field
+	ctx.crowd = s.crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	var origin := Vector2(0.0, 7.5)
+	var fx: NoLeaveFx = FxTimeline.cast(load("res://src/fx/decree/leaving_is_prohibited.gd"), ctx, origin)
+	fx._process(NoLeaveFx.T_SEAL + 0.05)
 	a.chained = true
-	a.ground_pos = fx.origin + Vector2(NoLeaveFx.RADIUS + 0.5, 0.0)
-	b.ground_pos = fx.origin + Vector2(NoLeaveFx.RADIUS + 0.5, 1.0)
-	fx._fx_process(0.016)
-	t.check(a.ground_pos.is_equal_approx(fx.origin + Vector2(NoLeaveFx.RADIUS + 0.5, 0.0)), "a chained captive walks out of the circle untouched")
-	t.check(b.ground_pos.distance_to(fx.origin) <= NoLeaveFx.RADIUS + 0.001 and fx.turned_back == 1, "an unchained person past the edge is set back onto it (%.2f)"
-		% b.ground_pos.distance_to(fx.origin))
+	a.ground_pos = origin + Vector2(NoLeaveFx.RADIUS + 0.5, 0.0)
+	b.ground_pos = origin + Vector2(NoLeaveFx.RADIUS + 0.5, 1.0)
+	fx._process(0.016)
+	t.check(a.ground_pos.is_equal_approx(origin + Vector2(NoLeaveFx.RADIUS + 0.5, 0.0)), "a chained captive walks out of the circle untouched")
+	t.check(b.ground_pos.distance_to(origin) <= NoLeaveFx.RADIUS + 0.001 and fx.turned_back == 1, "an unchained person past the edge is set back onto it (%.2f)"
+		% b.ground_pos.distance_to(origin))
 	a.chained = false
 	fx.free()
+	ctx.overhead.free()
+	ctx.ground.free()
 	_done(s)
 
 

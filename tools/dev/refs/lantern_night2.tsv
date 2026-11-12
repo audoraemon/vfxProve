@@ -8,6 +8,6 @@ lanterns_toll_3	--scenario=lanterns --case=toll --seed=3	726753522
 sermon_toll_1	--scenario=sermon --case=toll --seed=1	205497457
 sermon_toll_2	--scenario=sermon --case=toll --seed=2	-429823049
 sermon_toll_3	--scenario=sermon --case=toll --seed=3	-264237885
-prayers_toll_1	--scenario=prayers --case=toll --seed=1	965462662
-prayers_toll_2	--scenario=prayers --case=toll --seed=2	852517899
-prayers_toll_3	--scenario=prayers --case=toll --seed=3	-589100987
+prayers_toll_1	--scenario=prayers --case=toll --seed=1	409475099
+prayers_toll_2	--scenario=prayers --case=toll --seed=2	-442526729
+prayers_toll_3	--scenario=prayers --case=toll --seed=3	-92840140

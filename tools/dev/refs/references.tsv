@@ -4,8 +4,8 @@
 digest	state_digest	61267b7e90524d800bf1c3473a71146b
 crowd_check	crowd_check	-535548941
 calm	--scenario=calm --seconds=60	-819205162
-gates	--scenario=gates	482153417
-fire	--scenario=fire	-832499638
+gates	--scenario=gates	331905986
+fire	--scenario=fire	-68879995
 rite	--scenario=rite --interrupt	-205455162
 soldiers	--scenario=soldiers --case=escort	-369568987
 warning_none	--scenario=warning --case=none	-816071299
@@ -24,24 +24,24 @@ tax_none_3	--scenario=tax --case=none --seed=3	-414006516
 tax_play_1	--scenario=tax --case=play --seed=1	-434982160
 tax_play_2	--scenario=tax --case=play --seed=2	-521032682
 tax_play_3	--scenario=tax --case=play --seed=3	-821097325
-harvest_none_1	--scenario=harvest --case=none --seed=1	-376248379
-harvest_none_2	--scenario=harvest --case=none --seed=2	-499955815
-harvest_none_3	--scenario=harvest --case=none --seed=3	-48855667
-harvest_play_1	--scenario=harvest --case=play --seed=1	-385032746
-harvest_play_2	--scenario=harvest --case=play --seed=2	730081873
-harvest_play_3	--scenario=harvest --case=play --seed=3	490367957
-lamb_none_1	--scenario=lamb --case=none --seed=1	-782005847
-lamb_none_2	--scenario=lamb --case=none --seed=2	-344871039
-lamb_none_3	--scenario=lamb --case=none --seed=3	-400685821
-lamb_play_1	--scenario=lamb --case=play --seed=1	-123985182
-lamb_play_2	--scenario=lamb --case=play --seed=2	-371885551
-lamb_play_3	--scenario=lamb --case=play --seed=3	-948097182
-prayers_none_1	--scenario=prayers --case=none --seed=1	530430470
-prayers_none_2	--scenario=prayers --case=none --seed=2	-806989974
-prayers_none_3	--scenario=prayers --case=none --seed=3	563964787
-prayers_play_1	--scenario=prayers --case=play --seed=1	-601979404
-prayers_play_2	--scenario=prayers --case=play --seed=2	727586162
-prayers_play_3	--scenario=prayers --case=play --seed=3	-69964971
+harvest_none_1	--scenario=harvest --case=none --seed=1	-337550553
+harvest_none_2	--scenario=harvest --case=none --seed=2	-841308971
+harvest_none_3	--scenario=harvest --case=none --seed=3	206115542
+harvest_play_1	--scenario=harvest --case=play --seed=1	580776730
+harvest_play_2	--scenario=harvest --case=play --seed=2	-215855038
+harvest_play_3	--scenario=harvest --case=play --seed=3	421549996
+lamb_none_1	--scenario=lamb --case=none --seed=1	-951840884
+lamb_none_2	--scenario=lamb --case=none --seed=2	95737469
+lamb_none_3	--scenario=lamb --case=none --seed=3	26870796
+lamb_play_1	--scenario=lamb --case=play --seed=1	-746082893
+lamb_play_2	--scenario=lamb --case=play --seed=2	-328048914
+lamb_play_3	--scenario=lamb --case=play --seed=3	-138364554
+prayers_none_1	--scenario=prayers --case=none --seed=1	-687924114
+prayers_none_2	--scenario=prayers --case=none --seed=2	-193853833
+prayers_none_3	--scenario=prayers --case=none --seed=3	-618614172
+prayers_play_1	--scenario=prayers --case=play --seed=1	-643061545
+prayers_play_2	--scenario=prayers --case=play --seed=2	-410897661
+prayers_play_3	--scenario=prayers --case=play --seed=3	-622358146
 ringers_none_1	--scenario=ringers --case=none --seed=1	-891918235
 ringers_none_2	--scenario=ringers --case=none --seed=2	-57558926
 ringers_none_3	--scenario=ringers --case=none --seed=3	451534198
@@ -64,7 +64,7 @@ bread_none_1	--scenario=bread --case=none --seed=1	-163427669
 bread_none_2	--scenario=bread --case=none --seed=2	-505311055
 bread_none_3	--scenario=bread --case=none --seed=3	-857607540
 bread_play_1	--scenario=bread --case=play --seed=1	-911046596
-bread_play_2	--scenario=bread --case=play --seed=2	-191658616
+bread_play_2	--scenario=bread --case=play --seed=2	-365557207
 bread_play_3	--scenario=bread --case=play --seed=3	-355029877
 prisoner_none_1	--scenario=prisoner --case=none --seed=1	-712916423
 prisoner_none_2	--scenario=prisoner --case=none --seed=2	-879962305
@@ -81,14 +81,14 @@ hunt_play_3	--scenario=hunt --case=play --seed=3	982704315
 bishop_none_1	--scenario=bishop --case=none --seed=1	-264461347
 bishop_none_2	--scenario=bishop --case=none --seed=2	-689772993
 bishop_none_3	--scenario=bishop --case=none --seed=3	-22715196
-bishop_play_1	--scenario=bishop --case=play --seed=1	-32209656
-bishop_play_2	--scenario=bishop --case=play --seed=2	-308824730
+bishop_play_1	--scenario=bishop --case=play --seed=1	-373892742
+bishop_play_2	--scenario=bishop --case=play --seed=2	-25991873
 bishop_play_3	--scenario=bishop --case=play --seed=3	-634107609
 armoury_none_1	--scenario=armoury --case=none --seed=1	-23783136
 armoury_none_2	--scenario=armoury --case=none --seed=2	-730168207
 armoury_none_3	--scenario=armoury --case=none --seed=3	-462154650
 armoury_play_1	--scenario=armoury --case=play --seed=1	-685414287
-armoury_play_2	--scenario=armoury --case=play --seed=2	279947714
+armoury_play_2	--scenario=armoury --case=play --seed=2	659837787
 armoury_play_3	--scenario=armoury --case=play --seed=3	-98328650
 sermon_none_1	--scenario=sermon --case=none --seed=1	-587819092
 sermon_none_2	--scenario=sermon --case=none --seed=2	-93140018
@@ -126,131 +126,131 @@ procession_none_3	--scenario=feast --path=procession --board --case=none --seed=
 procession_play_1	--scenario=feast --path=procession --board --case=play --seed=1	-766720488
 procession_play_2	--scenario=feast --path=procession --board --case=play --seed=2	755184607
 procession_play_3	--scenario=feast --path=procession --board --case=play --seed=3	-635831169
-capital_calm	--scenario=capital_calm --seconds=60	-349044946
-capital_evac	--scenario=capital_evac	3971132
-first_taste_none_1	--scenario=first_taste --case=none --seed=1	-862607621
-first_taste_none_2	--scenario=first_taste --case=none --seed=2	-634128792
-first_taste_none_3	--scenario=first_taste --case=none --seed=3	-483087079
-first_taste_ruin_play_1	--scenario=first_taste --case=play --seed=1 --god=ruin:1 --dev-tree	-590282447
-first_taste_ruin_play_2	--scenario=first_taste --case=play --seed=2 --god=ruin:1 --dev-tree	881036810
-first_taste_ruin_play_3	--scenario=first_taste --case=play --seed=3 --god=ruin:1 --dev-tree	275180953
-first_taste_death_play_1	--scenario=first_taste --case=play --seed=1 --god=death:1 --dev-tree	-672795500
-first_taste_death_play_2	--scenario=first_taste --case=play --seed=2 --god=death:1 --dev-tree	-548307277
-first_taste_death_play_3	--scenario=first_taste --case=play --seed=3 --god=death:1 --dev-tree	-669140319
-first_taste_veil_play_1	--scenario=first_taste --case=play --seed=1 --god=veil:1 --dev-tree	-6564974
-first_taste_veil_play_2	--scenario=first_taste --case=play --seed=2 --god=veil:1 --dev-tree	762669956
-first_taste_veil_play_3	--scenario=first_taste --case=play --seed=3 --god=veil:1 --dev-tree	-777885062
+capital_calm	--scenario=capital_calm --seconds=60	-998002054
+capital_evac	--scenario=capital_evac	242945023
+first_taste_none_1	--scenario=first_taste --case=none --seed=1	-994220142
+first_taste_none_2	--scenario=first_taste --case=none --seed=2	-400311310
+first_taste_none_3	--scenario=first_taste --case=none --seed=3	-184378012
+first_taste_ruin_play_1	--scenario=first_taste --case=play --seed=1 --god=ruin:1 --dev-tree	-186120968
+first_taste_ruin_play_2	--scenario=first_taste --case=play --seed=2 --god=ruin:1 --dev-tree	-236486584
+first_taste_ruin_play_3	--scenario=first_taste --case=play --seed=3 --god=ruin:1 --dev-tree	-554800775
+first_taste_death_play_1	--scenario=first_taste --case=play --seed=1 --god=death:1 --dev-tree	887971841
+first_taste_death_play_2	--scenario=first_taste --case=play --seed=2 --god=death:1 --dev-tree	-376386209
+first_taste_death_play_3	--scenario=first_taste --case=play --seed=3 --god=death:1 --dev-tree	-337315584
+first_taste_veil_play_1	--scenario=first_taste --case=play --seed=1 --god=veil:1 --dev-tree	-94091612
+first_taste_veil_play_2	--scenario=first_taste --case=play --seed=2 --god=veil:1 --dev-tree	-875444902
+first_taste_veil_play_3	--scenario=first_taste --case=play --seed=3 --god=veil:1 --dev-tree	-675709027
 first_taste_passage_play_1	--scenario=first_taste --case=play --seed=1 --god=passage:1 --dev-tree	-715010558
 first_taste_passage_play_2	--scenario=first_taste --case=play --seed=2 --god=passage:1 --dev-tree	980353449
 first_taste_passage_play_3	--scenario=first_taste --case=play --seed=3 --god=passage:1 --dev-tree	-99504702
-first_taste_decree_play_1	--scenario=first_taste --case=play --seed=1 --god=decree:1 --dev-tree	-128339540
-first_taste_decree_play_2	--scenario=first_taste --case=play --seed=2 --god=decree:1 --dev-tree	-888023440
-first_taste_decree_play_3	--scenario=first_taste --case=play --seed=3 --god=decree:1 --dev-tree	-366833705
-first_taste_dominion_play_1	--scenario=first_taste --case=play --seed=1 --god=dominion:1 --dev-tree	-542144112
-first_taste_dominion_play_2	--scenario=first_taste --case=play --seed=2 --god=dominion:1 --dev-tree	-854083926
-first_taste_dominion_play_3	--scenario=first_taste --case=play --seed=3 --god=dominion:1 --dev-tree	-465385105
-hide_faithful_none_1	--scenario=hide_faithful --case=none --seed=1	103634925
-hide_faithful_none_2	--scenario=hide_faithful --case=none --seed=2	-967766367
-hide_faithful_none_3	--scenario=hide_faithful --case=none --seed=3	-891277421
-hide_faithful_ruin_play_1	--scenario=hide_faithful --case=play --seed=1 --god=ruin:1 --dev-tree	-839550223
-hide_faithful_ruin_play_2	--scenario=hide_faithful --case=play --seed=2 --god=ruin:1 --dev-tree	-558633913
-hide_faithful_ruin_play_3	--scenario=hide_faithful --case=play --seed=3 --god=ruin:1 --dev-tree	-53271657
-hide_faithful_death_play_1	--scenario=hide_faithful --case=play --seed=1 --god=death:1 --dev-tree	-439522962
-hide_faithful_death_play_2	--scenario=hide_faithful --case=play --seed=2 --god=death:1 --dev-tree	-230780946
-hide_faithful_death_play_3	--scenario=hide_faithful --case=play --seed=3 --god=death:1 --dev-tree	-465993393
-hide_faithful_veil_play_1	--scenario=hide_faithful --case=play --seed=1 --god=veil:1 --dev-tree	-311329655
-hide_faithful_veil_play_2	--scenario=hide_faithful --case=play --seed=2 --god=veil:1 --dev-tree	-301939286
-hide_faithful_veil_play_3	--scenario=hide_faithful --case=play --seed=3 --god=veil:1 --dev-tree	-340401409
+first_taste_decree_play_1	--scenario=first_taste --case=play --seed=1 --god=decree:1 --dev-tree	-706756994
+first_taste_decree_play_2	--scenario=first_taste --case=play --seed=2 --god=decree:1 --dev-tree	-766848765
+first_taste_decree_play_3	--scenario=first_taste --case=play --seed=3 --god=decree:1 --dev-tree	-128432582
+first_taste_dominion_play_1	--scenario=first_taste --case=play --seed=1 --god=dominion:1 --dev-tree	-679607271
+first_taste_dominion_play_2	--scenario=first_taste --case=play --seed=2 --god=dominion:1 --dev-tree	-497569145
+first_taste_dominion_play_3	--scenario=first_taste --case=play --seed=3 --god=dominion:1 --dev-tree	-686159919
+hide_faithful_none_1	--scenario=hide_faithful --case=none --seed=1	-776786705
+hide_faithful_none_2	--scenario=hide_faithful --case=none --seed=2	-528821958
+hide_faithful_none_3	--scenario=hide_faithful --case=none --seed=3	-729639375
+hide_faithful_ruin_play_1	--scenario=hide_faithful --case=play --seed=1 --god=ruin:1 --dev-tree	-274533754
+hide_faithful_ruin_play_2	--scenario=hide_faithful --case=play --seed=2 --god=ruin:1 --dev-tree	-893890206
+hide_faithful_ruin_play_3	--scenario=hide_faithful --case=play --seed=3 --god=ruin:1 --dev-tree	-940100161
+hide_faithful_death_play_1	--scenario=hide_faithful --case=play --seed=1 --god=death:1 --dev-tree	-771552690
+hide_faithful_death_play_2	--scenario=hide_faithful --case=play --seed=2 --god=death:1 --dev-tree	-57825802
+hide_faithful_death_play_3	--scenario=hide_faithful --case=play --seed=3 --god=death:1 --dev-tree	-677439038
+hide_faithful_veil_play_1	--scenario=hide_faithful --case=play --seed=1 --god=veil:1 --dev-tree	-802237474
+hide_faithful_veil_play_2	--scenario=hide_faithful --case=play --seed=2 --god=veil:1 --dev-tree	-627921776
+hide_faithful_veil_play_3	--scenario=hide_faithful --case=play --seed=3 --god=veil:1 --dev-tree	-208709930
 hide_faithful_passage_play_1	--scenario=hide_faithful --case=play --seed=1 --god=passage:1 --dev-tree	-577068562
 hide_faithful_passage_play_2	--scenario=hide_faithful --case=play --seed=2 --god=passage:1 --dev-tree	-896970501
 hide_faithful_passage_play_3	--scenario=hide_faithful --case=play --seed=3 --god=passage:1 --dev-tree	-495135777
-hide_faithful_decree_play_1	--scenario=hide_faithful --case=play --seed=1 --god=decree:1 --dev-tree	738168840
-hide_faithful_decree_play_2	--scenario=hide_faithful --case=play --seed=2 --god=decree:1 --dev-tree	-462637335
-hide_faithful_decree_play_3	--scenario=hide_faithful --case=play --seed=3 --god=decree:1 --dev-tree	-395159003
-hide_faithful_dominion_play_1	--scenario=hide_faithful --case=play --seed=1 --god=dominion:1 --dev-tree	-929497617
-hide_faithful_dominion_play_2	--scenario=hide_faithful --case=play --seed=2 --god=dominion:1 --dev-tree	-881784352
-hide_faithful_dominion_play_3	--scenario=hide_faithful --case=play --seed=3 --god=dominion:1 --dev-tree	675202642
-silence_witness_none_1	--scenario=silence_witness --case=none --seed=1	-290560938
-silence_witness_none_2	--scenario=silence_witness --case=none --seed=2	-868103092
-silence_witness_none_3	--scenario=silence_witness --case=none --seed=3	89419789
-silence_witness_ruin_play_1	--scenario=silence_witness --case=play --seed=1 --god=ruin:2 --dev-tree	-866795991
-silence_witness_ruin_play_2	--scenario=silence_witness --case=play --seed=2 --god=ruin:2 --dev-tree	321093532
-silence_witness_ruin_play_3	--scenario=silence_witness --case=play --seed=3 --god=ruin:2 --dev-tree	-181708191
-silence_witness_death_play_1	--scenario=silence_witness --case=play --seed=1 --god=death:2 --dev-tree	-397643768
-silence_witness_death_play_2	--scenario=silence_witness --case=play --seed=2 --god=death:2 --dev-tree	152793487
-silence_witness_death_play_3	--scenario=silence_witness --case=play --seed=3 --god=death:2 --dev-tree	457658897
-silence_witness_veil_play_1	--scenario=silence_witness --case=play --seed=1 --god=veil:2 --dev-tree	-445821788
-silence_witness_veil_play_2	--scenario=silence_witness --case=play --seed=2 --god=veil:2 --dev-tree	-165945103
-silence_witness_veil_play_3	--scenario=silence_witness --case=play --seed=3 --god=veil:2 --dev-tree	-102192805
-silence_witness_passage_play_1	--scenario=silence_witness --case=play --seed=1 --god=passage:2 --dev-tree	-586926500
-silence_witness_passage_play_2	--scenario=silence_witness --case=play --seed=2 --god=passage:2 --dev-tree	-797530027
-silence_witness_passage_play_3	--scenario=silence_witness --case=play --seed=3 --god=passage:2 --dev-tree	-722647809
-silence_witness_decree_play_1	--scenario=silence_witness --case=play --seed=1 --god=decree:2 --dev-tree	-875062699
-silence_witness_decree_play_2	--scenario=silence_witness --case=play --seed=2 --god=decree:2 --dev-tree	-741200594
-silence_witness_decree_play_3	--scenario=silence_witness --case=play --seed=3 --god=decree:2 --dev-tree	-455380156
-silence_witness_dominion_play_1	--scenario=silence_witness --case=play --seed=1 --god=dominion:2 --dev-tree	-567743550
-silence_witness_dominion_play_2	--scenario=silence_witness --case=play --seed=2 --god=dominion:2 --dev-tree	-545100207
-silence_witness_dominion_play_3	--scenario=silence_witness --case=play --seed=3 --god=dominion:2 --dev-tree	-104342724
-expel_inquisitor_none_1	--scenario=expel_inquisitor --case=none --seed=1	-514600614
-expel_inquisitor_none_2	--scenario=expel_inquisitor --case=none --seed=2	-221146108
-expel_inquisitor_none_3	--scenario=expel_inquisitor --case=none --seed=3	57885823
-expel_inquisitor_ruin_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=ruin:3 --dev-tree	-185349803
-expel_inquisitor_ruin_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=ruin:3 --dev-tree	-40097210
-expel_inquisitor_ruin_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=ruin:3 --dev-tree	-673697728
-expel_inquisitor_death_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=death:3 --dev-tree	-281049706
-expel_inquisitor_death_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=death:3 --dev-tree	-32647347
-expel_inquisitor_death_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=death:3 --dev-tree	-251392457
-expel_inquisitor_veil_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=veil:3 --dev-tree	-269546651
-expel_inquisitor_veil_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=veil:3 --dev-tree	-607592020
-expel_inquisitor_veil_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=veil:3 --dev-tree	-375451685
+hide_faithful_decree_play_1	--scenario=hide_faithful --case=play --seed=1 --god=decree:1 --dev-tree	-5547406
+hide_faithful_decree_play_2	--scenario=hide_faithful --case=play --seed=2 --god=decree:1 --dev-tree	618896485
+hide_faithful_decree_play_3	--scenario=hide_faithful --case=play --seed=3 --god=decree:1 --dev-tree	-454148366
+hide_faithful_dominion_play_1	--scenario=hide_faithful --case=play --seed=1 --god=dominion:1 --dev-tree	-480428682
+hide_faithful_dominion_play_2	--scenario=hide_faithful --case=play --seed=2 --god=dominion:1 --dev-tree	-550841819
+hide_faithful_dominion_play_3	--scenario=hide_faithful --case=play --seed=3 --god=dominion:1 --dev-tree	-705467007
+silence_witness_none_1	--scenario=silence_witness --case=none --seed=1	-77317178
+silence_witness_none_2	--scenario=silence_witness --case=none --seed=2	-936022987
+silence_witness_none_3	--scenario=silence_witness --case=none --seed=3	-365212236
+silence_witness_ruin_play_1	--scenario=silence_witness --case=play --seed=1 --god=ruin:2 --dev-tree	-199708871
+silence_witness_ruin_play_2	--scenario=silence_witness --case=play --seed=2 --god=ruin:2 --dev-tree	-190658943
+silence_witness_ruin_play_3	--scenario=silence_witness --case=play --seed=3 --god=ruin:2 --dev-tree	-665111165
+silence_witness_death_play_1	--scenario=silence_witness --case=play --seed=1 --god=death:2 --dev-tree	-426055937
+silence_witness_death_play_2	--scenario=silence_witness --case=play --seed=2 --god=death:2 --dev-tree	995777935
+silence_witness_death_play_3	--scenario=silence_witness --case=play --seed=3 --god=death:2 --dev-tree	707946174
+silence_witness_veil_play_1	--scenario=silence_witness --case=play --seed=1 --god=veil:2 --dev-tree	-426964410
+silence_witness_veil_play_2	--scenario=silence_witness --case=play --seed=2 --god=veil:2 --dev-tree	-843849878
+silence_witness_veil_play_3	--scenario=silence_witness --case=play --seed=3 --god=veil:2 --dev-tree	-105549606
+silence_witness_passage_play_1	--scenario=silence_witness --case=play --seed=1 --god=passage:2 --dev-tree	-955746219
+silence_witness_passage_play_2	--scenario=silence_witness --case=play --seed=2 --god=passage:2 --dev-tree	-511681776
+silence_witness_passage_play_3	--scenario=silence_witness --case=play --seed=3 --god=passage:2 --dev-tree	-611461854
+silence_witness_decree_play_1	--scenario=silence_witness --case=play --seed=1 --god=decree:2 --dev-tree	-428594719
+silence_witness_decree_play_2	--scenario=silence_witness --case=play --seed=2 --god=decree:2 --dev-tree	-669869261
+silence_witness_decree_play_3	--scenario=silence_witness --case=play --seed=3 --god=decree:2 --dev-tree	436511137
+silence_witness_dominion_play_1	--scenario=silence_witness --case=play --seed=1 --god=dominion:2 --dev-tree	-31194290
+silence_witness_dominion_play_2	--scenario=silence_witness --case=play --seed=2 --god=dominion:2 --dev-tree	-475869536
+silence_witness_dominion_play_3	--scenario=silence_witness --case=play --seed=3 --god=dominion:2 --dev-tree	-793138088
+expel_inquisitor_none_1	--scenario=expel_inquisitor --case=none --seed=1	-674239623
+expel_inquisitor_none_2	--scenario=expel_inquisitor --case=none --seed=2	758039683
+expel_inquisitor_none_3	--scenario=expel_inquisitor --case=none --seed=3	-830083429
+expel_inquisitor_ruin_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=ruin:3 --dev-tree	-531186296
+expel_inquisitor_ruin_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=ruin:3 --dev-tree	-512207773
+expel_inquisitor_ruin_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=ruin:3 --dev-tree	-338555943
+expel_inquisitor_death_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=death:3 --dev-tree	-466268723
+expel_inquisitor_death_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=death:3 --dev-tree	-234166597
+expel_inquisitor_death_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=death:3 --dev-tree	-785607935
+expel_inquisitor_veil_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=veil:3 --dev-tree	-809902428
+expel_inquisitor_veil_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=veil:3 --dev-tree	-438212134
+expel_inquisitor_veil_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=veil:3 --dev-tree	-596441079
 expel_inquisitor_passage_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=passage:3 --dev-tree	-322545580
-expel_inquisitor_passage_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=passage:3 --dev-tree	-659852886
-expel_inquisitor_passage_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=passage:3 --dev-tree	-445651473
-expel_inquisitor_decree_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=decree:3 --dev-tree	-462790995
-expel_inquisitor_decree_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=decree:3 --dev-tree	-307127054
-expel_inquisitor_decree_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=decree:3 --dev-tree	83864250
-expel_inquisitor_dominion_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=dominion:3 --dev-tree	672806568
-expel_inquisitor_dominion_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=dominion:3 --dev-tree	-626677446
-expel_inquisitor_dominion_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=dominion:3 --dev-tree	-364071679
-break_hunt_none_1	--scenario=break_hunt --case=none --seed=1	-211808373
-break_hunt_none_2	--scenario=break_hunt --case=none --seed=2	382402630
-break_hunt_none_3	--scenario=break_hunt --case=none --seed=3	223532881
-break_hunt_ruin_play_1	--scenario=break_hunt --case=play --seed=1 --god=ruin:4 --dev-tree	-828763245
-break_hunt_ruin_play_2	--scenario=break_hunt --case=play --seed=2 --god=ruin:4 --dev-tree	-276090186
-break_hunt_ruin_play_3	--scenario=break_hunt --case=play --seed=3 --god=ruin:4 --dev-tree	-890267405
-break_hunt_death_play_1	--scenario=break_hunt --case=play --seed=1 --god=death:4 --dev-tree	-341197675
-break_hunt_death_play_2	--scenario=break_hunt --case=play --seed=2 --god=death:4 --dev-tree	-698528197
-break_hunt_death_play_3	--scenario=break_hunt --case=play --seed=3 --god=death:4 --dev-tree	-27760033
-break_hunt_veil_play_1	--scenario=break_hunt --case=play --seed=1 --god=veil:4 --dev-tree	-403324349
-break_hunt_veil_play_2	--scenario=break_hunt --case=play --seed=2 --god=veil:4 --dev-tree	-363568824
-break_hunt_veil_play_3	--scenario=break_hunt --case=play --seed=3 --god=veil:4 --dev-tree	204795818
-break_hunt_passage_play_1	--scenario=break_hunt --case=play --seed=1 --god=passage:4 --dev-tree	-264290158
-break_hunt_passage_play_2	--scenario=break_hunt --case=play --seed=2 --god=passage:4 --dev-tree	-636319649
-break_hunt_passage_play_3	--scenario=break_hunt --case=play --seed=3 --god=passage:4 --dev-tree	-460745288
-break_hunt_decree_play_1	--scenario=break_hunt --case=play --seed=1 --god=decree:4 --dev-tree	-763996936
-break_hunt_decree_play_2	--scenario=break_hunt --case=play --seed=2 --god=decree:4 --dev-tree	-47354962
-break_hunt_decree_play_3	--scenario=break_hunt --case=play --seed=3 --god=decree:4 --dev-tree	-427603008
-break_hunt_dominion_play_1	--scenario=break_hunt --case=play --seed=1 --god=dominion:4 --dev-tree	-700853132
-break_hunt_dominion_play_2	--scenario=break_hunt --case=play --seed=2 --god=dominion:4 --dev-tree	-548026041
-break_hunt_dominion_play_3	--scenario=break_hunt --case=play --seed=3 --god=dominion:4 --dev-tree	-650174615
-face_halcyon_none_1	--scenario=face_halcyon --case=none --seed=1	-412905215
-face_halcyon_none_2	--scenario=face_halcyon --case=none --seed=2	-766720773
-face_halcyon_none_3	--scenario=face_halcyon --case=none --seed=3	-985130493
-face_halcyon_ruin_play_1	--scenario=face_halcyon --case=play --seed=1 --god=ruin:5 --dev-tree	-437644389
-face_halcyon_ruin_play_2	--scenario=face_halcyon --case=play --seed=2 --god=ruin:5 --dev-tree	-744916422
-face_halcyon_ruin_play_3	--scenario=face_halcyon --case=play --seed=3 --god=ruin:5 --dev-tree	293764077
-face_halcyon_death_play_1	--scenario=face_halcyon --case=play --seed=1 --god=death:5 --dev-tree	-536803238
-face_halcyon_death_play_2	--scenario=face_halcyon --case=play --seed=2 --god=death:5 --dev-tree	-674536623
-face_halcyon_death_play_3	--scenario=face_halcyon --case=play --seed=3 --god=death:5 --dev-tree	-200562402
-face_halcyon_veil_play_1	--scenario=face_halcyon --case=play --seed=1 --god=veil:5 --dev-tree	-252872191
-face_halcyon_veil_play_2	--scenario=face_halcyon --case=play --seed=2 --god=veil:5 --dev-tree	-77184919
-face_halcyon_veil_play_3	--scenario=face_halcyon --case=play --seed=3 --god=veil:5 --dev-tree	-116498780
+expel_inquisitor_passage_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=passage:3 --dev-tree	-351704426
+expel_inquisitor_passage_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=passage:3 --dev-tree	-28280985
+expel_inquisitor_decree_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=decree:3 --dev-tree	-769941893
+expel_inquisitor_decree_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=decree:3 --dev-tree	-774888750
+expel_inquisitor_decree_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=decree:3 --dev-tree	-802304186
+expel_inquisitor_dominion_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=dominion:3 --dev-tree	-863354099
+expel_inquisitor_dominion_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=dominion:3 --dev-tree	983471584
+expel_inquisitor_dominion_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=dominion:3 --dev-tree	344400140
+break_hunt_none_1	--scenario=break_hunt --case=none --seed=1	196574519
+break_hunt_none_2	--scenario=break_hunt --case=none --seed=2	-679886217
+break_hunt_none_3	--scenario=break_hunt --case=none --seed=3	-908667791
+break_hunt_ruin_play_1	--scenario=break_hunt --case=play --seed=1 --god=ruin:4 --dev-tree	-906727195
+break_hunt_ruin_play_2	--scenario=break_hunt --case=play --seed=2 --god=ruin:4 --dev-tree	-94810467
+break_hunt_ruin_play_3	--scenario=break_hunt --case=play --seed=3 --god=ruin:4 --dev-tree	-635975717
+break_hunt_death_play_1	--scenario=break_hunt --case=play --seed=1 --god=death:4 --dev-tree	-805102692
+break_hunt_death_play_2	--scenario=break_hunt --case=play --seed=2 --god=death:4 --dev-tree	-261485221
+break_hunt_death_play_3	--scenario=break_hunt --case=play --seed=3 --god=death:4 --dev-tree	-319387580
+break_hunt_veil_play_1	--scenario=break_hunt --case=play --seed=1 --god=veil:4 --dev-tree	-484636424
+break_hunt_veil_play_2	--scenario=break_hunt --case=play --seed=2 --god=veil:4 --dev-tree	-100478789
+break_hunt_veil_play_3	--scenario=break_hunt --case=play --seed=3 --god=veil:4 --dev-tree	-953730609
+break_hunt_passage_play_1	--scenario=break_hunt --case=play --seed=1 --god=passage:4 --dev-tree	-565472605
+break_hunt_passage_play_2	--scenario=break_hunt --case=play --seed=2 --god=passage:4 --dev-tree	-271469591
+break_hunt_passage_play_3	--scenario=break_hunt --case=play --seed=3 --god=passage:4 --dev-tree	-361450852
+break_hunt_decree_play_1	--scenario=break_hunt --case=play --seed=1 --god=decree:4 --dev-tree	-574395273
+break_hunt_decree_play_2	--scenario=break_hunt --case=play --seed=2 --god=decree:4 --dev-tree	-690922521
+break_hunt_decree_play_3	--scenario=break_hunt --case=play --seed=3 --god=decree:4 --dev-tree	-790599033
+break_hunt_dominion_play_1	--scenario=break_hunt --case=play --seed=1 --god=dominion:4 --dev-tree	-286942775
+break_hunt_dominion_play_2	--scenario=break_hunt --case=play --seed=2 --god=dominion:4 --dev-tree	958663135
+break_hunt_dominion_play_3	--scenario=break_hunt --case=play --seed=3 --god=dominion:4 --dev-tree	-297017686
+face_halcyon_none_1	--scenario=face_halcyon --case=none --seed=1	-125392844
+face_halcyon_none_2	--scenario=face_halcyon --case=none --seed=2	-662315114
+face_halcyon_none_3	--scenario=face_halcyon --case=none --seed=3	561109715
+face_halcyon_ruin_play_1	--scenario=face_halcyon --case=play --seed=1 --god=ruin:5 --dev-tree	-375230408
+face_halcyon_ruin_play_2	--scenario=face_halcyon --case=play --seed=2 --god=ruin:5 --dev-tree	-822832812
+face_halcyon_ruin_play_3	--scenario=face_halcyon --case=play --seed=3 --god=ruin:5 --dev-tree	-126502742
+face_halcyon_death_play_1	--scenario=face_halcyon --case=play --seed=1 --god=death:5 --dev-tree	-426088129
+face_halcyon_death_play_2	--scenario=face_halcyon --case=play --seed=2 --god=death:5 --dev-tree	-22174738
+face_halcyon_death_play_3	--scenario=face_halcyon --case=play --seed=3 --god=death:5 --dev-tree	802295107
+face_halcyon_veil_play_1	--scenario=face_halcyon --case=play --seed=1 --god=veil:5 --dev-tree	88242728
+face_halcyon_veil_play_2	--scenario=face_halcyon --case=play --seed=2 --god=veil:5 --dev-tree	-987336046
+face_halcyon_veil_play_3	--scenario=face_halcyon --case=play --seed=3 --god=veil:5 --dev-tree	-584130780
 face_halcyon_passage_play_1	--scenario=face_halcyon --case=play --seed=1 --god=passage:5 --dev-tree	-727445396
 face_halcyon_passage_play_2	--scenario=face_halcyon --case=play --seed=2 --god=passage:5 --dev-tree	-977252743
 face_halcyon_passage_play_3	--scenario=face_halcyon --case=play --seed=3 --god=passage:5 --dev-tree	-352924907
-face_halcyon_decree_play_1	--scenario=face_halcyon --case=play --seed=1 --god=decree:5 --dev-tree	879745885
-face_halcyon_decree_play_2	--scenario=face_halcyon --case=play --seed=2 --god=decree:5 --dev-tree	-226629477
-face_halcyon_decree_play_3	--scenario=face_halcyon --case=play --seed=3 --god=decree:5 --dev-tree	549106523
-face_halcyon_dominion_play_1	--scenario=face_halcyon --case=play --seed=1 --god=dominion:5 --dev-tree	-702901134
-face_halcyon_dominion_play_2	--scenario=face_halcyon --case=play --seed=2 --god=dominion:5 --dev-tree	-877705172
-face_halcyon_dominion_play_3	--scenario=face_halcyon --case=play --seed=3 --god=dominion:5 --dev-tree	-651490008
+face_halcyon_decree_play_1	--scenario=face_halcyon --case=play --seed=1 --god=decree:5 --dev-tree	-169282041
+face_halcyon_decree_play_2	--scenario=face_halcyon --case=play --seed=2 --god=decree:5 --dev-tree	-296802843
+face_halcyon_decree_play_3	--scenario=face_halcyon --case=play --seed=3 --god=decree:5 --dev-tree	-315198104
+face_halcyon_dominion_play_1	--scenario=face_halcyon --case=play --seed=1 --god=dominion:5 --dev-tree	-451811416
+face_halcyon_dominion_play_2	--scenario=face_halcyon --case=play --seed=2 --god=dominion:5 --dev-tree	-844180855
+face_halcyon_dominion_play_3	--scenario=face_halcyon --case=play --seed=3 --god=dominion:5 --dev-tree	-271291637

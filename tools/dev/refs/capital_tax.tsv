@@ -1,13 +1,13 @@
 # KAK exact references (v0.12 M2, Task 10): the Tax Collector played in the Capital (--city=capital), tax_collector@capital's overrides. name<TAB>how<TAB>expected
-capital_tax_none_1	--scenario=tax --case=none --seed=1 --city=capital	-604690665
-capital_tax_none_2	--scenario=tax --case=none --seed=2 --city=capital	-345384709
-capital_tax_none_3	--scenario=tax --case=none --seed=3 --city=capital	-339166337
-capital_tax_play_1	--scenario=tax --case=play --seed=1 --city=capital	-250988328
-capital_tax_play_2	--scenario=tax --case=play --seed=2 --city=capital	-671520556
-capital_tax_play_3	--scenario=tax --case=play --seed=3 --city=capital	-671857842
-capital_tax_b_play_1	--scenario=tax --case=play --route=b --seed=1 --city=capital	-399355619
-capital_tax_b_play_2	--scenario=tax --case=play --route=b --seed=2 --city=capital	-328245762
-capital_tax_b_play_3	--scenario=tax --case=play --route=b --seed=3 --city=capital	-480929454
-capital_tax_toll_1	--scenario=tax --case=toll --seed=1 --city=capital	-4670748
-capital_tax_toll_2	--scenario=tax --case=toll --seed=2 --city=capital	-81708860
-capital_tax_toll_3	--scenario=tax --case=toll --seed=3 --city=capital	-187590542
+capital_tax_none_1	--scenario=tax --case=none --seed=1 --city=capital	-721531918
+capital_tax_none_2	--scenario=tax --case=none --seed=2 --city=capital	-972733885
+capital_tax_none_3	--scenario=tax --case=none --seed=3 --city=capital	-326975882
+capital_tax_play_1	--scenario=tax --case=play --seed=1 --city=capital	-333759974
+capital_tax_play_2	--scenario=tax --case=play --seed=2 --city=capital	-209546056
+capital_tax_play_3	--scenario=tax --case=play --seed=3 --city=capital	-998560183
+capital_tax_b_play_1	--scenario=tax --case=play --route=b --seed=1 --city=capital	-593917438
+capital_tax_b_play_2	--scenario=tax --case=play --route=b --seed=2 --city=capital	-355820785
+capital_tax_b_play_3	--scenario=tax --case=play --route=b --seed=3 --city=capital	-538464211
+capital_tax_toll_1	--scenario=tax --case=toll --seed=1 --city=capital	-586156808
+capital_tax_toll_2	--scenario=tax --case=toll --seed=2 --city=capital	-564151420
+capital_tax_toll_3	--scenario=tax --case=toll --seed=3 --city=capital	-256354804

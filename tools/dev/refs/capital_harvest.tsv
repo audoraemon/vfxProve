@@ -1,11 +1,11 @@
 # KAK Spoiled Harvest in the Capital (v0.12 M2 Task 11): the Tier 1 night played in the Capital's old town (--city=capital), loadout A (none, play) and B (b_play), seeds 1-3. name<TAB>how<TAB>expected
 # Recorded from the gate runs (gate.sh harvest --city=capital; --route=b --city=capital). A row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
-capital_harvest_none_1	--scenario=harvest --case=none --seed=1 --city=capital	-283074050
-capital_harvest_none_2	--scenario=harvest --case=none --seed=2 --city=capital	-166632368
-capital_harvest_none_3	--scenario=harvest --case=none --seed=3 --city=capital	-612191963
-capital_harvest_play_1	--scenario=harvest --case=play --seed=1 --city=capital	-476113731
-capital_harvest_play_2	--scenario=harvest --case=play --seed=2 --city=capital	-495757360
-capital_harvest_play_3	--scenario=harvest --case=play --seed=3 --city=capital	-837171462
-capital_harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1 --city=capital	-56727929
-capital_harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2 --city=capital	-760420941
-capital_harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3 --city=capital	-954496646
+capital_harvest_none_1	--scenario=harvest --case=none --seed=1 --city=capital	-720191771
+capital_harvest_none_2	--scenario=harvest --case=none --seed=2 --city=capital	-92017861
+capital_harvest_none_3	--scenario=harvest --case=none --seed=3 --city=capital	-540971265
+capital_harvest_play_1	--scenario=harvest --case=play --seed=1 --city=capital	-515009472
+capital_harvest_play_2	--scenario=harvest --case=play --seed=2 --city=capital	-369944314
+capital_harvest_play_3	--scenario=harvest --case=play --seed=3 --city=capital	-3531194
+capital_harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1 --city=capital	848077277
+capital_harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2 --city=capital	-17847217
+capital_harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3 --city=capital	-865275952

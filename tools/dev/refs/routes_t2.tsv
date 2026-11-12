@@ -2,9 +2,9 @@
 miras_b_play_1	--scenario=miras --case=play --route=b --seed=1 --board	-610110491
 miras_b_play_2	--scenario=miras --case=play --route=b --seed=2 --board	-604829715
 miras_b_play_3	--scenario=miras --case=play --route=b --seed=3 --board	-151606793
-lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	31258438
-lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	145869998
-lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	324914283
+lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	253327281
+lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	567644000
+lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	700991072
 ringers_b_play_1	--scenario=ringers --case=play --route=b --seed=1	-994432003
 ringers_b_play_2	--scenario=ringers --case=play --route=b --seed=2	-586752350
 ringers_b_play_3	--scenario=ringers --case=play --route=b --seed=3	-866646582

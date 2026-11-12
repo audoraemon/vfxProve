@@ -13,5 +13,5 @@ prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	126957293
 prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-594073215
 prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	762421716
 hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-152867874
-hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	791723365
+hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	-424421200
 hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	-886121897

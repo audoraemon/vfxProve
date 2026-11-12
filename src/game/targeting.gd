@@ -99,10 +99,10 @@ const AREAS := {
 	# PaleSerpentFx.LENGTH, BAND, MIN_LENGTH: the head's glide from the press along the drag, as long as the drag ("follow"),
 	# its shadow BAND each side
 	# and the loop it turns at the end ("loop": CIRCLE_R, ringed to the drag's left), the head's path round it a kill zone too
-	# GraveTideFx.GIANT_AURA: where the horde walks to, ringed as wide as the giant's aura
-	"gravetide": {"shape": "circle", "r": GraveTideFx.GIANT_AURA},
 	"serpent": {"shape": "lane", "length": PaleSerpentFx.LENGTH, "half": PaleSerpentFx.BAND, "min": PaleSerpentFx.MIN_LENGTH,
 		"follow": true, "loop": PaleSerpentFx.CIRCLE_R},
+	# GraveTideFx.GIANT_AURA: where the horde walks to, ringed as wide as the giant's aura
+	"gravetide": {"shape": "circle", "r": GraveTideFx.GIANT_AURA},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},

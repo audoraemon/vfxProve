@@ -18,7 +18,8 @@ extends RefCounted
 ## Traits (give()) change how one goes about it: `phase` walks straight through walls and houses to its prey (a ghost),
 ## `wreck` claws at buildings (a demon): every `wreck_every` it strikes the building within `wreck_reach` of it for
 ## `wreck` (damage kind frenzy) -- running past one at its prey as much as standing at one -- and with nobody in
-## reach it goes for the nearest building within its seek reach instead.
+## reach it goes for the nearest building within its seek reach instead, unless `wreck_idle` is false (Grave Tide's giant:
+## it smashes only what stands in its way as it goes, never leaves the street for a house, nor claws one it stands idle by).
 ## Death's undead go by more traits: `knock_first` (the first bite on a citizen only knocks them down, a second within
 ## KNOCK_WINDOW kills; after that the next knocks again), `infect` (a bite also gives the plague), `spare_guise` (never
 ## picks a person under the Corpse Guise status), `prey` "soldiers" (hunts soldiers only), `fright_r` (frightens the
@@ -53,6 +54,8 @@ const FRIGHT_EVERY := 1.0
 ## march: it is there within MARCH_NEAR of the point; on the way it turns only on whoever comes within MARCH_SEEK.
 const MARCH_NEAR := 1.5
 const MARCH_SEEK := 1.5
+## march: how long it may take when give() names no `march_for`.
+const MARCH_FOR := 20.0
 
 ## A visitor bit `victim` (its first bite too: the owner spreads the outcry).
 signal bitten(visitor: Animal, victim: Person, first: bool)
@@ -105,6 +108,8 @@ class Rule extends RefCounted:
 	var wreck_every := 1.5
 	var wreck_reach := 0.5
 	var wreck_in := 0.0
+	## With nobody to hunt, it goes at the nearest building (false: it only strikes what it passes).
+	var wreck_idle := true
 	## The building it is going for, with nobody to hunt; the one beside it, looked for every WRECK_LOOK.
 	var house: Structure
 	var beside: Structure
@@ -174,7 +179,9 @@ func give(a: Animal, traits: Dictionary) -> void:
 	r.wreck = float(traits.get("wreck", r.wreck))
 	r.wreck_every = float(traits.get("wreck_every", r.wreck_every))
 	r.wreck_reach = float(traits.get("wreck_reach", r.wreck_reach))
-	r.wreck_in = r.wreck_every * 0.5
+	if traits.has("wreck") or traits.has("wreck_every"):
+		r.wreck_in = r.wreck_every * 0.5  # its first blow half a swing in (only as the claws are given: a renewed march keeps the count)
+	r.wreck_idle = bool(traits.get("wreck_idle", r.wreck_idle))
 	r.knock_first = bool(traits.get("knock_first", r.knock_first))
 	r.infect = bool(traits.get("infect", r.infect))
 	r.spare_guise = bool(traits.get("spare_guise", r.spare_guise))
@@ -188,7 +195,13 @@ func give(a: Animal, traits: Dictionary) -> void:
 	r.bite = float(traits.get("bite", r.bite))
 	if traits.has("march"):
 		r.march = traits.march
-		r.march_left = float(traits.get("march_for", 20.0))
+		r.march_left = float(traits.get("march_for", MARCH_FOR))
+
+
+## Whether visitor `a` is still on its march (give()'s `march`).
+func marching(a: Animal) -> bool:
+	var r: Rule = _rules.get(a)
+	return r != null and r.march != Vector2.INF
 
 
 ## The visitors still on their feet.
@@ -391,13 +404,14 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 					best = d
 					r.beside = s
 	var beside := r.beside
-	if beside != null and r.wreck_in <= 0.0:
+	# One that does not go at buildings (wreck_idle false) strikes only what stands in its way: never standing idle.
+	if beside != null and r.wreck_in <= 0.0 and (r.wreck_idle or not idle):
 		r.wreck_in = r.wreck_every
 		a.facing = 1 if beside.center().x - beside.center().y > a.ground_pos.x - a.ground_pos.y else -1
 		a.bit()
 		beside.damage(r.wreck, a.ground_pos, &"frenzy")
 		wrecked.emit(a, beside)
-	if not idle or beside != null:
+	if not idle or beside != null or not r.wreck_idle:
 		return
 	if r.house == null or not _wreckable(r.house) or r.house.distance_to(a.ground_pos) > r.seek_r:
 		r.house = null
@@ -592,10 +606,11 @@ func _nearest_visitor(at: Vector2) -> Animal:
 	return best
 
 
-func _free(a: Animal, deferred := false) -> void:
+## Untyped: a visitor whose node another power freed is still a key here, and a freed node errors in a typed parameter.
+func _free(a, deferred := false) -> void:
 	if not is_instance_valid(a):
 		return
-	var id := a.get_instance_id()
+	var id: int = a.get_instance_id()
 	if _slows.has(id):
 		for p in (_slows[id] as Dictionary).keys():
 			if is_instance_valid(p):

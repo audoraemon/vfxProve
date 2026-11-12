@@ -28,8 +28,11 @@ static func run(t) -> void:
 	_cap(t, made)
 	_march(t, made)
 	_aura(t, made)
+	_aura_others(t, made)
 	_soldier(t, made)
 	_wall(t, made)
+	_holds(t, made)
+	_freed_clear(t, made)
 	_life(t, made)
 	_exit(t, made)
 	RD._done(made)
@@ -283,7 +286,7 @@ static func _aura(t, made: Array) -> void:
 	var at := RD._empty(made)
 	_bodies(made, _ring(made, at, 5, 1.5))
 	var fx := _cast(made, at)
-	RD._run(fx, GraveTideFx.T_RISE + 0.1)
+	RD._run(fx, GraveTideFx.T_RISE + 0.2)
 	var zs := _zombies(fx)
 	var base := DeathParts.ZOMBIE_PACE * DummyEnemy.WALK_SPEED / (Animal.DOG_SPEED * Animal.RUN)
 	var fast := zs.size() == 5
@@ -301,6 +304,103 @@ static func _aura(t, made: Array) -> void:
 	RD._run(fx, 0.3)
 	t.check(is_equal_approx(out.speed_mul, base * GraveTideFx.AURA_SPEED), "and it is sped again as it comes back")
 	fx.end_now()
+
+
+## Review IMPORTANT 1 (spec 5.8, "Death's undead within 6 of the giant move 20% faster"): another power's zombie -- Raise the
+## Dead's -- standing by the giant is quickened too, and has its pace back as it leaves or as the giant goes (carried off by
+## another power: its node freed with no cut_down); a hellhound of another pack beside it never is.
+static func _aura_others(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
+	var beside := at + Vector2(0.0, 3.0)
+	_bodies(made, [beside])  # after the tide's pick: Raise's body, not the tide's
+	var raise := FxTimeline.cast(RaiseTheDeadFx, made[5], beside, {"mode": "zombie"}) as RaiseTheDeadFx
+	var hounds := Visitors.new().setup(made[3], crowd, made[2], made[4])
+	var hound := hounds.summon(at + Vector2(-2.0, 0.0), Animal.Breed.HELLHOUND, 4, 1.0, 0.0, 0.5, 1.0, false)
+	var both := func(seconds: float) -> void:
+		for i in roundi(seconds / DT):
+			if not fx.finished:
+				fx._process(DT)
+			if not raise.finished:
+				raise._process(DT)
+	both.call(GraveTideFx.T_RISE + 0.2)
+	var z: Animal = raise.visitors.living()[0] if raise.visitors.living().size() == 1 else null
+	t.check(z != null and fx.giant != null and z.ground_pos.distance_to(fx.giant.ground_pos) <= GraveTideFx.GIANT_AURA,
+		"(a Raise the Dead zombie stands by the giant)")
+	if z == null or fx.giant == null:
+		fx.end_now()
+		raise.end_now()
+		hounds.clear()
+		return
+	var own := DeathParts.ZOMBIE_PACE * DummyEnemy.WALK_SPEED / (Animal.DOG_SPEED * Animal.RUN)
+	t.check(is_equal_approx(z.speed_mul, own * GraveTideFx.AURA_SPEED) and is_equal_approx(hound.speed_mul, 1.0),
+		"another power's zombie by the giant is quickened x%.1f (%.3f); a hellhound beside it is not (%.2f)" % [GraveTideFx.AURA_SPEED, z.speed_mul, hound.speed_mul])
+	z.ground_pos = fx.giant.ground_pos + Vector2(GraveTideFx.GIANT_AURA + 3.0, 0.0)
+	both.call(0.3)
+	t.check(is_equal_approx(z.speed_mul, own), "it has its own pace back as it leaves the aura (%.3f)" % z.speed_mul)
+	z.ground_pos = fx.giant.ground_pos + Vector2(1.0, 0.0)
+	both.call(0.3)
+	var again := is_equal_approx(z.speed_mul, own * GraveTideFx.AURA_SPEED)
+	var mine: Animal = _zombies(fx)[0]
+	fx.visitors.take(fx.giant)  # another power carries the giant off: freed, no cut_down
+	both.call(0.3)
+	t.check(again and is_equal_approx(z.speed_mul, own) and is_equal_approx(mine.speed_mul, own) and fx.giant == null,
+		"quickened again as it comes back; the giant gone, every one has its own pace back (%.3f, %.3f)" % [z.speed_mul, mine.speed_mul])
+	fx.end_now()
+	raise.end_now()
+	hounds.clear()
+
+
+## Review IMPORTANT 2 ("it walks the streets ... smashes walls in its way"): with no soldier out in the open anywhere, the
+## giant holds at the click, between houses within its reach (one 2 off, a small one beside it), and claws none of them:
+## it never leaves the street for a building, nor strikes one it stands idle by.
+static func _holds(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[2]
+	var house := RD._house(env, grid)
+	var at := Vector2(house.footprint.end.x + 2.0, house.center().y)
+	var was := {}
+	for s in crowd.soldiers:
+		if is_instance_valid(s):
+			was[s] = s.inside
+			s.inside = true  # every soldier indoors: none to go after
+	var hp := house.hp
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
+	RD._run(fx, GraveTideFx.T_RISE + 8.0)
+	var g := fx.giant
+	t.check(g != null and house.distance_to(at) <= GraveTideFx.GIANT_SEEK and house.hp == hp and fx.wrecks == 0
+		and g.ground_pos.distance_to(at) <= Visitors.MARCH_NEAR + 0.5,
+		"no soldier near: the giant holds at the click and does not leave the street for the house %.1f off (%d blows, %.1f from the click)"
+		% [house.distance_to(at), fx.wrecks, g.ground_pos.distance_to(at) if g != null else -1.0])
+	var demon := Visitors.new().setup(made[3], crowd, grid, made[4])
+	var d := demon.summon(at, Animal.Breed.DEMON, 8, 1.0, 8.0, 0.6, 1.2, false)
+	demon.give(d, {"wreck": DoorsOfTheDeadFx.DEMON_WRECK})
+	t.check((demon._rules[d] as Visitors.Rule).wreck_idle and not (fx.visitors._rules[g] as Visitors.Rule).wreck_idle,
+		"a demon still goes at buildings with nobody near (wreck_idle by default); the giant does not")
+	demon.clear()
+	fx.end_now()
+	house.hp = hp
+	for s in was:
+		if is_instance_valid(s):
+			s.inside = was[s]
+
+
+## Review minor (a): a visitor whose node another power freed is still in its pack; clear() frees the rest without an error.
+static func _freed_clear(t, made: Array) -> void:
+	var v := Visitors.new().setup(made[3], made[0], made[2], made[4])
+	var at := RD._empty(made)
+	var gone := v.summon(at, Animal.Breed.ZOMBIE, 3, 1.0, 0.0, 0.5, 1.0, true)
+	var kept := v.summon(at + Vector2(1.0, 0.0), Animal.Breed.ZOMBIE, 3, 1.0, 0.0, 0.5, 1.0, true)
+	gone.free()
+	v.clear()
+	t.check(v._rules.is_empty() and not is_instance_valid(kept) and not (made[0] as Crowd).visitors.has(v),
+		"a freed visitor's pack clears without an error, the rest freed")
 
 
 ## The giant's blow kills a soldier outright (a zombie's only wounds one).
@@ -323,6 +423,10 @@ static func _soldier(t, made: Array) -> void:
 		if is_instance_valid(s) and s.is_alive() and s.corps != Person.Corps.KNIGHT:
 			soldier = s
 			break
+	t.check(soldier != null, "(a soldier left to stand by the giant)")
+	if soldier == null:
+		fx.end_now()
+		return
 	soldier.inside = false
 	soldier.ground_pos = fx.giant.ground_pos + Vector2(0.0, 0.5)
 	soldier.health = Person.HEALTH_SOLDIER

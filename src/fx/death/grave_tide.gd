@@ -10,11 +10,15 @@ extends FxTimeline
 ##   DeathParts.ZOMBIE_SEEK; a citizen's first bite knocks them down, a second kills, frenzy).
 ## - Where the most of those bodies lie close -- the biggest group within CLUSTER_R of one of them (cluster(): a fixed sweep,
 ##   oldest first, a tie to the older; no luck) -- and there are CLUSTER_MIN or more, a giant of bones bursts up at their
-##   middle like a fountain (Animal.Breed.BONE_GIANT, the Task 1 sheet). It walks to the click with the horde, then goes for
-##   the soldiers (prey "soldiers"); its blow (`bite` HEALTH_KNIGHT) fells any soldier at once; it takes GIANT_BLOWS blows and
-##   does not flinch; it claws down the walls in its way (`wreck`) and, with no soldier near, goes at the nearest building.
-## - Death's undead of this tide within GIANT_AURA of the giant move AURA_SPEED times as fast (Animal.speed_mul over their own,
-##   given back when they leave the aura or the giant falls).
+##   middle like a fountain (Animal.Breed.BONE_GIANT, the Task 1 sheet). It walks to the click with the horde, then walks the
+##   streets after the soldiers (prey "soldiers"): one within its reach it hunts; else every GIANT_LOOK it marches on, by the
+##   streets, toward the nearest soldier out in the open anywhere in town; with none left it holds at the click. Its blow
+##   (`bite` HEALTH_KNIGHT) fells any soldier at once; it takes GIANT_BLOWS blows and does not flinch; it claws down the walls
+##   in its way (`wreck`), and never leaves the street to go at a building (`wreck_idle` false).
+## - Death's undead within GIANT_AURA of the giant -- this tide's and any other power's (every Visitors pack in
+##   Crowd.visitors, the Animal.UNDEAD breeds only: never a hellhound, demon or ghost) -- move AURA_SPEED times as fast:
+##   Animal.speed_mul over their own, read as they first come within reach (every AURA_EVERY) and given back when they leave,
+##   when the giant falls, and at the end.
 ## - At LIFE every one still up falls to ash (the pack cleared); cut short, or freed without its end, the same.
 ## Loud (PowerBook.REACH): the danger counts from T_RISE, when the dead stand; the giant's rise frightens the street round it,
 ## and the horde's first bite is the town's outcry, as a hellhound's.
@@ -43,6 +47,9 @@ const GIANT_BITE_EVERY := 1.4
 const GIANT_WRECK := 30.0
 const GIANT_WRECK_EVERY := 1.5
 const GIANT_WRECK_REACH := 1.0
+## After its march it looks for the nearest soldier this often; the aura is read this often.
+const GIANT_LOOK := 0.5
+const AURA_EVERY := 0.1
 ## Its rise frightens the street within GIANT_FRIGHT_R; a heavy step sounds every STEP_EVERY while it walks.
 const GIANT_FRIGHT_R := 4.0
 const STEP_EVERY := 1.1
@@ -64,8 +71,12 @@ var wrecks := 0
 
 ## The bodies picked at the cast (the oldest first, MOST at most), raised at T_RISE.
 var _rising: Array[Remains.Remain] = []
-## Animal -> its own speed_mul (the aura multiplies it).
-var _base := {}
+## Animal (untyped: another power may free it) -> its own speed_mul, while the aura quickens it.
+var _sped := {}
+var _aura_in := 0.0
+var _look_in := 0.0
+## Whether the giant is still on its first march, to the click.
+var _to_click := true
 var _bitten := false
 var _step_in := 0.0
 var _step_from := Vector2.INF
@@ -74,6 +85,8 @@ var _see: SeeThrough
 
 ## The biggest group of `points` within CLUSTER_R of one of them, as indices in order: a sweep over the points in order,
 ## each counting those within CLUSTER_R of it; the most wins, a tie to the earlier point. Empty when there are none.
+## (The reading of "within 4 of each other", a ruling: within CLUSTER_R of one centre body -- the members may lie up to
+## twice that apart -- not every pair within CLUSTER_R.)
 static func cluster(points: Array[Vector2]) -> Array[int]:
 	var best: Array[int] = []
 	var r2 := CLUSTER_R * CLUSTER_R + 0.0001
@@ -150,7 +163,6 @@ func _rise() -> void:
 				a.ground_pos = w
 				a.sync_position()
 		visitors.give(a, {"march": origin, "march_for": MARCH_FOR})
-		_base[a] = a.speed_mul
 		raised += 1
 		if DominionParts.staged(self):
 			var sp := Iso.ground_to_screen(a.ground_pos)
@@ -171,7 +183,9 @@ func _raise_giant() -> void:
 	giant = visitors.summon(spot, Animal.Breed.BONE_GIANT, GIANT_BLOWS, GIANT_PACE / (Animal.DOG_SPEED * Animal.RUN), GIANT_SEEK,
 		GIANT_BITE_R, GIANT_BITE_EVERY, false)
 	visitors.give(giant, {"prey": "soldiers", "bite": Person.HEALTH_KNIGHT, "wreck": GIANT_WRECK, "wreck_every": GIANT_WRECK_EVERY,
-		"wreck_reach": GIANT_WRECK_REACH, "march": origin, "march_for": MARCH_FOR})
+		"wreck_reach": GIANT_WRECK_REACH, "wreck_idle": false, "march": origin, "march_for": MARCH_FOR})
+	_to_click = true
+	_look_in = GIANT_LOOK
 	_step_in = STEP_EVERY
 	_step_from = spot
 	ctx.play(&"giant_step", spot, 0.0)
@@ -202,9 +216,16 @@ func _fx_process(delta: float) -> void:
 	if visitors == null:
 		return
 	visitors.step(delta)
-	_aura()
+	_aura_in -= delta
+	if _aura_in <= 0.0:
+		_aura_in = AURA_EVERY
+		_aura()
 	if giant == null or not is_instance_valid(giant):
 		return
+	_look_in -= delta
+	if _look_in <= 0.0:
+		_look_in = GIANT_LOOK
+		_walk_on()
 	_step_in -= delta
 	if _step_in <= 0.0:
 		_step_in = STEP_EVERY
@@ -216,20 +237,77 @@ func _fx_process(delta: float) -> void:
 		_see.step(ctx.env.near(giant.ground_pos, 8.0), Rect2(sp.x - 28.0, sp.y - 84.0, 56.0, 84.0), sp.y, delta)
 
 
-## Death's undead within GIANT_AURA of the giant run AURA_SPEED times their own pace; the rest, their own.
+## After its march to the click: with a soldier in reach the Visitors hunt him; else it marches on toward the nearest
+## soldier out in the open anywhere in town (the point renewed every GIANT_LOOK, as he moves); with none, back to the click.
+func _walk_on() -> void:
+	if _to_click:
+		if visitors.marching(giant):
+			return
+		_to_click = false
+	if giant.target != null and is_instance_valid(giant.target):
+		return  # one within its reach: the hunt has him
+	var to := origin
+	var soldier := _nearest_soldier(giant.ground_pos)
+	if soldier != null:
+		to = soldier.ground_pos
+	elif giant.ground_pos.distance_to(origin) <= Visitors.MARCH_NEAR:
+		return  # none left: it holds at the click
+	visitors.give(giant, {"march": to, "march_for": LIFE})
+
+
+## The nearest living soldier out in the open anywhere in town, or null.
+func _nearest_soldier(at_ground: Vector2) -> Person:
+	if ctx.crowd == null:
+		return null
+	var best: Person = null
+	var best_d := INF
+	var soldiers: Array = ctx.crowd.soldiers  # untyped, so each is checked before a typed use (one who left the town is freed)
+	for e in soldiers:
+		if not is_instance_valid(e):
+			continue
+		var p := e as Person
+		if p == null or not p.is_alive() or p.inside:
+			continue
+		var d := p.ground_pos.distance_squared_to(at_ground)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
+
+
+## Death's undead within GIANT_AURA of the giant, in every pack in town, run AURA_SPEED times their own pace; one that
+## leaves the aura (or every one, the giant fallen) has its own back.
 func _aura() -> void:
 	var has_giant := giant != null and is_instance_valid(giant) and giant.is_alive()
-	var g := giant.ground_pos if has_giant else Vector2.INF
+	if not has_giant:
+		_unspeed_all()
+		return
+	var g := giant.ground_pos
 	var r2 := GIANT_AURA * GIANT_AURA
-	var gone := []
-	for a in _base:
-		if not is_instance_valid(a):
-			gone.append(a)
+	var packs: Array = ctx.crowd.visitors if ctx.crowd != null else [visitors]
+	var now := {}
+	for pack in packs:
+		for a in (pack as Visitors).living():
+			if a == giant or not (a.breed in Animal.UNDEAD) or a.ground_pos.distance_squared_to(g) > r2:
+				continue
+			now[a] = true
+			if not _sped.has(a):
+				_sped[a] = a.speed_mul
+				a.speed_mul *= AURA_SPEED
+	for a in _sped.keys():
+		if now.has(a):
 			continue
-		var own: float = _base[a]
-		(a as Animal).speed_mul = own * AURA_SPEED if has_giant and (a as Animal).ground_pos.distance_squared_to(g) <= r2 else own
-	for a in gone:
-		_base.erase(a)
+		if is_instance_valid(a):
+			(a as Animal).speed_mul = float(_sped[a])
+		_sped.erase(a)
+
+
+## Every quickened one has its own pace back (skipping any another power freed).
+func _unspeed_all() -> void:
+	for a in _sped.keys():
+		if is_instance_valid(a):
+			(a as Animal).speed_mul = float(_sped[a])
+	_sped.clear()
 
 
 ## The horde's first bite is the town's outcry.
@@ -242,9 +320,11 @@ func _on_bite(_a: Animal, victim: Person, first: bool) -> void:
 
 ## Cut down: it falls to bones and ash (the Visitors free its node). The giant gone, the aura goes with it.
 func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
-	_base.erase(a)
+	if _sped.has(a):
+		_sped.erase(a)  # it is freed right after: nothing to give back
 	if a == giant:
 		giant = null
+		_unspeed_all()
 		ctx.play(&"gravetide_rise", at_ground, -6.0)
 		_release_see()
 	if not DominionParts.staged(self):
@@ -279,7 +359,7 @@ func _end_life() -> void:
 
 
 func _clear_all(deferred: bool) -> void:
-	_base.clear()
+	_unspeed_all()
 	giant = null
 	_rising.clear()
 	if visitors != null:

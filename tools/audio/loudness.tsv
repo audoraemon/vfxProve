@@ -434,7 +434,7 @@ fire_crack	res://assets/audio/building/fire_crack_5.wav	-22.67	-4.93
 fire_douse	res://assets/audio/building/fire_douse_1.wav	-14.13	-0.09
 fire_douse	res://assets/audio/building/fire_douse_2.wav	-13.91	-0.16
 fire_douse	res://assets/audio/building/fire_douse_3.wav	-13.02	0.31
-lantern_flare	res://assets/audio/building/lantern_flare.wav	-14.59	-0.30
+lantern_flare	res://assets/audio/building/lantern_flare.wav	-14.65	-1.84
 lantern_burn	res://assets/audio/building/lantern_burn.wav	-15.76	-0.23
 lantern_blind	res://assets/audio/building/lantern_blind.wav	-16.05	-0.29
 amb_day	res://assets/audio/ambience/amb_day.wav	-18.59	-4.27

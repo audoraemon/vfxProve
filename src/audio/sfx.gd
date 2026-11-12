@@ -313,7 +313,7 @@ const CATALOG := {
 	&"fire_crack": {"path": "res://assets/audio/building/fire_crack_%d.wav", "variants": 5, "db": 0.7, "voices": 2, "jitter": 0.06},
 	&"fire_douse": {"path": "res://assets/audio/building/fire_douse_%d.wav", "variants": 3, "db": -10.1, "voices": 2, "jitter": 0.06},
 	# The Lantern (v0.11.2, LanternWatch plays them at the Temple): the toll's flare, the burn, and the Bearer's fall.
-	&"lantern_flare": {"path": "res://assets/audio/building/lantern_flare.wav", "db": 0.6},
+	&"lantern_flare": {"path": "res://assets/audio/building/lantern_flare.wav", "db": 0.7},
 	&"lantern_burn": {"path": "res://assets/audio/building/lantern_burn.wav", "db": 1.3},
 	&"lantern_blind": {"path": "res://assets/audio/building/lantern_blind.wav", "db": 0.5},
 	# Ambience (natural sound pass 2, Ambience plays them): the town's beds by day and by night and its fire bed, loops on

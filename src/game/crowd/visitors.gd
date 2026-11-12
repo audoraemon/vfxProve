@@ -19,6 +19,12 @@ extends RefCounted
 ## `wreck` claws at buildings (a demon): every `wreck_every` it strikes the building within `wreck_reach` of it for
 ## `wreck` (damage kind frenzy) -- running past one at its prey as much as standing at one -- and with nobody in
 ## reach it goes for the nearest building within its seek reach instead.
+## Death's undead go by more traits: `knock_first` (the first bite on a citizen only knocks them down, a second within
+## KNOCK_WINDOW kills; after that the next knocks again), `infect` (a bite also gives the plague), `spare_guise` (never
+## picks a person under the Corpse Guise status), `prey` "soldiers" (hunts soldiers only), `fright_r` (frightens the
+## crowd within it every FRIGHT_EVERY, as the Doors of the Dead's ghosts do), `slow` (whoever it passes through, within
+## `slow_r`, keeps `slow` of their pace for `slow_for` seconds: hold_pace()) and `no_bite` (it comes to its prey and
+## does not bite: a spirit passes through).
 ## A marked prey (mark(): Hound Gate's Quarry) is hunted by every visitor of the pack, at any distance, by the streets,
 ## in place of the nearest within reach, until it falls or goes inside (the mark is dropped then) or another is marked;
 ## one there is no way to is left alone SKIP_FOR like any other. With nothing marked the hunt is as above.
@@ -36,6 +42,10 @@ const WRECK_LOOK := 0.2
 ## Soldiers at their post within a visitor's seek reach are drawn to it this often, for this long.
 const LURE_EVERY := 1.0
 const LURE_FOR := 1.5
+## knock_first: a second bite within this long of the first kills.
+const KNOCK_WINDOW := 3.0
+## fright_r: how often the crowd round it is frightened.
+const FRIGHT_EVERY := 1.0
 
 ## A visitor bit `victim` (its first bite too: the owner spreads the outcry).
 signal bitten(visitor: Animal, victim: Person, first: bool)
@@ -62,6 +72,8 @@ var _living: Array = []
 var _living_taken := false
 ## The prey every visitor goes for (mark()), or null.
 var _mark: Person
+## Animal instance id -> {Person -> seconds its pace hold has left} (give()'s `slow`); lifted when the time is up or the visitor goes.
+var _slows := {}
 
 
 ## What one visitor is and does.
@@ -90,6 +102,19 @@ class Rule extends RefCounted:
 	var house: Structure
 	var beside: Structure
 	var look_in := 0.0
+	## give(): Death's undead (see the class comment).
+	var knock_first := false
+	var infect := false
+	var spare_guise := false
+	var soldiers_only := false
+	var no_bite := false
+	var fright_r := 0.0
+	var fright_in := 0.0
+	var slow := 1.0
+	var slow_for := 4.0
+	var slow_r := 0.5
+	## knock_first: whom it has knocked down -> seconds left in which a second bite kills.
+	var knocked := {}
 
 
 func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> Visitors:
@@ -139,6 +164,16 @@ func give(a: Animal, traits: Dictionary) -> void:
 	r.wreck_every = float(traits.get("wreck_every", r.wreck_every))
 	r.wreck_reach = float(traits.get("wreck_reach", r.wreck_reach))
 	r.wreck_in = r.wreck_every * 0.5
+	r.knock_first = bool(traits.get("knock_first", r.knock_first))
+	r.infect = bool(traits.get("infect", r.infect))
+	r.spare_guise = bool(traits.get("spare_guise", r.spare_guise))
+	r.no_bite = bool(traits.get("no_bite", r.no_bite))
+	if traits.has("prey"):
+		r.soldiers_only = String(traits.prey) == "soldiers"
+	r.fright_r = float(traits.get("fright_r", r.fright_r))
+	r.slow = float(traits.get("slow", r.slow))
+	r.slow_for = float(traits.get("slow_for", r.slow_for))
+	r.slow_r = float(traits.get("slow_r", r.slow_r))
 
 
 ## The visitors still on their feet.
@@ -209,6 +244,11 @@ func step(delta: float) -> void:
 			_go_home(a, r, delta)
 		else:
 			_hunt(a, r, delta)
+		if r.fright_r > 0.0 and not r.recalling:
+			_frighten(a, r, delta)
+		if r.slow < 1.0:
+			_pass_slow(a, r)
+	_lift_slows(delta)
 	_guard(delta)
 	_lure_in -= delta
 	if _lure_in <= 0.0:
@@ -227,20 +267,25 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 			r.skip = null
 	if r.skip != null and not is_instance_valid(r.skip):
 		r.skip = null  # the one it left alone is gone from the town (freed)
+	for k in r.knocked.keys():
+		if not is_instance_valid(k) or float(r.knocked[k]) - delta <= 0.0:
+			r.knocked.erase(k)
+		else:
+			r.knocked[k] = float(r.knocked[k]) - delta
 	var who := a.target
 	var quarry := marked()
 	if quarry != null and quarry != r.skip:
 		who = quarry  # the marked prey, wherever it is
 		a.target = quarry
 	else:
-		if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside
+		if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside and _fair(r, who)
 				and who.ground_pos.distance_to(a.ground_pos) <= r.seek_r):
 			who = null
 			a.target = null
 			r.retarget_in = 0.0
 		if r.retarget_in <= 0.0:
 			r.retarget_in = RETARGET
-			who = _nearest(a.ground_pos, r.seek_r, r.skip)
+			who = _nearest(a.ground_pos, r.seek_r, r.skip, r)
 			a.target = who
 	if r.wreck > 0.0:
 		_wreck(a, r, delta, who == null)
@@ -257,13 +302,19 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 			a.target = null
 			r.retarget_in = 0.0
 		return
-	if r.bite_in > 0.0:
+	if r.bite_in > 0.0 or r.no_bite:
 		return
 	r.bite_in = r.bite_every
 	a.facing = 1 if who.ground_pos.x - who.ground_pos.y > a.ground_pos.x - a.ground_pos.y else -1
 	a.bit()
 	var was := who.is_alive()
-	who.hurt_from(1.0, a.ground_pos)
+	if r.knock_first and not who.soldier and not r.knocked.has(who):
+		who.knock_down()  # the first bite only knocks them flat; a second within KNOCK_WINDOW kills
+		r.knocked[who] = KNOCK_WINDOW
+	else:
+		who.hurt_from(1.0, a.ground_pos)
+	if r.infect and who.is_alive():
+		who.infect(PlagueManager.PLAGUE_LIFE)
 	if was and not who.is_alive():
 		kills += 1
 	var first := not r.has_bitten
@@ -336,15 +387,22 @@ func _go_home(a: Animal, r: Rule, delta: float) -> void:
 		_free(a)
 
 
-## The nearest living person out in the open within `reach` of `at`, but for `skip`.
-func _nearest(at: Vector2, reach: float, skip: Person) -> Person:
+## Whether visitor rule `r` may hunt `p` at all: not a guised person under spare_guise, and a soldier under prey "soldiers".
+static func _fair(r: Rule, p: Person) -> bool:
+	if r.spare_guise and p.statuses.has(&"guise"):
+		return false
+	return not r.soldiers_only or p.soldier
+
+
+## The nearest living person out in the open within `reach` of `at`, but for `skip` (and, with a rule, those it never hunts).
+func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person:
 	var best: Person = null
 	var best_d := INF
 	var r2 := reach * reach
 	for e in _people():
 		var p := e as Person
 		# Alive asked again: one bitten earlier this step is still on the step's list.
-		if p == null or p.inside or p == skip or not p.is_alive():
+		if p == null or p.inside or p == skip or not p.is_alive() or (r != null and not _fair(r, p)):
 			continue
 		var d := p.ground_pos.distance_squared_to(at)
 		if d > r2:
@@ -429,6 +487,47 @@ func _lure() -> void:
 				p.lure(nearest.ground_pos, LURE_FOR)
 
 
+## fright_r: the crowd within it is frightened every FRIGHT_EVERY (Crowd.fright(), as the Doors of the Dead's ghosts do).
+func _frighten(a: Animal, r: Rule, delta: float) -> void:
+	r.fright_in -= delta
+	if r.fright_in > 0.0:
+		return
+	r.fright_in = FRIGHT_EVERY
+	if _crowd != null and is_instance_valid(_crowd):
+		_crowd.fright(a.ground_pos, r.fright_r, 0.5, 2.0, 3.0, 3.0, &"beast")
+
+
+## slow: whoever it is passing through keeps `slow` of their pace for `slow_for` (each visitor holds under its own id).
+func _pass_slow(a: Animal, r: Rule) -> void:
+	var id := a.get_instance_id()
+	var held: Dictionary = _slows.get(id, {})
+	var r2 := r.slow_r * r.slow_r
+	for e in _people():
+		var p := e as Person
+		if p == null or not p.is_alive() or p.ground_pos.distance_squared_to(a.ground_pos) > r2:
+			continue
+		p.hold_pace(id, r.slow)
+		held[p] = r.slow_for
+	if not held.is_empty():
+		_slows[id] = held
+
+
+## Counts the pace holds down and lifts the ones that are up.
+func _lift_slows(delta: float) -> void:
+	for id in _slows.keys():
+		var held: Dictionary = _slows[id]
+		for p in held.keys():
+			var left := float(held[p]) - delta
+			if left > 0.0 and is_instance_valid(p):
+				held[p] = left
+				continue
+			held.erase(p)
+			if is_instance_valid(p):
+				p.free_pace(id)
+		if held.is_empty():
+			_slows.erase(id)
+
+
 func _nearest_visitor(at: Vector2) -> Animal:
 	var best: Animal = null
 	var best_d := INF
@@ -446,6 +545,12 @@ func _nearest_visitor(at: Vector2) -> Animal:
 func _free(a: Animal) -> void:
 	if not is_instance_valid(a):
 		return
+	var id := a.get_instance_id()
+	if _slows.has(id):
+		for p in (_slows[id] as Dictionary).keys():
+			if is_instance_valid(p):
+				p.free_pace(id)
+		_slows.erase(id)
 	if a.is_inside_tree():
 		a.queue_free()
 	else:

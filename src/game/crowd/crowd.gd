@@ -215,6 +215,8 @@ var deaths := DeathVoices.new()
 ## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
 var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
+## The town's whole dead (Death's powers raise and move them). Off unless Rules turns it on (Remains.wants()).
+var remains: Remains
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -322,6 +324,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
+	remains = Remains.new().setup(field)
+	parent.add_child(remains)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
@@ -894,6 +898,7 @@ func advance(delta: float) -> void:
 
 func _advance(delta: float) -> void:
 	_clock += delta
+	remains.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()

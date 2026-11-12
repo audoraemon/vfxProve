@@ -2759,6 +2759,13 @@ func _draw_corpse() -> void:
 		super()
 
 
+## The PeopleArt facing it lies in when it falls (a remain keeps this, Remains).
+func remain_facing() -> int:
+	if _back:
+		return PeopleArt.Facing.NE if _facing > 0 else PeopleArt.Facing.NW
+	return PeopleArt.Facing.SE if _facing > 0 else PeopleArt.Facing.SW
+
+
 ## The design it wears (PeopleArt): its role's or its corps', the look hashed once from where it lives.
 func _design() -> String:
 	if _look < 0.0:

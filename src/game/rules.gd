@@ -220,6 +220,9 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	_field = field
 	_crowd = crowd
 	_town = town
+	# The night's slots are set: the ledger of bodies runs only when a Death power that uses them is carried.
+	if crowd.remains != null and Remains.wants(loadout):
+		crowd.remains.enabled = true
 	_escaped0 = crowd.escaped_count
 	_citizens0 = crowd.killed_citizens
 	_soldiers0 = crowd.killed_soldiers
@@ -409,6 +412,36 @@ func refuse(slot: int, reason: String, who: Variant = null) -> void:
 	cast_refused.emit(slot, reason)
 
 
+## What a power needs of the ground it is cast on: its mode's "needs", else the row's, else "". "body" is a remain within
+## Remains.PICK_R; "soul" one whose soul is still near; "any_body" any unhidden remain in town.
+static func needs_of(key: String, mode: String) -> String:
+	var row := PowerBook.get_power(key)
+	for m: Dictionary in row.get("modes", []):
+		if String(m.get("key", "")) == mode and m.has("needs"):
+			return String(m.needs)
+	return String(row.get("needs", ""))
+
+
+## "no_dead" or "soul_gone" when the ground lacks the body the power needs, else "". Costs nothing: no cooldown is spent.
+func body_refusal(key: String, mode: String, ground: Vector2) -> String:
+	return body_check(needs_of(key, mode), ground)
+
+
+func body_check(needs: String, ground: Vector2) -> String:
+	if needs == "" or _crowd == null or _crowd.remains == null:
+		return ""
+	var rem := _crowd.remains
+	if needs == "any_body":
+		return "" if not rem.all().is_empty() else "no_dead"
+	if needs == "body":
+		return "" if rem.pick(ground) != null else "no_dead"
+	if needs == "soul":
+		if rem.pick(ground, true) != null:
+			return ""
+		return "soul_gone" if rem.pick(ground) != null else "no_dead"
+	return ""
+
+
 ## Start the slot's cooldown and put its effect in the world. Returns the running effect, or
 ## null when the cast was refused (and when a test's caster hands nothing back).
 func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
@@ -418,6 +451,10 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		cast_refused.emit(slot, reason)
 		return null
 	var p := power(slot)
+	var no_body := body_refusal(String(p.key), String(extra.get("mode", "")), ground)
+	if no_body != "":
+		cast_refused.emit(slot, no_body)
+		return null
 	if String(p.key) == "whisper":
 		# Mind Whisper (v0.08) with no one to whisper to, or (v0.08.1) to someone still shaking the last one off:
 		# refused, and no cooldown starts.

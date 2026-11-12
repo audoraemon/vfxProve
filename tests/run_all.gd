@@ -310,6 +310,7 @@ func _reset_world() -> void:
 	City.use(&"aldermere")
 	City._extra.clear()  # a fixture town a failed suite never unregistered
 	Person.frame_no = -1
+	Person.frame_base = Engine.get_process_frames()  # a suite that awaited frames moved the engine's count: each suite steps its people as it does alone
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
 	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
 	GodTree.use_table({})  # Tier 1 fill: a test of an empty tree sets its own

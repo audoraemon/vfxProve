@@ -1,6 +1,6 @@
 extends RefCounted
 ## Eminent Domain (Decree, Tier IV; spec 5.7): a road dragged through the town. Every structure, wall, stall, tree and
-## piece of decor the 10 x 2 strip overlaps is claimed and torn down; whoever stands in it (or shelters in a house it
+## piece of decor the 10 x 2 strip overlaps is claimed, torn down and taken away whole (the street is left bare); whoever stands in it (or shelters in a house it
 ## claims) is thrown clear to the nearer side, knocked down, at half their health -- nobody dies of it. It leaves a clear
 ## street, its cells open, with law rubble piled along both long sides, never on the water. All by distance: no rolls.
 
@@ -60,6 +60,11 @@ static func _has(env: EnvironmentField, d: Variant) -> bool:
 	return is_instance_valid(d) and env.decor().has(d)
 
 
+## Whether structure `s` is gone from the town (taken away: freed, or out of the field's list).
+static func _taken(env: EnvironmentField, s: Variant) -> bool:
+	return not is_instance_valid(s) or not env.structures().has(s)
+
+
 static func run(t) -> void:
 	var b := PowerBook.get_power("eminent")
 	var area: Dictionary = Targeting.AREAS.get("eminent", {})
@@ -105,6 +110,9 @@ static func run(t) -> void:
 	var gate := env.add_structure(Rect2(23.0, 8.6, 0.4, 0.8), 20.0, Structure.Kind.GATE)
 	var house_out := env.add_structure(Rect2(24.0, 10.5, 0.8, 0.8), 30.0, Structure.Kind.HOUSE, &"house")  # 0.5 off
 	var claimed: Array[Structure] = [house_in, house_edge, stall, tree, wall, gate]
+	# A ruin already lying in the strip (a house that fell before the cast).
+	var ruin := env.add_structure(Rect2(25.8, 9.3, 0.6, 0.6), 30.0, Structure.Kind.HOUSE, &"house")
+	ruin.destroy(ruin.center(), &"stone")
 	var barrel_in := _decor(env, Decor.Kind.BARREL, Vector2(18.0, 9.5))
 	var oak := _decor(env, Decor.Kind.OAK, Vector2(21.5, 8.2), Vector2(50.0, 0.0))
 	var fence := _decor(env, Decor.Kind.FENCE, Vector2(24.6, 11.5), Vector2(0.0, -2.0))  # runs into the strip
@@ -148,11 +156,18 @@ static func run(t) -> void:
 
 	# --- The tear, and the throw.
 	_run(fx, DT + float(ef.T_THROW) + DT)
-	var fallen := true
+	var gone := _taken(env, ruin)
 	for s in claimed:
-		fallen = fallen and is_instance_valid(s) and s.destroyed
-	t.check(fallen and fx.claimed == claimed.size() and not house_out.destroyed and is_equal_approx(house_out.hp, house_out.max_hp),
-		"every house, wall, stall, tree and gate the strip overlaps is torn down (%d); the house 0.5 off is untouched" % fx.claimed)
+		gone = gone and _taken(env, s)
+	t.check(gone and fx.claimed == claimed.size() and fx.cleared == claimed.size() + 1
+		and env.structures().has(house_out) and not house_out.destroyed and is_equal_approx(house_out.hp, house_out.max_hp),
+		"every house, wall, stall, tree and gate the strip overlaps is torn down (%d) and taken away whole with the ruin already there (%d cleared); the house 0.5 off is untouched"
+		% [fx.claimed, fx.cleared])
+	var in_street := []
+	for s in env.structures():
+		if is_instance_valid(s) and fx.overlaps(s):
+			in_street.append(s.footprint)
+	t.check(in_street.is_empty(), "the street is bare: no structure, ruined or standing, overlaps it (%s)" % [in_street])
 	var left_in := 0
 	for d in env.decor():
 		if is_instance_valid(d) and fx.in_strip(d.at, 0.15):

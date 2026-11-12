@@ -140,7 +140,10 @@ func clear() -> void:
 ## this is for the handful of times a map is torn down, not for destruction — destroyed buildings stay.
 ## `announce` (v0.06): tell the walk grid and the crowd (structure_removed) -- a thorn wall withering mid-mission;
 ## a town torn down for a restart does not, its grid and crowd go with it.
-func remove(s: Structure, announce := true) -> void:
+## `keep_node` (Eminent Domain clearing a street of ruins): the structure leaves the field just the same, but its node is
+## hidden and stilled rather than freed, so whatever still holds it (a mission's house, a shelter's entry) holds a
+## fallen building, not a freed object.
+func remove(s: Structure, announce := true, keep_node := false) -> void:
 	if announce and _structures.has(s):
 		structure_removed.emit(s)
 	_structures.erase(s)
@@ -149,7 +152,10 @@ func remove(s: Structure, announce := true) -> void:
 		if s.light_id != 0 and lights != null:
 			lights.remove(s.light_id)
 			s.light_id = 0
-		if s.is_inside_tree():
+		if keep_node:
+			s.visible = false
+			s.set_process(false)
+		elif s.is_inside_tree():
 			s.queue_free()
 		else:
 			s.free()

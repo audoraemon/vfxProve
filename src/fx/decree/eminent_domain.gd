@@ -10,7 +10,8 @@ extends FxTimeline
 ##    middle and falling to either side; every piece of decor in it is taken away (EnvironmentField.remove_decor, as
 ##    Heaven's Door takes the goods). Whoever stands in it, or shelters in a house it claims, is thrown clear to the
 ##    nearer side over T_THROW, past where the rubble will lie, knocked down, at half their health. Nobody dies of it.
-## Leaves: a clear street, its cells open to walk (WalkGrid.open_street(), the river excepted), and law rubble
+## Leaves: a bare street -- when the thrown land, the ruins of all it tore down (and any ruin already there) are taken
+## away whole (_clear_ruins()) -- its cells open to walk (WalkGrid.open_street(), the river excepted), and law rubble
 ## (LawRubble.lay) piled along both long sides, outside its edges, closing the walk grid until the town's engineers clear
 ## it. No heap is laid on the water or in a standing building; anyone standing where one lands is pushed out first.
 ## Where the thrown land, what falls and where the heaps lie follow distance and order only, never a roll. Loud
@@ -53,10 +54,14 @@ var land := 0.0
 var claimed := 0
 var removed := 0
 var thrown := 0
+## Ruins taken away whole, so the street is bare.
+var cleared := 0
 var heaps: Array[Structure] = []
 
 ## Whoever is in the air: DummyEnemy -> [where they were thrown from, where they land, the side's sign].
 var _flying := {}
+## What the tear brought down (and the ruins already standing in the strip), cleared away whole when the thrown land.
+var _torn: Array[Structure] = []
 ## Ground pairs of the seams the houses split along (look only).
 var _splits := PackedVector2Array()
 var _strip: Strip
@@ -146,13 +151,21 @@ func _decor_in(d: Decor) -> bool:
 func _tear() -> void:
 	var take: Array[Structure] = []
 	for s in ctx.env.structures():
-		if is_instance_valid(s) and not s.destroyed and overlaps(s):
+		if is_instance_valid(s) and overlaps(s):
 			take.append(s)
 	var people: Array[DummyEnemy] = []
+	if ctx.crowd != null and ctx.crowd.rescue != null:
+		# Anyone trapped under a ruin the strip clears is dug out by it, and thrown with the rest.
+		for tr: Dictionary in ctx.crowd.rescue.trapped.duplicate():
+			var site = tr.site
+			if is_instance_valid(site) and take.has(site) and is_instance_valid(tr.p):
+				ctx.crowd.rescue._free(tr, (site as Structure).center())
+				people.append(tr.p)
 	if ctx.crowd != null and ctx.crowd.shelters != null:
 		for s in take:
-			for p in ctx.crowd.shelters.throw_out_of(s, 0.0):
-				people.append(p)
+			if not s.destroyed:
+				for p in ctx.crowd.shelters.throw_out_of(s, 0.0):
+					people.append(p)
 	for e in ctx.field.in_radius(middle(), LENGTH * 0.5 + HALF_W + 0.1):
 		var p := e as Person
 		if p != null and p.inside:
@@ -161,7 +174,10 @@ func _tear() -> void:
 			people.append(e)
 	var staged := DominionParts.staged(self)
 	for s in take:
-		if not is_instance_valid(s) or s.destroyed:
+		if not is_instance_valid(s):
+			continue
+		if s.destroyed:
+			_torn.append(s)  # a ruin already: cleared with the rest
 			continue
 		var sg := _sign_of(s.center())
 		# Split down the middle: its own debris falls away to its side of the line, the other half (look) to the other.
@@ -173,6 +189,7 @@ func _tear() -> void:
 		if not s.destroyed:
 			continue
 		claimed += 1
+		_torn.append(s)
 		if staged:
 			_split(s)
 	for d: Decor in ctx.env.decor().duplicate():
@@ -275,6 +292,7 @@ func _land() -> void:
 		if p != null:
 			p.knock_down()
 	_flying.clear()
+	_clear_ruins()
 	_lay()
 	if not DominionParts.staged(self):
 		return
@@ -284,6 +302,28 @@ func _land() -> void:
 		puff.drag = 1.0
 		puff.burst(5, {"radius": 10.0, "speed": Vector2(10, 40), "dir": PixelParticles.Dir.OUTWARD, "alt": Vector2(0, 6),
 			"alt_speed": Vector2(10, 30), "life": Vector2(0.6, 1.2), "size": Vector2(2, 4), "size_end_mul": 1.6})
+
+
+## The street is left bare: every ruin in the strip is taken away whole (EnvironmentField.remove, as Heaven's Door takes
+## what it tears up), one only partly in it too -- its halves fell to either side, into the rubble lines. Its node is
+## kept, hidden (remove()'s keep_node): a mission may hold that house, and holds a fallen one, never a freed object; a
+## shelter forgets it. Kept as ruins: the town's own gates, bridges, postern, dock and fountain and the Citadel's parts,
+## which the town's managers go on using (evacuation, the engineers' rebuilding, the river's crossings).
+func _clear_ruins() -> void:
+	var keep: Array = []
+	var town: Town = ctx.crowd._town if ctx.crowd != null else null
+	if is_instance_valid(town):
+		keep.append_array(town.gates)
+		keep.append_array(town.bridges)
+		keep.append_array([town.bridge, town.postern, town.dock, town.fountain])
+	for s in _torn:
+		if not is_instance_valid(s) or not s.destroyed or not ctx.env.structures().has(s) or keep.has(s) 				or s.role == &"citadel":
+			continue
+		if ctx.crowd != null and ctx.crowd.shelters != null:
+			ctx.crowd.shelters.shelters.erase(s)
+		ctx.env.remove(s, true, true)
+		cleared += 1
+	_torn.clear()
 
 
 ## The heaps: along each long side one every LENGTH / n (n the fewest that keeps them HEAP_EVERY apart), sized by index,

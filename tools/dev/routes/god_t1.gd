@@ -116,13 +116,114 @@ static func cast_mirror(bc, ctx: Dictionary, way_in: Vector2, way_out: Vector2) 
 	return true
 
 
-## The Bell Lies in `mode` ("well": ALL IS WELL; "guard": CALL THE GUARD, to `at`), when its slot is ready: true when it was cast.
-static func cast_bell(bc, ctx: Dictionary, mode: String, at: Vector2) -> bool:
+## Decree's two Tier 1 laws together (spec 5.2: the combo is meant): Leaving Is Prohibited laid on `at`, where those it is for (`who`) stand as
+## it seals, then Breathing Is Prohibited on them once it holds them (amber_breath()). Held where nobody can leave, they cannot run from the
+## airless circle, and BreathFx.CHOKE seconds kill them and whoever else stands in it inside the cell. The cell is laid only when the breath is
+## ready by the time it seals (NoLeaveFx.T_SEAL, while it keeps the caster busy); it is kept in ctx.memo.amber. True when the cell was cast.
+static func cast_amber(bc, ctx: Dictionary, at: Vector2, who: Array) -> bool:
 	var rules: Rules = ctx.rules
-	if not mode in ["well", "guard"] or not bc._slot_ready(rules, ctx.slots, "belllies"):
+	if who.is_empty() or not bc._slot_ready(rules, ctx.slots, "noleave") or float(bc._slot_wait(rules, ctx.slots, "breath")) > NoLeaveFx.T_SEAL:
 		return false
-	rules.cast(int(ctx.slots.belllies), at, {"mode": mode})
+	var fx := rules.cast(int(ctx.slots.noleave), at) as NoLeaveFx
+	if fx == null:
+		return false
+	ctx.memo["amber"] = {"fx": fx, "who": who.duplicate()}
 	return true
+
+
+## A cell cast_amber() laid is closing or holds those it is for, and its breath is still to come: the policy waits on it rather than cast
+## anything else. Only reads (a cell lifted, or holding none of them once sealed, is forgotten by amber_breath()).
+static func amber_pending(ctx: Dictionary) -> bool:
+	return ctx.memo.has("amber")
+
+
+## The breath that follows a cell cast_amber() laid: once it has sealed, Breathing Is Prohibited on the middle of those it was laid for that it
+## holds, where they will stand as the air goes (BreathFx.T_LAND on), kept within the cell. What was cast ("" for nothing); the cell is
+## forgotten once the breath is cast, or when it has lifted or holds none of them AMBER_JOIN after its seal.
+static func amber_breath(bc, ctx: Dictionary) -> String:
+	var amber: Dictionary = ctx.memo.get("amber", {})
+	if amber.is_empty():
+		return ""
+	var fx: NoLeaveFx = null
+	if is_instance_valid(amber.fx):
+		fx = amber.fx as NoLeaveFx
+	if fx == null or fx.finished or (fx.t >= NoLeaveFx.T_SEAL and not fx.sealed):
+		ctx.memo.erase("amber")
+		return ""
+	if not fx.sealed:
+		return ""
+	var held: Array[Person] = []
+	for v: Variant in amber.who:
+		if is_instance_valid(v) and (v as Person).is_alive() and fx.bound.has(v):
+			held.append(v as Person)
+	if held.is_empty():
+		if fx.t - NoLeaveFx.T_SEAL < AMBER_JOIN:
+			return ""  # one who walks in is held as well: he may be on the step of a door yet
+		ctx.memo.erase("amber")
+		return ""
+	var rules: Rules = ctx.rules
+	if not bc._slot_ready(rules, ctx.slots, "breath"):
+		return ""
+	var mid := Vector2.ZERO
+	for p in held:
+		mid += road_ahead(p, BreathFx.T_LAND)
+	mid /= float(held.size())
+	var off := mid - fx.origin
+	if off.length() > NoLeaveFx.RADIUS - AMBER_EDGE:
+		mid = fx.origin + off.normalized() * (NoLeaveFx.RADIUS - AMBER_EDGE)
+	var more := 0
+	for v: Variant in fx.bound:
+		if is_instance_valid(v) and not held.has(v) and (v as Person).is_alive() and (v as Person).ground_pos.distance_to(mid) <= BreathFx.RADIUS:
+			more += 1
+	rules.cast(int(ctx.slots.breath), mid)
+	ctx.memo.erase("amber")
+	return "breathing is prohibited in the amber, on %d held there (%d more held in its reach)" % [held.size(), more]
+
+
+## The breath's aim is kept this far inside the cell's edge (a man set back onto the edge stands on it).
+const AMBER_EDGE := 0.3
+## A cell that holds none of those it is for is kept this long after its seal for them to walk in (out of a door onto it), then forgotten.
+const AMBER_JOIN := 2.5
+## A cell's centre may lie up to AMBER_SHIFT from where those it is for will stand as it seals (so they stand at least RADIUS - AMBER_SHIFT
+## inside its edge), and one standing within its radius and AMBER_ROOM (he shifts meanwhile) counts as held with them.
+const AMBER_SHIFT := 2.0
+const AMBER_ROOM := 0.4
+
+
+## Where a cell for those who will stand at `at` dooms the fewest others: `at` itself or a point round it within `shift` (AMBER_SHIFT; less for
+## a group spread round `at`), the nearest `at` of equals. {"at", "others" (living, out of doors, not in `who`, held by it), "doomed" (those of
+## them within the breath's reach of `at`: they choke with them)}. Fewest doomed first, then fewest held. Only reads.
+static func amber_aim(crowd: Crowd, at: Vector2, who: Array, shift := AMBER_SHIFT) -> Dictionary:
+	var tries: Array[Vector2] = [at]
+	if shift > 0.05:
+		for rad: float in [shift * 0.35, shift * 0.7, shift]:
+			for k in 12:
+				tries.append(at + Vector2.from_angle(TAU * float(k) / 12.0) * rad)
+	var near: Array[Person] = []
+	for e in crowd._field.in_radius(at, NoLeaveFx.RADIUS + AMBER_ROOM + shift):
+		var p := e as Person
+		if p != null and p.is_alive() and not p.inside and not who.has(p):
+			near.append(p)
+	var best := {"at": at, "others": 1 << 20, "doomed": 1 << 20}
+	for g in tries:
+		var n := 0
+		var doomed := 0
+		for p in near:
+			if p.ground_pos.distance_to(g) <= NoLeaveFx.RADIUS + AMBER_ROOM:
+				n += 1
+				doomed += 1 if p.ground_pos.distance_to(at) <= BreathFx.RADIUS + AMBER_ROOM else 0
+		if doomed < int(best.doomed) or (doomed == int(best.doomed) and n < int(best.others)):
+			best = {"at": g, "others": n, "doomed": doomed}
+	return best
+
+
+## How many more deaths the district round `at` takes before it is in Local Emergency and the bell is called (AlarmManager.LOCAL_EVENTS
+## deaths or falls in one district); a large number once the town is past it. Only reads.
+static func deaths_left(crowd: Crowd, at: Vector2) -> int:
+	var alarms: AlarmManager = crowd.alarms
+	if alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY:
+		return 1 << 20
+	return AlarmManager.LOCAL_EVENTS - 1 - int(alarms._events.get(AlarmManager.district_of(at), 0))
 
 
 ## Where Pestilence would take the most people (three at most, PestilenceFx.INFECT_MAX) round `at`, without taking any of `avoid`: the

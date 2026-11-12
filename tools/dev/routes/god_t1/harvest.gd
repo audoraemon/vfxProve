@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks the watchmen so both are gone when
 ## Pestilence takes the carter (H2); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts the carter out beyond the
-## wall (H1); Decree holds the carter and calls the guard to him (H4); Dominion whispers him out of the
+## wall (H1); Decree has no route with Leaving and Breathing Is Prohibited (act_decree()); Dominion whispers him out of the
 ## gate a step at a time (H1).
 
 ## The types whose policy is written.
@@ -19,17 +19,11 @@ const CLEAR_PRE := 20.0
 ## its cast: 20 + 10 = 30), and counts a marked watchman as gone with this much of his fuse left.
 const DEATH_LEAD := 31.0
 const MARK_GONE := 3.0
-## Decree: how far along the road from a door toward the Citadel a carter about to take a load is looked for (_step_off()).
-const MIRROR_DOOR_STEP := 3.5
 ## Passage: how far from where the beam takes him a carter is set down, at the least and the most (the nearest ground out of the walls).
 const EXIT_MIN := 1.0
 const EXIT_MAX := 26.0
 ## Passage: how many seconds of a hauling carter's road ahead a Windfall of stone is laid across it (beyond its crush when it lands).
 const WALL_LEAD := 4.0
-## Decree: the seconds of his road ahead the hold is laid for a walking carter (it seals 0.6 s after the cast), and the longest the call waits on
-## the hold being laid.
-const HOLD_LEAD := 0.6
-const HOLD_PLAN := 4.0
 ## Dominion: how far ahead along his road a carter is whispered (Mind Whisper's REACH is 10).
 const WHISPER_STEP := 9.0
 
@@ -86,20 +80,6 @@ static func _name(d: HarvestDirector, s: Structure) -> String:
 ## The carter is standing at his door, not walking anywhere.
 static func _at_door(d: HarvestDirector, s: Structure, c: Person) -> bool:
 	return c.ground_pos.distance_to(d.doors[s]) <= 1.0 and not d._hauling.has(c.get_instance_id())
-
-
-## A point MIRROR_DOOR_STEP down the road from the granary's door toward the Citadel.
-static func _step_off(ctx: Dictionary, d: HarvestDirector, s: Structure) -> Vector2:
-	var path: PackedVector2Array = ctx.crowd._grid.path(d.doors[s], d.citadel_door)
-	var run := 0.0
-	var at: Vector2 = d.doors[s]
-	for k in path.size():
-		var seg := at.distance_to(path[k])
-		if run + seg >= MIRROR_DOOR_STEP:
-			return at.move_toward(path[k], MIRROR_DOOR_STEP - run)
-		run += seg
-		at = path[k]
-	return at
 
 
 ## The shared policy pieces (god_t1.gd preloads this file, so it is loaded when wanted).
@@ -257,55 +237,14 @@ static func _length_from(at: Vector2, road: PackedVector2Array) -> float:
 	return n
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies ------------------------------------------------------------------------
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited -------------------------------------------------------------
 
-## H4: hold the carter (Leaving Is Prohibited) at the place the guard are called to (The Bell Lies, CALL THE GUARD): on him, the hold first and the
-## call a look after, so he cannot walk out of the seizing radius while the guard run there. The bell's 60 s are the long wait (D12: Decree may idle up
-## to 60 s here); the hold once laid at the next granary's door to fill it did nothing, and is gone (D38).
-static func act_decree(bc, ctx: Dictionary) -> String:
-	var d := ctx.d as HarvestDirector
-	var rules: Rules = ctx.rules
-	if d == null:
-		return ""
-	var memo: Dictionary = ctx.memo
-	var now := d._clock
-	var plan: Dictionary = memo.get("plan", {})
-	if not plan.is_empty():
-		if now - float(plan.t) > HOLD_PLAN:
-			memo.erase("plan")
-		elif _god().cast_bell(bc, ctx, "guard", plan.at):
-			memo.erase("plan")
-			memo.last = now
-			return "the bell calls the guard to the %s granary's carter" % plan.name
-		else:
-			return ""
-	var tgt := _target(d)
-	if not tgt.is_empty() and _ready(bc, ctx, "belllies"):
-		var s: Structure = tgt.s
-		var c: Person = tgt.c
-		var hold := _ready(bc, ctx, "noleave")
-		var place := _guard_place(ctx, d, s, c)
-		if hold:
-			rules.cast(int(ctx.slots.noleave), place)
-			memo.plan = {"at": place, "t": now, "name": _name(d, s)}
-			memo.last = now
-			return "leaving is prohibited at the %s granary's carter" % _name(d, s)
-		if _god().cast_bell(bc, ctx, "guard", place):
-			memo.last = now
-			return "the bell calls the guard to the %s granary's carter" % _name(d, s)
-		return ""
+## No route (reported, not tuned around): every way a granary is spoiled needs a power Decree's Tier 1 lacks -- fire or a fall (a Ruin or Veil
+## power), the carter out of the walls (a lift, a whisper), sick (Pestilence), rotted (Blight), or seized by the guard The Bell Lies calls
+## (HarvestDirector._on_cast() keeps only a CALL THE GUARD cast for the seizure). A carter held in the amber, or choked in it, is no spoil: one
+## who dies is replaced (H5). So the policy casts nothing; the night is lost as the none run's.
+static func act_decree(_bc, _ctx: Dictionary) -> String:
 	return ""
-
-
-## Where the hold and the call are laid: on the carter. He stands at his door (waiting for the grain or about to take a load, then a step down
-## the road) or walks his road; the hold, laid on the spot he will be at when it seals, keeps him within Leaving Is Prohibited's radius of it
-## -- the radius the guard seize within (HarvestDirector.SEIZE_R) -- whenever the first soldier has come.
-static func _guard_place(ctx: Dictionary, d: HarvestDirector, s: Structure, c: Person) -> Vector2:
-	if _at_door(d, s, c):
-		return d.doors[s] if not d.has_grain(s) and d.grain_left(s) > HOLD_LEAD else _step_off(ctx, d, s)
-	if c.goal() == Vector2.INF:
-		return c.ground_pos
-	return _god().road_ahead(c, HOLD_LEAD)
 
 
 # --- Dominion: Mind Whisper, Discord -------------------------------------------------------------------------------------

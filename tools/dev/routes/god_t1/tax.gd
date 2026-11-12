@@ -9,8 +9,8 @@ extends RefCounted
 ##   veil     Blight the Bell Tower first (a seen death then rings nothing), then Silent Doom on a collector in the street (A's, unseen first).
 ##   passage  Skylift takes a collector in the street (and whoever walks with him) and sets him down beyond the nearest wall; a Windfall of
 ##            stone by the counting-house's door smokes the next one out.
-##   decree   The Bell Lies (CALL THE GUARD) from a spot 8+ away that takes his guards, once for each visit, as it begins or runs; Leaving Is
-##            Prohibited over the door as he comes out: the debtors mob him.
+##   decree   Leaving Is Prohibited over a debtor's door as he comes out (or on him in the street), then Breathing Is Prohibited on him
+##            once the cell holds him: he cannot run from it, and dies with his guards.
 ##   dominion Mind Whisper relayed: a hop of 9 toward the way off the map each time the last has been reached, until he is out of the walls.
 
 ## The types whose policy is written.
@@ -29,16 +29,9 @@ const DEATH_STREET := 11.0
 const SMOKE_AFTER := 30.0
 ## Passage: how far beyond the wall's margin Skylift sets a collector down.
 const LIFT_BEYOND := 1.0
-## Decree: The Bell Lies calls his guards away at the first look where his visit ends between BELL_MAX and BELL_MIN seconds on (they are gone
-## for the call's 20 s and the walk back, so he comes out unguarded), and Leaving Is Prohibited is laid over the door LIP_LEAD seconds before
-## he comes out. A visit not yet begun counts: his walk to the door and the visit's seconds.
-const BELL_MAX := 22.0
-const BELL_MIN := 3.0
+## Decree: Leaving Is Prohibited is laid over a debtor's door LIP_LEAD seconds before he comes out (it seals NoLeaveFx.T_SEAL on, and he walks
+## out into it).
 const LIP_LEAD := 1.2
-## Decree: his guards are called off when none stands within this of the door (the mob needs them beyond MOB_GUARD_R of him).
-const LIP_CLEAR := 3.0
-## Decree: how far from the door the guards are called.
-const BELL_FAR := [8.0, 9.0, 10.0]
 ## Dominion: how far a hop of the whisper goes (REACH is 10).
 const WHISPER_HOP := 9.0
 
@@ -281,100 +274,37 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 
 # --- Decree --------------------------------------------------------------------------------------------------------------------
 
-## The collector's guards that stand out of doors.
-static func _guards_out(q: AssassinateDirector.Quarry) -> Array[Person]:
-	var out: Array[Person] = []
-	for g: Variant in q.guards:
-		if MissionDirector._alive(g) and not (g as Person).inside:
-			out.append(g as Person)
-	return out
-
-
-## A spot 8+ from `door` where The Bell Lies, CALL THE GUARD, would take all of `guards` (they are among the GUARDS nearest soldiers to it);
-## Vector2.INF when none of the spots tried does. The spot with the fewest other soldiers called.
-static func _bell_spot(ctx: Dictionary, door: Vector2, guards: Array[Person]) -> Vector2:
-	var crowd: Crowd = ctx.crowd
-	var soldiers: Array[Person] = []
-	for s in crowd.soldiers:
-		if is_instance_valid(s) and s.is_alive() and not s.inside:
-			soldiers.append(s)
-	var best := Vector2.INF
-	var best_n := 1000
-	for far: float in BELL_FAR:
-		for k in 24:
-			var spot := door + Vector2.from_angle(TAU * float(k) / 24.0) * far
-			if not crowd._grid.walkable(spot):
-				continue
-			var pool := soldiers.duplicate()
-			pool.sort_custom(func(a: Person, b: Person) -> bool:
-				return a.ground_pos.distance_squared_to(spot) < b.ground_pos.distance_squared_to(spot))
-			var called: Array = pool.slice(0, BellLiesFx.GUARDS)
-			var all := true
-			for g in guards:
-				all = all and called.has(g)
-			if all and called.size() < best_n:
-				best = spot
-				best_n = called.size()
-	return best
-
-
-## The debtor's door `q` comes out of next and the seconds until he does: the visit he is in, or the one he walks to (his walk and the
-## visit's seconds). Empty for none (hiding, fleeing, or his round done).
-static func _next_exit(ctx: Dictionary, q: AssassinateDirector.Quarry) -> Dictionary:
-	var d := ctx.d as TaxCollectorDirector
-	if q.state == AssassinateDirector.State.VISITING:
-		return {"door": d._door_in(q), "in": q.indoors_left, "leg": q.leg}
-	if q.state == AssassinateDirector.State.WALKING and q.leg < q.stops.size() and not (q.target as Person).inside:
-		var secs := _road_seconds(q, _road(ctx, q), (q.target as Person).walk_speed)
-		return {"door": q.stop_doors[q.leg], "in": secs + d.visit_seconds, "leg": q.leg}
-	return {}
-
-
-## One of `guards` stands within `r` of `at`.
-static func _any_near(guards: Array[Person], at: Vector2, r: float) -> bool:
-	for g in guards:
-		if g.ground_pos.distance_to(at) <= r:
-			return true
-	return false
-
-
-## CALL THE GUARD when a collector's next exit from a debtor's door is BELL_MAX to BELL_MIN seconds away (once for that visit), from a spot that
-## takes his guards; then Leaving Is Prohibited over the door LIP_LEAD seconds before he comes out, if none of his guards stands near it. Bound
-## at the door with the guards away, the debtors mob him. The law is centred on the door (D17: the mob reads the law's centre, so a click on the door is
-## enough). With nothing else to do for SMOKE_AFTER seconds, the law at the counting-house's door smokes the next one out.
+## The cell and the breath (GOD.cast_amber(), GOD.amber_breath()) on a collector: Leaving Is Prohibited laid over a debtor's door LIP_LEAD seconds
+## before he comes out, so he steps out into it, or on a collector in the street where he will stand as it seals (on the spot that holds the
+## fewest others with him: GOD.amber_aim()); once it holds him, Breathing Is Prohibited on him. Held, he cannot run from the airless circle,
+## and he dies three seconds on with the guards at his side (seen: the bell tolls, the Lantern stirs, nothing is lost). Between collectors,
+## with nothing cast for SMOKE_AFTER seconds, the cell laid at the counting-house's door smokes the next one out into it.
 static func act_decree(bc, ctx: Dictionary) -> String:
-	var rules: Rules = ctx.rules
-	var slots: Dictionary = ctx.slots
 	var d := ctx.d as TaxCollectorDirector
 	if d == null:
 		return ""
+	var follow: String = GOD.amber_breath(bc, ctx)
+	if follow != "":
+		return _did(ctx, follow)
+	if GOD.amber_pending(ctx):
+		return ""
 	for q in d.quarries:
-		if q.dead or not q.state in [AssassinateDirector.State.WALKING, AssassinateDirector.State.VISITING] \
-				or not MissionDirector._alive(q.target):
+		if q.dead or not MissionDirector._alive(q.target):
 			continue
-		var nx := _next_exit(ctx, q)
-		if nx.is_empty():
-			continue
-		var door: Vector2 = nx["door"]
-		var left: float = nx["in"]
-		var key := "%d_%d" % [q.index, int(nx["leg"])]
-		var guards := _guards_out(q)
-		if q.state == AssassinateDirector.State.VISITING and left <= LIP_LEAD and bc._slot_ready(rules, slots, "noleave") \
-				and not ctx.memo.has("lip_" + key) and not _any_near(guards, door, LIP_CLEAR):
-			ctx.memo["lip_" + key] = _now(ctx)
-			rules.cast(slots.noleave, door)
-			return _did(ctx, "leaving is prohibited over %s's door, %d guard(s) out of doors" % [q.label, guards.size()])
-		if left <= BELL_MAX and left >= BELL_MIN and not guards.is_empty() and not ctx.memo.has("bell_" + key) \
-				and bc._slot_ready(rules, slots, "belllies"):
-			var spot := _bell_spot(ctx, door, guards)
-			if spot != Vector2.INF and GOD.cast_bell(bc, ctx, "guard", spot):
-				ctx.memo["bell_" + key] = _now(ctx)
-				return _did(ctx, "call the guard to (%.1f, %.1f), %.1f from %s's door, his exit in %.0f s" % [spot.x, spot.y,
-					spot.distance_to(door), q.label, left])
+		var p := q.target as Person
+		if q.state == AssassinateDirector.State.VISITING and q.indoors_left <= LIP_LEAD and q.indoors_left > 0.0:
+			var door := d._door_in(q)
+			if GOD.cast_amber(bc, ctx, door, [p]):
+				return _did(ctx, "leaving is prohibited over %s's door as he comes out: the breath follows" % q.label)
+	for q in _street(d):
+		var p := q.target as Person
+		var aim: Dictionary = GOD.amber_aim(ctx.crowd, GOD.road_ahead(p, NoLeaveFx.T_SEAL), [p])
+		if GOD.cast_amber(bc, ctx, aim.at, [p]):
+			return _did(ctx, "leaving is prohibited round %s in the street (%d others held): the breath follows" % [q.label, int(aim.others)])
 	var smoke := _smoke_spot(bc, ctx)
-	if smoke != Vector2.INF and bc._slot_ready(rules, slots, "noleave"):
-		rules.cast(slots.noleave, smoke)
-		return _did(ctx, "leaving is prohibited at the door, smoking out the next collector")
+	var next := d._next_waiting()
+	if smoke != Vector2.INF and next != null and MissionDirector._alive(next.target) and GOD.cast_amber(bc, ctx, d.hide_door, [next.target]):
+		return _did(ctx, "leaving is prohibited at the counting-house's door, smoking %s out into it" % next.label)
 	return ""
 
 

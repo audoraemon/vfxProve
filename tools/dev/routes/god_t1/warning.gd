@@ -35,10 +35,6 @@ const FIRE_AT := 3.0
 const TOWER_HITS := 2
 ## Smite keeps this far from the bell tower's walls (beyond its own blow's reach).
 const TOWER_KEEP := 1.0
-## The Decree policy sends the lie when the runner is this many seconds from the keeper.
-const LIE_LEAD := 5.0
-## The Decree policy holds a runner with Leaving Is Prohibited while the lie is not up yet, and sends the lie when this many seconds of his run are left.
-const PIN_SECONDS := 15.0
 ## Mind Whisper's reach, less a little for the walk's start.
 const WHISPER_REACH := MindWhisperFx.REACH - 0.5
 ## The longest walk a single whisper sends the carrier on towards the gate.
@@ -512,30 +508,82 @@ static func _beyond(bc, crowd: Crowd, from: Vector2) -> Vector2:
 	return best
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies ---
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited ---
 
-## ALL IS WELL when the runner is within LIE_LEAD seconds of the keeper and the bell is not lying, so his delivery falls inside the lie (it holds 45 s); Leaving Is Prohibited on him at his post when
-## he would arrive before the lie can be sent, to hold him until it is up.
+## A fright first, as Ruin's Smite: once his star has fallen, the air goes out (Breathing Is Prohibited) behind the watchman on the side away from
+## his gate's way out -- he runs from it, out through the gate (the postern's watchman with its key), and the walls stop the warning (W1). Its
+## circle is left at a run, but one boxed in against the wall chokes, so it is laid only where it takes at most FRIGHT_FEW others (_fright_at()).
+## A carrier on the road (the fright spent, or no room for it) is walled in amber (Leaving Is Prohibited) where he will stand as it seals, on the
+## spot that holds the fewest others with him (GodT1.amber_aim()), and the breath follows (GodT1.amber_breath()): held, he cannot run from it, and
+## three seconds kill him; whoever stood near him either chokes with him in the cell or ran from the air. Each held by him dies too, and four
+## deaths in a district call the bell (AlarmManager.LOCAL_EVENTS): it waits until his death and theirs leave the district short of that
+## (GodT1.deaths_left()), unless he is nearly at the keeper (URGENT_ETA), the keeper has it, or his is the night's last warning (the bell those
+## deaths call is not rung before he is dead and the night won).
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var crowd: Crowd = ctx.crowd
-	var memo: Dictionary = ctx.memo
+	var follow := GodT1.amber_breath(bc, ctx)
+	if follow != "" or GodT1.amber_pending(ctx):
+		return follow
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
-		var lying := crowd.is_bell_lying()
-		var eta := _eta(ctx, m)
-		if not lying and bc._slot_ready(rules, ctx.slots, "belllies") and (eta <= LIE_LEAD or w.phase == WarningDirector.Phase.DELIVERED):
-			if GodT1.cast_bell(bc, ctx, "well", _tower()):
-				return "the bell lies: ALL IS WELL (he is %.0f s from the keeper)" % eta
-		var wait: float = bc._slot_wait(rules, ctx.slots, "belllies")
-		var key := "pin_until_%d" % w.get_instance_id()
-		var pinned: float = float(memo.get(key, -1.0))
-		# Held when neither the lie that is up nor the next one (ready in `wait`) will be there when he arrives.
-		if crowd.lie_left() <= eta and wait + 1.5 > eta and bc._slot_ready(rules, ctx.slots, "noleave") and w._clock > pinned:
-			rules.cast(ctx.slots.noleave, m.ground_pos)
-			memo[key] = w._clock + PIN_SECONDS - 1.0
-			return "hold the carrier at his post (the lie is %.0f s off, he would arrive in %.0f)" % [wait, eta]
+		var door := w.key_door()
+		var out := door if door != Vector2.INF else _out_spot(bc, crowd, m)
+		var way: float = (m.ground_pos.distance_to(door) if door != Vector2.INF else bc._walk_len(crowd, m.ground_pos, out)) if out != Vector2.INF else INF
+		var skey := "scared_%d" % m.get_instance_id()
+		if m.mind != Person.Mind.FLEE and w.omen_fallen and w.phase != WarningDirector.Phase.DELIVERED and bc._slot_ready(rules, ctx.slots, "breath") 				and way <= SCARE_WALK and not ctx.memo.has(skey):
+			var back := _fright_at(crowd, m, out)
+			if back != Vector2.INF:
+				ctx.memo[skey] = true
+				rules.cast(ctx.slots.breath, back)
+				return "breathing is prohibited behind the carrier, to send him out through the gate"
+		var at := GodT1.road_ahead(m, NoLeaveFx.T_SEAL) if m.has_goal() else m.ground_pos
+		var aim: Dictionary = GodT1.amber_aim(crowd, at, [m])
+		var urgent := w.phase == WarningDirector.Phase.DELIVERED or _eta(ctx, m) < URGENT_ETA or _last(ctx, w)
+		if int(aim.doomed) + 1 > GodT1.deaths_left(crowd, at) and not urgent:
+			return ""
+		if GodT1.cast_amber(bc, ctx, aim.at, [m]):
+			return "leaving is prohibited round the carrier (%d others held, %d of them by him): the breath follows" % [int(aim.others), int(aim.doomed)]
 		return "")
+
+
+## `w` is the last warning of the night: every other star's warning is stopped.
+static func _last(ctx: Dictionary, w: WarningDirector) -> bool:
+	var d := ctx.d as StarfallDirector
+	if d == null or d.stars.size() < d.star_falls.size():
+		return false
+	for o: WarningDirector in d.stars:
+		if o != w and not o.warning_dead:
+			return false
+	return true
+
+
+## Decree's fright: the airless circle's centre FRIGHT_BACK behind him from `out` (turned up to FRIGHT_TURN either way), where it takes the fewest
+## others, at most FRIGHT_FEW; Vector2.INF for none.
+static func _fright_at(crowd: Crowd, m: Person, out: Vector2) -> Vector2:
+	var away := (m.ground_pos - out).normalized()
+	var best := Vector2.INF
+	var fewest := FRIGHT_FEW + 1
+	for back: float in FRIGHT_BACK:
+		for turn: float in [0.0, FRIGHT_TURN, -FRIGHT_TURN]:
+			var g := m.ground_pos + away.rotated(turn) * back
+			var n := 0
+			for e in crowd._field.in_radius(g, BreathFx.RADIUS + FRIGHT_ROOM):
+				var p := e as Person
+				if p != null and p != m and p.is_alive() and not p.inside:
+					n += 1
+			if n < fewest:
+				best = g
+				fewest = n
+	return best
+
+
+## The fright's circle lies these far behind him (inside its radius, so he is in it), turned up to FRIGHT_TURN radians from straight behind; it
+## takes at most FRIGHT_FEW others within its radius and FRIGHT_ROOM.
+const FRIGHT_BACK := [1.4, 1.0, 1.8]
+const FRIGHT_TURN := 0.45
+const FRIGHT_FEW := 1
+const FRIGHT_ROOM := 0.3
 
 
 ## The numbers the report lines print.

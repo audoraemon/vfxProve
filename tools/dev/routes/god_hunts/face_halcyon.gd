@@ -12,10 +12,9 @@ extends RefCounted
 ##   passage  Skylift one escort out past the walls (sent off), the rear of the file first, then the believer himself FH_GAP later (freed by the walls);
 ##            Mirrorfold Passage laid across the road ahead, its way out beyond the walls, as the finisher while the lift cools.
 ##   decree   Leaving Is Prohibited at the door of a house in the last moment before its procession forms up (those who come out are bound at once; the bars
-##            count as held), else round the file; The Bell Lies, CALL THE GUARD, on the file when the law is cooling.
+##            count as held), else round the file; Breathing Is Prohibited on the escort, sparing every believer, when the law is cooling.
 ##   dominion Mind Whisper sends an escort off, Discord holds one more; Rewrite Priority only when both are cooling (its seal takes a second).
 ## Ruin, Veil, Death and Passage break a procession in an opener and a finisher FH_GAP apart (Silence the witness's precedent): _may_finish().
-## Unlike Hunts 2-4, Decree has a route here (C9: those three Hunts report it as a gap).
 
 ## The god types whose policy is written (all six).
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
@@ -27,7 +26,7 @@ const LOADOUT := {
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "mirror"],
-	"decree": ["noleave", "belllies", "magnify"],
+	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "voice"],
 }
 
@@ -473,17 +472,49 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies, Magnify -----------------------------------------------------------------------------
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited ---------------------------------------------------------------------------
 
 ## The law's circle must hold the file a moment on (its T_SEAL after the cast): how much of the circle's radius is kept in hand for the walk.
 const LAW_SLACK := 0.5
 ## The law is laid at a house's door when its procession forms up in this many seconds or fewer (the seal takes NoLeaveFx.T_SEAL, 0.6).
 const LAW_LEAD := 0.8
+## The breath waits this long after the law was laid for a procession (its seal, the forming, a look): the bars are on those it holds by then.
+const LAW_BARS := NoLeaveFx.T_SEAL + LAW_LEAD + 0.6
+## The breath keeps every believer this far out of its circle (the god's kill of a believer counts as burned) and holds an escort this far inside it.
+const BREATH_SLACK := 0.5
 
 
-## Leaving Is Prohibited round as many of the able escorts as one circle holds (radius 3, less the walk to the seal), centred where the file will be; the bars
-## count as held (Ruling P5-T8-R3). The Bell Lies, CALL THE GUARD, at the file when the law cools: up to twelve soldiers, the nearest first, run to the click
-## and stand: the escort among them.
+## Where Breathing Is Prohibited takes the most of procession `i`'s able escorts `able` and no believer: on each escort, pushed back from his believer a
+## tenth at a time until every believer stands BREATH_SLACK out of it; {"at", "hit"} for the one that takes the most (the first found on a tie), {} for
+## none. Out of a cell nobody is held: whoever it finds chokes and runs for the edge (afraid, so unable), and dies only if he lingers three seconds.
+static func _breath_aim(d: FaceHalcyonDirector, i: int, able: Array[Person]) -> Dictionary:
+	var man := _man(d, i)
+	var best := {}
+	for e in able:
+		var dir := (e.ground_pos - man.ground_pos).normalized() if e.ground_pos.distance_to(man.ground_pos) > 0.1 else Vector2.RIGHT
+		var k := 0.0
+		while k <= BreathFx.RADIUS - BREATH_SLACK + 0.001:
+			var at: Vector2 = GOD.road_ahead(e, BreathFx.T_LAND) + dir * k
+			k += 0.1
+			var spared := true
+			for v: Variant in d.believers:
+				if MissionDirector._alive(v) and (v as Person).ground_pos.distance_to(at) < BreathFx.RADIUS + BREATH_SLACK:
+					spared = false
+			if not spared:
+				continue
+			var hit := 0
+			for o in able:
+				hit += 1 if GOD.road_ahead(o, BreathFx.T_LAND).distance_to(at) <= BreathFx.RADIUS - BREATH_SLACK else 0
+			if hit > 0 and (best.is_empty() or hit > int(best.hit)):
+				best = {"at": at, "hit": hit}
+			break
+	return best
+
+
+## Leaving Is Prohibited at the door of a house in the last moment before its procession forms up (those who come out are bound at once; the bars count
+## as held, Ruling P5-T8-R3), else round as many of the able escorts as the rule needs that one circle holds (radius 3, less the walk to the seal), centred
+## where they will be. While the law cools or has been spent on him (and LAW_BARS after it), Breathing Is Prohibited on the escort, laid behind or ahead of the believer so it
+## spares every believer (_breath_aim()): the escorts it finds choke and run for its edge, afraid and so unable.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := _fh(ctx)
 	if d == null:
@@ -495,28 +526,48 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 	for i in d.households.size():
 		var h: ExodusDirector.Household = d.households[i]
 		if not h.out and d.due_in(i) <= LAW_LEAD and bc._slot_ready(rules, slots, "noleave") and not ctx.memo.has("law_%d" % i):
-			ctx.memo["law_%d" % i] = true
+			ctx.memo["law_%d" % i] = _now(d)
 			rules.cast(int(slots.noleave), h.door)
 			return "leaving is prohibited at the door of the %s procession, as it forms up" % h.name.to_lower()
 	for i in _works(d):
 		var able := _ables(d, i)
-		var led: Array[Vector2] = []
-		for e in able:
-			led.append(GOD.road_ahead(e, NoLeaveFx.T_SEAL))
-		if led.is_empty():
+		if able.is_empty():
 			continue
 		if bc._slot_ready(rules, slots, "noleave") and not ctx.memo.has("law_%d" % i):
-			var circle := _enclose(led)
-			if float(circle.r) <= NoLeaveFx.RADIUS - LAW_SLACK:
-				ctx.memo["law_%d" % i] = true
+			var circle := _law_aim(able, _need(d, i))
+			if not circle.is_empty():
+				ctx.memo["law_%d" % i] = _now(d)
 				rules.cast(int(slots.noleave), circle.at)
-				return "leaving is prohibited round the file of procession %d (%d escorts)" % [i, able.size()]
-		if bc._slot_ready(rules, slots, "belllies") and not ctx.memo.has("call_%d" % i):
-			var mid: Vector2 = _enclose(led).at
-			ctx.memo["call_%d" % i] = true
-			GOD.cast_bell(bc, ctx, "guard", mid)
-			return "call the guard to procession %d" % i
+				return "leaving is prohibited round the file of procession %d (%d escorts)" % [i, int(circle.n)]
+		if bc._slot_ready(rules, slots, "breath") and _now(d) - float(ctx.memo.get("law_%d" % i, -999.0)) >= LAW_BARS:
+			var air := _breath_aim(d, i, able)
+			if not air.is_empty():
+				rules.cast(int(slots.breath), air.at)
+				return "breathing is prohibited on the escort of procession %d (%d escorts)" % [i, int(air.hit)]
 	return ""
+
+
+## The circle of the law that holds the most of `able` up to `need` (radius NoLeaveFx.RADIUS less LAW_SLACK, where they will be at the seal): {"at", "n"},
+## the first found on a tie; {} for none. The able are the rear of the file first, so a pair is tried from the rear.
+static func _law_aim(able: Array[Person], need: int) -> Dictionary:
+	var led: Array[Vector2] = []
+	for e in able:
+		led.append(GOD.road_ahead(e, NoLeaveFx.T_SEAL))
+	var best := {}
+	for a in led.size():
+		for b in range(a, led.size()):
+			var pair: Array[Vector2] = [led[a], led[b]]
+			var circle := _enclose(pair)
+			if float(circle.r) > NoLeaveFx.RADIUS - LAW_SLACK:
+				continue
+			var n := 0
+			for g in led:
+				n += 1 if g.distance_to(circle.at) <= NoLeaveFx.RADIUS - LAW_SLACK else 0
+			if best.is_empty() or n > int(best.n):
+				best = {"at": circle.at, "n": n}
+	if not best.is_empty():
+		best.n = mini(int(best.n), maxi(need, 1))
+	return best
 
 
 # --- Dominion: Mind Whisper, Discord, Rewrite Priority ----------------------------------------------------------------------------------

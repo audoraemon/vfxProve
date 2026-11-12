@@ -6,7 +6,7 @@ const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
 
 ## The user's Tier 1 picks (D2).
 const PAIRS := {"ruin": ["smite", "ember"], "death": ["deathmark", "pestilence"], "veil": ["doom", "blight"],
-	"passage": ["skylift", "windfall"], "decree": ["noleave", "belllies"], "dominion": ["whisper", "discord"]}
+	"passage": ["skylift", "windfall"], "decree": ["noleave", "breath"], "dominion": ["whisper", "discord"]}
 
 
 ## What behaviour_check hands a policy: only `_slot_ready` is used by the shared pieces.
@@ -15,6 +15,9 @@ class FakeBc:
 
 	func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
 		return slots.has(key) and rules.refusal(int(slots[key])) == ""
+
+	func _slot_wait(rules: Rules, slots: Dictionary, key: String) -> float:
+		return rules.cooldown_left(int(slots[key])) if slots.has(key) else INF
 
 
 static func run(t) -> void:
@@ -100,7 +103,7 @@ static func _god_draft(t) -> void:
 	for type: String in GodTree.RING:
 		ok = ok and Array(GodT1.loadout(type)) == PAIRS[type]
 	t.check(ok, "every god type drafts its own two Tier 1 keys")
-	t.check(GodT1.loadout("decree") == PackedStringArray(["noleave", "belllies"]), "decree: noleave, belllies")
+	t.check(GodT1.loadout("decree") == PackedStringArray(["noleave", "breath"]), "decree: noleave, breath")
 
 
 ## Rules.last_fx(): null before a cast, then the effect the cast returned; null again once that effect is freed.
@@ -171,18 +174,40 @@ static func _plague_aim(t) -> void:
 
 
 static func _casts(t) -> void:
-	var s := _world(PackedStringArray(["mirror", "belllies"]))
+	var s := _world(PackedStringArray(["mirror", "noleave", "breath"]))
 	var rules: Rules = s.rules
-	var ctx := {"rules": rules, "slots": s.slots}
+	var ctx := {"rules": rules, "slots": s.slots, "memo": {}}
 	var bc := FakeBc.new()
 	var calls: Array = s.calls
 	t.check(GodT1.cast_mirror(bc, ctx, Vector2(1, 17), Vector2(1, 22)), "the mirror is cast when ready")
 	t.check(calls.size() == 1 and calls[0].at == Vector2(1, 17) and calls[0].extra.to == Vector2(1, 22), "in at the first spot, out at the second")
 	t.check(not GodT1.cast_mirror(bc, ctx, Vector2(1, 17), Vector2(1, 22)) and calls.size() == 1, "and not again while it cools")
-	# The bell: only its two modes.
-	t.check(not GodT1.cast_bell(bc, ctx, "sing", Vector2.ZERO) and calls.size() == 1, "a mode the bell has not is refused")
-	t.check(GodT1.cast_bell(bc, ctx, "guard", Vector2(3, 4)), "the bell calls the guard when ready")
-	t.check(calls.size() == 2 and calls[1].at == Vector2(3, 4) and calls[1].extra.mode == "guard", "to the place given, in the mode given")
+	# Decree's cell and breath (the combo): the cell first, the breath on him once it has sealed and holds him.
+	var cells: Array[NoLeaveFx] = []
+	rules.caster = func(sc: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
+		calls.append({"at": g, "extra": e})
+		if sc != NoLeaveFx:
+			return null
+		var fx := NoLeaveFx.new()
+		fx.origin = g
+		cells.append(fx)
+		return fx
+	var p: Person = (s.crowd as Crowd).citizens[0]
+	p.inside = false
+	t.check(GodT1.amber_breath(bc, ctx) == "" and not GodT1.amber_pending(ctx), "no cell, no breath")
+	t.check(GodT1.cast_amber(bc, ctx, p.ground_pos, [p]) and calls.size() == 2 and calls[1].at == p.ground_pos and GodT1.amber_pending(ctx),
+		"the cell is laid on him when the breath will follow it")
+	t.check(GodT1.amber_breath(bc, ctx) == "" and calls.size() == 2 and GodT1.amber_pending(ctx), "no breath before it seals")
+	var cell := cells[0]
+	cell.busy = NoLeaveFx.T_SEAL  # as its _build() sets it: the caster is busy only while it seals
+	cell.t = NoLeaveFx.T_SEAL
+	cell.sealed = true
+	cell.bound[p] = 0.0
+	var did := GodT1.amber_breath(bc, ctx)
+	t.check(did != "" and calls.size() == 3 and (calls[2].at as Vector2).distance_to(p.ground_pos) < 0.05 and not GodT1.amber_pending(ctx),
+		"sealed and holding him: the breath on him (%s)" % did)
+	t.check(not GodT1.cast_amber(bc, ctx, p.ground_pos, [p]) and calls.size() == 3, "and no cell again while the two cool")
+	cell.free()
 	_done(s)
 
 

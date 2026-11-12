@@ -1,10 +1,10 @@
 extends RefCounted
 ## The scripted policies of the Hunt "Break the hunt" (Tier 4; god P5, MS §7, plan Task 3): the shared plan with the def's loadout (act_shared), one
-## act_<type> per god type, and the report line (state). All six types are written (Task 12); FILLED lists them. Decree has no route (MS §9 open
-## issue 1, ruling C9): its policy is the best honest delay. Called by god_hunts.gd (Ruling P5-7: the policies live here, behaviour_check is
-## never edited by a Hunt task).
+## act_<type> per god type, and the report line (state). All six types are written (Task 12); FILLED lists them. Decree's route came with the
+## user's Decree tree (2026-11-12; MS §9 open issue 1 and ruling C9 reported none with its old keys). Called by god_hunts.gd (Ruling P5-7: the
+## policies live here, behaviour_check is never edited by a Hunt task).
 
-## The god types whose policy is written (all six, god P5 Task 12; Decree is a reported gap: MS §9 open issue 1, ruling C9).
+## The god types whose policy is written (all six, god P5 Task 12).
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 
 ## What each type drafts here (MS §7: at most 3 keys, within TierBook.dp(4) Might at level 1, all in GodTree.keys_for(type, 4)); god_hunts.gd's
@@ -14,7 +14,7 @@ const LOADOUT := {
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "windfall"],
-	"decree": ["noleave", "belllies", "magnify"],
+	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "sanctuary"],
 }
 
@@ -381,38 +381,65 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies, Magnify ---
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited ---
 
-## The law is laid this many seconds ahead of the bearer's walk (NoLeaveFx.T_SEAL).
-const BH_LAW_AHEAD := 0.6
-## Leaving Is Prohibited (Decree): the hold lasts HOLD_TIME.
-const LEAVING_FX := preload("res://src/fx/decree/leaving_is_prohibited.gd")
+## The breath is laid where the file will stand when the air goes (BreathFx.T_LAND on), centred on the file when all of it fits within its RADIUS less
+## this (a man at the rim is out of it by a step), else on the first of it.
+const BH_BREATH_SLACK := 0.4
+## The cell is not laid on a marching bearer whose house is nearer than this many seconds (the seal, a look, the air going: then he stands choking) and
+## a step's slack: he would plant the standard before the breath stops him.
+const BH_LAW_ETA := NoLeaveFx.T_SEAL + BreathFx.T_LAND + 1.0
+## The cell is laid over a muster in the last this many seconds before its standard rises: its seal (NoLeaveFx.T_SEAL 0.6), a look and the director's
+## own look (HuntDirector.TICK 0.5), with a little in hand, are spent before the raise, so the file is held where it stands as it rises and the breath
+## follows at once (Face Halcyon's door law, LAW_LEAD there: the next is not 45 s plus the cast's delay after the last cast; seed 2's idle is 44).
+const BH_LAW_LEAD := 2.0
 
 
-## A circle of Leaving Is Prohibited laid over standard `i` is still up (its HOLD_TIME from the cast, kept in the memo).
-static func _held_circle(ctx: Dictionary, i: int) -> bool:
-	var k := "circle_%d" % i
-	return ctx.memo.has(k) and _now(ctx.d as BreakHuntDirector) - float(ctx.memo[k]) < LEAVING_FX.HOLD_TIME
+## Whether `p` stands in a Leaving Is Prohibited cell now (he cannot run from a Breathing Is Prohibited laid on him).
+static func _celled(ctx: Dictionary, p: Person) -> bool:
+	return (ctx.crowd as Crowd).in_law(p, LawZone.NO_LEAVING)
 
 
-## NO ROUTE (MS §9 open issue 1, ruling C9): nothing in Decree kills, frightens or moves a man. The best it has is delay: Leaving Is Prohibited laid over the
-## soonest bearer, ahead of his walk, whenever it is ready, so the circle holds him and his escorts for its 15 s. It cannot break a standard, so the night is
-## lost at the second house or at dawn; recorded as it falls, never tuned around. The Bell Lies (CALL THE GUARD answers soldiers, and these escorts are lay) and
-## Magnify (doubles what is already there) stop no one and are not cast.
+## Where the breath takes `people` together: the middle of where they will stand when the air goes, when all of them fit in it; else on the first.
+static func _breath_aim(people: Array[Person]) -> Vector2:
+	var led := _led(people, BreathFx.T_LAND)
+	var circle := _enclose(led)
+	return circle.at if float(circle.r) <= BreathFx.RADIUS - BH_BREATH_SLACK else led[0]
+
+
+## The cell and the breath, the two laws together a sure kill (spec 5.2), laid only when the breath is ready to follow the cell. Leaving Is Prohibited
+## over the muster next to be raised in the last BH_LAW_LEAD seconds before its standard rises (the bearer and his escorts stand together there, 1.3
+## apart), so the file is held where it stands as it rises; else over the file of a marching standard, centred on the bearer where he will be at the
+## seal, while his house is more than BH_LAW_ETA off. Then Breathing Is Prohibited on the raised file the cell holds (_breath_aim()): nobody can run for
+## the edge, and three seconds kill them together, so nobody is left to take the standard up.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := _bh(ctx)
 	if d == null:
 		return ""
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
+	if not bc._slot_ready(rules, slots, "breath"):
+		return ""
+	var marching := _marching(d)
+	for i in marching:
+		var held: Array[Person] = []
+		for p in _file(d, i):
+			if _celled(ctx, p):
+				held.append(p)
+		if not held.is_empty():
+			rules.cast(int(slots.breath), _breath_aim(held))
+			return _said("breathing is prohibited on the file held in the cell", i, "%d of the file" % held.size())
 	if not bc._slot_ready(rules, slots, "noleave"):
 		return ""
-	for i in _marching(d):
-		if _held_circle(ctx, i):
-			continue
-		ctx.memo["circle_%d" % i] = _now(d)
-		rules.cast(int(slots.noleave), GOD.road_ahead(d.bearer(i), BH_LAW_AHEAD))
-		return _said("law over the bearer", i, "to delay him")
+	var n := d.next_step()
+	if n >= 0 and d.due_in(n) <= BH_LAW_LEAD and not _file(d, n).is_empty():
+		rules.cast(int(slots.noleave), _enclose(_led(_file(d, n), NoLeaveFx.T_SEAL)).at)
+		return _said("leaving is prohibited over the muster as its standard rises", n, "%d of the file" % _file(d, n).size())
+	for i in marching:
+		if d.eta(i) <= BH_LAW_ETA:
+			continue  # he plants the standard before the breath stops him
+		rules.cast(int(slots.noleave), GOD.road_ahead(d.bearer(i), NoLeaveFx.T_SEAL))
+		return _said("leaving is prohibited round the file", i, "%.0f s from his house" % d.eta(i))
 	return ""
 
 

@@ -15,32 +15,32 @@ const TIER1_ONLY := {
 	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"passage": [["skylift", "windfall"], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"decree": [["noleave", "belllies"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"decree": [["noleave", "breath"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"dominion": [["whisper", "discord"], ["", ""], ["", ""], ["", ""], ["", ""]],
 }
 
 ## The keys each Hunt's types play, written out (C7: a changed LOADOUT fails `_loadouts_real`): Hunt -> type -> keys.
 const PLAYS := {
 	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,pestilence", "veil": "doom,blight", "passage": "skylift,windfall",
-		"decree": "noleave,belllies", "dominion": "whisper,discord"},
+		"decree": "noleave,breath", "dominion": "whisper,discord"},
 	"silence_witness": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "skylift,windfall", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
+		"passage": "skylift,windfall", "decree": "noleave,breath", "dominion": "whisper,discord,madness"},
 	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "skylift,windfall,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,madness"},
+		"passage": "skylift,windfall,mirror", "decree": "noleave,breath", "dominion": "whisper,discord,madness"},
 	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "skylift,windfall", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,sanctuary"},
+		"passage": "skylift,windfall", "decree": "noleave,breath", "dominion": "whisper,discord,sanctuary"},
 	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark,pestilence,glacial", "veil": "doom,blight,nova",
-		"passage": "skylift,mirror", "decree": "noleave,belllies,magnify", "dominion": "whisper,discord,voice"},
+		"passage": "skylift,mirror", "decree": "noleave,breath", "dominion": "whisper,discord,voice"},
 }
 
 ## What each Hunt's loadout lacks in the Tier-1-only tree (C7), per type: the keys above Tier 1, in LOADOUT order. Passage's is empty but for
 ## Mirrorfold (a Tier 3 key since the user's Passage row) on Hunts 3 and 5, Ruin's is empty on Hunt 5 (Smite and Ember); the whole of Hunt 1 is empty.
 const LACKS := {
 	"hide_faithful": {"ruin": "", "death": "", "veil": "", "passage": "", "decree": "", "dominion": ""},
-	"silence_witness": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "madness"},
-	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "magnify", "dominion": "madness"},
-	"break_hunt": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "magnify", "dominion": "sanctuary"},
-	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "magnify", "dominion": "voice"},
+	"silence_witness": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "", "dominion": "madness"},
+	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "madness"},
+	"break_hunt": {"ruin": "tornado", "death": "glacial", "veil": "nova", "passage": "", "decree": "", "dominion": "sanctuary"},
+	"face_halcyon": {"ruin": "", "death": "glacial", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "voice"},
 }
 
 

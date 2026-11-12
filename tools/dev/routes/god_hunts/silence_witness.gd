@@ -1,9 +1,9 @@
 extends RefCounted
 ## The scripted policies of the Hunt "Silence the witness" (Tier 2; god P5, MS §7, plan Task 3): the shared plan with the def's loadout (act_shared, Task 5),
-## one act_<type> per god type, and the report line (state). All six types are written (Task 10); FILLED lists them. Decree has no route (C9): its policy is
-## the best honest delay. Called by god_hunts.gd (Ruling P5-7: the policies live here, behaviour_check is never edited by a Hunt task).
+## one act_<type> per god type, and the report line (state). All six types are written (Task 10); FILLED lists them. Decree, once a reported gap (C9), plays
+## its real tree's law and breath (2026-11-12). Called by god_hunts.gd (Ruling P5-7: the policies live here, behaviour_check is never edited by a Hunt task).
 
-## The god types whose policy is written (all six, god P5 Task 10; Decree is a reported gap: MS §9 open issue 1, ruling C9).
+## The god types whose policy is written (all six, god P5 Task 10; Decree's was a reported gap, MS §9 open issue 1, ruling C9, until its real tree).
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 
 ## What each type drafts here (MS §7: at most 3 keys, within TierBook.dp(2) Might at level 1, all in GodTree.keys_for(type, 2)); god_hunts.gd's
@@ -13,7 +13,7 @@ const LOADOUT := {
 	"death": ["deathmark", "pestilence", "glacial"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "windfall"],
-	"decree": ["noleave", "belllies", "magnify"],
+	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "madness"],
 }
 
@@ -164,8 +164,12 @@ const SW_DOM_GAP := 15.0
 const SW_WHISPER_REACH := MindWhisperFx.REACH - 0.5
 ## Tornado Tempest's effect (its consts name the moment it forms and its pull).
 const TORNADO_FX := preload("res://src/fx/set2/tornado_tempest.gd")
-## Leaving Is Prohibited (Decree): the hold lasts HOLD_TIME.
-const LEAVING_FX := preload("res://src/fx/decree/leaving_is_prohibited.gd")
+## Decree: Leaving Is Prohibited is laid on a witness this many seconds after the policy first sees him out (his file on its street, off his door); Breathing
+## Is Prohibited is cast no later than SW_BREATH_BY after it, so the cell (sealed at T_SEAL, held HOLD_TIME) still holds the file through the air's going (T_LAND)
+## and the CHOKE, with a second to spare; the caged file must lie SW_BREATH_FIT inside the breath's RADIUS of its middle.
+const SW_LAW_AFTER := 4.0
+const SW_BREATH_BY := NoLeaveFx.T_SEAL + NoLeaveFx.HOLD_TIME - BreathFx.T_LAND - BreathFx.CHOKE - 1.0
+const SW_BREATH_FIT := 0.3
 
 
 ## Mission seconds since the Hunt's clock began (the director's).
@@ -597,38 +601,77 @@ static func _beyond(crowd: Crowd, from: Vector2) -> Vector2:
 	return best
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies, Magnify ---
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited ---
 
-## No route (MS §9 open issue 1, ruling C9): nothing in the Decree kit stops a witness for good, so this is its best honest play -- delay. Leaving Is
-## Prohibited (3 units round the aim, 15 s of every 20) on the witness as soon as it is ready, so the file cannot leave the circle; it is laid again on
-## the leading witness each time it can be. The Bell Lies and Magnify stop no one and are not cast. The losses are expected and reported, never tuned
-## around.
+## The law, then no air (spec 5.2: the two together are a sure kill). The opener is Leaving Is Prohibited on the witness once his file is out on its street
+## (walking, SW_LAW_AFTER seconds from his door): the cell of 3 holds him and his mates 15 s, and they walk on to its edge and stand there. The finisher,
+## SW_GAP on and while the cell still holds the file through the choke (SW_BREATH_BY), is Breathing Is Prohibited on the file's middle: nobody in the cell can
+## run, so all within its 2.5 choke where they stand and die together, and no mate is left to carry the word. A witness within SW_URGENT of the Temple is caged
+## and choked at once. Redefine and Bound in Law are not drafted: a name changes no count, and the file dies together without a bond.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as SilenceWitnessDirector
 	if d == null:
 		return ""
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
-	if not bc._slot_ready(rules, slots, "noleave"):
-		return ""
+	var crowd: Crowd = ctx.crowd
 	for r in _walkers(d):
 		var w := r.messenger
-		if _held_circle(ctx, w):
-			continue
-		rules.cast(slots.noleave, w.ground_pos)
-		ctx.memo[_key(r, "circle")] = _now(d)
-		return "leaving is prohibited round the witness"
+		var caged := _caged(crowd, r)
+		var since := _since(d, ctx.memo, r)
+		var urgent := _eta(r) <= SW_URGENT
+		var out_key := _key(r, "out")
+		if not ctx.memo.has(out_key):
+			ctx.memo[out_key] = _now(d)
+		if caged.has(w) and bc._slot_ready(rules, slots, "breath") and (since >= SW_GAP or urgent) and since <= SW_BREATH_BY:
+			var aim := _breath_aim(w, caged, urgent)
+			if aim != Vector2.INF:
+				rules.cast(slots.breath, aim)
+				_noted(d, ctx.memo, r)
+				return _said("breathing is prohibited on the caged file", caged)
+		if not caged.has(w) and bc._slot_ready(rules, slots, "noleave") and (urgent or _now(d) - float(ctx.memo[out_key]) >= SW_LAW_AFTER):
+			rules.cast(slots.noleave, w.ground_pos)
+			_noted(d, ctx.memo, r)
+			return _said("leaving is prohibited round the witness", _file(r))
 	return ""
 
 
-## A circle of Leaving Is Prohibited laid on this witness is still up (its HOLD_TIME from the cast, kept in the memo).
-static func _held_circle(ctx: Dictionary, w: Person) -> bool:
-	var d := ctx.d as SilenceWitnessDirector
-	for r in d.running():
-		if (r as WitnessDirector).messenger == w:
-			var k := _key(r as WitnessDirector, "circle")
-			return ctx.memo.has(k) and _now(d) - float(ctx.memo[k]) < LEAVING_FX.HOLD_TIME
-	return false
+## The witness and his mates the law holds now (alive, out of doors, in a NO LEAVING cell): the file one breath has to take.
+static func _caged(crowd: Crowd, r: WitnessDirector) -> Array[Person]:
+	var out: Array[Person] = []
+	var crew: Array = [r.messenger]
+	crew.append_array(r.mates)
+	for v: Variant in crew:
+		if WarningDirector._alive(v) and not (v as Person).inside and not out.has(v) and crowd.in_law(v, LawZone.NO_LEAVING):
+			out.append(v as Person)
+	return out
+
+
+## Where one breath takes the caged witness and as many of his caged mates as it can (all of them within RADIUS - SW_BREATH_FIT of its middle): the
+## whole file's middle, else the witness with the mate beside him; INF while the file stands too wide and the walk is not near its end (it gathers at the
+## cell's edge), the witness alone when it is.
+static func _breath_aim(w: Person, caged: Array[Person], urgent: bool) -> Vector2:
+	var fit := BreathFx.RADIUS - SW_BREATH_FIT
+	var all := _enclose(_places(caged))
+	if float(all.r) <= fit:
+		return all.at
+	if not urgent:
+		return Vector2.INF
+	for m in caged:
+		if m != w:
+			var pair: Array[Vector2] = [w.ground_pos, m.ground_pos]
+			var two := _enclose(pair)
+			if float(two.r) <= fit:
+				return two.at
+	return w.ground_pos
+
+
+## Where `people` stand.
+static func _places(people: Array[Person]) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for p in people:
+		out.append(p.ground_pos)
+	return out
 
 
 # --- Dominion: Mind Whisper, Discord, Madness Bloom ---

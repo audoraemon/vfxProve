@@ -832,11 +832,11 @@ static func _policies_written(t) -> void:
 
 
 ## How near a cast's aim must lie to someone the night still needs answered -- a walking witness or one of his mates, out of doors -- by power (the effect's own reach,
-## less nothing: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Madness Bloom 1.5, Leaving Is Prohibited 3.0; the wide ones by the
-## file's size: Tornado Tempest's fit 1.6 (its pull is 3.2), Glacial Cataclysm 5, Nuclear Nova's blast 3.5 (its fit), a Windfall across the street a few units
-## ahead (4 to 7), Skylift's beam on the witness's place at its take, within its radius 2.5).
+## less nothing: Silent Doom 0.8, Smite 0.6, Death Mark's pick 1.0, Pestilence 1.2, Discord 1.2, Madness Bloom 1.5, Leaving Is Prohibited 3.0, Breathing Is
+## Prohibited 2.5; the wide ones by the file's size: Tornado Tempest's fit 1.6 (its pull is 3.2), Glacial Cataclysm 5, Nuclear Nova's blast 3.5 (its fit), a
+## Windfall across the street a few units ahead (4 to 7), Skylift's beam on the witness's place at its take, within its radius 2.5).
 const AIM_REACH := {"doom": 1.3, "smite": 1.0, "deathmark": 1.0, "pestilence": 1.3, "discord": 1.2, "whisper": 0.8, "noleave": 3.0, "tornado": 1.6, "glacial": 3.0,
-	"nova": 3.5, "windfall": 7.5, "skylift": 2.5}
+	"nova": 3.5, "windfall": 7.5, "skylift": 2.5, "breath": 2.5}
 
 
 ## What is wrong with a cast of `key` at `at` as the night stands (review of Task 10, M1; Ruling P5-T10-R2): "" when its aim is within its reach of a walking

@@ -573,7 +573,7 @@ static func _eta_once(t) -> void:
 
 ## The Hunt's six per-type policies (god P5 Task 11): all six written, their loadouts within the tree and the floor, none a filler (D38: no cast whose
 ## only purpose is to end an idle stretch -- the policy file holds no FILL word), the Silent Doom aimed where the man stands now (it takes whoever is
-## within its radius at the cast), a Death Mark held back while the fuse would find him indoors, and Decree a delay only.
+## within its radius at the cast), a Death Mark held back while the fuse would find him indoors, and Decree's two laws only.
 static func _policies(t) -> void:
 	var filled := GodHunts.filled("expel_inquisitor")
 	for type: String in ["ruin", "death", "veil", "passage", "decree", "dominion"]:
@@ -607,10 +607,11 @@ static func _policies(t) -> void:
 	var dn := _ei(n)
 	Kit.arrive(dn.quarries[0].guards[0], dn.quarries[0].stop_doors[0] + Vector2(1.0, 0.0))
 	t.check(HUNT._door_guards(dn).size() == 1 and HUNT._door_guards(dn)[0] == dn.quarries[0].guards[0], "before anyone is out, the first warden's guard at his door is the one struck")
-	# Decree: no route (MS §9 open issue 1); its one act is the law laid over the captain, to delay him.
+	# Decree: the cell, then the breath on the man it holds (the user's Decree tree, 2026-11-12): its two keys and nothing else.
 	var from := src.find("static func act_decree")
 	var body := src.substr(from, src.find("# --- Dominion") - from)
-	t.check(body.contains("slots.noleave") and body.count("rules.cast(") == 1, "the Decree policy casts the one law (Leaving Is Prohibited), over the captain, and nothing else")
+	t.check(body.contains("slots.noleave") and body.contains("slots.breath") and body.count("rules.cast(int(slots.noleave)") + body.count("rules.cast(int(slots.breath)") == body.count("rules.cast("),
+		"the Decree policy casts its two laws (Leaving Is Prohibited, Breathing Is Prohibited) and nothing else")
 	Kit.done(n)
 
 

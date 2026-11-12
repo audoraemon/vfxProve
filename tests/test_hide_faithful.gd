@@ -1051,7 +1051,7 @@ static func _policies_answer(t) -> void:
 		if type == "passage" and not calls.is_empty():
 			t.check(Walls.outside(calls[0].extra.to) and words.begins_with("skylift"), "Passage lifts the file out past the wall: it is set down outside (%s)" % [calls[0].extra])
 		if type == "decree" and not calls.is_empty():
-			t.check(calls[0].extra.get("mode", "") == "guard" or words.begins_with("leaving"), "Decree calls the guard off or holds a circle (%s)" % words)
+			t.check(words.begins_with("leaving") or words.begins_with("breathing"), "Decree holds a circle or takes the air from a caged group (%s)" % words)
 		Kit.done(s)
 	var w := _world()
 	var report := Hunts.state("hide_faithful", null, {"d": w.d, "memo": {}})
@@ -1258,13 +1258,13 @@ static func _no_filler_casts(t) -> void:
 					near = tower != null and (c.at as Vector2).distance_to(tower.center()) <= 1.0
 				else:
 					# The cast names its target ("smite a patrol", "doom a watch", "leaving is prohibited: a patrol group ..."): it lands on one of THAT kind, a
-					# strike within 1.5 of him, a cage within 3.5, the call of the guard within 16 of the soldiers it takes.
+					# strike within 1.5 of him, a cage within 3.5, no air within its radius of him.
 					var said := String(c.get("did", ""))
 					var kind := "inquisitor" if said.contains("inquisitor") else ("patrol" if said.contains("patrol") else ("watch" if said.contains("watch") else ""))
-					var reach := 16.0 if key == "belllies" else (3.5 if key == "noleave" else 1.5)
+					var reach := 3.5 if key == "noleave" else (BreathFx.RADIUS if key == "breath" else 1.5)
 					var named: Array[Vector2] = []
 					for v: Variant in d._watchers():
-						if MissionDirector._alive(v) and _kind_of(d, v as Person) == kind or (key == "belllies" and MissionDirector._alive(v) and _kind_of(d, v as Person) != "inquisitor"):
+						if MissionDirector._alive(v) and _kind_of(d, v as Person) == kind:
 							named.append((v as Person).ground_pos)
 					for at: Vector2 in named:
 						near = near or (c.at as Vector2).distance_to(at) <= reach

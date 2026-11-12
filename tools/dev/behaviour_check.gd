@@ -5461,7 +5461,7 @@ const FT_USES := {
 	"death": ["deathmark", "pestilence"],
 	"veil": ["doom", "blight"],
 	"passage": ["skylift", "windfall"],
-	"decree": ["noleave", "belllies"],
+	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord"],
 }
 ## A breaker's sight (EscortDirector.SIGHT, 2.5) and a margin: a lamplighter nearer than this to one is already seen. A breaker within FT_ON_PATH of the
@@ -5484,8 +5484,10 @@ const FT_LIFT_BACK_AT := 20.0
 ## seconds of the shrine or a cleanse has begun (two held kneelers reset the ring).
 const FT_RESERVE := 24.0
 const FT_KNEEL_NEAR := 6.0
-## Decree: a Watchman this near the Main Gate's centre is the gate pair (posts at 1.1 from it).
-const FT_GATE_PAIR := 3.0
+## Decree: Breathing Is Prohibited takes those within RADIUS - FT_BREATH_FIT of its middle, and the captive and the marked lamplighters stand FT_BREATH_CLEAR
+## beyond its edge (one who walks in chokes too).
+const FT_BREATH_FIT := 0.3
+const FT_BREATH_CLEAR := 0.5
 
 
 ## The First Taste (god P3, MS §3.9), through _scripted(): the shared plan and, with --god=<type>, that type's own answers. Smite's hit-stop is wall clock,
@@ -5622,7 +5624,7 @@ func _first_taste_prep(type: String, rules: Rules, slots: Dictionary, d: FirstTa
 		"passage":
 			return _first_taste_lift(rules, slots, d, memo)
 		"decree":
-			# Circle the march every 20 s whenever the circle is free (held 15 of 20: it crawls), not only when it is near.
+			# Answer a walking march whenever a power is free, not only when it is near: no air over it (it breaks), else the circle (held 15 of 20: it crawls).
 			var walking := _first_taste_march(d, INF)
 			if walking != null:
 				return _first_taste_stop(type, rules, slots, d, walking, memo)
@@ -5730,7 +5732,15 @@ func _first_taste_stop(type: String, rules: Rules, slots: Dictionary, d: FirstTa
 				return ""  # (a captive who has not yet had his lift has the first claim on the beam)
 			return _first_taste_lift_back(rules, slots, d, m)
 		"decree":
-			# The circle is kept for the Watch while the drag has a post within FT_RESERVE units ahead; the march is circled when the road is clear.
+			# No air over the file: those in it choke and run, and the frightened leave the march for good (caged, they die where they stand). Else the
+			# circle, kept for the Watch while the drag has a post within FT_RESERVE units ahead; the march is circled when the road is clear.
+			var file: Array[Person] = []
+			for p in m.people:
+				if WarningDirector._alive(p):
+					file.append(p as Person)
+			var choked := _first_taste_breath(rules, slots, d, file, "the air goes out over a march of %d")
+			if choked != "":
+				return choked
 			if d.cleanse <= 0.0 and d.march_eta(m) > FT_KNEEL_NEAR and _first_taste_watch_ahead(d, FT_RESERVE):
 				return ""
 			return _first_taste_circle(rules, slots, d, target, true)
@@ -5764,22 +5774,17 @@ func _first_taste_hit(type: String, rules: Rules, slots: Dictionary, d: FirstTas
 				return lifted
 			return _first_taste_fall(rules, slots, d, b, "a breaker")
 		"decree":
-			# MS §3.8: the circle on the gate pair as the drag passes (15 s, 20 s to come back), CALL THE GUARD for the posts beyond it -- it holds every soldier
-			# for 20 s, and the shrine road and the approach lie 11 units apart, one call covers both (a 60 s power; Task 7 review I3: the circle is then free
-			# for the march). A power that is not ready gives way to the other.
-			var gate_pair := b.ground_pos.distance_to(TownLayout.MAIN_GATE.get_center()) <= FT_GATE_PAIR
-			if gate_pair:
-				var circled := _first_taste_circle(rules, slots, d, b, false)
-				if circled != "":
-					return circled
-			if d.watch.has(b) and WarningDirector._alive(d.captive) and _slot_ready(rules, slots, "belllies"):
-				# The bell calls the 12 soldiers nearest the place: the spot lies 6 units from the Watchman, away from the captive, so he is among them (a
-				# rule of the_bell_lies.gd's GUARDS the power's text does not state).
-				var away := (b.ground_pos - d.captive.ground_pos).normalized() * 6.0
-				var spot: Vector2 = mission._crowd._grid.nearest_walkable(b.ground_pos + away)
-				rules.cast(slots.belllies, spot if spot != Vector2.INF else b.ground_pos, {"mode": "guard"})
-				return "call the guard away"
-			return _first_taste_circle(rules, slots, d, b, false)
+			# The law, then no air (spec 5.2): a breaker the cell already holds is choked where he stands -- nobody in it can run, a sure kill -- when the
+			# breath spares the captive and the lamplighters; a breaker free to grip is caged with those beside him (held under the bars, B5), else the air
+			# goes out round him on the side away from the captive: he chokes and runs for its edge, frightened, and cannot grip.
+			var choked := _first_taste_breath(rules, slots, d, _first_taste_caged(d, b), "choke %d caged breakers")
+			if choked != "":
+				return choked
+			var circled := _first_taste_circle(rules, slots, d, b, false)
+			if circled != "":
+				return circled
+			var lone: Array[Person] = [b]
+			return _first_taste_breath(rules, slots, d, lone, "the air goes out round %d breaker")
 	return _first_taste_strike(rules, slots, d, b)
 
 
@@ -5796,6 +5801,54 @@ func _first_taste_circle(rules: Rules, slots: Dictionary, d: FirstTasteDirector,
 			n += 1.0
 	rules.cast(slots.noleave, sum / n)
 	return ("circle a march of %d" if march else "circle %d breakers") % int(n)
+
+
+## Decree: the breakers held by a NO LEAVING cell with `b` (him first, if held): those Breathing Is Prohibited would choke where they stand. Empty when he
+## is not held.
+func _first_taste_caged(d: FirstTasteDirector, b: Person) -> Array[Person]:
+	var out: Array[Person] = []
+	var crowd: Crowd = mission._crowd
+	if not crowd.in_law(b, LawZone.NO_LEAVING):
+		return out
+	out.append(b)
+	for o in d._breakers():
+		if o != b and WarningDirector._alive(o) and crowd.in_law(o, LawZone.NO_LEAVING) and o.ground_pos.distance_to(b.ground_pos) <= BreathFx.RADIUS * 2.0:
+			out.append(o)
+	return out
+
+
+## Decree: Breathing Is Prohibited over `people` (the first of them at least): the middle of as many as fit within RADIUS - FT_BREATH_FIT of it, moved
+## away from the captive until he and every marked lamplighter stand FT_BREATH_CLEAR beyond its edge. `words` takes the count. "" when it is not ready,
+## `people` is empty or no aim keeps them out.
+func _first_taste_breath(rules: Rules, slots: Dictionary, d: FirstTasteDirector, people: Array[Person], words: String) -> String:
+	if people.is_empty() or not _slot_ready(rules, slots, "breath"):
+		return ""
+	var spare: Array[Vector2] = []
+	for v in d.marked:
+		if WarningDirector._alive(v) and not v.inside:
+			spare.append(v.ground_pos)
+	var cap := Vector2.INF
+	if WarningDirector._alive(d.captive):
+		cap = d.captive.ground_pos
+		spare.append(cap)
+	var fit := BreathFx.RADIUS - FT_BREATH_FIT
+	for n in range(people.size(), 0, -1):
+		var mid := Vector2.ZERO
+		for k in n:
+			mid += people[k].ground_pos
+		mid /= float(n)
+		var away := (mid - cap).normalized() if cap != Vector2.INF and mid.distance_to(cap) > 0.01 else Vector2.ZERO
+		for step in 5:
+			var at := mid + away * 0.4 * float(step)
+			var ok := true
+			for k in n:
+				ok = ok and people[k].ground_pos.distance_to(at) <= fit
+			for q in spare:
+				ok = ok and q.distance_to(at) >= BreathFx.RADIUS + FT_BREATH_CLEAR
+			if ok:
+				rules.cast(slots.breath, at)
+				return words % n
+	return ""
 
 
 ## The way from `from` to the shrine as samples every half unit: {"at": point, "s": arc length from `from`}.

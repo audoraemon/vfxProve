@@ -217,6 +217,11 @@ const CATALOG := {
 	&"ed_roar": {"path": "res://assets/audio/ability/decree/ed_roar.wav", "db": 2.5},
 	# Fenced Rule: iron posts driven into the ground one after another round the ring, the last struck home with a long ring.
 	&"fe_posts": {"path": "res://assets/audio/ability/decree/fe_posts.wav", "db": 3.5},
+	# The Closing Cage: the brass bars rise out of the ground with a clang and begin to grind; the grind of them closing in
+	# (a loop, faded out at the end); and the cage shutting on its middle.
+	&"cg_rise": {"path": "res://assets/audio/ability/decree/cg_rise.wav", "db": 3.0},
+	&"cg_grind": {"path": "res://assets/audio/ability/decree/cg_grind.wav", "db": 0.0, "loop": true},
+	&"cg_shut": {"path": "res://assets/audio/ability/decree/cg_shut.wav", "db": 3.0},
 	# Buildings and the town: recordings (tools/audio/foley/building/). A building or tree coming down (Town plays them) is capped at four voices each, so a
 	# stone rain felling a dozen things at once is a roar, not a pile-up.
 	&"collapse_stone": {"path": "res://assets/audio/building/collapse_stone_%d.wav", "variants": 5, "db": -0.1, "voices": 4, "jitter": 0.08},

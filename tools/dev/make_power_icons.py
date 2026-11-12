@@ -1,7 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder, Eminent Domain and Fenced Rule.
+Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder, Eminent Domain, Fenced Rule and The Closing Cage.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -737,9 +737,80 @@ def fenced():
     finish(rgb, "fenced")
 
 
+def cage():
+    """The Closing Cage (Decree): on an ink field, a bird cage of brass bars seen at a slant -- their feet on an amber
+    ring on the ground, their tops bowed in to a gilt crown, carved with gilt marks of law, the far bars dim behind the
+    near ones -- closing on an amber glow at its heart, with sparks thrown off where its bars grind along the ground."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(149, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    cy = 22.0
+    ax, ay = 33.0, 12.0
+    top = -30.0
+    # The ground inside the ring: amber light, brightest at the middle, where everything is pressed.
+    e = np.hypot(x / ax, (y - cy) / ay)
+    rgb = blend(rgb, (120, 70, 20), np.clip((1.0 - e) / 0.1, 0.0, 1.0) * 0.45)
+    rgb = blend(rgb, (255, 190, 80), np.exp(-(x ** 2 + ((y - cy) * 2.2) ** 2) / 60.0) * 0.9)
+    rgb = blend(rgb, (255, 236, 170), np.exp(-(x ** 2 + ((y - cy) * 2.2) ** 2) / 8.0) * 0.8)
+    # The ground ring: ink under amber.
+    ring = np.abs(e - 1.0) * ay
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.2 - ring) / 0.8, 0.0, 1.0) * 0.85)
+    rgb = blend(rgb, (255, 200, 110), np.clip((0.9 - ring) / 0.5, 0.0, 1.0) * 0.9)
+
+    def bar(fx_, fy, near):
+        """One bar from its foot (fx_, fy) bowing in to the crown at (0, top)."""
+        nonlocal rgb
+        light = 0.55 + 0.45 * near
+        steps = 120
+        for k in range(steps + 1):
+            s_ = k / steps
+            # The bar bows: straight up most of the way, then in to the crown.
+            bow = s_ ** 2.2
+            px = fx_ * (1.0 - bow)
+            py = fy + (top - fy) * s_
+            d = np.hypot(x - px, (y - py) * 1.6)
+            rgb = blend(rgb, (10, 6, 18), np.clip((2.0 - d) / 0.6, 0.0, 1.0) * 0.5 * light)
+            rgb = blend(rgb, (200 * light, 150 * light, 60 * light), np.clip((1.1 - d) / 0.5, 0.0, 1.0))
+            if k in (40, 75):
+                mark = (np.abs(x - px) < 1.4) & (np.abs(y - py) < 0.6)
+                rgb = blend(rgb, (255, 214, 110), mark.astype(float) * light)
+
+    feet = []
+    for k in range(12):
+        a = 2.0 * math.pi * k / 12.0 + 0.13
+        feet.append((ax * math.cos(a), cy + ay * math.sin(a), math.sin(a)))
+    feet.sort(key=lambda q: q[1])
+    for fx_, fy, s_ in feet:
+        if s_ < 0.0:
+            bar(fx_, fy, 0.0)
+    for fx_, fy, s_ in feet:
+        if s_ >= 0.0:
+            bar(fx_, fy, 1.0)
+    # The crown: a gilt ring at the top, ink-edged.
+    crown = np.hypot(x / 5.0, (y - top) / 2.4)
+    rgb = blend(rgb, (10, 6, 18), np.clip((1.5 - crown) / 0.3, 0.0, 1.0) * 0.7)
+    rgb = blend(rgb, (255, 214, 110), np.clip((1.15 - crown) / 0.3, 0.0, 1.0))
+    rgb = blend(rgb, (255, 246, 208), np.clip((0.5 - crown) / 0.3, 0.0, 1.0))
+    # Sparks off the near bars' feet, thrown up and out.
+    for k, (fx_, fy, s_) in enumerate(feet):
+        if s_ < 0.3:
+            continue
+        for j in range(3):
+            ang = -math.pi * (0.25 + 0.5 * ((k * 0.618 + j * 0.381) % 1.0))
+            ln = 3.0 + 3.0 * j
+            sx, sy = fx_ + math.cos(ang) * ln, fy + math.sin(ang) * ln
+            d = np.hypot(x - sx, y - sy)
+            rgb = blend(rgb, (255, 230, 140), np.clip((1.0 - d) / 0.5, 0.0, 1.0) * (1.0 - 0.25 * j))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "cage")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
             "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
-            "erase": erase, "disorder": disorder, "eminent": eminent, "fenced": fenced}
+            "erase": erase, "disorder": disorder, "eminent": eminent, "fenced": fenced, "cage": cage}
 
 
 if __name__ == "__main__":

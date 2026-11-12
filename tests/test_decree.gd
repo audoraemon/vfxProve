@@ -44,9 +44,9 @@ static func run(t) -> void:
 				or not ResourceLoader.exists(String(b.path)) or not Targeting.AREAS.has(key) or not Rules.POWER_KINDS.has(key) \
 				or PowerBook.authority_of(key) != "decree" or not PowerBook.is_quiet(key):
 			problems.append(key)
-	t.check(problems.is_empty() and Array(PowerBook.of_authority("decree")) == ["noleave", "belllies", "breath", "magnify", "redefine", "bound", "disorder", "curfew", "erase", "eminent", "fenced", "abolition"]
+	t.check(problems.is_empty() and Array(PowerBook.of_authority("decree")) == ["noleave", "belllies", "breath", "magnify", "redefine", "bound", "disorder", "curfew", "erase", "eminent", "fenced", "abolition", "cage"]
 		and PowerBook.authority_title("decree") == "DECREE",
-		"Decree holds its five old quiet powers at 1, 2, 3, 4 and 5 DP, each with its effect, icons, clip and area, and Breathing Is Prohibited, Redefine, Bound in Law, Disorder, Erasing Distance, Eminent Domain and Fenced Rule (%s)" % [problems])
+		"Decree holds its five old quiet powers at 1, 2, 3, 4 and 5 DP, each with its effect, icons, clip and area, and Breathing Is Prohibited, Redefine, Bound in Law, Disorder, Erasing Distance, Eminent Domain, Fenced Rule and The Closing Cage (%s)" % [problems])
 	var modes: Array = PowerBook.get_power("abolition").modes
 	t.check(PowerBook.get_power("belllies").modes.size() == 2 and modes.size() == 3 and String(modes[0].key) == "clock" and String(modes[1].key) == "escape" and String(modes[2].key) == "ward",
 		"Abolition's modes are the three laws")

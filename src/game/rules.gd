@@ -86,6 +86,8 @@ const POWER_KINDS := {
 	"bound": [&"bound"],
 	"disorder": [],
 	"fenced": [],
+	# The Closing Cage: cut down at the bars, crushed with a house, crushed at the end
+	"cage": [&"collapse"],
 	"magnify": [&"magnify"],
 	"unseen": [],
 	"clearmind": [],

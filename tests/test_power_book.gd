@@ -1,5 +1,5 @@
 extends RefCounted
-## The power book: 67 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
+## The power book: 68 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
 
 ## v0.07's cooldowns (kak-v0.07.1), which v0.08's may lengthen but never shorten (spec §2).
 const V07_COOLDOWNS := {
@@ -10,11 +10,11 @@ const V07_COOLDOWNS := {
 ## The powers added since v0.07, which have no v0.07 cooldown to keep to.
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
 	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "breath", "belllies", "magnify", "redefine", "bound", "disorder", "erase", "eminent", "fenced", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
-	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors"]
+	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors", "cage"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 67, "67 powers")
+	t.check(PowerBook.POWERS.size() == 68, "68 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -42,7 +42,7 @@ static func run(t) -> void:
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "breath", "heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "tornado",
 		"pestilence", "dragon", "mirror", "magnify", "redefine", "bound", "disorder", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion",
 		"anathema", "sanctuary", "curfew", "erase", "eminent", "fenced", "allroads", "yesterday", "foldward", "tsunami", "gravity", "laser", "orbital", "cinder", "judgement",
-		"glacial", "solaris", "voice", "abolition", "tempest", "shatter", "everydoor", "schism", "fargate", "heavendoor", "deaddoors", "nova"],
+		"glacial", "solaris", "voice", "abolition", "tempest", "shatter", "everydoor", "schism", "fargate", "heavendoor", "deaddoors", "cage", "nova"],
 		"the book's order, cheapest first by v0.07's costs, Mind Whisper (v0.08) after Silent Doom (%s)" % [PowerBook.keys()])
 	var quiet := []
 	for key in PowerBook.keys():

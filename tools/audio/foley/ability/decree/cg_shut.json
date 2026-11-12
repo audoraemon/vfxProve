@@ -1,0 +1,8 @@
+{"length": 2.8, "peak_db": -1.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 16, "damp": 4200}, "eq": [["lowshelf", 120, 1.5], ["peak", 3800, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongscrape_mf.wav", "at": 0.0, "from": 2.0, "dur": 0.2, "pitch": -4, "hp": 90, "lp": 3000, "fade_in": 60, "fade_out": 40, "gain_db": -12},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Anvil_Hit1_v3_Sum.wav", "at": 0.1, "onset": true, "dur": 2.0, "pitch": -10, "lp": 3000, "fade_out": 1200, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v1_Sum.wav", "at": 0.1, "onset": true, "dur": 0.5, "pitch": -8, "lp": 2800, "fade_out": 250, "gain_db": -6},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongHit_fff.wav", "at": 0.1, "onset": true, "dur": 2.6, "pitch": -12, "lp": 1500, "fade_out": 1600, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v6_rr1_Sum.wav", "at": 0.1, "onset": true, "dur": 1.6, "lp": 240, "fade_out": 700, "gain_db": -3},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_metal_falling_01.ogg", "at": 0.12, "onset": true, "pitch": -5, "lp": 3000, "gain_db": -12},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_01.ogg", "at": 0.11, "onset": true, "dur": 0.5, "pitch": -5, "hp": 90, "lp": 2400, "fade_out": 250, "gain_db": -10}]}

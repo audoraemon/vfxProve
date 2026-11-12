@@ -274,6 +274,9 @@ er_crash	res://assets/audio/ability/decree/er_crash.wav	-17.15	-0.97
 di_bell	res://assets/audio/ability/decree/di_bell.wav	-15.76	-1.23
 ed_roar	res://assets/audio/ability/decree/ed_roar.wav	-16.88	-0.99
 fe_posts	res://assets/audio/ability/decree/fe_posts.wav	-19.52	-0.28
+cg_rise	res://assets/audio/ability/decree/cg_rise.wav	-18.90	-0.99
+cg_grind	res://assets/audio/ability/decree/cg_grind.wav	-17.62	-2.99
+cg_shut	res://assets/audio/ability/decree/cg_shut.wav	-18.68	-0.98
 collapse_stone	res://assets/audio/building/collapse_stone_1.wav	-18.02	-2.40
 collapse_stone	res://assets/audio/building/collapse_stone_2.wav	-19.24	-0.24
 collapse_stone	res://assets/audio/building/collapse_stone_3.wav	-17.97	-0.37

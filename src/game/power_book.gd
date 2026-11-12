@@ -459,6 +459,10 @@ const POWERS := [
 			{"RADIUS": 13.0, "MAX_DOORS": 21, "SPAN": 52.0, "MAX_SPIRITS": 190},
 			{"RADIUS": 13.5, "MAX_DOORS": 22, "SPAN": 56.0, "MAX_SPIRITS": 205},
 			{"RADIUS": 14.0, "MAX_DOORS": 24, "SPAN": 60.0, "MAX_SPIRITS": 220, "twist": true, "twist_text": "Rise Again: the horde's dead rise as ghosts"}]},
+	{"key": "cage", "name": "The Closing Cage", "path": "res://src/fx/decree/the_closing_cage.gd",
+		"blurb": "A ring of brass bars rises round a district and closes in over 30 s; all inside are crushed. Once a descent.",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a ring of bars round a district of 12 closes to 1.5 across over 30 s: nobody passes it, people are pushed in ahead of it, one pinned against a building is cut down, every building it reaches is crushed, and at the end all inside die; once a descent",
+		"authority": "decree"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -509,6 +513,9 @@ const REACH := {
 	"eminent": [10.0, 16.0, 0.8, 3.0],
 	# Fenced Rule: a ring of iron posts driven into a district rings across it; its danger is the driving, short and mild
 	"fenced": [9.0, 13.0, 0.4, 3.0],
+	# The Closing Cage: a ring of brass bars grinding in across a district is seen and heard far off; the danger is
+	# deadly and lasts the whole close
+	"cage": [16.0, 20.0, 1.0, 31.0],
 }
 ## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
 ## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
@@ -517,7 +524,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"breath": 0.5, "erase": 2.1, "disorder": 0.85, "eminent": 0.8, "fenced": 0.8,
+	"breath": 0.5, "erase": 2.1, "disorder": 0.85, "eminent": 0.8, "fenced": 0.8, "cage": 0.8,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -797,7 +804,7 @@ const FAMILY := {
 	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
 	"discord": "hold", "sanctuary": "hold", "anathema": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
-	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "disorder": "decree", "curfew": "decree", "erase": "decree", "eminent": "decree", "fenced": "decree", "abolition": "decree",
+	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "disorder": "decree", "curfew": "decree", "erase": "decree", "eminent": "decree", "fenced": "decree", "abolition": "decree", "cage": "decree",
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",

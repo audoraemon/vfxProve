@@ -6,7 +6,7 @@ rem   try.bat                            mirror, solaris, heaven, nova
 rem   try.bat voice schism wisp doom     any keys from PowerBook (doom whisper smite ember deathmark noleave skylift windfall hellspark wisp discord belllies breath heaven scatter madness blight
 rem                                      thorns pilgrim deep houndgate tornado pestilence dragon mirror magnify redefine bound disorder unseen congregation oath echo turncoat
 rem                                      hatred clearmind saint priority verdict delusion anathema sanctuary curfew erase eminent fenced tsunami gravity laser orbital cinder
-rem                                      judgement glacial solaris voice abolition tempest shatter schism nova)
+rem                                      judgement glacial solaris voice abolition tempest shatter schism cage nova)
 rem Voice of God, Abolition and Divine Schism: Q and E pick the command or the way to divide while the slot is focused.
 rem Override the engine path with: set GODOT=C:\path\to\Godot.exe
 setlocal

@@ -1,0 +1,10 @@
+{"length": 3.6, "peak_db": -1.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 16, "damp": 4200}, "eq": [["lowshelf", 120, 1.5], ["peak", 3800, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub2_v1.wav", "at": 0.0, "from": 0.5, "dur": 1.0, "lp": 220, "fade_in": 300, "fade_out": 200, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongscrape_pp.wav", "at": 0.0, "from": 0.4, "dur": 0.9, "pitch": -5, "hp": 90, "lp": 3200, "fade_in": 500, "fade_out": 120, "gain_db": -12},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Anvil_Hit1_v1_Sum.wav", "at": 0.8, "onset": true, "dur": 1.6, "pitch": -8, "lp": 3400, "fade_out": 900, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v3_Sum.wav", "at": 0.8, "onset": true, "dur": 0.5, "pitch": -7, "lp": 3000, "fade_out": 250, "gain_db": -6},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_001.ogg", "at": 0.8, "onset": true, "pitch": -8, "lp": 2000, "gain_db": -7},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongHit_fff.wav", "at": 0.8, "onset": true, "dur": 2.7, "pitch": -10, "lp": 1800, "fade_out": 1500, "gain_db": -9},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v6_rr1_Sum.wav", "at": 0.8, "onset": true, "dur": 1.4, "lp": 260, "fade_out": 600, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongscrape_mf.wav", "at": 0.95, "from": 1.0, "dur": 2.6, "pitch": -6, "hp": 80, "lp": 2800, "fade_in": 250, "fade_out": 1200, "gain_db": -13},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Ratchet1-Slow_v1_rr1_Sum.wav", "at": 1.0, "onset": true, "dur": 2.4, "pitch": -12, "hp": 60, "lp": 1400, "fade_in": 300, "fade_out": 1200, "gain_db": -18}]}

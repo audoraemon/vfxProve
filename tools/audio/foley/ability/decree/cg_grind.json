@@ -1,0 +1,5 @@
+{"length": 4.0, "loop": true, "peak_db": -3.0, "reverb": {"rt60": 1.4, "mix": 0.18, "predelay_ms": 14, "damp": 4000}, "eq": [["lowshelf", 120, 1.0], ["peak", 4000, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongscrape_mf.wav", "at": 0.0, "from": 1.0, "dur": 4.4, "pitch": -7, "hp": 80, "lp": 2600, "fade_in": 300, "fade_out": 300, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-scrape2_v1.wav", "at": 0.3, "from": 0.5, "dur": 4.2, "pitch": -9, "hp": 120, "lp": 3000, "fade_in": 400, "fade_out": 400, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Ratchet1-Slow_v1_rr1_Sum.wav", "at": 0.0, "from": 1.0, "dur": 4.4, "pitch": -14, "hp": 60, "lp": 1200, "fade_in": 300, "fade_out": 300, "gain_db": -12},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub2_v1.wav", "at": 0.0, "from": 1.0, "dur": 4.4, "lp": 160, "fade_in": 400, "fade_out": 400, "gain_db": -10}]}

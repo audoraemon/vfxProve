@@ -11,8 +11,8 @@ extends RefCounted
 ## across waves.
 
 ## The kinds of death nobody should hear cry out (Silent Doom, the Death Mark, the plague; and choking, Breathing Is
-## Prohibited: there is no air to cry with).
-const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"choke"]
+## Prohibited: there is no air to cry with; and the Sealed Verdict's dead, who fall where they stand without a sound).
+const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"choke", &"verdict"]
 ## Deaths this close after a wave's first belong to it, seconds.
 const WAVE_WINDOW := 0.25
 ## How many bodies of one wave are voiced.

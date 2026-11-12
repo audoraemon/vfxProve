@@ -128,6 +128,9 @@ const CATALOG := {
 	&"q_abolition": {"path": "res://assets/audio/ability/quiet/q_abolition.wav", "db": 1.0},
 	&"q_redefine": {"path": "res://assets/audio/ability/quiet/q_redefine.wav", "db": 3.5},
 	&"q_bound": {"path": "res://assets/audio/ability/quiet/q_bound.wav", "db": 0.5},
+	# The Sealed Verdict: a quill writing a district into the brass ledger, the clasp shut on it; and its one bell stroke.
+	&"q_sealed": {"path": "res://assets/audio/ability/quiet/q_sealed.wav", "db": 0.5},
+	&"q_sealed_hit": {"path": "res://assets/audio/ability/quiet/q_sealed_hit.wav", "db": 2.0},
 	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
 	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind.wav", "db": 0.0},
 	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema.wav", "db": 0.0},

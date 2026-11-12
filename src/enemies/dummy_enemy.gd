@@ -376,8 +376,8 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			# No body: the figure pales into starlight where it stands, and the light drifts up off it.
 			for i in 12:
 				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-16, -1), rng.randf_range(0.5, 1.2)))
-		&"choke":
-			# No blow lands (Breathing Is Prohibited): no flash, only the quiet collapse every plain death has.
+		&"choke", &"verdict":
+			# No blow lands (Breathing Is Prohibited; the Sealed Verdict): no flash, only the quiet collapse every plain death has.
 			_flash = 0.0
 		&"pit":
 			# Drawn down toward the hole's middle (the source) as it falls, up to a body's reach away.

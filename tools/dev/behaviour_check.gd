@@ -65,6 +65,8 @@ extends SceneTree
 ##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
 ##          --to=x,y gives a two-click power its second place, the citizen nearest it (Bound in Law);
+##          --fx-clock spaces the frames on the effect's own clock, not the frame count (a long power whose moment
+##          must be caught: The Sealed Verdict, --setup=cross --zoom=0.8 --seconds=62.6 --fx-clock);
 ##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
 ##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
 ##          open paving south of the market);
@@ -1404,6 +1406,7 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	await _frames(2)
 	var fx := _force_cast(0, at, Vector2(1, 0), extra)
 	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
+	var fx_clock := "--fx-clock" in OS.get_cmdline_user_args()
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
 	var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false,
@@ -1411,7 +1414,12 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	var t := 0.0
 	for i in PowerBook.CLIP_FRAMES:
 		var due := run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)
-		await _frames(maxi(roundi((due - t) * 60.0), 0))
+		if fx_clock and is_instance_valid(fx):
+			# A long power's moment (The Sealed Verdict's stroke) caught on its own clock, which a busy machine slows.
+			while is_instance_valid(fx) and not fx.finished and fx.t < due:
+				await process_frame
+		else:
+			await _frames(maxi(roundi((due - t) * 60.0), 0))
 		t = due
 		await RenderingServer.frame_post_draw
 		var img := bf.get_viewport().get_texture().get_image()

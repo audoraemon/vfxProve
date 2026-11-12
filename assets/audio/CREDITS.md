@@ -12,10 +12,11 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `footstep_concrete_004.ogg` | CC0 | Kenney | ability/quiet/q_allroads |
 | [Kenney impact-sounds](https://kenney.nl) `footstep_grass_001.ogg` | CC0 | Kenney | citizen/cit_fall_1 |
 | [Kenney impact-sounds](https://kenney.nl) `footstep_grass_002.ogg` | CC0 | Kenney | citizen/cit_fall_4 |
-| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_000.ogg` | CC0 | Kenney | ability/decree/di_bell, ability/quiet/q_deathmark_hit, ability/quiet/q_yesterday, building/lantern_blind |
+| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_000.ogg` | CC0 | Kenney | ability/decree/di_bell, ability/quiet/q_deathmark_hit, ability/quiet/q_sealed_hit, ability/quiet/q_yesterday, building/lantern_blind |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_001.ogg` | CC0 | Kenney | ability/decree/di_bell, ability/quiet/q_belllies |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_foldward, ability/quiet/q_verdict |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_003.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
+| [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_004.ogg` | CC0 | Kenney | ability/quiet/q_sealed |
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_clearmind, ability/quiet/q_discord |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_000.ogg` | CC0 | Kenney | ability/decree/fe_posts |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_001.ogg` | CC0 | Kenney | ability/decree/cg_rise, ability/decree/fe_posts, ability/quiet/q_oath |
@@ -73,8 +74,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `glass_04.ogg` | CC0 | rubberduck | ability/quiet/q_fargate, ability/quiet/q_mirror |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `glass_05.ogg` | CC0 | rubberduck | ability/quiet/q_abolition, ability/quiet/q_mirror |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `key_open_01.ogg` | CC0 | rubberduck | ability/quiet/q_everydoor |
-| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_01.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward |
-| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_02.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_01.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward, ability/quiet/q_sealed |
+| [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_02.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward, ability/quiet/q_sealed |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_03.ogg` | CC0 | rubberduck | ability/quiet/q_redefine, ui/ui_focus |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `paper_04.ogg` | CC0 | rubberduck | ability/decree/er_tear, ability/quiet/q_foldward, ability/quiet/q_redefine, ui/ui_click, ui/ui_hover |
 | [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) `slam_03.ogg` | CC0 | rubberduck | ability/decree/ed_roar, ability/decree/er_crash |
@@ -154,8 +155,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `blade_02.ogg` | CC0 | rubberduck | ability/quiet/q_turncoat |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_01.ogg` | CC0 | rubberduck | ability/quiet/q_foldward, ability/quiet/q_redefine |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_02.ogg` | CC0 | rubberduck | ui/ui_pause |
-| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_03.ogg` | CC0 | rubberduck | ability/quiet/q_priority, ui/ui_resume |
-| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_04.ogg` | CC0 | rubberduck | ui/ui_back |
+| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_03.ogg` | CC0 | rubberduck | ability/quiet/q_priority, ability/quiet/q_sealed, ui/ui_resume |
+| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `book_04.ogg` | CC0 | rubberduck | ability/quiet/q_sealed, ui/ui_back |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `chain_01.ogg` | CC0 | rubberduck | ability/quiet/q_bound |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `chain_02.ogg` | CC0 | rubberduck | ability/quiet/q_bound |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `chain_03.ogg` | CC0 | rubberduck | ability/quiet/q_noleave, ability/quiet/q_oath |
@@ -166,7 +167,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `item_stone_01.ogg` | CC0 | rubberduck | ability/quiet/q_blight_hit_1, ability/quiet/q_blight_hit_2, ability/quiet/q_blight_hit_4 |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `item_stone_04.ogg` | CC0 | rubberduck | ability/quiet/q_blight_hit_3 |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `lock_01.ogg` | CC0 | rubberduck | ability/quiet/q_everydoor, ability/quiet/q_noleave |
-| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `lock_02.ogg` | CC0 | rubberduck | ability/quiet/q_everydoor, ability/quiet/q_oath, ui/ui_mode |
+| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `lock_02.ogg` | CC0 | rubberduck | ability/quiet/q_everydoor, ability/quiet/q_oath, ability/quiet/q_sealed, ui/ui_mode |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `lock_03.ogg` | CC0 | rubberduck | ability/quiet/q_everydoor |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `spell_fire_01.ogg` | CC0 | rubberduck | ability/fire/dr_ignite, ability/quiet/q_ember_hit |
 | [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) `spell_fire_03.ogg` | CC0 | rubberduck | ability/fire/cf_fall_2, ability/fire/cf_rise, building/lantern_burn |
@@ -363,6 +364,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `NT5_PedalQuiet_064_rr1.wav` | CC0 | Versilian Studios | ability/decree/br_hush, ability/quiet/q_allroads |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `Anvil_Hit1_v1_Sum.wav` | CC0 | Versilian Studios | ability/decree/cg_rise, ability/quiet/q_noleave |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `Anvil_Hit1_v3_Sum.wav` | CC0 | Versilian Studios | ability/decree/cg_shut, ability/decree/fe_posts, ability/quiet/q_abolition |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BDrumNewhit_v3_rr1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_sealed_hit |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BDrumNewhit_v6_rr1_Sum.wav` | CC0 | Versilian Studios | ability/decree/cg_rise, ability/decree/cg_shut, ability/decree/fe_posts |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BellTree_Stroke1_v1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_mirror |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BellTree_Stroke2_v1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_everydoor |
@@ -387,7 +389,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_f.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_fff.wav` | CC0 | Versilian Studios | ability/decree/cg_rise, ability/decree/cg_shut |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_mf.wav` | CC0 | Versilian Studios | ability/quiet/q_everydoor |
-| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_p.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark_hit |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongHit_p.wav` | CC0 | Versilian Studios | ability/quiet/q_deathmark_hit, ability/quiet/q_sealed_hit |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongscrape_mf.wav` | CC0 | Versilian Studios | ability/decree/cg_grind, ability/decree/cg_rise, ability/decree/cg_shut |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `gongscrape_pp.wav` | CC0 | Versilian Studios | ability/decree/cg_rise |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `susCymb1-cresc-Long_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition, building/lantern_flare |
@@ -401,6 +403,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `VlnEns_susVib_E4_v1.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `horns-sus-ff-e2-PB-loop.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | building/town_horn |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `horns-sus-ff-e3-PB-loop.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | building/town_horn |
+| [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chimes-c3.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/quiet/q_sealed_hit |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chimes-c4.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/decree/di_bell |
 | [Sonatina Symphonic Orchestra 4.0](https://github.com/peastman/sso) `chimes-f#3.wav` | CC Sampling Plus 1.0 (credit requested) | Mattias Westlund and contributors | ability/decree/di_bell |
 | [20080618KamagasakiRiot.ogg](https://commons.wikimedia.org/wiki/File:20080618KamagasakiRiot.ogg) `20080618KamagasakiRiot.ogg` | CC0 | Kamagasaki450 | citizen/crowd_chaos |

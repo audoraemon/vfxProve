@@ -1,7 +1,8 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder, Eminent Domain, Fenced Rule and The Closing Cage.
+Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder, Eminent Domain, Fenced Rule, The Closing Cage
+and The Sealed Verdict.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -808,9 +809,81 @@ def cage():
     finish(rgb, "cage")
 
 
+def sealed():
+    """The Sealed Verdict (Decree): on an ink field, a brass bell high in the middle caught at its one stroke -- gilt rings
+    of sound thrown out either side of it -- over a district seen at a slant: a faint gilt ring of law marked with the
+    ledger's seconds, the hand at the last of them, and at its heart the verdict's red seal."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(163, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (52, 34, 74), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The district: a faint gilt ring on the ground, ink under it, sixty seconds marked round it.
+    cy, ax, ay = 21.0, 33.0, 12.5
+    e = np.hypot(x / ax, (y - cy) / ay)
+    rgb = blend(rgb, (70, 50, 30), np.clip((1.0 - e) / 0.08, 0.0, 1.0) * 0.25)
+    ring = np.abs(e - 1.0) * ay
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.4 - ring) / 0.8, 0.0, 1.0) * 0.8)
+    rgb = blend(rgb, (200, 150, 60), np.clip((1.0 - ring) / 0.5, 0.0, 1.0) * 0.85)
+    for k in range(12):
+        a = -math.pi / 2 + 2.0 * math.pi * k / 12.0
+        ux, uy = math.cos(a), math.sin(a)
+        for s_ in (0.84, 0.9):
+            tx, ty = ax * s_ * ux, cy + ay * s_ * uy
+            rgb = blend(rgb, (255, 207, 90) if k == 11 else (210, 160, 70), np.exp(-((x - tx) ** 2 + (y - ty) ** 2) / 1.0))
+    # The hand: a gilt line from the heart to the last second.
+    a = -math.pi / 2 - 2.0 * math.pi / 12.0
+    hx, hy = ax * 0.78 * math.cos(a), cy + ay * 0.78 * math.sin(a)
+    ux, uy = hx, hy - cy
+    ln = math.hypot(ux, uy)
+    ux, uy = ux / ln, uy / ln
+    along = np.clip(x * ux + (y - cy) * uy, 0.0, ln)
+    d = np.hypot(x - along * ux, (y - cy) - along * uy)
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.2 - d) / 0.7, 0.0, 1.0) * 0.7)
+    rgb = blend(rgb, (255, 214, 110), np.clip((1.0 - d) / 0.5, 0.0, 1.0))
+    # The seal at the heart: red wax, a gilt rim, a dark mark pressed in it.
+    sd = np.hypot(x, (y - cy) * 1.5)
+    rgb = blend(rgb, (10, 6, 18), np.clip((10.0 - sd) / 0.8, 0.0, 1.0) * 0.9)
+    rgb = blend(rgb, (255, 207, 90), np.clip((8.8 - sd) / 0.6, 0.0, 1.0))
+    rgb = blend(rgb, (210, 34, 30), np.clip((7.4 - sd) / 0.6, 0.0, 1.0))
+    rgb = blend(rgb, (255, 96, 74), np.clip((3.5 - np.hypot(x + 2.0, (y - cy + 1.2) * 1.5)) / 2.0, 0.0, 1.0) * 0.6)
+    rgb = blend(rgb, (96, 8, 12), ((np.abs(x) < 1.0) & (np.abs(y - cy) < 3.0)).astype(float))
+    rgb = blend(rgb, (96, 8, 12), ((np.abs(y - cy) < 0.7) & (np.abs(x) < 3.6)).astype(float))
+    # The bell: brass, lit from the left, a flared lip with a gilt band, a crown knob and the clapper swung to strike.
+    top, lip = -31.0, -7.0
+    s_ = np.clip((y - top) / (lip - top), 0.0, 1.0)
+    w = 6.5 + 9.5 * s_ ** 1.8 + 2.5 * np.clip((y - (lip - 3.0)) / 3.0, 0.0, 1.0)
+    body = np.clip((w - np.abs(x)) / 0.8, 0.0, 1.0) * np.clip((y - top) / 0.8, 0.0, 1.0) * np.clip((lip - y) / 0.8, 0.0, 1.0)
+    knob = np.clip((3.2 - np.hypot(x, y - (top - 2.0))) / 0.7, 0.0, 1.0)
+    edge = np.clip((np.maximum(body, knob) - 0.0) * 2.0, 0.0, 1.0)
+    halo = np.exp(-(np.hypot(x, (y + 18.0) * 0.9) / 22.0) ** 2)
+    rgb = blend(rgb, (255, 200, 110), halo * 0.35)
+    outline = np.clip((w + 1.6 - np.abs(x)) / 0.8, 0.0, 1.0) * np.clip((y - top + 1.6) / 0.8, 0.0, 1.0) * np.clip((lip + 1.6 - y) / 0.8, 0.0, 1.0)
+    rgb = blend(rgb, (10, 6, 18), np.maximum(outline, np.clip((4.6 - np.hypot(x, y - (top - 2.0))) / 0.7, 0.0, 1.0)) * 0.9)
+    shade = np.clip(0.5 + 0.5 * (-x / np.maximum(w, 1.0)), 0.0, 1.0)
+    brass = np.stack([110 + 120 * shade, 70 + 90 * shade, 24 + 40 * shade], axis=-1)
+    rgb = rgb * (1.0 - edge[..., None]) + brass * edge[..., None]
+    rgb = blend(rgb, (255, 236, 170), np.exp(-((x + w * 0.45) ** 2) / 2.0) * body * 0.6)
+    rgb = blend(rgb, (255, 207, 90), np.clip((1.2 - np.abs(y - (lip - 2.0))) / 0.5, 0.0, 1.0) * body)
+    cl = np.hypot(x - 3.0, y - (lip + 2.2))
+    rgb = blend(rgb, (10, 6, 18), np.clip((3.0 - cl) / 0.6, 0.0, 1.0))
+    rgb = blend(rgb, (200, 150, 60), np.clip((1.9 - cl) / 0.6, 0.0, 1.0))
+    # The stroke: gilt rings of sound thrown out either side.
+    for side in (-1.0, 1.0):
+        for k, rad in enumerate((22.0, 28.0)):
+            dr = np.abs(np.hypot(x, (y + 18.0) * 1.15) - rad)
+            ang = np.arctan2((y + 18.0), side * x)
+            arc = (np.abs(ang) < 0.55) & (side * x > 0)
+            rgb = blend(rgb, (10, 6, 18), np.clip((2.0 - dr) / 0.6, 0.0, 1.0) * arc * 0.6)
+            rgb = blend(rgb, (255, 214, 110), np.clip((1.0 - dr) / 0.5, 0.0, 1.0) * arc * (1.0 - 0.3 * k))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "sealed")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
             "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
-            "erase": erase, "disorder": disorder, "eminent": eminent, "fenced": fenced, "cage": cage}
+            "erase": erase, "disorder": disorder, "eminent": eminent, "fenced": fenced, "cage": cage, "sealed": sealed}
 
 
 if __name__ == "__main__":

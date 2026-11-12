@@ -7,41 +7,31 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**11** in progress · **27** to do · **137** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794484157:f>)\n• New: Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit)",
+     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **139** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794488921:f>)\n• Done: Town children (Discord idea Add children Npc)\n• New: God progression merged into Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-12T18:49:17+07:00"
+     "timestamp": "2026-11-12T20:08:41+07:00"
     },
     {
      "title": "god/death-powers",
-     "description": "299 commits not in Develop-Main · last commit today · local only\n> feat: Pale Reign -- a district drains of colour and life; its dead rise pale\n\n_No Ledger task points at this branch._",
+     "description": "18 commits not in Develop-Main · last commit today · local only\n> feat: Grave Tide -- every body in town rises; where the most lie, a giant of bones\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/decree-powers",
-     "description": "292 commits not in Develop-Main · last commit today · local only\n> assets: Breathing Is Prohibited's icon and draft clip; its haze reads on town ground\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "merge/god-into-dm",
-     "description": "286 commits not in Develop-Main · last commit today · local only\n> test: re-record references after merging Develop-Main\n\n_No Ledger task points at this branch._",
+     "description": "10 commits not in Develop-Main · last commit today · local only\n> feat: Erasing Distance (Decree, Tier 3) -- a dragged line folds to its middle, crushes, then springs back\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "272 commits not in Develop-Main · last commit today\n> dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "feat/children",
-     "description": "merged into Develop-Main · last commit yesterday\n> feat: cuter children: four chibi PixelLab kids (child_a-d) drawn 15 px tall\n\n**In progress** (1)\n• Town children (Discord idea Add children Npc) — **needs you**",
+     "description": "merged into Develop-Main · last commit today\n> dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
      "title": "god/dominion-t3-old",
-     "description": "215 commits not in Develop-Main · last commit 6 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "description": "2 commits not in Develop-Main · last commit 6 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -56,19 +46,12 @@
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-12\n> fix: the Lantern's flare moans without words\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (23)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-12\n> test: Solaris's closing sound is solar_fade (the sound audit's name) at the pillar\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (23)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
-    }
-   ]
-  },
-  {
-   "allowed_mentions": {
-    "parse": []
-   },
-   "embeds": [
+    },
     {
      "title": "Recently done",
-     "description": "• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_\n• Dominion powers sound like the mind (skill-tree audit) _(11-12)_\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts _(11-12)_\n• Skill Tree wheel + Remembrance (try a power before buying) _(11-12)_\n• Zoom-out cap x0.85 (Discord idea 'Zoom cap') _(11-12)_\n• Zoom readout (step 1 of the zoom cap) _(11-12)_\n• Passage ability levels built (god branch) _(11-12)_\n• Interface sounds to match the dark medieval look _(11-11)_",
+     "description": "• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_\n• Dominion powers sound like the mind (skill-tree audit) _(11-12)_\n• God progression merged into Develop-Main _(11-12)_\n• Town children (Discord idea Add children Npc) _(11-12)_\n• Soldier jobs: guards at fires, rubble piles, digging, watch posts _(11-12)_\n• Skill Tree wheel + Remembrance (try a power before buying) _(11-12)_\n• Zoom-out cap x0.85 (Discord idea 'Zoom cap') _(11-12)_\n• Zoom readout (step 1 of the zoom cap) _(11-12)_",
      "color": 10185686
     }
    ]

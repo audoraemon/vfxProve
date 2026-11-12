@@ -1,10 +1,11 @@
 {
- "hash": "a3647765541de771",
- "updated": "2026-11-12T18:49:17+07:00",
+ "hash": "b1f2c536598aef80",
+ "updated": "2026-11-12T20:08:41+07:00",
  "changes": {
-  "date": "<t:1794484157:f>",
+  "date": "<t:1794488921:f>",
   "items": [
-   "New: Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit)"
+   "Done: Town children (Discord idea Add children Npc)",
+   "New: God progression merged into Develop-Main"
   ]
  },
  "snapshot": {
@@ -312,6 +313,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-04",
     "order": 204
+   },
+   "god-into-develop-main": {
+    "title": "God progression merged into Develop-Main",
+    "status": "done",
+    "area": "God",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-12",
+    "order": 902
    },
    "god-level-tables-1": {
     "title": "Level tables, batch 1: five levels and the level-5 twist",
@@ -980,11 +990,11 @@
    },
    "town-children": {
     "title": "Town children (Discord idea Add children Npc)",
-    "status": "doing",
+    "status": "done",
     "area": "Crowd",
-    "needs_you": true,
-    "branch": "feat/children",
-    "updated": "2026-11-11",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-12",
     "order": 901
    },
    "ui-sfxr-listen": {
@@ -1596,48 +1606,32 @@
   "branches": [
    {
     "name": "god/death-powers",
-    "ahead": 299,
-    "behind": 42,
+    "ahead": 18,
+    "behind": 46,
     "date": "2026-11-12",
-    "subject": "feat: Pale Reign -- a district drains of colour and life; its dead rise pale",
+    "subject": "feat: Grave Tide -- every body in town rises; where the most lie, a giant of bones",
     "pushed": false
    },
    {
     "name": "god/decree-powers",
-    "ahead": 292,
-    "behind": 42,
+    "ahead": 10,
+    "behind": 46,
     "date": "2026-11-12",
-    "subject": "assets: Breathing Is Prohibited's icon and draft clip; its haze reads on town ground",
-    "pushed": false
-   },
-   {
-    "name": "merge/god-into-dm",
-    "ahead": 286,
-    "behind": 3,
-    "date": "2026-11-12",
-    "subject": "test: re-record references after merging Develop-Main",
+    "subject": "feat: Erasing Distance (Decree, Tier 3) -- a dragged line folds to its middle, crushes, then springs back",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
-    "ahead": 272,
-    "behind": 42,
+    "ahead": 0,
+    "behind": 59,
     "date": "2026-11-12",
     "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
     "pushed": true
    },
    {
-    "name": "feat/children",
-    "ahead": 0,
-    "behind": 35,
-    "date": "2026-11-11",
-    "subject": "feat: cuter children: four chibi PixelLab kids (child_a-d) drawn 15 px tall",
-    "pushed": true
-   },
-   {
     "name": "god/dominion-t3-old",
-    "ahead": 215,
-    "behind": 159,
+    "ahead": 2,
+    "behind": 235,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1645,7 +1639,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 444,
+    "behind": 733,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1653,7 +1647,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 402,
+    "behind": 691,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1662,7 +1656,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-12",
-   "subject": "fix: the Lantern's flare moans without words"
+   "subject": "test: Solaris's closing sound is solar_fade (the sound audit's name) at the pillar"
   }
  }
 }

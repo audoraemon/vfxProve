@@ -181,7 +181,7 @@ func _doors() -> void:
 			continue
 		if one_at_a_time and not _reading.is_empty():
 			continue  # (v0.11 M2) the next waits at the door
-		var seer := faithful_seeing(door, SIGHT)
+		var seer := faithful_seeing(door, SIGHT, null, p)  # (Corpse Guise: one passing as the walking dead is not seen)
 		if seer != null:
 			_turned[p] = true
 			_report(seer, temple_door)
@@ -242,7 +242,7 @@ func _exit(p: Person) -> void:
 	p.ground_pos = door
 	crowd._field.add(p)
 	p.leave_shelter(false)
-	var seer := faithful_seeing(door, SIGHT)
+	var seer := faithful_seeing(door, SIGHT, null, p)
 	if seer != null:
 		_report(seer, temple_door)
 

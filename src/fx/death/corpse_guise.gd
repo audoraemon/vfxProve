@@ -68,9 +68,10 @@ func _build() -> void:
 		_breathe()
 
 
-## Whether this cast still keeps `p`'s guise: it laid it, no later cast took it over, and it is still on.
-func _keeps(p: Person) -> bool:
-	return is_instance_valid(p) and p.statuses.has(KEY) and int(_owner.get(p.get_instance_id(), 0)) == get_instance_id()
+## Whether this cast still keeps `p`'s guise: it laid it, no later cast took it over, and it is still on. A Variant: `p` may be freed.
+func _keeps(p: Variant) -> bool:
+	return is_instance_valid(p) and (p as Person).statuses.has(KEY) \
+		and int(_owner.get((p as Person).get_instance_id(), 0)) == get_instance_id()
 
 
 func _fx_process(delta: float) -> void:
@@ -105,10 +106,22 @@ func _lift(p: Person) -> void:
 
 
 func _finish() -> void:
+	_release()
+	super()
+
+
+## Freed without finishing (its parent torn down mid-night): the guise still comes off and the count is let go.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_release()
+
+
+## Every guise this cast still keeps comes off, and its share of _owner is let go (for one freed meanwhile too). Safe to call twice.
+func _release() -> void:
 	for p in marked:
 		if _keeps(p):
 			_lift(p)
 	for id in _ids:
 		if int(_owner.get(id, 0)) == get_instance_id():
 			_owner.erase(id)
-	super()
+	_ids.clear()

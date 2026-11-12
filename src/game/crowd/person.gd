@@ -1724,7 +1724,7 @@ func resists_mind() -> bool:
 ## Whether this person passes as the walking dead now (Corpse Guise, Death III: statuses[&"guise"] holds the seconds left, laid,
 ## counted down and taken off by CorpseGuiseFx). The one hook the watch reads: a guised person is never seen, seized, reported
 ## or witnessing (EscortDirector._seen_by(), MissionDirector.faithful_seeing(), Crowd.nearest_witness()), never chosen by a
-## soldier to fight (_fightable()), spared by Death's undead (Visitors' spare_guise), and drawn greyed, shambling head down.
+## soldier on the watch to fight (_fightable()), spared by Death's undead (Visitors' spare_guise), and drawn greyed, shambling head down.
 func guised() -> bool:
 	return statuses.has(&"guise")
 
@@ -2041,8 +2041,8 @@ func _fightable(p: Person) -> bool:
 		return false
 	if p.is_down() and _fight_rule != FightRule.TARGET_ONLY:
 		return false  # nobody is beaten on the ground; a mob set on one person (a verdict) still finishes it
-	if soldier and _fight_rule != FightRule.TARGET_ONLY and p.guised():
-		return false  # Corpse Guise: the watch looks straight past the walking dead (a power's own order still holds)
+	if soldier and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND) and p.guised():
+		return false  # Corpse Guise: the watch's own choice looks straight past the walking dead (a frenzy or a power's order does not)
 	match _fight_rule:
 		FightRule.HOSTILES:
 			# A fighting citizen, or a fighter set on another side (a soldier turned).

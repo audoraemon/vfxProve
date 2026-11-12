@@ -659,6 +659,8 @@ func _on_post(v: Variant) -> bool:
 func _hunt() -> void:
 	hunters.clear()
 	hunters = _appoint_hunters(charge, hunt_size)
+	if _alive(charge) and charge.guised():
+		return  # (Corpse Guise) passing as the walking dead, he is no one to go after: they set out once it is off (_step_hunters())
 	for h in hunters:
 		h.go_duty(charge.ground_pos)
 
@@ -666,8 +668,8 @@ func _hunt() -> void:
 ## Each searcher kept walking to where he is now (v0.11 M2; one in a mind not his own is left be). v0.11 M6: single-charge, after
 ## charges[0] (plan decision 268), and nothing once he is gone; Exodus overrides it with its households' searchers.
 func _step_hunters() -> void:
-	if not _alive(charge):
-		return
+	if not _alive(charge) or charge.guised():
+		return  # (Corpse Guise) nobody homes on one passing as the walking dead: they hold where they are until it is off
 	for v: Variant in hunters:
 		if not _alive(v) or v == seizer:
 			continue

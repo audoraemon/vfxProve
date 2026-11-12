@@ -6,6 +6,8 @@ extends RefCounted
 
 const RD := preload("res://tests/test_raise_dead.gd")
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
+const Mira := preload("res://tests/test_miras_house.gd")
+const Lamb := preload("res://tests/test_lost_lamb.gd")
 const DT := 0.05
 
 
@@ -29,6 +31,11 @@ static func run(t) -> void:
 	_inquisitor(t)
 	_seized_after(t)
 	_faithful(t)
+	_freed_fx(t)
+	_mira(t)
+	_lamb_hunters(t)
+	_exodus_searchers(t)
+	_trail_waits(t)
 
 
 ## The row: Tier III's 3 Might, 50 s, a click, quiet (no danger for the town to see), Death's.
@@ -228,6 +235,12 @@ static func _hunt() -> Dictionary:
 			Kit.arrive(v as Person, (v as Person).ground_pos + Vector2(60.0, 60.0))
 	d._come_out(0)
 	Kit.run_for(s, EscortDirector.TICK + DT)
+	_give_ctx(s)
+	return s
+
+
+## An FxContext over a mission world (the kit's, Mira's House's, The Lost Lamb's: the same keys), kept as s.ctx.
+static func _give_ctx(s: Dictionary) -> FxContext:
 	var ctx := FxContext.new()
 	ctx.env = s.env
 	ctx.field = s.field
@@ -238,15 +251,18 @@ static func _hunt() -> Dictionary:
 	ctx.overhead = Node2D.new()
 	ctx.ground = Node2D.new()
 	s["ctx"] = ctx
-	return s
+	return ctx
+
+
+## Frees a world's FxContext layers (an effect freed unfinished takes its guise off).
+static func _drop_ctx(s: Dictionary) -> void:
+	var ctx: FxContext = s.ctx
+	ctx.overhead.free()
+	ctx.ground.free()
 
 
 static func _hunt_done(s: Dictionary) -> void:
-	var ctx: FxContext = s.ctx
-	for c in ctx.overhead.get_children():
-		(c as FxTimeline).end_now()
-	ctx.overhead.free()
-	ctx.ground.free()
+	_drop_ctx(s)
 	Kit.done(s)
 
 
@@ -273,6 +289,17 @@ static func _watcher(t) -> void:
 	t.check(not lead.held and d.seizures == 0 and d._seen_by(lead) == null,
 		"a watcher does not see a guised believer (held %s, seizures %d)" % [lead.held, d.seizures])
 	_hunt_done(s)
+	# The control: the same patrol soldier a step from the same believer, unguised, sees and seizes him.
+	var n := _hunt()
+	var e: HideFaithfulDirector = n.d
+	var lead2 := e.lamp(0)
+	var lp2 := lead2.man as Person
+	var soldier2 := e.patrols[0][0] as Person
+	Kit.arrive(soldier2, lp2.ground_pos + Vector2(1.0, 0.0))
+	soldier2.send_to_post(soldier2.ground_pos)
+	Kit.run_for(n, 2.0 * EscortDirector.TICK + DT)
+	t.check(not lp2.guised() and lead2.held and lead2.seizer == soldier2 and e.seizures == 1, "the control: unguised, he is seen and seized")
+	_hunt_done(n)
 
 
 ## "an inquisitor beside a guised believer does not seize him", nor takes up his trail.
@@ -343,3 +370,146 @@ static func _faithful(t) -> void:
 		"guised, no Faithful sees him")
 	fx.end_now()
 	RD._done(made)
+
+## An effect freed without finishing (its layer torn down mid-night) still takes its guise off and lets go of its count.
+static func _freed_fx(t) -> void:
+	var made := RD._setup()
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var p: Person = crowd.citizens[42]
+	p.ground_pos = at
+	var fx := _cast(made[5], at)
+	RD._run(fx, 3.0)
+	t.check(p.guised() and CorpseGuiseFx._owner.has(p.get_instance_id()), "guised, and counted by the cast")
+	fx.free()
+	t.check(not p.guised() and not CorpseGuiseFx._owner.has(p.get_instance_id()), "the cast freed unfinished: the guise is off, the count let go")
+	RD._done(made)
+
+
+## Runs a mission world (crowd, then Rules) and an effect together.
+static func _run_with(s: Dictionary, fx: FxTimeline, seconds: float) -> void:
+	for i in roundi(seconds / DT):
+		if fx != null and not fx.finished:
+			fx._process(DT)
+		(s.crowd as Crowd).advance(DT)
+		(s.rules as Rules).advance(DT)
+
+
+## Mira's House: a guised mourner at the door goes in and comes out under a Faithful's eyes, and nobody reports him.
+static func _mira(t) -> void:
+	var s: Dictionary = Mira._setup()
+	var d: MirasHouseDirector = s.d
+	var ctx := _give_ctx(s)
+	var g := d.grieving[0]
+	Mira._blind(d, d.door)
+	var f := d.faithful[0]
+	f.ground_pos = d.door + Vector2(2.5, 0.0)
+	Mira._bring(d, g)
+	var fx := FxTimeline.cast(CorpseGuiseFx, ctx, d.door) as CorpseGuiseFx
+	t.check(g.guised() and not f.guised(), "the mourner at the door guised, the Faithful 2.5 off not")
+	_run_with(s, fx, DT * 2.0)
+	t.check(g.inside and d.reports.is_empty() and d.reports_started == 0, "a guised mourner at Mira's door is not seen going in: no report")
+	_run_with(s, fx, MirasHouseDirector.READ_SECONDS + 0.5)
+	t.check(not g.inside and d.believers.has(g) and g.guised() and d.reports.is_empty() and d.reports_started == 0,
+		"nor coming out, a Believer, under the same Faithful's eyes")
+	_drop_ctx(s)
+	Mira._done(s)
+
+
+## The Lost Lamb (the Escort type's searchers): at 2:30 they are named, but nobody homes on a guised charge; once it is off they go.
+static func _lamb_hunters(t) -> void:
+	var s: Dictionary = Lamb._world()
+	var d: LostLambDirector = s.d
+	var ctx := _give_ctx(s)
+	Lamb._clear_watchers(d)
+	Lamb._run(s, LostLambDirector.HUNT_AT - 5.0)
+	var fx := FxTimeline.cast(CorpseGuiseFx, ctx, d.charge.ground_pos) as CorpseGuiseFx
+	_run_with(s, fx, 5.0 + DT * 2.0)
+	var near := 0
+	for h in d.hunters:
+		near += 1 if h.goal().distance_to(d.charge.ground_pos) < 1.5 or h.anchor.distance_to(d.charge.ground_pos) < 1.5 else 0
+	t.check(d.charge.guised() and d.hunters.size() == LostLambDirector.HUNTERS and near == 0,
+		"the searchers are named, but nobody homes on a guised charge (%d of %d near him)" % [near, d.hunters.size()])
+	_run_with(s, fx, CorpseGuiseFx.SPAN)
+	var ok := not d.charge.guised() and d.hunters.size() == LostLambDirector.HUNTERS
+	for h in d.hunters:
+		ok = ok and h.mind == Person.Mind.DUTY and h.anchor.distance_to(d.charge.ground_pos) < 1.5
+	t.check(ok, "once the guise is off they walk to him")
+	_drop_ctx(s)
+	Lamb._done(s)
+
+
+## The Exodus: a household's searchers leave the Temple, but hold while its lamp is guised; once it is off they go to him.
+static func _exodus_searchers(t) -> void:
+	var s := Kit.world(MissionBook.exodus())
+	var d: ExodusDirector = s.d
+	var ctx := _give_ctx(s)
+	for v: Variant in d._watchers():
+		if MissionDirector._alive(v):
+			Kit.arrive(v as Person, (v as Person).ground_pos + Vector2(60.0, 60.0))
+	d._come_out(0)
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var h: ExodusDirector.Household = d.households[0]
+	Kit.run_for(s, ExodusDirector.HUNT_AFTER - 3.0)
+	var fx := FxTimeline.cast(CorpseGuiseFx, ctx, (d.lamp(0).man as Person).ground_pos) as CorpseGuiseFx
+	_run_with(s, fx, 3.0 + DT * 2.0)
+	var lead := d.lamp(0).man as Person
+	var near := 0
+	for v: Variant in h.searchers:
+		near += 1 if (v as Person).anchor.distance_to(lead.ground_pos) < 1.5 else 0
+	t.check(h.sent and lead.guised() and near == 0, "sent out, the searchers do not home on a guised lamp (%d near)" % near)
+	_run_with(s, fx, CorpseGuiseFx.SPAN)
+	lead = d.lamp(0).man as Person
+	var ok := h.sent and not lead.guised()
+	for v: Variant in h.searchers:
+		ok = ok and (v as Person).anchor.distance_to(lead.ground_pos) < 1.5
+	t.check(ok, "once the guise is off they go to its lamp")
+	_drop_ctx(s)
+	Kit.done(s)
+
+
+## Hide the Faithful (review focus 4): the search reaching the door of a household out and wholly guised waits there, and takes up its
+## trail once the guise is off -- the household is not lost to the search for the night.
+static func _trail_waits(t) -> void:
+	var s := _hunt()
+	var d: HideFaithfulDirector = s.d
+	var ctx: FxContext = s.ctx
+	var hh: ExodusDirector.Household = d.households[0]
+	var k := -1
+	for i in d._search.size():
+		if int(d._search[i].household) == 0:
+			k = i
+	t.check(k >= 0 and hh.out, "household 0 is out, and its house is on the list")
+	var fxs: Array[CorpseGuiseFx] = []
+	for c: EscortDirector.Charge in hh.members:
+		var p := c.man as Person
+		if not d._resolved(c) and not p.inside and not p.guised():
+			fxs.append(FxTimeline.cast(CorpseGuiseFx, ctx, p.ground_pos) as CorpseGuiseFx)
+	var all := true
+	for c: EscortDirector.Charge in hh.members:
+		all = all and (d._resolved(c) or (c.man as Person).inside or (c.man as Person).guised())
+	t.check(all and not d._trail_seen(0), "every believer of it out of doors is guised: no trail to see")
+	d._search_at = k
+	d._search_stop = -1.0
+	d._trail = -1
+	var door: Vector2 = d._search[k].door
+	var by := d.inquisitors[0] as Person
+	var searched := d.searched
+	for i in roundi((2.0 * EscortDirector.TICK + DT) / DT):
+		for fx in fxs:
+			fx._process(DT)
+		Kit.arrive(by, door)
+		Kit.run_for(s, DT)
+	t.check(d._trail == -1 and d._search_at == k and d.searched == searched and d._search_stop < 0.0,
+		"the search at the door of a wholly guised household waits there: no trail, not passed by (at %d of %d, trail %d)" % [d._search_at, k, d._trail])
+	for fx in fxs:
+		fx.end_now()
+	Kit.arrive(by, door)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	var held := 0
+	for c: EscortDirector.Charge in hh.members:
+		held += 1 if c.held else 0
+	var trailed := d._trail == 0 and d.searched == searched + 1 and (s.banners as Array).has("THE INQUISITION FINDS THE TRAIL")
+	t.check(trailed or held > 0, "once the guise is off the search has them again: trailed or seized (trail %d, %d held)" % [d._trail, held])
+	_hunt_done(s)

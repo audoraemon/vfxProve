@@ -788,9 +788,12 @@ func _advance_search() -> void:
 		return
 	if not _search_near(e.door, HF_ARRIVE):
 		return
-	_pairs.clear()  # an arrival: the pair's places are worked out afresh, on the ground as it stands now
 	var hi := int(e.household)
-	if hi >= 0 and (households[hi] as Household).out and not (households[hi] as Household).done and _trail_seen(hi):
+	var open := hi >= 0 and (households[hi] as Household).out and not (households[hi] as Household).done
+	if open and not _trail_seen(hi):
+		return  # (Corpse Guise) its trail is all the walking dead's: the search waits at the door and takes it up once a guise is off
+	_pairs.clear()  # an arrival: the pair's places are worked out afresh, on the ground as it stands now
+	if open:
 		_trail = hi
 		searched += 1
 		rules.banner.emit("THE INQUISITION FINDS THE TRAIL")
@@ -800,7 +803,7 @@ func _advance_search() -> void:
 
 
 ## Household `i` leaves a trail the search can take up at its door: unless every believer of it still out of doors passes as the walking
-## dead (Corpse Guise) -- one wholly guised is passed by as any other door. With nobody guised, always (the rule as it was).
+## dead (Corpse Guise) -- then the search waits at the door until one's guise is off. With nobody guised, always (the rule as it was).
 func _trail_seen(i: int) -> bool:
 	var guised := false
 	for c: Charge in (households[i] as Household).members:

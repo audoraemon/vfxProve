@@ -1,4 +1,7 @@
-{"length": 2.0, "rms_db": -19.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 10, "damp": 5000}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
-  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan01.wav", "at": 0.0, "from": 0.6, "dur": 1.9, "pitch": 3, "hp": 260, "lp": 5200, "fade_in": 500, "fade_out": 600, "gain_db": -2},
-  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 1.wav", "at": 0.2, "dur": 1.7, "pitch": -2, "lp": 5000, "fade_in": 300, "fade_out": 500, "gain_db": -5},
-  {"src": "lib:oga/80-cc0-creture-sfx-2/80-CC0-creature-sfx-2/weird_06.ogg", "at": 1.0, "pitch": 2, "hp": 500, "gain_db": -8}]}
+{"length": 2.4, "rms_db": -19.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 14, "damp": 6000}, "eq": [["lowshelf", 120, 3.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.2, "dur": 1.4, "reverse": true, "pitch": -3, "hp": 250, "lp": 6000, "gain_db": -3, "fade_in": 200, "fade_out": 200},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan01.wav", "at": 0.5, "from": 0.6, "dur": 1.8, "pitch": 3, "hp": 260, "lp": 5200, "gain_db": -3, "fade_in": 500, "fade_out": 600},
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 1.wav", "at": 0.6, "onset": true, "dur": 1.6, "pitch": -2, "lp": 5000, "gain_db": -7, "fade_in": 300, "fade_out": 500},
+  {"src": "lib:oga/heartbeat-sounds/heartbeat_slow_0.wav", "at": 0.9, "onset": true, "dur": 1.2, "hp": 30, "lp": 600, "gain_db": -2, "fade_out": 300},
+  {"src": "lib:oga/80-cc0-creture-sfx-2/80-CC0-creature-sfx-2/weird_06.ogg", "at": 1.3, "onset": true, "pitch": 2, "hp": 500, "gain_db": -10}
+]}

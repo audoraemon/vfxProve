@@ -1,0 +1,5 @@
+{"length": 2.2, "rms_db": -16.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_strain.wav", "at": 0.0, "from": 0.0, "dur": 2.2, "hp": 60, "lp": 11000, "fade_in": 50, "fade_out": 150},
+  {"src": "lib:oga/droning-sound-effects/drone64.wav", "at": 0.0, "from": 30.0, "dur": 2.0, "hp": 200, "lp": 6000, "gain_db": -8, "fade_in": 1200, "fade_out": 150},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_004.ogg", "at": 1.6, "onset": true, "pitch": -4, "hp": 1500, "lp": 12000, "gain_db": -12}
+]}

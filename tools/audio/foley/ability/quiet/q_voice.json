@@ -1,1 +1,14 @@
-{"length": 3.0, "rms_db": -14.5, "reverb": {"rt60": 2.4, "mix": 0.3, "predelay_ms": 25, "damp": 4000}, "layers": [{"src": "lib:oga/ghost-voice-pack/ghost_and_lich_voice_pack/Ghost and Lich Voice Pack/output (11).wav", "at": 0.0, "pitch": -12, "dur": 2.8, "hp": 70, "lp": 4500, "gain_db": -1, "fade_in": 500, "fade_out": 900}, {"src": "lib:oga/horror-hit-soundpack-1/horror_hit_soundpack_1/Horror Hit Soundpack 1/Sound/Pitches/Very Bassy/Very Bassy 3.wav", "at": 0.0, "dur": 2.8, "gain_db": -5, "fade_in": 300, "fade_out": 900}, {"src": "lib:oga/cure-magic/curemagic/Cure1.wav", "at": 0.6, "pitch": -3, "gain_db": -8, "fade_out": 700}]}
+{"length": 2.2, "rms_db": -18.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_murmur.wav", "at": 0.0, "from": 0.0, "dur": 2.2, "hp": 60, "lp": 10000, "fade_in": 100, "fade_out": 200},
+  {"src": "lib:oga/droning-sound-effects/drone66.wav", "at": 0.0, "from": 10.0, "dur": 2.0, "hp": 40, "lp": 1500, "gain_db": -6, "fade_in": 1200, "fade_out": 200},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_3.ogg", "at": 0.791, "onset": true, "pitch": -3.95, "gain_db": -8.6, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_3.ogg", "at": 0.796, "onset": true, "pitch": -4.85, "gain_db": -11.2, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.854, "onset": true, "pitch": -2.28, "gain_db": -7.5, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_2.ogg", "at": 0.548, "onset": true, "pitch": -4.92, "gain_db": -8.1, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_4.ogg", "at": 0.529, "onset": true, "pitch": -2.9, "gain_db": -10.9, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.984, "onset": true, "pitch": -4.19, "gain_db": -9.7, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.873, "onset": true, "pitch": -3.66, "gain_db": -7.3, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_3.ogg", "at": 0.716, "onset": true, "pitch": -5.23, "gain_db": -8.5, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.133, "onset": true, "pitch": -5.55, "gain_db": -8.6, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_3.ogg", "at": 0.481, "onset": true, "pitch": -2.89, "gain_db": -8.4, "hp": 300, "lp": 7000, "fade_out": 60}
+]}

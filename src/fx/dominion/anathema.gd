@@ -52,7 +52,10 @@ func _build() -> void:
 	duration = T_CAST + SPAN + 0.5
 	busy = T_CAST
 	at(T_CAST, _lay)
-	ctx.play(&"q_anathema", origin)
+	if mark == HALLOWED:
+		ctx.play(&"dom_hallowed", origin)
+	else:
+		ctx.play(&"q_anathema", origin)
 	if not DominionParts.staged(self):
 		return
 	var col := HALLOW if mark == HALLOWED else CURSE
@@ -71,7 +74,7 @@ func _lay() -> void:
 			ctx.crowd.mark_structure(s, mark, SPAN)
 		if mark == HALLOWED:
 			_gather()
-	ctx.play(&"jg_rise", origin, -8.0)
+	ctx.play(&"dom_mark", origin)
 	if not DominionParts.staged(self):
 		return
 	var col := HALLOW if mark == HALLOWED else CURSE

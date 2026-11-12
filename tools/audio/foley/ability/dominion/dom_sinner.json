@@ -1,0 +1,5 @@
+{"length": 3.6, "rms_db": -17.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_sinner.wav", "at": 0.0, "from": 0.0, "dur": 3.6, "hp": 60, "lp": 9000, "fade_out": 900},
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 0.0, "from": 0.13, "dur": 3.0, "pitch": -14, "hp": 60, "lp": 5000, "gain_db": -4, "fade_in": 3, "fade_out": 1500},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.4, "onset": true, "pitch": -6, "hp": 600, "lp": 8000, "gain_db": -8}
+]}

@@ -1,1 +1,5 @@
-{"length": 2.2, "rms_db": -17.0, "reverb": {"rt60": 1.6, "mix": 0.3, "predelay_ms": 12, "damp": 9000}, "layers": [{"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.0, "pitch": 12, "gain_db": -2, "fade_out": 300}, {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 0.24, "pitch": 16, "gain_db": -5, "fade_out": 300}, {"src": "lib:oga/bell-dingschimes/bell_ding1.wav", "at": 0.5, "pitch": 19, "gain_db": -4, "fade_out": 300}, {"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.8, "pitch": 24, "gain_db": -8, "fade_out": 300}, {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/item_gem_04.ogg", "at": 0.15, "gain_db": -7, "hp": 2500}]}
+{"length": 4.0, "rms_db": -18.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 0.05, "dur": 3.9, "pitch": 5, "hp": 400, "lp": 12000, "fade_out": 1500},
+  {"src": "repo:tools/audio/music/render/dom_choir_wisp.wav", "at": 0.2, "from": 0.0, "dur": 3.6, "hp": 300, "lp": 11000, "gain_db": -4, "fade_in": 300, "fade_out": 1200},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_002.ogg", "at": 0.0, "onset": true, "pitch": 7, "hp": 2000, "lp": 14000, "gain_db": -14}
+]}

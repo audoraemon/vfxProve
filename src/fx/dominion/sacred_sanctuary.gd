@@ -138,7 +138,7 @@ func _raise() -> void:
 		var p := e as Person
 		if p != null and not guards.has(p) and inside(shape, site, p.ground_pos):
 			sheltered[p] = true
-	ctx.play(&"jg_rise", site, -8.0)
+	ctx.play(&"dom_wall", site)
 	if not DominionParts.staged(self):
 		return
 	var ground := Ground.new()

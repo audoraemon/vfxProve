@@ -96,6 +96,36 @@ static func run(t) -> void:
 	t.check(not wall.sealed and wall.bound.is_empty() and b.ground_pos.distance_to(at) > NoLeaveFx.RADIUS and b.badge_left == 0.0,
 		"when the time is up the law lifts and they go where they will")
 	wall.free()
+	# The amber cell (spec 5.1): a law laid on the place (LawZone), which anyone may walk into and nothing leaves --
+	# hounds too; at its end the amber cracks and falls away in shards, and hurts no one.
+	var visitors := Visitors.new().setup(ctx.field, crowd, grid, made[4])
+	var hound := visitors.summon(at + Vector2(0.5, -0.5), Animal.Breed.HELLHOUND, 3, 1.0, 8.0, 0.5, 1.0)
+	a.ground_pos = at + Vector2(1.0, 0.0)
+	guard.ground_pos = at + Vector2(NoLeaveFx.RADIUS + 1.0, 0.0)
+	var killed := crowd.killed_citizens + crowd.killed_soldiers
+	var cell: NoLeaveFx = FxTimeline.cast(load("res://src/fx/decree/leaving_is_prohibited.gd"), ctx, at)
+	cell._process(NoLeaveFx.T_SEAL + 0.05)
+	t.check(cell.law != null and crowd.laws.has(cell.law) and crowd.in_law(a, LawZone.NO_LEAVING) and cell.bound.has(a)
+		and not cell.bound.has(guard), "the cell is a law laid on the place, which the town's choices can ask")
+	hound.ground_pos = at + Vector2(0.0, -NoLeaveFx.RADIUS - 1.0)
+	cell._process(0.016)
+	t.check(is_equal_approx(hound.ground_pos.distance_to(at), NoLeaveFx.RADIUS) and not cell.bound.has(hound),
+		"a hound inside cannot leave it either (%.2f)" % hound.ground_pos.distance_to(at))
+	guard.ground_pos = at + Vector2(NoLeaveFx.RADIUS - 0.5, 0.0)
+	cell._process(0.016)
+	t.check(guard.ground_pos.is_equal_approx(at + Vector2(NoLeaveFx.RADIUS - 0.5, 0.0)) and cell.bound.has(guard)
+		and guard.badge_glyph == DecreeParts.BARS and guard.badge_left > 0.0, "a guard outside may walk in, and then he wears the bars")
+	guard.ground_pos = at + Vector2(NoLeaveFx.RADIUS + 1.0, 0.0)
+	cell._process(0.016)
+	t.check(is_equal_approx(guard.ground_pos.distance_to(at), NoLeaveFx.RADIUS) and cell.shards.is_empty(),
+		"and he cannot walk out again")
+	cell._process(NoLeaveFx.HOLD_TIME)
+	t.check(not cell.shards.is_empty() and not crowd.laws.has(cell.law) and not crowd.in_law(a, LawZone.NO_LEAVING)
+		and cell.bound.is_empty() and guard.badge_left == 0.0,
+		"at its end the amber cracks and falls away in shards (%d), and the law is lifted" % cell.shards.size())
+	t.check(crowd.killed_citizens + crowd.killed_soldiers == killed and a.is_alive() and guard.is_alive() and hound.is_alive(),
+		"the shards hurt no one")
+	cell.free()
 
 	# --- The Bell Lies
 	# The town has been warned: the bell rang true, and they are afraid.

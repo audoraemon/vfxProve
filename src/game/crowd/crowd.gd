@@ -924,20 +924,38 @@ func step_laws(delta: float) -> void:
 	var holding := false
 	_drop_ended_laws()
 	for z in laws:
-		if z.holds(LawZone.NO_LEAVING):
+		if z.holds(LawZone.NO_LEAVING) and not z.stepped_by_holder:
 			near = near.merge(z.bounds()) if holding else z.bounds()
 			holding = true
 	var people: Array = []
 	var beasts: Array = []
 	if holding:
 		people = _field.in_rect(near)
-		for pack: Visitors in visitors:
-			for a in pack.living():
-				if near.has_point(a.ground_pos):
-					beasts.append(a)
+		_beasts_in(near, beasts)
 	for z in laws:
-		z.step(delta, people, beasts)
+		if not z.stepped_by_holder:
+			z.step(delta, people, beasts)
 	_drop_ended_laws()
+
+
+## One frame of a law its holder steps on its own clock (LawZone.stepped_by_holder): who stands about it is taken for
+## it alone, then it steps as step_laws() would step it.
+func step_law(z: LawZone, delta: float) -> void:
+	var people: Array = []
+	var beasts: Array = []
+	if z.holds(LawZone.NO_LEAVING) and z.alive():
+		var near := z.bounds()
+		people = _field.in_rect(near)
+		_beasts_in(near, beasts)
+	z.step(delta, people, beasts)
+
+
+## The living visitors standing in `near`, added to `out`.
+func _beasts_in(near: Rect2, out: Array) -> void:
+	for pack: Visitors in visitors:
+		for a in pack.living():
+			if near.has_point(a.ground_pos):
+				out.append(a)
 
 
 ## Every law whose time has run out, or whose effect is gone, is lifted.

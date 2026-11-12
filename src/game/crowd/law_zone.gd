@@ -36,6 +36,10 @@ var is_lane := false
 var left := 0.0
 ## The effect that laid it (Crowd.add_law(); hold_by()); the zone ends when it is freed. null for none.
 var holder: Node
+## Whether its holder steps it on its own clock (Crowd.step_law(), as the effect's frame runs) rather than the crowd's
+## frame (Crowd.step_laws() then leaves it to the holder, and only drops it once it has ended). Leaving Is Prohibited's
+## cell holds on the effect's clock.
+var stepped_by_holder := false
 ## NO LEAVING: whoever it holds now (a Person or an Animal) -> seconds until it may be turned back again.
 var members := {}
 ## How many times someone has been turned back at the edge (each hesitation), and what the last step() did: the

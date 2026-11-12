@@ -96,6 +96,9 @@ const AREAS := {
 	"gatebelow": {"shape": "circle", "r": TheGateBelowFx.REACH},
 	# PaleReignFx.RADIUS: the district that goes grey
 	"pale": {"shape": "circle", "r": PaleReignFx.RADIUS},
+	# PaleSerpentFx.LENGTH, BAND, MIN_LENGTH: the head's glide from the press along the drag, as long as the drag ("follow"),
+	# its shadow BAND each side
+	"serpent": {"shape": "lane", "length": PaleSerpentFx.LENGTH, "half": PaleSerpentFx.BAND, "min": PaleSerpentFx.MIN_LENGTH, "follow": true},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -194,6 +197,7 @@ const AREA_STATS := {
 	"raise": {"roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"}, "guise": {"r": "MARK_R"},
 	"gatebelow": {"r": "REACH"},
 	"pale": {"r": "RADIUS"},
+	"serpent": {"length": "LENGTH"},
 	"heavendoor": {"r": "PULL_R"},
 }
 ## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole
@@ -582,6 +586,12 @@ func lane_length() -> float:
 	return clampf((_at - _press).length(), float(a.get("min", 0.0)), float(a.get("length", 0.0)))
 
 
+## A lane's length: its own, or for one that runs as far as the drag ("follow": The Pale Serpent) the drag's, clamped
+## (lane_length()).
+func _lane_len_of(a: Dictionary) -> float:
+	return lane_length() if bool(a.get("follow", false)) else float(a.length)
+
+
 func area() -> Dictionary:
 	# A live power that takes a follow-up may want its own ground drawn (Procession's ring, Turn the Tide's pick).
 	var follow := _rules.follow_up_area(slot) if slot >= 0 else {}
@@ -802,7 +812,7 @@ func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
 	var a := area_at(key, level)
 	if String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
-		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key, level)
+		_crowd.on_cast(lane_start(key, at, dir), dir, _lane_len_of(a), key, level)
 	elif String(a.get("shape", "")) == "path":
 		# Two clicks: from the first toward the second, as far as the power runs.
 		var run := _at - at
@@ -841,7 +851,7 @@ func _draw() -> void:
 				_ring(_press, float(a.roam), COL_FAINT)
 		"lane":
 			var dir := aim_dir()
-			_lane(lane_start(_rules.key(slot), _press, dir), dir, float(a.length), float(a.half), edge)
+			_lane(lane_start(_rules.key(slot), _press, dir), dir, _lane_len_of(a), float(a.half), edge)
 			if a.has("fissure"):
 				for i in 8:
 					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5

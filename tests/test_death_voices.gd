@@ -57,8 +57,8 @@ static func _quiet(t) -> void:
 			var d := DeathVoices.new()
 			var got := d.heard(Vector2.ONE, kind, soldier, 0.0)
 			t.check(got.size() == 1 and got[0][0] == &"cit_fall", "%s (soldier %s) slumps, no cry (%s)" % [kind, soldier, got])
-	t.check(DeathVoices.QUIET_KINDS == [&"doom", &"deathmark", &"plague", &"pale"],
-		"the quiet kinds are Doom, the Death Mark, the plague and Pale Reign")
+	t.check(DeathVoices.QUIET_KINDS == [&"doom", &"deathmark", &"plague", &"pale", &"shadow"],
+		"the quiet kinds are Doom, the Death Mark, the plague, Pale Reign and the Pale Serpent's shadow")
 	# A quiet mass never roars: it is not a thing the town hears.
 	var d := DeathVoices.new()
 	var all := []

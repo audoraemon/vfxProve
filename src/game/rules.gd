@@ -81,6 +81,7 @@ const POWER_KINDS := {
 	"walker": [],
 	"gatebelow": [&"pit"],
 	"pale": [&"pale"],
+	"serpent": [&"shadow"],
 	"belllies": [],
 	"magnify": [&"magnify"],
 	"unseen": [],

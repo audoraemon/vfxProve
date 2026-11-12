@@ -80,10 +80,10 @@ static func _upgrades(t) -> void:
 		for j in i:
 			if r.intersects(UpgradesScreen.cell_rect(j, n)):
 				bad += 1
-	t.check(n == 42 and bad == 0, "the 42 locked powers' grid fits beside the upgrades, no two cells overlapping (%d, %d locked)" % [bad, n])
+	t.check(n == 43 and bad == 0, "the 43 locked powers' grid fits beside the upgrades, no two cells overlapping (%d, %d locked)" % [bad, n])
 	t.check(UpgradesScreen.cell_height(36) == UpgradesScreen.CELL.y and UpgradesScreen.cell_height(37) < UpgradesScreen.CELL.y
 		and UpgradesScreen.cell_height(37) >= UpgradesScreen.MIN_CELL_H,
-		"the rows keep their full height while they fit and share the room when they do not (%.0f px for 42)" % UpgradesScreen.cell_height(42))
+		"the rows keep their full height while they fit and share the room when they do not (%.0f px for 43)" % UpgradesScreen.cell_height(43))
 	var emitted := []
 	up.action.connect(func(what: String) -> void: emitted.append(what))
 	up.click(up.button_rect("dp").get_center())

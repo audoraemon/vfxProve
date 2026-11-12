@@ -457,6 +457,11 @@ const POWERS := [
 			{"RADIUS": 13.0, "MAX_DOORS": 21, "SPAN": 52.0, "MAX_SPIRITS": 190},
 			{"RADIUS": 13.5, "MAX_DOORS": 22, "SPAN": 56.0, "MAX_SPIRITS": 205},
 			{"RADIUS": 14.0, "MAX_DOORS": 24, "SPAN": 60.0, "MAX_SPIRITS": 220, "twist": true, "twist_text": "Rise Again: the horde's dead rise as ghosts"}]},
+	{"key": "serpent", "name": "The Pale Serpent", "path": "res://src/fx/death/pale_serpent.gd",
+		"blurb": "A vast feathered serpent glides through the town; whoever its shadow crosses dies. Once a descent.",
+		"dp": 6, "cooldown": 999.0, "aim": "drag",
+		"shape": "a vast feathered serpent rises out of the ground and glides along the drag (14 at most) for 10 s, then loops once: whoever its shadow crosses (2 wide) dies at once without a sound and lies whole, ready to rise; houses are left standing; whoever sees it rise within 12 sickens for 20 s, slowed, and takes the plague if it is in town; drag to send it; once a descent",
+		"authority": "death"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -503,6 +508,9 @@ const REACH := {
 	# Pale Reign: a district gone grey is seen across the town, but it is silent (it hushes the town), so it is heard only
 	# near; the danger lasts its 12 s
 	"pale": [14.0, 10.0, 0.8, 12.0],
+	# The Pale Serpent: a serpent the size of a street gliding over the roofs is seen across the town and heard far (wind and
+	# feathers); the danger lasts its glide and loop
+	"serpent": [24.0, 16.0, 0.9, 14.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -514,7 +522,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5, "pale": 2.0,
+	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5, "pale": 2.0, "serpent": 1.0,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -786,7 +794,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death", "gatebelow": "death", "pale": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death", "gatebelow": "death", "pale": "death", "serpent": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

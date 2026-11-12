@@ -1,7 +1,7 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
-Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder and Eminent Domain.
+Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder, Eminent Domain and Fenced Rule.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -678,9 +678,68 @@ def eminent():
     finish(rgb, "eminent")
 
 
+def fenced():
+    """Fenced Rule (Decree): on an ink field, a district seen at a slant -- a ring of iron posts round it, each with a
+    gilt finial and joined by a low iron rail, the far posts small and the near ones tall -- and on the ground inside it
+    two lines of law in gilt: the two rules it holds."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(131, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The ground inside the fence: an ellipse a little below the middle, a shade lighter, washed in ink.
+    cy = 6.0
+    ax, ay = 34.0, 17.0
+    e = np.hypot(x / ax, (y - cy) / ay)
+    rgb = blend(rgb, (44, 30, 60), np.clip((1.0 - e) / 0.08, 0.0, 1.0) * (0.75 + 0.25 * n))
+    # The rail: ink under iron, on the ellipse.
+    rail = np.abs(e - 1.0) * ay
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.0 - rail) / 0.8, 0.0, 1.0) * 0.9)
+    rgb = blend(rgb, (118, 112, 124), np.clip((0.9 - rail) / 0.5, 0.0, 1.0) * 0.8)
+    # Two lines of law on the ground: short gilt letter bars, the upper line shorter (far), the lower longer (near).
+    for row, (ly, half, h) in enumerate(((cy - 6.0, 16.0, 2.4), (cy + 2.5, 20.0, 2.8))):
+        for k in range(-8, 9):
+            lx = k * 2.4
+            if abs(lx) > half or (k + row) % 5 == 0:
+                continue
+            tall = h * (1.0 if (k * 7 + row) % 3 else 0.6)
+            bar = np.clip((0.75 - np.abs(x - lx)) / 0.4, 0.0, 1.0) * np.clip((tall - np.abs(y - ly)) / 0.5, 0.0, 1.0)
+            rgb = blend(rgb, (10, 6, 18), np.clip((0.75 - np.abs(x - lx - 0.8)) / 0.4, 0.0, 1.0)
+                        * np.clip((tall - np.abs(y - ly - 0.8)) / 0.5, 0.0, 1.0) * 0.7)
+            rgb = blend(rgb, (255, 207, 90), bar)
+        under = np.clip((0.6 - np.abs(y - ly - h - 1.6)) / 0.4, 0.0, 1.0) * (np.abs(x) < half + 1.0)
+        rgb = blend(rgb, (255, 207, 90), under * 0.6)
+    # The posts, far first so the near ones stand over them: taller and wider the nearer they stand.
+    posts = []
+    for k in range(14):
+        a = 2.0 * math.pi * k / 14.0 + 0.11
+        posts.append((ax * math.cos(a), cy + ay * math.sin(a), math.sin(a)))
+    posts.sort(key=lambda q: q[1])
+    for px, py, near in posts:
+        depth = 0.5 + 0.5 * near
+        high = 8.0 + 6.0 * depth
+        half = 1.0 + 0.7 * depth
+        body = (np.abs(x - px) < half) & (y < py) & (y > py - high)
+        rgb = blend(rgb, (10, 6, 18), ((np.abs(x - px) < half + 1.0) & (y < py + 1.0) & (y > py - high - 1.0)).astype(float))
+        shade = np.where(x < px, 1.0, 0.6)
+        col = np.stack([70 * shade, 76 * shade, 92 * shade], axis=-1)
+        rgb = np.where(body[..., None], col, rgb)
+        rgb = blend(rgb, (150, 144, 160), (body & (x < px - half + 0.9)).astype(float) * 0.8)
+        # The gilt finial: a flat cap and a spear point over it, ink-edged.
+        top = py - high
+        cap = (np.abs(x - px) < half + 0.6) & (np.abs(y - (top - 0.6)) < 0.8)
+        point = (y < top - 1.2) & (y > top - 4.6) & (np.abs(x - px) * 1.5 < (y - (top - 4.6)))
+        rgb = blend(rgb, (10, 6, 18), ((np.abs(x - px) < half + 1.4) & (y > top - 5.4) & (y < top + 0.4) & ~cap & ~point).astype(float) * 0.5)
+        rgb = blend(rgb, (214, 160, 60), cap.astype(float))
+        rgb = blend(rgb, (255, 214, 110), point.astype(float))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "fenced")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
             "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
-            "erase": erase, "disorder": disorder, "eminent": eminent}
+            "erase": erase, "disorder": disorder, "eminent": eminent, "fenced": fenced}
 
 
 if __name__ == "__main__":

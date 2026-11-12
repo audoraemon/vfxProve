@@ -308,6 +308,15 @@ const POWERS := [
 		"blurb": "Drag a road through the town: the law claims the land, and everything on it is torn down.",
 		"dp": 4, "cooldown": 80.0, "aim": "drag", "shape": "a strip 10 long and 2 wide: every building, wall, stall, tree and piece of decor on it torn down, everyone on it thrown clear and knocked down at half health; leaves a clear street lined with rubble",
 		"authority": "decree"},
+	{"key": "fenced", "name": "Fenced Rule", "path": "res://src/fx/decree/fenced_rule.gd",
+		"blurb": "A fence of iron posts rises round a district for 30 s, and two of five rules hold inside it, for everyone. Q and E pick the two.",
+		"dp": 5, "cooldown": 80.0, "aim": "click", "shape": "a circle of 7 for 30 s under two rules, your faithful too: NO RUNNING, NO ARMS (no guard strikes or seizes), NO DOORS, NO SIGHT (none sees past 2), NO LEAVING; Q/E",
+		"authority": "decree", "modes": [
+			{"key": "run_arms", "name": "NO RUNNING + NO ARMS"}, {"key": "run_doors", "name": "NO RUNNING + NO DOORS"},
+			{"key": "run_sight", "name": "NO RUNNING + NO SIGHT"}, {"key": "run_leave", "name": "NO RUNNING + NO LEAVING"},
+			{"key": "arms_doors", "name": "NO ARMS + NO DOORS"}, {"key": "arms_sight", "name": "NO ARMS + NO SIGHT"},
+			{"key": "arms_leave", "name": "NO ARMS + NO LEAVING"}, {"key": "doors_sight", "name": "NO DOORS + NO SIGHT"},
+			{"key": "doors_leave", "name": "NO DOORS + NO LEAVING"}, {"key": "sight_leave", "name": "NO SIGHT + NO LEAVING"}]},
 	{"key": "allroads", "name": "All Roads Lead Here", "path": "res://src/fx/control/all_roads_lead_here.gd",
 		"blurb": "Every road in a district leads the people to one spot.",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "for 25 s every road in a district of 10 ends at the click: up to 80 people keep their own minds, but every way they take brings them here",
@@ -498,6 +507,8 @@ const REACH := {
 	# Eminent Domain: a street of houses torn down in one roar is seen and heard across a district; the danger is the
 	# tear and the throw
 	"eminent": [10.0, 16.0, 0.8, 3.0],
+	# Fenced Rule: a ring of iron posts driven into a district rings across it; its danger is the driving, short and mild
+	"fenced": [9.0, 13.0, 0.4, 3.0],
 }
 ## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
 ## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
@@ -506,7 +517,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"breath": 0.5, "erase": 2.1, "disorder": 0.85, "eminent": 0.8,
+	"breath": 0.5, "erase": 2.1, "disorder": 0.85, "eminent": 0.8, "fenced": 0.8,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -786,7 +797,7 @@ const FAMILY := {
 	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
 	"discord": "hold", "sanctuary": "hold", "anathema": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
-	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "disorder": "decree", "curfew": "decree", "erase": "decree", "eminent": "decree", "abolition": "decree",
+	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "disorder": "decree", "curfew": "decree", "erase": "decree", "eminent": "decree", "fenced": "decree", "abolition": "decree",
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",

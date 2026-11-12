@@ -8,10 +8,15 @@ extends RefCounted
 ##               turns (Person.hesitate(HESITATE)) at most every TURN_EVERY. Walking in is free, and whoever walks in is
 ##               held too. One carried more than CARRIED past the edge by something greater (a blast, a Mirrorfold) is
 ##               let go. One indoors, or a rite's chained captive, is left alone (the chain is stronger than the law).
-##   no_breath, disorder, no_running, no_arms, no_doors, no_sight
-##               only asked (Crowd.in_law(), Crowd.law_of()): the powers and the choice points act on them (NO BREATH:
-##               Breathing Is Prohibited chokes the people; Visitors run out of it. DISORDER: the town's choice points
-##               choose wrongly for whoever stands in it).
+##   no_running  held by the zone itself too (step()): whoever stands inside out of doors is held to a walk
+##               (Person.hold_pace() under the zone's own id, at Person.walk_share()), and let go when he walks out,
+##               dies or goes indoors, or the law is lifted (`paced`).
+##   no_breath, disorder, no_arms, no_doors, no_sight
+##               only asked (Crowd.in_law(), Crowd.law_of(), Crowd.sight()): the powers and the choice points act on them
+##               (NO BREATH: Breathing Is Prohibited chokes the people; Visitors run out of it. DISORDER: the town's
+##               choice points choose wrongly for whoever stands in it. NO ARMS: no guard strikes or seizes there. NO
+##               DOORS: no building there takes anyone in or lets anyone out. NO SIGHT: nobody sees farther than SIGHT_CAP
+##               there, in or out).
 ## Each zone holds its own: two laid on the same ground both hold, and lifting one leaves the other. A zone ends when
 ## its seconds run out, when it is lifted (Crowd.remove_law()), or when the effect that laid it goes (add_law()'s
 ## holder). No number is drawn from any rng.
@@ -29,6 +34,16 @@ const NO_BREATH := &"no_breath"
 ## Disorder: every choice made inside goes wrong (Person._flee_local, Person's fight pick, the Escort type's watchers,
 ## ShelterManager.try_shelter, EvacuationManager.choose and _recheck each ask it at the choice).
 const DISORDER := &"disorder"
+## Fenced Rule's rules (spec 5.8). NO RUNNING: everyone inside walks (held by the zone, step()). NO ARMS: no guard strikes
+## (Person's blow) or seizes (EscortDirector._seen_by, the Harvest's guard) where it holds. NO DOORS: no building there
+## takes anyone in or lets anyone out (ShelterManager). NO SIGHT: nobody sees farther than SIGHT_CAP into or out of it
+## (Crowd.sight(): MissionDirector._sees, EscortDirector._seen_by, LawMark's hunt, Person's fight pick).
+const NO_RUNNING := &"no_running"
+const NO_ARMS := &"no_arms"
+const NO_DOORS := &"no_doors"
+const NO_SIGHT := &"no_sight"
+## How far anyone sees under NO SIGHT.
+const SIGHT_CAP := 2.0
 
 ## The kinds of law it holds.
 var kinds: Array[StringName] = []
@@ -53,6 +68,8 @@ var members := {}
 var turned_back := 0
 var turned: Array = []
 var released: Array = []
+## NO RUNNING: whom it holds to a walk now (a Person) -> the share of his pace it holds him to.
+var paced := {}
 
 var _lifted := false
 ## Whether a holder was given: a freed one compares equal to null, so this remembers there was one.
@@ -92,6 +109,11 @@ func hold_by(node: Node) -> void:
 ## Whether it holds a law of `kind`.
 func holds(kind: StringName) -> bool:
 	return kinds.has(kind)
+
+
+## Whether it acts on the people about it each frame (NO LEAVING, NO RUNNING): the crowd hands step() who stands near.
+func holds_people() -> bool:
+	return kinds.has(NO_LEAVING) or kinds.has(NO_RUNNING)
 
 
 ## Whether `g` stands inside (the edge counts as inside).
@@ -155,6 +177,7 @@ func lift() -> void:
 	_lifted = true
 	released = members.keys()
 	members.clear()
+	_unpace()
 
 
 ## One frame. Time runs; under NO LEAVING, the people and visitors standing inside join it (from `people` and `beasts`,
@@ -164,7 +187,11 @@ func step(delta: float, people: Array, beasts: Array) -> void:
 	left -= delta
 	turned.clear()
 	released.clear()
-	if not holds(NO_LEAVING) or not alive():
+	if not alive():
+		return
+	if holds(NO_RUNNING):
+		_pace(people)
+	if not holds(NO_LEAVING):
 		return
 	for e in people:
 		var p := e as Person
@@ -200,3 +227,34 @@ func step(delta: float, people: Array, beasts: Array) -> void:
 			if p != null:
 				p.hesitate(HESITATE)
 
+
+## NO RUNNING, one frame: whoever stands inside out of doors (from `people`) is held to a walk -- his hold set again only
+## when the share changes (his mind changed) or something set his pace past a walk -- and whoever has walked out, died,
+## gone indoors or been chained is let go. By where each stands, no roll.
+func _pace(people: Array) -> void:
+	var id := get_instance_id()
+	for e in people:
+		var p := e as Person
+		if p == null or p.inside or p.chained or not p.is_alive() or not contains(p.ground_pos):
+			continue
+		var share := p.walk_share()
+		if not paced.has(p) or float(paced[p]) != share or p.walk_speed > Person.WALK_SPEED * p.pace + EPS:
+			paced[p] = share
+			p.hold_pace(id, share)
+	for body: Variant in paced.keys():
+		if not is_instance_valid(body):
+			paced.erase(body)
+			continue
+		var p := body as Person
+		if not p.is_alive() or p.inside or p.chained or not contains(p.ground_pos):
+			paced.erase(p)
+			p.free_pace(id)
+
+
+## Every pace it holds is let go.
+func _unpace() -> void:
+	var id := get_instance_id()
+	for body: Variant in paced.keys():
+		if is_instance_valid(body):
+			(body as Person).free_pace(id)
+	paced.clear()

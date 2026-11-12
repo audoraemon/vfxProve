@@ -215,6 +215,8 @@ const CATALOG := {
 	&"di_bell": {"path": "res://assets/audio/ability/decree/di_bell.wav", "db": 2.0},
 	# Eminent Domain: a low groan as the strip is claimed, then the demolition roar as everything on it comes down.
 	&"ed_roar": {"path": "res://assets/audio/ability/decree/ed_roar.wav", "db": 2.5},
+	# Fenced Rule: iron posts driven into the ground one after another round the ring, the last struck home with a long ring.
+	&"fe_posts": {"path": "res://assets/audio/ability/decree/fe_posts.wav", "db": 3.5},
 	# Buildings and the town: recordings (tools/audio/foley/building/). A building or tree coming down (Town plays them) is capped at four voices each, so a
 	# stone rain felling a dozen things at once is a roar, not a pile-up.
 	&"collapse_stone": {"path": "res://assets/audio/building/collapse_stone_%d.wav", "variants": 5, "db": -0.1, "voices": 4, "jitter": 0.08},

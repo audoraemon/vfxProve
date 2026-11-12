@@ -787,6 +787,13 @@ func free_pace(source: int) -> void:
 		walk_speed = _mind_speed()
 
 
+## The share of its pace now that is a walk (1.0 when it walks already, or slower): what a hold to a walk keeps (Decree's
+## NO RUNNING, LawZone).
+func walk_share() -> float:
+	var full := _base_speed()
+	return clampf(WALK_SPEED * pace / full, 0.0, 1.0) if full > 0.0 else 1.0
+
+
 ## The share of its pace the powers' holds leave it (1.0 for none).
 func pace_hold() -> float:
 	var m := 1.0
@@ -2077,6 +2084,8 @@ func _fight_step(delta: float) -> void:
 		# A frenzy turns on whoever is nearest now; the rest keep the one they have until it is gone. Under Decree's
 		# Disorder (LawZone) every look goes wrong: he swaps the one he has for the farthest in his sight.
 		var wrong := crowd != null and crowd.in_law(self, LawZone.DISORDER)
+		# Under Decree's NO SIGHT (LawZone) he sees no farther than its cap, into it or out of it (Crowd.sight()).
+		var lawful := crowd != null and not crowd.laws.is_empty()
 		if field != null and (fight_target == null or _fight_rule == FightRule.ANYONE or wrong):
 			var best: Person = fight_target
 			var best_d := best.ground_pos.distance_to(ground_pos) if best != null else (-INF if wrong else INF)
@@ -2085,6 +2094,8 @@ func _fight_step(delta: float) -> void:
 				if not _fightable(q):
 					continue
 				var d := q.ground_pos.distance_to(ground_pos)
+				if lawful and d > crowd.sight(self, q.ground_pos, _fight_sight):
+					continue
 				if d > best_d if wrong else d < best_d:
 					best = q
 					best_d = d
@@ -2103,7 +2114,8 @@ func _fight_step(delta: float) -> void:
 		_leg = 0
 		_target = ground_pos
 		_facing = 1 if fight_target.ground_pos.x - fight_target.ground_pos.y > ground_pos.x - ground_pos.y else -1
-		if _swing_in <= 0.0:
+		# Under Decree's NO ARMS (LawZone) no guard strikes, in it or into it (Crowd.disarmed()): he stands over him.
+		if _swing_in <= 0.0 and not (crowd != null and LawMark.is_guard(self) and crowd.disarmed(self, fight_target)):
 			_swing_in = FIGHT_SWING
 			_swing_left = SWING_SHOW
 			fight_target.hurt(_fight_blow, self)

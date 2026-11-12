@@ -17,7 +17,11 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_foldward, ability/quiet/q_verdict |
 | [Kenney impact-sounds](https://kenney.nl) `impactBell_heavy_003.ogg` | CC0 | Kenney | ability/quiet/q_belllies |
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_002.ogg` | CC0 | Kenney | ability/quiet/q_clearmind, ability/quiet/q_discord |
-| [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_001.ogg` | CC0 | Kenney | ability/quiet/q_oath |
+| [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_000.ogg` | CC0 | Kenney | ability/decree/fe_posts |
+| [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_001.ogg` | CC0 | Kenney | ability/decree/fe_posts, ability/quiet/q_oath |
+| [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_002.ogg` | CC0 | Kenney | ability/decree/fe_posts |
+| [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_003.ogg` | CC0 | Kenney | ability/decree/fe_posts |
+| [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_004.ogg` | CC0 | Kenney | ability/decree/fe_posts |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_light_000.ogg` | CC0 | Kenney | citizen/sol_death_1, citizen/sol_strike_1 |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_light_001.ogg` | CC0 | Kenney | citizen/sol_strike_2 |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_light_002.ogg` | CC0 | Kenney | citizen/sol_death_3, citizen/sol_strike_3 |
@@ -114,8 +118,8 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_hit_13.ogg` | CC0 | rubberduck | ability/aftermath/debris_small_1, ability/aftermath/debris_small_2, ability/aftermath/debris_small_3, ability/aftermath/debris_small_4 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_metal_falling_02.ogg` | CC0 | rubberduck | citizen/sol_death_2 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_misc_04.ogg` | CC0 | rubberduck | citizen/cit_fall_2 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_01.ogg` | CC0 | rubberduck | ability/decree/ed_roar, ability/decree/er_crash, ability/holy/hs_fissure, ability/ice/glac_peak, building/collapse_stone_1, building/collapse_stone_4 |
-| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_02.ogg` | CC0 | rubberduck | ability/fire/cf_impact_1, ability/fire/cf_impact_2, ability/fire/cf_impact_3, ability/fire/cf_impact_4, building/collapse_stone_2, building/collapse_stone_5 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_01.ogg` | CC0 | rubberduck | ability/decree/ed_roar, ability/decree/er_crash, ability/decree/fe_posts, ability/holy/hs_fissure, ability/ice/glac_peak, building/collapse_stone_1, building/collapse_stone_4 |
+| [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_02.ogg` | CC0 | rubberduck | ability/decree/fe_posts, ability/fire/cf_impact_1, ability/fire/cf_impact_2, ability/fire/cf_impact_3, ability/fire/cf_impact_4, building/collapse_stone_2, building/collapse_stone_5 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_breaking_03.ogg` | CC0 | rubberduck | ability/holy/jg_punch_1, ability/holy/jg_punch_3, building/collapse_stone_3 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_01.ogg` | CC0 | rubberduck | ability/holy/jg_punch_2, building/collapse_stone_3, building/collapse_stone_4 |
 | [75 CC0 breaking / falling / hit sfx](https://opengameart.org/content/75-cc0-breaking-falling-hit-sfx) `bfh1_rock_falling_02.ogg` | CC0 | rubberduck | ability/energy/orb_hit_1, ability/energy/orb_hit_2, building/collapse_stone_1, building/collapse_stone_3, building/collapse_stone_4, citizen/crowd_death_wave_1 |
@@ -296,7 +300,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `chainmail2.wav` | CC0 | artisticdude | citizen/sol_step_2, citizen/sol_step_4, citizen/sol_step_6 |
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `cloth-heavy.wav` | CC0 | artisticdude | ability/decree/er_crash, ability/decree/er_tear, ui/ui_buzz, ui/ui_manifest, ui/ui_pause |
 | [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `cloth.wav` | CC0 | artisticdude | ability/decree/er_tear |
-| [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `metal-ringing.wav` | CC0 | artisticdude | ability/quiet/q_bound, ability/quiet/q_turncoat |
+| [RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) `metal-ringing.wav` | CC0 | artisticdude | ability/decree/fe_posts, ability/quiet/q_bound, ability/quiet/q_turncoat |
 | [Sand spell](https://opengameart.org/content/sand-spell) `sand-spell.flac` | CC0 | qubodup | ability/quiet/q_thorns |
 | [Sea and river wave sounds](https://opengameart.org/content/sea-and-river-wave-sounds) `VistulaShort_0.mp3` | CC0 | RandomMind | ability/water/ts_roar |
 | [Seamless Energy Emission Loop](https://opengameart.org/content/seamless-energy-emission-loop) `movingshield_sound.ogg` | CC0 | zeroisnotnull | ability/arcane/grav_drone, ability/energy/laser_hum |
@@ -357,11 +361,13 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `NT5_Man3Quiet_158_rr1.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `NT5_PedalQuiet_064_rr1.wav` | CC0 | Versilian Studios | ability/decree/br_hush, ability/quiet/q_allroads |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `Anvil_Hit1_v1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_noleave |
-| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `Anvil_Hit1_v3_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_abolition |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `Anvil_Hit1_v3_Sum.wav` | CC0 | Versilian Studios | ability/decree/fe_posts, ability/quiet/q_abolition |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BDrumNewhit_v6_rr1_Sum.wav` | CC0 | Versilian Studios | ability/decree/fe_posts |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BellTree_Stroke1_v1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_mirror |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BellTree_Stroke2_v1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_everydoor |
-| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BrakeDrum1_Hammer_v1_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_bound |
-| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BrakeDrum1_Hammer_v2_Sum.wav` | CC0 | Versilian Studios | ability/quiet/q_noleave |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BrakeDrum1_Hammer_v1_Sum.wav` | CC0 | Versilian Studios | ability/decree/fe_posts, ability/quiet/q_bound |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BrakeDrum1_Hammer_v2_Sum.wav` | CC0 | Versilian Studios | ability/decree/fe_posts, ability/quiet/q_noleave |
+| [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `BrakeDrum1_Hammer_v3_Sum.wav` | CC0 | Versilian Studios | ability/decree/fe_posts |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `glock_medium_C6.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate, ability/quiet/q_redefine |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `glock_medium_C7.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate |
 | [VS Chamber Orchestra 2 Community Edition](https://github.com/sgossner/VSCO-2-CE) `glock_medium_G6.wav` | CC0 | Versilian Studios | ability/quiet/q_fargate, ability/quiet/q_redefine |

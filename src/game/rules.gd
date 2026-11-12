@@ -85,6 +85,7 @@ const POWER_KINDS := {
 	# Bound in Law: one dead, the other dies by the bond
 	"bound": [&"bound"],
 	"disorder": [],
+	"fenced": [],
 	"magnify": [&"magnify"],
 	"unseen": [],
 	"clearmind": [],

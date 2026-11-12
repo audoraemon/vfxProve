@@ -916,11 +916,32 @@ func in_law(p: Variant, kind: StringName) -> bool:
 func law_of(p: Variant, kind: StringName) -> LawZone:
 	if laws.is_empty() or not is_instance_valid(p):
 		return null
-	var at: Vector2 = p.ground_pos
+	return law_at(p.ground_pos, kind)
+
+
+## The first law of `kind` holding now at `g`, or null (a building's middle, where its door is barred; where a fall is seen).
+func law_at(g: Vector2, kind: StringName) -> LawZone:
 	for z in laws:
-		if z.alive() and z.holds(kind) and z.contains(at):
+		if z.alive() and z.holds(kind) and z.contains(g):
 			return z
 	return null
+
+
+## How far `p` sees toward `at`, at most `reach`: under Decree's NO SIGHT (LawZone.SIGHT_CAP) no farther than its cap, when
+## he or `at` stands where it holds. `reach` itself at once with no law laid. Every guard's sight and every witness's reach
+## asks here (MissionDirector._sees, EscortDirector._seen_by, LawMark's hunt, Person's fight pick).
+func sight(p: Variant, at: Vector2, reach: float) -> float:
+	if laws.is_empty() or reach <= LawZone.SIGHT_CAP:
+		return reach
+	if law_at(at, LawZone.NO_SIGHT) != null or (is_instance_valid(p) and law_at(p.ground_pos, LawZone.NO_SIGHT) != null):
+		return LawZone.SIGHT_CAP
+	return reach
+
+
+## Whether Decree's NO ARMS (LawZone) bars a guard's blow or seizure between `by` and `p`: either stands where it holds.
+## False at once with no law laid. Asked by Person's blow, EscortDirector._seen_by and the Harvest's guard.
+func disarmed(by: Variant, p: Variant) -> bool:
+	return not laws.is_empty() and (law_of(by, LawZone.NO_ARMS) != null or law_of(p, LawZone.NO_ARMS) != null)
 
 
 ## One frame of every law on a place (step_people() calls it after the people move; tests may call it directly): time
@@ -930,7 +951,7 @@ func step_laws(delta: float) -> void:
 	var holding := false
 	_drop_ended_laws()
 	for z in laws:
-		if z.holds(LawZone.NO_LEAVING) and not z.stepped_by_holder:
+		if z.holds_people() and not z.stepped_by_holder:
 			near = near.merge(z.bounds()) if holding else z.bounds()
 			holding = true
 	var people: Array = []
@@ -949,7 +970,7 @@ func step_laws(delta: float) -> void:
 func step_law(z: LawZone, delta: float) -> void:
 	var people: Array = []
 	var beasts: Array = []
-	if z.holds(LawZone.NO_LEAVING) and z.alive():
+	if z.holds_people() and z.alive():
 		var near := z.bounds()
 		people = _field.in_rect(near)
 		_beasts_in(near, beasts)

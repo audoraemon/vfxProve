@@ -519,10 +519,11 @@ func watchers(at: Vector2, reach: float, exclude: Variant = null) -> Array[Perso
 
 ## `f` would see `at`: alive, out in the open, not held by the god, not `exclude`, within `reach` (v0.10 M6), and someone by law (a
 ## NOBODY's witness is heeded by no one, LawMark). `f` and `exclude` are Variants because either may be a body already freed after its
-## death fade, and a freed person passed on as a Person aborts the call.
+## death fade, and a freed person passed on as a Person aborts the call. Under Decree's NO SIGHT (LawZone) no farther than its cap,
+## where he or `at` stands (Crowd.sight()).
 func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
-	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude and f.ground_pos.distance_to(at) <= reach \
-		and not LawMark.unseen_by_all(f)
+	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude \
+		and f.ground_pos.distance_to(at) <= (reach if crowd == null else crowd.sight(f, at, reach)) and not LawMark.unseen_by_all(f)
 
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.

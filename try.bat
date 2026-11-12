@@ -5,7 +5,7 @@ rem powers: press, drag, release), F3 shows the frame rate, F4 the behaviour ove
 rem   try.bat                            mirror, solaris, heaven, nova
 rem   try.bat voice schism wisp doom     any keys from PowerBook (doom whisper smite ember deathmark noleave skylift windfall hellspark wisp discord belllies breath heaven scatter madness blight
 rem                                      thorns pilgrim deep houndgate tornado pestilence dragon mirror magnify redefine bound disorder unseen congregation oath echo turncoat
-rem                                      hatred clearmind saint priority verdict delusion anathema sanctuary curfew erase eminent tsunami gravity laser orbital cinder
+rem                                      hatred clearmind saint priority verdict delusion anathema sanctuary curfew erase eminent fenced tsunami gravity laser orbital cinder
 rem                                      judgement glacial solaris voice abolition tempest shatter schism nova)
 rem Voice of God, Abolition and Divine Schism: Q and E pick the command or the way to divide while the slot is focused.
 rem Override the engine path with: set GODOT=C:\path\to\Godot.exe

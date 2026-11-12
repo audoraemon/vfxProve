@@ -71,6 +71,8 @@ const AREAS := {
 	"bound": {"shape": "pick", "r": 0.8},
 	# DisorderFx.RADIUS: where every choice goes wrong
 	"disorder": {"shape": "circle", "r": 5.0},
+	# FencedFx.RADIUS: the fence's ring, where its two rules hold
+	"fenced": {"shape": "circle", "r": 7.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
 	# SkyliftFx.RADIUS: what it would take is ringed at the first click; then where it is set down ("pick")

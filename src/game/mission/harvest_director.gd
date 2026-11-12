@@ -411,7 +411,7 @@ func _seize_look() -> void:
 		if razed(s):
 			continue
 		for c: Variant in carters.get(s, []):
-			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at):
+			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at) and not crowd.disarmed(c, c):  # (Decree's NO ARMS)
 				rules.banner.emit("THE GUARD SEIZE THE CART")
 				_spoil(s, "seized")
 				seized = true

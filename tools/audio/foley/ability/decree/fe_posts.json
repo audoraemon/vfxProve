@@ -1,0 +1,18 @@
+{"length": 2.8, "rms_db": -17.0, "reverb": {"rt60": 1.6, "mix": 0.18, "predelay_ms": 14, "damp": 4500}, "eq": [["lowshelf", 140, 1.0], ["peak", 3600, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v1_Sum.wav", "at": 0.3, "onset": true, "dur": 0.4, "pitch": -7, "lp": 3200, "fade_out": 200, "gain_db": -9},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_001.ogg", "at": 0.3, "onset": true, "pitch": -6, "lp": 2400, "gain_db": -12},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v2_Sum.wav", "at": 0.42, "onset": true, "dur": 0.4, "pitch": -8, "lp": 3000, "fade_out": 200, "gain_db": -8},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_003.ogg", "at": 0.42, "onset": true, "pitch": -7, "lp": 2400, "gain_db": -11},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_01.ogg", "at": 0.43, "onset": true, "dur": 0.3, "pitch": -4, "hp": 120, "lp": 2500, "fade_out": 120, "gain_db": -16},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v3_Sum.wav", "at": 0.53, "onset": true, "dur": 0.4, "pitch": -6, "lp": 3200, "fade_out": 200, "gain_db": -8},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_000.ogg", "at": 0.53, "onset": true, "pitch": -8, "lp": 2200, "gain_db": -11},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v2_Sum.wav", "at": 0.63, "onset": true, "dur": 0.4, "pitch": -9, "lp": 2800, "fade_out": 200, "gain_db": -7},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_004.ogg", "at": 0.63, "onset": true, "pitch": -6, "lp": 2400, "gain_db": -10},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_02.ogg", "at": 0.64, "onset": true, "dur": 0.3, "pitch": -5, "hp": 120, "lp": 2500, "fade_out": 120, "gain_db": -15},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v1_Sum.wav", "at": 0.72, "onset": true, "dur": 0.4, "pitch": -7.5, "lp": 3000, "fade_out": 200, "gain_db": -6},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_002.ogg", "at": 0.72, "onset": true, "pitch": -7, "lp": 2200, "gain_db": -9},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Anvil_Hit1_v3_Sum.wav", "at": 0.8, "onset": true, "dur": 1.9, "pitch": -7, "lp": 3600, "fade_out": 1000, "gain_db": -6},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_heavy_001.ogg", "at": 0.8, "onset": true, "pitch": -10, "lp": 1800, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v6_rr1_Sum.wav", "at": 0.8, "onset": true, "dur": 1.4, "lp": 260, "fade_out": 600, "gain_db": -4},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_01.ogg", "at": 0.81, "onset": true, "dur": 0.5, "pitch": -6, "hp": 90, "lp": 2200, "fade_out": 250, "gain_db": -11},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/metal-ringing.wav", "at": 0.84, "onset": true, "dur": 1.8, "pitch": -12, "hp": 200, "lp": 2600, "fade_in": 20, "fade_out": 1200, "gain_db": -14}]}

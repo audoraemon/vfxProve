@@ -127,6 +127,8 @@ func _hunt(p: Person) -> void:
 		if q == null or q == p or not q.is_alive() or q.inside or not is_guard(q) or q.held_by_god() \
 				or q.mind == Person.Mind.FIGHT or q.mind == Person.Mind.ASLEEP:
 			continue
+		if p.crowd != null and q.ground_pos.distance_to(p.ground_pos) > p.crowd.sight(q, p.ground_pos, SIGHT):
+			continue  # Decree's NO SIGHT (LawZone): he does not see that far
 		q.fight(p, left, Person.SOLDIER_BLOW, Person.FightRule.TARGET_ONLY, SIGHT, FIGHT_KIND)
 		if q.mind == Person.Mind.FIGHT and not hunters.has(q):
 			hunters.append(q)

@@ -15,12 +15,24 @@ extends FxTimeline
 ## with the townsfolk. To the player the district's streets show thin gold lines that grow over T_BEND and all bend in
 ## to the click, a soft gold glow lies on the ground there, and a faint gold thread trails from each caught person
 ## toward it while it lasts; all of it fades at the end.
+## Its level (PowerBook) widens the district (RADIUS), bends more people (MAX_PEOPLE) and holds longer (SPAN). Level 5's
+## twist, The Last Mile: for the last LAST_MILE seconds of the span the end of every road opens -- The Far Gate's door of
+## stars stands at the spot (TheFarGateFx, cast with extras: here, people only, a reach of GATHER_R) and every caught
+## person the roads have brought within GATHER_R of it walks in, drawn as the door draws, and is gone for the night (kind
+## gone, counted dead, no body). Whoever comes within GATHER_R while it stands is drawn too. When it shuts, with the span,
+## those still on their way have come too late: they stand where they are, dazed DAZE.
 
 const RADIUS := 10.0
 const MAX_PEOPLE := 80
 const SPAN := 25.0
 const T_BEND := 0.8
 const GATHER_R := 1.5
+## The Last Mile (level 5): the door stands for the last LAST_MILE seconds of the span, taking LAST_OPEN to open; whoever
+## of the caught it has not taken when it shuts stands dazed DAZE.
+const LAST_MILE := 3.0
+const LAST_OPEN := 0.5
+const DAZE := 1.0
+const FAR_GATE := "res://src/fx/control/the_far_gate.gd"
 
 ## The roads drawn: one from each of ROADS points round the district's edge, along the streets to the click.
 const ROADS := 18
@@ -41,13 +53,22 @@ var caught: Array[Person] = []
 var spot := Vector2.ZERO
 var _ended := false
 var _glow: QuadFx
+## Its numbers at the cast's level (PowerBook.stat()).
+var lv_radius := RADIUS
+var lv_max_people := MAX_PEOPLE
+var lv_span := SPAN
+## The Last Mile: whether it opens, the door when it stands, and those it took.
+var last_mile := false
+var gate: TheFarGateFx
+var taken: Array[Person] = []
 
 
 ## Who a cast at `at` catches: the living within RADIUS, nearest first (the earlier spawned first at the same distance),
-## MAX_PEOPLE at most. Those inside a building count: their roads bend when they come out.
-static func caught_by(field: EnemyField, at: Vector2) -> Array[Person]:
+## MAX_PEOPLE at most (`radius` and `most` at a level's numbers). Those inside a building count: their roads bend when
+## they come out.
+static func caught_by(field: EnemyField, at: Vector2, radius := RADIUS, most := MAX_PEOPLE) -> Array[Person]:
 	var out: Array[Person] = []
-	for e in field.in_radius(at, RADIUS):
+	for e in field.in_radius(at, radius):
 		var p := e as Person
 		if p != null:
 			out.append(p)
@@ -57,11 +78,15 @@ static func caught_by(field: EnemyField, at: Vector2) -> Array[Person]:
 		if da != db:
 			return da < db
 		return a.stagger_key() < b.stagger_key())
-	return out.slice(0, MAX_PEOPLE)
+	return out.slice(0, most)
 
 
 func _build() -> void:
-	duration = SPAN + 0.1
+	lv_radius = float(PowerBook.stat(extra, "allroads", "RADIUS", RADIUS))
+	lv_max_people = int(PowerBook.stat(extra, "allroads", "MAX_PEOPLE", MAX_PEOPLE))
+	lv_span = float(PowerBook.stat(extra, "allroads", "SPAN", SPAN))
+	last_mile = PowerBook.twist_at(extra, "allroads")
+	duration = lv_span + 0.1
 	busy = T_BEND
 	var grid := _grid()
 	spot = origin
@@ -69,10 +94,12 @@ func _build() -> void:
 		var w := grid.nearest_walkable(spot, 8)
 		if w != Vector2.INF:
 			spot = w
-	for p in caught_by(ctx.field, origin):
-		if p.bend_roads(spot, SPAN, GATHER_R):
+	for p in caught_by(ctx.field, origin, lv_radius, lv_max_people):
+		if p.bend_roads(spot, lv_span, GATHER_R):
 			caught.append(p)
-	at(SPAN, _release)
+	if last_mile:
+		at(maxf(lv_span - LAST_MILE, 0.0), _open_last_mile)
+	at(lv_span, _release)
 	ctx.play(&"q_allroads", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
@@ -89,14 +116,38 @@ func _build() -> void:
 	track(threads, ctx.overhead)
 
 
-## The span is over (or the effect cut short): every caught person's roads run true again.
+## The Last Mile: the end of every road opens. The Far Gate's door stands at the spot until the span is over, drawing
+## the caught within GATHER_R of it (and whoever of them comes so near while it stands).
+func _open_last_mile() -> void:
+	if _ended:
+		return
+	gate = FxTimeline.cast(load(FAR_GATE), ctx, spot, {"here": true, "open": LAST_OPEN,
+		"span": maxf(lv_span - t - LAST_OPEN, 0.0), "only": caught, "draw_r": GATHER_R, "keep_drawing": true,
+		"people_only": true}) as TheFarGateFx
+
+
+## The span is over (or the effect cut short): the door of The Last Mile shuts (its drawn let go, dazed), every caught
+## person's roads run true again, and under The Last Mile those still on their way stand where they are, dazed.
 func _release() -> void:
 	if _ended:
 		return
 	_ended = true
+	var let_go: Array[Person] = []
+	if gate != null and is_instance_valid(gate):
+		taken.append_array(gate.gone_people)
+		if gate.opened:
+			gate._shut()
+		else:
+			gate.end_now()
+		let_go = gate.released
 	for p in caught:
-		if is_instance_valid(p):
-			p.unbend_roads()
+		if not is_instance_valid(p):
+			continue
+		p.unbend_roads()
+		# The door dazed those it drew itself; the rest stand where they are.
+		if last_mile and p.is_alive() and not p.inside and not let_go.has(p):
+			p.stun(DAZE)
+			p.hesitate(DAZE)
 	caught.clear()
 
 
@@ -119,7 +170,7 @@ func _fx_process(_delta: float) -> void:
 
 ## How much of the drawing shows: the roads grow in over T_BEND, everything fades over the last FADE.
 func fade() -> float:
-	return curve([[0.0, 0.0], [T_BEND * 0.5, 1.0], [SPAN - FADE, 1.0], [SPAN, 0.0]])
+	return curve([[0.0, 0.0], [T_BEND * 0.5, 1.0], [lv_span - FADE, 1.0], [lv_span, 0.0]])
 
 
 ## How far the roads have grown in from the district's edge (0..1).
@@ -144,7 +195,7 @@ func _roads(grid: WalkGrid) -> Array:
 		return out
 	for k in ROADS:
 		var a := TAU * (float(k) + 0.5) / float(ROADS)
-		var from := grid.nearest_walkable(spot + Vector2(cos(a), sin(a)) * RADIUS * 0.92, 8)
+		var from := grid.nearest_walkable(spot + Vector2(cos(a), sin(a)) * lv_radius * 0.92, 8)
 		if from == Vector2.INF:
 			continue
 		var way := grid.path(from, spot)

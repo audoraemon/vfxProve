@@ -28,6 +28,9 @@ var size := SIZE
 var edge := false
 ## A ground footprint to outline (Mira's house); an empty Rect2 for none.
 var outline := Rect2()
+## A fill from 0 to 1 the HUD draws as a ring round the diamond (god P3, MS §2: a breaker's grip on a chained captive, the clergy's cleanse);
+## -1 for none, the default, so every other tag draws as before.
+var ring := -1.0
 
 
 ## A person: a diamond over the head, labelled if given, pointed at from the edge if asked.

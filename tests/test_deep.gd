@@ -190,7 +190,7 @@ static func run(t) -> void:
 	var hp := soaked.hp
 
 	fx._process(T_OPEN - 0.1)
-	t.check(is_equal_approx(wader.walk_speed, normal) and not wader.statuses.has(&"slow") and crowd.fires.is_burning(shed)
+	t.check(is_equal_approx(wader.walk_speed, normal) and wader.pace_holds.is_empty() and crowd.fires.is_burning(shed)
 		and is_equal_approx(soaked.hp, hp) and wader.ground_pos == at + Vector2(2.6, 0.0) and fx.caught == 0,
 		"before the door opens nobody wades, nobody is carried, no fire is touched, no wall is wet")
 	t.check(_water_threat(crowd, at).is_empty(), "nor is the place a danger yet")
@@ -200,15 +200,15 @@ static func run(t) -> void:
 		and is_equal_approx(float(threat.get("radius", 0.0)), RADIUS) and threat.get("at", Vector2.INF) == at,
 		"from the moment the door opens the whole circle is a real danger the town knows: a water threat of 0.6 on it")
 	fx._process(SPREAD + TICK - 0.05)
-	t.check(wader.is_alive() and wader.statuses.has(&"slow") and _about(wader.walk_speed, SLOW * normal, 0.1),
+	t.check(wader.is_alive() and not wader.pace_holds.is_empty() and _about(wader.walk_speed, SLOW * normal, 0.1),
 		"once the water has spread, a citizen in it walks at a third of his pace (%.2f of %.2f)" % [wader.walk_speed, normal])
 	t.check(guard.is_alive() and _about(guard.walk_speed, SLOW * guard_normal, 0.1), "a soldier in it wades as slowly")
-	t.check(is_equal_approx(dry.walk_speed, dry_normal) and not dry.statuses.has(&"slow"), "one standing half a step beyond the water keeps his pace")
+	t.check(is_equal_approx(dry.walk_speed, dry_normal) and dry.pace_holds.is_empty(), "one standing half a step beyond the water keeps his pace")
 	wader.ground_pos = at + Vector2(RADIUS + 1.0, 0.0)
 	guard.ground_pos = at + Vector2(0.0, -RADIUS - 1.0)
 	fx._process(TICK)
-	t.check(is_equal_approx(wader.walk_speed, normal) and not wader.statuses.has(&"slow") and is_equal_approx(guard.walk_speed, guard_normal)
-		and not guard.statuses.has(&"slow"), "whoever gets out of the water has his pace back at once")
+	t.check(is_equal_approx(wader.walk_speed, normal) and wader.pace_holds.is_empty() and is_equal_approx(guard.walk_speed, guard_normal)
+		and guard.pace_holds.is_empty(), "whoever gets out of the water has his pace back at once")
 
 	# --- Fires and walls, five seconds into the flood
 	fx._process(5.0 - SPREAD - 2.0 * TICK)
@@ -260,7 +260,7 @@ static func run(t) -> void:
 	var turned := Vector2(0.0, 2.0).angle_to(rel)
 	t.check(two.is_alive() and rel.length() < 2.0 - 0.15 and turned > 0.05 and two.mind == Person.Mind.CALM,
 		"a calm citizen standing still two steps from the door is nearer it a second and a half after it opens, and has been turned round it, clockwise on screen, his mind his own (%.2f from it, %.2f round)" % [rel.length(), turned])
-	t.check(two.statuses.has(&"slow"), "and he wades: the water slows him as it carries him")
+	t.check(not two.pace_holds.is_empty(), "and he wades: the water slows him as it carries him")
 	_run(whirl, 1.5)
 	t.check(sentry.is_alive() and sentry.ground_pos.distance_to(site) < sentry_from - 0.15 and sentry.mind == sentry_mind,
 		"a soldier standing in it is carried in as well, and keeps his post in mind (%.2f from it, was %.2f)"
@@ -295,18 +295,18 @@ static func run(t) -> void:
 	_stand(late, site + Vector2(3.6, 0.0))
 	var late_pace := late.walk_speed
 	_run(whirl, 0.6)
-	t.check(late.statuses.has(&"slow") and _about(late.walk_speed, SLOW * late_pace, 0.1), "one in the water at the end of the span is wading still")
+	t.check(not late.pace_holds.is_empty() and _about(late.walk_speed, SLOW * late_pace, 0.1), "one in the water at the end of the span is wading still")
 	_run(whirl, T_OPEN + SPAN + DRAIN + 0.1 - whirl.t)
-	t.check(whirl.reach(whirl.t) == 0.0 and late.is_alive() and is_equal_approx(late.walk_speed, late_pace) and not late.statuses.has(&"slow"),
+	t.check(whirl.reach(whirl.t) == 0.0 and late.is_alive() and is_equal_approx(late.walk_speed, late_pace) and late.pace_holds.is_empty(),
 		"when it drains, one the water ran back from has his pace back and no slow on him")
 	var late_at := late.ground_pos
 	_stand(after, site + Vector2(0.3, 0.0))
 	_run(whirl, 0.1)
 	t.check(after.is_alive() and after.ground_pos == site + Vector2(0.3, 0.0) and late.ground_pos == late_at and whirl.drowned == 3,
 		"after the drain nobody is moved any more, and one standing where the door was is safe")
-	t.check(beyond.is_alive() and beyond.ground_pos == site + Vector2(-RADIUS - 0.5, 0.0) and not beyond.statuses.has(&"slow"),
+	t.check(beyond.is_alive() and beyond.ground_pos == site + Vector2(-RADIUS - 0.5, 0.0) and beyond.pace_holds.is_empty(),
 		"one standing half a step beyond the rim was never moved, the whole while")
-	t.check(indoors.is_alive() and indoors.ground_pos == site + Vector2(0.0, -2.0) and not indoors.statuses.has(&"slow")
+	t.check(indoors.is_alive() and indoors.ground_pos == site + Vector2(0.0, -2.0) and indoors.pace_holds.is_empty()
 		and is_equal_approx(indoors.walk_speed, indoors_pace), "one inside a building two steps from the door is not carried, slowed or taken")
 	indoors.inside = false
 	whirl.free()
@@ -323,7 +323,7 @@ static func run(t) -> void:
 	var deep_frantic: Person = crowd.citizens[16]
 	var pull := func(d: float) -> float: return DoorToTheDeepFx.pull_speed(d)
 	var out := func(p: Person) -> bool:
-		return p.is_alive() and p.ground_pos.distance_to(site) > RADIUS and not p.statuses.has(&"slow") and is_equal_approx(p.walk_speed, p._mind_speed())
+		return p.is_alive() and p.ground_pos.distance_to(site) > RADIUS and p.pace_holds.is_empty() and is_equal_approx(p.walk_speed, p._mind_speed())
 	var under := func(p: Person) -> bool: return not p.is_alive() and p._kind == &"pit"
 	var second: DoorToTheDeepFx = FxTimeline.cast(load(FX), ctx, site)
 	_run(second, T_OPEN + SPREAD)
@@ -331,7 +331,7 @@ static func run(t) -> void:
 	_stand(deep_stroller, site + Vector2(0.0, -3.2))
 	var stroll_pace := stroller.walk_speed
 	_run(second, 0.15)
-	t.check(stroller.statuses.has(&"slow") and deep_stroller.statuses.has(&"slow"), "the two strollers are wading")
+	t.check(not stroller.pace_holds.is_empty() and not deep_stroller.pace_holds.is_empty(), "the two strollers are wading")
 	t.check(pull.call(RADIUS) < SLOW * stroll_pace and pull.call(3.2) > SLOW * stroll_pace,
 		"the pull is less than a stroller's wading pace at the rim, and more most of a step in (wading %.3f; pull %.2f at the rim, %.2f at 3.2)"
 			% [SLOW * stroll_pace, pull.call(RADIUS), pull.call(3.2)])
@@ -353,7 +353,7 @@ static func run(t) -> void:
 	_run(runs, 0.15)
 	var all_wading := true
 	for p: Person in runners:
-		all_wading = all_wading and p.is_alive() and p.statuses.has(&"slow")
+		all_wading = all_wading and p.is_alive() and not p.pace_holds.is_empty()
 	t.check(all_wading, "the four runners are wading")
 	t.check(pull.call(2.0) > SLOW * run_pace and pull.call(2.0) < SLOW * panic_pace and pull.call(1.2) > SLOW * panic_pace,
 		"two steps from the door the pull is more than a fleeing pace in the water and less than a panicked one; near the door it is more than anyone's (wading %.2f, %.2f; pull %.2f at 2, %.2f at 1.2)"
@@ -391,11 +391,11 @@ static func run(t) -> void:
 	var cut_pace := cut_one.walk_speed
 	var cut: DoorToTheDeepFx = FxTimeline.cast(load(FX), ctx, site)
 	_run(cut, T_OPEN + SPREAD + 0.1)
-	var was_slow := cut_one.statuses.has(&"slow")
+	var was_slow := not cut_one.pace_holds.is_empty()
 	cut.end_now()
 	var cut_at := cut_one.ground_pos
 	cut._process(STEP)
-	t.check(was_slow and cut_one.is_alive() and not cut_one.statuses.has(&"slow") and is_equal_approx(cut_one.walk_speed, cut_pace)
+	t.check(was_slow and cut_one.is_alive() and cut_one.pace_holds.is_empty() and is_equal_approx(cut_one.walk_speed, cut_pace)
 		and cut_one.ground_pos == cut_at, "cut short, it leaves nobody slowed and carries nobody on")
 	cut_one.ground_pos = park
 

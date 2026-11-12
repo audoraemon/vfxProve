@@ -14,7 +14,8 @@ signal bell_lied(at: Vector2)
 signal rallied
 ## A loud power's danger has just landed (v0.11.2, spec §3.2): at its first impact, not at its cast. `points` are the danger's
 ## points (cast_points()). Directors that judge a cast as danger read this, not Rules.cast_made.
-signal danger_landed(key: String, points: Array[Vector2])
+## `radius` is the danger's radius at the cast's ability level (on_cast()), so a director judges the number the town fled.
+signal danger_landed(key: String, points: Array[Vector2], radius: float)
 
 ## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
 const LIE_CALM := 8.0
@@ -143,6 +144,14 @@ var mission_holds: Array[Callable] = []
 var mission_points: Array[Callable] = []
 ## How ready the town is (v0.05): which responses it has and how strong. Mission sets it before spawn().
 var profile := ResponseProfile.for_tier(ResponseProfile.DEFAULT)
+## The Watchful Bell (god P3, MS §4, R12): every bell climb is this many times longer than the profile's `bell_climb` (the god's stolen gift
+## sets 1.2 on a later night; Mission sets it from the def's gifts before spawn()). Exactly 1.0 otherwise, so `x * 1.0` leaves every
+## climb, and every reference, as it was. The stand-in's ESCORT_CLIMB stacks on top; the Herald's descent is not a climb and never reads it.
+var climb_scale := 1.0
+## How far the town sees (NightRules): every sight reach -- the calm turning to look at a cast's build-up, a collapse's sight, the
+## witness of a quiet death -- is this many times what it is by day. Mission sets NightRules.NIGHT_SIGHT at NIGHT; exactly 1.0 otherwise,
+## so `x * 1.0` leaves every CURRENT reach, and every reference, as it was. Hearing never reads it.
+var sight_scale := 1.0
 ## Sturdy buildings people take cover in (v0.04 P2); made by spawn().
 var shelters: ShelterManager
 var _stage_in := 0.0
@@ -1318,7 +1327,7 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## by how near they are -- inside its area plus Person.THREAT_MARGIN they run clear of it, within sight or earshot
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
 ## its whole lane: a tsunami's far end runs through streets the player never pressed on.
-func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> void:
+func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1) -> void:
 	if is_veiled(ground):
 		return  # cast where nothing is seen (Unseen Hour): no look, no danger, no unease
 	if PowerBook.is_quiet(key):
@@ -1329,7 +1338,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 			add_alarm(unease)
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
-	var radius := _cast_radius(key)
+	var radius := _cast_radius(key, level)
 	var points := cast_points(ground, dir, length, radius)
 	var impact := PowerBook.impact(key)
 	if impact <= 0.0:
@@ -1339,7 +1348,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "") -> 
 	# who can see the build-up stop and look at it.
 	_held_dangers.append({"at": _clock + impact, "points": points, "radius": radius, "reach": reach, "key": key,
 		"ground": ground})
-	_look(points, float(reach[0]))
+	_look(points, float(reach[0]) * sight_scale)
 
 
 ## Danger held for the impact (on_cast()): how many casts are still building up.
@@ -1373,7 +1382,7 @@ func _land(key: String, points: Array[Vector2], radius: float, reach: Array, gro
 		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
 			StringName(key))
 	_react(points, radius, float(reach[1]), ground, StringName(key))
-	danger_landed.emit(key, points)
+	danger_landed.emit(key, points, radius)
 
 
 ## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
@@ -1409,9 +1418,10 @@ static func cast_points(ground: Vector2, dir: Vector2, length: float, radius: fl
 	return points
 
 
-## A cast's danger radius: its area on the ground (Targeting.AREAS), or v0.03's fright less the margin.
-static func _cast_radius(key: String) -> float:
-	var a: Dictionary = Targeting.AREAS.get(key, {})
+## A cast's danger radius: its area on the ground at ability level `level` (Targeting.area_at(); level 1 is Targeting.AREAS), or
+## v0.03's fright less the margin. The town's danger follows the level; PowerBook.REACH and IMPACT do not (R5a).
+static func _cast_radius(key: String, level := 1) -> float:
+	var a: Dictionary = Targeting.area_at(key, level)
 	if a.has("r"):
 		return float(a.r) + float(a.get("roam", 0.0))
 	if a.has("half"):
@@ -1498,7 +1508,7 @@ func _spread_fright() -> void:
 			continue
 		var src: Person = s[1]
 		for p in citizens:
-			if is_instance_valid(p) and p != src and p.is_alive() and p.mind == Person.Mind.CALM \
+			if is_instance_valid(p) and p != src and p.is_alive() and not p.night_indoors and p.mind == Person.Mind.CALM \
 					and p.ground_pos.distance_to(src.ground_pos) <= SPREAD_REACH:
 				p.observe(src._threat)
 
@@ -1513,9 +1523,9 @@ func _watch_threats() -> void:
 		if not (p.mind == Person.Mind.CALM or p.mind == Person.Mind.OBSERVE or p.mind == Person.Mind.RECOVER
 				or p.mind == Person.Mind.COMPELLED):
 			continue  # the compelled keep their survival (unless held absolutely: Person.panic())
-		for t in threats.nearby(p.ground_pos, Person.THREAT_MARGIN):
+		var t := threats.first_near(p.ground_pos, Person.THREAT_MARGIN)
+		if not t.is_empty():
 			p.panic(t.at, float(t.radius), t.kind)
-			break
 
 
 ## What happened in town reaching the alarm (a collapse, a death, a hit on the Citadel): until the Bell Tower has
@@ -1631,6 +1641,11 @@ func is_bell_lying() -> bool:
 	return _clock < _bell_lies_until
 
 
+## Seconds the bell still lies, on the crowd's clock (god T1R): 0 when it does not. Only reads.
+func lie_left() -> float:
+	return maxf(0.0, _bell_lies_until - _clock)
+
+
 ## The bell tolls, and it says all is well: the town is not warned, its alarm falls by LIE_CALM, and every citizen
 ## who hears it -- all of them -- takes heart for LIE_REASSURE (Person.reassure()).
 func false_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:
@@ -1683,6 +1698,8 @@ func _evacuate() -> void:
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
 			continue
+		if p.night_indoors:
+			continue  # kept indoors by a NIGHT (NightRules): the sweep passes them over
 		if p.mind == Person.Mind.SHELTER:
 			continue  # ShelterManager sends them to the gates
 		if p.mind == Person.Mind.DUTY:
@@ -1717,7 +1734,7 @@ func _tend_households() -> void:
 		var members: Array[Person] = []
 		var home_all := true
 		for p in citizens:
-			if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.REGROUP and p.profile != null \
+			if is_instance_valid(p) and p.is_alive() and not p.night_indoors and p.mind == Person.Mind.REGROUP and p.profile != null \
 					and p.profile.family == fam:
 				members.append(p)
 				home_all = home_all and not p.has_goal() and p.ground_pos.distance_to(p.profile.home) <= HOME_REACH
@@ -1733,7 +1750,7 @@ func _tend_households() -> void:
 func _regroup() -> void:
 	for i in citizens.size():
 		var p := citizens[i]
-		if not is_instance_valid(p) or not p.is_alive() or p.profile == null:
+		if not is_instance_valid(p) or not p.is_alive() or p.profile == null or p.night_indoors:
 			continue
 		if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
 			continue
@@ -1948,7 +1965,7 @@ func raise_profile(p: ResponseProfile) -> PackedStringArray:
 	profile = p
 	alarms.regroup_seconds = p.regroup_seconds
 	if bell != null and bell.state in [BellNetwork.State.IDLE, BellNetwork.State.WAITING]:
-		bell.climb = p.bell_climb
+		bell.climb = p.bell_climb * climb_scale
 	if p.rite and rite != null and rite.off_by_profile and _standing(rite.cathedral):
 		rite = BanishingRite.new().setup(self, _env, _grid)
 		if rite.state != BanishingRite.State.ENDED:
@@ -2200,7 +2217,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 		if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
 			_investigate(at)
 		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
-		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT, COLLAPSE_SOUND, &"collapse")
+		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale, COLLAPSE_SOUND, &"collapse")
 		var points: Array[Vector2] = [at]
 		_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
 	if is_instance_valid(_town) and s in _town.bridges:
@@ -2255,12 +2272,18 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	_hear_alarm(ALARM_KILL)
 
 
+## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night. The directors that read Crowd.DOOM_WITNESS
+## directly keep the day's distance.
+func doom_witness() -> float:
+	return DOOM_WITNESS * sight_scale
+
+
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
 ## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
 ## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too.
 func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best: Person = null
-	var best_d := DOOM_WITNESS
+	var best_d := doom_witness()
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside:
@@ -2289,7 +2312,7 @@ func _settle_doom() -> void:
 		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
-		threats.register(at, 0.6, 0.3, 3.0, DOOM_WITNESS, DOOM_WITNESS + 1.0, &"doom")
+		threats.register(at, 0.6, 0.3, 3.0, doom_witness(), DOOM_WITNESS + 1.0, &"doom")
 		seen_at.append(at)
 		if alarms.incident(at):
 			_investigate(at)
@@ -2307,7 +2330,7 @@ func _on_structure_added(s: Structure) -> void:
 		_thorn_alarm_at = _clock
 		add_alarm(THORN_ALARM)
 	for p in citizens:
-		if is_instance_valid(p) and p.is_alive() and p.ground_pos.distance_to(s.center()) <= THORN_LOOK:
+		if is_instance_valid(p) and p.is_alive() and not p.night_indoors and p.ground_pos.distance_to(s.center()) <= THORN_LOOK:
 			p.observe(s.center())
 
 

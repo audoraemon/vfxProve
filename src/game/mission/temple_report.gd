@@ -23,6 +23,8 @@ var door := Vector2.INF
 var delivered := false
 ## Ended by a death nobody saw.
 var dead := false
+## Called off by drop() (god T1R): undelivered, the carrier let go.
+var dropped := false
 var relays := 0
 ## func(p: Person) -> bool (v0.11 M5): a witness a relay passes over -- The Sermon's and The Relic Run's: one fleeing the town or
 ## reserved. Empty: any witness carries it on, as before.
@@ -48,7 +50,20 @@ func _init(p: Person, temple_door: Vector2, slow_pace := 1.0, descend_seconds :=
 
 ## Still on its way: neither delivered nor ended.
 func is_open() -> bool:
-	return not delivered and not dead
+	return not delivered and not dead and not dropped
+
+
+## The report is called off, undelivered (god T1R, First Prayers' ALL IS WELL): the carrier goes back to his day, and nothing reaches the
+## Temple. Nothing else calls it.
+func drop() -> void:
+	if not is_open():
+		return
+	dropped = true
+	_fell_at = Vector2.INF
+	if _alive(carrier):
+		if carrier.mind == Person.Mind.DUTY:
+			carrier.leave_shelter(false)
+		unslow()
 
 
 func step(delta: float, crowd: Crowd) -> void:

@@ -1,0 +1,158 @@
+<style>
+@font-face{font-family:Pix;src:url(/files/pixelify.ttf)}
+.wrap{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:8px;box-shadow:0 10px 40px #000a}
+.scr{position:absolute;left:0;top:0;width:640px;height:360px;transform-origin:0 0;font-family:Pix,monospace;color:#e8e2d0;overflow:hidden;
+ background:radial-gradient(circle at 50% 37%,#2a1d45 0%,#160f26 26%,#0b0912 55%,#050408 100%)}
+.scr *{box-sizing:border-box}
+.dust{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 12% 22%,#fff6 50%,transparent),radial-gradient(1px 1px at 82% 14%,#fff5 50%,transparent),radial-gradient(1px 1px at 68% 61%,#b9a6dc66 50%,transparent),radial-gradient(1px 1px at 27% 58%,#fff4 50%,transparent),radial-gradient(1px 1px at 45% 9%,#fff3 50%,transparent),radial-gradient(1px 1px at 92% 52%,#fff4 50%,transparent),radial-gradient(1px 1px at 6% 47%,#b9a6dc55 50%,transparent)}
+.vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 55%,#000c 100%);pointer-events:none}
+/* top bar */
+.top{position:absolute;left:0;right:0;top:0;height:26px;display:flex;align-items:center;padding:0 10px;background:linear-gradient(#000a,#0000)}
+.ttl{font-size:13px;letter-spacing:2px;color:#d8b23a}
+.ttl span{color:#9a9484;font-size:9px;letter-spacing:1px;margin-left:6px}
+.sw{position:absolute;left:50%;top:5px;transform:translateX(-50%);display:flex;align-items:center;gap:3px}
+.chip{font-size:9px;letter-spacing:1px;padding:3px 8px;border:1px solid #2e2838;color:#7d7668;background:#0c0a12cc;border-radius:2px}
+.chip b{font-weight:normal;color:#c07a4a;margin-left:4px;font-size:8px}
+.chip.on{font-size:12px;padding:3px 14px;color:#efe3ff;border-color:#9b7fd0;background:linear-gradient(#3a2862,#1d1430);box-shadow:0 0 10px #7a5ad066}
+.arrow{color:#5c5468;font-size:10px;padding:0 3px}
+.pts{position:absolute;right:10px;top:5px;display:flex;align-items:center;gap:5px;font-size:10px;color:#9a9484;padding:2px 7px 2px 5px;border:1px solid #4a3c1c;border-radius:2px;background:#120e06cc}
+.pts i{width:8px;height:8px;background:#d8b23a;transform:rotate(45deg);box-shadow:0 0 6px #d8b23a}
+.pts b{color:#f3d36a;font-size:13px;font-weight:normal}
+/* wheel */
+.wheel{position:absolute;left:320px;top:132px;width:0;height:0}
+.ring{position:absolute;border-radius:50%;border:1px solid #6a52a055}
+.ring.lock{border:1px dashed #3a334855}
+.ring.cur{border-color:#b39ae6aa;box-shadow:0 0 8px #8a6ad044}
+.tnum{position:absolute;font-size:8px;color:#8a7aa8;transform:translate(-50%,-50%);letter-spacing:1px}
+.tnum.lock{color:#4a4356}
+.core{position:absolute;left:-18px;top:-18px;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle,#c9b3ff 0%,#7a52d0 30%,#2a1a4a 70%,#0000 72%);box-shadow:0 0 30px #8a62e0aa}
+.corename{position:absolute;left:-60px;top:-6px;width:120px;text-align:center;font-size:8px;letter-spacing:2px;color:#f0e6ff;text-shadow:0 0 4px #000}
+.node{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:#100c18;border:2px solid #6a52a0;box-shadow:0 0 0 1px #000}
+.node img{position:absolute;left:1px;top:1px;width:18px;height:18px;image-rendering:pixelated;border-radius:50%}
+.node.have{border-color:#d8b23a;box-shadow:0 0 0 1px #000,0 0 8px #d8b23a88}
+.node.can{border-color:#b39ae6}
+.node.lock{border-color:#3a3348;opacity:.42}.node.lock img{filter:grayscale(1) brightness(.6)}
+.node.sel{box-shadow:0 0 0 1px #000,0 0 0 3px #fff3c4,0 0 14px #fff3c4aa}
+.lv{position:absolute;left:50%;top:22px;transform:translateX(-50%);display:flex;gap:1px}
+.lv i{width:3px;height:2px;background:#3a3326}.lv i.f{background:#f3d36a}
+.nm{position:absolute;left:50%;top:26px;transform:translateX(-50%);font-size:7px;white-space:nowrap;color:#bfb49a;text-shadow:0 1px 0 #000}
+.node.sel .nm{color:#fff3c4}
+.lockic{position:absolute;right:-4px;bottom:-3px;font-size:7px;color:#8a8090}
+/* side pillars */
+.pil{position:absolute;top:34px;width:112px;height:198px;border-radius:56px 56px 4px 4px;background:linear-gradient(#ffffff08,#0000);border:1px solid #2a2433;padding-top:12px;text-align:center;opacity:.78}
+.pil h4{margin:0;font-weight:normal;font-size:10px;letter-spacing:2px}
+.pil p{margin:1px 0 0;font-size:7px;color:#7d7668}
+.pil .x2{display:inline-block;margin-top:4px;font-size:7px;color:#c07a4a;border:1px solid #5a3a22;padding:0 4px;border-radius:2px}
+.mini{display:grid;grid-template-columns:repeat(2,18px);gap:5px 10px;justify-content:center;margin-top:9px}
+.mini div{width:18px;height:18px;border-radius:50%;border:1px solid #444;background:#0c0a10;position:relative}
+.mini img{width:14px;height:14px;position:absolute;left:1px;top:1px;image-rendering:pixelated;border-radius:50%}
+.mini .em{border-style:dashed;opacity:.4}
+.mini .lk{opacity:.35}.mini .lk img{filter:grayscale(1)}
+.cen{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);font-size:7px;color:#9a9484;white-space:nowrap;border-top:1px solid #2a2433;padding-top:4px}
+/* detail */
+.det{position:absolute;left:8px;right:8px;bottom:8px;height:102px;border:1px solid #5a4a2a;background:linear-gradient(#17121fee,#0b0910f0);border-radius:3px;display:flex;padding:7px;gap:9px;box-shadow:0 -6px 20px #0008}
+.det:before{content:"";position:absolute;left:0;right:0;top:-1px;height:1px;background:linear-gradient(90deg,#0000,#d8b23a,#0000)}
+.clip{width:152px;height:86px;flex:none;border:1px solid #3a3326;background:url(/files/clip_wisp.png) 0 0/608px 344px;image-rendering:pixelated;position:relative;animation:clipx 2s steps(1) infinite}
+.clip span{position:absolute;left:3px;bottom:2px;font-size:7px;color:#e8e2d0;background:#000a;padding:0 3px}
+.info{flex:1;min-width:0}
+.info .n{font-size:16px;color:#f3e7c0;line-height:1}
+.tags{margin:4px 0 5px;display:flex;gap:3px}
+.tags span{font-size:7px;padding:1px 5px;border:1px solid #4a3f5e;color:#c9b8ea;border-radius:2px}
+.tags span.q{border-color:#3a5a4a;color:#9fd1b8}
+.info .d{font-size:9px;line-height:11px;color:#c8c0ac}
+.up{width:132px;flex:none;border-left:1px solid #2a2433;padding-left:8px;font-size:8px;line-height:10px}
+.up .h{color:#9a9484;font-size:7px;letter-spacing:1px;margin-bottom:2px}
+.up .r{display:flex;justify-content:space-between;color:#bfb49a}.up .r em{font-style:normal;color:#9fe08a}
+.tw{margin-top:3px;padding-top:3px;border-top:1px dashed #3a3326;color:#e9c96a;font-size:7px;line-height:9px}
+.tw b{font-weight:normal;color:#f3d36a}
+.bt{width:96px;flex:none;display:flex;flex-direction:column;gap:5px;justify-content:center}
+.b{position:relative;height:30px;border-radius:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;letter-spacing:1px}
+.b small{font-size:7px;letter-spacing:0;opacity:.8}
+.b.rem{color:#dff2fa;border:1px solid #6fa8c8;background:linear-gradient(#1f3a4a,#0f1d26);box-shadow:inset 0 0 8px #6fa8c855}
+.b.raise{color:#2a1d04;border:1px solid #f3d36a;background:linear-gradient(#f0cf62,#b8901e);box-shadow:0 0 10px #d8b23a55}
+.b.raise small{color:#3a2a08}
+.esc{position:absolute;left:10px;bottom:114px;font-size:7px;color:#5c5468}
+@keyframes clipx{0%{background-position:0 0}6.25%{background-position:-152px 0}12.5%{background-position:-304px 0}18.75%{background-position:-456px 0}25%{background-position:0 -86px}31.25%{background-position:-152px -86px}37.5%{background-position:-304px -86px}43.75%{background-position:-456px -86px}50%{background-position:0 -172px}56.25%{background-position:-152px -172px}62.5%{background-position:-304px -172px}68.75%{background-position:-456px -172px}75%{background-position:0 -258px}81.25%{background-position:-152px -258px}87.5%{background-position:-304px -258px}93.75%{background-position:-456px -258px}}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 4px;font-size:12px;color:#aaa}
+.legend .scr2{position:relative;width:48px;height:48px;transform:scale(2);transform-origin:0 0;margin-right:48px;margin-bottom:48px}
+</style>
+
+<h2>Skill Tree: polished wheel</h2>
+<p class="subtitle">Drawn at the game's real size (640&times;360, pixel font, real icons and the real Will-o'-Wisp clip) and scaled up. A Dominion god at Tier 3, with Will-o'-Wisp selected.</p>
+
+<div class="wrap" id="w1"><div class="scr">
+  <div class="dust"></div>
+  <div class="top">
+    <div class="ttl">SKILL TREE<span>Tier 3 &middot; level 7</span></div>
+    <div class="sw"><span class="arrow">&#9664;</span><div class="chip">DEATH<b>x2</b></div><div class="chip on">DOMINION</div><div class="chip">RUIN<b>x2</b></div><span class="arrow">&#9654;</span></div>
+    <div class="pts"><i></i>Ability points <b>4</b></div>
+  </div>
+
+  <div class="pil" style="left:8px"><h4 style="color:#9fcf9a">DEATH</h4><p>neighbour</p><span class="x2">x2 cost</span><div class="mini" id="mL"></div><div class="cen">click to centre</div></div>
+  <div class="pil" style="right:8px"><h4 style="color:#e8946a">RUIN</h4><p>neighbour</p><span class="x2">x2 cost</span><div class="mini" id="mR"></div><div class="cen">click to centre</div></div>
+
+  <div class="wheel" id="wh"><div class="core"></div></div>
+
+  <div class="esc">Esc &middot; back</div>
+  <div class="det">
+    <div class="clip"><span>&#9654; preview</span></div>
+    <div class="info">
+      <div class="n">Will-o'-Wisp</div>
+      <div class="tags"><span>DOMINION</span><span>TIER II</span><span class="q">QUIET</span></div>
+      <div class="d">A pale light drifts up and lures up to 27 people to stand round it for 13 s. ENTHRALL holds them for 32 s.</div>
+    </div>
+    <div class="up">
+      <div class="h">LEVEL 2 &rarr; 3</div>
+      <div class="r"><span>Lured</span><span>27 &rarr; <em>30</em></span></div>
+      <div class="r"><span>Lure time</span><span>13 &rarr; <em>14 s</em></span></div>
+      <div class="r"><span>Cooldown</span><span>28 &rarr; <em>26 s</em></span></div>
+      <div class="r"><span>Might</span><span>2 &rarr; 3</span></div>
+      <div class="tw">&#9733; <b>Level 5 &middot; Procession</b><br>Click again: the light walks its people.</div>
+    </div>
+    <div class="bt">
+      <div class="b rem">&#10022; REMEMBRANCE<small>try it, free</small></div>
+      <div class="b raise">RAISE<small>2 points</small></div>
+    </div>
+  </div>
+  <div class="vig"></div>
+</div></div>
+
+<div class="section" style="margin-top:16px"><p class="label">What I changed as the designer</p>
+<ul style="font-size:13px;line-height:1.6;margin:4px 0 0 18px">
+<li><b>One focus.</b> The wheel is the only bright thing. Neighbours are pushed back (smaller, dimmer) until you hover them.</li>
+<li><b>Colour means one thing.</b> Each Authority has its own hue (Dominion violet, Ruin ember, Death green). <b>Gold always means "yours or buyable"</b>: learned rings, your points, the Raise button.</li>
+<li><b>Your tier ring glows.</b> Rings you can't reach are dashed, with a lock. Tier numerals I&ndash;V sit on the rings.</li>
+<li><b>Nodes are icon only.</b> A node shows its icon, short name and level ticks. Every number lives in the bottom panel.</li>
+<li><b>The panel reads left to right:</b> see it (the clip) &rarr; what it is &rarr; what the next level gives &rarr; act. Remembrance is cool blue (a memory, free). Raise is solid gold (spending).</li>
+<li><b>The preview clip</b> is the power's existing draft clip (152&times;86, 16 frames), so every power already has one.</li>
+</ul></div>
+
+<p class="label" style="margin-top:12px">Node states</p>
+<div class="legend" id="lg"></div>
+
+<script>
+(function(){
+ var dom=[["whisper","Whisper",3],["discord","Discord",1],["madness","Madness",1],["wisp","Wisp",2],["clearmind","Clear Mind",0],["saint","Saint",0],["sanctuary","Sanctuary",0],["anathema","Anathema",0],["voice","Voice",0],["schism","Schism",0]];
+ var tier=3, w=document.getElementById('wh');
+ var R=function(t){return 22+t*20};var RX=function(t){return R(t)*1.45};var ANG=[60,120,30,150,90];
+ for(var t=0;t<5;t++){var r=R(t);var c=document.createElement('div');c.className='ring'+(t+1>tier?' lock':'')+(t+1==tier?' cur':'');var rx=RX(t);c.style.cssText+='width:'+2*rx+'px;height:'+2*r+'px;left:'+(-rx)+'px;top:'+(-r)+'px';w.appendChild(c);
+  var n=document.createElement('div');n.className='tnum'+(t+1>tier?' lock':'');n.textContent=['I','II','III','IV','V'][t];n.style.left='0px';n.style.top=(-r)+'px';n.style.background='#120d1e';n.style.padding='0 2px';w.appendChild(n);}
+ for(var i=0;i<10;i++){var t=Math.floor(i/2),r=R(t),rx=RX(t),a=((i%2)*180+ANG[t])*Math.PI/180;var d=dom[i];
+  var n=document.createElement('div');var lock=t+1>tier;n.className='node '+(d[2]>0?'have':(lock?'lock':'can'))+(i==3?' sel':'');
+  n.style.left=(Math.sin(a)*rx)+'px';n.style.top=(-Math.cos(a)*r)+'px';
+  var lv='';if(d[2]>0){lv='<div class="lv">';for(var k=0;k<5;k++)lv+='<i class="'+(k<d[2]?'f':'')+'"></i>';lv+='</div>';}
+  n.innerHTML='<img src="/files/ic_'+d[0]+'.png">'+lv+'<div class="nm" style="top:'+(d[2]>0?27:25)+'px">'+d[1]+'</div>'+(lock?'<div class="lockic">&#128274;</div>':'');w.appendChild(n);}
+ function mini(id,keys,tierL){var m=document.getElementById(id);keys.forEach(function(k,i){var e=document.createElement('div');var t=Math.floor(i/2)+1;if(!k){e.className='em';}else{e.innerHTML='<img src="/files/ic_'+k+'.png">';if(t>tierL)e.className='lk';e.style.borderColor=id=='mL'?'#5f8f5a':'#a0603a';}m.appendChild(e);});}
+ mini('mL',['deathmark','pestilence','','','','','','','',''],3);
+ mini('mR',['smite','ember','tornado','scatter','solaris','dragon','tsunami','cinder','tempest','shatter'],3);
+ var lg=document.getElementById('lg');
+ [['have','Learned (gold, level ticks)',2],['can','Can learn',0],['lock','Tier locked',0],['have sel','Selected',2]].forEach(function(s){
+  var box=document.createElement('div');box.style.cssText='display:flex;align-items:center;gap:10px';
+  var sc=document.createElement('div');sc.className='scr';sc.style.cssText='position:relative;width:40px;height:44px;transform:scale(2);transform-origin:0 0;margin:0 40px 44px 0;background:#0e0a16;border-radius:3px';
+  var lv='';if(s[2]){lv='<div class="lv">';for(var k=0;k<5;k++)lv+='<i class="'+(k<s[2]?'f':'')+'"></i>';lv+='</div>';}
+  sc.innerHTML='<div class="node '+s[0]+'" style="left:20px;top:18px"><img src="/files/ic_wisp.png">'+lv+(s[0]=='lock'?'<div class="lockic">&#128274;</div>':'')+'</div>';
+  box.appendChild(sc);var tx=document.createElement('span');tx.textContent=s[1];box.appendChild(tx);lg.appendChild(box);});
+})();
+function fitST(){document.querySelectorAll('.wrap').forEach(function(w){w.querySelector('.scr').style.transform='scale('+(w.clientWidth/640)+')';});}
+window.addEventListener('resize',fitST);fitST();setTimeout(fitST,60);
+</script>

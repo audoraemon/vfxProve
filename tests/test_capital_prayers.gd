@@ -65,6 +65,8 @@ static func _overrides_valid(t) -> bool:
 		"the intro rests on the camera spot and starts 6 south of it (camera_at and intro_from together)")
 	t.check(d.shrine_at != FirstPrayersDirector.SHRINE_AT and d.poor_spot != FirstPrayersDirector.POOR_SPOT,
 		"the shrine and the poor's spot are the Capital's own")
+	t.check(d.poor_out_at.size() == 3 and is_equal_approx(float(d.poor_out_at[0]), 150.0),
+		"(god T1R) the Capital's first walker sets out at 150 s, its own (poor_out_at %s; Overrides took the Array)" % [d.poor_out_at])
 	return true
 
 

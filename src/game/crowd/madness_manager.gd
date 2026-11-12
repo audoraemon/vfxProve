@@ -71,6 +71,9 @@ var links: Array = []
 var alarm_generated := 0.0
 var broken := 0
 
+## Directed Frenzy (Madness Bloom level 5): the people the cast's own seeds made, who go into frenzy at Broken -- no roll -- and for the nearest soldier first.
+var directed := {}
+
 var _crowd: Crowd
 var _field: EnemyField
 var _rng := RandomNumberGenerator.new()
@@ -161,11 +164,17 @@ func step(delta: float) -> void:
 		_tick(p, rec, stage, delta)
 	for k: Variant in gone:
 		afflicted.erase(k)
+		directed.erase(k)
 	_propagate_in -= delta
 	if _propagate_in <= 0.0:
 		_propagate_in = PROPAGATE_EVERY
 		_propagate()
 	links = links.filter(func(l: Array) -> bool: return float(l[2]) > _clock)
+
+
+## Mark `p` as directed: at Broken they frenzy for certain (Directed Frenzy). Only the cast's seeds are marked, never a spread.
+func direct(p: Person) -> void:
+	directed[p] = true
 
 
 ## Take up anyone newly given the status (the effect's seeds).
@@ -208,7 +217,7 @@ func _enter(p: Person, rec: Dictionary, stage: Stage) -> void:
 		Stage.BROKEN:
 			broken += 1
 			rec.broken_at = _clock
-			var outcome := _draw_outcome()
+			var outcome := Outcome.FRENZY if directed.has(p) else _draw_outcome()
 			rec.outcome = outcome
 			match outcome:
 				Outcome.FRENZY:
@@ -238,8 +247,22 @@ func _draw_outcome() -> Outcome:
 
 ## The scream is over: it goes for whoever is nearest, lurching (kind &"madness"), and the town sees it.
 func _frenzy(p: Person) -> void:
-	p.fight(null, FRENZY_DURATION, ATTACK_DAMAGE, Person.FightRule.ANYONE, Person.FIGHT_SIGHT, &"madness")
+	p.fight(_nearest_soldier(p) if directed.has(p) else null, FRENZY_DURATION, ATTACK_DAMAGE, Person.FightRule.ANYONE, Person.FIGHT_SIGHT, &"madness")
 	_outbreak(p)
+
+
+## The nearest living soldier out in the open within FIGHT_SIGHT of `p` (a tie goes to the first in field order), or null.
+func _nearest_soldier(p: Person) -> Person:
+	var best: Person = null
+	var best_d := Person.FIGHT_SIGHT * Person.FIGHT_SIGHT
+	for s: Person in _crowd.soldiers:
+		if not is_instance_valid(s) or s == p or not s.is_alive() or s.inside:
+			continue
+		var d := s.ground_pos.distance_squared_to(p.ground_pos)
+		if d <= best_d and (best == null or d < best_d):
+			best_d = d
+			best = s
+	return best
 
 
 ## A frenzy breaks out: the town sees a danger, the alarm rises, and the nearest soldier at its post comes for them.
@@ -301,6 +324,7 @@ func _tick(p: Person, rec: Dictionary, stage: Stage, delta: float) -> void:
 
 ## The madness ends for `p`.
 func _end(p: Person) -> void:
+	directed.erase(p)
 	p.statuses.erase(STATUS)
 	if p.mind == Person.Mind.FIGHT and not p.soldier:
 		p.stop_fighting()

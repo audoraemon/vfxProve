@@ -224,10 +224,10 @@ func _on_escaped(p: Person) -> void:
 
 ## A loud power's danger has landed (Crowd.danger_landed; v0.09.1 final review, v0.11.2 spec §3.4: at its impact, not its cast):
 ## every living goer within its danger is broken, whatever it was doing -- a fleeing goer is past the fright (Person.panic())
-## that breaks the rest. The danger is the one Crowd registers: Crowd._cast_radius() plus Person.THREAT_MARGIN round each of
+## that breaks the rest. The danger is the one Crowd registers (its `radius`, at the cast's ability level) plus Person.THREAT_MARGIN round each of
 ## its points (a lane power's lane included, as the crowd took them). A quiet power registers none; its kills count as deaths.
-func _on_danger(key: String, points: Array[Vector2]) -> void:
-	var reach := Crowd._cast_radius(key) + Person.THREAT_MARGIN
+func _on_danger(_key: String, points: Array[Vector2], radius: float) -> void:
+	var reach := radius + Person.THREAT_MARGIN
 	for p in goers:
 		if not WarningDirector._alive(p):
 			continue

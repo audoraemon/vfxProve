@@ -27,6 +27,8 @@ const T_SPEAK := 1.6
 const WAVE_SPEED := 40.0
 const FLEE_RUN := 9.0
 const GATHER_CAPACITY := 150
+## A multiplier on every command's seconds in COMMANDS: the ability level's command length (1.0 at level 1).
+const COMMAND_X := 1.0
 ## Judge: how near the click the condemned must be, who turns on them and how hard a citizen strikes.
 const JUDGE_PICK := 2.0
 const JUDGE_REACH := 12.0
@@ -60,10 +62,22 @@ const GLYPHS := {
 ## The command given, and how long it holds.
 var command := "kneel"
 var seconds := 12.0
+## This cast's command length multiplier and gather cap at its ability level (COMMAND_X and GATHER_CAPACITY at level 1).
+var lv_command_x := COMMAND_X
+var lv_gather_capacity := GATHER_CAPACITY
 ## How many it has reached, and (Judge) the condemned and how many turned on them.
 var obeyed := 0
 var judged: Person
 var judges := 0
+## Second Word (level 5): the second command (empty until it is given), where it was spoken, how many it has reached, and who it condemns.
+var second := ""
+var second_at := Vector2.ZERO
+var _second_done := false
+var _second_n := 0
+var _second_judged: Person
+var _second_judges := 0
+var _spots2: Array[Vector2] = []
+var _twist := false
 
 ## Those the wave has not reached yet, nearest the click first.
 var _pending: Array[Person] = []
@@ -71,6 +85,8 @@ var _place := {}
 var _spots: Array[Vector2] = []
 ## Those it has reached, and when: [person, effect clock].
 var _reached: Array = []
+## Where each reached person was bound before the first command laid its own spot: a second word's RETURN sends them back here.
+var _homes := {}
 var _sparkle: PixelParticles
 var _sky: QuadFx
 var _halo: QuadFx
@@ -89,10 +105,13 @@ static func judged_at(field: EnemyField, at: Vector2) -> Person:
 
 
 func _build() -> void:
+	lv_command_x = float(PowerBook.stat(extra, "voice", "COMMAND_X", COMMAND_X))
+	lv_gather_capacity = int(PowerBook.stat(extra, "voice", "GATHER_CAPACITY", GATHER_CAPACITY))
 	command = String(extra.get("mode", "kneel"))
 	if not COMMANDS.has(command):
 		command = "kneel"
-	seconds = float(COMMANDS[command])
+	seconds = float(COMMANDS[command]) * lv_command_x
+	_twist = PowerBook.twist_at(extra, "voice")
 	duration = T_SPEAK + seconds + 1.0
 	busy = T_SPEAK + 1.0
 	for e in ctx.field.alive():
@@ -105,13 +124,41 @@ func _build() -> void:
 		"gather":
 			_place = CongregationFx.place_for(ctx.env, origin)
 			var grid: WalkGrid = _pending[0].grid if not _pending.is_empty() else null
-			_spots = CongregationFx.spots_for(grid, _place, mini(GATHER_CAPACITY, _pending.size()))
+			_spots = CongregationFx.spots_for(grid, _place, mini(lv_gather_capacity, _pending.size()))
 		"judge":
 			judged = judged_at(ctx.field, origin)
 	at(T_SPEAK, _speak)
 	ctx.play(&"q_voice", origin)
 	if _staged():
 		_gather_show()
+
+
+## Second Word: true at level 5, once per cast, from a second after the Voice speaks until the first command ends.
+func can_follow_up() -> bool:
+	return _twist and not finished and second == "" and t >= T_SPEAK + 1.0 and t < T_SPEAK + seconds
+
+
+## Second Word: `extra.mode` (default the first command) is laid on everyone the first reached, the moment it ends, with the click as its place.
+## Judge needs someone at the click.
+func follow_up(at_pos: Vector2, extra_data: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var cmd := String(extra_data.get("mode", command))
+	if not COMMANDS.has(cmd):
+		cmd = command
+	if cmd == "judge":
+		_second_judged = judged_at(ctx.field, at_pos)
+		if _second_judged == null:
+			return false
+	second = cmd
+	second_at = at_pos
+	duration = T_SPEAK + seconds + float(COMMANDS[cmd]) * lv_command_x + 1.0
+	return true
+
+
+## Second Word's preview: the Voice's own (it rings the judged for JUDGE).
+func follow_up_area() -> Dictionary:
+	return {}
 
 
 func _staged() -> bool:
@@ -137,49 +184,85 @@ func _fx_process(_delta: float) -> void:
 			break
 		_pending.remove_at(0)
 		if is_instance_valid(p) and p.is_alive() and not p.inside:
-			_command(p)
+			_command(p, command, _place, seconds, T_SPEAK)
+	if second != "" and not _second_done and t >= T_SPEAK + seconds:
+		_speak_second()
 	if is_instance_valid(_halo):
 		var k := curve([[0.0, 0.0], [T_SPEAK, 0.3], [T_SPEAK + 0.1, 0.55], [T_SPEAK + 1.2, 0.25], [T_SPEAK + 3.2, 0.18],
 			[T_SPEAK + 4.6, 0.0]])
 		_halo.set_param("intensity", k * (0.93 + 0.07 * sin(t * 6.0)))
 
 
-## The command reaches `p`.
-func _command(p: Person) -> void:
-	var left := maxf(seconds - (t - T_SPEAK), 0.5)
+## Second Word: the first command has ended; everyone it reached, alive and out in the open, takes the second at once, no wave, for its full seconds.
+func _speak_second() -> void:
+	_second_done = true
+	var secs := float(COMMANDS[second]) * lv_command_x
+	var place := {"at": second_at}
+	var folk: Array[Person] = []
+	for r: Array in _reached:
+		var p: Person = r[0]
+		if is_instance_valid(p) and p.is_alive() and not p.inside:
+			folk.append(p)
+	if second == "gather":
+		place = CongregationFx.place_for(ctx.env, second_at)
+		_spots2 = CongregationFx.spots_for(folk[0].grid if not folk.is_empty() else null, place, mini(lv_gather_capacity, folk.size()))
+	elif second == "silence" and ctx.crowd != null:
+		ctx.crowd.hush(secs)
+	for p in folk:
+		_command(p, second, place, secs, t, false)
+
+
+## The command `cmd` (with its `place`, whose "at" is the click when it has one, else the cast point) reaches `p` for `secs` from `t0`. `scatter`
+## is true for the cast's own command, which draws ctx.rng where it always has (a FLEE from someone on the click, a GATHER past the spots);
+## the second word draws none.
+func _command(p: Person, cmd: String, place: Dictionary, secs: float, t0: float, scatter := true) -> void:
+	var left := maxf(secs - (t - t0), 0.5)
 	var glyph: Array[int] = []
-	glyph.assign(GLYPHS[command])
+	glyph.assign(GLYPHS[cmd])
 	var will := Person.WILL_ABSOLUTE
-	obeyed += 1
-	_reached.append([p, t])
+	var click: Vector2 = place.get("at", origin)
+	var order := 0
+	if scatter:
+		obeyed += 1
+		order = obeyed
+		_reached.append([p, t])
+		_homes[p] = p.anchor  # before the command lays its own: a second word's RETURN sends them back to this
+	else:
+		_second_n += 1
+		order = _second_n
 	if is_instance_valid(_sparkle):
 		_sparkle.burst(3, {"offset": Iso.ground_to_screen(p.ground_pos) - _sparkle.position + Vector2(0, -8), "radius": 4.0,
 			"speed": Vector2(4, 14), "alt": Vector2(0, 6), "alt_speed": Vector2(10, 30), "life": Vector2(0.4, 0.8),
 			"size": Vector2(1, 1)})
-	match command:
+	match cmd:
 		"kneel":
 			p.compel(p.ground_pos, left, will, GOLD, false, &"kneel", glyph)
 		"halt":
 			p.compel(p.ground_pos, left, will, GOLD, false, &"", glyph)
 		"flee":
-			var away := p.ground_pos - origin
-			var dir := away.normalized() if away.length() > 0.05 else Vector2.RIGHT.rotated(ctx.rng.randf() * TAU)
+			var away := p.ground_pos - click
+			var dir := Vector2.RIGHT
+			if away.length() > 0.05:
+				dir = away.normalized()
+			elif scatter:
+				dir = Vector2.RIGHT.rotated(ctx.rng.randf() * TAU)
 			var to := (p.ground_pos + dir * FLEE_RUN).clamp(p.bounds.position, p.bounds.end)
 			if p.grid != null:
 				var free := p.grid.nearest_walkable(to, 8)
 				to = free if free != Vector2.INF else p.ground_pos
 			p.compel(to, left, will, GOLD, true, &"", glyph)
 		"gather":
-			var spot: Vector2 = _place.at
-			if obeyed - 1 < _spots.size():
-				spot = _spots[obeyed - 1]
-			elif p.grid != null:
+			var spot: Vector2 = place.at
+			var spots := _spots if scatter else _spots2
+			if order - 1 < spots.size():
+				spot = spots[order - 1]
+			elif scatter and p.grid != null:
 				var a := ctx.rng.randf() * TAU
 				var free := p.grid.nearest_walkable(spot + Vector2(cos(a), sin(a)) * ctx.rng.randf_range(1.0, 4.0), 6)
 				spot = free if free != Vector2.INF else spot
 			p.compel(spot, left, will, GOLD, false, &"", glyph)
 		"return":
-			var home := p.anchor
+			var home: Vector2 = _homes.get(p, p.anchor)
 			if p.soldier and p.post != Vector2.INF:
 				home = p.post
 			elif p.profile != null and p.profile.home != Vector2.INF:
@@ -188,14 +271,19 @@ func _command(p: Person) -> void:
 		"silence":
 			p.set_badge(glyph, HUSH, left)
 		"judge":
-			if judged == null or not is_instance_valid(judged):
+			var accused := judged if scatter else _second_judged
+			var turned := judges if scatter else _second_judges
+			if accused == null or not is_instance_valid(accused):
 				return
-			if p == judged:
+			if p == accused:
 				p.set_badge(glyph, CRIMSON, left)
-			elif judges < JUDGE_MAX and not p.resists_mind() and p.ground_pos.distance_to(judged.ground_pos) <= JUDGE_REACH:
-				judges += 1
+			elif turned < JUDGE_MAX and not p.resists_mind() and p.ground_pos.distance_to(accused.ground_pos) <= JUDGE_REACH:
+				if scatter:
+					judges += 1
+				else:
+					_second_judges += 1
 				p.set_badge(glyph, GOLD, left)
-				p.fight(judged, left, Person.SOLDIER_BLOW if p.soldier else JUDGE_BLOW, Person.FightRule.TARGET_ONLY)
+				p.fight(accused, left, Person.SOLDIER_BLOW if p.soldier else JUDGE_BLOW, Person.FightRule.TARGET_ONLY)
 
 
 # --- The show ----------------------------------------------------------------

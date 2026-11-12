@@ -37,6 +37,8 @@ const CROWD_R := 1.0
 const CROWD_W := 1.5
 const GROUND_SHARE := 0.05
 const NO_REPEAT := 2.0
+## Level 5 twist, Called Bolts: the player may call a hard bolt exactly where they click, once in CALL_EVERY, while the storm rains.
+const CALL_EVERY := 3.0
 const RAIN_EVERY := 1.0
 const RAIN_TRIES := 40
 const BOLT := Color("9fd0ff")
@@ -53,6 +55,9 @@ var fires := 0
 var sent_in := 0
 ## Where the last bolt fell.
 var last_at := Vector2.INF
+## How many bolts the player called (level 5), and when the last was.
+var called := 0
+var _last_called := -INF
 
 var _next_volley := 0.0
 ## How many volleys have fallen.
@@ -61,19 +66,53 @@ var _rain_in := 0.0
 var _clouds: QuadFx
 var _rain: PixelParticles
 var _flicker := 0.0
+## This cast's storm length, bolts per volley and time between volleys: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_storm_time := STORM_TIME
+var lv_volley := VOLLEY
+var lv_volley_every := VOLLEY_EVERY
 
 
 ## The storm's hours: gathering, storm, breaking.
 func storming() -> bool:
-	return t >= T_GATHER and t < T_GATHER + STORM_TIME
+	return t >= T_GATHER and t < T_GATHER + lv_storm_time
+
+
+## Whether a click would call a bolt now (the Called Bolts twist, level 5): the storm is raining and the last call is CALL_EVERY behind.
+func can_call() -> bool:
+	return PowerBook.twist_at(extra, "tempest") and storming() and t - _last_called >= CALL_EVERY
+
+
+## The player calls a bolt down at `where`: told LEAD ahead as any bolt is, then a hard one exactly there (no pick, no rng). It counts in
+## `bolts` (so in FIRE_EVERY). False -- and nothing happens -- when the twist is not this cast's or it is not the time.
+func call_bolt(where: Vector2) -> bool:
+	if not can_call():
+		return false
+	called += 1
+	_last_called = t
+	_omen(where, LEAD, true)
+	at(t + LEAD, _bolt.bind(where, true))
+	return true
+
+
+## The shared follow-up (Rules.recast): a click is a call while Called Bolts can be had.
+func can_follow_up() -> bool:
+	return can_call()
+
+
+## The shared follow-up (Rules.recast): the click calls a bolt.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	return call_bolt(at_pos)
 
 
 func _build() -> void:
-	duration = T_GATHER + STORM_TIME + T_BREAK
+	lv_storm_time = float(PowerBook.stat(extra, "tempest", "STORM_TIME", STORM_TIME))
+	lv_volley = PowerBook.stat(extra, "tempest", "VOLLEY", VOLLEY) as Vector2i
+	lv_volley_every = float(PowerBook.stat(extra, "tempest", "VOLLEY_EVERY", VOLLEY_EVERY))
+	duration = T_GATHER + lv_storm_time + T_BREAK
 	busy = T_GATHER
 	_next_volley = T_GATHER + 0.2
 	at(T_GATHER, _storm)
-	at(T_GATHER + STORM_TIME, _break)
+	at(T_GATHER + lv_storm_time, _break)
 	ctx.play(&"hs_rumble", origin, 4.0)
 	ctx.play(&"tn_form", origin, -2.0)
 	if not DominionParts.staged(self):
@@ -90,10 +129,10 @@ func _build() -> void:
 	_clouds.set_param("scale", 9.0)
 	_clouds.set_param("drift", 0.08)
 	_clouds.tween_param("cover", 0.0, 1.0, T_GATHER, 0.0, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
-	_clouds.tween_param("cover", 1.0, 0.0, T_BREAK, T_GATHER + STORM_TIME, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
+	_clouds.tween_param("cover", 1.0, 0.0, T_BREAK, T_GATHER + lv_storm_time, Tween.TRANS_SINE, Tween.EASE_IN_OUT)
 	_clouds.life = duration + 0.1
 	# The wind rises: dust blown across the town, low.
-	var dust := FxParts.emitter(self, ctx.overhead_back, centre, PixelParticles.Shape.STREAK, FxParts.FIRE_LIFE, 60.0, T_GATHER + STORM_TIME,
+	var dust := FxParts.emitter(self, ctx.overhead_back, centre, PixelParticles.Shape.STREAK, FxParts.FIRE_LIFE, 60.0, T_GATHER + lv_storm_time,
 		{"radius": 900.0, "velocity": Vector2(90, 0), "life": Vector2(0.6, 1.4), "size": Vector2(1, 1), "alt": Vector2(0, 8)})
 	dust.drag = 0.2
 
@@ -103,7 +142,7 @@ func _storm() -> void:
 	if not DominionParts.staged(self):
 		return
 	var centre := Iso.ground_to_screen(ctx.field.bounds.get_center())
-	_rain = FxParts.emitter(self, ctx.overhead, centre + Vector2(0, -200), PixelParticles.Shape.STREAK, RAIN, 700.0, STORM_TIME,
+	_rain = FxParts.emitter(self, ctx.overhead, centre + Vector2(0, -200), PixelParticles.Shape.STREAK, RAIN, 700.0, lv_storm_time,
 		{"radius": 1100.0, "velocity": Vector2(-50, 340), "life": Vector2(0.7, 1.1), "size": Vector2(1, 3)})
 	_rain.z_index = 11
 	_rain.iso_squash = 0.55
@@ -119,13 +158,13 @@ func _fx_process(delta: float) -> void:
 	# Sheet lightning in the ceiling while it gathers and storms.
 	if _clouds != null and is_instance_valid(_clouds):
 		_flicker = maxf(_flicker - delta * 6.0, 0.0)
-		if t < T_GATHER + STORM_TIME and ctx.rng.randf() < delta * (0.5 if t < T_GATHER else 0.25):
+		if t < T_GATHER + lv_storm_time and ctx.rng.randf() < delta * (0.5 if t < T_GATHER else 0.25):
 			_flicker = ctx.rng.randf_range(0.4, 0.9)
 		_clouds.set_param("flicker", _flicker)
 	if not storming():
 		return
 	if t >= _next_volley:
-		_next_volley = t + VOLLEY_EVERY
+		_next_volley = t + lv_volley_every
 		_volley()
 	_rain_in -= delta
 	if _rain_in <= 0.0:
@@ -173,8 +212,8 @@ func _pick() -> Vector2:
 
 ## A volley: the first bolt now and hard, the rest on its heels.
 func _volley() -> void:
-	var n := ctx.rng.randi_range(VOLLEY.x, VOLLEY.y)
-	if t + LEAD + VOLLEY_GAP * float(n - 1) > T_GATHER + STORM_TIME:
+	var n := ctx.rng.randi_range(lv_volley.x, lv_volley.y)
+	if t + LEAD + VOLLEY_GAP * float(n - 1) > T_GATHER + lv_storm_time:
 		return  # too late in the storm for a whole volley
 	volleys += 1
 	for i in n:

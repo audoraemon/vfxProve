@@ -118,6 +118,27 @@ var temple: Structure
 var temple_door := Vector2.INF
 ## How many gate reliefs came this night (v0.11 M6).
 var reliefs := 0
+## The numbers a Lantern Hunt changes (god P5, MS H11, Ruling C1): each starts equal to its const and is read in the const's place, so
+## a subclass that sets one before super() changes the night and one that sets none changes nothing. OUT_AT: when each household comes out.
+var tune_out_at: Array = OUT_AT.duplicate()
+## When each gate shuts (god P5, MS H11); an empty array means no gate shuts (the loops are guarded by its size).
+var tune_shut_at: Array = SHUT_AT.duplicate()
+## Searchers per household (god P5, MS H11).
+var tune_hounds := HOUNDS
+## Believers per household (god P5, MS H11).
+var tune_per_house := PER_HOUSE
+## The believers' pace as a fraction of walking pace (god P5, MS H11).
+var tune_believer_pace := BELIEVER_PACE
+## How many must get out (god P5, MS H11).
+var tune_need := NEED
+## Seconds after a household is done that the next comes out at the latest (god P5, MS H11).
+var tune_chain := CHAIN
+## Watchmen per gate (god P5, MS H11).
+var tune_gate_watch := GATE_WATCH
+## How near a beat or a gate post a dwelling's door may be and still count as quiet (god P5, MS H11).
+var tune_quiet := QUIET
+## The beats a quiet dwelling keeps clear of (god P5, MS H11).
+var tune_beats: Array = BEATS.duplicate(true)
 ## Each house's own damage filter before tonight (v0.11 M6).
 var _own_filters: Array[Callable] = []
 ## Charge -> its household's index; instance id -> household index while appointing; Charge -> in the file (v0.11 M6).
@@ -215,10 +236,10 @@ func _quiet_door(h: Structure, mouth: Vector2) -> Vector2:
 ## No beat passes and no gate post stands within QUIET of `door` (v0.11 M6). Only reads.
 func _quiet(door: Vector2) -> bool:
 	for p: Vector2 in watch_posts:
-		if p.distance_to(door) <= QUIET:
+		if p.distance_to(door) <= tune_quiet:
 			return false
-	for b: Array in BEATS:
-		if Geometry2D.get_closest_point_to_segment(door, b[0], b[1]).distance_to(door) <= QUIET:
+	for b: Array in tune_beats:
+		if Geometry2D.get_closest_point_to_segment(door, b[0], b[1]).distance_to(door) <= tune_quiet:
 			return false
 	return true
 
@@ -228,7 +249,7 @@ func _quiet(door: Vector2) -> bool:
 func _begin() -> void:
 	super()
 	for h: Household in households:
-		for k in HOUNDS:
+		for k in tune_hounds:
 			var near := _lay_near(temple_door, 1, _in_use(charge))
 			if near.is_empty():
 				break
@@ -244,17 +265,17 @@ func _begin() -> void:
 		_fallen_since.append(-1.0)
 	crowd._field.enemy_killed.connect(_on_killed)
 	for i in households.size():
-		timeline.add(float(OUT_AT[i]), "out_%d" % i, "The %s comes out" % (households[i] as Household).words.trim_prefix("the "),
+		timeline.add(float(tune_out_at[i]), "out_%d" % i, "The %s comes out" % (households[i] as Household).words.trim_prefix("the "),
 			_come_out.bind(i), func() -> bool: return not (households[i] as Household).out)
-	for g in gates.size():
-		timeline.add(float(SHUT_AT[g]), "shut_%d" % g, "The Inquisition shuts %s" % (gates[g] as Gate).words, _shut.bind(g))
+	for g in mini(gates.size(), tune_shut_at.size()):
+		timeline.add(float(tune_shut_at[g]), "shut_%d" % g, "The Inquisition shuts %s" % (gates[g] as Gate).words, _shut.bind(g))
 
 
 ## The twelve believers (v0.11 M6): the four lay citizens nearest each household's door.
 func _appoint_charges() -> Array[Person]:
 	var out: Array[Person] = []
 	for i in households.size():
-		for p in _lay_near((households[i] as Household).door, PER_HOUSE, out):
+		for p in _lay_near((households[i] as Household).door, tune_per_house, out):
 			out.append(p)
 			_home_of[p.get_instance_id()] = i
 	return out
@@ -268,7 +289,7 @@ func _place_charge(c: Charge) -> void:
 	_home[c] = i
 	h.members.append(c)
 	_set_down(p, h.door)
-	p.pace *= BELIEVER_PACE
+	p.pace *= tune_believer_pace
 	c.hold_at = h.door
 	p.go_duty(h.door)
 	_take_inside(p, h.house)
@@ -519,9 +540,9 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 
 ## The second household `i` comes out at the latest (v0.11 M6): its own time, or CHAIN after the one before is done if that is sooner.
 func out_due(i: int) -> float:
-	var at := float(OUT_AT[i]) * timeline.stretch_factor()
+	var at := float(tune_out_at[i]) * timeline.stretch_factor()
 	if i > 0 and (households[i - 1] as Household).done:
-		at = minf(at, (households[i - 1] as Household).done_at + CHAIN)
+		at = minf(at, (households[i - 1] as Household).done_at + tune_chain)
 	return at
 
 
@@ -560,7 +581,7 @@ func upcoming() -> int:
 ## Gate `g` is watched (v0.11 M6): one of its watchmen would see a believer at its mouth. Only reads.
 func gate_watched(g: int) -> bool:
 	for k in watch.size():
-		if k / GATE_WATCH == g and _watching(watch[k]) and (watch[k] as Person).ground_pos.distance_to((gates[g] as Gate).mouth) <= SIGHT + 1.0:
+		if k / tune_gate_watch == g and _watching(watch[k]) and (watch[k] as Person).ground_pos.distance_to((gates[g] as Gate).mouth) <= SIGHT + 1.0:
 			return true
 	return false
 
@@ -754,19 +775,19 @@ func _quench() -> void:
 ## Why the night is lost now (v0.11 M6, Decisions 223 and 228): "exodus_few" once the believers out and those left fall below NEED;
 ## "gates_shut" once every gate is shut with fewer than NEED out; else "".
 func lost_reason() -> String:
-	if out_count() + left_count() < NEED:
+	if out_count() + left_count() < tune_need:
 		return "exodus_few"
 	var all_shut := not gates.is_empty()
 	for g: Gate in gates:
 		all_shut = all_shut and g.shut
-	if all_shut and out_count() < NEED:
+	if all_shut and out_count() < tune_need:
 		return "gates_shut"
 	return ""
 
 
 ## "Lead them out 3 / 10, 2 to spare" (v0.11 M6).
 func hud_line() -> String:
-	return "Lead them out %d / %d, %d to spare" % [out_count(), NEED, maxi(out_count() + left_count() - NEED, 0)]
+	return "Lead them out %d / %d, %d to spare" % [out_count(), tune_need, maxi(out_count() + left_count() - tune_need, 0)]
 
 
 ## The banners (v0.11 M6).
@@ -798,7 +819,7 @@ func _escape_banner() -> String:
 ## the rest and on each gate's watch.
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
-	if lost_reason() != "" or out_count() >= NEED:
+	if lost_reason() != "" or out_count() >= tune_need:
 		return out
 	var marched := false
 	for c in charges:
@@ -827,7 +848,7 @@ func tags() -> Array[MapTag]:
 		var shut_at := gate.shut_at * timeline.stretch_factor()
 		if gate.shut:
 			out.append(MapTag.place(gate.mouth, MARK_NOT_YET, "%s - SHUT" % gate.label, 0.0, true))
-		elif shut_at - _clock <= SHUT_WARN:
+		elif g < tune_shut_at.size() and shut_at - _clock <= SHUT_WARN:
 			out.append(MapTag.place(gate.mouth, MARK_PLACE, "%s - SHUT IN %s" % [gate.label, UiTheme.clock(shut_at - _clock)], 0.0, true))
 		elif gate_watched(g):
 			out.append(MapTag.place(gate.mouth, MARK_WATCHED, "%s - WATCHED" % gate.label, 0.0, true))
@@ -866,7 +887,7 @@ func _waiting_tag(i: int) -> MapTag:
 ## its own, "shut" once the gate it is heading for (heading()) is shut, "gate" while its lamp nears that gate, watched; "waiting"
 ## between households (not before the first); else "".
 func hint_phase() -> String:
-	if lost_reason() != "" or out_count() >= NEED:
+	if lost_reason() != "" or out_count() >= tune_need:
 		return ""
 	for c in charges:
 		if c.held and not _resolved(c):
@@ -921,7 +942,7 @@ func hint_seconds() -> float:
 func tour() -> Array:
 	var out := []
 	if not households.is_empty():
-		out.append([(households[0] as Household).door, "The west household hides here. At %s, whisper its lamp to the postern; the rest follow." % UiTheme.clock(float(OUT_AT[0]))])
+		out.append([(households[0] as Household).door, "The west household hides here. At %s, whisper its lamp to the postern; the rest follow." % UiTheme.clock(float(tune_out_at[0]))])
 	if not gates.is_empty():
 		out.append([(gates[0] as Gate).mouth, "Gates shut: postern %s, Side Gate %s, Main Gate %s (lost unless ten are out)." % [
 			UiTheme.clock(float(SHUT_AT[0])), UiTheme.clock(float(SHUT_AT[1])), UiTheme.clock(float(SHUT_AT[2]))]])

@@ -3,7 +3,7 @@ extends Node
 ## Prepare (spec §1, §5): the briefing and the card under the mouse on the left; on the right the powers by Authority
 ## (v0.08: a tab per Authority in the mission's pool -- v0.06's were kinds -- over a grid of the open tab's cards), and
 ## under them the loadout bar -- the mission's slots, the picks in slot order whichever tab they came from -- with
-## MANIFEST once there is one. The header's right shows the slots and Divine Power spent; a card that would not fit is
+## MANIFEST once there is one. The header's right shows the slots and Might spent; a card that would not fit is
 ## dimmed and refuses with its reason. The difficulty strip shows only for a mission that lets the player choose.
 ##
 ## One deviation from the spec's layout, forced by 640x360: the cards carry the 42-pixel HUD icons, and the
@@ -23,8 +23,16 @@ const TAB_H := 16.0
 const TAB_GAP := 4.0
 ## How long a refused pick's reason stays in the panel's hint line (v0.08).
 const REFUSE_SECONDS := 1.5
+## What a click on a sealed card says (god P2, spec §10.3, Ruling P2-7): `%s` is the nights left.
+const REFUSE_SEALED := "Sealed by the Lantern: %s left"
+## The header while the Hunt is the night (god P2, spec §10.2, Ruling P2-5).
+const HUNT_HEADER := "THE LANTERN HUNT"
+## The header while an Awaken rite is the night (god P3, MS §1; gold).
+const RITE_HEADER := "THE AWAKENING RITE"
+## The rite's CHAIN row: Chain of the Forgotten is the rite's own power, outside the draft and its Might (god P3, MS §1 "free").
+const CHAIN_ROW := "Chain of the Forgotten (C): free"
 ## What the panel says when a pick is refused, by Draft.refusal()'s answer.
-const REFUSALS := {"dp": "Not enough Divine Power", "slots": "No free slot", "pool": "Not a power of this mission",
+const REFUSALS := {"dp": "Not enough Might", "slots": "No free slot", "pool": "Not a power of this mission",
 	"locked": "Locked: unlock it on the Upgrades screen"}
 ## And when MANIFEST is pressed with nothing picked.
 const REFUSE_EMPTY := "Pick at least one power"
@@ -34,6 +42,8 @@ const SLOT := Vector2(84.0, 28.0)
 ## A loadout slot narrower than this shows its icon and number without the name.
 const SLOT_NAME_MIN := 70.0
 const MANIFEST_RECT := Rect2(552.0, 282.0, 76.0, 28.0)
+## The level badge on a picked loadout slot (god P1, spec §3, ruling P13): "L1" to "L5", at the slot's top right.
+const LEVEL_BADGE := Vector2(14.0, 10.0)
 ## The left panel: briefing above, the card under the mouse below.
 const PANEL := Rect2(8.0, 40.0, 180.0, 274.0)
 ## The slot-number badge on a picked card: large enough for the body size, where 2 and 3 do not read as 8.
@@ -44,6 +54,18 @@ const LABEL_GAP := 6.0
 ## The mission being prepared (v0.08): its briefing, its slots and the powers it allows. Last Judgement until setup().
 var mission: MissionDef = MissionBook.last_judgement()
 var draft := Draft.new()
+## The board's test mode (god P1, spec §3, ruling P13): each picked slot carries a level badge, and a click on it steps the
+## power's level 1 to 5 and round to 1. Game sets it for a board night, before setup(); off, the badge is neither drawn nor hit.
+var level_picker := false
+## The levels the draft starts with (god P1, pre-flight G1), key -> level: Game's, set before setup() so Change powers and the
+## between-acts re-draft show the levels already chosen. setup() replaces the draft, so it copies them in.
+var levels := {}
+## Endless Night's god (god P1, spec §9.1): set before setup(), Prepare drafts from the abilities this god has learned, each at its
+## learned level -- a tab per god type holding one (the spot decides the tab, spec §5.2), the god's slots and Might, no level
+## picker. null for every other mission.
+var god: GodSlot = null
+## The look Endless Night rolled for this night (a Town.Look), or -1 for none: Game sets it with `god`; the header then says Day or Night.
+var look := -1
 ## The open tab: an index into tabs().
 var tab := 0
 ## Why the last pick (or MANIFEST) was refused, shown in the panel's hint line for REFUSE_SECONDS; "" for none.
@@ -64,6 +86,8 @@ const PROFILE_RIGHT := 626.0
 const COLUMN_GAP := 8.0
 
 var _ui: Control
+## A god's draft (god P1): type -> its draftable keys in spot order, made in setup() (empty for every other mission).
+var _god_tabs := {}
 ## Both icon sizes, loaded once here and never inside _draw() (a texture loaded while drawing can reach the
 ## draw list before the GPU has it and paint a white block that stays).
 var _icons := {}
@@ -85,9 +109,37 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 	mission = def
 	draft = Draft.new().for_mission(mission)
 	draft.locked = locked
+	_god_tabs.clear()
+	if god != null:
+		# Endless Night (god P1): the god's slots, Might and learned levels. A power's level is the god's, so every learned level
+		# stays in the draft, picked or not.
+		level_picker = false
+		draft.slots = god.slots()
+		draft.capacity = god.max_might()
+		draft.levels = god.learned.duplicate()
+		# A sealed key (god P2, Ruling P2-7) is listed in its tab so the player sees it, but never picked: not by a remembered loadout,
+		# whatever the def's pool is (preflight R7), and not by a click.
+		var wanted := PackedStringArray()
+		for key in preselect:
+			if key != god.sealed:
+				wanted.append(key)
+		preselect = wanted
+		for key in god.in_tree():
+			var type := _tab_of(key)
+			if (mission.allows(key) or key == god.sealed) and type != "":
+				var keys: PackedStringArray = _god_tabs.get(type, PackedStringArray())
+				keys.append(key)
+				_god_tabs[type] = keys
+	else:
+		draft.levels = levels.duplicate()
 	draft.preselect(preselect)
+	if god == null:
+		# A level kept for a power that did not make the loadout is dropped, so a later pick starts at level 1 (ruling C14).
+		for key: String in draft.levels.keys():
+			if not draft.picks.has(key):
+				draft.levels.erase(key)
 	# Open on the tab of the first pick, so a returning player sees where their loadout starts.
-	tab = maxi(tabs().find(PowerBook.authority_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
+	tab = maxi(tabs().find(_tab_of(draft.picks[0])), 0) if not draft.picks.is_empty() else 0
 	difficulty = tier
 	for p: Dictionary in PowerBook.POWERS:
 		var key := String(p.key)
@@ -131,9 +183,10 @@ static func tab_rect(i: int, count := PowerBook.AUTHORITIES.size()) -> Rect2:
 	return Rect2(TAB_AT + Vector2(float(i) * (w + TAB_GAP), 0.0), Vector2(w, TAB_H))
 
 
-## A power's cooldown as the cards print it: whole seconds stay whole ("20 s"), a fraction shows one decimal ("2.5 s").
-static func cooldown_text(p: Dictionary) -> String:
-	var seconds := float(p.cooldown)
+## A power's cooldown as the cards print it: whole seconds stay whole ("20 s"), a fraction shows one decimal ("2.5 s"). The
+## cooldown is the one at `level` (Ruin's ten powers shorten it as they grow); a row with no key (a fixture) prints its own.
+static func cooldown_text(p: Dictionary, level := 1) -> String:
+	var seconds := float(PowerBook.stat_in(p, level, "cooldown", p.cooldown))
 	return "%d s" % roundi(seconds) if is_equal_approx(seconds, roundf(seconds)) else "%.1f s" % seconds
 
 
@@ -144,9 +197,22 @@ static func slot_rect(i: int, count := 4) -> Rect2:
 	return Rect2(Vector2(LOADOUT_BAR.position.x + 4.0 + float(i) * (w + 4.0), LOADOUT_BAR.position.y + 2.0), Vector2(w, SLOT.y))
 
 
-## The Authorities with at least one power in the mission's pool, in PowerBook.AUTHORITIES order: one tab each.
+## The tab a power sits in: its Authority, or -- for a god's draft (god P1, spec §5.2) -- the type of the tree spot it was learned in.
+func _tab_of(key: String) -> String:
+	if god != null:
+		return str(GodTree.spot_of(key).get("type", ""))
+	return PowerBook.authority_of(key)
+
+
+## The Authorities with at least one power in the mission's pool, in PowerBook.AUTHORITIES order: one tab each. A god's draft (god P1)
+## has a tab per god type holding a draftable ability, in ring order.
 func tabs() -> PackedStringArray:
 	var out := PackedStringArray()
+	if god != null:
+		for type: String in GodTree.RING:
+			if _god_tabs.has(type):
+				out.append(type)
+		return out
 	for authority: String in PowerBook.AUTHORITIES:
 		for key in PowerBook.of_authority(authority):
 			if mission.allows(key):
@@ -160,12 +226,14 @@ func shown() -> PackedStringArray:
 	return authority_keys(tab)
 
 
-## Tab `i`'s power keys that the mission allows, in PowerBook order.
+## Tab `i`'s power keys that the mission allows, in PowerBook order -- a god's draft (god P1): the type's draftable keys, in spot order.
 func authority_keys(i: int) -> PackedStringArray:
 	var out := PackedStringArray()
 	var all := tabs()
 	if i < 0 or i >= all.size():
 		return out
+	if god != null:
+		return _god_tabs.get(all[i], out)
 	for key in PowerBook.of_authority(all[i]):
 		if mission.allows(key):
 			out.append(key)
@@ -183,8 +251,15 @@ func can_manifest() -> bool:
 	return draft.can_manifest()
 
 
-## What is under a point: a power key, "tab:<i>", "slot:<i>", "manifest", the difficulty arrows (only when the mission
-## lets the player choose the difficulty), or "".
+## The level badge of loadout slot `i` of `count` (god P1, ruling P13): LEVEL_BADGE at the slot's top right.
+static func level_rect(i: int, count: int) -> Rect2:
+	var slot := slot_rect(i, count)
+	return Rect2(Vector2(slot.end.x - LEVEL_BADGE.x - 2.0, slot.position.y + 2.0), LEVEL_BADGE)
+
+
+## What is under a point: a power key, "tab:<i>", "level:<i>" (a filled slot's badge, only while `level_picker` is on), "slot:<i>",
+## "manifest", the difficulty arrows (only when the mission lets the player choose the difficulty), or "". The badge is tested
+## before the slot it sits in, or a click on it would give the pick back (pre-flight R7).
 func hit(point: Vector2) -> String:
 	var count := tabs().size()
 	for i in count:
@@ -194,6 +269,10 @@ func hit(point: Vector2) -> String:
 	for i in keys.size():
 		if cell_rect(i, shown().size()).has_point(point):
 			return String(keys[i])
+	if level_picker:
+		for i in draft.picks.size():
+			if level_rect(i, draft.slots).has_point(point):
+				return "level:%d" % i
 	for i in draft.slots:
 		if slot_rect(i, draft.slots).has_point(point):
 			return "slot:%d" % i
@@ -251,8 +330,8 @@ func _on_gui_input(event: InputEvent) -> void:
 		click(event.position)
 
 
-## A left click at a screen point: a tab opens, a card is picked or given back, a filled slot gives its pick back,
-## MANIFEST goes. A card that does not fit, or MANIFEST with nothing picked, buzzes and says why (refused_reason).
+## A left click at a screen point: a tab opens, a card is picked or given back, a filled slot gives its pick back, a level badge
+## steps its power's level (1 to 5, 5 round to 1; a refusal says why as a pick's does), MANIFEST goes. A card that does not fit, or MANIFEST with nothing picked, buzzes and says why (refused_reason).
 func click(point: Vector2) -> void:
 	var h := hit(point)
 	if h == "diff_prev" or h == "diff_next":
@@ -260,39 +339,73 @@ func click(point: Vector2) -> void:
 	elif h.begins_with("tab:"):
 		UiSound.play(&"ui_click")
 		set_tab(int(h.substr(4)))
+	elif h.begins_with("level:"):
+		var key := draft.picks[int(h.substr(6))]
+		var why := draft.set_level(key, draft.level_of(key) % PowerBook.MAX_LEVEL + 1)
+		if why == "":
+			UiSound.play(&"ui_click")
+			_ui.queue_redraw()
+		else:
+			refuse(String(REFUSALS.get(why, why)))
 	elif h.begins_with("slot:"):
 		var i := int(h.substr(5))
 		if i < draft.picks.size():
 			UiSound.play(&"ui_click")
 			draft.toggle(draft.picks[i])
+			_keep_god_levels()
 			_ui.queue_redraw()
 	elif h == "manifest":
 		if can_manifest():
 			UiSound.play(&"ui_manifest")
 			action.emit("manifest")
 		else:
-			_refuse(REFUSE_EMPTY)
+			refuse(REFUSE_EMPTY)
+	elif god != null and h != "" and h == god.sealed:
+		refuse(REFUSE_SEALED % GodSlot.nights_text(god.seal_nights))
 	elif h != "":
 		var why := draft.toggle(h)
+		_keep_god_levels()
 		if why == "":
 			UiSound.play(&"ui_click")
 			_ui.queue_redraw()
 		else:
-			_refuse(String(REFUSALS.get(why, why)))
+			refuse(String(REFUSALS.get(why, why)))
 
 
-## Buzz, and say why in the panel's hint line for REFUSE_SECONDS.
-func _refuse(reason: String) -> void:
+## A god's powers keep their learned levels when picked, given back and picked again (god P1): Draft.toggle() clears a level when a
+## pick goes back (ruling C14, the board's picker), but here the level is the god's, not the player's.
+func _keep_god_levels() -> void:
+	if god != null:
+		draft.levels = god.learned.duplicate()
+
+
+## Buzz, and say why in the panel's hint line for REFUSE_SECONDS. Public: Game refuses an empty draft through it (god P1, review M4).
+func refuse(reason: String) -> void:
 	UiSound.play(&"ui_buzz")
 	refused_reason = reason
 	_refuse_left = REFUSE_SECONDS
 	_ui.queue_redraw()
 
 
-## The power the mouse is over: a card's, or the pick in a loadout slot's.
+## The price line of a power's card: its Might (at the level it is picked at, when it is picked on the board -- god P1, review M5), its
+## cooldown, a god's learned level before them, or the unlocking price of a locked power (v0.11 M1, spec §3.4).
+func card_cost_text(key: String) -> String:
+	var p := PowerBook.get_power(key)
+	if draft.locked.has(key):
+		return "Locked: %d" % DescendState.unlock_price(key)
+	if god != null and key == god.sealed:
+		return "Sealed: %s" % GodSlot.nights_text(god.seal_nights)
+	if god != null:
+		# A god's card (god P1): the learned level and the Might at that level.
+		return "L%d  %d Might  %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p, draft.level_of(key))]
+	var might := PowerBook.might(key, draft.level_of(key)) if draft.slot_of(key) > 0 else int(p.dp)
+	return "%d Might  %s" % [might, cooldown_text(p, draft.level_of(key))]
+
+
+## The power the mouse is over: a card's, or the pick in a loadout slot's (or its level badge's).
 func _hover_key() -> String:
-	if _hover.begins_with("slot:"):
-		var i := int(_hover.substr(5))
+	if _hover.begins_with("slot:") or _hover.begins_with("level:"):
+		var i := int(_hover.substr(_hover.find(":") + 1))
 		return draft.picks[i] if i < draft.picks.size() else ""
 	return _hover
 
@@ -316,8 +429,8 @@ func _process(delta: float) -> void:
 func preview(key: String) -> void:
 	_hover = key
 	_held = true
-	if tabs().has(PowerBook.authority_of(key)):
-		tab = tabs().find(PowerBook.authority_of(key))
+	if tabs().has(_tab_of(key)):
+		tab = tabs().find(_tab_of(key))
 	_clip_t = 0.0
 	_clip_frame = 0
 	_ui.queue_redraw()
@@ -325,7 +438,7 @@ func preview(key: String) -> void:
 
 func _draw_ui() -> void:
 	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
-	UiTheme.text(_ui, Vector2(8, 24), "PREPARE THE MANIFESTATION", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+	_draw_header()
 	_draw_budget()
 	_draw_panel()
 	_draw_tabs()
@@ -336,12 +449,47 @@ func _draw_ui() -> void:
 	_draw_profile()
 
 
-## "4 / 6 slots   12 / 14 DP" at the header's right (v0.08's budget meter): gold once the slots or the Divine Power
+## The header: THE AWAKENING RITE (gold) while a rite is the night (god P3, MS §1), THE LANTERN HUNT (red) while the Hunt is, else "PREPARE THE
+## MANIFESTATION" (god P2, Ruling P2-5).
+func header_text() -> String:
+	if is_rite():
+		return RITE_HEADER
+	if god != null and not GodNight.hunt_for(god).is_empty():
+		return HUNT_HEADER
+	return "PREPARE THE MANIFESTATION"
+
+
+func _draw_header() -> void:
+	var s := header_text()
+	var size := UiTheme.SIZE_BIG
+	var when := look_text()
+	var tail := UiTheme.width(when, UiTheme.SIZE_SMALL) + 10.0 if when != "" else 0.0  # the look's word sits after the header
+	# Body size only if the header (and the look after it) would meet the budget text at the right.
+	if 8.0 + UiTheme.width(s, size) + tail > 632.0 - UiTheme.width(budget_text(), UiTheme.SIZE_SMALL) - 8.0:
+		size = UiTheme.SIZE_BODY
+	UiTheme.text(_ui, Vector2(8, 24), s, size, UiTheme.COL_BAD if s == HUNT_HEADER else UiTheme.COL_GOLD)
+	if when != "":
+		UiTheme.text(_ui, Vector2(8.0 + UiTheme.width(s, size) + 10.0, 24.0), when, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+
+
+## "Day" or "Night" for an Endless Night's rolled look; "" when no look is set.
+func look_text() -> String:
+	if look == Town.Look.NIGHT:
+		return "Night"
+	return "Day" if look == Town.Look.DAY else ""
+
+
+## True when this screen prepares an Awaken rite for a god (god P3, MS §1): the mission is a rite's and there is a god.
+func is_rite() -> bool:
+	return god != null and GodNight.is_rite(mission.id)
+
+
+## "4 / 6 slots   12 / 14 Might" at the header's right (v0.08's budget meter): gold once the slots or the Might
 ## are used up, dim before.
 func budget_text() -> String:
 	if draft.capacity <= 0:
 		return "%d / %d slots" % [draft.picks.size(), draft.slots]
-	return "%d / %d slots   %d / %d DP" % [draft.picks.size(), draft.slots, draft.spent(), draft.capacity]
+	return "%d / %d slots   %d / %d Might" % [draft.picks.size(), draft.slots, draft.spent(), draft.capacity]
 
 
 func _draw_budget() -> void:
@@ -429,28 +577,115 @@ func _draw_panel() -> void:
 		_draw_power_card(hover, p)
 		_draw_hint("")
 		return
-	var brief := [
+	var layout := _brief_layout()
+	for row: Dictionary in layout.rows:
+		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, float(row.y)), String(row.label), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+		var y := float(row.y)
+		for line in row.lines:
+			UiTheme.text(_ui, Vector2(PANEL.position.x + float(layout.value_x), y), String(line), UiTheme.SIZE_SMALL)
+			y += UiTheme.LINE_SMALL
+	_draw_hint(hint_text())
+
+
+## The briefing's `[label, value]` pairs (god P2, Ruling P2-5). The Hunt's are HUNT (its title and plate), WIN, LOSE, IF WON and IF LOST
+## (the stake, said before it is played: spec §2); the LOADOUT row is left out so they fit the panel (preflight R4, step 1: the header's
+## budget and the hint line already give the slots and the Might). Any other night's are the six it has always had.
+func brief_rows() -> Array:
+	var loadout := ["LOADOUT", "%d slots, %d Might to spend on them" % [draft.slots, draft.capacity]]
+	if is_rite():
+		return _rite_rows()
+	var hunt := GodNight.hunt_for(god) if god != null else {}
+	if not hunt.is_empty():
+		return [
+			["HUNT", "%s: %s" % [hunt.title, hunt.plate]],
+			["WIN", mission.goal],
+			["LOSE", mission.lose],
+			["IF WON", "Notice %d%%, +%d Faith" % [GodNight.HUNT_WON_NOTICE, GodNight.HUNT_FAITH * int(hunt.tier)]],
+			["IF LOST", "%s; Notice %d%%" % [GodNight.hunt_stake(god), GodNight.HUNT_LOST_NOTICE]],
+		]
+	# An ordinary Endless night with stolen gifts shows what they do in place of the city's counts (god P3, Ruling P3-8); a Hunt does not.
+	var city := ["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]]
+	if god != null and not gift_effects().is_empty():
+		city = ["GIFTS", "; ".join(gift_effects())]
+	return [
 		["TARGET", mission.brief[0] if not mission.brief.is_empty() else mission.name],
 		["WIN", mission.goal],
 		["LOSE", mission.lose],
-		["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]],
-		["LOADOUT", "%d slots, %d Divine Power to spend on them" % [mission.slots, mission.dp_capacity]],
+		city,
+		loadout,
 		["TEMPLE", "Its fall resets every cooldown, once"],
 	]
-	# Values start just right of the widest label, measured rather than guessed -- a guessed column ran
-	# TARGET into "Aldermere".
+
+
+## What the god's stolen gifts do, one effect line each (god P3, MS §4 "Shown"); empty without a god or gifts.
+func gift_effects() -> PackedStringArray:
+	var out := PackedStringArray()
+	if god == null:
+		return out
+	for g in god.gifts:
+		if RiteBook.gift_effect(g) != "":
+			out.append(RiteBook.gift_effect(g))
+	return out
+
+
+## A rite's briefing (god P3, MS §1, preflight R1): RITE (its name only: the full plate with six rows ran past the hint line by 2 px, and the plate's
+## sense is the WIN row's), WIN, LOSE, IF WON (the tier crossed into, the points, the gift),
+## IF LOST (the Notice rise, shown before it happens: spec §2) and CHAIN. The LOADOUT row is left out as the Hunt's is. Tier copy is "Tier 2: Omen"
+## (MS §5, preflight G6).
+func _rite_rows() -> Array:
+	var row := RiteBook.row(mission.id)
+	var next_tier := god.tier + 1
+	var rite_name := String(row.get("name", mission.name))
+	return [
+		["RITE", rite_name],
+		["WIN", mission.goal],
+		["LOSE", mission.lose],
+		["IF WON", "Tier %d: %s, +%d ability points, %s" % [next_tier, TierBook.tier_name(next_tier), GodSlot.AWAKEN_POINTS,
+			RiteBook.gift_name(String(row.get("gift", "")))]],
+		["IF LOST", _rite_lost_line()],
+		["CHAIN", CHAIN_ROW],
+	]
+
+
+## IF LOST for a rite (milestone review Minor 5): the Notice rise after the clamp, as the pause confirm says it (PauseMenu.rite_rise), and the Hunt that
+## follows when the rise fills the meter. At Notice 0 it is the spec's exact "Lantern Notice +25%; the god stays capped".
+func _rite_lost_line() -> String:
+	var at := god.notice if god != null else 0
+	var rise := PauseMenu.rite_rise(at)
+	if rise == 0:
+		return "Lantern Notice is already 100%; the god stays capped; the Lantern Hunts next"
+	if at + rise >= GodSlot.NOTICE_MAX:
+		return "Lantern Notice +%d%%; the god stays capped; the Lantern Hunts next" % rise
+	return "Lantern Notice +%d%%; the god stays capped" % rise
+
+
+## Where the briefing's rows sit: {"value_x", "rows": [{"label", "y", "lines"}], "bottom"} -- `bottom` is the baseline the next row would
+## take, as _draw_panel() steps it. Values start just right of the widest label, measured rather than guessed -- a guessed column ran
+## TARGET into "Aldermere".
+func _brief_layout() -> Dictionary:
+	var brief := brief_rows()
 	var value_x := 0.0
 	for pair: Array in brief:
 		value_x = maxf(value_x, UiTheme.width(String(pair[0]), UiTheme.SIZE_SMALL))
 	value_x = roundf(value_x + 4.0 + LABEL_GAP)
 	var y := PANEL.position.y + 10.0
+	var rows := []
 	for pair: Array in brief:
-		UiTheme.text(_ui, Vector2(PANEL.position.x + 4.0, y), String(pair[0]), UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-		for line in UiTheme.wrap(String(pair[1]), PANEL.size.x - value_x - 4.0, UiTheme.SIZE_SMALL):
-			UiTheme.text(_ui, Vector2(PANEL.position.x + value_x, y), line, UiTheme.SIZE_SMALL)
-			y += UiTheme.LINE_SMALL
-		y += 3.0
-	_draw_hint("Pick up to %d powers within %d DP" % [mission.slots, mission.dp_capacity])
+		var lines := UiTheme.wrap(String(pair[1]), PANEL.size.x - value_x - 4.0, UiTheme.SIZE_SMALL)
+		rows.append({"label": String(pair[0]), "y": y, "lines": lines})
+		y += UiTheme.LINE_SMALL * float(lines.size()) + 3.0
+	return {"value_x": value_x, "rows": rows, "bottom": y}
+
+
+## The baseline after the briefing's last row (god P2, preflight R4): what must clear the hint line below it.
+func brief_bottom() -> float:
+	return float(_brief_layout().bottom)
+
+
+## The panel's hint when no refusal is showing: how many powers within how much Might.
+func hint_text() -> String:
+	return "Pick up to %d powers within %d Might%s" % [draft.slots, draft.capacity,
+		". Click the L on a slot to set its level" if level_picker else ""]
 
 
 ## The panel's last line: why a pick was just refused, in red, or else `hint`, dim ("" for none).
@@ -479,8 +714,11 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 			_ui.draw_texture_rect(art, Rect2(clip_rect.get_center() - Vector2(42, 42), Vector2(84, 84)), false)
 	UiTheme.frame(_ui, clip_rect, true)
 	y = clip_rect.end.y + 16.0
-	var title := PowerBook.authority_title(PowerBook.authority_of(key))
-	UiTheme.text(_ui, Vector2(tx, y), "%d DP   %s   %s" % [int(p.dp), cooldown_text(p), String(p.aim)], UiTheme.SIZE_SMALL)
+	var title := PowerBook.authority_title(_tab_of(key))
+	var stats := "%d Might   %s   %s" % [int(p.dp), cooldown_text(p, draft.level_of(key)), String(p.aim)]
+	if god != null:
+		stats = "L%d   %d Might   %s   %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p, draft.level_of(key)), String(p.aim)]
+	UiTheme.text(_ui, Vector2(tx, y), stats, UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,
 		Color("9ab48a") if bool(p.get("quiet", false)) else UiTheme.COL_DIM)
@@ -488,6 +726,11 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 	for line in UiTheme.wrap(String(p.shape), PANEL.size.x - 12.0, UiTheme.SIZE_SMALL):
 		UiTheme.text(_ui, Vector2(tx, y), line, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 		y += UiTheme.LINE_SMALL
+	# A power drafted at level 5 with a twist: the twist, in gold, after the shape.
+	if god != null and draft.level_of(key) == PowerBook.MAX_LEVEL and PowerBook.twist(key) != "":
+		for line in UiTheme.wrap(PowerBook.twist(key), PANEL.size.x - 12.0, UiTheme.SIZE_SMALL):
+			UiTheme.text(_ui, Vector2(tx, y), line, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+			y += UiTheme.LINE_SMALL
 
 
 func _draw_card(i: int, key: String) -> void:
@@ -497,8 +740,9 @@ func _draw_card(i: int, key: String) -> void:
 	var compact := r.size.y < CARD.y
 	var icon_px := r.size.y - 8.0 if compact else 42.0
 	var slot := draft.slot_of(key)
-	# A card that would not fit -- no free slot, or over the Divine Power -- is dimmed (v0.08); a picked one never is.
-	var refused := draft.refusal(key) != ""
+	# A card that would not fit -- no free slot, or over the Might -- is dimmed (v0.08); a picked one never is.
+	var sealed := god != null and key == god.sealed
+	var refused := sealed or draft.refusal(key) != ""
 	_ui.draw_rect(r, UiTheme.COL_PANEL if key != _hover else Color(0.1, 0.09, 0.07, 0.9))
 	var icon: Texture2D = _icons.get(key)
 	if icon != null:
@@ -514,15 +758,20 @@ func _draw_card(i: int, key: String) -> void:
 			UiTheme.COL_GOLD if slot > 0 else (UiTheme.COL_DIM if refused else UiTheme.COL_TEXT))
 		ty += UiTheme.LINE_SMALL - (1.0 if compact else 0.0)
 	# A locked power (v0.11 M1, spec §3.4) shows its unlocking price instead.
-	var cost := "%d DP  %s" % [int(p.dp), cooldown_text(p)]
-	if draft.locked.has(key):
-		cost = "Locked: %d" % DescendState.unlock_price(key)
-	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var cost := card_cost_text(key)
+	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_BAD if sealed else UiTheme.COL_DIM)
+	if sealed:
+		# The Lantern's seal (god P2): a red cross over the icon, drawn shapes only (C4).
+		var at := r.position + Vector2(4.0, 4.0)
+		_ui.draw_line(at, at + Vector2(icon_px, icon_px), UiTheme.COL_BAD, 2.0)
+		_ui.draw_line(at + Vector2(icon_px, 0.0), at + Vector2(0.0, icon_px), UiTheme.COL_BAD, 2.0)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.
-		# A locked card's price fills the line it would share, so its mark rides one line higher (v0.11 M1).
-		var lift := UiTheme.LINE_SMALL if draft.locked.has(key) else 0.0
-		UiTheme.text(_ui, Vector2(r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0, r.end.y - (3.0 if compact else 5.0) - lift),
+		# A locked card's price fills the line it would share, so its mark rides one line higher (v0.11 M1); so does a price
+		# that "Might" makes long enough to reach the mark (god P1, C1).
+		var mark_x := r.end.x - UiTheme.width("quiet", UiTheme.SIZE_SMALL) - 4.0
+		var lift := UiTheme.LINE_SMALL if draft.locked.has(key) or tx + UiTheme.width(cost, UiTheme.SIZE_SMALL) + 4.0 > mark_x else 0.0
+		UiTheme.text(_ui, Vector2(mark_x, r.end.y - (3.0 if compact else 5.0) - lift),
 			"quiet", UiTheme.SIZE_SMALL, Color("9ab48a"))
 	if slot > 0:
 		# On the icon's corner, gold on dark like the HUD's hotkeys. Dark digits on a gold square picked up every
@@ -533,6 +782,18 @@ func _draw_card(i: int, key: String) -> void:
 		var digit := "%d" % slot
 		UiTheme.text(_ui, badge.position + Vector2(roundf((BADGE - UiTheme.width(digit, UiTheme.SIZE_BODY)) * 0.5), 12.0),
 			digit, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
+
+
+## Slot `i`'s level badge (god P1, ruling P13): "L1" to "L5" in a small dark box at the slot's top right, gold once the level is
+## raised, lit while the mouse is on it.
+func _draw_level_badge(i: int, key: String) -> void:
+	var r := level_rect(i, draft.slots)
+	var level := draft.level_of(key)
+	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.95) if _hover == "level:%d" % i else Color(0.04, 0.04, 0.06, 0.92))
+	_ui.draw_rect(r, UiTheme.COL_GOLD if level > 1 or _hover == "level:%d" % i else UiTheme.COL_GOLD_DARK, false, -1.0)
+	var label := "L%d" % level
+	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(label, UiTheme.SIZE_SMALL) * 0.5), r.end.y - 1.0), label,
+		UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if level > 1 else UiTheme.COL_DIM)
 
 
 ## The loadout bar: the picks in slot order, whichever tab they came from (a click gives one back), then MANIFEST,
@@ -552,10 +813,12 @@ func _draw_loadout() -> void:
 		if icon != null:
 			_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(2, 2), Vector2(24, 24)), false)
 		UiTheme.text(_ui, r.position + Vector2(3.0, 12.0), digit, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+		if level_picker:
+			_draw_level_badge(i, key)
 		# The name, or its first word, cut to the slot's room -- none in a slot too narrow for one.
 		if r.size.x < SLOT_NAME_MIN:
 			continue
-		var name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - 32.0)
+		var name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - 32.0 - (LEVEL_BADGE.x + 2.0 if level_picker else 0.0))
 		UiTheme.text(_ui, r.position + Vector2(29.0, 17.0), name, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 	var full := draft.can_manifest()  # not "ready": that is Node's own signal, and shadowing it warns
 	_ui.draw_rect(MANIFEST_RECT, Color(0.12, 0.1, 0.04, 0.95) if full else Color(0, 0, 0, 0.35))

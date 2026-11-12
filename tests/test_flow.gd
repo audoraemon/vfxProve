@@ -37,9 +37,10 @@ static func run(t) -> void:
 	t.check(Game.next_screen("ending:title") == Game.Screen.TITLE, "and the ending leads to the title")
 	t.check(Game.next_screen("title:ending") == Game.Screen.ENDING, "an ending not yet seen opens from the title (v0.10 M5)")
 
-	# The tier board (v0.11 M1): the Upgrades from the board's header and from the results, and back to the board.
-	t.check(Game.next_screen("board:upgrades") == Game.Screen.UPGRADES, "the board's Upgrades button opens the Upgrades")
-	t.check(Game.next_screen("results:upgrades") == Game.Screen.UPGRADES, "and so do the results'")
+	# The Upgrades (v0.11 M1): the board is a test mode since god P1 (ruling C3) and has no Upgrades button, so nothing leads to the screen
+	# any more; its Back still leads to the board.
+	t.check(Game.next_screen("board:upgrades") == -1 and Game.next_screen("results:upgrades") == -1,
+		"neither the board nor the results open the Upgrades (god P1: no Upgrades button)")
 	t.check(Game.next_screen("upgrades:back") == Game.Screen.BOARD, "whose Back is the board")
 
 	# A --show sample never writes the player's save (v0.10 M5 final review): --show=ending, campaign-choice and the
@@ -65,8 +66,8 @@ static func run(t) -> void:
 		var to: int = Game.FLOW[action]
 		t.check(to >= 0 and to < Game.Screen.size(), "%s leads to a real screen (%d)" % [action, to])
 		reachable[to] = true
-	t.check(reachable.size() == Game.Screen.size() and Game.Screen.size() == 9,
-		"all nine screens are reachable, the Upgrades too (v0.11 M1) (%d)" % reachable.size())
+	t.check(Game.Screen.size() == 14 and reachable.size() == 13 and not reachable.has(Game.Screen.UPGRADES),
+		"all fourteen screens exist and thirteen are reachable: Endless Night's five too (god P1); the Upgrades are not, as the test-mode board has no button (%d)" % reachable.size())
 
 	# The board's cards sit side by side inside the screen, above its hint, without touching (v0.08).
 	for count in [1, 2, 3]:

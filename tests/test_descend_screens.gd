@@ -1,7 +1,8 @@
 extends RefCounted
 ## v0.11 M1 the board's screens (spec §3.4, §6): the results' rows -- the main objective, each wish granted, failed or lost
-## with why -- and lines -- believers banked and the total, the night, the tier's progress, bests beaten -- and its Board,
-## Again and Upgrades; the Upgrades screen's buttons and grid fit, a click buys what it can afford and refuses what it cannot.
+## with why -- and lines -- believers banked and the total, the night, the tier's progress, bests beaten (a test-mode night's say
+## nothing was banked: god P1) -- and its Board, Again and Change powers (god P1: the Upgrades button went with the test mode); the
+## Upgrades screen's buttons and grid fit, a click buys what it can afford and refuses what it cannot.
 
 const RESULT := {
 	"mission": "warning", "won": true, "reason": "warning", "goal": {"label": "The warnings die", "done": true},
@@ -46,11 +47,17 @@ static func _results(t) -> void:
 	var emitted := []
 	screen.action.connect(func(what: String) -> void: emitted.append(what))
 	t.check(screen.descend and not screen.campaign, "a board night's results")
-	for a in ["missions", "replay", "upgrades"]:
+	for a in ["missions", "replay", "change"]:
 		var r := screen._menu.rect_of(a)
 		screen._on_gui_input(_click(r.get_center()))
-	t.check(emitted == ["missions", "replay", "upgrades"], "Board, Again and Upgrades (%s)" % [emitted])
+	t.check(emitted == ["missions", "replay", "change"], "Board, Again and Change powers, no Upgrades (%s)" % [emitted])
+	t.check(not screen._menu.rect_of("upgrades").has_area(), "and no button for the Upgrades")
 	screen.free()
+	# A test-mode night (god P1, ruling P11): the same rows, but its lines say nothing was banked.
+	var test := RESULT.duplicate(true)
+	test.descend.bank = {"test": true, "night": 3, "cleared": true, "first_clear": false, "bests": ["Fastest clear 3:21"]}
+	t.check(Array(ResultsScreen.summary_lines(test)) == ["Test mode: nothing banked", "New best: Fastest clear 3:21"]
+		and ResultsScreen.descend_rows(test) == rows, "a test-mode night: nothing banked, its best shown (%s)" % [ResultsScreen.summary_lines(test)])
 
 
 static func _click(at: Vector2) -> InputEventMouseButton:

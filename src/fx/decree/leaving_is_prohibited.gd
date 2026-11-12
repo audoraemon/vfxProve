@@ -95,8 +95,8 @@ func _fx_process(delta: float) -> void:
 		if not is_instance_valid(p) or not p.is_alive():
 			bound.erase(p)
 			continue
-		if p.inside:
-			continue
+		if p.inside or p.chained:
+			continue  # (god P3, MS §2 R10: a rite's chained captive walks out of the circle; the chain is stronger than the law)
 		bound[p] = maxf(float(bound[p]) - delta, 0.0)
 		var d: Vector2 = p.ground_pos - origin
 		var far := d.length()

@@ -42,6 +42,9 @@ enum Place { HOME, WORK, LEISURE, ERRAND }
 
 var _crowd: Crowd
 var _rng := RandomNumberGenerator.new()
+## NIGHT (NightRules): citizens stay home more -- the home weight is NightRules.HOME_WEIGHT_X times, and a stay at home HOME_STAY_X times
+## as long. Mission sets it; false everywhere else, where nothing below differs from before.
+var night := false
 var _stalls: Array[Vector2] = []
 var _due := 0.0
 var _at := 0
@@ -77,7 +80,7 @@ func visit(i: int, dt: float) -> void:
 	if not is_instance_valid(_crowd.citizens[i]):
 		return
 	var p: Person = _crowd.citizens[i]
-	if p.profile == null or p.state == DummyEnemy.State.DEAD or p.has_goal():
+	if p.profile == null or p.night_indoors or p.state == DummyEnemy.State.DEAD or p.has_goal():
 		return
 	if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
 		return
@@ -97,9 +100,15 @@ func visit(i: int, dt: float) -> void:
 		p.mind = Person.Mind.CALM
 		p.awareness = Person.Awareness.UNAWARE
 	p.last_place = place
-	p.stay_left = _rng.randf_range(STAY[place].x, STAY[place].y)
+	p.stay_left = stay_for(place)
 	p.anchor = to
 	p.set_goal(to)
+
+
+## How long a stay at `place` lasts: a draw from its range, and at night a stay at home HOME_STAY_X times as long (one draw either way).
+func stay_for(place: Place) -> float:
+	var stay := _rng.randf_range(STAY[place].x, STAY[place].y)
+	return stay * NightRules.HOME_STAY_X if night and place == Place.HOME else stay
 
 
 ## The next kind of place by the role's weights, never the same kind twice running (unless it is the only one).
@@ -111,6 +120,8 @@ func pick(pr: CitizenProfile, last: int) -> Place:
 		w[Place.WORK] = 0.0
 	if _stalls.is_empty():
 		w[Place.ERRAND] = 0.0
+	if night:
+		w[Place.HOME] *= NightRules.HOME_WEIGHT_X
 	var total := 0.0
 	for k in w.size():
 		if k == last and w.reduce(func(a: float, b: float) -> float: return a + b) > w[k]:

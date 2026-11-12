@@ -7,8 +7,10 @@ const SPEC := [
 	# The board missions' (board tags, spec §3).
 	["warning", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["warning.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
+	["warning.stars", "Kill the messenger (gold) unseen (red), let the bell lie, or get him out: kill a man just outside his gate as he stares at his star."],
+	["warning.running", "The messenger (gold) runs for the bellkeeper (blue): kill him unseen (red), get him out of the walls, or let the bell lie."],
 	["warning.bell", "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."],
-	["warning.waiting", "That warning is dead. Watch the next star's gate (gold): its watchman runs when it falls."],
+	["warning.waiting", "That warning is dead. Watch the next star's gate (gold). A death just outside it as he stares draws its watchman out."],
 	["omen", "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."],
 	["omen.relay", "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."],
 	["omen.bell", "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."],
@@ -34,25 +36,27 @@ const SPEC := [
 	["vigil_flame.homeward", "The Vigil turns for home: have the flame swapped before its bearer reaches the Temple."],
 	["vigil_flame.carry", "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight."],
 	# The Tax Collector (v0.11 M2; three collectors, the controller's Task 2 ruling).
-	["tax_collector", "Kill each collector (gold) in the street. If no one near (red) sees it, no cry is raised; a seen one may ring the bell."],
-	["tax_collector.inside", "He is indoors (gold). He comes out to walk to his next debtor (orange): be ready."],
+	["tax_collector", "Stop each collector (gold): kill him, unseen if you can (red), or send him out of the walls. A seen kill rings the bell."],
+	["tax_collector.inside", "He is indoors (gold). Leaving Is Prohibited on a door he went in at, his guards drawn off, sets the debtors on him."],
 	["tax_collector.hiding", "Alarmed, he hides in the counting-house. Set it alight: every collector inside runs for the Citadel."],
 	["tax_collector.running", "No hiding place: he runs for the Citadel (red). Kill him before he gets in."],
 	["tax_collector.safe", "His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in."],
 	["tax_collector.next", "One down. The next collector (gold) leaves the counting-house soon: be ready for him."],
 	# Spoiled Harvest (v0.11 M2).
-	["spoiled_harvest", "Strike down a granary's two watchmen (red), then keep it burning 10 s before its carter (blue) empties it."],
+	["spoiled_harvest", "Spoil each granary (gold) before its carter (blue) empties it: burn or blight it, or stop him. Its watchmen (red) guard it."],
 	["spoiled_harvest.empty", "No grain yet: fire on an empty granary does nothing. Clear its watchmen (red) shortly before the grain comes."],
 	["spoiled_harvest.watchman", "A watchman (red) puts the fire out within 3 s. Strike down, scare off or whisper away every one first."],
 	["spoiled_harvest.burning", "It burns, with no one to put it out. Keep it burning 10 s, or bring it down, before a new watchman comes."],
 	# The Lost Lamb (v0.11 M2).
-	["lost_lamb", "Whisper the acolyte (blue) toward the west gate, and again before he stops. Soldiers (red) seize him on sight."],
+	["lost_lamb", "Get the acolyte (blue) out by the west gate. Frightened, or at 1:00, he runs for it: clear the soldiers (red) from his way."],
+	["lost_lamb.running", "He runs for the west gate. Clear the patrols and the watch (red) ahead of him, or draw them off."],
+	["lost_lamb.led", "He holds where you left him. Whisper or lure him on toward the west gate; soldiers (red) seize him on sight."],
 	["lost_lamb.caught", "He is caught. Discord the soldier taking him back (red), or strike once the acolyte is clear of him, before the Temple."],
 	["lost_lamb.gate", "The watch (red) holds the gate. It changes soon: bring him close, or draw the watch off."],
 	["lost_lamb.clear", "The watch is changing. Send him through the gate now."],
 	# First Prayers (v0.11 M2).
-	["first_prayers", "Whisper the poor (gold) to the old well shrine while no Faithful (red) watches. Three must pray."],
-	["first_prayers.watched", "Faithful (red) crowd the shrine's door. Draw them off, or let them go before you send anyone in."],
+	["first_prayers", "The poor (gold) walk to the old well one at a time, together once no Faithful (red) is left. Three must pray unseen."],
+	["first_prayers.watched", "Faithful (red) watch the door. Fire draws them off, ALL IS WELL sends them home, brambles by it hide who prays."],
 	# The Bell-Ringers (v0.11 M3).
 	["bell_ringers", "Kill each ringer (gold) where no one (red) sees, before he climbs the bell tower. His mates run with him."],
 	["bell_ringers.mates", "His mates (red) would see him die and run on. Draw them off or strike them first."],
@@ -148,6 +152,31 @@ const SPEC := [
 	["heart_of_faith.litter", "Odran rides in his litter, untouchable. Kill his bearers (red): with fewer than two, it falls."],
 	["heart_of_faith.on_foot", "Odran walks to the Temple's steps (orange). Kill him before he rekindles the flame."],
 	["heart_of_faith.rite", "Odran rekindles the flame. Kill him now, or whisper him off the steps to start it again."],
+	# Silence the witness (god P5, plan Task 5; MS §3): inserted here, clear of the other Hunts' rows at the end.
+	["silence_witness", "A witness (gold) walks to the Temple with two mates (red). Kill him where his mates cannot see."],
+	["silence_witness.relay", "His mate saw it and runs on: stop him too."],
+	["silence_witness.near", "The witness nears the Temple: stop him now."],
+	# The First Taste (god P3, plan Task 4): appended at the end, clear of t1routes' edits to the middle of SPEC (pre-flight B3, R3).
+	["first_taste", "Press C, then click a lamplighter (gold): he walks to Mira's shrine (orange). Three win the rite."],
+	["first_taste.drag", "Keep the Watch (red) off him. C again to Yank him on once."],
+	["first_taste.march", "The clergy (red) march on the shrine: stop two of them, or win first."],
+	["first_taste.cleanse", "The clergy cleanse the shrine: strike a kneeler now."],
+	# hide_faithful (god P5 Task 4).
+	["hide_faithful", "Your believers (blue) walk out by themselves. Clear the watch (red) from their road to the gate."],
+	["hide_faithful.trail", "The Inquisition found the trail: keep its searchers off the household."],
+	["hide_faithful.seized", "A believer is seized: strike his seizer before he reaches the Temple."],
+	# Expel the inquisitor (god P5 Task 6, MS §4): pinned like the rest, appended at the end (the other Hunts' tasks append their own after it).
+	["expel_inquisitor", "Stop each lantern-warden (gold): kill him, or put him out of the walls."],
+	["expel_inquisitor.captain", "The captain walks his rounds: kill him, or frighten him three times."],
+	["expel_inquisitor.near", "The captain nears the Citadel: stop him now."],
+	# Break the hunt (god P5 Task 7, MS §5).
+	["break_hunt", "Standards (gold) march on your believers' houses (blue). Strike a bearer when no escort (red) stands by him."],
+	["break_hunt.carried", "An escort took up the standard: strike him too."],
+	["break_hunt.taken", "A house is taken: one more and the hunt has won."],
+	# face_halcyon (god P5 Task 8, MS §6): appended after the expel_inquisitor rows.
+	["face_halcyon", "Break a believer's escort (red) without a seen death: frighten, hold or turn them."],
+	["face_halcyon.pyre", "A believer is at the pyre: break his escort before the fire takes him."],
+	["face_halcyon.gaze", "Halcyon's Gaze is filling: free them quietly."],
 ]
 
 

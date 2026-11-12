@@ -1,7 +1,8 @@
 extends RefCounted
-## v0.11 M1 the tier board (spec §3.1): five tabs and the cards of the open one fit the screen; a fresh board opens on Whisper,
-## a locked tier shows its rule and its missions cannot be picked; the header; a card's best; the board's draft greys and
-## refuses the locked powers (spec §3.4); Prepare for a board mission has no difficulty picker.
+## v0.11 M1 the tier board (spec §3.1), a test mode since god P1 (spec §3, ruling C3): five tabs and the cards of the open one fit
+## the screen; a fresh board opens on Whisper with every tier open (no rule, any mission can be picked); the test header and no Upgrades
+## button; a card's best; the board's draft refuses no power (Draft.locked is still a mechanism); Prepare for a board mission has no
+## difficulty picker.
 
 
 static func run(t) -> void:
@@ -49,31 +50,30 @@ static func _tabs(t) -> void:
 	var picked := []
 	board.action.connect(func(what: String) -> void: picked.append(what))
 	t.check(board.tier == 1 and Array(board.missions()) == ["warning", "tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
-		and board.lock_line() == "" and board.header_text() == "Night 1   Believers 0",
-		"a fresh board: Whisper's five, Night 1 (%s)" % board.header_text())
+		and board.lock_line() == "" and board.header_text() == MissionBoard.TEST_HEADER,
+		"a fresh board: Whisper's five, the test header (%s)" % board.header_text())
 	board.open_tab(2)
-	t.check(board.tier == 2 and board.lock_line() == "Clear 3 Whisper missions", "Omen is locked, its rule shown")
+	t.check(board.tier == 2 and board.lock_line() == "", "Omen is open on a fresh save: no rule")
 	board.choose("miras_house")
-	t.check(picked.is_empty() and board.chosen == "" and board.tier == 2, "a locked mission cannot be picked")
+	t.check(picked == ["pick"] and board.chosen == "miras_house" and board.tier == 2, "and its mission can be picked (test mode: no tier is locked)")
 	board.choose("warning")
-	t.check(picked == ["pick"] and board.chosen == "warning" and board.tier == 1, "an open one is")
-	save.descend.cleared.append_array(PackedStringArray(["warning", "tax_collector", "spoiled_harvest"]))
-	save.descend.refresh_open()
+	t.check(picked == ["pick", "pick"] and board.chosen == "warning" and board.tier == 1, "so can a Whisper one")
 	board.choose("broken_lanterns")
-	t.check(board.chosen == "broken_lanterns" and board.lock_line() == "", "Omen open: its mission picked")
+	t.check(board.chosen == "broken_lanterns" and board.lock_line() == "", "and an Omen one")
 	var u := InputEventKey.new()
 	u.physical_keycode = KEY_U
 	u.pressed = true
 	board._unhandled_input(u)
-	t.check(picked.back() == "upgrades", "U asks for the Upgrades")
-	t.check(board.hit(MissionBoard.UPGRADES_RECT.get_center()) == "upgrades" and board.hit(MissionBoard.tab_rect(2).get_center()) == "tab:3"
-		and board.hit(MissionBoard.card_rect(0, 5).get_center()) == "card:0", "what is under the mouse")
+	t.check(picked.size() == 3 and picked.back() == "pick", "U asks for nothing: there are no Upgrades on the board (%s)" % [picked])
+	t.check(board.hit(MissionBoard.UPGRADES_RECT.get_center()) == "" and board.hit(MissionBoard.tab_rect(2).get_center()) == "tab:3"
+		and board.hit(MissionBoard.card_rect(0, 5).get_center()) == "card:0", "what is under the mouse: no Upgrades button")
 	board.free()
 	var back := MissionBoard.new().setup(save, "broken_lanterns")
-	t.check(back.tier == 2 and back.selected == 1, "it opens on the mission last picked, when its tier is open")
+	t.check(back.tier == 2 and back.selected == 1, "it opens on the mission last picked (its tier is open on a fresh save)")
 	back.free()
 	var shut := MissionBoard.new().setup(SaveFile.new(), "festival")
-	t.check(shut.tier == 1 and shut.selected == 0, "and on Whisper when it is not")
+	t.check(shut.tier == TierBook.tier_of("festival") and shut.tier > 1 and shut.selected == TierBook.missions(shut.tier).find("festival"),
+		"and on a high tier's mission even on a fresh save (tier %d)" % shut.tier)
 	shut.free()
 
 
@@ -98,18 +98,23 @@ static func _best(t) -> void:
 
 
 static func _draft(t) -> void:
-	# Last Judgement's pool is every power, so the lock is what refuses (The Warning's pool would refuse first).
+	# Draft.locked stays a mechanism (a later mode may use it): Last Judgement's pool is every power, so the lock is what refuses
+	# (The Warning's pool would refuse first).
 	var d := Draft.new().for_mission(TierBook.board("last_judgement"))
 	d.locked = PackedStringArray(["tsunami", "nova"])
 	t.check(d.refusal("tsunami") == "locked" and d.toggle("tsunami") == "locked" and d.refusal("doom") == "", "a locked power is refused")
 	d.preselect(PackedStringArray(["tsunami", "doom"]))
 	t.check(d.picks == PackedStringArray(["doom"]), "and left out of a saved loadout")
-	var prep := PrepareScreen.new().setup(TierBook.board("warning"), PackedStringArray(), ResponseProfile.DEFAULT,
-		DescendState.new().locked())
-	t.check(prep.draft.locked.size() == 38 and prep.budget_text() == "0 / 3 slots   0 / 6 DP"
+	# The board is a test mode (god P1, C3): its Prepare is opened with no locked power, so every card is open.
+	var save := SaveFile.new()
+	var prep := PrepareScreen.new().setup(Game.board_def("warning"), PackedStringArray(), ResponseProfile.DEFAULT,
+		Game.board_locked_for(save, "warning"))
+	t.check(prep.draft.locked.is_empty() and prep.draft.refusal("tsunami") == "" and prep.draft.refusal("nova") == ""
+		and prep.budget_text() == "0 / 3 slots   0 / 6 Might"
 		and prep.hit(PrepareScreen.arrow_rect(-1).get_center()) == "" and not prep.mission.chooses_difficulty(),
-		"the board's Prepare: Tier 1's budget, the locked powers, no difficulty picker")
-	t.check(String(PrepareScreen.REFUSALS["locked"]) == "Locked: unlock it on the Upgrades screen", "and says why it refuses one")
+		"the board's Prepare: Tier 1's budget, no power locked, no difficulty picker")
+	t.check(String(PrepareScreen.REFUSALS["locked"]) == "Locked: unlock it on the Upgrades screen",
+		"and Draft.locked, were it used, still says why it refuses one")
 	prep.free()
 
 
@@ -185,9 +190,19 @@ static func _dev_town(t) -> void:
 	var want: Array = [MissionBook.CAPITAL_SANDBOX]
 	want.append_array(Array(MissionBook.town_missions(&"capital")))
 	want.append_array(["tax_collector@fixture"])
-	t.check(Array(board._missions_of(MissionBoard.DEV_TIER)) == want, "the DEV tab lists the sandbox, the Capital's missions, the fixture town's (%s)" % [board._missions_of(MissionBoard.DEV_TIER)])
+	# God P3 (preflight B4, Ruling P3-7): the Awaken rites come last, after the towns' missions.
+	want.append_array([MissionBook.FIRST_TASTE])
+	t.check(Array(board._missions_of(MissionBoard.DEV_TIER)) == want, "the DEV tab lists the sandbox, the Capital's missions, the fixture town's, then the rites (%s)" % [board._missions_of(MissionBoard.DEV_TIER)])
 	t.check(not Array(board._missions_of(MissionBoard.DEV_TIER)).any(func(id: String) -> bool: return id.ends_with("@aldermere")),
 		"Aldermere lists nothing of its own on the DEV tab")
+	# God P5 (plan Ruling C6): the Hunts are a second row, not row 1 -- row 1's list above is exact -- and on no tier tab.
+	t.check(Array(board.dev_hunts()) == Array(HuntBook.ids()), "dev_hunts() is HuntBook.ids() (%s)" % [board.dev_hunts()])
+	var on_tier := []
+	for tier in range(1, TierBook.NAMES.size() + 1):
+		for id in board._missions_of(tier):
+			if HuntBook.has(id):
+				on_tier.append("%s on tier %d" % [id, tier])
+	t.check(on_tier.is_empty(), "no tier 1-5 tab holds a Hunt id (%s)" % [on_tier])
 	board.open_tab(MissionBoard.DEV_TIER)
 	var composite := "tax_collector@fixture"
 	t.check(board._defs.has(composite) and (board._defs[composite] as MissionDef).city == FixtureCity.ID, "a town mission's def is built in its town")

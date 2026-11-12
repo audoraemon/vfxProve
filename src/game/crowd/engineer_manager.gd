@@ -371,7 +371,14 @@ func _work(team: Dictionary, delta: float) -> void:
 		c.repair(RATE * c.keep.max_hp * delta)
 	elif job.type == Job.CLEAR:
 		var s: Structure = job.target
-		team.progress += delta / (CLEAR_TIME * (WindfallFx.CLEAR_WEIGHT if s.role == &"windfall" else 1.0))
+		# A Windfall segment is CLEAR_WEIGHT thorn segments' work; Heart of the Fall's boulder (wider than a segment)
+		# BOULDER_WORK segments' more.
+		var weight := 1.0
+		if s.role == &"windfall":
+			weight = WindfallFx.CLEAR_WEIGHT
+			if s.footprint.size.x > WindfallFx.SEG * 1.5:
+				weight *= WindfallFx.BOULDER_WORK
+		team.progress += delta / (CLEAR_TIME * weight)
 		if team.progress >= 1.0:
 			_env.remove(job.target)
 			team.job = {}

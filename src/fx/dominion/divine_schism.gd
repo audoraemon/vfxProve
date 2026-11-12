@@ -11,6 +11,8 @@ extends FxTimeline
 ##   CUSTOM         two clicks: those round the first against those round the second (CUSTOM_R each).
 ##   SPREADING      a few round the click (SEED_R) split in two, and every RECRUIT_EVERY each fighter draws the people
 ##                  beside it (RECRUIT_R, RECRUIT_CHANCE) onto its own side, up to SPREAD_MAX.
+##   TUMULT         no sides: each one the wave reaches is struck mad (fights anyone), frozen where it stands or panicked
+##                  (runs wildly, a new far point every PANIC_REPICK) for the rest of DURATION; a caregiver is never mad.
 ## For T_BREAK the sigil stands whole over the town, straining; then it breaks, and the sides are laid as a wave sweeps
 ## out from the click (WAVE_SPEED), so their first paths are not all asked for in
 ## one frame. The town sees it (the book's REACH): those on no side run. The cast locks the other slots for 2 s.
@@ -32,6 +34,9 @@ const RECRUIT_EVERY := 1.0
 const RECRUIT_R := 1.5
 const RECRUIT_CHANCE := 0.35
 const SPREAD_MAX := 120
+## Turn the Tide (level 5): how many fighters may be turned in all, and how near the click a fighter must stand to be the one.
+const MAX_TURNS := 10
+const TURN_PICK := 1.0
 ## Who is set on a side but runs rather than fights.
 const FLEEING_ROLES := [CitizenProfile.Role.CAREGIVER]
 const GOLD := Color("ffe9a8")
@@ -40,6 +45,24 @@ const SIDE_COLORS: Array[Color] = [Color.WHITE, GOLD, CRIMSON]
 ## The sides' marks: a sun for the first, a blade-cross for the second; the condemned wear the judged's blade.
 const GLYPH_SIDES: Array = [[], [0b00100, 0b10101, 0b01110, 0b10101, 0b00100], [0b10001, 0b01010, 0b00100, 0b01010, 0b10001]]
 const GLYPH_CONDEMNED: Array[int] = [0b00100, 0b00100, 0b00100, 0b01110, 0b00100]
+## Tumult: what the wave does to each one (the order of counts_tumult), the odds, how often the panicked pick a new far
+## point, and each state's mark: a red blade, a white bar, a yellow zig-zag.
+const MAD := 0
+const FROZEN := 1
+const PANIC := 2
+const MAD_CHANCE := 0.4
+const FROZEN_CHANCE := 0.3
+const PANIC_REPICK := Vector2(3.0, 4.0)
+## A panicked one this close to its point has arrived and picks the next at once.
+const PANIC_ARRIVED := 0.5
+## A panicked one's next point is at least this far from where it stands.
+const PANIC_MIN_RUN := 6.0
+const MAD_RED := Color("e02828")
+const FROZEN_WHITE := Color.WHITE
+const PANIC_YELLOW := Color("ffd23a")
+const COLORS_TUMULT: Array[Color] = [MAD_RED, FROZEN_WHITE, PANIC_YELLOW]
+const GLYPHS_TUMULT: Array = [[0b00011, 0b00110, 0b01100, 0b10100, 0b11000], [0b00000, 0b11111, 0b11111, 0b11111, 0b00000],
+	[0b00110, 0b01100, 0b00110, 0b01100, 0b00110]]
 const SH_SIGIL := preload("res://shaders/schism_sigil.gdshader")
 const SIGIL_R := 9.0
 const FIRE := [Color(0.5, 0.06, 0.05, 0.5), Color("b01818"), Color("ff4030"), Color("ffb060"), Color("fff0d0")]
@@ -48,11 +71,23 @@ var mode := "faction"
 ## Everyone set on a side, and how many on each.
 var members: Array[Person] = []
 var counts := [0, 0, 0]
+## Tumult: what each one was struck with (MAD, FROZEN or PANIC), and how many of each.
+var states := {}
+var counts_tumult := [0, 0, 0]
 
 ## Those the wave has not reached yet: [person, side], nearest the click first.
 var _pending: Array = []
 var _recruit_in := RECRUIT_EVERY
+## Tumult: the panicked, [person, effect time of their next new point].
+var _panicked: Array = []
 var _debug: Debug
+## This cast's region, fighter cap and length at its ability level (REGION, MAX_FIGHTERS and DURATION at level 1).
+var lv_region := REGION
+var lv_max_fighters := MAX_FIGHTERS
+var lv_duration := DURATION
+## Turn the Tide: whether this cast has it, and how many it has turned.
+var turns := 0
+var _tide := false
 ## When each was set on its side (the effect's clock), for its thread; the sides' sparkles, by side.
 var _joined := {}
 var _sparkles: Array = [null, null, null]
@@ -85,13 +120,17 @@ static func _near(field: EnemyField, at: Vector2, r: float) -> Array[Person]:
 
 
 func _build() -> void:
+	lv_region = float(PowerBook.stat(extra, "schism", "REGION", REGION))
+	lv_max_fighters = int(PowerBook.stat(extra, "schism", "MAX_FIGHTERS", MAX_FIGHTERS))
+	lv_duration = float(PowerBook.stat(extra, "schism", "DURATION", DURATION))
+	_tide = PowerBook.twist_at(extra, "schism")
 	mode = String(extra.get("mode", "faction"))
-	duration = T_BREAK + DURATION + 0.5
+	duration = T_BREAK + lv_duration + 0.5
 	busy = T_BREAK + 1.0
 	match mode:
 		"purge":
 			var condemned := condemned_at(ctx.field, origin)
-			for p in _near(ctx.field, origin, REGION).slice(0, MAX_FIGHTERS):
+			for p in _near(ctx.field, origin, lv_region).slice(0, lv_max_fighters):
 				_pending.append([p, 2 if p in condemned else 1])
 		"custom":
 			var other: Vector2 = extra.get("to", origin + Vector2(CUSTOM_R * 2.0, 0.0))
@@ -101,21 +140,59 @@ func _build() -> void:
 			for p in _near(ctx.field, other, CUSTOM_R):
 				if p.ground_pos.distance_to(other) < p.ground_pos.distance_to(origin):
 					_pending.append([p, 2])
-			_pending = _pending.slice(0, MAX_FIGHTERS)
+			_pending = _pending.slice(0, lv_max_fighters)
 		"spreading":
 			var k := 0
 			for p in _near(ctx.field, origin, SEED_R):
 				_pending.append([p, 1 + k % 2])
 				k += 1
+		"tumult":
+			for p in _near(ctx.field, origin, lv_region).slice(0, lv_max_fighters):
+				_pending.append([p, 0])
 		_:
 			mode = "faction"
-			for p in _near(ctx.field, origin, REGION).slice(0, MAX_FIGHTERS):
+			for p in _near(ctx.field, origin, lv_region).slice(0, lv_max_fighters):
 				_pending.append([p, 2 if p.soldier else 1])
 	at(T_BREAK, _break)
-	at(T_BREAK + DURATION, _end)
+	at(T_BREAK + lv_duration, _end)
 	ctx.play(&"dom_strain", origin)
 	if _staged():
 		_strain_show()
+
+
+## Turn the Tide: true at level 5 while the sides fight (after the busy lock, before the schism lifts), in any mode but TUMULT, until MAX_TURNS.
+func can_follow_up() -> bool:
+	return _tide and not finished and mode != "tumult" and turns < MAX_TURNS and t >= T_BREAK + 1.0 and t < T_BREAK + lv_duration
+
+
+## Turn the Tide: the member of a side nearest the click (within TURN_PICK; a tie goes to the first set on a side) goes over to the other side.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var best: Person = null
+	var best_d := TURN_PICK
+	for p in members:
+		if not is_instance_valid(p) or p.side == 0 or not p.is_alive() or p.inside:
+			continue
+		var d := p.ground_pos.distance_to(at_pos)
+		if d <= best_d and (best == null or d < best_d):
+			best = p
+			best_d = d
+	if best == null:
+		return false
+	var to := 3 - best.side
+	counts[best.side] -= 1
+	counts[to] += 1
+	best.side = to
+	best.stop_fighting()
+	_lay_side(best, to, maxf(lv_duration - (t - T_BREAK), 0.5))
+	turns += 1
+	return true
+
+
+## Turn the Tide's preview: the one fighter the click picks.
+func follow_up_area() -> Dictionary:
+	return {"shape": "circle", "r": TURN_PICK}
 
 
 func _staged() -> bool:
@@ -140,8 +217,13 @@ func _fx_process(delta: float) -> void:
 		var s: int = _pending[0][1]
 		_pending.remove_at(0)
 		if p != null and p.is_alive() and not p.inside:
-			_enlist(p, s)
-	if mode == "spreading" and t < T_BREAK + DURATION:
+			if mode == "tumult":
+				_strike(p)
+			else:
+				_enlist(p, s)
+	if mode == "tumult" and t < T_BREAK + lv_duration:
+		_repick_panicked()
+	if mode == "spreading" and t < T_BREAK + lv_duration:
 		_recruit_in -= delta
 		if _recruit_in <= 0.0:
 			_recruit_in = RECRUIT_EVERY
@@ -161,16 +243,21 @@ static func fights(p: Person) -> bool:
 func _enlist(p: Person, s: int) -> void:
 	if p.side != 0 or p.resists_mind():
 		return
-	var left := maxf(DURATION - (t - T_BREAK), 0.5)
+	var left := maxf(lv_duration - (t - T_BREAK), 0.5)
 	p.side = s
 	members.append(p)
 	_joined[p] = t
+	counts[s] += 1
+	_lay_side(p, s, left)
+
+
+## `p` (already on side `s` and counted) takes up its side: the mark, and the fight (or, for the condemned citizen and the one who cannot fight, the run).
+func _lay_side(p: Person, s: int, left: float) -> void:
 	var sparkle: PixelParticles = _sparkles[s]
 	if is_instance_valid(sparkle):
 		sparkle.burst(4, {"offset": Iso.ground_to_screen(p.ground_pos) - sparkle.position + Vector2(0, -8), "radius": 4.0,
 			"speed": Vector2(6, 18), "alt": Vector2(0, 6), "alt_speed": Vector2(12, 36), "life": Vector2(0.4, 0.8),
 			"size": Vector2(1, 1)})
-	counts[s] += 1
 	var condemned := mode == "purge" and s == 2
 	var glyph: Array[int] = []
 	glyph.assign(GLYPH_CONDEMNED if condemned else GLYPH_SIDES[s])
@@ -184,6 +271,77 @@ func _enlist(p: Person, s: int) -> void:
 	else:
 		p.mind = Person.Mind.CALM
 		p.panic(origin, 0.5, &"schism")
+
+
+## Tumult: the wave reaches `p` -- mad, frozen where it stands, or panicked, rolled with the cast's rng. A caregiver is
+## never mad: it freezes or panics, half and half.
+func _strike(p: Person) -> void:
+	if p.resists_mind():
+		return
+	var left := maxf(lv_duration - (t - T_BREAK), 0.5)
+	var state := FROZEN
+	if not fights(p):
+		state = FROZEN if ctx.rng.randf() < 0.5 else PANIC
+	else:
+		var roll := ctx.rng.randf()
+		if roll < MAD_CHANCE:
+			state = MAD
+		elif roll < MAD_CHANCE + FROZEN_CHANCE:
+			state = FROZEN
+		else:
+			state = PANIC
+	var glyph: Array[int] = []
+	glyph.assign(GLYPHS_TUMULT[state])
+	match state:
+		MAD:
+			p.fight(null, left, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.ANYONE, SIGHT)
+		FROZEN:
+			if not p.compel(p.ground_pos, left, Person.WILL_ABSOLUTE, FROZEN_WHITE, false, &"", glyph):
+				return
+		_:
+			if not p.compel(_panic_point(p), left, Person.WILL_ABSOLUTE, PANIC_YELLOW, true, &"", glyph):
+				return
+			_panicked.append([p, t + ctx.rng.randf_range(PANIC_REPICK.x, PANIC_REPICK.y)])
+	p.set_badge(glyph, COLORS_TUMULT[state], left)
+	states[p] = state
+	counts_tumult[state] += 1
+	var sparkle: PixelParticles = _sparkles[2 if state == MAD else 1]
+	if is_instance_valid(sparkle):
+		sparkle.burst(4, {"offset": Iso.ground_to_screen(p.ground_pos) - sparkle.position + Vector2(0, -8), "radius": 4.0,
+			"speed": Vector2(6, 18), "alt": Vector2(0, 6), "alt_speed": Vector2(12, 36), "life": Vector2(0.4, 0.8),
+			"size": Vector2(1, 1)})
+
+
+## Where a panicked `p` runs next: a point within REGION of the click and at least PANIC_MIN_RUN from where it stands,
+## on the field and on walkable ground.
+func _panic_point(p: Person) -> Vector2:
+	var to := p.ground_pos
+	for attempt in 6:
+		var a := ctx.rng.randf() * TAU
+		to = origin + Vector2(cos(a), sin(a)) * lv_region * sqrt(ctx.rng.randf())
+		to = to.clamp(p.bounds.position, p.bounds.end)
+		if to.distance_to(p.ground_pos) >= PANIC_MIN_RUN:
+			break
+	if p.grid != null:
+		var free := p.grid.nearest_walkable(to, 8)
+		to = free if free != Vector2.INF else p.ground_pos
+	return to
+
+
+## Tumult: those running wildly pick a new far point every PANIC_REPICK seconds, or as soon as they reach the last one
+## (within PANIC_ARRIVED), so they never stand still until the end.
+func _repick_panicked() -> void:
+	for entry: Array in _panicked:
+		var p: Person = entry[0] if is_instance_valid(entry[0]) else null
+		if p == null or not p.is_alive() or p.mind != Person.Mind.COMPELLED:
+			continue
+		if t < float(entry[1]) and p.ground_pos.distance_to(p.anchor) > PANIC_ARRIVED:
+			continue
+		var left := maxf(T_BREAK + lv_duration - t, 0.5)
+		var glyph: Array[int] = []
+		glyph.assign(GLYPHS_TUMULT[PANIC])
+		p.compel(_panic_point(p), left, Person.WILL_ABSOLUTE, PANIC_YELLOW, true, &"", glyph)
+		entry[1] = t + ctx.rng.randf_range(PANIC_REPICK.x, PANIC_REPICK.y)
 
 
 ## Spreading Conflict: each fighter draws the people beside it onto its own side.
@@ -206,6 +364,17 @@ func _recruit() -> void:
 ## The schism lifts: the sides are gone, and those still fighting come round.
 func _end() -> void:
 	_pending.clear()
+	_panicked.clear()
+	for p: Person in states:
+		if not is_instance_valid(p):
+			continue
+		p.clear_badge()
+		if not p.is_alive():
+			continue
+		if states[p] == MAD:
+			p.stop_fighting()
+		else:
+			p.release_compulsion()
 	for p in members:
 		if not is_instance_valid(p):
 			continue
@@ -346,14 +515,14 @@ func _break_show() -> void:
 	FxParts.sparks(self, ctx.overhead, sp, 50, FxParts.FIRE_LIFE, Vector2(80, 280), Vector2(30, 240))
 	# Two rings across the region, one of each colour, and the air bending under them.
 	for k in 2:
-		var ring := FxParts.shockwave(self, origin, REGION, SOLAR if k == 0 else FIRE)
+		var ring := FxParts.shockwave(self, origin, lv_region, SOLAR if k == 0 else FIRE)
 		ring.set_param("thickness", 0.05)
 		if k == 1:
 			ring.set_param("progress", 0.0)
 		ring.tween_param("progress", 0.03, 1.0, 0.7, 0.12 * float(k), Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		ring.tween_param("fade", 1.0, 0.0, 0.3, 0.45 + 0.12 * float(k))
 		ring.life = 0.9
-	var bend := FxParts.refract_ring(self, origin, REGION * 0.8, CRIMSON)
+	var bend := FxParts.refract_ring(self, origin, lv_region * 0.8, CRIMSON)
 	bend.set_param("strength", 9.0)
 	bend.tween_param("progress", 0.05, 1.0, 0.5, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	bend.life = 0.52
@@ -444,15 +613,24 @@ class Debug extends Node2D:
 
 	func _draw() -> void:
 		var c := Iso.ground_to_screen(fx.origin)
-		var axes := Iso.radius_to_screen(REGION)
+		var axes := Iso.radius_to_screen(fx.lv_region)
 		var pts := PackedVector2Array()
 		for i in 49:
 			var a := TAU * float(i) / 48.0
 			pts.append(c + Vector2(cos(a) * axes.x, sin(a) * axes.y))
 		draw_polyline(pts, Color(1.0, 0.4, 0.3, 0.7), 1.0)
+		if fx.mode == "tumult":
+			var left := [0, 0, 0]
+			for p: Person in fx.states:
+				if is_instance_valid(p) and p.is_alive():
+					left[fx.states[p]] += 1
+			UiTheme.text(self, c + Vector2(10, -60), "Schism (tumult): %d mad, %d frozen, %d panicked standing of %d / %d / %d, %.0f s" % [
+				left[0], left[1], left[2], fx.counts_tumult[0], fx.counts_tumult[1], fx.counts_tumult[2],
+				maxf(T_BREAK + fx.lv_duration - fx.t, 0.0)], UiTheme.SIZE_SMALL, CRIMSON)
+			return
 		var alive := [0, 0, 0]
 		for p in fx.members:
 			if is_instance_valid(p) and p.is_alive():
 				alive[p.side] += 1
 		UiTheme.text(self, c + Vector2(10, -60), "Schism (%s): %d gold, %d crimson standing of %d / %d, %.0f s" % [fx.mode,
-			alive[1], alive[2], fx.counts[1], fx.counts[2], maxf(T_BREAK + DURATION - fx.t, 0.0)], UiTheme.SIZE_SMALL, CRIMSON)
+			alive[1], alive[2], fx.counts[1], fx.counts[2], maxf(T_BREAK + fx.lv_duration - fx.t, 0.0)], UiTheme.SIZE_SMALL, CRIMSON)

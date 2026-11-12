@@ -195,6 +195,8 @@ func clear_effects() -> void:
 		for c in layer.get_children():
 			if c.is_in_group(SolarisPit.GROUP):
 				c.queue_free()  # the Light of Solaris's pit, Earthshatter's crack
+	if ctx.crowd != null and ctx.crowd.fires != null:
+		ctx.crowd.fires.clear_patches()  # Dragonfire's ground fire: no unseen fire is left
 
 
 ## End every power still playing (v0.09, between the acts of a night): each effect is cut short, freeing what it made,

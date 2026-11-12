@@ -38,6 +38,9 @@ func _begin() -> void:
 		var w := WarningDirector.new()
 		w.post = s[1]
 		w.post_name = String(s[2])
+		w.walls_stop = true  # (god T1R, spec 4.1) a carrier out of the walls, or one who reaches a keeper who heard ALL IS WELL, stops the warning
+		w.lie_stops = true
+		w.gate_keeps = true  # (god T1R fix round, D26) W3: a death just outside his gate draws the staring watchman out; the postern's has its key
 		stars.append(w)
 		_stopped_at.append(-1.0)
 
@@ -72,6 +75,10 @@ func fall_at(i: int) -> float:
 func _reserved_for(next: WarningDirector) -> Array[Person]:
 	var out: Array[Person] = reserved.duplicate()
 	for w in stars:
+		if w.rules != null:
+			for p: Variant in w.leaving:  # (god T1R) a stopped carrier walking off the map is nobody's watchman
+				if is_instance_valid(p) and not out.has(p):
+					out.append(p as Person)
 		if w == next or w.rules == null or w.warning_dead:
 			continue
 		# Variants: a runner killed on an earlier star may be freed by now (_alive() rules the same way).
@@ -116,8 +123,16 @@ func next_star() -> int:
 	return -1
 
 
+## Mission seconds until the next star still to fall falls (fall_at() less the night's clock; never below 0), INF when none is left
+## (god T1R fix round 2, D29: what the NEXT STAR tag counts down, and all the Tier 1 policies may read of the schedule).
+func next_fall_in() -> float:
+	var next := next_star()
+	return maxf(0.0, fall_at(next) - _clock) if next >= 0 else INF
+
+
 ## The tags (v0.11 M1): every set-up warning's own (WarningDirector.tags()), the latest first; and the next star's gate,
-## pointed at from the edge, until it falls.
+## pointed at from the edge, until it falls, counting down to its fall (god T1R fix round 2, D29: "NEXT STAR - FALLS IN m:ss", so a
+## cast that takes time, such as a Death Mark for W3, can be timed by what the player sees).
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for i in range(stars.size() - 1, -1, -1):
@@ -125,7 +140,7 @@ func tags() -> Array[MapTag]:
 			out.append_array(stars[i].tags())
 	var next := next_star()
 	if next >= 0:
-		out.append(MapTag.place(star_falls[next][1], WarningDirector.MARK_MESSENGER, "NEXT STAR", 0.0, true))
+		out.append(MapTag.place(star_falls[next][1], WarningDirector.MARK_MESSENGER, "NEXT STAR - FALLS IN %s" % UiTheme.clock(next_fall_in()), 0.0, true))
 	return out
 
 
@@ -133,8 +148,14 @@ func tags() -> Array[MapTag]:
 func hint_phase() -> String:
 	var w := running()
 	if w != null:
-		return w.hint_phase()
-	return "waiting" if stopped() > 0 and next_star() >= 0 else ""
+		var phase := w.hint_phase()
+		if phase != "":
+			return phase
+		# (god T1R) the board's line names the new ways to stop a warning; once he runs, W3 (the stare's) is over: "running" names the rest (D30).
+		return "running" if w.phase == WarningDirector.Phase.RUN else "stars"
+	if stopped() > 0:
+		return "waiting" if next_star() >= 0 else ""
+	return "stars"
 
 
 ## The tour (v0.11 M1): the three gates the stars fall over, then the bellkeeper. v0.11 M2 (M1 final review): the first star
@@ -189,7 +210,12 @@ func report() -> Dictionary:
 	var relays := 0
 	for w in stars:
 		relays += w.relays
-	return {"stopped": stopped(), "relays": relays}
+	var out := 0
+	var lies := 0
+	for w in stars:
+		out += 1 if w.stopped_how == "out" else 0
+		lies += 1 if w.stopped_how == "lie" else 0
+	return {"stopped": stopped(), "relays": relays, "out": out, "lies": lies}
 
 
 func teardown() -> void:

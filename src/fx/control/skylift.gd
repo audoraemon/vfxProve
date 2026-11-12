@@ -16,6 +16,11 @@ extends FxTimeline
 ##    A heap does not land inside a building: it takes the nearest open spot within SHIFT, else the goods are lost.
 ## A second, shorter light marks the arrival. A lift with only people leaves nothing behind. Quiet, but for the book
 ## entry's "alarm": a light from the sky is seen.
+## Levels (PowerBook "skylift" levels): the circle (RADIUS) grows and the take (T_TAKE) comes sooner, read once a cast
+## (lv_radius, lv_t_take; the consts at level 1). Level 5's twist, Stay Put: everyone the beam sets down stands rooted
+## where they landed for STAY -- no step of their own (Person.statuses "slow" 0: their pace is nothing), soldiers too;
+## they can still be struck, bitten or moved by another power -- and then walks on to what they meant, their own pace
+## back as it was (also when the beam is cut short). The heap lands as before.
 
 const RADIUS := 2.5
 const T_TAKE := 1.4
@@ -29,6 +34,8 @@ const HEAP := 1.2
 const HEIGHT := 8.0
 const LIFE := 120.0
 const SHIFT := 1.5
+## Stay Put (level 5): how long those set down stand rooted.
+const STAY := 10.0
 ## The decor kinds that are goods to lift, and the small structures.
 const GOODS: Array[Decor.Kind] = [
 	Decor.Kind.BARREL, Decor.Kind.CRATES, Decor.Kind.TABLE, Decor.Kind.CART, Decor.Kind.LOGS, Decor.Kind.ROCK,
@@ -51,6 +58,13 @@ const DROP_H := 260.0
 const BLUE := Color(0.45, 0.75, 1.0)
 const PALE := Color(0.8, 0.92, 1.0)
 
+## This cast's circle and take time at its ability level (RADIUS and T_TAKE at level 1).
+var lv_radius := RADIUS
+var lv_t_take := T_TAKE
+## Stay Put: whether this cast roots those it sets down, and until when (effect clock; -1 before the take).
+var stay_put := false
+var rooted_until := -1.0
+
 ## Where it sets them down; how many people it took; the goods it took ([{kind, at, seed, scale, lift}] as they lie
 ## at the second place, WindfallFx.heap_for's shape); how many the heap crushed; the heap itself (null when there
 ## were no goods, where it could not land, or once it is gone).
@@ -65,12 +79,14 @@ var _seed := 0
 var _heap_node: Node2D
 ## The goods seen rising, with their places at the first click (set before the take, for the drawing).
 var _rising: Array = []
+## Stay Put: those rooted now, by instance id -> [Person, the "slow" they had before (or null)].
+var _rooted := {}
 
 
-## Whom a lift at `at` would take.
-static func lifted_at(field: EnemyField, at: Vector2) -> Array:
+## Whom a lift at `at` would take (within `r`: RADIUS, or a cast's lv_radius).
+static func lifted_at(field: EnemyField, at: Vector2, r := RADIUS) -> Array:
 	var out: Array = []
-	for e in field.in_radius(at, RADIUS):
+	for e in field.in_radius(at, r):
 		var p := e as Person
 		if p != null and p.inside:
 			continue
@@ -79,16 +95,17 @@ static func lifted_at(field: EnemyField, at: Vector2) -> Array:
 
 
 ## What a lift at `at` would take besides the people: the Decor goods (GOODS) standing within RADIUS, and the small
-## structures (TAKES, standing, not a fortification's) whose footprint reaches into the circle.
-static func goods_at(env: EnvironmentField, at: Vector2) -> Array:
+## structures (TAKES, standing, not a fortification's) whose footprint reaches into the circle (of `r`: RADIUS, or a
+## cast's lv_radius).
+static func goods_at(env: EnvironmentField, at: Vector2, r := RADIUS) -> Array:
 	var out: Array = []
 	for d in env.decor():
-		if is_instance_valid(d) and not d.sprite_only and d.kind in GOODS and d.at.distance_to(at) <= RADIUS:
+		if is_instance_valid(d) and not d.sprite_only and d.kind in GOODS and d.at.distance_to(at) <= r:
 			out.append(d)
 	for s in env.structures():
 		if not is_instance_valid(s) or s.destroyed or not s.kind in TAKES or s.role in KEEP_ROLES:
 			continue
-		if s.distance_to(at) <= RADIUS:
+		if s.distance_to(at) <= r:
 			out.append(s)
 	return out
 
@@ -109,44 +126,47 @@ static func landing_for(env: EnvironmentField, to: Vector2) -> Vector2:
 
 
 func _build() -> void:
+	lv_radius = float(PowerBook.stat(extra, "skylift", "RADIUS", RADIUS))
+	lv_t_take = float(PowerBook.stat(extra, "skylift", "T_TAKE", T_TAKE))
+	stay_put = PowerBook.twist_at(extra, "skylift")
 	to = extra.get("to", origin + Vector2(4.0, 0.0))
 	_seed = int(ctx.rng.randi() % 100000)
 	_land = landing_for(ctx.env, to)
-	duration = T_TAKE + T_SET + 0.8
-	busy = T_TAKE
-	at(T_TAKE, _take)
+	duration = lv_t_take + T_SET + 0.8
+	busy = lv_t_take
+	at(lv_t_take, _take)
 	ctx.play(&"q_skylift", origin)
 	if not DominionParts.staged(self):
 		return
-	at(T_TAKE - RISE, _show_rise)
+	at(lv_t_take - RISE, _show_rise)
 	var sp := Iso.ground_to_screen(origin)
 	# The light comes down on the place: a wide column, a bright core, rays off the sky, rings drawn in under it, the
 	# ground lit, motes drawn up into it, and the air over it bent.
-	var column := Set2Parts.glow_column(self, sp, 110.0, 520.0, BLUE, 0.0, T_TAKE + 0.3)
-	column.tween_param("intensity", 0.2, 2.2, T_TAKE * 0.7, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	column.tween_param("intensity", 2.2, 0.0, 0.3, T_TAKE)
-	var core := Set2Parts.glow_column(self, sp, 34.0, 520.0, PALE, 0.0, T_TAKE + 0.2)
-	core.tween_param("intensity", 0.0, 2.6, T_TAKE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	core.tween_param("intensity", 2.6, 0.0, 0.2, T_TAKE)
+	var column := Set2Parts.glow_column(self, sp, 110.0, 520.0, BLUE, 0.0, lv_t_take + 0.3)
+	column.tween_param("intensity", 0.2, 2.2, lv_t_take * 0.7, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	column.tween_param("intensity", 2.2, 0.0, 0.3, lv_t_take)
+	var core := Set2Parts.glow_column(self, sp, 34.0, 520.0, PALE, 0.0, lv_t_take + 0.2)
+	core.tween_param("intensity", 0.0, 2.6, lv_t_take, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	core.tween_param("intensity", 2.6, 0.0, 0.2, lv_t_take)
 	var white := FxParts.beam(self, ctx.overhead, sp, 12.0, 520.0, FxParts.ION)
 	white.set_param("intensity", 0.0)
-	white.tween_param("intensity", 0.0, 1.4, T_TAKE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	white.tween_param("intensity", 1.4, 0.0, 0.2, T_TAKE)
-	white.life = T_TAKE + 0.22
+	white.tween_param("intensity", 0.0, 1.4, lv_t_take, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	white.tween_param("intensity", 1.4, 0.0, 0.2, lv_t_take)
+	white.life = lv_t_take + 0.22
 	var rays := FxParts.screen_rays(self, sp + Vector2(0, -30), 120.0, PALE, 60.0, 0.0)
-	rays.tween_param("intensity", 0.0, 0.5, T_TAKE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	rays.tween_param("intensity", 0.5, 0.0, 0.25, T_TAKE)
-	rays.life = T_TAKE + 0.27
+	rays.tween_param("intensity", 0.0, 0.5, lv_t_take, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	rays.tween_param("intensity", 0.5, 0.0, 0.25, lv_t_take)
+	rays.life = lv_t_take + 0.27
 	var halo := FxParts.bloom(self, sp + Vector2(0, -10), 50.0, BLUE, 0.0, 0.7)
-	halo.tween_param("intensity", 0.0, 0.8, T_TAKE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	halo.tween_param("intensity", 0.8, 0.0, 0.25, T_TAKE)
-	halo.life = T_TAKE + 0.27
-	var bend := FxParts.refract_ring(self, origin, RADIUS + 1.0, Color(0.7, 0.85, 1.0))
+	halo.tween_param("intensity", 0.0, 0.8, lv_t_take, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	halo.tween_param("intensity", 0.8, 0.0, 0.25, lv_t_take)
+	halo.life = lv_t_take + 0.27
+	var bend := FxParts.refract_ring(self, origin, lv_radius + 1.0, Color(0.7, 0.85, 1.0))
 	bend.set_param("progress", 1.0)
-	bend.tween_param("progress", 1.0, 0.1, T_TAKE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	bend.life = T_TAKE + 0.05
+	bend.tween_param("progress", 1.0, 0.1, lv_t_take, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	bend.life = lv_t_take + 0.05
 	for i in 3:
-		var draw := FxParts.shockwave(self, origin, RADIUS + 1.6, FxParts.ION)
+		var draw := FxParts.shockwave(self, origin, lv_radius + 1.6, FxParts.ION)
 		draw.set_param("thickness", 0.06)
 		draw.set_param("progress", 1.0)
 		draw.set_param("fade", 0.0)
@@ -154,23 +174,23 @@ func _build() -> void:
 		draw.tween_param("fade", 0.0, 0.8, 0.1, 0.15 + 0.35 * float(i))
 		draw.tween_param("fade", 0.8, 0.0, 0.15, 0.6 + 0.35 * float(i))
 		draw.life = 0.8 + 0.35 * float(i)
-	var mark := FxParts.rings(self, origin, RADIUS, PALE, 2, 14.0)
+	var mark := FxParts.rings(self, origin, lv_radius, PALE, 2, 14.0)
 	mark.set_param("scan", 0.0)
-	mark.tween_param("reveal", 0.0, 1.0, T_TAKE * 0.6, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
-	mark.life = T_TAKE + 0.1
-	var light := FxParts.ground_light(self, origin, RADIUS * 2.2, BLUE, 0.0)
-	light.tween_param("intensity", 0.0, 2.0, T_TAKE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	light.tween_param("intensity", 2.0, 0.0, 0.3, T_TAKE)
-	light.life = T_TAKE + 0.32
-	var ground_rays := FxParts.ground_rays(self, origin, RADIUS * 2.5, PALE, 40.0)
+	mark.tween_param("reveal", 0.0, 1.0, lv_t_take * 0.6, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	mark.life = lv_t_take + 0.1
+	var light := FxParts.ground_light(self, origin, lv_radius * 2.2, BLUE, 0.0)
+	light.tween_param("intensity", 0.0, 2.0, lv_t_take, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	light.tween_param("intensity", 2.0, 0.0, 0.3, lv_t_take)
+	light.life = lv_t_take + 0.32
+	var ground_rays := FxParts.ground_rays(self, origin, lv_radius * 2.5, PALE, 40.0)
 	ground_rays.set_param("reach", 0.9)
-	ground_rays.tween_param("intensity", 0.0, 0.8, T_TAKE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-	ground_rays.tween_param("intensity", 0.8, 0.0, 0.3, T_TAKE)
-	ground_rays.life = T_TAKE + 0.32
-	var up := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.STREAK, FxParts.ION_LIFE, 110.0, T_TAKE,
+	ground_rays.tween_param("intensity", 0.0, 0.8, lv_t_take, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	ground_rays.tween_param("intensity", 0.8, 0.0, 0.3, lv_t_take)
+	ground_rays.life = lv_t_take + 0.32
+	var up := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.STREAK, FxParts.ION_LIFE, 110.0, lv_t_take,
 		{"radius": 26.0, "speed": Vector2(0, 6), "alt": Vector2(0, 10), "alt_speed": Vector2(140, 320), "life": Vector2(0.5, 1.0), "size": Vector2(1, 3)})
 	up.gravity = -80.0
-	var motes := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, FxParts.ION_LIFE, 50.0, T_TAKE,
+	var motes := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, FxParts.ION_LIFE, 50.0, lv_t_take,
 		{"radius": 40.0, "speed": Vector2(10, 40), "dir": PixelParticles.Dir.INWARD, "alt": Vector2(0, 30), "alt_speed": Vector2(20, 80), "life": Vector2(0.5, 0.9), "size": Vector2(1, 2)})
 	motes.drag = 0.5
 	ctx.play(&"laser_scan", origin, -8.0)
@@ -179,7 +199,7 @@ func _build() -> void:
 
 ## The goods begin to rise into the column (what stands there now; the take itself reads the place again).
 func _show_rise() -> void:
-	_rising = _pieces_of(goods_at(ctx.env, origin), origin)
+	_rising = _pieces_of(goods_at(ctx.env, origin, lv_radius), origin)
 	if _rising.is_empty():
 		return
 	var rise := Rise.new()
@@ -192,11 +212,11 @@ func _show_rise() -> void:
 ## Everything is taken, and set down.
 func _take() -> void:
 	var set_down: Array = []
-	for e in lifted_at(ctx.field, origin):
+	for e in lifted_at(ctx.field, origin, lv_radius):
 		if e.fold(to + (e.ground_pos - origin)):
 			taken += 1
 			set_down.append(e)
-	var things := goods_at(ctx.env, origin)
+	var things := goods_at(ctx.env, origin, lv_radius)
 	var lifted := _pieces_of(things, origin)
 	for thing in things:
 		if thing is Decor:
@@ -207,6 +227,8 @@ func _take() -> void:
 	if not lifted.is_empty() and _land != Vector2.INF:
 		goods = _heap_of(lifted, _land)
 		_drop(set_down)
+	if stay_put:
+		_root(set_down)
 	if not DominionParts.staged(self):
 		return
 	ctx.flash.call(Color(0.75, 0.9, 1.0, 0.22), 0.25)
@@ -219,11 +241,11 @@ func _take() -> void:
 	var snap := FxParts.bloom(self, sp + Vector2(0, -20), 60.0, Color(0.9, 0.96, 1.0), 1.1, 0.8)
 	snap.tween_param("intensity", 1.1, 0.0, 0.3, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	snap.life = 0.37
-	var back := FxParts.refract_ring(self, origin, RADIUS + 2.0, Color(0.7, 0.85, 1.0))
+	var back := FxParts.refract_ring(self, origin, lv_radius + 2.0, Color(0.7, 0.85, 1.0))
 	back.tween_param("progress", 0.05, 1.0, 0.45, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	back.life = 0.47
 	_ring(origin)
-	var second := FxParts.shockwave(self, origin, RADIUS + 2.5, FxParts.ION)
+	var second := FxParts.shockwave(self, origin, lv_radius + 2.5, FxParts.ION)
 	second.set_param("thickness", 0.05)
 	second.tween_param("progress", 0.05, 1.0, 0.7, 0.1, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	second.tween_param("fade", 1.0, 0.0, 0.3, 0.5)
@@ -247,13 +269,13 @@ func _take() -> void:
 	land.tween_param("intensity", 1.0, 0.0, 0.4, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	land.life = 0.42
 	_ring(to)
-	var out := FxParts.refract_ring(self, to, RADIUS + 2.0, Color(0.7, 0.85, 1.0))
+	var out := FxParts.refract_ring(self, to, lv_radius + 2.0, Color(0.7, 0.85, 1.0))
 	out.tween_param("progress", 0.05, 1.0, 0.5, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	out.life = 0.52
-	var light := FxParts.ground_light(self, to, RADIUS * 2.2, BLUE, 2.0)
+	var light := FxParts.ground_light(self, to, lv_radius * 2.2, BLUE, 2.0)
 	light.tween_param("intensity", 2.0, 0.0, T_SET + 0.4)
 	light.life = T_SET + 0.42
-	var ground_rays := FxParts.ground_rays(self, to, RADIUS * 2.5, PALE, 40.0)
+	var ground_rays := FxParts.ground_rays(self, to, lv_radius * 2.5, PALE, 40.0)
 	ground_rays.set_param("reach", 0.9)
 	ground_rays.tween_param("intensity", 0.8, 0.0, T_SET + 0.3)
 	ground_rays.life = T_SET + 0.32
@@ -292,7 +314,7 @@ func _drop(set_down: Array) -> void:
 				break
 	heap = ctx.env.add_structure(Rect2(_land - Vector2(HEAP, HEAP) * 0.5, Vector2(HEAP, HEAP)), HEIGHT, Structure.Kind.CRATES, &"windfall")
 	heap.visible = false
-	duration = T_TAKE + LIFE + 0.5
+	duration = lv_t_take + LIFE + 0.5
 	ctx.play(&"jg_crumble", _land, -4.0)
 
 
@@ -314,15 +336,17 @@ func _show_landed() -> void:
 
 
 func _fx_process(_delta: float) -> void:
+	if not _rooted.is_empty() and t >= rooted_until:
+		_unroot_all()
 	if heap == null:
 		return
 	# Gone by other hands (the engineers' Clear job, a blast): the goods go with it, and the beam is done.
 	if not is_instance_valid(heap) or heap.destroyed or not ctx.env.structures().has(heap):
 		heap = null
 		_drop_goods()
-		duration = minf(duration, t + 0.5)
+		_end_by(t + 0.5)
 		return
-	if t >= T_TAKE + LIFE:
+	if t >= lv_t_take + LIFE:
 		_remove_heap()
 
 
@@ -332,7 +356,57 @@ func _remove_heap() -> void:
 		ctx.env.remove(heap)
 	heap = null
 	_drop_goods()
-	duration = minf(duration, t + 0.5)
+	_end_by(t + 0.5)
+
+
+## The beam is done by `time` -- but not before those it rooted walk again.
+func _end_by(time: float) -> void:
+	duration = minf(duration, time)
+	if not _rooted.is_empty():
+		duration = maxf(duration, rooted_until + 0.1)
+
+
+## Stay Put: those set down (people only; the dead and those indoors are not) stand rooted for STAY. Their pace is
+## nothing ("slow" 0) until then; what slowed them before is kept, and given back when they walk again.
+func _root(set_down: Array) -> void:
+	for e in set_down:
+		var p := e as Person
+		if p == null or not is_instance_valid(p) or p.inside or not p.is_alive():
+			continue
+		var id := p.get_instance_id()
+		if _rooted.has(id):
+			continue
+		_rooted[id] = [p, null]
+		p.hold_pace(get_instance_id(), 0.0)
+	if _rooted.is_empty():
+		return
+	rooted_until = t + STAY
+	duration = maxf(duration, rooted_until + 0.1)
+	if not DominionParts.staged(self):
+		return
+	# The place is held: a faint ring of the beam's light stays on the ground where they stand, pulsing, and fades
+	# as the hold wears off (one ring for them all, however many were set down).
+	var pin := FxParts.rings(self, to, lv_radius, PALE, 2, 22.0)
+	pin.set_param("scan", 0.0)
+	pin.set_param("crosshair", 0.0)
+	pin.set_param("fill", 0.05)
+	pin.tween_param("reveal", 0.0, 1.0, 0.4, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
+	pin.tween_param("alpha", 1.0, 0.0, 1.2, STAY - 1.2)
+	pin.life = STAY + 0.05
+	var glow := FxParts.ground_light(self, to, lv_radius * 1.4, BLUE, 0.6)
+	glow.tween_param("intensity", 0.6, 0.0, 1.2, STAY - 1.2)
+	glow.life = STAY + 0.05
+
+
+## The hold is over (STAY is up, or the beam is cut short): each walks again at the pace they had.
+func _unroot_all() -> void:
+	for id in _rooted.keys():
+		var held: Array = _rooted[id]
+		var p: Person = held[0]
+		if not is_instance_valid(p):
+			continue
+		p.free_pace(get_instance_id())
+	_rooted.clear()
 
 
 func _drop_goods() -> void:
@@ -343,7 +417,14 @@ func _drop_goods() -> void:
 
 ## Cut short (FxTimeline.end_now()): the heap goes with it, or it would block the way for good.
 func end_now() -> void:
+	_unroot_all()
 	_remove_heap()
+	super()
+
+
+## Freed with the hold still on (the scene torn down): nobody is left rooted.
+func _exit_tree() -> void:
+	_unroot_all()
 	super()
 
 
@@ -385,7 +466,7 @@ func _heap_of(pieces: Array, centre: Vector2) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _seed + 7
 	var out := []
-	var squeeze := HEAP * 0.42 / RADIUS
+	var squeeze := HEAP * 0.42 / lv_radius
 	for i in pieces.size():
 		var g: Dictionary = pieces[i].duplicate()
 		var base := i < BASE
@@ -399,13 +480,13 @@ func _heap_of(pieces: Array, centre: Vector2) -> Array:
 		var db: Vector2 = b.at
 		return da.x + da.y + float(a.lift) * 0.05 < db.x + db.y + float(b.lift) * 0.05)
 	for i in out.size():
-		out[i].leave_t = T_TAKE + STAGGER * float(i)
+		out[i].leave_t = lv_t_take + STAGGER * float(i)
 		out[i].land_t = out[i].leave_t + FALL
 	return out
 
 
 func _ring(at_ground: Vector2) -> void:
-	var ring := FxParts.shockwave(self, at_ground, RADIUS + 1.0, FxParts.ION)
+	var ring := FxParts.shockwave(self, at_ground, lv_radius + 1.0, FxParts.ION)
 	ring.set_param("thickness", 0.14)
 	ring.tween_param("progress", 0.05, 1.0, 0.35, 0.0, Tween.TRANS_EXPO, Tween.EASE_OUT)
 	ring.tween_param("fade", 1.0, 0.0, 0.2, 0.16)
@@ -419,13 +500,13 @@ class Rise extends Node2D:
 	var pieces: Array = []
 
 	func _process(_delta: float) -> void:
-		if fx.t >= T_TAKE:
+		if fx.t >= fx.lv_t_take:
 			queue_free()
 			return
 		queue_redraw()
 
 	func _draw() -> void:
-		var k := clampf((fx.t - (T_TAKE - RISE)) / RISE, 0.0, 1.0)
+		var k := clampf((fx.t - (fx.lv_t_take - RISE)) / RISE, 0.0, 1.0)
 		var top := Iso.ground_to_screen(fx.origin) + Vector2(0, -300)
 		var i := 0
 		for g in pieces:

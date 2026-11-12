@@ -40,6 +40,8 @@ const TABLE := {
 	# The campaign's Feast nights are the Long Night's acts as nights of their own.
 	"feast_festival": ["temple", "market_square", "fountain"],
 	"feast_procession": ["temple", "citadel", "citadel_court", "market_square", "dock", "dock_wait"],
+	# The Awaken rite (god P3): Mira's shrine and the Temple's door.
+	"first_taste": ["temple"],
 	# The Capital's sandbox is a bare town.
 	"capital_sandbox": [],
 }

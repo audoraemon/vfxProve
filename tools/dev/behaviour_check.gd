@@ -4,6 +4,23 @@ extends SceneTree
 ##
 ## usage: godot --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- --scenario=calm
 ##   [--seconds=60] [--shots]
+##   --dev-tree, --god=<type>:<tier>, --level=<n> (god P1, C6; spec §5.2's per-type win check): --dev-tree turns GodTree.dev_fill on for
+##          the run; --god restricts the drafted loadout to GodTree.keys_for(type, tier) (tier 1 when omitted) -- a key outside it prints
+##          `BEHAVIOUR refused scenario=<s> god=<type>:<tier> outside=<k1,k2>` and quits 1 (gate.sh reads that as a FAIL), else the run
+##          prints `BEHAVIOUR god=<type>:<tier>` (in no checksum); --level=1..5 plays every drafted key at that level (Mission.levels).
+##          No flag: the run is exactly as before.
+##          God T1R: `--god=<type>:1` with NO --route on a scenario of tools/dev/routes/god_t1.gd (warning, tax, harvest, lamb, prayers) plays
+##          that type's own policy for the mission (god_t1/<scenario>.gd act_<type>) with the real tree's two Tier 1 keys, hit-stop off, printing
+##          `BEHAVIOUR god=<type>:1 route=god` and the gate's result line (`--board` for warning, as route b needs it). `--god` with
+##          --route=a|b, or on another scenario, refuses a loadout outside the type as above. Every --god run turns hit-stop off.
+##          God P5 (the Lantern Hunts, MS §7, R37-R38): `--scenario=<hunt id>` (hide_faithful, silence_witness, expel_inquisitor, break_hunt,
+##          face_halcyon) is one of tools/dev/routes/god_hunts.gd's SCENARIOS and takes --case=none|play. Play without --god casts the Hunt's
+##          shared plan (god_hunts/<id>.gd act_shared) with the def's own loadout; `--god=<type>:<tier> --dev-tree` plays that type's policy
+##          (act_<type>) with the loadout the file's LOADOUT names. A tier other than the Hunt's prints
+##          `BEHAVIOUR refused scenario=<id> god=<type>:<n> hunt_tier=<m>` and quits 1; a loadout the tree at that tier cannot draft (or over
+##          GodSlot.BASE_SLOTS keys, or over TierBook.dp(tier) Might) prints `... god=<type>:<n> missing=<...>`; all are a FAIL to gate.sh.
+##          `--route` on a Hunt id prints `... route=<r> (a Hunt takes --god, not --route)`, and `--level` other than 1 on a Hunt's `--god` run
+##          prints `... level=<n> (a Hunt is played at level 1)`; both quit 1 (milestone review, M1).
 ##   --case=toll (v0.11.2, a Lantern night, D32): the scripted player casts nothing until the bell tolls and the Lantern turns
 ##          (LanternWatch.tolled), then plays as `play` does -- the toll case's wins are judged, not its idle or median
 ##          (tools/dev/gate.sh --case=toll). A night's scenario function takes it through _scripted() or _acts() below.
@@ -453,6 +470,11 @@ const ROUTE_IDS := {"warning": "warning", "tax": "tax_collector", "harvest": "sp
 const TIER_B := [preload("res://tools/dev/routes/tier1_b.gd"), preload("res://tools/dev/routes/tier2_b.gd"),
 	preload("res://tools/dev/routes/tier3_b.gd"), preload("res://tools/dev/routes/tier4_b.gd"), preload("res://tools/dev/routes/tier5_b.gd")]
 
+## The per-type policies of the five Tier 1 missions (god T1R, spec 9): `--god=<type>:1` with no --route on one of GOD_T1.SCENARIOS.
+const GOD_T1 := preload("res://tools/dev/routes/god_t1.gd")
+## The per-type policies of the five Lantern Hunts (god P5, MS §7): any Hunt's id as `--scenario`, with or without `--god=<type>:<tier>`.
+const GOD_HUNTS := preload("res://tools/dev/routes/god_hunts.gd")
+
 ## The capital's evacuation (capital_evac): how long it runs after the alarm, and when the east stone bridge falls.
 const CAPITAL_EVAC_SECONDS := 180.0
 const CAPITAL_CUT_AT := 10.0
@@ -568,6 +590,16 @@ func _run() -> void:
 	elif scenario == "heart":
 		powers = PackedStringArray(["doom", "smite", "ember", "whisper", "heaven"])
 		mission.mission_id = MissionBook.HEART_OF_FAITH
+	elif scenario == "first_taste":
+		# God P3 (plan Task 4, pre-flight G4): the rite's loadout is the def's own, or with --god=<type> the type's two Tier 1 keys (the real TABLE's;
+		# --dev-tree is only for a tree edited elsewhere). The --god parse below is not touched (R3): it reads the type itself.
+		var rite_type := String(Battlefield.arg_value(args, "--god")).split(":")[0]
+		powers = GodTree.starting(rite_type) if rite_type in GodTree.RING else MissionBook.first_taste().default_loadout
+		mission.mission_id = MissionBook.FIRST_TASTE
+	elif scenario in GOD_HUNTS.SCENARIOS:
+		# God P5 (plan Task 3): a Lantern Hunt is played by its id; its def's own loadout here, the type's below (the --god parse, hunt_route).
+		powers = MissionBook.get_mission(scenario).default_loadout
+		mission.mission_id = scenario
 	elif scenario == "capital_calm" or scenario == "capital_evac":
 		City.use(&"capital")
 		mission.city = &"capital"
@@ -577,10 +609,71 @@ func _run() -> void:
 		push_error("behaviour_check: unknown --route=%s (a or b)" % route)
 		quit(1)
 		return
+	# God P5 (milestone review, M1): a Lantern Hunt is played with --god, never --route (a route would skip the tier and problems() refusals below).
+	if route != "" and scenario in GOD_HUNTS.SCENARIOS:
+		print("BEHAVIOUR refused scenario=%s route=%s (a Hunt takes --god, not --route)" % [scenario, route])
+		quit(1)
+		return
 	if scenario == "feast" and "--board" in args:
 		mission.mission_id = _route_id(scenario)  # v0.11.1: the board's Festival or Procession, not the campaign night
 	if route == "b" and not RouteBook.loadout_b(_route_id(scenario)).is_empty():
 		powers = RouteBook.loadout_b(_route_id(scenario))
+	# God P1, C6: the flags for the per-type win check. None given: nothing here runs and the mission starts as before.
+	if "--dev-tree" in args:
+		GodTree.dev_fill = true
+	var god_arg := Battlefield.arg_value(args, "--god")
+	var god_type := ""
+	var god_tier := 1
+	var level_arg := Battlefield.arg_value(args, "--level")
+	if level_arg != "" and not level_arg in ["1", "2", "3", "4", "5"]:
+		push_error("behaviour_check: unknown --level=%s (1-5)" % level_arg)
+		quit(1)
+		return
+	if god_arg != "":
+		var parts := god_arg.split(":")
+		god_type = parts[0]
+		god_tier = int(parts[1]) if parts.size() > 1 else 1
+		if not god_type in GodTree.RING or god_tier < 1 or god_tier > GodTree.TIERS or parts.size() > 2:
+			push_error("behaviour_check: unknown --god=%s (<type>:<tier>, type one of %s, tier 1-%d)" % [god_arg, ",".join(GodTree.RING), GodTree.TIERS])
+			quit(1)
+			return
+	# God T1R: --god with no --route on a Tier 1 mission plays that type's own policy (GOD_T1) and drafts exactly its Tier 1 keys (the real
+	# tree). With --route=a|b, or on another scenario, the check below refuses a loadout outside the type, as before.
+	var god_route := god_type != "" and god_tier == 1 and route == "" and scenario in GOD_T1.SCENARIOS
+	if god_route:
+		powers = GOD_T1.loadout(god_type)
+	# God P5: --god on a Lantern Hunt plays that type's policy (GOD_HUNTS) at the Hunt's own tier with the file's checked loadout. Another tier,
+	# or a loadout the tree at that tier cannot draft, is refused (gate.sh reads either as a FAIL).
+	var hunt_route := god_type != "" and route == "" and scenario in GOD_HUNTS.SCENARIOS
+	if hunt_route:
+		if god_tier != GOD_HUNTS.tier_of(scenario):
+			print("BEHAVIOUR refused scenario=%s god=%s:%d hunt_tier=%d" % [scenario, god_type, god_tier, GOD_HUNTS.tier_of(scenario)])
+			quit(1)
+			return
+		# --level is applied after the Might floor, so a level above 1 would lift a Hunt's loadout past TierBook.dp(tier) (milestone review, M1).
+		if level_arg != "" and level_arg != "1":
+			print("BEHAVIOUR refused scenario=%s god=%s:%d level=%s (a Hunt is played at level 1)" % [scenario, god_type, god_tier, level_arg])
+			quit(1)
+			return
+		var hunt_problems: PackedStringArray = GOD_HUNTS.problems(scenario, god_type, god_tier)
+		if not hunt_problems.is_empty():
+			print("BEHAVIOUR refused scenario=%s god=%s:%d missing=%s" % [scenario, god_type, god_tier, ",".join(hunt_problems)])
+			quit(1)
+			return
+		powers = GOD_HUNTS.loadout(scenario, god_type, god_tier)
+	# The loadout the run will draft: this scenario's, or (empty) the one the throw-away start in _ready() already drafted.
+	var drafted := powers if not powers.is_empty() else mission._drafted
+	if god_type != "":
+		var outside := GodTree.outside(god_type, god_tier, drafted)
+		if not outside.is_empty():
+			print("BEHAVIOUR refused scenario=%s god=%s:%d outside=%s" % [scenario, god_type, god_tier, ",".join(outside)])
+			quit(1)
+			return
+	if level_arg != "":
+		var at := {}
+		for key in drafted:
+			at[key] = int(level_arg)
+		mission.levels = at
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if mission.refused != "":
 		# v0.12 C6: a mission the town cannot host is not run; gate.sh reads this line as a FAIL.
@@ -588,7 +681,9 @@ func _run() -> void:
 		quit(1)
 		return
 	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
-	if route == "b" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"]:
+	if god_type != "":
+		print("BEHAVIOUR god=%s:%d%s" % [god_type, god_tier, " route=god" if god_route else (" route=hunt" if hunt_route else "")])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
+	if route == "b" or god_type != "" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"] or scenario in GOD_HUNTS.SCENARIOS:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
 	mission._rules.set_process(true)
@@ -596,6 +691,10 @@ func _run() -> void:
 	if Battlefield.arg_value(args, "--case") == "toll" and scenario in TOLL_CALLED:
 		_toll_caller.call_deferred(TOLL_CALLED[scenario])
 	match scenario:
+		_ when god_route:
+			await _god_route(scenario, god_type, Battlefield.arg_value(args, "--case"))
+		_ when scenario in GOD_HUNTS.SCENARIOS:
+			await _god_hunt(scenario, god_type if hunt_route else "", Battlefield.arg_value(args, "--case"))
 		_ when route == "b":
 			await _route_b(scenario, Battlefield.arg_value(args, "--case"))
 		"calm", "":
@@ -682,6 +781,8 @@ func _run() -> void:
 			await _exodus(Battlefield.arg_value(args, "--case"))
 		"heart":
 			await _heart(Battlefield.arg_value(args, "--case"))
+		"first_taste":
+			await _first_taste(Battlefield.arg_value(args, "--case"))
 		"warning":
 			var case_arg := Battlefield.arg_value(args, "--case")
 			if WARNING_CASES.has(case_arg if case_arg != "" else "none"):
@@ -718,6 +819,24 @@ func _route_b(scenario: String, case_arg: String) -> void:
 	await _scripted(label, case_arg if case_arg != "" else "play",
 		func() -> String: return String(tier.call("act_" + label, self, _route_ctx(memo))),
 		func() -> String: return String(tier.call("state_" + label, self, _route_ctx(memo))))
+
+
+## `--god=<type>:1` (god T1R, spec 9): the scenario's Tier 1 mission played with `type`'s own two powers, by GOD_T1's act(scenario, type, ...)
+## through _scripted() (the label is the scenario's; the star is the board's under --board, as for route b). ctx as _route_ctx() builds it.
+func _god_route(scenario: String, type: String, case_arg: String) -> void:
+	var memo := {}
+	await _scripted(scenario, case_arg if case_arg != "" else "play",
+		func() -> String: return GOD_T1.act(scenario, type, self, _route_ctx(memo)),
+		func() -> String: return GOD_T1.state(scenario, self, _route_ctx(memo)))
+
+
+## A Lantern Hunt (god P5, MS §7, R37-R38) played through _scripted(): GOD_HUNTS' act(scenario, type, ...) with `type` "" for the shared plan
+## (no `--god`) or the god type's own policy, and the Hunt's state line. The label is the Hunt's id; ctx as _route_ctx() builds it.
+func _god_hunt(scenario: String, type: String, case_arg: String) -> void:
+	var memo := {}
+	await _scripted(scenario, case_arg if case_arg != "" else "play",
+		func() -> String: return GOD_HUNTS.act(scenario, type, self, _route_ctx(memo)),
+		func() -> String: return GOD_HUNTS.state(scenario, self, _route_ctx(memo)))
 
 
 ## A B policy's ctx, built afresh at every look (v0.11.1): the rules, director and crowd change at a night's next_act, so a ctx kept
@@ -1771,6 +1890,10 @@ func _faith_look(rules: Rules, slots: Dictionary, d: MirasHouseDirector, fetch: 
 		var guarded := _faith_guard(rules, slots, d, watcher, fetch)
 		if guarded != "":
 			return guarded
+	if fetch:
+		var back := _prayers_walker_back(rules, slots, d)
+		if back != "":
+			return back
 	if d.faithful_seeing(d.door, MirasHouseDirector.SIGHT) != null or not _slot_ready(rules, slots, "whisper"):
 		return ""
 	var best: Person = null
@@ -1809,6 +1932,35 @@ func _faith_guard(rules: Rules, slots: Dictionary, d: MirasHouseDirector, w: Per
 		return "whisper a Faithful away from the door" if rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": away}) != null \
 			else ""
 	return ""
+
+
+## First Prayers' walker (god T1R: one of the poor walking to the shrine on his own) would go in under the Faithful's eyes -- a window's line at
+## the door when he gets there, or when the shrine frees for him, or one of them by it now as he comes up: a whisper sends him back down his road,
+## and he comes again when it wears off. Only First Prayers has a walker (`fetch`); what it cast, or "".
+func _prayers_walker_back(rules: Rules, slots: Dictionary, d: MirasHouseDirector) -> String:
+	var fp := d as FirstPrayersDirector
+	if fp == null or not _slot_ready(rules, slots, "whisper"):
+		return ""
+	var w := fp.walker
+	if not MissionDirector._alive(w) or w.inside or w.shaken() or w.mind != Person.Mind.DUTY:
+		return ""
+	var gap := w.ground_pos.distance_to(fp.door)
+	if gap > MindWhisperFx.REACH:
+		return ""  # far off yet: there is time
+	var left := fp.reading_left()
+	var walk := _walk_len(mission._crowd, w.ground_pos, fp.door) / maxf(w.walk_speed, 0.05)
+	var goes_in := fp.timeline.elapsed() + maxf(walk, left if left != INF else 0.0)
+	var seen := fp.faithful_seeing(fp.door, MirasHouseDirector.SIGHT) != null and walk <= PRAYERS_WALK
+	for win: Array in [[fp.market_at, fp.market_seconds, fp._free_faithful()], [fp.priests_at, fp.priests_seconds, fp._free_clergy()]]:
+		if not (win[2] as Array).is_empty() and goes_in >= float(win[0]) - 1.0 and goes_in <= float(win[0]) + float(win[1]) + PRAYERS_SLACK:
+			seen = true
+	if not seen:
+		return ""
+	var away := w.ground_pos - fp.door
+	var to := fp._walkable(w.ground_pos + (away.normalized() if away.length() > 0.1 else Vector2.DOWN) * (MindWhisperFx.REACH - 0.5))
+	if rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": to}) == null:
+		return ""
+	return "whisper the walker back down his road (he would go in at %.0f under their eyes)" % goes_in
 
 
 ## The door matters to the prayers policy (v0.11 M2): a Believer is about to come out (within PRAYERS_EXIT), or nobody prays and
@@ -1957,11 +2109,11 @@ func _idle_end(acts: Dictionary, t: float) -> float:
 
 
 ## Each collector's state by its initial (W waiting, A walking, V visiting, F fleeing, H hiding, S safe, D dead) and leg, in
-## order (v0.11 M2 tax reports): "A1 W0 W0".
+## order (v0.11 M2 tax reports; god T1R: O out of the walls): "A1 W0 W0".
 func _tax_states(d: AssassinateDirector) -> String:
 	var out := PackedStringArray()
 	for q in d.quarries:
-		out.append("%s%d" % ["WAVFHSD"[q.state], q.leg])
+		out.append("%s%d" % ["WAVFHSDO"[q.state], q.leg])
 	return " ".join(out)
 
 
@@ -2412,8 +2564,8 @@ func _watch_bearer_act(rules: Rules, slots: Dictionary, crowd: Crowd) -> String:
 
 ## A Tier 2 mission's scripted night (v0.11 M3, shared by ringers, panic and informer): its board line; then, until it ends or its
 ## main objective is done, every LOOK_FRAMES with `play` the policy's move (`act.call()`: what it cast, or ""), printed; a report
-## every 10 s (`state.call()`); then the result, with the longest stretch between two casts as `idle` (the gate: 45 s or less).
-## `none` casts nothing.
+## every 10 s (`state.call()`); then the result, with the longest stretch between two casts as `idle` (the gate: 45 s or less). A filler cast
+## (words starting GOD_T1.FILL, god T1R D38) is printed but ends no stretch, so `idle` is the real wait. `none` casts nothing.
 func _scripted(label: String, which: String, act: Callable, state: Callable) -> void:
 	var rules: Rules = mission._rules
 	_board_line()
@@ -2436,8 +2588,7 @@ func _scripted(label: String, which: String, act: Callable, state: Callable) -> 
 			did = String(act.call())
 		if did != "":
 			print("BEHAVIOUR %s t=%.1f %s" % [label, t, did])
-			acts.longest = maxf(float(acts.longest), t - float(acts.last))
-			acts.last = t
+			GOD_T1.note_cast(acts, t, did)  # (god T1R, D38) a filler ("fill: ...") is printed but does not end an idle stretch
 	acts.longest = maxf(float(acts.longest), t - float(acts.last))
 	print("BEHAVIOUR %s result %s %s idle=%.0f" % [label, _outcome(rules), String(state.call()), float(acts.longest)])
 
@@ -5289,3 +5440,497 @@ func _checksum() -> int:
 			h = (h * 31 + roundi(p.ground_pos.y * 100.0)) % 1000000007
 			h = (h * 31 + int(p.mind)) % 1000000007
 	return h
+
+
+# --- The First Taste (god P3, plan Task 4; the per-type answers are Task 7's) ---------------------------------------
+
+## How far from the drag a breaker is struck before he can grip (MS §3.9 "within 4 units"), how soon a walking march must be to the shrine before the
+## policy turns from chaining to stop it (MS §3.9 "within 45 s of the shrine"), and the seconds between the policy's "drag on" lines (pre-flight R7).
+const FT_STRIKE_R := 4.0
+const FT_MARCH_NEAR := 45.0
+const FT_SAY_EVERY := 20.0
+## A strike keeps this clear of the captive and the other victims (Silent Doom's and Smite's radius, and a margin).
+const FT_CLEAR := 1.2
+
+
+## The keys each type's answer casts (MS §3.8). They are checked against GodTree.starting(type) and the drafted slots when the run starts, so an edited
+## tree fails with a clear line instead of a night in which the policy silently casts nothing (C2).
+const FT_USES := {
+	"ruin": ["smite", "ember"],  # (Ember is required but never cast: Ruin wins on Smite alone; MS §3.8's Ember to draw the town is left out)
+	"death": ["deathmark", "pestilence"],
+	"veil": ["doom", "blight"],
+	"passage": ["skylift", "windfall"],
+	"decree": ["noleave", "belllies"],
+	"dominion": ["whisper", "discord"],
+}
+## A breaker's sight (EscortDirector.SIGHT, 2.5) and a margin: a lamplighter nearer than this to one is already seen. A breaker within FT_ON_PATH of the
+## captive's way ahead (within FT_AHEAD units of him) is one the drag will meet.
+const FT_SIGHT_PAD := 3.5
+const FT_ON_PATH := 2.6
+const FT_AHEAD := 60.0
+## Passage (the user's tree, 2026-11-12: Skylift and Windfall): Skylift takes whoever stands within its RADIUS of the first click and sets them down at the
+## second, so the captive is lifted onto the shrine itself. The beam's middle may lie off him, up to FT_LIFT_OFF from where he will stand at the take, so that
+## no breaker free to grip stands within RADIUS + FT_LIFT_PAD of it (now, or as he walks on to the take): the beam takes the captive and leaves the Watch.
+const FT_LIFT_OFF := 2.0
+const FT_LIFT_PAD := 0.3
+## Passage: a Windfall line is laid through a breaker (where he will stand as it lands) only with every segment's middle at least FT_FALL_CLEAR from the captive
+## and the other marked lamplighters (its HIT_R 0.7 and a margin): the load crushes the breaker and spares them.
+const FT_FALL_CLEAR := 1.1
+## Passage: a march this near the shrine (seconds) has its leader crushed by a Windfall (the load is loud: the rest of the file flees); one kneeling, or this
+## near and the captive already given his lift, is lifted back to the Temple's door.
+const FT_LIFT_BACK_AT := 20.0
+## Decree: the circle (20 s to come back) is kept for the Watch when the drag has a post within FT_RESERVE units ahead, unless a march is within FT_KNEEL_NEAR
+## seconds of the shrine or a cleanse has begun (two held kneelers reset the ring).
+const FT_RESERVE := 24.0
+const FT_KNEEL_NEAR := 6.0
+## Decree: a Watchman this near the Main Gate's centre is the gate pair (posts at 1.1 from it).
+const FT_GATE_PAIR := 3.0
+
+
+## The First Taste (god P3, MS §3.9), through _scripted(): the shared plan and, with --god=<type>, that type's own answers. Smite's hit-stop is wall clock,
+## so it is switched off here first (pre-flight R3: nothing is cast before this line, and the shared hit-stop-off list is not edited).
+func _first_taste(which: String) -> void:
+	mission._bf.ctx.impact.hitstop_enabled = false
+	var rules: Rules = mission._rules
+	var d := rules.director as FirstTasteDirector
+	var crowd: Crowd = mission._crowd
+	var slots := _slots(rules)
+	var type := String(Battlefield.arg_value(OS.get_cmdline_user_args(), "--god")).split(":")[0]
+	var lacks := PackedStringArray()
+	for key: String in FT_USES.get(type, []):
+		if not slots.has(key) or not GodTree.starting(type).has(key):
+			lacks.append(key)
+	if not lacks.is_empty():
+		print("BEHAVIOUR refused scenario=first_taste god=%s missing=%s" % [type, ",".join(lacks)])
+		quit(1)
+		return
+	var memo := {"said": -INF, "type": type, "pest": {}, "lifted": 0, "blighted": false}
+	await _scripted("first_taste", which, func() -> String: return _first_taste_act(rules, slots, d, crowd, memo),
+		func() -> String: return _first_taste_state(d))
+
+
+## The state line: `shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s` (the captive: `(x, y) walks|STILL <path points to the shrine>`, or `-`; `flame_in`: seconds to the flame's end at the soonest, or `-`).
+func _first_taste_state(d: FirstTasteDirector) -> String:
+	var marches := PackedStringArray()
+	for m in d.marches:
+		marches.append("%d%s" % [m.people.size(), "x" if m.done else ("w" if m.walking else "m")])
+	var cap := "-"
+	if WarningDirector._alive(d.captive):
+		cap = "(%.1f, %.1f) %s %d" % [d.captive.ground_pos.x, d.captive.ground_pos.y, "walks" if d.captive.has_goal() else "STILL",
+			mission._crowd._grid.path(d.captive.ground_pos, d.shrine()).size()]
+	# The margin of a night: the seconds until the flame would go out, at the soonest (a walking march's arrival plus the cleanse still to do); "-" with none.
+	var flame := INF
+	for m in d.marches:
+		if not m.done and not m.people.is_empty() and m.walking:
+			flame = minf(flame, d.march_eta(m) + FirstTasteDirector.CLEANSE_SECONDS - d.cleanse)
+	return "shards=%d/%d chain=%s march=%s cleanse=%.0f phase=%s captive=%s flame_in=%s" % [d.shards, d.need(), RiteDirector.Chain.keys()[d.chain_state],
+		",".join(marches) if not marches.is_empty() else "-", d.cleanse, d.hint_phase(), cap, "-" if flame == INF else "%.0f" % flame]
+
+
+## One look of the shared plan: a march near the shrine is answered before chaining; a ready chain takes the lamplighter with the shortest way to the
+## shrine; in a drag a breaker within FT_STRIKE_R of the captive is answered before he grips (the type's own answer: _first_taste_hit()), a grip past
+## 1.5 s is Yanked, and a drag that is only walking says so every FT_SAY_EVERY seconds (R7: MS §3.7 counts the drag as acting). "" when nothing was done.
+func _first_taste_act(rules: Rules, slots: Dictionary, d: FirstTasteDirector, crowd: Crowd, memo: Dictionary) -> String:
+	if d.stages_done() or d.flame_out:
+		return ""
+	var type := String(memo.type)
+	var opening := _first_taste_opening(type, rules, slots, memo)
+	if opening != "":
+		return opening
+	if d.chain_state == RiteDirector.Chain.READY:
+		var march := _first_taste_march(d, FT_MARCH_NEAR)
+		if march != null:
+			var stopped := _first_taste_stop(type, rules, slots, d, march, memo)
+			if stopped != "":
+				return stopped
+		var v := _first_taste_pick(d, type in ["passage", "decree"])
+		# Passage chains only with Skylift ready by the end of the bite: the lift is what takes a drag past the Watch, and the wait is its cooldown.
+		if v != null and type == "passage" and float(rules.cooldown_left(slots.skylift)) > RiteDirector.BITE:
+			v = null
+		if v != null and d.chain(v) == "":
+			memo.said = d._now
+			return "chain a lamplighter, %.0f units from the shrine" % d._way
+		return _first_taste_prep(type, rules, slots, d, crowd, memo)
+	if d.chain_state == RiteDirector.Chain.COOLDOWN:
+		var cooling := _first_taste_march(d, FT_MARCH_NEAR)
+		if cooling != null:
+			var did := _first_taste_stop(type, rules, slots, d, cooling, memo)
+			if did != "":
+				return did
+		return _first_taste_prep(type, rules, slots, d, crowd, memo)
+	var gripper := d.grip_by
+	if gripper != memo.get("gripper"):
+		memo.gripper = gripper  # (a log line only: who took hold, and where; it is not an act and not in any checksum)
+		if WarningDirector._alive(gripper):
+			print("BEHAVIOUR first_taste t=%.1f grip by %s at %s, captive %s" % [d._now, "the Watch" if d.watch.has(gripper) else "a marcher",
+				gripper.ground_pos.round(), d.captive.ground_pos.round() if WarningDirector._alive(d.captive) else "-"])
+	if WarningDirector._alive(gripper) and not d.held(gripper):
+		var answered := _first_taste_hit(type, rules, slots, d, gripper, memo)
+		if answered != "":
+			return answered
+	if d.grip > 1.5 and d.yanks_left > 0:
+		if d.chain_key() == "yank":
+			return "yank him on (a grip of %.1f s)" % d.grip
+	var near := _first_taste_breaker(d)
+	if near != null:
+		var struck := _first_taste_hit(type, rules, slots, d, near, memo)
+		if struck != "":
+			return struck
+	var prep := _first_taste_prep(type, rules, slots, d, crowd, memo)
+	if prep != "":
+		return prep
+	if d._now - float(memo.said) >= FT_SAY_EVERY:
+		memo.said = d._now
+		return "drag on, shrine in %s" % UiTheme.clock(d.drag_eta())
+	return ""
+
+
+## The type's opening move, once: Veil ruins the Bell Tower's bell at the start (MS §3.8 "no toll all night"). "" for the rest.
+func _first_taste_opening(type: String, rules: Rules, slots: Dictionary, memo: Dictionary) -> String:
+	if type == "veil" and not bool(memo.blighted) and _slot_ready(rules, slots, "blight"):
+		memo.blighted = true
+		rules.cast(slots.blight, TownLayout.BELL_TOWER.get_center())
+		return "blight the Bell Tower"
+	return ""
+
+
+## What the type does between breakers and marches (MS §3.8): Death marks the next Watchman ahead of the drag and sickens a muster; Passage lifts the captive
+## past the Watch onto the shrine; every type stops a march that is near the shrine once the drag has nothing more urgent. "" when nothing.
+func _first_taste_prep(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, _crowd: Crowd, memo: Dictionary) -> String:
+	var march := _first_taste_march(d, FT_MARCH_NEAR)
+	if march != null:
+		var stopped := _first_taste_stop(type, rules, slots, d, march, memo)
+		if stopped != "":
+			return stopped
+	match type:
+		"death":
+			for m in d.marches:
+				if m.done or m.walking or m.muster_left <= 0.0 or memo.pest.has(m) or not _slot_ready(rules, slots, "pestilence"):
+					continue
+				var at := Vector2.ZERO
+				var n := 0
+				for p in m.people:
+					if WarningDirector._alive(p):
+						at += (p as Person).ground_pos
+						n += 1
+				if n > 0:
+					memo.pest[m] = true
+					rules.cast(slots.pestilence, at / float(n))
+					return "pestilence on a muster of %d" % n
+			return _first_taste_mark_ahead(rules, slots, d)
+		"passage":
+			return _first_taste_lift(rules, slots, d, memo)
+		"decree":
+			# Circle the march every 20 s whenever the circle is free (held 15 of 20: it crawls), not only when it is near.
+			var walking := _first_taste_march(d, INF)
+			if walking != null:
+				return _first_taste_stop(type, rules, slots, d, walking, memo)
+	return ""
+
+
+## Death: a Death Mark on the Watchman nearest the captive (before a drag, nearest the next lamplighter), whom nothing holds yet: he is frail at once and
+## dead in 10 s (MS §3.8 "mark ahead of each drag"). "" when none is left or the mark is not ready.
+func _first_taste_mark_ahead(rules: Rules, slots: Dictionary, d: FirstTasteDirector) -> String:
+	if not _slot_ready(rules, slots, "deathmark"):
+		return ""
+	var ref := d.shrine()
+	if WarningDirector._alive(d.captive):
+		ref = d.captive.ground_pos
+	else:
+		var v := _first_taste_pick(d)
+		if v != null:
+			ref = v.ground_pos
+	var best: Person = null
+	for w in d.watch:
+		if not WarningDirector._alive(w) or d.held(w):
+			continue
+		if best == null or (w as Person).ground_pos.distance_to(ref) < best.ground_pos.distance_to(ref):
+			best = w
+	if best == null:
+		return ""
+	rules.cast(slots.deathmark, best.ground_pos)
+	return "death mark a watchman ahead of the drag"
+
+
+## The marked lamplighter with the shortest way to the shrine, or null. With `avoid`, one standing within FT_SIGHT_PAD of a breaker who is free to grip
+## is passed over while another stands clear: a player does not chain a man the Watch is already looking at (the types that can only hold or fold a
+## breaker, not kill him, pick this way).
+func _first_taste_pick(d: FirstTasteDirector, avoid := false) -> Person:
+	var best: Person = null
+	var best_way := INF
+	var best_clear := false
+	for v in d.marked:
+		if not WarningDirector._alive(v) or v.inside or v == d.captive:
+			continue
+		var way := d._path_length(v.ground_pos)
+		if way < 0.0:
+			continue
+		var clear := true
+		if avoid:
+			for b in d._breakers():
+				if not d.held(b) and b.ground_pos.distance_to(v.ground_pos) < FT_SIGHT_PAD:
+					clear = false
+		if best == null or (clear and not best_clear) or (clear == best_clear and way < best_way):
+			best = v
+			best_way = way
+			best_clear = clear
+	return best
+
+
+## The walking march whose leader is within `seconds` of the shrine, soonest first; null for none.
+func _first_taste_march(d: FirstTasteDirector, seconds: float) -> FirstTasteDirector.March:
+	var best: FirstTasteDirector.March = null
+	for m in d.marches:
+		if m.done or m.people.is_empty() or not m.walking:
+			continue
+		if d.march_eta(m) <= seconds and (best == null or d.march_eta(m) < d.march_eta(best)):
+			best = m
+	return best
+
+
+## The breaker nearest the captive within FT_STRIKE_R, standing free to grip (not held); null for none.
+func _first_taste_breaker(d: FirstTasteDirector) -> Person:
+	if not WarningDirector._alive(d.captive):
+		return null
+	var best: Person = null
+	for b in d._breakers():
+		if d.held(b):
+			continue
+		var gap := b.ground_pos.distance_to(d.captive.ground_pos)
+		if gap <= FT_STRIKE_R and (best == null or gap < best.ground_pos.distance_to(d.captive.ground_pos)):
+			best = b
+	return best
+
+
+## Stops a march (MS §3.8 "answers a march"): the type's own move on its people, the one nearest the shrine first.
+func _first_taste_stop(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, m: FirstTasteDirector.March, memo: Dictionary) -> String:
+	var target: Person = null
+	for p in m.people:
+		if WarningDirector._alive(p) and not d.held(p) \
+				and (target == null or p.ground_pos.distance_to(d.shrine()) < target.ground_pos.distance_to(d.shrine())):
+			target = p
+	if target == null:
+		return ""
+	match type:
+		"death":
+			if _slot_ready(rules, slots, "deathmark"):
+				rules.cast(slots.deathmark, target.ground_pos)
+				return "death mark a marcher"
+			return ""
+		"passage":
+			# Windfall crushes the leader (the load is loud: the file behind him flees); Skylift takes the file back to the Temple's door only when it is
+			# about to kneel (FT_LIFT_BACK_AT seconds off) and no captive still waits for his lift.
+			var fell := _first_taste_fall(rules, slots, d, target, "a march's leader")
+			if fell != "":
+				return fell
+			if d.march_eta(m) > FT_LIFT_BACK_AT:
+				return ""
+			if WarningDirector._alive(d.captive) and int(memo.lifted) != d.captive.get_instance_id():
+				return ""  # (a captive who has not yet had his lift has the first claim on the beam)
+			return _first_taste_lift_back(rules, slots, d, m)
+		"decree":
+			# The circle is kept for the Watch while the drag has a post within FT_RESERVE units ahead; the march is circled when the road is clear.
+			if d.cleanse <= 0.0 and d.march_eta(m) > FT_KNEEL_NEAR and _first_taste_watch_ahead(d, FT_RESERVE):
+				return ""
+			return _first_taste_circle(rules, slots, d, target, true)
+	return _first_taste_strike(rules, slots, d, target)
+
+
+## Whether an unheld Watchman stands within FT_ON_PATH of the captive's way in the next `reach` units (false with no captive).
+func _first_taste_watch_ahead(d: FirstTasteDirector, reach: float) -> bool:
+	if d.chain_state not in [RiteDirector.Chain.BITE, RiteDirector.Chain.DRAG] or not WarningDirector._alive(d.captive):
+		return false
+	for sm: Dictionary in _first_taste_way(d, d.captive.ground_pos):
+		if float(sm.s) > reach:
+			break
+		for w in d.watch:
+			if WarningDirector._alive(w) and not d.held(w) and (w as Person).ground_pos.distance_to(sm.at) <= FT_ON_PATH:
+				return true
+	return false
+
+
+## The type's answer to a breaker `b` who is near the captive or gripping him (MS §3.8 "answers the Watch").
+func _first_taste_hit(type: String, rules: Rules, slots: Dictionary, d: FirstTasteDirector, b: Person, memo: Dictionary) -> String:
+	match type:
+		"death":
+			if _slot_ready(rules, slots, "deathmark"):
+				rules.cast(slots.deathmark, b.ground_pos)
+				return "death mark a breaker"
+			return ""
+		"passage":
+			var lifted := _first_taste_lift(rules, slots, d, memo)
+			if lifted != "":
+				return lifted
+			return _first_taste_fall(rules, slots, d, b, "a breaker")
+		"decree":
+			# MS §3.8: the circle on the gate pair as the drag passes (15 s, 20 s to come back), CALL THE GUARD for the posts beyond it -- it holds every soldier
+			# for 20 s, and the shrine road and the approach lie 11 units apart, one call covers both (a 60 s power; Task 7 review I3: the circle is then free
+			# for the march). A power that is not ready gives way to the other.
+			var gate_pair := b.ground_pos.distance_to(TownLayout.MAIN_GATE.get_center()) <= FT_GATE_PAIR
+			if gate_pair:
+				var circled := _first_taste_circle(rules, slots, d, b, false)
+				if circled != "":
+					return circled
+			if d.watch.has(b) and WarningDirector._alive(d.captive) and _slot_ready(rules, slots, "belllies"):
+				# The bell calls the 12 soldiers nearest the place: the spot lies 6 units from the Watchman, away from the captive, so he is among them (a
+				# rule of the_bell_lies.gd's GUARDS the power's text does not state).
+				var away := (b.ground_pos - d.captive.ground_pos).normalized() * 6.0
+				var spot: Vector2 = mission._crowd._grid.nearest_walkable(b.ground_pos + away)
+				rules.cast(slots.belllies, spot if spot != Vector2.INF else b.ground_pos, {"mode": "guard"})
+				return "call the guard away"
+			return _first_taste_circle(rules, slots, d, b, false)
+	return _first_taste_strike(rules, slots, d, b)
+
+
+## Decree: Leaving Is Prohibited on `b` and every other breaker within 2.4 of him (the circle is 3 across), so that all of them are bound under its bars
+## (held, B5) for 15 s -- or, on a march, on its leader and those behind him.
+func _first_taste_circle(rules: Rules, slots: Dictionary, d: FirstTasteDirector, b: Person, march: bool) -> String:
+	if not _slot_ready(rules, slots, "noleave"):
+		return ""
+	var sum := b.ground_pos
+	var n := 1.0
+	for o in d._breakers():
+		if o != b and WarningDirector._alive(o) and not d.held(o) and o.ground_pos.distance_to(b.ground_pos) <= 2.4:
+			sum += (o as Person).ground_pos
+			n += 1.0
+	rules.cast(slots.noleave, sum / n)
+	return ("circle a march of %d" if march else "circle %d breakers") % int(n)
+
+
+## The way from `from` to the shrine as samples every half unit: {"at": point, "s": arc length from `from`}.
+func _first_taste_way(d: FirstTasteDirector, from: Vector2) -> Array:
+	var pts := PackedVector2Array([from])
+	pts.append_array(mission._crowd._grid.path(from, d.shrine()))
+	pts.append(d.shrine())
+	var out: Array = []
+	var s := 0.0
+	var next := 0.0
+	for i in range(1, pts.size()):
+		var seg := pts[i - 1].distance_to(pts[i])
+		while next <= s + seg and seg > 0.0:
+			out.append({"at": pts[i - 1].lerp(pts[i], (next - s) / seg), "s": next})
+			next += 0.5
+		s += seg
+	return out
+
+
+## Passage: Skylift takes the captive (in the bite or the drag) and sets him down on the shrine, where the chain takes him at once: the lift is the whole drag
+## past the Watch. The beam's middle is his place at the take (the bite's rest, then his walk), or a point up to FT_LIFT_OFF off it, so that no breaker free to
+## grip stands within RADIUS + FT_LIFT_PAD of it, now or at the take: the beam leaves the Watch where it stands. The second click is the shrine shifted by the
+## same offset, so he lands on the stone. Once a captive. "" when the beam is not ready or no middle leaves every breaker out.
+func _first_taste_lift(rules: Rules, slots: Dictionary, d: FirstTasteDirector, memo: Dictionary) -> String:
+	var cap := d.captive
+	if d.chain_state not in [RiteDirector.Chain.BITE, RiteDirector.Chain.DRAG] or not WarningDirector._alive(cap) \
+			or not _slot_ready(rules, slots, "skylift") or int(memo.lifted) == cap.get_instance_id():
+		return ""
+	var walk := SkyliftFx.T_TAKE - (d._bite_left if d.chain_state == RiteDirector.Chain.BITE else 0.0)
+	var at := GOD_T1.road_ahead(cap, maxf(walk, 0.0))
+	var reach := SkyliftFx.RADIUS + FT_LIFT_PAD
+	var near: Array[Vector2] = []
+	for b in d._breakers():
+		if not d.held(b) and b.ground_pos.distance_to(at) <= reach + FT_LIFT_OFF + 3.0:
+			near.append(b.ground_pos)
+			near.append(GOD_T1.road_ahead(b, SkyliftFx.T_TAKE))
+	var mid := Vector2.INF
+	for k in 5:
+		var off := FT_LIFT_OFF * float(k) / 4.0
+		for i in (1 if k == 0 else 12):
+			var c := at + Vector2.from_angle(TAU * float(i) / 12.0) * off
+			var clear := true
+			for q in near:
+				clear = clear and q.distance_to(c) > reach
+			if clear:
+				mid = c
+				break
+		if mid != Vector2.INF:
+			break
+	if mid == Vector2.INF:
+		_first_taste_note(memo, cap, "a breaker stands within the beam's reach")
+		return ""
+	memo.lifted = cap.get_instance_id()
+	rules.cast(slots.skylift, mid, {"to": d.shrine() + (mid - at)})
+	return "skylift the captive onto the shrine (%.0f units of drag left)" % d._path_length(cap.ground_pos)
+
+
+## Passage: a Windfall line through breaker `b` where he will stand as the load lands (T_DROP), laid across his way to the captive and turned in steps of 30
+## degrees until every segment's middle lies FT_FALL_CLEAR or more from the captive and every marked lamplighter: the load crushes him and spares them. It is
+## loud, so the soldiers near it rally and a march's file flees. `who` names him in the words. "" when it is not ready or no turn is clear.
+func _first_taste_fall(rules: Rules, slots: Dictionary, d: FirstTasteDirector, b: Person, who: String) -> String:
+	if not _slot_ready(rules, slots, "windfall"):
+		return ""
+	var at := GOD_T1.road_ahead(b, WindfallFx.T_DROP)
+	var spare: Array[Vector2] = []
+	for v in d.marked:
+		if WarningDirector._alive(v):
+			spare.append(v.ground_pos)
+	var toward := d.shrine()
+	if WarningDirector._alive(d.captive):
+		toward = d.captive.ground_pos
+		spare.append(d.captive.ground_pos)
+		spare.append(GOD_T1.road_ahead(d.captive, WindfallFx.T_DROP))
+	var axis := toward - at
+	var across := axis.orthogonal().normalized() if axis.length() > 0.01 else Vector2.RIGHT
+	for k in 6:
+		var dir := across.rotated(PI / 6.0 * float(k))
+		var clear := true
+		for r in WindfallFx.rects(at, dir):
+			for q in spare:
+				clear = clear and r.get_center().distance_to(q) >= FT_FALL_CLEAR
+		if clear:
+			rules.cast(slots.windfall, at, {"dir": dir})
+			return "windfall on %s" % who
+	return ""
+
+
+## A log line (not an act, not in any checksum) saying why the policy held back, once per captive and reason.
+func _first_taste_note(memo: Dictionary, cap: Person, why: String) -> void:
+	var key := "%d %s" % [cap.get_instance_id(), why.get_slice(" ", 0) + why.get_slice(" ", 1)]
+	if memo.get("note") != key:
+		memo.note = key
+		print("BEHAVIOUR first_taste note: the lift waits (%s)" % why)
+
+
+## Passage: Skylift takes a walking march's leader, and whoever of the file stands within its RADIUS of him at the take, back to the Temple's door, so the
+## file walks the long way again (MS §3.8 "send the march back"). "" when the beam is not ready or the captive stands within its reach.
+func _first_taste_lift_back(rules: Rules, slots: Dictionary, d: FirstTasteDirector, m: FirstTasteDirector.March) -> String:
+	if not _slot_ready(rules, slots, "skylift"):
+		return ""
+	var lead: Person = null
+	for p in m.people:
+		if WarningDirector._alive(p) and (lead == null or p.ground_pos.distance_to(d.shrine()) < lead.ground_pos.distance_to(d.shrine())):
+			lead = p
+	if lead == null:
+		return ""
+	var at := GOD_T1.road_ahead(lead, SkyliftFx.T_TAKE)
+	var door: Vector2 = mission._crowd._grid.nearest_walkable(d.lantern_door())
+	if door == Vector2.INF or (WarningDirector._alive(d.captive) and d.captive.ground_pos.distance_to(at) <= SkyliftFx.RADIUS + FT_LIFT_PAD):
+		return ""
+	rules.cast(slots.skylift, at, {"to": door})
+	return "skylift the march back to the Temple's door"
+
+
+## One strike at `b` with whatever the loadout holds ready, killing before holding: Silent Doom and Smite where neither takes the captive or a
+## lamplighter with him (FT_CLEAR), else Discord, else Mind Whisper sends him away from the captive. "" when nothing is ready or safe.
+func _first_taste_strike(rules: Rules, slots: Dictionary, d: FirstTasteDirector, b: Person) -> String:
+	var at := b.ground_pos + _tax_lead(b)
+	var clear := true
+	for v in d.marked:
+		if WarningDirector._alive(v) and v.ground_pos.distance_to(at) < FT_CLEAR:
+			clear = false
+	if WarningDirector._alive(d.captive) and d.captive.ground_pos.distance_to(at) < FT_CLEAR:
+		clear = false
+	if clear and _slot_ready(rules, slots, "doom"):
+		rules.cast(slots.doom, at)
+		return "doom a breaker"
+	if clear and _slot_ready(rules, slots, "smite"):
+		rules.cast(slots.smite, at)
+		return "smite a breaker"
+	if _slot_ready(rules, slots, "discord"):
+		rules.cast(slots.discord, b.ground_pos)
+		return "discord a breaker"
+	if _slot_ready(rules, slots, "whisper") and not b.shaken():
+		var from := d.captive.ground_pos if WarningDirector._alive(d.captive) else d.shrine()
+		var away := b.ground_pos + (b.ground_pos - from).normalized() * 5.0
+		rules.cast(slots.whisper, b.ground_pos, {"target": b, "to": MindWhisperFx.clamp_to(mission._crowd._grid, b.ground_pos, away)})
+		return "whisper a breaker away"
+	return ""

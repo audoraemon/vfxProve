@@ -14,6 +14,17 @@ signal pause_pressed
 ## The effect shaders are compiled and the mission can start. start() before this would clear the effect
 ## layers under the prewarm while it is still using them.
 signal prewarmed
+## The clock starts (god P1, Ruling P9): once at the end of each intro, a mission's or an act's. Endless Night marks the god's night
+## open on it, and a night left after this counts as lost.
+signal clock_started
+## Remembrance's DAY/NIGHT toggle was pressed (Skill Tree wheel, ruling R2): Game rebuilds the memory with the same power and level and the
+## look flipped. `night` is the look asked for.
+signal memory_night_toggled(night: bool)
+## Remembrance's level was picked (Task 5 fix): Game keeps its own copy of the level in step.
+signal memory_level_picked(level: int)
+## The run is decided (god P2 fix wave, review M1): only when `report_on_decision`, at the start of the ending, with the very result
+## `finished` carries after it, so Endless Night can bank the night before the 2-3 s ending a closed window would otherwise lose.
+signal decided(result: Dictionary)
 
 ## The four powers a mission starts with until the Prepare screen exists (milestone 4). Override on the
 ## command line: -- --loadout=heaven,gravity,judgement,nova
@@ -68,6 +79,12 @@ const ASCEND_SECONDS := 2.0
 const ENDING_MAX_STEP := 1.0 / 20.0
 const ENDING_EPSILON := 0.0001
 const ASCEND_BANNER := "YOU ASCEND"
+## The chain's key (god P3, MS §2, plan Task 5): C, free among the mission keys (1-6, Tab, F, H, R, Q/E, Esc, F1). Only in a rite.
+const CHAIN_KEY := KEY_C
+## A won rite's ending (god P3, MS §5, plan P3-18): the shard's light rises from the shrine twice as wide as the ascent's, and the win plate
+## shows for RITE_SECONDS real seconds in slow motion before the results (the bank happened at the decision: P2's review M1).
+const RITE_RISE := 2.0
+const RITE_SECONDS := 4.0
 
 ## The scripted run: [seconds, slot, ground (Vector2.INF: the active city's Citadel), drag direction or Vector2.ZERO].
 ## Spaced so each power has finished before the next is cast (Rules.busy_left()): Heaven 8.5 s, Cinderfall 12,
@@ -99,6 +116,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## Remembrance's overlay while one is up.
+var _memory: MemoryOverlay
 ## F4: the citizens' intents, the alarm stage and the gates (v0.04 debug).
 var _overlay: BehaviourOverlay
 ## The difficulty (v0.05): Game sets it before start(); a standalone run reads --difficulty=<name>.
@@ -114,6 +133,32 @@ var board := false
 var descend: DescendState
 ## The seed the board night's wishes are drawn from (Descent.seed_for()): Game sets it, and an R restart keeps it.
 var wish_seed := 0
+## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
+## Rules is given it, and an R restart or next_act() keeps it.
+var levels := {}
+## Remembrance (Skill Tree wheel, Task 4): the power key to try, set before add_child. When non-empty the mission is the free memory of the
+## capital (MissionBook.remembrance()): loadout [key], Rules.free_play, no score, no results, `finished` never emitted, a MemoryOverlay on top.
+var remembrance := ""
+## Remembrance's look (set before start): NIGHT, with NightRules, when true; DAY otherwise.
+var memory_night := false
+## Endless Night's night (god P1, spec §9.1): when valid, `_mission_def()` returns what this gives (a GodNight.def_for()) and ignores
+## `--mission`. Game sets it before start() for a night; unset everywhere else.
+var night_def: Callable
+## The town's look this run is given (Endless Night's roll, GodNight.look_for()): a Town.Look, or -1 for none -- then --look= or CURRENT, as
+## ever. Only Game's Endless Night sets it; the board, the campaign, the sandbox, the tests and the tools never do.
+var look_override := -1
+## True in Endless Night (god P1, Ruling P9): the R key does nothing, so a night cannot be restarted.
+var restart_locked := false
+## The chain's aim is up (god P3, MS §2): C was pressed in a rite with the chain ready, and the next click on the map chains the marked victim under
+## it. A slot key or click, Esc or a right-click ends it; a refused click keeps it. The HUD's plate turns gold while it is up.
+var chain_aim := false:
+	set(on):
+		chain_aim = on
+		if is_instance_valid(_hud):
+			_hud.chain_aiming = on
+## True in Endless Night (review M1): the last act's result is taken when the run is decided and `decided` carries it; `finished`
+## then carries the same dictionary. Off everywhere else, so every other result is still taken after the ending.
+var report_on_decision := false
 ## The loadout start() was last given (v0.11 M1): an R restart passes none and replays this one, not the mission's default
 ## (which on the board would hand out locked powers and drop what the player drafted).
 var _drafted := PackedStringArray()
@@ -291,6 +336,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		print("BEHAVIOUR refused %s" % refused)
 		return
 	_close_legend()
+	chain_aim = false
+	if remembrance != "":
+		powers = PackedStringArray([remembrance])  # Remembrance plays its one power, whatever Game or an R restart passes
 	if powers.is_empty():
 		powers = _drafted
 	_drafted = powers
@@ -313,7 +361,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_descent.release()
 		_descent = null
 	_bf.reset(seed_value)
-	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay]:
+	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay, _memory]:
 		if is_instance_valid(n):
 			if n is Town:
 				(n as Town).teardown()
@@ -339,7 +387,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_bf.ctx.field.bounds = City.current().map()
 	_town = Town.new()
 	_town.name = "Town"
-	_town.look = Town.look_from_args(OS.get_cmdline_user_args())
+	_town.look = (look_override as Town.Look) if look_override >= 0 else Town.look_from_args(OS.get_cmdline_user_args())
+	if remembrance != "":
+		_town.look = Town.Look.NIGHT if memory_night else Town.Look.DAY
 	add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_grid = WalkGrid.new().setup(_bf.ctx.env, _town)
@@ -372,15 +422,18 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	var town_people := City.current().citizens() + City.current().soldiers()
 	var people := int(wanted) if wanted != "" else town_people
 	var citizens := roundi(float(people) * float(City.current().citizens()) / float(town_people))
+	_crowd.climb_scale = RiteBook.climb_scale(_def.gifts)  # the Watchful Bell (god P3, MS §4); 1.0 for every def but a god's later night
 	_crowd.spawn(citizens, people - citizens)
 
 	_wired.clear()
 	_build_act(powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args()))
+	_apply_night_rules(seed_value)
 	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
 	_overlay.name = "BehaviourOverlay"
 	if "--behaviour" in OS.get_cmdline_user_args():
 		BehaviourOverlay.shown = true
 	add_child(_overlay)
+	_begin_memory()
 	_begin_intro(play)
 	_prayers_hold = 0.0
 	if _descent != null and not _scripted and not _descent.wishes.is_empty():
@@ -391,6 +444,45 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_show_held_banners()
 
 
+## Remembrance's overlay (start() ran): the level in force, the picker, the toggle. No overlay outside Remembrance.
+func _begin_memory() -> void:
+	_memory = null
+	if remembrance == "":
+		return
+	var top := PowerBook.MAX_LEVEL if PowerBook.has_levels(remembrance) else 1
+	levels = levels.duplicate()  # never write into the dictionary Game handed over (the god's own levels)
+	var level := clampi(int(levels.get(remembrance, 1)), 1, top)
+	levels[remembrance] = level
+	_rules.levels = levels
+	_memory = MemoryOverlay.new().setup(String(PowerBook.get_power(remembrance).get("name", remembrance)), top, level, memory_night)
+	_memory.level_picked.connect(set_memory_level)
+	_memory.night_toggled.connect(func(night: bool) -> void: memory_night_toggled.emit(night))
+	add_child(_memory)
+
+
+## Remembrance's level picker (1-5; 1 only for a power without level tables): the level the power is cast at from now on.
+func set_memory_level(level: int) -> void:
+	if remembrance == "":
+		return
+	var top := PowerBook.MAX_LEVEL if PowerBook.has_levels(remembrance) else 1
+	var picked := clampi(level, 1, top)
+	levels[remembrance] = picked
+	if is_instance_valid(_rules):
+		_rules.levels[remembrance] = picked
+	if is_instance_valid(_memory):
+		_memory.set_level(picked)
+	memory_level_picked.emit(picked)
+
+
+## The look's rules (NightRules) once the director has appointed its people: nothing but at NIGHT. The wishes' people are kept out too.
+func _apply_night_rules(seed_value: int) -> void:
+	var kept: Array = _director.reserved.duplicate() if _director != null else []
+	if _descent != null:
+		for w in _descent.wishes:
+			kept.append_array(w.people())
+	NightRules.apply(_crowd, _town.look, kept, seed_value, _director)
+
+
 ## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the
 ## nodes are made in is Last Judgement's and The Warning's since v0.08 -- their instance order feeds the staggers.
 func _build_act(loadout: PackedStringArray) -> void:
@@ -399,6 +491,8 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_rules.name = "Rules"
 	add_child(_rules)
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
+	_rules.levels = levels
+	_rules.free_play = remembrance != ""
 	_bf.ctx.rules = _rules
 	_rules.over.connect(_on_over)
 	_rules.main_won.connect(func() -> void: Music.sting(&"music_sting_objective"))
@@ -424,6 +518,10 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_aim.name = "Targeting"
 	_bf.ground_plane.add_child(_aim)
 	_aim.setup(_rules, _crowd)
+	if remembrance != "":
+		# Targeting unfocuses a slot after its cast (connected first, so this runs after): the memory's one slot goes back in focus, as
+		# keys 1-5 are the level picker's and a follow-up click ("click again") needs the slot focused.
+		_rules.cast_made.connect(func(_s: int, _k: String, _at: Vector2) -> void: focus_slot(0))
 	_aim.picked.connect(func(s: int) -> void:
 		if s >= 0:
 			UiSound.play(&"ui_focus"))
@@ -455,6 +553,12 @@ func set_ui_hidden(on: bool) -> void:
 ## Whether `event` is HIDE_UI_KEY pressed.
 static func toggles_ui(event: InputEvent) -> bool:
 	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == HIDE_UI_KEY
+
+
+## Shows `text` on the mission's banner, as the town's responses do (god P2 fix wave, review M4: a failed save at the clock's start).
+func announce(text: String) -> void:
+	if is_instance_valid(_rules):
+		_rules.banner.emit(text)
 
 
 ## The banners held while the act was built, after its intro's own (the HUD queues them).
@@ -517,7 +621,7 @@ func _wire_once(manager: Object) -> bool:
 
 ## The camera, the intro sweep and its banner for the mission or act about to be played.
 func _begin_intro(play: MissionDef) -> void:
-	if _scripted:
+	if _scripted or remembrance != "":
 		# The scripted runs time their casts from the first frame and frame the town the way milestone 3 did,
 		# so their captures and numbers stay comparable: no intro for them.
 		_tour = null
@@ -547,6 +651,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	if _night == null or _act == null or _act.is_last():
 		return
 	_close_legend()
+	chain_aim = false
 	var ids := _act.next
 	var id := path if path != "" and ids.has(path) else String(ids[0])
 	if ids.size() > 1:
@@ -642,6 +747,68 @@ static func ascends(event: InputEvent) -> bool:
 	return false
 
 
+## The chain's key (god P3, MS §2): C pressed -- not an echo, nor a release, and with no modifier (Ctrl+C is not the chain).
+static func chains(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return event.pressed and not event.echo and event.physical_keycode == CHAIN_KEY \
+			and not (event.alt_pressed or event.ctrl_pressed or event.meta_pressed or event.shift_pressed)
+	return false
+
+
+## The running rite's director (god P3), or null off a rite.
+func _rite() -> RiteDirector:
+	return _rules.director as RiteDirector if started() else null
+
+
+## C was pressed, or the chain plate clicked (god P3, MS §2, plan P3-17): the chain's answer is "aim" (a ready chain: the next click on the map
+## chains the victim under it, the focused slot is let go), "yank" (a drag's one Yank, done), or the words of a refusal (the plate flashes, a buzz
+## and a quiet banner). Pressing it again during the aim lets the aim go, as a slot key lets its power go.
+func chain_pressed() -> void:
+	var rite := _rite()
+	if rite == null or _ending or in_intro() or not is_instance_valid(_hud):
+		return
+	if chain_aim:
+		_end_chain_aim()
+		return
+	var answer := rite.chain_key()
+	if answer == "aim":
+		_aim.unfocus()
+		chain_aim = true
+		UiSound.play(&"ui_focus")
+	elif answer == "yank":
+		UiSound.play(&"ui_click")
+	else:
+		_hud.chain_refused(answer)
+
+
+## The chain's aim never outlives its chain (god P3): once the chain is not ready (a refusal kept it up, then it began another way), or the
+## night is ending, the aim is let go. Read every frame.
+func _sync_chain_aim() -> void:
+	if chain_aim and (_ending or _rite() == null or _rite().chain_state != RiteDirector.Chain.READY):
+		chain_aim = false
+
+
+## The aim ends without a chain (a second C, a slot, Esc, a right-click).
+func _end_chain_aim() -> void:
+	if chain_aim:
+		chain_aim = false
+		UiSound.play(&"ui_back")
+
+
+## The aim was clicked at `ground` (god P3, MS §2): the marked victim there is chained and the aim ends, or the refusal shows and the aim stays.
+func chain_click(ground: Vector2) -> void:
+	var rite := _rite()
+	if rite == null:
+		chain_aim = false
+		return
+	var refusal := rite.chain_at(ground)
+	if refusal == "":
+		chain_aim = false
+		UiSound.play(&"ui_click")
+	elif is_instance_valid(_hud):
+		_hud.chain_refused(refusal)
+
+
 ## True while the sweep is still landing: the world does not yet respond to input or run its clock.
 ## The running mission's rules (its clock, DP, stability), for whoever drives it. Null until started().
 func rules() -> Rules:
@@ -678,6 +845,7 @@ func _land() -> void:
 		_hud.intro = false
 		_hud.play_began()  # v0.11.1: the how-to-win line flashes once now
 	_rules.set_process(true)
+	clock_started.emit()
 
 
 ## How much of this frame's `delta` the intro takes (v0.11.1, spec §2: one message at a time). The opening's banners come first:
@@ -725,6 +893,10 @@ static func raised(stops: Array) -> Array:
 ## The mission to play: Game's choice, or for a standalone run the command line's --mission=<id> (v0.08); on the board, its
 ## tier's version (v0.11 M1).
 func _mission_def(args: PackedStringArray) -> MissionDef:
+	if remembrance != "":
+		return MissionBook.remembrance()
+	if night_def.is_valid():
+		return night_def.call()
 	var wanted_mission := Battlefield.arg_value(args, "--mission") if autostart else ""
 	return def_for(wanted_mission if wanted_mission != "" else mission_id, _on_board(args), descend)
 
@@ -777,9 +949,10 @@ static func wanted_city(args: PackedStringArray, autostart_run: bool) -> StringN
 
 
 ## Whether a night of `def` has a Descent (v0.12, D20): a board night in Aldermere only -- no wishes, believers, banking or tier
-## progress in another town.
+## progress in another town. A Lantern Hunt has one too (god P5, MS §1, R6, open issue 4: it hears the tier's wishes and banks believers, as
+## the stand-ins did); a rite does not.
 static func has_descent(def: MissionDef, on_board: bool) -> bool:
-	return on_board and TierBook.has(def.id) and def.city == &"aldermere"
+	return on_board and (TierBook.has(def.id) or HuntBook.has(def.id)) and def.city == &"aldermere"
 
 
 ## This is a board night (v0.11 M1): Game said so, or a standalone run was given --board.
@@ -848,7 +1021,12 @@ static func blight_banner(s: Structure) -> String:
 
 
 func _on_over(won: bool, reason: String) -> void:
-	_rules.banner.emit(ASCEND_BANNER if _rules.ascended else ResultsScreen.title_for(won, reason))
+	if remembrance != "":
+		return  # a memory is never won or lost, scored or reported
+	if _rite_won():
+		_show_rite_win()
+	else:
+		_rules.banner.emit(ASCEND_BANNER if _rules.ascended else ResultsScreen.title_for(won, reason))
 	if _scripted:
 		# The scripted runs have no Results screen to show, so they keep printing what they found.
 		if _act != null:
@@ -864,15 +1042,34 @@ func _on_over(won: bool, reason: String) -> void:
 	_play_ending()
 
 
+## A won rite (god P3, MS §5, plan P3-18): the shard's light rises from the shrine twice as wide as the ascent's and the win plate replaces the
+## stack, the strip and the slots; no banner (ResultsScreen.title_for() has no title for the shards). The bank happened at the decision.
+func _show_rite_win() -> void:
+	var rite := _rite()
+	if rite != null and is_instance_valid(_hud):
+		_hud.rise(rite.shrine(), RITE_RISE)
+		_hud.show_rite_plate(RiteBook.plate_lines(rite.rite_id()))
+
+
+## The run was a rite, and it is won (god P3).
+func _rite_won() -> bool:
+	return started() and _rules.won and _rite() != null
+
+
 func _play_ending() -> void:
 	_ending = true
 	set_ui_hidden(false)  # the ending's banner and the result are never hidden
+	chain_aim = false
 	_aim.unfocus()
 	var ended := _rules
+	var early := {}
+	if report_on_decision and (_night == null or _act.is_last()):
+		early = _final_result()
+		decided.emit(early)
 	if not _scripted:
 		# The scripted runs keep milestone 3's timing: no slow motion for them.
 		_bf.ctx.impact.set_base_time_scale(ENDING_TIME_SCALE)
-		var wait := ASCEND_SECONDS if _rules.ascended else ENDING_SECONDS
+		var wait := ASCEND_SECONDS if _rules.ascended else (RITE_SECONDS if _rite_won() else ENDING_SECONDS)
 		# Frame time counted from the next frame, each frame's share capped: a SceneTreeTimer made during _process is charged
 		# that whole frame's delta at once, so one long frame before the ending (a hitch on a loaded machine: 3 s and more)
 		# used to swallow the slow motion and report within the same frame -- before a Restart could come, or a fade-in end.
@@ -889,15 +1086,25 @@ func _play_ending() -> void:
 			# is no longer the one being played -- reporting it now would speak for the wrong mission or act.
 			return
 		_bf.ctx.impact.set_base_time_scale(1.0)
+	if not early.is_empty():
+		finished.emit(early)
+		return
+	if _night == null or _act.is_last():
+		finished.emit(_final_result())
+		return
+	var res := _rules.result()
+	_night.record(_act.id, res, _crowd)
+	act_over.emit(res)
+
+
+## The run's last result, as `finished` carries it: the mission's, or the night's with this last act recorded; a board night's with its
+## Descent's report.
+func _final_result() -> Dictionary:
 	var res := _rules.result()
 	if _night == null:
-		finished.emit(_with_descent(res))
-		return
+		return _with_descent(res)
 	_night.record(_act.id, res, _crowd)
-	if _act.is_last():
-		finished.emit(_with_descent(_night.result(res, _def.id, _def.scored)))
-	else:
-		act_over.emit(res)
+	return _with_descent(_night.result(res, _def.id, _def.scored))
 
 
 ## A board night's result (v0.11 M1) with its Descent's report merged in ("descend"); any other as it is.
@@ -922,7 +1129,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 		if event is InputEventKey and event.pressed and not event.echo \
-				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H]):
+				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H] or (chains(event) and _rite() != null)):
 			set_ui_hidden(false)
 	if toggles_legend(event):
 		# H opens the legend (over the intro's tour too), or turns its page. Handled here, so the panel it opens cannot take the
@@ -948,18 +1155,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		if i >= 0 and i < _rules.loadout.size():
 			_pick(i)
 		elif event.physical_keycode == KEY_R:
-			start(PackedStringArray(), Time.get_ticks_usec())
+			if not restart_locked:  # Endless Night: no restart (god P1, Ruling P9)
+				start(PackedStringArray(), Time.get_ticks_usec())
 		elif ascends(event):
 			ascend()
+		elif chains(event) and _rite() != null:
+			chain_pressed()
 		elif toggles_details(event):
 			get_viewport().set_input_as_handled()
 			_hud.toggle_details()
 		elif event.physical_keycode == KEY_ESCAPE:
-			# Esc first calls off a held press, then unfocuses the power. With nothing focused it is the
+			# Esc first lets go of the chain's aim (god P3), then calls off a held press, then unfocuses the power. With nothing focused it is the
 			# pause menu's -- or, for a mission running on its own with no Game around it, still the way out.
-			if _aim.cancel():
+			if chain_aim:
+				_end_chain_aim()
+			elif _aim.cancel():
 				UiSound.play(&"ui_back")  # a held press was called off
-			elif _aim.slot >= 0:
+			elif _aim.slot >= 0 and remembrance == "":  # the memory's one slot stays focused: Esc opens its pause at once
 				_aim.unfocus()
 				UiSound.play(&"ui_back")
 			elif autostart:
@@ -986,6 +1198,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			# A power whose second place has a shape (Sacred Sanctuary): the right button steps it.
 			UiSound.play(&"ui_mode")
 			return
+		_end_chain_aim()  # god P3: the chain's aim goes first (it has no slot and no held press)
 		if not _aim.cancel():
 			_aim.unfocus()
 		if focused:
@@ -1000,10 +1213,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			if wish >= 0 and _descent != null and _descent.engage(wish):
 				UiSound.play(&"ui_click")
 				return
+			# A click on the chain plate is C (god P3, plan P3-17).
+			if _hud.chain_shown() and _hud.chain_rect().has_point(event.position):
+				chain_pressed()
+				return
 			# A click on a HUD slot focuses that power instead of casting into the town under it.
 			var on_slot := _hud.slot_at(event.position)
 			if on_slot >= 0 and on_slot < _rules.loadout.size():
 				_pick(on_slot)
+				return
+			# With the chain's aim up the click is the chain's, not a cast (god P3, MS §2).
+			if chain_aim:
+				chain_click(_bf.mouse_ground())
 				return
 			_pressing = true
 			_aim.press(_bf.mouse_ground())
@@ -1053,7 +1274,14 @@ func _close_legend() -> void:
 
 ## Focus a slot by its key or its card. The focused one's own again lets it go (Targeting.pick), and that is the
 ## player letting go, so it sounds as Esc and a right-click do. A cast lets go too, but quietly: the power is heard.
+## Focus slot `i` and keep it so (unlike the slot key, which lets go of a slot already focused). Remembrance's one slot lives on it.
+func focus_slot(i: int) -> void:
+	if is_instance_valid(_aim) and _aim.slot != i:
+		_aim.pick(i)
+
+
 func _pick(i: int) -> void:
+	chain_aim = false  # a slot key or click lets the chain's aim go (god P3, plan P3-17)
 	if i == _aim.slot:
 		UiSound.play(&"ui_back")
 	_aim.pick(i)
@@ -1062,6 +1290,7 @@ func _pick(i: int) -> void:
 func _process(delta: float) -> void:
 	if not started():
 		return
+	_sync_chain_aim()
 	if not _ending:
 		_music_in -= delta
 		if _music_in <= 0.0:

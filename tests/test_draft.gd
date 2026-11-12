@@ -167,8 +167,8 @@ static func run(t) -> void:
 	click.set_tab(click.tabs().find("veil"))
 	var before := click.draft.picks.duplicate()
 	click.click(PrepareScreen.cell_rect(Array(click.shown()).find("doom")).get_center())
-	t.check(click.draft.picks == before and click.refused_reason == "Not enough Divine Power",
-		"a card over the Divine Power is refused with its reason ('%s', %s)" % [click.refused_reason, click.draft.picks])
+	t.check(click.draft.picks == before and click.refused_reason == "Not enough Might",
+		"a card over the Might is refused with its reason ('%s', %s)" % [click.refused_reason, click.draft.picks])
 	click.draft.preselect(PackedStringArray(["doom", "wisp", "discord", "heaven", "blight", "thorns"]))
 	click.set_tab(click.tabs().find("ruin"))
 	before = click.draft.picks.duplicate()

@@ -163,6 +163,25 @@ func bank(id: String, outcome: Dictionary) -> Dictionary:
 	night += 1
 	var earned := maxi(int(outcome.get("earned", 0)), 0)
 	believers += earned
+	var kept := _keep_bests(id, outcome)
+	var opened := refresh_open()
+	return {"believers": earned, "total": believers, "night": night, "cleared": kept.main, "first_clear": kept.first, "opened": opened,
+		"progress": progress_line(maxi(TierBook.tier_of(id), 1)), "bests": kept.bests}
+
+
+## Banks a finished board night in the test mode (god P1, spec §3, ruling P11): the night is counted -- only to seed the
+## board's wishes, never shown -- and the mission's cleared tick and bests are kept as bank() keeps them, but **no believers are
+## banked and no tier opens** (`open_tier` is untouched). `outcome` is as bank()'s. Returns `{"test": true, "night", "cleared",
+## "first_clear", "bests"}` for the results.
+func bank_test(id: String, outcome: Dictionary) -> Dictionary:
+	night += 1
+	var kept := _keep_bests(id, outcome)
+	return {"test": true, "night": night, "cleared": kept.main, "first_clear": kept.first, "bests": kept.bests}
+
+
+## The part of banking both modes share (spec §3.5): the mission cleared when its main objective was done, its fastest clear and
+## its most wishes granted kept when beaten. Returns `{"main", "first", "bests"}`.
+func _keep_bests(id: String, outcome: Dictionary) -> Dictionary:
 	var main := bool(outcome.get("main", false))
 	var first := main and not cleared.has(id)
 	if first:
@@ -176,9 +195,7 @@ func bank(id: String, outcome: Dictionary) -> Dictionary:
 	if kept > int(most_wishes.get(id, 0)):
 		most_wishes[id] = kept
 		bests.append("Most wishes granted: %d" % kept)
-	var opened := refresh_open()
-	return {"believers": earned, "total": believers, "night": night, "cleared": main, "first_clear": first, "opened": opened,
-		"progress": progress_line(maxi(TierBook.tier_of(id), 1)), "bests": bests}
+	return {"main": main, "first": first, "bests": bests}
 
 
 func write(cfg: ConfigFile) -> void:

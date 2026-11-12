@@ -1,0 +1,65 @@
+# Posts god progression work to its own Discord channel (e.g. #god-changelog).
+#   push to feat/god-progression -> "God progression: N changes", only the branch's own commits
+#                                   (anything merged in from feat/Develop-Main is left out: #changelog has it)
+#   push a kak-god-* tag         -> milestone summary since the previous kak-god-* tag
+#   run by hand                  -> re-post any kak-god-* tag
+# Needs the repo secret DISCORD_GOD_WEBHOOK (Settings > Secrets and variables > Actions).
+# Without it the job only prints what it would have posted.
+name: Discord god changelog
+
+on:
+  push:
+    branches: [feat/god-progression]
+    tags: ["kak-god-*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to post, e.g. kak-god-ruin-levels"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discord-god-changelog
+  cancel-in-progress: false  # queue posts so they arrive in order
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history, tags and origin/feat/Develop-Main (to leave its commits out)
+          filter: blob:none  # skip file contents: the art and sound are large, only commits are read
+          sparse-checkout: .github
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Post to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_GOD_WEBHOOK }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          script=.github/scripts/discord_changelog.py
+          opts=(--exclude origin/feat/Develop-Main --tag-glob "kak-god-*")
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            python "$script" "${opts[@]}" --tag "$INPUT_TAG"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            python "$script" "${opts[@]}" --tag "$REF_NAME"
+          elif [ -z "${BEFORE//0/}" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            # New branch or a force push: there is no old tip to compare with.
+            echo "No usable previous tip ($BEFORE); posting only the newest commit."
+            python "$script" "${opts[@]}" --name "God progression" --range "$AFTER~1..$AFTER" --branch "$REF_NAME"
+          else
+            python "$script" "${opts[@]}" --name "God progression" --range "$BEFORE..$AFTER" --branch "$REF_NAME"
+          fi

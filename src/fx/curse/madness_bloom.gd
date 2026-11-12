@@ -20,38 +20,48 @@ var resisted := 0
 
 
 ## Who it would take at `at`: everyone living in the circle, out in the open, not yet mad.
-static func victims_at(field: EnemyField, at: Vector2) -> Array[Person]:
+static func victims_at(field: EnemyField, at: Vector2, r := RADIUS) -> Array[Person]:
 	var out: Array[Person] = []
-	for e in field.in_radius(at, RADIUS):
+	for e in field.in_radius(at, r):
 		var p := e as Person
 		if p != null and not p.inside and not p.statuses.has(MadnessManager.STATUS):
 			out.append(p)
 	return out
 
 
+## This cast's circle and starting madness at its ability level (RADIUS and SEED at level 1).
+var lv_radius := RADIUS
+var lv_seed := SEED
+
+
 func _build() -> void:
+	lv_radius = float(PowerBook.stat(extra, "madness", "RADIUS", RADIUS))
+	lv_seed = float(PowerBook.stat(extra, "madness", "SEED", SEED))
 	duration = 1.8
 	busy = 0.8
-	for p in victims_at(ctx.field, origin):
+	for p in victims_at(ctx.field, origin, lv_radius):
 		if MadnessManager.resists(p, ctx.rng):
 			resisted += 1
 			continue
-		p.statuses[MadnessManager.STATUS] = SEED
+		p.statuses[MadnessManager.STATUS] = lv_seed
 		afflicted.append(p)
+	if PowerBook.twist_at(extra, "madness") and ctx.crowd != null and ctx.crowd.madness != null:
+		for p in afflicted:
+			ctx.crowd.madness.direct(p)  # Directed Frenzy: the seeds frenzy at Broken, on the nearest soldier first
 	# Dogs and cats in the circle turn on whoever is near once the madness has had a moment (AnimalPack).
-	at(ANIMAL_DELAY, func() -> void: AnimalPack.cast(ctx, origin, RADIUS, Animal.Spell.ATTACK, ANIMAL_RAGE))
+	at(ANIMAL_DELAY, func() -> void: AnimalPack.cast(ctx, origin, lv_radius, Animal.Spell.ATTACK, ANIMAL_RAGE))
 	ctx.play(&"q_madness", origin)
 	if ctx.impact == null or not is_inside_tree():
 		return
 	var sp := Iso.ground_to_screen(origin)
-	var haze := FxParts.heat_haze(self, sp, FxParts.particle_radius(RADIUS), 1.2)
+	var haze := FxParts.heat_haze(self, sp, FxParts.particle_radius(lv_radius), 1.2)
 	haze.set_param("speed", 1.5)
 	haze.tween_param("strength", 1.2, 0.0, 1.4, 0.3)
 	haze.life = 1.75
-	var dusk := FxParts.ground_light(self, origin, RADIUS * 1.2, DUSK_LIGHT, 0.5)
+	var dusk := FxParts.ground_light(self, origin, lv_radius * 1.2, DUSK_LIGHT, 0.5)
 	dusk.tween_param("intensity", 0.5, 0.0, 1.5)
 	var motes := FxParts.particles(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, DUSK)
 	motes.drag = 0.6
 	motes.gravity = -12.0
-	motes.burst(26, {"radius": FxParts.particle_radius(RADIUS), "speed": Vector2(10, 30), "dir": PixelParticles.Dir.INWARD,
+	motes.burst(26, {"radius": FxParts.particle_radius(lv_radius), "speed": Vector2(10, 30), "dir": PixelParticles.Dir.INWARD,
 		"alt": Vector2(0, 10), "alt_speed": Vector2(2, 10), "life": Vector2(0.7, 1.3), "size": Vector2(1, 2)})

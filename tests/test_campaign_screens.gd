@@ -71,7 +71,7 @@ static func run(t) -> void:
 	one.setup(CampaignState.new())
 	t.check(one.options.size() == 1 and one.chosen == MissionBook.WARNING, "Night 1's one mission is chosen at setup")
 	one.free()
-	t.check(CampaignScreen.status_text(CampaignState.new()) == "6 DP   3 slots   Bites 0 / 3   The Forgotten",
+	t.check(CampaignScreen.status_text(CampaignState.new()) == "6 Might   3 slots   Bites 0 / 3   The Forgotten",
 		"the status line: %s" % CampaignScreen.status_text(CampaignState.new()))
 	t.check(CampaignScreen.card_line(MissionBook.vigil_flame(), s) == CampaignText.CARD_LINES["vigil_flame"],
 		"a Night 2 card carries Cael's line")
@@ -125,9 +125,9 @@ static func run(t) -> void:
 	t.check(res.campaign and res._menu.items.size() == 1 and String(res._menu.items[0].action) == "next",
 		"a campaign night's results offer one Continue")
 	res.free()
-	t.check(ResultsScreen.campaign_line({"won": true, "dp_gain": 3, "dp": 9}) == "The god grows: +3 DP, 9 DP now.",
+	t.check(ResultsScreen.campaign_line({"won": true, "dp_gain": 3, "dp": 9}) == "The god grows: +3 Might, 9 Might now.",
 		"a won night's line")
-	t.check(ResultsScreen.campaign_line({"won": false, "dp": 5, "bites": 1}) == "Halcyon bites: 5 DP now. Bites 1 / 3.",
+	t.check(ResultsScreen.campaign_line({"won": false, "dp": 5, "bites": 1}) == "Halcyon bites: 5 Might now. Bites 1 / 3.",
 		"a lost night's line")
 	t.check(ResultsScreen.campaign_line({"won": false, "dp": 4, "bites": 3, "ending": "eaten"}) == "Halcyon has eaten you.",
 		"the last bite's line")

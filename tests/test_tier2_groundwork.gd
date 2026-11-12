@@ -336,7 +336,7 @@ static func _switches(t) -> void:
 	var d: AssassinateDirector = a.d
 	var main: Objective = (a.rules as Rules).objectives[0]
 	t.check(d.smoke_out and d.quarries[0].scheduled and d.hud_line() == "" and d.lost_reason() == ""
-		and main.hud_text(a.rules) == "Kill the collectors: 0 / 3" and main.check(a.rules) == Objective.Status.PENDING,
+		and main.hud_text(a.rules) == "Stop the collectors: 0 / 3" and main.check(a.rules) == Objective.Status.PENDING,
 		"The Tax Collector's switches as before: scheduled, smoked out, the objective's own HUD line, no other loss")
 	done(a)
 	var b := world(MissionBook.tax_collector(), Hidden.new())
@@ -364,8 +364,8 @@ static func _switches(t) -> void:
 	dc._alarm(qc)
 	var citadel: String = words.hud_text(c.rules)
 	dc.safe_label = "TEMPLE"
-	t.check(dc.fleeing_to_safe(qc) and citadel == "Kill the collectors: 0 / 3, he runs for the Citadel"
-		and words.hud_text(c.rules) == "Kill the collectors: 0 / 3, he runs for the Temple",
+	t.check(dc.fleeing_to_safe(qc) and citadel == "Stop the collectors: 0 / 3, he runs for the Citadel"
+		and words.hud_text(c.rules) == "Stop the collectors: 0 / 3, he runs for the Temple",
 		"running with no hiding place, he runs for the director's safe place: the Citadel's text exact, a Temple's its own (%s)" % [words.hud_text(c.rules)])
 	done(c)
 

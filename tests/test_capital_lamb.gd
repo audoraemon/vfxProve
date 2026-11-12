@@ -154,6 +154,12 @@ static func _beats(t, cap: Dictionary) -> void:
 	var posts: Array = ov.watch_posts
 	t.check(_snap(grid, posts[0]).distance_to(_snap(grid, posts[1])) > SPREAD, "the two posts stand more than %.1f apart (%.2f)" % [SPREAD,
 		_snap(grid, posts[0]).distance_to(_snap(grid, posts[1]))])
+	# God T1R (Problem 10 (a)): the second post is the outer one, just outside the gate on the road, so every point within ESCAPE_REACH of the way
+	# out is in its sight (as Aldermere's).
+	var outer := _snap(grid, posts[1])
+	t.check(outer.distance_to(_snap(grid, ov.exit_at)) <= EscortDirector.SIGHT - EscortDirector.ESCAPE_REACH
+		and outer.distance_to(_snap(grid, ov.gate_at)) > _snap(grid, posts[0]).distance_to(_snap(grid, ov.gate_at)),
+		"the second post stands just outside the gate: all of the way out is in its sight (%.2f from it)" % outer.distance_to(_snap(grid, ov.exit_at)))
 	var ends := []
 	for b: Array in ov.beat_spots:
 		for p: Vector2 in b:

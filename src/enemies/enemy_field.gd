@@ -123,6 +123,10 @@ func in_lane(origin: Vector2, dir: Vector2, half_width: float, along_min: float,
 func kill(e: DummyEnemy, kind: StringName, source := Vector2.INF) -> bool:
 	if not is_instance_valid(e) or not e.is_alive():
 		return false
+	if e.has_meta(&"decoy"):
+		# A decoy (Mirrorfold's glass twin) is no one: struck down it shatters, and no count, credit or director hears of it.
+		e.die(kind, source)
+		return false
 	e.die(kind, source)
 	enemy_killed.emit(e, kind)
 	return true
@@ -161,6 +165,14 @@ func knock_from(center: Vector2, r_min: float, r_max: float, force: float) -> vo
 func pull(center: Vector2, radius: float, strength: float, swirl: float, delta: float) -> void:
 	for e in alive():
 		if e.state == DummyEnemy.State.PULLED or e.ground_pos.distance_squared_to(center) <= radius * radius:
+			e.pull_step(center, strength, swirl, delta)
+
+
+## Like pull(), but only for enemies within `radius` of `center`: one already PULLED by another funnel, wherever it is, is not touched
+## (two funnels at once must not drag each other's captives).
+func pull_near(center: Vector2, radius: float, strength: float, swirl: float, delta: float) -> void:
+	for e in alive():
+		if e.ground_pos.distance_squared_to(center) <= radius * radius:
 			e.pull_step(center, strength, swirl, delta)
 
 

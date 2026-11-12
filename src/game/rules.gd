@@ -8,8 +8,12 @@ extends Node
 
 ## A cast went out: the slot, its power key and where it landed.
 signal cast_made(slot: int, key: String, at: Vector2)
+## A live storm took a click as a called bolt (Wrath of the Sky, level 5): the slot, its power key and where.
+signal recast_made(slot: int, key: String, at: Vector2)
 ## A cast could not go out: "cooldown", "busy", "empty", "over", "nobody" (v0.08: a Mind Whisper with no one to
-## whisper to) or "shaken" (v0.08.1: a Mind Whisper on someone still shaking the last one off, Person.SHAKE_OFF).
+## whisper to), "shaken" (v0.08.1: a Mind Whisper on someone still shaking the last one off, Person.SHAKE_OFF), or -- the order
+## wheel -- "foe" (an attack order with no fair foe) or "building" (a burn order with no fair building); "missed" (a live
+## power's follow-up order that found nothing at the click, Targeting).
 signal cast_refused(slot: int, reason: String)
 ## The Temple fell and every cooldown was reset (v0.08's Divine Surge, once a mission).
 signal surged
@@ -64,7 +68,7 @@ const POWER_KINDS := {
 	"pilgrim": [],
 	"deep": [&"pit"],
 	"houndgate": [&"frenzy"],
-	"allroads": [],
+	"allroads": [&"gone"],  # The Last Mile (level 5): those it takes through the door of stars
 	"yesterday": [],
 	"foldward": [],
 	"everydoor": [],
@@ -126,8 +130,14 @@ var clock_rate := 1.0:
 		clock_rate = maxf(value, 0.0)
 ## The drafted power keys, in slot order.
 var loadout := PackedStringArray()
+## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Mission sets it after setup(); cast()
+## hands the level to the effect as extra["level"].
+var levels := {}
 ## The mission is over: the clock ran out, the people got away, or the city fell.
 var finished := false
+## Remembrance (the Skill Tree's free memory): casts leave no cooldown, the clock never falls and nothing ends the run -- no clock,
+## no escape, no fall. busy_left() still applies. False everywhere else.
+var free_play := false
 ## Buildings destroyed this mission, by BUILDING_ROLES.
 var buildings_down := 0
 ## How many casts chained.
@@ -179,6 +189,8 @@ var _crowd: Crowd
 var _town: Town
 ## Seconds of cooldown left per slot.
 var _cooldowns := PackedFloat32Array()
+## The full cooldown of a slot whose last cast was in a mode with its own (cooldown_of() counts down from it): slot -> seconds.
+var _mode_cooldown := {}
 ## The power now playing; no other can be cast until it finishes (busy_left()).
 var _playing: FxTimeline
 ## One entry per cast that may still be credited: {"key", "fx", "at", "buildings", "kills", "chained", "until"}.
@@ -248,7 +260,7 @@ func advance(delta: float) -> void:
 	_step_abolished(delta)
 	if lantern != null:
 		clock_rate = lantern.rate()  # v0.11.2: the Lantern's stage is the clock's rate
-	if not is_abolished(LAW_CLOCK):
+	if not is_abolished(LAW_CLOCK) and not free_play:
 		time_left = maxf(0.0, time_left - delta * clock_rate)
 		_mission_elapsed += delta * clock_rate
 	if _stability_dirty:
@@ -345,6 +357,21 @@ func key(slot: int) -> String:
 	return String(p.get("key", ""))
 
 
+## The ability level of the power in a slot, 1-5 (levels; 1 when none was set, for an empty slot too).
+func level_of(slot: int) -> int:
+	return clampi(int(levels.get(key(slot), 1)), 1, PowerBook.MAX_LEVEL)
+
+
+## The slot's full cooldown in seconds at its ability level (what cooldown_left() counts down from); 0.0 for an empty slot.
+func cooldown_of(slot: int) -> float:
+	var p := power(slot)
+	if p.is_empty():
+		return 0.0
+	if _mode_cooldown.has(slot):
+		return float(_mode_cooldown[slot])
+	return PowerBook.cooldown(String(p.key), level_of(slot))
+
+
 func cooldown_left(slot: int) -> float:
 	if slot < 0 or slot >= _cooldowns.size():
 		return 0.0
@@ -405,14 +432,95 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 			refused_who = who
 			cast_refused.emit(slot, "shaken")
 			return null
-	_cooldowns[slot] = float(p.cooldown)
-	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, extra)
+		if extra.has("order"):
+			# The order wheel (god/whisper-wheel): an attack with no fair foe, or a burn with no fair building, is refused too.
+			var order := String(extra.get("order"))
+			if order == "attack" and not MindWhisperFx.foe_ok(who, extra.get("foe")):
+				cast_refused.emit(slot, "foe")
+				return null
+			if order == "burn" and not MindWhisperFx.building_ok(who, extra.get("building")):
+				cast_refused.emit(slot, "building")
+				return null
+	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
+	var told := extra.duplicate()
+	if not told.has("level"):
+		told["level"] = level_of(slot)
+	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.
+	_cooldowns[slot] = PowerBook.cooldown(String(p.key), int(told.level))
+	# A mode that carries its own cooldown (Will-o'-Wisp's ENTHRALL) waits that instead; no mode, or one without, changes nothing.
+	var own := PowerBook.mode_cooldown(String(p.key), String(told.get("mode", ""))) if told.has("mode") else -1.0
+	if own >= 0.0:
+		_cooldowns[slot] = own
+		_mode_cooldown[slot] = own
+	else:
+		_mode_cooldown.erase(slot)
+	if free_play:
+		_cooldowns[slot] = 0.0
+		_mode_cooldown.erase(slot)
+	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, told)
 	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
 		"until": _elapsed + CAST_GRACE})
 	last_cast = ground
 	cast_made.emit(slot, String(p.key), ground)
 	return fx
+
+
+## Whether the slot's power is running and would take a click as its own -- a live power's follow-up (Called Bolts, Procession,
+## Second Word, Turn the Tide): the same test as recast(), without acting. What the preview asks to draw its edge as ready, and what
+## turns the HUD card gold. The effect says so with can_follow_up().
+func can_recast(slot: int) -> bool:
+	if finished or busy_left() > 0.0:
+		return false
+	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
+	return fx != null and fx.has_method("can_follow_up") and fx.can_follow_up()
+
+
+## The click at `at` belongs to the running power in the slot (a live power's follow-up: Called Bolts, Procession, Second Word, Turn
+## the Tide): `extra` (the mode the player has picked) goes to the effect's follow_up(at, extra), true if it took it, and recast_made
+## is sent. False when no such power runs, or it cannot take one now (the run is over, or another power holds the busy lock, as cast()
+## refuses them); the caller then casts as usual. Touches no cooldown and has no rng, so a scripted route may call it.
+func recast(slot: int, at: Vector2, extra := {}) -> bool:
+	if finished or busy_left() > 0.0:
+		return false
+	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
+	if fx == null or not fx.has_method("follow_up") or not fx.follow_up(at, extra):
+		return false
+	recast_made.emit(slot, key(slot), at)
+	return true
+
+
+## The area the slot's live follow-up wants drawn as its preview (a Targeting.AREAS-shaped Dictionary), or {} for the power's own:
+## the effect's follow_up_area(), when the slot can take a follow-up now.
+func follow_up_area(slot: int) -> Dictionary:
+	if not can_recast(slot):
+		return {}
+	var fx: Variant = live_fx(key(slot))
+	if fx == null or not fx.has_method("follow_up_area"):
+		return {}
+	return fx.follow_up_area()
+
+
+## The latest still-running effect cast for `key` (a valid one that has not finished), or null: what a twist that reaches into
+## its live power reads (a follow-up). Only reads.
+func live_fx(key: String) -> FxTimeline:
+	for i in range(_casts.size() - 1, -1, -1):
+		var c: Dictionary = _casts[i]
+		if String(c.key) != key:
+			continue
+		var ref: Variant = c.fx
+		if is_instance_valid(ref) and not (ref as FxTimeline).finished:
+			return ref as FxTimeline
+	return null
+
+
+## The effect of the latest cast (god T1R): what a director reads of the power just cast (the mode of The Bell Lies, the people Leaving
+## Is Prohibited bound). Null before any cast, or when the effect has been freed since. Only reads.
+func last_fx() -> FxTimeline:
+	if _casts.is_empty():
+		return null
+	var fx: Variant = _casts.back().fx
+	return fx as FxTimeline if is_instance_valid(fx) else null
 
 
 ## The power key credited with this damage kind: among the casts still running, the one whose power deals it,
@@ -505,7 +613,7 @@ func _on_citadel_health(_fraction: float) -> void:
 ## Last Judgement lists the Citadel first, so a city that falls on the last tick of the clock still counts. On the tier
 ## board (v0.11 M1, spec §6) the first DONE holds the night instead (_hold()), and from then on _check_caught() decides.
 func _check_end() -> void:
-	if finished:
+	if finished or free_play:
 		return
 	if main_done:
 		_check_caught()

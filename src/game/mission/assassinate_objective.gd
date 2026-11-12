@@ -36,7 +36,7 @@ func check(rules: Rules) -> Status:
 	return Status.PENDING
 
 
-## "Kill the collectors: 1 / 3", "...: 1 / 3, he hides" (the current target flees or hides), "...: 1 / 3, he runs for the
+## "Stop the collectors: 1 / 3", "...: 1 / 3, he hides" (the current target flees or hides), "...: 1 / 3, he runs for the
 ## Citadel" (he flees with no hiding place, final review), "...: 1 / 3, rounds done" (he makes for the safe place); the label
 ## alone once all are dead or one is safe (v0.11 M2). The running text names the director's safe place (safe_label: "Citadel").
 ## v0.11 M3: the director's own HUD line (hud_line()) in place of all of it when it has one.
@@ -47,7 +47,7 @@ func hud_text(rules: Rules) -> String:
 	var line := d.hud_line()
 	if line != "":
 		return line
-	var count := "%s: %d / %d" % [label, d.killed(), d.quarries.size()]
+	var count := "%s: %d / %d" % [label, d.stopped(), d.quarries.size()]  # (god T1R) dead or stopped out of the walls
 	var q := d.current()
 	if q == null:
 		return count

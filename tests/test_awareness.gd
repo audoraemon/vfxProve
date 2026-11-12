@@ -96,7 +96,7 @@ static func _held(t) -> void:
 	_calm(q, at + Vector2(4.0, 0.0))  # inside Smite's sight (5.0), outside its radius
 	_calm(far, at + Vector2(0.0, 30.0))
 	var landed := []
-	crowd.danger_landed.connect(func(key: String, points: Array[Vector2]) -> void: landed.append([key, points]))
+	crowd.danger_landed.connect(func(key: String, points: Array[Vector2], _radius: float) -> void: landed.append([key, points]))
 	crowd.on_cast(at, Vector2.ZERO, 0.0, "smite")
 	t.check(crowd.threats.active_count() == 0 and p.mind == Person.Mind.OBSERVE and q.mind == Person.Mind.OBSERVE
 		and far.mind == Person.Mind.CALM and crowd.held_count() == 1 and landed.is_empty(),
@@ -319,7 +319,7 @@ static func _unkeyed(t) -> void:
 	var p: Person = crowd.citizens[0]
 	_calm(p, Vector2(0.8, 2.0))
 	var landed := []
-	crowd.danger_landed.connect(func(key: String, _points: Array[Vector2]) -> void: landed.append(key))
+	crowd.danger_landed.connect(func(key: String, _points: Array[Vector2], _radius: float) -> void: landed.append(key))
 	crowd.on_cast(Vector2(0.8, 2.0))
 	t.check(p.mind == Person.Mind.PANIC and crowd.held_count() == 0 and landed == [""], "an unkeyed cast frightens at once")
 	_done(s)

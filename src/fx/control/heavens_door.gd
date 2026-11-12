@@ -57,6 +57,14 @@ extends FxTimeline
 ## The end: the leaves slam shut over T_SHUT with a boom (the frames back to shut), and the door rises back into the sky
 ## over T_RISE, shut, and is gone.
 ## Once in a descent (the book's cooldown).
+##
+## Ability levels (PowerBook "heavendoor" levels; level 1 is the numbers above): the pull's reach (PULL_R), its time
+## (SPAN), its pull at the rim (PULL_FAR: runners get away less) and the landing's blow (LAND_DAMAGE) grow, read once a
+## cast into the lv_ numbers (the static helpers -- pull_speed(), storm_rate(), before() -- and the aim keep level 1's).
+## Level 5's twist, Twin Doors: two doors fall together, back to back, one facing the drag and one the other way
+## (drawn from the same sheet, the row for the other way), so the pull covers the whole circle of PULL_R instead of the
+## half before one door, the storm strikes every building in it, and each door takes whoever reaches it (DOOR_R of the
+## doorway on either side). They land as one: the landing's crush, throw and blow are struck once.
 
 const T_FALL := 1.2
 const CRUSH_R := 3.0
@@ -89,6 +97,9 @@ const DEFAULT_DIR := Vector2(1, 0)
 const GOODS: Array[Decor.Kind] = [Decor.Kind.BARREL, Decor.Kind.CRATES, Decor.Kind.CART, Decor.Kind.LOGS, Decor.Kind.PILE]
 ## The doorway is heard swallowing at most once every GULP_EVERY.
 const GULP_EVERY := 0.4
+## Twin Doors (level 5): each door stands this far (ground units) out from the landing point along its own way, back to
+## back, so the town sorts each on its own side.
+const TWIN_GAP := 0.3
 
 ## The eight ways it faces (ground units, 45 degrees apart: index k is the ground angle k * 45 degrees), and for each the
 ## sheet's row that shows it so (see the doc block: the front diagonals are drawn crosswise).
@@ -138,6 +149,15 @@ var torn_gone := 0
 var felled := 0
 ## Everyone the pull ever had hold of (distinct, by instance id).
 var drawn := 0
+## This cast's numbers at its ability level (the constants at level 1): the pull's reach, its time, its pull at the rim,
+## the landing's blow.
+var lv_pull_r := PULL_R
+var lv_span := SPAN
+var lv_pull_far := PULL_FAR
+var lv_land_damage := LAND_DAMAGE
+## Twin Doors (level 5): two doors back to back, the pull over the whole circle (its half angle then PI).
+var twin := false
+var half_angle := HALF_ANGLE
 
 var _goods: Array[Decor] = []
 ## Small structure -> the pull that has worked on it so far.
@@ -149,9 +169,11 @@ var _drawn_ids := {}
 var _gulp_at := -INF
 var _roar: Node
 var _door_node: Door
+var _back_node: Door
 var _flyers: Flyers
 var _glow: QuadFx
 var _front: QuadFx
+var _back: QuadFx
 
 
 ## When it is fully open, when it shuts, and when it is gone.
@@ -160,7 +182,7 @@ func open_at() -> float:
 
 
 func shut_at() -> float:
-	return open_at() + SPAN
+	return open_at() + lv_span
 
 
 func gone_at() -> float:
@@ -175,6 +197,22 @@ static func pull_speed(d: float) -> float:
 ## Wind damage a second to a building whose nearest wall is `d` from the doorway.
 static func storm_rate(d: float) -> float:
 	return STORM_DAMAGE * lerpf(STORM_NEAR, 1.0, clampf(d / PULL_R, 0.0, 1.0))
+
+
+## How fast this cast's pull (at its level) draws something `d` from the doorway.
+func pull_at(d: float) -> float:
+	return EnemyField.cone_speed(d, lv_pull_r, PULL_NEAR, lv_pull_far)
+
+
+## This cast's wind damage a second to a building whose nearest wall is `d` from the doorway.
+func storm_at(d: float) -> float:
+	return STORM_DAMAGE * lerpf(STORM_NEAR, 1.0, clampf(d / lv_pull_r, 0.0, 1.0))
+
+
+## Whether `g` is in this cast's pull, within `r` of the doorway (its reach when `r` is below 0): in front of the door,
+## or anywhere round the two of them (Twin Doors).
+func in_pull(g: Vector2, r := -1.0) -> bool:
+	return EnemyField.cone_has(g, door, facing, lv_pull_r if r < 0.0 else r, half_angle)
 
 
 ## Whether `g` is in front of a door at `at` facing `dir`, within `r` of it.
@@ -220,6 +258,12 @@ func leaves(now: float) -> float:
 func _build() -> void:
 	door = ctx.field.through(origin)
 	facing = facing_of(extra)
+	lv_pull_r = float(PowerBook.stat(extra, "heavendoor", "PULL_R", PULL_R))
+	lv_span = float(PowerBook.stat(extra, "heavendoor", "SPAN", SPAN))
+	lv_pull_far = float(PowerBook.stat(extra, "heavendoor", "PULL_FAR", PULL_FAR))
+	lv_land_damage = float(PowerBook.stat(extra, "heavendoor", "LAND_DAMAGE", LAND_DAMAGE))
+	twin = PowerBook.twist_at(extra, "heavendoor")
+	half_angle = PI if twin else HALF_ANGLE
 	duration = gone_at() + 0.2
 	busy = T_FALL
 	at(T_FALL, _land)
@@ -233,7 +277,19 @@ func _build() -> void:
 	var sp := Iso.ground_to_screen(door)
 	_door_node = Door.new()
 	_door_node.fx = self
+	_door_node.way = facing
 	_door_node.position = sp
+	if twin:
+		# Twin Doors: the second, back to back with the first, facing the other way; the first fades the houses before
+		# either (a single SeeThrough: two would each take the other's fade for a house's own look).
+		_door_node.position = Iso.ground_to_screen(door + facing * TWIN_GAP)
+		_back_node = Door.new()
+		_back_node.fx = self
+		_back_node.way = -facing
+		_back_node.sees = false
+		_back_node.position = Iso.ground_to_screen(door - facing * TWIN_GAP)
+		_door_node.twin_of = _back_node
+		track(_back_node, ctx.world if ctx.world != null else ctx.overhead)
 	track(_door_node, ctx.world if ctx.world != null else ctx.overhead)
 	var shadow := Shadow.new()
 	shadow.fx = self
@@ -282,7 +338,7 @@ func _land() -> void:
 		if p != null:
 			p.knock_down()
 		knocked += 1
-	ctx.env.damage_radius(door, SHOCK_R, LAND_DAMAGE, &"stone")
+	ctx.env.damage_radius(door, SHOCK_R, lv_land_damage, &"stone")
 	ctx.play(&"jg_punch", door, 0.0)
 	ctx.play(&"nova_boom", door, -1.0)
 	ctx.play(&"collapse_stone", door, -2.0)
@@ -333,7 +389,7 @@ func _open() -> void:
 	pulling = true
 	_goods.clear()
 	for d in ctx.env.decor():
-		if is_instance_valid(d) and not d.sprite_only and d.kind in GOODS and before(d.at, door, facing):
+		if is_instance_valid(d) and not d.sprite_only and d.kind in GOODS and in_pull(d.at):
 			_goods.append(d)
 	_roar = ctx.play(&"tn_wind", door, -1.0)
 	if not DominionParts.staged(self):
@@ -342,12 +398,11 @@ func _open() -> void:
 	ctx.shake.add_trauma(0.3)
 	var flare := FxParts.bloom(self, sp, 80.0, WARM, 0.7, 1.6)
 	flare.tween_param("intensity", 0.7, 0.18, 0.8, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	flare.tween_param("intensity", 0.18, 0.0, T_SHUT, SPAN, Tween.TRANS_QUAD, Tween.EASE_IN)
-	flare.life = SPAN + T_SHUT + 0.05
-	_front = FxParts.ground_light(self, door + facing * PULL_R * 0.35, PULL_R * 0.55, WARM, 0.0)
-	_front.tween_param("intensity", 0.0, 0.55, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	_front.tween_param("intensity", 0.55, 0.0, T_SHUT, SPAN, Tween.TRANS_QUAD, Tween.EASE_IN)
-	_front.life = SPAN + T_SHUT + 0.05
+	flare.tween_param("intensity", 0.18, 0.0, T_SHUT, lv_span, Tween.TRANS_QUAD, Tween.EASE_IN)
+	flare.life = lv_span + T_SHUT + 0.05
+	_front = _pour(facing)
+	if twin:
+		_back = _pour(-facing)
 	var fan := Fan.new()
 	fan.fx = self
 	fan.position = door
@@ -362,7 +417,27 @@ func _open() -> void:
 	_flyers.fx = self
 	_flyers.z_index = 6
 	track(_flyers, ctx.overhead)
-	var funnel := FxParts.singularity(self, door + facing * 0.6, 3.0, GOLD_WAVE)
+	_funnel(facing)
+	if twin:
+		_funnel(-facing)
+	var drift := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, GOLD_LIFE, 24.0, lv_span, {
+		"radius": 30.0, "speed": Vector2(4, 16), "alt": Vector2(0, 40), "alt_speed": Vector2(10, 40), "life": Vector2(0.6, 1.2),
+		"size": Vector2(1, 1)})
+	drift.gravity = -20.0
+
+
+## The light poured out on the street before a door facing `way`, for the span.
+func _pour(way: Vector2) -> QuadFx:
+	var q := FxParts.ground_light(self, door + way * lv_pull_r * 0.35, lv_pull_r * 0.55, WARM, 0.0)
+	q.tween_param("intensity", 0.0, 0.55, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	q.tween_param("intensity", 0.55, 0.0, T_SHUT, lv_span, Tween.TRANS_QUAD, Tween.EASE_IN)
+	q.life = lv_span + T_SHUT + 0.05
+	return q
+
+
+## The bend of the air drawn into the doorway of a door facing `way`, for the span.
+func _funnel(way: Vector2) -> void:
+	var funnel := FxParts.singularity(self, door + way * 0.6, 3.0, GOLD_WAVE)
 	funnel.set_param("strength", 0.0)
 	funnel.set_param("pinch", 0.0)
 	funnel.set_param("core_px", 0.0)
@@ -370,12 +445,8 @@ func _open() -> void:
 	funnel.set_param("rim_boost", 0.0)
 	funnel.set_param("tint", 0.0)
 	funnel.tween_param("pinch", 0.0, 0.35, 1.0)
-	funnel.tween_param("pinch", 0.35, 0.0, T_SHUT, SPAN)
-	funnel.life = SPAN + T_SHUT + 0.05
-	var drift := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, GOLD_LIFE, 24.0, SPAN, {
-		"radius": 30.0, "speed": Vector2(4, 16), "alt": Vector2(0, 40), "alt_speed": Vector2(10, 40), "life": Vector2(0.6, 1.2),
-		"size": Vector2(1, 1)})
-	drift.gravity = -20.0
+	funnel.tween_param("pinch", 0.35, 0.0, T_SHUT, lv_span)
+	funnel.life = lv_span + T_SHUT + 0.05
 
 
 func _animals() -> Array[Animal]:
@@ -392,7 +463,7 @@ func _animals() -> Array[Animal]:
 
 func _fx_process(delta: float) -> void:
 	if pulling and not shut:
-		while _ticks < roundi(SPAN / TICK) and t >= open_at() + TICK * float(_ticks):
+		while _ticks < roundi(lv_span / TICK) and t >= open_at() + TICK * float(_ticks):
 			_ticks += 1
 			_tick()
 		var from := maxf(t - delta, open_at())
@@ -405,20 +476,20 @@ func _fx_process(delta: float) -> void:
 
 ## One step of the pull, `h` seconds: people, animals, goods, small structures, and what is already loose.
 func _carry(h: float) -> void:
-	var moved := ctx.field.pull_cone(door, facing, PULL_R, HALF_ANGLE, PULL_NEAR, PULL_FAR, h, _sheltered)
+	var moved := ctx.field.pull_cone(door, facing, lv_pull_r, half_angle, PULL_NEAR, lv_pull_far, h, _sheltered)
 	for e in moved:
 		var id := e.get_instance_id()
 		if not _drawn_ids.has(id):
 			_drawn_ids[id] = true
 			drawn += 1
-		if before(e.ground_pos, door, facing, DOOR_R):
+		if in_pull(e.ground_pos, DOOR_R):
 			_take_person(e)
 	for a in _animals():
-		if not before(a.ground_pos, door, facing):
+		if not in_pull(a.ground_pos):
 			continue
-		a.ground_pos = ctx.field.carry_toward(a.ground_pos, door, pull_speed(a.ground_pos.distance_to(door)) * h)
+		a.ground_pos = ctx.field.carry_toward(a.ground_pos, door, pull_at(a.ground_pos.distance_to(door)) * h)
 		a.sync_position()
-		if before(a.ground_pos, door, facing, DOOR_R):
+		if in_pull(a.ground_pos, DOOR_R):
 			_take_animal(a)
 	var k := _goods.size() - 1
 	while k >= 0:
@@ -427,7 +498,7 @@ func _carry(h: float) -> void:
 		if not is_instance_valid(d):
 			_goods.erase(d)
 			continue
-		var next := ctx.field.carry_toward(d.at, door, pull_speed(d.at.distance_to(door)) * h)
+		var next := ctx.field.carry_toward(d.at, door, pull_at(d.at.distance_to(door)) * h)
 		if next != d.at:
 			d.shift(next - d.at)
 		if d.at.distance_to(door) <= DOOR_R:
@@ -444,7 +515,7 @@ func _carry(h: float) -> void:
 		var at_ground: Vector2 = piece.at
 		# Torn loose, it is in the air: nothing holds it.
 		var rel := door - at_ground
-		var step := pull_speed(rel.length()) * h
+		var step := pull_at(rel.length()) * h
 		piece.at = at_ground + rel.limit_length(step)
 		if Vector2(piece.at).distance_to(door) <= DOOR_R:
 			_loose.erase(piece)
@@ -460,13 +531,13 @@ func _sheltered(e: DummyEnemy) -> bool:
 
 ## The small structures in front give way, one by one, as the pull works on them.
 func _tear(h: float) -> void:
-	for s in ctx.env.near(door, PULL_R + 2.0):
+	for s in ctx.env.near(door, lv_pull_r + 2.0):
 		if not is_instance_valid(s) or s.destroyed or not s.kind in SkyliftFx.TAKES or s.role in SkyliftFx.KEEP_ROLES:
 			continue
 		var c := s.center()
-		if not before(c, door, facing):
+		if not in_pull(c):
 			continue
-		var strain := float(_strain.get(s, 0.0)) + pull_speed(c.distance_to(door)) * h
+		var strain := float(_strain.get(s, 0.0)) + pull_at(c.distance_to(door)) * h
 		if strain < LOOSEN:
 			_strain[s] = strain
 			continue
@@ -482,25 +553,25 @@ func _tear(h: float) -> void:
 
 ## One TICK of the span: the storm on the bigger buildings, and the fright of everyone it has hold of.
 func _tick() -> void:
-	for s in ctx.env.near(door, PULL_R + 2.0):
+	for s in ctx.env.near(door, lv_pull_r + 2.0):
 		if not is_instance_valid(s) or s.destroyed or s.walkable:
 			continue
 		if s.kind in SkyliftFx.TAKES and not s.role in SkyliftFx.KEEP_ROLES:
 			continue  # torn up whole instead (_tear())
 		var d := s.distance_to(door)
-		if d > PULL_R or (s.center() - door).dot(facing) < 0.0:
+		if d > lv_pull_r or (not twin and (s.center() - door).dot(facing) < 0.0):
 			continue
-		s.damage(storm_rate(d) * TICK, door, &"wind")
+		s.damage(storm_at(d) * TICK, door, &"wind")
 		if s.destroyed:
 			felled += 1
 			_felled(s)
-	for e in ctx.field.in_cone(door, facing, PULL_R, HALF_ANGLE):
+	for e in ctx.field.in_cone(door, facing, lv_pull_r, half_angle):
 		var p := e as Person
 		if p == null or p.inside:
 			continue
 		if p.mind in [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER, Person.Mind.FIGHT]:
 			continue
-		p.panic(door, PULL_R, &"wind")
+		p.panic(door, lv_pull_r, &"wind")
 
 
 ## A building the storm brought down: its dust and splinters go in through the door.
@@ -546,8 +617,12 @@ func _through(at_ground: Vector2) -> void:
 		ctx.play(&"grav_suction", door, -4.0)
 	if not DominionParts.staged(self):
 		return
-	if _door_node != null and is_instance_valid(_door_node):
-		_door_node.flare = 1.0
+	# The door it went in by flares (Twin Doors: the one on its side).
+	var by := _door_node
+	if _back_node != null and (at_ground - door).dot(facing) < 0.0:
+		by = _back_node
+	if by != null and is_instance_valid(by):
+		by.flare = 1.0
 	var sp := Iso.ground_to_screen(at_ground) + Vector2(0, -8)
 	var p := FxParts.particles(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, GOLD_LIFE)
 	p.gravity = -40.0
@@ -619,13 +694,18 @@ func _finish() -> void:
 ## light, the shadow and the dust still show where it stands.
 class Door extends Node2D:
 	var fx: HeavensDoorFx
+	## The way it faces (the cast's facing; Twin Doors' second, the other way); whether it fades the houses before it,
+	## and the twin it fades them for too.
+	var way := Vector2.ZERO
+	var sees := true
+	var twin_of: Door
 	var flare := 0.0
 	var row := 0
 	var _tex: Texture2D
 	var _see := SeeThrough.new()
 
 	func _ready() -> void:
-		row = HeavensDoorFx.row_of(fx.facing)
+		row = HeavensDoorFx.row_of(way if way != Vector2.ZERO else fx.facing)
 		if ResourceLoader.exists(SHEET):
 			_tex = load(SHEET)
 
@@ -636,9 +716,15 @@ class Door extends Node2D:
 		modulate = Color(1.0, 1.0, 1.0, 1.0 - k * k)
 		queue_redraw()
 		# The houses before it see-through while it stands (from just before it lands until it is half risen away).
+		if not sees:
+			return
 		var standing := fx.t >= T_FALL - 0.3 and k < 0.5
 		var rect := see_rect() if standing else Rect2()
-		_see.step(fx.ctx.env.structures() if fx.ctx.env != null else [], rect, position.y, delta)
+		var foot := position.y
+		if standing and twin_of != null and is_instance_valid(twin_of):
+			rect = rect.merge(twin_of.see_rect())
+			foot = minf(foot, twin_of.position.y)
+		_see.step(fx.ctx.env.structures() if fx.ctx.env != null else [], rect, foot, delta)
 
 	## What it covers on screen standing (world px): its sprite's body, a little inside the cell.
 	func see_rect() -> Rect2:
@@ -704,7 +790,7 @@ class Shadow extends Node2D:
 
 
 ## The light poured out over the half circle in front: god rays fanning out from the doorway to PULL_R, turning slowly
-## and breathing. Ground units, ground layer, added onto the street.
+## and breathing (Twin Doors: a fan before each door, the whole circle). Ground units, ground layer, added onto the street.
 class Fan extends Node2D:
 	const RAYS := 13
 	var fx: HeavensDoorFx
@@ -722,25 +808,28 @@ class Fan extends Node2D:
 		var a := fx.leaves(now)
 		if a <= 0.0 or now >= fx.shut_at() + T_SHUT:
 			return
-		var base := fx.facing.angle()
-		for i in RAYS:
-			var u := (float(i) + 0.5) / float(RAYS)
-			var ang := base + (u - 0.5) * PI * 0.94 + sin(now * 0.3 + float(i) * 1.7) * 0.04
-			var width := 0.05 + 0.04 * HeavensDoorFx.hash01(i, 11)
-			var reach := PULL_R * (0.75 + 0.25 * HeavensDoorFx.hash01(i, 13)) * clampf(a * 1.4, 0.0, 1.0)
-			var breath := 0.5 + 0.5 * sin(now * (0.8 + HeavensDoorFx.hash01(i, 17)) + float(i))
-			var c := Color(WARM.r, WARM.g, WARM.b, (0.06 + 0.06 * breath) * a)
-			var tip := Vector2.from_angle(ang)
-			if reach < 0.5:
-				continue
-			# From a narrow foot at the doorway out to a wide end, round one side and back down the other.
-			var foot := tip.orthogonal() * 0.3
-			draw_colored_polygon(PackedVector2Array([foot, tip.rotated(-width) * reach, tip.rotated(width) * reach, -foot]), c)
+		# One fan before each door (Twin Doors: the second fan the other way, its rays apart from the first's).
+		for side in (2 if fx.twin else 1):
+			var base := fx.facing.angle() + PI * float(side)
+			for i in RAYS:
+				var n := i + RAYS * side
+				var u := (float(i) + 0.5) / float(RAYS)
+				var ang := base + (u - 0.5) * PI * 0.94 + sin(now * 0.3 + float(n) * 1.7) * 0.04
+				var width := 0.05 + 0.04 * HeavensDoorFx.hash01(n, 11)
+				var reach := fx.lv_pull_r * (0.75 + 0.25 * HeavensDoorFx.hash01(n, 13)) * clampf(a * 1.4, 0.0, 1.0)
+				var breath := 0.5 + 0.5 * sin(now * (0.8 + HeavensDoorFx.hash01(n, 17)) + float(n))
+				var c := Color(WARM.r, WARM.g, WARM.b, (0.06 + 0.06 * breath) * a)
+				var tip := Vector2.from_angle(ang)
+				if reach < 0.5:
+					continue
+				# From a narrow foot at the doorway out to a wide end, round one side and back down the other.
+				var foot := tip.orthogonal() * 0.3
+				draw_colored_polygon(PackedVector2Array([foot, tip.rotated(-width) * reach, tip.rotated(width) * reach, -foot]), c)
 		draw_circle(Vector2.ZERO, 2.0 * a, Color(LIGHT, 0.12 * a))
 
 
-## The wind drawn into the door: streaks running in over the half circle, faster near the door, and dust motes
-## riding them. Ground units, ground layer, under everyone.
+## The wind drawn into the door: streaks running in over the half circle (Twin Doors: the whole circle), faster near
+## the door, and dust motes riding them. Ground units, ground layer, under everyone.
 class Wind extends Node2D:
 	const STREAKS := 110
 	var fx: HeavensDoorFx
@@ -754,17 +843,18 @@ class Wind extends Node2D:
 			return
 		var a := clampf((now - fx.open_at()) / 0.8, 0.0, 1.0) * clampf((fx.shut_at() - now) / 0.5, 0.0, 1.0)
 		var base := fx.facing.angle()
-		for i in STREAKS:
-			var ang := base + (HeavensDoorFx.hash01(i, 21) - 0.5) * PI
+		var spread := PI * 2.0 if fx.twin else PI
+		for i in (STREAKS * 2 if fx.twin else STREAKS):
+			var ang := base + (HeavensDoorFx.hash01(i, 21) - 0.5) * spread
 			# Each streak runs in from the rim to the door, round and round; the pull's speed sets its pace.
 			var phase := fposmod(HeavensDoorFx.hash01(i, 23) + now * 0.16 * (1.0 + HeavensDoorFx.hash01(i, 25)), 1.0)
-			var d := PULL_R * (1.0 - phase * phase)
+			var d := fx.lv_pull_r * (1.0 - phase * phase)
 			if d < DOOR_R:
 				continue
 			var dir := Vector2.from_angle(ang)
-			var run := 0.4 + HeavensDoorFx.pull_speed(d) * 0.35
+			var run := 0.4 + fx.pull_at(d) * 0.35
 			var from := dir * d
-			var c := Color(0.95, 0.9, 0.8, 0.22 * a * (1.0 - d / PULL_R * 0.6))
+			var c := Color(0.95, 0.9, 0.8, 0.22 * a * (1.0 - d / fx.lv_pull_r * 0.6))
 			draw_line(from, from - dir * run, c, 0.06)
 			if i % 3 == 0:
 				draw_circle(from, 0.06, Color(0.75, 0.68, 0.58, 0.5 * a))
@@ -787,7 +877,7 @@ class Flyers extends Node2D:
 				var b: Array = _bits[k]
 				k -= 1
 				var rel: Vector2 = fx.door - b[0]
-				b[0] = b[0] + rel.limit_length(HeavensDoorFx.pull_speed(rel.length()) * 1.4 * delta)
+				b[0] = b[0] + rel.limit_length(fx.pull_at(rel.length()) * 1.4 * delta)
 				if Vector2(b[0]).distance_to(fx.door) <= DOOR_R * 0.6:
 					_bits.erase(b)
 		else:
@@ -809,7 +899,7 @@ class Flyers extends Node2D:
 			var piece: Dictionary = fx._loose[i]
 			var g: Vector2 = piece.at
 			var d := g.distance_to(fx.door)
-			var lift := 10.0 + 20.0 * clampf(1.0 - d / PULL_R, 0.0, 1.0)
+			var lift := 10.0 + 20.0 * clampf(1.0 - d / fx.lv_pull_r, 0.0, 1.0)
 			var sp := Iso.ground_to_screen(g) + Vector2(0, -lift)
 			var size: Vector2 = piece.size
 			var w := clampf(size.x * 14.0, 6.0, 18.0) * clampf(d / 3.0, 0.35, 1.0)

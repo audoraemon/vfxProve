@@ -34,10 +34,20 @@ const RELIC_RUN := "relic_run"
 const LANTERN_EYE := "lantern_eye"
 const EXODUS := "exodus"
 const HEART_OF_FAITH := "heart_of_faith"
+## The Awaken rite (god P3, MS §1): The First Taste, played at the Tier 1 cap. Dev-only on the board; RiteBook holds its row.
+const FIRST_TASTE := "first_taste"
+## The five Lantern Hunts (god P5, MS §1): one per god tier, played when the Notice is full. Dev-only on the board; HuntBook holds their rows.
+const HIDE_FAITHFUL := "hide_faithful"
+const SILENCE_WITNESS := "silence_witness"
+const EXPEL_INQUISITOR := "expel_inquisitor"
+const BREAK_HUNT := "break_hunt"
+const FACE_HALCYON := "face_halcyon"
 ## Between a mission's id and its town in a composite id (v0.12): `tax_collector@capital`.
 const CITY_SEP := "@"
 ## The capital's free play (capital plan, Task 13 stub; Task 15 finishes it): dev-only, never on the board.
 const CAPITAL_SANDBOX := "capital_sandbox"
+## The Skill Tree's Remembrance (god progression): a free, endless memory of the capital for one power. Never on the board.
+const REMEMBRANCE := "remembrance"
 ## Where the sandbox's intro sweep starts: the new town's street south of the eastern stone bridge.
 const CAPITAL_INTRO_FROM := Vector2(4.0, 16.0)
 ## Seconds a completed Banishing Rite takes off the clock in The Long Night's acts (v0.09.1); every other mission keeps
@@ -78,6 +88,14 @@ static func get_mission(id: String) -> MissionDef:
 	for m in dev_missions():
 		if m.id == id:
 			return m
+	if id == REMEMBRANCE:
+		return remembrance()
+	for m in rite_missions():
+		if m.id == id:
+			return m
+	for m in hunt_missions():  # god P5 (MS §1)
+		if m.id == id:
+			return m
 	return last_judgement()
 
 
@@ -95,7 +113,7 @@ static func is_dev(id: String) -> bool:
 	for m in dev_missions():
 		if m.id == id:
 			return true
-	return false
+	return RiteBook.has(id) or HuntBook.has(id)  # god P3 (Ruling P3-6): a rite on the board is dev-only too; god P5 (MS §1): so is a Hunt
 
 
 ## The id of mission `id` played in `city` (v0.12): `tax_collector@capital`. It rides through Game, Prepare, the board, Restart
@@ -183,6 +201,43 @@ static func capital_sandbox() -> MissionDef:
 		var out: Array[Objective] = [ClockObjective.new(true, "Free play")]
 		return out
 	return m
+
+
+## Remembrance (Skill Tree wheel, Task 4): the capital as the god remembers it, for one power. One slot, no objectives (so nothing is
+## won or lost), no intro sweep (the camera rests on the great market at once). Mission fills the loadout and sets Rules.free_play; the def is
+## reached by id only -- never in dev_missions(), tier_missions() or the board.
+static func remembrance() -> MissionDef:
+	var m := MissionDef.new()
+	m.id = REMEMBRANCE
+	m.name = "Remembrance"
+	m.tier = 5
+	m.brief = PackedStringArray(["A night the god remembers.", "Free to try."])
+	m.goal = "Free play"
+	m.goal_label = "Free play"
+	m.slots = 1
+	m.city = &"capital"
+	m.clock = Rules.MISSION_SECONDS
+	m.camera_at = CapitalCity.MARKET_SQUARE.get_center()
+	m.intro_from = m.camera_at
+	m.intro_banner = ""
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = []
+		return out
+	return m
+
+
+## The Awaken rites' missions (god P3, Ruling P3-6): reached by id from the god's hub, and from the board's DEV tab; never listed on the
+## board, in the campaign or in dev_missions().
+static func rite_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [first_taste()]
+	return out
+
+
+## The Lantern Hunts' missions (god P5, MS §1, Ruling P5-3): reached by id from the god's draw and from the board's DEV tab; never listed on
+## the board, in the campaign, in dev_missions() or in tier_missions(). Each is on its tier's frame with its own director and objectives (its function below sets them).
+static func hunt_missions() -> Array[MissionDef]:
+	var out: Array[MissionDef] = [hide_faithful(), silence_witness(), expel_inquisitor(), break_hunt(), face_halcyon()]
+	return out
 
 
 ## The Lantern campaign's missions (v0.10): played from the campaign's night screen, never listed on the board.
@@ -285,21 +340,22 @@ static func _tier5(id: String, name: String, brief: PackedStringArray) -> Missio
 	return m
 
 
-## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): kill the tax
-## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector). A seen
-## kill still counts, but calls the bell; v0.11.2: the toll turns the Lantern (a watch night) instead of losing the night.
+## The Tax Collector (v0.11 M2, Tier 1, spec §8 row 2; three collectors by the controller's Task 2 ruling): stop the tax
+## collector and his two deputies on their rounds before any takes the taxes into the Citadel (TaxCollectorDirector): kill them, send
+## them out of the walls, or (god T1R) have the debtors mob them. A seen kill still counts, but calls the bell; v0.11.2: the toll turns
+## the Lantern (a watch night) instead of losing the night.
 static func tax_collector() -> MissionDef:
 	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
 		"Kill them before the taxes arrive."]))
-	m.goal = "Kill the tax collector and his two deputies before the taxes reach the Citadel"
-	m.goal_label = "The collectors are dead"
+	m.goal = "Stop the tax collector and his two deputies before the taxes reach the Citadel"
+	m.goal_label = "The collectors are stopped"
 	m.lose = "A collector reaches the Citadel, or dawn comes"
 	m.camera_at = _home().landmark(&"workshop").get_center() + Vector2(-2.0, 3.0)
 	m.intro_from = m.camera_at + Vector2(0.0, 6.0)
 	m.default_loadout = PackedStringArray(["doom", "discord", "whisper"])
 	m.director = TaxCollectorDirector
 	m.make_objectives = func() -> Array[Objective]:
-		var out: Array[Objective] = [AssassinateObjective.new("Kill the collectors", "collector", "taxes"),
+		var out: Array[Objective] = [AssassinateObjective.new("Stop the collectors", "collector", "taxes"),
 			ClockObjective.new(false, "Dawn", "dawn")]
 		return out
 	m.lantern = LanternWatch.KIND_WATCH  # v0.11.2: a seen kill's toll turns the Lantern instead of losing the night
@@ -327,9 +383,9 @@ static func spoiled_harvest() -> MissionDef:
 
 
 ## The Lost Lamb (v0.11 M2, Tier 1, spec §8 row 4): lead a runaway acolyte out through the west gate past the patrols, the
-## watch and the Temple's searchers (LostLambDirector).
+## watch and the Temple's searchers (LostLambDirector). God T1R: frightened near him, or at 1:00, he bolts for the gate himself.
 static func lost_lamb() -> MissionDef:
-	var m := _tier1(LOST_LAMB, "The Lost Lamb", PackedStringArray(["A runaway acolyte hides from the Temple.",
+	var m := _tier1(LOST_LAMB, "The Lost Lamb", PackedStringArray(["A runaway acolyte hides, then bolts.",
 		"Lead him out through the west gate."]))
 	m.goal = "Lead the runaway acolyte out through the west gate"
 	m.goal_label = "The lamb is free"
@@ -345,12 +401,13 @@ static func lost_lamb() -> MissionDef:
 	return m
 
 
-## First Prayers (v0.11 M2, Tier 1, spec §8 row 5): lead three of the poor to the old well shrine by the market, unseen by
-## Halcyon's few Faithful (FirstPrayersDirector, Mira's House's Convert).
+## First Prayers (v0.11 M2, Tier 1, spec §8 row 5): three of the poor must pray at the old well shrine by the market, unseen by
+## Halcyon's few Faithful (FirstPrayersDirector, Mira's House's Convert). (God T1R, D33/D34: the poor walk there themselves -- one at a time while a
+## Faithful watches the door, all together once none is left -- and the copy and the first_prayers hint say so.)
 static func first_prayers() -> MissionDef:
 	var m := _tier1(FIRST_PRAYERS, "First Prayers", PackedStringArray(["The poor have no shrine of their own.",
-		"Lead three to the old well, unseen."]))
-	m.goal = "Lead three of the poor to the old well shrine, unseen"
+		"They walk to the old well: let three pray unseen."]))
+	m.goal = "Keep three of the poor unseen as they pray at the old well shrine"
 	m.goal_label = "Three believe"
 	m.lose = "The Lantern looks, or fewer than three believe by dawn"
 	m.camera_at = FirstPrayersDirector.SHRINE_AT
@@ -966,4 +1023,126 @@ static func feast(act_id: String) -> MissionDef:
 	m.acts = [a]
 	m.make_objectives = a.make_objectives
 	m.make_bonuses = a.make_bonuses
+	return m
+
+
+## The First Taste (god P3, MS §1, §3; Ruling P3-3): a Tier 1 frame at the Watch's bell -- drag three of Halcyon's lamplighters to Mira's
+## shrine before the clergy cleanse it or dawn comes. The frame (Task 1); the director, the flame's objective, the camera (the gate plaza, where
+## lamplighters #3 and #4 are) and the tour come with Task 4. The objectives run in this order so the last shard wins before a full cleanse can
+## lose (MS §6: the winning strike never also loses).
+static func first_taste() -> MissionDef:
+	var r := RiteBook.row(FIRST_TASTE)
+	var m := _tier1(FIRST_TASTE, String(r.name), PackedStringArray([String(r.plate)]))
+	m.goal = "Drag three of Halcyon's lamplighters to Mira's shrine"
+	m.goal_label = "Three Lantern shards"
+	m.lose = String(r.lose_line)
+	m.lantern = LanternWatch.KIND_WATCH
+	m.default_loadout = PackedStringArray(["doom", "whisper", "smite"])
+	m.director = FirstTasteDirector
+	m.camera_at = FirstTasteDirector.CAMERA_AT
+	m.intro_from = FirstTasteDirector.CAMERA_AT + Vector2(0.0, 6.0)
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [StagesObjective.new("Lantern shards", "shards"), RiteFlameObjective.new(),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Dresses a Hunt's frame with the strings every Hunt shares (god P5, MS §1, Ruling P5-3): its brief, goal, label and lose as the spec gives
+## them, its default loadout, its Lantern (a watch; the Gaze at Tier 5), a camera at `camera` and a base director whose only objective
+## is the dawn; each Hunt's own function (below) then replaces `director` and `make_objectives`.
+static func _hunt(m: MissionDef, goal: String, label: String, lose: String, loadout: Array, camera: Vector2, kind := LanternWatch.KIND_WATCH) -> MissionDef:
+	m.goal = goal
+	m.goal_label = label
+	m.lose = lose
+	m.lantern = kind
+	m.default_loadout = PackedStringArray(loadout)
+	m.camera_at = camera
+	m.intro_from = camera + Vector2(0.0, 6.0)
+	m.director = MissionDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Hide the faithful (god P5, MS §2, Tier 1, the Lantern Hunt of the Escort type): two households of three walk out of the walls before the
+## Inquisition's search reaches their houses. The frame (Task 1), with HideFaithfulDirector, its Escort objective (five out; it fails only through
+## the director's lost_reason(), "faithful_lost"), the camera and the tour (Task 4). The objectives run in this order so the fifth out wins before
+## a second loss can fail (MS §0: the winning strike never also loses).
+static func hide_faithful() -> MissionDef:
+	var m := _tier1(HIDE_FAITHFUL, String(HuntBook.row(HIDE_FAITHFUL).title), PackedStringArray(["The Inquisition searches house by house.",
+		"Lead your believers out before it reaches them."]))
+	_hunt(m, "Lead five of your six believers out of the walls before the Inquisition takes them", "The faithful are hidden",
+		"Two believers are taken or killed, or dawn comes", ["whisper", "doom", "discord"], HideFaithfulDirector.HF_CAMERA_AT)
+	m.director = HideFaithfulDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [EscortObjective.new("Lead them out", "faithful_out", "faithful_taken", "faithful_dead",
+			HideFaithfulDirector.HF_NEED), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Silence the witness (god P5, MS §3, Tier 2, the Lantern Hunt of the Intercept type): four witnesses run for the Temple, and only their own
+## mates can carry the word on. The frame (Task 1); the director, the objective that loses on `word`, the camera and the tour are Task 5's: the Lantern
+## is a watch (the toll only turns it), the witnesses' count wins first, the dawn last.
+static func silence_witness() -> MissionDef:
+	var m := _tier2(SILENCE_WITNESS, String(HuntBook.row(SILENCE_WITNESS).title), PackedStringArray(["Four witnesses saw you work.",
+		"Stop them before they reach the Temple."]))
+	_hunt(m, "Stop all four witnesses before word of you reaches the Temple", "The witnesses are silent",
+		"A witness reaches the Temple, or dawn comes", ["doom", "whisper", "discord"], SilenceWitnessDirector.SW_CAMERA_AT)
+	m.director = SilenceWitnessDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [WitnessObjective.new("Silence the witnesses", "witnesses", "Witnesses silenced"),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Expel the inquisitor (god P5, MS §4, Tier 3, the Lantern Hunt of the Assassinate type): three wardens, then the captain, who three frights
+## drive out of the town. The frame (Task 1) with ExpelInquisitorDirector (Task 6): the Assassinate objective runs ahead of the dawn, so the
+## winning strike never also loses (MS §0); the camera looks at the west warden's quarter, clear of the HUD stack.
+static func expel_inquisitor() -> MissionDef:
+	var m := _tier3(EXPEL_INQUISITOR, String(HuntBook.row(EXPEL_INQUISITOR).title), PackedStringArray(["The Lantern's captain walks your town.",
+		"Break his wardens, then kill him or drive him out."]))
+	_hunt(m, "Stop his three wardens, then kill the captain or drive him out of the town", "The inquisitor is gone",
+		"The captain reaches the Citadel, or dawn comes", ["doom", "smite", "whisper"], ExpelInquisitorDirector.EI_CAMERA_AT)
+	m.director = ExpelInquisitorDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [AssassinateObjective.new("Expel the inquisitor", "expelled", "captain_safe"),
+			ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Break the hunt (god P5, MS §5, Tier 4, the Lantern Hunt of the Hunt type): four standards march on three believers' houses, and an escort
+## takes a guarded standard up. The frame (Task 1) with BreakHuntDirector (Task 7): the Hunt objective runs ahead of the dawn, so breaking the
+## fourth standard wins before a second house can be taken (MS §0: the winning strike never also loses); the camera looks at the north muster's
+## side, clear of the HUD stack.
+static func break_hunt() -> MissionDef:
+	var m := _tier4(BREAK_HUNT, String(HuntBook.row(BREAK_HUNT).title), PackedStringArray(["Four standards march on your believers' houses.",
+		"Break every standard before they plant them."]))
+	_hunt(m, "Break the four standards before they take two of your believers' houses", "The hunt is broken",
+		"Two believers' houses are taken, or dawn comes", ["doom", "smite", "heaven"], BreakHuntDirector.BH_CAMERA_AT)
+	m.director = BreakHuntDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [HuntObjective.new("Break the hunt", "standards"), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	return m
+
+
+## Face Halcyon (god P5, MS §6, Tier 5, the Lantern Hunt of the Gaze): four believers led to the pyre, freed by breaking their escorts unseen.
+## The frame (Task 1) with FaceHalcyonDirector (Task 8), the Gaze as its Lantern, and the Escort objective (three freed; it fails only through the
+## director's lost_reason(), "burned"), then the Gaze and the dawn: the objectives run in this order so the third believer freed wins before a
+## second burning or a full Gaze can lose (MS §0: the winning strike never also loses).
+static func face_halcyon() -> MissionDef:
+	var m := _tier5(FACE_HALCYON, String(HuntBook.row(FACE_HALCYON).title), PackedStringArray(["Halcyon's Gaze is on the whole town.",
+		"Free your believers from the pyre unseen."]))
+	_hunt(m, "Free three of the four believers led to the pyre, unseen by Halcyon", "The pyre stays cold",
+		"Two believers burn, Halcyon's Gaze fills, or dawn comes", ["whisper", "discord", "doom"], FaceHalcyonDirector.FH_CAMERA_AT, LanternWatch.KIND_GAZE)
+	m.director = FaceHalcyonDirector
+	m.make_objectives = func() -> Array[Objective]:
+		var out: Array[Objective] = [EscortObjective.new("Free the believers", "freed", "burned", "burned", FaceHalcyonDirector.FH_NEED),
+			GazeObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
 	return m

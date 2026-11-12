@@ -14,6 +14,13 @@ const WAVE_HEIGHT := 150.0
 ## The painted wall is drawn longer than the damage lane so it reads as a colossal wave, like the concept.
 const WAVE_VISUAL_WIDTH := 1.15
 const CARRY_BAND := 0.8
+## Level 5, Backwash: how long after the crash the water draws back, how long the draw takes, and how hard those it
+## carried are thrown clear of the start (ground units per second).
+const BACKWASH_DELAY := 0.2
+const BACKWASH_TIME := 2.4
+const BACKWASH_KNOCK := 2.5
+const BACKWASH_REACH := 5.0  ## beyond the wall: the splash ring's outer edge, where the crash only knocked people (R12a)
+const BACKWASH_SIDE := 1.5  ## each side wider than the lane: the flanks the carry band missed (R12a)
 const WATER_LIGHT := Color(0.45, 0.75, 1.0)
 const SH_FLOOD := preload("res://shaders/flood_water.gdshader")
 
@@ -133,13 +140,23 @@ var _foam: PixelParticles
 ## Mist rolling off the crest.
 var _mist: PixelParticles
 var _light: QuadFx
+## This cast's run and wall breadth: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_length := LENGTH
+var lv_width := WIDTH
+## Backwash (level 5): the water drawing back, where its edge is, when it began, and who it has caught.
+var _backwashing := false
+var _back_front := 0.0
+var _back_t0 := 0.0
+var _dragged: Array[DummyEnemy] = []
 
 
 func _build() -> void:
+	lv_length = float(PowerBook.stat(extra, "tsunami", "LENGTH", LENGTH))
+	lv_width = float(PowerBook.stat(extra, "tsunami", "WIDTH", WIDTH))
 	duration = 9.5
 	_dir = (extra.get("dir", Vector2(1, 0)) as Vector2).normalized()
 	_side = _dir.orthogonal()
-	_lane = Set2Parts.lane(self, origin, _dir, LENGTH, WIDTH, Color("6ac8ff"), "water")
+	_lane = Set2Parts.lane(self, origin, _dir, lv_length, lv_width, Color("6ac8ff"), "water")
 	var swirl := Set2Parts.sigil(self, origin, 1.3, Color("6ac8ff"), "spiral")
 	swirl.z_index = 9
 	# Darker scene while the wave is up so the bright water and foam pop, like the concept's dark backdrop.
@@ -153,8 +170,8 @@ func _build() -> void:
 
 func _wall_screen(front: float) -> Array:
 	# Endpoints of the wall line on screen, left-to-right, and its screen angle.
-	var a := Iso.ground_to_screen(origin + _dir * front - _side * WIDTH * 0.5)
-	var b := Iso.ground_to_screen(origin + _dir * front + _side * WIDTH * 0.5)
+	var a := Iso.ground_to_screen(origin + _dir * front - _side * lv_width * 0.5)
+	var b := Iso.ground_to_screen(origin + _dir * front + _side * lv_width * 0.5)
 	if a.x > b.x:
 		var tmp := a
 		a = b
@@ -171,9 +188,9 @@ func _rise() -> void:
 	ctx.play(&"ts_rise", origin)
 	_wave = TsunamiWave.new()
 	_wave.dir = _dir
-	_wave.width = WIDTH * WAVE_VISUAL_WIDTH
+	_wave.width = lv_width * WAVE_VISUAL_WIDTH
 	# Keep each rolling hood about the same size on the wider wall.
-	_wave.hoods = roundf(WIDTH * WAVE_VISUAL_WIDTH / 1.9)
+	_wave.hoods = roundf(lv_width * WAVE_VISUAL_WIDTH / 1.9)
 	_wave.max_height = WAVE_HEIGHT
 	_wave.seed = ctx.rng.randf()
 	# Above the world like the other titans: a tall diagonal wall sorts badly against castle walls.
@@ -206,8 +223,8 @@ func _rise() -> void:
 	_light.tween_param("intensity", 0.0, 0.35, RISE_TIME)
 	var light := _light
 	ctx.lights.register_quad(light, origin, 3.4, WATER_LIGHT, func(): return origin + _dir * _front)
-	_flood = FxParts.quad(self, SH_FLOOD, Vector2(LENGTH, WIDTH), ctx.ground, Vector2(0.0, 0.5))
-	_flood.set_param("width", WIDTH)
+	_flood = FxParts.quad(self, SH_FLOOD, Vector2(lv_length, lv_width), ctx.ground, Vector2(0.0, 0.5))
+	_flood.set_param("width", lv_width)
 	_flood.set_param("seed", ctx.rng.randf() * 10.0)
 	_flood.z_index = 2
 
@@ -219,13 +236,15 @@ func _sweep() -> void:
 
 
 func _fx_process(delta: float) -> void:
+	if _backwashing:
+		_backwash_step(delta)
 	if _wave == null or not is_instance_valid(_wave):
 		return
 	if _sweeping:
 		var k := clampf((t - T_SWEEP) / SWEEP_TIME, 0.0, 1.0)
-		_front = LENGTH * (k * k * (3.0 - 2.0 * k) * 0.35 + k * 0.65)
+		_front = lv_length * (k * k * (3.0 - 2.0 * k) * 0.35 + k * 0.65)
 		# Enemies in the wall band are swept up and carried along.
-		for e in ctx.field.in_lane(origin, _dir, WIDTH * 0.5 + 0.2, _front - CARRY_BAND, _front + 0.3):
+		for e in ctx.field.in_lane(origin, _dir, lv_width * 0.5 + 0.2, _front - CARRY_BAND, _front + 0.3):
 			if not e in _carried:
 				_carried.append(e)
 				e.flash(0.1)
@@ -234,11 +253,11 @@ func _fx_process(delta: float) -> void:
 		for i in _carried.size():
 			var e: DummyEnemy = _carried[i]
 			if is_instance_valid(e) and e.is_alive():
-				var target := origin + _dir * (_front + 0.25) + _side * clampf((e.ground_pos - origin).dot(_side), -WIDTH * 0.5, WIDTH * 0.5)
+				var target := origin + _dir * (_front + 0.25) + _side * clampf((e.ground_pos - origin).dot(_side), -lv_width * 0.5, lv_width * 0.5)
 				e.ground_pos = e.ground_pos.lerp(target, minf(12.0 * delta, 1.0))
 				e.state = DummyEnemy.State.PULLED
 				e.lift_target = 12.0 + 7.0 * sin(t * 6.0 + i * 1.9)
-		ctx.env.damage_lane(origin, _dir, WIDTH * 0.5, _front - 0.3, _front + 0.3, &"water")
+		ctx.env.damage_lane(origin, _dir, lv_width * 0.5, _front - 0.3, _front + 0.3, &"water")
 		ctx.shake.add_trauma(0.35 * delta)
 	_place_wave()
 	var ends := _wall_screen(_front)
@@ -253,20 +272,69 @@ func _fx_process(delta: float) -> void:
 	if is_instance_valid(_foam):
 		_foam.spec["offset"] = mid
 		_foam.spec["radius"] = half
+	_size_flood()
+
+
+## The flood quad covers the lane as far as the water's edge reaches.
+func _size_flood() -> void:
 	if _flood != null and is_instance_valid(_flood):
 		_flood.position = origin
 		_flood.rotation = _dir.angle()
 		_flood.visible = _front > 0.2
-		_flood.size = Vector2(maxf(_front, 0.01), WIDTH)
+		_flood.size = Vector2(maxf(_front, 0.01), lv_width)
 		_flood.set_param("length", maxf(_front, 0.01))
 		_flood.queue_redraw()
+
+
+# --- Level 5: the Backwash ----------------------------------------------------
+
+## The water draws back along the lane (R12). Not lethal: whoever is alive, in the open and in the lane behind the receding edge
+## is carried with it and set down at the start, knocked clear. Nothing is hit again.
+func _backwash(start: float) -> void:
+	_backwashing = true
+	_back_t0 = start
+	_back_front = lv_length + BACKWASH_REACH
+	ctx.play(&"ts_surge", origin + _dir * lv_length, -4.0)
+
+
+func _backwash_step(delta: float) -> void:
+	var k := clampf((t - _back_t0) / BACKWASH_TIME, 0.0, 1.0)
+	_back_front = (lv_length + BACKWASH_REACH) * (1.0 - k)
+	_front = minf(_back_front, lv_length)  # the flood and its light stay on the lane; the drag reaches further
+	for e in ctx.field.in_lane(origin, _dir, lv_width * 0.5 + BACKWASH_SIDE, _back_front - CARRY_BAND, lv_length + BACKWASH_REACH + 0.5):
+		var p := e as Person
+		if e in _dragged or (p != null and p.inside):
+			continue
+		_dragged.append(e)
+		e.flash(0.1)
+	for i in _dragged.size():
+		var e: DummyEnemy = _dragged[i]
+		if is_instance_valid(e) and e.is_alive():
+			var target := origin + _dir * maxf(_back_front - 0.25, 0.0) + _side * clampf((e.ground_pos - origin).dot(_side), -lv_width * 0.5, lv_width * 0.5)
+			e.ground_pos = e.ground_pos.lerp(target, minf(12.0 * delta, 1.0))
+			e.state = DummyEnemy.State.PULLED
+			e.lift_target = 12.0 + 7.0 * sin(t * 6.0 + i * 1.9)
+	_size_flood()
+	if k >= 1.0:
+		_set_down()
+
+
+## The water is back at the start: everyone it carried is put down there, on their own side of the lane, and knocked away from it.
+func _set_down() -> void:
+	_backwashing = false
+	for e in _dragged:
+		if is_instance_valid(e) and e.is_alive():
+			e.ground_pos = origin + _side * clampf((e.ground_pos - origin).dot(_side), -lv_width * 0.5, lv_width * 0.5)
+			e.release()
+			e.knock(-_dir * BACKWASH_KNOCK)
+	_dragged.clear()
 
 
 func _crash() -> void:
 	_sweeping = false
 	ctx.fade_out(_roar, 0.3)
-	ctx.play(&"ts_crash", origin + _dir * LENGTH)
-	var g := origin + _dir * LENGTH
+	ctx.play(&"ts_crash", origin + _dir * lv_length)
+	var g := origin + _dir * lv_length
 	var sp := Iso.ground_to_screen(g)
 	ctx.impact.impact_frame(0.05, ctx.impact.focus_of(sp), Color(0.9, 0.97, 1.0), Color(0.02, 0.1, 0.25))
 	ctx.impact.hitstop(0.08)
@@ -282,7 +350,7 @@ func _crash() -> void:
 	_light.tween_param("intensity", 0.35, 0.0, 0.8)
 
 	# Terminal splash: a towering burst of water spikes and spray fanning up and out.
-	var ends := _wall_screen(LENGTH)
+	var ends := _wall_screen(lv_length)
 	for i in 4:
 		var bp: Vector2 = (ends[0] as Vector2).lerp(ends[1], 0.14 + i * 0.24)
 		var splash := SplashBurst.new()
@@ -339,6 +407,8 @@ func _crash() -> void:
 	ctx.field.knock_from(g, 3.0, 5.0, 6.0)
 	ctx.env.damage_radius(g, 3.0, 99999.0, &"water")
 	at(t + 0.5, _aftermath)
+	if PowerBook.twist_at(extra, "tsunami"):
+		at(t + BACKWASH_DELAY, _backwash.bind(t + BACKWASH_DELAY))
 
 
 func _aftermath() -> void:
@@ -349,21 +419,21 @@ func _aftermath() -> void:
 		_flood.tween_param("settle", 0.0, 0.6, 1.2)
 		_flood.tween_param("fade", 1.0, 0.0, 1.5, duration - t - 1.6)
 	var flot := Flotsam.new()
-	flot.setup(ctx.rng, 9, LENGTH + 0.5, WIDTH, _dir)
+	flot.setup(ctx.rng, 9, lv_length + 0.5, lv_width, _dir)
 	flot.position = origin
 	flot.drift = _dir * 0.6
 	flot.z_index = 3
 	track(flot, ctx.ground)
 	create_tween().tween_property(flot, "alpha", 0.0, 1.2).set_delay(duration - t - 1.4)
 	for i in 6:
-		var g := origin + _dir * ctx.rng.randf_range(LENGTH - 0.5, LENGTH + 1.8) + _side * ctx.rng.randf_range(-WIDTH * 0.6, WIDTH * 0.6)
+		var g := origin + _dir * ctx.rng.randf_range(lv_length - 0.5, lv_length + 1.8) + _side * ctx.rng.randf_range(-lv_width * 0.6, lv_width * 0.6)
 		var puddle := FxParts.frost_ground(self, g, ctx.rng.randf_range(0.35, 0.8))
 		puddle.set_param("plate", Color(0.18, 0.42, 0.68, 0.6))
 		puddle.set_param("crack", Color(0.6, 0.82, 0.98, 0.2))
 		puddle.set_param("progress", 1.0)
 		puddle.tween_param("fade", 1.0, 0.0, 1.2, duration - t - 1.3)
 	for i in 10:
-		var g := origin + _dir * ctx.rng.randf_range(0.5, LENGTH) + _side * ctx.rng.randf_range(-WIDTH * 0.4, WIDTH * 0.4)
+		var g := origin + _dir * ctx.rng.randf_range(0.5, lv_length) + _side * ctx.rng.randf_range(-lv_width * 0.4, lv_width * 0.4)
 		var ripple := FxParts.rings(self, g, 0.7, Color(0.8, 0.93, 1.0), 2, 10.0)
 		ripple.set_param("scan", 0.0)
 		ripple.set_param("fill", 0.0)
@@ -373,14 +443,14 @@ func _aftermath() -> void:
 		ripple.tween_param("reveal", 0.1, 1.0, 1.2, delay)
 		ripple.tween_param("alpha", 0.28, 0.0, 1.2, delay)
 		ripple.life = 3.5
-	FxParts.emitter(self, ctx.overhead_back, Iso.ground_to_screen(origin + _dir * LENGTH * 0.6), PixelParticles.Shape.PUFF,
+	FxParts.emitter(self, ctx.overhead_back, Iso.ground_to_screen(origin + _dir * lv_length * 0.6), PixelParticles.Shape.PUFF,
 		FxParts.MIST_LIFE, 6.0, duration - t - 1.5, {
-			"radius": FxParts.particle_radius(LENGTH * 0.5), "speed": Vector2(2, 10), "alt": Vector2(0, 8),
+			"radius": FxParts.particle_radius(lv_length * 0.5), "speed": Vector2(2, 10), "alt": Vector2(0, 8),
 			"alt_speed": Vector2(3, 10), "life": Vector2(1.2, 2.0), "size": Vector2(3, 6), "size_end_mul": 1.4,
 		})
-	FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin + _dir * LENGTH * 0.6), PixelParticles.Shape.SQUARE,
+	FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin + _dir * lv_length * 0.6), PixelParticles.Shape.SQUARE,
 		Set2Parts.WATER_LIFE, 20.0, duration - t - 1.5, {
-			"radius": FxParts.particle_radius(LENGTH * 0.5), "alt": Vector2(0, 30), "alt_speed": Vector2(-40, -10),
+			"radius": FxParts.particle_radius(lv_length * 0.5), "alt": Vector2(0, 30), "alt_speed": Vector2(-40, -10),
 			"life": Vector2(0.4, 0.8), "size": Vector2(1, 1),
 		})
 	at(duration - 1.3, func(): ctx.impact.dim(0.0, 0.6))

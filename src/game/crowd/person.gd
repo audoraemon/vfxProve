@@ -105,6 +105,9 @@ const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
 const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
+## Ground fire (Dragonfire): the soot a scorched person shows, darkest at 0.45 and fading over the last 2 s.
+const SCORCH_COLOR := Color(0.12, 0.09, 0.08)
+const SCORCH_STRENGTH := 0.45
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
@@ -277,6 +280,14 @@ var assist_wait := 0.0
 ## Kept on its fire through the evacuation (v0.08.2): an engineer, who works on while the town leaves, unlike the
 ## fire brigade.
 var assist_stays := false
+## Beating out a patch of burning ground (Dragonfire Parade; FireManager runs the round): the patch, whether it stands at
+## its beat spot, seconds to its next swing, and its slot on the patch's ring.
+var assist_patch: GroundFire
+var assist_beating := false
+var _beat_in := 0.0
+var assist_slot := 0
+## Seconds until a beater short of its ring spot may pick a new one (FireManager.RESPOT).
+var assist_respot_in := 0.0
 ## On an engineer team while the engineers are out (v0.09.1; EngineerManager sets it): a fright or a shelter never sends it
 ## to the gates for good, it goes back to its team once calm. Cleared when its team stands down (Crowd.off_duty()).
 var engineer_duty := false
@@ -286,6 +297,10 @@ var shelters: ShelterManager
 var shelter: Structure
 var shelter_door := Vector2.INF
 var inside := false
+## Kept indoors for the whole mission by a NIGHT (NightRules.apply, the only thing that sets it): hidden like `inside`, and also passed over by
+## the crowd's sweeps (regroup, evacuation, households, the spread of fright, fire recruiting) and the routine, so it stays CALM with no goal.
+## Never use a plain `inside` guard for that: rubble and ferry people are inside too, and CURRENT must not change.
+var night_indoors := false
 var route_since := -INF
 var rerouting := 0.0
 var grid: WalkGrid
@@ -371,19 +386,33 @@ var compel_glyph: Array[int] = GLYPH_DIAMOND
 var badge_glyph: Array[int] = GLYPH_DIAMOND
 var badge_color := Color.WHITE
 var badge_left := 0.0
+## Seconds left that this person shows soot from a ground fire (GroundFire.SCORCH_SHOW when scorched).
+var scorched_left := 0.0
 ## Health, for blows (hurt()); set by setup_person().
 var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
 ## reads and steps it; the person only carries it, and responds to what the manager asks of it.
 var statuses := {}
+## Powers' holds on its pace, by the power's instance id -> the share kept (hold_pace()).
+var pace_holds := {}
+## Held by a rite's Chain of the Forgotten (god P3, MS §2, Ruling P3-12): a captive being dragged to the shrine. Only RiteDirector sets it, and only
+## NoLeaveFx reads it (a chained person is never set back by a Leaving Is Prohibited circle: the chain is stronger, R10). False for everyone else,
+## so nothing outside a rite changes.
+var chained := false
 ## The field this person is in, for blows that kill (null for one made on its own).
 var field: EnemyField
 ## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).
 var _whisper_left := 0.0
 var _whisper_fled := false
+## Mind Whisper's attack order (whisper_fight()) is what the fight is: when it ends he comes to as a whisper wears off (_wake()). Any other
+## fight() clears it.
+var _ordered := false
 ## Mind Whisper (v0.08.1): seconds left of shaking the last whisper off (see SHAKE_OFF); 0 for anyone never whispered.
 ## Counted down in tick(), so it runs on at any thinking rate, off screen or held still.
 var _shaken_left := 0.0
+## Held String (Mind Whisper level 5): the whisper now on this person leaves no shake-off when it wears off (_wake()). Set by hold_string()
+## after the whisper is laid; any whisper laid (whisper()) clears it first, so a level 1-4 whisper shakes as always.
+var _held_string := false
 ## Seconds left face-down after a stumble; see is_stumbling().
 var _stumble := 0.0
 ## Seconds of sleep left (Mind.ASLEEP; sleep()).
@@ -607,6 +636,8 @@ func _track_stride(d: Vector2, delta: float) -> void:
 func _think(delta: float) -> void:
 	if badge_left > 0.0:
 		badge_left = maxf(badge_left - delta, 0.0)
+	if scorched_left > 0.0:
+		scorched_left = maxf(scorched_left - delta, 0.0)
 	if fearless_left > 0.0:
 		fearless_left = maxf(fearless_left - delta, 0.0)
 		if fearless_left <= 0.0 and _reassured_fled:
@@ -751,9 +782,31 @@ func _think(delta: float) -> void:
 
 
 func _mind_speed() -> float:
-	# A status may slow it too (Death Mark's "slow": the share of its pace it keeps).
-	var v := _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0) * float(statuses.get(&"slow", 1.0))
+	# A status may slow it too (Death Mark's "slow": the share of its pace it keeps), or a power's hold on its pace
+	# (pace_hold()): the stronger of the two.
+	var v := _base_speed() * (SICK_PACE if sick_left > 0.0 else 1.0) * minf(float(statuses.get(&"slow", 1.0)), pace_hold())
 	return v * grid.pace_at(ground_pos) if grid != null else v
+
+
+## A power holds its pace (`share` of it kept, 0 for no step of its own), under its own `source` (the power's instance id):
+## several holds stack as the strongest of them, and each power lifts only its own (free_pace()). Kept apart from statuses
+## "slow", which the missions and Death Mark write as they like: a power saving and restoring that one could undo another's.
+func hold_pace(source: int, share: float) -> void:
+	pace_holds[source] = share
+	walk_speed = _mind_speed()
+
+
+func free_pace(source: int) -> void:
+	if pace_holds.erase(source):
+		walk_speed = _mind_speed()
+
+
+## The share of its pace the powers' holds leave it (1.0 for none).
+func pace_hold() -> float:
+	var m := 1.0
+	for v in pace_holds.values():
+		m = minf(m, float(v))
+	return m
 
 
 func _base_speed() -> float:
@@ -1075,7 +1128,9 @@ func _walking_a_path() -> bool:
 		return false
 	if _scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0 or _down_pending or _stumble > 0.0 or _startle_left > 0.0:
 		return false
-	return ground_pos.distance_to(_goal) > GOAL_REACH and ground_pos.distance_to(_target) > GOAL_REACH * 0.5
+	# Short of the waypoint by more than a step's arrival (ARRIVE), not by half a goal's reach: a walker pinned a hair
+	# short of a waypoint inside a building's margin (the step past it refused, the slide too) never arrives, and must count.
+	return ground_pos.distance_to(_goal) > GOAL_REACH and ground_pos.distance_to(_target) > ARRIVE
 
 
 ## Stuck: walk the way out (_way_out()) on the footprints alone, for UNSTICK_FOR beyond the time the walk takes.
@@ -1201,7 +1256,8 @@ func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
 ## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. A soldier (v0.11.1) runs
 ## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
 ## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
-func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
+## `startle` false skips the freeze of a fresh fright (a person in a ground fire does not stand still in it).
+func panic(from: Vector2, radius := 1.0, kind := &"", startle := true) -> void:
 	if mind == Mind.ASLEEP and state != State.DEAD:
 		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
@@ -1225,7 +1281,7 @@ func panic(from: Vector2, radius := 1.0, kind := &"") -> void:
 	# A child runs to a grown-up of its own family nearby instead, and keeps close for its fright (Children).
 	if not _run_to_kin():
 		_flee_local()
-	if from_other_mind:
+	if from_other_mind and startle:
 		# (v0.11.2) Frozen first: _idle too, as thinking is half-rate and the base tick would step on the off frame.
 		_startle_left = startle_seconds()
 		_idle = maxf(_idle, _startle_left)
@@ -1247,7 +1303,7 @@ func startled() -> bool:
 ## citizen does (v0.11.1: and a soldier standing at his post); the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
 ## watchman staring at the falling star), else it is OBSERVE_SECONDS at random.
 func observe(from: Vector2, seconds := -1.0) -> void:
-	if resists_mind() or state == State.DEAD or fearless_left > 0.0:
+	if night_indoors or resists_mind() or state == State.DEAD or fearless_left > 0.0:
 		return
 	if soldier:
 		if mind != Mind.POST or hurrying:
@@ -1740,6 +1796,8 @@ func _hold_begin() -> void:
 			assist_full = false
 			assist_at_water = false
 			assist_stays = false
+			assist_patch = null
+			assist_beating = false
 		_:
 			_held_mind = mind
 			_held_anchor = anchor
@@ -1928,6 +1986,7 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 	release_from_queue()
 	passing_gate = null
 	_held_saved = false  # a fight takes him over: nothing of an earlier hold is left to go back to
+	_ordered = false
 	mind = Mind.FIGHT
 	fight_target = target
 	_fight_left = seconds
@@ -2009,6 +2068,10 @@ func stop_fighting() -> void:
 		return
 	fight_target = null
 	_fight_left = 0.0
+	if _ordered:
+		_ordered = false
+		_wake()  # a whisper's order is over: he comes to as the whisper wears off, and shakes it off
+		return
 	if soldier:
 		send_to_post(post if post != Vector2.INF else ground_pos)
 	else:
@@ -2141,6 +2204,7 @@ func hurt_from(amount: float, from: Vector2) -> void:
 func whisper(to: Vector2, linger: float) -> bool:
 	if resists_mind() or inside or state == State.DEAD or shaken():
 		return false
+	_held_string = false
 	_hold_begin()
 	if mind != Mind.WHISPERED:
 		_whisper_fled = mind == Mind.FLEE or (mind == Mind.CONFUSED and _was_fleeing)
@@ -2156,6 +2220,46 @@ func whisper(to: Vector2, linger: float) -> bool:
 	walk_speed = _mind_speed()
 	set_goal(to)
 	return true
+
+
+## Mind Whisper's attack order (the order wheel): whispered where he stands -- so the flight he owes is kept and the whisper's shake-off
+## applies -- then set on `foe` alone for `seconds`, striking `blow` of their health a swing. When the fight ends (time, or the foe gone)
+## he comes to as after a whisper (_wake()). True when the whisper took. (A soldier's hold saved by the whisper is cleared by fight(), as in
+## Voice of God's judge: afterwards he goes to his post, not back to where he held.)
+func whisper_fight(foe: Person, seconds: float, blow: float) -> bool:
+	if not whisper(ground_pos, seconds):
+		return false
+	fight(foe, seconds, blow, FightRule.TARGET_ONLY)
+	_ordered = true
+	return true
+
+
+## Held String (Mind Whisper level 5): the whisper just laid on this person leaves no shake-off when it wears off, so they can be whispered
+## again at once. Call it after whisper() / whisper_fight() took; a later whisper laid without it clears the flag.
+func hold_string() -> void:
+	_held_string = true
+
+
+## Procession (Will-o'-Wisp level 5): the light a lured person stares at has moved; their goal and the spot they watch move to `spot`.
+## Only for someone alive and still staring at a light (mind OBSERVE, lured): true when it took. Its stare (_observe_left) runs on.
+func relure(spot: Vector2) -> bool:
+	if state == State.DEAD or mind != Mind.OBSERVE or not _lured:
+		return false
+	_threat = spot
+	redirect(spot)
+	return true
+
+
+## A new goal for someone already walking (Procession's light moves on): set_goal(), without the step back to the middle of the cell it stands in
+## that a fresh path begins with -- re-sent every half second, that step would hold a walker in place.
+func redirect(spot: Vector2) -> void:
+	if mind == Mind.ASLEEP:
+		return  # a sleeper goes nowhere (set_goal's own rule)
+	set_goal(spot)
+	if _leg >= 1 and _leg < _path.size():
+		var first := _path[_leg - 1]
+		if (first - ground_pos).dot(_path[_leg] - first) < 0.0:
+			_pick_target()
 
 
 ## Staring at a light it was lured to (a Will-o'-Wisp's, a body's) (v0.11.1: The Bell-Ringers' relay passes such a man over -- he looks at the light, not at the road).
@@ -2187,7 +2291,8 @@ func whisper_resume_flee() -> void:
 ## shakes the whisper off for SHAKE_OFF seconds (v0.08.1).
 func _wake() -> void:
 	_whisper_left = 0.0
-	_shaken_left = SHAKE_OFF
+	_shaken_left = 0.0 if _held_string else SHAKE_OFF
+	_held_string = false
 	if _whisper_fled and not soldier:
 		_whisper_fled = false
 		mind = Mind.CALM
@@ -2363,7 +2468,7 @@ func leave_shelter(evacuate: bool) -> void:
 ## Turn out to fight the fire on `s` (FireManager sends it for water). A soldier only when sent by its rescue squad
 ## or its engineer team (force); `stays` keeps it on through the evacuation (an engineer, v0.08.2).
 func assist(s: Structure, force := false, stays := false) -> void:
-	if (soldier and not force) or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT \
+	if night_indoors or (soldier and not force) or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT \
 			or held_by_will(WILL_FIRM):
 		return
 	_held_saved = false
@@ -2373,12 +2478,38 @@ func assist(s: Structure, force := false, stays := false) -> void:
 	assist_at_water = false
 	assist_full = false
 	assist_wait = 0.0
+	assist_patch = null
+	assist_beating = false
 	walk_speed = _mind_speed()
+
+
+## Turn out to beat out the patch of burning ground `patch` (FireManager sends it to the ring): a citizen's work, under the
+## same refusals as assist(). It carries no water, and a threat does not frighten it while it works.
+func beat(patch: GroundFire) -> void:
+	if soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+		return
+	_held_saved = false
+	mind = Mind.ASSIST
+	assist_patch = patch
+	assist_fire = null
+	assist_beating = false
+	assist_stays = false
+	_beat_in = 0.0
+	assist_respot_in = 0.0
+	walk_speed = _mind_speed()
+
+
+## Swing at the ground point `g`: face it, as the fight does, and show the blow.
+func swing_at(g: Vector2) -> void:
+	_facing = 1 if g.x - g.y > ground_pos.x - ground_pos.y else -1
+	_swing_left = SWING_SHOW
 
 
 ## Stop fighting a fire: wait a moment, then back to its day (a soldier goes back to its post).
 func stand_down() -> void:
 	assist_fire = null
+	assist_patch = null
+	assist_beating = false
 	assist_full = false
 	assist_at_water = false
 	assist_stays = false
@@ -2397,7 +2528,7 @@ func walk_to(g: Vector2) -> void:
 
 ## City Emergency (v0.04): go home to `home` and wait there with the family until the evacuation or the danger.
 func regroup(home: Vector2) -> void:
-	if soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or fearless_left > 0.0:
+	if night_indoors or soldier or state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or fearless_left > 0.0:
 		return
 	mind = Mind.REGROUP
 	awareness = maxi(awareness, Awareness.EMERGENCY) as Awareness
@@ -2465,7 +2596,7 @@ func is_stumbling() -> bool:
 ## Head for the nearest exit there is still a route to. The plan itself is staggered, so a town-wide panic
 ## does not ask for a hundred paths in the same frame.
 func flee() -> void:
-	if soldier or mind == Mind.FLEE or state == State.DEAD or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+	if night_indoors or soldier or mind == Mind.FLEE or state == State.DEAD or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
 		return
 	if fearless_left > 0.0:
 		_reassured_fled = true  # it will go when the calm wears off
@@ -2923,6 +3054,8 @@ func _sprite_tint() -> Color:
 		return Color(COL_CHAR, _char * 0.85)
 	if sick_left > 0.0 and state != State.DEAD:
 		return Color(sick_color(), SICK_CLOTH)
+	if scorched_left > 0.0 and state != State.DEAD:
+		return Color(SCORCH_COLOR, SCORCH_STRENGTH * clampf(scorched_left / 2.0, 0.0, 1.0))
 	return Color(0.0, 0.0, 0.0, 0.0)
 
 
@@ -3179,7 +3312,8 @@ func _sprite_signature() -> int:
 	var code := _sprite_pose_code()
 	var sig: int = (code >> 2 & 31) * 4 + (code & 3)
 	sig = sig * 16 + (code >> 7) % 16
-	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED:
+	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED \
+			and scorched_left <= 0.0:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
 		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
@@ -3195,7 +3329,11 @@ func _sprite_signature() -> int:
 	sig = sig * 9 + (1 + int(_anim * 3.0) % 8 if mind == Mind.CONFUSED else 0)
 	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
 	sig = sig * (SICK_STAGES + 1) + sick_stage()
-	return sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+	sig = sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+	if scorched_left > 0.0:
+		# Soot (ground fire) fades in steps; unscorched, the integer is the quiet fold's.
+		sig = sig * 5 + int(clampf(scorched_left / 2.0, 0.0, 1.0) * 4.0) + 1
+	return sig
 
 
 ## Where the watchman's lantern cap sits beside his sprite now (SPRITE_LANTERN, by facing), from his feet.

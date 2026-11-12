@@ -14,6 +14,17 @@ const T_BARRAGE_END := 7.0
 const T_SINK := 8.2
 const STONES := 20
 const STONE_KILL := 0.9
+## Level 5 twist, Lava Pool: the crater left where the volcano sank stays molten for LAVA_TIME seconds. Whoever steps within LAVA_R
+## of the cast point dies (checked every LAVA_TICK); the standing burnables within LAVA_SIDE are set alight at LAVA_FIRE_LEVEL when it
+## opens and every LAVA_IGNITE_EVERY seconds after, if they are not already burning.
+const LAVA_R := 1.5
+const LAVA_TIME := 15.0
+const LAVA_TICK := 0.1
+const LAVA_IGNITE_EVERY := 3.0
+const LAVA_SIDE := 3.0
+const LAVA_FIRE_LEVEL := 0.4
+## The cast's own length without the twist; its sound and the dimming of the scene end here at every level.
+const T_END := 12.0
 const LAVA_LIGHT := Color(1.0, 0.45, 0.15)
 ## Volcanic smoke: dark ash grey, thinning as it rises.
 const ASH_SMOKE := [Color(0.42, 0.37, 0.36, 0.85), Color(0.36, 0.33, 0.33, 0.85), Color(0.31, 0.29, 0.3, 0.75),
@@ -118,6 +129,21 @@ class Volcano:
 		return position + Vector2((CRATER.x - FRAME * 0.5) * SCALE, (CRATER.y - BASE_Y) * SCALE + _drop())
 
 
+## The molten pool of the level 5 twist: the decal and the light it keeps burning on the ground at the cast point. Flickers
+## the light; `fade` (tweened over the last second) dims it.
+class LavaPool:
+	extends Node2D
+
+	var light: QuadFx
+	var fade := 1.0
+	var _time := 0.0
+
+	func _process(delta: float) -> void:
+		_time += delta
+		if light != null and is_instance_valid(light):
+			light.set_param("intensity", fade * (0.8 + 0.2 * sin(_time * 9.0)))
+
+
 ## Flaming boulder: dark cracked rock glowing through molten seams, wrapped in fire that streams into a long tail.
 class FireStone:
 	extends Node2D
@@ -195,14 +221,28 @@ var _behind: Node2D
 var _plume: PixelParticles
 var _lava_voice: Node
 var _quake := 0.0
+## This cast's stone count and rain radius: the ability level's (PowerBook.stat()), the consts at level 1.
+var lv_stones := STONES
+var lv_radius := RADIUS
+## The Lava Pool (level 5): whether it is burning now and until when (effect clock).
+var pool_open := false
+var pool_until := 0.0
+var _pool_kill_in := 0.0
+var _pool_fire_in := 0.0
 
 
 func _build() -> void:
-	duration = 12.0
+	lv_stones = int(PowerBook.stat(extra, "cinder", "STONES", STONES))
+	lv_radius = float(PowerBook.stat(extra, "cinder", "RADIUS", RADIUS))
+	duration = T_END
+	if PowerBook.twist_at(extra, "cinder"):
+		# The pool burns on after the volcano has sunk; the slots unlock as at every level.
+		duration = T_SINK + LAVA_TIME + 1.0
+		busy = T_END
 	_center_px = Iso.ground_to_screen(origin)
 
 	_sigil = Set2Parts.sigil(self, origin, 3.2, Color("ff5a22"), "magma")
-	var outer := FxParts.rings(self, origin, RADIUS, Color("ff5a2a"), 2, 22.0)
+	var outer := FxParts.rings(self, origin, lv_radius, Color("ff5a2a"), 2, 22.0)
 	outer.z_index = 8
 	outer.set_param("crosshair", 0.0)
 	outer.set_param("fill", 0.06)
@@ -238,11 +278,13 @@ func _build() -> void:
 func _fx_process(delta: float) -> void:
 	if _quake > 0.0:
 		ctx.shake.add_trauma(_quake * delta * 2.0)
-		ctx.env.shake_radius(origin, RADIUS, _quake * 4.0)
+		ctx.env.shake_radius(origin, lv_radius, _quake * 4.0)
 	# Nothing survives inside the standing volcano: whatever wanders into its foot is burned and thrown back out.
 	if _volcano != null and is_instance_valid(_volcano) and _volcano.rise > 0.0 and _volcano.sink < 0.9:
 		for e in ctx.field.in_radius(origin, VOLCANO_RADIUS + 0.3):
 			ctx.field.kill(e, &"cinder", origin)
+	if pool_open:
+		_tend_pool(delta)
 
 
 func _rise() -> void:
@@ -406,9 +448,9 @@ func _erupt() -> void:
 func _schedule_barrage() -> void:
 	var placed: Array[Vector2] = []
 	var misses := 0
-	while placed.size() < STONES and misses < 800:
+	while placed.size() < lv_stones and misses < 800:
 		var a := ctx.rng.randf() * TAU
-		var d := lerpf(VOLCANO_RADIUS + 0.6, RADIUS, sqrt(ctx.rng.randf()))
+		var d := lerpf(VOLCANO_RADIUS + 0.6, lv_radius, sqrt(ctx.rng.randf()))
 		var g := origin + Vector2.RIGHT.rotated(a) * d
 		var ok := true
 		for q in placed:
@@ -523,6 +565,8 @@ func _stone_impact(g: Vector2) -> void:
 
 
 func _sink() -> void:
+	if PowerBook.twist_at(extra, "cinder"):
+		_open_pool()
 	_quake = 0.3
 	ctx.play(&"cf_rise", origin, -8.0)
 	create_tween().tween_property(_volcano, "heat", 0.35, 1.2)
@@ -550,9 +594,58 @@ func _sink() -> void:
 	haze.tween_param("strength", 1.6, 0.0, 1.5, 1.2)
 	haze.life = 2.8
 	FxParts.emitter(self, ctx.overhead, _center_px, PixelParticles.Shape.SQUARE, FxParts.EMBER_LIFE, 30.0, duration - t - 0.6, {
-		"radius": FxParts.particle_radius(RADIUS * 0.8), "alt": Vector2(0, 6), "alt_speed": Vector2(12, 40),
+		"radius": FxParts.particle_radius(lv_radius * 0.8), "alt": Vector2(0, 6), "alt_speed": Vector2(12, 40),
 		"speed": Vector2(0, 10), "life": Vector2(0.6, 1.4), "size": Vector2(1, 1),
 	})
-	at(duration - 1.3, func():
+	at(T_END - 1.3, func():
 		ctx.fade_out(_lava_voice, 1.2)
 		ctx.impact.dim(0.0, 0.6))
+
+
+## Level 5: the crater stays molten. The first kill sweep and the first ignition come with the next step of the effect.
+func _open_pool() -> void:
+	pool_open = true
+	pool_until = t + LAVA_TIME
+	_pool_kill_in = 0.0
+	_pool_fire_in = 0.0
+	if not DominionParts.staged(self):
+		return
+	var pool := LavaPool.new()
+	track(pool, ctx.ground)
+	var decal := FxParts.decal(self, origin, LAVA_R, Color("ffb040"), Color("fff0b8"), Color(1.0, 0.5, 0.12, 0.95))
+	decal.z_index = 3
+	decal.tween_param("fade", 0.0, 1.0, 0.6)
+	decal.tween_param("heat", 1.0, 0.7, LAVA_TIME - 1.0)
+	decal.tween_param("fade", 1.0, 0.0, 1.0, LAVA_TIME - 1.0)
+	var light := FxParts.ground_light(self, origin, LAVA_R * 2.2, LAVA_LIGHT, 0.0)
+	pool.light = light
+	pool.fade = 0.0
+	create_tween().tween_property(pool, "fade", 1.0, 0.6)
+	create_tween().tween_property(pool, "fade", 0.0, 1.0).set_delay(LAVA_TIME - 1.0)
+
+
+## Every LAVA_TICK: whoever is in the pool dies. Every LAVA_IGNITE_EVERY: what burns beside it is set alight.
+func _tend_pool(delta: float) -> void:
+	if t >= pool_until:
+		pool_open = false
+		return
+	_pool_kill_in -= delta
+	if _pool_kill_in <= 0.0:
+		_pool_kill_in = LAVA_TICK
+		for e in ctx.field.in_radius(origin, LAVA_R):
+			var p := e as Person
+			if p != null and p.inside:
+				continue
+			ctx.field.kill(e, &"cinder", origin)
+	_pool_fire_in -= delta
+	if _pool_fire_in <= 0.0:
+		_pool_fire_in = LAVA_IGNITE_EVERY
+		for s in ctx.env.near(origin, LAVA_SIDE):
+			if not is_instance_valid(s) or s.destroyed or not FireManager.burns(s) or s.distance_to(origin) > LAVA_SIDE:
+				continue
+			if ctx.crowd != null:
+				if not ctx.crowd.fires.is_burning(s):
+					ctx.crowd.fires.ignite(s, LAVA_FIRE_LEVEL)
+			else:
+				# No town to keep the fire: the heat itself is fire's blow.
+				s.damage(1.0, origin, &"fire")

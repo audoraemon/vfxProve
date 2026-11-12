@@ -48,7 +48,7 @@ const RELIEF_AFTER := 30.0
 ## A mirror's glass (v0.11 M6): its health; the most one blow takes off it (a Smite's worth); how long after a Heaven Splitter's first
 ## stroke on it the cast's later strokes only shake the tower (its whole effect, T_AFTER 4.3 s, falls inside), and their damage kind.
 const MIRROR_HP := 90.0
-const BLOW_MAX := SmiteFx.DAMAGE
+const BLOW_MAX := 45.0  # a level-1 Smite's worth: ability levels change Smite's damage, not a mirror's two blows (Lantern blows stay level-free)
 const HEAVEN_GAP := 5.0
 const HEAVEN_KIND := &"lightning"
 ## Seconds a shattered mirror lasts before it is gone for good (v0.11 M6).

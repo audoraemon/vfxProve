@@ -7,7 +7,8 @@ extends Node
 var _lights: Array[Dictionary] = []
 ## The moving and fading lights (effects): every sample looks at all of them.
 var _dynamic: Array[Dictionary] = []
-## The static lights (torches, lamps) by the cells their radius reaches: a sample looks only at its own cell's.
+## The static lights (torches, lamps) and the quad lights that never move (register_quad_at()) by the cells their radius
+## reaches: a sample looks only at its own cell's.
 ## The town has dozens of torches and every person and building samples several times a second, so walking all
 ## of them for every sample was a measurable share of each frame.
 var _cells := {}
@@ -33,6 +34,17 @@ func register_quad(quad: QuadFx, center: Vector2, radius: float, color: Color, g
 	_dynamic.append(l)
 
 
+## A QuadFx light pool that stays where it is (a patch of burning ground): its intensity is read from its shader each
+## frame as register_quad()'s, but it is kept in the cells its radius reaches, so a sample far from it never looks at it.
+## It goes when its quad is freed.
+func register_quad_at(quad: QuadFx, center: Vector2, radius: float, color: Color) -> void:
+	var l := {"pos": center, "radius": radius, "color": color, "intensity": 0.0, "life": -1.0, "quad": quad,
+		"getter": Callable(), "fixed": true, "cells": _bin(center, radius)}
+	_lights.append(l)
+	for key: Vector2i in l.cells:
+		(_cells[key] as Array[Dictionary]).append(l)
+
+
 ## Short light that fades out linearly over `seconds`.
 func pulse(center: Vector2, radius: float, color: Color, intensity: float, seconds: float) -> void:
 	var l := {"pos": center, "radius": radius, "color": color, "intensity": intensity,
@@ -48,6 +60,14 @@ func add_static(center: Vector2, radius: float, color: Color, intensity: float, 
 	var l := {"pos": center, "radius": radius, "color": color, "intensity": intensity, "base": intensity,
 		"life": -1.0, "static": true, "id": id, "flicker": flicker, "quad": null, "getter": Callable()}
 	_lights.append(l)
+	for key in _bin(center, radius):
+		(_cells[key] as Array[Dictionary]).append(l)
+	return id
+
+
+## The cells a light at `center` reaches (each cell's list made if new).
+func _bin(center: Vector2, radius: float) -> Array[Vector2i]:
+	var keys: Array[Vector2i] = []
 	var c0 := _cell(center - Vector2(radius, radius))
 	var c1 := _cell(center + Vector2(radius, radius))
 	for y in range(c0.y, c1.y + 1):
@@ -56,8 +76,17 @@ func add_static(center: Vector2, radius: float, color: Color, intensity: float, 
 			if not _cells.has(key):
 				var list: Array[Dictionary] = []
 				_cells[key] = list
-			(_cells[key] as Array[Dictionary]).append(l)
-	return id
+			keys.append(key)
+	return keys
+
+
+## Take a fixed quad light out of its cells (its quad is gone).
+func _unbin(l: Dictionary) -> void:
+	for key: Vector2i in l.cells:
+		var list: Array[Dictionary] = _cells.get(key, _EMPTY)
+		for i in range(list.size() - 1, -1, -1):
+			if is_same(list[i], l):
+				list.remove_at(i)
 
 
 func remove(id: int) -> void:
@@ -102,6 +131,8 @@ func _process(delta: float) -> void:
 			l.intensity = l.base * (1.0 - f * 0.25 + f * 0.25 * sin(_time * 13.0 + l.id * 1.7) * sin(_time * 7.3 + l.id))
 		elif l.quad != null:
 			if not is_instance_valid(l.quad):
+				if l.get("fixed", false):
+					_unbin(l)
 				continue
 			var v = l.quad.mat.get_shader_parameter("intensity")
 			l.intensity = float(v) if v != null else 0.0
@@ -113,7 +144,7 @@ func _process(delta: float) -> void:
 				continue
 			l.intensity = l.start * l.life / l.duration
 		keep.append(l)
-		if not l.get("static", false):
+		if not l.get("static", false) and not l.get("fixed", false):
 			moving.append(l)
 	_lights = keep
 	_dynamic = moving

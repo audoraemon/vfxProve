@@ -63,9 +63,9 @@ static func _fighter(crowd: Crowd, from: int) -> Person:
 static func run(t) -> void:
 	var book := PowerBook.get_power("schism")
 	t.check(PowerBook.authority_of("schism") == "dominion" and int(book.dp) == 6 and not PowerBook.is_quiet("schism")
-		and float(book.cooldown) > Rules.MISSION_SECONDS and (book.modes as Array).size() == 4 and PowerBook.REACH.has("schism")
+		and float(book.cooldown) > Rules.MISSION_SECONDS and (book.modes as Array).size() == 5 and PowerBook.REACH.has("schism")
 		and PowerBook.icon("schism") != null and PowerBook.hud_icon("schism") != null and PowerBook.clip("schism") != null,
-		"%s: Dominion, 6 DP, once a descent, four modes, seen by the town, its icons and clip" % book.name)
+		"%s: Dominion, 6 DP, once a descent, five modes, seen by the town, its icons and clip" % book.name)
 	t.check(Rules.POWER_KINDS["schism"] == [&"frenzy"], "its casts are credited with the dead of the fighting")
 
 	var made := _setup()

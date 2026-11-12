@@ -25,6 +25,8 @@ func _reset_world() -> void:
 	City._extra.clear()  # a fixture town a failed suite never unregistered
 	Person.frame_no = -1
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
+	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
+	GodTree.use_table({})  # Tier 1 fill: a test of an empty tree sets its own
 	SpriteView.window_boost = 0.0
 	SpriteView.look_params = {}
 	Structure.cast_shadows = true  # a town look's statics (v0.12 lighting): a suite that leaked a DAY or NIGHT town must not reach the next

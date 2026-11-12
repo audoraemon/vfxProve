@@ -2,6 +2,6 @@
 tax_toll_1	--scenario=tax --case=toll --seed=1	-909882005
 tax_toll_2	--scenario=tax --case=toll --seed=2	-842999004
 tax_toll_3	--scenario=tax --case=toll --seed=3	-120373436
-informer_toll_1	--scenario=informer --case=toll --seed=1	245468687
-informer_toll_2	--scenario=informer --case=toll --seed=2	-294742294
-informer_toll_3	--scenario=informer --case=toll --seed=3	519637458
+informer_toll_1	--scenario=informer --case=toll --seed=1	-230279095
+informer_toll_2	--scenario=informer --case=toll --seed=2	-987218029
+informer_toll_3	--scenario=informer --case=toll --seed=3	-580945817

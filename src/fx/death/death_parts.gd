@@ -75,16 +75,25 @@ static func wraith(v: Visitors, at: Vector2) -> Animal:
 ## chain -- and `left` (how many more may rise) comes back one fewer. A body that is not there (a stone death leaves none,
 ## the ledger is off, none are left to raise) leaves `left` as it was and raises nothing.
 static func on_kill_rise(v: Visitors, remains: Remains, victim: Person, left: int) -> int:
-	if left <= 0 or remains == null or not remains.enabled or victim == null or not is_instance_valid(victim):
+	if left <= 0:
 		return left
+	var fresh := fresh_remain(remains, victim)
+	if fresh == null:
+		return left
+	zombie(v, fresh, false)
+	remains.take(fresh)
+	return left - 1
+
+
+## The body `victim` has just left: the youngest whole-body remain within RISE_NEAR of where they fell, under RISE_FRESH
+## old (a Remain keeps no person, by design), or null -- none left (a stone death), or the ledger off.
+static func fresh_remain(remains: Remains, victim: Person) -> Remains.Remain:
+	if remains == null or not remains.enabled or victim == null or not is_instance_valid(victim):
+		return null
 	var fresh: Remains.Remain = null
 	for r in remains.near(victim.ground_pos, RISE_NEAR):
 		if remains.age(r) > RISE_FRESH or not Remains.BODY_KINDS.has(r.kind):
 			continue
 		if fresh == null or r.born > fresh.born:
 			fresh = r
-	if fresh == null:
-		return left
-	zombie(v, fresh, false)
-	remains.take(fresh)
-	return left - 1
+	return fresh

@@ -429,6 +429,11 @@ const POWERS := [
 			{"REGION": 16.0, "MAX_FIGHTERS": 160, "DURATION": 29.0},
 			{"REGION": 17.0, "MAX_FIGHTERS": 170, "DURATION": 32.0},
 			{"REGION": 18.0, "MAX_FIGHTERS": 180, "DURATION": 35.0, "twist": true, "twist_text": "Turn the Tide: click a fighter to turn them"}]},
+	{"key": "pale", "name": "Pale Reign", "path": "res://src/fx/death/pale_reign.gd",
+		"blurb": "The colour drains out of a district; the weakest die without a sound and rise pale.",
+		"dp": 6, "cooldown": 120.0, "aim": "click",
+		"shape": "the colour drains out of a district of 10 for 12 s, grey and silent: everyone in it crawls, its fires gutter, the bell is hushed; every 2 s the weakest one still there dies without a sound and rises as your grey-eyed servant for 20 s",
+		"authority": "death"},
 	{"key": "fargate", "name": "The Far Gate", "path": "res://src/fx/control/the_far_gate.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a door of stars opens for 15 s: up to 40 people within 10 walk through it with their dogs and goods, gone for the night; soldiers resist; once a descent",
 		"quiet": true, "alarm": 1.0, "authority": "passage"},
@@ -495,6 +500,9 @@ const REACH := {
 	# The Gate Below: the ground opening into a pit ringed in bone and pale arms dragging people under are seen and heard
 	# across the square; the danger lasts the pit's 12 s
 	"gatebelow": [10.0, 14.0, 0.8, 12.0],
+	# Pale Reign: a district gone grey is seen across the town, but it is silent (it hushes the town), so it is heard only
+	# near; the danger lasts its 12 s
+	"pale": [14.0, 10.0, 0.8, 12.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
@@ -506,7 +514,7 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
-	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5,
+	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5, "pale": 2.0,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -778,7 +786,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death", "gatebelow": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death", "gatebelow": "death", "pale": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",

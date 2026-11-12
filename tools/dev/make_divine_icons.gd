@@ -41,6 +41,8 @@ func _initialize() -> void:
 	_save(_sign([0b00100, 0b01110, 0b00100, 0b01010, 0b10001], Color(0.86, 0.84, 0.78), Color(0.05, 0.06, 0.06), 125), "walker")
 	# Death IV: two pale arms reaching up out of a pit ringed in bone.
 	_save(_sign([0b01010, 0b01010, 0b11111, 0b10001, 0b01110], Color(0.86, 0.84, 0.78), Color(0.04, 0.05, 0.05), 126), "gatebelow")
+	# Death IV: grey ash falling still over the street -- the district gone pale.
+	_save(_sign([0b01010, 0b10101, 0b01010, 0b00000, 0b11111], Color(0.8, 0.8, 0.8), Color(0.05, 0.05, 0.06), 127), "pale")
 	# Decree: black and gilt.
 	_save(_sign(DecreeParts.BARS, Color(1.0, 0.81, 0.35), Color(0.05, 0.03, 0.08), 91), "noleave")
 	_save(_sign(DecreeParts.BELL_DOWN, Color(1.0, 0.81, 0.35), Color(0.05, 0.03, 0.08), 92), "belllies")

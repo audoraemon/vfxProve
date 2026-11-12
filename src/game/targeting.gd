@@ -94,6 +94,8 @@ const AREAS := {
 	"walker": {"shape": "circle", "r": Remains.PICK_R},
 	# TheGateBelowFx.REACH: how far the pit's arms reach (the pit itself is PIT_R)
 	"gatebelow": {"shape": "circle", "r": TheGateBelowFx.REACH},
+	# PaleReignFx.RADIUS: the district that goes grey
+	"pale": {"shape": "circle", "r": PaleReignFx.RADIUS},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -191,6 +193,7 @@ const AREA_STATS := {
 	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
 	"raise": {"roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"}, "guise": {"r": "MARK_R"},
 	"gatebelow": {"r": "REACH"},
+	"pale": {"r": "RADIUS"},
 	"heavendoor": {"r": "PULL_R"},
 }
 ## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole

@@ -220,11 +220,12 @@ func marked() -> Person:
 	return _mark
 
 
-## Every visitor is freed at once (the owner's end).
-func clear() -> void:
+## Every visitor is freed at once (the owner's end). `deferred`: queued for freeing instead, for an owner's _exit_tree, whose
+## parents may be mid-teardown.
+func clear(deferred := false) -> void:
 	_mark = null
 	for a in _rules.keys():
-		_free(a)
+		_free(a, deferred)
 	_rules.clear()
 	_swings.clear()
 	if _crowd != null and is_instance_valid(_crowd):
@@ -544,7 +545,7 @@ func _nearest_visitor(at: Vector2) -> Animal:
 	return best
 
 
-func _free(a: Animal) -> void:
+func _free(a: Animal, deferred := false) -> void:
 	if not is_instance_valid(a):
 		return
 	var id := a.get_instance_id()
@@ -553,7 +554,7 @@ func _free(a: Animal) -> void:
 			if is_instance_valid(p):
 				p.free_pace(id)
 		_slows.erase(id)
-	if a.is_inside_tree():
+	if deferred or a.is_inside_tree():
 		a.queue_free()
 	else:
 		a.free()

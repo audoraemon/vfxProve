@@ -14,8 +14,8 @@ const MAX := 60
 const PICK_R := 1.0
 ## Only a death that leaves the body whole is recorded.
 const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy", &"pale", &"shadow"]
-## The powers that need the ledger on.
-const WANTED_BY: Array[String] = ["raise", "walker", "gravetide"]
+## The powers that need the ledger on (Pale Reign: its dead rise as servants).
+const WANTED_BY: Array[String] = ["raise", "walker", "gravetide", "pale"]
 
 
 ## One body: values only. `body` is a WeakRef to the dead Person, used for one thing -- hiding that node when the remain is

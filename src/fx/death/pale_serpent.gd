@@ -38,16 +38,21 @@ const DEPART := 1.5
 const DEPART_SPEED := 4.0
 ## The longest bit of path swept at once (ground units).
 const STEP := 0.25
-## The fright round the head while it glides, renewed as a spirit's is.
+## The fright while it glides, renewed as a spirit's is: centred FRIGHT_BACK behind the head along its path (review
+## IMPORTANT 2), so it scatters the street the serpent has passed, not the street ahead -- FRIGHT_R plus the town's own
+## margin (Person.THREAT_MARGIN), so nobody ahead of the head is reached. None until the head is that far out.
 const FRIGHT_R := BAND + 3.0
 const FRIGHT_EVERY := 1.0
+const FRIGHT_BACK := FRIGHT_R + Person.THREAT_MARGIN
 
 ## The art (Task 1, ruling R4): five heads (64 x 64) and the tail (64 x 48, pointing left).
-const DIR := "res://assets/pixellab/fx/pale_serpent/"
 const HEADS := {
-	"east": DIR + "head_east.png", "south-east": DIR + "head_south-east.png", "north-east": DIR + "head_north-east.png",
-	"south": DIR + "head_south.png", "north": DIR + "head_north.png"}
-const TAIL := DIR + "tail.png"
+	"east": preload("res://assets/pixellab/fx/pale_serpent/head_east.png"),
+	"south-east": preload("res://assets/pixellab/fx/pale_serpent/head_south-east.png"),
+	"north-east": preload("res://assets/pixellab/fx/pale_serpent/head_north-east.png"),
+	"south": preload("res://assets/pixellab/fx/pale_serpent/head_south.png"),
+	"north": preload("res://assets/pixellab/fx/pale_serpent/head_north.png")}
+const TAIL := preload("res://assets/pixellab/fx/pale_serpent/tail.png")
 ## The eight ways on screen from east, clockwise (screen y is down): [head, mirrored].
 const WAYS := [["east", false], ["south-east", false], ["south", false], ["south-east", true], ["east", true],
 	["north-east", true], ["north", false], ["north-east", false]]
@@ -104,16 +109,18 @@ var _see: SeeThrough
 var _next_feather := T_RISE
 
 
-## Where a cast at `at` ends: along the drag ("to"; else "dir"), LENGTH at most, MIN_LENGTH at least.
+## Where a cast at `at` ends: along the drag's way as Targeting reads it ("dir": Targeting.aim_dir(), DEFAULT_DIR for a drag
+## under DRAG_MIN -- the way the preview showed, never a short drag's jitter), as far as the drag went ("to"), LENGTH at most,
+## MIN_LENGTH at least; LENGTH with no "to" (a scripted cast). A cast with no "dir" takes the way to "to", else east.
 static func end_of(at: Vector2, extra_data: Dictionary) -> Vector2:
-	var to: Vector2 = extra_data.get("to", at)
-	var d := to - at
-	var dir: Vector2 = extra_data.get("dir", Vector2.RIGHT)
-	if d.length() > 0.01:
-		dir = d
+	var to: Vector2 = extra_data.get("to", Vector2.INF)
+	var dir: Vector2 = extra_data.get("dir", Vector2.ZERO)
+	if dir.length() < 0.001 and to != Vector2.INF:
+		dir = to - at
 	if dir.length() < 0.001:
 		dir = Vector2.RIGHT
-	return at + dir.normalized() * clampf(d.length(), MIN_LENGTH, LENGTH)
+	var length := LENGTH if to == Vector2.INF else clampf(to.distance_to(at), MIN_LENGTH, LENGTH)
+	return at + dir.normalized() * length
 
 
 ## When the loop is done (the shadow's last).
@@ -224,8 +231,9 @@ func _fx_process(delta: float) -> void:
 		_sweep(from, to)
 		_swept_to = to
 	while _next_fright < glide_end() and t >= _next_fright:
-		if ctx.crowd != null:
-			ctx.crowd.fright(head_at(_next_fright), FRIGHT_R, 0.9, 2.0, SIGHT, 16.0, &"beast")
+		var back := s_at(_next_fright) - FRIGHT_BACK
+		if ctx.crowd != null and back >= 0.0:
+			ctx.crowd.fright(path_at(back), FRIGHT_R, 0.9, 2.0, SIGHT, 16.0, &"beast")
 		_next_fright += FRIGHT_EVERY
 	if not _sick_over and t >= T_RISE + SICK:
 		_sick_over = true
@@ -422,16 +430,6 @@ class Piece extends Node2D:
 	var mirror := false
 	## The tail: the way it points on screen, from the body to its tip.
 	var back := Vector2.LEFT
-	var _heads := {}
-	var _tail: Texture2D
-
-	func _ready() -> void:
-		if kind == K_HEAD:
-			for key: String in HEADS:
-				if ResourceLoader.exists(HEADS[key]):
-					_heads[key] = load(HEADS[key])
-		elif kind == K_TAIL and ResourceLoader.exists(TAIL):
-			_tail = load(TAIL)
 
 	func _draw() -> void:
 		if alpha <= 0.0:
@@ -439,20 +437,18 @@ class Piece extends Node2D:
 		var tint := Color(1.0, 1.0, 1.0, alpha)
 		match kind:
 			K_HEAD:
-				var tex: Texture2D = _heads.get(head)
+				var tex: Texture2D = HEADS.get(head)
 				if tex == null:
 					return
 				draw_set_transform(Vector2(0.0, -alt), 0.0, Vector2(-1.0 if mirror else 1.0, 1.0))
 				draw_texture(tex, -HEAD_PIVOT, tint)
 				draw_set_transform(Vector2.ZERO)
 			K_TAIL:
-				if _tail == null:
-					return
 				var b := back if back.length() > 0.001 else Vector2.LEFT
 				# Pointing left as drawn: turned to `back`, mirrored when it points right so the feathers stay on top.
 				var flip := b.x > 0.0
 				draw_set_transform(Vector2(0.0, -alt), b.angle() if flip else b.angle() - PI, Vector2(-1.0 if flip else 1.0, 1.0))
-				draw_texture(_tail, -TAIL_ATTACH, tint)
+				draw_texture(TAIL, -TAIL_ATTACH, tint)
 				draw_set_transform(Vector2.ZERO)
 			_:
 				_disc(tint)

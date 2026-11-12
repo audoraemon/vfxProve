@@ -98,7 +98,9 @@ const AREAS := {
 	"pale": {"shape": "circle", "r": PaleReignFx.RADIUS},
 	# PaleSerpentFx.LENGTH, BAND, MIN_LENGTH: the head's glide from the press along the drag, as long as the drag ("follow"),
 	# its shadow BAND each side
-	"serpent": {"shape": "lane", "length": PaleSerpentFx.LENGTH, "half": PaleSerpentFx.BAND, "min": PaleSerpentFx.MIN_LENGTH, "follow": true},
+	# and the loop it turns at the end ("loop": CIRCLE_R, ringed to the drag's left), the head's path round it a kill zone too
+	"serpent": {"shape": "lane", "length": PaleSerpentFx.LENGTH, "half": PaleSerpentFx.BAND, "min": PaleSerpentFx.MIN_LENGTH,
+		"follow": true, "loop": PaleSerpentFx.CIRCLE_R},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -586,6 +588,14 @@ func lane_length() -> float:
 	return clampf((_at - _press).length(), float(a.get("min", 0.0)), float(a.get("length", 0.0)))
 
 
+## Where a lane that ends in a loop ("loop": its radius; The Pale Serpent) has the loop's centre: at the lane's end, the
+## loop's radius to the drag's left (Vector2.orthogonal(), the side PaleSerpentFx turns); Vector2.INF for a lane without one.
+static func loop_centre(a: Dictionary, from: Vector2, dir: Vector2, length: float) -> Vector2:
+	if float(a.get("loop", 0.0)) <= 0.0:
+		return Vector2.INF
+	return from + dir * length + dir.orthogonal() * float(a.loop)
+
+
 ## A lane's length: its own, or for one that runs as far as the drag ("follow": The Pale Serpent) the drag's, clamped
 ## (lane_length()).
 func _lane_len_of(a: Dictionary) -> float:
@@ -810,9 +820,13 @@ func _order_extra(who: Person) -> Dictionary:
 func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
 	var level := _rules.level_of(from_slot)
 	var a := area_at(key, level)
-	if String(a.get("shape", "")) == "lane":
+	if String(a.get("shape", "")) == "lane" and bool(a.get("follow", false)):
+		# A lane run by a creature that comes on slowly (The Pale Serpent): the town sees the cast at the press, not a
+		# warning the length of the street ahead (the effect frightens the street it has passed).
+		_crowd.on_cast(at, Vector2.ZERO, 0.0, key, level)
+	elif String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
-		_crowd.on_cast(lane_start(key, at, dir), dir, _lane_len_of(a), key, level)
+		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key, level)
 	elif String(a.get("shape", "")) == "path":
 		# Two clicks: from the first toward the second, as far as the power runs.
 		var run := _at - at
@@ -851,7 +865,11 @@ func _draw() -> void:
 				_ring(_press, float(a.roam), COL_FAINT)
 		"lane":
 			var dir := aim_dir()
-			_lane(lane_start(_rules.key(slot), _press, dir), dir, _lane_len_of(a), float(a.half), edge)
+			var run := _lane_len_of(a)
+			_lane(lane_start(_rules.key(slot), _press, dir), dir, run, float(a.half), edge)
+			var loop := loop_centre(a, lane_start(_rules.key(slot), _press, dir), dir, run)
+			if loop != Vector2.INF:
+				_ring(loop, float(a.loop), edge)
 			if a.has("fissure"):
 				for i in 8:
 					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5

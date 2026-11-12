@@ -12,7 +12,7 @@ const TYPES := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## the user does not move the literal lists below (the computed check reads the live tree too).
 const TIER1_ONLY := {
 	"ruin": [["smite", "ember"], ["", ""], ["", ""], ["", ""], ["", ""]],
-	"death": [["deathmark", "pestilence"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"death": [["deathmark", "raise"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"passage": [["skylift", "windfall"], ["", ""], ["", ""], ["", ""], ["", ""]],
 	"decree": [["noleave", "belllies"], ["", ""], ["", ""], ["", ""], ["", ""]],

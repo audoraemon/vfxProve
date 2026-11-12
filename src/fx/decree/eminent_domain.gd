@@ -317,7 +317,8 @@ func _clear_ruins() -> void:
 		keep.append_array(town.bridges)
 		keep.append_array([town.bridge, town.postern, town.dock, town.fountain])
 	for s in _torn:
-		if not is_instance_valid(s) or not s.destroyed or not ctx.env.structures().has(s) or keep.has(s) 				or s.role == &"citadel":
+		if not is_instance_valid(s) or not s.destroyed or not ctx.env.structures().has(s) or keep.has(s) \
+				or s.role == &"citadel":
 			continue
 		if ctx.crowd != null and ctx.crowd.shelters != null:
 			ctx.crowd.shelters.shelters.erase(s)

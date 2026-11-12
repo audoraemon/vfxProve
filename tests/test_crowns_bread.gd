@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_ahead(t)
 	_down(t)
 	_rebuild(t)
+	_taken(t)
 	_mend(t)
 	_smother(t)
 	_relief(t)
@@ -207,6 +208,24 @@ static func _rebuild(t) -> void:
 		ok = ok and opened and half and not st.destroyed and is_equal_approx(st.hp, st.max_hp) and is_equal_approx(st.height, st.max_height) \
 			and not grid.walkable(inner)
 	t.check(ok, "the barn and the watermill fall and are rebuilt by one engineer in REBUILD_ONE: standing, whole, their ground closed again (decision 92)")
+	Kit.done(s)
+
+
+## (final review) A fallen target Eminent Domain took away (EnvironmentField.remove keep_node: hidden, out of the town) cannot be
+## rebuilt: two on guard work at it for REBUILD and nothing is raised, nothing counted, no banner, its ground left open.
+static func _taken(t) -> void:
+	var s := _world()
+	var d: CrownsBreadDirector = s.d
+	var env: EnvironmentField = s.env
+	var grid: WalkGrid = (s.crowd as Crowd)._grid
+	var mill := d.targets[1]
+	mill.destroy(mill.center(), &"smite")
+	env.remove(mill, true, true)
+	_steady(d, 1)
+	Kit.run_for(s, CrownsBreadDirector.REBUILD + 0.5)
+	t.check(is_instance_valid(mill) and mill.taken and mill.destroyed and not env.structures().has(mill) and d.rebuilt == 0
+		and not (s.banners as Array).has("THE ENGINEERS REBUILD THE MILL") and grid.walkable(mill.center()),
+		"a fallen mill taken away cannot be rebuilt: nothing raised, nothing counted, its ground open")
 	Kit.done(s)
 
 

@@ -367,10 +367,11 @@ func upcoming() -> int:
 	return -1
 
 
-## Seconds left of target `i`'s rebuild at the rate its crew on guard works now (v0.11 M4); 0 when none is on guard or it stands.
+## Seconds left of target `i`'s rebuild at the rate its crew on guard works now (v0.11 M4); 0 when none is on guard, it stands, or it
+## was taken away (Structure.taken: never rebuilt).
 func rebuild_left(i: int) -> float:
 	var on := guards(i).size()
-	if on == 0 or not targets[i].destroyed:
+	if on == 0 or not targets[i].destroyed or targets[i].taken:
 		return 0.0
 	return (1.0 - rebuild_progress[i]) * (REBUILD if on >= 2 else REBUILD_ONE)
 
@@ -407,8 +408,8 @@ func _work(i: int, delta: float, looking: bool, evacuating := false) -> void:
 		return
 	if s.destroyed:
 		_alight[i] = 0.0
-		if in_use[i] or on == 0:
-			return
+		if in_use[i] or on == 0 or s.taken:
+			return  # (one taken away whole, Eminent Domain's Structure.taken, is not there to rebuild)
 		rebuild_progress[i] += delta / (REBUILD if on >= 2 else REBUILD_ONE)
 		if rebuild_progress[i] >= 1.0:
 			rebuild_progress[i] = 0.0

@@ -59,6 +59,7 @@ static func run(t) -> void:
 	_blight_cast(t)
 	_seized(t)
 	_seized_by_law(t)
+	_seized_disarmed(t)
 	_held(t)
 	_held_reset(t)
 	_held_indoors(t)
@@ -966,6 +967,43 @@ static func _seized_by_law(t) -> void:
 		ctx.overhead.free()
 		ctx.ground.free()
 		_done(s)
+
+
+## (final review) Decree's NO ARMS where the guard stands, not where the carter does: the soldier who arrives under it seizes no cart.
+static func _seized_disarmed(t) -> void:
+	var s := _world(false, false, PackedStringArray(["belllies", "noleave"]))
+	var d: HarvestDirector = s.d
+	var crowd: Crowd = s.crowd
+	var rules: Rules = s.rules
+	var g := d.targets[0]
+	var ctx := _fx_context(s)
+	rules.caster = func(script: GDScript, at: Vector2, extra: Dictionary) -> FxTimeline:
+		return FxTimeline.cast(script, ctx, at, extra)
+	_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	var place: Vector2 = crowd._grid.nearest_walkable(d.doors[g])
+	var near: Vector2 = crowd._grid.nearest_walkable(place + Vector2(5.0, 0.0))
+	for sol in crowd.soldiers:
+		sol.ground_pos = near
+	var fx := rules.cast(0, place, {"mode": "guard"}) as BellLiesFx
+	fx._process(BellLiesFx.T_CAST + 0.05)
+	var first: Person = null
+	for sol in crowd.soldiers:
+		if sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL:
+			first = sol
+			break
+	var arms := LawZone.circle(first.anchor, 0.6, [LawZone.NO_ARMS], 30.0)
+	crowd.add_law(arms)
+	_arrive(first, first.anchor)
+	_run(s, HarvestDirector.TICK * 3.0)
+	t.check(not crowd.in_law(c0, LawZone.NO_ARMS) and crowd.in_law(first, LawZone.NO_ARMS) and not d.razed(g)
+		and not (s.banners as Array).has("THE GUARD SEIZE THE CART"),
+		"NO ARMS on the arriving guard (not on the carter): he seizes no cart")
+	fx.free()
+	ctx.overhead.free()
+	ctx.ground.free()
+	_done(s)
 
 
 ## A NO LEAVING law laid round `at` on the crowd (as the amber cell or Fenced Rule lays one), lasting `seconds`.

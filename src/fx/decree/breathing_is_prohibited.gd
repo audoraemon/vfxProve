@@ -105,7 +105,8 @@ func _fx_process(delta: float) -> void:
 
 
 ## One frame of the choking: whoever stands inside now chokes (a newcomer from 0, the rest `delta` more), whoever is
-## not inside any more breathes again and is forgotten, and whoever has stood inside CHOKE seconds dies.
+## not inside any more breathes again and is forgotten, and whoever has stood inside CHOKE seconds dies. One rooted by a
+## NO LEAVING law that has lifted runs for the edge at once.
 func _choke(delta: float) -> void:
 	for e in ctx.field.in_rect(law.bounds()):
 		var p := e as Person
@@ -121,6 +122,10 @@ func _choke(delta: float) -> void:
 			# Nowhere to run: he clutches his throat where he stands until it is over.
 			_rooted[p] = true
 			p.scream(CHOKE - float(choking[p]) + 0.2)
+		elif _rooted.has(p) and not _held(p):
+			# The cell lifted mid-choke: there is somewhere to run again, and leaving still saves him.
+			_rooted.erase(p)
+			_gasp(p)
 	for p: Variant in choking.keys():
 		if not is_instance_valid(p) or not p.is_alive() or p.inside or p.chained or not law.contains(p.ground_pos):
 			choking.erase(p)

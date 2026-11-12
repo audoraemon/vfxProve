@@ -91,6 +91,7 @@ static func run(t) -> void:
 	_cast(t)
 	_drain(t)
 	_relight(t)
+	_taken(t)
 	_ending(t)
 	_prayers(t)
 	_knights(t)
@@ -215,6 +216,29 @@ static func _relight(t) -> void:
 	t.check(not d.vigil.active and _tag(d, "FLAME-BEARER") == null, "with all three dead the Vigil is over, and nobody is the flame-bearer")
 	_run(s, BrokenLanternsDirector.DRAIN_SECONDS)
 	t.check(d.is_drained(sh), "and nobody relights the shrine")
+	_done(s)
+
+
+## (final review) A broken shrine Eminent Domain took away (EnvironmentField.remove keep_node) cannot be relit: the bearer turns
+## back to his round, reaching its place raises nothing and counts nothing, and it drains as a shrine nobody reaches.
+static func _taken(t) -> void:
+	var s := _setup()
+	var d: BrokenLanternsDirector = s.d
+	var env: EnvironmentField = s.env
+	var banners: Array[String] = s.banners
+	_away(d)
+	var sh := d.shrines[1]
+	var at := d.relight_point(sh)
+	_break(sh)
+	env.remove(sh, true, true)
+	_run(s, DT * 2.0)
+	t.check(d.vigil.detour == Vector2.INF, "the bearer does not turn aside for a shrine taken away")
+	_arrive(d.vigil.bearer, at)
+	_run(s, DT * 2.0)
+	t.check(is_instance_valid(sh) and sh.taken and sh.destroyed and not env.structures().has(sh) and d.relit == 0 and d.draining(sh)
+		and not banners.has("THE FLAME RELIGHTS A LANTERN"), "at its place, the flame relights nothing: the shrine is gone, still draining")
+	_run(s, BrokenLanternsDirector.DRAIN_SECONDS)
+	t.check(d.is_drained(sh), "and it drains")
 	_done(s)
 
 

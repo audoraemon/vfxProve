@@ -227,6 +227,20 @@ static func run(t) -> void:
 			if not grid.walkable(Vector2(23.25 + 0.5 * float(x), 8.25 + 0.5 * float(y))):
 				shut += 1
 	t.check(house_out.destroyed and shut == 0, "the street stays open when a fall beside it stamps the town's ground again (%d)" % shut)
+	# (final review) The ruins it took away are kept, hidden, for whatever holds them -- and stay taken: a mission rebuilding
+	# one (Crown's Bread's engineers, Broken Lanterns' flame) raises nothing, and closes no cell of the street.
+	var kept := is_instance_valid(ruin) and is_instance_valid(house_in)
+	if kept:
+		ruin.restore()
+		house_in.restore()
+	shut = 0
+	for x in 20:
+		for y in 4:
+			if not grid.walkable(Vector2(17.25 + 0.5 * float(x), 8.25 + 0.5 * float(y))):
+				shut += 1
+	t.check(kept and ruin.taken and house_in.taken and ruin.destroyed and house_in.destroyed and not ruin.visible
+		and not env.structures().has(ruin) and not env.structures().has(house_in) and shut == 0,
+		"a ruin it took away cannot be raised again: restore() leaves it fallen, hidden, out of the town, the street open (%d closed)" % shut)
 
 	# --- By the river: no heap on the water, nobody thrown into it.
 	var wet: Person = crowd.citizens[5]
@@ -244,4 +258,29 @@ static func run(t) -> void:
 	t.check(dry and east >= 5, "by the river the rubble lies on the dry side only (%d heaps, %d east)" % [again.heaps.size(), east])
 	t.check(wet.is_alive() and grid.walkable(wet.ground_pos) and absf(wet.ground_pos.x - from2.x) > hl and wet.is_down(),
 		"one whose nearer side is the river is thrown clear onto dry ground (%s)" % [wet.ground_pos])
+	_done(made)
+	_kept_node(t)
+
+
+## (final review) EnvironmentField.remove(..., keep_node) marks the structure taken and lets go of it: restore() on it does
+## nothing -- it stays out of the field, fallen and hidden, and the walk grid keeps its ground open.
+static func _kept_node(t) -> void:
+	var made := _setup()
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[2]
+	for s in env.structures().duplicate():
+		if s.footprint.intersects(CLEAR):
+			env.remove(s)
+	var house := env.add_structure(Rect2(20.0, 8.5, 1.0, 1.0), 30.0, Structure.Kind.HOUSE, &"house")
+	var shut := not grid.walkable(house.center())
+	house.destroy(house.center(), &"stone")
+	env.remove(house, true, true)
+	var open := grid.walkable(house.center())
+	var restored := [0]
+	env.structure_restored.connect(func(_s: Structure) -> void: restored[0] += 1)
+	house.restore()
+	t.check(shut and open and is_instance_valid(house) and house.taken and house.destroyed and not house.visible
+		and not env.structures().has(house) and grid.walkable(house.center()) and restored[0] == 0,
+		"a structure removed with keep_node, then restore()d, stays taken: fallen, hidden, out of the field, its ground open, no restored signal")
+	house.free()
 	_done(made)

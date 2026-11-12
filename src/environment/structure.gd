@@ -201,6 +201,9 @@ var asleep := false
 ## sunk dock, a cathedral that holds no rite. It still stands, rotted grey-green (set_blighted()).
 var blighted := false
 const BLIGHT_TINT := Color(0.66, 0.78, 0.6)
+## Taken away whole, its node kept hidden for whatever still holds it (EnvironmentField.remove()'s keep_node: Eminent
+## Domain clearing a street): it is out of the town for good, so restore() does nothing.
+var taken := false
 ## Asleep while in view (_can_idle()): nothing on it moves, so only its light can change what it draws, and
 ## EnvironmentField checks that LIGHT_HZ times a second (idle_check()) instead of the structure processing every
 ## frame. A town centre shows ~250 buildings; per-frame processing of them all cost ~3 ms.
@@ -436,9 +439,9 @@ func ease_marks(level: float, crack_level: float) -> void:
 
 ## Rebuilt as it was before it fell (v0.05's engineers rebuild the gates and the bridge): standing, at full health and
 ## height, unmarked, its rubble gone. EnvironmentField relays restored, and the walk grid closes or opens its ground
-## again. Not for torches: their light is gone with them.
+## again. Not for torches: their light is gone with them, nor for one taken away (taken).
 func restore() -> void:
-	if not destroyed:
+	if not destroyed or taken:
 		return
 	wake()
 	destroyed = false

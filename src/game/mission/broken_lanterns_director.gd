@@ -177,11 +177,16 @@ func _drain(delta: float) -> void:
 		_sync_detour()
 
 
-## The flame-bearer at a broken shrine not yet drained relights it: it stands again, whole.
+## The flame-bearer at a broken shrine not yet drained relights it: it stands again, whole. One taken away (Eminent Domain:
+## Structure.taken) cannot be relit; it drains as one nobody reaches, and a bearer turned aside for it goes back to his round.
 func _relight() -> void:
 	if vigil == null or not vigil.active or not _alive(vigil.bearer):
 		return
+	var resync := false
 	for s: Structure in drain_left.keys():
+		if s.taken:
+			resync = resync or vigil.detour == relight_point(s)
+			continue
 		if s.distance_to(vigil.bearer.ground_pos) > RELIGHT_REACH:
 			continue
 		drain_left.erase(s)
@@ -190,15 +195,20 @@ func _relight() -> void:
 		rules.banner.emit("THE FLAME RELIGHTS A LANTERN")
 		_relit(s)
 		_sync_detour()
+	if resync:
+		_sync_detour()
 
 
-## The bearer turns aside for the nearest broken shrine not yet drained, or goes back to his round when there is none.
+## The bearer turns aside for the nearest broken shrine not yet drained (and not taken away), or goes back to his round when
+## there is none.
 func _sync_detour() -> void:
 	if vigil == null or not vigil.active:
 		return
 	var from := vigil.bearer.ground_pos if _alive(vigil.bearer) else temple_door
 	var best := Vector2.INF
 	for s: Structure in drain_left.keys():
+		if s.taken:
+			continue
 		var p := relight_point(s)
 		if best == Vector2.INF or from.distance_to(p) < from.distance_to(best):
 			best = p

@@ -188,7 +188,8 @@ static func _house_near(ctx: Dictionary, at: Vector2) -> Vector2:
 	var env: EnvironmentField = (ctx.crowd as Crowd)._env
 	var best := Vector2.INF
 	for st in env.near(at, 3.5):
-		if is_instance_valid(st) and not st.destroyed and FireManager.burns(st) and st.kind == Structure.Kind.HOUSE 				and not (ctx.crowd as Crowd).fires.is_burning(st) and not Walls.outside(st.center()):
+		if is_instance_valid(st) and not st.destroyed and FireManager.burns(st) and st.kind == Structure.Kind.HOUSE \
+				and not (ctx.crowd as Crowd).fires.is_burning(st) and not Walls.outside(st.center()):
 			if best == Vector2.INF or st.center().distance_to(at) < best.distance_to(at):
 				best = st.center()
 	return best
@@ -531,7 +532,8 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 		var out := door if door != Vector2.INF else _out_spot(bc, crowd, m)
 		var way: float = (m.ground_pos.distance_to(door) if door != Vector2.INF else bc._walk_len(crowd, m.ground_pos, out)) if out != Vector2.INF else INF
 		var skey := "scared_%d" % m.get_instance_id()
-		if m.mind != Person.Mind.FLEE and w.omen_fallen and w.phase != WarningDirector.Phase.DELIVERED and bc._slot_ready(rules, ctx.slots, "breath") 				and way <= SCARE_WALK and not ctx.memo.has(skey):
+		if m.mind != Person.Mind.FLEE and w.omen_fallen and w.phase != WarningDirector.Phase.DELIVERED and bc._slot_ready(rules, ctx.slots, "breath") \
+				and way <= SCARE_WALK and not ctx.memo.has(skey):
 			var back := _fright_at(crowd, m, out)
 			if back != Vector2.INF:
 				ctx.memo[skey] = true

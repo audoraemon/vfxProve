@@ -42,7 +42,9 @@ static func run(t) -> void:
 	var quiet := ["noleave", "belllies", "magnify", "curfew", "abolition", "redefine", "bound", "sealed"]
 	for key: String in prices:
 		var b := PowerBook.get_power(key)
-		if int(b.dp) != int(prices[key]) or PowerBook.icon(key) == null or PowerBook.hud_icon(key) == null or PowerBook.clip(key) == null 				or not ResourceLoader.exists(String(b.path)) or not Targeting.AREAS.has(key) or not Rules.POWER_KINDS.has(key) 				or PowerBook.authority_of(key) != "decree" or PowerBook.is_quiet(key) != quiet.has(key):
+		if int(b.dp) != int(prices[key]) or PowerBook.icon(key) == null or PowerBook.hud_icon(key) == null or PowerBook.clip(key) == null \
+				or not ResourceLoader.exists(String(b.path)) or not Targeting.AREAS.has(key) or not Rules.POWER_KINDS.has(key) \
+				or PowerBook.authority_of(key) != "decree" or PowerBook.is_quiet(key) != quiet.has(key):
 			problems.append(key)
 	t.check(problems.is_empty() and Array(PowerBook.of_authority("decree")) == ["noleave", "belllies", "breath", "magnify", "redefine", "bound", "disorder", "curfew", "erase", "eminent", "fenced", "abolition", "cage", "sealed"]
 		and PowerBook.authority_title("decree") == "DECREE",

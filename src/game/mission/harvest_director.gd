@@ -406,13 +406,13 @@ func _seize_look() -> void:
 		_guard_fx = null
 		_guard_at = Vector2.INF
 		return
-	var arrived := false
+	var guard: Person = null
 	for sol in crowd.soldiers:
 		if is_instance_valid(sol) and sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL \
 				and sol.anchor.distance_to(_guard_at) <= SEIZE_RING and sol.ground_pos.distance_to(sol.anchor) <= SEIZE_ARRIVE:
-			arrived = true
+			guard = sol
 			break
-	if not arrived:
+	if guard == null:
 		return
 	var at := _guard_at
 	_guard_fx = null
@@ -422,7 +422,7 @@ func _seize_look() -> void:
 		if razed(s):
 			continue
 		for c: Variant in carters.get(s, []):
-			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at) and not crowd.disarmed(c, c):  # (Decree's NO ARMS)
+			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at) and not crowd.disarmed(guard, c):  # (Decree's NO ARMS, on him or the guard)
 				rules.banner.emit("THE GUARD SEIZE THE CART")
 				_spoil(s, "seized")
 				seized = true

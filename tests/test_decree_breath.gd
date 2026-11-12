@@ -183,4 +183,19 @@ static func run(t) -> void:
 		"and all inside both die at 3.0 s; one in the cell but outside the breath lives")
 	cell.free()
 	air4.free()
+
+	# --- (final review) Rooted in the cell, he runs the moment the cell lifts mid-choke: leaving still saves him.
+	var m: Person = crowd.citizens[9]
+	m.ground_pos = at + Vector2(1.5, 0.0)
+	var cell2: NoLeaveFx = FxTimeline.cast(load("res://src/fx/decree/leaving_is_prohibited.gd"), ctx, at)
+	cell2._process(NoLeaveFx.T_SEAL)
+	var air5: BreathFx = FxTimeline.cast(load(PATH), ctx, at)
+	_run([cell2, air5], BreathFx.T_LAND + 0.3, [m])
+	var rooted := air5.choking.has(m) and m.is_screaming() and m.ground_pos.distance_to(at) < BreathFx.RADIUS
+	cell2._lift()
+	_run([air5], 3.0, [m])
+	t.check(rooted and m.is_alive() and m.ground_pos.distance_to(at) > BreathFx.RADIUS and not air5.choking.has(m),
+		"rooted in the cell, he runs once it lifts mid-choke and lives (%.2f out)" % m.ground_pos.distance_to(at))
+	cell2.free()
+	air5.free()
 	_done(made)

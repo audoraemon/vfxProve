@@ -11,9 +11,9 @@ god_veil_tax_play_3	--scenario=tax --case=play --seed=3 --god=veil:1	-756794392
 god_passage_tax_play_1	--scenario=tax --case=play --seed=1 --god=passage:1	-717303540
 god_passage_tax_play_2	--scenario=tax --case=play --seed=2 --god=passage:1	-92436106
 god_passage_tax_play_3	--scenario=tax --case=play --seed=3 --god=passage:1	-60490378
-god_decree_tax_play_1	--scenario=tax --case=play --seed=1 --god=decree:1	-558172844
-god_decree_tax_play_2	--scenario=tax --case=play --seed=2 --god=decree:1	-62713319
-god_decree_tax_play_3	--scenario=tax --case=play --seed=3 --god=decree:1	-198710000
+god_decree_tax_play_1	--scenario=tax --case=play --seed=1 --god=decree:1	-698528976
+god_decree_tax_play_2	--scenario=tax --case=play --seed=2 --god=decree:1	-664826322
+god_decree_tax_play_3	--scenario=tax --case=play --seed=3 --god=decree:1	-962892280
 god_dominion_tax_play_1	--scenario=tax --case=play --seed=1 --god=dominion:1	913766670
 god_dominion_tax_play_2	--scenario=tax --case=play --seed=2 --god=dominion:1	-878250505
 god_dominion_tax_play_3	--scenario=tax --case=play --seed=3 --god=dominion:1	-936848258

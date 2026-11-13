@@ -12,9 +12,9 @@ god_veil_warning_play_3	--scenario=warning --case=play --board --god=veil:1 --se
 god_passage_warning_play_1	--scenario=warning --case=play --board --god=passage:1 --seed=1	-885396591
 god_passage_warning_play_2	--scenario=warning --case=play --board --god=passage:1 --seed=2	-427816675
 god_passage_warning_play_3	--scenario=warning --case=play --board --god=passage:1 --seed=3	-674949952
-god_decree_warning_play_1	--scenario=warning --case=play --board --god=decree:1 --seed=1	-102654811
-god_decree_warning_play_2	--scenario=warning --case=play --board --god=decree:1 --seed=2	-476966376
-god_decree_warning_play_3	--scenario=warning --case=play --board --god=decree:1 --seed=3	103556342
+god_decree_warning_play_1	--scenario=warning --case=play --board --god=decree:1 --seed=1	-385080684
+god_decree_warning_play_2	--scenario=warning --case=play --board --god=decree:1 --seed=2	-868107511
+god_decree_warning_play_3	--scenario=warning --case=play --board --god=decree:1 --seed=3	3817408
 god_dominion_warning_play_1	--scenario=warning --case=play --board --god=dominion:1 --seed=1	-81108209
 god_dominion_warning_play_2	--scenario=warning --case=play --board --god=dominion:1 --seed=2	-446415573
 god_dominion_warning_play_3	--scenario=warning --case=play --board --god=dominion:1 --seed=3	79886604

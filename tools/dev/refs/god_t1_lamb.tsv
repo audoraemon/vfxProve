@@ -12,9 +12,9 @@ god_veil_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=veil:1	-72169288
 god_passage_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=passage:1	-168949626
 god_passage_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=passage:1	-579487318
 god_passage_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=passage:1	-373034920
-god_decree_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=decree:1	-680299187
+god_decree_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=decree:1	-910462883
 god_decree_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=decree:1	-803127383
-god_decree_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=decree:1	-790565049
+god_decree_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=decree:1	-230395448
 god_dominion_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=dominion:1	183724006
 god_dominion_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=dominion:1	-920685696
 god_dominion_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=dominion:1	-894560217

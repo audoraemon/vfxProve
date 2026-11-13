@@ -74,7 +74,7 @@ static func run(t) -> void:
 		and not (Animal.Breed.ZOMBIE in Animal.DOGS) and not (Animal.Breed.SPIRIT in Animal.CATS)
 		and Animal.sheet(Animal.Breed.BONE_GIANT).get("cell", 0) == 96
 		and Animal.sheet(Animal.Breed.SPIRIT).is_empty() and Animal.sheet(Animal.Breed.ZOMBIE).is_empty(),
-		"the three breeds are appended (indices kept), the giant has its 96 px sheet, the zombie and spirit have none")
+		"the breeds are appended (indices kept), the giant has its 96 px sheet, the zombie and spirit have none")
 
 	# --- Zombie wears the dead person's design.
 	var design := PeopleArt.design_for(false, 0, 0, 0.1)
@@ -230,6 +230,14 @@ static func run(t) -> void:
 	t.check(got.size() == 1 and got[0][0] == lone and got[0][1] == &"pit"
 		and rem.near(lone.ground_pos, 0.5).is_empty() and v.living().is_empty(),
 		"a wraith kills the soldier it reaches as pit, leaves no body, and is spent (%s)" % [got])
+	v = _fresh(made)
+	var gone_s: Person = crowd.soldiers[7]
+	gone_s.ground_pos = at + Vector2(0.3, 0.0)
+	var wlive := DeathParts.wraith(v, at)
+	wlive.target = gone_s
+	field.kill(gone_s, &"frenzy", gone_s.ground_pos)
+	_step(v, 1.0)
+	t.check(wlive.is_alive() and v.living().has(wlive), "a wraith whose target fell already is not spent")
 	v = _fresh(made)
 	var nearc: Person = crowd.citizens[11]
 	var fars: Person = crowd.soldiers[6]

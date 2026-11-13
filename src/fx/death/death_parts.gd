@@ -14,7 +14,7 @@ const GRAVE_GREEN := Color("7fe8b0")
 ## What greys a zombie's own colours.
 const ZOMBIE_TINT := Color(0.58, 0.62, 0.6)
 
-## A zombie lives this long, walks at ZOMBIE_PACE of a walk, falls to ZOMBIE_BLOWS blows, and smells prey within ZOMBIE_SEEK.
+## A zombie lives this long, walks at ZOMBIE_PACE of a walk (ZOMBIE_CHASE times that once it has prey), falls to ZOMBIE_BLOWS blows, and smells prey within ZOMBIE_SEEK.
 const ZOMBIE_LIFE := 30.0
 const ZOMBIE_PACE := 1.0
 ## With prey in sight a zombie runs at this multiple of its pace.

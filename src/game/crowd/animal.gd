@@ -49,6 +49,8 @@ const SPIRIT_BODY := Color(0.86, 0.9, 0.94, 0.5)
 const SPIRIT_HOVER := 5.0
 const SPIRIT_BOB := 1.2
 ## The wraith's painted sheet (rows drift_se, drift_ne, strike_se; its json holds a [w, h] cell, so sheet() is not used).
+const WRAITH_HOVER := 6.0
+const WRAITH_BOB := 2.0
 const WRAITH_SHEET := "res://assets/pixellab/fx/wraith/wraith.png"
 ## A wraith: the painted sheet (drift_ne with its back turned, strike_se while the bite pose plays, else drift_se), mirrored
 ## by `facing`, over a faint cold aura. Without the sheet on disk, the spirit shape at twice the size.
@@ -58,9 +60,11 @@ func _draw_wraith(flash: bool) -> void:
 	draw_circle(Vector2.ZERO, 9.0, Color(aura, 0.06))
 	draw_circle(Vector2.ZERO, 6.0, Color(aura, 0.10))
 	draw_set_transform(Vector2.ZERO)
+	# It hovers 6 px with a 2 px bob (each wraith on its own phase), the aura staying on the ground.
+	var lift := Vector2(0, -(WRAITH_HOVER + WRAITH_BOB * sin(_hover_t * 2.4 + float(get_instance_id() % 628) / 100.0)))
 	var sh := _wraith_sheet()
 	if sh.is_empty():
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2(2.0, 2.0))
+		draw_set_transform(lift.round(), 0.0, Vector2(2.0, 2.0))
 		_draw_spirit(flash)
 		draw_set_transform(Vector2.ZERO)
 		return
@@ -74,7 +78,7 @@ func _draw_wraith(flash: bool) -> void:
 	var cell: Vector2 = sh.cell
 	var foot: Vector2 = sh.foot
 	var col := worn_tint * (Color(2.0, 2.0, 2.0) if flash else Color.WHITE)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(float(facing), 1.0))
+	draw_set_transform(lift.round(), 0.0, Vector2(float(facing), 1.0))
 	draw_texture_rect_region(sh.tex, Rect2(-foot, cell), Rect2(Vector2(f * cell.x, row * cell.y), cell), col)
 	draw_set_transform(Vector2.ZERO)
 

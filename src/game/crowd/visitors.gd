@@ -354,20 +354,21 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		return
 	r.bite_in = r.bite_every
 	a.facing = 1 if who.ground_pos.x - who.ground_pos.y > a.ground_pos.x - a.ground_pos.y else -1
-	a.bit()
-	var was := who.is_alive()
 	if r.touch_kill != &"":
-		# Its touch kills outright: no knock, no hurt.
+		# Its touch kills outright: no knock, no hurt. Spent only when it did kill (the target may have fallen already).
 		a.bit()
-		if _field.kill(who, r.touch_kill, a.ground_pos):
+		var killed := _field.kill(who, r.touch_kill, a.ground_pos)
+		if killed:
 			kills += 1
 		var touched := not r.has_bitten
 		r.has_bitten = true
 		bitten.emit(a, who, touched)
-		if r.spent_on_kill:
+		if killed and r.spent_on_kill:
 			_rules.erase(a)
 			_free(a, true)
 		return
+	a.bit()
+	var was := who.is_alive()
 	if r.knock_first and not who.soldier and not r.knocked.has(who):
 		who.knock_down()  # the first bite only knocks them flat; a second within KNOCK_WINDOW kills
 		r.knocked[who] = KNOCK_WINDOW

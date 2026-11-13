@@ -1445,7 +1445,12 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	bf.camera.position = (Iso.ground_to_screen(look) + Vector2(0, -10 if whisper else -16)).round()
 	bf.camera.reset_smoothing()
 	await _frames(2)
-	var fx := _force_cast(0, at, Vector2(1, 0), extra)
+	# A drag power (Erasing Distance) given --to runs toward it, as a drag does; any other faces +x.
+	var cast_dir := Vector2(1, 0)
+	if to_arg != "" and key != "bound" and String(PowerBook.get_power(key).get("aim", "")) == "drag" \
+			and (extra["to"] as Vector2).distance_to(at) > 0.01:
+		cast_dir = ((extra["to"] as Vector2) - at).normalized()
+	var fx := _force_cast(0, at, cast_dir, extra)
 	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
 	var fx_clock := "--fx-clock" in OS.get_cmdline_user_args()
 	var crop := PowerBook.CLIP_SIZE * 2

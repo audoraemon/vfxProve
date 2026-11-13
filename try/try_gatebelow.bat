@@ -1,3 +1,3 @@
 @echo off
-rem Death Tier IV: The Gate Below (click: the ground opens; pale arms drag the living under, and their souls climb out as wraiths that hunt soldiers).
+rem Death Tier IV: The Gate Below (click: a rift splits the ground and pale arms reach up and drag the living under; their souls climb out as wraiths that kill soldiers by touch).
 call "%~dp0..\try.bat" gatebelow

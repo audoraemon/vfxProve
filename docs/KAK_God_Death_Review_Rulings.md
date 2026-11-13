@@ -1,7 +1,7 @@
 # KAK God: Death review rulings
 
 Source spec: docs/superpowers/specs/2026-11-13-kak-death-review-adjustments-design.md (the user's Discord review, 2026-11-13).
-Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings are the plan's picks for what the review left to the builder; Task 12 reconciles any number moved later.
+Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings are the plan's picks for what the review left to the builder; Task 12 reconciled the numbers the tasks shipped (R16-R23 amend or extend R1-R15).
 
 | # | Power | Ruling |
 |---|---|---|
@@ -20,6 +20,14 @@ Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings
 | R13 | Bench | Mission bench aid `--bench-cast=KEY` (optionally `--bench-bodies=N`). It passes when the effect's own cost is ≤ 5 ms: `avg_ms` with the cast minus without, the median of 3 alternating pairs on a quiet machine. Headless perf checks: horde (24 ghosts + 16 servants) and tide (30 zombies + giant + slams) under 5 ms, averaged over 200 frames. |
 | R14 | Kit | New kill kind `&"grave"`: added to `Remains.BODY_KINDS` and `DeathVoices.QUIET_KINDS`, with `Rules.POWER_KINDS["walker"] = [&"grave"]`. `Crowd._on_killed` returns after the death voice and before `alarms.incident` / `_hear_alarm` for it, as it does for `&"gone"`. |
 | R15 | Wheel | Effect hooks `follow_up_subject() -> Node2D` and `follow_up_orders() -> Array` (see Task 3). With a subject, a press within `Targeting.WHEEL_R` (1.2) of it opens the wheel on it; anywhere else is refused `"missed"`. |
+| R16 | Raise (amends R3) | `RaiseTheDeadFx.FRIGHT_R` 4.0 is applied per spirit in `_rise`; `DeathParts.SPIRIT_FRIGHT_R` stays 3.0 (Gravecall's wraiths). Why: Raise's lone spirit needed the wider scare once it no longer possesses; Gravecall's three overlap and keep the old circle. |
+| R17 | Wraith (amends R5, R9) | It hovers `Animal.WRAITH_HOVER` 6 px with a `WRAITH_BOB` 2 px bob. A touch-kill visitor is spent only when the kill succeeded. Why: the hover reads as a ghost, and a failed touch (a spared or guised target) must not cost the wraith its life. |
+| R18 | Walker (amends R7) | Attack pace scales `speed_mul` by the ratio (`ATTACK_PACE`), not replaces it, so Grave Tide's aura survives. A foe must be visible to be picked. Helpers `REPATH 0.5` and `REACH_EPS 0.01`. A decoy kill counts toward `KILLS_MOST`. Why: the pace must compose with other speed modifiers, and a kill the body spent on a decoy is still a kill. |
+| R19 | Gate Below (amends R8) | Ambient arms stand only on walkable ground, so cramped spots show fewer than `ARMS 24`. Why: arms standing in walls or houses looked wrong. |
+| R20 | Pale Reign (amends R10) | The horde also sinks at its 24th kill (`HORDE_KILLS`), not only at `SPAN`. `POUR_R 1.0` is the radius the opening ghosts pour out in. Visitors: a bounded rule (`bounds`) ignores a marked quarry outside its bounds. Why: the kill cap must end the horde, and a ghost must never chase a victim out of the district. |
+| R21 | Serpent (amends R11) | `COLUMN 40` replaces `EMERGE`; `HEAD_R 64` (test-only, `32 * SCALE`); `GLOW_R 2.6`; `HOLE 1.4`; `NECK_CUT` and the collar's feather skirt (the north-east socket, measured on the green neck, is `(12, 28)`). `FRIGHT_R = BAND + 3`, so with `BAND 2.0` it grew 4 to 5. Why: the seam, the rise and the flee radius all follow the doubled size. |
+| R22 | Grave Tide (amends R12) | No slam from a giant carried off this frame. The slam origin is the landing spot first, then the giant's current spot. Why: a giant lifted away must not slam from where it no longer is. |
+| R23 | Tooling (amends R13) | `crowd_check` must be run with `--fixed-fps 60` as an engine arg before `-s`. Why: after `--` it is ignored and the checksum wanders. |
 
 ## Baseline (a3478ce6)
 

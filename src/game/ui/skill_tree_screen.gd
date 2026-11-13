@@ -644,7 +644,7 @@ func _draw_detail() -> void:
 	var button := TreeDetail.buy_button(_slot, key, selected.y)
 	var reason := refused_reason if refused_reason != "" else String(button.reason)
 	if reason != "":
-		UiTheme.text(_ui, Vector2(INFO_X, 340.0), UiTheme.fit(reason, INFO_W, UiTheme.SIZE_SMALL), UiTheme.SIZE_SMALL,
+		UiTheme.text(_ui, Vector2(INFO_X, 347.0), UiTheme.fit(reason, INFO_W, UiTheme.SIZE_SMALL), UiTheme.SIZE_SMALL,
 			UiTheme.COL_BAD if refused_reason != "" else Color(UiTheme.COL_BAD, 0.75))
 	_draw_levels(key)
 	_draw_buttons(button)

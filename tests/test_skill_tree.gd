@@ -303,7 +303,7 @@ static func _icons_loaded(t) -> void:
 	s.free()
 
 
-## Nothing the page writes is cut: every description fits two lines of the info column with no "...", and every node name fits its
+## Nothing the page writes is cut: every description fits three lines of the info column with no "...", and every node name fits its
 ## label, no two labels of a wheel overlap and none leaves the screen.
 static func _texts_fit(t) -> void:
 	var cut := PackedStringArray()
@@ -318,7 +318,7 @@ static func _texts_fit(t) -> void:
 					if key == "":
 						continue
 					var d := TreeDetail.description(key, SkillTreeScreen.INFO_W)
-					if d.size() > 2 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
+					if d.size() > 3 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
 						cut.append(key)
 		for col in 3:
 			var labels: Array[Rect2] = []
@@ -348,6 +348,6 @@ static func _texts_fit(t) -> void:
 					if labels[a].intersects(labels[b]):
 						overlaps.append("%s col %d labels %d/%d" % [type, col, a, b])
 		s.free()
-	t.check(cut.is_empty(), "every description fits two lines at the info column's width, none ends in ... (%s)" % [cut])
+	t.check(cut.is_empty(), "every description fits three lines at the info column's width, none ends in ... (%s)" % [cut])
 	t.check(chopped.is_empty(), "every node name shows whole, or visibly ellipsised within its label (%s)" % [chopped])
 	t.check(overlaps.is_empty(), "no two node labels overlap and none leaves the screen (%s)" % [overlaps])

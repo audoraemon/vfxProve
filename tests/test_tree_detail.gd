@@ -99,7 +99,7 @@ static func _blurbs(t) -> void:
 					continue
 				n += 1
 				var d := TreeDetail.description(key, TreeDetail.DESCRIPTION_W)
-				if PowerBook.blurb(key) == "" or d.size() > 2 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
+				if PowerBook.blurb(key) == "" or d.size() > 3 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
 					bad.append(key)
-	t.check(n == 52 and bad.is_empty(), "all %d table keys have a blurb that fits two lines at %d px (%s)" % [n, int(TreeDetail.DESCRIPTION_W), bad])
+	t.check(n == 52 and bad.is_empty(), "all %d table keys have a blurb that fits three lines at %d px (%s)" % [n, int(TreeDetail.DESCRIPTION_W), bad])
 	t.check(PowerBook.blurb("nova") == "Huge circle", "a row with no blurb falls back to its shape, capitalised (%s)" % [PowerBook.blurb("nova")])

@@ -8,8 +8,8 @@ const REFUSALS := {"unknown": "Not yet chosen", "far": "Too far from your nature
 	"max": "Already at level 5", "points": "Not enough ability points"}
 const ROMAN := ["I", "II", "III", "IV", "V"]
 ## The description keeps to this many lines.
-const DESCRIPTION_LINES := 2
-## The width the screen gives a description (its info column); the blurbs are written to fit two lines of it.
+const DESCRIPTION_LINES := 3
+## The width the screen gives a description (its info column); the blurbs are written to fit three lines of it.
 const DESCRIPTION_W := 202.0
 
 
@@ -20,7 +20,7 @@ static func tags(key: String) -> PackedStringArray:
 	return PackedStringArray([PowerBook.authority_of(key).to_upper(), "TIER " + roman, "QUIET" if PowerBook.is_quiet(key) else "LOUD"])
 
 
-## The power's blurb wrapped to `width` px, cut to two lines (the second ends "..." if the text went on).
+## The power's blurb wrapped to `width` px, cut to three lines (the last ends "..." if the text went on).
 static func description(key: String, width: float) -> PackedStringArray:
 	var lines := UiTheme.wrap(PowerBook.blurb(key), width, UiTheme.SIZE_SMALL)
 	if lines.size() <= DESCRIPTION_LINES:
@@ -28,7 +28,9 @@ static func description(key: String, width: float) -> PackedStringArray:
 	var last := lines[DESCRIPTION_LINES - 1]
 	while last.length() > 1 and UiTheme.width(last + "...", UiTheme.SIZE_SMALL) > width:
 		last = last.substr(0, last.length() - 1).strip_edges(false, true)
-	return PackedStringArray([lines[0], last + "..."])
+	var kept := lines.slice(0, DESCRIPTION_LINES - 1)
+	kept.append(last + "...")
+	return kept
 
 
 ## The level column: {"head", "rows", "might", "twist"}. head is "LEARN" (rows = level 1's numbers, old == new), "LEVEL n -> n+1"

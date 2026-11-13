@@ -1,8 +1,8 @@
 extends RefCounted
 ## Redefine (Decree, Tier II; spec 5.3): say what a person is and, for 25 s, the law agrees. The MAX_NAMED people nearest
 ## the click within PICK_R are named (by distance, ties by instance order, never a roll), each with LawMark under the
-## effect's own owner id, and a gilt word floats over each. CRIMINAL: every guard who sees him goes for him (a soldier is
-## hunted by his own). OFFICER: no guard takes him for a suspect (an inquisitor at 1.0 does not seize a believer, who still
+## effect's own owner id, and a gilt word floats over each. CRIMINAL: everyone within 4 runs from him and every guard within 8
+## goes for him (a soldier is hunted by his own). OFFICER: no guard takes him for a suspect (an inquisitor at 1.0 does not seize a believer, who still
 ## counts). NOBODY: no one sees him. After SPAN every mark it set is lifted; ending early, or leaving the tree, lifts them too,
 ## and only its own. Quiet.
 
@@ -112,10 +112,16 @@ static func _criminal(t) -> void:
 	var named: Person = crowd.soldiers[0]
 	var s1: Person = crowd.soldiers[1]
 	var s2: Person = crowd.soldiers[2]
+	var s3: Person = crowd.soldiers[3]
+	var s4: Person = crowd.soldiers[4]
 	named.ground_pos = at
 	s1.ground_pos = at + Vector2(2.0, 0.0)
 	s2.ground_pos = at + Vector2(0.0, -2.4)
-	for s: Person in [named, s1, s2]:
+	s3.ground_pos = grid.nearest_walkable(at + Vector2(-7.0, 0.0))  # past the old sight of 3, within PURSUE_R
+	s4.ground_pos = grid.nearest_walkable(at + Vector2(0.0, 11.0))  # past PURSUE_R
+	var gap3 := s3.ground_pos.distance_to(at)
+	var gap4 := s4.ground_pos.distance_to(at)
+	for s: Person in [named, s1, s2, s3, s4]:
 		s.mind = Person.Mind.POST
 	var fx: FxTimeline = FxTimeline.cast(load(PATH), ctx, at, {"mode": "criminal"})
 	t.check(fx.get("named") == [named] and LawMark.wanted(named), "CRIMINAL names the soldier alone")
@@ -123,8 +129,11 @@ static func _criminal(t) -> void:
 	t.check(s1.mind == Person.Mind.FIGHT and s1.fight_target == named and s1._fight_rule == Person.FightRule.TARGET_ONLY
 		and s2.mind == Person.Mind.FIGHT and s2.fight_target == named, "the other soldiers go for him, a TARGET_ONLY fight")
 	t.check(named.mind != Person.Mind.FIGHT or named.fight_target != named, "he is not set on himself")
+	t.check(gap3 > 6.0 and gap3 <= LawMark.PURSUE_R and s3.mind == Person.Mind.FIGHT and s3.fight_target == named,
+		"a guard at 7 pursues him (%.1f)" % gap3)
+	t.check(gap4 > LawMark.PURSUE_R and s4.mind != Person.Mind.FIGHT, "one past 8 does not (%.1f)" % gap4)
 	fx.end_now()
-	t.check(LawMark.kind_of(named) == &"" and s1.mind != Person.Mind.FIGHT and s2.mind != Person.Mind.FIGHT,
+	t.check(LawMark.kind_of(named) == &"" and s1.mind != Person.Mind.FIGHT and s2.mind != Person.Mind.FIGHT and s3.mind != Person.Mind.FIGHT,
 		"ended, the law is lifted and his hunters are called off")
 	Breath._done(made)
 

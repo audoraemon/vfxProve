@@ -1,8 +1,10 @@
 extends RefCounted
 ## Eminent Domain (Decree, Tier IV; spec 5.7): a road dragged through the town. Every structure, wall, stall, tree and
-## piece of decor the 10 x 2 strip overlaps is claimed, torn down and taken away whole (the street is left bare); whoever stands in it (or shelters in a house it
-## claims) is thrown clear to the nearer side, knocked down, at half their health -- nobody dies of it. It leaves a clear
-## street, its cells open, with law rubble piled along both long sides, never on the water. All by distance: no rolls.
+## piece of decor the 10 x 2 strip overlaps is claimed, torn down and taken away whole at the tear (the street is left
+## bare); whoever stands in it (or shelters in a house it claims) is thrown clear to the nearer side, knocked down, at half
+## their health -- nobody dies of it. Each building's look is shoved to the nearer side (review R5) and becomes a heap of
+## its own ruins there; plain heaps fill the gaps between them, never on the water, never closing a cell of the street.
+## All by distance: no rolls, so a cast twice leaves the same.
 
 const PATH := "res://src/fx/decree/eminent_domain.gd"
 const DT := 0.05
@@ -154,8 +156,13 @@ static func run(t) -> void:
 	t.check(standing and not a.is_down() and a.ground_pos.is_equal_approx(Vector2(18.5, 9.4)) and _has(env, barrel_in)
 		and sheltered.inside, "while the strip is claimed, nothing is torn down and nobody is moved")
 
-	# --- The tear, and the throw.
-	_run(fx, DT + float(ef.T_THROW) + DT)
+	# --- The tear: all it claims is taken away at once; only its look is shoved aside, and no heap lies yet.
+	_run(fx, DT)
+	var at_once := _taken(env, ruin) and _taken(env, house_in) and _taken(env, house_edge)
+	t.check(at_once and fx.heaps.is_empty() and is_equal_approx(float(ef.T_SHOVE), 0.5),
+		"at the tear the buildings are taken away at once, their heaps still to come (%d heaps)" % fx.heaps.size())
+	# --- The throw, and the shove's end.
+	_run(fx, maxf(float(ef.T_THROW), float(ef.T_SHOVE)) + DT)
 	var gone := _taken(env, ruin)
 	for s in claimed:
 		gone = gone and _taken(env, s)
@@ -215,6 +222,40 @@ static func run(t) -> void:
 			north += 1
 	t.check(ok and north >= 6 and south >= 5,
 		"law rubble lies along both long sides, outside the street, never in a standing house or on a person (%d, %d)" % [north, south])
+	# Each building's look was shoved to its nearer side, and lies there as a heap of its own ruins; plain heaps fill only
+	# the gaps between them, so neither long side has a gap wider than HEAP_EVERY.
+	var own := LawRubble.art_tag_from(house_edge)
+	var edge_heap: Structure = null
+	for h: Structure in heaps:
+		if h.art_tag == own and h.center().y > 9.0 + hl and h.footprint.position.x <= house_edge.center().x 				and h.footprint.end.x >= house_edge.center().x:
+			edge_heap = h
+	t.check(own != &"" and edge_heap != null and fx.shoved >= 5,
+		"the house on the street's south edge lies as a heap of its own ruins (%s) on that side, by its place (%d own heaps)"
+		% [own, fx.shoved])
+	var built: Array[Rect2] = []
+	for pl: Dictionary in fx._plans:
+		if pl.ok:
+			built.append(pl.rect)
+	var apart := true
+	for h: Structure in heaps:
+		if built.has(h.footprint):
+			continue
+		for r in built:
+			apart = apart and not (signf(r.get_center().y - 9.0) == signf(h.center().y - 9.0)
+				and h.footprint.position.x < r.end.x and h.footprint.end.x > r.position.x)
+	var row: Array[Rect2] = []
+	for h: Structure in heaps:
+		if h.center().y < 9.0:
+			row.append(h.footprint)
+	row.sort_custom(func(p: Rect2, q: Rect2) -> bool: return p.position.x < q.position.x)
+	var widest := row[0].position.x - 17.0 if not row.is_empty() else INF
+	for k in range(1, row.size()):
+		widest = maxf(widest, row[k].position.x - row[k - 1].end.x)
+	if not row.is_empty():
+		widest = maxf(widest, 27.0 - row[-1].end.x)
+	t.check(apart and built.size() == fx.shoved and widest <= float(ef.HEAP_EVERY),
+		"plain heaps fill only the gaps between the buildings' own, and the north side has no gap over %.1f (widest %.2f)"
+		% [float(ef.HEAP_EVERY), widest])
 	t.check(beside.ground_pos.distance_to(Vector2(26.5, 10.6)) > 0.1 and absf(beside.ground_pos.y - 9.0) > 1.6,
 		"one standing where a heap is laid is pushed out from under it (%s)" % [beside.ground_pos])
 	_run(fx, fx.duration)
@@ -260,6 +301,45 @@ static func run(t) -> void:
 		"one whose nearer side is the river is thrown clear onto dry ground (%s)" % [wet.ground_pos])
 	_done(made)
 	_kept_node(t)
+	var first := _digest()
+	t.check(first != "" and first == _digest(),
+		"cast twice on the same town, it leaves the same heaps, the same looks and the same thrown (%d chars)" % first.length())
+
+
+## One cast on a fresh town's meadow (three houses, a stall, a barrel, two people), run to its end: what it left, as text.
+static func _digest() -> String:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var ctx: FxContext = made[5]
+	var i := 0
+	for person in crowd.citizens + crowd.soldiers:
+		person.ground_pos = Vector2(-27.0 + float(i % 20) * 0.3, -27.0 + float(i / 20) * 0.3)
+		i += 1
+	for s in env.structures().duplicate():
+		if s.footprint.intersects(CLEAR):
+			env.remove(s)
+	for d in env.decor().duplicate():
+		if CLEAR.has_point(d.at):
+			env.remove_decor(d)
+	env.rng.seed = 11  # the houses' own seeds (their sprite sets), the same each time
+	env.add_structure(Rect2(18.0, 8.2, 1.2, 1.0), 30.0, Structure.Kind.HOUSE, &"house")
+	env.add_structure(Rect2(19.4, 9.3, 1.0, 1.0), 26.0, Structure.Kind.HOUSE, &"house")
+	env.add_structure(Rect2(23.0, 7.7, 1.6, 0.8), 34.0, Structure.Kind.HOUSE, &"house")
+	env.add_structure(Rect2(25.5, 9.4, 0.6, 0.6), 12.0, Structure.Kind.MARKET_STALL, &"stall")
+	_decor(env, Decor.Kind.BARREL, Vector2(21.0, 9.6))
+	crowd.citizens[0].ground_pos = Vector2(20.0, 8.6)
+	crowd.citizens[1].ground_pos = Vector2(24.0, 9.7)
+	var fx = FxTimeline.cast(load(PATH), ctx, FROM, {"dir": DIR})
+	_run(fx, float(fx.duration) + DT)
+	var out := "%d %d %d %d %d|" % [fx.claimed, fx.cleared, fx.removed, fx.thrown, fx.shoved]
+	for h: Structure in fx.heaps:
+		out += "%s %s %.3f;" % [h.footprint, h.art_tag, h.max_height]
+	for pl: Dictionary in fx._plans:
+		out += "%s %s;" % [pl.at, pl.ok]
+	out += "|%s %s" % [crowd.citizens[0].ground_pos, crowd.citizens[1].ground_pos]
+	_done(made)
+	return out
 
 
 ## (final review) EnvironmentField.remove(..., keep_node) marks the structure taken and lets go of it: restore() on it does

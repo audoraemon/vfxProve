@@ -142,6 +142,8 @@ var _time := 0.0
 var _windows: Array = []
 var _cracks: Array[PackedVector2Array] = []
 var _rubble: Array = []
+## A pile of law rubble's procedural heap (LawRubble.heap_parts()), built on its first drawing; empty for anything else.
+var _heap: Array = []
 var _top_piece := {}
 var _molten := 0.0
 var _burning := false
@@ -507,6 +509,10 @@ func _grow_view_box_for_sprite() -> void:
 	if region.has_area():
 		size = region.size
 		at -= region.position
+	# A set drawn at another size (law rubble) takes the box it is drawn in.
+	var fit := float(sprite.get("fit", 1.0))
+	size *= fit
+	at *= fit
 	var x0 := _base.x - (size.x - at.x if sprite.mirror else at.x)
 	_view_box = _view_box.merge(Rect2(Vector2(x0, _base.y - at.y), size).grow(VIEW_BOX_MARGIN))
 
@@ -966,6 +972,8 @@ func _draw_all() -> void:
 		_draw_torch(right_c, left_c)
 	elif kind == Kind.TREE:
 		_draw_stump()
+	elif role == LawRubble.ROLE and not rubble_top and not destroyed:
+		_draw_law_heap(light, dir)
 	else:
 		_draw_box(0.0, height, top_c, right_c, left_c, rubble_top)
 	if not rubble_top and kind in WINDOWED and not art_drawn:
@@ -1134,7 +1142,7 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 				var u := (i + 0.5) / 6.0
 				var p := _s[3].lerp(_s[2], u) + Vector2(0, -height * 0.55)
 				draw_rect(Rect2(p.round(), Vector2(2, 2)), Color("c89a2a").lerp(COL_CHAR, scorch))
-		Kind.CRATES:
+		Kind.CRATES when role != LawRubble.ROLE:
 			draw_line(_s[3].lerp(_s[2], 0.5), _s[3].lerp(_s[2], 0.5) + Vector2(0, -height), left_c.darkened(0.3), -1.0)
 			draw_line(_s[1].lerp(_s[2], 0.5), _s[1].lerp(_s[2], 0.5) + Vector2(0, -height), right_c.darkened(0.3), -1.0)
 		Kind.SHRINE:
@@ -1144,6 +1152,25 @@ func _draw_kind_details(top_c: Color, right_c: Color, left_c: Color) -> void:
 			draw_rect(Rect2(niche + Vector2(-1, -3), Vector2(2, 3)), COL_FLAME[1])
 			draw_rect(Rect2(niche + Vector2(-1, -2), Vector2(1, 1)), COL_FLAME[0])
 			draw_rect(Rect2(roof + Vector2(-6, -2), Vector2(12, 2)), top_c.lightened(0.12))
+
+
+## A pile of law rubble with the sprites off (LawRubble.heap_parts()): a dark foot, jagged stones heaped over its
+## footprint, lit by face like the rest of the town, and two broken beams across the top. Built once from the pile's
+## hash (no rng), then drawn through _fan() and _quad(), which batch.
+func _draw_law_heap(light: Color, dir: Vector2) -> void:
+	if _heap.is_empty():
+		_heap = LawRubble.heap_parts(footprint, max_height)
+	var stone := [Color("8f877b"), Color("746d63"), Color("5a544c")]
+	var normals := [Vector2.ZERO, Vector2(1, 0), Vector2(0, 1)]
+	var faces := []
+	for i in 3:
+		faces.append(_face_color(stone[i], normals[i], light, dir))
+	var wood := _palette()
+	_fan(_heap[2], faces[2].darkened(0.3))
+	for st: Array in _heap[0]:
+		_fan(st[0], faces[int(st[1])])
+	for b: Array in _heap[1]:
+		_quad(b[0], _face_color(wood[1 + int(b[1])], normals[1 + int(b[1])], light, dir).darkened(0.15))
 
 
 ## One flat-coloured polygon, star-shaped about its vertices' average (a rubble chunk, a heap's jagged top), as a

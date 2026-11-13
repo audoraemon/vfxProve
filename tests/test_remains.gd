@@ -112,6 +112,35 @@ static func run(t) -> void:
 	t.check(rem._drawn(held) and rem._shown_count() == 1, "moved, it is drawn once, where it now lies")
 	rem.take(held)
 
+	# Decree's dead are whole bodies (choked, the verdict, the bond, crushed): each is a remain, and its corpse lies
+	# BODY_HOLD before it fades, as a Death Mark's does. The town's own collapse (a house falling on its shelterers) is
+	# not one, and fades at once as before.
+	var decree_kinds: Array[StringName] = [&"choke", &"verdict", &"bound", &"crushed"]
+	var lying: Array[Person] = []
+	var recorded := true
+	for i in decree_kinds.size():
+		var at := Vector2(-12.0 - float(i) * 3.0, 12.0)
+		var body := _kill(made, 110 + i, at, decree_kinds[i])
+		lying.append(body)
+		var r := rem.pick(at)
+		recorded = recorded and r != null and r.kind == decree_kinds[i] and Remains.BODY_KINDS.has(decree_kinds[i])
+	var town_dead := _kill(made, 120, Vector2(-30, 12), &"collapse")
+	t.check(recorded and rem.pick(Vector2(-30, 12)) == null and not Remains.BODY_KINDS.has(&"collapse"),
+		"choke, verdict, bound and crushed each record a remain; the town's collapse records none")
+	for p in lying + [town_dead]:
+		p.tick(DummyEnemy.DEATH_FADE + 0.5)
+	var all_lie := lying.all(func(p: Person) -> bool: return p.modulate.a > 0.99 and p.state == DummyEnemy.State.DEAD)
+	t.check(all_lie and town_dead.modulate.a <= 0.0,
+		"past DEATH_FADE a law's dead still lie there whole; a collapse's dead has faded")
+	for p in lying:
+		p.tick(DummyEnemy.BODY_HOLD)
+	t.check(lying.all(func(p: Person) -> bool: return p.modulate.a <= 0.0),
+		"and they fade once BODY_HOLD has passed, as the Death Mark's")
+	t.check(DummyEnemy.HELD_KINDS.all(func(k: StringName) -> bool: return Remains.BODY_KINDS.has(k)),
+		"every kind whose body is held is a whole body")
+	for r in rem.all():
+		rem.take(r)
+
 	# Rules.
 	var rules := Rules.new().setup(PackedStringArray(["smite", "deathmark"]), null, made[1], made[2], crowd, made[4])
 	var rem_on_before := Remains.wants(["smite", "deathmark"])

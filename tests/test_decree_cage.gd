@@ -2,7 +2,7 @@ extends RefCounted
 ## The Closing Cage (Decree, Tier V; spec 5.9): a ring of brass bars carved with law rises round a district of 12, and over
 ## 30 s slides in toward the middle until it is 1.5 across. Nobody can pass the bars (one NO LEAVING law whose radius
 ## shrinks): people and visitors at the bars are pushed inward ahead of them; one whose inward step is blocked by a
-## building the bars have not yet felled is cut down there (kill kind collapse). A building cracks as the bars touch it
+## building the bars have not yet felled is cut down there (kill kind crushed). A building cracks as the bars touch it
 ## and falls when they pass its middle, crushing whoever shelters in it. At the end everyone still inside dies; whoever
 ## stood outside 12 at the cast is untouched, and whoever walked in during the close is caged too. All by distance.
 
@@ -56,9 +56,9 @@ static func run(t) -> void:
 	t.check(String(b.get("name", "")) == "The Closing Cage" and int(b.get("dp", 0)) == 6 and float(b.get("cooldown", 0.0)) == 999.0
 		and String(b.get("aim", "")) == "click" and not PowerBook.is_quiet("cage") and PowerBook.authority_of("cage") == "decree"
 		and ResourceLoader.exists(String(b.get("path", ""))) and String(area.get("shape", "")) == "circle"
-		and is_equal_approx(float(area.get("r", 0.0)), 12.0) and Rules.POWER_KINDS.get("cage", null) == [&"collapse"]
+		and is_equal_approx(float(area.get("r", 0.0)), 12.0) and Rules.POWER_KINDS.get("cage", null) == [&"crushed"]
 		and PowerBook.family("cage") == "decree" and PowerBook.REACH.has("cage") and String(b.get("shape", "")).contains("once a descent"),
-		"The Closing Cage: Decree, 6 Might, once a descent, a click, loud, a circle of 12, kills by collapse (%s)" % [b])
+		"The Closing Cage: Decree, 6 Might, once a descent, a click, loud, a circle of 12, kills by crushing (%s)" % [b])
 	var cf = load(PATH) if ResourceLoader.exists(PATH) else null
 	if cf == null:
 		t.check(false, "the effect script loads")
@@ -139,7 +139,7 @@ static func _closing(t, cf) -> void:
 	# --- Pinned against the wall: cut down when the ring reaches him; the wall falls only when the ring passes its middle.
 	var killed := crowd.killed_citizens + crowd.killed_soldiers
 	_run_to(fx, cf.T_LAND + 15.3)
-	t.check(not pinned.is_alive() and pinned._kind == &"collapse" and not wall.destroyed and wall._cracks.size() > 0
+	t.check(not pinned.is_alive() and pinned._kind == &"crushed" and not wall.destroyed and wall._cracks.size() > 0
 		and crowd.killed_soldiers + crowd.killed_citizens == killed + 1 and fx.cut == 1,
 		"pinned against the wall it has not passed, he is cut down when the ring reaches him (kind %s, ring %.3f)" % [pinned._kind, fx.radius])
 	_run_to(fx, cf.T_LAND + 15.8)
@@ -151,7 +151,7 @@ static func _closing(t, cf) -> void:
 		"the ring touches the house: it cracks, and still stands (ring %.3f)" % fx.radius)
 	t.check(not hound.is_alive() and fx.cut == 2, "a hound pushed against it is cut down too")
 	_run_to(fx, cf.T_LAND + 18.8)
-	t.check(house.destroyed and not sheltered.is_alive() and sheltered._kind == &"collapse",
+	t.check(house.destroyed and not sheltered.is_alive() and sheltered._kind == &"crushed",
 		"the house falls as the ring passes its middle, and the one sheltering in it dies with it (ring %.3f)" % fx.radius)
 
 	# --- The end: everyone still inside dies; outside, nothing is touched.
@@ -159,8 +159,8 @@ static func _closing(t, cf) -> void:
 	t.check(a.is_alive() and mid.is_alive() and walker.is_alive() and a.ground_pos.distance_to(C) <= fx.radius + 0.001,
 		"just before the end those inside still live, pressed together (ring %.3f)" % fx.radius)
 	_run_to(fx, cf.T_LAND + cf.CLOSE_TIME + DT)
-	t.check(not a.is_alive() and not mid.is_alive() and not walker.is_alive() and a._kind == &"collapse" and mid._kind == &"collapse"
-		and walker._kind == &"collapse" and is_equal_approx(fx.radius, cf.END_R) and not crowd.laws.has(fx.law),
+	t.check(not a.is_alive() and not mid.is_alive() and not walker.is_alive() and a._kind == &"crushed" and mid._kind == &"crushed"
+		and walker._kind == &"crushed" and is_equal_approx(fx.radius, cf.END_R) and not crowd.laws.has(fx.law),
 		"at the end, 1.5 across, everyone still inside dies, and the law lifts")
 	var alive_in := 0
 	for e in field.in_radius(C, cf.RADIUS):

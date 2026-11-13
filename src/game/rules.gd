@@ -85,7 +85,8 @@ const POWER_KINDS := {
 	"gravetide": [&"frenzy"],
 	"belllies": [],
 	"breath": [&"choke"],
-	"erase": [&"collapse"],
+	# Erasing Distance: crushed in the fold (a whole body, not the town's collapse)
+	"erase": [&"crushed"],
 	# Eminent Domain throws and hurts, never kills
 	"eminent": [],
 	# Redefine: a man named CRIMINAL is beaten down by the guards it set on him (a fight's kill)
@@ -95,7 +96,7 @@ const POWER_KINDS := {
 	"disorder": [],
 	"fenced": [],
 	# The Closing Cage: cut down at the bars, crushed with a house, crushed at the end
-	"cage": [&"collapse"],
+	"cage": [&"crushed"],
 	# The Sealed Verdict: everyone inside at the bell's stroke
 	"sealed": [&"verdict"],
 	"magnify": [&"magnify"],

@@ -71,7 +71,7 @@ const CAPTURES := {
 	"eminent": {"target": Vector2(0, 0), "times": [0.5, 1.5, 3.0], "dir": Vector2(1, 0)},
 	"fenced": {"target": Vector2(0, 0), "times": [0.3, 2.0, 5.0]},
 	"cage": {"target": Vector2(0, 0), "times": [0.5, 5.0, 15.0, 30.0]},
-	"sealed": {"target": Vector2(0, 0), "times": [0.5, 5.0, 30.0, 59.0]},
+	"sealed": {"target": Vector2(0, 0), "times": [0.5, 5.0, 27.5, 29.9, 30.15, 31.5]},
 	# The way in above, the way out below; its clip is its first seconds, not the whole half-minute it lies there.
 	"mirror": {"target": Vector2(-1.8, -1.8), "to": Vector2(1.8, 1.8), "dir": Vector2(1, 1), "times": [0.3, 0.6, 3.0, 8.0, 29.6],
 		"clip_run": 10.0},

@@ -3,7 +3,8 @@ extends FxTimeline
 ## Redefine (Decree, Tier II; spec 5.3): say what a person is and, for SPAN, the law agrees. The MAX_NAMED living people
 ## nearest the click within PICK_R, out of doors, are named what the cast's mode says -- nearest first, a tie to the
 ## earlier instance, never a roll -- each by LawMark under this effect's own owner id, and a gilt word floats over each:
-##   CRIMINAL  every guard who sees him goes for him (LawMark: a TARGET_ONLY fight); a soldier named so is hunted by his own.
+##   CRIMINAL  everyone within 4 cells runs from him, and every guard within 8 goes for him and keeps at it until the law ends or he
+##             dies (LawMark: a TARGET_ONLY fight); a soldier named so is hunted by his own.
 ##   OFFICER   one of the garrison: no guard takes him for a suspect (a believer walks past an inquisitor unseized).
 ##   NOBODY    nobody sees him, strikes him or heeds what he saw.
 ## Perception only: no count changes (a believer named so still counts). What each law means is LawMark's, asked by every

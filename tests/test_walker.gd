@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_book(t)
 	var made := RD._setup()
 	_refused(t, made)
+	_recast(t, made)
 	_others_place(t, made)
 	_walks(t, made)
 	_orders(t, made)
@@ -135,6 +136,74 @@ static func _refused(t, made: Array) -> void:
 	t.check(casts.size() == 1 and (casts[0] as WalkingCorpseFx).origin == at
 		and (casts[0] as WalkingCorpseFx).extra.get("to", Vector2.INF) == at + Vector2(3.0, 0.0),
 		"and the second click casts it from the body to there")
+	for fx in casts:
+		if is_instance_valid(fx):
+			fx.end_now()
+	aim.free()
+	rules.free()
+
+
+## Final review 3 (R26): with a walker up and the slot off its cooldown, a press away from the walker (past WHEEL_R) is a fresh
+## cast -- its first click on another body, the second its first order -- and the old walker lies down where it stands, its sigil
+## gone; a press within WHEEL_R still opens the wheel; on its cooldown a press away is refused "missed" as before.
+static func _recast(t, made: Array) -> void:
+	RD._clear_all(made)
+	var rem: Remains = (made[0] as Crowd).remains
+	var rules := Rules.new().setup(PackedStringArray(["walker"]), null, made[1], made[3], made[0], made[6])
+	var casts: Array = []
+	rules.caster = func(s: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
+		var fx := FxTimeline.cast(s, made[5], g, e)
+		casts.append(fx)
+		return fx
+	var refused: Array = []
+	rules.cast_refused.connect(func(slot: int, why: String) -> void: refused.append([slot, why]))
+	var aim := Targeting.new().setup(rules, made[0])
+	var at := RD._empty(made)
+	var other := _spot(made, at, 4.0)
+	RD._body(made, 20, at)
+	RD._body(made, 21, other)
+	aim.pick(0)
+	aim.press(at)
+	aim.release(at)
+	aim.press(at)
+	aim.release(at)
+	t.check(casts.size() == 1, "(the first walker is cast)")
+	if casts.size() != 1:
+		aim.free()
+		rules.free()
+		return
+	var old := casts[0] as WalkingCorpseFx
+	RD._run(old, WalkingCorpseFx.T_RISE + 0.3)
+	var stood := old.walker.ground_pos
+	aim.pick(0)  # (the cast let go of the slot)
+	t.check(rules.can_recast(0) and rules.refusal(0) == "cooldown" and old.walker != null, "(the walker stands; the slot cools)")
+	# On its cooldown: as before.
+	refused.clear()
+	aim.press(other)
+	aim.release(other)
+	t.check(refused == [[0, "missed"]] and casts.size() == 1 and not old.laid and not aim.placed,
+		"on its cooldown, a press away from the walker is refused missed (%s)" % [refused])
+	# Off it: a press by the walker opens the wheel still.
+	rules._cooldowns[0] = 0.0
+	refused.clear()
+	aim.press(stood + Vector2(0.5, 0.0))
+	t.check(aim.wheel_open() and refused.is_empty(), "off its cooldown, a press within 1.2 of the walker still opens the wheel (%s)" % [refused])
+	aim.release(stood)
+	aim.cancel()
+	# And a press away is a fresh cast: the first click places the new body, the second raises it; the old one lies down.
+	aim.press(other)
+	aim.release(other)
+	t.check(aim.placed and refused.is_empty() and casts.size() == 1 and not old.laid,
+		"off its cooldown, a press on another body away from the walker is a fresh cast's first click (%s)" % [refused])
+	aim.press(other)
+	aim.release(other)
+	var fresh: WalkingCorpseFx = casts.back() if casts.size() == 2 else null
+	t.check(fresh != null and fresh.origin == other and fresh.walker != null and refused.is_empty(),
+		"and the second click raises the new body (%d casts, %s)" % [casts.size(), refused])
+	t.check(old.laid and old.walker == null and old.sigil == null and rem.all().has(old.remain)
+		and old.remain.pos.distance_to(stood) < 0.01 and not old.remain.hidden,
+		"the old walker lies down where it stood, its sigil gone (%s)" % [old.remain.pos])
+	t.check(rules.live_fx("walker") == fresh, "the slot's orders go to the new walker")
 	for fx in casts:
 		if is_instance_valid(fx):
 			fx.end_now()
@@ -286,6 +355,12 @@ static func _attack(t, made: Array) -> void:
 	foe.visible = false
 	t.check(not fx.follow_up(foe_pos, {"order": "attack", "foe": foe}) and fx.order == "wait", "and on one unseen (as Mind Whisper's)")
 	foe.visible = true
+	# Final review 4: the aim's preview asks the effect's own judge, would_attack(): the same answers as the order.
+	foe.statuses[&"guise"] = 5.0
+	var guised_no: bool = not fx.would_attack(foe)
+	foe.statuses.erase(&"guise")
+	t.check(guised_no and not fx.would_attack(far) and not fx.would_attack(null) and fx.would_attack(foe),
+		"would_attack(): no to one 7 off, guised or nobody; yes to one 4 off")
 	t.check(fx.follow_up(foe_pos, {"order": "attack", "foe": foe}) and fx.order == "attack", "an attack on one 4 off is taken")
 	var took := _until(fx, func() -> bool: return fx.order != "attack", 11.0, [by])
 	t.check(not foe.is_alive() and deaths == [[foe, &"grave"]] and fx.kills == 1 and fx.order == "wait" and took < 10.0,
@@ -302,7 +377,7 @@ static func _attack(t, made: Array) -> void:
 	_until(fx, func() -> bool: return fx.order != "attack", 11.0)
 	var foe3: Person = crowd.citizens[74]
 	foe3.ground_pos = _spot(made, fx.walker.ground_pos, 3.0)
-	t.check(not foe2.is_alive() and fx.kills == WalkingCorpseFx.KILLS_MOST
+	t.check(not foe2.is_alive() and fx.kills == WalkingCorpseFx.KILLS_MOST and not fx.would_attack(foe3)
 		and not fx.follow_up(foe3.ground_pos, {"order": "attack", "foe": foe3}) and fx.order == "wait" and foe3.is_alive(),
 		"two kills, then attack is refused (%d kills)" % fx.kills)
 	t.check(fx.follow_up(foe3.ground_pos, {"order": "walk", "to": foe3.ground_pos}), "(it still walks where it is told)")

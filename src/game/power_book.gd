@@ -202,7 +202,7 @@ const POWERS := [
 	{"key": "walker", "name": "Walking Corpse", "path": "res://src/fx/death/walking_corpse.gd",
 		"blurb": "A body gets up and does your bidding: walk, go in, or kill without a sound.",
 		"dp": 3, "cooldown": 30.0, "aim": "two clicks", "needs": "body", "reaches_hidden": true,
-		"shape": "click a body, then give it its first order; it gets up for up to 40 s, nobody panics, and a Death sigil hangs over it; click it again to open the wheel: WALK -- it goes there by the streets and stands and waits; ATTACK -- it hunts the nearest soul within 6 it can see for 10 s (at 1.6 of a walk) and kills up to 2 by touch, silently, leaving a body; ENTER -- it goes into the building under the click and lies hidden there, a plague body bringing the plague in to 3 sheltering there; orders reach 12; at the end it lies down where it stands",
+		"shape": "click a body, then give it its first order; it gets up for up to 40 s, nobody panics, and a Death sigil hangs over it; click it again to open the wheel: WALK -- it goes there by the streets and stands and waits; ATTACK -- it goes for the person you click, one within 6 it can see, for up to 10 s (at 1.6 of a walk) and kills them by touch, silently, leaving a body, 2 kills in all; ENTER -- it goes into the building under the click and lies hidden there, a plague body bringing the plague in to 3 sheltering there; orders reach 12; at the end it lies down where it stands; once the power is ready again, a click away from it raises another body and the first lies down",
 		"quiet": true, "authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"blurb": "A dragon breathes a cone of fire and burns all before it.",

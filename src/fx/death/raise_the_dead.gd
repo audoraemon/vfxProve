@@ -89,7 +89,7 @@ func _rise() -> void:
 	var at_ground := _remain.pos
 	if _spirit_mode:
 		spirit = DeathParts.spirit(visitors, at_ground, true)
-		visitors.give(spirit, {"fright_r": FRIGHT_R})  # a haunt reaches further than the Gravecall one
+		visitors.give(spirit, {"fright_r": FRIGHT_R})  # wider than a plain spirit's DeathParts.SPIRIT_FRIGHT_R (R16)
 		_look_in = 0.0
 	else:
 		DeathParts.zombie(visitors, _remain, _remain.kind == &"plague")

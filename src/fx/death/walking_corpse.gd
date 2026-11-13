@@ -18,7 +18,8 @@ extends FxTimeline
 ## drawing and out of every other power's reach, though Walking Corpse can walk it back out. A plague body that goes into a shelter
 ## brings the plague inside: up to INFECT_MOST of those sheltering there fall sick (Person.infect()), the nearest to the door first, a
 ## tie by instance id. At WALK_LIFE it lies down where it stands: Remains.move() puts the remain back on the ledger there with its
-## clock restarted. A Death sigil (Sigil) hangs SIGIL_UP px over it all its life. No luck anywhere.
+## clock restarted; so does a walker whose power is cast again (give_way(), R26: one walker at a time). A Death sigil (Sigil) hangs
+## SIGIL_UP px over it all its life. No luck anywhere.
 ## Quiet: no alarm, no fright, no panic -- only q_walker, a shuffle of cloth and a joint's creak nobody turns at.
 
 const WALK_LIFE := 40.0
@@ -216,6 +217,12 @@ static func _fair(p: Variant) -> bool:
 		and (p as Person).visible and not (p as Person).guised()
 
 
+## Whether an ATTACK on `p` would be taken now: a fair foe (_fair()) within ATTACK_R of the walker, fewer than KILLS_MOST killed. The
+## order's own judge, which the aim's preview asks too (Targeting paints a foe it would refuse red). A Variant: `p` may be freed.
+func would_attack(p: Variant) -> bool:
+	return can_follow_up() and kills < KILLS_MOST and _fair(p) and (p as Person).ground_pos.distance_to(walker.ground_pos) <= ATTACK_R
+
+
 ## Into building `b`: it walks to its door (an ENTER); false, nothing changed, when it has no door on walkable ground.
 func _go_in(b: Structure) -> bool:
 	var door := door_of(b, _grid)
@@ -296,7 +303,7 @@ func follow_up(at_pos: Vector2, extra_data: Dictionary) -> bool:
 			_go_in(b)
 		"attack":
 			var given: Variant = extra_data.get("foe")
-			if kills >= KILLS_MOST or not _fair(given) or (given as Person).ground_pos.distance_to(from) > ATTACK_R:
+			if not would_attack(given):
 				return false
 			_set_order("attack")
 			foe = given as Person
@@ -354,6 +361,13 @@ func _bring_plague() -> void:
 			break
 		if p.infect(PlagueManager.PLAGUE_LIFE):
 			infected.append(p)
+
+
+## A new Walking Corpse went out (Rules.cast(), R26: off the cooldown, a press away from this walker is a fresh cast): one walker is
+## up at a time, so this one lies down where it stands, its sigil gone, as at WALK_LIFE.
+func give_way() -> void:
+	if _can_lie_down():
+		_lie_down()
 
 
 ## Cut short while it walks (the act ends): it lies down where it is, so the body is never lost.

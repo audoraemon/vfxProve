@@ -1,7 +1,7 @@
 # KAK God: Death review rulings
 
 Source spec: docs/superpowers/specs/2026-11-13-kak-death-review-adjustments-design.md (the user's Discord review, 2026-11-13).
-Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings are the plan's picks for what the review left to the builder; Task 12 reconciled the numbers the tasks shipped (R16-R23 amend or extend R1-R15).
+Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings are the plan's picks for what the review left to the builder; Task 12 reconciled the numbers the tasks shipped (R16-R23 amend or extend R1-R15; R26-R27 come from the final whole-branch review).
 
 | # | Power | Ruling |
 |---|---|---|
@@ -30,6 +30,8 @@ Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings
 | R23 | Tooling (amends R13) | `crowd_check` must be run with `--fixed-fps 60` as an engine arg before `-s`. Why: after `--` it is ignored and the checksum wanders. |
 | R24 | Harvest (the user's, 2026-11-14) | A carter carrying a load who is frightened drops it, and his granary's grain is spoiled (`HarvestDirector` H7, `spoiled_by` "dropped", banner `THE CARTER DROPS HIS LOAD - THE GRAIN SPOILS`). Frightened is a mind of PANIC or FLEE, or SHELTER when a fright sent him into cover (`ShelterManager.fright_shelter()`; sent in by a hallowed building, Anathema, or by the rain, Tempest, he keeps his load); carrying is a load taken at the door and not yet at the Citadel. The night's rule for every power. Only the reading of his mind is shared with TempleReport, whose carrier drops the report while frightened and picks it up again; this drop is permanent and spoils the granary. Why: with possession gone Death had no way to spoil a granary (Task 14: 0/3); T1R D45. |
 | R25 | Lamb x Death (the user's, 2026-11-14) | Death x The Lost Lamb may idle up to 60 s (`god_gate.sh --idle-max=60`), like D12/D34/D40. Why: the faster zombies (R2) clear his way and his walk out is left to wait (seed 2: 59 s, nothing to answer); T1R D46. |
+| R26 | Walker (amends R7, R15; final review, the controller's) | With a walker up and the slot off its cooldown (`Rules.refusal()` is ""), a press that is not within `Targeting.WHEEL_R` (1.2) of the live walker falls through to a fresh cast: the power's own two clicks (a body, then its first order), and as the new cast goes out the old walker lies down where it stands (`WalkingCorpseFx.give_way()` -> `_lie_down()`, its sigil freed). Any cast of the power through `Rules.cast()` does this, so one walker is up at a time. A press within `WHEEL_R` still opens the wheel; on the cooldown a press away is refused `"missed"` as before; a pick step's press still names the target. Mind Whisper's path is unchanged. Why: the slot showed ready after its 30 s cooldown while every press was read as an order, so a body could not be raised again while a walker stood for 40 s. |
+| R27 | Grave Tide (amends R12, R18; final review) | The aura is ratio-based: on entry `speed_mul *= AURA_SPEED`; on leaving (or the giant gone, or the end) `speed_mul /= AURA_SPEED`, once each. A body whose pace nothing else touched meanwhile gets its exact own pace back (bit for bit, so the zombies' aura is unchanged). Why: restoring the saved value undid Walking Corpse's attack pace (R18) when the walker left the aura mid-chase. |
 
 ## Baseline (a3478ce6)
 

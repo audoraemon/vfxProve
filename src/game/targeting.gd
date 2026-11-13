@@ -262,6 +262,9 @@ var _wheel := false
 var _order := ""
 ## Where the press that will make that pick went down.
 var _pick_at := Vector2.ZERO
+## A fresh cast is being aimed over a live follow-up with a subject of its own (R26: off the cooldown, a press away from Walking
+## Corpse's walker): the slot's own aim, not the wheel, until it casts, is refused or called off.
+var _fresh := false
 
 var _rules: Rules
 var _crowd: Crowd
@@ -295,6 +298,7 @@ func pick(new_slot: int) -> void:
 	armed = false
 	aiming = false
 	placed = false
+	_fresh = false
 	_end_wheel()
 	picked.emit(slot)
 	queue_redraw()
@@ -305,6 +309,7 @@ func unfocus() -> void:
 	armed = false
 	aiming = false
 	placed = false
+	_fresh = false
 	_end_wheel()
 	picked.emit(slot)
 	queue_redraw()
@@ -363,17 +368,19 @@ func _unhandled_input(event: InputEvent) -> void:
 ## How the focused power is aimed: its mode's own way when the mode has one. A power that is running and can take a follow-up
 ## (Rules.can_recast) is aimed as a plain click, whatever its own kind: the click is the order.
 func _aim_kind() -> String:
-	if slot >= 0 and _rules.can_recast(slot):
-		# A follow-up through Mind Whisper's wheel (a possession) is aimed as a whisper: press, drag and release, and its wheel.
+	if slot >= 0 and not _fresh and _rules.can_recast(slot):
+		# A follow-up through Mind Whisper's wheel (Walking Corpse's orders) is aimed as a whisper: press, drag and release, and its wheel.
+		# A fresh cast over it (R26, _fresh) is aimed the power's own way.
 		return "whisper" if _wheel_fx() != null else "click"
 	return String(mode().get("aim", _rules.power(slot).get("aim", "click")))
 
 
-## The focused slot's live effect when it takes its follow-up through Mind Whisper's wheel (its follow_up_wheel() is true: Raise the Dead's
-## possession), else null. Such an effect may give follow_up_reach() (how far from follow_up_from(), and how far a walk order goes;
-## Mind Whisper's REACH without it) and follow_up_from() (where that reach is measured from: the spirit; anywhere without it).
+## The focused slot's live effect when it takes its follow-up through Mind Whisper's wheel (its follow_up_wheel() is true: Walking
+## Corpse's orders), else null -- null too while a fresh cast is aimed over it (R26, _fresh). Such an effect may give follow_up_reach()
+## (how far from follow_up_from(), and how far a walk order goes; Mind Whisper's REACH without it) and follow_up_from() (where that reach
+## is measured from: the walker; anywhere without it).
 func _wheel_fx() -> Variant:
-	if slot < 0 or not _rules.can_recast(slot):
+	if slot < 0 or _fresh or not _rules.can_recast(slot):
 		return null
 	var fx: Variant = _rules.live_fx(_rules.key(slot))
 	return fx if fx != null and fx.has_method("follow_up_wheel") and fx.follow_up_wheel() else null
@@ -410,7 +417,8 @@ func hover(ground: Vector2) -> void:
 	# plane, and redrawing it re-batches the layer the whole town is drawn in.
 	# A held whisper is the exception: its line starts on someone walking, so it follows them every frame.
 	if (_wheel or _order != "") and not _is_whisper():
-		# The live effect whose follow-up opened the wheel (a possession) has ended or stopped taking them: the wheel goes with it, quietly.
+		# The live effect whose follow-up opened the wheel (Walking Corpse's walker) has ended or stopped taking them: the wheel goes with it,
+		# quietly.
 		_end_wheel()
 		armed = false
 		aiming = false
@@ -458,9 +466,14 @@ func press(ground: Vector2) -> void:
 		aiming = true
 		queue_redraw()
 		return
+	if _is_whisper() and _has_subject() and _rules.refusal(slot) == "" and not _near_subject(ground):
+		# R26: the slot off its cooldown, a press away from the subject is a fresh cast of the power, aimed its own way (Walking Corpse:
+		# a new body, the old walker lying down as it goes out). The wheel is let go; the press goes on below as the cast's own.
+		_end_wheel()
+		_fresh = true
 	if _is_whisper() and _has_subject():
 		# A follow-up with a subject of its own (R15): a press within WHEEL_R of it opens the wheel round it, whoever stands there;
-		# anywhere else -- or with the subject gone -- is refused "missed".
+		# anywhere else -- or with the subject gone -- is refused "missed" (on the cooldown; off it, a fresh cast above).
 		var sub := _fx_subject()
 		if sub == null or not sub.call("is_alive") or ground.distance_to(sub.get("ground_pos")) > WHEEL_R:
 			_end_wheel()
@@ -545,6 +558,7 @@ func release(ground: Vector2) -> void:
 			var no_body := _rules.body_refusal(_rules.key(slot), String(extra.get("mode", "")), ground)
 			if no_body != "":
 				_rules.refuse(slot, no_body)
+				_fresh = false  # a fresh cast over a live walker (R26) is over: the next press is read afresh
 				queue_redraw()
 				return
 			placed = true
@@ -552,6 +566,7 @@ func release(ground: Vector2) -> void:
 			queue_redraw()
 			return
 		placed = false
+		_fresh = false
 		extra["to"] = ground
 		_rules.cast(slot, first, extra)
 		queue_redraw()
@@ -612,7 +627,7 @@ func release(ground: Vector2) -> void:
 	aiming = false
 	# A power already running may take this click as a follow-up order (Called Bolts, Procession, Sleepwalk, Second Word, Turn the Tide):
 	# the slot stays focused for the next.
-	if _rules.can_recast(slot):
+	if not _fresh and _rules.can_recast(slot):
 		# The click is the live power's order, never a place of the slot's own aim: a half-placed two-click aim from before is dropped,
 		# and a follow-up that finds nothing is refused as "missed", never started as a cast.
 		placed = false
@@ -620,6 +635,7 @@ func release(ground: Vector2) -> void:
 			_rules.refuse(slot, "missed")
 		queue_redraw()
 		return
+	_fresh = false
 	_rules.cast(slot, _press, extra)
 	queue_redraw()
 
@@ -631,6 +647,7 @@ func cancel() -> bool:
 	armed = false
 	aiming = false
 	placed = false
+	_fresh = false
 	_end_wheel()
 	queue_redraw()
 	return had
@@ -785,7 +802,7 @@ func _lv(key: String, stat_name: String, base: Variant) -> Variant:
 
 
 ## How far the focused Mind Whisper sends a person, at the slot's level (the table's REACH; MindWhisperFx.REACH at level 1).
-## A follow-up through the wheel (a possession) reaches as far as its effect says (follow_up_reach()).
+## A follow-up through the wheel (Walking Corpse's orders) reaches as far as its effect says (follow_up_reach()).
 func _whisper_reach() -> float:
 	var fx: Variant = _wheel_fx()
 	if fx != null:
@@ -830,6 +847,12 @@ func _end_wheel() -> void:
 func _has_subject() -> bool:
 	var fx: Variant = _wheel_fx()
 	return fx != null and fx.has_method("follow_up_subject")
+
+
+## `ground` is within WHEEL_R of the follow-up's subject, alive (a press there opens its wheel).
+func _near_subject(ground: Vector2) -> bool:
+	var sub := _fx_subject()
+	return sub != null and bool(sub.call("is_alive")) and ground.distance_to(sub.get("ground_pos")) <= WHEEL_R
 
 
 ## That subject while it is there (an object with ground_pos and is_alive(): an Animal), else null.
@@ -1117,7 +1140,8 @@ func _draw() -> void:
 	if _is_wheel() and placed:
 		_draw_wheel()
 	if _wheel_fx() != null:
-		# A follow-up through Mind Whisper's wheel (a possession): the reach round where the effect measures it from, then the whisper's own.
+		# A follow-up through Mind Whisper's wheel (Walking Corpse's orders): the reach round where the effect measures it from, then the
+		# whisper's own.
 		var fx: Variant = _wheel_fx()
 		if fx.has_method("follow_up_from") and not _whisper_held():
 			_ring(fx.follow_up_from(), _whisper_reach(), COL_FAINT)
@@ -1371,6 +1395,10 @@ func _draw_whisper() -> void:
 		var sub := _fx_subject()
 		if sub != null:
 			_ring(sub.get("ground_pos"), WHEEL_R, COL_FAINT)
+		if _rules.refusal(slot) == "" and not _near_subject(_press):
+			# R26: off the cooldown a press here is a fresh cast -- the bodies it could raise, marked as the power's own preview marks them.
+			for m in bodies_marked(_crowd.remains, _press, false, bool(_rules.power(slot).get("reaches_hidden", false))):
+				_death_mark(m.pos, COL_BONE, bool(m.lead))
 	else:
 		# Who a press here would whisper to; red while they shake the last whisper off (v0.08.1).
 		var who := _whisper_pick(_press)
@@ -1417,12 +1445,17 @@ func _draw_pick() -> void:
 	var from := _wheel_centre()
 	var col := order_color(_order)
 	if _has_subject():
-		# A follow-up's own subject (R15): the effect judges its orders, so only the spot or the foe under the cursor is shown.
+		# A follow-up's own subject (R15): the spot or the foe under the cursor. An ATTACK shows its reach (WalkingCorpseFx.ATTACK_R)
+		# round the subject, and a foe the effect's own judge (would_attack()) would refuse -- too far, guised, unseen, its kills used
+		# up -- in red.
 		_whisper_line(from, _at, col, _order == "walk")
 		if _order == "attack":
+			_ring(from, WalkingCorpseFx.ATTACK_R, COL_FAINT)
 			var foe := MindWhisperFx.foe_at(_crowd._field, _at)
 			if foe != null:
-				_ring(foe.ground_pos, 0.3, col)
+				var fx: Variant = _wheel_fx()
+				var ok: bool = fx == null or not fx.has_method("would_attack") or fx.would_attack(foe)
+				_ring(foe.ground_pos, 0.3, col if ok else COL_BAD)
 		_ring(from, 0.2, col)
 		return
 	match _order:

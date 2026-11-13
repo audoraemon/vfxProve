@@ -508,7 +508,11 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	if free_play:
 		_cooldowns[slot] = 0.0
 		_mode_cooldown.erase(slot)
+	# The power's last cast still running, if it gives way to a new one (give_way(): Walking Corpse's walker lies down, R26).
+	var before: FxTimeline = live_fx(String(p.key))
 	var fx: FxTimeline = caster.call(load(String(p.path)) as GDScript, ground, told)
+	if before != null and before != fx and is_instance_valid(before) and before.has_method("give_way"):
+		before.give_way()
 	_playing = fx
 	_casts.append({"key": String(p.key), "fx": fx, "at": ground, "buildings": 0, "kills": 0, "chained": false,
 		"until": _elapsed + CAST_GRACE})
@@ -537,9 +541,10 @@ func recast(slot: int, at: Vector2, extra := {}) -> bool:
 	var fx: Variant = live_fx(key(slot)) if slot >= 0 else null
 	if fx == null or not fx.has_method("follow_up"):
 		return false
-	# A follow-up through Mind Whisper's wheel (a possession) is read as a whisper's cast is: someone who cannot hear it, or an order with
-	# no fair target, never reaches the effect. One whose wheel turns on a subject of its own (follow_up_subject(), review R15: Walking
-	# Corpse's walker) orders no person: the effect judges its orders itself.
+	# A follow-up through Mind Whisper's wheel that orders a person (no power does since Raise the Dead lost its possession, R3; the
+	# hooks stay) is read as a whisper's cast is: someone who cannot hear it, or an order with no fair target, never reaches the effect.
+	# One whose wheel turns on a subject of its own (follow_up_subject(), review R15: Walking Corpse's walker) orders no person: the
+	# effect judges its orders itself.
 	if fx.has_method("follow_up_wheel") and fx.follow_up_wheel() and not fx.has_method("follow_up_subject") \
 			and whisper_refusal(at, extra) != "":
 		return false

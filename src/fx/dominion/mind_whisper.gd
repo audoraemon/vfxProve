@@ -10,8 +10,9 @@ extends FxTimeline
 ##   "burn"   (+ "building") they walk to the building's edge (a whisper to it), stay BURN_SECS, then light it at Ember's START_LEVEL
 ##                           (FireManager.ignite()); a building gone or no longer burnable by then, or a town with no fires, is not lit.
 ## Both stay quiet: the fire itself alarms as fires do.
-## The orders themselves are order() (Death task 4): any power that borrows the wheel (Raise the Dead's possession) lays them for its own
-## length. Targeting opens the wheel for a live effect whose follow_up_wheel() is true.
+## The orders themselves are order() (Death task 4): a power that borrows the wheel to order a person lays them for its own length (none
+## does since Raise the Dead lost its possession, review R3). Targeting opens the wheel for a live effect whose follow_up_wheel() is true;
+## Walking Corpse's opens round its own walker (R15) and judges its orders itself, without order().
 
 ## How near the press must be to a citizen.
 const PICK_R := 0.6
@@ -152,7 +153,7 @@ static func stand_at(grid: WalkGrid, s: Structure, from: Vector2) -> Vector2:
 	return free if free != Vector2.INF else from
 
 
-## One order of the wheel laid on `who`: Mind Whisper's own cast, or any power that borrows its orders (Raise the Dead's possession).
+## One order of the wheel laid on `who`: Mind Whisper's own cast, or any power that borrows its orders for a person (none now, R3).
 ## `extra` holds the keys Targeting's wheel builds (Targeting._order_extra()):
 ##   no "order" (or "walk")  + "to"         a whisper to that spot (Person.whisper()), lingering `seconds` there;
 ##   "attack"                + "foe"        set on that person alone for `seconds` (Person.whisper_fight()), at the civil or soldier's blow;

@@ -34,12 +34,25 @@ class WheelStub extends FxTimeline:
 		return true
 
 
+## A follow-up with a subject of its own (review R15: Walking Corpse's walker): the wheel opens round it, its third slice is ENTER.
+class SubjectStub extends WheelStub:
+	var subject: Animal
+
+	func follow_up_subject() -> Node2D:
+		return subject if is_instance_valid(subject) else null
+
+	func follow_up_orders() -> Array:
+		return ["walk", "attack", "enter"]
+
+
 static func run(t) -> void:
 	var made := _crowd()
 	_wheel(t, made)
 	_orders(t, made)
 	_rules(t, made)
 	_order_fx(t, made)
+	_subject(t, made)
+	await _subject_draws(t, made)
 	await _closed_redraws(t, made)
 	_done(made)
 
@@ -84,9 +97,9 @@ static func _house(env: EnvironmentField) -> Structure:
 
 
 ## Rules with a live WheelStub in slot 0 ("doom", a plain click power) past its busy lock, Mind Whisper in slot 1.
-static func _setup(made: Array) -> Array:
+static func _setup(made: Array, given: WheelStub = null) -> Array:
 	var rules := Rules.new().setup(PackedStringArray(["doom", "whisper"]), null, made[1], made[3], made[0], made[5])
-	var stub := WheelStub.new()
+	var stub := given if given != null else WheelStub.new()
 	stub.duration = 30.0
 	stub.busy = 1.0
 	var casts: Array = []
@@ -282,6 +295,115 @@ static func _rules(t, made: Array) -> void:
 	stub.wheel = false
 	t.check(rules.recast(0, base, {"target": who, "order": "attack", "foe": far}) and stub.got.size() == 2,
 		"a follow-up without the wheel is handed its extra as before, unread")
+	_free(set)
+
+
+## A follow-up with a subject (R15): the wheel opens round the subject, never round a picked person; its orders carry no "target".
+static func _subject(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[4]
+	var stub := SubjectStub.new()
+	var set := _setup(made, stub)
+	var rules: Rules = set[0]
+	var aim: Targeting = set[2]
+	var refused: Array = []
+	rules.cast_refused.connect(func(s: int, why: String) -> void: refused.append([s, why]))
+	var base := _empty(made)
+	t.check(base != Vector2.INF, "_subject: a spot with nobody within 7 units")
+	var dog := Animal.new()
+	dog.ground_pos = base
+	stub.subject = dog
+	stub.from = base
+	var other: Person = crowd.citizens[46]
+	other.ground_pos = base + Vector2(2.0, 0.0)  # someone Mind Whisper's pick would take: the subject's wheel never does
+	aim.pick(0)
+	t.check(aim._aim_kind() == "whisper", "(a subject's follow-up aims as the wheel)")
+
+	aim.press(base + Vector2(0.8, 0.4))
+	t.check(aim.wheel_open() and aim.armed and aim._subject == dog and aim._whisper_target == null and refused.is_empty(),
+		"a press within 1.2 of the subject opens the wheel on it (%s)" % [refused])
+	aim.release(base + Vector2(0.1, 0.0))
+	t.check(aim.wheel_open() and not aim.armed and stub.got.is_empty(), "(the middle keeps it open)")
+	aim.cancel()
+
+	refused.clear()
+	aim.press(other.ground_pos)
+	t.check(not aim.wheel_open() and not aim.armed and refused == [[0, "missed"]],
+		"a press 2.0 from the subject is refused missed, even on a person (%s)" % [refused])
+
+	# Past the edge: the walk, clamped to the effect's reach, with no "target".
+	refused.clear()
+	var spot := base + Vector2(0.0, 7.0)
+	aim.press(base)
+	aim.release(spot)
+	var want := {"order": "walk", "to": MindWhisperFx.clamp_to(grid, base, spot, 4.0)}
+	t.check(stub.got.size() == 1 and stub.got[0][0] == base and stub.got[0][1] == want and not (stub.got[0][1] as Dictionary).has("target"),
+		"release past the edge walks the subject (%s %s)" % [stub.got, refused])
+
+	# ATTACK, then a click on a citizen; a click on nobody is refused "foe" and the pick goes on.
+	aim.press(base)
+	aim.release(base + Targeting.wheel_dir("attack") * 0.8)
+	t.check(aim.picking_order() == "attack", "the ATTACK slice picks the attack")
+	refused.clear()
+	aim.press(base + Vector2(0.0, -3.0))
+	aim.release(base + Vector2(0.0, -3.0))
+	t.check(refused == [[0, "foe"]] and aim.picking_order() == "attack", "ATTACK on nobody is refused foe, the pick goes on (%s)" % [refused])
+	aim.press(other.ground_pos)
+	aim.release(other.ground_pos)
+	var last: Dictionary = stub.got.back()[1]
+	t.check(stub.got.size() == 2 and String(last.get("order", "")) == "attack" and last.get("foe") == other and not last.has("target"),
+		"ATTACK then a click on a citizen gives the foe (%s)" % [stub.got])
+
+	# The third slice is the effect's own word: ENTER, with the click's spot.
+	aim.press(base)
+	aim.release(base + Targeting.wheel_dir("burn") * 0.8)
+	t.check(aim.picking_order() == "enter", "the third slice is ENTER (%s)" % aim.picking_order())
+	var click := base + Vector2(1.5, 2.5)
+	aim.press(click)
+	aim.release(click)
+	t.check(stub.got.size() == 3 and stub.got.back()[1] == {"order": "enter", "to": click},
+		"the third slice is ENTER and gives the click spot (%s)" % [stub.got])
+
+	# The subject is taken away with the wheel up: it closes quietly, nothing is sent.
+	aim.press(base)
+	aim.release(base + Vector2(0.1, 0.0))
+	t.check(aim.wheel_open(), "(the wheel is up again)")
+	var before := refused.size()
+	dog.free()
+	aim.hover(base + Vector2(0.5, 0.5))
+	t.check(not aim.wheel_open() and aim.picking_order() == "" and refused.size() == before and stub.got.size() == 3,
+		"the subject freed: the wheel closes quietly (%s)" % [refused])
+	aim.release(base + Vector2(0.5, 0.5))
+	t.check(refused.size() == before and stub.got.size() == 3, "(and a release after it sends nothing)")
+	_free(set)
+
+
+## The subject's wheel and its pick step draw, in the tree, over frames: its words (ENTER third) and the order's line.
+static func _subject_draws(t, made: Array) -> void:
+	var stub := SubjectStub.new()
+	var set := _setup(made, stub)
+	var aim: Targeting = set[2]
+	var base := _empty(made)
+	var dog := Animal.new()
+	dog.ground_pos = base
+	stub.subject = dog
+	stub.from = base
+	aim.pick(0)
+	t.root.add_child(aim)
+	var draws := [0]
+	aim.draw.connect(func() -> void: draws[0] += 1)
+	aim.hover(base + Vector2(2.0, 0.0))
+	await t.process_frame
+	aim.press(base)
+	aim.hover(base + Targeting.wheel_dir("burn") * 0.8)
+	await t.process_frame
+	aim.release(base + Targeting.wheel_dir("burn") * 0.8)
+	aim.hover(base + Vector2(1.0, 2.0))
+	await t.process_frame
+	t.check(aim.picking_order() == "enter" and draws[0] >= 3, "the subject's wheel and its ENTER pick draw (%d draws)" % draws[0])
+	aim.cancel()
+	t.root.remove_child(aim)
+	dog.free()
 	_free(set)
 
 

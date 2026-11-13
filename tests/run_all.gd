@@ -87,6 +87,7 @@ const SUITES := [
 	"res://tests/test_dominion_levels.gd",
 	"res://tests/test_follow_up.gd",
 	"res://tests/test_follow_up_wheel.gd",
+	"res://tests/test_death_aims.gd",
 	"res://tests/test_dominion_twist_whisper.gd",
 	"res://tests/test_dominion_twist_discord.gd",
 	"res://tests/test_dominion_twist_madness.gd",

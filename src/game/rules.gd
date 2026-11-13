@@ -537,8 +537,10 @@ func recast(slot: int, at: Vector2, extra := {}) -> bool:
 	if fx == null or not fx.has_method("follow_up"):
 		return false
 	# A follow-up through Mind Whisper's wheel (a possession) is read as a whisper's cast is: someone who cannot hear it, or an order with
-	# no fair target, never reaches the effect.
-	if fx.has_method("follow_up_wheel") and fx.follow_up_wheel() and whisper_refusal(at, extra) != "":
+	# no fair target, never reaches the effect. One whose wheel turns on a subject of its own (follow_up_subject(), review R15: Walking
+	# Corpse's walker) orders no person: the effect judges its orders itself.
+	if fx.has_method("follow_up_wheel") and fx.follow_up_wheel() and not fx.has_method("follow_up_subject") \
+			and whisper_refusal(at, extra) != "":
 		return false
 	if not fx.follow_up(at, extra):
 		return false

@@ -70,7 +70,8 @@ extends SceneTree
 ##          --mode=<key> picks a mode; --to=dx,dy sets a second click that far from the cast (Gravecall); for Bound in
 ##          Law (--power=bound) --to=x,y is instead the second place itself, taken as the citizen nearest it;
 ##          --fx-clock spaces the frames on the effect's own clock, not the frame count (a long power whose moment
-##          must be caught: The Sealed Verdict, --setup=cross --zoom=0.8 --seconds=62.6 --fx-clock);
+##          must be caught: The Sealed Verdict, --setup=cross --zoom=1.0 --seconds=33.3 --fx-clock, its 15th frame just
+##          after the stroke); --full-frames=<dir> also saves each frame whole, uncropped, as <dir>/<key>_<i>.png;
 ##          --snap aims at the citizen nearest --at (a whisper always does, and sends them
 ##          (2.2, -2.2) on, across the screen, the camera halfway: recorded with --at=0,11 --snap --seconds=8, the
 ##          open paving south of the market);
@@ -1448,6 +1449,7 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	var fx := _force_cast(0, at, Vector2(1, 0), extra)
 	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
 	var fx_clock := "--fx-clock" in OS.get_cmdline_user_args()
+	var full_dir := Battlefield.arg_value(OS.get_cmdline_user_args(), "--full-frames")
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
 	var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false,
@@ -1464,6 +1466,8 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		t = due
 		await RenderingServer.frame_post_draw
 		var img := bf.get_viewport().get_texture().get_image()
+		if full_dir != "":
+			img.save_png(full_dir.path_join("%s_%02d.png" % [key, i]))
 		var from := Vector2i((img.get_width() - crop.x) / 2, (img.get_height() - crop.y) / 2)
 		var frame := img.get_region(Rect2i(from, crop))
 		frame.convert(Image.FORMAT_RGBA8)

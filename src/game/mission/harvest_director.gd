@@ -21,8 +21,9 @@ extends RazeDirector
 ## or seized by the guard The Bell Lies calls to him, spoils his granary at once (H1, H2, H4); Blight rots a granary whose grain
 ## is in and whose watchmen are not on guard (H3); a carter who dies is replaced RELIEF_AFTER later and killing one never spoils
 ## (H5). The user's ruling (2026-11-13, for Decree): a carter alive, out of doors and held by a NO LEAVING law (Leaving Is Prohibited's
-## amber cell, Fenced Rule's NO LEAVING) for HELD_SPOIL seconds without a break spoils his granary as a seizure does (H6). Every spoil is
-## recorded in `spoiled_by`.
+## amber cell, Fenced Rule's NO LEAVING) for HELD_SPOIL seconds without a break spoils his granary as a seizure does (H6). The user's ruling
+## (2026-11-14, for Death; the night's rule for every power): a carter carrying a load who is frightened drops it, and his granary's grain is
+## spoiled (H7, _dropped_look()). Every spoil is recorded in `spoiled_by`.
 
 ## One watchman's post (v0.11 M2): a plain record, so the director holds no cycle.
 class Watch:
@@ -76,6 +77,12 @@ const NO_CART_BANNER := "THE GUARD FIND NO CART"
 const HELD_SPOIL := 6.0
 const HELD_SLACK := 0.001
 const HELD_BANNER := "THE LAW HOLDS THE CART - THE GRAIN SPOILS"
+## The user's ruling (2026-11-14, H7; the pattern of TempleReport, whose frightened carrier drops the report): a carter carrying a load -- he has
+## taken it at the granary's door and not yet brought it to the Citadel -- drops it the moment he is frightened, and the grain spoils. Frightened
+## is exactly a mind in DROP_MINDS: PANIC (running from a danger near him), FLEE (making for a gate) or SHELTER (taking cover from one). A mind the
+## god holds (CONFUSED, WHISPERED, COMPELLED), one looking (OBSERVE), fighting or recovering is not fright, and a carter with no load drops nothing.
+const DROP_MINDS: Array[Person.Mind] = [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER]
+const DROP_BANNER := "THE CARTER DROPS HIS LOAD - THE GRAIN SPOILS"
 ## A watchman at his post while his granary burns is not frightened (Person.fearless_left): the town's ordinary flight from a
 ## fire would empty his post before he could beat the fire out. Held this many seconds past the last look; the god's own holds
 ## (a kill, a whisper, Discord) still take him (v0.11 M2).
@@ -111,7 +118,8 @@ var carters := {}
 var watches := {}
 ## Structure -> true once its grain has arrived (v0.11 M2).
 var grain := {}
-## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight", "seized" or "held" (god T1R, for the report and the tests).
+## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight", "seized", "held" or "dropped" (god T1R, for the report and the
+## tests).
 var spoiled_by := {}
 ## Structure -> the second its first carter set out (god T1R, H0).
 var _out_at := {}
@@ -305,6 +313,7 @@ func step(delta: float) -> void:
 	if looking:
 		_tick_in = TICK
 	_held_look(delta)
+	_dropped_look()
 	for i in targets.size():
 		var s := targets[i]
 		if razed(s):
@@ -453,6 +462,22 @@ func _held_look(delta: float) -> void:
 				_spoil(s, "held")
 				break
 	_held = now
+
+
+## A frightened carter drops his load (H7, the user's ruling 2026-11-14): every frame, a carter alive and carrying a load (`_hauling`) whose
+## mind is in DROP_MINDS spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
+## his mind decides it. Returns at once with no load on the road.
+func _dropped_look() -> void:
+	if _hauling.is_empty():
+		return
+	for s in targets:
+		if razed(s):
+			continue
+		for c: Variant in carters.get(s, []):
+			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and (c as Person).mind in DROP_MINDS:
+				rules.banner.emit(DROP_BANNER)
+				_spoil(s, "dropped")
+				break
 
 
 ## Whether watchman `w` of `s` is on guard now (v0.11 M2): alive, out of doors, in a calm mind, and at his post.
@@ -734,7 +759,7 @@ func tour() -> Array:
 		out.append([doors[targets[i]], "The %s granary. Its watchmen put out fires. Its grain arrives by %s." % [store_names[i],
 			UiTheme.clock(float(grain_at[i]))]])
 	if citadel_door != Vector2.INF:
-		out.append([citadel_door, "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled."])
+		out.append([citadel_door, "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled; a carter frightened with a load drops it."])
 	return out
 
 

@@ -4,8 +4,8 @@ extends RefCounted
 ## behaviour_check script, ctx = {rules, slots, d (the director), crowd, memo, mission} as for tier1_b.gd. Each looks the way a player does:
 ## the granary whose turn it is, its watchmen, its carter -- and casts at most one power a look.
 ##
-## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks a watchman and raises his spirit behind the
-## carter, which drives him out of the walls (H1); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts
+## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks a watchman and raises his spirit by the carter
+## as he carries a load, which he drops (H7); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts
 ## the carter out beyond the wall (H1); Decree holds the carter in Leaving Is Prohibited's amber cell for his time (H6, the user's ruling
 ## 2026-11-13); Dominion whispers him out of the gate a step at a time (H1).
 
@@ -15,14 +15,13 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## Ruin and Veil clear a granary's watchmen when its grain is due within this many seconds (A's HARVEST_PRE: sooner, the relief walks in
 ## before the fire has burned its 10 s; Veil's Blight needs them gone at the grain, 30 s of relief after the first).
 const CLEAR_PRE := 20.0
-## Death drives a carter out of the walls (H1) with Raise the Dead's SPIRIT: everyone within its fright runs straight away from it, and it
-## drifts after the nearest, so whoever it rises behind is driven before it. A watchman is Death-marked when his granary's carter is within
-## DEATH_MARK_NEAR of its door, the one whose fall sends the carter at the door towards the wall: from his post, the straight way past the door
-## leaves the town's ring within DEATH_HERD_WALL. The spirit rises from his body (its soul still near) once the carter stands within
-## DEATH_HERD_NEAR of it, on such a line.
-const DEATH_MARK_NEAR := 6.0
-const DEATH_HERD_WALL := 8.0
-const DEATH_HERD_NEAR := RaiseTheDeadFx.FRIGHT_R + 1.0
+## Death frightens a carter carrying a load (H7, the user's ruling 2026-11-14: he drops it and the grain spoils). A watchman is Death-marked
+## when the carter's walk to the door, or the grain still to come, is DEATH_MARK_LEAD seconds or less: he falls by the door and his soul is
+## still near (Remains.SOUL) when the carter takes the load, DEATH_SOUL_PAD to spare. The spirit rises from his body once the carter has taken
+## his load and, where he will stand as it rises (RaiseTheDeadFx.T_RISE on), is within its fright less DEATH_FRIGHT_PAD.
+const DEATH_SOUL_PAD := 4.0
+const DEATH_MARK_LEAD := DeathMarkFx.MARK_TIME + Remains.SOUL - DEATH_SOUL_PAD
+const DEATH_FRIGHT_PAD := 0.5
 ## Passage: how far from where the beam takes him a carter is set down, at the least and the most (the nearest ground out of the walls).
 const EXIT_MIN := 1.0
 const EXIT_MAX := 26.0
@@ -143,13 +142,10 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 
 # --- Death: Death Mark, Raise the Dead ----------------------------------------------------------------------------------
 
-## The carter is driven out of the walls by a spirit (H1: his granary rots at once, before or after its grain is in): a watchman of his granary
-## is Death-marked as the carter nears its door -- the one whose fall lies on the town side of the door (_herd_wall()), so the straight way from
-## his body past the door runs into the wall -- and Raise the Dead's SPIRIT rises from that body while its soul is near and the carter stands by
-## it on such a line. He runs from it towards the wall and it drifts after the nearest, so he may be driven on through a gate. A relief watchman
-## is marked in his turn when a drive fails. One granary at a time, the soonest to fall first.
-## (Review of 2026-11-13, Task 14: with possession gone this is Death's only way to spoil a granary at Tier 1, and it does not win the night --
-## the carter outruns the spirit, and each fresh fright turns him back inside the walls; reported to the controller, not tuned around.)
+## The carter is frightened while he carries a load (H7): a watchman of his granary is Death-marked as the carter comes for a load (he falls by
+## the door before the carter takes it, his soul still near), and Raise the Dead's SPIRIT rises from his body as the carter walks off with it: within its fright
+## he runs, drops the load, and the grain spoils. A body whose soul has gone before the carter came is followed by a mark on the next watchman.
+## One granary at a time, the soonest to fall first.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as HarvestDirector
 	var rules: Rules = ctx.rules
@@ -163,44 +159,27 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	var crowd: Crowd = ctx.crowd
 	var door: Vector2 = d.doors[s]
 	if rules.live_fx("raise") != null:
-		return ""  # a spirit is driving someone now
-	# A body whose soul is still near, the carter within its fright on a line into the wall: the spirit rises.
-	if _ready(bc, ctx, "raise") and crowd.remains != null:
-		for r in crowd.remains.near(c.ground_pos, DEATH_HERD_NEAR):
-			if not crowd.remains.has_soul(r) or _herd_wall(r.pos, c.ground_pos) > DEATH_HERD_WALL:
-				continue
-			rules.cast(int(ctx.slots.raise), r.pos, {"mode": "spirit"})
-			return "raise a spirit behind the %s granary's carter: it drives him to the wall" % _name(d, s)
-	# The watchman whose fall would drive the carter at the door into the wall, marked as the carter nears it; one mark at a time.
-	if _ready(bc, ctx, "deathmark") and c.ground_pos.distance_to(door) <= DEATH_MARK_NEAR and _marks_due(d, s) == 0:
-		var man: Person = null
-		var best := DEATH_HERD_WALL
-		for w in d.watchmen(s):
-			var way := _herd_wall(w.ground_pos, door)
-			if way <= best:
-				man = w
-				best = way
-		if man != null:
-			rules.cast(int(ctx.slots.deathmark), man.ground_pos)
-			return "death mark a watchman of the %s granary, on the town side of its door" % _name(d, s)
+		return ""  # a spirit is up: it frightens whoever it reaches
+	# He carries a load, and where he will stand as the spirit rises lies within its fright of a body whose soul is still near: the spirit rises.
+	if d._hauling.has(c.get_instance_id()) and _ready(bc, ctx, "raise") and crowd.remains != null:
+		var at: Vector2 = _god().road_ahead(c, RaiseTheDeadFx.T_RISE)
+		for r in crowd.remains.near(at, RaiseTheDeadFx.FRIGHT_R - DEATH_FRIGHT_PAD):
+			if crowd.remains.has_soul(r):
+				rules.cast(int(ctx.slots.raise), r.pos, {"mode": "spirit"})
+				return "raise a spirit by the %s granary's carter as he carries a load: he drops it" % _name(d, s)
+	# He comes to the door for a load within DEATH_MARK_LEAD (his walk, or the grain still to come): the watchman nearest the door is marked, his
+	# soul still near when the carter takes it; one mark at a time.
+	if not d._hauling.has(c.get_instance_id()) and _ready(bc, ctx, "deathmark") and _marks_due(d, s) == 0:
+		var walk := c.ground_pos.distance_to(door) / maxf(c.walk_speed, 0.1)
+		if maxf(walk, d.grain_left(s)) <= DEATH_MARK_LEAD:
+			var man: Person = null
+			for w in d.watchmen(s):
+				if man == null or w.ground_pos.distance_to(door) < man.ground_pos.distance_to(door):
+					man = w
+			if man != null:
+				rules.cast(int(ctx.slots.deathmark), man.ground_pos)
+				return "death mark a watchman of the %s granary, as its carter comes for a load" % _name(d, s)
 	return ""
-
-
-## How far past `to` the straight way from `from` through it runs before it leaves the town's ring (INF when `to` is `from`): a spirit
-## risen at `from` drives one standing at `to` along it. Only reads.
-static func _herd_wall(from: Vector2, to: Vector2) -> float:
-	var dir := to - from
-	if dir.length() < 0.05:
-		return INF
-	dir = dir.normalized()
-	var town := City.current().town()
-	var out := INF
-	for axis in 2:
-		if absf(dir[axis]) < 0.0001:
-			continue
-		var edge: float = town.end[axis] if dir[axis] > 0.0 else town.position[axis]
-		out = minf(out, (edge - to[axis]) / dir[axis])
-	return maxf(out, 0.0)
 
 
 ## Watchmen of `s` who wear a mark now.

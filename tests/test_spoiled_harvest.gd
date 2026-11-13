@@ -63,6 +63,9 @@ static func run(t) -> void:
 	_held(t)
 	_held_reset(t)
 	_held_indoors(t)
+	_dropped(t)
+	_dropped_calm(t)
+	_dropped_empty(t)
 	_replaced(t)
 	_road_closed(t)
 	_roads_stay_in(t)
@@ -207,7 +210,7 @@ static func _setup(t) -> void:
 		"tagged empty with the time to their grain, and a watchman at each post (%s)" % [_labels(d)])
 	var stops := d.tour()
 	t.check(stops.size() == 4 and String(stops[0][1]) == "The south-west granary. Its watchmen put out fires. Its grain arrives by 1:00."
-		and String(stops[3][1]) == "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled.",
+		and String(stops[3][1]) == "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled; a carter frightened with a load drops it.",
 		"the tour: the three granaries, then the Citadel")
 	t.check((s.banners as Array).has("SPOIL THE HARVEST"), "its opening banner")
 	_done(s)
@@ -1075,6 +1078,75 @@ static func _held_indoors(t) -> void:
 
 
 ## H5: a carter killed is replaced RELIEF_AFTER later from the Citadel's gate, the loads as they were; killing one never spoils.
+## A carter carrying a load away from his granary's door (H7, the user's ruling 2026-11-14), loaded at the door and on his way to the Citadel.
+static func _loaded(s: Dictionary) -> Person:
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK + DT)
+	return c0
+
+
+## H7: a carter frightened while he carries a load drops it -- each of the frightened minds (PANIC, FLEE, SHELTER), at once, his granary spoiled
+## (dropped) under the banner, no other granary touched, he is sent home.
+static func _dropped(t) -> void:
+	t.check(HarvestDirector.DROP_MINDS == [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER],
+		"frightened means a mind of PANIC, FLEE or SHELTER")
+	for mind: Person.Mind in HarvestDirector.DROP_MINDS:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var g := d.targets[0]
+		var c0 := _loaded(s)
+		t.check(d._hauling.has(c0.get_instance_id()) and int(d.loads[g]) == HarvestDirector.LOADS - 1 and not d.razed(g),
+			"loaded at the door, he carries it away (%s)" % Person.Mind.keys()[mind])
+		c0.mind = mind
+		_run(s, DT)
+		t.check(d.razed(g) and d.spoiled_by.get(g) == "dropped" and not d.razed(d.targets[1]) and d.carters[g].is_empty()
+			and (s.banners as Array).has(HarvestDirector.DROP_BANNER),
+			"frightened (%s) with a load, he drops it at once: his granary is spoiled (dropped), the banner says so (%s)"
+			% [Person.Mind.keys()[mind], d.spoiled_by.get(g, "")])
+		_done(s)
+
+
+## H7: a calm carter with a load, or one the god holds (not fright), drops nothing.
+static func _dropped_calm(t) -> void:
+	for mind: Person.Mind in [Person.Mind.DUTY, Person.Mind.CALM, Person.Mind.CONFUSED, Person.Mind.WHISPERED, Person.Mind.OBSERVE]:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var g := d.targets[0]
+		var c0 := _loaded(s)
+		c0.mind = mind
+		_run(s, DT)
+		t.check(not d.razed(g) and d._hauling.has(c0.get_instance_id()),
+			"carrying a load in mind %s, he drops nothing" % Person.Mind.keys()[mind])
+		_done(s)
+
+
+## H7: a frightened carter with no load (waiting at the door, or back at the Citadel) drops nothing.
+static func _dropped_empty(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_hold(s, c0, Person.Mind.PANIC, 1.0)
+	t.check(not d.razed(g) and not d._hauling.has(c0.get_instance_id()), "frightened at the door before his grain, with no load: nothing spoils")
+	_done(s)
+	s = _world()
+	d = s.d
+	g = d.targets[0]
+	c0 = _loaded(s)
+	_arrive(c0, d.citadel_door)
+	_run(s, HarvestDirector.TICK + DT)
+	t.check(not d._hauling.has(c0.get_instance_id()), "the load delivered at the Citadel, he carries nothing")
+	_hold(s, c0, Person.Mind.PANIC, 1.0)
+	t.check(not d.razed(g), "frightened on his way back with no load: nothing spoils")
+	_done(s)
+
+
 static func _replaced(t) -> void:
 	var s := _world()
 	var d: HarvestDirector = s.d

@@ -72,12 +72,12 @@ hosting and input change from the resolution change.
 
 **Files:**
 - Create: `src/game/ui/world_view.gd` (`class_name WorldView extends Node`)
-- Modify: `src/game/battlefield.gd` (hud_layer under `ui_parent()`, `SIM_VIEW`, `sim_view_size()`, `mouse_screen()`, `mouse_ground()`, `save_capture` reads the root)
-- Modify: `src/game/mission.gd` (ZoomReadout, memory overlay, behaviour overlay panel and legend under `_bf.ui_parent()`; `self_host` at the top of `_ready`; `world_xf()` for Game)
-- Modify: `src/game/ui/hud.gd` (`var world_viewport: Viewport`; `_world_xf()` replaces the 6 `get_viewport().get_canvas_transform()` calls; `_hover_point` uses `WorldView.mouse_in_view`)
+- Modify: `src/game/battlefield.gd` (hud_layer, `FpsMeter` (a CanvasLayer, F3 in `_input`) and `ArtToggle` (F7 in `_input`) under `ui_parent()`; `SIM_VIEW`, `sim_view_size()`, `mouse_screen()`, `mouse_ground()` (= `Iso.screen_to_ground(get_canvas_transform().affine_inverse() * mouse_screen())`); `save_capture` reads the root, **keeping the 2x resize in this task** (in viewport mode the root texture is still 640x360; Task 3 drops the resize))
+- Modify: `src/game/mission.gd` (ZoomReadout, memory overlay, the BehaviourOverlay node (it already adds its World lines to the battlefield itself) and legend under `_bf.ui_parent()`; `_hud.world_viewport = _bf.get_viewport()` after the Hud is made; `self_host` at the top of `_ready`; `world_xf()` for Game)
+- Modify: `src/game/ui/hud.gd` (`var world_viewport: Viewport`; `_world_xf()` replaces the 5 `get_viewport().get_canvas_transform()` calls (hud.gd 667, 748, 773, 1216, 1516); `_hover_point` uses `WorldView.mouse_in_view`)
 - Modify: `src/game/game.gd` (missions hosted with `_world.host(mission)` at both add sites 978/1004; `_capture` reads the root; `_flow_click_ground` uses the mission's world transform)
-- Modify: `src/game/ui/title_screen.gd` (hosts `_bf` and `_town` in a WorldView), `src/game/town_debug.gd`, `src/sandbox/sandbox.gd` (`self_host`)
-- Modify: `tools/dev/behaviour_check.gd`, `tools/dev/profile_view.gd` (host when `DisplayServer.get_name() != "headless"`)
+- Modify: `src/game/ui/title_screen.gd` (hosts `_bf` and `_town` in a WorldView), `src/game/town_debug.gd` (`self_host`; its ZoomReadout under `_bf.ui_parent()`), `src/sandbox/sandbox.gd` (`self_host`; `_mouse_ground()` uses `_bf.mouse_ground()`, not `get_global_mouse_position()`)
+- Modify: `tools/dev/behaviour_check.gd`, `tools/dev/profile_view.gd`, `tools/dev/profile_wear.gd` (host when `DisplayServer.get_name() != "headless"`); `behaviour_check.gd:1285` warps the **root** mouse with `WorldView.world_xf(bf.get_viewport()) * point` (a SubViewport's own `warp_mouse` has no container transform)
 - Create: `tests/test_world_view.gd`; register it in `SUITES`
 
 **Interfaces (produces):**
@@ -110,14 +110,14 @@ new WorldView added to the root, return true.
 - [ ] Step 1: Write the failing tests in `tests/test_world_view.gd` (headless; a SubViewport works without drawing):
   `_hosting` (`host()` puts a Node2D under `viewport`; `of()` finds it; `ui_parent` is `ui` when hosted and the node itself when not);
   `_bf_layers` (a hosted Battlefield's `hud_layer.get_parent() == wv.ui`; an unhosted one's is the battlefield);
-  `_no_ui_in_world` (host a Mission with `autostart = false` on the Warning, start it, walk `wv.viewport`: no `Control`; the CanvasLayers' `layer` values ⊆ {1, 2, 3, 4, 5});
+  `_no_ui_in_world` (host a Mission with `autostart = false` on the Warning, start it, walk `wv.viewport`: every `Control` is a full-rect `MOUSE_FILTER_IGNORE` `ColorRect` directly under a world post CanvasLayer (glow, Impact post, flash, TownGrade and TownBloom are ColorRects), none anywhere else; the CanvasLayers' `layer` values ⊆ {1, 2, 3, 4, 5}; no `FpsMeter`, `ZoomReadout`, `LegendPanel` or `Hud` in it);
   `_keys` (a world node sets a key as handled → `wv._unhandled_input(key)` leaves the root handled; a key the world ignores leaves it unhandled);
   `_mouse_identity` (an `InputEventMouseButton` at (123, 45) reaches the world node with `position == (123, 45)`);
   `_sim_view_pinned` (with the hosted SubViewport resized to 853×360 and `sim_zoom = 0.6`, after one `_process`, `Person.view.size == SIM_VIEW / 0.6 + 2·VIEW_MARGIN`).
 - [ ] Step 2: Run the suite; the new tests fail (WorldView missing).
 - [ ] Step 3: Implement. Import (new class_name).
 - [ ] Step 4: Suite `failures=0`; refs_check `bad=0`; FLOW alone passes.
-- [ ] Step 5: By eye, same as before: `SCENE=res://scenes/game.tscn GODOT=$G bash tools/capture.sh --show=warning --capture`, and
+- [ ] Step 5: By eye, same as before: `SCENE=res://scenes/game.tscn GODOT=$G bash tools/capture.sh --show=tax_collector --capture` (`warning` is not a show name: it falls through to the title), and
   `SCENE=res://scenes/town_debug.tscn GODOT=$G bash tools/capture.sh --capture-town --only=<first shot>`. Grade, bloom,
   glow and flash are over the world and under the HUD; output 1280×720.
 - [ ] Step 6: Commit `feat: the world renders in a WorldView SubViewport; UI layers stay in the root; sim view pinned`.
@@ -129,14 +129,14 @@ new WorldView added to the root, return true.
 - Create: `src/game/ui/ui_scale.gd` (`class_name UiScale`), `src/game/ui/ui_scale_notifier.gd` (`class_name UiScaleNotifier`, `signal changed(layout: Dictionary)`), `src/game/ui/ui_icon.gd` (`class_name UiIcon`)
 - Modify: `src/game/ui/ui_theme.gd` (`TEXT_S := 11`, `TEXT_L := 22`, `TEXT_XL := 33`, `TEXT_XXL := 66`, `LINE_S := 12.0`, `LINE_L := 24.0`; `frame()` and `mark()` widths `1.0`)
 - Modify: every UI file with hairlines (count today: 25 explicit `-1.0` plus about 20 calls with the width left out, in `hud.gd`, `ui_theme.gd`, `god_select_screen.gd`, `legend_panel.gd`, `mission_board.gd`, `prepare_screen.gd`, `results_screen.gd`, `skill_tree_screen.gd`, `title_screen.gd`, `ending_screen.gd`, `behaviour_overlay.gd`) → explicit `1.0`
-- Modify: `src/game/game.gd` (`UiScale.install(get_tree())` first in `_ready`), `src/game/ui/world_view.gd` (`self_host` installs too), `tools/capture.sh` (passes `--window=WxH` through; no change needed if the args go to the game)
+- Modify: `src/game/game.gd` (`UiScale.install(get_tree())` first in `_ready`; `_capture` drops the 2x resize), `src/game/battlefield.gd` (`save_capture` drops the 2x resize: under canvas_items the root texture is already window-sized), `src/game/ui/world_view.gd` (`self_host` installs too), `tools/capture.sh` (passes `--window=WxH` through; no change needed: args after `--` reach the game)
 - Test: `tests/test_ui_scale.gd`
 
 **Interfaces (produces):** as spec §4. `UiScale.layout(window: Vector2i) -> Dictionary {k, area, offset, fit}`;
 `install(tree)`; `k()`; `area()`; `design_offset()`; `anchor(design_rect: Rect2, where: int) -> Rect2` with
 `enum Anchor { TOP_LEFT, TOP, TOP_RIGHT, LEFT, CENTRE, RIGHT, BOTTOM_LEFT, BOTTOM, BOTTOM_RIGHT }`;
 `snap(p: Vector2) -> Vector2`; `design_frame(layer: CanvasLayer, filter: int) -> Control`;
-`backdrop(frame: Control) -> Rect2`; `static var notifier: UiScaleNotifier`. `UiIcon.native_rect(centre: Vector2,
+`backdrop(frame: Control) -> Rect2`; `static var notifier: UiScaleNotifier`; `anchor` takes an optional third argument `area: Vector2` (default `area()`), so `Hud` anchors to its own `_view()`; test hook `static func set_test_area(a: Vector2i) -> void` / `clear_test_area()` for headless tests of 800x450 layouts (`area()`, `design_offset()`, `anchor()` and `design_frame()` use it; every test that sets it clears it). `UiIcon.native_rect(centre: Vector2,
 want_units: float) -> Rect2`; `UiIcon.multiple(want_units: float) -> int`; `UiIcon.texture_for(key: String,
 m: int) -> Texture2D`; `UiIcon.grey(tex: Texture2D) -> Texture2D`; `UiIcon.grey_image(img: Image) -> Image`;
 `UiIcon.draw_round(on: CanvasItem, tex: Texture2D, rect: Rect2, tint := Color.WHITE) -> void`.
@@ -156,7 +156,7 @@ and `fit` for the expand task, but the expand is not applied until Task 9 (`UiSc
 - [ ] Step 3: Implement `UiScale`, `UiIcon` and the notifier; flip `project.godot`; sweep the hairlines. Import.
 - [ ] Step 4: Headless sanity: `"$G" --headless --path . -s` a throwaway script printing `root.get_visible_rect().size` → `(640, 360)`.
 - [ ] Step 5: Suite `failures=0`; refs_check `bad=0`; FLOW.
-- [ ] Step 6: Captures at `--window=1920x1080` and `--window=1366x768` of `--show=tree`, `--show=pause` and `--show=warning`: text sharp, world in 3×/2× blocks, lines one unit thick.
+- [ ] Step 6: Captures at `--window=1920x1080` and `--window=1366x768` of `--show=tree`, `--show=pause` and `--show=tax_collector`: text sharp, world in 3×/2× blocks, lines one unit thick.
 - [ ] Step 7: Commit `feat: full-resolution UI over the pixel world (canvas_items, UiScale, crisp text sizes, no hairlines)`.
 
 ### Task 4: Skill tree redesign (spec §7)
@@ -175,7 +175,7 @@ and `fit` for the expand task, but the expand is not applied until Task 9 (`UiSc
   `_labels_clear` — with `GodTree.dev_fill = true` for every type and column: every strip in `label_layout(col)` lies inside `LABEL_AREA`, clears every node disc grown 3 u and the ring numeral plates, and no two strips intersect;
   `_refusal_fits` — `refusal_lines(x)` has ≤ 2 lines and each is ≤ 96 u at `TEXT_S`, for every `REFUSALS` value (tier formatted with 5) and "Not enough ability points";
   `_value_columns` — on a fixture row set, the new values' right edges are all equal to `right`, the old values' right edges are all equal to `old_right`, and `arrow_x` is between them;
-  `_crisp_only` — the source of `skill_tree_screen.gd` has no `SIZE_SMALL`, `SIZE_BODY`, `SIZE_BIG` or numeric font size other than via `TEXT_*`/`NODE_NAME_PX`/`SMALL_PX`/`SIZE_CHIP` (RegEx);
+  `_crisp_only` — the source of `skill_tree_screen.gd` has no `SIZE_SMALL`, `SIZE_BODY`, `SIZE_BIG` or numeric font size other than via `TEXT_*`/`NODE_NAME_PX`/`SMALL_PX`/`SIZE_CHIP` (RegEx), and no `UiTheme.text/width/wrap/fit` call that leaves the size out (`text`/`width`/`wrap` default to `SIZE_BODY` 13);
   `_pulse` — `pulse_alpha` stays in [0.05, 0.12] and repeats after 1.6 s;
   `_mini_cells` — 10 mini rects per panel, inside the panel, none overlapping, all above the bottom line's baseline − 9.
   Update `_layout` and `_texts_fit` for the new numbers (only where §7 moved them).
@@ -196,11 +196,11 @@ and `fit` for the expand task, but the expand is not applied until Task 9 (`UiSc
 - `Hud.anchor_slots(area: Vector2) -> Rect2` and the like are not needed: `slot_rect(i)`, `chain_rect()`, `ascend_rect()`, `wish_at()` and `slot_at()` keep their signatures and return area-anchored rects.
 - Mission's `event.position` hit tests stay unchanged (identity mapping).
 
-- [ ] Step 1: Failing tests: in `test_hud.gd`, `_anchors_800x450` — a Hud sized 800×450 puts the slot row's bottom at `450 - (360 - SLOT_TOP - SLOT_SIZE)`, centred on x 400, and the status line's right edge at 800 − its 640-design margin; at 640×360 every rect equals today's. A source lint: no `SIZE_SMALL|SIZE_BODY|SIZE_BIG` or numeric font size under 11 in `hud.gd`.
+- [ ] Step 1: Failing tests: in `test_hud.gd`, `_anchors_800x450` — a Hud sized 800×450 puts the slot row's bottom at `450 - (360 - SLOT_TOP - SLOT_SIZE)`, centred on x 400, and the status line's right edge at 800 − its 640-design margin; at 640×360 every rect equals today's. A source lint: no `SIZE_SMALL|SIZE_BODY|SIZE_BIG` or numeric font size under 11 in `hud.gd`, and no `UiTheme.text/width/wrap/fit` call with the size left out (the default is `SIZE_BODY` 13).
 - [ ] Step 2: Run; they fail.
 - [ ] Step 3: Implement.
 - [ ] Step 4: Suite; refs_check (HUD code is drawing only, but `mission.gd` hit tests are in reach); FLOW.
-- [ ] Step 5: Captures `--show=warning`, `--show=pause` and `--show=sermon` at 1366×768 and 1920×1080. The HUD hugs the edges, and tags and arrows sit on their people.
+- [ ] Step 5: Captures `--show=tax_collector`, `--show=pause` and `--show=sermon` at 1366×768 and 1920×1080. The HUD hugs the edges, and tags and arrows sit on their people.
 - [ ] Step 6: Commit `feat: HUD and mission overlays anchored to the screen edges at full resolution`.
 
 ### Task 6: Menus: title, menu, options, pause, board, slots, god select, hub, faith, upgrades — *mechanical*
@@ -246,7 +246,7 @@ Same recipe as Task 6. `results_screen.gd`'s rank letter at `SIZE_HUGE` 64 → `
 - Modify: `src/game/ui/ui_scale.gd` (`EXPAND_ON := true`: `apply()` sets aspect `EXPAND` and `content_scale_size = area`; headless never)
 - Modify: `src/core/camera_shake.gd` (`var view_fit := 1.0`, `func zoom_to(z: float)`, `func logical_zoom() -> float`, `func set_view_fit(f: float)` re-applies the zoom)
 - Modify: `src/game/ui/world_view.gd` (on `UiScale.notifier.changed`: `resize(area)`, `set_view_fit(fit)` on the hosted camera)
-- Modify: every `camera.zoom` writer and simulation reader: `src/game/mission.gd` (14), `src/game/town_debug.gd` (15), `src/game/battlefield.gd` (1), `src/core/impact.gd` (1, visual: keep render zoom), `src/game/ui/title_screen.gd` (1); `Mission` re-clamps on `get_viewport().size_changed` (`_pan(Vector2.ZERO)`)
+- Modify: every `camera.zoom` writer and simulation reader: `src/game/mission.gd` (14), `src/game/town_debug.gd` (15), `src/game/battlefield.gd` (1, reader: `logical_zoom()`), `src/core/impact.gd` (1, visual: keep render zoom), `src/game/ui/title_screen.gd` (1), `src/sandbox/sandbox.gd` (writes at 158 and 409 → `zoom_to`; the two `tween_property(_camera, "zoom", ...)` at 204 and 217 → `tween_method(_camera.zoom_to, ...)` on the logical zoom). Render readers that stay on `zoom`: `src/fx/dominion/voice_of_god.gd:415`, `src/audio/{ambience,fire_sounds,sfx}.gd`. `tools/dev/*` writers (behaviour_check 16, profile_view 1) are outside the lint and run at fit 1 (see rulings on `logical_zoom()`). `Mission` re-clamps on `get_viewport().size_changed` (`_pan(Vector2.ZERO)`)
 - Test: `tests/test_ui_scale.gd`, `tests/test_world_view.gd`
 
 **Interfaces:** `CameraShake.zoom_to(z: float) -> void`, `CameraShake.logical_zoom() -> float`,
@@ -255,7 +255,7 @@ Same recipe as Task 6. `results_screen.gd`'s rank letter at `SIZE_HUGE` 64 → `
 
 Classification (write it into the commit message): pan by `event.relative / camera.zoom.x` = render (screen
 pixels to world); `clamp_view(..., camera.zoom.x, view_size)` = render; `sim_zoom` = logical; town_debug shot
-zooms = `zoom_to`; bench zooms = `zoom_to`.
+zooms = `zoom_to`; bench zooms = `zoom_to`; the wheel's new zoom is `logical_zoom() * 1.1` (or `/ 1.1`) clamped to ZOOM_MIN..MAX, then `zoom_to` (never from `camera.zoom.x`, which would compound `fit`); `_zoom_readout.show_zoom(logical_zoom())`; the bench box fit at `mission.gd:286` is a render zoom: `zoom_to(that / view_fit)`.
 
 - [ ] Step 1: Failing tests:
   `_zoom_lint` — no `camera.zoom =` / `cam.zoom =` / `.zoom = Vector2` outside `camera_shake.gd` in `src/` (RegEx);
@@ -266,7 +266,7 @@ zooms = `zoom_to`; bench zooms = `zoom_to`.
 - [ ] Step 2: Run; they fail.
 - [ ] Step 3: Implement.
 - [ ] Step 4: Suite; **refs_check `bad=0`** (this task touches the camera); FLOW alone.
-- [ ] Step 5: Captures at 1366×768, 1600×900, 1920×1200 and 2560×1080 of `--show=warning` and `--show=tree`: no bars; the world framing matches 1920×1080 in height; the HUD at the edges. Drag the window edge by hand once (resize works, the camera re-clamps).
+- [ ] Step 5: Captures at 1366×768, 1600×900, 1920×1200 and 2560×1080 of `--show=tax_collector` and `--show=tree`: no bars; the world framing matches 1920×1080 in height; the HUD at the edges. Drag the window edge by hand once (resize works, the camera re-clamps).
 - [ ] Step 6: Commit `feat: fill any aspect ratio (expand) with the visible world capped at 21:9 x 360 by camera fit`.
 
 ### Task 10: Proof captures, bench, final gates — *mechanical (verification only)*
@@ -275,12 +275,12 @@ zooms = `zoom_to`; bench zooms = `zoom_to`.
 report.
 
 - [ ] Step 1: For W×H in 1280x720, 1366x768, 1600x900, 1920x1080, 1920x1200, 2560x1080 and 3440x1440, and each show in
-  `tree hub pause results board-dev-hunts title prepare warning`:
+  `tree hub pause results board-dev-hunts title prepare tax_collector`:
   `SCENE=res://scenes/game.tscn GODOT=$G bash tools/capture.sh --show=<s> --capture --window=<W>x<H>`, then move
   `captures/screen_<s>.png` to `captures/ui_resolution/<s>_<W>x<H>.png`. Plus
   `SCENE=res://scenes/town_debug.tscn GODOT=$G bash tools/capture.sh --capture-town --only=<first shot> --window=<W>x<H>`.
 - [ ] Step 2: Script check (throwaway Python, PIL): image size == W×H; the four 8×8 corners are not all pure black;
-  in a 40×40 patch of world (centre of `warning`), horizontal run lengths of equal colour are multiples of k
+  in a 40×40 patch of world (centre of `tax_collector`), horizontal run lengths of equal colour are multiples of k
   (allow the 1-px offset at 2560×1080).
 - [ ] Step 3: Read every `tree_*` capture and the 3440×1440 and 1920×1200 ones by eye (labels, icons, states, the HUD at the edges).
 - [ ] Step 4: `bash tools/dev/land.sh --bench=7eb1c6a0` on a quiet machine (suite, refs, FLOW, bench pairs). The frame rate must stay within the machine's noise (about 1 fps).

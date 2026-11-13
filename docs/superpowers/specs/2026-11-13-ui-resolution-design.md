@@ -52,7 +52,7 @@ What the code does today that matters here:
   Every world click and key goes through `Mission._unhandled_input`. Mission hit-tests HUD rects with
   `event.position` (`mission.gd:1209-1221`): today the world and the HUD share one coordinate space.
 - `Hud` is a full-rect Control with `MOUSE_FILTER_IGNORE`. It maps world points with
-  `get_viewport().get_canvas_transform()` (6 call sites) and reads `get_viewport().get_mouse_position()`
+  `get_viewport().get_canvas_transform()` (5 call sites) and reads `get_viewport().get_mouse_position()`
   (`hud.gd:811`). `Hud._view()` already uses its own size.
 - **Things the simulation depends on:**
   `Battlefield._process` sets `Person.view = (visible rect / zoom)` round the camera centre. `Person._seen` picks
@@ -61,7 +61,8 @@ What the code does today that matters here:
   moves `Person.view`. `sim_zoom` is set from `camera.zoom` on the wheel. Everything else that reads the view
   (ambience, sfx, fire sounds, impact UVs, ground fire sprite) is audio or visuals only.
 - **Tools.** `behaviour_check.gd` and `profile_view.gd` add a Mission straight to the root. The references'
-  digest, crowd_check and global rows run **windowed** (hit-stop is wall clock); the scenario rows run headless.
+  global behaviour rows (calm, gates, fire, rite, soldiers, warning_*, ...: 17 rows) run **windowed** through
+  `behaviour_check.gd` (hit-stop is wall clock); digest (`state_digest.gd`), crowd_check and the scenario rows run headless.
   `scenes/mission.tscn` is instanced as a `Mission` by `game.gd`, `test_night_rules.gd` and the tools.
   `Battlefield.save_capture` and `Game._capture` read `get_viewport()` (640×360 world+HUD) and scale it 2× to
   1280×720. `sandbox.gd:418` (clip capture) reads `get_viewport()` and crops the world.
@@ -114,8 +115,9 @@ SubViewport's last pushed event, so the aim stays right while the mouse is over 
 Ruling: **UI never lives in the world viewport.** CanvasLayers and Controls created by world owners
 (`Battlefield.hud_layer`, the ZoomReadout, memory/behaviour overlays, the legend) are parented to
 `WorldView.ui` (in the root) when the world is hosted, and stay where they are today when it is not (headless
-tests and tools). An invariant test walks the SubViewport: no `Control`, and only the world post layers
-(TownGrade 1, TownBloom, glow 3, post 4, flash 5).
+tests and tools). An invariant test walks the SubViewport: no `Control` other than the full-rect `MOUSE_FILTER_IGNORE` ColorRects of
+the world post layers, and only those layers (TownGrade 1, TownBloom 2, glow 3, post 4, flash 5). `FpsMeter` and
+`ArtToggle` (created by Battlefield) go to `ui_parent()` too.
 
 Ruling: **Hosting.** `Game` hosts missions, `TitleScreen` hosts its backdrop battlefield, and `Mission`,
 `TownDebug` and `Sandbox` host themselves when they are the windowed main scene (`WorldView.self_host`:
@@ -172,7 +174,7 @@ Window (root, canvas_items, integer k, content_scale_size = area)        <- UiSc
 - `static func of(node: Node) -> WorldView` — the WorldView whose viewport holds `node`, else null
 - `static func ui_parent(node: Node) -> Node` — `of(node).ui` if hosted, else `node`
 - `static func self_host(node: Node) -> bool` — main-scene, windowed, unhosted: defers hosting and returns true
-- `static func world_xf(ui_node: Node, world: Viewport) -> Transform2D` — the world's canvas transform (identity mapping)
+- `static func world_xf(world: Viewport) -> Transform2D` — the world's canvas transform (identity mapping)
 - `static func mouse_in_view(world_node: Node) -> Vector2` — root mouse in world-viewport px when hosted, else
   the node's own viewport mouse
 - `_unhandled_input(e)`: `viewport.push_input(e, true)`; if `viewport.is_input_handled()`, mark the root handled
@@ -340,7 +342,7 @@ which is the largest text can get.
 FLOW alone.
 
 **Proof captures** (Task 10): `--show=tree`, `--show=hub`, `--show=pause`, `--show=results`, `--show=board`
-(TIER1 show), `--show=title`, `--show=prepare`, a mission show (`--show=warning`), and
+(TIER1 show), `--show=title`, `--show=prepare`, a mission show (`--show=tax_collector`; `warning` is not a show name), and
 `town_debug --capture-town --only=<one>`, each at **1280×720, 1366×768, 1600×900, 1920×1080, 1920×1200,
 2560×1080, 3440×1440** via `--window=WxH` (borderless). Checked by eye and by script: no black bars (corner
 pixels are not pure black, except where the art is black), world pixels are k×k blocks (sample a 40×40 world

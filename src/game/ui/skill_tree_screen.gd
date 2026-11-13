@@ -9,9 +9,9 @@ extends Node
 ## "learned" (a point was spent: Game writes the slot), "remember" (try the selected power) or "back".
 signal action(name: String)
 
-const BACK_RECT := Rect2(6.0, 4.0, 40.0, 18.0)
-const REMEMBER_RECT := Rect2(528.0, 263.0, 96.0, 30.0)
-const BUY_RECT := Rect2(528.0, 298.0, 96.0, 30.0)
+const BACK_RECT := Rect2(6.0, 4.0, 52.0, 18.0)
+const REMEMBER_RECT := Rect2(528.0, 256.0, 96.0, 26.0)
+const BUY_RECT := Rect2(528.0, 286.0, 96.0, 26.0)
 ## The detail panel (the wheel's DETAIL strip): the clip box, the info column, the level column and the buttons sit inside it.
 const DETAIL := TreeWheel.DETAIL
 const CLIP_BOX := Rect2(15.0, 258.0, 152.0, 86.0)
@@ -20,7 +20,26 @@ const INFO_W := TreeDetail.DESCRIPTION_W
 const LEVEL_X := 387.0
 const LEVEL_W := 132.0
 ## A side panel's small icons: a 2x5 grid of MINI_PX squares.
-const MINI_PX := 18.0
+const MINI_PX := 22.0
+## The icon sizes asked of UiIcon.native_rect: a node's (21 u at k2, 14 u at k3: always 42 px or a multiple) and a side cell's.
+const NODE_ICON_UNITS := 21.0
+const MINI_ICON_UNITS := 18.0
+## Where a node's name may sit, and how tall its strip is.
+const LABEL_AREA := Rect2(124.0, 28.0, 392.0, 218.0)
+const LABEL_STRIP_H := 13.0
+## The affordable nodes' glow breathes once in this many seconds.
+const PULSE_SECONDS := 1.6
+## The refusal under RAISE wraps to this width (units) and at most 2 lines.
+const REFUSAL_W := 96.0
+## The keys hint's box (kept clear of the labels).
+const HINT_RECT := Rect2(8.0, 236.0, 184.0, 14.0)
+## The wheel's centre emblem, and a lock badge's place and size relative to its node.
+const EMBLEM_R := 18.0
+const BADGE_AT := Vector2(8.0, 8.0)
+const BADGE_R := 5.0
+const ORBIT_SEGMENTS := 72
+## The level column's last text baseline.
+const LEVEL_BOTTOM := 348.0
 ## How long a refusal's reason stays up.
 const REFUSE_SECONDS := 1.5
 ## What a refused click says, by GodSlot.refusal(); "tier" takes the spot's tier.
@@ -31,10 +50,17 @@ const COL_SELECT := Color("fff3c4")
 const COL_NODE := Color("100c18")
 const COL_GREEN := Color("9fe08a")
 const COL_TWIST := Color("e9c96a")
-const NODE_NAME_PX := 9
+const COL_LABEL := Color("f3e7c0")
+const COL_LABEL_LOCKED := Color("8a8296")
+const COL_STRIP := Color(0.03, 0.02, 0.06, 0.82)
+const COL_RING_LOCKED := Color("4a4358", 0.8)
+## Orbit segments under a label strip are drawn at this alpha.
+const ORBIT_FADED := 0.12
+const NODE_NAME_PX := 11
 ## A node's name label: centred under the node, this wide at most (every power name fits, none is chopped).
 const NODE_NAME_W := 84.0
-const SMALL_PX := 9
+const SMALL_PX := 11
+const SIZE_CHIP := 11
 
 ## Why the last buy learned nothing, shown for REFUSE_SECONDS; "" for none.
 var refused_reason := ""
@@ -49,10 +75,13 @@ var _hover := ""
 ## The spots' icons, loaded once each in setup(), not in the draw (a texture first loaded inside a draw showed white for a frame);
 ## null for a power with none yet. _big holds the large icons and _clips the preview sheets, loaded when a power is selected.
 var _icons := {}
+var _icons_big := {}
 var _big := {}
 var _clips := {}
 var _clip_time := 0.0
 var _clip_shown := -1
+var _pulse_t := 0.0
+var _label_cache := {}
 var _wide_style: StyleBoxFlat
 
 
@@ -64,6 +93,7 @@ func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
 				var key := key_at(col, tier, i)
 				if key != "" and not _icons.has(key):
 					_icons[key] = spot_icon(key)
+					_icons_big[key] = PowerBook.icon(key)
 	centred = maxi(columns().find(slot.type), 0)
 	selected = _first_pick()
 	if p_state.has("centred") and int(p_state.centred) >= 0 and int(p_state.centred) < columns().size():
@@ -77,6 +107,7 @@ func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
 	add_child(layer)
 	_ui = Control.new()
 	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	layer.add_child(_ui)
@@ -110,6 +141,7 @@ func centre(col: int) -> void:
 	if col < 0 or col >= columns().size():
 		return
 	centred = col
+	_label_cache.clear()
 	_redraw()
 
 
@@ -187,9 +219,9 @@ func chip_rect(col: int) -> Rect2:
 	var widths: Array[float] = []
 	var total := 3.0 * (cols.size() - 1)
 	for c in cols.size():
-		var w := UiTheme.width(_chip_title(c), SIZE_CHIP if c == centred else SMALL_PX + 1) + (28.0 if c == centred else 18.0)
+		var w := UiTheme.width(_chip_title(c), SIZE_CHIP) + (28.0 if c == centred else 18.0)
 		if c != centred and cols[c] != _slot.type:
-			w += UiTheme.width(" x2", SMALL_PX - 1)
+			w += UiTheme.width(" x2", SIZE_CHIP)
 		widths.append(w)
 		total += w
 	var x := 320.0 - total * 0.5
@@ -198,9 +230,6 @@ func chip_rect(col: int) -> Rect2:
 			return Rect2(x, 4.0, widths[c], 18.0)
 		x += widths[c] + 3.0
 	return Rect2()
-
-
-const SIZE_CHIP := 12
 
 
 func _chip_title(col: int) -> String:
@@ -229,24 +258,160 @@ static func node_label(full: String) -> String:
 	return out.strip_edges(false, true) + "..."
 
 
-## Where a node's name sits: under the node; else beside it on its outer side (spot 0 right, spot 1 left), else above it -- the first
-## place clear of every other node's circle.
-static func node_label_rect(tier: int, i: int, text: String) -> Rect2:
-	var p := TreeWheel.node_at(tier, i)
-	var w := UiTheme.width(text, NODE_NAME_PX)
-	var side := 1.0 if i == 0 else -1.0
-	var spots := [Rect2(p.x - w * 0.5, p.y + TreeWheel.NODE_R + 2.0, w, 9.0),
-		Rect2(p.x + side * (TreeWheel.NODE_R + 3.0) - (0.0 if side > 0.0 else w), p.y - 4.0, w, 9.0),
-		Rect2(p.x - w * 0.5, p.y - TreeWheel.NODE_R - 11.0, w, 9.0)]
-	for r: Rect2 in spots:
-		var clear := true
-		for t in range(1, GodTree.TIERS + 1):
-			for k in GodTree.PER_TIER:
-				if (t != tier or k != i) and r.intersects(Rect2(TreeWheel.node_at(t, k) - Vector2.ONE * TreeWheel.NODE_R, Vector2.ONE * TreeWheel.NODE_R * 2.0)):
-					clear = false
-		if clear:
-			return r
-	return spots[0]
+## The ring numeral plates, one on the top of each tier's oval (16x12 u, the numeral inside at 11 u).
+static func numeral_plates() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for tier in range(1, GodTree.TIERS + 1):
+		var top := Vector2(TreeWheel.CENTER.x, TreeWheel.CENTER.y - TreeWheel.ring(tier).y)
+		out.append(Rect2(top.x - 8.0, top.y - 4.0, 16.0, 12.0))
+	return out
+
+
+## How far a point is from a rect (0 inside it).
+static func _gap(r: Rect2, p: Vector2) -> float:
+	return (p.clamp(r.position, r.end) - p).length()
+
+
+## Whether a label strip may sit at `r`: inside LABEL_AREA, off the top bar, the side panels, the detail panel and the keys hint, off
+## the ring numeral plates and the wheel's centre, 3 u clear of every node disc (and of its lock badge) and 2 u clear of every strip
+## already `placed`.
+static func strip_clear(r: Rect2, placed: Array) -> bool:
+	if not LABEL_AREA.encloses(r):
+		return false
+	for fixed: Rect2 in [TreeWheel.TOP_BAR, TreeWheel.DETAIL, TreeWheel.SIDE_L, TreeWheel.SIDE_R, HINT_RECT]:
+		if r.intersects(fixed):
+			return false
+	for plate in numeral_plates():
+		if r.intersects(plate):
+			return false
+	if _gap(r, TreeWheel.CENTER) < EMBLEM_R + 1.0:
+		return false
+	for tier in range(1, GodTree.TIERS + 1):
+		for i in GodTree.PER_TIER:
+			var p := TreeWheel.node_at(tier, i)
+			if _gap(r, p) < TreeWheel.NODE_R + 3.0 or _gap(r, p + BADGE_AT) < BADGE_R + 1.0:
+				return false
+	for q: Rect2 in placed:
+		if r.intersects(q.grow(2.0)):
+			return false
+	return true
+
+
+## The places a strip of `size` may take for a node at `p`, best first: radially outward, below, above, the outer side (the four of the
+## spec), then the same shifted along the node (aligned to its left or right edge, or nudged up or down) and radially further out, so a
+## crowded quarter of the wheel can still fan its names out.
+static func strip_candidates(p: Vector2, size: Vector2) -> Array[Rect2]:
+	var dir := (p - TreeWheel.CENTER).normalized()
+	var ext := absf(dir.x) * size.x * 0.5 + absf(dir.y) * size.y * 0.5
+	var gap := TreeWheel.NODE_R + 4.0
+	var side := 1.0 if p.x >= TreeWheel.CENTER.x else -1.0
+	var hw := size.x * 0.5
+	var hh := size.y * 0.5
+	var centres: Array[Vector2] = [p + dir * (gap + ext), p + Vector2(0.0, gap + hh), p - Vector2(0.0, gap + hh),
+		p + Vector2(side * (gap + hw), 0.0)]
+	for lean in [-1.0, 1.0]:
+		centres.append(p + Vector2(lean * (hw - 6.0), gap + hh))
+		centres.append(p + Vector2(lean * (hw - 6.0), -(gap + hh)))
+	for dy in [-9.0, 9.0, -18.0, 18.0]:
+		centres.append(p + Vector2(side * (gap + hw), dy))
+		centres.append(p + Vector2(-side * (gap + hw), dy))
+	for more in [6.0, 12.0, 20.0]:
+		centres.append(p + dir * (gap + ext + more))
+	var out: Array[Rect2] = []
+	for c in centres:
+		out.append(Rect2((c - size * 0.5).round(), size))
+	return out
+
+
+## Where every name of column `col` is written: Vector2i(tier, i) -> its strip (text width + 6 u by LABEL_STRIP_H), outermost tier first,
+## each in the first candidate place that is clear (strip_clear); when none is, the radial place, and a test fails. Cached per column.
+func label_layout(col: int) -> Dictionary:
+	if _label_cache.has(col):
+		return _label_cache[col]
+	var out := {}
+	var placed: Array[Rect2] = []
+	for tier in range(GodTree.TIERS, 0, -1):
+		for i in GodTree.PER_TIER:
+			var key := key_at(col, tier, i)
+			if key == "":
+				continue
+			var text := node_label(String(PowerBook.get_power(key).name))
+			var size := Vector2(ceilf(UiTheme.width(text, NODE_NAME_PX)) + 6.0, LABEL_STRIP_H)
+			var cands := strip_candidates(TreeWheel.node_at(tier, i), size)
+			var pick := cands[0]
+			for c in cands:
+				if strip_clear(c, placed):
+					pick = c
+					break
+			out[Vector2i(tier, i)] = pick
+			placed.append(pick)
+	_label_cache[col] = out
+	return out
+
+
+## The affordable nodes' glow alpha at time t: 0.05 .. 0.12, once round every PULSE_SECONDS.
+func pulse_alpha(t: float) -> float:
+	return 0.05 + 0.07 * (0.5 + 0.5 * sin(TAU * t / PULSE_SECONDS))
+
+
+## Whether the wheel shows a node that can be bought now (so it must redraw every frame for its glow).
+func _any_can() -> bool:
+	for tier in range(1, GodTree.TIERS + 1):
+		for i in GodTree.PER_TIER:
+			if node_state(centred, tier, i) == "can":
+				return true
+	return false
+
+
+## The refusal under RAISE: `reason` wrapped to REFUSAL_W at 11 u, at most 2 lines (the second ends "..." if the text went on).
+static func refusal_lines(reason: String) -> PackedStringArray:
+	var lines := UiTheme.wrap(reason, REFUSAL_W, UiTheme.TEXT_S)
+	if lines.size() <= 2:
+		return lines
+	var last := " ".join(lines.slice(1))
+	while last.length() > 1 and UiTheme.width(last + "...", UiTheme.TEXT_S) > REFUSAL_W:
+		last = last.substr(0, last.length() - 1).strip_edges(false, true)
+	return PackedStringArray([lines[0], last + "..."])
+
+
+static var _dot_zero: RegEx
+
+
+## A level value without a needless ".0".
+static func num(s: String) -> String:
+	if _dot_zero == null:
+		_dot_zero = RegEx.create_from_string("(?<=\\d)\\.0(?!\\d)")
+	return _dot_zero.sub(s, "", true)
+
+
+## The level column's one value column for `rows` ({label, old, new}): every new value ends at `right`, every old value at `old_right`,
+## and the arrow sits at `arrow_x` between them, so the numbers line up whatever their width. Only changed rows size the new column.
+static func value_columns(rows: Array) -> Dictionary:
+	var right := LEVEL_X + LEVEL_W - 6.0
+	var new_w := 0.0
+	for row: Dictionary in rows:
+		var o := num(String(row.old))
+		var n := num(String(row["new"]))
+		if o != n:
+			new_w = maxf(new_w, UiTheme.width(n, SMALL_PX))
+	return {"new_w": new_w, "arrow_x": right - new_w - 8.0, "old_right": right - new_w - 10.0, "right": right}
+
+
+## Where one row's values go in `cols` (value_columns): {changed, old, old_x, new, new_x} (x is the left edge of the text).
+static func row_layout(row: Dictionary, cols: Dictionary) -> Dictionary:
+	var o := num(String(row.old))
+	var n := num(String(row["new"]))
+	var out := {"changed": o != n, "new": n, "new_x": float(cols.right) - UiTheme.width(n, SMALL_PX)}
+	if o != n:
+		out["old"] = o
+		out["old_x"] = float(cols.old_right) - UiTheme.width(o, SMALL_PX)
+	return out
+
+
+## The Might line as a row ("a -> b" when the next level changes it).
+static func might_row(might: String) -> Dictionary:
+	var parts := might.split(" -> ")
+	return {"label": "Might", "old": parts[0], "new": parts[parts.size() - 1]}
 
 
 static func side_rect(side: int) -> Rect2:
@@ -255,13 +420,13 @@ static func side_rect(side: int) -> Rect2:
 
 ## The small icon of tier 1-5, spot i (0-1) inside a side panel.
 static func mini_rect(panel: Rect2, tier: int, i: int) -> Rect2:
-	return Rect2(Vector2(panel.get_center().x - 23.0 + float(i) * 28.0, panel.position.y + 64.0 + float(tier - 1) * 23.0),
+	return Rect2(Vector2(panel.get_center().x - 24.0 + float(i) * 26.0, panel.position.y + 60.0 + float(tier - 1) * 24.0),
 		Vector2(MINI_PX, MINI_PX))
 
 
 ## The points box in the top bar.
 func points_rect() -> Rect2:
-	var w := 28.0 + UiTheme.width("Ability points", SMALL_PX) + UiTheme.width(str(_slot.points), UiTheme.SIZE_BODY)
+	var w := 28.0 + UiTheme.width("Ability points", SMALL_PX) + UiTheme.width(str(_slot.points), SMALL_PX)
 	return Rect2(632.0 - w, 4.0, w, 18.0)
 
 
@@ -378,6 +543,12 @@ func _on_gui_input(event: InputEvent) -> void:
 		click(event.position)
 
 
+## Photographs only (`--tree-hover=<hit>`): shows the screen as if the mouse were over `what` (a hit() string).
+func hover_for_photo(what: String) -> void:
+	_hover = what
+	_redraw()
+
+
 func _redraw() -> void:
 	if _ui != null:
 		_ui.queue_redraw()
@@ -390,6 +561,9 @@ func _process(delta: float) -> void:
 			refused_reason = ""
 			_redraw()
 	_clip_time += delta
+	_pulse_t = fmod(_pulse_t + delta, PULSE_SECONDS)
+	if _any_can():
+		_redraw()
 	var frame := int(_clip_time * PowerBook.CLIP_FPS) % PowerBook.CLIP_FRAMES
 	if frame != _clip_shown and _clips.get(selected_key()) != null:
 		_clip_shown = frame
@@ -430,38 +604,38 @@ func _draw_top_bar() -> void:
 	UiTheme.frame(_ui, BACK_RECT, _hover == "back")
 	_text_centred(BACK_RECT.get_center().x, BACK_RECT.position.y + 13.0, "< BACK", SMALL_PX,
 		UiTheme.COL_GOLD if _hover == "back" else UiTheme.COL_TEXT)
-	UiTheme.text(_ui, Vector2(54.0, 18.0), "SKILL TREE", UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
-	UiTheme.text(_ui, Vector2(54.0 + UiTheme.width("SKILL TREE") + 6.0, 18.0), "Tier %d . level %d" % [_slot.tier, _slot.level], SMALL_PX,
-		UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(64.0, 17.0), "SKILL TREE", SMALL_PX, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(64.0 + UiTheme.width("SKILL TREE", SMALL_PX) + 8.0, 17.0), "Tier %d . level %d" % [_slot.tier, _slot.level],
+		SMALL_PX, UiTheme.COL_DIM)
 	var cols := columns()
 	for c in cols.size():
 		var r := chip_rect(c)
 		var on := c == centred
 		var hue := TreeWheel.color(cols[c])
 		var hot := _hover == "chip:%d" % c
-		_ui.draw_rect(r, hue.darkened(0.7) if on else Color(0.05, 0.04, 0.08, 0.8))
+		_ui.draw_rect(r, hue.darkened(0.55) if on else Color(0.05, 0.04, 0.08, 0.8))
 		_ui.draw_rect(r, hue if on else (hue.lightened(0.2) if hot else Color("2e2838")), false, 1.0)
 		if on:
 			_ui.draw_rect(r.grow(2.0), Color(hue, 0.18), false, 2.0)
 		var title := _chip_title(c)
 		var title_col := Color("efe3ff") if on else (UiTheme.COL_TEXT if hot else Color("7d7668"))
-		var tw := UiTheme.width(title, SIZE_CHIP if on else SMALL_PX + 1)
-		var x2 := 0.0 if (on or cols[c] == _slot.type) else UiTheme.width(" x2", SMALL_PX - 1)
+		var tw := UiTheme.width(title, SIZE_CHIP)
+		var x2 := 0.0 if (on or cols[c] == _slot.type) else UiTheme.width(" x2", SIZE_CHIP)
 		var x := r.position.x + (r.size.x - tw - x2) * 0.5
-		UiTheme.text(_ui, Vector2(roundf(x), r.position.y + (13.5 if on else 12.5)), title, SIZE_CHIP if on else SMALL_PX + 1, title_col)
+		UiTheme.text(_ui, Vector2(roundf(x), r.position.y + 13.0), title, SIZE_CHIP, title_col)
 		if x2 > 0.0:
-			UiTheme.text(_ui, Vector2(roundf(x + tw), r.position.y + 12.5), " x2", SMALL_PX - 1, Color("c07a4a"))
+			UiTheme.text(_ui, Vector2(roundf(x + tw), r.position.y + 13.0), " x2", SIZE_CHIP, Color("c07a4a"))
 	var pr := points_rect()
 	_ui.draw_rect(pr, Color(0.07, 0.055, 0.02, 0.8))
 	_ui.draw_rect(pr, Color("4a3c1c"), false, 1.0)
 	var d := Vector2(pr.position.x + 9.0, pr.get_center().y)
 	_ui.draw_colored_polygon(PackedVector2Array([d + Vector2(0, -4), d + Vector2(4, 0), d + Vector2(0, 4), d + Vector2(-4, 0)]), UiTheme.COL_GOLD)
-	UiTheme.text(_ui, Vector2(pr.position.x + 17.0, pr.position.y + 12.5), "Ability points", SMALL_PX, UiTheme.COL_DIM)
-	UiTheme.text(_ui, Vector2(pr.end.x - 5.0 - UiTheme.width(str(_slot.points), UiTheme.SIZE_BODY), pr.position.y + 14.0), str(_slot.points),
-		UiTheme.SIZE_BODY, Color("f3d36a"))
+	UiTheme.text(_ui, Vector2(pr.position.x + 17.0, pr.position.y + 13.0), "Ability points", SMALL_PX, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(pr.end.x - 5.0 - UiTheme.width(str(_slot.points), SMALL_PX), pr.position.y + 13.0), str(_slot.points),
+		SMALL_PX, Color("f3d36a"))
 
 
-func _ellipse(rx: float, ry: float, from_deg := 0.0, steps := 72) -> PackedVector2Array:
+func _ellipse(rx: float, ry: float, from_deg := 0.0, steps := ORBIT_SEGMENTS) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for k in steps + 1:
 		var a := deg_to_rad(from_deg + 360.0 * float(k) / float(steps))
@@ -469,35 +643,135 @@ func _ellipse(rx: float, ry: float, from_deg := 0.0, steps := 72) -> PackedVecto
 	return out
 
 
+## Whether an orbit segment's midpoint lies under a label strip (grown 3 u): those segments are drawn faint.
+static func _under_strip(a: Vector2, b: Vector2, strips: Array) -> bool:
+	var mid := (a + b) * 0.5
+	for s: Rect2 in strips:
+		if s.grow(3.0).has_point(mid):
+			return true
+	return false
+
+
+## One ring as its 72 segments cut into runs: [points, faded] pairs, faded where a label strip lies over the ring.
+func _orbit_runs(pts: PackedVector2Array, strips: Array) -> Array:
+	var runs := []
+	var run := PackedVector2Array()
+	var faded := false
+	for k in pts.size() - 1:
+		var f := _under_strip(pts[k], pts[k + 1], strips)
+		if run.size() > 0 and f != faded:
+			runs.append([run, faded])
+			run = PackedVector2Array()
+		if run.size() == 0:
+			run.append(pts[k])
+		run.append(pts[k + 1])
+		faded = f
+	if run.size() > 1:
+		runs.append([run, faded])
+	return runs
+
+
+## The colour of an orbit run: `col`, or ORBIT_FADED alpha under a strip.
+static func _orbit_colour(col: Color, faded: bool) -> Color:
+	return Color(col, minf(col.a, ORBIT_FADED)) if faded else col
+
+
 func _draw_wheel() -> void:
 	var hue := TreeWheel.color(columns()[centred])
 	var c := TreeWheel.CENTER
+	var strips: Array = label_layout(centred).values()
 	for r in range(40, 18, -2):
 		_ui.draw_circle(c, float(r), Color(hue, 0.045))
 	_ui.draw_circle(c, 18.0, hue.darkened(0.7))
 	_ui.draw_circle(c, 13.0, hue.darkened(0.3))
 	_ui.draw_circle(c, 8.0, hue.lightened(0.15))
 	_ui.draw_circle(c, 4.0, hue.lightened(0.6))
+	var plates := numeral_plates()
 	for tier in range(1, GodTree.TIERS + 1):
 		var ring := TreeWheel.ring(tier)
 		var locked := tier > _slot.tier
 		var pts := _ellipse(ring.x, ring.y)
 		if locked:
-			var dash := Color("3a3348")
 			for k in range(0, pts.size() - 1, 2):
-				_ui.draw_line(pts[k], pts[k + 1], Color(dash, 0.7), 1.0)
+				var dash := Color("3a3348", minf(0.7, ORBIT_FADED) if _under_strip(pts[k], pts[k + 1], strips) else 0.7)
+				_ui.draw_line(pts[k], pts[k + 1], dash, 1.0)
 		elif tier == _slot.tier:
-			_ui.draw_polyline(_ellipse(ring.x + 1.0, ring.y + 1.0), Color(hue, 0.18), 3.0)
-			_ui.draw_polyline(pts, Color(hue.lightened(0.3), 0.75), 1.0)
+			for run: Array in _orbit_runs(_ellipse(ring.x + 1.0, ring.y + 1.0), strips):
+				_ui.draw_polyline(run[0], _orbit_colour(Color(hue, 0.18), run[1]), 3.0)
+			for run: Array in _orbit_runs(pts, strips):
+				_ui.draw_polyline(run[0], _orbit_colour(Color(hue.lightened(0.3), 0.75), run[1]), 1.0)
 		else:
-			_ui.draw_polyline(pts, Color(hue, 0.35), 1.0)
-		var numeral := String(TreeDetail.ROMAN[tier - 1])
-		var top := Vector2(c.x, c.y - ring.y)
-		_ui.draw_rect(Rect2(top.x - 7.0, top.y - 5.0, 14.0, 10.0), Color(0.07, 0.05, 0.12, 0.95))
-		_text_centred(top.x, top.y + 3.5, numeral, SMALL_PX - 1, Color("4a4356") if locked else Color("a794c8"))
+			for run: Array in _orbit_runs(pts, strips):
+				_ui.draw_polyline(run[0], _orbit_colour(Color(hue, 0.35), run[1]), 1.0)
+		var plate: Rect2 = plates[tier - 1]
+		_ui.draw_rect(plate, Color(0.07, 0.05, 0.12, 0.95))
+		_text_centred(plate.get_center().x, plate.position.y + 10.0, String(TreeDetail.ROMAN[tier - 1]), SMALL_PX,
+			Color("6a6178") if locked else Color("a794c8"))
+	var glow := pulse_alpha(_pulse_t)
+	for tier in range(1, GodTree.TIERS + 1):
+		for i in GodTree.PER_TIER:
+			if node_state(centred, tier, i) == "can":
+				for gr in [15.0, 17.0, 19.0]:
+					_ui.draw_circle(TreeWheel.node_at(tier, i), gr, Color(hue, glow))
 	for tier in range(1, GodTree.TIERS + 1):
 		for i in GodTree.PER_TIER:
 			_draw_node(tier, i, hue)
+	var layout := label_layout(centred)
+	for tier in range(1, GodTree.TIERS + 1):
+		for i in GodTree.PER_TIER:
+			var at := Vector2i(tier, i)
+			if not layout.has(at):
+				continue
+			var strip: Rect2 = layout[at]
+			var key := key_at(centred, tier, i)
+			var sel := selected == Vector3i(centred, tier, i)
+			var name_col := COL_SELECT if sel else (COL_LABEL_LOCKED if node_state(centred, tier, i) == "lock" else COL_LABEL)
+			_ui.draw_rect(strip, COL_STRIP)
+			UiTheme.text(_ui, Vector2(strip.position.x + 3.0, strip.position.y + 10.0), node_label(String(PowerBook.get_power(key).name)),
+				NODE_NAME_PX, name_col)
+
+
+## The ring colour of a state (the same on the wheel and in the side panels).
+static func state_edge(state: String, hue: Color) -> Color:
+	match state:
+		"learned":
+			return UiTheme.COL_GOLD
+		"can":
+			return hue.lightened(0.2)
+		"lock":
+			return COL_RING_LOCKED
+	return hue.darkened(0.35)
+
+
+## An icon of `want` units centred on `c` at a native multiple, clipped round; grey when `locked`. The picture comes from setup's caches.
+func _draw_icon(c: Vector2, key: String, want: float, locked: bool, alpha := 1.0) -> void:
+	var rect := UiIcon.native_rect(c, want)
+	if rect.size.x > want * 1.6:
+		rect = Rect2(c - Vector2(want, want) * 0.5, Vector2(want, want))  # below the design window (k1): the 42 px icon would swamp the disc
+	var m := UiIcon.multiple(want)
+	var tex: Texture2D = _icons.get(key)
+	var big: Texture2D = _icons_big.get(key)
+	if m % 2 == 0 and big != null:
+		tex = big
+	elif tex == null:
+		tex = big
+	if tex == null:
+		return
+	var tint := Color(1, 1, 1, alpha)
+	if locked:
+		tex = UiIcon.grey(tex)
+		var lt := UiIcon.locked_tint(tex)
+		tint = Color(lt, lt.a * alpha)
+	UiIcon.draw_round(_ui, tex, rect, tint)
+
+
+## The padlock badge of a locked power at `at`; `s` scales it (1 on the wheel, 0.8 in a side panel).
+func _draw_lock(at: Vector2, s: float) -> void:
+	var b := at.round()
+	_ui.draw_circle(b, 5.0 * s, Color("120e1a"))
+	_ui.draw_arc(b, 4.5 * s, 0.0, TAU, 24, Color("8a8090"), 1.0)
+	_ui.draw_rect(Rect2(b.x - 2.5 * s, b.y - 0.5 * s, 5.0 * s, 4.0 * s), Color("b8b0c4"))
+	_ui.draw_arc(b + Vector2(0.0, -0.5 * s), 1.5 * s, PI, TAU, 8, Color("b8b0c4"), 1.0)
 
 
 func _draw_node(tier: int, i: int, hue: Color) -> void:
@@ -508,45 +782,25 @@ func _draw_node(tier: int, i: int, hue: Color) -> void:
 	var sel := selected == Vector3i(centred, tier, i)
 	var hot := _hover == "node:%d:%d" % [tier, i]
 	if sel:
-		_ui.draw_arc(p, r + 4.0, 0.0, TAU, 40, Color(COL_SELECT, 0.25), 2.0)
-		_ui.draw_arc(p, r + 2.0, 0.0, TAU, 40, COL_SELECT, 2.0)
+		_ui.draw_arc(p, r + 4.0, 0.0, TAU, 64, Color(COL_SELECT, 0.25), 2.0)
+		_ui.draw_arc(p, r + 2.0, 0.0, TAU, 64, COL_SELECT, 2.0)
 	if state == "empty":
 		_dashed_circle(p, r - 1.0, Color(hue, 0.45 if hot else 0.3))
 		return
 	var have := _slot.level_of(key)
-	var edge := hue.darkened(0.25)
-	var fade := 1.0
-	match state:
-		"learned":
-			edge = UiTheme.COL_GOLD
-		"can":
-			edge = hue.lightened(0.2)
-		"lock":
-			edge = Color("3a3348")
-			fade = 0.5
+	var edge := state_edge(state, hue)
 	if hot:
 		edge = edge.lightened(0.3)
 	if state == "learned":
-		_ui.draw_arc(p, r + 0.5, 0.0, TAU, 40, Color(UiTheme.COL_GOLD, 0.25), 3.0)
+		_ui.draw_arc(p, r + 0.5, 0.0, TAU, 64, Color(UiTheme.COL_GOLD, 0.25), 3.0)
 	_ui.draw_circle(p, r, Color(COL_NODE, 0.95))
-	_ui.draw_arc(p, r - 1.0, 0.0, TAU, 40, Color(edge, fade), 2.0)
-	var icon: Texture2D = _icons.get(key)
-	var tint := Color(1, 1, 1, 1) if state != "lock" else Color(0.5, 0.5, 0.55, 0.55)
-	if state == "poor":
-		tint = Color(1, 1, 1, 0.85)
-	if icon != null:
-		_ui.draw_texture_rect(icon, Rect2(p - Vector2(7.0, 7.0), Vector2(14.0, 14.0)), false, tint)
+	_draw_icon(p, key, NODE_ICON_UNITS, state == "lock", 0.85 if state == "poor" else 1.0)
+	_ui.draw_arc(p, r - 1.0, 0.0, TAU, 64, edge, 2.0)
 	if state == "lock":
-		var lp := p + Vector2(7.0, 7.0)
-		_ui.draw_rect(Rect2(lp.x - 3.0, lp.y - 1.0, 6.0, 5.0), Color("8a8090"))
-		_ui.draw_arc(lp + Vector2(0.0, -1.0), 2.0, PI, TAU, 8, Color("8a8090"), 1.0)
+		_draw_lock(p + BADGE_AT, 1.0)
 	if have > 0:
 		for k in PowerBook.MAX_LEVEL:
 			_ui.draw_rect(Rect2(p.x - 9.5 + float(k) * 4.0, p.y + r + 1.0, 3.0, 2.0), Color("f3d36a") if k < have else Color("3a3326"))
-	var name_col := COL_SELECT if sel else (Color("bfb49a") if state != "lock" else Color("6e6678"))
-	var short := node_label(String(PowerBook.get_power(key).name))
-	var label := node_label_rect(tier, i, short)
-	_text_centred(label.get_center().x, label.end.y - 1.0, short, NODE_NAME_PX, name_col)
 
 
 func _dashed_circle(p: Vector2, r: float, col: Color) -> void:
@@ -571,16 +825,26 @@ func _draw_side(side: int) -> void:
 	_wide_style.border_color = Color("2a2433") if not hot else Color("4a4058")
 	_ui.draw_style_box(_wide_style, panel)
 	var mid := panel.get_center().x
-	_text_centred(mid, panel.position.y + 24.0, PowerBook.authority_title(type), UiTheme.SIZE_BODY, Color(hue, fade))
-	_text_centred(mid, panel.position.y + 36.0, "your nature" if type == _slot.type else "neighbour", SMALL_PX, Color("7d7668", fade))
+	_text_centred(mid, panel.position.y + 24.0, PowerBook.authority_title(type), SMALL_PX, Color(hue, fade))
+	_text_centred(mid, panel.position.y + 37.0, "your nature" if type == _slot.type else "neighbour", SMALL_PX, Color("7d7668", fade))
 	if type != _slot.type:
-		var pill := Rect2(mid - 22.0, panel.position.y + 41.0, 44.0, 12.0)
+		var pill := Rect2(mid - 26.0, panel.position.y + 42.0, 52.0, 13.0)
 		_ui.draw_rect(pill, Color("5a3a22", 0.8), false, 1.0)
-		_text_centred(mid, pill.position.y + 9.5, "x2 cost", SMALL_PX - 1, Color("c07a4a", fade))
+		_text_centred(mid, pill.position.y + 10.0, "x2 cost", SMALL_PX, Color("c07a4a", fade))
 	for tier in range(1, GodTree.TIERS + 1):
+		var row := mini_rect(panel, tier, 0)
+		_text_centred(mid - 40.0, row.get_center().y + 4.0, String(TreeDetail.ROMAN[tier - 1]), SMALL_PX, Color(UiTheme.COL_DIM, fade))
 		for i in GodTree.PER_TIER:
 			_draw_mini(side, col, tier, i, hue, fade)
-	_text_centred(mid, panel.end.y - 7.0, "click to centre", SMALL_PX - 1, Color("9a9484", fade))
+	var line := "click to centre"
+	var line_col := Color("9a9484", fade)
+	if _hover.begins_with("mini:%d:" % col):
+		var p := _hover.split(":")
+		var key := key_at(col, int(p[2]), int(p[3]))
+		if key != "":
+			line = UiTheme.fit(String(PowerBook.get_power(key).name), 104.0, SMALL_PX)
+			line_col = COL_LABEL
+	_text_centred(mid, panel.end.y - 8.0, line, SMALL_PX, line_col)
 
 
 func _draw_mini(side: int, col: int, tier: int, i: int, hue: Color, fade: float) -> void:
@@ -589,28 +853,19 @@ func _draw_mini(side: int, col: int, tier: int, i: int, hue: Color, fade: float)
 	var c := r.get_center()
 	var sel := selected == Vector3i(col, tier, i)
 	if sel:
-		_ui.draw_arc(c, 11.5, 0.0, TAU, 28, COL_SELECT, 2.0)
+		_ui.draw_arc(c, 12.0, 0.0, TAU, 48, COL_SELECT, 2.0)
 	if key == "":
-		_dashed_circle(c, 8.5, Color(hue, 0.4 * fade))
+		_dashed_circle(c, 9.5, Color(hue, 0.4 * fade))
 		return
 	var state := node_state(col, tier, i)
-	var edge := hue.darkened(0.35)
-	if state == "learned":
-		edge = UiTheme.COL_GOLD
-	elif state == "can":
-		edge = hue.lightened(0.2)
-	elif state == "lock":
-		edge = Color("3a3348")
+	var edge := state_edge(state, hue)
 	if _hover == "mini:%d:%d:%d" % [col, tier, i]:
 		edge = edge.lightened(0.35)
-	_ui.draw_circle(c, 9.0, Color(COL_NODE, 0.9))
-	_ui.draw_arc(c, 8.5, 0.0, TAU, 24, Color(edge, fade), 1.0)
-	var icon: Texture2D = _icons.get(key)
-	if icon == null:
-		icon = spot_icon(key)
-	if icon != null:
-		_ui.draw_texture_rect(icon, Rect2(c - Vector2(6.0, 6.0), Vector2(12.0, 12.0)), false,
-			Color(0.5, 0.5, 0.55, 0.5 * fade) if state == "lock" else Color(1, 1, 1, fade))
+	_ui.draw_circle(c, 11.0, Color(COL_NODE, 0.9))
+	_draw_icon(c, key, MINI_ICON_UNITS, state == "lock", fade)
+	_ui.draw_arc(c, 10.5, 0.0, TAU, 48, Color(edge, edge.a * fade), 1.0)
+	if state == "lock":
+		_draw_lock(c + Vector2(7.0, 7.0), 0.8)
 
 
 ## The detail panel: clip, name and tags and description, the level column and the two buttons.
@@ -622,32 +877,43 @@ func _draw_detail() -> void:
 	_ui.draw_rect(CLIP_BOX, Color("0a0810"))
 	_ui.draw_rect(CLIP_BOX, Color("3a3326"), false, 1.0)
 	if key == "":
-		_text_centred(CLIP_BOX.get_center().x, CLIP_BOX.get_center().y + 4.0, GodTree.NOT_CHOSEN, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-		UiTheme.text(_ui, Vector2(INFO_X, 275.0), GodTree.NOT_CHOSEN, UiTheme.SIZE_BIG, UiTheme.COL_DIM)
-		UiTheme.text(_ui, Vector2(INFO_X, 296.0), "Nothing here yet.", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		_text_centred(CLIP_BOX.get_center().x, CLIP_BOX.get_center().y + 4.0, GodTree.NOT_CHOSEN, SMALL_PX, UiTheme.COL_DIM)
+		UiTheme.text(_ui, Vector2(INFO_X, 278.0), GodTree.NOT_CHOSEN, UiTheme.TEXT_L, UiTheme.COL_DIM)
+		UiTheme.text(_ui, Vector2(INFO_X, 309.0), "Nothing here yet.", SMALL_PX, UiTheme.COL_DIM)
 		return
 	_draw_clip(key)
 	var entry := PowerBook.get_power(key)
-	UiTheme.text(_ui, Vector2(INFO_X, 274.0), UiTheme.fit(String(entry.name), INFO_W, UiTheme.SIZE_BIG), UiTheme.SIZE_BIG, Color("f3e7c0"))
+	var shown := detail_name(String(entry.name))
+	UiTheme.text(_ui, Vector2(INFO_X, 278.0), String(shown.text), int(shown.size), COL_LABEL)
 	var tx := INFO_X
 	var tags := TreeDetail.tags(key)
 	var hue := TreeWheel.color(PowerBook.authority_of(key))
 	for n in tags.size():
 		var tag_col := hue if n == 0 else (Color("9fd1b8") if tags[n] == "QUIET" else (Color("d8906a") if tags[n] == "LOUD" else Color("c9b8ea")))
-		var w := UiTheme.width(tags[n], SMALL_PX - 1) + 10.0
-		_ui.draw_rect(Rect2(tx, 281.0, w, 12.0), Color(tag_col, 0.55), false, 1.0)
-		UiTheme.text(_ui, Vector2(tx + 5.0, 290.0), tags[n], SMALL_PX - 1, tag_col)
+		var w := UiTheme.width(tags[n], SMALL_PX) + 10.0
+		_ui.draw_rect(Rect2(tx, 283.0, w, 13.0), Color(tag_col, 0.55), false, 1.0)
+		UiTheme.text(_ui, Vector2(tx + 5.0, 293.0), tags[n], SMALL_PX, tag_col)
 		tx += w + 3.0
 	var desc := TreeDetail.description(key, INFO_W)
 	for n in desc.size():
-		UiTheme.text(_ui, Vector2(INFO_X, 307.0 + UiTheme.LINE_SMALL * float(n)), desc[n], UiTheme.SIZE_SMALL, Color("c8c0ac"))
+		UiTheme.text(_ui, Vector2(INFO_X, 309.0 + UiTheme.LINE_S * float(n)), desc[n], SMALL_PX, Color("c8c0ac"))
 	var button := TreeDetail.buy_button(_slot, key, selected.y)
-	var reason := refused_reason if refused_reason != "" else String(button.reason)
-	if reason != "":
-		UiTheme.text(_ui, Vector2(INFO_X, 340.0), UiTheme.fit(reason, INFO_W, UiTheme.SIZE_SMALL), UiTheme.SIZE_SMALL,
-			UiTheme.COL_BAD if refused_reason != "" else Color(UiTheme.COL_BAD, 0.75))
 	_draw_levels(key)
 	_draw_buttons(button)
+	var reason := refused_reason if refused_reason != "" else String(button.reason)
+	if reason != "":
+		var lines := refusal_lines(reason)
+		for n in lines.size():
+			_text_centred(BUY_RECT.get_center().x, 325.0 + UiTheme.LINE_S * float(n), lines[n], SMALL_PX,
+				UiTheme.COL_BAD if refused_reason != "" else Color(UiTheme.COL_BAD, 0.75))
+
+
+## The selected power's name as the detail panel writes it: 22 u when it fits INFO_W, else the whole name at 11 u (a name is never cut).
+## {text, size}.
+static func detail_name(full: String) -> Dictionary:
+	if UiTheme.width(full, UiTheme.TEXT_L) <= INFO_W:
+		return {"text": full, "size": UiTheme.TEXT_L}
+	return {"text": UiTheme.fit(full, INFO_W, SMALL_PX), "size": SMALL_PX}
 
 
 func _draw_clip(key: String) -> void:
@@ -661,79 +927,70 @@ func _draw_clip(key: String) -> void:
 		_ui.draw_texture_rect(big, Rect2(CLIP_BOX.get_center() - Vector2(40.0, 40.0), Vector2(80.0, 80.0)), false)
 
 
-func _num(s: String) -> String:
-	return _dot_zero.sub(s, "", true)
-
-
-var _dot_zero: RegEx = _make_dot_zero()
-
-
-static func _make_dot_zero() -> RegEx:
-	var re := RegEx.new()
-	re.compile("(?<=\\d)\\.0(?!\\d)")
-	return re
-
-
 func _draw_levels(key: String) -> void:
 	var col := TreeDetail.level_column(_slot, key)
-	_ui.draw_line(Vector2(LEVEL_X, 260.0), Vector2(LEVEL_X, 342.0), Color("2a2433"), 1.0)
+	_ui.draw_line(Vector2(LEVEL_X, 258.0), Vector2(LEVEL_X, 346.0), Color("2a2433"), 1.0)
 	var x := LEVEL_X + 8.0
 	var room := LEVEL_W - 14.0
 	var y := 268.0
-	var line := 10.0
+	var line := UiTheme.LINE_S
 	var no_table: bool = col.head == PowerBook.NO_LEVELS
-	UiTheme.text(_ui, Vector2(x, y), String(col.head), SMALL_PX - 1, UiTheme.COL_DIM)
+	UiTheme.text(_ui, Vector2(x, y), String(col.head), SMALL_PX, UiTheme.COL_DIM)
 	y += line
 	var twist_lines := PackedStringArray()
 	if String(col.twist) != "":
-		twist_lines = UiTheme.wrap(String(col.twist), room, SMALL_PX - 1)
-		if twist_lines.size() > 3:
-			twist_lines = twist_lines.slice(0, 3)
+		twist_lines = UiTheme.wrap(String(col.twist), room, SMALL_PX)
+		if twist_lines.size() > 2:
+			var last := " ".join(twist_lines.slice(1))
+			while last.length() > 1 and UiTheme.width(last + "...", SMALL_PX) > room:
+				last = last.substr(0, last.length() - 1).strip_edges(false, true)
+			twist_lines = PackedStringArray([twist_lines[0], last + "..."])
 	# Rows that do not fit above the Might row and the twist are dropped.
-	var budget := int((342.0 - y - line * float(1 + twist_lines.size()) - 3.0) / line)
-	var rows: Array = col.rows
-	for n in mini(rows.size(), maxi(budget, 0)):
-		var row: Dictionary = rows[n]
-		var old_v := _num(String(row.old))
-		var new_v := _num(String(row.new))
-		var value_w := 0.0
-		if old_v == new_v:
-			value_w = UiTheme.width(new_v, SMALL_PX)
-			UiTheme.text(_ui, Vector2(x + room - value_w, y), new_v, SMALL_PX, Color("c8c0ac"))
+	var might_y_max := LEVEL_BOTTOM - ((4.0 + line * float(twist_lines.size())) if twist_lines.size() > 0 else 0.0)
+	var budget := int((might_y_max - y) / line)
+	var all_rows: Array = (col.rows as Array).slice(0, maxi(budget, 0))
+	all_rows.append(might_row(String(col.might)))
+	var cols := value_columns(all_rows)
+	for row: Dictionary in all_rows:
+		var lay := row_layout(row, cols)
+		var left := float(lay.new_x)
+		if lay.changed:
+			left = float(lay.old_x)
+			UiTheme.text(_ui, Vector2(float(lay.old_x), y), String(lay.old), SMALL_PX, Color("c8c0ac"))
+			_draw_arrow(float(cols.arrow_x), y - 4.0)
+			UiTheme.text(_ui, Vector2(float(lay.new_x), y), String(lay["new"]), SMALL_PX, COL_GREEN)
 		else:
-			var new_w := UiTheme.width(new_v, SMALL_PX)
-			var old_part := old_v + " -> "
-			value_w = UiTheme.width(old_part, SMALL_PX) + new_w
-			UiTheme.text(_ui, Vector2(x + room - value_w, y), old_part, SMALL_PX, Color("bfb49a"))
-			UiTheme.text(_ui, Vector2(x + room - new_w, y), new_v, SMALL_PX, COL_GREEN)
-		UiTheme.text(_ui, Vector2(x, y), UiTheme.fit(String(row.label), room - value_w - 4.0, SMALL_PX), SMALL_PX, Color("bfb49a"))
+			UiTheme.text(_ui, Vector2(float(lay.new_x), y), String(lay["new"]), SMALL_PX, Color("c8c0ac"))
+		UiTheme.text(_ui, Vector2(x, y), UiTheme.fit(String(row.label), left - x - 4.0, SMALL_PX), SMALL_PX, Color("bfb49a"))
 		y += line
-	var might := _num(String(col.might))
-	UiTheme.text(_ui, Vector2(x, y), "Might", SMALL_PX, Color("bfb49a"))
-	UiTheme.text(_ui, Vector2(x + room - UiTheme.width(might, SMALL_PX), y), might, SMALL_PX, Color("c8c0ac"))
-	y += line
-	if not no_table:
-		_ui.draw_line(Vector2(x, y - line + 3.0), Vector2(x + room, y - line + 3.0), Color("3a3326"), 1.0)
+	if not no_table and twist_lines.size() > 0:
+		_ui.draw_line(Vector2(x, y - line + 4.0), Vector2(x + room, y - line + 4.0), Color("3a3326"), 1.0)
 	for n in twist_lines.size():
-		UiTheme.text(_ui, Vector2(x, y + 1.0 + line * float(n)), twist_lines[n], SMALL_PX - 1, COL_TWIST)
+		UiTheme.text(_ui, Vector2(x, y + line * float(n)), twist_lines[n], SMALL_PX, COL_TWIST)
+
+
+## The 6x5 u chevron arrow between an old value and a new one, its vertical middle at `cy`.
+func _draw_arrow(ax: float, cy: float) -> void:
+	_ui.draw_line(Vector2(ax, cy), Vector2(ax + 5.0, cy), COL_GREEN, 1.0)
+	_ui.draw_polyline(PackedVector2Array([Vector2(ax + 3.0, cy - 2.0), Vector2(ax + 5.0, cy), Vector2(ax + 3.0, cy + 2.0)]), COL_GREEN, 1.0)
 
 
 func _draw_buttons(button: Dictionary) -> void:
 	var rem_hot := _hover == "remember"
 	_ui.draw_rect(REMEMBER_RECT, Color("1f3a4a") if rem_hot else Color("152a37"))
 	_ui.draw_rect(REMEMBER_RECT, COL_REMEMBER, false, 1.0)
-	_text_centred(REMEMBER_RECT.get_center().x, REMEMBER_RECT.position.y + 13.0, "REMEMBRANCE", SMALL_PX + 1, Color("dff2fa"))
-	_text_centred(REMEMBER_RECT.get_center().x, REMEMBER_RECT.position.y + 24.0, "try it, free", SMALL_PX - 1, Color(COL_REMEMBER, 0.9))
+	_text_centred(REMEMBER_RECT.get_center().x, REMEMBER_RECT.position.y + 11.0, "REMEMBRANCE", SMALL_PX, Color("dff2fa"))
+	_text_centred(REMEMBER_RECT.get_center().x, REMEMBER_RECT.position.y + 22.0, "try it, free", SMALL_PX, Color(COL_REMEMBER, 0.9))
 	var on: bool = button.enabled
 	var hot := _hover == "buy" and on
 	var fill := Color("f0cf62") if hot else Color("d8b23a")
 	_ui.draw_rect(BUY_RECT, fill if on else Color("2a2630"))
 	_ui.draw_rect(BUY_RECT, Color("f3d36a") if on else Color("463f50"), false, 1.0)
 	var ink := Color("2a1d04") if on else Color("7d7668")
-	_text_centred(BUY_RECT.get_center().x, BUY_RECT.position.y + 13.0, String(button.label), UiTheme.SIZE_BODY - 1, ink)
+	_text_centred(BUY_RECT.get_center().x, BUY_RECT.position.y + 11.0, String(button.label), SMALL_PX, ink)
 	var cost: int = button.cost
 	var sub := "Level %d" % PowerBook.MAX_LEVEL if button.label == "MAX" else "%d point%s" % [cost, "" if cost == 1 else "s"]
-	_text_centred(BUY_RECT.get_center().x, BUY_RECT.position.y + 24.0, sub, SMALL_PX - 1, Color(ink, 0.85))
+	_text_centred(BUY_RECT.get_center().x, BUY_RECT.position.y + 22.0, sub, SMALL_PX, Color(ink, 0.85))
 
 
 func _text_centred(x: float, baseline: float, s: String, size: int, col: Color) -> void:

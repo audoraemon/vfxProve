@@ -638,6 +638,17 @@ func _ready() -> void:
 				await get_tree().process_frame
 			_mission._hud.push_banner("THE INQUISITOR SEARCHES")
 			_mission._hud.push_subtitle(CampaignText.cael_line(MissionBook.MIRAS_HOUSE, "venn"))
+		if show == "tree" and _screen_node is SkillTreeScreen:
+			# Photographs of the Skill Tree's states: --tree-centre=<column> --tree-select=<tier>:<i> --tree-buy (click the gold button).
+			var tree := _screen_node as SkillTreeScreen
+			var centre_arg := Battlefield.arg_value(args, "--tree-centre")
+			if centre_arg != "":
+				tree.centre(int(centre_arg))
+			var pick := Battlefield.arg_value(args, "--tree-select")
+			if pick != "":
+				tree.select(tree.centred, int(pick.get_slice(":", 0)), int(pick.get_slice(":", 1)))
+			if "--tree-buy" in args:
+				tree.click(SkillTreeScreen.BUY_RECT.get_center())
 		var wait := 1.0
 		if show == "first_taste-win":
 			wait = 0.6  # at the ending's 0.3 time scale: about 2 s real, inside the win plate's 4
@@ -651,6 +662,9 @@ func _ready() -> void:
 				await get_tree().process_frame
 			wait = IntroTour.MOVE_SECONDS * 2.0 + IntroTour.HOLD_SECONDS + 0.4
 		await get_tree().create_timer(wait).timeout
+		if show == "tree" and _screen_node is SkillTreeScreen and Battlefield.arg_value(args, "--tree-hover") != "":
+			(_screen_node as SkillTreeScreen).hover_for_photo(Battlefield.arg_value(args, "--tree-hover"))  # after the window's own mouse motion
+			await get_tree().process_frame
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		if god_base == SHOW_GOD:
 			_remove_gods()
@@ -1301,11 +1315,13 @@ func _remove_gods() -> void:
 ## The photographed god (god P1): a ruin god, level 7 (or `level`), tier 1 (or `tier`, god P3), three points, Smite at 3, Ember and Deathmark at 1,
 ## 180 Faith, on its sixth night.
 func _show_god(level: int, tier := 1) -> GodSlot:
-	var g := GodSlot.make(1, "ruin", 77)
+	# --god-type=<type> (photographs only): the fixture god of another Authority, so every tree can be shot centred.
+	var type := Battlefield.arg_value(OS.get_cmdline_user_args(), "--god-type")
+	var g := GodSlot.make(1, type if GodTree.RING.has(type) else "ruin", 77)
 	g.level = level
 	g.tier = tier
-	g.points = 3
-	g.learned = {"smite": 3, "ember": 1, "deathmark": 1}
+	g.points = int(Battlefield.arg_value(OS.get_cmdline_user_args(), "--tree-points")) if Battlefield.arg_value(OS.get_cmdline_user_args(), "--tree-points") != "" else 3
+	g.learned = {} if "--tree-unlearn" in OS.get_cmdline_user_args() else {"smite": 3, "ember": 1, "deathmark": 1}
 	g.faith = 180
 	g.night = 6
 	g.last_mission = MissionBook.WARNING

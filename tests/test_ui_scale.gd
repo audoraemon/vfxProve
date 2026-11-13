@@ -153,7 +153,7 @@ static func _crisp(t) -> void:
 
 
 ## The argument index of the width in each outline call, and the call text of every `name(` in `src` joined across lines.
-const WIDTH_ARG := {"draw_line": 3, "draw_polyline": 2, "draw_arc": 6, "draw_rect": 3, "draw_dashed_line": 3, "draw_multiline": 2, "draw_polyline_colors": 2}
+const WIDTH_ARG := {"draw_line": 3, "draw_polyline": 2, "draw_arc": 6, "draw_rect": 3, "draw_dashed_line": 3, "draw_multiline": 2, "draw_polyline_colors": 2, "draw_circle": 4}
 
 
 ## Top-level arguments of the call whose "(" is at `open` in `src`; also the index of its closing ")" in the last slot.
@@ -213,6 +213,9 @@ static func _hairline_lint(t) -> void:
 			if name == "draw_rect":
 				if n < 3 or args[2] == "true":
 					continue  # filled (the default, or literally): no outline; a filled flag that is not a literal counts as an outline
+			elif name == "draw_circle":
+				if n < 4 or args[3] == "true":
+					continue  # filled likewise (draw_circle(pos, radius, color, filled, width))
 			seen += 1
 			var w: int = WIDTH_ARG[name]
 			if n <= w or not _width_ok(args[w]):

@@ -1,4 +1,5 @@
 extends RefCounted
+const UiScaleTest := preload("res://tests/test_ui_scale.gd")
 ## The Skill Tree as a wheel (spec 2026-11-10): the own type between its ring neighbours, far types never shown, a click selects and only
 ## the gold button spends, an Authority centres from its chip, panel, small icon or Q/E, locked and empty spots, the first open's pick,
 ## the state a Remembrance returns to, and a layout whose hit areas stay on screen and apart.
@@ -20,6 +21,13 @@ static func run(t) -> void:
 	_layout(t)
 	_icons_loaded(t)
 	_texts_fit(t)
+	_labels_clear(t)
+	_refusal_fits(t)
+	_value_columns(t)
+	_crisp_only(t)
+	_pulse(t)
+	_mini_cells(t)
+	_states_draw(t)
 	GodTree.dev_fill = false
 
 
@@ -303,12 +311,11 @@ static func _icons_loaded(t) -> void:
 	s.free()
 
 
-## Nothing the page writes is cut: every description fits two lines of the info column with no "...", and every node name fits its
-## label, no two labels of a wheel overlap and none leaves the screen.
+## Nothing the page writes is cut: every description fits two lines of the info column with no "...", and every node name shows whole
+## (or visibly ellipsised) within its label width. (Where the labels sit is _labels_clear.)
 static func _texts_fit(t) -> void:
 	var cut := PackedStringArray()
 	var chopped := PackedStringArray()
-	var overlaps := PackedStringArray()
 	for type in ["ruin", "dominion", "death", "passage", "veil", "decree"]:
 		var s := _screen(type)
 		for col in 3:
@@ -320,34 +327,169 @@ static func _texts_fit(t) -> void:
 					var d := TreeDetail.description(key, SkillTreeScreen.INFO_W)
 					if d.size() > 2 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
 						cut.append(key)
-		for col in 3:
-			var labels: Array[Rect2] = []
-			var owners: Array[Vector2i] = []
-			for tier in range(1, 6):
-				for i in 2:
-					var key := s.key_at(col, tier, i)
-					if key == "":
-						continue
 					var shown := SkillTreeScreen.node_label(String(PowerBook.get_power(key).name))
 					var full := String(PowerBook.get_power(key).name)
 					if shown != full and not (shown.ends_with("...") and full.begins_with(shown.trim_suffix("..."))):
 						chopped.append(key)
 					if UiTheme.width(shown, SkillTreeScreen.NODE_NAME_PX) > SkillTreeScreen.NODE_NAME_W:
 						chopped.append(key + " (too wide)")
-					labels.append(SkillTreeScreen.node_label_rect(tier, i, shown))
-					owners.append(Vector2i(tier, i))
-			for a in labels.size():
-				for tt in range(1, 6):
-					for ii in 2:
-						var circle := Rect2(TreeWheel.node_at(tt, ii) - Vector2.ONE * TreeWheel.NODE_R, Vector2.ONE * TreeWheel.NODE_R * 2.0)
-						if labels[a].intersects(circle) and Vector2i(tt, ii) != owners[a]:
-							overlaps.append("%s col %d label %d on node %d:%d" % [type, col, a, tt, ii])
-				if not Rect2(0, 0, 640, 360).encloses(labels[a]):
-					overlaps.append("%s col %d label %d off screen" % [type, col, a])
-				for b in range(a + 1, labels.size()):
-					if labels[a].intersects(labels[b]):
-						overlaps.append("%s col %d labels %d/%d" % [type, col, a, b])
 		s.free()
 	t.check(cut.is_empty(), "every description fits two lines at the info column's width, none ends in ... (%s)" % [cut])
 	t.check(chopped.is_empty(), "every node name shows whole, or visibly ellipsised within its label (%s)" % [chopped])
-	t.check(overlaps.is_empty(), "no two node labels overlap and none leaves the screen (%s)" % [overlaps])
+
+
+## Every name's strip, in every column of every type, sits inside LABEL_AREA, clear of every node disc grown 3 u and of the ring numeral
+## plates, and no two strips of a wheel meet; and the layout is cached per column.
+static func _labels_clear(t) -> void:
+	var bad := PackedStringArray()
+	var count := 0
+	for type in ["ruin", "dominion", "death", "passage", "veil", "decree"]:
+		var s := _screen(type, 5, 3)
+		for col in 3:
+			var layout := s.label_layout(col)
+			var keys := 0
+			for tier in range(1, 6):
+				for i in 2:
+					if s.key_at(col, tier, i) != "":
+						keys += 1
+			if layout.size() != keys:
+				bad.append("%s col %d: %d strips for %d powers" % [type, col, layout.size(), keys])
+			var strips: Array = layout.keys()
+			for at: Vector2i in strips:
+				var r: Rect2 = layout[at]
+				var tag := "%s col %d %d:%d" % [type, col, at.x, at.y]
+				count += 1
+				if not SkillTreeScreen.LABEL_AREA.encloses(r):
+					bad.append(tag + " leaves LABEL_AREA")
+				for tt in range(1, 6):
+					for ii in 2:
+						var p := TreeWheel.node_at(tt, ii)
+						if p.clamp(r.position, r.end).distance_to(p) < TreeWheel.NODE_R + 3.0 - 0.001:
+							bad.append("%s touches the disc %d:%d" % [tag, tt, ii])
+				for plate in SkillTreeScreen.numeral_plates():
+					if r.intersects(plate):
+						bad.append(tag + " covers a numeral plate")
+				for other: Vector2i in strips:
+					if other != at and r.intersects(layout[other]):
+						bad.append("%s meets strip %d:%d" % [tag, other.x, other.y])
+			t.check(s.label_layout(col) == layout, "%s col %d: the layout is cached" % [type, col])
+		s.free()
+	t.check(count > 100 and bad.is_empty(), "every label strip (%d) is inside LABEL_AREA, off every disc and plate and apart: %s" % [count, bad.slice(0, 12)])
+
+
+static func _refusal_fits(t) -> void:
+	var reasons := PackedStringArray(["Not enough ability points"])
+	for v in SkillTreeScreen.REFUSALS.values():
+		reasons.append(String(v) % 5 if String(v).contains("%d") else String(v))
+	var bad := PackedStringArray()
+	for r in reasons:
+		var lines := SkillTreeScreen.refusal_lines(r)
+		if lines.size() > 2 or lines.is_empty():
+			bad.append("%s: %d lines" % [r, lines.size()])
+		for l in lines:
+			if UiTheme.width(l, UiTheme.TEXT_S) > 96.0:
+				bad.append("%s: line '%s' is %.0f u" % [r, l, UiTheme.width(l, UiTheme.TEXT_S)])
+	t.check(bad.is_empty(), "every refusal wraps to at most 2 lines of 96 u at 11 u: %s" % [bad])
+	t.check(Array(SkillTreeScreen.refusal_lines("Not enough ability points")) == ["Not enough ability", "points"],
+		"'Not enough ability points' breaks as 'Not enough ability' / 'points'")
+	t.check(SkillTreeScreen.refusal_lines("one two three four five six seven eight nine ten eleven twelve").size() == 2, "a long text is cut to 2 lines")
+
+
+static func _value_columns(t) -> void:
+	var rows := [{"label": "Damage", "old": "10", "new": "14"}, {"label": "Radius", "old": "4.0", "new": "4.5"},
+		{"label": "Cooldown", "old": "8.0", "new": "10.25"}, {"label": "Fire", "old": "yes", "new": "yes"}, {"label": "Might", "old": "9", "new": "12"}]
+	var cols := SkillTreeScreen.value_columns(rows)
+	var right := SkillTreeScreen.LEVEL_X + SkillTreeScreen.LEVEL_W - 6.0
+	t.check(is_equal_approx(float(cols.right), right) and is_equal_approx(right, 513.0), "the column's right edge is 513")
+	t.check(float(cols.arrow_x) > float(cols.old_right) and float(cols.arrow_x) < right, "the arrow sits between the old values and the new ones")
+	var olds := {}
+	var news := {}
+	var wide := 0.0
+	for row: Dictionary in rows:
+		var lay := SkillTreeScreen.row_layout(row, cols)
+		news[snappedf(float(lay.new_x) + UiTheme.width(String(lay["new"]), SkillTreeScreen.SMALL_PX), 0.001)] = true
+		if lay.changed:
+			olds[snappedf(float(lay.old_x) + UiTheme.width(String(lay.old), SkillTreeScreen.SMALL_PX), 0.001)] = true
+			wide = maxf(wide, UiTheme.width(String(lay["new"]), SkillTreeScreen.SMALL_PX))
+	t.check(news.size() == 1 and is_equal_approx(float(news.keys()[0]), right), "every new value ends at the right edge (%s)" % [news.keys()])
+	t.check(olds.size() == 1 and is_equal_approx(float(olds.keys()[0]), float(cols.old_right)), "every old value ends at old_right (%s)" % [olds.keys()])
+	t.check(is_equal_approx(float(cols.new_w), wide), "the new column is as wide as the widest changed new value")
+	t.check(not SkillTreeScreen.row_layout(rows[3], cols).changed, "an unchanged row shows its value alone")
+	t.check(SkillTreeScreen.num("4.0") == "4" and SkillTreeScreen.num("10.25") == "10.25" and SkillTreeScreen.num("1.05") == "1.05", "num drops a needless .0 only")
+	var m := SkillTreeScreen.might_row("30 -> 34")
+	t.check(m.old == "30" and m["new"] == "34" and SkillTreeScreen.might_row("30").old == "30", "the Might line splits into old and new")
+
+
+## Only the crisp sizes: 11, 22, 33 and 66 through TEXT_*, NODE_NAME_PX, SMALL_PX and SIZE_CHIP; no old SIZE_* and no text call that leaves
+## its size out (the defaults are the 13 u body size).
+static func _crisp_only(t) -> void:
+	var src := FileAccess.get_file_as_string("res://src/game/ui/skill_tree_screen.gd")
+	for old in ["SIZE_SMALL", "SIZE_BODY", "SIZE_BIG", "SIZE_TITLE", "SIZE_HUGE"]:
+		t.check(not src.contains(old), "skill_tree_screen.gd does not use " + old)
+	var okay := RegEx.create_from_string("^(UiTheme\\.TEXT_[A-Z]+|NODE_NAME_PX|SMALL_PX|SIZE_CHIP|size|int\\(shown\\.size\\))$")
+	var sizes := {"UiTheme.text": 3, "UiTheme.width": 1, "UiTheme.wrap": 2, "UiTheme.fit": 2, "_text_centred": 3}
+	var bad := PackedStringArray()
+	var seen := 0
+	for call in sizes:
+		var rx := RegEx.create_from_string("(?<![A-Za-z0-9_.])(?<!func )" + String(call).replace(".", "\\.") + "\\(")
+		for m in rx.search_all(src):
+			var args: Array = UiScaleTest._call_args(src, m.get_end() - 1)
+			var n: int = args.size() - 1
+			var line := src.substr(0, m.get_start()).count("\n") + 1
+			var idx: int = sizes[call]
+			seen += 1
+			if n <= idx or okay.search(String(args[idx])) == null:
+				bad.append("%s line %d" % [call, line])
+	t.check(seen > 40 and bad.is_empty(), "every text call names a crisp size (%d calls); offenders: %s" % [seen, bad])
+	t.check(SkillTreeScreen.NODE_NAME_PX == 11 and SkillTreeScreen.SMALL_PX == 11 and SkillTreeScreen.SIZE_CHIP == 11, "the three size constants are 11")
+
+
+static func _pulse(t) -> void:
+	var s := _screen("ruin", 1, 3)
+	s._slot.learned.clear()
+	var lo := 1.0
+	var hi := 0.0
+	var same := true
+	for k in 160:
+		var tt := float(k) * 0.01
+		var a := s.pulse_alpha(tt)
+		lo = minf(lo, a)
+		hi = maxf(hi, a)
+		same = same and absf(a - s.pulse_alpha(tt + SkillTreeScreen.PULSE_SECONDS)) < 1e-4
+	t.check(lo >= 0.05 - 1e-6 and hi <= 0.12 + 1e-6 and hi > 0.11 and lo < 0.06, "pulse_alpha stays in [0.05, 0.12] and reaches both ends (%f, %f)" % [lo, hi])
+	t.check(same and SkillTreeScreen.PULSE_SECONDS == 1.6, "and repeats every 1.6 s")
+	var cold := _screen("ruin", 1, 0)
+	t.check(s._any_can() and not cold._any_can(), "only a wheel with an affordable power redraws for the pulse")
+	cold.free()
+	s.free()
+
+
+static func _mini_cells(t) -> void:
+	for side in 2:
+		var panel := SkillTreeScreen.side_rect(side)
+		var cells: Array[Rect2] = []
+		for tier in range(1, 6):
+			for i in 2:
+				cells.append(SkillTreeScreen.mini_rect(panel, tier, i))
+		t.check(cells.size() == 10, "10 mini cells per panel")
+		var ok := true
+		var apart := true
+		for a in cells.size():
+			ok = ok and panel.encloses(cells[a]) and cells[a].size == Vector2(22, 22) and cells[a].end.y <= panel.end.y - 8.0 - 9.0
+			for b in range(a + 1, cells.size()):
+				apart = apart and not cells[a].intersects(cells[b])
+		t.check(ok and apart, "the cells are 22 u, inside the panel, above the bottom line and apart (side %d)" % side)
+		t.check(is_equal_approx(cells[0].get_center().x, panel.get_center().x - 13.0) and is_equal_approx(cells[1].get_center().x, panel.get_center().x + 13.0)
+			and is_equal_approx(cells[0].position.y, panel.position.y + 60.0) and is_equal_approx(cells[8].position.y, panel.position.y + 60.0 + 96.0),
+			"two columns at the middle +- 13, rows 24 apart from +60")
+
+
+## Locked powers draw grey, others in colour.
+static func _states_draw(t) -> void:
+	var s := _screen("ruin", 1, 1)
+	t.check(s.node_state(1, 3, 0) == "lock", "a power of a tier above is locked")
+	t.check(SkillTreeScreen.state_edge("lock", Color.RED) == SkillTreeScreen.COL_RING_LOCKED and SkillTreeScreen.state_edge("learned", Color.RED) == UiTheme.COL_GOLD,
+		"locked and owned rings have their own colours")
+	var grey := UiIcon.grey(SkillTreeScreen.spot_icon("smite"))
+	t.check(grey != null and (grey.has_meta("ui_grey") or UiIcon.locked_tint(grey) == UiIcon.LOCKED_TINT), "a locked icon is the grey copy, or the tint stand-in")
+	s.free()

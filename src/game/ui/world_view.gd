@@ -22,6 +22,7 @@ func _init() -> void:
 	viewport.disable_3d = true
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.snap_2d_vertices_to_pixel = true
+	viewport.audio_listener_enable_2d = true  # the world's positional sound pans against this viewport, not the root
 	viewport.size = Vector2i(640, 360)
 	add_child(viewport)
 	display = TextureRect.new()
@@ -40,6 +41,8 @@ func _init() -> void:
 
 ## Put `node` in the world viewport. The view frees itself (and its ui subtree) when the hosted node leaves the tree.
 func host(node: Node) -> void:
+	if _hosted != null and is_instance_valid(_hosted) and _hosted.tree_exited.is_connected(_on_hosted_exited):
+		_hosted.tree_exited.disconnect(_on_hosted_exited)  # one host per view: the old node no longer owns it
 	if node.get_parent() != null:
 		node.get_parent().remove_child(node)
 	viewport.add_child(node)
@@ -66,6 +69,8 @@ func _on_hosted_exited() -> void:
 		queue_free()
 
 
+## Input is forwarded only while the view processes (INHERIT): with the tree paused the world gets none, even a node set to
+## PROCESS_MODE_ALWAYS. Mission pause handling (2b) must account for that.
 func _unhandled_input(event: InputEvent) -> void:
 	viewport.push_input(event, true)
 	if viewport.is_input_handled():
@@ -101,19 +106,28 @@ static func mouse_in_view(world_node: Node) -> Vector2:
 	return world_node.get_viewport().get_mouse_position()
 
 
-## Windowed main scenes (Mission, TownDebug, Sandbox) host themselves: reparent `node` into a new view added to the root.
-## False (nothing done) when headless, when `node` is not the current scene under the root, or when already hosted.
-static func self_host(node: Node) -> bool:
+## Windowed main scenes (Mission, TownDebug, Sandbox) host themselves: reparent `node` into a new view added to the root,
+## and make that view the current scene (so change_scene_* and reload_current_scene free the view and its world together;
+## `hosted()` is the node). Contract: call this FIRST in `_ready` and return at once when it returns true; the node's _ready runs
+## again after the (deferred) reparent, by request_ready(), and that second run finds it hosted (false) and builds as usual.
+## False (nothing done) when headless (unless `force`, for tests), when `node` is not the current scene under the root, or when hosted.
+static func self_host(node: Node, force := false) -> bool:
+	if not node.is_inside_tree():
+		return false
 	var tree := node.get_tree()
-	if tree == null or node.get_parent() != tree.root or tree.current_scene != node:
+	if node.get_parent() != tree.root or tree.current_scene != node:
 		return false
-	if DisplayServer.get_name() == "headless" or of(node) != null:
+	if (DisplayServer.get_name() == "headless" and not force) or of(node) != null:
 		return false
-	var wv := WorldView.new()
-	tree.root.add_child.call_deferred(wv)
 	node.request_ready()
-	(func():
-		if is_instance_valid(node) and is_instance_valid(wv):
-			wv.host(node)
-			tree.current_scene = node).call_deferred()
+	_reparent.call_deferred(node, tree)
 	return true
+
+
+static func _reparent(node: Node, tree: SceneTree) -> void:
+	if not is_instance_valid(node) or not node.is_inside_tree():
+		return
+	var wv := WorldView.new()
+	tree.root.add_child(wv)
+	wv.host(node)
+	tree.current_scene = wv

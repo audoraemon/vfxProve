@@ -5,11 +5,27 @@ extends RefCounted
 class KeyNode extends Node:
 	var handled_keys := true
 	var seen: InputEvent
+	var count := 0
+	var handle_mouse := false
 
 	func _input(event: InputEvent) -> void:
 		seen = event
-		if handled_keys and event is InputEventKey:
+		count += 1
+		if (handled_keys and event is InputEventKey) or (handle_mouse and event is InputEventMouseButton):
 			get_viewport().set_input_as_handled()
+
+
+## Mimics a self-hosting scene: self_host first, children only when it returned false.
+class SelfHoster extends Node2D:
+	var readies := 0
+
+	func _ready() -> void:
+		readies += 1
+		if readies == 1:
+			get_tree().current_scene = self  # as a main scene is
+		if WorldView.self_host(self, true):
+			return
+		add_child(Node.new())
 
 
 ## A view on the root, once the tree is live (the suite starts before the root enters the tree; one frame fixes that).
@@ -75,7 +91,21 @@ static func _keys(t) -> void:
 	t.check(not root.is_input_handled(), "start unhandled")
 	wv._unhandled_input(_key(KEY_Q))
 	t.check(n.seen is InputEventKey and not root.is_input_handled(), "a key the world ignores leaves the root unhandled")
-	n.handled_keys = true
+	var click := InputEventMouseButton.new()
+	click.position = Vector2(10, 10)
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	wv._unhandled_input(click)
+	t.check(not root.is_input_handled(), "a click the world ignores leaves the root unhandled")
+	n.handle_mouse = true
+	wv._unhandled_input(click)
+	t.check(root.is_input_handled(), "a click the world handles marks the root handled")
+	n.handle_mouse = false
+	_drop(wv)
+	wv = await _view(t)
+	n = KeyNode.new()
+	n.set_process_input(true)
+	wv.host(n)
 	wv._unhandled_input(_key(KEY_Q))
 	t.check(root.is_input_handled(), "a key the world handles leaves the root handled")
 	_drop(wv)
@@ -93,7 +123,38 @@ static func _mouse_identity(t) -> void:
 	e.pressed = true
 	wv._unhandled_input(e)
 	t.check(n.seen is InputEventMouseButton and (n.seen as InputEventMouseButton).position == Vector2(123, 45), "a click reaches the world at the same position")
+	t.check(n.count == 1, "the world sees the click once")
+	wv._unhandled_input(e)
+	t.check(n.count == 2, "each click once")
+	var m := InputEventMouseMotion.new()
+	m.position = Vector2(300, 200)
+	wv._unhandled_input(m)
+	t.check(n.seen is InputEventMouseMotion and (n.seen as InputEventMouseMotion).position == Vector2(300, 200) and n.count == 3, "motion is forwarded, once")
 	_drop(wv)
+
+
+static func _self_host(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var loose := Node2D.new()
+	t.check(not WorldView.self_host(loose), "a node off the tree is never self-hosted")
+	loose.free()
+	var n := SelfHoster.new()
+	tree.root.add_child(n)
+	await t.process_frame
+	await t.process_frame
+	var wv := WorldView.of(n)
+	t.check(wv != null and n.get_parent() == wv.viewport and wv.get_parent() == tree.root, "the scene is reparented into a new view on the root")
+	t.check(tree.current_scene == wv and wv.hosted() == n, "the view is the current scene, hosted() is the node")
+	t.check(n.readies == 2 and n.get_child_count() == 1, "_ready runs twice and the second run builds the children once")
+	var other := Node2D.new()
+	wv.host(other)
+	t.check(wv.hosted() == other, "a view hosts one node at a time")
+	n.free()
+	await t.process_frame
+	t.check(is_instance_valid(wv) and not wv.is_queued_for_deletion(), "the old node leaving does not free a view that moved on")
+	tree.current_scene = null
+	wv.get_parent().remove_child(wv)
+	wv.free()
 
 
 static func _sim_view_pinned(t) -> void:
@@ -110,6 +171,12 @@ static func _sim_view_pinned(t) -> void:
 	t.near(Person.view.size.y, want.y, 0.001, "the sim view height")
 	t.check(Structure.view == Person.view, "structures see the same view")
 	t.check(bf.sim_view_size().is_equal_approx(Battlefield.SIM_VIEW / 0.6), "sim_view_size")
+	bf.sim_zoom = 0.0
+	bf.camera.zoom = Vector2.ONE * 0.8
+	bf._process(0.0)
+	var want2 := Battlefield.SIM_VIEW / 0.8 + Vector2.ONE * 2.0 * Battlefield.VIEW_MARGIN
+	t.near(Person.view.size.x, want2.x, 0.001, "without sim_zoom the camera zoom decides, width ignores the viewport")
+	t.near(Person.view.size.y, want2.y, 0.001, "and the height")
 	Person.view = person
 	Structure.view = structure
 	_drop(wv)
@@ -121,3 +188,4 @@ static func run(t) -> void:
 	await _keys(t)
 	await _mouse_identity(t)
 	await _sim_view_pinned(t)
+	await _self_host(t)

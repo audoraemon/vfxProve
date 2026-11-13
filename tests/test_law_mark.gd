@@ -142,7 +142,7 @@ static func _fights(t) -> void:
 	Kit.done(s)
 
 
-## CRIMINAL: every guard within LawMark.SIGHT -- a soldier, a watchman -- goes for him in a TARGET_ONLY fight; a citizen does not, nor a
+## CRIMINAL: every guard within LawMark.PURSUE_R (8) -- a soldier, a watchman -- goes for him in a TARGET_ONLY fight; a citizen does not, nor a
 ## guard further off; the law over, they are called off.
 static func _criminal(t) -> void:
 	var s := Kit.world(MissionBook.warning())
@@ -150,19 +150,22 @@ static func _criminal(t) -> void:
 	var crowd: Crowd = s.crowd
 	var c := d.messenger
 	var at := c.ground_pos
-	_clear(crowd, at, LawMark.SIGHT + 6.0, [c])
+	_clear(crowd, at, LawMark.PURSUE_R + 6.0, [c])
 	var soldiers: Array[Person] = []
 	for g in crowd.soldiers:
 		if MissionDirector._alive(g) and not g.inside and not g.held_by_god() and g.mind != Person.Mind.ASLEEP:
 			soldiers.append(g)
 	var near := soldiers[0]
 	var far := soldiers[1]
-	Kit.arrive(near, at + Vector2(LawMark.SIGHT - 1.0, 0.0))
-	Kit.arrive(far, at + Vector2(LawMark.SIGHT + 2.0, 0.0))
+	Kit.arrive(near, at + Vector2(LawMark.PURSUE_R - 1.0, 0.0))
+	Kit.arrive(far, at + Vector2(LawMark.PURSUE_R + 2.0, 0.0))
 	var watch := _bystander(crowd, at + Vector2(0.0, 1.0), [c])
 	watch.profile.role = CitizenProfile.Role.WATCHMAN
 	var plain := _bystander(crowd, at + Vector2(0.0, -1.0), [c, watch])
 	plain.profile.role = CitizenProfile.Role.RESIDENT
+	var distant := _bystander(crowd, at + Vector2(0.0, 6.0), [c, watch, plain])
+	distant.profile.role = CitizenProfile.Role.RESIDENT
+	var d0 := plain.ground_pos.distance_to(at)
 	c.tick(DT)
 	t.check(near.mind != Person.Mind.FIGHT and watch.mind != Person.Mind.FIGHT, "no law: no guard goes for him")
 	LawMark.set_law(c, &"criminal", 4.0, 1)
@@ -172,7 +175,17 @@ static func _criminal(t) -> void:
 		"a soldier within sight goes for him, a TARGET_ONLY fight")
 	t.check(watch.mind == Person.Mind.FIGHT and watch.fight_target == c and watch._fight_rule == Person.FightRule.TARGET_ONLY,
 		"so does a watchman")
-	t.check(far.mind != Person.Mind.FIGHT and plain.mind != Person.Mind.FIGHT, "a soldier beyond sight does not, nor a plain citizen")
+	t.check(far.mind != Person.Mind.FIGHT and plain.mind != Person.Mind.FIGHT, "a soldier beyond PURSUE_R does not, nor a plain citizen")
+	t.check(plain.mind == Person.Mind.PANIC or plain.inside or plain.mind == Person.Mind.SHELTER,
+		"a plain citizen within FLEE_R (1) runs from him (%s)" % [plain.mind])
+	t.check(distant.mind == Person.Mind.CALM, "one at 6, past FLEE_R (4), does not")
+	if plain.mind == Person.Mind.PANIC:
+		var dpos := distant.ground_pos
+		for i in 30:
+			c.tick(DT)
+			plain.tick(DT)
+		t.check(plain.ground_pos.distance_to(at) > d0 + 0.5 and plain.ground_pos.distance_to(at) < 20.0,
+			"he runs away from the criminal, a few cells, not off the map (%.1f -> %.1f)" % [d0, plain.ground_pos.distance_to(at)])
 	LawMark.step(c, 4.0)
 	t.check(LawMark.kind_of(c) == &"" and near.mind != Person.Mind.FIGHT and watch.mind != Person.Mind.FIGHT,
 		"the law run out, the guards are called off")

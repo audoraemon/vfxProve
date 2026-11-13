@@ -853,10 +853,14 @@ func _wheel_centre() -> Vector2:
 	return _whisper_target.ground_pos
 
 
-## The three slice words, in WHEEL_ORDERS' slot order: the effect's own (follow_up_orders(), R15), else WHEEL_ORDERS.
+## The three slice words, in WHEEL_ORDERS' slot order: the effect's own (follow_up_orders(), R15), else WHEEL_ORDERS -- also when the
+## effect names other than three (the slices index this list).
 func _orders() -> Array:
 	var fx: Variant = _wheel_fx()
-	return fx.follow_up_orders() if fx != null and fx.has_method("follow_up_orders") else WHEEL_ORDERS
+	if fx == null or not fx.has_method("follow_up_orders"):
+		return WHEEL_ORDERS
+	var words: Variant = fx.follow_up_orders()
+	return words if words is Array and (words as Array).size() == WHEEL_ORDERS.size() else WHEEL_ORDERS
 
 
 ## wheel_slice() named by the wheel's own words: the slice's order, "" for the hub, "out" past the edge.

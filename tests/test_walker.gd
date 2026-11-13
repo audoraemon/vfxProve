@@ -1,8 +1,10 @@
 extends RefCounted
 ## Walking Corpse (Death, Tier III, quiet; spec 5.4): click a body, then where it should go. The body gets up -- a ZOMBIE-breed
 ## Visitor in the dead person's own look, no grey, no eyes, so it passes for living -- and walks there by the streets at a
-## person's walk pace. Nobody panics, no alarm, no soldier cuts it down. When it gets there (or at WALK_LIFE) it lies down
-## again: its remain moved there and its clock restarted. Walked into a shelter or to a house door it is hidden: off the
+## person's walk pace. Nobody panics, no alarm, no soldier cuts it down. In the open it stands and waits for orders (review R7):
+## through the follow-up wheel it walks on (within ORDER_REACH), goes into a building, or kills someone quietly (&"grave", a body,
+## no alarm), KILLS_MOST times at most. A Death sigil hangs over it all its life. At WALK_LIFE it lies down where it stands: its
+## remain moved there and its clock restarted. Walked into a shelter or to a house door it is hidden: off the
 ## street drawing and out of the other powers' reach (Raise the Dead cannot pick it), though Walking Corpse can walk it back
 ## out. A plague body walked into a shelter infects up to INFECT_MOST of those sheltering there, nearest first.
 
@@ -20,10 +22,14 @@ static func run(t) -> void:
 	_refused(t, made)
 	_others_place(t, made)
 	_walks(t, made)
+	_orders(t, made)
+	_attack(t, made)
+	_foe_indoors(t, made)
 	_walk_life(t, made)
 	_quiet(t, made)
 	_shelter_plague(t, made)
 	_hidden(t, made)
+	_carried_off(t, made)
 	_exit(t, made)
 	RD._done(made)
 
@@ -44,6 +50,36 @@ static func _book(t) -> void:
 	t.check(Sfx.CATALOG.has(&"q_walker") and PowerBook.icon("walker") != null and PowerBook.hud_icon("walker") != null
 		and PowerBook.clip("walker") != null, "its own cue q_walker, its icons and its clip")
 	t.check(Rules.POWER_KINDS.get("walker", null) == [&"grave"] and PowerBook.FAMILY.get("walker", "") == "death", "it kills only as the quiet grave kind; Death's family")
+	t.check(WalkingCorpseFx.ORDER_REACH == 12.0 and WalkingCorpseFx.ATTACK_R == 6.0 and WalkingCorpseFx.ATTACK_SECS == 10.0
+		and WalkingCorpseFx.KILL_R == 0.4 and WalkingCorpseFx.KILLS_MOST == 2 and WalkingCorpseFx.ATTACK_PACE == 1.6
+		and WalkingCorpseFx.SIGIL_UP == 26.0, "its orders' numbers (R7): reach 12, attack 6 / 10 s / 0.4, 2 kills, 1.6 x pace, sigil 26 px up")
+
+
+## Steps `fx` (and `people`) DT at a time until `done` is true or `most` seconds pass: the seconds it took.
+static func _until(fx: FxTimeline, done: Callable, most: float, people: Array = []) -> float:
+	var took := 0.0
+	while not done.call() and took < most:
+		RD._run(fx, DT, people)
+		took += DT
+	return took
+
+
+## A body at `at`, sent to its own spot: it gets up and stands there, waiting for orders.
+static func _standing(made: Array, n: int, at: Vector2) -> WalkingCorpseFx:
+	RD._body(made, n, at)
+	var fx := _cast(made[5], at, at)
+	RD._run(fx, WalkingCorpseFx.T_RISE + 0.3)
+	return fx
+
+
+## Walkable ground `d` units from `at` along the first of eight ways, the line there open or not.
+static func _far(made: Array, at: Vector2, d: float) -> Vector2:
+	var grid: WalkGrid = made[2]
+	for k in 8:
+		var to := at + Vector2.RIGHT.rotated(TAU * float(k) / 8.0) * d
+		if grid.walkable(to):
+			return to
+	return Vector2.INF
 
 
 ## Walkable ground `d` units from `at` along the first of eight ways that is open all along, nobody within 4 of it.
@@ -128,11 +164,12 @@ static func _others_place(t, made: Array) -> void:
 	rules.free()
 
 
-## "walks to the second click and lies down there, clock restarted"
+## "arriving in the open it stands and waits, not lying down": walked to the second click, it stands there for its next order.
 static func _walks(t, made: Array) -> void:
 	RD._clear_all(made)
 	var crowd: Crowd = made[0]
 	var rem: Remains = crowd.remains
+	var ctx: FxContext = made[5]
 	var at := RD._empty(made)
 	var corpse: Person = crowd.citizens[2]
 	var r := RD._body(made, 2, at, &"deathmark")
@@ -144,6 +181,7 @@ static func _walks(t, made: Array) -> void:
 	t.check(rem.pick(at) == null and rem.all().is_empty(), "the body is taken off the ground while it walks")
 	t.check(is_instance_valid(corpse) and not corpse.visible and rem._shown_count() == 0,
 		"its corpse is not drawn at the old spot while it walks away (Death Mark's 20 s hold too)")
+	t.check(fx.order == "walk", "the second click in the open is its first order: a walk (%s)" % fx.order)
 	RD._run(fx, 0.1)
 	var up: Array = fx.visitors.living() if fx.visitors != null else []
 	var w: Animal = up[0] if up.size() == 1 else null
@@ -156,17 +194,141 @@ static func _walks(t, made: Array) -> void:
 	var pace := DummyEnemy.WALK_SPEED * 2.0
 	t.check(walked > pace * 0.85 and walked < pace * 1.15,
 		"it walks at a person's pace (%.2f in 2 s, a walk is %.2f)" % [walked, pace])
-	var waited := 0.0
-	while not fx.laid and waited < WalkingCorpseFx.WALK_LIFE:
-		RD._run(fx, 0.5)
-		waited += 0.5
-	t.check(fx.laid and waited < WalkingCorpseFx.WALK_LIFE - 20.0, "it gets there and lies down (%.1f s)" % [waited + 2.7])
-	var there := rem.pick(to)
-	t.check(there == r and r.pos.distance_to(to) < 0.3 and not r.hidden and rem.age(r) < 1.0 and rem.has_soul(r),
-		"walks to the second click and lies down there, clock restarted (%s, at %s, age %.2f)" % [there == r, r.pos, rem.age(r)])
-	t.check(rem._drawn(r) and rem._shown_count() == 1 and not corpse.visible,
-		"and it is drawn lying there at once, and only there")
-	t.check(fx.visitors == null or fx.visitors.living().is_empty(), "the walker is gone: only the body lies there")
+	var sig := fx.sigil
+	t.check(is_instance_valid(sig) and sig.get_parent() == ctx.overhead
+		and sig.position.distance_to(Iso.ground_to_screen(w.ground_pos) + Vector2(0.0, -WalkingCorpseFx.SIGIL_UP)) < 0.01,
+		"it carries a sigil all its life: Death's skull 26 px over it")
+	var waited := _until(fx, func() -> bool: return fx.order != "walk" or fx.laid, 30.0)
+	t.check(not fx.laid and fx.order == "wait" and fx.can_follow_up() and rem.pick(to, false, true) == null
+		and is_instance_valid(w) and w.ground_pos.distance_to(to) <= 0.3,
+		"arriving in the open it stands and waits, not lying down (%.1f s, laid %s, order %s)" % [waited, fx.laid, fx.order])
+	var stood := w.ground_pos
+	RD._run(fx, 3.0)
+	t.check(not fx.laid and fx.order == "wait" and w.ground_pos == stood and rem.all().is_empty() and is_instance_valid(fx.sigil),
+		"and it stays standing there, the body still up, the sigil over it")
+	fx.end_now()
+	t.check(fx.laid and rem.pick(stood) == r and fx.sigil == null, "cut short, it lies down where it stood and its sigil goes")
+
+
+## Orders through the wheel's hooks (R7, R15): its hooks; "a walk order sends it on"; "a walk past 12 is refused"; and Rules hands a
+## walk with no "target" key straight to it.
+static func _orders(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := RD._empty(made)
+	var fx := _standing(made, 6, at)
+	var w := fx.walker
+	t.check(fx.order == "wait" and fx.can_follow_up() and fx.follow_up_wheel() and fx.follow_up_subject() == w
+		and fx.follow_up_from() == w.ground_pos and fx.follow_up_reach() == WalkingCorpseFx.ORDER_REACH
+		and fx.follow_up_orders() == ["walk", "attack", "enter"],
+		"its hooks: the wheel on the walker itself, reach 12 from it, WALK / ATTACK / ENTER")
+	var p := _spot(made, w.ground_pos, 4.0)
+	t.check(fx.follow_up(p, {"order": "walk", "to": p}) and fx.order == "walk", "a walk order is taken")
+	var took := _until(fx, func() -> bool: return fx.order != "walk" or fx.laid, 15.0)
+	t.check(fx.order == "wait" and not fx.laid and fx.walker.ground_pos.distance_to(p) <= WalkingCorpseFx.ARRIVE,
+		"a walk order sends it on (%.1f s, %.2f off)" % [took, fx.walker.ground_pos.distance_to(p)])
+	var far := _far(made, fx.walker.ground_pos, 15.0)
+	t.check(far != Vector2.INF and not fx.follow_up(far, {"order": "walk", "to": far}) and fx.order == "wait",
+		"a walk past 12 is refused")
+	t.check(not fx.follow_up(p, {"order": "burn", "to": p}) and not fx.follow_up(p, {"to": p}) and not fx.follow_up(p, {})
+		and fx.order == "wait", "an order it does not know is refused")
+	var open := WalkingCorpseFx.indoors_at(ctx.env, crowd, p) == null
+	t.check(not open or not fx.follow_up(p, {"order": "enter", "to": p}), "ENTER with no building there is refused")
+	fx.end_now()
+	# Rules hands a subject's walk on as it is: no "target" key, the effect judges it.
+	var at2 := _spot(made, at, 6.0)
+	RD._body(made, 7, at2)
+	var rules := Rules.new().setup(PackedStringArray(["walker"]), null, made[1], made[3], made[0], made[6])
+	rules.caster = func(sc: GDScript, g: Vector2, e: Dictionary) -> FxTimeline: return FxTimeline.cast(sc, made[5], g, e)
+	var got := rules.cast(0, at2, {"to": at2}) as WalkingCorpseFx
+	t.check(got != null, "(Rules casts it on the body)")
+	if got != null:
+		RD._run(got, WalkingCorpseFx.T_RISE + 0.3)
+		var q := _spot(made, got.walker.ground_pos, 3.0)
+		var extra := {"order": "walk", "to": q}
+		t.check(rules.can_recast(0) and rules.recast(0, q, extra) and not extra.has("target") and got.order == "walk"
+			and got.dest.distance_to(q) < 0.01, "Rules: a walk order on the walker goes through, no target key")
+		var far2 := _far(made, got.walker.ground_pos, 15.0)
+		t.check(not rules.recast(0, far2, {"order": "walk", "to": far2}), "Rules: one past 12 is refused by the effect")
+		got.end_now()
+	rules.free()
+
+
+## "an attack order kills quietly and leaves a body"; "two kills, then attack is refused".
+static func _attack(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var rem: Remains = crowd.remains
+	var at := RD._empty(made)
+	var fx := _standing(made, 8, at)
+	var w := fx.walker
+	var foe: Person = crowd.citizens[70]
+	var foe_pos := _spot(made, w.ground_pos, 4.0)
+	foe.ground_pos = foe_pos
+	var by: Person = crowd.citizens[71]
+	by.ground_pos = foe_pos + (foe_pos - w.ground_pos).normalized() * 2.0
+	by.mind = Person.Mind.CALM
+	var deaths: Array = []
+	var on_kill := func(e: DummyEnemy, kind: StringName) -> void: deaths.append([e, kind])
+	field.enemy_killed.connect(on_kill)
+	var alarm := crowd.alarm
+	# Unfair foes first: out of ATTACK_R, or guised, or nobody.
+	var far: Person = crowd.citizens[72]
+	far.ground_pos = _far(made, w.ground_pos, 7.0)
+	t.check(not fx.follow_up(far.ground_pos, {"order": "attack", "foe": far}) and fx.order == "wait", "an attack on one 7 off is refused")
+	foe.statuses[&"guise"] = 5.0
+	t.check(not fx.follow_up(foe_pos, {"order": "attack", "foe": foe}) and fx.order == "wait", "and on one guised")
+	foe.statuses.erase(&"guise")
+	t.check(not fx.follow_up(foe_pos, {"order": "attack"}) and not fx.follow_up(foe_pos, {"order": "attack", "foe": w}),
+		"and with no person to attack")
+	t.check(fx.follow_up(foe_pos, {"order": "attack", "foe": foe}) and fx.order == "attack", "an attack on one 4 off is taken")
+	var took := _until(fx, func() -> bool: return fx.order != "attack", 11.0, [by])
+	t.check(not foe.is_alive() and deaths == [[foe, &"grave"]] and fx.kills == 1 and fx.order == "wait" and took < 10.0,
+		"an attack order kills quietly as the grave kind (%.1f s, %s)" % [took, deaths])
+	t.check(rem.pick(foe_pos) != null, "and leaves a body")
+	t.check(crowd.alarm == alarm and by.is_alive() and by.mind == Person.Mind.CALM,
+		"no alarm, and a citizen 2.0 from the kill stays calm (alarm %.2f -> %.2f, %s)" % [alarm, crowd.alarm, Person.Mind.keys()[by.mind]])
+	t.check(not fx.laid and fx.can_follow_up(), "and it stands, waiting for its next order")
+	# A second kill, then no more.
+	var foe2: Person = crowd.citizens[73]
+	foe2.ground_pos = _spot(made, fx.walker.ground_pos, 3.0)
+	t.check(fx.follow_up(foe2.ground_pos, {"order": "attack", "foe": foe2}), "a second attack is taken")
+	_until(fx, func() -> bool: return fx.order != "attack", 11.0)
+	var foe3: Person = crowd.citizens[74]
+	foe3.ground_pos = _spot(made, fx.walker.ground_pos, 3.0)
+	t.check(not foe2.is_alive() and fx.kills == WalkingCorpseFx.KILLS_MOST
+		and not fx.follow_up(foe3.ground_pos, {"order": "attack", "foe": foe3}) and fx.order == "wait" and foe3.is_alive(),
+		"two kills, then attack is refused (%d kills)" % fx.kills)
+	t.check(fx.follow_up(foe3.ground_pos, {"order": "walk", "to": foe3.ground_pos}), "(it still walks where it is told)")
+	field.enemy_killed.disconnect(on_kill)
+	fx.end_now()
+
+
+## "the foe goes indoors first: no kill, it waits"; and a chase that runs ATTACK_SECS gives up.
+static func _foe_indoors(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var fx := _standing(made, 9, at)
+	var foe: Person = crowd.citizens[75]
+	foe.ground_pos = _spot(made, fx.walker.ground_pos, 5.0)
+	t.check(fx.follow_up(foe.ground_pos, {"order": "attack", "foe": foe}), "(the attack is taken)")
+	RD._run(fx, 0.5)
+	foe.inside = true
+	RD._run(fx, 0.2)
+	t.check(fx.order == "wait" and fx.kills == 0 and foe.is_alive(), "the foe goes indoors first: no kill, it waits (%s)" % fx.order)
+	foe.inside = false
+	# Out of reach all along (always 3 ahead of it): at ATTACK_SECS it gives up.
+	t.check(fx.follow_up(foe.ground_pos, {"order": "attack", "foe": foe}), "(a new attack)")
+	var ahead := (foe.ground_pos - fx.walker.ground_pos).normalized() * 3.0
+	var took := _until(fx, func() -> bool:
+		if is_instance_valid(fx.walker):
+			foe.ground_pos = fx.walker.ground_pos + ahead
+		return fx.order != "attack", 12.0)
+	t.check(fx.order == "wait" and fx.kills == 0 and foe.is_alive() and absf(took - WalkingCorpseFx.ATTACK_SECS) < 0.2,
+		"a chase that runs 10 s gives up: no kill, it waits (%.1f s)" % took)
 	fx.end_now()
 
 
@@ -184,9 +346,20 @@ static func _walk_life(t, made: Array) -> void:
 	var fx := _cast(made[5], at, far)
 	RD._run(fx, WalkingCorpseFx.WALK_LIFE - 0.5)
 	t.check(not fx.laid, "still walking just short of WALK_LIFE")
-	RD._run(fx, 1.0)
-	t.check(fx.laid and r.pos.distance_to(at) > 5.0 and r.pos.distance_to(far) > 1.0 and rem.pick(r.pos) == r and not r.hidden,
-		"at WALK_LIFE it lies down where it got to (%s)" % [r.pos])
+	var sig := fx.sigil
+	t.check(is_instance_valid(sig), "it carries a sigil all its life (still there at 39.5 s)")
+	var last := fx.walker.ground_pos
+	while not fx.laid and fx.t < WalkingCorpseFx.WALK_LIFE + 1.0:
+		if is_instance_valid(fx.walker):
+			last = fx.walker.ground_pos
+		RD._run(fx, DT)
+	t.check(fx.laid and r.pos.distance_to(at) > 5.0 and r.pos.distance_to(far) > 1.0 and rem.pick(r.pos) == r and not r.hidden
+		and r.pos.distance_to(last) < 0.01 and fx.t >= WalkingCorpseFx.WALK_LIFE,
+		"time out: lies down where it stands at 40 s (%s, last %s)" % [r.pos, last])
+	t.check(rem.age(r) < 1.0 and rem.has_soul(r) and rem._drawn(r) and rem._shown_count() == 1,
+		"its clock restarted, and it is drawn lying there at once, and only there (age %.2f)" % rem.age(r))
+	t.check(fx.sigil == null and (not is_instance_valid(sig) or sig.is_queued_for_deletion()), "and its sigil goes as it lies down")
+	t.check(fx.visitors == null or fx.visitors.living().is_empty(), "the walker is gone: only the body lies there")
 	fx.end_now()
 
 
@@ -273,9 +446,13 @@ static func _shelter_plague(t, made: Array) -> void:
 	(made[3] as EnemyField).kill(dead, &"plague")
 	var r := crowd.remains.pick(from)
 	t.check(r != null and r.sick, "a plague body before its door")
-	var fx := _cast(made[5], from, s.center())
+	var fx := _cast(made[5], from, from)
+	RD._run(fx, WalkingCorpseFx.T_RISE + 0.3)
+	t.check(fx.order == "wait" and fx.follow_up(s.center(), {"order": "enter", "to": s.center()}) and fx.order == "enter",
+		"enter a shelter: the order is taken (%s)" % fx.order)
 	RD._run(fx, 20.0)
-	t.check(fx.laid and r.hidden and fx.shelter == s, "it walks in and lies down hidden (laid %s, hidden %s)" % [fx.laid, r.hidden if r != null else false])
+	t.check(fx.laid and r.hidden and fx.shelter == s and fx.sigil == null,
+		"enter a shelter: hidden, plague in, the walk over (laid %s, hidden %s)" % [fx.laid, r.hidden if r != null else false])
 	var sick := inside.filter(func(p: Person) -> bool: return p.sick_left > 0.0)
 	var by_id := inside.duplicate()
 	by_id.sort_custom(func(a: Person, b: Person) -> bool: return a.get_instance_id() < b.get_instance_id())
@@ -327,9 +504,30 @@ static func _hidden(t, made: Array) -> void:
 	t.check(got != null and refused.is_empty(), "Walking Corpse can walk it back out (%s)" % [refused])
 	if got != null:
 		RD._run(got, 20.0)
-		t.check((got as WalkingCorpseFx).laid and not r.hidden and rem.pick(from) == r, "out on the street again, seen")
+		var w := (got as WalkingCorpseFx).walker
+		t.check((got as WalkingCorpseFx).order == "wait" and is_instance_valid(w) and w.ground_pos.distance_to(from) < 0.3,
+			"walked back out, it stands on the street")
 		got.end_now()
+		t.check((got as WalkingCorpseFx).laid and not r.hidden and rem.pick(from) == r, "and lying down there it is out again, seen")
 	rules.free()
+
+
+## "carried off by another power: the wheel's subject is gone": the walker freed (Heaven's Door takes a pack's walkers), the effect
+## stops taking orders and its sigil goes.
+static func _carried_off(t, made: Array) -> void:
+	_clear_every(made)
+	var at := RD._empty(made)
+	var fx := _standing(made, 61, at)
+	t.check(fx.can_follow_up() and fx.follow_up_subject() == fx.walker, "(standing, its own subject)")
+	var sig := fx.sigil
+	fx.walker.free()
+	t.check(fx.follow_up_subject() == null and not fx.can_follow_up() and not fx.follow_up(at, {"order": "walk", "to": at})
+		and fx.follow_up_from() == fx.origin, "freed between frames: no subject, no order, and its reach is read from where it rose")
+	RD._run(fx, DT)
+	t.check(not fx.can_follow_up() and fx.follow_up_subject() == null and fx.sigil == null
+		and (not is_instance_valid(sig) or sig.is_queued_for_deletion()),
+		"carried off by another power: the wheel's subject is gone, and its sigil with it")
+	fx.end_now()
 
 
 ## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the walker is gone, and the body is put
@@ -352,6 +550,7 @@ static func _exit(t, made: Array) -> void:
 		"freed without its end, the walker is gone and the pack leaves the town")
 	t.check(fx.laid and rem.pick(was) == r and r.pos.distance_to(was) < 0.01 and not r.hidden,
 		"and the body lies back down where it had got to (%s)" % [r.pos])
+	t.check(fx.sigil == null, "and its sigil is let go")
 	fx.end_now()
 	t.check(fx.finished and rem.all().size() == 1, "and its end after that changes nothing (one body, %d)" % rem.all().size())
 	rem.take(r)

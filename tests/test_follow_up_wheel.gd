@@ -37,12 +37,13 @@ class WheelStub extends FxTimeline:
 ## A follow-up with a subject of its own (review R15: Walking Corpse's walker): the wheel opens round it, its third slice is ENTER.
 class SubjectStub extends WheelStub:
 	var subject: Animal
+	var words: Array = ["walk", "attack", "enter"]
 
 	func follow_up_subject() -> Node2D:
 		return subject if is_instance_valid(subject) else null
 
 	func follow_up_orders() -> Array:
-		return ["walk", "attack", "enter"]
+		return words
 
 
 static func run(t) -> void:
@@ -363,6 +364,12 @@ static func _subject(t, made: Array) -> void:
 	aim.release(click)
 	t.check(stub.got.size() == 3 and stub.got.back()[1] == {"order": "enter", "to": click},
 		"the third slice is ENTER and gives the click spot (%s)" % [stub.got])
+
+	# An effect that names other than three words: the wheel falls back to WALK / ATTACK / BURN, never indexing past its list.
+	stub.words = ["walk"]
+	t.check(aim._orders() == Targeting.WHEEL_ORDERS and aim._slice_at(Targeting.wheel_dir("burn") * 0.8) == "burn",
+		"a follow_up_orders() of other than three words falls back to the wheel's own (%s)" % [aim._orders()])
+	stub.words = ["walk", "attack", "enter"]
 
 	# The subject is taken away with the wheel up: it closes quietly, nothing is sent.
 	aim.press(base)

@@ -323,7 +323,7 @@ func _fx_process(delta: float) -> void:
 	if not is_instance_valid(giant):
 		_giant_gone()  # another power carried it off (freed, no cut_down)
 		return
-	if giant.is_alive() and t >= _next_slam:
+	if giant.is_alive() and not giant.is_queued_for_deletion() and t >= _next_slam:  # not one carried off this frame
 		_next_slam += SLAM_EVERY
 		_slam(giant.ground_pos)
 	_look_in -= delta

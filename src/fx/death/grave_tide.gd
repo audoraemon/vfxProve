@@ -9,8 +9,11 @@ extends FxTimeline
 ##   within Visitors.MARCH_SEEK on the way, MARCH_FOR at most), then hunts as any zombie does (the nearest within
 ##   DeathParts.ZOMBIE_SEEK; a citizen's first bite knocks them down, a second kills, frenzy).
 ## - Where the most of those bodies lie close -- the biggest group within CLUSTER_R of one of them (cluster(): a fixed sweep,
-##   oldest first, a tie to the older; no luck) -- and there are CLUSTER_MIN or more, a giant of bones bursts up at their
-##   middle like a fountain (Animal.Breed.BONE_GIANT, the Task 1 sheet). It walks to the click with the horde, then walks the
+##   oldest first, a tie to the older; no luck) -- and there are CLUSTER_MIN or more, a giant of bones (Animal.Breed.BONE_GIANT,
+##   the Task 1 sheet) assembles at their middle (ruling R12): from T_RISE its BONES bones fly in one by one, from those
+##   bodies, over ASSEMBLE; at T_RISE + ASSEMBLE it stands and lands with a slam (_slam: soldiers out in the open within SLAM_R
+##   die, in instance-id order, frenzy; the rest within it are knocked back and the street frightened; a shockwave, cracks,
+##   dust), and it slams the ground again every SLAM_EVERY while it stands. It walks to the click with the horde, then walks the
 ##   streets after the soldiers (prey "soldiers"): one within its reach it hunts; else every GIANT_LOOK it marches on, by the
 ##   streets, toward the nearest soldier out in the open anywhere in town; with none left it holds at the click. Its blow
 ##   (`bite` HEALTH_KNIGHT) fells any soldier at once; it takes GIANT_BLOWS blows and does not flinch; it claws down the walls
@@ -19,8 +22,9 @@ extends FxTimeline
 ##   Crowd.visitors, the Animal.UNDEAD breeds only: never a hellhound, demon or ghost) -- move AURA_SPEED times as fast:
 ##   Animal.speed_mul over their own, read as they first come within reach (every AURA_EVERY) and given back when they leave,
 ##   when the giant falls, and at the end.
-## - At LIFE every one still up falls to ash (the pack cleared); cut short, or freed without its end, the same.
-## Loud (PowerBook.REACH): the danger counts from T_RISE, when the dead stand; the giant's rise frightens the street round it,
+## - At LIFE every zombie still up falls to ash; the giant stands on to GIANT_LIFE after its landing, then falls to ash too
+##   (the pack cleared); cut short, or freed without its end, all of them at once (a tide cut short mid-assembly: no giant).
+## Loud (PowerBook.REACH): the danger counts from T_RISE, when the dead stand; the giant's slams frighten the street round it,
 ## and the horde's first bite is the town's outcry, as a hellhound's.
 
 ## The brief's numbers: the most that rise, how long they stand, the cluster (CLUSTER_MIN within CLUSTER_R), the giant's
@@ -50,16 +54,40 @@ const GIANT_WRECK_REACH := 1.0
 ## After its march it looks for the nearest soldier this often; the aura is read this often.
 const GIANT_LOOK := 0.5
 const AURA_EVERY := 0.1
-## Its rise frightens the street within GIANT_FRIGHT_R; a heavy step sounds every STEP_EVERY while it walks.
-const GIANT_FRIGHT_R := 4.0
+## A heavy step sounds every STEP_EVERY while it walks.
 const STEP_EVERY := 1.1
 ## The horde's first bite: the town's outcry (Hound Gate's and Raise the Dead's).
 const BITE_FRIGHT_R := 2.0
 const BITE_ALARM := 0.6
+## Ruling R12: the giant stands GIANT_LIFE from its landing (the zombies keep LIFE). It assembles over ASSEMBLE from T_RISE:
+## BONES bones fly one by one, from the cluster's remains, into its spot. Its landing is the first slam, and it slams the
+## ground every SLAM_EVERY while it stands: soldiers out in the open within SLAM_R die (frenzy, a body), everyone else
+## within it is knocked back SLAM_KNOCK and the street within SLAM_R + 1 frightened.
+const GIANT_LIFE := 60.0
+const ASSEMBLE := 1.2
+const BONES := 18
+const SLAM_EVERY := 4.0
+const SLAM_R := 3.0
+const SLAM_KNOCK := 5.5
+## The slam's fright (R12: Crowd.fright(at, SLAM_R + 1.0, 0.8, 3.0, 8.0, 12.0, &"beast")) and its blow (giant_step, +4 dB).
+const SLAM_FRIGHT := [0.8, 3.0, 8.0, 12.0]
+const SLAM_DB := 4.0
+## The look of it (staged only): each bone flies BONE_FLY, the last landing at T_RISE + ASSEMBLE, in an arc BONE_ARC px high,
+## and settles into the giant's frame, BONE_STACK px tall; the slam's ring runs out to SLAM_R over SLAM_RING_FOR, its
+## SLAM_CRACKS cracks lie SLAM_CRACK_FOR, and its dust is SLAM_DUST puffs at most.
+const BONE_FLY := 0.25
+const BONE_ARC := 26.0
+const BONE_STACK := 64.0
+const SLAM_RING_FOR := 0.35
+const SLAM_CRACKS := 7
+const SLAM_CRACK_FOR := 3.0
+const SLAM_DUST := 16
 ## Death's palette: bone white, ash grey, pale-white fire; grave green for glows only. No blood.
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
-const BONE_SPRAY := [Color("f2eedc"), Color("d8d2bf"), Color("b8b2a0"), Color(0.54, 0.54, 0.55, 0.0)]
+## A slam's cracks (dark, a hairline about PX * 1.5 wide: PX is about one screen pixel in ground units) and its ring.
+const CRACK := Color(0.1, 0.09, 0.08, 0.8)
+const PX := 0.03
 
 ## The tide's pack; how many rose; the giant (null when there is none, or none any more) and where it rose (INF: none);
 ## how often its claws struck a building.
@@ -68,6 +96,11 @@ var raised := 0
 var giant: Animal
 var giant_at := Vector2.INF
 var wrecks := 0
+## The assembly: how many bones have flown in (on the effect clock, staged or not); how often the giant has slammed the
+## ground; when it landed (-1: not yet).
+var bones_in := 0
+var slams := 0
+var landed_at := -1.0
 
 ## The bodies picked at the cast (the oldest first, MOST at most), raised at T_RISE.
 var _rising: Array[Remains.Remain] = []
@@ -81,6 +114,12 @@ var _bitten := false
 var _step_in := 0.0
 var _step_from := Vector2.INF
 var _see: SeeThrough
+## Where the cluster's bodies lay (the bones fly from them), the giant's spot (walkable), the next slam on the effect clock,
+## and the flying bones (staged only).
+var _group: Array[Vector2] = []
+var _spot := Vector2.INF
+var _next_slam := INF
+var _bones: Bones
 
 
 ## The biggest group of `points` within CLUSTER_R of one of them, as indices in order: a sweep over the points in order,
@@ -125,7 +164,11 @@ func _build() -> void:
 		var sum := Vector2.ZERO
 		for i in group:
 			sum += pts[i]
+			_group.append(pts[i])
 		giant_at = sum / float(group.size())
+		# The giant outlives the horde: the tide lasts to its end (cut down sooner, _giant_gone() brings the end back).
+		duration = maxf(LIFE, T_RISE + ASSEMBLE + GIANT_LIFE) + FADE
+		at(T_RISE + ASSEMBLE, _land)
 	at(T_RISE, _rise)
 	at(LIFE, _end_life)
 	ctx.play(&"gravetide_rise", origin, 0.0)
@@ -138,8 +181,8 @@ func _build() -> void:
 	if giant_at != Vector2.INF:
 		var light := FxParts.ground_light(self, giant_at, CLUSTER_R * 0.6, DeathParts.GRAVE_GREEN, 0.0)
 		light.tween_param("intensity", 0.0, 0.8, T_RISE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-		light.tween_param("intensity", 0.8, 0.0, 1.2, T_RISE)
-		light.life = T_RISE + 1.3
+		light.tween_param("intensity", 0.8, 0.0, 1.2, T_RISE + ASSEMBLE)
+		light.life = T_RISE + ASSEMBLE + 1.3
 	if ctx.shake != null:
 		ctx.shake.add_trauma(0.25)
 
@@ -169,17 +212,50 @@ func _rise() -> void:
 			FxParts.debris(self, sp, 4, 5.0, Vector2(20, 60), BONE_CHIPS, Vector2(1.0, 2.0), true)
 	_rising.clear()
 	if giant_at != Vector2.INF:
-		_raise_giant()
+		_assemble()
 
 
-## The giant bursts up at the heap's middle like a fountain of bones.
-func _raise_giant() -> void:
-	var spot := giant_at
+## The giant's spot (the heap's middle, or the nearest open ground to it); from T_RISE its bones fly in from the bodies.
+func _assemble() -> void:
+	_spot = giant_at
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
-	if grid != null and not grid.walkable(spot):
-		var w := grid.nearest_walkable(spot, 6)
+	if grid != null and not grid.walkable(_spot):
+		var w := grid.nearest_walkable(_spot, 6)
 		if w != Vector2.INF:
-			spot = w
+			_spot = w
+	if not DominionParts.staged(self):
+		return
+	_bones = Bones.new()
+	_bones.fx = self
+	for g in _group:
+		_bones.from.append(Iso.ground_to_screen(g))
+	_bones.to = Iso.ground_to_screen(_spot)
+	track(_bones, stand_layer())
+
+
+## The time bone `i` (0 first) lands in the giant's frame: BONE_FLY after it leaves, the last at T_RISE + ASSEMBLE.
+static func bone_lands(i: int) -> float:
+	return T_RISE + BONE_FLY + float(i) * (ASSEMBLE - BONE_FLY) / float(BONES - 1)
+
+
+## T_RISE + ASSEMBLE: every bone in, the giant stands, and its landing is the first slam.
+func _land() -> void:
+	if is_instance_valid(_bones):
+		_bones.queue_free()
+	_bones = null
+	if _spot == Vector2.INF:
+		return  # the dead never rose (no ledger): no giant
+	bones_in = BONES
+	_raise_giant()
+	landed_at = t
+	_next_slam = landed_at + SLAM_EVERY
+	at(landed_at + GIANT_LIFE, _end_giant)
+	_slam(giant.ground_pos)
+
+
+## The giant stands where its bones came together.
+func _raise_giant() -> void:
+	var spot := _spot
 	giant = visitors.summon(spot, Animal.Breed.BONE_GIANT, GIANT_BLOWS, GIANT_PACE / (Animal.DOG_SPEED * Animal.RUN), GIANT_SEEK,
 		GIANT_BITE_R, GIANT_BITE_EVERY, false)
 	visitors.give(giant, {"prey": "soldiers", "bite": Person.HEALTH_KNIGHT, "wreck": GIANT_WRECK, "wreck_every": GIANT_WRECK_EVERY,
@@ -188,28 +264,45 @@ func _raise_giant() -> void:
 	_look_in = GIANT_LOOK
 	_step_in = STEP_EVERY
 	_step_from = spot
-	ctx.play(&"giant_step", spot, 0.0)
-	if ctx.crowd != null:
-		ctx.crowd.fright(spot, GIANT_FRIGHT_R, 0.8, 3.0, 12.0, 14.0, &"beast")
-		ctx.crowd.threats.register(spot, 1.5, 0.8, 4.0, 10.0, 12.0, &"beast")
 	if not DominionParts.staged(self):
 		return
 	_see = SeeThrough.new()
-	var sp := Iso.ground_to_screen(spot)
-	# A fountain: bone shards thrown high and falling back for a moment, a burst of chips, ash and a flash of pale fire.
-	var spray := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.CHUNK, BONE_SPRAY, 90.0, 0.8,
-		{"radius": 8.0, "speed": Vector2(10, 50), "alt": Vector2(0, 8), "alt_speed": Vector2(180, 340), "life": Vector2(0.9, 1.6),
-			"size": Vector2(1.0, 2.5)})
-	spray.gravity = 420.0
-	spray.bounce = true
-	spray.shadows = true
-	FxParts.debris(self, sp, 24, 14.0, Vector2(30, 110), BONE_CHIPS, Vector2(1.5, 3.0), true)
-	FxParts.smoke(self, sp, 16.0, 40.0, 0.6, Vector2(16, 40), Vector2(3, 6), Vector2(0.8, 1.5), Color(0, 0, 0, 0), DUST)
-	var burst := FxParts.bloom(self, sp + Vector2(0, -40), 46.0, DeathParts.PALE_FIRE, 1.0, 0.9)
+	# The bones lock together in a flash of pale fire.
+	var burst := FxParts.bloom(self, Iso.ground_to_screen(spot) + Vector2(0, -40), 46.0, DeathParts.PALE_FIRE, 1.0, 0.9)
 	burst.tween_param("intensity", 0.9, 0.0, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	burst.life = 0.65
+
+
+## The giant slams the ground at `at_ground` (ruling R12): every soldier out in the open within SLAM_R dies (frenzy: a body
+## lies there), in instance-id order -- no luck in who dies; everyone else within it is knocked back, and the street within
+## SLAM_R + 1 frightened. Staged: a shockwave ring out to SLAM_R, cracks, a burst of dust, the ground shaking.
+func _slam(at_ground: Vector2) -> void:
+	slams += 1
+	ctx.play(&"giant_step", at_ground, SLAM_DB)
+	var doomed: Array[Person] = []
+	for e in ctx.field.in_radius(at_ground, SLAM_R):
+		var p := e as Person
+		if p != null and p.soldier and not p.inside:
+			doomed.append(p)
+	doomed.sort_custom(func(a: Person, b: Person) -> bool: return a.get_instance_id() < b.get_instance_id())
+	for p in doomed:
+		ctx.field.kill(p, &"frenzy", at_ground)
+	ctx.field.knock_from(at_ground, 0.0, SLAM_R, SLAM_KNOCK)
+	if ctx.crowd != null:
+		ctx.crowd.fright(at_ground, SLAM_R + 1.0, SLAM_FRIGHT[0], SLAM_FRIGHT[1], SLAM_FRIGHT[2], SLAM_FRIGHT[3], &"beast")
+	if not DominionParts.staged(self):
+		return
+	var mark := SlamMark.new()
+	mark.turn = float(slams) * 0.7
+	mark.position = at_ground
+	track(mark, ctx.ground)
+	var dust := FxParts.particles(self, ctx.overhead_back, Iso.ground_to_screen(at_ground), PixelParticles.Shape.PUFF, DUST)
+	dust.drag = 0.5
+	dust.burst(SLAM_DUST, {"radius": 18.0, "speed": Vector2(40, 110), "alt": Vector2(0, 4), "alt_speed": Vector2(10, 40),
+		"life": Vector2(0.7, 1.3), "size": Vector2(3, 6), "size_end_mul": 1.8, "dir": PixelParticles.Dir.OUTWARD})
 	if ctx.shake != null:
-		ctx.shake.add_trauma(0.4)
+		ctx.shake.add_trauma(0.4 if slams == 1 else 0.3)
+	ctx.impact.aberration(1.5, 0.2)
 
 
 func _fx_process(delta: float) -> void:
@@ -220,8 +313,19 @@ func _fx_process(delta: float) -> void:
 	if _aura_in <= 0.0:
 		_aura_in = AURA_EVERY
 		_aura()
-	if giant == null or not is_instance_valid(giant):
+	if landed_at < 0.0 and _spot != Vector2.INF:
+		var n := 0
+		while n < BONES and bone_lands(n) <= t:
+			n += 1
+		bones_in = n
+	if giant == null:
 		return
+	if not is_instance_valid(giant):
+		_giant_gone()  # another power carried it off (freed, no cut_down)
+		return
+	if giant.is_alive() and t >= _next_slam:
+		_next_slam += SLAM_EVERY
+		_slam(giant.ground_pos)
 	_look_in -= delta
 	if _look_in <= 0.0:
 		_look_in = GIANT_LOOK
@@ -323,10 +427,8 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 	if _sped.has(a):
 		_sped.erase(a)  # it is freed right after: nothing to give back
 	if a == giant:
-		giant = null
-		_unspeed_all()
+		_giant_gone()
 		ctx.play(&"gravetide_rise", at_ground, -6.0)
-		_release_see()
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(at_ground)
@@ -347,20 +449,54 @@ func _on_wreck(a: Animal, s: Structure) -> void:
 	FxParts.smoke(self, sp, 8.0, 30.0, 0.2, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
 
 
-## LIFE: every one still up falls to ash.
+## The giant is gone (cut down, carried off, or its GIANT_LIFE over): no more slams or aura, and the tide ends with the
+## horde (at LIFE), or FADE from now when the horde has already fallen.
+func _giant_gone() -> void:
+	giant = null
+	_next_slam = INF
+	_unspeed_all()
+	_release_see()
+	duration = maxf(LIFE, t) + FADE
+
+
+## LIFE: every zombie still up falls to ash; the giant stands on (GIANT_LIFE from its landing).
 func _end_life() -> void:
 	if visitors == null:
 		return
-	if DominionParts.staged(self):
-		for a in visitors.living():
-			FxParts.smoke(self, Iso.ground_to_screen(a.ground_pos), 6.0, 24.0, FADE * 0.5, Vector2(10, 26), Vector2(2, 4),
-				Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
+	var standing := giant != null and is_instance_valid(giant) and giant.is_alive()
+	if not standing:
+		_ash(visitors.living())
+		_clear_all(false)
+		return
+	var horde := visitors.living().filter(func(a: Animal) -> bool: return a != giant)
+	_ash(horde)
+	for a in horde:
+		_sped.erase(a)  # freed right after: nothing to give back
+		visitors.take(a)
+
+
+## landed_at + GIANT_LIFE: the giant falls to ash, and the tide with it.
+func _end_giant() -> void:
+	if visitors == null:
+		return
+	_ash(visitors.living())
 	_clear_all(false)
+	duration = maxf(LIFE, t) + FADE
+
+
+## Staged: ash dust where each of `who` stood.
+func _ash(who: Array) -> void:
+	if not DominionParts.staged(self):
+		return
+	for a in who:
+		FxParts.smoke(self, Iso.ground_to_screen((a as Animal).ground_pos), 6.0, 24.0, FADE * 0.5, Vector2(10, 26), Vector2(2, 4),
+			Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
 
 
 func _clear_all(deferred: bool) -> void:
 	_unspeed_all()
 	giant = null
+	_next_slam = INF
 	_rising.clear()
 	if visitors != null:
 		visitors.clear(deferred)
@@ -384,3 +520,104 @@ func _finish() -> void:
 func _exit_tree() -> void:
 	_clear_all(true)
 	super()
+
+
+## A slam's cracks: SLAM_CRACKS jagged lines out of its middle to most of SLAM_R, in ground units, turned by `turn` (each
+## slam's its own way; a fixed pattern, no luck).
+static func slam_cracks(turn: float) -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	for i in SLAM_CRACKS:
+		var a := turn + TAU * (float(i) + 0.5) / float(SLAM_CRACKS) + 0.35 * sin(float(i) * 1.9 + turn)
+		var dir := Vector2.from_angle(a)
+		var side := dir.orthogonal()
+		var to := SLAM_R * (0.55 + 0.3 * (0.5 + 0.5 * sin(float(i) * 3.7 + turn * 2.0)))
+		var line := PackedVector2Array()
+		for j in 5:
+			var k := float(j) / 4.0
+			var wob := 0.0 if j == 0 else 0.16 * sin(float(i) * 5.3 + float(j) * 2.1 + turn)
+			line.append(dir * lerpf(0.3, to, k) + side * wob)
+		out.append(line)
+	return out
+
+
+## The bones flying in (staged only): bone `i` leaves one of the cluster's bodies BONE_FLY before bone_lands(i), spinning
+## in an arc, and settles into the giant's frame -- from its feet up, BONE_STACK px tall -- so the giant is built bone by
+## bone. Screen space, in the effect's stand layer at the giant's spot.
+class Bones extends Node2D:
+	var fx: GraveTideFx
+	## Screen points the bones leave from (the bodies), and the giant's feet.
+	var from: Array[Vector2] = []
+	var to := Vector2.ZERO
+
+	func _ready() -> void:
+		position = to.round()
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if not is_instance_valid(fx) or from.is_empty():
+			return
+		for i in BONES:
+			var leaves := GraveTideFx.bone_lands(i) - BONE_FLY
+			if fx.t < leaves:
+				break  # they leave in order
+			var src: Vector2 = from[i % from.size()] - position + Vector2(5.0 * sin(float(i) * 1.7), 2.0 * cos(float(i) * 2.9))
+			var dst := Vector2(7.0 * sin(float(i) * 2.3), -4.0 - BONE_STACK * float(i) / float(BONES - 1))
+			var k := clampf((fx.t - leaves) / BONE_FLY, 0.0, 1.0)
+			var settled := PI * 0.5 if i % 3 == 0 else 0.3 * sin(float(i) * 1.1)
+			var turn := settled + (1.0 - k) * TAU * 1.5
+			var pos := _along(src, dst, k)
+			if k < 1.0:
+				# A short pale trail behind it, so it reads at speed.
+				draw_line(_along(src, dst, maxf(0.0, k - 0.2)), pos, Color(DeathParts.GRAVE_GREEN, 0.35), 1.0)
+			_bone(pos.round(), turn)
+
+	## Where a bone is `k` of the way from `src` to `dst`: fast off the body, easing in, in an arc BONE_ARC px high.
+	static func _along(src: Vector2, dst: Vector2, k: float) -> Vector2:
+		return src.lerp(dst, 1.0 - pow(1.0 - k, 2.0)) + Vector2(0.0, -BONE_ARC * sin(PI * k))
+
+	## One bone: a shaft with a knob at each end, a pixel of shadow under it so it reads on pale paving.
+	func _bone(at: Vector2, turn: float) -> void:
+		for pass_i in 2:
+			var col := Color(CRACK, 0.6) if pass_i == 0 else DeathParts.BONE
+			draw_set_transform(at + (Vector2(1, 1) if pass_i == 0 else Vector2.ZERO), turn)
+			draw_rect(Rect2(-3.0, -0.5, 6.0, 1.0), col)
+			draw_rect(Rect2(-4.0, -1.5, 2.0, 3.0), col)
+			draw_rect(Rect2(2.0, -1.5, 2.0, 3.0), col)
+		draw_set_transform(Vector2.ZERO)
+
+
+## A slam's mark on the ground (staged only), drawn in ground units on the ground layer so it lies flat: a shockwave ring
+## out to SLAM_R over SLAM_RING_FOR, and cracks that run out at once and lie SLAM_CRACK_FOR, fading over their last second.
+class SlamMark extends Node2D:
+	var turn := 0.0
+	var age := 0.0
+	var _cracks: Array[PackedVector2Array] = []
+
+	func _ready() -> void:
+		_cracks = GraveTideFx.slam_cracks(turn)
+
+	func _process(delta: float) -> void:
+		age += delta
+		if age >= SLAM_CRACK_FOR:
+			queue_free()
+			return
+		queue_redraw()
+
+	func _draw() -> void:
+		var fade := clampf(SLAM_CRACK_FOR - age, 0.0, 1.0)
+		var run := clampf(age / 0.12, 0.0, 1.0)
+		for line in _cracks:
+			var shown := PackedVector2Array()
+			for j in line.size():
+				if float(j) / float(line.size() - 1) > run + 0.001:
+					break
+				shown.append(line[j])
+			if shown.size() >= 2:
+				draw_polyline(shown, Color(CRACK, CRACK.a * fade), PX * 1.5)
+		if age < SLAM_RING_FOR:
+			var k := age / SLAM_RING_FOR
+			var r := SLAM_R * (1.0 - pow(1.0 - k, 2.0))
+			draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(DeathParts.BONE, 0.75 * (1.0 - k)), PX * 4.0)
+			draw_arc(Vector2.ZERO, r * 0.82, 0.0, TAU, 40, Color(DeathParts.ASH, 0.35 * (1.0 - k)), PX * 2.0)

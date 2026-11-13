@@ -4,9 +4,12 @@ extends RefCounted
 ## (CLUSTER_MIN within CLUSTER_R of a point; a deterministic sweep, no luck) a giant of bones bursts up at their middle: it
 ## takes GIANT_BLOWS blows, claws down the walls in its way, kills a soldier with a blow, and Death's undead within
 ## GIANT_AURA of it move AURA_SPEED times as fast. No body anywhere in town: the cast is refused "no_dead", nothing spent.
-## The frame-rate check: thirty zombies and the giant cost under 5 ms a frame.
+## Ruling R12: its BONES bones fly in one by one over ASSEMBLE; it lands with a slam and slams the ground every SLAM_EVERY
+## while it stands (soldiers within SLAM_R die, the rest are knocked back and frightened); it stands GIANT_LIFE, the zombies
+## LIFE. The frame-rate check: thirty zombies, the giant and its slams cost under 5 ms a frame.
 
 const RD := preload("res://tests/test_raise_dead.gd")
+const FxStage := preload("res://tests/fx_stage.gd")
 const DT := 0.05
 ## The perf check's frames and its ceiling (ms a frame, averaged).
 const PERF_FRAMES := 200
@@ -33,8 +36,14 @@ static func run(t) -> void:
 	_wall(t, made)
 	_holds(t, made)
 	_freed_clear(t, made)
+	_assemble(t, made)
+	_landing(t, made)
+	_slam_every(t, made)
+	_no_slam_fallen(t, made)
+	_cut_short(t, made)
 	_life(t, made)
 	_exit(t, made)
+	await _staged(t, made)
 	RD._done(made)
 	_perf(t)
 
@@ -91,6 +100,8 @@ static func _book(t) -> void:
 	t.check(GraveTideFx.MOST == 30 and GraveTideFx.LIFE == 40.0 and GraveTideFx.CLUSTER_R == 4.0 and GraveTideFx.CLUSTER_MIN == 5
 		and GraveTideFx.GIANT_BLOWS == 12 and GraveTideFx.GIANT_AURA == 6.0 and GraveTideFx.AURA_SPEED == 1.2,
 		"the numbers of the brief")
+	t.check(GraveTideFx.GIANT_LIFE == 60.0 and GraveTideFx.ASSEMBLE == 1.2 and GraveTideFx.BONES == 18 and GraveTideFx.SLAM_EVERY == 4.0
+		and GraveTideFx.SLAM_R == 3.0 and GraveTideFx.SLAM_KNOCK == 5.5, "the slam's numbers (ruling R12)")
 	t.check(Sfx.CATALOG.has(&"gravetide_rise") and Sfx.CATALOG.has(&"giant_step"), "its cues (bone grinding) are catalogued")
 	t.check(Remains.wants(["smite", "gravetide"]), "a loadout with Grave Tide keeps the town's bodies (Remains.wants)")
 	t.check(Animal.sheet(Animal.Breed.BONE_GIANT).size() > 0 or not ResourceLoader.exists(Animal.SHEETS[Animal.Breed.BONE_GIANT]),
@@ -192,7 +203,7 @@ static func _giant(t, made: Array) -> void:
 	var fx := _cast(made, at)
 	RD._run(fx, GraveTideFx.T_RISE - 0.1)
 	t.check(fx.giant == null, "nothing stands before T_RISE")
-	RD._run(fx, 0.15)
+	RD._run(fx, GraveTideFx.ASSEMBLE + 0.15)
 	var g := fx.giant
 	t.check(g != null and is_instance_valid(g) and g.breed == Animal.Breed.BONE_GIANT and fx.giant_at.distance_to(mid) < 0.5
 		and is_equal_approx(g.health, float(GraveTideFx.GIANT_BLOWS)),
@@ -286,7 +297,7 @@ static func _aura(t, made: Array) -> void:
 	var at := RD._empty(made)
 	_bodies(made, _ring(made, at, 5, 1.5))
 	var fx := _cast(made, at)
-	RD._run(fx, GraveTideFx.T_RISE + 0.2)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.2)
 	var zs := _zombies(fx)
 	var base := DeathParts.ZOMBIE_PACE * DummyEnemy.WALK_SPEED / (Animal.DOG_SPEED * Animal.RUN)
 	var fast := zs.size() == 5
@@ -326,7 +337,7 @@ static func _aura_others(t, made: Array) -> void:
 				fx._process(DT)
 			if not raise.finished:
 				raise._process(DT)
-	both.call(GraveTideFx.T_RISE + 0.2)
+	both.call(GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.2)
 	var z: Animal = raise.visitors.living()[0] if raise.visitors.living().size() == 1 else null
 	t.check(z != null and fx.giant != null and z.ground_pos.distance_to(fx.giant.ground_pos) <= GraveTideFx.GIANT_AURA,
 		"(a Raise the Dead zombie stands by the giant)")
@@ -413,7 +424,7 @@ static func _soldier(t, made: Array) -> void:
 	var bites := []
 	fx.visitors.bitten.connect(func(a: Animal, v: Person, _first: bool) -> void:
 		bites.append([a.breed, is_instance_valid(v) and v.is_alive()]))
-	RD._run(fx, GraveTideFx.T_RISE + 0.05)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.05)
 	t.check(fx.giant != null, "(five within 2 of the middle: a giant)")
 	if fx.giant == null:
 		fx.end_now()
@@ -427,6 +438,8 @@ static func _soldier(t, made: Array) -> void:
 	if soldier == null:
 		fx.end_now()
 		return
+	for z in _zombies(fx):
+		fx.visitors.take(z)  # the giant's own blow, not a zombie's bite first: only the giant stands by him
 	soldier.inside = false
 	soldier.ground_pos = fx.giant.ground_pos + Vector2(0.0, 0.5)
 	soldier.health = Person.HEALTH_SOLDIER
@@ -458,7 +471,7 @@ static func _wall(t, made: Array) -> void:
 		struck[s] = true
 		if a == fx.giant and (fx.visitors._rules[a] as Visitors.Rule).march != Vector2.INF:
 			on_march[0] += 1)
-	RD._run(fx, GraveTideFx.T_RISE + 0.05)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.05)
 	var start := fx.giant.ground_pos.distance_to(west) if fx.giant != null else 0.0
 	RD._run(fx, 12.0)
 	var lost := 0.0
@@ -475,18 +488,164 @@ static func _wall(t, made: Array) -> void:
 			(s as Structure).hp = before[s]
 
 
-## At LIFE every one of them falls to ash, and the effect ends.
-static func _life(t, made: Array) -> void:
+## Every soldier indoors (none for the giant to go after, none for a guard to strike it); the old `inside` of each.
+static func _soldiers_in(made: Array) -> Dictionary:
+	var was := {}
+	for s in (made[0] as Crowd).soldiers:
+		if is_instance_valid(s):
+			was[s] = s.inside
+			s.inside = true
+	return was
+
+
+static func _soldiers_back(was: Dictionary) -> void:
+	for s in was:
+		if is_instance_valid(s):
+			s.inside = was[s]
+
+
+## Ruling R12: "bones fly in one by one, then the giant stands" -- halfway through ASSEMBLE no giant yet and some, not all,
+## of the BONES in; at T_RISE + ASSEMBLE the giant stands with every bone in. Counted on the effect clock, staged or not.
+static func _assemble(t, made: Array) -> void:
 	RD._clear_all(made)
 	var at := RD._empty(made)
 	_bodies(made, _ring(made, at, 5, 1.5))
 	var fx := _cast(made, at)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE * 0.5)
+	t.check(fx.giant == null and fx.bones_in > 0 and fx.bones_in < GraveTideFx.BONES and fx.landed_at < 0.0,
+		"bones fly in one by one: halfway through, no giant and %d of %d bones in" % [fx.bones_in, GraveTideFx.BONES])
+	RD._run(fx, GraveTideFx.ASSEMBLE * 0.5 + 0.05)
+	t.check(fx.giant != null and fx.bones_in == GraveTideFx.BONES and fx.landed_at >= GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE - 0.001,
+		"then the giant stands, every bone in (%d), landed at %.2f" % [fx.bones_in, fx.landed_at])
+	fx.end_now()
+
+
+## "the landing slams": the landing is the first slam. A soldier 2 off dies (frenzy: a body lies there); a citizen 2 off
+## lives, is frightened and is thrown back.
+static func _landing(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.0))
+	var fx := _cast(made, at)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE - 0.1)
+	var spot := fx.giant_at
+	var soldier: Person = null
+	for s in crowd.soldiers:
+		if is_instance_valid(s) and s.is_alive():
+			soldier = s
+			break
+	var citizen := _put(made, 0, spot + Vector2(0.0, -2.0))
+	t.check(soldier != null and fx.giant == null and fx.slams == 0, "(a soldier to stand by the giant's spot; nothing has landed yet)")
+	if soldier == null:
+		fx.end_now()
+		return
+	soldier.inside = false
+	soldier.ground_pos = spot + Vector2(0.0, 2.0)
+	soldier.health = Person.HEALTH_SOLDIER
+	soldier.mind = Person.Mind.CALM
+	var from := citizen.ground_pos.distance_to(spot)
+	var dead_at := soldier.ground_pos
+	var kinds := []
+	var on_kill := func(e: DummyEnemy, kind: StringName) -> void:
+		if e == soldier:
+			kinds.append(kind)
+	field.enemy_killed.connect(on_kill)
+	RD._run(fx, 0.15)
+	field.enemy_killed.disconnect(on_kill)
+	t.check(fx.giant != null and fx.slams == 1, "the landing is the first slam (%d)" % fx.slams)
+	crowd.remains.step(0.01)
+	t.check(not soldier.is_alive() and kinds == [&"frenzy"] and crowd.remains.pick(dead_at) != null,
+		"a soldier 2 off dies (%s), and his body lies there" % [kinds])
+	var knocked := citizen.state == DummyEnemy.State.KNOCKBACK
+	RD._run(fx, 0.5, [citizen])
+	var away := citizen.ground_pos.distance_to(spot) - from
+	t.check(citizen.is_alive() and knocked and (citizen.mind == Person.Mind.PANIC or citizen.mind == Person.Mind.FLEE) and away >= 0.3,
+		"a citizen 2 off lives, knocked back (%s) and frightened (mind %d), thrown %.2f farther off" % [knocked, citizen.mind, away])
+	fx.end_now()
+
+
+## "a slam every 4 s": the landing's, then one at landed_at + 4 and + 8.
+static func _slam_every(t, made: Array) -> void:
+	RD._clear_all(made)
+	var was := _soldiers_in(made)
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.05)
+	var first := fx.slams
+	RD._run(fx, fx.landed_at + GraveTideFx.SLAM_EVERY - 0.1 - fx.t)
+	var before := fx.slams
+	RD._run(fx, fx.landed_at + 2.0 * GraveTideFx.SLAM_EVERY + 0.05 - fx.t)
+	t.check(first == 1 and before == 1 and fx.slams == 3,
+		"a slam every %.0f s: %d at the landing, %d just before the next, %d at landed_at + 8" % [GraveTideFx.SLAM_EVERY, first, before, fx.slams])
+	fx.end_now()
+	_soldiers_back(was)
+
+
+## Review Focus 4: "no slam once the giant falls" -- cut down, it slams no more.
+static func _no_slam_fallen(t, made: Array) -> void:
+	RD._clear_all(made)
+	var was := _soldiers_in(made)
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.05)
+	var g := fx.giant
+	t.check(g != null, "(the giant stands)")
+	if g == null:
+		fx.end_now()
+		_soldiers_back(was)
+		return
+	# Cut down as a guard's last blow does it: its health gone, the pack forgets it, cut_down heard.
+	var where := g.ground_pos
+	g.hurt(float(GraveTideFx.GIANT_BLOWS))
+	fx.visitors._rules.erase(g)
+	fx.visitors.cut_down.emit(g, where)
+	var n := fx.slams
+	RD._run(fx, GraveTideFx.SLAM_EVERY * 2.0 + 0.5)
+	t.check(fx.giant == null and n == 1 and fx.slams == n, "no slam once the giant falls (%d -> %d)" % [n, fx.slams])
+	fx.end_now()
+	if is_instance_valid(g):
+		g.free()
+	_soldiers_back(was)
+
+
+## "cut short mid-assembly: no giant ever".
+static func _cut_short(t, made: Array) -> void:
+	RD._clear_all(made)
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
+	RD._run(fx, GraveTideFx.T_RISE + 0.5)
+	fx._finish()
+	for i in roundi(3.0 / DT):
+		fx._process(DT)
+	t.check(fx.giant == null and fx.slams == 0 and fx.finished, "cut short mid-assembly: no giant ever, no slam")
+
+
+## "the giant outlives the horde": at LIFE the zombies fall to ash and the giant stands on; GIANT_LIFE after its landing
+## it is gone too, and the tide is over.
+static func _life(t, made: Array) -> void:
+	RD._clear_all(made)
+	var was := _soldiers_in(made)
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
 	RD._run(fx, GraveTideFx.LIFE - 0.2)
-	t.check(fx.visitors.living().size() == 6, "up to the end, all six stand (%d)" % fx.visitors.living().size())
-	RD._run(fx, 0.4)
-	t.check(fx.visitors.living().is_empty() and fx.giant == null, "at LIFE every one falls to ash")
-	RD._run(fx, GraveTideFx.FADE + 0.2)
-	t.check(fx.finished, "and the tide is over")
+	t.check(fx.visitors.living().size() == 6, "up to LIFE, all six stand (%d)" % fx.visitors.living().size())
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.LIFE + 1.0 - fx.t)
+	var g := fx.giant
+	t.check(_zombies(fx).is_empty() and g != null and is_instance_valid(g) and g.is_alive() and fx.visitors.living() == [g]
+		and not fx.finished,
+		"the giant outlives the horde: at LIFE the zombies fall to ash (%d left), the giant stands" % _zombies(fx).size())
+	RD._run(fx, fx.landed_at + GraveTideFx.GIANT_LIFE - 0.3 - fx.t)
+	t.check(fx.giant != null and not fx.finished, "it stands to the end of its GIANT_LIFE")
+	RD._run(fx, fx.landed_at + GraveTideFx.GIANT_LIFE + GraveTideFx.FADE + 0.2 - fx.t)
+	t.check(fx.giant == null and fx.visitors.living().is_empty() and fx.finished,
+		"GIANT_LIFE after its landing it is gone, and the tide is over")
+	_soldiers_back(was)
 
 
 ## Freed without its end (a mission torn down): the pack is cleared, nothing errors.
@@ -495,7 +654,7 @@ static func _exit(t, made: Array) -> void:
 	var at := RD._empty(made)
 	_bodies(made, _ring(made, at, 5, 1.5))
 	var fx := _cast(made, at)
-	RD._run(fx, GraveTideFx.T_RISE + 0.5)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.3)
 	var pack := fx.visitors
 	var up := pack.living()
 	t.check(up.size() == 6, "six up")
@@ -509,8 +668,79 @@ static func _exit(t, made: Array) -> void:
 	t.check(fx.finished, "and its end after that changes nothing")
 
 
-## "30 zombies + giant: _fx_process + visitors.step under 5 ms a frame averaged over 200 frames", in the full town (220
-## people where the day put them), the thirty bodies lying round the market.
+## One cast for the staged check: a soldier 2 off the giant's spot as it lands, run to past the second slam. Counts the
+## bones in mid-assembly, the slams, whether the soldier died, and (staged) the flying bones and slam marks drawn. Each
+## `await` lets the tree draw a frame with the effect itself held still, so staged and headless run the same clock.
+static func _slam_run(t, made: Array, staged: bool) -> Dictionary:
+	RD._clear_all(made)
+	var was := _soldiers_in(made)
+	var ctx: FxContext = made[5]
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
+	var out := {"bones": 0, "slams": 0, "dead": false, "drawn_bones": 0, "marks": 0}
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE * 0.5)
+	out.bones = fx.bones_in
+	if staged:
+		fx.set_process(false)
+		await t.process_frame
+		fx.set_process(true)
+		for n in fx.stand_layer().get_children():
+			out.drawn_bones += 1 if n is GraveTideFx.Bones else 0
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE - 0.1 - fx.t)
+	var soldier: Person = was.keys()[0] if not was.is_empty() else null
+	if soldier != null:
+		soldier.inside = false
+		soldier.ground_pos = fx.giant_at + Vector2(2.0, 0.0)
+		soldier.health = Person.HEALTH_SOLDIER
+	RD._run(fx, GraveTideFx.SLAM_EVERY + 0.3)
+	out.slams = fx.slams
+	out.dead = soldier != null and not soldier.is_alive()
+	if staged:
+		fx.set_process(false)
+		await t.process_frame
+		fx.set_process(true)
+		for n in ctx.ground.get_children():
+			out.marks += 1 if n is GraveTideFx.SlamMark else 0
+	fx.end_now()
+	_soldiers_back(was)
+	return out
+
+
+## Staged (the effect in the tree with an Impact, as in the game): the bones are drawn flying in, each slam leaves its mark
+## (ring and cracks) on the ground layer, and none of it changes the logic -- staged or headless, the same bones, slams and
+## dead.
+static func _staged(t, made: Array) -> void:
+	var plain: Dictionary = await _slam_run(t, made, false)
+	var ctx: FxContext = made[5]
+	var keep := [ctx.overhead, ctx.ground, ctx.overhead_back]
+	var stage := Node2D.new()
+	t.root.add_child(stage)
+	await t.process_frame  # (the tree is only live after the first frame)
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	ctx.overhead_back = Node2D.new()
+	for n in [ctx.ground, ctx.overhead_back, ctx.overhead]:
+		stage.add_child(n)
+	var stub := FxStage.StageImpact.new()
+	ctx.impact = stub
+	var lit: Dictionary = await _slam_run(t, made, true)
+	ctx.impact = null
+	stub.free()
+	ctx.overhead = keep[0]
+	ctx.ground = keep[1]
+	ctx.overhead_back = keep[2]
+	t.root.remove_child(stage)
+	stage.free()
+	t.check(int(lit.drawn_bones) == 1 and int(lit.marks) == 2,
+		"staged: the bones are drawn flying in, and each slam leaves its mark on the ground (%d, %d marks)" % [lit.drawn_bones, lit.marks])
+	t.check(lit.bones == plain.bones and lit.slams == plain.slams and lit.dead == plain.dead and int(plain.slams) == 2 and plain.dead,
+		"staged or not, the same bones (%d/%d), slams (%d/%d) and dead (%s/%s)" % [lit.bones, plain.bones, lit.slams, plain.slams, lit.dead, plain.dead])
+
+
+## "30 zombies + giant: _fx_process + visitors.step under 5 ms a frame", in the full town (220 people where the day put
+## them), the thirty bodies lying round the market; ruling R13 with the slams: measured from just before the landing to past
+## landed_at + 2 SLAM_EVERY (the landing's slam and two more), at 60 frames a second.
 static func _perf(t) -> void:
 	var made := RD._setup()
 	var crowd: Crowd = made[0]
@@ -521,15 +751,25 @@ static func _perf(t) -> void:
 		spots.append(grid.nearest_walkable(at + Vector2.from_angle(TAU * float(i) / 30.0) * (1.5 + float(i % 3) * 1.5), 4))
 	_bodies(made, spots)
 	var fx := _cast(made, at)
-	RD._run(fx, GraveTideFx.T_RISE + 0.05)
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE - 0.1)
 	var frame := 1.0 / 60.0
+	var frames := ceili((0.1 + 2.0 * GraveTideFx.SLAM_EVERY + 0.2) / frame)
+	var worst := 0.0
+	var slam_worst := 0.0
 	var t0 := Time.get_ticks_usec()
-	for i in PERF_FRAMES:
+	for i in frames:
+		var before := fx.slams
+		var f0 := Time.get_ticks_usec()
 		fx._process(frame)
-	var ms := float(Time.get_ticks_usec() - t0) / 1000.0 / float(PERF_FRAMES)
-	print("GRAVETIDE perf: %.3f ms a frame over %d frames (%d up, %d alive in town)" % [ms, PERF_FRAMES, fx.visitors.living().size(),
+		var f_ms := float(Time.get_ticks_usec() - f0) / 1000.0
+		worst = maxf(worst, f_ms)
+		if fx.slams > before:
+			slam_worst = maxf(slam_worst, f_ms)
+	var ms := float(Time.get_ticks_usec() - t0) / 1000.0 / float(frames)
+	print("GRAVETIDE perf: %.3f ms a frame over %d frames, worst %.3f ms, worst slam frame %.3f ms (%d slams, %d up, %d alive in town)"
+		% [ms, frames, worst, slam_worst, fx.slams, fx.visitors.living().size(),
 		(crowd.citizens + crowd.soldiers).filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive()).size()])
-	t.check(fx.giant != null and _zombies(fx).size() >= 25 and ms < PERF_MS,
-		"30 zombies + giant: _fx_process + visitors.step under 5 ms a frame averaged over 200 frames (%.3f ms)" % ms)
+	t.check(fx.giant != null and _zombies(fx).size() >= 25 and fx.slams >= 3 and frames >= PERF_FRAMES and ms < PERF_MS,
+		"30 zombies + giant + %d slams: _fx_process + visitors.step under 5 ms a frame averaged over %d frames (%.3f ms)" % [fx.slams, frames, ms])
 	fx.end_now()
 	RD._done(made)

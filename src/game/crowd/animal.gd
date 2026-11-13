@@ -85,8 +85,8 @@ func _draw_wraith(flash: bool) -> void:
 
 ## The wraith's sheet: {tex, cell, foot, fps, frames}; empty when it is not on disk or not imported.
 static func _wraith_sheet() -> Dictionary:
-	if _sheets.has(Breed.WRAITH):
-		return _sheets[Breed.WRAITH]
+	if _wraith != null:
+		return _wraith
 	var out := {}
 	var json := "res://assets/pixellab/fx/wraith/wraith.json"
 	if ResourceLoader.exists(WRAITH_SHEET) and FileAccess.file_exists(json):
@@ -94,7 +94,7 @@ static func _wraith_sheet() -> Dictionary:
 		if meta is Dictionary:
 			out = {"tex": load(WRAITH_SHEET), "cell": Vector2(meta.cell[0], meta.cell[1]),
 				"foot": Vector2(meta.foot[0], meta.foot[1]), "fps": float(meta.fps), "frames": meta.frames}
-	_sheets[Breed.WRAITH] = out
+	_wraith = out
 	return out
 
 
@@ -262,6 +262,9 @@ const ROUTE_AHEAD := 3
 const ROUTE_LOOK := 0.2
 const LOOK_MOVED := 0.25
 static var _sheets := {}
+## The wraith's sheet, cached apart from _sheets (its cell is [w, h]): sheet(WRAITH) finds no SHEETS entry and caches {} there, which
+## must never stand for the painted wraith. Null until first read.
+static var _wraith: Variant = null
 
 
 func is_dog() -> bool:
@@ -585,6 +588,9 @@ func tick_visual(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			queue_redraw()
+	if breed == Breed.WRAITH:
+		_bite_t += delta  # its own sheet (_draw_wraith()): the strike row plays while this is under 1, then it drifts again
+		return
 	var sh := sheet(breed)
 	if sh.is_empty():
 		return
@@ -711,7 +717,6 @@ func _draw() -> void:
 	if breed == Breed.GHOST:
 		tint *= GHOST_TINT
 		lift = Vector2(0, -GHOST_HOVER - GHOST_BOB * sin(_hover_t * 3.0))
-	var sh := sheet(breed)
 	if breed == Breed.ZOMBIE:
 		_draw_zombie(tint)
 		return
@@ -721,6 +726,7 @@ func _draw() -> void:
 	if breed == Breed.WRAITH:
 		_draw_wraith(_flash > 0.0)
 		return
+	var sh := sheet(breed)  # (after the wraith: it has a sheet of its own, _wraith_sheet())
 	if not sh.is_empty():
 		_draw_sheet(sh, tint, lift)
 		if breed == Breed.BONE_GIANT:

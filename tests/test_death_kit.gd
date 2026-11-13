@@ -149,6 +149,18 @@ static func run(t) -> void:
 	_step(v, 0.6)
 	t.check(w.target == sol and cit.is_alive(), "prey soldiers: a citizen nearer is ignored")
 	t.check(w.breed == Animal.Breed.WRAITH, "a wraith is the wraith breed")
+	# Final review 1: its painted sheet is what play draws. The draw path looks up sheet(breed) for every breed first; the
+	# wraith's own sheet is cached apart, so that look never leaves it empty (the 2x spirit stand-in drawn instead).
+	Animal.sheet(w.breed)
+	var wsh := Animal._wraith_sheet()
+	t.check(not wsh.is_empty() and wsh.get("tex") != null and (wsh.get("frames", []) as Array).size() == 3,
+		"the wraith's painted sheet is there after the draw path's sheet() look (%s)" % [wsh.keys()])
+	# And its strike row plays once and ends: the bite clock runs for a wraith too.
+	w.bit()
+	w.tick_visual(0.5)
+	var striking := w._bite_t < 1.0
+	w.tick_visual(0.6)
+	t.check(striking and w._bite_t >= 1.0, "a wraith's strike pose plays and ends (bite clock %.2f)" % w._bite_t)
 	v = _fresh(made)
 
 	# --- Spirit: cannot be cut down; frights within 3.

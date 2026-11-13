@@ -90,7 +90,7 @@ func _ready() -> void:
 	hud_layer = CanvasLayer.new()
 	hud_layer.name = "HudLayer"
 	hud_layer.layer = 6
-	add_child(hud_layer)
+	ui_parent().add_child(hud_layer)
 
 	# Glow sits above the world and effects, below the impact post and flash.
 	var glow_layer := CanvasLayer.new()
@@ -124,13 +124,13 @@ func _ready() -> void:
 	# F3 shows the frame rate.
 	var fps_meter := FpsMeter.new()
 	fps_meter.name = "FpsMeter"
-	add_child(fps_meter)
+	ui_parent().add_child(fps_meter)
 
 	# F7 flips the buildings between their sprites and the procedural art (PixelLab structures proof).
 	var art_toggle := ArtToggle.new()
 	art_toggle.name = "ArtToggle"
 	art_toggle.env = env
-	add_child(art_toggle)
+	ui_parent().add_child(art_toggle)
 
 	ctx.field = field
 	ctx.env = env
@@ -153,12 +153,28 @@ const VIEW_MARGIN := 48.0
 ## had before the zoom cap (2026-11-09, Mission.SIM_PLAY_ZOOM): the cap shows less town, but off-screen people still step at the
 ## rate the missions were tuned and gated with. 0 (the default): the view is just what the camera shows.
 var sim_zoom := 0.0
+## The frame the simulation sees, in screen px at zoom 1, whatever the window or the world viewport is (640x360): people step
+## by what the 640x360 design view shows, never by the real viewport size, so a wider window changes nothing in the sim.
+const SIM_VIEW := Vector2(640, 360)
+
+
+func sim_view_size() -> Vector2:
+	return SIM_VIEW / (sim_zoom if sim_zoom > 0.0 else camera.zoom.x)
+
+
+## Where this world's UI goes: the hosting WorldView's ui node, or the battlefield itself when not hosted.
+func ui_parent() -> Node:
+	return WorldView.ui_parent(self)
+
+
+## The mouse in world-viewport px.
+func mouse_screen() -> Vector2:
+	return WorldView.mouse_in_view(self)
 
 
 func _process(_delta: float) -> void:
 	ctx.lights.ambient = base_ambient * (1.0 - ctx.impact.dim_level() * 0.85)
-	var zoom := camera.zoom if sim_zoom <= 0.0 else Vector2.ONE * sim_zoom
-	var size := get_viewport().get_visible_rect().size / zoom
+	var size := sim_view_size()
 	Person.view = Rect2(camera.get_screen_center_position() - size * 0.5, size).grow(VIEW_MARGIN)
 	Structure.view = Person.view
 
@@ -211,7 +227,7 @@ func end_powers() -> void:
 
 ## Ground point under the mouse.
 func mouse_ground() -> Vector2:
-	return Iso.screen_to_ground(get_global_mouse_position())
+	return Iso.screen_to_ground(get_canvas_transform().affine_inverse() * mouse_screen())
 
 
 ## Small outlined debug text at the top left of the HUD layer.
@@ -226,10 +242,10 @@ func add_debug_label() -> Label:
 	return label
 
 
-## Save the next drawn frame, scaled 2x with nearest filtering, to res://captures/<file_name>.
+## Save the next drawn frame of the root (world and UI), scaled 2x with nearest filtering, to res://captures/<file_name>.
 func save_capture(file_name: String) -> void:
 	await RenderingServer.frame_post_draw
-	var img := get_viewport().get_texture().get_image()
+	var img := get_tree().root.get_texture().get_image()
 	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	var dir := ProjectSettings.globalize_path("res://captures")
 	DirAccess.make_dir_recursive_absolute(dir)

@@ -56,10 +56,30 @@ static func base_font() -> FontFile:
 	return _font
 
 
-## Whether UI text gets its extra word spacing. The skill tree turns it on while it is open (setup / _exit_tree): the wider spaces
-## change how every wrapped text fits, and each other screen re-fits its own text when it migrates (Tasks 5-8), then this becomes the
-## default. Tests reset it per suite (tests/run_part.gd).
+## Whether UI text gets its extra word spacing: true while any owner holds it (spacing_acquire). The skill tree and the HUD hold it while they live: the wider
+## spaces change how every wrapped text fits, and each other screen re-fits its own text when it migrates (Tasks 6-8), then this becomes the default.
+## Callers read it; tests that need a state save and set it directly and restore it, and tests/run_part.gd resets it per suite (spacing_reset).
 static var word_spacing := false
+## The owners (instance ids) that hold the wider spaces.
+static var _spacing_owners := {}
+
+
+## `owner` wants the wider spaces. Idempotent per owner (a second acquire changes nothing); one owner leaving never clears another's.
+static func spacing_acquire(owner: Object) -> void:
+	_spacing_owners[owner.get_instance_id()] = true
+	word_spacing = true
+
+
+## `owner` is done with them: they go off when the last owner has released. Releasing without having acquired does nothing.
+static func spacing_release(owner: Object) -> void:
+	_spacing_owners.erase(owner.get_instance_id())
+	word_spacing = not _spacing_owners.is_empty()
+
+
+## Nobody holds them (tests, between suites).
+static func spacing_reset() -> void:
+	_spacing_owners.clear()
+	word_spacing = false
 
 
 ## The pixel font as the UI draws it at `size`: the file plus, when `word_spacing` is on, extra word spacing, because its space is only

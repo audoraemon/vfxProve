@@ -569,17 +569,12 @@ func _buy() -> String:
 	return ""
 
 
-## How many tree screens want the wider spaces: a tree-to-tree swap (the new one's setup runs before the old one leaves) keeps them on.
-static var _spacing_users := 0
-var _spacing_on := false
-
-
+## The wider spaces are UiTheme's, held per owner: a tree-to-tree swap (the new one's setup runs before the old one leaves) or a HUD under it keeps them on.
 func _use_spacing(on: bool) -> void:
-	if on == _spacing_on:
-		return
-	_spacing_on = on
-	_spacing_users = maxi(_spacing_users + (1 if on else -1), 0)
-	UiTheme.word_spacing = _spacing_users > 0
+	if on:
+		UiTheme.spacing_acquire(self)
+	else:
+		UiTheme.spacing_release(self)
 
 
 func _exit_tree() -> void:

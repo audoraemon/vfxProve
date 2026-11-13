@@ -32,7 +32,7 @@ static func run(t) -> void:
 	_twists_whole(t)
 	_word_spacing(t)
 	GodTree.dev_fill = false
-	UiTheme.word_spacing = false
+	UiTheme.spacing_reset()
 
 
 static func _screen(type := "ruin", tier := 1, points := 0, p_state := {}) -> SkillTreeScreen:
@@ -411,7 +411,7 @@ static func _refusal_fits(t) -> void:
 	t.check(Array(SkillTreeScreen.refusal_lines("Not enough ability points")) == ["Not enough", "ability points"],
 		"'Not enough ability points' breaks as 'Not enough' / 'ability points'")
 	t.check(SkillTreeScreen.refusal_lines("one two three four five six seven eight nine ten eleven twelve").size() == 2, "a long text is cut to 2 lines")
-	UiTheme.word_spacing = false
+	UiTheme.spacing_reset()
 
 
 static func _value_columns(t) -> void:
@@ -561,7 +561,7 @@ static func _twists_whole(t) -> void:
 
 ## Words are separated: a space is at least 4 u at 11 u, 8 at 22 u, and the refusal still wraps to two lines.
 static func _word_spacing(t) -> void:
-	UiTheme.word_spacing = false
+	UiTheme.spacing_reset()
 	var plain := UiTheme.width("a b", 11) - UiTheme.width("ab", 11)
 	t.check(plain < 4.0, "without the flag the space is the font's own (%f)" % plain)
 	var s := _screen("ruin")
@@ -577,3 +577,11 @@ static func _word_spacing(t) -> void:
 	other.free()
 	s.free()
 	t.check(not UiTheme.word_spacing, "and leaving it turns the spacing off again")
+	var o := Node.new()
+	UiTheme.spacing_acquire(o)
+	UiTheme.spacing_acquire(o)
+	UiTheme.spacing_release(o)
+	t.check(not UiTheme.word_spacing, "UiTheme: one owner acquiring twice releases once")
+	UiTheme.spacing_release(o)
+	o.free()
+	t.check(not UiTheme.word_spacing, "and releasing without holding changes nothing")

@@ -181,6 +181,13 @@ const SPEC := [
 
 
 static func run(t) -> void:
+	var was := UiTheme.word_spacing
+	UiTheme.word_spacing = true  # the HUD draws the plate with the wider spaces: so is it measured
+	_run(t)
+	UiTheme.word_spacing = was
+
+
+static func _run(t) -> void:
 	_lantern(t)
 	_words(t)
 	var spec := {}
@@ -216,7 +223,7 @@ static func run(t) -> void:
 
 	var long := PackedStringArray()
 	for key: String in MissionHints.LINES:
-		if UiTheme.wrap(String(MissionHints.LINES[key]), Hud.HINT_W, UiTheme.SIZE_SMALL).size() > Hud.HINT_LINES:
+		if UiTheme.wrap(String(MissionHints.LINES[key]), Hud.HINT_W, UiTheme.TEXT_S).size() > Hud.HINT_LINES:
 			long.append(key)
 	t.check(long.is_empty(), "every line fits %d lines of %d px (too long: %s)" % [Hud.HINT_LINES, int(Hud.HINT_W),
 		", ".join(long)])
@@ -229,7 +236,7 @@ static func run(t) -> void:
 		and MissionHints.filled(spec["heretic_hunt"], 12.0) == spec["heretic_hunt"] and MissionDirector.new().hint_seconds() == 0.0,
 		"the seconds rounded up, never below 0; a line without the mark as it was; a director counts nothing by default")
 	t.check(Hud.hint_lines(MissionHints.filled(coming, 30.0)).size() <= Hud.HINT_LINES
-		and UiTheme.wrap(MissionHints.filled(coming, 30.0), Hud.HINT_W, UiTheme.SIZE_SMALL).size() <= Hud.HINT_LINES,
+		and UiTheme.wrap(MissionHints.filled(coming, 30.0), Hud.HINT_W, UiTheme.TEXT_S).size() <= Hud.HINT_LINES,
 		"filled at its longest (30 s), the captain's line still fits the plate")
 
 
@@ -245,12 +252,19 @@ const LANTERN_SPEC := {
 
 
 static func _lantern(t) -> void:
+	var was := UiTheme.word_spacing
+	UiTheme.word_spacing = true
+	_lantern_lines(t)
+	UiTheme.word_spacing = was
+
+
+static func _lantern_lines(t) -> void:
 	t.check(MissionHints.LANTERN == LANTERN_SPEC, "the Lantern's lines are the spec's (and the seeking and silent-bell ones)")
 	var odd := PackedStringArray()
 	for phase: String in LANTERN_SPEC:
 		if MissionHints.lantern_line(phase) != String(LANTERN_SPEC[phase]):
 			odd.append(phase)
-		if UiTheme.wrap(String(LANTERN_SPEC[phase]), Hud.HINT_W, UiTheme.SIZE_SMALL).size() > Hud.HINT_LINES:
+		if UiTheme.wrap(String(LANTERN_SPEC[phase]), Hud.HINT_W, UiTheme.TEXT_S).size() > Hud.HINT_LINES:
 			odd.append(phase + " (too long)")
 	t.check(odd.is_empty(), "lantern_line(phase) gives each line and each fits %d lines (%s)" % [Hud.HINT_LINES, ", ".join(odd)])
 	t.check(MissionHints.lantern_line("") == "" and MissionHints.lantern_line("nowhere") == "", "no phase, or an unknown one, has no Lantern line")

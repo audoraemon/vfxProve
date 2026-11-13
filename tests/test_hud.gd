@@ -182,6 +182,8 @@ static func run(t) -> void:
 	six.free()
 	six_rules.free()
 	_anchors_800x450(t, hud)
+	_spacing_owners(t, rules, crowd, town)
+	_labels_clear_of_plates(t, hud)
 	_crisp_source(t)
 	_spaced_hints(t)
 
@@ -553,6 +555,19 @@ static func _anchors_800x450(t, hud: Hud) -> void:
 	t.check(is_equal_approx(Hud.tag_frame(Vector2(800.0, 450.0)).end.y, frame_end + dy)
 		and is_equal_approx(Hud.tag_frame(Vector2(800.0, 450.0)).end.x, 800.0 - Hud.EDGE_MARGIN), "the arrows' frame follows the area's edges")
 	t.check(Hud.slot_top_in(Vector2(800.0, 450.0)) == Hud.SLOT_TOP + dy, "slot_top_in gives the same row top")
+	# The top-centre blocks follow the area's middle, the status plate its right edge.
+	hud.push_banner("THE BRIDGE HAS FALLEN")
+	hud.push_subtitle("Venn. She lit Mira's pyre.")
+	var lines := RiteBook.plate_lines(RiteBook.FIRST_TASTE)
+	hud.show_rite_plate(lines)
+	t.check(is_equal_approx(hud.clock_rect(800.0).get_center().x, 400.0) and absf(hud.banner_rect(800.0).get_center().x - 400.0) <= 0.5
+		and absf(hud.subtitle_rect(800.0).get_center().x - 400.0) <= 0.5 and absf(hud.rite_plate_rect().get_center().x - 400.0) <= 1.0,
+		"800 x 450: the clock, the banner, Cael's plate and the rite's plate are centred on x 400")
+	t.check(is_equal_approx(hud.rite_plate_rect().position.y, Hud.RITE_PLATE_TOP + dy * 0.5) and is_equal_approx(hud.status_rect().end.x, 800.0 - Hud.STATUS_MARGIN + 4.0),
+		"the rite's plate stays in the area's middle and the status plate keeps the right margin (%s, %s)" % [hud.rite_plate_rect(), hud.status_rect()])
+	hud.show_rite_plate(PackedStringArray())
+	hud.advance(10.0)
+	hud.advance(10.0)
 	hud.size = Vector2.ZERO
 
 
@@ -572,7 +587,8 @@ static func _crisp_source(t) -> void:
 		and uncrisp_calls("UiTheme.width(s, UiTheme.TEXT_L)", "x").is_empty(), "the lint catches a left-out or an old size")
 
 
-## The arguments of every UiTheme.text/width/wrap/fit call in `src` that do not name a crisp size, as "file:call".
+## The arguments of every UiTheme.text/width/wrap/fit call in `src` that do not name a crisp size, as "file:call". A size held in `size_px` or
+## returned by banner_size() is trusted by name: both only ever give TEXT_L or TEXT_S (a known gap of this lint).
 static func uncrisp_calls(code: String, file: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	var kept := PackedStringArray()
@@ -589,7 +605,7 @@ static func uncrisp_calls(code: String, file: String) -> PackedStringArray:
 		while at >= 0:
 			var args := _args(src, at + marker.length())
 			var idx: int = needs[fn]
-			if args.size() <= idx or not (args[idx].contains("TEXT_") or args[idx] == "size_px"):
+			if args.size() <= idx or not (args[idx].contains("TEXT_") or args[idx] == "size_px" or args[idx].begins_with("banner_size(")):
 				out.append("%s:%s" % [file, marker + ",".join(args).left(30)])
 			at = src.find(marker, at + marker.length())
 	if src.contains("UiTheme.SIZE_"):
@@ -637,5 +653,56 @@ static func _spaced_hints(t) -> void:
 	for line in [MissionHints.WISHES_LINE, MissionHints.ASCEND_LINE]:
 		if UiTheme.wrap(line, Hud.HINT_W, UiTheme.TEXT_S).size() > Hud.HINT_LINES:
 			long.append(line.left(20))
+	# The strip never starts left of EVENTS_LEFT_MIN, so no hint plate (2 + its width) runs under it.
+	var under := PackedStringArray()
+	var every: Array[String] = [MissionHints.WISHES_LINE, MissionHints.ASCEND_LINE]
+	for key: String in MissionHints.LINES:
+		every.append(String(MissionHints.LINES[key]))
+	for phase: String in MissionHints.LANTERN:
+		every.append(String(MissionHints.LANTERN[phase]))
+	for line in every:
+		if 2.0 + Hud.hint_width(Hud.hint_lines(line)) > Hud.EVENTS_LEFT_MIN:
+			under.append(line.left(20))
 	UiTheme.word_spacing = was
+	t.check(under.is_empty(), "the how-to-win plate ends before the events strip's least left edge (%s)" % ", ".join(under))
 	t.check(long.is_empty(), "with the wider spaces on, every how-to-win line fits %d lines of %d px (too long: %s)" % [Hud.HINT_LINES, int(Hud.HINT_W), ", ".join(long)])
+
+
+## The HUD holds the wider spaces as one owner among others (Task 5 fix round): a new Hud set up and the old one freed (a multi-act night) leaves them on, a second
+## owner (the skill tree) coming and going never clears the HUD's, and one owner acquiring twice still releases once.
+static func _spacing_owners(t, rules: Rules, crowd: Crowd, town: Town) -> void:
+	var a := Hud.new().setup(rules, crowd, town, null)
+	t.check(UiTheme.word_spacing, "a HUD set up turns the wider spaces on")
+	var b := Hud.new().setup(rules, crowd, town, null)  # the next act's, built before the old one is freed
+	a.free()
+	t.check(UiTheme.word_spacing, "the old HUD freed under the new one: the spaces stay on")
+	var tree := Node.new()  # stands in for the skill tree
+	UiTheme.spacing_acquire(tree)
+	UiTheme.spacing_acquire(tree)
+	UiTheme.spacing_release(tree)
+	t.check(UiTheme.word_spacing, "a tree opening and closing over a HUD does not clear its spaces (a double acquire counts once)")
+	tree.free()
+	b.free()
+	t.check(UiTheme.word_spacing, "and the first HUD of the test, still alive, holds them")
+
+
+## No tag label sits under the clock, the status plate, a banner's bar or Cael's plate: tag_layout() is given them as taken plates.
+static func _labels_clear_of_plates(t, hud: Hud) -> void:
+	hud.push_banner("THE BRIDGE HAS FALLEN")
+	hud.push_subtitle("Venn. She lit Mira's pyre.")
+	var plates := hud.overlay_rects()
+	t.check(plates.size() == 4 and plates.has(hud.banner_rect(640.0)) and plates.has(hud.subtitle_rect(640.0)) and plates.has(hud.clock_rect(640.0))
+		and plates.has(hud.status_rect()), "the clock, the status, the banner and Cael's plates are the HUD's overlay plates (%d)" % plates.size())
+	var tags: Array[MapTag] = []
+	for p in [hud.banner_rect(640.0).get_center() + Vector2(0.0, 26.0), hud.subtitle_rect(640.0).get_center() + Vector2(0.0, 30.0), Vector2(320.0, 40.0)]:
+		tags.append(MapTag.person(Iso.screen_to_ground(p), GOLD, "TAX COLLECTOR - INSIDE", true))
+	var layout := Hud.tag_layout(tags, Transform2D.IDENTITY, Vector2(640.0, 360.0), Rect2(), plates)
+	var bad := 0
+	for e: Dictionary in layout:
+		if bool(e.show):
+			for r in plates:
+				if (e.label as Rect2).intersects(r):
+					bad += 1
+	t.check(bad == 0, "with a banner and Cael's line up, no tag label that shows lies under a plate (%d)" % bad)
+	hud.advance(10.0)
+	hud.advance(10.0)

@@ -344,7 +344,7 @@ static func _keepout_stack(t) -> void:
 		"the stack: the objectives, the hint and three wishes' rows, padded (%s)" % r)
 	# UI resolution Task 5: the strip keeps clear of the hint now (EVENTS_LEFT_MIN), so the hint is no longer pushed under it and the real stack is
 	# shallower than the kit's cautious 165: the kit's STACK covers it.
-	t.check(Kit.STACK.size.y >= wishes.end.y - 2.0 and Kit.STACK.size.y > Kit.DEAD.size.y,
+	t.check(Kit.STACK.size.y >= wishes.end.y - 2.0 and Kit.STACK.size.y <= wishes.end.y + 30.0 and Kit.STACK.size.y > Kit.DEAD.size.y,
 		"the kit's STACK covers the real depth (%s of the plates' %s), deeper than DEAD" % [Kit.STACK.size.y, wishes.end.y])
 	hud.set_caption("The tour")
 	t.check(hud.stack_rect() == r, "the tour's caption leaves it: the stack is still drawn")

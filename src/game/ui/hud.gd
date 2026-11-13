@@ -231,7 +231,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # the player is aiming at the town, not clicking the HUD
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # icons are drawn at native multiples: no smoothing between their pixels
-	UiTheme.word_spacing = true  # the HUD's text is laid out for the wider spaces; off again when it leaves (_exit_tree)
+	UiTheme.spacing_acquire(self)  # the HUD's text is laid out for the wider spaces; released when it leaves (_exit_tree) or is freed
 	_flash.resize(_rules.loadout.size())
 	_flash.fill(0.0)
 	_slot_icons.clear()
@@ -267,9 +267,14 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
-	UiTheme.word_spacing = false
+	UiTheme.spacing_release(self)
 	if UiScale.notifier.changed.is_connected(_on_scale):
 		UiScale.notifier.changed.disconnect(_on_scale)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a Hud set up in a test)
 
 
 ## The window or the scale changed (UiScale.apply): everything is laid out again.
@@ -837,6 +842,7 @@ func _lay_out_tags() -> Array:
 	var hover := _hover_point()
 	var chain := chain_rect() if chain_shown() else Rect2()
 	var taken: Array[Rect2] = [events_rect(_view().x), slots_rect(), chain]
+	taken.append_array(overlay_rects())
 	return tag_layout(all_tags(), xf, _view(), stack_rect(), taken, hover, details, chain)
 
 
@@ -1346,7 +1352,7 @@ func _tag_signature(with_stack := true) -> String:
 	# review: the strip and the slot bar are placed for the labels, so the same for them (`with_stack` false leaves all three out).
 	var out := "%s|%s|%s" % [xf, _view(), stack_rect() if with_stack else Rect2()]
 	if with_stack:
-		out += "|%s|%s|%s" % [events_rect(_view().x), slots_rect(), chain_rect() if chain_shown() else Rect2()]
+		out += "|%s|%s|%s|%s" % [events_rect(_view().x), slots_rect(), chain_rect() if chain_shown() else Rect2(), overlay_rects()]
 	# v0.11.1 §3: which bare arrow the mouse is over (from the last layout: one frame late, no layout needed here) and whether all show.
 	out += "|%s|%d" % [details, hovered_arrow(_layout, _hover_point())]
 	for t in tags:
@@ -1680,16 +1686,75 @@ func status_right() -> float:
 	return _view().x - STATUS_MARGIN
 
 
-func _draw_status(w: float) -> void:
-	var gap := UiTheme.width("   ", UiTheme.TEXT_S)
+## The status segments that fit between the clock's plate and the right margin: all of them, else the first ones dropped (the alarm stage, the last, is the one that warns).
+func status_fit() -> Array:
 	var segs := status_segments()
+	var gap := UiTheme.width("   ", UiTheme.TEXT_S)
+	var room := status_right() - (clock_rect(_view().x).end.x + 4.0 if clock_shown() else 0.0) - 8.0
+	while segs.size() > 1 and _status_width(segs, gap) > room:
+		segs.pop_front()
+	return segs
+
+
+func _status_width(segs: Array, gap: float) -> float:
 	var total := gap * float(segs.size() - 1)
 	for seg: Array in segs:
 		total += UiTheme.width(String(seg[0]), UiTheme.TEXT_S)
-	var x := w - total - STATUS_MARGIN
-	for seg: Array in segs:
+	return total
+
+
+## The status line's plate (4 in on each side of its words), top right.
+func status_rect() -> Rect2:
+	if _rules == null or _crowd == null:
+		return Rect2()
+	var total := _status_width(status_fit(), UiTheme.width("   ", UiTheme.TEXT_S))
+	return Rect2(status_right() - total - 4.0, 2.0, total + 8.0, 16.0)
+
+
+func _draw_status(_w: float) -> void:
+	var gap := UiTheme.width("   ", UiTheme.TEXT_S)
+	var plate := status_rect()
+	draw_rect(plate, UiTheme.COL_PANEL)
+	var x := plate.position.x + 4.0
+	for seg: Array in status_fit():
 		UiTheme.text(self, Vector2(x, 14.0), String(seg[0]), UiTheme.TEXT_S, seg[1])
 		x += UiTheme.width(String(seg[0]), UiTheme.TEXT_S) + gap
+
+
+## The bar of the banner on screen, Rect2() for none: what tag labels keep clear of while it is up.
+func banner_rect(w: float) -> Rect2:
+	if _banners.is_empty():
+		return Rect2()
+	var text := String(_banners[0][0])
+	var text_w := UiTheme.width(text, banner_size(text, w))
+	return Rect2(roundf((w - text_w) * 0.5) - 8.0, BANNER_TOP, text_w + 16.0, BANNER_H)
+
+
+## Cael's plate on screen, Rect2() for none.
+func subtitle_rect(w: float) -> Rect2:
+	if _subtitles.is_empty():
+		return Rect2()
+	var text := String(_subtitles[0][0])
+	return Rect2(roundf((w - subtitle_width(text)) * 0.5) - 6.0, SUBTITLE_TOP, subtitle_width(text) + 12.0, SUBTITLE_H)
+
+
+## The clock's plate (22 u digits on a dark plate), Rect2() when the night has no clock.
+func clock_rect(w: float) -> Rect2:
+	if _rules == null or not clock_shown():
+		return Rect2()
+	var wide := UiTheme.width(UiTheme.clock(_rules.time_left), UiTheme.TEXT_L)
+	return Rect2(roundf((w - wide) * 0.5) - 7.0, 2.0, wide + 14.0, CLOCK_PLATE_H)
+
+
+## The plates drawn over the map that no tag label may sit under: the clock, the status line, the banner's bar and Cael's plate (the last two only
+## while up; the tags are laid out again every frame).
+func overlay_rects() -> Array[Rect2]:
+	var w := _view().x
+	var out: Array[Rect2] = []
+	for r: Rect2 in [clock_rect(w), status_rect(), banner_rect(w), subtitle_rect(w)]:
+		if r.has_area():
+			out.append(r)
+	return out
 
 
 ## A banner's text size on a screen `w` wide: 22 u, or 11 u for a line that would not fit the screen at 22.
@@ -1706,11 +1771,10 @@ func _draw_banners(w: float) -> void:
 	var col := UiTheme.COL_GOLD
 	col.a = fade
 	var size_px := banner_size(text, w)
-	var text_w := UiTheme.width(text, size_px)
-	var x := roundf((w - text_w) * 0.5)
+	var bar := banner_rect(w)
+	var x := bar.position.x + 8.0
 	# A banner announces something that is happening right now, which means it lands on top of the effect that
 	# caused it. On its own bar with a gold edge it stays readable over lightning or a wave.
-	var bar := Rect2(x - 8.0, BANNER_TOP, text_w + 16.0, BANNER_H)
 	draw_rect(bar, Color(0.03, 0.03, 0.05, 0.78 * fade))
 	var edge := UiTheme.COL_GOLD_DARK
 	edge.a = fade
@@ -1730,7 +1794,7 @@ func _draw_subtitle(w: float) -> void:
 	var who := speaker()
 	var who_w := UiTheme.width(who, UiTheme.TEXT_S)
 	var x := roundf((w - subtitle_width(text)) * 0.5)
-	draw_rect(Rect2(x - 6.0, SUBTITLE_TOP, subtitle_width(text) + 12.0, SUBTITLE_H), Color(0.03, 0.03, 0.05, 0.72 * fade))
+	draw_rect(subtitle_rect(w), Color(0.03, 0.03, 0.05, 0.72 * fade))
 	var gold := UiTheme.COL_GOLD
 	gold.a = fade
 	var body := UiTheme.COL_TEXT
@@ -1782,16 +1846,16 @@ func _draw_slots(_w: float) -> void:
 		_plate(icon_box.position + Vector2(1.0, 1.0), "%d" % (i + 1), UiTheme.COL_TEXT)
 		# The name beside the icon, gold when focused, dim when it cannot be cast: one line or two, its cooldown under it.
 		var tx := box.position.x + SLOT_SIZE + 4.0
-		var name_col := UiTheme.COL_GOLD if is_picked(i) else (UiTheme.COL_TEXT if usable else UiTheme.COL_DIM)
+		var name_col := UiTheme.COL_GOLD if is_picked(i) else UiTheme.COL_TEXT
 		var lines := slot_name_lines(i)
 		var y := box.position.y + (14.0 if lines.size() <= 1 else 11.0)
 		for line in lines:
 			UiTheme.text(self, Vector2(tx, y), line, UiTheme.TEXT_S, name_col)
 			y += UiTheme.LINE_S
-		UiTheme.text(self, Vector2(tx, y), slot_cooldown_text(i), UiTheme.TEXT_S, UiTheme.COL_DIM)
+		UiTheme.text(self, Vector2(tx, y), slot_cooldown_text(i), UiTheme.TEXT_S, UiTheme.COL_TEXT)
 		if state == "busy":
 			# Another power is still playing: a light shade and its seconds left, in gold.
-			draw_rect(Rect2(box.position, box.size), Color(0, 0, 0, 0.35))
+			draw_rect(icon_box, Color(0, 0, 0, 0.35))  # the icon only: the words beside it stay readable
 			var wait := "%d" % ceili(_rules.busy_left())
 			UiTheme.text(self, icon_box.get_center() + Vector2(-UiTheme.width(wait, UiTheme.TEXT_L) * 0.5, 8.0), wait, UiTheme.TEXT_L,
 				UiTheme.COL_GOLD)
@@ -1799,7 +1863,7 @@ func _draw_slots(_w: float) -> void:
 			# The cooldown as a shade falling away from the top of the card, its seconds over the icon.
 			var left := _rules.cooldown_left(i)
 			var frac := clampf(left / maxf(_rules.cooldown_of(i), 0.001), 0.0, 1.0)
-			draw_rect(Rect2(box.position, Vector2(box.size.x, SLOT_SIZE * frac)), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(icon_box.position, Vector2(icon_box.size.x, SLOT_SIZE * frac)), Color(0, 0, 0, 0.6))
 			var secs := "%d" % ceili(left)
 			UiTheme.text(self, icon_box.get_center() + Vector2(-UiTheme.width(secs, UiTheme.TEXT_L) * 0.5, 8.0), secs, UiTheme.TEXT_L,
 				UiTheme.COL_GOLD if follow else UiTheme.COL_TEXT)

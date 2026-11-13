@@ -1,9 +1,12 @@
 {
- "hash": "e760e63dbea88354",
- "updated": "2026-11-13T13:02:45+07:00",
+ "hash": "de9bda3293f77c4f",
+ "updated": "2026-11-13T22:57:14+07:00",
  "changes": {
-  "date": "<t:1794549765:f>",
-  "items": []
+  "date": "<t:1794585434:f>",
+  "items": [
+   "New: Death powers: your review adjustments (in progress)",
+   "New: Decree powers: your review adjustments"
+  ]
  },
  "snapshot": {
   "project": {
@@ -199,6 +202,24 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-13",
     "order": 2
+   },
+   "death-review-adjust": {
+    "title": "Death powers: your review adjustments",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-13",
+    "order": 4
+   },
+   "decree-review-adjust": {
+    "title": "Decree powers: your review adjustments",
+    "status": "done",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-13",
+    "order": 3
    },
    "discord-board": {
     "title": "Discord #board: live project board",
@@ -1647,27 +1668,35 @@
   },
   "branches": [
    {
-    "name": "god/death-powers",
-    "ahead": 49,
+    "name": "god/death-review",
+    "ahead": 67,
     "behind": 48,
     "date": "2026-11-13",
-    "subject": "test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell",
+    "subject": "feat: Pale Reign -- a horde of pale ghosts runs the district; every death adds one",
+    "pushed": false
+   },
+   {
+    "name": "feat/god-progression",
+    "ahead": 64,
+    "behind": 48,
+    "date": "2026-11-13",
+    "subject": "dev: re-record the Decree refs after the review adjustments",
     "pushed": true
    },
    {
     "name": "god/decree-powers",
-    "ahead": 49,
+    "ahead": 64,
     "behind": 48,
     "date": "2026-11-13",
-    "subject": "test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell",
+    "subject": "dev: re-record the Decree refs after the review adjustments",
     "pushed": true
    },
    {
     "name": "feat/ui-resolution",
-    "ahead": 2,
+    "ahead": 7,
     "behind": 1,
     "date": "2026-11-13",
-    "subject": "docs: ui-resolution plan pre-flight fixes (show names, invariant, missed call sites, test hooks)",
+    "subject": "feat: UiScale, UiIcon and the crisp text sizes (UI resolution 3a)",
     "pushed": false
    },
    {
@@ -1676,14 +1705,6 @@
     "behind": 0,
     "date": "2026-11-13",
     "subject": "feat: mission moments heard in tiers 2-5",
-    "pushed": true
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 0,
-    "behind": 61,
-    "date": "2026-11-12",
-    "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
     "pushed": true
    },
    {

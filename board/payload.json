@@ -7,36 +7,36 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **144** done\n**8** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**11** in progress · **27** to do · **145** done\n**8** active branches besides Develop-Main\n\n**Since the last update** (<t:1794585434:f>)\n• New: Death powers: your review adjustments (in progress)\n• New: Decree powers: your review adjustments",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-13T13:02:45+07:00"
+     "timestamp": "2026-11-13T22:57:14+07:00"
     },
     {
-     "title": "god/death-powers",
-     "description": "49 commits not in Develop-Main · last commit today\n> test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell\n\n_No Ledger task points at this branch._",
+     "title": "god/death-review",
+     "description": "67 commits not in Develop-Main · last commit today · local only\n> feat: Pale Reign -- a horde of pale ghosts runs the district; every death adds one\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/god-progression",
+     "description": "64 commits not in Develop-Main · last commit today\n> dev: re-record the Decree refs after the review adjustments\n\n**In progress** (1)\n• Death powers: your review adjustments\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
      "title": "god/decree-powers",
-     "description": "49 commits not in Develop-Main · last commit today\n> test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell\n\n_No Ledger task points at this branch._",
+     "description": "64 commits not in Develop-Main · last commit today\n> dev: re-record the Decree refs after the review adjustments\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/ui-resolution",
-     "description": "2 commits not in Develop-Main · last commit today · local only\n> docs: ui-resolution plan pre-flight fixes (show names, invariant, missed call sites, test hooks)\n\n_No Ledger task points at this branch._",
+     "description": "7 commits not in Develop-Main · last commit today · local only\n> feat: UiScale, UiIcon and the crisp text sizes (UI resolution 3a)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/sound-natural-2",
      "description": "1 commit not in Develop-Main · last commit today\n> feat: mission moments heard in tiers 2-5\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/god-progression",
-     "description": "merged into Develop-Main · last commit yesterday\n> dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
@@ -68,7 +68,7 @@
    "embeds": [
     {
      "title": "Recently done",
-     "description": "• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Town children (Discord idea Add children Npc) _(11-13)_\n• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_\n• Decree authority powers built (god branch) _(11-13)_\n• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_\n• Dominion powers sound like the mind (skill-tree audit) _(11-12)_",
+     "description": "• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Town children (Discord idea Add children Npc) _(11-13)_\n• Decree powers: your review adjustments _(11-13)_\n• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_\n• Decree authority powers built (god branch) _(11-13)_\n• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_",
      "color": 10185686
     }
    ]

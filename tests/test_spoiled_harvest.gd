@@ -1145,6 +1145,17 @@ static func _dropped_empty(t) -> void:
 	_hold(s, c0, Person.Mind.PANIC, 1.0)
 	t.check(not d.razed(g), "frightened on his way back with no load: nothing spoils")
 	_done(s)
+	# Final review 7: at the Citadel's gate the load is delivered, though the look that clears it (TICK) has not come yet.
+	s = _world()
+	d = s.d
+	g = d.targets[0]
+	c0 = _loaded(s)
+	_arrive(c0, d.citadel_door)
+	c0.mind = Person.Mind.PANIC
+	_run(s, DT)
+	t.check(not d.razed(g) and not d._hauling.has(c0.get_instance_id()),
+		"frightened at the Citadel's gate before the next look: his load is delivered, nothing spoils")
+	_done(s)
 
 
 ## H7: SHELTER counts only when a fright sent him into cover. A carrying carter sent into a hallowed building (Anathema's path,

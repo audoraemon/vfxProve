@@ -468,7 +468,8 @@ func _held_look(delta: float) -> void:
 
 ## A frightened carter drops his load (H7, the user's ruling 2026-11-14): every frame, a carter alive and carrying a load (`_hauling`) who is
 ## frightened (_frightened()) spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
-## his mind decides it. Returns at once with no load on the road.
+## his mind decides it. One frightened at the Citadel's gate (within TAKE_REACH) has delivered it: his load is cleared, nothing spoils. Returns at
+## once with no load on the road.
 func _dropped_look() -> void:
 	if _hauling.is_empty():
 		return
@@ -477,6 +478,10 @@ func _dropped_look() -> void:
 			continue
 		for c: Variant in carters.get(s, []):
 			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and _frightened(c as Person):
+				if (c as Person).ground_pos.distance_to(citadel_door) <= TAKE_REACH:
+					# At the Citadel's gate his load is delivered (as _cart() leaves it on its TICK, which may not have come yet).
+					_hauling.erase((c as Person).get_instance_id())
+					continue
 				rules.banner.emit(DROP_BANNER)
 				_spoil(s, "dropped")
 				break

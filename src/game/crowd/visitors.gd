@@ -123,6 +123,11 @@ class Rule extends RefCounted:
 	var spare_guise := false
 	var soldiers_only := false
 	var no_bite := false
+	## touch_kill: its touch kills outright as this kind (&"": it bites as above); spent_on_kill: freed after one.
+	var touch_kill: StringName = &""
+	var spent_on_kill := false
+	## bounds (cx, cy, r): it only hunts people within r of (cx, cy). r <= 0: anywhere.
+	var bounds := Vector3.ZERO
 	var fright_r := 0.0
 	var fright_in := 0.0
 	var slow := 1.0
@@ -189,6 +194,9 @@ func give(a: Animal, traits: Dictionary) -> void:
 	r.infect = bool(traits.get("infect", r.infect))
 	r.spare_guise = bool(traits.get("spare_guise", r.spare_guise))
 	r.no_bite = bool(traits.get("no_bite", r.no_bite))
+	r.touch_kill = StringName(traits.get("touch_kill", r.touch_kill))
+	r.spent_on_kill = bool(traits.get("spent_on_kill", r.spent_on_kill))
+	r.bounds = traits.get("bounds", r.bounds)
 	if traits.has("prey"):
 		r.soldiers_only = String(traits.prey) == "soldiers"
 	r.fright_r = float(traits.get("fright_r", r.fright_r))
@@ -278,6 +286,8 @@ func step(delta: float) -> void:
 				continue  # home, and freed: it slows nobody any more (a wraith's pass would hold a freed node's id)
 		elif not _flee_law(a, r, delta):
 			_hunt(a, r, delta)
+			if not _rules.has(a):
+				continue  # spent on its kill
 		if r.fright_r > 0.0 and not r.recalling:
 			_frighten(a, r, delta)
 		if r.slow < 1.0:
@@ -315,7 +325,7 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		a.target = quarry
 	else:
 		if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside and _fair(r, who)
-				and who.ground_pos.distance_to(a.ground_pos) <= reach):
+				and who.ground_pos.distance_to(a.ground_pos) <= reach and _within(r, who)):
 			who = null
 			a.target = null
 			r.retarget_in = 0.0
@@ -346,6 +356,18 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	a.facing = 1 if who.ground_pos.x - who.ground_pos.y > a.ground_pos.x - a.ground_pos.y else -1
 	a.bit()
 	var was := who.is_alive()
+	if r.touch_kill != &"":
+		# Its touch kills outright: no knock, no hurt.
+		a.bit()
+		if _field.kill(who, r.touch_kill, a.ground_pos):
+			kills += 1
+		var touched := not r.has_bitten
+		r.has_bitten = true
+		bitten.emit(a, who, touched)
+		if r.spent_on_kill:
+			_rules.erase(a)
+			_free(a, true)
+		return
 	if r.knock_first and not who.soldier and not r.knocked.has(who):
 		who.knock_down()  # the first bite only knocks them flat; a second within KNOCK_WINDOW kills
 		r.knocked[who] = KNOCK_WINDOW
@@ -477,6 +499,13 @@ static func _fair(r: Rule, p: Person) -> bool:
 	return not r.soldiers_only or p.soldier
 
 
+## Whether `p` stands inside rule `r`'s bounds (always, with none).
+static func _within(r: Rule, p: Person) -> bool:
+	if r.bounds.z <= 0.0:
+		return true
+	return p.ground_pos.distance_to(Vector2(r.bounds.x, r.bounds.y)) <= r.bounds.z
+
+
 ## The nearest living person out in the open within `reach` of `at`, but for `skip` (and, with a rule, those it never hunts).
 func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person:
 	var best: Person = null
@@ -485,7 +514,7 @@ func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person
 	for e in _people():
 		var p := e as Person
 		# Alive asked again: one bitten earlier this step is still on the step's list.
-		if p == null or p.inside or p == skip or not p.is_alive() or (r != null and not _fair(r, p)):
+		if p == null or p.inside or p == skip or not p.is_alive() or (r != null and not (_fair(r, p) and _within(r, p))):
 			continue
 		var d := p.ground_pos.distance_squared_to(at)
 		if d > r2:

@@ -70,7 +70,7 @@ static func run(t) -> void:
 	_clear_town(crowd)
 
 	t.check(Animal.Breed.GHOST == 12 and Animal.Breed.ZOMBIE == 13 and Animal.Breed.SPIRIT == 14 and Animal.Breed.BONE_GIANT == 15
-		and Animal.UNDEAD == [Animal.Breed.ZOMBIE, Animal.Breed.SPIRIT, Animal.Breed.BONE_GIANT]
+		and Animal.UNDEAD == [Animal.Breed.ZOMBIE, Animal.Breed.SPIRIT, Animal.Breed.BONE_GIANT, Animal.Breed.WRAITH]
 		and not (Animal.Breed.ZOMBIE in Animal.DOGS) and not (Animal.Breed.SPIRIT in Animal.CATS)
 		and Animal.sheet(Animal.Breed.BONE_GIANT).get("cell", 0) == 96
 		and Animal.sheet(Animal.Breed.SPIRIT).is_empty() and Animal.sheet(Animal.Breed.ZOMBIE).is_empty(),
@@ -86,8 +86,11 @@ static func run(t) -> void:
 	var blind := DeathParts.zombie(v, r, false, Color(1, 1, 1, 0))
 	t.check(z.eyes == DeathParts.GRAVE_GREEN and blind.eyes.a == 0.0,
 		"a zombie's eyes are grave green unless the caller gives none")
-	t.check(is_equal_approx(z.speed(), DeathParts.ZOMBIE_PACE * DummyEnemy.WALK_SPEED),
-		"zombie pace is 0.6 of a walk (%.3f)" % z.speed())
+	z.target = null
+	t.check(is_equal_approx(z.speed(), 0.6), "zombie walks at a walk (0.6 u/s) with no prey (%.3f)" % z.speed())
+	z.target = crowd.citizens[0]
+	t.check(is_equal_approx(z.speed(), 0.75), "zombie chases at 1.25 x walk (0.75 u/s) (%.3f)" % z.speed())
+	z.target = null
 	v = _fresh(made)
 
 	# --- knock_first: first bite knocks down, second within 3 s kills, after 3 s it knocks again.
@@ -145,7 +148,7 @@ static func run(t) -> void:
 	var w := DeathParts.wraith(v, at)
 	_step(v, 0.6)
 	t.check(w.target == sol and cit.is_alive(), "prey soldiers: a citizen nearer is ignored")
-	t.check(w.breed == Animal.Breed.SPIRIT, "a wraith is a spirit")
+	t.check(w.breed == Animal.Breed.WRAITH, "a wraith is the wraith breed")
 	v = _fresh(made)
 
 	# --- Spirit: cannot be cut down; frights within 3.
@@ -166,8 +169,8 @@ static func run(t) -> void:
 	t.check((v._rules[quiet] as Visitors.Rule).fright_r == 0.0, "a quiet spirit (fright false) frights no one")
 	v = _fresh(made)
 
-	# --- Wraith slows who it passes to 0.5 for 4 s.
-	var slowed: Person = crowd.soldiers[3]
+	# --- Wraith slows who it passes (a citizen; a soldier it reaches it kills) to 0.5 for 4 s.
+	var slowed: Person = crowd.citizens[17]
 	slowed.ground_pos = at + Vector2(0.3, 0.0)
 	var wr := DeathParts.wraith(v, at)
 	wr.target = null
@@ -202,6 +205,68 @@ static func run(t) -> void:
 	field.kill(dead2, &"frenzy")
 	var spent := DeathParts.on_kill_rise(v, rem, dead2, 0)
 	t.check(spent == 0 and v.living().size() == 1, "with none left to raise, nothing rises")
+	rem.enabled = false
+
+	# --- Task 2: the wraith breed, touch kills, bounded ghosts, the grave kind.
+	t.check(Animal.Breed.WRAITH == 16 and Animal.UNDEAD.has(Animal.Breed.WRAITH), "WRAITH is appended (16), undead")
+	var pk := AnimalPack.new().setup(crowd, grid, made[4], 13)
+	pk.spawn(80)
+	var nowr := true
+	for an in pk.animals:
+		nowr = nowr and an.breed != Animal.Breed.WRAITH
+	t.check(nowr, "WRAITH is never in the town pack")
+	pk.clear()
+	pk.free()
+	v = _fresh(made)
+	rem.enabled = true
+	var lone: Person = crowd.soldiers[5]
+	lone.ground_pos = at + Vector2(0.3, 0.0)
+	var got := []
+	var grab := func(e: DummyEnemy, kind: StringName) -> void: got.append([e, kind])
+	field.enemy_killed.connect(grab)
+	DeathParts.wraith(v, at)
+	_step(v, 1.0)
+	field.enemy_killed.disconnect(grab)
+	t.check(got.size() == 1 and got[0][0] == lone and got[0][1] == &"pit"
+		and rem.near(lone.ground_pos, 0.5).is_empty() and v.living().is_empty(),
+		"a wraith kills the soldier it reaches as pit, leaves no body, and is spent (%s)" % [got])
+	v = _fresh(made)
+	var nearc: Person = crowd.citizens[11]
+	var fars: Person = crowd.soldiers[6]
+	nearc.ground_pos = at + Vector2(1.0, 0.0)
+	fars.ground_pos = at + Vector2(4.0, 0.0)
+	DeathParts.wraith(v, at)
+	_step(v, 3.0)
+	t.check(nearc.is_alive() and not fars.is_alive(), "a wraith passes a nearer citizen for a soldier")
+	v = _fresh(made)
+	var pv: Person = crowd.citizens[12]
+	pv.ground_pos = at + Vector2(0.3, 0.0)
+	DeathParts.pale_ghost(v, at, at, 6.0)
+	_step(v, 1.0)
+	t.check(not pv.is_alive() and rem.pick(pv.ground_pos) != null, "a pale ghost's touch kills as pale and leaves a remain")
+	v = _fresh(made)
+	var outer: Person = crowd.citizens[13]
+	var inner: Person = crowd.citizens[14]
+	outer.ground_pos = at + Vector2(3.5, 0.0)
+	inner.ground_pos = at + Vector2(1.0, 0.0)
+	DeathParts.pale_ghost(v, at + Vector2(3.0, 0.0), at, 3.0)
+	_step(v, 4.0)
+	t.check(outer.is_alive() and not inner.is_alive(), "a pale ghost never picks anyone outside its bounds, even nearer")
+	v = _fresh(made)
+	var gp: Person = crowd.citizens[15]
+	gp.ground_pos = at + Vector2(-8.0, 0.0)
+	var alarm0 := crowd.alarm
+	field.kill(gp, &"grave", gp.ground_pos)
+	t.check(is_equal_approx(crowd.alarm, alarm0) and rem.pick(gp.ground_pos) != null
+		and DeathVoices.QUIET_KINDS.has(&"grave") and Rules.POWER_KINDS["walker"] == [&"grave"],
+		"the grave kind: a body, quiet, no alarm")
+	v = _fresh(made)
+	var calm: Person = crowd.citizens[16]
+	calm.ground_pos = at + Vector2(0.3, 0.0)
+	DeathParts.haunt(v, at)
+	_step(v, 3.0)
+	t.check(calm.is_alive() and calm.mind == Person.Mind.CALM, "haunt: a wraith that hunts nobody, bites nobody, frightens nobody")
+	v = _fresh(made)
 	rem.enabled = false
 
 	# --- The town's pack never spawns the undead.

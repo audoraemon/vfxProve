@@ -16,7 +16,9 @@ const ZOMBIE_TINT := Color(0.58, 0.62, 0.6)
 
 ## A zombie lives this long, walks at ZOMBIE_PACE of a walk, falls to ZOMBIE_BLOWS blows, and smells prey within ZOMBIE_SEEK.
 const ZOMBIE_LIFE := 30.0
-const ZOMBIE_PACE := 0.6
+const ZOMBIE_PACE := 1.0
+## With prey in sight a zombie runs at this multiple of its pace.
+const ZOMBIE_CHASE := 1.25
 const ZOMBIE_BLOWS := 3
 const ZOMBIE_SEEK := 10.0
 const ZOMBIE_BITE_R := 0.5
@@ -27,7 +29,15 @@ const SPIRIT_FRIGHT_R := 3.0
 const SPIRIT_BLOWS := 999
 ## A spirit drifts at this share of a dog's run; a wraith (which goes for soldiers) looks this far.
 const SPIRIT_SPEED := 0.7
-const WRAITH_SEEK := 8.0
+const WRAITH_SEEK := 12.0
+const WRAITH_SPEED := 1.0
+## A wraith's touch reaches this far.
+const WRAITH_TOUCH := 0.5
+## Pale Reign's ghosts: pace in walks, tint, touch reach and how often they touch.
+const PALE_GHOST_PACE := 2.2
+const PALE_GHOST_TINT := Color(0.92, 0.94, 0.97, 0.7)
+const PALE_GHOST_TOUCH := 0.4
+const PALE_GHOST_EVERY := 0.8
 ## Whoever a wraith passes through keeps this share of their pace for this long.
 const WRAITH_SLOW := 0.5
 const WRAITH_SLOW_FOR := 4.0
@@ -43,6 +53,7 @@ const RISE_FRESH := 2.0
 static func zombie(v: Visitors, r: Remains.Remain, plague: bool, eyes := GRAVE_GREEN) -> Animal:
 	var mul := ZOMBIE_PACE * DummyEnemy.WALK_SPEED / (Animal.DOG_SPEED * Animal.RUN)
 	var a := v.summon(r.pos, Animal.Breed.ZOMBIE, ZOMBIE_BLOWS, mul, ZOMBIE_SEEK, ZOMBIE_BITE_R, ZOMBIE_BITE_EVERY, true)
+	a.chase_mul = ZOMBIE_CHASE
 	a.wear(r.design, r.facing, ZOMBIE_TINT, eyes)
 	v.give(a, {"knock_first": true, "spare_guise": true, "infect": plague or r.sick})
 	return a
@@ -64,10 +75,28 @@ static func _spirit(v: Visitors, at: Vector2, fright: bool, seek: float) -> Anim
 	return a
 
 
-## A wraith: a spirit that goes for soldiers only, and slows whoever it passes through to half their pace for 4 s.
+## A wraith: the painted spirit that goes for soldiers only. Its touch kills one outright as the pit and it is spent;
+## whoever it passes through is slowed to half their pace for 4 s.
 static func wraith(v: Visitors, at: Vector2) -> Animal:
-	var a := _spirit(v, at, true, WRAITH_SEEK)
-	v.give(a, {"prey": "soldiers", "slow": WRAITH_SLOW, "slow_for": WRAITH_SLOW_FOR, "slow_r": 0.5})
+	var a := v.summon(at, Animal.Breed.WRAITH, SPIRIT_BLOWS, WRAITH_SPEED, WRAITH_SEEK, WRAITH_TOUCH, 1.0, false)
+	v.give(a, {"phase": true, "spare_guise": true, "prey": "soldiers", "slow": WRAITH_SLOW, "slow_for": WRAITH_SLOW_FOR,
+		"slow_r": 0.5, "fright_r": SPIRIT_FRIGHT_R, "touch_kill": &"pit", "spent_on_kill": true})
+	return a
+
+
+## A haunt: a wraith that hunts and bites no one and frightens no one; it drifts where its owner sends it.
+static func haunt(v: Visitors, at: Vector2) -> Animal:
+	var a := v.summon(at, Animal.Breed.WRAITH, SPIRIT_BLOWS, SPIRIT_SPEED, 0.0, 0.5, 1.0, false)
+	v.give(a, {"phase": true, "spare_guise": true, "no_bite": true})
+	return a
+
+
+## One of Pale Reign's ghosts: a pale wraith that touches dead (as pale, a body left) only people within `r` of `centre`.
+static func pale_ghost(v: Visitors, at: Vector2, centre: Vector2, r: float) -> Animal:
+	var mul := PALE_GHOST_PACE * DummyEnemy.WALK_SPEED / (Animal.DOG_SPEED * Animal.RUN)
+	var a := v.summon(at, Animal.Breed.WRAITH, SPIRIT_BLOWS, mul, 2.0 * r, PALE_GHOST_TOUCH, PALE_GHOST_EVERY, false)
+	a.worn_tint = PALE_GHOST_TINT
+	v.give(a, {"phase": true, "spare_guise": true, "touch_kill": &"pale", "bounds": Vector3(centre.x, centre.y, r)})
 	return a
 
 

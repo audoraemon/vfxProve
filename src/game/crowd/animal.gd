@@ -15,9 +15,9 @@ extends Node2D
 ## greyed, with pale fire in its eyes (wear()); SPIRIT is a thin pale shape with a trailing wisp, drawn in code, no hood and
 ## half seen through, its face fading in and out (not Passage's GHOST); BONE_GIANT is the 96 px painted bone giant, drawn at
 ## its own size with a pale fire in its sockets. UNDEAD is kept apart from OTHER_SIDE so that list stays Passage's.
-enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND, DEMON, GHOST, ZOMBIE, SPIRIT, BONE_GIANT }
+enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND, DEMON, GHOST, ZOMBIE, SPIRIT, BONE_GIANT, WRAITH }
 const OTHER_SIDE: Array[Breed] = [Breed.HELLHOUND, Breed.DEMON, Breed.GHOST]
-const UNDEAD: Array[Breed] = [Breed.ZOMBIE, Breed.SPIRIT, Breed.BONE_GIANT]
+const UNDEAD: Array[Breed] = [Breed.ZOMBIE, Breed.SPIRIT, Breed.BONE_GIANT, Breed.WRAITH]
 const DOGS: Array[Breed] = [Breed.HOUND, Breed.SHEPHERD, Breed.TERRIER, Breed.WOLFHOUND, Breed.SPANIEL]
 const CATS: Array[Breed] = [Breed.TABBY, Breed.BLACK_CAT, Breed.GREY_CAT, Breed.WHITE_CAT, Breed.BROWN_CAT]
 enum State { WANDER, SIT, FOLLOW, FLEE, ATTACK, GATHER, TRANCE, DEAD }
@@ -42,12 +42,58 @@ const PALETTE := {
 	Breed.ZOMBIE: [Color("8a8c86"), Color("4a4c48"), Color("d8d2bf")],
 	Breed.SPIRIT: [Color("dfe6ea"), Color("9aa4aa"), Color("f4fbff")],
 	Breed.BONE_GIANT: [Color("d8d2bf"), Color("5a5650"), Color("f2eedc")],
+	Breed.WRAITH: [Color("dfe6ea"), Color("9aa4aa"), Color("f4fbff")],
 }
 ## Death's dead (spec section 6): the palette is bone white, ash grey, pale-white fire, and grave green kept to eyes.
 const SPIRIT_BODY := Color(0.86, 0.9, 0.94, 0.5)
 const SPIRIT_HOVER := 5.0
 const SPIRIT_BOB := 1.2
-const ZOMBIE_SHAMBLE := 0.6
+## The wraith's painted sheet (rows drift_se, drift_ne, strike_se; its json holds a [w, h] cell, so sheet() is not used).
+const WRAITH_SHEET := "res://assets/pixellab/fx/wraith/wraith.png"
+## A wraith: the painted sheet (drift_ne with its back turned, strike_se while the bite pose plays, else drift_se), mirrored
+## by `facing`, over a faint cold aura. Without the sheet on disk, the spirit shape at twice the size.
+func _draw_wraith(flash: bool) -> void:
+	var aura := DeathParts.GRAVE_GREEN
+	draw_set_transform(Vector2(0, -8), 0.0, Vector2(1.0, 0.7))
+	draw_circle(Vector2.ZERO, 9.0, Color(aura, 0.06))
+	draw_circle(Vector2.ZERO, 6.0, Color(aura, 0.10))
+	draw_set_transform(Vector2.ZERO)
+	var sh := _wraith_sheet()
+	if sh.is_empty():
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(2.0, 2.0))
+		_draw_spirit(flash)
+		draw_set_transform(Vector2.ZERO)
+		return
+	var row := 1 if back else 0
+	var n: int = sh.frames[row]
+	var f := int(_hover_t * float(sh.fps)) % n
+	if _bite_t < 1.0:
+		row = 2
+		n = sh.frames[2]
+		f = mini(int(_bite_t * float(sh.fps)), n - 1)
+	var cell: Vector2 = sh.cell
+	var foot: Vector2 = sh.foot
+	var col := worn_tint * (Color(2.0, 2.0, 2.0) if flash else Color.WHITE)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(float(facing), 1.0))
+	draw_texture_rect_region(sh.tex, Rect2(-foot, cell), Rect2(Vector2(f * cell.x, row * cell.y), cell), col)
+	draw_set_transform(Vector2.ZERO)
+
+
+## The wraith's sheet: {tex, cell, foot, fps, frames}; empty when it is not on disk or not imported.
+static func _wraith_sheet() -> Dictionary:
+	if _sheets.has(Breed.WRAITH):
+		return _sheets[Breed.WRAITH]
+	var out := {}
+	var json := "res://assets/pixellab/fx/wraith/wraith.json"
+	if ResourceLoader.exists(WRAITH_SHEET) and FileAccess.file_exists(json):
+		var meta: Variant = JSON.parse_string(FileAccess.get_file_as_string(json))
+		if meta is Dictionary:
+			out = {"tex": load(WRAITH_SHEET), "cell": Vector2(meta.cell[0], meta.cell[1]),
+				"foot": Vector2(meta.foot[0], meta.foot[1]), "fps": float(meta.fps), "frames": meta.frames}
+	_sheets[Breed.WRAITH] = out
+	return out
+
+
 ## The bone giant's eye sockets, from its feet, on the painted sheet (the skull faces the way it walks).
 const GIANT_SOCKET := Vector2(13.0, -53.0)
 const GIANT_FIRE := Color(0.92, 0.97, 1.0)
@@ -148,6 +194,8 @@ var _hover_t := 0.0
 ## A zombie's (wear()): the people design it wears, the tint that greys it, and its eyes (alpha 0: none, it passes for living).
 var worn := ""
 var worn_tint := Color.WHITE
+## With prey in sight it runs at this multiple of its pace (a zombie chases faster than it walks).
+var chase_mul := 1.0
 var eyes := Color(0.5, 0.95, 0.7)
 ## Stuck check: the goal it is walking to, the nearest it has got, and how long it has got no nearer. `blocked` is set
 ## when the last walk gave up (a wall or no progress) rather than arrived.
@@ -230,6 +278,8 @@ func speed() -> float:
 		base *= 0.85
 	elif breed == Breed.WOLFHOUND:
 		base *= 1.15  # long legs
+	if chase_mul != 1.0 and is_instance_valid(target):
+		base *= chase_mul
 	if state in [State.FLEE, State.ATTACK]:
 		return base * RUN * speed_mul
 	return base * speed_mul
@@ -632,12 +682,12 @@ func _draw() -> void:
 		shadow = Rect2(-14, -2, 28, 5)
 	elif breed == Breed.ZOMBIE:
 		shadow = Rect2(-4, -1, 8, 2)
-	elif breed == Breed.SPIRIT:
+	elif breed == Breed.SPIRIT or breed == Breed.WRAITH:
 		shadow = Rect2(-3, -1, 6, 2)
-	var sc := Color(0, 0, 0, 0.28 if not breed in [Breed.GHOST, Breed.SPIRIT] else 0.14)
+	var sc := Color(0, 0, 0, 0.28 if not breed in [Breed.GHOST, Breed.SPIRIT, Breed.WRAITH] else 0.14)
 	var look_shadow := Person.foot_shadow(shadow, sc)
 	draw_rect(look_shadow[0], look_shadow[1])
-	if state == State.DEAD and breed in [Breed.ZOMBIE, Breed.SPIRIT]:
+	if state == State.DEAD and breed in [Breed.ZOMBIE, Breed.SPIRIT, Breed.WRAITH]:
 		return  # cut down, it is freed at once: only its shadow shows
 	if state == State.DEAD:
 		var dsh := sheet(breed)
@@ -663,6 +713,9 @@ func _draw() -> void:
 		return
 	if breed == Breed.SPIRIT:
 		_draw_spirit(_flash > 0.0)
+		return
+	if breed == Breed.WRAITH:
+		_draw_wraith(_flash > 0.0)
 		return
 	if not sh.is_empty():
 		_draw_sheet(sh, tint, lift)
@@ -698,8 +751,8 @@ func _draw_zombie(tint: Color) -> void:
 		var anim := 1 if _since_move < 0.2 else 0  # walk, else idle
 		var f := _people_facing()
 		var n: int = maxi(1, info[4][anim * 4 + f])
-		# One that passes for living (white, Walking Corpse) steps at a person's walk rate (PeopleArt's walk FPS); the rest shamble.
-		var rate := PeopleArt.FPS_AT[1] / maxf(7.0 * speed(), 0.001) if worn_tint == Color.WHITE else ZOMBIE_SHAMBLE * 2.5
+		# Every zombie, grey or white, steps at the rate its own speed asks (PeopleArt's walk FPS).
+		var rate := PeopleArt.FPS_AT[1] / maxf(7.0 * speed(), 0.001)
 		var frame := int(_anim * rate) % n if anim == 1 else int(_hover_t * 3.0) % n
 		var cell: Vector2 = info[3]
 		var src := Rect2(info[0] + Vector2(frame * cell.x, (anim * 4 + f) * cell.y), cell)

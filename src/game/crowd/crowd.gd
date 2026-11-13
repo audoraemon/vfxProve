@@ -2236,6 +2236,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if kind == &"gone":
 		return  # walked through a door of stars (The Far Gate): no cry, no body, nothing for the town to find
 	_voice_death(p, kind)
+	if kind == &"grave":
+		return  # the Walker's quiet kill: a body, a slump, no alarm
 	if is_veiled(p.ground_pos):
 		return  # a death nobody sees (Unseen Hour)
 	if kind == &"doom":

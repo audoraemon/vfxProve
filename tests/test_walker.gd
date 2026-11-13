@@ -43,7 +43,7 @@ static func _book(t) -> void:
 		"its area is the body's pick (%s)" % [area])
 	t.check(Sfx.CATALOG.has(&"q_walker") and PowerBook.icon("walker") != null and PowerBook.hud_icon("walker") != null
 		and PowerBook.clip("walker") != null, "its own cue q_walker, its icons and its clip")
-	t.check(Rules.POWER_KINDS.get("walker", null) == [] and PowerBook.FAMILY.get("walker", "") == "death", "it kills nobody; Death's family")
+	t.check(Rules.POWER_KINDS.get("walker", null) == [&"grave"] and PowerBook.FAMILY.get("walker", "") == "death", "it kills only as the quiet grave kind; Death's family")
 
 
 ## Walkable ground `d` units from `at` along the first of eight ways that is open all along, nobody within 4 of it.

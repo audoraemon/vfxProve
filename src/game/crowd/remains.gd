@@ -13,7 +13,7 @@ const MAX := 60
 ## A click takes the nearest remain within this.
 const PICK_R := 1.0
 ## Only a death that leaves the body whole is recorded.
-const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy", &"pale", &"shadow"]
+const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy", &"pale", &"shadow", &"grave"]
 ## The powers that need the ledger on (Pale Reign: its dead rise as servants).
 const WANTED_BY: Array[String] = ["raise", "walker", "gravetide", "pale"]
 

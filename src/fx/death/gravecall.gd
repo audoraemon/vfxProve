@@ -1,7 +1,7 @@
 class_name GravecallFx
 extends FxTimeline
-## Gravecall (Death, Tier II; spec 5.2): no body is needed. The first click calls SPIRITS pale spirits up out of the ground
-## (DeathParts.spirit()), the second (extra["to"]) sends them: they drift through walls, slightly apart, to that spot and haunt a
+## Gravecall (Death, Tier II; spec 5.2): no body is needed. The first click calls SPIRITS wraiths up out of the ground
+## (DeathParts.haunt()), the second (extra["to"]) sends them: they drift through walls, slightly apart, to that spot and haunt a
 ## circle of HAUNT_R there for HAUNT seconds -- everyone within it flees, afresh each second. A soldier a spirit passes through
 ## (within PASS_R) is frozen for FREEZE seconds, once per soldier per spirit. At the end every spirit is recalled and thins away.
 ## It kills nobody (Rules.POWER_KINDS: []). Loud (PowerBook.REACH): the danger counts from T_RISE, when the dead rise.
@@ -22,6 +22,8 @@ const ARRIVED := 0.3
 const FRIGHT_EVERY := Visitors.FRIGHT_EVERY
 ## At the end they thin away over FADE.
 const FADE := 0.6
+## The cold glow under each wraith.
+const GLOW := 0.35
 ## Cold grave light and pale fire (Death's palette).
 const PALE := [Color("eaf4ff"), Color("c8f0dc"), Color(0.5, 0.9, 0.7, 0.5), Color(0.2, 0.4, 0.35, 0.0)]
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
@@ -37,6 +39,8 @@ var _started := -1.0
 var _fright_in := 0.0
 var _passed := {}  # spirit -> {soldier: true}
 var _ended := false
+## A cold glow under each wraith while it haunts (staged only), by wraith.
+var _glows := {}  # Animal -> QuadFx
 
 
 func _build() -> void:
@@ -66,10 +70,12 @@ func _rise() -> void:
 	var mul := maxf(1.0, trip / (base * TRAVEL_MAX))
 	for k in SPIRITS:
 		var ang := TAU * float(k) / float(SPIRITS) + 0.5
-		var a := DeathParts.spirit(visitors, origin + Vector2.from_angle(ang) * SPREAD * 0.5, false)
+		var a := DeathParts.haunt(visitors, origin + Vector2.from_angle(ang) * SPREAD * 0.5)
 		a.speed_mul *= mul
 		spirits.append(a)
 		_passed[a] = {}
+		if DominionParts.staged(self):
+			_glows[a] = FxParts.ground_light(self, a.ground_pos, 1.0, DeathParts.GRAVE_GREEN, GLOW)
 	if DominionParts.staged(self):
 		var sp := Iso.ground_to_screen(origin)
 		var burst := FxParts.bloom(self, sp + Vector2(0, -10), 26.0, DeathParts.PALE_FIRE, 1.0, 1.0)
@@ -93,6 +99,8 @@ func _fx_process(delta: float) -> void:
 			a.walk_to(_slots[k], delta, null)  # straight through whatever stands between
 			all_there = false
 		_freeze_soldiers(a)
+		if _glows.has(a):
+			(_glows[a] as QuadFx).position = a.ground_pos
 	if all_there and not haunting:
 		haunting = true
 		_started = t
@@ -140,6 +148,8 @@ func _end_life() -> void:
 	haunting = false
 	if visitors == null:
 		return
+	for q: QuadFx in _glows.values():
+		q.tween_param("intensity", GLOW, 0.0, FADE)
 	if DominionParts.staged(self):
 		for a in visitors.living():
 			FxParts.smoke(self, Iso.ground_to_screen(a.ground_pos), 6.0, 24.0, FADE * 0.5, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), PALE)

@@ -27,7 +27,7 @@ static func _spot(made: Array) -> Vector2:
 	return RD._empty(made)
 
 
-## "three spirits rise with no body needed"
+## "three wraiths rise with no body needed"
 static func _rise(t, made: Array) -> void:
 	RD._clear_all(made)
 	var crowd: Crowd = made[0]
@@ -36,8 +36,8 @@ static func _rise(t, made: Array) -> void:
 	var fx := _cast(made, at, at + Vector2(6.0, 0.0))
 	RD._run(fx, GravecallFx.T_RISE + 0.1)
 	var up := fx.visitors.living()
-	t.check(up.size() == GravecallFx.SPIRITS and up.all(func(a: Animal) -> bool: return a.breed == Animal.Breed.SPIRIT),
-		"three spirits rise with no body needed (%d)" % up.size())
+	t.check(up.size() == GravecallFx.SPIRITS and up.all(func(a: Animal) -> bool: return a.breed == Animal.Breed.WRAITH),
+		"three wraiths rise with no body needed (%d)" % up.size())
 	t.check(GravecallFx.HAUNT_R == DeathParts.SPIRIT_FRIGHT_R, "the haunt reaches as far as a spirit's fright")
 	fx.end_now()
 

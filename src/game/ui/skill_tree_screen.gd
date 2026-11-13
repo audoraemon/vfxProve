@@ -28,6 +28,9 @@ const MINI_ICON_UNITS := 18.0
 const LABEL_AREA := Rect2(124.0, 28.0, 392.0, 218.0)
 const LABEL_STRIP_H := 13.0
 const LABEL_STRIP_H2 := 25.0
+## A strip must touch (within this many u of) its own node's disc, and its node must be the nearest by this ratio.
+const LABEL_NEAR := 6.0
+const LABEL_OWN_RATIO := 0.7
 ## The affordable nodes' glow breathes once in this many seconds.
 const PULSE_SECONDS := 1.6
 ## The refusal under RAISE wraps to this width (units) and at most 2 lines.
@@ -334,20 +337,40 @@ static func strip_candidates(p: Vector2, size: Vector2) -> Array[Rect2]:
 		centres.append(p + Vector2(-side * (gap + hw), dy))
 	for more in [6.0, 12.0, 20.0]:
 		centres.append(p + dir * (gap + ext + more))
+	# every other direction round the node, nearest the radial one first, the strip's near edge a fixed gap from the disc
+	var base := dir.angle()
+	for step in range(1, 9):
+		for sgn in [1.0, -1.0]:
+			var d := Vector2.from_angle(base + sgn * float(step) * PI / 8.0)
+			centres.append(p + d * (gap + absf(d.x) * hw + absf(d.y) * hh))
 	var out: Array[Rect2] = []
 	for c in centres:
 		out.append(Rect2((c - size * 0.5).round(), size))
 	return out
 
 
-## Where every name of column `col` is written: Vector2i(tier, i) -> its strip (text width + 6 u by LABEL_STRIP_H), outermost tier first,
+## Whether a strip reads as the name of the node at `p`: it is within LABEL_NEAR u of that disc, and that disc is the closest of the
+## wheel's nodes to it, by at least a margin (its distance <= LABEL_OWN_RATIO x the nearest other disc's).
+static func strip_belongs(r: Rect2, tier: int, i: int) -> bool:
+	var own := _gap(r, TreeWheel.node_at(tier, i)) - TreeWheel.NODE_R
+	if own > LABEL_NEAR:
+		return false
+	var other := INF
+	for t in range(1, GodTree.TIERS + 1):
+		for k in GodTree.PER_TIER:
+			if t != tier or k != i:
+				other = minf(other, _gap(r, TreeWheel.node_at(t, k)) - TreeWheel.NODE_R)
+	return own <= LABEL_OWN_RATIO * other
+
+
+## Where every name of column `col` is written: Vector2i(tier, i) -> its strip (text width + 6 u by LABEL_STRIP_H), innermost tier first (the most crowded),
 ## each in the first candidate place that is clear (strip_clear); when none is, the radial place, and a test fails. Cached per column.
 func label_layout(col: int) -> Dictionary:
 	if _label_cache.has(col):
 		return _label_cache[col]
 	var out := {}
 	var placed: Array[Rect2] = []
-	for tier in range(GodTree.TIERS, 0, -1):
+	for tier in range(1, GodTree.TIERS + 1):
 		for i in GodTree.PER_TIER:
 			var key := key_at(col, tier, i)
 			if key == "":
@@ -358,7 +381,7 @@ func label_layout(col: int) -> Dictionary:
 			var found := false
 			for two in [false, true]:
 				for c in strip_candidates(p, strip_size(full, two)):
-					if strip_clear(c, placed):
+					if strip_clear(c, placed) and strip_belongs(c, tier, i):
 						pick = c
 						found = true
 						break

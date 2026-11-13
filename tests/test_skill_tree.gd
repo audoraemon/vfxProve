@@ -377,6 +377,15 @@ static func _labels_clear(t) -> void:
 				for plate in SkillTreeScreen.numeral_plates():
 					if r.intersects(plate):
 						bad.append(tag + " covers a numeral plate")
+				var own := TreeWheel.node_at(at.x, at.y).clamp(r.position, r.end).distance_to(TreeWheel.node_at(at.x, at.y)) - TreeWheel.NODE_R
+				var nearest := INF
+				for tt in range(1, 6):
+					for ii in 2:
+						if Vector2i(tt, ii) != at:
+							var q := TreeWheel.node_at(tt, ii)
+							nearest = minf(nearest, q.clamp(r.position, r.end).distance_to(q) - TreeWheel.NODE_R)
+				if own > 6.0 + 0.001 or own > 0.7 * nearest + 0.001:
+					bad.append("%s is %.1f from its node and %.1f from the nearest other" % [tag, own, nearest])
 				for other: Vector2i in strips:
 					if other != at and r.intersects(layout[other]):
 						bad.append("%s meets strip %d:%d" % [tag, other.x, other.y])

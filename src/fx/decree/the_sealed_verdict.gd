@@ -3,7 +3,7 @@ extends FxTimeline
 ## The Sealed Verdict (Decree, Tier V; spec 5.10; the Judge's death verdict, a law that holds once written): a district
 ## of RADIUS round the click is written into the brass ledger. Only the player sees it: everything before the stroke is
 ## drawn on the god's overlay (ctx.overhead) -- its circle, the runes counting down round it, the gilt script chains
-## turning round its rim, the ledger page beside it inking a tally of the souls inside, and over the last DUSK seconds
+## turning round its rim, the ledger page inside it inking a tally of the souls inside, and over the last DUSK seconds
 ## the district darkening while a brass bell comes down over its middle. The town sees nothing -- the cast is quiet (no
 ## alarm, no danger, no fright), no law is laid for its choices to ask, nobody is marked -- and goes on, walking in and
 ## out.
@@ -183,7 +183,7 @@ func dusk() -> float:
 ## the town shows through it: a thin brass circle (ink under it so it reads on any ground); round its outside a rune
 ## for each of the COUNTDOWN seconds, from the top round clockwise, each going dark as its second is spent, the next one
 ## lit gilt; round its inside a brass and gilt chain turning one way and a band of gilt script turning the other; over
-## the middle the seconds left, in gilt on a small ink page edged in brass; and beside the circle, to the east, the
+## the middle the seconds left, in gilt on a small ink page edged in brass; and inside the circle, east of the middle, the
 ## ledger's page, where a gilt tally of the souls inside is inked in as it changes. Over the last TOLL_FROM seconds the circle beats with
 ## each one; over the last DUSK the district darkens and a brass bell is let down on its chain over the middle.
 ## At the stroke the bell is gone, a great seal falls (DROP) and stamps the middle, a gilt line runs from it to each of
@@ -202,7 +202,9 @@ class Ledger extends Node2D:
 	const SCRIPT := 64
 	## The darkness over the district at its deepest.
 	const DARK := 0.42
-	## The tally page: where it hangs east of the circle, its size, and the most marks it holds.
+	## The tally page: where it hangs inside the circle, east of its middle (PAGE_IN of the way to the rim, so it stays
+	## on screen at play zoom), its size, and the most marks it holds.
+	const PAGE_IN := 0.5
 	const PAGE_SIZE := Vector2(124, 96)
 	## The page's words, as big as the seconds' (the town is played zoomed out: Mission.PLAY_ZOOM).
 	const PAGE_TEXT := 20
@@ -286,7 +288,7 @@ class Ledger extends Node2D:
 		_links_a.resize(LINKS)
 		_links_b.resize(LINKS)
 		_script.resize(SCRIPT * 2)
-		_page_at = Vector2(h.x + 14.0, -PAGE_SIZE.y * 0.5).round()
+		_page_at = Vector2(h.x * PAGE_IN, -PAGE_SIZE.y * 0.5).round()
 		# Groups of five, four groups a row: four strokes and one across them.
 		for m in TALLY_MAX:
 			@warning_ignore("integer_division")
@@ -397,7 +399,7 @@ class Ledger extends Node2D:
 		draw_multiline(_script, Color(DecreeParts.INK, a * 0.6), 4.5)
 		draw_multiline(_script, Color(DecreeParts.GILT, a), 2.5)
 
-	## The ledger's page east of the circle: who is inside, as a gilt tally inked in.
+	## The ledger's page inside the circle, east of the middle: who is inside, as a gilt tally inked in.
 	func _draw_page(a: float) -> void:
 		var page := Rect2(_page_at, PAGE_SIZE)
 		draw_rect(page.grow(2.0), Color(BRASS, a))
@@ -517,7 +519,7 @@ class Ledger extends Node2D:
 ## The great seal burnt into the ground at the middle, on the ground plane (in ground units): its rings and its sign,
 ## glowing like an ember at first, then charred, gone over BURN.
 class Brand extends Node2D:
-	const R := 1.5
+	const R := 2.4
 	const EMBER := Color("ff8a2a")
 	const CHAR := Color(0.06, 0.04, 0.03)
 	var _age := 0.0
@@ -533,10 +535,10 @@ class Brand extends Node2D:
 		var a := 1.0 - _age / BURN
 		var hot := clampf(1.0 - _age / 1.2, 0.0, 1.0)
 		var line := Color(CHAR.lerp(EMBER, hot), a * 0.9)
-		draw_circle(Vector2.ZERO, R * 1.12, Color(CHAR, a * 0.45))
-		draw_arc(Vector2.ZERO, R, 0.0, TAU, 40, line, 0.14)
-		draw_arc(Vector2.ZERO, R * 0.82, 0.0, TAU, 40, line, 0.06)
+		draw_circle(Vector2.ZERO, R * 1.12, Color(CHAR, a * 0.7))
+		draw_arc(Vector2.ZERO, R, 0.0, TAU, 48, line, 0.22)
+		draw_arc(Vector2.ZERO, R * 0.82, 0.0, TAU, 48, line, 0.1)
 		for r in 5:
 			for c in 5:
 				if DecreeParts.HOURGLASS[r] & (1 << (4 - c)):
-					draw_rect(Rect2(Vector2(c - 2.5, r - 2.5) * 0.34, Vector2(0.34, 0.34)), line)
+					draw_rect(Rect2(Vector2(c - 2.5, r - 2.5) * 0.55, Vector2(0.55, 0.55)), line)

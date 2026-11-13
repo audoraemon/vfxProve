@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **144** done\n**7** active branches besides Develop-Main\n\n**Since the last update** (<t:1794548474:f>)\n• New: Mission moments heard (tier 1)",
+     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **144** done\n**8** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-13T12:41:14+07:00"
+     "timestamp": "2026-11-13T13:02:45+07:00"
     },
     {
      "title": "god/death-powers",
@@ -26,7 +26,12 @@
     },
     {
      "title": "feat/ui-resolution",
-     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: UI resolution & skill tree readability spec and plan\n\n_No Ledger task points at this branch._",
+     "description": "2 commits not in Develop-Main · last commit today · local only\n> docs: ui-resolution plan pre-flight fixes (show names, invariant, missed call sites, test hooks)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/sound-natural-2",
+     "description": "1 commit not in Develop-Main · last commit today\n> feat: mission moments heard in tiers 2-5\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -53,10 +58,17 @@
      "title": "feat/Develop-Main",
      "description": "Main line · last commit 2026-11-13\n> feat: mission moments heard where they happen (tier 1 first)\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (23)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
-    },
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "Recently done",
-     "description": "• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_\n• Decree authority powers built (god branch) _(11-13)_\n• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_\n• Dominion powers sound like the mind (skill-tree audit) _(11-12)_\n• God progression merged into Develop-Main _(11-12)_",
+     "description": "• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Town children (Discord idea Add children Npc) _(11-13)_\n• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_\n• Decree authority powers built (god branch) _(11-13)_\n• Ruin and Passage powers + roaming visitors get their own sound (skill-tree audit) _(11-12)_\n• Dominion powers sound like the mind (skill-tree audit) _(11-12)_",
      "color": 10185686
     }
    ]

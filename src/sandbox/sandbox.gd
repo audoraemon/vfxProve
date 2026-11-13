@@ -87,6 +87,8 @@ var _follow_slack := 0.0
 
 
 func _ready() -> void:
+	if WorldView.self_host(self):
+		return  # the main scene hosts itself: this _ready runs again inside the world viewport (WorldView.self_host)
 	RenderingServer.set_default_clear_color(Color("07080d"))
 	_build_world()
 	var args := OS.get_cmdline_user_args()
@@ -218,7 +220,7 @@ func _on_fx_done(fx: FxTimeline) -> void:
 
 
 func _mouse_ground() -> Vector2:
-	return Iso.screen_to_ground(get_global_mouse_position())
+	return _bf.mouse_ground()
 
 
 func _unhandled_input(event: InputEvent) -> void:

@@ -25,7 +25,7 @@ var frames := 240
 
 func _initialize() -> void:
 	mission = load("res://scenes/mission.tscn").instantiate()
-	root.add_child(mission)
+	WorldView.add_hosted(root, mission)  # hosted in a world viewport unless headless, as the game does
 	_run.call_deferred()
 
 

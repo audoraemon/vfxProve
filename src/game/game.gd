@@ -975,7 +975,7 @@ func _build_mission() -> Mission:
 		mission.report_on_decision = true  # the night banks when it is decided, not after its ending (review M1)
 		mission.clock_started.connect(_on_clock_started.bind(mission))
 		mission.decided.connect(_on_night_decided)
-	add_child(mission)
+	WorldView.add_hosted(self, mission)  # a fresh view per mission (not headless); it frees itself with the mission
 	mission.finished.connect(_on_mission_finished)
 	mission.act_over.connect(_on_act_over)
 	mission.pause_pressed.connect(_open_pause)
@@ -1001,7 +1001,7 @@ func _build_memory() -> Mission:
 	mission.memory_night = _memory_night
 	mission.levels = {_remembering: _memory_level}
 	mission.restart_locked = true
-	add_child(mission)
+	WorldView.add_hosted(self, mission)  # a fresh view per mission (not headless); it frees itself with the mission
 	mission.pause_pressed.connect(_open_pause)
 	mission.memory_night_toggled.connect(_on_memory_night)
 	mission.memory_level_picked.connect(func(level: int) -> void: _memory_level = level)
@@ -3322,8 +3322,8 @@ func _flow_enter_rite(step: Callable, hub: GodHub, pair: PackedStringArray) -> b
 ## own `_unhandled_input`, and true says the mouse really was there. Where this machine will not warp the mouse the click's work is done by
 ## `Mission.chain_click()` instead (false), so FLOW tests the rite and not the window manager.
 func _flow_click_ground(ground: Vector2) -> bool:
-	var view := get_viewport()
-	var at := view.get_canvas_transform() * Iso.ground_to_screen(ground)
+	var view := get_viewport()  # the root: the mouse is warped here and the click's position is a root (= world viewport) position
+	var at := _mission.world_xf() * Iso.ground_to_screen(ground)
 	view.warp_mouse(at)
 	await get_tree().process_frame
 	await get_tree().process_frame

@@ -212,6 +212,8 @@ var _music_in := 0.0
 
 
 func _ready() -> void:
+	if WorldView.self_host(self):
+		return  # the main scene hosts itself: this _ready runs again inside the world viewport (WorldView.self_host)
 	RenderingServer.set_default_clear_color(CLEAR)
 	_bf = Battlefield.new()
 	_bf.name = "Battlefield"
@@ -220,7 +222,7 @@ func _ready() -> void:
 	_bf.ctx.field.bounds = City.current().map()
 	_bf.sim_zoom = SIM_PLAY_ZOOM
 	_zoom_readout = ZoomReadout.new()
-	add_child(_zoom_readout)
+	_bf.ui_parent().add_child(_zoom_readout)  # UI is drawn in the root, never in the world viewport
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
 	# up a handler for every mission the player has played.
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
@@ -344,7 +346,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_drafted = powers
 	# v0.11.1: a Control that holds keyboard focus (a menu button just clicked) takes Tab for focus-next before the HUD can see it.
 	if is_inside_tree():
-		get_viewport().gui_release_focus()
+		get_tree().root.gui_release_focus()  # the menu buttons live in the root, not in the world viewport
 	if _ending:
 		# A start during the ending's slow motion (v0.09): that ending lets go once its wait is over (_play_ending()), so
 		# the time scale it dipped is restored here.
@@ -432,7 +434,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_overlay.name = "BehaviourOverlay"
 	if "--behaviour" in OS.get_cmdline_user_args():
 		BehaviourOverlay.shown = true
-	add_child(_overlay)
+	_bf.ui_parent().add_child(_overlay)
 	_begin_memory()
 	_begin_intro(play)
 	_prayers_hold = 0.0
@@ -457,7 +459,7 @@ func _begin_memory() -> void:
 	_memory = MemoryOverlay.new().setup(String(PowerBook.get_power(remembrance).get("name", remembrance)), top, level, memory_night)
 	_memory.level_picked.connect(set_memory_level)
 	_memory.night_toggled.connect(func(night: bool) -> void: memory_night_toggled.emit(night))
-	add_child(_memory)
+	_bf.ui_parent().add_child(_memory)
 
 
 ## Remembrance's level picker (1-5; 1 only for a power without level tables): the level the power is cast at from now on.
@@ -528,6 +530,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 
 	_hud = Hud.new()
 	_hud.name = "Hud"
+	_hud.world_viewport = _bf.get_viewport()  # the HUD lives in the root; its tags are placed with the world camera's transform
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_rules.banner.disconnect(hold)
@@ -674,7 +677,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_aim.queue_free()
 	_hud.queue_free()
 	if is_inside_tree():
-		get_viewport().gui_release_focus()  # v0.11.1: as in start()
+		get_tree().root.gui_release_focus()  # v0.11.1: as in start()
 	_pressing = false  # a press held over the old aim is not the new one's to release
 	_act = _def.act(id)
 	_act.night = _night
@@ -1399,6 +1402,11 @@ func _mission_test() -> void:
 	await _quit()
 
 
+## The camera's canvas transform of this mission's world (ground-side screen points to world-viewport px, which are root px when hosted).
+func world_xf() -> Transform2D:
+	return WorldView.world_xf(_bf.get_viewport())
+
+
 ## Whether start() has run. Between add_child() and the end of the shader prewarm there is a battlefield but
 ## no town, rules or aim yet, and nothing in the mission may touch them.
 func started() -> bool:
@@ -1417,5 +1425,9 @@ func _quit() -> void:
 ## subtree freezes the town, the crowd, the effects and the clock together.
 func set_frozen(frozen: bool) -> void:
 	process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT
+	# Hosted, the HUD, the zoom readout, the overlays and the FPS meter live in the view's ui and not under this node: they freeze with it
+	# (the legend is PROCESS_MODE_ALWAYS and the pause menu is Game's, so both keep running).
+	if _bf != null and is_instance_valid(_bf) and _bf.ui_parent() != _bf:
+		_bf.ui_parent().process_mode = Node.PROCESS_MODE_DISABLED if frozen else Node.PROCESS_MODE_INHERIT
 	if is_instance_valid(_crowd):
 		_crowd.pause_bed(frozen)

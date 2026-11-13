@@ -203,13 +203,15 @@ var _t := 0.0
 
 
 func _ready() -> void:
+	if WorldView.self_host(self):
+		return  # the main scene hosts itself: this _ready runs again inside the world viewport (WorldView.self_host)
 	RenderingServer.set_default_clear_color(CLEAR)
 	_bf = Battlefield.new()
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
 	_zoom_readout = ZoomReadout.new()
-	add_child(_zoom_readout)
+	_bf.ui_parent().add_child(_zoom_readout)
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
 	_drag_line = Node2D.new()
 	_drag_line.name = "DragLine"

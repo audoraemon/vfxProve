@@ -42,7 +42,7 @@ func _init() -> void:
 ## Put `node` in the world viewport. The view frees itself (and its ui subtree) when the hosted node leaves the tree.
 func host(node: Node) -> void:
 	if _hosted != null and is_instance_valid(_hosted) and _hosted.tree_exited.is_connected(_on_hosted_exited):
-		_hosted.tree_exited.disconnect(_on_hosted_exited)  # one host per view: the old node no longer owns it
+		_hosted.tree_exited.disconnect(_on_hosted_exited)  # one host per view: only the newest node's exit frees it (the old one stays in the viewport, the caller's to remove)
 	if node.get_parent() != null:
 		node.get_parent().remove_child(node)
 	viewport.add_child(node)
@@ -69,12 +69,30 @@ func _on_hosted_exited() -> void:
 		queue_free()
 
 
-## Input is forwarded only while the view processes (INHERIT): with the tree paused the world gets none, even a node set to
-## PROCESS_MODE_ALWAYS. Mission pause handling (2b) must account for that.
+## Input is forwarded only while the view processes (INHERIT), so a paused tree would starve the world of input, even a node set to
+## PROCESS_MODE_ALWAYS. The game never pauses the tree: the pause menu and the legend freeze the Mission (`set_frozen`, process_mode
+## DISABLED on its subtree), the view keeps forwarding and the frozen subtree simply takes none, as before hosting.
 func _unhandled_input(event: InputEvent) -> void:
 	viewport.push_input(event, true)
 	if viewport.is_input_handled():
 		get_viewport().set_input_as_handled()
+
+
+## Whether this run hosts worlds in a view at all: never headless (the references and the suite run unhosted, the root is the world).
+static func can_host() -> bool:
+	return DisplayServer.get_name() != "headless"
+
+
+## Put `node` under `parent`: inside a new WorldView added under `parent` when hosting is on (`can_host()`, or `force`), else straight
+## under `parent` as before. The view is added first, so `node`'s _ready runs inside the world viewport. Returns the view, or null.
+static func add_hosted(parent: Node, node: Node, force := false) -> WorldView:
+	if not (can_host() or force):
+		parent.add_child(node)
+		return null
+	var wv := WorldView.new()
+	parent.add_child(wv)
+	wv.host(node)
+	return wv
 
 
 ## The view hosting `node`, or null (not hosted).
@@ -117,7 +135,7 @@ static func self_host(node: Node, force := false) -> bool:
 	var tree := node.get_tree()
 	if node.get_parent() != tree.root or tree.current_scene != node:
 		return false
-	if (DisplayServer.get_name() == "headless" and not force) or of(node) != null:
+	if not (can_host() or force) or of(node) != null:
 		return false
 	node.request_ready()
 	_reparent.call_deferred(node, tree)

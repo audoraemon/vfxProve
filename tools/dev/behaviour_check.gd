@@ -490,7 +490,7 @@ func _initialize() -> void:
 	mission = load("res://scenes/mission.tscn").instantiate()
 	mission.exit_on_refusal = false
 	mission.unhosted_ok = true  # its throw-away _ready() start runs the default mission, which a non-home --city= does not host; _run() resets this
-	root.add_child(mission)
+	WorldView.add_hosted(root, mission)  # hosted in a world viewport unless headless, as the game does
 	_run.call_deferred()
 
 
@@ -1282,7 +1282,7 @@ func _quiet(shots: bool) -> void:
 			bf.camera.position = (Iso.ground_to_screen(aim_at) + Vector2(0, -16)).round()
 			await _frames(2)
 			# The mission aims wherever the mouse is, every frame: put the mouse on the target.
-			bf.get_viewport().warp_mouse(bf.get_viewport().get_canvas_transform() * Iso.ground_to_screen(aim_at))
+			root.warp_mouse(WorldView.world_xf(bf.get_viewport()) * Iso.ground_to_screen(aim_at))  # the root's mouse: a SubViewport has no container transform
 			await _frames(3)
 			await bf.save_capture("behaviour_aim_%s.png" % ["doom", "blight"][slot])
 		mission._aim.unfocus()

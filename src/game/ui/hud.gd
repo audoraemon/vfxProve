@@ -126,6 +126,9 @@ const RITE_PLATE_TOP := 164.0
 const RITE_PLATE_H := 80.0
 const RITE_PLATE_WRAP := 560.0
 
+## The viewport the world is drawn in (the mission's battlefield's). Hosted, the HUD lives in the root and the world in a SubViewport, so
+## tag positions use this viewport's camera transform; null means the HUD's own viewport (not hosted, as before).
+var world_viewport: Viewport
 var _rules: Rules
 var _crowd: Crowd
 var _town: Town
@@ -659,12 +662,19 @@ func all_tags() -> Array[MapTag]:
 	return out
 
 
+## The camera's canvas transform of the world the HUD marks (ground-side screen points to HUD px).
+func _world_xf() -> Transform2D:
+	if world_viewport != null and is_instance_valid(world_viewport) and world_viewport.is_inside_tree():
+		return WorldView.world_xf(world_viewport)
+	return get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+
+
 ## The waiting timed wish whose tag is within ENGAGE_PX of the screen point `point` (spec §5.2: clicking its tag engages it),
 ## as its index among the night's wishes; -1 for none.
 func wish_at(point: Vector2) -> int:
 	if _rules == null or _rules.descent == null:
 		return -1
-	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var xf := _world_xf()
 	var wishes := _rules.descent.wishes
 	for i in wishes.size():
 		if not wishes[i].waiting():
@@ -745,7 +755,7 @@ func _draw_gaze(w: float) -> void:
 ## tags out first (tag_layout()). v0.11 M6: the live stack is the layout's keepout (stack_rect()), so no tag, label or arrow hides under it;
 ## the timeline strip and the slot bar count as placed for labels (the final review), so no plate is drawn over them.
 func _draw_tags() -> void:
-	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var xf := _world_xf()
 	# v0.11.1 §3: the hover comes from the previous frame's arrows (cheap, one frame late), read before the layout is replaced.
 	_layout = _lay_out_tags()
 	# Outlines and diamonds first, then the labels over them all, so no later tag's diamond hides a label kept for an
@@ -770,7 +780,7 @@ func _draw_tags() -> void:
 ## The frame's tag layout (tag_layout()) with the HUD's own plates kept clear: the stack as the keepout, the strip, the slot bar and the chain plate
 ## as plates no label may cover, and the chain plate also as a place no arrow or diamond may sit (god P3, task 5 review I1).
 func _lay_out_tags() -> Array:
-	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var xf := _world_xf()
 	# v0.11.1 §3: the hover comes from the previous frame's arrows (cheap, one frame late), read before the layout is replaced.
 	var hover := _hover_point()
 	var chain := chain_rect() if chain_shown() else Rect2()
@@ -808,7 +818,7 @@ func _hover_point() -> Vector2:
 		return Vector2.INF
 	for e: Dictionary in _layout:
 		if String(e.mode) == "arrow":
-			return get_viewport().get_mouse_position()
+			return WorldView.mouse_in_view(self)
 	return Vector2.INF
 
 
@@ -1213,7 +1223,7 @@ func _tag_signature(with_stack := true) -> String:
 	var tags := all_tags()
 	if tags.is_empty():
 		return ""
-	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var xf := _world_xf()
 	# v0.11 M6: the stack is the layout's keepout, so the layer redraws when its size changes (a wish row comes or goes); the final
 	# review: the strip and the slot bar are placed for the labels, so the same for them (`with_stack` false leaves all three out).
 	var out := "%s|%s|%s" % [xf, _view(), stack_rect() if with_stack else Rect2()]
@@ -1513,7 +1523,7 @@ func _draw_ascend() -> void:
 func _draw_rise() -> void:
 	if not rising():
 		return
-	var xf := get_viewport().get_canvas_transform() if is_inside_tree() else Transform2D.IDENTITY
+	var xf := _world_xf()
 	var foot := (xf * Iso.ground_to_screen(_rise_at)).round()
 	var k := clampf(_rise_age / RISE_SECONDS, 0.0, 1.0)
 	var top := lerpf(foot.y, 0.0, minf(k * 2.0, 1.0))

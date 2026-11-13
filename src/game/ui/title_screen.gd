@@ -40,13 +40,13 @@ func setup(best_score: int, best_rank: String, settings: Settings = null, path :
 	_best_rank = best_rank
 	_bf = Battlefield.new()
 	_bf.name = "Backdrop"
-	add_child(_bf)
+	var view := WorldView.add_hosted(self, _bf)  # not headless: the backdrop is drawn in a world viewport, the menu in the root
 	_bf.reset(7)
 	# The title's backdrop is always Aldermere, whichever city a session played last.
 	City.use(&"aldermere")
 	_town = Town.new()
 	_town.name = "Town"
-	add_child(_town)
+	(view.viewport if view != null else self).add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
 	_bf.camera.zoom = Vector2.ONE * ZOOM
 	var layer := CanvasLayer.new()

@@ -283,11 +283,15 @@ static func _attack(t, made: Array) -> void:
 	foe.statuses.erase(&"guise")
 	t.check(not fx.follow_up(foe_pos, {"order": "attack"}) and not fx.follow_up(foe_pos, {"order": "attack", "foe": w}),
 		"and with no person to attack")
+	foe.visible = false
+	t.check(not fx.follow_up(foe_pos, {"order": "attack", "foe": foe}) and fx.order == "wait", "and on one unseen (as Mind Whisper's)")
+	foe.visible = true
 	t.check(fx.follow_up(foe_pos, {"order": "attack", "foe": foe}) and fx.order == "attack", "an attack on one 4 off is taken")
 	var took := _until(fx, func() -> bool: return fx.order != "attack", 11.0, [by])
 	t.check(not foe.is_alive() and deaths == [[foe, &"grave"]] and fx.kills == 1 and fx.order == "wait" and took < 10.0,
 		"an attack order kills quietly as the grave kind (%.1f s, %s)" % [took, deaths])
 	t.check(rem.pick(foe_pos) != null, "and leaves a body")
+	RD._run(fx, 1.0, [by])  # the bystander lives a second past the kill
 	t.check(crowd.alarm == alarm and by.is_alive() and by.mind == Person.Mind.CALM,
 		"no alarm, and a citizen 2.0 from the kill stays calm (alarm %.2f -> %.2f, %s)" % [alarm, crowd.alarm, Person.Mind.keys()[by.mind]])
 	t.check(not fx.laid and fx.can_follow_up(), "and it stands, waiting for its next order")
@@ -320,6 +324,16 @@ static func _foe_indoors(t, made: Array) -> void:
 	RD._run(fx, 0.2)
 	t.check(fx.order == "wait" and fx.kills == 0 and foe.is_alive(), "the foe goes indoors first: no kill, it waits (%s)" % fx.order)
 	foe.inside = false
+	# Another power's change to its pace (Grave Tide's aura) outlasts a chase: ATTACK_PACE is scaled on and off, never set.
+	var slowed := fx.walker.speed_mul * 0.5
+	fx.walker.speed_mul = slowed
+	t.check(fx.follow_up(foe.ground_pos, {"order": "attack", "foe": foe})
+		and is_equal_approx(fx.walker.speed_mul, slowed * WalkingCorpseFx.ATTACK_PACE), "(a chase quickens the slowed pace 1.6 x)")
+	t.check(fx.follow_up(fx.walker.ground_pos, {"order": "walk", "to": fx.walker.ground_pos}) and fx.order == "walk"
+		and is_equal_approx(fx.walker.speed_mul, slowed),
+		"a walker under another power's pace keeps it after the attack ends (%.3f, want %.3f)" % [fx.walker.speed_mul, slowed])
+	RD._run(fx, 0.2)
+	fx.walker.speed_mul = slowed * 2.0
 	# Out of reach all along (always 3 ahead of it): at ATTACK_SECS it gives up.
 	t.check(fx.follow_up(foe.ground_pos, {"order": "attack", "foe": foe}), "(a new attack)")
 	var ahead := (foe.ground_pos - fx.walker.ground_pos).normalized() * 3.0

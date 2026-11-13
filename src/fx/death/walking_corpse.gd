@@ -72,9 +72,12 @@ var sigil: Node2D
 ## Where it walks: the second click on walkable ground, a walk order's spot, or the building's door.
 var dest := Vector2.INF
 var _grid: WalkGrid
-## Its walk pace (its speed_mul), and when the current attack began.
+## Its walk pace (its speed_mul when summoned), and when the current attack began.
 var _pace := 1.0
 var _attack_t := 0.0
+## Whether its speed_mul is multiplied by ATTACK_PACE now (a chase). Scaled, never set outright, so another power's change to its pace
+## (Grave Tide's aura saves and gives back speed_mul) survives a chase; applied and taken off once each.
+var _chase_paced := false
 
 
 ## The shelter or house a second click at `to` sends the body into: the nearest standing one within DOOR_REACH of it (a tie
@@ -206,10 +209,11 @@ func _chase(delta: float) -> void:
 		ctx.field.kill(who, &"grave", walker.ground_pos)
 
 
-## Whether `p` may be gone for: a living person out in the open, not guised. A Variant: `p` may be freed.
+## Whether `p` may be gone for: a living person out in the open, seen and not guised (as MindWhisperFx.foe_ok()). A Variant: `p`
+## may be freed.
 static func _fair(p: Variant) -> bool:
 	return is_instance_valid(p) and p is Person and (p as Person).is_alive() and not (p as Person).inside \
-		and not (p as Person).guised()
+		and (p as Person).visible and not (p as Person).guised()
 
 
 ## Into building `b`: it walks to its door (an ENTER); false, nothing changed, when it has no door on walkable ground.
@@ -224,15 +228,17 @@ func _go_in(b: Structure) -> bool:
 	return true
 
 
-## A new order: the last one's foe and building let go, its walk pace back.
+## A new order: the last one's foe and building let go, a chase's ATTACK_PACE taken off its pace.
 func _set_order(o: String) -> void:
 	order = o
 	foe = null
 	building = null
 	shelter = null
 	if is_instance_valid(walker):
-		walker.speed_mul = _pace
+		if _chase_paced:
+			walker.speed_mul /= ATTACK_PACE
 		walker.blocked = false
+	_chase_paced = false
 
 
 ## --- Orders: a follow-up through Mind Whisper's wheel, opened on the walker (Targeting, Rules.recast(); review R7, R15).
@@ -295,7 +301,8 @@ func follow_up(at_pos: Vector2, extra_data: Dictionary) -> bool:
 			_set_order("attack")
 			foe = given as Person
 			_attack_t = t
-			walker.speed_mul = _pace * ATTACK_PACE
+			walker.speed_mul *= ATTACK_PACE
+			_chase_paced = true
 		_:
 			return false
 	return true

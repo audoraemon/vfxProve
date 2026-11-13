@@ -1,7 +1,7 @@
 extends RefCounted
 ## The Sealed Verdict (Decree, Tier V; spec 5.10): a district of 10 is written into the brass ledger. Only the player sees
 ## its circle and countdown (the god's overlay); the town sees nothing -- no alarm, no fright, nobody's mind changes, no
-## law for its choices to ask -- and goes on, walking in and out. At 60 s the bell strikes once, and everyone inside at
+## law for its choices to ask -- and goes on, walking in and out. At 30 s the bell strikes once, and everyone inside at
 ## that moment dies in the same frame, where he stands, without a cry (kill kind verdict): out of doors, sheltering in a
 ## house inside the circle (brought out at its door), or kept at home for the night. Then the bodies are found like any
 ## other dead. Who dies is where each stands at the stroke, never a roll.
@@ -82,14 +82,14 @@ static func run(t) -> void:
 	if sf == null:
 		t.check(false, "the effect script loads")
 		return
-	t.check(is_equal_approx(sf.RADIUS, 10.0) and is_equal_approx(sf.COUNTDOWN, 60.0) and sf.KIND == &"verdict",
-		"a district of 10, struck at 60 s")
+	t.check(is_equal_approx(sf.RADIUS, 10.0) and is_equal_approx(sf.COUNTDOWN, 30.0) and sf.KIND == &"verdict",
+		"a district of 10, struck at 30 s")
 	_quiet(t, sf)
 	_stroke(t, sf)
 	_cut_short(t, sf)
 
 
-## The cast: the town sees nothing over 59 s.
+## The cast: the town sees nothing over 29 s.
 static func _quiet(t, sf) -> void:
 	var made := _setup()
 	var crowd: Crowd = made[0]
@@ -112,24 +112,24 @@ static func _quiet(t, sf) -> void:
 	var killed := crowd.killed_citizens + crowd.killed_soldiers
 	crowd.on_cast(C, Vector2.ZERO, 0.0, "sealed")  # what Rules.cast tells the town of every cast
 	var fx = FxTimeline.cast(sf, ctx, C)
-	_run_to(fx, 59.0)
+	_run_to(fx, 29.0)
 	var changed := 0
 	for p in minds:
 		if p.mind != minds[p]:
 			changed += 1
 	t.check(is_equal_approx(crowd.alarm, alarm) and crowd.alarms.stage == stage and crowd.threats.nearby(C, 30.0).is_empty(),
-		"the writing adds no alarm and no danger over 59 s (alarm %.2f -> %.2f)" % [alarm, crowd.alarm])
+		"the writing adds no alarm and no danger over 29 s (alarm %.2f -> %.2f)" % [alarm, crowd.alarm])
 	t.check(changed == 0 and crowd.laws.is_empty() and crowd.killed_citizens + crowd.killed_soldiers == killed,
 		"and nobody's mind changes, no law is laid for the town to ask, nobody dies (%d changed)" % changed)
 	var alive := true
 	for p in near:
 		alive = alive and p.is_alive()
-	t.check(alive and not fx.struck and absf(fx.left() - 1.0) < 0.01, "the ledger counts down: 1 s left at 59 s (%.2f)" % fx.left())
+	t.check(alive and not fx.struck and absf(fx.left() - 1.0) < 0.01, "the ledger counts down: 1 s left at 29 s (%.2f)" % fx.left())
 	fx.end_now()
 	_done(made)
 
 
-## The stroke: whoever is inside at 60 s dies in that one frame; whoever left lives; then the town finds them.
+## The stroke: whoever is inside at 30 s dies in that one frame; whoever left lives; then the town finds them.
 static func _stroke(t, sf) -> void:
 	var made := _setup()
 	var crowd: Crowd = made[0]
@@ -139,8 +139,8 @@ static func _stroke(t, sf) -> void:
 	var ctx: FxContext = made[5]
 	_away(crowd)
 	var stayer: Person = crowd.citizens[0]  # inside all along
-	var walker: Person = crowd.citizens[1]  # outside at the cast, walks in at 30 s
-	var leaver: Person = crowd.citizens[2]  # inside at the cast, walks out at 50 s
+	var walker: Person = crowd.citizens[1]  # outside at the cast, walks in at 15 s
+	var leaver: Person = crowd.citizens[2]  # inside at the cast, walks out at 25 s
 	var far: Person = crowd.citizens[3]  # outside all along, just past the edge
 	var edge: Person = crowd.citizens[4]  # on the edge itself
 	var sheltered: Person = crowd.citizens[5]  # in a house inside the circle
@@ -167,20 +167,20 @@ static func _stroke(t, sf) -> void:
 	var alarm := crowd.alarm
 
 	var fx = FxTimeline.cast(sf, ctx, C)
-	_run_to(fx, 30.0)
+	_run_to(fx, 15.0)
 	walker.ground_pos = C + Vector2(0.0, 4.0)  # walks in
-	_run_to(fx, 50.0)
+	_run_to(fx, 25.0)
 	leaver.ground_pos = C + Vector2(-11.0, 0.0)  # walks out
 	_run_to(fx, sf.COUNTDOWN - DT)
 	t.check(deaths.is_empty() and not fx.struck and stayer.is_alive() and walker.is_alive() and sheltered.inside
 		and fx.t < sf.COUNTDOWN, "nobody dies before the stroke (%d dead at %.2f s)" % [deaths.size(), fx.t])
-	fx._process(DT * 1.5)  # the frame the clock passes 60 s
+	fx._process(DT * 1.5)  # the frame the clock passes 30 s
 	var frame_t: float = fx.t
-	t.check(fx.struck, "the bell strikes once at 60 s")
+	t.check(fx.struck, "the bell strikes once at 30 s")
 	t.check(not stayer.is_alive() and not walker.is_alive() and not guard.is_alive() and not edge.is_alive(),
-		"whoever stands inside at 60 s dies: one inside all along, one who walked in at 30 s, a soldier, one on the edge")
+		"whoever stands inside at 30 s dies: one inside all along, one who walked in at 15 s, a soldier, one on the edge")
 	t.check(leaver.is_alive() and far.is_alive() and held.is_alive() and hound.is_alive(),
-		"one who walked out at 50 s lives; so does one just past the edge, one a director holds indoors, and a hound")
+		"one who walked out at 25 s lives; so does one just past the edge, one a director holds indoors, and a hound")
 	t.check(not sheltered.is_alive() and not sheltered.inside and sheltered.visible and sheltered.ground_pos.distance_to(house.center()) > 0.4
 		and not (crowd.shelters.shelters[house].inside as Array).has(sheltered),
 		"one sheltering in a house inside the circle is brought out at its door and dies there, for the town to find")
@@ -211,7 +211,7 @@ static func _cut_short(t, sf) -> void:
 	var p: Person = crowd.citizens[0]
 	p.ground_pos = C
 	var fx = FxTimeline.cast(sf, ctx, C)
-	_run_to(fx, 30.0)
+	_run_to(fx, 15.0)
 	fx.end_now()
 	for i in 400:
 		fx._process(DT)

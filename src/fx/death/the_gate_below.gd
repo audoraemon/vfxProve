@@ -1,16 +1,19 @@
 class_name TheGateBelowFx
 extends FxTimeline
-## The Gate Below (Death, Tier IV; spec 5.5): a click, and the ground itself opens there into a pit of PIT_R ringed in bone
-## (the PixelLab sheet gate_below.png, grown out of a crack over T_OPEN and shrunk back into one over CLOSE: ruling R5). It is
-## not a door to elsewhere (that is Passage's Doors of the Dead): the ground takes them down.
+## The Gate Below (Death, Tier IV; spec 5.5): a click, and the ground itself tears open there: a dark rift about EDGE,
+## cracked out to PIT_R and strewn with bone, drawn in ground units on the ground layer (Rift; ruling R8), so it keeps its
+## proportions at every zoom. It opens out of a slit over T_OPEN and closes back into one over CLOSE. ARMS pale arms reach up
+## out of the ground all over the arms' reach while it is open (Arm, looping). It is not a door to elsewhere (that is
+## Passage's Doors of the Dead): the ground takes them down.
 ## - From T_OPEN, every GRAB_EVERY, pale arms take the nearest living person within REACH who is out in the open, not guised
 ##   (Person.guised()), not a decoy (Mirrorfold's glass twin) and not caught yet -- a tie goes to the lower instance id; no
 ##   luck. A caught one is held where they stand (hold_pace 0) and dragged in a straight line to the pit's EDGE over DRAG,
 ##   then pulled under: killed as &"pit", a kind that leaves no body (Remains.BODY_KINDS). Each one taken is a soul. No arm
 ##   reaches out once a drag could not finish before the close (SPAN - DRAG), so every soul taken is counted by then.
-## - At SPAN the pit closes, and every soul it took climbs back out of it as a wraith (DeathParts.wraith(): a pale spirit
-##   that goes for soldiers within DeathParts.WRAITH_SEEK, and leaves whoever it passes through at half pace for 4 s). They
-##   are this effect's own Visitors pack, and go back into the ground WRAITH_LIFE later.
+## - At SPAN the pit closes, and every soul it took climbs back out of it as a wraith (DeathParts.wraith(): it goes for
+##   soldiers within DeathParts.WRAITH_SEEK, kills the one it reaches as &"pit" and sinks with him (ruling R9), and leaves
+##   whoever it passes through at half pace for 4 s). They are this effect's own Visitors pack, and the ones left go back
+##   into the ground WRAITH_LIFE later.
 ## Loud (PowerBook.REACH): the danger counts from the first soul under (IMPACT = T_OPEN + DRAG). From then, while the pit is
 ## open, everyone within FRIGHT_R of it flees afresh every FRIGHT_EVERY, and the first soul taken raises the alarm (as Hound
 ## Gate's first bite). Cut short or over, every hold is let go and the wraiths are gone (_finish(); _exit_tree() when torn down).
@@ -26,9 +29,20 @@ const CLOSE := 1.0
 ## One more taken every GRAB_EVERY; each is dragged to the edge over DRAG.
 const GRAB_EVERY := 0.5
 const DRAG := 1.5
-## The edge they are dragged to and go under at: the lip of the hole inside the ring of bone, as drawn (the sheet's hole is
-## about 27 px across its 47 px half-width, at PIT_SCALE: 27 * 3 / 45.25 px per ground unit).
+## The edge they are dragged to and go under at: the rift's lip (its mean radius; it is jagged by 25% either way).
 const EDGE := 1.8
+## The rift (ruling R8): its jagged lip of RIFT_POINTS, CRACKS hairline cracks out to PIT_R, BONES chips of bone strewn
+## between the lip and PIT_R. PX is about one screen pixel in ground units (a ground unit is 32-36 px across).
+const RIFT_POINTS := 18
+const CRACKS := 9
+const BONES := 22
+const PX := 0.03
+## The ambient arms: ARMS of them on a golden-angle spiral from EDGE + 0.3 out to REACH, each rising, clawing and sinking
+## over ARM_LOOP, its loop offset by index * ARM_PHASE.
+const ARMS := 24
+const ARM_LOOP := 2.4
+const ARM_PHASE := 0.37
+const GOLDEN := 2.39996
 ## The wraiths: how long they hunt, how far apart they climb out, how long they take to sink back in at the end.
 const WRAITH_LIFE := 20.0
 const WRAITH_SPREAD := 0.6
@@ -39,13 +53,8 @@ const FRIGHT_EVERY := Visitors.FRIGHT_EVERY
 ## The first soul taken: the alarm it adds (Hound Gate's first bite).
 const TAKE_ALARM := 0.6
 
-## The sheets (Task 1). The pit: one 112x80 image, its middle at CENTRE, drawn at PIT_SCALE (so its outer ring of cobbles,
-## 47 px from the middle, lies about PIT_R out: 47 * 3 / 45.25 = 3.1). The arm: ARM_FRAMES frames of ARM_CELL, its foot at
-## ARM_FOOT -- 0-1 rising, 2-3 the grip, 4-5 pulling down -- drawn at ARM_SCALE, about a person's height (the arm stands
-## 42 px in its cell, a person 18 px in theirs: 42 * 0.5 = 21).
-const PIT_SHEET := "res://assets/pixellab/fx/gate_below.png"
-const PIT_CENTRE := Vector2(56, 40)
-const PIT_SCALE := 3.0
+## The arm sheet: ARM_FRAMES frames of ARM_CELL, its foot at ARM_FOOT -- 0-1 rising, 2-3 the grip, 4-5 pulling down -- drawn
+## at ARM_SCALE, about a person's height (the arm stands 42 px in its cell, a person 18 px in theirs: 42 * 0.5 = 21).
 const ARM_SHEET := "res://assets/pixellab/fx/grave_arms.png"
 const ARM_CELL := Vector2(48, 64)
 const ARM_FOOT := Vector2(24, 60)
@@ -59,6 +68,11 @@ const ARM_PULL := 0.45
 const ARM_SINK := 0.25
 ## The cold glow out of the hole: faint, so the hole stays dark.
 const LIGHT := 0.25
+## The rift's dark, its deepest middle, its lip of broken ground, its cracks.
+const RIFT_DARK := Color(0.02, 0.02, 0.03, 0.92)
+const RIFT_DEEP := Color(0.0, 0.0, 0.0, 0.6)
+const RIFT_LIP := Color(0.16, 0.15, 0.14, 0.7)
+const CRACK := Color(0.05, 0.05, 0.06, 0.85)
 ## Death's palette: bone white, ash grey, pale-white fire; grave green for glows only.
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
@@ -91,11 +105,23 @@ func _build() -> void:
 	ctx.play(&"gatebelow_open", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
-	var pit := Pit.new()
-	pit.fx = self
-	pit.transform = Iso.BASIS.affine_inverse()
-	pit.position = origin
-	track(pit, ctx.ground)
+	var rift := Rift.new()
+	rift.fx = self
+	rift.position = origin
+	track(rift, ctx.ground)
+	# The arms reaching up all over the reach: only out of open ground (none stands on a roof or a wall).
+	var i := 0
+	for spot in arm_spots(origin):
+		if grid == null or grid.walkable(spot):
+			var arm := Arm.new()
+			arm.fx = self
+			arm.born = T_OPEN
+			arm.loop = true
+			arm.phase = float(i) * ARM_PHASE
+			arm.facing = -1 if Iso.ground_to_screen(origin).x > Iso.ground_to_screen(spot).x else 1
+			arm.position = Iso.ground_to_screen(spot).round()
+			track(arm, stand_layer())
+		i += 1
 	# Cold light out of the hole, ground dust thrown up as it cracks open, the ground shaking.
 	_light = FxParts.ground_light(self, origin, PIT_R * 0.8, DeathParts.GRAVE_GREEN, 0.0)
 	_light.tween_param("intensity", 0.0, LIGHT, T_OPEN, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
@@ -279,41 +305,127 @@ func open_k(now: float) -> float:
 	return 1.0 - clampf((now - SPAN) / CLOSE, 0.0, 1.0)
 
 
-## The pit: the gate_below sheet on the ground layer (drawn in screen pixels from the cast point), grown out of a thin crack
-## -- scale about 0.2 to 1, flatter at first, fading in -- and shrunk back into one at the close (ruling R5).
-class Pit extends Node2D:
+## The rift's lip: RIFT_POINTS points about `centre`, at EDGE give or take 25% by a fixed hash of the index (no rng).
+static func rift_points(centre: Vector2) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in RIFT_POINTS:
+		var a := TAU * float(i) / float(RIFT_POINTS)
+		out.append(centre + Vector2.from_angle(a) * EDGE * (1.0 + 0.25 * sin(float(i) * 2.3 + 0.7)))
+	return out
+
+
+## Where the ambient arms stand about `centre`: ARMS points on a golden-angle spiral, evenly spread over the ring from
+## EDGE + 0.3 out to REACH (the square root keeps the outer ring as full as the inner one).
+static func arm_spots(centre: Vector2) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for i in ARMS:
+		var r := lerpf(EDGE + 0.3, REACH, sqrt((float(i) + 0.5) / float(ARMS)))
+		out.append(centre + Vector2.from_angle(float(i) * GOLDEN) * r)
+	return out
+
+
+## The cracks out of the lip: CRACKS jagged lines, each from the lip out to about PIT_R, in ground units about the middle.
+static func crack_lines() -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	for i in CRACKS:
+		var a := TAU * (float(i) + 0.5) / float(CRACKS) + 0.3 * sin(float(i) * 1.7)
+		var dir := Vector2.from_angle(a)
+		var side := dir.orthogonal()
+		var from := EDGE * 0.95
+		var to := PIT_R * (0.85 + 0.15 * sin(float(i) * 3.1 + 0.4))
+		var line := PackedVector2Array()
+		for j in 5:
+			var k := float(j) / 4.0
+			var wob := 0.0 if j == 0 else 0.14 * sin(float(i) * 5.3 + float(j) * 2.1)
+			line.append(dir * lerpf(from, to, k) + side * wob)
+		out.append(line)
+	return out
+
+
+## The rift: drawn on the ground layer in ground units about the cast point, so it lies flat and keeps its shape at every
+## zoom. A lip of broken ground, the dark of the hole (deepest at its middle) edged by one faint grave-green pixel, hairline
+## cracks out to PIT_R and chips of bone. It opens out of a slit (wide across the screen, thin down it) as the pit opens,
+## its cracks running out with it, and closes back into one.
+class Rift extends Node2D:
 	var fx: TheGateBelowFx
-	var _tex: Texture2D
+	var _lip := PackedVector2Array()
+	var _cracks: Array[PackedVector2Array] = []
+	## Each chip: [where (ground units about the middle), its colour index, its length in PX].
+	var _chips: Array = []
 
 	func _ready() -> void:
-		if ResourceLoader.exists(PIT_SHEET):
-			_tex = load(PIT_SHEET)
+		_lip = TheGateBelowFx.rift_points(Vector2.ZERO)
+		_cracks = TheGateBelowFx.crack_lines()
+		for i in BONES:
+			var a := float(i) * GOLDEN + 0.9
+			var r := lerpf(EDGE * 1.15, PIT_R, 0.5 + 0.5 * sin(float(i) * 4.7 + 1.3))
+			_chips.append([Vector2.from_angle(a) * r, i % BONE_CHIPS.size(), 1.0 + float(i % 3)])
 
 	func _process(_delta: float) -> void:
 		queue_redraw()
 
+	## `p` as the rift stands at openness `e`: along the screen's width it opens from 0.3 of its size, down it from 0.05.
+	static func _at(p: Vector2, e: float) -> Vector2:
+		var along := Vector2(1, -1).normalized()
+		var across := Vector2(1, 1).normalized()
+		return along * p.dot(along) * lerpf(0.3, 1.0, e) + across * p.dot(across) * lerpf(0.05, 1.0, e)
+
 	func _draw() -> void:
-		if _tex == null or not is_instance_valid(fx):
+		if not is_instance_valid(fx):
 			return
 		var k := fx.open_k(fx.t)
 		if k <= 0.0:
 			return
 		var e := 1.0 - pow(1.0 - k, 3.0)
-		var sx := lerpf(0.2, 1.0, e) * PIT_SCALE
-		var sy := lerpf(0.06, 1.0, e) * PIT_SCALE
-		var shake := Vector2(sin(fx.t * 61.0), 0.0) * (1.0 - e) * 2.0
-		draw_set_transform(shake, 0.0, Vector2(sx, sy))
-		draw_texture(_tex, -PIT_CENTRE, Color(1.0, 1.0, 1.0, clampf(k * 1.4, 0.0, 1.0)))
-		draw_set_transform(Vector2.ZERO)
+		var lip := PackedVector2Array()
+		var hole := PackedVector2Array()
+		var deep := PackedVector2Array()
+		var edge := PackedVector2Array()
+		for p in _lip:
+			lip.append(_at(p * 1.1, e))
+			hole.append(_at(p, e))
+			deep.append(_at(p * 0.55, e))
+			edge.append(_at(p * (1.0 - PX / EDGE), e))
+		edge.append(edge[0])
+		# The cracks first, under the lip, run out as it opens.
+		for line in _cracks:
+			var shown := PackedVector2Array()
+			for j in line.size():
+				if float(j) / float(line.size() - 1) > e + 0.001:
+					break
+				shown.append(_at(line[j], e))
+			if shown.size() >= 2:
+				draw_polyline(shown, Color(CRACK, CRACK.a * k), PX * 1.5)
+		draw_colored_polygon(lip, Color(RIFT_LIP, RIFT_LIP.a * k))
+		draw_colored_polygon(hole, Color(RIFT_DARK, RIFT_DARK.a * k))
+		draw_colored_polygon(deep, Color(RIFT_DEEP, RIFT_DEEP.a * k))
+		draw_polyline(edge, Color(DeathParts.GRAVE_GREEN, 0.35 * k), PX)
+		# The bone thrown out of the hole: a chip shows once the opening has reached it.
+		var reach := EDGE * 1.15 + (PIT_R - EDGE * 1.15) * e
+		for c in _chips:
+			var at: Vector2 = c[0]
+			if at.length() > reach:
+				continue
+			var col: Color = BONE_CHIPS[c[1]]
+			var size := Vector2(PX * float(c[2]), PX)
+			# A pixel of shadow under each (down the screen is ground (1, 1)), so it reads on pale paving too.
+			draw_rect(Rect2(at + Vector2(PX, PX) * 0.7, size), Color(CRACK, 0.6 * k))
+			draw_rect(Rect2(at, size), Color(col, col.a * k))
 
 
 ## One pale arm (grave_arms sheet) at a caught one's feet: it rises out of the ground, grips while they are dragged, then
 ## pulls down as they go under, and sinks back in. Stands in the effect's y-sorted stand layer, just in front of its victim.
+## A `loop` arm is one of the ambient arms reaching up all over the reach: from `born` (T_OPEN), after its `phase` (folded
+## into one loop, so every arm is up within ARM_LOOP), it rises, claws and sinks over ARM_LOOP again and again; with the
+## close it sinks into the ground over CLOSE and is gone.
 class Arm extends Node2D:
 	var fx: TheGateBelowFx
 	## When it reached out (the grab's tick), and when it began pulling down (-1: still gripping).
 	var born := 0.0
 	var pull_at := -1.0
+	## An ambient arm: looping, its loop offset by `phase` seconds.
+	var loop := false
+	var phase := 0.0
 	## 1, or -1 to mirror it (it leans toward the pit).
 	var facing := 1
 	var _tex: Texture2D
@@ -330,13 +442,16 @@ class Arm extends Node2D:
 	func _process(_delta: float) -> void:
 		if not is_instance_valid(fx):
 			return
-		if pull_at >= 0.0 and fx.t > pull_at + ARM_PULL + ARM_SINK:
+		if (pull_at >= 0.0 and fx.t > pull_at + ARM_PULL + ARM_SINK) or (loop and fx.t > SPAN + CLOSE):
 			queue_free()
 			return
 		queue_redraw()
 
 	func _draw() -> void:
 		if _tex == null or not is_instance_valid(fx):
+			return
+		if loop:
+			_draw_loop()
 			return
 		var u := fx.t - born
 		var frame := 2 + int(u / 0.15) % 2  # the grip, clenching
@@ -349,6 +464,32 @@ class Arm extends Node2D:
 			frame = 4 if v < ARM_PULL * 0.5 else 5
 			if v >= ARM_PULL:
 				shown = 1.0 - clampf((v - ARM_PULL) / ARM_SINK, 0.0, 1.0)
+		_draw_frame(frame, shown)
+
+	## An ambient arm's moment in its loop: up over ARM_RISE, clawing, then the pull down and the sink, all over ARM_LOOP;
+	## from SPAN it goes down with the rift over CLOSE.
+	func _draw_loop() -> void:
+		var u := fx.t - born - fposmod(phase, ARM_LOOP)
+		if u < 0.0:
+			return
+		var v := fposmod(u, ARM_LOOP)
+		var claw_end := ARM_LOOP - ARM_PULL - ARM_SINK
+		var frame := 2 + int(v / 0.15) % 2  # the claw, clenching
+		var shown := 1.0
+		if v < ARM_RISE:
+			frame = 0 if v < ARM_RISE * 0.5 else 1
+			shown = v / ARM_RISE
+		elif v >= claw_end:
+			var w := v - claw_end
+			frame = 4 if w < ARM_PULL * 0.5 else 5
+			if w >= ARM_PULL:
+				shown = 1.0 - clampf((w - ARM_PULL) / ARM_SINK, 0.0, 1.0)
+		if fx.t >= SPAN:
+			shown *= fx.open_k(fx.t)
+		_draw_frame(frame, shown)
+
+	## Frame `frame` of the sheet, `shown` (0..1) of it out of the ground above its foot.
+	func _draw_frame(frame: int, shown: float) -> void:
 		if shown <= 0.0:
 			return
 		var rows := ARM_FOOT.y * shown  # rows of the cell above its foot line still out of the ground

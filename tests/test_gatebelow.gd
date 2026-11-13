@@ -2,7 +2,8 @@ extends RefCounted
 ## The Gate Below (Death, Tier IV): a click opens the ground into a pit of 3 ringed in bone for 12 s. Every 0.5 s pale arms
 ## take the nearest person within 6 who is out in the open, not guised and not caught yet, hold them (pace 0) and drag them to
 ## the pit's edge over 1.5 s, where they go under (killed as pit: no body is left). When the pit closes every soul it took
-## climbs back out as a wraith that hunts soldiers for 20 s. Loud: the town panics.
+## climbs back out as a wraith that hunts soldiers for 20 s and kills the one it reaches (spent with him). The pit is a rift
+## drawn on the ground with arms reaching up all over its reach, not a stretched sheet. Loud: the town panics.
 
 const RD := preload("res://tests/test_raise_dead.gd")
 const DT := 0.05
@@ -15,12 +16,14 @@ static func _cast(made: Array, at: Vector2) -> TheGateBelowFx:
 static func run(t) -> void:
 	var made := RD._setup()
 	_book(t)
+	_rift(t)
 	_grabs(t, made)
 	_held_and_freed(t, made)
 	_pit(t, made)
 	_wraiths(t, made)
 	_none(t, made)
 	_prey(t, made)
+	_wraith_kills(t, made)
 	_loud(t, made)
 	_freed_mid_drag(t, made)
 	_killed_mid_drag(t, made)
@@ -67,6 +70,32 @@ static func _book(t) -> void:
 		"the numbers of the brief")
 	t.check(Sfx.CATALOG.has(&"gatebelow_open") and Sfx.CATALOG.has(&"gatebelow_close"), "its two cues are catalogued")
 
+
+## R8: the pit is a rift drawn on the ground, not a stretched sheet: 18 jagged points about the edge, and 24 arms standing
+## all over the arms' reach, from just past the edge out to REACH.
+static func _rift(t) -> void:
+	var c := Vector2(3.0, -2.0)
+	var pts := TheGateBelowFx.rift_points(c)
+	var ok := pts.size() == 18
+	for p in pts:
+		var d := p.distance_to(c)
+		ok = ok and d >= TheGateBelowFx.EDGE * 0.75 - 0.0001 and d <= TheGateBelowFx.EDGE * 1.25 + 0.0001
+	t.check(ok, "the rift: 18 points between 1.35 and 2.25 from the centre")
+	var spots := TheGateBelowFx.arm_spots(c)
+	var lo := INF
+	var hi := 0.0
+	var outer := 0
+	for s in spots:
+		var d := s.distance_to(c)
+		lo = minf(lo, d)
+		hi = maxf(hi, d)
+		if d > TheGateBelowFx.REACH * 0.75:
+			outer += 1
+	t.check(spots.size() == 24 and lo >= TheGateBelowFx.EDGE + 0.3 - 0.01 and hi <= TheGateBelowFx.REACH + 0.01 and outer >= 6,
+		"24 arms spread over the whole reach (%d, %.2f..%.2f, %d past 4.5)" % [spots.size(), lo, hi, outer])
+	var src := FileAccess.get_file_as_string("res://src/fx/death/the_gate_below.gd")
+	t.check(not ResourceLoader.exists("res://assets/pixellab/fx/gate_below.png") and not src.is_empty()
+		and not src.contains("gate_below.png"), "no stretched pit sprite")
 
 ## "grabs the nearest each 0.5 s, never a guised one": the nearest fair one first, the next 0.5 s later; a guised one, one
 ## indoors and one past REACH are never taken; a tie goes to the lower instance id.
@@ -178,7 +207,8 @@ static func _wraiths(t, made: Array) -> void:
 	var ok := up.size() == 3
 	for a in up:
 		var r: Visitors.Rule = fx.visitors._rules[a]
-		ok = ok and a.breed == Animal.Breed.SPIRIT and r.soldiers_only and r.slow < 1.0 and r.phase and a.ground_pos.distance_to(at) < TheGateBelowFx.PIT_R
+		ok = (ok and a.breed == Animal.Breed.WRAITH and r.soldiers_only and r.slow < 1.0 and r.phase and r.touch_kill == &"pit"
+			and r.spent_on_kill and a.ground_pos.distance_to(at) < TheGateBelowFx.PIT_R)
 	t.check(ok, "at 12 s one wraith per soul taken, out of the pit (%d up)" % up.size())
 	RD._run(fx, TheGateBelowFx.WRAITH_LIFE - 0.6)
 	t.check(fx.visitors.living().size() == 3 and not fx.finished, "they last their 20 s")
@@ -222,6 +252,33 @@ static func _prey(t, made: Array) -> void:
 	fx.end_now()
 	t.check(s.pace_hold() == 1.0, "cut short, the soldier it passed has his pace back")
 
+
+## R9: "a wraith that reaches a soldier kills him and is spent": one soul taken, then the close; a soldier 2.0 from the pit
+## (set down once the arms no longer take anyone) is killed as the pit within 4 s, and the wraith sinks with him.
+static func _wraith_kills(t, made: Array) -> void:
+	_reset(made)
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	_put(made, 2, at + Vector2(2.0, 0.0))
+	var alive := crowd.soldiers.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive())
+	var s: Person = alive[0]
+	var kinds := []
+	var on_kill := func(e: DummyEnemy, kind: StringName) -> void:
+		if e == s:
+			kinds.append(kind)
+	field.enemy_killed.connect(on_kill)
+	var fx := _cast(made, at)
+	RD._run(fx, TheGateBelowFx.SPAN - 0.1)
+	s.ground_pos = at + Vector2(0.0, 2.0)
+	RD._run(fx, 0.15)
+	t.check(fx.souls == 1 and fx.visitors.living().size() == 1 and s.is_alive(),
+		"(one soul taken, one wraith up, the soldier still alive: %d souls, %d up)" % [fx.souls, fx.visitors.living().size()])
+	RD._run(fx, 4.0)
+	t.check(not s.is_alive() and kinds == [&"pit"] and fx.visitors.living().size() == 0,
+		"a wraith that reaches a soldier kills him and is spent (%s, %d wraiths left)" % [kinds, fx.visitors.living().size()])
+	field.enemy_killed.disconnect(on_kill)
+	fx.end_now()
 
 ## "loud: the town panics": the cast is held as a danger until its impact; people past the arms' reach flee the open pit;
 ## the first soul taken raises the alarm.

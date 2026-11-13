@@ -4,7 +4,7 @@ extends FxTimeline
 ## with none, "NO DEAD THERE", before any cooldown). Q and E pick what rises (extra["mode"]):
 ##
 ## ZOMBIE: the grave breathes over T_RISE, then the body gets up where it lay (DeathParts.zombie(): its own people sprite,
-##   greyed, shambling at 0.6 of a walk, eyes alight). It hunts the nearest living within SEEK; a citizen's first bite knocks
+##   greyed, walking at a walk, a quarter faster on the chase, eyes alight). It hunts the nearest living within SEEK; a citizen's first bite knocks
 ##   them down, a second within 3 s kills (frenzy). Whoever it kills gets up as another (DeathParts.on_kill_rise()), CHAIN
 ##   raised in all by the cast. A soldier cuts one down in DeathParts.ZOMBIE_BLOWS (3) blows. A plague body's zombie infects
 ##   with its bites. The town panics at its first bite as at a hellhound's. At ZOMBIE_LIFE every one still up falls to ash.

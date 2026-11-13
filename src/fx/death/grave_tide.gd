@@ -20,8 +20,9 @@ extends FxTimeline
 ##   in its way (`wreck`), and never leaves the street to go at a building (`wreck_idle` false).
 ## - Death's undead within GIANT_AURA of the giant -- this tide's and any other power's (every Visitors pack in
 ##   Crowd.visitors, the Animal.UNDEAD breeds only: never a hellhound, demon or ghost) -- move AURA_SPEED times as fast:
-##   Animal.speed_mul over their own, read as they first come within reach (every AURA_EVERY) and given back when they leave,
-##   when the giant falls, and at the end.
+##   Animal.speed_mul scaled by AURA_SPEED as they first come within reach (every AURA_EVERY) and by 1 / AURA_SPEED when they
+##   leave, when the giant falls, and at the end -- a ratio, once each way, so another scale laid on meanwhile (Walking Corpse's
+##   attack pace, R18) survives it (R27); one whose pace nothing else touched gets exactly its own back.
 ## - At LIFE every zombie still up falls to ash; the giant stands on to GIANT_LIFE after its landing, then falls to ash too
 ##   (the pack cleared); cut short, or freed without its end, all of them at once (a tide cut short mid-assembly: no giant).
 ## Loud (PowerBook.REACH): the danger counts from T_RISE, when the dead stand; the giant's slams frighten the street round it,
@@ -104,7 +105,7 @@ var landed_at := -1.0
 
 ## The bodies picked at the cast (the oldest first, MOST at most), raised at T_RISE.
 var _rising: Array[Remains.Remain] = []
-## Animal (untyped: another power may free it) -> its own speed_mul, while the aura quickens it.
+## Animal (untyped: another power may free it) -> [its speed_mul before the aura, its speed_mul quickened], while the aura quickens it.
 var _sped := {}
 var _aura_in := 0.0
 var _look_in := 0.0
@@ -396,22 +397,32 @@ func _aura() -> void:
 				continue
 			now[a] = true
 			if not _sped.has(a):
-				_sped[a] = a.speed_mul
+				var own := a.speed_mul
 				a.speed_mul *= AURA_SPEED
+				_sped[a] = [own, a.speed_mul]
 	for a in _sped.keys():
 		if now.has(a):
 			continue
-		if is_instance_valid(a):
-			(a as Animal).speed_mul = float(_sped[a])
+		_unspeed(a)
 		_sped.erase(a)
 
 
 ## Every quickened one has its own pace back (skipping any another power freed).
 func _unspeed_all() -> void:
 	for a in _sped.keys():
-		if is_instance_valid(a):
-			(a as Animal).speed_mul = float(_sped[a])
+		_unspeed(a)
 	_sped.clear()
+
+
+## The aura's share taken off `a` (untyped: it may be freed; then nothing). Its pace untouched since the aura quickened it: exactly
+## its own back (bit for bit, as before R27). Scaled meanwhile by another power (Walking Corpse's attack pace, R18): only
+## AURA_SPEED divided out, so that other scale survives.
+func _unspeed(a: Variant) -> void:
+	if not is_instance_valid(a):
+		return
+	var an := a as Animal
+	var was: Array = _sped[a]
+	an.speed_mul = float(was[0]) if an.speed_mul == float(was[1]) else an.speed_mul / AURA_SPEED
 
 
 ## The horde's first bite is the town's outcry.

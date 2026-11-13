@@ -32,6 +32,7 @@ static func run(t) -> void:
 	_march(t, made)
 	_aura(t, made)
 	_aura_others(t, made)
+	_aura_walker(t, made)
 	_soldier(t, made)
 	_wall(t, made)
 	_holds(t, made)
@@ -363,6 +364,64 @@ static func _aura_others(t, made: Array) -> void:
 	fx.end_now()
 	raise.end_now()
 	hounds.clear()
+
+
+## Final review 2 (R27): the aura scales a walker's pace by its ratio, as Walking Corpse's attack pace does (R18), so the two
+## compose in either order: an attack started in the aura, the aura left, the attack ended -- its summoned pace back; an attack
+## started outside, the aura entered, the attack ended, the aura left -- its summoned pace back too.
+static func _aura_walker(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var at := RD._empty(made)
+	_bodies(made, _ring(made, at, 5, 1.5))
+	var fx := _cast(made, at)
+	var beside := grid.nearest_walkable(at + Vector2(0.0, 2.5))
+	_bodies(made, [beside])  # after the tide's pick: the walker's body, not the tide's
+	var wc := FxTimeline.cast(WalkingCorpseFx, made[5], beside, {"to": beside}) as WalkingCorpseFx
+	var both := func(seconds: float) -> void:
+		for i in roundi(seconds / DT):
+			if not fx.finished:
+				fx._process(DT)
+			if not wc.finished:
+				wc._process(DT)
+	both.call(GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.2)
+	for z in _zombies(fx):
+		fx.visitors.take(z)  # the tide's own zombies gone: nobody but the walker goes for the foe
+	var w := wc.walker
+	t.check(w != null and fx.giant != null and w.ground_pos.distance_to(fx.giant.ground_pos) <= GraveTideFx.GIANT_AURA
+		and is_equal_approx(w.speed_mul, wc._pace * GraveTideFx.AURA_SPEED), "(the walker stands in the giant's aura, quickened)")
+	if w == null or fx.giant == null:
+		fx.end_now()
+		wc.end_now()
+		return
+	var foe: Person = _alive(made)[0]
+	# In the aura: attack, leave, end the attack.
+	foe.ground_pos = grid.nearest_walkable(w.ground_pos + (w.ground_pos - fx.giant.ground_pos).normalized() * 4.0)
+	foe.statuses.erase(&"guise")
+	t.check(wc.follow_up(foe.ground_pos, {"order": "attack", "foe": foe}), "(an attack is taken in the aura)")
+	w.ground_pos = fx.giant.ground_pos + Vector2(GraveTideFx.GIANT_AURA + 4.0, 0.0)
+	both.call(0.3)
+	foe.statuses[&"guise"] = 5.0  # guised: the chase ends with no kill
+	both.call(0.1)
+	t.check(wc.order == "wait" and is_equal_approx(w.speed_mul, wc._pace),
+		"attack in the aura, leave it, end the attack: its summoned pace back (%.4f, want %.4f)" % [w.speed_mul, wc._pace])
+	# Outside: attack, come into the aura, end the attack, leave.
+	foe.statuses.erase(&"guise")
+	foe.ground_pos = grid.nearest_walkable(w.ground_pos + Vector2(3.0, 0.0))
+	t.check(wc.follow_up(foe.ground_pos, {"order": "attack", "foe": foe}), "(an attack is taken outside the aura)")
+	w.ground_pos = fx.giant.ground_pos + Vector2(1.0, 0.0)
+	both.call(0.3)
+	var quick := is_equal_approx(w.speed_mul, wc._pace * WalkingCorpseFx.ATTACK_PACE * GraveTideFx.AURA_SPEED)
+	foe.statuses[&"guise"] = 5.0
+	both.call(0.1)
+	w.ground_pos = fx.giant.ground_pos + Vector2(GraveTideFx.GIANT_AURA + 4.0, 0.0)
+	both.call(0.3)
+	t.check(quick and wc.order == "wait" and is_equal_approx(w.speed_mul, wc._pace),
+		"attack outside, enter the aura, end the attack, leave: its summoned pace back (%.4f, want %.4f)" % [w.speed_mul, wc._pace])
+	foe.statuses.erase(&"guise")
+	fx.end_now()
+	wc.end_now()
 
 
 ## Review IMPORTANT 2 ("it walks the streets ... smashes walls in its way"): with no soldier out in the open anywhere, the

@@ -217,6 +217,23 @@ static func _shrouds(t, made: Array) -> void:
 	RD._run(fx, CorpseGuiseFx.SPAN - 0.5)
 	var live := fx.shrouds.all(func(m: Node2D) -> bool: return is_instance_valid(m) and m.visible and not m.is_queued_for_deletion())
 	t.check(live and fx.shrouds.size() == 4, "each guised person carries a shroud mark for the whole span: all valid at SPAN - 0.5")
+	# The marks' own logic (they are detached here, so step them by hand): kept and visible, hidden indoors, freed at the lift.
+	var kept := true
+	for m in fx.shrouds:
+		m._process(0.0)
+		kept = kept and is_instance_valid(m) and not m.is_queued_for_deletion() and m.visible
+	t.check(kept, "a mark steps on, valid and visible, while its guise is kept")
+	var inner: CorpseGuiseFx.GuiseMark = fx.shrouds[1]
+	inner.who.inside = true
+	inner._process(0.0)
+	t.check(not inner.visible and not inner.is_queued_for_deletion(), "a mark hides while its person is indoors")
+	inner.who.inside = false
+	inner._process(0.0)
+	t.check(inner.visible, "and shows again when he comes out")
+	var lifted: CorpseGuiseFx.GuiseMark = fx.shrouds[0]
+	lifted.who.statuses.erase(&"guise")
+	lifted._process(0.0)
+	t.check(lifted.is_queued_for_deletion(), "a mark frees itself the moment its guise lifts")
 	RD._run(fx, 0.6)
 	var gone := fx.shrouds.all(func(m: Node2D) -> bool: return not is_instance_valid(m) or m.is_queued_for_deletion())
 	t.check(gone, "and none at SPAN + 0.1")

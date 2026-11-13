@@ -1,10 +1,10 @@
 {
- "hash": "bbf5c3c66421e309",
- "updated": "2026-11-13T08:11:19+07:00",
+ "hash": "d0eb2453d45fbf9e",
+ "updated": "2026-11-13T12:41:14+07:00",
  "changes": {
-  "date": "<t:1794532279:f>",
+  "date": "<t:1794548474:f>",
   "items": [
-   "New: Children heard; calm and tension music"
+   "New: Mission moments heard (tier 1)"
   ]
  },
  "snapshot": {
@@ -913,6 +913,15 @@
     "updated": "2026-11-11",
     "order": 906
    },
+   "sound-mission-tier1": {
+    "title": "Mission moments heard (tier 1)",
+    "status": "done",
+    "area": "Sound",
+    "needs_you": "Listen: the cart, grain and flies are built from stand-in recordings; the mob is a low-passed riot.",
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-13",
+    "order": 912
+   },
    "sound-stingers": {
     "title": "Music stingers (mission start, objective, win, lose)",
     "status": "done",
@@ -1642,7 +1651,7 @@
    {
     "name": "god/death-powers",
     "ahead": 49,
-    "behind": 47,
+    "behind": 48,
     "date": "2026-11-13",
     "subject": "test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell",
     "pushed": true
@@ -1650,15 +1659,23 @@
    {
     "name": "god/decree-powers",
     "ahead": 49,
-    "behind": 47,
+    "behind": 48,
     "date": "2026-11-13",
     "subject": "test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell",
     "pushed": true
    },
    {
+    "name": "feat/ui-resolution",
+    "ahead": 1,
+    "behind": 1,
+    "date": "2026-11-13",
+    "subject": "docs: UI resolution & skill tree readability spec and plan",
+    "pushed": false
+   },
+   {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 60,
+    "behind": 61,
     "date": "2026-11-12",
     "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
     "pushed": true
@@ -1666,7 +1683,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 236,
+    "behind": 237,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1674,7 +1691,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 734,
+    "behind": 735,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1682,7 +1699,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 692,
+    "behind": 693,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1691,7 +1708,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-13",
-   "subject": "feat: children heard in the town; calm and tension music before the battle"
+   "subject": "feat: mission moments heard where they happen (tier 1 first)"
   }
  }
 }

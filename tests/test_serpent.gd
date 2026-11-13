@@ -6,6 +6,7 @@ extends RefCounted
 ## takes the plague too if Pestilence's is in town.
 
 const RD := preload("res://tests/test_raise_dead.gd")
+const FxStage := preload("res://tests/fx_stage.gd")
 const DT := 0.05
 
 
@@ -19,7 +20,10 @@ static func run(t) -> void:
 	_book(t)
 	_path(t)
 	_heads(t)
+	_size(t)
+	_seamless(t)
 	_band(t, made)
+	_souls(t, made)
 	_remains(t, made)
 	_structures(t, made)
 	_sight(t, made)
@@ -31,6 +35,7 @@ static func run(t) -> void:
 	_aim(t, made)
 	_street(t, made)
 	_decoy(t, made)
+	await _staged(t, made)
 	RD._done(made)
 
 
@@ -70,7 +75,7 @@ static func _book(t) -> void:
 	t.check(PowerBook.icon("serpent") != null and PowerBook.hud_icon("serpent") != null and PowerBook.clip("serpent") != null,
 		"it has its icons and clip")
 	t.check(PaleSerpentFx.LENGTH == 14.0 and PaleSerpentFx.GLIDE == 10.0 and PaleSerpentFx.CIRCLE_R == 4.0
-		and PaleSerpentFx.CIRCLE == 3.0 and PaleSerpentFx.BAND == 1.0 and PaleSerpentFx.SIGHT == 12.0
+		and PaleSerpentFx.CIRCLE == 3.0 and PaleSerpentFx.BAND == 2.0 and PaleSerpentFx.SIGHT == 12.0
 		and PaleSerpentFx.SICK == 20.0, "the numbers of the brief")
 	t.check(Sfx.CATALOG.has(&"serpent_rise") and Sfx.CATALOG.has(&"serpent_glide"), "its cues (wind and feathers) are catalogued")
 	t.check(Remains.BODY_KINDS.has(&"shadow") and DeathVoices.QUIET_KINDS.has(&"shadow"),
@@ -118,8 +123,9 @@ static func _heads(t) -> void:
 		"a head for each of the eight ways")
 
 
-## "kills in the band, not 1.5 off it": the shadow takes everyone out in the open within BAND of the head's path as it
-## passes (a soldier too), as &"shadow"; not one 1.5 off it, nor one indoors or guised on it; the first at the impact.
+## "the kill lane is 4 wide": the shadow takes everyone out in the open within BAND (2.0) of the head's path as it passes
+## (a soldier too), as &"shadow" -- one 1.9 off it too; not one 2.4 off it, nor one indoors or guised on it; the first at
+## the impact.
 static func _band(t, made: Array) -> void:
 	_reset(made)
 	var field: EnemyField = made[3]
@@ -128,8 +134,8 @@ static func _band(t, made: Array) -> void:
 	var side := Vector2.RIGHT.orthogonal()  # the loop turns to this side; the spared stand on the other
 	var first := _put(made, 0, at)
 	var on := _put(made, 1, at + Vector2(5.0, 0.0))
-	var edge := _put(made, 2, at + Vector2(7.0, 0.0) - side * 0.9)
-	var off := _put(made, 3, at + Vector2(7.0, 0.0) - side * 1.5)
+	var edge := _put(made, 2, at + Vector2(7.0, 0.0) - side * 1.9)
+	var off := _put(made, 3, at + Vector2(7.0, 0.0) - side * 2.4)
 	var indoor := _put(made, 4, at + Vector2(3.0, 0.0))
 	indoor.inside = true
 	var guised := _put(made, 5, at + Vector2(4.0, 0.0))
@@ -151,13 +157,135 @@ static func _band(t, made: Array) -> void:
 	RD._run(fx, 0.3)
 	t.check(not on.is_alive(), "and dies as it does")
 	RD._run(fx, PaleSerpentFx.glide_end() - fx.t + 0.2)
-	t.check(not edge.is_alive() and not soldier.is_alive(), "0.9 off the path dies, and a soldier on it")
-	t.check(off.is_alive() and indoor.is_alive() and guised.is_alive(), "1.5 off it lives, and one indoors or guised on it")
+	t.check(PaleSerpentFx.BAND == 2.0 and not edge.is_alive() and off.is_alive(),
+		"the kill lane is 4 wide: 1.9 off the path dies, 2.4 off it lives")
+	t.check(not soldier.is_alive(), "a soldier on it dies")
+	t.check(indoor.is_alive() and guised.is_alive(), "one indoors or guised on it lives")
 	t.check(kinds.get(first.get_instance_id()) == &"shadow" and kinds.get(on.get_instance_id()) == &"shadow"
 		and kinds.get(edge.get_instance_id()) == &"shadow" and fx.taken.size() == 4,
 		"each dies as shadow (%d taken)" % fx.taken.size())
 	field.enemy_killed.disconnect(on_kill)
 	fx.end_now()
+
+
+## R11: twice the size -- the sprites drawn at SCALE 2, the neck and tail twice as wide, a longer, higher, wilder body; the
+## final loop the user likes kept as it was.
+static func _size(t) -> void:
+	t.check(PaleSerpentFx.R_NECK == 28.0 and PaleSerpentFx.R_TAIL == 16.0 and PaleSerpentFx.SCALE == 2.0, "twice the size")
+	t.check(PaleSerpentFx.SEGMENTS == 30 and PaleSerpentFx.GAP == 0.45 and PaleSerpentFx.LIFT == 60.0 and PaleSerpentFx.WAVE == 10.0,
+		"a longer body, higher over its shadow, with a wilder wave (R11)")
+	t.check(PaleSerpentFx.CIRCLE_R == 4.0 and PaleSerpentFx.LENGTH == 14.0, "the loop is kept")
+	t.check(PaleSerpentFx.NECK_SOCKET.size() == 5 and PaleSerpentFx.NECK_SOCKET.has_all(PaleSerpentFx.HEADS.keys())
+		and is_equal_approx(PaleSerpentFx.SOUL_FLY, 0.7), "a measured neck socket for each head; a soul flies 0.7 s")
+
+
+## R11, the seam: the collar (piece 1) sits on the head's neck socket and every piece overlaps the next, for drags along
+## all eight ways, through the whole glide and the loop.
+static func _seamless(t) -> void:
+	var worst_socket := 0.0
+	var worst_pair := ""
+	var bad := 0
+	var at := Vector2(2.0, 3.0)
+	for w in 8:
+		var dir := Vector2.RIGHT.rotated(float(w) * PI * 0.25)
+		var fx := PaleSerpentFx.new()
+		fx.origin = at
+		fx.extra = {"dir": dir, "to": at + dir * PaleSerpentFx.LENGTH}
+		fx.plan()
+		var time := PaleSerpentFx.T_RISE + 0.1
+		while time <= PaleSerpentFx.glide_end() + 0.001:
+			var ps: Array[Dictionary] = fx.pieces_at(time)
+			var gap := (ps[1].sp as Vector2).distance_to(fx.socket_at(time))
+			worst_socket = maxf(worst_socket, gap)
+			if gap > 1.0:
+				bad += 1
+			var prev := {}
+			for k in ps.size():
+				var q: Dictionary = ps[k]
+				if not bool(q.get("vis", true)):
+					continue
+				if not prev.is_empty():
+					var d := (prev.sp as Vector2).distance_to(q.sp)
+					if d >= (float(prev.r) + float(q.r)) * 0.75:
+						bad += 1
+						if worst_pair == "":
+							worst_pair = "way %d t %.2f piece %d: %.1f px apart, radii %.1f + %.1f" % [w, time, k, d, prev.r, q.r]
+				prev = q
+			time += 0.05
+		fx.free()
+	t.check(bad == 0 and worst_socket <= 1.0,
+		"seamless: every joint overlaps through the glide and the loop (%d bad; socket off %.2f px; %s)" % [bad, worst_socket, worst_pair])
+
+
+## "each kill's soul streams into it": SOUL_FLY after each kill, on the effect's clock (staged or not), its soul arrives.
+static func _souls(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	var first := _put(made, 0, at)
+	_put(made, 1, at + Vector2(3.0, 0.0))
+	_put(made, 2, at + Vector2(6.0, 0.5))
+	var fx := _cast(made, at, at + Vector2(14.0, 0.0))
+	RD._run(fx, PaleSerpentFx.T_RISE + 0.3)
+	t.check(not first.is_alive() and fx.souls_in == 0, "a soul is still on its way just after the kill (%d in)" % fx.souls_in)
+	RD._run(fx, PaleSerpentFx.SOUL_FLY)
+	t.check(fx.souls_in == 1, "and arrives SOUL_FLY after it (%d in)" % fx.souls_in)
+	RD._run(fx, PaleSerpentFx.glide_end() + PaleSerpentFx.SOUL_FLY + 0.1 - fx.t)
+	t.check(fx.souls_in == fx.taken.size() and fx.souls_in > 0,
+		"each kill's soul streams into it (%d of %d)" % [fx.souls_in, fx.taken.size()])
+	fx.end_now()
+
+
+## Staged (the effect in the tree with an Impact, as in the game): the pieces, the cold glow and the souls flying in as wisps
+## are drawn, and none of it changes the logic -- the same run headless and staged takes as many and counts as many souls.
+static func _staged(t, made: Array) -> void:
+	var plain := _soul_run(made, false)
+	var ctx: FxContext = made[5]
+	var keep := [ctx.overhead, ctx.ground, ctx.overhead_back]
+	var stage := Node2D.new()
+	t.root.add_child(stage)
+	await t.process_frame  # (the tree is only live after the first frame)
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	ctx.overhead_back = Node2D.new()
+	for n in [ctx.ground, ctx.overhead_back, ctx.overhead]:
+		stage.add_child(n)
+	var stub := FxStage.StageImpact.new()
+	ctx.impact = stub
+	var lit := _soul_run(made, true)
+	await t.process_frame
+	ctx.impact = null
+	stub.free()
+	ctx.overhead = keep[0]
+	ctx.ground = keep[1]
+	ctx.overhead_back = keep[2]
+	t.root.remove_child(stage)
+	stage.free()
+	t.check(int(lit.pieces) == PaleSerpentFx.SEGMENTS + 2, "staged: head, collar, discs and tail are drawn (%d)" % lit.pieces)
+	t.check(bool(lit.glow), "staged: a cold glow follows the head")
+	t.check(int(lit.wisps) > 0 and int(lit.taken) > 0, "staged: the souls fly in as wisps (%d at once)" % lit.wisps)
+	t.check(int(lit.taken) == int(plain.taken) and int(lit.souls) == int(plain.souls) and int(lit.souls) == int(lit.taken),
+		"staged or not, the same dead and the same souls (%d/%d staged, %d/%d headless)" % [lit.souls, lit.taken, plain.souls, plain.taken])
+
+
+## Three in the lane; the serpent run past its glide and its last soul's flight; what it took and drew.
+static func _soul_run(made: Array, staged: bool) -> Dictionary:
+	_reset(made)
+	var at := RD._empty(made)
+	for i in 3:
+		_put(made, i, at + Vector2(2.0 + 3.0 * float(i), 0.3 * float(i)))
+	var fx := _cast(made, at, at + Vector2(14.0, 0.0))
+	var out := {"pieces": fx._pieces.size(), "glow": false, "wisps": 0}
+	for i in roundi((PaleSerpentFx.glide_end() + PaleSerpentFx.SOUL_FLY + 0.2) / DT):
+		if fx.finished:
+			break
+		fx._process(DT)
+		if staged:
+			out.glow = bool(out.glow) or (is_instance_valid(fx._glow) and fx._glow.visible)
+			out.wisps = maxi(int(out.wisps), fx._wisps.size())
+	out.taken = fx.taken.size()
+	out.souls = fx.souls_in
+	fx.end_now()
+	return out
 
 
 ## "leaves remains (shadow is a body kind)": each one the shadow took lies whole where they fell, a remain Raise can take.

@@ -163,6 +163,9 @@ static func name_for(s: Structure) -> String:
 	# with. Aldermere has none.
 	if s.role == CapitalPlots.ROLE:
 		return _have(String(s.art_tag)) if String(s.art_tag).begins_with("gpt_") else ""
+	# A pile of law rubble wears a building set's ruins (LawRubble: its own building's, or one picked by where it lies).
+	if s.role == LawRubble.ROLE:
+		return LawRubble.art_name(s)
 	match s.kind:
 		Structure.Kind.HOUSE:
 			if s.role == &"farm":
@@ -358,6 +361,8 @@ static func set_for(s: Structure) -> Dictionary:
 	var base := sprite(n)
 	if base.is_empty():
 		return {}
+	if s.role == LawRubble.ROLE:
+		return rubble_of(base, s.footprint)
 	var out := base.duplicate()
 	var fp: Vector2 = base.footprint
 	out.mirror = not is_equal_approx(fp.x, fp.y) and (fp.x >= fp.y) != (s.footprint.size.x >= s.footprint.size.y)
@@ -365,6 +370,32 @@ static func set_for(s: Structure) -> Dictionary:
 		var piece := strip_piece(base, s.footprint, out.mirror)
 		out.anchor = piece.anchor
 		out.region = piece.region
+	return out
+
+
+## Set `base` worn by a pile of law rubble on `rect` (LawRubble): its ruins still in every state (a pile stands as a
+## heap, and a heap knocked down is still one), drawn at LawRubble.fit() of its size ("fit", SpriteView), mirrored by the
+## pile's hash. Nothing of the standing building comes along: no idle strip, collapse, lit windows, chimney, flames or
+## plot shadow.
+static func rubble_of(base: Dictionary, rect: Rect2) -> Dictionary:
+	var out := base.duplicate()
+	var ruins: Texture2D = (base.stills as Dictionary)[&"ruins"]
+	out.stills = {&"intact": ruins, &"damaged": ruins, &"ruins": ruins}
+	out.idle = null
+	out.frames = 1
+	out.collapse = null
+	out.collapse_frames = 0
+	out.glow_mask = null
+	out.glow_mask_look = null
+	out.chimney = Vector2.INF
+	out.own_smoke = false
+	out.keep_flames = false
+	out.flame = Vector2.INF
+	out.glass = Rect2()
+	out.shadow = Vector2.ZERO
+	out.region = Rect2()
+	out.mirror = LawRubble.mirrored(rect)
+	out.fit = LawRubble.fit(base.footprint, rect)
 	return out
 
 

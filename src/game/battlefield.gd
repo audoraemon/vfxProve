@@ -242,11 +242,10 @@ func add_debug_label() -> Label:
 	return label
 
 
-## Save the next drawn frame of the root (world and UI), scaled 2x with nearest filtering, to res://captures/<file_name>.
+## Save the next drawn frame of the root (world and UI) to res://captures/<file_name>: window-sized, the root draws at full resolution.
 func save_capture(file_name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_tree().root.get_texture().get_image()
-	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	var dir := ProjectSettings.globalize_path("res://captures")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var path := dir.path_join(file_name)

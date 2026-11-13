@@ -459,7 +459,7 @@ func _begin_memory() -> void:
 	_memory = MemoryOverlay.new().setup(String(PowerBook.get_power(remembrance).get("name", remembrance)), top, level, memory_night)
 	_memory.level_picked.connect(set_memory_level)
 	_memory.night_toggled.connect(func(night: bool) -> void: memory_night_toggled.emit(night))
-	_bf.ui_parent().add_child(_memory)
+	(_bf.ui_parent() if _bf != null else self).add_child(_memory)  # a bare Mission (the Remembrance tests) has no field yet
 
 
 ## Remembrance's level picker (1-5; 1 only for a power without level tables): the level the power is cast at from now on.

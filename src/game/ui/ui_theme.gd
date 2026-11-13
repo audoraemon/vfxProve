@@ -111,18 +111,18 @@ static func fit(s: String, room: float, size := SIZE_SMALL) -> String:
 ## A tick (gold) or a cross (red) seven pixels square, its top-left at `at`: the font has no check-mark glyph (v0.08).
 static func mark(on: CanvasItem, at: Vector2, ok: bool) -> void:
 	if ok:
-		on.draw_polyline(PackedVector2Array([at + Vector2(0, 4), at + Vector2(2, 6), at + Vector2(7, 0)]), COL_GOLD, -1.0)
+		on.draw_polyline(PackedVector2Array([at + Vector2(0, 4), at + Vector2(2, 6), at + Vector2(7, 0)]), COL_GOLD, 1.0)
 	else:
-		on.draw_line(at, at + Vector2(6, 6), COL_BAD, -1.0)
-		on.draw_line(at + Vector2(6, 0), at + Vector2(0, 6), COL_BAD, -1.0)
+		on.draw_line(at, at + Vector2(6, 6), COL_BAD, 1.0)
+		on.draw_line(at + Vector2(6, 0), at + Vector2(0, 6), COL_BAD, 1.0)
 
 
 ## The one gold frame every icon in the game wears: a bevel, four corner studs and a small diamond on top.
 static func frame(on: CanvasItem, rect: Rect2, bright := true) -> void:
 	var gold := COL_GOLD if bright else COL_GOLD_DARK
 	var dark := COL_GOLD_DARK if bright else Color(0.2, 0.16, 0.08, 1.0)
-	on.draw_rect(rect.grow(1.0), dark, false, -1.0)
-	on.draw_rect(rect, gold, false, -1.0)
+	on.draw_rect(rect.grow(1.0), dark, false, 1.0)
+	on.draw_rect(rect, gold, false, 1.0)
 	for corner in [rect.position, Vector2(rect.end.x - 1.0, rect.position.y),
 			Vector2(rect.position.x, rect.end.y - 1.0), rect.end - Vector2.ONE]:
 		on.draw_rect(Rect2(corner, Vector2.ONE), gold)

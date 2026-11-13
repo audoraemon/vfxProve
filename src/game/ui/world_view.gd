@@ -45,6 +45,8 @@ func _init() -> void:
 
 ## Put `node` in the world viewport. The view frees itself (and its ui subtree) when the hosted node leaves the tree.
 func host(node: Node) -> void:
+	if is_inside_tree():
+		UiScale.install(get_tree())  # idempotent; tools that host without a main scene of their own get the UI scale too
 	if _hosted != null and is_instance_valid(_hosted) and _hosted.tree_exited.is_connected(_on_hosted_exited):
 		_hosted.tree_exited.disconnect(_on_hosted_exited)  # one host per view: only the newest node's exit frees it (the old one stays in the viewport, the caller's to remove)
 	if node.get_parent() != null:
@@ -137,6 +139,7 @@ static func self_host(node: Node, force := false) -> bool:
 	if not node.is_inside_tree():
 		return false
 	var tree := node.get_tree()
+	UiScale.install(tree)  # before the first frame, so --window sizes the window before anything is drawn
 	if node.get_parent() != tree.root or tree.current_scene != node:
 		return false
 	if not (can_host() or force) or of(node) != null:

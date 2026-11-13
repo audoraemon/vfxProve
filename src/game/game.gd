@@ -387,6 +387,7 @@ static func bank_god_night(slot: GodSlot, id: String, kept: PackedStringArray, o
 
 
 func _ready() -> void:
+	UiScale.install(get_tree())
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
 	dev = "--dev" in args
@@ -1755,12 +1756,11 @@ func _on_title_action(what: String) -> void:
 			on_action("title:" + what)
 
 
-## One frame to res://captures/<file_name>, scaled 2x with nearest filtering -- the same shape as the
+## One frame of the root to res://captures/<file_name>: window-sized (the root draws at full resolution), the same shape as the
 ## battlefield's captures, so they sit next to each other.
 func _capture(file_name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
-	img.resize(img.get_width() * 2, img.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	var dir := ProjectSettings.globalize_path("res://captures")
 	DirAccess.make_dir_recursive_absolute(dir)
 	img.save_png(dir.path_join(file_name))

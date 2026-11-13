@@ -1460,11 +1460,11 @@ func _draw_wishes() -> void:
 		elif state == "failed":
 			UiTheme.mark(self, box, false)
 		else:
-			draw_rect(Rect2(box, Vector2(WISH_BOX - 1.0, WISH_BOX - 1.0)), Wish.COLOR, false, -1.0)
+			draw_rect(Rect2(box, Vector2(WISH_BOX - 1.0, WISH_BOX - 1.0)), Wish.COLOR, false, 1.0)
 		var col := Wish.COLOR if state == "open" else (UiTheme.COL_GOLD if state == "granted" else UiTheme.COL_DIM)
 		UiTheme.text(self, Vector2(18.0, y), text, UiTheme.SIZE_SMALL, col)
 		if state == "failed":
-			draw_line(Vector2(18.0, y - 4.0), Vector2(18.0 + UiTheme.width(text, UiTheme.SIZE_SMALL), y - 4.0), UiTheme.COL_DIM, -1.0)
+			draw_line(Vector2(18.0, y - 4.0), Vector2(18.0 + UiTheme.width(text, UiTheme.SIZE_SMALL), y - 4.0), UiTheme.COL_DIM, 1.0)
 		y += ROW_H
 
 
@@ -1549,11 +1549,11 @@ static func arrow_shape(at: Vector2, dir: Vector2) -> PackedVector2Array:
 ## _draw_arrow()'s drawing on any canvas (the legend draws the same arrow).
 static func paint_arrow(on: CanvasItem, at: Vector2, dir: Vector2, col: Color, ring: Color) -> void:
 	on.draw_circle(at - dir * 5.0, 10.0, MARK_EDGE)
-	on.draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, ring, -1.0)
+	on.draw_arc(at - dir * 5.0, 10.0, 0.0, TAU, 24, ring, 1.0)
 	var arrow := arrow_shape(at, dir)
 	on.draw_colored_polygon(arrow, col)
 	arrow.append(arrow[0])
-	on.draw_polyline(arrow, MARK_EDGE, -1.0)
+	on.draw_polyline(arrow, MARK_EDGE, 1.0)
 
 
 func _draw_status(w: float) -> void:
@@ -1584,7 +1584,7 @@ func _draw_banners(w: float) -> void:
 	draw_rect(bar, Color(0.03, 0.03, 0.05, 0.78 * fade))
 	var edge := UiTheme.COL_GOLD_DARK
 	edge.a = fade
-	draw_rect(bar, edge, false, -1.0)
+	draw_rect(bar, edge, false, 1.0)
 	UiTheme.text(self, Vector2(x, 131.0), text, UiTheme.SIZE_BIG, col)
 
 

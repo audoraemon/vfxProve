@@ -576,7 +576,7 @@ func _draw_card(r: Rect2, id: String, on: bool, rows: int) -> void:
 		y += UiTheme.LINE_BODY
 	var best := best_lines(id, room)
 	var rule := rule_y(r, maxi(rows, best.size()))
-	_ui.draw_line(Vector2(x, rule), Vector2(r.end.x - PAD, rule), UiTheme.COL_GOLD_DARK, -1.0)
+	_ui.draw_line(Vector2(x, rule), Vector2(r.end.x - PAD, rule), UiTheme.COL_GOLD_DARK, 1.0)
 	for i in best.size():
 		UiTheme.text(_ui, Vector2(x, rule + 4.0 + UiTheme.LINE_SMALL * float(i + 1)), best[i], UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD if on else UiTheme.COL_DIM)

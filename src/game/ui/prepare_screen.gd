@@ -778,7 +778,7 @@ func _draw_card(i: int, key: String) -> void:
 		# label's one-pixel shadow and read as 8, and a badge in the card's top-right corner covered long names.
 		var badge := Rect2(r.position + Vector2(2.0, 2.0), Vector2(BADGE, BADGE))
 		_ui.draw_rect(badge, Color(0.04, 0.04, 0.06, 0.92))
-		_ui.draw_rect(badge, UiTheme.COL_GOLD, false, -1.0)
+		_ui.draw_rect(badge, UiTheme.COL_GOLD, false, 1.0)
 		var digit := "%d" % slot
 		UiTheme.text(_ui, badge.position + Vector2(roundf((BADGE - UiTheme.width(digit, UiTheme.SIZE_BODY)) * 0.5), 12.0),
 			digit, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
@@ -790,7 +790,7 @@ func _draw_level_badge(i: int, key: String) -> void:
 	var r := level_rect(i, draft.slots)
 	var level := draft.level_of(key)
 	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.95) if _hover == "level:%d" % i else Color(0.04, 0.04, 0.06, 0.92))
-	_ui.draw_rect(r, UiTheme.COL_GOLD if level > 1 or _hover == "level:%d" % i else UiTheme.COL_GOLD_DARK, false, -1.0)
+	_ui.draw_rect(r, UiTheme.COL_GOLD if level > 1 or _hover == "level:%d" % i else UiTheme.COL_GOLD_DARK, false, 1.0)
 	var label := "L%d" % level
 	UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(label, UiTheme.SIZE_SMALL) * 0.5), r.end.y - 1.0), label,
 		UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if level > 1 else UiTheme.COL_DIM)

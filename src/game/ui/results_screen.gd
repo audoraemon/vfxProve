@@ -233,7 +233,7 @@ func _draw_ui() -> void:
 		UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(pts, UiTheme.SIZE_SMALL), y), pts, UiTheme.SIZE_SMALL,
 			UiTheme.COL_TEXT if points > 0 else UiTheme.COL_DIM)
 		y += ROW
-	_ui.draw_line(Vector2(TABLE_X, y - 7.0), Vector2(POINTS_R, y - 7.0), UiTheme.COL_GOLD_DARK, -1.0)
+	_ui.draw_line(Vector2(TABLE_X, y - 7.0), Vector2(POINTS_R, y - 7.0), UiTheme.COL_GOLD_DARK, 1.0)
 	var sum := thousands(total)
 	UiTheme.text(_ui, Vector2(TABLE_X, y + 4.0), "Total", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(sum, UiTheme.SIZE_SMALL), y + 4.0), sum, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
@@ -282,7 +282,7 @@ func _draw_night() -> void:
 		UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(path, UiTheme.SIZE_SMALL), y), path, UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD)
 		y += ROW
-	_ui.draw_line(Vector2(TABLE_X, y - 7.0), Vector2(POINTS_R, y - 7.0), UiTheme.COL_GOLD_DARK, -1.0)
+	_ui.draw_line(Vector2(TABLE_X, y - 7.0), Vector2(POINTS_R, y - 7.0), UiTheme.COL_GOLD_DARK, 1.0)
 	var sum := thousands(int(_result.get("score", 0)))
 	UiTheme.text(_ui, Vector2(TABLE_X, y + 4.0), "Night total", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(POINTS_R - UiTheme.width(sum, UiTheme.SIZE_SMALL), y + 4.0), sum, UiTheme.SIZE_SMALL,
@@ -314,7 +314,7 @@ func _draw_unscored() -> void:
 	for i in rows.size():
 		if i == ticks:
 			# The rule between the ticked rows and the figures.
-			_ui.draw_line(Vector2(PLAIN_L, y - 13.0), Vector2(PLAIN_R, y - 13.0), UiTheme.COL_GOLD_DARK, -1.0)
+			_ui.draw_line(Vector2(PLAIN_L, y - 13.0), Vector2(PLAIN_R, y - 13.0), UiTheme.COL_GOLD_DARK, 1.0)
 			y += 4.0
 		var row: Array = rows[i]
 		_plain_row(y, String(row[0]), String(row[1]), bool(row[2]))
@@ -592,7 +592,7 @@ func _draw_descend() -> void:
 	for row: Array in descend_rows(_result):
 		_descend_row(y, row)
 		y += DESCEND_ROW
-	_ui.draw_line(Vector2(DESCEND_L, y - 10.0), Vector2(DESCEND_R, y - 10.0), UiTheme.COL_GOLD_DARK, -1.0)
+	_ui.draw_line(Vector2(DESCEND_L, y - 10.0), Vector2(DESCEND_R, y - 10.0), UiTheme.COL_GOLD_DARK, 1.0)
 	y += 4.0
 	if endless:
 		_draw_god_lines(y)
@@ -647,7 +647,7 @@ func _descend_row(y: float, row: Array) -> void:
 	UiTheme.text(_ui, Vector2(DESCEND_L, y), label, UiTheme.SIZE_BODY, UiTheme.COL_DIM if dim else UiTheme.COL_TEXT)
 	if mark == "lost":
 		_ui.draw_line(Vector2(DESCEND_L, y - 5.0), Vector2(DESCEND_L + UiTheme.width(label, UiTheme.SIZE_BODY), y - 5.0),
-			UiTheme.COL_DIM, -1.0)
+			UiTheme.COL_DIM, 1.0)
 	if note != "":
 		UiTheme.text(_ui, Vector2(DESCEND_R - 12.0 - UiTheme.width(note, UiTheme.SIZE_SMALL), y), note, UiTheme.SIZE_SMALL,
 			UiTheme.COL_BAD)

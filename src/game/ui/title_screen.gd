@@ -117,8 +117,8 @@ func _on_gui_input(event: InputEvent) -> void:
 
 func _draw_ui() -> void:
 	_ui.draw_rect(BAND, Color(0.02, 0.02, 0.04, 0.66))
-	_ui.draw_line(BAND.position, Vector2(BAND.end.x, BAND.position.y), UiTheme.COL_GOLD_DARK, -1.0)
-	_ui.draw_line(Vector2(BAND.position.x, BAND.end.y), BAND.end, UiTheme.COL_GOLD_DARK, -1.0)
+	_ui.draw_line(BAND.position, Vector2(BAND.end.x, BAND.position.y), UiTheme.COL_GOLD_DARK, 1.0)
+	_ui.draw_line(Vector2(BAND.position.x, BAND.end.y), BAND.end, UiTheme.COL_GOLD_DARK, 1.0)
 	var title := "KINGDOMS AMID KATACLYSM"
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), 128.0), title,
 		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)

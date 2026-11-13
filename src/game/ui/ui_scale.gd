@@ -29,6 +29,59 @@ static func layout(window: Vector2i) -> Dictionary:
 	return {"k": k, "area": area, "offset": offset, "fit": fit}
 
 
+## Whether the root is expanded to the whole window (Task 9). Until then the area stays 640x360 and Godot's own integer scaling
+## (aspect "keep") centres the frame; k is the real integer scale either way.
+const EXPAND_ON := false
+
+static var _installed := false
+
+
+## Once per process, no-op in headless runs: applies `--window=WxH` (a borderless window of that size at the screen's origin,
+## before the first frame), gives the root the design size (aspect "keep" and scale mode "integer" come from project.godot) and follows
+## the root's size from then on. Call it first in a windowed main scene's _ready.
+static func install(tree: SceneTree) -> void:
+	if _installed or DisplayServer.get_name() == "headless":
+		return
+	_installed = true
+	var root := tree.root
+	var want := window_arg(OS.get_cmdline_user_args())
+	if want != Vector2i.ZERO:
+		root.mode = Window.MODE_WINDOWED
+		root.borderless = true
+		root.size = want
+		root.position = Vector2i.ZERO
+	root.content_scale_size = DESIGN
+	root.size_changed.connect(_follow_root.bind(root))
+	_follow_root(root)
+
+
+## `--window=WxH` from the user args, or (0, 0).
+static func window_arg(args: PackedStringArray) -> Vector2i:
+	for a in args:
+		if a.begins_with("--window="):
+			var parts := a.substr(9).to_lower().split("x")
+			if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int() and parts[0].to_int() > 0 and parts[1].to_int() > 0:
+				return Vector2i(parts[0].to_int(), parts[1].to_int())
+	return Vector2i.ZERO
+
+
+## The layout the game uses for a window: layout(), but with the area, offset and fit of an unexpanded root until EXPAND_ON.
+static func effective(window: Vector2i) -> Dictionary:
+	var lay := layout(window)
+	if not EXPAND_ON:
+		lay["area"] = DESIGN
+		lay["offset"] = Vector2i.ZERO
+		lay["fit"] = 1.0
+	return lay
+
+
+static func _follow_root(root: Window) -> void:
+	var lay := effective(root.size)
+	if EXPAND_ON:
+		root.content_scale_size = lay["area"]
+	apply(lay)
+
+
 ## Make `lay` (a layout() result) the current one and tell the listeners.
 static func apply(lay: Dictionary) -> void:
 	_layout = lay
@@ -56,6 +109,7 @@ static func design_offset() -> Vector2:
 
 
 ## Headless tests of other areas (800x450): area(), design_offset(), anchor() and design_frame() use it. Always clear it again.
+## It changes only those four: k() and fit() still answer for the applied layout (fit is 1.0 at a test area of 800x450, not the real 1.25).
 static func set_test_area(a: Vector2i) -> void:
 	_test_area = a
 

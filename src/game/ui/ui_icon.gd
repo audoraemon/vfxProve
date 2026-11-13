@@ -53,7 +53,7 @@ static func grey_image(img: Image) -> Image:
 	return out
 
 
-## The grey copy of `tex`, built once and cached by resource path. When the texture gives no image (headless) the texture itself
+## The grey copy of `tex`, built on first use (a 42 px image, once per process) and cached by resource path. When the texture gives no image (headless) the texture itself
 ## comes back: ask `locked_tint()` for the colour to draw it with.
 static func grey(tex: Texture2D) -> Texture2D:
 	if tex == null:

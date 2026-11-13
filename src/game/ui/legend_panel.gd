@@ -264,7 +264,7 @@ func _glyph(rows: Array[int], at: Vector2, col: Color, px := 2.0) -> void:
 
 func _ellipse(c: Vector2, rx: float, col: Color) -> void:
 	draw_set_transform(c, 0.0, Vector2(1.0, 0.5))
-	draw_arc(Vector2.ZERO, rx, 0.0, TAU, 24, col, -1.0)
+	draw_arc(Vector2.ZERO, rx, 0.0, TAU, 24, col, 1.0)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
@@ -279,7 +279,7 @@ func _swatch(kind: String, col: Color, x: float, cy: float) -> void:
 			var shape := Hud.mark_shape(c, 3.0 if kind == "pip" else Hud.MARK_R)
 			draw_colored_polygon(shape, tint)
 			shape.append(shape[0])
-			draw_polyline(shape, Hud.MARK_EDGE, -1.0)
+			draw_polyline(shape, Hud.MARK_EDGE, 1.0)
 		"outline":
 			draw_polyline(PackedVector2Array([c + Vector2(-10, 0), c + Vector2(0, -5), c + Vector2(10, 0), c + Vector2(0, 5),
 				c + Vector2(-10, 0)]), col, 1.0)

@@ -427,7 +427,7 @@ static func _tags(t) -> void:
 	var start := Hud.new().setup(s.rules, s.crowd, s.town, null)
 	Hud.details = true  # v0.11.1: the expanded HUD, three rows
 	t.check(start.hint_top() == 2.0 + 5.0 + Hud.ROW_H * float(start.objective_rows().size()) + 4.0
-		and not start.hint_rect().intersects(start.events_rect(Hud.SCREEN_W)),
+		and not start.hint_rect().intersects(start.events_rect(float(UiScale.DESIGN.x))),
 		"at its start the hint stays under the rows, clear of the events (%s)" % start.hint_top())
 	Hud.reset_session()
 	start.free()

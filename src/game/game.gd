@@ -649,6 +649,24 @@ func _ready() -> void:
 				tree.select(tree.centred, int(pick.get_slice(":", 0)), int(pick.get_slice(":", 1)))
 			if "--tree-buy" in args:
 				tree.click(SkillTreeScreen.BUY_RECT.get_center())
+		if is_instance_valid(_mission) and is_instance_valid(_mission._hud) and _mission.started():
+			# Capture-only switches for the HUD's photographs (UI resolution Task 5): TAB open, a banner and Cael's line, a zoom readout, a cast for
+			# the slot's cooldown, and the legend's pages. No effect on play.
+			var hud := _mission._hud
+			if "--hud-details" in args:
+				hud.toggle_details()
+			if Battlefield.arg_value(args, "--hud-banner") != "":
+				hud.push_banner(Battlefield.arg_value(args, "--hud-banner"))
+			if Battlefield.arg_value(args, "--hud-subtitle") != "":
+				hud.push_subtitle(Battlefield.arg_value(args, "--hud-subtitle"))
+			if "--hud-zoom" in args:
+				_mission._zoom_readout.show_zoom(0.75)
+			if Battlefield.arg_value(args, "--hud-cast") != "":
+				_mission.rules().cast(int(Battlefield.arg_value(args, "--hud-cast")), Vector2.ZERO)
+			if Battlefield.arg_value(args, "--hud-legend") != "":
+				_mission.open_legend()
+				if Battlefield.arg_value(args, "--hud-legend") == "2":
+					_mission._legend.open_next()
 		var wait := 1.0
 		if show == "first_taste-win":
 			wait = 0.6  # at the ending's 0.3 time scale: about 2 s real, inside the win plate's 4

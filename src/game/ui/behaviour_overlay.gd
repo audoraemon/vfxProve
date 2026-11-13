@@ -139,7 +139,7 @@ func _draw_statuses(ci: CanvasItem, p: Person, at: Vector2) -> void:
 	if p.statuses.has(MadnessManager.STATUS):
 		var v: float = p.statuses[MadnessManager.STATUS]
 		var stage := MadnessManager.stage_of(v)
-		UiTheme.text(ci, at + Vector2(-10, -26), "%.2f %s" % [v, MadnessManager.STAGE_NAMES[stage]], UiTheme.SIZE_SMALL,
+		UiTheme.text(ci, at + Vector2(-10, -26), "%.2f %s" % [v, MadnessManager.STAGE_NAMES[stage]], UiTheme.TEXT_S,
 			MadnessManager.COL_STAGES[stage])
 	if p.mind == Person.Mind.FIGHT and is_instance_valid(p.fight_target):
 		ci.draw_line(at, Iso.ground_to_screen(p.fight_target.ground_pos), Color(1, 0.2, 0.2, 0.8), 1.0)
@@ -243,8 +243,8 @@ func _draw_panel(ci: Control) -> void:
 	var y := 120.0
 	var w := 0.0
 	for l in lines:
-		w = maxf(w, UiTheme.width(String(l[0]), UiTheme.SIZE_SMALL))
-	ci.draw_rect(Rect2(4, y - 10, w + 8, UiTheme.LINE_SMALL * lines.size() + 4), Color(0, 0, 0, 0.6))
+		w = maxf(w, UiTheme.width(String(l[0]), UiTheme.TEXT_S))
+	ci.draw_rect(Rect2(4, y - 10, w + 8, UiTheme.LINE_S * lines.size() + 4), Color(0, 0, 0, 0.6))
 	for l in lines:
-		UiTheme.text(ci, Vector2(8, y), String(l[0]), UiTheme.SIZE_SMALL, l[1])
-		y += UiTheme.LINE_SMALL
+		UiTheme.text(ci, Vector2(8, y), String(l[0]), UiTheme.TEXT_S, l[1])
+		y += UiTheme.LINE_S

@@ -351,7 +351,7 @@ static func _hint_clears_events(t) -> void:
 	_start(s, null)
 	var hud := Hud.new().setup(s.rules, s.crowd, s.town, null)
 	Hud.details = true  # v0.11.1: these measure the expanded HUD
-	var w := Hud.SCREEN_W
+	var w := float(UiScale.DESIGN.x)
 	var natural := hud.hint_top()
 	t.check(hud.hint_text() != "" and hud.objective_rows().size() == 3 and natural == 50.0,
 		"the festival's hint sits under three unscored rows at the start (%s, %s)" % [hud.hint_text(), natural])

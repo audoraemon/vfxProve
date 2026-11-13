@@ -175,12 +175,12 @@ static func _chain_rect_6(t) -> void:
 	_done(s)
 
 
-## The plate is 100 x 20, ends at the slots' right end, sits 4 px above them, and touches nothing else the HUD draws.
+## The plate is 100 x 28, ends at the slots' right end, sits 4 px above them, and touches nothing else the HUD draws.
 static func _rect_checks(t, s: Dictionary, label: String) -> void:
 	var hud: Hud = s.hud
 	var r := hud.chain_rect()
-	t.check(r.size == Vector2(100.0, 20.0) and is_equal_approx(r.end.x, hud.slots_rect().end.x)
-		and is_equal_approx(r.end.y + 4.0, Hud.SLOT_TOP), "%s: 100 x 20, ends at the slots' right end, 4 px above them (%s)" % [label, r])
+	t.check(r.size == Vector2(100.0, 28.0) and is_equal_approx(r.end.x, hud.slots_rect().end.x)
+		and is_equal_approx(r.end.y + 4.0, hud.slot_top()), "%s: 100 x 28, ends at the slots' right end, 4 px above them (%s)" % [label, r])
 	var clear := true
 	for i in (s.rules as Rules).loadout.size():
 		clear = clear and not r.intersects(hud.slot_rect(i))
@@ -398,8 +398,8 @@ static func _rite_plate(t) -> void:
 		"the plate lies below the banner's bar (%s) and Cael's line (%s), covering neither" % [bar, cael])
 	t.check(not hud.stack_rect().has_area() and not hud.events_rect(640.0).has_area() and not hud.chain_shown(),
 		"and it replaces the stack, the strip and the chain plate")
-	var rest := UiTheme.wrap(lines[2], Hud.RITE_PLATE_WRAP, UiTheme.SIZE_SMALL)
-	t.check(lines.size() == 3 and rest.size() <= 2 and r.size.x >= UiTheme.width(lines[0], UiTheme.SIZE_BIG),
+	var rest := UiTheme.wrap(lines[2], Hud.RITE_PLATE_WRAP, UiTheme.TEXT_S)
+	t.check(lines.size() == 3 and rest.size() <= 2 and r.size.x >= UiTheme.width(lines[0], UiTheme.TEXT_L),
 		"the three lines fit it (the stolen gift wraps to %d)" % rest.size())
 	t.check(hud._signature() != before, "showing it redraws the HUD")
 	var layout := Hud.tag_layout(hud.all_tags(), Transform2D.IDENTITY, Vector2(640.0, 360.0), hud.stack_rect())

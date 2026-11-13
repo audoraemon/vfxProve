@@ -13,7 +13,11 @@ const COL_PALE := Color(0.82, 0.9, 0.97)
 const BOX := Vector2(18.0, 16.0)
 const BOX_GAP := 3.0
 const PICKER_Y := 26.0
+## The DAY/NIGHT toggle on a 640 x 360 screen: night_rect() moves it to the middle of a wider area, like the picker.
 const NIGHT_RECT := Rect2(404.0, 26.0, 74.0, 16.0)
+## The top banner's plate, and the "Esc . pause" hint's margin from the right edge.
+const BANNER_H := 18.0
+const HINT_MARGIN := 8.0
 ## Layers: the memory's tint sits under the HUD (layer 6), its controls over it.
 const WORLD_LAYER := 5
 const CONTROL_LAYER := 7
@@ -62,10 +66,16 @@ func banner_text() -> String:
 	return "REMEMBRANCE . %s . Level %d" % [power_name, level]
 
 
-## The picker's box for level `n` (1-5), left to right, centred on the screen.
-static func box_rect(n: int) -> Rect2:
+## The picker's box for level `n` (1-5), left to right, centred on the area (`area` defaults to the UI's).
+static func box_rect(n: int, area := Vector2.ZERO) -> Rect2:
 	var total := PowerBook.MAX_LEVEL * BOX.x + (PowerBook.MAX_LEVEL - 1) * BOX_GAP
-	return Rect2(Vector2(320.0 - total * 0.5 + (n - 1) * (BOX.x + BOX_GAP), PICKER_Y), BOX)
+	var design := Rect2(Vector2(320.0 - total * 0.5 + (n - 1) * (BOX.x + BOX_GAP), PICKER_Y), BOX)
+	return UiScale.anchor(design, UiScale.Anchor.TOP, area)
+
+
+## The DAY/NIGHT toggle's rectangle, next to the picker (`area` defaults to the UI's).
+static func night_rect(area := Vector2.ZERO) -> Rect2:
+	return UiScale.anchor(NIGHT_RECT, UiScale.Anchor.TOP, area)
 
 
 ## Picks level `n`: false (nothing sent) when it is above the power's top level.
@@ -107,7 +117,7 @@ func click(at: Vector2) -> bool:
 		if box_rect(n).has_point(at):
 			pick(n)
 			return true
-	if NIGHT_RECT.has_point(at):
+	if night_rect().has_point(at):
 		toggle_night()
 		return true
 	return false
@@ -129,7 +139,7 @@ func _redraw() -> void:
 
 
 func _draw_world() -> void:
-	var size := Vector2(640.0, 360.0)
+	var size := _world.size if _world.size.x > 1.0 else UiScale.area()
 	_world.draw_rect(Rect2(Vector2.ZERO, size), Color(0.6, 0.72, 0.85, 0.16))
 	for i in VIGNETTE_STEPS:
 		var a := 0.42 * pow(1.0 - float(i) / VIGNETTE_STEPS, 2.0)
@@ -140,13 +150,14 @@ func _draw_world() -> void:
 
 func _draw_ui() -> void:
 	var text := banner_text()
-	var w := UiTheme.width(text, UiTheme.SIZE_BODY) + 24.0
-	var plate := Rect2(320.0 - w * 0.5, 4.0, w, 18.0)
+	var area := _ui.size if _ui.size.x > 1.0 else UiScale.area()
+	var w := UiTheme.width(text, UiTheme.TEXT_S) + 24.0
+	var plate := Rect2(roundf(area.x * 0.5 - w * 0.5), 4.0, w, BANNER_H)
 	_ui.draw_rect(plate, Color(0.05, 0.09, 0.14, 0.78))
 	_ui.draw_rect(plate, COL_BLUE, false, 1.0)
-	UiTheme.text(_ui, Vector2(plate.position.x + 12.0, plate.position.y + 13.0), text, UiTheme.SIZE_BODY, COL_BLUE)
+	UiTheme.text(_ui, Vector2(plate.position.x + 12.0, plate.position.y + 13.0), text, UiTheme.TEXT_S, COL_BLUE)
 	for n in range(1, PowerBook.MAX_LEVEL + 1):
-		var r := box_rect(n)
+		var r := box_rect(n, area)
 		var open := n <= max_level
 		var chosen := n == level
 		_ui.draw_rect(r, Color(0.05, 0.09, 0.14, 0.78) if open else Color(0.05, 0.05, 0.07, 0.5))
@@ -156,10 +167,13 @@ func _draw_ui() -> void:
 			_ui.draw_rect(r.grow(-2.0), Color(COL_BLUE.r, COL_BLUE.g, COL_BLUE.b, 0.5))
 		var label := str(n)
 		var col := UiTheme.COL_TEXT if open else UiTheme.COL_DIM
-		UiTheme.text(_ui, r.position + Vector2((r.size.x - UiTheme.width(label)) * 0.5, 12.0), label, UiTheme.SIZE_BODY, col)
-	_ui.draw_rect(NIGHT_RECT, Color(0.05, 0.09, 0.14, 0.78))
-	_ui.draw_rect(NIGHT_RECT, COL_BLUE, false, 1.0)
+		UiTheme.text(_ui, r.position + Vector2((r.size.x - UiTheme.width(label, UiTheme.TEXT_S)) * 0.5, 12.0), label, UiTheme.TEXT_S, col)
+	var night_box := night_rect(area)
+	_ui.draw_rect(night_box, Color(0.05, 0.09, 0.14, 0.78))
+	_ui.draw_rect(night_box, COL_BLUE, false, 1.0)
 	var look := "N . %s" % ("NIGHT" if night else "DAY")
-	UiTheme.text(_ui, NIGHT_RECT.position + Vector2((NIGHT_RECT.size.x - UiTheme.width(look)) * 0.5, 12.0), look, UiTheme.SIZE_BODY, UiTheme.COL_TEXT)
+	UiTheme.text(_ui, night_box.position + Vector2((night_box.size.x - UiTheme.width(look, UiTheme.TEXT_S)) * 0.5, 12.0), look, UiTheme.TEXT_S, UiTheme.COL_TEXT)
 	var leave := "Esc . pause"
-	UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(leave), 14.0), leave, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var leave_w := UiTheme.width(leave, UiTheme.TEXT_S)
+	_ui.draw_rect(Rect2(area.x - HINT_MARGIN - leave_w - 4.0, 4.0, leave_w + 8.0, BANNER_H), Color(0.05, 0.09, 0.14, 0.78))  # a plate: the hint reads over any ground
+	UiTheme.text(_ui, Vector2(area.x - HINT_MARGIN - leave_w, 17.0), leave, UiTheme.TEXT_S, UiTheme.COL_DIM)

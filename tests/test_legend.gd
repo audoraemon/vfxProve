@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_columns(t)
 	_sweep_skips(t)
 	_hold_waits(t)
+	_areas(t)
 
 
 static func _tags(list: Array) -> Array[MapTag]:
@@ -212,3 +213,34 @@ static func _columns(t) -> void:
 			"LANTERN-BEARER: kill him and dawn slows again; his escorts take the flame if they see",
 			"HERALD: runs to the Temple; if he gets in, the night is lost"]:
 		t.check(words.has(line), "page 2 has the row: %s" % line)
+
+
+## UI resolution Task 5: on an 800 x 450 area the legend's design frame is centred (its dimmer fills the area), the memory overlay's picker and toggle follow
+## the middle and its hint the right edge, and the zoom readout's plate hugs the right edge; at 640 x 360 all are as before. With the wider spaces on, both
+## legend pages still fit their panel above the footer.
+static func _areas(t) -> void:
+	var panel := LegendPanel.new()
+	t.check(panel.design_offset() == Vector2.ZERO, "at 640 x 360 the legend's frame sits at the origin")
+	panel.size = Vector2(800.0, 450.0)
+	t.check(panel.design_offset() == Vector2(80.0, 45.0), "at 800 x 450 it is centred (%s)" % panel.design_offset())
+	panel.free()
+	var here := MemoryOverlay.box_rect(3)
+	var wide := MemoryOverlay.box_rect(3, Vector2(800.0, 450.0))
+	t.check(wide.position == here.position + Vector2(80.0, 0.0) and MemoryOverlay.night_rect(Vector2(800.0, 450.0)).position
+		== MemoryOverlay.NIGHT_RECT.position + Vector2(80.0, 0.0), "the picker and the toggle move to the middle of a wider area (%s)" % wide)
+	var z := ZoomReadout.plate_rect(40.0, Vector2(640.0, 360.0))
+	var zw := ZoomReadout.plate_rect(40.0, Vector2(800.0, 450.0))
+	t.check(is_equal_approx(z.end.x, 640.0 - ZoomReadout.RIGHT_MARGIN) and is_equal_approx(zw.end.x, 800.0 - ZoomReadout.RIGHT_MARGIN)
+		and is_equal_approx(zw.get_center().y, 225.0), "the zoom readout's plate keeps its distance from the right edge at any width (%s, %s)" % [z, zw])
+	var was := UiTheme.word_spacing
+	UiTheme.word_spacing = true
+	var top := LegendPanel.PANEL.position.y + 44.0
+	var bottom := LegendPanel.PANEL.end.y - 24.0
+	var cols := LegendPanel.overhead_columns()
+	var room := LegendPanel.column_room()
+	var h0 := LegendPanel.rows_height(cols[0], room)
+	var h1 := LegendPanel.rows_height(cols[1], room)
+	var marks := LegendPanel.rows_height(LegendPanel.MARKS, LegendPanel.LEFT_W - LegendPanel.SWATCH_W - 8.0)
+	UiTheme.word_spacing = was
+	t.check(top + h0 <= bottom + 12.0 and top + h1 <= bottom and top + marks <= bottom,
+		"with the wider spaces on, page 2's columns (%.0f, %.0f) and page 1's marks (%.0f) fit above the footer (%.0f)" % [h0, h1, marks, bottom - top])

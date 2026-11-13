@@ -19,7 +19,7 @@ static func run(t) -> void:
 		if said != String(row[2]):
 			wrong.append("%s/%s" % [row[0], row[1]])
 		# Review focus 5: each fits the screen with his name before it, 16 px in from either side.
-		if Hud.subtitle_width(said) > Hud.SCREEN_W - 32.0:
+		if Hud.subtitle_width(said) > float(UiScale.DESIGN.x) - 32.0:
 			wide.append("%s/%s %.0f px" % [row[0], row[1], Hud.subtitle_width(said)])
 	t.check(wrong.is_empty(), "Cael's six lines are the spec's (wrong: %s)" % ", ".join(wrong))
 	t.check(wide.is_empty(), "each fits the screen with his name before it (too wide: %s)" % ", ".join(wide))

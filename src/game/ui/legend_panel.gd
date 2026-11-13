@@ -8,6 +8,7 @@ extends Control
 ## Closed (page 0, or after Esc/H on page 2). The mission frees the panel and lets the night go on.
 signal closed
 
+## The design frame the panel is laid out in; it is centred in the UI area (design_offset()), the dimmer behind it fills the whole area.
 const VIEW := Vector2(640.0, 360.0)
 const PANEL := Rect2(20.0, 12.0, 600.0, 336.0)
 const FOOTER := "H next   Esc close   the night waits"
@@ -82,6 +83,28 @@ const OVERHEAD_SPLIT := 10
 var page := 0
 ## This night's rows, built when the panel is set up: [[Color, String]].
 var _night: Array = []
+## Where the design frame starts, for the drawing helpers that reset the transform (_ellipse).
+var _origin := Vector2.ZERO
+
+
+## Where the design frame starts in the area: the area's middle less half of VIEW.
+func design_offset() -> Vector2:
+	var area := size if size.x > 1.0 and size.y > 1.0 else UiScale.area()
+	return ((area - VIEW) / 2.0).floor()
+
+
+func _enter_tree() -> void:
+	if not UiScale.notifier.changed.is_connected(_on_scale):
+		UiScale.notifier.changed.connect(_on_scale)
+
+
+func _exit_tree() -> void:
+	if UiScale.notifier.changed.is_connected(_on_scale):
+		UiScale.notifier.changed.disconnect(_on_scale)
+
+
+func _on_scale(_lay: Dictionary) -> void:
+	queue_redraw()
 
 
 func _init() -> void:
@@ -158,26 +181,29 @@ static func night_rows(tags: Array[MapTag]) -> Array:
 func _draw() -> void:
 	if page == 0:
 		return
-	draw_rect(Rect2(Vector2.ZERO, VIEW), Color(0.0, 0.0, 0.0, 0.5))
+	var area := size if size.x > 1.0 and size.y > 1.0 else UiScale.area()
+	draw_rect(Rect2(Vector2.ZERO, area), Color(0.0, 0.0, 0.0, 0.5))  # the dimmer covers the whole area, the panel sits in the design frame
+	_origin = design_offset()
+	draw_set_transform(_origin)
 	draw_rect(PANEL, Color(0.04, 0.04, 0.06, 0.92))
 	UiTheme.frame(self, PANEL.grow(-3.0), true)
 	var title: String = TITLES[page - 1]
-	UiTheme.text(self, Vector2(roundf(PANEL.get_center().x - UiTheme.width(title, UiTheme.SIZE_BIG) * 0.5), PANEL.position.y + 26.0),
-		title, UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
+	UiTheme.text(self, Vector2(roundf(PANEL.get_center().x - UiTheme.width(title, UiTheme.TEXT_L) * 0.5), PANEL.position.y + 28.0),
+		title, UiTheme.TEXT_L, UiTheme.COL_GOLD)
 	var count := "%d / 2" % page
-	UiTheme.text(self, Vector2(PANEL.end.x - 14.0 - UiTheme.width(count, UiTheme.SIZE_SMALL), PANEL.position.y + 26.0), count,
-		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	UiTheme.text(self, Vector2(PANEL.end.x - 14.0 - UiTheme.width(count, UiTheme.TEXT_S), PANEL.position.y + 26.0), count,
+		UiTheme.TEXT_S, UiTheme.COL_DIM)
 	var left := PANEL.position.x + 16.0
 	var top := PANEL.position.y + 44.0
 	if page == 1:
 		_draw_rows(MARKS, left, top, LEFT_W - SWATCH_W - 8.0)
 		var right := left + LEFT_W + COL_GAP
-		UiTheme.text(self, Vector2(right, top + 2.0), NIGHT_TITLE, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
+		UiTheme.text(self, Vector2(right, top + 2.0), NIGHT_TITLE, UiTheme.TEXT_S, UiTheme.COL_GOLD)
 		var rows: Array = []
 		for r in _night:
 			rows.append(["diamond", r[0], String(r[1])])
 		if rows.is_empty():
-			UiTheme.text(self, Vector2(right, top + 22.0), NOTHING, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+			UiTheme.text(self, Vector2(right, top + 22.0), NOTHING, UiTheme.TEXT_S, UiTheme.COL_DIM)
 		else:
 			var room := PANEL.end.x - 16.0 - right - SWATCH_W - 8.0
 			_draw_rows(fit_rows(rows, room, top + 10.0, PANEL.end.y - 24.0), right, top + 10.0, room)
@@ -203,7 +229,7 @@ static func column_room() -> float:
 static func rows_height(rows: Array, room: float) -> float:
 	var total := 0.0
 	for r: Array in rows:
-		total += maxf(ROW_MIN, UiTheme.LINE_SMALL * float(UiTheme.wrap(String(r[2]), room, UiTheme.SIZE_SMALL).size()) + 3.0)
+		total += maxf(ROW_MIN, UiTheme.LINE_S * float(UiTheme.wrap(String(r[2]), room, UiTheme.TEXT_S).size()) + 3.0)
 	return total
 
 
@@ -213,7 +239,7 @@ static func fit_rows(rows: Array, room: float, top: float, bottom: float) -> Arr
 	var heights: Array[float] = []
 	var total := 0.0
 	for r: Array in rows:
-		var h := maxf(ROW_MIN, UiTheme.LINE_SMALL * float(UiTheme.wrap(String(r[2]), room, UiTheme.SIZE_SMALL).size()) + 3.0)
+		var h := maxf(ROW_MIN, UiTheme.LINE_S * float(UiTheme.wrap(String(r[2]), room, UiTheme.TEXT_S).size()) + 3.0)
 		heights.append(h)
 		total += h
 	if top + total <= bottom:
@@ -235,22 +261,22 @@ func _draw_footer() -> void:
 	var gap := 14.0
 	var total := gap * float(parts.size() - 1)
 	for part in parts:
-		total += UiTheme.width(part, UiTheme.SIZE_SMALL)
+		total += UiTheme.width(part, UiTheme.TEXT_S)
 	var x := roundf(PANEL.get_center().x - total * 0.5)
 	for part in parts:
-		UiTheme.text(self, Vector2(x, PANEL.end.y - 12.0), part, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-		x += UiTheme.width(part, UiTheme.SIZE_SMALL) + gap
+		UiTheme.text(self, Vector2(x, PANEL.end.y - 12.0), part, UiTheme.TEXT_S, UiTheme.COL_DIM)
+		x += UiTheme.width(part, UiTheme.TEXT_S) + gap
 
 
 ## Rows down from `top`: a swatch, then the words wrapped to `room`. Returns the y below the last.
 func _draw_rows(rows: Array, x: float, top: float, room: float) -> float:
 	var y := top
 	for r: Array in rows:
-		var lines := UiTheme.wrap(String(r[2]), room, UiTheme.SIZE_SMALL)
-		var h := maxf(ROW_MIN, UiTheme.LINE_SMALL * float(lines.size()) + 3.0)
+		var lines := UiTheme.wrap(String(r[2]), room, UiTheme.TEXT_S)
+		var h := maxf(ROW_MIN, UiTheme.LINE_S * float(lines.size()) + 3.0)
 		_swatch(String(r[0]), r[1], x, y + 7.0)
 		for i in lines.size():
-			UiTheme.text(self, Vector2(x + SWATCH_W + 8.0, y + 10.0 + UiTheme.LINE_SMALL * float(i)), lines[i], UiTheme.SIZE_SMALL)
+			UiTheme.text(self, Vector2(x + SWATCH_W + 8.0, y + 10.0 + UiTheme.LINE_S * float(i)), lines[i], UiTheme.TEXT_S)
 		y += h
 	return y
 
@@ -263,9 +289,9 @@ func _glyph(rows: Array[int], at: Vector2, col: Color, px := 2.0) -> void:
 
 
 func _ellipse(c: Vector2, rx: float, col: Color) -> void:
-	draw_set_transform(c, 0.0, Vector2(1.0, 0.5))
+	draw_set_transform(_origin + c, 0.0, Vector2(1.0, 0.5))
 	draw_arc(Vector2.ZERO, rx, 0.0, TAU, 24, col, 1.0)
-	draw_set_transform_matrix(Transform2D.IDENTITY)
+	draw_set_transform(_origin)
 
 
 ## One row's picture, in the SWATCH_W box starting at `x`, centred on `cy`.
@@ -309,7 +335,7 @@ func _swatch(kind: String, col: Color, x: float, cy: float) -> void:
 				draw_rect(Rect2(x + 1.0 + 3.0 * float(i), cy - 4.0, 3.0, 8.0), CLEAR.lerp(DANGER, float(i) / 7.0))
 		"clock_ring":
 			draw_rect(Rect2(x + 1.0, cy - 7.0, 24.0, 14.0), col, false, 1.0)
-			UiTheme.text(self, Vector2(x + 3.0, cy + 4.0), "1.5", UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+			UiTheme.text(self, Vector2(x + 3.0, cy + 4.0), "1.5", UiTheme.TEXT_S, UiTheme.COL_TEXT)
 		"beam":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-2, -6), c + Vector2(2, -6), c + Vector2(10, 5), c + Vector2(-10, 5)]),
 				Color(col, 0.4))
@@ -321,7 +347,7 @@ func _swatch(kind: String, col: Color, x: float, cy: float) -> void:
 			draw_rect(Rect2(x + 1.0, cy - 2.0, 24.0, 4.0), Color(0, 0, 0, 0.6))
 			draw_rect(Rect2(x + 1.0, cy - 2.0, 15.0, 4.0), col)
 		"strip":
-			UiTheme.text(self, Vector2(x, cy + 4.0), "0:23", UiTheme.SIZE_SMALL, col)
+			UiTheme.text(self, Vector2(x, cy + 4.0), "0:23", UiTheme.TEXT_S, col)
 		"stability":
 			for i in 5:
 				draw_rect(Rect2(x + 1.0 + 5.0 * float(i), cy - 2.0, 4.0, 5.0), UiTheme.STABILITY_COLS[i])
@@ -333,7 +359,7 @@ func _swatch(kind: String, col: Color, x: float, cy: float) -> void:
 			draw_rect(Rect2(x + 2.0, cy - 6.0, 12.0, 12.0), Color(0.04, 0.04, 0.06, 0.9))
 			draw_rect(Rect2(x + 2.0, cy - 6.0, 12.0, 7.0), Color(0, 0, 0, 0.55))
 			draw_rect(Rect2(x + 2.0, cy - 6.0, 12.0, 12.0), UiTheme.COL_GOLD_DARK, false, 1.0)
-			UiTheme.text(self, Vector2(x + 17.0, cy + 4.0), "2", UiTheme.SIZE_SMALL, col)
+			UiTheme.text(self, Vector2(x + 17.0, cy + 4.0), "2", UiTheme.TEXT_S, col)
 		"refused":
 			draw_rect(Rect2(x + 7.0, cy - 6.0, 12.0, 12.0), Color(col, 0.45))
 			draw_rect(Rect2(x + 7.0, cy - 6.0, 12.0, 12.0), col, false, 1.0)

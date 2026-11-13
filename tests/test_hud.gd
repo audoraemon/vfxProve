@@ -73,20 +73,16 @@ static func run(t) -> void:
 	t.check(hud.slot_at(hud.slot_rect(2).get_center()) == 2, "a point on the third slot is the third slot")
 	t.check(hud.slot_at(Vector2(4.0, 200.0)) == -1, "and a point on the town is no slot")
 
-	# Each slot is a card with the power's name beside its icon (the user's second playtest); since v0.08 a compact
-	# one, the name on one line cut to fit.
-	t.check(hud.slot_rect(0).size.x == Hud.SLOT_W and hud.slot_rect(0).size.y == Hud.SLOT_SIZE,
-		"a slot is a %d x %d card (%s)" % [int(Hud.SLOT_W), int(Hud.SLOT_SIZE), hud.slot_rect(0).size])
-	t.check(hud.slot_name(0) == UiTheme.fit("Heaven Splitter", Hud.NAME_ROOM) and hud.slot_name(0).begins_with("Heaven")
-		and hud.slot_name(3).begins_with("Nuclear"), "and carries its power's name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
-	var too_long := ""
-	for p: Dictionary in PowerBook.POWERS:
-		var cut := UiTheme.fit(String(p.name), Hud.NAME_ROOM)
-		if cut.length() < 3 or UiTheme.width(cut, UiTheme.SIZE_SMALL) > Hud.NAME_ROOM:
-			too_long += " " + String(p.name)
-	t.check(too_long == "", "every power's name fits a card on one line (too long:%s)" % too_long)
+	# Each slot is a card with the power's name beside its icon; since v0.08 a compact one (100 wide at six slots), and it widens when the row has
+	# room, so the name fits whole: at four slots the card is as wide as the row lets it.
+	t.check(hud.slot_rect(0).size.x == hud.slot_w() and hud.slot_w() > Hud.SLOT_W and hud.slot_w() <= Hud.SLOT_W_MAX
+		and hud.slot_rect(0).size.y == Hud.SLOT_SIZE, "a slot is a %d x %d card, wider than the crowded %d (%s)" % [int(hud.slot_w()),
+		int(Hud.SLOT_SIZE), int(Hud.SLOT_W), hud.slot_rect(0).size])
+	t.check(hud.slot_name(0) == "Heaven Splitter" and hud.slot_name(3) == "Nuclear Nova" and hud.slot_name_lines(0).size() == 1,
+		"and carries its power's whole name (%s, %s)" % [hud.slot_name(0), hud.slot_name(3)])
+	_slot_names(t)
 	# Four slots sit centred on the screen.
-	t.check(is_equal_approx(hud.slot_rect(0).position.x, Hud.SCREEN_W - hud.slot_rect(3).end.x),
+	t.check(is_equal_approx(hud.slot_rect(0).position.x, float(UiScale.DESIGN.x) - hud.slot_rect(3).end.x),
 		"four slots are centred (%.0f .. %.0f)" % [hud.slot_rect(0).position.x, hud.slot_rect(3).end.x])
 
 	# Banners queue up, show for their time and go.
@@ -174,7 +170,7 @@ static func run(t) -> void:
 	var six_bad := 0
 	for i in 6:
 		var r := six.slot_rect(i)
-		if r.position.x < 0.0 or r.end.x > Hud.SCREEN_W or r.end.y > 360.0:
+		if r.position.x < 0.0 or r.end.x > float(UiScale.DESIGN.x) or r.end.y > 360.0:
 			six_bad += 100
 		if i > 0 and r.intersects(six.slot_rect(i - 1)):
 			six_bad += 10
@@ -185,6 +181,9 @@ static func run(t) -> void:
 		% [six_bad, six.slot_rect(0).position.x, six.slot_rect(5).end.x])
 	six.free()
 	six_rules.free()
+	_anchors_800x450(t, hud)
+	_crisp_source(t)
+	_spaced_hints(t)
 
 	# The marks over people (v0.10; M5 made them bigger and outlined, so they read on the cobbles): a diamond MARK_R each
 	# way from its centre.
@@ -497,3 +496,146 @@ static func _lantern_clock(t) -> void:
 		"a Lantern tag is on the layer, and the layer is shown")
 	hud.free()
 	Kit.done(s)
+
+
+## Every power's name on its card (the pixel font's spaces are wider now): the widest card shows each whole in at most two lines; the narrowest (six slots at 640)
+## breaks it at its words, and trims letters only from a word that is itself wider than the room.
+static func _slot_names(t) -> void:
+	var was := UiTheme.word_spacing
+	UiTheme.word_spacing = true
+	var wide_room := Hud.SLOT_W_MAX - Hud.SLOT_SIZE - 6.0
+	var not_whole := ""
+	var too_wide := ""
+	var cut_without_cause := ""
+	for p: Dictionary in PowerBook.POWERS:
+		var power_name := String(p.name)
+		var lines := Hud.name_lines(power_name, wide_room)
+		if " ".join(lines) != power_name or lines.size() > Hud.NAME_LINES:
+			not_whole += " " + power_name
+		var narrow := Hud.name_lines(power_name, Hud.NAME_ROOM)
+		for l in narrow:
+			if UiTheme.width(l, UiTheme.TEXT_S) > Hud.NAME_ROOM:
+				too_wide += " " + power_name
+		if " ".join(narrow) != power_name:
+			# Cut: fair only when a word is wider than the room, or the words need more than two lines.
+			var longest_word := 0.0
+			for word in power_name.split(" "):
+				longest_word = maxf(longest_word, UiTheme.width(word, UiTheme.TEXT_S))
+			var all_lines := UiTheme.wrap(power_name, Hud.NAME_ROOM, UiTheme.TEXT_S)
+			if longest_word <= Hud.NAME_ROOM and all_lines.size() <= Hud.NAME_LINES:
+				cut_without_cause += " " + power_name
+	UiTheme.word_spacing = was
+	t.check(not_whole == "", "at the widest card every power's name is whole, in at most two lines (not:%s)" % not_whole)
+	t.check(too_wide == "", "and at the narrowest no line runs past the room (wide:%s)" % too_wide)
+	t.check(cut_without_cause == "", "a name is cut at the narrowest only when a word is wider than the room or it needs three lines (%s)" % cut_without_cause)
+
+
+## A Hud on an 800 x 450 area (Task 5): the slot row keeps its distance from the bottom edge and its centre, the status line its margin from the
+## right edge, the chain, ascend and caption plates and the arrows' frame their distance from the bottom; at 640 x 360 every rect is today's.
+static func _anchors_800x450(t, hud: Hud) -> void:
+	var top_now := hud.slot_rect(0).position.y
+	t.check(is_equal_approx(top_now, Hud.SLOT_TOP) and is_equal_approx(hud.status_right(), 640.0 - Hud.STATUS_MARGIN),
+		"at 640 x 360 the slot row and the status line are where they were (%s, %s)" % [top_now, hud.status_right()])
+	var chain_y := hud.chain_rect().position.y
+	var ascend_y := hud.ascend_rect().position.y
+	var caption_y := hud.caption_top()
+	var frame_end := Hud.tag_frame(Vector2(640.0, 360.0)).end.y
+	hud.size = Vector2(800.0, 450.0)
+	var last := hud.slot_rect(3)
+	var bottom_gap := 360.0 - Hud.SLOT_TOP - Hud.SLOT_SIZE
+	t.check(is_equal_approx(last.end.y, 450.0 - bottom_gap), "800 x 450: the slot row's bottom is the same distance from the edge (%s)" % last.end.y)
+	t.check(absf((hud.slot_rect(0).position.x + last.end.x) * 0.5 - 400.0) <= 0.5, "and it is centred on x 400 (%.1f .. %.1f)" % [hud.slot_rect(0).position.x, last.end.x])
+	t.check(is_equal_approx(hud.status_right(), 800.0 - Hud.STATUS_MARGIN), "the status line's right edge follows the area's (%s)" % hud.status_right())
+	var dy := 90.0
+	t.check(is_equal_approx(hud.chain_rect().position.y, chain_y + dy) and is_equal_approx(hud.ascend_rect().position.y, ascend_y + dy)
+		and is_equal_approx(hud.caption_top(), caption_y + dy), "the chain plate, the ASCEND plate and the tour's caption keep their distance from the bottom")
+	t.check(is_equal_approx(hud.ascend_rect().get_center().x, 400.0), "the ASCEND plate is centred on the area (%s)" % hud.ascend_rect())
+	t.check(is_equal_approx(Hud.tag_frame(Vector2(800.0, 450.0)).end.y, frame_end + dy)
+		and is_equal_approx(Hud.tag_frame(Vector2(800.0, 450.0)).end.x, 800.0 - Hud.EDGE_MARGIN), "the arrows' frame follows the area's edges")
+	t.check(Hud.slot_top_in(Vector2(800.0, 450.0)) == Hud.SLOT_TOP + dy, "slot_top_in gives the same row top")
+	hud.size = Vector2.ZERO
+
+
+## The HUD's source names only crisp sizes: no old SIZE_ constant, and every UiTheme text/width/wrap/fit call spells its size out (the default is the 13 px one).
+## The same for the other in-mission overlays.
+static func _crisp_source(t) -> void:
+	var bad := PackedStringArray()
+	for path in ["res://src/game/ui/hud.gd", "res://src/game/ui/legend_panel.gd", "res://src/game/ui/memory_overlay.gd", "res://src/game/ui/behaviour_overlay.gd",
+			"res://src/game/ui/zoom_readout.gd", "res://src/game/ui/fps_meter.gd"]:
+		bad.append_array(uncrisp_calls(FileAccess.get_file_as_string(path), path.get_file()))
+	t.check(bad.is_empty(), "the HUD and its overlays use only TEXT_S/L sizes, every call naming its own (%s)" % ", ".join(bad))
+	# The lint sees what it should: the old way of writing it is caught.
+	t.check(uncrisp_calls("UiTheme.text(self, at, s, UiTheme.SIZE_BODY)", "x").size() == 2
+		and uncrisp_calls("UiTheme.width(s)", "x").size() == 1 and uncrisp_calls("UiTheme.wrap(s, 10.0)", "x").size() == 1
+		and uncrisp_calls("UiTheme.fit(s, 10.0)", "x").size() == 1 and uncrisp_calls("UiTheme.text(self, at, s, 13)", "x").size() == 1
+		and uncrisp_calls("UiTheme.text(self, at, s, UiTheme.TEXT_S, col)", "x").is_empty()
+		and uncrisp_calls("UiTheme.width(s, UiTheme.TEXT_L)", "x").is_empty(), "the lint catches a left-out or an old size")
+
+
+## The arguments of every UiTheme.text/width/wrap/fit call in `src` that do not name a crisp size, as "file:call".
+static func uncrisp_calls(code: String, file: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var kept := PackedStringArray()
+	for line in code.split("\n"):
+		var cut := line.find("#")
+		while cut >= 0 and line.left(cut).count("\"") % 2 == 1:
+			cut = line.find("#", cut + 1)
+		kept.append(line if cut < 0 else line.left(cut))
+	var src := "\n".join(kept)
+	var needs := {"text": 3, "width": 1, "wrap": 2, "fit": 2}  # the index of the size argument
+	for fn: String in needs:
+		var marker := "UiTheme.%s(" % fn
+		var at := src.find(marker)
+		while at >= 0:
+			var args := _args(src, at + marker.length())
+			var idx: int = needs[fn]
+			if args.size() <= idx or not (args[idx].contains("TEXT_") or args[idx] == "size_px"):
+				out.append("%s:%s" % [file, marker + ",".join(args).left(30)])
+			at = src.find(marker, at + marker.length())
+	if src.contains("UiTheme.SIZE_"):
+		out.append("%s:SIZE_" % file)
+	return out
+
+
+## The top-level arguments of a call whose "(" has just been passed at `from`.
+static func _args(src: String, from: int) -> PackedStringArray:
+	var out := PackedStringArray()
+	var depth := 0
+	var cur := ""
+	var i := from
+	while i < src.length():
+		var c := src[i]
+		if c == "(" or c == "[":
+			depth += 1
+		elif c == ")" or c == "]":
+			if depth == 0:
+				break
+			depth -= 1
+		elif c == "," and depth == 0:
+			out.append(cur.strip_edges())
+			cur = ""
+			i += 1
+			continue
+		cur += c
+		i += 1
+	if cur.strip_edges() != "":
+		out.append(cur.strip_edges())
+	return out
+
+
+## With the wider spaces on (the HUD turns them on), every how-to-win line still fits the plate's lines.
+static func _spaced_hints(t) -> void:
+	var was := UiTheme.word_spacing
+	UiTheme.word_spacing = true
+	var long := PackedStringArray()
+	for key: String in MissionHints.LINES:
+		if UiTheme.wrap(String(MissionHints.LINES[key]), Hud.HINT_W, UiTheme.TEXT_S).size() > Hud.HINT_LINES:
+			long.append(key)
+	for phase: String in MissionHints.LANTERN:
+		if UiTheme.wrap(String(MissionHints.LANTERN[phase]), Hud.HINT_W, UiTheme.TEXT_S).size() > Hud.HINT_LINES:
+			long.append("lantern." + phase)
+	for line in [MissionHints.WISHES_LINE, MissionHints.ASCEND_LINE]:
+		if UiTheme.wrap(line, Hud.HINT_W, UiTheme.TEXT_S).size() > Hud.HINT_LINES:
+			long.append(line.left(20))
+	UiTheme.word_spacing = was
+	t.check(long.is_empty(), "with the wider spaces on, every how-to-win line fits %d lines of %d px (too long: %s)" % [Hud.HINT_LINES, int(Hud.HINT_W), ", ".join(long)])

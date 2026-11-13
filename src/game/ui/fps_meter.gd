@@ -48,11 +48,11 @@ class Readout extends Control:
 	func _draw() -> void:
 		if meter.text == "":
 			return
-		var w := get_viewport_rect().size.x
-		var tw := UiTheme.width(meter.text, UiTheme.SIZE_SMALL)
+		var w := size.x if size.x > 1.0 else UiScale.area().x
+		var tw := UiTheme.width(meter.text, UiTheme.TEXT_S)
 		var at := Vector2(roundf(w - tw - FpsMeter.MARGIN), FpsMeter.TOP)
 		draw_rect(Rect2(at - Vector2(2.0, 0.0), Vector2(tw + 4.0, FpsMeter.PLATE_H)), Color(0, 0, 0, 0.62))
-		UiTheme.text(self, at + Vector2(0.0, FpsMeter.PLATE_H - 3.0), meter.text, UiTheme.SIZE_SMALL, meter.color)
+		UiTheme.text(self, at + Vector2(0.0, FpsMeter.PLATE_H - 3.0), meter.text, UiTheme.TEXT_S, meter.color)
 
 
 func _ready() -> void:

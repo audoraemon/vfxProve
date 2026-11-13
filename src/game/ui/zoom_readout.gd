@@ -7,9 +7,11 @@ extends CanvasLayer
 ## How long the readout stays up after a change, and how long of that it spends fading out.
 const SHOW_SECONDS := 3.0
 const FADE_SECONDS := 0.6
-## Its plate's right edge and vertical centre on a 640 x 360 screen (the screen's right side, clear of the status line and slots).
+## Its plate's distance from the area's right edge and its vertical centre as a fraction of the area's height (the right side, clear of the
+## status line and the slots). The plate is anchored to that edge, so it hugs it at any area.
 const RIGHT_MARGIN := 6.0
 const MID_Y := 180.0
+const PLATE_H := 18.0
 
 var _text := ""
 var _left := 0.0
@@ -53,16 +55,20 @@ func _process(delta: float) -> void:
 	_view.queue_redraw()
 
 
+## The plate for a text `w` wide on an area of `area` units: its right edge RIGHT_MARGIN in from the area's, centred at MID_Y's share of its height.
+static func plate_rect(w: float, area: Vector2) -> Rect2:
+	return Rect2(Vector2(area.x - RIGHT_MARGIN - w - 8.0, roundf(area.y * (MID_Y / 360.0)) - PLATE_H * 0.5), Vector2(w + 8.0, PLATE_H))
+
+
 func _draw_view() -> void:
 	if not shown():
 		return
 	var a := clampf(_left / FADE_SECONDS, 0.0, 1.0)
-	var w := UiTheme.width(_text, UiTheme.SIZE_BODY)
-	var size := _view.size if _view.size.x > 1.0 else Vector2(640.0, 360.0)
-	var plate := Rect2(Vector2(size.x - RIGHT_MARGIN - w - 8.0, size.y * (MID_Y / 360.0) - 9.0), Vector2(w + 8.0, 18.0))
+	var w := UiTheme.width(_text, UiTheme.TEXT_S)
+	var plate := plate_rect(w, _view.size if _view.size.x > 1.0 else UiScale.area())
 	var bg := UiTheme.COL_PANEL
 	bg.a *= a
 	_view.draw_rect(plate, bg)
 	var col := UiTheme.COL_TEXT
 	col.a = a
-	UiTheme.text(_view, plate.position + Vector2(4.0, 13.0), _text, UiTheme.SIZE_BODY, col, a)
+	UiTheme.text(_view, plate.position + Vector2(4.0, 13.0), _text, UiTheme.TEXT_S, col, a)

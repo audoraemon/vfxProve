@@ -109,6 +109,8 @@ func step(delta: float) -> void:
 	if waiting or warning_dead or phase != Phase.RUN or not _alive(messenger) or messenger.inside:
 		return
 	if messenger.ground_pos.distance_to(_door()) <= TempleReport.REACH:
+		if not in_temple:
+			_sound(&"msn_knock", _door())
 		in_temple = true  # word reaches the Temple: SilenceWitnessDirector.lost_reason() says so, WitnessObjective loses the night
 		return
 	if messenger.mind == Person.Mind.DUTY and not messenger.has_goal():
@@ -186,6 +188,7 @@ func _judge() -> void:
 	if walls_stop and _out_of_walls():
 		return
 	rules.banner.emit("THE MATE RUNS ON")
+	_sound(&"msn_bolt", mate.ground_pos)
 	phase = Phase.RUN
 	_retarget_in = RETARGET
 	_run(true)
@@ -349,6 +352,7 @@ func _out_of_walls() -> bool:
 		return false
 	var gone := messenger
 	_end("out")
+	_sound(&"msn_gate_out", gone.ground_pos)
 	send_off(gone)
 	rules.banner.emit("THE WITNESS LEAVES TOWN")
 	return true

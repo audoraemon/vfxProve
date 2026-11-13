@@ -574,6 +574,7 @@ func _judge(q: Quarry) -> void:
 	q.judged = true
 	if not q.unseen:
 		rules.banner.emit(_seen_banner())
+		_sound(&"msn_scatter", at)
 		if crowd.bell != null and crowd.bell.state == BellNetwork.State.IDLE:
 			crowd.bell.call_keeper()
 

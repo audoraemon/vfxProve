@@ -233,6 +233,8 @@ func _appoint_hunters(_c: Person, n: int) -> Array[Person]:
 			_bring_out(v as Person, citadel_door)
 			_keep_from_flight(v as Person, true)
 			out.append(v as Person)
+	if not out.is_empty():
+		_sound(&"msn_knights", citadel_door)
 	return out
 
 
@@ -265,6 +267,7 @@ func _unbind(c: Charge) -> void:
 	var p := c.man as Person
 	if not is_instance_valid(p):
 		return
+	_sound(&"msn_shackle", p.ground_pos)
 	p.answers_lure = true
 	_pace_walk = p.pace
 	_pace_lure = p.pace / maxf(charge_pace, 0.01)

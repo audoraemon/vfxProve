@@ -1,0 +1,9 @@
+{"length": 3.0, "rms_db": -21.0, "reverb": {"rt60": 0.8, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "at": 0.0, "from": 11.4, "dur": 2.4, "hp": 180, "lp": 1800, "gain_db": -6, "fade_in": 50, "fade_out": 1600},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMining_002.ogg", "at": 0.25, "onset": true, "pitch": -5, "lp": 3200, "hp": 90, "gain_db": -2, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_004.ogg", "at": 0.25, "onset": true, "pitch": -6, "lp": 1800, "gain_db": -8, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMining_003.ogg", "at": 0.67, "onset": true, "pitch": -5, "lp": 3200, "hp": 90, "gain_db": -2, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_000.ogg", "at": 0.67, "onset": true, "pitch": -6, "lp": 1800, "gain_db": -8, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMining_004.ogg", "at": 1.09, "onset": true, "pitch": -5, "lp": 3200, "hp": 90, "gain_db": -2, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_001.ogg", "at": 1.09, "onset": true, "pitch": -6, "lp": 1800, "gain_db": -8, "fade_out": 60}
+]}

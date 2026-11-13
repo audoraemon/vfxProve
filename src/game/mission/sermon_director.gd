@@ -137,6 +137,7 @@ func _begin() -> void:
 		called.append(w == 0)
 		spent_at.append(-1.0)
 	super()
+	_sound(&"msn_preach", pulpit)
 	for l: Listener in listeners:
 		if l.wave == 0 and _alive(l.man):
 			(l.man as Person).go_duty(l.spot)
@@ -354,6 +355,7 @@ func _call_wave(w: int) -> void:
 	if called[w]:
 		return
 	called[w] = true
+	_sound(&"msn_gather", _wave_source(w))
 	for l: Listener in listeners:
 		if l.wave == w and _alive(l.man) and not (l.man as Person).inside:
 			_keep_from_flight(l.man as Person, true)
@@ -474,6 +476,7 @@ func _step_events(delta: float) -> void:
 	_answer_lures()
 	if now and not _was_preaching:
 		rules.banner.emit("THE PREACHER TAKES UP HIS SERMON")
+		_sound(&"msn_preach", pulpit)
 	_was_preaching = now
 	if _preacher_fell != Vector2.INF and not _fall_judged and crowd._doomed.is_empty():
 		_acolytes_see()
@@ -646,6 +649,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 			if held(a):
 				_held_at_fall.append(a)
 		rules.banner.emit("THE PREACHER IS SILENT")
+		_sound(&"msn_scatter", _preacher_fell)
 	if _listener_of(e) != null:
 		_warn_flock()
 
@@ -662,6 +666,7 @@ func _warn_flock() -> void:
 		rules.banner.emit("1 MORE LOST ENDS IT")
 	elif left == 0:
 		rules.banner.emit("THE FLOCK IS SCATTERED")
+		_sound(&"msn_scatter", pulpit)
 
 
 ## The preacher's death judged (v0.11 M5, plan decision 189): each acolyte not held who sees the fall within SIGHT runs to the Temple.

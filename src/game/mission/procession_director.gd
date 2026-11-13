@@ -82,7 +82,7 @@ func _begin() -> void:
 	# His events are dropped (and left off the strip) once he is dead, boarded, or if the town had nobody to be him.
 	var travelling := func() -> bool: return WarningDirector._alive(prince) and not boarded
 	timeline.add(BLESSING_AT, "blessing", "The blessing", _bless, travelling)
-	timeline.add(SHIP_AT, "ship", "The ship docks", Callable(), travelling)
+	timeline.add(SHIP_AT, "ship", "The ship docks", _ship_docks, travelling)
 	timeline.add(TIDE_AT, "tide", "The last tide", Callable(), travelling)
 	prince = _appoint_prince()
 	if prince == null:
@@ -95,6 +95,12 @@ func _begin() -> void:
 	if emerge_after > 0.0:
 		_take_inside(prince, null)
 		timeline.add(emerge_after, "emerge", "The Prince comes out", _emerge, travelling)
+	else:
+		_sound(&"msn_fanfare", route[0])
+
+
+func _ship_docks() -> void:
+	_sound(&"msn_boat", route[route.size() - 1])
 
 
 ## The Prince steps down from his carriage (v0.11.1) at the Citadel's exit, and his walk begins at the next look.
@@ -102,6 +108,8 @@ func _emerge() -> void:
 	if WarningDirector._alive(prince) and prince.inside:
 		_bring_out(prince, route[0])
 		prince.anchor = route[0]
+		_sound(&"msn_door", route[0])
+		_sound(&"msn_fanfare", route[0])
 
 
 ## The way to the ship, each point on walkable ground: out of the Citadel, the cathedral steps, the market's south
@@ -280,6 +288,7 @@ func _bless() -> void:
 	for p in pool.slice(0, ONLOOKERS):
 		onlookers.append(p)
 		p.observe(steps, ONLOOK_SECONDS)
+	_sound(&"msn_chant", steps)
 
 
 ## He steps aboard: out of the town by the escape path, which counts for Act II's escapes (Rules.escaped_this_act()).
@@ -287,6 +296,7 @@ func _board() -> void:
 	if boarded or timeline.elapsed() < SHIP_AT:
 		return
 	boarded = true
+	_sound(&"msn_boat", prince.ground_pos)
 	crowd._field.remove(prince)
 	crowd.escape(prince)
 

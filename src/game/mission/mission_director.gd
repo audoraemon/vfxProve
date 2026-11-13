@@ -554,6 +554,7 @@ func _report(seer: Person, door: Vector2) -> void:
 	reports.append(report)
 	reports_started += 1
 	rules.banner.emit("A FAITHFUL RUNS TO THE TEMPLE")
+	_sound(&"msn_bolt", seer.ground_pos)
 
 
 ## Each report runs on; one delivered fills the Gaze. Reports delivered or ended are let go.
@@ -562,6 +563,7 @@ func _step_reports(delta: float) -> void:
 		r.step(delta, crowd)
 		if r.delivered:
 			gaze.fill()
+			_sound(&"msn_knock", r.door)
 	reports.assign(reports.filter(func(r: TempleReport) -> bool: return r.is_open()))
 
 

@@ -1,0 +1,20 @@
+{"length": 4.0, "rms_db": -22.0, "reverb": {"rt60": 0.8, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "at": 0.0, "from": 12.0, "dur": 3.6, "hp": 200, "lp": 1400, "gain_db": -8, "fade_in": 1800, "fade_out": 700},
+  {"src": "lib:wikimedia/Church_people_walking_steps_with_reverb.wav", "at": 0.0, "from": 4.0, "dur": 3.6, "hp": 80, "lp": 6000, "gain_db": -4, "fade_in": 900, "fade_out": 700},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth2.ogg", "at": 0.408, "onset": true, "gain_db": -19.1, "lp": 3000, "pitch": -0.43, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth33.ogg", "at": 0.791, "onset": true, "gain_db": -19.1, "lp": 3571, "pitch": -0.62, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth4.ogg", "at": 1.136, "onset": true, "gain_db": -17.0, "lp": 4142, "pitch": -1.37, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth1.ogg", "at": 1.469, "onset": true, "gain_db": -15.5, "lp": 4714, "pitch": -1.39, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth1.ogg", "at": 1.832, "onset": true, "gain_db": -14.0, "lp": 5285, "pitch": 0.39, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth1.ogg", "at": 2.222, "onset": true, "gain_db": -12.9, "lp": 5857, "pitch": 0.47, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth4.ogg", "at": 2.564, "onset": true, "gain_db": -11.3, "lp": 6428, "pitch": -1.36, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth4.ogg", "at": 2.939, "onset": true, "gain_db": -8.0, "lp": 7000, "pitch": 0.1, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth2.ogg", "at": 0.582, "onset": true, "gain_db": -19.5, "lp": 3000, "pitch": -0.29, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth4.ogg", "at": 0.965, "onset": true, "gain_db": -17.9, "lp": 3571, "pitch": -0.88, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth1.ogg", "at": 1.283, "onset": true, "gain_db": -16.0, "lp": 4142, "pitch": 0.38, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth1.ogg", "at": 1.634, "onset": true, "gain_db": -14.8, "lp": 4714, "pitch": -1.06, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth3.ogg", "at": 1.966, "onset": true, "gain_db": -13.2, "lp": 5285, "pitch": -1.22, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth2.ogg", "at": 2.39, "onset": true, "gain_db": -12.5, "lp": 5857, "pitch": -1.0, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth2.ogg", "at": 2.763, "onset": true, "gain_db": -9.6, "lp": 6428, "pitch": -1.43, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_lth4.ogg", "at": 3.136, "onset": true, "gain_db": -8.7, "lp": 7000, "pitch": -0.48, "hp": 60, "fade_out": 60}
+]}

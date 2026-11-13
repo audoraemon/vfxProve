@@ -122,6 +122,7 @@ func _begin() -> void:
 	need = NEED
 	_walks_left = poor_out_at.size()
 	one_at_a_time = true
+	door_heard = false
 	super()
 	rules.cast_made.connect(_on_light)
 

@@ -1,0 +1,5 @@
+{"length": 2.6, "rms_db": -22.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/droning-sound-effects/drone60.wav", "at": 0.0, "from": 30.0, "dur": 2.5, "pitch": -5, "hp": 60, "lp": 2500, "gain_db": -4, "fade_in": 600, "fade_out": 1100},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.3, "from": 1.0, "dur": 1.6, "pitch": -3, "hp": 200, "lp": 6000, "gain_db": -7, "fade_in": 200, "fade_out": 700},
+  {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 0.1, "reverse": true, "pitch": -9, "hp": 200, "gain_db": -12, "dur": 1.0, "fade_in": 300, "fade_out": 60}
+]}

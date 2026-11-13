@@ -289,6 +289,7 @@ func _muster(i: int) -> void:
 	if mustering[i]:
 		return
 	mustering[i] = true
+	_sound(&"msn_knights", faces[i])
 	for a: Armed in armed[i]:
 		if a.squad and _alive(a.man) and (a.man as Person).inside:
 			var p := a.man as Person
@@ -439,6 +440,7 @@ func _from_reserve(post: Vector2) -> Person:
 		var p := v as Person
 		if p.inside:
 			_bring_out(p, citadel_door)
+			_sound(&"msn_knights", citadel_door)
 		_keep_from_flight(p, true)  # out once the town may be running: never one of the flight
 		p.go_duty(post)
 		return p

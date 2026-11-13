@@ -134,6 +134,7 @@ func _judge_targets(delta: float) -> void:
 			_burned[s] = burned(s) + delta
 			var spoil := _spoil_for(s)
 			if spoil > 0.0 and burned(s) >= spoil:
+				_sound(&"msn_ruin", s.center())
 				_raze(s)
 
 

@@ -1,0 +1,7 @@
+{"length": 1.6, "rms_db": -20.0, "reverb": {"rt60": 0.8, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_002.ogg", "at": 0.0, "onset": true, "pitch": -6, "lp": 1800, "gain_db": 0, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_001.ogg", "at": 0.02, "onset": true, "pitch": -6, "lp": 900, "gain_db": -5, "fade_out": 60},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.28, "onset": true, "pitch": -2, "gain_db": -4, "fade_out": 60},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.25, "pitch": -2, "hp": 300, "lp": 6000, "gain_db": -14, "dur": 0.4, "fade_out": 60},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/3grunt2.wav", "at": 0.5, "onset": true, "pitch": -3, "hp": 120, "gain_db": -9, "fade_out": 60}
+]}

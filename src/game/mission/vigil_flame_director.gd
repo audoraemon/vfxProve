@@ -159,6 +159,7 @@ func _start_vigil() -> void:
 	_pace_bearer()
 	vigil.start()
 	_lantern = vigil.bearer.ground_pos
+	_sound(&"msn_chant", vigil.bearer.ground_pos)
 
 
 ## The bearer keeps BEARER_LEAD of his slowest living acolyte's pace; an acolyte taking the flame up keeps to the same rule
@@ -234,6 +235,8 @@ func _home_check() -> void:
 	if not homeward or vigil == null or not _alive(vigil.bearer):
 		return
 	if vigil.bearer.ground_pos.distance_to(temple_door) <= HOME_REACH:
+		if not kept:
+			_sound(&"msn_door", temple_door)
 		kept = true
 
 
@@ -282,6 +285,7 @@ func _swap() -> void:
 			seer.pace = float(_walk_pace[seer])  # off the Vigil, he runs at his own pace (v0.10 M5)
 		_report(seer, temple_door)
 	rules.banner.emit("THE FLAME IS TAKEN")
+	_sound(&"msn_lock", wren.ground_pos)
 	wren.pace *= WREN_PACE
 	wren.go_duty(shrine)
 	_tick = TICK
@@ -352,6 +356,8 @@ func _wren_goal() -> Vector2:
 func _flame_home() -> void:
 	home = true
 	rules.banner.emit("MIRA'S SHRINE BURNS AGAIN")
+	_sound(&"msn_relight", shrine)
+	_sound(&"msn_light_out", searchlight.spire)
 	if wren.mind == Person.Mind.DUTY:
 		wren.leave_shelter(false)
 	_phase2_end()
@@ -529,6 +535,7 @@ func _touch() -> void:
 		touches += 1
 		gaze.add(TOUCH_GAZE)
 		rules.banner.emit("THE LIGHT FINDS THE BOY")
+		_sound(&"msn_eye_sees", wren.ground_pos)
 	_in_light = lit
 
 

@@ -591,7 +591,9 @@ func _wire_responses() -> void:
 				("THE MAIN GATE" if s.footprint == City.current().landmark(&"main_gate") else "THE SIDE GATE")))
 			_rules.banner.emit(what + " IS REBUILT"))
 	if _crowd.ferry != null and _crowd.ferry.state != RiverFerry.State.ENDED and _wire_once(_crowd.ferry):
-		_crowd.ferry.opened.connect(func(): _rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK"))
+		_crowd.ferry.opened.connect(func():
+			_rules.banner.emit("BOATS TAKE PEOPLE FROM THE DOCK")
+			_mission_sound(&"msn_boat", _crowd.ferry.board_at if _crowd.ferry != null else Vector2.INF))
 		# Act III's last ferry announces itself (JudgementDirector's event), so it gets no second banner.
 		_crowd.ferry.closed.connect(func(why: String):
 			if why != "the last ferry":
@@ -603,11 +605,22 @@ func _wire_responses() -> void:
 	if _crowd.rite != null and _crowd.rite.state != BanishingRite.State.ENDED and _wire_once(_crowd.rite):
 		var rite := _crowd.rite
 		rite.gathering.connect(func(): _rules.banner.emit("THE CLERGY GATHER AT THE CATHEDRAL"))
-		rite.started.connect(func(): _rules.banner.emit("THE BANISHING RITE BEGINS"))
-		rite.broken.connect(func(_why: String): _rules.banner.emit("THE RITE IS BROKEN"))
+		rite.started.connect(func():
+			_rules.banner.emit("THE BANISHING RITE BEGINS")
+			_mission_sound(&"msn_chant", _crowd.rite.centre if _crowd.rite != null else Vector2.INF))
+		rite.broken.connect(func(_why: String):
+			_rules.banner.emit("THE RITE IS BROKEN")
+			_mission_sound(&"msn_scatter", _crowd.rite.centre if _crowd.rite != null else Vector2.INF))
 		rite.ended.connect(func(_why: String): _rules.banner.emit("THE RITE IS ENDED"))
 		rite.completed.connect(func():
-			_rules.banner.emit("THE CLERGY BANISH YOU - %d s LOST" % roundi(_rules.banish())))
+			_rules.banner.emit("THE CLERGY BANISH YOU - %d s LOST" % roundi(_rules.banish()))
+			_mission_sound(&"msn_doom", _crowd.rite.centre if _crowd.rite != null else Vector2.INF))
+
+
+## A mission cue at a ground point through the battlefield's FX context; nothing with no context, an unknown cue or Vector2.INF.
+func _mission_sound(cue: StringName, at: Vector2) -> void:
+	if is_instance_valid(_bf) and _bf.ctx != null and Sfx.CATALOG.has(cue) and at != Vector2.INF:
+		_bf.ctx.play(cue, at)
 
 
 ## True the first time a manager is asked about, and marks it wired.

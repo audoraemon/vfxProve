@@ -348,6 +348,7 @@ func _reach_refuge(i: int) -> void:
 		man.send_to_post(p.spot, false, true)
 	q.guards = living
 	_guard_total = living.size()
+	_sound(&"msn_knights", doors[i])
 
 
 ## How long refuge `i` must burn with none on guard to drive him out (v0.11 M5).
@@ -365,6 +366,7 @@ func _drive_out(i: int) -> void:
 		return
 	_send_home(i)
 	rules.banner.emit("THE BISHOP FLEES %s" % String(REFUGE_WORDS[i]).to_upper())
+	_sound(&"msn_door", doors[i])
 	in_flight = true
 	at_refuge = i + 1
 	arrive_at = _clock + CHAIN
@@ -423,6 +425,7 @@ func _into_square() -> void:
 	_guard_total = ring.size()
 	q.target.go_duty(safe_at)
 	rules.banner.emit("THE BISHOP IS DRAWN INTO THE SQUARE")
+	_sound(&"msn_knights", door)
 	_send_guards()
 
 
@@ -538,6 +541,7 @@ func _relieve(p: Post) -> void:
 	p.relief = true
 	reliefs += 1
 	rules.banner.emit("A NEW KNIGHT COMES FROM THE CITADEL")
+	_sound(&"msn_knights", hide_door)
 
 
 ## A Knight walking from the Citadel's gate can reach `at` (v0.11 M5): the town's walk grid has a road there (always, with none).

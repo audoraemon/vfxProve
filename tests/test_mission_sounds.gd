@@ -4,7 +4,10 @@ extends RefCounted
 ## the omen names is in the catalog with its takes.
 
 const CUES := [&"msn_door", &"msn_unbar", &"msn_gate_out", &"msn_cart", &"msn_grain", &"msn_rot", &"msn_mob", &"msn_seize",
-	&"msn_bolt", &"msn_star_fall", &"msn_star_land", &"msn_chant"]
+	&"msn_bolt", &"msn_star_fall", &"msn_star_land", &"msn_chant", &"msn_knock", &"msn_cheer", &"msn_address", &"msn_scatter",
+	&"msn_gather", &"msn_shut", &"msn_fanfare", &"msn_boat", &"msn_shatter", &"msn_light_out", &"msn_relight", &"msn_knights",
+	&"msn_standard", &"msn_dismay", &"msn_preach", &"msn_eye_sees", &"msn_doom", &"msn_shackle", &"msn_ruin", &"msn_rebuild",
+	&"msn_rope", &"msn_lock"]
 
 
 ## A stand-in for the battlefield's Sfx that writes down what it was asked to play.
@@ -43,18 +46,24 @@ static func _catalog(t) -> void:
 		t.check(Sfx.CATALOG.get(cue, {}).get("voices", 0) >= 1, "%s has a voice limit" % cue)
 
 
-## Every cue the directors and the falling star name is a catalog cue, and each tier-1 moment has its sound.
+## Every cue the directors, the falling star and the mission's rite and ferry name is a catalog cue, and each cue is heard.
 static func _named(t) -> void:
 	var named := {}
 	var re := RegEx.create_from_string("(?:_sound|ctx\\.play)\\(&\"(\\w+)\"")
-	for dir in ["res://src/game/mission/", "res://src/fx/omen/"]:
-		for f in DirAccess.get_files_at(dir):
-			if not f.ends_with(".gd"):
-				continue
-			var text := FileAccess.get_file_as_string(dir + f)
-			for m in re.search_all(text):
-				named[StringName(m.get_string(1))] = dir + f
+	for path in _scripts():
+		for m in re.search_all(FileAccess.get_file_as_string(path)):
+			named[StringName(m.get_string(1))] = path
 	for cue: StringName in named:
 		t.check(Sfx.CATALOG.has(cue), "%s (named in %s) is a catalog cue" % [cue, named[cue]])
 	for cue: StringName in CUES:
 		t.check(named.has(cue), "%s is heard in a mission" % cue)
+
+
+## The scripts that play mission cues: every director, the omen's falling star, and the mission's rite and ferry.
+static func _scripts() -> Array:
+	var out := ["res://src/game/mission.gd"]
+	for dir in ["res://src/game/mission/", "res://src/fx/omen/"]:
+		for f in DirAccess.get_files_at(dir):
+			if f.ends_with(".gd"):
+				out.append(dir + f)
+	return out

@@ -119,3 +119,11 @@ the sheet the user listens with.
   (public domain, soerena; converted to WAV, pitched up to flies) and `20080618KamagasakiRiot.ogg` (low-passed, a mob's
   roar); Kenney's impact sounds. `msn_chant` lays `tools/audio/music/render/msn_choir_*.wav`, Sonatina's choir rendered
   by music_render.py.
+- Tiers 2-5 add OpenGameArt (CC0) `crowd-shoutingspeaking-ambience` (low-passed to a murmur, a gasp), `cheers-0`,
+  `grunts-male-death-and-pain` (groans only), `iron-door`, `stone-door`, `80-cc0-rpg-sfx` (chains), `rpg-sound-pack`
+  (chainmail, armour, a sword drawn, heavy cloth, small metal), `75-cc0-breaking-falling-hit-sfx` and
+  `ice-breakingshattering` (glass), `water-waves`, `6-short-water-splashes`, `steam-release-sounds`, `fire-crackling`,
+  `catching-fire`, `ghost-breath`, `droning-sound-effects`, `35-wooden-crackshitsdestructions`, `woodcutting`,
+  `saw-or-wood-impact`; Wikimedia Commons `Festival concert people crowd.wav`, `Church people walking steps with
+  reverb.wav` and `Striking a bell 15cm large.wav`. `msn_fanfare`, `msn_preach` and `msn_doom` lay
+  `tools/audio/music/render/msn_{fanfare,preach,doom}_*.wav` (Sonatina/VSCO trumpets, choir, tam-tam and organ pedal).

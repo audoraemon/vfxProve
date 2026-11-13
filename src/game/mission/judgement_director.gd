@@ -21,6 +21,8 @@ func _begin() -> void:
 		for g in town.gates:
 			if is_instance_valid(g) and g.walkable:
 				crowd.hold_gate(g, JAM_SECONDS)
+		if not town.gates.is_empty() and is_instance_valid(town.gates[0]):
+			_sound(&"msn_mob", town.gates[0].center())
 		for p in n.festival_broke:
 			if is_instance_valid(p) and p.is_alive():
 				p.flee()

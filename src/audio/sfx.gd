@@ -322,7 +322,10 @@ const CATALOG := {
 	&"lantern_burn": {"path": "res://assets/audio/building/lantern_burn.wav", "db": 1.3},
 	&"lantern_blind": {"path": "res://assets/audio/building/lantern_blind.wav", "db": 0.5},
 	# Mission events (MissionDirector._sound(), mission sound pass): a door, an unbarred postern, a leaving at the gate, the
-	# carter's cart, grain, rot, the mob, a seizure, a bolt, the falling star and the priests' hymn.
+	# carter's cart, grain, rot, the mob, a seizure, a bolt, the falling star and the priests' hymn (tier 1); then knocks, the
+	# crowd (cheer, the Mayor's address, scatter, gathering), a gate shut, the herald's fanfare, boats, lanterns (shattered,
+	# out, relit), knights, the Hunt's standards and its dismay, the sermon, the Eye, the doom, shackles, a burned-out ruin,
+	# a rebuild, a rope and a lock (tiers 2-5).
 	&"msn_door": {"path": "res://assets/audio/mission/msn_door_%d.wav", "variants": 3, "db": -3.5, "voices": 2, "jitter": 0.05},
 	&"msn_unbar": {"path": "res://assets/audio/mission/msn_unbar_%d.wav", "variants": 3, "db": -1.2, "voices": 1, "jitter": 0.05},
 	&"msn_gate_out": {"path": "res://assets/audio/mission/msn_gate_out_%d.wav", "variants": 3, "db": 0.6, "voices": 2, "jitter": 0.05},
@@ -335,6 +338,28 @@ const CATALOG := {
 	&"msn_star_fall": {"path": "res://assets/audio/mission/msn_star_fall_%d.wav", "variants": 2, "db": -0.5, "voices": 1, "jitter": 0.05},
 	&"msn_star_land": {"path": "res://assets/audio/mission/msn_star_land_%d.wav", "variants": 2, "db": 1.7, "voices": 1, "jitter": 0.05},
 	&"msn_chant": {"path": "res://assets/audio/mission/msn_chant_%d.wav", "variants": 2, "db": 1.3, "voices": 1, "jitter": 0.05},
+	&"msn_knock": {"path": "res://assets/audio/mission/msn_knock_%d.wav", "variants": 3, "db": -1.7, "voices": 2, "jitter": 0.05},
+	&"msn_cheer": {"path": "res://assets/audio/mission/msn_cheer_%d.wav", "variants": 3, "db": 0.8, "voices": 1, "jitter": 0.05},
+	&"msn_address": {"path": "res://assets/audio/mission/msn_address_%d.wav", "variants": 2, "db": -1.4, "voices": 1, "jitter": 0.05},
+	&"msn_scatter": {"path": "res://assets/audio/mission/msn_scatter_%d.wav", "variants": 3, "db": -3.4, "voices": 2, "jitter": 0.05},
+	&"msn_gather": {"path": "res://assets/audio/mission/msn_gather_%d.wav", "variants": 2, "db": -0.3, "voices": 1, "jitter": 0.05},
+	&"msn_shut": {"path": "res://assets/audio/mission/msn_shut_%d.wav", "variants": 3, "db": -2.6, "voices": 1, "jitter": 0.05},
+	&"msn_fanfare": {"path": "res://assets/audio/mission/msn_fanfare_%d.wav", "variants": 2, "db": -1.8, "voices": 1, "jitter": 0.05},
+	&"msn_boat": {"path": "res://assets/audio/mission/msn_boat_%d.wav", "variants": 3, "db": -0.2, "voices": 1, "jitter": 0.05},
+	&"msn_shatter": {"path": "res://assets/audio/mission/msn_shatter_%d.wav", "variants": 3, "db": 0.1, "voices": 2, "jitter": 0.05},
+	&"msn_light_out": {"path": "res://assets/audio/mission/msn_light_out_%d.wav", "variants": 3, "db": -1.5, "voices": 1, "jitter": 0.05},
+	&"msn_relight": {"path": "res://assets/audio/mission/msn_relight_%d.wav", "variants": 3, "db": -4.1, "voices": 2, "jitter": 0.05},
+	&"msn_knights": {"path": "res://assets/audio/mission/msn_knights_%d.wav", "variants": 3, "db": -2.0, "voices": 2, "jitter": 0.05},
+	&"msn_standard": {"path": "res://assets/audio/mission/msn_standard_%d.wav", "variants": 3, "db": -0.5, "voices": 1, "jitter": 0.05},
+	&"msn_dismay": {"path": "res://assets/audio/mission/msn_dismay_%d.wav", "variants": 3, "db": -2.0, "voices": 1, "jitter": 0.05},
+	&"msn_preach": {"path": "res://assets/audio/mission/msn_preach_%d.wav", "variants": 2, "db": 1.3, "voices": 1, "jitter": 0.05},
+	&"msn_eye_sees": {"path": "res://assets/audio/mission/msn_eye_sees_%d.wav", "variants": 3, "db": 0.6, "voices": 1, "jitter": 0.05},
+	&"msn_doom": {"path": "res://assets/audio/mission/msn_doom_%d.wav", "variants": 2, "db": -0.1, "voices": 1, "jitter": 0.05},
+	&"msn_shackle": {"path": "res://assets/audio/mission/msn_shackle_%d.wav", "variants": 3, "db": -0.9, "voices": 1, "jitter": 0.05},
+	&"msn_ruin": {"path": "res://assets/audio/mission/msn_ruin_%d.wav", "variants": 3, "db": -0.8, "voices": 2, "jitter": 0.05},
+	&"msn_rebuild": {"path": "res://assets/audio/mission/msn_rebuild_%d.wav", "variants": 2, "db": -0.6, "voices": 1, "jitter": 0.05},
+	&"msn_rope": {"path": "res://assets/audio/mission/msn_rope_%d.wav", "variants": 3, "db": 0.6, "voices": 1, "jitter": 0.05},
+	&"msn_lock": {"path": "res://assets/audio/mission/msn_lock_%d.wav", "variants": 3, "db": -5.5, "voices": 1, "jitter": 0.05},
 	# Ambience (natural sound pass 2, Ambience plays them): the town's beds by day and by night and its fire bed, loops on
 	# the Ambience bus; and the calls now and then near the camera, birds by day, a night call by night.
 	&"amb_day": {"path": "res://assets/audio/ambience/amb_day.wav", "db": -10.0, "loop": true},

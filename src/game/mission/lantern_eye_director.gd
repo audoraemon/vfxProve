@@ -132,6 +132,7 @@ func _plan() -> void:
 	return_after = RETURN_AFTER
 	relief_after = RELIEF_AFTER
 	shield_hits = true
+	raise_rope = true
 	standard_label = "MIRROR"
 	guard_label = "GUARD"
 	next_label = "NEXT MIRROR"
@@ -409,6 +410,7 @@ func _shatter(i: int) -> void:
 	drain_left[i] = DRAIN
 	hang_work[i] = 0.0
 	rules.banner.emit("THE MIRROR SHATTERS")
+	_sound(&"msn_shatter", towers[i].center())
 	for w: Guard in wrights[i]:
 		w.away = 0.0
 		if _alive(w.man) and (w.man as Person).inside:
@@ -424,6 +426,7 @@ func _rehang(i: int) -> void:
 	hang_work[i] = 0.0
 	drain_left[i] = 0.0
 	rules.banner.emit("THE MIRROR IS HUNG AGAIN")
+	_sound(&"msn_rope", towers[i].center())
 	for w: Guard in wrights[i]:
 		if _alive(w.man) and not (w.man as Person).inside:
 			(w.man as Person).go_duty(w.post)
@@ -444,6 +447,7 @@ func _gone(i: int) -> void:
 	_break(i)
 	if broken_all():
 		searchlight.put_out()
+		_sound(&"msn_light_out", searchlight.spire)
 
 
 ## Wright `w` is at work (v0.11 M6): alive, out of doors, not held by the god, within WRIGHT_REACH of his post.
@@ -534,6 +538,7 @@ func _step_eye() -> void:
 		eye_open = true
 		found = true
 		rules.banner.emit(_found_banner())
+		_sound(&"msn_doom", SPIRE)
 
 
 ## The light (v0.11 M6): hunting while a mirror stands, its noise forgotten when it goes quiet; swept on.
@@ -557,6 +562,7 @@ func _on_cast(_slot: int, key: String, at: Vector2) -> void:
 		seen_casts += 1
 		gaze.add(SEEN_CAST)
 		rules.banner.emit(SEEN_CAST_BANNER)
+		_sound(&"msn_eye_sees", at)
 	if key in UNHEARD or not _hunting():
 		if key == "wisp":
 			searchlight.lure(at)

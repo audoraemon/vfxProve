@@ -429,7 +429,12 @@ func _escape(c: Charge) -> void:
 	var i := int(_home.get(c, -1))
 	if i >= 0 and lamp(i) == c:
 		(households[i] as Household).out_to = _open_exit_near((c.man as Person).ground_pos)
+	if i >= 0:
+		for m: Charge in (households[i] as Household).members:
+			if m != c and m.escaped:
+				gate_heard = false
 	super(c)
+	gate_heard = true
 
 
 ## Household `i`'s lamp-bearer (v0.11 M6, plan decision 287): its first member in town, alive, out of doors, not out, not taken and not
@@ -506,6 +511,7 @@ func _come_out(i: int) -> void:
 		p.go_duty(spot)
 		c.hold_at = spot
 		_in_file[c] = true
+	_sound(&"msn_door", h.door)
 	timeline.add(timeline.elapsed() + HUNT_AFTER / timeline.stretch_factor(), "hunt_%d" % i, "The Temple sends searchers", _send.bind(i),
 		func() -> bool: return not (households[i] as Household).done)
 
@@ -520,6 +526,7 @@ func _send(i: int) -> void:
 		if _alive(v) and (v as Person).inside:
 			_bring_out(v as Person, temple_door)
 			_keep_from_flight(v as Person, true)
+	_sound(&"msn_door", temple_door)
 	_step_hunters()
 
 
@@ -528,6 +535,7 @@ func _send(i: int) -> void:
 func _shut(g: int) -> void:
 	var gate: Gate = gates[g]
 	gate.shut = true
+	_sound(&"msn_shut", gate.mouth)
 	for h: Household in households:
 		if h.out_to != Vector2.INF and h.out_to.distance_to(gate.way_out) <= ESCAPE_REACH:
 			h.out_to = _open_exit_near(h.out_to)

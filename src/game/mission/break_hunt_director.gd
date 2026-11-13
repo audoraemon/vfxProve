@@ -644,6 +644,7 @@ func _raise(i: int) -> void:
 	var b := bearer(i)
 	_seed_trail(i)
 	_mark(b)
+	_sound(&"msn_standard", b.ground_pos)
 	_set_pace(i)
 	if _dest[i] >= 0:
 		b.go_duty(house_doors[_dest[i]])

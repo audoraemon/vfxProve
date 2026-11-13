@@ -97,6 +97,7 @@ var head_chain := -1.0
 ## which a filtered blow never reaches). False (the default) keeps The Heretic Hunt's standards out of the fire manager's hearing; The
 ## Lantern's Eye sets it.
 var shield_hits := false
+var raise_rope := false
 ## The tags' and the HUD's words, set by _plan() (v0.11 M4): The Heretic Hunt's by default; lost_word is the loss's reason.
 var standard_label := "STANDARD"
 var guard_label := "GUARD"
@@ -128,6 +129,7 @@ var _head_called := false
 ## The point of his route he is making for, and the seconds of his stop left there (v0.11 M4).
 var _route_at := 0
 var _stop_left := 0.0
+var _knocked_at := -1
 ## Seconds into the night, and to the next look (v0.11 M4).
 var _clock := 0.0
 var _tick_in := 0.0
@@ -313,6 +315,7 @@ func step(delta: float) -> void:
 	if not found and _found():
 		found = true
 		rules.banner.emit(_found_banner())
+		_sound(&"msn_seize", _quarry_point())
 
 
 ## The second of the night step `i`'s standard is raised at the latest (v0.11 M4): its own time, or `chain` after the step before is
@@ -377,6 +380,10 @@ func _raise(i: int) -> void:
 	if not s.broken.is_connected(_on_broken):
 		s.broken.connect(_on_broken)
 	standards.append(s)
+	if raise_rope:
+		_sound(&"msn_rope", s.center())
+	else:
+		_sound(&"msn_standard", s.center())
 
 
 ## The step whose standard `s` is, or -1 (v0.11 M4).
@@ -430,6 +437,7 @@ func _break(i: int) -> void:
 	st.broken = true
 	st.broken_at = _clock
 	rules.banner.emit(_broken_banner(i))
+	_sound(&"msn_dismay", standard(i).center() if standard(i) != null else st.spot)
 	for g: Guard in st.party:
 		_release(g)
 	if i + 1 < steps.size():
@@ -556,6 +564,7 @@ func _head_go(announce: bool) -> void:
 	if p.inside:
 		_bring_out(p, door)
 		_keep_from_flight(p, true)
+		_sound(&"msn_door", door)
 	if not head_route.is_empty():
 		p.go_duty(head_route[0])
 	for k in escorts.size():
@@ -583,6 +592,9 @@ func _step_head(delta: float) -> void:
 	if p.mind == Person.Mind.DUTY:
 		if p.ground_pos.distance_to(goal) <= ARRIVE:
 			searching = true
+			if _knocked_at != _route_at:
+				_knocked_at = _route_at
+				_sound(&"msn_knock", goal)
 			if _route_at >= head_route.size() - 1:
 				return
 			_stop_left -= delta

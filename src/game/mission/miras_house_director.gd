@@ -85,6 +85,7 @@ var need := BelieversObjective.NEED
 var read_seconds := READ_SECONDS
 ## Only one inside at a time (v0.11 M2: the old well shrine): the next waits at the door until it is free.
 var one_at_a_time := false
+var door_heard := true
 
 
 func _begin() -> void:
@@ -213,6 +214,8 @@ func _enter(p: Person) -> void:
 	p.ground_pos = house.center() if house != null else door
 	crowd._field.remove(p)
 	_reading[p] = read_seconds
+	if door_heard:
+		_sound(&"msn_door", door)
 	_entered(p)
 
 
@@ -242,6 +245,8 @@ func _exit(p: Person) -> void:
 	p.ground_pos = door
 	crowd._field.add(p)
 	p.leave_shelter(false)
+	if door_heard:
+		_sound(&"msn_door", door)
 	var seer := faithful_seeing(door, SIGHT)
 	if seer != null:
 		_report(seer, temple_door)
@@ -427,6 +432,8 @@ func _venn_step(delta: float) -> void:
 		venn_searching = false
 		_report(venn, temple_door)
 		return
+	if _venn_wait == 0.0:
+		_sound(&"msn_knock", goal)
 	_venn_wait += delta
 	if _venn_wait >= VENN_STOP:
 		_venn_wait = 0.0
@@ -490,6 +497,7 @@ func _vigil_passes() -> void:
 		vigil = VigilRoute.new().setup(route, walkers[0], acolytes)
 		vigil.busy = _carrying
 		vigil.start()
+		_sound(&"msn_chant", door)
 	var walking := vigil.walkers() if vigil != null else ([] as Array[Person])
 	var lining: Array[Person] = []
 	for f in free:
@@ -526,6 +534,8 @@ func _burn() -> void:
 ## Everyone inside runs out at the door in a fright, unconverted if their reading was not done.
 func _flush() -> void:
 	burning = true
+	if not _reading.is_empty():
+		_sound(&"msn_bolt", door)
 	for p: Variant in _reading.keys():
 		_reading.erase(p)
 		if not is_instance_valid(p):

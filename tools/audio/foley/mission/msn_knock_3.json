@@ -1,0 +1,8 @@
+{"length": 1.4, "rms_db": -19.0, "reverb": {"rt60": 0.6, "mix": 0.07, "predelay_ms": 8, "damp": 6500}, "layers": [
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_003.ogg", "at": 0.031, "onset": true, "pitch": -4.8, "lp": 2600, "hp": 70, "gain_db": -1.0, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_medium_003.ogg", "at": 0.05, "onset": true, "pitch": -8, "lp": 1500, "gain_db": -12, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_004.ogg", "at": 0.338, "onset": true, "pitch": -4.2, "lp": 2600, "hp": 70, "gain_db": -1.5, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_medium_004.ogg", "at": 0.33, "onset": true, "pitch": -8, "lp": 1500, "gain_db": -12, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_000.ogg", "at": 0.611, "onset": true, "pitch": -3.5, "lp": 2600, "hp": 70, "gain_db": -2.0, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_medium_000.ogg", "at": 0.61, "onset": true, "pitch": -8, "lp": 1500, "gain_db": -12, "fade_out": 60}
+]}

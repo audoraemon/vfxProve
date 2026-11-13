@@ -119,7 +119,11 @@ func _add_events() -> void:
 	timeline.add(BONFIRE_AT, "bonfire", "The bonfire lights", _pack)
 	timeline.add(ADDRESS_AT, "address", "The Mayor's address", _address, speaks)
 	timeline.add(ADDRESS_AT + ADDRESS_SECONDS, "address_end", "The address ends", _address_ends, speaks)
-	timeline.add(CLOSE_AT, "close", "The guard closes the square")
+	timeline.add(CLOSE_AT, "close", "The guard closes the square", _close)
+
+
+func _close() -> void:
+	_sound(&"msn_shut", Places.at(&"market_square"))
 
 
 ## Virtual (v0.11 M3): whether goer `p` may be broken now by a fright or a loud cast's danger (Market Panic: not while a warden
@@ -166,6 +170,7 @@ func _pack() -> void:
 	for p in goers:
 		if WarningDirector._alive(p) and p.mind == Person.Mind.CALM:
 			p.walk_to(_pack_spot())
+	_sound(&"msn_cheer", Places.at(&"fountain"))
 
 
 ## Where the Mayor speaks from.
@@ -182,6 +187,7 @@ func _address() -> void:
 		return
 	var at := _address_spot()
 	mayor.go_duty(at)
+	_sound(&"msn_address", at)
 	for p in goers:
 		if WarningDirector._alive(p):
 			p.observe(at, ADDRESS_SECONDS)
@@ -190,6 +196,7 @@ func _address() -> void:
 func _address_ends() -> void:
 	if WarningDirector._alive(mayor):
 		crowd.off_duty(mayor)
+		_sound(&"msn_cheer", mayor.ground_pos)
 
 
 ## The Mayor dies: every living goer within MAYOR_PANIC_R of the fountain panics where he fell, and is broken (v0.09.1:
@@ -203,6 +210,7 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 			p.panic(e.ground_pos, 1.0, &"mayor")
 			_broke[p] = true
 	rules.banner.emit(MAYOR_BANNER)
+	_sound(&"msn_scatter", e.ground_pos)
 
 
 func step(delta: float) -> void:

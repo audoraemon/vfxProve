@@ -541,6 +541,7 @@ func _seize(c: Charge, by: Person) -> void:
 	c.seizer = by
 	seizures += 1
 	rules.banner.emit(_caught_banner())
+	_sound(&"msn_seize", (c.man as Person).ground_pos)
 	by.go_duty(return_to)
 	(c.man as Person).go_duty(by.ground_pos)
 
@@ -571,6 +572,7 @@ func _let_go_seizer(c: Charge) -> void:
 func _escape(c: Charge) -> void:
 	c.escaped = true
 	rules.banner.emit(_escape_banner())
+	_sound(&"msn_gate_out", (c.man as Person).ground_pos)
 	crowd._field.remove(c.man)
 	crowd.escape(c.man)
 

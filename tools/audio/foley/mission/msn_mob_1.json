@@ -1,0 +1,8 @@
+{"length": 3.0, "rms_db": -18.5, "reverb": {"rt60": 0.8, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:wikimedia/20080618KamagasakiRiot.ogg", "at": 0.0, "from": 22.0, "dur": 2.8, "hp": 120, "lp": 3200, "gain_db": -3, "fade_in": 150, "fade_out": 600},
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/01_combat_melee/impact_punch_heavy_002_48kHz_16bit_0.46s_565485a1_s02.wav", "at": 0.313, "onset": true, "pitch": -3.0, "gain_db": -4, "lp": 4000, "fade_out": 60},
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/01_combat_melee/impact_punch_heavy_004_48kHz_16bit_0.54s_b437d453_s02.wav", "at": 0.747, "onset": true, "pitch": -1.7, "gain_db": -5, "lp": 4000, "fade_out": 60},
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/01_combat_melee/impact_punch_medium_000_48kHz_16bit_0.36s_bd322da3_s02.wav", "at": 1.053, "onset": true, "pitch": -1.1, "gain_db": -6, "lp": 4000, "fade_out": 60},
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/01_combat_melee/impact_punch_heavy_000_48kHz_16bit_0.65s_8fb58ba7_s02.wav", "at": 1.493, "onset": true, "pitch": -1.3, "gain_db": -7, "lp": 4000, "fade_out": 60},
+  {"src": "lib:oga/male-gruntyelling-sounds/yelling sounds/yelling sounds/3grunt1.wav", "at": 0.45, "onset": true, "pitch": -2, "gain_db": -5, "hp": 120, "fade_out": 60}
+]}

@@ -271,6 +271,7 @@ func _release_crowd(q: Quarry) -> void:
 func _mob_kill(q: Quarry) -> void:
 	var who: Person = q.target
 	rules.banner.emit(MOB_BANNER)
+	_sound(&"msn_mob", who.ground_pos)
 	_mobbing = who
 	crowd._field.kill(who, &"mob", _mob_door(q))
 	_mobbing = null

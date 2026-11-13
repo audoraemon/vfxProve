@@ -373,6 +373,7 @@ func _out_of_walls() -> bool:
 		return false
 	var gone := messenger
 	_end("out")
+	_sound(&"msn_gate_out", gone.ground_pos)
 	if gone == _slowed:
 		gone.statuses.erase(&"slow")  # a Herald's pace is his errand's, and the errand is over
 	send_off(gone)
@@ -467,6 +468,7 @@ func _use_key() -> void:
 		return
 	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
 	if messenger.fold(at + out_dir * KEY_STEP):
+		_sound(&"msn_unbar", at)
 		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
 
 

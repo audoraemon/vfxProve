@@ -109,3 +109,13 @@ the sheet the user listens with.
   crying.oga` (public domain, natalie; converted to WAV, pitched down a little to a small child); OpenGameArt (CC0)
   `children-voices`, `group-giggling` (pitched up), `girly-scream`; the falls from Kenney's impact sounds. Wordless takes
   only: laughs, shrieks, giggles and cries, never a word.
+
+## Mission events
+
+- `mission/msn_*`: OpenGameArt (CC0) `100-cc0-sfx` and `100-cc0-sfx-2` (doors, keys, a lock, stones), `horse-trotting`,
+  `tree-creaking` (a cart's wheels, a gate's groan), `stone-rock-or-wood-moved-sound` (the bar drawn, the wheels' rumble),
+  `footsteps-0`, `footsteps-leather-cloth-armor`, `150-combat-sound-effects` (blows), `male-gruntyelling-sounds` (grunts only),
+  `breathing-tired`, `bell-dingschimes`, `air-whoosh`; Wikimedia Commons `Door handle creaking.wav`, `Hummel bee.ogg`
+  (public domain, soerena; converted to WAV, pitched up to flies) and `20080618KamagasakiRiot.ogg` (low-passed, a mob's
+  roar); Kenney's impact sounds. `msn_chant` lays `tools/audio/music/render/msn_choir_*.wav`, Sonatina's choir rendered
+  by music_render.py.

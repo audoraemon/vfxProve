@@ -321,6 +321,20 @@ const CATALOG := {
 	&"lantern_flare": {"path": "res://assets/audio/building/lantern_flare.wav", "db": 0.7},
 	&"lantern_burn": {"path": "res://assets/audio/building/lantern_burn.wav", "db": 1.3},
 	&"lantern_blind": {"path": "res://assets/audio/building/lantern_blind.wav", "db": 0.5},
+	# Mission events (MissionDirector._sound(), mission sound pass): a door, an unbarred postern, a leaving at the gate, the
+	# carter's cart, grain, rot, the mob, a seizure, a bolt, the falling star and the priests' hymn.
+	&"msn_door": {"path": "res://assets/audio/mission/msn_door_%d.wav", "variants": 3, "db": -3.5, "voices": 2, "jitter": 0.05},
+	&"msn_unbar": {"path": "res://assets/audio/mission/msn_unbar_%d.wav", "variants": 3, "db": -1.2, "voices": 1, "jitter": 0.05},
+	&"msn_gate_out": {"path": "res://assets/audio/mission/msn_gate_out_%d.wav", "variants": 3, "db": 0.6, "voices": 2, "jitter": 0.05},
+	&"msn_cart": {"path": "res://assets/audio/mission/msn_cart_%d.wav", "variants": 3, "db": 1.1, "voices": 2, "jitter": 0.05},
+	&"msn_grain": {"path": "res://assets/audio/mission/msn_grain_%d.wav", "variants": 3, "db": 2.0, "voices": 2, "jitter": 0.05},
+	&"msn_rot": {"path": "res://assets/audio/mission/msn_rot_%d.wav", "variants": 3, "db": 0.9, "voices": 2, "jitter": 0.05},
+	&"msn_mob": {"path": "res://assets/audio/mission/msn_mob_%d.wav", "variants": 3, "db": -1.0, "voices": 1, "jitter": 0.05},
+	&"msn_seize": {"path": "res://assets/audio/mission/msn_seize_%d.wav", "variants": 3, "db": -2.3, "voices": 2, "jitter": 0.05},
+	&"msn_bolt": {"path": "res://assets/audio/mission/msn_bolt_%d.wav", "variants": 3, "db": 0.6, "voices": 2, "jitter": 0.05},
+	&"msn_star_fall": {"path": "res://assets/audio/mission/msn_star_fall_%d.wav", "variants": 2, "db": -0.5, "voices": 1, "jitter": 0.05},
+	&"msn_star_land": {"path": "res://assets/audio/mission/msn_star_land_%d.wav", "variants": 2, "db": 1.7, "voices": 1, "jitter": 0.05},
+	&"msn_chant": {"path": "res://assets/audio/mission/msn_chant_%d.wav", "variants": 2, "db": 1.3, "voices": 1, "jitter": 0.05},
 	# Ambience (natural sound pass 2, Ambience plays them): the town's beds by day and by night and its fire bed, loops on
 	# the Ambience bus; and the calls now and then near the camera, birds by day, a night call by night.
 	&"amb_day": {"path": "res://assets/audio/ambience/amb_day.wav", "db": -10.0, "loop": true},

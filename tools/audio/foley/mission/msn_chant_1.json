@@ -1,0 +1,4 @@
+{"length": 6.0, "rms_db": -22.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/msn_choir_1.wav", "at": 0.0, "hp": 90, "fade_out": 500},
+  {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 0.0, "pitch": -9, "hp": 300, "gain_db": -14, "fade_out": 800}
+]}

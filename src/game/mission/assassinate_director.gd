@@ -345,6 +345,7 @@ func _set_out(q: Quarry) -> void:
 		return  # (v0.11.1, final review M1: one whose burst from a burning hideout is pending is not sent on his round)
 	if q.inside_of != null:
 		_come_out(q)
+		_sound(&"msn_door", q.target.ground_pos)
 	q.state = State.WALKING
 	q.target.go_duty(_leg_goal(q))
 
@@ -497,6 +498,7 @@ func _arrive(q: Quarry) -> void:
 func _reach_safe(q: Quarry) -> void:
 	q.state = State.SAFE
 	q.inside_of = null
+	_sound(&"msn_door", q.target.ground_pos)
 	_take_inside(q.target, null)
 	rules.banner.emit(_safe_banner())
 
@@ -507,6 +509,7 @@ func _alarm(q: Quarry) -> void:
 		return
 	q.state = State.FLEEING
 	q.alarms += 1
+	_sound(&"msn_bolt", q.target.ground_pos)
 	if not q.flushed:
 		rules.banner.emit(_hide_banner(q))  # a flushed one runs: the flush has its banner already
 	q.target.go_duty(_hide_goal(q))

@@ -1,0 +1,5 @@
+{"length": 2.4, "rms_db": -22.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 0.0, "pitch": -4, "hp": 200, "gain_db": -2, "fade_out": 900},
+  {"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.02, "pitch": 7, "hp": 1500, "gain_db": -10, "fade_out": 600},
+  {"src": "lib:kenney/impact-sounds/Audio/impactSoft_heavy_000.ogg", "at": 0.0, "onset": true, "pitch": -6, "lp": 900, "gain_db": -8, "fade_out": 60}
+]}

@@ -253,6 +253,13 @@ func _say(event: String) -> void:
 		rules.subtitle.emit(text)
 
 
+## A mission's moment heard where it happens (mission sound pass): `cue` at `at` through the FX context's player. Nothing
+## without a context (the tests' directors), for a cue the catalog lacks, or with no place (Vector2.INF).
+func _sound(cue: StringName, at: Vector2) -> void:
+	if ctx != null and Sfx.CATALOG.has(cue) and at != Vector2.INF:
+		ctx.play(cue, at)
+
+
 ## A point of walkable ground at or near `g` (`g` itself when the town has no walk grid, or none is free).
 func _walkable(g: Vector2) -> Vector2:
 	var w := crowd._grid.nearest_walkable(g) if crowd._grid != null else g

@@ -1,0 +1,5 @@
+{"length": 3.2, "rms_db": -24.0, "reverb": {"rt60": 0.6, "mix": 0.07, "predelay_ms": 8, "damp": 6500}, "layers": [
+  {"src": "lib:wikimedia/Hummel_bee.wav", "at": 0.0, "from": 26.0, "dur": 3.0, "pitch": 7, "hp": 250, "lp": 8000, "gain_db": -2, "fade_in": 500, "fade_out": 900},
+  {"src": "lib:wikimedia/Hummel_bee.wav", "at": 0.4, "from": 32.0, "dur": 2.6, "pitch": 10, "hp": 300, "lp": 9000, "gain_db": -6, "fade_in": 600, "fade_out": 800},
+  {"src": "lib:wikimedia/Hummel_bee.wav", "at": 0.8, "from": 37.0, "dur": 2.2, "pitch": 12, "hp": 400, "lp": 9000, "gain_db": -9, "fade_in": 500, "fade_out": 700}
+]}

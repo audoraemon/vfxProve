@@ -1,0 +1,6 @@
+{"length": 2.1, "rms_db": -21.0, "reverb": {"rt60": 0.6, "mix": 0.07, "predelay_ms": 8, "damp": 6500}, "layers": [
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/door_open.ogg", "at": 0.0, "onset": true, "pitch": 0, "dur": 1.2, "hp": 70, "fade_out": 150},
+  {"src": "lib:oga/footsteps-0/04-footstep.ogg", "at": 0.55, "onset": true, "gain_db": -8.1, "lp": 8000, "pitch": -0.71, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/02-footstep.ogg", "at": 0.97, "onset": true, "gain_db": -12.9, "lp": 6500, "pitch": -0.43, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/04-footstep.ogg", "at": 1.39, "onset": true, "gain_db": -14.8, "lp": 5000, "pitch": 0.32, "hp": 60, "fade_out": 60}
+]}

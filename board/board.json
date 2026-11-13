@@ -1,11 +1,10 @@
 {
- "hash": "de9bda3293f77c4f",
- "updated": "2026-11-13T22:57:14+07:00",
+ "hash": "cd5b67414ec55b1a",
+ "updated": "2026-11-14T01:00:33+07:00",
  "changes": {
-  "date": "<t:1794585434:f>",
+  "date": "<t:1794592833:f>",
   "items": [
-   "New: Death powers: your review adjustments (in progress)",
-   "New: Decree powers: your review adjustments"
+   "New: Mission sounds tiers 2-5"
   ]
  },
  "snapshot": {
@@ -941,6 +940,15 @@
     "updated": "2026-11-13",
     "order": 912
    },
+   "sound-mission-tiers2-5": {
+    "title": "Mission sounds tiers 2-5",
+    "status": "done",
+    "area": "sound",
+    "needs_you": "Listen: new mission cues in tiers 2-5. Check whether msn_cheer_1, the crowd murmur and the groans contain words.",
+    "branch": "claude/sound-natural-2",
+    "updated": "2026-11-14",
+    "order": 913
+   },
    "sound-stingers": {
     "title": "Music stingers (mission start, objective, win, lose)",
     "status": "done",
@@ -1669,48 +1677,32 @@
   "branches": [
    {
     "name": "god/death-review",
-    "ahead": 67,
-    "behind": 48,
-    "date": "2026-11-13",
-    "subject": "feat: Pale Reign -- a horde of pale ghosts runs the district; every death adds one",
+    "ahead": 91,
+    "behind": 49,
+    "date": "2026-11-14",
+    "subject": "dev: Death refs re-recorded for the review",
+    "pushed": false
+   },
+   {
+    "name": "feat/ui-resolution",
+    "ahead": 10,
+    "behind": 2,
+    "date": "2026-11-14",
+    "subject": "feat: skill tree readability: native icons, crisp 11/22 text, clear states, fanned labels, one value column, refusal by RAISE",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 64,
-    "behind": 48,
+    "behind": 49,
     "date": "2026-11-13",
     "subject": "dev: re-record the Decree refs after the review adjustments",
-    "pushed": true
-   },
-   {
-    "name": "god/decree-powers",
-    "ahead": 64,
-    "behind": 48,
-    "date": "2026-11-13",
-    "subject": "dev: re-record the Decree refs after the review adjustments",
-    "pushed": true
-   },
-   {
-    "name": "feat/ui-resolution",
-    "ahead": 7,
-    "behind": 1,
-    "date": "2026-11-13",
-    "subject": "feat: UiScale, UiIcon and the crisp text sizes (UI resolution 3a)",
-    "pushed": false
-   },
-   {
-    "name": "claude/sound-natural-2",
-    "ahead": 1,
-    "behind": 0,
-    "date": "2026-11-13",
-    "subject": "feat: mission moments heard in tiers 2-5",
     "pushed": true
    },
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 237,
+    "behind": 238,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1718,7 +1710,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 735,
+    "behind": 736,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1726,7 +1718,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 693,
+    "behind": 694,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1735,7 +1727,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-13",
-   "subject": "feat: mission moments heard where they happen (tier 1 first)"
+   "subject": "feat: mission moments heard in tiers 2-5"
   }
  }
 }

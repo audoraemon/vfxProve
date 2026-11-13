@@ -289,11 +289,12 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 
 # --- Death --------------------------------------------------------------------------------------------------------------------
 
-## Death Mark on a man the fuse will find out of doors (_mark_holds(): his round's visits are walked forward at the marked pace); Gravecall on
-## the captain once his countdown reads GRAVE_ETA or less and the mark cannot take him: the dead rise where he will stand at T_RISE, a loud
-## danger within his alarm reach, so it counts a fright and he runs to hide in the Temple, off the Citadel's road (his guards are frozen as
-## the spirits pass them); Pestilence on a man the mark cannot take. With no one in the street, a Death Mark on the next warden's guard at his
-## door. (Corpse Guise, Walking Corpse and Raise the Dead answer nothing here: nobody of the god's is hunted, and no body lies in a man's way.)
+## Death Mark on a man the fuse will find out of doors (_mark_holds(): his round's visits are walked forward at the marked pace); Gravecall on the
+## captain once his countdown reads GRAVE_ETA or less and the mark cannot take him: its wraiths rise and haunt where he will stand at T_RISE (both
+## clicks on that spot), a loud danger within his alarm reach, so it counts a fright and he runs to hide in the Temple, off the Citadel's road (his
+## guards are frozen as the wraiths pass them); Pestilence on a man the mark cannot take. With no one in the street, a Death Mark on the next warden's
+## guard at his door. (Corpse Guise, Walking Corpse and Raise the Dead answer nothing here: nobody of the god's is hunted, and no body lies in a man's
+## way.)
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:

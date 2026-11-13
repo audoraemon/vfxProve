@@ -321,16 +321,16 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 
 # --- Death: Death Mark, Pestilence, Gravecall ---
 
-## Gravecall's haunt holds the Temple's door at least this long after the cast (its rise and its 20 s; the spirits outrun a witness to it).
+## Gravecall's haunt holds the Temple's door at least this long after the cast (its rise and its 20 s; the wraiths outrun a witness to it).
 const SW_HAUNT_HOLD := GravecallFx.T_RISE + GravecallFx.HAUNT
 
 
-## Mates first, then the witness. The opener is a Death Mark on the nearest mate who could carry the word on (frail and slow, he falls behind the file and
-## dies in 10 s); the finisher Pestilence on the file (the three nearest the aim catch it; they die PlagueManager.PLAGUE_LIFE later together), else, with the
-## plague cooling (48 s against a witness every 25-55) or too little road left to wait for it, Gravecall: its three spirits rise on the file and haunt the
-## Temple's door for 20 s, so that no one of the file can reach it, while Death Mark takes the mates and then the witness, once no mate is left who could
-## see him fall (a mate a fright sent off comes back to his heel) -- with his road, or the door's hold, longer than the mark. Death stirs the Lantern
-## (every death seen turns the clock), so a second witness may come at x2.
+## Mates first, then the witness. The opener is a Death Mark on the nearest mate who could carry the word on (frail and slow, he falls behind the file
+## and dies in 10 s); the finisher Pestilence on the file (the three nearest the aim catch it; they die PlagueManager.PLAGUE_LIFE later together),
+## else, with the plague cooling (48 s against a witness every 25-55) or too little road left to wait for it, Gravecall: its three wraiths rise on the
+## file and haunt the Temple's door (the second click) for 20 s, so that no one of the file can reach it, while Death Mark takes the mates and then
+## the witness, once no mate is left who could see him fall (a mate a fright sent off comes back to his heel) -- with his road, or the door's hold,
+## longer than the mark. Death stirs the Lantern (every death seen turns the clock), so a second witness may come at x2.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as SilenceWitnessDirector
 	if d == null:
@@ -360,7 +360,7 @@ static func act_death(bc, ctx: Dictionary) -> String:
 			rules.cast(slots.gravecall, w.ground_pos, {"to": d.lantern_door()})
 			ctx.memo.door_held = _now(d) + SW_HAUNT_HOLD
 			_noted(d, ctx.memo, r)
-			return _said("gravecall: spirits rise on the file and haunt the Temple's door (the plague is cooling)", file)
+			return _said("gravecall: wraiths rise on the file and haunt the Temple's door (the plague is cooling)", file)
 		if bc._slot_ready(rules, slots, "deathmark"):
 			var time_left := maxf(eta, held)  # (a haunted door holds the file from it)
 			var able := _able_mates(r)

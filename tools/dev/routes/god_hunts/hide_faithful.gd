@@ -475,7 +475,7 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 # --- Death: Death Mark, Raise the Dead ---
 
 ## Where a spirit raised from a body can still reach a watcher: it drifts after the nearest group it finds within RaiseTheDeadFx.SEEK, and frightens
-## (a lay inquisitor) or is pressed into (anyone) whoever comes within its reach.
+## whoever comes within its FRIGHT_R -- citizens only, so of the watchers only a lay inquisitor; a soldier of the watch stands fast.
 const SPIRIT_NEAR := RaiseTheDeadFx.SEEK - 2.0
 
 ## The bodies whose soul is still near (Remains.SOUL), the freshest first: what a SPIRIT can rise from.
@@ -493,32 +493,33 @@ static func _souls(crowd: Crowd) -> Array:
 
 ## Death Mark takes one man, MARK_LEAD before his sight (it dies him in ten seconds) and, for each man of the same hour still to be marked before him,
 ## twenty seconds more (it is ready every twenty), a seizer first of all. Raise the Dead works the dead it leaves: a body whose soul is still near rises
-## as a SPIRIT when a seizer, or a watcher within MARK_LEAD of his sight, stands within SPIRIT_NEAR of it -- a lay inquisitor flees it, and the spirit is
-## pressed into a seizer (he lets his believer go) or a watcher within MARK_LEAD of his sight (he walks off), three in all, five seconds each.
+## as a SPIRIT where a lay inquisitor will walk -- an inquisitor marching a believer, or one within MARK_LEAD of his sight, standing within SPIRIT_NEAR
+## of it: the spirit drifts after him and he flees it (a seizer who flees lets his believer go; a watcher who flees sees nobody). It never rises for a
+## soldier of the watch: he stands fast before it.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := _hf(ctx)
 	if d == null:
 		return ""
 	var crowd: Crowd = ctx.crowd
 	var threats: Array = _view(ctx, d).threats
-	var fx := (ctx.rules as Rules).live_fx("raise")
 	if _ready(bc, ctx, "deathmark"):
 		for sz: Dictionary in _seizers(d):
 			if not _doomed(sz.s):
 				_cast(ctx, "deathmark", (sz.s as Person).ground_pos)
 				return "death mark a %s seizer" % sz.kind
-	if _ready(bc, ctx, "raise") and fx == null:
-		var near: Array = []  # [{p, kind}]: the seizers, then the watchers within MARK_LEAD of their sight
+	if _ready(bc, ctx, "raise") and (ctx.rules as Rules).live_fx("raise") == null:
+		var near: Array = []  # [{p, kind}]: the inquisitors marching a believer, then those within MARK_LEAD of their sight
 		for sz: Dictionary in _seizers(d):
-			near.append({"p": sz.s, "kind": "%s seizer" % sz.kind})
+			if sz.kind == "inquisitor":
+				near.append({"p": sz.s, "kind": "inquisitor seizer"})
 		for th: Dictionary in threats:
-			if float(th.t) <= MARK_LEAD:
+			if th.kind == "inquisitor" and float(th.t) <= MARK_LEAD:
 				near.append({"p": th.p, "kind": th.kind})
 		for r: Remains.Remain in _souls(crowd):
 			for w: Dictionary in near:
 				if (w.p as Person).ground_pos.distance_to(r.pos) <= SPIRIT_NEAR:
 					_cast(ctx, "raise", r.pos, {"mode": "spirit"})
-					return "raise a soul by a %s" % w.kind
+					return "raise a soul where an %s walks: he flees it" % w.kind
 	if _ready(bc, ctx, "deathmark"):
 		var live: Array = threats.filter(func(th: Dictionary) -> bool: return not _doomed(th.p))
 		for i in live.size():

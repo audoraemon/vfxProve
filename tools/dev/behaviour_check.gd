@@ -5516,9 +5516,13 @@ const FT_USES := {
 }
 ## Death (the user's tree, 2026-11-12: Death Mark and Raise the Dead): a dead marcher's soul is raised as a SPIRIT when what is left of his file stands within
 ## FT_HAUNT_R of his body (the spirit frightens everyone within RaiseTheDeadFx.FRIGHT_R, and a frightened marcher leaves the march for good), and no captive or
-## marked lamplighter stands within FT_HAUNT_CLEAR of it (the spirit drifts after the nearest group, and would frighten them too).
-const FT_HAUNT_R := 2.6
-const FT_HAUNT_CLEAR := 6.0
+## marked lamplighter stands within FT_HAUNT_CLEAR of it (the spirit drifts after the nearest group, and would frighten them too). Both follow the spirit's
+## fright (the review of 2026-11-13 widened it 3 -> 4): FT_HAUNT_R lies FT_HAUNT_IN inside it, FT_HAUNT_CLEAR FT_HAUNT_OUT beyond its reach (with the
+## margin a danger frightens across, Person.THREAT_MARGIN).
+const FT_HAUNT_IN := 0.4
+const FT_HAUNT_OUT := 1.5
+const FT_HAUNT_R := RaiseTheDeadFx.FRIGHT_R - FT_HAUNT_IN
+const FT_HAUNT_CLEAR := RaiseTheDeadFx.FRIGHT_R + Person.THREAT_MARGIN + FT_HAUNT_OUT
 ## A breaker's sight (EscortDirector.SIGHT, 2.5) and a margin: a lamplighter nearer than this to one is already seen. A breaker within FT_ON_PATH of the
 ## captive's way ahead (within FT_AHEAD units of him) is one the drag will meet.
 const FT_SIGHT_PAD := 3.5

@@ -1,10 +1,10 @@
 {
- "hash": "c9f366ebf83cf11f",
- "updated": "2026-11-13T05:48:05+07:00",
+ "hash": "bbf5c3c66421e309",
+ "updated": "2026-11-13T08:11:19+07:00",
  "changes": {
-  "date": "<t:1794523685:f>",
+  "date": "<t:1794532279:f>",
   "items": [
-   "New: Decree authority powers built (god branch)"
+   "New: Children heard; calm and tension music"
   ]
  },
  "snapshot": {
@@ -886,6 +886,15 @@
     "updated": "2026-11-12",
     "order": 910
    },
+   "sound-children-music": {
+    "title": "Children heard; calm and tension music",
+    "status": "done",
+    "area": "sound",
+    "needs_you": "Listen to child_play_2..5 for any words (the source page could not be checked) and to the new music: town day, night, Capital, tension.",
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-13",
+    "order": 911
+   },
    "sound-fire-placed": {
     "title": "Fire where it burns (sound)",
     "status": "done",
@@ -1631,25 +1640,25 @@
   },
   "branches": [
    {
-    "name": "god/decree-powers",
+    "name": "god/death-powers",
     "ahead": 49,
-    "behind": 46,
+    "behind": 47,
     "date": "2026-11-13",
     "subject": "test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell",
     "pushed": true
    },
    {
-    "name": "claude/sound-natural-2",
-    "ahead": 1,
-    "behind": 0,
+    "name": "god/decree-powers",
+    "ahead": 49,
+    "behind": 47,
     "date": "2026-11-13",
-    "subject": "feat: children heard in the town; calm and tension music before the battle",
+    "subject": "test: the merged tree's counts (52 locked) and the rite's chained-captive check through the amber cell",
     "pushed": true
    },
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 59,
+    "behind": 60,
     "date": "2026-11-12",
     "subject": "dev: the Passage bots play the real Passage tree (Skylift, Windfall and the Hunts' tier keys)",
     "pushed": true
@@ -1657,7 +1666,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 235,
+    "behind": 236,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1665,7 +1674,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 733,
+    "behind": 734,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1673,7 +1682,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 691,
+    "behind": 692,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1681,8 +1690,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-12",
-   "subject": "test: Solaris's closing sound is solar_fade (the sound audit's name) at the pillar"
+   "date": "2026-11-13",
+   "subject": "feat: children heard in the town; calm and tension music before the battle"
   }
  }
 }

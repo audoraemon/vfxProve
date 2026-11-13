@@ -90,7 +90,7 @@ var _wide_style: StyleBoxFlat
 
 
 func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
-	UiTheme.word_spacing = true  # this screen's text is laid out for the wider spaces; off again when it leaves (_exit_tree)
+	_use_spacing(true)  # this screen's text is laid out for the wider spaces; off again when the last tree screen leaves
 	_slot = slot
 	for col in columns().size():
 		for tier in range(1, GodTree.TIERS + 1):
@@ -388,7 +388,14 @@ func label_layout(col: int) -> Dictionary:
 				if found:
 					break
 			if not found:
-				pick = strip_candidates(p, strip_size(full, false))[0]
+				# No clear place that belongs: take a belonging one inside the area even if it crowds a neighbour (a test fails), else the radial
+				for two in [false, true]:
+					for c in strip_candidates(p, strip_size(full, two)):
+						if not found and LABEL_AREA.encloses(c) and strip_belongs(c, tier, i):
+							pick = c
+							found = true
+				if not found:
+					pick = strip_candidates(p, strip_size(full, false))[0]
 			out[Vector2i(tier, i)] = pick
 			placed.append(pick)
 	_label_cache[col] = out
@@ -562,8 +569,26 @@ func _buy() -> String:
 	return ""
 
 
+## How many tree screens want the wider spaces: a tree-to-tree swap (the new one's setup runs before the old one leaves) keeps them on.
+static var _spacing_users := 0
+var _spacing_on := false
+
+
+func _use_spacing(on: bool) -> void:
+	if on == _spacing_on:
+		return
+	_spacing_on = on
+	_spacing_users = maxi(_spacing_users + (1 if on else -1), 0)
+	UiTheme.word_spacing = _spacing_users > 0
+
+
 func _exit_tree() -> void:
-	UiTheme.word_spacing = false
+	_use_spacing(false)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_use_spacing(false)  # a screen freed without ever entering the tree
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1016,7 +1041,7 @@ static func twist_lines(key: String) -> PackedStringArray:
 	var text := PowerBook.twist(key)
 	if text == "" or not PowerBook.has_levels(key):
 		return PackedStringArray()
-	return UiTheme.wrap("Level %d . %s" % [PowerBook.MAX_LEVEL, text.split(". ")[0]], INFO_W, SMALL_PX)
+	return UiTheme.wrap("Level %d . %s" % [PowerBook.MAX_LEVEL, text], INFO_W, SMALL_PX)
 
 
 ## The 6x5 u chevron arrow between an old value and a new one, its vertical middle at `cy`.

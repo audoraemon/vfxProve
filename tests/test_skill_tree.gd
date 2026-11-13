@@ -395,6 +395,7 @@ static func _labels_clear(t) -> void:
 
 
 static func _refusal_fits(t) -> void:
+	UiTheme.word_spacing = true  # as the open tree has it
 	var reasons := PackedStringArray(["Not enough ability points"])
 	for v in SkillTreeScreen.REFUSALS.values():
 		reasons.append(String(v) % 5 if String(v).contains("%d") else String(v))
@@ -407,9 +408,10 @@ static func _refusal_fits(t) -> void:
 			if UiTheme.width(l, UiTheme.TEXT_S) > 96.0:
 				bad.append("%s: line '%s' is %.0f u" % [r, l, UiTheme.width(l, UiTheme.TEXT_S)])
 	t.check(bad.is_empty(), "every refusal wraps to at most 2 lines of 96 u at 11 u: %s" % [bad])
-	t.check(SkillTreeScreen.refusal_lines("Not enough ability points").size() == 2,
-		"'Not enough ability points' takes two lines")
+	t.check(Array(SkillTreeScreen.refusal_lines("Not enough ability points")) == ["Not enough", "ability points"],
+		"'Not enough ability points' breaks as 'Not enough' / 'ability points'")
 	t.check(SkillTreeScreen.refusal_lines("one two three four five six seven eight nine ten eleven twelve").size() == 2, "a long text is cut to 2 lines")
+	UiTheme.word_spacing = false
 
 
 static func _value_columns(t) -> void:
@@ -547,7 +549,7 @@ static func _twists_whole(t) -> void:
 			continue
 		seen += 1
 		var lines := SkillTreeScreen.twist_lines(key)
-		var want := "Level %d . %s" % [PowerBook.MAX_LEVEL, PowerBook.twist(key).split(". ")[0]]
+		var want := "Level %d . %s" % [PowerBook.MAX_LEVEL, PowerBook.twist(key)]
 		if lines.size() > SkillTreeScreen.TWIST_LINES or " ".join(lines) != want or " ".join(lines).contains("..."):
 			bad.append("%s: %d lines" % [key, lines.size()])
 		for l in lines:
@@ -569,6 +571,9 @@ static func _word_spacing(t) -> void:
 	t.check(UiTheme.wrap("Not enough ability points", 96.0, 11).size() == 2, "the refusal still wraps to two lines")
 	s.free()
 	s = _screen("ruin")
-	s._exit_tree()  # what leaving the tree runs
+	var other := _screen("ruin")
+	s._exit_tree()  # a swap: the old tree leaves after the new one's setup
+	t.check(UiTheme.word_spacing, "the old tree leaving does not clear the spacing under the new one")
+	other.free()
 	s.free()
 	t.check(not UiTheme.word_spacing, "and leaving it turns the spacing off again")

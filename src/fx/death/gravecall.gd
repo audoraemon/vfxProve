@@ -39,8 +39,8 @@ var _started := -1.0
 var _fright_in := 0.0
 var _passed := {}  # spirit -> {soldier: true}
 var _ended := false
-## A cold glow under each wraith while it haunts (staged only), by wraith.
-var _glows := {}  # Animal -> QuadFx
+## A cold glow under each wraith while it haunts (staged only), by the wraith's index in spirits.
+var _glows := {}  # int -> QuadFx
 
 
 func _build() -> void:
@@ -75,7 +75,9 @@ func _rise() -> void:
 		spirits.append(a)
 		_passed[a] = {}
 		if DominionParts.staged(self):
-			_glows[a] = FxParts.ground_light(self, a.ground_pos, 1.0, DeathParts.GRAVE_GREEN, GLOW)
+			var at := a.ground_pos
+			_glows[k] = FxParts.ground_light(self, at, 1.0, DeathParts.GRAVE_GREEN, GLOW,
+				func() -> Vector2: return a.ground_pos if is_instance_valid(a) else at)
 	if DominionParts.staged(self):
 		var sp := Iso.ground_to_screen(origin)
 		var burst := FxParts.bloom(self, sp + Vector2(0, -10), 26.0, DeathParts.PALE_FIRE, 1.0, 1.0)
@@ -94,13 +96,16 @@ func _fx_process(delta: float) -> void:
 	for k in spirits.size():
 		var a := spirits[k]
 		if not is_instance_valid(a):
+			if _glows.has(k):  # a slain wraith's glow goes out with it
+				(_glows[k] as QuadFx).tween_param("intensity", GLOW, 0.0, FADE)
+				_glows.erase(k)
 			continue
 		if a.ground_pos.distance_to(_slots[k]) > ARRIVED:
 			a.walk_to(_slots[k], delta, null)  # straight through whatever stands between
 			all_there = false
 		_freeze_soldiers(a)
-		if _glows.has(a):
-			(_glows[a] as QuadFx).position = a.ground_pos
+		if _glows.has(k):
+			(_glows[k] as QuadFx).position = a.ground_pos
 	if all_there and not haunting:
 		haunting = true
 		_started = t

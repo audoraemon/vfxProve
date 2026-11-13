@@ -29,6 +29,9 @@ var marked: Array[Person] = []
 ## Their instance ids, to let go of the count even for one freed meanwhile.
 var _ids: Array[int] = []
 
+## One mark per guised person (a grey shroud and a closed eye), drawn only; they follow the person and free themselves.
+var shrouds: Array[Node2D] = []
+
 var _breath_in := BREATH_EVERY * 0.5
 
 
@@ -58,9 +61,21 @@ func _build() -> void:
 		return
 	for p in marked:
 		p.statuses[KEY] = SPAN
+		# A cast taking over an earlier one's guise takes its mark too: one mark per person.
+		var before := instance_from_id(int(_owner.get(p.get_instance_id(), 0))) as CorpseGuiseFx
+		if before != null and before != self:
+			before._drop_marks(p)
 		_owner[p.get_instance_id()] = get_instance_id()
 		_ids.append(p.get_instance_id())
 	ctx.play(&"q_guise", origin)
+	var parent: Node2D = ctx.overhead if ctx.overhead != null else ctx.world
+	if parent != null:
+		for p in marked:
+			var m := GuiseMark.new()
+			m.who = p
+			m.fx = self
+			m.sync()
+			shrouds.append(track(m, parent) as Node2D)
 	if DominionParts.staged(self):
 		# The grave's cold settles on each of them: ash motes drawn down, and a first breath of cold.
 		for p in marked:
@@ -107,6 +122,30 @@ func _lift(p: Person) -> void:
 
 func _finish() -> void:
 	_release()
+	_free_marks()
+	super()
+
+
+## Marks on `p` (a cast took his guise over) go now.
+func _drop_marks(p: Person) -> void:
+	for i in range(shrouds.size() - 1, -1, -1):
+		var m := shrouds[i]
+		if not is_instance_valid(m):
+			shrouds.remove_at(i)
+		elif (m as GuiseMark).who == p:
+			m.queue_free()
+			shrouds.remove_at(i)
+
+
+func _free_marks() -> void:
+	for m in shrouds:
+		if is_instance_valid(m):
+			m.queue_free()
+	shrouds.clear()
+
+
+func _exit_tree() -> void:
+	_free_marks()
 	super()
 
 
@@ -114,6 +153,7 @@ func _finish() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		_release()
+		_free_marks()
 
 
 ## Every guise this cast still keeps comes off, and its share of _owner is let go (for one freed meanwhile too). Safe to call twice.
@@ -125,3 +165,45 @@ func _release() -> void:
 		if int(_owner.get(id, 0)) == get_instance_id():
 			_owner.erase(id)
 	_ids.clear()
+
+
+## The mark over one guised person: a grey shroud over his body, head to knee, and a closed eye 8 px above his head, for as
+## long as `fx` keeps his guise. Drawn only (no simulation state); frees itself when the guise lifts or he is gone.
+class GuiseMark extends Node2D:
+	const EYE := Vector2(7, 4)
+	const LID := Color(0.1, 0.1, 0.12, 1.0)
+	var who: Person
+	var fx: CorpseGuiseFx
+	var _head := 20.0
+
+	func sync() -> void:
+		if not is_instance_valid(who):
+			return
+		position = Iso.ground_to_screen(who.ground_pos)
+		var design: String = who._design()
+		if PeopleArt.has(design):
+			_head = (PeopleArt.info(design)[2] as Vector2).y
+
+	func _process(_delta: float) -> void:
+		if fx == null or not is_instance_valid(fx) or not fx._keeps(who):
+			queue_free()
+			return
+		sync()
+		visible = who.is_alive() and not who.inside
+		queue_redraw()
+
+	func _draw() -> void:
+		if fx == null or not is_instance_valid(fx) or not fx._keeps(who):
+			return
+		var top := -_head
+		var knee := -_head * 0.3
+		var w := 4.0
+		var shroud := PackedVector2Array([Vector2(-w + 1, top + 2), Vector2(w - 1, top + 2), Vector2(w, knee), Vector2(-w, knee)])
+		draw_colored_polygon(shroud, Color(DeathParts.ASH, 0.55))
+		var ey := top - 8.0 - EYE.y
+		var ex := -floorf(EYE.x * 0.5)
+		# The closed eye: a bone lens with a dark lid line along its lower edge.
+		draw_rect(Rect2(ex + 1, ey, EYE.x - 2, 1), DeathParts.BONE)
+		draw_rect(Rect2(ex, ey + 1, EYE.x, 2), DeathParts.BONE)
+		draw_rect(Rect2(ex + 1, ey + 3, EYE.x - 2, 1), DeathParts.BONE)
+		draw_rect(Rect2(ex, ey + 2, EYE.x, 1), LID)

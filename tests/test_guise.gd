@@ -26,6 +26,7 @@ static func run(t) -> void:
 	_countdown(t, made)
 	_overlap(t, made)
 	_looks(t, made)
+	_shrouds(t, made)
 	RD._done(made)
 	_watcher(t)
 	_inquisitor(t)
@@ -199,6 +200,47 @@ static func _overlap(t, made: Array) -> void:
 		"recast at 10 s: the first ends at 25 s and leaves the second's 9 s (%.2f)" % float(p.statuses.get(&"guise", -1.0)))
 	RD._run(b, 9.5)
 	t.check(not p.guised(), "then it ends")
+
+
+## Each guised person wears a shroud mark (grey shroud, closed eye) for the whole span; a second cast leaves one.
+static func _shrouds(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var ps: Array[Person] = []
+	for i in 4:
+		var p: Person = crowd.citizens[40 + i]
+		p.ground_pos = at + Vector2(0.4 * float(i), 0.2)
+		ps.append(p)
+	var fx := _cast(made[5], at)
+	t.check(fx.shrouds.size() == 4, "each guised person carries a shroud mark for the whole span (%d marks)" % fx.shrouds.size())
+	RD._run(fx, CorpseGuiseFx.SPAN - 0.5)
+	var live := fx.shrouds.all(func(m: Node2D) -> bool: return is_instance_valid(m) and m.visible and not m.is_queued_for_deletion())
+	t.check(live and fx.shrouds.size() == 4, "each guised person carries a shroud mark for the whole span: all valid at SPAN - 0.5")
+	RD._run(fx, 0.6)
+	var gone := fx.shrouds.all(func(m: Node2D) -> bool: return not is_instance_valid(m) or m.is_queued_for_deletion())
+	t.check(gone, "and none at SPAN + 0.1")
+	# A second cast on the same person: one mark once the first stops keeping him.
+	RD._clear_all(made)
+	var q: Person = crowd.citizens[44]
+	q.ground_pos = at
+	var a := _cast(made[5], at)
+	RD._run(a, 5.0)
+	var b := _cast(made[5], at)
+	RD._run(b, 0.1)
+	var n := 0
+	for m in a.shrouds + b.shrouds:
+		if is_instance_valid(m) and not m.is_queued_for_deletion() and m.who == q and m.fx._keeps(q):
+			n += 1
+	var drawn := 0
+	for m in a.shrouds + b.shrouds:
+		if is_instance_valid(m) and not m.is_queued_for_deletion() and m.who == q:
+			drawn += 1
+	t.check(n == 1 and drawn == 1, "a guise taken over by a second cast keeps one mark (%d keeping, %d alive)" % [n, drawn])
+	# Freed early: the marks go with the effect.
+	var marks: Array = b.shrouds.duplicate()
+	b.free()
+	t.check(marks.all(func(m) -> bool: return not is_instance_valid(m) or m.is_queued_for_deletion()), "a freed effect leaves no mark behind")
 
 
 ## The guised are drawn greyed with eyes down: the walking dead's lurch when they walk, and a redraw when it starts and ends.

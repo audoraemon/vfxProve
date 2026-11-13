@@ -7,14 +7,14 @@ extends FxTimeline
 ## visitors -- inward ahead of the bars. Walking in is free, and whoever walks in during the close is caged too. Whoever
 ## stood outside RADIUS at the cast is untouched.
 ##   Cut down  one whose inward step is blocked -- the point the bars would push him to lies in the footprint of a
-##             building the bars have not yet felled -- is cut down where he stands (kill kind collapse), the frame the
+##             building the bars have not yet felled -- is cut down where he stands (kill kind crushed), the frame the
 ##             ring reaches him. A visitor too.
 ##   Crushed   every building the bars reach cracks the frame they touch its footprint (Structure.crack) and falls when
 ##             they pass its middle (Structure.destroy; the Citadel's parts are dealt the blow through their owner);
 ##             whoever shelters in it dies with it. One the ring stands across at the cast cracks at once, and falls only
 ##             if its middle lies inside. Gates, bridges and fields (walkable) are passed through untouched: nobody is
 ##             pinned against them, and the town's crossings and queues keep them, as Eminent Domain keeps their ruins.
-##   The end  at T_LAND + CLOSE_TIME everyone still inside END_R dies (kill kind collapse), and whatever still stands
+##   The end  at T_LAND + CLOSE_TIME everyone still inside END_R dies (kill kind crushed), and whatever still stands
 ##             there falls: only the centre point is left.
 ## Indoors and a rite's chained captive are left to the law as it holds them (LawZone): the one sheltering dies with his
 ## house; the chained one is not held, so the bars pass him by. Who dies follows distance and order only, never a roll.
@@ -29,8 +29,10 @@ const CLOSE_TIME := 30.0
 const T_LAND := 0.8
 ## The bars sink and fade this long after the end (look only).
 const FADE := 1.0
-## The kill kind of the bars: cut down, and crushed at the end.
-const KIND := &"collapse"
+## The kill kind of the bars: cut down, crushed with a house the bars fell, and crushed at the end. Its own kind, not
+## the town's collapse (a house falling on its shelterers): the body is left whole and lies DummyEnemy.BODY_HOLD
+## (Remains.BODY_KINDS), and the death is loud.
+const KIND := &"crushed"
 ## Leeway on distances computed onto the ring.
 const EPS := 0.0001
 

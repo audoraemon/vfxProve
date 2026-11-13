@@ -1,6 +1,6 @@
 extends RefCounted
 ## Erasing Distance (Decree, Tier III; spec 5.5): a dragged line whose distance is erased. A gilt seam runs down it, the
-## fold pulls whoever stands within CRUSH_W to its middle and crushes them (kill kind collapse), every building it crosses
+## fold pulls whoever stands within CRUSH_W to its middle and crushes them (kill kind crushed), every building it crosses
 ## falls and those within CRACK_W crack; the spring back throws whoever stands within THROW_W outward and down; law
 ## rubble lies in kinked heaps along it, closing the walk grid. All by distance: no rolls.
 
@@ -56,9 +56,9 @@ static func run(t) -> void:
 		and String(b.get("aim", "")) == "drag" and not PowerBook.is_quiet("erase") and PowerBook.authority_of("erase") == "decree"
 		and ResourceLoader.exists(String(b.get("path", ""))) and String(area.get("shape", "")) == "lane"
 		and is_equal_approx(float(area.get("length", 0.0)), 10.0) and is_equal_approx(float(area.get("half", 0.0)), 1.0)
-		and bool(area.get("stretch", false)) and Rules.POWER_KINDS.get("erase", []) == [&"collapse"]
+		and bool(area.get("stretch", false)) and Rules.POWER_KINDS.get("erase", []) == [&"crushed"]
 		and PowerBook.family("erase") == "decree" and PowerBook.REACH.has("erase"),
-		"Erasing Distance: Decree, 4 Might, 60 s, a drag up to 10, loud, a lane 1 each side, kills by collapse (%s)" % [b])
+		"Erasing Distance: Decree, 4 Might, 60 s, a drag up to 10, loud, a lane 1 each side, kills by crushing (%s)" % [b])
 	var ef = load(PATH) if ResourceLoader.exists(PATH) else null
 	if ef == null:
 		t.check(false, "the effect script loads")
@@ -128,7 +128,7 @@ static func run(t) -> void:
 		% [a.ground_pos.distance_to(mid), a_from])
 	_run(fx, float(ef.T_FOLD) * 0.5)
 	fx._process(0.01)  # past the close, whatever the frames' rounding
-	t.check(not a.is_alive() and a._kind == &"collapse" and not guard.is_alive() and guard._kind == &"collapse"
+	t.check(not a.is_alive() and a._kind == &"crushed" and not guard.is_alive() and guard._kind == &"crushed"
 		and a.ground_pos.distance_to(mid) < 0.3 and guard.ground_pos.distance_to(mid) < 0.3
 		and crowd.killed_citizens + crowd.killed_soldiers == killed + 2 and fx.crushed == 2,
 		"when the fold closes they are crushed at its middle (kind %s, %.2f from it)" % [a._kind, a.ground_pos.distance_to(mid)])
@@ -166,6 +166,6 @@ static func run(t) -> void:
 	b2.ground_pos = FROM + Vector2(7.0, 0.5)
 	var again = FxTimeline.cast(ef, ctx, FROM + Vector2(6.2, 0.0), {"dir": DIR, "to": FROM + Vector2(6.2, LEN)})
 	_run(again, float(ef.T_SEAM) + float(ef.T_FOLD) + DT)
-	t.check(not b2.is_alive() and b2._kind == &"collapse", "a second line crushes the one 0.8 off it the same way")
+	t.check(not b2.is_alive() and b2._kind == &"crushed", "a second line crushes the one 0.8 off it the same way")
 	again.free()
 	_done(made)

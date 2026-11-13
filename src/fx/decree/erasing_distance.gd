@@ -5,7 +5,7 @@ extends FxTimeline
 ## end is given (the sandbox, scripted casts). Three stages, then what it leaves:
 ## 1. The seam (T_SEAM): a gilt seam runs down the line and the ground on both sides puckers toward it.
 ## 2. The fold (T_FOLD): everyone within CRUSH_W of the line (indoors excepted) is caught and pulled to its middle like
-##    cloth, and when the fold closes they are crushed there (kill kind collapse). Every building the line crosses falls
+##    cloth, and when the fold closes they are crushed there (kill kind crushed). Every building the line crosses falls
 ##    (EnvironmentField.damage_lane), every one within CRACK_W of it cracks, and what lies on the ground within CRUSH_W
 ##    (barrels, carts, lamps) is struck down.
 ## 3. The spring back (T_SNAP after the close): the fold snaps open. Whoever stands within THROW_W of the line is thrown
@@ -153,7 +153,7 @@ func _close() -> void:
 		if p != null and p.inside:
 			continue
 		e.ground_pos = mid
-		if ctx.field.kill(e, &"collapse", mid):
+		if ctx.field.kill(e, &"crushed", mid):
 			crushed += 1
 	caught.clear()
 	var side := dir.orthogonal()

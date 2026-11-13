@@ -12,8 +12,11 @@ const SOUL := 15.0
 const MAX := 60
 ## A click takes the nearest remain within this.
 const PICK_R := 1.0
-## Only a death that leaves the body whole is recorded.
-const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy", &"pale", &"shadow"]
+## Only a death that leaves the body whole is recorded: Death's own quiet kills, the mob's and a fight's, and Decree's
+## (choked, struck by the Sealed Verdict, killed by the bond, crushed by the Closing Cage or Erasing Distance's fold).
+## A blast, a fire, the pit or a door of stars leaves nothing to raise.
+const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy", &"pale", &"shadow", &"choke",
+	&"verdict", &"bound", &"crushed"]
 ## The powers that need the ledger on (Pale Reign: its dead rise as servants).
 const WANTED_BY: Array[String] = ["raise", "walker", "gravetide", "pale"]
 
@@ -144,8 +147,9 @@ func all() -> Array[Remain]:
 	return out
 
 
-## Uses a remain up. Its person's own corpse, still lying there (DummyEnemy's DEATH_FADE, Death Mark's BODY_HOLD), is hidden
-## at once: the body has got up, or gone, so it does not lie in two places. The node's own timer still frees it.
+## Uses a remain up. Its person's own corpse, still lying there (DummyEnemy's DEATH_FADE, or BODY_HOLD for its
+## HELD_KINDS), is hidden at once: the body has got up, or gone, so it does not lie in two places. The node's own timer
+## still frees it.
 func take(r: Remain) -> void:
 	var node := _body_node(r)
 	if node != null and node.state == DummyEnemy.State.DEAD:
@@ -183,7 +187,7 @@ func _shown_count() -> int:
 
 
 ## A remain lies drawn when it is not hidden and its person's own corpse no longer shows: the node has freed (after
-## DEATH_FADE, or Death Mark's BODY_HOLD) or was hidden (take()), or there never was one.
+## DEATH_FADE, or BODY_HOLD for DummyEnemy.HELD_KINDS) or was hidden (take()), or there never was one.
 func _drawn(r: Remain) -> bool:
 	if r.hidden:
 		return false

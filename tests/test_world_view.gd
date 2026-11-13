@@ -284,6 +284,59 @@ static func _positional_audio(t) -> void:
 	_drop(wv)
 
 
+## Hosting call sites (carry-over from the 2b review): add_hosted in both modes, the title's backdrop, and a view that goes with its world.
+static func _add_hosted(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var holder := Node.new()
+	tree.root.add_child(holder)
+	var plain := Node2D.new()
+	t.check(WorldView.add_hosted(holder, plain) == null and plain.get_parent() == holder, "headless: add_hosted returns null and parents straight")
+	holder.remove_child(plain)
+	plain.free()
+	var ready_in := []
+	var probe := ReadyProbe.new()
+	probe.log_into = ready_in
+	var wv := WorldView.add_hosted(holder, probe, true)
+	await t.process_frame
+	t.check(wv != null and wv.get_parent() == holder and probe.get_parent() == wv.viewport, "forced: a view under the parent, the node in its viewport")
+	t.check(ready_in.size() == 1 and ready_in[0] == wv.viewport, "the node's _ready ran inside the world viewport (the view was added first)")
+	probe.queue_free()
+	await t.process_frame
+	await t.process_frame
+	t.check(not is_instance_valid(wv), "freeing the hosted node frees its view (and its ui) with it, as Game's per-mission view does")
+	holder.get_parent().remove_child(holder)
+	holder.free()
+
+
+class ReadyProbe extends Node2D:
+	var log_into: Array
+
+	func _ready() -> void:
+		log_into.append(get_viewport())
+
+
+static func _title(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	WorldView.test_host = true
+	var title := TitleScreen.new()
+	tree.root.add_child(title)
+	title.setup(0, "")
+	await t.process_frame
+	var view: WorldView = null
+	for c in title.get_children():
+		if c is WorldView:
+			view = c
+	t.check(view != null and view.hosted() is Battlefield, "the title's backdrop battlefield is hosted")
+	t.check(view != null and view.viewport.get_node_or_null("Town") != null and title.get_node_or_null("Town") == null, "the Town is in the world viewport, not the title")
+	t.check(view != null and (view.hosted() as Battlefield).hud_layer.get_parent() == view.ui, "the backdrop's UI layers are in the view's ui")
+	var had_view := view != null
+	title.queue_free()
+	for i in 3:
+		await t.process_frame
+	t.check(had_view and not is_instance_valid(view), "the view goes with the title")
+	WorldView.test_host = false
+
+
 static func run(t) -> void:
 	await _hosting(t)
 	await _bf_layers(t)
@@ -294,3 +347,5 @@ static func run(t) -> void:
 	await _no_ui_in_world(t)
 	await _frozen(t)
 	await _positional_audio(t)
+	await _add_hosted(t)
+	await _title(t)

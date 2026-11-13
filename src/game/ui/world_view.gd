@@ -10,7 +10,11 @@ var viewport: SubViewport
 ## Shows the viewport's texture at the origin.
 var display: TextureRect
 ## Parent of every UI node of the hosted world (hud_layer, FpsMeter, ArtToggle, ZoomReadout, overlays, legend).
+## Everything under it freezes with the mission (`Mission.set_frozen` disables this subtree) unless it is PROCESS_MODE_ALWAYS,
+## so a persistent node must not be parented here.
 var ui: Node
+## Tests only: host in a headless run too (the references and the suite leave it false). Always put it back.
+static var test_host := false
 var _hosted: Node
 var _dying := false
 
@@ -80,7 +84,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Whether this run hosts worlds in a view at all: never headless (the references and the suite run unhosted, the root is the world).
 static func can_host() -> bool:
-	return DisplayServer.get_name() != "headless"
+	return test_host or DisplayServer.get_name() != "headless"
 
 
 ## Put `node` under `parent`: inside a new WorldView added under `parent` when hosting is on (`can_host()`, or `force`), else straight

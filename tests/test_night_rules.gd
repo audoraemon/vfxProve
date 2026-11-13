@@ -267,7 +267,7 @@ static func _wiring(t) -> void:
 	t.check(game.contains("mission.look_override = GodNight.look_for(god, mission_id)"), "Game gives an Endless Night's Mission the rolled look")
 	var block := game.find("if _in_endless and god != null:")
 	var at := game.find("mission.look_override")
-	t.check(block >= 0 and at > block and at < game.find("add_child(mission)", block),
+	t.check(block >= 0 and at > block and at < game.find("WorldView.add_hosted(self, mission)", block),
 		"and inside the Endless Night block, before the Mission is added")
 	t.check(game.count("look_override") == 1, "no other path sets it (the board, the campaign, the sandbox)")
 	var m := Mission.new()

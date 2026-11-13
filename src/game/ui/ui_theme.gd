@@ -28,6 +28,16 @@ const SIZE_TITLE := 32
 ## The rank letter on the results screen.
 const SIZE_HUGE := 64
 
+## The crisp text sizes (UI resolution): multiples of 11, so every glyph lands on the device pixel grid at every integer scale.
+## The skill tree and the HUD use only these; the old SIZE_* stay until nothing uses them.
+const TEXT_S := 11
+const TEXT_L := 22
+const TEXT_XL := 33
+const TEXT_XXL := 66
+## Line spacing for stacked text at TEXT_S and TEXT_L.
+const LINE_S := 12.0
+const LINE_L := 24.0
+
 static var _font: FontFile
 
 

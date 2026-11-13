@@ -56,5 +56,5 @@ func _init() -> void:
 func _save(file_name: String) -> void:
 	var dir := ProjectSettings.globalize_path("res://captures")
 	DirAccess.make_dir_recursive_absolute(dir)
-	get_root().get_texture().get_image().save_png(dir.path_join(file_name))
+	UiScale.root_image(get_root()).save_png(dir.path_join(file_name))
 	print("captured ", file_name)

@@ -28,5 +28,5 @@ func _init() -> void:
 		root2.add_child(w)
 	for f in 30:
 		await process_frame
-	get_root().get_texture().get_image().save_png("res://captures/wave_preview.png")
+	UiScale.root_image(get_root()).save_png("res://captures/wave_preview.png")
 	quit()

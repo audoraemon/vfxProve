@@ -38,7 +38,8 @@ static var _installed := false
 
 ## Once per process, no-op in headless runs: applies `--window=WxH` (a borderless window of that size at the screen's origin,
 ## before the first frame), gives the root the design size (aspect "keep" and scale mode "integer" come from project.godot) and follows
-## the root's size from then on. Call it first in a windowed main scene's _ready.
+## the root's size from then on. Call it first in a windowed main scene's _ready: from a `-s` script's _initialize the engine ignores
+## the `--window` size (its main window is not set up yet), so dev scripts get the project's window size.
 static func install(tree: SceneTree) -> void:
 	if _installed or DisplayServer.get_name() == "headless":
 		return
@@ -55,13 +56,41 @@ static func install(tree: SceneTree) -> void:
 	_follow_root(root)
 
 
+## The root's frame as an image in 640x360-style logical px (nearest-resized from the window-sized root texture, which draws at k x).
+## Dev tools that crop the root texture in logical coordinates read it through here. Unchanged when the root already is that size.
+static func root_image(root: Window) -> Image:
+	var img := root.get_texture().get_image()
+	var want := Vector2i(root.get_visible_rect().size)
+	if img.get_size() != want:
+		img.resize(want.x, want.y, Image.INTERPOLATE_NEAREST)
+	return img
+
+
+## Dev tools that make pixel art from the root's frame (sprite refs, people and sprite states) render it as the old viewport mode did:
+## a 640x360 root drawn at 1x, not a 2x draw sampled down (smooth shapes rasterise differently at 2x). A coroutine: `await` it before each
+## shot. The engine applies the project's window settings some frames after a `-s` script starts and would undo an earlier call, so it
+## does nothing when the root is already right and otherwise sets it and waits two frames.
+static func pixel_root(root: Window) -> void:
+	if root.content_scale_mode == Window.CONTENT_SCALE_MODE_DISABLED and root.size == DESIGN:
+		return
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
+	root.content_scale_size = Vector2i.ZERO
+	root.size = DESIGN
+	await root.get_tree().process_frame
+	await root.get_tree().process_frame
+
+
+## Biggest `--window` side accepted (a typo such as 99999x99999 would otherwise ask the OS for a window that size).
+const MAX_WINDOW := 8192
+
+
 ## `--window=WxH` from the user args, or (0, 0).
 static func window_arg(args: PackedStringArray) -> Vector2i:
 	for a in args:
 		if a.begins_with("--window="):
 			var parts := a.substr(9).to_lower().split("x")
 			if parts.size() == 2 and parts[0].is_valid_int() and parts[1].is_valid_int() and parts[0].to_int() > 0 and parts[1].to_int() > 0:
-				return Vector2i(parts[0].to_int(), parts[1].to_int())
+				return Vector2i(mini(parts[0].to_int(), MAX_WINDOW), mini(parts[1].to_int(), MAX_WINDOW))
 	return Vector2i.ZERO
 
 

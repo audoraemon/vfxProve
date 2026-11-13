@@ -60,9 +60,10 @@ func _init() -> void:
 			who.set_process(false)
 			who.queue_redraw()
 			_cam.position = who.position + Vector2(0, -10)
+			await UiScale.pixel_root(get_root())
 			for f in 3:
 				await process_frame
-			var shot := get_root().get_texture().get_image()
+			var shot := UiScale.root_image(get_root())
 			var at := Vector2i(320, 180) - CELL / 2
 			sheet.blit_rect(shot, Rect2i(at, CELL), Vector2i(c * CELL.x, r * CELL.y))
 			who.free()

@@ -26,6 +26,7 @@ static func _install(t) -> void:
 	t.check(UiScale.window_arg(PackedStringArray(["--show=tree", "--window=1280X720"])) == Vector2i(1280, 720), "among other args, either case of x")
 	t.check(UiScale.window_arg(PackedStringArray(["--window=big", "--window=0x5", "--window=12"])) == Vector2i.ZERO, "a bad or missing size is ignored")
 	t.check(UiScale.window_arg(PackedStringArray()) == Vector2i.ZERO, "no argument, no size")
+	t.check(UiScale.window_arg(PackedStringArray(["--window=99999x600"])) == Vector2i(UiScale.MAX_WINDOW, 600), "a huge side is clamped to MAX_WINDOW")
 	var eff := UiScale.effective(Vector2i(1366, 768))
 	t.check(eff["k"] == 2 and eff["area"] == Vector2i(640, 360) and eff["offset"] == Vector2i.ZERO and eff["fit"] == 1.0 and not UiScale.EXPAND_ON,
 		"until the expand, k is real and the area is the design frame (%s)" % [eff])
@@ -152,7 +153,7 @@ static func _crisp(t) -> void:
 
 
 ## The argument index of the width in each outline call, and the call text of every `name(` in `src` joined across lines.
-const WIDTH_ARG := {"draw_line": 3, "draw_polyline": 2, "draw_arc": 6, "draw_rect": 3}
+const WIDTH_ARG := {"draw_line": 3, "draw_polyline": 2, "draw_arc": 6, "draw_rect": 3, "draw_dashed_line": 3, "draw_multiline": 2, "draw_polyline_colors": 2}
 
 
 ## Top-level arguments of the call whose "(" is at `open` in `src`; also the index of its closing ")" in the last slot.
@@ -195,13 +196,13 @@ static func _width_ok(arg: String) -> bool:
 
 
 ## Every UI outline has an explicit positive width: -1.0 (and a missing width, which defaults to it) is one DEVICE px, a hairline
-## that thins out as the scale grows; 1.0 is one UI unit, k device px. Filled draw_rect calls are not outlines.
+## that thins out as the scale grows; 1.0 is one UI unit, k device px. Filled draw_rect calls (the default or a literal true) are not outlines.
 static func _hairline_lint(t) -> void:
 	var dir := DirAccess.open("res://src/game/ui")
 	var files := Array(dir.get_files()).filter(func(f): return f.ends_with(".gd"))
 	var bad: Array = []
 	var seen := 0
-	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(draw_line|draw_polyline|draw_arc|draw_rect)\\(")
+	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(draw_line|draw_polyline_colors|draw_polyline|draw_arc|draw_rect|draw_dashed_line|draw_multiline)\\(")
 	for f in files:
 		var src := FileAccess.get_file_as_string("res://src/game/ui/" + f)
 		for m in rx.search_all(src):
@@ -210,8 +211,8 @@ static func _hairline_lint(t) -> void:
 			var n := args.size() - 1
 			var line := src.substr(0, m.get_start()).count(char(10)) + 1
 			if name == "draw_rect":
-				if n < 3 or args[2] != "false":
-					continue
+				if n < 3 or args[2] == "true":
+					continue  # filled (the default, or literally): no outline; a filled flag that is not a literal counts as an outline
 			seen += 1
 			var w: int = WIDTH_ARG[name]
 			if n <= w or not _width_ok(args[w]):

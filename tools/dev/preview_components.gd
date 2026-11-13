@@ -105,7 +105,7 @@ func _shoot(n: Node, look: Vector2, path: String) -> void:
 		await process_frame
 	_hide_glows(n)
 	await process_frame
-	get_root().get_texture().get_image().save_png(path)
+	UiScale.root_image(get_root()).save_png(path)
 	print("captured ", path.get_file())
 
 

@@ -83,16 +83,17 @@ func _shoot(s: Structure, anchor: Vector2, size: Vector2i) -> Image:
 	# The camera's centre is the screen's (320, 180): put the front corner (the node's position) at SCREEN_AT.
 	_cam.position = s.position - (SCREEN_AT - Vector2(320, 180))
 	var rect := Rect2i(Vector2i(SCREEN_AT - anchor), size)
+	await UiScale.pixel_root(get_root())
 	RenderingServer.set_default_clear_color(BG)
 	for f in 6:
 		await process_frame
 	_hide_glows(s)
 	await process_frame
-	var on_bg := get_root().get_texture().get_image().get_region(rect)
+	var on_bg := UiScale.root_image(get_root()).get_region(rect)
 	RenderingServer.set_default_clear_color(BG2)
 	for f in 2:
 		await process_frame
-	var on_bg2 := get_root().get_texture().get_image().get_region(rect)
+	var on_bg2 := UiScale.root_image(get_root()).get_region(rect)
 	var img := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
 	for y in size.y:
 		for x in size.x:

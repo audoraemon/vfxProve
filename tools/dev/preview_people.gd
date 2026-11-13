@@ -61,6 +61,6 @@ func _init() -> void:
 		await process_frame
 	var dir := ProjectSettings.globalize_path("res://captures")
 	DirAccess.make_dir_recursive_absolute(dir)
-	get_root().get_texture().get_image().save_png(dir.path_join("people_preview.png"))
+	UiScale.root_image(get_root()).save_png(dir.path_join("people_preview.png"))
 	print("captured people_preview.png")
 	quit()

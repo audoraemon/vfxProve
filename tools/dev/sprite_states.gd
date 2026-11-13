@@ -70,9 +70,10 @@ func _init() -> void:
 			s.position = s.base_position()
 			s.queue_redraw()
 			_cam.position = s.position - (SCREEN_AT - Vector2(320, 180))
+			await UiScale.pixel_root(get_root())
 			for f in 4:
 				await process_frame
-			var shot := get_root().get_texture().get_image()
+			var shot := UiScale.root_image(get_root())
 			row.blit_rect(shot, Rect2i(Vector2i(SCREEN_AT - anchor), size), Vector2i(PAD + i * (size.x + PAD), PAD))
 			s.free()
 		row.resize(row.get_width() * 2, row.get_height() * 2, Image.INTERPOLATE_NEAREST)

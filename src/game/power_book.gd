@@ -553,8 +553,8 @@ const REACH := {
 	# across the square; the danger lasts the pit's 12 s
 	"gatebelow": [10.0, 14.0, 0.8, 12.0],
 	# Pale Reign: a district gone grey is seen across the town, but it is silent (it hushes the town), so it is heard only
-	# near; the danger lasts its 12 s
-	"pale": [14.0, 10.0, 0.8, 12.0],
+	# near; the danger lasts its 16 s
+	"pale": [14.0, 10.0, 0.8, 16.0],
 	# The Pale Serpent: a serpent the size of a street gliding over the roofs is seen across the town and heard far (wind and
 	# feathers); the danger lasts its glide and loop
 	"serpent": [24.0, 16.0, 0.9, 14.0],
@@ -588,7 +588,7 @@ const IMPACT := {
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
 	"breath": 0.5, "erase": 2.1, "disorder": 0.85, "eminent": 0.8, "fenced": 0.8, "cage": 0.8,
-	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5, "pale": 2.0, "serpent": 1.0, "gravetide": 1.2,
+	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5, "pale": 1.5, "serpent": 1.0, "gravetide": 1.2,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]

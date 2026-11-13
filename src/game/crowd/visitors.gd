@@ -33,7 +33,8 @@ extends RefCounted
 ## health (1 by default: a citizen falls to one, a soldier to two; Grave Tide's giant fells a soldier with one).
 ## A marked prey (mark(): Hound Gate's Quarry) is hunted by every visitor of the pack, at any distance, by the streets,
 ## in place of the nearest within reach, until it falls or goes inside (the mark is dropped then) or another is marked;
-## one there is no way to is left alone SKIP_FOR like any other. With nothing marked the hunt is as above.
+## one there is no way to is left alone SKIP_FOR like any other. A visitor with `bounds` leaves a mark outside them alone.
+## With nothing marked the hunt is as above.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -320,7 +321,8 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	var reach := MARCH_SEEK if marching else r.seek_r
 	var who := a.target
 	var quarry := marked()
-	if quarry != null and quarry != r.skip:
+	# A bounded one (a pale ghost) leaves a mark outside its bounds alone and hunts the nearest within them.
+	if quarry != null and quarry != r.skip and _within(r, quarry):
 		who = quarry  # the marked prey, wherever it is
 		a.target = quarry
 	else:

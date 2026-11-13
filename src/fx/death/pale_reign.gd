@@ -17,17 +17,30 @@ extends FxTimeline
 ##   ash-grey eyes (DeathParts.zombie, eyes ASH), in this effect's own Visitors pack, for SERVANT_LIFE from its rising; the
 ##   body is taken off the ledger (Remains.take hides the corpse). The ledger is on for a Pale night (Remains.wants); were
 ##   it off (a test, the sandbox), the reign keeps it on for itself and puts it back as it was at its end.
+## - The horde (R10): with the reign's first tick (its first death) HORDE_START pale ghosts pour out of the middle
+##   (DeathParts.pale_ghost: wraiths in a pale tint, through walls, at PALE_GHOST_PACE of a walk, in this effect's own
+##   `horde` pack). They run the district for the nearest living person inside it -- never one outside RADIUS, never a
+##   guised one -- and a ghost's touch kills as &"pale" (a whole body, so it rises as above). Every death inside the
+##   district during the span (anyone's: the reign's, a ghost's, a servant's) adds one more ghost where the body fell,
+##   while fewer than HORDE_CAP are up and the horde has killed fewer than HORDE_KILLS: it snowballs to a cap that holds
+##   the frame rate. At its HORDE_KILLS-th kill, or at SPAN, the horde sinks (recalled, gone within FADE).
 ## Loud (PowerBook.REACH): the danger counts from the first death (IMPACT = EVERY). Over, or cut short, or freed without its
-## end (_exit_tree), every pace is let go and the servants are gone.
+## end (_exit_tree), every pace is let go and the servants and the ghosts are gone.
 
 ## The district, how long it reigns, the pace it leaves, a death every EVERY, a servant's 20 s.
 const RADIUS := 10.0
-const SPAN := 12.0
+const SPAN := 16.0
 const CRAWL := 0.3
-const EVERY := 2.0
+const EVERY := 1.5
 const SERVANT_LIFE := 20.0
 ## At most this many of the dead rise in one reign.
-const MAX_RISEN := 12
+const MAX_RISEN := 16
+## The horde: how many pour out at the first death; at most this many up at once, and its kills before it sinks.
+const HORDE_START := 4
+const HORDE_CAP := 24
+const HORDE_KILLS := 24
+## The first ghosts pour out on a ring this far round the middle.
+const POUR_R := 1.0
 ## How often the fires inside are doused.
 const DOUSE_EVERY := 1.0
 ## The colour drains out over T_DRAIN and comes back over FADE once the span is over.
@@ -43,6 +56,10 @@ const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
 
 ## The servants' pack; the dead, in the order they fell; when the first fell; the fires put out.
 var visitors: Visitors
+## The horde's own pack, how many it has killed (its touch kills), and how many ghosts were made in all.
+var horde: Visitors
+var horde_kills := 0
+var ghosts_made := 0
 var taken: Array[Person] = []
 var first_kill_at := -1.0
 var doused := 0
@@ -61,6 +78,9 @@ var _next_douse := 0.0
 var _lit_ledger := false
 ## The reign's own death being dealt now: its tick (a servant's 20 s count from it), else -1.
 var _reaping_at := -1.0
+## Whether the first ghosts have poured out, and whether the horde has been sent down (its kills spent, or the span over).
+var _poured := false
+var _sunk := false
 var _drain: QuadFx
 
 
@@ -70,6 +90,8 @@ func _build() -> void:
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
+	horde = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
+	horde.bitten.connect(_on_touch)
 	ctx.field.enemy_killed.connect(_on_killed)
 	if ctx.crowd != null:
 		ctx.crowd.hush_at(origin, RADIUS, SPAN)
@@ -105,6 +127,7 @@ func _fx_process(delta: float) -> void:
 	if visitors == null:
 		return
 	visitors.step(delta)
+	horde.step(delta)
 	if is_instance_valid(_drain):
 		var k := shown()
 		_drain.set_param("amount", k)
@@ -117,6 +140,8 @@ func _fx_process(delta: float) -> void:
 			_next_douse += DOUSE_EVERY
 		while _next_kill <= SPAN + 0.0001 and t >= _next_kill:
 			_reap(_next_kill)
+			if not _poured:
+				_pour()
 			_next_kill += EVERY
 		if t >= SPAN:
 			_lift()
@@ -230,15 +255,55 @@ func _reap(when: float) -> void:
 		FxParts.smoke(self, Iso.ground_to_screen(p.ground_pos), 5.0, 24.0, 0.3, Vector2(6, 16), Vector2(2, 4), Vector2(0.6, 1.2), Color(0, 0, 0, 0), DUST)
 
 
-## Every whole-body death in the district during the span rises (the Remains ledger heard it first: it was connected at
-## the crowd's setup, before this): the reign's own, a servant's bite, anything that leaves a body; MAX_RISEN at most.
+## Every death in the district during the span adds a ghost to the horde where the body fell (_ghost_at()), and every
+## whole-body one rises (the Remains ledger heard it first: it was connected at the crowd's setup, before this): the
+## reign's own, a ghost's touch, a servant's bite, anything that leaves a body; MAX_RISEN at most.
 func _on_killed(e: DummyEnemy, kind: StringName) -> void:
-	if over or risen >= MAX_RISEN or not Remains.BODY_KINDS.has(kind):
+	if over:
 		return
 	var p := e as Person
-	if p == null or p.inside or p.ground_pos.distance_to(origin) > RADIUS:
+	if p == null or p.ground_pos.distance_to(origin) > RADIUS:
+		return
+	_ghost_at(p.ground_pos)
+	if p.inside or risen >= MAX_RISEN or not Remains.BODY_KINDS.has(kind):
 		return
 	_rise(p, _reaping_at if _reaping_at >= 0.0 else t)
+
+
+## The reign's first tick: HORDE_START ghosts pour out of the middle.
+func _pour() -> void:
+	_poured = true
+	for i in HORDE_START:
+		_ghost_at(origin + Vector2.from_angle(TAU * float(i) / float(HORDE_START)) * POUR_R)
+
+
+## One more ghost at `at`, while fewer than HORDE_CAP are up, the horde has killed fewer than HORDE_KILLS and the span runs.
+func _ghost_at(at: Vector2) -> void:
+	if horde == null or not (horde.living().size() < HORDE_CAP and horde_kills < HORDE_KILLS and t < SPAN):
+		return
+	DeathParts.pale_ghost(horde, at, origin, RADIUS)
+	ghosts_made += 1
+	if DominionParts.staged(self):
+		FxParts.smoke(self, Iso.ground_to_screen(at), 5.0, 20.0, 0.3, Vector2(6, 16), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
+
+
+## A ghost touched someone (Visitors.bitten): its kills are counted (Visitors.kills: only a touch that killed); at the
+## HORDE_KILLS-th the horde sinks.
+func _on_touch(_a: Animal, _who: Person, _first: bool) -> void:
+	horde_kills = horde.kills
+	if horde_kills >= HORDE_KILLS:
+		_sink()
+
+
+## The horde sinks: every ghost goes back where it came up and is gone within FADE (a puff of dust where each stood).
+func _sink() -> void:
+	if _sunk or horde == null:
+		return
+	_sunk = true
+	if DominionParts.staged(self):
+		for a in horde.living():
+			FxParts.smoke(self, Iso.ground_to_screen(a.ground_pos), 4.0, 20.0, 0.3, Vector2(6, 16), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
+	horde.recall(FADE)
 
 
 ## `p`'s body gets up where it fell: a zombie in their own look, ash-grey eyes, for SERVANT_LIFE from `when`.
@@ -256,10 +321,11 @@ func _rise(p: Person, when: float) -> void:
 		FxParts.debris(self, sp, 5, 5.0, Vector2(20, 60), BONE_CHIPS, Vector2(1.0, 2.0), true)
 
 
-## SPAN: the district has its colour and pace back. The servants stay up out their own 20 s.
+## SPAN: the district has its colour and pace back, and the horde sinks. The servants stay up out their own 20 s.
 func _lift() -> void:
 	over = true
 	_let_all_go()
+	_sink()
 
 
 ## A servant whose 20 s are up falls to ash; one cut down is gone already. The reign ends with the last of them.
@@ -281,13 +347,15 @@ func _expire() -> void:
 		duration = minf(duration, maxf(SPAN + FADE, t) + 0.05)
 
 
-## Over or cut short: every pace let go, the servants gone, the ledger as it was.
+## Over or cut short: every pace let go, the servants and the ghosts gone, the ledger as it was.
 func _finish() -> void:
 	_unhear()
 	_let_all_go()
 	_servants.clear()
 	if visitors != null:
 		visitors.clear()
+	if horde != null:
+		horde.clear()
 	_put_ledger_back()
 	super()
 
@@ -300,6 +368,8 @@ func _exit_tree() -> void:
 	_servants.clear()
 	if visitors != null:
 		visitors.clear(true)
+	if horde != null:
+		horde.clear(true)
 	_put_ledger_back()
 	super()
 

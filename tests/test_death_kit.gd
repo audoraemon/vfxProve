@@ -261,6 +261,17 @@ static func run(t) -> void:
 	_step(v, 4.0)
 	t.check(outer.is_alive() and not inner.is_alive(), "a pale ghost never picks anyone outside its bounds, even nearer")
 	v = _fresh(made)
+	# A mark (Hound Gate's Quarry) set on one outside the bounds does not draw a bounded ghost out after them.
+	var marked_out: Person = crowd.citizens[19]
+	var marked_in: Person = crowd.citizens[20]
+	marked_out.ground_pos = at + Vector2(-4.0, 0.0)
+	marked_in.ground_pos = at + Vector2(1.0, 0.0)
+	DeathParts.pale_ghost(v, at + Vector2(2.0, 0.0), at, 3.0)
+	v.mark(marked_out)
+	_step(v, 6.0)
+	t.check(marked_out.is_alive() and not marked_in.is_alive(),
+		"a pale ghost ignores a mark outside its bounds and hunts the nearest inside")
+	v = _fresh(made)
 	var gp: Person = crowd.citizens[15]
 	gp.ground_pos = at + Vector2(-8.0, 0.0)
 	var alarm0 := crowd.alarm

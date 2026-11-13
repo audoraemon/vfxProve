@@ -252,6 +252,7 @@ static func _staged(t, made: Array) -> void:
 	var stub := FxStage.StageImpact.new()
 	ctx.impact = stub
 	var lit := _soul_run(made, true)
+	var cut := _cut(made)
 	await t.process_frame
 	ctx.impact = null
 	stub.free()
@@ -260,11 +261,78 @@ static func _staged(t, made: Array) -> void:
 	ctx.overhead_back = keep[2]
 	t.root.remove_child(stage)
 	stage.free()
-	t.check(int(lit.pieces) == PaleSerpentFx.SEGMENTS + 2, "staged: head, collar, discs and tail are drawn (%d)" % lit.pieces)
-	t.check(bool(lit.glow), "staged: a cold glow follows the head")
+	t.check(int(lit.pieces) == PaleSerpentFx.SEGMENTS + 2, "staged: head, collar, discs and tail all show in the glide (%d)" % lit.pieces)
+	t.check(int(lit.glow) > 0 and int(lit.glow_off) == 0,
+		"staged: a cold glow lights the ground under the head (%d frames lit, %d off it)" % [lit.glow, lit.glow_off])
 	t.check(int(lit.wisps) > 0 and int(lit.taken) > 0, "staged: the souls fly in as wisps (%d at once)" % lit.wisps)
 	t.check(int(lit.taken) == int(plain.taken) and int(lit.souls) == int(plain.souls) and int(lit.souls) == int(lit.taken),
 		"staged or not, the same dead and the same souls (%d/%d staged, %d/%d headless)" % [lit.souls, lit.taken, plain.souls, plain.taken])
+	t.check(int(cut.bad) == 0 and int(cut.ways) == 8 and int(cut.poses) > 0,
+		"the collar as drawn covers the head's whole neck cut as drawn, on every heading (%d ways, %d poses, %d bad; %s)"
+		% [cut.ways, cut.poses, cut.bad, cut.worst])
+
+
+## Every opaque pixel of each head sheet's neck cut row (its lowest opaque row), in sprite px.
+static func _cut_rows() -> Dictionary:
+	var rows := {}
+	for key in PaleSerpentFx.HEADS:
+		var tex: Texture2D = PaleSerpentFx.HEADS[key]
+		var img := tex.get_image()
+		if img == null or img.is_empty():
+			img = Image.load_from_file(tex.resource_path)  # (the dummy renderer keeps no pixels: the sheet itself)
+		var px: Array[Vector2] = []
+		for y in range(img.get_height() - 1, -1, -1):
+			for x in img.get_width():
+				if img.get_pixel(x, y).a >= 0.5:
+					px.append(Vector2(x, y))
+			if not px.is_empty():
+				break
+		rows[key] = px
+	return rows
+
+
+## Staged, for drags along all eight ways through the glide and the loop: each frame, every pixel of the head's neck cut as
+## the head piece draws it (its position + lift, mirrored, at SCALE) must lie on the collar piece as drawn (its position +
+## lift): within its green disc (r) or across its feather skirt (skirt.x..skirt.y, r / 2 high), give or take 1 px. Read off
+## the drawn pieces, so a drift between _pose and pieces_at shows too.
+static func _cut(made: Array) -> Dictionary:
+	var rows := _cut_rows()
+	var out := {"bad": 0, "ways": 0, "poses": 0, "worst": ""}
+	var seen := {}
+	var worst := 0.0
+	for w in 8:
+		_reset(made)
+		var at := RD._empty(made)
+		var dir := Vector2.RIGHT.rotated(float(w) * PI * 0.25)
+		var fx := _cast(made, at, at + dir * PaleSerpentFx.LENGTH)
+		while not fx.finished and fx.t < PaleSerpentFx.glide_end():
+			fx._process(DT)
+			if fx.t < PaleSerpentFx.T_RISE + 0.1:
+				continue
+			var head: PaleSerpentFx.Piece = fx._pieces[0]
+			var collar: PaleSerpentFx.Piece = fx._pieces[1]
+			if not head.visible or not collar.visible:
+				continue
+			out.poses = int(out.poses) + 1
+			seen["%s%s" % [head.head, "<" if head.mirror else ""]] = true
+			var pivot := head.position + head.lift
+			var centre := collar.position + collar.lift
+			var m := -1.0 if head.mirror else 1.0
+			for p in rows[head.head]:
+				var q: Vector2 = pivot + Vector2(m * PaleSerpentFx.SCALE, PaleSerpentFx.SCALE) * (p + Vector2(0.5, 1.0) - PaleSerpentFx.HEAD_PIVOT)
+				var d := q - centre
+				var on_disc := d.length() <= collar.r + 1.0
+				var sk := collar.skirt
+				var on_skirt := sk != Vector2.ZERO and d.x >= sk.x - 1.0 and d.x <= sk.y + 1.0 and absf(d.y) <= collar.r * 0.5 + 1.0
+				if not on_disc and not on_skirt:
+					out.bad = int(out.bad) + 1
+					var off := d.length() - collar.r
+					if off > worst:
+						worst = off
+						out.worst = "%s%s pixel %s %.1f px off the collar" % [head.head, " mirrored" if head.mirror else "", p, off]
+		fx.end_now()
+	out.ways = seen.size()
+	return out
 
 
 ## Three in the lane; the serpent run past its glide and its last soul's flight; what it took and drew.
@@ -274,13 +342,18 @@ static func _soul_run(made: Array, staged: bool) -> Dictionary:
 	for i in 3:
 		_put(made, i, at + Vector2(2.0 + 3.0 * float(i), 0.3 * float(i)))
 	var fx := _cast(made, at, at + Vector2(14.0, 0.0))
-	var out := {"pieces": fx._pieces.size(), "glow": false, "wisps": 0}
+	var out := {"pieces": 0, "glow": 0, "glow_off": 0, "wisps": 0}
 	for i in roundi((PaleSerpentFx.glide_end() + PaleSerpentFx.SOUL_FLY + 0.2) / DT):
 		if fx.finished:
 			break
 		fx._process(DT)
 		if staged:
-			out.glow = bool(out.glow) or (is_instance_valid(fx._glow) and fx._glow.visible)
+			if fx.t > PaleSerpentFx.T_RISE + 6.0 and fx.t < PaleSerpentFx.T_RISE + PaleSerpentFx.GLIDE:
+				out.pieces = maxi(int(out.pieces), fx._pieces.filter(func(q: Node2D) -> bool: return q.visible).size())
+			if is_instance_valid(fx._glow) and float(fx._glow.mat.get_shader_parameter("intensity")) > 0.0:
+				out.glow = int(out.glow) + 1
+				if not fx._glow.position.is_equal_approx(fx.head_at(fx.t)):
+					out.glow_off = int(out.glow_off) + 1
 			out.wisps = maxi(int(out.wisps), fx._wisps.size())
 	out.taken = fx.taken.size()
 	out.souls = fx.souls_in

@@ -79,14 +79,23 @@ const COLUMN := 40.0
 const HEAD_PIVOT := Vector2(32, 36)
 ## The head as a piece of the body: half the drawn sprite (for the joint check, pieces_at()).
 const HEAD_R := 32.0 * SCALE
-## Where each head's neck is cut off on its sheet (sprite px from HEAD_PIVOT): the centre of the lowest opaque row, where
-## the neck leaves the sheet (measured by tools/dev/serpent_neck_socket.py). The collar disc sits here, under the head.
+## Where each head's neck is cut off on its sheet (sprite px from HEAD_PIVOT): on the lowest opaque row, where the neck
+## leaves the sheet, the centre of the green neck itself (not the feather mantle hanging beside it). The collar disc sits
+## here, under the head. NECK_CUT: the whole cut row (feathers too), its left and right edges in sprite px from the socket;
+## the collar covers it (a green disc over the neck, a feather skirt over the mantle beside it). Both measured by
+## tools/dev/serpent_neck_socket.py.
 const NECK_SOCKET := {
 	"east": Vector2(3.5, 27.0),
 	"south-east": Vector2(-9.0, 28.0),
 	"south": Vector2(0.0, 28.0),
-	"north-east": Vector2(3.5, 28.0),
+	"north-east": Vector2(12.0, 28.0),
 	"north": Vector2(0.0, 28.0)}
+const NECK_CUT := {
+	"east": Vector2(-14.5, 14.5),
+	"south-east": Vector2(-14.0, 14.0),
+	"south": Vector2(-11.0, 11.0),
+	"north-east": Vector2(-30.0, 13.0),
+	"north": Vector2(-13.0, 13.0)}
 ## Where the tail sprite meets the body: its right edge, halfway down.
 const TAIL_ATTACH := Vector2(60, 24)
 ## A soul's flight from the one who fell into the body (seconds).
@@ -116,7 +125,8 @@ var taken: Array[Person] = []
 var first_kill_at := -1.0
 ## Everyone who saw it rise (sickened).
 var sickened := 0
-## The souls that have streamed into it (one per kill, SOUL_FLY after it).
+## The souls that have streamed into it (one per kill, SOUL_FLY after it). Cut short (end_now(), _finish), the souls still
+## in flight are not flushed: they never arrive, and souls_in stays below taken.size().
 var souls_in := 0
 
 ## Instance id -> Person: everyone this effect slows.
@@ -395,10 +405,20 @@ static func socket_px(way: Array) -> Vector2:
 	return Vector2(-sk.x if bool(way[1]) else sk.x, sk.y) * SCALE
 
 
+## The feather skirt the collar spreads under a head [key, mirrored]: its left and right edges on screen (px from the
+## socket; NECK_CUT at SCALE, mirrored), or ZERO when the green disc (R_NECK, give or take a pixel) already covers the cut.
+static func collar_skirt(way: Array) -> Vector2:
+	var c: Vector2 = NECK_CUT.get(String(way[0]), Vector2.ZERO) * SCALE
+	if bool(way[1]):
+		c = Vector2(-c.y, -c.x)
+	return c if c.x < -(R_NECK + 1.0) or c.y > R_NECK + 1.0 else Vector2.ZERO
+
+
 ## Where every piece is at `time` (pure: nothing is touched): the head, the collar, the discs and the tail, in that order,
 ## each {"sp": its centre on screen, its height applied; "r": its radius (px); "kind": Piece.K_*; "g": its ground point;
-## "alt": its height (px); "alpha"; "vis": drawn at all}; the head with its sheet ("head", "mirror"), the tail with the way
-## it points on screen ("back"). The collar is the head's own point on the path at the body's height, and the head is
+## "alt": its height (px); "alpha"; "vis": drawn at all}; the head with its sheet ("head", "mirror"), the collar with its
+## feather skirt ("skirt", collar_skirt()), the tail with the way it points on screen ("back"). The collar is the head's
+## own point on the path at the body's height, and the head is
 ## raised over it so that its neck socket sits on it (socket_at()); the discs follow GAP apart along the path, the tail
 ## half a GAP past the last; whatever is still in the hole stands up out of it, COLUMN px lower per ground unit.
 func pieces_at(time: float) -> Array[Dictionary]:
@@ -428,6 +448,7 @@ func pieces_at(time: float) -> Array[Dictionary]:
 		ahead = Iso.ground_to_screen(origin + _dir) - Iso.ground_to_screen(origin)
 	var way: Array = head_for(ahead)
 	var collar: Dictionary = out[0]
+	collar["skirt"] = collar_skirt(way)
 	out.push_front({"sp": (collar.sp as Vector2) - socket_px(way), "r": HEAD_R, "kind": Piece.K_HEAD, "g": collar.g,
 		"alt": collar.alt, "alpha": a, "vis": a > 0.0, "head": String(way[0]), "mirror": bool(way[1])})
 	return out
@@ -460,6 +481,7 @@ func _pose(delta: float) -> void:
 		piece.visible = true
 		piece.alpha = float(q.alpha)
 		piece.r = float(q.r)
+		piece.skirt = q.get("skirt", Vector2.ZERO)
 		piece.position = foot
 		piece.lift = Vector2(0.0, -alt)
 		match piece.kind:
@@ -475,7 +497,9 @@ func _pose(delta: float) -> void:
 				piece.back = q.back
 				rects.append(Rect2(top.x - 64.0 * SCALE, top.y - 32.0 * SCALE, 128.0 * SCALE, 64.0 * SCALE))
 			_:
-				rects.append(Rect2(top.x - piece.r, top.y - piece.r * 1.3, piece.r * 2.0, piece.r * 2.3))
+				var lo := minf(piece.skirt.x, -piece.r)
+				var hi := maxf(piece.skirt.y, piece.r)
+				rects.append(Rect2(top.x + lo, top.y - piece.r * 1.3, hi - lo, piece.r * 2.3))
 		feet.append(foot.y)
 		piece.queue_redraw()
 		if piece.kind != Piece.K_TAIL:
@@ -593,6 +617,8 @@ class Piece extends Node2D:
 	## Where it is drawn from its ground point (px): straight up its height; for the head, its pivot.
 	var lift := Vector2.ZERO
 	var r := R_NECK
+	## The collar's feather skirt: its left and right edges (px off its centre), or ZERO for none.
+	var skirt := Vector2.ZERO
 	var alpha := 1.0
 	var head := "east"
 	var mirror := false
@@ -622,9 +648,22 @@ class Piece extends Node2D:
 				_disc(tint)
 
 	## The collar under the head: bare green scales in the neck's own colours, no feathers, so the neck runs on into it
-	## (its upper half under the head; the lower a rounded end the body leaves from).
+	## (its upper half under the head; the lower a rounded end the body leaves from). Where the head's feather mantle hangs
+	## beside the neck down to the cut (the north-east sheet), a skirt of white feathers under it spans the rest of the cut
+	## (`skirt`, collar_skirt()) and ends the mantle in ragged tips.
 	func _collar(tint: Color) -> void:
 		var c := lift
+		if skirt != Vector2.ZERO:
+			var hy := r * 0.5
+			_capsule(c, skirt.x, skirt.y, hy, FEATHER_SHADE * tint)
+			_capsule(c + Vector2(0.0, -SCALE), skirt.x + 2.0 * SCALE, skirt.y - 2.0 * SCALE, hy - 2.0 * SCALE, FEATHER * tint)
+			var n := maxi(2, roundi((skirt.y - skirt.x) / (5.0 * SCALE)))
+			for k in n:
+				var x := lerpf(skirt.x + hy * 0.6, skirt.y - hy * 0.6, float(k) / float(n - 1))
+				var top := c + Vector2(x, hy * 0.5)
+				var tri := PackedVector2Array([top + Vector2(-2.5 * SCALE, 0.0), top + Vector2(2.5 * SCALE, 0.0),
+					top + Vector2(SCALE, hy * (0.7 + 0.3 * float(k % 2)))])
+				draw_colored_polygon(tri, (FEATHER if k % 2 == 0 else FEATHER_SHADE) * tint)
 		draw_circle(c + Vector2(0.0, SCALE), r, (SCALE_DARK * 0.55) * tint)
 		draw_circle(c, r, SCALE_DARK * tint)
 		draw_circle(c + Vector2(0.0, -r * 0.08), r - 2.0 * SCALE, SCALE_LIGHT * tint)
@@ -633,6 +672,17 @@ class Piece extends Node2D:
 			var y := r * (-0.1 + 0.3 * float(k))
 			var half := sqrt(maxf(r * r - y * y, 0.0)) * 0.8
 			draw_line(c + Vector2(-half, y), c + Vector2(half, y), SCALE_DARK * tint, SCALE)
+
+	## A rounded bar from x `a` to `b` (px off `c`), `hy` half high.
+	func _capsule(c: Vector2, a: float, b: float, hy: float, color: Color) -> void:
+		var pts := PackedVector2Array()
+		for k in 9:
+			var ang := PI * 0.5 + PI * float(k) / 8.0
+			pts.append(c + Vector2(a + hy + cos(ang) * hy, sin(ang) * hy))
+		for k in 9:
+			var ang := -PI * 0.5 + PI * float(k) / 8.0
+			pts.append(c + Vector2(b - hy + cos(ang) * hy, sin(ang) * hy))
+		draw_colored_polygon(pts, color)
 
 	## A disc of dark green scales, a lighter sheen low on it, and over its top a mantle of white feathers with grey tips.
 	func _disc(tint: Color) -> void:

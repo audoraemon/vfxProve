@@ -3,8 +3,9 @@ extends RefCounted
 ## Decree's law on a person (spec §4.1): what the law says he is, set by a power for a time under its own owner id (its instance id), like
 ## Person.hold_pace(). Several owners may each hold one; the latest set of those still holding is the one that counts (kind_of()). Every
 ## place that decides whether a guard sees, seizes or strikes him, or whether he is a witness, asks here, never the power:
-##   CRIMINAL  every guard (a soldier, a watchman, an inquisitor) who sees him goes for him, a FightRule.TARGET_ONLY fight as Saint or
-##             Sinner's mob (step()); called off when the law ends.
+##   CRIMINAL  everyone about him runs from him, and every guard (a soldier, a watchman, an inquisitor) within PURSUE_R goes for him and
+##             keeps at it, a FightRule.TARGET_ONLY fight as Saint or Sinner's mob (step()); called off when the law ends or he dies.
+##             Anyone else out of doors within FLEE_R runs a few cells clear of him (a local panic, no alarm, no count).
 ##   OFFICER   one of the garrison: no guard sees him as a suspect (unseen_by_guards()); anyone else still sees him.
 ##   NOBODY    no one sees him, strikes him or heeds what he saw (unseen_by_all()).
 ##   BOUND     Bound in Law's, for its badge and cleanup: it changes no sight.
@@ -17,8 +18,10 @@ const OFFICER := &"officer"
 const NOBODY := &"nobody"
 const BOUND := &"bound"
 const KINDS: Array[StringName] = [CRIMINAL, OFFICER, NOBODY, BOUND]
-## How near a guard sees a criminal and goes for him.
-const SIGHT := 3.0
+## How near a guard is to a criminal and goes for him, and keeps pursuing.
+const PURSUE_R := 8.0
+## How near anyone but a guard is to a criminal and runs from him.
+const FLEE_R := 4.0
 ## How often a criminal is looked for by the guards about him.
 const LOOK := 0.5
 ## The fight's tag (Person.fight_kind), so only the law's own hunters are called off.
@@ -93,7 +96,7 @@ static func spares(by: Person, p: Variant, rule: Person.FightRule) -> bool:
 
 
 ## One frame of `p`'s laws (Person.tick()): each runs down and those run out are dropped; a criminal out of doors is looked for every
-## LOOK by the guards within SIGHT.
+## LOOK by the guards within PURSUE_R, and the people within FLEE_R run from him.
 static func step(p: Variant, delta: float) -> void:
 	if not _held(p):
 		return
@@ -113,8 +116,10 @@ static func step(p: Variant, delta: float) -> void:
 		m._hunt(who)
 
 
-## Every guard within SIGHT of criminal `p` who can see -- alive, out of doors, awake, not held by the god -- and is not already fighting
-## goes for him for as long as his law has left.
+## Every guard within PURSUE_R of criminal `p` who can see -- alive, out of doors, awake, not held by the god -- and is not already
+## fighting goes for him for as long as his law has left. Every other living person out of doors within FLEE_R runs from him, a local
+## panic (Person.panic(): a few cells clear of him, then back to the day) that raises no alarm and changes no count. Nearest first,
+## a tie to the earlier instance, no roll.
 func _hunt(p: Person) -> void:
 	if p.field == null or p.inside or not p.is_alive():
 		return
@@ -122,16 +127,28 @@ func _hunt(p: Person) -> void:
 	for e: Array in laws.values():
 		if e[0] == CRIMINAL:
 			left = maxf(left, float(e[1]))
-	for e in p.field.in_radius(p.ground_pos, SIGHT):
+	var near: Array[Person] = []
+	for e in p.field.in_radius(p.ground_pos, PURSUE_R):
 		var q := e as Person
-		if q == null or q == p or not q.is_alive() or q.inside or not is_guard(q) or q.held_by_god() \
-				or q.mind == Person.Mind.FIGHT or q.mind == Person.Mind.ASLEEP:
+		if q != null and q != p and q.is_alive() and not q.inside:
+			near.append(q)
+	near.sort_custom(func(a: Person, b: Person) -> bool:
+		var da := a.ground_pos.distance_squared_to(p.ground_pos)
+		var db := b.ground_pos.distance_squared_to(p.ground_pos)
+		return da < db if da != db else a.get_instance_id() < b.get_instance_id())
+	for q in near:
+		var d := q.ground_pos.distance_to(p.ground_pos)
+		if q.held_by_god() or q.mind == Person.Mind.ASLEEP:
 			continue
-		if p.crowd != null and q.ground_pos.distance_to(p.ground_pos) > p.crowd.sight(q, p.ground_pos, SIGHT):
+		if p.crowd != null and d > p.crowd.sight(q, p.ground_pos, PURSUE_R):
 			continue  # Decree's NO SIGHT (LawZone): he does not see that far
-		q.fight(p, left, Person.SOLDIER_BLOW, Person.FightRule.TARGET_ONLY, SIGHT, FIGHT_KIND)
-		if q.mind == Person.Mind.FIGHT and not hunters.has(q):
-			hunters.append(q)
+		if is_guard(q):
+			if q.mind != Person.Mind.FIGHT:
+				q.fight(p, left, Person.SOLDIER_BLOW, Person.FightRule.TARGET_ONLY, PURSUE_R, FIGHT_KIND)
+				if q.mind == Person.Mind.FIGHT and not hunters.has(q):
+					hunters.append(q)
+		elif d <= FLEE_R:
+			q.panic(p.ground_pos, 1.0, &"law")
 
 
 ## After a change to `p`'s laws: no longer wanted, his hunters are called off; no law left, he holds none.

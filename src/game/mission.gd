@@ -249,6 +249,9 @@ func _ready() -> void:
 		if Battlefield.arg_value(args, "--bench-toll") != "":
 			await _bench_toll(args)
 			label += "-toll"
+		if Battlefield.arg_value(args, "--bench-cast") != "":
+			await _bench_cast(args)
+			label += "-cast-" + Battlefield.arg_value(args, "--bench-cast")
 		label += await _bench_view(args)
 		await _bf.bench(label)
 		await _quit()
@@ -315,6 +318,35 @@ func _bench_toll(args: PackedStringArray) -> void:
 		_rules.lantern.burn()
 	var after := Battlefield.arg_value(args, "--bench-after")
 	await get_tree().create_timer(float(after) if after != "" else 5.0).timeout
+
+
+## Bench aid (Death review adjustments, Task 13): `--bench-cast=KEY` casts the loadout slot whose key is KEY at the middle of the
+## market square, then lets it run `--bench-after=SECONDS` (default 4) before the frames are timed. `--bench-bodies=N` first kills the N
+## citizens nearest the market as `deathmark` (whole bodies; nearest by distance, then instance id, so no luck) and waits a second.
+## Only under --bench: no effect on normal play or crowd_check.
+func _bench_cast(args: PackedStringArray) -> void:
+	var at := TownLayout.MARKET_SQUARE.get_center()
+	var bodies := Battlefield.arg_value(args, "--bench-bodies")
+	if bodies != "" and _crowd != null:
+		var people: Array = []
+		for p in _crowd.citizens:
+			if is_instance_valid(p) and p.is_alive():
+				people.append(p)
+		people.sort_custom(func(a: Person, b: Person) -> bool:
+			var da := a.ground_pos.distance_squared_to(at)
+			var db := b.ground_pos.distance_squared_to(at)
+			return da < db if da != db else a.get_instance_id() < b.get_instance_id())
+		for i in mini(int(bodies), people.size()):
+			_bf.ctx.field.kill(people[i], &"deathmark", at)
+		await get_tree().create_timer(1.0).timeout
+	var key := Battlefield.arg_value(args, "--bench-cast")
+	if _rules != null:
+		for i in _rules.loadout.size():
+			if _rules.key(i) == key:
+				_rules.cast(i, at)
+				break
+	var after := Battlefield.arg_value(args, "--bench-after")
+	await get_tree().create_timer(float(after) if after != "" else 4.0).timeout
 
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and six minutes.

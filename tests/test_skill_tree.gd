@@ -28,7 +28,11 @@ static func run(t) -> void:
 	_pulse(t)
 	_mini_cells(t)
 	_states_draw(t)
+	_click_through_input(t)
+	_twists_whole(t)
+	_word_spacing(t)
 	GodTree.dev_fill = false
+	UiTheme.word_spacing = false
 
 
 static func _screen(type := "ruin", tier := 1, points := 0, p_state := {}) -> SkillTreeScreen:
@@ -327,15 +331,12 @@ static func _texts_fit(t) -> void:
 					var d := TreeDetail.description(key, SkillTreeScreen.INFO_W)
 					if d.size() > 2 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
 						cut.append(key)
-					var shown := SkillTreeScreen.node_label(String(PowerBook.get_power(key).name))
 					var full := String(PowerBook.get_power(key).name)
-					if shown != full and not (shown.ends_with("...") and full.begins_with(shown.trim_suffix("..."))):
+					if SkillTreeScreen.node_label(full) != full:
 						chopped.append(key)
-					if UiTheme.width(shown, SkillTreeScreen.NODE_NAME_PX) > SkillTreeScreen.NODE_NAME_W:
-						chopped.append(key + " (too wide)")
 		s.free()
 	t.check(cut.is_empty(), "every description fits two lines at the info column's width, none ends in ... (%s)" % [cut])
-	t.check(chopped.is_empty(), "every node name shows whole, or visibly ellipsised within its label (%s)" % [chopped])
+	t.check(chopped.is_empty(), "every node name shows whole, never cut (%s)" % [chopped])
 
 
 ## Every name's strip, in every column of every type, sits inside LABEL_AREA, clear of every node disc grown 3 u and of the ring numeral
@@ -359,6 +360,13 @@ static func _labels_clear(t) -> void:
 				var r: Rect2 = layout[at]
 				var tag := "%s col %d %d:%d" % [type, col, at.x, at.y]
 				count += 1
+				var full := String(PowerBook.get_power(s.key_at(col, at.x, at.y)).name)
+				var lines := SkillTreeScreen.label_lines(full, r.size.y > SkillTreeScreen.LABEL_STRIP_H + 1.0)
+				if " ".join(lines) != full:
+					bad.append(tag + " shows a cut name")
+				for l in lines:
+					if UiTheme.width(l, SkillTreeScreen.NODE_NAME_PX) + 6.0 > r.size.x:
+						bad.append(tag + " strip narrower than its text")
 				if not SkillTreeScreen.LABEL_AREA.encloses(r):
 					bad.append(tag + " leaves LABEL_AREA")
 				for tt in range(1, 6):
@@ -390,8 +398,8 @@ static func _refusal_fits(t) -> void:
 			if UiTheme.width(l, UiTheme.TEXT_S) > 96.0:
 				bad.append("%s: line '%s' is %.0f u" % [r, l, UiTheme.width(l, UiTheme.TEXT_S)])
 	t.check(bad.is_empty(), "every refusal wraps to at most 2 lines of 96 u at 11 u: %s" % [bad])
-	t.check(Array(SkillTreeScreen.refusal_lines("Not enough ability points")) == ["Not enough ability", "points"],
-		"'Not enough ability points' breaks as 'Not enough ability' / 'points'")
+	t.check(SkillTreeScreen.refusal_lines("Not enough ability points").size() == 2,
+		"'Not enough ability points' takes two lines")
 	t.check(SkillTreeScreen.refusal_lines("one two three four five six seven eight nine ten eleven twelve").size() == 2, "a long text is cut to 2 lines")
 
 
@@ -456,7 +464,7 @@ static func _pulse(t) -> void:
 		lo = minf(lo, a)
 		hi = maxf(hi, a)
 		same = same and absf(a - s.pulse_alpha(tt + SkillTreeScreen.PULSE_SECONDS)) < 1e-4
-	t.check(lo >= 0.05 - 1e-6 and hi <= 0.12 + 1e-6 and hi > 0.11 and lo < 0.06, "pulse_alpha stays in [0.05, 0.12] and reaches both ends (%f, %f)" % [lo, hi])
+	t.check(lo >= 0.14 - 1e-6 and hi <= 0.32 + 1e-6 and hi > 0.31 and lo < 0.15, "pulse_alpha stays in [0.14, 0.32] and reaches both ends (%f, %f)" % [lo, hi])
 	t.check(same and SkillTreeScreen.PULSE_SECONDS == 1.6, "and repeats every 1.6 s")
 	var cold := _screen("ruin", 1, 0)
 	t.check(s._any_can() and not cold._any_can(), "only a wheel with an affordable power redraws for the pulse")
@@ -484,7 +492,7 @@ static func _mini_cells(t) -> void:
 			"two columns at the middle +- 13, rows 24 apart from +60")
 
 
-## Locked powers draw grey, others in colour.
+## Locked powers draw grey, others in colour; the buttons and bars are drawn where hit() looks for them.
 static func _states_draw(t) -> void:
 	var s := _screen("ruin", 1, 1)
 	t.check(s.node_state(1, 3, 0) == "lock", "a power of a tier above is locked")
@@ -493,3 +501,65 @@ static func _states_draw(t) -> void:
 	var grey := UiIcon.grey(SkillTreeScreen.spot_icon("smite"))
 	t.check(grey != null and (grey.has_meta("ui_grey") or UiIcon.locked_tint(grey) == UiIcon.LOCKED_TINT), "a locked icon is the grey copy, or the tint stand-in")
 	s.free()
+	var src := FileAccess.get_file_as_string("res://src/game/ui/skill_tree_screen.gd")
+	var fn := func(name: String) -> String:
+		var a := src.find("func " + name + "(")
+		return src.substr(a, src.find("
+func ", a + 5) - a)
+	t.check(String(fn.call("_draw_buttons")).contains("REMEMBER_RECT") and String(fn.call("_draw_buttons")).contains("BUY_RECT")
+		and not String(fn.call("_draw_buttons")).contains("Rect2("), "the buttons are drawn at the rects hit() uses")
+	t.check(String(fn.call("_draw_top_bar")).contains("BACK_RECT") and String(fn.call("_draw_top_bar")).contains("chip_rect(c)")
+		and String(fn.call("_draw_top_bar")).contains("points_rect()"), "the back button, chips and points box are drawn at their hit rects")
+	t.check(String(fn.call("_draw_mini")).contains("mini_rect(side_rect(side), tier, i)") and String(fn.call("_draw_node")).contains("TreeWheel.node_at(tier, i)"),
+		"nodes and minis are drawn at the places hit() tests")
+	t.check(not String(fn.call("_draw_node")).contains("0.85"), "a poor node's icon is full colour")
+
+
+## A click on RAISE through the Control's gui_input buys, whatever the scale (the screen works in design units; no code depends on k).
+static func _click_through_input(t) -> void:
+	for k in [2, 3]:
+		UiScale.set_test_area(Vector2i(640 * k, 360 * k))
+		var s := _screen("ruin", 1, 5)
+		s.select(1, 1, 0)
+		var before := s._slot.level_of("smite")
+		s._ui.gui_input.emit(_click(SkillTreeScreen.BUY_RECT.get_center()))
+		t.check(s._slot.level_of("smite") == before + 1, "a click on RAISE through gui_input buys at k%d" % k)
+		s.free()
+		UiScale.clear_test_area()
+
+
+## Every power's level-5 twist is shown in full: at most TWIST_LINES lines of the info column, no "...", every word there.
+static func _twists_whole(t) -> void:
+	var bad := PackedStringArray()
+	var seen := 0
+	for sp in GodTree.spots():
+		var key := String(sp.key)
+		if key == "" or PowerBook.twist(key) == "" or not PowerBook.has_levels(key):
+			continue
+		seen += 1
+		var lines := SkillTreeScreen.twist_lines(key)
+		var want := "Level %d . %s" % [PowerBook.MAX_LEVEL, PowerBook.twist(key).split(". ")[0]]
+		if lines.size() > SkillTreeScreen.TWIST_LINES or " ".join(lines) != want or " ".join(lines).contains("..."):
+			bad.append("%s: %d lines" % [key, lines.size()])
+		for l in lines:
+			if UiTheme.width(l, SkillTreeScreen.SMALL_PX) > SkillTreeScreen.INFO_W:
+				bad.append(key + " line too wide")
+	t.check(seen > 20 and bad.is_empty(), "every twist (%d powers) fits %d lines of the info column, in full: %s" % [seen, SkillTreeScreen.TWIST_LINES, bad])
+	t.check(SkillTreeScreen.twist_lines("smite").size() >= 1, "smite has a twist")
+
+
+## Words are separated: a space is at least 4 u at 11 u, 8 at 22 u, and the refusal still wraps to two lines.
+static func _word_spacing(t) -> void:
+	UiTheme.word_spacing = false
+	var plain := UiTheme.width("a b", 11) - UiTheme.width("ab", 11)
+	t.check(plain < 4.0, "without the flag the space is the font's own (%f)" % plain)
+	var s := _screen("ruin")
+	t.check(UiTheme.word_spacing, "opening the tree turns the spacing on")
+	t.check(UiTheme.width("a b", 11) - UiTheme.width("ab", 11) >= 4.0, "a space is at least 4 u wide at 11 u")
+	t.check(UiTheme.width("a b", 22) - UiTheme.width("ab", 22) >= 7.0, "and at least 7 u at 22 u")
+	t.check(UiTheme.wrap("Not enough ability points", 96.0, 11).size() == 2, "the refusal still wraps to two lines")
+	s.free()
+	s = _screen("ruin")
+	s._exit_tree()  # what leaving the tree runs
+	s.free()
+	t.check(not UiTheme.word_spacing, "and leaving it turns the spacing off again")

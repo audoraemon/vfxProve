@@ -13,7 +13,7 @@ static func run(t) -> void:
 	t.check(UiTheme.clock(29.4) == "0:30", "a part-second rounds up, so the clock never sits on 0:00 early (%s)" % UiTheme.clock(29.4))
 	t.check(UiTheme.clock(0.0) == "0:00" and UiTheme.clock(-3.0) == "0:00", "and it floors at 0:00")
 	var f := UiTheme.font()
-	t.check(f != null and f.antialiasing == TextServer.FONT_ANTIALIASING_NONE, "the pixel font has no smoothing")
+	t.check(f != null and (f.base_font as FontFile).antialiasing == TextServer.FONT_ANTIALIASING_NONE, "the pixel font has no smoothing")
 
 	var env := EnvironmentField.new()
 	var town := Town.new()

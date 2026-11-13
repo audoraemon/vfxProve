@@ -10,7 +10,7 @@ const ROMAN := ["I", "II", "III", "IV", "V"]
 ## The description keeps to this many lines.
 const DESCRIPTION_LINES := 2
 ## The width the screen gives a description (its info column); the blurbs are written to fit two lines of it.
-const DESCRIPTION_W := 202.0
+const DESCRIPTION_W := 210.0
 
 
 ## [AUTHORITY, "TIER n", "QUIET" | "LOUD"] for a power ("TIER ?" when it sits in no spot).

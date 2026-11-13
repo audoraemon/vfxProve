@@ -15,7 +15,7 @@ const BUY_RECT := Rect2(528.0, 286.0, 96.0, 26.0)
 ## The detail panel (the wheel's DETAIL strip): the clip box, the info column, the level column and the buttons sit inside it.
 const DETAIL := TreeWheel.DETAIL
 const CLIP_BOX := Rect2(15.0, 258.0, 152.0, 86.0)
-const INFO_X := 176.0
+const INFO_X := 172.0
 const INFO_W := TreeDetail.DESCRIPTION_W
 const LEVEL_X := 387.0
 const LEVEL_W := 132.0
@@ -27,6 +27,7 @@ const MINI_ICON_UNITS := 18.0
 ## Where a node's name may sit, and how tall its strip is.
 const LABEL_AREA := Rect2(124.0, 28.0, 392.0, 218.0)
 const LABEL_STRIP_H := 13.0
+const LABEL_STRIP_H2 := 25.0
 ## The affordable nodes' glow breathes once in this many seconds.
 const PULSE_SECONDS := 1.6
 ## The refusal under RAISE wraps to this width (units) and at most 2 lines.
@@ -40,6 +41,8 @@ const BADGE_R := 5.0
 const ORBIT_SEGMENTS := 72
 ## The level column's last text baseline.
 const LEVEL_BOTTOM := 348.0
+## The twist line count the info column has room for (baselines 333 and 345).
+const TWIST_LINES := 2
 ## How long a refusal's reason stays up.
 const REFUSE_SECONDS := 1.5
 ## What a refused click says, by GodSlot.refusal(); "tier" takes the spot's tier.
@@ -57,8 +60,6 @@ const COL_RING_LOCKED := Color("4a4358", 0.8)
 ## Orbit segments under a label strip are drawn at this alpha.
 const ORBIT_FADED := 0.12
 const NODE_NAME_PX := 11
-## A node's name label: centred under the node, this wide at most (every power name fits, none is chopped).
-const NODE_NAME_W := 84.0
 const SMALL_PX := 11
 const SIZE_CHIP := 11
 
@@ -86,6 +87,7 @@ var _wide_style: StyleBoxFlat
 
 
 func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
+	UiTheme.word_spacing = true  # this screen's text is laid out for the wider spaces; off again when it leaves (_exit_tree)
 	_slot = slot
 	for col in columns().size():
 		for tier in range(1, GodTree.TIERS + 1):
@@ -248,14 +250,29 @@ func side_col(side: int) -> int:
 	return -1
 
 
-## A node's name as its label shows it: whole, else cut at a letter with "..." so the cut is visible.
+## A node's name as its label shows it: always the whole name.
 static func node_label(full: String) -> String:
-	if UiTheme.width(full, NODE_NAME_PX) <= NODE_NAME_W:
-		return full
-	var out := full
-	while out.length() > 1 and UiTheme.width(out + "...", NODE_NAME_PX) > NODE_NAME_W:
-		out = out.substr(0, out.length() - 1)
-	return out.strip_edges(false, true) + "..."
+	return full
+
+
+## The lines of a name's strip: one, or (two == true) split at the space nearest the middle.
+static func label_lines(full: String, two: bool) -> PackedStringArray:
+	if not two or not full.contains(" "):
+		return PackedStringArray([full])
+	var best := -1
+	for k in full.length():
+		if full[k] == " " and (best < 0 or absi(k - full.length() / 2) < absi(best - full.length() / 2)):
+			best = k
+	return PackedStringArray([full.substr(0, best), full.substr(best + 1)])
+
+
+## The size of a name's strip: its widest line + 6 u by one or two lines tall.
+static func strip_size(full: String, two: bool) -> Vector2:
+	var w := 0.0
+	var lines := label_lines(full, two)
+	for l in lines:
+		w = maxf(w, UiTheme.width(l, NODE_NAME_PX))
+	return Vector2(ceilf(w) + 6.0, LABEL_STRIP_H if lines.size() == 1 else LABEL_STRIP_H2)
 
 
 ## The ring numeral plates, one on the top of each tier's oval (16x12 u, the numeral inside at 11 u).
@@ -335,23 +352,29 @@ func label_layout(col: int) -> Dictionary:
 			var key := key_at(col, tier, i)
 			if key == "":
 				continue
-			var text := node_label(String(PowerBook.get_power(key).name))
-			var size := Vector2(ceilf(UiTheme.width(text, NODE_NAME_PX)) + 6.0, LABEL_STRIP_H)
-			var cands := strip_candidates(TreeWheel.node_at(tier, i), size)
-			var pick := cands[0]
-			for c in cands:
-				if strip_clear(c, placed):
-					pick = c
+			var full := String(PowerBook.get_power(key).name)
+			var p := TreeWheel.node_at(tier, i)
+			var pick := Rect2()
+			var found := false
+			for two in [false, true]:
+				for c in strip_candidates(p, strip_size(full, two)):
+					if strip_clear(c, placed):
+						pick = c
+						found = true
+						break
+				if found:
 					break
+			if not found:
+				pick = strip_candidates(p, strip_size(full, false))[0]
 			out[Vector2i(tier, i)] = pick
 			placed.append(pick)
 	_label_cache[col] = out
 	return out
 
 
-## The affordable nodes' glow alpha at time t: 0.05 .. 0.12, once round every PULSE_SECONDS.
+## The affordable nodes' glow alpha at time t: 0.14 .. 0.32, once round every PULSE_SECONDS.
 func pulse_alpha(t: float) -> float:
-	return 0.05 + 0.07 * (0.5 + 0.5 * sin(TAU * t / PULSE_SECONDS))
+	return 0.14 + 0.18 * (0.5 + 0.5 * sin(TAU * t / PULSE_SECONDS))
 
 
 ## Whether the wheel shows a node that can be bought now (so it must redraw every frame for its glow).
@@ -514,6 +537,10 @@ func _buy() -> String:
 	_redraw()
 	action.emit("learned")
 	return ""
+
+
+func _exit_tree() -> void:
+	UiTheme.word_spacing = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -711,8 +738,10 @@ func _draw_wheel() -> void:
 	for tier in range(1, GodTree.TIERS + 1):
 		for i in GodTree.PER_TIER:
 			if node_state(centred, tier, i) == "can":
-				for gr in [15.0, 17.0, 19.0]:
-					_ui.draw_circle(TreeWheel.node_at(tier, i), gr, Color(hue, glow))
+				var np := TreeWheel.node_at(tier, i)
+				_ui.draw_circle(np, 19.0, Color(hue, glow))
+				_ui.draw_circle(np, 17.0, Color(hue, glow))
+				_ui.draw_arc(np, 16.0, 0.0, TAU, 64, Color(hue.lightened(0.3), minf(1.0, glow * 2.0)), 2.0)
 	for tier in range(1, GodTree.TIERS + 1):
 		for i in GodTree.PER_TIER:
 			_draw_node(tier, i, hue)
@@ -727,8 +756,9 @@ func _draw_wheel() -> void:
 			var sel := selected == Vector3i(centred, tier, i)
 			var name_col := COL_SELECT if sel else (COL_LABEL_LOCKED if node_state(centred, tier, i) == "lock" else COL_LABEL)
 			_ui.draw_rect(strip, COL_STRIP)
-			UiTheme.text(_ui, Vector2(strip.position.x + 3.0, strip.position.y + 10.0), node_label(String(PowerBook.get_power(key).name)),
-				NODE_NAME_PX, name_col)
+			var lines := label_lines(node_label(String(PowerBook.get_power(key).name)), strip.size.y > LABEL_STRIP_H + 1.0)
+			for n in lines.size():
+				UiTheme.text(_ui, Vector2(strip.position.x + 3.0, strip.position.y + 10.0 + 11.0 * float(n)), lines[n], NODE_NAME_PX, name_col)
 
 
 ## The ring colour of a state (the same on the wheel and in the side panels).
@@ -794,7 +824,7 @@ func _draw_node(tier: int, i: int, hue: Color) -> void:
 	if state == "learned":
 		_ui.draw_arc(p, r + 0.5, 0.0, TAU, 64, Color(UiTheme.COL_GOLD, 0.25), 3.0)
 	_ui.draw_circle(p, r, Color(COL_NODE, 0.95))
-	_draw_icon(p, key, NODE_ICON_UNITS, state == "lock", 0.85 if state == "poor" else 1.0)
+	_draw_icon(p, key, NODE_ICON_UNITS, state == "lock", 1.0)
 	_ui.draw_arc(p, r - 1.0, 0.0, TAU, 64, edge, 2.0)
 	if state == "lock":
 		_draw_lock(p + BADGE_AT, 1.0)
@@ -897,6 +927,9 @@ func _draw_detail() -> void:
 	var desc := TreeDetail.description(key, INFO_W)
 	for n in desc.size():
 		UiTheme.text(_ui, Vector2(INFO_X, 309.0 + UiTheme.LINE_S * float(n)), desc[n], SMALL_PX, Color("c8c0ac"))
+	var twist := twist_lines(key)
+	for n in twist.size():
+		UiTheme.text(_ui, Vector2(INFO_X, 333.0 + UiTheme.LINE_S * float(n)), twist[n], SMALL_PX, COL_TWIST)
 	var button := TreeDetail.buy_button(_slot, key, selected.y)
 	_draw_levels(key)
 	_draw_buttons(button)
@@ -934,20 +967,10 @@ func _draw_levels(key: String) -> void:
 	var room := LEVEL_W - 14.0
 	var y := 268.0
 	var line := UiTheme.LINE_S
-	var no_table: bool = col.head == PowerBook.NO_LEVELS
 	UiTheme.text(_ui, Vector2(x, y), String(col.head), SMALL_PX, UiTheme.COL_DIM)
 	y += line
-	var twist_lines := PackedStringArray()
-	if String(col.twist) != "":
-		twist_lines = UiTheme.wrap(String(col.twist), room, SMALL_PX)
-		if twist_lines.size() > 2:
-			var last := " ".join(twist_lines.slice(1))
-			while last.length() > 1 and UiTheme.width(last + "...", SMALL_PX) > room:
-				last = last.substr(0, last.length() - 1).strip_edges(false, true)
-			twist_lines = PackedStringArray([twist_lines[0], last + "..."])
-	# Rows that do not fit above the Might row and the twist are dropped.
-	var might_y_max := LEVEL_BOTTOM - ((4.0 + line * float(twist_lines.size())) if twist_lines.size() > 0 else 0.0)
-	var budget := int((might_y_max - y) / line)
+	# Rows that do not fit above the Might row are dropped.
+	var budget := int((LEVEL_BOTTOM - y) / line)
 	var all_rows: Array = (col.rows as Array).slice(0, maxi(budget, 0))
 	all_rows.append(might_row(String(col.might)))
 	var cols := value_columns(all_rows)
@@ -963,10 +986,14 @@ func _draw_levels(key: String) -> void:
 			UiTheme.text(_ui, Vector2(float(lay.new_x), y), String(lay["new"]), SMALL_PX, Color("c8c0ac"))
 		UiTheme.text(_ui, Vector2(x, y), UiTheme.fit(String(row.label), left - x - 4.0, SMALL_PX), SMALL_PX, Color("bfb49a"))
 		y += line
-	if not no_table and twist_lines.size() > 0:
-		_ui.draw_line(Vector2(x, y - line + 4.0), Vector2(x + room, y - line + 4.0), Color("3a3326"), 1.0)
-	for n in twist_lines.size():
-		UiTheme.text(_ui, Vector2(x, y + line * float(n)), twist_lines[n], SMALL_PX, COL_TWIST)
+
+
+## The level-5 twist as the detail panel writes it, in full: wrapped to the info column, at most TWIST_LINES lines (a test over every power).
+static func twist_lines(key: String) -> PackedStringArray:
+	var text := PowerBook.twist(key)
+	if text == "" or not PowerBook.has_levels(key):
+		return PackedStringArray()
+	return UiTheme.wrap("Level %d . %s" % [PowerBook.MAX_LEVEL, text.split(". ")[0]], INFO_W, SMALL_PX)
 
 
 ## The 6x5 u chevron arrow between an old value and a new one, its vertical middle at `cy`.

@@ -39,10 +39,11 @@ const LINE_S := 12.0
 const LINE_L := 24.0
 
 static var _font: FontFile
+static var _variations := {}
 
 
-## The pixel font with every smoothing trick off: on a 640x360 screen a blurred glyph is a broken glyph.
-static func font() -> FontFile:
+## The pixel font file with every smoothing trick off: on a 640x360 screen a blurred glyph is a broken glyph.
+static func base_font() -> FontFile:
 	if _font == null:
 		_font = load(FONT_PATH)
 		_font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
@@ -53,6 +54,29 @@ static func font() -> FontFile:
 		var ts := TextServerManager.get_primary_interface()
 		_font.opentype_feature_overrides = {ts.name_to_tag("liga"): 0, ts.name_to_tag("clig"): 0}
 	return _font
+
+
+## Whether UI text gets its extra word spacing. The skill tree turns it on while it is open (setup / _exit_tree): the wider spaces
+## change how every wrapped text fits, and each other screen re-fits its own text when it migrates (Tasks 5-8), then this becomes the
+## default. Tests reset it per suite (tests/run_part.gd).
+static var word_spacing := false
+
+
+## The pixel font as the UI draws it at `size`: the file plus, when `word_spacing` is on, extra word spacing, because its space is only
+## 2 u wide at 11 u and words ran together ("Notenoughability"). +1 px of space per 11 u of size (+1 at 11, +2 at 22, +3 at 33, +6 at 66).
+static func font_for(size := TEXT_S) -> FontVariation:
+	var extra := maxi(1, int(round(float(size) / 11.0))) if word_spacing else 0
+	if not _variations.has(extra):
+		var v := FontVariation.new()
+		v.base_font = base_font()
+		v.spacing_space = extra
+		_variations[extra] = v
+	return _variations[extra]
+
+
+## The font for 11 u text (what callers without a size draw with).
+static func font() -> FontVariation:
+	return font_for(TEXT_S)
 
 
 ## m:ss, the way the mission clock reads. Rounded up, so it shows 0:01 until the last moment and 0:00 only
@@ -71,13 +95,13 @@ static func shadow_color(fade := 1.0) -> Color:
 ## fades passes the same fade as `shadow_a` (v0.10 M5: Cael's lines), or its shadow shows bare before the words come up and
 ## stays behind as they go.
 static func text(on: CanvasItem, at: Vector2, s: String, size := SIZE_BODY, col := COL_TEXT, shadow_a := 1.0) -> void:
-	on.draw_string(font(), at + Vector2.ONE, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, shadow_color(shadow_a))
-	on.draw_string(font(), at, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+	on.draw_string(font_for(size), at + Vector2.ONE, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, shadow_color(shadow_a))
+	on.draw_string(font_for(size), at, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 
 ## How wide that text will be, for right-aligned and centred lines.
 static func width(s: String, size := SIZE_BODY) -> float:
-	return font().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	return font_for(size).get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 
 
 ## A string broken into lines no wider than `width`, at word boundaries. A single word wider than the line is

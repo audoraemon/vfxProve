@@ -27,6 +27,7 @@ func _reset_world() -> void:
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
 	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
 	GodTree.use_table({})  # Tier 1 fill: a test of an empty tree sets its own
+	UiTheme.word_spacing = false  # the skill tree turns it on while open; a test that frees one without leaving the tree must not leak it
 	SpriteView.window_boost = 0.0
 	SpriteView.look_params = {}
 	Structure.cast_shadows = true  # a town look's statics (v0.12 lighting): a suite that leaked a DAY or NIGHT town must not reach the next

@@ -1,0 +1,30 @@
+Wraith sheet (assets/pixellab/fx/wraith/) - PixelLab sources and prompts, 2026-11-13.
+Packed by pack_wraith.py (run from the repo root). Index 0 of every animate_image job is its input frame.
+
+USED
+wraith_se_b.png   create_image_pixflux 64x64, no_background, direction south-east, view low top-down,
+                  outline single color black, shading detailed, detail highly detailed, seed 6660:
+                  "tall dark shrouded wraith, floating, tattered black-grey shroud trailing into wisps below, no
+                  legs, hollow glowing pale eye sockets, thin bony hands, cold pale-green faint aura, top-down 3/4
+                  view facing south-east, dark medieval pixel art, no blood"
+turn_0..6.png     animate_image on wraith_se_b, 6 frames, seed 73:
+                  "slowly turns around in place until it faces away from the viewer toward the north-east, showing
+                  the back of its hood and shroud, still floating"  -> turn_6.png = wraith_ne_base.png (the NE base)
+drift_se_0..8.png animate_image on wraith_se_b, 8 frames, seed 71 (row drift_se uses 0..7; 8 ~= 0):
+                  "floating slowly in place, bobbing gently up and down, the tattered shroud sways and the ragged
+                  hem wisps trail and ripple in a cold wind, seamless loop"
+drift_ne_0..8.png animate_image on wraith_ne_base, 8 frames, seed 74, same action (row drift_ne uses 0..7)
+strike2_se_0..6.png animate_image on wraith_se_b, 6 frames, seed 75 (row strike_se uses 1..6):
+                  "violent lunge: surges forward and down toward the bottom-right, leaning hard, both bony arms
+                  thrust straight forward together reaching to seize, fingers clawed, the shroud whips back behind
+                  it, then it recoils back upright"
+
+REJECTED
+wraith_se_a.png   same prompt, seed 1313: good, but shorter and wider than b.
+wraith_ne_a.png   pixflux NE, init wraith_se_b strength 60 + palette, seed 6661: reads as a front view.
+wraith_ne_b.png   pixflux NE, palette only, seed 6662: back view but a grounded cone, no wisps.
+wraith_ne_c/d.png pixflux NE re-rolls, init wraith_ne_b strength 110 / 60, seeds 6663/6664: grounded flat cones.
+strike_se_0..6.png first strike, seed 72 ("lunges forward toward the south-east, both bony arms reach out
+                  forward ... then it pulls back"): arms spread sideways rather than reaching forward.
+
+POST-PROCESS (pack_wraith.py): hands recoloured from PixelLab's pale green to bone white; eyes keep the green.

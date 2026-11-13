@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_book(t)
 	_horde_pours(t, made)
 	_ghost_touch(t, made)
+	_last_touch(t, made)
 	_ghost_per_death(t, made)
 	_horde_caps(t, made)
 	_ghost_bounds(t, made)
@@ -525,6 +526,27 @@ static func _ghost_touch(t, made: Array) -> void:
 	sick_b.sick_left = 0.0
 
 
+## Final review 8: the touch that is the horde's HORDE_KILLS-th kill adds no ghost (it would be recalled at once): the horde one
+## kill short of its cap, a ghost's touch takes the one by the middle, no ghost is made and the horde sinks.
+static func _last_touch(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	var sick_a := _put(made, 0, at + Vector2(0.0, -9.0))
+	sick_a.sick_left = 60.0
+	var victim := _put(made, 2, at + Vector2(2.0, 0.0))
+	var fx := _cast(made, at)
+	RD._run(fx, PaleReignFx.EVERY + 0.05)
+	t.check(fx.taken == [sick_a] and victim.is_alive() and fx.horde != null, "(the sick one far off is the reign's first death)")
+	fx.horde.kills = PaleReignFx.HORDE_KILLS - 1
+	fx.horde_kills = PaleReignFx.HORDE_KILLS - 1
+	var made_before := fx.ghosts_made
+	RD._run(fx, 1.2)
+	t.check(not victim.is_alive() and fx.horde_kills == PaleReignFx.HORDE_KILLS and fx.ghosts_made == made_before and fx._sunk,
+		"the touch that is the 24th kill adds no ghost, and the horde sinks (%d -> %d ghosts, %d kills)"
+		% [made_before, fx.ghosts_made, fx.horde_kills])
+	fx.end_now()
+
+
 ## "every death adds a ghost": ten inside; over the whole span the ghosts made past the 4 that pour out are as many as the
 ## deaths inside (the reign's, the horde's, the servants'), while under both caps.
 static func _ghost_per_death(t, made: Array) -> void:
@@ -558,7 +580,30 @@ static func _horde_caps(t, made: Array) -> void:
 		if p.ground_pos.distance_to(at) <= PaleReignFx.RADIUS:
 			packed += 1
 	t.check(packed == 60, "(sixty packed inside: %d)" % packed)
+	# Final review 8: every death inside adds a ghost while under both caps and the span runs -- read here before the reign hears
+	# the death -- except the touch that is the horde's last kill (it sinks then): the ghosts made are exactly those.
+	var field: EnemyField = made[3]
+	var holder: Array = [null]
+	var under := [0]
+	var last := [false]
+	var pre := func(e: DummyEnemy, _kind: StringName) -> void:
+		var f: PaleReignFx = holder[0]
+		var p := e as Person
+		last[0] = false
+		if f == null or f.over or f.horde == null or p == null or p.ground_pos.distance_to(at) > PaleReignFx.RADIUS:
+			return
+		if f.horde.living().size() < PaleReignFx.HORDE_CAP and f.horde.kills < PaleReignFx.HORDE_KILLS and f.t < PaleReignFx.SPAN:
+			under[0] += 1
+			last[0] = true
+	field.enemy_killed.connect(pre)
 	var fx := _cast(made, at)
+	holder[0] = fx
+	var capped := [false]
+	fx.horde.bitten.connect(func(_a: Animal, _who: Person, _first: bool) -> void:
+		if not capped[0] and fx.horde.kills >= PaleReignFx.HORDE_KILLS:
+			capped[0] = true
+			if last[0]:
+				under[0] -= 1)  # the last kill itself adds none
 	var most := 0
 	for i in roundi((PaleReignFx.SPAN + PaleReignFx.FADE + 0.5) / DT):
 		if fx.finished:
@@ -570,6 +615,10 @@ static func _horde_caps(t, made: Array) -> void:
 	t.check(fx.horde_kills <= PaleReignFx.HORDE_KILLS and most <= PaleReignFx.HORDE_CAP,
 		"the horde stops at 24 alive and 24 kills (%d most alive, %d kills)" % [most, fx.horde_kills])
 	t.check(fx.horde.living().is_empty(), "and once it has its 24 it sinks")
+	t.check(capped[0] and fx.ghosts_made == PaleReignFx.HORDE_START + under[0],
+		"the ghosts made are the 4 poured and one per death under both caps, none for the last kill (%d made, %d + %d)"
+		% [fx.ghosts_made, PaleReignFx.HORDE_START, under[0]])
+	field.enemy_killed.disconnect(pre)
 	fx.end_now()
 
 

@@ -264,7 +264,9 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	var p := e as Person
 	if p == null or p.ground_pos.distance_to(origin) > RADIUS:
 		return
-	_ghost_at(p.ground_pos)
+	# A pale death not of the reign's own reaping is a ghost's touch: the horde counts it only after this (Visitors.kills, then
+	# _on_touch()), so it is counted here first -- the touch that is its HORDE_KILLS-th kill adds no ghost (it sinks then).
+	_ghost_at(p.ground_pos, kind == &"pale" and _reaping_at < 0.0)
 	if p.inside or risen >= MAX_RISEN or not Remains.BODY_KINDS.has(kind):
 		return
 	_rise(p, _reaping_at if _reaping_at >= 0.0 else t)
@@ -277,9 +279,11 @@ func _pour() -> void:
 		_ghost_at(origin + Vector2.from_angle(TAU * float(i) / float(HORDE_START)) * POUR_R)
 
 
-## One more ghost at `at`, while fewer than HORDE_CAP are up, the horde has killed fewer than HORDE_KILLS and the span runs.
-func _ghost_at(at: Vector2) -> void:
-	if horde == null or not (horde.living().size() < HORDE_CAP and horde_kills < HORDE_KILLS and t < SPAN):
+## One more ghost at `at`, while fewer than HORDE_CAP are up, the horde has killed fewer than HORDE_KILLS and the span runs. `touch`: the
+## death is a ghost's touch the horde has not counted yet, so it counts here.
+func _ghost_at(at: Vector2, touch := false) -> void:
+	var kills := horde_kills + (1 if touch else 0)
+	if horde == null or not (horde.living().size() < HORDE_CAP and kills < HORDE_KILLS and t < SPAN):
 		return
 	DeathParts.pale_ghost(horde, at, origin, RADIUS)
 	ghosts_made += 1

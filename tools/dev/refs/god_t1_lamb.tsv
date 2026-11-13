@@ -3,9 +3,9 @@
 god_ruin_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=ruin:1	-450677051
 god_ruin_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=ruin:1	-997059630
 god_ruin_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=ruin:1	-196611736
-god_death_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=death:1	622870838
-god_death_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=death:1	386209666
-god_death_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=death:1	-40197316
+god_death_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=death:1	916621723
+god_death_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=death:1	-458026948
+god_death_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=death:1	-71362548
 god_veil_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=veil:1	-155818934
 god_veil_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=veil:1	-847525872
 god_veil_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=veil:1	-721692888

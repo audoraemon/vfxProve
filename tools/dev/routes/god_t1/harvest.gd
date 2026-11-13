@@ -160,14 +160,8 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	var god := _god()
 	var crowd: Crowd = ctx.crowd
 	var due := d.grain_left(s) if not d.has_grain(s) else 0.0
-	# The spirit is up: the match is laid by a host once nobody guards the granary and its grain is in when the match is struck.
-	var spirit: RaiseTheDeadFx = god.free_spirit(ctx)
-	if spirit != null and not d.burning(s) and not d.guarding(s) and due <= DEATH_STRIKE:
-		var host := _host(ctx, d, s, c, spirit)
-		if host != null and god.cast_possess(ctx, host, {"order": "burn", "building": s}):
-			return "the spirit possesses %s: burn the %s granary" % ["its carter" if host == c else "one standing by", _name(d, s)]
 	# A body by the door with its soul still near, as the grain is due: the spirit rises from it.
-	if _ready(bc, ctx, "raise") and due <= DEATH_RISE and not d.burning(s) and god.free_spirit(ctx) == null:
+	if _ready(bc, ctx, "raise") and due <= DEATH_RISE and not d.burning(s) and rules.live_fx("raise") == null:
 		var body: Vector2 = god.body_near(crowd, d.doors[s], DEATH_BODY_R, true)
 		if body != Vector2.INF and rules.cast(int(ctx.slots.raise), body, {"mode": "spirit"}) != null:
 			return "raise a spirit by the %s granary's door" % _name(d, s)
@@ -189,25 +183,6 @@ static func _marks_due(d: HarvestDirector, s: Structure) -> int:
 	for w in d.watchmen(s):
 		n += 1 if w.statuses.has(&"frail") else 0
 	return n
-
-
-## Whom the spirit sends to light `s`: its carter when he stands within the spirit's reach, else the nearest one within it who would hear (not one of
-## its watchmen: back from the spirit he would guard it again); either only when the granary's edge he would walk to is near enough its wall
-## to strike the match from (MindWhisperFx.stand_at(), BURN_NEAR). Null for none.
-static func _host(ctx: Dictionary, d: HarvestDirector, s: Structure, c: Person, spirit: RaiseTheDeadFx) -> Person:
-	var from := spirit.follow_up_from()
-	var mine := d.watchmen(s)
-	var best: Person = null
-	for p in DominionParts.near((ctx.crowd as Crowd)._field, from, RaiseTheDeadFx.POSSESS_R - 0.2):
-		if p.inside or p.soldier or p.resists_mind() or p.shaken() or mine.has(p) or not MindWhisperFx.building_ok(p, s):
-			continue
-		if s.distance_to(MindWhisperFx.stand_at(p.grid, s, p.ground_pos)) > MindWhisperFx.BURN_NEAR - 0.05:
-			continue  # the edge he would be sent to is too far from the wall to strike the match
-		if p == c:
-			return c
-		if best == null or p.ground_pos.distance_to(from) < best.ground_pos.distance_to(from):
-			best = p
-	return best
 
 
 # --- Veil: Silent Doom, Blight -------------------------------------------------------------------------------------------

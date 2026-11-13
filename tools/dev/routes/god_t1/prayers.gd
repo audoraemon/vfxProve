@@ -177,36 +177,22 @@ static func _alone(d: FirstPrayersDirector, p: Person, reach: float) -> bool:
 ## and a walker comes at 1:20, so they must all be gone by then or kept from seeing. With the door empty the poor hurry in and pray together, and the
 ## night ends about one prayer after the last death: its idle stretch (D34: up to 60 s) is that kill's fuse, the walk and the prayer. Raise the Dead
 ## keeps the door blind: as a crit nears with a Faithful watching it, a SPIRIT rises from a body by the door (everyone within its fright flees it)
-## and possesses a watcher still in sight, walking him off it (the possessed see nothing); a runner to the Temple the mark cannot reach is possessed
-## and walked back the way he came.
+## (a spirit no longer possesses anyone: Task 14 rewrites this policy).
 
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
-	var spirit: RaiseTheDeadFx = GodT1.free_spirit(ctx)
 	for c in _runners(d):
 		if _ready(bc, ctx, "deathmark") and not c.statuses.has(&"frail"):
 			return _cast(ctx, "deathmark", c.ground_pos, "death mark a runner to the Temple")
-		if spirit != null and c.ground_pos.distance_to(spirit.follow_up_from()) <= RaiseTheDeadFx.POSSESS_R - 0.2:
-			var back := _whisper_spot(ctx, c, c.ground_pos * 2.0 - d.temple_door, RaiseTheDeadFx.POSSESS_R - 0.5)
-			if back != Vector2.INF and GodT1.cast_possess(ctx, c, {"to": back}):
-				ctx.memo["plast"] = _t(ctx)
-				return "the spirit possesses a runner to the Temple: back the way he came"
-	# The door at a crit: a watcher within the spirit's reach is possessed and walked off; else a spirit rises from a body by the door.
+	# The door at a crit: a spirit rises from a body by the door (Task 14 rewrites this policy).
 	var crit := crit_in(bc, ctx)
 	var watchers: Array[Person] = []
 	for w in _watchers(d):
 		if _fuse_left(ctx, w) > crit:
 			watchers.append(w)  # (one whose mark falls first sees nothing)
 	if crit <= LEAD and not watchers.is_empty():
-		if spirit != null:
-			var from := spirit.follow_up_from()
-			for w in watchers:
-				if w.ground_pos.distance_to(from) > RaiseTheDeadFx.POSSESS_R - 0.2 or w.shaken() or w.resists_mind():
-					continue
-				var off := _whisper_spot(ctx, w, w.ground_pos * 2.0 - d.door, RaiseTheDeadFx.POSSESS_R - 0.5)
-				if off != Vector2.INF and GodT1.cast_possess(ctx, w, {"to": off}):
-					ctx.memo["plast"] = _t(ctx)
-					return "the spirit possesses a Faithful at the door: off out of sight"
+		if (ctx.rules as Rules).live_fx("raise") != null:
+			pass  # a spirit is already up
 		elif _ready(bc, ctx, "raise"):
 			var body: Vector2 = GodT1.body_near(ctx.crowd, d.door, RISE_NEAR, true)
 			if body != Vector2.INF:

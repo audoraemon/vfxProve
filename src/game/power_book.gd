@@ -53,9 +53,9 @@ const POWERS := [
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
 		"quiet": true, "authority": "death"},
 	{"key": "raise", "name": "Raise the Dead", "path": "res://src/fx/death/raise_the_dead.gd",
-		"blurb": "A body rises to attack, or its soul to terrify and possess.",
+		"blurb": "A body rises to attack, or its soul to haunt and terrify.",
 		"dp": 1, "cooldown": 25.0, "aim": "click", "needs": "body",
-		"shape": "click a body: ZOMBIE -- it gets up for 30 s and hunts the nearest, and whoever it kills gets up too, 3 in all; SPIRIT -- its soul rises for 20 s, everyone within 3 flees, and a press on someone within 4 of it possesses them for 5 s with Mind Whisper's orders, 3 in all",
+		"shape": "click a body: ZOMBIE -- it gets up for 30 s and hunts the nearest, and whoever it kills gets up too, 3 in all; SPIRIT -- its soul rises for 20 s, everyone within 4 flees; it only haunts, it possesses no one",
 		"authority": "death", "modes": [
 			{"key": "zombie", "name": "ZOMBIE"},
 			{"key": "spirit", "name": "SPIRIT", "needs": "soul"}]},

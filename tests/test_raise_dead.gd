@@ -2,18 +2,9 @@ extends RefCounted
 ## Raise the Dead (Death, Tier I): a click on a body (a remain within Remains.PICK_R). ZOMBIE: the body gets up for 30 s
 ## wearing its own people sprite, hunts the nearest within 10, and whoever it kills gets up too, 3 raised in all; a soldier cuts
 ## one down in 3 blows; a plague body's zombie infects. SPIRIT (needs a soul): the soul rises for 20 s, frightens everyone
-## within 3 and drifts after the nearest group; a press within 4 of it possesses that person for 5 s with Mind Whisper's
-## own orders (walk, attack, burn), 3 hosts in all. A host who cannot hear is refused "missed" and spends nothing.
+## within 4 and drifts after the nearest group. It never possesses anyone: Raise has no follow-up (R3).
 
 const DT := 0.05
-
-
-## A person whose mind the god cannot reach (as test_soldier_minds' double).
-class Strong:
-	extends Person
-
-	func resists_mind() -> bool:
-		return true
 
 
 static func _setup() -> Array:
@@ -119,11 +110,8 @@ static func run(t) -> void:
 	_soldier(t, made)
 	_soul(t, made)
 	_spirit(t, made)
-	_possess_walk(t, made)
-	_possess_attack(t, made)
-	_possess_burn(t, made)
-	_hosts(t, made)
-	_refused_hosts(t, made)
+	_no_follow_up(t, made)
+	_zombie_catches(t, made)
 	_recalled(t, made)
 	_exit(t, made)
 	_done(made)
@@ -149,8 +137,7 @@ static func _book(t) -> void:
 		"its reach, impact (the dead stand), family, kills (frenzy) and area (the body's pick, the hunt's roam)")
 	t.check(PowerBook.icon("raise") != null and PowerBook.hud_icon("raise") != null, "it has its icons")
 	t.check(RaiseTheDeadFx.ZOMBIE_LIFE == 30.0 and RaiseTheDeadFx.CHAIN == 3 and RaiseTheDeadFx.SEEK == 10.0
-		and RaiseTheDeadFx.SPIRIT_LIFE == 20.0 and RaiseTheDeadFx.FRIGHT_R == 3.0 and RaiseTheDeadFx.POSSESS_R == 4.0
-		and RaiseTheDeadFx.POSSESS == 5.0 and RaiseTheDeadFx.HOSTS == 3, "the numbers of the brief")
+		and RaiseTheDeadFx.SPIRIT_LIFE == 20.0 and RaiseTheDeadFx.FRIGHT_R == 4.0, "the numbers of the brief")
 
 
 static func _cast(made: Array, at: Vector2, mode: String) -> RaiseTheDeadFx:
@@ -297,7 +284,7 @@ static func _soul(t, made: Array) -> void:
 	rules.free()
 
 
-## "citizens within 3 of the spirit flee", and it drifts after the nearest group.
+## "citizens within 4 of the spirit flee", and it drifts after the nearest group.
 static func _spirit(t, made: Array) -> void:
 	_clear_all(made)
 	var crowd: Crowd = made[0]
@@ -307,15 +294,15 @@ static func _spirit(t, made: Array) -> void:
 	t.check(crowd.remains.pick(at) == null, "the spirit's body is used up")
 	var near: Person = crowd.citizens[15]
 	var far: Person = crowd.citizens[16]
-	near.ground_pos = at + Vector2(2.0, 0.0)
+	near.ground_pos = at + Vector2(3.5, 0.0)
 	far.ground_pos = at + Vector2(0.0, 6.0)
 	_run(fx, RaiseTheDeadFx.T_RISE + 0.1)
 	var sp := fx.spirit
 	t.check(sp != null and sp.breed == Animal.Breed.SPIRIT and fx.visitors.living().size() == 1, "the soul rises as a spirit")
 	_run(fx, 1.2)
 	t.check(near.mind == Person.Mind.PANIC or near.mind == Person.Mind.FLEE,
-		"citizens within 3 of the spirit flee (%s)" % Person.Mind.keys()[near.mind])
-	t.check(far.mind == Person.Mind.CALM, "one at 6 does not (%s)" % Person.Mind.keys()[far.mind])
+		"citizens within 4 of the spirit flee (%s)" % Person.Mind.keys()[near.mind])
+	t.check(far.mind == Person.Mind.CALM, "one at 6 stays calm (%s)" % Person.Mind.keys()[far.mind])
 	# A group of three beside each other 6 off, the one frightened sent far away: it drifts to them.
 	_clear_town(crowd)
 	var group := at + Vector2(6.0, 0.0)
@@ -337,179 +324,47 @@ static func _spirit_at(made: Array, n: int) -> Array:
 	return [fx, at]
 
 
-## "possession: walk order moves the host for 5 s then frees them"
-static func _possess_walk(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var grid: WalkGrid = made[2]
-	var got := _spirit_at(made, 20)
-	var fx: RaiseTheDeadFx = got[0]
-	var at: Vector2 = got[1]
-	var host: Person = crowd.citizens[21]
-	host.ground_pos = at + Vector2(3.5, 0.0)  # beyond its fright (3), within its reach (4)
-	fx.drift = false
-	t.check(fx.can_follow_up() and fx.follow_up_wheel() and is_equal_approx(fx.follow_up_reach(), RaiseTheDeadFx.POSSESS_R)
-		and fx.follow_up_from() == fx.spirit.ground_pos, "a live spirit takes a follow-up through the whisper's wheel, reach 4 from itself")
-	var to := grid.nearest_walkable(host.ground_pos + Vector2(0.0, 3.0))
-	t.check(fx.follow_up(host.ground_pos, {"target": host, "to": to}), "a press on someone within 4 possesses them")
-	t.check(host.mind == Person.Mind.WHISPERED and host.anchor == to and not fx.spirit.visible and fx.hosts_left == 2
-		and fx.host == host and not fx.can_follow_up(),
-		"they walk where they were sent; the spirit is inside them, one host spent, none other meanwhile")
-	var from := host.ground_pos
-	_run(fx, 2.5, [host])
-	t.check(host.mind == Person.Mind.WHISPERED and host.ground_pos.distance_to(from) > 0.5, "they walk (%.2f)" % host.ground_pos.distance_to(from))
-	_run(fx, RaiseTheDeadFx.POSSESS - 2.5 + 0.2, [host])
-	t.check(host.mind != Person.Mind.WHISPERED and not host.shaken() and fx.host == null and fx.spirit.visible
-		and fx.can_follow_up(),
-		"possession: walk order moves the host for 5 s then frees them (%s); the spirit comes out" % Person.Mind.keys()[host.mind])
-	t.check(fx.spirit.ground_pos.distance_to(host.ground_pos) < 0.6, "it comes out of them where they stand")
-	fx.end_now()
-
-
-## "possession: attack order sets the host on the foe"
-static func _possess_attack(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var got := _spirit_at(made, 22)
-	var fx: RaiseTheDeadFx = got[0]
-	var at: Vector2 = got[1]
-	fx.drift = false
-	var host: Person = crowd.citizens[23]
-	var foe: Person = crowd.citizens[24]
-	host.ground_pos = at + Vector2(3.5, 0.0)
-	foe.ground_pos = host.ground_pos + Vector2(0.0, 0.4)
-	t.check(fx.follow_up(host.ground_pos, {"target": host, "order": "attack", "foe": foe}), "an attack order takes")
-	t.check(host.mind == Person.Mind.FIGHT and host.fight_target == foe and fx.host == host,
-		"possession: attack order sets the host on the foe")
-	_run(fx, RaiseTheDeadFx.POSSESS + 0.3)
-	t.check(host.mind != Person.Mind.FIGHT and fx.host == null and fx.spirit.visible, "after 5 s they come to and the spirit comes out")
-	fx.end_now()
-
-
-## A burn order: the host walks to the building's edge and lights it BURN_SECS after getting there.
-static func _possess_burn(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var env: EnvironmentField = made[1]
-	var grid: WalkGrid = made[2]
-	_clear_all(made)
-	var house := _house(env, grid)
-	t.check(house != null, "a house that burns")
-	if house == null:
-		return
-	var side := Vector2(house.footprint.end.x + 2.0, house.center().y)
-	_body(made, 25, side + Vector2(1.0, 0.0))
-	var fx := _cast(made, side + Vector2(1.0, 0.0), "spirit")
-	_run(fx, RaiseTheDeadFx.T_RISE + 0.1)
-	fx.drift = false
-	var host: Person = crowd.citizens[26]
-	host.ground_pos = MindWhisperFx.stand_at(grid, house, side)  # (the walk itself is the walk order's test)
-	t.check(fx.follow_up(host.ground_pos, {"target": host, "order": "burn", "building": house}), "a burn order takes")
-	var lit_at := -1.0
-	var start := fx.t
-	for i in roundi(8.0 / DT):
-		host.frame(DT)
-		fx._process(DT)
-		if crowd.fires.is_burning(house):
-			lit_at = fx.t - start
-			break
-	t.check(lit_at >= MindWhisperFx.BURN_SECS - 0.01 and lit_at < MindWhisperFx.BURN_SECS + 0.5,
-		"the possessed host lights the building BURN_SECS after getting to its edge (%.2f s)" % lit_at)
-	_run(fx, 0.2, [host])
-	t.check(fx.host == null and fx.spirit.visible, "and the spirit comes out of them")
-	crowd.fires.douse(house)
-	fx.end_now()
-
-
-## "3 hosts then can_follow_up is false"
-static func _hosts(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var got := _spirit_at(made, 27)
-	var fx: RaiseTheDeadFx = got[0]
-	var at: Vector2 = got[1]
-	fx.drift = false
-	for k in 3:
-		var host: Person = crowd.citizens[28 + k]
-		t.check(fx.can_follow_up(), "before host %d it takes a follow-up" % (k + 1))
-		host.ground_pos = fx.spirit.ground_pos + Vector2(3.5, 0.0)
-		(crowd.citizens[31 + k] as Person).ground_pos = host.ground_pos + Vector2(0.0, 0.4)
-		t.check(fx.follow_up(host.ground_pos, {"target": host, "order": "attack", "foe": crowd.citizens[31 + k]}),
-			"host %d is possessed" % (k + 1))
-		_run(fx, RaiseTheDeadFx.POSSESS + 0.2)
-		host.stop_fighting()
-		host.ground_pos = at + Vector2(-20.0, -20.0)
-	t.check(fx.hosts_left == 0 and not fx.can_follow_up() and fx.spirit.visible and not fx.finished,
-		"3 hosts then can_follow_up is false (%d left); the spirit drifts on" % fx.hosts_left)
-	fx.end_now()
-
-
-## "a resisting or indoor host is refused (missed) and the spirit keeps its hosts" (review focus 1), through Rules.recast too.
-static func _refused_hosts(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var field: EnemyField = made[3]
-	var grid: WalkGrid = made[2]
+## "spirit mode never possesses: raise has no follow-up"
+static func _no_follow_up(t, made: Array) -> void:
 	_clear_all(made)
 	var rules := Rules.new().setup(PackedStringArray(["raise"]), null, made[1], made[3], made[0], made[6])
-	var live := []
 	rules.caster = func(s: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
-		var f := FxTimeline.cast(s, made[5], g, e)
-		live.append(f)
-		return f
+		return FxTimeline.cast(s, made[5], g, e)
 	var at := _empty(made)
-	_body(made, 35, at)
+	_body(made, 20, at)
 	var fx := rules.cast(0, at, {"mode": "spirit"}) as RaiseTheDeadFx
-	t.check(fx != null, "the spirit is cast through Rules")
-	if fx == null:
-		rules.free()
-		return
-	_run(fx, RaiseTheDeadFx.T_RISE + 0.1)
-	fx.drift = false
-	var cd := rules.cooldown_left(0)
-	t.check(rules.can_recast(0), "a live spirit: the slot takes a follow-up")
-	var spot := fx.spirit.ground_pos + Vector2(3.5, 0.0)
-	var to := grid.nearest_walkable(spot + Vector2(0.0, 2.0))
-
-	# Indoors.
-	var indoor: Person = crowd.citizens[36]
-	indoor.ground_pos = spot
-	indoor.inside = true
-	t.check(not fx.follow_up(spot, {"target": indoor, "to": to}) and fx.hosts_left == RaiseTheDeadFx.HOSTS and fx.host == null,
-		"an indoor host is refused and the spirit keeps its hosts")
-	# A bystander under the press: whisper_refusal falls back to them and passes, but the press named the one indoors.
-	var bystander: Person = crowd.citizens[37]
-	bystander.ground_pos = spot + Vector2(0.1, 0.0)
-	t.check(rules.whisper_refusal(spot, {"target": indoor, "to": to}) == "", "(set-up) the bystander lets whisper_refusal pass")
-	t.check(not rules.recast(0, spot, {"target": indoor, "to": to}) and fx.hosts_left == RaiseTheDeadFx.HOSTS
-		and bystander.mind != Person.Mind.WHISPERED and fx.host == null,
-		"a bystander under the press: the indoor host is still refused (missed), nobody possessed")
-	indoor.inside = false
-	indoor.ground_pos = at + Vector2(-20.0, -20.0)
-
-	# A mind that resists.
-	var strong := Strong.new()
-	strong.setup_person(true, spot, grid)
-	field.add(strong)
-	(made[4] as Node).add_child(strong)
-	t.check(not rules.recast(0, spot, {"target": strong, "to": to}) and fx.hosts_left == RaiseTheDeadFx.HOSTS
-		and bystander.mind != Person.Mind.WHISPERED and strong.mind != Person.Mind.WHISPERED,
-		"a resisting host is refused (missed) and the spirit keeps its hosts")
-	strong.ground_pos = at + Vector2(-22.0, -20.0)
-
-	# Shaken.
-	bystander._shaken_left = Person.SHAKE_OFF
-	t.check(not fx.follow_up(bystander.ground_pos, {"target": bystander, "to": to}) and fx.hosts_left == RaiseTheDeadFx.HOSTS,
-		"a shaken host is refused too")
-	bystander._shaken_left = 0.0
-
-	# Out of reach of the spirit: the spirit drifted since the press was aimed.
-	bystander.ground_pos = fx.spirit.ground_pos + Vector2(4.6, 0.0)
-	t.check(not fx.follow_up(bystander.ground_pos, {"target": bystander, "to": to}) and fx.hosts_left == RaiseTheDeadFx.HOSTS,
-		"one more than 4 from the spirit is refused, measured at the follow-up")
-	t.check(not fx.finished and fx.spirit.visible and is_equal_approx(rules.cooldown_left(0), cd),
-		"the refusals spend nothing: the spirit lives on, the cooldown is as it was")
-	# And a fair one still takes.
-	bystander.ground_pos = spot
-	t.check(rules.recast(0, spot, {"target": bystander, "to": to}) and fx.hosts_left == RaiseTheDeadFx.HOSTS - 1,
-		"a fair host still takes after the refusals")
-	fx.end_now()
+	t.check(fx != null, "(set-up) the spirit is cast through Rules")
+	if fx != null:
+		_run(fx, RaiseTheDeadFx.T_RISE + 0.1)
+		t.check(not fx.has_method("follow_up") and not fx.has_method("follow_up_wheel") and not fx.has_method("can_follow_up")
+			and not rules.can_recast(0), "spirit mode never possesses: raise has no follow-up")
+		fx.end_now()
 	rules.free()
+
+
+## "a zombie closes on a walking citizen": the walker leaves at a walk, 3.0 off; within 8 s it is bitten.
+static func _zombie_catches(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	_clear_all(made)
+	var at := _empty(made)
+	_body(made, 30, at)
+	var fx := _cast(made, at, "zombie")
+	_run(fx, RaiseTheDeadFx.T_RISE + 0.1)
+	var walker: Person = crowd.citizens[31]
+	walker.ground_pos = at + Vector2(3.0, 0.0)
+	var away := grid.nearest_walkable(at + Vector2(9.0, 0.0))
+	walker.walk_to(away)
+	var bitten := false
+	for i in roundi(8.0 / DT):
+		walker.frame(DT)
+		fx._process(DT)
+		if walker.is_down() or not walker.is_alive():
+			bitten = true
+			break
+	t.check(bitten, "a zombie closes on a walking citizen (down=%s, %.1f off)" % [walker.is_down(),
+		walker.ground_pos.distance_to(fx.visitors.living()[0].ground_pos) if not fx.visitors.living().is_empty() else -1.0])
+	fx.end_now()
 
 
 ## "everything recalled by 30 s / 20 s"
@@ -529,17 +384,11 @@ static func _recalled(t, made: Array) -> void:
 	var sp := _cast(made, at2, "spirit")
 	_run(sp, RaiseTheDeadFx.T_RISE + 0.1)
 	sp.drift = false
-	var host: Person = crowd.citizens[42]
-	host.ground_pos = sp.spirit.ground_pos + Vector2(3.5, 0.0)
-	_run(sp, RaiseTheDeadFx.SPIRIT_LIFE - RaiseTheDeadFx.T_RISE - 0.1 - 3.0)
-	t.check(sp.follow_up(host.ground_pos, {"target": host, "to": host.ground_pos + Vector2(0.0, 1.0)}), "a host taken 3 s before the end")
-	_run(sp, 4.0, [host])
-	t.check(sp.visitors.living().is_empty() and sp.finished and host.mind != Person.Mind.WHISPERED,
-		"everything recalled by 20 s (spirit), and its host let go (%s)" % Person.Mind.keys()[host.mind])
+	_run(sp, RaiseTheDeadFx.SPIRIT_LIFE - RaiseTheDeadFx.T_RISE - 0.1 + 1.0)
+	t.check(sp.visitors.living().is_empty() and sp.finished, "everything recalled by 20 s (spirit)")
 
 
-## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the risen are gone, a live possession is
-## ended (the host let go of the order, the eyes gone), nothing errors, and its end after that changes nothing.
+## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the risen are gone, nothing errors, and its end after that changes nothing.
 static func _exit(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	_clear_all(made)
@@ -555,37 +404,6 @@ static func _exit(t, made: Array) -> void:
 		"freed without its end, the zombies are gone and the pack leaves the town")
 	fx.end_now()
 	t.check(fx.finished, "and its end after that changes nothing")
-	# A spirit riding a host.
-	var got := _spirit_at(made, 51)
-	var sp: RaiseTheDeadFx = got[0]
-	var at2: Vector2 = got[1]
-	sp.drift = false
-	var host: Person = crowd.citizens[52]
-	host.ground_pos = at2 + Vector2(3.5, 0.0)
-	var to := (made[2] as WalkGrid).nearest_walkable(host.ground_pos + Vector2(0.0, 3.0))
-	t.check(sp.follow_up(host.ground_pos, {"target": host, "to": to}) and sp.host == host, "(possessed)")
-	var spirits := sp.visitors.living()
-	var eyes := sp._eyes
-	sp._exit_tree()
-	t.check(sp.host == null and host.mind != Person.Mind.WHISPERED and (eyes == null or not is_instance_valid(eyes) or eyes.is_queued_for_deletion()),
-		"freed mid-possession, the host is let go of the order (%s) and the eyes go" % Person.Mind.keys()[host.mind])
-	t.check(_all_gone(spirits) and sp.visitors.living().is_empty(), "and the spirit is gone")
-	sp.end_now()
-	t.check(sp.finished and host.mind != Person.Mind.WHISPERED, "and its end after that changes nothing")
-	# A host freed mid-possession (they left the town), then the effect torn down: no error.
-	var got3 := _spirit_at(made, 53)
-	var sp3: RaiseTheDeadFx = got3[0]
-	sp3.drift = false
-	var host3: Person = crowd.citizens[54]
-	host3.ground_pos = (got3[1] as Vector2) + Vector2(3.5, 0.0)
-	t.check(sp3.follow_up(host3.ground_pos, {"target": host3, "to": host3.ground_pos + Vector2(0.0, 1.0)}), "(possessed again)")
-	crowd.citizens.erase(host3)
-	(made[3] as EnemyField).remove(host3)
-	host3.free()
-	sp3._exit_tree()
-	t.check(sp3.visitors.living().is_empty(), "a host freed before the teardown: the spirit still goes, without an error")
-	sp3.end_now()
-	t.check(sp3.finished, "and it ends cleanly")
 
 
 const T_RISE_PLUS := RaiseTheDeadFx.T_RISE + 0.1

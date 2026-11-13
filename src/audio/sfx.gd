@@ -120,7 +120,7 @@ const CATALOG := {
 	&"q_deathmark": {"path": "res://assets/audio/ability/quiet/q_deathmark.wav", "db": -0.2},
 	&"q_deathmark_hit": {"path": "res://assets/audio/ability/quiet/q_deathmark_hit.wav", "db": -0.7},
 	# Raise the Dead (Death I, tools/audio/foley/ability/death/): the dead getting up -- bone grinding under a cold low choir's breath -- and
-	# the spirit's wail (its rising, and each possession).
+	# the spirit's wail (its rising).
 	&"raise_rise": {"path": "res://assets/audio/ability/death/raise_rise.wav", "db": 0.0},
 	&"raise_wail": {"path": "res://assets/audio/ability/death/raise_wail.wav", "db": 0.0},
 	# Gravecall (Death II): three spirits called up out of the ground -- a ghostly chorus of moans over cold breath.

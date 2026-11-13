@@ -237,22 +237,6 @@ static func body_near(crowd: Crowd, at: Vector2, reach: float, soul := false) ->
 	return Vector2.INF
 
 
-## The spirit Raise the Dead has up and free to possess someone now (RaiseTheDeadFx.can_follow_up()), or null. Only reads.
-static func free_spirit(ctx: Dictionary) -> RaiseTheDeadFx:
-	var fx := (ctx.rules as Rules).live_fx("raise") as RaiseTheDeadFx
-	return fx if fx != null and fx.can_follow_up() else null
-
-
-## Raise the Dead's spirit possesses `who` with one of Mind Whisper's orders (`extra`: "order" "attack" + "foe", "burn" + "building", or
-## a walk "to"): a follow-up recast of the slot (Rules.recast()), no cooldown. True when it took.
-static func cast_possess(ctx: Dictionary, who: Person, extra: Dictionary) -> bool:
-	if not ctx.slots.has("raise"):
-		return false
-	var said := extra.duplicate()
-	said["target"] = who
-	return (ctx.rules as Rules).recast(int(ctx.slots.raise), who.ground_pos, said)
-
-
 ## Where Pestilence would take the most people (three at most, PestilenceFx.INFECT_MAX) round `at`, without taking any of `avoid`: the
 ## aim, at `at` itself or at one of those round it; Vector2.INF when no aim takes anyone. The nearest to `at` of equals. Only reads.
 static func plague_aim(crowd: Crowd, at: Vector2, avoid: Array = []) -> Vector2:

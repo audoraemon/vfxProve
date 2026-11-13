@@ -477,9 +477,6 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 ## Where a spirit raised from a body can still reach a watcher: it drifts after the nearest group it finds within RaiseTheDeadFx.SEEK, and frightens
 ## (a lay inquisitor) or is pressed into (anyone) whoever comes within its reach.
 const SPIRIT_NEAR := RaiseTheDeadFx.SEEK - 2.0
-## A possessed watcher is pressed only this far inside POSSESS_R of the spirit (it drifts on while the press is made).
-const POSSESS_PAD := 0.4
-
 
 ## The bodies whose soul is still near (Remains.SOUL), the freshest first: what a SPIRIT can rise from.
 static func _souls(crowd: Crowd) -> Array:
@@ -494,24 +491,6 @@ static func _souls(crowd: Crowd) -> Array:
 	return out
 
 
-## Raise the Dead's live SPIRIT, while it can still take a host (its follow-up); null for none.
-static func _spirit(ctx: Dictionary) -> RaiseTheDeadFx:
-	var fx := (ctx.rules as Rules).live_fx("raise") as RaiseTheDeadFx
-	return fx if fx != null and fx.can_follow_up() else null
-
-
-## The spirit goes into `p` (a seizer, or a watcher about to see a believer) and walks him off `from` for its five seconds: a seizer off his errand lets
-## his believer go, a watcher whispered away sees nobody. False when he cannot hear it or has drifted out of its reach.
-static func _possess(bc, ctx: Dictionary, fx: RaiseTheDeadFx, p: Person, from: Vector2) -> bool:
-	if p.shaken() or p.resists_mind() or p.ground_pos.distance_to(fx.follow_up_from()) > RaiseTheDeadFx.POSSESS_R - POSSESS_PAD:
-		return false
-	var to: Vector2 = bc._prisoner_away(ctx.crowd as Crowd, p, from)
-	if not (ctx.rules as Rules).recast(int(ctx.slots.raise), p.ground_pos, {"target": p, "to": to}):
-		return false
-	ctx.memo.last_cast = (ctx.d as HideFaithfulDirector)._clock
-	return true
-
-
 ## Death Mark takes one man, MARK_LEAD before his sight (it dies him in ten seconds) and, for each man of the same hour still to be marked before him,
 ## twenty seconds more (it is ready every twenty), a seizer first of all. Raise the Dead works the dead it leaves: a body whose soul is still near rises
 ## as a SPIRIT when a seizer, or a watcher within MARK_LEAD of his sight, stands within SPIRIT_NEAR of it -- a lay inquisitor flees it, and the spirit is
@@ -522,18 +501,7 @@ static func act_death(bc, ctx: Dictionary) -> String:
 		return ""
 	var crowd: Crowd = ctx.crowd
 	var threats: Array = _view(ctx, d).threats
-	var fx := _spirit(ctx)
-	if fx != null:
-		for sz: Dictionary in _seizers(d):
-			if _possess(bc, ctx, fx, sz.s, (sz.b as Person).ground_pos):
-				return "the spirit possesses a %s seizer: he lets his believer go" % sz.kind
-		var exposed: Array = _view(ctx, d).exposed
-		for th: Dictionary in threats:
-			if float(th.t) > MARK_LEAD or exposed.is_empty():
-				continue
-			var e: Dictionary = exposed[0]
-			if _possess(bc, ctx, fx, th.p, _point(e.rc, float(e.from))):
-				return "the spirit possesses a %s and walks him off" % th.kind
+	var fx := (ctx.rules as Rules).live_fx("raise")
 	if _ready(bc, ctx, "deathmark"):
 		for sz: Dictionary in _seizers(d):
 			if not _doomed(sz.s):

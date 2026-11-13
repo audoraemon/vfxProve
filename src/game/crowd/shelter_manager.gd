@@ -24,6 +24,8 @@ const DOOR_REACH := 0.6
 const HZ := 4.0
 ## A building under this share of its health throws its sheltering people out.
 const FLUSH_HP := 0.5
+## What sends people in without frightening them: Tempest's rain sends the calm indoors (try_shelter() with this kind).
+const CALM_KINDS := [&"rain"]
 
 var _crowd: Crowd
 var _env: EnvironmentField
@@ -31,6 +33,9 @@ var _field: EnemyField
 ## Building -> {"inside": Array[Person], "coming": Array[Person], "clear": float}
 var shelters := {}
 var _step_in := 0.0
+## Instance ids of those whose last way into cover was not a fright -- sent in by a hallowed building (send_in(), Anathema) or the rain
+## (CALM_KINDS) -- read by fright_shelter(). Every way into cover passes try_shelter() or send_in(), so the mark follows the latest one.
+var _calm := {}
 
 
 func setup(crowd: Crowd, env: EnvironmentField, field: EnemyField) -> ShelterManager:
@@ -90,8 +95,18 @@ func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> b
 	if best == null:
 		return false
 	shelters[best].coming.append(p)
+	if kind in CALM_KINDS:
+		_calm[p.get_instance_id()] = true
+	else:
+		_calm.erase(p.get_instance_id())
 	p.seek_shelter(best, _door(best, p.ground_pos))
 	return true
+
+
+## `p` is in cover (Mind.SHELTER) because a danger frightened him: false for one the rain or a hallowed building sent in (a compulsion, not
+## fear; the Harvest's dropped load, H7, counts only fright). Only reads.
+func fright_shelter(p: Person) -> bool:
+	return is_instance_valid(p) and p.mind == Person.Mind.SHELTER and not _calm.has(p.get_instance_id())
 
 
 func _usable(s: Structure) -> bool:
@@ -111,6 +126,7 @@ func send_in(p: Person, s: Structure) -> bool:
 	if _barred(s) or _crowd.in_law(p, LawZone.NO_DOORS):
 		return false  # Decree's NO DOORS (LawZone)
 	shelters[s].coming.append(p)
+	_calm[p.get_instance_id()] = true  # sent in, not frightened in (fright_shelter())
 	p.seek_shelter(s, _door(s, p.ground_pos))
 	return true
 

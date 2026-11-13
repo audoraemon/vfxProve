@@ -4,7 +4,7 @@ The Tier 1 routes milestone ("Option C": every god type wins all five Tier 1 mis
 
 Groups, in order: the controller rulings D1-D40 (as kept in `.superpowers/sdd/t1routes/rulings.md`), the answers to the spec's section 13, the pre-flight rulings PF1-PF19 (adopted as written by D14), the rulings each task reported (T1-T9), and the final review and its fix wave. Where two disagree, the controller rulings (D) beat the plan text; D25 supersedes D21; D26 is corrected by D28. Task 10 (this note) reported no rulings of its own.
 
-The user's own rulings are D3 (the routes table and the three shared rules), D2 (the real tree), D7 (the title switch), D25 (the Lamb's dead end is fair), D34 (Death x Prayers, option c), D40 (Passage x Prayers may idle to 60 s), D45 (Harvest: a frightened carter drops his load) and D46 (Death x Lamb may idle to 60 s). D12 was reported to the user as the one idle exception; D34 and D40 are the same kind of exception, granted by the user.
+The user's own rulings are D3 (the routes table and the three shared rules), D2 (the real tree), D7 (the title switch), D25 (the Lamb's dead end is fair), D34 (Death x Prayers, option c), D40 (Passage x Prayers may idle to 60 s), D45 (Harvest: a frightened carter drops his load) and D46 (Death x Lamb may idle to 60 s). D12 was reported to the user as the one idle exception; D34, D40 and D46 are the same kind of exception, granted by the user.
 
 ## Controller rulings D1-D40
 
@@ -363,11 +363,13 @@ Not binding (D10, D36); listed here so nobody has to dig for them:
 ## The Death review (2026-11-14)
 
 ### D45 (user, 2026-11-14)
-Ruling (the user's): at Spoiled Harvest a carter carrying a load who is frightened drops it, and his granary's grain is spoiled (H7,
-`spoiled_by` "dropped", banner THE CARTER DROPS HIS LOAD - THE GRAIN SPOILS, and the Citadel's tour stop says so). Frightened is
-exactly a mind of PANIC, FLEE or SHELTER (`HarvestDirector.DROP_MINDS`); a mind the god holds (CONFUSED, WHISPERED, COMPELLED), OBSERVE,
-FIGHT or RECOVER is not; a carter with no load (waiting at the door, walking back) drops nothing. It is the night's rule for every power
-that frightens a carter, as TempleReport's frightened carrier drops the report. Death's T1 policy marks a watchman as the carter comes for
+Ruling (the user's): at Spoiled Harvest a carter carrying a load who is frightened drops it, and his granary's grain is spoiled for good
+(H7, `spoiled_by` "dropped", banner THE CARTER DROPS HIS LOAD - THE GRAIN SPOILS, and the Citadel's tour stop says so). Frightened is
+exactly a mind of PANIC or FLEE, or SHELTER when a fright sent him into cover (`ShelterManager.fright_shelter()`): one sent in by a
+hallowed building (Anathema, `send_in()`) or by the rain (Tempest) keeps his load. A mind the god holds (CONFUSED, WHISPERED,
+COMPELLED), OBSERVE, FIGHT or RECOVER is not fright; a carter with no load (waiting at the door, walking back) drops nothing. It is the
+night's rule for every power that frightens a carter. Only the reading of his mind is shared with TempleReport: its carrier drops the
+report while frightened and picks it up again; H7's drop is permanent and spoils the granary. Death's T1 policy marks a watchman as the carter comes for
 a load and raises the spirit beside the carter as he walks off with it. Death review Task 14 found Harvest x Death unwinnable once Raise
 lost possession (0/3, reason dawn/emptied); with D45: 3/3, 153 s, idle 39 s. -- If wrong: revert the rule; Harvest x Death is 0/3 again.
 

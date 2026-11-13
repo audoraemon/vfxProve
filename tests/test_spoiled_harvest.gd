@@ -66,6 +66,7 @@ static func run(t) -> void:
 	_dropped(t)
 	_dropped_calm(t)
 	_dropped_empty(t)
+	_dropped_sent_in(t)
 	_replaced(t)
 	_road_closed(t)
 	_roads_stay_in(t)
@@ -1077,7 +1078,6 @@ static func _held_indoors(t) -> void:
 	_done(s)
 
 
-## H5: a carter killed is replaced RELIEF_AFTER later from the Citadel's gate, the loads as they were; killing one never spoils.
 ## A carter carrying a load away from his granary's door (H7, the user's ruling 2026-11-14), loaded at the door and on his way to the Citadel.
 static func _loaded(s: Dictionary) -> Person:
 	var d: HarvestDirector = s.d
@@ -1147,6 +1147,46 @@ static func _dropped_empty(t) -> void:
 	_done(s)
 
 
+## H7: SHELTER counts only when a fright sent him into cover. A carrying carter sent into a hallowed building (Anathema's path,
+## ShelterManager.send_in()) or indoors by the rain (Tempest's, try_shelter() of kind "rain") keeps his load; one a danger frightened into cover
+## (try_shelter() of a fright's kind) drops it.
+static func _dropped_sent_in(t) -> void:
+	for way in ["hallowed", "rain", "fright"]:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var crowd: Crowd = s.crowd
+		var g := d.targets[0]
+		var c0 := _loaded(s)
+		var house: Structure = null
+		for b: Structure in crowd.shelters.shelters.keys():
+			if house == null or b.distance_to(c0.ground_pos) < house.distance_to(c0.ground_pos):
+				house = b
+		var went := false
+		match way:
+			"hallowed":
+				went = crowd.shelters.send_in(c0, house)
+			"rain":
+				c0.mind = Person.Mind.RECOVER
+				for k in 200:  # (the rain's roll: a calm citizen goes in three times in ten; the seed decides, no luck in the check)
+					if crowd.shelters.try_shelter(c0, c0.ground_pos, 0.0, &"rain"):
+						went = true
+						break
+			"fright":
+				for k in 200:
+					if crowd.shelters.try_shelter(c0, c0.ground_pos + Vector2(0.1, 0.0), 0.0, &"smite"):
+						went = true
+						break
+		_run(s, DT)
+		t.check(went and c0.mind == Person.Mind.SHELTER, "the carrying carter goes into cover (%s)" % way)
+		if way == "fright":
+			t.check(d.razed(g) and d.spoiled_by.get(g) == "dropped", "frightened into cover with a load, he drops it")
+		else:
+			t.check(not d.razed(g) and d._hauling.has(c0.get_instance_id()),
+				"sent into cover by %s with a load, he keeps it (not fright)" % ("a hallowed building" if way == "hallowed" else "the rain"))
+		_done(s)
+
+
+## H5: a carter killed is replaced RELIEF_AFTER later from the Citadel's gate, the loads as they were; killing one never spoils.
 static func _replaced(t) -> void:
 	var s := _world()
 	var d: HarvestDirector = s.d

@@ -77,10 +77,12 @@ const NO_CART_BANNER := "THE GUARD FIND NO CART"
 const HELD_SPOIL := 6.0
 const HELD_SLACK := 0.001
 const HELD_BANNER := "THE LAW HOLDS THE CART - THE GRAIN SPOILS"
-## The user's ruling (2026-11-14, H7; the pattern of TempleReport, whose frightened carrier drops the report): a carter carrying a load -- he has
-## taken it at the granary's door and not yet brought it to the Citadel -- drops it the moment he is frightened, and the grain spoils. Frightened
-## is exactly a mind in DROP_MINDS: PANIC (running from a danger near him), FLEE (making for a gate) or SHELTER (taking cover from one). A mind the
-## god holds (CONFUSED, WHISPERED, COMPELLED), one looking (OBSERVE), fighting or recovering is not fright, and a carter with no load drops nothing.
+## The user's ruling (2026-11-14, H7): a carter carrying a load -- he has taken it at the granary's door and not yet brought it to the Citadel --
+## drops it the moment he is frightened, and the grain spoils for good. (Only the reading of his mind is TempleReport's: its carrier drops the
+## report while frightened and picks it up again; this drop is permanent and spoils the granary.) Frightened is exactly a mind in DROP_MINDS:
+## PANIC (running from a danger near him), FLEE (making for a gate), or SHELTER when a fright sent him into cover
+## (ShelterManager.fright_shelter()): one a hallowed building (Anathema) or the rain (Tempest) sent in is not frightened. A mind the god holds
+## (CONFUSED, WHISPERED, COMPELLED), one looking (OBSERVE), fighting or recovering is not fright, and a carter with no load drops nothing.
 const DROP_MINDS: Array[Person.Mind] = [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER]
 const DROP_BANNER := "THE CARTER DROPS HIS LOAD - THE GRAIN SPOILS"
 ## A watchman at his post while his granary burns is not frightened (Person.fearless_left): the town's ordinary flight from a
@@ -464,8 +466,8 @@ func _held_look(delta: float) -> void:
 	_held = now
 
 
-## A frightened carter drops his load (H7, the user's ruling 2026-11-14): every frame, a carter alive and carrying a load (`_hauling`) whose
-## mind is in DROP_MINDS spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
+## A frightened carter drops his load (H7, the user's ruling 2026-11-14): every frame, a carter alive and carrying a load (`_hauling`) who is
+## frightened (_frightened()) spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
 ## his mind decides it. Returns at once with no load on the road.
 func _dropped_look() -> void:
 	if _hauling.is_empty():
@@ -474,10 +476,17 @@ func _dropped_look() -> void:
 		if razed(s):
 			continue
 		for c: Variant in carters.get(s, []):
-			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and (c as Person).mind in DROP_MINDS:
+			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and _frightened(c as Person):
 				rules.banner.emit(DROP_BANNER)
 				_spoil(s, "dropped")
 				break
+
+
+## `p`'s mind is fright (H7): PANIC or FLEE, or SHELTER when a fright sent him in (not a hallowed building or the rain). Only reads.
+func _frightened(p: Person) -> bool:
+	if p.mind == Person.Mind.SHELTER:
+		return crowd.shelters == null or crowd.shelters.fright_shelter(p)
+	return p.mind in DROP_MINDS
 
 
 ## Whether watchman `w` of `s` is on guard now (v0.11 M2): alive, out of doors, in a calm mind, and at his post.

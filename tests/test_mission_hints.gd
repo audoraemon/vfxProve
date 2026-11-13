@@ -181,10 +181,11 @@ const SPEC := [
 
 
 static func run(t) -> void:
-	var was := UiTheme.word_spacing
-	UiTheme.word_spacing = true  # the HUD draws the plate with the wider spaces: so is it measured
+	var owner := Node.new()
+	UiTheme.spacing_acquire(owner)  # the HUD draws the plate with the wider spaces: so is it measured
 	_run(t)
-	UiTheme.word_spacing = was
+	UiTheme.spacing_release(owner)
+	owner.free()
 
 
 static func _run(t) -> void:
@@ -252,10 +253,11 @@ const LANTERN_SPEC := {
 
 
 static func _lantern(t) -> void:
-	var was := UiTheme.word_spacing
-	UiTheme.word_spacing = true
+	var owner := Node.new()
+	UiTheme.spacing_acquire(owner)
 	_lantern_lines(t)
-	UiTheme.word_spacing = was
+	UiTheme.spacing_release(owner)
+	owner.free()
 
 
 static func _lantern_lines(t) -> void:

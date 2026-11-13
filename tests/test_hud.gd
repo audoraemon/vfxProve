@@ -182,7 +182,7 @@ static func run(t) -> void:
 	six.free()
 	six_rules.free()
 	_anchors_800x450(t, hud)
-	_spacing_owners(t, rules, crowd, town)
+	_spacing_owners(t, rules, crowd, town, hud)
 	_labels_clear_of_plates(t, hud)
 	_crisp_source(t)
 	_spaced_hints(t)
@@ -487,6 +487,16 @@ static func _lantern_clock(t) -> void:
 	director.timeline = timeline
 	Hud.details = true
 	t.check(hud.event_rows() == [["0:30", "Dawn"], ["--:--", "The Bearer waits for the Herald"]], "and sorts after the timed ones (%s)" % [hud.event_rows()])
+	# A wide strip (two rows, one a long line, over 380 u) never lies under the how-to-win plate, whatever the plate's width: hint_top() drops the plate below it.
+	lw.rows = [{"in": 12.0, "label": "The Lantern-Bearer sets out from the cathedral and walks the whole long way round to the tower"}]
+	Hud.details = true
+	var strip := hud.events_rect(640.0)
+	t.check(strip.size.x > 380.0 and hud.hint_rect().has_area() and not hud.hint_rect().intersects(strip),
+		"a wide strip (%.0f u) and the hint plate do not meet (%s over %s)" % [strip.size.x, hud.hint_rect(), strip])
+	lw.rows = [{"in": 12.0, "label": "The Lantern-Bearer sets out"}]
+	var narrow := hud.events_rect(640.0)
+	t.check(narrow.size.x < 380.0 and not hud.hint_rect().intersects(narrow) and narrow.position.x >= Hud.EVENTS_LEFT_MIN - 0.01,
+		"a short strip keeps right of the plate's reach (%s)" % narrow)
 	director.timeline = null
 	lw.rows = []
 	t.check(hud.event_rows().is_empty(), "and none when it has none")
@@ -670,20 +680,32 @@ static func _spaced_hints(t) -> void:
 
 ## The HUD holds the wider spaces as one owner among others (Task 5 fix round): a new Hud set up and the old one freed (a multi-act night) leaves them on, a second
 ## owner (the skill tree) coming and going never clears the HUD's, and one owner acquiring twice still releases once.
-static func _spacing_owners(t, rules: Rules, crowd: Crowd, town: Town) -> void:
+static func _spacing_owners(t, rules: Rules, crowd: Crowd, town: Town, main: Hud) -> void:
+	UiTheme.spacing_reset()  # the test's own HUD holds them too: start from nobody
+	t.check(not UiTheme.word_spacing, "nobody holds the wider spaces to begin with")
+	# The suite runs before its SceneTree is up, so nodes cannot be added to it: the tree callbacks are called the way a tree would (as test_skill_tree does).
 	var a := Hud.new().setup(rules, crowd, town, null)
+	a._enter_tree()
 	t.check(UiTheme.word_spacing, "a HUD set up turns the wider spaces on")
 	var b := Hud.new().setup(rules, crowd, town, null)  # the next act's, built before the old one is freed
+	b._enter_tree()
+	a._exit_tree()  # the old act's HUD leaves the tree under the new one, then is freed
 	a.free()
-	t.check(UiTheme.word_spacing, "the old HUD freed under the new one: the spaces stay on")
+	t.check(UiTheme.word_spacing, "the old HUD freed out of the tree under the new one: the spaces stay on")
+	b._exit_tree()
+	t.check(not UiTheme.word_spacing, "a HUD leaving the tree lets the spaces go")
+	b._enter_tree()
+	t.check(UiTheme.word_spacing, "and putting it back turns them on again")
 	var tree := Node.new()  # stands in for the skill tree
 	UiTheme.spacing_acquire(tree)
 	UiTheme.spacing_acquire(tree)
 	UiTheme.spacing_release(tree)
 	t.check(UiTheme.word_spacing, "a tree opening and closing over a HUD does not clear its spaces (a double acquire counts once)")
 	tree.free()
+	t.check(UiTheme.word_spacing, "the tree stand-in freed: the HUD still holds them")
 	b.free()
-	t.check(UiTheme.word_spacing, "and the first HUD of the test, still alive, holds them")
+	t.check(not UiTheme.word_spacing, "the last HUD gone: the spaces go")
+	UiTheme.spacing_acquire(main)  # the test's own HUD goes on holding them
 
 
 ## No tag label sits under the clock, the status plate, a banner's bar or Cael's plate: tag_layout() is given them as taken plates.

@@ -262,6 +262,8 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 
 
 func _enter_tree() -> void:
+	if _rules != null:
+		UiTheme.spacing_acquire(self)  # a HUD taken out of the tree and put back (idempotent after setup())
 	if not UiScale.notifier.changed.is_connected(_on_scale):
 		UiScale.notifier.changed.connect(_on_scale)
 
@@ -1751,7 +1753,8 @@ func clock_rect(w: float) -> Rect2:
 func overlay_rects() -> Array[Rect2]:
 	var w := _view().x
 	var out: Array[Rect2] = []
-	for r: Rect2 in [clock_rect(w), status_rect(), banner_rect(w), subtitle_rect(w)]:
+	var playing := not intro and not rite_plate_up()  # the status line is a play plate: not drawn in the intro or under a rite's win plate
+	for r: Rect2 in [clock_rect(w), status_rect() if playing else Rect2(), banner_rect(w), subtitle_rect(w)]:
 		if r.has_area():
 			out.append(r)
 	return out

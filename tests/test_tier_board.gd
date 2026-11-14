@@ -87,13 +87,19 @@ static func _best(t) -> void:
 	save.descend.most_wishes["warning"] = 2
 	t.check(board.best_line("warning") == "Cleared  best 3:12  wishes 2", "its fastest and most wishes (%s)" % board.best_line("warning"))
 	# A best line wraps between its parts, never inside one, and keeps its double spaces (v0.11 M2, Task 8): on a card with room
-	# it is the one line; on a Whisper card (95 px) "Cleared  best 3:12" fills a line and "wishes 2" has the next.
+	# it is the one line; on a Whisper card (99 px of room: 115 less PAD twice) "Cleared  best 3:12" would be a line and "wishes 2" the next, but the
+	# wide spaces of the UI-resolution UI make that first line a pixel or two too long, so each part has a line.
 	t.check(Array(board.best_lines("warning", 300.0)) == ["Cleared  best 3:12  wishes 2"],
 		"room enough: one line, the double spaces kept (%s)" % [board.best_lines("warning", 300.0)])
-	var narrow := board.best_lines("warning", 95.0)
-	t.check(Array(narrow) == ["Cleared  best 3:12", "wishes 2"] and "  ".join(narrow) == board.best_line("warning"),
-		"95 px: it breaks after a part, so no part is split (%s)" % [narrow])
-	t.check(Array(board.best_lines("tax_collector", 95.0)) == ["Not yet cleared"], "a card never cleared is its one line")
+	var room := MissionBoard.card_rect(0, 5).size.x - MissionBoard.PAD * 2.0
+	var narrow := board.best_lines("warning", room)
+	t.check(narrow.size() <= 3 and "  ".join(narrow) == board.best_line("warning"),
+		"%.0f px: it breaks between parts, so no part is split (%s)" % [room, narrow])
+	var whole := true
+	for part in board.best_parts("warning"):
+		whole = whole and Array(narrow).any(func(line: String) -> bool: return part in line)
+	t.check(whole, "and every part is whole on a line (%s)" % [narrow])
+	t.check(Array(board.best_lines("tax_collector", room)) == ["Not yet cleared"], "a card never cleared is its one line")
 	board.free()
 
 

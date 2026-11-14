@@ -35,6 +35,9 @@ const CONFIRM_WIDTH := 420.0
 const CONFIRM_Y := 160.0
 const CONFIRM_BUTTONS_Y := 196.0
 
+## PAUSED's baseline: above the mission's name bar (the HUD's banner, 116 to 144), which stays up under the pause and used to run through the word.
+const TITLE_Y := 108.0
+
 var _ui: Control
 var _menu: Menu
 var _hover := ""
@@ -70,11 +73,10 @@ func setup(campaign := false, settings: Settings = null, path := Settings.PATH, 
 	var layer := CanvasLayer.new()
 	layer.layer = 20  # over the HUD
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the menu leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	if memory:
 		_menu = Menu.column(["resume", "leave_memory"], ["Resume", "Leave"], 320.0, 148.0, 140.0)
 	elif endless:
@@ -85,6 +87,15 @@ func setup(campaign := false, settings: Settings = null, path := Settings.PATH, 
 			320.0, 148.0, 140.0)
 	_rows = _menu
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)
 
 
 ## The actions of the rows now shown, top to bottom (a test reads them).
@@ -216,12 +227,15 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.0, 0.0, 0.0, 0.55))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.0, 0.0, 0.0, 0.55))
 	var title := "PAUSED"
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), 126.0), title,
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), TITLE_Y), title,
 		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
 	if _confirm:
 		var lines := UiTheme.wrap(confirm_line(), CONFIRM_WIDTH, UiTheme.SIZE_BODY)
+		# The red warning sits on a plate: over the dimmed town it was hard to read.
+		_ui.draw_rect(Rect2(320.0 - CONFIRM_WIDTH * 0.5 - 8.0, CONFIRM_Y - 14.0, CONFIRM_WIDTH + 16.0,
+			UiTheme.LINE_BODY * float(lines.size() - 1) + 20.0), Color(0.02, 0.02, 0.04, 0.85))
 		for i in lines.size():
 			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(lines[i], UiTheme.SIZE_BODY) * 0.5),
 				CONFIRM_Y + UiTheme.LINE_BODY * float(i)), lines[i], UiTheme.SIZE_BODY, UiTheme.COL_BAD if _forfeits else UiTheme.COL_TEXT)

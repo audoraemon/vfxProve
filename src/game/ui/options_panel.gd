@@ -41,7 +41,17 @@ func setup(s: Settings, path := Settings.PATH) -> OptionsPanel:
 	# The pause duck would bury the very thing the Music bar sets.
 	_was_ducked = Music.is_ducked()
 	Music.set_ducked(false)
+	UiTheme.spacing_acquire(self)  # opened over the title or the pause menu, which hold it too; each owner counts once
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)
 
 
 func is_open() -> bool:
@@ -147,8 +157,8 @@ func _pick(p: Vector2) -> void:
 func _draw() -> void:
 	if _settings == null:
 		return
-	draw_rect(Rect2(0, 0, 640, 360), Color(0.0, 0.0, 0.0, 0.55))
-	draw_rect(PANEL, Color(0.03, 0.03, 0.05, 0.98))
+	draw_rect(UiScale.backdrop_of(self), Color(0.0, 0.0, 0.0, 0.55))
+	draw_rect(PANEL, Color(0.03, 0.03, 0.05, 1.0))  # opaque: the menu behind it showed through as ghost words
 	UiTheme.frame(self, PANEL, true)
 	UiTheme.text(self, Vector2(roundf(320.0 - UiTheme.width(TITLE, UiTheme.SIZE_BIG) * 0.5), PANEL.position.y + 26.0), TITLE,
 		UiTheme.SIZE_BIG, UiTheme.COL_GOLD)

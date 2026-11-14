@@ -28,7 +28,7 @@ const BOARD_MARGIN := 8.0
 const CARD := Vector2(300.0, 230.0)
 const CARD_GAP := 12.0
 const CARD_TOP := 62.0
-const PAD := 10.0
+const PAD := 8.0
 ## The most lines a card's brief may wrap to (v0.11 M2): five cards a tab are 115 px wide, and seven lines end above the rule
 ## in the worst case, a best that wraps to three lines (a cleared card with a wide time and wishes; card 230 high: two name
 ## lines, the type, then 15 px a line, which leaves 5 px).
@@ -98,12 +98,20 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # the cards are fitted for the wider spaces; released when the board leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # the board is 640x360 and centred in the area (it is not stretched)
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)
 
 
 ## The board's state: the save's, or a fresh one with no save.
@@ -234,12 +242,12 @@ func best_line(id: String) -> String:
 
 
 ## A card's brief wrapped to `room`, line by line (v0.11 M2: Whisper's five cards are 115 px wide).
-func brief_lines(id: String, room: float) -> PackedStringArray:
+func brief_lines(id: String, room: float, size := UiTheme.SIZE_BODY) -> PackedStringArray:
 	var out := PackedStringArray()
 	var def: MissionDef = _defs.get(id)
 	if def != null and MissionBook.split_city(id)[1] == &"" and not RiteBook.has(id) and not HuntBook.has(id):  # a rite's card, like a town's, has no brief (god P3)
 		for brief in def.brief:
-			out.append_array(UiTheme.wrap(brief, room, UiTheme.SIZE_BODY))
+			out.append_array(UiTheme.wrap(brief, room, size))
 	return out
 
 
@@ -307,15 +315,59 @@ func card_title(id: String) -> String:
 
 ## The y of the first line of a card's brief (v0.11 M2, Task 8): under its name, however many lines that wraps to, and its type.
 func brief_top(id: String, r: Rect2) -> float:
-	var def: MissionDef = _defs.get(id)
-	var names := UiTheme.wrap(card_title(id), r.size.x - PAD * 2.0 - 12.0, UiTheme.SIZE_BIG).size()
-	return r.position.y + PAD + 14.0 + (UiTheme.LINE_BODY + 3.0) * float(names) + UiTheme.LINE_SMALL * float(kind_lines(id).size()) + 8.0
+	var names := UiTheme.wrap(card_title(id), title_room(id, r), title_size(id, r)).size()
+	return r.position.y + PAD + 14.0 + (UiTheme.LINE_BODY + 3.0) * float(names) + UiTheme.LINE_SMALL * float(kind_rows(id, r).size()) + 8.0
+
+
+## A card's name size: the same on every card of the open tab (a row of mixed type reads as a mistake). SIZE_BIG, or SIZE_BODY, or SIZE_SMALL when a
+## word of some card's name is wider than its room at the larger one ("Collector" on the DEV tab's seven 78 px cards ran out of its frame).
+func title_size(id: String, r: Rect2) -> int:
+	var size := _name_size(id, r)
+	for other in missions():
+		size = mini(size, _name_size(other, r))
+	return size
+
+
+func _name_size(id: String, r: Rect2) -> int:
+	var room := title_room(id, r)
+	var title := card_title(id)
+	for size in [UiTheme.SIZE_BIG, UiTheme.SIZE_BODY]:
+		var fits := true
+		for line in UiTheme.wrap(title, room, size):
+			if UiTheme.width(line, size) > room:
+				fits = false
+		if fits:
+			return size
+	return UiTheme.SIZE_SMALL
+
+
+## The room for a card's name: the card less its padding, and less the tick's 12 once the mission is cleared (an uncleared card has no tick).
+func title_room(id: String, r: Rect2) -> float:
+	return r.size.x - PAD * 2.0 - (12.0 if _state().cleared.has(id) else 0.0)
+
+
+## kind_lines() wrapped to the card's room, so "DEV SANDBOX" breaks into two rows on a narrow card instead of running out of its frame.
+func kind_rows(id: String, r: Rect2) -> PackedStringArray:
+	var out := PackedStringArray()
+	for line in kind_lines(id):
+		out.append_array(UiTheme.wrap(line, r.size.x - PAD * 2.0, UiTheme.SIZE_SMALL))
+	return out
 
 
 ## Where a card's brief ends (v0.11 M2, Task 8): its last line's baseline and a few pixels of descender.
 func brief_bottom(id: String, r: Rect2) -> float:
 	var room := r.size.x - PAD * 2.0
-	return brief_top(id, r) + UiTheme.LINE_BODY * float(maxi(brief_lines(id, room).size() - 1, 0)) + 3.0
+	return brief_top(id, r) + brief_step(r) * float(maxi(brief_lines(id, room, brief_size(r)).size() - 1, 0)) + 3.0
+
+
+## The brief's size on a card `r`: SIZE_BODY, or SIZE_SMALL on a card under 100 px wide (the DEV tab's seven), where 13 u wraps one or two words a line
+## and the sandbox's brief ran through the rule.
+static func brief_size(r: Rect2) -> int:
+	return UiTheme.SIZE_BODY if r.size.x >= 100.0 else UiTheme.SIZE_SMALL
+
+
+static func brief_step(r: Rect2) -> float:
+	return UiTheme.LINE_BODY if brief_size(r) == UiTheme.SIZE_BODY else UiTheme.LINE_SMALL
 
 
 ## Opens tier `t`'s tab -- locked or not: a locked one shows its rule -- on its first card.
@@ -476,7 +528,7 @@ func click(point: Vector2) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.03, 0.03, 0.05, 1.0))
 	UiTheme.text(_ui, Vector2(8, 24), "THE TIERS", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 	var head := header_text()
 	UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(head, UiTheme.SIZE_SMALL), 22.0), head, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
@@ -559,21 +611,22 @@ func _draw_card(r: Rect2, id: String, on: bool, rows: int) -> void:
 	var room := r.size.x - PAD * 2.0
 	var text_col := UiTheme.COL_TEXT if on else UiTheme.COL_DIM
 	var y := r.position.y + PAD + 14.0
-	for line in UiTheme.wrap(card_title(id), room - 12.0, UiTheme.SIZE_BIG):
-		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BIG, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
+	var name_size := title_size(id, r)
+	for line in UiTheme.wrap(card_title(id), title_room(id, r), name_size):
+		UiTheme.text(_ui, Vector2(x, y), line, name_size, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
 		y += UiTheme.LINE_BODY + 3.0
 	if _state().cleared.has(id):
 		UiTheme.mark(_ui, Vector2(r.end.x - PAD - 7.0, r.position.y + PAD + 2.0), true)
 	var town: bool = MissionBook.split_city(id)[1] != &""
-	var kinds := kind_lines(id)
+	var kinds := kind_rows(id, r)
 	for i in kinds.size():
 		# A town mission's town is gold on every card (v0.12); the type follows the card's own colour.
 		UiTheme.text(_ui, Vector2(x, y + UiTheme.LINE_SMALL * float(i)), kinds[i], UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD if on or (town and i == 0) else UiTheme.COL_DIM)
 	y = brief_top(id, r)
-	for line in brief_lines(id, room):
-		UiTheme.text(_ui, Vector2(x, y), line, UiTheme.SIZE_BODY, text_col)
-		y += UiTheme.LINE_BODY
+	for line in brief_lines(id, room, brief_size(r)):
+		UiTheme.text(_ui, Vector2(x, y), line, brief_size(r), text_col)
+		y += brief_step(r)
 	var best := best_lines(id, room)
 	var rule := rule_y(r, maxi(rows, best.size()))
 	_ui.draw_line(Vector2(x, rule), Vector2(r.end.x - PAD, rule), UiTheme.COL_GOLD_DARK, 1.0)

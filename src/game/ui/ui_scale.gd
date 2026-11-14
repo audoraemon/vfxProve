@@ -196,6 +196,13 @@ static func backdrop(frame: Control) -> Rect2:
 	return Rect2(-frame.position, area())
 
 
+## The whole area in `item`'s own coordinates, for an item that sits inside a design frame (an overlay panel filling the frame): its dimmer reaches the
+## screen's edges whatever the frame's offset. Without a tree (a test) the item is taken to be at the origin.
+static func backdrop_of(item: CanvasItem) -> Rect2:
+	var origin := item.get_global_transform_with_canvas().origin if item.is_inside_tree() else Vector2.ZERO
+	return Rect2(-origin, area())
+
+
 static func _place(blocker: Control, child: Control) -> void:
 	blocker.position = Vector2.ZERO
 	blocker.size = area()

@@ -52,13 +52,21 @@ func setup(best_score: int, best_rank: String, settings: Settings = null, path :
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # the menu's text is fitted for the wider spaces; released when the title leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	_menu = Menu.column(ROWS, LABELS, 320.0, 176.0, 132.0, 4.0)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a title set up in a test)
 
 
 func options_open() -> bool:
@@ -115,10 +123,17 @@ func _on_gui_input(event: InputEvent) -> void:
 			action.emit(a)
 
 
+## The plate under the best-result line, `text_w` wide text centred on x 320.
+static func best_rect(text_w: float) -> Rect2:
+	return Rect2(roundf(320.0 - text_w * 0.5) - 6.0, 300.0, text_w + 12.0, 17.0)
+
+
 func _draw_ui() -> void:
-	_ui.draw_rect(BAND, Color(0.02, 0.02, 0.04, 0.66))
-	_ui.draw_line(BAND.position, Vector2(BAND.end.x, BAND.position.y), UiTheme.COL_GOLD_DARK, 1.0)
-	_ui.draw_line(Vector2(BAND.position.x, BAND.end.y), BAND.end, UiTheme.COL_GOLD_DARK, 1.0)
+	var screen := UiScale.backdrop(_ui)
+	var band := Rect2(screen.position.x, BAND.position.y, screen.size.x, BAND.size.y)  # the band runs edge to edge
+	_ui.draw_rect(band, Color(0.02, 0.02, 0.04, 0.66))
+	_ui.draw_line(band.position, Vector2(band.end.x, band.position.y), UiTheme.COL_GOLD_DARK, 1.0)
+	_ui.draw_line(Vector2(band.position.x, band.end.y), band.end, UiTheme.COL_GOLD_DARK, 1.0)
 	var title := "KINGDOMS AMID KATACLYSM"
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), 128.0), title,
 		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
@@ -127,5 +142,6 @@ func _draw_ui() -> void:
 	_menu.draw_on(_ui, _hover)
 	if _best_score > 0:
 		var best := "Best %d  %s" % [_best_score, _best_rank]
-		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(best, UiTheme.SIZE_SMALL) * 0.5), 312.0), best,
-			UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+		var best_w := UiTheme.width(best, UiTheme.SIZE_SMALL)
+		_ui.draw_rect(best_rect(best_w), Color(0.02, 0.02, 0.04, 0.78))  # a plate: the town behind it is busy
+		UiTheme.text(_ui, Vector2(roundf(320.0 - best_w * 0.5), 312.0), best, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)

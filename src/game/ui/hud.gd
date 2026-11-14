@@ -968,6 +968,8 @@ static func tag_layout(tags: Array[MapTag], xf: Transform2D, view: Vector2, keep
 		if not t.valid():
 			continue
 		var c := tag_point(t, xf)
+		if not t.edge and Rect2(Vector2.ZERO, view).has_point(c):
+			c = c.clamp(Vector2.ONE * (t.size + 1.0), (view - Vector2.ONE * (t.size + 1.0)).max(Vector2.ONE * (t.size + 1.0)))  # a diamond at the screen's side stays whole
 		var e := {"tag": t, "c": c, "mode": "", "arrow": Vector2.INF, "dir": Vector2.ZERO, "label": Rect2(), "show": false}
 		var hidden := keep and t.edge and keepout.has_point(c)
 		var under := avoid.has_area() and t.edge and avoid.has_point(c)

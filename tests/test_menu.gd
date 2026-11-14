@@ -57,6 +57,11 @@ static func _frames(t) -> void:
 	t.check(pause.options_open() and UiScale.backdrop_of(pause._panel) == Rect2(-offset, Vector2(800, 450)),
 		"pause: the options panel's dimmer reaches all four edges of the area")
 	t.check(PauseMenu.TITLE_Y <= Hud.BANNER_TOP - 6.0, "pause: PAUSED sits above the mission's name bar (%s < %s)" % [PauseMenu.TITLE_Y, Hud.BANNER_TOP])
+	for a in [Vector2i(640, 360), Vector2i(683, 384), Vector2i(640, 400), Vector2i(1000, 800), Vector2i(640, 1138), Vector2i(360, 1000)]:
+		UiScale.set_test_area(a)
+		var on_screen := PauseMenu.title_y(UiScale.design_offset().y) + UiScale.design_offset().y
+		t.check(on_screen >= PauseMenu.TITLE_MIN_Y and on_screen <= Hud.BANNER_TOP - 6.0, "pause: PAUSED sits on the screen above the name bar in a %s area (%s)" % [a, on_screen])
+	UiScale.set_test_area(Vector2i(800, 450))
 	var lines := UiTheme.wrap(PauseMenu.CONFIRM_HUNT % "Two believers would be sealed", PauseMenu.CONFIRM_WIDTH, UiTheme.SIZE_BODY)
 	t.check(lines.size() <= 3, "pause: the Hunt's confirm stays within three lines with the wide spaces (%d)" % lines.size())
 	pause.queue_free()

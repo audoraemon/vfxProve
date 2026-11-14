@@ -46,14 +46,20 @@ static func _headless_keeps(t) -> void:
 static func _visible_capped(t) -> void:
 	for row in TABLE:
 		var lay := UiScale.layout(row[0])
-		var seen := Vector2(lay["area"]) / float(lay["fit"])
-		t.check(seen.x <= 840.0 + 1e-3 and seen.y <= 360.0 + 1e-3, "window %s sees %s reference px, within 840x360" % [row[0], seen])
+		var cam := CameraShake.new()
+		cam.set_view_fit(float(lay["fit"]))
+		cam.zoom_to(1.0)
+		var seen := Vector2(lay["area"]) / cam.zoom.x  # what a real camera of that fit shows at logical zoom 1
+		t.check(seen.x <= 840.0 + 1e-3 and seen.y <= 360.0 + 1e-3, "window %s: a real camera sees %s reference px, within 840x360" % [row[0], seen])
 		t.check(absf(seen.x - 840.0) < 1e-2 or absf(seen.y - 360.0) < 1e-2, "window %s uses its full allowance on one side" % [row[0]])
+		cam.zoom_to(0.6)
+		t.check((Vector2(lay["area"]) / cam.zoom.x * 0.6).x <= 840.0 + 1e-3, "window %s: the cap holds at another zoom" % [row[0]])
+		cam.free()
 
 
 ## No code in src/ writes a camera's zoom directly: every writer goes through CameraShake.zoom_to (the fit applies).
 static func _zoom_lint(t) -> void:
-	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(camera|cam|_camera|_cam|shake|_shake)\\.zoom\\s*=[^=]|\\.zoom\\s*=\\s*Vector2")
+	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(camera|cam|_camera|_cam|shake|_shake)\\.zoom(\\.[xy])?\\s*([-+*/]?=)[^=]|\\.zoom\\s*[-+*/]?=\\s*Vector2|tween_property\\([^)]*\"zoom\"|\\.set\\(\"zoom\"|set_deferred\\(\"zoom\"")
 	var bad: Array = []
 	var seen := 0
 	var stack: Array = ["res://src"]

@@ -213,6 +213,51 @@ static func _sim_independent(t) -> void:
 	_drop(wv)
 
 
+## A resize re-clamps the camera with the NEW fit: panned to an edge, zoomed out, then a wider layout: the view stays on the drawn ground.
+static func _resize_reclamps(t) -> void:
+	var made := await _hosted_mission(t)
+	var wv: WorldView = made[0]
+	var m: Mission = made[1]
+	m.skip_intro()
+	await t.process_frame
+	m._bf.camera.zoom_to(Mission.ZOOM_MIN)
+	m._pan(Vector2(1.0e6, 1.0e6))
+	m._pan(Vector2.ZERO)
+	for window in [Vector2i(3440, 1440), Vector2i(1600, 900), Vector2i(1366, 768), Vector2i(1280, 720)]:
+		UiScale.apply(UiScale.layout(window))
+		var view := Vector2(wv.viewport.size)
+		var cam := m._bf.camera
+		t.near(cam.view_fit, UiScale.layout(window)["fit"], 1e-6, "%s: the camera has the layout's fit" % [window])
+		var held := Mission.clamp_view(cam.position, cam.zoom.x, view)
+		t.check(held.is_equal_approx(cam.position), "%s: after the resize the camera is inside the clamp for the new fit and size (%s vs %s)" % [window, cam.position, held])
+	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
+	_drop(wv)
+
+
+## Picking at an area-shaped viewport: the area's centre is the camera's ground point, and the corners are symmetric about it.
+static func _picking(t) -> void:
+	var wv: WorldView = await _view(t)
+	var bf := Battlefield.new()
+	wv.host(bf)
+	UiScale.apply(UiScale.layout(Vector2i(2560, 1080)))  # 853x360 units
+	bf.camera.zoom_to(0.8)
+	bf.camera.position = Vector2(120, 40)
+	await t.process_frame
+	await t.process_frame
+	var inv := bf.get_canvas_transform().affine_inverse()
+	var area := Vector2(wv.viewport.size)
+	t.check(area == Vector2(853, 360), "the world viewport is the 853x360 area")
+	var centre := inv * (area * 0.5)
+	t.check(centre.is_equal_approx(bf.camera.get_screen_center_position()), "the area's centre is the camera's point (%s vs %s)" % [centre, bf.camera.get_screen_center_position()])
+	t.check(Iso.screen_to_ground(centre).is_equal_approx(Iso.screen_to_ground(bf.camera.get_screen_center_position())), "and its ground cell")
+	var a := (inv * Vector2.ZERO) - centre
+	var b := (inv * area) - centre
+	t.check((a + b).length() < 1e-3, "the top-left and bottom-right corners are symmetric about the centre")
+	t.near(b.x, area.x * 0.5 / bf.camera.zoom.x, 1e-3, "half the width in world px at the render zoom")
+	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
+	_drop(wv)
+
+
 ## A real Mission (Warning, seed 7) hosted in a view on the root; the caller frees the view.
 static func _hosted_mission(t) -> Array:
 	City.use(&"aldermere")
@@ -375,6 +420,8 @@ static func run(t) -> void:
 	await _mouse_identity(t)
 	await _sim_view_pinned(t)
 	await _sim_independent(t)
+	await _resize_reclamps(t)
+	await _picking(t)
 	await _self_host(t)
 	await _no_ui_in_world(t)
 	await _frozen(t)

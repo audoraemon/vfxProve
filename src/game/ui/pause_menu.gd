@@ -37,6 +37,16 @@ const CONFIRM_BUTTONS_Y := 196.0
 
 ## PAUSED's baseline: above the mission's name bar (the HUD's banner, 116 to 144), which stays up under the pause and used to run through the word.
 const TITLE_Y := 108.0
+## The least baseline PAUSED may take on the screen (its 32 u glyphs stay in the area).
+const TITLE_MIN_Y := 40.0
+
+
+## PAUSED's baseline in the frame's local coordinates. The mission's name bar is anchored to the area's top, so the title keeps its
+## screen position TITLE_Y whatever the area's height: the frame sits `offset_y` down, so the local y is negative in a tall area
+## (still on screen: local + offset). Never above the top margin on the screen.
+static func title_y(offset_y: float) -> float:
+	return maxf(TITLE_Y, TITLE_MIN_Y) - offset_y
+
 
 var _ui: Control
 var _menu: Menu
@@ -220,7 +230,7 @@ func _draw_ui() -> void:
 	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.0, 0.0, 0.0, 0.55))
 	var title := "PAUSED"
 	# The mission's name bar is anchored to the area's top, not centred: PAUSED keeps its place above it when the area is taller than 360.
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), TITLE_Y - UiScale.design_offset().y), title,
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), title_y(UiScale.design_offset().y)), title,
 		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
 	if _confirm:
 		var lines := UiTheme.wrap(confirm_line(), CONFIRM_WIDTH, UiTheme.SIZE_BODY)

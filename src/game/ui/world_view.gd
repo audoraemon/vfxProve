@@ -77,10 +77,12 @@ func _exit_tree() -> void:
 
 ## The window changed: the world viewport (and the picture of it) takes the UI area, and every camera in it takes the new fit, keeping
 ## its logical zoom. The simulation reads neither (SIM_VIEW, logical zoom).
+## The fit goes first: resizing the viewport emits its size_changed at once, and the hosted scene re-clamps its camera on it, which must
+## see the new fit (the render zoom) together with the new size.
 func _on_layout(lay: Dictionary) -> void:
-	resize(Vector2i(lay["area"]))
 	for cam in viewport.find_children("*", "CameraShake", true, false):
 		(cam as CameraShake).set_view_fit(float(lay["fit"]))
+	resize(Vector2i(lay["area"]))
 
 
 func _notification(what: int) -> void:

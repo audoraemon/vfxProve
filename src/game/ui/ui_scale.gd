@@ -29,9 +29,9 @@ static func layout(window: Vector2i) -> Dictionary:
 	return {"k": k, "area": area, "offset": offset, "fit": fit}
 
 
-## Whether the root is expanded to the whole window (Task 9). Until then the area stays 640x360 and Godot's own integer scaling
-## (aspect "keep") centres the frame; k is the real integer scale either way.
-const EXPAND_ON := false
+## Whether the root is expanded to the whole window: the area is floor(window / k) units and the UI and world fill it (the root's aspect
+## becomes EXPAND at run time; project.godot keeps "keep" for headless). False would keep 640x360 centred by Godot's integer scaling.
+const EXPAND_ON := true
 
 static var _installed := false
 
@@ -52,6 +52,8 @@ static func install(tree: SceneTree) -> void:
 		root.size = want
 		root.position = Vector2i.ZERO
 	root.content_scale_size = DESIGN
+	if EXPAND_ON:
+		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND  # fill any window; _follow_root sets the size to floor(window / k)
 	root.size_changed.connect(_follow_root.bind(root))
 	_follow_root(root)
 
@@ -115,6 +117,11 @@ static func _follow_root(root: Window) -> void:
 static func apply(lay: Dictionary) -> void:
 	_layout = lay
 	notifier.changed.emit(lay)
+
+
+## The current layout (a copy), for a node that joins after the last apply().
+static func layout_now() -> Dictionary:
+	return _layout.duplicate()
 
 
 static func k() -> int:

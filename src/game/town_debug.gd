@@ -210,6 +210,7 @@ func _ready() -> void:
 	_bf.name = "Battlefield"
 	add_child(_bf)
 	_bf.ctx.impact.dim_scale = 0.4
+	get_viewport().size_changed.connect(func() -> void: _pan(Vector2.ZERO))  # a new window size: back onto the drawn ground
 	_zoom_readout = ZoomReadout.new()
 	_bf.ui_parent().add_child(_zoom_readout)
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
@@ -224,7 +225,7 @@ func _ready() -> void:
 	var scripted := "--capture-town" in args or "--citadel-test" in args or "--crowd-test" in args or "--bench" in args
 	_look = Town.look_from_args(args)
 	_rebuild(7 if scripted else Time.get_ticks_usec())
-	_bf.camera.zoom = Vector2.ONE * 0.75
+	_bf.camera.zoom_to(0.75)
 	_bf.camera.position = Iso.ground_to_screen(Vector2(0.8, 2.0)).round()
 	await FxParts.prewarm(_bf.ctx.distort)
 	if "--capture-town" in args:
@@ -326,11 +327,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
 		_pan(-event.relative / _bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
-		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
+		var z := _bf.camera.logical_zoom() * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
+		_bf.camera.zoom_to(clampf(z, ZOOM_MIN, ZOOM_MAX))
 		_pan(Vector2.ZERO)
 		if is_instance_valid(_zoom_readout):
-			_zoom_readout.show_zoom(_bf.camera.zoom.x)
+			_zoom_readout.show_zoom(_bf.camera.logical_zoom())
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			_pressing = true
@@ -421,14 +422,14 @@ func _capture_town(only := "", frames := 1) -> void:
 				await _bf.wait_frames(10)
 			var frame := GptShowcase.shot_frame(row)
 			var vp := get_viewport().get_visible_rect().size
-			_bf.camera.zoom = Vector2.ONE * minf(float(shot[2]), minf(vp.x / (frame.size.x + 60.0),
-				vp.y / (frame.size.y + 60.0)))
+			_bf.camera.zoom_to(minf(float(shot[2]), minf(vp.x / (frame.size.x + 60.0),
+				vp.y / (frame.size.y + 60.0)) / _bf.camera.view_fit))
 			_bf.camera.position = frame.get_center().round()
 		else:
-			_bf.camera.zoom = Vector2.ONE * float(shot[2])
+			_bf.camera.zoom_to(float(shot[2]))
 			_bf.camera.position = (Iso.ground_to_screen(at) + Vector2(0, -30)).round()
 			if String(shot[0]).contains("_edge_"):
-				_bf.camera.position = Mission.clamp_view(Iso.ground_to_screen(at), float(shot[2]),
+				_bf.camera.position = Mission.clamp_view(Iso.ground_to_screen(at), _bf.camera.zoom.x,
 					get_viewport().get_visible_rect().size).round()
 		await _stage_shot(String(shot[0]))
 		await _bf.wait_frames(20)
@@ -591,7 +592,7 @@ func _stage_fields(file: String) -> void:
 func _citadel_test() -> void:
 	var cit := _town.citadel
 	cit.part_collapsed.connect(_log_part)
-	_bf.camera.zoom = Vector2.ONE * 0.8
+	_bf.camera.zoom_to(0.8)
 	_bf.camera.position = (Iso.ground_to_screen(TownLayout.CITADEL_ORIGIN) + Vector2(0, -60)).round()
 	await _bf.wait_frames(10)
 	_t = 0.0
@@ -623,7 +624,7 @@ func _citadel_test() -> void:
 ## Scripted run for the people: a few casts in the streets, then a log of what the crowd does — how many are
 ## alive, fleeing, queueing and escaped, and what the alarm is doing.
 func _crowd_test() -> void:
-	_bf.camera.zoom = Vector2.ONE * 0.6
+	_bf.camera.zoom_to(0.6)
 	_bf.camera.position = (Iso.ground_to_screen(Vector2(0.8, 3.0)) + Vector2(0, -30)).round()
 	await _bf.wait_frames(10)
 	_t = 0.0
@@ -643,15 +644,15 @@ func _crowd_test() -> void:
 		# who was ever going to escape already has, and the gates stand empty.
 		if not gates_shot and _t >= 18.0:
 			gates_shot = true
-			var saved_zoom := _bf.camera.zoom
+			var saved_zoom := _bf.camera.logical_zoom()
 			var saved_position := _bf.camera.position
 			for i in _town.gates.size():
 				var g: Structure = _town.gates[i]
-				_bf.camera.zoom = Vector2.ONE * 1.2
+				_bf.camera.zoom_to(1.2)
 				_bf.camera.position = Iso.ground_to_screen(g.center() - g.center().normalized() * 3.2).round()
 				await _bf.wait_frames(3)
 				await _bf.save_capture("crowd_gate_%d.png" % i)
-			_bf.camera.zoom = saved_zoom
+			_bf.camera.zoom_to(saved_zoom)
 			_bf.camera.position = saved_position
 		if _t >= next_log:
 			next_log += 1.0
@@ -680,7 +681,7 @@ func _log_part(_p: Structure) -> void:
 
 func _run_bench(only: String) -> void:
 	_hud.visible = false
-	_bf.camera.zoom = Vector2.ONE * 0.75
+	_bf.camera.zoom_to(0.75)
 	_bf.camera.position = Iso.ground_to_screen(TownLayout.CITADEL_ORIGIN).round()
 	await _bf.wait_frames(10)
 	if only != "":

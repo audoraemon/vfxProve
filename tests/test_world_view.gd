@@ -182,6 +182,37 @@ static func _sim_view_pinned(t) -> void:
 	_drop(wv)
 
 
+## The simulation's view does not depend on the window: a hosted Battlefield at 860x360 with fit 1.0238 (3440x1440) steps
+## the same Person.view as at 640x360 with fit 1, at the same logical zoom and camera position.
+static func _sim_independent(t) -> void:
+	var wv: WorldView = await _view(t)
+	var bf := Battlefield.new()
+	wv.host(bf)
+	var person := Person.view
+	var structure := Structure.view
+	bf.sim_zoom = 0.0
+	bf.camera.zoom_to(0.8)
+	bf.camera.position = Vector2(120, 40)
+	await t.process_frame  # the camera's screen centre follows its position a frame later
+	bf._process(0.0)
+	var narrow := Person.view
+	var lay := UiScale.layout(Vector2i(3440, 1440))
+	UiScale.apply(lay)
+	t.check(wv.viewport.size == Vector2i(860, 360), "the world viewport follows the layout's area (%s)" % [wv.viewport.size])
+	t.check(wv.display.size == Vector2(860, 360), "and so does the picture of it")
+	t.near(bf.camera.view_fit, 1.0238, 1e-3, "the hosted camera takes the layout's fit")
+	t.near(bf.camera.logical_zoom(), 0.8, 1e-6, "keeping its logical zoom")
+	t.near(bf.camera.zoom.x, 0.8 * bf.camera.view_fit, 1e-6, "and rendering at logical x fit")
+	await t.process_frame
+	bf._process(0.0)
+	t.check(Person.view == narrow, "Person.view is the same at 860x360 / fit 1.0238 as at 640x360 / fit 1 (%s vs %s)" % [Person.view, narrow])
+	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
+	t.check(wv.viewport.size == Vector2i(640, 360) and bf.camera.view_fit == 1.0, "back to 640x360, fit 1")
+	Person.view = person
+	Structure.view = structure
+	_drop(wv)
+
+
 ## A real Mission (Warning, seed 7) hosted in a view on the root; the caller frees the view.
 static func _hosted_mission(t) -> Array:
 	City.use(&"aldermere")
@@ -343,6 +374,7 @@ static func run(t) -> void:
 	await _keys(t)
 	await _mouse_identity(t)
 	await _sim_view_pinned(t)
+	await _sim_independent(t)
 	await _self_host(t)
 	await _no_ui_in_world(t)
 	await _frozen(t)

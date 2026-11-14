@@ -159,7 +159,7 @@ const SIM_VIEW := Vector2(640, 360)
 
 
 func sim_view_size() -> Vector2:
-	return SIM_VIEW / (sim_zoom if sim_zoom > 0.0 else camera.zoom.x)
+	return SIM_VIEW / (sim_zoom if sim_zoom > 0.0 else camera.logical_zoom())
 
 
 ## Where this world's UI goes: the hosting WorldView's ui node, or the battlefield itself when not hosted.

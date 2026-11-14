@@ -157,7 +157,7 @@ func _reset_world(seed_value: int) -> void:
 	_follow_fx = null
 	if _camera_tween:
 		_camera_tween.kill()
-	_camera.zoom = Vector2.ONE
+	_camera.zoom_to(1.0)
 	_bf.reset(seed_value)
 	if theme == "fantasy":
 		ctx.env.build_castle()
@@ -203,7 +203,7 @@ func _focus_camera(entry: Dictionary, fx: FxTimeline, ground: Vector2, extra: Di
 		_follow_slack = 0.0
 	else:
 		_camera_tween.tween_property(_camera, "position", target.round(), FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	_camera_tween.tween_property(_camera, "zoom", Vector2.ONE * zoom, FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_camera_tween.tween_method(_camera.zoom_to, _camera.logical_zoom(), zoom, FOCUS_IN).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 func _on_fx_done(fx: FxTimeline) -> void:
@@ -216,7 +216,7 @@ func _on_fx_done(fx: FxTimeline) -> void:
 		_camera_tween.kill()
 	_camera_tween = create_tween().set_parallel()
 	_camera_tween.tween_property(_camera, "position", _home_position, FOCUS_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_camera_tween.tween_property(_camera, "zoom", Vector2.ONE, FOCUS_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_camera_tween.tween_method(_camera.zoom_to, _camera.logical_zoom(), 1.0, FOCUS_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _mouse_ground() -> Vector2:
@@ -408,7 +408,7 @@ func _capture_clips(only: String) -> void:
 			if _camera_tween:
 				_camera_tween.kill()
 			_camera.position = Iso.ground_to_screen(cast_at) + Vector2(0, float(entry.get("focus_up", -40.0)))
-			_camera.zoom = Vector2.ONE * float(entry.get("zoom", SETS[set_index].zoom))
+			_camera.zoom_to(float(entry.get("zoom", SETS[set_index].zoom)))
 			_camera.reset_smoothing()
 		var run: float = plan.get("clip_run", fx.duration)
 		var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false, Image.FORMAT_RGBA8)

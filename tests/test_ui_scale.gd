@@ -21,18 +21,71 @@ static func _integer_setting(t) -> void:
 
 static func _install(t) -> void:
 	t.check(str(ProjectSettings.get_setting("display/window/stretch/mode")) == "canvas_items" and str(ProjectSettings.get_setting("display/window/stretch/aspect")) == "keep",
-		"the root draws at full resolution (canvas_items) and keeps its aspect until Task 9 expands it")
+		"the root draws at full resolution (canvas_items) and keeps its aspect in the project file (the expand is applied at run time)")
 	t.check(UiScale.window_arg(PackedStringArray(["--window=1366x768"])) == Vector2i(1366, 768), "--window=WxH is read")
 	t.check(UiScale.window_arg(PackedStringArray(["--show=tree", "--window=1280X720"])) == Vector2i(1280, 720), "among other args, either case of x")
 	t.check(UiScale.window_arg(PackedStringArray(["--window=big", "--window=0x5", "--window=12"])) == Vector2i.ZERO, "a bad or missing size is ignored")
 	t.check(UiScale.window_arg(PackedStringArray()) == Vector2i.ZERO, "no argument, no size")
 	t.check(UiScale.window_arg(PackedStringArray(["--window=99999x600"])) == Vector2i(UiScale.MAX_WINDOW, 600), "a huge side is clamped to MAX_WINDOW")
 	var eff := UiScale.effective(Vector2i(1366, 768))
-	t.check(eff["k"] == 2 and eff["area"] == Vector2i(640, 360) and eff["offset"] == Vector2i.ZERO and eff["fit"] == 1.0 and not UiScale.EXPAND_ON,
-		"until the expand, k is real and the area is the design frame (%s)" % [eff])
+	t.check(UiScale.EXPAND_ON and eff["k"] == 2 and eff["area"] == Vector2i(683, 384) and eff["offset"] == Vector2i(21, 12) and absf(eff["fit"] - 1.0667) < 1e-4,
+		"expanded: the effective layout is the table's (%s)" % [eff])
 	var before := UiScale.layout(Vector2i(1920, 1080))
 	UiScale.install(Engine.get_main_loop() as SceneTree)  # headless: a no-op
 	t.check(UiScale.k() == 1 and UiScale.area() == Vector2(640, 360) and before["k"] == 3, "install does nothing in a headless run")
+
+
+## Headless runs never expand: the root keeps aspect KEEP and the visible rect stays 640x360, fit 1.
+static func _headless_keeps(t) -> void:
+	var root := (Engine.get_main_loop() as SceneTree).root
+	t.check(root.content_scale_aspect == Window.CONTENT_SCALE_ASPECT_KEEP, "headless: UiScale.install leaves the root's aspect at KEEP")
+	t.check(Vector2i(root.get_visible_rect().size) == Vector2i(640, 360) and UiScale.fit() == 1.0, "headless: the visible rect is 640x360 and fit 1")
+
+
+## In every window of the size table the visible world (area / fit, reference px at zoom 1) is within 840x360, and fills the area.
+static func _visible_capped(t) -> void:
+	for row in TABLE:
+		var lay := UiScale.layout(row[0])
+		var seen := Vector2(lay["area"]) / float(lay["fit"])
+		t.check(seen.x <= 840.0 + 1e-3 and seen.y <= 360.0 + 1e-3, "window %s sees %s reference px, within 840x360" % [row[0], seen])
+		t.check(absf(seen.x - 840.0) < 1e-2 or absf(seen.y - 360.0) < 1e-2, "window %s uses its full allowance on one side" % [row[0]])
+
+
+## No code in src/ writes a camera's zoom directly: every writer goes through CameraShake.zoom_to (the fit applies).
+static func _zoom_lint(t) -> void:
+	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(camera|cam|_camera|_cam|shake|_shake)\\.zoom\\s*=[^=]|\\.zoom\\s*=\\s*Vector2")
+	var bad: Array = []
+	var seen := 0
+	var stack: Array = ["res://src"]
+	while not stack.is_empty():
+		var dir_path: String = stack.pop_back()
+		var dir := DirAccess.open(dir_path)
+		for d in dir.get_directories():
+			stack.append(dir_path + "/" + d)
+		for f in dir.get_files():
+			if not f.ends_with(".gd") or f == "camera_shake.gd":
+				continue
+			seen += 1
+			var src := FileAccess.get_file_as_string(dir_path + "/" + f)
+			for m in rx.search_all(src):
+				bad.append("%s/%s:%d" % [dir_path, f, src.substr(0, m.get_start()).count(char(10)) + 1])
+	t.check(seen > 100, "the zoom lint scans src (%d files)" % seen)
+	t.check(bad.is_empty(), "no direct camera zoom writes outside camera_shake.gd: %s" % [bad])
+
+
+## CameraShake: render zoom = logical zoom x fit.
+static func _fit(t) -> void:
+	var cam := CameraShake.new()
+	cam.zoom_to(0.85)
+	t.check(cam.zoom == Vector2.ONE * 0.85 and cam.logical_zoom() == cam.zoom.x, "fit 1: zoom is exactly 0.85 and the logical zoom is the same number")
+	cam.set_view_fit(1.25)
+	t.near(cam.zoom.x, 0.85 * 1.25, 1e-6, "fit 1.25: render zoom is 0.85 x 1.25")
+	t.near(cam.logical_zoom(), 0.85, 1e-6, "and the logical zoom is still 0.85")
+	cam.zoom_to(0.6)
+	t.near(cam.zoom.x, 0.75, 1e-6, "zoom_to under a fit multiplies by it")
+	cam.set_view_fit(1.0)
+	t.near(cam.zoom.x, 0.6, 1e-6, "back to fit 1 keeps the logical zoom")
+	cam.free()
 
 
 static func _layout_table(t) -> void:
@@ -286,6 +339,10 @@ static func _digits(t) -> void:
 static func run(t) -> void:
 	_integer_setting(t)
 	_install(t)
+	_headless_keeps(t)
+	_visible_capped(t)
+	_zoom_lint(t)
+	_fit(t)
 	_layout_table(t)
 	_anchor(t)
 	await _snap_and_frame(t)

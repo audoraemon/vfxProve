@@ -27,7 +27,7 @@ func _init() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.snap_2d_vertices_to_pixel = true
 	viewport.audio_listener_enable_2d = true  # the world's positional sound pans against this viewport, not the root
-	viewport.size = Vector2i(640, 360)
+	viewport.size = Vector2i(UiScale.area())
 	add_child(viewport)
 	display = TextureRect.new()
 	display.name = "Display"
@@ -63,6 +63,24 @@ func hosted() -> Node:
 func resize(area: Vector2i) -> void:
 	viewport.size = area
 	display.size = Vector2(area)
+
+
+func _enter_tree() -> void:
+	UiScale.notifier.changed.connect(_on_layout)
+	_on_layout(UiScale.layout_now())
+
+
+func _exit_tree() -> void:
+	if UiScale.notifier.changed.is_connected(_on_layout):
+		UiScale.notifier.changed.disconnect(_on_layout)
+
+
+## The window changed: the world viewport (and the picture of it) takes the UI area, and every camera in it takes the new fit, keeping
+## its logical zoom. The simulation reads neither (SIM_VIEW, logical zoom).
+func _on_layout(lay: Dictionary) -> void:
+	resize(Vector2i(lay["area"]))
+	for cam in viewport.find_children("*", "CameraShake", true, false):
+		(cam as CameraShake).set_view_fit(float(lay["fit"]))
 
 
 func _notification(what: int) -> void:

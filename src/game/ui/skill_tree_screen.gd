@@ -109,12 +109,10 @@ func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # the wheel's 640x360 coordinates, centred in the area
 	_ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	return self
 
 
@@ -637,7 +635,7 @@ func _draw_ui() -> void:
 
 func _draw_backdrop() -> void:
 	var stops := [[0.0, Color("2a1d45")], [0.26, Color("160f26")], [0.55, Color("0b0912")], [1.0, Color("050408")]]
-	_ui.draw_rect(Rect2(0, 0, 640, 360), stops[3][1])
+	_ui.draw_rect(UiScale.backdrop(_ui), stops[3][1])  # the whole area, wherever the 640x360 block sits
 	for k in range(45, 0, -1):
 		var t := float(k) / 45.0
 		var col: Color = stops[3][1]
@@ -651,7 +649,7 @@ func _draw_backdrop() -> void:
 
 
 func _draw_top_bar() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 26), Color(0, 0, 0, 0.45))
+	_ui.draw_rect(Rect2(UiScale.backdrop(_ui).position.x, 0.0, UiScale.area().x, 26.0), Color(0, 0, 0, 0.45))
 	_ui.draw_rect(BACK_RECT, Color(0.04, 0.04, 0.06, 0.85))
 	UiTheme.frame(_ui, BACK_RECT, _hover == "back")
 	_text_centred(BACK_RECT.get_center().x, BACK_RECT.position.y + 13.0, "< BACK", SMALL_PX,

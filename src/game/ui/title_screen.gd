@@ -48,7 +48,7 @@ func setup(best_score: int, best_rank: String, settings: Settings = null, path :
 	_town.name = "Town"
 	(view.viewport if view != null else self).add_child(_town)
 	_town.build(_bf.ctx.env, _bf.ground_plane, _bf.camera)
-	_bf.camera.zoom = Vector2.ONE * ZOOM
+	_bf.camera.zoom_to(ZOOM)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)

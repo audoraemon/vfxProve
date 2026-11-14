@@ -225,6 +225,7 @@ func _ready() -> void:
 	_bf.sim_zoom = SIM_PLAY_ZOOM
 	_zoom_readout = ZoomReadout.new()
 	_bf.ui_parent().add_child(_zoom_readout)  # UI is drawn in the root, never in the world viewport
+	get_viewport().size_changed.connect(_on_view_resized)  # a new window size: back onto the drawn ground
 	# Connected here and not in _start(): the field outlives a restart, so connecting per mission would stack
 	# up a handler for every mission the player has played.
 	_bf.ctx.env.structure_destroyed.connect(_on_structure_destroyed)
@@ -288,12 +289,12 @@ func _bench_view(args: PackedStringArray) -> String:
 		for c in [m.position + Vector2(m.size.x, 0.0), m.position + Vector2(0.0, m.size.y), m.end]:
 			box = box.expand(Iso.ground_to_screen(c))
 		var seen := get_viewport().get_visible_rect().size
-		_bf.camera.zoom = Vector2.ONE * minf(seen.x / box.size.x, seen.y / box.size.y)
+		_bf.camera.zoom_to(minf(seen.x / box.size.x, seen.y / box.size.y) / _bf.camera.view_fit)  # a render zoom: the whole map in the view
 		_bf.camera.position = box.get_center().round()
 		_bf.sim_zoom = 0.0  # the bench's views count what the camera shows
 		suffix = "-whole"
 	elif Battlefield.arg_value(args, "--bench-zoom") != "":
-		_bf.camera.zoom = Vector2.ONE * float(Battlefield.arg_value(args, "--bench-zoom"))
+		_bf.camera.zoom_to(float(Battlefield.arg_value(args, "--bench-zoom")))
 		_bf.sim_zoom = 0.0
 		suffix = "-z" + Battlefield.arg_value(args, "--bench-zoom")
 	else:
@@ -632,7 +633,7 @@ func _begin_intro(play: MissionDef) -> void:
 		# so their captures and numbers stay comparable: no intro for them.
 		_tour = null
 		_intro_left = 0.0
-		_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
+		_bf.camera.zoom_to(PLAY_ZOOM)
 		_bf.sim_zoom = SIM_PLAY_ZOOM
 		var framed := Vector2(0, -2) if play.id == MissionBook.LAST_JUDGEMENT else play.camera()
 		_bf.camera.position = Iso.ground_to_screen(framed).round()
@@ -640,7 +641,7 @@ func _begin_intro(play: MissionDef) -> void:
 			_hud.play_began()  # v0.11.1: a scripted run starts at once, so its captures show the how-to-win line too
 	else:
 		_rules.set_process(false)  # the clock waits for the camera
-		_bf.camera.zoom = Vector2.ONE * INTRO_FROM_ZOOM
+		_bf.camera.zoom_to(INTRO_FROM_ZOOM)
 		_bf.sim_zoom = SIM_INTRO_ZOOM
 		_bf.camera.position = Iso.ground_to_screen(play.intro_from).round()
 		var stops: Array = _director.tour() if _director != null else []
@@ -843,7 +844,7 @@ func _land() -> void:
 	_prayers_hold = 0.0
 	_tour = null
 	_bf.camera.position = Iso.ground_to_screen(play.camera()).round()
-	_bf.camera.zoom = Vector2.ONE * PLAY_ZOOM
+	_bf.camera.zoom_to(PLAY_ZOOM)
 	_bf.sim_zoom = SIM_PLAY_ZOOM
 	if is_instance_valid(_hud):
 		_hud.set_caption("")
@@ -1189,13 +1190,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
 		_pan(-event.relative / _bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-		var z := _bf.camera.zoom.x * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
-		_bf.camera.zoom = Vector2.ONE * clampf(z, ZOOM_MIN, ZOOM_MAX)
-		_bf.sim_zoom = _bf.camera.zoom.x * SIM_PLAY_ZOOM / PLAY_ZOOM
+		var z := _bf.camera.logical_zoom() * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
+		_bf.camera.zoom_to(clampf(z, ZOOM_MIN, ZOOM_MAX))
+		_bf.sim_zoom = _bf.camera.logical_zoom() * SIM_PLAY_ZOOM / PLAY_ZOOM
 		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
 		_pan(Vector2.ZERO)
 		if is_instance_valid(_zoom_readout):
-			_zoom_readout.show_zoom(_bf.camera.zoom.x)
+			_zoom_readout.show_zoom(_bf.camera.logical_zoom())
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		# Right-click first calls off a held press (note 10), and otherwise lets go of the focused power (note 7).
 		# Only a focused power can hold a press, so there was something to let go of exactly when one was focused.
@@ -1309,7 +1310,7 @@ func _process(delta: float) -> void:
 		if _tour != null:
 			_tour.step(step)
 			_bf.camera.position = Iso.ground_to_screen(_tour.camera()).round()
-			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, _tour.zoom_k())
+			_bf.camera.zoom_to(lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, _tour.zoom_k()))
 			_bf.sim_zoom = lerpf(SIM_INTRO_ZOOM, SIM_PLAY_ZOOM, _tour.zoom_k())
 			# One thing at a time (v0.11.1): a banner up means no caption (it is the HUD's one message).
 			_hud.set_caption("" if _hud.banner_up() else _tour.caption())
@@ -1318,7 +1319,7 @@ func _process(delta: float) -> void:
 			var smooth := k * k * (3.0 - 2.0 * k)  # not "ease": that is a global function, and shadowing it warns
 			var play: MissionDef = _act if _act != null else _def
 			_bf.camera.position = Iso.ground_to_screen(play.intro_from.lerp(play.camera(), smooth)).round()
-			_bf.camera.zoom = Vector2.ONE * lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth)
+			_bf.camera.zoom_to(lerpf(INTRO_FROM_ZOOM, PLAY_ZOOM, smooth))
 			_bf.sim_zoom = lerpf(SIM_INTRO_ZOOM, SIM_PLAY_ZOOM, smooth)
 		if _intro_left <= 0.0:
 			_land()
@@ -1330,6 +1331,11 @@ func _process(delta: float) -> void:
 		_pan(pan.normalized() * PAN_SPEED * real_delta / _bf.camera.zoom.x)
 	if not _scripted:
 		_aim.hover(_bf.mouse_ground())
+
+
+func _on_view_resized() -> void:
+	if _bf != null and _intro_left <= 0.0:
+		_pan(Vector2.ZERO)
 
 
 func _pan(by: Vector2) -> void:

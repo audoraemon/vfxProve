@@ -325,7 +325,7 @@ func _bench_toll(args: PackedStringArray) -> void:
 ## citizens nearest the market as `deathmark` (whole bodies; nearest by distance, then instance id, so no luck) and waits a second.
 ## Only under --bench: no effect on normal play or crowd_check.
 func _bench_cast(args: PackedStringArray) -> void:
-	var at := TownLayout.MARKET_SQUARE.get_center()
+	var at := Places.at(&"market_square")
 	var bodies := Battlefield.arg_value(args, "--bench-bodies")
 	if bodies != "" and _crowd != null:
 		var people: Array = []

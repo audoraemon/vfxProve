@@ -363,7 +363,68 @@ static func _positional_audio(t) -> void:
 	t.check(player.get_viewport().find_world_2d() == wv.viewport.find_world_2d() and wv.viewport.find_world_2d() != m.get_tree().root.find_world_2d(),
 		"the player and the listener share the world viewport's own World2D, which is not the root's")
 	t.check(wv.viewport.get_camera_2d() == m._bf.camera, "the listener's centre is the world camera (Sfx also pans from it)")
+	player.queue_free()
+	# The ear itself (Task 10): a steady tone on a probe bus with a capture effect; the left/right energy says where the engine put it.
+	var cam: CameraShake = m._bf.camera
+	var bus_idx := AudioServer.bus_count
+	AudioServer.add_bus(bus_idx)
+	AudioServer.set_bus_name(bus_idx, &"PanProbe")
+	var cap := AudioEffectCapture.new()
+	cap.buffer_length = 0.5
+	AudioServer.add_bus_effect(bus_idx, cap)
+	m.process_mode = Node.PROCESS_MODE_DISABLED  # the mission steers the camera every frame; hold it where the probe puts it (the probe's sources live outside this subtree)
+	var results := {}
+	for row in [["left", -250.0, 0.0], ["right", 250.0, 0.0], ["centre", 0.0, 0.0], ["follow_left", 250.0, 500.0], ["follow_right", 250.0, -500.0]]:
+		cam.position = Vector2(500.0, 300.0) + Vector2(float(row[2]), 0.0)
+		await t.create_timer(0.05).timeout
+		var src := AudioStreamPlayer2D.new()
+		src.bus = &"PanProbe"
+		src.stream = _tone()
+		src.max_distance = 2000.0
+		src.attenuation = 1.0
+		wv.viewport.add_child(src)
+		src.global_position = Vector2(500.0, 300.0) + Vector2(float(row[1]), 0.0)
+		cap.clear_buffer()
+		src.play()
+		await t.create_timer(0.35).timeout
+		var l := 0.0
+		var r := 0.0
+		var got := cap.get_frames_available()
+		for fr in cap.get_buffer(got):
+			l += absf(fr.x)
+			r += absf(fr.y)
+		results[row[0]] = [l, r, got]
+		print("PAN %s: source %+.0f from the camera's start, camera at x %.0f: left %.3f right %.3f over %d frames" % [row[0], row[1], cam.position.x, l, r, got])
+		src.queue_free()
+	var lr: Array = results["left"]
+	var rr: Array = results["right"]
+	var cr: Array = results["centre"]
+	t.check(lr[2] > 1000 and lr[0] + lr[1] > 1.0, "the probe heard the tone (%d frames)" % lr[2])
+	t.check(lr[0] > lr[1] * 1.25, "a sound left of the camera pans left (L %.2f R %.2f)" % [lr[0], lr[1]])
+	t.check(rr[1] > rr[0] * 1.25, "a sound right of the camera pans right (L %.2f R %.2f)" % [rr[0], rr[1]])
+	t.check(absf(cr[0] - cr[1]) < 0.15 * maxf(cr[0], cr[1]), "a sound at the camera is centred (L %.2f R %.2f)" % [cr[0], cr[1]])
+	# Same source, camera moved 500 px right (source now 250 left of the listener) and 500 px left (750 right of it): the pan follows the camera.
+	var fl: Array = results["follow_left"]
+	var fr2: Array = results["follow_right"]
+	t.check(fl[0] > fl[1] * 1.25, "the camera moved right past the source: the source now pans left (L %.2f R %.2f)" % [fl[0], fl[1]])
+	t.check(fr2[1] > fr2[0] * 1.25, "the camera moved left: the same source pans right (L %.2f R %.2f)" % [fr2[0], fr2[1]])
+	AudioServer.remove_bus(bus_idx)
 	_drop(wv)
+
+
+## 0.5 s of a 440 Hz tone, mono 16-bit, for the pan probe.
+static func _tone() -> AudioStreamWAV:
+	var rate := 22050
+	var data := PackedByteArray()
+	data.resize(rate)  # 0.5 s of 16-bit mono
+	for i in rate / 2:
+		data.encode_s16(i * 2, int(sin(TAU * 440.0 * float(i) / float(rate)) * 12000.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.stereo = false
+	w.data = data
+	return w
 
 
 ## Hosting call sites (carry-over from the 2b review): add_hosted in both modes, the title's backdrop, and a view that goes with its world.

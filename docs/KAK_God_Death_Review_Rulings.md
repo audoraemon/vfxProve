@@ -36,3 +36,14 @@ Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings
 ## Baseline (a3478ce6)
 
 crowd_check checksum=-535548941 alive=220 escaped=0. Death refs (`--only=death`): ok=33 bad=0 (silence_witness_death_play_2 records won=false reason=dawn; that is its recorded result, not a failure). Full gate at a00ca40b: two flaky timing checks seen under parallel load (test_person stagger, Lantern escort file); both pass alone.
+
+## Bench (R13, 2026-11-14, at 097b5dc2)
+
+Windowed `--bench`, the market, 3 alternating pairs each, taken when no other Godot ran (earlier runs under other sessions' load were discarded).
+
+| Pair | base avg_ms | cast avg_ms | delta |
+|---|---|---|---|
+| Grave Tide (`--bench-bodies=30`, cast `--bench-after=8`) | 9.02 / 8.74 / 8.92 | 13.90 / 11.30 / 11.04 | +4.88 / +2.56 / +2.12 (median **+2.56**) |
+| Pale Reign (cast `--bench-after=6`) | 10.57 / 9.03 / 8.89 | 12.35 / 10.10 / 10.29 | +1.78 / +1.07 / +1.40 (median **+1.40**) |
+
+Both within the 5 ms budget. Profile of the first pair (`--bench-prof`): Grave Tide adds ~0.8 ms to `people` and ~0.9 ms render CPU (about 100 more draw calls: the 30 risen, the giant, the bones); Pale adds ~0.2 ms to `people`. Pale's worst frame (68-86 ms in two runs) is a one-frame hitch, a follow-up to look at; the averages hold.

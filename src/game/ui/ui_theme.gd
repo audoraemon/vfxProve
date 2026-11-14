@@ -170,7 +170,7 @@ static func digit_font(size := TEXT_S, spaced := true) -> FontFile:
 			target += space_extra(size)
 		f.set_glyph_size(0, tex_size, 32, Vector2.ZERO)
 		f.set_glyph_uv_rect(0, tex_size, 32, Rect2())
-		f.set_glyph_texture_idx(0, tex_size, 32, 0)
+		f.set_glyph_texture_idx(0, tex_size, 32, -1)
 		f.set_glyph_advance(0, native, 32, Vector2(target / scale, 0))
 		f.fallbacks = [base]
 		# The text server rounds a scaled space on its own: measure four as drawn and take the difference off.

@@ -269,6 +269,12 @@ func bench(label: String, seconds := 9.0) -> void:
 	# --bench-prof (capital plan, Task 13): each system's share of the frame (BenchProf), the engine's own process
 	# time, and the renderer's CPU and GPU time. Off by default: the timers cost a little themselves.
 	var prof := "--bench-prof" in OS.get_cmdline_user_args()
+	# --bench-noui (dev): hide the hosted UI for the run, to tell what the HUD and overlays cost (draw calls and fps).
+	if "--bench-noui" in OS.get_cmdline_user_args() and WorldView.of(self) != null:
+		(WorldView.of(self).ui as Node).process_mode = Node.PROCESS_MODE_DISABLED
+		for c in WorldView.of(self).ui.get_children():
+			if c is CanvasItem or c is CanvasLayer:
+				c.visible = false
 	var vp := get_tree().root.get_viewport_rid()  # the root: the window, not the hosted world viewport
 	var process_ms := 0.0
 	var render_cpu := 0.0

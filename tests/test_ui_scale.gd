@@ -389,6 +389,11 @@ static func _letters(t) -> void:
 		t.check(same, "and each advances as the pixel font's own at %d u (within 1 u above 11 u: whole advances only)" % size)
 	t.check(is_equal_approx(UiTheme.font_for(UiTheme.SIZE_BODY).get_char_size(66, UiTheme.SIZE_BODY).x, base.get_char_size(66, UiTheme.SIZE_BODY).x), "the legacy 13-21 sizes keep the font's own B")
 	t.check(UiTheme.font_for(UiTheme.TEXT_S).has_char(65), "a letter that is not replaced still comes from the font behind")
+	# The face's own space must draw nothing, not an empty rect from its atlas: that rect breaks the canvas batch at every space in every string (+86 draw calls in the Warning, -4 fps).
+	for size in [11, 22]:
+		var face := UiTheme.digit_font(size)
+		var native := UiTheme.DIGIT_SMALL_NATIVE
+		t.check(face.get_glyph_texture_idx(0, Vector2i(native, 0), 32) == -1, "the %d u face's space has no texture, so it cannot break a batch" % size)
 
 
 static func run(t) -> void:

@@ -3,7 +3,7 @@ extends RefCounted
 ## The UI's size model (UI resolution spec §4, §5). One integer scale k for world and UI: k = max(1, floor(min(W/640, H/360))).
 ## A "UI unit" is k device px; the UI area is floor(window / k) units, 640x360 in headless runs and until the root is expanded.
 ## Menus keep their 640x360 layout constants in a "design frame" centred in the area; the HUD anchors to the area's edges.
-## All statics. Task 3a: the model, anchoring and frames; `apply()` is how the root's size will reach it (UiScale.install, in 3b).
+## All statics: the model (layout), anchoring and design frames, and `install()`, which expands the root to the window and feeds each resize to `apply()`.
 
 const DESIGN := Vector2i(640, 360)
 ## The widest the visible world may be, in reference px (21:9), and the height it is measured against.
@@ -29,10 +29,6 @@ static func layout(window: Vector2i) -> Dictionary:
 	return {"k": k, "area": area, "offset": offset, "fit": fit}
 
 
-## Whether the root is expanded to the whole window: the area is floor(window / k) units and the UI and world fill it (the root's aspect
-## becomes EXPAND at run time; project.godot keeps "keep" for headless). False would keep 640x360 centred by Godot's integer scaling.
-const EXPAND_ON := true
-
 static var _installed := false
 
 
@@ -52,8 +48,7 @@ static func install(tree: SceneTree) -> void:
 		root.size = want
 		root.position = Vector2i.ZERO
 	root.content_scale_size = DESIGN
-	if EXPAND_ON:
-		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND  # fill any window; _follow_root sets the size to floor(window / k)
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND  # fill any window (project.godot keeps "keep" for headless); _follow_root sets the size to floor(window / k)
 	root.size_changed.connect(_follow_root.bind(root))
 	_follow_root(root)
 
@@ -96,20 +91,9 @@ static func window_arg(args: PackedStringArray) -> Vector2i:
 	return Vector2i.ZERO
 
 
-## The layout the game uses for a window: layout(), but with the area, offset and fit of an unexpanded root until EXPAND_ON.
-static func effective(window: Vector2i) -> Dictionary:
-	var lay := layout(window)
-	if not EXPAND_ON:
-		lay["area"] = DESIGN
-		lay["offset"] = Vector2i.ZERO
-		lay["fit"] = 1.0
-	return lay
-
-
 static func _follow_root(root: Window) -> void:
-	var lay := effective(root.size)
-	if EXPAND_ON:
-		root.content_scale_size = lay["area"]
+	var lay := layout(root.size)
+	root.content_scale_size = lay["area"]
 	apply(lay)
 
 

@@ -117,9 +117,9 @@ static func space_extra(size: int) -> int:
 
 ## The digit (and, at 11 u and multiples, the confusable-capital) bitmaps as a font for text at `size`: only those and the space, with the pixel font behind it for every other character. One per size (the space
 ## differs), built once from DIGITS_*. The space is this font's own because a FontVariation's extra spacing only reaches the space of the font it wraps: it is the
-## pixel font's space at `size` plus space_extra when `spaced`, so a line is as wide as it was with the spacing on the pixel font itself.
-static func digit_font(size := TEXT_S, spaced := true) -> FontFile:
-	var cache_key := size * 2 + (1 if spaced else 0)
+## pixel font's space at `size` plus space_extra (words are always spaced out, on every screen).
+static func digit_font(size := TEXT_S) -> FontFile:
+	var cache_key := size
 	if not _digits.has(cache_key):
 		var medium := digits_medium(size)
 		var rows_of: Dictionary = DIGITS_MEDIUM if medium else DIGITS_SMALL
@@ -166,8 +166,7 @@ static func digit_font(size := TEXT_S, spaced := true) -> FontFile:
 			slot += 1
 		var scale := maxi(1, int(round(float(size) / float(native))))
 		var target := base.get_char_size(32, size).x
-		if spaced:
-			target += space_extra(size)
+		target += space_extra(size)
 		f.set_glyph_size(0, tex_size, 32, Vector2.ZERO)
 		f.set_glyph_uv_rect(0, tex_size, 32, Rect2())
 		f.set_glyph_texture_idx(0, tex_size, 32, -1)
@@ -180,18 +179,13 @@ static func digit_font(size := TEXT_S, spaced := true) -> FontFile:
 	return _digits[cache_key]
 
 
-## Whether UI text gets its extra word spacing: on by default, everywhere. Callers read it; a test that needs the narrow spaces sets it false and restores it.
-static var word_spacing := true
-
-
 ## The pixel font as the UI draws it at `size`: the digit bitmaps and a wider space (digit_font) in front of the file.
 static func font_for(size := TEXT_S) -> FontVariation:
-	var key := size * 2 + (1 if word_spacing else 0)
-	if not _variations.has(key):
+	if not _variations.has(size):
 		var v := FontVariation.new()
-		v.base_font = digit_font(size, word_spacing)
-		_variations[key] = v
-	return _variations[key]
+		v.base_font = digit_font(size)
+		_variations[size] = v
+	return _variations[size]
 
 
 ## The font for 11 u text (what callers without a size draw with).

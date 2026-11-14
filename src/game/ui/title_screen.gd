@@ -125,8 +125,8 @@ func _draw_ui() -> void:
 	_ui.draw_line(band.position, Vector2(band.end.x, band.position.y), UiTheme.COL_GOLD_DARK, 1.0)
 	_ui.draw_line(Vector2(band.position.x, band.end.y), band.end, UiTheme.COL_GOLD_DARK, 1.0)
 	var title := "KINGDOMS AMID KATACLYSM"
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), 128.0), title,
-		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.TEXT_XL) * 0.5), 128.0), title,
+		UiTheme.TEXT_XL, UiTheme.COL_GOLD)
 	var small := "KAK"
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(small) * 0.5), 150.0), small, UiTheme.SIZE_BODY, UiTheme.COL_DIM)
 	_menu.draw_on(_ui, _hover)

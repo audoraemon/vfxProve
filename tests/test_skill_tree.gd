@@ -500,27 +500,48 @@ static func _mini_cells(t) -> void:
 			"two columns at the middle +- 13, rows 24 apart from +60")
 
 
-## Locked powers draw grey, others in colour; the buttons and bars are drawn where hit() looks for them.
+## UiIcon.grey: a texture with an image gets a real grey copy (luma x 0.85, alpha kept, drawn white); one without (headless) gets itself back and the tint stand-in.
+static func _grey_copy(t) -> void:
+	var img := Image.create(2, 1, false, Image.FORMAT_RGBA8)
+	img.set_pixel(0, 0, Color(1.0, 0.0, 0.0, 1.0))
+	img.set_pixel(1, 0, Color(0.0, 0.0, 1.0, 0.5))
+	var tex := ImageTexture.create_from_image(img)
+	var g := UiIcon.grey(tex)
+	t.check(g != tex and g.has_meta("ui_grey"), "an icon with an image gets a new grey copy, marked ui_grey")
+	t.check(UiIcon.locked_tint(g) == Color.WHITE, "a real grey copy is drawn white")
+	var out := g.get_image()
+	t.check(out != null, "the grey copy gives its image back")
+	if out != null:
+		var red := out.get_pixel(0, 0)
+		t.near(red.r, 0.299 * UiIcon.GREY_LUMA, 0.01, "red goes to its luma x 0.85")
+		t.check(is_equal_approx(red.r, red.g) and is_equal_approx(red.g, red.b), "and is grey (r = g = b)")
+		t.near(out.get_pixel(1, 0).a, 0.5, 0.01, "alpha is kept")
+	var plain := PlaceholderTexture2D.new()
+	var same := UiIcon.grey(plain)
+	t.check(same == plain and UiIcon.locked_tint(same) == UiIcon.LOCKED_TINT, "a texture with no image stays itself and gets the tint stand-in")
+	t.check(UiIcon.grey(null) == null, "no texture, no grey")
+
+
+## Locked powers have their own ring colour; the buttons and bars are drawn where hit() looks for them (source-text drift guards).
 static func _states_draw(t) -> void:
 	var s := _screen("ruin", 1, 1)
 	t.check(s.node_state(1, 3, 0) == "lock", "a power of a tier above is locked")
 	t.check(SkillTreeScreen.state_edge("lock", Color.RED) == SkillTreeScreen.COL_RING_LOCKED and SkillTreeScreen.state_edge("learned", Color.RED) == UiTheme.COL_GOLD,
 		"locked and owned rings have their own colours")
-	var grey := UiIcon.grey(SkillTreeScreen.spot_icon("smite"))
-	t.check(grey != null and (grey.has_meta("ui_grey") or UiIcon.locked_tint(grey) == UiIcon.LOCKED_TINT), "a locked icon is the grey copy, or the tint stand-in")
 	s.free()
+	_grey_copy(t)
 	var src := FileAccess.get_file_as_string("res://src/game/ui/skill_tree_screen.gd")
 	var fn := func(name: String) -> String:
 		var a := src.find("func " + name + "(")
 		return src.substr(a, src.find("
 func ", a + 5) - a)
 	t.check(String(fn.call("_draw_buttons")).contains("REMEMBER_RECT") and String(fn.call("_draw_buttons")).contains("BUY_RECT")
-		and not String(fn.call("_draw_buttons")).contains("Rect2("), "the buttons are drawn at the rects hit() uses")
+		and not String(fn.call("_draw_buttons")).contains("Rect2("), "drift guard (source text): the buttons are drawn at the rects hit() uses")
 	t.check(String(fn.call("_draw_top_bar")).contains("BACK_RECT") and String(fn.call("_draw_top_bar")).contains("chip_rect(c)")
-		and String(fn.call("_draw_top_bar")).contains("points_rect()"), "the back button, chips and points box are drawn at their hit rects")
+		and String(fn.call("_draw_top_bar")).contains("points_rect()"), "drift guard (source text): the back button, chips and points box are drawn at their hit rects")
 	t.check(String(fn.call("_draw_mini")).contains("mini_rect(side_rect(side), tier, i)") and String(fn.call("_draw_node")).contains("TreeWheel.node_at(tier, i)"),
-		"nodes and minis are drawn at the places hit() tests")
-	t.check(not String(fn.call("_draw_node")).contains("0.85"), "a poor node's icon is full colour")
+		"drift guard (source text): nodes and minis are drawn at the places hit() tests")
+	t.check(not String(fn.call("_draw_node")).contains("0.85"), "drift guard (source text): a poor node's icon is full colour")
 
 
 ## A click on RAISE through the Control's gui_input buys, whatever the scale (the screen works in design units; no code depends on k).
@@ -558,12 +579,7 @@ static func _twists_whole(t) -> void:
 
 ## Words are separated (always, on every screen): a space is the font's own plus 1 u per 11 u (3 u at 11 u, 6 u at 22 u), and the refusal still wraps to two lines.
 static func _word_spacing(t) -> void:
-	t.check(UiTheme.word_spacing, "the spacing is on by default")
 	t.check(UiTheme.width(" ", 11) >= 3.0, "a space is at least 3 u wide at 11 u (%s)" % UiTheme.width(" ", 11))
 	t.check(UiTheme.width(" ", 22) >= 6.0, "and at least 6 u at 22 u (%s)" % UiTheme.width(" ", 22))
 	t.check(UiTheme.width("a b", 11) > UiTheme.width("ab", 11) + 2.0, "words are apart at 11 u")
 	t.check(UiTheme.wrap("Not enough ability points", 96.0, 11).size() == 2, "the refusal still wraps to two lines")
-	var s := _screen("ruin")
-	t.check(UiTheme.word_spacing, "opening the tree leaves it on")
-	s.free()
-	t.check(UiTheme.word_spacing, "and freeing it leaves it on")

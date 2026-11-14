@@ -228,8 +228,8 @@ func _draw_ui() -> void:
 	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.0, 0.0, 0.0, 0.55))
 	var title := "PAUSED"
 	# The mission's name bar is anchored to the area's top, not centred: PAUSED keeps its place above it when the area is taller than 360.
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), title_y(UiScale.design_offset().y)), title,
-		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.TEXT_XL) * 0.5), title_y(UiScale.design_offset().y)), title,
+		UiTheme.TEXT_XL, UiTheme.COL_GOLD)
 	if _confirm:
 		var lines := UiTheme.wrap(confirm_line(), CONFIRM_WIDTH, UiTheme.SIZE_BODY)
 		# The red warning sits on a plate: over the dimmed town it was hard to read.

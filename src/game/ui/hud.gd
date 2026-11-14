@@ -1177,7 +1177,7 @@ func slot_name_lines(i: int) -> PackedStringArray:
 	if i < 0 or i >= _slot_names.size():
 		return PackedStringArray()
 	var room := name_room()
-	var key := "%d|%d|%s" % [i, int(room), UiTheme.word_spacing]
+	var key := "%d|%d" % [i, int(room)]
 	if _name_lines.has(key):
 		return _name_lines[key]
 	var lines := name_lines(_slot_names[i], room)

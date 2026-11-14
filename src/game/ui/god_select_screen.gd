@@ -434,8 +434,8 @@ func _draw_name(i: int) -> void:
 	var col := UiTheme.COL_GOLD if on or _hover == "ring:%d" % i else Color("b2b8c8")
 	var dark := Color(0.03, 0.03, 0.06, 0.95)
 	for d in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1), Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
-		_ui.draw_string(UiTheme.font(), at + d, title, HORIZONTAL_ALIGNMENT_LEFT, -1, size, dark)
-	_ui.draw_string(UiTheme.font(), at, title, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+		_ui.draw_string(UiTheme.font_for(size), at + d, title, HORIZONTAL_ALIGNMENT_LEFT, -1, size, dark)
+	_ui.draw_string(UiTheme.font_for(size), at, title, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 
 ## The height of the top panel's text for `flavour_rows` rows of flavour and `tail_rows` small rows (name, verbs, flavour, then the tail).

@@ -27,9 +27,9 @@ static func _install(t) -> void:
 	t.check(UiScale.window_arg(PackedStringArray(["--window=big", "--window=0x5", "--window=12"])) == Vector2i.ZERO, "a bad or missing size is ignored")
 	t.check(UiScale.window_arg(PackedStringArray()) == Vector2i.ZERO, "no argument, no size")
 	t.check(UiScale.window_arg(PackedStringArray(["--window=99999x600"])) == Vector2i(UiScale.MAX_WINDOW, 600), "a huge side is clamped to MAX_WINDOW")
-	var eff := UiScale.effective(Vector2i(1366, 768))
-	t.check(UiScale.EXPAND_ON and eff["k"] == 2 and eff["area"] == Vector2i(683, 384) and eff["offset"] == Vector2i(21, 12) and absf(eff["fit"] - 1.0667) < 1e-4,
-		"expanded: the effective layout is the table's (%s)" % [eff])
+	var eff := UiScale.layout(Vector2i(1366, 768))
+	t.check(eff["k"] == 2 and eff["area"] == Vector2i(683, 384) and eff["offset"] == Vector2i(21, 12) and absf(eff["fit"] - 1.0667) < 1e-4,
+		"the layout of a 1366x768 window is the table's (%s)" % [eff])
 	var before := UiScale.layout(Vector2i(1920, 1080))
 	UiScale.install(Engine.get_main_loop() as SceneTree)  # headless: a no-op
 	t.check(UiScale.k() == 1 and UiScale.area() == Vector2(640, 360) and before["k"] == 3, "install does nothing in a headless run")
@@ -276,32 +276,61 @@ static func _width_ok(arg: String) -> bool:
 	return rx.search(arg) != null
 
 
+## The outline calls in `src` that have no explicit positive width, as "name:line"; `seen` counts the outline calls looked at.
+static func _hairline_offenders(src: String, seen: Array) -> Array:
+	var bad: Array = []
+	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(draw_line|draw_polyline_colors|draw_polyline|draw_arc|draw_rect|draw_dashed_line|draw_multiline|draw_circle)\\(")
+	for m in rx.search_all(src):
+		var name := m.get_string(1)
+		var args := _call_args(src, m.get_end() - 1)
+		var n := args.size() - 1
+		var line := src.substr(0, m.get_start()).count(char(10)) + 1
+		if name == "draw_rect":
+			if n < 3 or args[2] == "true":
+				continue  # filled (the default, or literally): no outline; a filled flag that is not a literal counts as an outline
+		elif name == "draw_circle":
+			if n < 4 or args[3] == "true":
+				continue  # filled likewise (draw_circle(pos, radius, color, filled, width))
+		seen[0] += 1
+		var w: int = WIDTH_ARG[name]
+		if n <= w or not _width_ok(args[w]):
+			bad.append("%s:%d" % [name, line])
+	return bad
+
+
+## The lint itself: one bad sample per drawing call is caught, the good forms are not (a lint that matches nothing passes for ever).
+static func _hairline_fixture(t) -> void:
+	var bad_calls := [
+		"draw_line(a, b, c)", "draw_line(a, b, c, -1.0)", "draw_polyline(p, c)", "draw_polyline(p, c, -1.0)",
+		"draw_polyline_colors(p, cs)", "draw_arc(c, r, 0.0, 1.0, 16, col)", "draw_arc(c, r, 0.0, 1.0, 16, col, -1.0)",
+		"draw_rect(r, c, false)", "draw_rect(r, c, false, -1.0)", "draw_rect(r, c, filled)",
+		"draw_dashed_line(a, b, c)", "draw_multiline(pts, c)",
+		"draw_circle(c, r, col, false)", "draw_circle(c, r, col, false, -1.0)", "draw_circle(c, r, col, filled)"]
+	for l: String in bad_calls:
+		var seen := [0]
+		t.check(_hairline_offenders(l, seen).size() == 1, "hairline lint catches: %s" % [l])
+	var ok_calls := [
+		"draw_line(a, b, c, 1.0)", "draw_line(a, b, c, UiTheme.LINE_W)", "draw_polyline(p, c, 2.0)", "draw_arc(c, r, 0.0, 1.0, 16, col, 1.0)",
+		"draw_rect(r, c)", "draw_rect(r, c, true)", "draw_rect(r, c, false, 1.0)",
+		"draw_circle(c, r, col)", "draw_circle(c, r, col, true)", "draw_circle(c, r, col, false, 1.0)",
+		"draw_circle(c + Vector2(1, 2), r, Color(1, 0, 0, 0.5), false, LINE_W)"]
+	for l: String in ok_calls:
+		var seen := [0]
+		t.check(_hairline_offenders(l, seen).is_empty(), "hairline lint accepts: %s" % [l])
+
+
 ## Every UI outline has an explicit positive width: -1.0 (and a missing width, which defaults to it) is one DEVICE px, a hairline
-## that thins out as the scale grows; 1.0 is one UI unit, k device px. Filled draw_rect calls (the default or a literal true) are not outlines.
+## that thins out as the scale grows; 1.0 is one UI unit, k device px. Filled draw_rect / draw_circle calls are not outlines.
 static func _hairline_lint(t) -> void:
 	var dir := DirAccess.open("res://src/game/ui")
 	var files := Array(dir.get_files()).filter(func(f): return f.ends_with(".gd"))
 	var bad: Array = []
-	var seen := 0
-	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(draw_line|draw_polyline_colors|draw_polyline|draw_arc|draw_rect|draw_dashed_line|draw_multiline)\\(")
+	var seen := [0]
 	for f in files:
 		var src := FileAccess.get_file_as_string("res://src/game/ui/" + f)
-		for m in rx.search_all(src):
-			var name := m.get_string(1)
-			var args := _call_args(src, m.get_end() - 1)
-			var n := args.size() - 1
-			var line := src.substr(0, m.get_start()).count(char(10)) + 1
-			if name == "draw_rect":
-				if n < 3 or args[2] == "true":
-					continue  # filled (the default, or literally): no outline; a filled flag that is not a literal counts as an outline
-			elif name == "draw_circle":
-				if n < 4 or args[3] == "true":
-					continue  # filled likewise (draw_circle(pos, radius, color, filled, width))
-			seen += 1
-			var w: int = WIDTH_ARG[name]
-			if n <= w or not _width_ok(args[w]):
-				bad.append("%s:%d %s" % [f, line, name])
-	t.check(seen > 50, "the lint sees the outline calls (%d)" % seen)
+		for o in _hairline_offenders(src, seen):
+			bad.append("%s %s" % [f, o])
+	t.check(seen[0] > 50, "the lint sees the outline calls (%d)" % seen[0])
 	t.check(bad.is_empty(), "every UI outline has an explicit positive width; offenders: %s" % [bad.slice(0, 60)])
 
 
@@ -409,6 +438,7 @@ static func run(t) -> void:
 	await _snap_and_frame(t)
 	_icons(t)
 	_crisp(t)
+	_hairline_fixture(t)
 	_hairline_lint(t)
 	_text_size_lint(t)
 	_digits(t)

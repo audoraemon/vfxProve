@@ -95,8 +95,8 @@ func _draw_ui() -> void:
 	_draw_frame()
 	var p := pages[page]
 	var title := String(p.get("title", ""))
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), TITLE_Y), title,
-		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.TEXT_XL) * 0.5), TITLE_Y), title,
+		UiTheme.TEXT_XL, UiTheme.COL_GOLD)
 	_ui.draw_line(Vector2(320.0 - RULE_W * 0.5, TITLE_Y + 12.0), Vector2(320.0 + RULE_W * 0.5, TITLE_Y + 12.0),
 		UiTheme.COL_GOLD_DARK, 1.0)
 	var y := TITLE_Y + 36.0

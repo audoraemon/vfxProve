@@ -248,7 +248,7 @@ func _on_gui_input(event: InputEvent) -> void:
 func _draw_ui() -> void:
 	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.03, 0.03, 0.05, 1.0))
 	var text := lines()
-	UiTheme.text(_ui, Vector2(24.0, 44.0), text[0], UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(24.0, 44.0), text[0], UiTheme.TEXT_XL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(24.0, 66.0), text[1], UiTheme.SIZE_BODY, UiTheme.COL_TEXT)
 	var full := 1.0 if _slot.capped() else clampf(float(_slot.divine_power) / float(maxi(_slot.need(), 1)), 0.0, 1.0)
 	_ui.draw_rect(BAR_RECT, Color(0.04, 0.04, 0.06, 0.85))

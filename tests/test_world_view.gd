@@ -234,8 +234,9 @@ static func _resize_reclamps(t) -> void:
 	_drop(wv)
 
 
-## Picking through the real path at a 2560x1080-shaped area (853x360 units, off-centre frame): a root mouse position goes through
-## mouse_in_view and mouse_ground, and lands on the ground point the camera's own transform gives for that screen point.
+## Picking at a 2560x1080-shaped area (853x360 units, off-centre frame): a mouse position (the test hook) lands on the ground point the
+## camera's own transform gives for that screen point. The real root-mouse path (get_viewport().get_mouse_position() under canvas_items)
+## is not reachable headless; FLOW's _flow_click_ground (game.gd) covers it.
 static func _picking(t) -> void:
 	var wv: WorldView = await _view(t)
 	var bf := Battlefield.new()
@@ -253,7 +254,6 @@ static func _picking(t) -> void:
 	var points := [area * 0.5, Vector2(0, 0), Vector2(852, 359), Vector2(100, 300), Vector2(700, 40)]
 	for p: Vector2 in points:
 		WorldView.test_mouse = p
-		t.check(WorldView.mouse_in_view(bf) == p, "mouse_in_view is the root mouse unchanged at %s" % [p])
 		var got := bf.mouse_ground()
 		var want: Vector2 = ground_of.call(p)
 		t.check(got.is_equal_approx(want), "mouse_ground at %s is the ground under that screen point (%s vs %s)" % [p, got, want])

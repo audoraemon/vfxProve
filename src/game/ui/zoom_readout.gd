@@ -19,7 +19,7 @@ var _view: Control
 
 
 func _init() -> void:
-	layer = 6  # above the HUD's (Battlefield.hud_layer is 5)
+	layer = 6  # the HUD's own layer (Battlefield.hud_layer is 6 too)
 	name = "ZoomReadout"
 	_view = Control.new()
 	_view.set_anchors_preset(Control.PRESET_FULL_RECT)

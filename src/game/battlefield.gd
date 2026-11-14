@@ -234,7 +234,8 @@ func mouse_ground() -> Vector2:
 func add_debug_label() -> Label:
 	var label := Label.new()
 	label.position = Vector2(6, 4)
-	label.add_theme_font_size_override("font_size", 8)
+	label.add_theme_font_override("font", UiTheme.font())  # the UI face; nothing under 11 u
+	label.add_theme_font_size_override("font_size", UiTheme.TEXT_S)
 	label.add_theme_color_override("font_color", Color("cfd8e8"))
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 2)

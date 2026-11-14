@@ -199,8 +199,8 @@ func _draw_ui() -> void:
 	UiTheme.frame(_ui, PANEL, true)
 
 	var title := title_for(won, String(_result.get("reason", "")))
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.SIZE_TITLE) * 0.5), 60.0), title,
-		UiTheme.SIZE_TITLE, UiTheme.COL_GOLD if won else UiTheme.COL_BAD)
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.TEXT_XL) * 0.5), 60.0), title,
+		UiTheme.TEXT_XL, UiTheme.COL_GOLD if won else UiTheme.COL_BAD)
 	if descend:
 		_draw_descend()
 		_draw_menu()
@@ -245,7 +245,7 @@ func _draw_rank() -> void:
 	UiTheme.text(_ui, Vector2(64.0, 162.0), rank, UiTheme.TEXT_XXL, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(66.0, 176.0), "RANK", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(_ui, Vector2(132.0, 102.0), "SCORE", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	UiTheme.text(_ui, Vector2(130.0, 132.0), thousands(int(_result.get("score", 0))), UiTheme.SIZE_TITLE)
+	UiTheme.text(_ui, Vector2(130.0, 132.0), thousands(int(_result.get("score", 0))), UiTheme.TEXT_XL)
 	if bool(_result.get("best", false)):
 		UiTheme.text(_ui, Vector2(132.0, 154.0), "NEW BEST!", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 

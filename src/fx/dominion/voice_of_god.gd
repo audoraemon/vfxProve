@@ -415,7 +415,7 @@ class Word extends Node2D:
 		var scale := pop / maxf(fx.ctx.shake.zoom.x, 0.01)
 		draw_set_transform(sky + Vector2(0, SKY_R * SKY_SQUASH + 26.0), 0.0, Vector2.ONE * scale)
 		for off: Vector2 in [Vector2(-2, 0), Vector2(2, 0), Vector2(0, -2), Vector2(0, 2)]:
-			draw_string(UiTheme.font(), Vector2(-w * 0.5, 0.0) + off, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size,
+			draw_string(UiTheme.font_for(size), Vector2(-w * 0.5, 0.0) + off, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size,
 				Color(0.9, 0.6, 0.2, 0.55 * a))
 		UiTheme.text(self, Vector2(-w * 0.5, 0.0), text, size, Color(1.0, 0.98, 0.86, a))
 		draw_set_transform(Vector2.ZERO)

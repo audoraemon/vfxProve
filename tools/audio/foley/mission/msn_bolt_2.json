@@ -1,0 +1,10 @@
+{"length": 2.0, "rms_db": -21.0, "reverb": {"rt60": 0.8, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/breathing-tired/breathing tired.wav", "at": 0.0, "from": 1.2, "dur": 0.35, "hp": 300, "gain_db": -8, "fade_in": 10, "fade_out": 120},
+  {"src": "lib:oga/footsteps-0/03-footstep.ogg", "at": 0.18, "onset": true, "gain_db": -3.4, "lp": 9000, "pitch": 0.04, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/06-footstep.ogg", "at": 0.42, "onset": true, "gain_db": -4.9, "lp": 8083, "pitch": -1.44, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/02-footstep.ogg", "at": 0.648, "onset": true, "gain_db": -6.8, "lp": 7166, "pitch": -0.27, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/06-footstep.ogg", "at": 0.865, "onset": true, "gain_db": -8.3, "lp": 6250, "pitch": -1.1, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/04-footstep.ogg", "at": 1.07, "onset": true, "gain_db": -10.4, "lp": 5333, "pitch": -0.43, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/05-footstep.ogg", "at": 1.266, "onset": true, "gain_db": -12.2, "lp": 4416, "pitch": -1.0, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/06-footstep.ogg", "at": 1.452, "onset": true, "gain_db": -13.2, "lp": 3500, "pitch": 0.38, "hp": 60, "fade_out": 60}
+]}

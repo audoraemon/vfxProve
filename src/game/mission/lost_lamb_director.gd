@@ -188,6 +188,7 @@ func _start_bolt(say: bool) -> void:
 	if bolting or led or not _alive(charge):
 		return
 	bolting = true
+	_sound(&"msn_bolt", charge.ground_pos)
 	if not is_equal_approx(bolt_pace, charge_pace):
 		charge.pace *= bolt_pace / charge_pace
 	if say:

@@ -135,8 +135,9 @@ func _start_vigil() -> void:
 	vigil = VigilRoute.new().setup(route, walkers[0], acolytes)
 	vigil.loop = true
 	vigil.pass_flame = true
-	vigil.flame_passed.connect(func(_to: Person) -> void:
+	vigil.flame_passed.connect(func(to: Person) -> void:
 		rules.banner.emit("AN ACOLYTE TAKES UP THE FLAME")
+		_sound(&"msn_relight", to.ground_pos)
 		_sync_detour())
 	vigil.start()
 
@@ -158,6 +159,7 @@ func _on_broken(s: Structure) -> void:
 		return
 	drain_left[s] = DRAIN_SECONDS
 	rules.banner.emit("A LANTERN BREAKS")
+	_sound(&"msn_shatter", s.center())
 	_broke(s)
 	_sync_detour()
 
@@ -171,6 +173,7 @@ func _drain(delta: float) -> void:
 		drain_left.erase(s)
 		drained[s] = true
 		rules.banner.emit("A LANTERN IS DRAINED (%d / %d)" % [drained.size(), shrines.size()])
+		_sound(&"msn_light_out", s.center())
 		if drained.size() == 1:
 			_say("drained")  # Cael, at the first only (spec §5.2)
 		_drained_one(s)
@@ -188,6 +191,7 @@ func _relight() -> void:
 		s.restore()
 		relit += 1
 		rules.banner.emit("THE FLAME RELIGHTS A LANTERN")
+		_sound(&"msn_relight", s.center())
 		_relit(s)
 		_sync_detour()
 
@@ -461,6 +465,7 @@ func _maybe_kneel() -> void:
 	praying.clear()
 	_call_kneelers()
 	rules.banner.emit("THE FAITHFUL KNEEL AT THE LAST LANTERN")
+	_sound(&"msn_chant", kneel_shrine.center())
 
 
 ## While the kneelers' shrine stands, each empty place round it (up to KNEELERS) takes the nearest free Faithful: at
@@ -504,6 +509,7 @@ func _knights_come() -> void:
 		knights.append(_knight(temple_door + Vector2(float(i) - float(KNIGHTS - 1) * 0.5, 0.6), false))
 	_tend_knights()
 	_say("knights")
+	_sound(&"msn_knights", temple_door)
 
 
 ## Each living Knight to a standing shrine. One whose shrine fell goes to the standing shrine with the fewest Knights

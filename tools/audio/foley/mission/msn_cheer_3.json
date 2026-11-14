@@ -1,0 +1,5 @@
+{"length": 3.6, "rms_db": -20.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/Festival_concert_people_crowd.wav", "at": 0.0, "from": 33.0, "dur": 3.4, "hp": 140, "lp": 7500, "gain_db": -2, "fade_in": 350, "fade_out": 900},
+  {"src": "lib:oga/cheers-0/cheers_1.ogg", "at": 0.25, "pitch": -2, "hp": 160, "lp": 8000, "gain_db": -5, "fade_out": 300},
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "at": 0.0, "from": 21.5, "dur": 3.0, "hp": 200, "lp": 2500, "gain_db": -14, "fade_in": 400, "fade_out": 800}
+]}

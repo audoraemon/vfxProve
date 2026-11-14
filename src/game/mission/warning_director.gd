@@ -162,6 +162,8 @@ func step(delta: float) -> void:
 			if _clock >= OMEN_AT + STARE:
 				phase = Phase.RUN
 				_retarget_in = RETARGET
+				if _alive(messenger):
+					_sound(&"msn_bolt", messenger.ground_pos)
 				_run()
 		Phase.RUN:
 			_tick_run(delta)
@@ -303,7 +305,10 @@ func _herald_tick(delta: float) -> void:
 			_retarget_in = 0.0
 		return
 	if (phase == Phase.RUN or phase == Phase.DELIVERED) and messenger.ground_pos.distance_to(lantern_door()) <= TempleReport.REACH:
+		var was_heard := rules.lantern.heard
 		rules.lantern.hear()
+		if not was_heard and rules.lantern.heard:
+			_sound(&"msn_knock", lantern_door())
 
 
 ## One look at a Herald (v0.11.2): given the Temple's door at the Herald's pace (slowed), as `_run()` gives the bell's errand; nothing while
@@ -364,6 +369,7 @@ func _take_rope() -> void:
 		return
 	bell.replace_keeper(messenger)
 	phase = Phase.DELIVERED
+	_sound(&"msn_rope", bell.foot)
 
 
 ## W1 (god T1R): the carrier stands out of doors outside the walls -- the warning stops for the night, he is sent on off the map (send_off()), and
@@ -373,6 +379,7 @@ func _out_of_walls() -> bool:
 		return false
 	var gone := messenger
 	_end("out")
+	_sound(&"msn_gate_out", gone.ground_pos)
 	if gone == _slowed:
 		gone.statuses.erase(&"slow")  # a Herald's pace is his errand's, and the errand is over
 	send_off(gone)
@@ -467,6 +474,7 @@ func _use_key() -> void:
 		return
 	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
 	if messenger.fold(at + out_dir * KEY_STEP):
+		_sound(&"msn_unbar", at)
 		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
 
 
@@ -499,6 +507,7 @@ func _judge() -> void:
 	if walls_stop and _out_of_walls():
 		return  # (god T1R) the witness stands outside the walls: the warning goes no further
 	rules.banner.emit("THE WARNING PASSES ON")
+	_sound(&"msn_bolt", witness.ground_pos)
 	phase = Phase.RUN
 	_retarget_in = RETARGET
 	_run(true)

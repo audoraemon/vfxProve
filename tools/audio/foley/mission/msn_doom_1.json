@@ -1,0 +1,4 @@
+{"length": 6.0, "rms_db": -20.0, "reverb": {"rt60": 2.6, "mix": 0.26, "predelay_ms": 24, "damp": 4500}, "layers": [
+  {"src": "repo:tools/audio/music/render/msn_doom_1.wav", "at": 0.0, "hp": 50, "fade_out": 900},
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 2.0, "from": 0.0, "dur": 3.6, "pitch": -12, "hp": 80, "lp": 4000, "gain_db": -8, "fade_out": 1500}
+]}

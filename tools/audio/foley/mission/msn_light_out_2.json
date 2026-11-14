@@ -1,0 +1,7 @@
+{"length": 3.2, "rms_db": -22.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/fire-crackling/fire-1.wav", "at": 0.0, "from": 0.8, "dur": 1.2, "hp": 200, "lp": 6000, "gain_db": -6, "fade_out": 900},
+  {"src": "lib:oga/steam-release-sounds/steam hisses - Marker #2.wav", "at": 0.25, "dur": 1.8, "pitch": -5, "hp": 300, "lp": 5000, "gain_db": -8, "fade_in": 120, "fade_out": 900},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.4, "from": 0.2, "dur": 2.0, "pitch": -5, "hp": 150, "lp": 3500, "gain_db": -10, "fade_in": 300, "fade_out": 900},
+  {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 0.15, "reverse": true, "pitch": -2, "hp": 500, "gain_db": -14, "dur": 0.8, "fade_in": 40, "fade_out": 60},
+  {"src": "lib:oga/bell-dingschimes/bell_ding3.wav", "at": 0.9, "pitch": -7, "hp": 300, "gain_db": -12, "fade_out": 1500}
+]}

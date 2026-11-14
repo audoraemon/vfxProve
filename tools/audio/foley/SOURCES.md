@@ -109,3 +109,21 @@ the sheet the user listens with.
   crying.oga` (public domain, natalie; converted to WAV, pitched down a little to a small child); OpenGameArt (CC0)
   `children-voices`, `group-giggling` (pitched up), `girly-scream`; the falls from Kenney's impact sounds. Wordless takes
   only: laughs, shrieks, giggles and cries, never a word.
+
+## Mission events
+
+- `mission/msn_*`: OpenGameArt (CC0) `100-cc0-sfx` and `100-cc0-sfx-2` (doors, keys, a lock, stones), `horse-trotting`,
+  `tree-creaking` (a cart's wheels, a gate's groan), `stone-rock-or-wood-moved-sound` (the bar drawn, the wheels' rumble),
+  `footsteps-0`, `footsteps-leather-cloth-armor`, `150-combat-sound-effects` (blows), `male-gruntyelling-sounds` (grunts only),
+  `breathing-tired`, `bell-dingschimes`, `air-whoosh`; Wikimedia Commons `Door handle creaking.wav`, `Hummel bee.ogg`
+  (public domain, soerena; converted to WAV, pitched up to flies) and `20080618KamagasakiRiot.ogg` (low-passed, a mob's
+  roar); Kenney's impact sounds. `msn_chant` lays `tools/audio/music/render/msn_choir_*.wav`, Sonatina's choir rendered
+  by music_render.py.
+- Tiers 2-5 add OpenGameArt (CC0) `crowd-shoutingspeaking-ambience` (low-passed to a murmur, a gasp), `cheers-0`,
+  `grunts-male-death-and-pain` (groans only), `iron-door`, `stone-door`, `80-cc0-rpg-sfx` (chains), `rpg-sound-pack`
+  (chainmail, armour, a sword drawn, heavy cloth, small metal), `75-cc0-breaking-falling-hit-sfx` and
+  `ice-breakingshattering` (glass), `water-waves`, `6-short-water-splashes`, `steam-release-sounds`, `fire-crackling`,
+  `catching-fire`, `ghost-breath`, `droning-sound-effects`, `35-wooden-crackshitsdestructions`, `woodcutting`,
+  `saw-or-wood-impact`; Wikimedia Commons `Festival concert people crowd.wav`, `Church people walking steps with
+  reverb.wav` and `Striking a bell 15cm large.wav`. `msn_fanfare`, `msn_preach` and `msn_doom` lay
+  `tools/audio/music/render/msn_{fanfare,preach,doom}_*.wav` (Sonatina/VSCO trumpets, choir, tam-tam and organ pedal).

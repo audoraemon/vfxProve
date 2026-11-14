@@ -235,6 +235,7 @@ func _set_out_cart() -> void:
 		return
 	set_out = true
 	_start_route(route, carter, escorts)
+	_sound(&"msn_cart", (carter as Person).ground_pos if _alive(carter) else _lantern)
 
 
 ## A VigilRoute for the cart along `points` (v0.11 M5): `bearer` the carter, `helpers` his escorts; the reins pass on a death; the
@@ -410,6 +411,7 @@ func _new_hands() -> void:
 	carter = lead
 	escorts = hands.slice(1)
 	rules.banner.emit("NEW HANDS COME FROM THE TEMPLE")
+	_sound(&"msn_door", temple_door)
 
 
 ## `p`, newly put to the run's work, on duty to `at` (v0.11 M5, The Crown's Bread's _relieve): one chosen once the town is running is
@@ -438,6 +440,7 @@ func _begin_halt(k: int) -> void:
 	counted = 0.0
 	unwatched_for = 0.0
 	rules.banner.emit("THE CART HALTS AT %s" % String(CHECK_WORDS[k]).to_upper())
+	_sound(&"msn_unbar", _lantern)
 	for w: Warden in wardens:
 		if w.checkpoint == k and _alive(w.man) and not (w.man as Person).inside:
 			(w.man as Person).go_duty(_count_spot(w))
@@ -459,6 +462,7 @@ func _end_halt() -> void:
 		if w.checkpoint == k:
 			_recall_to(w.man, w.post)
 	rules.banner.emit("THE CART ROLLS ON")
+	_sound(&"msn_cart", _lantern)
 
 
 ## The count runs (v0.11 M5): one of the watch -- the halt's wardens or the escorts -- alive, out of doors, not held, within WATCH of the
@@ -510,7 +514,10 @@ func _swap_step(delta: float) -> void:
 	if halt < 0:
 		unwatched_for = 0.0
 		if aboard and vigil != null and vigil.active:
+			var was := lock_left
 			lock_left = maxf(lock_left - delta, 0.0)
+			if was > 0.0 and lock_left == 0.0:
+				_sound(&"msn_lock", _lantern)
 		return
 	var seen := watched()
 	unwatched_for = 0.0 if seen else unwatched_for + delta
@@ -522,6 +529,8 @@ func _swap_step(delta: float) -> void:
 		return
 	if lock_left > 0.0:
 		lock_left = maxf(lock_left - delta, 0.0)
+		if lock_left == 0.0:
+			_sound(&"msn_lock", _lantern)
 		return
 	if halt != HALT_LEGS.size() - 1:
 		return
@@ -566,6 +575,8 @@ func _home_check() -> void:
 	if vigil == null or not _alive(vigil.bearer) or route.is_empty():
 		return
 	if vigil.bearer.ground_pos.distance_to(route[route.size() - 1]) <= CITADEL_REACH:
+		if not kept:
+			_sound(&"msn_shut", route[route.size() - 1])
 		kept = true
 
 
@@ -615,6 +626,8 @@ func _wren_goal() -> Vector2:
 func _relic_home() -> void:
 	home = true
 	rules.banner.emit("YOUR BELIEVERS HAVE THE RELIC")
+	_sound(&"msn_door", shrine)
+	_sound(&"msn_light_out", searchlight.spire)
 	if wren.mind == Person.Mind.DUTY:
 		wren.leave_shelter(false)
 	_phase2_end()

@@ -30,7 +30,7 @@ func _build() -> void:
 	_trail.auto_free = false
 	_head = FxParts.bloom(self, _land_px + FROM, 7.0, STAR_LIGHT, 1.4)
 	_head.life = FALL + 0.02
-	ctx.play(&"grav_shimmer", origin, -16.0)
+	ctx.play(&"msn_star_fall", origin)
 	at(FALL, _land)
 
 
@@ -55,7 +55,7 @@ func _fx_process(delta: float) -> void:
 
 
 func _land() -> void:
-	ctx.play(&"grav_shimmer", origin, -10.0)
+	ctx.play(&"msn_star_land", origin)
 	var bloom := FxParts.bloom(self, _land_px + Vector2(0, -4), 34.0, STAR_LIGHT, 1.2, 0.8)
 	bloom.tween_param("intensity", 1.2, 0.0, 0.7, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	bloom.life = 0.72

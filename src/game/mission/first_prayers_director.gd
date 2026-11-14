@@ -122,6 +122,7 @@ func _begin() -> void:
 	need = NEED
 	_walks_left = poor_out_at.size()
 	one_at_a_time = true
+	door_heard = false
 	super()
 	rules.cast_made.connect(_on_light)
 
@@ -228,6 +229,8 @@ func _market_fills() -> void:
 
 ## The priests come (v0.11 M2): the free clergy among the Faithful stand by the door (PRIEST_SPOTS) for PRIESTS_SECONDS.
 func _priests_come() -> void:
+	if not crowd.is_bell_lying():
+		_sound(&"msn_chant", door)
 	_form_line(_free_clergy, PRIEST_SPOTS, priests_seconds)
 
 
@@ -352,6 +355,7 @@ func _fire_step() -> void:
 			_pull_to(blaze, f, _pulled.find(f))
 	if pulled_now:
 		rules.banner.emit("THE FAITHFUL RUN TO THE FIRE")
+		_sound(&"msn_bolt", (_pulled[-1] as Person).ground_pos)
 
 
 ## `f` goes on duty to a spot FIRE_STAND off `blaze`, on the side away from the door, fanned by `k`: the first of the fan he has a way to, and

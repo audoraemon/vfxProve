@@ -1,0 +1,9 @@
+{"length": 3.2, "rms_db": -22.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/tree-creaking/tree_creak_0.ogg", "at": 0.0, "from": 0.6, "dur": 1.2, "pitch": -10, "hp": 90, "lp": 3500, "gain_db": -2, "fade_in": 60, "fade_out": 300},
+  {"src": "lib:oga/footsteps-0/03-footstep.ogg", "at": 0.6, "onset": true, "gain_db": -5.1, "lp": 7000, "pitch": -0.66, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/02-footstep.ogg", "at": 0.96, "onset": true, "gain_db": -9.1, "lp": 5960, "pitch": -0.35, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/04-footstep.ogg", "at": 1.32, "onset": true, "gain_db": -13.5, "lp": 4920, "pitch": -0.8, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/05-footstep.ogg", "at": 1.68, "onset": true, "gain_db": -16.6, "lp": 3880, "pitch": -0.59, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/02-footstep.ogg", "at": 2.04, "onset": true, "gain_db": -19.5, "lp": 2840, "pitch": -0.55, "hp": 60, "fade_out": 60},
+  {"src": "lib:oga/footsteps-0/02-footstep.ogg", "at": 2.4, "onset": true, "gain_db": -24.9, "lp": 1800, "pitch": -0.1, "hp": 60, "fade_out": 60}
+]}

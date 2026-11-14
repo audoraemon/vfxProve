@@ -1,0 +1,7 @@
+{"length": 2.2, "rms_db": -21.0, "reverb": {"rt60": 0.8, "mix": 0.1, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_light_001.ogg", "at": 0.0, "onset": true, "pitch": 7, "hp": 1500, "gain_db": -8, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/impactMetal_light_002.ogg", "at": 0.16, "onset": true, "pitch": 9, "hp": 1800, "gain_db": -10, "fade_out": 60},
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.22, "onset": true, "pitch": -1, "hp": 120, "gain_db": -1, "fade_out": 60},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.2, "pitch": -4, "hp": 120, "lp": 3000, "gain_db": -10, "dur": 0.5, "fade_out": 60},
+  {"src": "lib:oga/bell-dingschimes/bell_ding2.wav", "at": 0.32, "pitch": 5, "hp": 900, "gain_db": -11, "fade_out": 1200}
+]}

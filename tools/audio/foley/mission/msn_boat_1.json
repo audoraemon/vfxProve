@@ -1,0 +1,8 @@
+{"length": 3.4, "rms_db": -22.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/water-waves/wave_01_cc0-11505__transitking__wavesound.flac", "at": 0.0, "hp": 120, "lp": 3500, "gain_db": -4, "fade_in": 200, "fade_out": 500},
+  {"src": "lib:oga/water-waves/wave_02_cc0-11505__transitking__wavesound.flac", "at": 1.4, "hp": 120, "lp": 3000, "gain_db": -7, "fade_in": 200, "fade_out": 600},
+  {"src": "lib:oga/6-short-water-splashes/ezwa-water_splash/water_splash-01.flac", "at": 0.9, "onset": true, "pitch": -6, "lp": 2500, "gain_db": -12, "fade_out": 60},
+  {"src": "lib:oga/tree-creaking/tree_creak_0.ogg", "at": 0.3, "from": 0.2, "dur": 1.1, "pitch": -3, "hp": 300, "lp": 4500, "gain_db": -8, "fade_in": 80, "fade_out": 300},
+  {"src": "lib:oga/tree-creaking/tree_creak_0.ogg", "at": 1.8, "from": 2.0, "dur": 1.0, "pitch": -5, "hp": 300, "lp": 4000, "gain_db": -11, "fade_in": 80, "fade_out": 300},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_002.ogg", "at": 1.2, "onset": true, "pitch": -9, "lp": 900, "gain_db": -5, "fade_out": 60}
+]}

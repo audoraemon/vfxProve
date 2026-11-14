@@ -253,6 +253,13 @@ func _say(event: String) -> void:
 		rules.subtitle.emit(text)
 
 
+## A mission's moment heard where it happens (mission sound pass): `cue` at `at` through the FX context's player. Nothing
+## without a context (the tests' directors), for a cue the catalog lacks, or with no place (Vector2.INF).
+func _sound(cue: StringName, at: Vector2) -> void:
+	if ctx != null and Sfx.CATALOG.has(cue) and at != Vector2.INF:
+		ctx.play(cue, at)
+
+
 ## A point of walkable ground at or near `g` (`g` itself when the town has no walk grid, or none is free).
 func _walkable(g: Vector2) -> Vector2:
 	var w := crowd._grid.nearest_walkable(g) if crowd._grid != null else g
@@ -547,6 +554,7 @@ func _report(seer: Person, door: Vector2) -> void:
 	reports.append(report)
 	reports_started += 1
 	rules.banner.emit("A FAITHFUL RUNS TO THE TEMPLE")
+	_sound(&"msn_bolt", seer.ground_pos)
 
 
 ## Each report runs on; one delivered fills the Gaze. Reports delivered or ended are let go.
@@ -555,6 +563,7 @@ func _step_reports(delta: float) -> void:
 		r.step(delta, crowd)
 		if r.delivered:
 			gaze.fill()
+			_sound(&"msn_knock", r.door)
 	reports.assign(reports.filter(func(r: TempleReport) -> bool: return r.is_open()))
 
 

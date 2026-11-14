@@ -1,0 +1,9 @@
+{"length": 2.6, "rms_db": -21.0, "reverb": {"rt60": 0.6, "mix": 0.07, "predelay_ms": 8, "damp": 6500}, "layers": [
+  {"src": "lib:oga/tree-creaking/tree_creak_0.ogg", "at": 0.0, "from": 2.2, "dur": 1.6, "pitch": 4, "hp": 500, "lp": 7000, "gain_db": -5, "fade_in": 60, "fade_out": 400},
+  {"src": "lib:oga/tree-creaking/tree_creak_0.ogg", "at": 1.2, "from": 0.7, "dur": 1.0, "pitch": 6, "hp": 600, "lp": 7000, "gain_db": -8, "fade_in": 60, "fade_out": 300},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/wood-small.wav", "at": 0.3, "onset": true, "pitch": -2, "gain_db": -8, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_wood_003.ogg", "at": 0.45, "onset": true, "pitch": -2, "lp": 5000, "gain_db": -4, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_wood_004.ogg", "at": 0.87, "onset": true, "pitch": -2, "lp": 5000, "gain_db": -5, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_wood_000.ogg", "at": 1.29, "onset": true, "pitch": -2, "lp": 5000, "gain_db": -6, "fade_out": 60},
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_wood_001.ogg", "at": 1.71, "onset": true, "pitch": -2, "lp": 5000, "gain_db": -7, "fade_out": 60}
+]}

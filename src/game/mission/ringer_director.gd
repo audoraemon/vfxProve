@@ -100,6 +100,7 @@ func set_out() -> void:
 	omen_fallen = true
 	phase = Phase.STARE
 	_clock = OMEN_AT + STARE - tune_out_pause
+	_sound(&"msn_door", gate_spot)
 
 
 ## No star falls (v0.11 M3): set_out() starts the warning.

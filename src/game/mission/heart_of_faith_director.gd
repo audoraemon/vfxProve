@@ -431,6 +431,10 @@ func _open(i: int) -> void:
 	if in_use[i]:
 		return
 	in_use[i] = true
+	if targets[i] == oil_house:
+		_sound(&"msn_door", doors[i])
+	else:
+		_sound(&"msn_chant", doors[i])
 	for p: Post in posts:
 		if p.target == i and p.arriving and not p.done and _alive(p.man) and (p.man as Person).inside:
 			var k := p.man as Person
@@ -592,6 +596,7 @@ func _relieve(p: Post) -> void:
 	p.relief = true
 	reliefs += 1
 	rules.banner.emit("A NEW KNIGHT COMES FROM THE CITADEL")
+	_sound(&"msn_knights", citadel_door)
 
 
 ## A Knight walking from the Citadel's gate can reach `at` (v0.11 M6): the town's walk grid has a road there (always, with none).
@@ -632,6 +637,7 @@ func _flame_goes_out() -> void:
 	flame_out_at = _clock
 	(gaze as HeartGaze).fury = true
 	rules.banner.emit("THE GREAT FLAME GOES OUT")
+	_sound(&"msn_light_out", steps_at)
 	rules.banner.emit("HALCYON LOOKS HARDER")
 	litter_at = _litter_spot()
 	var taken: Array[Vector2] = []
@@ -695,6 +701,7 @@ func _odran_comes() -> void:
 	odran_out = true
 	if not _alive(odran):
 		return
+	_sound(&"msn_knights", citadel_door)
 	var o := odran as Person
 	o.pace *= ODRAN_PACE
 	_road_at = 1
@@ -771,6 +778,7 @@ func _step_litter() -> void:
 	var alive := bearers_standing()
 	if alive.size() < 2:
 		rules.banner.emit("THE LITTER FALLS")
+		_sound(&"msn_scatter", litter_at)
 		_set_on_foot(litter_at)
 		_bearers_guard()
 		return
@@ -835,11 +843,13 @@ func _step_rite(delta: float) -> void:
 			rite_on = false
 			rite_left = RITE
 			rules.banner.emit("THE REKINDLING IS BROKEN")
+			_sound(&"msn_scatter", steps_at)
 		return
 	if not rite_on:
 		rite_on = true
 		rite_left = RITE
 		rules.banner.emit("ODRAN REKINDLES THE FLAME")
+		_sound(&"msn_chant", steps_at)
 	rite_left -= delta
 	if rite_left <= 0.0:
 		kindled = true

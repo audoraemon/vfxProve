@@ -122,7 +122,11 @@ func _add_events() -> void:
 	for i in range(1, SOURCES.size()):
 		timeline.add(float(WAVE_AT[i]), "crowd_%d" % i, "More come to the fair", _send_wave.bind(i),
 			func() -> bool: return wave_out[i] < 0.0)
-	timeline.add(MARKET_CLOSE, "close", "The guard closes the market")
+	timeline.add(MARKET_CLOSE, "close", "The guard closes the market", _close)
+
+
+func _close() -> void:
+	_sound(&"msn_shut", HEART)
 
 
 ## Crowd `i` is appointed as the night begins (v0.11 M3, Decision 14 and Task 3's fix rounds): the WAVE lay citizens nearest its
@@ -153,6 +157,8 @@ func _send_wave(i: int) -> void:
 	if wave_out[i] >= 0.0:
 		return
 	wave_out[i] = _clock
+	if i > 0:
+		_sound(&"msn_gather", _walkable(SOURCES[i]))
 	for v: Variant in waves[i]:
 		if is_instance_valid(v):
 			_stands.erase((v as Person).get_instance_id())
@@ -229,6 +235,7 @@ func _chain() -> void:
 		var gone := mini(WAVE_NEED, (waves[i] as Array).size())
 		if scattered_at[i] < 0.0 and wave_count(i) + wave_left(i) >= gone:
 			scattered_at[i] = _clock
+			_sound(&"msn_scatter", HEART)
 			if wave_out[i] < 0.0:
 				wave_out[i] = _clock
 				for v: Variant in waves[i]:

@@ -242,6 +242,7 @@ func _deliver(s: Structure) -> void:
 		return
 	grain[s] = true
 	carting.append(s)
+	_sound(&"msn_grain", doors[s] if doors.has(s) else s.center())
 	if not _out_at.has(s):
 		_send_carter(s)
 
@@ -265,6 +266,8 @@ func _send_carter(s: Structure) -> void:
 	carters[s] = crew
 	for c in crew:
 		c.go_duty(doors[s])
+	if not crew.is_empty():
+		_sound(&"msn_cart", crew[0].ground_pos)
 
 
 ## Whether granary `s`'s carter is alive (god T1R, H5): any of the crew set out for it.
@@ -329,6 +332,7 @@ func _out_look(s: Structure) -> void:
 	for c: Variant in carters.get(s, []):
 		if _alive(c) and not (c as Person).inside and Walls.outside((c as Person).ground_pos):
 			rules.banner.emit("THE CARTER LEAVES TOWN - THE GRAIN ROTS")
+			_sound(&"msn_cart", (c as Person).ground_pos)
 			_spoil(s, "out")
 			send_off(c)
 			return
@@ -345,8 +349,10 @@ func _sick_look(s: Structure) -> void:
 			if not _turned.has(id):
 				_turned[id] = true
 				rules.banner.emit("THE WATCH TURNS THE SICK CART AWAY")
+				_sound(&"msn_cart", (c as Person).ground_pos)
 			continue
 		rules.banner.emit("THE PLAGUE SPOILS THE GRAIN")
+		_sound(&"msn_rot", s.center())
 		_spoil(s, "plague")
 		return
 
@@ -413,6 +419,7 @@ func _seize_look() -> void:
 		for c: Variant in carters.get(s, []):
 			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at):
 				rules.banner.emit("THE GUARD SEIZE THE CART")
+				_sound(&"msn_seize", (c as Person).ground_pos)
 				_spoil(s, "seized")
 				seized = true
 				break
@@ -541,6 +548,7 @@ func _needs_orders(p: Person, goal: Vector2) -> bool:
 func _take(s: Structure, id: int) -> void:
 	loads[s] = int(loads[s]) - 1
 	_hauling[id] = true
+	_sound(&"msn_grain", doors[s] if doors.has(s) else s.center())
 	if int(loads[s]) <= 0 and emptied == null:
 		emptied = s
 		rules.banner.emit("A GRANARY IS EMPTIED")

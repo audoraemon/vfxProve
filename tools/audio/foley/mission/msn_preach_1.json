@@ -1,0 +1,4 @@
+{"length": 6.0, "rms_db": -22.0, "reverb": {"rt60": 2.6, "mix": 0.26, "predelay_ms": 24, "damp": 4500}, "layers": [
+  {"src": "repo:tools/audio/music/render/msn_preach_1.wav", "at": 0.0, "hp": 80, "lp": 6000, "fade_out": 600},
+  {"src": "lib:oga/crowd-shoutingspeaking-ambience/crowd_shouting_0.ogg", "at": 0.0, "from": 5.0, "dur": 5.8, "hp": 200, "lp": 1100, "gain_db": -20, "fade_in": 800, "fade_out": 1200}
+]}

@@ -271,6 +271,10 @@ func _open(i: int) -> void:
 	if in_use[i]:
 		return
 	in_use[i] = true
+	if targets[i] == town.bridge:
+		_sound(&"msn_cart", faces[i])
+	else:
+		_sound(&"msn_grain", faces[i])
 	for c: Crew in crews[i]:
 		if c.shift:
 			_bring_out_shift(c)
@@ -413,6 +417,7 @@ func _work(i: int, delta: float, looking: bool, evacuating := false) -> void:
 		if rebuild_progress[i] >= 1.0:
 			rebuild_progress[i] = 0.0
 			s.restore()
+			_sound(&"msn_rebuild", s.center())
 			rebuilt += 1
 			rules.banner.emit("THE ENGINEERS REBUILD THE %s" % NAMES[i])
 		return

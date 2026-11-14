@@ -1,0 +1,3 @@
+{"length": 2.6, "rms_db": -20.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/msn_fanfare_1.wav", "at": 0.0, "hp": 150, "fade_out": 400}
+]}

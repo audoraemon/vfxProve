@@ -245,6 +245,7 @@ func _visit(i: int) -> void:
 		return
 	c.word = true
 	c.word_at = _clock
+	_sound(&"msn_knock", c.door)
 	if i == contacts.size() - 1:
 		timeline.expect("names", c.word_at + FOUND_LIMIT)
 
@@ -290,6 +291,7 @@ func _names_in() -> void:
 	if found or q.state == State.SAFE:
 		return
 	q.state = State.SAFE
+	_sound(&"msn_door", _walkable(TEMPLE_DOOR))
 
 
 ## The contacts not yet turned, and their company, are kept at their places (v0.11 M3, Decision 25): one moved off (a whisper, a

@@ -98,6 +98,7 @@ var seizures := 0
 ## v0.11 M6 (mission spec §6.1): false stops the watch's change ever starting (Exodus: a gate is cleared by acting, never waited out).
 ## True (the default) is The Lost Lamb's and The Prisoner's.
 var watch_changes := true
+var gate_heard := true
 
 ## The first charge, typed (v0.11 M6: an accessor over charges[0], the old field): null with none, or once his body is freed.
 var charge: Person:
@@ -541,6 +542,7 @@ func _seize(c: Charge, by: Person) -> void:
 	c.seizer = by
 	seizures += 1
 	rules.banner.emit(_caught_banner())
+	_sound(&"msn_seize", (c.man as Person).ground_pos)
 	by.go_duty(return_to)
 	(c.man as Person).go_duty(by.ground_pos)
 
@@ -571,6 +573,8 @@ func _let_go_seizer(c: Charge) -> void:
 func _escape(c: Charge) -> void:
 	c.escaped = true
 	rules.banner.emit(_escape_banner())
+	if gate_heard:
+		_sound(&"msn_gate_out", (c.man as Person).ground_pos)
 	crowd._field.remove(c.man)
 	crowd.escape(c.man)
 

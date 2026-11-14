@@ -1,10 +1,10 @@
 {
- "hash": "78c01ae0fae8f54a",
- "updated": "2026-11-14T08:27:26+07:00",
+ "hash": "ee078257680c73b7",
+ "updated": "2026-11-14T12:32:20+07:00",
  "changes": {
-  "date": "<t:1794619646:f>",
+  "date": "<t:1794634340:f>",
   "items": [
-   "Done: Death powers: your review adjustments"
+   "New: Harvest route B under its 150 s floor: a carter picked mid-flight (H8)"
   ]
  },
  "snapshot": {
@@ -563,6 +563,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-10-29",
     "order": 188
+   },
+   "harvest-b-carter-pick": {
+    "title": "Harvest route B under its 150 s floor: a carter picked mid-flight (H8)",
+    "status": "done",
+    "area": "Design",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-14",
+    "order": 5
    },
    "hide-ui-f1": {
     "title": "F1 hides the interface (watch the town)",
@@ -1676,19 +1685,19 @@
   },
   "branches": [
    {
-    "name": "god/death-review",
-    "ahead": 101,
+    "name": "god/harvest-b-pacing",
+    "ahead": 103,
     "behind": 49,
     "date": "2026-11-14",
-    "subject": "fix: the bench aid reads the market from Places (any town), not Aldermere's layout",
-    "pushed": true
+    "subject": "dev: harvest_b_play_1-2 re-recorded for H8 (route B gate passes)",
+    "pushed": false
    },
    {
     "name": "feat/ui-resolution",
-    "ahead": 17,
+    "ahead": 20,
     "behind": 2,
     "date": "2026-11-14",
-    "subject": "feat: title, pause, options and board on the full-resolution UI (design frame, full backdrops, word spacing, PAUSED clear of the mission bar)",
+    "subject": "fix: legible digits (own 5x7 and 6x9 bitmaps), word spacing on everywhere, no per-screen toggle",
     "pushed": false
    },
    {

@@ -7,26 +7,26 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**11** in progress · **27** to do · **146** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794592833:f>)\n• New: Mission sounds tiers 2-5",
+     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **147** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794619646:f>)\n• Done: Death powers: your review adjustments",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-14T01:00:33+07:00"
+     "timestamp": "2026-11-14T08:27:26+07:00"
     },
     {
      "title": "god/death-review",
-     "description": "91 commits not in Develop-Main · last commit today · local only\n> dev: Death refs re-recorded for the review\n\n_No Ledger task points at this branch._",
+     "description": "101 commits not in Develop-Main · last commit today\n> fix: the bench aid reads the market from Places (any town), not Aldermere's layout\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/ui-resolution",
-     "description": "10 commits not in Develop-Main · last commit today · local only\n> feat: skill tree readability: native icons, crisp 11/22 text, clear states, fanned labels, one value column, refusal by RAISE\n\n_No Ledger task points at this branch._",
+     "description": "17 commits not in Develop-Main · last commit today · local only\n> feat: title, pause, options and board on the full-resolution UI (design frame, full backdrops, word spacing, PAUSED clear of the mission bar)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "64 commits not in Develop-Main · last commit yesterday\n> dev: re-record the Decree refs after the review adjustments\n\n**In progress** (1)\n• Death powers: your review adjustments\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "64 commits not in Develop-Main · last commit yesterday\n> dev: re-record the Decree refs after the review adjustments\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
@@ -51,7 +51,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Mission sounds tiers 2-5 _(11-14)_\n• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Town children (Discord idea Add children Npc) _(11-13)_\n• Decree powers: your review adjustments _(11-13)_\n• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_\n• Decree authority powers built (god branch) _(11-13)_",
+     "description": "• Mission sounds tiers 2-5 _(11-14)_\n• Death powers: your review adjustments _(11-14)_\n• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Town children (Discord idea Add children Npc) _(11-13)_\n• Decree powers: your review adjustments _(11-13)_\n• Passage doors clean up when torn down _(11-13)_\n• Death Authority: 10 powers built (god branch) _(11-13)_",
      "color": 10185686
     }
    ]

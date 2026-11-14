@@ -1,10 +1,10 @@
 {
- "hash": "cd5b67414ec55b1a",
- "updated": "2026-11-14T01:00:33+07:00",
+ "hash": "78c01ae0fae8f54a",
+ "updated": "2026-11-14T08:27:26+07:00",
  "changes": {
-  "date": "<t:1794592833:f>",
+  "date": "<t:1794619646:f>",
   "items": [
-   "New: Mission sounds tiers 2-5"
+   "Done: Death powers: your review adjustments"
   ]
  },
  "snapshot": {
@@ -204,11 +204,11 @@
    },
    "death-review-adjust": {
     "title": "Death powers: your review adjustments",
-    "status": "doing",
+    "status": "done",
     "area": "Abilities",
-    "needs_you": false,
+    "needs_you": true,
     "branch": "feat/god-progression",
-    "updated": "2026-11-13",
+    "updated": "2026-11-14",
     "order": 4
    },
    "decree-review-adjust": {
@@ -1677,18 +1677,18 @@
   "branches": [
    {
     "name": "god/death-review",
-    "ahead": 91,
+    "ahead": 101,
     "behind": 49,
     "date": "2026-11-14",
-    "subject": "dev: Death refs re-recorded for the review",
-    "pushed": false
+    "subject": "fix: the bench aid reads the market from Places (any town), not Aldermere's layout",
+    "pushed": true
    },
    {
     "name": "feat/ui-resolution",
-    "ahead": 10,
+    "ahead": 17,
     "behind": 2,
     "date": "2026-11-14",
-    "subject": "feat: skill tree readability: native icons, crisp 11/22 text, clear states, fanned labels, one value column, refusal by RAISE",
+    "subject": "feat: title, pause, options and board on the full-resolution UI (design frame, full backdrops, word spacing, PAUSED clear of the mission bar)",
     "pushed": false
    },
    {

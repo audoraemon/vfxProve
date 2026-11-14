@@ -41,17 +41,7 @@ func setup(s: Settings, path := Settings.PATH) -> OptionsPanel:
 	# The pause duck would bury the very thing the Music bar sets.
 	_was_ducked = Music.is_ducked()
 	Music.set_ducked(false)
-	UiTheme.spacing_acquire(self)  # opened over the title or the pause menu, which hold it too; each owner counts once
 	return self
-
-
-func _exit_tree() -> void:
-	UiTheme.spacing_release(self)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		UiTheme.spacing_release(self)
 
 
 func is_open() -> bool:

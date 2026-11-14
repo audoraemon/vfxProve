@@ -98,20 +98,10 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	UiTheme.spacing_acquire(self)  # the cards are fitted for the wider spaces; released when the board leaves or is freed
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # the board is 640x360 and centred in the area (it is not stretched)
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	return self
-
-
-func _exit_tree() -> void:
-	UiTheme.spacing_release(self)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		UiTheme.spacing_release(self)
 
 
 ## The board's state: the save's, or a fresh one with no save.

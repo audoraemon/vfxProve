@@ -32,7 +32,6 @@ static func run(t) -> void:
 	_twists_whole(t)
 	_word_spacing(t)
 	GodTree.dev_fill = false
-	UiTheme.spacing_reset()
 
 
 static func _screen(type := "ruin", tier := 1, points := 0, p_state := {}) -> SkillTreeScreen:
@@ -395,7 +394,6 @@ static func _labels_clear(t) -> void:
 
 
 static func _refusal_fits(t) -> void:
-	UiTheme.word_spacing = true  # as the open tree has it
 	var reasons := PackedStringArray(["Not enough ability points"])
 	for v in SkillTreeScreen.REFUSALS.values():
 		reasons.append(String(v) % 5 if String(v).contains("%d") else String(v))
@@ -411,7 +409,6 @@ static func _refusal_fits(t) -> void:
 	t.check(Array(SkillTreeScreen.refusal_lines("Not enough ability points")) == ["Not enough", "ability points"],
 		"'Not enough ability points' breaks as 'Not enough' / 'ability points'")
 	t.check(SkillTreeScreen.refusal_lines("one two three four five six seven eight nine ten eleven twelve").size() == 2, "a long text is cut to 2 lines")
-	UiTheme.spacing_reset()
 
 
 static func _value_columns(t) -> void:
@@ -559,29 +556,14 @@ static func _twists_whole(t) -> void:
 	t.check(SkillTreeScreen.twist_lines("smite").size() >= 1, "smite has a twist")
 
 
-## Words are separated: a space is at least 4 u at 11 u, 8 at 22 u, and the refusal still wraps to two lines.
+## Words are separated (always, on every screen): a space is the font's own plus 1 u per 11 u (3 u at 11 u, 6 u at 22 u), and the refusal still wraps to two lines.
 static func _word_spacing(t) -> void:
-	UiTheme.spacing_reset()
-	var plain := UiTheme.width("a b", 11) - UiTheme.width("ab", 11)
-	t.check(plain < 4.0, "without the flag the space is the font's own (%f)" % plain)
-	var s := _screen("ruin")
-	t.check(UiTheme.word_spacing, "opening the tree turns the spacing on")
-	t.check(UiTheme.width("a b", 11) - UiTheme.width("ab", 11) >= 4.0, "a space is at least 4 u wide at 11 u")
-	t.check(UiTheme.width("a b", 22) - UiTheme.width("ab", 22) >= 7.0, "and at least 7 u at 22 u")
+	t.check(UiTheme.word_spacing, "the spacing is on by default")
+	t.check(UiTheme.width(" ", 11) >= 3.0, "a space is at least 3 u wide at 11 u (%s)" % UiTheme.width(" ", 11))
+	t.check(UiTheme.width(" ", 22) >= 6.0, "and at least 6 u at 22 u (%s)" % UiTheme.width(" ", 22))
+	t.check(UiTheme.width("a b", 11) > UiTheme.width("ab", 11) + 2.0, "words are apart at 11 u")
 	t.check(UiTheme.wrap("Not enough ability points", 96.0, 11).size() == 2, "the refusal still wraps to two lines")
+	var s := _screen("ruin")
+	t.check(UiTheme.word_spacing, "opening the tree leaves it on")
 	s.free()
-	s = _screen("ruin")
-	var other := _screen("ruin")
-	s._exit_tree()  # a swap: the old tree leaves after the new one's setup
-	t.check(UiTheme.word_spacing, "the old tree leaving does not clear the spacing under the new one")
-	other.free()
-	s.free()
-	t.check(not UiTheme.word_spacing, "and leaving it turns the spacing off again")
-	var o := Node.new()
-	UiTheme.spacing_acquire(o)
-	UiTheme.spacing_acquire(o)
-	UiTheme.spacing_release(o)
-	t.check(not UiTheme.word_spacing, "UiTheme: one owner acquiring twice releases once")
-	UiTheme.spacing_release(o)
-	o.free()
-	t.check(not UiTheme.word_spacing, "and releasing without holding changes nothing")
+	t.check(UiTheme.word_spacing, "and freeing it leaves it on")

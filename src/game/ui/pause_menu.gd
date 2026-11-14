@@ -73,7 +73,6 @@ func setup(campaign := false, settings: Settings = null, path := Settings.PATH, 
 	var layer := CanvasLayer.new()
 	layer.layer = 20  # over the HUD
 	add_child(layer)
-	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the menu leaves or is freed
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
@@ -87,15 +86,6 @@ func setup(campaign := false, settings: Settings = null, path := Settings.PATH, 
 			320.0, 148.0, 140.0)
 	_rows = _menu
 	return self
-
-
-func _exit_tree() -> void:
-	UiTheme.spacing_release(self)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		UiTheme.spacing_release(self)
 
 
 ## The actions of the rows now shown, top to bottom (a test reads them).

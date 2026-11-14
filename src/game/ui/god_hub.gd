@@ -60,20 +60,10 @@ func setup(slot: GodSlot, p_line := "", p_dev := false) -> GodHub:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	return self
-
-
-func _exit_tree() -> void:
-	UiTheme.spacing_release(self)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## The Divine Power bar's words: "n / need Divine Power"; at the level cap below level 50 "AWAKEN TO GROW"; at level 50 "MAX LEVEL"

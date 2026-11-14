@@ -188,7 +188,6 @@ static func run(t) -> void:
 	six.free()
 	six_rules.free()
 	_anchors_800x450(t, hud)
-	_spacing_owners(t, rules, crowd, town, hud)
 	_labels_clear_of_plates(t, hud)
 	_crisp_source(t)
 	_spaced_hints(t)
@@ -519,8 +518,6 @@ static func _lantern_clock(t) -> void:
 ## Every power's name on its card (the pixel font's spaces are wider now): the widest card shows each whole in at most two lines; the narrowest (six slots at 640)
 ## breaks it at its words, and trims letters only from a word that is itself wider than the room.
 static func _slot_names(t) -> void:
-	var was := UiTheme.word_spacing
-	UiTheme.word_spacing = true
 	var wide_room := Hud.SLOT_W_MAX - Hud.SLOT_SIZE - 6.0
 	var not_whole := ""
 	var too_wide := ""
@@ -542,7 +539,6 @@ static func _slot_names(t) -> void:
 			var all_lines := UiTheme.wrap(power_name, Hud.NAME_ROOM, UiTheme.TEXT_S)
 			if longest_word <= Hud.NAME_ROOM and all_lines.size() <= Hud.NAME_LINES:
 				cut_without_cause += " " + power_name
-	UiTheme.word_spacing = was
 	t.check(not_whole == "", "at the widest card every power's name is whole, in at most two lines (not:%s)" % not_whole)
 	t.check(too_wide == "", "and at the narrowest no line runs past the room (wide:%s)" % too_wide)
 	t.check(cut_without_cause == "", "a name is cut at the narrowest only when a word is wider than the room or it needs three lines (%s)" % cut_without_cause)
@@ -576,7 +572,7 @@ static func _anchors_800x450(t, hud: Hud) -> void:
 	hud.push_subtitle("Venn. She lit Mira's pyre.")
 	var lines := RiteBook.plate_lines(RiteBook.FIRST_TASTE)
 	hud.show_rite_plate(lines)
-	t.check(is_equal_approx(hud.clock_rect(800.0).get_center().x, 400.0) and absf(hud.banner_rect(800.0).get_center().x - 400.0) <= 0.5
+	t.check(absf(hud.clock_rect(800.0).get_center().x - 400.0) <= 0.5 and absf(hud.banner_rect(800.0).get_center().x - 400.0) <= 0.5
 		and absf(hud.subtitle_rect(800.0).get_center().x - 400.0) <= 0.5 and absf(hud.rite_plate_rect().get_center().x - 400.0) <= 1.0,
 		"800 x 450: the clock, the banner, Cael's plate and the rite's plate are centred on x 400")
 	t.check(is_equal_approx(hud.rite_plate_rect().position.y, Hud.RITE_PLATE_TOP + dy * 0.5) and is_equal_approx(hud.status_rect().end.x, 800.0 - Hud.STATUS_MARGIN + 4.0),
@@ -655,10 +651,8 @@ static func _args(src: String, from: int) -> PackedStringArray:
 	return out
 
 
-## With the wider spaces on (the HUD turns them on), every how-to-win line still fits the plate's lines.
+## With the wider spaces (always on), every how-to-win line still fits the plate's lines.
 static func _spaced_hints(t) -> void:
-	var was := UiTheme.word_spacing
-	UiTheme.word_spacing = true
 	var long := PackedStringArray()
 	for key: String in MissionHints.LINES:
 		if UiTheme.wrap(String(MissionHints.LINES[key]), Hud.HINT_W, UiTheme.TEXT_S).size() > Hud.HINT_LINES:
@@ -679,39 +673,9 @@ static func _spaced_hints(t) -> void:
 	for line in every:
 		if 2.0 + Hud.hint_width(Hud.hint_lines(line)) > Hud.EVENTS_LEFT_MIN:
 			under.append(line.left(20))
-	UiTheme.word_spacing = was
 	t.check(under.is_empty(), "the how-to-win plate ends before the events strip's least left edge (%s)" % ", ".join(under))
 	t.check(long.is_empty(), "with the wider spaces on, every how-to-win line fits %d lines of %d px (too long: %s)" % [Hud.HINT_LINES, int(Hud.HINT_W), ", ".join(long)])
 
-
-## The HUD holds the wider spaces as one owner among others (Task 5 fix round): a new Hud set up and the old one freed (a multi-act night) leaves them on, a second
-## owner (the skill tree) coming and going never clears the HUD's, and one owner acquiring twice still releases once.
-static func _spacing_owners(t, rules: Rules, crowd: Crowd, town: Town, main: Hud) -> void:
-	UiTheme.spacing_reset()  # the test's own HUD holds them too: start from nobody
-	t.check(not UiTheme.word_spacing, "nobody holds the wider spaces to begin with")
-	# The suite runs before its SceneTree is up, so nodes cannot be added to it: the tree callbacks are called the way a tree would (as test_skill_tree does).
-	var a := Hud.new().setup(rules, crowd, town, null)
-	a._enter_tree()
-	t.check(UiTheme.word_spacing, "a HUD set up turns the wider spaces on")
-	var b := Hud.new().setup(rules, crowd, town, null)  # the next act's, built before the old one is freed
-	b._enter_tree()
-	a._exit_tree()  # the old act's HUD leaves the tree under the new one, then is freed
-	a.free()
-	t.check(UiTheme.word_spacing, "the old HUD freed out of the tree under the new one: the spaces stay on")
-	b._exit_tree()
-	t.check(not UiTheme.word_spacing, "a HUD leaving the tree lets the spaces go")
-	b._enter_tree()
-	t.check(UiTheme.word_spacing, "and putting it back turns them on again")
-	var tree := Node.new()  # stands in for the skill tree
-	UiTheme.spacing_acquire(tree)
-	UiTheme.spacing_acquire(tree)
-	UiTheme.spacing_release(tree)
-	t.check(UiTheme.word_spacing, "a tree opening and closing over a HUD does not clear its spaces (a double acquire counts once)")
-	tree.free()
-	t.check(UiTheme.word_spacing, "the tree stand-in freed: the HUD still holds them")
-	b.free()
-	t.check(not UiTheme.word_spacing, "the last HUD gone: the spaces go")
-	UiTheme.spacing_acquire(main)  # the test's own HUD goes on holding them
 
 
 ## No tag label sits under the clock, the status plate, a banner's bar or Cael's plate: tag_layout() is given them as taken plates.

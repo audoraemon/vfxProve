@@ -75,7 +75,6 @@ static func _frames(t) -> void:
 	prep.setup(MissionBook.last_judgement(), PackedStringArray(["doom", "heaven"]))
 	t.check(prep._ui.position == offset and prep._ui.size == Vector2(640, 360), "prepare: the frame is 640x360 at (80, 45) in an 800x450 area")
 	t.check(UiScale.backdrop(prep._ui) == Rect2(-offset, Vector2(800, 450)), "prepare: the backdrop is the whole area in frame coordinates")
-	t.check(UiTheme.word_spacing, "prepare: holds the word spacing while it lives")
 	t.check(prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest" and prep.hit(PrepareScreen.tab_rect(0).get_center()) == "tab:0",
 		"prepare: MANIFEST and the first tab answer at frame-local points")
 	var emitted: Array[String] = []
@@ -95,18 +94,15 @@ static func _frames(t) -> void:
 		worst_name = maxf(worst_name, UiTheme.width(UpgradesScreen.cell_name(String(p.name), name_room), UiTheme.SIZE_SMALL))
 	t.check(worst_name <= name_room, "prepare: every power's name fits one line of a five-row card (%.0f of %.0f u)" % [worst_name, name_room])
 	prep.free()
-	t.check(not UiTheme.word_spacing, "prepare: gives the word spacing back when freed")
 
 	var res := ResultsScreen.new().setup(_god_result())
 	tree.root.add_child(res)
 	t.check(res._ui.position == offset and res._ui.size == Vector2(640, 360), "results: the frame is 640x360 at (80, 45)")
-	t.check(UiTheme.word_spacing, "results: holds the word spacing while it lives")
 	var got: Array[String] = []
 	res.action.connect(func(what: String) -> void: got.append(what))
 	res._on_gui_input(_click((res._menu.rect_of("tree") as Rect2).get_center()))
 	t.check(got == ["tree"], "results: a click at the frame-local Skill Tree button hits it (%s)" % [got])
 	res.free()
-	t.check(not UiTheme.word_spacing, "results: gives it back")
 	# The rank letter at TEXT_XXL (66 u) leaves the SCORE column's x (130) clear and stays inside the panel.
 	var worst := 0.0
 	for rank in ["S", "A", "B", "C", "D"]:

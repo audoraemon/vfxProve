@@ -39,21 +39,11 @@ func setup(ending: String, fragment: String, summary_line := "") -> EndingScreen
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	_build_menu()
 	return self
-
-
-func _exit_tree() -> void:
-	UiTheme.spacing_release(self)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## "The Deceiver   Nights won 2   Bites 1 / 3" (v0.10 M5): the god's title, the nights won and the bites.

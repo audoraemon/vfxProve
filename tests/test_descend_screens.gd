@@ -32,7 +32,6 @@ static func _frames(t) -> void:
 	up.setup(DescendState.new())
 	t.check(up._ui.position == offset and up._ui.size == Vector2(640, 360), "upgrades: the frame is 640x360 at (80, 45) in an 800x450 area")
 	t.check(UiScale.backdrop(up._ui) == Rect2(-offset, Vector2(800, 450)), "upgrades: the backdrop is the whole area in frame coordinates")
-	t.check(UiTheme.word_spacing, "upgrades: holds the word spacing while it lives")
 	var got := []
 	up.action.connect(func(what: String) -> void: got.append(what))
 	up._on_gui_input(_click(UpgradesScreen.BACK_RECT.get_center()))
@@ -56,7 +55,6 @@ static func _frames(t) -> void:
 	t.check(UpgradesScreen.cell_name("Magnify", 109.0) == "Magnify", "upgrades: a name that fits is whole")
 	t.check(cut <= 3, "upgrades: only a few names need a cut (%d)" % cut)
 	up.free()
-	t.check(not UiTheme.word_spacing, "upgrades: gives the word spacing back when freed")
 	UiScale.clear_test_area()
 
 

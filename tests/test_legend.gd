@@ -202,7 +202,8 @@ static func _columns(t) -> void:
 	var room := LegendPanel.column_room()
 	for i in 2:
 		var end := top + LegendPanel.rows_height(cols[i], room)
-		t.check(end <= bottom, "column %d ends at %.0f, above the footer's %.0f" % [i + 1, end, bottom])
+		# The first column runs up to 12 u into the footer's margin (the wide spaces, always on; the footer line itself is 24 u further down).
+		t.check(end <= bottom + (12.0 if i == 0 else 0.0), "column %d ends at %.0f, above the footer's %.0f" % [i + 1, end, bottom])
 	t.check(room > 100.0 and LegendPanel.PANEL.position.x + 16.0 + 2.0 * (room + LegendPanel.SWATCH_W + 8.0) + LegendPanel.COL_GAP
 		<= LegendPanel.PANEL.end.x - 16.0 + 0.01, "two columns fit the panel's width (room %.0f)" % room)
 	var words := []
@@ -232,8 +233,6 @@ static func _areas(t) -> void:
 	var zw := ZoomReadout.plate_rect(40.0, Vector2(800.0, 450.0))
 	t.check(is_equal_approx(z.end.x, 640.0 - ZoomReadout.RIGHT_MARGIN) and is_equal_approx(zw.end.x, 800.0 - ZoomReadout.RIGHT_MARGIN)
 		and is_equal_approx(zw.get_center().y, 225.0), "the zoom readout's plate keeps its distance from the right edge at any width (%s, %s)" % [z, zw])
-	var was := UiTheme.word_spacing
-	UiTheme.word_spacing = true
 	var top := LegendPanel.PANEL.position.y + 44.0
 	var bottom := LegendPanel.PANEL.end.y - 24.0
 	var cols := LegendPanel.overhead_columns()
@@ -241,6 +240,5 @@ static func _areas(t) -> void:
 	var h0 := LegendPanel.rows_height(cols[0], room)
 	var h1 := LegendPanel.rows_height(cols[1], room)
 	var marks := LegendPanel.rows_height(LegendPanel.MARKS, LegendPanel.LEFT_W - LegendPanel.SWATCH_W - 8.0)
-	UiTheme.word_spacing = was
 	t.check(top + h0 <= bottom + 12.0 and top + h1 <= bottom and top + marks <= bottom,
 		"with the wider spaces on, page 2's columns (%.0f, %.0f) and page 1's marks (%.0f) fit above the footer (%.0f)" % [h0, h1, marks, bottom - top])

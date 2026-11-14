@@ -224,6 +224,65 @@ static func _hairline_lint(t) -> void:
 	t.check(bad.is_empty(), "every UI outline has an explicit positive width; offenders: %s" % [bad.slice(0, 60)])
 
 
+## No UI text under 11 units: a numeric literal size in a UiTheme.text / width / wrap / fit call is at least 11; so is a
+## `SMALL_PX - n` (the old shrunk size) is gone. Named sizes (SIZE_*, TEXT_*) are all 11 or more (checked below).
+static func _text_size_lint(t) -> void:
+	var dir := DirAccess.open("res://src/game/ui")
+	var files := Array(dir.get_files()).filter(func(f): return f.ends_with(".gd"))
+	var bad: Array = []
+	var seen := 0
+	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])UiTheme\\.(text|width|wrap|fit)\\(")
+	var size_at := {"text": 3, "width": 1, "wrap": 2, "fit": 2}
+	var shrunk := RegEx.create_from_string("SMALL_PX\\s*-\\s*[0-9]")
+	for f in files:
+		if f == "ui_theme.gd":
+			continue
+		var src := FileAccess.get_file_as_string("res://src/game/ui/" + f)
+		for m in rx.search_all(src):
+			var args := _call_args(src, m.get_end() - 1)
+			var n := args.size() - 1
+			var line := src.substr(0, m.get_start()).count(char(10)) + 1
+			var idx: int = size_at[m.get_string(1)]
+			if n <= idx:
+				continue  # the default size (SIZE_BODY, 13)
+			seen += 1
+			var a: String = args[idx]
+			if a.is_valid_int() and a.to_int() < 11:
+				bad.append("%s:%d %s" % [f, line, a])
+		for m in shrunk.search_all(src):
+			bad.append("%s:%d SMALL_PX - n" % [f, src.substr(0, m.get_start()).count(char(10)) + 1])
+	t.check(seen > 100, "the text lint sees the sized calls (%d)" % seen)
+	t.check(bad.is_empty(), "no UI text is sized under 11 units; offenders: %s" % [bad.slice(0, 40)])
+	for named in [UiTheme.SIZE_SMALL, UiTheme.SIZE_BODY, UiTheme.SIZE_BIG, UiTheme.SIZE_TITLE, UiTheme.SIZE_HUGE, UiTheme.TEXT_S, UiTheme.TEXT_L, UiTheme.TEXT_XL, UiTheme.TEXT_XXL]:
+		t.check(named >= 11, "the named text size %d is at least 11" % named)
+
+
+## The digits are drawn from UiTheme's own bitmaps (Pixelify Sans's 5 and 8 both read as S): every digit has its own shape, the same at every place it is
+## drawn, each whole multiple of 11 u scales it exactly, and the rest of the string still comes from the pixel font.
+static func _digits(t) -> void:
+	for medium in [false, true]:
+		var rows_of: Dictionary = UiTheme.DIGITS_MEDIUM if medium else UiTheme.DIGITS_SMALL
+		var seen := {}
+		var all_ok := true
+		for d in 10:
+			var rows: Array = rows_of[str(d)]
+			var key := "".join(PackedStringArray(rows))
+			seen[key] = true
+			all_ok = all_ok and rows.size() == (9 if medium else 7) and rows.all(func(r): return String(r).length() == (6 if medium else 5))
+		t.check(seen.size() == 10 and all_ok, "%s digits: ten different shapes, each %s" % ["medium" if medium else "small", "6 x 9" if medium else "5 x 7"])
+	var f := UiTheme.font_for(UiTheme.TEXT_S)
+	var f22 := UiTheme.font_for(UiTheme.TEXT_L)
+	t.check(f.has_char(48) and f.has_char(57) and f.has_char(65) and f.has_char(44), "a digit font still has the letters and the comma behind it")
+	var w11 := f.get_string_size("0123456789", HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.TEXT_S).x
+	var w22 := f22.get_string_size("0123456789", HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.TEXT_L).x
+	var w33 := UiTheme.font_for(UiTheme.TEXT_XL).get_string_size("0123456789", HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.TEXT_XL).x
+	t.check(is_equal_approx(w11, 60.0) and is_equal_approx(w22, 120.0) and is_equal_approx(w33, 180.0), "ten digits advance 60 u at 11, 120 at 22, 180 at 33 (%s %s %s)" % [w11, w22, w33])
+	var w13 := UiTheme.width("0123456789", UiTheme.SIZE_BODY)
+	t.check(is_equal_approx(w13, 70.0), "and 70 u at 13 u (the medium set, 7 per digit): %s" % w13)
+	# A digit has its own bitmap: not the pixel font's. Pixelify's 5 and 8 are the same ink as an S; the bitmap's are not.
+	t.check(UiTheme.DIGITS_SMALL["5"] != UiTheme.DIGITS_SMALL["8"] and String(UiTheme.DIGITS_SMALL["5"][0]) == "#####", "the 5 has a flat top bar and the 8 does not")
+
+
 static func run(t) -> void:
 	_integer_setting(t)
 	_install(t)
@@ -233,3 +292,5 @@ static func run(t) -> void:
 	_icons(t)
 	_crisp(t)
 	_hairline_lint(t)
+	_text_size_lint(t)
+	_digits(t)

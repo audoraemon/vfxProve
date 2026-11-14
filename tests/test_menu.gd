@@ -49,7 +49,6 @@ static func _frames(t) -> void:
 	pause.setup(false, Settings.new(), "user://test_menu_settings.cfg")
 	var frame: Control = pause._ui
 	t.check(frame.position == offset and frame.size == Vector2(640, 360), "pause: the frame is 640x360 at (80, 45) in an 800x450 area")
-	t.check(UiTheme.word_spacing, "pause: holds the word spacing while it lives")
 	var emitted: Array[String] = []
 	pause.action.connect(func(what: String) -> void: emitted.append(what))
 	pause._on_gui_input(_click(pause._menu.rect_of("resume").get_center()))
@@ -62,7 +61,6 @@ static func _frames(t) -> void:
 	t.check(lines.size() <= 3, "pause: the Hunt's confirm stays within three lines with the wide spaces (%d)" % lines.size())
 	pause.queue_free()
 	await t.process_frame
-	t.check(not UiTheme.word_spacing, "pause: gives the word spacing back when freed")
 
 	var board := MissionBoard.new()
 	board.dev = true
@@ -109,12 +107,10 @@ static func _frames(t) -> void:
 	t.check(started == ["play"], "title: a click at Missions' frame-local centre hits it (%s)" % [started])
 	var best_w := UiTheme.width("Best 3483  D", UiTheme.SIZE_SMALL)
 	t.check(TitleScreen.best_rect(best_w).size.x > best_w and TitleScreen.best_rect(best_w).end.y < 330.0, "title: the best line has a plate")
-	t.check(UiTheme.word_spacing, "title: holds the word spacing")
 	title.queue_free()
 	for i in 3:
 		await t.process_frame
 	WorldView.test_host = false
-	t.check(not UiTheme.word_spacing, "title: gives it back")
 
 	var panel := OptionsPanel.new().setup(Settings.new(), "user://test_menu_settings.cfg")
 	t.check(UiTheme.width(OptionsPanel.FOOTER, UiTheme.SIZE_SMALL) <= OptionsPanel.PANEL.size.x - 16.0,

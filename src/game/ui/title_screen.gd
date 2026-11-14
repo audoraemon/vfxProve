@@ -52,21 +52,11 @@ func setup(best_score: int, best_rank: String, settings: Settings = null, path :
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	UiTheme.spacing_acquire(self)  # the menu's text is fitted for the wider spaces; released when the title leaves or is freed
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	_menu = Menu.column(ROWS, LABELS, 320.0, 176.0, 132.0, 4.0)
 	return self
-
-
-func _exit_tree() -> void:
-	UiTheme.spacing_release(self)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a title set up in a test)
 
 
 func options_open() -> bool:

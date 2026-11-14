@@ -233,7 +233,6 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # the player is aiming at the town, not clicking the HUD
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # icons are drawn at native multiples: no smoothing between their pixels
-	UiTheme.spacing_acquire(self)  # the HUD's text is laid out for the wider spaces; released when it leaves (_exit_tree) or is freed
 	_flash.resize(_rules.loadout.size())
 	_flash.fill(0.0)
 	_slot_icons.clear()
@@ -264,21 +263,13 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 
 
 func _enter_tree() -> void:
-	if _rules != null:
-		UiTheme.spacing_acquire(self)  # a HUD taken out of the tree and put back (idempotent after setup())
 	if not UiScale.notifier.changed.is_connected(_on_scale):
 		UiScale.notifier.changed.connect(_on_scale)
 
 
 func _exit_tree() -> void:
-	UiTheme.spacing_release(self)
 	if UiScale.notifier.changed.is_connected(_on_scale):
 		UiScale.notifier.changed.disconnect(_on_scale)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a Hud set up in a test)
 
 
 ## The window or the scale changed (UiScale.apply): everything is laid out again.

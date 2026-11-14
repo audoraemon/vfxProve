@@ -90,7 +90,6 @@ var _wide_style: StyleBoxFlat
 
 
 func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
-	_use_spacing(true)  # this screen's text is laid out for the wider spaces; off again when the last tree screen leaves
 	_slot = slot
 	for col in columns().size():
 		for tier in range(1, GodTree.TIERS + 1):
@@ -567,23 +566,6 @@ func _buy() -> String:
 	_redraw()
 	action.emit("learned")
 	return ""
-
-
-## The wider spaces are UiTheme's, held per owner: a tree-to-tree swap (the new one's setup runs before the old one leaves) or a HUD under it keeps them on.
-func _use_spacing(on: bool) -> void:
-	if on:
-		UiTheme.spacing_acquire(self)
-	else:
-		UiTheme.spacing_release(self)
-
-
-func _exit_tree() -> void:
-	_use_spacing(false)
-
-
-func _notification(what: int) -> void:
-	if what == NOTIFICATION_PREDELETE:
-		_use_spacing(false)  # a screen freed without ever entering the tree
 
 
 func _unhandled_input(event: InputEvent) -> void:

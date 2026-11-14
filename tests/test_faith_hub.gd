@@ -38,7 +38,6 @@ static func _frames(t) -> void:
 	faith.setup(god)
 	t.check(faith._ui.position == offset and faith._ui.size == Vector2(640, 360), "faith: the frame is 640x360 at (80, 45) in an 800x450 area")
 	t.check(UiScale.backdrop(faith._ui) == Rect2(-offset, Vector2(800, 450)), "faith: the backdrop is the whole area in frame coordinates")
-	t.check(UiTheme.word_spacing, "faith: holds the word spacing while it lives")
 	var got := []
 	faith.action.connect(func(what: String) -> void: got.append(what))
 	faith._on_gui_input(_click(FaithScreen.BACK_RECT.get_center()))
@@ -52,13 +51,11 @@ static func _frames(t) -> void:
 		t.check(UiTheme.width(FaithScreen.REFUSALS[why], UiTheme.SIZE_SMALL) <= 632.0 - FaithScreen.BACK_RECT.end.x - 12.0,
 			"faith: the refusal '%s' fits beside Back" % why)
 	faith.free()
-	t.check(not UiTheme.word_spacing, "faith: gives the word spacing back when freed")
 
 	var hub := GodHub.new()
 	tree.root.add_child(hub)
 	hub.setup(god, "", true)
 	t.check(hub._ui.position == offset and hub._ui.size == Vector2(640, 360), "hub: the frame is 640x360 at (80, 45)")
-	t.check(UiTheme.word_spacing, "hub: holds the word spacing while it lives")
 	got.clear()
 	hub.action.connect(func(what: String) -> void: got.append(what))
 	hub._on_gui_input(_click(hub.menu_rect("faith").get_center()))
@@ -78,7 +75,6 @@ static func _frames(t) -> void:
 	var keys_w := UiTheme.width(hub.hint_text(), UiTheme.SIZE_SMALL)
 	t.check(keys_w <= 632.0, "hub: the keys row fits the screen (%.0f)" % keys_w)
 	hub.free()
-	t.check(not UiTheme.word_spacing, "hub: gives it back")
 	UiScale.clear_test_area()
 
 

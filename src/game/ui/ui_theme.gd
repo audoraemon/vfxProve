@@ -42,7 +42,42 @@ const TEXT_XXL := 66
 const LINE_S := 12.0
 const LINE_L := 24.0
 
+## The ten digits as drawn here, in two bitmap sizes. Pixelify Sans's own digits read wrong at UI sizes: its 5 is an S ("15,380" read "1S,3S0"),
+## its 8 an S too, its 7 a "?" and its 2 and 3 are squashed. These are drawn in front of the font (digit_font), so every number in the game uses them.
+## SMALL is 5 x 7, advance 6: drawn at 11 and whole multiples of it (22, 33, 66). MEDIUM is 6 x 9, advance 7: drawn at 13-21 (the old body and big sizes).
+const DIGITS_SMALL := {
+	"0": [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+	"1": ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+	"2": [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+	"3": [".###.", "#...#", "....#", "..##.", "....#", "#...#", ".###."],
+	"4": ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+	"5": ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+	"6": ["..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."],
+	"7": ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+	"8": [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+	"9": [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."],
+}
+const DIGITS_MEDIUM := {
+	"0": [".####.", "#....#", "#....#", "#....#", "#....#", "#....#", "#....#", "#....#", ".####."],
+	"1": ["..#...", ".##...", "..#...", "..#...", "..#...", "..#...", "..#...", "..#...", ".###.."],
+	"2": [".####.", "#....#", ".....#", ".....#", "....#.", "...#..", "..#...", ".#....", "######"],
+	"3": [".####.", "#....#", ".....#", ".....#", "..###.", ".....#", ".....#", "#....#", ".####."],
+	"4": ["....#.", "...##.", "..#.#.", ".#..#.", "#...#.", "######", "....#.", "....#.", "....#."],
+	"5": ["######", "#.....", "#.....", "#####.", ".....#", ".....#", ".....#", "#....#", ".####."],
+	"6": ["..###.", ".#....", "#.....", "#.....", "#####.", "#....#", "#....#", "#....#", ".####."],
+	"7": ["######", ".....#", ".....#", "....#.", "...#..", "..#...", "..#...", "..#...", "..#..."],
+	"8": [".####.", "#....#", "#....#", "#....#", ".####.", "#....#", "#....#", "#....#", ".####."],
+	"9": [".####.", "#....#", "#....#", "#....#", ".#####", ".....#", ".....#", "....#.", ".###.."],
+}
+## The sizes the digit bitmaps are native at: the small ones also serve every whole multiple (integer scaling only, so they stay on the pixel grid).
+const DIGIT_SMALL_NATIVE := 11
+const DIGIT_MEDIUM_NATIVE := 13
+## The first size that takes the medium digits, and the first that goes back to the small ones (doubled: 22 u).
+const DIGIT_MEDIUM_FROM := 13
+const DIGIT_MEDIUM_UNTIL := 22
+
 static var _font: FontFile
+static var _digits := {}
 static var _variations := {}
 
 
@@ -60,42 +95,81 @@ static func base_font() -> FontFile:
 	return _font
 
 
-## Whether UI text gets its extra word spacing: true while any owner holds it (spacing_acquire). The skill tree and the HUD hold it while they live: the wider
-## spaces change how every wrapped text fits, and each other screen re-fits its own text when it migrates (Tasks 6-8), then this becomes the default.
-## Callers read it; tests that need a state save and set it directly and restore it, and tests/run_part.gd resets it per suite (spacing_reset).
-static var word_spacing := false
-## The owners (instance ids) that hold the wider spaces.
-static var _spacing_owners := {}
+## Whether `size` takes the medium digit set (13-21) rather than the small one (11 and whole multiples).
+static func digits_medium(size: int) -> bool:
+	return size >= DIGIT_MEDIUM_FROM and size < DIGIT_MEDIUM_UNTIL
 
 
-## `owner` wants the wider spaces. Idempotent per owner (a second acquire changes nothing); one owner leaving never clears another's.
-static func spacing_acquire(owner: Object) -> void:
-	_spacing_owners[owner.get_instance_id()] = true
-	word_spacing = true
+## The extra width a space gets at `size` when the words are kept apart: +1 u per whole 11 u of size (+1 at 11, +2 at 22, +3 at 33, +6 at 66).
+static func space_extra(size: int) -> int:
+	return maxi(1, int(round(float(size) / 11.0)))
 
 
-## `owner` is done with them: they go off when the last owner has released. Releasing without having acquired does nothing.
-static func spacing_release(owner: Object) -> void:
-	_spacing_owners.erase(owner.get_instance_id())
-	word_spacing = not _spacing_owners.is_empty()
+## The digit bitmaps as a font for text at `size`: only 0-9 and the space, with the pixel font behind it for every other character. One per size (the space
+## differs), built once from DIGITS_*. The space is this font's own because a FontVariation's extra spacing only reaches the space of the font it wraps: it is the
+## pixel font's space at `size` plus space_extra when `spaced`, so a line is as wide as it was with the spacing on the pixel font itself.
+static func digit_font(size := TEXT_S, spaced := true) -> FontFile:
+	var cache_key := size * 2 + (1 if spaced else 0)
+	if not _digits.has(cache_key):
+		var medium := digits_medium(size)
+		var rows_of: Dictionary = DIGITS_MEDIUM if medium else DIGITS_SMALL
+		var native := DIGIT_MEDIUM_NATIVE if medium else DIGIT_SMALL_NATIVE
+		var w: int = String(rows_of["0"][0]).length()
+		var h: int = rows_of["0"].size()
+		var f := FontFile.new()
+		f.fixed_size = native
+		f.fixed_size_scale_mode = TextServer.FIXED_SIZE_SCALE_INTEGER_ONLY
+		f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+		f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+		f.generate_mipmaps = false
+		var tex_size := Vector2i(native, 0)
+		var sheet := Image.create((w + 1) * 10, h, false, Image.FORMAT_RGBA8)
+		for d in 10:
+			var rows: Array = rows_of[str(d)]
+			for y in h:
+				for x in w:
+					if String(rows[y])[x] == "#":
+						sheet.set_pixel(d * (w + 1) + x, y, Color.WHITE)
+		f.set_texture_image(0, tex_size, 0, sheet)
+		# The pixel font's own metrics at that size: the digits stand on its baseline and the line is as tall as its line.
+		var base := base_font()
+		f.set_cache_ascent(0, native, base.get_ascent(native))
+		f.set_cache_descent(0, native, base.get_descent(native))
+		for d in 10:
+			var ch := 48 + d
+			f.set_glyph_advance(0, native, ch, Vector2(w + 1, 0))
+			f.set_glyph_size(0, tex_size, ch, Vector2(w, h))
+			f.set_glyph_offset(0, tex_size, ch, Vector2(0, -h))
+			f.set_glyph_uv_rect(0, tex_size, ch, Rect2(d * (w + 1), 0, w, h))
+			f.set_glyph_texture_idx(0, tex_size, ch, 0)
+		var scale := maxi(1, int(round(float(size) / float(native))))
+		var target := base.get_char_size(32, size).x
+		if spaced:
+			target += space_extra(size)
+		f.set_glyph_size(0, tex_size, 32, Vector2.ZERO)
+		f.set_glyph_uv_rect(0, tex_size, 32, Rect2())
+		f.set_glyph_texture_idx(0, tex_size, 32, 0)
+		f.set_glyph_advance(0, native, 32, Vector2(target / scale, 0))
+		f.fallbacks = [base]
+		# The text server rounds a scaled space on its own: measure four as drawn and take the difference off.
+		var drawn := f.get_string_size("    ", HORIZONTAL_ALIGNMENT_LEFT, -1, size).x * 0.25
+		f.set_glyph_advance(0, native, 32, Vector2((target - (drawn - target)) / scale, 0))
+		_digits[cache_key] = f
+	return _digits[cache_key]
 
 
-## Nobody holds them (tests, between suites).
-static func spacing_reset() -> void:
-	_spacing_owners.clear()
-	word_spacing = false
+## Whether UI text gets its extra word spacing: on by default, everywhere. Callers read it; a test that needs the narrow spaces sets it false and restores it.
+static var word_spacing := true
 
 
-## The pixel font as the UI draws it at `size`: the file plus, when `word_spacing` is on, extra word spacing, because its space is only
-## 2 u wide at 11 u and words ran together ("Notenoughability"). +1 px of space per 11 u of size (+1 at 11, +2 at 22, +3 at 33, +6 at 66).
+## The pixel font as the UI draws it at `size`: the digit bitmaps and a wider space (digit_font) in front of the file.
 static func font_for(size := TEXT_S) -> FontVariation:
-	var extra := maxi(1, int(round(float(size) / 11.0))) if word_spacing else 0
-	if not _variations.has(extra):
+	var key := size * 2 + (1 if word_spacing else 0)
+	if not _variations.has(key):
 		var v := FontVariation.new()
-		v.base_font = base_font()
-		v.spacing_space = extra
-		_variations[extra] = v
-	return _variations[extra]
+		v.base_font = digit_font(size, word_spacing)
+		_variations[key] = v
+	return _variations[key]
 
 
 ## The font for 11 u text (what callers without a size draw with).

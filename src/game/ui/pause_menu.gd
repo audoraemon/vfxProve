@@ -37,15 +37,13 @@ const CONFIRM_BUTTONS_Y := 196.0
 
 ## PAUSED's baseline: above the mission's name bar (the HUD's banner, 116 to 144), which stays up under the pause and used to run through the word.
 const TITLE_Y := 108.0
-## The least baseline PAUSED may take on the screen (its 32 u glyphs stay in the area).
-const TITLE_MIN_Y := 40.0
 
 
 ## PAUSED's baseline in the frame's local coordinates. The mission's name bar is anchored to the area's top, so the title keeps its
 ## screen position TITLE_Y whatever the area's height: the frame sits `offset_y` down, so the local y is negative in a tall area
-## (still on screen: local + offset). Never above the top margin on the screen.
+## (still on screen: local + offset).
 static func title_y(offset_y: float) -> float:
-	return maxf(TITLE_Y, TITLE_MIN_Y) - offset_y
+	return TITLE_Y - offset_y
 
 
 var _ui: Control

@@ -15,6 +15,8 @@ var display: TextureRect
 var ui: Node
 ## Tests only: host in a headless run too (the references and the suite leave it false). Always put it back.
 static var test_host := false
+## Tests only: a root mouse position (in area units) that `mouse_in_view` answers instead of the real mouse; INF = off. Always put it back.
+static var test_mouse := Vector2.INF
 var _hosted: Node
 var _dying := false
 
@@ -144,6 +146,8 @@ static func world_xf(world: Viewport) -> Transform2D:
 
 ## The mouse in world-viewport px: the root's mouse when hosted (identity mapping), else the node's own viewport's.
 static func mouse_in_view(world_node: Node) -> Vector2:
+	if test_mouse != Vector2.INF:
+		return test_mouse
 	var wv := of(world_node)
 	if wv != null and wv.is_inside_tree():
 		return wv.get_viewport().get_mouse_position()

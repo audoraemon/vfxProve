@@ -57,9 +57,31 @@ static func _visible_capped(t) -> void:
 		cam.free()
 
 
+## The pattern for a camera zoom write that bypasses zoom_to().
+static func _zoom_regex() -> RegEx:
+	return RegEx.create_from_string("(?<![A-Za-z0-9_])(camera|cam|_camera|_cam|shake|_shake)\\.zoom(\\.[xy])?\\s*([-+*/]?=)[^=]|\\.zoom\\s*[-+*/]?=\\s*Vector2|tween_property\\([^)]*\"zoom(:[xy])?\"|\\.set\\(\"zoom(:[xy])?\"|set_deferred\\(\"zoom(:[xy])?\"")
+
+
+## The matcher itself: every bad form is caught, a zoom_to( call and a read are not (a lint that matches nothing passes for ever).
+static func _zoom_lint_fixture(t) -> void:
+	var rx := _zoom_regex()
+	var bad_lines := [
+		"cam.zoom = Vector2.ONE * 2.0", "_camera.zoom = Vector2(1, 1)", "bf.camera.zoom *= 1.1", "camera.zoom += Vector2.ONE",
+		"cam.zoom.x = 0.5", "camera.zoom.y -= 0.1", "foo.zoom = Vector2.ONE",
+		"tween.tween_property(_camera, \"zoom\", Vector2.ONE, 1.0)", "tween.tween_property(cam, \"zoom:x\", 2.0, 1.0)",
+		"tween.tween_property(cam, \"zoom:y\", 2.0, 1.0)", "cam.set(\"zoom\", Vector2.ONE)",
+		"cam.set_deferred(\"zoom\", Vector2.ONE)"]
+	for l: String in bad_lines:
+		t.check(rx.search(l) != null, "zoom lint catches: %s" % [l])
+	var ok_lines := ["cam.zoom_to(0.8)", "var z := cam.zoom.x", "if cam.zoom.x == 1.0:", "_camera.logical_zoom()", "tween.tween_method(_camera.zoom_to, 1.0, 2.0, 1.0)",
+		"var zoom := 1.0", "zoom = 2.0"]
+	for l: String in ok_lines:
+		t.check(rx.search(l) == null, "zoom lint ignores: %s" % [l])
+
+
 ## No code in src/ writes a camera's zoom directly: every writer goes through CameraShake.zoom_to (the fit applies).
 static func _zoom_lint(t) -> void:
-	var rx := RegEx.create_from_string("(?<![A-Za-z0-9_])(camera|cam|_camera|_cam|shake|_shake)\\.zoom(\\.[xy])?\\s*([-+*/]?=)[^=]|\\.zoom\\s*[-+*/]?=\\s*Vector2|tween_property\\([^)]*\"zoom\"|\\.set\\(\"zoom\"|set_deferred\\(\"zoom\"")
+	var rx := _zoom_regex()
 	var bad: Array = []
 	var seen := 0
 	var stack: Array = ["res://src"]
@@ -348,6 +370,7 @@ static func run(t) -> void:
 	_headless_keeps(t)
 	_visible_capped(t)
 	_zoom_lint(t)
+	_zoom_lint_fixture(t)
 	_fit(t)
 	_layout_table(t)
 	_anchor(t)

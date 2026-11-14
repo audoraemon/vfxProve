@@ -234,7 +234,8 @@ static func _resize_reclamps(t) -> void:
 	_drop(wv)
 
 
-## Picking at an area-shaped viewport: the area's centre is the camera's ground point, and the corners are symmetric about it.
+## Picking through the real path at a 2560x1080-shaped area (853x360 units, off-centre frame): a root mouse position goes through
+## mouse_in_view and mouse_ground, and lands on the ground point the camera's own transform gives for that screen point.
 static func _picking(t) -> void:
 	var wv: WorldView = await _view(t)
 	var bf := Battlefield.new()
@@ -244,16 +245,21 @@ static func _picking(t) -> void:
 	bf.camera.position = Vector2(120, 40)
 	await t.process_frame
 	await t.process_frame
-	var inv := bf.get_canvas_transform().affine_inverse()
 	var area := Vector2(wv.viewport.size)
 	t.check(area == Vector2(853, 360), "the world viewport is the 853x360 area")
-	var centre := inv * (area * 0.5)
-	t.check(centre.is_equal_approx(bf.camera.get_screen_center_position()), "the area's centre is the camera's point (%s vs %s)" % [centre, bf.camera.get_screen_center_position()])
-	t.check(Iso.screen_to_ground(centre).is_equal_approx(Iso.screen_to_ground(bf.camera.get_screen_center_position())), "and its ground cell")
-	var a := (inv * Vector2.ZERO) - centre
-	var b := (inv * area) - centre
-	t.check((a + b).length() < 1e-3, "the top-left and bottom-right corners are symmetric about the centre")
-	t.near(b.x, area.x * 0.5 / bf.camera.zoom.x, 1e-3, "half the width in world px at the render zoom")
+	var zoom := bf.camera.zoom.x
+	var centre := bf.camera.get_screen_center_position()
+	var ground_of := func(p: Vector2) -> Vector2: return Iso.screen_to_ground(centre + (p - area * 0.5) / zoom)
+	var points := [area * 0.5, Vector2(0, 0), Vector2(852, 359), Vector2(100, 300), Vector2(700, 40)]
+	for p: Vector2 in points:
+		WorldView.test_mouse = p
+		t.check(WorldView.mouse_in_view(bf) == p, "mouse_in_view is the root mouse unchanged at %s" % [p])
+		var got := bf.mouse_ground()
+		var want: Vector2 = ground_of.call(p)
+		t.check(got.is_equal_approx(want), "mouse_ground at %s is the ground under that screen point (%s vs %s)" % [p, got, want])
+	WorldView.test_mouse = area * 0.5
+	t.check(bf.mouse_ground().is_equal_approx(Iso.screen_to_ground(centre)), "the area's centre picks the camera's own ground point")
+	WorldView.test_mouse = Vector2.INF
 	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
 	_drop(wv)
 

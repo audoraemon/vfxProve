@@ -149,12 +149,20 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## Where the open tab's card `i` sits.
@@ -437,7 +445,7 @@ func preview(key: String) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.03, 0.03, 0.05, 1.0))
 	_draw_header()
 	_draw_budget()
 	_draw_panel()
@@ -711,7 +719,7 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 		# No recording for this power: its card art, centred where the clip would be.
 		var art: Texture2D = _art.get(key)
 		if art != null:
-			_ui.draw_texture_rect(art, Rect2(clip_rect.get_center() - Vector2(42, 42), Vector2(84, 84)), false)
+			_ui.draw_texture_rect(art, Rect2(UiScale.snap(clip_rect.get_center() - Vector2(42, 42)), Vector2(84, 84)), false)
 	UiTheme.frame(_ui, clip_rect, true)
 	y = clip_rect.end.y + 16.0
 	var title := PowerBook.authority_title(_tab_of(key))
@@ -733,6 +741,18 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 			y += UiTheme.LINE_SMALL
 
 
+## A power's icon at a native multiple of its pixels (UiIcon): the 84 px art when the multiple is even, else the 42 px HUD icon, centred on
+## `centre`. A window under 2x (headless, k = 1) cannot show one under 42 px, so there the old fractional square stands.
+## Textures are the ones loaded in setup(): nothing loads while drawing.
+func _icon_box(key: String, centre: Vector2, want: float) -> Dictionary:
+	var m := UiIcon.multiple(want)
+	var rect := UiIcon.native_rect(centre, want)
+	if rect.size.x > want + 1.0:
+		return {"tex": _icons.get(key), "rect": Rect2(centre - Vector2(want, want) * 0.5, Vector2(want, want))}
+	var tex: Texture2D = _art.get(key) if m % 2 == 0 and _art.get(key) != null else _icons.get(key)
+	return {"tex": tex if tex != null else _art.get(key), "rect": rect}
+
+
 func _draw_card(i: int, key: String) -> void:
 	var p := PowerBook.get_power(key)
 	var r := cell_rect(i, shown().size())
@@ -744,15 +764,19 @@ func _draw_card(i: int, key: String) -> void:
 	var sealed := god != null and key == god.sealed
 	var refused := sealed or draft.refusal(key) != ""
 	_ui.draw_rect(r, UiTheme.COL_PANEL if key != _hover else Color(0.1, 0.09, 0.07, 0.9))
-	var icon: Texture2D = _icons.get(key)
-	if icon != null:
-		_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(4, 4), Vector2(icon_px, icon_px)), false,
-			Color(1, 1, 1, 0.45) if refused else Color.WHITE)
+	var icon_box := _icon_box(key, r.position + Vector2(4.0 + icon_px * 0.5, 4.0 + icon_px * 0.5), icon_px)
+	if icon_box.tex != null:
+		_ui.draw_texture_rect(icon_box.tex, icon_box.rect, false, Color(1, 1, 1, 0.45) if refused else Color.WHITE)
 	# Gold for a picked card (spec §5), so the picks read at a glance across the grid.
 	UiTheme.frame(_ui, r, slot > 0)
 	var tx := r.position.x + icon_px + 10.0
 	var ty := r.position.y + (11.0 if compact else 13.0)
-	var lines := UiTheme.wrap(String(p.name), CARD.x - icon_px - 14.0, UiTheme.SIZE_SMALL)
+	var name_room := CARD.x - icon_px - 14.0
+	var lines := UiTheme.wrap(String(p.name), name_room, UiTheme.SIZE_SMALL)
+	if compact and lines.size() > 1:
+		# A shorter card has no room for a second line above the price (the wide spaces made "Judgement of the Ancients" need one):
+		# one line of whole words and an ellipsis; the whole name shows over the card while it is hovered.
+		lines = PackedStringArray([UpgradesScreen.cell_name(String(p.name), name_room)])
 	for k in mini(lines.size(), 2):
 		UiTheme.text(_ui, Vector2(tx, ty), lines[k], UiTheme.SIZE_SMALL,
 			UiTheme.COL_GOLD if slot > 0 else (UiTheme.COL_DIM if refused else UiTheme.COL_TEXT))
@@ -762,9 +786,10 @@ func _draw_card(i: int, key: String) -> void:
 	UiTheme.text(_ui, Vector2(tx, r.end.y - (3.0 if compact else 5.0)), cost, UiTheme.SIZE_SMALL, UiTheme.COL_BAD if sealed else UiTheme.COL_DIM)
 	if sealed:
 		# The Lantern's seal (god P2): a red cross over the icon, drawn shapes only (C4).
-		var at := r.position + Vector2(4.0, 4.0)
-		_ui.draw_line(at, at + Vector2(icon_px, icon_px), UiTheme.COL_BAD, 2.0)
-		_ui.draw_line(at + Vector2(icon_px, 0.0), at + Vector2(0.0, icon_px), UiTheme.COL_BAD, 2.0)
+		var at: Vector2 = icon_box.rect.position
+		var side: float = icon_box.rect.size.x
+		_ui.draw_line(at, at + Vector2(side, side), UiTheme.COL_BAD, 2.0)
+		_ui.draw_line(at + Vector2(side, 0.0), at + Vector2(0.0, side), UiTheme.COL_BAD, 2.0)
 	if bool(p.get("quiet", false)):
 		# The quiet powers' mark: the town does not see them cast.
 		# A locked card's price fills the line it would share, so its mark rides one line higher (v0.11 M1); so does a price
@@ -809,9 +834,9 @@ func _draw_loadout() -> void:
 		if key == "":
 			UiTheme.text(_ui, r.position + Vector2(5.0, 18.0), digit, UiTheme.SIZE_BODY, UiTheme.COL_DIM)
 			continue
-		var icon: Texture2D = _icons.get(key)
-		if icon != null:
-			_ui.draw_texture_rect(icon, Rect2(r.position + Vector2(2, 2), Vector2(24, 24)), false)
+		var slot_icon := _icon_box(key, r.position + Vector2(14.0, 14.0), 24.0)
+		if slot_icon.tex != null:
+			_ui.draw_texture_rect(slot_icon.tex, slot_icon.rect, false)
 		UiTheme.text(_ui, r.position + Vector2(3.0, 12.0), digit, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 		if level_picker:
 			_draw_level_badge(i, key)

@@ -72,14 +72,22 @@ func setup(result: Dictionary, next: Array, night: NightState) -> InterludeScree
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	_menu = Menu.row(["draft", "missions"], ["Choose powers", "Abandon night" if endless else "Missions"], 320.0, PANEL.end.y - 28.0, 120.0)
 	_rows = _menu
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## Choose the act to play next by id, as a click on its card would: for the FLOW test, and the way back from Prepare.
@@ -216,7 +224,7 @@ func _on_gui_input(event: InputEvent) -> void:
 
 func _draw_ui() -> void:
 	var won := bool(_result.get("won", false))
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.0, 0.0, 0.0, 0.5))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.0, 0.0, 0.0, 0.5))
 	_ui.draw_rect(PANEL, Color(0.03, 0.03, 0.05, 0.9))
 	UiTheme.frame(_ui, PANEL, true)
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(_called, UiTheme.SIZE_BIG) * 0.5), NAME_Y), _called,

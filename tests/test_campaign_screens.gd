@@ -5,6 +5,7 @@ extends RefCounted
 
 
 static func run(t) -> void:
+	_frames(t)
 	for count in [1, 2, 3]:
 		var bad := 0
 		for i in count:
@@ -146,3 +147,53 @@ static func run(t) -> void:
 	t.check(String(pause._menu.items[4].action) == "campaign" and String(pause._menu.items[4].label) == "Campaign",
 		"in a campaign, Pause's last button is Campaign")
 	pause.free()
+
+
+static func _left(at: Vector2) -> InputEventMouseButton:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = true
+	e.position = at
+	return e
+
+
+## UI resolution Task 7: the campaign night, the ending and the interlude draw in a 640x360 design frame centred in the area, hold the wide spaces
+## while they live, and answer clicks at frame-local points.
+static func _frames(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	UiScale.set_test_area(Vector2i(800, 450))
+	var offset := Vector2(80, 45)
+	var s := CampaignState.new()
+	s.night = 1
+	var night := CampaignScreen.new()
+	tree.root.add_child(night)
+	night.setup(s)
+	t.check(night._ui.position == offset and night._ui.size == Vector2(640, 360), "campaign: the frame is 640x360 at (80, 45)")
+	t.check(UiScale.backdrop(night._ui) == Rect2(-offset, Vector2(800, 450)), "campaign: the backdrop is the whole area in frame coordinates")
+	t.check(UiTheme.word_spacing, "campaign: holds the word spacing while it lives")
+	night.click(CampaignScreen.card_rect(1, 3).get_center())
+	t.check(night.chosen == (night.options[1] as MissionDef).id, "campaign: a click at a card's frame-local centre chooses it (%s)" % night.chosen)
+	night.free()
+	t.check(not UiTheme.word_spacing, "campaign: gives the word spacing back when freed")
+
+	var end := EndingScreen.new()
+	tree.root.add_child(end)
+	end.setup(CampaignDef.FALSE_LANTERN, "vision")
+	t.check(end._ui.position == offset and end._ui.size == Vector2(640, 360), "ending: the frame is 640x360 at (80, 45)")
+	t.check(UiTheme.word_spacing, "ending: holds the word spacing while it lives")
+	end.free()
+	t.check(not UiTheme.word_spacing, "ending: gives it back")
+
+	var inter := InterludeScreen.new()
+	tree.root.add_child(inter)
+	inter.setup({"mission": "omen", "won": true, "goal": {"label": "Stop the warning", "done": true}, "bonuses": [], "time": 21.4},
+		[MissionBook.long_night().act("festival")], NightState.new())
+	var went: Array[String] = []
+	inter.action.connect(func(what: String) -> void: went.append(what))
+	t.check(inter._ui.position == offset and inter._ui.size == Vector2(640, 360), "interlude: the frame is 640x360 at (80, 45)")
+	t.check(UiTheme.word_spacing, "interlude: holds the word spacing while it lives")
+	inter.click(inter.button_rect("draft").get_center())
+	t.check(went == ["draft"], "interlude: a click at Choose powers' frame-local centre goes on (%s)" % [went])
+	inter.free()
+	t.check(not UiTheme.word_spacing, "interlude: gives it back")
+	UiScale.clear_test_area()

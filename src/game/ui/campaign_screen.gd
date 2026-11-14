@@ -86,13 +86,21 @@ func setup(state: CampaignState, pick := "") -> CampaignScreen:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	_menu = Menu.row(["draft", "restart", "title"], ["Choose powers", "New campaign", "Title"], 320.0, BUTTONS_Y, 128.0)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## Choose tonight's mission by id, as a click on its card would (the FLOW test).
@@ -196,7 +204,7 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.0, 0.0, 0.0, 0.85))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.0, 0.0, 0.0, 0.85))
 	_ui.draw_rect(PANEL, Color(0.03, 0.03, 0.05, 0.92))
 	UiTheme.frame(_ui, PANEL, true)
 	var n := CampaignDef.night(_state.night)

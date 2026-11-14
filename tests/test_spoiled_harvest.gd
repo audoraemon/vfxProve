@@ -49,6 +49,7 @@ static func run(t) -> void:
 	_reserved(t)
 	_mission(t)
 	_carter_early(t)
+	_carter_takes_orders(t)
 	_out(t)
 	_left_the_map(t)
 	_plague(t)
@@ -715,6 +716,48 @@ static func _carter_early(t) -> void:
 	t.check(d.has_grain(g) and int(d.loads[g]) == HarvestDirector.LOADS - 1 and carter_tags.size() >= 1
 		and carter_tags[0].label == "CARTER - %d LEFT" % (HarvestDirector.LOADS - 1) and carter_tags[0].edge,
 		"the grain comes and he takes his first load at once, tagged CARTER - n LEFT, edge-arrowed (%s)" % [_labels(d)])
+	_done(s)
+
+
+## H8: a carter is never picked from those who cannot take his errand (Person.can_take_duty()): one fleeing, fighting or held firm by
+## the god's will is passed over for the next nearest, who sets out. (A pick in mid-flight never set out and could run out of the walls,
+## spoiling the granary for the god -- harvest_b_play_1 at 141 s, under route B's 150 s floor.)
+static func _carter_takes_orders(t) -> void:
+	for how: String in ["flee", "fight", "compelled"]:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var g := d.targets[0]
+		var near := d._lay_near(d.citadel_door, 1, d._busy())
+		var first: Person = near[0] if not near.is_empty() else null
+		if first == null:
+			t.check(false, "a lay citizen near the Citadel's gate to test with (%s)" % how)
+			_done(s)
+			continue
+		match how:
+			"flee":
+				first.mind = Person.Mind.FLEE
+			"fight":
+				first.mind = Person.Mind.FIGHT
+			"compelled":
+				first.mind = Person.Mind.COMPELLED
+				first.compel_will = Person.WILL_FIRM
+		t.check(not first.can_take_duty(), "one %s cannot take a duty" % how)
+		d._send_carter(g)
+		var crew: Array = d.carters[g]
+		var c0: Person = crew[0] if not crew.is_empty() else null
+		t.check(crew.size() == HarvestDirector.CARTERS and c0 != null and c0 != first and c0.mind == Person.Mind.DUTY
+			and c0.goal().distance_to(d.doors[g]) < 0.5,
+			"the nearest lay citizen %s is passed over: the next sets out for the door (%s)" % [how,
+				Person.Mind.keys()[c0.mind] if c0 != null else "none"])
+		_done(s)
+	# A calm one nearest is still the one sent.
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	var first: Person = d._lay_near(d.citadel_door, 1, d._busy())[0]
+	t.check(first.can_take_duty(), "a calm citizen can take a duty")
+	d._send_carter(g)
+	t.check(d.carters[g] == [first] and first.mind == Person.Mind.DUTY, "a calm nearest one is the carter, as before")
 	_done(s)
 
 

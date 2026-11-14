@@ -23,7 +23,9 @@ extends RazeDirector
 ## (H5). The user's ruling (2026-11-13, for Decree): a carter alive, out of doors and held by a NO LEAVING law (Leaving Is Prohibited's
 ## amber cell, Fenced Rule's NO LEAVING) for HELD_SPOIL seconds without a break spoils his granary as a seizure does (H6). The user's ruling
 ## (2026-11-14, for Death; the night's rule for every power): a carter carrying a load who is frightened drops it, and his granary's grain is
-## spoiled (H7, _dropped_look()). Every spoil is recorded in `spoiled_by`.
+## spoiled (H7, _dropped_look()). A carter is picked only from those who can take the errand (H8, Person.can_take_duty()): one already
+## fleeing never set out, and his flight out of the walls spoiled the granary for the god before its grain was due. Every spoil is
+## recorded in `spoiled_by`.
 
 ## One watchman's post (v0.11 M2): a plain record, so the director holds no cycle.
 class Watch:
@@ -276,12 +278,13 @@ func carter_out_at(i: int) -> float:
 
 
 ## A carter sets out for `s`'s door from the Citadel's gate: the lay citizen nearest it not already at work (v0.11 M2; god T1R: the
-## first one early, a replacement after a death).
+## first one early, a replacement after a death). H8: none who cannot take the errand now (Person.can_take_duty()).
 func _send_carter(s: Structure) -> void:
 	if not _out_at.has(s):
 		_out_at[s] = _clock
 	_carter_fallen[s] = 0.0
-	var crew := _lay_near(citadel_door, CARTERS, _busy())
+	var unable := crowd.citizens.filter(func(p: Variant) -> bool: return _alive(p) and not (p as Person).can_take_duty())
+	var crew := _lay_near(citadel_door, CARTERS, _busy() + unable)
 	carters[s] = crew
 	for c in crew:
 		c.go_duty(doors[s])

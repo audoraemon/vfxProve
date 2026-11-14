@@ -2491,13 +2491,19 @@ func go_ring(steps: Vector2) -> void:
 ## its place in the Banishing Rite's ring. A fright still breaks it (panic()); Crowd.off_duty() ends it.
 ## Soldiers take duties too (v0.07): an escort taking over the bell or an engineer's place.
 func go_duty(at: Vector2) -> void:
-	if state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+	if not can_take_duty():
 		return
 	_held_saved = false
 	mind = Mind.DUTY
 	anchor = at
 	walk_speed = _mind_speed()
 	set_goal(at)
+
+
+## Whether go_duty() would take now: not dead, fleeing or fighting, nor held by a firm compulsion (god T1R H8: a mission picks its
+## errand-runners from those who can).
+func can_take_duty() -> bool:
+	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM))
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.

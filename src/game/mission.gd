@@ -116,6 +116,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## The pause menu is up (set_pause_hidden): a HUD built while it is (a mission paused as it opens) starts with its tags and Cael's plate hidden.
+var _pause_hidden := false
 ## Remembrance's overlay while one is up.
 var _memory: MemoryOverlay
 ## F4: the citizens' intents, the alarm stage and the gates (v0.04 debug).
@@ -533,6 +535,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_hud.world_viewport = _bf.get_viewport()  # the HUD lives in the root; its tags are placed with the world camera's transform
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
+	_hud.set_pause_hidden(_pause_hidden)
 	_rules.banner.disconnect(hold)
 	_held_banners = held
 	set_ui_hidden(ui_hidden)  # a new act or a restart keeps the interface as the player left it
@@ -1419,6 +1422,13 @@ func _quit() -> void:
 	if is_instance_valid(_crowd):
 		_crowd.stop_bed()
 	await _bf.quit()
+
+
+## The pause menu is up (Game): the HUD hides the map's tags and Cael's plate, so none of their words shows beside the menu's buttons.
+func set_pause_hidden(on: bool) -> void:
+	_pause_hidden = on
+	if is_instance_valid(_hud):
+		_hud.set_pause_hidden(on)
 
 
 ## Stop the world without stopping the menu over it. The whole mission lives under this node, so pausing the

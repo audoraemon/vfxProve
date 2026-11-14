@@ -32,12 +32,20 @@ func setup(slot: GodSlot) -> FaithScreen:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## The keys of GodSlot.FAITH, in order: one row each.
@@ -161,7 +169,7 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.03, 0.03, 0.05, 1.0))
 	UiTheme.text(_ui, Vector2(8, 24), "FAITH   %d" % _slot.faith, UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 	var keys := rows()
 	for i in keys.size():
@@ -172,7 +180,7 @@ func _draw_ui() -> void:
 		"Back", UiTheme.SIZE_BODY, UiTheme.COL_GOLD if _hover == "back" else UiTheme.COL_TEXT)
 	var hint := refused_reason if refused_reason != "" else "Click to buy. Esc to go back."
 	UiTheme.text(_ui, Vector2(BACK_RECT.end.x + 12.0, BACK_RECT.position.y + 14.0), hint, UiTheme.SIZE_SMALL,
-		UiTheme.COL_BAD if refused_reason != "" else UiTheme.COL_DIM)
+		UiTheme.COL_BAD_TEXT if refused_reason != "" else UiTheme.COL_DIM)
 
 
 ## A row: its line, and under it what it gives now; dim when it cannot be bought now.

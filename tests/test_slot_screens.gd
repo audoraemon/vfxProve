@@ -7,6 +7,7 @@ const FRAME := Rect2(0, 0, 640, 360)
 
 static func run(t) -> void:
 	_clear()
+	_frames(t)
 	_layout(t)
 	_empty(t)
 	_filled(t)
@@ -20,6 +21,60 @@ static func run(t) -> void:
 	_choose(t)
 	GodTree.dev_fill = false
 	_clear()
+
+
+static func _click(at: Vector2) -> InputEventMouseButton:
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = true
+	e.position = at
+	return e
+
+
+## UI resolution Task 6b: the slot select and the god select draw in a 640x360 design frame centred in the area, hold the wide spaces while they live, and their text fits.
+static func _frames(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	UiScale.set_test_area(Vector2i(800, 450))
+	var offset := Vector2(80, 45)
+	_write(1, "ruin", 7, 6)
+	var slots := SlotScreen.new()
+	tree.root.add_child(slots)
+	slots.setup(BASE)
+	t.check(slots._ui.position == offset and slots._ui.size == Vector2(640, 360), "slots: the frame is 640x360 at (80, 45) in an 800x450 area")
+	t.check(UiScale.backdrop(slots._ui) == Rect2(-offset, Vector2(800, 450)), "slots: the backdrop is the whole area in frame coordinates")
+	t.check(UiTheme.word_spacing, "slots: hold the word spacing while they live")
+	var got := _listen(slots)
+	slots._on_gui_input(_click(slots.button_rect(0, "continue").get_center()))
+	t.check(got == ["continue"] and slots.chosen == 1, "slots: a click at Continue's frame-local centre hits it (%s)" % [got])
+	slots._on_gui_input(_click(SlotScreen.BACK_RECT.get_center()))
+	t.check(got.back() == "back", "slots: and Back's")
+	var worst := 0.0
+	for type in GodTree.RING:
+		for tier in range(1, 6):
+			var line := "%s   Level %d   %s   Night %d" % [PowerBook.authority_title(type), GodSlot.MAX_LEVEL, TierBook.tier_name(tier), 100]
+			worst = maxf(worst, UiTheme.width(line, UiTheme.SIZE_SMALL))
+	t.check(worst <= SlotScreen.BUTTON_AT.x - 20.0, "slots: the longest slot line (%.0f u at 11 u) stays clear of the buttons (%.0f)" % [worst, SlotScreen.BUTTON_AT.x - 20.0])
+	slots.free()
+	t.check(not UiTheme.word_spacing, "slots: give the word spacing back when freed")
+	_clear()
+
+	var select := GodSelectScreen.new()
+	tree.root.add_child(select)
+	select.setup()
+	t.check(select._ui.position == offset and select._ui.size == Vector2(640, 360), "god select: the frame is 640x360 at (80, 45)")
+	t.check(UiTheme.word_spacing, "god select: holds the word spacing while it lives")
+	got = _listen(select)
+	select._on_gui_input(_click(GodSelectScreen.CHOOSE_RECT.get_center()))
+	t.check(got == ["chosen"], "god select: a click at Enter Path's frame-local centre chooses (%s)" % [got])
+	select._on_gui_input(_click(GodSelectScreen.BACK_RECT.get_center()))
+	t.check(got.back() == "back", "god select: and Back's")
+	var src := FileAccess.get_file_as_string("res://src/game/ui/god_select_screen.gd")
+	t.check(not src.contains("size -= 1"), "god select: no text is made smaller than 11 u (the carved names were 10 u when wide)")
+	for type in GodTree.RING:
+		t.check(UiTheme.width(PowerBook.authority_title(type), UiTheme.SIZE_SMALL) <= 60.0, "god select: %s's carved name fits its platform at 11 u" % type)
+	select.free()
+	t.check(not UiTheme.word_spacing, "god select: gives it back")
+	UiScale.clear_test_area()
 
 
 static func _clear() -> void:
@@ -261,7 +316,7 @@ static func _hit_areas(t) -> void:
 static func _info_fits(t) -> void:
 	GodTree.dev_fill = true
 	var screen := GodSelectScreen.new().setup()
-	var w := GodSelectScreen.INFO_RECT.size.x - 16.0
+	var w := GodSelectScreen.INFO_INNER_W
 	var bad := 0
 	for type in GodTree.RING:
 		var lines := screen.type_lines(type)

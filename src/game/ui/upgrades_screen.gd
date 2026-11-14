@@ -21,6 +21,10 @@ const GRID_BOTTOM := 316.0
 const MIN_CELL_H := 16.0
 const BACK_RECT := Rect2(8.0, 322.0, 100.0, 20.0)
 const REFUSE_SECONDS := 1.5
+## The tick that stands for "Unlocked" in a cell too narrow for the word beside a long name (UiTheme.mark is 7 u wide).
+const MARK_W := 8.0
+## Where the hovered power's full name starts in the left column (baseline of its first line).
+const DETAIL_Y := 232.0
 ## What a refused purchase says, by DescendState.refusal().
 const REFUSALS := {"believers": "Not enough believers", "limit": "None left to buy", "owned": "Already unlocked",
 	"unknown": "Not a power"}
@@ -41,12 +45,20 @@ func setup(state: DescendState) -> UpgradesScreen:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## The grid's cell `i` in a grid of `count` powers (0: as if they all fit at CELL's height).
@@ -123,6 +135,12 @@ func buy(what: String) -> bool:
 	return true
 
 
+## Puts the mouse on `what` (a power key, "dp", "slot" or "back") without a mouse: the photograph of a hovered power (`--show=upgrades --hover=<key>`).
+func preview(what: String) -> void:
+	_hover = what
+	_redraw()
+
+
 func _redraw() -> void:
 	if _ui != null:
 		_ui.queue_redraw()
@@ -155,7 +173,7 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.03, 0.03, 0.05, 1.0))
 	UiTheme.text(_ui, Vector2(8, 24), "UPGRADES", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 	var purse := "Believers %d" % _state.believers
 	UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(purse, UiTheme.SIZE_BODY), 24.0), purse, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
@@ -169,6 +187,7 @@ func _draw_ui() -> void:
 		UiTheme.text(_ui, Vector2(8.0, SLOT_RECT.end.y + 16.0 + UiTheme.LINE_SMALL * float(i)),
 			UiTheme.wrap(budget, DP_RECT.size.x, UiTheme.SIZE_SMALL)[i], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(_ui, Vector2(GRID_AT.x, GRID_AT.y - 6.0), "UNLOCK A POWER", UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	_draw_hovered_power()
 	for i in powers.size():
 		_draw_cell(i, powers[i])
 	_ui.draw_rect(BACK_RECT, Color(0.04, 0.04, 0.06, 0.85))
@@ -177,7 +196,19 @@ func _draw_ui() -> void:
 		"Board", UiTheme.SIZE_BODY, UiTheme.COL_GOLD if _hover == "back" else UiTheme.COL_TEXT)
 	var hint := refused_reason if refused_reason != "" else "Click to buy. Esc for the board."
 	UiTheme.text(_ui, Vector2(BACK_RECT.end.x + 12.0, BACK_RECT.position.y + 14.0), hint, UiTheme.SIZE_SMALL,
-		UiTheme.COL_BAD if refused_reason != "" else UiTheme.COL_DIM)
+		UiTheme.COL_BAD_TEXT if refused_reason != "" else UiTheme.COL_DIM)
+
+
+## The power under the mouse, in full, in the left column under the budget line: a cell may cut a long name.
+func _draw_hovered_power() -> void:
+	if not powers.has(_hover):
+		return
+	var power_name := String(PowerBook.get_power(_hover).name)
+	var state := "Unlocked" if _state.is_unlocked(_hover) else "%d believers" % DescendState.unlock_price(_hover)
+	var lines := UiTheme.wrap(power_name, DP_RECT.size.x, UiTheme.SIZE_SMALL)
+	for i in lines.size():
+		UiTheme.text(_ui, Vector2(8.0, DETAIL_Y + UiTheme.LINE_SMALL * float(i)), lines[i], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(8.0, DETAIL_Y + UiTheme.LINE_SMALL * float(lines.size())), state, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
 
 
 ## An upgrade's button: its name, and under it its price and count; dim when it cannot be bought now.
@@ -189,7 +220,29 @@ func _draw_button(r: Rect2, title: String, line: String, what: String) -> void:
 	UiTheme.text(_ui, r.position + Vector2(8.0, 32.0), line, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT if can else UiTheme.COL_DIM)
 
 
-## A locked power's cell: its name cut to fit and its price; "Unlocked" once bought; dim when unaffordable.
+## Whether "Unlocked" fits beside the power's whole name in a cell `cell_w` wide (else the cell shows a tick). Every locked power's name and price fit:
+## the longest name is 117 u, the grid's cell 136.
+static func unlocked_word_fits(key: String, cell_w: float) -> bool:
+	return UiTheme.width(String(PowerBook.get_power(key).name), UiTheme.SIZE_SMALL) + UiTheme.width("Unlocked", UiTheme.SIZE_SMALL) + 14.0 <= cell_w
+
+
+## A power's name for a cell with `room` u for it: whole when it fits, else as many whole words as fit and an ellipsis ("Judgement of the..."), else its letters
+## so far; never just the first word (that read as another power, "Judgement"). The full name shows in the left column while the cell is hovered.
+static func cell_name(power_name: String, room: float) -> String:
+	if UiTheme.width(power_name, UiTheme.SIZE_SMALL) <= room:
+		return power_name
+	var words := power_name.split(" ")
+	for n in range(words.size() - 1, 0, -1):
+		var cut := " ".join(words.slice(0, n)) + "…"
+		if UiTheme.width(cut, UiTheme.SIZE_SMALL) <= room:
+			return cut
+	var out := words[0]
+	while out.length() > 1 and UiTheme.width(out + "…", UiTheme.SIZE_SMALL) > room:
+		out = out.substr(0, out.length() - 1)
+	return out + "…"
+
+
+## A locked power's cell: its name (cell_name) and its price; "Unlocked" once bought; dim when unaffordable.
 func _draw_cell(i: int, key: String) -> void:
 	var r := cell_rect(i, powers.size())
 	var owned := _state.is_unlocked(key)
@@ -197,11 +250,16 @@ func _draw_cell(i: int, key: String) -> void:
 	_ui.draw_rect(r, Color(0.1, 0.09, 0.07, 0.9) if _hover == key else UiTheme.COL_PANEL)
 	UiTheme.frame(_ui, r, owned or (can and _hover == key))
 	var price := "Unlocked" if owned else "%d" % DescendState.unlock_price(key)
-	var price_w := UiTheme.width(price, UiTheme.SIZE_SMALL)
-	var power_name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - price_w - 14.0)
+	if owned and not unlocked_word_fits(key, r.size.x):
+		price = ""  # a long name keeps its whole self; a gold tick says what the word would
+	var price_w := UiTheme.width(price, UiTheme.SIZE_SMALL) if price != "" else MARK_W
+	var power_name := cell_name(String(PowerBook.get_power(key).name), r.size.x - price_w - 14.0)
 	# The line's baseline: 14 px down a full cell, kept in the middle of a shorter one.
 	var base := r.position.y + roundf(r.size.y * 0.5 + 4.0)
 	UiTheme.text(_ui, Vector2(r.position.x + 4.0, base), power_name, UiTheme.SIZE_SMALL,
 		UiTheme.COL_GOLD if owned else (UiTheme.COL_TEXT if can else UiTheme.COL_DIM))
+	if price == "":
+		UiTheme.mark(_ui, Vector2(r.end.x - 4.0 - MARK_W, base - 7.0), true)
+		return
 	UiTheme.text(_ui, Vector2(r.end.x - 4.0 - price_w, base), price, UiTheme.SIZE_SMALL,
 		UiTheme.COL_GOLD if owned else UiTheme.COL_DIM)

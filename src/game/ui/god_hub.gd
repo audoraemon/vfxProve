@@ -60,12 +60,20 @@ func setup(slot: GodSlot, p_line := "", p_dev := false) -> GodHub:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## The Divine Power bar's words: "n / need Divine Power"; at the level cap below level 50 "AWAKEN TO GROW"; at level 50 "MAX LEVEL"
@@ -248,7 +256,7 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.03, 0.03, 0.05, 1.0))
 	var text := lines()
 	UiTheme.text(_ui, Vector2(24.0, 44.0), text[0], UiTheme.SIZE_TITLE, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(24.0, 66.0), text[1], UiTheme.SIZE_BODY, UiTheme.COL_TEXT)
@@ -270,11 +278,11 @@ func _draw_ui() -> void:
 	var wrapped := UiTheme.wrap(line, LINE_WIDTH, UiTheme.SIZE_BODY) if line != "" else PackedStringArray()
 	for i in wrapped.size():
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(wrapped[i]) * 0.5), float(lay.line_ys[i])), wrapped[i], UiTheme.SIZE_BODY,
-			UiTheme.COL_BAD)
+			UiTheme.COL_BAD_TEXT)
 	for pair: Array in [[seal_line(), float(lay.seal_y)], [hunt_line(), float(lay.hunt_y)]]:
 		if String(pair[0]) != "":
 			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(String(pair[0])) * 0.5), float(pair[1])), String(pair[0]),
-				UiTheme.SIZE_BODY, UiTheme.COL_BAD)
+				UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
 	var dim := PackedStringArray() if can_descend() else PackedStringArray(["descend"])
 	if awaken_dim():
 		dim.append("awaken")
@@ -282,7 +290,7 @@ func _draw_ui() -> void:
 	var blocked := blocked_line()
 	if blocked != "":
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(blocked, UiTheme.SIZE_SMALL) * 0.5), BUTTONS_Y + Menu.HEIGHT + 16.0),
-			blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD)
+			blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD_TEXT)
 	var hint := hint_text()
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), 346.0), hint, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 

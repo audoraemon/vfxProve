@@ -561,7 +561,7 @@ func _draw_hunt_card(r: Rect2, id: String, on: bool) -> void:
 	var top := r.position.y + roundf((r.size.y - UiTheme.LINE_SMALL * float(lines.size())) * 0.5) + UiTheme.LINE_SMALL - 3.0
 	for k in lines.size():
 		UiTheme.text(_ui, Vector2(roundf(r.get_center().x - UiTheme.width(lines[k], UiTheme.SIZE_SMALL) * 0.5), top + UiTheme.LINE_SMALL * float(k)),
-			lines[k], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
+			lines[k], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_MID)
 
 
 ## The hint under the cards: HINT_DEV on the DEV tab with its Hunt row, else HINT.
@@ -613,7 +613,7 @@ func _draw_card(r: Rect2, id: String, on: bool, rows: int) -> void:
 	var y := r.position.y + PAD + 14.0
 	var name_size := title_size(id, r)
 	for line in UiTheme.wrap(card_title(id), title_room(id, r), name_size):
-		UiTheme.text(_ui, Vector2(x, y), line, name_size, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_DARK)
+		UiTheme.text(_ui, Vector2(x, y), line, name_size, UiTheme.COL_GOLD if on else UiTheme.COL_GOLD_MID)
 		y += UiTheme.LINE_BODY + 3.0
 	if _state().cleared.has(id):
 		UiTheme.mark(_ui, Vector2(r.end.x - PAD - 7.0, r.position.y + PAD + 2.0), true)

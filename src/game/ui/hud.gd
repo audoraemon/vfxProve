@@ -178,6 +178,8 @@ var _caption := ""
 ## always tags its Citadel, ~0.7 ms). It redraws only when what it shows has changed (_tag_signature()).
 var _tag_layer: Control
 var _tags_drawn := ""
+## The pause menu is up over this HUD (set_pause_hidden): the map's tags and Cael's plate stay out of sight, so no word of theirs shows through or beside the menu's buttons.
+var _pause_hidden := false
 ## What the drawing helpers draw on: the HUD, or the tag layer while it draws (_draw_tag_layer()).
 var _canvas: CanvasItem = self
 ## The night's first intro is up (v0.11 M1): Mission sets it, and the prayers plate shows the wishes heard.
@@ -1363,6 +1365,19 @@ func _tag_signature(with_stack := true) -> String:
 	return out
 
 
+## The pause menu opens or closes over the HUD: the tag layer (the tags and their edge arrows) and Cael's subtitle plate are hidden while it is up. The mission is frozen, so
+## the subtitle's clock does not run: it comes back where it was.
+func set_pause_hidden(on: bool) -> void:
+	_pause_hidden = on
+	if _tag_layer != null:
+		_tag_layer.visible = not on
+	queue_redraw()
+
+
+func pause_hidden() -> bool:
+	return _pause_hidden
+
+
 ## The tag layer's drawing (board tags): the tags on the map (v0.10; M6) and their edge arrows. The layer sits behind the
 ## HUD, so they sit under every other HUD element -- the clock, the bars, the events, the objectives, the status, the
 ## banners, Cael's plate and the slots -- and never hide one.
@@ -1384,7 +1399,8 @@ func _draw() -> void:
 	if not intro and not rite_plate_up():
 		_draw_play_plates(w)
 	_draw_banners(w)
-	_draw_subtitle(w)
+	if not _pause_hidden:
+		_draw_subtitle(w)
 	_draw_prayers(w)
 	_draw_caption(w)
 	_draw_rite_plate(w)  # god P3: a won rite's plate stands in place of the stack, the strip and the slots

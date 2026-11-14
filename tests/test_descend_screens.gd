@@ -17,8 +17,47 @@ const RESULT := {
 
 
 static func run(t) -> void:
+	_frames(t)
 	_results(t)
 	_upgrades(t)
+
+
+## UI resolution Task 6b: the Upgrades screen draws in a 640x360 design frame centred in the area, holds the wide spaces while it lives, and no power's name is cut to another's.
+static func _frames(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	UiScale.set_test_area(Vector2i(800, 450))
+	var offset := Vector2(80, 45)
+	var up := UpgradesScreen.new()
+	tree.root.add_child(up)
+	up.setup(DescendState.new())
+	t.check(up._ui.position == offset and up._ui.size == Vector2(640, 360), "upgrades: the frame is 640x360 at (80, 45) in an 800x450 area")
+	t.check(UiScale.backdrop(up._ui) == Rect2(-offset, Vector2(800, 450)), "upgrades: the backdrop is the whole area in frame coordinates")
+	t.check(UiTheme.word_spacing, "upgrades: holds the word spacing while it lives")
+	var got := []
+	up.action.connect(func(what: String) -> void: got.append(what))
+	up._on_gui_input(_click(UpgradesScreen.BACK_RECT.get_center()))
+	t.check(got == ["back"], "upgrades: a click at Board's frame-local centre hits it (%s)" % [got])
+	var n := up.powers.size()
+	var cell_w := UpgradesScreen.cell_rect(0, n).size.x
+	var bad := []
+	var cut := 0
+	for key in up.powers:
+		var full := String(PowerBook.get_power(key).name)
+		var room := cell_w - UiTheme.width("%d" % DescendState.unlock_price(key), UiTheme.SIZE_SMALL) - 14.0
+		var shown := UpgradesScreen.cell_name(full, room)
+		if UiTheme.width(shown, UiTheme.SIZE_SMALL) > room + 0.01:
+			bad.append(key)
+		if shown != full:
+			cut += 1
+			if not shown.ends_with("…"):
+				bad.append(key + " (no ellipsis)")
+	t.check(bad.is_empty(), "upgrades: every power's name fits its cell, a cut one ends in an ellipsis (%s)" % [bad])
+	t.check(UpgradesScreen.cell_name("Judgement of the Ancients", 109.0).begins_with("Judgement of"), "upgrades: a long name keeps its words, not just its first (%s)" % UpgradesScreen.cell_name("Judgement of the Ancients", 109.0))
+	t.check(UpgradesScreen.cell_name("Magnify", 109.0) == "Magnify", "upgrades: a name that fits is whole")
+	t.check(cut <= 3, "upgrades: only a few names need a cut (%d)" % cut)
+	up.free()
+	t.check(not UiTheme.word_spacing, "upgrades: gives the word spacing back when freed")
+	UiScale.clear_test_area()
 
 
 static func _results(t) -> void:

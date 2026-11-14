@@ -683,6 +683,9 @@ func _ready() -> void:
 		if show == "tree" and _screen_node is SkillTreeScreen and Battlefield.arg_value(args, "--tree-hover") != "":
 			(_screen_node as SkillTreeScreen).hover_for_photo(Battlefield.arg_value(args, "--tree-hover"))  # after the window's own mouse motion
 			await get_tree().process_frame
+		if show == "upgrades" and _screen_node is UpgradesScreen and Battlefield.arg_value(args, "--hover") != "":
+			(_screen_node as UpgradesScreen).preview(Battlefield.arg_value(args, "--hover"))  # after the window's own mouse motion
+			await get_tree().process_frame
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		if god_base == SHOW_GOD:
 			_remove_gods()
@@ -1736,6 +1739,7 @@ func _open_pause() -> void:
 	if is_instance_valid(_pause) or not is_instance_valid(_mission):
 		return
 	_mission.set_frozen(true)
+	_mission.set_pause_hidden(true)
 	_pause = PauseMenu.new()
 	_pause.name = "Pause"
 	add_child(_pause)
@@ -1760,6 +1764,8 @@ func _open_pause() -> void:
 func _close_pause() -> void:
 	if is_instance_valid(_pause):
 		_pause.queue_free()
+	if is_instance_valid(_mission):
+		_mission.set_pause_hidden(false)
 	_pause = null
 	get_viewport().gui_release_focus()  # v0.11.1: a clicked menu button must not keep TAB
 	Music.set_ducked(false)

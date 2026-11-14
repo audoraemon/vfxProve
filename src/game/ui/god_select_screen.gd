@@ -40,6 +40,10 @@ const ORBIT_UP := 4.0
 const ORBIT_TIME := 4.0
 ## The top panel the selected type's lines are drawn in, and the two buttons.
 const INFO_RECT := Rect2(186.0, 2.0, 268.0, 66.0)
+## The width its lines may take: Passage's flavour line is 253 u wide with the wide spaces, so the frame keeps 6 u a side, not 8.
+const INFO_INNER_W := 256.0
+## The plates under the corner texts, over the painted art: dark enough that the moon and the leaves do not wash the words out.
+const PLATE_COL := Color(0, 0, 0, 0.82)
 const CHOOSE_RECT := Rect2(520.0, 334.0, 112.0, 18.0)
 const BACK_RECT := Rect2(8.0, 334.0, 90.0, 18.0)
 ## A statue's sprite size; its plinth's bottom centre is at (32, 79).
@@ -64,6 +68,8 @@ const GOD_COL := {
 ## Where the four braziers stand (bottom centre of each).
 const BRAZIERS := [Vector2(22, 248), Vector2(618, 248), Vector2(222, 318), Vector2(418, 318)]
 const LEAF_COUNT := 8
+## What fills the area outside the painted background (and the frame itself when the art is missing).
+const BACKDROP := Color(0.03, 0.03, 0.05, 1.0)
 
 ## The type chosen by confirm(), or "".
 var chosen_type := ""
@@ -91,12 +97,11 @@ func setup() -> GodSelectScreen:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4242
 	for k in LEAF_COUNT:
@@ -110,6 +115,15 @@ func setup() -> GodSelectScreen:
 		_sparks.append(PackedFloat32Array([float(k) / SPARK_COUNT + rng.randf_range(-0.04, 0.04),
 			ORBIT_RX + rng.randf_range(-3.0, 3.0), ORBIT_RY + rng.randf_range(-1.5, 1.5)]))
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 func _process(delta: float) -> void:
@@ -381,11 +395,11 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
+	# The area outside the 640x360 frame is the art's darkest colour; the painted background stays in the frame.
+	_ui.draw_rect(UiScale.backdrop(_ui), BACKDROP)
 	var bg := GodSelectArt.texture("background")
 	if bg != null:
 		_ui.draw_texture_rect(bg, Rect2(0, 0, 640, 360), false)
-	else:
-		_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
 	_draw_braziers()
 	_draw_emblem()
 	var order := [0, 1, 2, 3, 4, 5]
@@ -396,15 +410,14 @@ func _draw_ui() -> void:
 			_draw_fx(i)
 		_draw_name(i)
 	_draw_leaves()
-	var back_col := Color(0, 0, 0, 0.55)
-	_ui.draw_rect(Rect2(0, 0, 182, 59), back_col)
+	_ui.draw_rect(Rect2(0, 0, 172, 59), PLATE_COL)
 	UiTheme.text(_ui, Vector2(10, 20), "GOD'S PATHS", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 	UiTheme.text(_ui, Vector2(10, 32), "CHOOSE YOUR AUTHORITY", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(_ui, Vector2(10, 45), "A god's type is chosen once,", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(_ui, Vector2(10, 56), "for this slot.", UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	_ui.draw_rect(Rect2(452, 0, 188, 32), back_col)
 	var keys := ["Left / Right look round the ring", "Enter chooses · Esc goes back"]
 	var kx := minf(466.0, 634.0 - maxf(UiTheme.width(keys[0], UiTheme.SIZE_SMALL), UiTheme.width(keys[1], UiTheme.SIZE_SMALL)))
+	_ui.draw_rect(Rect2(kx - 6.0, 0, 646.0 - kx, 32), PLATE_COL)  # sized to its text, so a wider text never runs off its plate
 	UiTheme.text(_ui, Vector2(kx, 14), keys[0], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(_ui, Vector2(kx, 26), keys[1], UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	_draw_info()
@@ -425,9 +438,7 @@ func _draw_ui() -> void:
 ## Type `i`'s name carved on its platform's front: light stone letters with a 1 px dark outline, gold when selected or hovered.
 func _draw_name(i: int) -> void:
 	var title := PowerBook.authority_title(GodTree.RING[i])
-	var size := UiTheme.SIZE_SMALL
-	if UiTheme.width(title, size) > 60.0:
-		size -= 1
+	var size := UiTheme.SIZE_SMALL  # never smaller: the widest name (Dominion) is 50 u wide at 11 u, inside its platform's 60
 	var on := i == selected
 	var at := Vector2(roundf(NAME_AT[i].x - UiTheme.width(title, size) * 0.5), NAME_AT[i].y + 4.0)
 	var col := UiTheme.COL_GOLD if on or _hover == "ring:%d" % i else Color("b2b8c8")
@@ -575,7 +586,7 @@ func _draw_leaves() -> void:
 func _draw_info() -> void:
 	var type: String = GodTree.RING[selected]
 	var lines := type_lines(type)
-	var w := INFO_RECT.size.x - 16.0
+	var w := INFO_INNER_W
 	_ui.draw_rect(INFO_RECT, Color(0.03, 0.03, 0.06, 0.88))
 	UiTheme.frame(_ui, INFO_RECT, true)
 	var x := INFO_RECT.get_center().x

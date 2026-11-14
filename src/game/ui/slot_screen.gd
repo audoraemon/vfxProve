@@ -41,12 +41,20 @@ func setup(base := GodSlot.PATH_BASE) -> SlotScreen:
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
-	_ui = Control.new()
-	_ui.set_anchors_preset(Control.PRESET_FULL_RECT)
+	UiTheme.spacing_acquire(self)  # fitted for the wider spaces; released when the screen leaves or is freed
+	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	layer.add_child(_ui)
 	return self
+
+
+func _exit_tree() -> void:
+	UiTheme.spacing_release(self)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		UiTheme.spacing_release(self)  # freed without ever leaving the tree (a screen set up in a test)
 
 
 ## Slot `i`'s row (0-2).
@@ -202,7 +210,7 @@ func _on_gui_input(event: InputEvent) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0.03, 0.03, 0.05, 1.0))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.03, 0.03, 0.05, 1.0))
 	UiTheme.text(_ui, Vector2(20, 30), "CHOOSE A SLOT", UiTheme.SIZE_BIG, UiTheme.COL_GOLD)
 	for i in GodSlot.COUNT:
 		_draw_slot(i)
@@ -239,7 +247,7 @@ func _draw_button(r: Rect2, label: String, what: String) -> void:
 
 ## The question over a dimmed screen, with Confirm and Cancel.
 func _draw_question() -> void:
-	_ui.draw_rect(Rect2(0, 0, 640, 360), Color(0, 0, 0, 0.6))
+	_ui.draw_rect(UiScale.backdrop(_ui), Color(0, 0, 0, 0.6))
 	_ui.draw_rect(CONFIRM_PANEL, Color(0.05, 0.05, 0.07, 0.97))
 	UiTheme.frame(_ui, CONFIRM_PANEL, true)
 	var lines := UiTheme.wrap(pending_text(), CONFIRM_PANEL.size.x - 32.0, UiTheme.SIZE_BODY)

@@ -11,6 +11,10 @@ const COL_GOLD := Color("d8b23a")
 const COL_GOLD_DARK := Color("7a5f18")
 const COL_PANEL := Color(0.04, 0.04, 0.06, 0.66)
 const COL_BAD := Color("c8342a")
+## Red text on a flat dark screen: COL_BAD is only 3.7:1 there (5.8:1 for this), and a refusal or a warning must read at 11 u.
+const COL_BAD_TEXT := Color("e8604f")
+## Gold for a card or name that is not the selected one: COL_GOLD_DARK on black is 2.9:1 (6.4:1 for this); the selected one stays COL_GOLD.
+const COL_GOLD_MID := Color("b09030")
 const COL_SHADOW := Color(0, 0, 0, 0.75)
 ## The five stability colours in the spec's order: population, infrastructure, leadership, military, resources.
 const STABILITY_COLS := [Color("7fc46a"), Color("c8a05a"), Color("d8b23a"), Color("c05a4a"), Color("6fa8c8")]

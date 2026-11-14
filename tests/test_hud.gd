@@ -40,6 +40,12 @@ static func run(t) -> void:
 		and hud.hint_top() == Hud.OBJECTIVE_PANEL.end.y + 4.0, "the how-to-win line, under the objectives (%s)" % hud.hint_text())
 	t.check(hud.status_text().contains(str(Crowd.CITIZENS)) and hud.status_text().contains(str(Crowd.SOLDIERS)),
 		"the status line counts the living (%s)" % hud.status_text())
+	# The pause menu over the HUD: the tag layer and Cael's plate are hidden (Task 6b), and come back with the menu closed.
+	t.check(not hud.pause_hidden() and hud._tag_layer.visible, "no pause: the tag layer shows")
+	hud.set_pause_hidden(true)
+	t.check(hud.pause_hidden() and not hud._tag_layer.visible, "under the pause menu the tag layer is hidden")
+	hud.set_pause_hidden(false)
+	t.check(not hud.pause_hidden() and hud._tag_layer.visible, "and back when the menu closes")
 	# The five-colour bar has a legend, and the figures top right wear the colour of the part they drive.
 	t.check(Hud.LEGEND.size() == 5 and Hud.LEGEND[3][1] == 3, "the stability bar has a five-entry legend in part order")
 	var segs := hud.status_segments()

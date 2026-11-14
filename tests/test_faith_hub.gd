@@ -6,6 +6,7 @@ extends RefCounted
 
 
 static func run(t) -> void:
+	_frames(t)
 	GodTree.dev_fill = true
 	_faith_rows(t)
 	_faith_buy(t)
@@ -24,6 +25,61 @@ static func run(t) -> void:
 	_hub_lines_unchanged(t)
 	GodTree.dev_fill = false
 	_hub_blocked(t)
+
+
+## UI resolution Task 6b: the Faith screen and the hub draw in a 640x360 design frame centred in the area, hold the wide spaces while they live, and their lines fit.
+static func _frames(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	UiScale.set_test_area(Vector2i(800, 450))
+	var offset := Vector2(80, 45)
+	var god := _slot()
+	var faith := FaithScreen.new()
+	tree.root.add_child(faith)
+	faith.setup(god)
+	t.check(faith._ui.position == offset and faith._ui.size == Vector2(640, 360), "faith: the frame is 640x360 at (80, 45) in an 800x450 area")
+	t.check(UiScale.backdrop(faith._ui) == Rect2(-offset, Vector2(800, 450)), "faith: the backdrop is the whole area in frame coordinates")
+	t.check(UiTheme.word_spacing, "faith: holds the word spacing while it lives")
+	var got := []
+	faith.action.connect(func(what: String) -> void: got.append(what))
+	faith._on_gui_input(_click(FaithScreen.BACK_RECT.get_center()))
+	t.check(got == ["back"], "faith: a click at Back's frame-local centre hits it (%s)" % [got])
+	var widest := 0.0
+	for key in faith.rows():
+		widest = maxf(widest, UiTheme.width(faith.row_line(key), UiTheme.SIZE_BODY))
+		widest = maxf(widest, UiTheme.width(faith.effect_line(key), UiTheme.SIZE_SMALL))
+	t.check(widest <= FaithScreen.ROW_SIZE.x - 16.0, "faith: every row's line fits its row with the wide spaces (%.0f)" % widest)
+	for why in FaithScreen.REFUSALS:
+		t.check(UiTheme.width(FaithScreen.REFUSALS[why], UiTheme.SIZE_SMALL) <= 632.0 - FaithScreen.BACK_RECT.end.x - 12.0,
+			"faith: the refusal '%s' fits beside Back" % why)
+	faith.free()
+	t.check(not UiTheme.word_spacing, "faith: gives the word spacing back when freed")
+
+	var hub := GodHub.new()
+	tree.root.add_child(hub)
+	hub.setup(god, "", true)
+	t.check(hub._ui.position == offset and hub._ui.size == Vector2(640, 360), "hub: the frame is 640x360 at (80, 45)")
+	t.check(UiTheme.word_spacing, "hub: holds the word spacing while it lives")
+	got.clear()
+	hub.action.connect(func(what: String) -> void: got.append(what))
+	hub._on_gui_input(_click(hub.menu_rect("faith").get_center()))
+	t.check(got == ["faith"], "hub: a click at Faith's frame-local centre hits it (%s)" % [got])
+	# the unwrapped lines fit the screen: the Hunt's line for every tier, the longest seal, the blocked line, the keys row
+	var widest_hunt := 0.0
+	for tier in range(1, 6):
+		widest_hunt = maxf(widest_hunt, UiTheme.width(GodHub.HUNT_DUE % String(HuntBook.at_tier(tier).title), UiTheme.SIZE_BODY))
+	t.check(widest_hunt <= 632.0, "hub: the Hunt's line fits the screen for every tier with the wide spaces (%.0f)" % widest_hunt)
+	var widest_seal := 0.0
+	for key in god.draftable():
+		widest_seal = maxf(widest_seal, UiTheme.width(GodHub.SEALED % [PowerBook.get_power(key).name, "10 nights"], UiTheme.SIZE_BODY))
+	t.check(widest_seal <= 632.0, "hub: the seal's line fits the screen for any power (%.0f)" % widest_seal)
+	t.check(UiTheme.width(GodHub.BLOCKED, UiTheme.SIZE_SMALL) <= 632.0, "hub: the blocked line fits the screen")
+	t.check(UiTheme.width(GodHub.AWAKEN_HUNT, UiTheme.SIZE_BODY) <= 632.0 and UiTheme.width(GodHub.RITE_UNWRITTEN, UiTheme.SIZE_BODY) <= 632.0,
+		"hub: the Awaken refusals fit the screen")
+	var keys_w := UiTheme.width(hub.hint_text(), UiTheme.SIZE_SMALL)
+	t.check(keys_w <= 632.0, "hub: the keys row fits the screen (%.0f)" % keys_w)
+	hub.free()
+	t.check(not UiTheme.word_spacing, "hub: gives it back")
+	UiScale.clear_test_area()
 
 
 static func _click(at: Vector2) -> InputEventMouseButton:

@@ -1,18 +1,19 @@
 {
- "hash": "1e43664e2809b4b9",
- "updated": "2026-11-14T13:36:47+07:00",
+ "hash": "a445b385fc0d2e02",
+ "updated": "2026-11-15T04:55:50+07:00",
  "changes": {
-  "date": "<t:1794638207:f>",
+  "date": "<t:1794693350:f>",
   "items": [
-   "New: Test runner fails a suite that hits a GDScript runtime error"
+   "New: Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)",
+   "New: Any screen resolution + crisp Skill Tree (UI Resolution milestone)"
   ]
  },
  "snapshot": {
   "project": {
    "version": "v0.12",
-   "tag": "kak-soldier-jobs",
-   "tests": 12005,
-   "updated": "2026-11-12"
+   "tag": "kak-ui-resolution",
+   "tests": 18887,
+   "updated": "2026-11-15"
   },
   "tasks": {
    "board-objective-tags": {
@@ -1086,6 +1087,24 @@
     "updated": "2026-11-13",
     "order": 901
    },
+   "ui-font-atlas": {
+    "title": "Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)",
+    "status": "todo",
+    "area": "Perf",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-15",
+    "order": 213
+   },
+   "ui-resolution": {
+    "title": "Any screen resolution + crisp Skill Tree (UI Resolution milestone)",
+    "status": "done",
+    "area": "UI",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-15",
+    "order": 212
+   },
    "ui-sfxr-listen": {
     "title": "Listen to the GodotSfxr sounds in game (UI, citizens, buildings, music)",
     "status": "done",
@@ -1696,23 +1715,15 @@
    {
     "name": "fix/suite-runtime-error",
     "ahead": 104,
-    "behind": 49,
+    "behind": 80,
     "date": "2026-11-14",
     "subject": "test: a suite that hits a GDScript runtime error fails, named",
     "pushed": false
    },
    {
-    "name": "feat/ui-resolution",
-    "ahead": 20,
-    "behind": 2,
-    "date": "2026-11-14",
-    "subject": "fix: legible digits (own 5x7 and 6x9 bitmaps), word spacing on everywhere, no per-screen toggle",
-    "pushed": false
-   },
-   {
     "name": "feat/god-progression",
     "ahead": 64,
-    "behind": 49,
+    "behind": 80,
     "date": "2026-11-13",
     "subject": "dev: re-record the Decree refs after the review adjustments",
     "pushed": true
@@ -1720,7 +1731,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 238,
+    "behind": 269,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1728,7 +1739,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 736,
+    "behind": 767,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1736,7 +1747,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 694,
+    "behind": 725,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1744,8 +1755,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-13",
-   "subject": "feat: mission moments heard in tiers 2-5"
+   "date": "2026-11-15",
+   "subject": "docs: UI resolution milestone rulings"
   }
  }
 }

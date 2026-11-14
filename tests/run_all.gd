@@ -1,5 +1,7 @@
 extends SceneTree
 
+const ScriptErrorLog := preload("res://tests/script_error_log.gd")
+
 const SUITES := [
 	"res://tests/test_iso.gd",
 	"res://tests/test_enemy_field.gd",
@@ -338,6 +340,8 @@ func _reset_world() -> void:
 
 
 func _initialize() -> void:
+	var errors := ScriptErrorLog.new()
+	OS.add_logger(errors)  # a GDScript runtime error only aborts its own function: the suite goes on, so count them
 	for path in SUITES:
 		var suite: GDScript = load(path)
 		if suite == null or not suite.can_instantiate():
@@ -346,10 +350,15 @@ func _initialize() -> void:
 		Hud.reset_session()  # v0.11.1: as in run_part.gd
 		_reset_world()
 		var before := checks
+		errors.take()  # an error between suites is not this suite's
 		await suite.run(self)
 		if checks == before:
 			check(false, "suite ran no checks (runtime error?): %s" % path)
+		var seen: Array = errors.take()
+		if seen[0] > 0:  # (no check when clean: the suite's check count stays its own)
+			check(false, "suite hit %d runtime error(s), the rest of each erroring function was skipped: %s -- first: %s" % [seen[0], path, seen[1]])
 		# v0.12 (ruling C3): a suite that switched the city puts Aldermere back; one that did not is a failure, named.
 		check(City.current().id() == &"aldermere", "suite left a city active: %s (%s)" % [path, City.current().id()])
+	OS.remove_logger(errors)
 	print("checks=%d failures=%d" % [checks, failures])
 	quit(1 if failures > 0 else 0)

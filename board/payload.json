@@ -7,16 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **148** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794634340:f>)\n• New: Harvest route B under its 150 s floor: a carter picked mid-flight (H8)",
+     "description": "**v0.12** is the latest release (`kak-soldier-jobs`)\n**10** in progress · **27** to do · **149** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794638207:f>)\n• New: Test runner fails a suite that hits a GDScript runtime error",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-14T12:32:20+07:00"
+     "timestamp": "2026-11-14T13:36:47+07:00"
     },
     {
-     "title": "god/harvest-b-pacing",
-     "description": "103 commits not in Develop-Main · last commit today · local only\n> dev: harvest_b_play_1-2 re-recorded for H8 (route B gate passes)\n\n_No Ledger task points at this branch._",
+     "title": "fix/suite-runtime-error",
+     "description": "104 commits not in Develop-Main · last commit today · local only\n> test: a suite that hits a GDScript runtime error fails, named\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -51,7 +51,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Mission sounds tiers 2-5 _(11-14)_\n• Harvest route B under its 150 s floor: a carter picked mid-flight (H8) _(11-14)_\n• Death powers: your review adjustments _(11-14)_\n• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Town children (Discord idea Add children Npc) _(11-13)_\n• Decree powers: your review adjustments _(11-13)_\n• Passage doors clean up when torn down _(11-13)_",
+     "description": "• Mission sounds tiers 2-5 _(11-14)_\n• Test runner fails a suite that hits a GDScript runtime error _(11-14)_\n• Harvest route B under its 150 s floor: a carter picked mid-flight (H8) _(11-14)_\n• Death powers: your review adjustments _(11-14)_\n• Mission moments heard (tier 1) _(11-13)_\n• Children heard; calm and tension music _(11-13)_\n• Town children (Discord idea Add children Npc) _(11-13)_\n• Decree powers: your review adjustments _(11-13)_",
      "color": 10185686
     }
    ]

@@ -412,6 +412,28 @@ static func _positional_audio(t) -> void:
 	_drop(wv)
 
 
+## A mission moment's sound (MissionDirector._sound -> the FX context -> the battlefield's Sfx) plays on a player inside the world
+## viewport, on the world's own World2D, so it pans against the camera's listener and not the root's.
+static func _mission_sound_heard(t) -> void:
+	var made := await _hosted_mission(t)
+	var wv: WorldView = made[0]
+	var m: Mission = made[1]
+	var d := MissionDirector.new()
+	d.ctx = m._bf.ctx
+	d._sound(&"msn_door", Vector2(120, 80))
+	var heard: AudioStreamPlayer2D = null
+	for p in m._bf.get_node("Sfx").get_children():
+		if p is AudioStreamPlayer2D and p.has_meta(&"cue") and p.get_meta(&"cue") == &"msn_door":
+			heard = p
+	t.check(heard != null, "a mission moment's cue is played through the battlefield's Sfx")
+	if heard != null:
+		t.check(heard.get_viewport() == wv.viewport and heard.is_inside_tree(), "its player lives in the world viewport, not the root or the ui")
+		t.check(heard.get_viewport().find_world_2d() == wv.viewport.find_world_2d() and wv.ui.get_viewport() != wv.viewport,
+			"it shares the listener's World2D; the ui is outside it")
+		t.check(heard.playing and heard.position.is_equal_approx(Iso.ground_to_screen(Vector2(120, 80))), "it is playing at the moment's place")
+	_drop(wv)
+
+
 ## 0.5 s of a 440 Hz tone, mono 16-bit, for the pan probe.
 static func _tone() -> AudioStreamWAV:
 	var rate := 22050
@@ -493,5 +515,6 @@ static func run(t) -> void:
 	await _no_ui_in_world(t)
 	await _frozen(t)
 	await _positional_audio(t)
+	await _mission_sound_heard(t)
 	await _add_hosted(t)
 	await _title(t)

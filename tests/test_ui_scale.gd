@@ -364,6 +364,33 @@ static func _digits(t) -> void:
 	t.check(UiTheme.DIGITS_SMALL["5"] != UiTheme.DIGITS_SMALL["8"] and String(UiTheme.DIGITS_SMALL["5"][0]) == "#####", "the 5 has a flat top bar and the 8 does not")
 
 
+## The capitals Pixelify Sans draws alike (B as 8/G, G as B, E as C, H as W, Z as 2) are bitmaps too, at 11 u and its multiples.
+static func _letters(t) -> void:
+	var seen := {}
+	var ok := true
+	for k in UiTheme.LETTERS_SMALL:
+		var rows: Array = UiTheme.LETTERS_SMALL[k]
+		seen["".join(PackedStringArray(rows))] = true
+		ok = ok and rows.size() == 7 and rows.all(func(r): return String(r).length() == 5)
+	for d in 10:
+		seen["".join(PackedStringArray(UiTheme.DIGITS_SMALL[str(d)]))] = true
+	t.check(seen.size() == UiTheme.LETTERS_SMALL.size() + 10 and ok, "the confusable capitals are 5 x 7 and differ from each other and from every digit")
+	t.check(String(UiTheme.LETTERS_SMALL["B"][0]) == "####." and String(UiTheme.LETTERS_SMALL["Z"][0]) == "#####" and String(UiTheme.LETTERS_SMALL["Z"][6]) == "#####", "B has a square shoulder and Z a flat top and foot (not a 2)")
+	var base := UiTheme.base_font()
+	for size in [11, 22, 33]:
+		var f := UiTheme.digit_font(size)
+		var every := true
+		var same := true
+		for k in UiTheme.LETTERS_SMALL:
+			var c := String(k).unicode_at(0)
+			every = every and f.has_char(c)
+			same = same and absf(f.get_char_size(c, size).x - base.get_char_size(c, size).x) <= (0.0 if size == 11 else 1.0) + 0.01
+		t.check(every, "the %d u face draws B, E, G, H and Z itself" % size)
+		t.check(same, "and each advances as the pixel font's own at %d u (within 1 u above 11 u: whole advances only)" % size)
+	t.check(is_equal_approx(UiTheme.font_for(UiTheme.SIZE_BODY).get_char_size(66, UiTheme.SIZE_BODY).x, base.get_char_size(66, UiTheme.SIZE_BODY).x), "the legacy 13-21 sizes keep the font's own B")
+	t.check(UiTheme.font_for(UiTheme.TEXT_S).has_char(65), "a letter that is not replaced still comes from the font behind")
+
+
 static func run(t) -> void:
 	_integer_setting(t)
 	_install(t)
@@ -380,3 +407,4 @@ static func run(t) -> void:
 	_hairline_lint(t)
 	_text_size_lint(t)
 	_digits(t)
+	_letters(t)

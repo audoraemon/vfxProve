@@ -57,6 +57,16 @@ const DIGITS_SMALL := {
 	"8": [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
 	"9": [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."],
 }
+## The capitals Pixelify Sans draws so alike at 11 u that they read as each other: its B has the same round ink as an 8 or a G ("Barrage" read "Garrage",
+## "Breaker" "Greaker"), its G as a B, its E as a C with an open tail, its H as a W or N, and its Z as a 2. Drawn here with square shoulders, 5 x 7 like the digits
+## and with the same advance (6) as the font's own, so no line changes width. They are in the small set only (11 u and its whole multiples); the legacy 13-21 sizes keep the font's.
+const LETTERS_SMALL := {
+	"B": ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+	"E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+	"G": [".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."],
+	"H": ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+	"Z": ["#####", "....#", "...#.", "..#..", ".#...", "#....", "#####"],
+}
 const DIGITS_MEDIUM := {
 	"0": [".####.", "#....#", "#....#", "#....#", "#....#", "#....#", "#....#", "#....#", ".####."],
 	"1": ["..#...", ".##...", "..#...", "..#...", "..#...", "..#...", "..#...", "..#...", ".###.."],
@@ -105,7 +115,7 @@ static func space_extra(size: int) -> int:
 	return maxi(1, int(round(float(size) / 11.0)))
 
 
-## The digit bitmaps as a font for text at `size`: only 0-9 and the space, with the pixel font behind it for every other character. One per size (the space
+## The digit (and, at 11 u and multiples, the confusable-capital) bitmaps as a font for text at `size`: only those and the space, with the pixel font behind it for every other character. One per size (the space
 ## differs), built once from DIGITS_*. The space is this font's own because a FontVariation's extra spacing only reaches the space of the font it wraps: it is the
 ## pixel font's space at `size` plus space_extra when `spaced`, so a line is as wide as it was with the spacing on the pixel font itself.
 static func digit_font(size := TEXT_S, spaced := true) -> FontFile:
@@ -123,25 +133,37 @@ static func digit_font(size := TEXT_S, spaced := true) -> FontFile:
 		f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
 		f.generate_mipmaps = false
 		var tex_size := Vector2i(native, 0)
-		var sheet := Image.create((w + 1) * 10, h, false, Image.FORMAT_RGBA8)
+		# The glyphs this face draws itself: the ten digits, and in the small set the confusable capitals (LETTERS_SMALL).
+		var glyphs := {}
 		for d in 10:
-			var rows: Array = rows_of[str(d)]
+			glyphs[48 + d] = rows_of[str(d)]
+		if not medium:
+			for letter in LETTERS_SMALL:
+				glyphs[String(letter).unicode_at(0)] = LETTERS_SMALL[letter]
+		var sheet := Image.create((w + 1) * glyphs.size(), h, false, Image.FORMAT_RGBA8)
+		var slot := 0
+		for ch in glyphs:
+			var rows: Array = glyphs[ch]
 			for y in h:
 				for x in w:
 					if String(rows[y])[x] == "#":
-						sheet.set_pixel(d * (w + 1) + x, y, Color.WHITE)
+						sheet.set_pixel(slot * (w + 1) + x, y, Color.WHITE)
+			slot += 1
 		f.set_texture_image(0, tex_size, 0, sheet)
 		# The pixel font's own metrics at that size: the digits stand on its baseline and the line is as tall as its line.
 		var base := base_font()
 		f.set_cache_ascent(0, native, base.get_ascent(native))
 		f.set_cache_descent(0, native, base.get_descent(native))
-		for d in 10:
-			var ch := 48 + d
+		slot = 0
+		for ch in glyphs:
+			# Whole advance (6 at 11 u, 12 at 22, 18 at 33): a fractional one lands the glyph between device pixels and greys it. The pixel font's own capitals are 13 and 19 u
+			# at 22 and 33 u, so a capital here is 1 u narrower per letter there (none at 11 u).
 			f.set_glyph_advance(0, native, ch, Vector2(w + 1, 0))
 			f.set_glyph_size(0, tex_size, ch, Vector2(w, h))
 			f.set_glyph_offset(0, tex_size, ch, Vector2(0, -h))
-			f.set_glyph_uv_rect(0, tex_size, ch, Rect2(d * (w + 1), 0, w, h))
+			f.set_glyph_uv_rect(0, tex_size, ch, Rect2(slot * (w + 1), 0, w, h))
 			f.set_glyph_texture_idx(0, tex_size, ch, 0)
+			slot += 1
 		var scale := maxi(1, int(round(float(size) / float(native))))
 		var target := base.get_char_size(32, size).x
 		if spaced:

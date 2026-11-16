@@ -152,6 +152,14 @@ const FROST := [Color(0.66, 0.80, 0.94), Color(0.86, 0.94, 1.0), Color(0.96, 0.9
 const PALE := [Color("eaf4ff"), Color("c8f0dc"), Color(0.5, 0.9, 0.7, 0.5), Color(0.2, 0.4, 0.35, 0.0)]
 ## The soul-smoke trailing off it: the same pale hues, see-through.
 const WISP := [Color(0.92, 0.96, 1.0, 0.55), Color(0.78, 0.94, 0.86, 0.42), Color(0.5, 0.9, 0.7, 0.25), Color(0.2, 0.4, 0.35, 0.0)]
+## Every circle the serpent, its shadow, its fog, its frost and its souls draw is one white disc texture in a rect (disc()):
+## a draw_circle is a 64-sided polygon and a draw call of its own, and the body, the fog and the frost drew some three
+## hundred a frame; rects of one texture are two triangles each and batch (the death review's frame-cost pass). Hard-edged
+## and sampled nearest, as the polygons were. DISC_TEX texels across: finer than the largest circle drawn on screen.
+const DISC_TEX := 256
+## A patch well inside the disc, solid white: a square drawn from it (draw_texture_rect_region) batches with the discs.
+const DISC_SOLID := Rect2(DISC_TEX * 0.5 - 8.0, DISC_TEX * 0.5 - 8.0, 16.0, 16.0)
+static var _disc_tex: ImageTexture
 
 ## The dead, in the order the shadow took them; when the first fell (on the effect's clock).
 var taken: Array[Person] = []
@@ -204,6 +212,29 @@ var _frost_at := -1.0
 var _vis := RandomNumberGenerator.new()
 ## The pieces as last posed (souls fly to the nearest).
 var _posed: Array[Dictionary] = []
+
+
+## The white disc (DISC_TEX across, its texels in where their middles fall within its radius), made once.
+static func disc_texture() -> ImageTexture:
+	if _disc_tex == null:
+		var img := Image.create(DISC_TEX, DISC_TEX, false, Image.FORMAT_LA8)
+		var h := DISC_TEX * 0.5
+		for y in DISC_TEX:
+			var dy := y + 0.5 - h
+			var w := sqrt(maxf(h * h - dy * dy, 0.0))
+			var x0 := ceili(h - w - 0.5)
+			var x1 := floori(h + w - 0.5)
+			if x1 >= x0:
+				img.fill_rect(Rect2i(x0, y, x1 - x0 + 1, 1), Color.WHITE)
+		_disc_tex = ImageTexture.create_from_image(img)
+	return _disc_tex
+
+
+## A filled circle on `ci` at `c`, radius `r`, in `color`: the disc texture in a rect (draw_circle's look, a fraction of
+## its cost). `ry` squashes it to an ellipse `r` wide and `ry` high (radii); negative: a circle.
+static func disc(ci: CanvasItem, c: Vector2, r: float, color: Color, ry := -1.0) -> void:
+	var h := Vector2(r, r if ry < 0.0 else ry)
+	ci.draw_texture_rect(disc_texture(), Rect2(c - h, h * 2.0), false, color)
 
 
 ## Where a cast at `at` ends: along the drag's way as Targeting reads it ("dir": Targeting.aim_dir(), DEFAULT_DIR for a drag
@@ -818,9 +849,9 @@ class Piece extends Node2D:
 				var tri := PackedVector2Array([top + Vector2(-2.5 * SCALE, 0.0), top + Vector2(2.5 * SCALE, 0.0),
 					top + Vector2(SCALE, hy * (0.7 + 0.3 * float(k % 2)))])
 				draw_colored_polygon(tri, (FEATHER if k % 2 == 0 else FEATHER_SHADE) * tint)
-		draw_circle(c + Vector2(0.0, SCALE), r, (SCALE_DARK * 0.55) * tint)
-		draw_circle(c, r, SCALE_DARK * tint)
-		draw_circle(c + Vector2(0.0, -r * 0.08), r - 2.0 * SCALE, SCALE_LIGHT * tint)
+		PaleSerpentFx.disc(self, c + Vector2(0.0, SCALE), r, (SCALE_DARK * 0.55) * tint)
+		PaleSerpentFx.disc(self, c, r, SCALE_DARK * tint)
+		PaleSerpentFx.disc(self, c + Vector2(0.0, -r * 0.08), r - 2.0 * SCALE, SCALE_LIGHT * tint)
 		# The belly's scale bands, as on the neck.
 		for k in 3:
 			var y := r * (-0.1 + 0.3 * float(k))
@@ -844,21 +875,23 @@ class Piece extends Node2D:
 			_collar(tint)
 			return
 		var c := lift
-		draw_circle(c + Vector2(0.0, SCALE), r, (SCALE_DARK * 0.7) * tint)
-		draw_circle(c, r, SCALE_DARK * tint)
-		draw_circle(c + Vector2(-r * 0.1, r * 0.25), r * 0.62, SCALE_LIGHT * tint)
+		PaleSerpentFx.disc(self, c + Vector2(0.0, SCALE), r, (SCALE_DARK * 0.7) * tint)
+		PaleSerpentFx.disc(self, c, r, SCALE_DARK * tint)
+		PaleSerpentFx.disc(self, c + Vector2(-r * 0.1, r * 0.25), r * 0.62, SCALE_LIGHT * tint)
 		for k in 3:
 			var dot := c + Vector2(-r * 0.4 + r * 0.4 * float(k), r * (0.45 + 0.1 * float(k % 2)))
-			draw_rect(Rect2(dot.round(), Vector2(SCALE, SCALE)), SCALE_DARK * tint)
-		draw_circle(c + Vector2(0.0, -r * 0.3), r * 0.84, FEATHER_SHADE * tint)
-		draw_circle(c + Vector2(0.0, -r * 0.45), r * 0.66, FEATHER * tint)
+			draw_texture_rect_region(PaleSerpentFx.disc_texture(), Rect2(dot.round(), Vector2(SCALE, SCALE)), DISC_SOLID,
+				SCALE_DARK * tint)  # the disc's solid middle: it batches with the discs
+		PaleSerpentFx.disc(self, c + Vector2(0.0, -r * 0.3), r * 0.84, FEATHER_SHADE * tint)
+		PaleSerpentFx.disc(self, c + Vector2(0.0, -r * 0.45), r * 0.66, FEATHER * tint)
 		# The feathers' ragged lower edge, pointing down and back.
 		for k in 4:
 			var x := -r * 0.6 + r * 0.4 * float(k)
 			var top := c + Vector2(x, r * 0.15)
 			var tri := PackedVector2Array([top + Vector2(-r * 0.18, 0.0), top + Vector2(r * 0.18, 0.0),
 				top + Vector2(r * 0.05, r * 0.32)])
-			draw_colored_polygon(tri, (FEATHER if k % 2 == 0 else FEATHER_SHADE) * tint)
+			var col: Color = (FEATHER if k % 2 == 0 else FEATHER_SHADE) * tint
+			draw_primitive(tri, PackedColorArray([col, col, col]), PackedVector2Array())  # a primitive batches; a polygon does not
 
 
 ## The serpent's shadow on the ground (ground units, ground layer): a soft dark band under the head and body, and the hole it
@@ -873,10 +906,10 @@ class Shade extends Node2D:
 		if not is_instance_valid(fx):
 			return
 		if hole > 0.0:
-			draw_circle(fx.origin, HOLE, Color(0.02, 0.03, 0.03, 0.45 * hole))
-			draw_circle(fx.origin, HOLE * 0.67, Color(0.0, 0.0, 0.0, 0.35 * hole))
+			PaleSerpentFx.disc(self, fx.origin, HOLE, Color(0.02, 0.03, 0.03, 0.45 * hole))
+			PaleSerpentFx.disc(self, fx.origin, HOLE * 0.67, Color(0.0, 0.0, 0.0, 0.35 * hole))
 		for p in pts:
-			draw_circle(p[0], float(p[1]), Color(0.0, 0.0, 0.03, float(p[2])))
+			PaleSerpentFx.disc(self, p[0], float(p[1]), Color(0.0, 0.0, 0.03, float(p[2])))
 
 
 ## The cold fog bank rolling ahead of the head (staged only, screen px over the town, under the serpent): soft puffs, each
@@ -918,12 +951,10 @@ class Fog extends Node2D:
 			var sp := (Iso.ground_to_screen(g) - Vector2(0.0, 6.0 + 12.0 * k)).round()
 			var lobe := float(q.lobe)
 			# A flat bank: circles squashed 2:1, a dim rim, the body with a lobe to one side, a pale core high on it.
-			draw_set_transform(sp, 0.0, Vector2(1.0, 0.5))
-			draw_circle(Vector2.ZERO, r, Color(FOG[0], 0.13 * a))
-			draw_circle(Vector2(r * 0.35 * lobe, -r * 0.1), r * 0.72, Color(FOG[1], 0.16 * a))
-			draw_circle(Vector2(-r * 0.3 * lobe, r * 0.05), r * 0.6, Color(FOG[1], 0.13 * a))
-			draw_circle(Vector2(0.0, -r * 0.2), r * 0.42, Color(FOG[2], 0.15 * a))
-		draw_set_transform(Vector2.ZERO)
+			PaleSerpentFx.disc(self, sp, r, Color(FOG[0], 0.13 * a), r * 0.5)
+			PaleSerpentFx.disc(self, sp + Vector2(r * 0.35 * lobe, -r * 0.05), r * 0.72, Color(FOG[1], 0.16 * a), r * 0.36)
+			PaleSerpentFx.disc(self, sp + Vector2(-r * 0.3 * lobe, r * 0.025), r * 0.6, Color(FOG[1], 0.13 * a), r * 0.3)
+			PaleSerpentFx.disc(self, sp + Vector2(0.0, -r * 0.1), r * 0.42, Color(FOG[2], 0.15 * a), r * 0.21)
 
 
 ## The frost laid ahead of the head (staged only, ground units, on the ground layer under the shadow): rimed patches of
@@ -968,8 +999,8 @@ class Frost extends Node2D:
 				continue
 			var g: Vector2 = q.g
 			var r := BAND * (0.55 + 0.45 * grow)
-			draw_circle(g, r, Color(FROST[0], 0.05 * fade))
-			draw_circle(g, r * 0.62, Color(FROST[1], 0.05 * fade))
+			PaleSerpentFx.disc(self, g, r, Color(FROST[0], 0.05 * fade))
+			PaleSerpentFx.disc(self, g, r * 0.62, Color(FROST[1], 0.05 * fade))
 			# Hoarfrost: a few needles of rime scattered over it.
 			rng.seed = int(q.seed)
 			for k in 7:
@@ -1005,7 +1036,7 @@ class SoulWisp extends Node2D:
 		var n := _trail.size()
 		for j in range(n - 1, 0, -1):
 			var f := 1.0 - float(j) / float(n)
-			draw_circle(_trail[j] - position, 1.0 + 2.5 * f, Color(0.78, 0.94, 0.86, 0.4 * f * fade))
-		draw_circle(Vector2.ZERO, 7.0, Color(0.92, 0.96, 1.0, 0.16 * fade))
-		draw_circle(Vector2.ZERO, 4.0, Color(0.92, 0.96, 1.0, 0.5 * fade))
-		draw_circle(Vector2.ZERO, 2.0, Color(1.0, 1.0, 1.0, 0.95 * fade))
+			PaleSerpentFx.disc(self, _trail[j] - position, 1.0 + 2.5 * f, Color(0.78, 0.94, 0.86, 0.4 * f * fade))
+		PaleSerpentFx.disc(self, Vector2.ZERO, 7.0, Color(0.92, 0.96, 1.0, 0.16 * fade))
+		PaleSerpentFx.disc(self, Vector2.ZERO, 4.0, Color(0.92, 0.96, 1.0, 0.5 * fade))
+		PaleSerpentFx.disc(self, Vector2.ZERO, 2.0, Color(1.0, 1.0, 1.0, 0.95 * fade))

@@ -95,6 +95,8 @@ signal wrecked(visitor: Animal, s: Structure)
 ## People bitten dead, and visitors cut down.
 var kills := 0
 var slain := 0
+## How many times an idle wrecker has looked for a building to go at (a count the tests read).
+var house_looks := 0
 
 var _field: EnemyField
 var _crowd: Crowd
@@ -144,6 +146,8 @@ class Rule extends RefCounted:
 	var house: Structure
 	var beside: Structure
 	var look_in := 0.0
+	## Seconds to its next look for a building to go at, while it has none (a look that found nothing waits WRECK_LOOK).
+	var house_in := 0.0
 	## give(): Death's undead (see the class comment).
 	var knock_first := false
 	var infect := false
@@ -499,10 +503,12 @@ func _march_on(a: Animal, r: Rule, delta: float) -> void:
 
 
 ## A wrecker's claws: the building beside it is struck every wreck_every; with nobody to hunt (`idle`) it goes to the
-## nearest building within its seek reach (to the open ground at the face nearest it) and strikes that.
+## nearest building within its seek reach (to the open ground at the face nearest it) and strikes that -- looked for every
+## WRECK_LOOK while it has none, and at once when the one it went for is gone, spared or out of reach.
 func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 	r.wreck_in -= delta
 	r.look_in -= delta
+	r.house_in -= delta
 	var env := _field.env if _field != null else null
 	if env == null:
 		return
@@ -526,9 +532,14 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 		wrecked.emit(a, beside)
 	if not idle or beside != null or not r.wreck_idle:
 		return
-	if r.house == null or not _wreckable(r.house) or _spares(r, r.house) or r.house.distance_to(a.ground_pos) > r.seek_r:
+	if r.house != null and (not _wreckable(r.house) or _spares(r, r.house) or r.house.distance_to(a.ground_pos) > r.seek_r):
 		r.house = null
+		r.house_in = 0.0  # the one it went for is gone or spared: it looks again at once
+	# With none, it looks every WRECK_LOOK (each look asks the town's buildings near it and whether each is spared).
+	if r.house == null and r.house_in <= 0.0:
+		r.house_in = WRECK_LOOK
 		best = INF
+		house_looks += 1
 		for s in env.near(a.ground_pos, r.seek_r):
 			if _wreckable(s) and not _spares(r, s):
 				var d := s.distance_to(a.ground_pos)
@@ -544,6 +555,7 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 		a.walk_to(to, delta, null)
 	elif a.route_to(to, delta, _grid, 1.0) and a.blocked:
 		r.house = null
+		r.house_in = 0.0
 
 
 ## A building a wrecker can strike: standing, solid (not a field, rubble or the bridge), not a power's own pile.

@@ -578,6 +578,18 @@ static func _second_review(t) -> void:
 			"spare asked live: an idle wrecker drops the house it was walking to once that house is spared")
 	v = _fresh(made)
 
+	# --- An idle wrecker with nothing to wreck looks for a building at most once every WRECK_LOOK, not every step.
+	var bored := v.summon(at, Animal.Breed.GHOUL, 4, 1.0, 8.0, 0.6, 1.0, true)
+	v.give(bored, {"wreck": 3.0, "wreck_every": 1.0, "wreck_reach": 0.5,
+		"spare": func(_s: Structure) -> bool: return true})
+	var looks0 := v.house_looks
+	_step(v, 1.0)
+	var most_looks := ceili(1.0 / Visitors.WRECK_LOOK) + 1
+	t.check(v.house_looks - looks0 >= 1 and v.house_looks - looks0 <= most_looks and v._rules[bored].house == null,
+		"an idle wrecker with nothing to wreck looks for a building at most once every WRECK_LOOK (%d looks in 1 s, most %d)"
+			% [v.house_looks - looks0, most_looks])
+	v = _fresh(made)
+
 	# --- Skeleton and ghoul stats.
 	var s1 := DeathParts.skeleton(v, at)
 	var g1 := DeathParts.ghoul(v, at)

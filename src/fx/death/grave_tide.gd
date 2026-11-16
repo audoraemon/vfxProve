@@ -86,12 +86,13 @@ const BITE_ALARM := 0.6
 ## BONES bones fly one by one, up out of its grave, into its spot. Its landing is the first slam, and it slams the ground
 ## every SLAM_EVERY while it stands: soldiers out in the open within SLAM_R die (frenzy, a body), everyone else within it is
 ## knocked back SLAM_KNOCK and the street within SLAM_R + 1 frightened; every building within SLAM_R not spared takes
-## SLAM_WRECK (R43).
+## SLAM_WRECK (R43). SLAM_EVERY 4 -> 3 and SLAM_R 3 -> 3.5 by the R46 bar ruling (the final review: the counter-blow
+## thinned the horde, so the giant slams harder to keep the tide level with Heaven's Door).
 const GIANT_LIFE := 60.0
 const ASSEMBLE := 1.2
 const BONES := 18
-const SLAM_EVERY := 4.0
-const SLAM_R := 3.0
+const SLAM_EVERY := 3.0
+const SLAM_R := 3.5
 const SLAM_KNOCK := 5.5
 const SLAM_WRECK := 60.0
 ## The slam's fright (R12: Crowd.fright(at, SLAM_R + 1.0, 0.8, 3.0, 8.0, 12.0, &"beast")) and its blow (giant_step, +4 dB).

@@ -16,7 +16,7 @@ Plan: docs/superpowers/plans/2026-11-13-kak-death-review-adjustments.md. Rulings
 | R9 | Gate Below | Wraith kill rule: **kill on contact**. A wraith within `WRAITH_TOUCH 0.5` of a soldier kills him as `&"pit"` (no body, credited to The Gate Below) and is spent: it sinks with him. `WRAITH_SEEK` 8 → **12**. New `WRAITH_SPEED 1.0` (share of a dog's run: 1.65 u/s). Its slow on citizens it passes is kept. |
 | R10 | Pale Reign | `SPAN` 12 → **16**, `EVERY` 2.0 → **1.5**, `MAX_RISEN` 12 → **16**, `SERVANT_LIFE 20` kept. Horde: `HORDE_START 4` ghosts pour out at `EVERY` (with the first drip death, so the first death stays at `IMPACT`). Every death inside the district during the span adds one ghost at the body, while living ghosts < `HORDE_CAP 24` and horde kills < `HORDE_KILLS 24`. Ghosts move through walls at `PALE_GHOST_PACE 2.2` x walk. A ghost's touch (`bite_r 0.4`, once every 0.8 s) kills as `&"pale"`. Ghosts never pick anyone outside `RADIUS`. They sink at `SPAN`. `PowerBook.IMPACT["pale"]` becomes 1.5; `REACH["pale"]` seconds become 16. |
 | R11 | Serpent | `SCALE 2.0` (the head and tail sprites are drawn at 2x). `R_NECK` 14 → 28, `R_TAIL` 8 → 16, `SEGMENTS` 22 → 30, `GAP` 0.32 → 0.45, `LIFT` 34 → 60, `WAVE` 6 → 10, `BAND` 1.0 → **2.0** (a 4-wide kill lane). `CIRCLE_R 4.0`, `LENGTH 14.0`, `GLIDE`, `SIGHT` and `SICK` are kept. Seam: a measured `NECK_SOCKET` per head way, a collar disc under the head, and disc 1 placed at the socket. Soul aura: a cold glow and wisps; each kill's soul flies into the nearest body piece over `SOUL_FLY 0.7` s. |
-| R12 | Grave Tide | `GIANT_LIFE 60.0` (zombies keep `LIFE 40`). Assembly: `BONES 18` bones fly one by one, from the cluster's remains, into the giant's spot over `ASSEMBLE 1.2` s; the giant stands at `T_RISE + ASSEMBLE`. The landing is the first slam. Then a slam every `SLAM_EVERY 4.0` s while it stands: soldiers within `SLAM_R 3.0` die as `&"frenzy"` (a body), and everyone else is knocked back (`field.knock_from(at, 0.0, SLAM_R, 5.5)`) and frightened (`Crowd.fright(at, SLAM_R + 1.0, 0.8, 3.0, 8.0, 12.0, &"beast")`). The slam plays `giant_step` at +4 dB. There is no new sound file. |
+| R12 | Grave Tide | `GIANT_LIFE 60.0` (zombies keep `LIFE 40`). Assembly: `BONES 18` bones fly one by one, from the cluster's remains, into the giant's spot over `ASSEMBLE 1.2` s; the giant stands at `T_RISE + ASSEMBLE`. The landing is the first slam. Then a slam every `SLAM_EVERY 4.0` s (3.0 by the R46 bar ruling, see Bar) while it stands: soldiers within `SLAM_R 3.0` (3.5 by the same ruling) die as `&"frenzy"` (a body), and everyone else is knocked back (`field.knock_from(at, 0.0, SLAM_R, 5.5)`) and frightened (`Crowd.fright(at, SLAM_R + 1.0, 0.8, 3.0, 8.0, 12.0, &"beast")`). The slam plays `giant_step` at +4 dB. There is no new sound file. |
 | R13 | Bench | Mission bench aid `--bench-cast=KEY` (optionally `--bench-bodies=N`). It passes when the effect's own cost is ≤ 5 ms: `avg_ms` with the cast minus without, the median of 3 alternating pairs on a quiet machine. Headless perf checks: horde (24 ghosts + 16 servants) and tide (30 zombies + giant + slams) under 5 ms, averaged over 200 frames. |
 | R14 | Kit | New kill kind `&"grave"`: added to `Remains.BODY_KINDS` and `DeathVoices.QUIET_KINDS`, with `Rules.POWER_KINDS["walker"] = [&"grave"]`. `Crowd._on_killed` returns after the death voice and before `alarms.incident` / `_hear_alarm` for it, as it does for `&"gone"`. |
 | R15 | Wheel | Effect hooks `follow_up_subject() -> Node2D` and `follow_up_orders() -> Array` (see Task 3). With a subject, a press within `Targeting.WHEEL_R` (1.2) of it opens the wheel on it; anywhere else is refused `"missed"`. |
@@ -112,7 +112,21 @@ with `heavendoor` and `--bench-tally=30`):
 The counter-blow (R30a) alone moves Grave Tide: with `_counter()` switched off (an experiment, not committed) seed 1 is
 again exactly 248 / 91, and seed 2 is 291 deaths / 83 destroyed. Citizens now land a blow on every undead that comes for
 them, so the tide's skeletons, ghouls and zombies fall sooner: about 95 fewer citizens die, and fewer undead are left to
-claw. Heaven's Door is untouched by the wave. **Open (for a ruling):** the buildings bar is short on seeds 1 and 2. Two
-R46 levers were tried and were not enough or not clearly better (experiments, not committed): the claws +33% (skeleton 8,
-ghoul 4, zombie 4) gave destroyed 80 / 82 / 92; `SKELETON_BLOWS` 5 gave 75 / 81 / 94. The tide's buildings count is
-chaotic from seed to seed (74-94 across these runs), so a lever tuned to it risks fitting seeds. Nothing was strengthened.
+claw. Heaven's Door is untouched by the wave. The buildings bar was short on seeds 1 and 2. Two
+R46 levers were tried first and were not enough (experiments, not committed): the claws +33% (skeleton 8, ghoul 4,
+zombie 4) gave destroyed 80 / 82 / 92; `SKELETON_BLOWS` 5 gave 75 / 81 / 94.
+
+**Ruling (controller, spec item 9: impact from stronger units, not more units; the caps hold):** strengthen the giant's
+slam, the city's main wrecker, in this order, stopping at the first step that meets the bar on all three seeds:
+(a) `SLAM_EVERY` 4.0 -> 3.0; (b) plus `SLAM_R` 3.0 -> 3.5; (c) plus a `SLAM_WRECK` that fells a bigger building in one
+slam. `LIVING_CAP` 60 and every unit count are kept.
+
+| Step | Grave Tide seeds 1 / 2 / 3: deaths, destroyed | Met? | test_gravetide perf (`PERF_MS 8`) |
+|---|---|---|---|
+| (a) `SLAM_EVERY 3.0` | 143, 79 / 154, 80 / 151, 96 | no (buildings short on 1, 2) | 3.095 ms a frame (worst 16.8) |
+| (b) + `SLAM_R 3.5` | 174, 105 / 151, 100 / 149, 96 | **yes** | 2.901 ms (worst 20.1), committed run 2.884 ms (worst 18.1, slam 13.3) |
+
+Final (b), against Heaven's Door's 65, 83 / 61, 83 / 65, 83: deaths +109 / +90 / +84, destroyed +22 / +17 / +13 on
+seeds 1 / 2 / 3. (c) was not needed: `SLAM_WRECK` stays 60. R12's `SLAM_EVERY 4.0` and `SLAM_R 3.0` read 3.0 and 3.5 from
+here (the slam's knock, fright and kill use `SLAM_R`, so soldiers within 3.5 die and the fright reaches 4.5). The
+Grave Tide shape text in `power_book.gd` says every 3 s and within 3.5.

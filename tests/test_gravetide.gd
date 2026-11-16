@@ -202,8 +202,8 @@ static func _book(t, made: Array) -> void:
 	t.check(GraveTideFx.ZOMBIE_WRECK == 3.0 and GraveTideFx.ZOMBIE_WRECK_EVERY == 1.5 and GraveTideFx.SKELETON_WRECK == 6.0
 		and GraveTideFx.SKELETON_WRECK_EVERY == 1.5 and GraveTideFx.GHOUL_WRECK == 3.0 and GraveTideFx.GHOUL_WRECK_EVERY == 1.0,
 		"the claws of each kind (R42)")
-	t.check(GraveTideFx.GIANT_LIFE == 60.0 and GraveTideFx.ASSEMBLE == 1.2 and GraveTideFx.BONES == 18 and GraveTideFx.SLAM_EVERY == 4.0
-		and GraveTideFx.SLAM_R == 3.0 and GraveTideFx.SLAM_KNOCK == 5.5, "the slam's numbers (ruling R12)")
+	t.check(GraveTideFx.GIANT_LIFE == 60.0 and GraveTideFx.ASSEMBLE == 1.2 and GraveTideFx.BONES == 18 and GraveTideFx.SLAM_EVERY == 3.0
+		and GraveTideFx.SLAM_R == 3.5 and GraveTideFx.SLAM_KNOCK == 5.5, "the slam's numbers (ruling R12; every 3 s within 3.5 by the R46 bar ruling)")
 	var script := load("res://src/fx/death/grave_tide.gd") as GDScript
 	var consts := script.get_script_constant_map()
 	var methods := script.get_script_method_list().map(func(m: Dictionary) -> String: return String(m.name))
@@ -480,7 +480,7 @@ static func _landing(t, made: Array) -> void:
 	fx.end_now()
 
 
-## "a slam every 4 s": the landing's, then one at landed_at + 4 and + 8.
+## "a slam every SLAM_EVERY s": the landing's, then one at landed_at + SLAM_EVERY and + 2 SLAM_EVERY.
 static func _slam_every(t, made: Array) -> void:
 	RD._clear_all(made)
 	var was := _soldiers_in(made)
@@ -491,7 +491,7 @@ static func _slam_every(t, made: Array) -> void:
 	var before := fx.slams
 	_run_bare(fx, fx.landed_at + 2.0 * GraveTideFx.SLAM_EVERY + 0.05 - fx.t)
 	t.check(first == 1 and before == 1 and fx.slams == 3,
-		"a slam every %.0f s: %d at the landing, %d just before the next, %d at landed_at + 8" % [GraveTideFx.SLAM_EVERY, first, before, fx.slams])
+		"a slam every %.0f s: %d at the landing, %d just before the next, %d at landed_at + %.0f" % [GraveTideFx.SLAM_EVERY, first, before, fx.slams, 2.0 * GraveTideFx.SLAM_EVERY])
 	fx.end_now()
 	_soldiers_back(was)
 

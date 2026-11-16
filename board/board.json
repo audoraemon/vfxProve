@@ -1,11 +1,10 @@
 {
- "hash": "4c0c7c60b3c6189b",
- "updated": "2026-11-16T19:09:04+07:00",
+ "hash": "895e4c1cff9ee273",
+ "updated": "2026-11-16T21:32:27+07:00",
  "changes": {
-  "date": "<t:1794830944:f>",
+  "date": "<t:1794839547:f>",
   "items": [
-   "New: Sharp pixel art at any window size (people, buildings, floor)",
-   "New: HUD task line: short 'do this now' step with live counter"
+   "New: Zoom-out limit is a player setting (Options)"
   ]
  },
  "snapshot": {
@@ -1728,6 +1727,15 @@
     "updated": "2026-11-12",
     "order": 211
    },
+   "zoom-out-setting": {
+    "title": "Zoom-out limit is a player setting (Options)",
+    "status": "done",
+    "area": "UI",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-16",
+    "order": 216
+   },
    "zoom-readout": {
     "title": "Zoom readout (step 1 of the zoom cap)",
     "status": "done",
@@ -1741,24 +1749,32 @@
   "branches": [
    {
     "name": "god/death-review-2",
-    "ahead": 135,
-    "behind": 87,
+    "ahead": 137,
+    "behind": 88,
     "date": "2026-11-16",
-    "subject": "fix: panic's may_shelter no longer shadows Person.shelter",
+    "subject": "perf: Pale Reign's horde costs a fraction of the frame (R49)",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 105,
-    "behind": 87,
+    "behind": 88,
     "date": "2026-11-16",
     "subject": "docs: Death and Decree ability levels design (proposed)",
     "pushed": true
    },
    {
+    "name": "god/refs-rerecord",
+    "ahead": 105,
+    "behind": 88,
+    "date": "2026-11-16",
+    "subject": "docs: Death and Decree ability levels design (proposed)",
+    "pushed": false
+   },
+   {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 276,
+    "behind": 277,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1766,7 +1782,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 774,
+    "behind": 775,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1774,7 +1790,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 732,
+    "behind": 733,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1783,7 +1799,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-16",
-   "subject": "feat: HUD task line: one short 'do this now' step with a live counter under the objectives, in both detail modes (MissionSteps)"
+   "subject": "feat: zoom-out limit is a player setting (Options: Zoom out, 0.85 near .. 0.35 far; default 0.85)"
   }
  }
 }

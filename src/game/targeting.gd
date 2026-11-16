@@ -111,8 +111,8 @@ const AREAS := {
 	"fargate": {"shape": "circle", "r": 10.0},
 	# DoorsOfTheDeadFx.RADIUS: the district whose doors open
 	"deaddoors": {"shape": "circle", "r": DoorsOfTheDeadFx.RADIUS},
-	# Remains.PICK_R: the body the click takes; RaiseTheDeadFx.SEEK is how far its zombie hunts (a spirit frightens FRIGHT_R about it)
-	"raise": {"shape": "circle", "r": Remains.PICK_R, "roam": RaiseTheDeadFx.SEEK},
+	# RING_R: the ring of bodies the click raises; RaiseTheDeadFx.SEEK is how far its zombie hunts (a spirit frightens FRIGHT_R about it)
+	"raise": {"shape": "circle", "r": RaiseTheDeadFx.RING_R, "roam": RaiseTheDeadFx.SEEK},
 	# GravecallFx.HAUNT_R: where the spirits rise at the first click, then a dashed route to the circle they haunt ("route")
 	"gravecall": {"shape": "route", "r": GravecallFx.HAUNT_R},
 	# CorpseGuiseFx.MARK_R: the circle the 4 nearest are guised within (each ringed)
@@ -225,7 +225,7 @@ const AREA_STATS := {
 	"sanctuary": {"r": "PICK_R"},
 	"skylift": {"r": "RADIUS"}, "windfall": {"length": "LENGTH"}, "hellspark": {"r": "RADIUS"}, "deep": {"r": "RADIUS"},
 	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
-	"raise": {"roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"}, "guise": {"r": "MARK_R"},
+	"raise": {"r": "RING_R", "roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"}, "guise": {"r": "MARK_R"},
 	"gatebelow": {"r": "REACH"},
 	"pale": {"r": "RADIUS"},
 	"serpent": {"length": "LENGTH"},
@@ -731,6 +731,20 @@ static func bodies_marked(remains: Remains, at: Vector2, need_soul: bool, hidden
 		out.append({"pos": r.pos, "lead": r == lead, "ok": not need_soul or remains.has_soul(r)})
 	if lead != null and lead.hidden:
 		out.append({"pos": lead.pos, "lead": true, "ok": true})
+	return out
+
+
+## Raise the Dead's ring (R28): {"pos", "lead", "ok"} for every unhidden remain within `r` of `at`. The ones that will rise (the oldest
+## `most`, with a soul if `need_soul`) are lead and ok; the rest (past the cap, or soul-less in SPIRIT) are not ok. Empty with no
+## ledger, or the ledger off.
+static func ring_marked(remains: Remains, at: Vector2, r: float, need_soul: bool, most: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if remains == null or not remains.enabled:
+		return out
+	var rising := remains.ring(at, r, need_soul, most)
+	for b in remains.near(at, r):
+		var up := rising.has(b)
+		out.append({"pos": b.pos, "lead": up, "ok": up})
 	return out
 
 
@@ -1243,8 +1257,8 @@ func _draw() -> void:
 			for p in CorpseGuiseFx.marked_at(_crowd._field, _press):
 				_death_mark(p.ground_pos, COL_BONE, true)
 		"raise":
-			# Every body a click here could take (R1), the one it takes with the skull; in SPIRIT a body whose soul has gone is red.
-			for m in bodies_marked(_crowd.remains, _press, String(mode().get("key", "")) == "spirit"):
+			# Every body in the ring (R28), the ones that will rise with the skull; past the cap, or in SPIRIT a soul-less one, red.
+			for m in ring_marked(_crowd.remains, _press, RaiseTheDeadFx.RING_R, String(mode().get("key", "")) == "spirit", RaiseTheDeadFx.MOST):
 				_death_mark(m.pos, COL_BONE if bool(m.ok) else COL_BAD, bool(m.lead))
 		"walker":
 			# The body the first click would take, as Raise marks them (a hidden one too: it walks a buried body back out).

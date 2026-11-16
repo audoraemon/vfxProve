@@ -325,11 +325,12 @@ static func _aura_others(t, made: Array) -> void:
 	RD._clear_all(made)
 	var crowd: Crowd = made[0]
 	var at := RD._empty(made)
+	var beside := at + Vector2(0.0, 3.0)
+	_bodies(made, [beside])
+	# Raise first: its ring (RING_R 3.0, R28) would take the tide's bodies too if they were laid already.
+	var raise := FxTimeline.cast(RaiseTheDeadFx, made[5], beside, {"mode": "zombie"}) as RaiseTheDeadFx
 	_bodies(made, _ring(made, at, 5, 1.5))
 	var fx := _cast(made, at)
-	var beside := at + Vector2(0.0, 3.0)
-	_bodies(made, [beside])  # after the tide's pick: Raise's body, not the tide's
-	var raise := FxTimeline.cast(RaiseTheDeadFx, made[5], beside, {"mode": "zombie"}) as RaiseTheDeadFx
 	var hounds := Visitors.new().setup(made[3], crowd, made[2], made[4])
 	var hound := hounds.summon(at + Vector2(-2.0, 0.0), Animal.Breed.HELLHOUND, 4, 1.0, 0.0, 0.5, 1.0, false)
 	var both := func(seconds: float) -> void:

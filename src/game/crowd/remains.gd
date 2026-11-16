@@ -111,11 +111,11 @@ func has_soul(r: Remain) -> bool:
 	return age(r) < SOUL
 
 
-## The nearest unhidden remain within PICK_R of `at` (one with its soul still near, if `need_soul`; a hidden one too, if
+## The nearest unhidden remain within `reach` (PICK_R) of `at` (one with its soul still near, if `need_soul`; a hidden one too, if
 ## `hidden_too`: Walking Corpse alone walks a hidden body back out), or null. Ties go to the older one.
-func pick(at: Vector2, need_soul := false, hidden_too := false) -> Remain:
+func pick(at: Vector2, need_soul := false, hidden_too := false, reach := PICK_R) -> Remain:
 	var best: Remain = null
-	var best_d := PICK_R * PICK_R
+	var best_d := reach * reach
 	for r in _list:
 		if (r.hidden and not hidden_too) or (need_soul and not has_soul(r)):
 			continue
@@ -124,6 +124,22 @@ func pick(at: Vector2, need_soul := false, hidden_too := false) -> Remain:
 			best = r
 			best_d = d
 	return best
+
+
+## The ring (Raise the Dead, R28): the unhidden remains within `r` of `at` (each with its soul still near, if `need_soul`), the
+## oldest first (a tie in ledger order), at most `most` of them.
+func ring(at: Vector2, r: float, need_soul: bool, most: int) -> Array[Remain]:
+	var found: Array[Remain] = []
+	for b in _list:
+		if not b.hidden and (not need_soul or has_soul(b)) and b.pos.distance_to(at) <= r:
+			found.append(b)
+	# Array.sort_custom is not stable: break a tie by the ledger's own order.
+	var order := {}
+	for i in found.size():
+		order[found[i]] = i
+	found.sort_custom(func(a: Remain, b: Remain) -> bool:
+		return order[a] < order[b] if a.born == b.born else a.born < b.born)
+	return found.slice(0, mini(most, found.size()))
 
 
 ## The unhidden remains within `r` of `at`, nearest first.

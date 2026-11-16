@@ -54,8 +54,8 @@ const POWERS := [
 		"quiet": true, "authority": "death"},
 	{"key": "raise", "name": "Raise the Dead", "path": "res://src/fx/death/raise_the_dead.gd",
 		"blurb": "A body rises to hunt the living, or its soul to haunt them.",
-		"dp": 1, "cooldown": 25.0, "aim": "click", "needs": "body",
-		"shape": "click a body (every remain within 1 of the cursor is marked): ZOMBIE -- it gets up for 30 s and hunts the nearest, and whoever it kills gets up too, 3 in all; SPIRIT -- its soul rises for 20 s and everyone within 4 flees; it only haunts, it possesses no one, and a body with no soul to raise is marked in red",
+		"dp": 1, "cooldown": 25.0, "aim": "click", "needs": "body", "pick_r": 3.0,
+		"shape": "click near bodies (every remain within 3 of the cursor is marked, eight rise at most, the oldest first): ZOMBIE -- each gets up for 30 s and hunts the nearest, and whoever they kill gets up too, 2 more in all; SPIRIT -- each soul rises for 20 s and everyone within 4 of one flees; it only haunts, it possesses no one, and a body with no soul to raise is marked in red",
 		"authority": "death", "modes": [
 			{"key": "zombie", "name": "ZOMBIE"},
 			{"key": "spirit", "name": "SPIRIT", "needs": "soul"}]},

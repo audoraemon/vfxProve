@@ -49,11 +49,27 @@ static func _marks(t) -> void:
 	_lay(rem, c)
 	_lay(rem, c + Vector2(0.6, 0.0))
 	_lay(rem, c + Vector2(1.4, 0.0))
-	var marks := Targeting.bodies_marked(rem, c, false)
+	var marks := Targeting.ring_marked(rem, c, Remains.PICK_R, false, 1)
 	var leads := marks.filter(func(m: Dictionary) -> bool: return bool(m.lead))
-	t.check(marks.size() == 2 and leads.size() == 1 and leads[0].pos == rem.pick(c).pos
-		and marks.all(func(m: Dictionary) -> bool: return bool(m.ok)),
-		"raise marks every body within 1.0, the picked one lead (%s)" % [marks])
+	t.check(marks.size() == 2 and leads.size() == 1 and leads[0].pos == rem.pick(c).pos,
+		"(a cap of 1: the oldest is lead, the rest not) (%s)" % [marks])
+	rem.free()
+	rem = Remains.new()
+	rem.enabled = true
+	for k in 10:
+		_lay(rem, c + Vector2(float(k) * 0.3, 0.0))
+		rem.step(0.1)
+	marks = Targeting.ring_marked(rem, c, RaiseTheDeadFx.RING_R, false, RaiseTheDeadFx.MOST)
+	var ok := marks.filter(func(m: Dictionary) -> bool: return bool(m.lead) and bool(m.ok))
+	var bad := marks.filter(func(m: Dictionary) -> bool: return not bool(m.ok) and not bool(m.lead))
+	t.check(marks.size() == 10 and ok.size() == 8 and bad.size() == 2,
+		"raise marks the whole ring, the risers with the skull (%d, %d, %d)" % [marks.size(), ok.size(), bad.size()])
+	rem.step(16.0)
+	_lay(rem, c)
+	marks = Targeting.ring_marked(rem, c, RaiseTheDeadFx.RING_R, true, RaiseTheDeadFx.MOST)
+	t.check(marks.size() == 11 and marks.filter(func(m: Dictionary) -> bool: return bool(m.ok)).size() == 1,
+		"SPIRIT: a soul-less one is not ok (%d)" % marks.size())
+	t.check(Targeting.ring_marked(null, c, 3.0, false, 8).is_empty(), "no ledger: nothing marked")
 	rem.free()
 
 	rem = Remains.new()

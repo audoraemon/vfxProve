@@ -113,6 +113,7 @@ static func run(t) -> void:
 	_no_follow_up(t, made)
 	_zombie_catches(t, made)
 	_recalled(t, made)
+	_ring(t, made)
 	_exit(t, made)
 	_done(made)
 
@@ -132,12 +133,12 @@ static func _book(t) -> void:
 	var area: Dictionary = Targeting.AREAS.get("raise", {})
 	t.check(PowerBook.REACH.has("raise") and is_equal_approx(PowerBook.impact("raise"), RaiseTheDeadFx.T_RISE)
 		and PowerBook.family("raise") == "death" and Rules.POWER_KINDS.get("raise", []) == [&"frenzy"]
-		and area.get("shape", "") == "circle" and is_equal_approx(float(area.get("r", 0.0)), Remains.PICK_R)
+		and area.get("shape", "") == "circle" and is_equal_approx(float(area.get("r", 0.0)), RaiseTheDeadFx.RING_R)
 		and is_equal_approx(float(area.get("roam", 0.0)), RaiseTheDeadFx.SEEK) and Targeting.AREA_STATS.has("raise"),
 		"its reach, impact (the dead stand), family, kills (frenzy) and area (the body's pick, the hunt's roam)")
 	t.check(PowerBook.icon("raise") != null and PowerBook.hud_icon("raise") != null, "it has its icons")
 	t.check(RaiseTheDeadFx.ZOMBIE_LIFE == 30.0 and RaiseTheDeadFx.CHAIN == 3 and RaiseTheDeadFx.SEEK == 10.0
-		and RaiseTheDeadFx.SPIRIT_LIFE == 20.0 and RaiseTheDeadFx.FRIGHT_R == 4.0, "the numbers of the brief")
+		and RaiseTheDeadFx.SPIRIT_LIFE == 20.0 and RaiseTheDeadFx.FRIGHT_R == 4.0 and RaiseTheDeadFx.RING_R == 3.0 and RaiseTheDeadFx.MOST == 8, "the numbers of the brief")
 
 
 static func _cast(made: Array, at: Vector2, mode: String) -> RaiseTheDeadFx:
@@ -297,7 +298,7 @@ static func _spirit(t, made: Array) -> void:
 	near.ground_pos = at + Vector2(3.5, 0.0)
 	far.ground_pos = at + Vector2(0.0, 6.0)
 	_run(fx, RaiseTheDeadFx.T_RISE + 0.1)
-	var sp := fx.spirit
+	var sp: Animal = fx.spirits[0] if not fx.spirits.is_empty() else null
 	t.check(sp != null and sp.breed == Animal.Breed.SPIRIT and fx.visitors.living().size() == 1, "the soul rises as a spirit")
 	_run(fx, 1.2)
 	t.check(near.mind == Person.Mind.PANIC or near.mind == Person.Mind.FLEE,
@@ -386,6 +387,74 @@ static func _recalled(t, made: Array) -> void:
 	sp.drift = false
 	_run(sp, RaiseTheDeadFx.SPIRIT_LIFE - RaiseTheDeadFx.T_RISE - 0.1 + 1.0)
 	t.check(sp.visitors.living().is_empty() and sp.finished, "everything recalled by 20 s (spirit)")
+
+
+## R28, R29: every body in the ring rises (eight at most, the oldest first); the chain stays three in all.
+static func _ring(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	_clear_all(made)
+	var c := _empty(made)
+	for k in 4:
+		_body(made, 60 + k, c + Vector2([0.0, 1.5, 2.8, 3.4][k], 0.0))
+	var fx := _cast(made, c, "zombie")
+	_run(fx, RaiseTheDeadFx.T_RISE + 0.05)
+	t.check(fx.visitors.living().size() == 3 and fx.raised == 3 and crowd.remains.pick(c + Vector2(3.4, 0.0), false, false, 0.2) != null,
+		"every body in the ring rises (%d up, the 3.4 one stays)" % fx.visitors.living().size())
+	fx.end_now()
+
+	_clear_all(made)
+	var d := _empty(made)
+	for k in 10:
+		_body(made, 70 + k, d + Vector2(cos(float(k)), sin(float(k))) * 1.5)
+		crowd.remains.step(0.5)
+	var fx2 := _cast(made, d, "zombie")
+	_run(fx2, RaiseTheDeadFx.T_RISE + 0.05)
+	var left := crowd.remains.near(d, 3.0)
+	t.check(fx2.raised == 8 and left.size() == 2 and left.all(func(r: Remains.Remain) -> bool: return crowd.remains.age(r) <= 1.0),
+		"at most 8, the oldest first (%d raised, %d left)" % [fx2.raised, left.size()])
+	fx2.end_now()
+
+	_clear_all(made)
+	var e := _empty(made)
+	_clear_all(made)
+	for k in 3:
+		_body(made, 80 + k, e + Vector2(float(k) * 0.8, 0.0))
+	var old := _body(made, 83, e + Vector2(0.0, 1.2))
+	old.born -= 16.0
+	var fx3 := _cast(made, e, "spirit")
+	_run(fx3, RaiseTheDeadFx.T_RISE + 0.1)
+	t.check(fx3.spirits.size() == 3 and fx3.visitors.living().size() == 3 and crowd.remains.pick(e + Vector2(0.0, 1.2)) != null,
+		"spirit mode: each soul rises, the soul-less stay (%d spirits)" % fx3.spirits.size())
+	fx3.end_now()
+
+	# Four zombies packed among citizens: the chain still raises two more in all.
+	_clear_all(made)
+	var f := _empty(made)
+	for k in 4:
+		_body(made, 90 + k, f + Vector2(float(k) * 0.5, 0.0))
+	var fx4 := _cast(made, f, "zombie")
+	_run(fx4, RaiseTheDeadFx.T_RISE + 0.05)
+	for k in 8:
+		var v: Person = crowd.citizens[100 + k]
+		v.ground_pos = f + Vector2(1.0 + float(k) * 0.3, 0.6)
+		v.mind = Person.Mind.CALM
+	var z: Animal = fx4.visitors.living()[0]
+	for k in 8:
+		var v: Person = crowd.citizens[100 + k]
+		made[3].kill(v, &"frenzy")
+		fx4.visitors.bitten.emit(z, v, false)
+	t.check(fx4.raised - 4 <= 2 and fx4.raised - 4 >= 1, "the chain stays 3 in all (%d raised)" % fx4.raised)
+	fx4.end_now()
+
+	_clear_all(made)
+	var rules := Rules.new().setup(PackedStringArray(["raise"]), null, made[1], made[3], made[0], made[6])
+	var g := _empty(made)
+	_body(made, 110, g + Vector2(2.5, 0.0))
+	var near_ok := rules.body_refusal("raise", "zombie", g) == ""
+	_clear_all(made)
+	_body(made, 111, g + Vector2(3.2, 0.0))
+	t.check(near_ok and rules.body_refusal("raise", "zombie", g) == "no_dead", "a body 2.5 off makes the cast valid, one 3.2 off does not")
+	rules.free()
 
 
 ## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the risen are gone, nothing errors, and its end after that changes nothing.

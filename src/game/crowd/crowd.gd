@@ -987,6 +987,15 @@ func step_law(z: LawZone, delta: float) -> void:
 	z.step(delta, people, beasts)
 
 
+## Whether `p` is cornered by the dead: any visitor pack's undead holds him in reach (Visitors.corners(), R30). A status of
+## the crowd's, whatever power sent them.
+func cornered(p: Person) -> bool:
+	for pack: Visitors in visitors:
+		if pack.corners(p):
+			return true
+	return false
+
+
 ## The living visitors standing in `near`, added to `out`.
 func _beasts_in(near: Rect2, out: Array) -> void:
 	for pack: Visitors in visitors:

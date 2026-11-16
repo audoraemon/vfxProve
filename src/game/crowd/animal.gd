@@ -64,17 +64,17 @@ const WRAITH_SHEET := "res://assets/pixellab/fx/wraith/wraith.png"
 ## by `facing`, over a faint cold aura. Without the sheet on disk, the spirit shape at twice the size.
 func _draw_wraith(flash: bool) -> void:
 	var aura := DeathParts.GRAVE_GREEN
-	draw_set_transform(Vector2(0, -8), 0.0, Vector2(1.0, 0.7))
+	draw_set_transform(Vector2(0, -8) + _draw_off, 0.0, Vector2(1.0, 0.7))
 	draw_circle(Vector2.ZERO, 9.0, Color(aura, 0.06))
 	draw_circle(Vector2.ZERO, 6.0, Color(aura, 0.10))
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_off)
 	# It hovers 6 px with a 2 px bob (each wraith on its own phase), the aura staying on the ground.
 	var lift := Vector2(0, -(WRAITH_HOVER + WRAITH_BOB * sin(_hover_t * 2.4 + float(get_instance_id() % 628) / 100.0)))
 	var sh := _wraith_sheet()
 	if sh.is_empty():
-		draw_set_transform(lift.round(), 0.0, Vector2(2.0, 2.0))
+		draw_set_transform(lift.round() + _draw_off, 0.0, Vector2(2.0, 2.0))
 		_draw_spirit(flash)
-		draw_set_transform(Vector2.ZERO)
+		draw_set_transform(_draw_off)
 		return
 	var row := 1 if back else 0
 	var n: int = sh.frames[row]
@@ -86,9 +86,9 @@ func _draw_wraith(flash: bool) -> void:
 	var cell: Vector2 = sh.cell
 	var foot: Vector2 = sh.foot
 	var col := worn_tint * (Color(2.0, 2.0, 2.0) if flash else Color.WHITE)
-	draw_set_transform(lift.round(), 0.0, Vector2(float(facing), 1.0))
+	draw_set_transform(lift.round() + _draw_off, 0.0, Vector2(float(facing), 1.0))
 	draw_texture_rect_region(sh.tex, Rect2(-foot, cell), Rect2(Vector2(f * cell.x, row * cell.y), cell), col)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_off)
 
 
 ## The wraith's sheet: {tex, cell, foot, fps, frames}; empty when it is not on disk or not imported.
@@ -171,6 +171,9 @@ const BITE_EVERY := 0.9
 const REACH := 0.4
 ## How far a maddened animal looks for someone to go for.
 const HUNT_SIGHT := 6.0
+## A blow's recoil (struck_from()): how far the drawing is pushed, screen px, and how long it takes to ease back.
+const RECOIL_PX := 3.0
+const RECOIL_FOR := 0.12
 
 var breed := Breed.HOUND
 var state := State.WANDER
@@ -190,6 +193,11 @@ var _bite_in := 0.0
 var _anim := 0.0
 var _frame := 0
 var _flash := 0.0
+## A blow's recoil (struck_from()): the way the drawing is pushed on screen (unit), seconds left of it, and the offset the
+## draw in progress uses (whole pixels).
+var _recoil_dir := Vector2.ZERO
+var _recoil_left := 0.0
+var _draw_off := Vector2.ZERO
 ## Moving up the screen (the sprite shows its back view).
 var back := false
 ## Sprite timing: seconds in the current pose, and since the last bite (a bite plays once).
@@ -359,6 +367,24 @@ func die() -> void:
 	target = null
 	z_index = -1  # a body lies under whoever walks past
 	queue_redraw()
+
+
+## A blow struck from ground point `from` (R32): the drawing is pushed RECOIL_PX screen px away from it and eases back over
+## RECOIL_FOR. Draw only: ground_pos, its pace and every rule are untouched.
+func struck_from(from: Vector2) -> void:
+	var away := Iso.ground_to_screen(ground_pos) - Iso.ground_to_screen(from)
+	if away.length_squared() < 0.0001:
+		away = Vector2(-float(facing), 0.0)  # struck from where it stands: back from the way it faces
+	_recoil_dir = away.normalized()
+	_recoil_left = RECOIL_FOR
+	queue_redraw()
+
+
+## The recoil's screen offset now (ZERO when there is none); every draw path is offset by it.
+func recoil_offset() -> Vector2:
+	if _recoil_left <= 0.0:
+		return Vector2.ZERO
+	return _recoil_dir * RECOIL_PX * (_recoil_left / RECOIL_FOR)
 
 
 func hurt(amount: float) -> void:
@@ -589,6 +615,10 @@ func _plan_route(goal: Vector2, grid: WalkGrid) -> void:
 
 func tick_visual(delta: float) -> void:
 	_since_move += delta
+	if _recoil_left > 0.0:
+		# Eased before any early return below, so every breed's recoil comes back.
+		_recoil_left = maxf(_recoil_left - delta, 0.0)
+		queue_redraw()
 	if breed == Breed.GHOST or breed in UNDEAD:
 		_hover_t += delta
 		queue_redraw()  # it bobs, sways and flickers every frame
@@ -691,6 +721,10 @@ func moving() -> bool:
 
 
 func _draw() -> void:
+	# A blow's recoil moves the whole drawing; every transform below adds it (_draw_off).
+	_draw_off = recoil_offset().round()
+	if _draw_off != Vector2.ZERO:
+		draw_set_transform(_draw_off)
 	var pal: Array = PALETTE[breed]
 	var shadow := Rect2(-5, -1, 10, 2) if is_dog() else Rect2(-4, -1, 8, 2)
 	if breed == Breed.HELLHOUND:
@@ -720,10 +754,10 @@ func _draw() -> void:
 			# On its side: the still pose turned over, dull.
 			var c: int = dsh.cell
 			var ft: Vector2 = dsh.foot
-			draw_set_transform(Vector2(0, -2), PI / 2.0 * facing, Vector2(0.8, 1.0))
+			draw_set_transform(Vector2(0, -2) + _draw_off, PI / 2.0 * facing, Vector2(0.8, 1.0))
 			draw_texture_rect_region(dsh.tex, Rect2(-ft.x, -ft.y * 0.5, c, c), Rect2(0, 0, c, c),
 					Color(0.6, 0.55, 0.55))
-			draw_set_transform(Vector2.ZERO)
+			draw_set_transform(_draw_off)
 			return
 		_draw_rows(_shape_body(), pal, true, Color(0.55, 0.5, 0.5))
 		return
@@ -765,9 +799,9 @@ func _draw_sheet(sh: Dictionary, tint: Color, lift := Vector2.ZERO) -> void:
 	var cell: int = sh.cell
 	var foot: Vector2 = sh.foot
 	var src := Rect2((f % 100) * cell, (f / 100) * cell, cell, cell)
-	draw_set_transform(lift.round(), 0.0, Vector2(float(facing), 1.0))
+	draw_set_transform(lift.round() + _draw_off, 0.0, Vector2(float(facing), 1.0))
 	draw_texture_rect_region(sh.tex, Rect2(-foot.x, -foot.y, cell, cell), src, tint)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_off)
 
 
 ## The PeopleArt facing it shows now (SE, SW, NE, NW).
@@ -939,9 +973,9 @@ func _draw_mark() -> void:
 		c = Color("ffd86a")
 	elif state == State.TRANCE:
 		c = Color("c8d8ff")
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
+	draw_set_transform(_draw_off, 0.0, Vector2(1.0, 0.5))
 	draw_arc(Vector2.ZERO, 6.0, 0.0, TAU, 14, c, 1.0)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_off)
 	var top := -13 if is_dog() else -12
 	draw_rect(Rect2(-2, top - 3, 5, 3), Color(0.05, 0.03, 0.06, 0.8))
 	draw_rect(Rect2(-1, top - 2, 3, 1), c)

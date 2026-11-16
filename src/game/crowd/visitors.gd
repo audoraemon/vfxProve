@@ -41,6 +41,14 @@ extends RefCounted
 ## withering person is never its prey), `touches_most` (after that many touches -- withering laid or touch kill -- it is
 ## spent and freed), `prefer` "soldiers" (the nearest soldier within reach, else the nearest anyone: the skeleton warrior)
 ## and `spare` (a Callable(s: Structure) -> bool: a building it answers true for is never this visitor's to wreck).
+## Fights with the dead (R30-R32): a guard's blow on an undead shows his swing (Person.swing_at()) and every blow on one
+## flinches it (Animal.hurt()'s flash and Animal.struck_from()'s draw-only recoil). A citizen is *cornered* (corners(),
+## Crowd.cornered(): a status of the crowd's, any power's undead) while one undead visitor hunting him has stayed within
+## CORNER_R of him for CORNER_HOLD without a break -- he is alive, out in the open and not down; it lapses the step that
+## stops. A cornered citizen fights back (_fight_back()): every CITIZEN_SWING (the first after one swing's wait) he swings
+## at the nearest undead within its reach of him (GUARD_REACH, or its own bite reach if longer: what can bite him can be
+## struck back); a solid one (Animal.SOLID_UNDEAD) takes CITIZEN_BLOW, flinches, and never has its bite begun again by it;
+## a spirit, wraith, pale ghost or giant takes nothing. His own flight is his own: the blow only lands while it is in reach.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -52,6 +60,12 @@ const AIR_CLEAR := 1.0
 ## The guard: a soldier this near a visitor strikes it every GUARD_SWING.
 const GUARD_REACH := 0.6
 const GUARD_SWING := 0.8
+## Cornered (corners()): an undead hunting a citizen this near him this long; then he strikes back every CITIZEN_SWING
+## for CITIZEN_BLOW (a zombie falls to six, a ghoul to four, a skeleton warrior to eight).
+const CORNER_R := 1.0
+const CORNER_HOLD := 0.5
+const CITIZEN_SWING := 1.2
+const CITIZEN_BLOW := 0.5
 ## A wrecker looks for the building beside it this often (a look asks the town's buildings near it).
 const WRECK_LOOK := 0.2
 ## Soldiers at their post within a visitor's seek reach are drawn to it this often, for this long.
@@ -86,6 +100,8 @@ var _parent: Node2D
 var _rules := {}
 ## Person (a soldier) -> seconds to his next blow, while he stands by a visitor.
 var _swings := {}
+## Person (a cornered citizen) -> seconds to his next blow, while he is cornered.
+var _fights := {}
 var _lure_in := 0.0
 ## The field's living, taken once a step when someone first needs them (_people()).
 var _living: Array = []
@@ -154,6 +170,9 @@ class Rule extends RefCounted:
 	var touches := 0
 	var prefer_soldiers := false
 	var spare := Callable()
+	## An undead's hold on the citizen it hunts (corners()): whom it is near, and for how long without a break.
+	var corner_of: Person
+	var corner_t := 0.0
 
 
 func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> Visitors:
@@ -289,6 +308,7 @@ func clear(deferred := false) -> void:
 		_free(a, deferred)
 	_rules.clear()
 	_swings.clear()
+	_fights.clear()
 	if _crowd != null and is_instance_valid(_crowd):
 		_crowd.visitors.erase(self)
 
@@ -316,6 +336,7 @@ func step(delta: float) -> void:
 			_pass_slow(a, r)
 	_lift_slows(delta)
 	_guard(delta)
+	_fight_back(delta)
 	_lure_in -= delta
 	if _lure_in <= 0.0:
 		_lure_in = LURE_EVERY
@@ -633,16 +654,111 @@ func _guard(delta: float) -> void:
 		var a: Animal = near[p]
 		if not is_instance_valid(a) or not a.is_alive():
 			continue
+		if a.breed in Animal.UNDEAD:
+			p.swing_at(a.ground_pos)  # the fight with the dead shows (R31)
+			a.struck_from(p.ground_pos)
 		a.hurt(1.0)
 		var r: Rule = _rules[a]
 		if r.flinch:
 			r.bite_in = maxf(r.bite_in, r.bite_every)
-		if not a.is_alive():
-			slain += 1
-			var at := a.ground_pos
-			_rules.erase(a)
-			cut_down.emit(a, at)
-			_free(a)
+		_fell(a)
+
+
+## At its last blow a visitor is cut down: counted, told and freed.
+func _fell(a: Animal) -> void:
+	if a.is_alive():
+		return
+	slain += 1
+	var at := a.ground_pos
+	_rules.erase(a)
+	cut_down.emit(a, at)
+	_free(a)
+
+
+## Whether `p` is cornered by this pack (see the class comment): a citizen alive, out in the open and not down, whom one of
+## its undead has hunted within CORNER_R for CORNER_HOLD without a break.
+func corners(p: Person) -> bool:
+	return _corner_by(p) != null
+
+
+## The undead of this pack holding `p` cornered (the first found), or null.
+func _corner_by(p: Person) -> Animal:
+	if not _cornerable(p):
+		return null
+	for a in _rules.keys():
+		if not is_instance_valid(a) or not a.is_alive():
+			continue
+		var r: Rule = _rules[a]
+		if r.corner_of == p and r.corner_t >= CORNER_HOLD:
+			return a
+	return null
+
+
+## Every undead's hold on the one it hunts (it breaks the step it is off him, or hunts another); then every cornered citizen
+## strikes back every CITIZEN_SWING (the first after a swing's wait) at the nearest undead within reach of him -- a solid one
+## takes CITIZEN_BLOW and flinches, though its bite is never begun again for it; any other takes nothing -- or swings at the
+## air before the one holding him. A citizen no longer cornered begins with a fresh swing next time.
+func _fight_back(delta: float) -> void:
+	var cornered := {}  # citizen -> the undead holding him
+	for a in _rules.keys():
+		if not is_instance_valid(a):
+			continue
+		var r: Rule = _rules[a]
+		var p = a.target  # untyped: the one it hunts may be gone from the town (freed)
+		if not a.is_alive() or r.recalling or not (a.breed in Animal.UNDEAD) or not is_instance_valid(p) \
+				or (p as Person).ground_pos.distance_squared_to(a.ground_pos) > CORNER_R * CORNER_R:
+			r.corner_of = null
+			r.corner_t = 0.0
+			continue
+		if r.corner_of != p:
+			r.corner_of = p
+			r.corner_t = 0.0
+		r.corner_t += delta
+		if r.corner_t >= CORNER_HOLD and not cornered.has(p) and _cornerable(p):
+			cornered[p] = a
+	for p in _fights.keys():
+		if not cornered.has(p):
+			_fights.erase(p)  # no longer cornered: the next time begins with a fresh swing
+	for p in cornered.keys():
+		var left := float(_fights.get(p, CITIZEN_SWING)) - delta
+		if left > 0.0:
+			_fights[p] = left
+			continue
+		_fights[p] = CITIZEN_SWING
+		var hit := _within_blow(p)
+		if hit == null:
+			var holder = cornered[p]  # untyped: another's blow this step may have cut it down and freed it
+			if is_instance_valid(holder):
+				p.swing_at(holder.ground_pos)  # at the air: it holds him from beyond his reach
+			continue
+		p.swing_at(hit.ground_pos)
+		if not (hit.breed in Animal.SOLID_UNDEAD):
+			continue  # at the air, or at one bare hands cannot touch
+		hit.struck_from(p.ground_pos)
+		hit.hurt(CITIZEN_BLOW)  # never begins its bite again (R31): a citizen alone would hold it off for ever
+		_fell(hit)
+
+
+## A citizen alive, out in the open and on his feet: one an undead can corner.
+static func _cornerable(p: Person) -> bool:
+	return p != null and is_instance_valid(p) and not p.soldier and p.is_alive() and not p.inside and not p.is_down()
+
+
+## The nearest living undead within reach of citizen `p`'s blow (GUARD_REACH, or that one's own bite reach if longer), or
+## null.
+func _within_blow(p: Person) -> Animal:
+	var best: Animal = null
+	var best_d := INF
+	for a in _rules.keys():
+		if not is_instance_valid(a) or not a.is_alive() or not (a.breed in Animal.UNDEAD):
+			continue
+		var r: Rule = _rules[a]
+		var reach := maxf(GUARD_REACH, r.bite_r)
+		var d: float = a.ground_pos.distance_squared_to(p.ground_pos)
+		if d <= reach * reach and d < best_d:
+			best_d = d
+			best = a
+	return best
 
 
 ## Soldiers at their post within a visitor's seek reach are drawn to the nearest visitor (lure(): only a soldier at his

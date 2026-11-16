@@ -131,3 +131,23 @@ Final (b), against Heaven's Door's 65, 83 / 61, 83 / 65, 83: deaths +109 / +90 /
 seeds 1 / 2 / 3. (c) was not needed: `SLAM_WRECK` stays 60. R12's `SLAM_EVERY 4.0` and `SLAM_R 3.0` read 3.0 and 3.5 from
 here (the slam's knock, fright and kill use `SLAM_R`, so soldiers within 3.5 die and the fright reaches 4.5). The
 Grave Tide shape text in `power_book.gd` says every 3 s and within 3.5.
+
+## Frame cost (2026-11-16, at 95e88d3d; the spec's "no frame-rate cliff")
+
+The machine rendered slowly (base 33-37 ms against 8.8 ms quiet) and another session ran reference checks throughout, so
+the controller ruled: judge by the median cast/base `avg_ms` ratio of back-to-back pairs (bench3.sh's commands, windowed,
+`--disable-vsync`; 6 other Godot processes during every run), Pale and the Serpent at most 1.55, Grave Tide 1.9.
+
+| Power | Pairs base/cast avg_ms = ratio | Median | Before |
+|---|---|---|---|
+| Pale Reign (`--bench-after=6`) | 10.57/13.24=1.25, 35.86/54.26=1.51, 37.23/57.21=1.54, 36.26/52.80=1.46, 35.14/51.46=1.46 | **1.46** | ~1.82 |
+| Pale Serpent (`--bench-after=4`) | 37.50/46.13=1.23, 37.09/45.92=1.24, 37.43/47.14=1.26, 35.54/46.14=1.30, 35.00/43.97=1.26 | **1.26** | ~1.93 |
+| Grave Tide (`--bench-after=10`) | 35.96/60.06=1.67, 36.40/49.70=1.37, 37.52/58.19=1.55 | **1.55** | ~1.69 |
+
+What was cut: (3d3f309d, drawing only) every circle the Serpent draws -- body, shadow, fog, frost, souls -- is one white
+disc texture in a rect (nearest, hard-edged: a pixel diff against the old frame differs only on circle rims), the scale
+dots a square of its middle, the feather tips primitives: primitives 27k -> 7.7k, extra draw calls +480 -> +120.
+(95e88d3d) R49; the evacuation's danger weighing kept by zone (the same grid weights, a fraction of the work); Visitors'
+`_nearest` reach-first, `_guard` box, `_lure` without a list per visitor (the same picks in the same order). TownPools'
+dim refresh was left as it was: it did not show in the Serpent's profile. Pale's worst frame (~230-250 ms, once a run)
+is unchanged by this pass.

@@ -90,6 +90,9 @@ const STACK_PAD := 10.0
 const HINT_W := 236.0
 const HINT_LINES := 3
 const HINT_COL := Color("e8d690")
+## The task line (MissionSteps): one short "do this now" plate under the how-to-win plate (or where it would be), drawn in both detail modes.
+## TASK_PAD is the room to the left of its text for the gold marker.
+const TASK_PAD := 9.0
 ## The tour's caption (v0.10 M6, spec §5): its plate's top, above the slot row (SLOT_TOP), and the word under it.
 const CAPTION_TOP := 262.0
 const SKIP_TEXT := "SPACE TO SKIP"
@@ -206,6 +209,8 @@ var _rite_lines := PackedStringArray()
 var _frame_rows: Variant = null
 var _frame_hint: Variant = null
 var _frame_lines: Variant = null
+## The task line (MissionSteps) taken once per advance() as well.
+var _frame_task: Variant = null
 ## The wish rows taken once per advance() as well (v0.11.1 fix round): the signature and the keepout read them several times a frame.
 var _frame_wishes: Variant = null
 ## The cue's plate width by its text (two texts): measured once.
@@ -295,6 +300,7 @@ func advance(delta: float) -> void:
 		_frame_rows = objective_rows()
 		_frame_wishes = _build_wish_rows()
 		_frame_hint = hint_text()
+		_frame_task = task_text()
 		_step_hint_flash(delta)
 		_frame_lines = hint_lines(String(_frame_hint)) if hint_shown() else PackedStringArray()
 	_advance(delta)
@@ -302,6 +308,7 @@ func advance(delta: float) -> void:
 	_frame_wishes = null
 	_frame_hint = null
 	_frame_lines = null
+	_frame_task = null
 
 
 ## advance()'s work, with the frame's rows and line taken (v0.11 M6's final review).
@@ -383,6 +390,18 @@ func _lines_now() -> PackedStringArray:
 	if _frame_lines != null:
 		return _frame_lines
 	return hint_lines(hint_text()) if hint_shown() else PackedStringArray()
+
+
+## The task line's words for the night as it stands (MissionSteps), "" for none.
+func task_text() -> String:
+	if _rules == null or _rules.mission == null:
+		return ""
+	return MissionSteps.line(_rules)
+
+
+## The task line this advance took, else live.
+func _task_now() -> String:
+	return String(_frame_task) if _frame_task != null else task_text()
 
 
 ## TAB (v0.11.1 §1.2): everything, or the short screen again.
@@ -568,6 +587,25 @@ func hint_rect() -> Rect2:
 	return Rect2(2.0, hint_top(), hint_width(lines), 5.0 + UiTheme.LINE_S * float(lines.size()))
 
 
+## The task line's plate as drawn: under the how-to-win plate when that shows, else where it would start (under the objectives), and clear of the
+## events plate as the how-to-win plate is. Rect2() for no line.
+func task_rect() -> Rect2:
+	return _task_plate(hint_rect())
+
+
+## task_rect() under a how-to-win plate `hint` already measured (stack_rect() and the wishes' plate share it).
+func _task_plate(hint: Rect2) -> Rect2:
+	var text := _task_now()
+	if text == "":
+		return Rect2()
+	var size := Vector2(TASK_PAD + UiTheme.width(text, UiTheme.TEXT_S) + 6.0, 5.0 + UiTheme.LINE_S)
+	var top := hint.end.y + 4.0 if hint.size != Vector2.ZERO else hint_top()
+	var events := events_rect(_view().x)
+	if events.size != Vector2.ZERO and events.position.x < 2.0 + size.x and top - 4.0 < events.end.y and top + size.y + 4.0 > events.position.y:
+		top = events.end.y + 4.0
+	return Rect2(2.0, top, size.x, size.y)
+
+
 ## The objective plate as drawn (v0.11 M6, factored out of _draw_rows() so the keepout reads the same rectangle): a scored mission's
 ## OBJECTIVE_PANEL, else the rows' plate, Rect2() with no rows.
 func objective_rect() -> Rect2:
@@ -629,7 +667,7 @@ func stack_rect() -> Rect2:
 	var right := 0.0
 	var bottom := 0.0
 	var hint := hint_rect()  # measured once: the how-to-win plate wraps its words, and the wishes' plate sits under it
-	for r: Rect2 in [objective_rect(), hint, _wishes_plate(hint)]:
+	for r: Rect2 in [objective_rect(), hint, _task_plate(hint), _wishes_plate(hint)]:
 		if r.has_area():
 			right = maxf(right, r.end.x)
 			bottom = maxf(bottom, r.end.y)
@@ -685,6 +723,9 @@ func wishes_top() -> float:
 ## Where the wishes' rows start under a how-to-win plate `hint` already measured (v0.11 M6's final review): the one rule wishes_top()
 ## and _wishes_plate() share.
 func _wishes_top_under(hint: Rect2) -> float:
+	var task := _task_plate(hint)
+	if task.size != Vector2.ZERO:
+		return task.end.y + 4.0  # the task line sits between the how-to-win plate and the wishes
 	return hint.end.y + 4.0 if hint.size != Vector2.ZERO else hint_top()
 
 
@@ -1324,6 +1365,7 @@ func _signature() -> String:
 		out += "|" + str(events)
 	out += "|" + clock_badge()  # v0.11.2: the Lantern's stage (the badge says which, the ring follows it)
 	out += "|" + (_hint_now() if hint_shown() else "")
+	out += "|" + _task_now()
 	out += "|" + _caption
 	out += "|%s" % intro
 	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
@@ -1577,6 +1619,30 @@ func _draw_hint() -> void:
 		y += UiTheme.LINE_S
 
 
+## The task line (MissionSteps): a gold marker, the step in the text colour and its counter in gold, on a plate under the how-to-win line.
+func _draw_task() -> void:
+	var text := _task_now()
+	if text == "":
+		return
+	var plate := task_rect()
+	draw_rect(plate, UiTheme.COL_PANEL)
+	draw_rect(Rect2(plate.position.x + 3.0, plate.position.y + 7.0, 3.0, 3.0), UiTheme.COL_GOLD)
+	var at := Vector2(plate.position.x + TASK_PAD + 1.0, plate.position.y + 12.0)
+	var cut := _task_cut(text)
+	UiTheme.text(self, at, text.substr(0, cut), UiTheme.TEXT_S)
+	if cut < text.length():
+		UiTheme.text(self, at + Vector2(UiTheme.width(text.substr(0, cut), UiTheme.TEXT_S), 0.0), text.substr(cut), UiTheme.TEXT_S, UiTheme.COL_GOLD)
+
+
+## Where the counter starts in a task line's text: after the label (the steps' labels never end in a digit: the counter is the last word).
+func _task_cut(text: String) -> int:
+	var at := text.rfind(" ")
+	if at < 0:
+		return text.length()
+	var last := text.substr(at + 1)
+	return at if last.length() > 0 and last[0] >= "0" and last[0] <= "9" else text.length()
+
+
 ## The wishes' rows (v0.11 M1, spec §5.2) on a plate under the how-to-win line: an open box, a tick once granted, a cross and
 ## the words struck through once failed.
 func _draw_wishes() -> void:
@@ -1614,6 +1680,7 @@ func _draw_play_plates(w: float) -> void:
 		_draw_rows()
 	_draw_cue()
 	_draw_hint()
+	_draw_task()
 	_draw_wishes()
 	_draw_status(w)
 

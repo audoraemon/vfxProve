@@ -523,6 +523,12 @@ func tags() -> Array[MapTag]:
 	return out
 
 
+## The task line's wait (task line): until the current target comes into use, in the phases where it has not yet; else 0.
+func step_seconds() -> float:
+	var i := current()
+	return due_in(i) if i >= 0 and hint_phase() in ["", "not_yet"] else 0.0
+
+
 ## The hint's phase (v0.11 M4, decision 102), for the current target: not in use, "not_yet" when down or WORK_AHEAD or less from its
 ## time, else ""; in use, "engineers" while one is on guard, else "open".
 func hint_phase() -> String:

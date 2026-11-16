@@ -680,6 +680,17 @@ func tags() -> Array[MapTag]:
 	return out
 
 
+## The task line's wait (task line): in "empty", the seconds until the soonest grain still to come; else 0.
+func step_seconds() -> float:
+	if hint_phase() != "empty":
+		return 0.0
+	var soon := INF
+	for s in targets:
+		if not razed(s) and not has_grain(s):
+			soon = minf(soon, grain_left(s))
+	return soon if soon != INF else 0.0
+
+
 ## The hint's phase (v0.11 M2): "burning" while a granary burns with no watchman on guard to beat it out, "watchman" while one
 ## burns under a watchman's eye, "empty" while every granary left is waiting for its grain; else "" (the mission's own line).
 func hint_phase() -> String:

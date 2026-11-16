@@ -108,6 +108,12 @@ func hint_seconds() -> float:
 	return 0.0
 
 
+## Virtual (task line): the seconds the HUD's task line counts down, as hint_seconds() does but also for the waits whose hint line has no `{n}`
+## (a granary's grain, a target coming into use). Read only; 0 for none.
+func step_seconds() -> float:
+	return hint_seconds()
+
+
 ## Virtual (v0.10 M6, spec §5): the stops of the camera's tour before the clock starts, as [ground point, caption] pairs;
 ## none by default, and then the intro is the sweep. A stop with no one to show is left out.
 func tour() -> Array:

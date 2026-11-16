@@ -1,11 +1,9 @@
 {
- "hash": "ef0f31aa3abce8bf",
- "updated": "2026-11-17T00:02:41+07:00",
+ "hash": "932ead3c8acbd200",
+ "updated": "2026-11-17T01:12:31+07:00",
  "changes": {
-  "date": "<t:1794848561:f>",
-  "items": [
-   "Done: Death powers: your second review"
-  ]
+  "date": "<t:1794852751:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1748,28 +1746,12 @@
   },
   "branches": [
    {
-    "name": "god/death-review-2",
-    "ahead": 139,
+    "name": "feat/god-progression",
+    "ahead": 142,
     "behind": 88,
     "date": "2026-11-17",
-    "subject": "test: overlapping danger zones and R49; tidy two wrapped conditions",
+    "subject": "docs: Death and Decree ability levels approved",
     "pushed": true
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 105,
-    "behind": 88,
-    "date": "2026-11-16",
-    "subject": "docs: Death and Decree ability levels design (proposed)",
-    "pushed": true
-   },
-   {
-    "name": "god/refs-rerecord",
-    "ahead": 105,
-    "behind": 88,
-    "date": "2026-11-16",
-    "subject": "docs: Death and Decree ability levels design (proposed)",
-    "pushed": false
    },
    {
     "name": "god/dominion-t3-old",

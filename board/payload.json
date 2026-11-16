@@ -7,26 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**10** in progress · **28** to do · **154** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794848561:f>)\n• Done: Death powers: your second review",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**10** in progress · **28** to do · **154** done\n**4** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-17T00:02:41+07:00"
-    },
-    {
-     "title": "god/death-review-2",
-     "description": "139 commits not in Develop-Main · last commit today\n> test: overlapping danger zones and R49; tidy two wrapped conditions\n\n_No Ledger task points at this branch._",
-     "color": 5016537
+     "timestamp": "2026-11-17T01:12:31+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "105 commits not in Develop-Main · last commit yesterday\n> docs: Death and Decree ability levels design (proposed)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "god/refs-rerecord",
-     "description": "105 commits not in Develop-Main · last commit yesterday · local only\n> docs: Death and Decree ability levels design (proposed)\n\n_No Ledger task points at this branch._",
+     "description": "142 commits not in Develop-Main · last commit today\n> docs: Death and Decree ability levels approved\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {

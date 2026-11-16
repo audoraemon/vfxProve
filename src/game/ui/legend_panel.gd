@@ -124,7 +124,7 @@ func _on_scale(_lay: Dictionary) -> void:
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_STOP  # a click on the legend casts nothing into the town under it
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## The panel for a night whose live tags are `tags` (Hud.all_tags()).

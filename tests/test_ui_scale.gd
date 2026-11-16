@@ -554,12 +554,60 @@ static func _letters(t) -> void:
 		t.check(face.get_glyph_texture_idx(0, Vector2i(native, 0), 32) == -1, "the %d u face's space has no texture, so it cannot break a batch" % size)
 
 
+## Full-rect nodes follow a resize (user report 2026-11-16: maximized, the mission HUD sat in a 320x135 corner). set_anchors_preset keeps
+## the offsets that hold the node's current size, so a node made full-rect while 0 wide inside a 640x360 parent kept offsets of -640/-360
+## and shrank to (area - 640x360) on every resize. set_anchors_and_offsets_preset zeroes them.
+static func _full_rect_follows(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	# The HUD's own shape: a CanvasLayer straight under a viewport (the root in the game; a SubViewport here, which a test can resize).
+	var vp := SubViewport.new()
+	vp.size = Vector2i(640, 360)
+	tree.root.add_child(vp)
+	var layer := CanvasLayer.new()
+	vp.add_child(layer)
+	var c := Control.new()
+	layer.add_child(c)
+	var old := Control.new()
+	layer.add_child(old)
+	await tree.process_frame  # the layer knows its 640x360 area, as the HUD's does when Mission sets it up
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)  # as Hud.setup does, after the add
+	old.set_anchors_preset(Control.PRESET_FULL_RECT)  # the old call, for the contrast
+	vp.size = Vector2i(960, 495)
+	await tree.process_frame
+	t.check(c.size == Vector2(960, 495), "a full-rect node added at 640x360 fills 960x495 after the resize (%s)" % c.size)
+	t.check(old.size != Vector2(960, 495), "the old call left it short (%s): the check would see the bug" % old.size)
+	vp.free()
+
+
+## No full-rect anchoring in src keeps stale offsets: set_anchors_preset(Control.PRESET_FULL_RECT) is the bug above.
+static func _full_rect_lint(t) -> void:
+	var bad: Array = []
+	var seen := 0
+	var stack: Array = ["res://src"]
+	while not stack.is_empty():
+		var dir_path: String = stack.pop_back()
+		var dir := DirAccess.open(dir_path)
+		for d in dir.get_directories():
+			stack.append(dir_path + "/" + d)
+		for f in dir.get_files():
+			if not f.ends_with(".gd"):
+				continue
+			seen += 1
+			var src := FileAccess.get_file_as_string(dir_path + "/" + f)
+			if src.contains("set_anchors_preset(Control.PRESET_FULL_RECT"):
+				bad.append("%s/%s" % [dir_path, f])
+	t.check(seen > 100, "the full-rect lint scans src (%d files)" % seen)
+	t.check(bad.is_empty(), "full-rect anchoring uses set_anchors_and_offsets_preset: %s" % [bad])
+
+
 static func run(t) -> void:
 	_integer_setting(t)
 	_install(t)
 	_headless_keeps(t)
 	_visible_capped(t)
 	_zoom_lint(t)
+	await _full_rect_follows(t)
+	_full_rect_lint(t)
 	_zoom_lint_fixture(t)
 	_fit(t)
 	_layout_table(t)

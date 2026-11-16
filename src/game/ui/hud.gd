@@ -230,7 +230,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	_crowd = crowd
 	_town = town
 	_aim = aim
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # the player is aiming at the town, not clicking the HUD
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # icons are drawn at native multiples: no smoothing between their pixels
 	_flash.resize(_rules.loadout.size())
@@ -252,7 +252,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	if _tag_layer == null:
 		_tag_layer = Control.new()
 		_tag_layer.name = "Tags"
-		_tag_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_tag_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_tag_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_tag_layer.show_behind_parent = true  # under every panel of the HUD, as the tags were drawn first
 		_tag_layer.draw.connect(_draw_tag_layer)

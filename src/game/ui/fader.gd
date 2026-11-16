@@ -10,7 +10,7 @@ func _ready() -> void:
 	layer = 100
 	_rect = ColorRect.new()
 	_rect.color = Color.BLACK
-	_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rect.modulate.a = 0.0
 	add_child(_rect)

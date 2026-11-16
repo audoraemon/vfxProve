@@ -61,7 +61,7 @@ func _ready() -> void:
 	_readout = Readout.new()
 	_readout.meter = self
 	_readout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_readout.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_readout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_readout)
 	if "--fps" in OS.get_cmdline_user_args():
 		shown = true

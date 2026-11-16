@@ -36,7 +36,7 @@ func _init() -> void:
 func setup(s: Settings, path := Settings.PATH) -> OptionsPanel:
 	_settings = s
 	_path = path
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	# The pause duck would bury the very thing the Music bar sets.
 	_was_ducked = Music.is_ducked()

@@ -20,7 +20,7 @@ func setup(look_value) -> TownBloom:
 	rect = ColorRect.new()
 	rect.name = "BloomRect"
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mat = ShaderMaterial.new()
 	mat.shader = preload("res://src/game/town/town_bloom.gdshader")
 	var b := TownLook.bloom(look_value)

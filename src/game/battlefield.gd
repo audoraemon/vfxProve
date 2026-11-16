@@ -98,7 +98,7 @@ func _ready() -> void:
 	add_child(glow_layer)
 	var glow := ColorRect.new()
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	glow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var glow_mat := ShaderMaterial.new()
 	glow_mat.shader = preload("res://shaders/glow_post.gdshader")
 	glow.material = glow_mat
@@ -118,7 +118,7 @@ func _ready() -> void:
 	_flash_rect = ColorRect.new()
 	_flash_rect.color = Color(1, 1, 1, 0)
 	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_flash_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	flash_layer.add_child(_flash_rect)
 
 	# F3 shows the frame rate.

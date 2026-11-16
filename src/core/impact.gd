@@ -36,7 +36,7 @@ func setup(post_parent: CanvasLayer, dim_parent: Node2D, camera: Camera2D) -> vo
 	_post = ColorRect.new()
 	_post.material = _mat
 	_post.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_post.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_post.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_post.visible = false
 	post_parent.add_child(_post)
 	_dim = Node2D.new()

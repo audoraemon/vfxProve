@@ -55,7 +55,7 @@ func _ready() -> void:
 	_panel = Readout.new()
 	_panel.overlay = self
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	layer.add_child(_panel)
 	_apply()
 

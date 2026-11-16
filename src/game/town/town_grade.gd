@@ -52,7 +52,7 @@ func setup(look_value, light: Texture2D = null) -> TownGrade:
 	rect = ColorRect.new()
 	rect.name = "GradeRect"
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mat = ShaderMaterial.new()
 	mat.shader = preload("res://src/game/town/town_grade.gdshader")
 	var g := TownLook.grade(look_value)

@@ -440,6 +440,43 @@ static func _second_review(t) -> void:
 	t.check(not again and lives and not twice.is_alive() and got.size() == 1 and got[0][1] == &"wither",
 		"a second withering on the withering runs nothing new: he dies at the first's 6 s")
 	field.enemy_killed.disconnect(grab)
+
+	# --- He dies where he stands: the withering's panic never rolls for a shelter (a door would carry him off it).
+	var sheltered := []
+	for i in 16:
+		var w: Person = crowd.citizens[30 + i]
+		w.ground_pos = grid.nearest_walkable(at + Vector2(float(i % 4) * 2.5 - 4.0, float(i / 4) * 2.5 - 4.0))
+		w.mind = Person.Mind.CALM
+		crowd.wither(w, Withering.WITHER, w.ground_pos + Vector2(0.5, 0.0))
+		if w.mind == Person.Mind.SHELTER or w.shelter != null:
+			sheltered.append(i)
+	t.check(sheltered.is_empty() and crowd.withering.count() == 16,
+		"the withering's panic never sends him for a shelter (%d of 16 sent)" % sheltered.size())
+	crowd.withering.clear()
+
+	# --- A withering laid while the withering steps (a kill callback lays another) is kept and runs its course.
+	got.clear()
+	var first: Person = crowd.citizens[50]
+	var next_one: Person = crowd.citizens[51]
+	first.ground_pos = at + Vector2(3.0, -2.0)
+	next_one.ground_pos = at + Vector2(-3.0, -2.0)
+	var chain := func(e: DummyEnemy, kind: StringName) -> void:
+		got.append([e, kind])
+		if e == first:
+			crowd.wither(next_one, Withering.WITHER, at)
+	field.enemy_killed.connect(chain)
+	crowd.wither(first, Withering.WITHER, at)
+	for i in roundi((Withering.WITHER + 0.5) / DT):
+		crowd.advance(DT)
+		if not got.is_empty():
+			break
+	# Kept, and not counted down in the step it was laid (that step was the first's, not his).
+	var left_then := float(next_one.statuses.get(Withering.KIND, -1.0))
+	var laid_in_loop := next_one.withered() and crowd.withering.count() == 1 and is_equal_approx(left_then, Withering.WITHER)
+	_advance(crowd, Withering.WITHER + 0.1)
+	t.check(laid_in_loop and not first.is_alive() and not next_one.is_alive() and got.size() == 2 and got[1][1] == &"wither",
+		"a withering laid during the withering's own step is kept, whole, and kills at its 6 s (left %.2f, %s)" % [left_then, got])
+	field.enemy_killed.disconnect(chain)
 	v = _fresh(made)
 
 	# --- A wraith withers whoever it reaches, three, then sinks.

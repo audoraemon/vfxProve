@@ -15,6 +15,9 @@ const TINT := Color(0.62, 0.64, 0.66)
 const KIND := &"wither"
 ## He panics from where it came, a danger this wide.
 const FRIGHT_R := 2.0
+## Whether his panic may send him for a shelter: never -- he dies where he stands, not behind a door (Person.panic()'s
+## `shelter`).
+const SHELTERS := false
 
 var _field: EnemyField
 ## Untyped: one of them may be freed (carried off) before his time is up, and a freed node errors in a typed slot.
@@ -32,18 +35,20 @@ func lay(p: Person, seconds: float, from: Vector2) -> bool:
 		return false
 	p.statuses[KIND] = seconds
 	p.hold_pace(get_instance_id(), WITHER_PACE)
-	p.panic(from, FRIGHT_R, KIND)
+	p.panic(from, FRIGHT_R, KIND, true, SHELTERS)
 	_on.append(p)
 	return true
 
 
 ## Counts every withering down; one whose time is up kills (out in the open) or lapses (indoors); one whose person died
-## of something else, or was freed, lapses at once.
+## of something else, or was freed, lapses at once. It walks the list as the step began: one laid meanwhile (a kill's
+## callback lays another) goes on the live list whole, counted from the next step.
 func step(delta: float) -> void:
 	if _on.is_empty():
 		return
-	var keep: Array = []
-	for p in _on:
+	var now := _on
+	_on = []
+	for p in now:
 		if not is_instance_valid(p):
 			continue  # carried off and freed: nothing of his is left to free
 		if not p.is_alive() or not p.statuses.has(KIND):
@@ -52,12 +57,11 @@ func step(delta: float) -> void:
 		var left := float(p.statuses[KIND]) - delta
 		if left > 0.0:
 			p.statuses[KIND] = left
-			keep.append(p)
+			_on.append(p)
 			continue
 		_lapse(p)
 		if not p.inside and _field != null:
 			_field.kill(p, KIND, p.ground_pos)
-	_on = keep
 
 
 ## Every withering lapses at once (the town's end): the holds are freed, nobody dies of it.

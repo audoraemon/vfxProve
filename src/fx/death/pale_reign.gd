@@ -23,7 +23,8 @@ extends FxTimeline
 ##   guised one -- and a ghost's touch kills as &"pale" (a whole body, so it rises as above). Every death inside the
 ##   district during the span (anyone's: the reign's, a ghost's, a servant's) adds one more ghost where the body fell,
 ##   while fewer than HORDE_CAP are up and the horde has killed fewer than HORDE_KILLS: it snowballs to a cap that holds
-##   the frame rate. At its HORDE_KILLS-th kill, or at SPAN, the horde sinks (recalled, gone within FADE).
+##   the frame rate. At its HORDE_KILLS-th kill the ghosts up are spent (R39: they run on, frighten, and kill no more; none
+##   is made after); at SPAN the horde sinks (recalled, gone within FADE).
 ## Loud (PowerBook.REACH): the danger counts from the first death (IMPACT = EVERY). Over, or cut short, or freed without its
 ## end (_exit_tree), every pace is let go and the servants and the ghosts are gone.
 
@@ -81,6 +82,8 @@ var _reaping_at := -1.0
 ## Whether the first ghosts have poured out, and whether the horde has been sent down (its kills spent, or the span over).
 var _poured := false
 var _sunk := false
+## The horde has made its HORDE_KILLS: its ghosts run on and frighten, and kill no more (R39).
+var spent := false
 var _drain: QuadFx
 
 
@@ -265,7 +268,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if p == null or p.ground_pos.distance_to(origin) > RADIUS:
 		return
 	# A pale death not of the reign's own reaping is a ghost's touch: the horde counts it only after this (Visitors.kills, then
-	# _on_touch()), so it is counted here first -- the touch that is its HORDE_KILLS-th kill adds no ghost (it sinks then).
+	# _on_touch()), so it is counted here first -- the touch that is its HORDE_KILLS-th kill adds no ghost (the horde is spent then).
 	_ghost_at(p.ground_pos, kind == &"pale" and _reaping_at < 0.0)
 	if p.inside or risen >= MAX_RISEN or not Remains.BODY_KINDS.has(kind):
 		return
@@ -292,11 +295,21 @@ func _ghost_at(at: Vector2, touch := false) -> void:
 
 
 ## A ghost touched someone (Visitors.bitten): its kills are counted (Visitors.kills: only a touch that killed); at the
-## HORDE_KILLS-th the horde sinks.
+## HORDE_KILLS-th the horde is spent (R39), and runs on to the end of the reign.
 func _on_touch(_a: Animal, _who: Person, _first: bool) -> void:
 	horde_kills = horde.kills
 	if horde_kills >= HORDE_KILLS:
-		_sink()
+		_spend()
+
+
+## R39: every ghost up is given a touch that kills nothing and no bite, and frightens PALE_GHOST_FRIGHT_R round it; they hunt on
+## inside the district to the end of the reign. No ghost is made after it (_ghost_at()).
+func _spend() -> void:
+	if spent or horde == null:
+		return
+	spent = true
+	for a in horde.living():
+		horde.give(a, {"touch_kill": &"", "no_bite": true, "fright_r": DeathParts.PALE_GHOST_FRIGHT_R})
 
 
 ## The horde sinks: every ghost goes back where it came up and is gone within FADE (a puff of dust where each stood).

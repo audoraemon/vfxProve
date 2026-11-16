@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_book(t)
 	_horde_pours(t, made)
 	_ghost_touch(t, made)
+	_pale_ghosts(t, made)
 	_last_touch(t, made)
 	_ghost_per_death(t, made)
 	_horde_caps(t, made)
@@ -526,8 +527,8 @@ static func _ghost_touch(t, made: Array) -> void:
 	sick_b.sick_left = 0.0
 
 
-## Final review 8: the touch that is the horde's HORDE_KILLS-th kill adds no ghost (it would be recalled at once): the horde one
-## kill short of its cap, a ghost's touch takes the one by the middle, no ghost is made and the horde sinks.
+## R39: the touch that is the horde's HORDE_KILLS-th kill adds no ghost, and the horde does NOT sink: the ghosts up run on to the
+## end of the reign, frighten, and kill no more. The kill count is set on the pack (`horde.kills`, which _on_touch reads).
 static func _last_touch(t, made: Array) -> void:
 	_reset(made)
 	var at := RD._empty(made)
@@ -540,10 +541,50 @@ static func _last_touch(t, made: Array) -> void:
 	fx.horde.kills = PaleReignFx.HORDE_KILLS - 1
 	fx.horde_kills = PaleReignFx.HORDE_KILLS - 1
 	var made_before := fx.ghosts_made
+	var up_before := fx.horde.living().size()
 	RD._run(fx, 1.2)
-	t.check(not victim.is_alive() and fx.horde_kills == PaleReignFx.HORDE_KILLS and fx.ghosts_made == made_before and fx._sunk,
-		"the touch that is the 24th kill adds no ghost, and the horde sinks (%d -> %d ghosts, %d kills)"
-		% [made_before, fx.ghosts_made, fx.horde_kills])
+	t.check(not victim.is_alive() and fx.horde_kills == PaleReignFx.HORDE_KILLS and fx.ghosts_made == made_before,
+		"the touch that is the 24th kill adds no ghost (%d -> %d ghosts, %d kills)" % [made_before, fx.ghosts_made, fx.horde_kills])
+	t.check(fx.spent and not fx._sunk and fx.horde.living().size() == up_before,
+		"past 24 kills the horde is spent, not sunk: the living count is unchanged (%d -> %d)" % [up_before, fx.horde.living().size()])
+	# They run on, frighten, kill no more; none made after.
+	# Several stand where the ghosts run (the reign's own reaping and the servants' bites go on: only the ghosts' touch is in question).
+	var near := _put(made, 3, at + Vector2(0.0, 0.0))
+	var others := [near]
+	for i in 4:
+		others.append(_put(made, 4 + i, at + Vector2(1.0 + float(i), 1.0)))
+	var ghosts_after := fx.ghosts_made
+	for g in fx.horde.living():
+		g.ground_pos = near.ground_pos + Vector2(1.0, 0.0)
+	var scared := false
+	for i in roundi(3.0 / RD.DT):
+		RD._run(fx, RD.DT, others)
+		scared = scared or near.mind == Person.Mind.PANIC or near.mind == Person.Mind.FLEE
+	# A ghost's touch is the only thing the horde's count moves for: it stays at 24 while they stand among the crowd for 3 s.
+	t.check(fx.horde.kills == PaleReignFx.HORDE_KILLS and fx.horde_kills == PaleReignFx.HORDE_KILLS and fx.ghosts_made == ghosts_after,
+		"the ghosts kill no more for 3 s among the crowd, and no ghost is made (%d kills, %d -> %d ghosts)" % [fx.horde.kills, ghosts_after, fx.ghosts_made])
+	t.check(scared, "a citizen within 2.0 of a ghost goes PANIC or FLEE (mind %d at the end)" % near.mind)
+	var spent_ok := true
+	for g in fx.horde.living():
+		spent_ok = spent_ok and fx.horde._rules[g].touch_kill == &"" and fx.horde._rules[g].no_bite 			and is_equal_approx(fx.horde._rules[g].fright_r, DeathParts.PALE_GHOST_FRIGHT_R)
+	t.check(spent_ok, "every living ghost has no touch, no bite, fright_r %.1f" % DeathParts.PALE_GHOST_FRIGHT_R)
+	RD._run(fx, PaleReignFx.SPAN + PaleReignFx.FADE + 0.2 - fx.t)
+	t.check(fx.horde.living().is_empty(), "at SPAN + FADE + 0.2 the horde is empty (%d up)" % fx.horde.living().size())
+	fx.end_now()
+
+
+## R38: the horde is made of pale ghosts.
+static func _pale_ghosts(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	_put(made, 0, at + Vector2(2.0, 0.0))
+	var fx := _cast(made, at)
+	RD._run(fx, PaleReignFx.EVERY + 0.05)
+	var up := fx.horde.living()
+	var all := not up.is_empty()
+	for a in up:
+		all = all and a.breed == Animal.Breed.PALE_GHOST
+	t.check(all, "the ghosts are pale ghosts (%d up)" % up.size())
 	fx.end_now()
 
 

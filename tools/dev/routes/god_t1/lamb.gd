@@ -19,7 +19,8 @@ const BLOW_GAP := 0.4
 const SEIZER_GAP := 0.4
 ## Death Mark: how far a citizen may be from him to be marked for the run (the mark dies 10 s on, slowed, within BOLT_REACH of him).
 const MARK_NEAR := 2.0
-## Death: his run is started once no more than RUN_PATROLS patrolmen live, or at RUN_AT; a zombie rises only this far from him or more.
+## Death: his run is started once no more than RUN_PATROLS patrolmen live, or at RUN_AT; a zombie rises only this far from him or more
+## (every body in the cast's ring).
 const RUN_PATROLS := 2
 const RUN_AT := 40.0
 const ZOMBIE_CLEAR := RaiseTheDeadFx.SEEK
@@ -302,18 +303,26 @@ static func _patrolmen(d: LostLambDirector) -> int:
 	return n
 
 
-## A soldier's body a zombie may rise from: beyond ZOMBIE_CLEAR of him, with a living soldier nearer it than any citizen (its first prey is
-## one of them). Its place, or Vector2.INF.
+## A soldier's body a zombie may rise from: with a living soldier nearer it than any citizen (its first prey is one of them), and every body
+## the click would raise (the ring, R28: all within RING_R of it, MOST at the most) beyond ZOMBIE_CLEAR of him. Its place, or Vector2.INF.
 static func _zombie_body(d: LostLambDirector, crowd: Crowd) -> Vector2:
 	if crowd.remains == null:
 		return Vector2.INF
 	for r in crowd.remains.all():
-		if not r.soldier or r.pos.distance_to(d.charge.ground_pos) < ZOMBIE_CLEAR:
+		if not r.soldier or not _ring_clear(d, crowd, r.pos):
 			continue
 		var near := DominionParts.near(crowd._field, r.pos, RaiseTheDeadFx.SEEK, 1)
 		if not near.is_empty() and near[0].soldier:
 			return r.pos
 	return Vector2.INF
+
+
+## True when every body a ZOMBIE cast at `at` would raise lies beyond ZOMBIE_CLEAR of him.
+static func _ring_clear(d: LostLambDirector, crowd: Crowd, at: Vector2) -> bool:
+	for b in crowd.remains.ring(at, RaiseTheDeadFx.RING_R, false, RaiseTheDeadFx.MOST):
+		if b.pos.distance_to(d.charge.ground_pos) < ZOMBIE_CLEAR:
+			return false
+	return true
 
 
 # --- Dominion: Mind Whisper, Discord ---

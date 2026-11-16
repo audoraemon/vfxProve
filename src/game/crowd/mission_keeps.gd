@@ -2,7 +2,7 @@ class_name MissionKeeps
 extends RefCounted
 ## Mission buildings, one rule (Death second review, R45 as amended; the user's "a Death night is never lost to a hidden side
 ## effect"): what a power's side effects -- Grave Tide's claws and slams (Visitors trait `spare`) -- ask before they wreck a
-## building. Only reads.
+## building. It changes nothing but Crowd.structure_mark()'s lazy erasing of a lapsed mark.
 
 
 ## Whether `s` is spared tonight. Never one the night's goal wants down (`director.wants_down()`: Raze's targets, the granaries,

@@ -346,7 +346,7 @@ func _keep_held(evacuating: bool) -> void:
 
 ## The stocks are the night's to bring down (R45 as amended): their fall frees her; standing at FREE_BY, she is taken inside.
 func wants_down(s: Structure) -> bool:
-	return (s != null and s == stocks) or super(s)
+	return s != null and s == stocks
 
 
 ## The night is lost while she is still bound at FREE_BY (v0.11 M4).

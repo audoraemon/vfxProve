@@ -264,9 +264,16 @@ func standing_shrines() -> Array[Structure]:
 	return out
 
 
-## The shrines are the night's to break (R45 as amended): never spared from a power's side effects.
+## The shrines are the night's to break (R45 as amended): never spared from a power's side effects -- but the last one, once the
+## kneelers ring it (`kneel_shrine`), is kept: broken early, with too few kneeling, it costs the Faithful star.
 func wants_down(s: Structure) -> bool:
-	return s != null and shrines.has(s)
+	return s != null and shrines.has(s) and s != kneel_shrine
+
+
+## The kneeling shrine, once set, is kept standing (R45, the controller's ruling): ThroughFaithfulObjective fails if it breaks
+## with fewer than its kneelers in reach -- a claw or a slam there would be a hidden loss.
+func needs_standing(s: Structure) -> bool:
+	return s != null and kneel_shrine != null and s == kneel_shrine
 
 
 ## The tags (v0.10 M6, spec §4.2), the most important first:

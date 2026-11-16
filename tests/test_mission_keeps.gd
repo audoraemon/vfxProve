@@ -122,7 +122,7 @@ static func _directors(t) -> void:
 	keep.append([TaxCollectorDirector.new(), "hideout", false])
 	keep.append([HereticHuntDirector.new(), "cellar", false])
 	keep.append([HereticHuntDirector.new(), "temple", false])
-	keep.append([LanternEyeDirector.new(), "towers", false])
+	keep.append([LanternEyeDirector.new(), "standards", true])
 	keep.append([LanternEyeDirector.new(), "temple", false])
 	keep.append([LostLambDirector.new(), "fountain", false])
 	keep.append([MirasHouseDirector.new(), "house", false])
@@ -148,10 +148,32 @@ static func _directors(t) -> void:
 		t.check(named and not other_side and not d.needs_standing(stranger) and not d.wants_down(stranger),
 			"each director names its goal buildings: %s %s (%s, the other side %s)" % [name, "wants_down" if down else "needs_standing", named, other_side])
 		t.check(MissionKeeps.spared(stub, null, d) != down, "%s: spared() follows its side" % name)
-	# The Lantern's Eye's standards are its towers: the mirror's glass is the goal, never the tower.
+	# The Lantern's Eye's standards are its towers: a blow on a raised one takes the mirror's glass (the goal), and the stone
+	# filter keeps its health, so it never falls. Before it is raised its stone spares it.
 	var eye := LanternEyeDirector.new()
-	stub.role = &"house"
-	eye.standards.append(stub)
-	eye.towers.append(stub)
-	t.check(eye.needs_standing(stub) and not eye.wants_down(stub), "the Lantern's Eye's towers are kept though they stand as its standards")
-	_drop([stub, stranger])
+	var tower := _building(&"")
+	tower.damage_filter = func(st: Structure, _amount: float, _source: Vector2, _kind: StringName) -> void: st.shake(1.0)
+	eye.towers.append(tower)
+	var before := MissionKeeps.spared(tower, null, eye) and not eye.needs_standing(tower) and not eye.wants_down(tower)
+	eye.standards.append(tower)
+	var raised := not MissionKeeps.spared(tower, null, eye) and eye.wants_down(tower) and not eye.needs_standing(tower)
+	t.check(before and raised, "the Lantern's Eye's tower is spared by its stone until raised, then may be struck (%s, %s)" % [before, raised])
+	_kneel_shrine(t)
+	_drop([stub, stranger, tower])
+
+
+## Broken Lanterns (the controller's ruling): the last shrine, once the kneelers ring it, is kept -- a claw or slam breaking it
+## early would cost the Faithful star -- while every other shrine stays the night's to break.
+static func _kneel_shrine(t) -> void:
+	var d := BrokenLanternsDirector.new()
+	var last := _building(&"shrine")
+	var other := _building(&"shrine")
+	d.shrines.append(last)
+	d.shrines.append(other)
+	var before := d.wants_down(last) and not d.needs_standing(last) and not MissionKeeps.spared(last, null, d)
+	d.kneel_shrine = last
+	var kept := d.needs_standing(last) and not d.wants_down(last) and MissionKeeps.spared(last, null, d)
+	var rest := d.wants_down(other) and not d.needs_standing(other) and not MissionKeeps.spared(other, null, d)
+	t.check(before and kept and rest,
+		"the kneeling shrine is kept once set, the other shrines may be broken (before %s, kept %s, the rest %s)" % [before, kept, rest])
+	_drop([last, other])

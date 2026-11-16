@@ -77,3 +77,21 @@ Spec: docs/superpowers/specs/2026-11-16-kak-death-second-review-design.md. Plan:
 | R48 | Checks | crowd_check stays `-535548941` after Tasks 2, 3, 7, 8, 9 and 13. Rows that must not move (they cast no changed power; the haunt wraiths never target): every `god_t1_warning`/`god_t1_tax` Death row, and `silence_witness_death_*`, `expel_inquisitor_death_*`, `break_hunt_death_*`, `face_halcyon_death_*`. |
 
 Book copy (Task 10; copy shortened to fit 3 lines of the skill tree's 202 px info column): serpent blurb "A vast serpent glides in on cold fog and frost; its shadow kills and it drinks souls. Once a descent."; gravetide blurb "The city's graves burst; the dead storm the streets and a bone giant slams it flat. Once a descent."
+
+## Bar (R46, 2026-11-16, at 15514215 + the `--bench-tally` aid)
+
+Headless `--bench --seed=1 --fixed-fps 60`, Aldermere, 220 people, each cast at the market (`Places.at(&"market_square")`)
+with no drag and no bodies; the tally counts from the cast. Heaven's Door: level 1, facing `HeavensDoorFx.DEFAULT_DIR`
+(ground (1, 0), screen down-right).
+
+| Run | Grave Tide (70 s) | Heaven's Door (30 s) |
+|---|---|---|
+| 1 | deaths 248 (149 citizens, 99 soldiers), destroyed 91 | deaths 65 (46 citizens, 19 soldiers), destroyed 83 |
+| 2 | deaths 248 (149, 99), destroyed 91 | deaths 65 (46, 19), destroyed 83 |
+| 3 (the committed aid) | deaths 248 (149, 99), destroyed 91 | deaths 66 (47, 19), destroyed 83 |
+
+Met on the first pass: Grave Tide's deaths are about 3.8 times Heaven's Door's (+182), its buildings destroyed +8 (91
+against 83, about 10% ahead). No unit was strengthened; the R42/R43 numbers and the caps stand. Grave Tide's tally is
+exact run to run; Heaven's Door's moved by one citizen once (65/66; likely the hitstop's wall clock, which the mission test also shows), never its buildings.
+The buildings margin is the thin one: a later cut to the claws or `SLAM_WRECK` (e.g. for the 8 ms ceiling) should
+re-run both tallies.

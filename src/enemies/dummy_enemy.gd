@@ -107,6 +107,12 @@ var _draw_origin := Vector2.ZERO
 var _light_in := 0.0
 
 
+## People (enemies, citizens, soldiers) are drawn with nearest filtering so their pixel art stays sharp in a hosted world,
+## whose viewport defaults to linear (WorldView: the rest of the world may soften). Drawing only: the simulation never reads it.
+func _init() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
 func _ready() -> void:
 	_light_in = float(get_instance_id() % 16) / (LIGHT_HZ * 16.0)
 	_pick_target()

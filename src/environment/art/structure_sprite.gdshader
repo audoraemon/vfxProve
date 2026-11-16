@@ -98,13 +98,15 @@ void vertex() {
 	modulate = COLOR;
 }
 
+#include "res://src/core/pixel_aa.gdshaderinc"
+
 void fragment() {
 	vec2 uv = UV;
 	if (idle_frames > 1) {
 		float f = mod(floor(idle_time * idle_fps + idle_phase), float(idle_frames));
 		uv.x += f * frame_w * TEXTURE_PIXEL_SIZE.x;
 	}
-	vec4 px = texture(TEXTURE, uv);
+	vec4 px = texture(TEXTURE, pixel_aa(uv, TEXTURE_PIXEL_SIZE));
 	vec2 p = floor(UV / TEXTURE_PIXEL_SIZE) + 0.5 - frame_origin - anchor;
 	float line = ground_y(p.x) - cut_lift;
 	if ((cut_mode == 1 && p.y > line) || (cut_mode == -1 && p.y < line)) {

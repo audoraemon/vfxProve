@@ -133,6 +133,65 @@ static func _mouse_identity(t) -> void:
 	_drop(wv)
 
 
+## Maximized at 125% DPI (1920x991, k 2, area 960x495, fit 1.375): the world renders at device resolution (area x k px) with its
+## canvas in UI units, so the picture is the area at k x, the camera's canvas transform and every mapping are what they were at
+## area px, and a mouse point lands on the same world position as before; only the render (final transform) gains k.
+static func _device_resolution(t) -> void:
+	var wv: WorldView = await _view(t)
+	var bf := Battlefield.new()
+	wv.host(bf)
+	UiScale.apply(UiScale.layout(Vector2i(1920, 991)))
+	bf.camera.zoom_to(0.8)
+	bf.camera.position = Vector2(120, 40)
+	await t.process_frame
+	await t.process_frame
+	t.check(wv.viewport.size == Vector2i(1920, 990), "the world viewport renders area x k = 1920x990 px (%s)" % [wv.viewport.size])
+	t.check(wv.viewport.size_2d_override == Vector2i(960, 495) and wv.viewport.size_2d_override_stretch, "its 2D canvas is the 960x495 area, stretched")
+	t.check(wv.viewport.get_visible_rect().size == Vector2(960, 495), "the visible rect (camera clamps, sounds, shaders) is still the area")
+	t.check(wv.display.size == Vector2(960, 495), "the picture covers the area in units (k device px each: 1:1)")
+	var cam := bf.camera
+	t.near(cam.zoom.x, 0.8 * 1.375, 1e-6, "the camera zoom is logical x fit, as before")
+	var xf := wv.viewport.get_canvas_transform()
+	t.near(xf.get_scale().x, cam.zoom.x, 1e-5, "the canvas transform (world to UI units) is the camera's zoom")
+	var render := wv.viewport.get_final_transform() * xf
+	t.near(render.get_scale().x, cam.zoom.x * 2.0, 1e-5, "the render (world to device px) is zoom x k: 2.75 device px per art px")
+	t.check(WorldView.world_xf(wv.viewport) == xf, "world_xf (HUD tags) is the canvas transform, in UI units")
+	# A real mouse event forwarded by the view lands where the same root point did when the viewport was area px.
+	var p := Vector2(700, 120)
+	var mm := InputEventMouseMotion.new()
+	mm.position = p
+	mm.global_position = p
+	wv._unhandled_input(mm)
+	t.check(wv.viewport.get_mouse_position() == p, "the world viewport's mouse is the root point (%s)" % [wv.viewport.get_mouse_position()])
+	var want := xf.affine_inverse() * p
+	t.check(bf.get_global_mouse_position().is_equal_approx(want), "the world mouse is the world point under it (%s vs %s)" % [bf.get_global_mouse_position(), want])
+	WorldView.test_mouse = p
+	var centre := cam.get_screen_center_position()
+	var ground := Iso.screen_to_ground(centre + (p - Vector2(960, 495) * 0.5) / cam.zoom.x)
+	t.check(bf.mouse_ground().is_equal_approx(ground), "mouse_ground is the ground under it (%s vs %s)" % [bf.mouse_ground(), ground])
+	WorldView.test_mouse = Vector2.INF
+	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
+	t.check(wv.viewport.size == Vector2i(640, 360), "back to 640x360 at k 1")
+	_drop(wv)
+
+
+## People and animals draw nearest (sharp); the world viewport defaults to linear, so buildings, ground and props soften.
+static func _filters(t) -> void:
+	var wv: WorldView = await _view(t)
+	t.check(wv.viewport.canvas_item_default_texture_filter == Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR, "the world defaults to linear")
+	var person := Person.new()
+	var enemy := DummyEnemy.new()
+	var animal := Animal.new()
+	var building := Structure.new()
+	t.check(person.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST, "a person draws nearest")
+	t.check(enemy.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST, "an enemy draws nearest")
+	t.check(animal.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST, "an animal draws nearest")
+	t.check(building.texture_filter == CanvasItem.TEXTURE_FILTER_PARENT_NODE, "a building inherits the world's linear")
+	for n: Node in [person, enemy, animal, building]:
+		n.free()
+	_drop(wv)
+
+
 static func _self_host(t) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	var loose := Node2D.new()
@@ -198,7 +257,9 @@ static func _sim_independent(t) -> void:
 	var narrow := Person.view
 	var lay := UiScale.layout(Vector2i(3440, 1440))
 	UiScale.apply(lay)
-	t.check(wv.viewport.size == Vector2i(860, 360), "the world viewport follows the layout's area (%s)" % [wv.viewport.size])
+	t.check(wv.viewport.size_2d_override == Vector2i(860, 360) and wv.viewport.get_visible_rect().size == Vector2(860, 360),
+		"the world viewport's canvas follows the layout's area (%s)" % [wv.viewport.size_2d_override])
+	t.check(wv.viewport.size == Vector2i(3440, 1440), "rendered at k (4) x the area (%s)" % [wv.viewport.size])
 	t.check(wv.display.size == Vector2(860, 360), "and so does the picture of it")
 	t.near(bf.camera.view_fit, 1.0238, 1e-3, "the hosted camera takes the layout's fit")
 	t.near(bf.camera.logical_zoom(), 0.8, 1e-6, "keeping its logical zoom")
@@ -207,7 +268,8 @@ static func _sim_independent(t) -> void:
 	bf._process(0.0)
 	t.check(Person.view == narrow, "Person.view is the same at 860x360 / fit 1.0238 as at 640x360 / fit 1 (%s vs %s)" % [Person.view, narrow])
 	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
-	t.check(wv.viewport.size == Vector2i(640, 360) and bf.camera.view_fit == 1.0, "back to 640x360, fit 1")
+	t.check(wv.viewport.size == Vector2i(640, 360) and wv.viewport.size_2d_override == Vector2i(640, 360) and bf.camera.view_fit == 1.0,
+		"back to 640x360 at k 1, fit 1")
 	Person.view = person
 	Structure.view = structure
 	_drop(wv)
@@ -225,7 +287,7 @@ static func _resize_reclamps(t) -> void:
 	m._pan(Vector2.ZERO)
 	for window in [Vector2i(3440, 1440), Vector2i(1600, 900), Vector2i(1366, 768), Vector2i(1280, 720)]:
 		UiScale.apply(UiScale.layout(window))
-		var view := Vector2(wv.viewport.size)
+		var view := wv.viewport.get_visible_rect().size
 		var cam := m._bf.camera
 		t.near(cam.view_fit, UiScale.layout(window)["fit"], 1e-6, "%s: the camera has the layout's fit" % [window])
 		var held := Mission.clamp_view(cam.position, cam.zoom.x, view)
@@ -246,8 +308,8 @@ static func _picking(t) -> void:
 	bf.camera.position = Vector2(120, 40)
 	await t.process_frame
 	await t.process_frame
-	var area := Vector2(wv.viewport.size)
-	t.check(area == Vector2(853, 360), "the world viewport is the 853x360 area")
+	var area := wv.viewport.get_visible_rect().size
+	t.check(area == Vector2(853, 360), "the world viewport's canvas is the 853x360 area")
 	var zoom := bf.camera.zoom.x
 	var centre := bf.camera.get_screen_center_position()
 	var ground_of := func(p: Vector2) -> Vector2: return Iso.screen_to_ground(centre + (p - area * 0.5) / zoom)
@@ -511,6 +573,8 @@ static func run(t) -> void:
 	await _sim_independent(t)
 	await _resize_reclamps(t)
 	await _picking(t)
+	await _device_resolution(t)
+	await _filters(t)
 	await _self_host(t)
 	await _no_ui_in_world(t)
 	await _frozen(t)

@@ -12,6 +12,8 @@ extends Node2D
 ## pebbles on top. It used to be ~10k rects replayed every frame. The river's glints are a small child node that
 ## redraws on its own. Without a renderer (headless) nothing is baked and the floor paints itself directly.
 
+## The baked floor's draw: pixel-art anti-aliasing (it softens in a hosted world without smearing or shimmering).
+const PIXEL_AA := preload("res://src/core/pixel_aa.gdshader")
 ## Drawn area: past the map by this much (Aldermere: Rect2(-34, -34, 68, 68)), so zoomed-out views rarely show the
 ## void. _fill() is the active city's.
 const FILL_MARGIN := 4.0
@@ -209,6 +211,10 @@ func _bake() -> void:
 	add_child(vp)
 	_texture = vp.get_texture()
 	_origin = bounds.position
+	if material == null:
+		var mat := ShaderMaterial.new()
+		mat.shader = PIXEL_AA  # the baked floor softens without smearing or shimmering in a hosted world (linear, WorldView)
+		material = mat
 	queue_redraw()
 	if not band_strips().is_empty():
 		_band_pass(vp, ground, detail, bounds)

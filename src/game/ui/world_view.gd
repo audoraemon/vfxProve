@@ -2,8 +2,13 @@ class_name WorldView
 extends Node
 ## Hosts a world (a Battlefield and what draws in it) in a SubViewport and shows it at the origin of the root with
 ## nearest filtering. The UI never lives in the world viewport: `ui` is the node the HUD, overlays and legend are
-## parented to (they draw in the root, at full resolution once the root leaves viewport mode). Identity mapping: one UI unit
-## is one world-viewport px, so a root mouse position is also the position in the world viewport. Headless runs never host.
+## parented to (they draw in the root, at full resolution once the root leaves viewport mode). The viewport renders at
+## full device resolution (area x k px) but its 2D canvas stays in UI units (size_2d_override = area, stretched), so
+## the mapping is still the identity: one UI unit is one world-viewport canvas unit, a root mouse position is also the
+## position in the world viewport, and the canvas transform, visible rect and camera zoom are what they were at area px.
+## Art is drawn at fit x k device px per art px (2 or 3 at a 1.375 fit, k 2) instead of fit px doubled (2 or 4).
+## The world's textures default to linear (buildings, ground, props, effects soften); people and animals set nearest
+## on themselves and stay sharp. Headless runs never host.
 
 ## The world's own viewport; the hosted node is its child.
 var viewport: SubViewport
@@ -29,13 +34,16 @@ func _init() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	viewport.snap_2d_vertices_to_pixel = true
 	viewport.audio_listener_enable_2d = true  # the world's positional sound pans against this viewport, not the root
-	viewport.size = Vector2i(UiScale.area())
+	viewport.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR
+	viewport.size_2d_override_stretch = true
+	_size_viewport(Vector2i(UiScale.area()), UiScale.k())
 	add_child(viewport)
 	display = TextureRect.new()
 	display.name = "Display"
 	display.texture = viewport.get_texture()
 	display.position = Vector2.ZERO
-	display.size = Vector2(viewport.size)
+	display.size = UiScale.area()
+	display.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # the texture is area x k px; the picture is the area in units (1:1 device px)
 	display.stretch_mode = TextureRect.STRETCH_SCALE
 	display.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	display.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -62,9 +70,17 @@ func hosted() -> Node:
 	return _hosted
 
 
-func resize(area: Vector2i) -> void:
-	viewport.size = area
+## The view takes `area` UI units, rendered at `k` device px per unit.
+func resize(area: Vector2i, k := UiScale.k()) -> void:
+	_size_viewport(area, k)
 	display.size = Vector2(area)
+
+
+## The canvas size first: setting either emits size_changed, and the hosted scene re-clamps its camera on it against the
+## visible rect (the override), which must already be the new area.
+func _size_viewport(area: Vector2i, k: int) -> void:
+	viewport.size_2d_override = area
+	viewport.size = area * maxi(k, 1)
 
 
 func _enter_tree() -> void:
@@ -77,14 +93,14 @@ func _exit_tree() -> void:
 		UiScale.notifier.changed.disconnect(_on_layout)
 
 
-## The window changed: the world viewport (and the picture of it) takes the UI area, and every camera in it takes the new fit, keeping
+## The window changed: the world viewport (and the picture of it) takes the UI area (rendered at k x), and every camera in it takes the new fit, keeping
 ## its logical zoom. The simulation reads neither (SIM_VIEW, logical zoom).
 ## The fit goes first: resizing the viewport emits its size_changed at once, and the hosted scene re-clamps its camera on it, which must
 ## see the new fit (the render zoom) together with the new size.
 func _on_layout(lay: Dictionary) -> void:
 	for cam in viewport.find_children("*", "CameraShake", true, false):
 		(cam as CameraShake).set_view_fit(float(lay["fit"]))
-	resize(Vector2i(lay["area"]))
+	resize(Vector2i(lay["area"]), int(lay["k"]))
 
 
 func _notification(what: int) -> void:

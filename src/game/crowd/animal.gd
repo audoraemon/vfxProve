@@ -191,6 +191,12 @@ const LOOK_MOVED := 0.25
 static var _sheets := {}
 
 
+## Animals are drawn with nearest filtering, sharp like the people, in a hosted world whose viewport defaults to linear
+## (WorldView). Drawing only.
+func _init() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
 func is_dog() -> bool:
 	return breed in DOGS or breed == Breed.HELLHOUND
 

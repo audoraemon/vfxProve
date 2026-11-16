@@ -92,6 +92,11 @@ var _sky: QuadFx
 var _halo: QuadFx
 
 
+## The spoken words are bitmap glyphs drawn in the world: nearest, as before, in a hosted world that defaults to linear (WorldView).
+func _init() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
 ## Whom Judge would condemn at `at`: the person nearest it within JUDGE_PICK, or null.
 static func judged_at(field: EnemyField, at: Vector2) -> Person:
 	var best: Person = null

@@ -694,6 +694,11 @@ func next_step() -> int:
 	return -1
 
 
+## A raised standard is the night's to break (R45 as amended): never spared from a power's side effects.
+func wants_down(s: Structure) -> bool:
+	return s != null and standards.has(s)
+
+
 ## Why the night is lost now, "" while it is not (v0.11 M4): the hunt found its quarry.
 func lost_reason() -> String:
 	return lost_word if found else ""

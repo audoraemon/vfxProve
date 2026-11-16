@@ -235,6 +235,11 @@ func called() -> bool:
 		and bell.state in [BellNetwork.State.CALLED, BellNetwork.State.CLIMBING, BellNetwork.State.WAITING]
 
 
+## The posts' towers and the stone (the bell tower) are kept standing tonight (R45): a ringer waits inside each post.
+func needs_standing(s: Structure) -> bool:
+	return s != null and (posts.has(s) or _stone.has(s))
+
+
 ## The map tags (v0.11 M3, mission spec §1), most important first: every warning out of doors (its own), the latest first; the
 ## town's bellkeeper while called, pointed at from the edge; the next post still waiting (NEXT POST) and each other (WATCH POST),
 ## all pointed at (controller ruling: the south-west post's arrow shows from the start); the bell tower.

@@ -154,6 +154,12 @@ func step(delta: float) -> void:
 		_roof()
 
 
+## The house is kept standing (R45): brought down, its readers are flushed and no more can be made Believers (_flush()). First
+## Prayers' well shrine and the Sermon's house are this `house` too.
+func needs_standing(s: Structure) -> bool:
+	return s != null and s == house
+
+
 ## (v0.11.2, spec 4.5) The night's own actors, whom the Lantern-Bearer and his escorts must not be taken from: the grieving, the Believers,
 ## the Inquisitor and the crying Believer. (The Faithful and a report's carrier are skipped by the Lantern itself.)
 func busy(p: Person) -> bool:

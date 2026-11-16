@@ -10,6 +10,12 @@ const MARK_CITADEL := Color("d8b23a")
 const MARK_WATCHED := Color("c8342a")
 
 
+## The Citadel is the night's to bring down (R45 as amended; CitadelObjective): its parts are never spared from a power's side
+## effects, budget or not.
+func wants_down(s: Structure) -> bool:
+	return s != null and s.role == &"citadel"
+
+
 ## The map tags (board tags, spec §2), most important first:
 ## - the Citadel, pointed at from the edge, until it falls;
 ## - the Banishing Rite, pointed at, while the clergy gather or chant;

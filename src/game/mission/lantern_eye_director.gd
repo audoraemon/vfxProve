@@ -642,6 +642,16 @@ func _found_banner() -> String:
 	return "THE EYE OPENS"
 
 
+## The towers (each mirror hangs on one; its wrights wait inside) and the Temple (the Searchlight's spire) are kept standing (R45).
+func needs_standing(s: Structure) -> bool:
+	return s != null and (towers.has(s) or s == temple)
+
+
+## The towers stand as the Hunt's standards, but the mirror's glass is the goal, never the tower (R45): not wanted down.
+func wants_down(s: Structure) -> bool:
+	return super(s) and not towers.has(s)
+
+
 ## The map tags, most important first (v0.11 M6, mission spec §1): the Eye's countdown on the spire while it runs; the current mirror,
 ## gold and pointed at ("- GUARDED", or "- SHATTERED n" orange); each other standing mirror, gold; the next mirror's tower with its
 ## sooner time, grey, pointed at; GUARD on each guard on guard, a red diamond on a relief walking in, a small red mark on one away;

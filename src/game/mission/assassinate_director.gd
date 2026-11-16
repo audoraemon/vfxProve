@@ -848,6 +848,12 @@ func report() -> Dictionary:
 	return {"target": how, "killed": killed(), "out": out_count(), "seen": seen, "alarms": alarms}
 
 
+## The hideout is kept standing (R45): with it gone an alarmed target runs for the safe place, where arriving loses the night
+## (fleeing_to_safe()).
+func needs_standing(s: Structure) -> bool:
+	return s != null and s == hideout
+
+
 ## `p` is one of this director's own actors (v0.11.2, LanternWatch's Bearer must not take them): a target or a guard of one.
 func busy(p: Person) -> bool:
 	for q in quarries:

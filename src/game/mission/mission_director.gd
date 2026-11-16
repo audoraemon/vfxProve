@@ -187,6 +187,18 @@ func is_seized(_p: Variant) -> bool:
 	return false
 
 
+## Virtual (Death second review, R45): `s` is a building of this night whose fall the director reads as a loss, a lost star or a
+## failed objective, so a power's side effects spare it (MissionKeeps.spared()). False by default.
+func needs_standing(_s: Structure) -> bool:
+	return false
+
+
+## Virtual (R45 as amended): `s` is a building this night's goal wants destroyed (Raze's targets, the granaries, the shrines), so
+## MissionKeeps.spared() never spares it, however hallowed or filtered. False by default.
+func wants_down(_s: Structure) -> bool:
+	return false
+
+
 ## The walkable point at the Temple's door, 0.6 south of its south face (v0.11.2): where a Herald runs to and the Lantern-Bearer sets out
 ## from. Named for the Lantern because several directors keep a `temple_door` variable of their own (Mira's, the Vigil Flame, Broken
 ## Lanterns, Exodus), which a method of that name would clash with; it is the same point.

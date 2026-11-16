@@ -535,6 +535,11 @@ static func _alive(p: Variant) -> bool:
 	return is_instance_valid(p) and (p as Person).is_alive()
 
 
+## The barred postern whose key the watchman holds is kept standing (R45): the frightened watchman unbars it (key_door()).
+func needs_standing(s: Structure) -> bool:
+	return s != null and s == _key_gate
+
+
 ## The map tags (board tags, spec §2), most important first:
 ## - whoever carries the warning, pointed at from the edge: WATCHMAN before he runs, BELLKEEPER once the keeper has it,
 ##   else MESSENGER (in place of v0.08's marker);

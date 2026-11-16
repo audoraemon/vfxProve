@@ -264,6 +264,11 @@ func standing_shrines() -> Array[Structure]:
 	return out
 
 
+## The shrines are the night's to break (R45 as amended): never spared from a power's side effects.
+func wants_down(s: Structure) -> bool:
+	return s != null and shrines.has(s)
+
+
 ## The tags (v0.10 M6, spec §4.2), the most important first:
 ## - each standing shrine: GUARDED while a Knight guards it, else LANTERN;
 ## - each broken one draining, with its whole seconds left;

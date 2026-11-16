@@ -570,6 +570,11 @@ func _seize(c: Charge, by: Person) -> void:
 	(c.man as Person).go_duty(by.ground_pos)
 
 
+## What binds the charge is the night's to bring down (R45 as amended): its fall frees him, so it is never spared.
+func wants_down(s: Structure) -> bool:
+	return s != null and s == bound_by
+
+
 ## A charge held by his seizer (Decree, spec 5.4: Bound in Law holds his partner while he is held).
 func is_seized(p: Variant) -> bool:
 	for c in charges:

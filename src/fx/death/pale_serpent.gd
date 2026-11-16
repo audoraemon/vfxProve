@@ -14,6 +14,12 @@ extends FxTimeline
 ##   Pestilence's is in town (plague_live(): anyone sick). Let go at SICK, at the end, and when freed without one.
 ## Loud (PowerBook.REACH): the danger counts from the head risen (IMPACT = T_RISE, the first shadow); every FRIGHT_EVERY
 ## while it glides the street within FRIGHT_R of the head runs. No hush.
+## A death wave ahead of it (R40): every CONE_EVERY from the head risen to the loop's end, everyone out in the open (not
+## guised, no decoy) within CONE_R of the head and CONE_HALF of its heading panics from the head (cone_holds(): pure
+## geometry over the effect's clock, staged or not alike). While it glides and loops the town's lights dim where it will be
+## DIM_LEAD on (TownPools.dim(), drawing only), lifted at the end, cut short or freed. Staged only: a cold fog bank rolls
+## FOG_LEAD ahead of the head along its path (Fog), and the ground frosts FROST_LEAD ahead, where it is about to pass, and
+## fades over FROST_LIFE (Frost; at its natural end the frost is left to fade on its own, cut short it goes with it).
 ## Its souls (R11): each one the shadow takes gives up a soul that streams into its body, arriving SOUL_FLY after the kill
 ## (souls_in, on the effect's clock, staged or not; drawn as a SoulWisp only when staged).
 ## Drawn (staged only) in the stand layer, y-sorted, at SCALE: the head (the Task 1 sheet, picked for its heading on screen
@@ -50,6 +56,29 @@ const STEP := 0.25
 const FRIGHT_R := BAND + 3.0
 const FRIGHT_EVERY := 1.0
 const FRIGHT_BACK := FRIGHT_R + Person.THREAT_MARGIN
+## R40, the fright cone ahead: CONE_R long, CONE_HALF degrees either side of the heading, every CONE_EVERY.
+const CONE_R := 8.0
+const CONE_HALF := 30.0
+const CONE_EVERY := 0.5
+## R40, the fog bank (staged): puffs FOG_LEAD seconds ahead of the head along its path, two every FOG_EVERY spread BAND
+## either side across it, each living FOG_LIFE, FOG_MOST at most at once.
+const FOG_LEAD := 1.0
+const FOG_EVERY := 0.1
+const FOG_LIFE := 1.6
+const FOG_MOST := 40
+## A puff rolls on along the path FOG_ROLL as far as the head goes meanwhile, so the bank keeps ahead of it (drawing only).
+const FOG_ROLL := 0.8
+## R40, the frost (staged, on the ground): a patch of radius BAND FROST_LEAD seconds ahead every FROST_EVERY, fading over
+## FROST_LIFE, FROST_MOST at most.
+const FROST_LEAD := 1.5
+const FROST_EVERY := 0.25
+const FROST_LIFE := 6.0
+const FROST_MOST := 48
+## R40, the lights going out: the town's light pools within DIM_R of where the head will be DIM_LEAD on keep
+## 1 - DIM * (1 - d / DIM_R) of their light.
+const DIM_LEAD := 1.0
+const DIM_R := 6.0
+const DIM := 0.75
 
 ## The art (Task 1, ruling R4): five heads (64 x 64) and the tail (64 x 48, pointing left).
 const HEADS := {
@@ -115,6 +144,9 @@ const FEATHER_SHADE := Color("a4aeb7")
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
 const FEATHERS := [Color("e2eeed"), Color("e2eeed"), Color("a4aeb7")]
+## The fog's cold greys (its rim, body and core) and the frost's rime (its bloom, its bright middle, its needles).
+const FOG := [Color(0.62, 0.70, 0.78), Color(0.76, 0.83, 0.90), Color(0.88, 0.93, 0.97)]
+const FROST := [Color(0.66, 0.80, 0.94), Color(0.86, 0.94, 1.0), Color(0.96, 0.99, 1.0)]
 ## Death's pale soul-light (the colours of Raise the Dead's and The Gate Below's spirits).
 const PALE := [Color("eaf4ff"), Color("c8f0dc"), Color(0.5, 0.9, 0.7, 0.5), Color(0.2, 0.4, 0.35, 0.0)]
 ## The soul-smoke trailing off it: the same pale hues, see-through.
@@ -125,6 +157,8 @@ var taken: Array[Person] = []
 var first_kill_at := -1.0
 ## Everyone who saw it rise (sickened).
 var sickened := 0
+## Everyone the cone ahead sent running (R40; once each).
+var frightened_ahead := 0
 ## The souls that have streamed into it (one per kill, SOUL_FLY after it). Cut short (end_now(), _finish), the souls still
 ## in flight are not flushed: they never arrive, and souls_in stays below taken.size().
 var souls_in := 0
@@ -144,6 +178,10 @@ var _swept_to := -1.0
 var _seen := false
 var _sick_over := false
 var _next_fright := T_RISE
+var _next_cone := T_RISE
+var _frightened := {}
+## Whether its dim is laid on the town's lights now.
+var _dimmed := false
 ## When each soul still on its way arrives (the effect's clock).
 var _souls: Array[float] = []
 ## Staged only: the pieces (head, collar, discs, tail), the shadow, the see-through, the cold light, the souls in flight.
@@ -155,6 +193,14 @@ var _glow_at := Vector2.ZERO
 var _wisps: Array[SoulWisp] = []
 var _next_feather := T_RISE
 var _next_wisp := T_RISE
+## Staged only: the fog bank and the frost, when the next of each is due, and when the last frost patch was laid.
+var _fog: Fog
+var _frost: Frost
+var _next_fog := T_RISE
+var _next_frost := T_RISE
+var _frost_at := -1.0
+## The fog's and the frost's own scatter (drawing only: never the effect's or the town's rng).
+var _vis := RandomNumberGenerator.new()
 ## The pieces as last posed (souls fly to the nearest).
 var _posed: Array[Dictionary] = []
 
@@ -238,6 +284,32 @@ func head_at(time: float) -> Vector2:
 	return path_at(s_at(time))
 
 
+## Where the head will be `lead` seconds after `time` (pure).
+func ahead_at(time: float, lead: float) -> Vector2:
+	return path_at(s_at(time + lead))
+
+
+## The way the head is going at `time` (ground, unit): the drag's way, round the loop its tangent, then the drag's way again.
+func heading_at(time: float) -> Vector2:
+	var s := s_at(time)
+	if s <= _len or s > _len + TAU * CIRCLE_R:
+		return _dir
+	var th := _theta0 + _turn * (s - _len) / CIRCLE_R
+	return Vector2(-sin(th), cos(th)) * _turn
+
+
+## Whether `p` is in the fright cone ahead at `time` (pure): within CONE_R of the head and CONE_HALF degrees of its heading
+## (right under the head counts).
+func cone_holds(p: Vector2, time: float) -> bool:
+	var d := p - head_at(time)
+	var r := d.length()
+	if r > CONE_R:
+		return false
+	if r < 0.001:
+		return true
+	return absf(heading_at(time).angle_to(d)) <= deg_to_rad(CONE_HALF)
+
+
 func _build() -> void:
 	plan()
 	duration = maxf(glide_end() + DEPART, T_RISE + SICK) + 0.05
@@ -253,6 +325,14 @@ func _build() -> void:
 	_shade.fx = self
 	_shade.z_index = 3
 	track(_shade, ctx.ground)
+	# The death wave ahead: the frost on the ground under the shadow, the fog over the town but under the serpent itself.
+	_vis.seed = hash(origin)
+	_frost = Frost.new()
+	_frost.z_index = 2
+	track(_frost, ctx.ground)
+	_fog = Fog.new()
+	_fog.fx = self
+	track(_fog, ctx.overhead_back)
 	var layer := stand_layer()
 	for i in SEGMENTS + 2:
 		var piece := Piece.new()
@@ -289,6 +369,12 @@ func _fx_process(delta: float) -> void:
 		if ctx.crowd != null and back >= 0.0:
 			ctx.crowd.fright(path_at(back), FRIGHT_R, 0.9, 2.0, SIGHT, 16.0, &"beast")
 		_next_fright += FRIGHT_EVERY
+	while _next_cone <= glide_end() and t >= _next_cone:
+		_cone(_next_cone)
+		_next_cone += CONE_EVERY
+	_dim()
+	if _fog != null:
+		_wave(delta)
 	if not _sick_over and t >= T_RISE + SICK:
 		_sick_over = true
 		_let_all_go()
@@ -296,6 +382,65 @@ func _fx_process(delta: float) -> void:
 		duration = minf(duration, t + 0.05)  # nobody left slowed: nothing more to do
 	if not _pieces.is_empty():
 		_pose(delta)
+
+
+## The fright cone at `time` (R40): everyone out in the open, not guised, no decoy, in it (cone_holds()) panics from the head;
+## each one sent running counted once (frightened_ahead).
+func _cone(time: float) -> void:
+	var head := head_at(time)
+	var runs := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER]
+	for e in ctx.field.in_radius(head, CONE_R):
+		var p := e as Person
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy") or not cone_holds(p.ground_pos, time):
+			continue
+		var was := p.mind
+		p.panic(head, CONE_R, &"beast")
+		var id := p.get_instance_id()
+		if not (was in runs) and p.mind in runs and not _frightened.has(id):
+			_frightened[id] = true
+			frightened_ahead += 1
+
+
+## The town's lights dim ahead while it glides and loops (drawing only), lifted once the loop is done.
+func _dim() -> void:
+	if t >= T_RISE and t <= glide_end():
+		TownPools.dim(get_instance_id(), ahead_at(t, DIM_LEAD), DIM_R, DIM)
+		_dimmed = true
+	elif _dimmed:
+		_undim()
+
+
+func _undim() -> void:
+	TownPools.undim(get_instance_id())
+	_dimmed = false
+
+
+## Staged: the fog bank and the frost laid ahead while it glides and loops, on the effect's clock (a long frame lays all
+## that was due).
+func _wave(delta: float) -> void:
+	_frost.step(delta)
+	_fog.prune(t)
+	while _next_fog <= glide_end() and t >= _next_fog:
+		var s := s_at(_next_fog + FOG_LEAD)
+		for k in 2:
+			var side := _vis.randf_range(-BAND, BAND)
+			_fog.add({"g": fog_at(s, side), "born": _next_fog, "s": s, "head_s": s_at(_next_fog), "side": side,
+				"r": _vis.randf_range(30.0, 46.0), "lobe": _vis.randf_range(-1.0, 1.0)})
+		_next_fog += FOG_EVERY
+	while _next_frost <= glide_end() and t >= _next_frost:
+		_frost.add(ahead_at(_next_frost, FROST_LEAD), _vis.randi())
+		_frost_at = _next_frost
+		_next_frost += FROST_EVERY
+	_fog.head = head_at(t)
+	_fog.queue_redraw()
+
+
+## A point `s` along the path and `side` across it (ground units, to the heading's orthogonal()).
+func fog_at(s: float, side: float) -> Vector2:
+	var way := (path_at(s + 0.05) - path_at(maxf(s - 0.05, 0.0))).normalized()
+	if way == Vector2.ZERO:
+		way = _dir
+	return path_at(s) + way.orthogonal() * side
 
 
 ## As it rises: everyone out in the open within SIGHT of it is slowed for SICK, and sickened if the plague is in town.
@@ -376,17 +521,23 @@ func _let_all_go() -> void:
 		_let_go(id)
 
 
-## Over or cut short: every pace let go, every house its own look back.
+## Over or cut short: every pace let go, every house its own look back, the town's lights their own. At its natural end
+## the frost is left to fade on its own (Frost.release()); cut short (end_now()), it goes with the rest.
 func _finish() -> void:
 	_let_all_go()
+	_undim()
 	if _see != null:
 		_see.release()
+	if t >= duration and is_instance_valid(_frost):
+		_tracked.erase(_frost)
+		_frost.release()
 	super()
 
 
-## Freed without _finish (a mission torn down mid-glide): the same.
+## Freed without _finish (a mission torn down mid-glide): the same, and the frost goes too.
 func _exit_tree() -> void:
 	_let_all_go()
+	_undim()
 	if _see != null:
 		_see.release()
 	super()
@@ -723,6 +874,105 @@ class Shade extends Node2D:
 			draw_circle(fx.origin, HOLE * 0.67, Color(0.0, 0.0, 0.0, 0.35 * hole))
 		for p in pts:
 			draw_circle(p[0], float(p[1]), Color(0.0, 0.0, 0.03, float(p[2])))
+
+
+## The cold fog bank rolling ahead of the head (staged only, screen px over the town, under the serpent): soft puffs, each
+## {"g": where it was laid, "born": on the effect's clock, "s": how far along the path, "head_s": the head's then, "side":
+## across the path, "r": its radius (px), "lobe": -1..1 its shape}; each rolls on along the path FOG_ROLL as far as the head
+## goes, spreads out, grows, lifts and fades over FOG_LIFE, and thins where the head is, so the head parts it and is never
+## lost in it.
+class Fog extends Node2D:
+	var fx: PaleSerpentFx
+	var puffs: Array[Dictionary] = []
+	var head := Vector2.INF
+
+	## A new puff; the oldest goes past FOG_MOST.
+	func add(q: Dictionary) -> void:
+		puffs.append(q)
+		while puffs.size() > FOG_MOST:
+			puffs.pop_front()
+
+	## Every puff past FOG_LIFE at `now` (the effect's clock) goes.
+	func prune(now: float) -> void:
+		while not puffs.is_empty() and now - float(puffs[0].born) >= FOG_LIFE:
+			puffs.pop_front()
+
+	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
+		var now := fx.t
+		for q in puffs:
+			var age := now - float(q.born)
+			var k := age / FOG_LIFE
+			var on := float(q.s) + FOG_ROLL * maxf(fx.s_at(now) - float(q.head_s), 0.0)
+			var g := fx.fog_at(on, float(q.side) * (1.0 + 0.25 * age))
+			var a := clampf(age / 0.3, 0.0, 1.0) * clampf((FOG_LIFE - age) / 0.8, 0.0, 1.0)
+			if head != Vector2.INF:
+				a *= clampf((g.distance_to(head) - 1.0) / 1.5, 0.0, 1.0)
+			if a <= 0.0:
+				continue
+			var r := float(q.r) * (0.7 + 0.6 * k)
+			var sp := (Iso.ground_to_screen(g) - Vector2(0.0, 6.0 + 12.0 * k)).round()
+			var lobe := float(q.lobe)
+			# A flat bank: circles squashed 2:1, a dim rim, the body with a lobe to one side, a pale core high on it.
+			draw_set_transform(sp, 0.0, Vector2(1.0, 0.5))
+			draw_circle(Vector2.ZERO, r, Color(FOG[0], 0.13 * a))
+			draw_circle(Vector2(r * 0.35 * lobe, -r * 0.1), r * 0.72, Color(FOG[1], 0.16 * a))
+			draw_circle(Vector2(-r * 0.3 * lobe, r * 0.05), r * 0.6, Color(FOG[1], 0.13 * a))
+			draw_circle(Vector2(0.0, -r * 0.2), r * 0.42, Color(FOG[2], 0.15 * a))
+		draw_set_transform(Vector2.ZERO)
+
+
+## The frost laid ahead of the head (staged only, ground units, on the ground layer under the shadow): rimed patches of
+## radius BAND, each spreading out from its middle as it is laid and fading over FROST_LIFE, FROST_MOST at most, on its own
+## clock (stepped by the effect; after release() it steps itself and frees itself once the last has faded).
+class Frost extends Node2D:
+	## Each {"g": its middle, "born": on this clock, "seed": its needles}.
+	var patches: Array[Dictionary] = []
+	var clock := 0.0
+
+	func _ready() -> void:
+		set_process(false)
+
+	func add(g: Vector2, seed_value: int) -> void:
+		patches.append({"g": g, "born": clock, "seed": seed_value})
+		while patches.size() > FROST_MOST:
+			patches.pop_front()
+
+	func step(delta: float) -> void:
+		clock += delta
+		while not patches.is_empty() and clock - float(patches[0].born) >= FROST_LIFE:
+			patches.pop_front()
+		queue_redraw()
+
+	## The effect is over: fade the rest on its own, then go.
+	func release() -> void:
+		set_process(true)
+
+	func _process(delta: float) -> void:
+		step(delta)
+		if patches.is_empty():
+			queue_free()
+
+	func _draw() -> void:
+		var rng := RandomNumberGenerator.new()
+		for q in patches:
+			var age := clock - float(q.born)
+			var grow := 1.0 - pow(1.0 - clampf(age / 0.6, 0.0, 1.0), 2.0)
+			var fade := 1.0 - age / FROST_LIFE
+			fade = fade * fade * (3.0 - 2.0 * fade)
+			if fade <= 0.0:
+				continue
+			var g: Vector2 = q.g
+			var r := BAND * (0.55 + 0.45 * grow)
+			draw_circle(g, r, Color(FROST[0], 0.05 * fade))
+			draw_circle(g, r * 0.62, Color(FROST[1], 0.05 * fade))
+			# Hoarfrost: a few needles of rime scattered over it.
+			rng.seed = int(q.seed)
+			for k in 7:
+				var at := g + Vector2.from_angle(rng.randf() * TAU) * r * 0.85 * sqrt(rng.randf())
+				var way := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.15, 0.35) * grow
+				draw_line(at - way, at + way, Color(FROST[2], 0.4 * fade), 0.05)
 
 
 ## A soul flying (staged only, screen px in the overhead layer): a bright pale mote with a fading tail, rising from one the

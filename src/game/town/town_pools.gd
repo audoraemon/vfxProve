@@ -62,8 +62,13 @@ const FLICKER_STEP := 0.1
 
 static var _texture: ImageTexture
 static var _lit_cache := {}
+## The dims laid over the town's lights (R40: The Pale Serpent's death wave): source id -> [ground point, radius, amount].
+## Read only by drawing (a pool's strength): nothing the town does reads it. _dims_serial counts every change.
+static var _dims := {}
+static var _dims_serial := 0
 
-## Static facts per pool: {flicker: float, light: Dictionary or null, structure, decor, alpha: float, i: int}.
+## Static facts per pool: {flicker: float, light: Dictionary or null, structure, decor, alpha: float, i: int, g: its ground
+## point (Vector2, for the dims)}.
 var _pools: Array[Dictionary] = []
 ## Per pool, parallel to _pools: the rect's top-left and size (world px), its colour (alpha = the live strength), shown.
 var _tl := PackedVector2Array()
@@ -82,6 +87,8 @@ var _env: EnvironmentField
 var _time := 0.0
 var _since := 0.0
 var _seen_view := Rect2()
+## The dims' serial the pools were last read against (TownPools._dims_serial).
+var _dims_seen := 0
 ## How many times the pools were redrawn (for tests).
 var redraws := 0
 
@@ -201,8 +208,8 @@ static func face_of(s: Structure) -> PackedVector2Array:
 	return PackedVector2Array([l, c, r, r - h, c - h, l - h])
 
 
-## Every pool of a town: {pos: Vector2 (world screen px), radius: float (x semi-axis, px), color: Color, flicker: float,
-## light: the LightField entry for a torch, absent for a window}.
+## Every pool of a town: {pos: Vector2 (world screen px), g: Vector2 (its ground point), radius: float (x semi-axis, px),
+## color: Color, flicker: float, light: the LightField entry for a torch, absent for a window}.
 static func pools_for(town: Town) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var env: EnvironmentField = town._env
@@ -212,14 +219,14 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 		for l: Dictionary in env.lights._lights:
 			if l.get("static", false):
 				out.append({"pos": Iso.ground_to_screen(l.pos), "radius": minf(Iso.radius_to_screen(l.radius).x * TORCH_REACH, TORCH_MAX),
-					"color": l.color, "flicker": float(l.flicker), "light": l})
+					"color": l.color, "flicker": float(l.flicker), "light": l, "g": l.pos})
 	# The decor lamps (the capital's street lamps, the houses' lanterns): LightField knows none of them.
 	for d: Decor in town._decor:
 		var lp := lamp_pool(d)
 		if lp.is_empty():
 			continue
 		out.append({"pos": lp.pos, "radius": LAMP_RADIUS * d.scale_mul, "color": Structure.TORCH_LIGHT, "flicker": 1.0,
-			"alpha": LAMP_ALPHA, "decor": d})
+			"alpha": LAMP_ALPHA, "decor": d, "g": d.at})
 	# The look's extra lights (TownLookDecor, round 2): a pool round every wall-walk torch, house lantern and street lamp.
 	if is_instance_valid(town.look_decor):
 		out.append_array(town.look_decor.lights())
@@ -231,7 +238,8 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 			continue
 		var front := Iso.ground_to_screen(s.footprint.end)
 		out.append({"pos": front + Vector2(0, 3), "radius": clampf(sqrt(float(lit)) * 2.8, WINDOW_MIN, WINDOW_MAX),
-			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA * TownLook.window_pool(town.look), "structure": s})
+			"color": WINDOW_COLOUR, "flicker": 0.5, "alpha": WINDOW_ALPHA * TownLook.window_pool(town.look), "structure": s,
+			"g": s.footprint.end})
 	return out
 
 
@@ -268,7 +276,7 @@ func setup(town: Town) -> TownPools:
 		_wall.append(WINDOW_WALL if p.get("structure") != null else 255)
 		_face.append(p.get("face", PackedVector2Array()))
 		_pools.append({"flicker": p.flicker, "light": p.get("light"), "structure": p.get("structure"), "decor": p.get("decor"),
-			"alpha": float(p.get("alpha", TORCH_ALPHA)), "i": _pools.size()})
+			"alpha": float(p.get("alpha", TORCH_ALPHA)), "i": _pools.size(), "g": p.get("g", Iso.screen_to_ground(p.pos))})
 		var dc = p.get("decor")
 		if dc != null:
 			(dc as Decor).fell.connect(_on_lamp_fell.bind(_pools.size() - 1))
@@ -372,9 +380,37 @@ func _set_structure(s: Structure, shown: int) -> void:
 const POOL_FLICKER := 0.0
 
 
-## The live strength of pool p now.
+## Dims the town's lights round `at` (ground units) for `source` (an effect's instance id; R40): a pool `d` from it, within
+## `radius`, keeps 1 - amount * (1 - d / radius) of its strength. Laid again, it moves. Drawing only.
+static func dim(source: int, at: Vector2, radius: float, amount: float) -> void:
+	_dims[source] = [at, radius, amount]
+	_dims_serial += 1
+
+
+## Lifts `source`'s dim (none laid: nothing changes).
+static func undim(source: int) -> void:
+	if _dims.erase(source):
+		_dims_serial += 1
+
+
+## How much of its light a pool at ground point `g` keeps under every dim laid now: the product of each dim's
+## 1 - amount * (1 - d / radius) within its radius, else 1. Pure over the registry.
+static func dim_factor(g: Vector2) -> float:
+	var k := 1.0
+	for v: Array in _dims.values():
+		var r: float = v[1]
+		var d := g.distance_to(v[0])
+		if d < r:
+			k *= 1.0 - float(v[2]) * (1.0 - d / r)
+	return k
+
+
+## The live strength of pool p now: its flicker (none today) under the dims (dim_factor() at its ground point), on every
+## path (Pre-flight F7: the flicker's early return too).
 func _strength(p: Dictionary) -> float:
 	var base: float = p.alpha
+	if not _dims.is_empty():
+		base *= dim_factor(p.g)
 	if POOL_FLICKER <= 0.0:
 		return base
 	var l = p.light
@@ -404,6 +440,9 @@ func _process(delta: float) -> void:
 	if _since >= FLICKER_STEP:
 		_since = 0.0
 		redraw = _refresh()
+	elif not _dims.is_empty() or _dims_seen != _dims_serial:
+		redraw = _refresh()  # a dim is laid (it moves every frame) or was just lifted: re-read now, not a tenth of a second on
+	_dims_seen = _dims_serial
 	if Structure.view != _seen_view:
 		_seen_view = Structure.view
 		redraw = true

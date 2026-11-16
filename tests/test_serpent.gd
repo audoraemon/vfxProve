@@ -35,6 +35,10 @@ static func run(t) -> void:
 	_aim(t, made)
 	_street(t, made)
 	_decoy(t, made)
+	_cone(t)
+	_ahead(t, made)
+	_dim(t, made)
+	_pool_dim(t)
 	await _staged(t, made)
 	RD._done(made)
 
@@ -55,6 +59,7 @@ static func _put(made: Array, n: int, at: Vector2) -> Person:
 	var p: Person = alive[n]
 	p.ground_pos = at
 	p.mind = Person.Mind.CALM
+	p._startle_left = 0.0  # (no freeze left over from an earlier fright)
 	return p
 
 
@@ -253,6 +258,8 @@ static func _staged(t, made: Array) -> void:
 	ctx.impact = stub
 	var lit := _soul_run(made, true)
 	var cut := _cut(made)
+	var wave := _wave(made)
+	var short := _cut_short(made)
 	await t.process_frame
 	ctx.impact = null
 	stub.free()
@@ -270,6 +277,15 @@ static func _staged(t, made: Array) -> void:
 	t.check(int(cut.bad) == 0 and int(cut.ways) == 8 and int(cut.poses) > 0,
 		"the collar as drawn covers the head's whole neck cut as drawn, on every heading (%d ways, %d poses, %d bad; %s)"
 		% [cut.ways, cut.poses, cut.bad, cut.worst])
+	t.check(int(wave.fog_frames) > 0 and int(wave.fog_behind) == 0 and int(wave.fog_most) <= PaleSerpentFx.FOG_MOST,
+		"staged: a cold fog bank rolls ahead of the head, never behind it (%d frames, %d behind, %d puffs at most)"
+		% [wave.fog_frames, wave.fog_behind, wave.fog_most])
+	t.check(int(wave.frost_frames) > 0 and int(wave.frost_behind) == 0 and int(wave.frost_most) <= PaleSerpentFx.FROST_MOST
+		and int(wave.frost_most) > 0, "staged: the ground frosts where it is about to pass (%d frames, newest behind %d, %d patches at most)"
+		% [wave.frost_frames, wave.frost_behind, wave.frost_most])
+	t.check(int(short.frost_before) > 0 and int(short.dim_before) > 0, "(cut short: frost and a dim were there)")
+	t.check(int(short.dimmed) == 0 and int(short.frosted) == 0,
+		"cut short: nothing stays dimmed or frosted, ended or freed (%d dimmed, %d frost nodes)" % [short.dimmed, short.frosted])
 
 
 ## Every opaque pixel of each head sheet's neck cut row (its lowest opaque row), in sprite px.
@@ -332,6 +348,78 @@ static func _cut(made: Array) -> Dictionary:
 						out.worst = "%s%s pixel %s %.1f px off the collar" % [head.head, " mirrored" if head.mirror else "", p, off]
 		fx.end_now()
 	out.ways = seen.size()
+	return out
+
+
+## Staged, a drag east through the glide and the loop: each frame the fog's puffs born this frame lie ahead of the head (on its
+## path FOG_LEAD on, BAND across at most, give or take a frame's travel), and the newest frost patch is ahead of the head too; how many of each live at most.
+static func _wave(made: Array) -> Dictionary:
+	_reset(made)
+	var at := RD._empty(made)
+	var fx := _cast(made, at, at + Vector2(14.0, 0.0))
+	var out := {"fog_frames": 0, "fog_behind": 0, "fog_most": 0, "frost_frames": 0, "frost_behind": 0, "frost_most": 0}
+	while not fx.finished and fx.t < PaleSerpentFx.glide_end():
+		fx._process(DT)
+		if fx.t < PaleSerpentFx.T_RISE + 0.2 or fx._fog == null or fx._frost == null:
+			continue
+		var head := fx.head_at(fx.t)
+		var lead := fx.ahead_at(fx.t, PaleSerpentFx.FOG_LEAD)
+		var newest_fog: Array = fx._fog.puffs.filter(func(q: Dictionary) -> bool: return float(q.born) > fx.t - DT)
+		if not newest_fog.is_empty():
+			out.fog_frames = int(out.fog_frames) + 1
+			for q in newest_fog:
+				if (q.g as Vector2).distance_to(lead) > PaleSerpentFx.BAND + 0.5 or (q.g as Vector2).distance_to(head) < 1.0:
+					out.fog_behind = int(out.fog_behind) + 1
+		out.fog_most = maxi(int(out.fog_most), fx._fog.puffs.size())
+		if not fx._frost.patches.is_empty():
+			out.frost_frames = int(out.frost_frames) + 1
+			var g: Vector2 = fx._frost.patches.back().g
+			if g.distance_to(fx.ahead_at(fx._frost_at, PaleSerpentFx.FROST_LEAD)) > 0.01 or g.distance_to(head) < 1.0:
+				out.frost_behind = int(out.frost_behind) + 1
+		out.frost_most = maxi(int(out.frost_most), fx._frost.patches.size())
+	fx.end_now()
+	return out
+
+
+## Live frost nodes on the ground layer (not on their way out).
+static func _frost_nodes(ctx: FxContext) -> int:
+	return ctx.ground.get_children().filter(func(n: Node) -> bool: return n is PaleSerpentFx.Frost and not n.is_queued_for_deletion()).size()
+
+
+## The dim at a few points round a run (the press, the head, ahead of it, the loop's centre): how many are not 1.
+static func _dimmed(fx: PaleSerpentFx, at: Vector2, time: float) -> int:
+	var n := 0
+	for g in [at, fx.head_at(time), fx.ahead_at(time, 1.0), fx.ahead_at(time, 2.0), at + Vector2(14.0, 4.0), at + Vector2(14.0, -4.0)]:
+		if not is_equal_approx(TownPools.dim_factor(g), 1.0):
+			n += 1
+	return n
+
+
+## Review Focus 3, staged: one cast cut short mid-glide (_finish()), one freed mid-glide (_exit_tree, a mission torn down):
+## nothing stays dimmed, no frost node is left on the ground.
+static func _cut_short(made: Array) -> Dictionary:
+	var ctx: FxContext = made[5]
+	var out := {"frost_before": 0, "dim_before": 0, "dimmed": 0, "frosted": 0}
+	for how in 2:
+		_reset(made)
+		var at := RD._empty(made)
+		var fx := _cast(made, at, at + Vector2(14.0, 0.0))
+		RD._run(fx, PaleSerpentFx.T_RISE + 4.0)
+		var time := fx.t
+		out.frost_before = int(out.frost_before) + _frost_nodes(ctx)
+		out.dim_before = int(out.dim_before) + _dimmed(fx, at, time)
+		var probe := PaleSerpentFx.new()
+		probe.origin = at
+		probe.extra = fx.extra
+		probe.plan()
+		if how == 0:
+			fx._finish()
+		else:
+			fx.get_parent().remove_child(fx)  # (_exit_tree, as a mission torn down frees it)
+			fx.free()
+		out.dimmed = int(out.dimmed) + _dimmed(probe, at, time)
+		out.frosted = int(out.frosted) + _frost_nodes(ctx)
+		probe.free()
 	return out
 
 
@@ -495,19 +583,121 @@ static func _loud(t, made: Array) -> void:
 	crowd.on_cast(at, Vector2.RIGHT, PaleSerpentFx.LENGTH, "serpent")
 	t.check(crowd.held_count() == held + 1, "the cast is a danger the town sees (held for its impact)")
 	crowd.drop_held()
-	# Review IMPORTANT 2b: the fright rolls along behind the head (FRIGHT_BACK), over the street it has passed; the street
-	# ahead is not sent running before the shadow reaches it.
-	var watcher := _put(made, 0, at + Vector2(4.0, 0.0) - Vector2.RIGHT.orthogonal() * 2.5)
-	var ahead := _put(made, 1, at + Vector2(13.0, 0.0) - Vector2.RIGHT.orthogonal() * 2.5)
+	# Review IMPORTANT 2b, R40: the fright rolls along behind the head (FRIGHT_BACK), over the street it has passed; the cone
+	# ahead (R40) reaches only those within CONE_HALF of its heading, so one beside the press, 90 degrees off it, is left alone.
+	var side := _put(made, 0, at - Vector2.RIGHT.orthogonal() * 5.0)
 	var fx := _cast(made, at, at + Vector2(14.0, 0.0))
-	RD._run(fx, PaleSerpentFx.T_RISE + PaleSerpentFx.GLIDE * 0.3)
-	t.check(watcher.mind == Person.Mind.CALM, "one beside its path ahead of the head is not frightened yet (%s)" % Person.Mind.keys()[watcher.mind])
-	RD._run(fx, PaleSerpentFx.GLIDE * 0.45)
-	t.check(watcher.is_alive() and watcher.mind != Person.Mind.CALM,
-		"once it has passed, the street behind it is frightened (%s)" % Person.Mind.keys()[watcher.mind])
-	t.check(ahead.mind != Person.Mind.PANIC and ahead.mind != Person.Mind.FLEE,
-		"while the street ahead is not sent running (%s)" % Person.Mind.keys()[ahead.mind])
+	var calm := true
+	while fx.t < PaleSerpentFx.T_RISE + 4.4:
+		RD._run(fx, DT)
+		calm = calm and side.mind == Person.Mind.CALM
+	t.check(calm and fx.head_at(fx.t).x > side.ground_pos.x + 4.0,
+		"one off to the side is not sent running by the cone: calm until the head has passed him (%s)" % Person.Mind.keys()[side.mind])
+	RD._run(fx, 1.6)
+	t.check(side.is_alive() and side.mind != Person.Mind.CALM,
+		"once it has passed, the street behind it is frightened (%s)" % Person.Mind.keys()[side.mind])
 	fx.end_now()
+
+
+## R40, the fright cone: CONE_HALF (30 degrees) either side of the head's heading, CONE_R (8) long -- pure geometry over the
+## effect's clock; on the loop the heading turns with it.
+static func _cone(t) -> void:
+	t.check(PaleSerpentFx.CONE_R == 8.0 and PaleSerpentFx.CONE_HALF == 30.0 and PaleSerpentFx.CONE_EVERY == 0.5
+		and PaleSerpentFx.FOG_LEAD == 1.0 and PaleSerpentFx.FOG_EVERY == 0.1 and PaleSerpentFx.FOG_LIFE == 1.6
+		and PaleSerpentFx.FOG_MOST == 40 and PaleSerpentFx.FROST_LEAD == 1.5 and PaleSerpentFx.FROST_EVERY == 0.25
+		and PaleSerpentFx.FROST_LIFE == 6.0 and PaleSerpentFx.FROST_MOST == 48 and PaleSerpentFx.DIM_LEAD == 1.0
+		and PaleSerpentFx.DIM_R == 6.0 and PaleSerpentFx.DIM == 0.75, "the numbers of R40")
+	var at := Vector2(2.0, 3.0)
+	var fx := PaleSerpentFx.new()
+	fx.origin = at
+	fx.extra = {"dir": Vector2.RIGHT, "to": at + Vector2(14.0, 0.0)}
+	fx.plan()
+	var time := PaleSerpentFx.T_RISE + 2.0
+	var h := fx.head_at(time)
+	t.check(fx.cone_holds(h + Vector2(7.9, 0.0), time) and not fx.cone_holds(h + Vector2(8.1, 0.0), time),
+		"the cone is 8 long: 7.9 ahead on the heading in it, 8.1 not")
+	t.check(fx.cone_holds(h + Vector2.RIGHT.rotated(deg_to_rad(29.0)) * 5.0, time)
+		and fx.cone_holds(h + Vector2.RIGHT.rotated(deg_to_rad(-29.0)) * 5.0, time)
+		and not fx.cone_holds(h + Vector2.RIGHT.rotated(deg_to_rad(31.0)) * 5.0, time)
+		and not fx.cone_holds(h + Vector2.RIGHT.rotated(deg_to_rad(-31.0)) * 5.0, time),
+		"the cone is 30 degrees either side: 29 in, 31 out, both sides")
+	t.check(not fx.cone_holds(h - Vector2(3.0, 0.0), time), "nobody behind the head is in it")
+	t.check(fx.ahead_at(time, 1.0).is_equal_approx(fx.path_at(fx.s_at(time + 1.0))), "ahead_at: the path where the head will be")
+	# On the loop the heading turns: the point a quarter turn on round the circle is ahead, the drag's way no longer is.
+	var loop_t := PaleSerpentFx.T_RISE + PaleSerpentFx.GLIDE + PaleSerpentFx.CIRCLE * 0.25
+	var lh := fx.head_at(loop_t)
+	var on := fx.head_at(loop_t + 0.15)
+	t.check(fx.cone_holds(on, loop_t) and lh.distance_to(on) > 0.5 and not fx.cone_holds(lh + Vector2(5.0, 0.0), loop_t),
+		"on the loop the cone turns with the head")
+	fx.free()
+
+
+## R40: "people ahead panic before it arrives" -- one on the drag line 7.0 ahead of the press is frightened (panics or runs,
+## or freezes in fright) while the head is still 3.0 or more from him; the effect counts him.
+static func _ahead(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	var p := _put(made, 0, at + Vector2(7.0, 0.0))
+	var fx := _cast(made, at, at + Vector2(14.0, 0.0))
+	var gap := -1.0
+	while fx.t < PaleSerpentFx.T_RISE + PaleSerpentFx.GLIDE and gap < 0.0:
+		RD._run(fx, DT)
+		if p.mind in [Person.Mind.PANIC, Person.Mind.FLEE] or p.startled():
+			gap = fx.head_at(fx.t).distance_to(p.ground_pos)
+	t.check(gap >= 3.0 and fx.frightened_ahead >= 1,
+		"people ahead panic before it arrives (%.1f from the head; %d frightened ahead)" % [gap, fx.frightened_ahead])
+	fx.end_now()
+
+
+## R40: "the town's lights dim ahead and come back": while it glides, the town's light map keeps at most 0.3 of a pool's light
+## where the head will be DIM_LEAD on; after its end, every pool its own.
+static func _dim(t, made: Array) -> void:
+	_reset(made)
+	var at := RD._empty(made)
+	var fx := _cast(made, at, at + Vector2(14.0, 0.0))
+	t.check(is_equal_approx(TownPools.dim_factor(at + Vector2(1.0, 0.0)), 1.0), "(nothing dimmed before it rises)")
+	var worst := 0.0
+	var far := 1.0
+	while fx.t < PaleSerpentFx.glide_end() - 0.1:
+		RD._run(fx, DT)
+		if fx.t > PaleSerpentFx.T_RISE + 0.1:
+			worst = maxf(worst, TownPools.dim_factor(fx.ahead_at(fx.t, 1.0)))
+			far = minf(far, TownPools.dim_factor(fx.head_at(fx.t) - Vector2(PaleSerpentFx.DIM_R + 9.0, 0.0)))
+	t.check(worst <= 0.3 and is_equal_approx(far, 1.0),
+		"the town's lights dim ahead (%.2f kept at most), and only there (%.2f far behind)" % [worst, far])
+	var ahead := fx.ahead_at(fx.t, 1.0)
+	RD._run(fx, 0.3)
+	t.check(is_equal_approx(TownPools.dim_factor(ahead), 1.0) and is_equal_approx(TownPools.dim_factor(at), 1.0),
+		"and come back after the end (%.2f)" % TownPools.dim_factor(ahead))
+	fx.end_now()
+
+
+## R40, Pre-flight F7: a pool under a dim keeps 1 - DIM * (1 - d / DIM_R) of its strength on every path through
+## TownPools._strength() (the flicker is off today: POOL_FLICKER 0), and the light map re-reads every frame while a dim is
+## registered, and once more when it lifts.
+static func _pool_dim(t) -> void:
+	var pools := TownPools.new()
+	var g := Vector2(40.0, 40.0)
+	var p := {"alpha": 0.8, "g": g, "light": null, "flicker": 0.5, "structure": null, "decor": null, "i": 0}
+	pools._pools.append(p)
+	pools._col.append(Color(1.0, 0.7, 0.3, 0.8))
+	pools._canvas = TownPools.PoolCanvas.new()
+	t.check(is_equal_approx(TownPools.dim_factor(g), 1.0) and is_equal_approx(pools._strength(p), 0.8), "(a pool at its own strength)")
+	TownPools.dim(-77, g + Vector2(3.0, 0.0), 6.0, 0.75)
+	TownPools.dim(-78, g + Vector2(0.0, 30.0), 6.0, 0.75)
+	t.check(is_equal_approx(TownPools.dim_factor(g), 1.0 - 0.75 * 0.5) and is_equal_approx(pools._strength(p), 0.8 * (1.0 - 0.75 * 0.5)),
+		"a pool 3 from a dim of 6 keeps 1 - 0.75 * (1 - 3 / 6) of its light (%.3f)" % pools._strength(p))
+	TownPools.dim(-78, g - Vector2(3.0, 0.0), 6.0, 0.75)
+	t.check(is_equal_approx(TownPools.dim_factor(g), pow(1.0 - 0.75 * 0.5, 2.0)), "two dims over it multiply")
+	TownPools.undim(-78)
+	pools._process(0.016)
+	t.check(is_equal_approx(pools._col[0].a, 0.8 * (1.0 - 0.75 * 0.5)), "the light map re-reads it in the next frame (%.3f)" % pools._col[0].a)
+	TownPools.undim(-77)
+	pools._process(0.016)
+	t.check(is_equal_approx(TownPools.dim_factor(g), 1.0) and is_equal_approx(pools._col[0].a, 0.8),
+		"lifted, the pool is its own again in the next frame (%.3f)" % pools._col[0].a)
+	pools._canvas.free()
+	pools.free()
 
 
 ## "once a descent": its cooldown outlasts the longest night; cast once, the slot refuses again.

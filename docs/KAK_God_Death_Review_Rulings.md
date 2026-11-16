@@ -96,3 +96,23 @@ against 83, about 10% ahead). No unit was strengthened; the R42/R43 numbers and 
 exact run to run; Heaven's Door's moved by one citizen once (65/66; likely the hitstop's wall clock, which the mission test also shows), never its buildings.
 The buildings margin is the thin one: a later cut to the claws or `SLAM_WRECK` (e.g. for the 8 ms ceiling) should
 re-run both tallies.
+
+### Bar after the final review's fix wave (R30a counter-blow; at 00796aaf, seeds 1-3)
+
+Same commands, `--seed=1`, `2` and `3` (`timeout 900 $G --headless --path . --fixed-fps 60 --audio-driver Dummy --scene
+res://scenes/mission.tscn -- --bench --seed=N --loadout=gravetide --bench-cast=gravetide --bench-tally=70`, and the same
+with `heavendoor` and `--bench-tally=30`):
+
+| Seed | Grave Tide (70 s) | Heaven's Door (30 s) | Met? |
+|---|---|---|---|
+| 1 | deaths 151 (54 citizens, 97 soldiers), destroyed 80 | deaths 65 (46, 19), destroyed 83 | deaths yes (+86); **buildings no (-3)** |
+| 2 | deaths 141 (50, 91), destroyed 74 | deaths 61 (39, 22), destroyed 83 | deaths yes (+80); **buildings no (-9)** |
+| 3 | deaths 150 (55, 95), destroyed 90 | deaths 65 (36, 29), destroyed 83 | yes (+85, +7) |
+
+The counter-blow (R30a) alone moves Grave Tide: with `_counter()` switched off (an experiment, not committed) seed 1 is
+again exactly 248 / 91, and seed 2 is 291 deaths / 83 destroyed. Citizens now land a blow on every undead that comes for
+them, so the tide's skeletons, ghouls and zombies fall sooner: about 95 fewer citizens die, and fewer undead are left to
+claw. Heaven's Door is untouched by the wave. **Open (for a ruling):** the buildings bar is short on seeds 1 and 2. Two
+R46 levers were tried and were not enough or not clearly better (experiments, not committed): the claws +33% (skeleton 8,
+ghoul 4, zombie 4) gave destroyed 80 / 82 / 92; `SKELETON_BLOWS` 5 gave 75 / 81 / 94. The tide's buildings count is
+chaotic from seed to seed (74-94 across these runs), so a lever tuned to it risks fitting seeds. Nothing was strengthened.

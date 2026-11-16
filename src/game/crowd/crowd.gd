@@ -916,9 +916,17 @@ func remove_law(z: LawZone) -> void:
 	z.lift()
 
 
+## The crowd's own clock, seconds (Person.struck_at reads it).
+func clock() -> float:
+	return _clock
+
+
 ## Whether `p` (a person or a visitor; null or a freed body: false) stands where a law of `kind` holds now. Indoors or
 ## not: the one asking decides what an indoor person makes of it.
 func in_law(p: Variant, kind: StringName) -> bool:
+	# Bad Counsel (Disorder, level 5): a person carries a law with them for a while (Person.carried_laws); a visitor never does.
+	if is_instance_valid(p) and p is Person and float((p as Person).carried_laws.get(kind, 0.0)) > 0.0:
+		return true
 	return law_of(p, kind) != null
 
 
@@ -2263,8 +2271,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if kind == &"gone":
 		return  # walked through a door of stars (The Far Gate): no cry, no body, nothing for the town to find
 	_voice_death(p, kind)
-	if kind == &"grave":
-		return  # the Walker's quiet kill: a body, a slump, no alarm
+	if kind == &"grave" or kind == &"borrowed":
+		return  # the Walker's quiet kill: a body, a slump, no alarm (Borrowed Life's is no body at all)
 	if is_veiled(p.ground_pos):
 		return  # a death nobody sees (Unseen Hour)
 	if kind == &"doom":

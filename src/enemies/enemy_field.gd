@@ -128,6 +128,8 @@ func kill(e: DummyEnemy, kind: StringName, source := Vector2.INF) -> bool:
 		e.die(kind, source)
 		return false
 	e.die(kind, source)
+	if e.is_alive():
+		return false  # spared (Person.deathless): it fell, it did not die
 	enemy_killed.emit(e, kind)
 	return true
 

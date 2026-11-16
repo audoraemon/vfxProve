@@ -333,6 +333,18 @@ var _observe_left := 0.0
 var sick_left := 0.0
 ## Pestilence (v0.07.1): the seconds the sickness ran in all, from infect(), to tell how far along it is.
 var sick_total := 0.0
+## Foul Dead (Pestilence, level 5; shared hook): the instance id of the cast whose plague this is, 0 for any other (PlagueManager
+## copies it from the one who gave it on). Read only through PlagueManager.foul.
+var plague_src := 0
+## Bad Counsel (Bound by Rule's cousin, Disorder level 5; shared hook): the laws this person carries away, kind -> seconds left.
+## Crowd.in_law() holds true for them while a kind has time left; tick() runs them down and erases them at 0.
+var carried_laws := {}
+## Party to the Bond (Bound in Law, level 5; shared hook): who struck this person last, and the crowd clock when (-1.0: never).
+var struck_by: WeakRef = null
+var struck_at := -1.0
+## Deathless (Corpse Guise, level 5; shared hook): asked as `deathless.call(self, kind)` before a death; true cancels it (the
+## person is knocked down where they stand and nothing else happens). Empty: no one is spared. Never asked for &"pit" or &"gone".
+var deathless := Callable()
 ## Discord (v0.06): seconds of confusion left, and whether it was fleeing when it struck.
 var _confused_left := 0.0
 var _was_fleeing := false
@@ -587,6 +599,8 @@ func unhurried() -> bool:
 func tick(delta: float) -> void:
 	if law != null:
 		LawMark.step(self, delta)
+	if not carried_laws.is_empty():
+		_run_carried_laws(delta)
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
 	if _bend_to != Vector2.INF:
@@ -614,6 +628,25 @@ func tick(delta: float) -> void:
 		_down_pending = false
 		_down_left = DOWN_SECONDS
 		_idle = maxf(_idle, 0.2)  # not a tick of creep before the first think
+
+
+## Bad Counsel: the carried laws run down, and are erased at 0.
+func _run_carried_laws(delta: float) -> void:
+	for kind in carried_laws.keys():
+		var left := float(carried_laws[kind]) - delta
+		if left <= 0.0:
+			carried_laws.erase(kind)
+		else:
+			carried_laws[kind] = left
+
+
+## A death, unless `deathless` spares it (Corpse Guise, level 5): the person falls where they stand and stays alive, and
+## nothing else happens (EnemyField.kill() sees a living person and counts, announces and leaves nothing).
+func die(kind: StringName, source := Vector2.INF) -> void:
+	if deathless.is_valid() and kind != &"pit" and kind != &"gone" and state != State.DEAD and bool(deathless.call(self, kind)):
+		knock_down()
+		return
+	super(kind, source)
 
 
 ## For the people sprites only: whether it stepped this tick, and whether toward the back of the screen.
@@ -2155,6 +2188,9 @@ func hurt(amount: float, by: Person) -> void:
 		return
 	if field != null:
 		field.enemy_struck.emit(self, by)
+	if by != null and is_instance_valid(by):
+		struck_by = weakref(by)
+		struck_at = crowd.clock() if crowd != null else 0.0
 	if mind == Mind.ASLEEP:
 		wake()
 	health -= amount

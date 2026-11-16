@@ -260,6 +260,12 @@ func _ready() -> void:
 		await _quit()
 
 
+## `--bench-level=N` (1-5, default 1): the level `--bench-cast=KEY` casts at (the level-5 twists' frame budget).
+static func bench_level_arg(args: PackedStringArray) -> int:
+	var v := Battlefield.arg_value(args, "--bench-level")
+	return clampi(int(v), 1, PowerBook.MAX_LEVEL) if v != "" else 1
+
+
 ## Bench aid (v0.09): `--mission=long_night --bench --bench-act=festival|procession|judgement` skips the acts before the
 ## one named, then lets it run `--bench-after=SECONDS` (default 50) before the frames are timed, so the Festival's crowd
 ## is packed round the bonfire (it packs at 45 s). A night-only hook: the bench of every other mission is untouched.
@@ -359,6 +365,10 @@ func _bench_cast(args: PackedStringArray) -> bool:
 		_bf.ctx.env.structure_destroyed.connect(count_fall)
 	var cast_out := false
 	if _rules != null:
+		var bench_level := bench_level_arg(args)
+		if bench_level > 1:
+			_rules.levels = _rules.levels.duplicate()
+			_rules.levels[key] = bench_level  # --bench-level=N: the cast power at level N (Death, Decree, ... tables)
 		for i in _rules.loadout.size():
 			if _rules.key(i) == key:
 				cast_out = _rules.cast(i, at) != null

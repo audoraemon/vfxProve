@@ -765,6 +765,14 @@ func tags() -> Array[MapTag]:
 	return out
 
 
+## The task line's wait (task line): in "waiting", until the next standard is raised at the latest; else the hint's own seconds.
+func step_seconds() -> float:
+	if hint_phase() == "waiting":
+		var n := next_step()
+		return due_in(n) if n >= 0 else 0.0
+	return hint_seconds()
+
+
 ## The hint's phase (v0.11 M4, decision 110; the final review put a standing standard first): "guarded" or "open" for the current
 ## standard while one stands; else "searching" or "captain" while the head is out; "coming" once every step is broken and the head is
 ## still to come out (the controller's ruling: the seconds to him, hint_seconds(), on the line); "waiting" while none stands and a step

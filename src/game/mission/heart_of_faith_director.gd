@@ -992,6 +992,14 @@ func tags() -> Array[MapTag]:
 	return out
 
 
+## The task line's wait (task line): in "not_yet", until the next target comes into use; else the hint's own seconds.
+func step_seconds() -> float:
+	if hint_phase() == "not_yet":
+		var n := next_target()
+		return due_in(n) if n >= 0 else 0.0
+	return hint_seconds()
+
+
 ## The hint's phase (v0.11 M6, plan decision 303): stage two "coming", "litter", "rite", "on_foot"; stage one "guarded", "burning", "open"
 ## for the target in use (of two, the first with no Knight on guard -- the work to do -- else the first), "not_yet" for the next one fallen
 ## or within WORK_AHEAD of its time; else "".

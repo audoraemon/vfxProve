@@ -49,6 +49,9 @@ static func install(tree: SceneTree) -> void:
 		root.position = Vector2i.ZERO
 	root.content_scale_size = DESIGN
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND  # fill any window (project.godot keeps "keep" for headless); _follow_root sets the size to floor(window / k)
+	# The integer scale is ours: _follow_root sizes the content to floor(window / k), so a fractional stretch lands on exactly k (plus the
+	# under-1-unit remainder). Godot's own "integer" stretch boxed the frame by the startup 640x360 base after a maximize (black borders).
+	root.content_scale_stretch = Window.CONTENT_SCALE_STRETCH_FRACTIONAL
 	root.size_changed.connect(_follow_root.bind(root))
 	_follow_root(root)
 	# Maximize and OS snaps can end on a size whose size_changed fired mid-change (seen on a user's machine: the area stuck at the

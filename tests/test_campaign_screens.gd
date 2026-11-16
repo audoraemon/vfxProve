@@ -161,15 +161,16 @@ static func _left(at: Vector2) -> InputEventMouseButton:
 ## while they live, and answer clicks at frame-local points.
 static func _frames(t) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
-	UiScale.set_test_area(Vector2i(800, 450))
-	var offset := Vector2(80, 45)
+	UiScale.set_test_area(Vector2i(960, 495))
+	var offset := Vector2(40, 0)
+	var f := 1.375  # 960x495 is a 1.375x page: 880x495, centred
 	var s := CampaignState.new()
 	s.night = 1
 	var night := CampaignScreen.new()
 	tree.root.add_child(night)
 	night.setup(s)
-	t.check(night._ui.position == offset and night._ui.size == Vector2(640, 360), "campaign: the frame is 640x360 at (80, 45)")
-	t.check(UiScale.backdrop(night._ui) == Rect2(-offset, Vector2(800, 450)), "campaign: the backdrop is the whole area in frame coordinates")
+	t.check(night._ui.position == offset and night._ui.size == Vector2(640, 360) and night._ui.scale == Vector2(f, f), "campaign: the frame is 640x360 at (40, 0), scaled 1.375x")
+	t.check(UiScale.backdrop(night._ui) == Rect2(-offset / f, Vector2(960, 495) / f), "campaign: the backdrop is the whole area in frame coordinates")
 	night.click(CampaignScreen.card_rect(1, 3).get_center())
 	t.check(night.chosen == (night.options[1] as MissionDef).id, "campaign: a click at a card's frame-local centre chooses it (%s)" % night.chosen)
 	night.free()
@@ -177,7 +178,7 @@ static func _frames(t) -> void:
 	var end := EndingScreen.new()
 	tree.root.add_child(end)
 	end.setup(CampaignDef.FALSE_LANTERN, "vision")
-	t.check(end._ui.position == offset and end._ui.size == Vector2(640, 360), "ending: the frame is 640x360 at (80, 45)")
+	t.check(end._ui.position == offset and end._ui.size == Vector2(640, 360) and end._ui.scale == Vector2(f, f), "ending: the frame is 640x360 at (40, 0), scaled 1.375x")
 	end.free()
 
 	var inter := InterludeScreen.new()
@@ -186,7 +187,7 @@ static func _frames(t) -> void:
 		[MissionBook.long_night().act("festival")], NightState.new())
 	var went: Array[String] = []
 	inter.action.connect(func(what: String) -> void: went.append(what))
-	t.check(inter._ui.position == offset and inter._ui.size == Vector2(640, 360), "interlude: the frame is 640x360 at (80, 45)")
+	t.check(inter._ui.position == offset and inter._ui.size == Vector2(640, 360) and inter._ui.scale == Vector2(f, f), "interlude: the frame is 640x360 at (40, 0), scaled 1.375x")
 	inter.click(inter.button_rect("draft").get_center())
 	t.check(went == ["draft"], "interlude: a click at Choose powers' frame-local centre goes on (%s)" % [went])
 	inter.free()

@@ -30,14 +30,15 @@ static func run(t) -> void:
 ## UI resolution Task 6b: the Faith screen and the hub draw in a 640x360 design frame centred in the area, hold the wide spaces while they live, and their lines fit.
 static func _frames(t) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
-	UiScale.set_test_area(Vector2i(800, 450))
-	var offset := Vector2(80, 45)
+	UiScale.set_test_area(Vector2i(960, 495))
+	var offset := Vector2(40, 0)
+	var f := 1.375  # 960x495 is a 1.375x page: 880x495, centred
 	var god := _slot()
 	var faith := FaithScreen.new()
 	tree.root.add_child(faith)
 	faith.setup(god)
-	t.check(faith._ui.position == offset and faith._ui.size == Vector2(640, 360), "faith: the frame is 640x360 at (80, 45) in an 800x450 area")
-	t.check(UiScale.backdrop(faith._ui) == Rect2(-offset, Vector2(800, 450)), "faith: the backdrop is the whole area in frame coordinates")
+	t.check(faith._ui.position == offset and faith._ui.size == Vector2(640, 360) and faith._ui.scale == Vector2(f, f), "faith: the frame is 640x360 at (40, 0), scaled 1.375x, in a 960x495 area")
+	t.check(UiScale.backdrop(faith._ui) == Rect2(-offset / f, Vector2(960, 495) / f), "faith: the backdrop is the whole area in frame coordinates")
 	var got := []
 	faith.action.connect(func(what: String) -> void: got.append(what))
 	faith._on_gui_input(_click(FaithScreen.BACK_RECT.get_center()))
@@ -55,7 +56,7 @@ static func _frames(t) -> void:
 	var hub := GodHub.new()
 	tree.root.add_child(hub)
 	hub.setup(god, "", true)
-	t.check(hub._ui.position == offset and hub._ui.size == Vector2(640, 360), "hub: the frame is 640x360 at (80, 45)")
+	t.check(hub._ui.position == offset and hub._ui.size == Vector2(640, 360) and hub._ui.scale == Vector2(f, f), "hub: the frame is 640x360 at (40, 0), scaled 1.375x")
 	got.clear()
 	hub.action.connect(func(what: String) -> void: got.append(what))
 	hub._on_gui_input(_click(hub.menu_rect("faith").get_center()))

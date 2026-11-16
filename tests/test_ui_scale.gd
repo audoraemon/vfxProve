@@ -28,7 +28,7 @@ static func _install(t) -> void:
 	t.check(UiScale.window_arg(PackedStringArray()) == Vector2i.ZERO, "no argument, no size")
 	t.check(UiScale.window_arg(PackedStringArray(["--window=99999x600"])) == Vector2i(UiScale.MAX_WINDOW, 600), "a huge side is clamped to MAX_WINDOW")
 	var eff := UiScale.layout(Vector2i(1366, 768))
-	t.check(eff["k"] == 2 and eff["area"] == Vector2i(683, 384) and eff["offset"] == Vector2i(21, 12) and absf(eff["fit"] - 1.0667) < 1e-4,
+	t.check(eff["k"] == 2 and eff["area"] == Vector2i(683, 384) and eff["offset"] == Vector2i.ZERO and absf(eff["frame"] - 1.0667) < 1e-4 and absf(eff["fit"] - 1.0667) < 1e-4,
 		"the layout of a 1366x768 window is the table's (%s)" % [eff])
 	var before := UiScale.layout(Vector2i(1920, 1080))
 	UiScale.install(Engine.get_main_loop() as SceneTree)  # headless: a no-op
@@ -128,8 +128,12 @@ static func _layout_table(t) -> void:
 		var lay := UiScale.layout(row[0])
 		t.check(lay["k"] == row[1] and lay["area"] == row[2] and absf(lay["fit"] - row[3]) < 1e-4,
 			"layout %s = k %d area %s fit %.4f (got %s)" % [row[0], row[1], row[2], row[3], lay])
-	t.check(UiScale.layout(Vector2i(640, 360))["offset"] == Vector2i.ZERO and UiScale.layout(Vector2i(1600, 900))["offset"] == Vector2i(80, 45),
-		"the design frame's offset centres 640x360 in the area")
+	t.check(UiScale.layout(Vector2i(640, 360))["offset"] == Vector2i.ZERO and UiScale.layout(Vector2i(1600, 900))["offset"] == Vector2i.ZERO
+		and UiScale.layout(Vector2i(1600, 900))["frame"] == 1.25,
+		"the design frame fills an area of 16:9 (scaled up, no offset)")
+	t.check(UiScale.layout(Vector2i(2560, 1080))["frame"] == 1.0 and UiScale.layout(Vector2i(1920, 1200))["offset"] == Vector2i(0, 20),
+		"the frame is limited by the shorter axis and centred on the other (a 640x400 area: y 20)")
+	t.check(UiScale.layout(Vector2i(2560, 1080))["offset"] == Vector2i(106, 0), "an 853x360 area centres the 640x360 page at x 106")
 	t.check(UiScale.k() == 1 and UiScale.area() == Vector2(640, 360) and UiScale.design_offset() == Vector2.ZERO,
 		"not installed (headless): k 1, area 640x360, no offset")
 
@@ -139,7 +143,8 @@ static func _anchor(t) -> void:
 	for where in UiScale.Anchor.values():
 		t.check(UiScale.anchor(r, where) == r, "at 640x360 anchor %d is the identity" % where)
 	UiScale.set_test_area(Vector2i(800, 450))
-	t.check(UiScale.area() == Vector2(800, 450) and UiScale.design_offset() == Vector2(80, 45), "the test area stands in for area() and design_offset()")
+	t.check(UiScale.area() == Vector2(800, 450) and UiScale.design_offset() == Vector2.ZERO and UiScale.frame_scale() == 1.25,
+		"the test area stands in for area(), design_offset() and frame_scale(): 800x450 is a 1.25x page at the origin")
 	t.check(UiScale.anchor(r, UiScale.Anchor.BOTTOM_RIGHT) == Rect2(760, 406, 40, 20), "bottom right follows the area's corner")
 	t.check(UiScale.anchor(r, UiScale.Anchor.CENTRE) == Rect2(680, 361, 40, 20), "centre shifts by half the growth")
 	t.check(UiScale.anchor(r, UiScale.Anchor.TOP_LEFT) == r, "top left stays")
@@ -162,13 +167,33 @@ static func _snap_and_frame(t) -> void:
 	t.check(UiScale.k() == 3 and UiScale.snap(Vector2(1.2, 2.5)).is_equal_approx(Vector2(4.0 / 3.0, 2.6666667)), "snap at k 3 rounds to thirds")
 	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
 	var layer := CanvasLayer.new()
-	UiScale.set_test_area(Vector2i(800, 450))
+	UiScale.set_test_area(Vector2i(960, 495))  # a 1.375x page: 880x495 at x 40
 	var frame := UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)
 	var blocker := frame.get_parent() as Control
-	t.check(blocker.get_parent() == layer and blocker.size == Vector2(800, 450) and blocker.mouse_filter == Control.MOUSE_FILTER_STOP,
+	t.check(blocker.get_parent() == layer and blocker.size == Vector2(960, 495) and blocker.mouse_filter == Control.MOUSE_FILTER_STOP,
 		"the blocker fills the area and takes the filter")
-	t.check(frame.position == Vector2(80, 45) and frame.size == Vector2(640, 360), "the design frame is 640x360 at the offset")
-	t.check(UiScale.backdrop(frame) == Rect2(-80, -45, 800, 450), "the backdrop is the whole area in the frame's coordinates")
+	t.check(frame.position == Vector2(40, 0) and frame.size == Vector2(640, 360) and frame.scale == Vector2(1.375, 1.375),
+		"the design frame is 640x360, scaled 1.375x and centred (40, 0)")
+	var bd := UiScale.backdrop(frame)
+	t.check(bd == Rect2(Vector2(-40, 0) / 1.375, Vector2(960, 495) / 1.375), "the backdrop is the whole area in the frame's coordinates")
+	# What the frame's transform makes of that backdrop is the whole area, edge to edge (the real drawing check, with the scale in it).
+	var xf := Transform2D(0.0, frame.scale, 0.0, frame.position)
+	var on_screen := xf * bd
+	t.check(on_screen.position.is_equal_approx(Vector2.ZERO) and on_screen.size.is_equal_approx(Vector2(960, 495)), "drawn through the frame's scale the backdrop covers the area exactly (%s)" % on_screen)
+	# The page is centred: equal margins left and right of the scaled 640x360, none above or below at this aspect.
+	var page := xf * Rect2(Vector2.ZERO, Vector2(640, 360))
+	t.check(is_equal_approx(page.position.x, 960.0 - page.end.x) and page.position.y == 0.0 and is_equal_approx(page.end.y, 495.0),
+		"the scaled page is centred: %s in 960x495" % page)
+	# Frame-local click mapping: a point on the screen reaches gui_input as frame coordinates.
+	for design in [Vector2(0, 0), Vector2(320, 180), Vector2(639, 359), Vector2(100.5, 40.25)]:
+		var screen: Vector2 = xf * design
+		t.check((xf.affine_inverse() * screen).is_equal_approx(design) and page.has_point(screen), "a click at the page's %s is at %s on the screen and maps back" % [design, screen])
+	# A different aspect: a tall area is limited by the width and the page sits in the middle vertically; under 640x360 it never shrinks.
+	UiScale.set_test_area(Vector2i(800, 800))
+	t.check(UiScale.frame_scale() == 1.25 and UiScale.design_offset() == Vector2(0, 175), "an 800x800 area: 1.25x, centred vertically at y 175")
+	UiScale.set_test_area(Vector2i(500, 300))
+	t.check(UiScale.frame_scale() == 1.0, "an area under 640x360 does not shrink the page")
+	UiScale.set_test_area(Vector2i(960, 495))
 	UiScale.clear_test_area()
 	layer.free()
 	# the frame follows the notifier while in the tree
@@ -178,9 +203,23 @@ static func _snap_and_frame(t) -> void:
 	await tree.process_frame
 	var frame2 := UiScale.design_frame(layer2, Control.MOUSE_FILTER_IGNORE)
 	t.check(frame2.position == Vector2.ZERO, "at 640x360 the frame is at the origin")
-	UiScale.set_test_area(Vector2i(800, 450))
-	UiScale.apply(UiScale.layout(Vector2i(1600, 900)))
-	t.check(frame2.position == Vector2(80, 45) and (frame2.get_parent() as Control).size == Vector2(800, 450), "a layout change re-places a frame in the tree")
+	UiScale.set_test_area(Vector2i(960, 495))
+	UiScale.apply(UiScale.layout(Vector2i(1920, 990)))
+	t.check(frame2.position == Vector2(40, 0) and frame2.scale == Vector2(1.375, 1.375) and (frame2.get_parent() as Control).size == Vector2(960, 495),
+		"a layout change re-places and re-scales a frame in the tree")
+	# The engine's own hit test: a click on the screen reaches the scaled frame's gui_input in the page's coordinates.
+	frame2.mouse_filter = Control.MOUSE_FILTER_STOP
+	var got: Array[Vector2] = []
+	frame2.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton:
+			got.append((e as InputEventMouseButton).position))
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = Vector2(40.0 + 100.0 * 1.375, 40.0 * 1.375)  # the page's (100, 40)
+	press.global_position = press.position
+	tree.root.push_input(press)
+	t.check(got.size() == 1 and got[0].is_equal_approx(Vector2(100, 40)), "the engine maps a screen click into the scaled frame's coordinates (%s)" % [got])
 	UiScale.clear_test_area()
 	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
 	layer2.get_parent().remove_child(layer2)  # out of the tree but alive: only the follower's _exit_tree can have disconnected it
@@ -190,6 +229,89 @@ static func _snap_and_frame(t) -> void:
 			connected = true
 	layer2.free()
 	t.check(not connected, "a frame out of the tree leaves no connection behind")
+
+
+## A mouse event at the screen point where `frame`'s local point `local` is drawn (through the frame's own scale and offset), pushed into the tree as the engine would.
+static func _press_at(tree: SceneTree, frame: Control, local: Vector2, pressed := true, motion := false) -> void:
+	var at := frame.get_global_transform_with_canvas() * local
+	var e: InputEventMouse
+	if motion:
+		e = InputEventMouseMotion.new()
+	else:
+		var b := InputEventMouseButton.new()
+		b.button_index = MOUSE_BUTTON_LEFT
+		b.pressed = pressed
+		e = b
+	e.position = at
+	e.global_position = at
+	tree.root.push_input(e)
+
+
+## Scaled frames, real input: on a 960x495 area (a 1.375x page at x 40) a click or drag at the screen point where a button or card is drawn reaches it,
+## through the engine's own hit test (buttons, the board's tabs and cards, the upgrade screen, the skill tree's nodes, the options bars and their drag).
+static func _scaled_input(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	UiScale.set_test_area(Vector2i(960, 495))
+	var up := UpgradesScreen.new()
+	tree.root.add_child(up)
+	up.setup(DescendState.new())
+	var got := []
+	up.action.connect(func(what: String) -> void: got.append(what))
+	await tree.process_frame
+	_press_at(tree, up._ui, UpgradesScreen.BACK_RECT.get_center())
+	t.check(got == ["back"], "scaled input: a click where the upgrades screen draws Board lands on it (%s)" % [got])
+	_press_at(tree, up._ui, UpgradesScreen.BACK_RECT.get_center() + Vector2(0.0, -40.0))
+	t.check(got == ["back"], "scaled input: and a click above it hits nothing (%s)" % [got])
+	up.free()
+
+	var board := MissionBoard.new()
+	board.dev = true
+	tree.root.add_child(board)
+	board.setup(SaveFile.new(), "warning")
+	await tree.process_frame
+	_press_at(tree, board._ui, MissionBoard.tab_rect(2).get_center())
+	t.check(board.tier == 3, "scaled input: a click where the board draws the Wrath tab opens it (%d)" % board.tier)
+	var picks: Array[String] = []
+	board.action.connect(func(what: String) -> void: picks.append(what))
+	_press_at(tree, board._ui, MissionBoard.card_rect(1, board.missions().size()).get_center())
+	t.check(picks == ["pick"], "scaled input: a click where the board draws a card picks it (%s)" % [picks])
+	board.free()
+
+	var slot := GodSlot.make(1, "ruin", 7)
+	slot.tier = 1
+	var tree_screen := SkillTreeScreen.new().setup(slot, {})
+	tree.root.add_child(tree_screen)
+	await tree.process_frame
+	var backs := []
+	tree_screen.action.connect(func(what: String) -> void: backs.append(what))
+	_press_at(tree, tree_screen._ui, SkillTreeScreen.BACK_RECT.get_center())
+	t.check(backs == ["back"], "scaled input: a click where the skill tree draws Back leaves (%s)" % [backs])
+	var node := TreeWheel.node_at(1, 0)
+	_press_at(tree, tree_screen._ui, node)
+	t.check(tree_screen.selected_key() != "", "scaled input: a click where the skill tree draws a node selects it (%s)" % tree_screen.selected_key())
+	tree_screen.free()
+
+	var layer := CanvasLayer.new()
+	tree.root.add_child(layer)
+	var frame := UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)
+	var settings := Settings.new()
+	var panel := OptionsPanel.new().setup(settings, "user://test_ui_scale_settings.cfg")
+	frame.add_child(panel)
+	await tree.process_frame
+	var key := String(OptionsPanel.ROWS[0][0])
+	var bar := panel.bar_rect(0)
+	_press_at(tree, frame, Vector2(bar.position.x + bar.size.x * 0.25, bar.get_center().y))
+	var low := settings.level(key)
+	_press_at(tree, frame, Vector2(bar.position.x + bar.size.x * 0.75, bar.get_center().y), true, true)
+	var high := settings.level(key)
+	_press_at(tree, frame, Vector2(bar.position.x + bar.size.x * 0.75, bar.get_center().y), false)
+	t.check(absf(low - 0.25) <= 0.1 and absf(high - 0.75) <= 0.1, "scaled input: a press and a drag along the options bar set the level where it is drawn (%.2f then %.2f)" % [low, high])
+	var dim := UiScale.backdrop_of(panel)
+	var covered: Rect2 = frame.get_global_transform_with_canvas() * dim
+	t.check(covered.position.is_equal_approx(Vector2.ZERO) and covered.size.is_equal_approx(Vector2(960, 495)), "scaled input: the options dimmer, drawn through the frame's scale, covers the area (%s)" % covered)
+	layer.free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://test_ui_scale_settings.cfg"))
+	UiScale.clear_test_area()
 
 
 static func _icons(t) -> void:
@@ -443,6 +565,7 @@ static func run(t) -> void:
 	_layout_table(t)
 	_anchor(t)
 	await _snap_and_frame(t)
+	await _scaled_input(t)
 	_icons(t)
 	_crisp(t)
 	_hairline_fixture(t)

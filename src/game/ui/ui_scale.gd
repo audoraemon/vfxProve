@@ -15,18 +15,18 @@ enum Anchor { TOP_LEFT, TOP, TOP_RIGHT, LEFT, CENTRE, RIGHT, BOTTOM_LEFT, BOTTOM
 ## Emits `changed(layout)` after every apply().
 static var notifier := UiScaleNotifier.new()
 
-static var _layout := {"k": 1, "area": DESIGN, "offset": Vector2i.ZERO, "fit": 1.0}
+static var _layout := {"k": 1, "area": DESIGN, "offset": Vector2i.ZERO, "frame": 1.0, "fit": 1.0}
 static var _test_area := Vector2i.ZERO
 
 
-## The pure table: for a window in device px, the integer scale, the UI area in units, the design frame's offset in the area
-## and the camera fit (render zoom = logical zoom x fit) that keeps the visible world within 840x360 reference px.
+## The pure table: for a window in device px, the integer scale, the UI area in units, the design frame's offset in the area and its scale
+## ("frame", see frame_scale_for) and the camera fit (render zoom = logical zoom x fit) that keeps the visible world within 840x360 reference px.
 static func layout(window: Vector2i) -> Dictionary:
 	var k := maxi(1, floori(minf(window.x / float(DESIGN.x), window.y / float(DESIGN.y))))
 	var area := Vector2i(floori(window.x / float(k)), floori(window.y / float(k)))
-	var offset := Vector2i(floori((area.x - DESIGN.x) / 2.0), floori((area.y - DESIGN.y) / 2.0))
+	var offset := Vector2i(frame_offset_for(Vector2(area)))
 	var fit := maxf(area.x / MAX_WORLD_W, area.y / REF_H)
-	return {"k": k, "area": area, "offset": offset, "fit": fit}
+	return {"k": k, "area": area, "offset": offset, "frame": frame_scale_for(Vector2(area)), "fit": fit}
 
 
 static var _installed := false
@@ -149,13 +149,29 @@ static func fit() -> float:
 	return _layout["fit"]
 
 
-## Where the 640x360 design frame sits in the area.
+## Where a design frame sits in the area: its top-left corner, in area units. The frame is the 640x360 layout scaled by frame_scale() and centred.
 static func design_offset() -> Vector2:
-	return ((area() - Vector2(DESIGN)) / 2.0).floor()
+	return frame_offset_for(area())
 
 
-## Headless tests of other areas (800x450): area(), design_offset(), anchor() and design_frame() use it. Always clear it again.
-## It changes only those four: k() and fit() still answer for the applied layout (fit is 1.0 at a test area of 800x450, not the real 1.25).
+## The scale a design frame is drawn at in an area `a`: the 640x360 page grows to fill the area as far as its aspect allows (never below 1).
+## Not an integer at in-between sizes (the pixels of a page are then slightly uneven); the area is already a whole number of device px per unit.
+static func frame_scale_for(a: Vector2) -> float:
+	return maxf(1.0, minf(a.x / DESIGN.x, a.y / DESIGN.y))
+
+
+## `frame_scale_for` the current area.
+static func frame_scale() -> float:
+	return frame_scale_for(area())
+
+
+## The top-left of the scaled design frame centred in an area `a`.
+static func frame_offset_for(a: Vector2) -> Vector2:
+	return ((a - Vector2(DESIGN) * frame_scale_for(a)) / 2.0 + Vector2(0.001, 0.001)).floor().max(Vector2.ZERO)  # the epsilon: 360 x 1.0667 is 383.99999 in a 384 area
+
+
+## Headless tests of other areas (960x495 ...): area(), design_offset(), frame_scale(), anchor() and design_frame() use it. Always clear it again.
+## It changes only those: k() and fit() still answer for the applied layout (fit is 1.0 at a test area of 800x450, not the real 1.25).
 static func set_test_area(a: Vector2i) -> void:
 	_test_area = a
 
@@ -210,19 +226,24 @@ static func design_frame(layer: CanvasLayer, filter: int) -> Control:
 
 ## The whole area in `frame`'s local coordinates (a design frame): what a backdrop or dimmer fills.
 static func backdrop(frame: Control) -> Rect2:
-	return Rect2(-frame.position, area())
+	var f := frame.scale.x if frame.scale.x > 0.0 else 1.0
+	return Rect2(-frame.position / f, area() / f)
 
 
 ## The whole area in `item`'s own coordinates, for an item that sits inside a design frame (an overlay panel filling the frame): its dimmer reaches the
 ## screen's edges whatever the frame's offset. Without a tree (a test) the item is taken to be at the origin.
 static func backdrop_of(item: CanvasItem) -> Rect2:
-	var origin := item.get_global_transform_with_canvas().origin if item.is_inside_tree() else Vector2.ZERO
-	return Rect2(-origin, area())
+	if not item.is_inside_tree():
+		return Rect2(Vector2.ZERO, area())
+	var xf := item.get_global_transform_with_canvas()
+	return xf.affine_inverse() * Rect2(Vector2.ZERO, area())
 
 
 static func _place(blocker: Control, child: Control) -> void:
 	blocker.position = Vector2.ZERO
 	blocker.size = area()
+	var f := frame_scale()
+	child.scale = Vector2(f, f)
 	child.position = design_offset()
 	child.size = Vector2(DESIGN)
 	blocker.queue_redraw()

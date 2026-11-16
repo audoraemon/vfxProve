@@ -39,11 +39,11 @@ const CONFIRM_BUTTONS_Y := 196.0
 const TITLE_Y := 108.0
 
 
-## PAUSED's baseline in the frame's local coordinates. The mission's name bar is anchored to the area's top, so the title keeps its
-## screen position TITLE_Y whatever the area's height: the frame sits `offset_y` down, so the local y is negative in a tall area
-## (still on screen: local + offset).
-static func title_y(offset_y: float) -> float:
-	return TITLE_Y - offset_y
+## PAUSED's baseline in the frame's local coordinates. The mission's name bar is anchored to the area's top (the HUD is not scaled), so the
+## title keeps its screen position TITLE_Y whatever the area's height: the frame sits `offset_y` down and is drawn `scale` times as big,
+## so the local y is (TITLE_Y - offset_y) / scale, negative in a tall area (still on screen: offset + local * scale).
+static func title_y(offset_y: float, scale := 1.0) -> float:
+	return (TITLE_Y - offset_y) / scale
 
 
 var _ui: Control
@@ -228,7 +228,7 @@ func _draw_ui() -> void:
 	_ui.draw_rect(UiScale.backdrop(_ui), Color(0.0, 0.0, 0.0, 0.55))
 	var title := "PAUSED"
 	# The mission's name bar is anchored to the area's top, not centred: PAUSED keeps its place above it when the area is taller than 360.
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.TEXT_XL) * 0.5), title_y(UiScale.design_offset().y)), title,
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(title, UiTheme.TEXT_XL) * 0.5), title_y(UiScale.design_offset().y, UiScale.frame_scale())), title,
 		UiTheme.TEXT_XL, UiTheme.COL_GOLD)
 	if _confirm:
 		var lines := UiTheme.wrap(confirm_line(), CONFIRM_WIDTH, UiTheme.SIZE_BODY)

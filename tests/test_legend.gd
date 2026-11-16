@@ -222,8 +222,13 @@ static func _columns(t) -> void:
 static func _areas(t) -> void:
 	var panel := LegendPanel.new()
 	t.check(panel.design_offset() == Vector2.ZERO, "at 640 x 360 the legend's frame sits at the origin")
-	panel.size = Vector2(800.0, 450.0)
-	t.check(panel.design_offset() == Vector2(80.0, 45.0), "at 800 x 450 it is centred (%s)" % panel.design_offset())
+	t.check(panel.design_scale() == 1.0 and panel.to_design(Vector2(10.0, 20.0)) == Vector2(10.0, 20.0), "at 640 x 360 the legend's page is unscaled")
+	panel.size = Vector2(960.0, 495.0)
+	t.check(panel.design_offset() == Vector2(40.0, 0.0) and is_equal_approx(panel.design_scale(), 1.375), "at 960 x 495 the page is 1.375x, centred (%s)" % panel.design_offset())
+	t.check(panel.to_design(Vector2(40.0, 0.0)).is_equal_approx(Vector2.ZERO) and panel.to_design(Vector2(920.0, 495.0)).is_equal_approx(Vector2(640.0, 360.0)),
+		"a screen point maps to the page's own coordinates: the scaled page's corners are (0, 0) and (640, 360)")
+	panel.size = Vector2(640.0, 450.0)
+	t.check(panel.design_offset() == Vector2(0.0, 45.0) and panel.design_scale() == 1.0, "a 640 x 450 area keeps the page at 1x, centred down (%s)" % panel.design_offset())
 	panel.free()
 	var here := MemoryOverlay.box_rect(3)
 	var wide := MemoryOverlay.box_rect(3, Vector2(800.0, 450.0))

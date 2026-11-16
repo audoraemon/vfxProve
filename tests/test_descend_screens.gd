@@ -25,13 +25,14 @@ static func run(t) -> void:
 ## UI resolution Task 6b: the Upgrades screen draws in a 640x360 design frame centred in the area, holds the wide spaces while it lives, and no power's name is cut to another's.
 static func _frames(t) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
-	UiScale.set_test_area(Vector2i(800, 450))
-	var offset := Vector2(80, 45)
+	UiScale.set_test_area(Vector2i(960, 495))
+	var offset := Vector2(40, 0)
+	var f := 1.375  # 960x495 is a 1.375x page: 880x495, centred
 	var up := UpgradesScreen.new()
 	tree.root.add_child(up)
 	up.setup(DescendState.new())
-	t.check(up._ui.position == offset and up._ui.size == Vector2(640, 360), "upgrades: the frame is 640x360 at (80, 45) in an 800x450 area")
-	t.check(UiScale.backdrop(up._ui) == Rect2(-offset, Vector2(800, 450)), "upgrades: the backdrop is the whole area in frame coordinates")
+	t.check(up._ui.position == offset and up._ui.size == Vector2(640, 360) and up._ui.scale == Vector2(f, f), "upgrades: the frame is 640x360 at (40, 0), scaled 1.375x, in a 960x495 area")
+	t.check(UiScale.backdrop(up._ui) == Rect2(-offset / f, Vector2(960, 495) / f), "upgrades: the backdrop is the whole area in frame coordinates")
 	var got := []
 	up.action.connect(func(what: String) -> void: got.append(what))
 	up._on_gui_input(_click(UpgradesScreen.BACK_RECT.get_center()))

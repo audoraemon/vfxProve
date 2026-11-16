@@ -68,13 +68,14 @@ static func _god_result() -> Dictionary:
 ## answer clicks at frame-local points, and keep the rank letter (TEXT_XXL) clear of its neighbours.
 static func _frames(t) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
-	UiScale.set_test_area(Vector2i(800, 450))
-	var offset := Vector2(80, 45)
+	UiScale.set_test_area(Vector2i(960, 495))
+	var offset := Vector2(40, 0)
+	var f := 1.375  # 960x495 is a 1.375x page: 880x495, centred
 	var prep := PrepareScreen.new()
 	tree.root.add_child(prep)
 	prep.setup(MissionBook.last_judgement(), PackedStringArray(["doom", "heaven"]))
-	t.check(prep._ui.position == offset and prep._ui.size == Vector2(640, 360), "prepare: the frame is 640x360 at (80, 45) in an 800x450 area")
-	t.check(UiScale.backdrop(prep._ui) == Rect2(-offset, Vector2(800, 450)), "prepare: the backdrop is the whole area in frame coordinates")
+	t.check(prep._ui.position == offset and prep._ui.size == Vector2(640, 360) and prep._ui.scale == Vector2(f, f), "prepare: the frame is 640x360 at (40, 0), scaled 1.375x, in a 960x495 area")
+	t.check(UiScale.backdrop(prep._ui) == Rect2(-offset / f, Vector2(960, 495) / f), "prepare: the backdrop is the whole area in frame coordinates")
 	t.check(prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest" and prep.hit(PrepareScreen.tab_rect(0).get_center()) == "tab:0",
 		"prepare: MANIFEST and the first tab answer at frame-local points")
 	var emitted: Array[String] = []
@@ -97,7 +98,7 @@ static func _frames(t) -> void:
 
 	var res := ResultsScreen.new().setup(_god_result())
 	tree.root.add_child(res)
-	t.check(res._ui.position == offset and res._ui.size == Vector2(640, 360), "results: the frame is 640x360 at (80, 45)")
+	t.check(res._ui.position == offset and res._ui.size == Vector2(640, 360) and res._ui.scale == Vector2(f, f), "results: the frame is 640x360 at (40, 0), scaled 1.375x")
 	var got: Array[String] = []
 	res.action.connect(func(what: String) -> void: got.append(what))
 	res._on_gui_input(_click((res._menu.rect_of("tree") as Rect2).get_center()))

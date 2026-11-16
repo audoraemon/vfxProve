@@ -456,6 +456,8 @@ func _ready() -> void:
 		"pause":
 			go_to(Screen.MISSION)
 			_open_pause()
+		"legend", "legend-2":  # the legend of marks open over a running night (page 1, or page 2 for legend-2): a photograph of its frame in any window
+			go_to(Screen.MISSION)
 		"options":  # v0.11.2: the title with the Options panel open
 			go_to(Screen.TITLE)
 			(_screen_node as TitleScreen)._open_options()
@@ -582,6 +584,13 @@ func _ready() -> void:
 			go_to(Screen.BOARD)
 		_:
 			go_to(Screen.TITLE)
+	if show in ["legend", "legend-2"] and is_instance_valid(_mission):
+		await _until(func() -> bool: return _mission.started(), 10.0)
+		_mission.skip_intro()
+		await get_tree().create_timer(1.0).timeout
+		_mission.open_legend()
+		if show == "legend-2" and is_instance_valid(_mission._legend):
+			_mission._legend.open_next()
 	if "--capture" in args:
 		# A second for anything behind the screen to settle, then one frame to disk. This is how each screen
 		# task shows its work: SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture

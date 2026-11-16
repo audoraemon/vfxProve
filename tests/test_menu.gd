@@ -41,30 +41,34 @@ static func _click(at: Vector2) -> InputEventMouseButton:
 static func _frames(t) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	await t.process_frame  # the tree is only live after the first frame
-	UiScale.set_test_area(Vector2i(800, 450))
-	var offset := Vector2(80, 45)
+	UiScale.set_test_area(Vector2i(960, 495))
+	var offset := Vector2(40, 0)
+	var f := 1.375  # 960x495 is a 1.375x page: 880x495, centred
 
 	var pause := PauseMenu.new()
 	tree.root.add_child(pause)
 	pause.setup(false, Settings.new(), "user://test_menu_settings.cfg")
 	var frame: Control = pause._ui
-	t.check(frame.position == offset and frame.size == Vector2(640, 360), "pause: the frame is 640x360 at (80, 45) in an 800x450 area")
+	t.check(frame.position == offset and frame.size == Vector2(640, 360) and frame.scale == Vector2(f, f), "pause: the frame is 640x360 at (40, 0), scaled 1.375x, in a 960x495 area")
 	var emitted: Array[String] = []
 	pause.action.connect(func(what: String) -> void: emitted.append(what))
 	pause._on_gui_input(_click(pause._menu.rect_of("resume").get_center()))
 	t.check(emitted == ["resume"], "pause: a click at Resume's frame-local centre hits it (%s)" % [emitted])
 	pause._on_gui_input(_click(pause._menu.rect_of("options").get_center()))
-	t.check(pause.options_open() and UiScale.backdrop_of(pause._panel) == Rect2(-offset, Vector2(800, 450)),
-		"pause: the options panel's dimmer reaches all four edges of the area")
+	var dim := UiScale.backdrop_of(pause._panel)
+	var want := Rect2(-offset / f, Vector2(960, 495) / f)
+	t.check(pause.options_open() and dim.position.is_equal_approx(want.position) and dim.size.is_equal_approx(want.size),
+		"pause: the options panel's dimmer reaches all four edges of the area (%s, want %s)" % [dim, want])
 	t.check(PauseMenu.TITLE_Y <= Hud.BANNER_TOP - 6.0, "pause: PAUSED sits above the mission's name bar (%s < %s)" % [PauseMenu.TITLE_Y, Hud.BANNER_TOP])
 	for a in [Vector2i(640, 360), Vector2i(683, 384), Vector2i(640, 400), Vector2i(1000, 800), Vector2i(640, 1138), Vector2i(360, 1000)]:
 		UiScale.set_test_area(a)
 		var off_y := UiScale.design_offset().y
-		var on_screen := PauseMenu.title_y(off_y) + off_y  # the baseline on the screen
-		var first_button := pause._menu.rect_of("resume").position.y + off_y
-		t.check(on_screen - 24.0 >= 0.0 and on_screen <= Hud.BANNER_TOP - 6.0 and on_screen + 4.0 < first_button,
+		var fs := UiScale.frame_scale()
+		var on_screen := PauseMenu.title_y(off_y, fs) * fs + off_y  # the baseline on the screen: the HUD's name bar is not scaled, so neither is this
+		var first_button := pause._menu.rect_of("resume").position.y * fs + off_y
+		t.check(is_equal_approx(on_screen, PauseMenu.TITLE_Y) and on_screen - 24.0 * fs >= 0.0 and on_screen <= Hud.BANNER_TOP - 6.0 and on_screen + 4.0 < first_button,
 			"pause: PAUSED is on the screen, above the name bar and the buttons in a %s area (baseline %s, buttons from %s)" % [a, on_screen, first_button])
-	UiScale.set_test_area(Vector2i(800, 450))
+	UiScale.set_test_area(Vector2i(960, 495))
 	var lines := UiTheme.wrap(PauseMenu.CONFIRM_HUNT % "Two believers would be sealed", PauseMenu.CONFIRM_WIDTH, UiTheme.SIZE_BODY)
 	t.check(lines.size() <= 3, "pause: the Hunt's confirm stays within three lines with the wide spaces (%d)" % lines.size())
 	pause.queue_free()
@@ -74,7 +78,7 @@ static func _frames(t) -> void:
 	board.dev = true
 	tree.root.add_child(board)
 	board.setup(SaveFile.new(), "warning")
-	t.check(board._ui.position == offset and board._ui.size == Vector2(640, 360), "board: the frame is 640x360 at (80, 45)")
+	t.check(board._ui.position == offset and board._ui.size == Vector2(640, 360) and board._ui.scale == Vector2(f, f), "board: the frame is 640x360 at (40, 0), scaled 1.375x")
 	board._on_gui_input(_click(MissionBoard.tab_rect(2).get_center()))
 	t.check(board.tier == 3, "board: a click at the Wrath tab's frame-local centre opens it (%d)" % board.tier)
 	var picks: Array[String] = []
@@ -108,7 +112,7 @@ static func _frames(t) -> void:
 	tree.root.add_child(title)
 	WorldView.test_host = true
 	title.setup(3483, "D", Settings.new(), "user://test_menu_settings.cfg")
-	t.check(title._ui.position == offset, "title: the frame is at (80, 45)")
+	t.check(title._ui.position == offset and title._ui.scale == Vector2(f, f), "title: the frame is at (40, 0), scaled 1.375x")
 	var started: Array[String] = []
 	title.action.connect(func(what: String) -> void: started.append(what))
 	title._on_gui_input(_click(title._menu.rect_of("play").get_center()))

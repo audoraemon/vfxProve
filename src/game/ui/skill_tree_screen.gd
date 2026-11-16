@@ -649,7 +649,8 @@ func _draw_backdrop() -> void:
 
 
 func _draw_top_bar() -> void:
-	_ui.draw_rect(Rect2(UiScale.backdrop(_ui).position.x, 0.0, UiScale.area().x, 26.0), Color(0, 0, 0, 0.45))
+	var screen := UiScale.backdrop(_ui)
+	_ui.draw_rect(Rect2(screen.position.x, 0.0, screen.size.x, 26.0), Color(0, 0, 0, 0.45))
 	_ui.draw_rect(BACK_RECT, Color(0.04, 0.04, 0.06, 0.85))
 	UiTheme.frame(_ui, BACK_RECT, _hover == "back")
 	_text_centred(BACK_RECT.get_center().x, BACK_RECT.position.y + 13.0, "< BACK", SMALL_PX,

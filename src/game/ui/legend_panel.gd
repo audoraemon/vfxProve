@@ -83,14 +83,28 @@ const OVERHEAD_SPLIT := 10
 var page := 0
 ## This night's rows, built when the panel is set up: [[Color, String]].
 var _night: Array = []
-## Where the design frame starts, for the drawing helpers that reset the transform (_ellipse).
+## Where the design frame starts and how much it is scaled, for the drawing helpers that reset the transform (_ellipse).
 var _origin := Vector2.ZERO
+var _scale := 1.0
 
 
-## Where the design frame starts in the area: the area's middle less half of VIEW.
+## Where the design frame starts in the area: the area's middle less half of VIEW at design_scale().
 func design_offset() -> Vector2:
-	var area := size if size.x > 1.0 and size.y > 1.0 else UiScale.area()
-	return ((area - VIEW) / 2.0).floor()
+	return UiScale.frame_offset_for(_area())
+
+
+## How much the 640x360 page is scaled to fill the area (the same rule as every menu's design frame).
+func design_scale() -> float:
+	return UiScale.frame_scale_for(_area())
+
+
+func _area() -> Vector2:
+	return size if size.x > 1.0 and size.y > 1.0 else UiScale.area()
+
+
+## A point on the screen in the page's own coordinates (what a click on the legend would be measured in).
+func to_design(p: Vector2) -> Vector2:
+	return (p - design_offset()) / design_scale()
 
 
 func _enter_tree() -> void:
@@ -184,7 +198,8 @@ func _draw() -> void:
 	var area := size if size.x > 1.0 and size.y > 1.0 else UiScale.area()
 	draw_rect(Rect2(Vector2.ZERO, area), Color(0.0, 0.0, 0.0, 0.5))  # the dimmer covers the whole area, the panel sits in the design frame
 	_origin = design_offset()
-	draw_set_transform(_origin)
+	_scale = design_scale()
+	draw_set_transform(_origin, 0.0, Vector2(_scale, _scale))
 	draw_rect(PANEL, Color(0.04, 0.04, 0.06, 0.92))
 	UiTheme.frame(self, PANEL.grow(-3.0), true)
 	var title: String = TITLES[page - 1]
@@ -289,9 +304,9 @@ func _glyph(rows: Array[int], at: Vector2, col: Color, px := 2.0) -> void:
 
 
 func _ellipse(c: Vector2, rx: float, col: Color) -> void:
-	draw_set_transform(_origin + c, 0.0, Vector2(1.0, 0.5))
+	draw_set_transform(_origin + c * _scale, 0.0, Vector2(_scale, _scale * 0.5))
 	draw_arc(Vector2.ZERO, rx, 0.0, TAU, 24, col, 1.0)
-	draw_set_transform(_origin)
+	draw_set_transform(_origin, 0.0, Vector2(_scale, _scale))
 
 
 ## One row's picture, in the SWATCH_W box starting at `x`, centred on `cy`.

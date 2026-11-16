@@ -34,14 +34,15 @@ static func _click(at: Vector2) -> InputEventMouseButton:
 ## UI resolution Task 6b: the slot select and the god select draw in a 640x360 design frame centred in the area, hold the wide spaces while they live, and their text fits.
 static func _frames(t) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
-	UiScale.set_test_area(Vector2i(800, 450))
-	var offset := Vector2(80, 45)
+	UiScale.set_test_area(Vector2i(960, 495))
+	var offset := Vector2(40, 0)
+	var f := 1.375  # 960x495 is a 1.375x page: 880x495, centred
 	_write(1, "ruin", 7, 6)
 	var slots := SlotScreen.new()
 	tree.root.add_child(slots)
 	slots.setup(BASE)
-	t.check(slots._ui.position == offset and slots._ui.size == Vector2(640, 360), "slots: the frame is 640x360 at (80, 45) in an 800x450 area")
-	t.check(UiScale.backdrop(slots._ui) == Rect2(-offset, Vector2(800, 450)), "slots: the backdrop is the whole area in frame coordinates")
+	t.check(slots._ui.position == offset and slots._ui.size == Vector2(640, 360) and slots._ui.scale == Vector2(f, f), "slots: the frame is 640x360 at (40, 0), scaled 1.375x, in a 960x495 area")
+	t.check(UiScale.backdrop(slots._ui) == Rect2(-offset / f, Vector2(960, 495) / f), "slots: the backdrop is the whole area in frame coordinates")
 	var got := _listen(slots)
 	slots._on_gui_input(_click(slots.button_rect(0, "continue").get_center()))
 	t.check(got == ["continue"] and slots.chosen == 1, "slots: a click at Continue's frame-local centre hits it (%s)" % [got])
@@ -59,7 +60,7 @@ static func _frames(t) -> void:
 	var select := GodSelectScreen.new()
 	tree.root.add_child(select)
 	select.setup()
-	t.check(select._ui.position == offset and select._ui.size == Vector2(640, 360), "god select: the frame is 640x360 at (80, 45)")
+	t.check(select._ui.position == offset and select._ui.size == Vector2(640, 360) and select._ui.scale == Vector2(f, f), "god select: the frame is 640x360 at (40, 0), scaled 1.375x")
 	got = _listen(select)
 	select._on_gui_input(_click(GodSelectScreen.CHOOSE_RECT.get_center()))
 	t.check(got == ["chosen"], "god select: a click at Enter Path's frame-local centre chooses (%s)" % [got])

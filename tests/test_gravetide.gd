@@ -38,6 +38,18 @@ class HoldDirector extends MissionDirector:
 		return s == held
 
 
+## A night that wants one building down (a Raze target: R45's wants_down()) and needs another standing.
+class WantDirector extends MissionDirector:
+	var want: Structure
+	var held: Structure
+
+	func wants_down(s: Structure) -> bool:
+		return s == want
+
+	func needs_standing(s: Structure) -> bool:
+		return s == held
+
+
 static func _cast(made: Array, at: Vector2) -> GraveTideFx:
 	return FxTimeline.cast(GraveTideFx, made[5], at) as GraveTideFx
 
@@ -66,6 +78,7 @@ static func run(t) -> void:
 	_tour(t, made)
 	_slam_house(t, made)
 	_spared(t, made)
+	_wanted_down(t, made)
 	_life(t, made)
 	RD._done(made)
 	_perf(t)
@@ -957,6 +970,58 @@ static func _spared(t, made: Array) -> void:
 		"a building the night needs is never damaged: the temple (%.0f -> %.0f) and the held house (%.0f -> %.0f), skeletons beside them and slammed"
 		% [hp[0], temple.hp, hp[1], held.hp])
 	t.check(plain.destroyed or plain.hp < hp[2], "a plain house beside them is clawed (%.0f -> %.0f)" % [hp[2], plain.hp])
+	fx.end_now()
+	ctx.rules = null
+	rules.free()
+	_soldiers_back(was)
+
+
+## R45 at the tide's level: a building the night wants down is the god's to spoil even where it would be spared (the temple,
+## a Raze target here) -- clawed and slammed -- while a house it needs standing beside it keeps every hp.
+static func _wanted_down(t, made: Array) -> void:
+	RD._clear_all(made)
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[2]
+	var ctx: FxContext = made[5]
+	var was := _soldiers_in(made)
+	var temple: Structure = null
+	for s in env.structures():
+		if s.role == &"temple" and not s.destroyed:
+			temple = s
+			break
+	var held: Structure = null
+	if temple != null:
+		var best := INF
+		for s in env.near(temple.center(), 10.0):
+			if Visitors._wreckable(s) and s.kind == Structure.Kind.HOUSE and s.role == &"house" and _beside(grid, s) != Vector2.INF 					and s.distance_to(temple.center()) < best:
+				best = s.distance_to(temple.center())
+				held = s
+	t.check(temple != null and held != null and _beside(grid, temple) != Vector2.INF
+		and MissionKeeps.spared(temple, made[0], null), "(the temple, spared on a plain night, and a house near it)")
+	if temple == null or held == null:
+		_soldiers_back(was)
+		return
+	var director := WantDirector.new()
+	director.want = temple
+	director.held = held
+	var rules := Rules.new()
+	rules.director = director
+	ctx.rules = rules
+	var fx := _cast(made, RD._empty(made))
+	RD._run(fx, GraveTideFx.T_RISE + 0.1)
+	var hp := [temple.hp, held.hp]
+	for s in [temple, held]:
+		for i in 2:
+			fx._up_skeleton(_beside(grid, s))
+	fx._slam(_beside(grid, temple))
+	var slammed: bool = temple.destroyed or temple.hp < float(hp[0])
+	fx._slam(_beside(grid, held))
+	RD._run(fx, 20.0)
+	t.check(slammed and (temple.destroyed or temple.hp < hp[0]),
+		"a building the night wants down is slammed and clawed even where it would be spared: the temple (%.0f -> %.0f)"
+		% [hp[0], temple.hp])
+	t.check(held.hp == hp[1] and not held.destroyed,
+		"one it needs standing beside it is not (%.0f -> %.0f)" % [hp[1], held.hp])
 	fx.end_now()
 	ctx.rules = null
 	rules.free()

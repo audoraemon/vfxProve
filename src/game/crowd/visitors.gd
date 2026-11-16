@@ -49,7 +49,10 @@ extends RefCounted
 ## stops. A cornered citizen fights back (_fight_back()): every CITIZEN_SWING (the first after one swing's wait) he swings
 ## at the nearest undead within its reach of him (GUARD_REACH, or its own bite reach if longer: what can bite him can be
 ## struck back); a solid one (Animal.SOLID_UNDEAD) takes CITIZEN_BLOW, flinches, and never has its bite begun again by it;
-## a spirit, wraith, pale ghost or giant takes nothing. His own flight is his own: the blow only lands while it is in reach.
+## a spirit, wraith, pale ghost or giant takes nothing (the nearest solid one in reach is struck first). And the step an
+## undead hunting a citizen first comes within that reach of him, while he is up and out in the open, he strikes it at once,
+## before its own bite that step: the counter-blow (_counter(), R30a), once for each citizen it hunts.
+## His own flight is his own: the blow only lands while it is in reach.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -174,6 +177,8 @@ class Rule extends RefCounted:
 	## An undead's hold on the citizen it hunts (corners()): whom it is near, and for how long without a break.
 	var corner_of: Person
 	var corner_t := 0.0
+	## The counter-blow (R30a): the instance id of the citizen who has struck it as it first came within his reach (0: none).
+	var countered := 0
 
 
 func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> Visitors:
@@ -384,9 +389,13 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		if marching:
 			_march_on(a, r, delta)
 		return  # nobody near: it stands (or goes at a building), and looks again
+	# Already within his reach as the step begins: his counter-blow lands before its bite below.
+	if _counter(a, r, who):
+		return  # cut down by it
 	if a.ground_pos.distance_to(who.ground_pos) > r.bite_r:
 		if r.phase:
 			a.walk_to(who.ground_pos, delta, null)  # straight through whatever stands between
+			_counter(a, r, who)  # come within his reach on the way: he strikes the same step
 			return
 		# Round the buildings by the streets; only one there is no way to at all is left alone a while.
 		if a.route_to(who.ground_pos, delta, _grid, CHASE_REPATH) and a.blocked:
@@ -394,6 +403,8 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 			r.skip_left = SKIP_FOR
 			a.target = null
 			r.retarget_in = 0.0
+			return
+		_counter(a, r, who)
 		return
 	if r.bite_in > 0.0 or r.no_bite:
 		return
@@ -749,26 +760,58 @@ func _fight_back(delta: float) -> void:
 		_fell(hit)
 
 
+## The counter-blow (R30a): undead `a`, hunting citizen `who`, first comes within his blow reach (GUARD_REACH, or its own
+## bite reach if longer) while he is up and out in the open: he strikes at once -- before its own bite this step -- a solid
+## one taking CITIZEN_BLOW and flinching (its bite is never begun again for it), any other nothing. Once for each citizen
+## it hunts; his cornered blows (_fight_back()) then come every CITIZEN_SWING from here. True when the blow cut it down
+## (it is forgotten and freed: the caller must not touch it again).
+func _counter(a: Animal, r: Rule, who: Person) -> bool:
+	if r.recalling or not (a.breed in Animal.UNDEAD) or r.countered == who.get_instance_id() or not _cornerable(who):
+		return false
+	var reach := maxf(GUARD_REACH, r.bite_r)
+	if a.ground_pos.distance_squared_to(who.ground_pos) > reach * reach:
+		return false
+	r.countered = who.get_instance_id()
+	_fights[who] = CITIZEN_SWING  # his next blow, while cornered, a full swing on
+	who.swing_at(a.ground_pos)
+	if not (a.breed in Animal.SOLID_UNDEAD):
+		return false  # at one bare hands cannot touch
+	a.struck_from(who.ground_pos)
+	a.hurt(CITIZEN_BLOW)  # never begins its bite again (R31)
+	if a.is_alive():
+		return false
+	_fell(a)
+	return true
+
+
 ## A citizen alive, out in the open and on his feet: one an undead can corner.
 static func _cornerable(p: Person) -> bool:
 	return p != null and is_instance_valid(p) and not p.soldier and p.is_alive() and not p.inside and not p.is_down()
 
 
-## The nearest living undead within reach of citizen `p`'s blow (GUARD_REACH, or that one's own bite reach if longer), or
-## null.
+## The nearest living solid undead (Animal.SOLID_UNDEAD) within reach of citizen `p`'s blow (GUARD_REACH, or that one's
+## own bite reach if longer) -- a giant's long reach shadowing a skeleton must not waste his blow -- else the nearest other
+## undead in reach (he swings at it and lands nothing), or null.
 func _within_blow(p: Person) -> Animal:
 	var best: Animal = null
 	var best_d := INF
+	var solid: Animal = null
+	var solid_d := INF
 	for a in _rules.keys():
 		if not is_instance_valid(a) or not a.is_alive() or not (a.breed in Animal.UNDEAD):
 			continue
 		var r: Rule = _rules[a]
 		var reach := maxf(GUARD_REACH, r.bite_r)
 		var d: float = a.ground_pos.distance_squared_to(p.ground_pos)
-		if d <= reach * reach and d < best_d:
+		if d > reach * reach:
+			continue
+		if d < best_d:
 			best_d = d
 			best = a
-	return best
+		if a.breed in Animal.SOLID_UNDEAD and d < solid_d:
+			solid_d = d
+			solid = a
+	return solid if solid != null else best
 
 
 ## Soldiers at their post within a visitor's seek reach are drawn to the nearest visitor (lure(): only a soldier at his

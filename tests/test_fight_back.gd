@@ -125,7 +125,9 @@ static func run(t) -> void:
 	_step(v, 0.25)
 	t.check(crowd.cornered(c) and v.corners(c), "a citizen a zombie holds in reach is cornered by 0.55 s")
 	_step(v, Visitors.CORNER_HOLD + Visitors.CITIZEN_SWING + 0.05 - 0.55)
-	t.check(is_equal_approx(cz.health, 2.5) and c._swing_left > 0.0 and c._facing == _facing_to(c, cz.ground_pos),
+	# His counter-blow as it stood in his reach (R30a), then his first cornered blow a swing after CORNER_HOLD.
+	t.check(is_equal_approx(cz.health, 3.0 - 2.0 * Visitors.CITIZEN_BLOW) and c._swing_left > 0.0
+		and c._facing == _facing_to(c, cz.ground_pos),
 		"a citizen a zombie holds in reach is cornered and fights back (health %.2f, swing %.2f)" % [cz.health, c._swing_left])
 	# Weaker, and never resets the bite: over 5 s from the start, at most ceil(5 / 1.2) blows of 0.5.
 	var rule: Visitors.Rule = v._rules[cz]
@@ -138,7 +140,7 @@ static func run(t) -> void:
 		if cz.health < hp and rule.bite_in > before:
 			never_up = false
 	var most := ceilf(5.0 / Visitors.CITIZEN_SWING) * Visitors.CITIZEN_BLOW
-	t.check(never_up and 3.0 - cz.health <= most + 0.001 and cz.health < 2.5,
+	t.check(never_up and 3.0 - cz.health <= most + 0.001 and cz.health < 2.0,
 		"a citizen's blow is weaker and never resets the bite (took %.2f, most %.2f)" % [3.0 - cz.health, most])
 	c.free_pace(PIN)
 	v = _fresh(made)
@@ -186,10 +188,12 @@ static func run(t) -> void:
 	var dz := _zombie(v, at + Vector2(0.4, 0.0))
 	_step(v, 0.6)
 	t.check(crowd.cornered(d), "the one to be knocked down is cornered first")
+	var d_hp := dz.health  # his counter-blow only (R30a)
 	d.knock_down()
 	_step(v, 3.0)
-	t.check(d.is_down() and not crowd.cornered(d) and is_equal_approx(dz.health, 3.0),
-		"down or freed: no blow while he is down (health %.2f)" % dz.health)
+	t.check(d.is_down() and not crowd.cornered(d) and is_equal_approx(dz.health, d_hp)
+		and is_equal_approx(d_hp, 3.0 - Visitors.CITIZEN_BLOW),
+		"down or freed: no blow while he is down (health %.2f, at the knock %.2f)" % [dz.health, d_hp])
 	v = _fresh(made)
 	var f: Person = _pinned(crowd.citizens[5], at)
 	var fz := _zombie(v, at + Vector2(0.4, 0.0))
@@ -200,5 +204,72 @@ static func run(t) -> void:
 	t.check(not crowd.cornered(f) and v.slain == 0 and v._rules.is_empty(),
 		"down or freed: the zombie freed between steps, the next steps run and land nothing")
 	f.free_pace(PIN)
+	v = _fresh(made)
+
+	# --- The counter-blow (R30a): a BITING zombie comes up to a pinned citizen; he strikes the moment it comes within his
+	# reach, before its first bite knocks him down.
+	var k: Person = _pinned(crowd.citizens[6], at)
+	var kz := _zombie(v, at + Vector2(2.0, 0.0), true)
+	var hit_at := -1
+	var down_at := -1
+	for i in roundi(4.0 / DT):
+		v.step(DT)
+		if hit_at < 0 and kz.health < float(DeathParts.ZOMBIE_BLOWS):
+			hit_at = i
+		if down_at < 0 and k.is_down():
+			down_at = i
+			break
+	t.check(down_at >= 0 and hit_at >= 0 and hit_at <= down_at
+		and is_equal_approx(kz.health, float(DeathParts.ZOMBIE_BLOWS) - Visitors.CITIZEN_BLOW) and k._swing_left > 0.0,
+		"a biting zombie that reaches him takes his counter-blow before he is knocked down (hit step %d, down step %d, health %.2f)"
+			% [hit_at, down_at, kz.health])
+	var kr: Visitors.Rule = v._rules[kz]
+	t.check(kr.bite_in > 0.0, "the counter-blow does not begin the zombie's bite again: it bit (bite in %.2f)" % kr.bite_in)
+	k.free_pace(PIN)
+	v = _fresh(made)
+
+	# Summoned already within his reach: the counter lands in the same step, before the bite.
+	var k2: Person = _pinned(crowd.citizens[7], at)
+	var kz2 := _zombie(v, at + Vector2(0.4, 0.0), true)
+	v.step(DT)
+	t.check(k2.is_down() and is_equal_approx(kz2.health, float(DeathParts.ZOMBIE_BLOWS) - Visitors.CITIZEN_BLOW),
+		"a biting zombie already in his reach takes his counter-blow in the very step it knocks him down (health %.2f)"
+			% kz2.health)
+	_step(v, 2.0)
+	t.check(is_equal_approx(kz2.health, float(DeathParts.ZOMBIE_BLOWS) - Visitors.CITIZEN_BLOW),
+		"knocked down, he strikes no more (health %.2f)" % kz2.health)
+	k2.free_pace(PIN)
+	v = _fresh(made)
+
+	# --- A biting skeleton: its first strike kills, yet he lands his one blow before he dies.
+	var sk: Person = _pinned(crowd.citizens[8], at)
+	var skel := DeathParts.skeleton(v, at + Vector2(2.0, 0.0))
+	var sk_died := -1
+	var sk_hit := -1
+	for i in roundi(5.0 / DT):
+		v.step(DT)
+		if sk_hit < 0 and skel.health < float(DeathParts.SKELETON_BLOWS):
+			sk_hit = i
+		if not sk.is_alive():
+			sk_died = i
+			break
+	t.check(sk_died >= 0 and sk_hit >= 0 and sk_hit <= sk_died
+		and is_equal_approx(skel.health, float(DeathParts.SKELETON_BLOWS) - Visitors.CITIZEN_BLOW),
+		"a biting skeleton's victim lands one blow before he dies (hit step %d, died step %d, health %.2f)"
+			% [sk_hit, sk_died, skel.health])
+	sk.free_pace(PIN)
+	v = _fresh(made)
+
+	# --- A giant's long reach shadowing a skeleton does not waste his blow: he strikes the nearest SOLID one in reach.
+	var sh: Person = _pinned(crowd.citizens[9], at)
+	var sh_sk := DeathParts.skeleton(v, at + Vector2(0.5, 0.0))
+	v.give(sh_sk, {"no_bite": true})
+	var giant := v.summon(at + Vector2(0.0, 0.3), Animal.Breed.BONE_GIANT, 12, 1.0, 10.0, 0.9, 1.4, false)
+	v.give(giant, {"prey": "soldiers", "no_bite": true})
+	_step(v, Visitors.CORNER_HOLD + Visitors.CITIZEN_SWING + 0.1)
+	t.check(is_equal_approx(sh_sk.health, float(DeathParts.SKELETON_BLOWS) - 2.0 * Visitors.CITIZEN_BLOW)
+		and is_equal_approx(giant.health, 12.0),
+		"a nearer giant does not take the blow meant for the skeleton (skeleton %.2f, giant %.2f)" % [sh_sk.health, giant.health])
+	sh.free_pace(PIN)
 
 	_done(made)

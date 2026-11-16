@@ -17,7 +17,8 @@ extends FxTimeline
 ## A death wave ahead of it (R40): every CONE_EVERY from the head risen to the loop's end, everyone out in the open (not
 ## guised, no decoy) within CONE_R of the head and CONE_HALF of its heading panics from the head (cone_holds(): pure
 ## geometry over the effect's clock, staged or not alike). While it glides and loops the town's lights dim where it will be
-## DIM_LEAD on (TownPools.dim(), drawing only), lifted at the end, cut short or freed. Staged only: a cold fog bank rolls
+## DIM_LEAD on (TownPools.dim(), drawing only), easing out over DEPART as it climbs away, lifted then, at the end, cut short
+## or freed. Staged only: a cold fog bank rolls
 ## FOG_LEAD ahead of the head along its path (Fog), and the ground frosts FROST_LEAD ahead, where it is about to pass, and
 ## fades over FROST_LIFE (Frost; at its natural end the frost is left to fade on its own, cut short it goes with it).
 ## Its souls (R11): each one the shadow takes gives up a soul that streams into its body, arriving SOUL_FLY after the kill
@@ -401,10 +402,12 @@ func _cone(time: float) -> void:
 			frightened_ahead += 1
 
 
-## The town's lights dim ahead while it glides and loops (drawing only), lifted once the loop is done.
+## The town's lights dim ahead while it glides and loops (drawing only); as it climbs away the dim eases out over DEPART
+## in step with shown() (no pop at glide_end()), and is lifted once it is gone (at the end at the latest: _finish()).
 func _dim() -> void:
-	if t >= T_RISE and t <= glide_end():
-		TownPools.dim(get_instance_id(), ahead_at(t, DIM_LEAD), DIM_R, DIM)
+	var out := clampf((t - glide_end()) / DEPART, 0.0, 1.0)
+	if t >= T_RISE and out < 1.0:
+		TownPools.dim(get_instance_id(), ahead_at(t, DIM_LEAD), DIM_R, DIM * (1.0 - out))
 		_dimmed = true
 	elif _dimmed:
 		_undim()

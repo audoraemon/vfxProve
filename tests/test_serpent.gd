@@ -665,10 +665,17 @@ static func _dim(t, made: Array) -> void:
 			far = minf(far, TownPools.dim_factor(fx.head_at(fx.t) - Vector2(PaleSerpentFx.DIM_R + 9.0, 0.0)))
 	t.check(worst <= 0.3 and is_equal_approx(far, 1.0),
 		"the town's lights dim ahead (%.2f kept at most), and only there (%.2f far behind)" % [worst, far])
+	# It eases out as it climbs away (in step with shown()), no pop at glide_end(): midway through DEPART the light under
+	# the dim is between the glide's and its own.
+	RD._run(fx, PaleSerpentFx.glide_end() + PaleSerpentFx.DEPART * 0.5 - fx.t)
+	var mid := TownPools.dim_factor(fx.ahead_at(fx.t, PaleSerpentFx.DIM_LEAD))
+	t.check(mid > worst + 0.05 and mid < 0.95 and absf(fx.shown() - 0.5) < 0.05,
+		"midway through DEPART the dim eases out (%.2f kept, the glide's %.2f; shown %.2f)" % [mid, worst, fx.shown()])
 	var ahead := fx.ahead_at(fx.t, 1.0)
-	RD._run(fx, 0.3)
-	t.check(is_equal_approx(TownPools.dim_factor(ahead), 1.0) and is_equal_approx(TownPools.dim_factor(at), 1.0),
-		"and come back after the end (%.2f)" % TownPools.dim_factor(ahead))
+	RD._run(fx, fx.duration - fx.t + 0.1)
+	t.check(fx.finished and is_equal_approx(TownPools.dim_factor(ahead), 1.0) and is_equal_approx(TownPools.dim_factor(at), 1.0)
+		and not TownPools._dims.has(fx.get_instance_id()),
+		"and come back after the end (%.2f, ended %s)" % [TownPools.dim_factor(ahead), fx.finished])
 	fx.end_now()
 
 
@@ -696,6 +703,26 @@ static func _pool_dim(t) -> void:
 	pools._process(0.016)
 	t.check(is_equal_approx(TownPools.dim_factor(g), 1.0) and is_equal_approx(pools._col[0].a, 0.8),
 		"lifted, the pool is its own again in the next frame (%.3f)" % pools._col[0].a)
+	# A dim that changes the pool by less than the flicker's 0.01 threshold is still written exactly (no residue).
+	TownPools.dim(-79, g, 6.0, 0.005)
+	pools._process(0.016)
+	t.check(absf(pools._col[0].a - pools._strength(p)) < 1e-5 and pools._col[0].a < 0.799,
+		"a dim's change is written exactly, however small (%.4f)" % pools._col[0].a)
+	pools._col[0].a = 0.795  # as the last eased frame of a dim could leave it, within the flicker's 0.01
+	TownPools.undim(-79)
+	pools._process(0.016)
+	t.check(absf(pools._col[0].a - 0.8) < 1e-5, "lifted, the pool is exactly its own again: no residue (%.4f)" % pools._col[0].a)
+	# setup() clears the dims a freed effect may have left behind (the registry is static).
+	TownPools.dim(-80, g, 6.0, 0.75)
+	var fresh := TownPools.new()
+	var town := Town.new()
+	town.build(EnvironmentField.new())
+	fresh.setup(town)
+	t.check(TownPools._dims.is_empty() and is_equal_approx(TownPools.dim_factor(g), 1.0),
+		"a fresh town's pools start with no dims laid (%d left)" % TownPools._dims.size())
+	TownPools.undim(-80)
+	fresh.free()
+	town.free()
 	pools._canvas.free()
 	pools.free()
 

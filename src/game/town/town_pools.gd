@@ -246,6 +246,9 @@ static func pools_for(town: Town) -> Array[Dictionary]:
 func setup(town: Town) -> TownPools:
 	name = "Pools"
 	_env = town._env
+	# The dims are static: a fresh town's lights start with none an earlier town's effect may have left laid.
+	_dims.clear()
+	_dims_serial += 1
 	buffer = SubViewport.new()
 	buffer.name = "LightBuffer"
 	buffer.disable_3d = true
@@ -397,7 +400,8 @@ static func undim(source: int) -> void:
 ## 1 - amount * (1 - d / radius) within its radius, else 1. Pure over the registry.
 static func dim_factor(g: Vector2) -> float:
 	var k := 1.0
-	for v: Array in _dims.values():
+	for key in _dims:  # the keys, not values(): no array made per pool per frame
+		var v: Array = _dims[key]
 		var r: float = v[1]
 		var d := g.distance_to(v[0])
 		if d < r:
@@ -421,13 +425,14 @@ func _strength(p: Dictionary) -> float:
 	return base * (1.0 - f * 0.25 + f * 0.25 * sin(_time * 5.0 + i * 2.3) * sin(_time * 3.1 + i))
 
 
-## Re-read every pool's flicker; true when one changed enough to show.
-func _refresh() -> bool:
+## Re-read every pool's flicker; true when one changed enough to show. `exact` (the dims changed since the last read):
+## every pool takes its exact strength, so a dim eased out or lifted leaves no residue under the flicker's 0.01.
+func _refresh(exact := false) -> bool:
 	var changed := false
 	for p in _pools:
 		var a := _strength(p)
 		var i: int = p.i
-		if absf(_col[i].a - a) > 0.01:
+		if absf(_col[i].a - a) > 0.01 or (exact and _col[i].a != a):
 			_col[i].a = a
 			changed = true
 	return changed
@@ -437,11 +442,12 @@ func _process(delta: float) -> void:
 	_time += delta
 	_since += delta
 	var redraw := false
+	var dims_moved := _dims_seen != _dims_serial
 	if _since >= FLICKER_STEP:
 		_since = 0.0
-		redraw = _refresh()
-	elif not _dims.is_empty() or _dims_seen != _dims_serial:
-		redraw = _refresh()  # a dim is laid (it moves every frame) or was just lifted: re-read now, not a tenth of a second on
+		redraw = _refresh(dims_moved)
+	elif not _dims.is_empty() or dims_moved:
+		redraw = _refresh(dims_moved)  # a dim is laid (it moves every frame) or was just lifted: re-read now, not a tenth of a second on
 	_dims_seen = _dims_serial
 	if Structure.view != _seen_view:
 		_seen_view = Structure.view

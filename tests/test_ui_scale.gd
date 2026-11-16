@@ -40,6 +40,13 @@ static func _headless_keeps(t) -> void:
 	var root := (Engine.get_main_loop() as SceneTree).root
 	t.check(root.content_scale_aspect == Window.CONTENT_SCALE_ASPECT_KEEP, "headless: UiScale.install leaves the root's aspect at KEEP")
 	t.check(Vector2i(root.get_visible_rect().size) == Vector2i(640, 360) and UiScale.fit() == 1.0, "headless: the visible rect is 640x360 and fit 1")
+	# A missed size_changed (maximize ending mid-change): the watcher's test sees a window size other than the last one followed.
+	var kept := UiScale._followed_size
+	UiScale._followed_size = root.size
+	t.check(not UiScale.needs_follow(root), "watcher: no re-follow while the window keeps the size last followed")
+	UiScale._followed_size = Vector2i(697, 360)
+	t.check(UiScale.needs_follow(root), "watcher: a window size other than the one followed asks for a re-follow")
+	UiScale._followed_size = kept
 
 
 ## In every window of the size table the visible world (area / fit, reference px at zoom 1) is within 840x360, and fills the area.

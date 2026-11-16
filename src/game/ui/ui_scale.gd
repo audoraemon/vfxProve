@@ -51,6 +51,12 @@ static func install(tree: SceneTree) -> void:
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND  # fill any window (project.godot keeps "keep" for headless); _follow_root sets the size to floor(window / k)
 	root.size_changed.connect(_follow_root.bind(root))
 	_follow_root(root)
+	# Maximize and OS snaps can end on a size whose size_changed fired mid-change (seen on a user's machine: the area stuck at the
+	# half-step 697x360 inside a maximized window). A watcher re-follows whenever the window size differs from the last one followed.
+	var watcher := RootWatcher.new()
+	watcher.name = "UiScaleWatcher"
+	watcher.process_mode = Node.PROCESS_MODE_ALWAYS
+	root.add_child.call_deferred(watcher)
 
 
 ## The root's frame as an image in 640x360-style logical px (nearest-resized from the window-sized root texture, which draws at k x).
@@ -91,10 +97,27 @@ static func window_arg(args: PackedStringArray) -> Vector2i:
 	return Vector2i.ZERO
 
 
+static var _followed_size := Vector2i.ZERO
+
+
 static func _follow_root(root: Window) -> void:
+	_followed_size = root.size
 	var lay := layout(root.size)
 	root.content_scale_size = lay["area"]
 	apply(lay)
+
+
+## True when the root's window size is not the one the layout was last made for.
+static func needs_follow(root: Window) -> bool:
+	return root.size != _followed_size
+
+
+## Re-follows the root's size each frame it differs from the last followed one (a missed size_changed).
+class RootWatcher extends Node:
+	func _process(_delta: float) -> void:
+		var root := get_tree().root
+		if UiScale.needs_follow(root):
+			UiScale._follow_root(root)
 
 
 ## Make `lay` (a layout() result) the current one and tell the listeners.

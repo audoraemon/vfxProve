@@ -1457,20 +1457,23 @@ static func _cast_radius(key: String, level := 1) -> float:
 
 
 ## Something frightening at `at` of `radius` (a maddened citizen turning on the crowd): a danger the town knows of for
-## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()).
+## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()). `fresh_only` (R49): a
+## citizen already panicking is left to the flight he is in -- not sent running afresh from here -- so a fright renewed every
+## second (a ghost horde's) costs no new route for those it already has running.
 func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName,
-		soldiers_too := false) -> void:
+		soldiers_too := false, fresh_only := false) -> void:
 	if is_veiled(at):
 		return  # nothing there is seen (Unseen Hour)
 	threats.register(at, radius, severity, seconds, sight, sound, kind)
 	var points: Array[Vector2] = [at]
-	_react(points, radius, sound, at, kind, soldiers_too)
+	_react(points, radius, sound, at, kind, soldiers_too, fresh_only)
 
 
 ## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look. Citizens;
 ## and with `soldiers_too` (v0.11.1: a power's fright -- Collective Delusion's false danger -- not an ordinary cast's danger,
 ## where soldiers stand fast) the soldiers too, who run and look as citizens do but do not cry out or pass a fright on.
-func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2, kind := &"", soldiers_too := false) -> void:
+func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2, kind := &"", soldiers_too := false,
+		fresh_only := false) -> void:
 	var frightened: Array[Person] = []
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
@@ -1488,6 +1491,8 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 			p.wake()  # a loud blow wakes the sleeping (Curfew)
 		if best <= radius + Person.THREAT_MARGIN:
 			var was := p.mind
+			if fresh_only and was == Person.Mind.PANIC:
+				continue  # running already: left to his flight (R49)
 			p.panic(at, radius, kind)
 			if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
 				frightened.append(p)

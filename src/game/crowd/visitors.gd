@@ -164,6 +164,8 @@ class Rule extends RefCounted:
 	var bounds := Vector3.ZERO
 	var fright_r := 0.0
 	var fright_in := 0.0
+	## give()'s `fright_fresh`: its fright sends running only those not running already (Crowd.fright()'s fresh_only).
+	var fright_fresh := false
 	var slow := 1.0
 	var slow_for := 4.0
 	var slow_r := 0.5
@@ -247,6 +249,7 @@ func give(a: Animal, traits: Dictionary) -> void:
 	if traits.has("prey"):
 		r.soldiers_only = String(traits.prey) == "soldiers"
 	r.fright_r = float(traits.get("fright_r", r.fright_r))
+	r.fright_fresh = bool(traits.get("fright_fresh", r.fright_fresh))
 	r.slow = float(traits.get("slow", r.slow))
 	r.slow_for = float(traits.get("slow_for", r.slow_for))
 	r.slow_r = float(traits.get("slow_r", r.slow_r))
@@ -633,11 +636,14 @@ func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person
 	var r2 := reach * reach
 	for e in _people():
 		var p := e as Person
-		# Alive asked again: one bitten earlier this step is still on the step's list.
-		if p == null or p.inside or p == skip or not p.is_alive() or (r != null and not (_fair(r, p) and _within(r, p))):
+		if p == null:
 			continue
+		# The reach first: it is the cheapest test and turns most of a town away (the same pick in the same order).
 		var d := p.ground_pos.distance_squared_to(at)
 		if d > r2:
+			continue
+		# Alive asked again: one bitten earlier this step is still on the step's list.
+		if p.inside or p == skip or not p.is_alive() or (r != null and not (_fair(r, p) and _within(r, p))):
 			continue
 		if d < best_d:
 			best_d = d
@@ -666,9 +672,17 @@ func _guard(delta: float) -> void:
 	# The soldiers who can strike, once a step in the field's order (_people()).
 	var guards: Array[Person] = []
 	if not _rules.is_empty():
+		# Only a soldier within GUARD_REACH of the box round every visitor can reach one: the rest are passed over at once.
+		var box := Rect2()
+		var boxed := false
+		for a in _rules.keys():
+			if is_instance_valid(a) and a.is_alive():
+				box = box.expand(a.ground_pos) if boxed else Rect2(a.ground_pos, Vector2.ZERO)
+				boxed = true
+		box = box.grow(GUARD_REACH + 0.01)  # a hair over: one exactly at his reach is still in it
 		for e in _people():
 			var p := e as Person
-			if p != null and p.soldier and p.is_alive() and not p.inside and not p.is_down():
+			if p != null and p.soldier and boxed and box.has_point(p.ground_pos) and p.is_alive() and not p.inside 					and not p.is_down():
 				guards.append(p)
 	var reach2 := GUARD_REACH * GUARD_REACH
 	for a in _rules.keys():
@@ -835,18 +849,22 @@ func _within_blow(p: Person) -> Animal:
 ## post or holding ground answers; one already on his way, fighting or ordered elsewhere does not).
 func _lure() -> void:
 	var seen := {}
+	var up := living()
 	for a in _rules.keys():
 		if not is_instance_valid(a) or not a.is_alive():
 			continue
 		var r: Rule = _rules[a]
 		if r.recalling:
 			continue
-		for e in _field.in_radius(a.ground_pos, r.seek_r):
+		# The step's living (the field's order, as in_radius() would list them, without a fresh list per visitor), the
+		# soldiers among them within its seek reach, alive asked again.
+		var r2 := r.seek_r * r.seek_r
+		for e in _people():
 			var p := e as Person
-			if p == null or not p.soldier or p.inside or seen.has(p):
+			if p == null or not p.soldier or p.inside or seen.has(p) or p.ground_pos.distance_squared_to(a.ground_pos) > r2 					or not p.is_alive():
 				continue
 			seen[p] = true
-			var nearest := _nearest_visitor(p.ground_pos)
+			var nearest := _nearest_visitor(p.ground_pos, up)
 			if nearest != null and p.ground_pos.distance_to(nearest.ground_pos) > GUARD_REACH:
 				p.lure(nearest.ground_pos, LURE_FOR)
 
@@ -858,7 +876,7 @@ func _frighten(a: Animal, r: Rule, delta: float) -> void:
 		return
 	r.fright_in = FRIGHT_EVERY
 	if _crowd != null and is_instance_valid(_crowd):
-		_crowd.fright(a.ground_pos, r.fright_r, 0.5, 2.0, 3.0, 3.0, &"beast")
+		_crowd.fright(a.ground_pos, r.fright_r, 0.5, 2.0, 3.0, 3.0, &"beast", false, r.fright_fresh)
 
 
 ## slow: whoever it is passing through keeps `slow` of their pace for `slow_for` (each visitor holds under its own id).
@@ -892,10 +910,11 @@ func _lift_slows(delta: float) -> void:
 			_slows.erase(id)
 
 
-func _nearest_visitor(at: Vector2) -> Animal:
+## `up`: living(), when the caller has it already.
+func _nearest_visitor(at: Vector2, up: Array[Animal] = []) -> Animal:
 	var best: Animal = null
 	var best_d := INF
-	for a in living():
+	for a in (up if not up.is_empty() else living()):
 		var r: Rule = _rules[a]
 		if r.recalling:
 			continue

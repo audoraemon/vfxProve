@@ -49,8 +49,10 @@ var _built_version := -1
 var _w := 0
 var _h := 0
 var _origin := Vector2i.ZERO
-## The cells _weigh_danger() weighted, each once (Vector2i -> true).
+## The cells _weigh_danger() weighted: Vector2i -> how many of the zones weighted now stand over it.
 var _weighted := {}
+## The zones weighted now ([at, radius] -> their cells).
+var _zones := {}
 var _threat_epoch := -1
 var _due := 0.0
 var _at := 0
@@ -229,29 +231,49 @@ func _at_field(f: PackedInt32Array, id: Vector2i) -> int:
 	return f[y * _w + x]
 
 
-## Danger costed into the walk grid: cells in an active threat or a recent impact weigh DANGER_WEIGHT.
+## Danger costed into the walk grid: cells in an active threat or a recent impact weigh DANGER_WEIGHT. Kept by zone (the
+## death review's frame-cost pass): only a zone come or gone since the last weighing is walked, each cell counting the zones
+## over it, weighted while one is and back to 1.0 when the last goes -- the grid as weighing every zone afresh leaves it, at
+## a fraction of the cost when many small dangers come and go (a ghost horde's frights: a zone each, every second).
 func _weigh_danger() -> void:
-	for id in _weighted:
-		if _grid.grid.is_in_boundsv(id):
-			_grid.grid.set_point_weight_scale(id, 1.0)
-	_weighted.clear()
 	# A zone weighted once needs no second pass: a ground fire's danger and the recent impacts it leaves are the same disc.
-	var done := {}
+	var now := {}
 	for t: Dictionary in _crowd.threats.all_zones():
-		var c: Vector2 = t.at
-		var r: float = t.radius
-		var key := [c, r]
-		if done.has(key):
+		now[[t.at as Vector2, float(t.radius)]] = true
+	for key in _zones.keys():
+		if now.has(key):
 			continue
-		done[key] = true
-		var c0 := _grid.world_to_id(c - Vector2(r, r))
-		var c1 := _grid.world_to_id(c + Vector2(r, r))
-		for y in range(c0.y, c1.y + 1):
-			for x in range(c0.x, c1.x + 1):
-				var id := Vector2i(x, y)
-				if _grid.grid.is_in_boundsv(id) and _grid.id_to_world(id).distance_to(c) <= r:
-					_grid.grid.set_point_weight_scale(id, DANGER_WEIGHT)
-					_weighted[id] = true
+		for id: Vector2i in _zones[key]:
+			var n: int = _weighted[id] - 1
+			if n > 0:
+				_weighted[id] = n
+			else:
+				_weighted.erase(id)
+				_grid.grid.set_point_weight_scale(id, 1.0)
+		_zones.erase(key)
+	for key in now:
+		if _zones.has(key):
+			continue
+		var cells := _zone_cells(key[0], key[1])
+		_zones[key] = cells
+		for id in cells:
+			var n: int = _weighted.get(id, 0)
+			if n == 0:
+				_grid.grid.set_point_weight_scale(id, DANGER_WEIGHT)
+			_weighted[id] = n + 1
+
+
+## The walk cells of the zone at `c`, radius `r`: in the grid, their middles within `r` of `c`.
+func _zone_cells(c: Vector2, r: float) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var c0 := _grid.world_to_id(c - Vector2(r, r))
+	var c1 := _grid.world_to_id(c + Vector2(r, r))
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			var id := Vector2i(x, y)
+			if _grid.grid.is_in_boundsv(id) and _grid.id_to_world(id).distance_to(c) <= r:
+				out.append(id)
+	return out
 
 
 func _rebuild_all() -> void:

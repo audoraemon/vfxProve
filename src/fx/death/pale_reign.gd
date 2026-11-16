@@ -303,13 +303,13 @@ func _on_touch(_a: Animal, _who: Person, _first: bool) -> void:
 
 
 ## R39: every ghost up is given a touch that kills nothing and no bite, and frightens PALE_GHOST_FRIGHT_R round it; they hunt on
-## inside the district to the end of the reign. No ghost is made after it (_ghost_at()).
+## inside the district to the end of the reign. R49: their fright sends running only those not running already (fright_fresh). No ghost is made after it (_ghost_at()).
 func _spend() -> void:
 	if spent or horde == null:
 		return
 	spent = true
 	for a in horde.living():
-		horde.give(a, {"touch_kill": &"", "no_bite": true, "fright_r": DeathParts.PALE_GHOST_FRIGHT_R})
+		horde.give(a, {"touch_kill": &"", "no_bite": true, "fright_r": DeathParts.PALE_GHOST_FRIGHT_R, "fright_fresh": true})
 
 
 ## The horde sinks: every ghost goes back where it came up and is gone within FADE (a puff of dust where each stood).

@@ -1,9 +1,11 @@
 {
- "hash": "932ead3c8acbd200",
- "updated": "2026-11-17T01:12:31+07:00",
+ "hash": "9b5b55077e5abd15",
+ "updated": "2026-11-17T01:13:02+07:00",
  "changes": {
-  "date": "<t:1794852751:f>",
-  "items": []
+  "date": "<t:1794852782:f>",
+  "items": [
+   "New: Death and Decree ability levels (in progress)"
+  ]
  },
  "snapshot": {
   "project": {
@@ -199,6 +201,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-13",
     "order": 2
+   },
+   "death-decree-levels": {
+    "title": "Death and Decree ability levels",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-17",
+    "order": 5
    },
    "death-review-2": {
     "title": "Death powers: your second review",

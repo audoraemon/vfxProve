@@ -3,7 +3,8 @@
 Status: **proposed** (2026-11-16), waiting for the user's word. The twists were picked with the user on 2026-11-16;
 the numbers are first guesses, to tune in play.
 
-Scope: the twenty powers in the Death and Decree rows of `GodTree.TABLE` (feat/god-progression 8e975fb6). Their build
+Scope: the twenty powers in the Death and Decree rows of `GodTree.TABLE` (feat/god-progression 7de2f7cd, after the
+Death second review: level 1 below is the shipped numbers of docs/KAK_God_Death_Review_Rulings.md R28-R49). Their build
 specs (`2026-11-12-kak-death-authority-powers-design.md`, `2026-11-12-kak-decree-authority-powers-design.md`) left
 levels 1-5 and the level-5 twists to this spec, as Passage did.
 
@@ -55,7 +56,7 @@ Ruin's destruction spreads, Dominion's gives a new way to steer, Passage's sprin
 - Data: each row gets a `levels` table (index 0 = level 1). The effect reads each number through
   `PowerBook.stat(extra, "<key>", "<STAT>", CONST)`; a twist is gated by `PowerBook.twist_at(extra, key)`. Level 5
   carries `"twist": true` and `"twist_text"`.
-- Stat names are the effect's own constants (feat/god-progression 8e975fb6). **cd** is the cooldown in seconds. The
+- Stat names are the effect's own constants (feat/god-progression 7de2f7cd). **cd** is the cooldown in seconds. The
   Tier 5 powers are once a descent at every level, so they have no cd column.
 - Might check at level 5 (the god's top budget is 16): Death Tier 5 Serpent 8 + Grave Tide 8 = 16; Decree Tier 5
   Cage 8 + Verdict 8 = 16; both at the cap. Death Tier 4 Gate 7 + Pale Reign 8 = 15 and Decree Tier 4 Eminent 6 +
@@ -100,7 +101,8 @@ a Raise the Dead ZOMBIE (`ZOMBIE_LIFE` 30 s, hunts the nearest, whoever it kills
 level 1 numbers. The body is used up as Raise uses it.
 
 ### Raise the Dead (`raise`, 1 Might, `src/fx/death/raise_the_dead.gd`; ZOMBIE / SPIRIT)
-Grows: the zombie's time `ZOMBIE_LIFE`, how many rise in its chain `CHAIN`, the spirit's time `SPIRIT_LIFE`, cooldown.
+Grows: the zombies' time `ZOMBIE_LIFE`, the cast's chain `CHAIN` (R29: it counts the whole cast), the spirits' time
+`SPIRIT_LIFE`, cooldown. The ring `RING_R` 3.0 and `MOST` 8 bodies stay at every level (the frame's cost, R28).
 
 | Lv | ZOMBIE_LIFE | CHAIN | SPIRIT_LIFE | cd | Might |
 |---|---|---|---|---|---|
@@ -110,11 +112,11 @@ Grows: the zombie's time `ZOMBIE_LIFE`, how many rise in its chain `CHAIN`, the 
 | 4 | 36 | 4 | 23 | 22 | 2 |
 | 5 | 38 | 5 | 24 | 21 | 3 |
 
-**Twist -- Body and Soul:** one cast gives both halves. ZOMBIE: when the first zombie (the one clicked) is cut down or
-its time ends, its soul rises out of it as this cast's SPIRIT (`SPIRIT_LIFE`, everyone within `FRIGHT_R` flees).
-SPIRIT: when the spirit fades, it sinks back into its body and the body gets up as this cast's ZOMBIE (`ZOMBIE_LIFE`,
-its own `CHAIN`). It happens once a cast: the second half never brings back the first. A body with no soul (marked red)
-gets no spirit.
+**Twist -- Body and Soul:** one cast gives both halves, for every body the ring raised. ZOMBIE: when one of the ring's
+zombies is cut down or its time ends, its soul rises out of it as a spirit of this cast (`SPIRIT_LIFE`, drifting after
+its own nearest group as R28's spirits do); a body with no soul gives none. SPIRIT: when one of the ring's spirits
+fades, it sinks back into its body and the body gets up as a zombie of this cast (`ZOMBIE_LIFE`, counted in the cast's
+`CHAIN`). Once for each body: the second half never brings back the first, and the chain's risers give no spirit.
 
 ## Tier 2
 
@@ -185,66 +187,76 @@ corpse takes the last victim's sprite set and keeps its Death sigil, which only 
 ## Tier 4
 
 ### The Gate Below (`gatebelow`, 5 Might, `src/fx/death/the_gate_below.gd`)
-Grows: the arms' reach `REACH`, time open `SPAN`, the wraiths' time `WRAITH_LIFE`, cooldown.
+Grows: the arms' reach `REACH` (the lip `EDGE` follows it at 0.7 of it, R33's 4.2 of 6), time open `SPAN`, the
+touches a wraith has before it sinks `WRAITH_TOUCHES` (R37), cooldown. `ARMS` 36 stays at every level (the frame's
+cost). The wraiths get stronger, not more of them: `SPAN` grows little, since every grab is one more wraith.
 
-| Lv | REACH | SPAN | WRAITH_LIFE | cd | Might |
-|---|---|---|---|---|---|
-| 1 | 6 | 12 | 20 | 90 | 5 |
-| 2 | 6.25 | 13 | 21 | 87 | 5 |
-| 3 | 6.5 | 14 | 22 | 84 | 6 |
-| 4 | 6.75 | 15 | 23 | 81 | 6 |
-| 5 | 7 | 16 | 24 | 78 | 7 |
+| Lv | REACH | EDGE | SPAN | WRAITH_TOUCHES | cd | Might |
+|---|---|---|---|---|---|---|
+| 1 | 6 | 4.2 | 12 | 3 | 90 | 5 |
+| 2 | 6.25 | 4.375 | 12.5 | 3 | 87 | 5 |
+| 3 | 6.5 | 4.55 | 13 | 4 | 84 | 6 |
+| 4 | 6.75 | 4.725 | 13.5 | 4 | 81 | 6 |
+| 5 | 7 | 4.9 | 14 | 5 | 78 | 7 |
 
-**Twist -- Graves Answer:** while the rift is open, every body lying within 12 of it sprouts pale arms (the Gate's
-arms, small). Each drags the nearest living person within 1.5 of it down into the ground, once, leaving no body, and
-the body sinks with them. Each one taken is a soul: it climbs out of the rift as a wraith when it closes, as the rift's
-own do.
+**Twist -- Graves Answer:** while the rift is open, the 8 bodies nearest the rift within 12 of it each sprout a grave
+hand (R34's sheet). Each drags the nearest living person within 1.5 of it down into the ground, once, leaving no body,
+and its own body sinks with them. Each one taken is a soul: it climbs out of the rift as a wraith when it closes and
+scatters with the rift's own (R35), withering what it touches (R37).
 
 ### Pale Reign (`pale`, 6 Might, `src/fx/death/pale_reign.gd`)
-Grows: district `RADIUS`, time `SPAN`, servants `MAX_RISEN`, cooldown. `HORDE_CAP` stays 24 at every level (the
-frame's cost).
+Grows: district `RADIUS`, time `SPAN` (the horde runs it all, R39), the horde's kill cap `HORDE_KILLS`, cooldown.
+`HORDE_CAP` 24 ghosts up and `MAX_RISEN` 16 servants stay at every level: the reign gets deadlier, not more crowded
+(Pale's cast/base ratio is 1.46 against the 1.55 ceiling).
 
-| Lv | RADIUS | SPAN | MAX_RISEN | cd | Might |
+| Lv | RADIUS | SPAN | HORDE_KILLS | cd | Might |
 |---|---|---|---|---|---|
-| 1 | 10 | 16 | 16 | 120 | 6 |
-| 2 | 10.5 | 17 | 17 | 116 | 6 |
-| 3 | 11 | 18 | 18 | 112 | 7 |
-| 4 | 11.5 | 19 | 19 | 108 | 7 |
-| 5 | 12 | 20 | 20 | 104 | 8 |
+| 1 | 10 | 16 | 24 | 120 | 6 |
+| 2 | 10.25 | 17 | 26 | 116 | 6 |
+| 3 | 10.5 | 18 | 28 | 112 | 7 |
+| 4 | 10.75 | 19 | 30 | 108 | 7 |
+| 5 | 11 | 20 | 32 | 104 | 8 |
 
-**Twist -- The Pall Grows:** every death in the district widens the grey by 0.25, up to 5 wider than the level's
-`RADIUS` (20 deaths; up to 17 at level 5). The span does not change. Whoever the new edge reaches crawls with the rest; its fires gutter.
+**Twist -- The Pall Grows:** every death in the district widens the grey by 0.25, up to 3 wider than the level's
+`RADIUS` (12 deaths; up to 14 at level 5). Whoever the new edge reaches crawls with the rest; its fires gutter. The span
+does not change. The ghosts run in the grown district.
 
 ## Tier 5 (once a descent)
 
 ### The Pale Serpent (`serpent`, 6 Might, once a descent, `src/fx/death/pale_serpent.gd`)
-Grows: longest drag `LENGTH`, shadow half width `BAND`, how far its rising is seen `SIGHT`, the sickness `SICK`.
+Grows: longest drag `LENGTH`, shadow half width `BAND` (R40's fog spreads across it), how far its rising is seen
+`SIGHT`, the sickness `SICK`. R40's fog, frost, dim and fright cone keep their numbers and caps (`FOG_MOST` 40,
+`FROST_MOST` 48) at every level.
 
 | Lv | LENGTH | BAND | SIGHT | SICK | Might |
 |---|---|---|---|---|---|
 | 1 | 14 | 2 | 12 | 20 | 6 |
-| 2 | 15 | 2.1 | 12.5 | 21 | 6 |
-| 3 | 16 | 2.2 | 13 | 22 | 7 |
-| 4 | 17 | 2.3 | 13.5 | 23 | 7 |
-| 5 | 18 | 2.4 | 14 | 24 | 8 |
+| 2 | 14.5 | 2.1 | 12.5 | 21 | 6 |
+| 3 | 15 | 2.2 | 13 | 22 | 7 |
+| 4 | 15.5 | 2.3 | 13.5 | 23 | 7 |
+| 5 | 16 | 2.4 | 14 | 24 | 8 |
 
 **Twist -- Shed Skin:** as it departs it sheds its skin, which lies along the whole path (the drag and the loop) for
-30 s, a pale band 1 wide. Whoever walks onto it sickens as those who saw it rise do (`SICK_PACE` for `SICK`, and the
-plague when it is in town). Each person once.
+30 s, a pale band 1 wide drawn with the Serpent's disc texture (one draw per segment, as 3d3f309d's cut). Whoever walks
+onto it sickens as those who saw it rise do (`SICK_PACE` for `SICK`, and the plague when it is in town). Each person
+once.
 
 ### Grave Tide (`gravetide`, 6 Might, once a descent, `src/fx/death/grave_tide.gd`)
-Grows: bodies risen `MOST`, their time `LIFE`, the giant's time `GIANT_LIFE`, its blows `GIANT_BLOWS`.
+Grows: the giant only, as the user ruled for the tide (stronger effects, not more units): its time `GIANT_LIFE`, its
+blows `GIANT_BLOWS`, the slam's reach `SLAM_R` and its blow on buildings `SLAM_WRECK`. `GRAVES_MOST` 24, `LIVING_CAP`
+60, `MOST` 30 and the undead's `LIFE` stay at every level (the tide is near its 8 ms ceiling: cast/base 1.55).
 
-| Lv | MOST | LIFE | GIANT_LIFE | GIANT_BLOWS | Might |
+| Lv | GIANT_LIFE | GIANT_BLOWS | SLAM_R | SLAM_WRECK | Might |
 |---|---|---|---|---|---|
-| 1 | 30 | 40 | 60 | 12 | 6 |
-| 2 | 32 | 42 | 63 | 13 | 6 |
-| 3 | 34 | 44 | 66 | 14 | 7 |
-| 4 | 36 | 46 | 69 | 15 | 7 |
-| 5 | 38 | 48 | 72 | 16 | 8 |
+| 1 | 60 | 12 | 3.5 | 60 | 6 |
+| 2 | 63 | 13 | 3.6 | 65 | 6 |
+| 3 | 66 | 14 | 3.7 | 70 | 7 |
+| 4 | 69 | 15 | 3.8 | 75 | 7 |
+| 5 | 72 | 16 | 4 | 80 | 8 |
 
 **Twist -- Scattered Bones:** when the giant falls (cut down or its time ends), its 18 bones burst outward and each
-lands as a skeleton that hunts the nearest for 20 s (the tide's risen numbers). The skeletons' kills do not rise.
+lands as a SKELETON (R42's numbers) that hunts for 20 s. They count in `LIVING_CAP` 60: none rise while it is full. The
+skeletons' kills do not rise.
 
 ---
 
@@ -436,4 +448,8 @@ counts; the faithful die as the base verdict kills them.)
   - The per-key area, danger-time and alarm tables in `power_book.gd` stay at their level 1 values, as for Passage.
   - The Might column is for reading only: Might comes from `PowerBook.might()` (`MIGHT_STEPS`), not the table.
   - Tests copy the Passage twists' level-5 test pattern.
+- Frame budgets (docs/KAK_God_Death_Review_Rulings.md, R13/R47 and the frame-cost table): at level 5 with its twist,
+  the Gate Below, Pale Reign and the Serpent stay within 5 ms (cast/base ratio 1.55 on a loaded machine) and Grave Tide
+  within 8 ms (1.9). Bench each at level 5 with the twist firing; if one is over, cut its twist's draw first, then its
+  growth, never the level 1 numbers.
 - Refs: the Death and Decree reference rows play at level 1 and must not move. Add one level-5 sandbox check per twist.

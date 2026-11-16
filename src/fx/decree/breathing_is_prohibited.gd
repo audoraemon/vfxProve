@@ -33,15 +33,22 @@ var _rooted := {}
 var _hush: Hush
 
 
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_radius := RADIUS
+var lv_hold_time := HOLD_TIME
+
+
 func _build() -> void:
-	duration = T_LAND + HOLD_TIME + FADE
+	lv_radius = float(PowerBook.stat(extra, "breath", "RADIUS", RADIUS))
+	lv_hold_time = float(PowerBook.stat(extra, "breath", "HOLD_TIME", HOLD_TIME))
+	duration = T_LAND + lv_hold_time + FADE
 	busy = T_LAND
 	at(T_LAND, _land)
-	at(T_LAND + HOLD_TIME, _lift)
+	at(T_LAND + lv_hold_time, _lift)
 	ctx.play(&"br_hush", origin)
 	if DominionParts.staged(self):
 		DecreeParts.proclaim(self, origin, 50.0, 64.0, T_LAND, 0.9)
-		var mark := FxParts.rings(self, origin, RADIUS, DecreeParts.GILT, 2, 24.0)
+		var mark := FxParts.rings(self, origin, lv_radius, DecreeParts.GILT, 2, 24.0)
 		mark.set_param("scan", 0.0)
 		mark.tween_param("reveal", 0.0, 1.0, T_LAND, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		mark.life = T_LAND + 0.1
@@ -49,7 +56,7 @@ func _build() -> void:
 
 ## The air goes out.
 func _land() -> void:
-	law = LawZone.circle(origin, RADIUS, [LawZone.NO_BREATH], HOLD_TIME)
+	law = LawZone.circle(origin, lv_radius, [LawZone.NO_BREATH], lv_hold_time)
 	law.stepped_by_holder = true
 	if ctx.crowd != null:
 		ctx.crowd.add_law(law, self)
@@ -64,12 +71,12 @@ func _land() -> void:
 	_hush.z_index = 4
 	track(_hush, ctx.overhead_back)
 	# The air drawn out of it: a grey-gold ring thrown out to the edge, and a dull light that goes.
-	var out := FxParts.shockwave(self, origin, RADIUS * 1.15, DecreeParts.GILT_RAMP)
+	var out := FxParts.shockwave(self, origin, lv_radius * 1.15, DecreeParts.GILT_RAMP)
 	out.set_param("thickness", 0.12)
 	out.tween_param("progress", 0.05, 1.0, 0.45, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	out.tween_param("fade", 1.0, 0.0, 0.2, 0.3)
 	out.life = 0.55
-	DominionParts.pulse(self, origin, RADIUS, Hush.HAZE_LIGHT, 0.5, 0.8)
+	DominionParts.pulse(self, origin, lv_radius, Hush.HAZE_LIGHT, 0.5, 0.8)
 
 
 ## The air comes back: the law is lifted, and whoever was choking breathes again.
@@ -82,7 +89,7 @@ func _lift() -> void:
 	choking.clear()
 	_rooted.clear()
 	if DominionParts.staged(self):
-		DecreeParts.wave(self, origin, RADIUS * 1.2, 0.5, 0.05)
+		DecreeParts.wave(self, origin, lv_radius * 1.2, 0.5, 0.05)
 
 
 ## Cut short (an act of the night ends): the law is lifted with it.
@@ -141,7 +148,7 @@ func _choke(delta: float) -> void:
 func _gasp(p: Person) -> void:
 	if _held(p):
 		return
-	p.panic(origin, RADIUS, &"choke", false)
+	p.panic(origin, lv_radius, &"choke", false)
 	p.scream(CLUTCH)
 
 
@@ -154,9 +161,9 @@ func _held(p: Person) -> bool:
 func shown() -> float:
 	if t < T_LAND:
 		return 0.0
-	if t < T_LAND + HOLD_TIME:
+	if t < T_LAND + lv_hold_time:
 		return clampf((t - T_LAND) / 0.3, 0.0, 1.0)
-	return clampf(1.0 - (t - T_LAND - HOLD_TIME) / FADE, 0.0, 1.0)
+	return clampf(1.0 - (t - T_LAND - lv_hold_time) / FADE, 0.0, 1.0)
 
 
 ## The airless circle, drawn in screen space round its middle: a grey-gold haze on the ground with a still, thin
@@ -180,15 +187,15 @@ class Hush extends Node2D:
 	var _rim_px := PackedVector2Array()
 
 	## The ground circle's half width and half height on screen.
-	static func half_axes() -> Vector2:
-		return Vector2(RADIUS * 32.0 * sqrt(2.0), RADIUS * 16.0 * sqrt(2.0))
+	static func half_axes(r := RADIUS) -> Vector2:
+		return Vector2(r * 32.0 * sqrt(2.0), r * 16.0 * sqrt(2.0))
 
-	func _init() -> void:
+	func _ready() -> void:
 		for i in 32:
 			_disc.append(Vector2.from_angle(TAU * float(i) / 32.0))
 		_rim = _disc.duplicate()
 		_rim.append(_disc[0])
-		var h := half_axes()
+		var h := half_axes(fx.lv_radius)
 		for v in _rim:
 			_rim_px.append(v * h)
 
@@ -202,7 +209,7 @@ class Hush extends Node2D:
 		var a := fx.shown()
 		if a <= 0.0:
 			return
-		var h := half_axes()
+		var h := half_axes(fx.lv_radius)
 		var now := fx.t
 		# The haze, and a little darker at its heart, where the air is thinnest.
 		draw_set_transform(Vector2.ZERO, 0.0, h)

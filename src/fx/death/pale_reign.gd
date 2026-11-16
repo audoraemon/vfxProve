@@ -85,10 +85,17 @@ var _sunk := false
 ## The horde has made its HORDE_KILLS: its ghosts run on and frighten, and kill no more (R39).
 var spent := false
 var _drain: QuadFx
+## This cast's numbers at its ability level (the consts at level 1): the district, the time, the horde's kill cap.
+var lv_radius := RADIUS
+var lv_span := SPAN
+var lv_horde_kills := HORDE_KILLS
 
 
 func _build() -> void:
-	duration = SPAN + SERVANT_LIFE + FADE + 1.0  # a ceiling: _lift() and _expire() set the real end
+	lv_radius = float(PowerBook.stat(extra, "pale", "RADIUS", RADIUS))
+	lv_span = float(PowerBook.stat(extra, "pale", "SPAN", SPAN))
+	lv_horde_kills = int(PowerBook.stat(extra, "pale", "HORDE_KILLS", HORDE_KILLS))
+	duration = lv_span + SERVANT_LIFE + FADE + 1.0  # a ceiling: _lift() and _expire() set the real end
 	busy = T_DRAIN
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
@@ -97,7 +104,7 @@ func _build() -> void:
 	horde.bitten.connect(_on_touch)
 	ctx.field.enemy_killed.connect(_on_killed)
 	if ctx.crowd != null:
-		ctx.crowd.hush_at(origin, RADIUS, SPAN)
+		ctx.crowd.hush_at(origin, lv_radius, lv_span)
 		if ctx.crowd.remains != null and not ctx.crowd.remains.enabled:
 			ctx.crowd.remains.enabled = true
 			_lit_ledger = true
@@ -116,12 +123,12 @@ func _build() -> void:
 	track(veil, ctx.overhead_back)
 	# And its colour drained: the ground, the houses and the people inside go to the grey of their own light.
 	if ctx.distort != null:
-		_drain = FxParts.quad(self, SHADER, Iso.radius_to_screen(RADIUS) * 2.0, ctx.distort)
+		_drain = FxParts.quad(self, SHADER, Iso.radius_to_screen(lv_radius) * 2.0, ctx.distort)
 		_drain.position = sp
 		_drain.set_param("amount", 0.0)
 	# Ash drifting down over the district for the span.
-	var ash := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, ASH_FALL, 14.0, SPAN - 1.0,
-		{"radius": FxParts.particle_radius(RADIUS) * 0.8, "speed": Vector2(1, 4), "alt": Vector2(20, 50),
+	var ash := FxParts.emitter(self, ctx.overhead, sp, PixelParticles.Shape.SQUARE, ASH_FALL, 14.0, lv_span - 1.0,
+		{"radius": FxParts.particle_radius(lv_radius) * 0.8, "speed": Vector2(1, 4), "alt": Vector2(20, 50),
 		"alt_speed": Vector2(-8, -3), "life": Vector2(2.0, 3.5), "size": Vector2(1, 1)})
 	ash.gravity = 2.0
 
@@ -138,28 +145,28 @@ func _fx_process(delta: float) -> void:
 	if not over:
 		_crawl()
 		# The fires and the deaths run on the reign's own clock, a tick at a time, so a long frame misses none.
-		while _next_douse <= SPAN and t >= _next_douse:
+		while _next_douse <= lv_span and t >= _next_douse:
 			_douse()
 			_next_douse += DOUSE_EVERY
-		while _next_kill <= SPAN + 0.0001 and t >= _next_kill:
+		while _next_kill <= lv_span + 0.0001 and t >= _next_kill:
 			_reap(_next_kill)
 			if not _poured:
 				_pour()
 			_next_kill += EVERY
-		if t >= SPAN:
+		if t >= lv_span:
 			_lift()
 	_expire()
 
 
 ## 0..1 how grey the district is now: drained over T_DRAIN, its colour back over FADE from SPAN.
 func shown() -> float:
-	return clampf(minf(t / T_DRAIN, 1.0 - (t - SPAN) / FADE), 0.0, 1.0)
+	return clampf(minf(t / T_DRAIN, 1.0 - (t - lv_span) / FADE), 0.0, 1.0)
 
 
 ## Everyone inside out in the open crawls; whoever left (or went in, or fell) is let go.
 func _crawl() -> void:
 	var inside := {}
-	for e in ctx.field.in_radius(origin, RADIUS):
+	for e in ctx.field.in_radius(origin, lv_radius):
 		var p := e as Person
 		if p == null or p.inside:
 			continue
@@ -191,8 +198,8 @@ func _douse() -> void:
 	var fires: FireManager = ctx.crowd.fires if ctx.crowd != null else null
 	if fires == null or ctx.env == null:
 		return
-	for s in ctx.env.near(origin, RADIUS):
-		if not is_instance_valid(s) or s.destroyed or s.distance_to(origin) > RADIUS or not fires.is_burning(s):
+	for s in ctx.env.near(origin, lv_radius):
+		if not is_instance_valid(s) or s.destroyed or s.distance_to(origin) > lv_radius or not fires.is_burning(s):
 			continue
 		fires.douse(s)
 		if fires.is_burning(s):
@@ -208,7 +215,7 @@ func weakest() -> Person:
 	var best: Person = null
 	var best_rank := 0
 	var best_d := INF
-	for e in ctx.field.in_radius(origin, RADIUS):
+	for e in ctx.field.in_radius(origin, lv_radius):
 		var p := e as Person
 		if p == null or p.inside or p.guised() or p.has_meta(&"decoy"):
 			continue
@@ -265,7 +272,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if over:
 		return
 	var p := e as Person
-	if p == null or p.ground_pos.distance_to(origin) > RADIUS:
+	if p == null or p.ground_pos.distance_to(origin) > lv_radius:
 		return
 	# A pale death not of the reign's own reaping is a ghost's touch: the horde counts it only after this (Visitors.kills, then
 	# _on_touch()), so it is counted here first -- the touch that is its HORDE_KILLS-th kill adds no ghost (the horde is spent then).
@@ -286,9 +293,9 @@ func _pour() -> void:
 ## death is a ghost's touch the horde has not counted yet, so it counts here.
 func _ghost_at(at: Vector2, touch := false) -> void:
 	var kills := horde_kills + (1 if touch else 0)
-	if horde == null or not (horde.living().size() < HORDE_CAP and kills < HORDE_KILLS and t < SPAN):
+	if horde == null or not (horde.living().size() < HORDE_CAP and kills < lv_horde_kills and t < lv_span):
 		return
-	DeathParts.pale_ghost(horde, at, origin, RADIUS)
+	DeathParts.pale_ghost(horde, at, origin, lv_radius)
 	ghosts_made += 1
 	if DominionParts.staged(self):
 		FxParts.smoke(self, Iso.ground_to_screen(at), 5.0, 20.0, 0.3, Vector2(6, 16), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
@@ -298,7 +305,7 @@ func _ghost_at(at: Vector2, touch := false) -> void:
 ## HORDE_KILLS-th the horde is spent (R39), and runs on to the end of the reign.
 func _on_touch(_a: Animal, _who: Person, _first: bool) -> void:
 	horde_kills = horde.kills
-	if horde_kills >= HORDE_KILLS:
+	if horde_kills >= lv_horde_kills:
 		_spend()
 
 
@@ -361,7 +368,7 @@ func _expire() -> void:
 		visitors.take(a)
 	_servants = still
 	if over and _servants.is_empty():
-		duration = minf(duration, maxf(SPAN + FADE, t) + 0.05)
+		duration = minf(duration, maxf(lv_span + FADE, t) + 0.05)
 
 
 ## Over or cut short: every pace let go, the servants and the ghosts gone, the ledger as it was.
@@ -420,7 +427,7 @@ class Veil extends Node2D:
 		var a := fx.shown()
 		if a <= 0.0:
 			return
-		var major := RADIUS * FxParts.PX_PER_UNIT_MAJOR
+		var major := fx.lv_radius * FxParts.PX_PER_UNIT_MAJOR
 		var step := Color.WHITE.lerp(GREY, a * 0.4)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
 		for k in 4:

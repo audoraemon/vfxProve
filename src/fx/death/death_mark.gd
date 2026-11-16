@@ -27,6 +27,10 @@ var body_at := Vector2.INF
 var gawked := 0
 
 var _look_in := 0.0
+## This cast's numbers at its ability level (the consts at level 1): the time to death, who comes to look, and from how far.
+var lv_mark_time := MARK_TIME
+var lv_gawkers := GAWKERS
+var lv_look_r := LOOK_R
 
 
 ## Whom a click at `at` would mark: the nearest within PICK_R, or null.
@@ -36,7 +40,10 @@ static func target_at(field: EnemyField, at: Vector2) -> Person:
 
 
 func _build() -> void:
-	duration = MARK_TIME + DummyEnemy.BODY_HOLD
+	lv_mark_time = float(PowerBook.stat(extra, "deathmark", "MARK_TIME", MARK_TIME))
+	lv_gawkers = int(PowerBook.stat(extra, "deathmark", "GAWKERS", GAWKERS))
+	lv_look_r = float(PowerBook.stat(extra, "deathmark", "LOOK_R", LOOK_R))
+	duration = lv_mark_time + DummyEnemy.BODY_HOLD
 	busy = 0.8
 	marked = target_at(ctx.field, origin)
 	if marked == null:
@@ -45,8 +52,8 @@ func _build() -> void:
 	marked.statuses[&"frail"] = 1.0
 	marked.statuses[&"slow"] = SLOW
 	marked.walk_speed = marked._mind_speed()
-	marked.set_badge(SKULL, PALE, MARK_TIME)
-	at(MARK_TIME, _die)
+	marked.set_badge(SKULL, PALE, lv_mark_time)
+	at(lv_mark_time, _die)
 	ctx.play(&"q_deathmark", origin)
 	if DominionParts.staged(self):
 		# The mark settles on them: pale motes drawn down, and the skull shown large for a moment.
@@ -86,8 +93,8 @@ func _fx_process(delta: float) -> void:
 		return
 	_look_in = LOOK_EVERY
 	var came := 0
-	for p in DominionParts.near(ctx.field, body_at, LOOK_R):
-		if came >= GAWKERS:
+	for p in DominionParts.near(ctx.field, body_at, lv_look_r):
+		if came >= lv_gawkers:
 			break
 		var a := ctx.rng.randf() * TAU
 		if p.lure(body_at + Vector2(cos(a), sin(a)) * ctx.rng.randf_range(RING.x, RING.y), LOOK_SECONDS, body_at):

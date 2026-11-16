@@ -32,7 +32,7 @@ var lifted := false
 
 
 ## The MAX_NAMED living people out of doors within PICK_R of `at`, nearest first, a tie to the earlier instance.
-static func named_at(field: EnemyField, at: Vector2) -> Array[Person]:
+static func named_at(field: EnemyField, at: Vector2, most := MAX_NAMED) -> Array[Person]:
 	var out: Array[Person] = []
 	if field == null:
 		return out
@@ -44,20 +44,27 @@ static func named_at(field: EnemyField, at: Vector2) -> Array[Person]:
 		var da := a.ground_pos.distance_squared_to(at)
 		var db := b.ground_pos.distance_squared_to(at)
 		return da < db if da != db else a.get_instance_id() < b.get_instance_id())
-	return out.slice(0, MAX_NAMED)
+	return out.slice(0, most)
+
+
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_max_named := MAX_NAMED
+var lv_span := SPAN
 
 
 func _build() -> void:
+	lv_max_named = int(PowerBook.stat(extra, "redefine", "MAX_NAMED", MAX_NAMED))
+	lv_span = float(PowerBook.stat(extra, "redefine", "SPAN", SPAN))
 	mode = String(extra.get("mode", "criminal"))
 	if not KINDS.has(mode):
 		mode = "criminal"
 	kind = KINDS[mode]
-	duration = SPAN + FADE
+	duration = lv_span + FADE
 	busy = WRITE
-	named.assign(named_at(ctx.field, origin))
+	named.assign(named_at(ctx.field, origin, lv_max_named))
 	for p: Variant in named:
-		LawMark.set_law(p, kind, SPAN, get_instance_id())
-	at(SPAN, _lift)
+		LawMark.set_law(p, kind, lv_span, get_instance_id())
+	at(lv_span, _lift)
 	ctx.play(&"q_redefine", origin)
 	if DominionParts.staged(self):
 		_show()
@@ -103,7 +110,7 @@ func _show() -> void:
 ## How much of the words shows: written in over WRITE, whole while the law holds, gone over FADE once it lifts.
 func shown() -> float:
 	if lifted:
-		return clampf(1.0 - (t - SPAN) / FADE, 0.0, 1.0) if t >= SPAN else 0.0
+		return clampf(1.0 - (t - lv_span) / FADE, 0.0, 1.0) if t >= lv_span else 0.0
 	return clampf(t / WRITE, 0.0, 1.0)
 
 

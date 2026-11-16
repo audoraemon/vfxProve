@@ -28,16 +28,23 @@ var law: LawZone
 var _ring: Askew
 
 
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_radius := RADIUS
+var lv_hold_time := HOLD_TIME
+
+
 func _build() -> void:
-	duration = T_LAND + HOLD_TIME + FADE
+	lv_radius = float(PowerBook.stat(extra, "disorder", "RADIUS", RADIUS))
+	lv_hold_time = float(PowerBook.stat(extra, "disorder", "HOLD_TIME", HOLD_TIME))
+	duration = T_LAND + lv_hold_time + FADE
 	busy = T_LAND + T_TOLL
 	at(T_LAND, _land)
 	at(T_LAND + T_TOLL, _toll)
-	at(T_LAND + HOLD_TIME, _lift)
+	at(T_LAND + lv_hold_time, _lift)
 	ctx.play(&"di_bell", origin)
 	if DominionParts.staged(self):
 		DecreeParts.proclaim(self, origin, 60.0, 70.0, T_LAND, 0.9)
-		var mark := FxParts.rings(self, origin, RADIUS, DecreeParts.GILT, 2, 24.0)
+		var mark := FxParts.rings(self, origin, lv_radius, DecreeParts.GILT, 2, 24.0)
 		mark.set_param("scan", 0.0)
 		mark.tween_param("reveal", 0.0, 1.0, T_LAND, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		mark.life = T_LAND + 0.1
@@ -45,7 +52,7 @@ func _build() -> void:
 
 ## The law lands: from now on every choice made inside goes wrong.
 func _land() -> void:
-	law = LawZone.circle(origin, RADIUS, [LawZone.DISORDER], HOLD_TIME)
+	law = LawZone.circle(origin, lv_radius, [LawZone.DISORDER], lv_hold_time)
 	law.stepped_by_holder = true
 	if ctx.crowd != null:
 		ctx.crowd.add_law(law, self)
@@ -64,8 +71,8 @@ func _land() -> void:
 func _toll() -> void:
 	if not DominionParts.staged(self):
 		return
-	DecreeParts.wave(self, origin + Vector2(0.35, -0.2), RADIUS * 1.1, 0.7, 0.06)
-	var plate := DecreeParts.seal(self, origin, CROOKED_BELL, HOLD_TIME - T_TOLL, 74.0, 4)
+	DecreeParts.wave(self, origin + Vector2(0.35, -0.2), lv_radius * 1.1, 0.7, 0.06)
+	var plate := DecreeParts.seal(self, origin, CROOKED_BELL, lv_hold_time - T_TOLL, 74.0, 4)
 	plate.shrink_at = 1.6
 	plate.shrink_px = 2
 
@@ -78,7 +85,7 @@ func _lift() -> void:
 		else:
 			law.lift()
 	if DominionParts.staged(self):
-		DecreeParts.wave(self, origin, RADIUS * 1.15, 0.5, 0.05)
+		DecreeParts.wave(self, origin, lv_radius * 1.15, 0.5, 0.05)
 
 
 ## Cut short (an act of the night ends): the law is lifted with it.
@@ -103,9 +110,9 @@ func _fx_process(delta: float) -> void:
 func shown() -> float:
 	if t < T_LAND:
 		return 0.0
-	if t < T_LAND + HOLD_TIME:
+	if t < T_LAND + lv_hold_time:
 		return clampf((t - T_LAND) / 0.3, 0.0, 1.0)
-	return clampf(1.0 - (t - T_LAND - HOLD_TIME) / FADE, 0.0, 1.0)
+	return clampf(1.0 - (t - T_LAND - lv_hold_time) / FADE, 0.0, 1.0)
 
 
 ## Where the law holds, drawn in screen space round its middle: a faint ink wash, a gilt ring that will not sit true
@@ -131,11 +138,11 @@ class Askew extends Node2D:
 	var _lean := PackedFloat32Array()
 
 	## The ground circle's half width and half height on screen.
-	static func half_axes() -> Vector2:
-		return Vector2(RADIUS * 32.0 * sqrt(2.0), RADIUS * 16.0 * sqrt(2.0))
+	static func half_axes(r := RADIUS) -> Vector2:
+		return Vector2(r * 32.0 * sqrt(2.0), r * 16.0 * sqrt(2.0))
 
-	func _init() -> void:
-		var h := half_axes()
+	func _ready() -> void:
+		var h := half_axes(fx.lv_radius)
 		for i in 40:
 			var ang := TAU * float(i) / 40.0
 			_disc.append(Vector2.from_angle(ang))
@@ -161,7 +168,7 @@ class Askew extends Node2D:
 		var a := fx.shown()
 		if a <= 0.0:
 			return
-		var h := half_axes()
+		var h := half_axes(fx.lv_radius)
 		var now := fx.t
 		var rock := TILT + ROCK * sin(now * 0.9)
 		# The wash, set true: where the law holds.

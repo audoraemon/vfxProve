@@ -71,15 +71,23 @@ var _cage: Cage
 
 ## The ring's radius at `time` on the effect's clock: RADIUS until the bars stand, END_R once they have closed, an even
 ## pace in between.
-static func radius_at(time: float) -> float:
-	return lerpf(RADIUS, END_R, clampf((time - T_LAND) / CLOSE_TIME, 0.0, 1.0))
+static func radius_at(time: float, start := RADIUS, close_time := CLOSE_TIME) -> float:
+	return lerpf(start, END_R, clampf((time - T_LAND) / close_time, 0.0, 1.0))
+
+
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_radius := RADIUS
+var lv_close_time := CLOSE_TIME
 
 
 func _build() -> void:
-	duration = T_LAND + CLOSE_TIME + FADE
+	lv_radius = float(PowerBook.stat(extra, "cage", "RADIUS", RADIUS))
+	lv_close_time = float(PowerBook.stat(extra, "cage", "CLOSE_TIME", CLOSE_TIME))
+	radius = lv_radius
+	duration = T_LAND + lv_close_time + FADE
 	busy = T_LAND
 	at(T_LAND, _land)
-	at(T_LAND + CLOSE_TIME, _shut)
+	at(T_LAND + lv_close_time, _shut)
 	ctx.play(&"cg_rise", origin)
 	if not DominionParts.staged(self):
 		return
@@ -95,18 +103,18 @@ func _build() -> void:
 ## The bars stand: the law holds, and every building the ring will reach is taken down in order.
 func _land() -> void:
 	_survey()
-	law = LawZone.circle(origin, RADIUS, [LawZone.NO_LEAVING], CLOSE_TIME)
+	law = LawZone.circle(origin, lv_radius, [LawZone.NO_LEAVING], lv_close_time)
 	law.stepped_by_holder = true
 	if ctx.crowd != null:
 		ctx.crowd.add_law(law, self)
 	else:
 		law.hold_by(self)
-	_close(RADIUS)
+	_close(lv_radius)
 	_step_law(0.0)  # whoever stands inside is caged from this frame
 	_grind = ctx.play(&"cg_grind", origin, -5.0)
 	if not DominionParts.staged(self):
 		return
-	DecreeParts.wave(self, origin, RADIUS * 1.04, 0.7, 0.04)
+	DecreeParts.wave(self, origin, lv_radius * 1.04, 0.7, 0.04)
 	var plate := DecreeParts.seal(self, origin, DecreeParts.BARS, 2.4, 96.0, 4)
 	plate.shrink_at = 1.6
 	plate.shrink_px = 2
@@ -122,7 +130,7 @@ func _survey() -> void:
 			continue
 		var f := s.footprint
 		var near := origin.clamp(f.position, f.end).distance_to(origin)
-		if near >= RADIUS:
+		if near >= lv_radius:
 			continue
 		var far := 0.0
 		for corner in [f.position, Vector2(f.end.x, f.position.y), f.end, Vector2(f.position.x, f.end.y)]:
@@ -134,7 +142,7 @@ func _survey() -> void:
 		_mid.append(f.get_center().distance_to(origin))
 		_near.append(near)
 		order_far.append(i)
-		if _mid[i] < RADIUS:
+		if _mid[i] < lv_radius:
 			order_mid.append(i)
 	# Farthest first, and by the order the town lists them where two tie: no roll.
 	order_far.sort_custom(func(x: int, y: int) -> bool: return _far[x] > _far[y] if _far[x] != _far[y] else x < y)
@@ -148,7 +156,7 @@ func _survey() -> void:
 func _fx_process(delta: float) -> void:
 	if law == null or shut or not law.alive():
 		return
-	_close(radius_at(t))
+	_close(radius_at(t, lv_radius, lv_close_time))
 	# The law's clock starts when the bars stand.
 	_step_law(minf(delta, t - T_LAND))
 
@@ -327,9 +335,9 @@ func standing() -> float:
 	if t < T_LAND:
 		var k := clampf(t / T_LAND, 0.0, 1.0)
 		return 1.0 - (1.0 - k) * (1.0 - k)
-	if t < T_LAND + CLOSE_TIME:
+	if t < T_LAND + lv_close_time:
 		return 1.0
-	return clampf(1.0 - (t - T_LAND - CLOSE_TIME) / FADE, 0.0, 1.0)
+	return clampf(1.0 - (t - T_LAND - lv_close_time) / FADE, 0.0, 1.0)
 
 
 ## The cage, drawn in screen space round its middle (over the town, as every Decree mark is), thin so the town shows

@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_column(t)
 	_button(t)
 	_blurbs(t)
+	_death_decree(t)
 
 
 static func _slot(type := "dominion", tier := 1, points := 0) -> GodSlot:
@@ -103,3 +104,23 @@ static func _blurbs(t) -> void:
 					bad.append(key)
 	t.check(n == 52 and bad.is_empty(), "all %d table keys have a blurb that fits three lines at %d px (%s)" % [n, int(TreeDetail.DESCRIPTION_W), bad])
 	t.check(PowerBook.blurb("nova") == "Huge circle", "a row with no blurb falls back to its shape, capitalised (%s)" % [PowerBook.blurb("nova")])
+
+
+## Death's and Decree's twenty have tables: a spot at level 4 shows level 5's twist as its level line, and one at 5 is MAX.
+static func _death_decree(t) -> void:
+	var shown := true
+	var all_max := true
+	for key in ["deathmark", "raise", "pestilence", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide",
+			"noleave", "breath", "redefine", "bound", "erase", "disorder", "eminent", "fenced", "cage", "sealed"]:
+		var slot := _slot(PowerBook.authority_of(key), 5, 0)
+		slot.learned[key] = 4
+		var c := TreeDetail.level_column(slot, key)
+		shown = shown and String(c.head) == "LEVEL 4 -> 5" and String(c.twist) == "Level 5 . " + PowerBook.twist(key) and not (c.rows as Array).is_empty() 			and PowerBook.level_change(key, 5).ends_with(PowerBook.twist(key))
+		slot.learned[key] = 5
+		all_max = all_max and String(TreeDetail.level_column(slot, key).head) == "MAX"
+	t.check(shown, "all twenty Death and Decree spots at level 4: LEVEL 4 -> 5 with rows, and level 5's line is the twist")
+	t.check(all_max, "and at 5 each is MAX")
+	var fresh := _slot("death", 1, 0)
+	fresh.learned.erase("deathmark")
+	t.check(TreeDetail.level_column(fresh, "deathmark").head == "LEARN" and PowerBook.level_change("deathmark", 2) != PowerBook.NO_LEVELS,
+		"an unlearned Death spot says LEARN; no row says Levels to come any more")

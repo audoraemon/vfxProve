@@ -87,43 +87,50 @@ static func nearest(field: EnemyField, at: Vector2, r: float, skip: Variant = nu
 
 ## Whom two clicks would bind: [a, b], or [] when either click finds no one (or the same man). With no second click
 ## (`to` INF: a scripted route, a clip) the one nearest `a` within REACH.
-static func pair_at(field: EnemyField, first: Vector2, to: Vector2) -> Array:
+static func pair_at(field: EnemyField, first: Vector2, to: Vector2, reach := REACH) -> Array:
 	var one := nearest(field, first, PICK_R)
 	if one == null:
 		return []
-	var two := nearest(field, one.ground_pos, REACH, one) if to == Vector2.INF else nearest(field, to, PICK_R, one)
+	var two := nearest(field, one.ground_pos, reach, one) if to == Vector2.INF else nearest(field, to, PICK_R, one)
 	return [] if two == null else [one, two]
 
 
 ## Why two clicks cannot bind (Rules.cast asks before the cast is made): "unbound" when either finds no one, "far" when
 ## the two stand farther than REACH apart; "" when they can.
-static func refusal(field: EnemyField, first: Vector2, to: Vector2) -> String:
-	var pair := pair_at(field, first, to)
+static func refusal(field: EnemyField, first: Vector2, to: Vector2, reach := REACH) -> String:
+	var pair := pair_at(field, first, to, reach)
 	if pair.is_empty():
 		return "unbound"
-	if (pair[0] as Person).ground_pos.distance_to((pair[1] as Person).ground_pos) > REACH:
+	if (pair[0] as Person).ground_pos.distance_to((pair[1] as Person).ground_pos) > reach:
 		return "far"
 	return ""
 
 
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_reach := REACH
+var lv_span := SPAN
+
+
 func _build() -> void:
+	lv_reach = float(PowerBook.stat(extra, "bound", "REACH", REACH))
+	lv_span = float(PowerBook.stat(extra, "bound", "SPAN", SPAN))
 	busy = FORGE
 	var to: Vector2 = extra.get("to", Vector2.INF)
-	if refusal(ctx.field, origin, to) != "":
+	if refusal(ctx.field, origin, to, lv_reach) != "":
 		duration = 0.1  # cast round Rules on no pair: nothing is bound
 		return
-	var pair := pair_at(ctx.field, origin, to)
+	var pair := pair_at(ctx.field, origin, to, lv_reach)
 	a = pair[0]
 	b = pair[1]
 	_sa.p = a
 	_sb.p = b
 	linked = true
-	duration = SPAN + FADE
+	duration = lv_span + FADE
 	for p: Variant in [a, b]:
-		LawMark.set_law(p, LawMark.BOUND, SPAN, get_instance_id())
+		LawMark.set_law(p, LawMark.BOUND, lv_span, get_instance_id())
 	_see(_sa)
 	_see(_sb)
-	at(SPAN, _unlink)
+	at(lv_span, _unlink)
 	ctx.play(&"q_bound", (a as Person).ground_pos.lerp((b as Person).ground_pos, 0.5))
 	if DominionParts.staged(self):
 		_show()

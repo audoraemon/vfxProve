@@ -51,18 +51,25 @@ static func kinds_of(m: String) -> Array[StringName]:
 	return out
 
 
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_radius := RADIUS
+var lv_hold_time := HOLD_TIME
+
+
 func _build() -> void:
+	lv_radius = float(PowerBook.stat(extra, "fenced", "RADIUS", RADIUS))
+	lv_hold_time = float(PowerBook.stat(extra, "fenced", "HOLD_TIME", HOLD_TIME))
 	rules = rules_of(String(extra.get("mode", "run_arms")))
 	mode = "_".join(rules)
-	duration = T_LAND + HOLD_TIME + FADE
+	duration = T_LAND + lv_hold_time + FADE
 	busy = T_LAND
 	at(T_LAND, _land)
-	at(T_LAND + HOLD_TIME, _lift)
+	at(T_LAND + lv_hold_time, _lift)
 	ctx.play(&"fe_posts", origin)
 	if not DominionParts.staged(self):
 		return
 	DecreeParts.proclaim(self, origin, 70.0, 76.0, T_DRIVE + 0.2, 0.6)
-	var mark := FxParts.rings(self, origin, RADIUS, DecreeParts.GILT, 2, 24.0)
+	var mark := FxParts.rings(self, origin, lv_radius, DecreeParts.GILT, 2, 24.0)
 	mark.set_param("scan", 0.0)
 	mark.tween_param("reveal", 0.0, 1.0, T_LAND, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	mark.life = T_LAND + 0.1
@@ -76,7 +83,7 @@ func _build() -> void:
 
 ## The last post is in: the two rules hold from now.
 func _land() -> void:
-	law = LawZone.circle(origin, RADIUS, kinds_of(mode), HOLD_TIME)
+	law = LawZone.circle(origin, lv_radius, kinds_of(mode), lv_hold_time)
 	law.stepped_by_holder = true
 	if ctx.crowd != null:
 		ctx.crowd.add_law(law, self)
@@ -85,7 +92,7 @@ func _land() -> void:
 		law.hold_by(self)
 	if not DominionParts.staged(self):
 		return
-	DecreeParts.wave(self, origin, RADIUS * 1.05, 0.7, 0.05)
+	DecreeParts.wave(self, origin, lv_radius * 1.05, 0.7, 0.05)
 	var plate := DecreeParts.seal(self, origin, DecreeParts.BARS, 2.2, 84.0, 4)
 	plate.shrink_at = 1.4
 	plate.shrink_px = 2
@@ -99,7 +106,7 @@ func _lift() -> void:
 		else:
 			law.lift()
 	if DominionParts.staged(self):
-		DecreeParts.wave(self, origin, RADIUS * 1.1, 0.5, 0.04)
+		DecreeParts.wave(self, origin, lv_radius * 1.1, 0.5, 0.04)
 
 
 ## Cut short (an act of the night ends): the law is lifted with it.
@@ -128,8 +135,8 @@ static func driven_at(i: int, n: int) -> float:
 ## How far the posts stand out of the ground (0..1): each driven home in its turn, all of them while the law holds,
 ## sinking as it lifts.
 func standing(i: int, n: int) -> float:
-	if t >= T_LAND + HOLD_TIME:
-		return clampf(1.0 - (t - T_LAND - HOLD_TIME) / FADE, 0.0, 1.0)
+	if t >= T_LAND + lv_hold_time:
+		return clampf(1.0 - (t - T_LAND - lv_hold_time) / FADE, 0.0, 1.0)
 	return 1.0 if t >= driven_at(i, n) else 0.0
 
 
@@ -137,9 +144,9 @@ func standing(i: int, n: int) -> float:
 func shown() -> float:
 	if t < T_LAND:
 		return 0.0
-	if t < T_LAND + HOLD_TIME:
+	if t < T_LAND + lv_hold_time:
 		return clampf((t - T_LAND) / 0.4, 0.0, 1.0)
-	return clampf(1.0 - (t - T_LAND - HOLD_TIME) / FADE, 0.0, 1.0)
+	return clampf(1.0 - (t - T_LAND - lv_hold_time) / FADE, 0.0, 1.0)
 
 
 ## The fence, drawn in screen space round its middle (over the town, as every Decree mark is): a ring of iron posts on
@@ -171,11 +178,11 @@ class Fence extends Node2D:
 	var _widths := PackedFloat32Array()
 
 	## The ground circle's half width and half height on screen.
-	static func half_axes() -> Vector2:
-		return Vector2(RADIUS * 32.0 * sqrt(2.0), RADIUS * 16.0 * sqrt(2.0))
+	static func half_axes(r := RADIUS) -> Vector2:
+		return Vector2(r * 32.0 * sqrt(2.0), r * 16.0 * sqrt(2.0))
 
 	func _ready() -> void:
-		var h := half_axes()
+		var h := half_axes(fx.lv_radius)
 		for i in 40:
 			_disc.append(Vector2.from_angle(TAU * float(i) / 40.0))
 		var order: Array[int] = []
@@ -210,7 +217,7 @@ class Fence extends Node2D:
 		var a := fx.shown()
 		if a <= 0.0:
 			return
-		var h := half_axes()
+		var h := half_axes(fx.lv_radius)
 		draw_set_transform(Vector2.ZERO, 0.0, h)
 		draw_colored_polygon(_disc, Color(WASH, WASH.a * a))
 		draw_set_transform(Vector2.ZERO)

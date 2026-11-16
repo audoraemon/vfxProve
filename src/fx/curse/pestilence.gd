@@ -11,22 +11,29 @@ const MIASMA := [Color("d0f090"), Color("90b050"), Color("5a7a30"), Color("2a3a1
 
 
 ## Who it would infect at `at`: the nearest healthy people within reach, soldiers too, INFECT_MAX at most.
-static func victims_at(field: EnemyField, at: Vector2) -> Array[Person]:
+static func victims_at(field: EnemyField, at: Vector2, r := INFECT_R, most := INFECT_MAX) -> Array[Person]:
 	var out: Array[Person] = []
-	for e in field.in_radius(at, INFECT_R):
+	for e in field.in_radius(at, r):
 		var p := e as Person
 		if p != null and not p.inside and p.sick_left <= 0.0:
 			out.append(p)
 	out.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
-	return out.slice(0, INFECT_MAX)
+	return out.slice(0, most)
+
+
+## This cast's reach and count at its ability level (INFECT_R and INFECT_MAX at level 1).
+var lv_infect_r := INFECT_R
+var lv_infect_max := INFECT_MAX
 
 
 func _build() -> void:
+	lv_infect_r = float(PowerBook.stat(extra, "pestilence", "INFECT_R", INFECT_R))
+	lv_infect_max = int(PowerBook.stat(extra, "pestilence", "INFECT_MAX", INFECT_MAX))
 	duration = 1.4
 	busy = 0.8
 	ctx.play(&"q_pestilence", origin)
-	var victims := victims_at(ctx.field, origin)
+	var victims := victims_at(ctx.field, origin, lv_infect_r, lv_infect_max)
 	var spots: Array[Vector2] = [origin]
 	for p in victims:
 		spots.append(p.ground_pos)

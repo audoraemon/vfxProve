@@ -51,6 +51,10 @@ var _ring: Array[Remains.Remain] = []
 var _spirit_mode := false
 ## How many more of the zombies' kills may rise.
 var _left := CHAIN - 1
+## This cast's numbers at its ability level (the consts at level 1): the zombies' time, the chain, the spirits' time.
+var lv_zombie_life := ZOMBIE_LIFE
+var lv_chain := CHAIN
+var lv_spirit_life := SPIRIT_LIFE
 var _bitten := false
 ## Each spirit's own drift target and look timer, in the order of `spirits`.
 var _drift_to: Array[Vector2] = []
@@ -58,6 +62,10 @@ var _look_in: Array[float] = []
 
 
 func _build() -> void:
+	lv_zombie_life = float(PowerBook.stat(extra, "raise", "ZOMBIE_LIFE", ZOMBIE_LIFE))
+	lv_chain = int(PowerBook.stat(extra, "raise", "CHAIN", CHAIN))
+	lv_spirit_life = float(PowerBook.stat(extra, "raise", "SPIRIT_LIFE", SPIRIT_LIFE))
+	_left = lv_chain - 1
 	_spirit_mode = String(extra.get("mode", "zombie")) == "spirit"
 	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
 	if rem != null:
@@ -67,7 +75,7 @@ func _build() -> void:
 		return
 	for r in _ring:
 		rem.take(r)
-	duration = (SPIRIT_LIFE if _spirit_mode else ZOMBIE_LIFE) + FADE
+	duration = (lv_spirit_life if _spirit_mode else lv_zombie_life) + FADE
 	busy = T_RISE
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, ctx.crowd._grid, parent)
@@ -123,7 +131,7 @@ func _fx_process(delta: float) -> void:
 	if visitors == null:
 		return
 	visitors.step(delta)
-	if not _spirit_mode or t >= SPIRIT_LIFE or not drift:
+	if not _spirit_mode or t >= lv_spirit_life or not drift:
 		return
 	for i in spirits.size():
 		if is_instance_valid(spirits[i]):

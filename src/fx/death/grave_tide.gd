@@ -223,9 +223,21 @@ func undead_up() -> int:
 	return n
 
 
+## This cast's numbers at its ability level (the consts at level 1): the giant's time, its blows and its slam's reach and blow on
+## buildings. The undead's own numbers do not change.
+var lv_giant_life := GIANT_LIFE
+var lv_giant_blows := GIANT_BLOWS
+var lv_slam_r := SLAM_R
+var lv_slam_wreck := SLAM_WRECK
+
+
 func _build() -> void:
+	lv_giant_life = float(PowerBook.stat(extra, "gravetide", "GIANT_LIFE", GIANT_LIFE))
+	lv_giant_blows = int(PowerBook.stat(extra, "gravetide", "GIANT_BLOWS", GIANT_BLOWS))
+	lv_slam_r = float(PowerBook.stat(extra, "gravetide", "SLAM_R", SLAM_R))
+	lv_slam_wreck = float(PowerBook.stat(extra, "gravetide", "SLAM_WRECK", SLAM_WRECK))
 	# The giant outlives the horde: the tide lasts to its end (cut down sooner, _giant_gone() brings the end back).
-	duration = maxf(LIFE, T_RISE + ASSEMBLE + GIANT_LIFE) + FADE
+	duration = maxf(LIFE, T_RISE + ASSEMBLE + lv_giant_life) + FADE
 	busy = T_RISE
 	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
@@ -383,14 +395,14 @@ func _land() -> void:
 	_raise_giant()
 	landed_at = t
 	_next_slam = landed_at + SLAM_EVERY
-	at(landed_at + GIANT_LIFE, _end_giant)
+	at(landed_at + lv_giant_life, _end_giant)
 	_slam(giant.ground_pos)
 
 
 ## The giant stands where its bones came together; its grave is the first of its tour.
 func _raise_giant() -> void:
 	var spot := _spot
-	giant = visitors.summon(spot, Animal.Breed.BONE_GIANT, GIANT_BLOWS, GIANT_PACE / (Animal.DOG_SPEED * Animal.RUN), GIANT_SEEK,
+	giant = visitors.summon(spot, Animal.Breed.BONE_GIANT, lv_giant_blows, GIANT_PACE / (Animal.DOG_SPEED * Animal.RUN), GIANT_SEEK,
 		GIANT_BITE_R, GIANT_BITE_EVERY, false)
 	visitors.give(giant, {"prey": "soldiers", "bite": Person.HEALTH_KNIGHT, "wreck": GIANT_WRECK, "wreck_every": GIANT_WRECK_EVERY,
 		"wreck_reach": GIANT_WRECK_REACH, "wreck_idle": false, "spare": _spared})
@@ -419,30 +431,31 @@ func _slam(at_ground: Vector2) -> void:
 	slams += 1
 	ctx.play(&"giant_step", at_ground, SLAM_DB)
 	var doomed: Array[Person] = []
-	for e in ctx.field.in_radius(at_ground, SLAM_R):
+	for e in ctx.field.in_radius(at_ground, lv_slam_r):
 		var p := e as Person
 		if p != null and p.soldier and not p.inside:
 			doomed.append(p)
 	doomed.sort_custom(func(a: Person, b: Person) -> bool: return a.get_instance_id() < b.get_instance_id())
 	for p in doomed:
 		ctx.field.kill(p, &"frenzy", at_ground)
-	ctx.field.knock_from(at_ground, 0.0, SLAM_R, SLAM_KNOCK)
+	ctx.field.knock_from(at_ground, 0.0, lv_slam_r, SLAM_KNOCK)
 	if ctx.crowd != null:
-		ctx.crowd.fright(at_ground, SLAM_R + 1.0, SLAM_FRIGHT[0], SLAM_FRIGHT[1], SLAM_FRIGHT[2], SLAM_FRIGHT[3], &"beast")
+		ctx.crowd.fright(at_ground, lv_slam_r + 1.0, SLAM_FRIGHT[0], SLAM_FRIGHT[1], SLAM_FRIGHT[2], SLAM_FRIGHT[3], &"beast")
 	var env: EnvironmentField = ctx.env if ctx.env != null else ctx.field.env
 	if env != null:
 		var struck: Array[Structure] = []
-		for s in env.near(at_ground, SLAM_R):
-			if Visitors._wreckable(s) and s.distance_to(at_ground) <= SLAM_R and not _spared(s):
+		for s in env.near(at_ground, lv_slam_r):
+			if Visitors._wreckable(s) and s.distance_to(at_ground) <= lv_slam_r and not _spared(s):
 				struck.append(s)
 		struck.sort_custom(func(a: Structure, b: Structure) -> bool: return a.get_instance_id() < b.get_instance_id())
 		for s in struck:
-			s.damage(SLAM_WRECK, at_ground, &"frenzy")
+			s.damage(lv_slam_wreck, at_ground, &"frenzy")
 			slam_wrecks += 1
 	if not DominionParts.staged(self):
 		return
 	var mark := SlamMark.new()
 	mark.turn = float(slams) * 0.7
+	mark.reach = lv_slam_r
 	mark.position = at_ground
 	track(mark, ctx.ground)
 	var dust := FxParts.particles(self, ctx.overhead_back, Iso.ground_to_screen(at_ground), PixelParticles.Shape.PUFF, DUST)
@@ -703,13 +716,13 @@ func _exit_tree() -> void:
 
 ## A slam's cracks: SLAM_CRACKS jagged lines out of its middle to most of SLAM_R, in ground units, turned by `turn` (each
 ## slam's its own way; a fixed pattern, no luck).
-static func slam_cracks(turn: float) -> Array[PackedVector2Array]:
+static func slam_cracks(turn: float, reach := SLAM_R) -> Array[PackedVector2Array]:
 	var out: Array[PackedVector2Array] = []
 	for i in SLAM_CRACKS:
 		var a := turn + TAU * (float(i) + 0.5) / float(SLAM_CRACKS) + 0.35 * sin(float(i) * 1.9 + turn)
 		var dir := Vector2.from_angle(a)
 		var side := dir.orthogonal()
-		var to := SLAM_R * (0.55 + 0.3 * (0.5 + 0.5 * sin(float(i) * 3.7 + turn * 2.0)))
+		var to := reach * (0.55 + 0.3 * (0.5 + 0.5 * sin(float(i) * 3.7 + turn * 2.0)))
 		var line := PackedVector2Array()
 		for j in 5:
 			var k := float(j) / 4.0
@@ -771,11 +784,13 @@ class Bones extends Node2D:
 ## out to SLAM_R over SLAM_RING_FOR, and cracks that run out at once and lie SLAM_CRACK_FOR, fading over their last second.
 class SlamMark extends Node2D:
 	var turn := 0.0
+	## How far the ring runs out (the slam's reach at the tide's level).
+	var reach := SLAM_R
 	var age := 0.0
 	var _cracks: Array[PackedVector2Array] = []
 
 	func _ready() -> void:
-		_cracks = GraveTideFx.slam_cracks(turn)
+		_cracks = GraveTideFx.slam_cracks(turn, reach)
 
 	func _process(delta: float) -> void:
 		age += delta
@@ -797,7 +812,7 @@ class SlamMark extends Node2D:
 				draw_polyline(shown, Color(CRACK, CRACK.a * fade), PX * 1.5)
 		if age < SLAM_RING_FOR:
 			var k := age / SLAM_RING_FOR
-			var r := SLAM_R * (1.0 - pow(1.0 - k, 2.0))
+			var r := reach * (1.0 - pow(1.0 - k, 2.0))
 			draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(DeathParts.BONE, 0.75 * (1.0 - k)), PX * 4.0)
 			draw_arc(Vector2.ZERO, r * 0.82, 0.0, TAU, 40, Color(DeathParts.ASH, 0.35 * (1.0 - k)), PX * 2.0)
 

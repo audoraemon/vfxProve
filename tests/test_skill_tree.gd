@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_layout(t)
 	_icons_loaded(t)
 	_texts_fit(t)
+	_death_decree_twists(t)
 	GodTree.dev_fill = false
 
 
@@ -351,3 +352,32 @@ static func _texts_fit(t) -> void:
 	t.check(cut.is_empty(), "every description fits three lines at the info column's width, none ends in ... (%s)" % [cut])
 	t.check(chopped.is_empty(), "every node name shows whole, or visibly ellipsised within its label (%s)" % [chopped])
 	t.check(overlaps.is_empty(), "no two node labels overlap and none leaves the screen (%s)" % [overlaps])
+
+
+## Every spot of the Death and Decree wheels has its table, and its level-5 line (the twist) wraps to the three lines of the
+## level column with nothing cut.
+static func _death_decree_twists(t) -> void:
+	var cut := PackedStringArray()
+	var no_table := PackedStringArray()
+	var found := {}
+	var mine := ["deathmark", "raise", "pestilence", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide",
+		"noleave", "breath", "redefine", "bound", "erase", "disorder", "eminent", "fenced", "cage", "sealed"]
+	for type in ["death", "decree"]:
+		var s := _screen(type, 5, 0)
+		for col in 3:
+			for tier in range(1, 6):
+				for i in 2:
+					var key := s.key_at(col, tier, i)
+					if key == "" or not mine.has(key):
+						continue
+					found[key] = true
+					if not PowerBook.has_levels(key):
+						no_table.append(key)
+						continue
+					var line := "Level 5 . " + PowerBook.twist(key)
+					var lines := UiTheme.wrap(line, SkillTreeScreen.LEVEL_W - 14.0, SkillTreeScreen.SMALL_PX - 1)
+					if lines.size() > 3:
+						cut.append(key)
+		s.free()
+	t.check(found.size() == 20 and no_table.is_empty(), "all twenty spots on the Death and Decree wheels have a levels table (%d found; none: %s)" % [found.size(), no_table])
+	t.check(cut.is_empty(), "each level-5 twist line fits the level column's three lines (cut: %s)" % [cut])

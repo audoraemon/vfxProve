@@ -101,13 +101,22 @@ var _crumb_spec := {"radius": 8.0, "speed": Vector2(10, 50), "alt": Vector2(4, 1
 	"life": Vector2(0.5, 1.0), "size": Vector2(1.5, 3.0), "offset": Vector2.ZERO}
 
 
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_max_len := MAX_LEN
+var lv_crush_w := CRUSH_W
+var lv_throw_w := THROW_W
+
+
 func _build() -> void:
+	lv_max_len = float(PowerBook.stat(extra, "erase", "MAX_LEN", MAX_LEN))
+	lv_crush_w = float(PowerBook.stat(extra, "erase", "CRUSH_W", CRUSH_W))
+	lv_throw_w = float(PowerBook.stat(extra, "erase", "THROW_W", THROW_W))
 	var drag: Vector2 = extra.get("dir", Vector2.ZERO)
 	var end: Vector2 = extra.get("to", Vector2.INF)
 	if drag.length() < 0.01 and end != Vector2.INF:
 		drag = end - origin
 	dir = drag.normalized() if drag.length() >= 0.01 else Vector2.RIGHT
-	length = clampf(origin.distance_to(end), MIN_LEN, MAX_LEN) if end != Vector2.INF else DEFAULT_LEN
+	length = clampf(origin.distance_to(end), MIN_LEN, lv_max_len) if end != Vector2.INF else DEFAULT_LEN
 	to = origin + dir * length
 	duration = T_SEAM + T_FOLD + T_SNAP + SCAR
 	busy = T_SEAM + T_FOLD + T_SNAP
@@ -203,7 +212,7 @@ func _take_hold() -> void:
 		_slides.append([s, s.center(), base, Iso.ground_to_screen(s.center()) - base])
 		s.crack()
 	for d in ctx.env.decor():
-		if is_instance_valid(d) and not d.sprite_only and not d.kind in Decor.ON_WATER and off_line(d.at) <= CRUSH_W:
+		if is_instance_valid(d) and not d.sprite_only and not d.kind in Decor.ON_WATER and off_line(d.at) <= lv_crush_w:
 			_goods.append([d, d.at])
 
 
@@ -298,13 +307,13 @@ func _trail(k: float) -> void:
 ## and given his place in the pile.
 func _catch() -> void:
 	var k := fold_k()
-	for e in ctx.field.in_radius(middle(), length * 0.5 + CRUSH_W):
+	for e in ctx.field.in_radius(middle(), length * 0.5 + lv_crush_w):
 		if caught.has(e):
 			continue
 		var p := e as Person
 		if p != null and p.inside:
 			continue
-		if off_line(e.ground_pos) <= CRUSH_W:
+		if off_line(e.ground_pos) <= lv_crush_w:
 			caught[e] = [e.ground_pos, k, _bodies]
 			_bodies += 1
 			if p != null:
@@ -359,7 +368,7 @@ func _close() -> void:
 	_goods.clear()
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	if grid != null:
-		grid.open_street(origin, dir, length, CRUSH_W)
+		grid.open_street(origin, dir, length, lv_crush_w)
 	_lay(froms)
 	ctx.play(&"er_crash", origin)
 	if not DominionParts.staged(self):
@@ -372,7 +381,7 @@ func _close() -> void:
 	ctx.shake.kick(Vector2(0, 5))
 	FxParts.debris(self, sp, 26, 12.0, Vector2(40, 220), FxParts.ROCK, Vector2(2, 5), true)
 	DecreeParts.scatter(self, origin, 24, 10.0)
-	DecreeParts.wave(self, origin, CRUSH_W + 1.2, 0.35, 0.12)
+	DecreeParts.wave(self, origin, lv_crush_w + 1.2, 0.35, 0.12)
 
 
 ## Those sheltering in `s`, or trapped under it (its ruins), go into the fold with it: crushed at the press.
@@ -434,17 +443,17 @@ func _within(s: Structure, w: float) -> bool:
 ## The fold snaps open: whoever stands within THROW_W of the line is thrown outward and knocked down.
 func _spring() -> void:
 	var side := dir.orthogonal()
-	for e in ctx.field.in_radius(middle(), length * 0.5 + THROW_W):
+	for e in ctx.field.in_radius(middle(), length * 0.5 + lv_throw_w):
 		var p := e as Person
 		if p != null and p.inside:
 			continue
 		var d := off_line(e.ground_pos)
-		if d > THROW_W:
+		if d > lv_throw_w:
 			continue
 		var away := e.ground_pos - _nearest(e.ground_pos)
 		if away.length() < 0.01:
 			away = side
-		e.knock(away.normalized() * lerpf(KNOCK_NEAR, KNOCK_FAR, clampf(d / THROW_W, 0.0, 1.0)))
+		e.knock(away.normalized() * lerpf(KNOCK_NEAR, KNOCK_FAR, clampf(d / lv_throw_w, 0.0, 1.0)))
 		if p != null:
 			p.knock_down()
 		thrown += 1
@@ -453,7 +462,7 @@ func _spring() -> void:
 	ctx.shake.add_trauma(0.45)
 	for k in 3:
 		var at_g := origin + dir * length * (0.5 * float(k))
-		DecreeParts.wave(self, at_g, THROW_W, 0.45, 0.06)
+		DecreeParts.wave(self, at_g, lv_throw_w, 0.45, 0.06)
 
 
 ## The candidate spots of the mound, in the order they are filled: its middle (mound()), then ring after ring RING
@@ -589,7 +598,7 @@ class Seam extends Node2D:
 		if not shut:
 			var k := fx.fold_k()
 			# The ground drawn in: an ink band where the cloth gathers.
-			var w := CRUSH_W * (0.35 + 0.65 * open)
+			var w := fx.lv_crush_w * (0.35 + 0.65 * open)
 			_band[0] = _at(0.0, w, k)
 			_band[1] = _at(fx.length * open, w, k)
 			_band[2] = _at(fx.length * open, -w, k)
@@ -602,7 +611,7 @@ class Seam extends Node2D:
 				for si in 2:
 					var s := -1.0 if si == 0 else 1.0
 					var near_p := _at(c.x, s * 0.12, k)
-					var far_p := _at(c.x + c.y, s * (CRUSH_W + 0.45) * open, k)
+					var far_p := _at(c.x + c.y, s * (fx.lv_crush_w + 0.45) * open, k)
 					draw_line(near_p, far_p, Color(DecreeParts.INK, 0.75 * open), 0.1)
 					draw_line(near_p, near_p.lerp(far_p, 0.6), Color(DecreeParts.GILT, 0.5 * open), 0.04)
 			# The seam: ink under gilt, a bright core that pulses as the fold pulls.

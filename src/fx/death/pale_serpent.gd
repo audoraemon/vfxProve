@@ -177,6 +177,12 @@ var _held := {}
 ## The run: start, way, length, end; the loop's centre, start angle and turn (+1 or -1).
 var _dir := Vector2.RIGHT
 var _len := LENGTH
+## This cast's numbers at its ability level (the consts at level 1): the longest drag, the shadow's half width, how far its rising
+## is seen, the sickness.
+var lv_length := LENGTH
+var lv_band := BAND
+var lv_sight := SIGHT
+var lv_sick := SICK
 var _end := Vector2.ZERO
 var _centre := Vector2.ZERO
 var _theta0 := 0.0
@@ -240,14 +246,14 @@ static func disc(ci: CanvasItem, c: Vector2, r: float, color: Color, ry := -1.0)
 ## Where a cast at `at` ends: along the drag's way as Targeting reads it ("dir": Targeting.aim_dir(), DEFAULT_DIR for a drag
 ## under DRAG_MIN -- the way the preview showed, never a short drag's jitter), as far as the drag went ("to"), LENGTH at most,
 ## MIN_LENGTH at least; LENGTH with no "to" (a scripted cast). A cast with no "dir" takes the way to "to", else east.
-static func end_of(at: Vector2, extra_data: Dictionary) -> Vector2:
+static func end_of(at: Vector2, extra_data: Dictionary, longest := LENGTH) -> Vector2:
 	var to: Vector2 = extra_data.get("to", Vector2.INF)
 	var dir: Vector2 = extra_data.get("dir", Vector2.ZERO)
 	if dir.length() < 0.001 and to != Vector2.INF:
 		dir = to - at
 	if dir.length() < 0.001:
 		dir = Vector2.RIGHT
-	var length := LENGTH if to == Vector2.INF else clampf(to.distance_to(at), MIN_LENGTH, LENGTH)
+	var length := longest if to == Vector2.INF else clampf(to.distance_to(at), MIN_LENGTH, longest)
 	return at + dir.normalized() * length
 
 
@@ -278,7 +284,7 @@ static func plague_live(crowd: Crowd) -> bool:
 
 ## The run from the cast (origin, extra): the end, and the loop through it.
 func plan() -> void:
-	_end = end_of(origin, extra)
+	_end = end_of(origin, extra, lv_length)
 	_len = origin.distance_to(_end)
 	_dir = (_end - origin) / _len
 	_centre = _end + _dir.orthogonal() * CIRCLE_R
@@ -343,8 +349,12 @@ func cone_holds(p: Vector2, time: float) -> bool:
 
 
 func _build() -> void:
+	lv_length = float(PowerBook.stat(extra, "serpent", "LENGTH", LENGTH))
+	lv_band = float(PowerBook.stat(extra, "serpent", "BAND", BAND))
+	lv_sight = float(PowerBook.stat(extra, "serpent", "SIGHT", SIGHT))
+	lv_sick = float(PowerBook.stat(extra, "serpent", "SICK", SICK))
 	plan()
-	duration = maxf(glide_end() + DEPART, T_RISE + SICK) + 0.05
+	duration = maxf(glide_end() + DEPART, T_RISE + lv_sick) + 0.05
 	busy = T_RISE
 	ctx.play(&"serpent_rise", origin, 0.0)
 	at(T_RISE, func(): ctx.play(&"serpent_glide", origin, 0.0))
@@ -360,6 +370,7 @@ func _build() -> void:
 	# The death wave ahead: the frost on the ground under the shadow, the fog over the town but under the serpent itself.
 	_vis.seed = hash(origin)
 	_frost = Frost.new()
+	_frost.band = lv_band
 	_frost.z_index = 2
 	track(_frost, ctx.ground)
 	_fog = Fog.new()
@@ -397,9 +408,9 @@ func _fx_process(delta: float) -> void:
 		_swept_to = to
 	_souls_arrive()
 	while _next_fright < glide_end() and t >= _next_fright:
-		var back := s_at(_next_fright) - FRIGHT_BACK
+		var back := s_at(_next_fright) - (lv_band + 3.0 + Person.THREAT_MARGIN)
 		if ctx.crowd != null and back >= 0.0:
-			ctx.crowd.fright(path_at(back), FRIGHT_R, 0.9, 2.0, SIGHT, 16.0, &"beast")
+			ctx.crowd.fright(path_at(back), lv_band + 3.0, 0.9, 2.0, lv_sight, 16.0, &"beast")
 		_next_fright += FRIGHT_EVERY
 	while _next_cone <= glide_end() and t >= _next_cone:
 		_cone(_next_cone)
@@ -407,7 +418,7 @@ func _fx_process(delta: float) -> void:
 	_dim()
 	if _fog != null:
 		_wave(delta)
-	if not _sick_over and t >= T_RISE + SICK:
+	if not _sick_over and t >= T_RISE + lv_sick:
 		_sick_over = true
 		_let_all_go()
 	if t >= glide_end() + DEPART and _held.is_empty() and _souls.is_empty():
@@ -457,7 +468,7 @@ func _wave(delta: float) -> void:
 	while _next_fog <= glide_end() and t >= _next_fog:
 		var s := s_at(_next_fog + FOG_LEAD)
 		for k in 2:
-			var side := _vis.randf_range(-BAND, BAND)
+			var side := _vis.randf_range(-lv_band, lv_band)
 			_fog.add({"g": fog_at(s, side), "born": _next_fog, "s": s, "head_s": s_at(_next_fog), "side": side,
 				"r": _vis.randf_range(30.0, 46.0), "lobe": _vis.randf_range(-1.0, 1.0)})
 		_next_fog += FOG_EVERY
@@ -481,7 +492,7 @@ func fog_at(s: float, side: float) -> Vector2:
 func _sight() -> void:
 	_seen = true
 	var plague := plague_live(ctx.crowd)
-	for e in ctx.field.in_radius(origin, SIGHT):
+	for e in ctx.field.in_radius(origin, lv_sight):
 		var p := e as Person
 		if p == null or p.inside or p.guised():
 			continue
@@ -509,11 +520,11 @@ func _sweep(t0: float, t1: float) -> void:
 ## death on the clock where the head passed nearest them.
 func _shadow(a: Vector2, b: Vector2, when: float, span: float) -> void:
 	var near: Array[Person] = []
-	for e in ctx.field.in_radius((a + b) * 0.5, a.distance_to(b) * 0.5 + BAND + 0.01):
+	for e in ctx.field.in_radius((a + b) * 0.5, a.distance_to(b) * 0.5 + lv_band + 0.01):
 		var p := e as Person
 		if p == null or p.inside or p.guised() or p.has_meta(&"decoy"):
 			continue  # a decoy (Mirrorfold's glass twin) is no one: the shadow passes over it, as Pale Reign's does
-		if Geometry2D.get_closest_point_to_segment(p.ground_pos, a, b).distance_to(p.ground_pos) <= BAND:
+		if Geometry2D.get_closest_point_to_segment(p.ground_pos, a, b).distance_to(p.ground_pos) <= lv_band:
 			near.append(p)
 	near.sort_custom(func(x: Person, y: Person) -> bool: return x.get_instance_id() < y.get_instance_id())
 	for p in near:
@@ -688,7 +699,7 @@ func _pose(delta: float) -> void:
 		feet.append(foot.y)
 		piece.queue_redraw()
 		if piece.kind != Piece.K_TAIL:
-			var w := BAND if k == 0 else BAND * (0.5 + 0.4 * piece.r / R_NECK)
+			var w := lv_band if k == 0 else lv_band * (0.5 + 0.4 * piece.r / R_NECK)
 			shade.append([q.g, w, piece.alpha * (0.14 if k == 0 else 0.07)])
 	_shade.pts = shade
 	var s_tail := s_at(t) - (float(SEGMENTS) - 0.5) * GAP
@@ -964,6 +975,8 @@ class Frost extends Node2D:
 	## Each {"g": its middle, "born": on this clock, "seed": its needles}.
 	var patches: Array[Dictionary] = []
 	var clock := 0.0
+	## The patch radius (the shadow's half width at the cast's level).
+	var band := BAND
 
 	func _ready() -> void:
 		set_process(false)
@@ -998,7 +1011,7 @@ class Frost extends Node2D:
 			if fade <= 0.0:
 				continue
 			var g: Vector2 = q.g
-			var r := BAND * (0.55 + 0.45 * grow)
+			var r := band * (0.55 + 0.45 * grow)
 			PaleSerpentFx.disc(self, g, r, Color(FROST[0], 0.05 * fade))
 			PaleSerpentFx.disc(self, g, r * 0.62, Color(FROST[1], 0.05 * fade))
 			# Hoarfrost: a few needles of rime scattered over it.

@@ -52,17 +52,24 @@ var _next_tally := 0.0
 
 ## Seconds until the stroke (0 once it has struck).
 func left() -> float:
-	return maxf(COUNTDOWN - t, 0.0)
+	return maxf(lv_countdown - t, 0.0)
+
+
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_radius := RADIUS
+var lv_countdown := COUNTDOWN
 
 
 func _build() -> void:
-	duration = COUNTDOWN + BURN
+	lv_radius = float(PowerBook.stat(extra, "sealed", "RADIUS", RADIUS))
+	lv_countdown = float(PowerBook.stat(extra, "sealed", "COUNTDOWN", COUNTDOWN))
+	duration = lv_countdown + BURN
 	busy = WRITE
-	at(COUNTDOWN, _stroke)
+	at(lv_countdown, _stroke)
 	ctx.play(&"q_sealed", origin)
 	if not DominionParts.staged(self):
 		return
-	var mark := FxParts.rings(self, origin, RADIUS, DecreeParts.GILT, 1, 40.0)
+	var mark := FxParts.rings(self, origin, lv_radius, DecreeParts.GILT, 1, 40.0)
 	mark.set_param("scan", 0.0)
 	mark.set_param("crosshair", 0.0)
 	mark.tween_param("reveal", 0.0, 1.0, WRITE, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
@@ -82,15 +89,15 @@ func _fx_process(_delta: float) -> void:
 	if _ledger == null or struck or t < _next_tally:
 		return
 	_next_tally = t + TALLY_EVERY
-	_ledger.souls = souls_at(ctx.crowd, ctx.field, origin)
+	_ledger.souls = souls_at(ctx.crowd, ctx.field, origin, lv_radius)
 
 
 ## Everyone the verdict takes at `at`, but those sheltering (their houses are found by shelters_at()): every living person
 ## out of doors within RADIUS, then those kept at home for the night whose place lies inside; nearest first, a tie to the
 ## earlier instance.
-static func doomed_at(crowd: Crowd, field: EnemyField, at: Vector2) -> Array[Person]:
+static func doomed_at(crowd: Crowd, field: EnemyField, at: Vector2, r := RADIUS) -> Array[Person]:
 	var out: Array[Person] = []
-	for e in field.in_radius(at, RADIUS):
+	for e in field.in_radius(at, r):
 		var p := e as Person
 		if p != null and p.is_alive() and not p.inside:
 			out.append(p)
@@ -98,7 +105,7 @@ static func doomed_at(crowd: Crowd, field: EnemyField, at: Vector2) -> Array[Per
 		for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 			for p in group:
 				if is_instance_valid(p) and p.is_alive() and p.inside and p.night_indoors \
-						and p.ground_pos.distance_squared_to(at) <= RADIUS * RADIUS:
+						and p.ground_pos.distance_squared_to(at) <= r * r:
 					out.append(p)
 	out.sort_custom(func(a: Person, b: Person) -> bool:
 		var da := a.ground_pos.distance_squared_to(at)
@@ -108,20 +115,20 @@ static func doomed_at(crowd: Crowd, field: EnemyField, at: Vector2) -> Array[Per
 
 
 ## The shelters with people in them whose place lies within RADIUS of `at`, in the town's order.
-static func shelters_at(crowd: Crowd, at: Vector2) -> Array[Structure]:
+static func shelters_at(crowd: Crowd, at: Vector2, r := RADIUS) -> Array[Structure]:
 	var out: Array[Structure] = []
 	if crowd == null or crowd.shelters == null:
 		return out
 	for s: Structure in crowd.shelters.shelters:
-		if is_instance_valid(s) and crowd.shelters.occupants(s) > 0 and s.center().distance_squared_to(at) <= RADIUS * RADIUS:
+		if is_instance_valid(s) and crowd.shelters.occupants(s) > 0 and s.center().distance_squared_to(at) <= r * r:
 			out.append(s)
 	return out
 
 
 ## How many the verdict would take if the bell struck now: those doomed_at() and everyone sheltering in shelters_at().
-static func souls_at(crowd: Crowd, field: EnemyField, at: Vector2) -> int:
-	var n := doomed_at(crowd, field, at).size()
-	for s in shelters_at(crowd, at):
+static func souls_at(crowd: Crowd, field: EnemyField, at: Vector2, r := RADIUS) -> int:
+	var n := doomed_at(crowd, field, at, r).size()
+	for s in shelters_at(crowd, at, r):
 		n += crowd.shelters.occupants(s)
 	return n
 
@@ -133,8 +140,8 @@ func _stroke() -> void:
 		return
 	struck = true
 	ctx.play(&"q_sealed_hit", origin)
-	var doomed := doomed_at(ctx.crowd, ctx.field, origin)
-	for s in shelters_at(ctx.crowd, origin):
+	var doomed := doomed_at(ctx.crowd, ctx.field, origin, lv_radius)
+	for s in shelters_at(ctx.crowd, origin, lv_radius):
 		doomed.append_array(ctx.crowd.shelters.throw_out_of(s, 0.0))  # brought out at the door, where the body is found
 	var staged := _ledger != null and DominionParts.staged(self)
 	for p in doomed:
@@ -149,7 +156,7 @@ func _stroke() -> void:
 	if not staged:
 		return
 	_ledger.souls = dead
-	DecreeParts.wave(self, origin, RADIUS, 0.9, 0.03)
+	DecreeParts.wave(self, origin, lv_radius, 0.9, 0.03)
 	DecreeParts.wave(self, origin, 3.2, 0.35, 0.12)
 	var glow := FxParts.bloom(self, _ledger.position, 110.0, DecreeParts.GILT, 1.6, 0.6)
 	glow.tween_param("intensity", 1.6, 0.0, 0.6, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
@@ -166,17 +173,17 @@ func _stroke() -> void:
 
 ## How much of the ledger's circle shows: written in over WRITE, whole until the stroke, gone over FADE after it.
 func shown() -> float:
-	if t < COUNTDOWN:
+	if t < lv_countdown:
 		return clampf(t / WRITE, 0.0, 1.0)
-	return clampf(1.0 - (t - COUNTDOWN) / FADE, 0.0, 1.0)
+	return clampf(1.0 - (t - lv_countdown) / FADE, 0.0, 1.0)
 
 
 ## How dark the district is drawn: none until the last DUSK seconds, deepening to the stroke, lifted just after it.
 func dusk() -> float:
-	if t < COUNTDOWN:
-		var k := clampf((t - (COUNTDOWN - DUSK)) / DUSK, 0.0, 1.0)
+	if t < lv_countdown:
+		var k := clampf((t - (lv_countdown - DUSK)) / DUSK, 0.0, 1.0)
 		return k * k * (3.0 - 2.0 * k)
-	return clampf(1.0 - (t - COUNTDOWN) / 0.8, 0.0, 1.0)
+	return clampf(1.0 - (t - lv_countdown) / 0.8, 0.0, 1.0)
 
 
 ## The ledger's entry, drawn for the player alone on the god's overlay round the district's middle, see-through so
@@ -196,6 +203,8 @@ class Ledger extends Node2D:
 	## Bright brass: the runes still to come and the chain's heavy links, to read over a busy town.
 	const BRIGHT := Color("e8b44c")
 	const MARKS := 30  # one rune a second: COUNTDOWN
+	## One rune a second of this cast's countdown (MARKS at level 1).
+	var marks := MARKS
 	const ALPHA := 0.8
 	const SIZE := 20
 	const LINKS := 48
@@ -255,23 +264,24 @@ class Ledger extends Node2D:
 	var _head := ""
 
 	## The ground circle of RADIUS's half width and half height on screen.
-	static func half_axes() -> Vector2:
-		return Vector2(RADIUS * 32.0 * sqrt(2.0), RADIUS * 16.0 * sqrt(2.0))
+	static func half_axes(r := RADIUS) -> Vector2:
+		return Vector2(r * 32.0 * sqrt(2.0), r * 16.0 * sqrt(2.0))
 
 	## The point at `angle` on the circle grown `k` times, in screen pixels from the middle.
-	static func on_rim(angle: float, k: float) -> Vector2:
-		return Vector2(cos(angle), sin(angle)) * half_axes() * k
+	func on_rim(angle: float, k: float) -> Vector2:
+		return Vector2(cos(angle), sin(angle)) * half_axes(fx.lv_radius) * k
 
 	func _ready() -> void:
-		var h := half_axes()
+		var h := half_axes(fx.lv_radius)
+		marks = ceili(fx.lv_countdown)
 		for i in 65:
 			_rim.append(Vector2.from_angle(TAU * float(i) / 64.0) * h)
 		for i in 64:
 			_disc.append(_rim[i])
 			_disc_out.append(_rim[i] * 1.05)
-		for i in MARKS:
+		for i in marks:
 			# From the top of the circle, round clockwise, as a clock's hand goes.
-			var ang := -PI * 0.5 + TAU * float(i) / float(MARKS)
+			var ang := -PI * 0.5 + TAU * float(i) / float(marks)
 			var b := on_rim(ang, 1.03)
 			var u := (on_rim(ang, 1.11) - b).normalized() * 22.0
 			var v := Vector2(-u.y, u.x).normalized()
@@ -358,9 +368,9 @@ class Ledger extends Node2D:
 		draw_polyline(_rim, Color(DecreeParts.INK, a * 0.8), 9.0)
 		draw_polyline(_rim, Color(BRASS.lerp(DecreeParts.GILT, lit), minf(a + lit * 0.4, 1.0)), 5.0)
 		# The seconds: those spent go dark (the last one fading), the next one still to come lit gilt.
-		var spent := clampi(int(floor(fx.t)), 0, MARKS)
+		var spent := clampi(int(floor(fx.t)), 0, marks)
 		var frac := fposmod(fx.t, 1.0)
-		for i in MARKS:
+		for i in marks:
 			var c := Color(BRIGHT, a)
 			if i < spent - 1 or (fx.struck and i < spent):
 				c = Color(DecreeParts.INK, a * 0.7)
@@ -443,7 +453,7 @@ class Ledger extends Node2D:
 
 	## Over the last DUSK seconds the bell comes down on its chain over the middle, swaying, glinting with each second.
 	func _draw_bell(lit: float) -> void:
-		var k := clampf((fx.t - (COUNTDOWN - DUSK)) / DUSK, 0.0, 1.0)
+		var k := clampf((fx.t - (fx.lv_countdown - DUSK)) / DUSK, 0.0, 1.0)
 		if k <= 0.0:
 			return
 		var ba := clampf(k * DUSK / 0.5, 0.0, 1.0) * 0.9
@@ -464,7 +474,7 @@ class Ledger extends Node2D:
 	## The great seal: it falls over DROP onto the middle, landing at the stroke, its handle lifts away, and its face
 	## lies a moment on the ground in gilt and fades as the burn (Brand) takes its place; a gilt ring runs out from it.
 	func _draw_seal() -> void:
-		var s := fx.t - COUNTDOWN
+		var s := fx.t - fx.lv_countdown
 		if s < -DROP or s > 0.9:
 			return
 		var fall := clampf(-s / DROP, 0.0, 1.0)
@@ -491,7 +501,7 @@ class Ledger extends Node2D:
 
 	## A gilt line from the seal to each of the dead, drawn out and gone; a soul rising from each.
 	func _draw_dead() -> void:
-		var s := fx.t - COUNTDOWN
+		var s := fx.t - fx.lv_countdown
 		var n := _dead.size()
 		if n == 0:
 			return

@@ -41,17 +41,24 @@ var _passed := {}  # spirit -> {soldier: true}
 var _ended := false
 ## A cold glow under each wraith while it haunts (staged only), by the wraith's index in spirits.
 var _glows := {}  # int -> QuadFx
+## This cast's numbers at its ability level (the consts at level 1): the wraiths, the haunt time, a soldier's freeze.
+var lv_spirits := SPIRITS
+var lv_haunt := HAUNT
+var lv_freeze := FREEZE
 
 
 func _build() -> void:
+	lv_spirits = int(PowerBook.stat(extra, "gravecall", "SPIRITS", SPIRITS))
+	lv_haunt = float(PowerBook.stat(extra, "gravecall", "HAUNT", HAUNT))
+	lv_freeze = float(PowerBook.stat(extra, "gravecall", "FREEZE", FREEZE))
 	_to = extra.get("to", origin)
-	duration = T_RISE + TRAVEL_MAX + HAUNT + FADE + 2.0  # a safe ceiling: _end_life() sets the real end
+	duration = T_RISE + TRAVEL_MAX + lv_haunt + FADE + 2.0  # a safe ceiling: _end_life() sets the real end
 	busy = T_RISE
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
-	for k in SPIRITS:
-		var ang := TAU * float(k) / float(SPIRITS) + 0.5
+	for k in lv_spirits:
+		var ang := TAU * float(k) / float(lv_spirits) + 0.5
 		_slots.append(_to + Vector2.from_angle(ang) * SPREAD)
 	at(T_RISE, _rise)
 	ctx.play(&"gravecall_rise", origin, 0.0)
@@ -68,8 +75,8 @@ func _rise() -> void:
 	var trip := origin.distance_to(_to)
 	var base := DeathParts.SPIRIT_SPEED * Animal.DOG_SPEED * Animal.RUN
 	var mul := maxf(1.0, trip / (base * TRAVEL_MAX))
-	for k in SPIRITS:
-		var ang := TAU * float(k) / float(SPIRITS) + 0.5
+	for k in lv_spirits:
+		var ang := TAU * float(k) / float(lv_spirits) + 0.5
 		var a := DeathParts.haunt(visitors, origin + Vector2.from_angle(ang) * SPREAD * 0.5)
 		a.speed_mul *= mul
 		spirits.append(a)
@@ -113,7 +120,7 @@ func _fx_process(delta: float) -> void:
 	if _fright_in <= 0.0:
 		_fright_in = FRIGHT_EVERY
 		_haunt_fright()
-	if haunting and t - _started >= HAUNT:
+	if haunting and t - _started >= lv_haunt:
 		_end_life()
 
 
@@ -142,7 +149,7 @@ func _freeze_soldiers(a: Animal) -> void:
 			continue
 		if s.ground_pos.distance_to(a.ground_pos) <= PASS_R:
 			seen[s] = true
-			s.stun(FREEZE)
+			s.stun(lv_freeze)
 
 
 ## The 20 s are up: every spirit is recalled and thins away.

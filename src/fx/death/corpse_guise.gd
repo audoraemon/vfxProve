@@ -37,11 +37,11 @@ var _breath_in := BREATH_EVERY * 0.5
 
 ## Whom a click at `at` would guise: the MOST nearest living people out of doors within MARK_R, nearest first, a tie by
 ## instance id.
-static func marked_at(field: EnemyField, at: Vector2) -> Array[Person]:
+static func marked_at(field: EnemyField, at: Vector2, r := MARK_R, most := MOST) -> Array[Person]:
 	var out: Array[Person] = []
 	if field == null:
 		return out
-	for e in field.in_radius(at, MARK_R):
+	for e in field.in_radius(at, r):
 		var p := e as Person
 		if p != null and p.is_alive() and not p.inside:
 			out.append(p)
@@ -49,18 +49,27 @@ static func marked_at(field: EnemyField, at: Vector2) -> Array[Person]:
 		var da := a.ground_pos.distance_squared_to(at)
 		var db := b.ground_pos.distance_squared_to(at)
 		return da < db if da != db else a.get_instance_id() < b.get_instance_id())
-	return out.slice(0, MOST)
+	return out.slice(0, most)
+
+
+## This cast's numbers at its ability level (the consts at level 1): the faithful hidden, the reach, the time.
+var lv_most := MOST
+var lv_mark_r := MARK_R
+var lv_span := SPAN
 
 
 func _build() -> void:
-	duration = SPAN
+	lv_most = int(PowerBook.stat(extra, "guise", "MOST", MOST))
+	lv_mark_r = float(PowerBook.stat(extra, "guise", "MARK_R", MARK_R))
+	lv_span = float(PowerBook.stat(extra, "guise", "SPAN", SPAN))
+	duration = lv_span
 	busy = 0.8
-	marked = marked_at(ctx.field, origin)
+	marked = marked_at(ctx.field, origin, lv_mark_r, lv_most)
 	if marked.is_empty():
 		duration = 1.0
 		return
 	for p in marked:
-		p.statuses[KEY] = SPAN
+		p.statuses[KEY] = lv_span
 		# A cast taking over an earlier one's guise takes its mark too: one mark per person.
 		var before := instance_from_id(int(_owner.get(p.get_instance_id(), 0))) as CorpseGuiseFx
 		if before != null and before != self:

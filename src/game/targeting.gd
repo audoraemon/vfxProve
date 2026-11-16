@@ -228,8 +228,11 @@ const AREA_STATS := {
 	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
 	"raise": {"r": "RING_R", "roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"}, "guise": {"r": "MARK_R"},
 	"gatebelow": {"r": "REACH"},
+	"pestilence": {"r": "INFECT_R"}, "noleave": {"r": "RADIUS"}, "breath": {"r": "RADIUS"}, "disorder": {"r": "RADIUS"},
+	"fenced": {"r": "RADIUS"}, "cage": {"r": "RADIUS"}, "sealed": {"r": "RADIUS"},
+	"erase": {"length": "MAX_LEN", "half": "CRUSH_W", "outer": "THROW_W"}, "eminent": {"length": "LENGTH", "half": "HALF_W"},
 	"pale": {"r": "RADIUS"},
-	"serpent": {"length": "LENGTH"},
+	"serpent": {"length": "LENGTH", "half": "BAND"},
 	"gravetide": {"r": "GIANT_AURA"},
 	"heavendoor": {"r": "PULL_R"},
 }
@@ -1209,19 +1212,20 @@ func _draw() -> void:
 				_ring(p.ground_pos, 0.2, COL_DIVINE)
 		"bound":
 			# Whom the first click takes; placed, how far the second may be, and whom it takes -- red when too far.
+			var bond_reach := float(_lv("bound", "REACH", BoundFx.REACH))
 			var one := BoundFx.nearest(_crowd._field, first if placed else _press, BoundFx.PICK_R)
 			if one != null:
 				_ring(one.ground_pos, 0.25, COL_DIVINE)
 				if placed:
-					_ring(one.ground_pos, BoundFx.REACH, COL_FAINT)
+					_ring(one.ground_pos, bond_reach, COL_FAINT)
 					var two := BoundFx.nearest(_crowd._field, _press, BoundFx.PICK_R, one)
 					if two != null:
-						var far := two.ground_pos.distance_to(one.ground_pos) > BoundFx.REACH
+						var far := two.ground_pos.distance_to(one.ground_pos) > bond_reach
 						_ring(two.ground_pos, 0.25, COL_CRIMSON if far else COL_DIVINE)
 						draw_line(one.ground_pos, two.ground_pos, COL_CRIMSON if far else COL_FAINT, -1.0)
 		"redefine":
 			# Whom it would name.
-			for p in RedefineFx.named_at(_crowd._field, _press):
+			for p in RedefineFx.named_at(_crowd._field, _press, int(_lv("redefine", "MAX_NAMED", RedefineFx.MAX_NAMED))):
 				_ring(p.ground_pos, 0.22, COL_CRIMSON if String(mode().get("key", "")) == "criminal" else COL_DIVINE)
 		"turncoat":
 			var turned := TurncoatFx.target_at(_crowd._field, _press)
@@ -1247,7 +1251,8 @@ func _draw() -> void:
 				_ring(p.ground_pos, 0.2, COL_MAD)
 		"pestilence":
 			# Who it would infect.
-			for p in PestilenceFx.victims_at(_crowd._field, _press):
+			for p in PestilenceFx.victims_at(_crowd._field, _press, float(_lv("pestilence", "INFECT_R", PestilenceFx.INFECT_R)),
+					int(_lv("pestilence", "INFECT_MAX", PestilenceFx.INFECT_MAX))):
 				_ring(p.ground_pos, 0.2, Person.SICK_MOTE)
 		"discord":
 			# Who it would take.
@@ -1280,7 +1285,8 @@ func _draw() -> void:
 				_ring(marked.ground_pos, 0.25, COL_MAD)
 		"guise":
 			# Who it would guise, each with Death's skull.
-			for p in CorpseGuiseFx.marked_at(_crowd._field, _press):
+			for p in CorpseGuiseFx.marked_at(_crowd._field, _press, float(_lv("guise", "MARK_R", CorpseGuiseFx.MARK_R)),
+					int(_lv("guise", "MOST", CorpseGuiseFx.MOST))):
 				_death_mark(p.ground_pos, COL_BONE, true)
 		"raise":
 			# Every body in the ring (R28), the ones that will rise with the skull; past the cap, or in SPIRIT a soul-less one, red.
@@ -1490,7 +1496,7 @@ func _draw_pick() -> void:
 		# up -- in red.
 		_whisper_line(from, _at, col, _order == "walk")
 		if _order == "attack":
-			_ring(from, WalkingCorpseFx.ATTACK_R, COL_FAINT)
+			_ring(from, float(_lv("walker", "ATTACK_R", WalkingCorpseFx.ATTACK_R)), COL_FAINT)
 			var foe := MindWhisperFx.foe_at(_crowd._field, _at)
 			if foe != null:
 				var fx: Variant = _wheel_fx()

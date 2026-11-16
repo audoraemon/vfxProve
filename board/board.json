@@ -1,11 +1,10 @@
 {
- "hash": "a445b385fc0d2e02",
- "updated": "2026-11-15T04:55:50+07:00",
+ "hash": "e044bda2d0d9b858",
+ "updated": "2026-11-16T14:58:17+07:00",
  "changes": {
-  "date": "<t:1794693350:f>",
+  "date": "<t:1794815897:f>",
   "items": [
-   "New: Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)",
-   "New: Any screen resolution + crisp Skill Tree (UI Resolution milestone)"
+   "New: Death powers: your second review (in progress)"
   ]
  },
  "snapshot": {
@@ -202,6 +201,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-13",
     "order": 2
+   },
+   "death-review-2": {
+    "title": "Death powers: your second review",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-16",
+    "order": 4
    },
    "death-review-adjust": {
     "title": "Death powers: your review adjustments",
@@ -1102,7 +1110,7 @@
     "area": "UI",
     "needs_you": true,
     "branch": "feat/Develop-Main",
-    "updated": "2026-11-15",
+    "updated": "2026-11-16",
     "order": 212
    },
    "ui-sfxr-listen": {
@@ -1713,25 +1721,25 @@
   },
   "branches": [
    {
-    "name": "fix/suite-runtime-error",
-    "ahead": 104,
-    "behind": 80,
-    "date": "2026-11-14",
-    "subject": "test: a suite that hits a GDScript runtime error fails, named",
+    "name": "god/death-review-2",
+    "ahead": 119,
+    "behind": 84,
+    "date": "2026-11-16",
+    "subject": "fix: Lantern's Eye towers may be struck; the kneeling shrine is kept",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
-    "ahead": 64,
-    "behind": 80,
-    "date": "2026-11-13",
-    "subject": "dev: re-record the Decree refs after the review adjustments",
+    "ahead": 105,
+    "behind": 84,
+    "date": "2026-11-16",
+    "subject": "docs: Death and Decree ability levels design (proposed)",
     "pushed": true
    },
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 269,
+    "behind": 273,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1739,7 +1747,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 767,
+    "behind": 771,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1747,7 +1755,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 725,
+    "behind": 729,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1755,8 +1763,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-15",
-   "subject": "docs: UI resolution milestone rulings"
+   "date": "2026-11-16",
+   "subject": "fix: mission HUD shrank to a corner after a window resize (full-rect anchors kept -640/-360 offsets)"
   }
  }
 }

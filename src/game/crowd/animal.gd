@@ -619,7 +619,7 @@ func tick_visual(delta: float) -> void:
 		# Eased before any early return below, so every breed's recoil comes back.
 		_recoil_left = maxf(_recoil_left - delta, 0.0)
 		queue_redraw()
-	if breed == Breed.GHOST or breed in UNDEAD:
+	if _hovers():
 		_hover_t += delta
 		queue_redraw()  # it bobs, sways and flickers every frame
 	if _off_left > 0.0:
@@ -645,6 +645,18 @@ func tick_visual(delta: float) -> void:
 	if f != _shown:
 		_shown = f
 		queue_redraw()
+
+
+## Whether it is drawn off the hover clock and so redrawn every frame: the ghost, spirit, wraith and bone giant (they bob,
+## sway or flicker), the pale ghost with no sheet (the wraith's draw), and the zombie (its idle frames run off the clock).
+## The skeleton, the ghoul and the painted pale ghost are sheet breeds: redrawn only when their frame or state changes.
+func _hovers() -> bool:
+	match breed:
+		Breed.GHOST, Breed.SPIRIT, Breed.WRAITH, Breed.BONE_GIANT, Breed.ZOMBIE:
+			return true
+		Breed.PALE_GHOST:
+			return sheet(breed).is_empty()
+	return false
 
 
 ## A bite landed: the sprite plays its bite once.

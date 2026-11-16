@@ -590,6 +590,22 @@ static func _second_review(t) -> void:
 			% [v.house_looks - looks0, most_looks])
 	v = _fresh(made)
 
+	# --- Only the breeds that bob, sway or flicker run the hover clock (and redraw every frame); the sheet breeds do not.
+	var clocked := []
+	var still := []
+	for b in [Animal.Breed.GHOST, Animal.Breed.SPIRIT, Animal.Breed.WRAITH, Animal.Breed.BONE_GIANT, Animal.Breed.ZOMBIE,
+			Animal.Breed.PALE_GHOST, Animal.Breed.SKELETON, Animal.Breed.GHOUL]:
+		var an := Animal.new()
+		an.breed = b
+		an.tick_visual(0.1)
+		var sheeted: bool = b == Animal.Breed.PALE_GHOST and not Animal.sheet(b).is_empty()
+		var want: bool = not (b in [Animal.Breed.SKELETON, Animal.Breed.GHOUL] or sheeted)
+		if (an._hover_t > 0.0) != want:
+			(still if want else clocked).append(Animal.Breed.keys()[b])
+		an.free()
+	t.check(clocked.is_empty() and still.is_empty(),
+		"the hover clock runs only for hovering breeds (wrongly clocked %s, wrongly still %s)" % [clocked, still])
+
 	# --- Skeleton and ghoul stats.
 	var s1 := DeathParts.skeleton(v, at)
 	var g1 := DeathParts.ghoul(v, at)

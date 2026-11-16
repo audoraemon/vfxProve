@@ -72,5 +72,35 @@ static func run(t) -> void:
 	crowd.threats.clear()
 	ev.step(0.0)
 	t.check(is_equal_approx(grid.grid.get_point_weight_scale(id), 1.0), "and stop once it is gone")
+
+	# Two zones overlapping: when one goes, what the other still covers stays weighted, what only it covered is free again.
+	var za := Vector2(2.7, 12.0)
+	var zb := Vector2(4.2, 12.0)
+	var ida := crowd.threats.register(za, 2.5, 0.8, 30.0, 8.0, 12.0, &"test")
+	crowd.threats.register(zb, 2.5, 0.8, 30.0, 8.0, 12.0, &"test")
+	ev.step(0.0)
+	var cells_a := ev._zone_cells(za, 2.5)
+	var cells_b := ev._zone_cells(zb, 2.5)
+	var both: Array[Vector2i] = []
+	var only_a: Array[Vector2i] = []
+	for c in cells_a:
+		if cells_b.has(c):
+			both.append(c)
+		else:
+			only_a.append(c)
+	t.check(not both.is_empty() and not only_a.is_empty(), "(the two zones overlap, and each has cells of its own)")
+	crowd.threats.end(ida)
+	crowd.threats.step(ThreatManager.RECENT + 0.1)  # it lingers as a recent impact for RECENT s, then is gone
+	ev.step(0.0)
+	var shared_ok := true
+	for c in both:
+		shared_ok = shared_ok and is_equal_approx(grid.grid.get_point_weight_scale(c), EvacuationManager.DANGER_WEIGHT)
+	var freed_ok := true
+	for c in only_a:
+		freed_ok = freed_ok and is_equal_approx(grid.grid.get_point_weight_scale(c), 1.0)
+	t.check(shared_ok, "cells the other zone still covers stay at DANGER_WEIGHT")
+	t.check(freed_ok, "cells only the gone zone covered go back to 1.0")
+	crowd.threats.clear()
+	ev.step(0.0)
 	crowd.clear()
 	world.free()

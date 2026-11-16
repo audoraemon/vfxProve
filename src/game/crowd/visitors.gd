@@ -658,6 +658,7 @@ func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person
 
 ## The field's living this step, in its order (EnemyField.in_radius() builds this list on every call: a horde asking it
 ## round every visitor made that the dearest thing in the frame).
+## `_guard`, `_nearest` and `_lure` rely on this per-step snapshot: nothing may add or remove soldiers in the field during the visitors' step.
 func _people() -> Array:
 	if not _living_taken:
 		_living_taken = true
@@ -682,7 +683,8 @@ func _guard(delta: float) -> void:
 		box = box.grow(GUARD_REACH + 0.01)  # a hair over: one exactly at his reach is still in it
 		for e in _people():
 			var p := e as Person
-			if p != null and p.soldier and boxed and box.has_point(p.ground_pos) and p.is_alive() and not p.inside 					and not p.is_down():
+			if (p != null and p.soldier and boxed and box.has_point(p.ground_pos) and p.is_alive()
+					and not p.inside and not p.is_down()):
 				guards.append(p)
 	var reach2 := GUARD_REACH * GUARD_REACH
 	for a in _rules.keys():
@@ -861,7 +863,8 @@ func _lure() -> void:
 		var r2 := r.seek_r * r.seek_r
 		for e in _people():
 			var p := e as Person
-			if p == null or not p.soldier or p.inside or seen.has(p) or p.ground_pos.distance_squared_to(a.ground_pos) > r2 					or not p.is_alive():
+			if (p == null or not p.soldier or p.inside or seen.has(p)
+					or p.ground_pos.distance_squared_to(a.ground_pos) > r2 or not p.is_alive()):
 				continue
 			seen[p] = true
 			var nearest := _nearest_visitor(p.ground_pos, up)

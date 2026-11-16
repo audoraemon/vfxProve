@@ -31,6 +31,7 @@ static func run(t) -> void:
 	_ghost_touch(t, made)
 	_pale_ghosts(t, made)
 	_last_touch(t, made)
+	_fresh_fright(t, made)
 	_ghost_per_death(t, made)
 	_horde_caps(t, made)
 	_ghost_bounds(t, made)
@@ -525,6 +526,25 @@ static func _ghost_touch(t, made: Array) -> void:
 	field.enemy_killed.disconnect(on_kill)
 	fx.end_now()
 	sick_b.sick_left = 0.0
+
+
+## R49: a spent ghost's fright (`fresh_only`) leaves a citizen already in PANIC to the flight he is on -- same mind, same goal --
+## while a calm one beside him still panics.
+static func _fresh_fright(t, made: Array) -> void:
+	_reset(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var running := _put(made, 0, at + Vector2(1.0, 0.0))
+	var calm := _put(made, 1, at + Vector2(-1.0, 0.0))
+	running.panic(at + Vector2(0.0, 6.0), 2.0, &"test")
+	t.check(running.mind == Person.Mind.PANIC, "(the first citizen is running in panic)")
+	var goal := running.goal()
+	var intent := running.intent()
+	crowd.fright(at, 3.0, 0.5, 2.0, 3.0, 3.0, &"beast", false, true)
+	t.check(running.mind == Person.Mind.PANIC and running.goal() == goal and running.intent() == intent,
+		"a fresh_only fright leaves a citizen already in PANIC his flight and goal (%s -> %s)" % [goal, running.goal()])
+	t.check(calm.mind == Person.Mind.PANIC, "and a calm citizen in reach still panics (mind %d)" % calm.mind)
+	crowd.threats.clear()
 
 
 ## R39: the touch that is the horde's HORDE_KILLS-th kill adds no ghost, and the horde does NOT sink: the ghosts up run on to the

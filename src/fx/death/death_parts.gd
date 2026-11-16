@@ -28,7 +28,7 @@ const ZOMBIE_BITE_EVERY := 1.2
 const SPIRIT_FRIGHT_R := 3.0
 ## A spirit cannot be cut down: its blows are beyond counting.
 const SPIRIT_BLOWS := 999
-## A spirit drifts at this share of a dog's run; a wraith (which goes for soldiers) looks this far.
+## A spirit drifts at this share of a dog's run; a wraith (which withers anyone in its sector, R37) looks this far.
 const SPIRIT_SPEED := 0.7
 const WRAITH_SEEK := 12.0
 const WRAITH_SPEED := 1.0

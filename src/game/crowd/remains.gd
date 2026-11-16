@@ -17,8 +17,9 @@ const PICK_R := 1.0
 ## or Erasing Distance's fold), and the withering's (R36). A blast, a fire, the pit or a door of stars leaves nothing to raise.
 const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy", &"pale", &"shadow", &"grave", &"choke",
 	&"verdict", &"bound", &"crushed", &"wither"]
-## The powers that need the ledger on (Pale Reign: its dead rise as servants).
-const WANTED_BY: Array[String] = ["raise", "walker", "gravetide", "pale"]
+## The powers that need the ledger on (Pale Reign: its dead rise as servants; The Gate Below: its withered leave a body,
+## ready to rise, R36).
+const WANTED_BY: Array[String] = ["raise", "walker", "gravetide", "pale", "gatebelow"]
 
 
 ## One body: values only. `body` is a WeakRef to the dead Person, used for one thing -- hiding that node when the remain is

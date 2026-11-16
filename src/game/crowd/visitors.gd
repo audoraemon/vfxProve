@@ -401,11 +401,12 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	if r.wither > 0.0:
 		# Its touch withers: no knock, no hurt; the crowd's withering does the rest. It looks for the next at once.
 		a.bit()
+		# Only a curse laid is a touch (bitten, the count): none laid (no crowd to lay it) is no touch at all.
 		var laid := _crowd != null and is_instance_valid(_crowd) and _crowd.wither(who, r.wither, a.ground_pos)
-		var first_touch := not r.has_bitten
-		r.has_bitten = true
-		bitten.emit(a, who, first_touch)
 		if laid:
+			var first_touch := not r.has_bitten
+			r.has_bitten = true
+			bitten.emit(a, who, first_touch)
 			a.target = null
 			r.retarget_in = 0.0
 			_touched(a, r)

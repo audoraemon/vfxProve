@@ -1,9 +1,11 @@
 extends RefCounted
-## The Gate Below (Death, Tier IV): a click opens the ground into a pit of 3 ringed in bone for 12 s. Every 0.5 s pale arms
-## take the nearest person within 6 who is out in the open, not guised and not caught yet, hold them (pace 0) and drag them to
-## the pit's edge over 1.5 s, where they go under (killed as pit: no body is left). When the pit closes every soul it took
-## climbs back out as a wraith that hunts soldiers for 20 s and kills the one it reaches (spent with him). The pit is a rift
-## drawn on the ground with arms reaching up all over its reach, not a stretched sheet. Loud: the town panics.
+## The Gate Below (Death, Tier IV): a click tears the ground open into a rift that fills its ring of 6 (its lip about 4.2,
+## cracks and bone out to 6) for 12 s. Every 0.5 s grasping hands take the nearest person within 6 who is out in the open,
+## not guised and not caught yet, hold them (pace 0) and drag them to the lip over 1.5 s (one already inside it goes under
+## where he stands), where they go under (killed as pit: no body is left). When the pit closes every soul it took climbs
+## back out as a wraith that flies out into its own sector of the circle and withers whoever it reaches there (three at
+## most, citizen or soldier), and they die of it 6 s later as wither, leaving a body. The pit is a rift drawn on the ground
+## with 36 hands reaching up all over its ring, not a stretched sheet. Loud: the town panics.
 
 const RD := preload("res://tests/test_raise_dead.gd")
 const DT := 0.05
@@ -20,10 +22,11 @@ static func run(t) -> void:
 	_grabs(t, made)
 	_held_and_freed(t, made)
 	_pit(t, made)
+	_inside_lip(t, made)
 	_wraiths(t, made)
 	_none(t, made)
-	_prey(t, made)
-	_wraith_kills(t, made)
+	_scatter(t, made)
+	_wraith_withers(t, made)
 	_loud(t, made)
 	_freed_mid_drag(t, made)
 	_killed_mid_drag(t, made)
@@ -60,27 +63,37 @@ static func _book(t) -> void:
 		"The Gate Below: Death's 5 DP, 90 s, a click, loud (%s)" % [b])
 	var area: Dictionary = Targeting.AREAS.get("gatebelow", {})
 	t.check(PowerBook.REACH.has("gatebelow") and is_equal_approx(PowerBook.impact("gatebelow"), TheGateBelowFx.T_OPEN + TheGateBelowFx.DRAG)
-		and PowerBook.family("gatebelow") == "death" and Rules.POWER_KINDS.get("gatebelow", []) == [&"pit"]
+		and PowerBook.family("gatebelow") == "death" and Rules.POWER_KINDS.get("gatebelow", []) == [&"pit", &"wither"]
 		and area.get("shape", "") == "circle" and is_equal_approx(float(area.get("r", 0.0)), TheGateBelowFx.REACH)
 		and Targeting.AREA_STATS.get("gatebelow", {}) == {"r": "REACH"},
-		"its reach, impact (the first soul under), family, kills (pit) and area (the arms' reach)")
+		"its reach, impact (the first soul under), family, kills (pit, wither) and area (the arms' reach)")
 	t.check(PowerBook.icon("gatebelow") != null and PowerBook.hud_icon("gatebelow") != null, "it has its icons")
-	t.check(TheGateBelowFx.PIT_R == 3.0 and TheGateBelowFx.REACH == 6.0 and TheGateBelowFx.SPAN == 12.0
-		and TheGateBelowFx.GRAB_EVERY == 0.5 and TheGateBelowFx.DRAG == 1.5 and TheGateBelowFx.WRAITH_LIFE == 20.0,
-		"the numbers of the brief")
+	t.check(TheGateBelowFx.PIT_R == TheGateBelowFx.REACH and TheGateBelowFx.REACH == 6.0 and TheGateBelowFx.EDGE == 4.2
+		and TheGateBelowFx.SPAN == 12.0 and TheGateBelowFx.GRAB_EVERY == 0.5 and TheGateBelowFx.DRAG == 1.5
+		and TheGateBelowFx.WRAITH_LIFE == 20.0 and TheGateBelowFx.ARMS == 36 and TheGateBelowFx.ARM_SCALE == 1.0,
+		"the numbers of the brief (R33, R34)")
+	t.check(Remains.wants(["smite", "gatebelow"]), "a loadout with The Gate Below keeps the town's bodies: the withered rise (Remains.wants)")
 	t.check(Sfx.CATALOG.has(&"gatebelow_open") and Sfx.CATALOG.has(&"gatebelow_close"), "its two cues are catalogued")
 
 
-## R8: the pit is a rift drawn on the ground, not a stretched sheet: 18 jagged points about the edge, and 24 arms standing
-## all over the arms' reach, from just past the edge out to REACH.
+## R8, R33, R34: the pit is a rift drawn on the ground, not a stretched sheet, and it fills its ring: 28 jagged points
+## about the lip (4.2, give or take 20%), cracks out toward the reach, and 36 hands standing all over the ring, the rift too.
 static func _rift(t) -> void:
 	var c := Vector2(3.0, -2.0)
 	var pts := TheGateBelowFx.rift_points(c)
-	var ok := pts.size() == 18
+	var ok := pts.size() == 28
+	var most := 0.0
 	for p in pts:
 		var d := p.distance_to(c)
-		ok = ok and d >= TheGateBelowFx.EDGE * 0.75 - 0.0001 and d <= TheGateBelowFx.EDGE * 1.25 + 0.0001
-	t.check(ok, "the rift: 18 points between 1.35 and 2.25 from the centre")
+		most = maxf(most, d)
+		ok = ok and d >= TheGateBelowFx.EDGE * 0.8 - 0.0001 and d <= TheGateBelowFx.EDGE * 1.2 + 0.0001
+	var cracks := TheGateBelowFx.crack_lines()
+	var crack_ok := cracks.size() == 16
+	for line in cracks:
+		var end := line[line.size() - 1].length()
+		crack_ok = crack_ok and end >= TheGateBelowFx.REACH * 0.7 - 0.0001 and end <= TheGateBelowFx.REACH + 0.01
+	t.check(ok and most <= TheGateBelowFx.REACH and crack_ok,
+		"the rift spans the reach: 28 points between 3.36 and 5.04 (widest %.2f), %d cracks out toward 6" % [most, cracks.size()])
 	var spots := TheGateBelowFx.arm_spots(c)
 	var lo := INF
 	var hi := 0.0
@@ -91,8 +104,16 @@ static func _rift(t) -> void:
 		hi = maxf(hi, d)
 		if d > TheGateBelowFx.REACH * 0.75:
 			outer += 1
-	t.check(spots.size() == 24 and lo >= TheGateBelowFx.EDGE + 0.3 - 0.01 and hi <= TheGateBelowFx.REACH + 0.01 and outer >= 6,
-		"24 arms spread over the whole reach (%d, %.2f..%.2f, %d past 4.5)" % [spots.size(), lo, hi, outer])
+	t.check(spots.size() == 36 and lo <= TheGateBelowFx.ARM_IN + 0.05 and hi <= TheGateBelowFx.REACH + 0.01 and outer >= 8,
+		"36 hands over the whole ring (%d, %.2f..%.2f, %d past 4.5)" % [spots.size(), lo, hi, outer])
+	var hand := "res://assets/pixellab/fx/grave_hand/grave_hand"
+	var sheet = JSON.parse_string(FileAccess.get_file_as_string(hand + ".json"))
+	var sheet_ok: bool = (sheet is Dictionary and Vector2(sheet.cell[0], sheet.cell[1]) == TheGateBelowFx.ARM_CELL
+		and Vector2(sheet.foot[0], sheet.foot[1]) == TheGateBelowFx.ARM_FOOT and int(sheet.frames) == TheGateBelowFx.ARM_FRAMES)
+	t.check(ResourceLoader.exists(hand + ".png") and TheGateBelowFx.ARM_SHEET == hand + ".png" and sheet_ok
+		and not ResourceLoader.exists("res://assets/pixellab/fx/grave_arms.png")
+		and not FileAccess.file_exists("res://assets/pixellab/fx/grave_arms.json"),
+		"the hand sheet, no pole arms (%s)" % [sheet])
 	var src := FileAccess.get_file_as_string("res://src/fx/death/the_gate_below.gd")
 	t.check(not ResourceLoader.exists("res://assets/pixellab/fx/gate_below.png") and not src.is_empty()
 		and not src.contains("gate_below.png"), "no stretched pit sprite")
@@ -144,17 +165,17 @@ static func _names(ps: Array) -> Array:
 static func _held_and_freed(t, made: Array) -> void:
 	_reset(made)
 	var at := RD._empty(made)
-	var p := _put(made, 2, at + Vector2(4.0, 0.0))
+	var p := _put(made, 2, at + Vector2(5.5, 0.0))
 	var fx := _cast(made, at)
 	RD._run(fx, TheGateBelowFx.T_OPEN + 0.6)
 	var d := p.ground_pos.distance_to(at)
-	t.check(p.is_alive() and p.pace_hold() == 0.0 and d < 4.0 - 0.1 and d > TheGateBelowFx.EDGE,
+	t.check(p.is_alive() and p.pace_hold() == 0.0 and d < 5.5 - 0.1 and d > TheGateBelowFx.EDGE,
 		"a caught one is held (pace %.2f) and dragged toward the edge (%.2f from the middle)" % [p.pace_hold(), d])
 	fx.end_now()
 	t.check(p.is_alive() and p.pace_hold() == 1.0, "cut short, they are let go with their pace back (%.2f)" % p.pace_hold())
 	# One the night puts indoors mid-drag is let go too, and never goes under.
 	_reset(made)
-	var q := _put(made, 2, at + Vector2(0.0, 4.0))
+	var q := _put(made, 2, at + Vector2(0.0, 5.0))
 	var fx2 := _cast(made, at)
 	RD._run(fx2, TheGateBelowFx.T_OPEN + 0.3)
 	q.inside = true
@@ -170,7 +191,7 @@ static func _pit(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var field: EnemyField = made[3]
 	var at := RD._empty(made)
-	var p := _put(made, 2, at + Vector2(0.0, 4.5))
+	var p := _put(made, 2, at + Vector2(0.0, 5.5))
 	var kinds := []
 	var on_kill := func(e: DummyEnemy, kind: StringName) -> void:
 		if e == p:
@@ -191,8 +212,29 @@ static func _pit(t, made: Array) -> void:
 	fx.end_now()
 
 
-## "at 12 s one wraith per soul taken": none before the close; at it one per soul, wraiths that go for soldiers; they last
-## WRAITH_LIFE and are gone with the effect.
+## R33: "one inside the lip goes under where he stands": a citizen 2.0 from the middle is grabbed, held where he stands,
+## and goes under there after DRAG as the pit.
+static func _inside_lip(t, made: Array) -> void:
+	_reset(made)
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	var stood := at + Vector2(2.0, 0.0)
+	var p := _put(made, 2, stood)
+	var kinds := []
+	var on_kill := func(e: DummyEnemy, kind: StringName) -> void:
+		if e == p:
+			kinds.append(kind)
+	field.enemy_killed.connect(on_kill)
+	var fx := _cast(made, at)
+	RD._run(fx, TheGateBelowFx.T_OPEN + TheGateBelowFx.DRAG + 0.1)
+	t.check(fx.grabbed == [p] and not p.is_alive() and kinds == [&"pit"] and p.ground_pos.distance_to(stood) <= 0.1,
+		"one inside the lip goes under where he stands (%s, %.2f from where he stood)" % [kinds, p.ground_pos.distance_to(stood)])
+	field.enemy_killed.disconnect(on_kill)
+	fx.end_now()
+
+
+## "at 12 s one wraith per soul taken": none before the close; at it one per soul, each owning its share of the circle,
+## withering anyone (three at most); they last WRAITH_LIFE and are gone with the effect.
 static func _wraiths(t, made: Array) -> void:
 	_reset(made)
 	var at := RD._empty(made)
@@ -207,9 +249,14 @@ static func _wraiths(t, made: Array) -> void:
 	var ok := up.size() == 3
 	for a in up:
 		var r: Visitors.Rule = fx.visitors._rules[a]
-		ok = (ok and a.breed == Animal.Breed.WRAITH and r.soldiers_only and r.slow < 1.0 and r.phase and r.touch_kill == &"pit"
-			and r.spent_on_kill and a.ground_pos.distance_to(at) < TheGateBelowFx.PIT_R)
-	t.check(ok, "at 12 s one wraith per soul taken, out of the pit (%d up)" % up.size())
+		ok = (ok and a.breed == Animal.Breed.WRAITH and not r.soldiers_only and r.slow < 1.0 and r.phase
+			and r.wither == Withering.WITHER and r.touches_most == DeathParts.WRAITH_TOUCHES
+			and is_equal_approx(r.sector.w, TAU / 3.0) and a.ground_pos.distance_to(at) < TheGateBelowFx.EDGE)
+	t.check(ok, "at 12 s one wraith per soul taken, out of the pit, each to its third (%d up)" % up.size())
+	# Everyone else indoors (_reset brings them out): with nobody to wither, none is spent before its time.
+	for p in (made[0] as Crowd).citizens + (made[0] as Crowd).soldiers:
+		if is_instance_valid(p):
+			p.inside = true
 	RD._run(fx, TheGateBelowFx.WRAITH_LIFE - 0.6)
 	t.check(fx.visitors.living().size() == 3 and not fx.finished, "they last their 20 s")
 	RD._run(fx, 0.6 + TheGateBelowFx.FADE + 0.4)
@@ -225,60 +272,96 @@ static func _none(t, made: Array) -> void:
 	t.check(fx.souls == 0 and fx.visitors.living().is_empty() and fx.finished, "nobody taken: no wraith, and it ends with the close")
 
 
-## "wraiths go for soldiers, not a nearer citizen"
-static func _prey(t, made: Array) -> void:
+## R35: the sectors, by rule: wraith k of n owns [0.4 + TAU (k - 0.5) / n, + TAU / n) about the pit; one alone owns the
+## circle. "wraiths scatter, one to a sector": four souls taken, then the close: four wraiths, a quarter each, and 2 s after
+## the close they have flown apart, at least an eighth of the circle between any two bearings from the pit.
+static func _scatter(t, made: Array) -> void:
+	var c := Vector2(1.0, 2.0)
+	var s0 := TheGateBelowFx.sector_of(0, 4, c)
+	var s3 := TheGateBelowFx.sector_of(3, 4, c)
+	var one := TheGateBelowFx.sector_of(0, 1, c)
+	t.check(Vector2(s0.x, s0.y) == c and is_equal_approx(s0.z, 0.4 - TAU / 8.0) and is_equal_approx(s0.w, TAU / 4.0)
+		and is_equal_approx(s3.z, 0.4 + TAU * 2.5 / 4.0) and is_equal_approx(one.w, TAU),
+		"the sectors by rule: a quarter each from 0.4, one alone the whole circle (%s, %s, %s)" % [s0, s3, one])
 	_reset(made)
-	var crowd: Crowd = made[0]
 	var at := RD._empty(made)
-	_put(made, 2, at + Vector2(3.0, 0.0))
-	var s: Person = crowd.soldiers[0]
-	s.ground_pos = at + Vector2(0.0, 7.0)
+	_put(made, 2, at + Vector2(1.5, 0.0))
+	_put(made, 3, at + Vector2(0.0, 2.0))
+	_put(made, 4, at + Vector2(-2.5, 0.0))
+	_put(made, 5, at + Vector2(0.0, -3.0))
 	var fx := _cast(made, at)
-	RD._run(fx, TheGateBelowFx.SPAN - 0.1)
-	var near := _put(made, 3, at + Vector2(-1.5, 0.0))  # set down once the arms no longer take anyone
-	RD._run(fx, 0.15)
+	RD._run(fx, TheGateBelowFx.SPAN + 0.05)
 	var up := fx.visitors.living()
-	t.check(up.size() == 1 and near.is_alive(), "one wraith, and the citizen beside the pit is not taken")
-	if up.size() != 1:
-		fx.end_now()
-		return
-	var w := up[0]
-	var before := w.ground_pos.distance_to(s.ground_pos)
-	var near_before := w.ground_pos.distance_to(near.ground_pos)
+	var ok := fx.souls == 4 and up.size() == 4
+	for a in up:
+		var r: Visitors.Rule = fx.visitors._rules[a]
+		ok = ok and is_equal_approx(r.sector.w, TAU / 4.0) and Vector2(r.sector.x, r.sector.y) == at
 	RD._run(fx, 2.0)
-	var after := w.ground_pos.distance_to(s.ground_pos)
-	t.check(w.target == s and after < before - 0.8 and near_before < before,
-		"wraiths go for soldiers, not a nearer citizen (%.2f -> %.2f from the soldier; the citizen was %.2f)" % [before, after, near_before])
+	var bearings: Array[float] = []
+	for a in up:
+		if is_instance_valid(a):
+			bearings.append((a.ground_pos - at).angle())
+	var apart := INF
+	for i in bearings.size():
+		for j in range(i + 1, bearings.size()):
+			apart = minf(apart, absf(angle_difference(bearings[i], bearings[j])))
+	t.check(ok and bearings.size() == 4 and apart >= TAU / 8.0,
+		"wraiths scatter, one to a sector (%d souls, %d up, the nearest two %.2f apart)" % [fx.souls, bearings.size(), apart])
 	fx.end_now()
-	t.check(s.pace_hold() == 1.0, "cut short, the soldier it passed has his pace back")
 
 
-## R9: "a wraith that reaches a soldier kills him and is spent": one soul taken, then the close; a soldier 2.0 from the pit
-## (set down once the arms no longer take anyone) is killed as the pit within 4 s, and the wraith sinks with him.
-static func _wraith_kills(t, made: Array) -> void:
+## Runs `fx` and the crowd's withering (the town steps it) for `seconds`.
+static func _run_withering(fx: FxTimeline, crowd: Crowd, seconds: float) -> void:
+	for i in roundi(seconds / DT):
+		if not fx.finished:
+			fx._process(DT)
+		crowd.withering.step(DT)
+
+
+## R36, R37 (in place of R9's touch kill): "a wraith withers a citizen or a soldier, and they die as wither": two souls
+## taken, then the close; a citizen and a soldier out past the reach in sector 0 are both withered within 8 s, each dies as
+## wither 6 s after the touch, and the pit counts the curses.
+static func _wraith_withers(t, made: Array) -> void:
 	_reset(made)
 	var crowd: Crowd = made[0]
 	var field: EnemyField = made[3]
 	var at := RD._empty(made)
-	_put(made, 2, at + Vector2(2.0, 0.0))
+	var s0 := TheGateBelowFx.sector_of(0, 2, at)
+	var dir := Vector2.from_angle(s0.z + s0.w * 0.5)
+	_put(made, 2, at - dir * 1.5)
+	_put(made, 3, at - dir * 2.5 + dir.orthogonal())
+	var c := _put(made, 4, at + dir * (TheGateBelowFx.REACH + 1.0))
 	var alive := crowd.soldiers.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive())
 	var s: Person = alive[0]
-	var kinds := []
-	var on_kill := func(e: DummyEnemy, kind: StringName) -> void:
-		if e == s:
-			kinds.append(kind)
-	field.enemy_killed.connect(on_kill)
+	s.ground_pos = at + dir * (TheGateBelowFx.REACH + 2.5)
+	s.mind = Person.Mind.CALM
+	var touched := {}
+	var died := {}
 	var fx := _cast(made, at)
-	RD._run(fx, TheGateBelowFx.SPAN - 0.1)
-	s.ground_pos = at + Vector2(0.0, 2.0)
-	RD._run(fx, 0.15)
-	t.check(fx.souls == 1 and fx.visitors.living().size() == 1 and s.is_alive(),
-		"(one soul taken, one wraith up, the soldier still alive: %d souls, %d up)" % [fx.souls, fx.visitors.living().size()])
-	RD._run(fx, 4.0)
-	t.check(not s.is_alive() and kinds == [&"pit"] and fx.visitors.living().size() == 0,
-		"a wraith that reaches a soldier kills him and is spent (%s, %d wraiths left)" % [kinds, fx.visitors.living().size()])
+	fx.visitors.bitten.connect(func(_a: Animal, who: Person, _first: bool) -> void:
+		touched[who] = fx.t)
+	var on_kill := func(e: DummyEnemy, kind: StringName) -> void:
+		if e == c or e == s:
+			died[e] = [kind, fx.t]
+	field.enemy_killed.connect(on_kill)
+	_run_withering(fx, crowd, TheGateBelowFx.SPAN + 0.05)
+	t.check(fx.souls == 2 and fx.visitors.living().size() == 2 and c.is_alive() and s.is_alive(),
+		"(two souls, two wraiths up, the two out past the reach alive: %d, %d)" % [fx.souls, fx.visitors.living().size()])
+	_run_withering(fx, crowd, 8.0)
+	var by := TheGateBelowFx.SPAN + 8.0
+	t.check(touched.has(c) and touched.has(s) and float(touched[c]) <= by and float(touched[s]) <= by,
+		"both are withered within 8 s of the close (%s)" % [touched.values()])
+	_run_withering(fx, crowd, Withering.WITHER + 0.5)
+	var ok := touched.has(c) and touched.has(s) and died.has(c) and died.has(s)
+	if ok:
+		for who in [c, s]:
+			ok = ok and died[who][0] == &"wither" and absf(float(died[who][1]) - float(touched[who]) - Withering.WITHER) <= 0.1
+	t.check(ok and fx.withered >= 2,
+		"a wraith withers a citizen or a soldier, and they die as wither 6 s after the touch (%s, %d withered)"
+			% [died.values(), fx.withered])
 	field.enemy_killed.disconnect(on_kill)
 	fx.end_now()
+
 
 ## "loud: the town panics": the cast is held as a danger until its impact; people past the arms' reach flee the open pit;
 ## the first soul taken raises the alarm.

@@ -1,51 +1,59 @@
 class_name TheGateBelowFx
 extends FxTimeline
-## The Gate Below (Death, Tier IV; spec 5.5): a click, and the ground itself tears open there: a dark rift about EDGE,
-## cracked out to PIT_R and strewn with bone, drawn in ground units on the ground layer (Rift; ruling R8), so it keeps its
-## proportions at every zoom. It opens out of a slit over T_OPEN and closes back into one over CLOSE. ARMS pale arms reach up
-## out of the ground all over the arms' reach while it is open (Arm, looping). It is not a door to elsewhere (that is
-## Passage's Doors of the Dead): the ground takes them down.
-## - From T_OPEN, every GRAB_EVERY, pale arms take the nearest living person within REACH who is out in the open, not guised
+## The Gate Below (Death, Tier IV; spec 5.5): a click, and the ground itself tears open there: a dark rift that fills the
+## ring (its jagged lip about EDGE, R33), cracked out to PIT_R (the reach) and strewn with bone, drawn in ground units on the
+## ground layer (Rift; ruling R8), so it keeps its proportions at every zoom. It opens out of a slit over T_OPEN and closes
+## back into one over CLOSE. ARMS grasping hands (the grave_hand sheet, R34) reach up out of the ground all over the ring,
+## over the rift too, while it is open (Arm, looping). It is not a door to elsewhere (that is Passage's Doors of the Dead):
+## the ground takes them down.
+## - From T_OPEN, every GRAB_EVERY, a hand takes the nearest living person within REACH who is out in the open, not guised
 ##   (Person.guised()), not a decoy (Mirrorfold's glass twin) and not caught yet -- a tie goes to the lower instance id; no
-##   luck. A caught one is held where they stand (hold_pace 0) and dragged in a straight line to the pit's EDGE over DRAG,
-##   then pulled under: killed as &"pit", a kind that leaves no body (Remains.BODY_KINDS). Each one taken is a soul. No arm
-##   reaches out once a drag could not finish before the close (SPAN - DRAG), so every soul taken is counted by then.
-## - At SPAN the pit closes, and every soul it took climbs back out of it as a wraith (DeathParts.wraith(): it goes for
-##   soldiers within DeathParts.WRAITH_SEEK, kills the one it reaches as &"pit" and sinks with him (ruling R9), and leaves
-##   whoever it passes through at half pace for 4 s). They are this effect's own Visitors pack, and the ones left go back
-##   into the ground WRAITH_LIFE later.
+##   luck. A caught one is held where they stand (hold_pace 0) and dragged in a straight line to the lip (EDGE) over DRAG --
+##   one already inside it is held where he stands -- then pulled under: killed as &"pit", a kind that leaves no body
+##   (Remains.BODY_KINDS). Each one taken is a soul. No hand reaches out once a drag could not finish before the close
+##   (SPAN - DRAG), so every soul taken is counted by then.
+## - At SPAN the pit closes, and every soul it took climbs back out of it as a wraith (DeathParts.wraith(), R35, R37): with
+##   n souls, wraith k owns sector_of(k, n), flies out along its middle to WRAITH_FAR from the pit, then hunts the nearest
+##   anyone, citizen or soldier, whose bearing from the pit lies in its sector. Its touch withers (the crowd's Withering: grey,
+##   slowed, panicked, dead as &"wither" 6 s later, a body left); after DeathParts.WRAITH_TOUCHES it is spent, and it slows
+##   whoever it passes through. `withered` counts its curses. They are this effect's own Visitors pack, and the ones left go
+##   back into the ground WRAITH_LIFE later.
 ## Loud (PowerBook.REACH): the danger counts from the first soul under (IMPACT = T_OPEN + DRAG). From then, while the pit is
 ## open, everyone within FRIGHT_R of it flees afresh every FRIGHT_EVERY, and the first soul taken raises the alarm (as Hound
 ## Gate's first bite). Cut short or over, every hold is let go and the wraiths are gone (_finish(); _exit_tree() when torn down).
 
-## The ground cracks and opens over T_OPEN; the arms reach out from then.
+## The ground cracks and opens over T_OPEN; the hands reach out from then.
 const T_OPEN := 1.0
-## The pit (ringed in bone) and how far its arms reach.
-const PIT_R := 3.0
+## How far the hands reach, and the pit's cracks and bone with them (R33: the rift fills the ring).
 const REACH := 6.0
+const PIT_R := REACH
 ## How long the pit stays open, counted from the cast; it closes over CLOSE.
 const SPAN := 12.0
 const CLOSE := 1.0
 ## One more taken every GRAB_EVERY; each is dragged to the edge over DRAG.
 const GRAB_EVERY := 0.5
 const DRAG := 1.5
-## The edge they are dragged to and go under at: the rift's lip (its mean radius; it is jagged by 25% either way).
-const EDGE := 1.8
-## The rift (ruling R8): its jagged lip of RIFT_POINTS, CRACKS hairline cracks out to PIT_R, BONES chips of bone strewn
-## between the lip and PIT_R. PX is about one screen pixel in ground units (a ground unit is 32-36 px across).
-const RIFT_POINTS := 18
-const CRACKS := 9
-const BONES := 22
+## The edge they are dragged to and go under at: the rift's lip (its mean radius; it is jagged by JAG either way, R33).
+const EDGE := 4.2
+const JAG := 0.20
+## The rift (rulings R8, R33): its jagged lip of RIFT_POINTS, CRACKS hairline cracks out toward PIT_R, BONES chips of bone
+## strewn between the lip and PIT_R. PX is about one screen pixel in ground units (a ground unit is 32-36 px across).
+const RIFT_POINTS := 28
+const CRACKS := 16
+const BONES := 40
 const PX := 0.03
-## The ambient arms: ARMS of them on a golden-angle spiral from EDGE + 0.3 out to REACH, each rising, clawing and sinking
-## over ARM_LOOP, its loop offset by index * ARM_PHASE.
-const ARMS := 24
+## The ambient hands (R34): ARMS of them on a golden-angle spiral from ARM_IN out to REACH (over the rift too), each rising,
+## clawing and sinking over ARM_LOOP, its loop offset by index * ARM_PHASE.
+const ARMS := 36
+const ARM_IN := 0.6
 const ARM_LOOP := 2.4
 const ARM_PHASE := 0.37
 const GOLDEN := 2.39996
-## The wraiths: how long they hunt, how far apart they climb out, how long they take to sink back in at the end.
+## The wraiths: how long they hunt, how far out they climb from the middle, how far they fly out along their sector's
+## middle before they hunt (R35), how long they take to sink back in at the end.
 const WRAITH_LIFE := 20.0
 const WRAITH_SPREAD := 0.6
+const WRAITH_FAR := REACH + 2.0
 const FADE := 0.6
 ## The town's fright while the pit is open: past the arms' reach, renewed as a spirit's is.
 const FRIGHT_R := REACH + 2.0
@@ -53,15 +61,15 @@ const FRIGHT_EVERY := Visitors.FRIGHT_EVERY
 ## The first soul taken: the alarm it adds (Hound Gate's first bite).
 const TAKE_ALARM := 0.6
 
-## The arm sheet: ARM_FRAMES frames of ARM_CELL, its foot at ARM_FOOT -- 0-1 rising, 2-3 the grip, 4-5 pulling down -- drawn
-## at ARM_SCALE, about a person's height (the arm stands 42 px in its cell, a person 18 px in theirs: 42 * 0.5 = 21).
-const ARM_SHEET := "res://assets/pixellab/fx/grave_arms.png"
-const ARM_CELL := Vector2(48, 64)
-const ARM_FOOT := Vector2(24, 60)
+## The hand sheet (R34, grave_hand.json): ARM_FRAMES frames of ARM_CELL, its foot at ARM_FOOT -- 0-1 rising, 2-3 clawing,
+## 4-5 closing and pulling down -- drawn 1:1 (ARM_SCALE): the hand and forearm about 48 px tall, the hand about 20 px across.
+const ARM_SHEET := "res://assets/pixellab/fx/grave_hand/grave_hand.png"
+const ARM_CELL := Vector2(64, 64)
+const ARM_FOOT := Vector2(32, 62)
 const ARM_FRAMES := 6
-const ARM_SCALE := 0.5
-## How far (screen px) an arm stands from its victim, toward the pit.
-const ARM_SIDE := 6.0
+const ARM_SCALE := 1.0
+## How far (screen px) a hand stands from its victim, toward the pit.
+const ARM_SIDE := 10.0
 ## An arm's moments: up out of the ground over ARM_RISE, the pull down over ARM_PULL, then gone into it over ARM_SINK.
 const ARM_RISE := 0.3
 const ARM_PULL := 0.45
@@ -85,6 +93,8 @@ var souls := 0
 var first_soul_at := -1.0
 ## Whether the pit has closed.
 var closed := false
+## The wraiths' curses: everyone a wraith of this cast has withered (Visitors.bitten: a withering laid).
+var withered := 0
 
 ## The drags under way: {p: Person, from: Vector2, to: Vector2, at: float (the grab's tick), arm: Arm or null}.
 var _drags: Array[Dictionary] = []
@@ -102,6 +112,7 @@ func _build() -> void:
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
+	visitors.bitten.connect(_on_withered)
 	ctx.play(&"gatebelow_open", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
@@ -109,7 +120,7 @@ func _build() -> void:
 	rift.fx = self
 	rift.position = origin
 	track(rift, ctx.ground)
-	# The arms reaching up all over the reach: only out of open ground (none stands on a roof or a wall).
+	# The hands reaching up all over the ring: only out of open ground (none stands on a roof or a wall).
 	var i := 0
 	for spot in arm_spots(origin):
 		if grid == null or grid.walkable(spot):
@@ -238,15 +249,15 @@ func _take(p: Person, arm: Arm, when: float) -> void:
 	FxParts.debris(self, sp, 5, 4.0, Vector2(20, 60), BONE_CHIPS, Vector2(1.0, 2.0), true)
 
 
-## SPAN: the pit closes, and every soul it took climbs back out as a wraith.
+## SPAN: the pit closes, and every soul it took climbs back out as a wraith: wraith k climbs out along its sector's
+## middle and flies out along it to WRAITH_FAR, then hunts in its own sector (R35).
 func _close() -> void:
 	closed = true
 	ctx.play(&"gatebelow_close", origin, 0.0)
 	for k in souls:
-		var ang := TAU * float(k) / float(maxi(souls, 1)) + 0.4
-		var spot := origin + Vector2.from_angle(ang) * WRAITH_SPREAD
-		# The whole circle and no flight out for now: R35's scatter by sector comes with Gate Below's own change.
-		DeathParts.wraith(visitors, spot, Vector4.ZERO, spot)
+		var sector := sector_of(k, souls, origin)
+		var dir := Vector2.from_angle(sector.z + sector.w * 0.5)
+		DeathParts.wraith(visitors, origin + dir * WRAITH_SPREAD, sector, origin + dir * WRAITH_FAR)
 	if souls == 0:
 		duration = t + CLOSE + 0.1
 	if not DominionParts.staged(self):
@@ -262,6 +273,11 @@ func _close() -> void:
 		FxParts.sparks(self, ctx.overhead, sp + Vector2(0, -8), 8 + 4 * souls, PALE, Vector2(20, 90), Vector2(40, 140))
 	if ctx.shake != null:
 		ctx.shake.add_trauma(0.15)
+
+
+## A wraith of this cast laid its withering on someone (the pack's bitten: emitted only for a curse laid).
+func _on_withered(_wraith: Animal, _victim: Person, _first: bool) -> void:
+	withered += 1
 
 
 ## WRAITH_LIFE after the close: the wraiths go back into the ground.
@@ -307,26 +323,34 @@ func open_k(now: float) -> float:
 	return 1.0 - clampf((now - SPAN) / CLOSE, 0.0, 1.0)
 
 
-## The rift's lip: RIFT_POINTS points about `centre`, at EDGE give or take 25% by a fixed hash of the index (no rng).
+## Wraith `k` of `n`'s sector (R35): (centre x, centre y, from angle, width) -- from 0.4 + TAU (k - 0.5) / n, TAU / n wide,
+## so the n of them share the circle about `centre` evenly; one alone has the whole circle.
+static func sector_of(k: int, n: int, centre: Vector2) -> Vector4:
+	var m := maxi(n, 1)
+	return Vector4(centre.x, centre.y, 0.4 + TAU * (float(k) - 0.5) / float(m), TAU / float(m))
+
+
+## The rift's lip: RIFT_POINTS points about `centre`, at EDGE give or take JAG by a fixed hash of the index (no rng).
 static func rift_points(centre: Vector2) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for i in RIFT_POINTS:
 		var a := TAU * float(i) / float(RIFT_POINTS)
-		out.append(centre + Vector2.from_angle(a) * EDGE * (1.0 + 0.25 * sin(float(i) * 2.3 + 0.7)))
+		out.append(centre + Vector2.from_angle(a) * EDGE * (1.0 + JAG * sin(float(i) * 2.3 + 0.7)))
 	return out
 
 
-## Where the ambient arms stand about `centre`: ARMS points on a golden-angle spiral, evenly spread over the ring from
-## EDGE + 0.3 out to REACH (the square root keeps the outer ring as full as the inner one).
+## Where the ambient hands stand about `centre`: ARMS points on a golden-angle spiral, evenly spread over the whole ring,
+## the first at ARM_IN and the last at REACH (the square root keeps the outer ring as full as the inner one).
 static func arm_spots(centre: Vector2) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for i in ARMS:
-		var r := lerpf(EDGE + 0.3, REACH, sqrt((float(i) + 0.5) / float(ARMS)))
+		var r := lerpf(ARM_IN, REACH, sqrt(float(i) / float(ARMS - 1)))
 		out.append(centre + Vector2.from_angle(float(i) * GOLDEN) * r)
 	return out
 
 
-## The cracks out of the lip: CRACKS jagged lines, each from the lip out to about PIT_R, in ground units about the middle.
+## The cracks out of the lip: CRACKS jagged lines, each from inside the lip out to between 0.7 and 1 of PIT_R, in ground
+## units about the middle.
 static func crack_lines() -> Array[PackedVector2Array]:
 	var out: Array[PackedVector2Array] = []
 	for i in CRACKS:
@@ -415,7 +439,7 @@ class Rift extends Node2D:
 			draw_rect(Rect2(at, size), Color(col, col.a * k))
 
 
-## One pale arm (grave_arms sheet) at a caught one's feet: it rises out of the ground, grips while they are dragged, then
+## One grasping hand (grave_hand sheet) at a caught one's feet: it rises out of the ground, grips while they are dragged, then
 ## pulls down as they go under, and sinks back in. Stands in the effect's y-sorted stand layer, just in front of its victim.
 ## A `loop` arm is one of the ambient arms reaching up all over the reach: from `born` (T_OPEN), after its `phase` (folded
 ## into one loop, so every arm is up within ARM_LOOP), it rises, claws and sinks over ARM_LOOP again and again; with the

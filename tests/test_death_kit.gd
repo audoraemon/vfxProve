@@ -460,6 +460,18 @@ static func _second_review(t) -> void:
 	crowd.withering.clear()
 	v = _fresh(made)
 
+	# --- No crowd to lay the withering: a wraith's touch lays nothing, and nothing is told as a touch (bitten).
+	var bare := Visitors.new().setup(field, null, grid, made[4])
+	var told := []
+	bare.bitten.connect(func(_a: Animal, who: Person, _first: bool) -> void: told.append(who))
+	var lone_c: Person = crowd.citizens[29]
+	lone_c.ground_pos = at + Vector2(0.3, 0.0)
+	DeathParts.wraith(bare, at, Vector4.ZERO, at)
+	_step(bare, 2.0)
+	t.check(told.is_empty() and not lone_c.withered(), "no withering laid, no touch told (%d told)" % told.size())
+	bare.clear()
+	_clear_town(crowd)
+
 	# --- A sector keeps a wraith to its own.
 	var out_one: Person = crowd.citizens[30]
 	var in_one: Person = crowd.citizens[31]

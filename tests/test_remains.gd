@@ -145,9 +145,9 @@ static func run(t) -> void:
 	var rules := Rules.new().setup(PackedStringArray(["smite", "deathmark"]), null, made[1], made[2], crowd, made[4])
 	var rem_on_before := Remains.wants(["smite", "deathmark"])
 	t.check(not rem_on_before, "a loadout with no raise, walker or gravetide does not need the ledger")
-	t.check(rules.body_check("body", Vector2(0, 0)) == "no_dead" and rules.body_check("any_body", Vector2(0, 0)) == "no_dead"
-		and rules.body_check("soul", Vector2(0, 0)) == "no_dead" and rules.body_check("", Vector2(0, 0)) == "",
-		"Rules refuses a needs-body cast with no remain: no_dead (body, any_body, soul)")
+	t.check(rules.body_check("body", Vector2(0, 0)) == "no_dead" and rules.body_check("soul", Vector2(0, 0)) == "no_dead"
+		and rules.body_check("", Vector2(0, 0)) == "" and rules.body_check("any_body", Vector2(0, 0)) == "",
+		"Rules refuses a needs-body cast with no remain: no_dead (body, soul); any_body is gone (R44: Grave Tide needs no body)")
 	var refused: Array = []
 	rules.cast_refused.connect(func(slot: int, reason: String): refused.append([slot, reason]))
 	rules.caster = func(_s: GDScript, _g: Vector2, _e: Dictionary) -> FxTimeline: return null
@@ -155,13 +155,13 @@ static func run(t) -> void:
 		"a power without needs casts as before, and no cooldown is spent by a check")
 	_kill(made, 100, Vector2(7, 7), &"mob")
 	var there := rem.pick(Vector2(7, 7))
-	t.check(rules.body_check("body", Vector2(7, 7)) == "" and rules.body_check("any_body", Vector2(-9, -9)) == ""
-		and rules.body_check("soul", Vector2(7, 7)) == "", "a body there passes body, any_body and soul")
+	t.check(rules.body_check("body", Vector2(7, 7)) == "" and rules.body_check("soul", Vector2(7, 7)) == "",
+		"a body there passes body and soul")
 	rem.step(16.0)
 	t.check(rules.body_check("soul", Vector2(7, 7)) == "soul_gone" and rules.body_check("body", Vector2(7, 7)) == "",
 		"a body whose soul has gone: soul_gone for a soul cast, body still fine")
 	there.hidden = true
-	t.check(rules.body_check("any_body", Vector2(0, 0)) == "no_dead", "any_body ignores hidden remains")
+	t.check(rules.body_check("body", Vector2(7, 7)) == "no_dead", "a hidden remain is no body for a body cast")
 
 	t.check(Remains.wants(["smite", "raise"]) and not Remains.wants(["smite"]) and Remains.wants(["gravetide"]) and Remains.wants(["walker"]),
 		"Remains.wants(['smite','raise']) is true, wants(['smite']) is false")

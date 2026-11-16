@@ -27,10 +27,11 @@ extends RefCounted
 ## crowd within it every FRIGHT_EVERY, as the Doors of the Dead's ghosts do), `slow` (whoever it passes through, within
 ## `slow_r`, keeps `slow` of their pace for `slow_for` seconds: hold_pace()) and `no_bite` (it comes to its prey and
 ## does not bite: a spirit passes through).
-## `march` (a ground point; Grave Tide's horde) sends it there first, by the streets (straight, with `phase`), for
-## `march_for` seconds at most: on the way it turns only on whoever comes within MARCH_SEEK of it, and once within
-## MARCH_NEAR of the point (or blocked, or out of time) it hunts as above. `bite` is what one bite takes off a person's
-## health (1 by default: a citizen falls to one, a soldier to two; Grave Tide's giant fells a soldier with one).
+## `march` (a ground point; a leg of Grave Tide's giant's tour, a wraith's flight out) sends it there first, by the
+## streets (straight, with `phase`), for `march_for` seconds at most (end_march() ends it sooner): on the way it turns only
+## on whoever comes within MARCH_SEEK of it, and once within MARCH_NEAR of the point (or blocked, or out of time) it
+## hunts as above. `bite` is what one bite takes off a person's health (1 by default: a citizen falls to one, a soldier to
+## two; Grave Tide's giant fells a soldier with one).
 ## A marked prey (mark(): Hound Gate's Quarry) is hunted by every visitor of the pack, at any distance, by the streets,
 ## in place of the nearest within reach, until it falls or goes inside (the mark is dropped then) or another is marked;
 ## one there is no way to is left alone SKIP_FOR like any other. A visitor with `bounds` leaves a mark outside them alone.
@@ -463,6 +464,13 @@ func _marching(a: Animal, r: Rule, delta: float) -> bool:
 	return true
 
 
+## Ends visitor `a`'s march now (Grave Tide's giant: a soldier near cuts its leg short); it hunts from where it stands.
+func end_march(a: Animal) -> void:
+	var r: Rule = _rules.get(a)
+	if r != null and r.march != Vector2.INF:
+		_end_march(a, r)
+
+
 func _end_march(a: Animal, r: Rule) -> void:
 	r.march = Vector2.INF
 	r.retarget_in = 0.0
@@ -488,7 +496,7 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 	if env == null:
 		return
 	var best := INF
-	if r.look_in <= 0.0 or (r.beside != null and not _wreckable(r.beside)):
+	if r.look_in <= 0.0 or (r.beside != null and (not _wreckable(r.beside) or _spares(r, r.beside))):
 		r.look_in = WRECK_LOOK
 		r.beside = null
 		for s in env.near(a.ground_pos, r.wreck_reach):
@@ -507,7 +515,7 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 		wrecked.emit(a, beside)
 	if not idle or beside != null or not r.wreck_idle:
 		return
-	if r.house == null or not _wreckable(r.house) or r.house.distance_to(a.ground_pos) > r.seek_r:
+	if r.house == null or not _wreckable(r.house) or _spares(r, r.house) or r.house.distance_to(a.ground_pos) > r.seek_r:
 		r.house = null
 		best = INF
 		for s in env.near(a.ground_pos, r.seek_r):
@@ -532,7 +540,8 @@ static func _wreckable(s: Structure) -> bool:
 	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall", &"decree"])
 
 
-## Whether rule `r` spares `s` (give()'s `spare`): never this visitor's to wreck. Asked live, at every look.
+## Whether rule `r` spares `s` (give()'s `spare`): never this visitor's to wreck. Asked live: at every look, and every step of
+## the building beside it and the one it is going for, so one spared after it was chosen is dropped at once.
 static func _spares(r: Rule, s: Structure) -> bool:
 	return r.spare.is_valid() and bool(r.spare.call(s))
 

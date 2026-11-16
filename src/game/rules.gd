@@ -436,7 +436,7 @@ func refuse(slot: int, reason: String, who: Variant = null) -> void:
 
 
 ## What a power needs of the ground it is cast on: its mode's "needs", else the row's, else "". "body" is a remain within
-## Remains.PICK_R; "soul" one whose soul is still near; "any_body" any unhidden remain in town. A hidden remain counts only
+## Remains.PICK_R (the row's "pick_r" where it has one); "soul" one whose soul is still near. A hidden remain counts only
 ## for a row with "reaches_hidden" (Walking Corpse, which walks it back out).
 static func needs_of(key: String, mode: String) -> String:
 	var row := PowerBook.get_power(key)
@@ -456,8 +456,6 @@ func body_check(needs: String, ground: Vector2, hidden_too := false, r := Remain
 	if needs == "" or _crowd == null or _crowd.remains == null:
 		return ""
 	var rem := _crowd.remains
-	if needs == "any_body":
-		return "" if not rem.all().is_empty() else "no_dead"
 	if needs == "body":
 		return "" if rem.pick(ground, false, hidden_too, r) != null else "no_dead"
 	if needs == "soul":

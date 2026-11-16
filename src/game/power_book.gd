@@ -506,7 +506,7 @@ const POWERS := [
 		"authority": "death"},
 	{"key": "gravetide", "name": "Grave Tide", "path": "res://src/fx/death/grave_tide.gd",
 		"blurb": "Every body in town rises; a giant of bones assembles and slams the ground. Once a descent.",
-		"dp": 6, "cooldown": 999.0, "aim": "click", "needs": "any_body",
+		"dp": 6, "cooldown": 999.0, "aim": "click",
 		"shape": "every unused body in town (up to 30, the oldest first) gets up for 40 s and walks toward the click, then hunts; where 5 or more lie within 4 of each other 18 bones fly in and assemble a giant over 1.2 s: it lives 60 s, lands with a slam and slams again every 4 s (soldiers within 3 die, everyone else is thrown back and frightened), takes 12 blows, claws down the walls in its way, fells a soldier with a blow, and the undead within 6 of it move 20% faster; the more the town has lost tonight, the bigger the tide; needs a body somewhere in town; once a descent",
 		"authority": "death"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",

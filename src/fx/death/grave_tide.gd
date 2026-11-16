@@ -1,50 +1,69 @@
 class_name GraveTideFx
 extends FxTimeline
-## Grave Tide (Death, Tier V; spec 5.8): a click, once a descent. The more the town has lost tonight, the bigger the tide.
-## - Every unused body in town (Remains.all(): the unhidden remains, the oldest first), MOST at most, gets up at T_RISE as a
-##   zombie (DeathParts.zombie: its own look, greyed, eyes alight) in this effect's own Visitors pack, and the body is used
-##   up (Remains.take hides the corpse). Rules refuses a cast with no body anywhere in town ("needs": "any_body": "NO DEAD
-##   THERE"), so nothing is spent.
-## - The horde walks toward the click first (the Visitors `march` trait: by the streets, turning only on whoever comes
-##   within Visitors.MARCH_SEEK on the way, MARCH_FOR at most), then hunts as any zombie does (the nearest within
-##   DeathParts.ZOMBIE_SEEK; a citizen's first bite knocks them down, a second kills, frenzy).
-## - Where the most of those bodies lie close -- the biggest group within CLUSTER_R of one of them (cluster(): a fixed sweep,
-##   oldest first, a tie to the older; no luck) -- and there are CLUSTER_MIN or more, a giant of bones (Animal.Breed.BONE_GIANT,
-##   the Task 1 sheet) assembles at their middle (ruling R12): from T_RISE its BONES bones fly in one by one, from those
-##   bodies, over ASSEMBLE; at T_RISE + ASSEMBLE it stands and lands with a slam (_slam: soldiers out in the open within SLAM_R
-##   die, in instance-id order, frenzy; the rest within it are knocked back and the street frightened; a shockwave, cracks,
-##   dust), and it slams the ground again every SLAM_EVERY while it stands. It walks to the click with the horde, then walks the
-##   streets after the soldiers (prey "soldiers"): one within its reach it hunts; else every GIANT_LOOK it marches on, by the
-##   streets, toward the nearest soldier out in the open anywhere in town; with none left it holds at the click. Its blow
-##   (`bite` HEALTH_KNIGHT) fells any soldier at once; it takes GIANT_BLOWS blows and does not flinch; it claws down the walls
-##   in its way (`wreck`), and never leaves the street to go at a building (`wreck_idle` false).
+## Grave Tide (Death, Tier V; the second review's city-wide grave burst, rulings R41-R45): a click, once a descent. The
+## graves of the whole city burst, and the dead storm every district. Always castable: no body is needed.
+## - The graves (grave_spots(), R41: by rule, no luck): every district's centre, then its points a quarter and three
+##   quarters in, each snapped to open ground and kept GRAVE_GAP from every grave kept before, GRAVES_MOST at most, spread.
+##   Grave `i` bursts at T_RISE + i * BURST_STEP (soil, bone chips, dust and a dark pit, staged only) and raises one
+##   skeleton warrior and one ghoul (DeathParts.skeleton/ghoul) in this effect's own Visitors pack.
+## - The town's bodies (Remains.all(): the unhidden remains, the oldest first, MOST at most) rise at T_RISE as zombies on
+##   top (DeathParts.zombie: their own look, greyed, eyes alight), and each body is used up. The cap (R44): at most
+##   LIVING_CAP living undead in the pack, the giant not counted. The graves rise first: the bodies take only the room the
+##   graves leave (picked at the cast), and a grave whose two would pass the cap raises none.
+## - Nobody marches to the click: each hunts from where it rose (its kind's seek; the skeleton takes the nearest soldier
+##   first), and claws at buildings (the Visitors `wreck` trait, `wreck_idle`: with nobody near it goes at the nearest):
+##   a skeleton SKELETON_WRECK every SKELETON_WRECK_EVERY, a ghoul GHOUL_WRECK every GHOUL_WRECK_EVERY, a zombie ZOMBIE_WRECK
+##   every ZOMBIE_WRECK_EVERY. A building the night needs standing is never theirs (the `spare` trait: MissionKeeps.spared(),
+##   R45: the Citadel, the temple, the hallowed, a mission's own; a building the night wants down is never spared).
+## - The giant always comes (R43): a giant of bones (Animal.Breed.BONE_GIANT) assembles at the grave nearest the click (a
+##   tie to the lower index; giant_grave): from T_RISE its BONES bones fly up out of that grave, one by one, over ASSEMBLE;
+##   at T_RISE + ASSEMBLE it stands and lands with a slam (_slam: soldiers out in the open within SLAM_R die, in instance-id
+##   order, frenzy; the rest within it are knocked back and the street frightened; every wreckable building within SLAM_R
+##   not spared takes SLAM_WRECK, a house falls to one slam; a shockwave, cracks, dust), and it slams again every SLAM_EVERY
+##   while it stands. It walks the graves: by the streets to the nearest grave it has not visited (a `march`, GIANT_LEG at
+##   most), then the next; all visited, the tour starts again. A soldier out in the open within GIANT_SEEK ends the leg, and
+##   the hunt takes him (prey "soldiers"); then the tour goes on. Its blow (`bite` HEALTH_KNIGHT) fells any soldier at once; it
+##   takes GIANT_BLOWS blows and does not flinch; it claws down the walls in its way (`wreck`), and never leaves the street to
+##   go at a building (`wreck_idle` false).
 ## - Death's undead within GIANT_AURA of the giant -- this tide's and any other power's (every Visitors pack in
 ##   Crowd.visitors, the Animal.UNDEAD breeds only: never a hellhound, demon or ghost) -- move AURA_SPEED times as fast:
 ##   Animal.speed_mul scaled by AURA_SPEED as they first come within reach (every AURA_EVERY) and by 1 / AURA_SPEED when they
 ##   leave, when the giant falls, and at the end -- a ratio, once each way, so another scale laid on meanwhile (Walking Corpse's
 ##   attack pace, R18) survives it (R27); one whose pace nothing else touched gets exactly its own back.
-## - At LIFE every zombie still up falls to ash; the giant stands on to GIANT_LIFE after its landing, then falls to ash too
-##   (the pack cleared); cut short, or freed without its end, all of them at once (a tide cut short mid-assembly: no giant).
+## - At LIFE every one of the horde still up falls to ash; the giant stands on to GIANT_LIFE after its landing, then falls to
+##   ash too (the pack cleared); cut short, or freed without its end, all of them at once (cut short mid-burst: no more graves
+##   burst, and no giant).
 ## Loud (PowerBook.REACH): the danger counts from T_RISE, when the dead stand; the giant's slams frighten the street round it,
 ## and the horde's first bite is the town's outcry, as a hellhound's.
 
-## The brief's numbers: the most that rise, how long they stand, the cluster (CLUSTER_MIN within CLUSTER_R), the giant's
-## blows, its aura and the speed it lends.
+## The brief's numbers: the most bodies that rise, how long the horde stands, the giant's blows, its aura and the speed it
+## lends.
 const MOST := 30
 const LIFE := 40.0
-const CLUSTER_R := 4.0
-const CLUSTER_MIN := 5
 const GIANT_BLOWS := 12
 const GIANT_AURA := 6.0
 const AURA_SPEED := 1.2
+## The graves (R41): GRAVES_MOST at most, GRAVE_GAP apart at least, one bursting every BURST_STEP from T_RISE; a candidate
+## snaps to open ground within GRAVE_SNAP cells.
+const GRAVES_MOST := 24
+const GRAVE_GAP := 2.5
+const BURST_STEP := 0.08
+const GRAVE_SNAP := 6
+## The cap on the living undead in the pack, the giant not counted (R44).
+const LIVING_CAP := 60
+## The claws (R42): what each kind's blow takes off a building, and how often it strikes.
+const SKELETON_WRECK := 6.0
+const SKELETON_WRECK_EVERY := 1.5
+const GHOUL_WRECK := 3.0
+const GHOUL_WRECK_EVERY := 1.0
+const ZOMBIE_WRECK := 3.0
+const ZOMBIE_WRECK_EVERY := 1.5
 ## The ground breaks over T_RISE, and the dead stand (the power's impact); at the end they fall to ash over FADE.
 const T_RISE := 1.2
 const FADE := 0.6
-## The march to the click takes this long at most; then they hunt from wherever they are.
-const MARCH_FOR := 20.0
 ## The giant: its pace (ground units a second: a heavy walk, under a man's run), how far it looks for soldiers, its reach,
 ## a blow every GIANT_BITE_EVERY; its claws on a wall (GIANT_WRECK every GIANT_WRECK_EVERY, within GIANT_WRECK_REACH: a
-## wide reach, its arms are long).
+## wide reach, its arms are long); one leg of its tour (to the next grave) takes GIANT_LEG at most (R43).
 const GIANT_PACE := 1.1
 const GIANT_SEEK := 10.0
 const GIANT_BITE_R := 0.9
@@ -52,7 +71,10 @@ const GIANT_BITE_EVERY := 1.4
 const GIANT_WRECK := 30.0
 const GIANT_WRECK_EVERY := 1.5
 const GIANT_WRECK_REACH := 1.0
-## After its march it looks for the nearest soldier this often; the aura is read this often.
+const GIANT_LEG := 25.0
+## A leg cut for a soldier the hunt could not take: it walks on this long before another soldier may cut one.
+const GIANT_RESEEK := 2.0
+## The giant looks about this often (the next leg, a soldier near); the aura is read this often.
 const GIANT_LOOK := 0.5
 const AURA_EVERY := 0.1
 ## A heavy step sounds every STEP_EVERY while it walks.
@@ -60,16 +82,18 @@ const STEP_EVERY := 1.1
 ## The horde's first bite: the town's outcry (Hound Gate's and Raise the Dead's).
 const BITE_FRIGHT_R := 2.0
 const BITE_ALARM := 0.6
-## Ruling R12: the giant stands GIANT_LIFE from its landing (the zombies keep LIFE). It assembles over ASSEMBLE from T_RISE:
-## BONES bones fly one by one, from the cluster's remains, into its spot. Its landing is the first slam, and it slams the
-## ground every SLAM_EVERY while it stands: soldiers out in the open within SLAM_R die (frenzy, a body), everyone else
-## within it is knocked back SLAM_KNOCK and the street within SLAM_R + 1 frightened.
+## Ruling R12: the giant stands GIANT_LIFE from its landing (the horde keeps LIFE). It assembles over ASSEMBLE from T_RISE:
+## BONES bones fly one by one, up out of its grave, into its spot. Its landing is the first slam, and it slams the ground
+## every SLAM_EVERY while it stands: soldiers out in the open within SLAM_R die (frenzy, a body), everyone else within it is
+## knocked back SLAM_KNOCK and the street within SLAM_R + 1 frightened; every building within SLAM_R not spared takes
+## SLAM_WRECK (R43).
 const GIANT_LIFE := 60.0
 const ASSEMBLE := 1.2
 const BONES := 18
 const SLAM_EVERY := 4.0
 const SLAM_R := 3.0
 const SLAM_KNOCK := 5.5
+const SLAM_WRECK := 60.0
 ## The slam's fright (R12: Crowd.fright(at, SLAM_R + 1.0, 0.8, 3.0, 8.0, 12.0, &"beast")) and its blow (giant_step, +4 dB).
 const SLAM_FRIGHT := [0.8, 3.0, 8.0, 12.0]
 const SLAM_DB := 4.0
@@ -83,65 +107,124 @@ const SLAM_RING_FOR := 0.35
 const SLAM_CRACKS := 7
 const SLAM_CRACK_FOR := 3.0
 const SLAM_DUST := 16
-## Death's palette: bone white, ash grey, pale-white fire; grave green for glows only. No blood.
+## The horde's claws on walls (dozens a second across the town): their crumble and dust at most once every HORDE_WRECK_FX.
+const HORDE_WRECK_FX := 0.25
+## A grave's burst (staged only): its pit is PIT_R ground units across at most and lies to the end of the horde; the two
+## that climb out stand CLIMB_OUT either side of it.
+const PIT_R := 0.45
+const CLIMB_OUT := 0.25
+## Death's palette: bone white, ash grey, pale-white fire; grave green for glows only. No blood. Soil for the graves.
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
-## A slam's cracks (dark, a hairline about PX * 1.5 wide: PX is about one screen pixel in ground units) and its ring.
+const SOIL := [Color("5a4634"), Color("3f3226"), Color("2c241c")]
+## A slam's cracks (dark, a hairline about PX * 1.5 wide: PX is about one screen pixel in ground units) and its ring; a pit.
 const CRACK := Color(0.1, 0.09, 0.08, 0.8)
+const PIT := Color(0.07, 0.06, 0.05, 0.85)
 const PX := 0.03
 
-## The tide's pack; how many rose; the giant (null when there is none, or none any more) and where it rose (INF: none);
-## how often its claws struck a building.
+## The tide's pack; how many rose (graves and bodies); the giant (null when there is none, or none any more) and where it
+## rose (INF: not yet); how often the horde's and the giant's claws struck a building.
 var visitors: Visitors
 var raised := 0
 var giant: Animal
 var giant_at := Vector2.INF
 var wrecks := 0
+## The graves (R41), how many have burst, the one the giant rose from (-1: none, the click itself), the graves its tour has
+## visited (giant_grave first), and how many buildings its slams struck.
+var graves: Array[Vector2] = []
+var burst := 0
+var giant_grave := -1
+var visited: Array[int] = []
+var slam_wrecks := 0
 ## The assembly: how many bones have flown in (on the effect clock, staged or not); how often the giant has slammed the
 ## ground; when it landed (-1: not yet).
 var bones_in := 0
 var slams := 0
 var landed_at := -1.0
 
-## The bodies picked at the cast (the oldest first, MOST at most), raised at T_RISE.
+## The bodies picked at the cast (the oldest first, MOST at most, the room the graves leave), raised at T_RISE.
 var _rising: Array[Remains.Remain] = []
 ## Animal (untyped: another power may free it) -> [its speed_mul before the aura, its speed_mul quickened], while the aura quickens it.
 var _sped := {}
 var _aura_in := 0.0
 var _look_in := 0.0
-## Whether the giant is still on its first march, to the click.
-var _to_click := true
+## The grave the giant's leg goes to (-1: none under way); whether its last leg was cut for a soldier, and when another may
+## be; the horde's next wreck dust (staged), on the effect clock's countdown.
+var _leg := -1
+var _cut := false
+var _cut_rest := 0.0
+var _wreck_fx_in := 0.0
 var _bitten := false
 var _step_in := 0.0
 var _step_from := Vector2.INF
 var _see: SeeThrough
-## Where the cluster's bodies lay (the bones fly from them), the giant's spot (walkable), the next slam on the effect clock,
-## and the flying bones (staged only).
-var _group: Array[Vector2] = []
+## The giant's spot (walkable), the next slam on the effect clock, and the flying bones (staged only).
 var _spot := Vector2.INF
 var _next_slam := INF
 var _bones: Bones
 
 
-## The biggest group of `points` within CLUSTER_R of one of them, as indices in order: a sweep over the points in order,
-## each counting those within CLUSTER_R of it; the most wins, a tie to the earlier point. Empty when there are none.
-## (The reading of "within 4 of each other", a ruling: within CLUSTER_R of one centre body -- the members may lie up to
-## twice that apart -- not every pair within CLUSTER_R.)
-static func cluster(points: Array[Vector2]) -> Array[int]:
-	var best: Array[int] = []
-	var r2 := CLUSTER_R * CLUSTER_R + 0.0001
-	for i in points.size():
-		var group: Array[int] = []
-		for j in points.size():
-			if points[j].distance_squared_to(points[i]) <= r2:
-				group.append(j)
-		if group.size() > best.size():
-			best = group
+## The grave spots of a town (R41), by rule: the candidates are every district's centre (in `districts` order), then each
+## district's points at (0.25, 0.25) and (0.75, 0.75) of its rect; each snaps to open ground with a way to the streets
+## (grid.nearest_walkable within GRAVE_SNAP cells, a walled-in pocket counted solid: the dead of a grave there could reach
+## nobody; none there: skipped) and is kept only GRAVE_GAP or more from every spot kept before. Past GRAVES_MOST,
+## spot floor(i * n / GRAVES_MOST) is kept for i in 0..GRAVES_MOST - 1: spread over the whole list, not its head.
+static func grave_spots(grid: WalkGrid, districts: Array) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if grid == null:
+		return out
+	var candidates: Array[Vector2] = []
+	for d: Rect2 in districts:
+		candidates.append(d.get_center())
+	for d: Rect2 in districts:
+		candidates.append(d.position + d.size * 0.25)
+		candidates.append(d.position + d.size * 0.75)
+	for c in candidates:
+		var p := grid.nearest_walkable(c, GRAVE_SNAP, true)
+		if p == Vector2.INF:
+			continue
+		var apart := true
+		for k in out:
+			if k.distance_to(p) < GRAVE_GAP:
+				apart = false
+				break
+		if apart:
+			out.append(p)
+	var n := out.size()
+	if n <= GRAVES_MOST:
+		return out
+	var kept: Array[Vector2] = []
+	for i in GRAVES_MOST:
+		kept.append(out[i * n / GRAVES_MOST])
+	return kept
+
+
+## The index of the grave in `spots` nearest `at` (a tie to the lower index), or -1 with none.
+static func nearest_grave(spots: Array[Vector2], at: Vector2) -> int:
+	var best := -1
+	var best_d := INF
+	for i in spots.size():
+		var d := spots[i].distance_squared_to(at)
+		if d < best_d:
+			best_d = d
+			best = i
 	return best
 
 
+## The living undead of the tide's pack, the giant not counted (the cap's count, R44).
+func undead_up() -> int:
+	if visitors == null:
+		return 0
+	var n := 0
+	for a in visitors.living():
+		if a != giant:
+			n += 1
+	return n
+
+
 func _build() -> void:
-	duration = LIFE + FADE
+	# The giant outlives the horde: the tide lasts to its end (cut down sooner, _giant_gone() brings the end back).
+	duration = maxf(LIFE, T_RISE + ASSEMBLE + GIANT_LIFE) + FADE
 	busy = T_RISE
 	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
@@ -150,88 +233,137 @@ func _build() -> void:
 	visitors.bitten.connect(_on_bite)
 	visitors.cut_down.connect(_on_cut_down)
 	visitors.wrecked.connect(_on_wreck)
+	graves = grave_spots(grid, City.current().districts())
+	giant_grave = nearest_grave(graves, origin)
+	giant_at = graves[giant_grave] if giant_grave >= 0 else origin
+	# The graves first: the town's bodies take the room they leave under the cap.
+	var room := maxi(0, LIVING_CAP - 2 * graves.size())
 	if rem != null:
 		var all := rem.all()
-		for i in mini(all.size(), MOST):
+		for i in mini(all.size(), mini(MOST, room)):
 			_rising.append(all[i])
-	if _rising.is_empty():
-		duration = 0.1  # no body in town: Rules refuses such a cast before it comes here
-		return
-	var pts: Array[Vector2] = []
-	for r in _rising:
-		pts.append(r.pos)
-	var group := cluster(pts)
-	if group.size() >= CLUSTER_MIN:
-		var sum := Vector2.ZERO
-		for i in group:
-			sum += pts[i]
-			_group.append(pts[i])
-		giant_at = sum / float(group.size())
-		# The giant outlives the horde: the tide lasts to its end (cut down sooner, _giant_gone() brings the end back).
-		duration = maxf(LIFE, T_RISE + ASSEMBLE + GIANT_LIFE) + FADE
-		at(T_RISE + ASSEMBLE, _land)
+	for i in graves.size():
+		at(T_RISE + float(i) * BURST_STEP, _burst.bind(i))
 	at(T_RISE, _rise)
+	at(T_RISE + ASSEMBLE, _land)
 	at(LIFE, _end_life)
 	ctx.play(&"gravetide_rise", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
-	# The graves breathe: ash dust lifts off every body, and the ground glows cold under the giant's heap.
+	# The graves breathe: ash dust lifts off every grave and every body, and the ground glows cold over the giant's grave.
+	for g in graves:
+		FxParts.smoke(self, Iso.ground_to_screen(g), 6.0, 5.0, T_RISE, Vector2(6, 16), Vector2(2, 4), Vector2(0.5, 1.0),
+			Color(DeathParts.GRAVE_GREEN, 0.1), DUST)
 	for r in _rising:
 		FxParts.smoke(self, Iso.ground_to_screen(r.pos), 6.0, 8.0, T_RISE, Vector2(6, 16), Vector2(2, 4), Vector2(0.5, 1.0),
 			Color(DeathParts.GRAVE_GREEN, 0.12), DUST)
-	if giant_at != Vector2.INF:
-		var light := FxParts.ground_light(self, giant_at, CLUSTER_R * 0.6, DeathParts.GRAVE_GREEN, 0.0)
-		light.tween_param("intensity", 0.0, 0.8, T_RISE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
-		light.tween_param("intensity", 0.8, 0.0, 1.2, T_RISE + ASSEMBLE)
-		light.life = T_RISE + ASSEMBLE + 1.3
+	var light := FxParts.ground_light(self, giant_at, 2.4, DeathParts.GRAVE_GREEN, 0.0)
+	light.tween_param("intensity", 0.0, 0.8, T_RISE, 0.0, Tween.TRANS_QUAD, Tween.EASE_IN)
+	light.tween_param("intensity", 0.8, 0.0, 1.2, T_RISE + ASSEMBLE)
+	light.life = T_RISE + ASSEMBLE + 1.3
 	if ctx.shake != null:
 		ctx.shake.add_trauma(0.25)
 
 
-## The dead stand: each body as a zombie that walks to the click, then the giant where the most lay.
+## Grave `i` bursts: a skeleton warrior and a ghoul climb out, one either side of it -- none when the two would pass the cap.
+## Staged: soil and bone thrown up, dust, and the open pit left behind.
+func _burst(i: int) -> void:
+	burst += 1
+	var g := graves[i]
+	if undead_up() + 2 <= LIVING_CAP:
+		_up_skeleton(_beside(g, -CLIMB_OUT))
+		_up_ghoul(_beside(g, CLIMB_OUT))
+	if i % 4 == 0:
+		ctx.play(&"gravetide_rise", g, -8.0)
+	if not DominionParts.staged(self):
+		return
+	var sp := Iso.ground_to_screen(g)
+	FxParts.debris(self, sp, 7, 6.0, Vector2(30, 90), SOIL, Vector2(1.5, 3.0), true)
+	FxParts.debris(self, sp, 3, 4.0, Vector2(20, 60), BONE_CHIPS, Vector2(1.0, 2.0), true)
+	FxParts.smoke(self, sp, 8.0, 24.0, 0.2, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
+	var pit := GravePit.new()
+	pit.turn = float(i) * 1.3
+	pit.life = LIFE - t + FADE
+	pit.position = g
+	track(pit, ctx.ground)
+
+
+## The open ground `dx` across from grave `g`, on the streets' side (the grave itself where that is not).
+func _beside(g: Vector2, dx: float) -> Vector2:
+	var p := g + Vector2(dx, 0.0)
+	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
+	return p if grid == null or grid.on_streets(p) else g
+
+
+## A skeleton warrior up at `at`, armed for the tide: its claws (R42) and the buildings it spares (R45).
+func _up_skeleton(at_ground: Vector2) -> Animal:
+	var a := DeathParts.skeleton(visitors, at_ground)
+	visitors.give(a, {"wreck": SKELETON_WRECK, "wreck_every": SKELETON_WRECK_EVERY, "spare": _spared})
+	raised += 1
+	return a
+
+
+## A ghoul up at `at`, armed for the tide.
+func _up_ghoul(at_ground: Vector2) -> Animal:
+	var a := DeathParts.ghoul(visitors, at_ground)
+	visitors.give(a, {"wreck": GHOUL_WRECK, "wreck_every": GHOUL_WRECK_EVERY, "spare": _spared})
+	raised += 1
+	return a
+
+
+## Whether the tide spares building `s` (R45): one the night needs standing, asked live (MissionKeeps.spared()).
+func _spared(s: Structure) -> bool:
+	var d: MissionDirector = null
+	if ctx.rules != null and is_instance_valid(ctx.rules):
+		d = ctx.rules.director
+	return MissionKeeps.spared(s, ctx.crowd, d)
+
+
+## T_RISE: the town's bodies stand too, each as a zombie that hunts from where it lay, under the cap.
 func _rise() -> void:
 	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
-	if rem == null:
-		return
-	var still := rem.all()  # a body another power took meanwhile is not raised twice
-	var grid: WalkGrid = ctx.crowd._grid
-	for r in _rising:
-		if not still.has(r):
-			continue
-		var a := DeathParts.zombie(visitors, r, false)
-		rem.take(r)
-		if grid != null and not grid.walkable(a.ground_pos):
-			# A body that fell indoors gets up at the nearest open ground.
-			var w := grid.nearest_walkable(a.ground_pos, 4)
-			if w != Vector2.INF:
-				a.ground_pos = w
-				a.sync_position()
-		visitors.give(a, {"march": origin, "march_for": MARCH_FOR})
-		raised += 1
-		if DominionParts.staged(self):
-			var sp := Iso.ground_to_screen(a.ground_pos)
-			FxParts.debris(self, sp, 4, 5.0, Vector2(20, 60), BONE_CHIPS, Vector2(1.0, 2.0), true)
+	if rem != null:
+		var still := rem.all()  # a body another power took meanwhile is not raised twice
+		var grid: WalkGrid = ctx.crowd._grid
+		for r in _rising:
+			if not still.has(r) or undead_up() >= LIVING_CAP:
+				continue
+			var a := DeathParts.zombie(visitors, r, false)
+			rem.take(r)
+			if grid != null and not grid.on_streets(a.ground_pos):
+				# A body that fell indoors (or in a walled-in pocket) gets up at the nearest open ground with a way out.
+				var w := grid.nearest_walkable(a.ground_pos, 4, true)
+				if w != Vector2.INF:
+					a.ground_pos = w
+					a.sync_position()
+			visitors.give(a, {"wreck": ZOMBIE_WRECK, "wreck_every": ZOMBIE_WRECK_EVERY, "spare": _spared})
+			raised += 1
+			if DominionParts.staged(self):
+				var sp := Iso.ground_to_screen(a.ground_pos)
+				FxParts.debris(self, sp, 4, 5.0, Vector2(20, 60), BONE_CHIPS, Vector2(1.0, 2.0), true)
 	_rising.clear()
-	if giant_at != Vector2.INF:
-		_assemble()
+	_assemble()
 
 
-## The giant's spot (the heap's middle, or the nearest open ground to it); from T_RISE its bones fly in from the bodies.
+## The giant's spot (its grave, or the nearest open ground to the click); from T_RISE its bones fly up out of the grave.
 func _assemble() -> void:
 	_spot = giant_at
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
-	if grid != null and not grid.walkable(_spot):
-		var w := grid.nearest_walkable(_spot, 6)
+	if grid != null and not grid.on_streets(_spot):
+		var w := grid.nearest_walkable(_spot, GRAVE_SNAP, true)
 		if w != Vector2.INF:
 			_spot = w
 	if not DominionParts.staged(self):
 		return
 	_bones = Bones.new()
 	_bones.fx = self
-	for g in _group:
-		_bones.from.append(Iso.ground_to_screen(g))
+	for i in 6:
+		_bones.from.append(Iso.ground_to_screen(_spot + Vector2.from_angle(TAU * float(i) / 6.0) * PIT_R))
 	_bones.to = Iso.ground_to_screen(_spot)
 	track(_bones, stand_layer())
+	# Its grave breaks open first, whenever its turn in the bursts comes.
+	var sp := Iso.ground_to_screen(_spot)
+	FxParts.debris(self, sp, 10, 8.0, Vector2(30, 100), SOIL, Vector2(1.5, 3.0), true)
 
 
 ## The time bone `i` (0 first) lands in the giant's frame: BONE_FLY after it leaves, the last at T_RISE + ASSEMBLE.
@@ -245,7 +377,7 @@ func _land() -> void:
 		_bones.queue_free()
 	_bones = null
 	if _spot == Vector2.INF:
-		return  # the dead never rose (no ledger): no giant
+		return  # the dead never rose: no giant
 	bones_in = BONES
 	_raise_giant()
 	landed_at = t
@@ -254,14 +386,17 @@ func _land() -> void:
 	_slam(giant.ground_pos)
 
 
-## The giant stands where its bones came together.
+## The giant stands where its bones came together; its grave is the first of its tour.
 func _raise_giant() -> void:
 	var spot := _spot
 	giant = visitors.summon(spot, Animal.Breed.BONE_GIANT, GIANT_BLOWS, GIANT_PACE / (Animal.DOG_SPEED * Animal.RUN), GIANT_SEEK,
 		GIANT_BITE_R, GIANT_BITE_EVERY, false)
 	visitors.give(giant, {"prey": "soldiers", "bite": Person.HEALTH_KNIGHT, "wreck": GIANT_WRECK, "wreck_every": GIANT_WRECK_EVERY,
-		"wreck_reach": GIANT_WRECK_REACH, "wreck_idle": false, "march": origin, "march_for": MARCH_FOR})
-	_to_click = true
+		"wreck_reach": GIANT_WRECK_REACH, "wreck_idle": false, "spare": _spared})
+	visited.clear()
+	if giant_grave >= 0:
+		visited.append(giant_grave)
+	_leg = -1
 	_look_in = GIANT_LOOK
 	_step_in = STEP_EVERY
 	_step_from = spot
@@ -269,14 +404,16 @@ func _raise_giant() -> void:
 		return
 	_see = SeeThrough.new()
 	# The bones lock together in a flash of pale fire.
-	var burst := FxParts.bloom(self, Iso.ground_to_screen(spot) + Vector2(0, -40), 46.0, DeathParts.PALE_FIRE, 1.0, 0.9)
-	burst.tween_param("intensity", 0.9, 0.0, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
-	burst.life = 0.65
+	var flash_at := FxParts.bloom(self, Iso.ground_to_screen(spot) + Vector2(0, -40), 46.0, DeathParts.PALE_FIRE, 1.0, 0.9)
+	flash_at.tween_param("intensity", 0.9, 0.0, 0.6, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	flash_at.life = 0.65
 
 
 ## The giant slams the ground at `at_ground` (ruling R12): every soldier out in the open within SLAM_R dies (frenzy: a body
 ## lies there), in instance-id order -- no luck in who dies; everyone else within it is knocked back, and the street within
-## SLAM_R + 1 frightened. Staged: a shockwave ring out to SLAM_R, cracks, a burst of dust, the ground shaking.
+## SLAM_R + 1 frightened; every wreckable building within SLAM_R that the tide does not spare (R45) takes SLAM_WRECK (R43: a
+## house falls to one slam), counted in slam_wrecks. Staged: a shockwave ring out to SLAM_R, cracks, a burst of dust, the
+## ground shaking.
 func _slam(at_ground: Vector2) -> void:
 	slams += 1
 	ctx.play(&"giant_step", at_ground, SLAM_DB)
@@ -291,6 +428,16 @@ func _slam(at_ground: Vector2) -> void:
 	ctx.field.knock_from(at_ground, 0.0, SLAM_R, SLAM_KNOCK)
 	if ctx.crowd != null:
 		ctx.crowd.fright(at_ground, SLAM_R + 1.0, SLAM_FRIGHT[0], SLAM_FRIGHT[1], SLAM_FRIGHT[2], SLAM_FRIGHT[3], &"beast")
+	var env: EnvironmentField = ctx.env if ctx.env != null else ctx.field.env
+	if env != null:
+		var struck: Array[Structure] = []
+		for s in env.near(at_ground, SLAM_R):
+			if Visitors._wreckable(s) and s.distance_to(at_ground) <= SLAM_R and not _spared(s):
+				struck.append(s)
+		struck.sort_custom(func(a: Structure, b: Structure) -> bool: return a.get_instance_id() < b.get_instance_id())
+		for s in struck:
+			s.damage(SLAM_WRECK, at_ground, &"frenzy")
+			slam_wrecks += 1
 	if not DominionParts.staged(self):
 		return
 	var mark := SlamMark.new()
@@ -310,6 +457,7 @@ func _fx_process(delta: float) -> void:
 	if visitors == null:
 		return
 	visitors.step(delta)
+	_wreck_fx_in -= delta
 	_aura_in -= delta
 	if _aura_in <= 0.0:
 		_aura_in = AURA_EVERY
@@ -342,42 +490,56 @@ func _fx_process(delta: float) -> void:
 		_see.step(ctx.env.near(giant.ground_pos, 8.0), Rect2(sp.x - 28.0, sp.y - 84.0, 56.0, 84.0), sp.y, delta)
 
 
-## After its march to the click: with a soldier in reach the Visitors hunt him; else it marches on toward the nearest
-## soldier out in the open anywhere in town (the point renewed every GIANT_LOOK, as he moves); with none, back to the click.
+## The giant's tour (R43), every GIANT_LOOK. On a leg: a soldier out in the open within GIANT_SEEK ends it (on a march a
+## visitor turns only on prey within Visitors.MARCH_SEEK), and the hunt takes him; the grave is not counted visited (one the
+## hunt could not take leaves it walking GIANT_RESEEK before another soldier may cut a leg). A leg
+## over (there, blocked or out of time): that grave is visited. Hunting: the hunt goes on. Otherwise the next leg, by the
+## streets, to the nearest grave not yet visited (a tie to the lower index); all visited, the tour starts again from where
+## it stands.
 func _walk_on() -> void:
-	if _to_click:
-		if visitors.marching(giant):
-			return
-		_to_click = false
+	if visitors.marching(giant):
+		if t >= _cut_rest and _soldier_near():
+			visitors.end_march(giant)
+			_leg = -1
+			_cut = true
+		return
+	if _leg >= 0:
+		if not visited.has(_leg):
+			visited.append(_leg)
+		_leg = -1
 	if giant.target != null and is_instance_valid(giant.target):
+		_cut = false
 		return  # one within its reach: the hunt has him
-	var to := origin
-	var soldier := _nearest_soldier(giant.ground_pos)
-	if soldier != null:
-		to = soldier.ground_pos
-	elif giant.ground_pos.distance_to(origin) <= Visitors.MARCH_NEAR:
-		return  # none left: it holds at the click
-	visitors.give(giant, {"march": to, "march_for": LIFE})
+	if _cut:
+		# The leg was cut for a soldier the hunt could not take (no way to him): it walks on a while before another cuts it.
+		_cut = false
+		_cut_rest = t + GIANT_RESEEK
+	var left: Array[Vector2] = []
+	var index: Array[int] = []
+	for i in graves.size():
+		if not visited.has(i):
+			left.append(graves[i])
+			index.append(i)
+	if left.is_empty():
+		if graves.size() < 2:
+			return  # nowhere else to go: it stands and hunts
+		var last := visited[-1] if not visited.is_empty() else -1
+		visited.clear()
+		if last >= 0:
+			visited.append(last)
+		_walk_on()
+		return
+	_leg = index[nearest_grave(left, giant.ground_pos)]
+	visitors.give(giant, {"march": graves[_leg], "march_for": GIANT_LEG})
 
 
-## The nearest living soldier out in the open anywhere in town, or null.
-func _nearest_soldier(at_ground: Vector2) -> Person:
-	if ctx.crowd == null:
-		return null
-	var best: Person = null
-	var best_d := INF
-	var soldiers: Array = ctx.crowd.soldiers  # untyped, so each is checked before a typed use (one who left the town is freed)
-	for e in soldiers:
-		if not is_instance_valid(e):
-			continue
+## Whether a living soldier stands out in the open within GIANT_SEEK of the giant (one the hunt could take).
+func _soldier_near() -> bool:
+	for e in ctx.field.in_radius(giant.ground_pos, GIANT_SEEK):
 		var p := e as Person
-		if p == null or not p.is_alive() or p.inside:
-			continue
-		var d := p.ground_pos.distance_squared_to(at_ground)
-		if d < best_d:
-			best_d = d
-			best = p
-	return best
+		if p != null and p.soldier and p.is_alive() and not p.inside:
+			return true
+	return false
 
 
 ## Death's undead within GIANT_AURA of the giant, in every pack in town, run AURA_SPEED times their own pace; one that
@@ -448,10 +610,15 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 	FxParts.smoke(self, sp, 14.0 if big else 7.0, 36.0, 0.25, Vector2(14, 36), Vector2(2, 5), Vector2(0.6, 1.1), Color(0, 0, 0, 0), DUST)
 
 
-## The giant's claws on a wall: dust and splinters.
+## Claws on a wall: dust and splinters -- every blow of the giant's; the horde's (dozens a second across the town) at most
+## once every HORDE_WRECK_FX.
 func _on_wreck(a: Animal, s: Structure) -> void:
 	wrecks += 1
-	ctx.play(&"jg_crumble", a.ground_pos, -10.0)
+	if a != giant:
+		if _wreck_fx_in > 0.0:
+			return
+		_wreck_fx_in = HORDE_WRECK_FX
+	ctx.play(&"jg_crumble", a.ground_pos, -10.0 if a == giant else -14.0)
 	if not DominionParts.staged(self):
 		return
 	var hit := a.ground_pos.clamp(s.footprint.position, s.footprint.end)
@@ -470,7 +637,7 @@ func _giant_gone() -> void:
 	duration = maxf(LIFE, t) + FADE
 
 
-## LIFE: every zombie still up falls to ash; the giant stands on (GIANT_LIFE from its landing).
+## LIFE: every one of the horde still up falls to ash; the giant stands on (GIANT_LIFE from its landing).
 func _end_life() -> void:
 	if visitors == null:
 		return
@@ -632,3 +799,31 @@ class SlamMark extends Node2D:
 			var r := SLAM_R * (1.0 - pow(1.0 - k, 2.0))
 			draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(DeathParts.BONE, 0.75 * (1.0 - k)), PX * 4.0)
 			draw_arc(Vector2.ZERO, r * 0.82, 0.0, TAU, 40, Color(DeathParts.ASH, 0.35 * (1.0 - k)), PX * 2.0)
+
+
+## A burst grave's pit (staged only), drawn in ground units on the ground layer so it lies flat: a dark, ragged hole about
+## PIT_R across with a rim of thrown soil, turned by `turn` (each its own way; a fixed shape, no luck). It lies `life`
+## seconds, fading over its last FADE.
+class GravePit extends Node2D:
+	var turn := 0.0
+	var life := 40.0
+	var age := 0.0
+
+	func _process(delta: float) -> void:
+		age += delta
+		if age >= life:
+			queue_free()
+			return
+		if age > life - FADE:
+			modulate.a = clampf((life - age) / FADE, 0.0, 1.0)
+
+	func _draw() -> void:
+		var hole := PackedVector2Array()
+		var rim := PackedVector2Array()
+		for i in 12:
+			var a := turn + TAU * float(i) / 12.0
+			var wob := 0.75 + 0.25 * (0.5 + 0.5 * sin(float(i) * 2.7 + turn))
+			hole.append(Vector2.from_angle(a) * PIT_R * wob * Vector2(1.0, 0.8))
+			rim.append(Vector2.from_angle(a) * PIT_R * (wob + 0.35) * Vector2(1.0, 0.8))
+		draw_colored_polygon(rim, Color(SOIL[0], 0.75))
+		draw_colored_polygon(hole, PIT)

@@ -533,6 +533,49 @@ static func _second_review(t) -> void:
 		t.check(kept.hp == kept_hp and other.hp < other_hp,
 			"spare: a spared building is never clawed (%.0f -> %.0f), the other is (%.0f -> %.0f)"
 			% [kept_hp, kept.hp, other_hp, other.hp])
+		kept.hp = kept_hp
+		other.hp = other_hp
+		v = _fresh(made)
+		# Asked live (the parked review item): a building spared after it was chosen -- the one beside a wrecker, or the one
+		# an idle wrecker is walking to -- is dropped at once, with no fresh look between.
+		var held := [false]
+		var by := v.summon(side, Animal.Breed.GHOUL, 4, 1.0, 8.0, 0.6, 1.0, true)
+		v.give(by, {"wreck": 3.0, "wreck_every": 1.0, "wreck_reach": 0.5,
+			"spare": func(s: Structure) -> bool: return held[0] and s == kept})
+		var on_kept := [0]
+		v.wrecked.connect(func(_a: Animal, s: Structure) -> void:
+			if s == kept:
+				on_kept[0] += 1)
+		var rb: Visitors.Rule = v._rules[by]
+		for i in 40:
+			v.step(DT)
+			if on_kept[0] > 0:
+				break
+		var struck_once: bool = on_kept[0] == 1 and rb.beside == kept
+		held[0] = true
+		rb.look_in = 99.0  # no fresh look: only the live re-check can drop it
+		var hp_then := kept.hp
+		_step(v, 1.5)
+		t.check(struck_once and kept.hp == hp_then and rb.beside != kept,
+			"spare asked live: the building beside it, spared after it was chosen, takes no more blows (%d before, %.0f -> %.0f)"
+			% [on_kept[0], hp_then, kept.hp])
+		kept.hp = kept_hp
+		other.hp = other_hp
+		v = _fresh(made)
+		var going_to := [null]
+		var walker := v.summon(at, Animal.Breed.GHOUL, 4, 1.0, 8.0, 0.6, 1.0, true)
+		v.give(walker, {"wreck": 3.0, "wreck_every": 1.0, "wreck_reach": 0.5,
+			"spare": func(s: Structure) -> bool: return s == going_to[0]})
+		var rw: Visitors.Rule = v._rules[walker]
+		for i in 10:
+			v.step(DT)
+			if rw.house != null:
+				break
+		var then := rw.house
+		going_to[0] = then  # spared now, with the wrecker on its way to it
+		v.step(DT)
+		t.check(then != null and rw.house != then,
+			"spare asked live: an idle wrecker drops the house it was walking to once that house is spared")
 	v = _fresh(made)
 
 	# --- Skeleton and ghoul stats.

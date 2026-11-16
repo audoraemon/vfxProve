@@ -128,8 +128,9 @@ const AREAS := {
 	# and the loop it turns at the end ("loop": CIRCLE_R, ringed to the drag's left), the head's path round it a kill zone too
 	"serpent": {"shape": "lane", "length": PaleSerpentFx.LENGTH, "half": PaleSerpentFx.BAND, "min": PaleSerpentFx.MIN_LENGTH,
 		"follow": true, "loop": PaleSerpentFx.CIRCLE_R},
-	# GraveTideFx.GIANT_AURA: where the horde walks to, ringed as wide as the giant's aura
-	"gravetide": {"shape": "circle", "r": GraveTideFx.GIANT_AURA},
+	# GraveTideFx.GIANT_AURA: every grave of the town marked (GraveTideFx.grave_spots()), and the one the giant would rise from
+	# -- the nearest the cursor -- ringed as wide as its aura ("graves")
+	"gravetide": {"shape": "graves", "r": GraveTideFx.GIANT_AURA},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -277,6 +278,10 @@ var _at := Vector2.ZERO
 ## Whether the preview's edge was last drawn as ready (gold) or not (red): the cooldown, the busy lock and a storm's Called Bolts all
 ## change it without the cursor moving, so _process() redraws when it flips.
 var _edge_ready := true
+## Grave Tide's graves for the preview (grave_spots()), kept for the walk grid they were found on, at its version.
+var _graves: Array[Vector2] = []
+var _graves_grid: WalkGrid
+var _graves_version := -1
 
 
 func setup(rules: Rules, crowd: Crowd) -> Targeting:
@@ -748,6 +753,19 @@ static func ring_marked(remains: Remains, at: Vector2, r: float, need_soul: bool
 	return out
 
 
+## Grave Tide's graves in this town (GraveTideFx.grave_spots() over the city's districts), as a cast now would find them: worked
+## out once per walk grid, and again only when the grid changes (a building fallen).
+func grave_spots() -> Array[Vector2]:
+	var grid: WalkGrid = _crowd._grid if _crowd != null else null
+	if grid == null:
+		return []
+	if grid != _graves_grid or grid.version != _graves_version:
+		_graves = GraveTideFx.grave_spots(grid, City.current().districts())
+		_graves_grid = grid
+		_graves_version = grid.version
+	return _graves
+
+
 ## A "square" area: the axis-aligned square of side 2 * `half` centred on `at`, in ground units.
 static func square(at: Vector2, half: float) -> Rect2:
 	return Rect2(at - Vector2(half, half), Vector2(half, half) * 2.0)
@@ -1119,6 +1137,14 @@ func _draw() -> void:
 				_ring(_press, float(a.r), edge)
 			else:
 				_death_mark(_press, rise, false)
+		"graves":
+			# Grave Tide (R41, R43): a bone mark on every grave that would burst, the skull and the aura's ring on the one the
+			# giant would rise from (the nearest the cursor).
+			var spots := grave_spots()
+			var lead := GraveTideFx.nearest_grave(spots, _press)
+			for i in spots.size():
+				_death_mark(spots[i], COL_BONE if _edge_ready else COL_BAD, i == lead)
+			_ring(spots[lead] if lead >= 0 else _press, float(a.r), edge)
 		"sanctuary":
 			# The people under the cursor until the first click takes them; then the wall's shape follows the cursor.
 			if placed:

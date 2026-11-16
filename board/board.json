@@ -1,10 +1,11 @@
 {
- "hash": "e044bda2d0d9b858",
- "updated": "2026-11-16T14:58:17+07:00",
+ "hash": "4c0c7c60b3c6189b",
+ "updated": "2026-11-16T19:09:04+07:00",
  "changes": {
-  "date": "<t:1794815897:f>",
+  "date": "<t:1794830944:f>",
   "items": [
-   "New: Death powers: your second review (in progress)"
+   "New: Sharp pixel art at any window size (people, buildings, floor)",
+   "New: HUD task line: short 'do this now' step with live counter"
   ]
  },
  "snapshot": {
@@ -894,6 +895,15 @@
     "updated": "2026-10-15",
     "order": 32
    },
+   "sharp-people": {
+    "title": "Sharp pixel art at any window size (people, buildings, floor)",
+    "status": "done",
+    "area": "UI",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-16",
+    "order": 214
+   },
    "soldier-jobs": {
     "title": "Soldier jobs: guards at fires, rubble piles, digging, watch posts",
     "status": "done",
@@ -1076,6 +1086,15 @@
     "needs_you": false,
     "updated": "2026-10-03",
     "order": 19
+   },
+   "task-line": {
+    "title": "HUD task line: short 'do this now' step with live counter",
+    "status": "done",
+    "area": "UI",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-16",
+    "order": 215
    },
    "town-animals": {
     "title": "Town dogs and cats (Discord idea Animals)",
@@ -1722,16 +1741,16 @@
   "branches": [
    {
     "name": "god/death-review-2",
-    "ahead": 119,
-    "behind": 84,
+    "ahead": 135,
+    "behind": 87,
     "date": "2026-11-16",
-    "subject": "fix: Lantern's Eye towers may be struck; the kneeling shrine is kept",
+    "subject": "fix: panic's may_shelter no longer shadows Person.shelter",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 105,
-    "behind": 84,
+    "behind": 87,
     "date": "2026-11-16",
     "subject": "docs: Death and Decree ability levels design (proposed)",
     "pushed": true
@@ -1739,7 +1758,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 273,
+    "behind": 276,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1747,7 +1766,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 771,
+    "behind": 774,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1755,7 +1774,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 729,
+    "behind": 732,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1764,7 +1783,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-16",
-   "subject": "fix: mission HUD shrank to a corner after a window resize (full-rect anchors kept -640/-360 offsets)"
+   "subject": "feat: HUD task line: one short 'do this now' step with a live counter under the objectives, in both detail modes (MissionSteps)"
   }
  }
 }

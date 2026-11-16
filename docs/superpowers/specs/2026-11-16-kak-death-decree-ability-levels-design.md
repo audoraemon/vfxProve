@@ -1,6 +1,6 @@
 # KAK -- Death and Decree ability levels
 
-Status: **proposed** (2026-11-16), waiting for the user's word. The twists were picked with the user on 2026-11-16;
+Status: **approved** by the user (2026-11-17). The twists were picked with the user on 2026-11-16;
 the numbers are first guesses, to tune in play.
 
 Scope: the twenty powers in the Death and Decree rows of `GodTree.TABLE` (feat/god-progression 7de2f7cd, after the

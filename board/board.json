@@ -1,10 +1,10 @@
 {
- "hash": "895e4c1cff9ee273",
- "updated": "2026-11-16T21:32:27+07:00",
+ "hash": "ef0f31aa3abce8bf",
+ "updated": "2026-11-17T00:02:41+07:00",
  "changes": {
-  "date": "<t:1794839547:f>",
+  "date": "<t:1794848561:f>",
   "items": [
-   "New: Zoom-out limit is a player setting (Options)"
+   "Done: Death powers: your second review"
   ]
  },
  "snapshot": {
@@ -204,11 +204,11 @@
    },
    "death-review-2": {
     "title": "Death powers: your second review",
-    "status": "doing",
+    "status": "done",
     "area": "Abilities",
-    "needs_you": false,
+    "needs_you": true,
     "branch": "feat/god-progression",
-    "updated": "2026-11-16",
+    "updated": "2026-11-17",
     "order": 4
    },
    "death-review-adjust": {
@@ -1749,11 +1749,11 @@
   "branches": [
    {
     "name": "god/death-review-2",
-    "ahead": 137,
+    "ahead": 139,
     "behind": 88,
-    "date": "2026-11-16",
-    "subject": "perf: Pale Reign's horde costs a fraction of the frame (R49)",
-    "pushed": false
+    "date": "2026-11-17",
+    "subject": "test: overlapping danger zones and R49; tidy two wrapped conditions",
+    "pushed": true
    },
    {
     "name": "feat/god-progression",

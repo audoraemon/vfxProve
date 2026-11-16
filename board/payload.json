@@ -7,41 +7,41 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **28** to do · **153** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794839547:f>)\n• New: Zoom-out limit is a player setting (Options)",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**10** in progress · **28** to do · **154** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794848561:f>)\n• Done: Death powers: your second review",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-16T21:32:27+07:00"
+     "timestamp": "2026-11-17T00:02:41+07:00"
     },
     {
      "title": "god/death-review-2",
-     "description": "137 commits not in Develop-Main · last commit today · local only\n> perf: Pale Reign's horde costs a fraction of the frame (R49)\n\n_No Ledger task points at this branch._",
+     "description": "139 commits not in Develop-Main · last commit today\n> test: overlapping danger zones and R49; tidy two wrapped conditions\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "105 commits not in Develop-Main · last commit today\n> docs: Death and Decree ability levels design (proposed)\n\n**In progress** (1)\n• Death powers: your second review\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "105 commits not in Develop-Main · last commit yesterday\n> docs: Death and Decree ability levels design (proposed)\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
      "title": "god/refs-rerecord",
-     "description": "105 commits not in Develop-Main · last commit today · local only\n> docs: Death and Decree ability levels design (proposed)\n\n_No Ledger task points at this branch._",
+     "description": "105 commits not in Develop-Main · last commit yesterday · local only\n> docs: Death and Decree ability levels design (proposed)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/dominion-t3-old",
-     "description": "2 commits not in Develop-Main · last commit 10 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "description": "2 commits not in Develop-Main · last commit 11 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 38 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 39 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 38 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 39 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
@@ -51,7 +51,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Zoom-out limit is a player setting (Options) _(11-16)_\n• HUD task line: short 'do this now' step with live counter _(11-16)_\n• Sharp pixel art at any window size (people, buildings, floor) _(11-16)_\n• Any screen resolution + crisp Skill Tree (UI Resolution milestone) _(11-16)_\n• Mission sounds tiers 2-5 _(11-14)_\n• Test runner fails a suite that hits a GDScript runtime error _(11-14)_\n• Harvest route B under its 150 s floor: a carter picked mid-flight (H8) _(11-14)_\n• Death powers: your review adjustments _(11-14)_",
+     "description": "• Death powers: your second review _(11-17)_\n• Zoom-out limit is a player setting (Options) _(11-16)_\n• HUD task line: short 'do this now' step with live counter _(11-16)_\n• Sharp pixel art at any window size (people, buildings, floor) _(11-16)_\n• Any screen resolution + crisp Skill Tree (UI Resolution milestone) _(11-16)_\n• Mission sounds tiers 2-5 _(11-14)_\n• Test runner fails a suite that hits a GDScript runtime error _(11-14)_\n• Harvest route B under its 150 s floor: a carter picked mid-flight (H8) _(11-14)_",
      "color": 10185686
     }
    ]

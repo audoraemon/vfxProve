@@ -298,15 +298,21 @@ static func _scatter(t, made: Array) -> void:
 		ok = ok and is_equal_approx(r.sector.w, TAU / 4.0) and Vector2(r.sector.x, r.sector.y) == at
 	RD._run(fx, 2.0)
 	var bearings: Array[float] = []
+	var own := 0  # how many stand within their own sector (fposmod(bearing - from, TAU) < width)
 	for a in up:
 		if is_instance_valid(a):
-			bearings.append((a.ground_pos - at).angle())
+			var bearing := (a.ground_pos - at).angle()
+			bearings.append(bearing)
+			var rr: Visitors.Rule = fx.visitors._rules.get(a)
+			if rr != null and fposmod(bearing - rr.sector.z, TAU) < rr.sector.w:
+				own += 1
 	var apart := INF
 	for i in bearings.size():
 		for j in range(i + 1, bearings.size()):
 			apart = minf(apart, absf(angle_difference(bearings[i], bearings[j])))
-	t.check(ok and bearings.size() == 4 and apart >= TAU / 8.0,
-		"wraiths scatter, one to a sector (%d souls, %d up, the nearest two %.2f apart)" % [fx.souls, bearings.size(), apart])
+	t.check(ok and bearings.size() == 4 and apart >= TAU / 8.0 and own == 4,
+		"wraiths scatter, one to a sector, each within its own (%d souls, %d up, %d in their own, the nearest two %.2f apart)"
+			% [fx.souls, bearings.size(), own, apart])
 	fx.end_now()
 
 

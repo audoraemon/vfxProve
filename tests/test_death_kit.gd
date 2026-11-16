@@ -485,6 +485,8 @@ static func _second_review(t) -> void:
 		var q: Person = crowd.citizens[26 + k]
 		q.ground_pos = at + Vector2(1.5 * float(k + 1), 0.0)
 		line.append(q)
+	var sank := []
+	v.spent.connect(func(_a: Animal, where: Vector2) -> void: sank.append(where))
 	DeathParts.wraith(v, at, Vector4.ZERO, at)
 	_step(v, 15.0)
 	var hit := 0
@@ -494,6 +496,8 @@ static func _second_review(t) -> void:
 			hit += 1
 	t.check(hit == 3 and line[3].is_alive() and not line[3].withered() and v.living().is_empty(),
 		"a wraith withers whoever it reaches, three, then sinks (%d withered, %d up)" % [hit, v.living().size()])
+	t.check(sank.size() == 1 and (sank[0] as Vector2).distance_to(line[2].ground_pos) < 1.0,
+		"a spent wraith is told as it goes (spent, where it sank: %s), so its power can puff it away" % [sank])
 	crowd.withering.clear()
 	v = _fresh(made)
 

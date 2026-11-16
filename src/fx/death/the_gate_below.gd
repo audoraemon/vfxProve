@@ -113,6 +113,7 @@ func _build() -> void:
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
 	visitors.bitten.connect(_on_withered)
+	visitors.spent.connect(_on_spent)
 	ctx.play(&"gatebelow_open", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
@@ -280,14 +281,25 @@ func _on_withered(_wraith: Animal, _victim: Person, _first: bool) -> void:
 	withered += 1
 
 
+## A wraith of this cast was spent (its WRAITH_TOUCHES-th touch): staged, it goes in a pale puff, not a pop.
+func _on_spent(_wraith: Animal, at: Vector2) -> void:
+	if DominionParts.staged(self):
+		_puff(at)
+
+
 ## WRAITH_LIFE after the close: the wraiths go back into the ground.
 func _end_wraiths() -> void:
 	_ended = true
 	if DominionParts.staged(self):
 		for a in visitors.living():
-			FxParts.smoke(self, Iso.ground_to_screen(a.ground_pos), 6.0, 24.0, FADE * 0.5, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), PALE)
+			_puff(a.ground_pos)
 	visitors.recall(FADE)
 	duration = t + FADE + 0.1
+
+
+## A wraith's going (staged): a pale puff where it is.
+func _puff(at: Vector2) -> void:
+	FxParts.smoke(self, Iso.ground_to_screen(at), 6.0, 24.0, FADE * 0.5, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), PALE)
 
 
 ## Over or cut short: everyone still held is let go, the wraiths are gone.

@@ -91,6 +91,9 @@ signal bitten(visitor: Animal, victim: Person, first: bool)
 signal cut_down(visitor: Animal, at: Vector2)
 ## A visitor with `wreck` struck building `s`.
 signal wrecked(visitor: Animal, s: Structure)
+## A visitor was spent at `at` (touches_most reached, or spent_on_kill), so its owner can show it go (its node is freed right
+## after, deferred).
+signal spent(visitor: Animal, at: Vector2)
 
 ## People bitten dead, and visitors cut down.
 var kills := 0
@@ -438,6 +441,7 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		bitten.emit(a, who, touched)
 		if killed and not _touched(a, r) and r.spent_on_kill:
 			_rules.erase(a)
+			spent.emit(a, a.ground_pos)
 			_free(a, true)
 		return
 	a.bit()
@@ -463,6 +467,7 @@ func _touched(a: Animal, r: Rule) -> bool:
 	if r.touches_most <= 0 or r.touches < r.touches_most:
 		return false
 	_rules.erase(a)
+	spent.emit(a, a.ground_pos)
 	_free(a, true)
 	return true
 

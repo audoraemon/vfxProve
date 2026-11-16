@@ -489,9 +489,9 @@ static func _horde_pours(t, made: Array) -> void:
 	RD._run(fx, 0.1)
 	fx._process(0.01)
 	var up := fx.horde.living()
-	var pale := up.filter(func(a: Animal) -> bool: return a.breed == Animal.Breed.WRAITH and a.worn_tint == DeathParts.PALE_GHOST_TINT)
+	var pale := up.filter(func(a: Animal) -> bool: return a.breed == Animal.Breed.PALE_GHOST and a.worn_tint == DeathParts.PALE_GHOST_TINT)
 	t.check(up.size() >= PaleReignFx.HORDE_START and pale.size() == up.size() and fx.taken.size() == 1,
-		"the horde pours out at the first death: 4 ghosts (%d up, %d pale wraiths)" % [up.size(), pale.size()])
+		"the horde pours out at the first death: 4 ghosts (%d up, %d pale ghosts)" % [up.size(), pale.size()])
 	t.check(fx.ghosts_made == PaleReignFx.HORDE_START + 1, "4 pour out, and one more for the first death (%d)" % fx.ghosts_made)
 	fx.end_now()
 
@@ -665,7 +665,7 @@ static func _horde_sinks(t, made: Array) -> void:
 	var undead := 0
 	for pack in crowd.visitors:
 		for a in (pack as Visitors).living():
-			if a.breed == Animal.Breed.WRAITH or a.breed == Animal.Breed.ZOMBIE:
+			if a.breed in Animal.UNDEAD:
 				undead += 1
 	var held := (crowd.citizens + crowd.soldiers).filter(func(q: Person) -> bool:
 		return is_instance_valid(q) and q.is_alive() and q.pace_hold() < 1.0)

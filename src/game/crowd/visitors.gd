@@ -35,6 +35,12 @@ extends RefCounted
 ## in place of the nearest within reach, until it falls or goes inside (the mark is dropped then) or another is marked;
 ## one there is no way to is left alone SKIP_FOR like any other. A visitor with `bounds` leaves a mark outside them alone.
 ## With nothing marked the hunt is as above.
+## Death's second review adds (all off by default): `sector` (cx, cy, from, width: it hunts only people whose bearing from
+## (cx, cy) lies in [from, from + width), mod TAU; a width <= 0 or >= TAU is anywhere -- Gate Below's scattered wraiths),
+## `wither` (seconds: reaching its prey it lays the crowd's withering, Crowd.wither(), in place of a bite or a kill, and a
+## withering person is never its prey), `touches_most` (after that many touches -- withering laid or touch kill -- it is
+## spent and freed), `prefer` "soldiers" (the nearest soldier within reach, else the nearest anyone: the skeleton warrior)
+## and `spare` (a Callable(s: Structure) -> bool: a building it answers true for is never this visitor's to wreck).
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
@@ -140,6 +146,14 @@ class Rule extends RefCounted:
 	var march_left := 0.0
 	## knock_first: whom it has knocked down -> seconds left in which a second bite kills.
 	var knocked := {}
+	## give(): its sector (cx, cy, from angle, width; width 0: anywhere), the withering its touch lays (0: none), the touches
+	## it has before it is spent (0: no end) and has made, whether it takes a soldier first, and the buildings it spares.
+	var sector := Vector4.ZERO
+	var wither := 0.0
+	var touches_most := 0
+	var touches := 0
+	var prefer_soldiers := false
+	var spare := Callable()
 
 
 func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> Visitors:
@@ -208,6 +222,13 @@ func give(a: Animal, traits: Dictionary) -> void:
 	if traits.has("march"):
 		r.march = traits.march
 		r.march_left = float(traits.get("march_for", MARCH_FOR))
+	r.sector = traits.get("sector", r.sector)
+	r.wither = float(traits.get("wither", r.wither))
+	r.touches_most = int(traits.get("touches_most", r.touches_most))
+	if traits.has("prefer"):
+		r.prefer_soldiers = String(traits.prefer) == "soldiers"
+	if traits.has("spare"):
+		r.spare = traits.spare
 
 
 ## Whether visitor `a` is still on its march (give()'s `march`).
@@ -356,6 +377,18 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		return
 	r.bite_in = r.bite_every
 	a.facing = 1 if who.ground_pos.x - who.ground_pos.y > a.ground_pos.x - a.ground_pos.y else -1
+	if r.wither > 0.0:
+		# Its touch withers: no knock, no hurt; the crowd's withering does the rest. It looks for the next at once.
+		a.bit()
+		var laid := _crowd != null and is_instance_valid(_crowd) and _crowd.wither(who, r.wither, a.ground_pos)
+		var first_touch := not r.has_bitten
+		r.has_bitten = true
+		bitten.emit(a, who, first_touch)
+		if laid:
+			a.target = null
+			r.retarget_in = 0.0
+			_touched(a, r)
+		return
 	if r.touch_kill != &"":
 		# Its touch kills outright: no knock, no hurt. Spent only when it did kill (the target may have fallen already).
 		a.bit()
@@ -365,7 +398,7 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 		var touched := not r.has_bitten
 		r.has_bitten = true
 		bitten.emit(a, who, touched)
-		if killed and r.spent_on_kill:
+		if killed and not _touched(a, r) and r.spent_on_kill:
 			_rules.erase(a)
 			_free(a, true)
 		return
@@ -383,6 +416,17 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	var first := not r.has_bitten
 	r.has_bitten = true
 	bitten.emit(a, who, first)
+
+
+## One more touch (a withering laid, a touch kill): at `touches_most` it is spent, forgotten and freed (deferred). True
+## when it was spent.
+func _touched(a: Animal, r: Rule) -> bool:
+	r.touches += 1
+	if r.touches_most <= 0 or r.touches < r.touches_most:
+		return false
+	_rules.erase(a)
+	_free(a, true)
+	return true
 
 
 ## Whether it is still on its march: not yet within MARCH_NEAR of the point, and with time left. Ending it, it looks for
@@ -426,7 +470,7 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 		r.look_in = WRECK_LOOK
 		r.beside = null
 		for s in env.near(a.ground_pos, r.wreck_reach):
-			if _wreckable(s):
+			if _wreckable(s) and not _spares(r, s):
 				var d := s.distance_to(a.ground_pos)
 				if d < best:
 					best = d
@@ -445,7 +489,7 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 		r.house = null
 		best = INF
 		for s in env.near(a.ground_pos, r.seek_r):
-			if _wreckable(s):
+			if _wreckable(s) and not _spares(r, s):
 				var d := s.distance_to(a.ground_pos)
 				if d < best:
 					best = d
@@ -464,6 +508,11 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 ## A building a wrecker can strike: standing, solid (not a field, rubble or the bridge), not a power's own pile.
 static func _wreckable(s: Structure) -> bool:
 	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall", &"decree"])
+
+
+## Whether rule `r` spares `s` (give()'s `spare`): never this visitor's to wreck. Asked live, at every look.
+static func _spares(r: Rule, s: Structure) -> bool:
+	return r.spare.is_valid() and bool(r.spare.call(s))
 
 
 ## A visitor standing where the air has gone (a NO BREATH law: Breathing Is Prohibited) runs for the nearest edge,
@@ -495,24 +544,33 @@ func _go_home(a: Animal, r: Rule, delta: float) -> void:
 		_free(a)
 
 
-## Whether visitor rule `r` may hunt `p` at all: not a guised person under spare_guise, and a soldier under prey "soldiers".
+## Whether visitor rule `r` may hunt `p` at all: not a guised person under spare_guise, not one withering already under
+## `wither`, and a soldier under prey "soldiers".
 static func _fair(r: Rule, p: Person) -> bool:
 	if r.spare_guise and p.guised():
+		return false
+	if r.wither > 0.0 and p.withered():
 		return false
 	return not r.soldiers_only or p.soldier
 
 
-## Whether `p` stands inside rule `r`'s bounds (always, with none).
+## Whether `p` stands inside rule `r`'s bounds (always, with none) and its sector (always, with none).
 static func _within(r: Rule, p: Person) -> bool:
-	if r.bounds.z <= 0.0:
+	if r.bounds.z > 0.0 and p.ground_pos.distance_to(Vector2(r.bounds.x, r.bounds.y)) > r.bounds.z:
+		return false
+	if r.sector.w <= 0.0 or r.sector.w >= TAU:
 		return true
-	return p.ground_pos.distance_to(Vector2(r.bounds.x, r.bounds.y)) <= r.bounds.z
+	var bearing := (p.ground_pos - Vector2(r.sector.x, r.sector.y)).angle()
+	return fposmod(bearing - r.sector.z, TAU) < r.sector.w
 
 
-## The nearest living person out in the open within `reach` of `at`, but for `skip` (and, with a rule, those it never hunts).
+## The nearest living person out in the open within `reach` of `at`, but for `skip` (and, with a rule, those it never hunts;
+## under prefer "soldiers", the nearest soldier if there is one).
 func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person:
 	var best: Person = null
 	var best_d := INF
+	var best_soldier: Person = null
+	var soldier_d := INF
 	var r2 := reach * reach
 	for e in _people():
 		var p := e as Person
@@ -525,6 +583,11 @@ func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person
 		if d < best_d:
 			best_d = d
 			best = p
+		if p.soldier and d < soldier_d:
+			soldier_d = d
+			best_soldier = p
+	if r != null and r.prefer_soldiers and best_soldier != null:
+		return best_soldier
 	return best
 
 

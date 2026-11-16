@@ -244,7 +244,9 @@ func _close() -> void:
 	ctx.play(&"gatebelow_close", origin, 0.0)
 	for k in souls:
 		var ang := TAU * float(k) / float(maxi(souls, 1)) + 0.4
-		DeathParts.wraith(visitors, origin + Vector2.from_angle(ang) * WRAITH_SPREAD)
+		var spot := origin + Vector2.from_angle(ang) * WRAITH_SPREAD
+		# The whole circle and no flight out for now: R35's scatter by sector comes with Gate Below's own change.
+		DeathParts.wraith(visitors, spot, Vector4.ZERO, spot)
 	if souls == 0:
 		duration = t + CLOSE + 0.1
 	if not DominionParts.staged(self):

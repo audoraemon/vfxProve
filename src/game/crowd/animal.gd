@@ -15,9 +15,14 @@ extends Node2D
 ## greyed, with pale fire in its eyes (wear()); SPIRIT is a thin pale shape with a trailing wisp, drawn in code, no hood and
 ## half seen through, its face fading in and out (not Passage's GHOST); BONE_GIANT is the 96 px painted bone giant, drawn at
 ## its own size with a pale fire in its sockets. UNDEAD is kept apart from OTHER_SIDE so that list stays Passage's.
-enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND, DEMON, GHOST, ZOMBIE, SPIRIT, BONE_GIANT, WRAITH }
+## Death's second review adds three, each on its painted sheet (the animal format, canvas 48): PALE_GHOST (Pale Reign's gaunt,
+## faceless runner, drawn times its worn_tint; with no sheet on disk, the wraith's draw), SKELETON (an armed skeleton warrior)
+## and GHOUL (low and long, its bite a leap). SOLID_UNDEAD are the undead with a body a blow can land on.
+enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND, DEMON, GHOST, ZOMBIE, SPIRIT, BONE_GIANT, WRAITH, PALE_GHOST, SKELETON, GHOUL }
 const OTHER_SIDE: Array[Breed] = [Breed.HELLHOUND, Breed.DEMON, Breed.GHOST]
-const UNDEAD: Array[Breed] = [Breed.ZOMBIE, Breed.SPIRIT, Breed.BONE_GIANT, Breed.WRAITH]
+const UNDEAD: Array[Breed] = [Breed.ZOMBIE, Breed.SPIRIT, Breed.BONE_GIANT, Breed.WRAITH, Breed.PALE_GHOST, Breed.SKELETON,
+	Breed.GHOUL]
+const SOLID_UNDEAD: Array[Breed] = [Breed.ZOMBIE, Breed.SKELETON, Breed.GHOUL]
 const DOGS: Array[Breed] = [Breed.HOUND, Breed.SHEPHERD, Breed.TERRIER, Breed.WOLFHOUND, Breed.SPANIEL]
 const CATS: Array[Breed] = [Breed.TABBY, Breed.BLACK_CAT, Breed.GREY_CAT, Breed.WHITE_CAT, Breed.BROWN_CAT]
 enum State { WANDER, SIT, FOLLOW, FLEE, ATTACK, GATHER, TRANCE, DEAD }
@@ -43,6 +48,9 @@ const PALETTE := {
 	Breed.SPIRIT: [Color("dfe6ea"), Color("9aa4aa"), Color("f4fbff")],
 	Breed.BONE_GIANT: [Color("d8d2bf"), Color("5a5650"), Color("f2eedc")],
 	Breed.WRAITH: [Color("dfe6ea"), Color("9aa4aa"), Color("f4fbff")],
+	Breed.PALE_GHOST: [Color("e6ecf2"), Color("9aa4aa"), Color("f4fbff")],
+	Breed.SKELETON: [Color("d8d2bf"), Color("5a5650"), Color("f2eedc")],
+	Breed.GHOUL: [Color("8a8c86"), Color("3a3c38"), Color("d8d2bf")],
 }
 ## Death's dead (spec section 6): the palette is bone white, ash grey, pale-white fire, and grave green kept to eyes.
 const SPIRIT_BODY := Color(0.86, 0.9, 0.94, 0.5)
@@ -241,7 +249,10 @@ const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png",
 	Breed.HELLHOUND: "res://assets/pixellab/animals/hellhound.png",
 	Breed.DEMON: "res://assets/pixellab/animals/demon.png",
 	Breed.GHOST: "res://assets/pixellab/animals/ghost.png",
-	Breed.BONE_GIANT: "res://assets/pixellab/animals/bone_giant.png"}
+	Breed.BONE_GIANT: "res://assets/pixellab/animals/bone_giant.png",
+	Breed.PALE_GHOST: "res://assets/pixellab/animals/pale_ghost.png",
+	Breed.SKELETON: "res://assets/pixellab/animals/skeleton.png",
+	Breed.GHOUL: "res://assets/pixellab/animals/ghoul.png"}
 enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE, IDLE, BARK, SNIFF, SCRATCH, LIE }
 const WALK_FPS := 8.0
 const BITE_FPS := 14.0
@@ -588,7 +599,7 @@ func tick_visual(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			queue_redraw()
-	if breed == Breed.WRAITH:
+	if breed == Breed.WRAITH or (breed == Breed.PALE_GHOST and sheet(breed).is_empty()):
 		_bite_t += delta  # its own sheet (_draw_wraith()): the strike row plays while this is under 1, then it drifts again
 		return
 	var sh := sheet(breed)
@@ -694,10 +705,14 @@ func _draw() -> void:
 		shadow = Rect2(-4, -1, 8, 2)
 	elif breed == Breed.SPIRIT or breed == Breed.WRAITH:
 		shadow = Rect2(-3, -1, 6, 2)
-	var sc := Color(0, 0, 0, 0.28 if not breed in [Breed.GHOST, Breed.SPIRIT, Breed.WRAITH] else 0.14)
+	elif breed == Breed.PALE_GHOST or breed == Breed.SKELETON:
+		shadow = Rect2(-4, -1, 8, 2)
+	elif breed == Breed.GHOUL:
+		shadow = Rect2(-6, -1, 12, 2)  # low and long
+	var sc := Color(0, 0, 0, 0.28 if not breed in [Breed.GHOST, Breed.SPIRIT, Breed.WRAITH, Breed.PALE_GHOST] else 0.14)
 	var look_shadow := Person.foot_shadow(shadow, sc)
 	draw_rect(look_shadow[0], look_shadow[1])
-	if state == State.DEAD and breed in [Breed.ZOMBIE, Breed.SPIRIT, Breed.WRAITH]:
+	if state == State.DEAD and breed in [Breed.ZOMBIE, Breed.SPIRIT, Breed.WRAITH, Breed.PALE_GHOST, Breed.SKELETON, Breed.GHOUL]:
 		return  # cut down, it is freed at once: only its shadow shows
 	if state == State.DEAD:
 		var dsh := sheet(breed)
@@ -725,6 +740,14 @@ func _draw() -> void:
 		return
 	if breed == Breed.WRAITH:
 		_draw_wraith(_flash > 0.0)
+		return
+	if breed == Breed.PALE_GHOST:
+		# Its own painted runner on the ground, multiplied by worn_tint (Pale Reign's pale); with no sheet, the wraith's draw.
+		var psh := sheet(breed)
+		if psh.is_empty():
+			_draw_wraith(_flash > 0.0)
+		else:
+			_draw_sheet(psh, tint * worn_tint)
 		return
 	var sh := sheet(breed)  # (after the wraith: it has a sheet of its own, _wraith_sheet())
 	if not sh.is_empty():

@@ -100,9 +100,9 @@ const SPRITE_LANTERN := Vector2i(3, -8)
 const SPRITE_CHAIN := Vector2i(-1, -10)
 const SPRITE_CROWN := Vector2i(-1, -17)
 ## _sprite_signature()'s multipliers folded for its quiet case: past the frame, the tumble, lift, frost and flash terms
-## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage, whisper and guise terms.
+## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage, whisper and grey (guise, withering) terms.
 const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
-const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2 * 2
+const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2 * 3
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Ground fire (Dragonfire): the soot a scorched person shows, darkest at 0.45 and fading over the last 2 s.
@@ -1747,6 +1747,18 @@ func guised() -> bool:
 	return statuses.has(&"guise")
 
 
+## Whether a withering is on him now (Withering, R36: statuses[&"wither"] holds the seconds left, laid, counted down and
+## taken off by the crowd's Withering). Drawn grey (Withering.TINT), as the guised are.
+func withered() -> bool:
+	return statuses.has(&"wither")
+
+
+## The grey his sprite is drawn in: the withering's, else the walking dead's (Corpse Guise), else none (white). 2, 1, 0 in
+## the draw signatures.
+func _grey() -> int:
+	return 2 if withered() else (1 if guised() else 0)
+
+
 ## Whether the god's hand is on him now (v0.11.1): whispered, confused, compelled, or staring at a lure. A director that
 ## takes its soldiers back to their places at its looks leaves a held one be: the hold ends by itself and he is sent back
 ## (_soldier_back()).
@@ -3013,8 +3025,11 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 		sil.size.y = keep
 		dst.size.y = keep
 	var atlas := PeopleArt.atlas()
-	# The guised (Corpse Guise) wear the walking dead's grey, as Death's zombies do (DeathParts.ZOMBIE_TINT); still one batch.
-	draw_texture_rect_region(atlas, dst, src, DeathParts.ZOMBIE_TINT if state != State.DEAD and guised() else Color.WHITE)
+	# The guised (Corpse Guise) wear the walking dead's grey, as Death's zombies do (DeathParts.ZOMBIE_TINT), and the withering
+	# its own (Withering.TINT); still one batch.
+	var grey := _grey() if state != State.DEAD else 0
+	draw_texture_rect_region(atlas, dst, src,
+		Withering.TINT if grey == 2 else (DeathParts.ZOMBIE_TINT if grey == 1 else Color.WHITE))
 	var tint := _sprite_tint()
 	if tint.a > 0.01:
 		draw_texture_rect_region(atlas, dst, sil, tint)
@@ -3208,7 +3223,7 @@ func _sprite_signature() -> int:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
 		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
-			+ (2 if mind == Mind.WHISPERED else 0) + (1 if guised() else 0)
+			+ (3 if mind == Mind.WHISPERED else 0) + _grey()
 	sig = sig * 1024 + (int(_anim * 1.4 * 8.0) % 1024 if _lift > 8.0 else 0)
 	sig = sig * 97 + int(round(_lift))
 	sig = sig * 97 + int(_frozen * 8.0)
@@ -3221,7 +3236,7 @@ func _sprite_signature() -> int:
 	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
 	sig = sig * (SICK_STAGES + 1) + sick_stage()
 	sig = sig * 2 + (1 if mind == Mind.WHISPERED else 0)
-	sig = sig * 2 + (1 if guised() else 0)  # Corpse Guise's grey
+	sig = sig * 3 + _grey()  # Corpse Guise's grey, or the withering's
 	if scorched_left > 0.0:
 		# Soot (ground fire) fades in steps; unscorched, the integer is the quiet fold's.
 		sig = sig * 5 + int(clampf(scorched_left / 2.0, 0.0, 1.0) * 4.0) + 1

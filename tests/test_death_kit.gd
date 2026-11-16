@@ -1,7 +1,8 @@
 extends RefCounted
 ## Death's undead kit (Death authority, spec 5.1 and 6): zombies wearing the dead person's own sprite, the pale spirit,
-## the wraith and the bone giant breed, and the Visitors traits they go by (knock_first, infect, spare_guise, prey,
-## fright_r, slow_pass). Every Death power that raises or calls the dead spawns through DeathParts.
+## the wraith and the bone giant breed, the pale ghost, skeleton warrior and ghoul, the withering, and the Visitors traits they
+## go by (knock_first, infect, spare_guise, prey, fright_r, slow_pass, sector, wither, touches_most, prefer, spare). Every
+## Death power that raises or calls the dead spawns through DeathParts.
 
 const DT := 0.05
 
@@ -70,7 +71,8 @@ static func run(t) -> void:
 	_clear_town(crowd)
 
 	t.check(Animal.Breed.GHOST == 12 and Animal.Breed.ZOMBIE == 13 and Animal.Breed.SPIRIT == 14 and Animal.Breed.BONE_GIANT == 15
-		and Animal.UNDEAD == [Animal.Breed.ZOMBIE, Animal.Breed.SPIRIT, Animal.Breed.BONE_GIANT, Animal.Breed.WRAITH]
+		and Animal.UNDEAD == [Animal.Breed.ZOMBIE, Animal.Breed.SPIRIT, Animal.Breed.BONE_GIANT, Animal.Breed.WRAITH,
+			Animal.Breed.PALE_GHOST, Animal.Breed.SKELETON, Animal.Breed.GHOUL]
 		and not (Animal.Breed.ZOMBIE in Animal.DOGS) and not (Animal.Breed.SPIRIT in Animal.CATS)
 		and Animal.sheet(Animal.Breed.BONE_GIANT).get("cell", 0) == 96
 		and Animal.sheet(Animal.Breed.SPIRIT).is_empty() and Animal.sheet(Animal.Breed.ZOMBIE).is_empty(),
@@ -140,14 +142,17 @@ static func run(t) -> void:
 	guised.statuses.erase(&"guise")
 	v = _fresh(made)
 
-	# --- prey soldiers.
+	# --- prey soldiers (the trait; the giant goes by it).
 	var cit: Person = crowd.citizens[5]
 	var sol: Person = crowd.soldiers[0]
 	cit.ground_pos = at + Vector2(0.5, 0.0)
 	sol.ground_pos = at + Vector2(4.0, 0.0)
-	var w := DeathParts.wraith(v, at)
+	var ps := v.summon(at, Animal.Breed.WRAITH, DeathParts.SPIRIT_BLOWS, 1.0, 12.0, 0.5, 1.0, false)
+	v.give(ps, {"phase": true, "prey": "soldiers", "no_bite": true})
 	_step(v, 0.6)
-	t.check(w.target == sol and cit.is_alive(), "prey soldiers: a citizen nearer is ignored")
+	t.check(ps.target == sol and cit.is_alive(), "prey soldiers: a citizen nearer is ignored")
+	v = _fresh(made)
+	var w := DeathParts.wraith(v, at, Vector4.ZERO, at)
 	t.check(w.breed == Animal.Breed.WRAITH, "a wraith is the wraith breed")
 	# Final review 1: its painted sheet is what play draws. The draw path looks up sheet(breed) for every breed first; the
 	# wraith's own sheet is cached apart, so that look never leaves it empty (the 2x spirit stand-in drawn instead).
@@ -181,14 +186,15 @@ static func run(t) -> void:
 	t.check((v._rules[quiet] as Visitors.Rule).fright_r == 0.0, "a quiet spirit (fright false) frights no one")
 	v = _fresh(made)
 
-	# --- Wraith slows who it passes (a citizen; a soldier it reaches it kills) to 0.5 for 4 s.
+	# --- Wraith slows who it passes to 0.5 for 4 s (a guised one: it passes through, and never withers them).
 	var slowed: Person = crowd.citizens[17]
 	slowed.ground_pos = at + Vector2(0.3, 0.0)
-	var wr := DeathParts.wraith(v, at)
+	slowed.statuses[&"guise"] = 25.0
+	var wr := DeathParts.wraith(v, at, Vector4.ZERO, at)
 	wr.target = null
 	var base := slowed.pace_hold()
 	_step(v, 0.2)
-	t.check(is_equal_approx(base, 1.0) and slowed.pace_hold() <= 0.5 + 0.001,
+	t.check(is_equal_approx(base, 1.0) and slowed.pace_hold() <= 0.5 + 0.001 and not slowed.withered(),
 		"wraith slows who it passes to 0.5 (%.2f)" % slowed.pace_hold())
 	wr.ground_pos = Vector2(27.0, 27.0)
 	slowed.ground_pos = Vector2(-27.0, -27.0)
@@ -196,6 +202,7 @@ static func run(t) -> void:
 	var still := slowed.pace_hold() <= 0.5 + 0.001
 	_step(v, 1.0)
 	t.check(still and is_equal_approx(slowed.pace_hold(), 1.0), "and the hold lifts 4 s after the pass")
+	slowed.statuses.erase(&"guise")
 	v = _fresh(made)
 
 	# --- on_kill_rise.
@@ -236,34 +243,52 @@ static func run(t) -> void:
 	var got := []
 	var grab := func(e: DummyEnemy, kind: StringName) -> void: got.append([e, kind])
 	field.enemy_killed.connect(grab)
-	DeathParts.wraith(v, at)
+	var wl := DeathParts.wraith(v, at, Vector4.ZERO, at)
 	_step(v, 1.0)
 	field.enemy_killed.disconnect(grab)
-	t.check(got.size() == 1 and got[0][0] == lone and got[0][1] == &"pit"
-		and rem.near(lone.ground_pos, 0.5).is_empty() and v.living().is_empty(),
-		"a wraith kills the soldier it reaches as pit, leaves no body, and is spent (%s)" % [got])
+	t.check(got.is_empty() and lone.is_alive() and lone.withered() and v.living().has(wl),
+		"a wraith withers the soldier it reaches (no kill at its touch) and is not spent by one touch (%s)" % [got])
+	crowd.withering.clear()
+	v = _fresh(made)
+	# The touch kill is a trait still (no Death power gives it to a wraith now): it kills as its kind and, spent_on_kill, is freed.
+	var lone2: Person = crowd.soldiers[8]
+	lone2.ground_pos = at + Vector2(0.3, 0.0)
+	got.clear()
+	field.enemy_killed.connect(grab)
+	_touch_killer(v, at)
+	_step(v, 1.0)
+	field.enemy_killed.disconnect(grab)
+	t.check(got.size() == 1 and got[0][0] == lone2 and got[0][1] == &"pit"
+		and rem.near(lone2.ground_pos, 0.5).is_empty() and v.living().is_empty(),
+		"touch_kill: it kills the soldier it reaches as pit, leaves no body, and is spent (%s)" % [got])
 	v = _fresh(made)
 	var gone_s: Person = crowd.soldiers[7]
 	gone_s.ground_pos = at + Vector2(0.3, 0.0)
-	var wlive := DeathParts.wraith(v, at)
+	var wlive := _touch_killer(v, at)
 	wlive.target = gone_s
 	field.kill(gone_s, &"frenzy", gone_s.ground_pos)
 	_step(v, 1.0)
-	t.check(wlive.is_alive() and v.living().has(wlive), "a wraith whose target fell already is not spent")
+	t.check(wlive.is_alive() and v.living().has(wlive), "touch_kill: one whose target fell already is not spent")
 	v = _fresh(made)
+	# R37: a wraith goes for the nearest, citizen or soldier.
 	var nearc: Person = crowd.citizens[11]
 	var fars: Person = crowd.soldiers[6]
 	nearc.ground_pos = at + Vector2(1.0, 0.0)
 	fars.ground_pos = at + Vector2(4.0, 0.0)
-	DeathParts.wraith(v, at)
+	var order := []
+	v.bitten.connect(func(_a: Animal, victim: Person, _first: bool) -> void: order.append(victim))
+	DeathParts.wraith(v, at, Vector4.ZERO, at)
 	_step(v, 3.0)
-	t.check(nearc.is_alive() and not fars.is_alive(), "a wraith passes a nearer citizen for a soldier")
+	t.check(not order.is_empty() and order[0] == nearc and nearc.withered(),
+		"a wraith goes for the nearer citizen first, not the soldier (R37) (%d touched)" % order.size())
+	crowd.withering.clear()
 	v = _fresh(made)
 	var pv: Person = crowd.citizens[12]
 	pv.ground_pos = at + Vector2(0.3, 0.0)
-	DeathParts.pale_ghost(v, at, at, 6.0)
+	var pg := DeathParts.pale_ghost(v, at, at, 6.0)
 	_step(v, 1.0)
-	t.check(not pv.is_alive() and rem.pick(pv.ground_pos) != null, "a pale ghost's touch kills as pale and leaves a remain")
+	t.check(not pv.is_alive() and rem.pick(pv.ground_pos) != null and pg.breed == Animal.Breed.PALE_GHOST,
+		"a pale ghost (its own breed) touches dead as pale and leaves a remain")
 	v = _fresh(made)
 	var outer: Person = crowd.citizens[13]
 	var inner: Person = crowd.citizens[14]
@@ -309,4 +334,212 @@ static func run(t) -> void:
 	t.check(clean, "the town's pack never spawns ZOMBIE, SPIRIT, BONE_GIANT")
 	pack.clear()
 	pack.free()
+	_done(made)
+	_second_review(t)
+
+
+## A wraith with the touch kill (the trait, kept): prey soldiers, kills as pit, spent on its kill.
+static func _touch_killer(v: Visitors, at: Vector2) -> Animal:
+	var a := v.summon(at, Animal.Breed.WRAITH, DeathParts.SPIRIT_BLOWS, DeathParts.WRAITH_SPEED, DeathParts.WRAITH_SEEK,
+		DeathParts.WRAITH_TOUCH, 1.0, false)
+	v.give(a, {"phase": true, "prey": "soldiers", "touch_kill": &"pit", "spent_on_kill": true})
+	return a
+
+
+## Steps the crowd (its withering with it) for `seconds`.
+static func _advance(crowd: Crowd, seconds: float) -> void:
+	for i in roundi(seconds / DT):
+		crowd.advance(DT)
+
+
+## Death's second review (R36-R42): the new breeds, the withering and the traits Gate Below, Pale Reign and Grave Tide go by.
+## A town of its own: the crowd is stepped here (its withering with it), and the first town's plague (the infect check) would
+## spread through it.
+static func _second_review(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[2]
+	var field: EnemyField = made[3]
+	var v := _fresh(made)
+	var rem: Remains = crowd.remains
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+
+	# --- The breeds.
+	var pk := AnimalPack.new().setup(crowd, grid, made[4], 17)
+	pk.spawn(80)
+	var none := true
+	for an in pk.animals:
+		none = none and not (an.breed in [Animal.Breed.PALE_GHOST, Animal.Breed.SKELETON, Animal.Breed.GHOUL])
+	pk.clear()
+	pk.free()
+	t.check(Animal.Breed.PALE_GHOST == 17 and Animal.Breed.SKELETON == 18 and Animal.Breed.GHOUL == 19
+		and Animal.UNDEAD.has(Animal.Breed.PALE_GHOST) and Animal.UNDEAD.has(Animal.Breed.SKELETON)
+		and Animal.UNDEAD.has(Animal.Breed.GHOUL)
+		and Animal.SOLID_UNDEAD == [Animal.Breed.ZOMBIE, Animal.Breed.SKELETON, Animal.Breed.GHOUL] and none,
+		"three breeds appended, undead, never in the town pack")
+
+	# --- The withering: grey, slowed, panicked, dead at 6 s as wither, a body.
+	rem.enabled = true
+	var c: Person = crowd.citizens[21]
+	c.ground_pos = at
+	var got := []
+	var grab := func(e: DummyEnemy, kind: StringName) -> void: got.append([e, kind])
+	field.enemy_killed.connect(grab)
+	var laid := crowd.wither(c, Withering.WITHER, c.ground_pos + Vector2(1, 0))
+	t.check(laid and c.withered() and c.pace_hold() <= Withering.WITHER_PACE
+		and c.walk_speed <= Withering.WITHER_PACE * c._base_speed() + 0.001
+		and (c.mind in [Person.Mind.PANIC, Person.Mind.FLEE] or c.startled()),
+		"withering: grey, held to WITHER_PACE of the pace his mind gives (%.2f of %.2f), panicked (mind %d)"
+		% [c.walk_speed, c._base_speed(), c.mind])
+	_advance(crowd, 5.9)
+	var alive_at := c.is_alive()
+	var alarm0 := crowd.alarm
+	_advance(crowd, 0.2)
+	var pos := c.ground_pos
+	t.check(alive_at and not c.is_alive() and got.size() == 1 and got[0][1] == &"wither" and rem.pick(pos) != null
+		and crowd.alarm > alarm0,
+		"withering: alive at 5.9 s, dead at 6.1 s as wither, a body, the alarm raised (%s, alarm %.2f -> %.2f)"
+		% [got, alarm0, crowd.alarm])
+	t.check(not c.withered() and crowd.withering.count() == 0, "and it is done with him")
+
+	# --- It lapses indoors, on another death, or freed (Review Focus 1).
+	got.clear()
+	var home: Person = crowd.citizens[22]
+	var slain: Person = crowd.citizens[23]
+	var carried: Person = crowd.citizens[24]
+	home.ground_pos = at + Vector2(2.0, 0.0)
+	slain.ground_pos = at + Vector2(-2.0, 0.0)
+	carried.ground_pos = at + Vector2(0.0, 2.0)
+	for q in [home, slain, carried]:
+		crowd.wither(q, Withering.WITHER, at)
+	_advance(crowd, 2.0)
+	field.kill(slain, &"frenzy", slain.ground_pos)
+	field.remove(carried)
+	crowd.citizens.erase(carried)
+	carried.free()
+	_advance(crowd, 1.0)
+	home.inside = true
+	_advance(crowd, 3.1)
+	t.check(home.is_alive() and not home.withered() and is_equal_approx(home.pace_hold(), 1.0)
+		and got.size() == 1 and got[0][0] == slain and got[0][1] == &"frenzy" and not slain.withered()
+		and crowd.withering.count() == 0,
+		"withering lapses indoors, on another death, or freed (%s)" % [got])
+	home.inside = false
+
+	# --- A second withering on the withering runs nothing new.
+	got.clear()
+	var twice: Person = crowd.citizens[25]
+	twice.ground_pos = at + Vector2(-3.0, 1.0)
+	crowd.wither(twice, Withering.WITHER, at)
+	_advance(crowd, 3.0)
+	var again := crowd.wither(twice, Withering.WITHER, at)
+	_advance(crowd, 2.9)
+	var lives := twice.is_alive()
+	_advance(crowd, 0.2)
+	t.check(not again and lives and not twice.is_alive() and got.size() == 1 and got[0][1] == &"wither",
+		"a second withering on the withering runs nothing new: he dies at the first's 6 s")
+	field.enemy_killed.disconnect(grab)
+	v = _fresh(made)
+
+	# --- A wraith withers whoever it reaches, three, then sinks.
+	var line: Array[Person] = []
+	for k in 4:
+		var q: Person = crowd.citizens[26 + k]
+		q.ground_pos = at + Vector2(1.5 * float(k + 1), 0.0)
+		line.append(q)
+	DeathParts.wraith(v, at, Vector4.ZERO, at)
+	_step(v, 15.0)
+	var hit := 0
+	for k in 3:
+		var q := line[k]
+		if q.withered() or (not q.is_alive() and q._kind == &"wither"):
+			hit += 1
+	t.check(hit == 3 and line[3].is_alive() and not line[3].withered() and v.living().is_empty(),
+		"a wraith withers whoever it reaches, three, then sinks (%d withered, %d up)" % [hit, v.living().size()])
+	crowd.withering.clear()
+	v = _fresh(made)
+
+	# --- A sector keeps a wraith to its own.
+	var out_one: Person = crowd.citizens[30]
+	var in_one: Person = crowd.citizens[31]
+	out_one.ground_pos = at + Vector2(0.0, -2.0)
+	in_one.ground_pos = at + Vector2(3.0, 0.5)
+	var from := at + Vector2(0.0, -1.0)
+	var sw := DeathParts.wraith(v, from, Vector4(at.x, at.y, 0.0, PI / 2.0), from)
+	_step(v, 1.0)
+	t.check(sw.target == in_one and not out_one.withered(),
+		"a sector keeps a wraith to its own: the nearer one outside it is passed over")
+	crowd.withering.clear()
+	v = _fresh(made)
+
+	# --- prefer soldiers: a skeleton passes a nearer citizen.
+	var pc: Person = crowd.citizens[32]
+	var psol: Person = crowd.soldiers[9]
+	pc.ground_pos = at + Vector2(1.0, 0.0)
+	psol.ground_pos = at + Vector2(4.0, 0.0)
+	var sk := DeathParts.skeleton(v, at)
+	_step(v, 0.2)
+	var took_soldier := sk.target == psol
+	v = _fresh(made)
+	pc.ground_pos = at + Vector2(1.0, 0.0)
+	var sk2 := DeathParts.skeleton(v, at)
+	_step(v, 0.2)
+	t.check(took_soldier and sk2.target == pc,
+		"prefer soldiers: a skeleton passes a nearer citizen for a soldier; with no soldier in seek, the citizen")
+	v = _fresh(made)
+
+	# --- spare: a spared building is never clawed.
+	var kept: Structure = null
+	var other: Structure = null
+	var side := Vector2.INF
+	for s in env.structures():
+		if not Visitors._wreckable(s) or s.kind != Structure.Kind.HOUSE:
+			continue
+		var p := Vector2(s.footprint.end.x + 0.3, s.center().y)
+		if not grid.walkable(p):
+			continue
+		var best := INF
+		var near: Structure = null
+		for o in env.near(p, 8.0):
+			if o != s and Visitors._wreckable(o) and o.distance_to(p) < best:
+				best = o.distance_to(p)
+				near = o
+		if near != null:
+			kept = s
+			other = near
+			side = p
+			break
+	t.check(kept != null, "two houses for the spare check")
+	if kept != null:
+		var kept_hp := kept.hp
+		var other_hp := other.hp
+		var wk := v.summon(side, Animal.Breed.GHOUL, 4, 1.0, 8.0, 0.6, 1.0, true)
+		v.give(wk, {"wreck": 3.0, "wreck_every": 1.0, "wreck_reach": 0.5,
+			"spare": func(s: Structure) -> bool: return s == kept})
+		_step(v, 10.0)
+		t.check(kept.hp == kept_hp and other.hp < other_hp,
+			"spare: a spared building is never clawed (%.0f -> %.0f), the other is (%.0f -> %.0f)"
+			% [kept_hp, kept.hp, other_hp, other.hp])
+	v = _fresh(made)
+
+	# --- Skeleton and ghoul stats.
+	var s1 := DeathParts.skeleton(v, at)
+	var g1 := DeathParts.ghoul(v, at)
+	var rs: Visitors.Rule = v._rules[s1]
+	var rg: Visitors.Rule = v._rules[g1]
+	s1.target = null
+	g1.target = null
+	t.check(s1.breed == Animal.Breed.SKELETON and is_equal_approx(s1.health, 4.0) and not rs.flinch
+		and is_equal_approx(rs.bite, 1.0) and rs.prefer_soldiers and rs.spare_guise
+		and g1.breed == Animal.Breed.GHOUL and is_equal_approx(g1.health, 2.0) and rg.knock_first and rg.flinch
+		and rg.spare_guise and is_equal_approx(s1.speed(), 0.78) and is_equal_approx(g1.speed(), 1.2),
+		"skeleton and ghoul stats (speeds %.3f / %.3f)" % [s1.speed(), g1.speed()])
+	v = _fresh(made)
+
+	# --- The wither kind.
+	t.check(Remains.BODY_KINDS.has(&"wither") and not DeathVoices.QUIET_KINDS.has(&"wither")
+		and Rules.POWER_KINDS["gatebelow"] == [&"pit", &"wither"],
+		"the wither kind: a body, a cry, Gate Below's")
+	rem.enabled = false
 	_done(made)

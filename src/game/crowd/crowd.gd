@@ -222,6 +222,8 @@ var _bed_level := 0.0
 ## The town's whole dead (Death's powers raise and move them). Off unless Rules turns it on (Remains.wants()). Freed by clear()
 ## (null after it): a reader checks it.
 var remains: Remains
+## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
+var withering: Withering
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -331,6 +333,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
+	withering = Withering.new(field)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
@@ -1015,6 +1018,8 @@ func _advance(delta: float) -> void:
 	_clock += delta
 	if remains != null:
 		remains.step(delta)
+	if withering != null:
+		withering.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1590,6 +1595,12 @@ func is_veiled(at: Vector2) -> bool:
 	return false
 
 
+## Lays the withering on `p` for `seconds`, panicking him from `from` (Withering.lay()): false when nothing was laid
+## (gone, dead, inside, or withering already).
+func wither(p: Person, seconds: float, from: Vector2) -> bool:
+	return withering != null and withering.lay(p, seconds, from)
+
+
 ## The town is told what `s` is, for `seconds` (Anathema): a `mark` the managers read -- &"cursed": nobody will be
 ## inside it, fight its fire or climb it; &"hallowed": everyone must be inside and stays. A later mark replaces an
 ## earlier one.
@@ -2134,6 +2145,8 @@ func clear() -> void:
 	_freeze_left = 0.0
 	_veils.clear()
 	_struct_marks.clear()
+	if withering != null:
+		withering.clear()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):

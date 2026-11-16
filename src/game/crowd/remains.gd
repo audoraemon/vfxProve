@@ -14,9 +14,9 @@ const MAX := 60
 const PICK_R := 1.0
 ## Only a death that leaves the body whole is recorded: Death's own quiet kills (the Walking Corpse's grave kill among them),
 ## the mob's and a fight's, and Decree's (choked, struck by the Sealed Verdict, killed by the bond, crushed by the Closing Cage
-## or Erasing Distance's fold). A blast, a fire, the pit or a door of stars leaves nothing to raise.
+## or Erasing Distance's fold), and the withering's (R36). A blast, a fire, the pit or a door of stars leaves nothing to raise.
 const BODY_KINDS: Array[StringName] = [&"deathmark", &"plague", &"mob", &"frenzy", &"pale", &"shadow", &"grave", &"choke",
-	&"verdict", &"bound", &"crushed"]
+	&"verdict", &"bound", &"crushed", &"wither"]
 ## The powers that need the ledger on (Pale Reign: its dead rise as servants).
 const WANTED_BY: Array[String] = ["raise", "walker", "gravetide", "pale"]
 

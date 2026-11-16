@@ -1,6 +1,6 @@
 class_name OptionsPanel
 extends Control
-## The Options panel (v0.11.2, spec §2.1): three volume bars of ten steps -- Music, Sounds, Interface -- over the pause menu
+## The Options panel (v0.11.2, spec §2.1): three volume bars of ten steps -- Music, Sounds, Interface -- and the Zoom out bar (how far the camera may pull back) -- over the pause menu
 ## or the title. A change applies at once; closing saves. It lives under whichever menu opened it and eats every click and
 ## key while it is open, so the menu below it does nothing: Esc closes the panel and never resumes the mission.
 
@@ -8,13 +8,13 @@ signal closed
 
 const TITLE := "OPTIONS"
 ## [settings key, label]
-const ROWS := [["music", "Music"], ["sfx", "Sounds"], ["ui", "Interface"]]
+const ROWS := [["music", "Music"], ["sfx", "Sounds"], ["ui", "Interface"], ["zoom_out", "Zoom out"]]
 const STEPS := 10
 const FOOTER := "Click a bar or use Left/Right   Up/Down to choose   Esc back"
-const PANEL := Rect2(120.0, 92.0, 400.0, 176.0)
+const PANEL := Rect2(120.0, 84.0, 400.0, 192.0)
 const BAR_LEFT := 250.0
 const BAR_WIDTH := 220.0
-const BAR_TOP := 140.0
+const BAR_TOP := 134.0
 const BAR_HEIGHT := 14.0
 const ROW_GAP := 28.0
 
@@ -55,13 +55,21 @@ func bar_rect(i: int) -> Rect2:
 ## One step of the chosen row's bar: -1 quieter, +1 louder. Plays the row's check sound when the level moved.
 func step(dir: int) -> void:
 	var key := String(ROWS[row][0])
-	_set_step(key, roundi(_settings.level(key) * STEPS) + dir)
+	_set_step(key, _step_of(key) + dir)
+
+
+## The bar's filled steps: a volume's tenths, or the zoom-out's steps from near (0) to far.
+func _step_of(key: String) -> int:
+	return _settings.zoom_step() if key == "zoom_out" else roundi(_settings.level(key) * STEPS)
 
 
 func _set_step(key: String, steps: int) -> void:
-	var before := _settings.level(key)
-	_settings.set_level(key, float(clampi(steps, 0, STEPS)) / float(STEPS))
-	if not is_equal_approx(before, _settings.level(key)):
+	var before := _step_of(key)
+	if key == "zoom_out":
+		_settings.set_zoom_step(steps)
+	else:
+		_settings.set_level(key, float(clampi(steps, 0, STEPS)) / float(STEPS))
+	if before != _step_of(key):
 		_settings.save_to(_path)  # (final review: a quit with the panel open keeps the change)
 		match key:
 			"sfx":
@@ -155,7 +163,7 @@ func _draw() -> void:
 	for i in ROWS.size():
 		var r := bar_rect(i)
 		var chosen := i == row
-		var level := roundi(_settings.level(String(ROWS[i][0])) * STEPS)
+		var level := _step_of(String(ROWS[i][0]))
 		UiTheme.text(self, Vector2(PANEL.position.x + 24.0, r.position.y + 11.0), String(ROWS[i][1]), UiTheme.SIZE_BODY,
 			UiTheme.COL_GOLD if chosen else UiTheme.COL_TEXT)
 		draw_rect(r, Color(0.04, 0.04, 0.06, 0.9))
@@ -165,6 +173,8 @@ func _draw() -> void:
 			draw_rect(cell, UiTheme.COL_GOLD if s < level else Color(0.16, 0.14, 0.1, 1.0))
 		UiTheme.frame(self, r, chosen)
 		var pct := "%d%%" % (level * 10)
+		if String(ROWS[i][0]) == "zoom_out":
+			pct = "Near" if level == 0 else ("Far" if level == STEPS else "x%.2f" % _settings.zoom_out)
 		UiTheme.text(self, Vector2(r.end.x + 10.0, r.position.y + 11.0), pct, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	UiTheme.text(self, Vector2(roundf(320.0 - UiTheme.width(FOOTER, UiTheme.SIZE_SMALL) * 0.5), PANEL.end.y - 12.0), FOOTER,
 		UiTheme.SIZE_SMALL, UiTheme.COL_DIM)

@@ -318,6 +318,7 @@ func _reset_world() -> void:
 	Structure.steady_light = false
 	AnimalPack.enabled = false  # the suite and its checksums run without the town's animals; test_animals turns them on
 	Children.enabled = false  # nor its children; test_children turns them on
+	Settings.live_zoom_out = Settings.ZOOM_OUT_NEAR  # the zoom-out limit a suite set
 	TownLook.active = Town.Look.CURRENT
 	Town._look_owner = 0
 

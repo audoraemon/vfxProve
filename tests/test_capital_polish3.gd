@@ -368,7 +368,7 @@ static func _camera(t) -> void:
 		var limits := Mission.pan_limits()
 		var bad := 0
 		var probes := 0
-		for z: float in [0.3, Mission.ZOOM_MIN, Mission.PLAY_ZOOM, 1.0, Mission.ZOOM_MAX]:
+		for z: float in [0.3, Settings.ZOOM_OUT_FAR, Mission.ZOOM_MIN, Mission.PLAY_ZOOM, 1.0, Mission.ZOOM_MAX]:
 			for i in 21:
 				for j in 21:
 					var probe := limits.position - Vector2(800, 800) + (limits.size + Vector2(1600, 1600)) \
@@ -381,7 +381,7 @@ static func _camera(t) -> void:
 							bad += 1
 							break
 		t.check(probes > 0 and bad == 0, "%s: the view never leaves the drawn ground (%d of %d probes out)" % [id, bad, probes])
-		t.check(Mission.clamp_view(Vector2.ZERO, Mission.ZOOM_MIN, view) == Vector2.ZERO,
+		t.check(Mission.clamp_view(Vector2.ZERO, Settings.ZOOM_OUT_FAR, view) == Vector2.ZERO,
 			"%s: the map's middle stays reachable at the furthest zoom" % id)
 		# At play zoom the camera still frames each corner of the map's ground (the map's corner within view).
 		var map := City.current().map()

@@ -328,7 +328,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pan(-event.relative / _bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var z := _bf.camera.logical_zoom() * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
-		_bf.camera.zoom_to(clampf(z, ZOOM_MIN, ZOOM_MAX))
+		_bf.camera.zoom_to(clampf(z, Mission.zoom_min(), ZOOM_MAX))
 		_pan(Vector2.ZERO)
 		if is_instance_valid(_zoom_readout):
 			_zoom_readout.show_zoom(_bf.camera.logical_zoom())

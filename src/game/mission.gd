@@ -38,6 +38,7 @@ const PAN_MAX := Vector2(1700, 1000)
 ## The map width PAN_MIN..PAN_MAX are set for (Aldermere's, TownLayout.MAP: tests/test_capital.gd); a wider city's
 ## limits grow in proportion (pan_limits()).
 const PAN_MAP_WIDTH := 60.0
+## The nearest the zoom-out limit goes (and the default): the player's own limit is zoom_min(), set in Options (0.35..0.85).
 const ZOOM_MIN := 0.85
 const ZOOM_MAX := 1.6
 ## A slot's hotkey: 1-6, for up to six slots (v0.08).
@@ -52,7 +53,7 @@ const CLEAR := Color("6e8230")
 ## the clock only starts when it arrives (spec §1). Where it sweeps from and to is the mission's (MissionDef).
 const INTRO_SECONDS := 2.0
 ## The sweep starts as far out as the zoom goes.
-const INTRO_FROM_ZOOM := ZOOM_MIN
+const INTRO_FROM_ZOOM := 0.85  # not the player's limit: the sweep is tuned from here
 ## A board night that heard wishes ends its first intro with one last hold at the play spot (v0.11.1, spec §2), showing only
 ## the prayers plate.
 const PRAYERS_SECONDS := 3.0
@@ -200,6 +201,8 @@ var exit_on_refusal := true
 var is_prewarmed := false
 ## Seconds of intro left; 0 once the mission is under way.
 var _intro_left := 0.0
+## Set by the bench views, which frame the map from further out than a player can go: the resume clamp leaves them alone.
+var _bench_zoomed := false
 ## The last PRAYERS_SECONDS of `_intro_left` when the night's first intro ends on the prayers plate (v0.11.1), else 0.
 var _prayers_hold := 0.0
 ## The intro's tour of a Night 2 mission's key places (v0.10 M6, spec §5), played in place of the sweep; null for a
@@ -292,10 +295,12 @@ func _bench_view(args: PackedStringArray) -> String:
 		_bf.camera.zoom_to(minf(seen.x / box.size.x, seen.y / box.size.y) / _bf.camera.view_fit)  # a render zoom: the whole map in the view
 		_bf.camera.position = box.get_center().round()
 		_bf.sim_zoom = 0.0  # the bench's views count what the camera shows
+		_bench_zoomed = true
 		suffix = "-whole"
 	elif Battlefield.arg_value(args, "--bench-zoom") != "":
 		_bf.camera.zoom_to(float(Battlefield.arg_value(args, "--bench-zoom")))
 		_bf.sim_zoom = 0.0
+		_bench_zoomed = true
 		suffix = "-z" + Battlefield.arg_value(args, "--bench-zoom")
 	else:
 		return suffix
@@ -850,6 +855,17 @@ func skip_intro() -> void:
 		_land()
 
 
+## A photograph aid: `--dev-zoom=Z` rests the camera at Z (0.35..1.6), as if the wheel had gone there, lowering the zoom-out limit to it.
+func apply_dev_zoom() -> void:
+	var dev_zoom := Battlefield.arg_value(OS.get_cmdline_user_args(), "--dev-zoom")
+	if dev_zoom == "":
+		return
+	_bf.camera.zoom_to(clampf(float(dev_zoom), Settings.ZOOM_OUT_FAR, ZOOM_MAX))
+	Settings.live_zoom_out = minf(Settings.live_zoom_out, _bf.camera.logical_zoom())
+	_bf.sim_zoom = _bf.camera.logical_zoom() * SIM_PLAY_ZOOM / PLAY_ZOOM
+	_pan(Vector2.ZERO)
+
+
 ## The intro is over (v0.10 M6): the camera rests on the mission's own spot, the tour's caption goes, and the clock starts.
 func _land() -> void:
 	var play: MissionDef = _act if _act != null else _def
@@ -859,6 +875,7 @@ func _land() -> void:
 	_bf.camera.position = Iso.ground_to_screen(play.camera()).round()
 	_bf.camera.zoom_to(PLAY_ZOOM)
 	_bf.sim_zoom = SIM_PLAY_ZOOM
+	apply_dev_zoom()
 	if is_instance_valid(_hud):
 		_hud.set_caption("")
 		_hud.praying = false
@@ -1204,7 +1221,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pan(-event.relative / _bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var z := _bf.camera.logical_zoom() * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
-		_bf.camera.zoom_to(clampf(z, ZOOM_MIN, ZOOM_MAX))
+		_bf.camera.zoom_to(clampf(z, zoom_min(), ZOOM_MAX))
 		_bf.sim_zoom = _bf.camera.logical_zoom() * SIM_PLAY_ZOOM / PLAY_ZOOM
 		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
 		_pan(Vector2.ZERO)
@@ -1317,6 +1334,11 @@ func _process(delta: float) -> void:
 			_music_in = 0.5
 			Music.set_intensity(1.0 - _rules.stability.total())
 	_sync_intro_hud()
+	# A limit raised in the pause Options: a camera further out than it now allows steps back in on resume.
+	if _intro_left <= 0.0 and not _ending and _bf.camera.logical_zoom() < zoom_min() - 0.0005 and not _bench_zoomed:
+		_bf.camera.zoom_to(zoom_min())
+		_bf.sim_zoom = _bf.camera.logical_zoom() * SIM_PLAY_ZOOM / PLAY_ZOOM
+		_pan(Vector2.ZERO)
 	if _intro_left > 0.0:
 		var step := _intro_step(delta)
 		_intro_left = maxf(0.0, _intro_left - step)
@@ -1349,6 +1371,11 @@ func _process(delta: float) -> void:
 func _on_view_resized() -> void:
 	if _bf != null and _intro_left <= 0.0:
 		_pan(Vector2.ZERO)
+
+
+## The furthest zoom out the player allows (Options, Settings.zoom_out), read live; 0.85 by default and in headless runs.
+static func zoom_min() -> float:
+	return clampf(Settings.live_zoom_out, Settings.ZOOM_OUT_FAR, ZOOM_MIN)
 
 
 func _pan(by: Vector2) -> void:

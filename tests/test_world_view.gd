@@ -275,6 +275,50 @@ static func _sim_independent(t) -> void:
 	_drop(wv)
 
 
+## The wheel stops at the player's zoom-out limit (Settings.zoom_out): 0.85 by default, 0.5 when set; a raised limit
+## brings a camera that is further out back in, and the view stays on the ground at 0.35.
+static func _zoom_limit(t) -> void:
+	var made := await _hosted_mission(t)
+	var wv: WorldView = made[0]
+	var m: Mission = made[1]
+	m.skip_intro()
+	await t.process_frame
+	var wheel := func(up: bool, n: int) -> void:
+		for i in n:
+			var e := InputEventMouseButton.new()
+			e.button_index = MOUSE_BUTTON_WHEEL_UP if up else MOUSE_BUTTON_WHEEL_DOWN
+			e.pressed = true
+			m._unhandled_input(e)
+	var cam := m._bf.camera
+	wheel.call(false, 30)
+	t.near(cam.logical_zoom(), 0.85, 1e-4, "default: the wheel stops at 0.85 (%f)" % cam.logical_zoom())
+	var s := Settings.new()
+	s.zoom_out = 0.5
+	s.apply()
+	t.near(Mission.zoom_min(), 0.5, 1e-6, "Mission.zoom_min() follows the setting")
+	wheel.call(false, 30)
+	t.near(cam.logical_zoom(), 0.5, 1e-4, "set to 0.5: the wheel stops at 0.5 (%f)" % cam.logical_zoom())
+	s.zoom_out = 0.35
+	s.apply()
+	wheel.call(false, 30)
+	t.near(cam.logical_zoom(), 0.35, 1e-4, "set to 0.35: the wheel stops at 0.35 (%f)" % cam.logical_zoom())
+	var view := wv.viewport.get_visible_rect().size
+	m._pan(Vector2(1.0e6, 1.0e6))
+	t.check(Mission.clamp_view(cam.position, cam.zoom.x, view).is_equal_approx(cam.position), "panned to the far corner at 0.35: still clamped")
+	var outer := TownFloor.drawn_area()
+	var half := view * 0.5 / cam.zoom.x
+	var ok := true
+	for c: Vector2 in [cam.position - half, cam.position + half, cam.position + Vector2(half.x, -half.y), cam.position + Vector2(-half.x, half.y)]:
+		ok = ok and outer.grow(0.01).has_point(Iso.screen_to_ground(c))
+	t.check(ok, "at 0.35 in the far corner the view's corners are on drawn ground")
+	s.zoom_out = 0.7  # raised in the pause Options: the next frame steps the camera back in
+	s.apply()
+	await t.process_frame
+	t.check(cam.logical_zoom() >= 0.7 - 1e-4, "a raised limit brings the camera back to it (%f)" % cam.logical_zoom())
+	Settings.new().apply()
+	_drop(wv)
+
+
 ## A resize re-clamps the camera with the NEW fit: panned to an edge, zoomed out, then a wider layout: the view stays on the drawn ground.
 static func _resize_reclamps(t) -> void:
 	var made := await _hosted_mission(t)
@@ -572,6 +616,7 @@ static func run(t) -> void:
 	await _sim_view_pinned(t)
 	await _sim_independent(t)
 	await _resize_reclamps(t)
+	await _zoom_limit(t)
 	await _picking(t)
 	await _device_resolution(t)
 	await _filters(t)

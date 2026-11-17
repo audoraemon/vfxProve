@@ -7,8 +7,13 @@ extends FxTimeline
 ## come to look -- and every LOOK_EVERY up to GAWKERS people going about their day within LOOK_R walk over and stand
 ## staring (Person.lure()) for LOOK_SECONDS. Quiet when cast: a frail man walking is nothing to see. The cast locks the
 ## other slots for 0.8 s.
+## Level 5, The Wake: the first of the gawkers to stand within PICK_R of the body sees it get up as a Raise the Dead zombie (at
+## Raise's level-1 numbers; the body is used up) in the middle of the crowd it drew. Its kills raise at most CHAIN - 1 more. Quiet
+## as the rest of the power: no fright, alarm or danger of the rising's own.
 
 const PICK_R := 1.0
+## How near the body's own remain must be for the wake to find it.
+const WAKE_R := 0.2
 const MARK_TIME := 10.0
 const SLOW := 0.6
 const LOOK_R := 4.0
@@ -27,6 +32,15 @@ var body_at := Vector2.INF
 var gawked := 0
 
 var _look_in := 0.0
+## The Wake (level 5 only): the people the mark lured, the zombie's pack, how many more of its kills may rise, whether the body has
+## been dealt with, and when the luring ends (the mark's own span; the zombie outlasts it).
+var visitors: Visitors
+var raised := 0
+var _twist := false
+var _looked: Array[Person] = []
+var _woke := false
+var _left := 0
+var _lure_end := 0.0
 ## This cast's numbers at its ability level (the consts at level 1): the time to death, who comes to look, and from how far.
 var lv_mark_time := MARK_TIME
 var lv_gawkers := GAWKERS
@@ -45,10 +59,14 @@ func _build() -> void:
 	lv_look_r = float(PowerBook.stat(extra, "deathmark", "LOOK_R", LOOK_R))
 	duration = lv_mark_time + DummyEnemy.BODY_HOLD
 	busy = 0.8
+	_lure_end = duration
 	marked = target_at(ctx.field, origin)
 	if marked == null:
 		duration = 1.0
 		return
+	_twist = PowerBook.twist_at(extra, "deathmark")
+	if _twist and ctx.crowd != null and ctx.crowd.remains != null:
+		ctx.crowd.remains.enabled = true  # the body must be written down to rise (the ledger is Raise's, Pale Reign's ...)
 	marked.statuses[&"frail"] = 1.0
 	marked.statuses[&"slow"] = SLOW
 	marked.walk_speed = marked._mind_speed()
@@ -86,12 +104,18 @@ func _die() -> void:
 
 
 func _fx_process(delta: float) -> void:
+	if visitors != null:
+		visitors.step(delta)
 	if body_at == Vector2.INF:
 		return
+	if _twist and not _woke:
+		_watch_wake()
 	_look_in -= delta
 	if _look_in > 0.0:
 		return
 	_look_in = LOOK_EVERY
+	if _twist and t >= _lure_end:
+		return  # the zombie outlasts the mark; the luring does not
 	var came := 0
 	for p in DominionParts.near(ctx.field, body_at, lv_look_r):
 		if came >= lv_gawkers:
@@ -99,4 +123,74 @@ func _fx_process(delta: float) -> void:
 		var a := ctx.rng.randf() * TAU
 		if p.lure(body_at + Vector2(cos(a), sin(a)) * ctx.rng.randf_range(RING.x, RING.y), LOOK_SECONDS, body_at):
 			came += 1
+			if _twist:
+				_looked.append(p)
 	gawked += came
+
+
+## The Wake: the first gawker (the nearest, then the lower instance id) standing within PICK_R of the body raises it.
+func _watch_wake() -> void:
+	var best: Person = null
+	var best_d := 0.0
+	for p in _looked:
+		if not is_instance_valid(p) or not p.is_alive() or p.inside:
+			continue
+		var d := p.ground_pos.distance_to(body_at)
+		if d > PICK_R:
+			continue
+		if best == null or d < best_d or (d == best_d and p.get_instance_id() < best.get_instance_id()):
+			best = p
+			best_d = d
+	if best == null:
+		return
+	_woke = true
+	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
+	if rem == null:
+		return
+	var r := rem.pick(body_at, false, false, WAKE_R)
+	if r == null or r.kind != &"deathmark":
+		return  # taken by another power first (or the ledger lost it): nothing rises
+	rem.take(r)
+	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
+	visitors = Visitors.new().setup(ctx.field, ctx.crowd, ctx.crowd._grid, parent)
+	visitors.bitten.connect(_on_bite)
+	DeathParts.zombie(visitors, r, r.kind == &"plague")
+	raised = 1
+	_left = RaiseTheDeadFx.CHAIN - 1
+	var end := t + RaiseTheDeadFx.ZOMBIE_LIFE + RaiseTheDeadFx.FADE
+	duration = maxf(duration, end)
+	at(end - RaiseTheDeadFx.FADE, _end_life)
+	ctx.play(&"raise_rise", body_at, -3.0)
+	if DominionParts.staged(self):
+		var sp := Iso.ground_to_screen(body_at)
+		FxParts.debris(self, sp, 6, 5.0, Vector2(20, 70), RaiseTheDeadFx.BONE_CHIPS, Vector2(1.0, 2.0), true)
+		FxParts.smoke(self, sp, 6.0, 30.0, 0.25, Vector2(8, 20), Vector2(2, 4), Vector2(0.5, 1.0), Color(DeathParts.GRAVE_GREEN, 0.25), RaiseTheDeadFx.DUST)
+
+
+## A zombie's bite that kills raises the dead one while the chain lasts (no outcry of the cast's own: Death Mark is quiet).
+func _on_bite(_a: Animal, victim: Person, _first: bool) -> void:
+	if not is_instance_valid(victim) or victim.is_alive() or ctx.crowd == null:
+		return
+	var before := _left
+	_left = DeathParts.on_kill_rise(visitors, ctx.crowd.remains, victim, _left)
+	if _left != before:
+		raised += 1
+
+
+## The zombie's time is up: it falls to ash.
+func _end_life() -> void:
+	if visitors != null:
+		visitors.clear()
+
+
+func _finish() -> void:
+	if visitors != null:
+		visitors.clear()
+	super()
+
+
+## Freed without _finish (a restart): the risen are gone, the pack only queued for freeing.
+func _exit_tree() -> void:
+	if visitors != null:
+		visitors.clear(true)
+	super()

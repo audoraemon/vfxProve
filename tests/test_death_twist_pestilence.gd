@@ -14,6 +14,8 @@ static func run(t) -> void:
 	_level_4(t)
 	_two_casts(t)
 	_spot_ends(t)
+	_spread_line(t)
+	_reach_edge(t)
 	_teardown(t)
 
 
@@ -188,6 +190,59 @@ static func _spot_ends(t) -> void:
 	w.ground_pos = AT
 	_run(null, plague, 0.5)
 	t.check(w.sick_left <= 0.0, "a walker on the old spot is not infected")
+	fx.end_now()
+	RD._done(made)
+
+
+## DL2's core case: someone the plague passed on (PlagueManager._spread) from a level-5 victim carries the cast's id, and their
+## plague death lays a spot where they stood.
+static func _spread_line(t) -> void:
+	var s := _scene()
+	var made: Array = s[0]
+	var crowd: Crowd = s[1]
+	var plague: PlagueManager = s[2]
+	var v: Person = crowd.citizens[0]
+	v.ground_pos = AT + Vector2(-1.5, 0.0)
+	var n: Person = crowd.citizens[1]
+	n.ground_pos = v.ground_pos + Vector2(-0.5, 0.0)  # 2.0 from the aim: out of the cast's 1.6 reach, in the spread's 1.5
+	var fx := _cast(made, AT, 5)
+	_run(fx, plague, 0.6)
+	var id := fx.get_instance_id()
+	t.check(v.plague_src == id and n.sick_left <= 0.0, "the cast caught the victim only; the neighbour 0.5 away is healthy (%s %s %.2f)" % [v.plague_src == id, v.sick_left, n.sick_left])
+	var tries := 0
+	while n.sick_left <= 0.0 and tries < 200:
+		plague._spread()
+		tries += 1
+	t.check(n.sick_left > 0.0 and n.plague_src == id, "the spread gave the neighbour the cast's id as plague_src (%d tries)" % tries)
+	var at_n := n.ground_pos
+	_run(null, plague, PlagueManager.PLAGUE_LIFE + 0.3)
+	var found := false
+	for sp in plague.foul_spots:
+		if (sp["pos"] as Vector2).is_equal_approx(at_n) and int(sp["src"]) == id:
+			found = true
+	t.check(not n.is_alive() and found, "the neighbour died of the plague and laid a foul spot where they stood")
+	fx.end_now()
+	RD._done(made)
+
+
+## The spot's reach edge: with fewer than 3 others near, a walker at 1.15 is infected and one at 1.25 is not.
+static func _reach_edge(t) -> void:
+	var s := _scene()
+	var made: Array = s[0]
+	var crowd: Crowd = s[1]
+	var plague: PlagueManager = s[2]
+	var v: Person = crowd.citizens[0]
+	v.ground_pos = AT
+	var fx := _cast(made, AT, 5)
+	_run(fx, plague, 0.6 + PlagueManager.PLAGUE_LIFE + 0.3)
+	t.check(plague.foul_spots.size() == 1, "one spot to measure from")
+	var near: Person = crowd.citizens[5]
+	var far: Person = crowd.citizens[6]
+	near.ground_pos = AT + Vector2(1.15, 0.0)
+	far.ground_pos = AT + Vector2(-1.25, 0.0)
+	_run(null, plague, 0.3)
+	t.check(near.sick_left > 0.0, "a walker at 1.15 is infected")
+	t.check(far.sick_left <= 0.0, "a walker at 1.25 is not")
 	fx.end_now()
 	RD._done(made)
 

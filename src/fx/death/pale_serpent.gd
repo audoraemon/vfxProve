@@ -183,6 +183,26 @@ var lv_length := LENGTH
 var lv_band := BAND
 var lv_sight := SIGHT
 var lv_sick := SICK
+## Shed Skin (level 5, DL10): as it departs it leaves its skin along the whole path (the drag and the loop), a band of
+## SKIN_HALF either side of the points laid STEP apart, for SKIN_LIFE (faded over the last SKIN_FADE). Whoever steps onto it
+## out in the open (not indoors, not guised, no decoy) is sickened once, SICK_PACE for lv_sick (hold_pace under this
+## effect's own id) and the plague too when it is in town. Let go at lv_sick, at the end, and when freed.
+const SKIN_LIFE := 30.0
+const SKIN_FADE := 3.0
+const SKIN_HALF := 0.5
+const SKIN_EVERY := 0.1
+const SKIN_TINT := Color(0.88, 0.94, 0.9, 0.22)
+var _twist := false
+var _skin_laid := false
+var _skin_pts: Array[Vector2] = []
+var _skin_cells := {}
+var _skin_mid := Vector2.ZERO
+var _skin_reach := 0.0
+var _skin_node: ShedSkin
+var _skin_next := 0.0
+var _skin_once := {}
+## Who the skin has sickened: id -> [the person, the clock they are let go at].
+var _skin_held := {}
 var _end := Vector2.ZERO
 var _centre := Vector2.ZERO
 var _theta0 := 0.0
@@ -353,8 +373,11 @@ func _build() -> void:
 	lv_band = float(PowerBook.stat(extra, "serpent", "BAND", BAND))
 	lv_sight = float(PowerBook.stat(extra, "serpent", "SIGHT", SIGHT))
 	lv_sick = float(PowerBook.stat(extra, "serpent", "SICK", SICK))
+	_twist = PowerBook.twist_at(extra, "serpent")
 	plan()
 	duration = maxf(glide_end() + DEPART, T_RISE + lv_sick) + 0.05
+	if _twist:
+		duration = maxf(duration, glide_end() + SKIN_LIFE + lv_sick + 0.05)  # (cut short once the band and its holds are gone)
 	busy = T_RISE
 	ctx.play(&"serpent_rise", origin, 0.0)
 	at(T_RISE, func(): ctx.play(&"serpent_glide", origin, 0.0))
@@ -416,12 +439,14 @@ func _fx_process(delta: float) -> void:
 		_cone(_next_cone)
 		_next_cone += CONE_EVERY
 	_dim()
+	if _twist:
+		_skin_tick()
 	if _fog != null:
 		_wave(delta)
 	if not _sick_over and t >= T_RISE + lv_sick:
 		_sick_over = true
 		_let_all_go()
-	if t >= glide_end() + DEPART and _held.is_empty() and _souls.is_empty():
+	if t >= glide_end() + DEPART and _held.is_empty() and _souls.is_empty() and _skin_held.is_empty() 			and (not _twist or t >= glide_end() + SKIN_LIFE):
 		duration = minf(duration, t + 0.05)  # nobody left slowed: nothing more to do
 	if not _pieces.is_empty():
 		_pose(delta)
@@ -566,10 +591,104 @@ func _let_all_go() -> void:
 		_let_go(id)
 
 
+## Shed Skin: the clock the band is gone at.
+func _skin_end() -> float:
+	return glide_end() + SKIN_LIFE
+
+
+## The band's points: the drag then the loop, STEP apart (DL10).
+func _lay_skin() -> void:
+	_skin_laid = true
+	var total := _len + TAU * CIRCLE_R
+	var n := ceili(total / STEP)
+	var lo := Vector2.INF
+	var hi := -Vector2.INF
+	for k in n + 1:
+		var g := path_at(minf(total, float(k) * STEP))
+		_skin_pts.append(g)
+		var cell := Vector2i(floori(g.x), floori(g.y))
+		if not _skin_cells.has(cell):
+			_skin_cells[cell] = []
+		(_skin_cells[cell] as Array).append(g)
+		lo = lo.min(g)
+		hi = hi.max(g)
+	_skin_mid = (lo + hi) * 0.5
+	_skin_reach = _skin_mid.distance_to(hi) + SKIN_HALF + 0.5
+	_skin_next = t
+	if _shade != null:  # staged: one node, every point one disc drawn once (a fade is its modulate)
+		_skin_node = ShedSkin.new()
+		_skin_node.pts = _skin_pts
+		_skin_node.z_index = 2
+		track(_skin_node, ctx.ground)
+
+
+## Whether a ground point is on the band (pure over the laid points).
+func on_skin(g: Vector2) -> bool:
+	var c := Vector2i(floori(g.x), floori(g.y))
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var cell: Array = _skin_cells.get(Vector2i(c.x + dx, c.y + dy), [])
+			for q in cell:
+				if (q as Vector2).distance_to(g) <= SKIN_HALF:
+					return true
+	return false
+
+
+## Shed Skin each frame: lay the band at the departure, sicken whoever steps on it, let the sick go, take it up at its end.
+func _skin_tick() -> void:
+	var live := t >= glide_end() and t < _skin_end()
+	if live and not _skin_laid:
+		_lay_skin()
+	for id in _skin_held.keys():
+		var rec: Array = _skin_held[id]
+		if t >= float(rec[1]):
+			_skin_let_go(id)
+	if _skin_node != null:
+		if live:
+			_skin_node.modulate.a = clampf((_skin_end() - t) / SKIN_FADE, 0.0, 1.0)
+		else:
+			_tracked.erase(_skin_node)
+			_skin_node.queue_free()
+			_skin_node = null
+	if not live or t < _skin_next:
+		return
+	_skin_next = t + SKIN_EVERY
+	var plague := false
+	var plague_known := false
+	for e in ctx.field.in_radius(_skin_mid, _skin_reach):
+		var p := e as Person
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy") or not p.is_alive():
+			continue
+		var id := p.get_instance_id()
+		if _skin_once.has(id) or _held.has(id) or not on_skin(p.ground_pos):
+			continue
+		_skin_once[id] = true
+		_skin_held[id] = [p, t + lv_sick]
+		p.hold_pace(get_instance_id(), SICK_PACE)
+		if not plague_known:
+			plague_known = true
+			plague = plague_live(ctx.crowd)
+		if plague:
+			p.infect(PlagueManager.PLAGUE_LIFE)
+
+
+func _skin_let_go(id: int) -> void:
+	var rec: Array = _skin_held.get(id, [])
+	_skin_held.erase(id)
+	if not rec.is_empty() and is_instance_valid(rec[0]):
+		(rec[0] as Person).free_pace(get_instance_id())
+
+
+func _skin_let_all_go() -> void:
+	for id in _skin_held.keys():
+		_skin_let_go(id)
+
+
 ## Over or cut short: every pace let go, every house its own look back, the town's lights their own. At its natural end
 ## the frost is left to fade on its own (Frost.release()); cut short (end_now()), it goes with the rest.
 func _finish() -> void:
 	_let_all_go()
+	_skin_let_all_go()
 	_undim()
 	if _see != null:
 		_see.release()
@@ -582,6 +701,7 @@ func _finish() -> void:
 ## Freed without _finish (a mission torn down mid-glide): the same, and the frost goes too.
 func _exit_tree() -> void:
 	_let_all_go()
+	_skin_let_all_go()
 	_undim()
 	if _see != null:
 		_see.release()
@@ -903,6 +1023,16 @@ class Piece extends Node2D:
 				top + Vector2(r * 0.05, r * 0.32)])
 			var col: Color = (FEATHER if k % 2 == 0 else FEATHER_SHADE) * tint
 			draw_primitive(tri, PackedColorArray([col, col, col]), PackedVector2Array())  # a primitive batches; a polygon does not
+
+
+## The shed skin (staged only, ground units, ground layer): a pale disc at each point of the path, drawn once (the fade is
+## the node's modulate), the same one disc texture as the shadow.
+class ShedSkin extends Node2D:
+	var pts: Array[Vector2] = []
+
+	func _draw() -> void:
+		for g in pts:
+			PaleSerpentFx.disc(self, g, SKIN_HALF, SKIN_TINT)
 
 
 ## The serpent's shadow on the ground (ground units, ground layer): a soft dark band under the head and body, and the hole it

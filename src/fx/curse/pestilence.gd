@@ -25,9 +25,12 @@ static func victims_at(field: EnemyField, at: Vector2, r := INFECT_R, most := IN
 ## This cast's reach and count at its ability level (INFECT_R and INFECT_MAX at level 1).
 var lv_infect_r := INFECT_R
 var lv_infect_max := INFECT_MAX
+## Level 5, Foul Dead: whether this cast's plague leaves a foul spot where its sick die (PlagueManager.foul_from).
+var _twist := false
 
 
 func _build() -> void:
+	_twist = PowerBook.twist_at(extra, "pestilence")
 	lv_infect_r = float(PowerBook.stat(extra, "pestilence", "INFECT_R", INFECT_R))
 	lv_infect_max = int(PowerBook.stat(extra, "pestilence", "INFECT_MAX", INFECT_MAX))
 	duration = 1.4
@@ -45,5 +48,8 @@ func _build() -> void:
 			"life": Vector2(0.7, 1.2), "size": Vector2(2, 4), "size_end_mul": 1.8})
 	at(0.4, func() -> void:
 		for p in victims:
-			if is_instance_valid(p):
-				p.infect(PlagueManager.PLAGUE_LIFE))
+			if is_instance_valid(p) and p.infect(PlagueManager.PLAGUE_LIFE) and _twist:
+				p.plague_src = get_instance_id()
+		if _twist and ctx.crowd != null and ctx.crowd.plague != null:
+			# The plague outlives this node by design: the line stays foul in PlagueManager.foul (one id per level-5 cast).
+			ctx.crowd.plague.foul_from(get_instance_id()))

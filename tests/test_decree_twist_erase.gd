@@ -27,6 +27,7 @@ static func run(t) -> void:
 	_through(t)
 	_hound(t)
 	_rest(t)
+	_sound(t)
 	_unwalkable(t)
 	_expiry(t)
 	await _teardown(t)
@@ -109,12 +110,65 @@ static func _rest(t) -> void:
 	p.ground_pos = fx.origin
 	E._run(fx, 0.1)
 	t.check(p.ground_pos.distance_to(b) < 0.01, "ping-pong: he is set at B")
-	E._run(fx, 0.8)
+	E._run(fx, 4.0)
 	t.check(p.ground_pos.distance_to(b) < 0.01 and fx.shortcuts == 1,
-		"no ping-pong: still at B (standing on it) within 1.0 s")
-	E._run(fx, 0.3)
+		"no ping-pong: someone standing still at the landing end is never moved back (4 s)")
+	# Control: he walks out of the end's ring, and back in: taken again (to A).
+	p.ground_pos = b + Vector2(0.0, -1.5)
+	E._run(fx, 0.1)
+	t.check(fx.shortcuts == 1, "control: stepping out of the ring alone moves nobody")
+	p.ground_pos = fx.to
+	E._run(fx, 0.1)
 	t.check(p.ground_pos.distance_to(_land(made, fx.origin)) < 0.01 and fx.shortcuts == 2,
-		"control: after the 1.0 s he can be taken again (back to A)")
+		"control: walking out and back into an end takes him again (to A)")
+	# The 1.0 s minimum: out and straight back in within a second is not enough.
+	var q: Person = (made[0] as Crowd).citizens[1]
+	q.ground_pos = fx.to
+	E._run(fx, 0.05)
+	var at_a := q.ground_pos
+	q.ground_pos = fx.origin + Vector2(0.0, -1.5)
+	E._run(fx, 0.05)
+	q.ground_pos = fx.origin
+	E._run(fx, 0.05)
+	t.check(q.ground_pos.is_equal_approx(fx.origin) and at_a.distance_to(_land(made, fx.origin)) < 0.01,
+		"the 1.0 s minimum holds even after stepping out")
+	E._run(fx, 1.0)
+	t.check(q.ground_pos.distance_to(_land(made, fx.to)) < 0.01, "control: after the 1.0 s he is taken")
+	fx.end_now()
+	E._done(made)
+
+
+class Rec extends Node:
+	var cues: Array = []
+
+	func play(cue: StringName, _g: Vector2, _db := 0.0) -> Node:
+		cues.append(cue)
+		return null
+
+
+static func _sound(t) -> void:
+	var w := _world(5)
+	var made: Array = w[0]
+	var fx: EraseFx = w[1]
+	var rec := Rec.new()
+	(made[5] as FxContext).sfx = rec
+	var p: Person = (made[0] as Crowd).citizens[0]
+	var q: Person = (made[0] as Crowd).citizens[1]
+	E._run(fx, 0.5)
+	t.check(rec.cues.is_empty(), "sound: nobody at an end, no sound")
+	p.ground_pos = fx.origin
+	q.ground_pos = fx.origin + Vector2(0.1, 0.0)
+	E._run(fx, 0.05)
+	t.check(rec.cues.size() == 1 and fx.shortcuts == 2, "sound: two crossing in one step make one sound (%d)" % rec.cues.size())
+	E._run(fx, 3.0)
+	t.check(rec.cues.size() == 1, "sound: two resting at the landing end make no more (%d)" % rec.cues.size())
+	p.ground_pos = fx.to + Vector2(0.0, 1.5)
+	E._run(fx, 0.05)
+	p.ground_pos = fx.to
+	E._run(fx, 0.05)
+	t.check(rec.cues.size() == 2, "control: a fresh crossing sounds again")
+	(made[5] as FxContext).sfx = null
+	rec.free()
 	fx.end_now()
 	E._done(made)
 

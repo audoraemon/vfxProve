@@ -260,23 +260,36 @@ func ends() -> Array[Vector2]:
 	return [origin, to]
 
 
-## Whoever stands at an end is set down at the other: one query per end, the living visitors of each pack beside it.
+## Whoever stands at an end is set down at the other: one query per end, the living visitors gathered once. One just
+## taken (`_rest`: id -> [body, earliest time, where it landed, has stepped out]) is not taken again until SEAM_REST has passed and it
+## stepped out of SEAM_R of where it landed (at any time since), so someone standing still at the landing end is never sent back.
+## The sound plays once per step that moved anyone.
 func _step_seams() -> void:
 	for id: int in _rest.keys():
-		if _rest[id] <= t:
+		var r: Array = _rest[id]
+		if not is_instance_valid(r[0]):
+			_rest.erase(id)
+			continue
+		if (r[0].ground_pos as Vector2).distance_to(r[2]) > SEAM_R:
+			r[3] = true
+		if r[3] and r[1] <= t:
 			_rest.erase(id)
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	var pair := ends()
+	var beasts: Array[Animal] = []
+	if ctx.crowd != null:
+		for pack: Visitors in ctx.crowd.visitors:
+			beasts.append_array(pack.living())
+	var moved := 0
+	var heard := Vector2.INF
 	for i in 2:
 		var here := pair[i]
 		var there := pair[1 - i]
 		var bodies: Array = []
 		bodies.append_array(ctx.field.in_radius(here, SEAM_R))
-		if ctx.crowd != null:
-			for pack: Visitors in ctx.crowd.visitors:
-				for a in pack.living():
-					if a.ground_pos.distance_to(here) <= SEAM_R:
-						bodies.append(a)
+		for a in beasts:
+			if a.ground_pos.distance_to(here) <= SEAM_R:
+				bodies.append(a)
 		if bodies.is_empty():
 			continue
 		var land := there
@@ -291,12 +304,14 @@ func _step_seams() -> void:
 			if p != null and p.inside:
 				continue
 			if b.wrap_to(land):
-				_rest[b.get_instance_id()] = t + SEAM_REST
+				_rest[b.get_instance_id()] = [b, t + SEAM_REST, land, false]
 				shortcuts += 1
+				moved += 1
+				heard = land
 				if p != null:
 					p.wait = 0.0
-		if bodies.size() > 0:
-			ctx.play(&"er_tear", land, -8.0)
+	if moved > 0:
+		ctx.play(&"er_tear", heard, -8.0)
 
 
 func _fx_process(delta: float) -> void:

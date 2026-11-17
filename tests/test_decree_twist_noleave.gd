@@ -59,7 +59,7 @@ static func run(t) -> void:
 	guard.ground_pos = a.ground_pos + Vector2(2.0, 0.0)
 	guard.mind = Person.Mind.POST
 	a.law._hunt(a)
-	t.check(guard.mind == Person.Mind.FIGHT or not a.law.hunters.is_empty(), "a guard hunts one named for trial")
+	t.check(a.law.hunters.has(guard) and guard.fight_kind == LawMark.FIGHT_KIND, "a guard hunts one named for trial")
 	LawMark.lift(a, fx.get_instance_id())
 	LawMark.lift(b, fx.get_instance_id())
 	fx.free()
@@ -76,6 +76,34 @@ static func run(t) -> void:
 	t.check(LawMark.kind_of(b) == &"" and not f2.named.has(b) and f2.named.has(a), "noleave level 5: one who left before the end is not named")
 	LawMark.lift(a, f2.get_instance_id())
 	f2.free()
+
+	# The edge of the band: +0.4 past the radius and still held is named, +0.6 is not.
+	var f4 := _cast(ctx, at, 5)
+	f4._process(1.0)
+	a.ground_pos = at + Vector2(f4.lv_radius + 0.4, 0.0)
+	b.ground_pos = at + Vector2(f4.lv_radius + 0.6, 0.0)
+	f4.bound[a] = 1.0
+	f4.bound[b] = 1.0
+	f4._lift()
+	t.check(f4.named.has(a) and not f4.named.has(b) and LawMark.kind_of(b) == &"", "noleave level 5: +0.4 past the radius is named, +0.6 is not")
+	LawMark.lift(a, f4.get_instance_id())
+	f4.free()
+
+	# Teardown: ended before the end, nobody is named and no law is left on anyone.
+	for p: Person in [a, b, c]:
+		p.ground_pos = at + Vector2(0.5, 0.0)
+		p.law = null
+	var f5 := _cast(ctx, at, 5)
+	f5.end_now()
+	t.check(f5.named.is_empty() and LawMark.kind_of(a) == &"" and a.law == null, "noleave level 5: end_now before the end names nobody and leaves no law")
+	f5.free()
+	# The law lifted early (crowd.remove_law), one step, then the end: nobody is named.
+	var f6 := _cast(ctx, at, 5)
+	ctx.crowd.remove_law(f6.law)
+	f6._process(0.1)
+	f6._lift()
+	t.check(f6.named.is_empty() and LawMark.kind_of(a) == &"" and a.law == null, "noleave level 5: a law lifted early names nobody at the end")
+	f6.free()
 
 	# No director: all inside are named.
 	ctx.rules = null

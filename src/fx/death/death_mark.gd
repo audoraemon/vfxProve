@@ -14,6 +14,8 @@ extends FxTimeline
 const PICK_R := 1.0
 ## How near the body's own remain must be for the wake to find it.
 const WAKE_R := 0.2
+## The meta key on the Remains that counts the Wakes holding the ledger on.
+const HOLDERS_META := &"wake_ledger_holders"
 const MARK_TIME := 10.0
 const SLOW := 0.6
 const LOOK_R := 4.0
@@ -67,9 +69,19 @@ func _build() -> void:
 		duration = 1.0
 		return
 	_twist = PowerBook.twist_at(extra, "deathmark")
-	if _twist and ctx.crowd != null and ctx.crowd.remains != null and not ctx.crowd.remains.enabled:
-		ctx.crowd.remains.enabled = true  # the body must be written down to rise (the ledger is Raise's, Pale Reign's ...)
-		_lit_ledger = true
+	if _twist and ctx.crowd != null and ctx.crowd.remains != null:
+		# The body must be written down to rise. A ledger this power lights is shared by every Wake running (a count on the Remains
+		# itself, so separate worlds never leak): it goes back off only when the last of them ends. One already on for
+		# another reason is left alone.
+		var rem: Remains = ctx.crowd.remains
+		var holders := int(rem.get_meta(HOLDERS_META, 0))
+		if not rem.enabled:
+			rem.enabled = true
+			rem.set_meta(HOLDERS_META, 1)
+			_lit_ledger = true
+		elif holders > 0:
+			rem.set_meta(HOLDERS_META, holders + 1)
+			_lit_ledger = true
 	marked.statuses[&"frail"] = 1.0
 	marked.statuses[&"slow"] = SLOW
 	marked.walk_speed = marked._mind_speed()
@@ -196,7 +208,11 @@ func _finish() -> void:
 ## The ledger goes back as this cast found it.
 func _put_ledger_back() -> void:
 	if _lit_ledger and ctx != null and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains):
-		ctx.crowd.remains.enabled = false
+		var rem: Remains = ctx.crowd.remains
+		var holders := int(rem.get_meta(HOLDERS_META, 1)) - 1
+		rem.set_meta(HOLDERS_META, maxi(holders, 0))
+		if holders <= 0:
+			rem.enabled = false
 	_lit_ledger = false
 
 

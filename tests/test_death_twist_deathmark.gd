@@ -89,6 +89,7 @@ static func run(t) -> void:
 	_quiet(t)
 	_sick(t)
 	_unlured(t)
+	_overlap(t)
 
 
 static func _raises(t) -> void:
@@ -165,6 +166,39 @@ static func _chain(t) -> void:
 	t.check(fx.raised == 3 and fx.visitors.living().size() == 3, "its kills raise at most 2 more (%d, %d standing)" % [fx.raised, fx.visitors.living().size()])
 	fx.end_now()
 	fx.free()
+	_done(made)
+
+
+## Two level-5 casts overlap: the first to end leaves the ledger on for the second; after both it is off.
+static func _overlap(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	_clear_town(crowd)
+	var spot := _spot(made)
+	var a := _cast(made, 5, 2, spot)
+	var fa: DeathMarkFx = a[0]
+	t.check(crowd.remains.enabled, "overlap: the first cast lights the ledger")
+	# The second is cast at once (its person is not dead yet) a little way off.
+	var second: Person = crowd.citizens[3]
+	var spot2 := (made[1] as WalkGrid).nearest_walkable(spot + Vector2(8.0, 0.0))
+	second.ground_pos = spot2
+	second.mind = Person.Mind.CALM
+	var gaw: Person = crowd.citizens[30]
+	gaw.ground_pos = (made[1] as WalkGrid).nearest_walkable(spot2 + Vector2(2.0, 0.5))
+	gaw.mind = Person.Mind.CALM
+	var fb: DeathMarkFx = FxTimeline.cast(load(SCRIPT), made[2], spot2, {"level": 5})
+	t.check(fb.marked == second and second.is_alive(), "overlap: the second is cast while the first's body already lies")
+	fa.end_now()
+	t.check(crowd.remains.enabled, "overlap: the first ends and the ledger stays on")
+	fb._process(fb.lv_mark_time + 0.05)
+	fb._process(0.6)
+	t.check(crowd.remains.pick(fb.body_at) != null, "overlap: the second's body is still written down")
+	_arrive(fb, gaw, 0.4)
+	t.check(fb.visitors != null and fb.raised == 1, "overlap: and its Wake still comes")
+	fb.end_now()
+	t.check(not crowd.remains.enabled, "overlap: after both end the ledger is off")
+	fa.free()
+	fb.free()
 	_done(made)
 
 
@@ -293,3 +327,15 @@ static func _unlured(t) -> void:
 	fx.end_now()
 	fx.free()
 	_done(made)
+	# Positive control: the same setup with a lured gawker does wake.
+	var made2 := _setup()
+	var crowd2: Crowd = made2[0]
+	crowd2.remains.enabled = true
+	_clear_town(crowd2)
+	var c2 := _cast(made2, 5, 2, _spot(made2), 1)
+	var fx2: DeathMarkFx = c2[0]
+	_arrive(fx2, (c2[2] as Array)[0], 0.4)
+	t.check(fx2.visitors != null, "control: the same cast with a lured gawker at the body does wake it")
+	fx2.end_now()
+	fx2.free()
+	_done(made2)

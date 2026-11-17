@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **156** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794898249:f>)\n• New: Covered-outline: win back the 12-17% fps\n• New: Outline tagged people hidden behind stalls, trees, houses (Option A)",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **157** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794912736:f>)\n• New: Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-17T13:50:49+07:00"
+     "timestamp": "2026-11-17T17:52:16+07:00"
     },
     {
      "title": "god/dd-levels",
@@ -26,7 +26,7 @@
     },
     {
      "title": "god/refs-rerecord",
-     "description": "140 commits not in Develop-Main · last commit today · local only\n> dev: re-record 372 stale refs moved by the walk fixes and the stand-still crowd\n\n_No Ledger task points at this branch._",
+     "description": "142 commits not in Develop-Main · last commit today · local only\n> dev: the Dominion bot whispers only to a spot with a short way (First Prayers)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -46,12 +46,12 @@
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-17\n> feat: covered-outline: a tagged person hidden behind a stall, tree or house is traced in its tag's colour\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (25)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-17\n> fix: world picture sized to the UI area when its view is made after the window (tags, clicks and art agree)\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (25)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• bread_play_3 reference mismatch on Develop-Main\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Outline tagged people hidden behind stalls, trees, houses (Option A) _(11-17)_\n• Map tags sit on their person; wheel zoom keeps the centre _(11-17)_\n• Death powers: your second review _(11-17)_\n• Zoom-out limit is a player setting (Options) _(11-16)_\n• HUD task line: short 'do this now' step with live counter _(11-16)_\n• Sharp pixel art at any window size (people, buildings, floor) _(11-16)_\n• Any screen resolution + crisp Skill Tree (UI Resolution milestone) _(11-16)_\n• Mission sounds tiers 2-5 _(11-14)_",
+     "description": "• Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan) _(11-17)_\n• Outline tagged people hidden behind stalls, trees, houses (Option A) _(11-17)_\n• Map tags sit on their person; wheel zoom keeps the centre _(11-17)_\n• Death powers: your second review _(11-17)_\n• Zoom-out limit is a player setting (Options) _(11-16)_\n• HUD task line: short 'do this now' step with live counter _(11-16)_\n• Sharp pixel art at any window size (people, buildings, floor) _(11-16)_\n• Any screen resolution + crisp Skill Tree (UI Resolution milestone) _(11-16)_",
      "color": 10185686
     }
    ]

@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **158** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1794925109:f>)\n• New: Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **158** done\n**6** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-17T21:18:29+07:00"
+     "timestamp": "2026-11-17T23:02:02+07:00"
     },
     {
      "title": "god/dd-levels",
@@ -26,7 +26,7 @@
     },
     {
      "title": "feat/god-progression",
-     "description": "142 commits not in Develop-Main · last commit today\n> docs: Death and Decree ability levels approved\n\n**In progress** (1)\n• Death and Decree ability levels\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "142 commits not in Develop-Main · last commit today\n> docs: Death and Decree ability levels approved\n\n**In progress** (1)\n• Death and Decree ability levels — **needs you**\n\n**To do** (4)\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {

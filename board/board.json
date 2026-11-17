@@ -1,11 +1,9 @@
 {
- "hash": "5ddd2974fe535606",
- "updated": "2026-11-17T21:18:29+07:00",
+ "hash": "632bc3ec71ab848e",
+ "updated": "2026-11-17T23:02:02+07:00",
  "changes": {
-  "date": "<t:1794925109:f>",
-  "items": [
-   "New: Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize"
-  ]
+  "date": "<t:1794931322:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -224,7 +222,7 @@
     "title": "Death and Decree ability levels",
     "status": "doing",
     "area": "Abilities",
-    "needs_you": false,
+    "needs_you": true,
     "branch": "feat/god-progression",
     "updated": "2026-11-17",
     "order": 5

@@ -175,6 +175,62 @@ static func _device_resolution(t) -> void:
 	_drop(wv)
 
 
+## Where the player actually sees the world point `p` (root UI units): the camera's canvas transform, the viewport's stretch to its
+## device px (the texture), then the display's mapping of that texture onto its rect in the root.
+static func _shown(wv: WorldView, p: Vector2) -> Vector2:
+	var tex := wv.viewport.get_final_transform() * wv.viewport.get_canvas_transform() * p
+	return wv.display.position + tex * wv.display.size / Vector2(wv.viewport.size)
+
+
+## The world point the player sees under the root point `s` (the inverse of _shown()).
+static func _seen_at(wv: WorldView, s: Vector2) -> Vector2:
+	var tex := (s - wv.display.position) * Vector2(wv.viewport.size) / wv.display.size
+	return (wv.viewport.get_final_transform() * wv.viewport.get_canvas_transform()).affine_inverse() * tex
+
+
+## 2026-11-17 tag fix 2: the HUD's tags (world_xf), the picture the player sees (the camera, the viewport's stretch, the display) and
+## mouse picking agree on every world point, at k 1 (any area, 1392x711 too), k 2 (odd remainders) and k 3, at zoom 0.5 .. 1.6, before
+## and after panning; with the view made after the window has its size (a mission started from the board: the display once took the
+## texture's size, area x k, and showed the world k times too big while the tags stayed true) and before it (a --show run).
+static func _display_mapping(t) -> void:
+	var windows := [Vector2i(1392, 711), Vector2i(1300, 700), Vector2i(1000, 640), Vector2i(1100, 900), Vector2i(1280, 720),
+		Vector2i(1920, 991), Vector2i(1517, 803), Vector2i(2560, 1369)]
+	for window: Vector2i in windows:
+		for late in [true, false]:
+			var lay := UiScale.layout(window)
+			if late:
+				UiScale.apply(lay)  # the window first, then the view (the board's missions, the title)
+			var wv: WorldView = await _view(t)
+			var bf := Battlefield.new()
+			wv.host(bf)
+			if not late:
+				UiScale.apply(lay)  # the view first, then the window (a --show run)
+			await t.process_frame
+			var area := Vector2(lay["area"])
+			var what := "%s k%d %s" % [window, lay["k"], "view made after the resize" if late else "view resized"]
+			t.check(wv.display.size == area and wv.display.position == Vector2.ZERO, "%s: the picture covers the area %s (%s)" % [what, area, wv.display.size])
+			t.check(wv.viewport.size == Vector2i(area) * int(lay["k"]), "%s: the viewport renders area x k (%s)" % [what, wv.viewport.size])
+			var worst := 0.0
+			var worst_pick := 0.0
+			for z in [0.5, 0.85, 1.6]:
+				bf.camera.zoom_to(z)
+				for pan in [Vector2.ZERO, Vector2(300, -150), Vector2(-700, 420)]:
+					bf.camera.position = pan
+					await t.process_frame
+					var xf := WorldView.world_xf(wv.viewport)
+					for f in [Vector2(0.5, 0.5), Vector2(0.1, 0.1), Vector2(0.9, 0.2), Vector2(0.2, 0.85), Vector2(0.95, 0.95)]:
+						var p: Vector2 = xf.affine_inverse() * (area * (f as Vector2))  # a world point on screen
+						worst = maxf(worst, (xf * p).distance_to(_shown(wv, p)))
+						var s: Vector2 = area * (f as Vector2)
+						WorldView.test_mouse = s
+						worst_pick = maxf(worst_pick, Iso.ground_to_screen(bf.mouse_ground()).distance_to(_seen_at(wv, s)))
+						WorldView.test_mouse = Vector2.INF
+			t.check(worst < 0.01, "%s: every tag sits on the world point it marks as drawn, at zoom 0.5/0.85/1.6, panned (off by %.3f units)" % [what, worst])
+			t.check(worst_pick < 0.01, "%s: a click picks the world point drawn under it (off by %.3f px)" % [what, worst_pick])
+			_drop(wv)
+			UiScale.apply(UiScale.layout(Vector2i(640, 360)))
+
+
 ## People and animals draw nearest (sharp); the world viewport defaults to linear, so buildings, ground and props soften.
 static func _filters(t) -> void:
 	var wv: WorldView = await _view(t)
@@ -619,6 +675,7 @@ static func run(t) -> void:
 	await _zoom_limit(t)
 	await _picking(t)
 	await _device_resolution(t)
+	await _display_mapping(t)
 	await _filters(t)
 	await _self_host(t)
 	await _no_ui_in_world(t)

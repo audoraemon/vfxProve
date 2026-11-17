@@ -40,11 +40,14 @@ func _init() -> void:
 	add_child(viewport)
 	display = TextureRect.new()
 	display.name = "Display"
+	# The modes before the texture and the size (2026-11-17 tag fix 2): under the default EXPAND_KEEP_SIZE the texture (area x k px) is the
+	# rect's minimum size, so `size = area` was clamped up to area x k: a view made after the window had its size (every mission from the
+	# board, the title) showed the world k times too big from the area's top-left while the HUD's tags and the mouse kept the true mapping.
+	display.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # the texture is area x k px; the picture is the area in units (1:1 device px)
+	display.stretch_mode = TextureRect.STRETCH_SCALE
 	display.texture = viewport.get_texture()
 	display.position = Vector2.ZERO
 	display.size = UiScale.area()
-	display.expand_mode = TextureRect.EXPAND_IGNORE_SIZE  # the texture is area x k px; the picture is the area in units (1:1 device px)
-	display.stretch_mode = TextureRect.STRETCH_SCALE
 	display.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	display.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(display)

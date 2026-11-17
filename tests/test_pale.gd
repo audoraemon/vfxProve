@@ -13,8 +13,8 @@ const PERF_FRAMES := 200
 const PERF_MS := 5.0
 
 
-static func _cast(made: Array, at: Vector2) -> PaleReignFx:
-	return FxTimeline.cast(PaleReignFx, made[5], at) as PaleReignFx
+static func _cast(made: Array, at: Vector2, level := 1) -> PaleReignFx:
+	return FxTimeline.cast(PaleReignFx, made[5], at, {"level": level}) as PaleReignFx
 
 
 ## A cast whose horde never comes (its kill cap spent before it starts): the reign's own deaths, read alone.
@@ -53,6 +53,7 @@ static func run(t) -> void:
 	_bell(t, made)
 	RD._done(made)
 	_perf(t)
+	_perf(t, 5)
 
 
 ## Everyone back out in the open, well and whole, then off in the corner (RD._clear_all); the town's clock on past any
@@ -738,13 +739,13 @@ static func _horde_sinks(t, made: Array) -> void:
 
 ## Perf (R13): the horde at its cap (24) and 16 servants in the full town (its 220 out where they spawned): the reign's
 ## _fx_process with both packs stepped, averaged over 200 frames, is under 5 ms a frame.
-static func _perf(t) -> void:
+static func _perf(t, level := 1) -> void:
 	var made := RD._setup()
 	var crowd: Crowd = made[0]
 	var grid: WalkGrid = made[2]
 	var field: EnemyField = made[3]
 	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
-	var fx := _cast(made, at)
+	var fx := _cast(made, at, level)
 	RD._run(fx, PaleReignFx.EVERY + 0.05)
 	# The dead inside rise (MAX_RISEN of them), each adding a ghost; then the horde is filled to its cap.
 	var alive := crowd.citizens.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive() and not q.inside)
@@ -758,6 +759,17 @@ static func _perf(t) -> void:
 		if fx.horde.living().size() >= PaleReignFx.HORDE_CAP:
 			break
 		fx._ghost_at(at + Vector2.from_angle(TAU * float(i) / 24.0) * 3.0)
+	# Level 5 (The Pall Grows): twelve more deaths widen the grey to its most, every one a ghost and a servant's chance.
+	if level == 5:
+		for j in 12:
+			var q: Person = alive[j]
+			if q.is_alive():
+				q.ground_pos = grid.nearest_walkable(at + Vector2.from_angle(TAU * float(j) / 12.0) * 3.0, 4)
+				field.kill(q, &"mob", q.ground_pos)
+		for j in 40:
+			if fx.horde.living().size() >= PaleReignFx.HORDE_CAP:
+				break
+			fx._ghost_at(at + Vector2.from_angle(TAU * float(j) / 24.0) * 3.0)
 	var ghosts := fx.horde.living().size()
 	var servants := fx.visitors.living().size()
 	# The worst case: the horde's kill count held far back, so all 24 hunt and kill through every measured frame instead of
@@ -769,10 +781,10 @@ static func _perf(t) -> void:
 		fx._process(frame)
 	var ms := float(Time.get_ticks_usec() - t0) / 1000.0 / float(PERF_FRAMES)
 	var killed := fx.horde.kills + 100000
-	print("PALE perf: %.3f ms a frame over %d frames (%d ghosts + %d servants at the start, %d ghosts at the end, %d killed by them, %d citizens)" % [
-		ms, PERF_FRAMES, ghosts, servants, fx.horde.living().size(), killed, crowd.citizens.size()])
+	print("PALE perf L%d: %.3f ms a frame over %d frames (%d ghosts + %d servants at the start, %d ghosts at the end, %d killed by them, %d citizens)" % [
+		level, ms, PERF_FRAMES, ghosts, servants, fx.horde.living().size(), killed, crowd.citizens.size()])
 	t.check(ghosts == PaleReignFx.HORDE_CAP and servants == PaleReignFx.MAX_RISEN and fx.horde.living().size() == PaleReignFx.HORDE_CAP
-		and crowd.citizens.size() >= 220 and ms < PERF_MS,
-		"horde 24 + 16 servants: _fx_process + both packs under 5 ms a frame over 200 frames (%.3f ms)" % ms)
+		and crowd.citizens.size() >= 220 and ms < PERF_MS and (level < 5 or is_equal_approx(fx.lv_radius, 14.0)),
+		"horde 24 + 16 servants%s: _fx_process + both packs under 5 ms a frame over 200 frames (%.3f ms)" % [" at level 5, 12 deaths" if level == 5 else "", ms])
 	fx.end_now()
 	RD._done(made)

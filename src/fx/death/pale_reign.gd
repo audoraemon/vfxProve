@@ -89,12 +89,19 @@ var _drain: QuadFx
 var lv_radius := RADIUS
 var lv_span := SPAN
 var lv_horde_kills := HORDE_KILLS
+## The Pall Grows (level 5): each death in the district adds PALL_STEP to lv_radius, up to the cast-time radius + PALL_MOST (DL9).
+const PALL_STEP := 0.25
+const PALL_MOST := 3.0
+var _twist := false
+var _pall_max := 0.0
 
 
 func _build() -> void:
 	lv_radius = float(PowerBook.stat(extra, "pale", "RADIUS", RADIUS))
 	lv_span = float(PowerBook.stat(extra, "pale", "SPAN", SPAN))
 	lv_horde_kills = int(PowerBook.stat(extra, "pale", "HORDE_KILLS", HORDE_KILLS))
+	_twist = PowerBook.twist_at(extra, "pale")
+	_pall_max = lv_radius + PALL_MOST
 	duration = lv_span + SERVANT_LIFE + FADE + 1.0  # a ceiling: _lift() and _expire() set the real end
 	busy = T_DRAIN
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
@@ -274,12 +281,29 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	var p := e as Person
 	if p == null or p.ground_pos.distance_to(origin) > lv_radius:
 		return
+	if _twist:
+		_grow()
 	# A pale death not of the reign's own reaping is a ghost's touch: the horde counts it only after this (Visitors.kills, then
 	# _on_touch()), so it is counted here first -- the touch that is its HORDE_KILLS-th kill adds no ghost (the horde is spent then).
 	_ghost_at(p.ground_pos, kind == &"pale" and _reaping_at < 0.0)
 	if p.inside or risen >= MAX_RISEN or not Remains.BODY_KINDS.has(kind):
 		return
 	_rise(p, _reaping_at if _reaping_at >= 0.0 else t)
+
+
+## The Pall Grows (DL9): the district widens by PALL_STEP (to the cast radius + PALL_MOST at most); what reads it each frame
+## (the crawl, the douse, the veil) follows by itself, the ghosts' bounds and the drain's quad are given the new size here.
+## The cast's danger and its hush keep the cast-time radius.
+func _grow() -> void:
+	if lv_radius >= _pall_max:
+		return
+	lv_radius = minf(lv_radius + PALL_STEP, _pall_max)
+	if horde != null:
+		for a in horde.living():
+			horde.give(a, {"bounds": Vector3(origin.x, origin.y, lv_radius)})
+	if is_instance_valid(_drain):
+		_drain.size = Iso.radius_to_screen(lv_radius) * 2.0
+		_drain.queue_redraw()
 
 
 ## The reign's first tick: HORDE_START ghosts pour out of the middle.

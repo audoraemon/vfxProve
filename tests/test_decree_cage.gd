@@ -70,7 +70,8 @@ static func run(t) -> void:
 		and is_equal_approx(cf.radius_at(cf.T_LAND + 30.0), 0.75) and is_equal_approx(cf.radius_at(cf.T_LAND + 99.0), 0.75),
 		"the bars close at an even pace: 6.4 at 15 s (%.3f)" % cf.radius_at(cf.T_LAND + 15.0))
 	_closing(t, cf)
-	_perf(t, cf)
+	_perf(t, cf, 1)
+	_perf(t, cf, 5)  # level 5: the cage is dragged 6.0 across the town while the 220 are inside
 
 
 static func _closing(t, cf) -> void:
@@ -176,7 +177,7 @@ static func _closing(t, cf) -> void:
 
 
 ## With 220 people inside it, in the town as it stands, its own frame stays under 2 ms.
-static func _perf(t, cf) -> void:
+static func _perf(t, cf, level := 1) -> void:
 	var made := _setup()
 	var crowd: Crowd = made[0]
 	var env: EnvironmentField = made[1]
@@ -204,27 +205,30 @@ static func _perf(t, cf) -> void:
 	var untouched: Array[Structure] = []
 	for s in env.structures():
 		var c := at.clamp(s.footprint.position, s.footprint.end)
-		if c.distance_to(at) > cf.RADIUS + 0.05 and not s.destroyed and s._cracks.is_empty():
+		if level == 1 and c.distance_to(at) > cf.RADIUS + 0.05 and not s.destroyed and s._cracks.is_empty():
 			untouched.append(s)
 	# Timed frame by frame over the close. A frame where someone dies or a building falls also runs the town's own
 	# reaction to it (Crowd: the alarm, a collapse's fright, the investigation), which any killing power sets off; the
 	# effect's own work is the frames where neither happens.
-	var fx = FxTimeline.cast(cf, ctx, at)
+	var fx = FxTimeline.cast(cf, ctx, at, {"level": level})
+	var close_time: float = fx.lv_close_time
 	var times := PackedInt32Array()
 	var own := PackedInt32Array()
-	for j in roundi((cf.T_LAND + cf.CLOSE_TIME + 1.0) * 60.0):
+	for j in roundi((cf.T_LAND + close_time + 1.0) * 60.0):
+		if level == 5 and not fx.dragged and fx.t > cf.T_LAND + 3.0:
+			fx.follow_up(at + Vector2(10.0, 0.0), {})
 		var before: float = fx.t
 		var cut0: int = fx.cut
 		var fell0: int = fx.felled
 		var t0 := Time.get_ticks_usec()
 		fx._process(1.0 / 60.0)
 		var spent := Time.get_ticks_usec() - t0
-		if before > cf.T_LAND + 0.05 and fx.t < cf.T_LAND + cf.CLOSE_TIME - 0.05:
+		if before > cf.T_LAND + 0.05 and fx.t < cf.T_LAND + close_time - 0.05:
 			times.append(spent)
 			if fx.cut == cut0 and fx.felled == fell0:
 				own.append(spent)
-	t.check(inside.size() == 220 and times.size() > 1700 and own.size() > 1000,
-		"220 people inside the ring (%d), timed over the close (%d frames, %d its own work only)" % [inside.size(), times.size(), own.size()])
+	t.check(inside.size() == 220 and times.size() > int(close_time * 60.0) - 100 and own.size() > 1000 and (level == 1 or fx.dragged),
+		"level %d: 220 people inside the ring (%d), timed over the close (%d frames, %d its own work only)%s" % [level, inside.size(), times.size(), own.size(), ", dragged" if level == 5 else ""])
 	if times.is_empty() or own.is_empty():
 		_done(made)
 		return
@@ -238,10 +242,10 @@ static func _perf(t, cf) -> void:
 	var top := own[own.size() - 1]
 	# 99.5th percentile: a frame or two the machine takes from the test is not the effect's.
 	var own_hi := own[mini(int(own.size() * 0.995), own.size() - 1)]
-	print("cage perf: own frames median %d us, p99.5 %d us, max %d us; all frames mean %.0f us, p95 %d us, max %d us; %d cut, %d felled"
-		% [own[own.size() / 2], own_hi, top, mean, all[int(all.size() * 0.95)], all[all.size() - 1], fx.cut, fx.felled])
+	print("cage perf (level %d): own frames median %d us, p99.5 %d us, max %d us; all frames mean %.0f us, p95 %d us, max %d us; %d cut, %d felled"
+		% [level, own[own.size() / 2], own_hi, top, mean, all[int(all.size() * 0.95)], all[all.size() - 1], fx.cut, fx.felled])
 	t.check(own_hi < 2000 and mean < 2000.0 and all[int(all.size() * 0.95)] < 2000,
-		"with 220 inside, its own frame stays under 2 ms (p99.5 %d us, max %d us), and every frame averages under it (%.0f us)" % [own_hi, top, mean])
+		"level %d with 220 inside, its own frame stays under 2 ms (p99.5 %d us, max %d us), and every frame averages under it (%.0f us)" % [level, own_hi, top, mean])
 	var alive := 0
 	for p in inside:
 		if p.is_alive():

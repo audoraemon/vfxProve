@@ -18,6 +18,9 @@ extends FxTimeline
 ##   slowed, panicked, dead as &"wither" 6 s later, a body left); after DeathParts.WRAITH_TOUCHES it is spent, and it slows
 ##   whoever it passes through. `withered` counts its curses. They are this effect's own Visitors pack, and the ones left go
 ##   back into the ground WRAITH_LIFE later.
+## Level 5, Graves Answer (twist): at open the GRAVES nearest bodies (Remains) within GRAVE_R of the rift each sprout a grave
+##   hand; each, on the pit's own grab clock, takes the nearest fair living person within GRAVE_GRAB of its body, once, held
+##   where they stand for DRAG and then pulled under (&"pit"), and the body sinks with them. Each is a soul for the close.
 ## Loud (PowerBook.REACH): the danger counts from the first soul under (IMPACT = T_OPEN + DRAG). From then, while the pit is
 ## open, everyone within FRIGHT_R of it flees afresh every FRIGHT_EVERY, and the first soul taken raises the alarm (as Hound
 ## Gate's first bite). Cut short or over, every hold is let go and the wraiths are gone (_finish(); _exit_tree() when torn down).
@@ -74,6 +77,10 @@ const ARM_SIDE := 10.0
 const ARM_RISE := 0.3
 const ARM_PULL := 0.45
 const ARM_SINK := 0.25
+## Graves Answer (level 5): how many bodies sprout a hand, how far from the rift they may lie, how near a body its hand reaches.
+const GRAVES := 8
+const GRAVE_R := 12.0
+const GRAVE_GRAB := 1.5
 ## The cold glow out of the hole: faint, so the hole stays dark.
 const LIGHT := 0.25
 ## The rift's dark, its deepest middle, its lip of broken ground, its cracks.
@@ -110,6 +117,9 @@ var lv_reach := REACH
 var lv_edge := EDGE
 var lv_span := SPAN
 var lv_wraith_touches := DeathParts.WRAITH_TOUCHES
+## Graves Answer: whether the level-5 twist is on; the hands still waiting to grab: {r: Remains.Remain, arm: Arm or null}.
+var _twist := false
+var graves: Array[Dictionary] = []
 
 
 func _build() -> void:
@@ -122,6 +132,9 @@ func _build() -> void:
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
+	_twist = PowerBook.twist_at(extra, "gatebelow")
+	if _twist:
+		_pick_graves()
 	visitors.bitten.connect(_on_withered)
 	visitors.spent.connect(_on_spent)
 	ctx.play(&"gatebelow_open", origin, 0.0)
@@ -144,6 +157,14 @@ func _build() -> void:
 			arm.position = Iso.ground_to_screen(spot).round()
 			track(arm, stand_layer())
 		i += 1
+	for g in graves:
+		var arm := Arm.new()
+		arm.fx = self
+		arm.born = T_OPEN
+		arm.facing = -1 if Iso.ground_to_screen(origin).x > Iso.ground_to_screen((g.r as Remains.Remain).pos).x else 1
+		arm.position = Iso.ground_to_screen((g.r as Remains.Remain).pos).round()
+		track(arm, stand_layer())
+		g["arm"] = arm
 	# Cold light out of the hole, ground dust thrown up as it cracks open, the ground shaking.
 	_light = FxParts.ground_light(self, origin, lv_reach * 0.8, DeathParts.GRAVE_GREEN, 0.0)
 	_light.tween_param("intensity", 0.0, LIGHT, T_OPEN, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
@@ -173,8 +194,78 @@ func _fx_process(delta: float) -> void:
 		_end_wraiths()
 
 
-## One reach of the arms (the tick at `when`): the nearest fair one within REACH is caught and held.
+## One reach of the arms (the tick at `when`): the pit's own, then (level 5) one grave hand's.
 func _grab(when: float) -> void:
+	_grab_pit(when)
+	if _twist:
+		_grab_grave(when)
+
+
+## Graves Answer (DL8): the GRAVES remains nearest the rift within GRAVE_R, not hidden or taken (a tie by age), each with a hand.
+func _pick_graves() -> void:
+	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
+	if rem == null:
+		return
+	var near := rem.near(origin, GRAVE_R)
+	var order := {}
+	for i in near.size():
+		order[near[i]] = i
+	near.sort_custom(func(a: Remains.Remain, b: Remains.Remain) -> bool:
+		var da := a.pos.distance_squared_to(origin)
+		var db := b.pos.distance_squared_to(origin)
+		if da != db:
+			return da < db
+		return order[a] < order[b])
+	for i in mini(GRAVES, near.size()):
+		graves.append({"r": near[i], "arm": null})
+
+
+## One grave hand's grab on the pit's tick: the first waiting hand with a fair living person within GRAVE_GRAB of its body takes
+## them, once -- held where they stand for DRAG, then under -- and its body sinks with them. A hand whose body was taken meanwhile
+## (another power) lets go.
+func _grab_grave(when: float) -> void:
+	var rem: Remains = ctx.crowd.remains
+	var left: Array[Dictionary] = []
+	var done := false
+	for g in graves:
+		var r: Remains.Remain = g.r
+		var arm = g.arm
+		if not rem.near(r.pos, 0.001).has(r):
+			if is_instance_valid(arm):
+				(arm as Arm).let_go(t)
+			continue
+		var victim: Person = null if done else _grave_victim(r.pos)
+		if victim == null:
+			left.append(g)
+			continue
+		done = true
+		_caught[victim.get_instance_id()] = true
+		grabbed.append(victim)
+		victim.hold_pace(get_instance_id(), 0.0)
+		var hand: Arm = arm if is_instance_valid(arm) else null
+		if hand != null:
+			hand.position = _arm_at(victim.ground_pos)
+		_drags.append({"p": victim, "from": victim.ground_pos, "to": victim.ground_pos, "at": when, "arm": hand, "rem": r})
+	graves = left
+
+
+## The nearest fair living person within GRAVE_GRAB of `at` (a tie to the lower instance id), or null.
+func _grave_victim(at: Vector2) -> Person:
+	var best: Person = null
+	var best_d := INF
+	for e in ctx.field.in_radius(at, GRAVE_GRAB):
+		var p := e as Person
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy") or _caught.has(p.get_instance_id()):
+			continue
+		var d := p.ground_pos.distance_squared_to(at)
+		if d < best_d or (d == best_d and p.get_instance_id() < best.get_instance_id()):
+			best_d = d
+			best = p
+	return best
+
+
+## The pit's own reach: the nearest fair one within REACH is caught and held.
+func _grab_pit(when: float) -> void:
 	var best: Person = null
 	var best_d := INF
 	for e in ctx.field.in_radius(origin, lv_reach):
@@ -229,7 +320,7 @@ func _drag() -> void:
 		if k < 1.0:
 			still.append(d)
 			continue
-		_take(p, arm, float(d.at) + DRAG)
+		_take(p, arm, float(d.at) + DRAG, d.get("rem"))
 	_drags = still
 
 
@@ -242,12 +333,14 @@ func _arm_at(g: Vector2) -> Vector2:
 
 
 ## `p` is pulled under at the edge (their drag's end, `when`, on the pit's clock): a pit death (no body), one more soul.
-func _take(p: Person, arm: Arm, when: float) -> void:
+func _take(p: Person, arm: Arm, when: float, body: Remains.Remain = null) -> void:
 	p.free_pace(get_instance_id())
 	if arm != null and is_instance_valid(arm):
 		arm.let_go(t)
 	if not ctx.field.kill(p, &"pit", origin):
 		return
+	if body != null and ctx.crowd != null:
+		ctx.crowd.remains.take(body)  # a grave hand's body sinks only with its victim (a released one leaves it lying)
 	souls += 1
 	if souls == 1:
 		first_soul_at = when
@@ -265,6 +358,10 @@ func _take(p: Person, arm: Arm, when: float) -> void:
 func _close() -> void:
 	closed = true
 	ctx.play(&"gatebelow_close", origin, 0.0)
+	for g in graves:
+		if is_instance_valid(g.arm):
+			(g.arm as Arm).let_go(t)
+	graves.clear()
 	for k in souls:
 		var sector := sector_of(k, souls, origin)
 		var dir := Vector2.from_angle(sector.z + sector.w * 0.5)

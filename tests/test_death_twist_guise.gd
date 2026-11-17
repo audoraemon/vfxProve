@@ -57,7 +57,15 @@ static func _fall(t, made: Array) -> void:
 	t.check(p.is_alive() and p.is_down() and crowd.killed_citizens == n0 and crowd.remains.all().size() == rem0
 		and is_equal_approx(crowd.alarm, alarm0), "lies down alive: no kill, no remain, no alarm")
 	t.check(not p.deathless.is_valid(), "the hook is spent")
-	RD._run(fx, 4.0, [p])
+	RD._run(fx, 1.0, [p])
+	var c1 := p._sprite_pose_code()
+	RD._run(fx, 2.0, [p])
+	var c3 := p._sprite_pose_code()
+	t.check(c1 >> 7 >= 0 and c3 >> 7 >= 0 and (c1 >> 2 & 31) == 4 and (c3 >> 2 & 31) == 4,
+		"at 1.0 s and 3.0 s of the fall the body draws a lying frame (>= 0): %d, %d" % [c1 >> 7, c3 >> 7])
+	t.check(is_equal_approx(p._down_total, CorpseGuiseFx.FALL_TIME - Person.GETUP_SECONDS),
+		"the pose clock runs the whole lie")
+	RD._run(fx, 1.0, [p])
 	t.check(p.is_down(), "lying (down) at 4.0 s into the fall")
 	RD._run(fx, 0.9, [p])
 	t.check(p.is_alive() and p.health <= 0.0 and p.pace_hold() == 0.0 and p.guised(), "still lying at 4.9 s on a held pace, still guised")

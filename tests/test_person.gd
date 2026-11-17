@@ -332,6 +332,16 @@ static func run(t) -> void:
 	frightened._startle_left = 1.0
 	frightened.knock_down()
 	t.check(frightened._startle_left == 0.0, "a knock-down clears a pending fright freeze, so it does not freeze after getting up")
+	frightened.knock_down(Person.DOWN_SECONDS, true)
+	t.check(frightened._down_total == Person.DOWN_SECONDS, "a default-lie knock-down's pose clock is DOWN_SECONDS (level 1 unchanged)")
+	frightened._design()
+	var same := true
+	for left in [1.0, 0.7, 0.3, 0.05]:
+		frightened._down_left = left
+		var code := frightened._sprite_pose_code()
+		var n: int = frightened._design_info[4][4 * 4 + (code & 3)]
+		same = same and (code >> 7) == mini(int((Person.DOWN_SECONDS - left) * PeopleArt.FPS_AT[4]), n - 1)
+	t.check(same, "the down pose's frames at DOWN_SECONDS - _down_left are today's")
 	frightened.free()
 	var pinned := Person.new()
 	pinned.rng.seed = 50

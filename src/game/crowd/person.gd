@@ -425,6 +425,7 @@ var _scream_total := SCREAM_SECONDS
 ## down and then getting up (is_down()).
 var _down_pending := false
 var _down_left := 0.0
+var _down_total := DOWN_SECONDS  # the lie now under way, in all (the down pose's clock)
 var _down_lie := DOWN_SECONDS  # how long the pending knock-down will lie
 var _getup_left := 0.0
 ## Seconds left of showing the swing pose after a blow it struck.
@@ -630,6 +631,7 @@ func tick(delta: float) -> void:
 		# The knock-back slide is over: it lies where it came to rest.
 		_down_pending = false
 		_down_left = _down_lie
+		_down_total = _down_lie
 		_down_lie = DOWN_SECONDS
 		_idle = maxf(_idle, 0.2)  # not a tick of creep before the first think
 
@@ -2093,6 +2095,7 @@ func knock_down(lie := DOWN_SECONDS, force := false) -> void:
 		_down_pending = false
 		_down_lie = DOWN_SECONDS
 		_down_left = lie
+		_down_total = lie
 		_getup_left = 0.0
 		_scream_left = 0.0
 		_startle_left = 0.0
@@ -2943,7 +2946,7 @@ func _sprite_pose_code() -> int:
 	elif _down_left > 0.0 and state == State.WANDER:
 		# Knocked down: the death fall, held on its last frame.
 		anim = 4
-		t = DOWN_SECONDS - _down_left
+		t = maxf(_down_total - _down_left, 0.0)
 	elif _getup_left > 0.0 and state == State.WANDER:
 		anim = 8
 		t = GETUP_SECONDS - _getup_left

@@ -32,6 +32,13 @@ var law: LawZone
 var _rooted := {}
 var _hush: Hush
 
+## Level 5 twist (Nobody May Leave): a NO LEAVING law of STAY_TIME seconds laid with the air, so none can run until it
+## lifts and the choking has run most of its course. Held by the cast; lifted at the end of the cast, at its early
+## end and when it is freed.
+const STAY_TIME := 2.0
+var _twist := false
+var _stay: LawZone
+
 
 ## This cast's numbers at its ability level (the consts at level 1).
 var lv_radius := RADIUS
@@ -41,6 +48,7 @@ var lv_hold_time := HOLD_TIME
 func _build() -> void:
 	lv_radius = float(PowerBook.stat(extra, "breath", "RADIUS", RADIUS))
 	lv_hold_time = float(PowerBook.stat(extra, "breath", "HOLD_TIME", HOLD_TIME))
+	_twist = PowerBook.twist_at(extra, "breath")
 	duration = T_LAND + lv_hold_time + FADE
 	busy = T_LAND
 	at(T_LAND, _land)
@@ -62,6 +70,13 @@ func _land() -> void:
 		ctx.crowd.add_law(law, self)
 	else:
 		law.hold_by(self)
+	if _twist:
+		_stay = LawZone.circle(origin, lv_radius, [LawZone.NO_LEAVING], STAY_TIME)
+		_stay.stepped_by_holder = true
+		# Held by the cast, lifted by its own exit (the crowd's one hook per holder is the air's).
+		if ctx.crowd != null:
+			ctx.crowd.add_law(_stay)
+		_stay.hold_by(self)
 	_choke(0.0)
 	if not DominionParts.staged(self):
 		return
@@ -81,6 +96,7 @@ func _land() -> void:
 
 ## The air comes back: the law is lifted, and whoever was choking breathes again.
 func _lift() -> void:
+	_lift_stay()
 	if law != null:
 		if ctx.crowd != null:
 			ctx.crowd.remove_law(law)
@@ -96,7 +112,29 @@ func _lift() -> void:
 func end_now() -> void:
 	if not finished and law != null and law.alive():
 		_lift()
+	_lift_stay()
 	super()
+
+
+func _finish() -> void:
+	_lift_stay()
+	super()
+
+
+func _exit_tree() -> void:
+	_lift_stay()
+	super()
+
+
+## The seal on the air is lifted (once): this cast's own NO LEAVING law, and nobody else's.
+func _lift_stay() -> void:
+	if _stay == null:
+		return
+	if ctx != null and ctx.crowd != null:
+		ctx.crowd.remove_law(_stay)
+	else:
+		_stay.lift()
+	_stay = null
 
 
 func _fx_process(delta: float) -> void:
@@ -104,6 +142,11 @@ func _fx_process(delta: float) -> void:
 		return
 	# The law's clock starts when the air goes, so it holds to the last frame before the lift.
 	var dt := minf(delta, t - T_LAND)
+	if _stay != null:
+		if ctx.crowd != null:
+			ctx.crowd.step_law(_stay, dt)
+		if _stay.left <= LawZone.EPS:
+			_lift_stay()
 	if ctx.crowd != null:
 		ctx.crowd.step_law(law, dt)
 	else:

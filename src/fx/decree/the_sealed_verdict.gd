@@ -48,6 +48,20 @@ var struck := false
 var dead := 0
 var _ledger: Ledger
 var _next_tally := 0.0
+## Level 5, The Ledger Remembers (DL14): the instance ids of everyone whose ground position lay inside the district at any step
+## of the countdown (one frame counts); at the bell each listed one still alive dies by verdict wherever he is.
+var _twist := false
+var _listed := {}
+
+
+func _finish() -> void:
+	_listed.clear()
+	super._finish()
+
+
+func _exit_tree() -> void:
+	_listed.clear()
+	super._exit_tree()
 
 
 ## Seconds until the stroke (0 once it has struck).
@@ -63,6 +77,7 @@ var lv_countdown := COUNTDOWN
 func _build() -> void:
 	lv_radius = float(PowerBook.stat(extra, "sealed", "RADIUS", RADIUS))
 	lv_countdown = float(PowerBook.stat(extra, "sealed", "COUNTDOWN", COUNTDOWN))
+	_twist = PowerBook.twist_at(extra, "sealed")
 	duration = lv_countdown + BURN
 	busy = WRITE
 	at(lv_countdown, _stroke)
@@ -86,6 +101,11 @@ func _build() -> void:
 
 ## The ledger page's tally, counted every TALLY_EVERY until the stroke (only when it is drawn).
 func _fx_process(_delta: float) -> void:
+	if _twist and not struck and not finished:
+		# One query a step, a set of ids: no scan of the town; quiet (no alarm, fright or on_cast).
+		for e in ctx.field.in_radius(origin, lv_radius):
+			if e is Person:
+				_listed[e.get_instance_id()] = true
 	if _ledger == null or struck or t < _next_tally:
 		return
 	_next_tally = t + TALLY_EVERY
@@ -143,6 +163,16 @@ func _stroke() -> void:
 	var doomed := doomed_at(ctx.crowd, ctx.field, origin, lv_radius)
 	for s in shelters_at(ctx.crowd, origin, lv_radius):
 		doomed.append_array(ctx.crowd.shelters.throw_out_of(s, 0.0))  # brought out at the door, where the body is found
+	var listed: Array[Person] = []
+	if _twist:
+		var ids := _listed.keys()
+		ids.sort()
+		for id in ids:
+			var o := instance_from_id(id)  # null for one freed since
+			if o != null and is_instance_valid(o) and o is Person and (o as Person).is_alive() and not doomed.has(o):
+				listed.append(o)
+		_listed.clear()
+	doomed.append_array(listed)
 	var staged := _ledger != null and DominionParts.staged(self)
 	for p in doomed:
 		var at_g := p.ground_pos

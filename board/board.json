@@ -1,10 +1,10 @@
 {
- "hash": "9b5b55077e5abd15",
- "updated": "2026-11-17T01:13:02+07:00",
+ "hash": "1a80124569abb7cd",
+ "updated": "2026-11-17T07:32:16+07:00",
  "changes": {
-  "date": "<t:1794852782:f>",
+  "date": "<t:1794875536:f>",
   "items": [
-   "New: Death and Decree ability levels (in progress)"
+   "New: Map tags sit on their person; wheel zoom keeps the centre"
   ]
  },
  "snapshot": {
@@ -1095,6 +1095,15 @@
     "updated": "2026-10-03",
     "order": 19
    },
+   "tag-on-person": {
+    "title": "Map tags sit on their person; wheel zoom keeps the centre",
+    "status": "done",
+    "area": "UI",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-17",
+    "order": 217
+   },
    "task-line": {
     "title": "HUD task line: short 'do this now' step with live counter",
     "status": "done",
@@ -1757,9 +1766,17 @@
   },
   "branches": [
    {
+    "name": "god/ddl-1b",
+    "ahead": 145,
+    "behind": 89,
+    "date": "2026-11-17",
+    "subject": "feat: shared hooks for the Death and Decree twists",
+    "pushed": false
+   },
+   {
     "name": "feat/god-progression",
     "ahead": 142,
-    "behind": 88,
+    "behind": 89,
     "date": "2026-11-17",
     "subject": "docs: Death and Decree ability levels approved",
     "pushed": true
@@ -1767,7 +1784,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 277,
+    "behind": 278,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1775,7 +1792,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 775,
+    "behind": 776,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1783,7 +1800,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 733,
+    "behind": 734,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1791,8 +1808,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-16",
-   "subject": "feat: zoom-out limit is a player setting (Options: Zoom out, 0.85 near .. 0.35 far; default 0.85)"
+   "date": "2026-11-17",
+   "subject": "fix: map tags sit on their person's drawn body at any zoom and never over no one; wheel zoom keeps the screen centre"
   }
  }
 }

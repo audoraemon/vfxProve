@@ -239,14 +239,13 @@ func _grab_grave(when: float) -> void:
 			left.append(g)
 			continue
 		done = true
-		rem.take(r)
 		_caught[victim.get_instance_id()] = true
 		grabbed.append(victim)
 		victim.hold_pace(get_instance_id(), 0.0)
 		var hand: Arm = arm if is_instance_valid(arm) else null
 		if hand != null:
 			hand.position = _arm_at(victim.ground_pos)
-		_drags.append({"p": victim, "from": victim.ground_pos, "to": victim.ground_pos, "at": when, "arm": hand})
+		_drags.append({"p": victim, "from": victim.ground_pos, "to": victim.ground_pos, "at": when, "arm": hand, "rem": r})
 	graves = left
 
 
@@ -321,7 +320,7 @@ func _drag() -> void:
 		if k < 1.0:
 			still.append(d)
 			continue
-		_take(p, arm, float(d.at) + DRAG)
+		_take(p, arm, float(d.at) + DRAG, d.get("rem"))
 	_drags = still
 
 
@@ -334,12 +333,14 @@ func _arm_at(g: Vector2) -> Vector2:
 
 
 ## `p` is pulled under at the edge (their drag's end, `when`, on the pit's clock): a pit death (no body), one more soul.
-func _take(p: Person, arm: Arm, when: float) -> void:
+func _take(p: Person, arm: Arm, when: float, body: Remains.Remain = null) -> void:
 	p.free_pace(get_instance_id())
 	if arm != null and is_instance_valid(arm):
 		arm.let_go(t)
 	if not ctx.field.kill(p, &"pit", origin):
 		return
+	if body != null and ctx.crowd != null:
+		ctx.crowd.remains.take(body)  # a grave hand's body sinks only with its victim (a released one leaves it lying)
 	souls += 1
 	if souls == 1:
 		first_soul_at = when

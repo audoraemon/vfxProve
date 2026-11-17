@@ -30,6 +30,7 @@ static func run(t) -> void:
 	var made := RD._setup()
 	_eight(t, made)
 	_reach_and_cap(t, made)
+	_teardown(t, made)
 	_level_four(t, made)
 	RD._done(made)
 
@@ -71,6 +72,14 @@ static func _eight(t, made: Array) -> void:
 	t.check((made[0] as Crowd).remains.pick(rems[8].pos, false, false, 0.2) != null and (made[0] as Crowd).remains.pick(rems[9].pos, false, false, 0.2) != null,
 		"the two other bodies still lie there")
 	t.check(fx.souls == 9 and fx.graves.is_empty(), "souls: the rift's own and eight (%d), no hand left waiting" % fx.souls)
+	# Through the close: one wraith per soul (9), each owning a ninth of the circle.
+	RD._run(fx, fx.lv_span - fx.t + 0.15)
+	var up := fx.visitors.living()
+	var sectors := up.size() == 9
+	for a in up:
+		var rule: Visitors.Rule = fx.visitors._rules[a]
+		sectors = sectors and is_equal_approx(rule.sector.w, TAU / 9.0)
+	t.check(sectors, "at the close: nine wraiths (one per soul), each sectored by 9 (%d up)" % up.size())
 	fx.end_now()
 
 
@@ -108,3 +117,30 @@ static func _level_four(t, made: Array) -> void:
 	RD._run(fx, 6.0)
 	t.check(fx.graves.is_empty() and fx.souls == 0 and person.is_alive(), "level 4: no grave hands, nobody taken")
 	fx.end_now()
+
+
+## Cut short with a grave hand holding someone (end_now, then a freed node): the victim lives with their pace back, the body still lies
+## there (it sinks only with its victim), and no wraith, hold or hand is left.
+static func _teardown(t, made: Array) -> void:
+	for mode in 2:
+		GB._reset(made)
+		var at := RD._empty(made)
+		var pool := _alive(made)
+		var rem := _corpse(made, pool[0], at + Vector2(9.0, 0.0))
+		var victim: Person = pool[1]
+		victim.ground_pos = at + Vector2(10.0, 0.0)
+		victim.mind = Person.Mind.CALM
+		var fx := _cast(made, at, 5)
+		RD._run(fx, TheGateBelowFx.T_OPEN + 0.5)
+		var held := victim.pace_hold() == 0.0 and fx.grabbed == [victim]
+		var name := "end_now" if mode == 0 else "freed"
+		if mode == 0:
+			fx.end_now()
+		else:
+			fx._exit_tree()
+		t.check(held and victim.is_alive() and victim.pace_hold() == 1.0 and fx.souls == 0
+			and (made[0] as Crowd).remains.pick(rem.pos, false, false, 0.2) == rem
+			and fx.visitors.living().is_empty() and fx._drags.is_empty(),
+			"%s mid-drag: victim alive and released, body still lies there, nothing left (held %s)" % [name, held])
+		if mode == 1:
+			fx.free()

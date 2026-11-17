@@ -89,20 +89,31 @@ static func run(t) -> void:
 	LawMark.lift(a, f4.get_instance_id())
 	f4.free()
 
-	# Teardown: ended before the end, nobody is named and no law is left on anyone.
+	# Teardown: ended before the end, nobody is named. Control first: the same setup run to its normal end names `a`.
 	for p: Person in [a, b, c]:
 		p.ground_pos = at + Vector2(0.5, 0.0)
-		p.law = null
+	var f7 := _cast(ctx, at, 5)
+	var held7 := f7.bound.has(a)
+	_end(f7)
+	t.check(held7 and f7.named.has(a) and LawMark.kind_of(a) == LawMark.CRIMINAL, "noleave level 5 control: held and run to its normal end, a is named criminal")
+	LawMark.lift(a, f7.get_instance_id())
+	LawMark.lift(b, f7.get_instance_id())
+	LawMark.lift(c, f7.get_instance_id())
+	f7.free()
+	for p: Person in [a, b, c]:
+		p.ground_pos = at + Vector2(0.5, 0.0)
 	var f5 := _cast(ctx, at, 5)
+	var held5 := f5.bound.has(a)
 	f5.end_now()
-	t.check(f5.named.is_empty() and LawMark.kind_of(a) == &"" and a.law == null, "noleave level 5: end_now before the end names nobody and leaves no law")
+	t.check(held5 and f5.named.is_empty() and LawMark.kind_of(a) == &"", "noleave level 5: a held, then end_now before the end names nobody")
 	f5.free()
 	# The law lifted early (crowd.remove_law), one step, then the end: nobody is named.
 	var f6 := _cast(ctx, at, 5)
+	var held6 := f6.bound.has(a)
 	ctx.crowd.remove_law(f6.law)
 	f6._process(0.1)
 	f6._lift()
-	t.check(f6.named.is_empty() and LawMark.kind_of(a) == &"" and a.law == null, "noleave level 5: a law lifted early names nobody at the end")
+	t.check(held6 and f6.named.is_empty() and LawMark.kind_of(a) == &"", "noleave level 5: a held, law lifted early, then the end names nobody")
 	f6.free()
 
 	# No director: all inside are named.

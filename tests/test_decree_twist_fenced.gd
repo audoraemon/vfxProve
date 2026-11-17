@@ -170,8 +170,8 @@ static func _refusals(t) -> void:
 	t.check(fx.follow_up(Vector2.ZERO, {"order": W["sight"]}) and fx.law.kinds.size() == 3, "while a fresh word is taken (control)")
 	# A fourth is refused, and the orders have none left to give a rule in force.
 	var fourth := false
-	for w in ["doors", "leave", "sight", "run"]:
-		fourth = fourth or fx.follow_up(Vector2.ZERO, {"order": w})
+	for w in ALL:
+		fourth = fourth or fx.follow_up(Vector2.ZERO, {"order": W[w]})
 	t.check(not fourth and fx.law.kinds.size() == 3 and fx.third == "sight" and not fx.can_follow_up(),
 		"a fourth rule is refused: three hold, no more are taken")
 	t.check(fx.follow_up_orders() == [W.doors, W.leave], "and the orders never offer a rule in force (%s)" % [fx.follow_up_orders()])

@@ -314,7 +314,7 @@ static func run(t) -> void:
 	var alarm0 := crowd.alarm
 	field.kill(gp, &"grave", gp.ground_pos)
 	t.check(is_equal_approx(crowd.alarm, alarm0) and rem.pick(gp.ground_pos) != null
-		and DeathVoices.QUIET_KINDS.has(&"grave") and Rules.POWER_KINDS["walker"] == [&"grave"],
+		and DeathVoices.QUIET_KINDS.has(&"grave") and Rules.POWER_KINDS["walker"] == [&"grave", &"borrowed"],
 		"the grave kind: a body, quiet, no alarm")
 	v = _fresh(made)
 	var calm: Person = crowd.citizens[16]

@@ -16,6 +16,10 @@ extends FxTimeline
 ##    slide: it is dealt the blow where it stands. Every building within CRACK_W of the line cracks where it stands.
 ## 3. The spring back (T_SNAP after the close): the fold snaps open. Whoever stands within THROW_W of the line is thrown
 ##    outward, harder the nearer, and knocked down.
+## Level 5 twist, Shortcut: after the spring back the line's two ends stay joined as a door for SEAM_LIFE seconds. Anyone
+## (people, soldiers, visitors) who stands within SEAM_R of one end is set down at the other end's nearest walkable point
+## (path cleared, as a person set down by Skylift is), and cannot be moved again for SEAM_REST seconds, so nobody
+## ping-pongs. One proximity query per end per step; nothing is rolled.
 ## Leaves: the line bare, its cells open to walk (WalkGrid.open_street(), the river excepted), and everything it took
 ## merged at its start: one mound of law rubble (LawRubble.lay) clustered round the press -- 1 heap, 1 more per building
 ## taken and 1 per 3 pieces of decor, HEAP_CAP at most -- each building's heap wearing that building's own ruins art. The
@@ -62,6 +66,11 @@ const HEAP_H := 9.0
 const HEAP_BIG_H := 11.0
 ## Dust and crumbs trail the buildings sliding, a burst every DUST_EVERY seconds (look only).
 const DUST_EVERY := 0.08
+## Shortcut (level 5): how long the two seams last after the spring back, how near an end one must stand to be taken
+## through, and how long one just taken cannot be taken again.
+const SEAM_LIFE := 15.0
+const SEAM_R := 0.6
+const SEAM_REST := 1.0
 
 ## The line: its direction and length, and where it ends.
 var dir := Vector2.RIGHT
@@ -78,8 +87,13 @@ var struck := 0
 var cracked := 0
 var thrown := 0
 var heaps: Array[Structure] = []
+## Shortcut: how many have been taken through a seam.
+var shortcuts := 0
 
 var _closed := false
+## Level 5: Shortcut is on this cast. Who was just taken through (instance id -> the time they may be taken again).
+var _twist := false
+var _rest := {}
 var _seam: Seam
 ## The buildings sliding to the start, nearest it first: [Structure, its centre, its node's resting place (its front
 ## corner on screen), that corner's offset to its centre on screen].
@@ -108,6 +122,7 @@ var lv_throw_w := THROW_W
 
 
 func _build() -> void:
+	_twist = PowerBook.twist_at(extra, "erase")
 	lv_max_len = float(PowerBook.stat(extra, "erase", "MAX_LEN", MAX_LEN))
 	lv_crush_w = float(PowerBook.stat(extra, "erase", "CRUSH_W", CRUSH_W))
 	lv_throw_w = float(PowerBook.stat(extra, "erase", "THROW_W", THROW_W))
@@ -120,6 +135,8 @@ func _build() -> void:
 	to = origin + dir * length
 	duration = T_SEAM + T_FOLD + T_SNAP + SCAR
 	busy = T_SEAM + T_FOLD + T_SNAP
+	if _twist:
+		duration = T_SEAM + T_FOLD + T_SNAP + SEAM_LIFE
 	at(T_SEAM, _fold)
 	at(T_SEAM + T_FOLD, _close)
 	at(T_SEAM + T_FOLD + T_SNAP, _spring)
@@ -131,6 +148,11 @@ func _build() -> void:
 	_seam.fx = self
 	_seam.z_index = 4
 	track(_seam, ctx.ground)
+	if _twist:
+		var doors := Doors.new()
+		doors.fx = self
+		doors.z_index = 4
+		track(doors, ctx.ground)
 
 
 ## The middle of the line (where its proclamation hangs).
@@ -228,7 +250,58 @@ func _kept() -> Array:
 	return keep
 
 
+## Whether the two seams are open: after the spring back, for SEAM_LIFE seconds (level 5 only).
+func seams_open() -> bool:
+	return _twist and not finished and t >= T_SEAM + T_FOLD + T_SNAP and t < T_SEAM + T_FOLD + T_SNAP + SEAM_LIFE
+
+
+## The two ends of the line, which the seams join.
+func ends() -> Array[Vector2]:
+	return [origin, to]
+
+
+## Whoever stands at an end is set down at the other: one query per end, the living visitors of each pack beside it.
+func _step_seams() -> void:
+	for id: int in _rest.keys():
+		if _rest[id] <= t:
+			_rest.erase(id)
+	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
+	var pair := ends()
+	for i in 2:
+		var here := pair[i]
+		var there := pair[1 - i]
+		var bodies: Array = []
+		bodies.append_array(ctx.field.in_radius(here, SEAM_R))
+		if ctx.crowd != null:
+			for pack: Visitors in ctx.crowd.visitors:
+				for a in pack.living():
+					if a.ground_pos.distance_to(here) <= SEAM_R:
+						bodies.append(a)
+		if bodies.is_empty():
+			continue
+		var land := there
+		if grid != null:
+			land = grid.nearest_walkable(there, 8)
+		if land == Vector2.INF:
+			continue
+		for b: Variant in bodies:
+			if _rest.has(b.get_instance_id()) or not b.is_alive():
+				continue
+			var p := b as Person
+			if p != null and p.inside:
+				continue
+			if b.wrap_to(land):
+				_rest[b.get_instance_id()] = t + SEAM_REST
+				shortcuts += 1
+				if p != null:
+					p.wait = 0.0
+		if bodies.size() > 0:
+			ctx.play(&"er_tear", land, -8.0)
+
+
 func _fx_process(delta: float) -> void:
+	if seams_open():
+		_step_seams()
 	if t < T_SEAM or _closed:
 		return
 	_catch()
@@ -553,6 +626,7 @@ func _blocked(rect: Rect2) -> bool:
 ## Cut short mid-fold (an act of the night ends with it playing): what was sliding is put back where it stands, at its
 ## own size; the decor stays where the fold had brought it.
 func end_now() -> void:
+	_rest.clear()
 	if not finished and not _closed:
 		for sl: Array in _slides:
 			_unplace(sl)
@@ -563,6 +637,16 @@ func end_now() -> void:
 					if is_instance_valid(f):
 						f.scale = Vector2.ONE
 	super.end_now()
+
+
+func _finish() -> void:
+	_rest.clear()
+	super()
+
+
+func _exit_tree() -> void:
+	_rest.clear()
+	super()
 
 
 ## The seam on the ground, drawn in ground units: an ink-and-gilt line run down from the press while the seam opens,
@@ -630,3 +714,24 @@ class Seam extends Node2D:
 		var b := fx.origin + fx.dir * fx.length * clampf(fade * 1.4, 0.0, 1.0)
 		draw_line(a, b, Color(DecreeParts.INK, 0.8 * fade), 0.22)
 		draw_line(a, b, Color(DecreeParts.GILT, 0.9 * fade), 0.1)
+
+
+## The two seams (Shortcut): a gilt ring at each end of the line that opens after the spring back, breathes while it
+## holds and shuts at the end of its time. Drawn in ground units.
+class Doors extends Node2D:
+	var fx: EraseFx
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if not fx.seams_open():
+			return
+		var since := fx.t - (T_SEAM + T_FOLD + T_SNAP)
+		var left := SEAM_LIFE - since
+		var a := clampf(since / 0.3, 0.0, 1.0) * clampf(left / 1.0, 0.0, 1.0)
+		var pulse := 0.8 + 0.2 * sin(fx.t * 9.0)
+		for g: Vector2 in fx.ends():
+			draw_circle(g, SEAM_R, Color(DecreeParts.INK, 0.35 * a))
+			draw_arc(g, SEAM_R, 0.0, TAU, 24, Color(DecreeParts.GILT, 0.9 * a * pulse), 0.1)
+			draw_arc(g, SEAM_R * 0.55, 0.0, TAU, 16, Color(1.0, 0.97, 0.85, 0.7 * a), 0.05)

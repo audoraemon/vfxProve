@@ -121,12 +121,15 @@ static func door_of(s: Structure, grid: WalkGrid) -> Vector2:
 var lv_walk_life := WALK_LIFE
 var lv_kills_most := KILLS_MOST
 var lv_attack_r := ATTACK_R
+## Level 5, Borrowed Life: an ATTACK kill leaves no body (&"borrowed") and the walker takes the victim's look (DL7).
+var _twist := false
 
 
 func _build() -> void:
 	lv_walk_life = float(PowerBook.stat(extra, "walker", "WALK_LIFE", WALK_LIFE))
 	lv_kills_most = int(PowerBook.stat(extra, "walker", "KILLS_MOST", KILLS_MOST))
 	lv_attack_r = float(PowerBook.stat(extra, "walker", "ATTACK_R", ATTACK_R))
+	_twist = PowerBook.twist_at(extra, "walker")
 	busy = T_RISE
 	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
 	# The row's "reaches_hidden": a body walked indoors can be walked back out (Rules lets the cast through on the same flag).
@@ -215,8 +218,26 @@ func _chase(delta: float) -> void:
 	var who := foe
 	_set_order("wait")
 	kills += 1
-	if ctx.field != null:
+	if ctx.field == null:
+		return
+	if not _twist:
 		ctx.field.kill(who, &"grave", walker.ground_pos)
+		return
+	var look := who._design()
+	if ctx.field.kill(who, &"borrowed", walker.ground_pos):
+		_borrow(look)
+
+
+## Borrowed Life (DL7): the walker wears `look` (its facing kept) and the remain it carries lies down in it.
+func _borrow(look: String) -> void:
+	if look == "" or not is_instance_valid(walker):
+		return
+	var face := walker.facing
+	var turned := walker.back
+	walker.wear(look, remain.facing, Color.WHITE, Color(0, 0, 0, 0))
+	walker.facing = face
+	walker.back = turned
+	remain.design = look
 
 
 ## Whether `p` may be gone for: a living person out in the open, seen and not guised (as MindWhisperFx.foe_ok()). A Variant: `p`

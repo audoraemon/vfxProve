@@ -333,6 +333,12 @@ var queue_since := -1.0
 var passing_gate: Structure = null
 ## The field of buildings, for sorting against them. Null in tests that build a person without a town.
 var env: EnvironmentField
+## The people-sprite frame its last drawing showed (covered-outline, TagOutlines): the atlas rect, where it went (local px from the
+## draw origin) and whether that drawing was the standing body (not dead, not hoisted, a sprite at all). Drawing only: nothing reads it
+## but the tag outline, which traces that frame where something stands in front of it.
+var drawn_src := Rect2()
+var drawn_dst := Rect2()
+var drawn_upright := false
 ## This person's own speed multiplier, drawn from PACE_RANGE, so a crowd is not a marching column.
 var pace := 1.0
 ## Seconds until the next draw-order reading, staggered by instance so a crowd does not all re-sort together.
@@ -2819,6 +2825,7 @@ static func _screen_box(fp: Rect2, h: float) -> Rect2:
 # --- Drawing -----------------------------------------------------------------
 
 func _draw_body(lift: int, top_only: int) -> void:
+	drawn_upright = false
 	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD 			and not (SpriteArt.on() and PeopleArt.ready() and _prays()):
 		# On its knees: the body down, no legs under it (unless the sprite has a pray of its own).
 		lift += 3
@@ -3101,6 +3108,9 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 		sil.size.y = keep
 		dst.size.y = keep * sk
 	var atlas := PeopleArt.atlas()
+	drawn_src = src
+	drawn_dst = dst
+	drawn_upright = state != State.DEAD and _lift <= 8.0
 	draw_texture_rect_region(atlas, dst, src)
 	var tint := _sprite_tint()
 	if tint.a > 0.01:

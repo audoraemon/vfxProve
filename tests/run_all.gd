@@ -287,6 +287,7 @@ const SUITES := [
 	"res://tests/test_ui_scale.gd",
 	"res://tests/test_world_view.gd",
 	"res://tests/test_tag_on_person.gd",
+	"res://tests/test_tag_outlines.gd",
 ]
 
 var failures := 0

@@ -117,6 +117,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## Covered-outline (TagOutlines): the tagged people's outlines over what stands in front of them.
+var _outlines: TagOutlines
 ## The centre the wheel zooms about (wheel_zoom()), and where that put the camera: a camera found elsewhere was moved by something else.
 var _wheel_goal := Vector2.ZERO
 var _wheel_at := Vector2.INF
@@ -545,6 +547,13 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_hud.set_pause_hidden(_pause_hidden)
+	# Covered-outline: a tagged person behind a stall, a tree or a house is traced in the tag's colour over what hides them. One layer
+	# per battlefield, over the world's grade; each act's HUD hands it its tags.
+	if _outlines == null or not is_instance_valid(_outlines):
+		_outlines = TagOutlines.new().setup(_hud, _bf)
+		_bf.add_child(_outlines)
+	else:
+		_outlines.hud = _hud
 	_rules.banner.disconnect(hold)
 	_held_banners = held
 	set_ui_hidden(ui_hidden)  # a new act or a restart keeps the interface as the player left it

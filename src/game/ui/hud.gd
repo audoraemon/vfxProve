@@ -1468,6 +1468,14 @@ func pause_hidden() -> bool:
 	return _pause_hidden
 
 
+## The map's tags are on screen (covered-outline, TagOutlines traces them): the HUD and its tag layer shown (not hidden by the player,
+## not under the pause menu).
+func tag_layer_on() -> bool:
+	if not is_inside_tree() or not is_visible_in_tree() or _tag_layer == null or not _tag_layer.is_visible_in_tree():
+		return false
+	return not (get_parent() is CanvasLayer and not (get_parent() as CanvasLayer).visible)
+
+
 ## The tag layer's drawing (board tags): the tags on the map (v0.10; M6) and their edge arrows. The layer sits behind the
 ## HUD, so they sit under every other HUD element -- the clock, the bars, the events, the objectives, the status, the
 ## banners, Cael's plate and the slots -- and never hide one.

@@ -751,7 +751,7 @@ func tags() -> Array[MapTag]:
 			continue
 		for i in out.size():
 			if out[i].at == w.ground_pos and out[i].label == "":
-				out[i] = MapTag.person(w.ground_pos, MARK_GRIEVING, "POOR - TO THE SHRINE", true)
+				out[i] = MapTag.person(w, MARK_GRIEVING, "POOR - TO THE SHRINE", true)
 				break
 	return out
 

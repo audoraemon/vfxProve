@@ -416,39 +416,39 @@ func tags() -> Array[MapTag]:
 	if escaped or taken or bound_lost or not _alive(charge):
 		return out
 	if bound:
-		out.append(MapTag.person(charge.ground_pos, MARK_CHARGE, "PRISONER - DO NOT KILL", true))
+		out.append(MapTag.person(charge, MARK_CHARGE, "PRISONER - DO NOT KILL", true))
 		if is_instance_valid(stocks) and not stocks.destroyed:
 			var left := timeline.seconds_to("inside") if timeline != null else FREE_BY
 			var spot := MapTag.place(stocks_far, MARK_STOCKS, "STOCKS - TAKEN INSIDE IN %s" % UiTheme.clock(left), stocks.height, false)
 			spot.lift += STOCKS_LIFT  # above the prisoner's own plate, which stands over the same spot (the photograph, v0.11 M4)
 			out.append(spot)
 	elif held:
-		out.append(MapTag.person(charge.ground_pos, MARK_WATCHED, "PRISONER - CAUGHT", true))
+		out.append(MapTag.person(charge, MARK_WATCHED, "PRISONER - CAUGHT", true))
 	else:
-		out.append(MapTag.person(charge.ground_pos, MARK_CHARGE, "PRISONER", true))
+		out.append(MapTag.person(charge, MARK_CHARGE, "PRISONER", true))
 	var clear := watch_away or not _gate_watched()
 	out.append(MapTag.place(exit_at, MARK_CLEAR if clear else MARK_WATCHED, "POSTERN - CLEAR" if clear else "POSTERN - WATCHED", 0.0, true))
 	if held and _alive(seizer):
-		out.append(MapTag.person((seizer as Person).ground_pos, MARK_WATCHED, "TAKING HER BACK", true))
+		out.append(MapTag.person((seizer as Person), MARK_WATCHED, "TAKING HER BACK", true))
 		out.append(MapTag.place(return_to, MARK_WATCHED, "CITADEL"))
 	for v: Variant in gaolers:
 		if _alive(v) and v != seizer and not (v as Person).inside:
-			var warn := MapTag.person((v as Person).ground_pos, MARK_WATCHED, "GAOLER - SEIZES HER", true)
+			var warn := MapTag.person((v as Person), MARK_WATCHED, "GAOLER - SEIZES HER", true)
 			warn.lift = GAOLER_LIFT  # at the feet: the gaolers stand by the prisoner, and her plate would hide a plate over their heads
 			out.append(warn)
 	for v: Variant in hunters:
 		if _alive(v) and v != seizer and not (v as Person).inside:
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "SEARCHER", true))
+			out.append(MapTag.person((v as Person), MARK_WATCHED, "SEARCHER", true))
 	for squad: Array in patrols:
 		var named := false
 		for v: Variant in squad:
 			if _alive(v) and v != seizer and not (v as Person).inside:
-				out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "" if named else "PATROL"))
+				out.append(MapTag.person((v as Person), MARK_WATCHED, "" if named else "PATROL"))
 				named = true
 	if not watch_away:
 		for v: Variant in watch:
 			if _alive(v) and v != seizer and not (v as Person).inside:
-				out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED))
+				out.append(MapTag.person((v as Person), MARK_WATCHED))
 	return out
 
 

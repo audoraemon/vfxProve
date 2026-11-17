@@ -186,10 +186,10 @@ func tags() -> Array[MapTag]:
 		var label := "LANTERN-BEARER - KEEPS THE VIGIL"
 		if state == State.WALKING:
 			label = "LANTERN-BEARER - AT THE TOWER IN %s" % UiTheme.clock(seconds_left() * rules.clock_rate)
-		out.append(MapTag.person(carrier.ground_pos, GOLD, label, true))
+		out.append(MapTag.person(carrier, GOLD, label, true))
 	for e: Variant in escorts:
 		if _alive(e):
-			out.append(MapTag.person((e as Person).ground_pos, RED, "ESCORT", true))
+			out.append(MapTag.person((e as Person), RED, "ESCORT", true))
 	if state == State.WALKING and crowd.bell != null and is_instance_valid(crowd.bell.tower) and not crowd.bell.tower.destroyed:
 		out.append(MapTag.place(crowd.bell.tower.center(), ORANGE, "BELL TOWER", crowd.bell.tower.height))
 	return out

@@ -784,7 +784,7 @@ func tags() -> Array[MapTag]:
 	if not swapped and not kept and _lantern != Vector2.INF:
 		out.append(MapTag.person(_lantern, MARK_CART, _cart_label(), true))
 	if appeared and _alive(wren) and not wren.inside and not home:
-		out.append(MapTag.person(wren.ground_pos, MARK_PIP, _pip_label(), true))
+		out.append(MapTag.person(wren, MARK_PIP, _pip_label(), true))
 	if not swapped and next_halt() >= 0:
 		out.append(MapTag.place(checkpoints[next_halt()], MARK_PLACE, "CHECKPOINT", 0.0, true))
 	if not home:
@@ -795,26 +795,26 @@ func tags() -> Array[MapTag]:
 	var running := false
 	for r in reports:
 		if r.is_open() and _alive(r.carrier):
-			out.append(MapTag.person(r.carrier.ground_pos, MARK_WATCHED, "TO THE TEMPLE", true))
+			out.append(MapTag.person(r.carrier, MARK_WATCHED, "TO THE TEMPLE", true))
 			running = true
 	if running:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	var keeper := bellkeeper()
 	if keeper != null:
-		out.append(MapTag.person(keeper.ground_pos, MARK_WATCHED, "BELLKEEPER", true))
+		out.append(MapTag.person(keeper, MARK_WATCHED, "BELLKEEPER", true))
 	var named: Array = []
 	for v: Variant in escorts:
 		if _alive(v) and not (v as Person).inside:
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "CART ESCORT"))  # (the Lantern-Bearer's are "ESCORT")
+			out.append(MapTag.person((v as Person), MARK_WATCHED, "CART ESCORT"))  # (the Lantern-Bearer's are "ESCORT")
 			named.append(v)
 	for w: Warden in wardens:
 		if _alive(w.man) and not (w.man as Person).inside:
-			out.append(MapTag.person((w.man as Person).ground_pos, MARK_WATCHED, "WARDEN"))
+			out.append(MapTag.person((w.man as Person), MARK_WATCHED, "WARDEN"))
 			named.append(w.man)
 	if not swapped:
 		for f in watchers_now():
 			if not named.has(f):
-				out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
+				out.append(MapTag.person(f, MARK_WATCHED))
 	return out
 
 

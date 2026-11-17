@@ -472,16 +472,16 @@ func tags() -> Array[MapTag]:
 			continue
 		var p := w.man as Person
 		if _on_guard(w):
-			out.append(MapTag.person(p.ground_pos, MARK_WARDEN, "WARDEN"))
+			out.append(MapTag.person(p, MARK_WARDEN, "WARDEN"))
 		else:
-			out.append(MapTag.pip(p.ground_pos, MARK_WARDEN))
+			out.append(MapTag.pip(p, MARK_WARDEN))
 	var next := next_wave()
 	if next >= 0:
 		out.append(MapTag.place(_walkable(SOURCES[next]), MARK_NEXT, next_label(next), 0.0, true))
 	for p in unbroken():
-		out.append(MapTag.pip(p.ground_pos, MARK_GOER))
+		out.append(MapTag.pip(p, MARK_GOER))
 	for p in waiting_goers():
-		out.append(MapTag.pip(p.ground_pos, MARK_GOER))
+		out.append(MapTag.pip(p, MARK_GOER))
 	return out
 
 

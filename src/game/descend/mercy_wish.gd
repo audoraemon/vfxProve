@@ -159,8 +159,8 @@ func _target_tags() -> Array[MapTag]:
 		for k in family.size():
 			var v: Variant = family[k]
 			if not _escaped.has(_ids[k]) and MissionDirector._alive(v) and not (v as Person).inside:
-				out.append(MapTag.person((v as Person).ground_pos, COLOR, FAMILY_LABEL, true))
+				out.append(MapTag.person((v as Person), COLOR, FAMILY_LABEL, true))
 		return out
 	if not _out and MissionDirector._alive(target) and not target.inside:
-		out.append(MapTag.person(target.ground_pos, COLOR, "BROTHER"))
+		out.append(MapTag.person(target, COLOR, "BROTHER"))
 	return out

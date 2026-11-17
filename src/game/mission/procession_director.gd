@@ -358,16 +358,16 @@ func tags() -> Array[MapTag]:
 	var label := "PRINCE"
 	if prince.inside:
 		label = "PRINCE - IN HIS CARRIAGE %s" % UiTheme.clock(maxf(emerge_after - timeline.elapsed(), 0.0) * timeline.stretch_factor())
-	out.append(MapTag.person(prince.ground_pos, MARK_PRINCE, label, true))
+	out.append(MapTag.person(prince, MARK_PRINCE, label, true))
 	out.append(MapTag.place(route[route.size() - 1], MARK_WATCHED, "THE SHIP", 0.0, false))
 	if leg <= STEPS_LEG:
 		out.append(MapTag.place(route[STEPS_LEG], MARK_STEPS, "CATHEDRAL STEPS", 0.0, false))
 	var seeing := witnesses()
 	for p in seeing:
-		out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+		out.append(MapTag.person(p, MARK_WATCHED))
 	for s in escorts:
 		if WarningDirector._alive(s) and not s.inside and not seeing.has(s):
-			out.append(MapTag.person(s.ground_pos, MARK_ESCORT))
+			out.append(MapTag.person(s, MARK_ESCORT))
 	return out
 
 

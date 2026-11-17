@@ -1219,14 +1219,14 @@ func tags() -> Array[MapTag]:
 		var words := "BELIEVER"
 		if i == lead:
 			words = "PYRE IN %s" % UiTheme.clock(ceilf(pyre_in(i)))
-		out.append(MapTag.person(p.ground_pos, MARK_CHARGE, "%s - DO NOT KILL" % words, true))
+		out.append(MapTag.person(p, MARK_CHARGE, "%s - DO NOT KILL" % words, true))
 	for i in order:
 		var pr: Procession = procs[i]
 		if not pr.phase in [Procession.Phase.FORMING, Procession.Phase.MARCHING, Procession.Phase.BURNING]:
 			continue
 		for k in pr.escorts.size():
 			if _able(pr, k):
-				out.append(MapTag.person((pr.escorts[k] as Person).ground_pos, MARK_WATCHED, "ESCORT", true))
+				out.append(MapTag.person((pr.escorts[k] as Person), MARK_WATCHED, "ESCORT", true))
 	for i in households.size():
 		if not (households[i] as Household).out:
 			out.append(_waiting_tag(i))

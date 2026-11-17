@@ -752,7 +752,7 @@ func all_tags() -> Array[MapTag]:
 		out.append_array(_rules.lantern.tags())  # v0.11.2: the Herald and the Bearer, after the mission's own, before the wishes'
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
-	return out
+	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn
 
 
 ## The camera's canvas transform of the world the HUD marks (ground-side screen points to HUD px).
@@ -772,7 +772,7 @@ func wish_at(point: Vector2) -> int:
 	for i in wishes.size():
 		if not wishes[i].waiting():
 			continue
-		for tag in wishes[i].tags():
+		for tag in MapTag.shown(wishes[i].tags()):
 			if tag.valid() and tag_point(tag, xf).distance_to(point) <= ENGAGE_PX:
 				return i
 	return -1
@@ -949,8 +949,61 @@ static func mark_shape(c: Vector2, r := MARK_R) -> PackedVector2Array:
 
 ## Where a tag's diamond sits on screen (v0.10 M6): its ground point raised `rise` world pixels, through the camera `xf`,
 ## then `lift` screen pixels up.
+## 2026-11-17 tag fix: a tag on a person (`who`) is placed from the body as drawn, not from a ground point: with the person's lift
+## (MapTag.PERSON_LIFT) its diamond's lower tip sits PERSON_GAP screen px over the top of the head (DummyEnemy.tag_top(): the drawn feet,
+## the sort bias, the head's height, a power's lift) at every zoom -- a fixed 22 screen px floated over a far-out crowd and sank into the
+## chest close in; with a lift of its own (the gaolers' plate at the feet) that lift is taken from the drawn feet.
 static func tag_point(t: MapTag, xf: Transform2D) -> Vector2:
+	if t.who != null and is_instance_valid(t.who) and t.who.is_inside_tree():  # out of the tree (a model world) nothing is drawn: its point
+		if t.lift == MapTag.PERSON_LIFT and t.rise == 0.0:
+			return (xf * t.who.tag_top() - Vector2(0.0, t.size + PERSON_GAP)).round()
+		var feet := t.who.get_global_transform() * t.who._draw_origin
+		return (xf * (feet - Vector2(0.0, t.rise)) - Vector2(0.0, t.lift)).round()
 	return (xf * (Iso.ground_to_screen(t.at) - Vector2(0.0, t.rise)) - Vector2(0.0, t.lift)).round()
+
+
+## Screen px between the top of a tagged person's head and the lower tip of its diamond.
+const PERSON_GAP := 1.0
+## How far (screen px) a tag may sit from where its person's body puts it before tag_faults() calls it a fault.
+const TAG_TOLERANCE := 3.0
+
+
+## The tag-on-person invariant (2026-11-17 tag fix), for the tests: one line per fault among `tags` (what the map shows, all_tags()) under the
+## camera `xf`, empty when every tag on a person sits on that person's drawn body and that body is drawn. Checked against Godot's own mapping
+## of the body to the screen (its global transform with canvas -- the world viewport's camera when hosted), not tag_point()'s, so a HUD
+## that placed its tags with another transform than the one the world is drawn with fails here. `people` (the crowd's) catches a tag made
+## from a point copied off a living person instead of the person, which nothing could hide when that person goes in or fades.
+static func tag_faults(tags: Array[MapTag], xf: Transform2D, people: Array = [], tol := TAG_TOLERANCE) -> PackedStringArray:
+	var out := PackedStringArray()
+	for t in tags:
+		if not t.valid():
+			continue
+		var what := "'%s' at %s" % [t.label, t.at]
+		if t.who == null:
+			if t.lift == MapTag.PERSON_LIFT and t.rise == 0.0:
+				for v: Variant in people:
+					if is_instance_valid(v) and (v as DummyEnemy).is_alive() and (v as DummyEnemy).ground_pos.distance_to(t.at) < 0.01:
+						out.append("%s marks a person by a copied point: hand MapTag.person() the Person" % what)
+						break
+			continue
+		if not is_instance_valid(t.who):
+			out.append("%s marks a freed person" % what)
+			continue
+		if not t.who.tag_drawn():
+			out.append("%s is shown over a person who is not drawn (visible %s, inside %s, alpha %.2f)" % [what, t.who.is_visible_in_tree(),
+				t.who.get("inside"), t.who.modulate.a])
+		if t.at.distance_to(t.who.ground_pos) > 0.01:
+			out.append("%s is stale: its person stands at %s" % [what, t.who.ground_pos])
+		var canvas := t.who.get_global_transform_with_canvas()
+		var feet := canvas * t.who._draw_origin
+		var k := canvas.get_scale().y
+		var want := feet - Vector2(0.0, t.rise * k + t.lift)
+		if t.lift == MapTag.PERSON_LIFT and t.rise == 0.0:
+			want = feet - Vector2(0.0, (t.who.tag_head() + roundf(t.who._lift)) * k + t.size + PERSON_GAP)
+		var c := tag_point(t, xf)
+		if c.distance_to(want) > tol:
+			out.append("%s: diamond at %s, its person's body puts it at %s (feet %s)" % [what, c, want.round(), feet.round()])
+	return out
 
 
 ## The frame the tags' arrows keep to on a screen `view` wide and tall (v0.10 M6).
@@ -1397,6 +1450,8 @@ func _tag_signature(with_stack := true) -> String:
 	for t in tags:
 		out += "|%s%s%s%s%s%s%s%s%s%d" % [t.at, t.color.to_html(), t.label, t.rise, t.lift, t.size, t.edge, t.outline, t.valid(),
 			roundi(t.ring * 48.0)]  # god P3: a ring filling (a grip on a standing captive) redraws the layer
+		if t.who != null:
+			out += "@%s" % tag_point(t, xf)  # the body as drawn (a lift, a sort bias) moves its diamond
 	return out
 
 

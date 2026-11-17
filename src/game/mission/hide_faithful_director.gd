@@ -1359,9 +1359,9 @@ func tags() -> Array[MapTag]:
 	for c in charges:
 		if not c.held or _resolved(c):
 			continue
-		out.append(MapTag.person((c.man as Person).ground_pos, MARK_WATCHED, "SEIZED - TEMPLE IN %s%s" % [UiTheme.clock(_temple_in(c)), warn], true))
+		out.append(MapTag.person((c.man as Person), MARK_WATCHED, "SEIZED - TEMPLE IN %s%s" % [UiTheme.clock(_temple_in(c)), warn], true))
 		if _alive(c.seizer):
-			out.append(MapTag.person((c.seizer as Person).ground_pos, MARK_WATCHED, "TAKING HIM IN", true))
+			out.append(MapTag.person((c.seizer as Person), MARK_WATCHED, "TAKING HIM IN", true))
 		marched = true
 	if marched:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE", 0.0, true))
@@ -1379,9 +1379,9 @@ func tags() -> Array[MapTag]:
 				var g := heading(i)
 				var gate := String((gates[g] as Gate).label) if g >= 0 else "GATE"
 				var eta := _road_left(i, p.ground_pos) / maxf(Person.PANIC_SPEED * believer_pace(), 0.1)
-				out.append(MapTag.person(p.ground_pos, MARK_CHARGE, "BELIEVER - %s IN %s%s" % [gate, UiTheme.clock(eta), warn], true))
+				out.append(MapTag.person(p, MARK_CHARGE, "BELIEVER - %s IN %s%s" % [gate, UiTheme.clock(eta), warn], true))
 			else:
-				out.append(MapTag.person(p.ground_pos, MARK_CHARGE, "BELIEVER" + warn, true))
+				out.append(MapTag.person(p, MARK_CHARGE, "BELIEVER" + warn, true))
 	for k in _search.size():
 		if _reached(k) or k >= _eta.size() or _eta[k] == INF:
 			continue
@@ -1389,17 +1389,17 @@ func tags() -> Array[MapTag]:
 		out.append(MapTag.place(_search[k].door, color, "SEARCH IN %s" % UiTheme.clock(search_eta(k)), 0.0, true))
 	for v: Variant in inquisitors:
 		if _alive(v) and not (v as Person).inside and not _seizing(v):
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "INQUISITOR", true))
+			out.append(MapTag.person((v as Person), MARK_WATCHED, "INQUISITOR", true))
 	for squad: Array in patrols:
 		var named := false
 		for v: Variant in squad:
 			if _alive(v) and not (v as Person).inside and not _seizing(v) and (v as Person).mind != Person.Mind.RALLY:  # (rallied: gone, P5-T17-R1)
-				out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "" if named else "WATCH", not named))
+				out.append(MapTag.person((v as Person), MARK_WATCHED, "" if named else "WATCH", not named))
 				named = true
 	var posted := 0
 	for v: Variant in watch:
 		if _alive(v) and not (v as Person).inside and not _seizing(v) and (v as Person).mind != Person.Mind.RALLY:  # (rallied: gone, P5-T17-R1)
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "WATCH" if posted % 2 == 0 else ""))
+			out.append(MapTag.person((v as Person), MARK_WATCHED, "WATCH" if posted % 2 == 0 else ""))
 		posted += 1
 	return out
 

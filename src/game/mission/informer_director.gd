@@ -480,19 +480,19 @@ func tags() -> Array[MapTag]:
 		out.append(_target_tag(q))
 		out.append(MapTag.place(safe_at, MARK_WATCHED, safe_label, 0.0, true))
 		for p in witnesses(q):
-			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(p, MARK_WATCHED))
 		return out
 	var c := contact_now()
 	if c == null:
 		return out
 	if _alive(c.man) and not (c.man as Person).inside:
-		out.append(MapTag.person((c.man as Person).ground_pos, MARK_PLACE if c.word else MARK_WAITING, _contact_label(c), true))
+		out.append(MapTag.person((c.man as Person), MARK_PLACE if c.word else MARK_WAITING, _contact_label(c), true))
 		for p in onlookers(c):
-			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(p, MARK_WATCHED))
 	for o in contacts:
 		if o == c or o.turned or not _alive(o.man) or (o.man as Person).inside:
 			continue
-		out.append(MapTag.person((o.man as Person).ground_pos, MARK_PALE, _contact_label(o)))
+		out.append(MapTag.person((o.man as Person), MARK_PALE, _contact_label(o)))
 	return out
 
 

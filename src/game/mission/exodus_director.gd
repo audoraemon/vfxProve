@@ -833,9 +833,9 @@ func tags() -> Array[MapTag]:
 	for c in charges:
 		if not c.held or _resolved(c):
 			continue
-		out.append(MapTag.person((c.man as Person).ground_pos, MARK_WATCHED, "TAKEN TO THE TEMPLE", true))
+		out.append(MapTag.person((c.man as Person), MARK_WATCHED, "TAKEN TO THE TEMPLE", true))
 		if _alive(c.seizer):
-			out.append(MapTag.person((c.seizer as Person).ground_pos, MARK_WATCHED, "TAKING HIM IN", true))
+			out.append(MapTag.person((c.seizer as Person), MARK_WATCHED, "TAKING HIM IN", true))
 		marched = true
 	for i in households.size():
 		var h: Household = households[i]
@@ -848,7 +848,7 @@ func tags() -> Array[MapTag]:
 			if _resolved(c) or c.held or (c.man as Person).inside:
 				continue
 			var p := c.man as Person
-			out.append(MapTag.person(p.ground_pos, MARK_CHARGE, "LAMP - DO NOT KILL" if c == lead else "", c == lead))
+			out.append(MapTag.person(p, MARK_CHARGE, "LAMP - DO NOT KILL" if c == lead else "", c == lead))
 	if marched:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE", 0.0, true))
 	for g in gates.size():
@@ -870,16 +870,16 @@ func tags() -> Array[MapTag]:
 			continue
 		for v: Variant in h.searchers:
 			if _alive(v) and not (v as Person).inside:
-				out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "SEARCHER", true))
+				out.append(MapTag.person((v as Person), MARK_WATCHED, "SEARCHER", true))
 	for squad: Array in patrols:
 		var named := false
 		for v: Variant in squad:
 			if _alive(v) and not (v as Person).inside:
-				out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "" if named else "PATROL"))
+				out.append(MapTag.person((v as Person), MARK_WATCHED, "" if named else "PATROL"))
 				named = true
 	for v: Variant in watch:
 		if _alive(v) and not (v as Person).inside:
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED))
+			out.append(MapTag.person((v as Person), MARK_WATCHED))
 	return out
 
 

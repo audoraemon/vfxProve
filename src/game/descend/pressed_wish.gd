@@ -255,8 +255,8 @@ func check(rules: Rules) -> Status:
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if MissionDirector._alive(child) and not child.inside:
-		out.append(MapTag.person(child.ground_pos, COLOR, String(_param("son_label", "PRESSED MAN")), true))
+		out.append(MapTag.person(child, COLOR, String(_param("son_label", "PRESSED MAN")), true))
 	for p in _men():
 		if not p.inside:
-			out.append(MapTag.person(p.ground_pos, COLOR, String(_param("guard_label", "PRESS-GANG")), engaged))
+			out.append(MapTag.person(p, COLOR, String(_param("guard_label", "PRESS-GANG")), engaged))
 	return out

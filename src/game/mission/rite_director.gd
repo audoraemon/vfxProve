@@ -658,7 +658,7 @@ func left() -> int:
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if _alive(captive):
-		var c := MapTag.person(captive.ground_pos, MARK_VICTIM, CAPTIVE_TAG % UiTheme.clock(drag_eta()), true)
+		var c := MapTag.person(captive, MARK_VICTIM, CAPTIVE_TAG % UiTheme.clock(drag_eta()), true)
 		if grip_by != null:
 			c.ring = clampf(grip / BREAK_SECONDS, 0.0, 1.0)
 		out.append(c)
@@ -668,8 +668,8 @@ func tags() -> Array[MapTag]:
 		if not _alive(w) or w == captive or (w as Person).inside:
 			continue
 		var v := w as Person
-		out.append(MapTag.person(v.ground_pos, MARK_VICTIM, victim_word(), true))
-		var pip := MapTag.pip(v.ground_pos, MARK_VICTIM)
+		out.append(MapTag.person(v, MARK_VICTIM, victim_word(), true))
+		var pip := MapTag.pip(v, MARK_VICTIM)
 		pip.lift = 8.0
 		out.append(pip)
 	return out

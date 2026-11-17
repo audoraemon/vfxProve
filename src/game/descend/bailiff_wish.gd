@@ -203,7 +203,7 @@ func hud_text(_rules: Rules) -> String:
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if MissionDirector._alive(bailiff) and not bailiff.inside:
-		out.append(MapTag.person(bailiff.ground_pos, COLOR, "BAILIFF", engaged))
+		out.append(MapTag.person(bailiff, COLOR, "BAILIFF", engaged))
 	if home != Vector2.INF:
 		out.append(MapTag.place(home, COLOR, "HOME", 0.0, false))
 	return out

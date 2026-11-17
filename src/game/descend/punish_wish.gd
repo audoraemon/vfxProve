@@ -102,7 +102,7 @@ func _act(_rules: Rules) -> Status:
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if MissionDirector._alive(target) and not target.inside:
-		out.append(MapTag.person(target.ground_pos, COLOR, String(def.params.get("label", "")), bool(def.params.get("edge", false))))
+		out.append(MapTag.person(target, COLOR, String(def.params.get("label", "")), bool(def.params.get("edge", false))))
 	return out
 
 

@@ -694,11 +694,11 @@ func tags() -> Array[MapTag]:
 			var label := TAG_CLERGY
 			if k == 0 and not (m.walking and _kneeling_all(m)):
 				label = (TAG_MUSTER % UiTheme.clock(m.muster_left)) if not m.walking else (TAG_LEADER % UiTheme.clock(m.eta))
-			out.insert(idx, MapTag.person(p.ground_pos, EscortDirector.MARK_WATCHED, label, true))
+			out.insert(idx, MapTag.person(p, EscortDirector.MARK_WATCHED, label, true))
 			idx += 1
 	for w: Variant in watch:
 		if _alive(w) and not (w as Person).inside:
-			out.append(MapTag.person((w as Person).ground_pos, EscortDirector.MARK_WATCHED, TAG_WATCH))
+			out.append(MapTag.person((w as Person), EscortDirector.MARK_WATCHED, TAG_WATCH))
 	return out
 
 

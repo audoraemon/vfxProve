@@ -77,5 +77,5 @@ func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for p: Variant in family:
 		if MissionDirector._alive(p) and not (p as Person).inside and not shown.has(p):
-			out.append(MapTag.person((p as Person).ground_pos, COLOR, LABEL))
+			out.append(MapTag.person((p as Person), COLOR, LABEL))
 	return out

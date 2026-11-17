@@ -244,7 +244,7 @@ func tags() -> Array[MapTag]:
 		out.append_array(ringers[i].tags())
 	var bell := crowd.bell
 	if called():
-		out.append(MapTag.person(bell.keeper.ground_pos, WarningDirector.MARK_KEEPER, "BELLKEEPER", true))
+		out.append(MapTag.person(bell.keeper, WarningDirector.MARK_KEEPER, "BELLKEEPER", true))
 	var next := next_post()
 	for i in ringers.size():
 		if not ringers[i].waiting:

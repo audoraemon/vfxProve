@@ -214,9 +214,9 @@ func hud_text(_rules: Rules) -> String:
 func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if MissionDirector._alive(child) and not child.inside:
-		out.append(MapTag.person(child.ground_pos, COLOR, "THE CHILD", engaged))
+		out.append(MapTag.person(child, COLOR, "THE CHILD", engaged))
 	if MissionDirector._alive(soldier) and not soldier.inside:
-		out.append(MapTag.person(soldier.ground_pos, COLOR, "SOLDIER", engaged))
+		out.append(MapTag.person(soldier, COLOR, "SOLDIER", engaged))
 	return out
 
 

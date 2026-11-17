@@ -315,21 +315,21 @@ func tags() -> Array[MapTag]:
 	var running := false
 	for r in reports:
 		if r.is_open() and _alive(r.carrier):
-			out.append(MapTag.person(r.carrier.ground_pos, MARK_WATCHED, "TO THE TEMPLE", true))
+			out.append(MapTag.person(r.carrier, MARK_WATCHED, "TO THE TEMPLE", true))
 			running = true
 	if _alive(shouter):
-		out.append(MapTag.person(shouter.ground_pos, MARK_BELIEVER, "CRYING OUT", true))
+		out.append(MapTag.person(shouter, MARK_BELIEVER, "CRYING OUT", true))
 	if _alive(venn) and not venn.inside:
 		var eyes := open and _sees(venn, door, SIGHT, null)
-		out.append(MapTag.person(venn.ground_pos, MARK_VENN, "INQUISITOR - WATCHING" if eyes else "INQUISITOR", venn_searching))
+		out.append(MapTag.person(venn, MARK_VENN, "INQUISITOR - WATCHING" if eyes else "INQUISITOR", venn_searching))
 	if running:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	if open:
 		for f in watchers(door, SIGHT, venn):
-			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(f, MARK_WATCHED))
 	for p in grieving:
 		if _alive(p) and not p.inside:
-			out.append(MapTag.person(p.ground_pos, MARK_BELIEVER if believers.has(p) else MARK_GRIEVING))
+			out.append(MapTag.person(p, MARK_BELIEVER if believers.has(p) else MARK_GRIEVING))
 	return out
 
 

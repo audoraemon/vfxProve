@@ -115,6 +115,9 @@ const PACE_RANGE := Vector2(0.85, 1.2)
 ## A child's people sprite while it wears a grown-up's design standing in for its own (PeopleArt.STAND_INS): drawn this
 ## much smaller, feet on its ground point.
 const CHILD_STAND_IN_SCALE := 0.78
+## A soldier's and a child's head heights for a map tag (tag_head(); a citizen's is DummyEnemy.TAG_HEAD).
+const TAG_HEAD_SOLDIER := 20.0
+const TAG_HEAD_CHILD := 15.0
 ## One panicked dash: how far (ground units), and how far it may veer from straight away (radians).
 const DASH := Vector2(1.6, 3.2)
 const DASH_VEER := 0.6
@@ -1837,6 +1840,18 @@ func _soldier_back() -> void:
 			hold_ground()
 		_:
 			send_to_post(at, false, hurry)
+
+
+## Its head's height for a map tag (DummyEnemy.tag_head()): a soldier's helmet stands higher, a child lower.
+func tag_head() -> float:
+	if soldier:
+		return TAG_HEAD_SOLDIER
+	return TAG_HEAD_CHILD if is_child() else TAG_HEAD
+
+
+## Indoors (a shelter, a house, a cell, the ferry) is never drawn, whatever its visibility says.
+func tag_drawn() -> bool:
+	return not inside and super()
 
 
 ## One of the town's children (Children).

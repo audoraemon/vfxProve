@@ -156,5 +156,5 @@ func _target_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	for p: Variant in neighbours:
 		if MissionDirector._alive(p) and not (p as Person).inside and not believing.has(p):
-			out.append(MapTag.person((p as Person).ground_pos, COLOR, _label(), bool(def.params.get("edge", false))))
+			out.append(MapTag.person((p as Person), COLOR, _label(), bool(def.params.get("edge", false))))
 	return out

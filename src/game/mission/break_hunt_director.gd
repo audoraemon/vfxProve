@@ -1156,7 +1156,7 @@ func tags() -> Array[MapTag]:
 			continue
 		var held := " - TAKEN UP" if _clock < _steady_until[i] else ""
 		var label := standard_label + held + (" - PLANTED" if _planted[i] else " - HOUSE IN %s" % UiTheme.clock(ceilf(eta(i))))
-		out.append(MapTag.person(b.ground_pos, MARK_TARGET, label, true))
+		out.append(MapTag.person(b, MARK_TARGET, label, true))
 	for h in houses.size():
 		if _taken[h]:
 			out.append(MapTag.place(house_doors[h], BH_MARK_TAKEN, "BELIEVERS - TAKEN", (houses[h].height if is_instance_valid(houses[h]) else 0.0), true))
@@ -1175,9 +1175,9 @@ func tags() -> Array[MapTag]:
 			if not _alive(g.man) or (g.man as Person).inside:
 				continue
 			if steps[i].raised:
-				out.append(MapTag.person((g.man as Person).ground_pos, MARK_WATCHED, escort_label, true))
+				out.append(MapTag.person((g.man as Person), MARK_WATCHED, escort_label, true))
 			else:
-				out.append(MapTag.pip((g.man as Person).ground_pos, MARK_WATCHED))
+				out.append(MapTag.pip((g.man as Person), MARK_WATCHED))
 	return out
 
 

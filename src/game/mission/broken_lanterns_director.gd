@@ -274,10 +274,10 @@ func tags() -> Array[MapTag]:
 		elif drain_left.has(s):
 			out.append(MapTag.place(s.center(), MARK_DRAINING, "DRAINING %d" % ceili(float(drain_left[s])), SHRINE_H))
 	if vigil != null and vigil.active and _alive(vigil.bearer):
-		out.append(MapTag.person(vigil.bearer.ground_pos, MARK_LIT, "FLAME-BEARER", vigil.detour != Vector2.INF))
+		out.append(MapTag.person(vigil.bearer, MARK_LIT, "FLAME-BEARER", vigil.detour != Vector2.INF))
 	for k in knights:
 		if _alive(k):
-			out.append(MapTag.person(k.ground_pos, MARK_KNIGHT, "KNIGHT"))
+			out.append(MapTag.person(k, MARK_KNIGHT, "KNIGHT"))
 	return out
 
 

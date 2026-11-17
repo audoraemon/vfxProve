@@ -389,7 +389,7 @@ func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	var with_us := appeared and _alive(wren) and not wren.inside
 	if with_us and not home:
-		out.append(MapTag.person(wren.ground_pos, MARK_WREN, _wren_label(), true))
+		out.append(MapTag.person(wren, MARK_WREN, _wren_label(), true))
 	if not swapped:
 		var flame := vigil.bearer.ground_pos if vigil != null and vigil.active and _alive(vigil.bearer) else _lantern
 		if flame != Vector2.INF:
@@ -399,7 +399,7 @@ func tags() -> Array[MapTag]:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	if with_us and not swapped:
 		for f in watchers(wren.ground_pos, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null):
-			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(f, MARK_WATCHED))
 	return out
 
 

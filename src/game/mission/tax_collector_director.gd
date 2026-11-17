@@ -302,7 +302,7 @@ func _target_tag(q: Quarry) -> MapTag:
 		var words := q.label + " - GUARDED"
 		if not _guarded(q):
 			words = q.label + " - MOB " + UiTheme.clock(ceilf(mob_left(q)))
-		return MapTag.person(q.target.ground_pos, MARK_TARGET, words, true)
+		return MapTag.person(q.target, MARK_TARGET, words, true)
 	return super(q)
 
 

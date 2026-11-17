@@ -368,10 +368,10 @@ func tags() -> Array[MapTag]:
 	var label := "WITNESS - TEMPLE IN %s" % UiTheme.clock(eta())
 	if messenger.inside:
 		label = "WITNESS INSIDE - TEMPLE IN %s" % UiTheme.clock(eta())  # (sheltering: hidden, but the tag and the strip's row go on, review M8)
-	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
+	out.append(MapTag.person(messenger, MARK_MESSENGER, label, true))
 	for v: Variant in mates:
 		if _alive(v) and v != messenger and not (v as Person).inside:
-			out.append(MapTag.person((v as Person).ground_pos, MARK_WATCHED, "MATE", true))
+			out.append(MapTag.person((v as Person), MARK_WATCHED, "MATE", true))
 	return out
 
 

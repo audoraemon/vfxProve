@@ -594,11 +594,11 @@ func tags() -> Array[MapTag]:
 				continue
 			var p := a.man as Person
 			if _on_guard(i, a):
-				out.append(MapTag.person(p.ground_pos, MARK_WATCHED, "ARMED"))
+				out.append(MapTag.person(p, MARK_WATCHED, "ARMED"))
 			elif a.relief:
-				out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+				out.append(MapTag.person(p, MARK_WATCHED))
 			else:
-				out.append(MapTag.pip(p.ground_pos, MARK_WATCHED))
+				out.append(MapTag.pip(p, MARK_WATCHED))
 	return out
 
 

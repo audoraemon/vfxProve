@@ -565,14 +565,14 @@ func tags() -> Array[MapTag]:
 	var herald := herald_open()
 	if herald:
 		label = herald_label()  # v0.11.2: the bell has tolled: the keeper and the tower are no longer the errand
-	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
+	out.append(MapTag.person(messenger, MARK_MESSENGER, label, true))
 	if keeper != null and keeper != messenger and not keeper.inside and not herald:
-		out.append(MapTag.person(keeper.ground_pos, MARK_KEEPER, _keeper_label(), phase == Phase.RUN))
+		out.append(MapTag.person(keeper, MARK_KEEPER, _keeper_label(), phase == Phase.RUN))
 	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed and not herald:
 		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
 	if phase == Phase.RUN or phase == Phase.DELIVERED:
 		for p in witnesses():
-			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(p, MARK_WATCHED))
 	return out
 
 

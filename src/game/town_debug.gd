@@ -327,9 +327,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
 		_pan(-event.relative / _bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		# About the screen's centre, as a mission's wheel (Mission.wheel_zoom()): an edge's clamp gives the kept centre back on the way in.
+		if _bf.camera.position != _wheel_at:
+			_wheel_goal = _bf.camera.position
 		var z := _bf.camera.logical_zoom() * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
 		_bf.camera.zoom_to(clampf(z, Mission.zoom_min(), ZOOM_MAX))
+		_bf.camera.position = _wheel_goal
 		_pan(Vector2.ZERO)
+		_wheel_at = _bf.camera.position
 		if is_instance_valid(_zoom_readout):
 			_zoom_readout.show_zoom(_bf.camera.logical_zoom())
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -360,6 +365,11 @@ func _process(delta: float) -> void:
 
 
 ## Panned within PAN_MIN..PAN_MAX, the view kept on the drawn ground (TownFloor.keep_in_view(), polish 3).
+## The centre the wheel zooms about, and where that put the camera (Mission.wheel_zoom()).
+var _wheel_goal := Vector2.ZERO
+var _wheel_at := Vector2.INF
+
+
 func _pan(by: Vector2) -> void:
 	_bf.camera.position = TownFloor.keep_in_view((_bf.camera.position + by).clamp(PAN_MIN, PAN_MAX), _bf.camera.zoom.x,
 		get_viewport().get_visible_rect().size)

@@ -667,16 +667,16 @@ func tags() -> Array[MapTag]:
 				continue
 			var p := w.man as Person
 			if _on_guard(s, w):
-				out.append(MapTag.person(p.ground_pos, MARK_WATCHED, "WATCHMAN"))
+				out.append(MapTag.person(p, MARK_WATCHED, "WATCHMAN"))
 			else:
-				out.append(MapTag.pip(p.ground_pos, MARK_WATCHED))
+				out.append(MapTag.pip(p, MARK_WATCHED))
 	for s in targets:
 		if razed(s) or not _out_at.has(s):
 			continue
 		var label := "CARTER - %d LEFT" % int(loads[s]) if has_grain(s) else "CARTER - GRAIN IN %s" % UiTheme.clock(grain_left(s))
 		for c: Variant in carters.get(s, []):
 			if _alive(c) and not (c as Person).inside:
-				out.append(MapTag.person((c as Person).ground_pos, MARK_CARTER, label, true))
+				out.append(MapTag.person((c as Person), MARK_CARTER, label, true))
 	return out
 
 

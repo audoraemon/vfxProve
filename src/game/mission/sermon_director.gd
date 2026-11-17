@@ -745,16 +745,16 @@ func tags() -> Array[MapTag]:
 	var running := false
 	for r in reports:
 		if r.is_open() and _alive(r.carrier):
-			out.append(MapTag.person(r.carrier.ground_pos, MARK_WATCHED, "TO THE TEMPLE", true))
+			out.append(MapTag.person(r.carrier, MARK_WATCHED, "TO THE TEMPLE", true))
 			running = true
 	if running:
 		out.append(MapTag.place(temple_door, MARK_WATCHED, "TEMPLE"))
 	var keeper := bellkeeper()
 	if keeper != null:
-		out.append(MapTag.person(keeper.ground_pos, MARK_WATCHED, "BELLKEEPER", true))
+		out.append(MapTag.person(keeper, MARK_WATCHED, "BELLKEEPER", true))
 	if _alive(preacher) and not (preacher as Person).inside:
 		var on := preaching()
-		out.append(MapTag.person((preacher as Person).ground_pos, MARK_WATCHED if on else MARK_GREY, "PREACHER" if on else "PREACHER - SILENT",
+		out.append(MapTag.person((preacher as Person), MARK_WATCHED if on else MARK_GREY, "PREACHER" if on else "PREACHER - SILENT",
 			true))
 	var w := next_wave()
 	if w > 0:
@@ -763,29 +763,29 @@ func tags() -> Array[MapTag]:
 		if not _alive(st.man) or (st.man as Person).inside:
 			continue
 		if _on_guard(st):
-			out.append(MapTag.person((st.man as Person).ground_pos, MARK_WATCHED, "SENTRY"))
+			out.append(MapTag.person((st.man as Person), MARK_WATCHED, "SENTRY"))
 		else:
-			out.append(MapTag.person((st.man as Person).ground_pos, MARK_WATCHED))  # off guard: whispered, confused, returning, a relief
+			out.append(MapTag.person((st.man as Person), MARK_WATCHED))  # off guard: whispered, confused, returning, a relief
 	var posted := _busy()
 	for f in watchers(door, SIGHT):
 		if not posted.has(f):
-			out.append(MapTag.person(f.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(f, MARK_WATCHED))
 	for a: Variant in acolytes:
 		if _alive(a) and not (a as Person).inside:
-			out.append(MapTag.person((a as Person).ground_pos, MARK_WATCHED))
+			out.append(MapTag.person((a as Person), MARK_WATCHED))
 	for l: Listener in listeners:
 		if not _alive(l.man) or (l.man as Person).inside:
 			continue
 		var p := l.man as Person
 		if believers.has(p):
-			out.append(MapTag.person(p.ground_pos, MARK_CLEAR))
+			out.append(MapTag.person(p, MARK_CLEAR))
 			continue
 		if not called[l.wave]:
-			out.append(MapTag.person(p.ground_pos, MARK_GREY))  # waiting for his wave: not yet to be whispered (the final review)
+			out.append(MapTag.person(p, MARK_GREY))  # waiting for his wave: not yet to be whispered (the final review)
 			continue
-		out.append(MapTag.person(p.ground_pos, MARK_GOLD))
+		out.append(MapTag.person(p, MARK_GOLD))
 		if rapt(p):
-			out.append(MapTag.pip(p.ground_pos, MARK_WATCHED))
+			out.append(MapTag.pip(p, MARK_WATCHED))
 	return out
 
 

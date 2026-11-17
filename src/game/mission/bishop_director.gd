@@ -628,10 +628,10 @@ func tags() -> Array[MapTag]:
 		return out
 	if in_square:
 		var running := q.state == State.FLEEING
-		out.append(MapTag.person(q.target.ground_pos, MARK_TARGET, "BISHOP - RUNNING" if running else "BISHOP", true))
+		out.append(MapTag.person(q.target, MARK_TARGET, "BISHOP - RUNNING" if running else "BISHOP", true))
 		out.append(MapTag.place(safe_at, MARK_WATCHED, safe_label, 0.0, true))
 		for p in witnesses(q):
-			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(p, MARK_WATCHED))
 		return out
 	if at_refuge < 0:
 		out.append(MapTag.place(hide_door, MARK_GREY, "BISHOP - IN THE CITADEL", 0.0, true))
@@ -657,11 +657,11 @@ func tags() -> Array[MapTag]:
 				continue
 			var man := p.man as Person
 			if _on_guard(p):
-				out.append(MapTag.person(man.ground_pos, MARK_WATCHED, "KNIGHT"))
+				out.append(MapTag.person(man, MARK_WATCHED, "KNIGHT"))
 			elif p.relief:
-				out.append(MapTag.person(man.ground_pos, MARK_WATCHED))
+				out.append(MapTag.person(man, MARK_WATCHED))
 			else:
-				out.append(MapTag.pip(man.ground_pos, MARK_WATCHED))
+				out.append(MapTag.pip(man, MARK_WATCHED))
 	return out
 
 

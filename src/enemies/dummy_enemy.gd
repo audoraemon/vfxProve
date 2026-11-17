@@ -98,6 +98,8 @@ var _shards: Array[Vector4] = []
 var _drawn_art := -1
 ## A signature no drawing has: the unit redraws on its next frame in view.
 const UNDRAWN := -0x7fffffffffffffff
+## The top of a grown body's head, world px above its feet (the people sprites: 17-19 for citizens, 20-21 for soldiers).
+const TAG_HEAD := 18.0
 ## Screen pixels added to this unit's y-sort key without moving where it is drawn. Zero except for the town's
 ## people, who use it to sort in front of a long building they stand in front of (Person.sort_bias_for).
 var sort_bias := 0.0
@@ -395,6 +397,23 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 
 func is_alive() -> bool:
 	return state != State.DEAD
+
+
+## How far above its feet the top of its head is drawn, in world px, standing (a map tag sits just over it: tag_top()).
+func tag_head() -> float:
+	return TAG_HEAD
+
+
+## The top of its head as drawn, in its canvas's (the world's) coordinates: the drawn feet (position and the sort bias drawn back out)
+## raised by tag_head() and by how far a power has lifted the body (2026-11-17 tag fix). Drawing only.
+func tag_top() -> Vector2:
+	return get_global_transform() * (_draw_origin - Vector2(0.0, tag_head() + roundf(_lift)))
+
+
+## The player can see its body (2026-11-17 tag fix): visible and not faded out. A map tag shows only while this holds. A body out of the
+## tree (a model world the tests build, with no screen) counts as drawn, so its tags are what the director made.
+func tag_drawn() -> bool:
+	return not is_inside_tree() or (is_visible_in_tree() and modulate.a > 0.05)
 
 
 func flash(seconds: float) -> void:

@@ -617,10 +617,10 @@ func tags() -> Array[MapTag]:
 		var seeing := witnesses(q)
 		for p in seeing:
 			if not q.guards.has(p):
-				out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+				out.append(MapTag.person(p, MARK_WATCHED))
 		for g: Variant in q.guards:
 			if _alive(g) and not (g as Person).inside:
-				out.append(MapTag.person((g as Person).ground_pos, MARK_WATCHED, "GUARD", true))
+				out.append(MapTag.person((g as Person), MARK_WATCHED, "GUARD", true))
 	return out
 
 
@@ -638,7 +638,7 @@ func _target_tag(q: Quarry) -> MapTag:
 	var label := "%s - SHAKEN %d/%d" % [q.label, _frights, EI_FRIGHTS]
 	if _warned(q):
 		label = "%s - CITADEL IN %s" % [q.label, UiTheme.clock(ceilf(captain_eta()))]
-	return MapTag.person(q.target.ground_pos, MARK_TARGET, label, true)
+	return MapTag.person(q.target, MARK_TARGET, label, true)
 
 
 ## The grey tag over the door of a target still waiting: his word and the seconds to his time (the strip's, mission seconds).

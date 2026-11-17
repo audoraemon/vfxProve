@@ -324,9 +324,9 @@ func tags() -> Array[MapTag]:
 	if held or out.is_empty() or out[0].label != charge_label:
 		return out
 	if bolting:
-		out[0] = MapTag.person(charge.ground_pos, MARK_CHARGE, charge_label + " - RUNNING", true)
+		out[0] = MapTag.person(charge, MARK_CHARGE, charge_label + " - RUNNING", true)
 	elif not led:
-		out[0] = MapTag.person(charge.ground_pos, MARK_CHARGE, "%s - BOLTS IN %s" % [charge_label, UiTheme.clock(bolt_left())], true)
+		out[0] = MapTag.person(charge, MARK_CHARGE, "%s - BOLTS IN %s" % [charge_label, UiTheme.clock(bolt_left())], true)
 	return out
 
 

@@ -678,14 +678,14 @@ func tags() -> Array[MapTag]:
 				continue
 			var p := g.man as Person
 			if _guarding(i, g):
-				out.append(MapTag.person(p.ground_pos, MARK_WATCHED, guard_label))
+				out.append(MapTag.person(p, MARK_WATCHED, guard_label))
 			elif g.relief:
-				out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+				out.append(MapTag.person(p, MARK_WATCHED))
 			else:
-				out.append(MapTag.pip(p.ground_pos, MARK_WATCHED))
+				out.append(MapTag.pip(p, MARK_WATCHED))
 		for w: Guard in wrights[i]:
 			if _alive(w.man) and not (w.man as Person).inside:
-				out.append(MapTag.person((w.man as Person).ground_pos, MARK_WATCHED, "WRIGHT"))
+				out.append(MapTag.person((w.man as Person), MARK_WATCHED, "WRIGHT"))
 	return out
 
 

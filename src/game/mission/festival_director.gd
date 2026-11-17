@@ -285,14 +285,14 @@ func _elapsed() -> float:
 func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if WarningDirector._alive(mayor) and not mayor.inside:
-		out.append(MapTag.person(mayor.ground_pos, MARK_MAYOR, "MAYOR", hint_phase() == "address"))
+		out.append(MapTag.person(mayor, MARK_MAYOR, "MAYOR", hint_phase() == "address"))
 	if broken():
 		return out
 	var rise := town.fountain.height if town != null and is_instance_valid(town.fountain) else 0.0
 	out.append(MapTag.place(Places.at(&"fountain"), MARK_FEAST, "THE FEAST", rise))
 	for p in goers:
 		if WarningDirector._alive(p) and not p.inside and not _broke.has(p) and not _left.has(p):
-			out.append(MapTag.pip(p.ground_pos, MARK_GOER))
+			out.append(MapTag.pip(p, MARK_GOER))
 	return out
 
 

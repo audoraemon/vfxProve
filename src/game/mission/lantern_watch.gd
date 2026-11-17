@@ -508,7 +508,7 @@ func _herald_tags() -> Array[MapTag]:
 			label = "HERALD - COMES DOWN IN %s" % UiTheme.clock(h.descend_left() * rate)
 		else:
 			label = "HERALD - AT THE TEMPLE IN %s" % UiTheme.clock(TempleReport.walk_seconds(h.carrier, h.door, h.slow) * rate)
-		out.append(MapTag.person(h.carrier.ground_pos, MARK_HERALD, label, true))
+		out.append(MapTag.person(h.carrier, MARK_HERALD, label, true))
 	out.append(MapTag.place(door(), MARK_TEMPLE, "TEMPLE", 0.0, true))
 	return out
 

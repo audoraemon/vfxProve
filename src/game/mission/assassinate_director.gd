@@ -782,10 +782,10 @@ func tags() -> Array[MapTag]:
 			continue
 		var seeing := witnesses(q)
 		for p in seeing:
-			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(p, MARK_WATCHED))
 		for g: Variant in q.guards:
 			if _alive(g) and not (g as Person).inside and not seeing.has(g):
-				out.append(MapTag.person((g as Person).ground_pos, MARK_GUARD))
+				out.append(MapTag.person((g as Person), MARK_GUARD))
 	return out
 
 
@@ -798,7 +798,7 @@ func _target_tag(q: Quarry) -> MapTag:
 			# v0.11.2 (D21): the stay itself is real time (a reflex), its countdown is shown in mission seconds like the clock's.
 			words += " " + UiTheme.clock(maxf(q.indoors_left, 0.0) * (rules.clock_rate if is_instance_valid(rules) else 1.0))
 		return MapTag.place(_door_in(q), MARK_TARGET, words, 0.0, true)
-	return MapTag.person(q.target.ground_pos, MARK_TARGET, q.label, true)
+	return MapTag.person(q.target, MARK_TARGET, q.label, true)
 
 
 ## The place `q` is bound for, appended to `out` (v0.11 M2): his stop while it stands, or the safe place once his round is done --

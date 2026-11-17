@@ -304,13 +304,13 @@ func tags() -> Array[MapTag]:
 	var label := "RINGER - CLIMBING" if climbing else "RINGER"
 	if herald_open():
 		label = herald_label()  # v0.11.2: the bell has tolled; the ringer is the Herald
-	out.append(MapTag.person(messenger.ground_pos, MARK_MESSENGER, label, true))
+	out.append(MapTag.person(messenger, MARK_MESSENGER, label, true))
 	var with_him := mates_with()
 	for p in with_him:
-		out.append(MapTag.person(p.ground_pos, MARK_WATCHED, "MATE"))
+		out.append(MapTag.person(p, MARK_WATCHED, "MATE"))
 	for p in witnesses():
 		if not with_him.has(p):
-			out.append(MapTag.person(p.ground_pos, MARK_WATCHED))
+			out.append(MapTag.person(p, MARK_WATCHED))
 	return out
 
 

@@ -970,25 +970,25 @@ func tags() -> Array[MapTag]:
 	elif riding:
 		out.append(MapTag.person(litter_at, MARK_TARGET, "ODRAN - IN HIS LITTER", true))
 	elif _alive(odran) and not (odran as Person).inside:
-		out.append(MapTag.person((odran as Person).ground_pos, MARK_TARGET, "ODRAN - REKINDLING %d" % ceili(rite_left) if rite_on else "ODRAN", true))
+		out.append(MapTag.person((odran as Person), MARK_TARGET, "ODRAN - REKINDLING %d" % ceili(rite_left) if rite_on else "ODRAN", true))
 	if odran_out:
 		out.append(MapTag.place(steps_at, MARK_PLACE, "ALTAR", 0.0, true))
 	if flame_out and (riding or not odran_out):
 		for b in bearers_standing():
-			out.append(MapTag.person(b.ground_pos, MARK_WATCHED, "BEARER", true))
+			out.append(MapTag.person(b, MARK_WATCHED, "BEARER", true))
 	for g in last_guards():
-		out.append(MapTag.person(g.ground_pos, MARK_WATCHED, "KNIGHT", true))
+		out.append(MapTag.person(g, MARK_WATCHED, "KNIGHT", true))
 	if not flame_out:
 		for p: Post in posts:
 			if p.done or not _alive(p.man) or (p.man as Person).inside:
 				continue
 			var k := p.man as Person
 			if _on_guard(p):
-				out.append(MapTag.person(k.ground_pos, MARK_WATCHED, "KNIGHT"))
+				out.append(MapTag.person(k, MARK_WATCHED, "KNIGHT"))
 			elif p.relief:
-				out.append(MapTag.person(k.ground_pos, MARK_WATCHED))
+				out.append(MapTag.person(k, MARK_WATCHED))
 			else:
-				out.append(MapTag.pip(k.ground_pos, MARK_WATCHED))
+				out.append(MapTag.pip(k, MARK_WATCHED))
 	return out
 
 

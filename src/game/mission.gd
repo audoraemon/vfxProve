@@ -117,6 +117,9 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## The centre the wheel zooms about (wheel_zoom()), and where that put the camera: a camera found elsewhere was moved by something else.
+var _wheel_goal := Vector2.ZERO
+var _wheel_at := Vector2.INF
 ## The pause menu is up (set_pause_hidden): a HUD built while it is (a mission paused as it opens) starts with its tags and Cael's plate hidden.
 var _pause_hidden := false
 ## Remembrance's overlay while one is up.
@@ -1220,11 +1223,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
 		_pan(-event.relative / _bf.camera.zoom.x)
 	elif event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-		var z := _bf.camera.logical_zoom() * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.1)
-		_bf.camera.zoom_to(clampf(z, zoom_min(), ZOOM_MAX))
-		_bf.sim_zoom = _bf.camera.logical_zoom() * SIM_PLAY_ZOOM / PLAY_ZOOM
-		# Zoomed out at an edge, the view would reach past the drawn ground: the camera steps back onto it.
-		_pan(Vector2.ZERO)
+		wheel_zoom(event.button_index == MOUSE_BUTTON_WHEEL_UP)
 		if is_instance_valid(_zoom_readout):
 			_zoom_readout.show_zoom(_bf.camera.logical_zoom())
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
@@ -1380,6 +1379,20 @@ static func zoom_min() -> float:
 
 func _pan(by: Vector2) -> void:
 	_bf.camera.position = clamp_view(_bf.camera.position + by, _bf.camera.zoom.x, get_viewport().get_visible_rect().size)
+
+
+## One wheel step in (`zoom_in`) or out, about the screen's centre (2026-11-17): the camera is the centre and zooms about it, and the
+## centre the player chose is kept (`_wheel_goal`). Zoomed out at an edge the view would reach past the drawn ground, so clamp_view()
+## steps the camera onto it; zooming back in it returns toward the kept centre, so a step out and a step in end where they began.
+## Any other move of the camera (a pan, the landing, a resize) makes where it then is the kept centre.
+func wheel_zoom(zoom_in: bool) -> void:
+	if _bf.camera.position != _wheel_at:
+		_wheel_goal = _bf.camera.position
+	var z := _bf.camera.logical_zoom() * (1.1 if zoom_in else 1.0 / 1.1)
+	_bf.camera.zoom_to(clampf(z, zoom_min(), ZOOM_MAX))
+	_bf.sim_zoom = _bf.camera.logical_zoom() * SIM_PLAY_ZOOM / PLAY_ZOOM
+	_bf.camera.position = clamp_view(_wheel_goal, _bf.camera.zoom.x, get_viewport().get_visible_rect().size)
+	_wheel_at = _bf.camera.position
 
 
 ## Where the camera may rest at `zoom` with a view `view` px across (polish 3): inside pan_limits(), and close enough to

@@ -104,7 +104,7 @@ func tags() -> Array[MapTag]:
 		return out
 	out.append_array(_target_tags())
 	if MissionDirector._alive(wisher) and not wisher.inside:
-		out.append(MapTag.person(wisher.ground_pos, COLOR, WISHER_LABEL))
+		out.append(MapTag.person(wisher, COLOR, WISHER_LABEL))
 	return out
 
 

@@ -18,6 +18,9 @@ extends FxTimeline
 ##             there falls: only the centre point is left.
 ## Indoors and a rite's chained captive are left to the law as it holds them (LawZone): the one sheltering dies with his
 ## house; the chained one is not held, so the bars pass him by. Who dies follows distance and order only, never a roll.
+## Level 5 (Dragged Cage): once while it closes a click drags the whole cage toward it, up to DRAG_MAX over DRAG_TIME. The
+## people and visitors it holds are carried with it (each still held inside the bars), the ring's reach sweeps the
+## buildings on its way (cracked as it touches them, felled as it crosses their middles), and the law's centre moves with it.
 ## Loud (PowerBook.REACH): its danger lands as the bars stand. Its frame is cheap: each building's distances are taken
 ## once at the landing and walked in order as the ring closes; only the buildings the ring is passing through are asked
 ## whether they pin anyone; no list is built per frame.
@@ -35,6 +38,9 @@ const FADE := 1.0
 const KIND := &"crushed"
 ## Leeway on distances computed onto the ring.
 const EPS := 0.0001
+## Dragged Cage (level 5): the furthest the click moves the centre, and how long the move takes.
+const DRAG_MAX := 6.0
+const DRAG_TIME := 2.0
 
 ## The law on the place (LawZone, NO LEAVING), its radius the ring's: laid at T_LAND, lifted at the end. null before.
 var law: LawZone
@@ -68,6 +74,27 @@ var _doomed: Array = []
 var _grind: Node
 var _cage: Cage
 
+## Dragged Cage: whether this cast has the twist, the ring's centre now (the cast's point until a drag), whether the drag has been
+## spent and whether it is under way, where it goes from and to and when it began (the effect's clock).
+var _twist := false
+var _c := Vector2.ZERO
+var dragged := false
+var _drag_on := false
+var _drag_from := Vector2.ZERO
+var _drag_to := Vector2.ZERO
+var _drag_t0 := 0.0
+## The buildings the drag can reach, taken when it begins (indices into these four), what each was to the ring last frame
+## (0 wholly inside, 1 across the bars, 2 wholly outside), whether its middle was inside, and whether it has been cracked.
+var _ds: Array[Structure] = []
+var _dr: Array[Rect2] = []
+var _dstate := PackedByteArray()
+var _dmid := PackedByteArray()
+var _dcrk := PackedByteArray()
+## The footprints of the cracked, standing buildings the ring is passing through while it is dragged.
+var _dband: Array[Rect2] = []
+## Buildings cracked (by instance id) once a drag has begun, so the sorted walk after it never cracks one twice.
+var _cracked_ids := {}
+
 
 ## The ring's radius at `time` on the effect's clock: RADIUS until the bars stand, END_R once they have closed, an even
 ## pace in between.
@@ -81,6 +108,8 @@ var lv_close_time := CLOSE_TIME
 
 
 func _build() -> void:
+	_twist = PowerBook.twist_at(extra, "cage")
+	_c = origin
 	lv_radius = float(PowerBook.stat(extra, "cage", "RADIUS", RADIUS))
 	lv_close_time = float(PowerBook.stat(extra, "cage", "CLOSE_TIME", CLOSE_TIME))
 	radius = lv_radius
@@ -102,8 +131,8 @@ func _build() -> void:
 
 ## The bars stand: the law holds, and every building the ring will reach is taken down in order.
 func _land() -> void:
-	_survey()
-	law = LawZone.circle(origin, lv_radius, [LawZone.NO_LEAVING], lv_close_time)
+	_survey(lv_radius)
+	law = LawZone.circle(_c, lv_radius, [LawZone.NO_LEAVING], lv_close_time)
 	law.stepped_by_holder = true
 	if ctx.crowd != null:
 		ctx.crowd.add_law(law, self)
@@ -122,27 +151,27 @@ func _land() -> void:
 
 
 ## Every standing building (walkable ground excepted) some of whose footprint lies inside RADIUS: its distances, once.
-func _survey() -> void:
+func _survey(reach: float) -> void:
 	var order_far: Array[int] = []
 	var order_mid: Array[int] = []
 	for s in ctx.env.structures():
 		if not is_instance_valid(s) or s.destroyed or s.walkable:
 			continue
 		var f := s.footprint
-		var near := origin.clamp(f.position, f.end).distance_to(origin)
-		if near >= lv_radius:
+		var near := _c.clamp(f.position, f.end).distance_to(_c)
+		if near >= reach:
 			continue
 		var far := 0.0
 		for corner in [f.position, Vector2(f.end.x, f.position.y), f.end, Vector2(f.position.x, f.end.y)]:
-			far = maxf(far, (corner as Vector2).distance_to(origin))
+			far = maxf(far, (corner as Vector2).distance_to(_c))
 		var i := _s.size()
 		_s.append(s)
 		_rect.append(f)
 		_far.append(far)
-		_mid.append(f.get_center().distance_to(origin))
+		_mid.append(f.get_center().distance_to(_c))
 		_near.append(near)
 		order_far.append(i)
-		if _mid[i] < lv_radius:
+		if _mid[i] < reach:
 			order_mid.append(i)
 	# Farthest first, and by the order the town lists them where two tie: no roll.
 	order_far.sort_custom(func(x: int, y: int) -> bool: return _far[x] > _far[y] if _far[x] != _far[y] else x < y)
@@ -156,7 +185,10 @@ func _survey() -> void:
 func _fx_process(delta: float) -> void:
 	if law == null or shut or not law.alive():
 		return
-	_close(radius_at(t, lv_radius, lv_close_time))
+	if _drag_on:
+		_drag_frame(clampf((t - _drag_t0) / DRAG_TIME, 0.0, 1.0), radius_at(t, lv_radius, lv_close_time))
+	else:
+		_close(radius_at(t, lv_radius, lv_close_time))
 	# The law's clock starts when the bars stand.
 	_step_law(minf(delta, t - T_LAND))
 
@@ -180,7 +212,12 @@ func _close(r: float) -> void:
 		var s := _s[i]
 		if not is_instance_valid(s) or s.destroyed:
 			continue
+		if _twist and _cracked_ids.has(s.get_instance_id()):
+			_band.append(i)  # cracked on the drag: the walk keeps it in the band, no second crack
+			continue
 		s.crack()
+		if _twist:
+			_cracked_ids[s.get_instance_id()] = true
 		s.shake(2.5)
 		cracked += 1
 		_band.append(i)
@@ -196,6 +233,11 @@ func _close(r: float) -> void:
 			_band.remove_at(k)
 	if law == null or _band.is_empty():
 		return
+	_cut_pinned(r)
+
+
+## Whoever the ring would push into a building it is passing through (the band) is cut down where he stands.
+func _cut_pinned(r: float) -> void:
 	var r2 := r * r
 	for body: Variant in law.members:
 		if not is_instance_valid(body) or not body.is_alive():
@@ -203,14 +245,14 @@ func _close(r: float) -> void:
 		var p := body as Person
 		if p != null and (p.inside or p.chained):
 			continue
-		var d: Vector2 = body.ground_pos - origin
+		var d: Vector2 = body.ground_pos - _c
 		var d2 := d.length_squared()
 		if d2 <= r2:
 			continue
 		var out := sqrt(d2)
 		if out - r > LawZone.CARRIED:
 			continue  # carried off by something greater: the law lets him go
-		if _pinned(origin + d / out * r):
+		if _pinned(_c + d / out * r):
 			_doomed.append(body)
 	for body: Variant in _doomed:
 		_cut(body)
@@ -219,6 +261,11 @@ func _close(r: float) -> void:
 
 ## Whether ground point `g` lies in a building the ring is passing through.
 func _pinned(g: Vector2) -> bool:
+	if _drag_on:
+		for f in _dband:
+			if f.has_point(g):
+				return true
+		return false
 	for i in _band:
 		if _rect[i].has_point(g):
 			return true
@@ -227,8 +274,8 @@ func _pinned(g: Vector2) -> bool:
 
 ## The point on the ring of `r` nearest `g`.
 func _ring_point(g: Vector2, r: float) -> Vector2:
-	var d := g - origin
-	return origin + (d.normalized() if d.length_squared() > EPS else Vector2.RIGHT) * r
+	var d := g - _c
+	return _c + (d.normalized() if d.length_squared() > EPS else Vector2.RIGHT) * r
 
 
 ## Cut down by the bars, where he stands.
@@ -248,14 +295,18 @@ func _cut(body: Variant) -> void:
 
 ## The ring passes building `i`'s middle: whoever shelters in it dies with it, and it falls.
 func _fell(i: int) -> void:
-	var s := _s[i]
+	_fell_s(_s[i], _mid[i])
+
+
+## The same for building `s`, whose middle lies `mid` from the ring's centre.
+func _fell_s(s: Structure, mid: float) -> void:
 	if not is_instance_valid(s) or s.destroyed:
 		return
 	if ctx.crowd != null and ctx.crowd.shelters != null:
 		for p in ctx.crowd.shelters.throw_out_of(s, 0.0):
 			if ctx.field.kill(p, KIND, s.center()):
 				crushed += 1
-	var from := _ring_point(s.center(), _mid[i] + 1.0)
+	var from := _ring_point(s.center(), mid + 1.0)
 	if s.damage_filter.is_valid():
 		s.damage(99999.0, from, &"stone")  # the Citadel's own health decides
 	else:
@@ -271,38 +322,40 @@ func _shut() -> void:
 		return
 	# Everyone the bars still hold is inside the last ring they stood at; the law brings them in to END_R.
 	var reach := maxf(radius, END_R) + EPS
+	if _drag_on:
+		_drag_frame(1.0, radius)  # the drag is done where it was going
 	_close(END_R)
 	_step_law(0.0)
 	shut = true
 	while _passed < _by_mid.size():
 		_fell(_by_mid[_passed])
 		_passed += 1
-	for e in ctx.field.in_radius(origin, reach):
-		if ctx.field.kill(e, KIND, origin):
+	for e in ctx.field.in_radius(_c, reach):
+		if ctx.field.kill(e, KIND, _c):
 			crushed += 1
 	if ctx.crowd != null:
 		for pack: Visitors in ctx.crowd.visitors:
 			for a in pack.living():
-				if a.ground_pos.distance_to(origin) <= reach:
+				if a.ground_pos.distance_to(_c) <= reach:
 					a.die()
 					crushed += 1
 	for body: Variant in law.members:
-		if is_instance_valid(body) and body is Animal and body.is_alive() and body.ground_pos.distance_to(origin) <= reach:
+		if is_instance_valid(body) and body is Animal and body.is_alive() and body.ground_pos.distance_to(_c) <= reach:
 			body.die()
 			crushed += 1
 	_lift()
 	if _grind != null:
 		ctx.fade_out(_grind, 0.3)
 		_grind = null
-	ctx.play(&"cg_shut", origin)
+	ctx.play(&"cg_shut", _c)
 	if not DominionParts.staged(self):
 		return
-	_spark_at(origin, 24)
+	_spark_at(_c, 24)
 	ctx.flash.call(Color(1.0, 0.85, 0.5, 0.35), 0.25)
 	ctx.impact.hitstop(0.05)
 	ctx.shake.add_trauma(0.7)
-	DecreeParts.scatter(self, origin, 18, 14.0)
-	DecreeParts.wave(self, origin, 2.4, 0.5, 0.1)
+	DecreeParts.scatter(self, _c, 18, 14.0)
+	DecreeParts.wave(self, _c, 2.4, 0.5, 0.1)
 
 
 func _lift() -> void:
@@ -313,14 +366,173 @@ func _lift() -> void:
 			law.lift()
 
 
+## Dragged Cage: whether the click can still drag the cage (the bars stand, it has not shut, and it has not been dragged yet).
+func can_follow_up() -> bool:
+	return _twist and not dragged and law != null and law.alive() and not shut and not finished
+
+
+## Dragged Cage: the cage's centre moves up to DRAG_MAX toward `at_pos` over DRAG_TIME. False when it cannot be dragged, or the
+## click lies on the centre.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var d := at_pos - _c
+	var dist := d.length()
+	if dist <= EPS:
+		return false
+	dragged = true
+	_drag_on = true
+	_drag_from = _c
+	_drag_to = _c + d / dist * minf(DRAG_MAX, dist)
+	_drag_t0 = t
+	_drag_begin()
+	return true
+
+
+## Dragged Cage's preview: the ring as it stands now.
+func follow_up_area() -> Dictionary:
+	return {"shape": "circle", "r": radius}
+
+
+## The buildings the drag can reach, and how each stands to the ring now.
+func _drag_begin() -> void:
+	_cracked_ids.clear()
+	for k in _touched:
+		var s := _s[_by_far[k]]
+		if is_instance_valid(s):
+			_cracked_ids[s.get_instance_id()] = true
+	_ds.clear()
+	_dr.clear()
+	_dstate.clear()
+	_dmid.clear()
+	_dcrk.clear()
+	var reach := radius + DRAG_MAX + EPS
+	for s in ctx.env.structures():
+		if not is_instance_valid(s) or s.destroyed or s.walkable:
+			continue
+		var f := s.footprint
+		if _c.clamp(f.position, f.end).distance_to(_c) >= reach:
+			continue
+		_ds.append(s)
+		_dr.append(f)
+		_dstate.append(_state_of(f, _c, radius))
+		_dmid.append(1 if f.get_center().distance_to(_c) < radius - EPS else 0)
+		_dcrk.append(1 if _cracked_ids.has(s.get_instance_id()) else 0)
+	_dband.clear()
+
+
+## 0 when footprint `f` lies wholly inside the ring of `r` about `c`, 2 wholly outside it, 1 when the bars cross it.
+static func _state_of(f: Rect2, c: Vector2, r: float) -> int:
+	if c.clamp(f.position, f.end).distance_to(c) >= r:
+		return 2
+	var far := 0.0
+	for corner in [f.position, Vector2(f.end.x, f.position.y), f.end, Vector2(f.position.x, f.end.y)]:
+		far = maxf(far, (corner as Vector2).distance_to(c))
+	return 1 if far >= r - EPS else 0
+
+
+## One frame of the drag, `k` (0..1) of the way: the centre moves, those the law holds are carried with it, and the ring (of `r`) cracks
+## and fells what it sweeps, then cuts down whoever it pins against a building it is passing through. At k = 1 the drag ends and the
+## sorted walk of the closing is taken again for where the cage now stands.
+func _drag_frame(k: float, r: float) -> void:
+	var to := _drag_from.lerp(_drag_to, k)
+	var move := to - _c
+	_c = to
+	law.a = _c
+	law.b = _c
+	radius = r
+	if _cage != null and is_instance_valid(_cage):
+		_cage.position = Iso.ground_to_screen(_c).round()
+	if move.length_squared() > 0.0:
+		for body: Variant in law.members:
+			if not is_instance_valid(body) or not body.is_alive():
+				continue
+			var p := body as Person
+			if p != null and (p.inside or p.chained):
+				continue
+			body.ground_pos += move
+			if p == null:
+				(body as Animal).sync_position()
+	_dband.clear()
+	for j in _ds.size():
+		var s := _ds[j]
+		if not is_instance_valid(s) or s.destroyed:
+			continue
+		var f := _dr[j]
+		var st := _state_of(f, _c, r)
+		if _dcrk[j] == 0 and (st == 1 or st != _dstate[j]):
+			_dcrk[j] = 1
+			_cracked_ids[s.get_instance_id()] = true
+			s.crack()
+			s.shake(2.5)
+			cracked += 1
+			_spark_at(_ring_point(s.center(), r), 6)
+		_dstate[j] = st
+		var mid := f.get_center().distance_to(_c)
+		var inside_mid := 1 if mid < r - EPS else 0
+		if inside_mid != _dmid[j]:
+			_dmid[j] = inside_mid
+			_fell_s(s, mid)
+			if s.destroyed:
+				continue
+		if _dcrk[j] == 1 and _c.clamp(f.position, f.end).distance_to(_c) <= r:
+			_dband.append(f)
+	if not _dband.is_empty():
+		# Carried into a building the bars are passing through: crushed against it.
+		var r2 := r * r
+		for body: Variant in law.members:
+			if not is_instance_valid(body) or not body.is_alive():
+				continue
+			var p := body as Person
+			if p != null and (p.inside or p.chained):
+				continue
+			if (body.ground_pos - _c).length_squared() <= r2 and _pinned(body.ground_pos):
+				_doomed.append(body)
+		for body: Variant in _doomed:
+			_cut(body)
+		_doomed.clear()
+		_cut_pinned(r)
+	if k >= 1.0:
+		_drag_on = false
+		_ds.clear()
+		_dr.clear()
+		_dband.clear()
+		_resurvey(r)
+
+
+## The closing's sorted walk, taken again for the cage's new place: every standing building the bars still reach, farthest first.
+func _resurvey(r: float) -> void:
+	_s.clear()
+	_rect.clear()
+	_far.clear()
+	_mid.clear()
+	_near.clear()
+	_by_far.clear()
+	_by_mid.clear()
+	_band.clear()
+	_touched = 0
+	_passed = 0
+	_survey(r)
+
+
 ## Cut short (an act of the night ends): the law is lifted, and nobody more dies of it.
 func end_now() -> void:
 	if not finished:
 		shut = true
+		_drag_on = false
 		_lift()
 		if _grind != null:
 			ctx.fade_out(_grind, 0.3)
 			_grind = null
+	super()
+
+
+func _exit_tree() -> void:
+	if not shut and law != null:
+		shut = true
+		_drag_on = false
+		if ctx.crowd == null or is_instance_valid(ctx.crowd):
+			_lift()
 	super()
 
 

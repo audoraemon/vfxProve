@@ -14,6 +14,6 @@ god_passage_prayers_play_3	--scenario=prayers --case=play --god=passage:1 --seed
 god_decree_prayers_play_1	--scenario=prayers --case=play --god=decree:1 --seed=1	-39961822
 god_decree_prayers_play_2	--scenario=prayers --case=play --god=decree:1 --seed=2	-865044478
 god_decree_prayers_play_3	--scenario=prayers --case=play --god=decree:1 --seed=3	-971429711
-god_dominion_prayers_play_1	--scenario=prayers --case=play --god=dominion:1 --seed=1	162648940
-god_dominion_prayers_play_2	--scenario=prayers --case=play --god=dominion:1 --seed=2	-439972036
-god_dominion_prayers_play_3	--scenario=prayers --case=play --god=dominion:1 --seed=3	410497732
+god_dominion_prayers_play_1	--scenario=prayers --case=play --god=dominion:1 --seed=1	854702039
+god_dominion_prayers_play_2	--scenario=prayers --case=play --god=dominion:1 --seed=2	-997526704
+god_dominion_prayers_play_3	--scenario=prayers --case=play --god=dominion:1 --seed=3	-587256113

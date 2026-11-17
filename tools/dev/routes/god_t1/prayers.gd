@@ -742,15 +742,28 @@ static func doom_faithful(bc, ctx: Dictionary, seen_after := 8.0) -> String:
 
 
 ## A spot to whisper `p` to, `reach` from him, on the side of `toward` first and then round the compass, that he has a way to (and is not shut in
-## a pocket of ground); Vector2.INF for none.
+## a pocket of ground) no longer than WHISPER_WAY x the distance; else the one of them with the shortest way; Vector2.INF for none. (A whisper's
+## linger only starts once he is there: a spot across a wall sent the walker the long way round, 54 s, after the walk-grid fixes.)
 static func _whisper_spot(ctx: Dictionary, p: Person, toward: Vector2, reach: float) -> Vector2:
 	var d := ctx.d as FirstPrayersDirector
 	var grid: WalkGrid = ctx.crowd._grid
 	var base := (toward - p.ground_pos).normalized()
+	var best := Vector2.INF
+	var best_len := INF
 	for k in 8:
 		var turn := (float((k + 1) / 2) * (1.0 if k % 2 == 0 else -1.0)) * TAU / 8.0
 		var spot := d._walkable(p.ground_pos + base.rotated(turn) * reach)
 		var way := grid.path(p.ground_pos, spot)
-		if spot.distance_to(p.ground_pos) > reach * 0.6 and not way.is_empty() and way[way.size() - 1].distance_to(spot) < 1.0:
-			return spot
-	return Vector2.INF
+		var gap := spot.distance_to(p.ground_pos)
+		if gap > reach * 0.6 and not way.is_empty() and way[way.size() - 1].distance_to(spot) < 1.0:
+			var len := d._way_length(p.ground_pos, way)
+			if len <= gap * WHISPER_WAY:
+				return spot
+			if len < best_len:
+				best = spot
+				best_len = len
+	return best
+
+
+## The longest way a whisper spot may take to walk to, as a share of its distance.
+const WHISPER_WAY := 1.5

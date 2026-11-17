@@ -42,11 +42,17 @@ var _cell: Cell
 ## This cast's numbers at its ability level (the consts at level 1).
 var lv_radius := RADIUS
 var lv_hold_time := HOLD_TIME
+## Level 5 twist (Held for Trial): the people the cell frees at its end are named criminal for TRIAL_TIME.
+const TRIAL_TIME := 15.0
+var _twist := false
+## Who was named at the end (Person), for the books and the tests.
+var named: Array = []
 
 
 func _build() -> void:
 	lv_radius = float(PowerBook.stat(extra, "noleave", "RADIUS", RADIUS))
 	lv_hold_time = float(PowerBook.stat(extra, "noleave", "HOLD_TIME", HOLD_TIME))
+	_twist = PowerBook.twist_at(extra, "noleave")
 	duration = T_SEAL + lv_hold_time + CRACK_TIME + FALL_TIME
 	busy = T_SEAL
 	at(T_SEAL, _seal)
@@ -88,6 +94,8 @@ func _seal() -> void:
 
 func _lift() -> void:
 	sealed = false
+	if _twist:
+		_name_the_freed()
 	if law != null:
 		if ctx.crowd != null:
 			ctx.crowd.remove_law(law)
@@ -139,6 +147,22 @@ func _step_law(delta: float) -> void:
 				bound.erase(p)
 				if is_instance_valid(p):
 					p.clear_badge()
+
+
+## Held for Trial: whoever the cell holds at its end, and still stands inside it, is named criminal (LawMark) for TRIAL_TIME
+## -- the faithful (ctx.rules.director.faithful) excepted. Every guard who sees one goes for him. Quiet: no alarm of its own.
+func _name_the_freed() -> void:
+	var faithful: Array = []
+	if ctx.rules != null and is_instance_valid(ctx.rules) and ctx.rules.director != null:
+		faithful = ctx.rules.director.faithful
+	for p: Variant in bound:
+		var who := p as Person
+		if who == null or not is_instance_valid(who) or not who.is_alive() or who.inside:
+			continue
+		if who.ground_pos.distance_to(origin) > lv_radius + 0.5 or faithful.has(who):
+			continue
+		LawMark.set_law(who, LawMark.CRIMINAL, TRIAL_TIME, get_instance_id())
+		named.append(who)
 
 
 ## The amber cracks: its shards, laid out over the dome by order (a golden-angle spread), never by a roll.

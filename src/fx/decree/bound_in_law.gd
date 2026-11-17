@@ -45,8 +45,14 @@ var ended_at := -1.0
 ## The chain flares when a fate passes along it (1 at the moment, decaying; look only).
 var flare := 0.0
 
-var _sa := BondEnd.new()
-var _sb := BondEnd.new()
+## Everyone the bond holds (BondEnds): a, b, then the joiners (Party to the Bond) in the order they joined.
+var _ends: Array[BondEnd] = []
+## Party to the Bond (level 5): who has joined (Persons, in order; either may since have been freed).
+var joiners: Array = []
+## This cast's twist (PowerBook.twist_at), read once in _build.
+var _twist := false
+## Joiners a cast takes at most.
+const JOIN_MAX := 2
 
 
 ## One end of the bond: what was seen of him at the end of the last frame, what began on him since, and whether the bond
@@ -64,6 +70,8 @@ class BondEnd:
 	var slept := 0.0
 	## Seized now (the state, not the onset: the other is held while it holds).
 	var seized := false
+	## Seized at the frame before (Party to the Bond: a seizure's onset).
+	var was_seized := false
 	## The bond holds his pace (the other is seized).
 	var holding := false
 
@@ -122,14 +130,17 @@ func _build() -> void:
 	var pair := pair_at(ctx.field, origin, to, lv_reach)
 	a = pair[0]
 	b = pair[1]
-	_sa.p = a
-	_sb.p = b
+	_twist = PowerBook.twist_at(extra, "bound")
+	for p: Variant in [a, b]:
+		var s := BondEnd.new()
+		s.p = p
+		_ends.append(s)
 	linked = true
 	duration = lv_span + FADE
 	for p: Variant in [a, b]:
 		LawMark.set_law(p, LawMark.BOUND, lv_span, get_instance_id())
-	_see(_sa)
-	_see(_sb)
+	for s in _ends:
+		_see(s)
 	at(lv_span, _unlink)
 	ctx.play(&"q_bound", (a as Person).ground_pos.lerp((b as Person).ground_pos, 0.5))
 	if DominionParts.staged(self):
@@ -143,22 +154,77 @@ func _fx_process(delta: float) -> void:
 	if not is_instance_valid(a) or not is_instance_valid(b):
 		_unlink()  # gone from the town: the bond has nothing to hold
 		return
-	_read(_sa)
-	_read(_sb)
-	_lay(_sa, _sb)
-	_lay(_sb, _sa)
-	var pa := a as Person
-	var pb := b as Person
-	# One fate: one dead, the other dies too.
-	if not pa.is_alive() and pb.is_alive():
-		_kill(pb, pa)
-	elif not pb.is_alive() and pa.is_alive():
-		_kill(pa, pb)
-	if not pa.is_alive() or not pb.is_alive():
-		_unlink()
+	if _twist:
+		_drop_freed()
+	for s in _ends:
+		_read(s)
+	if _twist:
+		_join(delta)
+	for s in _ends:
+		for o in _ends:
+			if o != s:
+				_lay(s, o)
+	# One fate: one dead, the others die too.
+	var gone: Person = null
+	for s in _ends:
+		if not (s.p as Person).is_alive():
+			gone = s.p as Person
+			break
+	if gone != null:
+		for s in _ends:
+			if (s.p as Person).is_alive():
+				_kill(s.p as Person, gone)
+	for s in _ends:
+		if not (s.p as Person).is_alive():
+			_unlink()
+			return
+	for s in _ends:
+		_see(s)
+
+
+## Party to the Bond: a joiner freed from the town leaves the bond without a word (a and b keep the original rule).
+func _drop_freed() -> void:
+	for i in range(_ends.size() - 1, 1, -1):
+		if not is_instance_valid(_ends[i].p):
+			_ends.remove_at(i)
+
+
+## Party to the Bond (DL13): whoever struck a bound person within the last frame (his blow took health), alive and not yet
+## bound, joins the bond, two to a cast; a seizer joins when the director can name one (seizer_of), else seizures add no one
+## (Ruling C5). Stuns carry no source and add no one. Taken in the order of the ends (no roll).
+func _join(delta: float) -> void:
+	var left := lv_span - t
+	if left <= 0.0:
 		return
-	_see(_sa)
-	_see(_sb)
+	var now := ctx.crowd.clock() if ctx.crowd != null else 0.0
+	for s in _ends.duplicate():
+		if joiners.size() >= JOIN_MAX:
+			return
+		var p := s.p as Person
+		var who: Variant = null
+		if s.hurt > EPS and p.struck_by != null and now - p.struck_at <= delta + EPS:
+			who = p.struck_by.get_ref()
+		elif s.seized and not s.was_seized and ctx.rules != null and ctx.rules.director != null 				and ctx.rules.director.has_method("seizer_of"):
+			who = ctx.rules.director.seizer_of(p)
+		if who is Person and is_instance_valid(who) and (who as Person).is_alive() and not _bound(who):
+			_add(who as Person, left)
+
+
+func _bound(p: Variant) -> bool:
+	for s in _ends:
+		if s.p == p:
+			return true
+	return false
+
+
+## `p` joins: baseline seen now (what is laid on him next is his to take), the BOUND mark for what is left of the span.
+func _add(p: Person, left: float) -> void:
+	var s := BondEnd.new()
+	s.p = p
+	_see(s)
+	_ends.append(s)
+	joiners.append(p)
+	LawMark.set_law(p, LawMark.BOUND, left, get_instance_id())
 
 
 ## What is seen of `s` now: the baseline the next frame's onsets are read against.
@@ -178,6 +244,7 @@ func _read(s: BondEnd) -> void:
 	s.fell = alive and p.is_down() and not s.down
 	s.stunned = p.wait if alive and p.wait > s.wait + EPS else 0.0
 	s.slept = p.sleep_left() if alive and p.is_asleep() and not s.asleep else 0.0
+	s.was_seized = s.seized
 	s.seized = alive and _seized(p)
 
 
@@ -234,7 +301,7 @@ func _unlink() -> void:
 		return
 	linked = false
 	ended_at = t
-	for s: BondEnd in [_sa, _sb]:
+	for s in _ends:
 		if not is_instance_valid(s.p):
 			continue
 		LawMark.lift(s.p, get_instance_id())
@@ -302,11 +369,24 @@ class Chain extends Node2D:
 		var pb := fx.b as Person
 		var from := Iso.ground_to_screen(pa.ground_pos) + Vector2(0.0, -WAIST)
 		var to := Iso.ground_to_screen(pb.ground_pos) + Vector2(0.0, -WAIST)
+		if from.distance_to(to) < 1.0:
+			return
+		var lit := 0.8 + 0.2 * fx.flare
+		_chain(pa, pb, alpha, lit, fx.forged())
+		for j: Variant in fx.joiners:
+			if is_instance_valid(j) and (j as Person).is_alive():
+				_chain(pa, j as Person, alpha, lit, 1.0)
+				_shackle(j as Person, alpha, lit)
+		_shackle(pa, alpha, lit)
+		_shackle(pb, alpha, lit)
+
+	## One chain from `pa` to `pb`, drawn in as far as `reach` (0..1).
+	func _chain(pa: Person, pb: Person, alpha: float, lit: float, reach: float) -> void:
+		var from := Iso.ground_to_screen(pa.ground_pos) + Vector2(0.0, -WAIST)
+		var to := Iso.ground_to_screen(pb.ground_pos) + Vector2(0.0, -WAIST)
 		var span := from.distance_to(to)
 		if span < 1.0:
 			return
-		var reach := fx.forged()
-		var lit := 0.8 + 0.2 * fx.flare
 		var pulse := 0.85 + 0.15 * sin(fx.t * 5.0)
 		var n := clampi(int(span / LINK), 2, 200)
 		var sag := minf(span * SAG, 24.0)
@@ -330,9 +410,7 @@ class Chain extends Node2D:
 			else:
 				draw_line(prev, at, Color(BRASS_LIGHT, alpha), 2.0)
 			prev = at
-		_shackle(pa, alpha, lit)
-		_shackle(pb, alpha, lit)
-		if fx.flare > 0.0:
+		if fx.flare > 0.0 and pb == fx.b:
 			# A fate passing: a bright bead runs the chain's length.
 			var bead := from.lerp(to, 1.0 - fx.flare) + Vector2(0.0, sag * 4.0 * (1.0 - fx.flare) * fx.flare)
 			draw_circle(bead, 3.5, Color(BRASS_LIGHT, fx.flare * alpha))

@@ -23,6 +23,11 @@ extends FxTimeline
 
 const LENGTH := 10.0
 const HALF_W := 1.0
+## Further Claim (level 5): for FOLLOW_WINDOW after the strip is torn down one click tears a second strip from the first's end
+## toward it, min(FOLLOW_MAX, its distance) long (a click under FOLLOW_MIN away is refused).
+const FOLLOW_WINDOW := 5.0
+const FOLLOW_MAX := 6.0
+const FOLLOW_MIN := 1.0
 const T_TEAR := 0.8
 const T_THROW := 0.35
 ## How long a torn building's look takes to be shoved out to where its heap is laid (and the decor's to be flung clear).
@@ -126,11 +131,19 @@ var _fling_spin := PackedFloat32Array()
 ## This cast's numbers at its ability level (the consts at level 1).
 var lv_length := LENGTH
 var lv_half_w := HALF_W
+## Further Claim: the second strip, a level 1 cast of this same effect sized by extra "strip_len" / "strip_half_w" (a key only
+## the follow-up sends, so no ordinary cast reads it); this cast's own instance, ended with it.
+var _twist := false
+var _second: EminentFx = null
 
 
 func _build() -> void:
 	lv_length = float(PowerBook.stat(extra, "eminent", "LENGTH", LENGTH))
 	lv_half_w = float(PowerBook.stat(extra, "eminent", "HALF_W", HALF_W))
+	if extra.has("strip_len"):
+		lv_length = float(extra.strip_len)
+		lv_half_w = float(extra.get("strip_half_w", lv_half_w))
+	_twist = PowerBook.twist_at(extra, "eminent")
 	var drag: Vector2 = extra.get("dir", Vector2.ZERO)
 	var end: Vector2 = extra.get("to", Vector2.INF)
 	if drag.length() < 0.01 and end != Vector2.INF:
@@ -142,6 +155,8 @@ func _build() -> void:
 	land = lv_half_w + GAP + 2.0 * maxf(_ext(HEAP), _ext(long.x, long.y)) + LAND_PAD
 	duration = T_TEAR + T_THROW + SCAR
 	busy = T_TEAR + maxf(T_THROW, T_SHOVE)
+	if _twist:
+		duration = maxf(duration, T_TEAR + FOLLOW_WINDOW)
 	at(T_TEAR, _tear)
 	at(T_TEAR + T_THROW, _land)
 	at(T_TEAR + T_SHOVE * 0.5, _mid_shove)
@@ -165,6 +180,42 @@ func _build() -> void:
 			FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(g), PixelParticles.Shape.SQUARE, DecreeParts.GILT_LIFE, 14.0,
 				T_TEAR, {"radius": 10.0, "speed": Vector2(2, 10), "alt": Vector2(0, 4), "alt_speed": Vector2(20, 55),
 					"life": Vector2(0.4, 0.8), "size": Vector2(1, 2)})
+
+
+## Further Claim (level 5): the first strip is torn down, FOLLOW_WINDOW has not run out and no second strip is claimed yet.
+func can_follow_up() -> bool:
+	return _twist and not finished and _second == null and t >= T_TEAR and t < T_TEAR + FOLLOW_WINDOW
+
+
+## Further Claim: the click tears a second strip, the first's width and work, from the first strip's end toward the click,
+## min(FOLLOW_MAX, its distance) long. False for a click under FOLLOW_MIN from that end. The second strip claims, tears and
+## lays rubble as a first does (it is one: a level 1 cast of this effect), and the cast lives until it is done.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var run := at_pos - to
+	if run.length() < FOLLOW_MIN:
+		return false
+	_second = FxTimeline.cast(get_script(), ctx, to, {"level": 1, "dir": run.normalized(),
+		"strip_len": minf(FOLLOW_MAX, run.length()), "strip_half_w": lv_half_w}) as EminentFx
+	duration = maxf(duration, t + _second.duration)
+	return true
+
+
+## Cut short: the second strip ends with it.
+func _finish() -> void:
+	_end_second()
+	super()
+
+
+func _exit_tree() -> void:
+	_end_second()
+	super()
+
+
+func _end_second() -> void:
+	if is_instance_valid(_second) and not _second.finished:
+		_second.end_now()
 
 
 ## The middle of the strip's line.

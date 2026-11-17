@@ -27,12 +27,22 @@ const KINDS := {"run": LawZone.NO_RUNNING, "arms": LawZone.NO_ARMS, "doors": Law
 	"leave": LawZone.NO_LEAVING}
 const WORDS := {"run": "NO RUNNING", "arms": "NO ARMS", "doors": "NO DOORS", "sight": "NO SIGHT", "leave": "NO LEAVING"}
 
+## The wheel's words for the rules (the wheel upper-cases them; short, so three fit its slices): each reads as the rule, never as a command.
+const ORDER_WORDS := {"run": "no run", "arms": "no arms", "doors": "no doors", "sight": "no sight", "leave": "no exit"}
+
 ## The cast's mode: its two rules joined by "_" (run_arms .. sight_leave).
 var mode := "run_arms"
 ## Its two rules (RULES' keys), in order.
 var rules := PackedStringArray(["run", "arms"])
 ## The law on the place (LawZone, the two kinds): laid at T_LAND, lifted at the end. null before.
 var law: LawZone
+## Third Clause (level 5): the rule (a RULES key) the player added through the order wheel, "" until then; and when (the cast's
+## clock). One only; it lifts with the fence (it is a kind of the same LawZone, which is lifted whole).
+var third := ""
+var third_at := 0.0
+## The fence's centre sigil (level 5): the subject the order wheel opens on. Tracked, so it goes with the cast.
+var sigil: Node2D
+var _twist := false
 
 
 ## The two rules a mode names, in order; a mode that names no two of them is NO RUNNING + NO ARMS.
@@ -59,6 +69,7 @@ var lv_hold_time := HOLD_TIME
 func _build() -> void:
 	lv_radius = float(PowerBook.stat(extra, "fenced", "RADIUS", RADIUS))
 	lv_hold_time = float(PowerBook.stat(extra, "fenced", "HOLD_TIME", HOLD_TIME))
+	_twist = PowerBook.twist_at(extra, "fenced")
 	rules = rules_of(String(extra.get("mode", "run_arms")))
 	mode = "_".join(rules)
 	duration = T_LAND + lv_hold_time + FADE
@@ -66,6 +77,13 @@ func _build() -> void:
 	at(T_LAND, _land)
 	at(T_LAND + lv_hold_time, _lift)
 	ctx.play(&"fe_posts", origin)
+	if _twist and ctx.overhead != null:
+		var s := Sigil.new()
+		s.fx = self
+		s.ground_pos = origin
+		s.position = Iso.ground_to_screen(origin).round()
+		s.z_index = 5
+		sigil = track(s, ctx.overhead) as Node2D
 	if not DominionParts.staged(self):
 		return
 	DecreeParts.proclaim(self, origin, 70.0, 76.0, T_DRIVE + 0.2, 0.6)
@@ -107,6 +125,49 @@ func _lift() -> void:
 			law.lift()
 	if DominionParts.staged(self):
 		DecreeParts.wave(self, origin, lv_radius * 1.1, 0.5, 0.04)
+
+
+## Third Clause (level 5): the law holds now and no third rule has been added.
+func can_follow_up() -> bool:
+	return _twist and not finished and third == "" and law != null and law.alive()
+
+
+## The wheel opens on the fence's centre sigil.
+func follow_up_wheel() -> bool:
+	return true
+
+
+func follow_up_subject() -> Node2D:
+	return sigil if is_instance_valid(sigil) else null
+
+
+## The wheel's words (ORDER_WORDS) of the rules not in force, in RULES' order: three while the cast's two hold, none once a third is added.
+func follow_up_orders() -> Array:
+	var out: Array = []
+	for r in RULES:
+		if not rules.has(r) and r != third:
+			out.append(ORDER_WORDS[r])
+	return out
+
+
+## An order from the wheel: {"order": the wheel's word of a rule not in force}. It joins the live law for the time it has left, once; anything else
+## (a rule already in force, an unknown word, a second clause, no law) is refused and changes nothing.
+func follow_up(_at: Vector2, extra_data: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var shown := String(extra_data.get("order", ""))
+	if not follow_up_orders().has(shown):
+		return false
+	var word: String = ORDER_WORDS.find_key(shown)
+	third = word
+	third_at = t
+	var kind: StringName = KINDS[word]
+	if not law.kinds.has(kind):
+		law.kinds.append(kind)
+	if DominionParts.staged(self):
+		DecreeParts.wave(self, origin, lv_radius * 0.6, 0.5, 0.04)
+		ctx.play(&"fe_posts", origin)
+	return true
 
 
 ## Cut short (an act of the night ends): the law is lifted with it.
@@ -176,6 +237,8 @@ class Fence extends Node2D:
 	var _rail := PackedVector2Array()
 	var _words := PackedStringArray()
 	var _widths := PackedFloat32Array()
+	var _third_word := ""
+	var _third_w := 0.0
 
 	## The ground circle's half width and half height on screen.
 	static func half_axes(r := RADIUS) -> Vector2:
@@ -228,19 +291,27 @@ class Fence extends Node2D:
 		# each written in as its stroke runs under it.
 		var font := UiTheme.font()
 		for k in _words.size():
-			var w := _widths[k]
-			var y := (-0.3 if k == 0 else 0.3) * h.y
 			var stroke := clampf((now - T_LAND - 0.15 * float(k)) / 0.35, 0.0, 1.0)
-			draw_set_transform(Vector2(0.0, y), 0.0, FLAT)
-			var at := Vector2(-w * 0.5, 7.0).round()
-			var plate := Rect2(at + Vector2(-5.0, -SIZE + 2.0), Vector2(w + 10.0, SIZE + 6.0))
-			draw_rect(plate.grow(1.0), Color(DecreeParts.GILT, 0.55 * a))
-			draw_rect(plate, Color(DecreeParts.INK, 0.72 * a))
-			draw_string(font, at + Vector2(1.0, 1.0), _words[k], HORIZONTAL_ALIGNMENT_LEFT, -1, SIZE, Color(DecreeParts.INK, a))
-			draw_string(font, at, _words[k], HORIZONTAL_ALIGNMENT_LEFT, -1, SIZE, Color(DecreeParts.GILT, a))
-			var line := at.y + 4.0
-			draw_line(Vector2(at.x - 3.0, line), Vector2(at.x - 3.0 + (w + 6.0) * stroke, line), Color(DecreeParts.GILT, 0.9 * a), 1.0)
+			_draw_word(font, _words[k], _widths[k], (-0.3 if k == 0 else 0.3) * h.y, stroke, a)
+		# Third Clause: the added rule's words, written in below the two once it is added.
+		if fx.third != "":
+			if _third_word == "":
+				_third_word = String(WORDS[fx.third])
+				_third_w = UiTheme.width(_third_word, SIZE)
+			_draw_word(font, _third_word, _third_w, 0.7 * h.y, clampf((now - fx.third_at) / 0.35, 0.0, 1.0), a)
 		draw_set_transform(Vector2.ZERO)
+
+	## One rule's words on their ink plate, laid flat at `y`, its gilt stroke run `stroke` of the way.
+	func _draw_word(font: Font, word: String, w: float, y: float, stroke: float, a: float) -> void:
+		draw_set_transform(Vector2(0.0, y), 0.0, FLAT)
+		var at := Vector2(-w * 0.5, 7.0).round()
+		var plate := Rect2(at + Vector2(-5.0, -SIZE + 2.0), Vector2(w + 10.0, SIZE + 6.0))
+		draw_rect(plate.grow(1.0), Color(DecreeParts.GILT, 0.55 * a))
+		draw_rect(plate, Color(DecreeParts.INK, 0.72 * a))
+		draw_string(font, at + Vector2(1.0, 1.0), word, HORIZONTAL_ALIGNMENT_LEFT, -1, SIZE, Color(DecreeParts.INK, a))
+		draw_string(font, at, word, HORIZONTAL_ALIGNMENT_LEFT, -1, SIZE, Color(DecreeParts.GILT, a))
+		var line := at.y + 4.0
+		draw_line(Vector2(at.x - 3.0, line), Vector2(at.x - 3.0 + (w + 6.0) * stroke, line), Color(DecreeParts.GILT, 0.9 * a), 1.0)
 
 	## Post `i`: falling from above until it is driven home, a gilt spark at its foot as it strikes, then standing; it
 	## sinks as the law lifts.
@@ -279,3 +350,32 @@ class Fence extends Node2D:
 			draw_line(base + Vector2(-r, 0.0), base + Vector2(-r * 0.4, -r * 0.35), c, 2.0)
 			draw_line(base + Vector2(r, 0.0), base + Vector2(r * 0.4, -r * 0.35), c, 2.0)
 			draw_line(base + Vector2(-r * 0.7, 1.0), base + Vector2(r * 0.7, 1.0), Color(DecreeParts.INK, 0.6 * (1.0 - k)), 3.0)
+
+
+## Third Clause's centre sigil (level 5): a small gilt clause mark on the ground at the fence's middle, where the order wheel
+## opens. A subject for Targeting (ground_pos, is_alive()); drawn only, no simulation state. It stands while the cast can take the
+## clause (the law holds, none added yet), and is freed with the cast.
+class Sigil extends Node2D:
+	var fx: FencedFx
+	var ground_pos := Vector2.ZERO
+
+	func is_alive() -> bool:
+		return is_instance_valid(fx) and fx.can_follow_up()
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if not is_instance_valid(fx) or fx.law == null or fx.third != "":
+			return
+		var a := clampf(fx.shown(), 0.0, 1.0)
+		if a <= 0.0:
+			return
+		var pulse := 0.65 + 0.35 * sin(fx.t * 4.0)
+		var g := Color(DecreeParts.GILT, a * pulse)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(2.0, 1.0))
+		draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 20, Color(DecreeParts.INK, a * 0.8), 4.0)
+		draw_arc(Vector2.ZERO, 7.0, 0.0, TAU, 20, g, 2.0)
+		draw_set_transform(Vector2.ZERO)
+		draw_rect(Rect2(-1.0, -8.0, 2.0, 16.0), g)
+		draw_rect(Rect2(-8.0, -1.0, 16.0, 2.0), g)

@@ -16,6 +16,8 @@ static func run(t) -> void:
 	_fall_count(t, made)
 	_leave(t, made)
 	_life_end(t, made)
+	_late_fall(t, made)
+	_claws(t, made)
 	_no_rise(t, made)
 	_level_four(t, made)
 	_teardown(t, made)
@@ -109,7 +111,6 @@ static func _no_rise(t, made: Array) -> void:
 	var a: Animal = _skeletons(fx)[0]
 	var victim := GT._put(made, 0, a.ground_pos)
 	victim.inside = false
-	var rem: Remains = (made[0] as Crowd).remains
 	GT._soldiers_back(s[1])
 	RD._run(fx, 3.0, [victim])
 	t.check(not victim.is_alive() and fx.raised == raised and GT._of(fx, Animal.Breed.ZOMBIE).is_empty(),
@@ -175,4 +176,39 @@ static func _two_casts(t, made: Array) -> void:
 	a.end_now()
 	t.check(b.giant != null and not b.finished, "and ending the first leaves the second's giant standing")
 	b.end_now()
+	GT._soldiers_back(s[1])
+
+
+## The giant cut down 5 s before its life is over: the stale end of its life changes nothing; the skeletons stand 20.0 s.
+static func _late_fall(t, made: Array) -> void:
+	var s := _stand(made, 5, 0)
+	var fx: GraveTideFx = s[0]
+	GT._run_bare(fx, fx.landed_at + fx.lv_giant_life - 5.0 - fx.t)
+	_cut(fx)
+	var fell := fx.t
+	t.check(_skeletons(fx).size() == 18 and fx.giant == null, "late fall (5 s before its life is out): eighteen skeletons")
+	RD._run(fx, 6.0)  # past the stale end of the giant's life
+	t.check(_skeletons(fx).size() > 0 and not fx.finished, "the stale end of its life leaves them standing (%d)" % _skeletons(fx).size())
+	RD._run(fx, fell + 19.8 - fx.t)
+	t.check(_skeletons(fx).size() > 0 and not fx.finished, "still up at +19.8 s")
+	RD._run(fx, fell + GraveTideFx.SCATTER_LIFE + 0.1 - fx.t)
+	t.check(_skeletons(fx).is_empty(), "gone at +20.0 s")
+	RD._run(fx, GraveTideFx.FADE + 0.3)
+	t.check(fx.finished, "and the tide ends at fall + 20 + FADE")
+	GT._soldiers_back(s[1])
+
+
+## They claw as the tide's own skeletons do (R42: SKELETON_WRECK every SKELETON_WRECK_EVERY, R45's spare) and count in raised.
+static func _claws(t, made: Array) -> void:
+	var s := _stand(made, 5, 0)
+	var fx: GraveTideFx = s[0]
+	var before := fx.raised
+	_cut(fx)
+	var a: Animal = _skeletons(fx).filter(func(x: Animal) -> bool: return fx.visitors._rules[x].wreck > 0.0)[0] if not _skeletons(fx).is_empty() else null
+	var r = fx.visitors._rules[a] if a != null else null
+	t.check(fx.raised == before + 18 and r != null and is_equal_approx(r.wreck, GraveTideFx.SKELETON_WRECK)
+		and is_equal_approx(r.wreck_every, GraveTideFx.SKELETON_WRECK_EVERY) and r.spare.is_valid(),
+		"they claw like the tide's skeletons (wreck %.1f every %.1f, spare set) and count in raised (%d -> %d)"
+		% [r.wreck if r != null else -1.0, r.wreck_every if r != null else -1.0, before, fx.raised])
+	fx.end_now()
 	GT._soldiers_back(s[1])

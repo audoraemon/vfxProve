@@ -684,6 +684,8 @@ func _end_life() -> void:
 func _end_giant() -> void:
 	if visitors == null:
 		return
+	if _twist and _fell_once and (giant == null or not is_instance_valid(giant)):
+		return  # the giant fell earlier: this is its stale end, and the skeletons it left keep their 20.0 s
 	if _twist and giant != null and is_instance_valid(giant):
 		_scatter(giant.ground_pos)
 		if not _scattered.is_empty():
@@ -729,8 +731,7 @@ func _scatter(at_ground: Vector2) -> void:
 		if grid != null and not grid.on_streets(p):
 			var w := grid.nearest_walkable(p, 3, true)
 			p = w if w != Vector2.INF else at_ground
-		_scattered.append(DeathParts.skeleton(visitors, p))
-		raised += 1
+		_scattered.append(_up_skeleton(p))  # as the tide's own: claws (R42) and the spared buildings (R45), counted in raised
 	at(t + SCATTER_LIFE, _bones_leave)
 	if DominionParts.staged(self):
 		FxParts.debris(self, Iso.ground_to_screen(at_ground), 8, 6.0, Vector2(30, 90), BONE_CHIPS, Vector2(1.0, 2.0), true)

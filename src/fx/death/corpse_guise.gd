@@ -90,6 +90,7 @@ func _build() -> void:
 		if _twist:
 			_health[p.get_instance_id()] = maxf(p.health, Person.HEALTH_SOLDIER if p.soldier else Person.HEALTH_CITIZEN)
 			p.deathless = Callable(self, "_spare")
+			p.deathless_lie = FALL_TIME - Person.GETUP_SECONDS  # up just as the 5 s end
 	ctx.play(&"q_guise", origin)
 	var parent: Node2D = ctx.overhead if ctx.overhead != null else ctx.world
 	if parent != null:
@@ -117,6 +118,11 @@ func _fx_process(delta: float) -> void:
 		if not _keeps(p):
 			continue
 		if _fallen.has(p.get_instance_id()):
+			if not p.is_alive():
+				# Died again while lying (a second death is not caught): the guise and the shroud go with them.
+				_rise(p, false)
+				_lift(p)
+				continue
 			# Lying as a body: the guise waits, and the rise comes when the 5 s are up.
 			_fallen[p.get_instance_id()] = float(_fallen[p.get_instance_id()]) - delta
 			if float(_fallen[p.get_instance_id()]) <= 0.0:
@@ -167,6 +173,7 @@ func _rise(p: Variant, renew: bool) -> void:
 	_fallen.erase(id)
 	who.free_pace(get_instance_id())
 	if who.is_alive():
+		who.stand_up()  # the 5 s are up: on his feet now, not a think-tick later
 		who.health = float(_health.get(id, who.health))
 		if renew and _keeps(who):
 			who.statuses[KEY] = RISEN_GUISE

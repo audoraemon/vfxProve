@@ -201,10 +201,16 @@ static func _sheltered(t) -> void:
 		inn.inside = false
 		inn.visible = true
 		inn.ground_pos = C + Vector2(-25.0, 0.0)
+		# a listed one sheltering in a house OUTSIDE the district when the bell strikes
+		if level == 5:
+			t.check((crowd.shelters.shelters[h_out].inside as Array).has(outer), "setup: the outer one sits in the outside house")
+			fx._listed[outer.get_instance_id()] = true  # (a person once in the district, now sheltering outside it)
 		SV._run_to(fx, fx.lv_countdown - DT)
 		fx._process(DT * 1.5)
 		if level == 5:
-			t.check(not inn.is_alive() and outer.is_alive(), "level 5: the one once indoors dies at the bell wherever he is; the outside house's lives")
+			t.check(not outer.is_alive() and crowd.shelters.occupants(h_out) == 0 and crowd.shelters.occupants(h_in) == 0,
+				"level 5: a listed one in a house outside is let out before he dies: no dead occupant stays inside")
+			t.check(not inn.is_alive(), "level 5: the one once indoors dies at the bell wherever he is")
 		else:
 			t.check(inn.is_alive() and outer.is_alive(), "level 4: the one who left lives")
 		fx.end_now()

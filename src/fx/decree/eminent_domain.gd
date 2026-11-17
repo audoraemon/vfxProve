@@ -187,6 +187,14 @@ func can_follow_up() -> bool:
 	return _twist and not finished and _second == null and t >= T_TEAR and t < T_TEAR + FOLLOW_WINDOW
 
 
+## Further Claim's preview while a second strip can be claimed: a ring the size of the nearest refused click (FOLLOW_MIN), so the
+## ground never shows the first strip's 12-long lane at the cursor. {} otherwise (the power's own area).
+func follow_up_area() -> Dictionary:
+	if not can_follow_up():
+		return {}
+	return {"shape": "circle", "r": FOLLOW_MIN}
+
+
 ## Further Claim: the click tears a second strip, the first's width and work, from the first strip's end toward the click,
 ## min(FOLLOW_MAX, its distance) long. False for a click under FOLLOW_MIN from that end. The second strip claims, tears and
 ## lays rubble as a first does (it is one: a level 1 cast of this effect), and the cast lives until it is done.

@@ -41,6 +41,7 @@ static func run(t) -> void:
 	_struck_by(t)
 	_borrowed(t)
 	_deathless(t)
+	_spared_plague(t)
 	_bench_level(t)
 
 
@@ -235,6 +236,29 @@ static func _borrowed(t) -> void:
 	_done(made)
 
 
+## A person Deathless spares from a plague death is no longer foul: a later sickness is not inherited from the old source.
+static func _spared_plague(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var plague: PlagueManager = crowd.plague
+	var src := 4242
+	plague.foul_from(src)
+	var kept: Person = crowd.citizens[0]
+	kept.ground_pos = Vector2(6.0, 6.0)
+	kept.deathless = func(_w: Person, _k: StringName) -> bool: return true
+	_sick_still(crowd, kept, src)
+	plague.step(0.1)
+	plague.step(PlagueManager.PLAGUE_LIFE + 0.1)
+	t.check(kept.is_alive() and kept.plague_src == 0, "spared from a plague death: the foul source is cleared")
+	var gone: Person = crowd.citizens[1]
+	gone.ground_pos = Vector2(8.0, 8.0)
+	_sick_still(crowd, gone, src)
+	plague.step(0.1)
+	plague.step(PlagueManager.PLAGUE_LIFE + 0.1)
+	t.check(not gone.is_alive() and plague.foul_spots.size() == 1, "control: one not spared dies foul and lays its spot")
+	_done(made)
+
+
 ## The deathless fall: a callable that returns true spares the death (down, alive, nothing counted); false lets it happen.
 static func _deathless(t) -> void:
 	var made := _setup()
@@ -263,9 +287,9 @@ static func _deathless(t) -> void:
 	spared.hurt(1.0, crowd.citizens[1])
 	t.check(spared.is_alive() and crowd.killed_citizens == n0, "a blow that would kill is caught too")
 
-	# The two kinds it never catches.
-	for kind in [&"pit", &"gone"]:
-		var q: Person = crowd.citizens[2 if kind == &"pit" else 3]
+	# The kinds it never catches (the rite counts its shard, so it must not be cancelled).
+	for kind in [&"pit", &"gone", &"rite"]:
+		var q: Person = crowd.citizens[{&"pit": 2, &"gone": 3, &"rite": 7}[kind]]
 		q.ground_pos = at + Vector2(1.0, 0.0)
 		var asks := [0]
 		q.deathless = func(_w: Person, _k: StringName) -> bool:

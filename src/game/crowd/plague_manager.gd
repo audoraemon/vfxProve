@@ -91,6 +91,8 @@ func step(delta: float) -> void:
 			deaths += 1
 			if src != 0 and foul.has(src):
 				foul_spots.append({"pos": p.ground_pos, "left": FOUL_LIFE, "most": FOUL_MOST, "src": src})
+		else:
+			p.plague_src = 0  # spared (Deathless): the sickness is over, and no later sickness inherits this foulness
 	_spread_in -= delta
 	if _spread_in <= 0.0:
 		_spread_in = SPREAD_EVERY

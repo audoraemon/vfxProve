@@ -138,12 +138,14 @@ static func _window(t) -> void:
 	var click := END + Vector2(0.0, 4.0)
 	var early := _cast(made, 5)
 	_run(early, 5.75)
+	t.check(early.follow_up_area() == {"shape": "circle", "r": EminentFx.FOLLOW_MIN}, "while a follow-up can be taken the preview is a small ring, not a lane")
 	t.check(early.can_follow_up() and early.follow_up(click, {}), "at 5.75 s (within 5.0 s of the tear) a click is taken (control)")
 	_end(early)
 	var late := _cast(made, 5)
 	_run(late, 5.85)
 	t.check(not late.can_follow_up() and not late.follow_up(click, {}) and late._second == null,
 		"after 5.0 s from the tear a click is refused")
+	t.check(late.follow_up_area().is_empty(), "and the preview is the power's own again")
 	_end(late)
 	E._done(made)
 

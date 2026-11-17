@@ -345,6 +345,8 @@ var struck_at := -1.0
 ## Deathless (Corpse Guise, level 5; shared hook): asked as `deathless.call(self, kind)` before a death; true cancels it (the
 ## person is knocked down where they stand and nothing else happens). Empty: no one is spared. Never asked for &"pit" or &"gone".
 var deathless := Callable()
+## How long a Deathless fall lies (the hook's owner sets it; the get-up follows).
+var deathless_lie := DOWN_SECONDS
 ## Discord (v0.06): seconds of confusion left, and whether it was fleeing when it struck.
 var _confused_left := 0.0
 var _was_fleeing := false
@@ -423,6 +425,7 @@ var _scream_total := SCREAM_SECONDS
 ## down and then getting up (is_down()).
 var _down_pending := false
 var _down_left := 0.0
+var _down_lie := DOWN_SECONDS  # how long the pending knock-down will lie
 var _getup_left := 0.0
 ## Seconds left of showing the swing pose after a blow it struck.
 var _swing_left := 0.0
@@ -626,7 +629,8 @@ func tick(delta: float) -> void:
 	if _down_pending and state == State.WANDER:
 		# The knock-back slide is over: it lies where it came to rest.
 		_down_pending = false
-		_down_left = DOWN_SECONDS
+		_down_left = _down_lie
+		_down_lie = DOWN_SECONDS
 		_idle = maxf(_idle, 0.2)  # not a tick of creep before the first think
 
 
@@ -643,8 +647,8 @@ func _run_carried_laws(delta: float) -> void:
 ## A death, unless `deathless` spares it (Corpse Guise, level 5): the person falls where they stand and stays alive, and
 ## nothing else happens (EnemyField.kill() sees a living person and counts, announces and leaves nothing).
 func die(kind: StringName, source := Vector2.INF) -> void:
-	if deathless.is_valid() and kind != &"pit" and kind != &"gone" and state != State.DEAD and bool(deathless.call(self, kind)):
-		knock_down()
+	if deathless.is_valid() and kind != &"pit" and kind != &"gone" and kind != &"rite" and state != State.DEAD and bool(deathless.call(self, kind)):
+		knock_down(deathless_lie, true)
 		return
 	super(kind, source)
 
@@ -2062,9 +2066,15 @@ func freeze(seconds: float, on_thaw := Callable()) -> void:
 		_scream_left = 0.0
 
 
+## Up now, whatever is left of the lie or the get-up (Deathless's fall ends at its own clock).
+func stand_up() -> void:
+	_get_up_now()
+
+
 ## Moved by something else while down: the down and get-up timers are cleared and it behaves as normal.
 func _get_up_now() -> void:
 	_down_pending = false
+	_down_lie = DOWN_SECONDS
 	_down_left = 0.0
 	_getup_left = 0.0
 
@@ -2075,9 +2085,22 @@ func is_screaming() -> bool:
 
 ## Knocked down by a blow: after the knock-back slide it lies still for DOWN_SECONDS, then gets up for GETUP_SECONDS.
 ## Its mind is its own business (hurt() frightens it as the blow lands), and its flight waits until it is up.
-func knock_down() -> void:
-	if state == State.DEAD or is_frozen() or is_down():
+## `lie` is how long it lies (DOWN_SECONDS by default). `force` (Deathless): lies now even when frozen or already down.
+func knock_down(lie := DOWN_SECONDS, force := false) -> void:
+	if state == State.DEAD:
 		return
+	if force:
+		_down_pending = false
+		_down_lie = DOWN_SECONDS
+		_down_left = lie
+		_getup_left = 0.0
+		_scream_left = 0.0
+		_startle_left = 0.0
+		_idle = maxf(_idle, 0.2)
+		return
+	if is_frozen() or is_down():
+		return
+	_down_lie = lie
 	_down_pending = true
 	_scream_left = 0.0
 	_startle_left = 0.0  # a fright freeze waiting to start would freeze it again once it is up

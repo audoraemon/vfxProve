@@ -14,6 +14,8 @@ static func run(t) -> void:
 	_second(t, made)
 	_pit(t, made)
 	_ended(t, made)
+	_already_down(t, made)
+	_died_lying(t, made)
 	_level_4(t, made)
 	_two_casts(t, made)
 	_teardown(t, made)
@@ -55,16 +57,18 @@ static func _fall(t, made: Array) -> void:
 	t.check(p.is_alive() and p.is_down() and crowd.killed_citizens == n0 and crowd.remains.all().size() == rem0
 		and is_equal_approx(crowd.alarm, alarm0), "lies down alive: no kill, no remain, no alarm")
 	t.check(not p.deathless.is_valid(), "the hook is spent")
-	RD._run(fx, 4.9)
+	RD._run(fx, 4.0, [p])
+	t.check(p.is_down(), "lying (down) at 4.0 s into the fall")
+	RD._run(fx, 0.9, [p])
 	t.check(p.is_alive() and p.health <= 0.0 and p.pace_hold() == 0.0 and p.guised(), "still lying at 4.9 s on a held pace, still guised")
-	RD._run(fx, 0.2)
-	t.check(is_equal_approx(p.health, Person.HEALTH_CITIZEN) and p.pace_hold() == 1.0, "up at 5.0 s at full health, pace free")
+	RD._run(fx, 0.2, [p])
+	t.check(is_equal_approx(p.health, Person.HEALTH_CITIZEN) and p.pace_hold() == 1.0 and not p.is_down(), "up at 5.0 s at full health, pace free, on his feet")
 	t.check(p.guised() and float(p.statuses[CorpseGuiseFx.KEY]) > 9.8 and float(p.statuses[CorpseGuiseFx.KEY]) <= 10.0,
 		"the guise renewed to 10 s from the rise (%s)" % [p.statuses[CorpseGuiseFx.KEY]])
 	t.check(fx.duration >= fx.t + 9.8, "the cast lives to cover it")
-	RD._run(fx, 9.6)
+	RD._run(fx, 9.6, [p])
 	t.check(p.guised(), "still guised at +9.6")
-	RD._run(fx, 0.6)
+	RD._run(fx, 0.6, [p])
 	t.check(not p.guised(), "the guise ends at +10")
 	fx.end_now()
 
@@ -82,6 +86,44 @@ static func _second(t, made: Array) -> void:
 	var n1 := crowd.killed_citizens
 	t.check(_kill(made, q) and not q.is_alive() and crowd.killed_citizens == n1 + 1, "a second death while lying kills too")
 	t.check(q.pace_hold() == 1.0 or not q.is_alive(), "(a dead one's hold does not matter)")
+	fx.end_now()
+
+
+## An already-down (or frozen) guised person caught by Deathless still lies the whole fall.
+static func _already_down(t, made: Array) -> void:
+	var fx := _cast(made, 5)
+	var p: Person = fx.marked[0]
+	var q: Person = fx.marked[1]
+	var both: Array = [p, q]
+	p.knock_down()
+	RD._run(fx, 0.5, both)
+	t.check(p.is_down(), "setup: knocked down already")
+	p.health = 0.0
+	_kill(made, p)
+	RD._run(fx, 4.0, both)
+	t.check(p.is_alive() and p.is_down(), "already down when caught: still lying at 4.0 s of the fall (a plain knock-down is up by 2 s)")
+	RD._run(fx, 1.2, both)
+	t.check(p.is_alive() and not p.is_down(), "and up after it")
+	# A frozen one: the plain call does nothing (control); Deathless lies them anyway.
+	q.freeze(30.0)
+	q.knock_down()
+	t.check(not q.is_down(), "control: a plain knock-down does nothing to a frozen one")
+	q.health = 0.0
+	_kill(made, q)
+	t.check(q.is_alive() and q.is_down(), "a frozen guised one caught by Deathless lies")
+	fx.end_now()
+
+
+## A guised one who dies again while lying loses the guise and the shroud at once.
+static func _died_lying(t, made: Array) -> void:
+	var fx := _cast(made, 5)
+	var p: Person = fx.marked[0]
+	_kill(made, p)
+	RD._run(fx, 1.0)
+	t.check(p.guised(), "control: guised while lying")
+	p.die(&"smite")
+	RD._run(fx, 0.2)
+	t.check(not p.is_alive() and not p.guised(), "died while lying: the guise is off at once, not up to 5 s later")
 	fx.end_now()
 
 

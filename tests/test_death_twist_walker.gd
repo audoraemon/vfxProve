@@ -61,6 +61,7 @@ static func _kill(t, made: Array) -> void:
 	t.check(not foe.is_alive() and deaths == [[foe, &"borrowed"]] and fx.kills == 1, "the kill is the borrowed kind (%s)" % [deaths])
 	t.check(crowd.remains.pick(foe.ground_pos, false, true) == null and crowd.remains.all().size() == rem0, "and leaves no remain")
 	t.check(crowd.killed_soldiers + crowd.killed_citizens == killed + 1, "it counts as a death")
+	t.check(Rules.POWER_KINDS["walker"].has(&"borrowed"), "Borrowed Life's kills are credited to the walker's power")
 	RD._run(fx, 0.5)
 	t.check(is_equal_approx(crowd.alarm, alarm), "no alarm (%.2f -> %.2f)" % [alarm, crowd.alarm])
 	t.check(w.worn == look and fx.remain.design == look, "the walker's design and its remain's are the victim's")

@@ -183,6 +183,8 @@ func _stroke() -> void:
 	doomed.append_array(listed)
 	var staged := _ledger != null and DominionParts.staged(self)
 	for p in doomed:
+		if p.inside and ctx.crowd.shelters != null:
+			ctx.crowd.shelters.release(p)  # a listed one sheltering elsewhere is let out first, as the base game does
 		var at_g := p.ground_pos
 		if not ctx.field.kill(p, KIND, at_g):
 			continue

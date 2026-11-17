@@ -78,7 +78,7 @@ const POWER_KINDS := {
 	"raise": [&"frenzy"],
 	"gravecall": [],
 	"guise": [],
-	"walker": [&"grave"],
+	"walker": [&"grave", &"borrowed"],
 	"gatebelow": [&"pit", &"wither"],
 	"pale": [&"pale"],
 	"serpent": [&"shadow"],

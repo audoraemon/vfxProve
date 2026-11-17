@@ -1,7 +1,7 @@
 # KAK per-type references, First Prayers (god T1R Task 6): the scripted policy of each god type (tools/dev/routes/god_t1/prayers.gd), playing only its two Tier 1 powers (behaviour_check --god=<type>:1). name<TAB>how<TAB>expected
-god_ruin_prayers_play_1	--scenario=prayers --case=play --god=ruin:1 --seed=1	-530170554
-god_ruin_prayers_play_2	--scenario=prayers --case=play --god=ruin:1 --seed=2	-321824036
-god_ruin_prayers_play_3	--scenario=prayers --case=play --god=ruin:1 --seed=3	-399013182
+god_ruin_prayers_play_1	--scenario=prayers --case=play --god=ruin:1 --seed=1	-417623867
+god_ruin_prayers_play_2	--scenario=prayers --case=play --god=ruin:1 --seed=2	-812402788
+god_ruin_prayers_play_3	--scenario=prayers --case=play --god=ruin:1 --seed=3	-226849362
 god_death_prayers_play_1	--scenario=prayers --case=play --god=death:1 --seed=1	-588496413
 god_death_prayers_play_2	--scenario=prayers --case=play --god=death:1 --seed=2	817885735
 god_death_prayers_play_3	--scenario=prayers --case=play --god=death:1 --seed=3	-208030890

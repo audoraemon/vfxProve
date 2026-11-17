@@ -257,6 +257,7 @@ class FrameFollower extends Node:
 
 	func _enter_tree() -> void:
 		UiScale.notifier.changed.connect(_on_changed)
+		UiScale._place(blocker, child)  # as WorldView does: a frame made (or kept) off the tree may have missed a resize
 
 	func _exit_tree() -> void:
 		if UiScale.notifier.changed.is_connected(_on_changed):

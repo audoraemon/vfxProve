@@ -231,6 +231,74 @@ static func _display_mapping(t) -> void:
 			UiScale.apply(UiScale.layout(Vector2i(640, 360)))
 
 
+## 2026-11-17 real-path sweep: the real game makes every view after the window has its size (title, board -> Prepare -> mission,
+## Restart, Replay, a second mission), which --show runs never did. A real Mission and the title's backdrop, each built after the
+## window is maximized at k 2 (1920x991, 125% DPI) and at k 3 (2560x1369), then resized mid-mission (1517x803, back to 640x360):
+## the picture covers the area at k x, every camera has the window's fit, the HUD marks with the view's camera, the world's
+## full-rect post layers (glow, impact, flash, grade, bloom) fill the area, the outlines' device transform is k x the camera's,
+## and a tag (world_xf) sits where the world point is drawn.
+static func _made_after_resize(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	for window: Vector2i in [Vector2i(1920, 991), Vector2i(2560, 1369)]:
+		UiScale.apply(UiScale.layout(window))  # the window first: the view is made after it, as from the board
+		var made := await _hosted_mission(t)
+		var wv: WorldView = made[0]
+		var m: Mission = made[1]
+		m.skip_intro()
+		for later in [window, Vector2i(1517, 803), Vector2i(640, 360)]:
+			if later != window:
+				UiScale.apply(UiScale.layout(later))  # a resize mid-mission
+			await t.process_frame
+			await t.process_frame
+			var lay := UiScale.layout_now()
+			var area := Vector2(lay["area"])
+			var k := int(lay["k"])
+			var what := "mission made at %s, now %s (area %s k %d)" % [window, later, area, k]
+			t.check(wv.display.size == area and wv.display.position == Vector2.ZERO and wv.display.expand_mode == TextureRect.EXPAND_IGNORE_SIZE,
+				"%s: the picture is the area at the origin (%s)" % [what, wv.display.size])
+			t.check(wv.viewport.size == Vector2i(area) * k and wv.viewport.size_2d_override == Vector2i(area),
+				"%s: the world renders area x k (%s, override %s)" % [what, wv.viewport.size, wv.viewport.size_2d_override])
+			t.check(is_equal_approx(m._bf.camera.view_fit, float(lay["fit"])), "%s: the camera has the window's fit (%.3f)" % [what, m._bf.camera.view_fit])
+			t.check(m._hud.world_viewport == wv.viewport and m._hud._world_xf() == wv.viewport.get_canvas_transform(),
+				"%s: the HUD marks with the view's camera" % what)
+			var short := PackedStringArray()
+			for c: Control in wv.viewport.find_children("*", "Control", true, false):
+				if c.get_parent() is CanvasLayer and c.anchor_right == 1.0 and c.anchor_bottom == 1.0 and (c.size != area or c.position != Vector2.ZERO):
+					short.append("%s %s" % [c.name, c.size])
+			t.check(short.is_empty(), "%s: the world's full-rect layers fill the area (off: %s)" % [what, ", ".join(short)])
+			if m._outlines != null:
+				var want := Transform2D().scaled(Vector2(k, k)) * wv.viewport.get_canvas_transform()
+				t.check(m._outlines.device_xf().is_equal_approx(want), "%s: the outlines' device transform is k x the camera's" % what)
+			var xf := m._hud._world_xf()
+			var worst := 0.0
+			for f in [Vector2(0.5, 0.5), Vector2(0.1, 0.15), Vector2(0.9, 0.8)]:
+				var p: Vector2 = xf.affine_inverse() * (area * (f as Vector2))
+				worst = maxf(worst, (xf * p).distance_to(_shown(wv, p)))
+			t.check(worst < 0.01, "%s: a tag sits where its world point is drawn (off by %.3f units)" % [what, worst])
+		_drop(wv)
+		# The title's backdrop, made after the window.
+		UiScale.apply(UiScale.layout(window))
+		WorldView.test_host = true
+		var title := TitleScreen.new()
+		tree.root.add_child(title)
+		title.setup(0, "")
+		await t.process_frame
+		var area := UiScale.area()
+		var view: WorldView = null
+		for c in title.get_children():
+			if c is WorldView:
+				view = c
+		t.check(view != null and view.display.size == area and view.viewport.size == Vector2i(area) * UiScale.k(),
+			"title made at %s: its backdrop is the area at k x (%s)" % [window, view.display.size if view != null else Vector2.ZERO])
+		var frame: Control = title._ui
+		t.check((frame.get_parent() as Control).size == area and frame.position == UiScale.design_offset() and is_equal_approx(frame.scale.x, UiScale.frame_scale()),
+			"title made at %s: its design frame is centred in the area (%s, %s x%.4f; want %s x%.4f)" % [window, (frame.get_parent() as Control).size,
+			frame.position, frame.scale.x, UiScale.design_offset(), UiScale.frame_scale()])
+		WorldView.test_host = false
+		title.free()
+		UiScale.apply(UiScale.layout(Vector2i(640, 360)))
+
+
 ## People and animals draw nearest (sharp); the world viewport defaults to linear, so buildings, ground and props soften.
 static func _filters(t) -> void:
 	var wv: WorldView = await _view(t)
@@ -676,6 +744,7 @@ static func run(t) -> void:
 	await _picking(t)
 	await _device_resolution(t)
 	await _display_mapping(t)
+	await _made_after_resize(t)
 	await _filters(t)
 	await _self_host(t)
 	await _no_ui_in_world(t)

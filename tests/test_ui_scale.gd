@@ -600,7 +600,88 @@ static func _full_rect_lint(t) -> void:
 	t.check(bad.is_empty(), "full-rect anchoring uses set_anchors_and_offsets_preset: %s" % [bad])
 
 
+## The TextureRects in `src` (a {path: source} map) that are given a texture or a size before their expand mode (2026-11-17, 18d32435:
+## under the default EXPAND_KEEP_SIZE the texture is the minimum size, so a size set first was clamped up to the texture's: WorldView's
+## picture, area x k px, came out k times the area whenever the view was made after the window).
+static func texture_rect_offenders(sources: Dictionary) -> Array:
+	var bad: Array = []
+	var made := RegEx.create_from_string("(?m)^\\s*(?:var\\s+)?([A-Za-z_][A-Za-z0-9_.]*)\\s*:?=\\s*TextureRect\\.new\\(\\)")
+	for path: String in sources:
+		var src: String = sources[path]
+		for m in made.search_all(src):
+			var v := m.get_string(1)
+			var after := src.substr(m.get_end())
+			var mode := after.find(v + ".expand_mode")
+			for prop in [".texture =", ".size =", ".custom_minimum_size =", ".set_size("]:
+				var at := after.find(v + prop)
+				if at >= 0 and (mode < 0 or at < mode):
+					bad.append("%s: %s%s before %s.expand_mode" % [path, v, prop, v])
+	return bad
+
+
+static func _texture_rect_fixture(t) -> void:
+	var old := "\tdisplay = TextureRect.new()\n\tdisplay.texture = vp.get_texture()\n\tdisplay.size = area\n\tdisplay.expand_mode = TextureRect.EXPAND_IGNORE_SIZE\n"
+	var fixed := "\tdisplay = TextureRect.new()\n\tdisplay.expand_mode = TextureRect.EXPAND_IGNORE_SIZE\n\tdisplay.texture = vp.get_texture()\n\tdisplay.size = area\n"
+	t.check(texture_rect_offenders({"old": old}).size() == 2, "the TextureRect lint sees the old WorldView order (texture and size before the expand mode)")
+	t.check(texture_rect_offenders({"fixed": fixed}).is_empty(), "and passes the fixed order")
+
+
+static func _texture_rect_lint(t) -> void:
+	var sources := {}
+	var stack: Array = ["res://src"]
+	while not stack.is_empty():
+		var dir_path: String = stack.pop_back()
+		var dir := DirAccess.open(dir_path)
+		for d in dir.get_directories():
+			stack.append(dir_path + "/" + d)
+		for f in dir.get_files():
+			if f.ends_with(".gd"):
+				var src := FileAccess.get_file_as_string(dir_path + "/" + f)
+				if src.contains("TextureRect.new()"):
+					sources["%s/%s" % [dir_path, f]] = src
+	var bad := texture_rect_offenders(sources)
+	t.check(sources.size() >= 1, "the TextureRect lint scans src (%d files make one)" % sources.size())
+	t.check(bad.is_empty(), "every TextureRect in src has its expand mode before its texture and size: %s" % [bad])
+
+
+## A design frame made after the window (every screen the real game opens once it is maximized) is the area at k 2 and k 3, and follows
+## a later resize: the blocker fills the area, the 640x360 page is scaled by frame_scale() and centred.
+static func _frame_after_resize(t) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	for window: Vector2i in [Vector2i(1920, 991), Vector2i(2560, 1369), Vector2i(1517, 803)]:
+		UiScale.apply(UiScale.layout(window))
+		var layer := CanvasLayer.new()
+		tree.root.add_child(layer)
+		var frame := UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)
+		await tree.process_frame  # the suite's root joins the tree a frame late; the frame's follower connects on entering it
+		var first := true
+		for now: Vector2i in [window, Vector2i(1392, 711), Vector2i(2560, 1369), Vector2i(1517, 803)]:
+			if not first:
+				UiScale.apply(UiScale.layout(now))
+			first = false
+			var area := UiScale.area()
+			var blocker := frame.get_parent() as Control
+			t.check(blocker.size == area and blocker.position == Vector2.ZERO and frame.position == UiScale.design_offset()
+				and frame.scale == Vector2.ONE * UiScale.frame_scale(),
+				"a design frame made at %s, now %s: fills area %s, page at %s x%.3f (%s, %s x%.3f)" % [window, now, area, UiScale.design_offset(),
+				UiScale.frame_scale(), blocker.size, frame.position, frame.scale.x])
+		layer.free()
+	# A frame made off the tree, then a resize, then added: placed for the window it joins in.
+	UiScale.apply(UiScale.layout(Vector2i(1920, 991)))
+	var off := CanvasLayer.new()
+	var made := UiScale.design_frame(off, Control.MOUSE_FILTER_STOP)
+	UiScale.apply(UiScale.layout(Vector2i(2560, 1369)))
+	tree.root.add_child(off)
+	t.check((made.get_parent() as Control).size == UiScale.area() and made.position == UiScale.design_offset(),
+		"a design frame made off the tree at 1920x991 and added after a resize to 2560x1369 fills the new area (%s)" % (made.get_parent() as Control).size)
+	off.free()
+	UiScale.apply(UiScale.layout(Vector2i(640, 360)))
+
+
 static func run(t) -> void:
+	_texture_rect_fixture(t)
+	_texture_rect_lint(t)
+	await _frame_after_resize(t)
 	_integer_setting(t)
 	_install(t)
 	_headless_keeps(t)

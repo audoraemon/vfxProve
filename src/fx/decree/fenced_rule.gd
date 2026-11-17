@@ -27,6 +27,9 @@ const KINDS := {"run": LawZone.NO_RUNNING, "arms": LawZone.NO_ARMS, "doors": Law
 	"leave": LawZone.NO_LEAVING}
 const WORDS := {"run": "NO RUNNING", "arms": "NO ARMS", "doors": "NO DOORS", "sight": "NO SIGHT", "leave": "NO LEAVING"}
 
+## The wheel's words for the rules (the wheel upper-cases them; short, so three fit its slices): each reads as the rule, never as a command.
+const ORDER_WORDS := {"run": "no run", "arms": "no arms", "doors": "no doors", "sight": "no sight", "leave": "no exit"}
+
 ## The cast's mode: its two rules joined by "_" (run_arms .. sight_leave).
 var mode := "run_arms"
 ## Its two rules (RULES' keys), in order.
@@ -74,7 +77,7 @@ func _build() -> void:
 	at(T_LAND, _land)
 	at(T_LAND + lv_hold_time, _lift)
 	ctx.play(&"fe_posts", origin)
-	if _twist:
+	if _twist and ctx.overhead != null:
 		var s := Sigil.new()
 		s.fx = self
 		s.ground_pos = origin
@@ -138,23 +141,24 @@ func follow_up_subject() -> Node2D:
 	return sigil if is_instance_valid(sigil) else null
 
 
-## The rule words not in force (RULES' keys, in their order): three while the cast's two hold, none once a third is added.
+## The wheel's words (ORDER_WORDS) of the rules not in force, in RULES' order: three while the cast's two hold, none once a third is added.
 func follow_up_orders() -> Array:
 	var out: Array = []
 	for r in RULES:
 		if not rules.has(r) and r != third:
-			out.append(r)
+			out.append(ORDER_WORDS[r])
 	return out
 
 
-## An order from the wheel: {"order": a rule not in force}. It joins the live law for the time it has left, once; anything else
+## An order from the wheel: {"order": the wheel's word of a rule not in force}. It joins the live law for the time it has left, once; anything else
 ## (a rule already in force, an unknown word, a second clause, no law) is refused and changes nothing.
 func follow_up(_at: Vector2, extra_data: Dictionary) -> bool:
 	if not can_follow_up():
 		return false
-	var word := String(extra_data.get("order", ""))
-	if not follow_up_orders().has(word):
+	var shown := String(extra_data.get("order", ""))
+	if not follow_up_orders().has(shown):
 		return false
+	var word: String = ORDER_WORDS.find_key(shown)
 	third = word
 	third_at = t
 	var kind: StringName = KINDS[word]

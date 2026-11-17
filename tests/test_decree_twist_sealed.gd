@@ -16,6 +16,7 @@ static func _cast(ctx: FxContext, level: int) -> SealedFx:
 static func run(t) -> void:
 	_walkers(t)
 	_quiet(t)
+	_sheltered(t)
 	_teardown(t)
 	_two_casts(t)
 
@@ -166,3 +167,46 @@ static func _two_casts(t) -> void:
 	f1.free()
 	f2.free()
 	SV._done(made)
+
+
+## Sheltering in a district house from 5 s to 20 s, then out of the circle before the bell: listed, dies. A house outside lists nobody.
+static func _sheltered(t) -> void:
+	for level in [5, 4]:
+		var made := SV._setup()
+		var crowd: Crowd = made[0]
+		var env: EnvironmentField = made[1]
+		var ctx: FxContext = made[5]
+		SV._away(crowd)
+		var inn: Person = crowd.citizens[0]
+		var outer: Person = crowd.citizens[1]
+		var h_in := env.add_structure(Rect2(C + Vector2(4.5, 2.5), Vector2(1.0, 1.0)), 30.0, Structure.Kind.HOUSE, &"house")
+		var h_out := env.add_structure(Rect2(C + Vector2(24.5, 2.5), Vector2(1.0, 1.0)), 30.0, Structure.Kind.HOUSE, &"house")
+		for h in [h_in, h_out]:
+			crowd.shelters.shelters[h] = {"inside": [], "coming": [], "clear": 0.0}
+		var fx := _cast(ctx, level)
+		SV._run_to(fx, 5.0)
+		inn.ground_pos = h_in.center()
+		crowd.shelters._enter(inn, h_in)
+		(crowd.shelters.shelters[h_in].inside as Array).append(inn)
+		outer.ground_pos = h_out.center()
+		crowd.shelters._enter(outer, h_out)
+		(crowd.shelters.shelters[h_out].inside as Array).append(outer)
+		SV._run_to(fx, 5.5)
+		if level == 5:
+			t.check(fx._listed.has(inn.get_instance_id()) and not fx._listed.has(outer.get_instance_id()),
+				"level 5: one indoors in a district house is listed; one in a house outside is not")
+		# out of the house and the circle before the bell (a release, wherever it lands)
+		SV._run_to(fx, 20.0)
+		(crowd.shelters.shelters[h_in].inside as Array).erase(inn)
+		inn.inside = false
+		inn.visible = true
+		inn.ground_pos = C + Vector2(-25.0, 0.0)
+		SV._run_to(fx, fx.lv_countdown - DT)
+		fx._process(DT * 1.5)
+		if level == 5:
+			t.check(not inn.is_alive() and outer.is_alive(), "level 5: the one once indoors dies at the bell wherever he is; the outside house's lives")
+		else:
+			t.check(inn.is_alive() and outer.is_alive(), "level 4: the one who left lives")
+		fx.end_now()
+		fx.free()
+		SV._done(made)

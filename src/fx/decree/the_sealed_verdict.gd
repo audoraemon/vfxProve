@@ -106,6 +106,11 @@ func _fx_process(_delta: float) -> void:
 		for e in ctx.field.in_radius(origin, lv_radius):
 			if e is Person:
 				_listed[e.get_instance_id()] = true
+		# Those sheltering in a house of the district are out of the field: found as the bell finds them, a few buildings only.
+		for house in shelters_at(ctx.crowd, origin, lv_radius):
+			for v in ctx.crowd.shelters.shelters[house].inside:
+				if is_instance_valid(v) and v is Person:
+					_listed[(v as Person).get_instance_id()] = true
 	if _ledger == null or struck or t < _next_tally:
 		return
 	_next_tally = t + TALLY_EVERY
@@ -164,12 +169,15 @@ func _stroke() -> void:
 	for s in shelters_at(ctx.crowd, origin, lv_radius):
 		doomed.append_array(ctx.crowd.shelters.throw_out_of(s, 0.0))  # brought out at the door, where the body is found
 	var listed: Array[Person] = []
+	var taken := {}
+	for p in doomed:
+		taken[p.get_instance_id()] = true
 	if _twist:
 		var ids := _listed.keys()
 		ids.sort()
 		for id in ids:
 			var o := instance_from_id(id)  # null for one freed since
-			if o != null and is_instance_valid(o) and o is Person and (o as Person).is_alive() and not doomed.has(o):
+			if o != null and is_instance_valid(o) and o is Person and (o as Person).is_alive() and not taken.has(id):
 				listed.append(o)
 		_listed.clear()
 	doomed.append_array(listed)

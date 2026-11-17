@@ -1,9 +1,13 @@
 {
- "hash": "632bc3ec71ab848e",
- "updated": "2026-11-17T23:02:02+07:00",
+ "hash": "cff1419f25b40ace",
+ "updated": "2026-11-17T23:07:06+07:00",
  "changes": {
-  "date": "<t:1794931322:f>",
-  "items": []
+  "date": "<t:1794931626:f>",
+  "items": [
+   "Done: bread_play_3 reference mismatch on Develop-Main",
+   "New: God branch: 372 stale refs re-recorded; Prayers x Ruin and x Dominion fixed",
+   "New: First Prayers x Passage and x Decree idle over the bar"
+  ]
  },
  "snapshot": {
   "project": {
@@ -23,11 +27,11 @@
    },
    "bread-play-3-ref": {
     "title": "bread_play_3 reference mismatch on Develop-Main",
-    "status": "todo",
+    "status": "done",
     "area": "Tools",
     "needs_you": false,
     "branch": "feat/Develop-Main",
-    "updated": "2026-11-05",
+    "updated": "2026-11-17",
     "order": 201
    },
    "c01": {
@@ -481,6 +485,16 @@
     "updated": "2026-10-27",
     "order": 189
    },
+   "god-refs-rerecord": {
+    "title": "God branch: 372 stale refs re-recorded; Prayers x Ruin and x Dominion fixed",
+    "status": "done",
+    "area": "Tools",
+    "version": "god",
+    "needs_you": false,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-17",
+    "order": 202
+   },
    "god-ring-order": {
     "title": "God ring order: Ruin, Passage, Veil, Decree, Death, Dominion",
     "status": "done",
@@ -872,6 +886,16 @@
     "needs_you": false,
     "updated": "2026-11-10",
     "order": 185
+   },
+   "prayers-passage-decree-idle": {
+    "title": "First Prayers x Passage and x Decree idle over the bar",
+    "status": "todo",
+    "area": "Design",
+    "version": "god",
+    "needs_you": true,
+    "branch": "feat/god-progression",
+    "updated": "2026-11-17",
+    "order": 203
    },
    "push-auth": {
     "title": "Sign in to GitHub on BURIN_NITRO so pushes work",

@@ -41,6 +41,8 @@ var _looked: Array[Person] = []
 var _woke := false
 var _left := 0
 var _lure_end := 0.0
+## True when this cast turned the remains ledger on (it puts it back off at its end).
+var _lit_ledger := false
 ## This cast's numbers at its ability level (the consts at level 1): the time to death, who comes to look, and from how far.
 var lv_mark_time := MARK_TIME
 var lv_gawkers := GAWKERS
@@ -65,8 +67,9 @@ func _build() -> void:
 		duration = 1.0
 		return
 	_twist = PowerBook.twist_at(extra, "deathmark")
-	if _twist and ctx.crowd != null and ctx.crowd.remains != null:
+	if _twist and ctx.crowd != null and ctx.crowd.remains != null and not ctx.crowd.remains.enabled:
 		ctx.crowd.remains.enabled = true  # the body must be written down to rise (the ledger is Raise's, Pale Reign's ...)
+		_lit_ledger = true
 	marked.statuses[&"frail"] = 1.0
 	marked.statuses[&"slow"] = SLOW
 	marked.walk_speed = marked._mind_speed()
@@ -154,7 +157,7 @@ func _watch_wake() -> void:
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, ctx.crowd._grid, parent)
 	visitors.bitten.connect(_on_bite)
-	DeathParts.zombie(visitors, r, r.kind == &"plague")
+	DeathParts.zombie(visitors, r, r.sick)
 	raised = 1
 	_left = RaiseTheDeadFx.CHAIN - 1
 	var end := t + RaiseTheDeadFx.ZOMBIE_LIFE + RaiseTheDeadFx.FADE
@@ -186,11 +189,20 @@ func _end_life() -> void:
 func _finish() -> void:
 	if visitors != null:
 		visitors.clear()
+	_put_ledger_back()
 	super()
+
+
+## The ledger goes back as this cast found it.
+func _put_ledger_back() -> void:
+	if _lit_ledger and ctx != null and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains):
+		ctx.crowd.remains.enabled = false
+	_lit_ledger = false
 
 
 ## Freed without _finish (a restart): the risen are gone, the pack only queued for freeing.
 func _exit_tree() -> void:
 	if visitors != null:
 		visitors.clear(true)
+	_put_ledger_back()
 	super()

@@ -87,6 +87,8 @@ static func run(t) -> void:
 	_hunts(t)
 	_gone(t)
 	_quiet(t)
+	_sick(t)
+	_unlured(t)
 
 
 static func _raises(t) -> void:
@@ -230,6 +232,64 @@ static func _quiet(t) -> void:
 	var fx2: DeathMarkFx = c2[0]
 	_arrive(fx2, (c2[2] as Array)[0], 0.5)
 	t.check(fx2.visitors != null, "with the ledger off at the cast, the twist turns it on and the body still rises")
+	t.check(made2[0].remains.enabled, "the cast that turned the ledger on keeps it on while it runs")
 	fx2.end_now()
+	t.check(not made2[0].remains.enabled, "and puts it back off at its end")
 	fx2.free()
 	_done(made2)
+	# Freed without end_now: the ledger goes back too. A ledger already on stays on.
+	var made3 := _setup()
+	_clear_town(made3[0])
+	var c3 := _cast(made3, 5, 2, _spot(made3))
+	t.check(made3[0].remains.enabled, "a level 5 cast lights the ledger")
+	(c3[0] as DeathMarkFx)._exit_tree()  # what a free inside a live tree runs (the test's layers are not in one)
+	(c3[0] as Node).free()
+	t.check(not made3[0].remains.enabled, "torn down without end_now (_exit_tree): the ledger is off again")
+	_done(made3)
+	var made4 := _setup()
+	made4[0].remains.enabled = true
+	_clear_town(made4[0])
+	var c4 := _cast(made4, 5, 2, _spot(made4))
+	(c4[0] as DeathMarkFx).end_now()
+	t.check(made4[0].remains.enabled, "a ledger that was already on stays on")
+	(c4[0] as Node).free()
+	_done(made4)
+
+
+## DL3: a sick body's zombie carries the plague.
+static func _sick(t) -> void:
+	for sick in [true, false]:
+		var made := _setup()
+		var crowd: Crowd = made[0]
+		crowd.remains.enabled = true
+		_clear_town(crowd)
+		var spot := _spot(made)
+		var marked: Person = crowd.citizens[2]
+		marked.infect(60.0) if sick else null
+		var c := _cast(made, 5, 2, spot)
+		var fx: DeathMarkFx = c[0]
+		_arrive(fx, (c[2] as Array)[0], 0.5)
+		var z: Animal = fx.visitors.living()[0]
+		var r: Visitors.Rule = fx.visitors._rules[z]
+		t.check(r.infect == sick, "a %s marked person's wake zombie %s the plague" % ["sick" if sick else "healthy", "carries" if sick else "does not carry"])
+		fx.end_now()
+		fx.free()
+		_done(made)
+
+
+## Someone never lured, standing at the body, does not wake it.
+static func _unlured(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	crowd.remains.enabled = true
+	_clear_town(crowd)
+	var c := _cast(made, 5, 2, _spot(made), 0)
+	var fx: DeathMarkFx = c[0]
+	var stranger: Person = crowd.citizens[60]
+	stranger.mind = Person.Mind.CALM
+	_arrive(fx, stranger, 0.4)
+	fx._process(1.0)
+	t.check(fx.visitors == null and crowd.remains.pick(fx.body_at) != null, "someone never lured, standing at the body, does not wake it")
+	fx.end_now()
+	fx.free()
+	_done(made)

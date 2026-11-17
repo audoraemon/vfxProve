@@ -1,10 +1,11 @@
 {
- "hash": "1a80124569abb7cd",
- "updated": "2026-11-17T07:32:16+07:00",
+ "hash": "dd6f48130a43c290",
+ "updated": "2026-11-17T13:50:49+07:00",
  "changes": {
-  "date": "<t:1794875536:f>",
+  "date": "<t:1794898249:f>",
   "items": [
-   "New: Map tags sit on their person; wheel zoom keeps the centre"
+   "New: Covered-outline: win back the 12-17% fps",
+   "New: Outline tagged people hidden behind stalls, trees, houses (Option A)"
   ]
  },
  "snapshot": {
@@ -76,6 +77,24 @@
     "needs_you": false,
     "updated": "2026-10-03",
     "order": 0
+   },
+   "covered-outline-perf": {
+    "title": "Covered-outline: win back the 12-17% fps",
+    "status": "todo",
+    "area": "Perf",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-17",
+    "order": 219
+   },
+   "covered-outline": {
+    "title": "Outline tagged people hidden behind stalls, trees, houses (Option A)",
+    "status": "done",
+    "area": "UI",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-17",
+    "order": 218
    },
    "d01": {
     "title": "Pestilence: 5 s life, spreads every second, soldiers catch it",
@@ -1766,25 +1785,33 @@
   },
   "branches": [
    {
-    "name": "god/ddl-1b",
-    "ahead": 145,
-    "behind": 89,
+    "name": "god/dd-levels",
+    "ahead": 181,
+    "behind": 90,
     "date": "2026-11-17",
-    "subject": "feat: shared hooks for the Death and Decree twists",
+    "subject": "docs: Death and Decree ability levels summary and rulings",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 142,
-    "behind": 89,
+    "behind": 90,
     "date": "2026-11-17",
     "subject": "docs: Death and Decree ability levels approved",
     "pushed": true
    },
    {
+    "name": "god/refs-rerecord",
+    "ahead": 140,
+    "behind": 90,
+    "date": "2026-11-17",
+    "subject": "dev: re-record 372 stale refs moved by the walk fixes and the stand-still crowd",
+    "pushed": false
+   },
+   {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 278,
+    "behind": 279,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1792,7 +1819,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 776,
+    "behind": 777,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1800,7 +1827,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 734,
+    "behind": 735,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1809,7 +1836,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-17",
-   "subject": "fix: map tags sit on their person's drawn body at any zoom and never over no one; wheel zoom keeps the screen centre"
+   "subject": "feat: covered-outline: a tagged person hidden behind a stall, tree or house is traced in its tag's colour"
   }
  }
 }

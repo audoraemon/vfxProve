@@ -1,9 +1,11 @@
 {
- "hash": "ec20df562d4afea1",
- "updated": "2026-11-18T21:56:09+07:00",
+ "hash": "f395c47c5b8e5b24",
+ "updated": "2026-11-18T23:36:01+07:00",
  "changes": {
-  "date": "<t:1795013769:f>",
-  "items": []
+  "date": "<t:1795019761:f>",
+  "items": [
+   "New: Zoomed-out fps: render with Forward+ (Vulkan)"
+  ]
  },
  "snapshot": {
   "project": {
@@ -1816,13 +1818,22 @@
     "branch": "feat/Develop-Main",
     "updated": "2026-11-12",
     "order": 210
+   },
+   "zoomout-fps": {
+    "title": "Zoomed-out fps: render with Forward+ (Vulkan)",
+    "status": "done",
+    "area": "Perf",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-18",
+    "order": 221
    }
   },
   "branches": [
    {
     "name": "god/dd-levels",
     "ahead": 186,
-    "behind": 94,
+    "behind": 95,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": false
@@ -1830,7 +1841,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 142,
-    "behind": 94,
+    "behind": 95,
     "date": "2026-11-17",
     "subject": "docs: Death and Decree ability levels approved",
     "pushed": true
@@ -1838,7 +1849,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 283,
+    "behind": 284,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1846,7 +1857,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 781,
+    "behind": 782,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1854,7 +1865,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 739,
+    "behind": 740,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1863,7 +1874,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-18",
-   "subject": "feat: zoom-out limit defaults to 0.5 (Settings.ZOOM_OUT_DEFAULT)"
+   "subject": "perf: render with Forward+ (Vulkan) instead of gl_compatibility"
   }
  }
 }

@@ -31,9 +31,18 @@ const GLOW_RIM_WIDTH := 2.0
 ## Spread puffs (v0.07.1): this many particles each, and at most PUFF_MAX alive at once.
 const PUFF_PARTICLES := 6
 const PUFF_MAX := 40
+## Foul spots (Pestilence, level 5): how long one lies, how far it reaches, how many it infects in all.
+const FOUL_LIFE := 15.0
+const FOUL_R := 1.2
+const FOUL_MOST := 3
 
 var sick: Array[Person] = []
 var deaths := 0
+## Foul Dead (Pestilence, level 5; shared hook, inert while empty): the plague sources (Person.plague_src, a cast's instance id)
+## whose dead leave a foul spot. {source id: true}; foul_from() adds one.
+var foul := {}
+## The foul spots: {"pos": ground, "left": seconds, "most": infections still to give, "src": plague_src}.
+var foul_spots: Array[Dictionary] = []
 var _crowd: Crowd
 var _field: EnemyField
 var _rng := RandomNumberGenerator.new()
@@ -54,9 +63,12 @@ func setup(crowd: Crowd, field: EnemyField, seed_value: int) -> PlagueManager:
 
 func step(delta: float) -> void:
 	_scan_in -= delta
-	_collect(_scan_in <= 0.0)
-	if _scan_in <= 0.0:
+	var scanning := _scan_in <= 0.0
+	_collect(scanning)
+	if scanning:
 		_scan_in = SCAN_EVERY
+	if not foul_spots.is_empty():
+		_step_spots(delta, scanning)
 	if sick.is_empty():
 		_spread_in = SPREAD_EVERY
 		return
@@ -74,12 +86,56 @@ func step(delta: float) -> void:
 			_crowd.shelters.release(p)
 		if p.inside:
 			continue  # aboard a boat: it sails away with the others
+		var src := p.plague_src
 		if _field.kill(p, &"plague"):
 			deaths += 1
+			if src != 0 and foul.has(src):
+				foul_spots.append({"pos": p.ground_pos, "left": FOUL_LIFE, "most": FOUL_MOST, "src": src})
+		else:
+			p.plague_src = 0  # spared (Deathless): the sickness is over, and no later sickness inherits this foulness
 	_spread_in -= delta
 	if _spread_in <= 0.0:
 		_spread_in = SPREAD_EVERY
 		_spread()
+
+
+## Pestilence's Foul Dead: the dead of plague source `src` (a level-5 cast's instance id) leave a foul spot.
+func foul_from(src: int) -> void:
+	if src != 0:
+		foul[src] = true
+
+
+## Ages the foul spots and, on a scan, infects the nearest healthy people out of doors in each (nearest first, ties by instance id:
+## no random number), counting its `most` down. A victim carries the spot's source, so it is foul in turn.
+func _step_spots(delta: float, scanning: bool) -> void:
+	var kept: Array[Dictionary] = []
+	for s in foul_spots:
+		s["left"] = float(s["left"]) - delta
+		if float(s["left"]) <= 0.0 or int(s["most"]) <= 0:
+			continue
+		if scanning:
+			var at: Vector2 = s["pos"]
+			var near: Array[Person] = []
+			for e in _field.in_radius(at, FOUL_R):
+				var q := e as Person
+				if q != null and q.is_alive() and not q.inside and q.sick_left <= 0.0:
+					near.append(q)
+			near.sort_custom(func(a: Person, b: Person) -> bool:
+				var da := a.ground_pos.distance_squared_to(at)
+				var db := b.ground_pos.distance_squared_to(at)
+				return da < db if da != db else a.get_instance_id() < b.get_instance_id())
+			for q in near:
+				if int(s["most"]) <= 0:
+					break
+				if q.infect(PLAGUE_LIFE):
+					q.plague_src = int(s["src"])
+					s["most"] = int(s["most"]) - 1
+					if not sick.has(q):
+						sick.append(q)
+					_puff(q)
+		if int(s["most"]) > 0:
+			kept.append(s)
+	foul_spots = kept
 
 
 ## The sick list: the dead, the freed and the escaped leave it; on a scan, the effect's newly infected join it.
@@ -98,6 +154,7 @@ func _collect(scan: bool) -> void:
 
 func _spread() -> void:
 	var fresh: Array[Person] = []
+	var fresh_src: Array[int] = []  # who gave it to each (Person.plague_src)
 	for p in sick:
 		var near: Array = []
 		if p.inside:
@@ -112,10 +169,13 @@ func _spread() -> void:
 			if q != null and q != p and q.is_alive() and q.sick_left <= 0.0 and not fresh.has(q) \
 					and _rng.randf() < SPREAD_CHANCE:
 				fresh.append(q)
+				fresh_src.append(p.plague_src)
 	if not fresh.is_empty():
 		_puffs = _puffs.filter(func(x) -> bool: return is_instance_valid(x))  # the finished ones, once for all of them
-	for q in fresh:
+	for k in fresh.size():
+		var q := fresh[k]
 		q.infect(PLAGUE_LIFE)
+		q.plague_src = fresh_src[k]
 		sick.append(q)
 		_puff(q)
 
@@ -160,6 +220,16 @@ func puffs_alive() -> int:
 ## sickness's colour. Into `ci` (the crowd's ground drawer, under the people), world space, in two canvas commands in
 ## all, however many are sick: every fill as one triangle array, every rim as one multiline.
 func draw_ground(ci: CanvasItem) -> void:
+	for s in foul_spots:
+		var c: Color = PestilenceFx.MIASMA[1]
+		var k := 0.4 + 0.6 * clampf(float(s["left"]) / FOUL_LIFE, 0.0, 1.0)
+		var pts := PackedVector2Array()
+		var centre := Iso.ground_to_screen(s["pos"])
+		for j in GLOW_SEGMENTS + 1:
+			var a := TAU * float(j) / float(GLOW_SEGMENTS)
+			pts.append(Iso.ground_to_screen(s["pos"] + Vector2(cos(a), sin(a)) * FOUL_R))
+		ci.draw_polyline(pts, Color(c, 0.7 * k), GLOW_RIM_WIDTH)
+		ci.draw_circle(centre, 3.0, Color(PestilenceFx.MIASMA[2], 0.5 * k))
 	if sick.is_empty():
 		return
 	var glow := build_glow(0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.001 * TAU * GLOW_PULSE_HZ))
@@ -219,6 +289,8 @@ func build_glow(pulse: float) -> Dictionary:
 
 func clear() -> void:
 	sick.clear()
+	foul.clear()
+	foul_spots.clear()
 	_puffs.clear()
 	deaths = 0
 	_spread_in = SPREAD_EVERY

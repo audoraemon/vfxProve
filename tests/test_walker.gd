@@ -50,7 +50,7 @@ static func _book(t) -> void:
 		"its area is the body's pick (%s)" % [area])
 	t.check(Sfx.CATALOG.has(&"q_walker") and PowerBook.icon("walker") != null and PowerBook.hud_icon("walker") != null
 		and PowerBook.clip("walker") != null, "its own cue q_walker, its icons and its clip")
-	t.check(Rules.POWER_KINDS.get("walker", null) == [&"grave"] and PowerBook.FAMILY.get("walker", "") == "death", "it kills only as the quiet grave kind; Death's family")
+	t.check(Rules.POWER_KINDS.get("walker", null) == [&"grave", &"borrowed"] and PowerBook.FAMILY.get("walker", "") == "death", "it kills only as the quiet grave kind (and Borrowed Life's); Death's family")
 	t.check(WalkingCorpseFx.ORDER_REACH == 12.0 and WalkingCorpseFx.ATTACK_R == 6.0 and WalkingCorpseFx.ATTACK_SECS == 10.0
 		and WalkingCorpseFx.KILL_R == 0.4 and WalkingCorpseFx.KILLS_MOST == 2 and WalkingCorpseFx.ATTACK_PACE == 1.6
 		and WalkingCorpseFx.SIGIL_UP == 26.0, "its orders' numbers (R7): reach 12, attack 6 / 10 s / 0.4, 2 kills, 1.6 x pace, sigil 26 px up")

@@ -117,7 +117,19 @@ static func door_of(s: Structure, grid: WalkGrid) -> Vector2:
 	return grid.nearest_walkable(door)
 
 
+## This cast's numbers at its ability level (the consts at level 1): its time, its kills, the reach of an ATTACK order.
+var lv_walk_life := WALK_LIFE
+var lv_kills_most := KILLS_MOST
+var lv_attack_r := ATTACK_R
+## Level 5, Borrowed Life: an ATTACK kill leaves no body (&"borrowed") and the walker takes the victim's look (DL7).
+var _twist := false
+
+
 func _build() -> void:
+	lv_walk_life = float(PowerBook.stat(extra, "walker", "WALK_LIFE", WALK_LIFE))
+	lv_kills_most = int(PowerBook.stat(extra, "walker", "KILLS_MOST", KILLS_MOST))
+	lv_attack_r = float(PowerBook.stat(extra, "walker", "ATTACK_R", ATTACK_R))
+	_twist = PowerBook.twist_at(extra, "walker")
 	busy = T_RISE
 	var rem: Remains = ctx.crowd.remains if ctx.crowd != null else null
 	# The row's "reaches_hidden": a body walked indoors can be walked back out (Rules lets the cast through on the same flag).
@@ -127,7 +139,7 @@ func _build() -> void:
 		duration = 0.1  # no body there: Rules refuses such a click before it comes here
 		return
 	rem.take(remain)
-	duration = WALK_LIFE + SETTLE
+	duration = lv_walk_life + SETTLE
 	_grid = ctx.crowd._grid
 	# The second click is its first order: into the building under it (as an ENTER), else a walk there (no reach on this one).
 	var to: Vector2 = extra.get("to", remain.pos)
@@ -168,7 +180,7 @@ func _fx_process(delta: float) -> void:
 		duration = minf(duration, t + SETTLE)
 		return
 	walker.tick_visual(delta)
-	if t >= WALK_LIFE:
+	if t >= lv_walk_life:
 		_lie_down()
 		return
 	if t >= T_RISE:
@@ -206,8 +218,26 @@ func _chase(delta: float) -> void:
 	var who := foe
 	_set_order("wait")
 	kills += 1
-	if ctx.field != null:
+	if ctx.field == null:
+		return
+	if not _twist:
 		ctx.field.kill(who, &"grave", walker.ground_pos)
+		return
+	var look := who._design()
+	if ctx.field.kill(who, &"borrowed", walker.ground_pos):
+		_borrow(look)
+
+
+## Borrowed Life (DL7): the walker wears `look` (its facing kept) and the remain it carries lies down in it.
+func _borrow(look: String) -> void:
+	if look == "" or not is_instance_valid(walker):
+		return
+	var face := walker.facing
+	var turned := walker.back
+	walker.wear(look, remain.facing, Color.WHITE, Color(0, 0, 0, 0))
+	walker.facing = face
+	walker.back = turned
+	remain.design = look
 
 
 ## Whether `p` may be gone for: a living person out in the open, seen and not guised (as MindWhisperFx.foe_ok()). A Variant: `p`
@@ -220,7 +250,7 @@ static func _fair(p: Variant) -> bool:
 ## Whether an ATTACK on `p` would be taken now: a fair foe (_fair()) within ATTACK_R of the walker, fewer than KILLS_MOST killed. The
 ## order's own judge, which the aim's preview asks too (Targeting paints a foe it would refuse red). A Variant: `p` may be freed.
 func would_attack(p: Variant) -> bool:
-	return can_follow_up() and kills < KILLS_MOST and _fair(p) and (p as Person).ground_pos.distance_to(walker.ground_pos) <= ATTACK_R
+	return can_follow_up() and kills < lv_kills_most and _fair(p) and (p as Person).ground_pos.distance_to(walker.ground_pos) <= lv_attack_r
 
 
 ## Into building `b`: it walks to its door (an ENTER); false, nothing changed, when it has no door on walkable ground.

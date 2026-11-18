@@ -78,7 +78,7 @@ const POWER_KINDS := {
 	"raise": [&"frenzy"],
 	"gravecall": [],
 	"guise": [],
-	"walker": [&"grave"],
+	"walker": [&"grave", &"borrowed"],
 	"gatebelow": [&"pit", &"wither"],
 	"pale": [&"pale"],
 	"serpent": [&"shadow"],
@@ -487,7 +487,8 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 			return null
 	if String(p.key) == "bound":
 		# Bound in Law: a person at each click, within its REACH of each other -- else refused, and no cooldown starts.
-		var why := BoundFx.refusal(_field, ground, extra.get("to", Vector2.INF))
+		var why := BoundFx.refusal(_field, ground, extra.get("to", Vector2.INF),
+				float(PowerBook.level_stat("bound", level_of(slot), "REACH", BoundFx.REACH)))
 		if why != "":
 			cast_refused.emit(slot, why)
 			return null

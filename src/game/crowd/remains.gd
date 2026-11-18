@@ -30,6 +30,7 @@ class Remain:
 	var role := 0
 	var soldier := false
 	var kind: StringName = &""
+	## The look it lies in. Its owner may rewrite it (Borrowed Life: the walker lies down as its last victim).
 	var design := ""
 	var facing := 0
 	var sick := false

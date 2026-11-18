@@ -39,15 +39,28 @@ var shards: Array = []
 var _cell: Cell
 
 
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_radius := RADIUS
+var lv_hold_time := HOLD_TIME
+## Level 5 twist (Held for Trial): the people the cell frees at its end are named criminal for TRIAL_TIME.
+const TRIAL_TIME := 15.0
+var _twist := false
+## Who was named at the end (Person), for the books and the tests.
+var named: Array = []
+
+
 func _build() -> void:
-	duration = T_SEAL + HOLD_TIME + CRACK_TIME + FALL_TIME
+	lv_radius = float(PowerBook.stat(extra, "noleave", "RADIUS", RADIUS))
+	lv_hold_time = float(PowerBook.stat(extra, "noleave", "HOLD_TIME", HOLD_TIME))
+	_twist = PowerBook.twist_at(extra, "noleave")
+	duration = T_SEAL + lv_hold_time + CRACK_TIME + FALL_TIME
 	busy = T_SEAL
 	at(T_SEAL, _seal)
-	at(T_SEAL + HOLD_TIME, _lift)
+	at(T_SEAL + lv_hold_time, _lift)
 	ctx.play(&"q_noleave", origin)
 	if DominionParts.staged(self):
 		DecreeParts.proclaim(self, origin, 60.0, 70.0, T_SEAL, 1.2)
-		var mark := FxParts.rings(self, origin, RADIUS, DecreeParts.GILT, 2, 24.0)
+		var mark := FxParts.rings(self, origin, lv_radius, DecreeParts.GILT, 2, 24.0)
 		mark.set_param("scan", 0.0)
 		mark.tween_param("reveal", 0.0, 1.0, T_SEAL, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 		mark.life = T_SEAL + 0.1
@@ -55,7 +68,7 @@ func _build() -> void:
 
 func _seal() -> void:
 	sealed = true
-	law = LawZone.circle(origin, RADIUS, [LawZone.NO_LEAVING], HOLD_TIME)
+	law = LawZone.circle(origin, lv_radius, [LawZone.NO_LEAVING], lv_hold_time)
 	law.stepped_by_holder = true
 	if ctx.crowd != null:
 		ctx.crowd.add_law(law, self)
@@ -70,9 +83,9 @@ func _seal() -> void:
 	_cell.z_index = 4
 	track(_cell, ctx.overhead_back)
 	DecreeParts.seal(self, origin, DecreeParts.BARS, 2.6, 64.0)
-	DominionParts.pulse(self, origin, RADIUS, DecreeParts.GILT, 0.5, 1.0)
+	DominionParts.pulse(self, origin, lv_radius, DecreeParts.GILT, 0.5, 1.0)
 	# The amber closes in from outside.
-	var close := FxParts.shockwave(self, origin, RADIUS * 1.6, DecreeParts.GILT_RAMP)
+	var close := FxParts.shockwave(self, origin, lv_radius * 1.6, DecreeParts.GILT_RAMP)
 	close.set_param("thickness", 0.05)
 	close.tween_param("progress", 1.0, 0.62, 0.35, 0.0, Tween.TRANS_CUBIC, Tween.EASE_IN)
 	close.tween_param("fade", 1.0, 0.0, 0.12, 0.25)
@@ -81,6 +94,8 @@ func _seal() -> void:
 
 func _lift() -> void:
 	sealed = false
+	if _twist:
+		_name_the_freed()
 	if law != null:
 		if ctx.crowd != null:
 			ctx.crowd.remove_law(law)
@@ -92,7 +107,7 @@ func _lift() -> void:
 	bound.clear()
 	_crack()
 	if DominionParts.staged(self):
-		DecreeParts.wave(self, origin, RADIUS * 1.3, 0.5, 0.05)
+		DecreeParts.wave(self, origin, lv_radius * 1.3, 0.5, 0.05)
 
 
 func _fx_process(delta: float) -> void:
@@ -114,7 +129,7 @@ func _step_law(delta: float) -> void:
 		for e: Array in law.turned:
 			var edge: Vector2 = e[1]
 			_cell.strike((edge - origin).angle())
-	var left := maxf(T_SEAL + HOLD_TIME - t, 0.1)
+	var left := maxf(T_SEAL + lv_hold_time - t, 0.1)
 	var held := 0
 	for body: Variant in law.members:
 		if not is_instance_valid(body):
@@ -134,10 +149,26 @@ func _step_law(delta: float) -> void:
 					p.clear_badge()
 
 
+## Held for Trial: whoever the cell holds at its end, and still stands inside it, is named criminal (LawMark) for TRIAL_TIME
+## -- the faithful (ctx.rules.director.faithful) excepted. Every guard who sees one goes for him. Quiet: no alarm of its own.
+func _name_the_freed() -> void:
+	var faithful: Array = []
+	if ctx.rules != null and is_instance_valid(ctx.rules) and ctx.rules.director != null:
+		faithful = ctx.rules.director.faithful
+	for p: Variant in bound:
+		var who := p as Person
+		if who == null or not is_instance_valid(who) or not who.is_alive() or who.inside:
+			continue
+		if who.ground_pos.distance_to(origin) > lv_radius + 0.5 or faithful.has(who):
+			continue
+		LawMark.set_law(who, LawMark.CRIMINAL, TRIAL_TIME, get_instance_id())
+		named.append(who)
+
+
 ## The amber cracks: its shards, laid out over the dome by order (a golden-angle spread), never by a roll.
 func _crack() -> void:
 	shards.clear()
-	var half := Cell.half_axes()
+	var half := Cell.half_axes(lv_radius)
 	for i in SHARDS:
 		var round_at := TAU * fposmod(float(i) * 0.618034, 1.0)
 		var up := lerpf(0.12, 1.2, fposmod(float(i) * 0.381966 + 0.17, 1.0))
@@ -152,7 +183,7 @@ func _crack() -> void:
 
 ## How much of the amber shows: up as the law lands, whole while it holds and as it cracks, gone once it has fallen.
 func shown() -> float:
-	if t >= T_SEAL + HOLD_TIME + CRACK_TIME:
+	if t >= T_SEAL + lv_hold_time + CRACK_TIME:
 		return 0.0
 	return clampf((t - T_SEAL) / 0.3, 0.0, 1.0)
 
@@ -183,11 +214,11 @@ class Cell extends Node2D:
 	var _strike_age := PackedFloat32Array()
 
 	## The ground circle's half width and half height on screen.
-	static func half_axes() -> Vector2:
-		return Vector2(RADIUS * 32.0 * sqrt(2.0), RADIUS * 16.0 * sqrt(2.0))
+	static func half_axes(r := RADIUS) -> Vector2:
+		return Vector2(r * 32.0 * sqrt(2.0), r * 16.0 * sqrt(2.0))
 
-	func _init() -> void:
-		var h := half_axes()
+	func _ready() -> void:
+		var h := half_axes(fx.lv_radius)
 		var s := sqrt(h.y * h.y + DOME_UP * DOME_UP)
 		# The dome's outline: the top of its silhouette, then the ground in front of it.
 		for i in STEPS + 1:
@@ -252,7 +283,7 @@ class Cell extends Node2D:
 		_strike_age[slot] = 0.0
 
 	func _process(delta: float) -> void:
-		if fx.t > T_SEAL + HOLD_TIME + CRACK_TIME + FALL_TIME:
+		if fx.t > T_SEAL + fx.lv_hold_time + CRACK_TIME + FALL_TIME:
 			queue_free()
 			return
 		for i in STRIKES:
@@ -261,7 +292,7 @@ class Cell extends Node2D:
 		queue_redraw()
 
 	func _draw() -> void:
-		var broke := fx.t - (T_SEAL + HOLD_TIME)
+		var broke := fx.t - (T_SEAL + fx.lv_hold_time)
 		if broke >= CRACK_TIME:
 			_draw_shards(broke - CRACK_TIME)
 			return
@@ -271,7 +302,7 @@ class Cell extends Node2D:
 		# It closes in from a little wider than the circle.
 		var k := clampf((fx.t - T_SEAL) / 0.3, 0.0, 1.0)
 		var s := lerpf(1.3, 1.0, 1.0 - (1.0 - k) * (1.0 - k))
-		var h := half_axes()
+		var h := half_axes(fx.lv_radius)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(s, s))
 		draw_colored_polygon(_body, Color(DecreeParts.AMBER, DecreeParts.AMBER.a * a))
 		# Lighter towards the crown, and a glint.

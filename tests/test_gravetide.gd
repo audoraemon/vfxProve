@@ -82,6 +82,7 @@ static func run(t) -> void:
 	_life(t, made)
 	RD._done(made)
 	_perf(t)
+	_perf_bones(t)
 
 
 ## The citizens still alive and out in the open, in the crowd's order.
@@ -1087,5 +1088,37 @@ static func _perf(t) -> void:
 	t.check(fx.giant != null and fx.raised == full and fx.slams >= 3 and frames >= PERF_FRAMES and ms < PERF_MS,
 		"the whole tide (%d of %d risen, %d at its peak) + the giant + %d slams: _fx_process + visitors.step under %.0f ms a frame averaged over %d frames (%.3f ms)"
 		% [fx.raised, full, peak, fx.slams, PERF_MS, frames, ms])
+	fx.end_now()
+	RD._done(made)
+
+
+## Level 5, Scattered Bones, the bones out: the tide at its cap (the graves' 2 each and the town's bodies, none lying here, so
+## the bones take the room the graves' dead leave, up to 18), the giant cut down just after its landing, then PERF_FRAMES frames of the
+## whole pack (_fx_process + visitors.step) under PERF_MS a frame averaged.
+static func _perf_bones(t) -> void:
+	var made := RD._setup()
+	var grid: WalkGrid = made[2]
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	var fx := FxTimeline.cast(GraveTideFx, made[5], at, {"level": 5}) as GraveTideFx
+	RD._run(fx, GraveTideFx.T_RISE + GraveTideFx.ASSEMBLE + 0.1)
+	var g := fx.giant
+	var where := g.ground_pos
+	g.hurt(float(fx.lv_giant_blows))
+	fx.visitors._rules.erase(g)
+	fx.visitors.cut_down.emit(g, where)
+	g.free()
+	var bones := fx._scattered.size()
+	var room := GraveTideFx.LIVING_CAP - (fx.undead_up() - bones)
+	var frame := 1.0 / 60.0
+	var t0 := Time.get_ticks_usec()
+	var peak := 0
+	for i in PERF_FRAMES:
+		fx._process(frame)
+		peak = maxi(peak, fx.undead_up())
+	var ms := float(Time.get_ticks_usec() - t0) / 1000.0 / float(PERF_FRAMES)
+	print("TIDE perf (level 5, bones out): %.3f ms a frame over %d frames (%d bones, peak %d undead)" % [ms, PERF_FRAMES, bones, peak])
+	t.check(bones == mini(GraveTideFx.SCATTER_MOST, room) and bones > 0 and peak <= GraveTideFx.LIVING_CAP and ms < PERF_MS,
+		"level 5 with the %d bones out (peak %d of %d): the pack under %.0f ms a frame averaged over %d frames (%.3f ms)"
+		% [bones, peak, GraveTideFx.LIVING_CAP, PERF_MS, PERF_FRAMES, ms])
 	fx.end_now()
 	RD._done(made)

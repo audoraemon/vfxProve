@@ -14,6 +14,9 @@ extends FxTimeline
 
 const PICK_R := 1.5
 const MAX_NAMED := 3
+## Precedent (level 5): how many copies of a name a cast may give, and how near a named one the new name must stand to the click.
+const COPIES := 3
+const COPY_R := 2.0
 const SPAN := 25.0
 ## The quill's stroke under each word as it is written (look only).
 const WRITE := 0.35
@@ -29,10 +32,13 @@ var kind := LawMark.CRIMINAL
 var named: Array = []
 ## The marks are lifted (at SPAN, or cut short).
 var lifted := false
+## Level 5 (Precedent): the people a follow-up click gave a copy of the name, in order; lifted with the rest.
+var copied: Array = []
+var _twist := false
 
 
 ## The MAX_NAMED living people out of doors within PICK_R of `at`, nearest first, a tie to the earlier instance.
-static func named_at(field: EnemyField, at: Vector2) -> Array[Person]:
+static func named_at(field: EnemyField, at: Vector2, most := MAX_NAMED) -> Array[Person]:
 	var out: Array[Person] = []
 	if field == null:
 		return out
@@ -44,20 +50,28 @@ static func named_at(field: EnemyField, at: Vector2) -> Array[Person]:
 		var da := a.ground_pos.distance_squared_to(at)
 		var db := b.ground_pos.distance_squared_to(at)
 		return da < db if da != db else a.get_instance_id() < b.get_instance_id())
-	return out.slice(0, MAX_NAMED)
+	return out.slice(0, most)
+
+
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_max_named := MAX_NAMED
+var lv_span := SPAN
 
 
 func _build() -> void:
+	lv_max_named = int(PowerBook.stat(extra, "redefine", "MAX_NAMED", MAX_NAMED))
+	lv_span = float(PowerBook.stat(extra, "redefine", "SPAN", SPAN))
+	_twist = PowerBook.twist_at(extra, "redefine")
 	mode = String(extra.get("mode", "criminal"))
 	if not KINDS.has(mode):
 		mode = "criminal"
 	kind = KINDS[mode]
-	duration = SPAN + FADE
+	duration = lv_span + FADE
 	busy = WRITE
-	named.assign(named_at(ctx.field, origin))
+	named.assign(named_at(ctx.field, origin, lv_max_named))
 	for p: Variant in named:
-		LawMark.set_law(p, kind, SPAN, get_instance_id())
-	at(SPAN, _lift)
+		LawMark.set_law(p, kind, lv_span, get_instance_id())
+	at(lv_span, _lift)
 	ctx.play(&"q_redefine", origin)
 	if DominionParts.staged(self):
 		_show()
@@ -70,6 +84,66 @@ func _lift() -> void:
 	lifted = true
 	for p: Variant in named:
 		LawMark.lift(p, get_instance_id())
+	for p: Variant in copied:
+		LawMark.lift(p, get_instance_id())
+
+
+## Precedent (level 5): the names still hold and fewer than COPIES copies are given.
+func can_follow_up() -> bool:
+	return _twist and not finished and not lifted and copied.size() < COPIES
+
+
+## Precedent: the click names the living, unnamed person out of doors nearest it who stands within COPY_R of a living named one,
+## with that name for what time the named one's has left (ties to the earlier instance, no roll). False when the click is not within
+## COPY_R of a named one or no such person stands there.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var sources: Array[Person] = []
+	for v: Variant in named:
+		if is_instance_valid(v) and (v as Person).is_alive() and not (v as Person).inside 				and (v as Person).ground_pos.distance_to(at_pos) <= COPY_R:
+			sources.append(v as Person)
+	if sources.is_empty() or ctx.field == null:
+		return false
+	var best: Person = null
+	var best_src: Person = null
+	for e in ctx.field.in_radius(at_pos, COPY_R * 2.0):
+		var p := e as Person
+		if p == null or not p.is_alive() or p.inside or named.has(p) or copied.has(p):
+			continue
+		var src: Person = null
+		for s in sources:
+			if s.ground_pos.distance_to(p.ground_pos) <= COPY_R:
+				src = s
+				break
+		if src == null:
+			continue
+		if best == null:
+			best = p
+			best_src = src
+			continue
+		var da := p.ground_pos.distance_squared_to(at_pos)
+		var db := best.ground_pos.distance_squared_to(at_pos)
+		if da < db or (da == db and p.get_instance_id() < best.get_instance_id()):
+			best = p
+			best_src = src
+	if best == null:
+		return false
+	var left := lv_span - t
+	if best_src.law != null and best_src.law.laws.has(get_instance_id()):
+		left = float(best_src.law.laws[get_instance_id()][1])
+	if left <= 0.0:
+		return false
+	LawMark.set_law(best, kind, left, get_instance_id())
+	copied.append(best)
+	if DominionParts.staged(self):
+		DecreeParts.scatter(self, best.ground_pos, 6, Words.HEAD)
+	return true
+
+
+## Precedent's preview: the circle in which a named one must stand to be copied from.
+func follow_up_area() -> Dictionary:
+	return {"shape": "circle", "r": COPY_R}
 
 
 ## Cut short (an act of the night ends): the marks are lifted with it.
@@ -103,7 +177,7 @@ func _show() -> void:
 ## How much of the words shows: written in over WRITE, whole while the law holds, gone over FADE once it lifts.
 func shown() -> float:
 	if lifted:
-		return clampf(1.0 - (t - SPAN) / FADE, 0.0, 1.0) if t >= SPAN else 0.0
+		return clampf(1.0 - (t - lv_span) / FADE, 0.0, 1.0) if t >= lv_span else 0.0
 	return clampf(t / WRITE, 0.0, 1.0)
 
 
@@ -142,8 +216,9 @@ class Words extends Node2D:
 			return
 		var font := UiTheme.font()
 		var stroke := clampf(fx.t / WRITE, 0.0, 1.0)
-		for i in fx.named.size():
-			var body: Variant = fx.named[i]
+		var shown_all: Array = fx.named + fx.copied
+		for i in shown_all.size():
+			var body: Variant = shown_all[i]
 			if not is_instance_valid(body):
 				continue
 			var p := body as Person

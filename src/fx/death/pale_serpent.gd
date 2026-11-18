@@ -177,6 +177,32 @@ var _held := {}
 ## The run: start, way, length, end; the loop's centre, start angle and turn (+1 or -1).
 var _dir := Vector2.RIGHT
 var _len := LENGTH
+## This cast's numbers at its ability level (the consts at level 1): the longest drag, the shadow's half width, how far its rising
+## is seen, the sickness.
+var lv_length := LENGTH
+var lv_band := BAND
+var lv_sight := SIGHT
+var lv_sick := SICK
+## Shed Skin (level 5, DL10): as it departs it leaves its skin along the whole path (the drag and the loop), a band of
+## SKIN_HALF either side of the points laid STEP apart, for SKIN_LIFE (faded over the last SKIN_FADE). Whoever steps onto it
+## out in the open (not indoors, not guised, no decoy) is sickened once, SICK_PACE for lv_sick (hold_pace under this
+## effect's own id) and the plague too when it is in town. Let go at lv_sick, at the end, and when freed.
+const SKIN_LIFE := 30.0
+const SKIN_FADE := 3.0
+const SKIN_HALF := 0.5
+const SKIN_EVERY := 0.1
+const SKIN_TINT := Color(0.88, 0.94, 0.9, 0.22)
+var _twist := false
+var _skin_laid := false
+var _skin_pts: Array[Vector2] = []
+var _skin_cells := {}
+var _skin_mid := Vector2.ZERO
+var _skin_reach := 0.0
+var _skin_node: ShedSkin
+var _skin_next := 0.0
+var _skin_once := {}
+## Who the skin has sickened: id -> [the person, the clock they are let go at].
+var _skin_held := {}
 var _end := Vector2.ZERO
 var _centre := Vector2.ZERO
 var _theta0 := 0.0
@@ -240,14 +266,14 @@ static func disc(ci: CanvasItem, c: Vector2, r: float, color: Color, ry := -1.0)
 ## Where a cast at `at` ends: along the drag's way as Targeting reads it ("dir": Targeting.aim_dir(), DEFAULT_DIR for a drag
 ## under DRAG_MIN -- the way the preview showed, never a short drag's jitter), as far as the drag went ("to"), LENGTH at most,
 ## MIN_LENGTH at least; LENGTH with no "to" (a scripted cast). A cast with no "dir" takes the way to "to", else east.
-static func end_of(at: Vector2, extra_data: Dictionary) -> Vector2:
+static func end_of(at: Vector2, extra_data: Dictionary, longest := LENGTH) -> Vector2:
 	var to: Vector2 = extra_data.get("to", Vector2.INF)
 	var dir: Vector2 = extra_data.get("dir", Vector2.ZERO)
 	if dir.length() < 0.001 and to != Vector2.INF:
 		dir = to - at
 	if dir.length() < 0.001:
 		dir = Vector2.RIGHT
-	var length := LENGTH if to == Vector2.INF else clampf(to.distance_to(at), MIN_LENGTH, LENGTH)
+	var length := longest if to == Vector2.INF else clampf(to.distance_to(at), MIN_LENGTH, longest)
 	return at + dir.normalized() * length
 
 
@@ -278,7 +304,7 @@ static func plague_live(crowd: Crowd) -> bool:
 
 ## The run from the cast (origin, extra): the end, and the loop through it.
 func plan() -> void:
-	_end = end_of(origin, extra)
+	_end = end_of(origin, extra, lv_length)
 	_len = origin.distance_to(_end)
 	_dir = (_end - origin) / _len
 	_centre = _end + _dir.orthogonal() * CIRCLE_R
@@ -343,8 +369,15 @@ func cone_holds(p: Vector2, time: float) -> bool:
 
 
 func _build() -> void:
+	lv_length = float(PowerBook.stat(extra, "serpent", "LENGTH", LENGTH))
+	lv_band = float(PowerBook.stat(extra, "serpent", "BAND", BAND))
+	lv_sight = float(PowerBook.stat(extra, "serpent", "SIGHT", SIGHT))
+	lv_sick = float(PowerBook.stat(extra, "serpent", "SICK", SICK))
+	_twist = PowerBook.twist_at(extra, "serpent")
 	plan()
-	duration = maxf(glide_end() + DEPART, T_RISE + SICK) + 0.05
+	duration = maxf(glide_end() + DEPART, T_RISE + lv_sick) + 0.05
+	if _twist:
+		duration = maxf(duration, glide_end() + SKIN_LIFE + lv_sick + 0.05)  # (cut short once the band and its holds are gone)
 	busy = T_RISE
 	ctx.play(&"serpent_rise", origin, 0.0)
 	at(T_RISE, func(): ctx.play(&"serpent_glide", origin, 0.0))
@@ -360,6 +393,7 @@ func _build() -> void:
 	# The death wave ahead: the frost on the ground under the shadow, the fog over the town but under the serpent itself.
 	_vis.seed = hash(origin)
 	_frost = Frost.new()
+	_frost.band = lv_band
 	_frost.z_index = 2
 	track(_frost, ctx.ground)
 	_fog = Fog.new()
@@ -397,20 +431,22 @@ func _fx_process(delta: float) -> void:
 		_swept_to = to
 	_souls_arrive()
 	while _next_fright < glide_end() and t >= _next_fright:
-		var back := s_at(_next_fright) - FRIGHT_BACK
+		var back := s_at(_next_fright) - (lv_band + 3.0 + Person.THREAT_MARGIN)
 		if ctx.crowd != null and back >= 0.0:
-			ctx.crowd.fright(path_at(back), FRIGHT_R, 0.9, 2.0, SIGHT, 16.0, &"beast")
+			ctx.crowd.fright(path_at(back), lv_band + 3.0, 0.9, 2.0, lv_sight, 16.0, &"beast")
 		_next_fright += FRIGHT_EVERY
 	while _next_cone <= glide_end() and t >= _next_cone:
 		_cone(_next_cone)
 		_next_cone += CONE_EVERY
 	_dim()
+	if _twist:
+		_skin_tick()
 	if _fog != null:
 		_wave(delta)
-	if not _sick_over and t >= T_RISE + SICK:
+	if not _sick_over and t >= T_RISE + lv_sick:
 		_sick_over = true
 		_let_all_go()
-	if t >= glide_end() + DEPART and _held.is_empty() and _souls.is_empty():
+	if t >= glide_end() + DEPART and _held.is_empty() and _souls.is_empty() and _skin_held.is_empty() 			and (not _twist or t >= glide_end() + SKIN_LIFE):
 		duration = minf(duration, t + 0.05)  # nobody left slowed: nothing more to do
 	if not _pieces.is_empty():
 		_pose(delta)
@@ -457,7 +493,7 @@ func _wave(delta: float) -> void:
 	while _next_fog <= glide_end() and t >= _next_fog:
 		var s := s_at(_next_fog + FOG_LEAD)
 		for k in 2:
-			var side := _vis.randf_range(-BAND, BAND)
+			var side := _vis.randf_range(-lv_band, lv_band)
 			_fog.add({"g": fog_at(s, side), "born": _next_fog, "s": s, "head_s": s_at(_next_fog), "side": side,
 				"r": _vis.randf_range(30.0, 46.0), "lobe": _vis.randf_range(-1.0, 1.0)})
 		_next_fog += FOG_EVERY
@@ -481,7 +517,7 @@ func fog_at(s: float, side: float) -> Vector2:
 func _sight() -> void:
 	_seen = true
 	var plague := plague_live(ctx.crowd)
-	for e in ctx.field.in_radius(origin, SIGHT):
+	for e in ctx.field.in_radius(origin, lv_sight):
 		var p := e as Person
 		if p == null or p.inside or p.guised():
 			continue
@@ -509,11 +545,11 @@ func _sweep(t0: float, t1: float) -> void:
 ## death on the clock where the head passed nearest them.
 func _shadow(a: Vector2, b: Vector2, when: float, span: float) -> void:
 	var near: Array[Person] = []
-	for e in ctx.field.in_radius((a + b) * 0.5, a.distance_to(b) * 0.5 + BAND + 0.01):
+	for e in ctx.field.in_radius((a + b) * 0.5, a.distance_to(b) * 0.5 + lv_band + 0.01):
 		var p := e as Person
 		if p == null or p.inside or p.guised() or p.has_meta(&"decoy"):
 			continue  # a decoy (Mirrorfold's glass twin) is no one: the shadow passes over it, as Pale Reign's does
-		if Geometry2D.get_closest_point_to_segment(p.ground_pos, a, b).distance_to(p.ground_pos) <= BAND:
+		if Geometry2D.get_closest_point_to_segment(p.ground_pos, a, b).distance_to(p.ground_pos) <= lv_band:
 			near.append(p)
 	near.sort_custom(func(x: Person, y: Person) -> bool: return x.get_instance_id() < y.get_instance_id())
 	for p in near:
@@ -555,10 +591,104 @@ func _let_all_go() -> void:
 		_let_go(id)
 
 
+## Shed Skin: the clock the band is gone at.
+func _skin_end() -> float:
+	return glide_end() + SKIN_LIFE
+
+
+## The band's points: the drag then the loop, STEP apart (DL10).
+func _lay_skin() -> void:
+	_skin_laid = true
+	var total := _len + TAU * CIRCLE_R
+	var n := ceili(total / STEP)
+	var lo := Vector2.INF
+	var hi := -Vector2.INF
+	for k in n + 1:
+		var g := path_at(minf(total, float(k) * STEP))
+		_skin_pts.append(g)
+		var cell := Vector2i(floori(g.x), floori(g.y))
+		if not _skin_cells.has(cell):
+			_skin_cells[cell] = []
+		(_skin_cells[cell] as Array).append(g)
+		lo = lo.min(g)
+		hi = hi.max(g)
+	_skin_mid = (lo + hi) * 0.5
+	_skin_reach = _skin_mid.distance_to(hi) + SKIN_HALF + 0.5
+	_skin_next = t
+	if _shade != null:  # staged: one node, every point one disc drawn once (a fade is its modulate)
+		_skin_node = ShedSkin.new()
+		_skin_node.pts = _skin_pts
+		_skin_node.z_index = 2
+		track(_skin_node, ctx.ground)
+
+
+## Whether a ground point is on the band (pure over the laid points).
+func on_skin(g: Vector2) -> bool:
+	var c := Vector2i(floori(g.x), floori(g.y))
+	for dx in range(-1, 2):
+		for dy in range(-1, 2):
+			var cell: Array = _skin_cells.get(Vector2i(c.x + dx, c.y + dy), [])
+			for q in cell:
+				if (q as Vector2).distance_to(g) <= SKIN_HALF:
+					return true
+	return false
+
+
+## Shed Skin each frame: lay the band at the departure, sicken whoever steps on it, let the sick go, take it up at its end.
+func _skin_tick() -> void:
+	var live := t >= glide_end() and t < _skin_end()
+	if live and not _skin_laid:
+		_lay_skin()
+	for id in _skin_held.keys():
+		var rec: Array = _skin_held[id]
+		if t >= float(rec[1]):
+			_skin_let_go(id)
+	if _skin_node != null:
+		if live:
+			_skin_node.modulate.a = clampf((_skin_end() - t) / SKIN_FADE, 0.0, 1.0)
+		else:
+			_tracked.erase(_skin_node)
+			_skin_node.queue_free()
+			_skin_node = null
+	if not live or t < _skin_next:
+		return
+	_skin_next = t + SKIN_EVERY
+	var plague := false
+	var plague_known := false
+	for e in ctx.field.in_radius(_skin_mid, _skin_reach):
+		var p := e as Person
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy") or not p.is_alive():
+			continue
+		var id := p.get_instance_id()
+		if _skin_once.has(id) or _held.has(id) or not on_skin(p.ground_pos):
+			continue
+		_skin_once[id] = true
+		_skin_held[id] = [p, t + lv_sick]
+		p.hold_pace(get_instance_id(), SICK_PACE)
+		if not plague_known:
+			plague_known = true
+			plague = plague_live(ctx.crowd)
+		if plague:
+			p.infect(PlagueManager.PLAGUE_LIFE)
+
+
+func _skin_let_go(id: int) -> void:
+	var rec: Array = _skin_held.get(id, [])
+	_skin_held.erase(id)
+	if not rec.is_empty() and is_instance_valid(rec[0]):
+		(rec[0] as Person).free_pace(get_instance_id())
+
+
+func _skin_let_all_go() -> void:
+	for id in _skin_held.keys():
+		_skin_let_go(id)
+
+
 ## Over or cut short: every pace let go, every house its own look back, the town's lights their own. At its natural end
 ## the frost is left to fade on its own (Frost.release()); cut short (end_now()), it goes with the rest.
 func _finish() -> void:
 	_let_all_go()
+	_skin_let_all_go()
 	_undim()
 	if _see != null:
 		_see.release()
@@ -571,6 +701,7 @@ func _finish() -> void:
 ## Freed without _finish (a mission torn down mid-glide): the same, and the frost goes too.
 func _exit_tree() -> void:
 	_let_all_go()
+	_skin_let_all_go()
 	_undim()
 	if _see != null:
 		_see.release()
@@ -688,7 +819,7 @@ func _pose(delta: float) -> void:
 		feet.append(foot.y)
 		piece.queue_redraw()
 		if piece.kind != Piece.K_TAIL:
-			var w := BAND if k == 0 else BAND * (0.5 + 0.4 * piece.r / R_NECK)
+			var w := lv_band if k == 0 else lv_band * (0.5 + 0.4 * piece.r / R_NECK)
 			shade.append([q.g, w, piece.alpha * (0.14 if k == 0 else 0.07)])
 	_shade.pts = shade
 	var s_tail := s_at(t) - (float(SEGMENTS) - 0.5) * GAP
@@ -894,6 +1025,16 @@ class Piece extends Node2D:
 			draw_primitive(tri, PackedColorArray([col, col, col]), PackedVector2Array())  # a primitive batches; a polygon does not
 
 
+## The shed skin (staged only, ground units, ground layer): a pale disc at each point of the path, drawn once (the fade is
+## the node's modulate), the same one disc texture as the shadow.
+class ShedSkin extends Node2D:
+	var pts: Array[Vector2] = []
+
+	func _draw() -> void:
+		for g in pts:
+			PaleSerpentFx.disc(self, g, SKIN_HALF, SKIN_TINT)
+
+
 ## The serpent's shadow on the ground (ground units, ground layer): a soft dark band under the head and body, and the hole it
 ## came out of while its body is still pouring out.
 class Shade extends Node2D:
@@ -964,6 +1105,8 @@ class Frost extends Node2D:
 	## Each {"g": its middle, "born": on this clock, "seed": its needles}.
 	var patches: Array[Dictionary] = []
 	var clock := 0.0
+	## The patch radius (the shadow's half width at the cast's level).
+	var band := BAND
 
 	func _ready() -> void:
 		set_process(false)
@@ -998,7 +1141,7 @@ class Frost extends Node2D:
 			if fade <= 0.0:
 				continue
 			var g: Vector2 = q.g
-			var r := BAND * (0.55 + 0.45 * grow)
+			var r := band * (0.55 + 0.45 * grow)
 			PaleSerpentFx.disc(self, g, r, Color(FROST[0], 0.05 * fade))
 			PaleSerpentFx.disc(self, g, r * 0.62, Color(FROST[1], 0.05 * fade))
 			# Hoarfrost: a few needles of rime scattered over it.

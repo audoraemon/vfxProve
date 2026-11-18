@@ -75,7 +75,7 @@ static func _book(t) -> void:
 		and PowerBook.family("serpent") == "death" and Rules.POWER_KINDS.get("serpent", []) == [&"shadow"]
 		and area.get("shape", "") == "lane" and is_equal_approx(float(area.get("length", 0.0)), PaleSerpentFx.LENGTH)
 		and is_equal_approx(float(area.get("half", 0.0)), PaleSerpentFx.BAND) and bool(area.get("follow", false))
-		and Targeting.AREA_STATS.get("serpent", {}) == {"length": "LENGTH"},
+		and Targeting.AREA_STATS.get("serpent", {}) == {"length": "LENGTH", "half": "BAND"},
 		"its reach, impact (the head risen: the first shadow), family, kills (shadow) and area (the drag's lane)")
 	t.check(PowerBook.icon("serpent") != null and PowerBook.hud_icon("serpent") != null and PowerBook.clip("serpent") != null,
 		"it has its icons and clip")

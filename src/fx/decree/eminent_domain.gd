@@ -23,6 +23,11 @@ extends FxTimeline
 
 const LENGTH := 10.0
 const HALF_W := 1.0
+## Further Claim (level 5): for FOLLOW_WINDOW after the strip is torn down one click tears a second strip from the first's end
+## toward it, min(FOLLOW_MAX, its distance) long (a click under FOLLOW_MIN away is refused).
+const FOLLOW_WINDOW := 5.0
+const FOLLOW_MAX := 6.0
+const FOLLOW_MIN := 1.0
 const T_TEAR := 0.8
 const T_THROW := 0.35
 ## How long a torn building's look takes to be shoved out to where its heap is laid (and the decor's to be flung clear).
@@ -123,18 +128,35 @@ var _fling_by := PackedVector2Array()
 var _fling_spin := PackedFloat32Array()
 
 
+## This cast's numbers at its ability level (the consts at level 1).
+var lv_length := LENGTH
+var lv_half_w := HALF_W
+## Further Claim: the second strip, a level 1 cast of this same effect sized by extra "strip_len" / "strip_half_w" (a key only
+## the follow-up sends, so no ordinary cast reads it); this cast's own instance, ended with it.
+var _twist := false
+var _second: EminentFx = null
+
+
 func _build() -> void:
+	lv_length = float(PowerBook.stat(extra, "eminent", "LENGTH", LENGTH))
+	lv_half_w = float(PowerBook.stat(extra, "eminent", "HALF_W", HALF_W))
+	if extra.has("strip_len"):
+		lv_length = float(extra.strip_len)
+		lv_half_w = float(extra.get("strip_half_w", lv_half_w))
+	_twist = PowerBook.twist_at(extra, "eminent")
 	var drag: Vector2 = extra.get("dir", Vector2.ZERO)
 	var end: Vector2 = extra.get("to", Vector2.INF)
 	if drag.length() < 0.01 and end != Vector2.INF:
 		drag = end - origin
 	dir = drag.normalized() if drag.length() >= 0.01 else Vector2.RIGHT
 	side = dir.orthogonal()
-	to = origin + dir * LENGTH
+	to = origin + dir * lv_length
 	var long := _heap_size(HEAP_LONG, HEAP)
-	land = HALF_W + GAP + 2.0 * maxf(_ext(HEAP), _ext(long.x, long.y)) + LAND_PAD
+	land = lv_half_w + GAP + 2.0 * maxf(_ext(HEAP), _ext(long.x, long.y)) + LAND_PAD
 	duration = T_TEAR + T_THROW + SCAR
 	busy = T_TEAR + maxf(T_THROW, T_SHOVE)
+	if _twist:
+		duration = maxf(duration, T_TEAR + FOLLOW_WINDOW)
 	at(T_TEAR, _tear)
 	at(T_TEAR + T_THROW, _land)
 	at(T_TEAR + T_SHOVE * 0.5, _mid_shove)
@@ -154,22 +176,66 @@ func _build() -> void:
 	# Gilt rising off both edges as they are ruled out (over the roofs: the ground's lines hide behind the houses).
 	for k in 5:
 		for sg in [1.0, -1.0]:
-			var g: Vector2 = origin + dir * LENGTH * (0.1 + 0.2 * float(k)) + side * HALF_W * sg
+			var g: Vector2 = origin + dir * lv_length * (0.1 + 0.2 * float(k)) + side * lv_half_w * sg
 			FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(g), PixelParticles.Shape.SQUARE, DecreeParts.GILT_LIFE, 14.0,
 				T_TEAR, {"radius": 10.0, "speed": Vector2(2, 10), "alt": Vector2(0, 4), "alt_speed": Vector2(20, 55),
 					"life": Vector2(0.4, 0.8), "size": Vector2(1, 2)})
 
 
+## Further Claim (level 5): the first strip is torn down, FOLLOW_WINDOW has not run out and no second strip is claimed yet.
+func can_follow_up() -> bool:
+	return _twist and not finished and _second == null and t >= T_TEAR and t < T_TEAR + FOLLOW_WINDOW
+
+
+## Further Claim's preview while a second strip can be claimed: a ring the size of the nearest refused click (FOLLOW_MIN), so the
+## ground never shows the first strip's 12-long lane at the cursor. {} otherwise (the power's own area).
+func follow_up_area() -> Dictionary:
+	if not can_follow_up():
+		return {}
+	return {"shape": "circle", "r": FOLLOW_MIN}
+
+
+## Further Claim: the click tears a second strip, the first's width and work, from the first strip's end toward the click,
+## min(FOLLOW_MAX, its distance) long. False for a click under FOLLOW_MIN from that end. The second strip claims, tears and
+## lays rubble as a first does (it is one: a level 1 cast of this effect), and the cast lives until it is done.
+func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
+	if not can_follow_up():
+		return false
+	var run := at_pos - to
+	if run.length() < FOLLOW_MIN:
+		return false
+	_second = FxTimeline.cast(get_script(), ctx, to, {"level": 1, "dir": run.normalized(),
+		"strip_len": minf(FOLLOW_MAX, run.length()), "strip_half_w": lv_half_w}) as EminentFx
+	duration = maxf(duration, t + _second.duration)
+	return true
+
+
+## Cut short: the second strip ends with it.
+func _finish() -> void:
+	_end_second()
+	super()
+
+
+func _exit_tree() -> void:
+	_end_second()
+	super()
+
+
+func _end_second() -> void:
+	if is_instance_valid(_second) and not _second.finished:
+		_second.end_now()
+
+
 ## The middle of the strip's line.
 func middle() -> Vector2:
-	return origin + dir * LENGTH * 0.5
+	return origin + dir * lv_length * 0.5
 
 
 ## Whether ground point `g` lies in the strip, grown by `reach`.
 func in_strip(g: Vector2, reach := 0.0) -> bool:
 	var rel := g - origin
 	var along := rel.dot(dir)
-	return along >= -reach and along <= LENGTH + reach and absf(rel.dot(side)) <= HALF_W + reach
+	return along >= -reach and along <= lv_length + reach and absf(rel.dot(side)) <= lv_half_w + reach
 
 
 ## Whether `s`'s footprint overlaps the strip.
@@ -178,7 +244,7 @@ func overlaps(s: Structure) -> bool:
 	var rel := s.center() - origin
 	var along := rel.dot(dir)
 	var ext_along := absf(half.x * dir.x) + absf(half.y * dir.y)
-	return along + ext_along >= 0.0 and along - ext_along <= LENGTH and absf(rel.dot(side)) <= HALF_W + _ext(s.footprint.size.x, s.footprint.size.y)
+	return along + ext_along >= 0.0 and along - ext_along <= lv_length and absf(rel.dot(side)) <= lv_half_w + _ext(s.footprint.size.x, s.footprint.size.y)
 
 
 ## Half the reach across the strip of an axis-aligned box `w` by `h` (`h` defaults to a square).
@@ -235,7 +301,7 @@ func _tear() -> void:
 			if not s.destroyed:
 				for p in ctx.crowd.shelters.throw_out_of(s, 0.0):
 					people.append(p)
-	for e in ctx.field.in_radius(middle(), LENGTH * 0.5 + HALF_W + 0.1):
+	for e in ctx.field.in_radius(middle(), lv_length * 0.5 + lv_half_w + 0.1):
 		var p := e as Person
 		if p != null and p.inside:
 			continue
@@ -277,7 +343,7 @@ func _tear() -> void:
 		removed += 1
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	if grid != null:
-		grid.open_street(origin, dir, LENGTH, HALF_W)
+		grid.open_street(origin, dir, lv_length, lv_half_w)
 	for e in people:
 		if not is_instance_valid(e) or not e.is_alive():
 			continue
@@ -298,9 +364,9 @@ func _tear() -> void:
 	ctx.impact.aberration(2.0, 0.3)
 	ctx.shake.add_trauma(0.75)
 	ctx.shake.kick(Vector2(0, 5))
-	DecreeParts.wave(self, mid, LENGTH * 0.5, 0.45, 0.08)
+	DecreeParts.wave(self, mid, lv_length * 0.5, 0.45, 0.08)
 	for k in 5:
-		var g := origin + dir * LENGTH * (0.1 + 0.2 * float(k))
+		var g := origin + dir * lv_length * (0.1 + 0.2 * float(k))
 		DecreeParts.scatter(self, g, 6, 8.0)
 		var puff := FxParts.particles(self, ctx.overhead_back, Iso.ground_to_screen(g), PixelParticles.Shape.PUFF, FxParts.DUST_LIFE)
 		puff.drag = 1.2
@@ -330,7 +396,7 @@ func _split(s: Structure) -> void:
 ## Where someone thrown from `g` toward side `sg` lands: straight out past the rubble, on open ground (the walk grid's;
 ## dry, standing nothing) -- farther out if the first spot is not, then the far side, failing all the first spot.
 func _landing(g: Vector2, sg: float) -> Vector2:
-	var along := clampf((g - origin).dot(dir), 0.0, LENGTH)
+	var along := clampf((g - origin).dot(dir), 0.0, lv_length)
 	var base := origin + dir * along
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	for way in [sg, -sg]:
@@ -484,7 +550,7 @@ func _plan(gone: Array[Structure]) -> void:
 		var sz := _heap_size(clampf(2.0 * _reach(s.footprint.size) * HEAP_OF, HEAP, HEAP_LONG), HEAP)
 		var half := _reach(sz)
 		_plans.append({"from": s, "sign": _sign_of(s.center()), "size": sz,
-			"along": clampf((s.center() - origin).dot(dir), half, LENGTH - half),
+			"along": clampf((s.center() - origin).dot(dir), half, lv_length - half),
 			"h": HEAP_H * clampf(s.max_height / BUILD_H, HEAP_H_LO, HEAP_H_HI)})
 	_plans.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		if not is_equal_approx(float(a.along), float(b.along)):
@@ -498,9 +564,9 @@ func _plan(gone: Array[Structure]) -> void:
 		var sz: Vector2 = pl.size
 		var half := _reach(sz)
 		var along := maxf(float(pl.along), float(reached[sg]) + HEAP_PAD + half)
-		var fits := along + half <= LENGTH + 0.001
-		along = minf(along, LENGTH - half)
-		var c := origin + dir * along + side * sg * (HALF_W + GAP + _ext(sz.x, sz.y))
+		var fits := along + half <= lv_length + 0.001
+		along = minf(along, lv_length - half)
+		var c := origin + dir * along + side * sg * (lv_half_w + GAP + _ext(sz.x, sz.y))
 		var rect := Rect2(c - sz * 0.5, sz)
 		var ok := fits and (ctx.field.bounds.size == Vector2.ZERO or ctx.field.bounds.encloses(rect)) \
 			and not _wet(rect) and not _blocked(rect)
@@ -529,7 +595,7 @@ func _lay() -> void:
 			shoved += 1
 			var half := _reach(rect.size)
 			held.append(Vector2(float(pl.along) - half, float(pl.along) + half))
-		held.append(Vector2(LENGTH + HEAP_PAD, INF))
+		held.append(Vector2(lv_length + HEAP_PAD, INF))
 		var start := 0.0
 		for span in held:
 			_fill(start, span.x - HEAP_PAD, way)
@@ -551,7 +617,7 @@ func _fill(a: float, b: float, way: float) -> void:
 		var size := minf(HEAP * (0.8 + 0.2 * fposmod(float(k) * 0.618034 + (0.0 if way > 0.0 else 0.5), 1.0)), step / wide)
 		if size < HEAP_MIN:
 			continue
-		var c: Vector2 = origin + dir * along + side * way * (HALF_W + GAP + _ext(size))
+		var c: Vector2 = origin + dir * along + side * way * (lv_half_w + GAP + _ext(size))
 		var rect := Rect2(c - Vector2(size, size) * 0.5, Vector2(size, size))
 		if ctx.field.bounds.size != Vector2.ZERO and not ctx.field.bounds.encloses(rect):
 			continue
@@ -637,7 +703,7 @@ func _shove(pl: Dictionary, fell: bool, scorch: float) -> void:
 func _fling(d: Decor) -> void:
 	var mid := d.at + (d.size * 0.5 if d.kind in RUNS or d.kind in PLOTS else Vector2.ZERO)
 	var sg := _sign_of(mid)
-	var out := maxf(HALF_W - (mid - origin).dot(side) * sg, 0.0) + FLING
+	var out := maxf(lv_half_w - (mid - origin).dot(side) * sg, 0.0) + FLING
 	var parent: Node = d.get_parent() if d.is_inside_tree() else null
 	if parent == null:
 		parent = ctx.world if ctx.world != null else ctx.overhead
@@ -758,13 +824,13 @@ class Strip extends Node2D:
 		var now := fx.t
 		var o := fx.origin
 		var d := fx.dir
-		var s := fx.side * HALF_W
+		var s := fx.side * fx.lv_half_w
 		var torn := now >= T_TEAR
 		var run := clampf(now / (T_TEAR * 0.75), 0.0, 1.0)
-		var run_len := LENGTH * run
+		var run_len := fx.lv_length * run
 		var fade := 1.0
 		if torn:
-			run_len = LENGTH
+			run_len = fx.lv_length
 			fade = clampf(1.0 - (now - T_TEAR - T_THROW) / SCAR, 0.0, 1.0) if now > T_TEAR + T_THROW else 1.0
 		if fade <= 0.0 or run_len < 0.05:
 			return

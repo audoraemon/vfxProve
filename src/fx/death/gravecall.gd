@@ -41,19 +41,36 @@ var _passed := {}  # spirit -> {soldier: true}
 var _ended := false
 ## A cold glow under each wraith while it haunts (staged only), by the wraith's index in spirits.
 var _glows := {}  # int -> QuadFx
+## This cast's numbers at its ability level (the consts at level 1): the wraiths, the haunt time, a soldier's freeze.
+var lv_spirits := SPIRITS
+var lv_haunt := HAUNT
+var lv_freeze := FREEZE
+## The level-5 twist (Swelling Host): a death inside HAUNT_R of the haunt spot, while it haunts, raises one more wraith at the body,
+## HOST_MAX at most per cast. `_hearing` is the signal this cast connected (undone on _finish and _exit_tree).
+const HOST_MAX := 4
+var _twist := false
+var _hosted := 0
+var _hearing: EnemyField
 
 
 func _build() -> void:
+	_twist = PowerBook.twist_at(extra, "gravecall")
+	lv_spirits = int(PowerBook.stat(extra, "gravecall", "SPIRITS", SPIRITS))
+	lv_haunt = float(PowerBook.stat(extra, "gravecall", "HAUNT", HAUNT))
+	lv_freeze = float(PowerBook.stat(extra, "gravecall", "FREEZE", FREEZE))
 	_to = extra.get("to", origin)
-	duration = T_RISE + TRAVEL_MAX + HAUNT + FADE + 2.0  # a safe ceiling: _end_life() sets the real end
+	duration = T_RISE + TRAVEL_MAX + lv_haunt + FADE + 2.0  # a safe ceiling: _end_life() sets the real end
 	busy = T_RISE
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	var grid: WalkGrid = ctx.crowd._grid if ctx.crowd != null else null
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, grid, parent)
-	for k in SPIRITS:
-		var ang := TAU * float(k) / float(SPIRITS) + 0.5
+	for k in lv_spirits:
+		var ang := TAU * float(k) / float(lv_spirits) + 0.5
 		_slots.append(_to + Vector2.from_angle(ang) * SPREAD)
 	at(T_RISE, _rise)
+	if _twist and ctx.field != null:
+		_hearing = ctx.field
+		_hearing.enemy_killed.connect(_on_killed)
 	ctx.play(&"gravecall_rise", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
@@ -68,8 +85,8 @@ func _rise() -> void:
 	var trip := origin.distance_to(_to)
 	var base := DeathParts.SPIRIT_SPEED * Animal.DOG_SPEED * Animal.RUN
 	var mul := maxf(1.0, trip / (base * TRAVEL_MAX))
-	for k in SPIRITS:
-		var ang := TAU * float(k) / float(SPIRITS) + 0.5
+	for k in lv_spirits:
+		var ang := TAU * float(k) / float(lv_spirits) + 0.5
 		var a := DeathParts.haunt(visitors, origin + Vector2.from_angle(ang) * SPREAD * 0.5)
 		a.speed_mul *= mul
 		spirits.append(a)
@@ -113,8 +130,34 @@ func _fx_process(delta: float) -> void:
 	if _fright_in <= 0.0:
 		_fright_in = FRIGHT_EVERY
 		_haunt_fright()
-	if haunting and t - _started >= HAUNT:
+	if haunting and t - _started >= lv_haunt:
 		_end_life()
+
+
+## Swelling Host: a death inside the haunt circle, while the spirits haunt it, raises one more wraith at the body, which haunts
+## there until the cast's haunt ends (it is recalled with the rest). HOST_MAX of them per cast; each cast counts its own.
+func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
+	if not _twist or not haunting or _ended or _hosted >= HOST_MAX or visitors == null or not is_instance_valid(e):
+		return
+	var at := e.ground_pos
+	if at.distance_to(_to) > HAUNT_R:
+		return
+	_hosted += 1
+	var a := DeathParts.haunt(visitors, at)
+	var k := spirits.size()
+	spirits.append(a)
+	_slots.append(at)
+	_passed[a] = {}
+	if DominionParts.staged(self):
+		_glows[k] = FxParts.ground_light(self, at, 1.0, DeathParts.GRAVE_GREEN, GLOW,
+			func() -> Vector2: return a.ground_pos if is_instance_valid(a) else at)
+		FxParts.smoke(self, Iso.ground_to_screen(at), 6.0, 20.0, 0.5, Vector2(8, 20), Vector2(2, 4), Vector2(0.5, 1.0), Color(DeathParts.GRAVE_GREEN, 0.2), DUST)
+
+
+func _unhear() -> void:
+	if _hearing != null and is_instance_valid(_hearing) and _hearing.enemy_killed.is_connected(_on_killed):
+		_hearing.enemy_killed.disconnect(_on_killed)
+	_hearing = null
 
 
 ## The people near the spirits flee: around the spot once they are there, around their middle on the way.
@@ -142,7 +185,7 @@ func _freeze_soldiers(a: Animal) -> void:
 			continue
 		if s.ground_pos.distance_to(a.ground_pos) <= PASS_R:
 			seen[s] = true
-			s.stun(FREEZE)
+			s.stun(lv_freeze)
 
 
 ## The 20 s are up: every spirit is recalled and thins away.
@@ -151,6 +194,7 @@ func _end_life() -> void:
 		return
 	_ended = true
 	haunting = false
+	_unhear()
 	if visitors == null:
 		return
 	for q: QuadFx in _glows.values():
@@ -163,6 +207,7 @@ func _end_life() -> void:
 
 
 func _finish() -> void:
+	_unhear()
 	if visitors != null:
 		visitors.clear()
 	super()
@@ -171,6 +216,7 @@ func _finish() -> void:
 ## Freed without _finish (Battlefield.clear_effects() on a restart): the spirits are gone all the same, the pack only queued for
 ## freeing (its parents may be mid-teardown). After _finish there is nothing left to do here.
 func _exit_tree() -> void:
+	_unhear()
 	if visitors != null:
 		visitors.clear(true)
 	spirits.clear()

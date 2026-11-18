@@ -264,6 +264,8 @@ func _line_door(pool: Array[Person], spots: Array, seconds: float) -> void:
 		liners.append(pool[i])
 		_line_spots[pool[i]] = spots[i]
 	_liners_left = seconds
+	# F2: one the fire had already pulled is a liner now and walks to the door; struck off the pulled, the fire pulls him again as a liner.
+	_pulled.assign(_pulled.filter(func(p: Person) -> bool: return not liners.has(p)))
 
 
 ## One step (god T1R): the lie first (the line is stood down and the reports dropped before one can be delivered), then Mira's step,

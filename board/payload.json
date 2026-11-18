@@ -7,26 +7,16 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**10** in progress · **29** to do · **162** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1795026685:f>)\n• Done: Death and Decree ability levels",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**10** in progress · **29** to do · **163** done\n**4** active branches besides Develop-Main\n\n**Since the last update** (<t:1795044689:f>)\n• New: God progression merged into Develop-Main (Death, Decree, levels)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-19T01:31:25+07:00"
-    },
-    {
-     "title": "feat/god-into-dm",
-     "description": "146 commits not in Develop-Main · last commit yesterday · local only\n> perf: render with Forward+ (Vulkan) instead of gl_compatibility\n\n_No Ledger task points at this branch._",
-     "color": 5016537
+     "timestamp": "2026-11-19T06:31:29+07:00"
     },
     {
      "title": "feat/god-progression",
-     "description": "186 commits not in Develop-Main · last commit 2 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "god/dd-levels",
-     "description": "186 commits not in Develop-Main · last commit 2 days ago · local only\n> test: the walker also credits Borrowed Life's kills\n\n_No Ledger task points at this branch._",
+     "description": "merged into Develop-Main · last commit 2 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
@@ -46,12 +36,12 @@
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-18\n> perf: render with Forward+ (Vulkan) instead of gl_compatibility\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (24)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-19\n> test: re-record refs after merging god-progression into Develop-Main\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (24)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Death and Decree ability levels _(11-19)_\n• Zoomed-out fps: render with Forward+ (Vulkan) _(11-18)_\n• Zoom-out limit is a player setting (Options) _(11-18)_\n• Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize _(11-17)_\n• Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan) _(11-17)_\n• Outline tagged people hidden behind stalls, trees, houses (Option A) _(11-17)_\n• Map tags sit on their person; wheel zoom keeps the centre _(11-17)_\n• God branch: 372 stale refs re-recorded; Prayers x Ruin and x Dominion fixed _(11-17)_",
+     "description": "• God progression merged into Develop-Main (Death, Decree, levels) _(11-19)_\n• Death and Decree ability levels _(11-19)_\n• Zoomed-out fps: render with Forward+ (Vulkan) _(11-18)_\n• Zoom-out limit is a player setting (Options) _(11-18)_\n• Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize _(11-17)_\n• Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan) _(11-17)_\n• Outline tagged people hidden behind stalls, trees, houses (Option A) _(11-17)_\n• Map tags sit on their person; wheel zoom keeps the centre _(11-17)_",
      "color": 10185686
     }
    ]

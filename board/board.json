@@ -1,18 +1,18 @@
 {
- "hash": "cf2609c773ff397f",
- "updated": "2026-11-19T01:31:25+07:00",
+ "hash": "a7cba35cb36db44b",
+ "updated": "2026-11-19T06:31:29+07:00",
  "changes": {
-  "date": "<t:1795026685:f>",
+  "date": "<t:1795044689:f>",
   "items": [
-   "Done: Death and Decree ability levels"
+   "New: God progression merged into Develop-Main (Death, Decree, levels)"
   ]
  },
  "snapshot": {
   "project": {
    "version": "v0.12",
    "tag": "kak-ui-resolution",
-   "tests": 18887,
-   "updated": "2026-11-15"
+   "tests": 22112,
+   "updated": "2026-11-19"
   },
   "tasks": {
    "board-objective-tags": {
@@ -384,6 +384,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-04",
     "order": 204
+   },
+   "god-into-develop-main-2": {
+    "title": "God progression merged into Develop-Main (Death, Decree, levels)",
+    "status": "done",
+    "area": "God",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-19",
+    "order": 903
    },
    "god-into-develop-main": {
     "title": "God progression merged into Develop-Main",
@@ -1831,33 +1840,17 @@
   },
   "branches": [
    {
-    "name": "feat/god-into-dm",
-    "ahead": 146,
-    "behind": 0,
-    "date": "2026-11-18",
-    "subject": "perf: render with Forward+ (Vulkan) instead of gl_compatibility",
-    "pushed": false
-   },
-   {
     "name": "feat/god-progression",
-    "ahead": 186,
-    "behind": 95,
+    "ahead": 0,
+    "behind": 98,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
    },
    {
-    "name": "god/dd-levels",
-    "ahead": 186,
-    "behind": 95,
-    "date": "2026-11-17",
-    "subject": "test: the walker also credits Borrowed Life's kills",
-    "pushed": false
-   },
-   {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 284,
+    "behind": 473,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1865,7 +1858,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 782,
+    "behind": 971,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1873,7 +1866,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 740,
+    "behind": 929,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1881,8 +1874,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-18",
-   "subject": "perf: render with Forward+ (Vulkan) instead of gl_compatibility"
+   "date": "2026-11-19",
+   "subject": "test: re-record refs after merging god-progression into Develop-Main"
   }
  }
 }

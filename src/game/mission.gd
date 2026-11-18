@@ -1381,7 +1381,7 @@ func _on_view_resized() -> void:
 		_pan(Vector2.ZERO)
 
 
-## The furthest zoom out the player allows (Options, Settings.zoom_out), read live; 0.85 by default and in headless runs.
+## The furthest zoom out the player allows (Options, Settings.zoom_out), read live; Settings.ZOOM_OUT_DEFAULT (0.5) by default and in headless runs.
 static func zoom_min() -> float:
 	return clampf(Settings.live_zoom_out, Settings.ZOOM_OUT_FAR, ZOOM_MIN)
 

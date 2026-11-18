@@ -12,17 +12,19 @@ const BUSES := {"music": "Music", "sfx": "SFX", "ui": "UI"}
 var music := 1.0
 var sfx := 1.0
 var ui := 1.0
-## The furthest the camera zooms out (logical zoom): ZOOM_OUT_NEAR (0.85, the default and the old fixed cap) down to ZOOM_OUT_FAR.
-var zoom_out := ZOOM_OUT_NEAR
+## The furthest the camera zooms out (logical zoom): ZOOM_OUT_NEAR (0.85, the old fixed cap) down to ZOOM_OUT_FAR; ZOOM_OUT_DEFAULT until the player moves the bar.
+var zoom_out := ZOOM_OUT_DEFAULT
 
 const VIEW_SECTION := "view"
 const ZOOM_OUT_NEAR := 0.85
 const ZOOM_OUT_FAR := 0.35
+## The default limit (the user's pick, 2026-11-18): a bigger picture than the old 0.85 cap.
+const ZOOM_OUT_DEFAULT := 0.5
 ## The Options bar's steps between near and far (0.05 each).
 const ZOOM_OUT_STEPS := 10
 ## What Mission.zoom_min() reads: the zoom_out of the Settings last apply()'d (Game's), read live so a change in the pause
 ## Options takes effect on resume. A headless run never applies one, so it keeps the default.
-static var live_zoom_out := ZOOM_OUT_NEAR
+static var live_zoom_out := ZOOM_OUT_DEFAULT
 
 
 ## Read `path`; a missing or damaged file, or a value that is not a number, leaves the default (1.0); numbers clamp to 0..1.
@@ -30,11 +32,11 @@ func load_from(path := PATH) -> Settings:
 	music = 1.0
 	sfx = 1.0
 	ui = 1.0
-	zoom_out = ZOOM_OUT_NEAR
+	zoom_out = ZOOM_OUT_DEFAULT
 	var cf := ConfigFile.new()
 	if cf.load(path) != OK:
 		return self
-	var z: Variant = cf.get_value(VIEW_SECTION, "zoom_out", ZOOM_OUT_NEAR)
+	var z: Variant = cf.get_value(VIEW_SECTION, "zoom_out", ZOOM_OUT_DEFAULT)
 	if typeof(z) == TYPE_FLOAT or typeof(z) == TYPE_INT:
 		zoom_out = clean_zoom_out(float(z))
 	for key: String in BUSES:
@@ -91,7 +93,7 @@ func set_level(name: String, v: float) -> void:
 
 ## `z` clamped to ZOOM_OUT_FAR..ZOOM_OUT_NEAR; nan and inf are damage: the default.
 static func clean_zoom_out(z: float) -> float:
-	return clampf(z, ZOOM_OUT_FAR, ZOOM_OUT_NEAR) if is_finite(z) else ZOOM_OUT_NEAR
+	return clampf(z, ZOOM_OUT_FAR, ZOOM_OUT_NEAR) if is_finite(z) else ZOOM_OUT_DEFAULT
 
 
 ## The Options bar's step (0 = near .. ZOOM_OUT_STEPS = far) of the zoom-out limit, and back.

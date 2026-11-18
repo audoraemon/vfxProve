@@ -77,11 +77,11 @@ static func _settings(t) -> void:
 	t.check(is_equal_approx(_bus_db("SFX"), linear_to_db(0.5)), "set_level applies at once")
 	# The zoom-out limit: its own key, round trip, clamped, damage is the default.
 	var zs := Settings.new()
-	t.check(zs.zoom_out == 0.85 and Settings.new().load_from("user://no_such.cfg").zoom_out == 0.85, "zoom_out defaults to 0.85")
+	t.check(zs.zoom_out == 0.5 and Settings.new().load_from("user://no_such.cfg").zoom_out == 0.5, "zoom_out defaults to 0.5")
 	zs.set_zoom_step(6)
 	zs.save_to(PATH)
 	t.check(is_equal_approx(Settings.new().load_from(PATH).zoom_out, 0.55), "zoom_out round trips (0.55)")
-	for pair in [[0.1, 0.35], [3.0, 0.85], [NAN, 0.85], [INF, 0.85], [-INF, 0.85]]:
+	for pair in [[0.1, 0.35], [3.0, 0.85], [NAN, 0.5], [INF, 0.5], [-INF, 0.5]]:
 		var zcf := ConfigFile.new()
 		zcf.set_value("view", "zoom_out", float(pair[0]))
 		zcf.save(PATH)
@@ -89,7 +89,7 @@ static func _settings(t) -> void:
 	var zw := ConfigFile.new()
 	zw.set_value("view", "zoom_out", "far")
 	zw.save(PATH)
-	t.check(Settings.new().load_from(PATH).zoom_out == 0.85, "a word is the default")
+	t.check(Settings.new().load_from(PATH).zoom_out == 0.5, "a word is the default")
 	Settings.new().apply()  # leaves Mission.zoom_min() at the default for whoever runs next
 	# Settings never touch the progress save.
 	t.check(Settings.PATH != SaveFile.PATH and Settings.PATH == "user://kak_settings.cfg", "its own file")
@@ -117,7 +117,9 @@ static func _zoom_row(t, p: OptionsPanel, s: Settings) -> void:
 	p._unhandled_input(_key(KEY_DOWN))
 	p._unhandled_input(_key(KEY_DOWN))
 	t.check(p.row == 3 and String(OptionsPanel.ROWS[3][0]) == "zoom_out", "Down reaches Zoom out and stops")
-	t.check(s.zoom_out == 0.85 and Mission.zoom_min() == 0.85, "it starts at the old cap")
+	t.check(s.zoom_out == 0.5 and Mission.zoom_min() == 0.5, "it starts at the default, 0.5 (step %d)" % s.zoom_step())
+	s.set_zoom_step(0)
+	s.apply()
 	p._unhandled_input(_key(KEY_LEFT))  # the bar is empty at Near: Left does nothing
 	t.check(s.zoom_out == 0.85, "Left at Near stays")
 	p._unhandled_input(_key(KEY_RIGHT))
@@ -130,9 +132,9 @@ static func _zoom_row(t, p: OptionsPanel, s: Settings) -> void:
 	t.check(is_equal_approx(s.zoom_out, 0.6) and p.row == 3, "a click at the middle: 0.60 (%f)" % s.zoom_out)
 	p._gui_input(_click(r3.position + Vector2(1.0, 5.0)))
 	t.check(is_equal_approx(s.zoom_out, 0.85), "a click at the left end: back to 0.85")
-	s.set_zoom_step(0)
+	s.zoom_out = Settings.ZOOM_OUT_DEFAULT
 	s.apply()
-	t.check(Mission.zoom_min() == 0.85, "Mission.zoom_min() is back at the default")
+	t.check(Mission.zoom_min() == 0.5, "Mission.zoom_min() is back at the default")
 	p.row = 0
 
 

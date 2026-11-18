@@ -1,10 +1,10 @@
 {
- "hash": "f395c47c5b8e5b24",
- "updated": "2026-11-18T23:36:01+07:00",
+ "hash": "cf2609c773ff397f",
+ "updated": "2026-11-19T01:31:25+07:00",
  "changes": {
-  "date": "<t:1795019761:f>",
+  "date": "<t:1795026685:f>",
   "items": [
-   "New: Zoomed-out fps: render with Forward+ (Vulkan)"
+   "Done: Death and Decree ability levels"
   ]
  },
  "snapshot": {
@@ -222,11 +222,11 @@
    },
    "death-decree-levels": {
     "title": "Death and Decree ability levels",
-    "status": "doing",
+    "status": "done",
     "area": "Abilities",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/god-progression",
-    "updated": "2026-11-17",
+    "updated": "2026-11-19",
     "order": 5
    },
    "death-review-2": {
@@ -1831,20 +1831,28 @@
   },
   "branches": [
    {
+    "name": "feat/god-into-dm",
+    "ahead": 146,
+    "behind": 0,
+    "date": "2026-11-18",
+    "subject": "perf: render with Forward+ (Vulkan) instead of gl_compatibility",
+    "pushed": false
+   },
+   {
+    "name": "feat/god-progression",
+    "ahead": 186,
+    "behind": 95,
+    "date": "2026-11-17",
+    "subject": "test: the walker also credits Borrowed Life's kills",
+    "pushed": true
+   },
+   {
     "name": "god/dd-levels",
     "ahead": 186,
     "behind": 95,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": false
-   },
-   {
-    "name": "feat/god-progression",
-    "ahead": 142,
-    "behind": 95,
-    "date": "2026-11-17",
-    "subject": "docs: Death and Decree ability levels approved",
-    "pushed": true
    },
    {
     "name": "god/dominion-t3-old",

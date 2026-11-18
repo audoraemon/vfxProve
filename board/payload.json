@@ -7,36 +7,41 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **161** done\n**5** active branches besides Develop-Main\n\n**Since the last update** (<t:1795019761:f>)\n• New: Zoomed-out fps: render with Forward+ (Vulkan)",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**10** in progress · **29** to do · **162** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1795026685:f>)\n• Done: Death and Decree ability levels",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-18T23:36:01+07:00"
+     "timestamp": "2026-11-19T01:31:25+07:00"
     },
     {
-     "title": "god/dd-levels",
-     "description": "186 commits not in Develop-Main · last commit yesterday · local only\n> test: the walker also credits Borrowed Life's kills\n\n_No Ledger task points at this branch._",
+     "title": "feat/god-into-dm",
+     "description": "146 commits not in Develop-Main · last commit yesterday · local only\n> perf: render with Forward+ (Vulkan) instead of gl_compatibility\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "142 commits not in Develop-Main · last commit yesterday\n> docs: Death and Decree ability levels approved\n\n**In progress** (1)\n• Death and Decree ability levels — **needs you**\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "186 commits not in Develop-Main · last commit 2 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "god/dd-levels",
+     "description": "186 commits not in Develop-Main · last commit 2 days ago · local only\n> test: the walker also credits Borrowed Life's kills\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/dominion-t3-old",
-     "description": "2 commits not in Develop-Main · last commit 12 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "description": "2 commits not in Develop-Main · last commit 13 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 40 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 41 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 40 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 41 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
@@ -46,7 +51,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Zoomed-out fps: render with Forward+ (Vulkan) _(11-18)_\n• Zoom-out limit is a player setting (Options) _(11-18)_\n• Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize _(11-17)_\n• Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan) _(11-17)_\n• Outline tagged people hidden behind stalls, trees, houses (Option A) _(11-17)_\n• Map tags sit on their person; wheel zoom keeps the centre _(11-17)_\n• God branch: 372 stale refs re-recorded; Prayers x Ruin and x Dominion fixed _(11-17)_\n• bread_play_3 reference mismatch on Develop-Main _(11-17)_",
+     "description": "• Death and Decree ability levels _(11-19)_\n• Zoomed-out fps: render with Forward+ (Vulkan) _(11-18)_\n• Zoom-out limit is a player setting (Options) _(11-18)_\n• Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize _(11-17)_\n• Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan) _(11-17)_\n• Outline tagged people hidden behind stalls, trees, houses (Option A) _(11-17)_\n• Map tags sit on their person; wheel zoom keeps the centre _(11-17)_\n• God branch: 372 stale refs re-recorded; Prayers x Ruin and x Dominion fixed _(11-17)_",
      "color": 10185686
     }
    ]

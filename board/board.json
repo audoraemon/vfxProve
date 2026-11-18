@@ -1,13 +1,9 @@
 {
- "hash": "cff1419f25b40ace",
- "updated": "2026-11-17T23:07:06+07:00",
+ "hash": "ec20df562d4afea1",
+ "updated": "2026-11-18T21:56:09+07:00",
  "changes": {
-  "date": "<t:1794931626:f>",
-  "items": [
-   "Done: bread_play_3 reference mismatch on Develop-Main",
-   "New: God branch: 372 stale refs re-recorded; Prayers x Ruin and x Dominion fixed",
-   "New: First Prayers x Passage and x Decree idle over the bar"
-  ]
+  "date": "<t:1795013769:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1807,9 +1803,9 @@
     "title": "Zoom-out limit is a player setting (Options)",
     "status": "done",
     "area": "UI",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "feat/Develop-Main",
-    "updated": "2026-11-16",
+    "updated": "2026-11-18",
     "order": 216
    },
    "zoom-readout": {
@@ -1825,24 +1821,16 @@
   "branches": [
    {
     "name": "god/dd-levels",
-    "ahead": 182,
-    "behind": 93,
+    "ahead": 186,
+    "behind": 94,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": false
    },
    {
-    "name": "god/refs-rerecord",
-    "ahead": 145,
-    "behind": 93,
-    "date": "2026-11-17",
-    "subject": "dev: the Dominion bot whispers only to a spot with a short way (First Prayers)",
-    "pushed": false
-   },
-   {
     "name": "feat/god-progression",
     "ahead": 142,
-    "behind": 93,
+    "behind": 94,
     "date": "2026-11-17",
     "subject": "docs: Death and Decree ability levels approved",
     "pushed": true
@@ -1850,7 +1838,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 282,
+    "behind": 283,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1858,7 +1846,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 780,
+    "behind": 781,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1866,7 +1854,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 738,
+    "behind": 739,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1874,8 +1862,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-17",
-   "subject": "tools: real-path sweep (real_path.ps1 + real_path_probe.gd): the real game in a real window, OS clicks, keys, wheel, drags and resizes"
+   "date": "2026-11-18",
+   "subject": "feat: zoom-out limit defaults to 0.5 (Settings.ZOOM_OUT_DEFAULT)"
   }
  }
 }

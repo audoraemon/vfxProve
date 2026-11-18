@@ -19,6 +19,15 @@ static func _integer_setting(t) -> void:
 	t.check(str(ProjectSettings.get_setting("display/window/stretch/scale_mode")) == "integer", "the frame scales by whole numbers only (crisp at every window size)")
 
 
+## The renderer (2026-11-18 zoomed-out fps pass): Forward+ (Vulkan) draws the same frames as gl_compatibility but its 2D
+## draw calls cost less CPU; at zoom 0.5 the Aldermere bench went 66 -> 93 fps (busy machine) and 84 -> 116 (quiet).
+## Machines without Vulkan fall back to OpenGL. Phones and the web stay on gl_compatibility.
+static func _renderer_setting(t) -> void:
+	t.check(str(ProjectSettings.get_setting("rendering/renderer/rendering_method")) == "forward_plus", "desktop renders with Forward+")
+	t.check(str(ProjectSettings.get_setting("rendering/renderer/rendering_method.mobile")) == "gl_compatibility", "mobile stays on gl_compatibility")
+	t.check(bool(ProjectSettings.get_setting("rendering/rendering_device/fallback_to_opengl3", true)), "no Vulkan: falls back to OpenGL")
+
+
 static func _install(t) -> void:
 	t.check(str(ProjectSettings.get_setting("display/window/stretch/mode")) == "canvas_items" and str(ProjectSettings.get_setting("display/window/stretch/aspect")) == "keep",
 		"the root draws at full resolution (canvas_items) and keeps its aspect in the project file (the expand is applied at run time)")
@@ -683,6 +692,7 @@ static func run(t) -> void:
 	_texture_rect_lint(t)
 	await _frame_after_resize(t)
 	_integer_setting(t)
+	_renderer_setting(t)
 	_install(t)
 	_headless_keeps(t)
 	_visible_capped(t)

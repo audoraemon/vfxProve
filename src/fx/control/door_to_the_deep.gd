@@ -548,10 +548,12 @@ func soaks(p: Person) -> bool:
 func _dry(id: int) -> void:
 	var held: Array = _soaked[id]
 	_soaked.erase(id)
-	var p: Person = held[0]
+	# Untyped until checked: one who left the town (Crowd.escape) or was taken "gone" by another power is freed, and
+	# assigning a freed one to a Person errors.
+	var p = held[0]
 	if not is_instance_valid(p):
 		return
-	p.free_pace(get_instance_id())
+	(p as Person).free_pace(get_instance_id())
 
 
 func _dry_all() -> void:
@@ -580,6 +582,16 @@ func _finish() -> void:
 	super()
 
 
+## Freed without _finish (Battlefield.clear_effects() on a restart): nobody it soaked is left slowed and the roar is
+## stopped at once (no fade made: the sound's own parents may be mid-teardown). After _finish there is nothing left to do.
+func _exit_tree() -> void:
+	_dry_all()
+	if _roar != null and is_instance_valid(_roar) and _roar.get_meta(&"cue", &"") == &"tn_wind" and _roar is AudioStreamPlayer2D:
+		(_roar as AudioStreamPlayer2D).stop()
+	_roar = null
+	super()
+
+
 ## The water's shape at `r` from the door: a circle whose edge laps, in ground units.
 static func shore(r: float, time: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -600,14 +612,16 @@ class Pool extends Node2D:
 		visible = false
 
 	func _process(_delta: float) -> void:
-		if fx.t > fx.visuals_end():
-			queue_free()
+		if not is_instance_valid(fx) or fx.t > fx.visuals_end():
+			queue_free()  # done with, or its effect torn down first
 			return
 		# No water, no pool: a clipping parent that draws nothing would let the flood through whole.
 		visible = fx.reach(fx.t) > 0.02
 		queue_redraw()
 
 	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
 		var r := fx.reach(fx.t)
 		if r <= 0.02:
 			return
@@ -619,12 +633,14 @@ class Shore extends Node2D:
 	var fx: DoorToTheDeepFx
 
 	func _process(_delta: float) -> void:
-		if fx.t > fx.visuals_end():
-			queue_free()
+		if not is_instance_valid(fx) or fx.t > fx.visuals_end():
+			queue_free()  # done with, or its effect torn down first
 			return
 		queue_redraw()
 
 	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
 		var r := fx.reach(fx.t)
 		if r <= 0.05:
 			return
@@ -650,12 +666,14 @@ class Arms extends Node2D:
 	var fx: DoorToTheDeepFx
 
 	func _process(_delta: float) -> void:
-		if fx.t > fx.visuals_end():
-			queue_free()
+		if not is_instance_valid(fx) or fx.t > fx.visuals_end():
+			queue_free()  # done with, or its effect torn down first
 			return
 		queue_redraw()
 
 	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
 		var outer := fx.reach(fx.t) - 0.08
 		var inner := MOUTH_R * fx.opening() * 0.8
 		if outer <= inner + 0.3:
@@ -712,8 +730,8 @@ class Flecks extends Node2D:
 			_age.append(1.0)
 
 	func _process(delta: float) -> void:
-		if fx.t > fx.visuals_end():
-			queue_free()
+		if not is_instance_valid(fx) or fx.t > fx.visuals_end():
+			queue_free()  # done with, or its effect torn down first
 			return
 		var reach := fx.reach(fx.t)
 		var force := fx.force(fx.t)
@@ -736,6 +754,8 @@ class Flecks extends Node2D:
 		return TURN * fx.lv_radius / maxf(r, 0.45)
 
 	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
 		var reach := fx.reach(fx.t) - 0.1
 		var force := fx.force(fx.t)
 		if reach <= 0.2:
@@ -765,12 +785,14 @@ class Mouth extends Node2D:
 	var fx: DoorToTheDeepFx
 
 	func _process(_delta: float) -> void:
-		if fx.t > fx.visuals_end():
-			queue_free()
+		if not is_instance_valid(fx) or fx.t > fx.visuals_end():
+			queue_free()  # done with, or its effect torn down first
 			return
 		queue_redraw()
 
 	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
 		var o := fx.opening()
 		if o <= 0.01:
 			return

@@ -29,6 +29,14 @@ const COL_CRIMSON_FILL := Color(1.0, 0.3, 0.25, 0.1)
 ## The order wheel's tints (Mind Whisper): the walk is the preview's gold, the attack the crimson, the burn a flame.
 const COL_FLAME := Color(1.0, 0.55, 0.15, 0.9)
 const COL_FLAME_FILL := Color(1.0, 0.55, 0.15, 0.14)
+## Death's marks (review R1): the bodies a click would take, the guised, and a subject's ENTER order.
+const COL_BONE := Color(0.92, 0.9, 0.82, 0.9)
+const COL_BONE_FILL := Color(0.92, 0.9, 0.82, 0.16)
+## A body's mark (_death_mark()): its ring's radius on the ground, and the skull over the lead -- five rows of five pixels (bit 4 is
+## the left column), drawn SKULL_UP px above it on the screen.
+const BODY_MARK_R := 0.32
+const SKULL := [0b01110, 0b10101, 0b11111, 0b01110, 0b01010]
+const SKULL_UP := 18.0
 ## The wheel's radius on the ground and the hub in its middle that is no slice. The slices' middles lie at these angles on the
 ## screen (degrees, clockwise from the right, so -90 is straight up), WALK on top; a slice is a third of the wheel (wheel_slice()).
 const WHEEL_R := 1.2
@@ -56,8 +64,27 @@ const AREAS := {
 	# The Bell Lies works at the Bell Tower wherever the click lands: the tower is ringed (_draw()); its Call the
 	# Guard mode marks where the soldiers are sent (the book's "area")
 	"belllies": {"shape": "circle", "r": 0.6},
+	# BreathFx.RADIUS: the ground the air goes out of
+	"breath": {"shape": "circle", "r": 2.5},
+	# EraseFx: the line runs from the press as far as the drag (MIN_LEN..MAX_LEN, "stretch"), CRUSH_W each side; THROW_W
+	# ("outer") is how far the spring back throws
+	"erase": {"shape": "lane", "length": 10.0, "half": 1.0, "min": 2.0, "stretch": true, "outer": 3.0},
+	# EminentFx.LENGTH from the press along the drag, HALF_W each side: the strip it claims
+	"eminent": {"shape": "lane", "length": 10.0, "half": 1.0},
 	# MagnifyFx.RADIUS
 	"magnify": {"shape": "circle", "r": 4.0},
+	# RedefineFx.PICK_R; whom it would name is ringed (_draw())
+	"redefine": {"shape": "circle", "r": 1.5},
+	# BoundFx.PICK_R: whom the first click takes is ringed, then the second, and BoundFx.REACH round the first (_draw())
+	"bound": {"shape": "pick", "r": 0.8},
+	# DisorderFx.RADIUS: where every choice goes wrong
+	"disorder": {"shape": "circle", "r": 5.0},
+	# FencedFx.RADIUS: the fence's ring, where its two rules hold
+	"fenced": {"shape": "circle", "r": 7.0},
+	# CageFx.RADIUS: the ring of bars as it stands, before it closes
+	"cage": {"shape": "circle", "r": 12.0},
+	# SealedFx.RADIUS: the district written into the ledger
+	"sealed": {"shape": "circle", "r": 10.0},
 	# Abolition voids a law of the whole night: the mark is only where the click lands
 	"abolition": {"shape": "circle", "r": 0.6},
 	# SkyliftFx.RADIUS: what it would take is ringed at the first click; then where it is set down ("pick")
@@ -84,6 +111,26 @@ const AREAS := {
 	"fargate": {"shape": "circle", "r": 10.0},
 	# DoorsOfTheDeadFx.RADIUS: the district whose doors open
 	"deaddoors": {"shape": "circle", "r": DoorsOfTheDeadFx.RADIUS},
+	# RING_R: the ring of bodies the click raises; RaiseTheDeadFx.SEEK is how far its zombie hunts (a spirit frightens FRIGHT_R about it)
+	"raise": {"shape": "circle", "r": RaiseTheDeadFx.RING_R, "roam": RaiseTheDeadFx.SEEK},
+	# GravecallFx.HAUNT_R: where the spirits rise at the first click, then a dashed route to the circle they haunt ("route")
+	"gravecall": {"shape": "route", "r": GravecallFx.HAUNT_R},
+	# CorpseGuiseFx.MARK_R: the circle the 4 nearest are guised within (each ringed)
+	"guise": {"shape": "circle", "r": CorpseGuiseFx.MARK_R},
+	# Remains.PICK_R: the body the first click takes (the second is where it walks)
+	"walker": {"shape": "circle", "r": Remains.PICK_R},
+	# TheGateBelowFx.REACH: how far the pit's arms reach (the pit itself is PIT_R)
+	"gatebelow": {"shape": "circle", "r": TheGateBelowFx.REACH},
+	# PaleReignFx.RADIUS: the district that goes grey
+	"pale": {"shape": "circle", "r": PaleReignFx.RADIUS},
+	# PaleSerpentFx.LENGTH, BAND, MIN_LENGTH: the head's glide from the press along the drag, as long as the drag ("follow"),
+	# its shadow BAND each side
+	# and the loop it turns at the end ("loop": CIRCLE_R, ringed to the drag's left), the head's path round it a kill zone too
+	"serpent": {"shape": "lane", "length": PaleSerpentFx.LENGTH, "half": PaleSerpentFx.BAND, "min": PaleSerpentFx.MIN_LENGTH,
+		"follow": true, "loop": PaleSerpentFx.CIRCLE_R},
+	# GraveTideFx.GIANT_AURA: every grave of the town marked (GraveTideFx.grave_spots()), and the one the giant would rise from
+	# -- the nearest the cursor -- ringed as wide as its aura ("graves")
+	"gravetide": {"shape": "graves", "r": GraveTideFx.GIANT_AURA},
 	# HeavensDoorFx.PULL_R over HALF_ANGLE each side: the half circle before the door, turned with the drag ("aimed")
 	# in its eight steps (HeavensDoorFx.DIRS: "snap"); CRUSH_R and SHOCK_R ringed where it lands
 	"heavendoor": {"shape": "cone", "r": 16.0, "arc": PI, "aimed": true, "snap": 8, "inner": 3.0, "outer": 7.0},
@@ -179,6 +226,11 @@ const AREA_STATS := {
 	"sanctuary": {"r": "PICK_R"},
 	"skylift": {"r": "RADIUS"}, "windfall": {"length": "LENGTH"}, "hellspark": {"r": "RADIUS"}, "deep": {"r": "RADIUS"},
 	"mirror": {"length": "MAX_LEN"}, "allroads": {"r": "RADIUS"}, "foldward": {"half": "HALF"}, "deaddoors": {"r": "RADIUS"},
+	"raise": {"r": "RING_R", "roam": "SEEK"}, "gravecall": {"r": "HAUNT_R"}, "guise": {"r": "MARK_R"},
+	"gatebelow": {"r": "REACH"},
+	"pale": {"r": "RADIUS"},
+	"serpent": {"length": "LENGTH"},
+	"gravetide": {"r": "GIANT_AURA"},
 	"heavendoor": {"r": "PULL_R"},
 }
 ## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole
@@ -202,12 +254,18 @@ var _lane_len := 0.0
 
 ## The citizen a held Mind Whisper press picked (v0.08), or null.
 var _whisper_target: Person
+## Or, for a follow-up whose effect has a subject of its own (follow_up_subject(), review R15: Walking Corpse's walker), that subject:
+## the wheel opens round it instead of round a picked person. _wheel_centre() is where either stands.
+var _subject: Node2D
 ## The order wheel is up around that citizen (from the press, and after a release in its middle).
 var _wheel := false
 ## The order picked on a slice ("walk", "attack" or "burn") while the aim waits for its target, or "".
 var _order := ""
 ## Where the press that will make that pick went down.
 var _pick_at := Vector2.ZERO
+## A fresh cast is being aimed over a live follow-up with a subject of its own (R26: off the cooldown, a press away from Walking
+## Corpse's walker): the slot's own aim, not the wheel, until it casts, is refused or called off.
+var _fresh := false
 
 var _rules: Rules
 var _crowd: Crowd
@@ -220,6 +278,10 @@ var _at := Vector2.ZERO
 ## Whether the preview's edge was last drawn as ready (gold) or not (red): the cooldown, the busy lock and a storm's Called Bolts all
 ## change it without the cursor moving, so _process() redraws when it flips.
 var _edge_ready := true
+## Grave Tide's graves for the preview (grave_spots()), kept for the walk grid they were found on, at its version.
+var _graves: Array[Vector2] = []
+var _graves_grid: WalkGrid
+var _graves_version := -1
 
 
 func setup(rules: Rules, crowd: Crowd) -> Targeting:
@@ -241,6 +303,7 @@ func pick(new_slot: int) -> void:
 	armed = false
 	aiming = false
 	placed = false
+	_fresh = false
 	_end_wheel()
 	picked.emit(slot)
 	queue_redraw()
@@ -251,6 +314,7 @@ func unfocus() -> void:
 	armed = false
 	aiming = false
 	placed = false
+	_fresh = false
 	_end_wheel()
 	picked.emit(slot)
 	queue_redraw()
@@ -309,9 +373,47 @@ func _unhandled_input(event: InputEvent) -> void:
 ## How the focused power is aimed: its mode's own way when the mode has one. A power that is running and can take a follow-up
 ## (Rules.can_recast) is aimed as a plain click, whatever its own kind: the click is the order.
 func _aim_kind() -> String:
-	if slot >= 0 and _rules.can_recast(slot):
-		return "click"
+	if slot >= 0 and not _fresh and _rules.can_recast(slot):
+		# A follow-up through Mind Whisper's wheel (Walking Corpse's orders) is aimed as a whisper: press, drag and release, and its wheel.
+		# A fresh cast over it (R26, _fresh) is aimed the power's own way.
+		return "whisper" if _wheel_fx() != null else "click"
 	return String(mode().get("aim", _rules.power(slot).get("aim", "click")))
+
+
+## The focused slot's live effect when it takes its follow-up through Mind Whisper's wheel (its follow_up_wheel() is true: Walking
+## Corpse's orders), else null -- null too while a fresh cast is aimed over it (R26, _fresh). Such an effect may give follow_up_reach()
+## (how far from follow_up_from(), and how far a walk order goes; Mind Whisper's REACH without it) and follow_up_from() (where that reach
+## is measured from: the walker; anywhere without it).
+func _wheel_fx() -> Variant:
+	if slot < 0 or _fresh or not _rules.can_recast(slot):
+		return null
+	var fx: Variant = _rules.live_fx(_rules.key(slot))
+	return fx if fx != null and fx.has_method("follow_up_wheel") and fx.follow_up_wheel() else null
+
+
+## The slot's own reason it cannot cast, which a whisper's refusals name first -- none for a follow-up through the wheel, which casts
+## nothing (its slot is on its cooldown by then).
+func _why() -> String:
+	return "" if _wheel_fx() != null else _rules.refusal(slot)
+
+
+## A whisper's refusal when no one who can hear is there (`who` null) or they are still shaking the last whisper off: "nobody" or "shaken"
+## for Mind Whisper; "missed" for a follow-up through the wheel, as any follow-up that finds nothing.
+func _unheard(who: Person) -> String:
+	if _wheel_fx() != null:
+		return "missed"
+	return "nobody" if who == null else "shaken"
+
+
+## Whom a whisper press at `ground` picks (MindWhisperFx.pick()); for a follow-up through the wheel, only someone within its reach of the
+## effect's follow_up_from().
+func _whisper_pick(ground: Vector2) -> Person:
+	var who := MindWhisperFx.pick(_crowd._field, ground)
+	var fx: Variant = _wheel_fx()
+	if who != null and fx != null and fx.has_method("follow_up_from") \
+			and who.ground_pos.distance_to(fx.follow_up_from()) > _whisper_reach():
+		return null
+	return who
 
 
 ## The cursor moved. Keeps the preview where the player is looking.
@@ -319,15 +421,29 @@ func hover(ground: Vector2) -> void:
 	# Mission calls this every frame. A preview that has not moved is not redrawn: this node sits on the ground
 	# plane, and redrawing it re-batches the layer the whole town is drawn in.
 	# A held whisper is the exception: its line starts on someone walking, so it follows them every frame.
-	if (_wheel or _order != "") and not _whisper_hears():
-		# The one the wheel (or the pick) is set on has died, gone in or been taken: it can no longer hear, so it is over -- once.
-		_end_stale_whisper()
+	if (_wheel or _order != "") and not _is_whisper():
+		# The live effect whose follow-up opened the wheel (Walking Corpse's walker) has ended or stopped taking them: the wheel goes with it,
+		# quietly.
+		_end_wheel()
+		armed = false
+		aiming = false
+		queue_redraw()  # a still cursor returns below before its redraw: the wheel must not stay drawn
+	elif (_wheel or _order != "") and not _whisper_hears():
+		if _has_subject():
+			# The effect's own subject is gone (carried off, or its time is up): the wheel goes with it, quietly (review Focus 1).
+			_end_wheel()
+			armed = false
+			aiming = false
+			queue_redraw()
+		else:
+			# The one the wheel (or the pick) is set on has died, gone in or been taken: it can no longer hear, so it is over -- once.
+			_end_stale_whisper()
 	var held := _whisper_held()
 	if ground.is_equal_approx(_at) and not held:
 		return
 	_at = ground
 	if held:
-		_press = _whisper_target.ground_pos
+		_press = _wheel_centre()
 	elif not aiming:
 		_press = ground
 	if _is_wheel() and placed:
@@ -348,18 +464,38 @@ func press(ground: Vector2) -> void:
 		armed = true
 		queue_redraw()
 		return
-	if _is_whisper() and _wheel and _whisper_hears() and ground.distance_to(_whisper_target.ground_pos) <= WHEEL_R:
+	if _is_whisper() and _wheel and _whisper_hears() and ground.distance_to(_wheel_centre()) <= WHEEL_R:
 		# A press inside the open wheel is held on it: the release picks a slice or walks the person away.
-		_press = _whisper_target.ground_pos
+		_press = _wheel_centre()
 		armed = true
 		aiming = true
 		queue_redraw()
 		return
-	if _is_whisper():
+	if _is_whisper() and _has_subject() and _rules.refusal(slot) == "" and not _near_subject(ground):
+		# R26: the slot off its cooldown, a press away from the subject is a fresh cast of the power, aimed its own way (Walking Corpse:
+		# a new body, the old walker lying down as it goes out). The wheel is let go; the press goes on below as the cast's own.
+		_end_wheel()
+		_fresh = true
+	if _is_whisper() and _has_subject():
+		# A follow-up with a subject of its own (R15): a press within WHEEL_R of it opens the wheel round it, whoever stands there;
+		# anywhere else -- or with the subject gone -- is refused "missed" (on the cooldown; off it, a fresh cast above).
+		var sub := _fx_subject()
+		if sub == null or not sub.call("is_alive") or ground.distance_to(sub.get("ground_pos")) > WHEEL_R:
+			_end_wheel()
+			armed = false
+			aiming = false
+			_rules.refuse(slot, _unheard(null))
+			queue_redraw()
+			return
+		_subject = sub
+		_wheel = true
+		_order = ""
+		ground = sub.get("ground_pos")
+	elif _is_whisper():
 		# Mind Whisper: the press snaps to the citizen under it, and with nobody there -- or (v0.08.1) only someone
 		# still shaking the last whisper off -- nothing is armed. A slot that could not cast anyway names its own
 		# reason first, as a release would.
-		var who := MindWhisperFx.pick(_crowd._field, ground)
+		var who := _whisper_pick(ground)
 		if _wheel and who == null:
 			# A press away from the open wheel on nobody closes it, quietly: the player has turned from that person.
 			_end_wheel()
@@ -370,8 +506,8 @@ func press(ground: Vector2) -> void:
 		if who == null or who.shaken():
 			if _wheel:
 				_end_wheel()  # a press elsewhere on someone who cannot be whispered still leaves the old wheel
-			var why := _rules.refusal(slot)
-			_rules.refuse(slot, why if why != "" else ("nobody" if who == null else "shaken"), who)
+			var why := _why()
+			_rules.refuse(slot, why if why != "" else _unheard(who), who)
 			queue_redraw()
 			return
 		_whisper_target = who
@@ -423,11 +559,19 @@ func release(ground: Vector2) -> void:
 		return
 	if _is_twice():
 		if not placed:
+			# A power that needs a body at its first click (Walking Corpse) is refused there and then, not after the second.
+			var no_body := _rules.body_refusal(_rules.key(slot), String(extra.get("mode", "")), ground)
+			if no_body != "":
+				_rules.refuse(slot, no_body)
+				_fresh = false  # a fresh cast over a live walker (R26) is over: the next press is read afresh
+				queue_redraw()
+				return
 			placed = true
 			first = ground
 			queue_redraw()
 			return
 		placed = false
+		_fresh = false
 		extra["to"] = ground
 		_rules.cast(slot, first, extra)
 		queue_redraw()
@@ -454,14 +598,19 @@ func release(ground: Vector2) -> void:
 	elif _is_whisper():
 		# A whisper goes out where the citizen is now, sending them to the release clamped to REACH and walkable
 		# ground. Someone who died or went in meanwhile can no longer hear it.
-		var who := _whisper_target if _whisper_hears() else null
+		# A follow-up's own subject (R15) goes the same way, its orders carrying no "target".
+		var hears := _whisper_hears()
+		var who := _whisper_target if hears and not _has_subject() else null
 		aiming = false
-		if who == null:
+		if not hears:
 			_end_wheel()
-			var why := _rules.refusal(slot)
-			_rules.refuse(slot, why if why != "" else "nobody")
+			if not _has_subject():
+				var why := _why()
+				_rules.refuse(slot, why if why != "" else _unheard(null))
+			# (a subject taken away is let go quietly, as hover() lets it go)
 			queue_redraw()
 			return
+		var centre := _wheel_centre()
 		if _order != "":
 			# The pick step: the click names the target of the order picked on the wheel; a bad one is refused and the pick goes on.
 			extra = _order_extra(who)
@@ -469,7 +618,7 @@ func release(ground: Vector2) -> void:
 				queue_redraw()
 				return
 		else:
-			var slice := wheel_slice(ground - who.ground_pos)
+			var slice := _slice_at(ground - centre)
 			if slice != "out":
 				# On the wheel: its middle keeps it open, a slice picks its order and waits for the target.
 				if slice != "":
@@ -477,13 +626,13 @@ func release(ground: Vector2) -> void:
 					_wheel = false
 				queue_redraw()
 				return
-			extra = {"to": MindWhisperFx.clamp_to(_crowd._grid, who.ground_pos, ground, _whisper_reach()), "target": who}
+			extra = _walk_extra(who, ground)
 		_end_wheel()
-		_press = who.ground_pos
+		_press = centre
 	aiming = false
 	# A power already running may take this click as a follow-up order (Called Bolts, Procession, Sleepwalk, Second Word, Turn the Tide):
 	# the slot stays focused for the next.
-	if _rules.can_recast(slot):
+	if not _fresh and _rules.can_recast(slot):
 		# The click is the live power's order, never a place of the slot's own aim: a half-placed two-click aim from before is dropped,
 		# and a follow-up that finds nothing is refused as "missed", never started as a cast.
 		placed = false
@@ -491,6 +640,7 @@ func release(ground: Vector2) -> void:
 			_rules.refuse(slot, "missed")
 		queue_redraw()
 		return
+	_fresh = false
 	_rules.cast(slot, _press, extra)
 	queue_redraw()
 
@@ -502,6 +652,7 @@ func cancel() -> bool:
 	armed = false
 	aiming = false
 	placed = false
+	_fresh = false
 	_end_wheel()
 	queue_redraw()
 	return had
@@ -520,11 +671,27 @@ func lane_length() -> float:
 	return clampf((_at - _press).length(), float(a.get("min", 0.0)), float(a.get("length", 0.0)))
 
 
+## Where a lane that ends in a loop ("loop": its radius; The Pale Serpent) has the loop's centre: at the lane's end, the
+## loop's radius to the drag's left (Vector2.orthogonal(), the side PaleSerpentFx turns); Vector2.INF for a lane without one.
+static func loop_centre(a: Dictionary, from: Vector2, dir: Vector2, length: float) -> Vector2:
+	if float(a.get("loop", 0.0)) <= 0.0:
+		return Vector2.INF
+	return from + dir * length + dir.orthogonal() * float(a.loop)
+
+
+## A lane's length: its own, or for one that runs as far as the drag ("follow": The Pale Serpent; "stretch": Erase) the
+## drag's, clamped (lane_length()).
+func _lane_len_of(a: Dictionary) -> float:
+	return lane_length() if bool(a.get("follow", false)) or bool(a.get("stretch", false)) else float(a.length)
+
+
 func area() -> Dictionary:
 	# A live power that takes a follow-up may want its own ground drawn (Procession's ring, Turn the Tide's pick).
 	var follow := _rules.follow_up_area(slot) if slot >= 0 else {}
 	if not follow.is_empty():
 		return follow
+	if _wheel_fx() != null:
+		return AREAS["whisper"]  # a follow-up through Mind Whisper's wheel shows the whisper's pick ring
 	var a := area_at(_rules.key(slot), _rules.level_of(slot))
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
@@ -554,6 +721,49 @@ static func area_at(key: String, level: int) -> Dictionary:
 	if AREA_TWIST.has(key) and level >= PowerBook.MAX_LEVEL and PowerBook.twist(key) != "":
 		out.merge(AREA_TWIST[key], true)
 	return out
+
+
+## The bodies a click at `at` could take (review R1), for the aim's marks: {"pos", "lead", "ok"} for every unhidden remain within
+## Remains.PICK_R. The lead is the one Remains.pick() takes (with `need_soul`: SPIRIT; `hidden_too`: Walking Corpse, whose lead may be a
+## hidden body, marked too). "ok" is false for a body whose soul has gone when one is needed: it is never the lead. Empty with no
+## ledger, or the ledger off (a night without Death's powers).
+static func bodies_marked(remains: Remains, at: Vector2, need_soul: bool, hidden_too := false) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if remains == null or not remains.enabled:
+		return out
+	var lead := remains.pick(at, need_soul, hidden_too)
+	for r in remains.near(at, Remains.PICK_R):
+		out.append({"pos": r.pos, "lead": r == lead, "ok": not need_soul or remains.has_soul(r)})
+	if lead != null and lead.hidden:
+		out.append({"pos": lead.pos, "lead": true, "ok": true})
+	return out
+
+
+## Raise the Dead's ring (R28): {"pos", "lead", "ok"} for every unhidden remain within `r` of `at`. The ones that will rise (the oldest
+## `most`, with a soul if `need_soul`) are lead and ok; the rest (past the cap, or soul-less in SPIRIT) are not ok. Empty with no
+## ledger, or the ledger off.
+static func ring_marked(remains: Remains, at: Vector2, r: float, need_soul: bool, most: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if remains == null or not remains.enabled:
+		return out
+	var rising := remains.ring(at, r, need_soul, most)
+	for b in remains.near(at, r):
+		var up := rising.has(b)
+		out.append({"pos": b.pos, "lead": up, "ok": up})
+	return out
+
+
+## Grave Tide's graves in this town (GraveTideFx.grave_spots() over the city's districts), as a cast now would find them: worked
+## out once per walk grid, and again only when the grid changes (a building fallen).
+func grave_spots() -> Array[Vector2]:
+	var grid: WalkGrid = _crowd._grid if _crowd != null else null
+	if grid == null:
+		return []
+	if grid != _graves_grid or grid.version != _graves_version:
+		_graves = GraveTideFx.grave_spots(grid, City.current().districts())
+		_graves_grid = grid
+		_graves_version = grid.version
+	return _graves
 
 
 ## A "square" area: the axis-aligned square of side 2 * `half` centred on `at`, in ground units.
@@ -624,7 +834,11 @@ func _lv(key: String, stat_name: String, base: Variant) -> Variant:
 
 
 ## How far the focused Mind Whisper sends a person, at the slot's level (the table's REACH; MindWhisperFx.REACH at level 1).
+## A follow-up through the wheel (Walking Corpse's orders) reaches as far as its effect says (follow_up_reach()).
 func _whisper_reach() -> float:
+	var fx: Variant = _wheel_fx()
+	if fx != null:
+		return float(fx.follow_up_reach()) if fx.has_method("follow_up_reach") else MindWhisperFx.REACH
 	return float(PowerBook.level_stat("whisper", _rules.level_of(slot), "REACH", MindWhisperFx.REACH))
 
 
@@ -635,44 +849,109 @@ static func whisper_pick_color(who: Person) -> Color:
 
 ## A Mind Whisper press is held, or its wheel or its pick step is up, on someone still there to hear it.
 func _whisper_held() -> bool:
-	return (armed or _wheel or _order != "") and is_instance_valid(_whisper_target)
+	return (armed or _wheel or _order != "") and _wheel_set()
 
 
 ## The wheel or the pick step is up (the whisper's press ring gives way to it).
 func _whisper_ordering() -> bool:
-	return (_wheel or _order != "") and is_instance_valid(_whisper_target)
+	return (_wheel or _order != "") and _wheel_set()
 
 
-## The citizen the whisper was aimed at can still hear it: alive, out in the open and of a mind the god can reach.
+## The citizen the whisper was aimed at can still hear it: alive, out in the open and of a mind the god can reach. A follow-up's own
+## subject (R15) hears while it is there and alive.
 func _whisper_hears() -> bool:
+	if _has_subject():
+		return is_instance_valid(_subject) and bool(_subject.call("is_alive"))
 	return is_instance_valid(_whisper_target) and _whisper_target.is_alive() \
 		and not _whisper_target.inside and not _whisper_target.resists_mind()
 
 
-## The wheel and the pick step are over (a cast, a refusal, a cancel, another slot): the citizen is let go.
+## The wheel and the pick step are over (a cast, a refusal, a cancel, another slot): the citizen (or the subject) is let go.
 func _end_wheel() -> void:
 	_whisper_target = null
+	_subject = null
 	_wheel = false
 	_order = ""
+
+
+## The focused follow-up's effect has a subject of its own (it gives follow_up_subject(), review R15: Walking Corpse's walker): the wheel
+## opens round that subject, and Mind Whisper's pick of a person is not used.
+func _has_subject() -> bool:
+	var fx: Variant = _wheel_fx()
+	return fx != null and fx.has_method("follow_up_subject")
+
+
+## `ground` is within WHEEL_R of the follow-up's subject, alive (a press there opens its wheel).
+func _near_subject(ground: Vector2) -> bool:
+	var sub := _fx_subject()
+	return sub != null and bool(sub.call("is_alive")) and ground.distance_to(sub.get("ground_pos")) <= WHEEL_R
+
+
+## That subject while it is there (an object with ground_pos and is_alive(): an Animal), else null.
+func _fx_subject() -> Node2D:
+	var fx: Variant = _wheel_fx()
+	if fx == null or not fx.has_method("follow_up_subject"):
+		return null
+	var sub: Variant = fx.follow_up_subject()
+	return sub as Node2D if is_instance_valid(sub) else null
+
+
+## The one the wheel or its pick step is set on is still there (a node, alive or not): the subject, or Mind Whisper's citizen.
+func _wheel_set() -> bool:
+	return is_instance_valid(_subject) if _has_subject() else is_instance_valid(_whisper_target)
+
+
+## Where the wheel stands: on the follow-up's subject, or on Mind Whisper's citizen. Only asked while _wheel_set().
+func _wheel_centre() -> Vector2:
+	if _has_subject():
+		return _subject.get("ground_pos")
+	return _whisper_target.ground_pos
+
+
+## The three slice words, in WHEEL_ORDERS' slot order: the effect's own (follow_up_orders(), R15), else WHEEL_ORDERS -- also when the
+## effect names other than three (the slices index this list).
+func _orders() -> Array:
+	var fx: Variant = _wheel_fx()
+	if fx == null or not fx.has_method("follow_up_orders"):
+		return WHEEL_ORDERS
+	var words: Variant = fx.follow_up_orders()
+	return words if words is Array and (words as Array).size() == WHEEL_ORDERS.size() else WHEEL_ORDERS
+
+
+## wheel_slice() named by the wheel's own words: the slice's order, "" for the hub, "out" past the edge.
+func _slice_at(d: Vector2) -> String:
+	var s := wheel_slice(d)
+	if s == "" or s == "out":
+		return s
+	return String(_orders()[WHEEL_ORDERS.find(s)])
+
+
+## A walk to `to`, clamped to the reach and walkable ground: Mind Whisper's {to, target}, or a subject's {order "walk", to}.
+func _walk_extra(who: Person, to: Vector2) -> Dictionary:
+	if _has_subject():
+		return {"order": "walk", "to": MindWhisperFx.clamp_to(_crowd._grid, _wheel_centre(), to, _whisper_reach())}
+	return {"to": MindWhisperFx.clamp_to(_crowd._grid, who.ground_pos, to, _whisper_reach()), "target": who}
 
 
 ## The wheel or the pick step is set on someone who can no longer hear it (died, went in, resists): it is called off and the player told
 ## "nobody" (the slot's own refusal first), whether or not the button is down.
 func _end_stale_whisper() -> void:
+	var why := _why() if slot >= 0 else ""
+	var unheard := _unheard(null)
 	_end_wheel()
 	armed = false
 	aiming = false
-	var why := _rules.refusal(slot) if slot >= 0 else ""
-	_rules.refuse(slot, why if why != "" else "nobody")
+	_rules.refuse(slot, why if why != "" else unheard)
 	queue_redraw()
 
 
-## The order wheel is up around a citizen (the button may be down or up).
+## The order wheel is up around a citizen, or a follow-up's subject (the button may be down or up).
 func wheel_open() -> bool:
 	return _wheel
 
 
-## The order picked on the wheel, while the aim waits for its target: "walk", "attack" or "burn", else "".
+## The order picked on the wheel, while the aim waits for its target: "walk", "attack" or "burn" (or the follow-up's own third word,
+## follow_up_orders()), else "".
 func picking_order() -> String:
 	return _order
 
@@ -702,13 +981,27 @@ static func order_color(order: String) -> Color:
 			return COL_CRIMSON
 		"burn":
 			return COL_FLAME
+		"enter":
+			return COL_BONE
 	return COL_EDGE
 
 
 ## The cast's extra for the click that names the target of the picked order (at _pick_at), or {} when it is no fair target -- then the
 ## click is refused (the slot's own reason first, as other picks refuse) and the pick goes on.
 func _order_extra(who: Person) -> Dictionary:
-	var why := _rules.refusal(slot)
+	var why := _why()
+	if _has_subject():
+		# A follow-up's own subject (R15): no "target"; the effect itself judges whether it can carry the order out.
+		match _order:
+			"walk":
+				return _walk_extra(null, _pick_at)
+			"attack":
+				var foe := MindWhisperFx.foe_at(_crowd._field, _pick_at)
+				if foe != null:
+					return {"order": "attack", "foe": foe}
+				_rules.refuse(slot, why if why != "" else "foe")
+				return {}
+		return {"order": _order, "to": _pick_at}
 	match _order:
 		"attack":
 			var foe := MindWhisperFx.foe_at(_crowd._field, _pick_at)
@@ -731,9 +1024,13 @@ func _order_extra(who: Person) -> Dictionary:
 func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
 	var level := _rules.level_of(from_slot)
 	var a := area_at(key, level)
-	if String(a.get("shape", "")) == "lane":
+	if String(a.get("shape", "")) == "lane" and bool(a.get("follow", false)):
+		# A lane run by a creature that comes on slowly (The Pale Serpent): the town sees the cast at the press, not a
+		# warning the length of the street ahead (the effect frightens the street it has passed).
+		_crowd.on_cast(at, Vector2.ZERO, 0.0, key, level)
+	elif String(a.get("shape", "")) == "lane":
 		var dir := aim_dir()
-		_crowd.on_cast(lane_start(key, at, dir), dir, float(a.length), key, level)
+		_crowd.on_cast(lane_start(key, at, dir), dir, _lane_len_of(a), key, level)
 	elif String(a.get("shape", "")) == "path":
 		# Two clicks: from the first toward the second, as far as the power runs.
 		var run := _at - at
@@ -772,7 +1069,13 @@ func _draw() -> void:
 				_ring(_press, float(a.roam), COL_FAINT)
 		"lane":
 			var dir := aim_dir()
-			_lane(lane_start(_rules.key(slot), _press, dir), dir, float(a.length), float(a.half), edge)
+			var run := _lane_len_of(a)
+			_lane(lane_start(_rules.key(slot), _press, dir), dir, run, float(a.half), edge)
+			if a.has("outer"):
+				_lane(lane_start(_rules.key(slot), _press, dir), dir, run, float(a.outer), COL_FAINT)
+			var loop := loop_centre(a, lane_start(_rules.key(slot), _press, dir), dir, run)
+			if loop != Vector2.INF:
+				_ring(loop, float(a.loop), edge)
 			if a.has("fissure"):
 				for i in 8:
 					var out := Vector2.RIGHT.rotated(TAU * float(i) / 8.0) * float(a.fissure) * 0.5
@@ -824,6 +1127,24 @@ func _draw() -> void:
 				_ring(first, float(a.half), COL_INNER)
 			else:
 				_ring(_press, float(a.half), edge)
+		"route":
+			# Gravecall (R4): where the spirits rise under the cursor until the first click sets it; then a dashed route from there
+			# to the circle they would haunt, following the cursor.
+			var rise := COL_BONE if _edge_ready else COL_BAD
+			if placed:
+				_death_mark(first, rise, false)
+				_dashes(first, _press, COL_FAINT)
+				_ring(_press, float(a.r), edge)
+			else:
+				_death_mark(_press, rise, false)
+		"graves":
+			# Grave Tide (R41, R43): a bone mark on every grave that would burst, the skull and the aura's ring on the one the
+			# giant would rise from (the nearest the cursor).
+			var spots := grave_spots()
+			var lead := GraveTideFx.nearest_grave(spots, _press)
+			for i in spots.size():
+				_death_mark(spots[i], COL_BONE if _edge_ready else COL_BAD, i == lead)
+			_ring(spots[lead] if lead >= 0 else _press, float(a.r), edge)
 		"sanctuary":
 			# The people under the cursor until the first click takes them; then the wall's shape follows the cursor.
 			if placed:
@@ -858,6 +1179,14 @@ func _draw() -> void:
 				_lane(_press, dir, lane_length(), float(a.half), edge)
 	if _is_wheel() and placed:
 		_draw_wheel()
+	if _wheel_fx() != null:
+		# A follow-up through Mind Whisper's wheel (Walking Corpse's orders): the reach round where the effect measures it from, then the
+		# whisper's own.
+		var fx: Variant = _wheel_fx()
+		if fx.has_method("follow_up_from") and not _whisper_held():
+			_ring(fx.follow_up_from(), _whisper_reach(), COL_FAINT)
+		_draw_whisper()
+		return
 	if not _rules.follow_up_area(slot).is_empty():
 		return  # a live power's follow-up draws its own ground, not "who the cast would take"
 	match _rules.key(slot):
@@ -878,6 +1207,22 @@ func _draw() -> void:
 			# Whom it would bind, or start with.
 			for p in OathboundFx.bound_at(_crowd._field, first if placed else _press, 5 if _rules.key(slot) == "echo" else 4):
 				_ring(p.ground_pos, 0.2, COL_DIVINE)
+		"bound":
+			# Whom the first click takes; placed, how far the second may be, and whom it takes -- red when too far.
+			var one := BoundFx.nearest(_crowd._field, first if placed else _press, BoundFx.PICK_R)
+			if one != null:
+				_ring(one.ground_pos, 0.25, COL_DIVINE)
+				if placed:
+					_ring(one.ground_pos, BoundFx.REACH, COL_FAINT)
+					var two := BoundFx.nearest(_crowd._field, _press, BoundFx.PICK_R, one)
+					if two != null:
+						var far := two.ground_pos.distance_to(one.ground_pos) > BoundFx.REACH
+						_ring(two.ground_pos, 0.25, COL_CRIMSON if far else COL_DIVINE)
+						draw_line(one.ground_pos, two.ground_pos, COL_CRIMSON if far else COL_FAINT, -1.0)
+		"redefine":
+			# Whom it would name.
+			for p in RedefineFx.named_at(_crowd._field, _press):
+				_ring(p.ground_pos, 0.22, COL_CRIMSON if String(mode().get("key", "")) == "criminal" else COL_DIVINE)
 		"turncoat":
 			var turned := TurncoatFx.target_at(_crowd._field, _press)
 			if turned != null:
@@ -914,19 +1259,7 @@ func _draw() -> void:
 			for p in drawn:
 				_ring(p.ground_pos, 0.18, COL_FAINT)
 		"whisper":
-			if _order != "" and _whisper_held():
-				_draw_pick()
-			elif _wheel and _whisper_held():
-				_draw_whisper_wheel()
-				if armed:
-					_whisper_line(_press, _at)
-			elif _whisper_held():
-				_whisper_line(_press, _at)
-			else:
-				# Who a press here would whisper to; red while they shake the last whisper off (v0.08.1).
-				var who := MindWhisperFx.pick(_crowd._field, _press)
-				if who != null:
-					_ring(who.ground_pos, 0.2, whisper_pick_color(who))
+			_draw_whisper()
 		"ember":
 			# What it would light, or a red ring for nothing that burns in reach.
 			var burns := EmberFx.target(_crowd._env, _press, float(area().get("r", EmberFx.REACH)))
@@ -945,6 +1278,19 @@ func _draw() -> void:
 			var marked := DeathMarkFx.target_at(_crowd._field, _press)
 			if marked != null:
 				_ring(marked.ground_pos, 0.25, COL_MAD)
+		"guise":
+			# Who it would guise, each with Death's skull.
+			for p in CorpseGuiseFx.marked_at(_crowd._field, _press):
+				_death_mark(p.ground_pos, COL_BONE, true)
+		"raise":
+			# Every body in the ring (R28), the ones that will rise with the skull; past the cap, or in SPIRIT a soul-less one, red.
+			for m in ring_marked(_crowd.remains, _press, RaiseTheDeadFx.RING_R, String(mode().get("key", "")) == "spirit", RaiseTheDeadFx.MOST):
+				_death_mark(m.pos, COL_BONE if bool(m.ok) else COL_BAD, bool(m.lead))
+		"walker":
+			# The body the first click would take, as Raise marks them (a hidden one too: it walks a buried body back out).
+			if not placed:
+				for m in bodies_marked(_crowd.remains, _press, false, true):
+					_death_mark(m.pos, COL_BONE, bool(m.lead))
 		"blight":
 			# What it would ruin, or a red ring for nothing in reach.
 			var mine := _rules.director.blight_target(_press) if _rules.director != null else Vector2.INF
@@ -1037,25 +1383,78 @@ func _place_mark(at: Vector2, col: Color) -> void:
 func _whisper_line(from: Vector2, to: Vector2, col := COL_EDGE, reach := true) -> void:
 	var lv_reach := _whisper_reach()
 	var spot := MindWhisperFx.clamp_to(_crowd._grid, from, to, lv_reach) if reach else to
-	var steps := WHISPER_DASHES * 2 - 1
-	for i in range(0, steps, 2):
-		var a := from.lerp(spot, float(i) / float(steps))
-		var b := from.lerp(spot, float(i + 1) / float(steps))
-		draw_line(a + Vector2(0.0, SHADE_GAP), b + Vector2(0.0, SHADE_GAP), SHADE, -1.0)
-		draw_line(a, b, col, -1.0)
+	_dashes(from, spot, col)
 	_ring(spot, 0.25, col)
 	if reach and from.distance_to(to) > lv_reach:
 		draw_line(from + (to - from).limit_length(lv_reach), to, COL_BAD, -1.0)
 
 
-## The order wheel around the citizen: three slices in their tints (the one under the held cursor brighter), the hub, and each
-## slice's word upright on the screen.
+## A dotted line of WHISPER_DASHES dashes from `from` to `to`, each over its dark stroke.
+func _dashes(from: Vector2, to: Vector2, col: Color) -> void:
+	var steps := WHISPER_DASHES * 2 - 1
+	for i in range(0, steps, 2):
+		var a := from.lerp(to, float(i) / float(steps))
+		var b := from.lerp(to, float(i + 1) / float(steps))
+		draw_line(a + Vector2(0.0, SHADE_GAP), b + Vector2(0.0, SHADE_GAP), SHADE, -1.0)
+		draw_line(a, b, col, -1.0)
+
+
+## Death's mark on a body (R1), a guised person, or where Gravecall's spirits rise: a ring of BODY_MARK_R with a faint fill; the lead
+## also carries a skull SKULL_UP px above it, upright on the screen (drawn through the ground plane's inverse, as _label()).
+func _death_mark(at: Vector2, col: Color, lead: bool) -> void:
+	_disc(at, BODY_MARK_R, Color(col, COL_BONE_FILL.a), col)
+	if not lead:
+		return
+	var inverse := Iso.BASIS.affine_inverse()
+	draw_set_transform_matrix(Transform2D(inverse.x, inverse.y, at))
+	for pass_i in 2:  # the dark stroke under every pixel first, then the bright ones over it
+		for r in 5:
+			for c in 5:
+				if int(SKULL[r]) & (1 << (4 - c)):
+					var px := Vector2(float(c) * 2.0 - 5.0, float(r) * 2.0 - 5.0 - SKULL_UP)
+					if pass_i == 0:
+						draw_rect(Rect2(px + Vector2(1.0, 1.0), Vector2(2.0, 2.0)), SHADE)
+					else:
+						draw_rect(Rect2(px, Vector2(2.0, 2.0)), col)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+## Mind Whisper's aim drawn (its own, or a follow-up through its wheel): the pick step, the wheel, the held line, or who a press here would
+## whisper to.
+func _draw_whisper() -> void:
+	if _order != "" and _whisper_held():
+		_draw_pick()
+	elif _wheel and _whisper_held():
+		_draw_whisper_wheel()
+		if armed:
+			_whisper_line(_press, _at)
+	elif _whisper_held():
+		_whisper_line(_press, _at)
+	elif _has_subject():
+		# Where a press opens the wheel: round the follow-up's own subject (R15).
+		var sub := _fx_subject()
+		if sub != null:
+			_ring(sub.get("ground_pos"), WHEEL_R, COL_FAINT)
+		if _rules.refusal(slot) == "" and not _near_subject(_press):
+			# R26: off the cooldown a press here is a fresh cast -- the bodies it could raise, marked as the power's own preview marks them.
+			for m in bodies_marked(_crowd.remains, _press, false, bool(_rules.power(slot).get("reaches_hidden", false))):
+				_death_mark(m.pos, COL_BONE, bool(m.lead))
+	else:
+		# Who a press here would whisper to; red while they shake the last whisper off (v0.08.1).
+		var who := _whisper_pick(_press)
+		if who != null:
+			_ring(who.ground_pos, 0.2, whisper_pick_color(who))
+
+
+## The order wheel around the citizen (or a follow-up's subject): three slices in their tints (the one under the held cursor brighter),
+## the hub, and each slice's word upright on the screen.
 func _draw_whisper_wheel() -> void:
-	var c := _whisper_target.ground_pos
-	var under := wheel_slice(_at - c) if armed else ""
+	var c := _wheel_centre()
+	var under := _slice_at(_at - c) if armed else ""
 	var half := deg_to_rad(60.0)
+	var words := _orders()
 	for i in 3:
-		var order: String = WHEEL_ORDERS[i]
+		var order := String(words[i])
 		var mid := deg_to_rad(float(WHEEL_ANGLES[i])) - PI * 0.25
 		var tint := order_color(order)
 		var fill := Color(tint.r, tint.g, tint.b, 0.34 if order == under else 0.12)
@@ -1083,8 +1482,22 @@ func _label(at: Vector2, text: String, col: Color) -> void:
 ## The pick step: the order's line from the citizen to the cursor in its tint, the reach of the order, and a ring (or a building's
 ## outline) on a valid target under the cursor -- red where the cursor is on a target that would be refused.
 func _draw_pick() -> void:
-	var from := _whisper_target.ground_pos
+	var from := _wheel_centre()
 	var col := order_color(_order)
+	if _has_subject():
+		# A follow-up's own subject (R15): the spot or the foe under the cursor. An ATTACK shows its reach (WalkingCorpseFx.ATTACK_R)
+		# round the subject, and a foe the effect's own judge (would_attack()) would refuse -- too far, guised, unseen, its kills used
+		# up -- in red.
+		_whisper_line(from, _at, col, _order == "walk")
+		if _order == "attack":
+			_ring(from, WalkingCorpseFx.ATTACK_R, COL_FAINT)
+			var foe := MindWhisperFx.foe_at(_crowd._field, _at)
+			if foe != null:
+				var fx: Variant = _wheel_fx()
+				var ok: bool = fx == null or not fx.has_method("would_attack") or fx.would_attack(foe)
+				_ring(foe.ground_pos, 0.3, col if ok else COL_BAD)
+		_ring(from, 0.2, col)
+		return
 	match _order:
 		"attack":
 			_ring(from, MindWhisperFx.ATTACK_R, COL_FAINT)

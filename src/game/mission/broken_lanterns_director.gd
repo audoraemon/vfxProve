@@ -180,11 +180,16 @@ func _drain(delta: float) -> void:
 		_sync_detour()
 
 
-## The flame-bearer at a broken shrine not yet drained relights it: it stands again, whole.
+## The flame-bearer at a broken shrine not yet drained relights it: it stands again, whole. One taken away (Eminent Domain:
+## Structure.taken) cannot be relit; it drains as one nobody reaches, and a bearer turned aside for it goes back to his round.
 func _relight() -> void:
 	if vigil == null or not vigil.active or not _alive(vigil.bearer):
 		return
+	var resync := false
 	for s: Structure in drain_left.keys():
+		if s.taken:
+			resync = resync or vigil.detour == relight_point(s)
+			continue
 		if s.distance_to(vigil.bearer.ground_pos) > RELIGHT_REACH:
 			continue
 		drain_left.erase(s)
@@ -194,15 +199,20 @@ func _relight() -> void:
 		_sound(&"msn_relight", s.center())
 		_relit(s)
 		_sync_detour()
+	if resync:
+		_sync_detour()
 
 
-## The bearer turns aside for the nearest broken shrine not yet drained, or goes back to his round when there is none.
+## The bearer turns aside for the nearest broken shrine not yet drained (and not taken away), or goes back to his round when
+## there is none.
 func _sync_detour() -> void:
 	if vigil == null or not vigil.active:
 		return
 	var from := vigil.bearer.ground_pos if _alive(vigil.bearer) else temple_door
 	var best := Vector2.INF
 	for s: Structure in drain_left.keys():
+		if s.taken:
+			continue
 		var p := relight_point(s)
 		if best == Vector2.INF or from.distance_to(p) < from.distance_to(best):
 			best = p
@@ -256,6 +266,18 @@ func standing_shrines() -> Array[Structure]:
 		if not s.destroyed:
 			out.append(s)
 	return out
+
+
+## The shrines are the night's to break (R45 as amended): never spared from a power's side effects -- but the last one, once the
+## kneelers ring it (`kneel_shrine`), is kept: broken early, with too few kneeling, it costs the Faithful star.
+func wants_down(s: Structure) -> bool:
+	return s != null and shrines.has(s) and s != kneel_shrine
+
+
+## The kneeling shrine, once set, is kept standing (R45, the controller's ruling): ThroughFaithfulObjective fails if it breaks
+## with fewer than its kneelers in reach -- a claw or a slam there would be a hidden loss.
+func needs_standing(s: Structure) -> bool:
+	return s != null and kneel_shrine != null and s == kneel_shrine
 
 
 ## The tags (v0.10 M6, spec §4.2), the most important first:

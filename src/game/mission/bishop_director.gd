@@ -616,6 +616,12 @@ func hud_line() -> String:
 	return "Kill the bishop: refuges %d / %d" % [driven, refuges.size()]
 
 
+## His refuges are the god's lever (R45 as amended): a refuge falling drives him out, so none is spared from a power's side
+## effects, the Temple among them.
+func wants_down(s: Structure) -> bool:
+	return (s != null and refuges.has(s)) or super(s)
+
+
 ## The map tags, most important first (v0.11 M5, mission spec §1): before 0:45 BISHOP - IN THE CITADEL (grey, an edge tag: the Citadel
 ## lies under the HUD's corner, and M6's keepout keeps an edge tag's words -- the final review); the refuge he is in, gold, guarded,
 ## open or burning; the next refuge, grey, with his arrival's time while he is on his way; KNIGHT on each Knight on guard at those two,

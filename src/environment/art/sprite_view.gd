@@ -226,4 +226,7 @@ func _draw() -> void:
 	if region.has_area():
 		src = region
 	_mat.set_shader_parameter("frame_origin", origin)
-	draw_texture_rect_region(tex, Rect2(src.position - origin - at, src.size), src, color)
+	# A set worn at another size (a pile of law rubble: SpriteArt.rubble_of) is drawn scaled about its anchor; the shader
+	# reads its texels, so it lights and clips them the same.
+	var fit := float(sprite.get("fit", 1.0))
+	draw_texture_rect_region(tex, Rect2((src.position - origin - at) * fit, src.size * fit), src, color)

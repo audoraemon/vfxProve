@@ -12,7 +12,7 @@ These are your rules (D4) and they were the gate on every route:
 
 - Every timed wait is 60 s or less.
 - Doing nothing loses 3 of 3.
-- The scripted player wins at least 2 of 3 seeds, and idles no more than 45 s (three pairs may idle up to 60 s by your word, see Problems).
+- The scripted player wins at least 2 of 3 seeds, and idles no more than 45 s (a few pairs may idle up to 60 s by your word, see Problems: Prayers x Death, Prayers x Passage and, since 2026-11-14, Lamb x Death).
 - No luck: nothing a route needs depends on who happens to walk by. No hidden losses: every new stop or give-up has a banner.
 - Every moving target has an edge-arrowed tag and its tag counts down. The bell never loses outright.
 - New rules are opt-in: a flag the shared director leaves off, set only by the Tier 1 director, so no other mission changes.
@@ -41,6 +41,8 @@ These are your rules (D4) and they were the gate on every route:
 - **Plague**: a sick carter spoils his granary if no watchman of it stands on guard (else THE WATCH TURNS THE SICK CART AWAY).
 - **Blight** rots a full granary with no watchman on guard (BLIGHT - THE GRAIN ROTS; NO GRAIN TO ROT YET; THEIR WATCH KEEPS IT).
 - **The guard seize the cart** (Decree): CALL THE GUARD, once its first soldier stands at his ring spot, seizes every carter within 3 units of the law's centre or the bell's place; his granary counts spoiled.
+- **Held by the law** (Decree, H6, your ruling of 2026-11-13): a carter held 6 s by a NO LEAVING law spoils his granary (THE LAW HOLDS THE CART - THE GRAIN SPOILS).
+- **The dropped load** (H7, your ruling of 2026-11-14, D45): a carter carrying a load who is frightened -- running (PANIC), fleeing (FLEE), or taking cover because a fright sent him there -- drops it, and his granary counts spoiled (THE CARTER DROPS HIS LOAD - THE GRAIN SPOILS). Sent into a hallowed building (Anathema) or indoors by the rain (Tempest) is not fright; a carter with no load drops nothing. Any power that frightens him does it.
 
 **The Lost Lamb.**
 - The bolt (above), tags ACOLYTE - BOLTS IN m:ss and ACOLYTE - RUNNING, banner HE BOLTS FOR THE WEST GATE. One gate watchman stands just outside the gate, so a Mirrorfold past the gate still lands in his sight unless the watch is drawn off.
@@ -55,7 +57,7 @@ These are your rules (D4) and they were the gate on every route:
 
 ## The routes as built
 
-Aldermere, the binding town. Cells are wins, median clear, longest real idle, for the final tree (`god_gate.sh`; `none` loses 3/3 on all five missions). Medians are reported only; the bar is 2 of 3 and idle 45 s, except the three marked pairs (60 s).
+Aldermere, the binding town. Cells are wins, median clear, longest real idle, for the final tree (`god_gate.sh`; `none` loses 3/3 on all five missions). Medians are reported only; the bar is 2 of 3 and idle 45 s, except the three marked pairs (60 s). (Since: Harvest x Decree's allowance is gone, 2026-11-13; Lamb x Death may idle 60 s, D46, 2026-11-14.)
 
 | | The Warning | Tax Collector | Spoiled Harvest | Lost Lamb | First Prayers |
 |---|---|---|---|---|---|
@@ -105,7 +107,7 @@ The policies were tuned in Aldermere. The Capital's West River and West Gates ha
 | Lamb gate watch | posts at (2.7, 14.6) and (2.7, 16.8) | exact |
 | Prayers: first walker, later walkers | 80 s (Capital 150 s), then 170 s and 240 s or 50 s after the one before | *tunable* (spec had 60/135/200 and 35) |
 | Prayers: `FIRE_PULL`, `THORN_HIDE`, `WALK_STALL` | 7.0, 1.5, 20 s | *tunable* |
-| Idle allowed | 45 s; 60 s for Harvest x Decree, Prayers x Death, Prayers x Passage | your rule |
+| Idle allowed | 45 s; 60 s for Prayers x Death, Prayers x Passage, Lamb x Death (D46; Harvest x Decree's D12 gone 2026-11-13) | your rule |
 | Per-type bar | wins 2 of 3, idle, `none` loses 3 of 3 | your rule |
 | Save format | unchanged | exact |
 
@@ -216,3 +218,11 @@ The scripted player is not a human. These are the ones most worth a minute of yo
   `tests/test_v012_merge.gd` (fails without the fix). Aldermere walkers never pass `to`, so nothing there moves. Every Capital run
   moves a little: 53 Capital rows re-recorded (no win or loss flipped), and the Capital per-type report goes 24/30 -> 22/30 (First
   Prayers Veil idle 52 s, Passage idle 81 s; the same with `FOLD_LEAD` 40, so not D41). Reported only, as before.
+
+## The Death review (2026-11-14)
+
+- **The dropped load** (D45, your ruling): see Spoiled Harvest above. With Raise's possession gone, Death had no way to spoil a granary
+  (0/3); now Death marks a watchman as the carter comes for a load and raises the spirit beside him as he walks off with it: 3/3, 153 s,
+  idle 39 s. Every other Harvest pair still passes (`god_gate --only=harvest` 6/6).
+- **Lamb x Death may idle 60 s** (D46, your ruling): the faster zombies clear the gate watch at once, and the lamb's walk out has nothing
+  in it to answer (59 s at seed 2). 3/3, 130 s.

@@ -1,6 +1,8 @@
 """Paint the procedural powers' icons, in the painted icons' manner -- a dark field with one glowing subject -- at 84x84
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
-Thornwall, Discord, Pestilence) and v0.08's Mind Whisper.
+Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
+Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder, Eminent Domain, Fenced Rule, The Closing Cage
+and The Sealed Verdict.
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -321,8 +323,567 @@ def whisper():
     finish(rgb, "whisper")
 
 
+def breath():
+    """Breathing Is Prohibited (Decree): on an ink field, a gilt ring of law holding a grey-gold haze, three curls of
+    breath inside it fading away, and a red stroke of the Decree struck through them."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(83, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (52, 36, 72), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The airless haze inside the ring, grey-gold and a little darker at the heart.
+    inside = np.clip((31.0 - r) / 2.0, 0.0, 1.0)
+    rgb = blend(rgb, (150, 138, 104), inside * (0.32 + 0.12 * n))
+    rgb = blend(rgb, (60, 54, 44), np.exp(-(r / 12.0) ** 2) * 0.35)
+    # Three strands of breath rising from below and thinning out to nothing before the top.
+    for cx, ph in [(-9.0, 0.0), (0.0, 2.0), (9.0, 4.0)]:
+        sway = cx + 3.2 * np.sin(y / 4.5 + ph)
+        d = np.abs(x - sway)
+        rise = np.clip((22.0 - y) / 44.0, 0.0, 1.0)
+        fade = np.clip(1.0 - rise, 0.0, 1.0) ** 0.7 * (y < 22.0) * (y > -24.0)
+        rgb = blend(rgb, (60, 52, 40), np.exp(-(d ** 2) / 6.0) * fade * 0.5)
+        rgb = blend(rgb, (244, 236, 210), np.exp(-(d ** 2) / 1.4) * fade)
+    # The ring of law: ink under gilt, with a lighter inner edge.
+    ring = np.exp(-((r - 32.0) ** 2) / 3.0)
+    rgb = blend(rgb, (10, 6, 18), np.exp(-((r - 32.0) ** 2) / 9.0) * 0.8)
+    rgb = blend(rgb, (255, 207, 90), ring)
+    rgb = blend(rgb, (255, 246, 208), np.exp(-((r - 30.6) ** 2) / 0.6) * 0.5)
+    # Letters of law round the ring: short gilt ticks.
+    for k in range(12):
+        a = k * math.pi / 6.0 + 0.26
+        tx, ty = 36.5 * math.cos(a), 36.5 * math.sin(a)
+        rgb = blend(rgb, (255, 207, 90), np.exp(-((x - tx) ** 2 + (y - ty) ** 2) / 1.1) * 0.8)
+    # The Decree's stroke: red over ink, corner to corner through the breath.
+    ux, uy = math.cos(-math.pi / 4), math.sin(-math.pi / 4)
+    along = np.clip(x * ux + y * uy, -27.0, 27.0)
+    d = np.hypot(x - along * ux, y - along * uy)
+    rgb = blend(rgb, (18, 10, 28), np.clip((5.0 - d) / 1.2, 0.0, 1.0))
+    rgb = blend(rgb, (255, 58, 48), np.clip((3.2 - d) / 1.0, 0.0, 1.0))
+    rgb = blend(rgb, (255, 150, 120), np.clip((0.9 - np.abs(d - 0.2)) / 0.9, 0.0, 1.0) * 0.4)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "breath")
+
+
+def redefine():
+    """Redefine (Decree): on an ink field, a dark figure, head and shoulders, and over his head the law's word on an ink
+    plate edged in gilt, its letters gilt; a gilt quill comes down from the top right and writes the gilt stroke under
+    the word."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(97, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (58, 38, 80), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # A warm glow behind the figure, where the law's light falls on him.
+    rgb = blend(rgb, (150, 110, 50), np.exp(-((x + 4.0) ** 2 + (y - 14.0) ** 2) / 260.0) * 0.35)
+    # The figure: a head and shoulders in shadow, edged in gilt.
+    hx, hy = -6.0, 12.0
+    head = np.hypot(x - hx, y - hy) - 8.5
+    sh = (np.hypot((x - hx) / 22.0, (y - 40.0) / 15.0) - 1.0) * 15.0
+    sd = np.minimum(head, sh)
+    rgb = blend(rgb, (64, 44, 88), np.clip(-sd, 0.0, 1.0))
+    rgb = blend(rgb, (40, 26, 58), np.clip(-sd - 3.0, 0.0, 1.0) * np.clip((x - hx + 4.0) / 10.0, 0.0, 1.0))
+    rgb = blend(rgb, (232, 180, 82), np.exp(-(sd ** 2) / 1.2) * 0.9)
+    # The plate over his head: ink, edged in gilt.
+    px0, px1, py0, py1 = -29.0, 13.0, -20.0, -6.0
+    plate = (x > px0) & (x < px1) & (y > py0) & (y < py1)
+    edge = (x > px0 - 2.0) & (x < px1 + 2.0) & (y > py0 - 2.0) & (y < py1 + 2.0) & ~plate
+    rgb = blend(rgb, (255, 207, 90), edge.astype(float))
+    rgb = blend(rgb, (14, 8, 24), plate.astype(float))
+    # Its word: five gilt letters, blocky, as the pixel font's capitals are.
+    for k in range(5):
+        lx = px0 + 4.0 + k * 7.6
+        stem = (x > lx) & (x < lx + 2.2) & (y > py0 + 3.0) & (y < py1 - 3.0)
+        top = (x > lx) & (x < lx + 5.4) & (np.abs(y - (py0 + 4.0 + (k % 2) * 3.0)) < 1.1)
+        bar = (x > lx) & (x < lx + 5.4) & (np.abs(y - (py1 - 4.0)) < 1.1) & (k % 3 != 1)
+        rgb = blend(rgb, (255, 220, 120), (stem | top | bar).astype(float))
+    # The stroke under it, being written: gilt, ink beneath it.
+    uy0 = py1 + 5.0
+    rgb = blend(rgb, (10, 6, 18), ((np.abs(y - uy0) < 2.4) & (x > px0 - 1.0) & (x < px1 + 9.0)).astype(float) * 0.7)
+    rgb = blend(rgb, (255, 207, 90), ((np.abs(y - uy0) < 1.2) & (x > px0) & (x < px1 + 7.0)).astype(float))
+    # The quill: a long gilt feather from the top right corner down to the stroke's end, its shaft pale, its nib dark.
+    ax, ay, bx, by = 44.0, -44.0, px1 + 7.0, uy0 - 1.0
+    ux, uy = bx - ax, by - ay
+    ln = math.hypot(ux, uy)
+    ux, uy = ux / ln, uy / ln
+    t = (x - ax) * ux + (y - ay) * uy
+    d = (x - ax - np.clip(t, 0.0, ln) * ux) * (-uy) + (y - ay - np.clip(t, 0.0, ln) * uy) * ux
+    k = np.clip(t / ln, 0.0, 1.0)
+    on = (t > 0.0) & (t < ln)
+    # The vane: wider on one side, as a flight feather is; tapering into the shaft well above the nib.
+    side = np.where(d > 0.0, 6.5, 4.0)
+    half = np.where(k < 0.7, side * np.sin(np.clip(k / 0.7, 0.0, 1.0) * math.pi) ** 0.5, 0.0)
+    vane = (np.abs(d) < half) & on
+    barbs = 0.7 + 0.3 * (np.sin(t * 1.9 - np.abs(d) * 1.3) > 0.0)
+    rgb = blend(rgb, (10, 6, 18), ((np.abs(d) < half + 1.3) & on & (k < 0.72)).astype(float) * 0.85)
+    rgb = blend(rgb, (236, 192, 100), vane.astype(float) * barbs)
+    shaft = (np.abs(d) < 0.9) & on & (k < 0.86)
+    rgb = blend(rgb, (10, 6, 18), ((np.abs(d) < 1.9) & on & (k > 0.6) & (k < 0.86)).astype(float) * 0.8)
+    rgb = blend(rgb, (255, 246, 208), shaft.astype(float))
+    nib = (np.abs(d) < 1.8 * (1.0 - (k - 0.86) / 0.14) + 0.3) & on & (k >= 0.86)
+    rgb = blend(rgb, (24, 14, 14), nib.astype(float))
+    rgb = blend(rgb, (255, 240, 190), np.exp(-((x - bx) ** 2 + (y - by) ** 2) / 2.5) * 0.7)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "redefine")
+
+
+def bound():
+    """Bound in Law (Decree): on an ink field, two dark figures, head and shoulders, one low at the left and one high at the
+    right, each edged in brass; a brass chain of light hangs between them at the chest, its links face-on and edge-on by
+    turns, a shackle ring round each, and a bright bead of a fate passing along it."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(53, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (58, 38, 80), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The brass light along the chain's way.
+    rgb = blend(rgb, (150, 105, 40), np.exp(-((y - 4.0 + x * 0.25) ** 2) / 90.0) * np.exp(-(x / 40.0) ** 2) * 0.35)
+    ends = [(-23.0, 2.0), (23.0, -8.0)]
+    for hx, hy in ends:
+        head = np.hypot(x - hx, y - hy) - 7.5
+        sh = (np.hypot((x - hx) / 17.0, (y - (hy + 33.0)) / 20.0) - 1.0) * 17.0
+        sd = np.minimum(head, sh)
+        rgb = blend(rgb, (30, 18, 44), np.clip(-sd, 0.0, 1.0))
+        rgb = blend(rgb, (16, 9, 26), np.clip(-sd - 3.0, 0.0, 1.0) * np.clip((x - hx + 5.0) / 10.0, 0.0, 1.0))
+        rgb = blend(rgb, (232, 180, 82), np.exp(-(sd ** 2) / 1.2) * 0.9)
+    # The chain: from one chest to the other, sagging; links alternate an open loop and a short bar.
+    (ax, ay), (bx, by) = (ends[0][0] + 9.0, ends[0][1] + 20.0), (ends[1][0] - 9.0, ends[1][1] + 20.0)
+    links = 7
+    for i in range(links):
+        k0, k1 = i / links, (i + 1) / links
+        km = (k0 + k1) / 2.0
+        cx = ax + (bx - ax) * km
+        cy = ay + (by - ay) * km + 10.0 * 4.0 * km * (1.0 - km)
+        ang = math.atan2((by - ay) + 10.0 * 4.0 * (1.0 - 2.0 * km), bx - ax)
+        ca, sa = math.cos(ang), math.sin(ang)
+        u = (x - cx) * ca + (y - cy) * sa
+        v = -(x - cx) * sa + (y - cy) * ca
+        if i % 2 == 0:
+            ring = np.abs(np.hypot(u / 4.4, v / 2.6) - 1.0) * 2.6
+            rgb = blend(rgb, (10, 6, 18), np.clip(1.8 - ring, 0.0, 1.0) * 0.8)
+            rgb = blend(rgb, (255, 226, 150), np.clip(1.0 - ring, 0.0, 1.0))
+        else:
+            bar = (np.abs(u) < 4.2) & (np.abs(v) < 1.0)
+            rgb = blend(rgb, (10, 6, 18), ((np.abs(u) < 5.0) & (np.abs(v) < 2.0)).astype(float) * 0.8)
+            rgb = blend(rgb, (217, 164, 65), bar.astype(float))
+    # A shackle ring round each one's chest end.
+    for (sx, sy) in [(ax, ay), (bx, by)]:
+        ring = np.abs(np.hypot((x - sx) / 4.5, (y - sy) / 4.5) - 1.0) * 4.5
+        rgb = blend(rgb, (10, 6, 18), np.clip(2.2 - ring, 0.0, 1.0) * 0.8)
+        rgb = blend(rgb, (217, 164, 65), np.clip(1.2 - ring, 0.0, 1.0))
+    # A fate passing: a bright bead on the chain, a third of the way along.
+    kb = 0.36
+    px, py = ax + (bx - ax) * kb, ay + (by - ay) * kb + 10.0 * 4.0 * kb * (1.0 - kb)
+    rgb = blend(rgb, (255, 246, 210), np.exp(-((x - px) ** 2 + (y - py) ** 2) / 6.0))
+    rgb = blend(rgb, (255, 207, 90), np.exp(-((x - px) ** 2 + (y - py) ** 2) / 40.0) * 0.4)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "bound")
+
+def erase():
+    """Erasing Distance (Decree): on an ink field, a square of town ground -- cobbles, a road across it -- whose middle
+    has been pulled in along a gilt seam running corner to corner: the ground's edges and its creases bend in toward the
+    seam's middle where the distance along it was erased, ink in the folds, and the seam itself shortened to a bright
+    gilt stitch with a burst of gilt at its heart."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(71, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (58, 38, 80), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # u runs along the seam (bottom left to top right), v across it.
+    c, s = math.cos(-math.pi / 4), math.sin(-math.pi / 4)
+    u = x * c + y * s
+    v = -x * s + y * c
+    pinch = 1.0 - 0.62 * np.exp(-(v / 10.0) ** 2)
+    # Where each point came from before the fold: along the seam it is stretched back out.
+    u0 = u / pinch
+    cloth = (np.abs(u0) < 29.0) & (np.abs(v) < 29.0)
+    edge = (np.abs(u0) < 31.5) & (np.abs(v) < 31.5) & ~cloth
+    # The ground: warm stone with cobbles (a grid laid in the unfolded ground), a road across it.
+    cob = (np.sin(u0 * 0.95) * np.sin(v * 0.95 + 0.6 * np.floor(u0 / 3.3)))
+    ground = np.where(cob[..., None] > 0.1, np.array((132, 112, 86)), np.array((112, 94, 72)))
+    rgb = np.where(cloth[..., None], ground * (0.85 + 0.25 * n[..., None]), rgb)
+    road = cloth & (np.abs(u0 + 4.0) < 6.0)
+    rgb = blend(rgb, (164, 142, 104), road.astype(float) * 0.75)
+    rgb = blend(rgb, (10, 6, 18), edge.astype(float) * 0.9)
+    # The creases: lines of the unfolded ground's grid bent in toward the seam, inked, with a lit lip.
+    for k in range(-3, 4):
+        if k == 0:
+            continue
+        d = np.abs(u0 - k * 8.0) * pinch
+        lit = cloth & (d < 2.4)
+        rgb = blend(rgb, (24, 14, 30), np.clip((1.6 - d) / 1.2, 0.0, 1.0) * cloth * (0.5 + 0.5 * np.exp(-(v / 12.0) ** 2)))
+        rgb = blend(rgb, (200, 176, 130), lit * np.clip((d - 1.4) / 1.0, 0.0, 1.0) * 0.35)
+    # The gathered fold along the seam: shadow either side of it.
+    rgb = blend(rgb, (18, 10, 28), cloth * np.exp(-(v / 4.5) ** 2) * 0.55)
+    # The seam: shortened, ink under gilt, a white-gold core.
+    seam = np.abs(u) < 12.5
+    rgb = blend(rgb, (10, 6, 18), seam * np.clip((3.6 - np.abs(v)) / 1.2, 0.0, 1.0))
+    rgb = blend(rgb, (255, 207, 90), seam * np.clip((2.0 - np.abs(v)) / 0.9, 0.0, 1.0))
+    rgb = blend(rgb, (255, 246, 208), seam * np.clip((0.8 - np.abs(v)) / 0.6, 0.0, 1.0))
+    # Its stitches: short gilt bars across it.
+    for k in range(-2, 3):
+        bar = (np.abs(u - k * 5.0) < 0.9) & (np.abs(v) < 4.6)
+        rgb = blend(rgb, (255, 220, 120), bar.astype(float))
+    # The burst where it all gathered.
+    rgb = blend(rgb, (255, 207, 90), np.exp(-(r / 7.0) ** 2) * 0.55)
+    rgb = blend(rgb, (255, 250, 230), np.exp(-(r / 2.6) ** 2))
+    for k in range(8):
+        a = k * math.pi / 4.0 + math.pi / 8.0
+        ray = np.abs(-x * math.sin(a) + y * math.cos(a)) < 0.8
+        rgb = blend(rgb, (255, 226, 150), ray * ((x * math.cos(a) + y * math.sin(a)) > 3.0) * np.exp(-(r / 10.0) ** 2) * 0.8)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "erase")
+
+
+def disorder():
+    """Disorder (Decree): on an ink field, a gilt ring of law that will not sit true -- dented, tilted, set off its middle
+    -- with letters of law knocked askew round it, and in it a crooked bell: a gilt bell leaning hard over, its clapper
+    swung out to the wrong side, a second faint outline of it a little off, as if it rang out of true."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(97, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The ring: off its middle, tilted, dented by two slow lobes.
+    rx, ry = x - 2.0, y + 1.5
+    tilt = 0.32
+    ex = rx * math.cos(tilt) + ry * math.sin(tilt)
+    ey = -rx * math.sin(tilt) + ry * math.cos(tilt)
+    ang = np.arctan2(ey, ex)
+    er = np.hypot(ex, ey * 1.12) / (1.0 + 0.06 * np.sin(2.0 * ang + 0.7) + 0.04 * np.sin(3.0 * ang + 2.1))
+    rgb = blend(rgb, (34, 22, 50), np.clip((31.0 - er) / 2.0, 0.0, 1.0) * 0.5)
+    rgb = blend(rgb, (10, 6, 18), np.exp(-((er - 32.0) ** 2) / 9.0) * 0.85)
+    rgb = blend(rgb, (255, 207, 90), np.exp(-((er - 32.0) ** 2) / 2.6))
+    rgb = blend(rgb, (255, 246, 208), np.exp(-((er - 30.8) ** 2) / 0.6) * 0.4)
+    # Letters of law round it, each a short gilt bar at its own wrong angle.
+    for k in range(12):
+        a = k * math.pi / 6.0 + 0.2 * math.sin(k * 1.7)
+        tx, ty = 36.5 * math.cos(a) + 1.0, 36.0 * math.sin(a) - 1.0
+        lean = a + math.pi / 2 + 0.9 * math.sin(k * 2.4)
+        ux, uy = math.cos(lean), math.sin(lean)
+        along = (x - tx) * ux + (y - ty) * uy
+        across = -(x - tx) * uy + (y - ty) * ux
+        bar = np.clip((2.4 - np.abs(along)) / 0.8, 0.0, 1.0) * np.clip((1.1 - np.abs(across)) / 0.6, 0.0, 1.0)
+        rgb = blend(rgb, (255, 207, 90), bar * 0.9)
+
+    def bell(cx, cy, lean):
+        """The bell's body (0..1) in the bell's own frame: crown at the top, flaring to a lip at the bottom."""
+        bx = (x - cx) * math.cos(lean) + (y - cy) * math.sin(lean)
+        by = -(x - cx) * math.sin(lean) + (y - cy) * math.cos(lean)
+        t = np.clip((by + 14.0) / 26.0, 0.0, 1.0)
+        half = 5.5 + 9.0 * t ** 1.8 + 2.5 * np.clip((by - 9.0) / 3.0, 0.0, 1.0)
+        body = np.clip((half - np.abs(bx)) / 1.0, 0.0, 1.0) * np.clip((by + 14.0) / 1.0, 0.0, 1.0) * np.clip((12.5 - by) / 1.0, 0.0, 1.0)
+        crown = np.clip((3.2 - np.hypot(bx, by + 16.5)) / 0.8, 0.0, 1.0)
+        return np.maximum(body, crown), bx, by, half
+
+    lean = 0.5
+    # The ghost of it a little off, as if it rang out of true.
+    ghost, _, _, _ = bell(4.0, 1.0, lean - 0.22)
+    rgb = blend(rgb, (150, 104, 40), ghost * 0.35)
+    body, bx, by, half = bell(1.0, 0.0, lean)
+    rgb = blend(rgb, (10, 6, 18), np.clip(body * 3.0, 0.0, 1.0) * 0.9)
+    shade = np.clip(0.55 + 0.45 * (-bx / np.maximum(half, 1.0)), 0.0, 1.0)
+    col = np.stack([176 + 79 * shade, 122 + 85 * shade, 28 + 62 * shade], axis=-1)
+    inner = np.clip((body - 0.5) * 2.0, 0.0, 1.0)
+    rgb = rgb * (1.0 - inner[..., None]) + col * inner[..., None]
+    # The lip: a bright rim along the bottom.
+    rgb = blend(rgb, (255, 236, 170), inner * np.clip((by - 9.5) / 1.5, 0.0, 1.0) * 0.8)
+    # The clapper swung out past the lip, to the wrong side.
+    cx, cy = 1.0 + 15.0 * math.cos(lean + 0.35), 15.0 * math.sin(lean + 0.35) + 9.0
+    rgb = blend(rgb, (10, 6, 18), np.clip((4.4 - np.hypot(x - cx, y - cy)) / 1.0, 0.0, 1.0))
+    rgb = blend(rgb, (255, 207, 90), np.clip((3.0 - np.hypot(x - cx, y - cy)) / 1.0, 0.0, 1.0))
+    # Its ring: short gilt arcs thrown off one side only.
+    for k, rad in enumerate((20.0, 25.0)):
+        arc = np.exp(-((np.hypot(x - 1.0, y) - rad) ** 2) / 1.2) * ((x - 1.0) < -6.0) * (np.abs(y) < 12.0 - 3.0 * k)
+        rgb = blend(rgb, (255, 226, 150), arc * (0.7 - 0.25 * k))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "disorder")
+
+
+def eminent():
+    """Eminent Domain (Decree): on an ink field, a block of town seen from above -- red-tiled roofs in rows -- with a
+    straight road cut clean through it corner to corner, its gilt edges ruled and staked; the houses it claimed split
+    down the middle, their halves thrown apart to either side with a dark crack between, and heaps of rubble lining the
+    road's two edges."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(113, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # u runs along the road (bottom left to top right), v across it.
+    c, s = math.cos(-math.pi / 4), math.sin(-math.pi / 4)
+    u = x * c + y * s
+    v = -x * s + y * c
+    town = (np.abs(u) < 33.0) & (np.abs(v) < 33.0) & (r < 41.0)
+    # The ground between the houses: dark packed earth.
+    rgb = blend(rgb, (66, 52, 42), town * (0.85 + 0.15 * n))
+    ROAD = 7.0
+
+    def roof(du, dv, hu, hv, side, lit):
+        lu = u - du
+        lv = v - dv
+        body = (np.abs(lu) < hu) & (np.abs(lv) < hv) & town
+        # Two slopes either side of the ridge, the one facing the light brighter.
+        face = np.where(lv * side > 0, 1.0, 0.72) * lit
+        col = np.stack([158 * face, 70 * face, 48 * face], axis=-1) * (0.9 + 0.2 * n[..., None])
+        out = np.where(body[..., None], col, rgb)
+        out = blend(out, (210, 132, 90), (body & (np.abs(lv) < 0.7)).astype(float) * 0.85)
+        out = blend(out, (64, 28, 22), (body & (np.abs(np.sin(lu * 1.3)) < 0.22)).astype(float) * 0.4)
+        out = blend(out, (16, 8, 14), (((np.abs(lu) < hu + 0.9) & (np.abs(lv) < hv + 0.9) & ~body) & town).astype(float) * 0.6)
+        return out
+
+    for side in (-1.0, 1.0):
+        # The far rows: whole houses.
+        for row in (1, 2):
+            v0 = side * (ROAD + 6.5 + row * 8.5)
+            for k in range(-3, 4):
+                u0 = k * 10.0 + (5.0 if row == 2 else 0.0)
+                rgb = roof(u0, v0, 3.8, 3.2, side, 0.95)
+        # The row the road claimed: each house split down the middle, its halves thrown apart and out.
+        v0 = side * (ROAD + 6.0)
+        for k in range(-3, 4):
+            u0 = k * 10.0
+            for half in (-1.0, 1.0):
+                rgb = roof(u0 + half * 2.9, v0 + side * 0.8 * (1.0 + 0.3 * half), 2.0, 3.2, side, 1.0)
+            # The torn end facing the road: splinters of timber.
+            torn = (np.abs(u - u0) < 4.2) & (np.abs(v - side * (ROAD + 2.4)) < 0.8) & (np.sin(u * 2.7) > 0.2) & town
+            rgb = blend(rgb, (122, 86, 54), torn.astype(float) * 0.9)
+    # The road: pale fresh earth, straight and clear, a faint gilt line of law down its middle.
+    road = town & (np.abs(v) < ROAD)
+    rgb = np.where(road[..., None], np.array((172, 148, 110)) * (0.9 + 0.15 * n[..., None]), rgb)
+    rgb = blend(rgb, (255, 207, 90), road * np.clip((0.7 - np.abs(v)) / 0.5, 0.0, 1.0) * 0.55 * (np.sin(u * 0.9) > -0.2))
+    # The road's edges: ink under gilt, ruled, with stakes across them.
+    for side in (-1.0, 1.0):
+        d = np.abs(v - side * ROAD)
+        rgb = blend(rgb, (10, 6, 18), town * np.clip((1.7 - d) / 0.7, 0.0, 1.0))
+        rgb = blend(rgb, (255, 207, 90), town * np.clip((0.9 - d) / 0.5, 0.0, 1.0))
+        for k in range(-3, 4):
+            stake = (np.abs(u - k * 10.0 - 5.0) < 0.7) & (d < 2.4) & town
+            rgb = blend(rgb, (255, 236, 170), stake.astype(float))
+    # Rubble heaps lining both edges, just outside them.
+    for side in (-1.0, 1.0):
+        for k in range(-6, 7):
+            hu0 = k * 5.0 + side * 1.5
+            hr = 1.9 + 0.7 * ((k * 0.618) % 1.0)
+            d = np.hypot(u - hu0, (v - side * (ROAD + 3.0)) * 1.25)
+            heap = town & (d < hr)
+            rgb = blend(rgb, (24, 18, 22), (town & (d < hr + 0.7) & ~heap).astype(float) * 0.5)
+            rgb = blend(rgb, (118, 106, 92), heap.astype(float))
+            rgb = blend(rgb, (184, 168, 142), heap * np.clip((hr - d) / hr, 0.0, 1.0) * 0.7)
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "eminent")
+
+
+def fenced():
+    """Fenced Rule (Decree): on an ink field, a district seen at a slant -- a ring of iron posts round it, each with a
+    gilt finial and joined by a low iron rail, the far posts small and the near ones tall -- and on the ground inside it
+    two lines of law in gilt: the two rules it holds."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(131, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The ground inside the fence: an ellipse a little below the middle, a shade lighter, washed in ink.
+    cy = 6.0
+    ax, ay = 34.0, 17.0
+    e = np.hypot(x / ax, (y - cy) / ay)
+    rgb = blend(rgb, (44, 30, 60), np.clip((1.0 - e) / 0.08, 0.0, 1.0) * (0.75 + 0.25 * n))
+    # The rail: ink under iron, on the ellipse.
+    rail = np.abs(e - 1.0) * ay
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.0 - rail) / 0.8, 0.0, 1.0) * 0.9)
+    rgb = blend(rgb, (118, 112, 124), np.clip((0.9 - rail) / 0.5, 0.0, 1.0) * 0.8)
+    # Two lines of law on the ground: short gilt letter bars, the upper line shorter (far), the lower longer (near).
+    for row, (ly, half, h) in enumerate(((cy - 6.0, 16.0, 2.4), (cy + 2.5, 20.0, 2.8))):
+        for k in range(-8, 9):
+            lx = k * 2.4
+            if abs(lx) > half or (k + row) % 5 == 0:
+                continue
+            tall = h * (1.0 if (k * 7 + row) % 3 else 0.6)
+            bar = np.clip((0.75 - np.abs(x - lx)) / 0.4, 0.0, 1.0) * np.clip((tall - np.abs(y - ly)) / 0.5, 0.0, 1.0)
+            rgb = blend(rgb, (10, 6, 18), np.clip((0.75 - np.abs(x - lx - 0.8)) / 0.4, 0.0, 1.0)
+                        * np.clip((tall - np.abs(y - ly - 0.8)) / 0.5, 0.0, 1.0) * 0.7)
+            rgb = blend(rgb, (255, 207, 90), bar)
+        under = np.clip((0.6 - np.abs(y - ly - h - 1.6)) / 0.4, 0.0, 1.0) * (np.abs(x) < half + 1.0)
+        rgb = blend(rgb, (255, 207, 90), under * 0.6)
+    # The posts, far first so the near ones stand over them: taller and wider the nearer they stand.
+    posts = []
+    for k in range(14):
+        a = 2.0 * math.pi * k / 14.0 + 0.11
+        posts.append((ax * math.cos(a), cy + ay * math.sin(a), math.sin(a)))
+    posts.sort(key=lambda q: q[1])
+    for px, py, near in posts:
+        depth = 0.5 + 0.5 * near
+        high = 8.0 + 6.0 * depth
+        half = 1.0 + 0.7 * depth
+        body = (np.abs(x - px) < half) & (y < py) & (y > py - high)
+        rgb = blend(rgb, (10, 6, 18), ((np.abs(x - px) < half + 1.0) & (y < py + 1.0) & (y > py - high - 1.0)).astype(float))
+        shade = np.where(x < px, 1.0, 0.6)
+        col = np.stack([70 * shade, 76 * shade, 92 * shade], axis=-1)
+        rgb = np.where(body[..., None], col, rgb)
+        rgb = blend(rgb, (150, 144, 160), (body & (x < px - half + 0.9)).astype(float) * 0.8)
+        # The gilt finial: a flat cap and a spear point over it, ink-edged.
+        top = py - high
+        cap = (np.abs(x - px) < half + 0.6) & (np.abs(y - (top - 0.6)) < 0.8)
+        point = (y < top - 1.2) & (y > top - 4.6) & (np.abs(x - px) * 1.5 < (y - (top - 4.6)))
+        rgb = blend(rgb, (10, 6, 18), ((np.abs(x - px) < half + 1.4) & (y > top - 5.4) & (y < top + 0.4) & ~cap & ~point).astype(float) * 0.5)
+        rgb = blend(rgb, (214, 160, 60), cap.astype(float))
+        rgb = blend(rgb, (255, 214, 110), point.astype(float))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "fenced")
+
+
+def cage():
+    """The Closing Cage (Decree): on an ink field, a bird cage of brass bars seen at a slant -- their feet on an amber
+    ring on the ground, their tops bowed in to a gilt crown, carved with gilt marks of law, the far bars dim behind the
+    near ones -- closing on an amber glow at its heart, with sparks thrown off where its bars grind along the ground."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(149, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (56, 36, 78), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    cy = 22.0
+    ax, ay = 33.0, 12.0
+    top = -30.0
+    # The ground inside the ring: amber light, brightest at the middle, where everything is pressed.
+    e = np.hypot(x / ax, (y - cy) / ay)
+    rgb = blend(rgb, (120, 70, 20), np.clip((1.0 - e) / 0.1, 0.0, 1.0) * 0.45)
+    rgb = blend(rgb, (255, 190, 80), np.exp(-(x ** 2 + ((y - cy) * 2.2) ** 2) / 60.0) * 0.9)
+    rgb = blend(rgb, (255, 236, 170), np.exp(-(x ** 2 + ((y - cy) * 2.2) ** 2) / 8.0) * 0.8)
+    # The ground ring: ink under amber.
+    ring = np.abs(e - 1.0) * ay
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.2 - ring) / 0.8, 0.0, 1.0) * 0.85)
+    rgb = blend(rgb, (255, 200, 110), np.clip((0.9 - ring) / 0.5, 0.0, 1.0) * 0.9)
+
+    def bar(fx_, fy, near):
+        """One bar from its foot (fx_, fy) bowing in to the crown at (0, top)."""
+        nonlocal rgb
+        light = 0.55 + 0.45 * near
+        steps = 120
+        for k in range(steps + 1):
+            s_ = k / steps
+            # The bar bows: straight up most of the way, then in to the crown.
+            bow = s_ ** 2.2
+            px = fx_ * (1.0 - bow)
+            py = fy + (top - fy) * s_
+            d = np.hypot(x - px, (y - py) * 1.6)
+            rgb = blend(rgb, (10, 6, 18), np.clip((2.0 - d) / 0.6, 0.0, 1.0) * 0.5 * light)
+            rgb = blend(rgb, (200 * light, 150 * light, 60 * light), np.clip((1.1 - d) / 0.5, 0.0, 1.0))
+            if k in (40, 75):
+                mark = (np.abs(x - px) < 1.4) & (np.abs(y - py) < 0.6)
+                rgb = blend(rgb, (255, 214, 110), mark.astype(float) * light)
+
+    feet = []
+    for k in range(12):
+        a = 2.0 * math.pi * k / 12.0 + 0.13
+        feet.append((ax * math.cos(a), cy + ay * math.sin(a), math.sin(a)))
+    feet.sort(key=lambda q: q[1])
+    for fx_, fy, s_ in feet:
+        if s_ < 0.0:
+            bar(fx_, fy, 0.0)
+    for fx_, fy, s_ in feet:
+        if s_ >= 0.0:
+            bar(fx_, fy, 1.0)
+    # The crown: a gilt ring at the top, ink-edged.
+    crown = np.hypot(x / 5.0, (y - top) / 2.4)
+    rgb = blend(rgb, (10, 6, 18), np.clip((1.5 - crown) / 0.3, 0.0, 1.0) * 0.7)
+    rgb = blend(rgb, (255, 214, 110), np.clip((1.15 - crown) / 0.3, 0.0, 1.0))
+    rgb = blend(rgb, (255, 246, 208), np.clip((0.5 - crown) / 0.3, 0.0, 1.0))
+    # Sparks off the near bars' feet, thrown up and out.
+    for k, (fx_, fy, s_) in enumerate(feet):
+        if s_ < 0.3:
+            continue
+        for j in range(3):
+            ang = -math.pi * (0.25 + 0.5 * ((k * 0.618 + j * 0.381) % 1.0))
+            ln = 3.0 + 3.0 * j
+            sx, sy = fx_ + math.cos(ang) * ln, fy + math.sin(ang) * ln
+            d = np.hypot(x - sx, y - sy)
+            rgb = blend(rgb, (255, 230, 140), np.clip((1.0 - d) / 0.5, 0.0, 1.0) * (1.0 - 0.25 * j))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "cage")
+
+
+def sealed():
+    """The Sealed Verdict (Decree): on an ink field, a brass bell high in the middle caught at its one stroke -- gilt rings
+    of sound thrown out either side of it -- over a district seen at a slant: a faint gilt ring of law marked with the
+    ledger's seconds, the hand at the last of them, and at its heart the verdict's red seal."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(163, 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (18, 10, 28)
+    rgb = blend(rgb, (52, 34, 74), np.exp(-(r / 34.0) ** 2) * (0.6 + 0.4 * n))
+    # The district: a faint gilt ring on the ground, ink under it, sixty seconds marked round it.
+    cy, ax, ay = 21.0, 33.0, 12.5
+    e = np.hypot(x / ax, (y - cy) / ay)
+    rgb = blend(rgb, (70, 50, 30), np.clip((1.0 - e) / 0.08, 0.0, 1.0) * 0.25)
+    ring = np.abs(e - 1.0) * ay
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.4 - ring) / 0.8, 0.0, 1.0) * 0.8)
+    rgb = blend(rgb, (200, 150, 60), np.clip((1.0 - ring) / 0.5, 0.0, 1.0) * 0.85)
+    for k in range(12):
+        a = -math.pi / 2 + 2.0 * math.pi * k / 12.0
+        ux, uy = math.cos(a), math.sin(a)
+        for s_ in (0.84, 0.9):
+            tx, ty = ax * s_ * ux, cy + ay * s_ * uy
+            rgb = blend(rgb, (255, 207, 90) if k == 11 else (210, 160, 70), np.exp(-((x - tx) ** 2 + (y - ty) ** 2) / 1.0))
+    # The hand: a gilt line from the heart to the last second.
+    a = -math.pi / 2 - 2.0 * math.pi / 12.0
+    hx, hy = ax * 0.78 * math.cos(a), cy + ay * 0.78 * math.sin(a)
+    ux, uy = hx, hy - cy
+    ln = math.hypot(ux, uy)
+    ux, uy = ux / ln, uy / ln
+    along = np.clip(x * ux + (y - cy) * uy, 0.0, ln)
+    d = np.hypot(x - along * ux, (y - cy) - along * uy)
+    rgb = blend(rgb, (10, 6, 18), np.clip((2.2 - d) / 0.7, 0.0, 1.0) * 0.7)
+    rgb = blend(rgb, (255, 214, 110), np.clip((1.0 - d) / 0.5, 0.0, 1.0))
+    # The seal at the heart: red wax, a gilt rim, a dark mark pressed in it.
+    sd = np.hypot(x, (y - cy) * 1.5)
+    rgb = blend(rgb, (10, 6, 18), np.clip((10.0 - sd) / 0.8, 0.0, 1.0) * 0.9)
+    rgb = blend(rgb, (255, 207, 90), np.clip((8.8 - sd) / 0.6, 0.0, 1.0))
+    rgb = blend(rgb, (210, 34, 30), np.clip((7.4 - sd) / 0.6, 0.0, 1.0))
+    rgb = blend(rgb, (255, 96, 74), np.clip((3.5 - np.hypot(x + 2.0, (y - cy + 1.2) * 1.5)) / 2.0, 0.0, 1.0) * 0.6)
+    rgb = blend(rgb, (96, 8, 12), ((np.abs(x) < 1.0) & (np.abs(y - cy) < 3.0)).astype(float))
+    rgb = blend(rgb, (96, 8, 12), ((np.abs(y - cy) < 0.7) & (np.abs(x) < 3.6)).astype(float))
+    # The bell: brass, lit from the left, a flared lip with a gilt band, a crown knob and the clapper swung to strike.
+    top, lip = -31.0, -7.0
+    s_ = np.clip((y - top) / (lip - top), 0.0, 1.0)
+    w = 6.5 + 9.5 * s_ ** 1.8 + 2.5 * np.clip((y - (lip - 3.0)) / 3.0, 0.0, 1.0)
+    body = np.clip((w - np.abs(x)) / 0.8, 0.0, 1.0) * np.clip((y - top) / 0.8, 0.0, 1.0) * np.clip((lip - y) / 0.8, 0.0, 1.0)
+    knob = np.clip((3.2 - np.hypot(x, y - (top - 2.0))) / 0.7, 0.0, 1.0)
+    edge = np.clip((np.maximum(body, knob) - 0.0) * 2.0, 0.0, 1.0)
+    halo = np.exp(-(np.hypot(x, (y + 18.0) * 0.9) / 22.0) ** 2)
+    rgb = blend(rgb, (255, 200, 110), halo * 0.35)
+    outline = np.clip((w + 1.6 - np.abs(x)) / 0.8, 0.0, 1.0) * np.clip((y - top + 1.6) / 0.8, 0.0, 1.0) * np.clip((lip + 1.6 - y) / 0.8, 0.0, 1.0)
+    rgb = blend(rgb, (10, 6, 18), np.maximum(outline, np.clip((4.6 - np.hypot(x, y - (top - 2.0))) / 0.7, 0.0, 1.0)) * 0.9)
+    shade = np.clip(0.5 + 0.5 * (-x / np.maximum(w, 1.0)), 0.0, 1.0)
+    brass = np.stack([110 + 120 * shade, 70 + 90 * shade, 24 + 40 * shade], axis=-1)
+    rgb = rgb * (1.0 - edge[..., None]) + brass * edge[..., None]
+    rgb = blend(rgb, (255, 236, 170), np.exp(-((x + w * 0.45) ** 2) / 2.0) * body * 0.6)
+    rgb = blend(rgb, (255, 207, 90), np.clip((1.2 - np.abs(y - (lip - 2.0))) / 0.5, 0.0, 1.0) * body)
+    cl = np.hypot(x - 3.0, y - (lip + 2.2))
+    rgb = blend(rgb, (10, 6, 18), np.clip((3.0 - cl) / 0.6, 0.0, 1.0))
+    rgb = blend(rgb, (200, 150, 60), np.clip((1.9 - cl) / 0.6, 0.0, 1.0))
+    # The stroke: gilt rings of sound thrown out either side.
+    for side in (-1.0, 1.0):
+        for k, rad in enumerate((22.0, 28.0)):
+            dr = np.abs(np.hypot(x, (y + 18.0) * 1.15) - rad)
+            ang = np.arctan2((y + 18.0), side * x)
+            arc = (np.abs(ang) < 0.55) & (side * x > 0)
+            rgb = blend(rgb, (10, 6, 18), np.clip((2.0 - dr) / 0.6, 0.0, 1.0) * arc * 0.6)
+            rgb = blend(rgb, (255, 214, 110), np.clip((1.0 - dr) / 0.5, 0.0, 1.0) * arc * (1.0 - 0.3 * k))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, "sealed")
+
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
-            "whisper": whisper}
+            "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
+            "erase": erase, "disorder": disorder, "eminent": eminent, "fenced": fenced, "cage": cage, "sealed": sealed}
 
 
 if __name__ == "__main__":

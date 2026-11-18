@@ -260,6 +260,11 @@ func tour() -> Array:
 	return out
 
 
+## The cellar (found, the night is lost) and the Temple (the captain waits in it) are kept standing (R45).
+func needs_standing(s: Structure) -> bool:
+	return s != null and (s == cellar or s == temple)
+
+
 ## Lets go of the cellar's stone -- its own filter put back, none for most dwellings -- then the Hunt type's (v0.11 M4).
 func teardown() -> void:
 	if is_instance_valid(cellar) and cellar.damage_filter == _stone:

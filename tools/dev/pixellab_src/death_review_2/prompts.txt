@@ -1,0 +1,115 @@
+Death second review art (2026-11-16) - PixelLab sources and prompts. 65 generations (balance 1253 -> 1188).
+Run everything from the repo root.
+
+  grasping hand   python tools/dev/pixellab_src/death_review_2/pack_hand.py
+                  -> assets/pixellab/fx/grave_hand/grave_hand.png + grave_hand.json (R34)
+  pale ghost      python tools/dev/make_animal_sheet.py --src tools/dev/pixellab_src/death_review_2/pale_ghost --out assets/pixellab/animals/pale_ghost.png
+  skeleton        python tools/dev/make_animal_sheet.py --src tools/dev/pixellab_src/death_review_2/skeleton --out assets/pixellab/animals/skeleton.png
+  ghoul           python tools/dev/make_animal_sheet.py --src tools/dev/pixellab_src/death_review_2/ghoul --out assets/pixellab/animals/ghoul.png
+
+Character folders (pale_ghost/, skeleton/, ghoul/) are laid out from each character's get_character ZIP by
+layout_char.py: rot_<dir>.png and <anim>/<dir>_<i>.png, every image centred on a transparent 48x48 canvas (padding
+only, no scaling) because PixelLab stores the rotations and the animations on different canvases (24/28 vs 32/40).
+The run animations are saved as walk/ (make_animal_sheet.py reads walk/ and bite/). Extra folders (grab2/, grab3/)
+are rejected takes, ignored by the packer. Sheet rows: still SE/NE, walk SE, walk NE, bite SE (8 frames each).
+
+Why the characters are small: v3 draws the figure to fill its canvas (a 48 px v3 character is ~46 px tall, 2.5x a
+~18 px townsperson), so the figures were made at 28/24 px and padded to the 48 cell to read 1:1 (R38/R42).
+
+==================================================================================================================
+GRASPING HAND (hand/)
+==================================================================================================================
+USED
+hand_b.png        create_image_pixflux 64x64, no_background, view low top-down, outline single color black, shading
+                  detailed, detail highly detailed, seed 7102 (job eeaafa6d):
+                  "a gaunt pale grey-white hand and forearm rising out of cracked dark earth, long bony fingers clawed
+                  upward, torn grave-cloth at the wrist, dark medieval pixel art, no blood"
+anim81_0..6.png   animate_image on hand_b, 6 frames, seed 81 (job 056a1781), the brief's action:
+                  "rises up out of the ground, the fingers claw at the air, then close into a fist and pull down into
+                  the earth"  -> it only clawed and closed (no rise, no sink); frame 1 used (clawing).
+anim82_0..6.png   same, seed 82 (job 23cd9d1b) -> frame 3 used (the clenched fist).
+sink_fist_0..6    animate_image on anim82_3, 6 frames, seed 84 (job 44e07da4):
+                  "the clenched fist pulls straight down into the cracked earth and disappears below the ground; the
+                  earth mound stays in place"  -> frame 3 used (pulling down); frame 6 (empty mound) fed rise.
+rise_0..6.png     animate_image first frame sink_fist_6 (empty mound), last frame hand_b, 6 frames, seed 85
+                  (job 7e0f5ab4): "a pale clawed hand bursts up out of the cracked earth, fingertips first, the
+                  forearm pushing up through the soil; the earth mound stays in place"  -> frames 2 and 4 used (rising).
+Sheet frames: rise_2, rise_4 (rising) | hand_b, anim81_1 (clawing) | anim82_3, sink_fist_3 (closing, pulling down).
+
+REJECTED
+hand_a.png        seed 7101: flesh-pink hand on a reddish (blood-like) mound.
+hand_c.png        seed 7103: a red fingertip (reads as blood) and a white snow-like mound.
+sink_open_0..6    animate_image on hand_b, seed 83 ("slowly sinks straight down ... until only the clawed fingertips
+                  show"): it closed into a fist and stopped half-way; superseded by rise_*.
+
+==================================================================================================================
+PALE GHOST (pale_ghost/) - character bafa64f1-72df-401b-b4d1-8a3c05bd5476
+==================================================================================================================
+USED
+create_character v3, size 28, low top-down (2 gen):
+  "gaunt faceless pale figure, ash-white skin, tattered grey shroud trailing behind it, long thin arms, no hood, no
+  legs visible under the shroud hem, dark medieval pixel art, no blood. Bare bald head, hairless, nothing covering
+  the head."   (the brief's prompt + the last sentence: without it v3 drew a hood twice)
+walk/  (SE, NE) animate_character v3, 8 frames, keep_first_frame false (2 gen):
+  "runs forward fast in a hunched lurch, long thin arms reaching ahead, the tattered shroud streaming out behind,
+  seamless run loop"
+bite/  (SE) animate_character v3, 8 frames (1 gen):
+  "lunges forward and grabs with both long thin arms thrust straight out, clawed fingers seizing, then drags the arms
+  back in"   -> a grounded lunge, one arm thrust forward.
+
+REJECTED
+rejected/pale_ghost_a  v3 size 48, the brief's prompt verbatim: hooded (reads as the wraith / Passage's GHOST) and
+                       46 px tall.
+rejected/pale_ghost_c  v3 size 28, same prompt as the used one: hooded again.
+pale_ghost/grab2/      v3 "hunches forward and reaches out with both long thin arms to seize ...": arms folded on the
+                       chest, reads as hugging itself.
+pale_ghost/grab3/      v3 "lurches forward with both long thin arms stretched straight out ...": body lifts off and
+                       flies horizontally, i.e. hovers like the wraith's strike (R38: on the ground).
+
+==================================================================================================================
+SKELETON WARRIOR (skeleton/) - character 261aa27d-2e4e-46dd-b8da-49a4b59d86e1
+==================================================================================================================
+USED
+create_character v3, size 28 (2 gen), the brief's prompt verbatim:
+  "skeleton warrior, bone white, rusted short sword, broken round wooden shield, scraps of mail, pale green eye glow,
+  dark medieval pixel art, no blood"
+walk/  (SE, NE) v3, 8 frames (2 gen): "marches forward with a stiff jerky skeletal stride, sword held low and ready,
+  shield raised, seamless walk loop"
+bite/  (SE) v3, 8 frames (1 gen): "raises the sword high and hacks down in a hard diagonal cut, then recovers to guard"
+
+REJECTED
+rejected/skeleton_a  v3 size 48: excellent, but 42 px tall (twice a person).
+rejected/skeleton_b  v3 size 24: red marks on the skull and blade tips (read as blood), skin-coloured body.
+rejected/skeleton_d  v3 size 24 re-roll: person-sized (20 px) but the sword reads as a bow or club, maroon armour.
+
+==================================================================================================================
+GHOUL (ghoul/) - character a5610df1-35a6-46d9-baf5-21e0e88671f9
+==================================================================================================================
+USED
+create_character v3, size 24 (2 gen):
+  "crouching ghoul, grey-green mottled skin, long arms, low on all fours, hollow eyes, ragged loincloth, dark medieval
+  pixel art, no blood. Crawls like a beast: gaunt body held long and horizontal close to the ground, hands planted on
+  the ground far ahead of the knees."   (the brief's prompt + the last two sentences)
+walk/  (SE, NE) v3, 8 frames (2 gen): "scuttles forward fast on all fours like a beast, body low and stretched long
+  close to the ground, long clawed arms reaching ahead in turn, seamless run loop"
+bite/  (SE) v3, 8 frames (1 gen): "pounces: coils back low, then leaps forward low and fast with both clawed hands
+  outstretched, lands crouched on all fours"
+
+REJECTED
+rejected/ghoul_a  v3 size 48, brief's prompt: a strong, frightening design but 46 px tall.
+rejected/ghoul_b  v3 size 24, brief's prompt: a broken white blob on its back in the rear views.
+rejected/ghoul_f  v3 size 20, the used prompt: 16 px tall but a shapeless hunched blob.
+rejected/ghoul_d  standard quadruped (cat template) size 28: low and long, but a pale round-headed crawler.
+rejected/ghoul_e  standard quadruped (dog template) size 28: same, and a stand-up north view.
+rejected/ghoul_g  standard quadruped (cat) size 28, + "Emaciated, spine and ribs showing, long clawed fingers,
+                  sunken black eye sockets, gaping jaw of sharp teeth, menacing.": low and long (18 px), animated
+                  (template running-8-frames walk, v3 pounce), but in motion it reads as a crawling baby (big round
+                  bald head), and the NE run stands upright.
+rejected/ghoul_h  standard quadruped (lion) size 28: front view stands upright.
+rejected/ghoul_i  standard quadruped (cat), "dark grey-green ... long narrow skull-like head ... bared sharp fangs":
+                  an orange-red mouth (reads as blood).
+rejected/ghoul_j  standard quadruped (dog), same prompt: animated (v3 scuttle + pounce), still a round-headed baby-like
+                  crawler at 1:1.
+rejected/ghoul_ref  create_image_pixflux attempts at a frightening crawler (seeds 9201-9203 at 40x40, 9211-9213 at
+                  44x24, 9221-9223 at 32x32, 9231-9233 at 32x32 medium detail): frightening, but pixflux fills its
+                  canvas (20-38 px tall, up to 42 px long), noisy at 1:1, maroon/red patches, one grew a tail.

@@ -10,6 +10,11 @@ const STRUCK := Color("ff3a30")
 const GILT_LIFE := [Color("fff6d0"), Color("ffcf5a"), Color("b07a1c"), Color(0.35, 0.2, 0.05, 0.5)]
 const INK_LIFE := [Color("4a3668"), Color("2a1a40"), Color("120a1c"), Color(0.03, 0.01, 0.05, 0.55)]
 const GILT_RAMP := [Color(0.5, 0.32, 0.08, 0.4), Color("b07a1c"), Color("ffcf5a"), Color("ffe9a0"), Color("fff6d0")]
+## Amber (spec 4.4): the Judge's resin, a warm translucent gold that holds what it closes over (Leaving Is Prohibited's
+## cell). Its body, drawn over what it holds; its deep edge; its light.
+const AMBER := Color(1.0, 0.72, 0.2, 0.22)
+const AMBER_DEEP := Color("b85c0c")
+const AMBER_LIGHT := Color("ffe39a")
 
 ## Signs, 5x5, a row per int, the high bit leftmost.
 const BARS: Array[int] = [0b11111, 0b10101, 0b10101, 0b10101, 0b11111]

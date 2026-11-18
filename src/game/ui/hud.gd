@@ -1388,6 +1388,15 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 		push_banner("NO ONE THERE TO ATTACK", true)
 	elif reason == "building":
 		push_banner("NOTHING THERE TO BURN", true)
+	elif reason == "unbound":
+		# Bound in Law: a click on no one (or the same one twice).
+		push_banner("NO ONE THERE TO BIND", true)
+	elif reason == "far":
+		push_banner("TOO FAR APART TO BIND", true)
+	elif reason == "no_dead":
+		push_banner("NO DEAD THERE", true)
+	elif reason == "soul_gone":
+		push_banner("THE SOUL HAS GONE", true)
 	elif reason == "shaken":
 		# v0.11 M5 (the final review): a director that knows why says so in place of the plain words, in one banner.
 		var words := _rules.director.refused_words(slot, reason) if _rules.director != null else ""

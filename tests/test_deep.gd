@@ -399,6 +399,48 @@ static func run(t) -> void:
 		and cut_one.ground_pos == cut_at, "cut short, it leaves nobody slowed and carries nobody on")
 	cut_one.ground_pos = park
 
+	# --- One in the water freed mid-span (they left the town: Crowd.escape, or another power took them "gone"): dropped
+	# at the next tick without an error, everyone else still held.
+	var freed: Person = crowd.citizens[18]
+	var stays: Person = crowd.citizens[19]
+	_stand(freed, site + Vector2(3.5, 0.0))
+	_stand(stays, site + Vector2(-3.5, 0.0))
+	var drop: DoorToTheDeepFx = FxTimeline.cast(load(FX), ctx, site)
+	_run(drop, T_OPEN + SPREAD + 0.1)
+	var freed_id := freed.get_instance_id()
+	t.check(drop.soaks(freed) and drop.soaks(stays), "(both in the water)")
+	crowd.citizens.erase(freed)
+	field.remove(freed)
+	freed.free()
+	_run(drop, TICK + STEP)
+	t.check(not drop._soaked.has(freed_id) and drop.soaks(stays) and is_equal_approx(stays.pace_hold(), SLOW),
+		"one freed in the water is dropped at the next tick without an error; the others are still held")
+	drop.end_now()
+	t.check(drop.finished and stays.pace_holds.is_empty(), "and its end lets the rest go")
+	drop.free()
+	stays.ground_pos = park
+
+	# --- Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): nobody is left slowed and the
+	# roar is stopped, with no error; its end after that changes nothing.
+	var torn_one: Person = crowd.citizens[14]
+	_stand(torn_one, site + Vector2(3.5, 0.0))
+	var torn_pace := torn_one.walk_speed
+	var torn: DoorToTheDeepFx = FxTimeline.cast(load(FX), ctx, site)
+	_run(torn, T_OPEN + SPREAD + 0.1)
+	var roar := AudioStreamPlayer2D.new()
+	roar.set_meta(&"cue", &"tn_wind")
+	torn._roar = roar
+	t.check(not torn_one.pace_holds.is_empty(), "(one slowed in the water)")
+	torn._exit_tree()
+	t.check(torn_one.is_alive() and torn_one.pace_holds.is_empty() and is_equal_approx(torn_one.walk_speed, torn_pace)
+		and torn._soaked.is_empty() and torn._roar == null,
+		"freed without its end, nobody is left slowed and the roar is stopped")
+	torn.end_now()
+	t.check(torn.finished and torn_one.pace_holds.is_empty(), "and its end after that changes nothing")
+	torn.free()
+	roar.free()
+	torn_one.ground_pos = park
+
 	# --- Through a Mirrorfold
 	field.portals.append(Shift.new())
 	var carried: DoorToTheDeepFx = FxTimeline.cast(load(FX), ctx, at)

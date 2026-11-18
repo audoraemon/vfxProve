@@ -186,4 +186,79 @@ static func run(t) -> void:
 	field.portals.erase(shift)
 	third.end_now()
 	third.free()
+	_freed_quarry(t, made, at)
+	_exit(t, made, at)
 	_done(made)
+
+
+## Stand `p` calm at `at`, with nothing to walk to.
+static func _stand(p: Person, at: Vector2) -> void:
+	p.ground_pos = at
+	p.mind = Person.Mind.CALM
+	p._goal = Vector2.INF
+	p._path = PackedVector2Array()
+	p._target = at
+
+
+## Quarry's marked one freed mid-hunt (they left the town: Crowd.escape, or another power took them "gone"): the dead
+## mark is dropped without an error, its ring goes, the hounds hunt on, and a new mark still takes. A hound freed by
+## something else leaves its trail behind without an error.
+static func _freed_quarry(t, made: Array, at: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var field: EnemyField = made[3]
+	var ctx: FxContext = made[5]
+	var fx: HoundGateFx = FxTimeline.cast(load("res://src/fx/control/hound_gate.gd"), ctx, at, {"level": 5})
+	_run(fx, HoundGateFx.T_OPEN + float(fx.lv_hounds) * HoundGateFx.OUT_EVERY + 0.05)
+	var gone: Person = crowd.citizens[4]
+	var next: Person = crowd.citizens[5]
+	_stand(gone, grid.nearest_walkable(at + Vector2(12.0, 0.0)))
+	_stand(next, grid.nearest_walkable(at + Vector2(-12.0, 0.0)))
+	t.check(fx.follow_up(gone.ground_pos, {}) and fx.quarry == gone and fx.visitors.marked() == gone, "(marked)")
+	var ring := HoundGateFx.QuarryMark.new()
+	ring.fx = fx
+	ring.prey = gone
+	crowd.citizens.erase(gone)
+	field.remove(gone)
+	gone.free()
+	_run(fx, 0.5)
+	ring._process(DT)
+	t.check(fx.visitors.marked() == null and ring.is_queued_for_deletion()
+		and fx.visitors.living().size() == fx.lv_hounds,
+		"a marked one freed mid-hunt: the mark is dropped without an error, its ring goes, the hounds hunt on")
+	t.check(fx.follow_up(next.ground_pos, {}) and fx.quarry == next and fx.visitors.marked() == next, "and a new mark still takes")
+	var lost: Animal = fx.visitors.living()[0]
+	fx._trails[lost] = null
+	fx.visitors.take(lost)
+	if is_instance_valid(lost):
+		lost.free()
+	fx._stop_trail(lost)
+	t.check(not fx._trails.has(lost), "a hound freed by something else: its trail is let go without an error")
+	fx.end_now()
+	fx.free()
+	ring.free()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart queue_frees it): the hounds are gone and the pack leaves
+## the town, Quarry's mark with it, with no error; its end after that changes nothing.
+static func _exit(t, made: Array, at: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var ctx: FxContext = made[5]
+	var fx: HoundGateFx = FxTimeline.cast(load("res://src/fx/control/hound_gate.gd"), ctx, at, {"level": 5})
+	_run(fx, HoundGateFx.T_OPEN + float(fx.lv_hounds) * HoundGateFx.OUT_EVERY + 0.05)
+	var prey: Person = crowd.citizens[6]
+	_stand(prey, grid.nearest_walkable(at + Vector2(12.0, 0.0)))
+	t.check(fx.follow_up(prey.ground_pos, {}), "(a quarry marked)")
+	var pack := fx.visitors
+	var up := pack.living()
+	t.check(up.size() == fx.lv_hounds and crowd.visitors.has(pack), "(the hounds up: %d)" % up.size())
+	fx._exit_tree()
+	var gone := true
+	for a in up:
+		gone = gone and (not is_instance_valid(a) or a.is_queued_for_deletion())
+	t.check(gone and pack.living().is_empty() and not crowd.visitors.has(pack) and pack.marked() == null and fx.quarry == null,
+		"freed without its end, the hounds are gone, the pack leaves the town and the mark goes")
+	fx.end_now()
+	t.check(fx.finished and prey.is_alive(), "and its end after that changes nothing")
+	fx.free()

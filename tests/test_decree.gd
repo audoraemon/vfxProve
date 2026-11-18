@@ -37,16 +37,18 @@ static func _done(made: Array) -> void:
 
 static func run(t) -> void:
 	var problems := []
-	var prices := {"noleave": 1, "belllies": 2, "magnify": 3, "curfew": 4, "abolition": 5}
+	var prices := {"noleave": 1, "belllies": 2, "breath": 2, "magnify": 3, "redefine": 3, "bound": 3, "disorder": 3, "curfew": 4, "erase": 4,
+		"eminent": 4, "abolition": 5, "fenced": 5, "cage": 6, "sealed": 6}
+	var quiet := ["noleave", "belllies", "magnify", "curfew", "abolition", "redefine", "bound", "sealed"]
 	for key: String in prices:
 		var b := PowerBook.get_power(key)
 		if int(b.dp) != int(prices[key]) or PowerBook.icon(key) == null or PowerBook.hud_icon(key) == null or PowerBook.clip(key) == null \
 				or not ResourceLoader.exists(String(b.path)) or not Targeting.AREAS.has(key) or not Rules.POWER_KINDS.has(key) \
-				or PowerBook.authority_of(key) != "decree" or not PowerBook.is_quiet(key):
+				or PowerBook.authority_of(key) != "decree" or PowerBook.is_quiet(key) != quiet.has(key):
 			problems.append(key)
-	t.check(problems.is_empty() and Array(PowerBook.of_authority("decree")) == ["noleave", "belllies", "magnify", "curfew", "abolition"]
+	t.check(problems.is_empty() and Array(PowerBook.of_authority("decree")) == ["noleave", "belllies", "breath", "magnify", "redefine", "bound", "disorder", "curfew", "erase", "eminent", "fenced", "abolition", "cage", "sealed"]
 		and PowerBook.authority_title("decree") == "DECREE",
-		"Decree holds five quiet powers at 1, 2, 3, 4 and 5 DP, each with its effect, icons, clip and area (%s)" % [problems])
+		"Decree holds its fourteen powers at their DP, each with its effect, icons, clip and area; the quiet ones are Leaving Is Prohibited, The Bell Lies, Magnify, Curfew, Abolition, Redefine, Bound in Law and The Sealed Verdict (%s)" % [problems])
 	var modes: Array = PowerBook.get_power("abolition").modes
 	t.check(PowerBook.get_power("belllies").modes.size() == 2 and modes.size() == 3 and String(modes[0].key) == "clock" and String(modes[1].key) == "escape" and String(modes[2].key) == "ward",
 		"Abolition's modes are the three laws")
@@ -96,6 +98,36 @@ static func run(t) -> void:
 	t.check(not wall.sealed and wall.bound.is_empty() and b.ground_pos.distance_to(at) > NoLeaveFx.RADIUS and b.badge_left == 0.0,
 		"when the time is up the law lifts and they go where they will")
 	wall.free()
+	# The amber cell (spec 5.1): a law laid on the place (LawZone), which anyone may walk into and nothing leaves --
+	# hounds too; at its end the amber cracks and falls away in shards, and hurts no one.
+	var visitors := Visitors.new().setup(ctx.field, crowd, grid, made[4])
+	var hound := visitors.summon(at + Vector2(0.5, -0.5), Animal.Breed.HELLHOUND, 3, 1.0, 8.0, 0.5, 1.0)
+	a.ground_pos = at + Vector2(1.0, 0.0)
+	guard.ground_pos = at + Vector2(NoLeaveFx.RADIUS + 1.0, 0.0)
+	var killed := crowd.killed_citizens + crowd.killed_soldiers
+	var cell: NoLeaveFx = FxTimeline.cast(load("res://src/fx/decree/leaving_is_prohibited.gd"), ctx, at)
+	cell._process(NoLeaveFx.T_SEAL + 0.05)
+	t.check(cell.law != null and crowd.laws.has(cell.law) and crowd.in_law(a, LawZone.NO_LEAVING) and cell.bound.has(a)
+		and not cell.bound.has(guard), "the cell is a law laid on the place, which the town's choices can ask")
+	hound.ground_pos = at + Vector2(0.0, -NoLeaveFx.RADIUS - 1.0)
+	cell._process(0.016)
+	t.check(is_equal_approx(hound.ground_pos.distance_to(at), NoLeaveFx.RADIUS) and not cell.bound.has(hound),
+		"a hound inside cannot leave it either (%.2f)" % hound.ground_pos.distance_to(at))
+	guard.ground_pos = at + Vector2(NoLeaveFx.RADIUS - 0.5, 0.0)
+	cell._process(0.016)
+	t.check(guard.ground_pos.is_equal_approx(at + Vector2(NoLeaveFx.RADIUS - 0.5, 0.0)) and cell.bound.has(guard)
+		and guard.badge_glyph == DecreeParts.BARS and guard.badge_left > 0.0, "a guard outside may walk in, and then he wears the bars")
+	guard.ground_pos = at + Vector2(NoLeaveFx.RADIUS + 1.0, 0.0)
+	cell._process(0.016)
+	t.check(is_equal_approx(guard.ground_pos.distance_to(at), NoLeaveFx.RADIUS) and cell.shards.is_empty(),
+		"and he cannot walk out again")
+	cell._process(NoLeaveFx.HOLD_TIME)
+	t.check(not cell.shards.is_empty() and not crowd.laws.has(cell.law) and not crowd.in_law(a, LawZone.NO_LEAVING)
+		and cell.bound.is_empty() and guard.badge_left == 0.0,
+		"at its end the amber cracks and falls away in shards (%d), and the law is lifted" % cell.shards.size())
+	t.check(crowd.killed_citizens + crowd.killed_soldiers == killed and a.is_alive() and guard.is_alive() and hound.is_alive(),
+		"the shards hurt no one")
+	cell.free()
 
 	# --- The Bell Lies
 	# The town has been warned: the bell rang true, and they are afraid.

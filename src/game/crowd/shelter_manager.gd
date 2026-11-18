@@ -24,6 +24,8 @@ const DOOR_REACH := 0.6
 const HZ := 4.0
 ## A building under this share of its health throws its sheltering people out.
 const FLUSH_HP := 0.5
+## What sends people in without frightening them: Tempest's rain sends the calm indoors (try_shelter() with this kind).
+const CALM_KINDS := [&"rain"]
 
 var _crowd: Crowd
 var _env: EnvironmentField
@@ -31,6 +33,9 @@ var _field: EnemyField
 ## Building -> {"inside": Array[Person], "coming": Array[Person], "clear": float}
 var shelters := {}
 var _step_in := 0.0
+## Instance ids of those whose last way into cover was not a fright -- sent in by a hallowed building (send_in(), Anathema) or the rain
+## (CALM_KINDS) -- read by fright_shelter(). Every way into cover passes try_shelter() or send_in(), so the mark follows the latest one.
+var _calm := {}
 
 
 func setup(crowd: Crowd, env: EnvironmentField, field: EnemyField) -> ShelterManager:
@@ -67,6 +72,10 @@ func total_inside() -> int:
 func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> bool:
 	if _crowd.doors() != &"":
 		return false  # every door shut or open (Every Door): no building takes anyone in
+	if _crowd.in_law(p, LawZone.DISORDER):
+		return false  # Decree's Disorder (LawZone): the door he makes for leads back out, before any roll
+	if _crowd.in_law(p, LawZone.NO_DOORS):
+		return false  # Decree's NO DOORS (LawZone): no door opens to him, before any roll
 	if p.rng.randf() >= (CHANCE_SEVERE if kind in SEVERE else CHANCE):
 		return false
 	var best: Structure = null
@@ -77,6 +86,8 @@ func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> b
 		var e: Dictionary = shelters[s]
 		if (e.inside as Array).size() + (e.coming as Array).size() >= capacity(s) and not _hallowed(s):
 			continue
+		if _barred(s):
+			continue
 		var d := s.distance_to(p.ground_pos)
 		if d < best_d:
 			best_d = d
@@ -84,8 +95,18 @@ func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> b
 	if best == null:
 		return false
 	shelters[best].coming.append(p)
+	if kind in CALM_KINDS:
+		_calm[p.get_instance_id()] = true
+	else:
+		_calm.erase(p.get_instance_id())
 	p.seek_shelter(best, _door(best, p.ground_pos))
 	return true
+
+
+## `p` is in cover (Mind.SHELTER) because a danger frightened him: false for one the rain or a hallowed building sent in (a compulsion, not
+## fear; the Harvest's dropped load, H7, counts only fright). Only reads.
+func fright_shelter(p: Person) -> bool:
+	return is_instance_valid(p) and p.mind == Person.Mind.SHELTER and not _calm.has(p.get_instance_id())
 
 
 func _usable(s: Structure) -> bool:
@@ -102,9 +123,17 @@ func _hallowed(s: Structure) -> bool:
 func send_in(p: Person, s: Structure) -> bool:
 	if not shelters.has(s) or not is_instance_valid(p) or not p.is_alive() or p.inside or _crowd.doors() != &"":
 		return false
+	if _barred(s) or _crowd.in_law(p, LawZone.NO_DOORS):
+		return false  # Decree's NO DOORS (LawZone)
 	shelters[s].coming.append(p)
+	_calm[p.get_instance_id()] = true  # sent in, not frightened in (fright_shelter())
 	p.seek_shelter(s, _door(s, p.ground_pos))
 	return true
+
+
+## Decree's NO DOORS (LawZone) holds where `s` stands: nobody goes into it or comes out. False at once with no law laid.
+func _barred(s: Structure) -> bool:
+	return not _crowd.laws.is_empty() and is_instance_valid(s) and _crowd.law_at(s.center(), LawZone.NO_DOORS) != null
 
 
 func _door(s: Structure, from: Vector2) -> Vector2:
@@ -130,7 +159,7 @@ func step(delta: float) -> void:
 		for p in e.coming:
 			if not is_instance_valid(p) or not p.is_alive() or p.mind != Person.Mind.SHELTER or p.shelter != s:
 				continue
-			if barred or ((not _usable(s) or evacuating) and not holy):
+			if barred or ((not _usable(s) or evacuating) and not holy) or _barred(s) or _crowd.in_law(p, LawZone.NO_DOORS):
 				p.leave_shelter(evacuating)
 				continue
 			if not p.has_goal() and p.ground_pos.distance_to(p.shelter_door) <= DOOR_REACH:
@@ -158,8 +187,10 @@ func step(delta: float) -> void:
 				_crowd.rescue.trap(trapped, s)
 			e.inside = []
 			continue
-		if holy or shut:
-			e.clear = 0.0  # nobody leaves a hallowed house, nor any while every door is shut: struck, burning or the town leaving, they stay
+		if holy or shut or _barred(s):
+			# nobody leaves a hallowed house, nor any while every door is shut (Every Door) or barred by law (Decree's NO DOORS):
+			# struck, burning or the town leaving, they stay
+			e.clear = 0.0
 			continue
 		if not _usable(s):
 			_flush(s, e, true)

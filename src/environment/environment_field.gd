@@ -63,7 +63,7 @@ func add_structure(rect: Rect2, height: float, kind: Structure.Kind, role := &""
 	s.broken.connect(_on_structure_broken)
 	s.idled.connect(_on_idled)
 	s.restored.connect(_on_structure_restored)
-	s.hit.connect(func(st: Structure, amount: float, kind: StringName) -> void: structure_hit.emit(st, amount, kind))
+	s.hit.connect(_on_structure_hit)
 	if kind == Structure.Kind.TORCH and lights != null:
 		s.light_id = lights.add_static(rect.get_center(), 2.4, Structure.TORCH_LIGHT, 0.55, 1.0)
 	_structures.append(s)
@@ -140,7 +140,17 @@ func clear() -> void:
 ## this is for the handful of times a map is torn down, not for destruction — destroyed buildings stay.
 ## `announce` (v0.06): tell the walk grid and the crowd (structure_removed) -- a thorn wall withering mid-mission;
 ## a town torn down for a restart does not, its grid and crowd go with it.
-func remove(s: Structure, announce := true) -> void:
+## `keep_node` (Eminent Domain clearing a street of ruins): the structure leaves the field just the same, but its node is
+## hidden and stilled rather than freed, so whatever still holds it (a mission's house, a shelter's entry) holds a
+## fallen building, not a freed object. It is marked taken and the field lets go of its signals: restore() on it does
+## nothing (a mission's relight or rebuild raises no invisible building, and the walk grid closes no cell for it).
+func remove(s: Structure, announce := true, keep_node := false) -> void:
+	if keep_node and is_instance_valid(s):
+		s.taken = true
+		for pair: Array in [[s.broken, _on_structure_broken], [s.idled, _on_idled], [s.restored, _on_structure_restored],
+				[s.hit, _on_structure_hit]]:
+			if (pair[0] as Signal).is_connected(pair[1]):
+				(pair[0] as Signal).disconnect(pair[1])
 	if announce and _structures.has(s):
 		structure_removed.emit(s)
 	_structures.erase(s)
@@ -149,7 +159,10 @@ func remove(s: Structure, announce := true) -> void:
 		if s.light_id != 0 and lights != null:
 			lights.remove(s.light_id)
 			s.light_id = 0
-		if s.is_inside_tree():
+		if keep_node:
+			s.visible = false
+			s.set_process(false)
+		elif s.is_inside_tree():
 			s.queue_free()
 		else:
 			s.free()
@@ -349,6 +362,10 @@ func shake_radius(center: Vector2, radius: float, amount: float) -> void:
 func _on_structure_broken(s: Structure) -> void:
 	destroy_epoch += 1
 	structure_destroyed.emit(s, s.destroy_kind)
+
+
+func _on_structure_hit(s: Structure, amount: float, kind: StringName) -> void:
+	structure_hit.emit(s, amount, kind)
 
 
 func _on_structure_restored(s: Structure) -> void:

@@ -1,0 +1,8 @@
+{"length": 3.0, "rms_db": -13.5, "reverb": {"rt60": 2.4, "mix": 0.28, "predelay_ms": 24, "damp": 4000}, "eq": [["lowshelf", 180, -4.0], ["peak", 2000, 1.8, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan03.wav", "at": 0.0, "onset": true, "dur": 2.6, "pitch": 1, "lp": 5000, "hp": 160, "fade_in": 300, "fade_out": 800, "gain_db": -2},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan05.wav", "at": 0.35, "onset": true, "dur": 2.4, "pitch": 4, "lp": 4800, "hp": 220, "fade_in": 350, "fade_out": 800, "gain_db": -4},
+  {"src": "lib:oga/ghost-voice-pack/ghost_and_lich_voice_pack/Ghost and Lich Voice Pack/output (6).wav", "at": 0.7, "dur": 2.2, "pitch": -2, "lp": 4500, "hp": 200, "fade_in": 400, "fade_out": 800, "gain_db": -8},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-female-c5.wav", "at": 0.2, "dur": 2.7, "lp": 3800, "hp": 300, "fade_in": 700, "fade_out": 1000, "gain_db": -12},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "dur": 1.8, "pitch": -3, "lp": 4200, "hp": 150, "fade_in": 150, "fade_out": 500, "gain_db": -8},
+  {"src": "lib:oga/stonerockorwoodmovednotick/stone_rock_or_wood_moved_no_tick.mp3", "at": 0.1, "onset": true, "dur": 0.9, "pitch": 3, "lp": 5000, "hp": 160, "fade_in": 40, "fade_out": 300, "gain_db": -9}
+]}

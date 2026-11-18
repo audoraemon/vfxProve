@@ -1,0 +1,1042 @@
+class_name PaleSerpentFx
+extends FxTimeline
+## The Pale Serpent (Death, Tier V; spec 5.7): a drag, once a descent. A vast feathered serpent -- white feathers over dark
+## green scales, the novel's Death Consul -- bursts up out of the ground at the press over T_RISE, glides along the drag
+## (LENGTH at most, MIN_LENGTH at least) over GLIDE, then loops once through the end, a circle of CIRCLE_R turned to the
+## drag's left (Vector2.orthogonal()) over CIRCLE, and climbs away into the dark over DEPART.
+## - Its shadow kills: each step, everyone out in the open (not indoors, not guised -- Corpse Guise hides the faithful, as
+##   The Gate Below and Pale Reign spare them -- and no decoy, Mirrorfold's glass twin) within BAND of the head's path swept that step dies at once, without a
+##   sound or a mark, killed as &"shadow" (a whole body: it leaves a remain, ready to rise; a quiet kind,
+##   DeathVoices.QUIET_KINDS). No luck: everyone in the band dies, in instance-id order. A long frame is swept in steps of
+##   STEP at most, so nobody is skipped. Houses are left standing: nothing here touches a structure.
+## - Its sight sickens: as it rises, everyone out in the open within SIGHT of it (not indoors, not guised) walks at
+##   SICK_PACE for SICK (hold_pace under this effect's id), and catches the plague too (PlagueManager.PLAGUE_LIFE) when
+##   Pestilence's is in town (plague_live(): anyone sick). Let go at SICK, at the end, and when freed without one.
+## Loud (PowerBook.REACH): the danger counts from the head risen (IMPACT = T_RISE, the first shadow); every FRIGHT_EVERY
+## while it glides the street within FRIGHT_R of the head runs. No hush.
+## A death wave ahead of it (R40): every CONE_EVERY from the head risen to the loop's end, everyone out in the open (not
+## guised, no decoy) within CONE_R of the head and CONE_HALF of its heading panics from the head (cone_holds(): pure
+## geometry over the effect's clock, staged or not alike). While it glides and loops the town's lights dim where it will be
+## DIM_LEAD on (TownPools.dim(), drawing only), easing out over DEPART as it climbs away, lifted then, at the end, cut short
+## or freed. Staged only: a cold fog bank rolls
+## FOG_LEAD ahead of the head along its path (Fog), and the ground frosts FROST_LEAD ahead, where it is about to pass, and
+## fades over FROST_LIFE (Frost; at its natural end the frost is left to fade on its own, cut short it goes with it).
+## Its souls (R11): each one the shadow takes gives up a soul that streams into its body, arriving SOUL_FLY after the kill
+## (souls_in, on the effect's clock, staged or not; drawn as a SoulWisp only when staged).
+## Drawn (staged only) in the stand layer, y-sorted, at SCALE: the head (the Task 1 sheet, picked for its heading on screen
+## among eight ways, the west three the east three mirrored), raised on its neck so that the sheet's neck socket
+## (NECK_SOCKET) sits on the collar, a disc under the head that the body runs on from -- one seamless body; a procedural
+## chain of SEGMENTS scaled discs under a mantle of white feathers trailing the head's path GAP apart (the part still in the
+## hole a column pouring up out of it), and the tail sprite turned back along the path; their shadow on the ground below; a
+## cold light under the head and pale wisps of souls trailing off the tail; and whatever house stands in front of any of it
+## goes see-through (SeeThrough). pieces_at() places every piece; _pose() only draws what it says.
+
+## The brief's numbers: the longest drag, the glide, the loop's radius and time, the shadow's half width, how far it is seen
+## and how long the sight sickens.
+const LENGTH := 14.0
+const GLIDE := 10.0
+const CIRCLE_R := 4.0
+const CIRCLE := 3.0
+## A 4-wide kill lane (R11).
+const BAND := 2.0
+const SIGHT := 12.0
+const SICK := 20.0
+## The burst out of the ground (the head up: the first shadow, the power's impact); the shortest run (a click with no drag).
+const T_RISE := 1.0
+const MIN_LENGTH := 4.0
+## The pace the sight leaves.
+const SICK_PACE := 0.6
+## After the loop: it climbs away, fading, at DEPART_SPEED along the drag's way for DEPART.
+const DEPART := 1.5
+const DEPART_SPEED := 4.0
+## The longest bit of path swept at once (ground units).
+const STEP := 0.25
+## The fright while it glides, renewed as a spirit's is: centred FRIGHT_BACK behind the head along its path (review
+## IMPORTANT 2), so it scatters the street the serpent has passed, not the street ahead -- FRIGHT_R plus the town's own
+## margin (Person.THREAT_MARGIN), so nobody ahead of the head is reached. None until the head is that far out.
+const FRIGHT_R := BAND + 3.0
+const FRIGHT_EVERY := 1.0
+const FRIGHT_BACK := FRIGHT_R + Person.THREAT_MARGIN
+## R40, the fright cone ahead: CONE_R long, CONE_HALF degrees either side of the heading, every CONE_EVERY.
+const CONE_R := 8.0
+const CONE_HALF := 30.0
+const CONE_EVERY := 0.5
+## R40, the fog bank (staged): puffs FOG_LEAD seconds ahead of the head along its path, two every FOG_EVERY spread BAND
+## either side across it, each living FOG_LIFE, FOG_MOST at most at once.
+const FOG_LEAD := 1.0
+const FOG_EVERY := 0.1
+const FOG_LIFE := 1.6
+const FOG_MOST := 40
+## A puff rolls on along the path FOG_ROLL as far as the head goes meanwhile, so the bank keeps ahead of it (drawing only).
+const FOG_ROLL := 0.8
+## R40, the frost (staged, on the ground): a patch of radius BAND FROST_LEAD seconds ahead every FROST_EVERY, fading over
+## FROST_LIFE, FROST_MOST at most.
+const FROST_LEAD := 1.5
+const FROST_EVERY := 0.25
+const FROST_LIFE := 6.0
+const FROST_MOST := 48
+## R40, the lights going out: the town's light pools within DIM_R of where the head will be DIM_LEAD on keep
+## 1 - DIM * (1 - d / DIM_R) of their light.
+const DIM_LEAD := 1.0
+const DIM_R := 6.0
+const DIM := 0.75
+
+## The art (Task 1, ruling R4): five heads (64 x 64) and the tail (64 x 48, pointing left).
+const HEADS := {
+	"east": preload("res://assets/pixellab/fx/pale_serpent/head_east.png"),
+	"south-east": preload("res://assets/pixellab/fx/pale_serpent/head_south-east.png"),
+	"north-east": preload("res://assets/pixellab/fx/pale_serpent/head_north-east.png"),
+	"south": preload("res://assets/pixellab/fx/pale_serpent/head_south.png"),
+	"north": preload("res://assets/pixellab/fx/pale_serpent/head_north.png")}
+const TAIL := preload("res://assets/pixellab/fx/pale_serpent/tail.png")
+## The eight ways on screen from east, clockwise (screen y is down): [head, mirrored].
+const WAYS := [["east", false], ["south-east", false], ["south", false], ["south-east", true], ["east", true],
+	["north-east", true], ["north", false], ["north-east", false]]
+## Its size (R11, twice the first cut): the head and tail sprites drawn at SCALE (a 128 px head, six people tall);
+## SEGMENTS discs GAP apart along the path (30 x 0.45 = 13.5 ground units of body), R_NECK px in radius at the collar
+## (56 px across) tapering to R_TAIL at the tail; the body glides LIFT px over its shadow, rising and falling WAVE px down
+## its length, the head raised over it on its neck.
+const SCALE := 2.0
+const SEGMENTS := 30
+const GAP := 0.45
+const R_NECK := 28.0
+const R_TAIL := 16.0
+const LIFT := 60.0
+const WAVE := 10.0
+## The part of the body still in the hole stands up out of it as a column: COLUMN px of height per ground unit of body
+## (a disc GAP behind another is GAP * COLUMN px lower), so it pours up out of the ground without a break.
+const COLUMN := 40.0
+const HEAD_PIVOT := Vector2(32, 36)
+## The head as a piece of the body: half the drawn sprite (for the joint check, pieces_at()).
+const HEAD_R := 32.0 * SCALE
+## Where each head's neck is cut off on its sheet (sprite px from HEAD_PIVOT): on the lowest opaque row, where the neck
+## leaves the sheet, the centre of the green neck itself (not the feather mantle hanging beside it). The collar disc sits
+## here, under the head. NECK_CUT: the whole cut row (feathers too), its left and right edges in sprite px from the socket;
+## the collar covers it (a green disc over the neck, a feather skirt over the mantle beside it). Both measured by
+## tools/dev/serpent_neck_socket.py.
+const NECK_SOCKET := {
+	"east": Vector2(3.5, 27.0),
+	"south-east": Vector2(-9.0, 28.0),
+	"south": Vector2(0.0, 28.0),
+	"north-east": Vector2(12.0, 28.0),
+	"north": Vector2(0.0, 28.0)}
+const NECK_CUT := {
+	"east": Vector2(-14.5, 14.5),
+	"south-east": Vector2(-14.0, 14.0),
+	"south": Vector2(-11.0, 11.0),
+	"north-east": Vector2(-30.0, 13.0),
+	"north": Vector2(-13.0, 13.0)}
+## Where the tail sprite meets the body: its right edge, halfway down.
+const TAIL_ATTACH := Vector2(60, 24)
+## A soul's flight from the one who fell into the body (seconds).
+const SOUL_FLY := 0.7
+## The cold light under the head: its radius (ground units) and strength; a wisp of souls off the tail this often.
+const GLOW_R := 2.6
+const GLOW := 0.4
+const WISP_EVERY := 0.15
+## The hole it bursts out of (ground units).
+const HOLE := 1.4
+## Scales and feathers (the sheet's own colours).
+const SCALE_DARK := Color("214d37")
+const SCALE_LIGHT := Color("3b6748")
+const FEATHER := Color("e2eeed")
+const FEATHER_SHADE := Color("a4aeb7")
+## Death's palette for the dust: bone and ash; no blood.
+const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
+const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
+const FEATHERS := [Color("e2eeed"), Color("e2eeed"), Color("a4aeb7")]
+## The fog's cold greys (its rim, body and core) and the frost's rime (its bloom, its bright middle, its needles).
+const FOG := [Color(0.62, 0.70, 0.78), Color(0.76, 0.83, 0.90), Color(0.88, 0.93, 0.97)]
+const FROST := [Color(0.66, 0.80, 0.94), Color(0.86, 0.94, 1.0), Color(0.96, 0.99, 1.0)]
+## Death's pale soul-light (the colours of Raise the Dead's and The Gate Below's spirits).
+const PALE := [Color("eaf4ff"), Color("c8f0dc"), Color(0.5, 0.9, 0.7, 0.5), Color(0.2, 0.4, 0.35, 0.0)]
+## The soul-smoke trailing off it: the same pale hues, see-through.
+const WISP := [Color(0.92, 0.96, 1.0, 0.55), Color(0.78, 0.94, 0.86, 0.42), Color(0.5, 0.9, 0.7, 0.25), Color(0.2, 0.4, 0.35, 0.0)]
+## Every circle the serpent, its shadow, its fog, its frost and its souls draw is one white disc texture in a rect (disc()):
+## a draw_circle is a 64-sided polygon and a draw call of its own, and the body, the fog and the frost drew some three
+## hundred a frame; rects of one texture are two triangles each and batch (the death review's frame-cost pass). Hard-edged
+## and sampled nearest, as the polygons were. DISC_TEX texels across: finer than the largest circle drawn on screen.
+const DISC_TEX := 256
+## A patch well inside the disc, solid white: a square drawn from it (draw_texture_rect_region) batches with the discs.
+const DISC_SOLID := Rect2(DISC_TEX * 0.5 - 8.0, DISC_TEX * 0.5 - 8.0, 16.0, 16.0)
+static var _disc_tex: ImageTexture
+
+## The dead, in the order the shadow took them; when the first fell (on the effect's clock).
+var taken: Array[Person] = []
+var first_kill_at := -1.0
+## Everyone who saw it rise (sickened).
+var sickened := 0
+## Everyone the cone ahead sent running (R40; once each).
+var frightened_ahead := 0
+## The souls that have streamed into it (one per kill, SOUL_FLY after it). Cut short (end_now(), _finish), the souls still
+## in flight are not flushed: they never arrive, and souls_in stays below taken.size().
+var souls_in := 0
+
+## Instance id -> Person: everyone this effect slows.
+var _held := {}
+## The run: start, way, length, end; the loop's centre, start angle and turn (+1 or -1).
+var _dir := Vector2.RIGHT
+var _len := LENGTH
+var _end := Vector2.ZERO
+var _centre := Vector2.ZERO
+var _theta0 := 0.0
+var _turn := 1.0
+var _planned := false
+## How far along the path the shadow has swept (on the effect's clock); whether the sight and the sickness are done.
+var _swept_to := -1.0
+var _seen := false
+var _sick_over := false
+var _next_fright := T_RISE
+var _next_cone := T_RISE
+var _frightened := {}
+## Whether its dim is laid on the town's lights now.
+var _dimmed := false
+## When each soul still on its way arrives (the effect's clock).
+var _souls: Array[float] = []
+## Staged only: the pieces (head, collar, discs, tail), the shadow, the see-through, the cold light, the souls in flight.
+var _pieces: Array[Piece] = []
+var _shade: Shade
+var _see: SeeThrough
+var _glow: QuadFx
+var _glow_at := Vector2.ZERO
+var _wisps: Array[SoulWisp] = []
+var _next_feather := T_RISE
+var _next_wisp := T_RISE
+## Staged only: the fog bank and the frost, when the next of each is due, and when the last frost patch was laid.
+var _fog: Fog
+var _frost: Frost
+var _next_fog := T_RISE
+var _next_frost := T_RISE
+var _frost_at := -1.0
+## The fog's and the frost's own scatter (drawing only: never the effect's or the town's rng).
+var _vis := RandomNumberGenerator.new()
+## The pieces as last posed (souls fly to the nearest).
+var _posed: Array[Dictionary] = []
+
+
+## The white disc (DISC_TEX across, its texels in where their middles fall within its radius), made once.
+static func disc_texture() -> ImageTexture:
+	if _disc_tex == null:
+		var img := Image.create(DISC_TEX, DISC_TEX, false, Image.FORMAT_LA8)
+		var h := DISC_TEX * 0.5
+		for y in DISC_TEX:
+			var dy := y + 0.5 - h
+			var w := sqrt(maxf(h * h - dy * dy, 0.0))
+			var x0 := ceili(h - w - 0.5)
+			var x1 := floori(h + w - 0.5)
+			if x1 >= x0:
+				img.fill_rect(Rect2i(x0, y, x1 - x0 + 1, 1), Color.WHITE)
+		_disc_tex = ImageTexture.create_from_image(img)
+	return _disc_tex
+
+
+## A filled circle on `ci` at `c`, radius `r`, in `color`: the disc texture in a rect (draw_circle's look, a fraction of
+## its cost). `ry` squashes it to an ellipse `r` wide and `ry` high (radii); negative: a circle.
+static func disc(ci: CanvasItem, c: Vector2, r: float, color: Color, ry := -1.0) -> void:
+	var h := Vector2(r, r if ry < 0.0 else ry)
+	ci.draw_texture_rect(disc_texture(), Rect2(c - h, h * 2.0), false, color)
+
+
+## Where a cast at `at` ends: along the drag's way as Targeting reads it ("dir": Targeting.aim_dir(), DEFAULT_DIR for a drag
+## under DRAG_MIN -- the way the preview showed, never a short drag's jitter), as far as the drag went ("to"), LENGTH at most,
+## MIN_LENGTH at least; LENGTH with no "to" (a scripted cast). A cast with no "dir" takes the way to "to", else east.
+static func end_of(at: Vector2, extra_data: Dictionary) -> Vector2:
+	var to: Vector2 = extra_data.get("to", Vector2.INF)
+	var dir: Vector2 = extra_data.get("dir", Vector2.ZERO)
+	if dir.length() < 0.001 and to != Vector2.INF:
+		dir = to - at
+	if dir.length() < 0.001:
+		dir = Vector2.RIGHT
+	var length := LENGTH if to == Vector2.INF else clampf(to.distance_to(at), MIN_LENGTH, LENGTH)
+	return at + dir.normalized() * length
+
+
+## When the loop is done (the shadow's last).
+static func glide_end() -> float:
+	return T_RISE + GLIDE + CIRCLE
+
+
+## The head drawn for a heading on screen: [sheet key, mirrored].
+static func head_for(screen_dir: Vector2) -> Array:
+	var d := screen_dir if screen_dir.length() > 0.001 else Vector2.RIGHT
+	return WAYS[posmod(roundi(d.angle() / (PI * 0.25)), 8)]
+
+
+## Whether Pestilence's plague is in town: anyone alive is sick (Person.sick_left).
+static func plague_live(crowd: Crowd) -> bool:
+	if crowd == null:
+		return false
+	if crowd.plague != null:
+		for q in crowd.plague.sick:
+			if is_instance_valid(q) and q.is_alive() and q.sick_left > 0.0:
+				return true
+	for p in crowd.citizens + crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.sick_left > 0.0:
+			return true
+	return false
+
+
+## The run from the cast (origin, extra): the end, and the loop through it.
+func plan() -> void:
+	_end = end_of(origin, extra)
+	_len = origin.distance_to(_end)
+	_dir = (_end - origin) / _len
+	_centre = _end + _dir.orthogonal() * CIRCLE_R
+	_theta0 = (_end - _centre).angle()
+	_turn = 1.0 if Vector2(-sin(_theta0), cos(_theta0)).dot(_dir) > 0.0 else -1.0
+	_planned = true
+
+
+## How far along its path the head is at `time` (ground units).
+func s_at(time: float) -> float:
+	if time <= T_RISE:
+		return 0.0
+	if time <= T_RISE + GLIDE:
+		return _len * (time - T_RISE) / GLIDE
+	var loop := TAU * CIRCLE_R
+	if time <= glide_end():
+		return _len + loop * (time - T_RISE - GLIDE) / CIRCLE
+	return _len + loop + DEPART_SPEED * (time - glide_end())
+
+
+## The ground point `s` along the path: the glide, the loop, then on along the drag's way.
+func path_at(s: float) -> Vector2:
+	if s <= 0.0:
+		return origin
+	if s <= _len:
+		return origin + _dir * s
+	var loop := TAU * CIRCLE_R
+	if s <= _len + loop:
+		return _centre + Vector2.from_angle(_theta0 + _turn * (s - _len) / CIRCLE_R) * CIRCLE_R
+	return _end + _dir * (s - _len - loop)
+
+
+## Where the head is at `time`.
+func head_at(time: float) -> Vector2:
+	return path_at(s_at(time))
+
+
+## Where the head will be `lead` seconds after `time` (pure).
+func ahead_at(time: float, lead: float) -> Vector2:
+	return path_at(s_at(time + lead))
+
+
+## The way the head is going at `time` (ground, unit): the drag's way, round the loop its tangent, then the drag's way again.
+func heading_at(time: float) -> Vector2:
+	var s := s_at(time)
+	if s <= _len or s > _len + TAU * CIRCLE_R:
+		return _dir
+	var th := _theta0 + _turn * (s - _len) / CIRCLE_R
+	return Vector2(-sin(th), cos(th)) * _turn
+
+
+## Whether `p` is in the fright cone ahead at `time` (pure): within CONE_R of the head and CONE_HALF degrees of its heading
+## (right under the head counts).
+func cone_holds(p: Vector2, time: float) -> bool:
+	var d := p - head_at(time)
+	var r := d.length()
+	if r > CONE_R:
+		return false
+	if r < 0.001:
+		return true
+	return absf(heading_at(time).angle_to(d)) <= deg_to_rad(CONE_HALF)
+
+
+func _build() -> void:
+	plan()
+	duration = maxf(glide_end() + DEPART, T_RISE + SICK) + 0.05
+	busy = T_RISE
+	ctx.play(&"serpent_rise", origin, 0.0)
+	at(T_RISE, func(): ctx.play(&"serpent_glide", origin, 0.0))
+	at(T_RISE + GLIDE * 0.5, func(): ctx.play(&"serpent_glide", head_at(t), -2.0))
+	at(T_RISE + GLIDE, func(): ctx.play(&"serpent_glide", _end, 0.0))
+	if not DominionParts.staged(self):
+		return
+	_see = SeeThrough.new()
+	_shade = Shade.new()
+	_shade.fx = self
+	_shade.z_index = 3
+	track(_shade, ctx.ground)
+	# The death wave ahead: the frost on the ground under the shadow, the fog over the town but under the serpent itself.
+	_vis.seed = hash(origin)
+	_frost = Frost.new()
+	_frost.z_index = 2
+	track(_frost, ctx.ground)
+	_fog = Fog.new()
+	_fog.fx = self
+	track(_fog, ctx.overhead_back)
+	var layer := stand_layer()
+	for i in SEGMENTS + 2:
+		var piece := Piece.new()
+		piece.kind = Piece.K_HEAD if i == 0 else (Piece.K_TAIL if i == SEGMENTS + 1 else Piece.K_BODY)
+		piece.index = i
+		piece.visible = false
+		_pieces.append(piece)
+		track(piece, layer)
+	# The cold soul-light under the head, following it.
+	_glow_at = origin
+	_glow = FxParts.ground_light(self, origin, GLOW_R, DeathParts.PALE_FIRE, 0.0, func() -> Vector2: return _glow_at)
+	# The burst out of the ground: bone dust and chips, a flurry of feathers, the ground shaking.
+	var sp := Iso.ground_to_screen(origin)
+	FxParts.smoke(self, sp, 60.0, 40.0, T_RISE, Vector2(10, 40), Vector2(4, 8), Vector2(0.8, 1.6), Color(0, 0, 0, 0), DUST)
+	FxParts.debris(self, sp, 24, 50.0, Vector2(40, 140), BONE_CHIPS, Vector2(1.5, 3.0), true)
+	FxParts.debris(self, sp + Vector2(0, -LIFT), 20, 36.0, Vector2(20, 90), FEATHERS, Vector2(1.5, 2.5), true)
+	if ctx.shake != null:
+		ctx.shake.add_trauma(0.4)
+
+
+func _fx_process(delta: float) -> void:
+	if not _planned:
+		return
+	if not _seen and t >= T_RISE:
+		_sight()
+	if t >= T_RISE and _swept_to < glide_end():
+		var from := maxf(_swept_to, T_RISE)
+		var to := minf(t, glide_end())
+		_sweep(from, to)
+		_swept_to = to
+	_souls_arrive()
+	while _next_fright < glide_end() and t >= _next_fright:
+		var back := s_at(_next_fright) - FRIGHT_BACK
+		if ctx.crowd != null and back >= 0.0:
+			ctx.crowd.fright(path_at(back), FRIGHT_R, 0.9, 2.0, SIGHT, 16.0, &"beast")
+		_next_fright += FRIGHT_EVERY
+	while _next_cone <= glide_end() and t >= _next_cone:
+		_cone(_next_cone)
+		_next_cone += CONE_EVERY
+	_dim()
+	if _fog != null:
+		_wave(delta)
+	if not _sick_over and t >= T_RISE + SICK:
+		_sick_over = true
+		_let_all_go()
+	if t >= glide_end() + DEPART and _held.is_empty() and _souls.is_empty():
+		duration = minf(duration, t + 0.05)  # nobody left slowed: nothing more to do
+	if not _pieces.is_empty():
+		_pose(delta)
+
+
+## The fright cone at `time` (R40): everyone out in the open, not guised, no decoy, in it (cone_holds()) panics from the head;
+## each one sent running counted once (frightened_ahead).
+func _cone(time: float) -> void:
+	var head := head_at(time)
+	var runs := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER]
+	for e in ctx.field.in_radius(head, CONE_R):
+		var p := e as Person
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy") or not cone_holds(p.ground_pos, time):
+			continue
+		var was := p.mind
+		p.panic(head, CONE_R, &"beast")
+		var id := p.get_instance_id()
+		if not (was in runs) and p.mind in runs and not _frightened.has(id):
+			_frightened[id] = true
+			frightened_ahead += 1
+
+
+## The town's lights dim ahead while it glides and loops (drawing only); as it climbs away the dim eases out over DEPART
+## in step with shown() (no pop at glide_end()), and is lifted once it is gone (at the end at the latest: _finish()).
+func _dim() -> void:
+	var out := clampf((t - glide_end()) / DEPART, 0.0, 1.0)
+	if t >= T_RISE and out < 1.0:
+		TownPools.dim(get_instance_id(), ahead_at(t, DIM_LEAD), DIM_R, DIM * (1.0 - out))
+		_dimmed = true
+	elif _dimmed:
+		_undim()
+
+
+func _undim() -> void:
+	TownPools.undim(get_instance_id())
+	_dimmed = false
+
+
+## Staged: the fog bank and the frost laid ahead while it glides and loops, on the effect's clock (a long frame lays all
+## that was due).
+func _wave(delta: float) -> void:
+	_frost.step(delta)
+	_fog.prune(t)
+	while _next_fog <= glide_end() and t >= _next_fog:
+		var s := s_at(_next_fog + FOG_LEAD)
+		for k in 2:
+			var side := _vis.randf_range(-BAND, BAND)
+			_fog.add({"g": fog_at(s, side), "born": _next_fog, "s": s, "head_s": s_at(_next_fog), "side": side,
+				"r": _vis.randf_range(30.0, 46.0), "lobe": _vis.randf_range(-1.0, 1.0)})
+		_next_fog += FOG_EVERY
+	while _next_frost <= glide_end() and t >= _next_frost:
+		_frost.add(ahead_at(_next_frost, FROST_LEAD), _vis.randi())
+		_frost_at = _next_frost
+		_next_frost += FROST_EVERY
+	_fog.head = head_at(t)
+	_fog.queue_redraw()
+
+
+## A point `s` along the path and `side` across it (ground units, to the heading's orthogonal()).
+func fog_at(s: float, side: float) -> Vector2:
+	var way := (path_at(s + 0.05) - path_at(maxf(s - 0.05, 0.0))).normalized()
+	if way == Vector2.ZERO:
+		way = _dir
+	return path_at(s) + way.orthogonal() * side
+
+
+## As it rises: everyone out in the open within SIGHT of it is slowed for SICK, and sickened if the plague is in town.
+func _sight() -> void:
+	_seen = true
+	var plague := plague_live(ctx.crowd)
+	for e in ctx.field.in_radius(origin, SIGHT):
+		var p := e as Person
+		if p == null or p.inside or p.guised():
+			continue
+		var id := p.get_instance_id()
+		if not _held.has(id):
+			_held[id] = p
+			p.hold_pace(get_instance_id(), SICK_PACE)
+			sickened += 1
+		if plague:
+			p.infect(PlagueManager.PLAGUE_LIFE)
+
+
+## The shadow over the head's path from `t0` to `t1` (the effect's clock), in bits of STEP at most.
+func _sweep(t0: float, t1: float) -> void:
+	var s0 := s_at(t0)
+	var s1 := s_at(t1)
+	var n := maxi(1, ceili((s1 - s0) / STEP))
+	for k in n:
+		var a := path_at(lerpf(s0, s1, float(k) / float(n)))
+		var b := path_at(lerpf(s0, s1, float(k + 1) / float(n)))
+		_shadow(a, b, lerpf(t0, t1, float(k) / float(n)), (t1 - t0) / float(n))
+
+
+## Everyone out in the open within BAND of the bit of path a..b dies, in instance-id order; `when` and `span` place each
+## death on the clock where the head passed nearest them.
+func _shadow(a: Vector2, b: Vector2, when: float, span: float) -> void:
+	var near: Array[Person] = []
+	for e in ctx.field.in_radius((a + b) * 0.5, a.distance_to(b) * 0.5 + BAND + 0.01):
+		var p := e as Person
+		if p == null or p.inside or p.guised() or p.has_meta(&"decoy"):
+			continue  # a decoy (Mirrorfold's glass twin) is no one: the shadow passes over it, as Pale Reign's does
+		if Geometry2D.get_closest_point_to_segment(p.ground_pos, a, b).distance_to(p.ground_pos) <= BAND:
+			near.append(p)
+	near.sort_custom(func(x: Person, y: Person) -> bool: return x.get_instance_id() < y.get_instance_id())
+	for p in near:
+		var at_pt := Geometry2D.get_closest_point_to_segment(p.ground_pos, a, b)
+		var u := at_pt.distance_to(a) / a.distance_to(b) if a.distance_to(b) > 0.0001 else 0.0
+		_let_go(p.get_instance_id())
+		if not ctx.field.kill(p, &"shadow", at_pt):
+			continue
+		taken.append(p)
+		var fell := when + span * u
+		if first_kill_at < 0.0:
+			first_kill_at = fell
+		_souls.append(fell + SOUL_FLY)
+		if not _pieces.is_empty():
+			_soul_from(at_pt, fell)
+
+
+## Every soul whose flight is over is in (the effect's clock: staged or not).
+func _souls_arrive() -> void:
+	var i := 0
+	while i < _souls.size():
+		if t >= _souls[i]:
+			souls_in += 1
+			_souls.remove_at(i)
+		else:
+			i += 1
+
+
+func _let_go(id: int) -> void:
+	# Untyped until checked: one who left the town (Crowd.escape) is freed, and assigning a freed one to a Person errors.
+	var p = _held.get(id)
+	_held.erase(id)
+	if is_instance_valid(p):
+		(p as Person).free_pace(get_instance_id())
+
+
+func _let_all_go() -> void:
+	for id in _held.keys():
+		_let_go(id)
+
+
+## Over or cut short: every pace let go, every house its own look back, the town's lights their own. At its natural end
+## the frost is left to fade on its own (Frost.release()); cut short (end_now()), it goes with the rest.
+func _finish() -> void:
+	_let_all_go()
+	_undim()
+	if _see != null:
+		_see.release()
+	if t >= duration and is_instance_valid(_frost):
+		_tracked.erase(_frost)
+		_frost.release()
+	super()
+
+
+## Freed without _finish (a mission torn down mid-glide): the same, and the frost goes too.
+func _exit_tree() -> void:
+	_let_all_go()
+	_undim()
+	if _see != null:
+		_see.release()
+	super()
+
+
+## 0..1 how much of it shows at `time` (the effect's clock if none): in over the rise's first part, out as it climbs away.
+func shown(time := -1.0) -> float:
+	var x := t if time < 0.0 else time
+	var k := clampf(x / (T_RISE * 0.5), 0.0, 1.0)
+	return k * (1.0 - clampf((x - glide_end()) / DEPART, 0.0, 1.0))
+
+
+## The head's neck socket off its pivot on screen (px) for a sheet [key, mirrored] from head_for(): NECK_SOCKET at SCALE.
+static func socket_px(way: Array) -> Vector2:
+	var sk: Vector2 = NECK_SOCKET.get(String(way[0]), Vector2.ZERO)
+	return Vector2(-sk.x if bool(way[1]) else sk.x, sk.y) * SCALE
+
+
+## The feather skirt the collar spreads under a head [key, mirrored]: its left and right edges on screen (px from the
+## socket; NECK_CUT at SCALE, mirrored), or ZERO when the green disc (R_NECK, give or take a pixel) already covers the cut.
+static func collar_skirt(way: Array) -> Vector2:
+	var c: Vector2 = NECK_CUT.get(String(way[0]), Vector2.ZERO) * SCALE
+	if bool(way[1]):
+		c = Vector2(-c.y, -c.x)
+	return c if c.x < -(R_NECK + 1.0) or c.y > R_NECK + 1.0 else Vector2.ZERO
+
+
+## Where every piece is at `time` (pure: nothing is touched): the head, the collar, the discs and the tail, in that order,
+## each {"sp": its centre on screen, its height applied; "r": its radius (px); "kind": Piece.K_*; "g": its ground point;
+## "alt": its height (px); "alpha"; "vis": drawn at all}; the head with its sheet ("head", "mirror"), the collar with its
+## feather skirt ("skirt", collar_skirt()), the tail with the way it points on screen ("back"). The collar is the head's
+## own point on the path at the body's height, and the head is
+## raised over it so that its neck socket sits on it (socket_at()); the discs follow GAP apart along the path, the tail
+## half a GAP past the last; whatever is still in the hole stands up out of it, COLUMN px lower per ground unit.
+func pieces_at(time: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var a := shown(time)
+	var s_head := s_at(time)
+	var climb := 0.0
+	if time > glide_end():
+		var k := clampf((time - glide_end()) / DEPART, 0.0, 1.0)
+		climb = k * k * 90.0
+	var rise := clampf(time / T_RISE, 0.0, 1.0)
+	rise = 1.0 - (1.0 - rise) * (1.0 - rise)
+	for i in range(1, SEGMENTS + 2):
+		var tail := i == SEGMENTS + 1
+		var s := s_head - ((float(SEGMENTS) - 0.5) if tail else float(i - 1)) * GAP
+		var g := path_at(s)
+		var alt := (LIFT + WAVE * sin(time * 2.4 - float(i) * 0.6)) * rise + COLUMN * minf(s, 0.0) + climb
+		var r := R_TAIL if tail else lerpf(R_NECK, R_TAIL, pow(float(i - 1) / float(SEGMENTS - 1), 1.3))
+		# Still in the hole: hidden until its top clears the ground. The collar shows with the head.
+		var alpha := a if i == 1 else a * clampf(alt / r, 0.0, 1.0)
+		out.append({"sp": Iso.ground_to_screen(g) - Vector2(0.0, alt), "r": r, "kind": Piece.K_TAIL if tail else Piece.K_BODY,
+			"g": g, "alt": alt, "alpha": alpha, "vis": alpha > 0.0})
+	var back: Vector2 = out[SEGMENTS].sp - out[SEGMENTS - 1].sp
+	out[SEGMENTS]["back"] = back if back.length() > 0.5 else Vector2.DOWN
+	var ahead := Iso.ground_to_screen(path_at(s_head + 0.1)) - Iso.ground_to_screen(path_at(maxf(s_head - 0.1, 0.0)))
+	if s_head <= 0.0:
+		ahead = Iso.ground_to_screen(origin + _dir) - Iso.ground_to_screen(origin)
+	var way: Array = head_for(ahead)
+	var collar: Dictionary = out[0]
+	collar["skirt"] = collar_skirt(way)
+	out.push_front({"sp": (collar.sp as Vector2) - socket_px(way), "r": HEAD_R, "kind": Piece.K_HEAD, "g": collar.g,
+		"alt": collar.alt, "alpha": a, "vis": a > 0.0, "head": String(way[0]), "mirror": bool(way[1])})
+	return out
+
+
+## The head's neck socket on screen at `time` (SCALE, mirror and height applied): where the collar, disc 1, is placed.
+func socket_at(time: float) -> Vector2:
+	var h: Dictionary = pieces_at(time)[0]
+	return (h.sp as Vector2) + socket_px([h.head, h.mirror])
+
+
+## Staged: every piece where pieces_at() puts it (in whole px; the head drawn off its collar, so the joint never slips);
+## the shadow; the cold light; feathers and soul wisps trailing; the souls in flight; the houses in front see-through.
+func _pose(delta: float) -> void:
+	var a := shown()
+	var ps := pieces_at(t)
+	_posed = ps
+	var rects: Array[Rect2] = []
+	var feet: Array[float] = []
+	var shade: Array = []
+	for k in ps.size():
+		var q: Dictionary = ps[k]
+		var piece := _pieces[k]
+		if not bool(q.vis):
+			piece.visible = false
+			continue
+		var foot := Iso.ground_to_screen(q.g).round()
+		var alt := roundf(float(q.alt))
+		var top := foot + Vector2(0.0, -alt)
+		piece.visible = true
+		piece.alpha = float(q.alpha)
+		piece.r = float(q.r)
+		piece.skirt = q.get("skirt", Vector2.ZERO)
+		piece.position = foot
+		piece.lift = Vector2(0.0, -alt)
+		match piece.kind:
+			Piece.K_HEAD:
+				piece.head = String(q.head)
+				piece.mirror = bool(q.mirror)
+				# A pixel in front of its collar, so the layer always draws the collar under the head.
+				piece.position = foot + Vector2(0.0, 1.0)
+				var pivot := top - socket_px([q.head, q.mirror])
+				piece.lift = pivot - piece.position
+				rects.append(Rect2(pivot - HEAD_PIVOT * SCALE, Vector2(64.0, 64.0) * SCALE))
+			Piece.K_TAIL:
+				piece.back = q.back
+				rects.append(Rect2(top.x - 64.0 * SCALE, top.y - 32.0 * SCALE, 128.0 * SCALE, 64.0 * SCALE))
+			_:
+				var lo := minf(piece.skirt.x, -piece.r)
+				var hi := maxf(piece.skirt.y, piece.r)
+				rects.append(Rect2(top.x + lo, top.y - piece.r * 1.3, hi - lo, piece.r * 2.3))
+		feet.append(foot.y)
+		piece.queue_redraw()
+		if piece.kind != Piece.K_TAIL:
+			var w := BAND if k == 0 else BAND * (0.5 + 0.4 * piece.r / R_NECK)
+			shade.append([q.g, w, piece.alpha * (0.14 if k == 0 else 0.07)])
+	_shade.pts = shade
+	var s_tail := s_at(t) - (float(SEGMENTS) - 0.5) * GAP
+	_shade.hole = a * clampf(1.0 - s_tail, 0.0, 1.0)
+	_shade.queue_redraw()
+	# The cold light under the head.
+	_glow_at = ps[0].g
+	if is_instance_valid(_glow):
+		_glow.position = _glow_at
+		_glow.set_param("intensity", GLOW * a)
+	# A white feather shed now and then as it goes.
+	if a > 0.0 and t >= _next_feather and t < glide_end():
+		_next_feather = t + 0.4
+		FxParts.debris(self, (ps[0].sp as Vector2) + Vector2(0.0, 20.0), 2, 16.0, Vector2(10, 40), FEATHERS, Vector2(1.5, 2.5), true)
+	# Pale wisps of souls trailing off the tail's tip, and off the body here and there.
+	var tl: Dictionary = ps[ps.size() - 1]
+	if bool(tl.vis) and t >= _next_wisp and t < glide_end() + DEPART * 0.6:
+		_next_wisp = t + WISP_EVERY
+		var tip: Vector2 = (tl.sp as Vector2) + (tl.back as Vector2).normalized() * (TAIL_ATTACH.x - 8.0) * SCALE
+		_wisp(tip, 3, 8.0)
+		var mid: Dictionary = ps[2 + posmod(roundi(t / WISP_EVERY) * 7, SEGMENTS - 1)]
+		if bool(mid.vis):
+			_wisp((mid.sp as Vector2) + Vector2(0.0, -float(mid.r) * 0.4), 2, float(mid.r) * 0.6)
+	_fly_souls()
+	_see_through(rects, feet, delta)
+
+
+## A puff of pale soul-smoke at `sp` (screen), drifting up and fading.
+func _wisp(sp: Vector2, count: int, radius_px: float) -> void:
+	var p := FxParts.particles(self, ctx.overhead_back, sp, PixelParticles.Shape.PUFF, WISP)
+	p.drag = 0.5
+	p.burst(count, {"radius": radius_px, "speed": Vector2(4, 16), "alt": Vector2(0, 6), "alt_speed": Vector2(8, 26),
+		"life": Vector2(0.7, 1.3), "size": Vector2(2, 4), "size_end_mul": 1.8})
+
+
+## Staged: a soul rises from one the shadow took (at `at_ground`, fallen at `fell`) and flies into the body.
+func _soul_from(at_ground: Vector2, fell: float) -> void:
+	var w := SoulWisp.new()
+	w.from = Iso.ground_to_screen(at_ground) + Vector2(0.0, -10.0)
+	w.position = w.from
+	w.born = fell
+	_wisps.append(w)
+	track(w, ctx.overhead)
+	FxParts.sparks(self, ctx.overhead, w.from, 6, PALE, Vector2(10, 40), Vector2(30, 90))
+
+
+## Every soul in flight on its way into the nearest piece of the body; one there sparks and is gone (souls_in counts it on
+## the clock, staged or not: _souls_arrive()).
+func _fly_souls() -> void:
+	var i := 0
+	while i < _wisps.size():
+		var w := _wisps[i]
+		if not is_instance_valid(w):
+			_wisps.remove_at(i)
+			continue
+		var k := (t - w.born) / SOUL_FLY
+		if k >= 1.0:
+			FxParts.sparks(self, ctx.overhead, w.position, 5, PALE, Vector2(10, 50), Vector2(10, 60))
+			w.queue_free()
+			_wisps.remove_at(i)
+			continue
+		w.fly(clampf(k, 0.0, 1.0), _nearest(w.position))
+		i += 1
+
+
+## The nearest piece of the body drawn (screen), or `sp` itself if none is.
+func _nearest(sp: Vector2) -> Vector2:
+	var best := sp
+	var d := INF
+	for q in _posed:
+		if bool(q.vis) and (q.sp as Vector2).distance_to(sp) < d:
+			d = (q.sp as Vector2).distance_to(sp)
+			best = q.sp
+	return best
+
+
+## Whatever house stands in front of any piece (it overlaps that piece and its base sorts below the piece's foot) fades.
+func _see_through(rects: Array[Rect2], feet: Array[float], delta: float) -> void:
+	if ctx.env == null:
+		return
+	var front: Array = []
+	if not rects.is_empty():
+		var all := rects[0]
+		for r in rects:
+			all = all.merge(r)
+		for s in ctx.env.structures():
+			if not is_instance_valid(s) or s.destroyed:
+				continue
+			var box: Rect2 = s.view_box()
+			if not box.intersects(all):
+				continue
+			var base: float = s.base_position().y
+			for k in rects.size():
+				if base > feet[k] and box.intersects(rects[k]):
+					front.append(s)
+					break
+		_see.step(front, all, -1.0e9, delta)
+	else:
+		_see.step([], Rect2(), 0.0, delta)
+
+
+## One piece of the serpent in the stand layer, at its ground point (so the layer sorts it), drawn `lift` px off it: the head
+## sprite (at SCALE, its pivot off its collar), a scaled disc under its mantle of feathers, or the tail sprite (at SCALE)
+## turned back along the path.
+class Piece extends Node2D:
+	const K_HEAD := 0
+	const K_BODY := 1
+	const K_TAIL := 2
+	var kind := K_BODY
+	var index := 0
+	## Where it is drawn from its ground point (px): straight up its height; for the head, its pivot.
+	var lift := Vector2.ZERO
+	var r := R_NECK
+	## The collar's feather skirt: its left and right edges (px off its centre), or ZERO for none.
+	var skirt := Vector2.ZERO
+	var alpha := 1.0
+	var head := "east"
+	var mirror := false
+	## The tail: the way it points on screen, from the body to its tip.
+	var back := Vector2.LEFT
+
+	func _draw() -> void:
+		if alpha <= 0.0:
+			return
+		var tint := Color(1.0, 1.0, 1.0, alpha)
+		match kind:
+			K_HEAD:
+				var tex: Texture2D = HEADS.get(head)
+				if tex == null:
+					return
+				draw_set_transform(lift, 0.0, Vector2(-SCALE if mirror else SCALE, SCALE))
+				draw_texture(tex, -HEAD_PIVOT, tint)
+				draw_set_transform(Vector2.ZERO)
+			K_TAIL:
+				var b := back if back.length() > 0.001 else Vector2.LEFT
+				# Pointing left as drawn: turned to `back`, mirrored when it points right so the feathers stay on top.
+				var flip := b.x > 0.0
+				draw_set_transform(lift, b.angle() if flip else b.angle() - PI, Vector2(-SCALE if flip else SCALE, SCALE))
+				draw_texture(TAIL, -TAIL_ATTACH, tint)
+				draw_set_transform(Vector2.ZERO)
+			_:
+				_disc(tint)
+
+	## The collar under the head: bare green scales in the neck's own colours, no feathers, so the neck runs on into it
+	## (its upper half under the head; the lower a rounded end the body leaves from). Where the head's feather mantle hangs
+	## beside the neck down to the cut (the north-east sheet), a skirt of white feathers under it spans the rest of the cut
+	## (`skirt`, collar_skirt()) and ends the mantle in ragged tips.
+	func _collar(tint: Color) -> void:
+		var c := lift
+		if skirt != Vector2.ZERO:
+			var hy := r * 0.5
+			_capsule(c, skirt.x, skirt.y, hy, FEATHER_SHADE * tint)
+			_capsule(c + Vector2(0.0, -SCALE), skirt.x + 2.0 * SCALE, skirt.y - 2.0 * SCALE, hy - 2.0 * SCALE, FEATHER * tint)
+			var n := maxi(2, roundi((skirt.y - skirt.x) / (5.0 * SCALE)))
+			for k in n:
+				var x := lerpf(skirt.x + hy * 0.6, skirt.y - hy * 0.6, float(k) / float(n - 1))
+				var top := c + Vector2(x, hy * 0.5)
+				var tri := PackedVector2Array([top + Vector2(-2.5 * SCALE, 0.0), top + Vector2(2.5 * SCALE, 0.0),
+					top + Vector2(SCALE, hy * (0.7 + 0.3 * float(k % 2)))])
+				draw_colored_polygon(tri, (FEATHER if k % 2 == 0 else FEATHER_SHADE) * tint)
+		PaleSerpentFx.disc(self, c + Vector2(0.0, SCALE), r, (SCALE_DARK * 0.55) * tint)
+		PaleSerpentFx.disc(self, c, r, SCALE_DARK * tint)
+		PaleSerpentFx.disc(self, c + Vector2(0.0, -r * 0.08), r - 2.0 * SCALE, SCALE_LIGHT * tint)
+		# The belly's scale bands, as on the neck.
+		for k in 3:
+			var y := r * (-0.1 + 0.3 * float(k))
+			var half := sqrt(maxf(r * r - y * y, 0.0)) * 0.8
+			draw_line(c + Vector2(-half, y), c + Vector2(half, y), SCALE_DARK * tint, SCALE)
+
+	## A rounded bar from x `a` to `b` (px off `c`), `hy` half high.
+	func _capsule(c: Vector2, a: float, b: float, hy: float, color: Color) -> void:
+		var pts := PackedVector2Array()
+		for k in 9:
+			var ang := PI * 0.5 + PI * float(k) / 8.0
+			pts.append(c + Vector2(a + hy + cos(ang) * hy, sin(ang) * hy))
+		for k in 9:
+			var ang := -PI * 0.5 + PI * float(k) / 8.0
+			pts.append(c + Vector2(b - hy + cos(ang) * hy, sin(ang) * hy))
+		draw_colored_polygon(pts, color)
+
+	## A disc of dark green scales, a lighter sheen low on it, and over its top a mantle of white feathers with grey tips.
+	func _disc(tint: Color) -> void:
+		if index == 1:
+			_collar(tint)
+			return
+		var c := lift
+		PaleSerpentFx.disc(self, c + Vector2(0.0, SCALE), r, (SCALE_DARK * 0.7) * tint)
+		PaleSerpentFx.disc(self, c, r, SCALE_DARK * tint)
+		PaleSerpentFx.disc(self, c + Vector2(-r * 0.1, r * 0.25), r * 0.62, SCALE_LIGHT * tint)
+		for k in 3:
+			var dot := c + Vector2(-r * 0.4 + r * 0.4 * float(k), r * (0.45 + 0.1 * float(k % 2)))
+			draw_texture_rect_region(PaleSerpentFx.disc_texture(), Rect2(dot.round(), Vector2(SCALE, SCALE)), DISC_SOLID,
+				SCALE_DARK * tint)  # the disc's solid middle: it batches with the discs
+		PaleSerpentFx.disc(self, c + Vector2(0.0, -r * 0.3), r * 0.84, FEATHER_SHADE * tint)
+		PaleSerpentFx.disc(self, c + Vector2(0.0, -r * 0.45), r * 0.66, FEATHER * tint)
+		# The feathers' ragged lower edge, pointing down and back.
+		for k in 4:
+			var x := -r * 0.6 + r * 0.4 * float(k)
+			var top := c + Vector2(x, r * 0.15)
+			var tri := PackedVector2Array([top + Vector2(-r * 0.18, 0.0), top + Vector2(r * 0.18, 0.0),
+				top + Vector2(r * 0.05, r * 0.32)])
+			var col: Color = (FEATHER if k % 2 == 0 else FEATHER_SHADE) * tint
+			draw_primitive(tri, PackedColorArray([col, col, col]), PackedVector2Array())  # a primitive batches; a polygon does not
+
+
+## The serpent's shadow on the ground (ground units, ground layer): a soft dark band under the head and body, and the hole it
+## came out of while its body is still pouring out.
+class Shade extends Node2D:
+	var fx: PaleSerpentFx
+	## [ground point, radius, alpha] per piece.
+	var pts: Array = []
+	var hole := 0.0
+
+	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
+		if hole > 0.0:
+			PaleSerpentFx.disc(self, fx.origin, HOLE, Color(0.02, 0.03, 0.03, 0.45 * hole))
+			PaleSerpentFx.disc(self, fx.origin, HOLE * 0.67, Color(0.0, 0.0, 0.0, 0.35 * hole))
+		for p in pts:
+			PaleSerpentFx.disc(self, p[0], float(p[1]), Color(0.0, 0.0, 0.03, float(p[2])))
+
+
+## The cold fog bank rolling ahead of the head (staged only, screen px over the town, under the serpent): soft puffs, each
+## {"g": where it was laid, "born": on the effect's clock, "s": how far along the path, "head_s": the head's then, "side":
+## across the path, "r": its radius (px), "lobe": -1..1 its shape}; each rolls on along the path FOG_ROLL as far as the head
+## goes, spreads out, grows, lifts and fades over FOG_LIFE, and thins where the head is, so the head parts it and is never
+## lost in it.
+class Fog extends Node2D:
+	var fx: PaleSerpentFx
+	var puffs: Array[Dictionary] = []
+	var head := Vector2.INF
+
+	## A new puff; the oldest goes past FOG_MOST.
+	func add(q: Dictionary) -> void:
+		puffs.append(q)
+		while puffs.size() > FOG_MOST:
+			puffs.pop_front()
+
+	## Every puff past FOG_LIFE at `now` (the effect's clock) goes.
+	func prune(now: float) -> void:
+		while not puffs.is_empty() and now - float(puffs[0].born) >= FOG_LIFE:
+			puffs.pop_front()
+
+	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
+		var now := fx.t
+		for q in puffs:
+			var age := now - float(q.born)
+			var k := age / FOG_LIFE
+			var on := float(q.s) + FOG_ROLL * maxf(fx.s_at(now) - float(q.head_s), 0.0)
+			var g := fx.fog_at(on, float(q.side) * (1.0 + 0.25 * age))
+			var a := clampf(age / 0.3, 0.0, 1.0) * clampf((FOG_LIFE - age) / 0.8, 0.0, 1.0)
+			if head != Vector2.INF:
+				a *= clampf((g.distance_to(head) - 1.0) / 1.5, 0.0, 1.0)
+			if a <= 0.0:
+				continue
+			var r := float(q.r) * (0.7 + 0.6 * k)
+			var sp := (Iso.ground_to_screen(g) - Vector2(0.0, 6.0 + 12.0 * k)).round()
+			var lobe := float(q.lobe)
+			# A flat bank: circles squashed 2:1, a dim rim, the body with a lobe to one side, a pale core high on it.
+			PaleSerpentFx.disc(self, sp, r, Color(FOG[0], 0.13 * a), r * 0.5)
+			PaleSerpentFx.disc(self, sp + Vector2(r * 0.35 * lobe, -r * 0.05), r * 0.72, Color(FOG[1], 0.16 * a), r * 0.36)
+			PaleSerpentFx.disc(self, sp + Vector2(-r * 0.3 * lobe, r * 0.025), r * 0.6, Color(FOG[1], 0.13 * a), r * 0.3)
+			PaleSerpentFx.disc(self, sp + Vector2(0.0, -r * 0.1), r * 0.42, Color(FOG[2], 0.15 * a), r * 0.21)
+
+
+## The frost laid ahead of the head (staged only, ground units, on the ground layer under the shadow): rimed patches of
+## radius BAND, each spreading out from its middle as it is laid and fading over FROST_LIFE, FROST_MOST at most, on its own
+## clock (stepped by the effect; after release() it steps itself and frees itself once the last has faded).
+class Frost extends Node2D:
+	## Each {"g": its middle, "born": on this clock, "seed": its needles}.
+	var patches: Array[Dictionary] = []
+	var clock := 0.0
+
+	func _ready() -> void:
+		set_process(false)
+
+	func add(g: Vector2, seed_value: int) -> void:
+		patches.append({"g": g, "born": clock, "seed": seed_value})
+		while patches.size() > FROST_MOST:
+			patches.pop_front()
+
+	func step(delta: float) -> void:
+		clock += delta
+		while not patches.is_empty() and clock - float(patches[0].born) >= FROST_LIFE:
+			patches.pop_front()
+		queue_redraw()
+
+	## The effect is over: fade the rest on its own, then go.
+	func release() -> void:
+		set_process(true)
+
+	func _process(delta: float) -> void:
+		step(delta)
+		if patches.is_empty():
+			queue_free()
+
+	func _draw() -> void:
+		var rng := RandomNumberGenerator.new()
+		for q in patches:
+			var age := clock - float(q.born)
+			var grow := 1.0 - pow(1.0 - clampf(age / 0.6, 0.0, 1.0), 2.0)
+			var fade := 1.0 - age / FROST_LIFE
+			fade = fade * fade * (3.0 - 2.0 * fade)
+			if fade <= 0.0:
+				continue
+			var g: Vector2 = q.g
+			var r := BAND * (0.55 + 0.45 * grow)
+			PaleSerpentFx.disc(self, g, r, Color(FROST[0], 0.05 * fade))
+			PaleSerpentFx.disc(self, g, r * 0.62, Color(FROST[1], 0.05 * fade))
+			# Hoarfrost: a few needles of rime scattered over it.
+			rng.seed = int(q.seed)
+			for k in 7:
+				var at := g + Vector2.from_angle(rng.randf() * TAU) * r * 0.85 * sqrt(rng.randf())
+				var way := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.15, 0.35) * grow
+				draw_line(at - way, at + way, Color(FROST[2], 0.4 * fade), 0.05)
+
+
+## A soul flying (staged only, screen px in the overhead layer): a bright pale mote with a fading tail, rising from one the
+## shadow took and swooping on an arc into the body.
+class SoulWisp extends Node2D:
+	var from := Vector2.ZERO
+	var born := 0.0
+	var _trail: Array[Vector2] = []
+	var _k := 0.0
+
+	## `k` 0..1 of the way from where they fell, up and over, into `to` (the nearest piece of the body).
+	func fly(k: float, to: Vector2) -> void:
+		_k = k
+		var e := k * k * (3.0 - 2.0 * k)
+		var mid := (from + to) * 0.5 + Vector2(0.0, -40.0 - from.distance_to(to) * 0.25)
+		var p := from.lerp(mid, e).lerp(mid.lerp(to, e), e)
+		var side := (to - from).orthogonal().normalized() if from.distance_to(to) > 0.5 else Vector2.RIGHT
+		p += side * sin(k * PI * 3.0) * 5.0 * (1.0 - k)
+		_trail.push_front(p)
+		if _trail.size() > 9:
+			_trail.pop_back()
+		position = p
+		queue_redraw()
+
+	func _draw() -> void:
+		var fade := clampf(_k * 6.0, 0.0, 1.0)
+		var n := _trail.size()
+		for j in range(n - 1, 0, -1):
+			var f := 1.0 - float(j) / float(n)
+			PaleSerpentFx.disc(self, _trail[j] - position, 1.0 + 2.5 * f, Color(0.78, 0.94, 0.86, 0.4 * f * fade))
+		PaleSerpentFx.disc(self, Vector2.ZERO, 7.0, Color(0.92, 0.96, 1.0, 0.16 * fade))
+		PaleSerpentFx.disc(self, Vector2.ZERO, 4.0, Color(0.92, 0.96, 1.0, 0.5 * fade))
+		PaleSerpentFx.disc(self, Vector2.ZERO, 2.0, Color(1.0, 1.0, 1.0, 0.95 * fade))

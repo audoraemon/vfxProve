@@ -12,6 +12,7 @@ static func run(t) -> void:
 	_offscreen(t, b)
 	_long_steps(t, b)
 	_evac_at_30(t, b)
+	_frame_base(t, b)
 	(b.crowd as Crowd).clear()
 	t.check(Person.offscreen_every == Person.OFFSCREEN_EVERY,
 		"a capital crowd torn down leaves Person.offscreen_every at Aldermere's %d (%d)" % [Person.OFFSCREEN_EVERY,
@@ -84,6 +85,38 @@ static func _offscreen(t, b: Dictionary) -> void:
 		p.mind = Person.Mind.CALM
 	Person.view = view
 	t.check(fled > 0.28 and fled < 0.39, "off screen, the fleeing still step every 3rd frame (%.2f)" % fled)
+
+
+## The engine's frame count is read from Person.frame_base, which the test runners set before each suite: whatever frames an earlier suite
+## awaited, a suite's people step on the frames they step on when it runs alone (a suite that awaited frames once left half of a
+## later suite's calm people never stepping).
+static func _frame_base(t, b: Dictionary) -> void:
+	var people := _out_of_doors((b.crowd as Crowd).citizens)
+	var view := Person.view
+	var base := Person.frame_base
+	Person.view = Rect2(-100000.0, -100000.0, 10.0, 10.0)  # everyone off screen: each steps on its own frames only
+	Person.frame_no = 0
+	var alone := _stepped(people)
+	Person.frame_no = -1
+	Person.frame_base = Engine.get_process_frames()
+	var counted := _stepped(people)
+	Person.frame_base = Engine.get_process_frames() - 1
+	var moved := _stepped(people)
+	Person.frame_base = base
+	Person.view = view
+	t.check(counted == alone and moved != alone,
+		"the engine's frame count is counted from Person.frame_base: the same %d of %d step as on frame 0, a frame on they do not"
+			% [alone.count(true), alone.size()])
+
+
+## Which of `people` one frame() steps: one that steps hands on all the time it skipped (_offscreen_delta back to 0).
+static func _stepped(people: Array) -> Array:
+	var out := []
+	for p: Person in people:
+		p._offscreen_delta = 0.0
+		p.frame(1.0 / 60.0)
+		out.append(p._offscreen_delta == 0.0)
+	return out
 
 
 ## Those the crowd's ticker steps (nobody indoors).

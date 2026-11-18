@@ -52,6 +52,13 @@ const POWERS := [
 		"blurb": "One person grows frail and slow, then dies. The body draws a crowd.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "one grows frail and slow, dies in 10 s; the body draws a crowd",
 		"quiet": true, "authority": "death"},
+	{"key": "raise", "name": "Raise the Dead", "path": "res://src/fx/death/raise_the_dead.gd",
+		"blurb": "Every body in the ring rises to hunt the living, or its soul to haunt them.",
+		"dp": 1, "cooldown": 25.0, "aim": "click", "needs": "body", "pick_r": 3.0,
+		"shape": "click near bodies (every remain within 3 of the cursor is marked, eight rise at most, the oldest first): ZOMBIE -- each gets up for 30 s and hunts the nearest, and whoever they kill gets up too, 2 more in all for the whole cast; SPIRIT -- each soul rises for 20 s, drifts after its own nearest group, and everyone within 4 of one flees; it only haunts, it possesses no one, and a body with no soul to raise is marked in red",
+		"authority": "death", "modes": [
+			{"key": "zombie", "name": "ZOMBIE"},
+			{"key": "spirit", "name": "SPIRIT", "needs": "soul"}]},
 	{"key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd",
 		"blurb": "Nobody in the circle can leave it for a time.",
 		"dp": 1, "cooldown": 20.0, "aim": "click", "shape": "nobody in the circle can leave it, 15 s",
@@ -113,6 +120,10 @@ const POWERS := [
 		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "the bell tolls all is well, now and for 45 s; or calls the guard to a place; Q/E",
 		"quiet": true, "authority": "decree", "modes": [
 			{"key": "well", "name": "ALL IS WELL"}, {"key": "guard", "name": "CALL THE GUARD", "area": {"r": 1.5}}]},
+	{"key": "breath", "name": "Breathing Is Prohibited", "path": "res://src/fx/decree/breathing_is_prohibited.gd",
+		"blurb": "The air goes out of a circle. Three seconds inside kills.",
+		"dp": 2, "cooldown": 25.0, "aim": "click", "shape": "no air in the circle for 8 s: 3 s inside kills, leaving saves",
+		"authority": "decree"},
 	{"key": "heaven", "name": "Heaven Splitter", "path": "res://src/fx/set2/heaven_splitter.gd",
 		"dp": 2, "cooldown": 30.0, "aim": "drag", "shape": "line + 8 fissures", "authority": "ruin"},
 	{"key": "scatter", "name": "Scatter Strike", "path": "res://src/fx/ruin/scatter_strike.gd",
@@ -165,6 +176,11 @@ const POWERS := [
 			{"HOUNDS": 5, "HUNT": 34.0, "BLOWS": 4, "cooldown": 37.0},
 			{"HOUNDS": 6, "HUNT": 36.0, "BLOWS": 5, "cooldown": 35.5},
 			{"HOUNDS": 6, "HUNT": 38.0, "BLOWS": 5, "cooldown": 34.0, "twist": true, "twist_text": "Quarry: click a person and every hound hunts them"}]},
+	{"key": "gravecall", "name": "Gravecall", "path": "res://src/fx/death/gravecall.gd",
+		"blurb": "Wraiths rise where you mark, and haunt where you send them.",
+		"dp": 2, "cooldown": 30.0, "aim": "two clicks",
+		"shape": "no body needed: the first click marks where 3 wraiths rise out of the ground, the second sends them (a route is drawn between the two); they drift through walls and haunt a circle of 3 there for 20 s, and a soldier a wraith passes through is frozen for 3 s",
+		"authority": "death"},
 	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"blurb": "A roaming vortex tears through the town and flings people about.",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin",
@@ -178,6 +194,16 @@ const POWERS := [
 		"blurb": "A fast plague spreads through the crowds.",
 		"dp": 3, "cooldown": 48.0, "aim": "click", "shape": "a fast plague spreading through crowds", "quiet": true,
 		"authority": "death"},
+	{"key": "guise", "name": "Corpse Guise", "path": "res://src/fx/death/corpse_guise.gd",
+		"blurb": "Up to 4 faithful pass as the walking dead: the law can't see them for 25 s.",
+		"dp": 3, "cooldown": 50.0, "aim": "click",
+		"shape": "the 4 nearest within 2 pass as the walking dead for 25 s, each under a grey shroud with a closed eye over the head: soldiers, watchmen and inquisitors look straight past them, and Death's own undead leave them alone",
+		"quiet": true, "authority": "death"},
+	{"key": "walker", "name": "Walking Corpse", "path": "res://src/fx/death/walking_corpse.gd",
+		"blurb": "A body gets up and does your bidding: walk, go in, or kill without a sound.",
+		"dp": 3, "cooldown": 30.0, "aim": "two clicks", "needs": "body", "reaches_hidden": true,
+		"shape": "click a body, then give it its first order; it gets up for up to 40 s, nobody panics, and a Death sigil hangs over it; click it again to open the wheel: WALK -- it goes there by the streets and stands and waits; ATTACK -- it goes for the person you click, one within 6 it can see, for up to 10 s (at 1.6 of a walk) and kills them by touch, silently, leaving a body, 2 kills in all; ENTER -- it goes into the building under the click and lies hidden there, a plague body bringing the plague in to 3 sheltering there; orders reach 12; at the end it lies down where it stands; once the power is ready again, a click away from it raises another body and the first lies down",
+		"quiet": true, "authority": "death"},
 	{"key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd",
 		"blurb": "A dragon breathes a cone of fire and burns all before it.",
 		"dp": 3, "cooldown": 54.0, "aim": "click", "shape": "cone, faces down-right on screen", "authority": "ruin",
@@ -200,6 +226,19 @@ const POWERS := [
 	{"key": "magnify", "name": "Magnify", "path": "res://src/fx/decree/magnify.gd",
 		"dp": 3, "cooldown": 75.0, "aim": "click", "shape": "doubles what is already there: fires, cracks, madness, spells",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
+	{"key": "redefine", "name": "Redefine", "path": "res://src/fx/decree/redefine.gd",
+		"blurb": "Name up to three people; for 25 s the law agrees.",
+		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "up to 3 people by the click named for 25 s: the guards hunt a criminal, pass an officer, see no nobody; Q/E",
+		"quiet": true, "authority": "decree", "modes": [
+			{"key": "criminal", "name": "CRIMINAL"}, {"key": "officer", "name": "OFFICER"}, {"key": "nobody", "name": "NOBODY"}]},
+	{"key": "bound", "name": "Bound in Law", "path": "res://src/fx/decree/bound_in_law.gd",
+		"blurb": "Two people within 10 share one fate for 20 s.",
+		"dp": 3, "cooldown": 45.0, "aim": "two clicks", "shape": "two people within 10 of each other share one fate for 20 s: struck, felled, stunned, asleep, seized or dead, both are",
+		"quiet": true, "authority": "decree"},
+	{"key": "disorder", "name": "Disorder", "path": "res://src/fx/decree/disorder.gd",
+		"blurb": "For 15 s every choice in a circle goes wrong.",
+		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "a circle of 5 for 15 s: the frightened run toward the danger, a guard goes for the farthest man, no shelter takes anyone in, the farthest gate",
+		"authority": "decree"},
 	{"key": "unseen", "name": "Unseen Hour", "path": "res://src/fx/quiet/unseen_hour.gd",
 		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "for 20 s nothing in the circle is seen: no alarm, no fright, nobody comes",
 		"quiet": true, "authority": "veil"},
@@ -283,6 +322,23 @@ const POWERS := [
 	{"key": "curfew", "name": "Curfew", "path": "res://src/fx/decree/curfew.gd",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "everyone in the circle sleeps where they stand, 30 s; a loud blow or a hurt wakes them",
 		"quiet": true, "alarm": 1.0, "authority": "decree"},
+	{"key": "erase", "name": "Erasing Distance", "path": "res://src/fx/decree/erasing_distance.gd",
+		"blurb": "A dragged line folds to its middle, crushes, springs back.",
+		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "a line up to 10 long: within 1 crushed at its middle, buildings on it felled, within 2 cracked, within 3 thrown down; rubble left on it",
+		"authority": "decree"},
+	{"key": "eminent", "name": "Eminent Domain", "path": "res://src/fx/decree/eminent_domain.gd",
+		"blurb": "A dragged road is claimed: all on it torn down.",
+		"dp": 4, "cooldown": 80.0, "aim": "drag", "shape": "a strip 10 long and 2 wide: every building, wall, stall, tree and piece of decor on it torn down, everyone on it thrown clear and knocked down at half health; leaves a clear street lined with rubble",
+		"authority": "decree"},
+	{"key": "fenced", "name": "Fenced Rule", "path": "res://src/fx/decree/fenced_rule.gd",
+		"blurb": "A fenced district holds two of five rules for 30 s.",
+		"dp": 5, "cooldown": 80.0, "aim": "click", "shape": "a circle of 7 for 30 s under two rules, your faithful too: NO RUNNING, NO ARMS (no guard strikes or seizes), NO DOORS, NO SIGHT (none sees past 2), NO LEAVING; Q/E",
+		"authority": "decree", "modes": [
+			{"key": "run_arms", "name": "NO RUNNING + NO ARMS"}, {"key": "run_doors", "name": "NO RUNNING + NO DOORS"},
+			{"key": "run_sight", "name": "NO RUNNING + NO SIGHT"}, {"key": "run_leave", "name": "NO RUNNING + NO LEAVING"},
+			{"key": "arms_doors", "name": "NO ARMS + NO DOORS"}, {"key": "arms_sight", "name": "NO ARMS + NO SIGHT"},
+			{"key": "arms_leave", "name": "NO ARMS + NO LEAVING"}, {"key": "doors_sight", "name": "NO DOORS + NO SIGHT"},
+			{"key": "doors_leave", "name": "NO DOORS + NO LEAVING"}, {"key": "sight_leave", "name": "NO SIGHT + NO LEAVING"}]},
 	{"key": "allroads", "name": "All Roads Lead Here", "path": "res://src/fx/control/all_roads_lead_here.gd",
 		"blurb": "Every road in a district leads the people to one spot.",
 		"dp": 4, "cooldown": 90.0, "aim": "click", "shape": "for 25 s every road in a district of 10 ends at the click: up to 80 people keep their own minds, but every way they take brings them here",
@@ -358,6 +414,11 @@ const POWERS := [
 			{"COMMAND_X": 1.2, "GATHER_CAPACITY": 175, "cooldown": 160.0},
 			{"COMMAND_X": 1.3, "GATHER_CAPACITY": 185, "cooldown": 150.0},
 			{"COMMAND_X": 1.4, "GATHER_CAPACITY": 200, "cooldown": 140.0, "twist": true, "twist_text": "Second Word: click again for a second command"}]},
+	{"key": "gatebelow", "name": "The Gate Below", "path": "res://src/fx/death/the_gate_below.gd",
+		"blurb": "The ground splits; hands drag the living under and their souls wither.",
+		"dp": 5, "cooldown": 90.0, "aim": "click",
+		"shape": "the ground splits into a jagged rift filling the 6 around the click for 12 s, with 36 grasping hands reaching up all over it; every 0.5 s they drag the nearest within 6 to its edge and under, leaving no body; when it closes every soul it took climbs out as a wraith, flies out along its own sector of the ring, then hunts the nearest living person within 12 of it in that sector for 20 s: a wraith's touch withers him for 6 s (grey, slowed, panicking) and he dies where he stands, leaving a body; 3 touches and it is spent",
+		"authority": "death"},
 	{"key": "abolition", "name": "Abolition", "path": "res://src/fx/decree/abolition.gd",
 		"blurb": "One law is void for 15 s: the clock, the escape limit or the ward. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "one law is void for 15 s: the clock (time stops), the escape limit, the ward; Q/E; once",
@@ -402,6 +463,11 @@ const POWERS := [
 			{"REGION": 16.0, "MAX_FIGHTERS": 160, "DURATION": 29.0},
 			{"REGION": 17.0, "MAX_FIGHTERS": 170, "DURATION": 32.0},
 			{"REGION": 18.0, "MAX_FIGHTERS": 180, "DURATION": 35.0, "twist": true, "twist_text": "Turn the Tide: click a fighter to turn them"}]},
+	{"key": "pale", "name": "Pale Reign", "path": "res://src/fx/death/pale_reign.gd",
+		"blurb": "A district goes grey; pale ghosts run it, and every death adds one.",
+		"dp": 6, "cooldown": 120.0, "aim": "click",
+		"shape": "the colour drains out of a district of 10 for 16 s, grey and silent: everyone in it crawls, its fires gutter, the bell is hushed; 4 pale ghosts pour out at once and every 1.5 s the weakest one still there dies without a sound and rises as your grey-eyed servant for 20 s (16 at most); every death in the district adds a ghost (24 at a time); the ghosts run through walls at 2.2 times a walk, kill by touch only inside the district, and at the 24th kill they kill no more but run on and frighten, all the reign, and sink when it ends",
+		"authority": "death"},
 	{"key": "fargate", "name": "The Far Gate", "path": "res://src/fx/control/the_far_gate.gd",
 		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a door of stars opens for 15 s: up to 40 people within 10 walk through it with their dogs and goods, gone for the night; soldiers resist; once a descent",
 		"quiet": true, "alarm": 1.0, "authority": "passage"},
@@ -425,6 +491,24 @@ const POWERS := [
 			{"RADIUS": 13.0, "MAX_DOORS": 21, "SPAN": 52.0, "MAX_SPIRITS": 190},
 			{"RADIUS": 13.5, "MAX_DOORS": 22, "SPAN": 56.0, "MAX_SPIRITS": 205},
 			{"RADIUS": 14.0, "MAX_DOORS": 24, "SPAN": 60.0, "MAX_SPIRITS": 220, "twist": true, "twist_text": "Rise Again: the horde's dead rise as ghosts"}]},
+	{"key": "cage", "name": "The Closing Cage", "path": "res://src/fx/decree/the_closing_cage.gd",
+		"blurb": "A ring of bars closes in and crushes. Once a descent.",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a ring of bars round a district of 12 closes to 1.5 across over 30 s: nobody passes it, people are pushed in ahead of it, one pinned against a building is cut down, every building it reaches is crushed, and at the end all inside die; once a descent",
+		"authority": "decree"},
+	{"key": "sealed", "name": "The Sealed Verdict", "path": "res://src/fx/decree/the_sealed_verdict.gd",
+		"blurb": "A district is written down; at 30 s all inside die.",
+		"dp": 6, "cooldown": 999.0, "aim": "click", "shape": "a district of 10 written into the ledger: the town sees nothing and goes on, walking in and out; at 30 s the bell strikes once and everyone inside at that moment dies where he stands, without a cry, indoors too; once a descent",
+		"quiet": true, "authority": "decree"},
+	{"key": "serpent", "name": "The Pale Serpent", "path": "res://src/fx/death/pale_serpent.gd",
+		"blurb": "A vast serpent glides in on cold fog; its shadow kills. Once a descent.",
+		"dp": 6, "cooldown": 999.0, "aim": "drag",
+		"shape": "a vast feathered serpent, twice the old size, rises out of the ground and glides along the drag (14 at most) for 10 s, then loops once, a wave of fog and frost rolling ahead of it and the lights dimming as it comes: whoever its shadow crosses (4 wide) dies at once without a sound and lies whole, ready to rise, and the soul flies into the serpent; everyone out in the open within 8 ahead of it, in a cone of 30 degrees each side, panics; houses are left standing; whoever sees it rise within 12 sickens for 20 s, slowed, and takes the plague if it is in town; everyone within 5 of it flees; drag to send it; once a descent",
+		"authority": "death"},
+	{"key": "gravetide", "name": "Grave Tide", "path": "res://src/fx/death/grave_tide.gd",
+		"blurb": "Graves burst; the dead storm in with a bone giant. Once a descent.",
+		"dp": 6, "cooldown": 999.0, "aim": "click",
+		"shape": "the graves of the whole city burst (up to 24, one in each district and between), each raising a skeleton warrior and a ghoul that hunt from where they rose; every unused body in town (up to 30, the oldest first) gets up as a zombie too, 60 of the living dead at most, each for 40 s, and they claw down the buildings they pass; a giant of bones assembles at the grave nearest the click over 1.2 s and walks the town by the streets from grave to grave, hunting any soldier within 10: it lives 60 s, lands with a slam and slams again every 3 s (soldiers within 3.5 die, everyone else is thrown back and frightened, and the buildings in reach are struck), takes 12 blows, claws down the walls in its way, fells a soldier with a blow, and the undead within 6 of it move 20% faster; the buildings a night needs standing are spared; once a descent",
+		"authority": "death"},
 	{"key": "nova", "name": "Nuclear Nova", "path": "res://src/fx/nuclear_nova.gd",
 		"dp": 4, "cooldown": 120.0, "aim": "click", "shape": "huge circle", "authority": "ruin"},
 ]
@@ -454,15 +538,47 @@ const REACH := {
 	"pilgrim": [6.0, 9.0, 0.4, 15.0],
 	"deep": [5.0, 8.0, 0.4, 4.0],
 	"houndgate": [6.0, 9.0, 0.6, 30.0],
+	# Raise the Dead: the dead getting up in the street is seen and heard as a hound gate's hounds are; the danger lasts the
+	# zombies' 30 s (a spirit's is its own fright)
+	"raise": [6.0, 9.0, 0.6, 30.0],
+	# Gravecall: three pale spirits rising and drifting through the street are seen and heard like a spirit's wail; the danger lasts the haunt
+	"gravecall": [5.0, 8.0, 0.5, 20.0],
 	# Heaven's Door: a door taller than a house falling out of a shaft of light is seen and heard across the town, as the
 	# Light of Solaris is; the danger lasts its opening and its pull
 	"heavendoor": [16.0, 22.0, 0.9, 16.0],
 	# Doors of the Dead: a district's doors burning cold and the other side pouring out of them is seen and heard far
 	# off; the danger lasts the span
 	"deaddoors": [16.0, 20.0, 1.0, 50.0],
+	# The Gate Below: the ground opening into a pit ringed in bone and pale arms dragging people under are seen and heard
+	# across the square; the danger lasts the pit's 12 s
+	"gatebelow": [10.0, 14.0, 0.8, 12.0],
+	# Pale Reign: a district gone grey is seen across the town, but it is silent (it hushes the town), so it is heard only
+	# near; the danger lasts its 16 s
+	"pale": [14.0, 10.0, 0.8, 16.0],
+	# The Pale Serpent: a serpent the size of a street gliding over the roofs is seen across the town and heard far (wind and
+	# feathers); the danger lasts its glide and loop
+	"serpent": [24.0, 16.0, 0.9, 14.0],
+	# Grave Tide: the dead getting up all over the town are seen far and heard (bone grinding, the giant's steps); the danger
+	# is held where the horde converges, the click, while it gathers
+	"gravetide": [20.0, 18.0, 0.9, 20.0],
 	"shatter": [8.0, 12.0, 0.8, 6.0],
 	# Tempest: seen by the whole town as it gathers; the cast's own danger is small (the bolts frighten, one by one)
 	"tempest": [40.0, 40.0, 0.3, 2.0],
+	# Breathing Is Prohibited: a grey-gold haze where sound dies is seen more than heard; dangerous while the air is gone
+	"breath": [6.0, 6.0, 0.6, 8.0],
+	# Erasing Distance: a street folding shut like cloth and tearing open again is seen and heard across a district;
+	# the danger lasts the fold and the spring back
+	"erase": [10.0, 14.0, 0.8, 4.0],
+	# Disorder: a crooked bell tolling over a market is heard across a district; its danger is the toll itself, short
+	"disorder": [8.0, 12.0, 0.4, 3.0],
+	# Eminent Domain: a street of houses torn down in one roar is seen and heard across a district; the danger is the
+	# tear and the throw
+	"eminent": [10.0, 16.0, 0.8, 3.0],
+	# Fenced Rule: a ring of iron posts driven into a district rings across it; its danger is the driving, short and mild
+	"fenced": [9.0, 13.0, 0.4, 3.0],
+	# The Closing Cage: a ring of brass bars grinding in across a district is seen and heard far off; the danger is
+	# deadly and lasts the whole close
+	"cage": [16.0, 20.0, 1.0, 31.0],
 }
 ## When each loud power first kills (v0.11.2, spec §3.2): seconds after the cast, read from its effect script's own constants
 ## (tests/test_awareness.gd checks each). A loud power's danger counts from here (Crowd.on_cast()); the town looks at the
@@ -471,6 +587,8 @@ const IMPACT := {
 	"smite": 0.35, "heaven": 1.4, "tornado": 1.0, "dragon": 1.2, "tsunami": 1.9, "gravity": 0.8, "laser": 2.0,
 	"orbital": 1.45, "cinder": 1.2, "judgement": 2.0, "glacial": 1.2, "solaris": 1.2, "schism": 1.8, "nova": 2.3, "tempest": 5.0, "scatter": 0.9, "shatter": 1.2, "windfall": 0.8,
 	"hellspark": 0.6, "pilgrim": 0.8, "deep": 0.8, "houndgate": 3.0, "heavendoor": 1.2, "deaddoors": 2.6,
+	"breath": 0.5, "erase": 2.1, "disorder": 0.85, "eminent": 0.8, "fenced": 0.8, "cage": 0.8,
+	"raise": 0.8, "gravecall": 0.8, "gatebelow": 2.5, "pale": 1.5, "serpent": 1.0, "gravetide": 1.2,
 }
 ## For a cast with no known power (the sandbox, scripted tests): v0.03's single 7-unit fright, heard to 10.
 const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
@@ -742,7 +860,7 @@ static func authority_title(authority: String) -> String:
 ## two families, loadout A's and loadout B's (RouteBook); the gate proves both.
 const FAMILY := {
 	"doom": "veil", "blight": "veil", "unseen": "veil",
-	"deathmark": "death", "pestilence": "death",
+	"deathmark": "death", "pestilence": "death", "raise": "death", "gravecall": "death", "guise": "death", "walker": "death", "gatebelow": "death", "pale": "death", "serpent": "death", "gravetide": "death",
 	"smite": "strike", "heaven": "strike", "tornado": "strike", "tsunami": "strike", "gravity": "strike", "laser": "strike",
 	"orbital": "strike", "judgement": "strike", "glacial": "strike", "solaris": "strike", "nova": "strike", "tempest": "strike", "scatter": "strike", "shatter": "strike",
 	"ember": "fire", "dragon": "fire", "cinder": "fire",
@@ -750,7 +868,7 @@ const FAMILY := {
 	"wisp": "draw", "delusion": "draw", "clearmind": "draw",
 	"discord": "hold", "sanctuary": "hold", "anathema": "hold",
 	"madness": "turn", "turncoat": "turn", "hatred": "turn", "verdict": "turn", "schism": "turn",
-	"noleave": "decree", "belllies": "decree", "magnify": "decree", "curfew": "decree", "abolition": "decree",
+	"noleave": "decree", "breath": "decree", "belllies": "decree", "magnify": "decree", "redefine": "decree", "bound": "decree", "disorder": "decree", "curfew": "decree", "erase": "decree", "eminent": "decree", "fenced": "decree", "abolition": "decree", "cage": "decree", "sealed": "decree",
 	"thorns": "passage", "mirror": "passage", "skylift": "passage", "windfall": "passage",
 	"hellspark": "passage", "pilgrim": "passage", "deep": "passage", "houndgate": "passage",
 	"allroads": "passage", "yesterday": "passage", "everydoor": "passage", "fargate": "passage",

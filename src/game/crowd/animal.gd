@@ -11,8 +11,18 @@ extends Node2D
 ## DOGS and so never in the town's pack. DEMON (a horned brute a head taller than a man) and GHOST (a hooded shroud that
 ## hovers off the ground, half seen through) come from the same side (Visitors, Doors of the Dead): OTHER_SIDE, all
 ## three run at a dog's pace before their summoner's multiplier, and none is ever in the town's pack.
-enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND, DEMON, GHOST }
+## Death's own dead (UNDEAD, Visitors via DeathParts) are of the same kind: ZOMBIE wears the dead person's own people sprite,
+## greyed, with pale fire in its eyes (wear()); SPIRIT is a thin pale shape with a trailing wisp, drawn in code, no hood and
+## half seen through, its face fading in and out (not Passage's GHOST); BONE_GIANT is the 96 px painted bone giant, drawn at
+## its own size with a pale fire in its sockets. UNDEAD is kept apart from OTHER_SIDE so that list stays Passage's.
+## Death's second review adds three, each on its painted sheet (the animal format, canvas 48): PALE_GHOST (Pale Reign's gaunt,
+## faceless runner, drawn times its worn_tint; with no sheet on disk, the wraith's draw), SKELETON (an armed skeleton warrior)
+## and GHOUL (low and long, its bite a leap). SOLID_UNDEAD are the undead with a body a blow can land on.
+enum Breed { HOUND, SHEPHERD, TERRIER, TABBY, BLACK_CAT, GREY_CAT, WOLFHOUND, SPANIEL, WHITE_CAT, BROWN_CAT, HELLHOUND, DEMON, GHOST, ZOMBIE, SPIRIT, BONE_GIANT, WRAITH, PALE_GHOST, SKELETON, GHOUL }
 const OTHER_SIDE: Array[Breed] = [Breed.HELLHOUND, Breed.DEMON, Breed.GHOST]
+const UNDEAD: Array[Breed] = [Breed.ZOMBIE, Breed.SPIRIT, Breed.BONE_GIANT, Breed.WRAITH, Breed.PALE_GHOST, Breed.SKELETON,
+	Breed.GHOUL]
+const SOLID_UNDEAD: Array[Breed] = [Breed.ZOMBIE, Breed.SKELETON, Breed.GHOUL]
 const DOGS: Array[Breed] = [Breed.HOUND, Breed.SHEPHERD, Breed.TERRIER, Breed.WOLFHOUND, Breed.SPANIEL]
 const CATS: Array[Breed] = [Breed.TABBY, Breed.BLACK_CAT, Breed.GREY_CAT, Breed.WHITE_CAT, Breed.BROWN_CAT]
 enum State { WANDER, SIT, FOLLOW, FLEE, ATTACK, GATHER, TRANCE, DEAD }
@@ -34,7 +44,71 @@ const PALETTE := {
 	Breed.HELLHOUND: [Color("1c1a22"), Color("0c0a10"), Color("ff7a1a")],
 	Breed.DEMON: [Color("2a1a1e"), Color("120a0c"), Color("ff6a1a")],
 	Breed.GHOST: [Color("dfeeff"), Color("8aa8c8"), Color("ffffff")],
+	Breed.ZOMBIE: [Color("8a8c86"), Color("4a4c48"), Color("d8d2bf")],
+	Breed.SPIRIT: [Color("dfe6ea"), Color("9aa4aa"), Color("f4fbff")],
+	Breed.BONE_GIANT: [Color("d8d2bf"), Color("5a5650"), Color("f2eedc")],
+	Breed.WRAITH: [Color("dfe6ea"), Color("9aa4aa"), Color("f4fbff")],
+	Breed.PALE_GHOST: [Color("e6ecf2"), Color("9aa4aa"), Color("f4fbff")],
+	Breed.SKELETON: [Color("d8d2bf"), Color("5a5650"), Color("f2eedc")],
+	Breed.GHOUL: [Color("8a8c86"), Color("3a3c38"), Color("d8d2bf")],
 }
+## Death's dead (spec section 6): the palette is bone white, ash grey, pale-white fire, and grave green kept to eyes.
+const SPIRIT_BODY := Color(0.86, 0.9, 0.94, 0.5)
+const SPIRIT_HOVER := 5.0
+const SPIRIT_BOB := 1.2
+## The wraith's painted sheet (rows drift_se, drift_ne, strike_se; its json holds a [w, h] cell, so sheet() is not used).
+const WRAITH_HOVER := 6.0
+const WRAITH_BOB := 2.0
+const WRAITH_SHEET := "res://assets/pixellab/fx/wraith/wraith.png"
+## A wraith: the painted sheet (drift_ne with its back turned, strike_se while the bite pose plays, else drift_se), mirrored
+## by `facing`, over a faint cold aura. Without the sheet on disk, the spirit shape at twice the size.
+func _draw_wraith(flash: bool) -> void:
+	var aura := DeathParts.GRAVE_GREEN
+	draw_set_transform(Vector2(0, -8) + _draw_off, 0.0, Vector2(1.0, 0.7))
+	draw_circle(Vector2.ZERO, 9.0, Color(aura, 0.06))
+	draw_circle(Vector2.ZERO, 6.0, Color(aura, 0.10))
+	draw_set_transform(_draw_off)
+	# It hovers 6 px with a 2 px bob (each wraith on its own phase), the aura staying on the ground.
+	var lift := Vector2(0, -(WRAITH_HOVER + WRAITH_BOB * sin(_hover_t * 2.4 + float(get_instance_id() % 628) / 100.0)))
+	var sh := _wraith_sheet()
+	if sh.is_empty():
+		draw_set_transform(lift.round() + _draw_off, 0.0, Vector2(2.0, 2.0))
+		_draw_spirit(flash)
+		draw_set_transform(_draw_off)
+		return
+	var row := 1 if back else 0
+	var n: int = sh.frames[row]
+	var f := int(_hover_t * float(sh.fps)) % n
+	if _bite_t < 1.0:
+		row = 2
+		n = sh.frames[2]
+		f = mini(int(_bite_t * float(sh.fps)), n - 1)
+	var cell: Vector2 = sh.cell
+	var foot: Vector2 = sh.foot
+	var col := worn_tint * (Color(2.0, 2.0, 2.0) if flash else Color.WHITE)
+	draw_set_transform(lift.round() + _draw_off, 0.0, Vector2(float(facing), 1.0))
+	draw_texture_rect_region(sh.tex, Rect2(-foot, cell), Rect2(Vector2(f * cell.x, row * cell.y), cell), col)
+	draw_set_transform(_draw_off)
+
+
+## The wraith's sheet: {tex, cell, foot, fps, frames}; empty when it is not on disk or not imported.
+static func _wraith_sheet() -> Dictionary:
+	if _wraith != null:
+		return _wraith
+	var out := {}
+	var json := "res://assets/pixellab/fx/wraith/wraith.json"
+	if ResourceLoader.exists(WRAITH_SHEET) and FileAccess.file_exists(json):
+		var meta: Variant = JSON.parse_string(FileAccess.get_file_as_string(json))
+		if meta is Dictionary:
+			out = {"tex": load(WRAITH_SHEET), "cell": Vector2(meta.cell[0], meta.cell[1]),
+				"foot": Vector2(meta.foot[0], meta.foot[1]), "fps": float(meta.fps), "frames": meta.frames}
+	_wraith = out
+	return out
+
+
+## The bone giant's eye sockets, from its feet, on the painted sheet (the skull faces the way it walks).
+const GIANT_SOCKET := Vector2(13.0, -53.0)
+const GIANT_FIRE := Color(0.92, 0.97, 1.0)
 ## A ghost hovers GHOST_HOVER px off the ground, bobbing GHOST_BOB px, and is drawn GHOST_TINT (the other side's green, a little seen through).
 const GHOST_HOVER := 4.0
 const GHOST_BOB := 1.5
@@ -97,6 +171,9 @@ const BITE_EVERY := 0.9
 const REACH := 0.4
 ## How far a maddened animal looks for someone to go for.
 const HUNT_SIGHT := 6.0
+## A blow's recoil (struck_from()): how far the drawing is pushed, screen px, and how long it takes to ease back.
+const RECOIL_PX := 3.0
+const RECOIL_FOR := 0.12
 
 var breed := Breed.HOUND
 var state := State.WANDER
@@ -116,6 +193,11 @@ var _bite_in := 0.0
 var _anim := 0.0
 var _frame := 0
 var _flash := 0.0
+## A blow's recoil (struck_from()): the way the drawing is pushed on screen (unit), seconds left of it, and the offset the
+## draw in progress uses (whole pixels).
+var _recoil_dir := Vector2.ZERO
+var _recoil_left := 0.0
+var _draw_off := Vector2.ZERO
 ## Moving up the screen (the sprite shows its back view).
 var back := false
 ## Sprite timing: seconds in the current pose, and since the last bite (a bite plays once).
@@ -127,8 +209,14 @@ var _shown := -1
 var idle := &"sit"
 ## Seconds since it last took a step: the walk shows only while it really moves.
 var _since_move := 99.0
-## A ghost's hover: seconds it has bobbed.
+## A ghost's hover: seconds it has bobbed (a spirit's wisp and fading face, a zombie's sway, a giant's fire run on it too).
 var _hover_t := 0.0
+## A zombie's (wear()): the people design it wears, the tint that greys it, and its eyes (alpha 0: none, it passes for living).
+var worn := ""
+var worn_tint := Color.WHITE
+## With prey in sight it runs at this multiple of its pace (a zombie chases faster than it walks).
+var chase_mul := 1.0
+var eyes := Color(0.5, 0.95, 0.7)
 ## Stuck check: the goal it is walking to, the nearest it has got, and how long it has got no nearer. `blocked` is set
 ## when the last walk gave up (a wall or no progress) rather than arrived.
 var blocked := false
@@ -168,7 +256,11 @@ const SHEETS := {Breed.HOUND: "res://assets/pixellab/animals/hound.png",
 	Breed.BROWN_CAT: "res://assets/pixellab/animals/brown_cat.png",
 	Breed.HELLHOUND: "res://assets/pixellab/animals/hellhound.png",
 	Breed.DEMON: "res://assets/pixellab/animals/demon.png",
-	Breed.GHOST: "res://assets/pixellab/animals/ghost.png"}
+	Breed.GHOST: "res://assets/pixellab/animals/ghost.png",
+	Breed.BONE_GIANT: "res://assets/pixellab/animals/bone_giant.png",
+	Breed.PALE_GHOST: "res://assets/pixellab/animals/pale_ghost.png",
+	Breed.SKELETON: "res://assets/pixellab/animals/skeleton.png",
+	Breed.GHOUL: "res://assets/pixellab/animals/ghoul.png"}
 enum Row { STILL, WALK_SE, WALK_NE, SIT, BITE, IDLE, BARK, SNIFF, SCRATCH, LIE }
 const WALK_FPS := 8.0
 const BITE_FPS := 14.0
@@ -189,6 +281,9 @@ const ROUTE_AHEAD := 3
 const ROUTE_LOOK := 0.2
 const LOOK_MOVED := 0.25
 static var _sheets := {}
+## The wraith's sheet, cached apart from _sheets (its cell is [w, h]): sheet(WRAITH) finds no SHEETS entry and caches {} there, which
+## must never stand for the painted wraith. Null until first read.
+static var _wraith: Variant = null
 
 
 ## Animals are drawn with nearest filtering, sharp like the people, in a hosted world whose viewport defaults to linear
@@ -210,11 +305,13 @@ func hypnotized() -> bool:
 
 
 func speed() -> float:
-	var base := DOG_SPEED if is_dog() or breed in OTHER_SIDE else CAT_SPEED
+	var base := DOG_SPEED if is_dog() or breed in OTHER_SIDE or breed in UNDEAD else CAT_SPEED
 	if breed == Breed.TERRIER:
 		base *= 0.85
 	elif breed == Breed.WOLFHOUND:
 		base *= 1.15  # long legs
+	if chase_mul != 1.0 and is_instance_valid(target):
+		base *= chase_mul
 	if state in [State.FLEE, State.ATTACK]:
 		return base * RUN * speed_mul
 	return base * speed_mul
@@ -222,6 +319,17 @@ func speed() -> float:
 
 func bite() -> float:
 	return DOG_BITE if is_dog() else CAT_BITE
+
+
+## A zombie puts on the dead person's own look: the PeopleArt `design_name`, turned as `face` (PeopleArt.Facing), its colours
+## multiplied by `tint` (a grey greys it; white passes for living) and two pale pixels for `eye_color` (alpha 0: no eyes).
+func wear(design_name: String, face: int, tint: Color, eye_color: Color) -> void:
+	worn = design_name
+	worn_tint = tint
+	eyes = eye_color
+	facing = -1 if face in [PeopleArt.Facing.SW, PeopleArt.Facing.NW] else 1
+	back = face in [PeopleArt.Facing.NE, PeopleArt.Facing.NW]
+	queue_redraw()
 
 
 ## A power's hold on it for `seconds`: go for `who` (or the nearest, ATTACK), walk to `to` and sit (GATHER), or sit
@@ -265,6 +373,24 @@ func die() -> void:
 	target = null
 	z_index = -1  # a body lies under whoever walks past
 	queue_redraw()
+
+
+## A blow struck from ground point `from` (R32): the drawing is pushed RECOIL_PX screen px away from it and eases back over
+## RECOIL_FOR. Draw only: ground_pos, its pace and every rule are untouched.
+func struck_from(from: Vector2) -> void:
+	var away := Iso.ground_to_screen(ground_pos) - Iso.ground_to_screen(from)
+	if away.length_squared() < 0.0001:
+		away = Vector2(-float(facing), 0.0)  # struck from where it stands: back from the way it faces
+	_recoil_dir = away.normalized()
+	_recoil_left = RECOIL_FOR
+	queue_redraw()
+
+
+## The recoil's screen offset now (ZERO when there is none); every draw path is offset by it.
+func recoil_offset() -> Vector2:
+	if _recoil_left <= 0.0:
+		return Vector2.ZERO
+	return _recoil_dir * RECOIL_PX * (_recoil_left / RECOIL_FOR)
 
 
 func hurt(amount: float) -> void:
@@ -495,9 +621,13 @@ func _plan_route(goal: Vector2, grid: WalkGrid) -> void:
 
 func tick_visual(delta: float) -> void:
 	_since_move += delta
-	if breed == Breed.GHOST:
+	if _recoil_left > 0.0:
+		# Eased before any early return below, so every breed's recoil comes back.
+		_recoil_left = maxf(_recoil_left - delta, 0.0)
+		queue_redraw()
+	if _hovers():
 		_hover_t += delta
-		queue_redraw()  # it bobs every frame
+		queue_redraw()  # it bobs, sways and flickers every frame
 	if _off_left > 0.0:
 		_off_left -= delta
 		_off_t += delta
@@ -505,6 +635,9 @@ func tick_visual(delta: float) -> void:
 		_flash -= delta
 		if _flash <= 0.0:
 			queue_redraw()
+	if breed == Breed.WRAITH or (breed == Breed.PALE_GHOST and sheet(breed).is_empty()):
+		_bite_t += delta  # its own sheet (_draw_wraith()): the strike row plays while this is under 1, then it drifts again
+		return
 	var sh := sheet(breed)
 	if sh.is_empty():
 		return
@@ -518,6 +651,18 @@ func tick_visual(delta: float) -> void:
 	if f != _shown:
 		_shown = f
 		queue_redraw()
+
+
+## Whether it is drawn off the hover clock and so redrawn every frame: the ghost, spirit, wraith and bone giant (they bob,
+## sway or flicker), the pale ghost with no sheet (the wraith's draw), and the zombie (its idle frames run off the clock).
+## The skeleton, the ghoul and the painted pale ghost are sheet breeds: redrawn only when their frame or state changes.
+func _hovers() -> bool:
+	match breed:
+		Breed.GHOST, Breed.SPIRIT, Breed.WRAITH, Breed.BONE_GIANT, Breed.ZOMBIE:
+			return true
+		Breed.PALE_GHOST:
+			return sheet(breed).is_empty()
+	return false
 
 
 ## A bite landed: the sprite plays its bite once.
@@ -594,6 +739,10 @@ func moving() -> bool:
 
 
 func _draw() -> void:
+	# A blow's recoil moves the whole drawing; every transform below adds it (_draw_off).
+	_draw_off = recoil_offset().round()
+	if _draw_off != Vector2.ZERO:
+		draw_set_transform(_draw_off)
 	var pal: Array = PALETTE[breed]
 	var shadow := Rect2(-5, -1, 10, 2) if is_dog() else Rect2(-4, -1, 8, 2)
 	if breed == Breed.HELLHOUND:
@@ -602,19 +751,31 @@ func _draw() -> void:
 		shadow = Rect2(-8, -1, 16, 3)
 	elif breed == Breed.GHOST:
 		shadow = Rect2(-5, -1, 10, 2)
-	var sc := Color(0, 0, 0, 0.28 if breed != Breed.GHOST else 0.14)
+	elif breed == Breed.BONE_GIANT:
+		shadow = Rect2(-14, -2, 28, 5)
+	elif breed == Breed.ZOMBIE:
+		shadow = Rect2(-4, -1, 8, 2)
+	elif breed == Breed.SPIRIT or breed == Breed.WRAITH:
+		shadow = Rect2(-3, -1, 6, 2)
+	elif breed == Breed.PALE_GHOST or breed == Breed.SKELETON:
+		shadow = Rect2(-4, -1, 8, 2)
+	elif breed == Breed.GHOUL:
+		shadow = Rect2(-6, -1, 12, 2)  # low and long
+	var sc := Color(0, 0, 0, 0.28 if not breed in [Breed.GHOST, Breed.SPIRIT, Breed.WRAITH, Breed.PALE_GHOST] else 0.14)
 	var look_shadow := Person.foot_shadow(shadow, sc)
 	draw_rect(look_shadow[0], look_shadow[1])
+	if state == State.DEAD and breed in [Breed.ZOMBIE, Breed.SPIRIT, Breed.WRAITH, Breed.PALE_GHOST, Breed.SKELETON, Breed.GHOUL]:
+		return  # cut down, it is freed at once: only its shadow shows
 	if state == State.DEAD:
 		var dsh := sheet(breed)
 		if not dsh.is_empty():
 			# On its side: the still pose turned over, dull.
 			var c: int = dsh.cell
 			var ft: Vector2 = dsh.foot
-			draw_set_transform(Vector2(0, -2), PI / 2.0 * facing, Vector2(0.8, 1.0))
+			draw_set_transform(Vector2(0, -2) + _draw_off, PI / 2.0 * facing, Vector2(0.8, 1.0))
 			draw_texture_rect_region(dsh.tex, Rect2(-ft.x, -ft.y * 0.5, c, c), Rect2(0, 0, c, c),
 					Color(0.6, 0.55, 0.55))
-			draw_set_transform(Vector2.ZERO)
+			draw_set_transform(_draw_off)
 			return
 		_draw_rows(_shape_body(), pal, true, Color(0.55, 0.5, 0.5))
 		return
@@ -623,9 +784,28 @@ func _draw() -> void:
 	if breed == Breed.GHOST:
 		tint *= GHOST_TINT
 		lift = Vector2(0, -GHOST_HOVER - GHOST_BOB * sin(_hover_t * 3.0))
-	var sh := sheet(breed)
+	if breed == Breed.ZOMBIE:
+		_draw_zombie(tint)
+		return
+	if breed == Breed.SPIRIT:
+		_draw_spirit(_flash > 0.0)
+		return
+	if breed == Breed.WRAITH:
+		_draw_wraith(_flash > 0.0)
+		return
+	if breed == Breed.PALE_GHOST:
+		# Its own painted runner on the ground, multiplied by worn_tint (Pale Reign's pale); with no sheet, the wraith's draw.
+		var psh := sheet(breed)
+		if psh.is_empty():
+			_draw_wraith(_flash > 0.0)
+		else:
+			_draw_sheet(psh, tint * worn_tint)
+		return
+	var sh := sheet(breed)  # (after the wraith: it has a sheet of its own, _wraith_sheet())
 	if not sh.is_empty():
 		_draw_sheet(sh, tint, lift)
+		if breed == Breed.BONE_GIANT:
+			_draw_giant_fire()
 	else:
 		_draw_rows(_shape(), pal, false, tint)
 	_draw_mark()
@@ -637,9 +817,86 @@ func _draw_sheet(sh: Dictionary, tint: Color, lift := Vector2.ZERO) -> void:
 	var cell: int = sh.cell
 	var foot: Vector2 = sh.foot
 	var src := Rect2((f % 100) * cell, (f / 100) * cell, cell, cell)
-	draw_set_transform(lift.round(), 0.0, Vector2(float(facing), 1.0))
+	draw_set_transform(lift.round() + _draw_off, 0.0, Vector2(float(facing), 1.0))
 	draw_texture_rect_region(sh.tex, Rect2(-foot.x, -foot.y, cell, cell), src, tint)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_off)
+
+
+## The PeopleArt facing it shows now (SE, SW, NE, NW).
+func _people_facing() -> int:
+	return (2 if back else 0) + (0 if facing > 0 else 1)
+
+
+## A zombie: the dead person's own walk frames (idle while it stands), greyed by worn_tint, with two pale eye pixels
+## unless the eyes have alpha 0 or it has its back turned. Without the people atlas, a plain grey figure.
+func _draw_zombie(tint: Color) -> void:
+	var col := worn_tint * tint
+	if SpriteArt.on() and PeopleArt.ready() and PeopleArt.has(worn):
+		var info := PeopleArt.info(worn)
+		var anim := 1 if _since_move < 0.2 else 0  # walk, else idle
+		var f := _people_facing()
+		var n: int = maxi(1, info[4][anim * 4 + f])
+		# Every zombie, grey or white, steps at the rate its own speed asks (PeopleArt's walk FPS).
+		var rate := PeopleArt.FPS_AT[1] / maxf(7.0 * speed(), 0.001)
+		var frame := int(_anim * rate) % n if anim == 1 else int(_hover_t * 3.0) % n
+		var cell: Vector2 = info[3]
+		var src := Rect2(info[0] + Vector2(frame * cell.x, (anim * 4 + f) * cell.y), cell)
+		var foot: Vector2 = info[2]
+		draw_texture_rect_region(PeopleArt.atlas(), Rect2(-foot, cell), src, col)
+		if not back and eyes.a > 0.0:
+			var ey := -(foot.y - 6.0)
+			draw_rect(Rect2(-1, ey, 1, 1), eyes)
+			draw_rect(Rect2(1, ey, 1, 1), eyes)
+		return
+	draw_rect(Rect2(-2, -14, 4, 14), (PALETTE[breed] as Array)[0] * col)
+	if not back and eyes.a > 0.0:
+		draw_rect(Rect2(-1, -12, 1, 1), eyes)
+		draw_rect(Rect2(1, -12, 1, 1), eyes)
+
+
+## A spirit: a thin pale shape hovering off the ground with a wisp trailing behind it (the way it faces), about half seen
+## through, no hood; its face -- two dark hollows and a mouth -- fades in and out, never fully gone and never full.
+func _draw_spirit(flash: bool) -> void:
+	var t := _hover_t
+	var hover := SPIRIT_HOVER + SPIRIT_BOB * sin(t * 2.4)
+	var body := SPIRIT_BODY
+	if flash:
+		body = Color(1, 1, 1, 0.8)
+	var top := -hover - 13.0
+	# Head and a narrowing body: 3 wide at the head, 2 at the shoulders, a pixel at the waist.
+	for i in 13:
+		var w := 3 if i < 3 else (2 if i < 7 else 1)
+		var sway := roundi(sin(t * 3.0 + float(i) * 0.5) * (0.4 + float(i) * 0.06))
+		draw_rect(Rect2(-(w / 2) + sway, top + float(i), w, 1), body)
+	# The wisp: it trails behind, drifting, thinning and fading.
+	var back_dir := -float(facing)
+	for k in 9:
+		var kf := float(k)
+		var a := body.a * (1.0 - kf / 9.0) * 0.8
+		var wx := back_dir * (1.0 + kf * 0.9) + sin(t * 4.0 + kf * 0.7) * 1.2
+		var wy := -hover - 4.0 + kf * 0.6 + sin(t * 3.0 + kf) * 0.4
+		draw_rect(Rect2(roundf(wx), roundf(wy), 1, 1), Color(body.r, body.g, body.b, a))
+	# The face fades in and out.
+	var fade := 0.5 + 0.5 * sin(t * 1.7)
+	fade = fade * fade
+	var hollow := Color(0.16, 0.18, 0.2, 0.15 + 0.7 * fade)
+	draw_rect(Rect2(-1, top + 1, 1, 1), hollow)
+	draw_rect(Rect2(1, top + 1, 1, 1), hollow)
+	draw_rect(Rect2(0, top + 2, 1, 1), Color(hollow.r, hollow.g, hollow.b, hollow.a * 0.6))
+
+
+## The bone giant's eye sockets: a pale-white fire, two pixels flickering and a soft glow round them (with its back to
+## us the skull shows none).
+func _draw_giant_fire() -> void:
+	if back:
+		return
+	var flick := 0.6 + 0.4 * sin(_hover_t * 11.0) * sin(_hover_t * 7.3 + 1.0)
+	var c := Vector2(GIANT_SOCKET.x * float(facing), GIANT_SOCKET.y)
+	draw_circle(c, 4.0, Color(GIANT_FIRE.r, GIANT_FIRE.g, GIANT_FIRE.b, 0.12 * flick))
+	draw_circle(c, 2.5, Color(GIANT_FIRE.r, GIANT_FIRE.g, GIANT_FIRE.b, 0.16 * flick))
+	var px := Color(GIANT_FIRE.r, GIANT_FIRE.g, GIANT_FIRE.b, 0.5 + 0.5 * flick)
+	draw_rect(Rect2(c.x - 2.0, c.y, 1, 1), px)
+	draw_rect(Rect2(c.x + 1.0, c.y, 1, 1), px)
 
 
 func _sitting() -> bool:
@@ -734,9 +991,9 @@ func _draw_mark() -> void:
 		c = Color("ffd86a")
 	elif state == State.TRANCE:
 		c = Color("c8d8ff")
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(1.0, 0.5))
+	draw_set_transform(_draw_off, 0.0, Vector2(1.0, 0.5))
 	draw_arc(Vector2.ZERO, 6.0, 0.0, TAU, 14, c, 1.0)
-	draw_set_transform(Vector2.ZERO)
+	draw_set_transform(_draw_off)
 	var top := -13 if is_dog() else -12
 	draw_rect(Rect2(-2, top - 3, 5, 3), Color(0.05, 0.03, 0.06, 0.8))
 	draw_rect(Rect2(-1, top - 2, 3, 1), c)

@@ -50,6 +50,13 @@ func _sealed_hit(s: Structure, _amount: float, _source: Vector2, _kind: StringNa
 	s.shake(SEALED_SHAKE)
 
 
+## A target is the night's to bring down (R45 as amended): never spared from a power's side effects, sealed or not. The
+## Spoiled Harvest's granaries, the Crown's Bread's granary, mill and bridge, the Armoury's three, the Heart of Faith's oil house
+## and Temple.
+func wants_down(s: Structure) -> bool:
+	return s != null and targets.has(s)
+
+
 ## `s`'s burning so far is forgotten (v0.11 M2): a fire beaten out for good (HarvestDirector's watchman) leaves nothing toward
 ## its spoiling.
 func forget_burn(s: Structure) -> void:

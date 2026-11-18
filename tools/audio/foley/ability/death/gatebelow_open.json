@@ -1,0 +1,8 @@
+{"length": 3.6, "rms_db": -13.5, "reverb": {"rt60": 2.2, "mix": 0.22, "predelay_ms": 22, "damp": 3600}, "eq": [["lowshelf", 120, 1.5], ["peak", 2400, 1.2, 0.9]], "layers": [
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "from": 2.0, "dur": 3.4, "pitch": -3, "lp": 900, "hp": 30, "fade_in": 250, "fade_out": 900, "gain_db": -3},
+  {"src": "lib:oga/earthquake-and-open-sesame/shake.flac", "at": 0.05, "onset": true, "dur": 2.8, "pitch": -2, "lp": 3000, "hp": 40, "fade_in": 120, "fade_out": 900, "gain_db": -5},
+  {"src": "lib:oga/stone-door/stone_door.ogg", "at": 0.3, "onset": true, "pitch": -5, "lp": 4200, "hp": 70, "fade_in": 60, "fade_out": 400, "gain_db": -4},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "at": 0.7, "onset": true, "dur": 2.4, "pitch": -4, "lp": 3500, "hp": 60, "fade_in": 80, "fade_out": 900, "gain_db": -10},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-male-c3.wav", "at": 0.6, "dur": 2.8, "pitch": -3, "lp": 2000, "hp": 80, "fade_in": 700, "fade_out": 1000, "gain_db": -11},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.9, "dur": 1.8, "pitch": -4, "lp": 3800, "hp": 150, "fade_in": 300, "fade_out": 600, "gain_db": -11}
+]}

@@ -737,7 +737,7 @@ func witnesses(q: Quarry = null) -> Array[Person]:
 	var at := w.target.ground_pos
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if is_instance_valid(p) and p != w.target and p.is_alive() and not p.inside:
+			if is_instance_valid(p) and p != w.target and p.is_alive() and not p.inside and not LawMark.unseen_by_all(p):
 				var d := p.ground_pos.distance_to(at)
 				if d <= Crowd.DOOM_WITNESS and d > SilentDoom.RADIUS:
 					out.append(p)
@@ -850,6 +850,12 @@ func report() -> Dictionary:
 	elif all_fallen():
 		how = "seen" if seen > 0 else "unseen"
 	return {"target": how, "killed": killed(), "out": out_count(), "seen": seen, "alarms": alarms}
+
+
+## The hideout is kept standing (R45): with it gone an alarmed target runs for the safe place, where arriving loses the night
+## (fleeing_to_safe()).
+func needs_standing(s: Structure) -> bool:
+	return s != null and s == hideout
 
 
 ## `p` is one of this director's own actors (v0.11.2, LanternWatch's Bearer must not take them): a target or a guard of one.

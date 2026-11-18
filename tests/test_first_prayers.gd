@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_walker_waits(t)
 	_walker_whispered(t)
 	_fire_pulls(t)
+	_fire_then_line(t)
 	_thorns_block(t)
 	_lie(t)
 	_drop(t)
@@ -532,6 +533,44 @@ static func _fire_pulls(t) -> void:
 		back = back and f.mind == Person.Mind.DUTY and f.anchor.distance_to(d.door) <= MirasHouseDirector.SIGHT
 	t.check(back, "the fire out, a liner whose window is open goes back to his spot")
 	_done(s)
+
+
+## F2: a free Faithful the fire has already pulled, then put on the market's line while it burns, is pulled again as a liner: he does not walk
+## to his spot by the door (the Ruin route's 0/3 after the walk-grid merge, 735843a0).
+static func _fire_then_line(t) -> void:
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var house := _house_by_door(s)
+	t.check(house != null, "a house stands within FIRE_PULL of the shrine's door")
+	if house == null:
+		_done(s)
+		return
+	_run_blind(s, FirstPrayersDirector.MARKET_AT - 3.0)
+	var f: Person = d.faithful[0]
+	for g in d.faithful:
+		if g != f:
+			_arrive(g, d.door + Vector2(40.0, 40.0))
+	_arrive(f, d._walkable(d.door + (d.door - house.center()).normalized() * 5.0))
+	f.mind = Person.Mind.CALM
+	(s.crowd as Crowd).fires.ignite(house, 0.4)
+	_run(s, DT * 3.0)
+	t.check(d._pulled.has(f) and f.mind == Person.Mind.DUTY, "the fire pulls a free Faithful %.1f from the door" % f.ground_pos.distance_to(d.door))
+	_run(s, 3.0 + DT * 2.0)
+	t.check(d.liners.has(f), "the market fills while it burns: he is put on the line")
+	t.check(f.mind == Person.Mind.DUTY and f.anchor.distance_to(d.door + (d._line_spots[f] as Vector2)) > 1.0
+		and f.anchor.distance_to(d.door) > MirasHouseDirector.SIGHT, "and is pulled again: he does not walk to his spot by the door")
+	_done(s)
+
+
+## The house nearest the shrine's door within FIRE_PULL of it; null for none.
+static func _house_by_door(s: Dictionary) -> Structure:
+	var d: FirstPrayersDirector = s.d
+	var house: Structure = null
+	for st: Structure in (s.town as Town)._built:
+		if st.kind == Structure.Kind.HOUSE and st.role == &"house" and st.center().distance_to(d.door) <= FirstPrayersDirector.FIRE_PULL \
+				and (house == null or st.center().distance_to(d.door) < house.center().distance_to(d.door)):
+			house = st
+	return house
 
 
 ## F3: a thorn segment on the line from a Faithful to the door hides it from him; moved off the line, he sees it again. (Fix round: the segments

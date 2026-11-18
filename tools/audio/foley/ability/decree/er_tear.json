@@ -1,0 +1,9 @@
+{"length": 2.3, "rms_db": -17.0, "reverb": {"rt60": 1.4, "mix": 0.16, "predelay_ms": 12, "damp": 5000}, "eq": [["lowshelf", 140, 1.5], ["peak", 3800, -1.5, 0.8]], "layers": [
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.0, "onset": true, "pitch": -3, "hp": 120, "lp": 7000, "gain_db": -4},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_02.ogg", "at": 0.05, "onset": true, "pitch": -5, "hp": 200, "lp": 7000, "gain_db": -3},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_01.ogg", "at": 0.2, "onset": true, "pitch": -7, "hp": 180, "lp": 6000, "gain_db": -4},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_04.ogg", "at": 0.34, "onset": true, "pitch": -4, "hp": 250, "lp": 6500, "gain_db": -6},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 0.46, "onset": true, "pitch": -6, "hp": 100, "lp": 5000, "gain_db": -6},
+  {"src": "lib:oga/tree-creaking/tree_creak.flac", "at": 0.6, "onset": true, "dur": 1.6, "pitch": -5, "hp": 90, "lp": 1800, "fade_in": 200, "fade_out": 300, "gain_db": -7},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.7, "from": 0.4, "dur": 1.45, "pitch": -7, "reverse": true, "hp": 60, "lp": 1200, "fade_in": 600, "fade_out": 40, "gain_db": -8},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.6, "from": 2.0, "dur": 1.55, "lp": 220, "fade_in": 500, "fade_out": 200, "gain_db": -9}]}

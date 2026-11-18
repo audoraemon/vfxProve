@@ -20,10 +20,10 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
 	"ruin": ["smite", "ember"],
-	"death": ["deathmark", "pestilence"],
+	"death": ["deathmark", "raise"],
 	"veil": ["doom", "blight"],
 	"passage": ["skylift", "windfall"],
-	"decree": ["noleave", "belllies"],
+	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord"],
 }
 
@@ -53,20 +53,19 @@ const BLOW_GAP := 0.4
 ## so the first goes early enough for it); Silent Doom the same.
 const SMITE_LEAD := 13.0
 const DOOM_LEAD := 13.0
-## Death: a Death Mark dies its man in ten seconds, so it is cast this long before his sight; Pestilence kills in about six (it is cast
-## PLAGUE_LEAD before, and never within PLAGUE_CLEAR of a believer).
+## Death: a Death Mark dies its man in ten seconds, so it is cast this long before his sight.
 const MARK_LEAD := 17.0
-const PLAGUE_LEAD := 13.0
-const PLAGUE_CLEAR := 6.0
 ## ...and two men are "of the same hour" when their sight of a household is this many seconds apart or fewer.
 const MARK_HOUR := 14.0
-## Decree: the law holds a circle fifteen seconds from its seal, and a group within 40 s of its sight of a household is caged (LAW_CRAWL); the call
-## of the guard stands soldiers away twenty from 0.8, and is cast GUARD_LEAD before the first of them would see a household.
+## Decree: the law holds a circle fifteen seconds from its seal, and a group within 40 s of its sight of a household is caged (LAW_CRAWL).
 const LAW_CRAWL := 40.0
-## ...the cage's centre lies this much inside the law's radius behind the group's lead.
+## ...the cage's centre lies this much inside the law's radius behind the group's lead; a group standing still is caged on its middle when every man of
+## it stands this much inside the radius.
 const CAGE_SLACK := 1.0
-const GUARD_LEAD := 9.0
-const GUARD_SPAN := 20.0
+## ...no air is cast over a caged group unless every caged man stands BREATH_FIT inside its RADIUS, and every believer out and free -- now and on his walk
+## through the choke (T_LAND + CHOKE and a second) -- stands BLOW_GAP beyond its edge.
+const BREATH_FIT := 0.3
+const BREATH_WALK := BreathFx.T_LAND + BreathFx.CHOKE + 1.0
 ## Dominion: Mind Whisper is cast on a watcher this near his sight of a believer (it holds him some twenty seconds, so never far ahead: ruling P5-T9-R9);
 ## Discord on a tight pair the same.
 const WHISPER_LEAD := 9.0
@@ -473,37 +472,54 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence ---
+# --- Death: Death Mark, Raise the Dead ---
 
-## Pestilence takes a pair whole (both within its reach -- victims_at() says so -- and nobody of the flock within PLAGUE_CLEAR) when the soonest
-## of them is within PLAGUE_LEAD of his sight; a Death Mark takes one man, MARK_LEAD before his sight (it dies him in ten seconds) and, for each man
-## of the same hour still to be marked before him, twenty seconds more (it is ready every twenty), a seizer first of all.
+## Where a spirit raised from a body can still reach a watcher: it drifts after the nearest group it finds within RaiseTheDeadFx.SEEK, and frightens
+## whoever comes within its FRIGHT_R -- citizens only, so of the watchers only a lay inquisitor; a soldier of the watch stands fast.
+const SPIRIT_NEAR := RaiseTheDeadFx.SEEK - 2.0
+
+## The bodies whose soul is still near (Remains.SOUL), the freshest first: what a SPIRIT can rise from.
+static func _souls(crowd: Crowd) -> Array:
+	var rem: Remains = crowd.remains
+	if rem == null:
+		return []
+	var out: Array = []
+	for r in rem.all():
+		if rem.has_soul(r):
+			out.append(r)
+	out.reverse()
+	return out
+
+
+## Death Mark takes one man, MARK_LEAD before his sight (it dies him in ten seconds) and, for each man of the same hour still to be marked before him,
+## twenty seconds more (it is ready every twenty), a seizer first of all. Raise the Dead works the dead it leaves: a body whose soul is still near rises
+## as a SPIRIT where a lay inquisitor will walk -- an inquisitor marching a believer, or one within MARK_LEAD of his sight, standing within SPIRIT_NEAR
+## of it: the spirit drifts after him and he flees it (a seizer who flees lets his believer go; a watcher who flees sees nobody). It never rises for a
+## soldier of the watch: he stands fast before it.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := _hf(ctx)
 	if d == null:
 		return ""
 	var crowd: Crowd = ctx.crowd
+	var threats: Array = _view(ctx, d).threats
 	if _ready(bc, ctx, "deathmark"):
 		for sz: Dictionary in _seizers(d):
 			if not _doomed(sz.s):
 				_cast(ctx, "deathmark", (sz.s as Person).ground_pos)
 				return "death mark a %s seizer" % sz.kind
-	var threats: Array = _view(ctx, d).threats
-	if _ready(bc, ctx, "pestilence"):
+	if _ready(bc, ctx, "raise") and (ctx.rules as Rules).live_fx("raise") == null:
+		var near: Array = []  # [{p, kind}]: the inquisitors marching a believer, then those within MARK_LEAD of their sight
+		for sz: Dictionary in _seizers(d):
+			if sz.kind == "inquisitor":
+				near.append({"p": sz.s, "kind": "inquisitor seizer"})
 		for th: Dictionary in threats:
-			if float(th.t) > PLAGUE_LEAD:
-				continue
-			var p: Person = th.p
-			if _doomed(p):
-				continue
-			for o: Dictionary in threats:
-				if o.p == p or _doomed(o.p) or (o.p as Person).ground_pos.distance_to(p.ground_pos) > PestilenceFx.INFECT_R * 2.0:
-					continue
-				var mid := (p.ground_pos + (o.p as Person).ground_pos) * 0.5
-				var taken := PestilenceFx.victims_at(crowd._field, mid)
-				if taken.has(p) and taken.has(o.p) and _flock_clear(bc, d, mid, PLAGUE_CLEAR):
-					_cast(ctx, "pestilence", mid)
-					return "pestilence on a %s pair" % th.kind
+			if th.kind == "inquisitor" and float(th.t) <= MARK_LEAD:
+				near.append({"p": th.p, "kind": th.kind})
+		for r: Remains.Remain in _souls(crowd):
+			for w: Dictionary in near:
+				if (w.p as Person).ground_pos.distance_to(r.pos) <= SPIRIT_NEAR:
+					_cast(ctx, "raise", r.pos, {"mode": "spirit"})
+					return "raise a soul where an %s walks: he flees it" % w.kind
 	if _ready(bc, ctx, "deathmark"):
 		var live: Array = threats.filter(func(th: Dictionary) -> bool: return not _doomed(th.p))
 		for i in live.size():
@@ -713,7 +729,7 @@ static func act_passage(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies ---
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited ---
 
 ## The law is a circle its people cannot leave (NoLeaveFx: they are set back onto its edge), not a hand on a shoulder: laid so a group stands at
 ## the edge on the side it is walking from, it stops that group for the hold. The centre is NoLeaveFx.RADIUS - CAGE_SLACK behind the group's lead
@@ -753,122 +769,127 @@ static func _cage_safe(view: Dictionary, at: Vector2) -> bool:
 	return true
 
 
-## Where the guard is called for `targets` (soldiers): the call takes the BellLiesFx.GUARDS soldiers nearest the click, so the place must have every one
-## of them among those (else a soldier the household meets stays at his post; Task 17); of such places within 12 of the group, the one farthest from the
-## households' roads, so they stand away from the roads and walk back a long way. The group's middle when no place takes them all.
-static func _call_spot(ctx: Dictionary, d: HideFaithfulDirector, targets: Array) -> Vector2:
+## The watchers a cell holds now, grouped with the watcher `p` (him first): those of them within twice the breath's RADIUS of him. Empty when he is not held.
+static func _caged(ctx: Dictionary, d: HideFaithfulDirector, p: Person) -> Array[Person]:
+	var out: Array[Person] = []
+	var crowd: Crowd = ctx.crowd
+	if not MissionDirector._alive(p) or p.inside or not crowd.in_law(p, LawZone.NO_LEAVING):
+		return out
+	out.append(p)
+	for v: Variant in d._watchers():
+		if v != p and MissionDirector._alive(v) and not (v as Person).inside and not out.has(v) and crowd.in_law(v, LawZone.NO_LEAVING) \
+				and (v as Person).ground_pos.distance_to(p.ground_pos) <= BreathFx.RADIUS * 2.0:
+			out.append(v as Person)
+	return out
+
+
+## Where one breath takes every one of `caged` (BREATH_FIT inside its RADIUS of their middle) and no believer out and free, now or on his walk through the
+## choke (BREATH_WALK), within BLOW_GAP of its edge: their middle, or INF.
+static func _breath_aim(d: HideFaithfulDirector, caged: Array[Person]) -> Vector2:
+	if caged.is_empty():
+		return Vector2.INF
 	var mid := Vector2.ZERO
-	for q: Person in targets:
-		mid += q.ground_pos
-	mid /= maxf(float(targets.size()), 1.0)
-	var pool: Array[Person] = []
-	for q in (ctx.crowd as Crowd).soldiers:
-		if is_instance_valid(q) and q.is_alive() and not q.inside:
-			pool.append(q)
-	var best := mid
-	var far := -1.0
-	for dist in [0.0, 2.0, 4.0, 6.0, 9.0, 12.0]:
-		for k in (1 if dist == 0.0 else 16):
-			var g: Vector2 = mid + Vector2.from_angle(TAU * float(k) / 16.0) * float(dist)
-			if not (ctx.crowd as Crowd)._grid.walkable(g) or Walls.outside(g):
-				continue
-			var near := pool.duplicate()
-			near.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_squared_to(g) < b.ground_pos.distance_squared_to(g))
-			near = near.slice(0, BellLiesFx.GUARDS)
-			var all := true
-			for q: Person in targets:
-				all = all and near.has(q)
-			if not all:
-				continue
-			var road := INF
-			for i in d.households.size():
-				var pts: Array = _road(ctx, d, i).pts
-				for m in range(pts.size() - 1):
-					road = minf(road, Geometry2D.get_closest_point_to_segment(g, pts[m], pts[m + 1]).distance_to(g))
-			if road > far:
-				far = road
-				best = g
-	return best
+	for p in caged:
+		mid += p.ground_pos
+	mid /= float(caged.size())
+	for p in caged:
+		if p.ground_pos.distance_to(mid) > BreathFx.RADIUS - BREATH_FIT:
+			return Vector2.INF
+	for c: EscortDirector.Charge in d.charges:
+		if d._resolved(c) or not MissionDirector._alive(c.man) or (c.man as Person).inside:
+			continue
+		var b := c.man as Person
+		var s := 0.0
+		while s <= BREATH_WALK:
+			if GOD_T1.road_ahead(b, s).distance_to(mid) <= BreathFx.RADIUS + BLOW_GAP:
+				return Vector2.INF
+			s += READ_STEP
+	return mid
 
 
-## The Bell Lies calls the guard to the soldiers a household would meet (the call takes soldiers only: they stand away twenty seconds, blind) when
-## the first gate watchman is near his sight, or away from a soldier who seizes -- but while a household still has its gate's watch to pass, a patrol's
-## seizer is left to the law when the law can take him before his march ends, and the call is kept for the gate (Task 17). Leaving Is Prohibited takes
-## a marched believer's seizer first (an inquisitor bound by it lets his believer go and stands: the fallback the user approved, ruling P5-T17-R4; a
-## soldier's march stops while the cage holds), then cages the group that is the soonest to meet a household -- the inquisitors (held still and
-## blind), or a patrol (at the edge on the side it walks from, _cage()) -- whenever it is ready and the cage keeps the households out of reach
-## (_cage_safe()).
+## The law, then no air (spec 5.2: inside the cell nobody can run, so the two together are a sure kill). Breathing Is Prohibited chokes a caged group where it
+## stands -- the soonest threat's first, then a marched believer's seizer's, then any -- when the breath spares every believer (_breath_aim()). Leaving Is
+## Prohibited takes a marched believer's seizer (an inquisitor bound by it lets his believer go and stands: ruling P5-T17-R4; a soldier's march stops while
+## the cage holds), then cages the group that is the soonest to meet a household within LAW_CRAWL -- the gate's watch at its post, a patrol at the edge on
+## the side it walks from (_cage()), the inquisitors (held still and blind) -- whenever it is ready and the cage keeps the households out of reach
+## (_cage_safe()). A soldier's seizer is only held by the law: a breath on him would choke his believer with him.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := _hf(ctx)
 	if d == null:
 		return ""
 	var view := _view(ctx, d)
-	# A household not yet out still has its gate's watch to pass: the call is kept for that (the law holds a patrol's seizer meanwhile).
-	var gate_ahead := false
-	for h: ExodusDirector.Household in d.households:
-		if h.done:
+	if _ready(bc, ctx, "breath"):
+		var order: Array[Person] = []
+		for th: Dictionary in view.threats:
+			order.append(th.p as Person)
+		for sz: Dictionary in _seizers(d):
+			order.append(sz.s as Person)
+		for v: Variant in d._watchers():
+			if MissionDirector._alive(v):
+				order.append(v as Person)  # (a caged man the cell has set looking about is still the night's to answer)
+		for p in order:
+			var caged := _caged(ctx, d, p)
+			var aim := _breath_aim(d, caged)
+			if aim != Vector2.INF:
+				_cast(ctx, "breath", aim)
+				return "breathing is prohibited: %d caged %s choke where they stand" % [caged.size(), _kind(d, p)]
+	if not _ready(bc, ctx, "noleave"):
+		return ""
+	# A marched believer and his seizer caged behind them on the road to the Temple: the march stops fifteen seconds in twenty, and a believer
+	# held until dawn is neither taken nor dead.
+	for sz: Dictionary in _seizers(d):
+		if (ctx.crowd as Crowd).in_law(sz.s, LawZone.NO_LEAVING):
 			continue
-		var mouth: Vector2 = (d.gates[h.gate] as ExodusDirector.Gate).mouth
-		for v: Variant in d.watch:
-			gate_ahead = gate_ahead or (d._watching(v) and (v as Person).ground_pos.distance_to(mouth) <= GATE_NEAR)
-	if _ready(bc, ctx, "belllies"):
-		for sz: Dictionary in _seizers(d):
-			if sz.kind == "inquisitor":
-				continue  # the call takes soldiers only: a lay inquisitor marching a believer is the law's (below)
-			var caged := float(ctx.memo.get("caged_%d" % (sz.s as Person).get_instance_id(), -INF))
-			var law_in: float = (ctx.rules as Rules).cooldown_left(int(ctx.slots.noleave)) if ctx.slots.has("noleave") else INF
-			var law_soon := law_in < d._temple_in(sz.c) - 2.0  # the law is ready before the march ends: it will take him
-			if gate_ahead and sz.kind != "watch" and (law_soon or d._clock - caged < NoLeaveFx.HOLD_TIME):
-				continue  # a gate's watch is still to pass: the law takes this seizer, the call is kept for the gate
-			var away := _call_spot(ctx, d, [sz.s])
-			_cast(ctx, "belllies", away, {"mode": "guard"})
-			return "call the guard away from a %s seizer, to (%.1f, %.1f)" % [sz.kind, away.x, away.y]
-		var first := INF
-		for th: Dictionary in view.threats:
-			if th.kind == "watch":  # the gate's watch: the one the law cannot hold (a patrol can be caged); lay inquisitors the call does not take
-				first = minf(first, float(th.t))
-		if first <= GUARD_LEAD:
-			var targets: Array = []
-			for th: Dictionary in view.threats:
-				if th.kind != "inquisitor" and float(th.t) <= first + GUARD_SPAN:
-					targets.append(th.p)
-			var there := _call_spot(ctx, d, targets)
-			_cast(ctx, "belllies", there, {"mode": "guard"})
-			return "call the guard away from the roads, to (%.1f, %.1f)" % [there.x, there.y]
-	if _ready(bc, ctx, "noleave"):
-		# A marched believer and his seizer caged behind them on the road to the Temple: the march stops fifteen seconds in twenty, and a believer
-		# held until dawn is neither taken nor dead.
-		for sz: Dictionary in _seizers(d):
-			var march := _cage(d, [sz.s, sz.b])
-			if not march.is_empty():
-				_cast(ctx, "noleave", march.at)
-				ctx.memo["caged_%d" % (sz.s as Person).get_instance_id()] = d._clock
-				return "leaving is prohibited on a %s seizer and his prisoner" % sz.kind
-		var groups: Array = []  # [{members, t, kind}] by the squad each belongs to
-		for th: Dictionary in view.threats:
-			if th.kind == "watch" or float(th.t) > LAW_CRAWL:
-				continue
-			var squad: Array = d.inquisitors if th.kind == "inquisitor" else []
-			if th.kind == "patrol":
-				for sq: Array in d.patrols:
-					if sq.has(th.p):
-						squad = sq
-			var found := false
-			for g: Dictionary in groups:
-				if g.squad == squad:
-					found = true
-			if not found:
-				var members: Array = []
-				for v: Variant in squad:
-					if d._watching(v) and not d._seizing(v):
-						members.append(v)
-				groups.append({"squad": squad, "members": members, "t": th.t, "kind": th.kind})
+		var march := _cage(d, [sz.s, sz.b])
+		if march.is_empty():
+			march = _cage_still([sz.s, sz.b])
+		if not march.is_empty():
+			_cast(ctx, "noleave", march.at)
+			return "leaving is prohibited on a %s seizer and his prisoner" % sz.kind
+	var groups: Array = []  # [{members, t, kind}] by the squad each belongs to
+	for th: Dictionary in view.threats:
+		if float(th.t) > LAW_CRAWL or (ctx.crowd as Crowd).in_law(th.p, LawZone.NO_LEAVING):
+			continue
+		var squad: Array = d.inquisitors if th.kind == "inquisitor" else [th.p]
+		if th.kind == "patrol":
+			for sq: Array in d.patrols:
+				if sq.has(th.p):
+					squad = sq
+		elif th.kind == "watch":
+			for v: Variant in d.watch:
+				if v != th.p and MissionDirector._alive(v) and (v as Person).ground_pos.distance_to((th.p as Person).ground_pos) <= NoLeaveFx.RADIUS:
+					squad = [th.p, v]
+		var found := false
 		for g: Dictionary in groups:
-			var cage := _cage(d, g.members)
-			if not cage.is_empty() and _cage_safe(view, cage.at):
-				_cast(ctx, "noleave", cage.at)
-				return "leaving is prohibited: a %s group caged behind its lead" % g.kind
+			found = found or g.squad.has(th.p)
+		if not found:
+			var members: Array = []
+			for v: Variant in squad:
+				if d._watching(v) and not d._seizing(v):
+					members.append(v)
+			groups.append({"squad": squad, "members": members, "t": th.t, "kind": th.kind})
+	for g: Dictionary in groups:
+		var cage := _cage(d, g.members)
+		if cage.is_empty():
+			cage = _cage_still(g.members)
+		if not cage.is_empty() and _cage_safe(view, cage.at):
+			_cast(ctx, "noleave", cage.at)
+			return "leaving is prohibited: a %s group caged" % g.kind
 	return ""
+
+
+## A cage for a group standing still (the gate's watch at its post): on its middle, when every man of it stands CAGE_SLACK inside the radius. {} else.
+static func _cage_still(members: Array) -> Dictionary:
+	if members.is_empty():
+		return {}
+	var mid := Vector2.ZERO
+	for m: Person in members:
+		mid += m.ground_pos
+	mid /= float(members.size())
+	for m: Person in members:
+		if m.ground_pos.distance_to(mid) > NoLeaveFx.RADIUS - CAGE_SLACK:
+			return {}
+	return {"at": mid, "lead": members[0]}
 
 
 # --- Dominion: Mind Whisper, Discord ---

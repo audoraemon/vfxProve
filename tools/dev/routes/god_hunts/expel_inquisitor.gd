@@ -5,16 +5,18 @@ extends RefCounted
 ##   ruin     Smite each warden and the captain, led ahead of his walk; Light of Solaris and Tornado on him when the bolt is cooling;
 ##            the next warden's guard is struck at his door while he waits indoors.
 ##   death    Death Mark on a man with 11 s of street left (a marked man indoors at the fuse lives); Pestilence when the mark cannot be laid;
-##            Glacial Cataclysm on the captain's last leg; Death Mark on the next warden's guard while the warden waits.
+##            Gravecall on the captain's last leg (a fright: he hides in the Temple); Death Mark on the next warden's guard while the warden waits.
 ##   veil     Blight the Bell Tower early (a seen death then rings nothing), Silent Doom aimed to take the guard with the man (_doom_aim());
 ##            Doom on the next warden's guard while he waits.
 ##   passage  Skylift a man in the street, the captain first, out past the wall (walls stop him); Mirrorfold laid across a man's road with
 ##            its way out past the wall while the lift cools; a Windfall of stone crushes the next warden's guard at his door while he waits.
-##   decree   NO ROUTE (MS §9 open issue 1): Leaving Is Prohibited over the captain on his way, to delay him; recorded, never tuned around.
+##   decree   Leaving Is Prohibited over a man in the street (or at the door he is about to come out of), then Breathing Is Prohibited on him
+##            where the cell holds him (the user's Decree tree, 2026-11-12; MS §9 open issue 1 found no route in the old keys); the same two on the
+##            next warden's guard at his door.
 ##   dominion Mind Whisper in relayed hops toward the way off the map, wardens and captain alike; Madness Bloom on the captain's company
 ##            when the whisper is cooling.
 
-## The god types whose policy is written (all six; Decree's is the delay, MS §9 open issue 1).
+## The god types whose policy is written (all six).
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 
 ## The shared policy pieces (god T1R, Ruling P5-7): road_ahead() and the filler words, reached through the Hunts' common file.
@@ -24,10 +26,10 @@ const GOD := preload("res://tools/dev/routes/god_t1.gd")
 ## problems() checks it, and a refusal names the key (Ruling P5-8: checked, not chosen at run time).
 const LOADOUT := {
 	"ruin": ["smite", "solaris", "tornado"],
-	"death": ["deathmark", "pestilence", "glacial"],
+	"death": ["deathmark", "pestilence", "gravecall"],
 	"veil": ["doom", "blight", "nova"],
 	"passage": ["skylift", "windfall", "mirror"],
-	"decree": ["noleave", "belllies", "magnify"],
+	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "madness"],
 }
 
@@ -40,9 +42,9 @@ const RUIN_PREP_LEAD := 24.0
 ## A guard counts as at the door when he stands within this of it (the door ring is 1 unit; the captain's guards stand up to 1.6 off).
 const DOOR_REACH := 3.0
 ## Death: the seconds either side of the fuse (MARK_TIME 10) a marked man must be out of doors for the mark to take him (a man indoors at the
-## fuse lives), and the captain's countdown (real seconds) at or under which the Glacial burst (impact 1.2 s, radius 5) is spent on his last leg.
+## fuse lives), and the captain's countdown (real seconds) at or under which Gravecall is spent on his last leg.
 const DEATH_MARGIN := 0.8
-const GLACIAL_ETA := 30.0
+const GRAVE_ETA := 30.0
 ## Passage: how far along his road the way in is laid, the least road ahead of him that takes it (else the road from his next door), and the
 ## seconds before another is laid for the same man (a mirror lasts 30).
 const MIRROR_ON := 6.0
@@ -56,8 +58,15 @@ const FALL_PREP_LEAD := 24.0
 const FALL_CLEAR := WindfallFx.KILL_R + 0.25
 ## Passage: a man lifted is left alone this long: the light takes him T_TAKE after the cast, and the director's next look finds him out of the walls.
 const LIFT_HOLD := SkyliftFx.T_TAKE + 1.0
-## Decree: the law is laid over the captain this many seconds ahead of where he walks (NoLeaveFx.T_SEAL).
-const LAW_AHEAD := 0.6
+## Decree: the seconds from the cell's cast to the breath stopping a man in it (the seal, a look, the air going: he then stands choking), and the
+## door's ring with a step's slack: a man nearer his door than his walk in that time and this is indoors before he is stopped (indoors the law
+## leaves him alone), so the cell is not laid on him. The guard at the next warden's door is taken in the last DECREE_PREP_LEAD seconds of the wait
+## (the breath's 25 s cooldown is then spent by the time the warden comes out), and at a visited door in the last LAW_DOOR_LEAD seconds of the
+## visit (the seal, and a look).
+const LAW_DOOR_LEAD := NoLeaveFx.T_SEAL + 0.3
+const LAW_TO_BREATH := NoLeaveFx.T_SEAL + BreathFx.T_LAND + 0.3
+const LAW_DOOR_CLEAR := 1.5
+const DECREE_PREP_LEAD := 30.0
 ## Dominion: how far a hop of the whisper goes (REACH is 10).
 const WHISPER_HOP := 9.0
 
@@ -280,9 +289,12 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 
 # --- Death --------------------------------------------------------------------------------------------------------------------
 
-## Death Mark on a man the fuse will find out of doors (_mark_holds(): his round's visits are walked forward at the marked pace); Glacial
-## Cataclysm on the captain once his countdown reads GLACIAL_ETA or less and nothing else can take him; Pestilence on a man the mark cannot
-## take. With no one in the street, a Death Mark on the next warden's guard at his door.
+## Death Mark on a man the fuse will find out of doors (_mark_holds(): his round's visits are walked forward at the marked pace); Gravecall on the
+## captain once his countdown reads GRAVE_ETA or less and the mark cannot take him: its wraiths rise and haunt where he will stand at T_RISE (both
+## clicks on that spot), a loud danger within his alarm reach, so it counts a fright and he runs to hide in the Temple, off the Citadel's road (his
+## guards are frozen as the wraiths pass them); Pestilence on a man the mark cannot take. With no one in the street, a Death Mark on the next warden's
+## guard at his door. (Corpse Guise, Walking Corpse and Raise the Dead answer nothing here: nobody of the god's is hunted, and no body lies in a man's
+## way.)
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:
@@ -298,9 +310,10 @@ static func act_death(bc, ctx: Dictionary) -> String:
 		if mark_ready and _mark_holds(ctx, q):
 			rules.cast(int(slots.deathmark), p.ground_pos)
 			return "death mark %s" % q.label
-		if d._is_captain(q) and d._warned(q) and d.captain_eta() / _rate(ctx) <= GLACIAL_ETA and bc._slot_ready(rules, slots, "glacial"):
-			rules.cast(int(slots.glacial), GOD.road_ahead(p, 1.2))
-			return "glacial %s on his last leg" % q.label
+		if d._is_captain(q) and d._warned(q) and d.captain_eta() / _rate(ctx) <= GRAVE_ETA and bc._slot_ready(rules, slots, "gravecall"):
+			var at: Vector2 = GOD.road_ahead(p, GravecallFx.T_RISE)
+			rules.cast(int(slots.gravecall), at, {"to": at})
+			return "gravecall %s on his last leg: a fright, and he hides" % q.label
 		if bc._slot_ready(rules, slots, "pestilence"):
 			var aim: Vector2 = GOD.plague_aim(crowd, p.ground_pos)
 			if aim != Vector2.INF and PestilenceFx.victims_at(crowd._field, aim).has(p):
@@ -471,22 +484,64 @@ static func _fall_dir(d: ExpelInquisitorDirector, g: Person, guards: Array[Perso
 
 # --- Decree -------------------------------------------------------------------------------------------------------------------
 
-## NO ROUTE (MS §9 open issue 1): nothing in Decree kills, frightens or moves a man. The best it has is delay: Leaving Is Prohibited laid over
-## the captain, ahead of his walk, whenever it is ready, so the circle holds him (and his guards) for its 15 s. It cannot stop a warden, so the
-## night is lost at the captain's gate or at dawn; recorded as it falls, never tuned around.
+## Whether `p` stands in a Leaving Is Prohibited cell now (he cannot run from a Breathing Is Prohibited laid on him).
+static func _celled(ctx: Dictionary, p: Person) -> bool:
+	return (ctx.crowd as Crowd).in_law(p, LawZone.NO_LEAVING)
+
+
+## The cell and the breath, the two laws together a sure kill (spec 5.2), laid only when the breath is ready to follow the cell: Leaving Is
+## Prohibited over the first man in the street (the captain first), ahead of his walk, while his door is farther than he walks before the breath
+## stops him (indoors the law leaves him alone); else at the door of a man visiting there in the last LAW_DOOR_LEAD seconds of his visit, so he comes
+## out into it (a warden's round is short legs and long visits). Then Breathing Is Prohibited on the man the cell holds: he cannot run for the edge,
+## and three seconds kill him with whoever stands by him. With nobody in the street, the same two on the next warden's guard at his door in the last
+## DECREE_PREP_LEAD seconds of the wait, so the warden comes out alone (Ruin's Smite there).
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:
 		return ""
 	var rules: Rules = ctx.rules
 	var slots: Dictionary = ctx.slots
-	var cap := d.captain()
-	if cap == null or cap.state != AssassinateDirector.State.WALKING or not MissionDirector._alive(cap.target) or cap.target.inside:
+	if not bc._slot_ready(rules, slots, "breath"):
 		return ""
-	if bc._slot_ready(rules, slots, "noleave"):
-		rules.cast(int(slots.noleave), GOD.road_ahead(cap.target, LAW_AHEAD))
-		return "law over the captain, to delay him"
+	var street := _street(d)
+	var guards := _door_guards(d, DECREE_PREP_LEAD) if street.is_empty() else ([] as Array[Person])
+	for q in street:
+		if _celled(ctx, q.target):
+			rules.cast(int(slots.breath), GOD.road_ahead(q.target, BreathFx.T_LAND))
+			return "breathing is prohibited on %s, held in the cell" % q.label
+	for g in guards:
+		if _celled(ctx, g):
+			rules.cast(int(slots.breath), g.ground_pos)
+			return "breathing is prohibited on the guard at the door, held in the cell"
+	if not bc._slot_ready(rules, slots, "noleave"):
+		return ""
+	for q in street:
+		var reach: float = q.target.walk_speed * LAW_TO_BREATH + LAW_DOOR_CLEAR
+		if q.state == AssassinateDirector.State.WALKING and q.target.ground_pos.distance_to(d._leg_goal(q)) <= reach:
+			continue  # he is at his door before the breath stops him
+		rules.cast(int(slots.noleave), GOD.road_ahead(q.target, NoLeaveFx.T_SEAL))
+		return "leaving is prohibited round %s" % q.label
+	for q in _visiting(d):
+		if q.indoors_left <= LAW_DOOR_LEAD:
+			rules.cast(int(slots.noleave), q.stop_doors[q.leg])
+			return "leaving is prohibited at the door of %s, as he comes out" % q.label
+	for g in guards:
+		rules.cast(int(slots.noleave), g.ground_pos)
+		return "leaving is prohibited round the guard at the door"
 	return ""
+
+
+## The targets visiting a stop now (alive, indoors at one of their round's doors), the captain first.
+static func _visiting(d: ExpelInquisitorDirector) -> Array[AssassinateDirector.Quarry]:
+	var out: Array[AssassinateDirector.Quarry] = []
+	for q in d.quarries:
+		if q.dead or q.state != AssassinateDirector.State.VISITING or not MissionDirector._alive(q.target) or q.leg >= q.stop_doors.size():
+			continue
+		if d._is_captain(q):
+			out.insert(0, q)
+		else:
+			out.append(q)
+	return out
 
 
 # --- Dominion -----------------------------------------------------------------------------------------------------------------

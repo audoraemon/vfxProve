@@ -271,6 +271,11 @@ func _release(c: Charge) -> void:
 		_run_for_it(c)
 
 
+## His hiding place's fountain is kept standing (R45).
+func needs_standing(s: Structure) -> bool:
+	return s != null and s == fountain
+
+
 func teardown() -> void:
 	for c in charges:
 		if is_instance_valid(c.man):

@@ -207,6 +207,24 @@ func busy(_p: Person) -> bool:
 	return false
 
 
+## Virtual (Decree, spec 5.4): `p` is held by this director's seizure now -- seized and held or marched by a guard. Bound in Law
+## asks it to hold his partner where he stands. False by default.
+func is_seized(_p: Variant) -> bool:
+	return false
+
+
+## Virtual (Death second review, R45): `s` is a building of this night whose fall the director reads as a loss, a lost star or a
+## failed objective, so a power's side effects spare it (MissionKeeps.spared()). False by default.
+func needs_standing(_s: Structure) -> bool:
+	return false
+
+
+## Virtual (R45 as amended): `s` is a building this night's goal wants destroyed (Raze's targets, the granaries, the shrines), so
+## MissionKeeps.spared() never spares it, however hallowed or filtered. False by default.
+func wants_down(_s: Structure) -> bool:
+	return false
+
+
 ## The walkable point at the Temple's door, 0.6 south of its south face (v0.11.2): where a Herald runs to and the Lantern-Bearer sets out
 ## from. Named for the Lantern because several directors keep a `temple_door` variable of their own (Mira's, the Vigil Flame, Broken
 ## Lanterns, Exodus), which a method of that name would clash with; it is the same point.
@@ -525,9 +543,12 @@ func _unhook_kills(handler: Callable) -> void:
 
 
 ## The nearest Faithful within `reach` of `at` who is out in the open, alive, not held by the god and not `exclude`
-## (v0.10: who sees what the god does); else null.
-func faithful_seeing(at: Vector2, reach: float, exclude: Variant = null) -> Person:
+## (v0.10: who sees what the god does); else null. `seen`, when what is seen is a person: one passing as the walking dead (Corpse
+## Guise) is seen by no one (_unseen()).
+func faithful_seeing(at: Vector2, reach: float, exclude: Variant = null, seen: Variant = null) -> Person:
 	var best: Person = null
+	if _unseen(seen):
+		return best
 	for f in faithful:
 		if _sees(f, at, reach, exclude) and (best == null or f.ground_pos.distance_to(at) < best.ground_pos.distance_to(at)):
 			best = f
@@ -535,20 +556,30 @@ func faithful_seeing(at: Vector2, reach: float, exclude: Variant = null) -> Pers
 
 
 ## Every Faithful who would see `at` from within `reach`, as faithful_seeing() judges, but `exclude`, in the order of
-## `faithful` (v0.10 M6: the watchers the HUD marks red).
-func watchers(at: Vector2, reach: float, exclude: Variant = null) -> Array[Person]:
+## `faithful` (v0.10 M6: the watchers the HUD marks red). `seen` as faithful_seeing()'s.
+func watchers(at: Vector2, reach: float, exclude: Variant = null, seen: Variant = null) -> Array[Person]:
 	var out: Array[Person] = []
+	if _unseen(seen):
+		return out
 	for f in faithful:
 		if _sees(f, at, reach, exclude):
 			out.append(f)
 	return out
 
 
-## `f` would see `at`: alive, out in the open, not held by the god, not `exclude`, and within `reach` (v0.10 M6). `f` and
-## `exclude` are Variants because either may be a body already freed after its death fade, and a freed person passed on
-## as a Person aborts the call.
+## `f` would see `at`: alive, out in the open, not held by the god, not `exclude`, within `reach` (v0.10 M6), and someone by law (a
+## NOBODY's witness is heeded by no one, LawMark). `f` and `exclude` are Variants because either may be a body already freed after its
+## death fade, and a freed person passed on as a Person aborts the call. Under Decree's NO SIGHT (LawZone) no farther than its cap,
+## where he or `at` stands (Crowd.sight()).
 func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
-	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude and f.ground_pos.distance_to(at) <= reach
+	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude \
+		and f.ground_pos.distance_to(at) <= (reach if crowd == null else crowd.sight(f, at, reach)) and not LawMark.unseen_by_all(f)
+
+
+## The seen side of _sees() (BLIND is the watcher's): `seen` is a living person passing as the walking dead (Corpse Guise, Death III),
+## whom no Faithful, watchman or inquisitor sees. A Variant: null when what is seen is a place, and a body may be freed already.
+static func _unseen(seen: Variant) -> bool:
+	return seen != null and _alive(seen) and (seen as Person).guised()
 
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.

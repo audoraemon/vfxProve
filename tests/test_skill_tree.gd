@@ -328,7 +328,7 @@ static func _texts_fit(t) -> void:
 					if key == "":
 						continue
 					var d := TreeDetail.description(key, SkillTreeScreen.INFO_W)
-					if d.size() > 2 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
+					if d.size() > TreeDetail.DESCRIPTION_LINES or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
 						cut.append(key)
 					var full := String(PowerBook.get_power(key).name)
 					if SkillTreeScreen.node_label(full) != full:

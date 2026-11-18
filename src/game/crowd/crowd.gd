@@ -174,8 +174,12 @@ var animals: AnimalPack
 ## The visitors from the other side walking the town now (Visitors.setup() adds a pack, its clear() takes it out), for
 ## the powers that move whoever walks a place (The Folded Ward).
 var visitors: Array[Visitors] = []
+## Decree's laws on places (LawZone; add_law()), stepped every frame after the people (step_laws()).
+var laws: Array[LawZone] = []
 ## Voice of God's Silence: until this clock nobody can shout, pass a fright on, call for help or ring the bell.
 var _hush_until := -INF
+## Places hushed (Pale Reign): [{at, r, until}] -- nobody inside shouts or cries out, and a bell there makes no sound.
+var _hushes: Array = []
 ## Until when the bell lies (bell_lies()), on the crowd's clock.
 var _bell_lies_until := -INF
 ## Seconds left of time standing still (freeze()).
@@ -225,6 +229,11 @@ var deaths := DeathVoices.new()
 ## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
 var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
+## The town's whole dead (Death's powers raise and move them). Off unless Rules turns it on (Remains.wants()). Freed by clear()
+## (null after it): a reader checks it.
+var remains: Remains
+## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
+var withering: Withering
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -334,6 +343,9 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	piles = PileManager.new().setup(self, env, grid)
 	guard_jobs = GuardJobs.new().setup(self)
+	remains = Remains.new().setup(field)
+	parent.add_child(remains)
+	withering = Withering.new(field)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
@@ -748,6 +760,7 @@ func _add_person(is_soldier: bool, at: Vector2, seeds: RandomNumberGenerator = n
 	p.setup_person(is_soldier, at, _grid)
 	p.env = _env
 	p.field = _field
+	p.crowd = self
 	_parent.add_child(p)
 	return p
 
@@ -986,6 +999,124 @@ func step_people(delta: float) -> void:
 		if is_instance_valid(p) and not (still and p.is_alive()):
 			p.frame(delta)
 	BenchProf.add(&"people", t0)
+	if not laws.is_empty():
+		step_laws(delta)
+
+
+## A law on a place holds from now (Decree; LawZone) until its seconds run out, it is lifted (remove_law()) or `holder`
+## (the effect that laid it; null for none) goes: freed, it holds no more, and leaving the tree it is lifted at once.
+func add_law(z: LawZone, holder: Node = null) -> void:
+	if z == null or laws.has(z):
+		return
+	z.hold_by(holder)
+	laws.append(z)
+	if holder != null and is_instance_valid(holder):
+		holder.tree_exiting.connect(remove_law.bind(z), CONNECT_ONE_SHOT)
+
+
+## The law is lifted: it holds no more, and lets go of everyone it held. Any other law on the same ground still holds.
+func remove_law(z: LawZone) -> void:
+	if z == null:
+		return
+	laws.erase(z)
+	z.lift()
+
+
+## Whether `p` (a person or a visitor; null or a freed body: false) stands where a law of `kind` holds now. Indoors or
+## not: the one asking decides what an indoor person makes of it.
+func in_law(p: Variant, kind: StringName) -> bool:
+	return law_of(p, kind) != null
+
+
+## The first law of `kind` holding now where `p` (a person or a visitor) stands, or null (as in_law()).
+func law_of(p: Variant, kind: StringName) -> LawZone:
+	if laws.is_empty() or not is_instance_valid(p):
+		return null
+	return law_at(p.ground_pos, kind)
+
+
+## The first law of `kind` holding now at `g`, or null (a building's middle, where its door is barred; where a fall is seen).
+func law_at(g: Vector2, kind: StringName) -> LawZone:
+	for z in laws:
+		if z.alive() and z.holds(kind) and z.contains(g):
+			return z
+	return null
+
+
+## How far `p` sees toward `at`, at most `reach`: under Decree's NO SIGHT (LawZone.SIGHT_CAP) no farther than its cap, when
+## he or `at` stands where it holds. `reach` itself at once with no law laid. Every guard's sight and every witness's reach
+## asks here (MissionDirector._sees, EscortDirector._seen_by, LawMark's hunt, Person's fight pick).
+func sight(p: Variant, at: Vector2, reach: float) -> float:
+	if laws.is_empty() or reach <= LawZone.SIGHT_CAP:
+		return reach
+	if law_at(at, LawZone.NO_SIGHT) != null or (is_instance_valid(p) and law_at(p.ground_pos, LawZone.NO_SIGHT) != null):
+		return LawZone.SIGHT_CAP
+	return reach
+
+
+## Whether Decree's NO ARMS (LawZone) bars a guard's blow or seizure between `by` and `p`: either stands where it holds.
+## False at once with no law laid. Asked by Person's blow, EscortDirector._seen_by and the Harvest's guard.
+func disarmed(by: Variant, p: Variant) -> bool:
+	return not laws.is_empty() and (law_of(by, LawZone.NO_ARMS) != null or law_of(p, LawZone.NO_ARMS) != null)
+
+
+## One frame of every law on a place (step_people() calls it after the people move; tests may call it directly): time
+## runs, the ended are dropped, and NO LEAVING holds its own. Who stands about the laws is taken once for all of them.
+func step_laws(delta: float) -> void:
+	var near := Rect2()
+	var holding := false
+	_drop_ended_laws()
+	for z in laws:
+		if z.holds_people() and not z.stepped_by_holder:
+			near = near.merge(z.bounds()) if holding else z.bounds()
+			holding = true
+	var people: Array = []
+	var beasts: Array = []
+	if holding:
+		people = _field.in_rect(near)
+		_beasts_in(near, beasts)
+	for z in laws:
+		if not z.stepped_by_holder:
+			z.step(delta, people, beasts)
+	_drop_ended_laws()
+
+
+## One frame of a law its holder steps on its own clock (LawZone.stepped_by_holder): who stands about it is taken for
+## it alone, then it steps as step_laws() would step it.
+func step_law(z: LawZone, delta: float) -> void:
+	var people: Array = []
+	var beasts: Array = []
+	if z.holds_people() and z.alive():
+		var near := z.bounds()
+		people = _field.in_rect(near)
+		_beasts_in(near, beasts)
+	z.step(delta, people, beasts)
+
+
+## Whether `p` is cornered by the dead: any visitor pack's undead holds him in reach (Visitors.corners(), R30). A status of
+## the crowd's, whatever power sent them.
+func cornered(p: Person) -> bool:
+	for pack: Visitors in visitors:
+		if pack.corners(p):
+			return true
+	return false
+
+
+## The living visitors standing in `near`, added to `out`.
+func _beasts_in(near: Rect2, out: Array) -> void:
+	for pack: Visitors in visitors:
+		for a in pack.living():
+			if near.has_point(a.ground_pos):
+				out.append(a)
+
+
+## Every law whose time has run out, or whose effect is gone, is lifted.
+func _drop_ended_laws() -> void:
+	for i in range(laws.size() - 1, -1, -1):
+		if not laws[i].alive():
+			var z := laws[i]
+			laws.remove_at(i)
+			z.lift()
 
 
 ## Gate queues, escapes and the crowd clock. Runs from _process; tests call it directly.
@@ -1000,6 +1131,10 @@ func advance(delta: float) -> void:
 
 func _advance(delta: float) -> void:
 	_clock += delta
+	if remains != null:
+		remains.step(delta)
+	if withering != null:
+		withering.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1304,7 +1439,7 @@ func _update_bed(delta: float) -> void:
 
 ## One voice from `p`, if the budget allows it.
 func _voice(p: Person, cue: StringName) -> void:
-	if is_hushed():
+	if is_hushed() or is_hushed_at(p.ground_pos):
 		return
 	if _voice_tokens < 1.0:
 		return
@@ -1430,20 +1565,23 @@ static func _cast_radius(key: String, level := 1) -> float:
 
 
 ## Something frightening at `at` of `radius` (a maddened citizen turning on the crowd): a danger the town knows of for
-## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()).
+## `seconds`, seen to `sight` and heard to `sound`, and everyone in reach reacts now (_react()). `fresh_only` (R49): a
+## citizen already panicking is left to the flight he is in -- not sent running afresh from here -- so a fright renewed every
+## second (a ghost horde's) costs no new route for those it already has running.
 func fright(at: Vector2, radius: float, severity: float, seconds: float, sight: float, sound: float, kind: StringName,
-		soldiers_too := false) -> void:
+		soldiers_too := false, fresh_only := false) -> void:
 	if is_veiled(at):
 		return  # nothing there is seen (Unseen Hour)
 	threats.register(at, radius, severity, seconds, sight, sound, kind)
 	var points: Array[Vector2] = [at]
-	_react(points, radius, sound, at, kind, soldiers_too)
+	_react(points, radius, sound, at, kind, soldiers_too, fresh_only)
 
 
 ## Everyone reached by a danger at `points` of `radius`, heard as far as `sound`: the near run, the rest look. Citizens;
 ## and with `soldiers_too` (v0.11.1: a power's fright -- Collective Delusion's false danger -- not an ordinary cast's danger,
 ## where soldiers stand fast) the soldiers too, who run and look as citizens do but do not cry out or pass a fright on.
-func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2, kind := &"", soldiers_too := false) -> void:
+func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector2, kind := &"", soldiers_too := false,
+		fresh_only := false) -> void:
 	var frightened: Array[Person] = []
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive():
@@ -1461,6 +1599,8 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 			p.wake()  # a loud blow wakes the sleeping (Curfew)
 		if best <= radius + Person.THREAT_MARGIN:
 			var was := p.mind
+			if fresh_only and was == Person.Mind.PANIC:
+				continue  # running already: left to his flight (R49)
 			p.panic(at, radius, kind)
 			if p.mind == Person.Mind.PANIC and was != Person.Mind.PANIC:
 				frightened.append(p)
@@ -1547,6 +1687,21 @@ func is_hushed() -> bool:
 	return _clock < _hush_until
 
 
+## Silence one place, within `r` of `at`, for `seconds` (Pale Reign): nobody there shouts or cries out (_voice(),
+## _voice_death()), and a bell tower there makes no sound (BellNetwork._ring(): the keeper tries again). Unlike hush(),
+## frights still pass, the alarm is still raised and the town still comes to look.
+func hush_at(at: Vector2, r: float, seconds: float) -> void:
+	_hushes = _hushes.filter(func(h: Dictionary) -> bool: return _clock < float(h.until))
+	_hushes.append({"at": at, "r": r, "until": _clock + seconds})
+
+
+func is_hushed_at(pos: Vector2) -> bool:
+	for h: Dictionary in _hushes:
+		if _clock < float(h.until) and (h.at as Vector2).distance_to(pos) <= float(h.r):
+			return true
+	return false
+
+
 ## Nothing within `r` of `at` is seen for `seconds` (Unseen Hour): no cast there is looked at or feared, no death or
 ## collapse there raises the alarm or brings anyone, no danger is registered there, no fire there is fought. The
 ## people inside go on as they were; what is done to them is done.
@@ -1560,6 +1715,12 @@ func is_veiled(at: Vector2) -> bool:
 		if _clock < float(v.until) and (v.at as Vector2).distance_to(at) <= float(v.r):
 			return true
 	return false
+
+
+## Lays the withering on `p` for `seconds`, panicking him from `from` (Withering.lay()): false when nothing was laid
+## (gone, dead, inside, or withering already).
+func wither(p: Person, seconds: float, from: Vector2) -> bool:
+	return withering != null and withering.lay(p, seconds, from)
 
 
 ## The town is told what `s` is, for `seconds` (Anathema): a `mark` the managers read -- &"cursed": nobody will be
@@ -2112,7 +2273,21 @@ func clear() -> void:
 		else:
 			animals.free()
 	animals = null
+	# The ledger of bodies goes with the crowd (an R restart): cut off the field at once, so no death between this clear and the
+	# frame's end is written down, then freed; the next setup() makes a fresh one.
+	if remains != null and is_instance_valid(remains):
+		if is_instance_valid(_field) and _field.enemy_killed.is_connected(remains._on_killed):
+			_field.enemy_killed.disconnect(remains._on_killed)
+		remains.enabled = false
+		if remains.is_inside_tree():
+			remains.queue_free()
+		else:
+			remains.free()
+	remains = null
 	visitors.clear()
+	for z in laws:
+		z.lift()
+	laws.clear()
 	threats.clear()
 	_spreads.clear()
 	_held_dangers.clear()
@@ -2130,10 +2305,13 @@ func clear() -> void:
 	_held.clear()
 	_thorn_alarm_at = -INF
 	_hush_until = -INF
+	_hushes.clear()
 	_bell_lies_until = -INF
 	_freeze_left = 0.0
 	_veils.clear()
 	_struct_marks.clear()
+	if withering != null:
+		withering.clear()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
@@ -2208,8 +2386,8 @@ func clear_ground(r: Rect2) -> int:
 
 
 func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
-	if s.role == &"thorns" or s.role == &"windfall":
-		return  # a bramble or a dropped pile burnt or blasted away: no incident, nothing to flee
+	if s.role == &"thorns" or s.role == &"windfall" or s.role == LawRubble.ROLE:
+		return  # a bramble, a dropped pile or law rubble burnt or blasted away: no incident, nothing to flee
 	var at := s.center()
 	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
 		if s.role != &"citadel":
@@ -2230,10 +2408,10 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 		piles.on_fall(s)
 
 
-## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town nobody cries out, so the
-## fall is all that is heard (a quiet kind's cue).
+## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town (or a hushed place: Pale
+## Reign) nobody cries out, so the fall is all that is heard (a quiet kind's cue).
 func _voice_death(p: Person, kind: StringName) -> void:
-	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() else kind, p.soldier, _clock, p.is_child())
+	var cues := deaths.heard(p.ground_pos, &"doom" if is_hushed() or is_hushed_at(p.ground_pos) else kind, p.soldier, _clock, p.is_child())
 	if sfx == null:
 		return
 	for c: Array in cues:
@@ -2262,6 +2440,8 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if kind == &"gone":
 		return  # walked through a door of stars (The Far Gate): no cry, no body, nothing for the town to find
 	_voice_death(p, kind)
+	if kind == &"grave":
+		return  # the Walker's quiet kill: a body, a slump, no alarm
 	if is_veiled(p.ground_pos):
 		return  # a death nobody sees (Unseen Hour)
 	if kind == &"doom":
@@ -2280,13 +2460,14 @@ func doom_witness() -> float:
 
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
 ## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
-## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too.
+## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too. One passing as the
+## walking dead (Corpse Guise) is no witness.
 func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best: Person = null
 	var best_d := doom_witness()
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside:
+			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p) or p.guised():
 				continue
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:

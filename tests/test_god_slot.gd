@@ -65,7 +65,7 @@ static func _round_trip(t) -> void:
 	s.tier = 2
 	s.divine_power = 61
 	s.points = 4
-	s.learned = {"noleave": 3, "belllies": 1, "magnify": 2}
+	s.learned = {"noleave": 3, "breath": 1, "redefine": 2}
 	s.faith = 88
 	s.bought = {"slot": 2, "might": 1, "clock": 3, "respec": 1}
 	s.notice = 35
@@ -76,8 +76,8 @@ static func _round_trip(t) -> void:
 	s.in_night = "warning"
 	s.gifts = PackedStringArray(["watchful_bell", "walls_hold"])
 	s.bests = {"warning": {"cleared": true, "fastest": 143.5, "most_wishes": 2}}
-	s.carried = {"noleave": 5, "belllies": 2}
-	s.loadout = PackedStringArray(["noleave", "magnify"])
+	s.carried = {"noleave": 5, "breath": 2}
+	s.loadout = PackedStringArray(["noleave", "redefine"])
 	var file := _file("round")
 	t.check(s.write(file) == OK, "write() saves")
 	var r := GodSlot.read(file)

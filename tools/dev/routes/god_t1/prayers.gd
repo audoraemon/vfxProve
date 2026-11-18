@@ -5,8 +5,8 @@ extends RefCounted
 ##
 ## The poor walk to the shrine on their own (FirstPrayersDirector, rule 3), one at a time, so the night is the door: at the two instants a
 ## walker goes in and a prayer ends (the crits, crit_in()) no Faithful may see it. Each type clears the door in its own way (spec 8.6): Ruin
-## with fire (F2), Death and Veil by killing the ones who would watch, Passage by lifting the watchers off it (Skylift), Decree with ALL IS
-## WELL (F5), Dominion as loadout A does (Whisper and Discord).
+## with fire (F2), Death, Veil and Decree by killing the ones who would watch (Decree: Leaving and Breathing Is Prohibited together), Passage by
+## lifting the watchers off it (Skylift), Dominion as loadout A does (Whisper and Discord).
 
 const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
 
@@ -171,29 +171,40 @@ static func _alone(d: FirstPrayersDirector, p: Person, reach: float) -> bool:
 	return true
 
 
-# --- Death: Death Mark and Pestilence ---
+# --- Death: Death Mark and Raise the Dead ---
 
-## Death (D34) takes every Faithful as fast as its two casts allow -- the market lines the door with the four nearest at 1:15, a walker comes at 1:20,
-## and two casts cannot take four in five seconds, so they must all be gone by then anyway. With the door empty the poor hurry in and pray
-## together, and the night ends about one prayer after the last death: its idle stretch (D34: up to 60 s) is that kill's fuse, the walk and the prayer.
-
+## Death (D34) takes every Faithful as fast as Death Mark allows, the nearest the door first -- the market lines the door with the four nearest at 1:15
+## and a walker comes at 1:20, so they must all be gone by then or kept from seeing. With the door empty the poor hurry in and pray together, and the
+## night ends about one prayer after the last death: its idle stretch (D34: up to 60 s) is that kill's fuse, the walk and the prayer. Raise the Dead's
+## SPIRIT keeps the door blind and the Temple deaf: everyone within its fright (RaiseTheDeadFx.FRIGHT_R) runs from it, and a frightened carrier drops
+## his report until he is back on his feet. As a crit nears with a Faithful watching the door, it rises from a body by the door; and a runner to the
+## Temple the mark cannot stop in time (it is cooling, or its fuse outlasts his walk) is frightened off his run by one risen from a body on his way,
+## where none of the poor stands in its reach.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
+	var spirit_free: bool = _ready(bc, ctx, "raise") and (ctx.rules as Rules).live_fx("raise") == null
 	for c in _runners(d):
 		if _ready(bc, ctx, "deathmark") and not c.statuses.has(&"frail"):
 			return _cast(ctx, "deathmark", c.ground_pos, "death mark a runner to the Temple")
-		if _ready(bc, ctx, "pestilence") and c.sick_left <= 0.0 and _alone(d, c, 3.0):
-			return _cast(ctx, "pestilence", c.ground_pos, "pestilence on a runner to the Temple")
+		if spirit_free and _fuse_left(ctx, c) > TempleReport.walk_seconds(c, d.temple_door):
+			var body := _spirit_body(ctx, d, c.ground_pos)
+			if body != Vector2.INF:
+				return _cast(ctx, "raise", body, "raise a spirit on a runner's way to the Temple: he drops the report", {"mode": "spirit"})
+	# The door at a crit: a spirit rises from a body by the door and the Faithful watching it run.
+	var crit := crit_in(bc, ctx)
+	var watchers: Array[Person] = []
+	for w in _watchers(d):
+		if _fuse_left(ctx, w) > crit:
+			watchers.append(w)  # (one whose mark falls first sees nothing)
+	if crit <= LEAD and not watchers.is_empty() and spirit_free:
+		var body: Vector2 = GodT1.body_near(ctx.crowd, d.door, RISE_NEAR, true)
+		if body != Vector2.INF:
+			return _cast(ctx, "raise", body, "raise a spirit by the door", {"mode": "spirit"})
 	var faithful := _faithful(d)
 	var doomed: Array[Person] = []
 	for f in faithful:
-		if not f.statuses.has(&"frail") and f.sick_left <= 0.0 and not d._carrying(f):
+		if not f.statuses.has(&"frail") and not d._carrying(f):
 			doomed.append(f)
-	# The plague takes a clustered few at once (the clergy at the Temple's door) when no one else stands by to catch it, or one alone.
-	if _ready(bc, ctx, "pestilence"):
-		var aim := _plague_on(ctx, doomed, 1)
-		if aim != Vector2.INF:
-			return _cast(ctx, "pestilence", aim, "pestilence on the Faithful")
 	# Death Mark: one at a time, the nearest the door first, each alone where he stands (seen, while the Gaze can bear it, once the night is under way).
 	if _ready(bc, ctx, "deathmark"):
 		var room := d.gaze.value + GazeMeter.SEEN_DEATH <= BEAR_GAZE and d.timeline.elapsed() > 8.0
@@ -203,31 +214,33 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-## Where Pestilence would take at least `least` of `pool` and nobody else, with no one within 1.7 (the plague spreads 1.5) to catch it.
-static func _plague_on(ctx: Dictionary, pool: Array[Person], least: int) -> Vector2:
-	var d := ctx.d as FirstPrayersDirector
-	var best := Vector2.INF
-	var most := 0
-	for f in pool:
-		var victims := PestilenceFx.victims_at(ctx.crowd._field, f.ground_pos)
-		var mine := 0
-		var clear := true
-		for v in victims:
-			if pool.has(v):
-				mine += 1
-			else:
-				clear = false
-		if not clear or mine <= most or mine < least:
+## A body with its soul still near within RISE_NEAR of `at` whose spirit's fright reaches none of the poor (they must reach the shrine); its place, or
+## Vector2.INF. Only reads.
+static func _spirit_body(ctx: Dictionary, d: FirstPrayersDirector, at: Vector2) -> Vector2:
+	var crowd: Crowd = ctx.crowd
+	if crowd.remains == null:
+		return Vector2.INF
+	for r in crowd.remains.near(at, RISE_NEAR):
+		if not crowd.remains.has_soul(r):
 			continue
-		for group: Array[Person] in [d.crowd.citizens, d.crowd.soldiers]:
-			for o in group:
-				if is_instance_valid(o) and o.is_alive() and not o.inside and not victims.has(o) \
-						and o.ground_pos.distance_to(f.ground_pos) < 1.7:
-					clear = false
+		var clear := true
+		for g: Variant in _spare(d):
+			clear = clear and (g as Person).ground_pos.distance_to(r.pos) > RaiseTheDeadFx.FRIGHT_R + Person.THREAT_MARGIN
 		if clear:
-			best = f.ground_pos
-			most = mine
-	return best
+			return r.pos
+	return Vector2.INF
+
+
+## Seconds until `p`'s Death Mark falls on him (the mark still running), INF when he wears none.
+static func _fuse_left(ctx: Dictionary, p: Person) -> float:
+	var fx := (ctx.rules as Rules).live_fx("deathmark") as DeathMarkFx
+	if fx == null or fx.marked != p or not p.statuses.has(&"frail"):
+		return INF
+	return DeathMarkFx.MARK_TIME - fx.t
+
+
+## Death: a spirit rises from a body with its soul still near within this of the door, or of a runner (its fright reaches FRIGHT_R about it).
+const RISE_NEAR := 4.0
 
 
 # --- Veil: Silent Doom and Blight ---
@@ -546,53 +559,77 @@ static func _way_near(way: PackedVector2Array, at: Vector2, reach: float) -> boo
 	return way.size() == 1 and way[0].distance_to(at) <= reach
 
 
-# --- Decree: Leaving Is Prohibited and The Bell Lies ---
+# --- Decree: Leaving Is Prohibited and Breathing Is Prohibited ---
 
+## Decree takes the Faithful (as Death, D34) with the cell and the breath together (GodT1.cast_amber(), amber_breath()): walled in amber where
+## they will stand as it seals, held, they cannot run from the airless circle, and die three seconds on; with the door empty the poor hurry in.
+## A report on the run first, whatever it costs (one delivered fills the Gaze); and while a crit nears with a line at the door or one by it
+## (RESERVE), the two are kept for that report. Otherwise the most Faithful for the fewest others doomed with them (DOOMED_OK at most: a death
+## someone sees adds 10 to the Gaze), never holding one of the poor, and while their deaths leave the district short of Local Emergency
+## (GodT1.deaths_left(): its bell would toll, and the toll adds 40).
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
-	var crowd: Crowd = ctx.crowd
-	# ALL IS WELL (F5): rung BELL_LEAD seconds before the next crit (a walker's arrival or a prayer's end), it lies through the walker's going in and
-	# his coming out (32 s), and stands the line down on the spot; and with the bell free, for a report on the run.
-	if _ready(bc, ctx, "belllies") and not crowd.is_bell_lying():
-		if crit_in(bc, ctx) <= BELL_LEAD or not _runners(d).is_empty():
-			return _cast(ctx, "belllies", d.door, "the bell lies: all is well", {"mode": "well"})
-	# A window that came due in the lie forms the moment it ends: Leaving Is Prohibited on the ones who would line it (the clergy at the
-	# Temple, for the priests) as the lie ends keeps them off the door until it has closed.
-	if _ready(bc, ctx, "noleave") and crowd.is_bell_lying() and crowd.lie_left() <= 4.0 and not d._late.is_empty():
-		var late: Array[Person] = (d._late[0].pool as Callable).call()
-		late.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(d.door) < b.ground_pos.distance_to(d.door))
-		if not late.is_empty():
-			return _cast(ctx, "noleave", late[0].ground_pos, "leaving is prohibited: the Faithful who would line the door")
-	# Leaving Is Prohibited pins the Faithful where they stand -- the clergy at the Temple before the priests are due, else a Faithful or two
-	# on their way to the door -- so the line comes late, if at all.
-	if _ready(bc, ctx, "noleave") and _idle(ctx) > FILL_AFTER - 14.0 and (not crowd.is_bell_lying() or crowd.lie_left() > 22.0 or d._late.is_empty()):
-		var pin := _pin_at(ctx)
-		if pin != Vector2.INF:
-			return _cast(ctx, "noleave", pin, "leaving is prohibited: pin the Faithful")
+	var follow := GodT1.amber_breath(bc, ctx)
+	if follow != "":
+		ctx.memo["plast"] = _t(ctx)
+		return follow
+	if GodT1.amber_pending(ctx):
+		return ""
+	for c in _runners(d):
+		var cell := _cell_on(ctx, [c])
+		if not cell.is_empty() and GodT1.cast_amber(bc, ctx, cell.at, [c]):
+			ctx.memo["plast"] = _t(ctx)
+			return "leaving is prohibited round a runner to the Temple: the breath follows"
+	var crit := crit_in(bc, ctx)
+	if crit <= RESERVE and (not d.liners.is_empty() or _line_left(ctx, crit) > 0.0 or not _watchers(d).is_empty()):
+		return ""
+	var best := {}
+	for f in _faithful(d):
+		var group: Array[Person] = []
+		var at := GodT1.road_ahead(f, NoLeaveFx.T_SEAL)
+		for o in _faithful(d):
+			if GodT1.road_ahead(o, NoLeaveFx.T_SEAL).distance_to(at) <= NoLeaveFx.RADIUS - CELL_IN * 2.0:
+				group.append(o)
+		var cell := _cell_on(ctx, group)
+		if cell.is_empty() or int(cell.doomed) > DOOMED_OK or group.size() + int(cell.doomed) > GodT1.deaths_left(ctx.crowd, cell.at):
+			continue
+		if best.is_empty() or group.size() - int(cell.doomed) > (best.group as Array).size() - int(best.doomed):
+			best = {"at": cell.at, "group": group, "doomed": int(cell.doomed)}
+	if not best.is_empty() and GodT1.cast_amber(bc, ctx, best.at, best.group):
+		ctx.memo["plast"] = _t(ctx)
+		return "leaving is prohibited round %d Faithful (%d others by them): the breath follows" % [(best.group as Array).size(), int(best.doomed)]
 	return ""
 
 
-## The seconds before a crit the bell is rung: its 45 s then cover a walker going in and his prayer's end (32 s on).
-const BELL_LEAD := 13.0
+## The cell and the breath are kept for a report while a crit with a line at the door (or one by it) is this near: their cooldown and a few seconds.
+const RESERVE := 30.0
+## A cell is laid on the Faithful where it dooms at most DOOMED_OK others with them.
+const DOOMED_OK := 1
 
 
-## Where Leaving Is Prohibited would pin the most Faithful and none of the poor (within its radius), the clergy first; Vector2.INF for none.
-static func _pin_at(ctx: Dictionary) -> Vector2:
+## The cell for `group` (Faithful, or a runner): laid on the middle of where they will stand as it seals, shifted as far as keeps each CELL_IN
+## inside its edge to doom the fewest others (GodT1.amber_aim()); empty when it would hold one of the poor, or one of `group` would stand outside
+## it. {"at", "doomed"}.
+static func _cell_on(ctx: Dictionary, group: Array) -> Dictionary:
 	var d := ctx.d as FirstPrayersDirector
-	var best := Vector2.INF
-	var most := 0
-	for f in _faithful(d):
-		var n := 0
-		var clear := true
-		for g in d.grieving:
-			if MissionDirector._alive(g) and g.ground_pos.distance_to(f.ground_pos) <= NoLeaveFx.RADIUS + 0.5:
-				clear = false
-		for o in _faithful(d):
-			n += 1 if o.ground_pos.distance_to(f.ground_pos) <= NoLeaveFx.RADIUS else 0
-		if clear and n > most:
-			best = f.ground_pos
-			most = n
-	return best
+	var mid := Vector2.ZERO
+	for p: Person in group:
+		mid += GodT1.road_ahead(p, NoLeaveFx.T_SEAL)
+	mid /= float(group.size())
+	var spread := 0.0
+	for p: Person in group:
+		spread = maxf(spread, GodT1.road_ahead(p, NoLeaveFx.T_SEAL).distance_to(mid))
+	if spread > NoLeaveFx.RADIUS - CELL_IN:
+		return {}
+	var aim: Dictionary = GodT1.amber_aim(ctx.crowd, mid, group, clampf(NoLeaveFx.RADIUS - CELL_IN - spread, 0.0, GodT1.AMBER_SHIFT))
+	for g: Person in _spare(d):
+		if not g.inside and g.ground_pos.distance_to(aim.at) <= NoLeaveFx.RADIUS + GodT1.AMBER_ROOM:
+			return {}
+	return {"at": aim.at, "doomed": int(aim.doomed)}
+
+
+## Those a cell is laid for stand at least this far inside its edge (they shift as it seals).
+const CELL_IN := 0.4
 
 
 # --- Dominion: Mind Whisper and Discord (loadout A's policy) ---
@@ -705,15 +742,28 @@ static func doom_faithful(bc, ctx: Dictionary, seen_after := 8.0) -> String:
 
 
 ## A spot to whisper `p` to, `reach` from him, on the side of `toward` first and then round the compass, that he has a way to (and is not shut in
-## a pocket of ground); Vector2.INF for none.
+## a pocket of ground) no longer than WHISPER_WAY x the distance; else the one of them with the shortest way; Vector2.INF for none. (A whisper's
+## linger only starts once he is there: a spot across a wall sent the walker the long way round, 54 s, after the walk-grid fixes.)
 static func _whisper_spot(ctx: Dictionary, p: Person, toward: Vector2, reach: float) -> Vector2:
 	var d := ctx.d as FirstPrayersDirector
 	var grid: WalkGrid = ctx.crowd._grid
 	var base := (toward - p.ground_pos).normalized()
+	var best := Vector2.INF
+	var best_len := INF
 	for k in 8:
 		var turn := (float((k + 1) / 2) * (1.0 if k % 2 == 0 else -1.0)) * TAU / 8.0
 		var spot := d._walkable(p.ground_pos + base.rotated(turn) * reach)
 		var way := grid.path(p.ground_pos, spot)
-		if spot.distance_to(p.ground_pos) > reach * 0.6 and not way.is_empty() and way[way.size() - 1].distance_to(spot) < 1.0:
-			return spot
-	return Vector2.INF
+		var gap := spot.distance_to(p.ground_pos)
+		if gap > reach * 0.6 and not way.is_empty() and way[way.size() - 1].distance_to(spot) < 1.0:
+			var len := d._way_length(p.ground_pos, way)
+			if len <= gap * WHISPER_WAY:
+				return spot
+			if len < best_len:
+				best = spot
+				best_len = len
+	return best
+
+
+## The longest way a whisper spot may take to walk to, as a share of its distance.
+const WHISPER_WAY := 1.5

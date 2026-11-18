@@ -463,7 +463,7 @@ func lights() -> Array[Dictionary]:
 		# A stall's bare lantern is a point: a small pool on its counter (round 4: the market read as one lit sheet).
 		out.append({"pos": Iso.ground_to_screen(p.at) - Vector2(0, p.lift), "radius": BARE_RADIUS if bare else l.radius,
 			"color": Structure.TORCH_LIGHT, "flicker": l.flicker, "alpha": BARE_ALPHA if bare else l.alpha, "structure": host,
-			"look_decor": true, "face": face})
+			"look_decor": true, "face": face, "g": p.at})
 	return out
 
 

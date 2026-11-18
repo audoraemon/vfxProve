@@ -4,10 +4,10 @@ extends RefCounted
 ## behaviour_check script, ctx = {rules, slots, d (the director), crowd, memo, mission} as for tier1_b.gd. Each looks the way a player does:
 ## the granary whose turn it is, its watchmen, its carter -- and casts at most one power a look.
 ##
-## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks the watchmen so both are gone when
-## Pestilence takes the carter (H2); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts the carter out beyond the
-## wall (H1); Decree holds the carter and calls the guard to him (H4); Dominion whispers him out of the
-## gate a step at a time (H1).
+## The six routes: Ruin Smites the watchmen and Embers the granary (A's, with Smite); Death marks a watchman and raises his spirit by the carter
+## as he carries a load, which he drops (H7); Veil dooms the watchmen and Blights the full granary (H3); Passage Skylifts
+## the carter out beyond the wall (H1); Decree holds the carter in Leaving Is Prohibited's amber cell for his time (H6, the user's ruling
+## 2026-11-13); Dominion whispers him out of the gate a step at a time (H1).
 
 ## The types whose policy is written.
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
@@ -15,23 +15,24 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 ## Ruin and Veil clear a granary's watchmen when its grain is due within this many seconds (A's HARVEST_PRE: sooner, the relief walks in
 ## before the fire has burned its 10 s; Veil's Blight needs them gone at the grain, 30 s of relief after the first).
 const CLEAR_PRE := 20.0
-## Death starts marking the watchmen when Pestilence is ready within this many seconds (two marks, 20 s apart, the second falling 10 s after
-## its cast: 20 + 10 = 30), and counts a marked watchman as gone with this much of his fuse left.
-const DEATH_LEAD := 31.0
-const MARK_GONE := 3.0
-## Decree: how far along the road from a door toward the Citadel a carter about to take a load is looked for (_step_off()).
-const MIRROR_DOOR_STEP := 3.5
+## Death frightens a carter carrying a load (H7, the user's ruling 2026-11-14: he drops it and the grain spoils). A watchman is Death-marked
+## when the carter's walk to the door, or the grain still to come, is DEATH_MARK_LEAD seconds or less: he falls by the door and his soul is
+## still near (Remains.SOUL) when the carter takes the load, DEATH_SOUL_PAD to spare. The spirit rises from his body once the carter has taken
+## his load and, where he will stand as it rises (RaiseTheDeadFx.T_RISE on), is within its fright less DEATH_FRIGHT_PAD.
+const DEATH_SOUL_PAD := 4.0
+const DEATH_MARK_LEAD := DeathMarkFx.MARK_TIME + Remains.SOUL - DEATH_SOUL_PAD
+const DEATH_FRIGHT_PAD := 0.5
 ## Passage: how far from where the beam takes him a carter is set down, at the least and the most (the nearest ground out of the walls).
 const EXIT_MIN := 1.0
 const EXIT_MAX := 26.0
 ## Passage: how many seconds of a hauling carter's road ahead a Windfall of stone is laid across it (beyond its crush when it lands).
 const WALL_LEAD := 4.0
-## Decree: the seconds of his road ahead the hold is laid for a walking carter (it seals 0.6 s after the cast), and the longest the call waits on
-## the hold being laid.
-const HOLD_LEAD := 0.6
-const HOLD_PLAN := 4.0
 ## Dominion: how far ahead along his road a carter is whispered (Mind Whisper's REACH is 10).
 const WHISPER_STEP := 9.0
+## Decree: a walking carter's cell is centred this many seconds of his road past where he stands as it seals (he walks into its middle,
+## not straight to its far edge), but never more than CELL_IN from that spot (he is sealed in at least RADIUS - CELL_IN inside the edge).
+const CELL_AHEAD := 2.5
+const CELL_IN := 2.0
 
 
 # --- Reading the night ---------------------------------------------------------------------------------------------------
@@ -88,20 +89,6 @@ static func _at_door(d: HarvestDirector, s: Structure, c: Person) -> bool:
 	return c.ground_pos.distance_to(d.doors[s]) <= 1.0 and not d._hauling.has(c.get_instance_id())
 
 
-## A point MIRROR_DOOR_STEP down the road from the granary's door toward the Citadel.
-static func _step_off(ctx: Dictionary, d: HarvestDirector, s: Structure) -> Vector2:
-	var path: PackedVector2Array = ctx.crowd._grid.path(d.doors[s], d.citadel_door)
-	var run := 0.0
-	var at: Vector2 = d.doors[s]
-	for k in path.size():
-		var seg := at.distance_to(path[k])
-		if run + seg >= MIRROR_DOOR_STEP:
-			return at.move_toward(path[k], MIRROR_DOOR_STEP - run)
-		run += seg
-		at = path[k]
-	return at
-
-
 ## The shared policy pieces (god_t1.gd preloads this file, so it is loaded when wanted).
 static func _god() -> GDScript:
 	return load("res://tools/dev/routes/god_t1.gd")
@@ -153,41 +140,54 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence ---------------------------------------------------------------------------------------
+# --- Death: Death Mark, Raise the Dead ----------------------------------------------------------------------------------
 
-## H2: the carter is sick with no watchman on guard. Death Mark the watchmen (a mark kills in 10 s, the cooldown is 20) timed to have both gone
-## as Pestilence comes ready, then Pestilence on the carter; one marked that way counts as gone with MARK_GONE of his fuse left.
+## The carter is frightened while he carries a load (H7): a watchman of his granary is Death-marked as the carter comes for a load (he falls by
+## the door before the carter takes it, his soul still near), and Raise the Dead's SPIRIT rises from his body as the carter walks off with it: within its fright
+## he runs, drops the load, and the grain spoils. A body whose soul has gone before the carter came is followed by a mark on the next watchman.
+## One granary at a time, the soonest to fall first.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as HarvestDirector
 	var rules: Rules = ctx.rules
 	if d == null:
 		return ""
-	var memo: Dictionary = ctx.memo
-	if not memo.has("marks"):
-		memo.marks = {}
 	var tgt := _target(d)
 	if tgt.is_empty():
 		return ""
 	var s: Structure = tgt.s
 	var c: Person = tgt.c
-	var left: Array[Person] = []
-	for g in d.guards(s):
-		var at: float = memo.marks.get(g.get_instance_id(), -INF)
-		if at == -INF or d._clock - at < 10.0 - MARK_GONE:
-			left.append(g)
-	if left.is_empty() and _ready(bc, ctx, "pestilence") and c.sick_left <= 0.0:
-		rules.cast(int(ctx.slots.pestilence), c.ground_pos)
-		return "pestilence on the %s granary's carter" % _name(d, s)
-	if not left.is_empty() and _cd(ctx, "pestilence") <= DEATH_LEAD and _ready(bc, ctx, "deathmark"):
-		var man := left[0]
-		for g in left:
-			if not memo.marks.has(g.get_instance_id()):
-				man = g
-				break
-		memo.marks[man.get_instance_id()] = d._clock
-		rules.cast(int(ctx.slots.deathmark), man.ground_pos)
-		return "death mark a watchman of the %s granary" % _name(d, s)
+	var crowd: Crowd = ctx.crowd
+	var door: Vector2 = d.doors[s]
+	if rules.live_fx("raise") != null:
+		return ""  # a spirit is up: it frightens whoever it reaches
+	# He carries a load, and where he will stand as the spirit rises lies within its fright of a body whose soul is still near: the spirit rises.
+	if d._hauling.has(c.get_instance_id()) and _ready(bc, ctx, "raise") and crowd.remains != null:
+		var at: Vector2 = _god().road_ahead(c, RaiseTheDeadFx.T_RISE)
+		for r in crowd.remains.near(at, RaiseTheDeadFx.FRIGHT_R - DEATH_FRIGHT_PAD):
+			if crowd.remains.has_soul(r):
+				rules.cast(int(ctx.slots.raise), r.pos, {"mode": "spirit"})
+				return "raise a spirit by the %s granary's carter as he carries a load: he drops it" % _name(d, s)
+	# He comes to the door for a load within DEATH_MARK_LEAD (his walk, or the grain still to come): the watchman nearest the door is marked, his
+	# soul still near when the carter takes it; one mark at a time.
+	if not d._hauling.has(c.get_instance_id()) and _ready(bc, ctx, "deathmark") and _marks_due(d, s) == 0:
+		var walk := c.ground_pos.distance_to(door) / maxf(c.walk_speed, 0.1)
+		if maxf(walk, d.grain_left(s)) <= DEATH_MARK_LEAD:
+			var man: Person = null
+			for w in d.watchmen(s):
+				if man == null or w.ground_pos.distance_to(door) < man.ground_pos.distance_to(door):
+					man = w
+			if man != null:
+				rules.cast(int(ctx.slots.deathmark), man.ground_pos)
+				return "death mark a watchman of the %s granary, as its carter comes for a load" % _name(d, s)
 	return ""
+
+
+## Watchmen of `s` who wear a mark now.
+static func _marks_due(d: HarvestDirector, s: Structure) -> int:
+	var n := 0
+	for w in d.watchmen(s):
+		n += 1 if w.statuses.has(&"frail") else 0
+	return n
 
 
 # --- Veil: Silent Doom, Blight -------------------------------------------------------------------------------------------
@@ -257,55 +257,30 @@ static func _length_from(at: Vector2, road: PackedVector2Array) -> float:
 	return n
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies ------------------------------------------------------------------------
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited -------------------------------------------------------------
 
-## H4: hold the carter (Leaving Is Prohibited) at the place the guard are called to (The Bell Lies, CALL THE GUARD): on him, the hold first and the
-## call a look after, so he cannot walk out of the seizing radius while the guard run there. The bell's 60 s are the long wait (D12: Decree may idle up
-## to 60 s here); the hold once laid at the next granary's door to fill it did nothing, and is gone (D38).
+## H6 (the user's ruling 2026-11-13): a carter held by the law HarvestDirector.HELD_SPOIL seconds spoils his granary. Leaving Is Prohibited is laid
+## on the carter of the first granary still to spoil the moment he is out and not already held: on him where he stands (waiting at his door), or,
+## walking, a little way along his road (CELL_AHEAD, CELL_IN) so he is sealed in and walks into the cell's middle. The cell (15 s) outlasts his
+## time; its cooldown (20 s) is back before the next carter is out. Breathing Is Prohibited is not needed: a dead carter spoils nothing (H5).
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as HarvestDirector
 	var rules: Rules = ctx.rules
 	if d == null:
 		return ""
-	var memo: Dictionary = ctx.memo
-	var now := d._clock
-	var plan: Dictionary = memo.get("plan", {})
-	if not plan.is_empty():
-		if now - float(plan.t) > HOLD_PLAN:
-			memo.erase("plan")
-		elif _god().cast_bell(bc, ctx, "guard", plan.at):
-			memo.erase("plan")
-			memo.last = now
-			return "the bell calls the guard to the %s granary's carter" % plan.name
-		else:
-			return ""
 	var tgt := _target(d)
-	if not tgt.is_empty() and _ready(bc, ctx, "belllies"):
-		var s: Structure = tgt.s
-		var c: Person = tgt.c
-		var hold := _ready(bc, ctx, "noleave")
-		var place := _guard_place(ctx, d, s, c)
-		if hold:
-			rules.cast(int(ctx.slots.noleave), place)
-			memo.plan = {"at": place, "t": now, "name": _name(d, s)}
-			memo.last = now
-			return "leaving is prohibited at the %s granary's carter" % _name(d, s)
-		if _god().cast_bell(bc, ctx, "guard", place):
-			memo.last = now
-			return "the bell calls the guard to the %s granary's carter" % _name(d, s)
+	if tgt.is_empty() or not _ready(bc, ctx, "noleave"):
 		return ""
-	return ""
-
-
-## Where the hold and the call are laid: on the carter. He stands at his door (waiting for the grain or about to take a load, then a step down
-## the road) or walks his road; the hold, laid on the spot he will be at when it seals, keeps him within Leaving Is Prohibited's radius of it
-## -- the radius the guard seize within (HarvestDirector.SEIZE_R) -- whenever the first soldier has come.
-static func _guard_place(ctx: Dictionary, d: HarvestDirector, s: Structure, c: Person) -> Vector2:
-	if _at_door(d, s, c):
-		return d.doors[s] if not d.has_grain(s) and d.grain_left(s) > HOLD_LEAD else _step_off(ctx, d, s)
-	if c.goal() == Vector2.INF:
-		return c.ground_pos
-	return _god().road_ahead(c, HOLD_LEAD)
+	var s: Structure = tgt.s
+	var c: Person = tgt.c
+	if (ctx.crowd as Crowd).in_law(c, LawZone.NO_LEAVING):
+		return ""
+	var sealed_at: Vector2 = _god().road_ahead(c, NoLeaveFx.T_SEAL)
+	var ahead: Vector2 = _god().road_ahead(c, NoLeaveFx.T_SEAL + CELL_AHEAD)
+	var at := sealed_at + (ahead - sealed_at).limit_length(CELL_IN)
+	rules.cast(int(ctx.slots.noleave), at)
+	return "leaving is prohibited round the %s granary's carter (%s): held his time, his load spoils" % [_name(d, s),
+		"at his door" if _at_door(d, s, c) else "on his road"]
 
 
 # --- Dominion: Mind Whisper, Discord -------------------------------------------------------------------------------------

@@ -20,7 +20,12 @@ extends RazeDirector
 ## grain is due and waits at the door (H0); a carter out of the town's walls, or sick (Pestilence) with no watchman on guard,
 ## or seized by the guard The Bell Lies calls to him, spoils his granary at once (H1, H2, H4); Blight rots a granary whose grain
 ## is in and whose watchmen are not on guard (H3); a carter who dies is replaced RELIEF_AFTER later and killing one never spoils
-## (H5). Every spoil is recorded in `spoiled_by`.
+## (H5). The user's ruling (2026-11-13, for Decree): a carter alive, out of doors and held by a NO LEAVING law (Leaving Is Prohibited's
+## amber cell, Fenced Rule's NO LEAVING) for HELD_SPOIL seconds without a break spoils his granary as a seizure does (H6). The user's ruling
+## (2026-11-14, for Death; the night's rule for every power): a carter carrying a load who is frightened drops it, and his granary's grain is
+## spoiled (H7, _dropped_look()). A carter is picked only from those who can take the errand (H8, Person.can_take_duty()): one already
+## fleeing never set out, and his flight out of the walls spoiled the granary for the god before its grain was due. Every spoil is
+## recorded in `spoiled_by`.
 
 ## One watchman's post (v0.11 M2): a plain record, so the director holds no cycle.
 class Watch:
@@ -68,6 +73,20 @@ const SEIZE_SLACK := 0.05
 const SEIZE_RING := 2.4
 ## The called guard come and find no carter in reach (final review M7): the call is spent, and the player is told so (no hidden loss).
 const NO_CART_BANNER := "THE GUARD FIND NO CART"
+## The user's ruling (2026-11-13, H6; tunable): how long a carter held by a NO LEAVING law spoils his load -- "his time", inside the amber cell's
+## 15 s (NoLeaveFx.HOLD_TIME). The clock runs only while he is held and resets when he is free of the law. HELD_SLACK covers the float of a
+## clock summed frame by frame. The banner when it does.
+const HELD_SPOIL := 6.0
+const HELD_SLACK := 0.001
+const HELD_BANNER := "THE LAW HOLDS THE CART - THE GRAIN SPOILS"
+## The user's ruling (2026-11-14, H7): a carter carrying a load -- he has taken it at the granary's door and not yet brought it to the Citadel --
+## drops it the moment he is frightened, and the grain spoils for good. (Only the reading of his mind is TempleReport's: its carrier drops the
+## report while frightened and picks it up again; this drop is permanent and spoils the granary.) Frightened is exactly a mind in DROP_MINDS:
+## PANIC (running from a danger near him), FLEE (making for a gate), or SHELTER when a fright sent him into cover
+## (ShelterManager.fright_shelter()): one a hallowed building (Anathema) or the rain (Tempest) sent in is not frightened. A mind the god holds
+## (CONFUSED, WHISPERED, COMPELLED), one looking (OBSERVE), fighting or recovering is not fright, and a carter with no load drops nothing.
+const DROP_MINDS: Array[Person.Mind] = [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER]
+const DROP_BANNER := "THE CARTER DROPS HIS LOAD - THE GRAIN SPOILS"
 ## A watchman at his post while his granary burns is not frightened (Person.fearless_left): the town's ordinary flight from a
 ## fire would empty his post before he could beat the fire out. Held this many seconds past the last look; the god's own holds
 ## (a kill, a whisper, Discord) still take him (v0.11 M2).
@@ -103,12 +122,15 @@ var carters := {}
 var watches := {}
 ## Structure -> true once its grain has arrived (v0.11 M2).
 var grain := {}
-## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight" or "seized" (god T1R, for the report and the tests).
+## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight", "seized", "held" or "dropped" (god T1R, for the report and the
+## tests).
 var spoiled_by := {}
 ## Structure -> the second its first carter set out (god T1R, H0).
 var _out_at := {}
 ## Structure -> seconds since its carter was last alive (god T1R, H5: a relief is sent RELIEF_AFTER after).
 var _carter_fallen := {}
+## Instance id of a carter held by a NO LEAVING law -> seconds held without a break (H6, the user's ruling 2026-11-13).
+var _held := {}
 ## Instance ids of the sick carters the watch has already turned away (god T1R, H2: the banner shows once per carter).
 var _turned := {}
 ## The Bell Lies' CALL THE GUARD cast that may still seize a cart, and where it called them (god T1R, H4).
@@ -257,12 +279,13 @@ func carter_out_at(i: int) -> float:
 
 
 ## A carter sets out for `s`'s door from the Citadel's gate: the lay citizen nearest it not already at work (v0.11 M2; god T1R: the
-## first one early, a replacement after a death).
+## first one early, a replacement after a death). H8: none who cannot take the errand now (Person.can_take_duty()).
 func _send_carter(s: Structure) -> void:
 	if not _out_at.has(s):
 		_out_at[s] = _clock
 	_carter_fallen[s] = 0.0
-	var crew := _lay_near(citadel_door, CARTERS, _busy())
+	var unable := crowd.citizens.filter(func(p: Variant) -> bool: return _alive(p) and not (p as Person).can_take_duty())
+	var crew := _lay_near(citadel_door, CARTERS, _busy() + unable)
 	carters[s] = crew
 	for c in crew:
 		c.go_duty(doors[s])
@@ -297,6 +320,8 @@ func step(delta: float) -> void:
 	var looking := _tick_in <= 0.0
 	if looking:
 		_tick_in = TICK
+	_held_look(delta)
+	_dropped_look()
 	for i in targets.size():
 		var s := targets[i]
 		if razed(s):
@@ -401,13 +426,13 @@ func _seize_look() -> void:
 		_guard_fx = null
 		_guard_at = Vector2.INF
 		return
-	var arrived := false
+	var guard: Person = null
 	for sol in crowd.soldiers:
 		if is_instance_valid(sol) and sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL \
 				and sol.anchor.distance_to(_guard_at) <= SEIZE_RING and sol.ground_pos.distance_to(sol.anchor) <= SEIZE_ARRIVE:
-			arrived = true
+			guard = sol
 			break
-	if not arrived:
+	if guard == null:
 		return
 	var at := _guard_at
 	_guard_fx = null
@@ -417,7 +442,7 @@ func _seize_look() -> void:
 		if razed(s):
 			continue
 		for c: Variant in carters.get(s, []):
-			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at):
+			if _alive(c) and not (c as Person).inside and _in_seizing_reach(c as Person, at) and not crowd.disarmed(guard, c):  # (Decree's NO ARMS, on him or the guard)
 				rules.banner.emit("THE GUARD SEIZE THE CART")
 				_sound(&"msn_seize", (c as Person).ground_pos)
 				_spoil(s, "seized")
@@ -425,6 +450,58 @@ func _seize_look() -> void:
 				break
 	if not seized:
 		rules.banner.emit(NO_CART_BANNER)
+
+
+## A carter held by the law (H6, the user's ruling 2026-11-13): every frame, each carter alive, out of doors and inside a NO LEAVING law
+## (Crowd.in_law) adds to his clock; one free of it starts again. HELD_SPOIL seconds held spoils his granary ("held"); he is sent home as a
+## seizure sends him (_on_razed). Returns at once with no law laid (crowd_check unchanged).
+func _held_look(delta: float) -> void:
+	if crowd.laws.is_empty():
+		_held.clear()
+		return
+	var now := {}
+	for s in targets:
+		if razed(s):
+			continue
+		for c: Variant in carters.get(s, []):
+			if not _alive(c) or (c as Person).inside or not crowd.in_law(c, LawZone.NO_LEAVING):
+				continue
+			var id := (c as Person).get_instance_id()
+			now[id] = float(_held.get(id, 0.0)) + delta
+			if float(now[id]) >= HELD_SPOIL - HELD_SLACK:
+				rules.banner.emit(HELD_BANNER)
+				now.erase(id)
+				_spoil(s, "held")
+				break
+	_held = now
+
+
+## A frightened carter drops his load (H7, the user's ruling 2026-11-14): every frame, a carter alive and carrying a load (`_hauling`) who is
+## frightened (_frightened()) spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
+## his mind decides it. One frightened at the Citadel's gate (within TAKE_REACH) has delivered it: his load is cleared, nothing spoils. Returns at
+## once with no load on the road.
+func _dropped_look() -> void:
+	if _hauling.is_empty():
+		return
+	for s in targets:
+		if razed(s):
+			continue
+		for c: Variant in carters.get(s, []):
+			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and _frightened(c as Person):
+				if (c as Person).ground_pos.distance_to(citadel_door) <= TAKE_REACH:
+					# At the Citadel's gate his load is delivered (as _cart() leaves it on its TICK, which may not have come yet).
+					_hauling.erase((c as Person).get_instance_id())
+					continue
+				rules.banner.emit(DROP_BANNER)
+				_spoil(s, "dropped")
+				break
+
+
+## `p`'s mind is fright (H7): PANIC or FLEE, or SHELTER when a fright sent him in (not a hallowed building or the rain). Only reads.
+func _frightened(p: Person) -> bool:
+	if p.mind == Person.Mind.SHELTER:
+		return crowd.shelters == null or crowd.shelters.fright_shelter(p)
+	return p.mind in DROP_MINDS
 
 
 ## Whether watchman `w` of `s` is on guard now (v0.11 M2): alive, out of doors, in a calm mind, and at his post.
@@ -718,7 +795,7 @@ func tour() -> Array:
 		out.append([doors[targets[i]], "The %s granary. Its watchmen put out fires. Its grain arrives by %s." % [store_names[i],
 			UiTheme.clock(float(grain_at[i]))]])
 	if citadel_door != Vector2.INF:
-		out.append([citadel_door, "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled."])
+		out.append([citadel_door, "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled; a carter frightened with a load drops it."])
 	return out
 
 

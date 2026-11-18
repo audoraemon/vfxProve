@@ -1,0 +1,6 @@
+{"length": 2.2, "peak_db": -2.0, "reverb": {"rt60": 1.4, "mix": 0.16, "predelay_ms": 10, "damp": 5500}, "eq": [["lowshelf", 200, -5.0], ["peak", 3200, 1.5, 0.9]], "layers": [
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_01.ogg", "at": 0.0, "onset": true, "hp": 500, "lp": 9000, "fade_out": 80, "gain_db": -4},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_02.ogg", "at": 0.2, "onset": true, "pitch": 2, "hp": 600, "lp": 9000, "fade_out": 80, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v1_Sum.wav", "at": 0.42, "pitch": 5, "hp": 400, "lp": 7000, "dur": 1.6, "fade_out": 900, "gain_db": -3},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Triangle3-Hit_v1_rr1_Sum.wav", "at": 0.44, "lp": 9000, "dur": 1.7, "fade_out": 1000, "gain_db": -10},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/metal-ringing.wav", "at": 0.43, "pitch": -2, "hp": 900, "lp": 8000, "fade_out": 300, "gain_db": -9}]}

@@ -545,6 +545,11 @@ static func _alive(p: Variant) -> bool:
 	return is_instance_valid(p) and (p as Person).is_alive()
 
 
+## The barred postern whose key the watchman holds is kept standing (R45): the frightened watchman unbars it (key_door()).
+func needs_standing(s: Structure) -> bool:
+	return s != null and s == _key_gate
+
+
 ## The map tags (board tags, spec §2), most important first:
 ## - whoever carries the warning, pointed at from the edge: WATCHMAN before he runs, BELLKEEPER once the keeper has it,
 ##   else MESSENGER (in place of v0.08's marker);
@@ -591,7 +596,7 @@ func witnesses() -> Array[Person]:
 		return out
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if is_instance_valid(p) and p != messenger and p.is_alive() and not p.inside and not on_lantern_errand(p) \
+			if is_instance_valid(p) and p != messenger and p.is_alive() and not p.inside and not on_lantern_errand(p) and not LawMark.unseen_by_all(p) \
 					and p.ground_pos.distance_to(messenger.ground_pos) <= Crowd.DOOM_WITNESS:
 				out.append(p)
 	return out

@@ -25,6 +25,8 @@ const MINI_PX := 22.0
 const NODE_ICON_UNITS := 21.0
 const MINI_ICON_UNITS := 18.0
 ## Where a node's name may sit, and how tall its strip is.
+## How many times label_layout() lays a column out again, the names left without a clear place moved to the front.
+const LABEL_PASSES := 4
 const LABEL_AREA := Rect2(124.0, 28.0, 392.0, 218.0)
 const LABEL_STRIP_H := 13.0
 const LABEL_STRIP_H2 := 25.0
@@ -361,41 +363,61 @@ static func strip_belongs(r: Rect2, tier: int, i: int) -> bool:
 
 
 ## Where every name of column `col` is written: Vector2i(tier, i) -> its strip (text width + 6 u by LABEL_STRIP_H), innermost tier first (the most crowded),
-## each in the first candidate place that is clear (strip_clear); when none is, the radial place, and a test fails. Cached per column.
+## each in the first candidate place that is clear (strip_clear); when none is, the radial place, and a test fails. A name left without a
+## clear place is moved to the front and the column laid out again (at most LABEL_PASSES times): an inner name can take the one place an
+## outer one has (Decree: Breathing Is Prohibited and The Sealed Verdict). Cached per column.
 func label_layout(col: int) -> Dictionary:
 	if _label_cache.has(col):
 		return _label_cache[col]
-	var out := {}
-	var placed: Array[Rect2] = []
+	var order: Array[Vector2i] = []
 	for tier in range(1, GodTree.TIERS + 1):
 		for i in GodTree.PER_TIER:
-			var key := key_at(col, tier, i)
-			if key == "":
-				continue
-			var full := String(PowerBook.get_power(key).name)
-			var p := TreeWheel.node_at(tier, i)
-			var pick := Rect2()
-			var found := false
+			if key_at(col, tier, i) != "":
+				order.append(Vector2i(tier, i))
+	var out := {}
+	for pass_n in LABEL_PASSES:
+		var misses: Array[Vector2i] = []
+		out = _label_pass(col, order, misses)
+		if misses.is_empty():
+			break
+		for m in misses:
+			order.erase(m)
+		order = misses + order
+	_label_cache[col] = out
+	return out
+
+
+## One layout of column `col` in `order`; the names that found no clear place go into `misses`.
+func _label_pass(col: int, order: Array[Vector2i], misses: Array[Vector2i]) -> Dictionary:
+	var out := {}
+	var placed: Array[Rect2] = []
+	for at in order:
+		var tier := at.x
+		var i := at.y
+		var full := String(PowerBook.get_power(key_at(col, tier, i)).name)
+		var p := TreeWheel.node_at(tier, i)
+		var pick := Rect2()
+		var found := false
+		for two in [false, true]:
+			for c in strip_candidates(p, strip_size(full, two)):
+				if strip_clear(c, placed) and strip_belongs(c, tier, i):
+					pick = c
+					found = true
+					break
+			if found:
+				break
+		if not found:
+			misses.append(at)
+			# No clear place that belongs: take a belonging one inside the area even if it crowds a neighbour (a test fails), else the radial
 			for two in [false, true]:
 				for c in strip_candidates(p, strip_size(full, two)):
-					if strip_clear(c, placed) and strip_belongs(c, tier, i):
+					if not found and LABEL_AREA.encloses(c) and strip_belongs(c, tier, i):
 						pick = c
 						found = true
-						break
-				if found:
-					break
 			if not found:
-				# No clear place that belongs: take a belonging one inside the area even if it crowds a neighbour (a test fails), else the radial
-				for two in [false, true]:
-					for c in strip_candidates(p, strip_size(full, two)):
-						if not found and LABEL_AREA.encloses(c) and strip_belongs(c, tier, i):
-							pick = c
-							found = true
-				if not found:
-					pick = strip_candidates(p, strip_size(full, false))[0]
-			out[Vector2i(tier, i)] = pick
-			placed.append(pick)
-	_label_cache[col] = out
+				pick = strip_candidates(p, strip_size(full, false))[0]
+		out[at] = pick
+		placed.append(pick)
 	return out
 
 

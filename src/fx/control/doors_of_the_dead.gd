@@ -113,6 +113,9 @@ var _fallen := {}
 var _fog: QuadFx
 var _frost: QuadFx
 var _chill: QuadFx
+## The cold wind (a looping cue): played as the cold comes in and again at the call back, faded as the cold lifts.
+var _winds: Array[Node] = []
+const WIND_CUES: Array[StringName] = [&"dead_chill", &"dead_recall"]
 
 
 func t_end() -> float:
@@ -144,7 +147,7 @@ func _build() -> void:
 	if rise_again:
 		visitors.bitten.connect(_on_kill)
 	_pick_doors()
-	ctx.play(&"dead_chill", origin, -2.0)
+	_wind(&"dead_chill", -2.0)
 	for d in doors:
 		at(d.opens, _open.bind(d))
 	at(t_end(), _call_back)
@@ -371,10 +374,33 @@ func _tick_cold(delta: float) -> void:
 func _warm(id: int) -> void:
 	var held: Array = _cold[id]
 	_cold.erase(id)
-	var p: Person = held[0]
+	# Untyped until checked: one who left the town (Crowd.escape) or was taken "gone" by another power is freed, and
+	# assigning a freed one to a Person errors.
+	var p = held[0]
 	if not is_instance_valid(p):
 		return
-	p.free_pace(get_instance_id())
+	(p as Person).free_pace(get_instance_id())
+
+
+## The cold blows (dead_chill as the doors open, dead_recall as the dead are called back), each voice kept to be faded.
+func _wind(cue: StringName, db: float) -> void:
+	var w := ctx.play(cue, origin, db)
+	if w != null:
+		_winds.append(w)
+
+
+## The cold dies away over `seconds` (0: stopped at once, no tween made), each voice only if it still plays this
+## cast's cue (a voice another cast took over is left alone).
+func _hush(seconds: float) -> void:
+	for w in _winds:
+		if not is_instance_valid(w) or not w.get_meta(&"cue", &"") in WIND_CUES:
+			continue
+		if seconds <= 0.0:
+			if w is AudioStreamPlayer2D:
+				(w as AudioStreamPlayer2D).stop()
+		else:
+			ctx.fade_out(w, seconds)
+	_winds.clear()
 
 
 ## Whether `p` is in the cold now.
@@ -387,7 +413,7 @@ func _call_back() -> void:
 	_recalled = true
 	_rising.clear()  # the span is over: whoever has not risen yet stays down
 	visitors.recall(RECALL)
-	ctx.play(&"dead_recall", origin, -4.0)
+	_wind(&"dead_recall", -4.0)
 
 
 ## The doors close; whoever of the other side has not made it back is gone anyway; the cold begins to lift.
@@ -399,6 +425,7 @@ func _close_all() -> void:
 		d.open = false
 	for id in _cold.keys():
 		_warm(id)
+	_hush(THAW)
 	ctx.play(&"dead_close", origin, -6.0)
 	if not DominionParts.staged(self):
 		return
@@ -555,6 +582,22 @@ func _finish() -> void:
 		visitors.clear()
 	for id in _cold.keys():
 		_warm(id)
+	_hush(0.3)
+	super()
+
+
+## Freed without _finish (Battlefield.clear_effects() on a restart): the same -- the spirits gone, everyone in the cold
+## given their pace back, the wind stopped -- the pack only queued for freeing (its parents may be mid-teardown) and
+## nothing new made. After _finish there is nothing left to do here.
+func _exit_tree() -> void:
+	if visitors != null:
+		visitors.clear(true)
+	for id in _cold.keys():
+		_warm(id)
+	_hush(0.0)
+	_trails.clear()
+	_fright_in.clear()
+	_rising.clear()
 	super()
 
 
@@ -569,12 +612,14 @@ class DoorGlow extends Node2D:
 
 	func _process(delta: float) -> void:
 		flare = maxf(flare - delta * 3.0, 0.0)
-		if fx.t > fx.closed_at() + 0.6:
+		if not is_instance_valid(fx) or fx.t > fx.closed_at() + 0.6:
 			queue_free()
 			return
 		queue_redraw()
 
 	func _draw() -> void:
+		if not is_instance_valid(fx):
+			return
 		var age := fx.t - door.opens
 		if age < 0.0:
 			return

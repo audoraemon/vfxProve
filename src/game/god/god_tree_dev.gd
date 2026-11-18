@@ -8,6 +8,7 @@ extends RefCounted
 ## Same shape as GodTree.TABLE: type -> five tiers of two keys, "" for a spot left empty.
 ## Ruin's row is the user's full tree (2026-11-02): no dev key left in it (Heaven Splitter, Gravity Distortion and Judgement are out);
 ## Death's and Veil's Tier 2 take Orbital Strike and Walking Laser Grid for Light of Solaris and Tsunami Breaker, now Ruin's.
+## Death's dev keys (Glacial, Orbital) sit under the user's Death picks (2026-11-12: the whole Death row is real), so none of them reaches play.
 ## Dominion's other dev keys likewise sit under the user's picks (2026-11-06: the whole Dominion row is real), so none of them reaches play.
 ## Dominion's Tier 3 dev keys (Oathbound, Command Echo) sit under the user's Clear Mind and Saint or Sinner (2026-11-04), so they
 ## no longer reach play; the real table wins a filled spot.

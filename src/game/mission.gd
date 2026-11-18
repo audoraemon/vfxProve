@@ -268,6 +268,12 @@ func _ready() -> void:
 		if Battlefield.arg_value(args, "--bench-toll") != "":
 			await _bench_toll(args)
 			label += "-toll"
+		if Battlefield.arg_value(args, "--bench-cast") != "":
+			if await _bench_cast(args):
+				# --bench-tally: the counts are printed; no frames are timed.
+				await _quit()
+				return
+			label += "-cast-" + Battlefield.arg_value(args, "--bench-cast")
 		label += await _bench_view(args)
 		await _bf.bench(label)
 		await _quit()
@@ -338,6 +344,60 @@ func _bench_toll(args: PackedStringArray) -> void:
 		_rules.lantern.burn()
 	var after := Battlefield.arg_value(args, "--bench-after")
 	await get_tree().create_timer(float(after) if after != "" else 5.0).timeout
+
+
+## Bench aid (Death review adjustments, Task 13): `--bench-cast=KEY` casts the loadout slot whose key is KEY at the middle of the
+## market square, then lets it run `--bench-after=SECONDS` (default 4) before the frames are timed. `--bench-bodies=N` first kills the N
+## citizens nearest the market as `deathmark` (whole bodies; nearest by distance, then instance id, so no luck) and waits a second.
+## The cast has no drag (no extra): a drag-aimed power faces its own default, so Heaven's Door faces HeavensDoorFx.DEFAULT_DIR,
+## ground (1, 0), screen down-right (R46), the same every run.
+## `--bench-tally=SECONDS` (Death second review, R46; the bar against Heaven's Door): counts from the cast itself (not after
+## `--bench-after`, which it replaces) for SECONDS, then prints `TALLY key=<key> seconds=<S> deaths=<D> citizens=<C>
+## soldiers=<X> destroyed=<B>` -- the people killed since the cast (`killed_citizens` + `killed_soldiers`) and the buildings
+## that fell (`structure_destroyed`) -- and returns true, so the bench quits without timing frames. Run it at
+## `--fixed-fps 60`: counts, not times. Only under --bench: no effect on normal play or crowd_check.
+func _bench_cast(args: PackedStringArray) -> bool:
+	var at := Places.at(&"market_square")
+	var bodies := Battlefield.arg_value(args, "--bench-bodies")
+	if bodies != "" and _crowd != null:
+		var people: Array = []
+		for p in _crowd.citizens:
+			if is_instance_valid(p) and p.is_alive():
+				people.append(p)
+		people.sort_custom(func(a: Person, b: Person) -> bool:
+			var da := a.ground_pos.distance_squared_to(at)
+			var db := b.ground_pos.distance_squared_to(at)
+			return da < db if da != db else a.get_instance_id() < b.get_instance_id())
+		for i in mini(int(bodies), people.size()):
+			_bf.ctx.field.kill(people[i], &"deathmark", at)
+		await get_tree().create_timer(1.0).timeout
+	var key := Battlefield.arg_value(args, "--bench-cast")
+	var tally := Battlefield.arg_value(args, "--bench-tally")
+	# The tally's baselines are taken at the cast: the bodies above are not counted. An Array, as a lambda copies a plain local.
+	var citizens0 := _crowd.killed_citizens if _crowd != null else 0
+	var soldiers0 := _crowd.killed_soldiers if _crowd != null else 0
+	var destroyed := [0]
+	var count_fall := func(_s: Structure, _kind: StringName) -> void: destroyed[0] += 1
+	if tally != "":
+		_bf.ctx.env.structure_destroyed.connect(count_fall)
+	var cast_out := false
+	if _rules != null:
+		for i in _rules.loadout.size():
+			if _rules.key(i) == key:
+				cast_out = _rules.cast(i, at) != null
+				break
+	if tally != "":
+		if not cast_out:
+			push_warning("--bench-tally: %s was not cast (refused, or not in the loadout); the tally counts the town alone" % key)
+		await get_tree().create_timer(float(tally)).timeout
+		_bf.ctx.env.structure_destroyed.disconnect(count_fall)
+		var c := (_crowd.killed_citizens - citizens0) if _crowd != null else 0
+		var x := (_crowd.killed_soldiers - soldiers0) if _crowd != null else 0
+		print("TALLY key=%s seconds=%s deaths=%d citizens=%d soldiers=%d destroyed=%d" % [key, tally, c + x, c, x, destroyed[0]])
+		return true
+	var after := Battlefield.arg_value(args, "--bench-after")
+	await get_tree().create_timer(float(after) if after != "" else 4.0).timeout
+	return false
 
 
 ## A fresh mission: clear the world, build the town, spawn the people, hand out 100 DP and six minutes.

@@ -1,0 +1,6 @@
+{"length": 5.0, "rms_db": -18.0, "reverb": {"rt60": 3.2, "mix": 0.28, "predelay_ms": 24, "damp": 3800}, "eq": [["lowshelf", 140, 1.5], ["peak", 3000, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-c3.wav", "at": 0.02, "onset": true, "dur": 4.6, "pitch": -12, "lp": 3000, "fade_out": 2400, "gain_db": -2},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-c3.wav", "at": 0.03, "onset": true, "dur": 4.4, "pitch": -11.6, "lp": 2400, "fade_out": 2400, "gain_db": -7},
+  {"src": "lib:kenney/impact-sounds/Audio/impactBell_heavy_000.ogg", "at": 0.02, "onset": true, "pitch": -12, "lp": 1400, "dur": 2.6, "fade_out": 1500, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongHit_p.wav", "at": 0.02, "onset": true, "dur": 4.4, "pitch": -9, "lp": 900, "fade_out": 2600, "gain_db": -10},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v3_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 1.4, "lp": 200, "fade_out": 700, "gain_db": -9}]}

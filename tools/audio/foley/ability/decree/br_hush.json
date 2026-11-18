@@ -1,0 +1,8 @@
+{"length": 3.0, "rms_db": -18.0, "reverb": {"rt60": 1.8, "mix": 0.24, "predelay_ms": 14, "damp": 3500}, "eq": [["lowshelf", 140, -2.0], ["peak", 3500, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/cymbal-crash1_pp_rr1.wav", "at": 0.0, "dur": 1.0, "reverse": true, "hp": 500, "lp": 3000, "fade_in": 400, "fade_out": 40, "gain_db": -8},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "onset": true, "dur": 1.0, "reverse": true, "hp": 250, "lp": 3500, "fade_in": 300, "fade_out": 60, "gain_db": -5},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_air_01.ogg", "at": 0.25, "dur": 0.8, "reverse": true, "hp": 600, "lp": 5000, "fade_in": 200, "fade_out": 60, "gain_db": -10},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub1_v1.wav", "at": 0.95, "dur": 0.8, "lp": 260, "fade_in": 20, "fade_out": 400, "gain_db": -6},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 1.0, "dur": 1.9, "hp": 40, "lp": 520, "fade_in": 150, "fade_out": 1100, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_146_rr1.wav", "at": 1.05, "pitch": -12, "dur": 1.8, "hp": 180, "lp": 1100, "fade_in": 300, "fade_out": 1100, "gain_db": -13},
+  {"src": "lib:oga/wind/wind/wind/Wind3.ogg", "at": 1.0, "dur": 1.6, "hp": 1800, "lp": 6000, "fade_in": 30, "fade_out": 1300, "gain_db": -18}]}

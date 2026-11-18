@@ -125,6 +125,30 @@ const CATALOG := {
 	&"q_blight_hit": {"path": "res://assets/audio/ability/quiet/q_blight_hit_%d.wav", "variants": 4, "db": -0.2, "voices": 3, "jitter": 0.08},
 	&"q_deathmark": {"path": "res://assets/audio/ability/quiet/q_deathmark.wav", "db": -0.2},
 	&"q_deathmark_hit": {"path": "res://assets/audio/ability/quiet/q_deathmark_hit.wav", "db": -0.7},
+	# Raise the Dead (Death I, tools/audio/foley/ability/death/): the dead getting up -- bone grinding under a cold low choir's breath -- and
+	# the spirit's wail (its rising).
+	&"raise_rise": {"path": "res://assets/audio/ability/death/raise_rise.wav", "db": 0.0},
+	&"raise_wail": {"path": "res://assets/audio/ability/death/raise_wail.wav", "db": 0.0},
+	# Gravecall (Death II): three spirits called up out of the ground -- a ghostly chorus of moans over cold breath.
+	&"gravecall_rise": {"path": "res://assets/audio/ability/death/gravecall_rise.wav", "db": 0.0},
+	# Corpse Guise (Death III, quiet): a near-inaudible cold breath, barely over the quiet floor.
+	&"q_guise": {"path": "res://assets/audio/ability/quiet/q_guise.wav", "db": 0.0},
+	# Walking Corpse (Death III, quiet): a body gets up -- a shuffle of cloth and a stiff joint's creak, under the quiet floor's edge.
+	&"q_walker": {"path": "res://assets/audio/ability/quiet/q_walker.wav", "db": 0.0},
+	# The Gate Below (Death IV): the ground opening -- a deep rumble, stone grinding, a cold choir's breath -- and its closing, ground
+	# grinding shut under a wraith's wail.
+	&"gatebelow_open": {"path": "res://assets/audio/ability/death/gatebelow_open.wav", "db": 2.0},
+	&"gatebelow_close": {"path": "res://assets/audio/ability/death/gatebelow_close.wav", "db": 1.0},
+	# Pale Reign (Death IV): the colour going out of a district -- a low choir held under a great bell's slow toll.
+	&"pale_drone": {"path": "res://assets/audio/ability/death/pale_drone.wav", "db": 0.0},
+	# The Pale Serpent (Death V): bursting up out of the ground in a gust of wind and a flurry of great wings; then the long
+	# rush of wind over feathers as it glides.
+	&"serpent_rise": {"path": "res://assets/audio/ability/death/serpent_rise.wav", "db": 1.5},
+	&"serpent_glide": {"path": "res://assets/audio/ability/death/serpent_glide.wav", "db": 0.0},
+	# Grave Tide (Death V): the town's dead getting up at once -- a deep grinding of bones under the earth's rumble and a low
+	# choir; the bone giant's heavy step, a thud and a rattle of bones.
+	&"gravetide_rise": {"path": "res://assets/audio/ability/death/gravetide_rise.wav", "db": 2.5},
+	&"giant_step": {"path": "res://assets/audio/ability/death/giant_step.wav", "db": 2.0},
 	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
 	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
 	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},
@@ -132,6 +156,11 @@ const CATALOG := {
 	&"q_belllies": {"path": "res://assets/audio/ability/quiet/q_belllies.wav", "db": 1.2},
 	&"q_magnify": {"path": "res://assets/audio/ability/quiet/q_magnify.wav", "db": -1.3},
 	&"q_abolition": {"path": "res://assets/audio/ability/quiet/q_abolition.wav", "db": 1.0},
+	&"q_redefine": {"path": "res://assets/audio/ability/quiet/q_redefine.wav", "db": 3.5},
+	&"q_bound": {"path": "res://assets/audio/ability/quiet/q_bound.wav", "db": 0.5},
+	# The Sealed Verdict: a quill writing a district into the brass ledger, the clasp shut on it; and its one bell stroke.
+	&"q_sealed": {"path": "res://assets/audio/ability/quiet/q_sealed.wav", "db": 0.5},
+	&"q_sealed_hit": {"path": "res://assets/audio/ability/quiet/q_sealed_hit.wav", "db": 2.0},
 	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
 	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind.wav", "db": 1.8},
 	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema.wav", "db": 0.2},
@@ -215,6 +244,22 @@ const CATALOG := {
 	&"q_verdict_hit": {"path": "res://assets/audio/ability/quiet/q_verdict_hit.wav", "db": 0.0},
 	&"q_delusion": {"path": "res://assets/audio/ability/quiet/q_delusion.wav", "db": -2.5},
 	&"q_voice": {"path": "res://assets/audio/ability/quiet/q_voice.wav", "db": 0.8},
+	# Decree's loud powers (tools/audio/foley/ability/decree/): Breathing Is Prohibited's hollow, airless hush.
+	&"br_hush": {"path": "res://assets/audio/ability/decree/br_hush.wav", "db": 3.4},
+	# Erasing Distance: a cloth tear as the seam runs and the fold draws in, and the crash as it shuts.
+	&"er_tear": {"path": "res://assets/audio/ability/decree/er_tear.wav", "db": 3.0},
+	&"er_crash": {"path": "res://assets/audio/ability/decree/er_crash.wav", "db": 2.5},
+	# Disorder's crooked bell: two chimes a little out of tune with each other, and a late, lower toll that does not fit.
+	&"di_bell": {"path": "res://assets/audio/ability/decree/di_bell.wav", "db": 2.0},
+	# Eminent Domain: a low groan as the strip is claimed, then the demolition roar as everything on it comes down.
+	&"ed_roar": {"path": "res://assets/audio/ability/decree/ed_roar.wav", "db": 2.5},
+	# Fenced Rule: iron posts driven into the ground one after another round the ring, the last struck home with a long ring.
+	&"fe_posts": {"path": "res://assets/audio/ability/decree/fe_posts.wav", "db": 3.5},
+	# The Closing Cage: the brass bars rise out of the ground with a clang and begin to grind; the grind of them closing in
+	# (a loop, faded out at the end); and the cage shutting on its middle.
+	&"cg_rise": {"path": "res://assets/audio/ability/decree/cg_rise.wav", "db": 3.0},
+	&"cg_grind": {"path": "res://assets/audio/ability/decree/cg_grind.wav", "db": 0.0, "loop": true},
+	&"cg_shut": {"path": "res://assets/audio/ability/decree/cg_shut.wav", "db": 3.0},
 	# Buildings and the town: recordings (tools/audio/foley/building/). A building or tree coming down (Town plays them) is capped at four voices each, so a
 	# stone rain felling a dozen things at once is a roar, not a pile-up.
 	&"collapse_stone": {"path": "res://assets/audio/building/collapse_stone_%d.wav", "variants": 5, "db": -0.1, "voices": 4, "jitter": 0.08},

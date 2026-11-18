@@ -13,8 +13,13 @@ const ARRIVE := 0.05
 const KNOCK_DECAY := 8.0
 const MIN_PULL_DIST := 0.15
 const DEATH_FADE := 1.6
-## How long one killed by a Death Mark lies where it fell before it fades, for the town to find.
+## How long one killed by a Death Mark, or by one of Decree's laws, lies where it fell before it fades, for the town to
+## find (and for Death's powers to use: Remains).
 const BODY_HOLD := 20.0
+## The kinds of death whose body lies BODY_HOLD before it fades: the Death Mark's; and Decree's, whose dead are left
+## whole -- choked (Breathing Is Prohibited), struck by the Sealed Verdict, killed by the bond (Bound in Law), crushed by
+## the Closing Cage or the fold of Erasing Distance. Each is a whole body (Remains.BODY_KINDS).
+const HELD_KINDS: Array[StringName] = [&"deathmark", &"choke", &"verdict", &"bound", &"crushed"]
 ## How often a unit re-reads the light around it. Pixel art tints in steps anyway, and with 160 people this
 ## sampling was the biggest thing left in the crowd's frame.
 const LIGHT_HZ := 20.0
@@ -278,8 +283,8 @@ func _tick_death(delta: float) -> void:
 		_:
 			pass
 	var fade_start := 0.25 if _kind == &"gravity" else (0.35 if _kind == &"ice" else (1.0 if _kind == &"pit" else 0.6))
-	# The marked lie there a while first.
-	var hold := BODY_HOLD if _kind == &"deathmark" else 0.0
+	# The marked, and the law's dead, lie there a while first.
+	var hold := BODY_HOLD if HELD_KINDS.has(_kind) else 0.0
 	modulate.a = clampf(1.0 - (_dead_time - hold - fade_start) / (DEATH_FADE - fade_start), 0.0, 1.0)
 	if _kind == &"gravity" and _dead_time > 0.3:
 		modulate.a = 0.0
@@ -384,6 +389,9 @@ func die(kind: StringName, source := Vector2.INF) -> void:
 			# No body: the figure pales into starlight where it stands, and the light drifts up off it.
 			for i in 12:
 				_embers.append(Vector3(rng.randf_range(-4, 4), rng.randf_range(-16, -1), rng.randf_range(0.5, 1.2)))
+		&"choke", &"verdict":
+			# No blow lands (Breathing Is Prohibited; the Sealed Verdict): no flash, only the quiet collapse every plain death has.
+			_flash = 0.0
 		&"pit":
 			# Drawn down toward the hole's middle (the source) as it falls, up to a body's reach away.
 			_fly = Vector2.ZERO

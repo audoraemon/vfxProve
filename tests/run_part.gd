@@ -3,6 +3,7 @@ extends SceneTree
 ## suite as M Godot processes at once. Prints "part=N/M suites=S checks=C failures=F"; exits 1 on any failure.
 
 const ALL := preload("res://tests/run_all.gd")
+const ScriptErrorLog := preload("res://tests/script_error_log.gd")
 
 var failures := 0
 var checks := 0
@@ -24,6 +25,7 @@ func _reset_world() -> void:
 	City.use(&"aldermere")
 	City._extra.clear()  # a fixture town a failed suite never unregistered
 	Person.frame_no = -1
+	Person.frame_base = Engine.get_process_frames()  # a suite that awaited frames moved the engine's count: each suite steps its people as it does alone
 	Person.offscreen_every = Person.OFFSCREEN_EVERY
 	GodTree.dev_fill = false  # god P1: the dev fill is on only inside a test that turns it on
 	GodTree.use_table({})  # Tier 1 fill: a test of an empty tree sets its own
@@ -55,6 +57,8 @@ func _initialize() -> void:
 	var mine: Array = suites.slice((part - 1) * size, part * size)
 	if only != "":
 		mine = suites.filter(func(path: String) -> bool: return path.contains(only))  # `--only=name`: just those suites
+	var errors := ScriptErrorLog.new()
+	OS.add_logger(errors)  # a GDScript runtime error only aborts its own function: the suite goes on, so count them
 	for path in mine:
 		var suite: GDScript = load(path)
 		if suite == null or not suite.can_instantiate():
@@ -63,11 +67,16 @@ func _initialize() -> void:
 		Hud.reset_session()  # v0.11.1: no suite depends on the display state an earlier one left in this process
 		_reset_world()
 		var before := checks
+		errors.take()  # an error between suites is not this suite's
 		# A suite may be a coroutine (await t.process_frame): the tree is only live after the first frame.
 		await suite.run(self)
 		if checks == before:
 			check(false, "suite ran no checks (runtime error?): %s" % path)
+		var seen: Array = errors.take()
+		if seen[0] > 0:  # (no check when clean: the suite's check count stays its own)
+			check(false, "suite hit %d runtime error(s), the rest of each erroring function was skipped: %s -- first: %s" % [seen[0], path, seen[1]])
 		# v0.12 (ruling C3): a suite that switched the city puts Aldermere back; one that did not is a failure, named.
 		check(City.current().id() == &"aldermere", "suite left a city active: %s (%s)" % [path, City.current().id()])
+	OS.remove_logger(errors)
 	print("part=%d/%d suites=%d checks=%d failures=%d" % [part, of, mine.size(), checks, failures])
 	quit(1 if failures > 0 else 0)

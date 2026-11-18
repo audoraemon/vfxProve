@@ -5,7 +5,8 @@ extends RefCounted
 ## never steps: it is summoned at a gate, hunts whoever is nearest -- citizen or soldier, alive and out in the open,
 ## within its seek reach, the nearest looked for again every RETARGET -- and bites whoever it reaches (hurt_from: a
 ## citizen falls to one bite, a soldier to two; the dead are the god's, damage kind frenzy). It fears nothing: no
-## threat, strike or fright ever sets it running, and it never flees. The guard cuts it down: a soldier within
+## threat, strike or fright ever sets it running, and it never flees -- but for a law that takes the air (NO BREATH):
+## it runs out of that (_flee_law()). The guard cuts it down: a soldier within
 ## GUARD_REACH of one lands a blow every GUARD_SWING (the first after a swing's wait; he strikes one visitor at a
 ## time), and at `blows` blows it dies. A visitor summoned to flinch must begin its bite again each time it is struck,
 ## so one guard holds one off; one that does not flinch bites through the blows, and a lone guard falls to it.
@@ -18,24 +19,71 @@ extends RefCounted
 ## Traits (give()) change how one goes about it: `phase` walks straight through walls and houses to its prey (a ghost),
 ## `wreck` claws at buildings (a demon): every `wreck_every` it strikes the building within `wreck_reach` of it for
 ## `wreck` (damage kind frenzy) -- running past one at its prey as much as standing at one -- and with nobody in
-## reach it goes for the nearest building within its seek reach instead.
+## reach it goes for the nearest building within its seek reach instead, unless `wreck_idle` is false (Grave Tide's giant:
+## it smashes only what stands in its way as it goes, never leaves the street for a house, nor claws one it stands idle by).
+## Death's undead go by more traits: `knock_first` (the first bite on a citizen only knocks them down, a second within
+## KNOCK_WINDOW kills; after that the next knocks again), `infect` (a bite also gives the plague), `spare_guise` (never
+## picks a person under the Corpse Guise status), `prey` "soldiers" (hunts soldiers only), `fright_r` (frightens the
+## crowd within it every FRIGHT_EVERY, as the Doors of the Dead's ghosts do), `slow` (whoever it passes through, within
+## `slow_r`, keeps `slow` of their pace for `slow_for` seconds: hold_pace()) and `no_bite` (it comes to its prey and
+## does not bite: a spirit passes through).
+## `march` (a ground point; a leg of Grave Tide's giant's tour, a wraith's flight out) sends it there first, by the
+## streets (straight, with `phase`), for `march_for` seconds at most (end_march() ends it sooner): on the way it turns only
+## on whoever comes within MARCH_SEEK of it, and once within MARCH_NEAR of the point (or blocked, or out of time) it
+## hunts as above. `bite` is what one bite takes off a person's health (1 by default: a citizen falls to one, a soldier to
+## two; Grave Tide's giant fells a soldier with one).
 ## A marked prey (mark(): Hound Gate's Quarry) is hunted by every visitor of the pack, at any distance, by the streets,
 ## in place of the nearest within reach, until it falls or goes inside (the mark is dropped then) or another is marked;
-## one there is no way to is left alone SKIP_FOR like any other. With nothing marked the hunt is as above.
+## one there is no way to is left alone SKIP_FOR like any other. A visitor with `bounds` leaves a mark outside them alone.
+## With nothing marked the hunt is as above.
+## Death's second review adds (all off by default): `sector` (cx, cy, from, width: it hunts only people whose bearing from
+## (cx, cy) lies in [from, from + width), mod TAU; a width <= 0 or >= TAU is anywhere -- Gate Below's scattered wraiths),
+## `wither` (seconds: reaching its prey it lays the crowd's withering, Crowd.wither(), in place of a bite or a kill, and a
+## withering person is never its prey), `touches_most` (after that many touches -- withering laid or touch kill -- it is
+## spent and freed), `prefer` "soldiers" (the nearest soldier within reach, else the nearest anyone: the skeleton warrior)
+## and `spare` (a Callable(s: Structure) -> bool: a building it answers true for is never this visitor's to wreck).
+## Fights with the dead (R30-R32): a guard's blow on an undead shows his swing (Person.swing_at()) and every blow on one
+## flinches it (Animal.hurt()'s flash and Animal.struck_from()'s draw-only recoil). A citizen is *cornered* (corners(),
+## Crowd.cornered(): a status of the crowd's, any power's undead) while one undead visitor hunting him has stayed within
+## CORNER_R of him for CORNER_HOLD without a break -- he is alive, out in the open and not down; it lapses the step that
+## stops. A cornered citizen fights back (_fight_back()): every CITIZEN_SWING (the first after one swing's wait) he swings
+## at the nearest undead within its reach of him (GUARD_REACH, or its own bite reach if longer: what can bite him can be
+## struck back); a solid one (Animal.SOLID_UNDEAD) takes CITIZEN_BLOW, flinches, and never has its bite begun again by it;
+## a spirit, wraith, pale ghost or giant takes nothing (the nearest solid one in reach is struck first). And the step an
+## undead hunting a citizen first comes within that reach of him, while he is up and out in the open, he strikes it at once,
+## before its own bite that step: the counter-blow (_counter(), R30a), once for each citizen it hunts.
+## His own flight is his own: the blow only lands while it is in reach.
 
 ## How often a visitor looks for the nearest person again, and how long it leaves one it could not reach.
 const RETARGET := 0.5
 const SKIP_FOR := 1.0
 ## It runs the streets' way round to its prey (Animal.route_to()), planned again this often: the prey moves.
 const CHASE_REPATH := 0.5
+## Where the air has gone (a NO BREATH law) a visitor runs this far past the nearest edge.
+const AIR_CLEAR := 1.0
 ## The guard: a soldier this near a visitor strikes it every GUARD_SWING.
 const GUARD_REACH := 0.6
 const GUARD_SWING := 0.8
+## Cornered (corners()): an undead hunting a citizen this near him this long; then he strikes back every CITIZEN_SWING
+## for CITIZEN_BLOW (a zombie falls to six, a ghoul to four, a skeleton warrior to eight).
+const CORNER_R := 1.0
+const CORNER_HOLD := 0.5
+const CITIZEN_SWING := 1.2
+const CITIZEN_BLOW := 0.5
 ## A wrecker looks for the building beside it this often (a look asks the town's buildings near it).
 const WRECK_LOOK := 0.2
 ## Soldiers at their post within a visitor's seek reach are drawn to it this often, for this long.
 const LURE_EVERY := 1.0
 const LURE_FOR := 1.5
+## knock_first: a second bite within this long of the first kills.
+const KNOCK_WINDOW := 3.0
+## fright_r: how often the crowd round it is frightened.
+const FRIGHT_EVERY := 1.0
+## march: it is there within MARCH_NEAR of the point; on the way it turns only on whoever comes within MARCH_SEEK.
+const MARCH_NEAR := 1.5
+const MARCH_SEEK := 1.5
+## march: how long it may take when give() names no `march_for`.
+const MARCH_FOR := 20.0
 
 ## A visitor bit `victim` (its first bite too: the owner spreads the outcry).
 signal bitten(visitor: Animal, victim: Person, first: bool)
@@ -43,10 +91,15 @@ signal bitten(visitor: Animal, victim: Person, first: bool)
 signal cut_down(visitor: Animal, at: Vector2)
 ## A visitor with `wreck` struck building `s`.
 signal wrecked(visitor: Animal, s: Structure)
+## A visitor was spent at `at` (touches_most reached, or spent_on_kill), so its owner can show it go (its node is freed right
+## after, deferred).
+signal spent(visitor: Animal, at: Vector2)
 
 ## People bitten dead, and visitors cut down.
 var kills := 0
 var slain := 0
+## How many times an idle wrecker has looked for a building to go at (a count the tests read).
+var house_looks := 0
 
 var _field: EnemyField
 var _crowd: Crowd
@@ -56,12 +109,16 @@ var _parent: Node2D
 var _rules := {}
 ## Person (a soldier) -> seconds to his next blow, while he stands by a visitor.
 var _swings := {}
+## Person (a cornered citizen) -> seconds to his next blow, while he is cornered.
+var _fights := {}
 var _lure_in := 0.0
 ## The field's living, taken once a step when someone first needs them (_people()).
 var _living: Array = []
 var _living_taken := false
 ## The prey every visitor goes for (mark()), or null.
 var _mark: Person
+## Animal instance id -> {Person -> seconds its pace hold has left} (give()'s `slow`); lifted when the time is up or the visitor goes.
+var _slows := {}
 
 
 ## What one visitor is and does.
@@ -86,10 +143,51 @@ class Rule extends RefCounted:
 	var wreck_every := 1.5
 	var wreck_reach := 0.5
 	var wreck_in := 0.0
+	## With nobody to hunt, it goes at the nearest building (false: it only strikes what it passes).
+	var wreck_idle := true
 	## The building it is going for, with nobody to hunt; the one beside it, looked for every WRECK_LOOK.
 	var house: Structure
 	var beside: Structure
 	var look_in := 0.0
+	## Seconds to its next look for a building to go at, while it has none (a look that found nothing waits WRECK_LOOK).
+	var house_in := 0.0
+	## give(): Death's undead (see the class comment).
+	var knock_first := false
+	var infect := false
+	var spare_guise := false
+	var soldiers_only := false
+	var no_bite := false
+	## touch_kill: its touch kills outright as this kind (&"": it bites as above); spent_on_kill: freed after one.
+	var touch_kill: StringName = &""
+	var spent_on_kill := false
+	## bounds (cx, cy, r): it only hunts people within r of (cx, cy). r <= 0: anywhere.
+	var bounds := Vector3.ZERO
+	var fright_r := 0.0
+	var fright_in := 0.0
+	## give()'s `fright_fresh`: its fright sends running only those not running already (Crowd.fright()'s fresh_only).
+	var fright_fresh := false
+	var slow := 1.0
+	var slow_for := 4.0
+	var slow_r := 0.5
+	## give(): what a bite takes off; the point it walks to before it hunts (INF: none) and how long it may take.
+	var bite := 1.0
+	var march := Vector2.INF
+	var march_left := 0.0
+	## knock_first: whom it has knocked down -> seconds left in which a second bite kills.
+	var knocked := {}
+	## give(): its sector (cx, cy, from angle, width; width 0: anywhere), the withering its touch lays (0: none), the touches
+	## it has before it is spent (0: no end) and has made, whether it takes a soldier first, and the buildings it spares.
+	var sector := Vector4.ZERO
+	var wither := 0.0
+	var touches_most := 0
+	var touches := 0
+	var prefer_soldiers := false
+	var spare := Callable()
+	## An undead's hold on the citizen it hunts (corners()): whom it is near, and for how long without a break.
+	var corner_of: Person
+	var corner_t := 0.0
+	## The counter-blow (R30a): the instance id of the citizen who has struck it as it first came within his reach (0: none).
+	var countered := 0
 
 
 func setup(field: EnemyField, crowd: Crowd, grid: WalkGrid, parent: Node2D) -> Visitors:
@@ -138,7 +236,40 @@ func give(a: Animal, traits: Dictionary) -> void:
 	r.wreck = float(traits.get("wreck", r.wreck))
 	r.wreck_every = float(traits.get("wreck_every", r.wreck_every))
 	r.wreck_reach = float(traits.get("wreck_reach", r.wreck_reach))
-	r.wreck_in = r.wreck_every * 0.5
+	if traits.has("wreck") or traits.has("wreck_every"):
+		r.wreck_in = r.wreck_every * 0.5  # its first blow half a swing in (only as the claws are given: a renewed march keeps the count)
+	r.wreck_idle = bool(traits.get("wreck_idle", r.wreck_idle))
+	r.knock_first = bool(traits.get("knock_first", r.knock_first))
+	r.infect = bool(traits.get("infect", r.infect))
+	r.spare_guise = bool(traits.get("spare_guise", r.spare_guise))
+	r.no_bite = bool(traits.get("no_bite", r.no_bite))
+	r.touch_kill = StringName(traits.get("touch_kill", r.touch_kill))
+	r.spent_on_kill = bool(traits.get("spent_on_kill", r.spent_on_kill))
+	r.bounds = traits.get("bounds", r.bounds)
+	if traits.has("prey"):
+		r.soldiers_only = String(traits.prey) == "soldiers"
+	r.fright_r = float(traits.get("fright_r", r.fright_r))
+	r.fright_fresh = bool(traits.get("fright_fresh", r.fright_fresh))
+	r.slow = float(traits.get("slow", r.slow))
+	r.slow_for = float(traits.get("slow_for", r.slow_for))
+	r.slow_r = float(traits.get("slow_r", r.slow_r))
+	r.bite = float(traits.get("bite", r.bite))
+	if traits.has("march"):
+		r.march = traits.march
+		r.march_left = float(traits.get("march_for", MARCH_FOR))
+	r.sector = traits.get("sector", r.sector)
+	r.wither = float(traits.get("wither", r.wither))
+	r.touches_most = int(traits.get("touches_most", r.touches_most))
+	if traits.has("prefer"):
+		r.prefer_soldiers = String(traits.prefer) == "soldiers"
+	if traits.has("spare"):
+		r.spare = traits.spare
+
+
+## Whether visitor `a` is still on its march (give()'s `march`).
+func marching(a: Animal) -> bool:
+	var r: Rule = _rules.get(a)
+	return r != null and r.march != Vector2.INF
 
 
 ## The visitors still on their feet.
@@ -185,13 +316,15 @@ func marked() -> Person:
 	return _mark
 
 
-## Every visitor is freed at once (the owner's end).
-func clear() -> void:
+## Every visitor is freed at once (the owner's end). `deferred`: queued for freeing instead, for an owner's _exit_tree, whose
+## parents may be mid-teardown.
+func clear(deferred := false) -> void:
 	_mark = null
 	for a in _rules.keys():
-		_free(a)
+		_free(a, deferred)
 	_rules.clear()
 	_swings.clear()
+	_fights.clear()
 	if _crowd != null and is_instance_valid(_crowd):
 		_crowd.visitors.erase(self)
 
@@ -207,9 +340,19 @@ func step(delta: float) -> void:
 		a.tick_visual(delta)
 		if r.recalling:
 			_go_home(a, r, delta)
-		else:
+			if not _rules.has(a):
+				continue  # home, and freed: it slows nobody any more (a wraith's pass would hold a freed node's id)
+		elif not _flee_law(a, r, delta):
 			_hunt(a, r, delta)
+			if not _rules.has(a):
+				continue  # spent on its kill
+		if r.fright_r > 0.0 and not r.recalling:
+			_frighten(a, r, delta)
+		if r.slow < 1.0:
+			_pass_slow(a, r)
+	_lift_slows(delta)
 	_guard(delta)
+	_fight_back(delta)
 	_lure_in -= delta
 	if _lure_in <= 0.0:
 		_lure_in = LURE_EVERY
@@ -227,28 +370,42 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 			r.skip = null
 	if r.skip != null and not is_instance_valid(r.skip):
 		r.skip = null  # the one it left alone is gone from the town (freed)
+	for k in r.knocked.keys():
+		if not is_instance_valid(k) or float(r.knocked[k]) - delta <= 0.0:
+			r.knocked.erase(k)
+		else:
+			r.knocked[k] = float(r.knocked[k]) - delta
+	var marching := _marching(a, r, delta)
+	var reach := MARCH_SEEK if marching else r.seek_r
 	var who := a.target
 	var quarry := marked()
-	if quarry != null and quarry != r.skip:
+	# A bounded one (a pale ghost) leaves a mark outside its bounds alone and hunts the nearest within them.
+	if quarry != null and quarry != r.skip and _within(r, quarry):
 		who = quarry  # the marked prey, wherever it is
 		a.target = quarry
 	else:
-		if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside
-				and who.ground_pos.distance_to(a.ground_pos) <= r.seek_r):
+		if who != null and not (is_instance_valid(who) and who.is_alive() and not who.inside and _fair(r, who)
+				and who.ground_pos.distance_to(a.ground_pos) <= reach and _within(r, who)):
 			who = null
 			a.target = null
 			r.retarget_in = 0.0
 		if r.retarget_in <= 0.0:
 			r.retarget_in = RETARGET
-			who = _nearest(a.ground_pos, r.seek_r, r.skip)
+			who = _nearest(a.ground_pos, reach, r.skip, r)
 			a.target = who
 	if r.wreck > 0.0:
-		_wreck(a, r, delta, who == null)
+		_wreck(a, r, delta, who == null and not marching)
 	if who == null:
+		if marching:
+			_march_on(a, r, delta)
 		return  # nobody near: it stands (or goes at a building), and looks again
+	# Already within his reach as the step begins: his counter-blow lands before its bite below.
+	if _counter(a, r, who):
+		return  # cut down by it
 	if a.ground_pos.distance_to(who.ground_pos) > r.bite_r:
 		if r.phase:
 			a.walk_to(who.ground_pos, delta, null)  # straight through whatever stands between
+			_counter(a, r, who)  # come within his reach on the way: he strikes the same step
 			return
 		# Round the buildings by the streets; only one there is no way to at all is left alone a while.
 		if a.route_to(who.ground_pos, delta, _grid, CHASE_REPATH) and a.blocked:
@@ -256,14 +413,49 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 			r.skip_left = SKIP_FOR
 			a.target = null
 			r.retarget_in = 0.0
+			return
+		_counter(a, r, who)
 		return
-	if r.bite_in > 0.0:
+	if r.bite_in > 0.0 or r.no_bite:
 		return
 	r.bite_in = r.bite_every
 	a.facing = 1 if who.ground_pos.x - who.ground_pos.y > a.ground_pos.x - a.ground_pos.y else -1
+	if r.wither > 0.0:
+		# Its touch withers: no knock, no hurt; the crowd's withering does the rest. It looks for the next at once.
+		a.bit()
+		# Only a curse laid is a touch (bitten, the count): none laid (no crowd to lay it) is no touch at all.
+		var laid := _crowd != null and is_instance_valid(_crowd) and _crowd.wither(who, r.wither, a.ground_pos)
+		if laid:
+			var first_touch := not r.has_bitten
+			r.has_bitten = true
+			bitten.emit(a, who, first_touch)
+			a.target = null
+			r.retarget_in = 0.0
+			_touched(a, r)
+		return
+	if r.touch_kill != &"":
+		# Its touch kills outright: no knock, no hurt. Spent only when it did kill (the target may have fallen already).
+		a.bit()
+		var killed := _field.kill(who, r.touch_kill, a.ground_pos)
+		if killed:
+			kills += 1
+		var touched := not r.has_bitten
+		r.has_bitten = true
+		bitten.emit(a, who, touched)
+		if killed and not _touched(a, r) and r.spent_on_kill:
+			_rules.erase(a)
+			spent.emit(a, a.ground_pos)
+			_free(a, true)
+		return
 	a.bit()
 	var was := who.is_alive()
-	who.hurt_from(1.0, a.ground_pos)
+	if r.knock_first and not who.soldier and not r.knocked.has(who):
+		who.knock_down()  # the first bite only knocks them flat; a second within KNOCK_WINDOW kills
+		r.knocked[who] = KNOCK_WINDOW
+	else:
+		who.hurt_from(r.bite, a.ground_pos)
+	if r.infect and who.is_alive():
+		who.infect(PlagueManager.PLAGUE_LIFE)
 	if was and not who.is_alive():
 		kills += 1
 	var first := not r.has_bitten
@@ -271,38 +463,93 @@ func _hunt(a: Animal, r: Rule, delta: float) -> void:
 	bitten.emit(a, who, first)
 
 
+## One more touch (a withering laid, a touch kill): at `touches_most` it is spent, forgotten and freed (deferred). True
+## when it was spent.
+func _touched(a: Animal, r: Rule) -> bool:
+	r.touches += 1
+	if r.touches_most <= 0 or r.touches < r.touches_most:
+		return false
+	_rules.erase(a)
+	spent.emit(a, a.ground_pos)
+	_free(a, true)
+	return true
+
+
+## Whether it is still on its march: not yet within MARCH_NEAR of the point, and with time left. Ending it, it looks for
+## prey at once.
+func _marching(a: Animal, r: Rule, delta: float) -> bool:
+	if r.march == Vector2.INF:
+		return false
+	r.march_left -= delta
+	if r.march_left <= 0.0 or a.ground_pos.distance_to(r.march) <= MARCH_NEAR:
+		_end_march(a, r)
+		return false
+	return true
+
+
+## Ends visitor `a`'s march now (Grave Tide's giant: a soldier near cuts its leg short); it hunts from where it stands.
+func end_march(a: Animal) -> void:
+	var r: Rule = _rules.get(a)
+	if r != null and r.march != Vector2.INF:
+		_end_march(a, r)
+
+
+func _end_march(a: Animal, r: Rule) -> void:
+	r.march = Vector2.INF
+	r.retarget_in = 0.0
+	a.target = null
+
+
+## One step of the march: by the streets (straight through, with phase); one that cannot get there hunts from here.
+func _march_on(a: Animal, r: Rule, delta: float) -> void:
+	if r.phase:
+		if a.walk_to(r.march, delta, null):
+			_end_march(a, r)
+		return
+	if a.route_to(r.march, delta, _grid) and a.blocked:
+		_end_march(a, r)
+
+
 ## A wrecker's claws: the building beside it is struck every wreck_every; with nobody to hunt (`idle`) it goes to the
-## nearest building within its seek reach (to the open ground at the face nearest it) and strikes that.
+## nearest building within its seek reach (to the open ground at the face nearest it) and strikes that -- looked for every
+## WRECK_LOOK while it has none, and at once when the one it went for is gone, spared or out of reach.
 func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 	r.wreck_in -= delta
 	r.look_in -= delta
+	r.house_in -= delta
 	var env := _field.env if _field != null else null
 	if env == null:
 		return
 	var best := INF
-	if r.look_in <= 0.0 or (r.beside != null and not _wreckable(r.beside)):
+	if r.look_in <= 0.0 or (r.beside != null and (not _wreckable(r.beside) or _spares(r, r.beside))):
 		r.look_in = WRECK_LOOK
 		r.beside = null
 		for s in env.near(a.ground_pos, r.wreck_reach):
-			if _wreckable(s):
+			if _wreckable(s) and not _spares(r, s):
 				var d := s.distance_to(a.ground_pos)
 				if d < best:
 					best = d
 					r.beside = s
 	var beside := r.beside
-	if beside != null and r.wreck_in <= 0.0:
+	# One that does not go at buildings (wreck_idle false) strikes only what stands in its way: never standing idle.
+	if beside != null and r.wreck_in <= 0.0 and (r.wreck_idle or not idle):
 		r.wreck_in = r.wreck_every
 		a.facing = 1 if beside.center().x - beside.center().y > a.ground_pos.x - a.ground_pos.y else -1
 		a.bit()
 		beside.damage(r.wreck, a.ground_pos, &"frenzy")
 		wrecked.emit(a, beside)
-	if not idle or beside != null:
+	if not idle or beside != null or not r.wreck_idle:
 		return
-	if r.house == null or not _wreckable(r.house) or r.house.distance_to(a.ground_pos) > r.seek_r:
+	if r.house != null and (not _wreckable(r.house) or _spares(r, r.house) or r.house.distance_to(a.ground_pos) > r.seek_r):
 		r.house = null
+		r.house_in = 0.0  # the one it went for is gone or spared: it looks again at once
+	# With none, it looks every WRECK_LOOK (each look asks the town's buildings near it and whether each is spared).
+	if r.house == null and r.house_in <= 0.0:
+		r.house_in = WRECK_LOOK
 		best = INF
+		house_looks += 1
 		for s in env.near(a.ground_pos, r.seek_r):
-			if _wreckable(s):
+			if _wreckable(s) and not _spares(r, s):
 				var d := s.distance_to(a.ground_pos)
 				if d < best:
 					best = d
@@ -316,11 +563,34 @@ func _wreck(a: Animal, r: Rule, delta: float, idle: bool) -> void:
 		a.walk_to(to, delta, null)
 	elif a.route_to(to, delta, _grid, 1.0) and a.blocked:
 		r.house = null
+		r.house_in = 0.0
 
 
 ## A building a wrecker can strike: standing, solid (not a field, rubble or the bridge), not a power's own pile.
 static func _wreckable(s: Structure) -> bool:
-	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall"])
+	return is_instance_valid(s) and not s.destroyed and not s.walkable and not (s.role in [&"thorns", &"windfall", &"decree"])
+
+
+## Whether rule `r` spares `s` (give()'s `spare`): never this visitor's to wreck. Asked live: at every look, and every step of
+## the building beside it and the one it is going for, so one spared after it was chosen is dropped at once.
+static func _spares(r: Rule, s: Structure) -> bool:
+	return r.spare.is_valid() and bool(r.spare.call(s))
+
+
+## A visitor standing where the air has gone (a NO BREATH law: Breathing Is Prohibited) runs for the nearest edge,
+## AIR_CLEAR past it, instead of hunting: the other side breathes too. It never dies of it. True while it flees.
+func _flee_law(a: Animal, r: Rule, delta: float) -> bool:
+	if _crowd == null or _crowd.laws.is_empty():
+		return false
+	var z := _crowd.law_of(a, LawZone.NO_BREATH)
+	if z == null:
+		return false
+	var out := z.nearest_outside(a.ground_pos, AIR_CLEAR)
+	if r.phase:
+		a.walk_to(out, delta, null)
+	else:
+		a.route_to(out, delta, _grid, CHASE_REPATH)
+	return true
 
 
 ## Recalled: back to the gate, freed there or when the time is up.
@@ -336,27 +606,59 @@ func _go_home(a: Animal, r: Rule, delta: float) -> void:
 		_free(a)
 
 
-## The nearest living person out in the open within `reach` of `at`, but for `skip`.
-func _nearest(at: Vector2, reach: float, skip: Person) -> Person:
+## Whether visitor rule `r` may hunt `p` at all: not a guised person under spare_guise, not one withering already under
+## `wither`, and a soldier under prey "soldiers".
+static func _fair(r: Rule, p: Person) -> bool:
+	if r.spare_guise and p.guised():
+		return false
+	if r.wither > 0.0 and p.withered():
+		return false
+	return not r.soldiers_only or p.soldier
+
+
+## Whether `p` stands inside rule `r`'s bounds (always, with none) and its sector (always, with none).
+static func _within(r: Rule, p: Person) -> bool:
+	if r.bounds.z > 0.0 and p.ground_pos.distance_to(Vector2(r.bounds.x, r.bounds.y)) > r.bounds.z:
+		return false
+	if r.sector.w <= 0.0 or r.sector.w >= TAU:
+		return true
+	var bearing := (p.ground_pos - Vector2(r.sector.x, r.sector.y)).angle()
+	return fposmod(bearing - r.sector.z, TAU) < r.sector.w
+
+
+## The nearest living person out in the open within `reach` of `at`, but for `skip` (and, with a rule, those it never hunts;
+## under prefer "soldiers", the nearest soldier if there is one).
+func _nearest(at: Vector2, reach: float, skip: Person, r: Rule = null) -> Person:
 	var best: Person = null
 	var best_d := INF
+	var best_soldier: Person = null
+	var soldier_d := INF
 	var r2 := reach * reach
 	for e in _people():
 		var p := e as Person
-		# Alive asked again: one bitten earlier this step is still on the step's list.
-		if p == null or p.inside or p == skip or not p.is_alive():
+		if p == null:
 			continue
+		# The reach first: it is the cheapest test and turns most of a town away (the same pick in the same order).
 		var d := p.ground_pos.distance_squared_to(at)
 		if d > r2:
+			continue
+		# Alive asked again: one bitten earlier this step is still on the step's list.
+		if p.inside or p == skip or not p.is_alive() or (r != null and not (_fair(r, p) and _within(r, p))):
 			continue
 		if d < best_d:
 			best_d = d
 			best = p
+		if p.soldier and d < soldier_d:
+			soldier_d = d
+			best_soldier = p
+	if r != null and r.prefer_soldiers and best_soldier != null:
+		return best_soldier
 	return best
 
 
 ## The field's living this step, in its order (EnemyField.in_radius() builds this list on every call: a horde asking it
 ## round every visitor made that the dearest thing in the frame).
+## `_guard`, `_nearest` and `_lure` rely on this per-step snapshot: nothing may add or remove soldiers in the field during the visitors' step.
 func _people() -> Array:
 	if not _living_taken:
 		_living_taken = true
@@ -371,9 +673,18 @@ func _guard(delta: float) -> void:
 	# The soldiers who can strike, once a step in the field's order (_people()).
 	var guards: Array[Person] = []
 	if not _rules.is_empty():
+		# Only a soldier within GUARD_REACH of the box round every visitor can reach one: the rest are passed over at once.
+		var box := Rect2()
+		var boxed := false
+		for a in _rules.keys():
+			if is_instance_valid(a) and a.is_alive():
+				box = box.expand(a.ground_pos) if boxed else Rect2(a.ground_pos, Vector2.ZERO)
+				boxed = true
+		box = box.grow(GUARD_REACH + 0.01)  # a hair over: one exactly at his reach is still in it
 		for e in _people():
 			var p := e as Person
-			if p != null and p.soldier and p.is_alive() and not p.inside and not p.is_down():
+			if (p != null and p.soldier and boxed and box.has_point(p.ground_pos) and p.is_alive()
+					and not p.inside and not p.is_down()):
 				guards.append(p)
 	var reach2 := GUARD_REACH * GUARD_REACH
 	for a in _rules.keys():
@@ -397,42 +708,216 @@ func _guard(delta: float) -> void:
 		var a: Animal = near[p]
 		if not is_instance_valid(a) or not a.is_alive():
 			continue
+		if a.breed in Animal.UNDEAD:
+			p.swing_at(a.ground_pos)  # the fight with the dead shows (R31)
+			a.struck_from(p.ground_pos)
 		a.hurt(1.0)
 		var r: Rule = _rules[a]
 		if r.flinch:
 			r.bite_in = maxf(r.bite_in, r.bite_every)
-		if not a.is_alive():
-			slain += 1
-			var at := a.ground_pos
-			_rules.erase(a)
-			cut_down.emit(a, at)
-			_free(a)
+		_fell(a)
+
+
+## At its last blow a visitor is cut down: counted, told and freed.
+func _fell(a: Animal) -> void:
+	if a.is_alive():
+		return
+	slain += 1
+	var at := a.ground_pos
+	_rules.erase(a)
+	cut_down.emit(a, at)
+	_free(a)
+
+
+## Whether `p` is cornered by this pack (see the class comment): a citizen alive, out in the open and not down, whom one of
+## its undead has hunted within CORNER_R for CORNER_HOLD without a break.
+func corners(p: Person) -> bool:
+	return _corner_by(p) != null
+
+
+## The undead of this pack holding `p` cornered (the first found), or null.
+func _corner_by(p: Person) -> Animal:
+	if not _cornerable(p):
+		return null
+	for a in _rules.keys():
+		if not is_instance_valid(a) or not a.is_alive():
+			continue
+		var r: Rule = _rules[a]
+		if r.corner_of == p and r.corner_t >= CORNER_HOLD:
+			return a
+	return null
+
+
+## Every undead's hold on the one it hunts (it breaks the step it is off him, or hunts another); then every cornered citizen
+## strikes back every CITIZEN_SWING (the first after a swing's wait) at the nearest undead within reach of him -- a solid one
+## takes CITIZEN_BLOW and flinches, though its bite is never begun again for it; any other takes nothing -- or swings at the
+## air before the one holding him. A citizen no longer cornered begins with a fresh swing next time.
+func _fight_back(delta: float) -> void:
+	var cornered := {}  # citizen -> the undead holding him
+	for a in _rules.keys():
+		if not is_instance_valid(a):
+			continue
+		var r: Rule = _rules[a]
+		var p = a.target  # untyped: the one it hunts may be gone from the town (freed)
+		if not a.is_alive() or r.recalling or not (a.breed in Animal.UNDEAD) or not is_instance_valid(p) \
+				or (p as Person).ground_pos.distance_squared_to(a.ground_pos) > CORNER_R * CORNER_R:
+			r.corner_of = null
+			r.corner_t = 0.0
+			continue
+		if r.corner_of != p:
+			r.corner_of = p
+			r.corner_t = 0.0
+		r.corner_t += delta
+		if r.corner_t >= CORNER_HOLD and not cornered.has(p) and _cornerable(p):
+			cornered[p] = a
+	for p in _fights.keys():
+		if not cornered.has(p):
+			_fights.erase(p)  # no longer cornered: the next time begins with a fresh swing
+	for p in cornered.keys():
+		var left := float(_fights.get(p, CITIZEN_SWING)) - delta
+		if left > 0.0:
+			_fights[p] = left
+			continue
+		_fights[p] = CITIZEN_SWING
+		var hit := _within_blow(p)
+		if hit == null:
+			var holder = cornered[p]  # untyped: another's blow this step may have cut it down and freed it
+			if is_instance_valid(holder):
+				p.swing_at(holder.ground_pos)  # at the air: it holds him from beyond his reach
+			continue
+		p.swing_at(hit.ground_pos)
+		if not (hit.breed in Animal.SOLID_UNDEAD):
+			continue  # at the air, or at one bare hands cannot touch
+		hit.struck_from(p.ground_pos)
+		hit.hurt(CITIZEN_BLOW)  # never begins its bite again (R31): a citizen alone would hold it off for ever
+		_fell(hit)
+
+
+## The counter-blow (R30a): undead `a`, hunting citizen `who`, first comes within his blow reach (GUARD_REACH, or its own
+## bite reach if longer) while he is up and out in the open: he strikes at once -- before its own bite this step -- a solid
+## one taking CITIZEN_BLOW and flinching (its bite is never begun again for it), any other nothing. Once for each citizen
+## it hunts; his cornered blows (_fight_back()) then come every CITIZEN_SWING from here. True when the blow cut it down
+## (it is forgotten and freed: the caller must not touch it again).
+func _counter(a: Animal, r: Rule, who: Person) -> bool:
+	if r.recalling or not (a.breed in Animal.UNDEAD) or r.countered == who.get_instance_id() or not _cornerable(who):
+		return false
+	var reach := maxf(GUARD_REACH, r.bite_r)
+	if a.ground_pos.distance_squared_to(who.ground_pos) > reach * reach:
+		return false
+	r.countered = who.get_instance_id()
+	_fights[who] = CITIZEN_SWING  # his next blow, while cornered, a full swing on
+	who.swing_at(a.ground_pos)
+	if not (a.breed in Animal.SOLID_UNDEAD):
+		return false  # at one bare hands cannot touch
+	a.struck_from(who.ground_pos)
+	a.hurt(CITIZEN_BLOW)  # never begins its bite again (R31)
+	if a.is_alive():
+		return false
+	_fell(a)
+	return true
+
+
+## A citizen alive, out in the open and on his feet: one an undead can corner.
+static func _cornerable(p: Person) -> bool:
+	return p != null and is_instance_valid(p) and not p.soldier and p.is_alive() and not p.inside and not p.is_down()
+
+
+## The nearest living solid undead (Animal.SOLID_UNDEAD) within reach of citizen `p`'s blow (GUARD_REACH, or that one's
+## own bite reach if longer) -- a giant's long reach shadowing a skeleton must not waste his blow -- else the nearest other
+## undead in reach (he swings at it and lands nothing), or null.
+func _within_blow(p: Person) -> Animal:
+	var best: Animal = null
+	var best_d := INF
+	var solid: Animal = null
+	var solid_d := INF
+	for a in _rules.keys():
+		if not is_instance_valid(a) or not a.is_alive() or not (a.breed in Animal.UNDEAD):
+			continue
+		var r: Rule = _rules[a]
+		var reach := maxf(GUARD_REACH, r.bite_r)
+		var d: float = a.ground_pos.distance_squared_to(p.ground_pos)
+		if d > reach * reach:
+			continue
+		if d < best_d:
+			best_d = d
+			best = a
+		if a.breed in Animal.SOLID_UNDEAD and d < solid_d:
+			solid_d = d
+			solid = a
+	return solid if solid != null else best
 
 
 ## Soldiers at their post within a visitor's seek reach are drawn to the nearest visitor (lure(): only a soldier at his
 ## post or holding ground answers; one already on his way, fighting or ordered elsewhere does not).
 func _lure() -> void:
 	var seen := {}
+	var up := living()
 	for a in _rules.keys():
 		if not is_instance_valid(a) or not a.is_alive():
 			continue
 		var r: Rule = _rules[a]
 		if r.recalling:
 			continue
-		for e in _field.in_radius(a.ground_pos, r.seek_r):
+		# The step's living (the field's order, as in_radius() would list them, without a fresh list per visitor), the
+		# soldiers among them within its seek reach, alive asked again.
+		var r2 := r.seek_r * r.seek_r
+		for e in _people():
 			var p := e as Person
-			if p == null or not p.soldier or p.inside or seen.has(p):
+			if (p == null or not p.soldier or p.inside or seen.has(p)
+					or p.ground_pos.distance_squared_to(a.ground_pos) > r2 or not p.is_alive()):
 				continue
 			seen[p] = true
-			var nearest := _nearest_visitor(p.ground_pos)
+			var nearest := _nearest_visitor(p.ground_pos, up)
 			if nearest != null and p.ground_pos.distance_to(nearest.ground_pos) > GUARD_REACH:
 				p.lure(nearest.ground_pos, LURE_FOR)
 
 
-func _nearest_visitor(at: Vector2) -> Animal:
+## fright_r: the crowd within it is frightened every FRIGHT_EVERY (Crowd.fright(), as the Doors of the Dead's ghosts do).
+func _frighten(a: Animal, r: Rule, delta: float) -> void:
+	r.fright_in -= delta
+	if r.fright_in > 0.0:
+		return
+	r.fright_in = FRIGHT_EVERY
+	if _crowd != null and is_instance_valid(_crowd):
+		_crowd.fright(a.ground_pos, r.fright_r, 0.5, 2.0, 3.0, 3.0, &"beast", false, r.fright_fresh)
+
+
+## slow: whoever it is passing through keeps `slow` of their pace for `slow_for` (each visitor holds under its own id).
+func _pass_slow(a: Animal, r: Rule) -> void:
+	var id := a.get_instance_id()
+	var held: Dictionary = _slows.get(id, {})
+	var r2 := r.slow_r * r.slow_r
+	for e in _people():
+		var p := e as Person
+		if p == null or not p.is_alive() or p.ground_pos.distance_squared_to(a.ground_pos) > r2:
+			continue
+		p.hold_pace(id, r.slow)
+		held[p] = r.slow_for
+	if not held.is_empty():
+		_slows[id] = held
+
+
+## Counts the pace holds down and lifts the ones that are up.
+func _lift_slows(delta: float) -> void:
+	for id in _slows.keys():
+		var held: Dictionary = _slows[id]
+		for p in held.keys():
+			var left := float(held[p]) - delta
+			if left > 0.0 and is_instance_valid(p):
+				held[p] = left
+				continue
+			held.erase(p)
+			if is_instance_valid(p):
+				p.free_pace(id)
+		if held.is_empty():
+			_slows.erase(id)
+
+
+## `up`: living(), when the caller has it already.
+func _nearest_visitor(at: Vector2, up: Array[Animal] = []) -> Animal:
 	var best: Animal = null
 	var best_d := INF
-	for a in living():
+	for a in (up if not up.is_empty() else living()):
 		var r: Rule = _rules[a]
 		if r.recalling:
 			continue
@@ -443,10 +928,17 @@ func _nearest_visitor(at: Vector2) -> Animal:
 	return best
 
 
-func _free(a: Animal) -> void:
+## Untyped: a visitor whose node another power freed is still a key here, and a freed node errors in a typed parameter.
+func _free(a, deferred := false) -> void:
 	if not is_instance_valid(a):
 		return
-	if a.is_inside_tree():
+	var id: int = a.get_instance_id()
+	if _slows.has(id):
+		for p in (_slows[id] as Dictionary).keys():
+			if is_instance_valid(p):
+				p.free_pace(id)
+		_slows.erase(id)
+	if deferred or a.is_inside_tree():
 		a.queue_free()
 	else:
 		a.free()

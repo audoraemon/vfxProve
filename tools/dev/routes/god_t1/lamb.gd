@@ -15,12 +15,15 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 const BEAT_NEAR := 3.2
 ## A killing blow lands this far (plus its radius) from him at the least, or it takes him too.
 const BLOW_GAP := 0.4
-## Pestilence is cast this far from him at the least: the plague can spread to him (rulings D13, spec Problem 11).
-const PLAGUE_CLEAR := 8.0
 ## His seizer is struck when he trails him by more than the blow's radius plus this.
 const SEIZER_GAP := 0.4
 ## Death Mark: how far a citizen may be from him to be marked for the run (the mark dies 10 s on, slowed, within BOLT_REACH of him).
 const MARK_NEAR := 2.0
+## Death: his run is started once no more than RUN_PATROLS patrolmen live, or at RUN_AT; a zombie rises only this far from him or more
+## (every body in the cast's ring).
+const RUN_PATROLS := 2
+const RUN_AT := 40.0
+const ZOMBIE_CLEAR := RaiseTheDeadFx.SEEK
 
 
 
@@ -239,9 +242,9 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Death: Death Mark, Pestilence ---
+# --- Death: Death Mark, Raise the Dead ---
 
-## The citizen nearest him within MARK_NEAR (a lay one, out of doors, not marked): Death Mark's first victim, whose death starts his run.
+## The citizen nearest him within MARK_NEAR (a lay one, out of doors, not marked): Death Mark's victim whose death starts his run.
 static func _citizen_beside(d: LostLambDirector, crowd: Crowd) -> Person:
 	var best: Person = null
 	for p in crowd.citizens:
@@ -253,8 +256,10 @@ static func _citizen_beside(d: LostLambDirector, crowd: Crowd) -> Person:
 	return best
 
 
-## Pestilence takes a squad whole (every one of its men within 1.2 of the aim) when the aim is PLAGUE_CLEAR or more from him; Death Mark
-## takes one man at a time (it dies 10 s on): a watchman, a patrol's man, a searcher, his seizer; and a citizen marked beside him starts his run.
+## Death works the soldiers ahead of him in the order he meets them. Death Mark takes one man at a time (he dies 10 s on): a patrol's man, a
+## watchman, a searcher, his seizer. Raise the Dead's ZOMBIE gets up from a soldier's body where he fell, among his own, when he is beyond its
+## sight (ZOMBIE_CLEAR): it hunts the nearest, the soldiers at their posts are drawn to it, and whoever it kills gets up too. His run is started
+## by a citizen marked beside him once the patrols are thinned (RUN_PATROLS), or at RUN_AT.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var d := _lamb(ctx, bc)
 	if d == null or d.charge.inside:
@@ -262,29 +267,21 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	var lamb := d.charge
 	var crowd: Crowd = ctx.crowd
 	if d.held and WarningDirector._alive(d.seizer):
-		if _ready(bc, ctx, "deathmark"):
+		if _ready(bc, ctx, "deathmark") and not (d.seizer as Person).statuses.has(&"frail"):
 			_cast(ctx, "deathmark", (d.seizer as Person).ground_pos)
 			return "death mark his seizer"
 		return ""
+	if _ready(bc, ctx, "raise"):
+		var body := _zombie_body(d, crowd)
+		if body != Vector2.INF:
+			_cast(ctx, "raise", body, {"mode": "zombie"})
+			return "raise a zombie among the soldiers (%.1f, %.1f)" % [body.x, body.y]
 	var squads := _squads(d, _road(ctx, d))
-	# The run: a citizen beside him marked, dying within reach of him in 10 s, starts it.
-	if not d.bolting and not d.led and _ready(bc, ctx, "deathmark"):
+	if not d.bolting and not d.led and _ready(bc, ctx, "deathmark") and (_patrolmen(d) <= RUN_PATROLS or d._clock >= RUN_AT):
 		var one := _citizen_beside(d, crowd)
 		if one != null:
 			_cast(ctx, "deathmark", one.ground_pos)
 			return "death mark a citizen beside him"
-	if _ready(bc, ctx, "pestilence"):
-		for sq: Dictionary in squads:
-			if (sq.members as Array).size() < 2:
-				continue  # one man is Death Mark's
-			var mid := _mid(sq.members)
-			var victims := PestilenceFx.victims_at(crowd._field, mid)
-			var whole := true
-			for m: Person in sq.members:
-				whole = whole and victims.has(m)
-			if whole and not victims.has(lamb) and lamb.ground_pos.distance_to(mid) >= PLAGUE_CLEAR:
-				_cast(ctx, "pestilence", mid)
-				return "pestilence on a %s (%d)" % [sq.kind, (sq.members as Array).size()]
 	if _ready(bc, ctx, "deathmark"):
 		for sq: Dictionary in squads:
 			var mark: Person = null
@@ -296,6 +293,36 @@ static func act_death(bc, ctx: Dictionary) -> String:
 				_cast(ctx, "deathmark", mark.ground_pos)
 				return "death mark a %s" % sq.kind
 	return ""
+
+
+## The living patrolmen.
+static func _patrolmen(d: LostLambDirector) -> int:
+	var n := 0
+	for k in d.patrols.size():
+		n += _living(d.patrols[k]).size()
+	return n
+
+
+## A soldier's body a zombie may rise from: with a living soldier nearer it than any citizen (its first prey is one of them), and every body
+## the click would raise (the ring, R28: all within RING_R of it, MOST at the most) beyond ZOMBIE_CLEAR of him. Its place, or Vector2.INF.
+static func _zombie_body(d: LostLambDirector, crowd: Crowd) -> Vector2:
+	if crowd.remains == null:
+		return Vector2.INF
+	for r in crowd.remains.all():
+		if not r.soldier or not _ring_clear(d, crowd, r.pos):
+			continue
+		var near := DominionParts.near(crowd._field, r.pos, RaiseTheDeadFx.SEEK, 1)
+		if not near.is_empty() and near[0].soldier:
+			return r.pos
+	return Vector2.INF
+
+
+## True when every body a ZOMBIE cast at `at` would raise lies beyond ZOMBIE_CLEAR of him.
+static func _ring_clear(d: LostLambDirector, crowd: Crowd, at: Vector2) -> bool:
+	for b in crowd.remains.ring(at, RaiseTheDeadFx.RING_R, false, RaiseTheDeadFx.MOST):
+		if b.pos.distance_to(d.charge.ground_pos) < ZOMBIE_CLEAR:
+			return false
+	return true
 
 
 # --- Dominion: Mind Whisper, Discord ---
@@ -481,57 +508,114 @@ const CRUSH_ROOM := 0.1
 const FLING_TO := Vector2(-12.0, -12.0)
 
 
-# --- Decree: Leaving Is Prohibited, The Bell Lies ---
+# --- Decree: Leaving Is Prohibited, Breathing Is Prohibited ---
 
-## Decree: Leaving Is Prohibited holds a patrol where it stands (a circle of 3, fifteen seconds in twenty), re-laid on it each time it is
-## ready, so the patrol that walks his road crawls; The Bell Lies calls the guard, once he nears the gate, to the middle of the watch: it and the
-## soldiers nearest it run there and see nothing for 20 s. He bolts at 1:00 by himself.
+## Decree: the soldiers who would see him, in the order he meets them (a patrol pair together, the watch's two men together), are walled in amber
+## where they will stand as it seals and the breath follows (_pieces().cast_amber(), amber_breath()): held, they cannot run from the airless circle,
+## and die three seconds on. Only where neither the cell nor the breath can reach the ground he walks while they last (he bolts past fear, so a
+## breath on his road would choke him). Seized, his seizer is put to flight by the breath alone, laid beyond him from the boy so it takes the
+## seizer and leaves the boy out of it (_breath_seizer()): a soldier choking is off his errand, and lets him go. First, the breath on empty
+## ground beside him (_startle_at()) starts his run at once, as Ruin's Ember does: a loud power's danger near him.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := _lamb(ctx, bc)
 	if d == null or d.charge.inside:
 		return ""
+	var follow: String = _pieces().amber_breath(bc, ctx)
+	if follow != "":
+		ctx.memo.last_cast = d._clock
+		return follow
+	if _pieces().amber_pending(ctx):
+		return ""
 	var lamb := d.charge
+	if d.held and WarningDirector._alive(d.seizer):
+		if _ready(bc, ctx, "breath"):
+			var at := _breath_seizer(d)
+			if at != Vector2.INF:
+				_cast(ctx, "breath", at)
+				return "breathing is prohibited on his seizer, beyond him: he chokes and lets go"
+		return ""
+	if not d.bolting and not d.led and _ready(bc, ctx, "breath"):
+		var near := _startle_at(ctx, d)
+		if near != Vector2.INF:
+			_cast(ctx, "breath", near)
+			return "breathing is prohibited on empty ground beside him (%.1f off): he bolts" % near.distance_to(lamb.ground_pos)
 	var road := _road(ctx, d)
 	var speed := maxf(lamb.walk_speed, 0.3)
-	if d.held and WarningDirector._alive(d.seizer):
-		if _ready(bc, ctx, "belllies"):
-			var s := d.seizer as Person
-			_cast(ctx, "belllies", s.ground_pos + Vector2(3.0, 0.0), {"mode": "guard"})
-			return "call the guard away from his seizer"
-		return ""
-	var total := _length(road)
-	if d.bolting and _ready(bc, ctx, "belllies") and total / speed <= BELL_LEAD and total > 1.0:
-		# To the middle of the watch: it is then among the twelve nearest soldiers to the click, whatever else the town has about.
-		var live := _living(d.watch)
-		var mid := _mid(live) if not live.is_empty() else d.guardhouse
-		_cast(ctx, "belllies", mid, {"mode": "guard"})
-		return "call the guard to the gate"
-	if _ready(bc, ctx, "noleave"):
-		# The patrols that meet his road first, then any (a patrol off his road is pinned all the same: it is work, and it holds it there).
-		var squads := _squads(d, road)
-		for k in d.patrols.size():
-			var live := _living(d.patrols[k])
-			if not live.is_empty():
-				squads.append({"members": live, "along": INF, "kind": "patrol"})
-		# The ground he walks while the law holds (HOLD_TIME + T_SEAL): the circle binds whoever walks into it, and he must not.
-		var walk := _prefix(road, maxf(NoLeaveFx.HOLD_TIME + NoLeaveFx.T_SEAL - d.bolt_left(), 0.0) * speed)
-		for sq: Dictionary in squads:
-			if sq.kind != "patrol":
-				continue
-			var mid := _mid(sq.members)
-			var tight := true
-			for m: Person in sq.members:
-				tight = tight and m.ground_pos.distance_to(mid) <= NoLeaveFx.RADIUS - 0.5
-			if tight and _probe(walk, mid).x >= NoLeaveFx.RADIUS + LIP_MARGIN:
-				_cast(ctx, "noleave", mid)
-				return "leaving is prohibited on a patrol"
+	# The ground he walks while the law and the air last (he may bolt at any moment: a death near him starts him).
+	var walk := _prefix(road, (NoLeaveFx.T_SEAL + NoLeaveFx.HOLD_TIME) * speed)
+	var squads := _squads(d, road)
+	var watch := _living(d.watch)
+	if watch.size() > 1:
+		squads = squads.filter(func(sq: Dictionary) -> bool: return sq.kind != "watch")
+		squads.append({"members": watch, "along": _probe(road, _mid(watch)).y, "kind": "watch"})
+		squads.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.along) < float(b.along))
+	for sq: Dictionary in squads:
+		var pts: Array[Vector2] = []
+		var mid := Vector2.ZERO
+		for m: Person in sq.members:
+			pts.append(_pieces().road_ahead(m, NoLeaveFx.T_SEAL))
+			mid += pts.back()
+		mid /= float(pts.size())
+		var tight := true
+		for g in pts:
+			tight = tight and g.distance_to(mid) <= NoLeaveFx.RADIUS - LIP_IN
+		if not tight or _probe(walk, mid).x < NoLeaveFx.RADIUS + LIP_MARGIN:
+			continue
+		if _pieces().cast_amber(bc, ctx, mid, sq.members):
+			ctx.memo.last_cast = d._clock
+			return "leaving is prohibited on the %s (%d): the breath follows" % [sq.kind, (sq.members as Array).size()]
 	return ""
 
 
-## The Bell Lies' guard lasts 20 s: it is called when the rest of his road takes him less than this (seconds) to walk.
-const BELL_LEAD := 16.0
-## Leaving Is Prohibited is laid only where its circle keeps this far off his road (it would hold him too).
-const LIP_MARGIN := 1.0
+## Where the breath startles him into his run (a loud power's danger within BOLT_REACH of him) and takes the fewest (none if it can): ground
+## STARTLE_AT from him round the compass, walkable, its circle STARTLE_CLEAR off the ground he walks while it lasts (he would choke).
+## Vector2.INF for none.
+static func _startle_at(ctx: Dictionary, d: LostLambDirector) -> Vector2:
+	var crowd: Crowd = ctx.crowd
+	var best := Vector2.INF
+	var fewest := 1 << 20
+	# The ground he walks once he bolts, while the air is out (he runs past fear: into it, he would choke).
+	var walk := _prefix(_road(ctx, d), (BreathFx.T_LAND + BreathFx.HOLD_TIME + 1.0) * maxf(d.charge.walk_speed, STARTLE_PACE))
+	for far: float in STARTLE_AT:
+		for k in 16:
+			var g := d.charge.ground_pos + Vector2.from_angle(TAU * float(k) / 16.0) * far
+			if not crowd._grid.walkable(g) or _probe(walk, g).x < BreathFx.RADIUS + STARTLE_CLEAR:
+				continue
+			var n := 0
+			for e in crowd._field.in_radius(g, BreathFx.RADIUS + 0.5):
+				var p := e as Person
+				if p != null and p.is_alive() and not p.inside:
+					n += 1
+			if n < fewest:
+				best = g
+				fewest = n
+	return best
+
+
+## The breath that starts his run lands this far from him (BOLT_REACH is 6), its edge at least STARTLE_CLEAR off him.
+const STARTLE_AT := [4.5, 5.0, 4.0]
+const STARTLE_CLEAR := 1.2
+## The least pace his walk is reckoned at for that (his bolt is a walk: CHARGE_PACE of a citizen's).
+const STARTLE_PACE := 0.6
+
+
+## Where the breath takes his seizer and not him: on the line from the boy through the seizer (where each will stand as it lands), as far
+## beyond the seizer as keeps him LIP_IN inside its edge, when the boy then stands BOY_CLEAR beyond it; Vector2.INF when he trails too close.
+static func _breath_seizer(d: LostLambDirector) -> Vector2:
+	var s: Vector2 = _pieces().road_ahead(d.seizer as Person, BreathFx.T_LAND)
+	var boy: Vector2 = _pieces().road_ahead(d.charge, BreathFx.T_LAND)
+	var away := s - boy
+	if away.length() < 0.05:
+		return Vector2.INF
+	var at := s + away.normalized() * (BreathFx.RADIUS - LIP_IN)
+	return at if boy.distance_to(at) >= BreathFx.RADIUS + BOY_CLEAR else Vector2.INF
+
+
+## A cell is laid only where its circle keeps LIP_MARGIN off the ground he walks while it and the breath last (it would hold him, and the air
+## would choke him), and on soldiers who all stand LIP_IN inside its edge. The breath on his seizer leaves him BOY_CLEAR beyond its edge.
+const LIP_MARGIN := 1.5
+const LIP_IN := 0.4
+const BOY_CLEAR := 0.3
 
 
 ## The numbers a report line prints: where he is, who holds him, where the soldiers of each patrol and the watch stand.

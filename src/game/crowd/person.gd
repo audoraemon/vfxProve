@@ -100,9 +100,9 @@ const SPRITE_LANTERN := Vector2i(3, -8)
 const SPRITE_CHAIN := Vector2i(-1, -10)
 const SPRITE_CROWN := Vector2i(-1, -17)
 ## _sprite_signature()'s multipliers folded for its quiet case: past the frame, the tumble, lift, frost and flash terms
-## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage and whisper terms.
+## (1024 * 97^3) and the state's 7; after the height, the swirl, cough, stage, whisper and grey (guise, withering) terms.
 const SIG_SPRITE_QUIET := 1024 * 97 * 97 * 97 * 7
-const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2
+const SIG_SPRITE_OVERLAYS := 9 * 5 * (SICK_STAGES + 1) * 2 * 3
 ## A lightning hit's blue flash (DummyEnemy._tint's).
 const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Ground fire (Dragonfire): the soot a scorched person shows, darkest at 0.45 and fading over the last 2 s.
@@ -404,12 +404,17 @@ var health := HEALTH_CITIZEN
 var statuses := {}
 ## Powers' holds on its pace, by the power's instance id -> the share kept (hold_pace()).
 var pace_holds := {}
+## Decree's law on it (LawMark), while one holds it; null for none. Only LawMark sets it: ask LawMark, never this.
+var law: LawMark
 ## Held by a rite's Chain of the Forgotten (god P3, MS §2, Ruling P3-12): a captive being dragged to the shrine. Only RiteDirector sets it, and only
 ## NoLeaveFx reads it (a chained person is never set back by a Leaving Is Prohibited circle: the chain is stronger, R10). False for everyone else,
 ## so nothing outside a rite changes.
 var chained := false
 ## The field this person is in, for blows that kill (null for one made on its own).
 var field: EnemyField
+## The crowd this person is one of (null for one made on its own): its choice points ask the laws on places it holds
+## (Crowd.in_law(); LawZone.DISORDER), never a power by name.
+var crowd: Crowd
 ## Mind Whisper (v0.08): seconds of lingering left once it has arrived, and whether it fled before (or must flee after).
 var _whisper_left := 0.0
 var _whisper_fled := false
@@ -506,6 +511,10 @@ const OFFSCREEN_EVERY := 3
 static var offscreen_every := OFFSCREEN_EVERY
 ## The frame count the LOD staggers by: the engine's (-1), or one a test sets, since the test runner never advances frames.
 static var frame_no := -1
+## The engine's count is read from here (0 in play). The test runners set it to the engine's count before each suite: a suite that
+## awaits frames advances the engine's count for every suite after it, and a calm person staggered off the frame it was left on
+## would never step again (CALM_EVERY) -- the suites after it would see a different town than they see alone.
+static var frame_base := 0
 
 ## On screen, a calm citizen or a soldier at his post is updated every this many frames, with the time it skipped:
 ## they amble or stand, and a step every other frame does not show. With ~100 people on screen at the market this
@@ -578,7 +587,7 @@ func frame(delta: float) -> void:
 		every = CALM_EVERY
 	if every > 1:
 		_offscreen_delta += delta
-		if ((frame_no if frame_no >= 0 else Engine.get_process_frames()) + stagger_key()) % every != 0:
+		if ((frame_no if frame_no >= 0 else Engine.get_process_frames() - frame_base) + stagger_key()) % every != 0:
 			return
 		delta = _offscreen_delta
 		_offscreen_delta = 0.0
@@ -603,6 +612,8 @@ func unhurried() -> bool:
 # --- Brain -------------------------------------------------------------------
 
 func tick(delta: float) -> void:
+	if law != null:
+		LawMark.step(self, delta)
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
 	if _bend_to != Vector2.INF:
@@ -808,6 +819,13 @@ func hold_pace(source: int, share: float) -> void:
 func free_pace(source: int) -> void:
 	if pace_holds.erase(source):
 		walk_speed = _mind_speed()
+
+
+## The share of its pace now that is a walk (1.0 when it walks already, or slower): what a hold to a walk keeps (Decree's
+## NO RUNNING, LawZone).
+func walk_share() -> float:
+	var full := _base_speed()
+	return clampf(WALK_SPEED * pace / full, 0.0, 1.0) if full > 0.0 else 1.0
 
 
 ## The share of its pace the powers' holds leave it (1.0 for none).
@@ -1265,8 +1283,9 @@ func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
 ## wait and go back to its day (_settle()). Not to a gate: evacuation is the staged alarm's call. A soldier (v0.11.1) runs
 ## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
 ## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
-## `startle` false skips the freeze of a fresh fright (a person in a ground fire does not stand still in it).
-func panic(from: Vector2, radius := 1.0, kind := &"", startle := true) -> void:
+## `startle` false skips the freeze of a fresh fright (a person in a ground fire does not stand still in it). `may_shelter` false
+## skips the shelter roll (a status that kills him where he stands: Withering.SHELTERS).
+func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true) -> void:
 	if mind == Mind.ASLEEP and state != State.DEAD:
 		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
@@ -1274,7 +1293,7 @@ func panic(from: Vector2, radius := 1.0, kind := &"", startle := true) -> void:
 	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
 		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
 	# A sturdy building nearby may be better than running (ShelterManager).
-	if shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
+	if may_shelter and shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
 		return
 	var from_other_mind := mind != Mind.PANIC
@@ -1776,6 +1795,26 @@ func resists_mind() -> bool:
 	return false
 
 
+## Whether this person passes as the walking dead now (Corpse Guise, Death III: statuses[&"guise"] holds the seconds left, laid,
+## counted down and taken off by CorpseGuiseFx). The one hook the watch reads: a guised person is never seen, seized, reported
+## or witnessing (EscortDirector._seen_by(), MissionDirector.faithful_seeing(), Crowd.nearest_witness()), never chosen by a
+## soldier on the watch to fight (_fightable()), spared by Death's undead (Visitors' spare_guise), and drawn greyed, shambling head down.
+func guised() -> bool:
+	return statuses.has(&"guise")
+
+
+## Whether a withering is on him now (Withering, R36: statuses[&"wither"] holds the seconds left, laid, counted down and
+## taken off by the crowd's Withering). Drawn grey (Withering.TINT), as the guised are.
+func withered() -> bool:
+	return statuses.has(&"wither")
+
+
+## The grey his sprite is drawn in: the withering's, else the walking dead's (Corpse Guise), else none (white). 2, 1, 0 in
+## the draw signatures.
+func _grey() -> int:
+	return 2 if withered() else (1 if guised() else 0)
+
+
 ## Whether the god's hand is on him now (v0.11.1): whispered, confused, compelled, or staring at a lure. A director that
 ## takes its soldiers back to their places at its looks leaves a held one be: the hold ends by itself and he is sent back
 ## (_soldier_back()).
@@ -1958,6 +1997,11 @@ func is_asleep() -> bool:
 	return mind == Mind.ASLEEP
 
 
+## Seconds of sleep left (0 when awake).
+func sleep_left() -> float:
+	return _sleep_left if mind == Mind.ASLEEP else 0.0
+
+
 ## Hypnotized for `seconds` (Clear Mind): it senses nothing special -- no danger frightens it, nothing makes it look,
 ## no evacuation calls it (fearless_left) -- and goes on with what it was doing. A fright it was in is dropped for its
 ## day (a soldier's, his post); unlike reassure() it does not go when the trance ends: it never knew. True when it took.
@@ -2105,6 +2149,10 @@ func _fightable(p: Person) -> bool:
 		return false
 	if p.is_down() and _fight_rule != FightRule.TARGET_ONLY:
 		return false  # nobody is beaten on the ground; a mob set on one person (a verdict) still finishes it
+	if p.law != null and LawMark.spares(self, p, _fight_rule):
+		return false  # the law hides him (a NOBODY, or an OFFICER from a guard)
+	if soldier and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND) and p.guised():
+		return false  # Corpse Guise: the watch's own choice looks straight past the walking dead (a frenzy or a power's order does not)
 	match _fight_rule:
 		FightRule.HOSTILES:
 			# A fighting citizen, or a fighter set on another side (a soldier turned).
@@ -2132,15 +2180,24 @@ func _fight_step(delta: float) -> void:
 		fight_target = null
 	if fight_target == null or _retarget_in <= 0.0:
 		_retarget_in = FIGHT_RETARGET
-		# A frenzy turns on whoever is nearest now; the rest keep the one they have until it is gone.
-		if field != null and (fight_target == null or _fight_rule == FightRule.ANYONE):
+		# A frenzy turns on whoever is nearest now; the rest keep the one they have until it is gone. Under Decree's
+		# Disorder (LawZone) every look goes wrong: he swaps the one he has for the farthest in his sight.
+		var wrong := crowd != null and crowd.in_law(self, LawZone.DISORDER)
+		# Under Decree's NO SIGHT (LawZone) he sees no farther than its cap, into it or out of it (Crowd.sight()).
+		var lawful := crowd != null and not crowd.laws.is_empty()
+		if field != null and (fight_target == null or _fight_rule == FightRule.ANYONE or wrong):
 			var best: Person = fight_target
-			var best_d := best.ground_pos.distance_to(ground_pos) if best != null else INF
+			var best_d := best.ground_pos.distance_to(ground_pos) if best != null else (-INF if wrong else INF)
 			for e in field.in_radius(ground_pos, _fight_sight):
 				var q := e as Person
-				if _fightable(q) and q.ground_pos.distance_to(ground_pos) < best_d:
+				if not _fightable(q):
+					continue
+				var d := q.ground_pos.distance_to(ground_pos)
+				if lawful and d > crowd.sight(self, q.ground_pos, _fight_sight):
+					continue
+				if d > best_d if wrong else d < best_d:
 					best = q
-					best_d = q.ground_pos.distance_to(ground_pos)
+					best_d = d
 			fight_target = best
 		if fight_target != null:
 			# A new path only when they have moved: a street of fighters must not all ask for one every look.
@@ -2156,7 +2213,8 @@ func _fight_step(delta: float) -> void:
 		_leg = 0
 		_target = ground_pos
 		_facing = 1 if fight_target.ground_pos.x - fight_target.ground_pos.y > ground_pos.x - ground_pos.y else -1
-		if _swing_in <= 0.0:
+		# Under Decree's NO ARMS (LawZone) no guard strikes, in it or into it (Crowd.disarmed()): he stands over him.
+		if _swing_in <= 0.0 and not (crowd != null and LawMark.is_guard(self) and crowd.disarmed(self, fight_target)):
 			_swing_in = FIGHT_SWING
 			_swing_left = SWING_SHOW
 			fight_target.hurt(_fight_blow, self)
@@ -2261,6 +2319,15 @@ func hold_string() -> void:
 	_held_string = true
 
 
+## The whisper (or the whispered fight) on this person ends now, as if it had worn off (_wake(), stop_fighting()): what lays a whisper
+## for a fixed time of its own lets them go with it (Raise the Dead's spirit leaving its host). Nothing for anyone not whispered.
+func end_whisper() -> void:
+	if mind == Mind.WHISPERED:
+		_wake()
+	elif mind == Mind.FIGHT and _ordered:
+		stop_fighting()
+
+
 ## Procession (Will-o'-Wisp level 5): the light a lured person stares at has moved; their goal and the spot they watch move to `spot`.
 ## Only for someone alive and still staring at a light (mind OBSERVE, lured): true when it took. Its stare (_observe_left) runs on.
 func relure(spot: Vector2) -> bool:
@@ -2325,10 +2392,12 @@ func _wake() -> void:
 ## Run to a walkable point LOCAL_FLEE beyond the threat's edge, straight away from it (or a dash when none is
 ## found).
 func _flee_local() -> void:
-	var away := ground_pos - _threat
-	var dir := away.normalized() if away.length() > 0.01 else Vector2.RIGHT.rotated(rng.randf() * TAU)
-	dir = dir.rotated(rng.randf_range(-DASH_VEER, DASH_VEER) * 0.5)
-	var to := _threat + dir * (_threat_r + LOCAL_FLEE + rng.randf_range(0.0, LOCAL_FLEE_JITTER))
+	var to := _threat  # under Decree's Disorder (LawZone) the worst way there is: into the danger's heart, no roll in it
+	if crowd == null or not crowd.in_law(self, LawZone.DISORDER):
+		var away := ground_pos - _threat
+		var dir := away.normalized() if away.length() > 0.01 else Vector2.RIGHT.rotated(rng.randf() * TAU)
+		dir = dir.rotated(rng.randf_range(-DASH_VEER, DASH_VEER) * 0.5)
+		to = _threat + dir * (_threat_r + LOCAL_FLEE + rng.randf_range(0.0, LOCAL_FLEE_JITTER))
 	if grid != null:
 		var free := grid.nearest_walkable(to, 8)
 		to = free if free != Vector2.INF else ground_pos
@@ -2567,13 +2636,19 @@ func go_ring(steps: Vector2) -> void:
 ## its place in the Banishing Rite's ring. A fright still breaks it (panic()); Crowd.off_duty() ends it.
 ## Soldiers take duties too (v0.07): an escort taking over the bell or an engineer's place.
 func go_duty(at: Vector2) -> void:
-	if state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
+	if not can_take_duty():
 		return
 	_held_saved = false
 	mind = Mind.DUTY
 	anchor = at
 	walk_speed = _mind_speed()
 	set_goal(at)
+
+
+## Whether go_duty() would take now: not dead, fleeing or fighting, nor held by a firm compulsion (god T1R H8: a mission picks its
+## errand-runners from those who can).
+func can_take_duty() -> bool:
+	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM))
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.
@@ -2919,6 +2994,13 @@ func _draw_corpse() -> void:
 		super()
 
 
+## The PeopleArt facing it lies in when it falls (a remain keeps this, Remains).
+func remain_facing() -> int:
+	if _back:
+		return PeopleArt.Facing.NE if _facing > 0 else PeopleArt.Facing.NW
+	return PeopleArt.Facing.SE if _facing > 0 else PeopleArt.Facing.SW
+
+
 ## The design it wears (PeopleArt): its role's or its corps', the look hashed once from where it lives.
 func _design() -> String:
 	if _look < 0.0:
@@ -3003,10 +3085,10 @@ func _sprite_pose_code() -> int:
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
 		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
-		if mind == Mind.FIGHT and fight_kind == &"madness":
+		if (mind == Mind.FIGHT and fight_kind == &"madness") or (anim == 1 and guised()):
 			_design()
 			if _has_own_art(6):
-				anim = 6  # the zombie lurch of a frenzy
+				anim = 6  # the zombie lurch of a frenzy; the guised shamble head down as the walking dead do
 	var frame := int(t * PeopleArt.FPS_AT[anim])
 	if span > 0.0:
 		# The whole clip plays within the window it is shown for.
@@ -3111,7 +3193,11 @@ func _draw_sprite(lift: int, top_only: int) -> void:
 	drawn_src = src
 	drawn_dst = dst
 	drawn_upright = state != State.DEAD and _lift <= 8.0
-	draw_texture_rect_region(atlas, dst, src)
+	# The guised (Corpse Guise) wear the walking dead's grey, as Death's zombies do (DeathParts.ZOMBIE_TINT), and the withering
+	# its own (Withering.TINT); still one batch.
+	var grey := _grey() if state != State.DEAD else 0
+	draw_texture_rect_region(atlas, dst, src,
+		Withering.TINT if grey == 2 else (DeathParts.ZOMBIE_TINT if grey == 1 else Color.WHITE))
 	var tint := _sprite_tint()
 	if tint.a > 0.01:
 		draw_texture_rect_region(atlas, dst, sil, tint)
@@ -3342,7 +3428,7 @@ func _sprite_signature() -> int:
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
 		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
-			+ (1 if mind == Mind.WHISPERED else 0)
+			+ (3 if mind == Mind.WHISPERED else 0) + _grey()
 	sig = sig * 1024 + (int(_anim * 1.4 * 8.0) % 1024 if _lift > 8.0 else 0)
 	sig = sig * 97 + int(round(_lift))
 	sig = sig * 97 + int(_frozen * 8.0)
@@ -3355,6 +3441,7 @@ func _sprite_signature() -> int:
 	sig = sig * 5 + (1 + int(_anim * 2.0) % 4 if sick_left > 0.0 else 0)
 	sig = sig * (SICK_STAGES + 1) + sick_stage()
 	sig = sig * 2 + (1 if mind == Mind.WHISPERED else 0)
+	sig = sig * 3 + _grey()  # Corpse Guise's grey, or the withering's
 	if scorched_left > 0.0:
 		# Soot (ground fire) fades in steps; unscorched, the integer is the quiet fold's.
 		sig = sig * 5 + int(clampf(scorched_left / 2.0, 0.0, 1.0) * 4.0) + 1

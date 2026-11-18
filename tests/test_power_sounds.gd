@@ -151,7 +151,7 @@ static func _floor(t, mains: Dictionary, median: float) -> void:
 	for key in PowerBook.keys():
 		if PowerBook.IMPACT.has(key):
 			loud += 1
-	t.check(loud == 24, "twenty-four loud powers (got %d)" % loud)
+	t.check(loud == 36, "thirty-six loud powers (got %d)" % loud)
 	t.check(not is_nan(median), "a loud median can be measured")
 	var raw := median - FLOOR_BELOW
 	t.check(QUIET_FLOOR <= raw + 0.001 and raw - QUIET_FLOOR < FLOOR_STEP + 0.001,
@@ -189,7 +189,7 @@ static func _quiet_cues(t) -> void:
 			t.check(not plays_it, "%s is still pending but already plays %s: take it off PENDING_QUIET" % [key, cue])
 		else:
 			t.check(Sfx.CATALOG.has(cue) and plays_it, "%s plays its own cue %s" % [key, cue])
-	t.check(quiet == 36, "thirty-six quiet powers (got %d)" % quiet)
+	t.check(quiet == 41, "forty-one quiet powers (got %d)" % quiet)
 	var owner_of := {}
 	var shared := ""
 	for cue in Sfx.CATALOG:
@@ -223,6 +223,7 @@ const HIT_SOURCES := {
 	"thorns": "res://src/fx/control/thornwall.gd",
 	"mirror": "res://src/fx/control/mirrorfold_passage.gd",
 	"madness": "res://src/game/crowd/madness_manager.gd",
+	"sealed": "res://src/fx/decree/the_sealed_verdict.gd",
 }
 const LANTERN_BAND := 3.0
 

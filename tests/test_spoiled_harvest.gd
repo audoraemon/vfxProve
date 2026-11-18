@@ -49,6 +49,7 @@ static func run(t) -> void:
 	_reserved(t)
 	_mission(t)
 	_carter_early(t)
+	_carter_takes_orders(t)
 	_out(t)
 	_left_the_map(t)
 	_plague(t)
@@ -59,6 +60,14 @@ static func run(t) -> void:
 	_blight_cast(t)
 	_seized(t)
 	_seized_by_law(t)
+	_seized_disarmed(t)
+	_held(t)
+	_held_reset(t)
+	_held_indoors(t)
+	_dropped(t)
+	_dropped_calm(t)
+	_dropped_empty(t)
+	_dropped_sent_in(t)
 	_replaced(t)
 	_road_closed(t)
 	_roads_stay_in(t)
@@ -203,7 +212,7 @@ static func _setup(t) -> void:
 		"tagged empty with the time to their grain, and a watchman at each post (%s)" % [_labels(d)])
 	var stops := d.tour()
 	t.check(stops.size() == 4 and String(stops[0][1]) == "The south-west granary. Its watchmen put out fires. Its grain arrives by 1:00."
-		and String(stops[3][1]) == "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled.",
+		and String(stops[3][1]) == "The Citadel. Carts carry the grain here. An emptied granary cannot be spoiled; a carter frightened with a load drops it.",
 		"the tour: the three granaries, then the Citadel")
 	t.check((s.banners as Array).has("SPOIL THE HARVEST"), "its opening banner")
 	_done(s)
@@ -710,6 +719,48 @@ static func _carter_early(t) -> void:
 	_done(s)
 
 
+## H8: a carter is never picked from those who cannot take his errand (Person.can_take_duty()): one fleeing, fighting or held firm by
+## the god's will is passed over for the next nearest, who sets out. (A pick in mid-flight never set out and could run out of the walls,
+## spoiling the granary for the god -- harvest_b_play_1 at 141 s, under route B's 150 s floor.)
+static func _carter_takes_orders(t) -> void:
+	for how: String in ["flee", "fight", "compelled"]:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var g := d.targets[0]
+		var near := d._lay_near(d.citadel_door, 1, d._busy())
+		var first: Person = near[0] if not near.is_empty() else null
+		if first == null:
+			t.check(false, "a lay citizen near the Citadel's gate to test with (%s)" % how)
+			_done(s)
+			continue
+		match how:
+			"flee":
+				first.mind = Person.Mind.FLEE
+			"fight":
+				first.mind = Person.Mind.FIGHT
+			"compelled":
+				first.mind = Person.Mind.COMPELLED
+				first.compel_will = Person.WILL_FIRM
+		t.check(not first.can_take_duty(), "one %s cannot take a duty" % how)
+		d._send_carter(g)
+		var crew: Array = d.carters[g]
+		var c0: Person = crew[0] if not crew.is_empty() else null
+		t.check(crew.size() == HarvestDirector.CARTERS and c0 != null and c0 != first and c0.mind == Person.Mind.DUTY
+			and c0.goal().distance_to(d.doors[g]) < 0.5,
+			"the nearest lay citizen %s is passed over: the next sets out for the door (%s)" % [how,
+				Person.Mind.keys()[c0.mind] if c0 != null else "none"])
+		_done(s)
+	# A calm one nearest is still the one sent.
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	var first: Person = d._lay_near(d.citadel_door, 1, d._busy())[0]
+	t.check(first.can_take_duty(), "a calm citizen can take a duty")
+	d._send_carter(g)
+	t.check(d.carters[g] == [first] and first.mind == Person.Mind.DUTY, "a calm nearest one is the carter, as before")
+	_done(s)
+
+
 ## H1: a carter set down outside the walls, before his grain: the granary is spoiled at once, the chain starts, he is sent off the map.
 static func _out(t) -> void:
 	var s := _world()
@@ -962,6 +1013,230 @@ static func _seized_by_law(t) -> void:
 		held.free()
 		ctx.overhead.free()
 		ctx.ground.free()
+		_done(s)
+
+
+## (final review) Decree's NO ARMS where the guard stands, not where the carter does: the soldier who arrives under it seizes no cart.
+static func _seized_disarmed(t) -> void:
+	var s := _world(false, false, PackedStringArray(["belllies", "noleave"]))
+	var d: HarvestDirector = s.d
+	var crowd: Crowd = s.crowd
+	var rules: Rules = s.rules
+	var g := d.targets[0]
+	var ctx := _fx_context(s)
+	rules.caster = func(script: GDScript, at: Vector2, extra: Dictionary) -> FxTimeline:
+		return FxTimeline.cast(script, ctx, at, extra)
+	_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	var place: Vector2 = crowd._grid.nearest_walkable(d.doors[g])
+	var near: Vector2 = crowd._grid.nearest_walkable(place + Vector2(5.0, 0.0))
+	for sol in crowd.soldiers:
+		sol.ground_pos = near
+	var fx := rules.cast(0, place, {"mode": "guard"}) as BellLiesFx
+	fx._process(BellLiesFx.T_CAST + 0.05)
+	var first: Person = null
+	for sol in crowd.soldiers:
+		if sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL:
+			first = sol
+			break
+	var arms := LawZone.circle(first.anchor, 0.6, [LawZone.NO_ARMS], 30.0)
+	crowd.add_law(arms)
+	_arrive(first, first.anchor)
+	_run(s, HarvestDirector.TICK * 3.0)
+	t.check(not crowd.in_law(c0, LawZone.NO_ARMS) and crowd.in_law(first, LawZone.NO_ARMS) and not d.razed(g)
+		and not (s.banners as Array).has("THE GUARD SEIZE THE CART"),
+		"NO ARMS on the arriving guard (not on the carter): he seizes no cart")
+	fx.free()
+	ctx.overhead.free()
+	ctx.ground.free()
+	_done(s)
+
+
+## A NO LEAVING law laid round `at` on the crowd (as the amber cell or Fenced Rule lays one), lasting `seconds`.
+static func _law(s: Dictionary, at: Vector2, seconds := 30.0) -> LawZone:
+	var z := LawZone.circle(at, 3.0, [LawZone.NO_LEAVING], seconds)
+	(s.crowd as Crowd).add_law(z)
+	return z
+
+
+## The user's ruling (2026-11-13, H6): a carter held by a NO LEAVING law for HELD_SPOIL (6 s) spoils his granary, "held", and is sent home as a seizure
+## sends him; 5.9 s does not.
+static func _held(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	t.check(is_equal_approx(HarvestDirector.HELD_SPOIL, 6.0) and not d.razed(g), "HELD_SPOIL is 6 s; with no law nothing is held")
+	_law(s, c0.ground_pos)
+	_run(s, 5.9)
+	t.check(not d.razed(g), "held 5.9 s: his granary is not spoiled")
+	_run(s, 0.1)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "held" and not d.razed(d.targets[1]) and d.carters[g].is_empty()
+		and c0.mind != Person.Mind.DUTY and (s.banners as Array).has(HarvestDirector.HELD_BANNER),
+		"held 6.0 s: his granary is spoiled (held), he is sent home, the banner says so (%s)" % [d.spoiled_by.get(g, "")])
+	_done(s)
+
+
+## H6: the clock resets when he is free of the law -- held 4 s, freed, held 4 s again: not spoiled.
+static func _held_reset(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	var z := _law(s, c0.ground_pos)
+	_run(s, 4.0)
+	(s.crowd as Crowd).remove_law(z)
+	_run(s, 0.5)
+	_law(s, c0.ground_pos)
+	_run(s, 4.0)
+	t.check(not d.razed(g), "held 4 s, freed, held 4 s again: the clock reset, not spoiled")
+	_run(s, 2.0)
+	t.check(d.razed(g) and d.spoiled_by.get(g) == "held", "held on to 6 s in the second law: spoiled")
+	_done(s)
+
+
+## H6: a carter indoors inside the law's circle is not held (in_law reads position only).
+static func _held_indoors(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK * 2.0)
+	_law(s, c0.ground_pos)
+	for i in roundi(8.0 / DT):
+		c0.inside = true
+		(s.crowd as Crowd).advance(DT)
+		(s.rules as Rules).advance(DT)
+	t.check(not d.razed(g), "a carter indoors in the law's circle for 8 s is not counted")
+	c0.inside = false
+	_done(s)
+
+
+## A carter carrying a load away from his granary's door (H7, the user's ruling 2026-11-14), loaded at the door and on his way to the Citadel.
+static func _loaded(s: Dictionary) -> Person:
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_run(s, HarvestDirector.TICK + DT)
+	return c0
+
+
+## H7: a carter frightened while he carries a load drops it -- each of the frightened minds (PANIC, FLEE, SHELTER), at once, his granary spoiled
+## (dropped) under the banner, no other granary touched, he is sent home.
+static func _dropped(t) -> void:
+	t.check(HarvestDirector.DROP_MINDS == [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER],
+		"frightened means a mind of PANIC, FLEE or SHELTER")
+	for mind: Person.Mind in HarvestDirector.DROP_MINDS:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var g := d.targets[0]
+		var c0 := _loaded(s)
+		t.check(d._hauling.has(c0.get_instance_id()) and int(d.loads[g]) == HarvestDirector.LOADS - 1 and not d.razed(g),
+			"loaded at the door, he carries it away (%s)" % Person.Mind.keys()[mind])
+		c0.mind = mind
+		_run(s, DT)
+		t.check(d.razed(g) and d.spoiled_by.get(g) == "dropped" and not d.razed(d.targets[1]) and d.carters[g].is_empty()
+			and (s.banners as Array).has(HarvestDirector.DROP_BANNER),
+			"frightened (%s) with a load, he drops it at once: his granary is spoiled (dropped), the banner says so (%s)"
+			% [Person.Mind.keys()[mind], d.spoiled_by.get(g, "")])
+		_done(s)
+
+
+## H7: a calm carter with a load, or one the god holds (not fright), drops nothing.
+static func _dropped_calm(t) -> void:
+	for mind: Person.Mind in [Person.Mind.DUTY, Person.Mind.CALM, Person.Mind.CONFUSED, Person.Mind.WHISPERED, Person.Mind.OBSERVE]:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var g := d.targets[0]
+		var c0 := _loaded(s)
+		c0.mind = mind
+		_run(s, DT)
+		t.check(not d.razed(g) and d._hauling.has(c0.get_instance_id()),
+			"carrying a load in mind %s, he drops nothing" % Person.Mind.keys()[mind])
+		_done(s)
+
+
+## H7: a frightened carter with no load (waiting at the door, or back at the Citadel) drops nothing.
+static func _dropped_empty(t) -> void:
+	var s := _world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	_run(s, d.carter_out_at(0) + HarvestDirector.TICK * 2.0)
+	var c0: Person = d.carters[g][0]
+	_arrive(c0, d.doors[g])
+	_hold(s, c0, Person.Mind.PANIC, 1.0)
+	t.check(not d.razed(g) and not d._hauling.has(c0.get_instance_id()), "frightened at the door before his grain, with no load: nothing spoils")
+	_done(s)
+	s = _world()
+	d = s.d
+	g = d.targets[0]
+	c0 = _loaded(s)
+	_arrive(c0, d.citadel_door)
+	_run(s, HarvestDirector.TICK + DT)
+	t.check(not d._hauling.has(c0.get_instance_id()), "the load delivered at the Citadel, he carries nothing")
+	_hold(s, c0, Person.Mind.PANIC, 1.0)
+	t.check(not d.razed(g), "frightened on his way back with no load: nothing spoils")
+	_done(s)
+	# Final review 7: at the Citadel's gate the load is delivered, though the look that clears it (TICK) has not come yet.
+	s = _world()
+	d = s.d
+	g = d.targets[0]
+	c0 = _loaded(s)
+	_arrive(c0, d.citadel_door)
+	c0.mind = Person.Mind.PANIC
+	_run(s, DT)
+	t.check(not d.razed(g) and not d._hauling.has(c0.get_instance_id()),
+		"frightened at the Citadel's gate before the next look: his load is delivered, nothing spoils")
+	_done(s)
+
+
+## H7: SHELTER counts only when a fright sent him into cover. A carrying carter sent into a hallowed building (Anathema's path,
+## ShelterManager.send_in()) or indoors by the rain (Tempest's, try_shelter() of kind "rain") keeps his load; one a danger frightened into cover
+## (try_shelter() of a fright's kind) drops it.
+static func _dropped_sent_in(t) -> void:
+	for way in ["hallowed", "rain", "fright"]:
+		var s := _world()
+		var d: HarvestDirector = s.d
+		var crowd: Crowd = s.crowd
+		var g := d.targets[0]
+		var c0 := _loaded(s)
+		var house: Structure = null
+		for b: Structure in crowd.shelters.shelters.keys():
+			if house == null or b.distance_to(c0.ground_pos) < house.distance_to(c0.ground_pos):
+				house = b
+		var went := false
+		match way:
+			"hallowed":
+				went = crowd.shelters.send_in(c0, house)
+			"rain":
+				c0.mind = Person.Mind.RECOVER
+				for k in 200:  # (the rain's roll: a calm citizen goes in three times in ten; the seed decides, no luck in the check)
+					if crowd.shelters.try_shelter(c0, c0.ground_pos, 0.0, &"rain"):
+						went = true
+						break
+			"fright":
+				for k in 200:
+					if crowd.shelters.try_shelter(c0, c0.ground_pos + Vector2(0.1, 0.0), 0.0, &"smite"):
+						went = true
+						break
+		_run(s, DT)
+		t.check(went and c0.mind == Person.Mind.SHELTER, "the carrying carter goes into cover (%s)" % way)
+		if way == "fright":
+			t.check(d.razed(g) and d.spoiled_by.get(g) == "dropped", "frightened into cover with a load, he drops it")
+		else:
+			t.check(not d.razed(g) and d._hauling.has(c0.get_instance_id()),
+				"sent into cover by %s with a load, he keeps it (not fright)" % ("a hallowed building" if way == "hallowed" else "the rain"))
 		_done(s)
 
 

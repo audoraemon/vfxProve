@@ -116,6 +116,9 @@ const TIER5_SHOWS := ["lantern_eye", "exodus", "heart_of_faith", "lantern_eye-hu
 ## kneeling (the shrine's ring) and `win` the third shard (the win plate). Staged by `_stage_rite()`.
 const RITE_SHOWS := ["first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk",
 	"first_taste-cleanse", "first_taste-win"]
+## The Might gauge's photographs: a Tier 5 god mid-night in an Endless gauge night, one ability on cooldown and the gauge part spent. `bar-hidden`
+## has the strip (the armed ability, the gauge, the hint), `bar-open` the ability bar open on the god's own type's page. Staged by `_stage_bar()`.
+const BAR_SHOWS := ["bar-hidden", "bar-open"]
 ## The Lantern Hunts' photographs (god P5, Task 14, MS §1-§6): each Hunt as the god of its tier plays it (GodNight.def_for()). `-start` is the
 ## intro's end with the banners gone; the others are staged through the director's own paths by `_stage_hunt()`: `hide_faithful-trail` the search
 ## on the north-west household's trail, `silence_witness-relay` a witness killed in sight of his mate, `expel_inquisitor-captain` the captain out
@@ -564,6 +567,9 @@ func _ready() -> void:
 			_show_endless(show)
 		"first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk", "first_taste-cleanse", "first_taste-win":
 			_show_endless(show)
+		"bar-hidden", "bar-open":
+			# The Might gauge's ability bar in a Tier 5 god's night, hidden (the strip) and open.
+			_show_endless(show)
 		"prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5", \
 		"hide_faithful-start", "hide_faithful-trail", "hide_faithful-broken", "hide_faithful-march", "silence_witness-start", "silence_witness-relay", \
 		"expel_inquisitor-start", "expel_inquisitor-captain", \
@@ -604,7 +610,7 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission):
+		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS or show in BAR_SHOWS) and is_instance_valid(_mission):
 			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -621,7 +627,7 @@ func _ready() -> void:
 				heart._open(1)
 				heart._raze(heart.targets[1])
 				heart._odran_comes()
-		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission) \
+		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS or show in BAR_SHOWS) and is_instance_valid(_mission) \
 				and is_instance_valid(_mission._hud):
 			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
 			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)
@@ -633,6 +639,8 @@ func _ready() -> void:
 			await _stage_rite(show)
 		if show in HUNT_SHOWS and is_instance_valid(_mission):
 			await _stage_hunt(show)
+		if show in BAR_SHOWS and is_instance_valid(_mission):
+			_stage_bar(show)
 		if show == "ascend" and is_instance_valid(_mission):
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -1366,6 +1374,19 @@ func _show_god(level: int, tier := 1) -> GodSlot:
 	return g
 
 
+## The god of a Might gauge photograph: a ruin god of tier 5 on its tenth level that has learned all ten abilities of its own type and the first three
+## of each neighbouring type, every one at level 2.
+func _show_bar_god() -> GodSlot:
+	var g := _show_god(10, 5)
+	g.learned = {}
+	for key in GodTree.keys_for(g.type, 5):
+		g.learned[key] = 2
+	for type in GodTree.neighbours(g.type):
+		for key in GodTree.keys_for(type, 2).slice(0, 3):
+			g.learned[key] = 2
+	return g
+
+
 ## --show=<name> for Endless Night's screens (god P1): the fixture god on the dev fill, written to the show's own slot files. `hub-capped` is
 ## the same god at level 10 (the tier's cap); `pause-endless` has the night's clock started, so Abandon's confirm says the night is lost.
 func _show_endless(show: String) -> void:
@@ -1376,6 +1397,8 @@ func _show_endless(show: String) -> void:
 	var rite_night := show in RITE_SHOWS
 	var hunt_id := hunt_of_show(show)
 	match show:
+		"bar-hidden", "bar-open":
+			god = _show_bar_god()
 		"hub-unwritten":
 			god = _show_god(20, 2)  # capped at the next cap, no rite written there yet: the dim Awaken
 		"hub-gifts", "prepare-gifts":
@@ -1509,6 +1532,10 @@ func _show_endless(show: String) -> void:
 			elif hunt_id != "":
 				mission_id = hunt_id
 				go_to(Screen.MISSION)
+			elif show in BAR_SHOWS:
+				mission_id = MissionBook.WARNING
+				loadout = GodNight.night_loadout(god)
+				go_to(Screen.MISSION)
 
 
 ## The Hunt a --show name is about (god P5, Task 14): `prepare-hunt-<tier>` the Hunt of that tier, `<id>-<rule>` the Hunt `<id>`; "" for any other name.
@@ -1537,6 +1564,20 @@ func _show_rite_loadout(show: String) -> void:
 	loadout = GodNight.night_loadout(god)
 	if show == "first_taste-modes" and not loadout.has("belllies"):
 		loadout.append("belllies")  # no spot of the tree holds it, so the whole tree lacks it: the photograph adds it, as the draft once did
+
+
+## Stages a Might gauge photograph past its intro: the second own-type ability armed, the third on cooldown, the gauge at about half; `bar-open`
+## shows the bar. The mission is up and started and the opening banners are waited out by the caller.
+func _stage_bar(show: String) -> void:
+	var rules := _mission.rules()
+	var bar := _mission._hud.bar
+	if rules == null or bar == null:
+		return
+	var slots: PackedInt32Array = bar.pages()[bar.page].slots
+	rules._cooldowns[slots[2]] = rules.cooldown_of(slots[2]) * 0.6
+	rules.might.value = rules.might.capacity * 0.45
+	_mission._aim.pick(slots[1])
+	bar.open = show == "bar-open"
 
 
 ## Stages a First Taste photograph past its intro (god P3, Task 8): the director's own paths, as the Tier 5 shots are staged. The mission is up

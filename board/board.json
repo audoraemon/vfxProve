@@ -1,11 +1,9 @@
 {
- "hash": "a651da915e6239e0",
- "updated": "2026-11-19T12:40:19+07:00",
+ "hash": "d7f332de69f37fa7",
+ "updated": "2026-11-19T12:50:09+07:00",
  "changes": {
-  "date": "<t:1795066819:f>",
-  "items": [
-   "New: PixelLab ability icons for the 47 drawn powers"
-  ]
+  "date": "<t:1795067409:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -16,7 +14,7 @@
   },
   "tasks": {
    "ability-icons-pixellab": {
-    "title": "PixelLab ability icons for the 47 drawn powers",
+    "title": "PixelLab ability icons for the 47 drawn powers + 6 flat Decree",
     "status": "done",
     "area": "UI",
     "needs_you": false,
@@ -1851,7 +1849,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 99,
+    "behind": 100,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -1859,7 +1857,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 474,
+    "behind": 475,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1867,7 +1865,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 972,
+    "behind": 973,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1875,7 +1873,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 930,
+    "behind": 931,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1884,7 +1882,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-19",
-   "subject": "feat: PixelLab ability icons for the 47 drawn powers (Discord #ideas \"Improve Abilities Icon\")"
+   "subject": "feat: repaint the 6 flat Decree icons (Cage, Fenced, Eminent, Erase, Bound, Sealed) in the PixelLab icon style"
   }
  }
 }

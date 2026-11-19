@@ -314,6 +314,7 @@ const SUITES := [
 	"res://tests/test_might_pool.gd",
 	"res://tests/test_rules_might.gd",
 	"res://tests/test_might_night.gd",
+	"res://tests/test_might_route.gd",
 	"res://tests/test_ability_bar.gd",
 	"res://tests/test_god_night.gd",
 	"res://tests/test_night_rules.gd",

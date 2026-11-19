@@ -159,7 +159,7 @@ t.check(PowerBook.might("slumber") == 3 and PowerBook.might("dread") == 4 and Po
 - [ ] **Step 6: The tree and the counts.** Set `GodTree.TABLE.veil`. Update the counts that now differ: `test_power_book` 77 -> 84, `test_tree_detail` 52 -> 60, `test_routes` FAMILY size, and any other suite the whole run shows. Make the Upgrades grid hold 59 locked powers inside `GRID_BOTTOM` (four columns, or the smallest change that keeps its own tests green).
 - [ ] **Step 7: The ring.** In `Targeting.area()`, for a key in `VeilRules.RING`, return the circle with `r = VeilRules.size(key, stat, _crowd.in_dark(_press))`, and draw a small `LIGHT` / `DARK` tag by the ring. Test: with the cursor on dusk `area().r == 1.6` for doom, on lit ground `0.8`.
 - [ ] **Step 8: Placeholder icons.** Add the seven keys to `tools/dev/make_power_icons.py` (a dark field, one violet glyph each) and run it for them.
-- [ ] **Step 9: Verify.** `test_veil_law` `failures=0`; the whole suite `failures=0`; `refs_check.sh --only='^(digest|crowd_check)$'` unchanged; 40 rows that cast no Veil power (`--only='^(tax|harvest)_none_'` and the Ruin rows `god_ruin_`) all `OK`.
+- [ ] **Step 9: Verify.** `test_veil_law` `failures=0`; the whole suite `failures=0`; `refs_check.sh --only='^(digest|crowd_check)$'` unchanged; 40 rows that cast no Veil power, picked from `tools/dev/refs/*.tsv` (rows whose loadout holds no `veil` key, for example the `god_ruin_*` rows), all `OK`.
 - [ ] **Step 10: Commit** `feat: the law of the Veil -- dusk, two sizes, the Veil tree's rows`.
 
 ### Task 2: Shared hooks for the Veil powers

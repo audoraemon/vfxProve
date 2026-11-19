@@ -110,3 +110,28 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VA4 (Task 4): who falls ill is fixed at the cast (the picked person, then in the dark the nearest others within ILL_REACH of them, by
   distance then instance id) and made ill at T_ROT; the picked person dead by then: nobody. A cast on a person or a director's thing
   leaves the usual 20 s dusk patch (VeilParts.land); a building's lasting patch is its only one.
+- VA5 (Task 10): The Swallowing Dark spares, besides what `MissionKeeps.spared()` names (the Citadel and Temple, the hallowed, a damage
+  filter, the director's `reserved_places` and `needs_standing()`), the town's own gates, bridges, postern, dock and fountain, as Eminent
+  Domain's `_clear_ruins()` keeps them -- the town's managers go on using them (evacuation, the river's crossings) and a bridge taken out
+  of the walk grid would close the river. A ruin wholly inside is taken like a standing building (no rubble is left either way).
+- VA6 (Task 10): who is "inside" is fixed at full size: every living person whose point lies within the full radius -- out in the open,
+  or indoors at home (a NIGHT mission's citizens, the home-sick) -- plus every animal and visitor, every lying remain (its corpse hidden)
+  and every decor piece whose `at` is inside. One sheltering in a shelter is taken only with his building (released, then taken) and is
+  out of reach in a standing one. Each person is checked again when his turn comes: one who has walked out by then lives.
+- VA7 (Task 10): a blighted foothold (`Crowd.footholds`) the dark takes is healed first (`BlightFx.heal()`: its lasting dusk ended, its
+  light-map pool given back, unblighted, dropped from `Crowd.footholds`), then removed, so no foothold ever points at a removed building;
+  the emptied ground carries the swallow's own 20 s dusk instead.
+- VA8 (Task 10): the circle grows from the cast (radius `start_r` at t = 0) and `busy = T_OPEN` (0.5 s, the rim fading in), so the other
+  slots unlock while it grows (C16). In the dark with no patch under the click (a NIGHT mission, the veil) it starts at 0. The removals go
+  outermost first (an inward fold), then by instance id, PER_FRAME a frame, of which at most BUILDINGS_PER_FRAME (2) buildings (VA9);
+  the effect stays up until the last is made. Ended or freed
+  before full size it takes nothing and lays no dusk; ended after, the removals not yet made are dropped. No cast sound here (Task 12's
+  cues): the fold is soundless. The bare dark earth is a node left on `ctx.ground` (not tracked), freed with the mission's ground layer.
+- VA9 (Task 10): bench (`--bench --loadout=swallow` against `--bench-cast=swallow --bench-after=4`, the market square, light: r 10;
+  machine loaded by other sessions). avg_ms base / cast: 16.22 / 16.11, 15.56 / 15.91, 15.87 / 16.37; ratios 0.993, 1.022, 1.032;
+  median 1.02 (bar 1.55). Worst frame in those cast windows (t 4-13 s, the growing disc): 34.1 ms (bases 33.8-39.9). The fold itself
+  (`--bench-after=17`, t 17-26 s: full size at 20 s, 75 buildings and about 390 removals): worst 92.3 ms with only PER_FRAME; each
+  `EnvironmentField.remove()` rebuilds the field's whole spatial index (`_reindex()`, about 10 ms a building here, measured), so
+  BUILDINGS_PER_FRAME = 2 caps it: worst 56.4 / 59.5 ms (one a frame: 50.2 ms, and the fold takes 2.8 s), and the fold there takes about
+  1.9 s, not 1 s (the suite's own site finishes within 1 s). Under 50 ms needs one index rebuild per frame for several buildings, a batch
+  remove in environment_field.gd (not this task's file).

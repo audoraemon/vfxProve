@@ -7,7 +7,7 @@ extends RefCounted
 ## inside a draw paints a white block (see Hud._slot_icons).
 
 ## A tile's side, HUD units (640x360).
-const TILE := 36.0
+const TILE := 42.0
 ## The gap between tiles.
 const TILE_GAP := 4.0
 ## The armed tile in the hidden strip, which is as tall as it is.
@@ -314,11 +314,19 @@ func signature(armed: int) -> String:
 	return "|".join(parts)
 
 
-## The tile's icon for a side of `side` units at the current UI scale: the 84 px painted icon for even multiples, else the 42 px one.
-func _icon(slot: int, side: float) -> Texture2D:
+## The square an icon occupies in `box`: UiIcon's native multiple centred in it, or the whole box when no native size fits (the 28 u
+## strip tile at 640x360).
+static func _icon_rect(box: Rect2) -> Rect2:
+	var native := UiIcon.native_rect(box.get_center(), box.size.x)
+	return native if native.size.x <= box.size.x + 0.001 else box
+
+
+## The tile's icon for `rect` at the current UI scale: the 84 px painted icon for even multiples, else the 42 px one.
+func _icon(slot: int, rect: Rect2) -> Texture2D:
 	var small: Texture2D = _small[slot] if slot >= 0 and slot < _small.size() else null
 	var big: Texture2D = _big[slot] if slot >= 0 and slot < _big.size() else null
-	if maxi(roundi(side * float(UiScale.k()) / float(UiIcon.SOURCE)), 1) % 2 == 0 and big != null:
+	var m := maxi(roundi(rect.size.x * float(UiScale.k()) / float(UiIcon.SOURCE)), 1)
+	if m % 2 == 0 and big != null:
 		return big
 	return small if small != null else big
 
@@ -347,14 +355,15 @@ func _draw_tile(on: CanvasItem, box: Rect2, slot: int, key_label: String, armed:
 		var red := UiTheme.COL_BAD
 		red.a = flash_alpha
 		on.draw_rect(box, red)
-	var icon := _icon(slot, box.size.x)
+	var icon_box := _icon_rect(box)
+	var icon := _icon(slot, icon_box)
 	if icon != null:
 		var tint := Color.WHITE
 		if state == "sealed":
 			tint = COL_SEALED
 		elif state != "ready":
 			tint = COL_POOR
-		on.draw_texture_rect(icon, box, false, tint)
+		on.draw_texture_rect(icon, icon_box, false, tint)
 	if armed:
 		UiTheme.frame(on, box, true)
 	else:

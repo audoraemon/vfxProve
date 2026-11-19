@@ -7,6 +7,7 @@ extends RefCounted
 const KEYS := ["whisper", "smite", "ember", "tornado", "scatter", "solaris", "dragon", "tsunami", "cinder", "tempest", "shatter",
 	"skylift", "windfall", "houndgate"]
 const VIEW := Vector2(640, 360)
+const TILE_SIDE := AbilityBar.TILE
 
 
 static func run(t) -> void:
@@ -131,6 +132,10 @@ static func _layout(t) -> void:
 	var last := bar.tile_rect(9, big)
 	t.near((first.position.x + last.end.x) * 0.5, big.x * 0.5, 0.01, "the row is centred on the view")
 	t.check(is_equal_approx(first.size.x, AbilityBar.TILE) and is_equal_approx(first.size.y, AbilityBar.TILE), "a tile is TILE square")
+	var tile := bar.tile_rect(0, VIEW)
+	t.check(AbilityBar._icon_rect(tile) == UiIcon.native_rect(tile.get_center(), TILE_SIDE), "a tile's icon sits at the native size")
+	t.check(AbilityBar._icon_rect(bar.strip_tile_rect(VIEW)) == bar.strip_tile_rect(VIEW) or AbilityBar._icon_rect(bar.strip_tile_rect(VIEW)).size.x <= AbilityBar.STRIP_TILE,
+		"the strip's icon never overflows its tile")
 	t.check(bar.rect(VIEW).size.y <= AbilityBar.TILE + 3.0 * AbilityBar.LINE + 8.0, "open: no taller than a row and three lines (%.1f)" % bar.rect(VIEW).size.y)
 	t.check(bar.rect(VIEW).end.y <= VIEW.y - AbilityBar.BOTTOM + 0.01, "and the bottom gap is kept")
 	bar.toggle()

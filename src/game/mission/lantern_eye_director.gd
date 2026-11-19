@@ -717,6 +717,24 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "eye", "shattered", "guarded", "open", "waiting"])
 
 
+## Mission clarity (spec 5.5): the guards' banners (HuntDirector), and a wright held (compelled or lured) within the cast's reach who still
+## works (_working(): only BLIND stops him). Only reads.
+const WHY_WRIGHT := "HELD, HE STILL WORKS - LEAD HIM OFF"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	var text := super(key, at)
+	if text != "" or not _holds_only(key, MissionVerbs.verbs_of(key)):
+		return text
+	for i in wrights.size():
+		if not shattered[i] or steps[i].broken:
+			continue
+		for w: Guard in wrights[i]:
+			if _alive(w.man) and (w.man as Person).held_by_god() and _working(w) 					and _cast_reaches(key, at, (w.man as Person).ground_pos) and not _may_kill(key, at, (w.man as Person).ground_pos):
+				return WHY_WRIGHT
+	return ""
+
+
 ## The seconds the hint counts down (v0.11 M6): the Eye's in "eye", the first draining mirror's in "shattered"; else 0.
 func hint_seconds() -> float:
 	match hint_phase():

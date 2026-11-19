@@ -244,8 +244,35 @@ static func _advance_prayers(t) -> void:
 
 
 # --- clarity block: hunt ---
-static func _advance_hunt(_t) -> void:
-	pass
+static func _advance_hunt(t) -> void:
+	# The hunts' steps follow the director's phase; the waits count down.
+	var s := _stub_world(MissionBook.heretic_hunt())
+	var d: PhaseStub = s.d
+	d.phase = "waiting"
+	d.secs = 35.0
+	t.check(MissionSteps.line(s.rules) == "Be at the next standard (grey) 0:35", "the Heretic Hunt's wait counts down (%s)" % MissionSteps.line(s.rules))
+	d.phase = "coming"
+	d.secs = 20.0
+	t.check(MissionSteps.line(s.rules) == "Be at the captain's road 0:20", "and the captain's: %s" % MissionSteps.line(s.rules))
+	d.phase = "captain"
+	t.check(MissionSteps.line(s.rules) == "Kill the captain (gold)", "then he is the target (%s)" % MissionSteps.line(s.rules))
+	d.phase = "open"
+	t.check(MissionSteps.line(s.rules).begins_with("Strike or rot it (gold) now"), "an open standard: strike or rot (%s)" % MissionSteps.line(s.rules))
+	Kit.done(s)
+	s = _stub_world(MissionBook.lantern_eye())
+	d = s.d
+	d.phase = "shattered"
+	d.secs = 12.0
+	t.check(MissionSteps.line(s.rules) == "Lead or kill the wrights (red) 0:12", "the Lantern's Eye: the wrights, counted (%s)" % MissionSteps.line(s.rules))
+	d.phase = "waiting"
+	d.secs = 30.0
+	t.check(MissionSteps.line(s.rules) == "Be at the next mirror (grey) 0:30", "and the next mirror's wait (%s)" % MissionSteps.line(s.rules))
+	Kit.done(s)
+	s = _stub_world(MissionBook.break_hunt())
+	d = s.d
+	d.phase = "carried"
+	t.check(MissionSteps.line(s.rules).begins_with("Kill or scare the new bearer"), "Break the Hunt: the new bearer (%s)" % MissionSteps.line(s.rules))
+	Kit.done(s)
 
 
 

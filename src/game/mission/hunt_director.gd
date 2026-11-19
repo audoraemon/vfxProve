@@ -778,6 +778,65 @@ func step_seconds() -> float:
 	return hint_seconds()
 
 
+## Mission clarity (spec 5.5): the banners a cast that reaches the hunt's guards or standard and will not count gets. Both read state only.
+const WHY_STRIKE := "GUARDED (RED) - IT ONLY SHAKES"
+const WHY_HELD := "HELD, HE STILL GUARDS - LEAD HIM OFF"
+
+
+## Why a cast of `key` at `at` does not count here, "" when it does or reaches nothing of the hunt's:
+##  - a blow (Strike) on a standard its party guards only shakes it -- unless the cast also kills a guard within its kill radius, which
+##    counts (Blight has its own banner, blight_words(), so it is never asked here);
+##  - a Hold or Lure that has taken a guard within its reach leaves him guarding (the rule is BLIND: whispered or confused only), so
+##    the player is told to lead him off. A Lead or a Discord is BLIND, so a cast that leads or confuses never gets this banner.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	var held := _why_held(key, at, verbs)
+	if held != "":
+		return held
+	return _why_strike(key, at, verbs)
+
+
+## A blow on a guarded standard (why_not()).
+func _why_strike(key: String, at: Vector2, verbs: PackedStringArray) -> String:
+	if not "strike" in verbs:
+		return ""
+	for i in steps.size():
+		var s := standard(i) if steps[i].raised and not steps[i].broken else null
+		if s == null or s.destroyed or not _guarded(i) or s.distance_to(at) > Crowd._cast_radius(key):
+			continue
+		for g: Guard in steps[i].party:
+			if _guarding(i, g) and _may_kill(key, at, (g.man as Person).ground_pos):
+				return ""
+		return WHY_STRIKE
+	return ""
+
+
+## A guard held (compelled or lured) and still guarding, within the cast's reach (why_not()).
+func _why_held(key: String, at: Vector2, verbs: PackedStringArray) -> String:
+	if not _holds_only(key, verbs):
+		return ""
+	for i in steps.size():
+		if steps[i].broken:
+			continue
+		for g: Guard in steps[i].party:
+			if _held_still(g, i) and _cast_reaches(key, at, (g.man as Person).ground_pos) and not _may_kill(key, at, (g.man as Person).ground_pos):
+				return WHY_HELD
+	return ""
+
+
+## Whether `key` holds minds and does nothing that would count against a hunt's guard or worker: no Lead, no Confuse (both BLIND him),
+## and The Bell Lies only in its guard mode (its other mode calms the town).
+func _holds_only(key: String, verbs: PackedStringArray) -> bool:
+	if not ("hold" in verbs or "lure" in verbs) or "lead" in verbs or "confuse" in verbs:
+		return false
+	return key != "belllies" or _last_mode() == "guard"
+
+
+## Guard `g` of step `i` is held by the god and so would be taken off his post by anything but the hold itself, and still guards.
+func _held_still(g: Guard, i: int) -> bool:
+	return _alive(g.man) and (g.man as Person).held_by_god() and _guarding(i, g)
+
+
 ## The hint's phase (v0.11 M4, decision 110; the final review put a standing standard first): "guarded" or "open" for the current
 ## standard while one stands; else "searching" or "captain" while the head is out; "coming" once every step is broken and the head is
 ## still to come out (the controller's ruling: the seconds to him, hint_seconds(), on the line); "waiting" while none stands and a step

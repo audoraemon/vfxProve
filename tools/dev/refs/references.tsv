@@ -70,7 +70,7 @@ prisoner_none_1	--scenario=prisoner --case=none --seed=1	-712916423
 prisoner_none_2	--scenario=prisoner --case=none --seed=2	-879962305
 prisoner_none_3	--scenario=prisoner --case=none --seed=3	-715328072
 prisoner_play_1	--scenario=prisoner --case=play --seed=1	-28712552
-prisoner_play_2	--scenario=prisoner --case=play --seed=2	31262820
+prisoner_play_2	--scenario=prisoner --case=play --seed=2	-519488563
 prisoner_play_3	--scenario=prisoner --case=play --seed=3	51324867
 hunt_none_1	--scenario=hunt --case=none --seed=1	-88417007
 hunt_none_2	--scenario=hunt --case=none --seed=2	-207761814

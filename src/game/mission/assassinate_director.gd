@@ -637,6 +637,12 @@ func _door_in(q: Quarry) -> Vector2:
 	return q.stop_doors[i] if i >= 0 else q.target.ground_pos
 
 
+## Where a cast must land to reach `q` (Mission clarity, for the why-not banners): his feet in the street, the door he is behind indoors.
+## Only reads.
+func _reach_point(q: Quarry) -> Vector2:
+	return _door_in(q) if q.target.inside else q.target.ground_pos
+
+
 ## Where `q`'s round takes him next (v0.11 M2): the stop he walks to, or the safe place.
 func _leg_goal(q: Quarry) -> Vector2:
 	return q.stop_doors[q.leg] if q.leg < q.stops.size() else safe_at

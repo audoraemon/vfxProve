@@ -525,6 +525,71 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "running", "hiding", "found", "waiting"])
 
 
+## Seconds until word reaches the contact to work on (Mission clarity, spec 5.2): the strip's own mission seconds, while his hint is
+## "waiting"; 0 in every other phase. Only reads.
+func hint_seconds() -> float:
+	var c := contact_now()
+	if c == null or hint_phase() != "waiting":
+		return 0.0
+	return visit_in(contacts.find(c))
+
+
+## The why-not banners (Mission clarity, spec 5.2; pre-flight I1, I6): before word, a fright, a lead, a lure or a confuse on the contact
+## or his company turns nothing -- and a lone Skylift or kill is judged by no cause here; after word, only a Mind Whisper or a Discord turns
+## the contact, and a company member lured or frightened off walks back. A Mind Whisper or Discord after word is the director's own to
+## judge (it turns him, or its banner says he was seen), so says nothing here. Only reads.
+const WHY_EARLY := "TOO EARLY - NO WORD YET"
+const WHY_BACK := "THEY WALK BACK TO HIS DOOR"
+const WHY_ONLY := "ONLY CONFUSE OR LEAD TURNS HIM"
+const _WAITING_VERBS := ["scare", "lead", "lure", "confuse"]
+const _AFTER_VERBS := ["scare", "lure", "hold", "banish"]
+
+
+func why_not(key: String, at: Vector2) -> String:
+	if found or cold or contacts.is_empty():
+		return ""
+	var c := contact_now()
+	if c == null or not _alive(c.man):
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	var man := c.man as Person
+	var crew: Array[Person] = []
+	for v: Variant in c.company:
+		if _alive(v) and not (v as Person).inside:
+			crew.append(v as Person)
+	if not c.word:
+		# Before word: nothing turns him, whatever the verb; a kill or a lift is not a cast that "should have worked".
+		if not _any_verb(verbs, _WAITING_VERBS) or man.inside:
+			return ""
+		for p: Person in [man] + crew:
+			if _may_kill(key, at, p.ground_pos):
+				return ""
+		for p: Person in [man] + crew:
+			if _cast_reaches(key, at, p.ground_pos):
+				return WHY_EARLY
+		return ""
+	if key == "whisper" or key == "discord" or man.inside:
+		return ""
+	if _may_kill(key, at, man.ground_pos):
+		return ""
+	if _any_verb(verbs, _AFTER_VERBS) and _cast_reaches(key, at, man.ground_pos):
+		return WHY_ONLY
+	# A company member lured or frightened off by this cast goes back to his spot (_keep()).
+	if "lure" in verbs or "scare" in verbs:
+		for p in crew:
+			if _cast_reaches(key, at, p.ground_pos) and not _may_kill(key, at, p.ground_pos) and (p.lured() or p.mind in FRIGHT):
+				return WHY_BACK
+	return ""
+
+
+## Whether `verbs` holds any of `wanted`.
+func _any_verb(verbs: PackedStringArray, wanted: Array) -> bool:
+	for v in verbs:
+		if wanted.has(v):
+			return true
+	return false
+
+
 ## The tour (mission spec §3, the controller's ruling on Decision 26): the first contact -- how many there are, and the plain warning
 ## not to kill him; the Temple.
 func tour() -> Array:

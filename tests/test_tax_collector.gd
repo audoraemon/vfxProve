@@ -210,7 +210,7 @@ static func _setup(t) -> void:
 	t.check(up.size() == 3 and String(up[0].id) == "out_0" and is_equal_approx(float(up[0].at), TaxCollectorDirector.SET_OUT_AT[0])
 		and String(up[1].id) == "out_1" and is_equal_approx(float(up[1].at), TaxCollectorDirector.SET_OUT_AT[1])
 		and String(up[2].id) == "out_2", "the strip: the collector out at 0:35, his deputies at their times")
-	t.check(_labels(d) == ["TAX COLLECTOR - INSIDE", "COUNTING-HOUSE", "DEBTOR"] and d.hint_phase() == "inside",
+	t.check(_labels(d) == ["TAX COLLECTOR - INSIDE", "COUNTING-HOUSE", "DEBTOR"] and d.hint_phase() == "ready",
 		"tagged indoors, with the counting-house and his first debtor (%s); the hint: he is indoors" % [_labels(d)])
 	var stops := d.tour()
 	t.check(stops.size() == 3

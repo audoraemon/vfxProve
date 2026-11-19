@@ -39,31 +39,29 @@ const SPEC := [
 	["procession.dock", "The Prince waits at the dock. He boards as soon as his ship is in: kill him first."],
 
 	# --- clarity block: assassinate ---
-	# The Informer (v0.11 M3).
-	["informer", "Whisper or Discord the contact (orange) while no one (red) sees. He names the next. Do not kill a contact."],
-	["informer.waiting", "Word has not reached the contact (grey) yet. Get his company (red) away before it does. Do not kill a contact."],
+	["informer", "Confuse the contact (orange) and his company (red) together, or lead him with none of them near. Do not kill a contact."],
+	["informer.waiting", "Word reaches the contact (grey) in {n} s. Nothing turns him before then. A companion you scare off walks back."],
 	["informer.found", "He is found and runs for the Temple (red). Kill him before he gets in. Unseen, no cry is raised."],
-	["informer.hiding", "Alarmed, he hides. Set the house alight to smoke him out, or wait for him."],
+	["informer.hiding", "Alarmed, he hides (gold). Burn the house: the fire drives him out. Or wait for him."],
 	["informer.running", "No hiding place: he runs for the Temple (red). Kill him before he gets in."],
-	# The Tax Collector (v0.11 M2; three collectors, the controller's Task 2 ruling).
-	["tax_collector", "Stop each collector (gold): kill him, unseen if you can (red), or send him out of the walls. A seen kill rings the bell."],
-	["tax_collector.inside", "He is indoors (gold). Leaving Is Prohibited on a door he went in at, his guards drawn off, sets the debtors on him."],
-	["tax_collector.hiding", "Alarmed, he hides in the counting-house. Set it alight: every collector inside runs for the Citadel."],
+	["tax_collector", "Kill each collector (gold) on his round, unseen (red) if you can: a seen kill rings the bell. Or banish him."],
+	["tax_collector.ready", "The first collector (gold) leaves the counting-house (orange) in {n} s. Be ready to kill him on his round."],
+	["tax_collector.inside", "He is in a debtor's house (gold) for {n} s. Be at the door and seal it as he comes out, his guards away."],
+	["tax_collector.hiding", "Alarmed, he hides in the counting-house (orange). Burn it: everyone inside runs for the Citadel."],
 	["tax_collector.running", "No hiding place: he runs for the Citadel (red). Kill him before he gets in."],
 	["tax_collector.safe", "His rounds are done. He takes the taxes to the Citadel (red): kill him before he gets in."],
-	["tax_collector.next", "One down. The next collector (gold) leaves the counting-house soon: be ready for him."],
-	# The Bishop (v0.11 M5).
+	["tax_collector.next", "One down. The next collector (gold) leaves the counting-house (orange) in {n} s."],
 	["bishop", "Burn each refuge the bishop hides in (gold), once its Knights (red) are dead. The Temple last: then kill him in the square."],
-	["bishop.waiting", "He reaches his next refuge in {n} s. Kill its Knights (red) shortly before he comes."],
-	["bishop.guarded", "His Knights (red) beat out fire and turn blows aside. Kill them, or whisper, Discord or lure them off: each walks back."],
+	["bishop.waiting", "He reaches his next refuge in {n} s. Kill or hold its Knights (red) shortly before he comes."],
+	["bishop.guarded", "His Knights (red) beat out fire and turn blows aside. Kill or hold them: a held Knight walks back after."],
 	["bishop.open", "No Knight stands. Set the refuge (gold) alight before a new Knight comes."],
 	["bishop.burning", "It burns. Keep it burning: his Knights (red) put out a fire they stand by."],
 	["bishop.square", "He is in the square and makes for the Citadel (red). Kill him before he gets in."],
 	["bishop.running", "Alarmed, he runs for the Citadel (red). Kill him now."],
-	# Expel the inquisitor (god P5 Task 6, MS §4): pinned like the rest, appended at the end (the other Hunts' tasks append their own after it).
-	["expel_inquisitor", "Stop each lantern-warden (gold): kill him, or put him out of the walls."],
-	["expel_inquisitor.captain", "The captain walks his rounds: kill him, or frighten him three times."],
-	["expel_inquisitor.near", "The captain nears the Citadel: stop him now."],
+	# expel_inquisitor (god P5 Task 6; MS §4, *my call*)
+	["expel_inquisitor", "Kill or banish each lantern-warden (gold). A fright only sends a warden to hide."],
+	["expel_inquisitor.captain", "The captain (gold) walks his rounds. Kill him, or scare him three times, each 8 s or more apart, while he walks."],
+	["expel_inquisitor.near", "The captain (gold) nears the Citadel (red). Kill or banish him now."],
 
 	# --- clarity block: escort ---
 	# The Lost Lamb (v0.11 M2).

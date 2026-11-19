@@ -42,6 +42,7 @@ func _build() -> void:
 	duration = T_SIT + REST + 1.0
 	busy = T_SIT
 	VeilParts.land(self, origin, r)
+	ctx.play(&"v_dreamless", origin)
 	if ctx.field != null:
 		_victims = victims_at(ctx.field, origin, r, most)
 	for p in _victims:

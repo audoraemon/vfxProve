@@ -162,6 +162,19 @@ const CATALOG := {
 	&"q_sealed": {"path": "res://assets/audio/ability/quiet/q_sealed.wav", "db": 0.5},
 	&"q_sealed_hit": {"path": "res://assets/audio/ability/quiet/q_sealed_hit.wav", "db": 2.0},
 	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
+	# The Veil's seven (Veil authority powers spec 6; tools/audio/foley/ability/veil/): the silent god's cues are quiet, low and close --
+	# a breath, cloth, a held low note, a lamp guttering -- never a bang, a scream or an alarm. A cast cue v_<key> each, the Swallowing
+	# Dark's taking, Evernight's held night (a loop) and Blight's sickness on a person. None ducks the music or has an aftermath.
+	&"v_slumber": {"path": "res://assets/audio/ability/veil/v_slumber.wav", "db": 0.0},
+	&"v_cloak": {"path": "res://assets/audio/ability/veil/v_cloak.wav", "db": 1.6},
+	&"v_dreamless": {"path": "res://assets/audio/ability/veil/v_dreamless.wav", "db": 1.0},
+	&"v_dread": {"path": "res://assets/audio/ability/veil/v_dread.wav", "db": 0.9},
+	&"v_shadowplay": {"path": "res://assets/audio/ability/veil/v_shadowplay.wav", "db": -0.3},
+	&"v_swallow": {"path": "res://assets/audio/ability/veil/v_swallow.wav", "db": 2.4},
+	&"v_swallow_take": {"path": "res://assets/audio/ability/veil/v_swallow_take.wav", "db": 0.7},
+	&"v_evernight": {"path": "res://assets/audio/ability/veil/v_evernight.wav", "db": 1.6},
+	&"v_evernight_loop": {"path": "res://assets/audio/ability/veil/v_evernight_loop.wav", "db": 1.5, "loop": true, "voices": 1},
+	&"q_blight_ill": {"path": "res://assets/audio/ability/veil/q_blight_ill.wav", "db": 0.7},
 	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind.wav", "db": 1.8},
 	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema.wav", "db": 0.2},
 	&"q_sanctuary": {"path": "res://assets/audio/ability/quiet/q_sanctuary.wav", "db": 0.8},

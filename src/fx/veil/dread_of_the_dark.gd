@@ -65,6 +65,8 @@ static func dark_in_reach(crowd: Crowd, at: Vector2, reach: float) -> bool:
 
 func _build() -> void:
 	reach = VeilParts.size(self, "dread", "REACH")
+	if ctx != null:
+		ctx.play(&"v_dread", origin)
 	if ctx == null or ctx.crowd == null:
 		duration = 1.0  # the VFX Sandbox: nothing to dread, no dusk to lay
 		_lifted = true

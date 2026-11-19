@@ -60,7 +60,8 @@ extends SceneTree
 ##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac|cross|body|bodies] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
+##          [--setup=rite|evac|cross|body|bodies|dusk] [--zoom=z]; --setup=dusk lays a dusk patch DUSK_AT from the cast (Dread of the
+##          Dark: dark ground in reach); --setup=cross sends the citizens nearest the cast walking across it
 ##          (a power that acts on walkers has some: The Folded Ward); --setup=body kills the citizen nearest --at and casts
 ##          on their body (Raise the Dead, --mode=); --setup=bodies kills the CLIP_BODIES citizens nearest --at and casts
 ##          BODIES_CAST_OFF east of them (Grave Tide: the heap rises, its giant too, and walks to the click); --zoom frames a
@@ -1339,6 +1340,8 @@ const CROSS_TO := 4.5
 ## The clip's "bodies" setup: this many fall round the cast, and the cast lands this far east of them.
 const CLIP_BODIES := 12
 const BODIES_CAST_OFF := Vector2(4.0, 0.0)
+## The clip's "dusk" setup: where the dusk patch is laid, from the cast (outside DUSK_R of it, inside the light reach of Dread).
+const DUSK_AT := Vector2(3.5, 0.0)
 
 
 ## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
@@ -1387,6 +1390,11 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		if cast_at != Vector2.INF:
 			at = cast_at
 		await _frames(2 * 60)
+	elif setup == "dusk":
+		# (Veil Task 12) A dusk patch DUSK_AT east of the cast, as an earlier Veil cast leaves: Dread of the Dark needs dark ground in
+		# reach (it is refused without), and the cast itself stays on lit ground (its light size).
+		crowd.lay_dusk(at + DUSK_AT, VeilRules.DUSK_R, VeilRules.DUSK_TIME)
+		await _frames(30)
 	elif setup == "cross":
 		# The CROSSERS citizens nearest the cast set off across it, each to the far side of the cast from where it stands.
 		var near: Array[Person] = []

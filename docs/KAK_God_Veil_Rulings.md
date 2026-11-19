@@ -171,3 +171,18 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   BUILDINGS_PER_FRAME = 2 caps it: worst 56.4 / 59.5 ms (one a frame: 50.2 ms, and the fold takes 2.8 s), and the fold there takes about
   1.9 s, not 1 s (the suite's own site finishes within 1 s). Under 50 ms needs one index rebuild per frame for several buildings, a batch
   remove in environment_field.gd (not this task's file).
+- VD1 (Task 12): the Veil's seven new powers cast with `v_<key>` (the brief's names: v_slumber, v_cloak, v_dreamless, v_dread,
+  v_shadowplay, v_swallow, v_evernight), not the `q_<key>` every other quiet power has; tests/test_power_sounds.gd's own-cue rule
+  (`own_cue()`) reads `v_` for those seven and checks that no two q_ or v_ cues share a file. PENDING_QUIET (V10) is empty. The
+  cues are quiet, low and close (a breath, cloth, a held low note, a lamp guttering): each plays within 3 LU over the quiet floor
+  (VEIL_BAND), Evernight's held night (`v_evernight_loop`) under its cast and faded out at the end of the night, and no Veil cue
+  ducks the music or calls an aftermath -- a sound only, never a danger or a fright.
+- VD2 (Task 12): the Veil's clips are recorded in the town (`tools/dev/behaviour_check.gd --scenario=clip`, as Unseen Hour's and the
+  other quiet powers' were), not by `tools/capture.sh --capture-clip`: the sandbox has no crowd, so Slumber, Cloak, Dreamless, Dread
+  and Shadow Play would show nobody, and Dread with no crowd builds nothing. The clip scenario instantiates mission.tscn on its own and
+  reads and writes no save file (no user:// file at all). Dread is refused with no dark in reach, so the clip scenario gets one more
+  setup, `--setup=dusk` (a dusk patch 3.5 east of the cast, the cast itself on lit ground); a dev tool change, reachable only by that
+  flag. Commands: slumber --seconds=4; cloak --seconds=6; dreamless (its run); dread --setup=dusk --seconds=10 --zoom=0.8
+  --look=2.5,0; shadowplay --seconds=8; swallow --zoom=0.4 --seconds=24 (past the fold); evernight --seconds=15 --zoom=0.8.
+- VD3 (Task 12): test_draft's AWAITING_CLIPS (V1) is empty: every power has its preview clip. The seven flat placeholder icons
+  were already made in Task 1 (`tools/dev/make_power_icons.py` veil_glyph); Task 12 leaves them as they are.

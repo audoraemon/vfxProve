@@ -131,6 +131,16 @@ q_bound	res://assets/audio/ability/quiet/q_bound.wav	-16.10	-1.96
 q_sealed	res://assets/audio/ability/quiet/q_sealed.wav	-18.96	-1.29
 q_sealed_hit	res://assets/audio/ability/quiet/q_sealed_hit.wav	-17.28	-2.09
 q_unseen	res://assets/audio/ability/quiet/q_unseen.wav	-18.02	-3.07
+v_slumber	res://assets/audio/ability/veil/v_slumber.wav	-19.47	-4.05
+v_cloak	res://assets/audio/ability/veil/v_cloak.wav	-21.15	-3.55
+v_dreamless	res://assets/audio/ability/veil/v_dreamless.wav	-20.53	-6.69
+v_dread	res://assets/audio/ability/veil/v_dread.wav	-20.40	-6.15
+v_shadowplay	res://assets/audio/ability/veil/v_shadowplay.wav	-19.20	-1.65
+v_swallow	res://assets/audio/ability/veil/v_swallow.wav	-21.85	-10.36
+v_swallow_take	res://assets/audio/ability/veil/v_swallow_take.wav	-20.24	-4.60
+v_evernight	res://assets/audio/ability/veil/v_evernight.wav	-21.07	-5.99
+v_evernight_loop	res://assets/audio/ability/veil/v_evernight_loop.wav	-26.46	-13.58
+q_blight_ill	res://assets/audio/ability/veil/q_blight_ill.wav	-20.21	-1.04
 q_clearmind	res://assets/audio/ability/quiet/q_clearmind.wav	-17.79	-6.78
 q_anathema	res://assets/audio/ability/quiet/q_anathema.wav	-17.23	-4.10
 q_sanctuary	res://assets/audio/ability/quiet/q_sanctuary.wav	-16.64	-1.79

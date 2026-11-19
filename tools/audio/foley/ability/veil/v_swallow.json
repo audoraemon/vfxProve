@@ -1,0 +1,5 @@
+{"length": 3.0, "rms_db": -21.0, "reverb": {"rt60": 2.2, "mix": 0.22, "predelay_ms": 16, "damp": 3200}, "eq": [["lowshelf", 180, -4.0], ["peak", 3600, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_070_rr1.wav", "at": 0.0, "from": 0.4, "dur": 3.0, "pitch": -12, "lp": 450, "hp": 30, "fade_in": 1100, "fade_out": 1100, "gain_db": -1},
+  {"src": "lib:oga/short-wind-sound/short wind sound.wav", "at": 0.0, "onset": true, "dur": 2.6, "pitch": -5, "reverse": true, "hp": 400, "lp": 3000, "fade_in": 900, "fade_out": 300, "gain_db": -7},
+  {"src": "lib:oga/horror-breathing/horrorbreathing.wav", "at": 0.6, "from": 4.2, "dur": 1.6, "pitch": -6, "lp": 1600, "hp": 150, "fade_in": 600, "fade_out": 700, "gain_db": -12}
+]}

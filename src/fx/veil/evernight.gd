@@ -64,6 +64,8 @@ var _called := {}
 ## The crowd and light field this cast joined (kept: ctx may be torn down first).
 var _crowd: Crowd
 var _lights: LightField
+## The held night's sound (v_evernight_loop), from the fall to the end of the night; faded out at dawn.
+var _hush: Node
 
 
 ## Up to TORCHES living soldiers out of doors who light torches: those with the most living citizens out of doors within
@@ -162,6 +164,8 @@ func _build() -> void:
 	duration = t_dawn + DAWN
 	busy = WAVE
 	_join_look()
+	if ctx != null:
+		ctx.play(&"v_evernight", origin)
 	at(WAVE, _fall)
 	if _crowd != null:
 		var k := 1
@@ -188,6 +192,8 @@ func _fall() -> void:
 	if not _live() or _over:
 		return
 	_join_night()
+	if ctx != null:
+		_hush = ctx.play(&"v_evernight_loop", origin)
 	_veil = _crowd.veil_all(night_time + DAWN)
 	for b in bearers(_crowd):
 		var light := _lights.add_static(b.ground_pos, TORCH_R, TORCH_COLOR, TORCH_GLOW, 0.35) if _live_lights() else 0
@@ -344,6 +350,19 @@ func _end_night() -> void:
 			_crowd.end_veil_all(_veil)
 	_veil = 0
 	_leave_night()
+	_hush_off()
+
+
+## The held night's sound fades out over the dawn (sound only). A pool voice already handed to another cue is left alone.
+func _hush_off() -> void:
+	var v := _hush
+	_hush = null
+	if v == null or not is_instance_valid(v) or v.get_meta(&"cue", &"") != &"v_evernight_loop":
+		return
+	if ctx != null and ctx.sfx != null and is_instance_valid(ctx.sfx) and ctx.sfx.is_inside_tree():
+		ctx.fade_out(v, DAWN)
+	elif v is AudioStreamPlayer2D:
+		(v as AudioStreamPlayer2D).stop()
 
 
 func _live() -> bool:

@@ -23,6 +23,7 @@ func _build() -> void:
 	busy = T_FALL
 	at(T_FALL, _fall)
 	VeilParts.land(self, origin, _r)
+	ctx.play(&"v_slumber", origin)
 	if not DominionParts.staged(self):
 		return
 	var mark := FxParts.rings(self, origin, _r, VeilParts.VEIL, 2, 30.0)

@@ -46,6 +46,8 @@ func _build() -> void:
 	var most := int(VeilParts.size(self, "cloak", "MOST"))
 	var marked := marked_at(ctx.field if ctx != null else null, origin, r, most)
 	VeilParts.land(self, origin, r)
+	if ctx != null:
+		ctx.play(&"v_cloak", origin)
 	if marked.is_empty():
 		duration = 1.0
 		return

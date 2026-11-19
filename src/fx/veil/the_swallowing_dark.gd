@@ -62,6 +62,7 @@ func _build() -> void:
 	busy = T_OPEN
 	duration = t_full + FOLD
 	at(t_full, _swallow)
+	ctx.play(&"v_swallow", origin)
 	if ctx.ground != null:
 		_disc = SwallowDisc.new()
 		_disc.at = origin
@@ -106,6 +107,7 @@ func _swallow() -> void:
 	swallowed = true
 	_queue = _inside()
 	VeilParts.land(self, origin, full_r)
+	ctx.play(&"v_swallow_take", origin)
 	if ctx.ground != null:
 		var mark := BareEarth.new()
 		mark.at = origin

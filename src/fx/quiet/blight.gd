@@ -242,6 +242,8 @@ func _build() -> void:
 			if is_instance_valid(s) and not s.destroyed:
 				plant(ctx.crowd, ctx.env, s, VeilParts.size(self, "blight", "DUSK_R"))
 		elif picked != null:
+			if not sick.is_empty() and is_instance_valid(sick[0]) and sick[0].is_alive():
+				ctx.play(&"q_blight_ill", where)
 			_make_ill(sick)
 			VeilParts.land(self, where))
 

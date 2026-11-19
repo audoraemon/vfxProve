@@ -1,0 +1,6 @@
+{"length": 8.0, "loop": true, "rms_db": -24.0, "reverb": {"rt60": 2.4, "mix": 0.24, "predelay_ms": 16, "damp": 3200}, "eq": [["lowshelf", 180, -4.0], ["peak", 3600, -1.5, 0.8]], "layers": [
+  {"src": "lib:oga/mild-wind-background-noise/wind background noise 2.wav", "at": 0.0, "from": 2.0, "dur": 8.0, "hp": 200, "lp": 1800, "fade_in": 1500, "fade_out": 1500, "gain_db": -6},
+  {"src": "lib:oga/mild-wind-background-noise/wind background noise 2.wav", "at": 4.0, "from": 14.0, "dur": 8.0, "hp": 200, "lp": 1800, "fade_in": 1500, "fade_out": 1500, "gain_db": -6},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.0, "from": 0.6, "dur": 8.0, "pitch": -12, "lp": 400, "hp": 30, "fade_in": 2500, "fade_out": 2500, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 4.0, "from": 0.6, "dur": 8.0, "pitch": -12, "lp": 400, "hp": 30, "fade_in": 2500, "fade_out": 2500, "gain_db": -4}
+]}

@@ -2,8 +2,8 @@ extends RefCounted
 ## The draft's rules: slots filled in pick order, a pick past the last slot or over the Divine Power refused (v0.08),
 ## unpicking closes the gap, and a saved loadout comes back cleaned up.
 
-## The Veil's seven new powers have no preview clip until their looks are built (Veil Task 12 records them and empties this list; V1).
-const AWAITING_CLIPS := ["slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight"]
+## The Veil's seven new powers had no preview clip until their looks were built (V1); Veil Task 12 recorded them and emptied it (VD3).
+const AWAITING_CLIPS := []
 
 
 static func run(t) -> void:

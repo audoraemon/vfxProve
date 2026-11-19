@@ -57,6 +57,7 @@ func _build() -> void:
 	duration = T_RISE + SPAN
 	busy = T_RISE
 	VeilParts.land(self, origin, _r)
+	ctx.play(&"v_shadowplay", origin)
 	at(T_RISE, _rise)
 	at(T_RISE + SPAN, _end)
 	if not DominionParts.staged(self):

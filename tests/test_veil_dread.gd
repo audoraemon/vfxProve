@@ -214,6 +214,40 @@ static func _refused(t, made: Array) -> void:
 	if got != null:
 		got.end_now()
 	rules.free()
+	_unlocks(t, made, at)
+
+
+## C16: through Rules, Dread locks the other slots only until it falls (busy = T_FALL); then another power casts while it runs.
+static func _unlocks(t, made: Array, at: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	crowd.lay_dusk(at + Vector2(4.0, 0.0), 1.5, 120.0)
+	var rules := Rules.new().setup(PackedStringArray(["dread", "doom"]), null, made[1], made[3], crowd, made[6])
+	var casts: Array = []
+	rules.caster = func(s: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
+		var fx := FxTimeline.cast(s, made[5], g, e)
+		casts.append(fx)
+		return fx
+	var refused: Array = []
+	rules.cast_refused.connect(func(slot: int, why: String) -> void: refused.append([slot, why]))
+	var dread := rules.cast(0, at) as DreadOfTheDarkFx
+	t.check(dread != null and refused.is_empty(), "Dread goes out over the laid dusk (%s)" % [refused])
+	if dread == null:
+		rules.free()
+		return
+	var far := at + Vector2(-8.0, 0.0)
+	_go(dread, 0.4)
+	var early := rules.cast(1, far)
+	t.check(rules.busy_left() > 0.0 and early == null and refused == [[1, "busy"]] and casts.size() == 1,
+		"before T_FALL the other slots are locked (busy %.2f, %s)" % [rules.busy_left(), refused])
+	refused.clear()
+	_go(dread, DreadOfTheDarkFx.T_FALL - 0.4 + DT)
+	var later := rules.cast(1, far)
+	t.check(later != null and refused.is_empty() and not dread.finished and not crowd.dreads.is_empty(),
+		"after T_FALL Silent Doom casts while Dread still holds (%s)" % [refused])
+	if later != null and is_instance_valid(later):
+		later.end_now()
+	dread.end_now()
+	rules.free()
 
 
 ## A NIGHT mission: everyone within 12 of the click is dreaded; one at 13 is not.

@@ -34,6 +34,11 @@ static func for_tier(tier: int) -> MightPool:
 	return make(TierBook.dp(tier), REFILL_SECONDS)
 
 
+## The god's gauge: its Might as the size, its FASTER MIGHT refill.
+static func for_god(god: GodSlot) -> MightPool:
+	return make(god.max_might(), god.refill_seconds())
+
+
 ## Refill seconds after `bought` FASTER MIGHT upgrades.
 static func refill_for(bought: int) -> float:
 	return maxf(REFILL_SECONDS - REFILL_STEP * bought, REFILL_FLOOR)

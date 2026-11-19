@@ -62,7 +62,7 @@ func hit(point: Vector2) -> String:
 	return ""
 
 
-## The row `what` as a line: its name, price and count ("+1 SLOT   150 Faith   0 / 3"; "bought 2" for a row with no limit; "All
+## The row `what` as a line: its name, price and count ("FASTER MIGHT   150 Faith   0 / 3"; "bought 2" for a row with no limit; "All
 ## bought" at its limit).
 func row_line(what: String) -> String:
 	var row := _row(what)
@@ -110,9 +110,9 @@ func buy(what: String) -> bool:
 func effect_line(what: String) -> String:
 	match what:
 		"slot":
-			return "Slots in a draft: %d" % _slot.slots()
+			return "Full refill: %d s" % int(_slot.refill_seconds())
 		"might":
-			return "Might to spend: %d" % _slot.max_might()
+			return "Might gauge: %d" % _slot.max_might()
 		"clock":
 			return "Extra descent time: %d s" % int(_slot.extra_clock())
 		"respec":

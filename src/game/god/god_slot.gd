@@ -34,10 +34,11 @@ const CLOCK_STEP := 15.0
 ## A bought count the file may not exceed for an upgrade with no limit (a hand-edited file).
 const UNLIMITED_CAP := 999
 
-## The Faith screen's rows (spec §7; prices *tunable*; new rows are data). `prices` lists each purchase's price in turn; `step` makes
+## The Faith screen's rows (spec §7; prices *tunable*; new rows are data). The first row's key stays "slot" so an older build sharing
+## the file keeps reading it; here it buys FASTER MIGHT. `prices` lists each purchase's price in turn; `step` makes
 ## the n-th cost `step x n`; `limit` is the most purchases, 0 for none.
 const FAITH := [
-	{"key": "slot", "name": "+1 SLOT", "prices": [150, 300, 450], "limit": 3},
+	{"key": "slot", "name": "FASTER MIGHT", "prices": [150, 300, 450], "limit": 3},
 	{"key": "might", "name": "+1 MIGHT", "step": 25, "limit": 6},
 	{"key": "clock", "name": "+15 S DESCENT", "step": 40, "limit": 4},
 	{"key": "respec", "name": "RESET ABILITY POINTS", "step": 100, "limit": 0},
@@ -83,7 +84,7 @@ var in_night := ""
 var gifts := PackedStringArray()
 ## Per-mission bests for this god: mission id -> {"cleared": bool, "fastest": float, "most_wishes": int}.
 var bests := {}
-## Nights each ability was drafted: PowerBook key -> count (Ruling P16, for P2's most-carried).
+## Nights each ability was cast: PowerBook key -> count (Ruling P16, for P2's most-carried).
 var carried := {}
 ## The last drafted loadout.
 var loadout := PackedStringArray()
@@ -365,9 +366,15 @@ func max_might() -> int:
 	return TierBook.dp(tier) + int(bought.get("might", 0))
 
 
-## Slots in a draft: BASE_SLOTS plus the Faith upgrades, never above TierBook.MAX_SLOTS (spec §6).
+## Slots in a draft: BASE_SLOTS plus the Faith upgrades, never above TierBook.MAX_SLOTS (spec §6). A night no longer drafts by them
+## (the Might gauge); the Hunt bots' loadout check still reads it.
 func slots() -> int:
 	return mini(BASE_SLOTS + int(bought.get("slot", 0)), TierBook.MAX_SLOTS)
+
+
+## Seconds a full refill of the Might gauge takes: the base less FASTER MIGHT's steps (the "slot" count), never under the floor.
+func refill_seconds() -> float:
+	return MightPool.refill_for(int(bought.get("slot", 0)))
 
 
 ## Seconds the Faith upgrades add to the descent clock (spec §7).
@@ -407,7 +414,7 @@ func add_notice(delta: int) -> int:
 	return notice - before
 
 
-## The ability a lost Hunt seals (god P2, spec §10.3, Ruling P2-7): over in_tree(), the most nights carried; a tie goes to the higher
+## The ability a lost Hunt seals (god P2, spec §10.3, Ruling P2-7): over in_tree(), the most nights cast; a tie goes to the higher
 ## Might at the learned level, then to the earlier spot. "" when fewer than two keys sit in the tree (Ruling P2-8: never trap the god).
 func seal_target() -> String:
 	var keys := in_tree()

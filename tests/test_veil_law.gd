@@ -78,7 +78,7 @@ static func _book_and_tree(t) -> void:
 		and PowerBook.might("dread") == 4 and PowerBook.might("shadowplay") == 5 and PowerBook.might("swallow") == 6
 		and PowerBook.might("evernight") == 6, "might")
 	t.check(String(PowerBook.get_power("unseen").get("blurb", "")) != "", "Unseen Hour has a blurb of its own")
-	t.check(Rules.POWER_KINDS["dreamless"] == [&"dreamless", &"dreamt"] and Rules.POWER_KINDS["shadowplay"] == [&"shadow"]
+	t.check(Rules.POWER_KINDS["dreamless"] == [&"dreamless", &"dreamt"] and Rules.POWER_KINDS["shadowplay"] == [&"shade"]
 		and Rules.POWER_KINDS["swallow"] == [&"void"] and Rules.POWER_KINDS["evernight"] == [&"night"]
 		and Rules.POWER_KINDS["blight"] == [] and Rules.POWER_KINDS["slumber"] == [], "the new kill kinds are the powers' credit")
 	var keys := PowerBook.of_authority("veil")

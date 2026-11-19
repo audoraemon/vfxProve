@@ -651,3 +651,8 @@ func teardown() -> void:
 		if is_instance_valid(crowd) and (_slowed as Person).mind == Person.Mind.DUTY:
 			crowd.off_duty(_slowed as Person)
 	_slowed = null
+
+
+## Veil (spec 5.2): the watchman who saw the omen and the messenger who carries it -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and (p == watchman or p == messenger)

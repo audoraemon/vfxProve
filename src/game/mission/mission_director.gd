@@ -53,6 +53,7 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> M
 	if c != null:
 		c.mission_holds.append(_holds_soldier)
 		c.mission_points.append(route_points)
+		c.mission_keeps.append(keeps_alive)
 	_begin()
 	return self
 
@@ -170,16 +171,23 @@ func blight_takes(_at: Vector2) -> bool:
 	return true
 
 
-## Virtual (v0.11.1): Blight landed on this director's thing at `at` (blight_target()). True when it took: the base then adds the
-## town's alarm (Crowd.BLIGHT_ALARM) that env.blight() adds for a structure (I12). A guarded one (blight_takes() false) costs no
-## alarm and returns false -- only its banner (blight_words()) shows. Subclasses call `super(at)` and break their standard or cloud
-## their mirror only if it returned true.
+## Virtual (v0.11.1): Blight landed on this director's thing at `at` (blight_target()). True when it took. (Veil, spec 11.1: no alarm
+## any more -- it added Crowd.BLIGHT_ALARM until the rework.) A guarded one (blight_takes() false) returns false -- only its banner
+## (blight_words()) shows. Subclasses call `super(at)` and break their standard or cloud their mirror only if it returned true.
 func blighted(at: Vector2) -> bool:
-	if not blight_takes(at):
-		return false
-	if crowd != null:
-		crowd.add_alarm(Crowd.BLIGHT_ALARM)
-	return true
+	return blight_takes(at)
+
+
+## Virtual (Veil, spec 5.2): `p` is a person this director is built around and the god must stop -- the tax collector, the warning's
+## messenger, an inquisitor -- so Blight makes him ill for a while (Person.make_ill()) instead of sending him home. False by default.
+func quarry(_p: Person) -> bool:
+	return false
+
+
+## Virtual (Veil, spec 5.9): `p` is a person this director must not lose -- the charge, the households, the believers -- so Evernight's
+## automatic takes pass him over (Crowd.spared()). A separate question from quarry(). False by default.
+func keeps_alive(_p: Person) -> bool:
+	return false
 
 
 ## Virtual (v0.11.1): the banner for a Blight that landed on this director's thing at `at`, taken or not ("BLIGHT - THE STANDARD ROTS",
@@ -572,14 +580,21 @@ func watchers(at: Vector2, reach: float, exclude: Variant = null, seen: Variant 
 ## death fade, and a freed person passed on as a Person aborts the call. Under Decree's NO SIGHT (LawZone) no farther than its cap,
 ## where he or `at` stands (Crowd.sight()).
 func _sees(f: Variant, at: Vector2, reach: float, exclude: Variant) -> bool:
-	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude \
+	return _alive(f) and not f.inside and not (f.mind in BLIND) and f != exclude and not _blind_veil(f) \
 		and f.ground_pos.distance_to(at) <= (reach if crowd == null else crowd.sight(f, at, reach)) and not LawMark.unseen_by_all(f)
 
 
-## The seen side of _sees() (BLIND is the watcher's): `seen` is a living person passing as the walking dead (Corpse Guise, Death III),
-## whom no Faithful, watchman or inquisitor sees. A Variant: null when what is seen is a place, and a body may be freed already.
+## The seen side of _sees() (BLIND is the watcher's): `seen` is a living person hidden from the watch (Person.hidden_from_watch(): passing
+## as the walking dead, Corpse Guise, Death III, or cloaked, Cloak of Night), whom no Faithful, watchman or inquisitor sees. A Variant: null when what is seen is a place, and a body may be freed already.
 static func _unseen(seen: Variant) -> bool:
-	return seen != null and _alive(seen) and (seen as Person).guised()
+	return seen != null and _alive(seen) and (seen as Person).hidden_from_watch()
+
+
+## The watcher's side of the Veil (Shadow Play, Dread of the Dark): a shadow sees and reports nothing; the dreaded can neither. `f` is a
+## living person (the caller checked _alive()).
+static func _blind_veil(f: Variant) -> bool:
+	var p := f as Person
+	return not p.statuses.is_empty() and (p.is_shadow() or p.is_dreaded())
 
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.

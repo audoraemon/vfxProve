@@ -290,6 +290,9 @@ var _at := Vector2.ZERO
 ## Whether the preview's edge was last drawn as ready (gold) or not (red): the cooldown, the busy lock and a storm's Called Bolts all
 ## change it without the cursor moving, so _process() redraws when it flips.
 var _edge_ready := true
+## The law of the Veil's tag the ring was last drawn with (ring_tag()): a dusk patch laid or fading under a still cursor changes the size,
+## so _process() redraws when it no longer matches (ring_stale()).
+var _drawn_tag := ""
 ## Grave Tide's graves for the preview (grave_spots()), kept for the walk grid they were found on, at its version.
 var _graves: Array[Vector2] = []
 var _graves_grid: WalkGrid
@@ -1076,6 +1079,14 @@ func _process(_delta: float) -> void:
 		return
 	if (_rules.refusal(slot) == "" or _rules.can_recast(slot)) != _edge_ready:
 		queue_redraw()
+	elif ring_stale():
+		queue_redraw()
+
+
+## Whether the dark or light under the cursor changed since the ring was drawn (a patch laid or faded under a still cursor): one cheap
+## question a frame, and only for a Veil power whose ring has two sizes ("" == "" for every other).
+func ring_stale() -> bool:
+	return ring_tag() != _drawn_tag
 
 
 func _draw() -> void:
@@ -1084,6 +1095,7 @@ func _draw() -> void:
 		return
 	# A power that cannot be cast still shows its area, in red, so the player can aim while it comes back.
 	_edge_ready = _rules.refusal(slot) == "" or _rules.can_recast(slot)
+	_drawn_tag = ring_tag()
 	var edge := COL_EDGE if _edge_ready else COL_BAD
 	match String(a.shape):
 		"circle":

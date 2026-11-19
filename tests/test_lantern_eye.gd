@@ -215,8 +215,8 @@ static func _blight_mirror(t) -> void:
 	t.check(d.shattered[0] and is_zero_approx(d.glass[0]) and absf(d.drain_left[0] - LanternEyeDirector.DRAIN) < 0.5 and out
 		and is_equal_approx(d.towers[0].hp, d.towers[0].max_hp) and d.hint_phase() == "shattered" and not d.searchlight.hunt,
 		"unguarded, Blight clouds the glass: shattered, its two wrights out to their posts, the tower unharmed, the light quiet")
-	t.check(is_equal_approx(crowd.alarm - alarm, Crowd.BLIGHT_ALARM) and banners.slice(before).has("BLIGHT - THE MIRROR CLOUDS")
-		and banners.slice(before).has("THE MIRROR SHATTERS"), "the town hears one Blight's alarm; the banners say the mirror clouds and shatters")
+	t.check(is_equal_approx(crowd.alarm, alarm) and banners.slice(before).has("BLIGHT - THE MIRROR CLOUDS")
+		and banners.slice(before).has("THE MIRROR SHATTERS"), "Blight raises no alarm (Veil C1); the banners say the mirror clouds and shatters")
 	fx.end_now()
 	t.check(d.blight_target(face) == Vector2.INF, "a shattered mirror gives Blight nothing more")
 	fxc.overhead.free()

@@ -32,6 +32,12 @@ static func target(env: EnvironmentField, at: Vector2) -> Structure:
 	return best
 
 
+## Why a Blight cast at `ground` must be refused ("no_blight": neither a building nor a person in reach), else "" (Rules.cast() asks;
+## a refused cast spends no cooldown). A stub that allows every cast until the Blight rework (Veil Task 4) fills it.
+static func refusal(_rules: Rules, _ground: Vector2) -> String:
+	return ""
+
+
 ## The director's point Blight would rot at `at` (v0.11.1), or Vector2.INF for none: no director, or none of its own in reach.
 ## Targeting rings it as it rings a structure.
 static func director_target(ctx: FxContext, at: Vector2) -> Vector2:

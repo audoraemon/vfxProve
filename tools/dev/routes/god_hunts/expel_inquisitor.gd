@@ -27,7 +27,7 @@ const GOD := preload("res://tools/dev/routes/god_t1.gd")
 const LOADOUT := {
 	"ruin": ["smite", "solaris", "tornado"],
 	"death": ["deathmark", "pestilence", "gravecall"],
-	"veil": ["doom", "blight", "nova"],
+	"veil": ["doom", "blight", "slumber"],
 	"passage": ["skylift", "windfall", "mirror"],
 	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "madness"],

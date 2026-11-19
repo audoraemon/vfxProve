@@ -11,14 +11,13 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 const LOADOUT := {
 	"ruin": ["smite", "tornado"],
 	"death": ["deathmark", "pestilence", "gravecall"],
-	"veil": ["doom", "blight", "nova"],
+	"veil": ["doom", "blight", "slumber"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "madness"],
 }
 
 ## Nuclear Nova's script (it has no class_name): its RADIUS, T_BLAST and WAVE_TIME lead Veil's fallback cast.
-const _NOVA := preload("res://src/fx/nuclear_nova.gd")
 
 ## The pieces every Hunt's policy shares (god_t1.gd): road_ahead().
 const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
@@ -480,12 +479,12 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 			rules.cast(slots.doom, _mate_aim(w, mates[0]))
 			_noted(d, ctx.memo, r)
 			return "doom the mate nearest the witness"
-		if _eta(r) <= SW_URGENT and bc._slot_wait(rules, slots, "doom") > _eta(r) - 3.0 and bc._slot_ready(rules, slots, "nova"):
-			var blast := _nova_aim(file)
-			if blast.has("at"):
-				rules.cast(slots.nova, blast.at)
+		if _eta(r) <= SW_URGENT and bc._slot_wait(rules, slots, "doom") > _eta(r) - 3.0 and bc._slot_ready(rules, slots, "slumber"):
+			var lull := _slumber_aim(file)
+			if lull.has("at"):
+				rules.cast(slots.slumber, lull.at)
 				_noted(d, ctx.memo, r)
-				return _said("nova over the file", file)
+				return _said("slumber over the file", file)
 	return ""
 
 
@@ -509,12 +508,13 @@ static func _mate_aim(w: Person, m: Person) -> Vector2:
 	return aim if aim.distance_to(w.ground_pos) > SilentDoom.RADIUS + 0.05 else m.ground_pos
 
 
-## Where Nuclear Nova falls so the whole file stands inside its blast when the front has spread (T_BLAST and the wave, led), a unit and a half inside its
-## RADIUS: {at}, or {} when the file is spread wider than that.
-static func _nova_aim(file: Array[Person]) -> Dictionary:
-	var pts := _led(file, _NOVA.T_BLAST + _NOVA.WAVE_TIME)
+## Where Slumber falls so the whole file stands inside it (Veil ruling C9: the Veil tree no longer reaches Nuclear Nova; Slumber took its
+## slot): the circle round the file as it stands, inside the light ring (VeilRules SLUMBER RADIUS): {at}, or {} when the file is spread wider.
+## Whether this Hunt is still won is Task 13's.
+static func _slumber_aim(file: Array[Person]) -> Dictionary:
+	var pts := _led(file, 0.0)
 	var c := _enclose(pts)
-	if float(c.r) > _NOVA.RADIUS - 1.5:
+	if float(c.r) > VeilRules.size("slumber", "RADIUS", false):
 		return {}
 	return {"at": c.at}
 

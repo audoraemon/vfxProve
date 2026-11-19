@@ -24,7 +24,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 const LOADOUT := {
 	"ruin": ["smite", "ember"],
 	"death": ["deathmark"],
-	"veil": ["doom", "blight", "nova"],
+	"veil": ["doom", "blight", "slumber"],
 	"passage": ["skylift", "mirror"],
 	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "voice"],

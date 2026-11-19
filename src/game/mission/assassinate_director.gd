@@ -878,3 +878,14 @@ func teardown() -> void:
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Veil (spec 5.2): the quarries this night hunts -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	if p == null:
+		return false
+	for q in quarries:
+		var t: Variant = q.target  # (a Variant: a body may be freed after its death fade)
+		if is_instance_valid(t) and t == p:
+			return true
+	return false

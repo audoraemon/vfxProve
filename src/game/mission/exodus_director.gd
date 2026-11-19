@@ -716,7 +716,7 @@ func _step_hunters() -> void:
 		if not h.sent or h.done:
 			continue
 		var lead := lamp(i)
-		if lead == null or (lead.man as Person).guised():
+		if lead == null or (lead.man as Person).hidden_from_watch():
 			continue
 		var to := (lead.man as Person).ground_pos
 		for k in h.searchers.size():
@@ -975,3 +975,14 @@ func teardown() -> void:
 		if is_instance_valid(h.house):
 			h.house.damage_filter = _own_filters[i]
 	super()
+
+
+## Veil (spec 5.9): every charge (super) and every household's believer -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
+func keeps_alive(p: Person) -> bool:
+	if super(p):
+		return true
+	for h in households:
+		for c in (h as Household).members:
+			if is_instance_valid(c.man) and c.man == p:
+				return true
+	return false

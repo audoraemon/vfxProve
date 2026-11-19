@@ -587,3 +587,8 @@ func bench_beams() -> void:
 class FlameGaze extends GazeMeter:
 	func seen_death() -> void:
 		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE)
+
+
+## Veil (spec 5.9): Wren -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
+func keeps_alive(p: Person) -> bool:
+	return p != null and p == wren

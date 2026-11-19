@@ -860,3 +860,8 @@ func report() -> Dictionary:
 	for done in halts_done:
 		halts += 1 if done else 0
 	return {"swapped": swapped, "halts": halts, "touches": touches, "reports": reports_started, "home": home}
+
+
+## Veil (spec 5.2): the carter -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and is_instance_valid(carter) and carter == p

@@ -126,6 +126,8 @@ func step(delta: float) -> void:
 				return
 			if _crowd.doors_shut():
 				return  # every door shut (Every Door): nobody climbs; the climb stands where it is
+			if not keeper.statuses.is_empty() and (keeper.is_shadow() or keeper.is_dreaded()):
+				return  # (Veil) a shadow on the rope rings nothing, and the dreaded cannot climb: the climb stands where it is
 			progress += delta
 			if progress >= climb:
 				_ring()

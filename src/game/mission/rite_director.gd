@@ -684,3 +684,8 @@ func teardown() -> void:
 			(p as Person).chained = false
 	captive = null
 	grip_by = null
+
+
+## Veil (spec 5.9): the captive -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
+func keeps_alive(p: Person) -> bool:
+	return p != null and p == captive

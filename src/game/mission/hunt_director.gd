@@ -823,3 +823,8 @@ func teardown() -> void:
 				s.broken.disconnect(_on_broken)
 	_unhook_kills(_on_killed)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Veil (spec 5.2): the hunt's head -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and is_instance_valid(head) and head == p

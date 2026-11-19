@@ -338,3 +338,8 @@ func teardown() -> void:
 		if is_instance_valid(fire) and not fire.finished:
 			fire._finish()
 	_fires.clear()
+
+
+## Veil (spec 5.2): the mayor -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and p == mayor

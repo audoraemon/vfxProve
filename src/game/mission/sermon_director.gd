@@ -826,3 +826,8 @@ func teardown() -> void:
 	if house != null and is_instance_valid(house):
 		house.damage_filter = Callable()
 	super()
+
+
+## Veil (spec 5.2): Mira's House's own (super) and the preacher -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return super(p) or (p != null and is_instance_valid(preacher) and preacher == p)

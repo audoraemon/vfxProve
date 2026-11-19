@@ -503,12 +503,12 @@ func _step_held(c: Charge) -> void:
 ## Decree's Fenced Rule (LawZone): under NO SIGHT he sees no farther than its cap (Crowd.sight()); under NO ARMS, where he or `c`
 ## stands, he seizes no one (Crowd.disarmed()).
 func _seen_by(c: Charge) -> Person:
-	if LawMark.unseen_by_guards(c.man) or (c.man as Person).guised():
+	if LawMark.unseen_by_guards(c.man) or (c.man as Person).hidden_from_watch():
 		return null
 	var at := (c.man as Person).ground_pos
 	var lawful := crowd != null and not crowd.laws.is_empty()
 	for v: Variant in _watchers():
-		if _watching(v) and not _marching_other(v, c) and (v as Person).ground_pos.distance_to(at) <= SIGHT \
+		if _watching(v) and not _marching_other(v, c) and not _blind_veil(v) and (v as Person).ground_pos.distance_to(at) <= SIGHT \
 				and not _farther_in_sight(v as Person, c) \
 				and not (lawful and ((v as Person).ground_pos.distance_to(at) > crowd.sight(v, at, SIGHT) or crowd.disarmed(v, c.man))):
 			return v as Person
@@ -523,7 +523,7 @@ func _farther_in_sight(v: Person, c: Charge) -> bool:
 	var d := v.ground_pos.distance_to((c.man as Person).ground_pos)
 	for o in charges:
 		if o == c or _resolved(o) or o.held or o.bound or (o.man as Person).inside or LawMark.unseen_by_guards(o.man) \
-				or (o.man as Person).guised():
+				or (o.man as Person).hidden_from_watch():
 			continue
 		var od := v.ground_pos.distance_to((o.man as Person).ground_pos)
 		if od > d and od <= crowd.sight(v, (o.man as Person).ground_pos, SIGHT):
@@ -698,7 +698,7 @@ func _on_post(v: Variant) -> bool:
 func _hunt() -> void:
 	hunters.clear()
 	hunters = _appoint_hunters(charge, hunt_size)
-	if _alive(charge) and charge.guised():
+	if _alive(charge) and charge.hidden_from_watch():
 		return  # (Corpse Guise) passing as the walking dead, he is no one to go after: they set out once it is off (_step_hunters())
 	for h in hunters:
 		h.go_duty(charge.ground_pos)
@@ -707,7 +707,7 @@ func _hunt() -> void:
 ## Each searcher kept walking to where he is now (v0.11 M2; one in a mind not his own is left be). v0.11 M6: single-charge, after
 ## charges[0] (plan decision 268), and nothing once he is gone; Exodus overrides it with its households' searchers.
 func _step_hunters() -> void:
-	if not _alive(charge) or charge.guised():
+	if not _alive(charge) or charge.hidden_from_watch():
 		return  # (Corpse Guise) nobody homes on one passing as the walking dead: they hold where they are until it is off
 	for v: Variant in hunters:
 		if not _alive(v) or v == seizer:
@@ -808,3 +808,13 @@ func teardown() -> void:
 	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
 		crowd.escaped.disconnect(_on_escaped)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Veil (spec 5.9): every charge -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
+func keeps_alive(p: Person) -> bool:
+	if p == null:
+		return false
+	for c in charges:
+		if is_instance_valid(c.man) and c.man == p:
+			return true
+	return false

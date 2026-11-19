@@ -809,7 +809,7 @@ func _trail_seen(i: int) -> bool:
 	for c: Charge in (households[i] as Household).members:
 		if _resolved(c) or (c.man as Person).inside:
 			continue
-		if not (c.man as Person).guised():
+		if not (c.man as Person).hidden_from_watch():
 			return true
 		guised = true
 	return not guised
@@ -829,10 +829,10 @@ func _search_near(at: Vector2, reach: float) -> bool:
 func _search_point() -> Vector2:
 	if _trail >= 0:
 		var lead := lamp(_trail)
-		if lead != null and not (lead.man as Person).guised():
+		if lead != null and not (lead.man as Person).hidden_from_watch():
 			return (lead.man as Person).ground_pos
 		for c: Charge in (households[_trail] as Household).members:
-			if not _resolved(c) and not (c.man as Person).inside and not (c.man as Person).guised():
+			if not _resolved(c) and not (c.man as Person).inside and not (c.man as Person).hidden_from_watch():
 				return (c.man as Person).ground_pos
 		return Vector2.INF
 	if _search_at < _search.size():
@@ -1454,3 +1454,8 @@ func report() -> Dictionary:
 	out["searched"] = searched
 	out["search_reliefs"] = inq_reliefs
 	return out
+
+
+## Veil (spec 5.2): the inquisitors who search the households out -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and inquisitors.has(p)

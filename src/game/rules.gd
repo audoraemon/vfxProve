@@ -108,7 +108,7 @@ const POWER_KINDS := {
 	"cloak": [],
 	"dreamless": [&"dreamless", &"dreamt"],
 	"dread": [],
-	"shadowplay": [&"shadow"],
+	"shadowplay": [&"shade"],
 	"swallow": [&"void"],
 	"evernight": [&"night"],
 	"clearmind": [],
@@ -222,6 +222,11 @@ var _crowd: Crowd
 var _town: Town
 ## Seconds of cooldown left per slot.
 var _cooldowns := PackedFloat32Array()
+## The rate an authority's cooldown clocks run at (Veil: Evernight sets {"veil": 2.0} and erases it at dawn): authority -> rate, read by
+## advance() for a cooldown already running and a new one alike. Never for a once-a-descent power (cooldown_of() >= ONCE_COOLDOWN).
+var haste: Dictionary = {}
+## A cooldown this long or longer is once a descent (The Swallowing Dark, Evernight): haste never touches it.
+const ONCE_COOLDOWN := 999.0
 ## The full cooldown of a slot whose last cast was in a mode with its own (cooldown_of() counts down from it): slot -> seconds.
 var _mode_cooldown := {}
 ## The power now playing; no other can be cast until it finishes (busy_left()).
@@ -291,7 +296,11 @@ func advance(delta: float) -> void:
 		return
 	for i in _cooldowns.size():
 		var was := _cooldowns[i]
-		_cooldowns[i] = maxf(0.0, was - delta)
+		# Evernight (Veil): an authority's cooldown clocks may run faster (haste), never a once-a-descent one. No haste: as before.
+		var step := delta
+		if not haste.is_empty() and cooldown_of(i) < ONCE_COOLDOWN:
+			step = delta * float(haste.get(PowerBook.authority_of(key(i)), 1.0))
+		_cooldowns[i] = maxf(0.0, was - step)
 		if was > 0.0 and _cooldowns[i] == 0.0:
 			recharged.emit(i)
 	_elapsed += delta
@@ -504,6 +513,18 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 				float(PowerBook.level_stat("bound", level_of(slot), "REACH", BoundFx.REACH)))
 		if why != "":
 			cast_refused.emit(slot, why)
+			return null
+	if String(p.key) == "blight":
+		# Blight (Veil): with neither a building nor a person in reach it is refused, and no cooldown starts.
+		var no_blight := BlightFx.refusal(self, ground)
+		if no_blight != "":
+			cast_refused.emit(slot, no_blight)
+			return null
+	if String(p.key) == "dread":
+		# Dread of the Dark (Veil): with no dark ground in reach it is refused, and no cooldown starts.
+		var no_dark := DreadOfTheDarkFx.refusal(_crowd, ground, bool(extra.get("dark", _crowd != null and _crowd.in_dark(ground))))
+		if no_dark != "":
+			cast_refused.emit(slot, no_dark)
 			return null
 	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
 	var told := extra.duplicate()

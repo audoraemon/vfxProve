@@ -1277,3 +1277,18 @@ func report() -> Dictionary:
 	out["freed_broken"] = freed_broken
 	out["freed_walls"] = freed_walls
 	return out
+
+
+## Veil (spec 5.2): the escorts who march the believers to the pyre (ruling V13) -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	if p == null:
+		return false
+	for list in escort_lists:
+		if (list as Array).has(p):
+			return true
+	return false
+
+
+## Veil (spec 5.9): the households' believers (super) and the believers led to the pyre -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
+func keeps_alive(p: Person) -> bool:
+	return super(p) or (p != null and believers.has(p))

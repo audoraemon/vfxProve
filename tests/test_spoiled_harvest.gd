@@ -857,8 +857,8 @@ static func _blight(t) -> void:
 		"Blight's mark is a granary near the aim; a far aim has none")
 	var alarm := crowd.alarm
 	var took := d.blighted(aim)
-	t.check(took and d.razed(g) and d.spoiled_by.get(g) == "blight" and d.blight_words(aim) == "BLIGHT - THE GRAIN ROTS" and crowd.alarm > alarm,
-		"Blight rots it: spoiled (blight), the words, the town's alarm")
+	t.check(took and d.razed(g) and d.spoiled_by.get(g) == "blight" and d.blight_words(aim) == "BLIGHT - THE GRAIN ROTS" and crowd.alarm == alarm,
+		"Blight rots it: spoiled (blight), the words, no alarm (Veil C1)")
 	t.check(d.blight_target(aim) == Vector2.INF, "and a spoiled granary is no mark")
 	_done(s)
 

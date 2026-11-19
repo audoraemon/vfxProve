@@ -12,7 +12,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 const LOADOUT := {
 	"ruin": ["smite", "tornado"],
 	"death": ["deathmark", "pestilence"],
-	"veil": ["doom", "blight", "nova"],
+	"veil": ["doom", "blight", "slumber"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "sanctuary"],

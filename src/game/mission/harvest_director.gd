@@ -428,7 +428,7 @@ func _seize_look() -> void:
 		return
 	var guard: Person = null
 	for sol in crowd.soldiers:
-		if is_instance_valid(sol) and sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL \
+		if is_instance_valid(sol) and sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL and not _blind_veil(sol) \
 				and sol.anchor.distance_to(_guard_at) <= SEIZE_RING and sol.ground_pos.distance_to(sol.anchor) <= SEIZE_ARRIVE:
 			guard = sol
 			break
@@ -477,7 +477,7 @@ func _held_look(delta: float) -> void:
 
 
 ## A frightened carter drops his load (H7, the user's ruling 2026-11-14): every frame, a carter alive and carrying a load (`_hauling`) who is
-## frightened (_frightened()) spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
+## frightened (_frightened()) -- or sent home sick by Blight (Veil, Person.home_sick) -- spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
 ## his mind decides it. One frightened at the Citadel's gate (within TAKE_REACH) has delivered it: his load is cleared, nothing spoils. Returns at
 ## once with no load on the road.
 func _dropped_look() -> void:
@@ -487,7 +487,7 @@ func _dropped_look() -> void:
 		if razed(s):
 			continue
 		for c: Variant in carters.get(s, []):
-			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and _frightened(c as Person):
+			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and (_frightened(c as Person) or (c as Person).home_sick):
 				if (c as Person).ground_pos.distance_to(citadel_door) <= TAKE_REACH:
 					# At the Citadel's gate his load is delivered (as _cart() leaves it on its TICK, which may not have come yet).
 					_hauling.erase((c as Person).get_instance_id())
@@ -682,7 +682,7 @@ func blight_takes(at: Vector2) -> bool:
 	return i >= 0 and has_grain(targets[i]) and not guarding(targets[i])
 
 
-## Blight landed on a granary (god T1R, H3): taken, it is spoiled and the town's alarm rises (the base); not, only the banner shows.
+## Blight landed on a granary (god T1R, H3): taken, it is spoiled (no alarm since the Veil rework); not, only the banner shows.
 func blighted(at: Vector2) -> bool:
 	var i := _blight_granary(at)
 	_blight_said = _blight_words_now(at)

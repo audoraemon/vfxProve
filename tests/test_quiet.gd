@@ -198,7 +198,7 @@ static func run(t) -> void:
 	var waters := crowd.fires.water_points().size()
 	env.blight(well)
 	t.check(well.blighted and crowd.fires.water_points().size() == waters - 1
-		and is_equal_approx(crowd.alarm - before, Crowd.BLIGHT_ALARM), "a blighted well gives no water, and adds one alarm")
+		and crowd.alarm == before, "a blighted well gives no water, and raises no alarm (Veil C1)")
 	t.check(Mission.blight_banner(well) == "BLIGHT - THE WELL IS POISONED", "and the player is told")
 
 	# A blighted gate jams: its crowd waits, nobody passes, until it frees itself.
@@ -253,9 +253,9 @@ static func run(t) -> void:
 	before = crowd.alarm
 	var fx: FxTimeline = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, well.center() + Vector2(0.3, 0.0))
 	fx._process(1.0)
-	t.check(dir.told == [dir.spot] and not well.blighted and is_equal_approx(crowd.alarm - before, Crowd.BLIGHT_ALARM)
+	t.check(dir.told == [dir.spot] and not well.blighted and crowd.alarm == before
 		and banners == ["BLIGHT - THE STANDARD ROTS"],
-		"on its point Blight tells the director once, ruins no structure, adds one alarm and says the director's words")
+		"on its point Blight tells the director once, ruins no structure, raises no alarm (Veil C1) and says the director's words")
 	fx.end_now()
 	# A guarded one: the banner and nothing else -- no alarm, nothing ruined (Decision 29).
 	dir.guarded = true
@@ -271,8 +271,8 @@ static func run(t) -> void:
 	before = crowd.alarm
 	fx = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), fxc, well.center() + Vector2(0.3, 0.0))
 	fx._process(1.0)
-	t.check(dir.told.size() == 3 and well.blighted and is_equal_approx(crowd.alarm - before, Crowd.BLIGHT_ALARM) and banners.size() == 2,
-		"with no point of its own it ruins the well as v0.11 did (one alarm), and the director hears nothing")
+	t.check(dir.told.size() == 3 and well.blighted and crowd.alarm == before and banners.size() == 2,
+		"with no point of its own it ruins the well as v0.11 did (no alarm since Veil C1), and the director hears nothing")
 	fx.end_now()
 	rules.free()
 	fxc.overhead.free()

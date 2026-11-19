@@ -61,3 +61,38 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   `VeilRules.RING`, so it never changes size.
 - V10: tests/test_power_sounds.gd takes the seven new keys onto its own `PENDING_QUIET` list (the list made for quiet powers still
   without their q_<key> cue) and counts 48 quiet powers: their sounds are Task 12's, which takes each key off the list.
+- V11: Shadow Play's silent kill kind is `&"shade"`, not `&"shadow"`: `&"shadow"` is already the Pale Serpent's kind (a whole body
+  in `Remains.BODY_KINDS`, a quiet slump in `DeathVoices.QUIET_KINDS`, the alarm path in `Crowd._on_killed`); making it silent and
+  bodiless would move every Serpent row. `Rules.POWER_KINDS["shadowplay"] = [&"shade"]`; the person's status key stays
+  `statuses[&"shadow"]` (`Person.is_shadow()`). Task 9 takes its soldiers with `crowd.take(p, &"shade")`.
+- V12: `&"dreamless"` (Dreamless's found body) joins `DeathVoices.QUIET_KINDS` as `&"doom"` is there: its fall is a slump, never a
+  cry (no Veil power makes a death voice). The four silent kinds are listed there too, though `Crowd._on_killed` returns before any
+  voice for them.
+- V13: `FaceHalcyonDirector` has no inquisitors (the brief's "face_halcyon (inquisitors)"): nobody seizes there, the escorts march the
+  believers to the pyre and breaking them is the win. Its `quarry()` is its escorts (`escort_lists`), so Blight on one makes him ill,
+  not gone; `keeps_alive()` is the households' believers (Exodus) and `believers`.
+- V14: Directors that extend a listed one answer as it does: Bishop, Expel the Inquisitor, The Informer, The Tax Collector
+  (Assassinate's quarries); Heretic Hunt, Lantern Eye, Break the Hunt (Hunt's head); Ringer and Witness (the Warning's watchman and
+  messenger, plus the Ringer's own keeper); Silence the Witness (each Bell-Ringers post's); First Prayers (Mira's shouter and
+  believers); Market Panic (the Festival's mayor); First Taste (the Rite's captive); The Relic Run (its carter; Vigil Flame's `wren`,
+  null there); The Prisoner and The Lost Lamb (the Escort's charges kept alive). The Lost Lamb has no shepherd field (spec 5.2's
+  "the lamb's shepherd"): no quarry there.
+- V15: `Person.send_home_sick()`: the sick walk in CALM (a soldier in POST, anchor his yard), and `_think()`'s sick branch takes the
+  walk up again every look, whatever took the mind meanwhile; no fright, look, flight, fight or duty takes him (`can_take_duty()`
+  false). Indoors within 0.9 of the home point (snapped walkable; a soldier's barracks yard; no home: the nearest house); with no path
+  he walks straight. A sick soldier indoors is not stepped (`frame()` returns). A Harvest carter sent home sick drops his load by
+  H7's path (`HarvestDirector._dropped_look()` counts `home_sick` as fright).
+- V16: The shadow and the dreaded are read at: `Crowd.nearest_witness()` and `TempleReport._witness()` (no witness),
+  `MissionDirector._sees()` (no Faithful sight, no report), `EscortDirector._seen_by()` (no seizure, the whole Escort family), the
+  Harvest's called guard, `BellNetwork` (the climb holds: no ring), `Crowd._voice()` (no shout), `Person.panic/observe/flee/fight` and
+  `_fight_step()`; the walk: `Person.tick()` holds a dreaded non-shadow still, and `Person._step_blocked()` refuses a step from outside
+  into dreaded ground (he waits at the edge). Every check is behind `statuses.is_empty()` / `dreads.is_empty()`: nothing changes
+  without a Veil status.
+- V17: `Crowd.take()` hides the taken at once (`visible = false`): no body is drawn; the power draws its own vanishing.
+- V18: `Crowd.spared()` asks the director through `Crowd.mission_keeps` (registered in `MissionDirector.setup()` beside
+  `mission_holds`, cleared with the mission hooks).
+- V19: `LightField.mute(share)` touches only the static lights the field held when the muting began (a call with no muting on);
+  lights added after it -- Evernight's torches -- are never muted, and `mute(1.0)` gives every muted light back as made and ends the
+  muting.
+- V20: `Rules.haste` is read per slot by `advance()` only while it is non-empty, and never for a slot whose `cooldown_of()` is 999 or
+  more (`Rules.ONCE_COOLDOWN`); with no haste the cooldown arithmetic is exactly as before.

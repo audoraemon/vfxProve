@@ -79,32 +79,33 @@ const STEPS := {
 
 	# --- clarity block: assassinate ---
 	"informer": [
-		{"t": "Turn the contact unseen", "c": "n"},
-		{"t": "Draw his company away", "ph": ["waiting"], "c": "n"},
-		{"t": "Kill him before the Temple", "ph": ["found", "running"], "c": "n"},
-		{"t": "Smoke him out: burn the house", "ph": ["hiding"], "c": "n"},
+		{"t": "Confuse the contact (orange)", "c": "n"},
+		{"t": "Word reaches him (grey) in", "ph": ["waiting"], "c": "s"},
+		{"t": "Kill the informer (gold)", "ph": ["found", "running"], "c": "n"},
+		{"t": "Burn his hiding place (gold)", "ph": ["hiding"], "c": "n"},
 	],
 	# Tier 1.
 	"tax_collector": [
-		{"t": "Stop the tax collector", "c": "n"},
-		{"t": "Seal his door, draw guards off", "ph": ["inside"], "c": "n"},
-		{"t": "Burn the counting-house", "ph": ["hiding"], "c": "n"},
+		{"t": "Kill the collector (gold)", "c": "n"},
+		{"t": "Ambush him at the door (gold)", "ph": ["inside"], "c": "s"},
+		{"t": "Ambush the first collector", "ph": ["ready"], "c": "s"},
+		{"t": "Burn the counting-house (orange)", "ph": ["hiding"], "c": "n"},
 		{"t": "Kill him before the Citadel", "ph": ["running", "safe"], "c": "n"},
-		{"t": "Be ready for the next collector", "ph": ["next"], "c": "n"},
+		{"t": "Ambush the next collector", "ph": ["next"], "c": "s"},
 	],
 	# Tier 4.
 	"bishop": [
-		{"t": "Burn the bishop's refuge", "c": "n"},
-		{"t": "Kill the Knights before he comes", "ph": ["waiting"], "c": "s"},
-		{"t": "Kill the refuge's Knights", "ph": ["guarded"], "c": "n"},
-		{"t": "Set the refuge alight", "ph": ["open"], "c": "n"},
+		{"t": "Burn the bishop's refuge (gold)", "c": "n"},
+		{"t": "Kill or hold its Knights (red)", "ph": ["waiting"], "c": "s"},
+		{"t": "Kill or hold its Knights (red)", "ph": ["guarded"], "c": "n"},
+		{"t": "Burn the refuge (gold) now", "ph": ["open"], "c": "n"},
 		{"t": "Keep it burning", "ph": ["burning"], "c": "n"},
-		{"t": "Kill him before the Citadel", "ph": ["square", "running"]},
+		{"t": "Kill the bishop (gold)", "ph": ["square", "running"]},
 	],
 	"expel_inquisitor": [
-		{"t": "Stop a lantern-warden", "c": "n"},
-		{"t": "Kill or frighten the captain", "ph": ["captain"], "c": "n"},
-		{"t": "Stop him before the Citadel", "ph": ["near"], "c": "n"},
+		{"t": "Kill or banish a warden (gold)", "c": "n"},
+		{"t": "Kill or scare the captain (gold)", "ph": ["captain"], "c": "n"},
+		{"t": "Kill the captain (gold) now", "ph": ["near"], "c": "n"},
 	],
 
 	# --- clarity block: escort ---

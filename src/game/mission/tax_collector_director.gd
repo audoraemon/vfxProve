@@ -314,6 +314,95 @@ func teardown() -> void:
 	super()
 
 
+## "ready" while the first collector still waits in the counting-house for his time (Mission clarity, pre-flight I2: the base calls it "inside",
+## which reads as a visit that is not under way); the base's otherwise. Only the phase's word changes.
+func hint_phase() -> String:
+	var ph := super()
+	if ph == "inside":
+		var q := current()
+		if q != null and q.state == State.WAITING:
+			return "ready"
+	return ph
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1): the base's and "ready".
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "hiding", "inside", "next", "safe", "ready"])
+
+
+## The seconds a hint counts (Mission clarity, pre-flight I2): the visit he has left in "inside", in mission seconds as his tag counts it;
+## the wait to the next set-out in "ready" and "next" (the strip's, chained times included); 0 otherwise. Only reads.
+func hint_seconds() -> float:
+	var q := current()
+	if q == null:
+		return 0.0
+	match hint_phase():
+		"inside":
+			return maxf(q.indoors_left, 0.0) * (rules.clock_rate if is_instance_valid(rules) else 1.0)
+		"ready", "next":
+			return timeline.seconds_to("out_%d" % q.index) if timeline != null else 0.0
+	return 0.0
+
+
+## The why-not banners (Mission clarity, spec 5.2, pre-flight I12). A Kill, Scare or Hold on a collector indoors whose house stands
+## unburnt: the door is the way. A Seal that does not count: not on a door he went in at, laid more than HOLD_TIME before he comes out, or
+## with a guard of his by. A power that burns or breaks the house may bring him out itself, so it is judged by none of them. Only reads.
+const WHY_INDOORS := "HE IS INDOORS - WAIT AT THE DOOR"
+const WHY_DOOR := "SEAL A DOOR HE WENT IN AT"
+const WHY_SOON := "TOO SOON - SEAL AS HE COMES OUT"
+const WHY_GUARD := "HIS GUARD (BLUE) STOPS THE MOB"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if "seal" in verbs:
+		return _why_seal(key, at)
+	if "burn" in verbs or "strike" in verbs or not (verbs.has("kill") or verbs.has("scare") or verbs.has("hold")):
+		return ""
+	for q in quarries:
+		if q.dead or not (q.state == State.VISITING or q.state == State.HIDING) or not _alive(q.target) or not q.target.inside:
+			continue  # (one waiting in the counting-house is sent out by a cast at its door: the director's own handler)
+		var house := q.inside_of
+		if house == null or not is_instance_valid(house) or house.destroyed or _burning(house):
+			continue
+		if _cast_reaches(key, at, _reach_point(q)) or house.distance_to(at) <= Crowd._cast_radius(key) + WHY_MARGIN:
+			return WHY_INDOORS
+	return ""
+
+
+## The Seal's banner: judged for every collector the circle reaches; one that would count says nothing.
+func _why_seal(key: String, at: Vector2) -> String:
+	var text := ""
+	for q in quarries:
+		if not _is_out(q) or not _alive(q.target) or not _cast_reaches(key, at, _reach_point(q)):
+			continue
+		var mine := _why_seal_for(q, at)
+		if mine == "":
+			return ""
+		if text == "":
+			text = mine
+	return text
+
+
+## What one collector's Seal at `at` lacks, or "" when it sets the debtors on him.
+func _why_seal_for(q: Quarry, at: Vector2) -> String:
+	var door := Vector2.INF
+	for d: Vector2 in _visited.get(q.index, []):
+		if at.distance_to(d) <= MOB_DOOR_R and (door == Vector2.INF or at.distance_to(d) < at.distance_to(door)):
+			door = d
+	if door == Vector2.INF:
+		return WHY_DOOR
+	if q.state == State.VISITING and q.indoors_left > NoLeaveFx.HOLD_TIME:
+		return WHY_SOON
+	if q.target.inside:
+		for g: Variant in q.guards:
+			if _alive(g) and not (g as Person).inside and (g as Person).ground_pos.distance_to(door) <= MOB_GUARD_R:
+				return WHY_GUARD
+	elif _guarded(q):
+		return WHY_GUARD
+	return ""
+
+
 ## The tour (spec §1, v0.11 M2): the counting-house and when they set out (the deputies "by" their times: the chain can bring
 ## them sooner), the collector's first debtor, the Citadel.
 func tour() -> Array:

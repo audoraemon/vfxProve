@@ -185,13 +185,14 @@ static func _advance_tax(t) -> void:
 	var s := _stub_world(MissionBook.tax_collector())
 	var d: PhaseStub = s.d
 	var seen := PackedStringArray()
-	for phase in ["inside", "hiding", "running", "next"]:
+	for phase in ["", "ready", "inside", "hiding", "running", "next"]:
 		d.phase = phase
 		seen.append(String(MissionSteps.current(s.rules)["t"]))
-	t.check(seen == PackedStringArray(["Seal his door, draw guards off", "Burn the counting-house", "Kill him before the Citadel",
-		"Be ready for the next collector"]), "The Tax Collector's steps follow its phases (%s)" % [seen])
+	t.check(seen == PackedStringArray(["Kill the collector (gold)", "Ambush the first collector", "Ambush him at the door (gold)",
+		"Burn the counting-house (orange)", "Kill him before the Citadel", "Ambush the next collector"]),
+		"The Tax Collector's steps follow its phases (%s)" % [seen])
 	var cur := MissionSteps.current(s.rules)
-	t.check(int(cur["of"]) == 5 and int(cur["index"]) == 4, "a step knows its place (%s)" % [cur])
+	t.check(int(cur["of"]) == 6 and int(cur["index"]) == 5, "a step knows its place (%s)" % [cur])
 	Kit.done(s)
 
 

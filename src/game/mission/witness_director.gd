@@ -108,7 +108,7 @@ func step(delta: float) -> void:
 	super(delta)
 	if waiting or warning_dead or phase != Phase.RUN or not _alive(messenger) or messenger.inside:
 		return
-	if messenger.ground_pos.distance_to(_door()) <= TempleReport.REACH:
+	if messenger.ground_pos.distance_to(_door()) <= TempleReport.REACH and not messenger.veil_blind():  # (Veil C13)
 		if not in_temple:
 			_sound(&"msn_knock", _door())
 		in_temple = true  # word reaches the Temple: SilenceWitnessDirector.lost_reason() says so, WitnessObjective loses the night

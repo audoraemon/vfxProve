@@ -483,7 +483,8 @@ func _step_held(c: Charge) -> void:
 		return
 	var s := c.seizer as Person
 	var p := c.man as Person
-	if s.ground_pos.distance_to(return_to) <= RETURN_REACH and p.ground_pos.distance_to(s.ground_pos) <= TAKE_REACH * 2.0:
+	if s.ground_pos.distance_to(return_to) <= RETURN_REACH and p.ground_pos.distance_to(s.ground_pos) <= TAKE_REACH * 2.0 \
+			and not s.veil_blind():  # (Veil C13: a shadow or a dreaded seizer hands no one over)
 		c.taken = true
 		c.held = false
 		crowd.off_duty(s)

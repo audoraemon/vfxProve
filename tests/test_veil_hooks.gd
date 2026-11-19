@@ -5,6 +5,22 @@ extends RefCounted
 ## refusal stubs, the footholds, Remembrance's ledger and the aim ring that redraws when the dusk under it changes.
 
 
+## A Hunt whose quarry stands at one named point (C13: the head's find).
+class FindDirector extends HuntDirector:
+	var spot := Vector2.INF
+
+	func _quarry_point() -> Vector2:
+		return spot
+
+
+## Rules whose Veil refusal is named by the test (ruling C17: the seam cast() asks, not the stubs' "").
+class RefusingRules extends Rules:
+	var why := ""
+
+	func veil_refusal(_key: String, _ground: Vector2, _extra: Dictionary) -> String:
+		return why
+
+
 ## A director whose quarry and keeps_alive are one named person each.
 class HookDirector extends MissionDirector:
 	var mine: Person
@@ -62,6 +78,7 @@ static func run(t) -> void:
 	_remembrance(t, made)
 	_ring(t, made)
 	_directors(t, made)
+	_acts(t, made)
 	var crowd: Crowd = made[0]
 	crowd.footholds.append(made[5].gates[0])
 	t.check(crowd.footholds.size() == 1, "Crowd.footholds holds the blighted buildings")
@@ -352,6 +369,10 @@ static func _dread(t, made: Array) -> void:
 	crowd.dread(at, 6.0, 25.0)
 	crowd._clock += 25.1
 	t.check(not crowd.dreaded(dpt), "a dread ends at its time")
+	t.check(crowd.dreads.is_empty(), "and the spent dread is let go (dreads empty again: the walk's check is free once more)")
+	crowd.dread(at, 6.0, 1.0)
+	crowd.advance(1.5)
+	t.check(crowd.dreads.is_empty(), "the crowd's own step lets a spent dread go")
 	# Nobody outside steps into it; a shadow does, and so does anyone once it ends.
 	var c := crowd.dread(at, 6.0, 25.0)
 	var p: Person = crowd.citizens[60]
@@ -498,11 +519,36 @@ static func _refusals(t, made: Array) -> void:
 		return null
 	var refused: Array = []
 	rules.cast_refused.connect(func(_s: int, why: String) -> void: refused.append(why))
-	t.check(BlightFx.refusal(rules, Vector2.ZERO) == "" and DreadOfTheDarkFx.refusal(crowd, Vector2.ZERO, false) == ""
-		and DreadOfTheDarkFx.refusal(null, Vector2.ZERO, false) == "", "the two refusal stubs allow every cast")
-	rules.cast(0, Vector2.ZERO)
-	rules.cast(1, Vector2.ZERO)
-	t.check(casts.size() == 2 and refused.is_empty() and rules.cooldown_left(0) > 0.0, "so Blight and Dread go out (%s)" % [refused])
+	# Allowed by the stubs and by the real refusals alike (C17): Blight on a building with a use, Dread over a laid dusk patch.
+	var well := BlightFx.target(made[1], TownLayout.WELLS[0].get_center())
+	var grid: WalkGrid = made[2]
+	var dark := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	var patch := crowd.lay_dusk(dark, 3.0, 20.0)
+	t.check(well != null and crowd.dusk.enabled and patch > 0, "(a well to blight; the ledger on, a dusk patch laid)")
+	rules.cast(0, well.center())
+	rules.cast(1, dark)
+	t.check(casts.size() == 2 and refused.is_empty() and rules.cooldown_left(0) > 0.0 and rules.cooldown_left(1) > 0.0,
+		"Blight on a well and Dread over dusk go out and spend their cooldowns (%s)" % [refused])
+	crowd.dusk.end(patch)
+	# A refused reason spends no cooldown, through the seam cast() asks.
+	var rr := RefusingRules.new()
+	rr.setup(PackedStringArray(["blight", "dread"]), null, made[1], made[3], crowd, made[5])
+	var rcasts: Array = []
+	rr.caster = func(_s: GDScript, _g: Vector2, e: Dictionary) -> FxTimeline:
+		rcasts.append(e)
+		return null
+	var rrefused: Array = []
+	rr.cast_refused.connect(func(_s: int, why: String) -> void: rrefused.append(why))
+	rr.why = "no_blight"
+	rr.cast(0, well.center())
+	rr.why = "no_dark"
+	rr.cast(1, dark)
+	t.check(rrefused == ["no_blight", "no_dark"] and rcasts.is_empty() and rr.cooldown_left(0) == 0.0 and rr.cooldown_left(1) == 0.0,
+		"a refused Blight or Dread goes out nowhere and spends no cooldown (%s)" % [rrefused])
+	rr.why = ""
+	rr.cast(1, dark)
+	t.check(rcasts.size() == 1 and rr.cooldown_left(1) > 0.0, "allowed through the same seam, it goes out (control)")
+	rr.free()
 	t.check(Hud.VEIL_REFUSALS.get("no_blight", "") == "NOTHING HERE TO BLIGHT" and Hud.VEIL_REFUSALS.get("no_dark", "") == "NO DARK HERE TO DREAD",
 		"the HUD's words for the two refusals")
 	var src := (load("res://src/game/rules.gd") as GDScript).source_code
@@ -647,4 +693,108 @@ static func _directors(t, made: Array) -> void:
 	br.ringers.append(rg)
 	if not (br.quarry(p) and not br.quarry(o)):
 		bad.append("bell_ringers")
+	var ex := ExodusDirector.new()
+	var hh := ExodusDirector.Household.new()
+	var ch := EscortDirector.Charge.new()
+	ch.man = p
+	hh.members.append(ch)
+	ex.households.append(hh)
+	if not (ex.keeps_alive(p) and not ex.keeps_alive(o) and not ex.keeps_alive(null)):
+		bad.append("exodus")
+	var fh := FaceHalcyonDirector.new()
+	var esc: Person = crowd.citizens[102]
+	fh.escort_lists.append([esc])
+	fh.believers.append(o)
+	if not (fh.quarry(esc) and not fh.quarry(o) and not fh.quarry(null) and fh.keeps_alive(o) and not fh.keeps_alive(esc)):
+		bad.append("face_halcyon")
+	var fh2 := FaceHalcyonDirector.new()
+	var hh2 := ExodusDirector.Household.new()
+	var ch2 := EscortDirector.Charge.new()
+	ch2.man = p
+	hh2.members.append(ch2)
+	fh2.households.append(hh2)
+	if not fh2.keeps_alive(p):
+		bad.append("face_halcyon households")
 	t.check(bad.is_empty(), "each director answers quarry / keeps_alive from its own people (%s)" % [bad])
+
+
+## C13: a shadow or a dreaded person seizes, finds, reports and delivers nothing -- each site with a free control on the same path.
+static func _acts(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	_clear_round(crowd)
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	var p: Person = crowd.citizens[110]
+	t.check(not p.veil_blind(), "free: veil_blind() is false")
+	for key: StringName in [&"shadow", &"dread"]:
+		p.statuses[key] = 1.0
+		t.check(p.veil_blind(), "%s: veil_blind()" % key)
+		p.statuses.erase(key)
+	# The Hunt's head at the quarry finds it; a shadowed or dreaded head does not.
+	var h := FindDirector.new()
+	var head: Person = crowd.soldiers[20]
+	head.ground_pos = at
+	h.spot = at
+	h.head = head
+	h.head_out = true
+	h.head_route = [at] as Array[Vector2]
+	h._route_at = 0
+	for key: StringName in [&"shadow", &"dread"]:
+		head.statuses[key] = 1.0
+		t.check(not h._found(), "a head under %s finds nothing" % key)
+		head.statuses.erase(key)
+	t.check(h._found(), "the free head on the same spot finds the quarry (control)")
+	# A soldier at his post keeps watch only when free (on_watch(): the quiet-door checks); his post still counts as held.
+	head.send_to_post(at)
+	head.post = at
+	head.ground_pos = at
+	head.anchor = at
+	t.check(head.on_watch(), "a free soldier at his post keeps watch (control)")
+	head.statuses[&"shadow"] = 1.0
+	t.check(not head.on_watch() and head.at_own_post(), "a shadow keeps no watch, but his post is held")
+	head.statuses.erase(&"shadow")
+	# A report's carrier at the Temple's door: delivered only when free.
+	var door := at + Vector2(0.5, 0.0)
+	for key: StringName in [&"shadow", &"dread"]:
+		var c: Person = crowd.citizens[111]
+		c.ground_pos = at
+		var rep := TempleReport.new(c, door)
+		rep.skip = func(_q: Person) -> bool: return false
+		c.statuses[key] = 1.0
+		rep.step(0.1, crowd)
+		t.check(not rep.delivered, "a carrier under %s delivers no report" % key)
+		c.statuses.erase(key)
+		rep.step(0.1, crowd)
+		t.check(rep.delivered, "free again, the same carrier delivers it (control, %s)" % key)
+	# A director's own seer runs to report nothing.
+	var md := MissionDirector.new()
+	md.crowd = crowd
+	var seer: Person = crowd.citizens[112]
+	seer.statuses[&"shadow"] = 1.0
+	md._report(seer, door)
+	t.check(md.reports.is_empty() and md.reports_started == 0, "a shadow carries no report to the Temple")
+	seer.statuses.erase(&"shadow")
+	# The Warning's messenger beside the keeper tells him only when free.
+	var bell := crowd.bell
+	var keeper := bell.keeper
+	keeper.mind = Person.Mind.CALM
+	keeper.ground_pos = at + Vector2(0.0, 3.0)
+	bell.state = BellNetwork.State.IDLE
+	var w := WarningDirector.new()
+	w.crowd = crowd
+	var m: Person = crowd.citizens[113]
+	m.ground_pos = keeper.ground_pos + Vector2(0.3, 0.0)
+	m.mind = Person.Mind.CALM
+	m.go_duty(keeper.ground_pos)
+	w.messenger = m
+	w.phase = WarningDirector.Phase.RUN
+	for key: StringName in [&"shadow", &"dread"]:
+		m.statuses[key] = 1.0
+		w._run(false)
+		t.check(w.phase == WarningDirector.Phase.RUN and w.messenger == m, "a messenger under %s tells the keeper nothing" % key)
+		m.statuses.erase(key)
+	m.go_duty(keeper.ground_pos)
+	w._run(false)
+	t.check(w.phase == WarningDirector.Phase.DELIVERED and w.messenger == keeper, "the free messenger tells him (control)")
+	bell.state = BellNetwork.State.IDLE
+	bell.progress = 0.0

@@ -144,7 +144,10 @@ func clear() -> void:
 ## hidden and stilled rather than freed, so whatever still holds it (a mission's house, a shelter's entry) holds a
 ## fallen building, not a freed object. It is marked taken and the field lets go of its signals: restore() on it does
 ## nothing (a mission's relight or rebuild raises no invisible building, and the walk grid closes no cell for it).
-func remove(s: Structure, announce := true, keep_node := false) -> void:
+## `reindex` false (a batch: The Swallowing Dark's fold takes dozens in a few frames): instead of rebuilding the whole index, `s` is
+## struck from just the cells its footprint covers (_unindex()), so the index is never stale in between; call reindex() once after
+## the batch. The same list, index, walk grid and signals as single removes (test_environment).
+func remove(s: Structure, announce := true, keep_node := false, reindex := true) -> void:
 	if keep_node and is_instance_valid(s):
 		s.taken = true
 		for pair: Array in [[s.broken, _on_structure_broken], [s.idled, _on_idled], [s.restored, _on_structure_restored],
@@ -155,6 +158,8 @@ func remove(s: Structure, announce := true, keep_node := false) -> void:
 		structure_removed.emit(s)
 	_structures.erase(s)
 	_idle.erase(s)
+	if not reindex:
+		_unindex(s)  # before a free below: it reads the footprint
 	if is_instance_valid(s):
 		if s.light_id != 0 and lights != null:
 			lights.remove(s.light_id)
@@ -166,7 +171,8 @@ func remove(s: Structure, announce := true, keep_node := false) -> void:
 			s.queue_free()
 		else:
 			s.free()
-	_reindex()
+	if reindex:
+		_reindex()
 
 
 ## Blight `s` (v0.05): its use is gone until unblight().
@@ -397,3 +403,31 @@ func _index(s: Structure) -> void:
 			if not _fine.has(key):
 				_fine[key] = []
 			_fine[key].append(s)
+
+
+## Strike `s` from the cells _index() put it in (its footprint and walkability are fixed once indexed: reindex() follows any change),
+## keeping the others' order and dropping a cell left empty: what _reindex() would build without it.
+func _unindex(s: Structure) -> void:
+	layout_epoch += 1
+	if not is_instance_valid(s):
+		return
+	var r := s.footprint.grow(MAX_MARGIN)
+	var c0 := _cell(r.position)
+	var c1 := _cell(r.end)
+	for y in range(c0.y, c1.y + 1):
+		for x in range(c0.x, c1.x + 1):
+			_strike(_grid, Vector2i(x, y), s)
+	var f0 := Vector2i(floori(r.position.x / FINE_CELL), floori(r.position.y / FINE_CELL))
+	var f1 := Vector2i(floori(r.end.x / FINE_CELL), floori(r.end.y / FINE_CELL))
+	for y in range(f0.y, f1.y + 1):
+		for x in range(f0.x, f1.x + 1):
+			_strike(_fine, Vector2i(x, y), s)
+
+
+static func _strike(cells: Dictionary, key: Vector2i, s: Structure) -> void:
+	var at: Array = cells.get(key, _NONE)
+	if at.is_empty():
+		return
+	at.erase(s)
+	if at.is_empty():
+		cells.erase(key)

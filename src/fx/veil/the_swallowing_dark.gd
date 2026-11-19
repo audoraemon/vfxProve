@@ -5,8 +5,8 @@ extends FxTimeline
 ## FULL_R (14). Nobody sees it grow: it registers no danger, frightens nobody, raises no alarm; one who walks out in time lives. At full
 ## size everything inside is gone without a sound: every person (Crowd.take(p, &"void"): no body, no voice, no remain), every animal
 ## and visitor, every lying remain, every decor piece whose `at` is inside, and every building whose footprint lies wholly inside
-## (wholly_inside()) by Eminent Domain's quiet path (EnvironmentField.remove(s, true, true): the walk grid opens, no rubble), together
-## with whoever shelters in it. Spared: a building MissionKeeps.spared() names (the Citadel and Temple, the hallowed, the mission's own)
+## (wholly_inside()) by Eminent Domain's quiet path (EnvironmentField.remove(s, true, true), batched: the walk grid opens, no rubble), with
+## whoever shelters in it. Spared: a building MissionKeeps.spared() names (the Citadel and Temple, the hallowed, the mission's own)
 ## and the town's own gates, bridges, postern, dock and fountain, which its managers go on using (as Eminent Domain keeps them). A
 ## blighted foothold that goes is healed first (BlightFx.heal()), so no foothold points at a removed building. The removals are spread
 ## over frames, PER_FRAME at most each (BUILDINGS_PER_FRAME of them buildings), outermost first (an inward fold). The emptied ground is dusk for VeilRules.DUSK_TIME and
@@ -16,10 +16,10 @@ extends FxTimeline
 ## Growth in ground units a second.
 const GROW := 0.5
 ## At most this many removals in one frame.
-const PER_FRAME := 12
-## Of which at most this many buildings: each EnvironmentField.remove() rebuilds the field's whole spatial index (about 10 ms on a
-## loaded machine), so two a frame keep the worst frame of the fold near the bench's aim (under 50 ms).
-const BUILDINGS_PER_FRAME := 2
+const PER_FRAME := 24
+## Of which at most this many buildings. They go by EnvironmentField's batch remove (remove(..., reindex = false): each struck from
+## its own index cells, about 0.5 ms, where a full index rebuild is 6-14 ms), with one reindex() when the fold is done (VA10).
+const BUILDINGS_PER_FRAME := 8
 ## The circle has opened (the rim drawn) this long after the cast: the other slots unlock then (ruling C16).
 const T_OPEN := 0.5
 ## The fold's drawing after full size.
@@ -39,6 +39,8 @@ var removed := 0
 var _queue: Array = []
 ## The buildings the dark takes (fixed at full size): a person sheltering is taken only with one of these.
 var _gone := {}
+## Buildings removed by the batch path since the last full index rebuild.
+var _batched := false
 var _disc: SwallowDisc
 
 
@@ -100,6 +102,10 @@ func _fx_process(_delta: float) -> void:
 	# The fold waits for the last removal (a slow frame rate).
 	if not _queue.is_empty():
 		duration = maxf(duration, t + 0.1)
+	elif _batched:
+		# The buildings went by the batch remove (each struck from its own index cells); one full rebuild closes the batch.
+		_batched = false
+		ctx.env.reindex()
 
 
 ## Full size: what is inside is fixed now and taken over the next frames; the ground is left dusk and bare.
@@ -267,7 +273,8 @@ func _take_building(s: Structure) -> void:
 					crowd.shelters.release(p)
 					crowd.take(p, KIND)
 			crowd.shelters.shelters.erase(s)
-	ctx.env.remove(s, true, true)
+	ctx.env.remove(s, true, true, false)
+	_batched = true
 	removed += 1
 
 

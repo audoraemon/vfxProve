@@ -106,6 +106,7 @@ static func run(t) -> void:
 		_control(t, made, far)
 	_done(made)
 	_no_crowd(t)
+	_market(t)
 
 
 static func _wholly(t) -> void:
@@ -440,3 +441,62 @@ static func _no_crowd(t) -> void:
 	t.check(fx.finished and not env.structures().has(h), "no crowd: it takes the house and finishes")
 	ctx.overhead.free()
 	ctx.ground.free()
+
+
+## Task 10b (C19): the market square, light (r 10), the densest fold in town. Every building wholly inside and not spared goes, the
+## rest stand in their order, and the fold ends within 1 s of full size even at 30 fps (30 frames); the field's index after it is
+## the one a full rebuild gives (the batch remove left nothing stale).
+static func _market(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var ctx: FxContext = made[5]
+	var town: Town = made[6]
+	var at := Places.at(&"market_square")
+	var keep: Array = []
+	keep.append_array(town.gates)
+	keep.append_array(town.bridges)
+	keep.append_array([town.bridge, town.postern, town.dock, town.fountain])
+	var expect: Array[Structure] = []
+	var stay: Array[Structure] = []
+	for s in env.structures():
+		if not s.taken and not keep.has(s) and TheSwallowingDarkFx.wholly_inside(s, at, 10.0) and not MissionKeeps.spared(s, crowd, null):
+			expect.append(s)
+		else:
+			stay.append(s)
+	t.check(expect.size() >= 50, "the market square has a dense block to take (%d buildings)" % expect.size())
+	var fx := _cast(ctx, at)
+	while not fx.swallowed and not fx.finished:
+		fx._process(DT)
+	var frames := 0
+	var worst := 0
+	while fx.left() > 0 and frames < 600:
+		var t0 := Time.get_ticks_usec()
+		fx._process(DT)
+		worst = maxi(worst, Time.get_ticks_usec() - t0)
+		frames += 1
+	print("veil_swallow market: %d buildings, %d removals, %d frames, worst step %.1f ms" % [expect.size(), fx.removed, frames,
+		worst / 1000.0])
+	# Within 1 s even when the fold's own frames run at 30 fps (a game frame is the town's ~16 ms plus the fold's step): 30 frames at most.
+	t.check(fx.left() == 0 and frames <= 30, "market square: the fold ends within 1 s of full size at 30 fps (%d frames)" % frames)
+	var all_taken := true
+	for s in expect:
+		all_taken = all_taken and s.taken
+	t.check(all_taken and env.structures() == stay, "market square: every building wholly inside is taken, the rest stand in order")
+	var cells := func() -> Array:
+		var out := []
+		for g: Dictionary in [env._grid, env._fine]:
+			var keys := []
+			for k in g:
+				if not (g[k] as Array).is_empty():
+					keys.append(k)
+			keys.sort()
+			for k in keys:
+				out.append([k, (g[k] as Array).map(func(s: Structure) -> int: return s.get_instance_id())])
+		return out
+	var now: Array = cells.call()
+	env.reindex()
+	t.check(now == cells.call(), "market square: after the fold the field's index is a full rebuild's")
+	_go(fx, 2.0)
+	t.check(fx.finished, "market square: the effect ends")
+	_done(made)

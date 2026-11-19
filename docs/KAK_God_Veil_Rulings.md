@@ -171,6 +171,16 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   BUILDINGS_PER_FRAME = 2 caps it: worst 56.4 / 59.5 ms (one a frame: 50.2 ms, and the fold takes 2.8 s), and the fold there takes about
   1.9 s, not 1 s (the suite's own site finishes within 1 s). Under 50 ms needs one index rebuild per frame for several buildings, a batch
   remove in environment_field.gd (not this task's file).
+- VA10 (Task 10b, C19 item 1): `EnvironmentField.remove(s, announce, keep_node, reindex := true)`. The default (true) is today's path
+  unchanged (a full `_reindex()`). `reindex = false` strikes `s` from just the index cells its footprint covers (`_unindex()`, before any
+  free; an emptied cell is dropped; `layout_epoch` bumped), so the deferred index is never stale: it is what a full rebuild without `s`
+  gives, read at any point of the batch (exact because a footprint never changes once indexed and walkability changes are followed
+  by `reindex()`, town.gd's postern). The caller ends a batch with one `reindex()`. The Swallowing Dark removes its buildings that
+  way and calls `reindex()` once, when its queue is empty; PER_FRAME 12 -> 24, BUILDINGS_PER_FRAME 2 -> 8. Per building: 7-14 ms ->
+  about 0.45 ms (headless, market square); one rebuild 6-9 ms. Test town, market square (75 buildings, 364 removals): the fold
+  takes 40 -> 15 frames (within 1 s even at 30 fps). Game bench (`--bench --loadout=swallow --bench-cast=swallow --bench-after=17`,
+  t 17-26 s, the fold; machine loaded): worst frame 60.3 ms before, 39.9 / 37.0 ms after, against 36.9 / 35.9 ms in the same
+  session's runs without the cast.
 - VD1 (Task 12): the Veil's seven new powers cast with `v_<key>` (the brief's names: v_slumber, v_cloak, v_dreamless, v_dread,
   v_shadowplay, v_swallow, v_evernight), not the `q_<key>` every other quiet power has; tests/test_power_sounds.gd's own-cue rule
   (`own_cue()`) reads `v_` for those seven and checks that no two q_ or v_ cues share a file. PENDING_QUIET (V10) is empty. The

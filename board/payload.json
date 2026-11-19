@@ -7,56 +7,56 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **164** done\n**12** active branches besides Develop-Main\n\n**Since the last update** (<t:1795078367:f>)\n• New: Veil authority tree and powers (in progress)",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **165** done\n**12** active branches besides Develop-Main\n\n**Since the last update** (<t:1795120250:f>)\n• New: Skill-tree ability sound pass (moments, own cues, takes, level weight)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-19T15:52:47+07:00"
+     "timestamp": "2026-11-20T03:30:50+07:00"
     },
     {
-     "title": "god/ruin-adjust",
-     "description": "7 commits not in Develop-Main · last commit today · local only\n> fix: a burning man always runs; the ring stays on dry, walkable ground\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/god-chamber",
-     "description": "5 commits not in Develop-Main · last commit today · local only\n> feat: the God's Chamber layout table and greybox art hook\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "claude/sound-natural-2",
-     "description": "1 commit not in Develop-Main · last commit today\n> feat: skill-tree powers heard in full (moments, own cues, takes, level weight)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "clarity/g",
-     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: mission clarity spec and plan -- every mission's steps and hints say what counts, why-not banners, the verb page\n\n_No Ledger task points at this branch._",
+     "title": "god/veil-merge",
+     "description": "20 commits not in Develop-Main · last commit today · local only\n> fix: The Swallowing Dark spares a shelterer in a standing building; guarded remains\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/lantern-campaign-spec",
-     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: mission clarity spec and plan -- every mission's steps and hints say what counts, why-not banners, the verb page\n\n_No Ledger task points at this branch._",
+     "description": "15 commits not in Develop-Main · last commit today · local only\n> fix: a Skylift on the Informer's contact before word says TOO EARLY (the user's own case)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
-     "title": "feat/clean-footprints",
-     "description": "1 commit not in Develop-Main · last commit today · local only\n> feat: remove the dithered contact shadows round building bases and under trees\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/wish-clarity",
-     "description": "1 commit not in Develop-Main · last commit today · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
+     "title": "feat/might-gauge",
+     "description": "15 commits not in Develop-Main · last commit today · local only\n> test: Might gauge photographs (--show=bar-hidden, --show=bar-open)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/veil-powers",
-     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: Veil authority powers design (draft for approval)\n\n**In progress** (1)\n• Veil authority tree and powers",
+     "description": "5 commits not in Develop-Main · last commit today · local only\n> feat: shared hooks for the Veil powers\n\n**In progress** (1)\n• Veil authority tree and powers",
+     "color": 5016537
+    },
+    {
+     "title": "god/ruin-adjust",
+     "description": "10 commits not in Develop-Main · last commit yesterday · local only\n> dev: refs re-recorded after the burning man runs to the end\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/god-chamber",
+     "description": "9 commits not in Develop-Main · last commit yesterday · local only\n> fix: the Chamber at ultrawide and 4:3 (Title reachable by mouse, bar at the screen's top edge), final review minors\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/clean-footprints",
+     "description": "1 commit not in Develop-Main · last commit yesterday · local only\n> feat: remove the dithered contact shadows round building bases and under trees\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/wish-clarity",
+     "description": "1 commit not in Develop-Main · last commit yesterday · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "merged into Develop-Main · last commit 2 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "merged into Develop-Main · last commit 3 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     }
    ]
@@ -68,27 +68,27 @@
    "embeds": [
     {
      "title": "god/dominion-t3-old",
-     "description": "2 commits not in Develop-Main · last commit 13 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "description": "2 commits not in Develop-Main · last commit 14 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 41 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 42 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 41 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 42 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-19\n> feat: repaint the 6 flat Decree icons (Cage, Fenced, Eminent, Erase, Bound, Sealed) in the PixelLab icon style\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (24)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-19\n> feat: skill-tree powers heard in full (moments, own cues, takes, level weight)\n\n**In progress** (8)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n\n**To do** (24)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• PixelLab ability icons for the 47 drawn powers + 6 flat Decree _(11-19)_\n• God progression merged into Develop-Main (Death, Decree, levels) _(11-19)_\n• Death and Decree ability levels _(11-19)_\n• Zoomed-out fps: render with Forward+ (Vulkan) _(11-18)_\n• Zoom-out limit is a player setting (Options) _(11-18)_\n• Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize _(11-17)_\n• Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan) _(11-17)_\n• Outline tagged people hidden behind stalls, trees, houses (Option A) _(11-17)_",
+     "description": "• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• PixelLab ability icons for the 47 drawn powers + 6 flat Decree _(11-19)_\n• God progression merged into Develop-Main (Death, Decree, levels) _(11-19)_\n• Death and Decree ability levels _(11-19)_\n• Zoomed-out fps: render with Forward+ (Vulkan) _(11-18)_\n• Zoom-out limit is a player setting (Options) _(11-18)_\n• Real-path render sweep: every route, real clicks, 4 window sizes, mid-mission resize _(11-17)_\n• Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan) _(11-17)_",
      "color": 10185686
     }
    ]

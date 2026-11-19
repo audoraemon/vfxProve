@@ -387,3 +387,10 @@ func hint_phase() -> String:
 ## Every phase hint_phase() can return (Mission clarity, spec 6.1).
 func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "near", "relay"])
+
+
+## What a cast does to this warning (Mission clarity, spec 5.1): his mates are held, not confused, to blind them (_could_carry()), so only the
+## carrier is judged.
+func _cast_reach(key: String, at: Vector2) -> Reach:
+	return _carrier_reach(key, at)
+

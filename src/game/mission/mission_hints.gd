@@ -6,7 +6,7 @@ extends RefCounted
 
 ## The Warning's lines, which its act in The Long Night shares (board tags: the colours are its tags').
 const WARNING_LINE := "Kill the messenger (gold) with no one near (red) before he warns the bellkeeper (blue)."
-const WARNING_RELAY := "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near."
+const WARNING_RELAY := "Someone saw: a witness (gold) carries the warning on. Kill again where no one (red) is near."
 const WARNING_BELL := "The bell is called. Kill its ringer (gold) unseen, or the bell tolls and he runs for the Temple."
 ## Last Judgement's lines for the rite and the fallen Citadel, which Judgement (its act in The Long Night) shares.
 const RITE_LINE := "The clergy (red) chant the Banishing Rite. Kill or scare them off the steps, or strike the cathedral, or it cuts your time."
@@ -20,33 +20,33 @@ const LINES := {
 	# --- clarity block: intercept ---
 	"warning": WARNING_LINE,
 	"warning.relay": WARNING_RELAY,
-	"warning.stars": "Kill the messenger (gold) unseen (red), let the bell lie, or get him out: kill a man just outside his gate as he stares at his star.",
-	"warning.running": "The messenger (gold) runs for the bellkeeper (blue): kill him unseen (red), get him out of the walls, or let the bell lie.",
+	"warning.stars": "Kill the messenger (gold) unseen (red), banish him, or calm the town. Or kill a man just outside his gate as he stares.",
+	"warning.running": "The messenger (gold) runs for the bellkeeper (blue). Kill him unseen (red), banish him, or calm the town.",
 	"warning.bell": WARNING_BELL,
 	"warning.waiting": "That warning is dead. Watch the next star's gate (gold). A death just outside it as he stares draws its watchman out.",
 	"omen": WARNING_LINE,
 	"omen.relay": WARNING_RELAY,
 	"omen.bell": WARNING_BELL,
 	"bell_ringers": "Kill each ringer (gold) where no one (red) sees, before he climbs the bell tower. His mates run with him.",
-	"bell_ringers.mates": "His mates (red) would see him die and run on. Draw them off or strike them first.",
-	"bell_ringers.relay": "Someone saw: a witness (gold) carries the warning on. Strike again where no one (red) is near.",
-	"bell_ringers.climbing": "He climbs the bell (gold). Pull him off with a whisper or a fright, or kill him unseen before the bar fills.",
-	"bell_ringers.bell": "The town calls its bellkeeper (blue). Stop him, or the bell tolls and the Lantern turns.",
+	"bell_ringers.mates": "His mates (red) see him die and run on. Lead or lure them off, or kill them first.",
+	"bell_ringers.relay": "Someone saw: a witness (gold) carries the warning on. Kill again where no one (red) is near.",
+	"bell_ringers.climbing": "He climbs the bell (gold). Lead or scare him off the rope, or kill him unseen (red), before the bar fills.",
+	"bell_ringers.bell": "The town calls its bellkeeper (blue). Kill or hold him, or the bell tolls and the Lantern turns.",
 	"bell_ringers.waiting": "That warning is dead. The next post (gold) sends its ringer soon. A loud power near a post sends him at once.",
 	# silence_witness (god P5 Task 5)
-	"silence_witness": "A witness (gold) walks to the Temple with two mates (red). Kill him where his mates cannot see.",
-	"silence_witness.relay": "His mate saw it and runs on: stop him too.",
-	"silence_witness.near": "The witness nears the Temple: stop him now.",
-	"festival": "Break the festival: kill or scatter enough of its crowd (gold) before the guard closes the square.",
-	"festival.packed": "The bonfire packs the crowd (gold) round the fountain: one strike there breaks many.",
+	"silence_witness": "A witness (gold) walks to the Temple with two mates (red). Kill him unseen by them, or hold them first.",
+	"silence_witness.relay": "His mate saw it and runs on with the word (gold). Kill him too.",
+	"silence_witness.near": "The witness (gold) nears the Temple. Kill or banish him now.",
+	"festival": "Kill or scare enough of the crowd (gold) before the guard closes the square in {n} s.",
+	"festival.packed": "The bonfire packs the crowd (gold) round the fountain: scare them there and one cast breaks many.",
 	"festival.address": "The Mayor (orange) speaks from the fountain. Kill him and the crowd round it panics.",
-	"market_panic": "Strike the wardens (red), then scatter the crowd (gold). Thirty-six must break; crowds still waiting count if struck down.",
-	"market_panic.steadied": "A warden (red) steadies the crowd near him: frights break no one there. Remove them all first.",
-	"market_panic.open": "No warden stands. Strike the crowd (gold) now, before a new warden comes.",
-	"market_panic.coming": "More come to the fair (gold). Strike them on the way, away from the wardens, or when they arrive.",
+	"market_panic": "Wardens (red) stand fast and steady the crowd (gold). Kill, lead or confuse them, then scare the crowd. 36 must break.",
+	"market_panic.steadied": "A warden (red) still steadies the crowd near him. Kill, lead or confuse him; no fright breaks them there.",
+	"market_panic.open": "No warden stands. Scare the crowd (gold) now, before a new warden comes.",
+	"market_panic.coming": "More come to the fair (gold). Scare them on the way, away from the wardens (red), or when they arrive.",
 	"procession": "Kill the Prince (gold) before he boards. If no one near (red) sees it, the town is left leaderless.",
-	"procession.blessing": "The Prince holds at the cathedral steps for the blessing. Strike while he stands still.",
-	"procession.dock": "The Prince waits at the dock. He boards as soon as his ship is in: kill him first.",
+	"procession.blessing": "The Prince (gold) holds at the cathedral steps for {n} s. Kill him while he stands still.",
+	"procession.dock": "The Prince (gold) boards in {n} s, as soon as his ship is in. Kill him first.",
 
 	# --- clarity block: assassinate ---
 	"informer": "Whisper or Discord the contact (orange) while no one (red) sees. He names the next. Do not kill a contact.",

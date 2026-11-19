@@ -333,6 +333,31 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "herald", "climbing", "relay", "mates"])
 
 
+const MATE_SEES_BANNER := "CONFUSED, HE STILL SEES - LEAD HIM"
+
+
+## What a cast does to this warning (Mission clarity, spec 5.1): the carrier's (WarningDirector.Reach), else a mate with him that a
+## Discord cannot take off the road. Only reads.
+func _cast_reach(key: String, at: Vector2) -> Reach:
+	var reach := _carrier_reach(key, at)
+	if reach != Reach.NONE or waiting or phase == Phase.OVER or warning_dead:
+		return reach
+	var verbs := MissionVerbs.verbs_of(key)
+	if "confuse" in verbs and not ("kill" in verbs or "lead" in verbs or "lure" in verbs or "banish" in verbs):
+		for p in mates_with():
+			if _cast_reaches(key, at, p.ground_pos):
+				return Reach.NOT
+	return Reach.NONE
+
+
+## Mission clarity (spec 5.1): the carrier's banner; or, for a Discord on a mate, `CONFUSED, HE STILL SEES - LEAD HIM` (a confused man is
+## still a witness; a whispered one walks off, a lured one stares at the light and sees nothing of the road).
+func why_not(key: String, at: Vector2) -> String:
+	if _cast_reach(key, at) != Reach.NOT:
+		return ""
+	return STOPS_BANNER if _carrier_reach(key, at) == Reach.NOT else MATE_SEES_BANNER
+
+
 ## No tour of its own: BellRingersDirector shows the posts (v0.11 M3).
 func tour() -> Array:
 	return []

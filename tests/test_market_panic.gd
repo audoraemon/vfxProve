@@ -462,8 +462,8 @@ static func _texts(t) -> void:
 		if line == "" or (phase != "" and line == MissionHints.line("market_panic")):
 			missing.append(phase)
 	t.check(missing.is_empty(), "a hint line for every phase (missing: %s)" % [missing])
-	t.check(MissionHints.line("market_panic").contains("Thirty-six") and MarketPanicDirector.FAIR_NEED == 36,
-		"the hint's \"Thirty-six\" is FAIR_NEED in words: retune one, reword the other")
+	t.check(MissionHints.line("market_panic").contains("%d must break" % MarketPanicDirector.FAIR_NEED),
+		"the hint's \"36 must break\" is FAIR_NEED: retune one, reword the other")
 	Kit.done(s)
 
 

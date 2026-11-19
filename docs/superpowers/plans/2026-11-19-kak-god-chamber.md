@@ -248,7 +248,7 @@ Each line has its test in the task that owns the code (Tasks 3 and 4).
   room's layers, a black rect over the room and under nothing: the bar fades with it), and `Game`'s `p_from` and off switch.
 - [ ] **Step 4:** Run `--only=test_god_chamber`: 0 failures. Headless FLOW again: `checks=209 failures=0`.
 - [ ] **Step 5:** A windowed look, on test saves only: `powershell -ExecutionPolicy Bypass -File tools/dev/real_path.ps1 -Out
-  <scratch dir> -Size max -Mode god`; read `probe.log` (no `CHECK` line other than `CHECK ok`) and the hub screenshots.
+  <scratch dir> -Size max -Mode route -Route god`; read `probe.log` (no `CHECK` line other than `CHECK ok`) and the hub screenshots.
 - [ ] **Step 6:** Commit: `feat: the Chamber's parallax and zoom transitions`.
 
 ### Task 5: The user's play test

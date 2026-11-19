@@ -269,3 +269,24 @@ Expected toll, played well: 60 to 100 people (Grave Tide takes about 150, Heaven
 - Which soldiers' duties end when they walk to barracks sick, mission by mission; any mission-specific ruling is
   written down in a rulings document (`docs/KAK_God_Veil_Rulings.md`).
 - Test names and the split into tasks.
+
+## 11. Amendments after reading the code (2026-11-19)
+
+These replace the text above where they differ.
+
+1. **Blight raises no alarm.** Today a blighted building adds `Crowd.BLIGHT_ALARM` (1.0). The rework drops it, for a
+   building and for a mission's own target alike: a Veil power raises no alarm (§3). The 30 s gate jam stays; it is the
+   gate's use gone, not an alarm.
+2. **Evernight does not switch the town's art look.** The game can only change the DAY/NIGHT look by rebuilding the
+   mission. Evernight draws its night by easing the light field's ambient and tint to the night values, muting the
+   lamps and laying a starred sky wash, and eases them back at dawn.
+3. **Dusk does not dim lamps.** The light field cannot dim one light. The dusk layer darkens the ground itself;
+   Blight removes its building's light outright.
+4. **"The ledger exists only with Veil" does not isolate rows by itself.** Silent Doom is in 22 missions' default
+   loadouts. What keeps other rows identical is that an empty ledger changes nothing; a row that casts a Veil power
+   moves and is re-recorded.
+5. **A sick person walks to their home point.** People have no home building, only the point in front of their house.
+   They walk there (a soldier: to the barracks yard) and are then kept indoors as a NIGHT mission keeps its citizens.
+6. **"Inside a blighted building" at Evernight's dawn** means: sheltering in one.
+7. **The Upgrades grid is widened** to hold the seven new locked powers.
+8. **Each new power gets a preview clip** (the draft screen's test requires one per power) and a generated flat icon.

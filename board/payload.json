@@ -7,18 +7,65 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**10** in progress · **29** to do · **164** done\n**4** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**11** in progress · **29** to do · **164** done\n**12** active branches besides Develop-Main\n\n**Since the last update** (<t:1795078367:f>)\n• New: Veil authority tree and powers (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-19T12:50:09+07:00"
+     "timestamp": "2026-11-19T15:52:47+07:00"
+    },
+    {
+     "title": "god/ruin-adjust",
+     "description": "7 commits not in Develop-Main · last commit today · local only\n> fix: a burning man always runs; the ring stays on dry, walkable ground\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/god-chamber",
+     "description": "5 commits not in Develop-Main · last commit today · local only\n> feat: the God's Chamber layout table and greybox art hook\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/sound-natural-2",
+     "description": "1 commit not in Develop-Main · last commit today\n> feat: skill-tree powers heard in full (moments, own cues, takes, level weight)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "clarity/g",
+     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: mission clarity spec and plan -- every mission's steps and hints say what counts, why-not banners, the verb page\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/lantern-campaign-spec",
+     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: mission clarity spec and plan -- every mission's steps and hints say what counts, why-not banners, the verb page\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/clean-footprints",
+     "description": "1 commit not in Develop-Main · last commit today · local only\n> feat: remove the dithered contact shadows round building bases and under trees\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/wish-clarity",
+     "description": "1 commit not in Develop-Main · last commit today · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "god/veil-powers",
+     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: Veil authority powers design (draft for approval)\n\n**In progress** (1)\n• Veil authority tree and powers",
+     "color": 5016537
     },
     {
      "title": "feat/god-progression",
      "description": "merged into Develop-Main · last commit 2 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
-    },
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "god/dominion-t3-old",
      "description": "2 commits not in Develop-Main · last commit 13 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",

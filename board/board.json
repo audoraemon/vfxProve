@@ -1,9 +1,11 @@
 {
- "hash": "d7f332de69f37fa7",
- "updated": "2026-11-19T12:50:09+07:00",
+ "hash": "0d35549b697abe2c",
+ "updated": "2026-11-19T15:52:47+07:00",
  "changes": {
-  "date": "<t:1795067409:f>",
-  "items": []
+  "date": "<t:1795078367:f>",
+  "items": [
+   "New: Veil authority tree and powers (in progress)"
+  ]
  },
  "snapshot": {
   "project": {
@@ -1573,6 +1575,15 @@
     "updated": "2026-10-07",
     "order": 0
    },
+   "veil-authority-powers": {
+    "title": "Veil authority tree and powers",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "god/veil-powers",
+    "updated": "2026-11-19",
+    "order": 5
+   },
    "vfx-anathema": {
     "title": "Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed",
     "status": "done",
@@ -1846,6 +1857,70 @@
    }
   },
   "branches": [
+   {
+    "name": "god/ruin-adjust",
+    "ahead": 7,
+    "behind": 0,
+    "date": "2026-11-19",
+    "subject": "fix: a burning man always runs; the ring stays on dry, walkable ground",
+    "pushed": false
+   },
+   {
+    "name": "feat/god-chamber",
+    "ahead": 5,
+    "behind": 0,
+    "date": "2026-11-19",
+    "subject": "feat: the God's Chamber layout table and greybox art hook",
+    "pushed": false
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 1,
+    "behind": 1,
+    "date": "2026-11-19",
+    "subject": "feat: skill-tree powers heard in full (moments, own cues, takes, level weight)",
+    "pushed": true
+   },
+   {
+    "name": "clarity/g",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-19",
+    "subject": "docs: mission clarity spec and plan -- every mission's steps and hints say what counts, why-not banners, the verb page",
+    "pushed": false
+   },
+   {
+    "name": "claude/lantern-campaign-spec",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-19",
+    "subject": "docs: mission clarity spec and plan -- every mission's steps and hints say what counts, why-not banners, the verb page",
+    "pushed": false
+   },
+   {
+    "name": "feat/clean-footprints",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-19",
+    "subject": "feat: remove the dithered contact shadows round building bases and under trees",
+    "pushed": false
+   },
+   {
+    "name": "feat/wish-clarity",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-19",
+    "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
+    "pushed": false
+   },
+   {
+    "name": "god/veil-powers",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-19",
+    "subject": "docs: Veil authority powers design (draft for approval)",
+    "pushed": false
+   },
    {
     "name": "feat/god-progression",
     "ahead": 0,

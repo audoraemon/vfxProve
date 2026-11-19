@@ -96,3 +96,17 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   muting.
 - V20: `Rules.haste` is read per slot by `advance()` only while it is non-empty, and never for a slot whose `cooldown_of()` is 999 or
   more (`Rules.ONCE_COOLDOWN`); with no haste the cooldown arithmetic is exactly as before.
+- VA1 (Task 4): a blighted building's "light" is its pool in the town's light map: `TownPools.dim(<the structure's instance id>,
+  footprint.end, BlightFx.LIGHT_R, 1.0)` puts its window pool out (drawing only, the registry Pale Serpent uses) and `undim()` gives it
+  back when the foothold heals; `BlightFx.lit(s)` reads it. The sprite's painted windows are left as drawn (the rot tint covers them).
+  Why: houses register no LightField light, and the task may edit only its effect file.
+- VA2 (Task 4): a Blight "building" is a standing, untaken, unblighted structure that has a use (`blightable()`, as today) or walls and
+  windows (`Structure.WINDOWED`). One with no use is rotted by `Structure.set_blighted(true)`, not `EnvironmentField.blight()`, so
+  `structure_blighted` is not sent: `Mission.blight_banner()` would name a house "THE FOUNTAIN" and nothing in the town reads a house's
+  use. Healing goes through `EnvironmentField.unblight()` for both.
+- VA3 (Task 4): a foothold keeps its lasting dusk patch's id on its structure (meta `blight_foothold`, with the ledger's instance id so
+  a patch of an earlier ledger is never ended). A gate's 30 s jam still frees it (`Crowd._free_jams()`), but its foothold (dusk, light)
+  stays until the cap heals it; Blight on a gate that is already a foothold jams it again and plants no second foothold.
+- VA4 (Task 4): who falls ill is fixed at the cast (the picked person, then in the dark the nearest others within ILL_REACH of them, by
+  distance then instance id) and made ill at T_ROT; the picked person dead by then: nobody. A cast on a person or a director's thing
+  leaves the usual 20 s dusk patch (VeilParts.land); a building's lasting patch is its only one.

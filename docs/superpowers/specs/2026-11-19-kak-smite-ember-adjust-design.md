@@ -75,8 +75,7 @@ Rejected options:
   - Smite: a short click equals the old level 5 bolt without the fork; a drag of N grows to the right radius; the cap
     holds; buildings in the grown radius are hit.
   - Ember: a person under the click burns; a building is chosen when no person is near; the burning man runs, frightens
-    others, lights a house he passes, and dies as fire at `BURN_FOR`; indoors he lapses; level 5 leaps from him; a
-    guised person is not picked.
+    others, lights a house he passes, and dies as fire at `BURN_FOR`; indoors he lapses; a guised person is not picked; level 5 lays a ring of burning ground round a lit house, and a trail behind a burning man (one patch every TRAIL_STEP, TRAIL_MOST at most).
 - **Bots and references:** rows that cast Smite at level 5 or Ember near people are re-gated and re-recorded, with
   reasons.
 - **The full gate**, and crowd_check must print `-535548941`.

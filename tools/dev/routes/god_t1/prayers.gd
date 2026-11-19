@@ -105,12 +105,14 @@ static func _doom_aim(bc, ctx: Dictionary, pool: Array[Person], seen_ok := false
 	for f in pool:
 		var mine := 0
 		var foreign := false
-		for v in SilentDoom.victims_at(ctx.crowd._field, f.ground_pos):
+		# The reach the cast gets there (ruling VE1): a Doom laid on the dusk an earlier one left is full size and takes more.
+		var r := GodT1.doom_r(ctx.crowd, f.ground_pos)
+		for v in SilentDoom.victims_at(ctx.crowd._field, f.ground_pos, r):
 			if pool.has(v):
 				mine += 1
 			else:
 				foreign = true
-		if foreign or mine <= most or not (seen_ok or bc._doom_unseen(ctx.crowd, f.ground_pos, spare, 0.3)):
+		if foreign or mine <= most or not (seen_ok or bc._doom_unseen(ctx.crowd, f.ground_pos, spare, 0.3, r)):
 			continue
 		best = f.ground_pos
 		most = mine
@@ -244,10 +246,48 @@ const RISE_NEAR := 4.0
 
 
 # --- Veil: Silent Doom and Blight ---
-# (Blight has no use at First Prayers: the fountain it once rotted only to break an idle stretch was a filler, D38, and is gone.)
+# (The fountain Blight once rotted only to break an idle stretch was a filler, D38, and is gone.) The reworked Blight takes a person (Veil
+# spec 5.2): he falls ill without a sound and walks home to bed. Ruling VE2: when Doom is ready but every Faithful has someone else
+# within its reach (in the dusk the Dooms leave more of them go unseen, and an unseen death frightens nobody, so the street stays full
+# round them), Blight sends that one home, and a later look Dooms the Faithful alone. Only on lit ground, where Blight takes him alone: in the dark it takes the 2 nearest
+# within 2 as well, and a Faithful sent home sick lives on and keeps the poor from hurrying in.
+
+## The one Blight would send home to clear a Doom on a Faithful: for the Faithful nearest the door first, the only other person within
+## the Doom's reach of him, on lit ground, out of doors and not one to spare, whom a Blight on his spot takes (BlightFx.choose()). Null
+## for none.
+static func _blight_blocker(ctx: Dictionary) -> Person:
+	var d := ctx.d as FirstPrayersDirector
+	var crowd: Crowd = ctx.crowd
+	var pool := _faithful(d)
+	var spare := _spare(d)
+	for f in pool:
+		var others: Array[Person] = []
+		for v in SilentDoom.victims_at(crowd._field, f.ground_pos, GodT1.doom_r(crowd, f.ground_pos)):
+			if not pool.has(v):
+				others.append(v as Person)
+		if others.size() != 1:
+			continue
+		var q: Person = others[0]
+		if q == null or spare.has(q) or d.faithful.has(q) or not BlightFx.ill_able(q) or crowd.in_dark(q.ground_pos):
+			continue
+		var pick := BlightFx.choose(crowd._env, crowd, d, q.ground_pos)
+		if pick.kind == &"person" and pick.p == q:
+			return q
+	return null
+
 
 static func act_veil(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
+	var said := _veil_doom(bc, ctx, d)
+	if said != "" or not _ready(bc, ctx, "doom") or not _ready(bc, ctx, "blight"):
+		return said
+	var q := _blight_blocker(ctx)
+	if q != null:
+		return _cast(ctx, "blight", q.ground_pos, "blight the one beside a Faithful, home sick")
+	return ""
+
+
+static func _veil_doom(bc, ctx: Dictionary, d: FirstPrayersDirector) -> String:
 	if _ready(bc, ctx, "doom"):
 		# A runner to the Temple first, where nobody would see it fall.
 		var runners := _runners(d)

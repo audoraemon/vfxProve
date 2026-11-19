@@ -290,3 +290,17 @@ These replace the text above where they differ.
 6. **"Inside a blighted building" at Evernight's dawn** means: sheltering in one.
 7. **The Upgrades grid is widened** to hold the seven new locked powers.
 8. **Each new power gets a preview clip** (the draft screen's test requires one per power) and a generated flat icon.
+
+Departures the build ruled (2026-11-20; rulings file `docs/KAK_God_Veil_Rulings.md`):
+
+9. **Dread of the Dark lays its dusk when the dread lifts** (C18, VC1), not when it lands. A patch laid at the landing would itself
+   be dark ground in reach and freeze everyone within 3 of every click, in the light too, against 5.7's "turns the dusk the god has
+   laid into a trap".
+10. **The Swallowing Dark keeps the town's gates, bridges, postern, dock and fountain** (VA5), besides what `MissionKeeps` spares,
+    as Eminent Domain does: the town's managers go on using them, and a bridge taken out of the walk grid would close the river.
+11. **Shadow Play's kill kind is `&"shade"`** (C12, V11), not `&"shadow"`: the Pale Serpent already owns `&"shadow"` (a body and a
+    remain). The shadowed person's status key stays `&"shadow"`.
+12. **Each new power sets `busy` to its landing time** (C16), so the other slots unlock once it has landed. Silent Doom, Blight and
+    Unseen Hour keep the lock they have today (level 1 in the light is today).
+13. **Evernight lays no dusk patch of its own** (VC7): the whole town is its dark while it lasts (`Dusk.everywhere`), and a patch at
+    the click would only put out the torches near it.

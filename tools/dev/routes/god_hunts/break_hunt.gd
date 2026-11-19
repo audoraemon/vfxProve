@@ -247,7 +247,7 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Veil: Silent Doom, Blight, Nuclear Nova ---
+# --- Veil: Silent Doom, Blight (Slumber is drafted and never cast: ruling VE4) ---
 
 ## Silent Doom on each escort (one each: they stand 2.6 apart), then on the bearer, 10 s apart from the raise: three casts in 20 s, so the 45 s chain between two
 ## bearers never leaves a stretch of idle over 45 s and no work is done ahead of the raise. Blight ruins the Bell Tower first, so the bell never tolls and the

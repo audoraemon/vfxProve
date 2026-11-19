@@ -4500,15 +4500,16 @@ func _flame_swap(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void
 
 ## Silent Doom at `at` would go unseen and take none of `spare` (v0.11 M6, plan decision 304): it takes someone; nobody living out of
 ## doors beyond its radius stands within Crowd.DOOM_WITNESS (and `margin` more, the final review: Exodus's EXODUS_MARGIN, room to spare
-## so no one walking in while it falls sees it) of anyone within it; none within it is one of `spare`. Only reads.
-func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = [], margin := 0.0) -> bool:
+## so no one walking in while it falls sees it) of anyone within it; none within it is one of `spare`. `r` is the Doom's reach (a policy
+## that casts into the dark passes the dark size, GOD_T1.doom_r(), ruling VE1). Only reads.
+func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = [], margin := 0.0, r := SilentDoom.RADIUS) -> bool:
 	var victims: Array[Person] = []
 	var others: Array[Person] = []
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside:
 				continue
-			if p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
+			if p.ground_pos.distance_to(at) <= r:
 				victims.append(p)
 			else:
 				others.append(p)

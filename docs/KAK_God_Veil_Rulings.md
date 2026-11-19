@@ -36,7 +36,8 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 ## Rulings
 
 - V1: tests/test_draft.gd keeps "every power has a preview clip" honest with a named allow-list, `AWAITING_CLIPS`, of the seven new
-  keys (and a check that a key leaves the list once its clip exists) -- the clips are Task 12's; Task 12 empties the list.
+  keys (and a check that a key leaves the list once its clip exists) -- the clips are Task 12's; Task 12 empties the list. (Done: the
+  list is empty, VD3.)
 - V2: the Upgrades grid holds 59 locked powers by lowering `UpgradesScreen.MIN_CELL_H` from 12 to 11 (20 rows of 3 fit above
   GRID_BOTTOM, up to 60 powers), not by a fourth column -- four columns leave cells about 102 px wide, which cut far more names than
   test_descend_screens' "only a few names need a cut" allows; one pixel off a row is the smallest change that keeps its tests green.
@@ -60,7 +61,8 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   Voice of God's), not "none": test_targeting requires an area for every power, and the mark is no area of effect. It is not in
   `VeilRules.RING`, so it never changes size.
 - V10: tests/test_power_sounds.gd takes the seven new keys onto its own `PENDING_QUIET` list (the list made for quiet powers still
-  without their q_<key> cue) and counts 48 quiet powers: their sounds are Task 12's, which takes each key off the list.
+  without their q_<key> cue) and counts 48 quiet powers: their sounds are Task 12's, which takes each key off the list. (Done: the
+  list is empty and the seven cast with `v_<key>`, VD1; the count of 48 stands.)
 - V11: Shadow Play's silent kill kind is `&"shade"`, not `&"shadow"`: `&"shadow"` is already the Pale Serpent's kind (a whole body
   in `Remains.BODY_KINDS`, a quiet slump in `DeathVoices.QUIET_KINDS`, the alarm path in `Crowd._on_killed`); making it silent and
   bodiless would move every Serpent row. `Rules.POWER_KINDS["shadowplay"] = [&"shade"]`; the person's status key stays
@@ -92,11 +94,6 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   Heretic Hunt's, The Informer's and Heart of Faith's quiet doors), while `at_own_post()` still counts his post held; `BellNetwork`
   (no ring); `Crowd._voice()` (no shout); `Person.panic/observe/flee/fight` and `_fight_step()`; the walk: `Person.tick()` holds a
   dreaded non-shadow still, and `Person._step_blocked()` refuses a step from outside into dreaded ground.
-- V21 (ruling C13's sweep): left unread on purpose -- The Informer's `_found()` (the god's turning of the contacts finds him, no
-  person's act), The Lantern's Eye's `_found()` (the mirrors' Eye, no person), Break the Hunt's `_found()` (counts the houses taken,
-  which a shadow bearer no longer takes), Face Halcyon's burn (the stake's clock; a shadowed escort keeps his place in the file, as
-  spec 5.8 counts a shadow's post held), Mira's House Venn's knock (his search reports through `_report()`, which is read), and the
-  director-placed and town-placed stands (`GuardJobs`, `at_own_post()`): the post looks manned.
 - V17: `Crowd.take()` hides the taken at once (`visible = false`): no body is drawn; the power draws its own vanishing.
 - V18: `Crowd.spared()` asks the director through `Crowd.mission_keeps` (registered in `MissionDirector.setup()` beside
   `mission_holds`, cleared with the mission hooks).
@@ -105,42 +102,11 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   muting.
 - V20: `Rules.haste` is read per slot by `advance()` only while it is non-empty, and never for a slot whose `cooldown_of()` is 999 or
   more (`Rules.ONCE_COOLDOWN`); with no haste the cooldown arithmetic is exactly as before.
-- VB0 (Task 5; was V21 in the track): Slumber lays its dusk at the cast (in _build), not when the hush lands at T_FALL -- test_veil_law (not this task's file) checks that every Veil effect lays its dusk at once, and the dusk only shortens sight; the sleep itself is at T_FALL.
-- VB1 (Task 7): Dreamless fixes its victims at the cast (`victims_at(field, at, r, most)`: reach and count from VeilRules, nearest first, then instance id) and decides at T_SIT, not at the cast, who is already asleep: asleep or a shadow's owner -> `crowd.take(p, &"dreamt")` at once; the dead and anyone gone indoors are skipped; the rest sit deep asleep with `statuses[&"dreamless"]`. A sitter who is woken meanwhile (a hurt wakes a deep sleeper) is not killed at the end: the 20 s rest only kills those still sleeping it. Teardown (`_finish`, `_exit_tree`) lifts the status and wakes the sitters; once the kill has run nothing is left to undo.
-- VB2 (Task 7): The walk to the wall is the person's own goal at the cast (`set_goal`), and at T_SIT the last steps are settled by placing him at the spot (nearest standing, non-walkable structure within 2.0, 0.3 off its footprint, on open ground, at most 2.0 from where he stood); with no such wall he sits where he stands. Dreamless lays its dusk at the cast (V21), radius its reach (floored at the dusk radius), and does not ask `Crowd.spared()`: the god's own chosen victims are taken as Silent Doom's are; only Evernight's automatic takes pass the kept by.
-- VB3 (Task 9): Shadow Play's shadow is the person node itself, not a second body: `statuses[&"shadow"]` (its value the casting effect's instance id) and a flat BLACK `self_modulate` with a SILVER edge drawn behind; the person keeps walking with his own goal, post and mind, so posts stay held and every director counts him, and the Task 2 hooks make him see, report, shout, fight, chase and seize nothing. Who becomes a shadow is decided at T_RISE (the living in the open within 3.0 / 6.0, nearest first, then instance id). A later cast on a shadow takes it over (the value becomes its id); an earlier cast's end or teardown lifts only shadows whose value is still its own. Dusk is laid at the cast with the power's radius (V21); `busy = T_RISE` (C16).
-- VB4 (Task 9): Shadow Play's end. Light: each shadow lies down where it stopped with `Person.knock_down(LIE 1.5, true)` -- a lie that does not touch the mind, so a guard is still POST and a citizen still CALM -- and the status and look are lifted. Dark: the soldiers are taken with `crowd.take(p, &"shade")` (C12), not asked `Crowd.spared()` (the god's own chosen, as VB2); the citizens lie down and wake as in the light. Anyone dead or taken meanwhile (Dreamless takes a shadow's owner with `&"dreamt"`) is let go at once and skipped at the end. Teardown (`_finish`, `_exit_tree`) lifts every status this cast still holds and gives every look back; it takes nobody.
-- VC1: Dread of the Dark lays its dusk (VeilRules.DUSK_R at the click) when the dread lifts (at T_FALL + HOLD, or when cut short),
-  not at the cast -- Crowd.dreaded() reads the dark live, so a patch laid at the cast would itself be dark ground in reach: every
-  Dread would freeze its own click circle and "no dark ground in reach: refused" (spec 5.7) would mean nothing. The Swallowing Dark
-  likewise lays its dusk at the end (C14). A Dread freed outside the tree lays none (the world may be going).
-- VC2: who the Dread holds is read every frame while it lasts: the living out of doors within reach on dark ground, not a shadow,
-  and not a sleeper it did not already hold. So one whose dark fades under him (a dusk patch running out) goes free, one who wakes
-  inside freezes then (asleep beats frozen; "a sleeper is not frozen again" while he sleeps), and one a new patch covers freezes.
-  Each person keeps the casts holding him as meta `dread_owners` ({instance id: true}); the status comes off with the last.
-- VC3: DreadOfTheDarkFx.refusal() reads Dusk._patches and Crowd._veils (read only) to find a patch or veil reaching into the light
-  reach: the ledgers have no public walk over their circles, and sampling points would miss a thin overlap. With no crowd it allows
-  the cast (nothing to judge: the VFX Sandbox has no Rules either).
-- VC4: Dread's `busy` is T_FALL (as Unseen Hour's): the other slots unlock once it falls, so Dreamless, Silent Doom and the
-  Swallowing Dark can be cast into it (spec 5.7: it "sets them up").
-- VC5: Cloak of Night's `marked_at` skips people indoors (`Person.inside`), as Corpse Guise's does: the watch's sight is out of doors, a
-  person inside the nearest to the click is not spent on one of the 3 / 8 places, and the next one out of doors is marked instead.
-- VC6: Cloak of Night's `busy` is T_LAND (0.5 s; ruling C16): the other slots unlock once it has landed while the cloak runs its 25 s.
-- VC7: Evernight lays no dusk patch of its own (C14: it uses `dusk.everywhere`): the whole town is its dark while it lasts, and a patch
-  at the click would only put out the torches near it. Its night's rules (the dark, the town-wide veil, the haste, the sight) hold from
-  the end of the wave (WAVE) to the start of the dawn (WAVE + 60 / 90); the dawn's takes run at that moment, the torches are put away
-  then (nobody taken) and the bearers sent back to their posts; the look (ambient, tint, lamp mute, the wash) eases back over DAWN.
-- VC8: Evernight's ambient is eased as a share of what the light field holds each frame (the night's 0.86 of it), not set: the
-  Battlefield writes `LightField.ambient` afresh every frame (its dim), so a set value would be lost and a saved one would undo the dim.
-  The town-wide state is kept in owner ledgers (crowd meta `evernight_night`, light-field meta `evernight_look`): the first owner saves
-  the town as it was, only the lowest-id owner eases the look, the last owner puts everything back (two casts never undo each other).
-- VC9: Evernight's torch is fixed where its bearer stood at nightfall (he is posted there); "a Veil cast whose area touches a torch" is
-  read as a dusk patch laid over its light (`Dusk.laid`, centre distance <= patch r + TORCH_R): every Veil cast leaves its dusk where
-  it lands. The dawn's takes, like the lone's and a torch's, pass over the spared (`Crowd.spared()`). Citizens called to a torch are the
-  calm, awake ones out of doors (`walk_to` a huddle slot inside TORCH_R, nearest first, ties by instance id).
-- VC10: Evernight bench (Task 11 Step 5; Aldermere mission, `--loadout=evernight` against `--bench-cast=evernight --bench-after=4`, three
-  alternating pairs on a loaded machine): avg_ms 15.75 / 18.88, 15.58 / 18.68, 15.71 / 18.77, cast/base 1.199, 1.199, 1.195: median
-  1.20 (bar 1.55). Worst frame of the cast runs 31.03, 25.21, 54.23 ms (base 35.92, 43.64, 42.39).
+- V21 (ruling C13's sweep): left unread on purpose -- The Informer's `_found()` (the god's turning of the contacts finds him, no
+  person's act), The Lantern's Eye's `_found()` (the mirrors' Eye, no person), Break the Hunt's `_found()` (counts the houses taken,
+  which a shadow bearer no longer takes), Face Halcyon's burn (the stake's clock; a shadowed escort keeps his place in the file, as
+  spec 5.8 counts a shadow's post held), Mira's House Venn's knock (his search reports through `_report()`, which is read), and the
+  director-placed and town-placed stands (`GuardJobs`, `at_own_post()`): the post looks manned.
 - VA1 (Task 4): a blighted building's "light" is its pool in the town's light map: `TownPools.dim(<the structure's instance id>,
   footprint.end, BlightFx.LIGHT_R, 1.0)` puts its window pool out (drawing only, the registry Pale Serpent uses) and `undim()` gives it
   back when the foothold heals; `BlightFx.lit(s)` reads it. The sprite's painted windows are left as drawn (the rot tint covers them).
@@ -179,7 +145,7 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   `EnvironmentField.remove()` rebuilds the field's whole spatial index (`_reindex()`, about 10 ms a building here, measured), so
   BUILDINGS_PER_FRAME = 2 caps it: worst 56.4 / 59.5 ms (one a frame: 50.2 ms, and the fold takes 2.8 s), and the fold there takes about
   1.9 s, not 1 s (the suite's own site finishes within 1 s). Under 50 ms needs one index rebuild per frame for several buildings, a batch
-  remove in environment_field.gd (not this task's file).
+  remove in environment_field.gd (not this task's file). (Done in Task 10b: VA10 replaces BUILDINGS_PER_FRAME 2 and these numbers.)
 - VA10 (Task 10b, C19 item 1): `EnvironmentField.remove(s, announce, keep_node, reindex := true)`. The default (true) is today's path
   unchanged (a full `_reindex()`). `reindex = false` strikes `s` from just the index cells its footprint covers (`_unindex()`, before any
   free; an emptied cell is dropped; `layout_epoch` bumped), so the deferred index is never stale: it is what a full rebuild without `s`
@@ -190,6 +156,44 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   takes 40 -> 15 frames (within 1 s even at 30 fps). Game bench (`--bench --loadout=swallow --bench-cast=swallow --bench-after=17`,
   t 17-26 s, the fold; machine loaded): worst frame 60.3 ms before, 39.9 / 37.0 ms after, against 36.9 / 35.9 ms in the same
   session's runs without the cast.
+- VB0 (Task 5; was V21 in the track): Slumber lays its dusk at the cast (in _build), not when the hush lands at T_FALL -- the dusk only
+  shortens sight; the sleep itself is at T_FALL. (Written when test_veil_law's `_stubs` still checked every Veil effect's dusk at the cast;
+  ruling C14 dropped that check, each power's own suite says when its dusk lands, and Slumber's stays at the cast.)
+- VB1 (Task 7): Dreamless fixes its victims at the cast (`victims_at(field, at, r, most)`: reach and count from VeilRules, nearest first, then instance id) and decides at T_SIT, not at the cast, who is already asleep: asleep or a shadow's owner -> `crowd.take(p, &"dreamt")` at once; the dead and anyone gone indoors are skipped; the rest sit deep asleep with `statuses[&"dreamless"]`. A sitter who is woken meanwhile (a hurt wakes a deep sleeper) is not killed at the end: the 20 s rest only kills those still sleeping it. Teardown (`_finish`, `_exit_tree`) lifts the status and wakes the sitters; once the kill has run nothing is left to undo.
+- VB2 (Task 7): The walk to the wall is the person's own goal at the cast (`set_goal`), and at T_SIT the last steps are settled by placing him at the spot (nearest standing, non-walkable structure within 2.0, 0.3 off its footprint, on open ground, at most 2.0 from where he stood); with no such wall he sits where he stands. Dreamless lays its dusk at the cast (V21), radius its reach (floored at the dusk radius), and does not ask `Crowd.spared()`: the god's own chosen victims are taken as Silent Doom's are; only Evernight's automatic takes pass the kept by.
+- VB3 (Task 9): Shadow Play's shadow is the person node itself, not a second body: `statuses[&"shadow"]` (its value the casting effect's instance id) and a flat BLACK `self_modulate` with a SILVER edge drawn behind; the person keeps walking with his own goal, post and mind, so posts stay held and every director counts him, and the Task 2 hooks make him see, report, shout, fight, chase and seize nothing. Who becomes a shadow is decided at T_RISE (the living in the open within 3.0 / 6.0, nearest first, then instance id). A later cast on a shadow takes it over (the value becomes its id); an earlier cast's end or teardown lifts only shadows whose value is still its own. Dusk is laid at the cast with the power's radius (V21); `busy = T_RISE` (C16).
+- VB4 (Task 9): Shadow Play's end. Light: each shadow lies down where it stopped with `Person.knock_down(LIE 1.5, true)` -- a lie that does not touch the mind, so a guard is still POST and a citizen still CALM -- and the status and look are lifted. Dark: the soldiers are taken with `crowd.take(p, &"shade")` (C12), not asked `Crowd.spared()` (the god's own chosen, as VB2); the citizens lie down and wake as in the light. Anyone dead or taken meanwhile (Dreamless takes a shadow's owner with `&"dreamt"`) is let go at once and skipped at the end. Teardown (`_finish`, `_exit_tree`) lifts every status this cast still holds and gives every look back; it takes nobody.
+- VC1: Dread of the Dark lays its dusk (VeilRules.DUSK_R at the click) when the dread lifts (at T_FALL + HOLD, or when cut short),
+  not at the cast -- Crowd.dreaded() reads the dark live, so a patch laid at the cast would itself be dark ground in reach: every
+  Dread would freeze its own click circle and "no dark ground in reach: refused" (spec 5.7) would mean nothing. The Swallowing Dark
+  likewise lays its dusk at the end (C14). A Dread freed outside the tree lays none (the world may be going).
+- VC2: who the Dread holds is read every frame while it lasts: the living out of doors within reach on dark ground, not a shadow,
+  and not a sleeper it did not already hold. So one whose dark fades under him (a dusk patch running out) goes free, one who wakes
+  inside freezes then (asleep beats frozen; "a sleeper is not frozen again" while he sleeps), and one a new patch covers freezes.
+  Each person keeps the casts holding him as meta `dread_owners` ({instance id: true}); the status comes off with the last.
+- VC3: DreadOfTheDarkFx.refusal() reads Dusk._patches and Crowd._veils (read only) to find a patch or veil reaching into the light
+  reach: the ledgers have no public walk over their circles, and sampling points would miss a thin overlap. With no crowd it allows
+  the cast (nothing to judge: the VFX Sandbox has no Rules either).
+- VC4: Dread's `busy` is T_FALL (as Unseen Hour's): the other slots unlock once it falls, so Dreamless, Silent Doom and the
+  Swallowing Dark can be cast into it (spec 5.7: it "sets them up").
+- VC5: Cloak of Night's `marked_at` skips people indoors (`Person.inside`), as Corpse Guise's does: the watch's sight is out of doors, a
+  person inside the nearest to the click is not spent on one of the 3 / 8 places, and the next one out of doors is marked instead.
+- VC6: Cloak of Night's `busy` is T_LAND (0.5 s; ruling C16): the other slots unlock once it has landed while the cloak runs its 25 s.
+- VC7: Evernight lays no dusk patch of its own (C14: it uses `dusk.everywhere`): the whole town is its dark while it lasts, and a patch
+  at the click would only put out the torches near it. Its night's rules (the dark, the town-wide veil, the haste, the sight) hold from
+  the end of the wave (WAVE) to the start of the dawn (WAVE + 60 / 90); the dawn's takes run at that moment, the torches are put away
+  then (nobody taken) and the bearers sent back to their posts; the look (ambient, tint, lamp mute, the wash) eases back over DAWN.
+- VC8: Evernight's ambient is eased as a share of what the light field holds each frame (the night's 0.86 of it), not set: the
+  Battlefield writes `LightField.ambient` afresh every frame (its dim), so a set value would be lost and a saved one would undo the dim.
+  The town-wide state is kept in owner ledgers (crowd meta `evernight_night`, light-field meta `evernight_look`): the first owner saves
+  the town as it was, only the lowest-id owner eases the look, the last owner puts everything back (two casts never undo each other).
+- VC9: Evernight's torch is fixed where its bearer stood at nightfall (he is posted there); "a Veil cast whose area touches a torch" is
+  read as a dusk patch laid over its light (`Dusk.laid`, centre distance <= patch r + TORCH_R): every Veil cast leaves its dusk where
+  it lands. The dawn's takes, like the lone's and a torch's, pass over the spared (`Crowd.spared()`). Citizens called to a torch are the
+  calm, awake ones out of doors (`walk_to` a huddle slot inside TORCH_R, nearest first, ties by instance id).
+- VC10: Evernight bench (Task 11 Step 5; Aldermere mission, `--loadout=evernight` against `--bench-cast=evernight --bench-after=4`, three
+  alternating pairs on a loaded machine): avg_ms 15.75 / 18.88, 15.58 / 18.68, 15.71 / 18.77, cast/base 1.199, 1.199, 1.195: median
+  1.20 (bar 1.55). Worst frame of the cast runs 31.03, 25.21, 54.23 ms (base 35.92, 43.64, 42.39).
 - VD1 (Task 12): the Veil's seven new powers cast with `v_<key>` (the brief's names: v_slumber, v_cloak, v_dreamless, v_dread,
   v_shadowplay, v_swallow, v_evernight), not the `q_<key>` every other quiet power has; tests/test_power_sounds.gd's own-cue rule
   (`own_cue()`) reads `v_` for those seven and checks that no two q_ or v_ cues share a file. PENDING_QUIET (V10) is empty. The
@@ -205,3 +209,52 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   --look=2.5,0; shadowplay --seconds=8; swallow --zoom=0.4 --seconds=24 (past the fold); evernight --seconds=15 --zoom=0.8.
 - VD3 (Task 12): test_draft's AWAITING_CLIPS (V1) is empty: every power has its preview clip. The seven flat placeholder icons
   were already made in Task 1 (`tools/dev/make_power_icons.py` veil_glyph); Task 12 leaves them as they are.
+
+## Task 13a: the Veil's Tier 1 nights and Hunts (VE)
+
+- VE1 (Task 13a): a Veil bot sizes a Silent Doom by the ground under its aim, as the cast will: `GOD_T1.doom_r(crowd, at)`
+  (tools/dev/routes/god_t1.gd: `VeilRules.size("doom", "RADIUS", crowd.in_dark(at))`, the question Rules.cast() stamps), and
+  behaviour_check's `_doom_unseen()` takes the reach as an optional last argument (default `SilentDoom.RADIUS`: every other caller is
+  unchanged). First Prayers' `_doom_aim()` counts its victims and its witnesses at that reach, so a Doom laid on an earlier Doom's dusk
+  (full size, 1.6) is never thought to take only the Faithful when it would take a bystander too. On its own it moved no gate run
+  (seed 1's checksum was the same); it is kept because the light count is wrong in the dark.
+- VE2 (Task 13a): First Prayers x Veil failed on idle (`gate prayers route=god:veil wins=3/3 median=116 idle_max=46 FAIL`; seed 1
+  116.5 s, idle 46: the last Faithful fell at 70.7 s and the poor took 46 s to go in). The cause is the dusk alone: seed 1 with the
+  ledger switched off (a local experiment, not committed) gave the reference row's own checksum (-901602410, 93.7 s, idle 39). In the
+  dusk the Dooms leave, more of them go unseen; an unseen death frightens nobody, so the street stays full round the Faithful, and
+  the policy, which Dooms a Faithful only when nobody else stands in its reach, waited 10-19 s for each clean shot (22.2 -> 41.6,
+  53.3 -> 70.7). Fix in the bot, with the law: Blight now has a use here. When Doom is ready but every Faithful has someone else in its
+  reach, Blight sends that one home sick (`_blight_blocker()`: the only other person within the Doom's reach of a Faithful, the nearest
+  the door first, on lit ground so Blight takes him alone, not one of the grieving, and one Blight's own pick takes), and a later look
+  Dooms the Faithful alone. After: `gate prayers route=god:veil none_lost=- wins=3/3 median=118 idle_max=39 PASS`. Tried and dropped:
+  Blight on a Faithful (he lives on, sick at home, and while a Faithful lives the poor do not hurry in: seed 1 won at 224 s, idle 182);
+  a foothold over the shrine's door (it is a well shrine, and no plain house stands within 2.5 of its door).
+- VE3 (Task 13a): Hide the Faithful (Hunt 1) x Veil fell from 3/3 (140 / 126 / 182 s, idle 45, docs/KAK_God_P5_Summary.md) to
+  `gate hide_faithful route=god:veil none_lost=- wins=1/3 median=128 idle_max=57 FAIL` (seed 1 lost at 103.5 s, seed 2 lost at
+  184.4 s; seed 3 kept its reference checksum). The cause is the dusk alone: seed 1 with the ledger switched off (local experiment)
+  gave its reference row's checksum (-802237474, won at 106.9 s). With it, the Doom on a patrol's seizer at 59.5 s was cast on the
+  dusk an earlier Doom left, so it was full size (1.6) and took the marched believer with his seizer: a believer lost. The policy
+  measured the believer's room with the light reach (0.8 + BLOW_GAP). Fix in the bot, in three steps, all on the law:
+  (1) every Veil Doom here is sized by the ground under its aim (`GOD_T1.doom_r()`, VE1) for the believers' room (`_seizer_aim`,
+  `_flock_clear`) and for who it takes (`_doom_ok`'s `r`) -- after it: 3/3 but idle 80 / 57 (the smaller blows the believers' room now
+  allows leave more of the watch standing, so the second household waits for the 2:20 latest time); (2) once the first household is
+  out and nothing is to answer (no seizer, no watcher near sight), the policy breaks the watch itself, one unseen man at a time
+  (`doom a watch, to break the watch`): HideFaithfulDirector sets the second household out the moment no soldier of the watch stands
+  (P5-T17-R1), so this is a real play, not an idle-clock kill (P5-T9-R9 stays retired) and not a filler -- alone it gave idle 60 on
+  seed 1, because a gate pair always has a citizen in sight; (3) `_doom_ok` judges a death in the dusk as seen from 0.6 as far
+  (NightRules.NIGHT_SIGHT, the crowd's own rule), so the Doom after the first lands unseen in the dusk the first left -- lay the dark,
+  strike inside it. After: `gate hide_faithful route=god:veil none_lost=- wins=3/3 median=199 idle_max=44 PASS` (198.7 / 204.3 /
+  127.7 s). The two longer wins sit near the Hunt's pooled band's top (200 s); the band is judged on all six types (`--judge`), which
+  this task does not run.
+- VE4 (Task 13a, ruling C9): the four other Veil Hunts, gated with the loadout Task 2 left (doom, blight, slumber), win as they are,
+  so nothing in their bots changes but stale comments. Before this build (docs/KAK_God_P5_Summary.md, the third key then Tsunami
+  Breaker or Nuclear Nova) and now:
+  Silence the witness 3/3, 193 s, idle 44 -> `gate silence_witness route=god:veil none_lost=- wins=3/3 median=206 idle_max=45 PASS`
+  (its policy casts Slumber over the file where Nova fell, C9; seed 2 cast it once, at 86.5 s);
+  Expel the inquisitor 3/3, 181 s, idle 39 -> `gate expel_inquisitor route=god:veil none_lost=- wins=3/3 median=181 idle_max=39 PASS`;
+  Break the hunt 3/3, 177 s, idle 24 -> `gate break_hunt route=god:veil none_lost=- wins=3/3 median=177 idle_max=24 PASS`;
+  Face Halcyon 3/3, 196 s, idle 45 -> `gate face_halcyon route=god:veil none_lost=- wins=3/3 median=196 idle_max=45 PASS`.
+  Expel, Break and Face win with Silent Doom and Blight alone (their policies never cast a third key, before or now); Slumber stays
+  drafted in their LOADOUT, as Task 2 left it, so the loadout the reference rows and test_hunt_tools' PLAYS name does not move. Their
+  Dooms are still measured with the light reach and their gates lost no one by it; were a believer ever to fall with an escort
+  there, VE1's `doom_r()` is the fix, as in Hunt 1.

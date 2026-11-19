@@ -275,6 +275,20 @@ static func _mouse(t) -> void:
 	t.check(bar.page == 2 and aim.slot == armed, "a click on a tab turns to it, the armed slot kept")
 	m._unhandled_input(_click(bar.tab_rect(0, VIEW).get_center()))
 	t.check(bar.page == 0, "and on another")
+	# R5: a click inside the open bar that is no tile and no tab (the gauge, the tabs line, the name line) is the bar's and casts nothing.
+	var gap := Vector2.INF
+	var rect := bar.rect(VIEW)
+	for y in range(int(rect.position.y) + 1, int(rect.end.y), 2):
+		for x in range(int(rect.position.x) + 1, int(rect.end.x), 2):
+			var at := Vector2(x, y)
+			if gap == Vector2.INF and bar.hit(at, VIEW) == "":
+				gap = at
+	t.check(gap != Vector2.INF and bar.open, "the open bar has a point that is neither a tile nor a tab")
+	aim.pick(bar.slot_for_digit(0))
+	var held := aim.slot
+	t.check(held >= 0 and m.bar_input(_click(gap)) and aim.slot == held, "a click on the open bar's empty part is swallowed and keeps the armed ability (slot %d)" % aim.slot)
+	t.check(not m.bar_input(_click(bar.tile_rect(0, VIEW).get_center())), "a tile click is still left to the slot branch")
+	t.check(not m.bar_input(_click(Vector2(rect.position.x - 3.0, rect.position.y - 3.0))), "and a click outside the bar is not the bar's")
 	WorldView.test_mouse = bar.tile_rect(0, VIEW).get_center()
 	var first := hud._signature()
 	WorldView.test_mouse = Vector2(5.0, 5.0)

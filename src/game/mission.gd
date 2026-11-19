@@ -1407,7 +1407,7 @@ func wakes_bar(event: InputEvent) -> bool:
 
 ## A Might night's bar takes its keys and clicks before the slot row's: 1..9 and 0 arm a tile of the page shown (a key past the page's
 ## last arms nothing), Ctrl shows or hides the bar, Z and X turn the page, a click on the strip opens the bar and a click on a tab turns
-## to it. True when the event was the bar's. A click on a tile is left to the slot branch (HUD.slot_at answers for the bar).
+## to it, any other click inside the open bar is swallowed. True when the event was the bar's. A click on a tile is left to the slot branch (HUD.slot_at answers for the bar).
 func bar_input(event: InputEvent) -> bool:
 	var bar := _hud.bar
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -1435,6 +1435,8 @@ func bar_input(event: InputEvent) -> bool:
 			bar.turn(int(hit.substr(4)) - bar.page)
 			UiSound.play(&"ui_mode")
 			return true
+		if hit == "" and bar.open and not bar.pages().is_empty() and _hud.slots_rect().has_point(event.position):
+			return true  # the open bar's gauge, tabs line or name line: the click is the bar's, never a cast into the town under it
 	return false
 
 

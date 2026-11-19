@@ -144,9 +144,9 @@ func status_layout() -> Dictionary:
 	return {"line_ys": ys, "seal_y": seal_y, "hunt_y": hunt_y, "top": top if (not ys.is_empty() or seal_y > 0.0 or hunt_y > 0.0) else BUTTONS_Y}
 
 
-## True when the god has an ability to draft; a god with none cannot Descend (Ruling P8).
+## True when the god has an ability in its tree (the night brings all of them, the sealed one locked); a god with none cannot Descend (Ruling P8).
 func can_descend() -> bool:
-	return not _slot.draftable().is_empty()
+	return not _slot.in_tree().is_empty()
 
 
 ## BLOCKED when the god cannot Descend, else "".

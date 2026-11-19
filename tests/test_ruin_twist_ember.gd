@@ -14,6 +14,8 @@ static func run(t) -> void:
 	_consts(t)
 	_ring_spots(t)
 	_house_ring(t)
+	_ring_dry(t)
+	_ring_most(t)
 	_durations(t)
 	var made := RD._setup()
 	_person_burns(t, made)
@@ -141,6 +143,70 @@ static func _house_ring(t) -> void:
 		if b.contains(p.at, 0.0):
 			inside += 1
 	t.check(not ctx.crowd.fires.patches.is_empty() and inside == 0, "no patch is laid inside a building (%d)" % inside)
+	_end(fx)
+	_drop(ctx)
+
+
+## A house by the river: no patch on the water (City.rivers(), as the Dragonfire Parade skips them), nor on a cell nobody
+## can walk.
+static func _ring_dry(t) -> void:
+	var river: Rect2 = TownLayout.RIVER
+	var ctx := _ctx(1)
+	var a := _house(ctx, Vector2(0.0, river.position.y - 0.5))
+	var all := EmberFx.ring_spots(a, 1.0)
+	var wet := 0
+	for g in all:
+		if river.has_point(g):
+			wet += 1
+	var dry := EmberFx.ring_spots(a, 1.0, ctx.env, null, [river])
+	var dry_ok := not dry.is_empty() and dry.size() == all.size() - wet
+	for g in dry:
+		dry_ok = dry_ok and not river.has_point(g)
+	t.check(wet > 0 and dry_ok, "(pure) %d of %d spots lie in the river and are left out" % [wet, all.size()])
+	var fx := _cast(ctx, a.center(), 5)
+	fx._process(EmberFx.T_LAND + 0.05)
+	var in_river := 0
+	for p in ctx.crowd.fires.patches:
+		for r: Rect2 in City.current().rivers():
+			if r.has_point(p.at):
+				in_river += 1
+	t.check(fx.lit and not ctx.crowd.fires.patches.is_empty() and in_river == 0,
+		"level 5 on a house by the river: %d patches, none on the water" % ctx.crowd.fires.patches.size())
+	_end(fx)
+	_drop(ctx)
+	# The walk grid: in the town, every ring spot is on a walkable cell.
+	var made := RD._setup()
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[2]
+	var bad := 0
+	var n := 0
+	for s: Structure in env.structures():
+		if s.destroyed or not FireManager.burns(s):
+			continue
+		for g in EmberFx.ring_spots(s, 1.0, env, grid, City.current().rivers()):
+			n += 1
+			if not grid.walkable(g) or env.blocked(g, 0.0):
+				bad += 1
+	t.check(n > 0 and bad == 0, "every ring spot round the town's burnables is walkable and dry (%d spots, %d bad)" % [n, bad])
+	RD._done(made)
+
+
+## A large building's ring is thinned evenly to RING_MOST (16) patches.
+static func _ring_most(t) -> void:
+	var ctx := _ctx(1)
+	var big := ctx.env.add_structure(Rect2(Vector2(5.0, 5.0), Vector2(6.0, 5.0)), 40.0, Structure.Kind.TEMPLE, &"temple")
+	var spots := EmberFx.ring_spots(big, 1.0)
+	var fx := _cast(ctx, big.center(), 5)
+	fx._process(EmberFx.T_LAND + 0.05)
+	var n := ctx.crowd.fires.patches.size()
+	var lo := INF
+	var hi := 0.0
+	for k in spots.size():
+		var d := spots[k].distance_to(spots[(k + 1) % spots.size()])
+		lo = minf(lo, d)
+		hi = maxf(hi, d)
+	t.check(EmberFx.RING_MOST == 16 and spots.size() == 16 and fx.lit and n == 16 and hi <= lo * 2.0 + 0.01,
+		"a 6 x 5 temple (perimeter 26.8): %d spots, %d patches, gaps %.2f-%.2f" % [spots.size(), n, lo, hi])
 	_end(fx)
 	_drop(ctx)
 

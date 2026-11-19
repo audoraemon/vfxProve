@@ -20,6 +20,9 @@ static func run(t) -> void:
 	_lapses(t, made)
 	_trail(t, made)
 	_cleared(t, made)
+	_runs_from_shelter(t, made)
+	_runs_free(t, made)
+	_relay(t, made)
 	_perf(t, made)
 	RD._done(made)
 
@@ -222,6 +225,101 @@ static func _cleared(t, made: Array) -> void:
 	crowd.burning.clear()
 	_advance(crowd, Burning.BURN_FOR + 0.5)
 	t.check(p.is_alive() and not p.burning() and crowd.burning.count() == 0, "cleared: the burning lapses, he lives")
+
+
+## Steps him and the town together (his feet, the shelters, the burning) for `seconds`; true if he was ever indoors.
+static func _walk(crowd: Crowd, p: Person, seconds: float) -> bool:
+	var was_in := false
+	for i in roundi(seconds / DT):
+		if is_instance_valid(p) and p.is_alive():
+			p.frame(DT)
+		crowd.advance(DT)
+		was_in = was_in or (is_instance_valid(p) and p.inside)
+	return was_in
+
+
+## A citizen on his way into a shelter, set alight: he drops it and runs, never gets indoors, and dies as fire (fix round
+## 1: panic() alone refuses a mind in SHELTER, and the door would have saved him).
+static func _runs_from_shelter(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var field: EnemyField = made[3]
+	var house: Structure = null
+	var spot := Vector2.INF
+	for s: Structure in crowd.shelters.shelters.keys():
+		var g := Vector2(s.footprint.end.x + 2.0, s.center().y)
+		if is_instance_valid(s) and not s.destroyed and grid.walkable(g):
+			house = s
+			spot = g
+			break
+	var p := _put(made, 32, spot)
+	var sent := house != null and crowd.shelters.send_in(p, house)
+	t.check(sent and p.mind == Person.Mind.SHELTER and p.shelter == house, "(set-up) he is on his way into a shelter 2.0 off")
+	var got := []
+	var grab := func(e: DummyEnemy, kind: StringName) -> void:
+		if e == p:
+			got.append(kind)
+	field.enemy_killed.connect(grab)
+	var laid := crowd.burn(p, Burning.BURN_FOR, p.ground_pos + Vector2(0.5, 0.0))
+	var ran := p.mind == Person.Mind.PANIC and p.shelter == null
+	var was_in := _walk(crowd, p, Burning.BURN_FOR + 0.2)
+	field.enemy_killed.disconnect(grab)
+	t.check(laid and ran and not was_in and not p.is_alive() and got == [Burning.KIND],
+		"on his way into a shelter, set alight: he drops it and runs (%s), never gets indoors (%s), dies as fire (%s)"
+		% [ran, was_in, got])
+
+
+## From a fight (a citizen) or leaving the town, he runs too; a soldier in a fight fights on, and a god's hold (told there is
+## nothing to fear) wins: he burns but does not run.
+static func _runs_free(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var fighter := _put(made, 33, at)
+	var foe := _put(made, 34, at + Vector2(2.0, 0.0))
+	fighter.fight(foe, 10.0, 0.0)
+	var fighting := fighter.mind == Person.Mind.FIGHT
+	crowd.burn(fighter, Burning.BURN_FOR, at)
+	t.check(fighting and fighter.mind == Person.Mind.PANIC and fighter.burning(),
+		"a citizen in a fight, set alight, runs (mind %d)" % fighter.mind)
+	var leaving := _put(made, 35, at + Vector2(0.0, 2.0))
+	leaving.flee()
+	var fled := leaving.mind == Person.Mind.FLEE
+	crowd.burn(leaving, Burning.BURN_FOR, leaving.ground_pos)
+	t.check(fled and leaving.mind == Person.Mind.PANIC and leaving.passing_gate == null,
+		"one leaving the town, set alight, runs in panic (mind %d)" % leaving.mind)
+	var soldier: Person = crowd.soldiers.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive())[0]
+	soldier.ground_pos = at + Vector2(-2.0, 0.0)
+	soldier.inside = false
+	soldier.fight(foe, 10.0, 0.0)
+	crowd.burn(soldier, Burning.BURN_FOR, soldier.ground_pos)
+	t.check(soldier.burning() and soldier.mind == Person.Mind.FIGHT, "a soldier in a fight burns and fights on")
+	var calm := _put(made, 36, at + Vector2(0.0, -2.0))
+	calm.reassure(10.0)
+	crowd.burn(calm, Burning.BURN_FOR, calm.ground_pos)
+	t.check(calm.burning() and calm.mind != Person.Mind.PANIC and calm.fearless_left > 0.0,
+		"a god's hold wins: told there is nothing to fear, he burns but does not run (mind %d)" % calm.mind)
+	soldier.stop_fighting()
+	crowd.burning.clear()
+
+
+## A re-lay after his status was taken off from outside never adds a second entry; once the old one has lapsed it lays anew.
+static func _relay(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var p := _put(made, 37, at)
+	crowd.burn(p, Burning.BURN_FOR, at)
+	p.statuses.erase(Burning.STATUS)
+	var again := crowd.burn(p, Burning.BURN_FOR, at)
+	var entries := crowd.burning._on.size()
+	crowd.advance(DT)
+	var lapsed := crowd.burning._on.size() == 0 and crowd.burning.count() == 0
+	var anew := crowd.burn(p, Burning.BURN_FOR, at)
+	t.check(not again and entries == 1 and lapsed and anew and crowd.burning._on.size() == 1 and p.burning(),
+		"a re-lay after an outside erase is refused (entries %d), and lays once the old entry has lapsed" % entries)
+	crowd.burning.clear()
 
 
 ## 12 burning people in the town, each with a trail, running as they do: the burning's step costs under 1 ms a frame on

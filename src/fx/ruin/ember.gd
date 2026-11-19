@@ -19,6 +19,8 @@ const PERSON_R := 0.6
 const TRAIL_STEP := 1.0
 const TRAIL_MOST := 8
 const RING_OUT := 0.6
+## A ring has at most this many patches (a cathedral's is thinned evenly).
+const RING_MOST := TRAIL_MOST * 2
 const SPARK := [Color("fff6d8"), Color("ffc14a"), Color("ff6a1a"), Color(0.6, 0.15, 0.05, 0.6)]
 ## How high on a person the spark comes down (screen pixels).
 const PERSON_LIFT := 10.0
@@ -67,13 +69,16 @@ static func pick_person(field: EnemyField, at: Vector2) -> Person:
 
 
 ## The ring of burning ground round `s` (pure): points about RING_OUT outside its footprint, round the rectangle grown by
-## RING_OUT, spaced `step` along it (evenly, so the ring closes), starting at its top-left corner. With `env`, a point inside
-## another building is left out.
-static func ring_spots(s: Structure, step: float, env: EnvironmentField = null) -> Array[Vector2]:
+## RING_OUT, spaced `step` along it (evenly, so the ring closes), starting at its top-left corner. Left out: a point inside
+## another building (with `env`), on a cell nobody can walk (with `grid`), or in a river (`rivers`: City.rivers(), as the
+## Dragonfire Parade's patches skip them). A ring longer than RING_MOST steps is spread evenly over RING_MOST points instead
+## (a stride picked from the `step` ring would leave gaps of one and two steps).
+static func ring_spots(s: Structure, step: float, env: EnvironmentField = null, grid: WalkGrid = null,
+		rivers: Array = []) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var r := s.footprint.grow(RING_OUT)
 	var perim := 2.0 * (r.size.x + r.size.y)
-	var n := maxi(roundi(perim / maxf(step, 0.01)), 4)
+	var n := clampi(roundi(perim / maxf(step, 0.01)), 4, RING_MOST)
 	var corners: Array[Vector2] = [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
 	var sides: Array[float] = [r.size.x, r.size.y, r.size.x, r.size.y]
 	for k in n:
@@ -85,7 +90,15 @@ static func ring_spots(s: Structure, step: float, env: EnvironmentField = null) 
 		var g := corners[i].lerp(corners[(i + 1) % 4], clampf(along / sides[i], 0.0, 1.0))
 		if env != null and env.blocked(g, 0.0):
 			continue
-		out.append(g)
+		if grid != null and not grid.walkable(g):
+			continue
+		var wet := false
+		for river: Rect2 in rivers:
+			if river.has_point(g):
+				wet = true
+				break
+		if not wet:
+			out.append(g)
 	return out
 
 
@@ -135,7 +148,7 @@ func _land() -> void:
 			ctx.crowd.fires.ignite(fuel, lv_start_level)
 			lit = ctx.crowd.fires.is_burning(fuel)
 			if lit and twist:
-				for g in ring_spots(fuel, TRAIL_STEP, ctx.env):
+				for g in ring_spots(fuel, TRAIL_STEP, ctx.env, ctx.crowd._grid, City.current().rivers()):
 					ctx.crowd.fires.lay(g)
 		else:
 			# No town to keep the fire: the blow itself is fire's.

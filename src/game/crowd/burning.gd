@@ -32,9 +32,12 @@ const SCREAM := &"cit_scream"
 const DUE := 1e-6
 
 var _crowd: Crowd
-## One entry a burning person: {p, level, spread_in, trail, every, most, laid, anchor}. `p` untyped: he may be freed (carried
+## One entry a burning person: {p, id, level, spread_in, trail, every, most, laid, anchor}. `p` untyped: he may be freed (carried
 ## off) before his time is up, and a freed node errors in a typed slot.
 var _on: Array = []
+## The instance ids of everyone with an entry, live or still being stepped: one person never has two (a re-lay after his
+## status was taken off from outside is refused until his old entry has lapsed).
+var _ids := {}
 
 
 func _init(crowd: Crowd = null) -> void:
@@ -42,14 +45,18 @@ func _init(crowd: Crowd = null) -> void:
 
 
 ## Sets `p` alight for `seconds`, from `from` (where the fire came from): false (and nothing laid) when he is gone, dead,
-## inside, or burning already. A building he brushes catches at `level`.
+## inside, burning already, or still has an entry here. A building he brushes catches at `level`.
 func lay(p: Person, seconds: float, from: Vector2, level := LIGHT_AT) -> bool:
 	if p == null or not is_instance_valid(p) or not p.is_alive() or p.inside or p.burning() or seconds <= 0.0:
 		return false
+	if _ids.has(p.get_instance_id()):
+		return false
 	p.statuses[STATUS] = seconds
+	_free_to_run(p)
 	p.panic(from, FRIGHT_R, KIND, false, SHELTERS)
-	_on.append({"p": p, "level": level, "spread_in": SPREAD_EVERY, "trail": Callable(), "every": 0.0, "most": 0,
-		"laid": 0, "anchor": p.ground_pos})
+	_ids[p.get_instance_id()] = true
+	_on.append({"p": p, "id": p.get_instance_id(), "level": level, "spread_in": SPREAD_EVERY, "trail": Callable(),
+		"every": 0.0, "most": 0, "laid": 0, "anchor": p.ground_pos})
 	if _crowd != null:
 		_crowd._voice(p, SCREAM)
 	return true
@@ -82,10 +89,12 @@ func step(delta: float) -> void:
 	_on = []
 	for b: Dictionary in now:
 		if not is_instance_valid(b.p):
+			_ids.erase(b.id)
 			continue  # carried off and freed: nothing of his is left
 		var p: Person = b.p
 		if not p.is_alive() or not p.statuses.has(STATUS) or p.inside:
 			p.statuses.erase(STATUS)
+			_ids.erase(b.id)
 			continue
 		_lay_trail(b, p)
 		b.spread_in = float(b.spread_in) - delta
@@ -99,6 +108,7 @@ func step(delta: float) -> void:
 			_on.append(b)
 			continue
 		p.statuses.erase(STATUS)
+		_ids.erase(b.id)
 		if _crowd != null and _crowd._field != null:
 			_crowd._field.kill(p, KIND, p.ground_pos)
 
@@ -109,6 +119,7 @@ func clear() -> void:
 		if is_instance_valid(b.p):
 			(b.p as Person).statuses.erase(STATUS)
 	_on.clear()
+	_ids.clear()
 
 
 ## How many are burning now.
@@ -118,6 +129,27 @@ func count() -> int:
 		if is_instance_valid(b.p) and (b.p as Person).is_alive():
 			n += 1
 	return n
+
+
+## Whatever he was set on that would keep him from running is dropped first, through the town's own ways out of it, so the
+## burning's panic takes: on his way into a shelter (ShelterManager drops him from its list as his mind changes), leaving the
+## town, or a citizen in a fight. A god's hold wins -- held absolutely (Person.held_by_will), told there is nothing to fear
+## (Person.fearless_left), or beyond the mind's reach (Person.resists_mind): he is left as he is, and panic() refuses him
+## too. A soldier in a fight fights on.
+func _free_to_run(p: Person) -> void:
+	if p.resists_mind() or p.held_by_will(Person.WILL_ABSOLUTE) or p.fearless_left > 0.0:
+		return
+	match p.mind:
+		Person.Mind.SHELTER:
+			p.leave_shelter(false)
+		Person.Mind.FLEE:
+			# Out of the gate queue and off the gate (Person.reassure()'s way), then come round where he stands.
+			p.release_from_queue()
+			p.passing_gate = null
+			p.leave_shelter(false)
+		Person.Mind.FIGHT:
+			if not p.soldier:
+				p.stop_fighting()
 
 
 func _lay_trail(b: Dictionary, p: Person) -> void:

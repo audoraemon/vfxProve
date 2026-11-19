@@ -96,3 +96,4 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   muting.
 - V20: `Rules.haste` is read per slot by `advance()` only while it is non-empty, and never for a slot whose `cooldown_of()` is 999 or
   more (`Rules.ONCE_COOLDOWN`); with no haste the cooldown arithmetic is exactly as before.
+- V21 (Task 5): Slumber lays its dusk at the cast (in _build), not when the hush lands at T_FALL -- test_veil_law (not this task's file) checks that every Veil effect lays its dusk at once, and the dusk only shortens sight; the sleep itself is at T_FALL.

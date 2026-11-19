@@ -1,10 +1,10 @@
 {
- "hash": "a7cba35cb36db44b",
- "updated": "2026-11-19T06:31:29+07:00",
+ "hash": "a651da915e6239e0",
+ "updated": "2026-11-19T12:40:19+07:00",
  "changes": {
-  "date": "<t:1795044689:f>",
+  "date": "<t:1795066819:f>",
   "items": [
-   "New: God progression merged into Develop-Main (Death, Decree, levels)"
+   "New: PixelLab ability icons for the 47 drawn powers"
   ]
  },
  "snapshot": {
@@ -15,6 +15,15 @@
    "updated": "2026-11-19"
   },
   "tasks": {
+   "ability-icons-pixellab": {
+    "title": "PixelLab ability icons for the 47 drawn powers",
+    "status": "done",
+    "area": "UI",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-19",
+    "order": 904
+   },
    "board-objective-tags": {
     "title": "Board missions adopt M6's objective layer",
     "status": "done",
@@ -1842,7 +1851,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 98,
+    "behind": 99,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -1850,7 +1859,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 473,
+    "behind": 474,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1858,7 +1867,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 971,
+    "behind": 972,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1866,7 +1875,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 929,
+    "behind": 930,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1875,7 +1884,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-19",
-   "subject": "test: re-record refs after merging god-progression into Develop-Main"
+   "subject": "feat: PixelLab ability icons for the 47 drawn powers (Discord #ideas \"Improve Abilities Icon\")"
   }
  }
 }

@@ -239,7 +239,7 @@ static func _advance_convert(t) -> void:
 static func _advance_prayers(t) -> void:
 	# A counter read from the objective: First Prayers' believers.
 	var s := Kit.world(MissionBook.first_prayers())
-	t.check(MissionSteps.line(s.rules) == "Wait for a believer to pray 0/3", "First Prayers: %s" % MissionSteps.line(s.rules))
+	t.check(MissionSteps.line(s.rules) == "Lead the poor (gold) to the well 0/3", "First Prayers: %s" % MissionSteps.line(s.rules))
 	Kit.done(s)
 
 

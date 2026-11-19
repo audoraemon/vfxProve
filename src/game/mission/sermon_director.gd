@@ -813,6 +813,13 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "bell", "report", "seen", "coming", "rapt", "watched"])
 
 
+## Mission clarity (spec 5.6): only the sentries' cause -- a hold on one who watches the god's door. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	if burning or roof_fallen or crowd == null or door == Vector2.INF:
+		return ""
+	return _why_held(key, at)
+
+
 ## The tour (v0.11 M5, mission spec §3): the preacher, the god's house, the Temple.
 func tour() -> Array:
 	return [[pulpit, "The preacher at the south-west well. While he preaches, his crowd hears only him."],

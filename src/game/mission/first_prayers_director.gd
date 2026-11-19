@@ -768,6 +768,42 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "watched"])
 
 
+## Seconds to the next walker setting out, in the night's own seconds (Mission clarity, spec 5.6): the "" line counts it down; 0 when none is due.
+func hint_seconds() -> float:
+	var due := walk_due()
+	if due == INF or timeline == null:
+		return 0.0
+	return maxf((due - timeline.elapsed()) * timeline.stretch_factor(), 0.0)
+
+
+const WHY_FAR := "TOO FAR TO PULL THE FAITHFUL"
+
+
+func _turned_words() -> String:
+	return "WATCHED - HE WILL BE TURNED AWAY"
+
+
+func _only_words() -> String:
+	return "ONLY THE POOR (GOLD) PRAY HERE"
+
+
+## Mission clarity (spec 5.6; pre-flight I7): Mira's causes, and a Burn on houses none of which stands within FIRE_PULL of the door while a Faithful
+## watches it. The fire has not been lit when the cast is made, so it is judged by the buildings the cast reaches. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var text := super(key, at)
+	if text != "" or burning or roof_fallen or crowd == null or not "burn" in MissionVerbs.verbs_of(key) \
+			or faithful_seeing(door, SIGHT) == null:
+		return text
+	var far := false
+	for s: Structure in town._built:
+		if s.destroyed or s == house or s.center().distance_to(at) > Crowd._cast_radius(key) + WHY_MARGIN:
+			continue
+		if s.center().distance_to(door) <= FIRE_PULL:
+			return ""
+		far = true
+	return WHY_FAR if far else ""
+
+
 ## The tour (v0.11 M2, spec §4): the shrine, the first of the poor still standing, the Temple.
 func tour() -> Array:
 	var out := []

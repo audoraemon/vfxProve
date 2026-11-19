@@ -667,6 +667,25 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["drag", "cleanse", "march", "chain"])
 
 
+const WHY_HELD := "HELD, HE ONLY LOSES TIME"
+
+
+## Mission clarity (spec 5.6): a Hold that is no kill and no fright on a marcher while a file walks -- he only loses time. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	if hint_phase() != "march":
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	if not "hold" in verbs or "kill" in verbs or "scare" in verbs:
+		return ""
+	for m in marches:
+		if m.done or not m.walking:
+			continue
+		for v: Variant in m.people:
+			if _alive(v) and _cast_reaches(key, at, (v as Person).ground_pos):
+				return WHY_HELD
+	return ""
+
+
 ## The shrine and the two ways in: the gate pair and the camera's resting place.
 func tour() -> Array:
 	var out := []

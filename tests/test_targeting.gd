@@ -198,6 +198,7 @@ static func run(t) -> void:
 	t.check(bystander.mind == Person.Mind.CALM, "someone a street away does not")
 
 	_whisper(t, crowd, field, grid, env, town)
+	_smite(t, crowd, field, env, town)
 
 	rules.free()
 	aim.free()
@@ -282,6 +283,80 @@ static func _whisper(t, crowd: Crowd, field: EnemyField, grid: WalkGrid, env: En
 	t.check(refused == [[0, "shaken"]] and casts.size() == 2 and rules.cooldown_left(0) == 0.0,
 		"a release on someone shaken since the press is refused the same way (%s)" % [refused])
 	c._shaken_left = 0.0
+	aim.free()
+	rules.free()
+
+
+## Smite level 5, Gathered Storm: the level row's "aim" makes it a drag; its preview ring grows with the drag up to GROW_MAX; a drag
+## keeps the level it was pressed at (Review Focus 1).
+static func _smite(t, crowd: Crowd, field: EnemyField, env: EnvironmentField, town: Town) -> void:
+	t.check(PowerBook.aim_at("smite", 5) == "drag" and PowerBook.aim_at("smite", 4) == "click" and PowerBook.aim_at("smite", 1) == "click"
+		and PowerBook.aim_at("heaven", 5) == "drag" and PowerBook.aim_at("nosuch", 5) == "click",
+		"PowerBook.aim_at: Smite's level 5 row aims as a drag, its levels 1-4 and other powers aim their own way")
+	t.check(PowerBook.twist("smite") == "Gathered Storm: drag to widen the bolt (2.5x at most)", "Smite's twist text (%s)" % PowerBook.twist("smite"))
+	var rules := Rules.new().setup(PackedStringArray(["smite"]), null, env, field, crowd, town)
+	rules.free_play = true
+	var casts: Array = []
+	rules.caster = func(_script: GDScript, ground: Vector2, extra: Dictionary) -> FxTimeline:
+		casts.append([ground, extra])
+		return null
+	var aim := Targeting.new().setup(rules, crowd)
+	var kinds := ""
+	for lv in range(1, 6):
+		rules.levels = {"smite": lv}
+		aim.pick(0)
+		kinds += " " + aim._aim_kind()
+		aim.unfocus()
+	t.check(kinds == " click click click click drag", "Smite aims as a click at levels 1-4 and a drag at level 5 (%s)" % kinds)
+
+	# Level 5: a press and release in place is the plain bolt; the preview ring grows with the drag, up to the cap.
+	var r5 := float(Targeting.area_at("smite", 5).r)
+	rules.levels = {"smite": 5}
+	aim.pick(0)
+	aim.press(Vector2(1.0, 1.0))
+	t.check(aim.aiming and is_equal_approx(aim.preview_r(), r5), "a level 5 press starts a drag; the ring is KILL_R(5) (%.2f)" % aim.preview_r())
+	aim.hover(Vector2(1.0, 2.5))
+	t.check(is_equal_approx(aim.preview_r(), r5 * 2.0), "dragged 1.5 the ring is twice as wide (%.2f)" % aim.preview_r())
+	aim.hover(Vector2(1.0, 11.0))
+	t.check(is_equal_approx(aim.preview_r(), r5 * SmiteFx.GROW_MAX), "dragged 10 it stops at 2.5x (%.2f)" % aim.preview_r())
+	aim.hover(Vector2(1.2, 1.0))
+	t.check(is_equal_approx(aim.preview_r(), r5), "back to a twitch, the plain ring (%.2f)" % aim.preview_r())
+	aim.release(Vector2(1.0, 2.5))
+	var ex: Dictionary = casts[0][1] if casts.size() == 1 else {}
+	t.check(casts.size() == 1 and casts[0][0] == Vector2(1.0, 1.0) and ex.get("to") == Vector2(1.0, 2.5)
+		and is_equal_approx(SmiteFx.grow_of(ex.merged({"level": 5}), casts[0][0]), 2.0),
+		"the release casts at the press, told where the drag ended: a 2x bolt (%s)" % [casts])
+	rules.levels = {"smite": 4}
+	aim.pick(0)
+	aim.press(Vector2(1.0, 1.0))
+	aim.hover(Vector2(1.0, 2.5))
+	t.check(not aim.aiming and is_equal_approx(aim.preview_r(), float(Targeting.area_at("smite", 4).r)), "at level 4 a drag grows nothing")
+	aim.unfocus()
+
+	# Review Focus 1: the level at the press holds until the release, either way.
+	casts.clear()
+	rules.levels = {"smite": 4}
+	aim.pick(0)
+	aim.press(Vector2(0.0, 0.0))
+	rules.levels = {"smite": 5}
+	aim.hover(Vector2(1.5, 0.0))
+	aim.release(Vector2(1.5, 0.0))
+	ex = casts[0][1] if casts.size() == 1 else {}
+	t.check(casts.size() == 1 and int(ex.get("level", 0)) == 4 and not ex.has("to"),
+		"pressed at level 4, released at level 5: a level 4 click, no drag (%s)" % [casts])
+	casts.clear()
+	rules.levels = {"smite": 5}
+	aim.pick(0)
+	aim.press(Vector2(0.0, 0.0))
+	rules.levels = {"smite": 4}
+	t.check(aim.aiming and aim._aim_kind() == "drag", "pressed at level 5, the level dropping mid-drag: still a drag")
+	aim.hover(Vector2(1.5, 0.0))
+	aim.release(Vector2(1.5, 0.0))
+	ex = casts[0][1] if casts.size() == 1 else {}
+	t.check(casts.size() == 1 and int(ex.get("level", 0)) == 5 and ex.get("to") == Vector2(1.5, 0.0),
+		"...and its release casts at level 5, told where the drag ended (%s)" % [casts])
+	aim.pick(0)
+	t.check(aim._aim_kind() == "click", "the next aim reads the level as it is now (level 4: a click)")
 	aim.free()
 	rules.free()
 

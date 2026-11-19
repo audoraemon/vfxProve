@@ -37,7 +37,8 @@ const POWERS := [
 			{"KILL_R": 0.65, "DAMAGE": 50.0, "cooldown": 9.5},
 			{"KILL_R": 0.7, "DAMAGE": 55.0, "cooldown": 9.0},
 			{"KILL_R": 0.75, "DAMAGE": 60.0, "cooldown": 8.5},
-			{"KILL_R": 0.8, "DAMAGE": 65.0, "cooldown": 8.0, "twist": true, "twist_text": "Forked Bolt: leaps to one more nearby"}]},
+			{"KILL_R": 0.8, "DAMAGE": 65.0, "cooldown": 8.0, "twist": true, "twist_text": "Gathered Storm: drag to widen the bolt (2.5x at most)",
+				"aim": "drag"}]},
 	{"key": "ember", "name": "Ember", "path": "res://src/fx/ruin/ember.gd",
 		"blurb": "One spark flies to a building and sets it alight.",
 		"dp": 1, "cooldown": 15.0, "aim": "click", "shape": "one spark that sets one building alight", "quiet": true,
@@ -732,8 +733,9 @@ const MAX_LEVEL := 5
 const MIGHT_STEPS := [3, 5]
 ## What level_change() says for a power whose row has no `levels` table yet (Ruin's and Dominion's powers have one; the other rows do not yet).
 const NO_LEVELS := "Levels to come"
-## The keys a level table holds besides stats: level 5's twist flag and its one-line text.
-const TWIST_KEYS := ["twist", "twist_text"]
+## The keys a level table holds besides stats: level 5's twist flag, its one-line text, and the aim the twist may bring (aim_at():
+## Smite's Gathered Storm is a drag).
+const TWIST_KEYS := ["twist", "twist_text", "aim"]
 
 
 ## What a power costs in Might at a level (spec §6): its `dp` plus one for each MIGHT_STEPS entry the level has reached.
@@ -806,6 +808,17 @@ static func cooldown(key: String, level := 1) -> float:
 ## power without a table are all false -- an effect gates its twist on this before it draws a random number or schedules anything.
 static func twist_at(extra: Dictionary, key: String) -> bool:
 	return int(extra.get("level", 1)) == MAX_LEVEL and bool(stat(extra, key, "twist", false))
+
+
+## How a power is aimed at `level`: that level's row's "aim" when it has one (Smite's level 5 is a drag), else the power's own
+## ("click" for an unknown key).
+static func aim_at(key: String, level: int) -> String:
+	return aim_in(get_power(key), level)
+
+
+## aim_at() for a row given directly.
+static func aim_in(entry: Dictionary, level: int) -> String:
+	return String(stat_in(entry, level, "aim", entry.get("aim", "click")))
 
 
 ## The one-line twist a power gains at level 5, or "" for a power without one.

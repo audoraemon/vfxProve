@@ -715,7 +715,8 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 	var title := PowerBook.authority_title(_tab_of(key))
 	var stats := "%d Might   %s   %s" % [int(p.dp), cooldown_text(p, draft.level_of(key)), String(p.aim)]
 	if god != null:
-		stats = "L%d   %d Might   %s   %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p, draft.level_of(key)), String(p.aim)]
+		stats = "L%d   %d Might   %s   %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p, draft.level_of(key)),
+			PowerBook.aim_in(p, draft.level_of(key))]
 	UiTheme.text(_ui, Vector2(tx, y), stats, UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,

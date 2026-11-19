@@ -66,7 +66,7 @@ func reserve(rules: Rules, director: MissionDirector) -> void:
 	_crowd = rules.crowd()
 	if not _heard:
 		_heard = true
-		hear(rules.crowd(), rules.town())
+		hear(rules.crowd(), rules.town(), rules.loadout)
 	if director != null:
 		for w in wishes:
 			for p in w.people():
@@ -95,10 +95,10 @@ func attach(rules: Rules, director: MissionDirector) -> void:
 ## The town prays (spec §5.1): TierBook.wishes(tier) wishes drawn with the night's seed, filtered by the mission's tags and by
 ## what the town can give, each paying its believers at the tier's multiplier. v0.11 M3: from the wishes its tier can hear
 ## (WishBook.pool_for()).
-func hear(crowd: Crowd, town: Town) -> void:
+func hear(crowd: Crowd, town: Town, powers := PackedStringArray()) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = wish_seed
-	wishes = WishBook.draw(WishBook.pool_for(tier), TierBook.wishes(tier), def.mission_tags, crowd, town, rng)
+	wishes = WishBook.draw(WishBook.pool_for(tier), TierBook.wishes(tier), def.mission_tags, crowd, town, rng, powers)
 	for w in wishes:
 		w.reward = reward(w.def.reward)
 

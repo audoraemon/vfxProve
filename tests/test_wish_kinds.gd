@@ -3,7 +3,9 @@ extends RefCounted
 ## the tag's click is the HUD's), then the soldier drags the child toward the Citadel's gate; stopped or turned within 45 s
 ## grants it, the child dead, the gate reached or the time out fails it (review focus 2); the soldier felled before it is
 ## engaged by the god's own cast engages and grants it, by any other hand fails it (controller ruling); "Lead my brother
-## out" -- whispered to a gate, he escapes; "Show yourself to my family" -- three whispered. The pool is the spec's eight.
+## out" -- whispered to a gate, he escapes; "Show yourself to my family" -- three shown (2026-11-19: a power cast where each sees
+## it, no longer a whisper). The pool is the spec's eight. 2026-11-19 (Discord #ideas "Wish not clear"): every wish says what to do
+## (WishDef.how), and one only Mind Whisper can grant is not drawn for a loadout without it.
 
 const DT := 0.05
 
@@ -16,6 +18,7 @@ static func run(t) -> void:
 	_mercy(t)
 	_family(t)
 	_people(t)
+	_hows(t)
 
 
 static func _world(loadout := PackedStringArray()) -> Dictionary:
@@ -241,11 +244,21 @@ static func _family(t) -> void:
 	var first: Person = w.family[0]
 	first.whisper(first.ground_pos + Vector2(1.0, 0.0), 8.0)
 	w.step(s.rules, DT)
+	t.check(w.check(s.rules) == Objective.Status.PENDING and w.hud_text(s.rules) == "Show yourself to my family (+0) 0 / 3",
+		"a whisper alone shows the god to nobody (2026-11-19: shown is a power seen) (%s)" % w.hud_text(s.rules))
+	w.on_cast("smite", first.ground_pos + Vector2(FamilyWish.SEE + 1.0, 0.0))
+	t.check(w.shown.is_empty(), "a cast beyond SEE is not seen")
+	first.inside = true
+	w.on_cast("smite", first.ground_pos)
+	t.check(w.shown.is_empty(), "nor by a member indoors")
+	first.inside = false
+	w.on_cast("smite", first.ground_pos + Vector2(1.0, 0.0))
 	t.check(w.check(s.rules) == Objective.Status.PENDING and w.hud_text(s.rules) == "Show yourself to my family (+0) 1 / 3",
-		"one shown (%s)" % w.hud_text(s.rules))
+		"a power cast where one sees it: one shown (%s)" % w.hud_text(s.rules))
+	w.on_cast("smite", first.ground_pos)
+	t.check(w.shown.size() == 1, "each counts once")
 	for p: Person in w.family:
-		p.whisper(p.ground_pos + Vector2(1.0, 0.0), 8.0)
-	w.step(s.rules, DT)
+		w.on_cast("ember", p.ground_pos)
 	t.check(w.check(s.rules) == Objective.Status.DONE, "all three shown: granted")
 	var other := _wish(s, "family", 11) as FamilyWish
 	(s.field as EnemyField).kill(other.family[1], &"doom")
@@ -269,4 +282,35 @@ static func _people(t) -> void:
 	taken.append_array(only.slice(1))
 	t.check(not bare.choose(crowd, s.town, RandomNumberGenerator.new(), taken) and taken.size() == only.size() - 1,
 		"a brother with no second citizen to name takes nobody")
+	_done(s)
+
+
+## Every wish of the pool says exactly what to do, and names the tag it points at; those only Mind Whisper grants need it and
+## are not drawn for a loadout without it (2026-11-19).
+static func _hows(t) -> void:
+	var bare := PackedStringArray()
+	var whisper := PackedStringArray()
+	for d in WishBook.pool():
+		if d.how == "" or d.how.length() > 60:
+			bare.append(d.id)
+		if d.needs == "whisper":
+			whisper.append(d.id)
+	t.check(bare.is_empty(), "every wish has a how-line of at most 60 characters (none or too long: %s)" % [bare])
+	t.check(whisper == PackedStringArray(["brother", "neighbours", "family_out", "priest"]),
+		"the four granted only by a whisper need Mind Whisper (%s)" % [whisper])
+	t.check(_def("family").needs == "" and _def("family").how == "Cast a power where each FAMILY member sees it",
+		"Show yourself to my family needs no particular power")
+	var d := _def("neighbours")
+	t.check(not WishBook.grantable(d, PackedStringArray(["smite", "ember"])) and WishBook.grantable(d, PackedStringArray(["whisper"]))
+		and WishBook.grantable(d, PackedStringArray()), "a whisper wish: not for a loadout without Mind Whisper; unknown loadout skips nothing")
+	var s := _world()
+	var defs := WishBook.pool()
+	var no_whisper := 0
+	for seed_n in 8:
+		var r := RandomNumberGenerator.new()
+		r.seed = seed_n
+		for w in WishBook.draw(defs, 6, PackedStringArray(), s.crowd, s.town, r, PackedStringArray(["smite", "deathmark"])):
+			if w.def.needs != "":
+				no_whisper += 1
+	t.check(no_whisper == 0, "eight draws for a Ruin/Death loadout hear no whisper wish (%d heard)" % no_whisper)
 	_done(s)

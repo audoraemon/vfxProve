@@ -1259,9 +1259,47 @@ func _waiting_tag(i: int) -> MapTag:
 	return MapTag.place(h.door, MARK_NOT_YET, "PROCESSION IN %s" % UiTheme.clock(due_in(i)), h.house.height, i == upcoming())
 
 
-## No hint counts down (the base's "waiting" phase is not this Hunt's).
+## The seconds the hint counts down (Mission clarity, read-only): in "pyre", the soonest burning believer's seconds left (burn_left()); 0
+## elsewhere (the base's "waiting" phase is not this Hunt's).
 func hint_seconds() -> float:
-	return 0.0
+	if hint_phase() != "pyre":
+		return 0.0
+	var left := INF
+	for i in procs.size():
+		if phase_of(i) == Procession.Phase.BURNING:
+			left = minf(left, burn_left(i))
+	return 0.0 if left == INF else left
+
+
+## Why a cast that reached a believer or his escort did not count (Mission clarity, read-only; pre-flight I6, minor 4):
+## - a Hold that landed on an escort while enough stay able to keep him (FH_ESCORT_HOLD or more): the words are fixed, so the gate's
+##   REPEAT dedupes them whatever the count;
+## - a Lead or a Lure on a believer: he is bound, deaf to the god and past fear.
+## A cast that could also kill an escort or leave too few of them able says nothing.
+func why_not(key: String, at: Vector2) -> String:
+	if lost_reason() != "" or out_count() >= tune_need:
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	var custody := [Procession.Phase.FORMING, Procession.Phase.MARCHING, Procession.Phase.BURNING]
+	var held_one := false
+	var bound_one := false
+	for i in procs.size():
+		var pr: Procession = procs[i]
+		if not pr.phase in custody or pr.charge == null or not _alive(pr.charge.man):
+			continue
+		if _kills_any(key, at, pr.escorts):
+			return ""
+		if "hold" in verbs:
+			for v: Variant in pr.escorts:
+				if _alive(v) and not (v as Person).inside and _reaches_one(key, at, (v as Person).ground_pos) and _disabled(v as Person):
+					if able_escort(i) < FH_ESCORT_HOLD:
+						return ""
+					held_one = true
+		if ("lead" in verbs or "lure" in verbs) and _reaches_one(key, at, (pr.charge.man as Person).ground_pos):
+			bound_one = true
+	if held_one:
+		return "STILL GUARDED - HOLD MORE ESCORTS"
+	return "BOUND - HE CANNOT HEAR YOU" if bound_one else ""
 
 
 ## The tour (MS §6, *my call*): the first procession's house, the pyre; each line fits the caption's plate.

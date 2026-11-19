@@ -65,34 +65,34 @@ const SPEC := [
 
 	# --- clarity block: escort ---
 	# The Lost Lamb (v0.11 M2).
-	["lost_lamb", "Get the acolyte (blue) out by the west gate. Frightened, or at 1:00, he runs for it: clear the soldiers (red) from his way."],
-	["lost_lamb.running", "He runs for the west gate. Clear the patrols and the watch (red) ahead of him, or draw them off."],
-	["lost_lamb.led", "He holds where you left him. Whisper or lure him on toward the west gate; soldiers (red) seize him on sight."],
-	["lost_lamb.caught", "He is caught. Discord the soldier taking him back (red), or strike once the acolyte is clear of him, before the Temple."],
-	["lost_lamb.gate", "The watch (red) holds the gate. It changes soon: bring him close, or draw the watch off."],
-	["lost_lamb.clear", "The watch is changing. Send him through the gate now."],
+	["lost_lamb", "Lead or lure the acolyte (blue) to the west gate, or scare him: he bolts for it. At {n} s he bolts alone."],
+	["lost_lamb.running", "He runs for the west gate. Hold or kill the patrols and the watch (red) ahead of him."],
+	["lost_lamb.led", "He holds where you left him. Lead or lure him on toward the west gate; soldiers (red) seize him on sight."],
+	["lost_lamb.caught", "He is caught. Hold or kill the soldier taking him (red) before the Temple."],
+	["lost_lamb.gate", "The watch (red) holds the gate. It changes in {n} s: bring him close, or hold the watch."],
+	["lost_lamb.clear", "The watch is changing. Lead him through the gate now."],
 	# The Prisoner (v0.11 M4).
-	["prisoner", "Whisper or lure her (blue) toward the postern, and again before she stops. Watchmen (red) seize her on sight."],
-	["prisoner.bound", "Remove both gaolers (red): one left seizes her for the Citadel. Then burn the stocks (orange) or strike their far side."],
-	["prisoner.caught", "She is caught. Whisper or Discord the man taking her back (red), or strike once she is clear of him."],
-	["prisoner.hounds", "The Citadel's hounds (red) follow her. Strike them or turn them before they see her."],
-	["prisoner.gate", "The watch (red) holds the postern. It changes soon: bring her close, or draw the watch off."],
-	["prisoner.clear", "The guard is changing. Send her through the postern now."],
+	["prisoner", "Lead or lure her (blue) toward the postern, and again before she stops. Watchmen (red) seize her on sight."],
+	["prisoner.bound", "Kill, lead or confuse both gaolers (red): one left seizes her for the Citadel. Then burn the stocks (orange) or strike them."],
+	["prisoner.caught", "She is caught. Lead, scare or kill the man taking her back (red) before the Citadel."],
+	["prisoner.hounds", "The Citadel's hounds (red) follow her. Lead, scare or kill them before they see her."],
+	["prisoner.gate", "The watch (red) holds the postern. It changes in {n} s: bring her close, or lead the watch off."],
+	["prisoner.clear", "The guard is changing. Lead her through the postern now."],
 	# Exodus (v0.11 M6).
-	["exodus", "Whisper each lamp (blue) to an open gate: the rest follow. Inquisitors (red) seize on sight. Ten must get out alive."],
-	["exodus.caught", "A believer is taken to the Temple. Whisper, Discord or strike the man taking him (red)."],
-	["exodus.hounds", "The Temple's searchers (red) follow the household. Strike them or turn them before they see it."],
-	["exodus.gate", "Inquisitors (red) watch the gate. Whisper them off or strike them, then send the household through."],
+	["exodus", "Lead each lamp (blue) to an open gate: the rest follow. Scare or kill Inquisitors (red) in the way. Ten must get out."],
+	["exodus.caught", "A believer is taken to the Temple. Lead, scare or kill the man taking him (red)."],
+	["exodus.hounds", "The Temple's searchers (red) follow the household. Lead, scare or kill them before they see it."],
+	["exodus.gate", "Inquisitors (red) watch the gate. Scare or kill them, then lead the household through."],
 	["exodus.shut", "That gate is shut. Lead the household to another open gate."],
-	["exodus.waiting", "The next household comes out in {n} s. Clear its road and its gate of Inquisitors (red)."],
+	["exodus.waiting", "The next household comes out in {n} s. Scare or kill the Inquisitors (red) on its road and at its gate."],
 	# hide_faithful (god P5 Task 4).
-	["hide_faithful", "Your believers (blue) walk out by themselves. Clear the watch (red) from their road to the gate."],
-	["hide_faithful.trail", "The Inquisition found the trail: keep its searchers off the household."],
-	["hide_faithful.seized", "A believer is seized: strike his seizer before he reaches the Temple."],
+	["hide_faithful", "Your believers (blue) walk out by themselves. Hold or kill the watch (red) on their road to the gate."],
+	["hide_faithful.trail", "The Inquisition found the trail. Scare or kill its searchers (red) before they see the household."],
+	["hide_faithful.seized", "A believer is seized. Hold or kill his seizer (red) before he reaches the Temple."],
 	# face_halcyon (god P5 Task 8, MS §6): appended after the expel_inquisitor rows.
-	["face_halcyon", "Break a believer's escort (red) without a seen death: frighten, hold or turn them."],
-	["face_halcyon.pyre", "A believer is at the pyre: break his escort before the fire takes him."],
-	["face_halcyon.gaze", "Halcyon's Gaze is filling: free them quietly."],
+	["face_halcyon", "Hold two of a believer's three escorts (red) and he runs free. A death anyone sees feeds the Gaze."],
+	["face_halcyon.pyre", "A believer burns at the pyre in {n} s. Hold two of his three escorts (red) now."],
+	["face_halcyon.gaze", "Halcyon's Gaze is filling. Hold the escorts (red); every death anyone sees fills it more."],
 
 	# --- clarity block: raze ---
 	# Spoiled Harvest (v0.11 M2).

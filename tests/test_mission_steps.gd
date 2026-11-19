@@ -209,10 +209,10 @@ static func _advance_lamb(t) -> void:
 	for phase in ["", "running", "led", "caught", "gate", "clear"]:
 		d.phase = phase
 		seen.append(MissionSteps.line(s.rules))
-	t.check(seen == PackedStringArray(["Get the acolyte to the gate", "Clear his road to the gate", "Lure him on to the west gate",
-		"Stop the soldier taking him", "Draw the watch off the gate", "Send him through the gate"]), "The Lost Lamb's steps follow its phases (%s)" % [seen])
+	t.check(seen == PackedStringArray(["Lead or scare the acolyte (blue)", "Hold the soldiers (red) ahead", "Lead or lure him west (blue)",
+		"Hold or kill his captor (red)", "Hold the gate's watch (red)", "Lead him through the gate now"]), "The Lost Lamb's steps follow its phases (%s)" % [seen])
 	d.phase = "unknown"
-	t.check(MissionSteps.line(s.rules) == "Get the acolyte to the gate", "a phase no step names gives the default step")
+	t.check(MissionSteps.line(s.rules) == "Lead or scare the acolyte (blue)", "a phase no step names gives the default step")
 	Kit.done(s)
 
 

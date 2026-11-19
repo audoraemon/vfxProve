@@ -1244,7 +1244,7 @@ func _draw() -> void:
 					_ring(who.ground_pos, 0.3, COL_DIVINE)
 		"doom":
 			# Who it would take.
-			for v in SilentDoom.victims_at(_crowd._field, _press):
+			for v in SilentDoom.victims_at(_crowd._field, _press, float(area().get("r", SilentDoom.RADIUS))):
 				_ring(v.ground_pos, 0.22, COL_INNER)
 		"oath", "echo":
 			# Whom it would bind, or start with.
@@ -1338,13 +1338,19 @@ func _draw() -> void:
 				for m in bodies_marked(_crowd.remains, _press, false, true):
 					_death_mark(m.pos, COL_BONE, bool(m.lead))
 		"blight":
-			# What it would ruin, or a red ring for nothing in reach.
-			var mine := _rules.director.blight_target(_press) if _rules.director != null else Vector2.INF
-			var s := BlightFx.target(_crowd._env, _press) if mine == Vector2.INF else null
+			# What it would take (BlightFx.choose(), the cast's own order): a director's thing, a building, a person -- in the dark the
+			# others who would fall ill with them -- or a red ring for nothing in reach (the cast is refused).
+			var took := BlightFx.choose(_crowd._env, _crowd, _rules.director, _press)
+			var mine: Vector2 = took.at if took.kind == &"director" else Vector2.INF
+			var s: Structure = took.s
 			if mine != Vector2.INF:
 				# A director's own thing (v0.11.1: an unguarded standard or mirror), ringed as a structure is outlined; a guarded one
 				# only takes the banner, so its ring is red.
 				_ring(mine, 0.45, COL_ROT if _rules.director.blight_takes(mine) else COL_BAD)
+			elif took.kind == &"person":
+				var most := int(VeilRules.size("blight", "ILL_MOST", ring_tag() == "DARK"))
+				for p in BlightFx.sick_with(_crowd, took.p, most):
+					_ring(p.ground_pos, 0.22, COL_ROT)
 			elif s != null:
 				var r := s.footprint.grow(0.08)
 				for pass_i in 2:

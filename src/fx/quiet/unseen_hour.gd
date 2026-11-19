@@ -16,16 +16,21 @@ const DUSK_LIFE := [Color("f4ecff"), Color("b98cff"), Color("7a3cf0"), Color(0.1
 
 ## Whether the veil is down now.
 var veiled := false
+## This cast's size: RADIUS and VEIL_TIME in the light, VeilRules.SIZES' dark numbers when cast in the dark.
+var radius := RADIUS
+var veil_time := VEIL_TIME
 
 
 func _build() -> void:
-	duration = T_FALL + VEIL_TIME + 1.0
+	radius = VeilParts.size(self, "unseen", "RADIUS")
+	veil_time = VeilParts.size(self, "unseen", "VEIL_TIME")
+	duration = T_FALL + veil_time + 1.0
 	busy = T_FALL
 	at(T_FALL, _fall)
 	ctx.play(&"q_unseen", origin)
 	if not DominionParts.staged(self):
 		return
-	var mark := FxParts.rings(self, origin, RADIUS, VEIL, 2, 36.0)
+	var mark := FxParts.rings(self, origin, radius, VEIL, 2, 36.0)
 	mark.set_param("scan", 0.0)
 	mark.tween_param("reveal", 0.0, 1.0, T_FALL, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	mark.life = T_FALL + 0.1
@@ -40,20 +45,21 @@ func _build() -> void:
 func _fall() -> void:
 	veiled = true
 	if ctx.crowd != null:
-		ctx.crowd.veil(origin, RADIUS, VEIL_TIME)
+		ctx.crowd.veil(origin, radius, veil_time)
+		VeilParts.land(self, origin, radius)
 	if not DominionParts.staged(self):
 		return
 	# The veil settles: a ring of dusk out to the edge, then the shimmer that is all the god sees of it.
-	var w := FxParts.shockwave(self, origin, RADIUS, FxParts.VOID)
+	var w := FxParts.shockwave(self, origin, radius, FxParts.VOID)
 	w.set_param("thickness", 0.08)
 	w.tween_param("progress", 0.05, 1.0, 0.5, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	w.tween_param("fade", 1.0, 0.0, 0.25, 0.3)
 	w.life = 0.6
-	var lens := FxParts.refract_ring(self, origin, RADIUS, Color(0.8, 0.7, 1.0))
+	var lens := FxParts.refract_ring(self, origin, radius, Color(0.8, 0.7, 1.0))
 	lens.tween_param("progress", 0.05, 1.0, 0.6, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	lens.life = 0.62
-	var haze := FxParts.heat_haze(self, Iso.ground_to_screen(origin), Iso.radius_to_screen(RADIUS).x * 0.9, 0.9)
-	haze.life = VEIL_TIME + 0.5
+	var haze := FxParts.heat_haze(self, Iso.ground_to_screen(origin), Iso.radius_to_screen(radius).x * 0.9, 0.9)
+	haze.life = veil_time + 0.5
 	var hem := Hem.new()
 	hem.fx = self
 	hem.position = origin
@@ -68,7 +74,7 @@ func _rise() -> void:
 
 ## How much of the veil shows: in as it falls, out as the hour ends.
 func shown() -> float:
-	return clampf(minf((t - T_FALL) / 0.4, (T_FALL + VEIL_TIME + 0.8 - t) / 0.8), 0.0, 1.0)
+	return clampf(minf((t - T_FALL) / 0.4, (T_FALL + veil_time + 0.8 - t) / 0.8), 0.0, 1.0)
 
 
 ## The veil's hem on the ground: a dusk band at the edge with slow pale threads crossing it, and faint motes rising.
@@ -76,7 +82,7 @@ class Hem extends Node2D:
 	var fx: UnseenHourFx
 
 	func _process(_delta: float) -> void:
-		if fx.t > T_FALL + VEIL_TIME + 0.9:
+		if fx.t > T_FALL + fx.veil_time + 0.9:
 			queue_free()
 			return
 		queue_redraw()
@@ -85,15 +91,15 @@ class Hem extends Node2D:
 		var a := fx.shown()
 		if a <= 0.0:
 			return
-		draw_arc(Vector2.ZERO, RADIUS, 0.0, TAU, 80, Color(DUSK, 0.5 * a), 0.25)
-		draw_arc(Vector2.ZERO, RADIUS - 0.3, 0.0, TAU, 80, Color(DUSK, 0.18 * a), 0.4)
+		draw_arc(Vector2.ZERO, fx.radius, 0.0, TAU, 80, Color(DUSK, 0.5 * a), 0.25)
+		draw_arc(Vector2.ZERO, fx.radius - 0.3, 0.0, TAU, 80, Color(DUSK, 0.18 * a), 0.4)
 		var turn := fx.t * 0.12
 		for i in 9:
 			var a0 := turn + TAU * float(i) / 9.0
-			draw_arc(Vector2.ZERO, RADIUS, a0, a0 + 0.25, 6, Color(VEIL, 0.55 * a), 0.06)
+			draw_arc(Vector2.ZERO, fx.radius, a0, a0 + 0.25, 6, Color(VEIL, 0.55 * a), 0.06)
 		# Motes drifting up the hem, each on its own slow loop.
 		for i in 14:
 			var k := fmod(fx.t * 0.35 + float(i) * 0.137, 1.0)
 			var ang := TAU * float(i) / 14.0 + fx.t * 0.05
-			var p := Vector2.from_angle(ang) * (RADIUS - 0.1 + 0.2 * sin(fx.t * 2.0 + float(i)))
+			var p := Vector2.from_angle(ang) * (fx.radius - 0.1 + 0.2 * sin(fx.t * 2.0 + float(i)))
 			draw_rect(Rect2(p - Vector2(0, k * 0.9) - Vector2(0.03, 0.03), Vector2(0.06, 0.06)), Color(VEIL, (1.0 - k) * 0.7 * a))

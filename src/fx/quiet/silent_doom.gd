@@ -11,9 +11,10 @@ const T_STRIKE := 0.45
 const WISP := [Color("0e0b12"), Color("231c2c"), Color("3a3048"), Color("4d4060")]
 
 
-## Who the doom would take at `at`: every living person within RADIUS (v0.07.1: no cap), nearest first.
-static func victims_at(field: EnemyField, at: Vector2) -> Array[DummyEnemy]:
-	var near := field.in_radius(at, RADIUS)
+## Who the doom would take at `at`: every living person within `r` (RADIUS in the light, twice that in the dark; v0.07.1: no
+## cap), nearest first.
+static func victims_at(field: EnemyField, at: Vector2, r := RADIUS) -> Array[DummyEnemy]:
+	var near := field.in_radius(at, r)
 	near.sort_custom(func(a: DummyEnemy, b: DummyEnemy) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
 	return near
@@ -21,7 +22,7 @@ static func victims_at(field: EnemyField, at: Vector2) -> Array[DummyEnemy]:
 
 func _build() -> void:
 	duration = 1.4
-	var victims := victims_at(ctx.field, origin)
+	var victims := victims_at(ctx.field, origin, VeilParts.size(self, "doom", "RADIUS"))
 	ctx.play(&"q_doom", origin)
 	for v in victims:
 		_wisp(Iso.ground_to_screen(v.ground_pos))
@@ -38,7 +39,8 @@ func _build() -> void:
 			ctx.field.kill(v, &"doom", origin)
 			struck += 1
 		if struck > 0:
-			ctx.play(&"q_doom_hit", origin))
+			ctx.play(&"q_doom_hit", origin)
+		VeilParts.land(self, origin))
 
 
 ## A dark wisp: smoke that curls down onto the spot, then a faint puff as it takes them.

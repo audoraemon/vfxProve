@@ -34,7 +34,8 @@ Anti-goals (a failure even if it works)
 - The gauge makes a night a waiting game. The project's mission lessons say "no waiting"; a god that stands idle for long stretches
   because the gauge is empty is a failed tuning.
 - A bar that covers the town. The bar must be smaller on screen than today's six cards when hidden, and one icon tall when shown.
-- Board reference runs changing. The 286 Develop-Main board rows in `tools/dev/refs/*.tsv` must stay byte-identical.
+- Reference runs without a god changing. The 304 rows of `tools/dev/refs/*.tsv` that carry no `--god` (the 286 board rows and
+  the 18 `--case=none` Hunt and rite rows) must stay byte-identical.
 
 ## 3. How it works today (what the builder starts from)
 
@@ -58,12 +59,17 @@ Anti-goals (a failure even if it works)
   `SLOT_TOP` 316 on the 640x360 logical screen). Caption, ASCEND button, the rite's "C CHAIN" plate and other plates are placed
   relative to `slot_top()` / `slots_rect()`. `_on_cast_refused` flashes the slot and plays `ui_buzz`.
 - Ability prices: `PowerBook.might(key, level)` = the row's `dp` (1-6) + 1 at level 3 + 1 at level 5. Cooldowns per level from
-  `PowerBook.cooldown(key, level)` (6 s and up).
+  `PowerBook.cooldown(key, level)`. Tier 1 abilities at level 1: cooldowns 8 s (whisper) to 36 s (blight), prices 1 or 2
+  (discord, breath and blight cost 2).
 - `GodTree`: six types in a ring, 5 tiers x 2 spots each (10 abilities a type). A god learns its own type (1 point) and its ring
   neighbours' (2 points), so a god holds at most three types.
 - God bots: `tools/dev/behaviour_check.gd --god=<type>:<tier>` starts a `Mission` directly with a small loadout (the type's two
   Tier 1 keys for the five Tier 1 missions in `tools/dev/routes/god_t1.gd`; the file's `LOADOUT` for the five Hunts in
-  `tools/dev/routes/god_hunts.gd`). They do not go through `GodNight` or Prepare. Their 222 rows are in `tools/dev/refs/*.tsv`.
+  `tools/dev/routes/god_hunts.gd`). They do not go through `GodNight` or Prepare. `tools/dev/refs/*.tsv` holds 204 rows that carry
+  `--god`, and 18 `--case=none` rows (five Hunts and `first_taste`, three seeds each) that cast nothing.
+- The god gates judge more than wins. `tools/dev/god_gate.sh` (through `gate.sh`) also fails a pair that stands idle over 45 s (60 s
+  for three named pairs): the user's no-waiting limit. `tools/dev/hunt_gate.sh` also fails a Hunt whose pooled median time leaves
+  180-240 s (140-200 s for Hunt 1), with Decree excepted on Hunts 2-4.
 
 ## 4. Constraints
 
@@ -78,7 +84,7 @@ Anti-goals (a failure even if it works)
 
 1. **Extend the existing night; new code in new files. (Picked.)** `Rules` gets an optional Might pool: on for a god's night, off
    everywhere else. A god's night loads every learned ability as its loadout. The gauge and the new bar are new files; the shared
-   files get hooks only. Trade-off: the 222 god/Hunt reference rows are re-recorded, because bots now pay Might.
+   files get hooks only. Trade-off: the 204 `--god` reference rows are re-recorded, because bots now pay Might.
 2. **A separate night for gods.** Copies of the rules and HUD used only in Endless Night. No shared file is edited, so no conflicts
    now. Trade-off: casting logic exists twice and drifts; every later ability, sound and HUD change is made in two places.
 3. **Replace the loadout everywhere.** Ruled out by scope: the user chose Endless Night first.
@@ -137,7 +143,8 @@ Details, all **[call]**:
 
 ### 6.5 The ability bar **[user]**, details **[call]**
 
-Mockups the user chose from: `.superpowers/brainstorm/9441-1795072236/content/ability-bar-v2.html` (option "B", layout 1).
+The mockup the user chose from: `docs/superpowers/specs/assets/2026-11-19-might-gauge-bar-mockup.html` (option "B", layout 1; a
+copy of the design session's page, so its icon links do not resolve: the icons are `assets/pixellab/icons/hud/*.png`).
 
 **[user]**
 - **Hidden by default.** A small strip at the bottom centre shows the armed ability (icon tile with its key, name, Might price) and
@@ -166,8 +173,9 @@ Bar hidden:
 ```
 
 Details, all **[call]**:
-- Pages: one per god type the god has learned at least one ability of, the god's own type first, then the others in `GodTree.RING`
-  order. Z/X wrap around. With one type there are no tabs and Z/X do nothing.
+- Pages: one per god type the god has learned at least one ability of. Tabs read as in the mockup, the god's own type in the
+  middle: the ring neighbour before it on the left, the one after it on the right (`GodTree.neighbours(type)` order; a Ruin god
+  sees DOMINION | RUIN | PASSAGE). Z turns left, X right, and both wrap around. With one type there are no tabs and Z/X do nothing.
 - A page's tiles are that type's learned abilities in tree order (tier 1 to 5), packed from key 1 with no gaps. A newly learned
   ability can therefore shift later keys on its page; packed was preferred over fixed-by-spot because the user asked for a cleaner
   bar, and empty tiles are clutter.
@@ -211,10 +219,12 @@ Details, all **[call]**:
   limit (3). A god's existing slot purchases convert one for one.
 
 Details, all **[call]**:
-- The row's key becomes `"regen"`. `GodSlot.read()` moves an old file's `bought.slot` count to `bought.regen` (clamped to the
-  limit); `GodSlot.VERSION` goes to 2. `GodSlot.slots()` and `BASE_SLOTS` stay only if something still needs them (the Hunt bots'
-  loadout check does today); otherwise remove them with their tests.
-- New `GodSlot.refill_seconds()` = base - step x `bought.regen`, never under the floor.
+- The row keeps its key `"slot"` in `FAITH` and in the god's file; only its name and meaning change. So existing purchases
+  convert with no file change, `GodSlot.VERSION` stays 1, and an older build on another branch that opens the same god file still
+  reads and writes the purchases instead of dropping an unknown key (up to 900 Faith). A comment on the row says why the key is
+  not renamed. `GodSlot.slots()` and `BASE_SLOTS` stay only if something still needs them (the Hunt bots' loadout check does
+  today); otherwise remove them with their tests.
+- New `GodSlot.refill_seconds()` = base - step x `bought.slot`, never under the floor.
 - Faith screen lines: "Full refill: 55 s" for the row, "Might gauge: 9" for "+1 MIGHT" (today "Might to spend: 9").
 
 ### 6.8 Where the code goes **[call]**
@@ -241,7 +251,7 @@ Hooks in shared files, kept as small as they can be:
 - `game.gd`: a god's night starts with the def's full pool as its loadout and no draft; passes the cast keys to `bank()`; the FLOW
   steps that assert Prepare's "3 slots, 6 Might" style texts are updated.
 - `prepare_screen.gd`: a read-only mode for a gauge night.
-- `god_slot.gd`, `faith_screen.gd`: the `regen` row, `refill_seconds()`, the file conversion, the texts.
+- `god_slot.gd`, `faith_screen.gd`: the renamed row, `refill_seconds()`, the texts.
 - `tools/dev/behaviour_check.gd`: every `--god` run turns the pool on with `MightPool.for_tier(tier)`. Loadouts and policies stay.
 
 ### 6.9 Bots and balance **[user]** for the rule, **[call]** for the method
@@ -253,26 +263,32 @@ Hooks in shared files, kept as small as they can be:
   god of that tier, so a bot win means any real god can win.
 - A bot that meets a `"might"` refusal waits and retries, as it does for a cooldown today; if a policy cannot do that, the policy
   gets the smallest change that lets it.
-- Expected pressure, Tier 1: size 6, 0.10 Might/s, abilities at 1 Might. A 300 s night allows about 36 casts (6 + 30), where two
-  6 s cooldowns today allow far more. This is where failures are most likely.
-- Tuning order when bots fail, staying inside the user's rule: first `REFILL_SECONDS` (60 down toward 40), then a flat bonus to
-  every tier's gauge size. Any number other than the agreed 60 s / tier budget is reported to the user with the bot results before
-  landing; the user decides.
-- After tuning, re-record the 222 god and Hunt rows. The 286 board rows must not change (the pool is off there); a changed board
-  row is a bug.
+- The pass bar is the gates as they pass on `acb82b96`, not wins alone: `god_gate.sh` and `hunt_gate.sh` green, which includes
+  the idle limit (the user's no-waiting rule) and the Hunts' median bands. Record both gates on the untouched tree first, so a
+  pair that already fails there is not blamed on the gauge.
+- Expected pressure, Tier 1: size 6 and 0.10 Might/s give about 36 Might over a 300 s night (6 + 30). Cooldowns alone already cap
+  Death and Passage near 27 casts, so the gauge should not bind there. Dominion would spend about 57, Ruin about 50, Veil about
+  46, and Decree's combo costs 3 a time. Expect the failures in those four types, not spread across Tier 1.
+- Tuning order when a gate fails, staying inside the user's rule: first `REFILL_SECONDS`, from 60 down to 45 and no lower (under
+  45 the third "FASTER MIGHT" purchase would hit the 30 s floor and buy nothing); then a flat bonus to every tier's gauge size.
+  The Faith step (5 s) and floor (30 s) do not change.
+- If those two numbers cannot bring a pair back inside the gates, stop and bring the user the bot results. Whether the idle limit,
+  a Hunt band or a bot policy then gives is the user's decision, not the builder's.
+- Any number other than the agreed 60 s and tier budget is reported to the user with the bot results before landing.
+- After tuning, re-record the 204 `--god` rows. The other 304 rows must not change (no pool there); a changed one is a bug.
 
 ## 7. Testing and landing
 
 - Unit suites: `MightPool` (spend, refill rate, clamp, refill, `for_god`, `for_tier`); `Rules` with a pool (refusal order, pay on
   accepted cast only, recast free, surge refills, `free_play` and null pool unchanged, sealed refusal, cast-keys list); `GodSlot`
-  (`regen` row, file conversion from `slot`, `refill_seconds()`, `seal_target()` by nights cast); `GodNight` (pool = `in_tree()`,
+  (the renamed row, an old file's purchases read as before, `refill_seconds()`, `seal_target()` by nights cast); `GodNight` (pool = `in_tree()`,
   gauge fields on the def and each act, `bank()` with cast keys); the bar (pages, key mapping, packed order, hidden/shown
   rectangles, hit-testing, sealed tile); Prepare's read-only mode; the Faith screen texts.
 - Existing suites that assert slots, drafts or "+1 SLOT" in a god's night are updated, not deleted, unless what they prove no
   longer exists.
 - FLOW on a quiet machine, with the Endless steps updated for the briefing.
 - God gates: `tools/dev/god_gate.sh` and `tools/dev/hunt_gate.sh` (every type's Tier 1 policy on the five missions, every Hunt).
-- Refs: `tools/dev/refs_check.sh`; board rows identical, god rows re-recorded once the bots win.
+- Refs: `tools/dev/refs_check.sh`; the 304 rows without `--god` identical, the 204 `--god` rows re-recorded once the gates pass.
 - Full suite: `bash tools/dev/run_suite_parallel.sh 6` (rerun a "NO RESULT" part alone with a longer timeout).
 - Real screen captures of the strip and the bar at 1280x720 and one larger resolution, on the test save.
 - After landing: Ledger (idea done, task entry, board refresh); Discord (#ideas post OPEN to DONE and closed, #god-changelog post).

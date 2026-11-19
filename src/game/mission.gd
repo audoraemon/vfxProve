@@ -144,6 +144,8 @@ var wish_seed := 0
 ## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
 ## Rules is given it, and an R restart or next_act() keeps it.
 var levels := {}
+## The bots' switch (Might gauge): above 0, every act's Rules gets MightPool.for_tier(might_tier), whatever the def says.
+var might_tier := 0
 ## Remembrance (Skill Tree wheel, Task 4): the power key to try, set before add_child. When non-empty the mission is the free memory of the
 ## capital (MissionBook.remembrance()): loadout [key], Rules.free_play, no score, no results, `finished` never emitted, a MemoryOverlay on top.
 var remembrance := ""
@@ -177,6 +179,8 @@ var _def: MissionDef
 var _director: MissionDirector
 ## A mission played in acts (v0.09): the night so far and the act being played; both null for a single mission.
 var _night: NightState
+## Keys cast in the acts already played this night (the current act's are still on its Rules).
+var _cast_before := PackedStringArray()
 var _act: ActDef
 ## The town's response managers whose banners are wired, by instance id: each is wired once (_wire_responses()).
 var _wired := {}
@@ -492,6 +496,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	# A board night (v0.11 M1): its wishes, its Tier 5 Gaze and its ascent, handed to each act's Rules in _build_act().
 	_descent = Descent.new().setup(_def, wish_seed) if has_descent(_def, on_board) else null
 	_night = NightState.new() if _def.has_acts() else null
+	_cast_before = PackedStringArray()
 	if _night != null:
 		_night.bell_rang = bell_rang
 	_act = _def.first_act() if _night != null else null
@@ -568,6 +573,33 @@ func _apply_night_rules(seed_value: int) -> void:
 	NightRules.apply(_crowd, _town.look, kept, seed_value, _director)
 
 
+## The gauge and the seal of the act being played (Might gauge): the bots' tier pool, else the def's own when it is a gauge night. A
+## remembrance never has one; with neither switch the Rules keep the pool null and the seal empty.
+func _arm_might(play: MissionDef) -> void:
+	if remembrance != "":
+		return
+	if might_tier > 0:
+		_rules.might = MightPool.for_tier(might_tier)
+	elif play.gauge():
+		_rules.might = MightPool.make(play.might_capacity, play.might_refill)
+	_rules.sealed = play.sealed
+
+
+## The keys cast this night: the acts played so far and the one being played.
+func cast_keys() -> PackedStringArray:
+	var out := _cast_before.duplicate()
+	if _rules != null:
+		for key in _rules.cast_keys:
+			if not out.has(key):
+				out.append(key)
+	return out
+
+
+## Folds the finished act's cast keys into the night's, before its Rules are let go.
+func _carry_cast() -> void:
+	_cast_before = cast_keys()
+
+
 ## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the
 ## nodes are made in is Last Judgement's and The Warning's since v0.08 -- their instance order feeds the staggers.
 func _build_act(loadout: PackedStringArray) -> void:
@@ -578,6 +610,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
 	_rules.levels = levels
 	_rules.free_play = remembrance != ""
+	_arm_might(play)
 	_bf.ctx.rules = _rules
 	_rules.over.connect(_on_over)
 	_rules.main_won.connect(func() -> void: Music.sting(&"music_sting_objective"))
@@ -772,6 +805,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_director = null
 	if _descent != null:
 		_descent.next_act(_rules)  # its seconds count toward the night's time
+	_carry_cast()
 	_rules.teardown()
 	_rules.queue_free()
 	# Every power still playing ends here, with the act that cast it: an Act I Heaven Splitter must not fall on the
@@ -1213,6 +1247,7 @@ func _play_ending() -> void:
 		return
 	var res := _rules.result()
 	_night.record(_act.id, res, _crowd)
+	res["cast"] = cast_keys()
 	act_over.emit(res)
 
 
@@ -1220,10 +1255,13 @@ func _play_ending() -> void:
 ## Descent's report.
 func _final_result() -> Dictionary:
 	var res := _rules.result()
+	res["cast"] = cast_keys()
 	if _night == null:
 		return _with_descent(res)
 	_night.record(_act.id, res, _crowd)
-	return _with_descent(_night.result(res, _def.id, _def.scored))
+	var out := _night.result(res, _def.id, _def.scored)
+	out["cast"] = cast_keys()
+	return _with_descent(out)
 
 
 ## A board night's result (v0.11 M1) with its Descent's report merged in ("descend"); any other as it is.

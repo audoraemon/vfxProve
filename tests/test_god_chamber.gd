@@ -310,8 +310,16 @@ static func _transition_out(t) -> void:
 		"0.2 s in: nothing yet, zoom %.2f between 1 and 2.2, fade 0" % ch.zoom())
 	ch.advance(0.2)
 	t.check(got == ["tree"] and ch.fade() == 1.0 and ch.zoom() == GodChamber.ZOOM_TO, "0.4 s in: tree emitted exactly once, fade 1 (%s)" % [got])
-	ch.advance(0.5)
-	t.check(got == ["tree"], "and never again (%s)" % [got])
+	ch.advance(0.1)
+	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
+	t.check(got == ["tree"] and ch.in_transition() and ch.fade() == 1.0, "held black after the zoom: a click neither restarts it nor re-sends (%s)" % [got])
+	ch.advance(GodChamber.HELD_TIME)
+	t.check(got == ["tree"] and not ch.in_transition() and ch.zoom() == 1.0 and ch.fade() == 0.0,
+		"a room Game did not replace comes back to rest (zoom %.2f, fade %.2f)" % [ch.zoom(), ch.fade()])
+	got.clear()
+	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
+	ch.advance(GodChamber.ZOOM_TIME)
+	t.check(got == ["faith"], "and its stations work again (%s)" % [got])
 	ch.free()
 	GodChamber.transitions = false
 
@@ -325,7 +333,9 @@ static func _transition_skip(t) -> void:
 	ch._on_gui_input(_motion(ch.menu_rect("faith").get_center()))
 	t.check(ch._hover == "", "hover does not change in a transition")
 	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
-	t.check(got == ["tree"] and not ch.in_transition(), "a click on faith during the zoom to tree skips: tree once, never faith (%s)" % [got])
+	t.check(got == ["tree"] and ch.fade() == 1.0, "a click on faith during the zoom to tree skips: tree once, never faith (%s)" % [got])
+	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
+	t.check(got == ["tree"], "and a click while it is held black does not restart the zoom or re-send (%s)" % [got])
 	ch.free()
 	made = _on()
 	ch = made[0]
@@ -352,12 +362,22 @@ static func _transition_skip(t) -> void:
 
 ## Review Focus 2: a room freed mid-zoom emits nothing.
 static func _transition_freed(t) -> void:
+	await (Engine.get_main_loop() as SceneTree).process_frame  # the tree is only live after the first frame: _exit_tree needs it
 	var made := _on()
 	var ch: GodChamber = made[0]
 	var got: Array = made[1]
 	ch._on_gui_input(_click(ch.menu_rect("tree").get_center()))
 	ch.free()
 	var tree := Engine.get_main_loop() as SceneTree
+	# A room taken off the tree mid-zoom has its pending action cleared: stepping or skipping it emits nothing.
+	var made2 := _on()
+	var d: GodChamber = made2[0]
+	d._on_gui_input(_click(d.menu_rect("tree").get_center()))
+	tree.root.remove_child(d)
+	d.advance(0.5)
+	d.skip()
+	t.check((made2[1] as Array).is_empty(), "a detached room stepped and skipped emits nothing (%s)" % [made2[1]])
+	d.free()
 	await tree.process_frame
 	await tree.process_frame
 	t.check(got.is_empty(), "a room freed mid-zoom emits nothing (%s)" % [got])

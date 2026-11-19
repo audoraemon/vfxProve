@@ -31,7 +31,9 @@ static var transitions := true
 const ZOOM_TO := 2.2
 const ZOOM_TIME := 0.35
 const FADE_FROM := 0.6
-## Transition modes: at rest, zooming into a station (the action waits), coming back out of one, and held at the end of the zoom in.
+## How long the room waits, black, for Game to replace it after a zoom in before it comes back to rest (a refused action leaves it here).
+const HELD_TIME := 0.25
+## Transition modes: at rest, zooming into a station (the action waits), coming back out of one, and held (input ignored) at the end of the zoom in.
 enum Mode {REST, OUT, BACK, HELD}
 
 ## A one-off message shown near the bottom (e.g. GodNight.ABANDONED); "" for none.
@@ -86,7 +88,7 @@ func mouse01() -> Vector2:
 
 
 func in_transition() -> bool:
-	return _mode == Mode.OUT or _mode == Mode.BACK
+	return _mode != Mode.REST
 
 
 ## Progress of the zoom in, 0 (at rest) to 1 (fully in): the zoom, the fade and the draw all read it.
@@ -113,14 +115,17 @@ func advance(delta: float) -> void:
 	if not in_transition():
 		return
 	_t += delta
-	if _t >= ZOOM_TIME:
+	if _mode == Mode.HELD:
+		if _t >= HELD_TIME:
+			_mode = Mode.REST  # Game did not replace the room (the action was refused): show the stations again
+	elif _t >= ZOOM_TIME:
 		_finish()
 	_redraw()
 
 
 ## Finishes a transition at once: a zoom in sends its action, a return is at rest.
 func skip() -> void:
-	if in_transition():
+	if _mode == Mode.OUT or _mode == Mode.BACK:
 		_finish()
 		_redraw()
 
@@ -130,6 +135,7 @@ func _finish() -> void:
 		_mode = Mode.REST
 		return
 	_mode = Mode.HELD
+	_t = 0.0
 	var what := _pending
 	_pending = ""
 	if what != "":
@@ -436,31 +442,39 @@ func _draw_under_bar() -> void:
 			y += UiTheme.LINE_BODY
 
 
+## Baselines of the stack above the keys hint, bottom up: the blocked line, the stolen gifts, the one-off line's last row.
+func _stack() -> Dictionary:
+	var y := HINT_Y - STACK_GAP
+	var out := {}
+	out.blocked = y
+	if status.blocked_line() != "":
+		y -= 14.0
+	out.gifts = y
+	if status.gifts_line() != "":
+		y -= UiTheme.LINE_BODY
+	out.line = y
+	return out
+
+
 ## The bottom block, stacked upward from the keys hint: the blocked line, the stolen gifts, the one-off line (wrapped to 600).
 func _draw_bottom() -> void:
 	var hint := hint_text()
 	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), HINT_Y), hint, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	var y := HINT_Y - STACK_GAP
+	var at := _stack()
 	var blocked := status.blocked_line()
 	if blocked != "":
-		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(blocked, UiTheme.SIZE_SMALL) * 0.5), y), blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD_TEXT)
-		y -= 14.0
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(blocked, UiTheme.SIZE_SMALL) * 0.5), at.blocked), blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD_TEXT)
 	var gifts := status.gifts_line()
 	if gifts != "":
-		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(gifts) * 0.5), y), gifts, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
-		y -= UiTheme.LINE_BODY
+		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(gifts) * 0.5), at.gifts), gifts, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 	if line != "":
 		var wrapped := UiTheme.wrap(line, LINE_WIDTH, UiTheme.SIZE_BODY)
+		var y: float = at.line
 		for i in range(wrapped.size() - 1, -1, -1):
 			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(wrapped[i]) * 0.5), y), wrapped[i], UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
 			y -= UiTheme.LINE_BODY
 
 
-## The baseline of the one-off line's last row (a test checks it against the hint): the stack above the hint, in the order _draw_bottom draws it.
+## The baseline of the one-off line's last row (a test checks it against the hint).
 func one_off_baseline() -> float:
-	var y := HINT_Y - STACK_GAP
-	if status.blocked_line() != "":
-		y -= 14.0
-	if status.gifts_line() != "":
-		y -= UiTheme.LINE_BODY
-	return y
+	return _stack().line

@@ -31,7 +31,8 @@ static var transitions := true
 const ZOOM_TO := 2.2
 const ZOOM_TIME := 0.35
 const FADE_FROM := 0.6
-## How long the room waits, black, for Game to replace it after a zoom in before it comes back to rest (a refused action leaves it here).
+## How long the room waits, black, for Game to replace it after a zoom in before it comes back to rest. Every hub action Game accepts frees the room
+## inside the emit call, so this only times out after a refusal.
 const HELD_TIME := 0.25
 ## Transition modes: at rest, zooming into a station (the action waits), coming back out of one, and held (input ignored) at the end of the zoom in.
 enum Mode {REST, OUT, BACK, HELD}
@@ -66,7 +67,10 @@ func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodCham
 	add_child(layer)
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
-	_ui.gui_input.connect(_on_gui_input)
+	# The Design child is only 640x360: a click outside it (the bands of a wide or tall window, where the bar and the Title button reach) would go
+	# to the blocker, which swallows it. So the blocker takes the mouse and hands it on in frame units; the child ignores it.
+	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	(_ui.get_parent() as Control).gui_input.connect(_on_blocker_input)
 	if transitions and (p_from == "tree" or p_from == "faith"):
 		_mode = Mode.BACK
 		_focus_key = p_from
@@ -112,7 +116,7 @@ func fade() -> float:
 
 ## One step of a transition (public so tests drive it without the clock). The end of a zoom in sends the waiting action.
 func advance(delta: float) -> void:
-	if not in_transition():
+	if is_queued_for_deletion() or not in_transition():
 		return
 	_t += delta
 	if _mode == Mode.HELD:
@@ -125,6 +129,8 @@ func advance(delta: float) -> void:
 
 ## Finishes a transition at once: a zoom in sends its action, a return is at rest.
 func skip() -> void:
+	if is_queued_for_deletion():
+		return
 	if _mode == Mode.OUT or _mode == Mode.BACK:
 		_finish()
 		_redraw()
@@ -164,16 +170,16 @@ func can_descend() -> bool:
 	return status.can_descend()
 
 
-## The top bar's rect in frame coordinates: from the area's left edge to its right edge, 22 units high.
+## The top bar's rect in frame coordinates: the screen's top edge (above the frame in a tall window), edge to edge, 22 units high.
 func bar_rect() -> Rect2:
 	var back := UiScale.backdrop(_ui)
-	return Rect2(back.position.x, 0.0, back.size.x, ChamberLayout.BAR_H)
+	return Rect2(back.position.x, back.position.y, back.size.x, ChamberLayout.BAR_H)
 
 
 ## The Title button's rect, at the bar's right end.
 func title_rect() -> Rect2:
 	var bar := bar_rect()
-	return Rect2(bar.end.x - TITLE_W - 4.0, 3.0, TITLE_W, ChamberLayout.BAR_H - 6.0)
+	return Rect2(bar.end.x - TITLE_W - 4.0, bar.position.y + 3.0, TITLE_W, ChamberLayout.BAR_H - 6.0)
 
 
 ## The station's current rect ("descend", "tree", "faith", "awaken") with the parallax; the Title button's for "title"; empty for none.
@@ -216,7 +222,7 @@ func hint_text() -> String:
 
 ## The station under a frame point; a closed door is skipped (no hover, no click).
 func _station_at(point: Vector2) -> String:
-	var key := ChamberLayout.at(point, _mouse01)
+	var key := ChamberLayout.at(point, _mouse01, bar_rect().position.y)
 	if key == "awaken" and not status.awaken_shown():
 		return ""
 	return key
@@ -281,6 +287,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	_press(key)
 
 
+## The blocker's mouse, in the blocker's units: converted to frame units (the same point the Design child would have reported).
+func _on_blocker_input(event: InputEvent) -> void:
+	if not (event is InputEventMouse):
+		return
+	var e := event.duplicate() as InputEventMouse
+	e.position = (event.position - _ui.position) / maxf(_ui.scale.x, 0.0001)
+	_on_gui_input(e)
+
+
 func _on_gui_input(event: InputEvent) -> void:
 	if in_transition():
 		if event is InputEventMouseButton and event.pressed:
@@ -294,7 +309,7 @@ func _on_gui_input(event: InputEvent) -> void:
 			_hover = h
 			if h != "":
 				UiSound.play(&"ui_hover")
-		_redraw()
+			_redraw()
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		click(event.position)
 
@@ -386,7 +401,7 @@ func _draw_bar() -> void:
 	_ui.draw_rect(bar, Color(0.03, 0.03, 0.05, 0.92))
 	_ui.draw_rect(Rect2(bar.position.x, bar.end.y, bar.size.x, 1.0), UiTheme.COL_GOLD_DARK)
 	var text := lines()
-	var y := 15.0
+	var y := bar.position.y + 15.0
 	# Left: the type's title, then the level and the tier's name.
 	var left_x := bar.position.x + 6.0
 	UiTheme.text(_ui, Vector2(left_x, y), text[0], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
@@ -407,7 +422,7 @@ func _draw_bar() -> void:
 	var pct := "%d%%" % _slot.notice
 	rx -= UiTheme.width(pct, UiTheme.SIZE_SMALL)
 	UiTheme.text(_ui, Vector2(rx, y), pct, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
-	var meter := Rect2(rx - 3.0 - NOTICE_W, 8.0, NOTICE_W, 6.0)
+	var meter := Rect2(rx - 3.0 - NOTICE_W, bar.position.y + 8.0, NOTICE_W, 6.0)
 	_ui.draw_rect(meter, Color(0.10, 0.04, 0.04, 0.9))
 	_ui.draw_rect(Rect2(meter.position, Vector2(roundf(meter.size.x * status.notice_fill()), meter.size.y)), UiTheme.COL_BAD)
 	UiTheme.frame(_ui, meter, false)
@@ -424,7 +439,7 @@ func _draw_bar() -> void:
 	var hi := rx - BAR_GAP
 	var w := maxf(0.0, minf(150.0, hi - lo))
 	var cx := clampf(bar.get_center().x, lo + w * 0.5, hi - w * 0.5)
-	var pr := Rect2(roundf(cx - w * 0.5), 6.0, roundf(w), 10.0)
+	var pr := Rect2(roundf(cx - w * 0.5), bar.position.y + 6.0, roundf(w), 10.0)
 	_ui.draw_rect(pr, Color(0.04, 0.04, 0.06, 0.85))
 	_ui.draw_rect(Rect2(pr.position, Vector2(roundf(pr.size.x * status.bar_fill()), pr.size.y)), UiTheme.COL_GOLD_DARK)
 	UiTheme.frame(_ui, pr, false)
@@ -433,13 +448,18 @@ func _draw_bar() -> void:
 		UiTheme.COL_TEXT)
 
 
+## The baseline of the i-th line under the bar (the Hunt line, then the seal line).
+func under_bar_baseline(i: int) -> float:
+	return bar_rect().end.y + 14.0 + UiTheme.LINE_BODY * float(i)
+
+
 ## The Hunt and the seal, in red, centred under the bar.
 func _draw_under_bar() -> void:
-	var y := ChamberLayout.BAR_H + 14.0
+	var i := 0
 	for s: String in [status.hunt_line(), status.seal_line()]:
 		if s != "":
-			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(s) * 0.5), y), s, UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
-			y += UiTheme.LINE_BODY
+			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(s) * 0.5), under_bar_baseline(i)), s, UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
+			i += 1
 
 
 ## Baselines of the stack above the keys hint, bottom up: the blocked line, the stolen gifts, the one-off line's last row.

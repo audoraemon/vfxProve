@@ -28,7 +28,7 @@ const STATIONS := {
 		"layer": "stations", "keys": [KEY_F, KEY_3], "action": "faith",
 	},
 	"awaken": {
-		"name": "Rite Door", "rect": Rect2(170.0, 50.0, 80.0, 90.0), "focus": Vector2(210.0, 95.0),
+		"name": "Rite Door", "rect": Rect2(170.0, 62.0, 80.0, 78.0), "focus": Vector2(210.0, 100.0),
 		"layer": "wall", "keys": [KEY_A, KEY_4], "action": "awaken",
 	},
 }
@@ -56,8 +56,8 @@ static func rect_of(key: String, mouse01 := Vector2.ZERO) -> Rect2:
 
 
 ## The station under a design-frame point, front layer first; "" for none or for a point inside the top bar.
-static func at(point: Vector2, mouse01 := Vector2.ZERO) -> String:
-	if point.y < BAR_H:
+static func at(point: Vector2, mouse01 := Vector2.ZERO, bar_top := 0.0) -> String:
+	if point.y < bar_top + BAR_H:
 		return ""
 	for layer in _HIT_LAYERS:
 		for k in ORDER:

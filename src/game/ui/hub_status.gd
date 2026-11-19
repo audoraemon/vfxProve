@@ -1,8 +1,8 @@
 class_name HubStatus
 extends RefCounted
 ## The between-nights hub's words and decisions, apart from its drawing (God's Chamber Task 1): the lines, the Notice meter, the Hunt and
-## seal lines, the stolen gifts, whether the god can Descend, what Awaken offers, and what one press does. GodHub draws and plays sounds
-## from it; the God's Chamber screen reads the same object, so both say the same words. It holds no node and plays no sound.
+## seal lines, the stolen gifts, whether the god can Descend, what Awaken offers, and what one press does. GodChamber (the screen) draws and plays
+## sounds from it. It holds no node and plays no sound.
 
 ## What the hub says when the god has nothing to draft (Ruling P8).
 const BLOCKED := "Nothing to draft: the tree's Tier 1 is not filled yet"

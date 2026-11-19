@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_hover(t)
 	_hint_and_lines(t)
 	_resolutions(t)
+	_blocker(t)
 	_long_line(t)
 	_transition_out(t)
 	_transition_skip(t)
@@ -273,6 +274,13 @@ static func _resolutions(t) -> void:
 		for key: String in ChamberLayout.ORDER:
 			clear = clear and not ch.menu_rect(key).intersects(bar)
 		t.check(clear, "%s: no station meets the bar" % area)
+		t.check(is_equal_approx(bar.position.y, back.position.y), "%s: the bar sits at the screen's top edge (%s vs %s)" % [area, bar.position.y, back.position.y])
+		t.check(ch._ui.mouse_filter == Control.MOUSE_FILTER_IGNORE and (ch._ui.get_parent() as Control).mouse_filter == Control.MOUSE_FILTER_STOP,
+			"%s: the blocker takes the mouse, the 640x360 child ignores it" % area)
+		var door_top := 1000.0
+		for m: float in [-1.0, 1.0]:
+			door_top = minf(door_top, ChamberLayout.rect_of("awaken", Vector2(m, m)).position.y)
+		t.check(ch.under_bar_baseline(1) + 4.0 < door_top, "%s: two under-bar lines stay clear of the Rite Door (%s vs %s)" % [area, ch.under_bar_baseline(1), door_top])
 		t.check(bar.encloses(ch.title_rect()), "%s: the Title button is inside the bar" % area)
 		for key: String in ChamberLayout.ORDER:
 			got.clear()
@@ -458,3 +466,31 @@ static func _parallax_mouse(t) -> void:
 			t.check(got == [key], "%s: a click at the %s centre emits it (%s)" % [p, key, got])
 	ch.free()
 	UiScale.clear_test_area()
+
+
+## Final review: mouse events outside the 640x360 child (the bands of a wide or tall window) reach the room through the blocker: the Title
+## button works, hover clears and the parallax keeps following.
+static func _blocker(t) -> void:
+	for area: Vector2i in [Vector2i(2560, 1080), Vector2i(1024, 768)]:
+		UiScale.set_test_area(area)
+		var made := _make(_capped(10))
+		var ch: GodChamber = made[0]
+		var got: Array = made[1]
+		var blocker := ch._ui.get_parent() as Control
+		var f: float = ch._ui.scale.x
+		var title := ch.title_rect()
+		var outside := not Rect2(Vector2.ZERO, Vector2(640, 360)).encloses(title)
+		t.check(outside, "%s: the Title button lies outside the 640x360 child" % area)
+		# the same point in the blocker's units
+		blocker.gui_input.emit(_click(ch._ui.position + title.get_center() * f))
+		t.check(got == ["title"], "%s: a mouse click on Title through the blocker emits title (%s)" % [area, got])
+		var c := ch.menu_rect("tree").get_center()
+		blocker.gui_input.emit(_motion(ch._ui.position + c * f))
+		t.check(ch._hover == "tree", "%s: hover through the blocker lights the station" % area)
+		var band := ChamberLayout.FRAME.position - Vector2(30.0, -100.0)  # left of the frame, in frame units
+		if area.x > 2000:
+			blocker.gui_input.emit(_motion(ch._ui.position + band * f))
+			t.check(ch._hover == "", "%s: moving into a side band clears the hover" % area)
+			t.check(ch.mouse01().x < -0.5, "%s: the parallax keeps following in the band (%s)" % [area, ch.mouse01()])
+		ch.free()
+		UiScale.clear_test_area()

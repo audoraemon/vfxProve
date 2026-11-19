@@ -15,7 +15,7 @@ extends RefCounted
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
 		"blurb": "Everyone within reach is struck down, unseen.",
-		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within reach struck down, unseen", "quiet": true,
+		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within 0.8 (1.6 in the dark) struck down, unseen", "quiet": true,
 		"authority": "veil"},
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
 		"blurb": "Press a person: send them walking, at someone, or to burn a building.",
@@ -170,8 +170,8 @@ const POWERS := [
 			{"RADIUS": 1.95, "SEED": 0.08, "cooldown": 34.0},
 			{"RADIUS": 2.1, "SEED": 0.1, "cooldown": 32.0, "twist": true, "twist_text": "Directed Frenzy: the broken hunt soldiers"}]},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
-		"blurb": "Ruins a well, bell, gate, dock or rite.",
-		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "ruins a well, bell, gate, dock or rite", "quiet": true,
+		"blurb": "Rots a building and leaves dusk round it, or sickens a person.",
+		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "a building rots, losing its use or its light, and the ground within 3 (5 in the dark) of it stays dusk, 3 buildings at most; a person within 0.5 falls ill and goes home to bed (with the 2 nearest within 2 in the dark)", "quiet": true,
 		"authority": "veil"},
 	{"key": "thorns", "name": "Thornwall", "path": "res://src/fx/control/thornwall.gd",
 		"blurb": "A bramble wall rises and blocks the way for a while.",
@@ -307,7 +307,7 @@ const POWERS := [
 			{"RADIUS": 6.0, "HOLD_TIME": 19.0, "cooldown": 37.0, "twist": true, "twist_text": "Bad Counsel: leavers carry the disorder 8 s"}]},
 	{"key": "unseen", "name": "Unseen Hour", "path": "res://src/fx/quiet/unseen_hour.gd",
 		"blurb": "For a while nothing in the circle is seen: no alarm, nobody comes.",
-		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "for 20 s nothing in the circle is seen: no alarm, no fright, nobody comes",
+		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "for 20 s (30 in the dark) nothing within 5 (7 in the dark) is seen: no alarm, no fright, nobody comes",
 		"quiet": true, "authority": "veil"},
 	# The Veil's seven (Veil authority powers spec §5.3-§5.10). Each is small in the light and full size in the dark (VeilRules):
 	# the shape line gives both.

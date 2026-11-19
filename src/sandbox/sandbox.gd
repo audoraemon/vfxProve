@@ -9,6 +9,7 @@ const SETS := [
 	{"name": "Set1 Sci-Fi", "theme": "scifi", "clear": Color("07080d"), "dim_scale": 0.75, "zoom": 1.35},
 	{"name": "Set2 Fantasy", "theme": "fantasy", "clear": Color("2a2e24"), "dim_scale": 0.4, "zoom": 1.55},
 	{"name": "Set3 Divine", "theme": "fantasy", "clear": Color("2a2e24"), "dim_scale": 0.4, "zoom": 1.55},
+	{"name": "Set4 Veil", "theme": "fantasy", "clear": Color("2a2e24"), "dim_scale": 0.4, "zoom": 1.55},
 ]
 const FOCUS_IN := 0.45
 const FOCUS_OUT := 0.7
@@ -25,8 +26,6 @@ const EFFECTS := [
 	{"set": 1, "key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd", "follow": true, "focus_up": -120.0, "zoom": 0.9},
 	{"set": 1, "key": "judgement", "name": "Judgement of the Ancients", "path": "res://src/fx/set2/judgement_of_the_ancients.gd", "focus_up": -130.0, "zoom": 0.7},
 	{"set": 1, "key": "dragon", "name": "Dragonfire Parade", "path": "res://src/fx/set2/dragonfire_parade.gd", "focus_up": -10.0, "focus_px": Vector2(150, -20), "zoom": 0.8},
-	{"set": 1, "key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd", "focus_up": -16.0, "zoom": 2.2},
-	{"set": 1, "key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd", "focus_up": -20.0, "zoom": 2.2},
 	# Decree (2026-11-12): the whole tree, Tier 1 to Tier 5.
 	{"set": 1, "key": "noleave", "name": "Leaving Is Prohibited", "path": "res://src/fx/decree/leaving_is_prohibited.gd", "focus_up": -30.0, "zoom": 1.2},
 	{"set": 1, "key": "breath", "name": "Breathing Is Prohibited", "path": "res://src/fx/decree/breathing_is_prohibited.gd", "focus_up": -30.0, "zoom": 1.2},
@@ -40,6 +39,17 @@ const EFFECTS := [
 	{"set": 1, "key": "sealed", "name": "The Sealed Verdict", "path": "res://src/fx/decree/the_sealed_verdict.gd", "focus_up": -30.0, "zoom": 1.2},
 	{"set": 2, "key": "solaris", "name": "Light of Solaris", "path": "res://src/fx/solaris/light_of_solaris.gd", "focus_up": -30.0, "zoom": 0.8},
 	{"set": 2, "key": "mirror", "name": "Mirrorfold Passage", "path": "res://src/fx/control/mirrorfold_passage.gd", "pair": true, "focus_up": 0.0, "zoom": 1.0},
+	# The Veil (2026-11-20): the ten powers in tree order, light size only (the Sandbox has no crowd and no rules; ruling C10).
+	{"set": 3, "key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd", "focus_up": -16.0, "zoom": 2.2},
+	{"set": 3, "key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 3, "key": "slumber", "name": "Slumber", "path": "res://src/fx/veil/slumber.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 3, "key": "cloak", "name": "Cloak of Night", "path": "res://src/fx/veil/cloak_of_night.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 3, "key": "unseen", "name": "Unseen Hour", "path": "res://src/fx/quiet/unseen_hour.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 3, "key": "dreamless", "name": "Dreamless", "path": "res://src/fx/veil/dreamless.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 3, "key": "dread", "name": "Dread of the Dark", "path": "res://src/fx/veil/dread_of_the_dark.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 3, "key": "shadowplay", "name": "Shadow Play", "path": "res://src/fx/veil/shadow_play.gd", "focus_up": -20.0, "zoom": 2.2},
+	{"set": 3, "key": "swallow", "name": "The Swallowing Dark", "path": "res://src/fx/veil/the_swallowing_dark.gd", "focus_up": -20.0, "zoom": 1.6},
+	{"set": 3, "key": "evernight", "name": "Evernight", "path": "res://src/fx/veil/evernight.gd", "focus_up": -20.0, "zoom": 1.2},
 ]
 
 ## Capture moments per effect (seconds from cast).
@@ -248,8 +258,8 @@ func _mouse_ground() -> Vector2:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
-			KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7:
-				var i: int = event.physical_keycode - KEY_1
+			KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0:
+				var i: int = 9 if event.physical_keycode == KEY_0 else event.physical_keycode - KEY_1
 				if i < _visible_effects().size():
 					selected = i
 					_first = Vector2.INF
@@ -330,7 +340,7 @@ func _update_hud() -> void:
 	var names := []
 	var list := _visible_effects()
 	for i in list.size():
-		var label := "%d %s" % [i + 1, list[i].name]
+		var label := "%d %s" % [(i + 1) % 10, list[i].name]
 		if not ResourceLoader.exists(list[i].path):
 			label += "*"
 		names.append("[%s]" % label if i == selected else " %s " % label)

@@ -1748,6 +1748,14 @@ func veil(at: Vector2, r: float, seconds: float) -> void:
 	threats.blind = is_veiled
 
 
+## True when a live Unseen Hour veil's circle reaches into the circle of radius `r` about `at` (Evernight's town-wide veil too).
+func veil_reaches(at: Vector2, r: float) -> bool:
+	for v: Dictionary in _veils:
+		if _clock < float(v.until) and (v.at as Vector2).distance_to(at) <= r + float(v.r):
+			return true
+	return false
+
+
 func is_veiled(at: Vector2) -> bool:
 	for v: Dictionary in _veils:
 		if _clock < float(v.until) and (v.at as Vector2).distance_to(at) <= float(v.r):

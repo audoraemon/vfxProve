@@ -1,7 +1,7 @@
 extends RefCounted
 ## v0.05 quiet powers. Silent Doom takes everyone within reach of the aim (v0.07.1); unseen, the town never knows (no
 ## danger, no alarm), but a witness panics and the death raises the alarm. Blight ruins what a structure is for --
-## a well's water, a gate (jammed for a while), the bell, the dock, the rite -- and adds a single alarm.
+## a well's water, a gate (jammed for a while), the bell, the dock, the rite -- and raises no alarm (ruling C1, spec 11.1).
 
 
 ## A director with a thing of its own Blight can ruin (v0.11.1): a point `at`, a banner, and a count of the times it was told.

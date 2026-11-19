@@ -65,6 +65,16 @@ func covers(at: Vector2) -> bool:
 	return false
 
 
+## True when the ground within `r` of `at` touches dusk: the everywhere flag is up, or a live patch's circle reaches into the circle.
+func reaches(at: Vector2, r: float) -> bool:
+	if everywhere:
+		return true
+	for p in _patches:
+		if (p.at as Vector2).distance_to(at) <= r + float(p.r):
+			return true
+	return false
+
+
 ## The radius of the largest live patch covering `at`, else 0.0.
 func r_at(at: Vector2) -> float:
 	var best := 0.0

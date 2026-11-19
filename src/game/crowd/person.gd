@@ -491,6 +491,13 @@ var _design_key := -1
 var _design_name := ""
 var _design_info: Array
 
+
+## The design's PeopleArt.info() table (block, silhouette block, foot, cell, frames, flags), empty before the first draw. Shadow Play
+## reads the silhouette frame from it for its edge.
+func silhouette_src() -> Array:
+	return _design_info
+
+
 var _path := PackedVector2Array()
 var _leg := 0
 var _goal := Vector2.INF

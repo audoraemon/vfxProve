@@ -47,9 +47,16 @@ func _build() -> void:
 		puff.burst(10, {"radius": 5.0, "speed": Vector2(4, 14), "alt": Vector2(2, 12), "alt_speed": Vector2(2, 10),
 			"life": Vector2(0.7, 1.2), "size": Vector2(2, 4), "size_end_mul": 1.8})
 	at(0.4, func() -> void:
+		var caught := Vector2.ZERO
+		var n := 0
 		for p in victims:
-			if is_instance_valid(p) and p.infect(PlagueManager.PLAGUE_LIFE) and _twist:
-				p.plague_src = get_instance_id()
+			if is_instance_valid(p) and p.infect(PlagueManager.PLAGUE_LIFE):
+				caught += p.ground_pos
+				n += 1
+				if _twist:
+					p.plague_src = get_instance_id()
+		if n > 0:
+			ctx.play(&"plague_catch", caught / float(n), 0.0)  # heard: the sickness caught, once, at the victims' middle
 		if _twist and ctx.crowd != null and ctx.crowd.plague != null:
 			# The plague outlives this node by design: the line stays foul in PlagueManager.foul (one id per level-5 cast).
 			ctx.crowd.plague.foul_from(get_instance_id()))

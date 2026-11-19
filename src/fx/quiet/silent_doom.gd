@@ -38,7 +38,9 @@ func _build() -> void:
 			ctx.field.kill(v, &"doom", origin)
 			struck += 1
 		if struck > 0:
-			ctx.play(&"q_doom_hit", origin))
+			ctx.play(&"q_doom_hit", origin)
+		else:
+			ctx.play(&"veil_fizzle", origin))  # nobody to take: the dark puff dies
 
 
 ## A dark wisp: smoke that curls down onto the spot, then a faint puff as it takes them.

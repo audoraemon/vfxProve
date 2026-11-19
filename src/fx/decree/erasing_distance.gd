@@ -108,6 +108,9 @@ var _bodies := 0
 var _dust: PixelParticles
 var _crumbs: PixelParticles
 var _next_dust := 0.0
+## Shortcut: when the seam's tear may sound again, however many step through (one at most every TEAR_SOUND_GAP).
+const TEAR_SOUND_GAP := 0.5
+var _next_tear := 0.0
 var _dust_spec := {"radius": 5.0, "speed": Vector2(4, 16), "dir": PixelParticles.Dir.OUTWARD, "alt": Vector2(0, 4),
 	"alt_speed": Vector2(2, 10), "life": Vector2(0.35, 0.7), "size": Vector2(1.5, 3), "size_end_mul": 1.4,
 	"offset": Vector2.ZERO}
@@ -191,6 +194,7 @@ func mound() -> Vector2:
 func _fold() -> void:
 	_catch()
 	_take_hold()
+	ctx.play(&"er_fold", middle())
 	if not DominionParts.staged(self):
 		return
 	ctx.shake.add_trauma(0.25)
@@ -310,7 +314,8 @@ func _step_seams() -> void:
 				heard = land
 				if p != null:
 					p.wait = 0.0
-	if moved > 0:
+	if moved > 0 and t >= _next_tear:
+		_next_tear = t + TEAR_SOUND_GAP
 		ctx.play(&"er_tear", heard, -8.0)
 
 
@@ -545,6 +550,7 @@ func _spring() -> void:
 		if p != null:
 			p.knock_down()
 		thrown += 1
+	ctx.play(&"er_spring", middle())
 	if not DominionParts.staged(self):
 		return
 	ctx.shake.add_trauma(0.45)

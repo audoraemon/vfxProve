@@ -108,7 +108,7 @@ func _fork(where: Vector2) -> void:
 		if ctx.field.kill(e, &"lightning", where):
 			struck += 1
 	ctx.env.damage_radius(where, HIT_R, lv_damage, &"smite")
-	ctx.play(&"hs_strike", where, -5.0)
+	ctx.play(&"smite_crack", where, -5.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(where)

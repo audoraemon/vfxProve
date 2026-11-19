@@ -1,0 +1,5 @@
+{"length": 2.0, "peak_db": -1.6, "reverb": {"rt60": 1.2, "mix": 0.12, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/spell_fire_05.ogg", "gain_db": -8, "onset": true, "pitch": -3.5, "at": 0.0},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "gain_db": -10, "dur": 2.0, "lp": 400, "from": 17.64, "at": 0.0, "pitch": 1.5},
+  {"src": "lib:oga/skippy-fish-water-sound-collection/bubbles.wav", "gain_db": -14, "pitch": -4.75, "at": 0.58}
+]}

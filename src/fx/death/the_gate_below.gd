@@ -91,6 +91,11 @@ const CRACK := Color(0.05, 0.05, 0.06, 0.85)
 ## Death's palette: bone white, ash grey, pale-white fire; grave green for glows only.
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
+## Heard (skill-tree sound pass): an arm's grab at most every GRAB_QUIET, a wraith's touch every TOUCH_QUIET, a spent one's
+## fall to ash every ASH_QUIET.
+const GRAB_QUIET := 0.5
+const TOUCH_QUIET := 0.35
+const ASH_QUIET := 0.2
 const PALE := [Color("eaf4ff"), Color("c8f0dc"), Color(0.5, 0.9, 0.7, 0.5), Color(0.2, 0.4, 0.35, 0.0)]
 
 ## The wraiths' pack; the people taken, in the order they were caught; the souls the pit took; when the first went under.
@@ -120,6 +125,11 @@ var lv_wraith_touches := DeathParts.WRAITH_TOUCHES
 ## Graves Answer: whether the level-5 twist is on; the hands still waiting to grab: {r: Remains.Remain, arm: Arm or null}.
 var _twist := false
 var graves: Array[Dictionary] = []
+## The pit's rumble while it is open, and the clocks each moment may be heard again at (sound only).
+var _rumble: Node
+var _grab_heard := 0.0
+var _touch_heard := 0.0
+var _ash_heard := 0.0
 
 
 func _build() -> void:
@@ -138,6 +148,7 @@ func _build() -> void:
 	visitors.bitten.connect(_on_withered)
 	visitors.spent.connect(_on_spent)
 	ctx.play(&"gatebelow_open", origin, 0.0)
+	at(T_OPEN, func() -> void: _rumble = ctx.play(&"pit_rumble", origin, 0.0))
 	if not DominionParts.staged(self):
 		return
 	var rift := Rift.new()
@@ -246,6 +257,7 @@ func _grab_grave(when: float) -> void:
 		if hand != null:
 			hand.position = _arm_at(victim.ground_pos)
 		_drags.append({"p": victim, "from": victim.ground_pos, "to": victim.ground_pos, "at": when, "arm": hand, "rem": r})
+		_grab_sound(victim.ground_pos)
 	graves = left
 
 
@@ -284,6 +296,7 @@ func _grab_pit(when: float) -> void:
 	var rel := best.ground_pos - origin
 	var to := origin + rel.limit_length(lv_edge)
 	var drag := {"p": best, "from": best.ground_pos, "to": to, "at": when, "arm": null}
+	_grab_sound(best.ground_pos)
 	if DominionParts.staged(self):
 		var arm := Arm.new()
 		arm.fx = self
@@ -358,6 +371,9 @@ func _take(p: Person, arm: Arm, when: float, body: Remains.Remain = null) -> voi
 func _close() -> void:
 	closed = true
 	ctx.play(&"gatebelow_close", origin, 0.0)
+	_hush(CLOSE)
+	if souls > 0:
+		ctx.play(&"wraith_rise", origin, -2.0)
 	for g in graves:
 		if is_instance_valid(g.arm):
 			(g.arm as Arm).let_go(t)
@@ -385,12 +401,18 @@ func _close() -> void:
 
 
 ## A wraith of this cast laid its withering on someone (the pack's bitten: emitted only for a curse laid).
-func _on_withered(_wraith: Animal, _victim: Person, _first: bool) -> void:
+func _on_withered(_wraith: Animal, victim: Person, _first: bool) -> void:
 	withered += 1
+	if is_instance_valid(victim) and t >= _touch_heard:
+		_touch_heard = t + TOUCH_QUIET
+		ctx.play(&"wraith_touch", victim.ground_pos, 0.0)
 
 
 ## A wraith of this cast was spent (its WRAITH_TOUCHES-th touch): staged, it goes in a pale puff, not a pop.
 func _on_spent(_wraith: Animal, at: Vector2) -> void:
+	if t >= _ash_heard:
+		_ash_heard = t + ASH_QUIET
+		ctx.play(&"undead_ash", at, 0.0)
 	if DominionParts.staged(self):
 		_puff(at)
 
@@ -398,6 +420,12 @@ func _on_spent(_wraith: Animal, at: Vector2) -> void:
 ## WRAITH_LIFE after the close: the wraiths go back into the ground.
 func _end_wraiths() -> void:
 	_ended = true
+	var left := visitors.living()
+	if not left.is_empty():
+		var mid := Vector2.ZERO
+		for a in left:
+			mid += a.ground_pos
+		ctx.play(&"undead_ash", mid / float(left.size()), 0.0)
 	if DominionParts.staged(self):
 		for a in visitors.living():
 			_puff(a.ground_pos)
@@ -410,8 +438,26 @@ func _puff(at: Vector2) -> void:
 	FxParts.smoke(self, Iso.ground_to_screen(at), 6.0, 24.0, FADE * 0.5, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), PALE)
 
 
+## Heard: the earth bursting where an arm takes someone, at most every GRAB_QUIET.
+func _grab_sound(at_ground: Vector2) -> void:
+	if t >= _grab_heard:
+		_grab_heard = t + GRAB_QUIET
+		ctx.play(&"pit_grab", at_ground, 0.0)
+
+
+## The pit's rumble fades over `seconds` (stops at 0), if it is still this pit's to fade (sound only).
+func _hush(seconds: float) -> void:
+	if _rumble != null and is_instance_valid(_rumble) and _rumble.get_meta(&"cue", &"") == &"pit_rumble":
+		if seconds > 0.0:
+			ctx.fade_out(_rumble, seconds)
+		elif _rumble is AudioStreamPlayer2D:
+			(_rumble as AudioStreamPlayer2D).stop()
+	_rumble = null
+
+
 ## Over or cut short: everyone still held is let go, the wraiths are gone.
 func _finish() -> void:
+	_hush(0.5)
 	_let_all_go()
 	if visitors != null:
 		visitors.clear()
@@ -421,6 +467,7 @@ func _finish() -> void:
 ## Freed without _finish (Battlefield.clear_effects() on a restart): the same -- every hold let go, the wraiths gone -- the pack
 ## only queued for freeing (its parents may be mid-teardown). After _finish there is nothing left to do here.
 func _exit_tree() -> void:
+	_hush(0.0)
 	_let_all_go()
 	if visitors != null:
 		visitors.clear(true)

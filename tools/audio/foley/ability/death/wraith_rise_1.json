@@ -1,0 +1,7 @@
+{"length": 2.4, "rms_db": -17.1, "reverb": {"rt60": 2.0, "mix": 0.26, "predelay_ms": 24, "damp": 4200}, "eq": [["lowshelf", 200, -4.0], ["peak", 2000, 1.5, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan02.wav", "at": 0.0, "from": 0.3, "dur": 1.9, "pitch": 2, "lp": 5000, "hp": 180, "fade_in": 250, "fade_out": 700, "gain_db": 0},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan05.wav", "at": 0.25, "onset": true, "dur": 1.5, "pitch": 6, "lp": 4800, "hp": 250, "fade_in": 250, "fade_out": 600, "gain_db": -5},
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "from": 0.5, "dur": 1.2, "pitch": -3, "lp": 4500, "hp": 150, "fade_in": 400, "fade_out": 500, "gain_db": -7},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-female-c5.wav", "at": 0.2, "dur": 1.9, "lp": 3800, "hp": 300, "fade_in": 600, "fade_out": 800, "gain_db": -15},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.2, "dur": 1.6, "pitch": -3, "lp": 4200, "hp": 150, "fade_in": 150, "fade_out": 500, "gain_db": -8}
+]}

@@ -1,0 +1,6 @@
+{"length": 4.0, "rms_db": -19.0, "reverb": {"rt60": 3.2, "mix": 0.3, "predelay_ms": 30, "damp": 2500}, "eq": [["lowshelf", 90, 3.0], ["peak", 2500, -6.0, 0.7]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Timpani/Rolls/Timpani2_Roll_v3_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 1.2, "pitch": -7, "lp": 400, "fade_in": 250, "fade_out": 500, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v7_rr2_Sum.wav", "at": 0.05, "onset": true, "pitch": -4, "lp": 250, "fade_out": 900, "gain_db": -1},
+  {"src": "lib:oga/rain-long-thunder/rain-thunder.ogg", "at": 0.1, "from": 11.0, "dur": 3.6, "pitch": -5, "lp": 300, "fade_in": 120, "fade_out": 2200, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_067_rr1.wav", "at": 0.15, "onset": true, "pitch": -12, "dur": 3.4, "lp": 220, "fade_in": 200, "fade_out": 2200, "gain_db": -8}
+]}

@@ -183,7 +183,7 @@ func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
 	var was := mouth
 	var left := maxf(shut_at() - t, 0.0)
 	mouth = was + (at_pos - was).limit_length(WANDER)
-	ctx.play(&"cf_erupt", was, -3.0)
+	ctx.play(&"hm_erupt", was, -3.0)
 	for v in [_breath, _breath2]:
 		if v != null:
 			ctx.fade_out(v, 0.5)
@@ -191,9 +191,9 @@ func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
 	if ctx.crowd != null:
 		ctx.crowd.threats.end(_threat)
 		_threat = ctx.crowd.threats.register(mouth, lv_radius + 0.5, 0.7, left, 5.0, 8.0, &"fire")
-	ctx.play(&"hs_rumble", mouth, -2.0)
-	ctx.play(&"dr_ignite", mouth, 0.0)
-	_breath = ctx.play(&"dr_breath", mouth, -6.0)
+	ctx.play(&"hm_rumble", mouth, -2.0)
+	ctx.play(&"hm_ignite", mouth, 0.0)
+	_breath = ctx.play(&"hm_breath", mouth, -6.0)
 	if DominionParts.staged(self):
 		for e in [_embers, _flames]:
 			if is_instance_valid(e):

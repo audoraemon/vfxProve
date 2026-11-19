@@ -1,0 +1,6 @@
+{"length": 1.1, "rms_db": -18.6, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/wierd-whooshes/weird_whoosh_sounds_-_whoosh_12_0.mp3", "at": 0.0, "onset": true, "dur": 1.0, "pitch": -5.25, "hp": 80, "lp": 7000, "fade_in": 300, "fade_out": 150},
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "at": 0.0, "from": 5.71, "dur": 1.1, "pitch": -1.75, "hp": 60, "lp": 5000, "gain_db": -4, "fade_in": 400, "fade_out": 150},
+  {"src": "lib:oga/teleport-spell/teleport.wav", "at": 0.0, "onset": true, "dur": 0.9, "pitch": -7.0, "hp": 100, "lp": 6000, "gain_db": -10, "fade_out": 200},
+  {"src": "lib:oga/breaking-rock/rock_break_0.ogg", "at": 0.057, "onset": true, "dur": 0.9, "reverse": true, "pitch": -7.0, "hp": 60, "lp": 3000, "gain_db": -8, "fade_in": 300, "fade_out": 40}
+]}

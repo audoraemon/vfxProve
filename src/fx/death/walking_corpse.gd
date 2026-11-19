@@ -123,6 +123,9 @@ var lv_kills_most := KILLS_MOST
 var lv_attack_r := ATTACK_R
 ## Level 5, Borrowed Life: an ATTACK kill leaves no body (&"borrowed") and the walker takes the victim's look (DL7).
 var _twist := false
+## Heard (skill-tree sound pass): a dragging step every STEP_LEN it walks, from where the last was heard.
+const STEP_LEN := 0.45
+var _step_from := Vector2.INF
 
 
 func _build() -> void:
@@ -163,6 +166,7 @@ func _build() -> void:
 		s.sync()
 		sigil = track(s, ctx.overhead) as Node2D
 	ctx.play(&"q_walker", remain.pos)
+	_step_from = remain.pos
 	if DominionParts.staged(self):
 		FxParts.smoke(self, Iso.ground_to_screen(remain.pos), 5.0, 10.0, T_RISE, Vector2(6, 14), Vector2(1, 3), Vector2(0.5, 1.0),
 			Color(0, 0, 0, 0), DUST)
@@ -190,6 +194,9 @@ func _fx_process(delta: float) -> void:
 			"attack":
 				_chase(delta)
 			# "wait": it stands where it is (its idle frames), for the next order.
+		if is_instance_valid(walker) and walker.ground_pos.distance_to(_step_from) >= STEP_LEN:
+			_step_from = walker.ground_pos
+			ctx.play(&"walker_step", walker.ground_pos, 0.0)
 	if is_instance_valid(sigil):
 		(sigil as Sigil).sync()  # over where it has got to this frame
 
@@ -221,10 +228,12 @@ func _chase(delta: float) -> void:
 	if ctx.field == null:
 		return
 	if not _twist:
-		ctx.field.kill(who, &"grave", walker.ground_pos)
+		if ctx.field.kill(who, &"grave", walker.ground_pos):
+			ctx.play(&"walker_kill", walker.ground_pos, 0.0)
 		return
 	var look := who._design()
 	if ctx.field.kill(who, &"borrowed", walker.ground_pos):
+		ctx.play(&"walker_kill", walker.ground_pos, 0.0)
 		_borrow(look)
 
 
@@ -364,6 +373,7 @@ func _lie_down(torn_down := false) -> void:
 		visitors.clear(true)
 		walker = null
 		return
+	ctx.play(&"walker_lie", at, 0.0)
 	if inside and remain.sick and shelter != null:
 		_bring_plague()
 	if DominionParts.staged(self):

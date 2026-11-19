@@ -1,0 +1,6 @@
+{"length": 1.5, "rms_db": -18.72, "reverb": {"rt60": 0.9, "mix": 0.12, "predelay_ms": 10, "damp": 3800}, "eq": [["lowshelf", 160, -1.0]], "layers": [
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 0.0, "onset": true, "pitch": -6, "lp": 4000, "hp": 120, "fade_out": 150, "gain_db": -3},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_06.ogg", "at": 0.33, "onset": true, "pitch": -9, "lp": 1200, "hp": 40, "fade_out": 250, "gain_db": -1},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.5, "onset": true, "pitch": -5, "lp": 3500, "hp": 120, "fade_out": 200, "gain_db": -6},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.4, "from": 1.0, "dur": 0.9, "pitch": -6, "lp": 2400, "hp": 200, "fade_in": 150, "fade_out": 500, "gain_db": -9}
+]}

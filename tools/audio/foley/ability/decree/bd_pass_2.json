@@ -1,0 +1,4 @@
+{"length": 1.1, "peak_db": -2.0, "reverb": {"rt60": 1.0, "mix": 0.14, "predelay_ms": 10, "damp": 5500}, "eq": [["lowshelf", 250, -5.0], ["peak", 3200, 1.0, 0.9]], "layers": [
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_02.ogg", "at": 0.0, "onset": true, "dur": 0.35, "pitch": -3.0, "hp": 500, "lp": 8000, "fade_out": 100, "gain_db": -3},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/metal-small2.wav", "at": 0.18, "onset": true, "pitch": -2.0, "hp": 600, "lp": 8000, "fade_out": 100, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Triangle3-Hit_v2_rr1_Sum.wav", "at": 0.22, "onset": true, "dur": 0.8, "pitch": 1.0, "hp": 1500, "lp": 9000, "fade_out": 550, "gain_db": -12}]}

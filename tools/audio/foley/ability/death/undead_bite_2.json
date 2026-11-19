@@ -1,0 +1,7 @@
+{"length": 0.8, "rms_db": -21.22, "reverb": {"rt60": 0.5, "mix": 0.08, "predelay_ms": 8, "damp": 4500}, "eq": [["lowshelf", 200, -2.0], ["peak", 2600, 1.5, 0.9]], "layers": [
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/NPC/beetle/bite-small2.wav", "at": 0.0, "onset": true, "pitch": -4, "lp": 6000, "hp": 120, "fade_out": 120, "gain_db": -3},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/chomp.ogg", "at": 0.01, "onset": true, "pitch": -6, "lp": 5000, "hp": 150, "fade_out": 120, "gain_db": -3},
+  {"src": "lib:oga/80-cc0-creture-sfx-2/80-CC0-creature-sfx-2/slime_03.ogg", "at": 0.03, "onset": true, "pitch": -2, "lp": 5000, "hp": 160, "fade_out": 150, "gain_db": -4},
+  {"src": "lib:wikimedia/Bones_breaking_wood_fire_ice_crackling.wav", "at": 0.06, "from": 10.28, "dur": 0.25, "lp": 7000, "hp": 300, "fade_in": 2, "fade_out": 120, "gain_db": -7},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr12.wav", "at": 0.0, "onset": true, "pitch": -8, "lp": 2400, "hp": 90, "fade_out": 200, "gain_db": -12}
+]}

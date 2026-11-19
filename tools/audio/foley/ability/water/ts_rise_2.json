@@ -1,0 +1,3 @@
+{"length": 1.4, "peak_db": -3.75, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:oga/beach-ocean-waves/wave_02_cc0-18363__jasinski__alkaibeach.flac", "gain_db": -3, "dur": 1.4, "fade_out": 300, "from": 0.4, "at": 0.0, "pitch": -0.5}
+]}

@@ -1,0 +1,5 @@
+{"length": 3.0, "loop": true, "rms_db": -22.0, "reverb": {"rt60": 0.6, "mix": 0.06, "predelay_ms": 5, "damp": 7000}, "layers": [
+  {"src": "lib:oga/fire-crackling/fire-1.wav", "at": 0.0, "from": 0.0, "dur": 2.85, "hp": 300, "lp": 10000, "fade_in": 400, "fade_out": 400},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 22-Audio.wav", "at": 0.0, "from": 1.0, "dur": 3.4, "hp": 2500, "lp": 9000, "gain_db": -12, "fade_in": 400, "fade_out": 400},
+  {"src": "lib:oga/fireplace-sound-loop/fire.wav", "at": 0.0, "from": 20.0, "dur": 3.4, "hp": 150, "lp": 6000, "gain_db": -8, "fade_in": 400, "fade_out": 400}
+]}

@@ -319,7 +319,7 @@ func _land() -> void:
 	if heart:
 		_meteor_leave = last_land()
 		at(_meteor_leave + M_FLIGHT, _meteor)
-		at(maxf(_meteor_leave - M_SWELL, t), func(): ctx.play(&"cf_fall", landing_origin, 8.0))
+		at(maxf(_meteor_leave - M_SWELL, t), func(): ctx.play(&"wf_fall", landing_origin, 8.0))
 	var all := rects(landing_origin, _dir, lv_length, lv_segments)
 	_line = []
 	for r in all:
@@ -492,7 +492,7 @@ func _meteor() -> void:
 			if ctx.crowd != null:
 				ctx.crowd.threats.register(mid, BURN_R + 0.4, 0.6, maxf(T_DROP + OIL_BURN - t, 0.5), 5.0, 7.0, &"fire")
 			duration = maxf(duration, T_DROP + OIL_BURN + 0.5)
-		ctx.play(&"cf_erupt", mid, 4.0)
+		ctx.play(&"wf_erupt", mid, 4.0)
 	elif open:
 		var half := BOULDER * 0.5
 		for e in ctx.field.in_radius(mid, half * 1.42 + 0.15):
@@ -513,10 +513,10 @@ func _meteor() -> void:
 		_boulder_work = BOULDER_WORK * lv_clear_work / float(maxi(lv_segments, 1))
 		work_left += _boulder_work
 		duration = maxf(duration, T_DROP + LIFE + 0.5)
-		ctx.play(&"cf_impact", mid, 6.0)
-		ctx.play(&"jg_crumble", mid, 4.0)
+		ctx.play(&"wf_impact", mid, 6.0)
+		ctx.play(&"wf_crumble", mid, 4.0)
 	else:
-		ctx.play(&"cf_impact", mid, 6.0)
+		ctx.play(&"wf_impact", mid, 6.0)
 	if not DominionParts.staged(self):
 		return
 	_show_meteor_down(mid, oil)

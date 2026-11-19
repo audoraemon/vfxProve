@@ -37,6 +37,8 @@ var swallowed := false
 var removed := 0
 ## The removals still to make: [kind, thing, structure or pack].
 var _queue: Array = []
+## The buildings the dark takes (fixed at full size): a person sheltering is taken only with one of these.
+var _gone := {}
 var _disc: SwallowDisc
 
 
@@ -132,6 +134,7 @@ func _inside() -> Array:
 			if MissionKeeps.spared(s, crowd, director):
 				continue
 			gone[s] = true
+	_gone = gone
 	# Who shelters where: a sheltered person goes with a taken building and is out of reach in a standing one.
 	var sheltered := {}
 	if crowd != null and crowd.shelters != null:
@@ -201,11 +204,15 @@ func _remove(entry: Array) -> void:
 			var p: Person = entry[1]
 			if not is_instance_valid(p) or not p.is_alive():
 				return
-			var house: Structure = entry[2]
-			if not p.inside and p.ground_pos.distance_to(origin) > full_r:
-				return  # walked out while the dark closed (or out of the shelter and away)
-			if house != null and crowd.shelters != null:
+			# Where he is now decides (C20): sheltering, only with a building the dark takes; out in the open or indoors at home, only
+			# within the circle (one who walked out lives).
+			var house := _shelter_of(p)
+			if house != null:
+				if not _gone.has(house):
+					return  # out of reach in a standing building, whenever he went in
 				crowd.shelters.release(p)
+			elif p.ground_pos.distance_to(origin) > full_r:
+				return
 			if crowd.take(p, KIND):
 				removed += 1
 		&"animal":
@@ -219,8 +226,10 @@ func _remove(entry: Array) -> void:
 				(entry[2] as Visitors).take(a)
 				removed += 1
 		&"remain":
-			crowd.remains.take(entry[1])
-			removed += 1
+			# Still lying inside, unhidden and on the ledger (not taken up or carried off since full size).
+			if crowd.remains != null and crowd.remains.near(origin, full_r).has(entry[1]):
+				crowd.remains.take(entry[1])
+				removed += 1
 		&"decor":
 			var d: Decor = entry[1]
 			if is_instance_valid(d) and ctx.env.decor().has(d):
@@ -228,6 +237,17 @@ func _remove(entry: Array) -> void:
 				removed += 1
 		&"building":
 			_take_building(entry[1])
+
+
+## The shelter `p` is inside now, else null.
+func _shelter_of(p: Person) -> Structure:
+	var crowd: Crowd = ctx.crowd
+	if not p.inside or crowd == null or crowd.shelters == null:
+		return null
+	for s in crowd.shelters.shelters:
+		if (crowd.shelters.shelters[s].inside as Array).has(p):
+			return s
+	return null
 
 
 ## A building goes whole: a foothold is healed first (its lasting dusk and its light), whoever came to shelter in it since goes with

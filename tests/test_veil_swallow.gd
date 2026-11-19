@@ -253,6 +253,24 @@ static func _full(t, made: Array, s0: Structure, grid: WalkGrid) -> void:
 	var b: Person = crowd.citizens[2]
 	b.ground_pos = at + Vector2(5.0, 1.0)
 	b.inside = false
+	# The kept house made a shelter (C20): one shelters in it at full size, one walks in from the open after full size. Both live while
+	# it stands; the one sheltering in s0 (taken) is the control.
+	crowd.shelters.shelters[kept] = {"inside": [], "coming": [], "clear": 0.0}
+	var k: Person = crowd.citizens[6]
+	crowd.shelters._enter(k, kept)
+	(crowd.shelters.shelters[kept].inside as Array).append(k)
+	var late: Person = crowd.citizens[7]
+	late.ground_pos = at + Vector2(0.3, 0.2)
+	late.inside = false
+	# Remains: one lying inside, one outside (written to the ledger as a body would be; their people then go far off).
+	var lay_remain := func(p: Person, g: Vector2) -> Remains.Remain:
+		p.ground_pos = g
+		crowd.remains._on_killed(p, &"deathmark")
+		p.ground_pos = Vector2(-27.0, -27.0)
+		p.inside = false
+		return crowd.remains.near(g, 0.01)[0]
+	var r_in: Remains.Remain = lay_remain.call(crowd.citizens[4], at + Vector2(6.0, -1.0))
+	var r_out: Remains.Remain = lay_remain.call(crowd.citizens[5], at + Vector2(R + 5.0, 0.0))
 	crowd.dusk.clear()
 	crowd.lay_dusk(at, 3.0, 120.0)
 	var kinds := {}
@@ -293,6 +311,11 @@ static func _full(t, made: Array, s0: Structure, grid: WalkGrid) -> void:
 	t.check(not heard, "while it grows: no threat registered, alarm unchanged")
 	t.check(not fled and a.is_alive(), "a person inside does not flee")
 	t.check(inside.has(a) and not inside.has(b) and inside.size() > 1, "at full size %d people stand inside" % inside.size())
+	# After full size, before his turn (he stands near the middle: the fold takes the outermost first), one walks into the standing shelter.
+	t.check(late.is_alive() and not late.inside, "the late one is still out in the open at full size")
+	crowd.shelters._enter(late, kept)
+	(crowd.shelters.shelters[kept].inside as Array).append(late)
+	inside.erase(late)
 	# The removals: never more than PER_FRAME a frame, all done within 1 s.
 	var most := fx.removed
 	var frames := 0
@@ -340,7 +363,11 @@ static func _full(t, made: Array, s0: Structure, grid: WalkGrid) -> void:
 	# Nothing remembered.
 	t.check(crowd.alarm == alarm and crowd.threats._next == threats and crowd.alarms._events.size() == events,
 		"nothing remembered: alarm unchanged, no threat, no incident")
-	t.check(crowd.remains.all().size() == remains, "no remains")
+	t.check(crowd.remains.all().size() == remains - 1, "no remains left by the void's own kills")
+	t.check(not crowd.remains.all().has(r_in) and crowd.remains.all().has(r_out), "a remain lying inside is taken; one outside stays")
+	t.check(k.is_alive() and k.inside and env.structures().has(kept),
+		"one sheltering in a building that stands is out of reach (VA6)")
+	t.check(late.is_alive() and late.inside, "one who went into a standing building after full size is not taken")
 	# The emptied ground: dusk for 20 s.
 	var rim := at + Vector2(R - 0.1, 0.0)
 	t.check(crowd.dusk.covers(rim), "the emptied ground is dusk")

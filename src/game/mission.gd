@@ -43,6 +43,8 @@ const ZOOM_MIN := 0.85
 const ZOOM_MAX := 1.6
 ## A slot's hotkey: 1-6, for up to six slots (v0.08).
 const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6]
+## A Might night's number keys: tiles 1..9 and 10 of the bar's page.
+const BAR_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
 ## Hides the whole interface, to watch the town (v0.11.2, the user's ask): the HUD, its tags and the aim. The camera still moves,
 ## and no click casts while it is hidden; F1 again, or a slot key, TAB or H, brings it back.
 const HIDE_UI_KEY := KEY_F1
@@ -648,6 +650,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_hud.name = "Hud"
 	_hud.world_viewport = _bf.get_viewport()  # the HUD lives in the root; its tags are placed with the world camera's transform
 	_bf.hud_layer.add_child(_hud)
+	_hud.bar_type = play.god_type
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_hud.set_pause_hidden(_pause_hidden)
 	# Covered-outline: a tagged person behind a stall, a tree or a house is traced in the tag's colour over what hides them. One layer
@@ -1286,7 +1289,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 		if event is InputEventKey and event.pressed and not event.echo \
-				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H] or (chains(event) and _rite() != null)):
+				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H] or (chains(event) and _rite() != null) \
+				or wakes_bar(event)):
 			set_ui_hidden(false)
 	if toggles_legend(event):
 		# H opens the legend (over the intro's tour too), or turns its page. Handled here, so the panel it opens cannot take the
@@ -1306,6 +1310,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if is_inside_tree():
 				get_viewport().set_input_as_handled()
 			skip_intro()
+		return
+	if _hud.bar != null and bar_input(event):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var i := SLOT_KEYS.find(event.physical_keycode)
@@ -1384,6 +1390,52 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _pressing:
 			_pressing = false
 			_aim.release(_bf.mouse_ground())
+
+
+## Whether `event` is a Ctrl key pressed alone: it shows or hides the ability bar of a Might night.
+static func toggles_bar(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_CTRL \
+		and not (event.alt_pressed or event.meta_pressed or event.shift_pressed)
+
+
+## Whether `event` is a key of the ability bar (a number key, Ctrl, Z or X) on a night that has one.
+func wakes_bar(event: InputEvent) -> bool:
+	if _hud == null or _hud.bar == null or not event is InputEventKey:
+		return false
+	return event.physical_keycode in BAR_KEYS or event.physical_keycode in [KEY_Z, KEY_X] or toggles_bar(event)
+
+
+## A Might night's bar takes its keys and clicks before the slot row's: 1..9 and 0 arm a tile of the page shown (a key past the page's
+## last arms nothing), Ctrl shows or hides the bar, Z and X turn the page, a click on the strip opens the bar and a click on a tab turns
+## to it. True when the event was the bar's. A click on a tile is left to the slot branch (HUD.slot_at answers for the bar).
+func bar_input(event: InputEvent) -> bool:
+	var bar := _hud.bar
+	if event is InputEventKey and event.pressed and not event.echo:
+		var digit := BAR_KEYS.find(event.physical_keycode)
+		if digit >= 0:
+			var slot := bar.slot_for_digit(digit)
+			if slot >= 0 and slot < _rules.loadout.size():
+				_pick(slot)
+			return true
+		if toggles_bar(event):
+			bar.toggle()
+			UiSound.play(&"ui_click")
+			return true
+		if event.physical_keycode in [KEY_Z, KEY_X]:
+			bar.turn(-1 if event.physical_keycode == KEY_Z else 1)
+			UiSound.play(&"ui_mode")
+			return true
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var hit := _hud.bar_hit(event.position)
+		if hit == "strip":
+			bar.toggle()
+			UiSound.play(&"ui_click")
+			return true
+		if hit.begins_with("tab:"):
+			bar.turn(int(hit.substr(4)) - bar.page)
+			UiSound.play(&"ui_mode")
+			return true
+	return false
 
 
 ## Whether `event` is H pressed: the legend's key (spec §4, Decision 1).

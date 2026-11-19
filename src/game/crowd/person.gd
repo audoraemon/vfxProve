@@ -108,6 +108,8 @@ const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Ground fire (Dragonfire): the soot a scorched person shows, darkest at 0.45 and fading over the last 2 s.
 const SCORCH_COLOR := Color(0.12, 0.09, 0.08)
 const SCORCH_STRENGTH := 0.45
+## How many flame frames a burning person flickers through (_draw_flames()).
+const FLAME_FRAMES := 6
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
@@ -1848,6 +1850,12 @@ func withered() -> bool:
 	return statuses.has(&"wither")
 
 
+## Whether he is alight now (Burning: statuses[&"burning"] holds the seconds left, laid, counted down and taken off by the
+## crowd's Burning). Flames are drawn on him (_draw_flames()); drawing only.
+func burning() -> bool:
+	return statuses.has(&"burning")
+
+
 ## The grey his sprite is drawn in: the withering's, else the walking dead's (Corpse Guise), else none (white). 2, 1, 0 in
 ## the draw signatures.
 func _grey() -> int:
@@ -2975,6 +2983,27 @@ func _draw_body(lift: int, top_only: int) -> void:
 		_draw_citizen(lift, top_only)
 	if state != State.DEAD:
 		_draw_marks(lift)
+		if burning():
+			_draw_flames(lift)
+
+
+## Alight (Burning): tongues of flame licking up his body, flickering with the seconds he has left. Drawing only.
+func _draw_flames(lift: int) -> void:
+	var k := _flame_frame()
+	var top := -18 if SpriteArt.on() and PeopleArt.ready() else -14
+	for i in 5:
+		var x := (i * 2 - 4) + ((k + i) % 2)
+		var h := 3 + (k * 3 + i * 5) % 5
+		var y := -2 - (i * 7 + k * 3) % 10 + lift
+		y = maxi(y - h, top + lift) + h
+		_px(x, y - h, 1, h, COL_EMBER)
+		_px(x, y - h, 1, 1 + h / 3, COL_HOT)
+	_px(-1, top + lift - 1 - k % 2, 1, 2, Color(COL_HOT, 0.8))
+
+
+## Which of FLAME_FRAMES the flames show now: they flicker as his seconds run down.
+func _flame_frame() -> int:
+	return int(float(statuses.get(&"burning", 0.0)) * 10.0) % FLAME_FRAMES
 
 
 ## What a power has laid on it, over the head: a compulsion's mark (its glyph, drifting up and down with its steps,
@@ -3459,6 +3488,9 @@ func _pose_signature() -> int:
 func _art_signature() -> int:
 	if SpriteArt.on() and PeopleArt.ready():
 		return _sprite_signature()
+	if statuses.has(&"burning") and state != State.DEAD:
+		# Alight (Burning): the whole fold, and the flames' frame on top.
+		return (super() + _mark_signature() * SIG_MARK) * (FLAME_FRAMES + 1) + 1 + _flame_frame()
 	if state != State.WANDER or _lift != 0.0 or _frozen > 0.0 or _flash > 0.0:
 		return super() + _mark_signature() * SIG_MARK
 	var running := is_running()
@@ -3486,7 +3518,7 @@ func _sprite_signature() -> int:
 	var sig: int = (code >> 2 & 31) * 4 + (code & 3)
 	sig = sig * 16 + (code >> 7) % 16
 	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED \
-			and scorched_left <= 0.0:
+			and scorched_left <= 0.0 and not statuses.has(&"burning"):
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
 		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
@@ -3507,6 +3539,9 @@ func _sprite_signature() -> int:
 	if scorched_left > 0.0:
 		# Soot (ground fire) fades in steps; unscorched, the integer is the quiet fold's.
 		sig = sig * 5 + int(clampf(scorched_left / 2.0, 0.0, 1.0) * 4.0) + 1
+	if statuses.has(&"burning"):
+		# Alight (Burning): the flames' frame on top; not alight, the integer is as it was.
+		sig = sig * (FLAME_FRAMES + 1) + 1 + _flame_frame()
 	return sig
 
 

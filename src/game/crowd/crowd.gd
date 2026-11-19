@@ -234,6 +234,8 @@ var _bed_level := 0.0
 var remains: Remains
 ## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
 var withering: Withering
+## The burning (Burning: Ember on a person): laid by burn(), stepped beside the withering, cleared with the town.
+var burning: Burning
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -346,6 +348,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
+	burning = Burning.new(self)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
@@ -1143,6 +1146,8 @@ func _advance(delta: float) -> void:
 		remains.step(delta)
 	if withering != null:
 		withering.step(delta)
+	if burning != null:
+		burning.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1729,6 +1734,12 @@ func is_veiled(at: Vector2) -> bool:
 ## (gone, dead, inside, or withering already).
 func wither(p: Person, seconds: float, from: Vector2) -> bool:
 	return withering != null and withering.lay(p, seconds, from)
+
+
+## Sets `p` alight for `seconds`, from `from` (Burning.lay()); a building he brushes catches at `level`: false when nothing
+## was laid (gone, dead, inside, or burning already).
+func burn(p: Person, seconds: float, from: Vector2, level := Burning.LIGHT_AT) -> bool:
+	return burning != null and burning.lay(p, seconds, from, level)
 
 
 ## The town is told what `s` is, for `seconds` (Anathema): a `mark` the managers read -- &"cursed": nobody will be
@@ -2320,6 +2331,8 @@ func clear() -> void:
 	_struct_marks.clear()
 	if withering != null:
 		withering.clear()
+	if burning != null:
+		burning.clear()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):

@@ -1304,9 +1304,12 @@ func _draw() -> void:
 		"whisper":
 			_draw_whisper()
 		"ember":
-			# What it would light, or a red ring for nothing that burns in reach.
-			var burns := EmberFx.target(_crowd._env, _press, float(area().get("r", EmberFx.REACH)))
-			if burns != null:
+			# Who or what it would light (a person under the click first), or a red ring for nothing that burns in reach.
+			var alight := EmberFx.pick_person(_crowd._field, _press)
+			var burns := EmberFx.target(_crowd._env, _press, float(area().get("r", EmberFx.REACH))) if alight == null else null
+			if alight != null:
+				_ring(alight.ground_pos, 0.25, COL_INNER)
+			elif burns != null:
 				var box := burns.footprint.grow(0.08)
 				draw_polyline(PackedVector2Array([box.position, Vector2(box.end.x, box.position.y), box.end,
 					Vector2(box.position.x, box.end.y), box.position]), COL_INNER, -1.0)

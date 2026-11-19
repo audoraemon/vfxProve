@@ -612,6 +612,11 @@ func hint_phase() -> String:
 	return "relay" if phase == Phase.RUN and relays > 0 else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "herald", "bell", "relay"])
+
+
 ## The tour (board tags, spec §4): the watchman at the gate, then the bellkeeper.
 func tour() -> Array:
 	var out := []

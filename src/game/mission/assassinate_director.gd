@@ -836,6 +836,11 @@ func hint_phase() -> String:
 	return "safe" if q.leg >= q.stops.size() else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "hiding", "inside", "next", "safe"])
+
+
 ## The results' report (v0.11 M2): how the night ended for the targets ("escaped" if one got away; with all dead, "seen" if any
 ## death was seen, else "unseen"; else "alive"), how many died, how many were stopped out of the walls (god T1R) and how many deaths were seen, and the alarms.
 func report() -> Dictionary:

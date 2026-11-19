@@ -798,6 +798,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "guarded", "open", "searching", "captain", "coming", "waiting"])
+
+
 ## The seconds the hint's line counts down (v0.11 M4, MissionHints.SECONDS): in the "coming" phase, until the head comes out at the
 ## latest (head_due()); else 0.
 func hint_seconds() -> float:

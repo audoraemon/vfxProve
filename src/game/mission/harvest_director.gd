@@ -788,6 +788,11 @@ func hint_phase() -> String:
 	return phase
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "burning", "watchman", "empty"])
+
+
 ## The tour (spec §2, v0.11 M2): the three granaries with their watchmen and when their grain arrives, then the Citadel.
 func tour() -> Array:
 	var out := []

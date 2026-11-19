@@ -383,6 +383,11 @@ func hint_phase() -> String:
 	return "blessing" if at_steps and t >= BLESSING_AT and t < BLESSING_AT + BLESSING_SECONDS else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "dock", "blessing"])
+
+
 ## The tour (board tags, spec §4): the Prince, the cathedral steps, the dock.
 func tour() -> Array:
 	var out := []

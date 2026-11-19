@@ -474,6 +474,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "bound", "caught", "clear", "gate", "hounds"])
+
+
 ## The tour (v0.11 M4, mission spec §2): her in the stocks, the postern, the Citadel.
 func tour() -> Array:
 	var out := []

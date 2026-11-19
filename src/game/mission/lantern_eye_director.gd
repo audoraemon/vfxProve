@@ -712,6 +712,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "eye", "shattered", "guarded", "open", "waiting"])
+
+
 ## The seconds the hint counts down (v0.11 M6): the Eye's in "eye", the first draining mirror's in "shattered"; else 0.
 func hint_seconds() -> float:
 	match hint_phase():

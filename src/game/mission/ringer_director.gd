@@ -328,6 +328,11 @@ func hint_phase() -> String:
 	return "mates" if not mates_with().is_empty() else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "herald", "climbing", "relay", "mates"])
+
+
 ## No tour of its own: BellRingersDirector shows the posts (v0.11 M3).
 func tour() -> Array:
 	return []

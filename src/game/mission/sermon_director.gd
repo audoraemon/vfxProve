@@ -808,6 +808,11 @@ func hint_phase() -> String:
 	return "watched" if faithful_seeing(door, SIGHT) != null else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "bell", "report", "seen", "coming", "rapt", "watched"])
+
+
 ## The tour (v0.11 M5, mission spec §3): the preacher, the god's house, the Temple.
 func tour() -> Array:
 	return [[pulpit, "The preacher at the south-west well. While he preaches, his crowd hears only him."],

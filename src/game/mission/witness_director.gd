@@ -382,3 +382,8 @@ func hint_phase() -> String:
 	if eta() <= near_warn:
 		return "near"
 	return "relay" if relays > 0 else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "near", "relay"])

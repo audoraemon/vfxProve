@@ -520,6 +520,11 @@ func hint_phase() -> String:
 	return "waiting" if c != null and not c.word else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "hiding", "found", "waiting"])
+
+
 ## The tour (mission spec §3, the controller's ruling on Decision 26): the first contact -- how many there are, and the plain warning
 ## not to kill him; the Temple.
 func tour() -> Array:

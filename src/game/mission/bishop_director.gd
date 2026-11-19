@@ -687,6 +687,11 @@ func hint_phase() -> String:
 	return "burning" if _burning(refuges[cur]) else "open"
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "square", "waiting", "guarded", "burning", "open"])
+
+
 ## The seconds the hint counts down (v0.11 M5, MissionHints.SECONDS): to his next refuge while he waits or is on his way; else 0.
 func hint_seconds() -> float:
 	return arrive_in() if hint_phase() == "waiting" else 0.0

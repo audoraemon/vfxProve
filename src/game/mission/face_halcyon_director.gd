@@ -1186,6 +1186,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "pyre", "gaze"])
+
+
 ## The map tags, most important first (MS §6): each believer bound to the stake and the pyre ("BURNING 0:12" with its ring filling), the leading
 ## procession's believer "PYRE IN 0:40", every other believer "BELIEVER", all "- DO NOT KILL", blue and pointed at; each able escort "ESCORT",
 ## red and pointed at; the pyre ("PYRE IN" its soonest procession's seconds, "PYRE" otherwise), orange, its pile outlined; each house still waiting

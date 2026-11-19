@@ -305,6 +305,11 @@ func hint_phase() -> String:
 	return "packed" if t >= BONFIRE_AT else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "address", "packed"])
+
+
 ## The tour (board tags, spec §4): the fountain, then the Mayor.
 func tour() -> Array:
 	var out := []

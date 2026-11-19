@@ -507,6 +507,11 @@ func hint_phase() -> String:
 	return "steadied" if standing < wards.size() else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "coming", "open", "steadied"])
+
+
 ## The tour (mission spec §2, v0.11 M3): the fair and its wardens, then the three later crowds' sources with their times ("by": the
 ## chain can bring them sooner), the last with the close.
 func tour() -> Array:

@@ -51,3 +51,8 @@ func hint_phase() -> String:
 	if rite_running():
 		return "rite"
 	return "fallen" if town != null and is_instance_valid(town.citadel) and town.citadel.is_fallen() else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "rite", "fallen"])

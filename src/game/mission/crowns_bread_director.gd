@@ -541,6 +541,11 @@ func hint_phase() -> String:
 	return "engineers" if not guards(i).is_empty() else "open"
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "not_yet", "engineers", "open"])
+
+
 ## The tour (v0.11 M4, mission spec §1): the granary, the mill, the bridge, each with its time.
 func tour() -> Array:
 	var words := ["The granary by the east road. In use at %s. Its engineers mend and rebuild.",

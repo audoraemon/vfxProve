@@ -433,6 +433,11 @@ func hint_phase() -> String:
 	return "wren" if appeared else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "carry", "homeward", "wren"])
+
+
 ## The tour (v0.10 M6, spec §5): the flame on its bearer, Mira's shrine, the Temple.
 func tour() -> Array:
 	var out := []

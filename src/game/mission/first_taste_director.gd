@@ -662,6 +662,11 @@ func hint_phase() -> String:
 	return "chain"
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["drag", "cleanse", "march", "chain"])
+
+
 ## The shrine and the two ways in: the gate pair and the camera's resting place.
 func tour() -> Array:
 	var out := []

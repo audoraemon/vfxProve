@@ -158,6 +158,11 @@ func hint_phase() -> String:
 	return "stars"
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "herald", "bell", "relay", "stars", "running", "waiting"])
+
+
 ## The tour (v0.11 M1): the three gates the stars fall over, then the bellkeeper. v0.11 M2 (M1 final review): the first star
 ## falls at its time; a later one may fall sooner (stop_wait), so it falls "by" its time.
 func tour() -> Array:

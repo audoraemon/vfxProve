@@ -308,6 +308,11 @@ func hint_phase() -> String:
 	return "knights" if living_knights() > 0 else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "knights"])
+
+
 ## The tour (v0.10 M6, spec §5): a lantern, the flame-bearer, the Temple the Knights come out of.
 func tour() -> Array:
 	var out := []

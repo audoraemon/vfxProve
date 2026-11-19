@@ -34,6 +34,7 @@ const PROCESSION := [
 ## Steps by mission or act id, in the order they come.
 ## (The Feast plays The Long Night's act, so its ids share the acts' steps.)
 const STEPS := {
+	# --- clarity block: intercept ---
 	# The Warning and its acts (The Omen shares the Warning's), and the board's Starfall.
 	"warning": [
 		{"t": "Kill the messenger unseen"},
@@ -50,62 +51,6 @@ const STEPS := {
 	"long_night": [
 		{"t": "Stop the messenger unseen"},
 	],
-	"festival": FESTIVAL,
-	"feast_festival": FESTIVAL,
-	"procession": PROCESSION,
-	"feast_procession": PROCESSION,
-	"judgement": [
-		{"t": "Bring the Citadel down"},
-		{"t": "Break the Banishing Rite", "ph": ["rite"]},
-		{"t": "Break the city's stability", "ph": ["fallen"]},
-	],
-	"last_judgement": [
-		{"t": "Bring the Citadel down"},
-		{"t": "Break the Banishing Rite", "ph": ["rite"]},
-		{"t": "Break the city's stability", "ph": ["fallen"]},
-	],
-	# The Lantern campaign.
-	"miras_house": [
-		{"t": "Whisper a mourner to her door", "c": "n"},
-		{"t": "Ascend, or hold until dawn", "ph": ["four"]},
-		{"t": "Keep your believers alive", "ph": ["burning"], "c": "n"},
-	],
-	"vigil_flame": [
-		{"t": "Draw the acolytes off the flame"},
-		{"t": "Lead Wren to the flame", "ph": ["wren"]},
-		{"t": "Swap the flame before the Temple", "ph": ["homeward"]},
-		{"t": "Walk Wren to Mira's shrine", "ph": ["carry"]},
-	],
-	"broken_lanterns": [
-		{"t": "Break and drain a lantern", "c": "n"},
-		{"t": "Draw off the lantern's Knight", "ph": ["knights"], "c": "n"},
-	],
-	# Tier 1.
-	"tax_collector": [
-		{"t": "Stop the tax collector", "c": "n"},
-		{"t": "Seal his door, draw guards off", "ph": ["inside"], "c": "n"},
-		{"t": "Burn the counting-house", "ph": ["hiding"], "c": "n"},
-		{"t": "Kill him before the Citadel", "ph": ["running", "safe"], "c": "n"},
-		{"t": "Be ready for the next collector", "ph": ["next"], "c": "n"},
-	],
-	"spoiled_harvest": [
-		{"t": "Wait for the grain cart", "ph": ["empty"], "c": "s"},
-		{"t": "Clear the watchmen, burn it", "c": "n"},
-		{"t": "Clear the watchman at the fire", "ph": ["watchman"]},
-		{"t": "Keep it burning", "ph": ["burning"], "c": "n"},
-	],
-	"lost_lamb": [
-		{"t": "Get the acolyte to the gate"},
-		{"t": "Clear his road to the gate", "ph": ["running"]},
-		{"t": "Lure him on to the west gate", "ph": ["led"]},
-		{"t": "Stop the soldier taking him", "ph": ["caught"]},
-		{"t": "Draw the watch off the gate", "ph": ["gate"]},
-		{"t": "Send him through the gate", "ph": ["clear"]},
-	],
-	"first_prayers": [
-		{"t": "Wait for a believer to pray", "c": "n"},
-		{"t": "Draw the Faithful off the door", "ph": ["watched"], "c": "n"},
-	],
 	# Tier 2.
 	"bell_ringers": [
 		{"t": "Kill a ringer unseen", "c": "n"},
@@ -115,40 +60,36 @@ const STEPS := {
 		{"t": "Stop the bellkeeper", "ph": ["bell"], "c": "n"},
 		{"t": "Wait for the next ringer", "ph": ["waiting"], "c": "n"},
 	],
+	"silence_witness": [
+		{"t": "Kill a witness out of sight", "c": "n"},
+		{"t": "Stop the mate running on", "ph": ["relay"], "c": "n"},
+		{"t": "Stop him before the Temple", "ph": ["near"], "c": "n"},
+	],
+	"festival": FESTIVAL,
+	"feast_festival": FESTIVAL,
 	"market_panic": [
 		{"t": "Strike the wardens first"},
 		{"t": "Remove the last wardens", "ph": ["steadied"]},
 		{"t": "Scatter the crowd", "ph": ["open"], "c": "n"},
 		{"t": "Strike the crowd on the way", "ph": ["coming"], "c": "n"},
 	],
+	"procession": PROCESSION,
+	"feast_procession": PROCESSION,
+
+	# --- clarity block: assassinate ---
 	"informer": [
 		{"t": "Turn the contact unseen", "c": "n"},
 		{"t": "Draw his company away", "ph": ["waiting"], "c": "n"},
 		{"t": "Kill him before the Temple", "ph": ["found", "running"], "c": "n"},
 		{"t": "Smoke him out: burn the house", "ph": ["hiding"], "c": "n"},
 	],
-	# Tier 3.
-	"crowns_bread": [
-		{"t": "Wait, then clear the engineers", "c": "s"},
-		{"t": "Clear the engineers now", "ph": ["not_yet"], "c": "s"},
-		{"t": "Remove every engineer", "ph": ["engineers"], "c": "n"},
-		{"t": "Bring it down now", "ph": ["open"], "c": "n"},
-	],
-	"prisoner": [
-		{"t": "Lead her to the postern"},
-		{"t": "Remove both gaolers", "ph": ["bound"]},
-		{"t": "Stop the man taking her back", "ph": ["caught"]},
-		{"t": "Turn the hounds from her", "ph": ["hounds"]},
-		{"t": "Draw the watch off the postern", "ph": ["gate"]},
-		{"t": "Send her through the postern", "ph": ["clear"]},
-	],
-	"heretic_hunt": [
-		{"t": "Clear a standard's guards", "c": "n"},
-		{"t": "Break the standard", "ph": ["open"], "c": "n"},
-		{"t": "Clear the next guards", "ph": ["waiting"], "c": "s"},
-		{"t": "Be ready for the captain", "ph": ["coming"], "c": "s"},
-		{"t": "Kill the captain", "ph": ["captain"]},
-		{"t": "Kill him before the cellar", "ph": ["searching"]},
+	# Tier 1.
+	"tax_collector": [
+		{"t": "Stop the tax collector", "c": "n"},
+		{"t": "Seal his door, draw guards off", "ph": ["inside"], "c": "n"},
+		{"t": "Burn the counting-house", "ph": ["hiding"], "c": "n"},
+		{"t": "Kill him before the Citadel", "ph": ["running", "safe"], "c": "n"},
+		{"t": "Be ready for the next collector", "ph": ["next"], "c": "n"},
 	],
 	# Tier 4.
 	"bishop": [
@@ -159,12 +100,123 @@ const STEPS := {
 		{"t": "Keep it burning", "ph": ["burning"], "c": "n"},
 		{"t": "Kill him before the Citadel", "ph": ["square", "running"]},
 	],
+	"expel_inquisitor": [
+		{"t": "Stop a lantern-warden", "c": "n"},
+		{"t": "Kill or frighten the captain", "ph": ["captain"], "c": "n"},
+		{"t": "Stop him before the Citadel", "ph": ["near"], "c": "n"},
+	],
+
+	# --- clarity block: escort ---
+	"lost_lamb": [
+		{"t": "Get the acolyte to the gate"},
+		{"t": "Clear his road to the gate", "ph": ["running"]},
+		{"t": "Lure him on to the west gate", "ph": ["led"]},
+		{"t": "Stop the soldier taking him", "ph": ["caught"]},
+		{"t": "Draw the watch off the gate", "ph": ["gate"]},
+		{"t": "Send him through the gate", "ph": ["clear"]},
+	],
+	"prisoner": [
+		{"t": "Lead her to the postern"},
+		{"t": "Remove both gaolers", "ph": ["bound"]},
+		{"t": "Stop the man taking her back", "ph": ["caught"]},
+		{"t": "Turn the hounds from her", "ph": ["hounds"]},
+		{"t": "Draw the watch off the postern", "ph": ["gate"]},
+		{"t": "Send her through the postern", "ph": ["clear"]},
+	],
+	"exodus": [
+		{"t": "Lead the household to a gate", "c": "n"},
+		{"t": "Stop the man taking him", "ph": ["caught"], "c": "n"},
+		{"t": "Turn the searchers away", "ph": ["hounds"], "c": "n"},
+		{"t": "Draw the Inquisitors off", "ph": ["gate"], "c": "n"},
+		{"t": "Lead them to another gate", "ph": ["shut"], "c": "n"},
+		{"t": "Clear the next road", "ph": ["waiting"], "c": "s"},
+	],
+	"hide_faithful": [
+		{"t": "Clear the watch from their road", "c": "n"},
+		{"t": "Keep searchers off the household", "ph": ["trail"], "c": "n"},
+		{"t": "Stop the man seizing him", "ph": ["seized"], "c": "n"},
+	],
+	"face_halcyon": [
+		{"t": "Break a believer's escort", "c": "n"},
+		{"t": "Break his escort at the pyre", "ph": ["pyre"], "c": "n"},
+		{"t": "Free them quietly", "ph": ["gaze"], "c": "n"},
+	],
+
+	# --- clarity block: raze ---
+	"spoiled_harvest": [
+		{"t": "Wait for the grain cart", "ph": ["empty"], "c": "s"},
+		{"t": "Clear the watchmen, burn it", "c": "n"},
+		{"t": "Clear the watchman at the fire", "ph": ["watchman"]},
+		{"t": "Keep it burning", "ph": ["burning"], "c": "n"},
+	],
+	# Tier 3.
+	"crowns_bread": [
+		{"t": "Wait, then clear the engineers", "c": "s"},
+		{"t": "Clear the engineers now", "ph": ["not_yet"], "c": "s"},
+		{"t": "Remove every engineer", "ph": ["engineers"], "c": "n"},
+		{"t": "Bring it down now", "ph": ["open"], "c": "n"},
+	],
 	"armoury": [
 		{"t": "Wait for the horn", "c": "s"},
 		{"t": "Kill its night watch", "ph": ["not_yet"], "c": "s"},
 		{"t": "Kill its armed men", "ph": ["guarded"], "c": "n"},
 		{"t": "Strike the barracks, no fire", "ph": ["stone"], "c": "n"},
 		{"t": "Destroy it now", "ph": ["open"], "c": "n"},
+	],
+	"heart_of_faith": [
+		{"t": "Kill the Knights, then burn", "c": "n"},
+		{"t": "Kill its Knights first", "ph": ["not_yet"], "c": "s"},
+		{"t": "Kill the Lantern Knights", "ph": ["guarded"], "c": "n"},
+		{"t": "Set it alight", "ph": ["open"], "c": "n"},
+		{"t": "Keep it burning", "ph": ["burning"], "c": "n"},
+		{"t": "Kill Odran's bearers", "ph": ["coming", "litter"], "c": "s"},
+		{"t": "Kill Odran on the steps", "ph": ["on_foot"]},
+		{"t": "Kill Odran now", "ph": ["rite"], "c": "s"},
+	],
+	"judgement": [
+		{"t": "Bring the Citadel down"},
+		{"t": "Break the Banishing Rite", "ph": ["rite"]},
+		{"t": "Break the city's stability", "ph": ["fallen"]},
+	],
+	"last_judgement": [
+		{"t": "Bring the Citadel down"},
+		{"t": "Break the Banishing Rite", "ph": ["rite"]},
+		{"t": "Break the city's stability", "ph": ["fallen"]},
+	],
+
+	# --- clarity block: hunt ---
+	"heretic_hunt": [
+		{"t": "Clear a standard's guards", "c": "n"},
+		{"t": "Break the standard", "ph": ["open"], "c": "n"},
+		{"t": "Clear the next guards", "ph": ["waiting"], "c": "s"},
+		{"t": "Be ready for the captain", "ph": ["coming"], "c": "s"},
+		{"t": "Kill the captain", "ph": ["captain"]},
+		{"t": "Kill him before the cellar", "ph": ["searching"]},
+	],
+	# Tier 5.
+	"lantern_eye": [
+		{"t": "Clear a mirror's guards", "c": "n"},
+		{"t": "Shatter the mirror", "ph": ["open"], "c": "n"},
+		{"t": "Keep it shattered", "ph": ["shattered"], "c": "s"},
+		{"t": "Clear the next mirror's guards", "ph": ["waiting"], "c": "n"},
+		{"t": "Shatter a mirror now", "ph": ["eye"], "c": "s"},
+	],
+	"break_hunt": [
+		{"t": "Strike a bearer, no escort near", "c": "n"},
+		{"t": "Strike the new bearer", "ph": ["carried"], "c": "n"},
+		{"t": "Do not lose another house", "ph": ["taken"], "c": "n"},
+	],
+
+	# --- clarity block: convert ---
+	"first_prayers": [
+		{"t": "Wait for a believer to pray", "c": "n"},
+		{"t": "Draw the Faithful off the door", "ph": ["watched"], "c": "n"},
+	],
+	# The Lantern campaign.
+	"miras_house": [
+		{"t": "Whisper a mourner to her door", "c": "n"},
+		{"t": "Ascend, or hold until dawn", "ph": ["four"]},
+		{"t": "Keep your believers alive", "ph": ["burning"], "c": "n"},
 	],
 	"sermon": [
 		{"t": "Whisper the crowd to your door", "c": "n"},
@@ -174,6 +226,12 @@ const STEPS := {
 		{"t": "Stop the runner unseen", "ph": ["report"]},
 		{"t": "No more seen deaths", "ph": ["seen"]},
 		{"t": "Stop the bellkeeper unseen", "ph": ["bell"]},
+	],
+	"vigil_flame": [
+		{"t": "Draw the acolytes off the flame"},
+		{"t": "Lead Wren to the flame", "ph": ["wren"]},
+		{"t": "Swap the flame before the Temple", "ph": ["homeward"]},
+		{"t": "Walk Wren to Mira's shrine", "ph": ["carry"]},
 	],
 	"relic_run": [
 		{"t": "Bring Pip to the first halt"},
@@ -187,31 +245,9 @@ const STEPS := {
 		{"t": "No more seen deaths", "ph": ["seen"]},
 		{"t": "Stop the bellkeeper unseen", "ph": ["bell"]},
 	],
-	# Tier 5.
-	"lantern_eye": [
-		{"t": "Clear a mirror's guards", "c": "n"},
-		{"t": "Shatter the mirror", "ph": ["open"], "c": "n"},
-		{"t": "Keep it shattered", "ph": ["shattered"], "c": "s"},
-		{"t": "Clear the next mirror's guards", "ph": ["waiting"], "c": "n"},
-		{"t": "Shatter a mirror now", "ph": ["eye"], "c": "s"},
-	],
-	"exodus": [
-		{"t": "Lead the household to a gate", "c": "n"},
-		{"t": "Stop the man taking him", "ph": ["caught"], "c": "n"},
-		{"t": "Turn the searchers away", "ph": ["hounds"], "c": "n"},
-		{"t": "Draw the Inquisitors off", "ph": ["gate"], "c": "n"},
-		{"t": "Lead them to another gate", "ph": ["shut"], "c": "n"},
-		{"t": "Clear the next road", "ph": ["waiting"], "c": "s"},
-	],
-	"heart_of_faith": [
-		{"t": "Kill the Knights, then burn", "c": "n"},
-		{"t": "Kill its Knights first", "ph": ["not_yet"], "c": "s"},
-		{"t": "Kill the Lantern Knights", "ph": ["guarded"], "c": "n"},
-		{"t": "Set it alight", "ph": ["open"], "c": "n"},
-		{"t": "Keep it burning", "ph": ["burning"], "c": "n"},
-		{"t": "Kill Odran's bearers", "ph": ["coming", "litter"], "c": "s"},
-		{"t": "Kill Odran on the steps", "ph": ["on_foot"]},
-		{"t": "Kill Odran now", "ph": ["rite"], "c": "s"},
+	"broken_lanterns": [
+		{"t": "Break and drain a lantern", "c": "n"},
+		{"t": "Draw off the lantern's Knight", "ph": ["knights"], "c": "n"},
 	],
 	# The rite and the Lantern Hunts (god progression).
 	"first_taste": [
@@ -220,31 +256,8 @@ const STEPS := {
 		{"t": "Stop the marching clergy", "ph": ["march"], "c": "n"},
 		{"t": "Strike a kneeler now", "ph": ["cleanse"]},
 	],
-	"hide_faithful": [
-		{"t": "Clear the watch from their road", "c": "n"},
-		{"t": "Keep searchers off the household", "ph": ["trail"], "c": "n"},
-		{"t": "Stop the man seizing him", "ph": ["seized"], "c": "n"},
-	],
-	"silence_witness": [
-		{"t": "Kill a witness out of sight", "c": "n"},
-		{"t": "Stop the mate running on", "ph": ["relay"], "c": "n"},
-		{"t": "Stop him before the Temple", "ph": ["near"], "c": "n"},
-	],
-	"expel_inquisitor": [
-		{"t": "Stop a lantern-warden", "c": "n"},
-		{"t": "Kill or frighten the captain", "ph": ["captain"], "c": "n"},
-		{"t": "Stop him before the Citadel", "ph": ["near"], "c": "n"},
-	],
-	"break_hunt": [
-		{"t": "Strike a bearer, no escort near", "c": "n"},
-		{"t": "Strike the new bearer", "ph": ["carried"], "c": "n"},
-		{"t": "Do not lose another house", "ph": ["taken"], "c": "n"},
-	],
-	"face_halcyon": [
-		{"t": "Break a believer's escort", "c": "n"},
-		{"t": "Break his escort at the pyre", "ph": ["pyre"], "c": "n"},
-		{"t": "Free them quietly", "ph": ["gaze"], "c": "n"},
-	],
+
+	# --- the rest (free play, the Lantern campaign) ---
 	# Free play: nothing to win, so the HUD draws no line (Rules.free_play), but the table is whole.
 	"capital_sandbox": [
 		{"t": "Play freely"},

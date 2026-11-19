@@ -1027,6 +1027,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "coming", "litter", "rite", "on_foot", "guarded", "burning", "open", "not_yet"])
+
+
 ## The seconds the hint counts down (v0.11 M6): Odran's chain in "coming", the rite's in "rite"; else 0.
 func hint_seconds() -> float:
 	match hint_phase():

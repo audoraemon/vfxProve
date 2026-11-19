@@ -347,6 +347,13 @@ func hint_phase() -> String:
 	return phase
 
 
+## Every phase hint_phase() can return: the escort's and the two the lamb adds (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	var out := super()
+	out.append_array(PackedStringArray(["running", "led"]))
+	return out
+
+
 ## The tour (v0.11 M2, spec §3): him, the west gate, the Temple.
 func tour() -> Array:
 	var out := []

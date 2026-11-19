@@ -798,6 +798,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "caught", "clear", "gate"])
+
+
 ## What the director adds to the results (v0.11 M2): how many times he was seized, and whether he got out.
 func report() -> Dictionary:
 	return {"seizures": seizures, "out": escaped}

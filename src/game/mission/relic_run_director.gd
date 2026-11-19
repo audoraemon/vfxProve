@@ -845,6 +845,11 @@ func hint_phase() -> String:
 	return "moving" if set_out else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "bell", "report", "seen", "carry", "watched", "aboard", "citadel", "last_halt", "moving"])
+
+
 ## The tour (v0.11 M5, mission spec §4): the cart at the Temple, Pip, your believers' house.
 func tour() -> Array:
 	var out := [[temple_door, "The relic cart at the Temple. It halts at two checkpoints, where its reliquary opens."]]

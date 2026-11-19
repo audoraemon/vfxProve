@@ -622,6 +622,11 @@ func hint_phase() -> String:
 	return "stone" if is_instance_valid(s) and not s.kind in FireManager.BURNABLE else "open"
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "not_yet", "guarded", "stone", "open"])
+
+
 ## The tour (v0.11 M5, mission spec §2): the north barracks, the gate barracks, the armoury.
 func tour() -> Array:
 	var words := ["The north barracks. The muster horn calls it at %s.", "The gate barracks, by %s. It is stone: blows, not fire.",

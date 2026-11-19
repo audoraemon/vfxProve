@@ -358,6 +358,11 @@ func hint_phase() -> String:
 	return "four" if believers_outside() >= need else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "burning", "four"])
+
+
 ## The tour (v0.10 M6, spec §5): her door, the Temple, the Inquisitor.
 func tour() -> Array:
 	var out := []

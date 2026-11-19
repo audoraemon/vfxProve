@@ -82,7 +82,10 @@ static func does(verb: String) -> String:
 	return String(_row(verb).get("does", ""))
 
 
-## The verbs whose word stands in `text` as a whole word, any case, in table order ("burning" is not "burn").
+## The verbs whose word stands in `text` as a whole word, any case, in table order ("burning" is not "burn"). A mention that forbids
+## the verb is skipped (pre-flight I10): one with "not" or "never" in the three words before it in its clause ("do not kill them",
+## "never burn"), or "none", "no one" or "nobody" right after it ("kill none"): a text that says not to kill does not need a case
+## where killing counts.
 static func named_in(text: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	var low := text.to_lower()
@@ -96,11 +99,24 @@ static func named_in(text: String) -> PackedStringArray:
 			var before := at == 0 or not _letter(low[at - 1])
 			var end := at + w.length()
 			var after := end >= low.length() or not _letter(low[end])
-			if before and after:
+			if before and after and not _forbidden(low, at, end):
 				out.append(w)
 				break
 			from = at + 1
 	return out
+
+
+## Whether the verb standing at low[at:end] is named only to be refused (named_in()).
+static func _forbidden(low: String, at: int, end: int) -> bool:
+	var clause := low.substr(0, at)
+	for stop in [",", ".", ";", ":", "(", ")", "!", "?"]:
+		clause = clause.get_slice(stop, clause.get_slice_count(stop) - 1)
+	var words := clause.split(" ", false)
+	for i in range(maxi(0, words.size() - 3), words.size()):
+		if words[i] == "not" or words[i] == "never":
+			return true
+	var tail := low.substr(end, 12).strip_edges()
+	return tail.begins_with("none") or tail.begins_with("no one") or tail.begins_with("nobody")
 
 
 static func _letter(c: String) -> bool:

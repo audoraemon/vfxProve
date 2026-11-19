@@ -280,6 +280,11 @@ func hint_phase() -> String:
 	return "waiting" if stopped() > 0 and next_post() >= 0 else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "bell", "herald", "climbing", "relay", "mates", "waiting"])
+
+
 ## The tour (mission spec §1): the three posts with their times (the later ones "by": the chain can bring them sooner), then the
 ## bell tower (v0.11 M3).
 func tour() -> Array:

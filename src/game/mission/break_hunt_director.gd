@@ -1143,6 +1143,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "taken", "carried"])
+
+
 ## The map tags (MS §5), most important first: each standard's bearer (gold, pointed at) with his seconds to the house; the believers' houses
 ## (blue, a taken one red) with the nearest standard's seconds; the musters not yet raised (grey) with their countdown; the escorts (red,
 ## pointed at once the march begins).

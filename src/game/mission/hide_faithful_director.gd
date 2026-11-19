@@ -1431,6 +1431,11 @@ func hint_phase() -> String:
 	return "trail" if _trail >= 0 else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "seized", "trail"])
+
+
 ## The tour (MS §2, *my call*): the north-west household's door, the Main Gate, the Temple's door; each line fits the caption's plate.
 func tour() -> Array:
 	var out := []

@@ -193,6 +193,9 @@ var intro := false
 ## The ascent's column (v0.11 M1): its ground point (Vector2.INF for none) and its real seconds so far.
 var _rise_at := Vector2.INF
 var _rise_age := 0.0
+## The why-not banners' rate limit (Mission clarity, spec 6.1) and the real seconds it counts on (advance() keeps it, as _rise_age is kept).
+var _why := WhyNotGate.new()
+var _why_clock := 0.0
 ## How wide the column is drawn, 1.0 for the ascent's (god P3, MS §5: a won rite's rises larger, Mission.RITE_RISE).
 var _rise_scale := 1.0
 ## The chain plate (god P3, MS §2): Mission sets `chain_aiming` while C's aim is up (the plate's frame turns gold); a refused chain flashes it
@@ -251,6 +254,8 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 		_slot_names.append(String(_rules.power(i).get("name", "")))
 	_rules.banner.connect(push_banner)
 	_rules.subtitle.connect(push_subtitle)
+	# After the director's own handler (it connected in its own set-up), so a cast that turned a target is judged on what it did.
+	_rules.cast_made.connect(_on_cast_why)
 	_rules.cast_refused.connect(_on_cast_refused)
 	_rules.recharged.connect(_on_recharged)
 	_rules.surged.connect(_on_surged)
@@ -313,6 +318,7 @@ func advance(delta: float) -> void:
 
 ## advance()'s work, with the frame's rows and line taken (v0.11 M6's final review).
 func _advance(delta: float) -> void:
+	_why_clock += delta / maxf(Engine.time_scale, 0.001)
 	_age(_banners, delta, BANNER_SECONDS)
 	_age(_subtitles, delta, SUBTITLE_SECONDS)
 	if _rise_at != Vector2.INF:
@@ -1402,6 +1408,17 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 		var words := _rules.director.refused_words(slot, reason) if _rules.director != null else ""
 		push_banner(words if words != "" else "THEY SHAKE OFF THE WHISPER", true)
 	UiSound.play(&"ui_buzz")
+
+
+## A cast landed (Rules.cast_made): the director says why it will not count, if it can (MissionDirector.why_not()), as one quiet banner. Free
+## play, no director, the intro, a finished night and a queue already holding a banner show none (a reason shown late reads as the answer to
+## the wrong cast); WhyNotGate keeps each cause to once in REPEAT seconds and any two apart by GAP.
+func _on_cast_why(_slot: int, key: String, at: Vector2) -> void:
+	if _rules == null or _rules.director == null or _rules.free_play or _rules.finished or intro or _banners.size() > 1:
+		return
+	var text := _rules.director.why_not(key, at)
+	if _why.allow(text, _why_clock):
+		push_banner(text, true)
 
 
 func _on_recharged(_slot: int) -> void:

@@ -763,6 +763,11 @@ func hint_phase() -> String:
 	return "watched" if faithful_seeing(door, SIGHT) != null else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "watched"])
+
+
 ## The tour (v0.11 M2, spec §4): the shrine, the first of the poor still standing, the Temple.
 func tour() -> Array:
 	var out := []

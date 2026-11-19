@@ -576,6 +576,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "near", "captain"])
+
+
 ## The map tags, most important first: the captain, each warden out (or his door while he is inside), each waiting target's countdown, the
 ## stop each walks to, the Citadel's gate, then the guards of every target in the street (red, pointed at) and anyone who would see a target die.
 func tags() -> Array[MapTag]:

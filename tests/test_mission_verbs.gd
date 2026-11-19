@@ -105,6 +105,11 @@ static func _named(t) -> void:
 	t.check(MissionVerbs.named_in("Keep it burning").is_empty(), "burning is not Burn")
 	t.check(MissionVerbs.named_in("Burn the refuge (gold) now") == PackedStringArray(["burn"]), "Burn the refuge")
 	t.check(MissionVerbs.named_in("HOLD, SEAL").size() == 2 and MissionVerbs.named_in("").is_empty(), "any case; empty is empty")
+	# A mention that forbids the verb is not a claim that it works (pre-flight I10).
+	t.check(MissionVerbs.named_in("Do not kill a contact").is_empty() and MissionVerbs.named_in("Never burn it").is_empty(), "'do not kill', 'never burn' name nothing")
+	t.check(MissionVerbs.named_in("Kill none, hold them") == PackedStringArray(["hold"]) and MissionVerbs.named_in("Kill no one").is_empty(), "'kill none' and 'kill no one' name nothing")
+	t.check(MissionVerbs.named_in("Hold or scare, do not kill") == PackedStringArray(["scare", "hold"]), "a negation stays inside its clause (%s)" % [MissionVerbs.named_in("Hold or scare, do not kill")])
+	t.check(MissionVerbs.named_in("Do not kill them, lead him") == PackedStringArray(["lead"]) and MissionVerbs.named_in("Kill, do not hold") == PackedStringArray(["kill"]), "the clause ends at a comma")
 
 
 static func _legend_rows(t) -> void:

@@ -79,7 +79,7 @@ static func _bank_leaves_save(t) -> void:
 	t.check(out.god.divine_power == 120, "main plus two wishes at tier 1 is 120 Divine Power (%s)" % [out.get("god")])
 	t.check(out.god.faith == 30 and god.faith == 30 and god.night == 1 and god.last_mission == "warning",
 		"the god banks the night: Faith %d, night %d, last %s" % [god.faith, god.night, god.last_mission])
-	t.check(god.carried == {"smite": 1} and god.loadout == kit, "and carries the drafted ability (%s)" % [god.carried])
+	t.check(god.carried == {"smite": 1}, "and carries the cast ability (%s)" % [god.carried])
 	t.check(out.best == false, "the results show no NEW BEST (the board's best is not touched)")
 	t.check(save.descend.night == 3 and save.descend.believers == 40 and save.descend.cleared == PackedStringArray(["warning"]),
 		"the board's night, believers and cleared are unchanged (%d, %d, %s)" % [save.descend.night, save.descend.believers, save.descend.cleared])

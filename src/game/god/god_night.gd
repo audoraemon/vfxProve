@@ -1,7 +1,7 @@
 class_name GodNight
 extends RefCounted
 ## One Endless Night night for a god (god P1, spec §9.1, §8, §7): which mission the night is (a seeded draw that never repeats the last
-## one), the mission as this god plays it (its slots, Might, drafted abilities and Faith clock), what a finished night banks (Divine Power,
+## one), the mission as this god plays it (its slots, Might, learned abilities, the gauge and Faith clock), what a finished night banks (Divine Power,
 ## Faith, the god's bests, the carried abilities) and what an abandoned one costs. God P2 (spec §10) adds the Lantern: every night moves
 ## the Notice, a full Notice makes the next night the Hunt, and a lost Hunt seals an ability. All statics; the god's save slot is the only thing
 ## written, and never the board's save (C7). Game owns the flow around these; Mission only gets the two hooks `night_def` and
@@ -137,7 +137,7 @@ static func draw(slot: GodSlot) -> String:
 
 
 ## The mission `id` as `slot`'s god plays it (spec §9.1): the board's version at the god's tier with the god's slots, Might and
-## drafted abilities, and the Faith clock added to the night's clock after the board stretched its events (Ruling P7: the events keep
+## learned abilities, and the Faith clock added to the night's clock after the board stretched its events (Ruling P7: the events keep
 ## the tier's times and only dawn comes later). A night with acts has the clock added to each act. Null for an id not on the board.
 ## A Lantern Hunt (god P5, MS §1, Ruling P5-2) is built from HuntBook at any Notice -- a stale `in_night` or a test asks for it by id -- on
 ## its own tier's frame (the Hunt's tier, not the god's: a Hunt is played at its own tier), then dressed with its title and banner.
@@ -148,7 +148,7 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 	var def := HuntBook.def(id) if is_hunt else TierBook.board(id, null)
 	if def == null:
 		return null
-	var pool := slot.draftable()
+	var pool := slot.in_tree()
 	if pool.is_empty():
 		pool = PackedStringArray([NO_POWERS])
 	var extra := slot.extra_clock()
@@ -165,13 +165,13 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 	return def
 
 
-## The rite `id` as this god plays it (god P3, MS §1, Ruling P3-3): the rite's frame at the god's tier with its slots, Might, drafted
+## The rite `id` as this god plays it (god P3, MS §1, Ruling P3-3): the rite's frame at the god's tier with its slots, Might, learned
 ## abilities and the tier's clock plus the Faith clock. Its town is the frame's Unaware one.
 static func _rite_def(slot: GodSlot, id: String) -> MissionDef:
 	var def := RiteBook.def(id)
 	if def == null:
 		return null
-	var pool := slot.draftable()
+	var pool := slot.in_tree()
 	if pool.is_empty():
 		pool = PackedStringArray([NO_POWERS])
 	def.tier = slot.tier
@@ -194,11 +194,21 @@ static func _dress_hunt(def: MissionDef, hunt: Dictionary) -> void:
 	def.intro_banner = String(hunt.title).to_upper()
 
 
-## The god's numbers on one def (the mission or an act).
+## What Game starts a god's night with: every learned key in the tree, sealed ones included (the gauge, not a draft, limits the night).
+static func night_loadout(slot: GodSlot) -> PackedStringArray:
+	return slot.in_tree()
+
+
+## The god's numbers on one def (the mission or an act). The pool is every learned key, the sealed one too (the bar shows it locked);
+## `slots` and `dp_capacity` are kept for the read-only briefing.
 static func _apply_god(def: MissionDef, slot: GodSlot, pool: PackedStringArray) -> void:
 	def.slots = slot.slots()
 	def.dp_capacity = slot.max_might()
 	def.pool = pool.duplicate()
+	def.might_capacity = slot.max_might()
+	def.might_refill = slot.refill_seconds()
+	def.sealed = slot.sealed
+	def.god_type = slot.type
 
 
 ## Divine Power a night earns (spec §8, Ruling P22): from a report's "descend", the main objective's `MAIN_DP x tier` and `WISH_DP x
@@ -211,16 +221,16 @@ static func divine_power(d: Dictionary) -> int:
 
 
 ## Banks a finished night (spec §7, §8, §9.1, §10; Ruling P16, P2-1 to P2-10): a seal ticks, the night counts, `id` is the last mission,
-## Faith comes 1:1 from the believers banked, Divine Power from divine_power(), the mission's bests are kept (not a Hunt's), each drafted
-## ability is carried once more, and then the Notice moves -- or, for the Hunt (the Notice was 100 at the start), is set: a win sets 0
+## Faith comes 1:1 from the believers banked, Divine Power from divine_power(), the mission's bests are kept (not a Hunt's), each ability
+## cast that night is carried once more, and then the Notice moves -- or, for the Hunt (the Notice was 100 at the start), is set: a win sets 0
 ## and pays HUNT_FAITH x tier, a loss seals the most-carried ability chosen BEFORE this draft was counted and sets 50.
 ## `outcome` is a result with Descent.report()'s "descend". Returns what the results show: {"divine_power", "levels", "points", "lost",
 ## "capped", "level", "bar": [divine_power, need], "believers", "faith", "faith_total", "notice", "notice_change", "night", "bests",
 ## "hunt" ({} or {"tier", "id", "title", "won", "faith", "sealed", "seal_nights"}), "unsealed" (a key whose seal ended, or ""),
 ## "hunt_next"}. A rite (RiteBook.has(id)) goes to _bank_rite() instead, before the Hunt, and its result adds a "rite" key.
-static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome: Dictionary) -> Dictionary:
+static func bank(slot: GodSlot, id: String, cast: PackedStringArray, outcome: Dictionary) -> Dictionary:
 	if is_rite(id):
-		return _bank_rite(slot, id, drafted, outcome)
+		return _bank_rite(slot, id, cast, outcome)
 	var d: Dictionary = outcome.get("descend", {})
 	var hunt := hunt_for(slot)
 	var target := slot.seal_target() if not hunt.is_empty() else ""
@@ -238,9 +248,8 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 	var bests := PackedStringArray()
 	if hunt.is_empty():  # a Hunt keeps no best (Ruling P2-10)
 		bests = _keep_bests(slot, id, d)
-	for key in drafted:
+	for key in cast:
 		slot.carried[key] = int(slot.carried.get(key, 0)) + 1
-	slot.loadout = drafted.duplicate()
 	var hunt_result := {}
 	if hunt.is_empty():
 		slot.add_notice(notice_delta(d))
@@ -265,19 +274,18 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 
 ## Banks a finished Awaken rite (god P3, MS §1 R2-R4, Ruling P3-4, P3-5): a seal ticks, the night counts, and nothing else of an ordinary
 ## night is earned -- no Divine Power, Faith, believers or best, and `last_mission` and `before_hunt` stay (so the next draw is as if the
-## rite had not been played). The draft is carried and remembered. Won (`outcome.won`): the tier rises, AWAKEN_POINTS come, the gift is
+## rite had not been played). The abilities cast are carried. Won (`outcome.won`): the tier rises, AWAKEN_POINTS come, the gift is
 ## stolen (once) and the Notice stays; lost: the Notice rises by NOTICE_LOST_RITE and the god stays capped. Returns bank()'s keys plus
 ## "rite" ({"id", "name", "won", "tier" (after), "points", "gift" (id stolen now, or ""), "shards" (`outcome.rite.shards`), "need"}).
-static func _bank_rite(slot: GodSlot, id: String, drafted: PackedStringArray, outcome: Dictionary) -> Dictionary:
+static func _bank_rite(slot: GodSlot, id: String, cast: PackedStringArray, outcome: Dictionary) -> Dictionary:
 	var row := RiteBook.row(id)
 	var won := bool(outcome.get("won", false))
 	var notice_before := slot.notice
 	var unsealed := slot.tick_seal()
 	slot.night += 1
 	slot.in_night = ""
-	for key in drafted:
+	for key in cast:
 		slot.carried[key] = int(slot.carried.get(key, 0)) + 1
-	slot.loadout = drafted.duplicate()
 	var stolen := ""
 	if won:
 		slot.awaken()

@@ -110,9 +110,9 @@ static func _frame(t) -> void:
 		and objectives[1] is ClockObjective, "the Hunt objective runs ahead of the dawn: the winning strike never also loses")
 	t.check(m.goal == "Break the four standards before they take two of your believers' houses" and m.goal_label == "The hunt is broken"
 		and m.lose == "Two believers' houses are taken, or dawn comes", "the goal, label and lose are the spec's")
-	t.check(MissionHints.line("break_hunt") == "Standards (gold) march on your believers' houses (blue). Strike a bearer when no escort (red) stands by him."
-		and MissionHints.line("break_hunt", "carried") == "An escort took up the standard: strike him too."
-		and MissionHints.line("break_hunt", "taken") == "A house is taken: one more and the hunt has won.", "the three hints")
+	t.check(MissionHints.line("break_hunt") == "Standards (gold) march on your houses (blue). Kill or scare a bearer when no escort (red) guards him: hold them first."
+		and MissionHints.line("break_hunt", "carried") == "An escort took up the standard (gold). Kill or scare him too, with no escort by him."
+		and MissionHints.line("break_hunt", "taken") == "A house is taken: one more and the hunt has won. Kill or scare a lone bearer (gold).", "the three hints")
 	t.check(m.camera_at == BreakHuntDirector.BH_CAMERA_AT and m.intro_from == m.camera_at + Vector2(0.0, 6.0), "the camera is the director's")
 	# C2: no parent const name is redeclared (a parse error otherwise); the Hunt's numbers carry its prefix.
 	var own := (BreakHuntDirector as GDScript).get_script_constant_map()

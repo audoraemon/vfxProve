@@ -186,25 +186,25 @@ const STEPS := {
 
 	# --- clarity block: hunt ---
 	"heretic_hunt": [
-		{"t": "Clear a standard's guards", "c": "n"},
-		{"t": "Break the standard", "ph": ["open"], "c": "n"},
-		{"t": "Clear the next guards", "ph": ["waiting"], "c": "s"},
-		{"t": "Be ready for the captain", "ph": ["coming"], "c": "s"},
-		{"t": "Kill the captain", "ph": ["captain"]},
-		{"t": "Kill him before the cellar", "ph": ["searching"]},
+		{"t": "Kill or lead its guards (red)", "c": "n"},
+		{"t": "Strike or rot it (gold) now", "ph": ["open"], "c": "n"},
+		{"t": "Be at the next standard (grey)", "ph": ["waiting"], "c": "s"},
+		{"t": "Be at the captain's road", "ph": ["coming"], "c": "s"},
+		{"t": "Kill the captain (gold)", "ph": ["captain"]},
+		{"t": "Kill the captain (gold) now", "ph": ["searching"]},
 	],
 	# Tier 5.
 	"lantern_eye": [
-		{"t": "Clear a mirror's guards", "c": "n"},
-		{"t": "Shatter the mirror", "ph": ["open"], "c": "n"},
-		{"t": "Keep it shattered", "ph": ["shattered"], "c": "s"},
-		{"t": "Clear the next mirror's guards", "ph": ["waiting"], "c": "n"},
-		{"t": "Shatter a mirror now", "ph": ["eye"], "c": "s"},
+		{"t": "Kill or lead its guards (red)", "c": "n"},
+		{"t": "Strike or rot the mirror (gold)", "ph": ["open"], "c": "n"},
+		{"t": "Lead or kill the wrights (red)", "ph": ["shattered"], "c": "s"},
+		{"t": "Be at the next mirror (grey)", "ph": ["waiting"], "c": "s"},
+		{"t": "Strike or rot a mirror now", "ph": ["eye"], "c": "s"},
 	],
 	"break_hunt": [
-		{"t": "Strike a bearer, no escort near", "c": "n"},
-		{"t": "Strike the new bearer", "ph": ["carried"], "c": "n"},
-		{"t": "Do not lose another house", "ph": ["taken"], "c": "n"},
+		{"t": "Kill or scare a bearer (gold)", "c": "n"},
+		{"t": "Kill or scare the new bearer", "ph": ["carried"], "c": "n"},
+		{"t": "Kill or scare a bearer (gold)", "ph": ["taken"], "c": "n"},
 	],
 
 	# --- clarity block: convert ---

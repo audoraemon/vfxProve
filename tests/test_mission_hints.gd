@@ -132,24 +132,23 @@ const SPEC := [
 
 	# --- clarity block: hunt ---
 	# The Heretic Hunt (v0.11 M4).
-	["heretic_hunt", "Clear a standard's guards (red), then break the standard (gold). Three standards, then the captain."],
-	["heretic_hunt.guarded", "Its guards (red) hold the standard: blows only shake it. Remove every one first."],
-	["heretic_hunt.open", "The standard (gold) stands unguarded. Break it now with a blow or Blight, before a new guard comes."],
-	["heretic_hunt.waiting", "The hunt moves on soon. Clear the next sweep's guards (red) shortly before it comes."],
+	["heretic_hunt", "Kill or lead a standard's guards (red), then strike or rot the standard (gold). Three standards, then the captain."],
+	["heretic_hunt.guarded", "Its guards (red) stand over the standard: blows only shake it. Kill, lead or confuse every one."],
+	["heretic_hunt.open", "The standard (gold) stands unguarded. Strike or rot it now, before a new guard comes."],
+	["heretic_hunt.waiting", "The hunt moves on soon. Kill, lead or confuse the next sweep's guards (red) shortly before it comes."],
 	["heretic_hunt.coming", "The captain comes out of the Temple (grey) in {n} s. Be ready on his road to your cellar (blue)."],
 	["heretic_hunt.captain", "The captain (gold) leads the last sweep to your cellar (blue). Kill him before he finds it."],
 	["heretic_hunt.searching", "The captain searches the houses by your cellar. Kill him before he reaches its door."],
-	# The Lantern's Eye (v0.11 M6).
-	["lantern_eye", "Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. Never cast in the light."],
-	["lantern_eye.guarded", "Its guards (red) hold the mirror: blows only shake the tower. Remove every one."],
-	["lantern_eye.open", "The mirror (gold) stands unguarded. Two blows or one Blight shatter it: strike where no beam shines."],
-	["lantern_eye.shattered", "Its wrights (red) hang a new glass. Stop them for {n} s and it is gone for good."],
-	["lantern_eye.waiting", "The next mirror goes up soon; till then the beams sweep but do not hunt. Clear its guards (red) shortly before."],
+	["lantern_eye", "Kill or lead a mirror's guards (red), strike or rot the mirror (gold), keep it shattered 20 s. Never cast in the light."],
+	["lantern_eye.guarded", "Its guards (red) stand over the mirror: blows only shake the tower. Kill, lead or confuse every one."],
+	["lantern_eye.open", "The mirror (gold) stands unguarded. Strike it twice or rot it once, where no beam shines."],
+	["lantern_eye.shattered", "Its wrights (red) hang a new glass. Kill, lead or confuse them for {n} s and it is gone for good."],
+	["lantern_eye.waiting", "The next mirror goes up soon; till then the beams sweep but do not hunt. Kill or lead its guards (red) shortly before."],
 	["lantern_eye.eye", "All three mirrors stand: the Eye opens in {n} s. Shatter one now."],
-	# Break the hunt (god P5 Task 7, MS §5).
-	["break_hunt", "Standards (gold) march on your believers' houses (blue). Strike a bearer when no escort (red) stands by him."],
-	["break_hunt.carried", "An escort took up the standard: strike him too."],
-	["break_hunt.taken", "A house is taken: one more and the hunt has won."],
+	# break_hunt (god P5 Task 7; MS §5, *my call*)
+	["break_hunt", "Standards (gold) march on your houses (blue). Kill or scare a bearer when no escort (red) guards him: hold them first."],
+	["break_hunt.carried", "An escort took up the standard (gold). Kill or scare him too, with no escort by him."],
+	["break_hunt.taken", "A house is taken: one more and the hunt has won. Kill or scare a lone bearer (gold)."],
 
 	# --- clarity block: convert ---
 	["first_prayers", "Lead or lure the poor (gold) to the well (gold), or let them walk: the next sets out in {n} s. Three must pray unseen."],

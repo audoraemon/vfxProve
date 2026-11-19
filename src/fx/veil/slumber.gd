@@ -3,7 +3,7 @@ extends FxTimeline
 ## Slumber (Veil, Tier 2): a hush that settles on the click. T_FALL after the cast everyone out in the open within the circle
 ## (VeilRules: 1.5 light / 3.5 dark) -- citizens, watchmen, soldiers -- sleeps where they stand for SLEEP_TIME (Person.sleep()). In the
 ## light a loud blow or a hurt wakes a sleeper, as with Curfew; in the dark it is a deep sleep that noise does not wake, only a hurt.
-## Quiet: no danger, no fright, no alarm. Its dusk is laid at the cast, under the settling hush (VeilParts.land(); V21). The sleep is the sleeper's own timer,
+## Quiet: no danger, no fright, no alarm. Its dusk is laid at the cast, under the settling hush (VeilParts.land(); VB0). The sleep is the sleeper's own timer,
 ## so the effect holds nothing to undo: ending it early wakes nobody, and a second cast on a sleeper only runs the sleep to the later end.
 
 const SLEEP_TIME := 20.0

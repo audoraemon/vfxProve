@@ -5,7 +5,7 @@ extends FxTimeline
 ## For the next REST seconds the town sees only people resting: no witness reacts, no alarm. At T_SIT + REST each still-sleeping one
 ## dies with kind &"dreamless" (a body, found like any other dead; credited to the cast by Rules.POWER_KINDS). Anyone already asleep
 ## at T_SIT (Slumber, Curfew, a night sleeper) or a shadow's owner is taken at once, kind &"dreamt": no body, never found. Quiet: no
-## danger, no fright, no alarm, no cue. Its dusk is laid at the cast (VeilParts.land(); V21).
+## danger, no fright, no alarm, no cue. Its dusk is laid at the cast (VeilParts.land(); VB0).
 ## Teardown: the status is lifted and the sit's sleep ends in _finish() AND in _exit_tree(); nobody dies after an early end.
 
 const REST := 20.0

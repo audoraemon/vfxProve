@@ -9,7 +9,7 @@ extends FxTimeline
 ## The end (VB4): in the light every shadow lies down for LIE seconds where it stopped (Person.knock_down(.., true): the mind is not
 ## touched) and is the person again. In the dark the soldiers' shadows walk off and fade -- those soldiers are taken (Crowd.take(),
 ## kind &"shade": no body, no remain, no sound; C12) -- and the citizens wake as in the light. The dead are skipped.
-## Quiet: no danger, no fright, no alarm, no cue. Its dusk is laid at the cast, radius its own (VeilParts.land(); V21).
+## Quiet: no danger, no fright, no alarm, no cue. Its dusk is laid at the cast, radius its own (VeilParts.land(); VB0).
 ## Drawn: the person's own sprite as a flat BLACK silhouette (self_modulate) with a thin SILVER edge (an Edge drawn behind it), and where
 ## they stood when the shadow rose, a faint lying outline that only the god sees.
 ## Teardown: every status this cast still holds is lifted and every look given back in _finish() AND in _exit_tree(); an early end

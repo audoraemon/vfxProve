@@ -1244,7 +1244,7 @@ func _draw() -> void:
 					_ring(who.ground_pos, 0.3, COL_DIVINE)
 		"doom":
 			# Who it would take.
-			for v in SilentDoom.victims_at(_crowd._field, _press):
+			for v in SilentDoom.victims_at(_crowd._field, _press, float(area().get("r", SilentDoom.RADIUS))):
 				_ring(v.ground_pos, 0.22, COL_INNER)
 		"oath", "echo":
 			# Whom it would bind, or start with.

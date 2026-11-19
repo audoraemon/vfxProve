@@ -130,15 +130,21 @@ static func _stub_world(def: MissionDef) -> Dictionary:
 
 ## The steps follow the phases, one function per mission, each in its group's block (Mission clarity, pre-flight I9: a group task edits only
 ## its own block's functions, so the six merge without touching one function).
+## The dispatcher names groups only: a group adds its missions inside its own `_advance_<group>()`, never here.
 static func _advance(t) -> void:
-	_advance_lamb(t)
-	_advance_tax(t)
-	_advance_harvest(t)
-	_advance_prayers(t)
-	_advance_board(t)
+	_advance_escort(t)
+	_advance_assassinate(t)
+	_advance_raze(t)
+	_advance_convert(t)
+	_advance_intercept(t)
+	_advance_hunt(t)
 
 
 # --- clarity block: intercept ---
+static func _advance_intercept(t) -> void:
+	_advance_board(t)
+
+
 ## A board night whose main objective is done: the wishes, then the ascent (as the how-to-win line does).
 static func _advance_board(t) -> void:
 	var b := _board_world(TierBook.board("warning"))
@@ -154,6 +160,10 @@ static func _advance_board(t) -> void:
 
 
 # --- clarity block: assassinate ---
+static func _advance_assassinate(t) -> void:
+	_advance_tax(t)
+
+
 static func _advance_tax(t) -> void:
 	var s := _stub_world(MissionBook.tax_collector())
 	var d: PhaseStub = s.d
@@ -169,6 +179,10 @@ static func _advance_tax(t) -> void:
 
 
 # --- clarity block: escort ---
+static func _advance_escort(t) -> void:
+	_advance_lamb(t)
+
+
 static func _advance_lamb(t) -> void:
 	# Scripted phases: each step shows while the director sits in its phase, and the next one when it moves on.
 	var s := _stub_world(MissionBook.lost_lamb())
@@ -185,6 +199,10 @@ static func _advance_lamb(t) -> void:
 
 
 # --- clarity block: raze ---
+static func _advance_raze(t) -> void:
+	_advance_harvest(t)
+
+
 static func _advance_harvest(t) -> void:
 	# The seconds count down, then drop once there are none.
 	var s := _stub_world(MissionBook.spoiled_harvest())
@@ -214,11 +232,21 @@ static func _advance_harvest(t) -> void:
 
 
 # --- clarity block: convert ---
+static func _advance_convert(t) -> void:
+	_advance_prayers(t)
+
+
 static func _advance_prayers(t) -> void:
 	# A counter read from the objective: First Prayers' believers.
 	var s := Kit.world(MissionBook.first_prayers())
 	t.check(MissionSteps.line(s.rules) == "Wait for a believer to pray 0/3", "First Prayers: %s" % MissionSteps.line(s.rules))
 	Kit.done(s)
+
+
+# --- clarity block: hunt ---
+static func _advance_hunt(_t) -> void:
+	pass
+
 
 
 static func _board_world(def: MissionDef) -> Dictionary:

@@ -174,7 +174,14 @@ static func snapshot(s: Dictionary) -> Dictionary:
 	var tags := []
 	for m in d.tags():
 		tags.append([m.at, m.label, m.color, m.edge])
-	return {"people": people, "rng": crowd._rng.state, "report": d.report(), "phase": d.hint_phase(), "tags": tags,
+	# Buildings and the power cooldowns too: a why_not() that burns, breaks or spends a cast must fail here (Task 1+2 review).
+	var built := []
+	if s.get("env") != null:
+		for st: Structure in (s.env as EnvironmentField).structures():
+			if is_instance_valid(st):
+				built.append([st.footprint, st.hp, st.destroyed, st.scorch])
+	var cooldowns: Variant = (s.rules as Rules)._cooldowns if s.get("rules") != null else null
+	return {"people": people, "built": built, "cooldowns": cooldowns, "rng": crowd._rng.state, "report": d.report(), "phase": d.hint_phase(), "tags": tags,
 		"elapsed": d.timeline.elapsed() if d.timeline != null else -1.0,
 		"fired": d.timeline.fired_ids() if d.timeline != null else PackedStringArray(),
 		"banners": (s.banners as Array).size()}

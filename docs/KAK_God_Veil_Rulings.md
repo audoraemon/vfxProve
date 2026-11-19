@@ -109,3 +109,6 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   the cast (nothing to judge: the VFX Sandbox has no Rules either).
 - VC4: Dread's `busy` is T_FALL (as Unseen Hour's): the other slots unlock once it falls, so Dreamless, Silent Doom and the
   Swallowing Dark can be cast into it (spec 5.7: it "sets them up").
+- VC5: Cloak of Night's `marked_at` skips people indoors (`Person.inside`), as Corpse Guise's does: the watch's sight is out of doors, a
+  person inside the nearest to the click is not spent on one of the 3 / 8 places, and the next one out of doors is marked instead.
+- VC6: Cloak of Night's `busy` is T_LAND (0.5 s; ruling C16): the other slots unlock once it has landed while the cloak runs its 25 s.

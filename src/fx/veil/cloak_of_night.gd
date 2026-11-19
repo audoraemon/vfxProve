@@ -10,6 +10,8 @@ extends FxTimeline
 ## no fright. Drawn: a dark shimmer over each cloaked person, in the god's overhead layer only. Lands its dusk.
 
 const SPAN := 25.0
+## When the cloak has landed: the other slots unlock then (busy), while the cloak runs on (C16, as Unseen Hour's T_FALL).
+const T_LAND := 0.5
 ## The status this lays (Person.hidden_from_watch() reads the same key).
 const KEY := &"cloak"
 ## The person's meta that names the cast keeping his cloak.
@@ -39,6 +41,7 @@ static func marked_at(field: EnemyField, at: Vector2, r := 2.0, most := 3) -> Ar
 
 func _build() -> void:
 	duration = SPAN
+	busy = T_LAND
 	var r := VeilParts.size(self, "cloak", "MARK_R")
 	var most := int(VeilParts.size(self, "cloak", "MOST"))
 	var marked := marked_at(ctx.field if ctx != null else null, origin, r, most)

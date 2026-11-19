@@ -32,6 +32,8 @@ static func run(t) -> void:
 	_overlap(t, made)
 	_teardown(t, made)
 	_quiet(t, made)
+	_busy(t, made)
+	_indoors(t, made)
 	_shimmer(t, made)
 	RD._done(made)
 	_watcher(t)
@@ -291,3 +293,43 @@ static func _no_crowd(t) -> void:
 	ctx.overhead.free()
 	ctx.ground.free()
 	ctx.world.free()
+
+
+## C16: through Rules, the cloak locks the other slots only until it lands (T_LAND); it runs on for 25 s after.
+static func _busy(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var ps := _ring(crowd, at, 2)
+	var rules := Rules.new().setup(PackedStringArray(["cloak", "slumber"]), null, made[1], made[3], crowd, made[6])
+	rules.caster = func(s: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
+		return FxTimeline.cast(s, made[5], g, e)
+	var refused: Array = []
+	rules.cast_refused.connect(func(slot: int, why: String) -> void: refused.append([slot, why]))
+	var fx := rules.cast(0, at) as CloakOfNightFx
+	t.check(fx != null and fx.busy == CloakOfNightFx.T_LAND and fx.duration == CloakOfNightFx.SPAN, "cast through Rules; busy is its landing time")
+	t.check(rules.cast(1, at + Vector2(6.0, 0.0)) == null and refused == [[1, "busy"]], "before it lands another power is refused busy (%s)" % [refused])
+	refused.clear()
+	RD._run(fx, CloakOfNightFx.T_LAND + 0.1)
+	t.check(rules.busy_left() == 0.0 and not fx.finished and ps[0].hidden_from_watch(), "landed: the rules are free, the cloak still runs and holds")
+	var other := rules.cast(1, at + Vector2(6.0, 0.0))
+	t.check(other != null and refused.is_empty() and not fx.finished and ps[0].hidden_from_watch() and ps[1].hidden_from_watch(),
+		"after landing another power can be cast while the cloak still runs and its people are still cloaked (%s)" % [refused])
+	if other != null:
+		other.end_now()
+	fx.end_now()
+	rules.free()
+
+
+## VC5: the indoors are not cloaked (marked_at skips them, as Corpse Guise's does: the cloak hides people from the watch's eyes
+## out of doors; indoors nobody watches), though they stand nearest.
+static func _indoors(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var ps := _ring(crowd, at, 2, 60)
+	ps[0].inside = true
+	var picked := CloakOfNightFx.marked_at(made[3], at)
+	t.check(not picked.has(ps[0]) and picked.has(ps[1]), "one indoors is not marked; the one out of doors beside him is")
+	ps[0].inside = false
+	t.check(CloakOfNightFx.marked_at(made[3], at).has(ps[0]), "out of doors he is (positive control)")

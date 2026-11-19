@@ -31,22 +31,18 @@ static func _shape(t) -> void:
 	var last: Dictionary = GodTree.spots()[59]
 	t.check(first == {"type": "ruin", "tier": 1, "i": 0, "key": "smite"} and last.type == "dominion" and last.tier == 5 and last.i == 1,
 		"spots() runs in RING, tier, index order (%s .. %s)" % [first, last])
-	# The user's Tier 1 fill (2026-10-27): every Tier 1 spot holds a key; Tiers 2-5 are still empty except Ruin's (2026-11-02).
+	# The user's Tier 1 fill (2026-10-27), then each type's whole tree (Ruin 2026-11-02 ... Veil 2026-11-19): every spot holds a key.
 	var tier1_full := true
-	var rest_empty := true
+	var rest_full := true
 	for key: String in GodTree.TABLE.keys():
 		var tiers: Array = GodTree.TABLE[key]
 		for k: String in tiers[0]:
 			tier1_full = tier1_full and k != ""
-		if key == "ruin":
-			continue
 		for i in range(1, tiers.size()):
-			if key == "dominion" or key == "passage" or key == "decree" or key == "death":
-				continue
 			for k: String in tiers[i]:
-				rest_empty = rest_empty and k == ""
+				rest_full = rest_full and k != ""
 	t.check(tier1_full, "every Tier 1 spot of the real table is filled")
-	t.check(rest_empty, "Tiers 2-5 of the real table are still empty, Ruin's, Dominion's, Passage's, Death's and Decree's aside")
+	t.check(rest_full, "Tiers 2-5 of the real table are filled too: every type's whole tree is the user's (Veil's last, 2026-11-19)")
 	t.check(GodTree.TABLE.dominion.slice(1) == [["madness", "wisp"], ["clearmind", "saint"], ["sanctuary", "anathema"], ["voice", "schism"]],
 		"Dominion's Tiers 2-5 hold the user's picks (%s)" % [GodTree.TABLE.dominion])
 	t.check(GodTree.TABLE.passage.slice(1) == [["houndgate", "hellspark"], ["deep", "mirror"], ["allroads", "foldward"], ["deaddoors", "heavendoor"]],

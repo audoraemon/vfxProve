@@ -14,7 +14,15 @@ const FLOOR_STEP := 0.5
 ## A loud power whose main cue sits under the floor, with its number. Measured: none (the quietest, Smite, is -20.4).
 const LOUD_EXEMPT := {}
 ## The quiet keys still without their own q_<key> cue; Tasks 13 and 14 empty it, one key per line (a key that already plays its cue must leave). Tasks 13 and 14 took all 24 (v0.11.2).
+## The Veil's seven wait for their sounds (Veil Task 12 takes them off, one key per line; V10).
 const PENDING_QUIET := [
+	"slumber",
+	"cloak",
+	"dreamless",
+	"dread",
+	"shadowplay",
+	"swallow",
+	"evernight",
 ]
 const TSV := "res://tools/audio/loudness.tsv"
 ## Spec 6.3 row 4: the death cues' played levels relative to the loud median, and how far either way is allowed.
@@ -189,7 +197,7 @@ static func _quiet_cues(t) -> void:
 			t.check(not plays_it, "%s is still pending but already plays %s: take it off PENDING_QUIET" % [key, cue])
 		else:
 			t.check(Sfx.CATALOG.has(cue) and plays_it, "%s plays its own cue %s" % [key, cue])
-	t.check(quiet == 41, "forty-one quiet powers (got %d)" % quiet)
+	t.check(quiet == 48, "forty-eight quiet powers (got %d)" % quiet)
 	var owner_of := {}
 	var shared := ""
 	for cue in Sfx.CATALOG:

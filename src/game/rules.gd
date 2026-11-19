@@ -101,6 +101,16 @@ const POWER_KINDS := {
 	"sealed": [&"verdict"],
 	"magnify": [&"magnify"],
 	"unseen": [],
+	# The Veil's (Veil authority powers spec §5): taken, no body (void, night, dreamt, shadow); Dreamless's found body (dreamless).
+	# Blight sickens and Slumber, Cloak and Dread take nobody.
+	"blight": [],
+	"slumber": [],
+	"cloak": [],
+	"dreamless": [&"dreamless", &"dreamt"],
+	"dread": [],
+	"shadowplay": [&"shadow"],
+	"swallow": [&"void"],
+	"evernight": [&"night"],
 	"clearmind": [],
 	"saint": [&"frenzy"],
 	"sanctuary": [&"frenzy"],
@@ -246,6 +256,9 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	# The night's slots are set: the ledger of bodies runs only when a Death power that uses them is carried.
 	if crowd.remains != null and Remains.wants(loadout):
 		crowd.remains.enabled = true
+	# And the dusk ledger only when a Veil power is carried (the law of the Veil: the trigger is the power, not the god).
+	if crowd.dusk != null:
+		crowd.dusk.enabled = VeilRules.wants(loadout)
 	_escaped0 = crowd.escaped_count
 	_citizens0 = crowd.killed_citizens
 	_soldiers0 = crowd.killed_soldiers
@@ -496,6 +509,10 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	var told := extra.duplicate()
 	if not told.has("level"):
 		told["level"] = level_of(slot)
+	# The law of the Veil: a Veil cast is told once, now, whether the ground under the click is dark -- its full size -- or lit (a key
+	# already given wins: tests).
+	if not told.has("dark") and _crowd != null and PowerBook.authority_of(String(p.key)) == "veil":
+		told["dark"] = _crowd.in_dark(ground)
 	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.
 	_cooldowns[slot] = PowerBook.cooldown(String(p.key), int(told.level))
 	# A mode that carries its own cooldown (Will-o'-Wisp's ENTHRALL) waits that instead; no mode, or one without, changes nothing.

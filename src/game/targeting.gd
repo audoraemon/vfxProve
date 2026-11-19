@@ -144,6 +144,15 @@ const AREAS := {
 	"clearmind": {"shape": "circle", "r": 5.0},
 	# UnseenHourFx.RADIUS
 	"unseen": {"shape": "circle", "r": 5.0},
+	# The Veil's seven at their light size (VeilRules.SIZES; area() draws the dark one over dark ground, VeilRules.RING). Evernight
+	# covers the whole town: the mark is only where the click lands (where its wave starts), as Tempest's.
+	"slumber": {"shape": "circle", "r": 1.5},
+	"cloak": {"shape": "circle", "r": 2.0},
+	"dreamless": {"shape": "circle", "r": 1.0},
+	"dread": {"shape": "circle", "r": 6.0},
+	"shadowplay": {"shape": "circle", "r": 3.0},
+	"swallow": {"shape": "circle", "r": 10.0},
+	"evernight": {"shape": "circle", "r": 0.6},
 	# CurfewFx.RADIUS
 	"curfew": {"shape": "circle", "r": 4.0},
 	# EarthshatterFx: the run from the first click toward the second, HALF wide, MAX_LENGTH at most ("path")
@@ -696,6 +705,12 @@ func area() -> Dictionary:
 	if _wheel_fx() != null:
 		return AREAS["whisper"]  # a follow-up through Mind Whisper's wheel shows the whisper's pick ring
 	var a := area_at(_rules.key(slot), _rules.level_of(slot))
+	var veil := ring_tag()
+	if veil != "":
+		# The law of the Veil: the ring is drawn at the size the cast would get on the ground under the cursor.
+		var key := _rules.key(slot)
+		a = a.duplicate()
+		a["r"] = VeilRules.size(key, String(VeilRules.RING[key]), veil == "DARK")
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
 		return a
@@ -703,6 +718,14 @@ func area() -> Dictionary:
 	var out := a.duplicate()
 	out.merge(own, true)
 	return out
+
+
+## The law of the Veil's tag for the focused power's ring: "DARK" over dark ground (Crowd.in_dark() at the press), "LIGHT" over lit
+## ground, "" for a power whose ring keeps one size (not in VeilRules.RING) or with no crowd.
+func ring_tag() -> String:
+	if slot < 0 or _crowd == null or not VeilRules.RING.has(_rules.key(slot)):
+		return ""
+	return "DARK" if _crowd.in_dark(_press) else "LIGHT"
 
 
 ## A power's area at an ability level: AREAS[key] with each AREA_STATS number read from the level's table. Level 1 (and a power with
@@ -1066,6 +1089,11 @@ func _draw() -> void:
 		"circle":
 			if not _whisper_ordering():
 				_ring(_press, float(a.r), edge)
+			var tag := ring_tag()
+			if tag != "":
+				# Which size this cast would get here, by the ring's lower edge.
+				_label(_press + Vector2(1.0, 1.0).normalized() * (float(a.r) + 0.45), tag,
+					VeilParts.VEIL if tag == "DARK" else COL_EDGE)
 			if a.has("inner"):
 				_ring(_press, float(a.inner), COL_INNER)
 			if float(a.get("roam", 0.0)) > 0.0:

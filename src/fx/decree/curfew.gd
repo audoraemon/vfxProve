@@ -49,7 +49,7 @@ func _night() -> void:
 	w.tween_param("progress", 0.05, 1.0, 0.6, 0.0, Tween.TRANS_CUBIC, Tween.EASE_OUT)
 	w.tween_param("fade", 1.0, 0.0, 0.3, 0.4)
 	w.life = 0.75
-	var dusk := Dusk.new()
+	var dusk := CurfewDusk.new()
 	dusk.fx = self
 	dusk.position = origin
 	dusk.z_index = 2
@@ -64,7 +64,7 @@ func shown() -> float:
 
 
 ## The dusk on the ground: a dark disc, breathing slowly, with a faint gilt rim.
-class Dusk extends Node2D:
+class CurfewDusk extends Node2D:
 	var fx: CurfewFx
 
 	func _process(_delta: float) -> void:

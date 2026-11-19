@@ -37,12 +37,13 @@ const FLAVOUR := {
 ## Schism; Tier 3 2026-11-04: the new Clear Mind and Saint or Sinner; Tier 4 2026-11-06: the new Sacred Sanctuary and Anathema);
 ## Passage's whole tree by the user (2026-11-11, the Passage Tree Picker: Thornwall left Tier 1 for Skylift and Windfall); Death's whole tree by the user (2026-11-12, the Death Tree Picker, https://claude.ai/artifact/AxpvpmrePhvY8tjthTgEVA, picks/death:
 ## Pestilence left Tier 1 for Raise the Dead); Decree's whole tree by the user (2026-11-12, the Decree Tree Picker; The Bell Lies
-## left the tree); the rest empty.
+## left the tree); Veil's whole tree by the user (2026-11-19, the Veil Tree Picker, picks/veil: Unseen Hour takes Tier 3 and seven new
+## powers fill the rest).
 const TABLE := {
 	"ruin": [["smite", "ember"], ["tornado", "scatter"], ["solaris", "dragon"], ["tsunami", "cinder"], ["tempest", "shatter"]],
 	"death": [["deathmark", "raise"], ["pestilence", "gravecall"], ["guise", "walker"], ["gatebelow", "pale"],
 		["serpent", "gravetide"]],
-	"veil": [["doom", "blight"], ["", ""], ["", ""], ["", ""], ["", ""]],
+	"veil": [["doom", "blight"], ["slumber", "cloak"], ["unseen", "dreamless"], ["dread", "shadowplay"], ["swallow", "evernight"]],
 	"passage": [["skylift", "windfall"], ["houndgate", "hellspark"], ["deep", "mirror"], ["allroads", "foldward"],
 		["deaddoors", "heavendoor"]],
 	"decree": [["noleave", "breath"], ["redefine", "bound"], ["erase", "disorder"], ["eminent", "fenced"], ["cage", "sealed"]],

@@ -234,6 +234,12 @@ var _bed_level := 0.0
 var remains: Remains
 ## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
 var withering: Withering
+## The dusk ledger (the law of the Veil): made beside the remains, off until Rules.setup() finds a Veil power in the loadout
+## (VeilRules.wants()); stepped after the withering, cleared with the town. Empty, it changes nothing.
+var dusk: Dusk
+## A NIGHT mission (NightRules.apply() sets it): everywhere outdoors is dark for the Veil's powers (in_dark()). Sight at night is
+## sight_scale's, not this flag's.
+var night_mission := false
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -346,6 +352,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
+	dusk = Dusk.new()
+	parent.add_child(dusk)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
@@ -1143,6 +1151,8 @@ func _advance(delta: float) -> void:
 		remains.step(delta)
 	if withering != null:
 		withering.step(delta)
+	if dusk != null:
+		dusk.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1491,7 +1501,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", lev
 	# who can see the build-up stop and look at it.
 	_held_dangers.append({"at": _clock + impact, "points": points, "radius": radius, "reach": reach, "key": key,
 		"ground": ground})
-	_look(points, float(reach[0]) * sight_scale)
+	_look(points, float(reach[0]))
 
 
 ## Danger held for the impact (on_cast()): how many casts are still building up.
@@ -1530,7 +1540,9 @@ func _land(key: String, points: Array[Vector2], radius: float, reach: Array, gro
 
 ## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
 ## their posts; those the impact will reach are judged when it lands.
-func _look(points: Array[Vector2], sight: float) -> void:
+## Everyone calm enough to look whose nearest of `points` lies within `reach` times the sight scale of that line (sight_scale_at():
+## dusk at either end shortens it) stops and looks at it.
+func _look(points: Array[Vector2], reach: float) -> void:
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive() or p.inside:
 			continue
@@ -1541,7 +1553,7 @@ func _look(points: Array[Vector2], sight: float) -> void:
 			if d < best:
 				best = d
 				at = point
-		if best <= sight:
+		if best <= reach * sight_scale_at(p.ground_pos, at):
 			p.observe(at)
 
 
@@ -1723,6 +1735,28 @@ func is_veiled(at: Vector2) -> bool:
 		if _clock < float(v.until) and (v.at as Vector2).distance_to(at) <= float(v.r):
 			return true
 	return false
+
+
+## The law of the Veil (VeilRules): is `at` dark ground -- a dusk patch covers it, Unseen Hour's veil covers it, the mission is a
+## NIGHT mission, or Evernight is up. Only the Veil's powers read it (their two sizes, the aim ring).
+func in_dark(at: Vector2) -> bool:
+	return (dusk != null and (dusk.everywhere or dusk.covers(at))) or is_veiled(at) or night_mission
+
+
+## Lays a dusk patch (Dusk.lay()): its id, 0 with no ledger or the ledger off.
+func lay_dusk(at: Vector2, r: float, seconds: float) -> int:
+	return dusk.lay(at, r, seconds) if dusk != null else 0
+
+
+## The sight scale of a line from `viewer` to `seen`: sight_scale, shortened to NightRules.NIGHT_SIGHT when either end lies in a dusk
+## patch -- once, never twice (a NIGHT mission's 0.6 stays 0.6). Vector2.INF for an end means no such point. An empty ledger returns
+## sight_scale exactly.
+func sight_scale_at(viewer: Vector2, seen: Vector2) -> float:
+	if dusk == null or dusk.count() == 0:
+		return sight_scale
+	if (viewer != Vector2.INF and dusk.covers(viewer)) or (seen != Vector2.INF and dusk.covers(seen)):
+		return minf(sight_scale, NightRules.NIGHT_SIGHT)
+	return sight_scale
 
 
 ## Lays the withering on `p` for `seconds`, panicking him from `from` (Withering.lay()): false when nothing was laid
@@ -2320,6 +2354,15 @@ func clear() -> void:
 	_struct_marks.clear()
 	if withering != null:
 		withering.clear()
+	if dusk != null and is_instance_valid(dusk):
+		dusk.enabled = false
+		dusk.clear()
+		if dusk.is_inside_tree():
+			dusk.queue_free()
+		else:
+			dusk.free()
+	dusk = null
+	night_mission = false
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
@@ -2403,7 +2446,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 		if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
 			_investigate(at)
 		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
-		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale, COLLAPSE_SOUND, &"collapse")
+		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale_at(Vector2.INF, at), COLLAPSE_SOUND, &"collapse")
 		var points: Array[Vector2] = [at]
 		_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
 	if is_instance_valid(_town) and s in _town.bridges:
@@ -2460,10 +2503,11 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	_hear_alarm(ALARM_KILL)
 
 
-## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night. The directors that read Crowd.DOOM_WITNESS
-## directly keep the day's distance.
-func doom_witness() -> float:
-	return DOOM_WITNESS * sight_scale
+## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night or (the law of the Veil) when the death
+## at `at` lies in dusk (sight_scale_at(); INF: no place, the town's own scale). The directors that read Crowd.DOOM_WITNESS directly keep
+## the day's distance.
+func doom_witness(at := Vector2.INF) -> float:
+	return DOOM_WITNESS * sight_scale_at(Vector2.INF, at)
 
 
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
@@ -2473,11 +2517,18 @@ func doom_witness() -> float:
 func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best: Person = null
 	var best_d := doom_witness()
+	# The law of the Veil: dusk at the witness or at the death shortens each line on its own (sight_scale_at()); an empty ledger
+	# keeps the one reach for everyone.
+	var each := dusk != null and dusk.count() > 0
+	if each:
+		best_d = INF
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p) or p.guised():
 				continue
 			var d := p.ground_pos.distance_to(at)
+			if each and d > DOOM_WITNESS * sight_scale_at(p.ground_pos, at):
+				continue
 			if d <= best_d:
 				best = p
 				best_d = d
@@ -2501,7 +2552,7 @@ func _settle_doom() -> void:
 		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
-		threats.register(at, 0.6, 0.3, 3.0, doom_witness(), DOOM_WITNESS + 1.0, &"doom")
+		threats.register(at, 0.6, 0.3, 3.0, doom_witness(at), DOOM_WITNESS + 1.0, &"doom")
 		seen_at.append(at)
 		if alarms.incident(at):
 			_investigate(at)

@@ -112,3 +112,18 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VC5: Cloak of Night's `marked_at` skips people indoors (`Person.inside`), as Corpse Guise's does: the watch's sight is out of doors, a
   person inside the nearest to the click is not spent on one of the 3 / 8 places, and the next one out of doors is marked instead.
 - VC6: Cloak of Night's `busy` is T_LAND (0.5 s; ruling C16): the other slots unlock once it has landed while the cloak runs its 25 s.
+- VC7: Evernight lays no dusk patch of its own (C14: it uses `dusk.everywhere`): the whole town is its dark while it lasts, and a patch
+  at the click would only put out the torches near it. Its night's rules (the dark, the town-wide veil, the haste, the sight) hold from
+  the end of the wave (WAVE) to the start of the dawn (WAVE + 60 / 90); the dawn's takes run at that moment, the torches are put away
+  then (nobody taken) and the bearers sent back to their posts; the look (ambient, tint, lamp mute, the wash) eases back over DAWN.
+- VC8: Evernight's ambient is eased as a share of what the light field holds each frame (the night's 0.86 of it), not set: the
+  Battlefield writes `LightField.ambient` afresh every frame (its dim), so a set value would be lost and a saved one would undo the dim.
+  The town-wide state is kept in owner ledgers (crowd meta `evernight_night`, light-field meta `evernight_look`): the first owner saves
+  the town as it was, only the lowest-id owner eases the look, the last owner puts everything back (two casts never undo each other).
+- VC9: Evernight's torch is fixed where its bearer stood at nightfall (he is posted there); "a Veil cast whose area touches a torch" is
+  read as a dusk patch laid over its light (`Dusk.laid`, centre distance <= patch r + TORCH_R): every Veil cast leaves its dusk where
+  it lands. The dawn's takes, like the lone's and a torch's, pass over the spared (`Crowd.spared()`). Citizens called to a torch are the
+  calm, awake ones out of doors (`walk_to` a huddle slot inside TORCH_R, nearest first, ties by instance id).
+- VC10: Evernight bench (Task 11 Step 5; Aldermere mission, `--loadout=evernight` against `--bench-cast=evernight --bench-after=4`, three
+  alternating pairs on a loaded machine): avg_ms 15.75 / 18.88, 15.58 / 18.68, 15.71 / 18.77, cast/base 1.199, 1.199, 1.195: median
+  1.20 (bar 1.55). Worst frame of the cast runs 31.03, 25.21, 54.23 ms (base 35.92, 43.64, 42.39).

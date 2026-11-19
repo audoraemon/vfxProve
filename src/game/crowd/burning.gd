@@ -7,10 +7,13 @@ extends RefCounted
 ## frightened -- the fright and the alarm come from the sight of him, never from the power that lit him. When the time is
 ## up, alive and out in the open, he dies where he stands as KIND, the town's own fire kill: no body to raise
 ## (Remains.BODY_KINDS). Indoors, dead of something else first, freed (carried off) or cleared with the town: it lapses at
-## once, with no fire death. Laid on one already burning, nothing new runs. p.statuses[STATUS] holds the seconds left.
-## A trail (trail()) calls back with each spot he leaves behind (Ember's level 5 Fire Trail). The Crowd owns one and steps
-## it every frame beside the withering (Crowd._advance()); it draws no number from any rng, so nothing else in the town
-## moves for it.
+## once, with no fire death. He runs until he dies: whenever his flight ends (he reached where he ran to, his fright ran
+## out) or another mind takes him, he panics again from just behind him and runs on, still with no shelter roll
+## (_keep_running()); a god's hold wins, as at the lay. Laid on one already burning, nothing new runs. p.statuses[STATUS]
+## holds the seconds left. A trail (trail()) calls back with each spot he leaves behind (Ember's level 5 Fire Trail). The
+## Crowd owns one and steps it every frame, after the town's orders (Crowd._advance()). It draws no number from a shared town
+## stream: only the people it touches move (his flight and the witnesses' draw from their own rngs, a cry from the town's
+## voice budget), and with nobody burning it does nothing at all.
 
 const BURN_FOR := 4.0
 const SPREAD_EVERY := 0.5
@@ -30,14 +33,20 @@ const SHELTERS := false
 const SCREAM := &"cit_scream"
 ## Float drift: the spread clock is counted down in frame steps.
 const DUE := 1e-6
+## When his flight ends he panics again from this far behind him (the way he was running), so he runs on that way.
+const BEHIND := 0.3
 
 var _crowd: Crowd
-## One entry a burning person: {p, id, level, spread_in, trail, every, most, laid, anchor}. `p` untyped: he may be freed (carried
-## off) before his time is up, and a freed node errors in a typed slot.
+## One entry a burning person: {p, id, level, spread_in, trail, every, most, laid, anchor, from}. `p` untyped: he may be freed
+## (carried off) before his time is up, and a freed node errors in a typed slot. `from`: where his last panic ran from.
 var _on: Array = []
 ## The instance ids of everyone with an entry, live or still being stepped: one person never has two (a re-lay after his
 ## status was taken off from outside is refused until his old entry has lapsed).
 var _ids := {}
+## The list a step is walking (step()), so a clear in the middle of it (a death's callback ends the town) reaches those too.
+var _stepping: Array = []
+## Counts the clears: a step that sees it change stops there and puts nobody back.
+var _clears := 0
 
 
 func _init(crowd: Crowd = null) -> void:
@@ -56,7 +65,7 @@ func lay(p: Person, seconds: float, from: Vector2, level := LIGHT_AT) -> bool:
 	p.panic(from, FRIGHT_R, KIND, false, SHELTERS)
 	_ids[p.get_instance_id()] = true
 	_on.append({"p": p, "id": p.get_instance_id(), "level": level, "spread_in": SPREAD_EVERY, "trail": Callable(),
-		"every": 0.0, "most": 0, "laid": 0, "anchor": p.ground_pos})
+		"every": 0.0, "most": 0, "laid": 0, "anchor": p.ground_pos, "from": from})
 	if _crowd != null:
 		_crowd._voice(p, SCREAM)
 	return true
@@ -78,16 +87,21 @@ func trail(p: Person, on_step: Callable, every := 1.0, most := 0) -> bool:
 	return false
 
 
-## Counts every burning down: a building he brushes catches and those who see him run, each SPREAD_EVERY; his trail is laid
-## as he goes; one whose time is up dies (out in the open). One indoors, dead of something else, or freed lapses at once.
-## It walks the list as the step began: one laid meanwhile (a kill's callback lays another) goes on the live list whole,
-## counted from the next step.
+## Counts every burning down: one whose flight has ended runs on (_keep_running()); a building he brushes catches and those
+## who see him run, each SPREAD_EVERY; his trail is laid as he goes; one whose time is up dies (out in the open). One
+## indoors, dead of something else, or freed lapses at once. It walks the list as the step began: one laid meanwhile (a
+## kill's callback lays another) goes on the live list whole, counted from the next step. Cleared meanwhile (a kill's
+## callback ends the town), it stops there: the clear has put out every one on the list, and nobody is put back.
 func step(delta: float) -> void:
 	if _on.is_empty():
 		return
 	var now := _on
 	_on = []
+	_stepping = now
+	var clears := _clears
 	for b: Dictionary in now:
+		if _clears != clears:
+			return
 		if not is_instance_valid(b.p):
 			_ids.erase(b.id)
 			continue  # carried off and freed: nothing of his is left
@@ -96,12 +110,15 @@ func step(delta: float) -> void:
 			p.statuses.erase(STATUS)
 			_ids.erase(b.id)
 			continue
+		_keep_running(b, p)
 		_lay_trail(b, p)
 		b.spread_in = float(b.spread_in) - delta
 		if float(b.spread_in) <= DUE:
 			b.spread_in = float(b.spread_in) + SPREAD_EVERY
 			_spread(p, float(b.level))
 			_frighten(p)
+		if _clears != clears:
+			return
 		var left := float(p.statuses[STATUS]) - delta
 		if left > 0.0:
 			p.statuses[STATUS] = left
@@ -111,15 +128,35 @@ func step(delta: float) -> void:
 		_ids.erase(b.id)
 		if _crowd != null and _crowd._field != null:
 			_crowd._field.kill(p, KIND, p.ground_pos)
+	_stepping = []
 
 
-## Every burning lapses at once (the town's end): nobody dies of it, no trail goes on.
+## Every burning lapses at once (the town's end): nobody dies of it, no trail goes on. A step under way (_stepping) is put out
+## too, and stops (_clears).
 func clear() -> void:
-	for b: Dictionary in _on:
-		if is_instance_valid(b.p):
-			(b.p as Person).statuses.erase(STATUS)
+	_clears += 1
+	for list: Array in [_on, _stepping]:
+		for b: Dictionary in list:
+			if is_instance_valid(b.p):
+				(b.p as Person).statuses.erase(STATUS)
 	_on.clear()
+	_stepping = []  # a new list, not cleared in place: the step is still walking the old one
 	_ids.clear()
+
+
+## He runs until he dies (the spec's flight: he panics and runs, with no shelter roll). Once his flight has ended -- he reached
+## the spot he ran to and settled, or his fright ran out -- or another mind took him (a shelter, the gate, a fight), he is
+## freed as at the lay and panics again, from BEHIND him the way he ran, so he runs on that way; no shelter roll. A god's hold
+## wins, as at the lay (_free_to_run(), Person.panic()), and a soldier in a fight fights on.
+func _keep_running(b: Dictionary, p: Person) -> void:
+	if p.mind == Person.Mind.PANIC:
+		return
+	var away := p.ground_pos - (b.from as Vector2)
+	var from := p.ground_pos - away.normalized() * BEHIND if away.length() > 0.01 else p.ground_pos
+	_free_to_run(p)
+	p.panic(from, FRIGHT_R, KIND, false, SHELTERS)
+	if p.mind == Person.Mind.PANIC:
+		b.from = from
 
 
 ## How many are burning now.

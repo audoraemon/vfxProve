@@ -326,6 +326,25 @@ static func _smite(t, crowd: Crowd, field: EnemyField, env: EnvironmentField, to
 	t.check(casts.size() == 1 and casts[0][0] == Vector2(1.0, 1.0) and ex.get("to") == Vector2(1.0, 2.5)
 		and is_equal_approx(SmiteFx.grow_of(ex.merged({"level": 5}), casts[0][0]), 2.0),
 		"the release casts at the press, told where the drag ended: a 2x bolt (%s)" % [casts])
+	# The town's fright grows with the drag too: the held danger is the level's radius times the bolt's growth.
+	var base5 := Crowd._cast_radius("smite", 5)
+	var held: Dictionary = crowd._held_dangers.back() if not crowd._held_dangers.is_empty() else {}
+	t.check(is_equal_approx(float(held.get("radius", 0.0)), base5 * 2.0),
+		"a 2x Gathered Storm frightens the town twice as wide (%.2f, the plain bolt's %.2f)" % [float(held.get("radius", 0.0)), base5])
+	rules.levels = {"smite": 5}
+	aim.pick(0)
+	aim.press(Vector2(1.0, 1.0))
+	aim.hover(Vector2(1.0, 11.0))
+	aim.release(Vector2(1.0, 11.0))
+	held = crowd._held_dangers.back() if not crowd._held_dangers.is_empty() else {}
+	t.check(is_equal_approx(float(held.get("radius", 0.0)), base5 * SmiteFx.GROW_MAX),
+		"dragged 10, the fright stops at 2.5x with the bolt (%.2f)" % float(held.get("radius", 0.0)))
+	aim.pick(0)
+	aim.press(Vector2(1.0, 1.0))
+	aim.release(Vector2(1.2, 1.0))
+	held = crowd._held_dangers.back() if not crowd._held_dangers.is_empty() else {}
+	t.check(is_equal_approx(float(held.get("radius", 0.0)), base5), "a twitch frightens as the plain bolt (%.2f)" % float(held.get("radius", 0.0)))
+	casts.clear()
 	rules.levels = {"smite": 4}
 	aim.pick(0)
 	aim.press(Vector2(1.0, 1.0))
@@ -344,6 +363,9 @@ static func _smite(t, crowd: Crowd, field: EnemyField, env: EnvironmentField, to
 	ex = casts[0][1] if casts.size() == 1 else {}
 	t.check(casts.size() == 1 and int(ex.get("level", 0)) == 4 and not ex.has("to"),
 		"pressed at level 4, released at level 5: a level 4 click, no drag (%s)" % [casts])
+	held = crowd._held_dangers.back() if not crowd._held_dangers.is_empty() else {}
+	t.check(is_equal_approx(float(held.get("radius", 0.0)), Crowd._cast_radius("smite", 4)),
+		"...and the town is told of a level 4 bolt (%.2f)" % float(held.get("radius", 0.0)))
 	casts.clear()
 	rules.levels = {"smite": 5}
 	aim.pick(0)
@@ -355,6 +377,9 @@ static func _smite(t, crowd: Crowd, field: EnemyField, env: EnvironmentField, to
 	ex = casts[0][1] if casts.size() == 1 else {}
 	t.check(casts.size() == 1 and int(ex.get("level", 0)) == 5 and ex.get("to") == Vector2(1.5, 0.0),
 		"...and its release casts at level 5, told where the drag ended (%s)" % [casts])
+	held = crowd._held_dangers.back() if not crowd._held_dangers.is_empty() else {}
+	t.check(is_equal_approx(float(held.get("radius", 0.0)), base5 * 2.0),
+		"...and the town is told of the level 5 storm it grew to (%.2f)" % float(held.get("radius", 0.0)))
 	aim.pick(0)
 	t.check(aim._aim_kind() == "click", "the next aim reads the level as it is now (level 4: a click)")
 	aim.free()

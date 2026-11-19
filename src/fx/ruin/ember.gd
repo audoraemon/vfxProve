@@ -4,7 +4,8 @@ extends FxTimeline
 ## click (the nearest; a guised one is passed over, as Death's undead pass them) and sets him alight (Crowd.burn(): the
 ## Burning status -- he screams, runs, lights what he brushes and dies as fire at Burning.BURN_FOR); with nobody there,
 ## onto the nearest thing that burns within REACH of the click -- a house, a stall, a tree, the barracks, the cathedral
-## (FireManager.burns()) -- and sets it alight at START_LEVEL. From there the fire is the town's own: it grows, spreads on
+## (FireManager.burns()) -- and sets it alight at START_LEVEL; so too when the man it fell for is gone from under it as it
+## lands (dead, carried off, guised, indoors). From there the fire is the town's own: it grows, spreads on
 ## the wind, and draws the fire brigade and the engineers away from whatever else they were doing. Nobody sees one spark
 ## fall: quiet when cast; the fire, and the burning man, are seen. With nothing in reach it gutters out on the ground.
 
@@ -27,8 +28,10 @@ const PERSON_LIFT := 10.0
 
 ## What it lands on, or null.
 var fuel: Structure
-## Who it lands on, or null (a person is chosen before any building).
+## Who it lands on, or null (a person is chosen before any building; null again if he is gone as it lands).
 var victim: Person
+## Whether it fell for a person at the cast (a freed one is not null, so this is kept apart from `victim`).
+var _for_person := false
 ## Whether it took.
 var lit := false
 ## This cast's reach and the strength of the fire it starts: the ability level's (PowerBook.stat()), the consts at level 1.
@@ -108,7 +111,8 @@ func _build() -> void:
 	duration = T_LAND + 1.6
 	busy = T_LAND
 	victim = pick_person(ctx.field, origin)
-	if victim == null:
+	_for_person = victim != null
+	if not _for_person:
 		fuel = target(ctx.env, origin, lv_reach)
 	at(T_LAND, _land)
 	ctx.play(&"q_ember", origin)
@@ -134,16 +138,21 @@ func landing_lift() -> float:
 
 
 func _land() -> void:
-	var where := landing()
-	var lift := landing_lift()
 	var twist := PowerBook.twist_at(extra, "ember")
-	if victim != null:
-		# On a person: he burns, if he is still out in the open to burn (Burning.lay()).
-		if is_instance_valid(victim) and ctx.crowd != null:
-			lit = ctx.crowd.burn(victim, Burning.BURN_FOR, where, lv_start_level)
+	if _for_person:
+		# On a person: he burns, if he is still there to burn -- alive, out in the open, not guised (Burning.lay()).
+		if is_instance_valid(victim) and ctx.crowd != null and not victim.guised():
+			lit = ctx.crowd.burn(victim, Burning.BURN_FOR, victim.ground_pos, lv_start_level)
 			if lit and twist:
 				ctx.crowd.burning.trail(victim, ctx.crowd.fires.lay, TRAIL_STEP, TRAIL_MOST)
-	elif fuel != null and is_instance_valid(fuel) and not fuel.destroyed:
+		if not lit:
+			# Gone from under it while it fell (dead, carried off, guised, indoors, alight already): it falls on the building the
+			# click would have lit with nobody there, else gutters on the ground.
+			victim = null
+			fuel = target(ctx.env, origin, lv_reach)
+	var where := landing()
+	var lift := landing_lift()
+	if not lit and fuel != null and is_instance_valid(fuel) and not fuel.destroyed:
 		if ctx.crowd != null:
 			ctx.crowd.fires.ignite(fuel, lv_start_level)
 			lit = ctx.crowd.fires.is_burning(fuel)

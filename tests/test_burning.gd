@@ -23,6 +23,9 @@ static func run(t) -> void:
 	_runs_from_shelter(t, made)
 	_runs_free(t, made)
 	_relay(t, made)
+	_runs_to_the_end(t, made)
+	_trail_stops(t, made)
+	_cleared_mid_step(t, made)
 	_perf(t, made)
 	RD._done(made)
 
@@ -319,6 +322,138 @@ static func _relay(t, made: Array) -> void:
 	var anew := crowd.burn(p, Burning.BURN_FOR, at)
 	t.check(not again and entries == 1 and lapsed and anew and crowd.burning._on.size() == 1 and p.burning(),
 		"a re-lay after an outside erase is refused (entries %d), and lays once the old entry has lapsed" % entries)
+	crowd.burning.clear()
+
+
+## He runs until he dies (final review, item 1): a calm citizen and a soldier at his post (a rescue squad's man, whom the
+## squad recalls every half second), set alight and walked with the town in small steps for BURN_FOR, panic on every frame his
+## feet move, are never on their way into a shelter and never indoors, and die as fire at BURN_FOR. A third, sent for a shelter
+## at 3.0 s (a danger reaching him after his first flight has ended), drops it within the same step and runs on.
+static func _runs_to_the_end(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	for who: String in ["citizen", "soldier", "sent for a shelter"]:
+		RD._clear_all(made)
+		var at := RD._empty(made)
+		var p: Person = null
+		if who == "soldier":
+			p = crowd.soldiers.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive())[1]
+			p.stop_fighting()
+			p.ground_pos = at
+			p.inside = false
+			p.mind = Person.Mind.POST
+		else:
+			p = _put(made, 40 + (0 if who == "citizen" else 1), at)
+		var got := []
+		var grab := func(e: DummyEnemy, kind: StringName) -> void:
+			if e == p:
+				got.append(kind)
+		field.enemy_killed.connect(grab)
+		var laid := crowd.burn(p, Burning.BURN_FOR, at + Vector2(0.3, 0.0))
+		var calm_frames := 0
+		var sheltering := 0
+		var was_in := false
+		var sent := false
+		var alive_at := false
+		var start := p.ground_pos
+		var far := 0.0
+		var steps := roundi((Burning.BURN_FOR - 0.1) / DT)
+		for i in steps:
+			# His feet move (p.frame) in the mind the last step left him: count the frames that was not a panic.
+			if p.mind != Person.Mind.PANIC:
+				calm_frames += 1
+			p.frame(DT)
+			if who == "sent for a shelter" and not sent and float(i) * DT >= 3.0:
+				# The town's order comes between his feet and the town's step, as a danger's would.
+				for s: Structure in crowd.shelters.shelters.keys():
+					if is_instance_valid(s) and not s.destroyed and crowd.shelters.send_in(p, s):
+						sent = true
+						break
+			crowd.advance(DT)
+			if p.mind == Person.Mind.SHELTER or p.shelter != null:
+				sheltering += 1
+			was_in = was_in or p.inside
+			far = maxf(far, p.ground_pos.distance_to(start))
+		alive_at = p.is_alive() and p.burning()
+		for i in roundi(0.2 / DT):
+			if is_instance_valid(p) and p.is_alive():
+				p.frame(DT)
+			crowd.advance(DT)
+		field.enemy_killed.disconnect(grab)
+		var sent_ok := sent or who != "sent for a shelter"
+		t.check(laid and sent_ok and calm_frames == 0 and sheltering == 0 and not was_in and far > 2.0,
+			"a burning %s runs every frame of his burning (%d frames not panicking, %d sheltering, indoors %s, ran %.1f)"
+			% [who, calm_frames, sheltering, was_in, far])
+		t.check(alive_at and not p.is_alive() and got == [Burning.KIND],
+			"...alive and burning at 3.9 s, dead as fire at 4.1 s (%s)" % [got])
+	crowd.burning.clear()
+
+
+## The trail stops when he dies of something else or goes indoors: no spot after it (Review Focus 2).
+static func _trail_stops(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	for how: String in ["slain", "indoors"]:
+		RD._clear_all(made)
+		var at := RD._empty(made)
+		var p := _put(made, 42, at)
+		var spots: Array[Vector2] = []
+		crowd.burn(p, Burning.BURN_FOR, at)
+		crowd.burning.trail(p, func(g: Vector2) -> void: spots.append(g), 1.0, 0)
+		for i in 10:
+			p.ground_pos = at + Vector2(0.25 * float(i + 1), 0.0)
+			crowd.advance(DT)
+		var before := spots.size()
+		if how == "slain":
+			field.kill(p, &"frenzy", p.ground_pos)
+		else:
+			p.inside = true
+		for i in 16:
+			p.ground_pos = at + Vector2(2.5 + 0.25 * float(i + 1), 0.0)
+			crowd.advance(DT)
+		t.check(before == 2 and spots.size() == before and not p.burning() and crowd.burning.count() == 0,
+			"%s mid-burn: the trail stops (%d spots before, %d after)" % [how, before, spots.size()])
+		p.inside = false
+
+
+## Cleared in the middle of a step (a death's callback ends the town): the clear is not undone -- the one still to be stepped
+## is put out and never dies of it; one laid afresh after the clear keeps burning.
+static func _cleared_mid_step(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var field: EnemyField = made[3]
+	var at := RD._empty(made)
+	var first := _put(made, 43, at)
+	var second := _put(made, 44, at + Vector2(2.0, 0.0))
+	var died := []
+	var ends := func(e: DummyEnemy, kind: StringName) -> void:
+		died.append([e, kind])
+		if e == first:
+			crowd.burning.clear()
+	field.enemy_killed.connect(ends)
+	crowd.burn(first, DT * 0.5, at)
+	crowd.burn(second, Burning.BURN_FOR, second.ground_pos)
+	crowd.burning.step(DT)
+	var put_out := not second.burning() and crowd.burning.count() == 0 and crowd.burning._on.is_empty()
+	_advance(crowd, Burning.BURN_FOR + 0.5)
+	t.check(put_out and second.is_alive() and died.size() == 1 and died[0][0] == first,
+		"cleared by a death in the middle of a step: the one after is put out and lives (%s)" % [died])
+	field.enemy_killed.disconnect(ends)
+	# A clear that lays a fresh burning in the same breath: the fresh one burns on.
+	RD._clear_all(made)
+	first = _put(made, 46, at)
+	second = _put(made, 47, at + Vector2(2.0, 0.0))
+	var relays := func(e: DummyEnemy, _kind: StringName) -> void:
+		if e == first:
+			crowd.burning.clear()
+			crowd.burn(second, Burning.BURN_FOR, second.ground_pos)
+	field.enemy_killed.connect(relays)
+	crowd.burn(first, DT * 0.5, at)
+	crowd.burn(second, Burning.BURN_FOR, second.ground_pos)
+	crowd.burning.step(DT)
+	field.enemy_killed.disconnect(relays)
+	t.check(second.burning() and crowd.burning.count() == 1 and crowd.burning._on.size() == 1,
+		"laid afresh by the clearing callback, he burns on (%d entries)" % crowd.burning._on.size())
 	crowd.burning.clear()
 
 

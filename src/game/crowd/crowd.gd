@@ -234,7 +234,7 @@ var _bed_level := 0.0
 var remains: Remains
 ## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
 var withering: Withering
-## The burning (Burning: Ember on a person): laid by burn(), stepped beside the withering, cleared with the town.
+## The burning (Burning: Ember on a person): laid by burn(), stepped after the town's orders (_advance()), cleared with the town.
 var burning: Burning
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
@@ -1146,8 +1146,6 @@ func _advance(delta: float) -> void:
 		remains.step(delta)
 	if withering != null:
 		withering.step(delta)
-	if burning != null:
-		burning.step(delta)
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1192,6 +1190,10 @@ func _advance(delta: float) -> void:
 	if rescue != null:
 		rescue.step(delta)
 	piles.step(delta)
+	# After the town's orders (a rescue squad's recall, the marshals, the escorts): a burning man any of them sent off this
+	# frame is running again before his feet move (Burning._keep_running()).
+	if burning != null:
+		burning.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1474,8 +1476,9 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## calm who see the build-up look at it; below, what the impact does): it registers a threat (PowerBook.REACH), and the people it reaches react
 ## by how near they are -- inside its area plus Person.THREAT_MARGIN they run clear of it, within sight or earshot
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
-## its whole lane: a tsunami's far end runs through streets the player never pressed on.
-func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1) -> void:
+## its whole lane: a tsunami's far end runs through streets the player never pressed on. `scale` widens the danger with the
+## cast (Smite's Gathered Storm: SmiteFx.grow_of(), Targeting._on_cast_made()).
+func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1, scale := 1.0) -> void:
 	if is_veiled(ground):
 		return  # cast where nothing is seen (Unseen Hour): no look, no danger, no unease
 	if PowerBook.is_quiet(key):
@@ -1486,7 +1489,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", lev
 			add_alarm(unease)
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
-	var radius := _cast_radius(key, level)
+	var radius := _cast_radius(key, level) * scale
 	var points := cast_points(ground, dir, length, radius)
 	var impact := PowerBook.impact(key)
 	if impact <= 0.0:

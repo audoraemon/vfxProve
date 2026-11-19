@@ -1062,9 +1062,18 @@ func _order_extra(who: Person) -> Dictionary:
 	return {}
 
 
+## A cast went out: the town is told of it at the level it was cast at -- the press's, for the cast this aim's release made
+## (_press_level is held until the release is done), else the slot's now -- and as wide as it was cast: a Gathered Storm's
+## danger grows with its drag (SmiteFx.grow_of(), as the bolt and the preview ring do).
 func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
-	var level := _rules.level_of(from_slot)
+	var mine := from_slot == slot and _press_level > 0
+	var level := _press_level if mine else _rules.level_of(from_slot)
 	var a := area_at(key, level)
+	if bool(a.get("grow", false)):
+		var grow := SmiteFx.grow_of({"level": level, "to": _at}, at) if mine else 1.0
+		_crowd.on_cast(at, Vector2.ZERO, 0.0, key, level, grow)
+		unfocus()
+		return
 	if String(a.get("shape", "")) == "lane" and bool(a.get("follow", false)):
 		# A lane run by a creature that comes on slowly (The Pale Serpent): the town sees the cast at the press, not a
 		# warning the length of the street ahead (the effect frightens the street it has passed).

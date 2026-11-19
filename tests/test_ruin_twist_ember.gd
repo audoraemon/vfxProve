@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_person_too_far(t, made)
 	_nearer_burns(t, made)
 	_guised(t, made)
+	_victim_gone(t, made)
 	_quiet(t, made)
 	_man_trail(t, made)
 	_man_low_levels(t, made)
@@ -323,6 +324,54 @@ static func _guised(t, made: Array) -> void:
 	_end(fx)
 
 
+## The man the spark fell for is gone from under it as it lands -- indoors, dead, guised or carried off (freed): it falls on
+## the building the click would have lit with nobody there, not a fizzle (final review, item 4). With no building in reach,
+## it gutters as before.
+static func _victim_gone(t, made: Array) -> void:
+	var field: EnemyField = made[3]
+	for how: String in ["indoors", "dead", "guised", "freed"]:
+		_reset(made)
+		var crowd: Crowd = made[0]
+		var house := RD._house(made[1], made[2])
+		var click := Vector2(house.footprint.end.x + 0.5, house.center().y)
+		var p := _put(made, 16, click + Vector2(0.2, 0.0))
+		var fx := _town_cast(made, click)
+		var picked := fx.victim == p
+		fx._process(EmberFx.T_LAND * 0.5)
+		match how:
+			"indoors":
+				p.inside = true
+			"dead":
+				field.kill(p, &"frenzy", p.ground_pos)
+			"guised":
+				p.statuses[&"guise"] = 30.0
+			"freed":
+				field.remove(p)
+				crowd.citizens.erase(p)
+				p.free()
+		fx._process(EmberFx.T_LAND * 0.5 + 0.05)
+		var want := EmberFx.target(made[1], click)
+		t.check(picked and want != null and fx.victim == null and fx.fuel == want and fx.lit and crowd.fires.is_burning(want)
+			and crowd.burning.count() == 0,
+			"the man %s as the spark lands: it falls on the building in reach instead (fuel %s, lit %s)" % [how, fx.fuel, fx.lit])
+		if is_instance_valid(p):
+			p.inside = false
+			p.statuses.erase(&"guise")
+		_end(fx)
+	# Nothing in reach: it gutters.
+	_reset(made)
+	var at := RD._empty(made)
+	var q := _put(made, 17, at + Vector2(0.2, 0.0))
+	var fx := _town_cast(made, at)
+	fx._process(EmberFx.T_LAND * 0.5)
+	q.inside = true
+	fx._process(EmberFx.T_LAND * 0.5 + 0.05)
+	t.check(fx.victim == null and fx.fuel == null and not fx.lit and (made[0] as Crowd).fires.fires.is_empty(),
+		"the man indoors as it lands and no building in reach: it gutters on the ground")
+	q.inside = false
+	_end(fx)
+
+
 ## Quiet when cast: no alarm, and the bystander stays calm until the burning man is seen.
 static func _quiet(t, made: Array) -> void:
 	_reset(made)
@@ -362,7 +411,8 @@ static func _man_trail(t, made: Array) -> void:
 	for g in crowd.fires.patches:
 		spots.append(g.at)
 	var laid := crowd.fires.patches_laid - laid0
-	var ok := laid >= 1 and laid <= EmberFx.TRAIL_MOST and spots.size() == laid
+	# He runs the whole BURN_FOR (Burning._keep_running()), so his trail is three patches at least.
+	var ok := laid >= 3 and laid <= EmberFx.TRAIL_MOST and spots.size() == laid
 	if ok:
 		ok = spots[0].distance_to(caught) < 0.2
 		for k in range(1, spots.size()):

@@ -82,12 +82,21 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   false). Indoors within 0.9 of the home point (snapped walkable; a soldier's barracks yard; no home: the nearest house); with no path
   he walks straight. A sick soldier indoors is not stepped (`frame()` returns). A Harvest carter sent home sick drops his load by
   H7's path (`HarvestDirector._dropped_look()` counts `home_sick` as fright).
-- V16: The shadow and the dreaded are read at: `Crowd.nearest_witness()` and `TempleReport._witness()` (no witness),
-  `MissionDirector._sees()` (no Faithful sight, no report), `EscortDirector._seen_by()` (no seizure, the whole Escort family), the
-  Harvest's called guard, `BellNetwork` (the climb holds: no ring), `Crowd._voice()` (no shout), `Person.panic/observe/flee/fight` and
-  `_fight_step()`; the walk: `Person.tick()` holds a dreaded non-shadow still, and `Person._step_blocked()` refuses a step from outside
-  into dreaded ground (he waits at the edge). Every check is behind `statuses.is_empty()` / `dreads.is_empty()`: nothing changes
-  without a Veil status.
+- V16 (amended by ruling C13): one read, `Person.veil_blind()` (a shadow or the dreaded; `statuses.is_empty()` first), says a person
+  sees, seizes, finds, reports and delivers nothing. Read at: `Crowd.nearest_witness()` and `TempleReport._witness()` (no witness);
+  `MissionDirector._sees()` (no Faithful sight) and `_report()` (no report sent); `TempleReport.step()` (no report delivered);
+  `EscortDirector._seen_by()` (no seizure) and `_step_held()` (no charge handed over: the whole Escort family); the Harvest's called
+  guard; `HuntDirector._found()` (the head finds nothing; Heretic Hunt and its kin inherit it); Break the Hunt's bearers (no house
+  taken); `WarningDirector._run()` (no keeper told, no rope taken) and `_herald_tick()` (the Lantern hears nothing); the Witness's
+  messenger (word does not reach the Temple); `LanternBearer.step()` (no flame brought to the vigil); `Person.on_watch()` (no watch kept:
+  Heretic Hunt's, The Informer's and Heart of Faith's quiet doors), while `at_own_post()` still counts his post held; `BellNetwork`
+  (no ring); `Crowd._voice()` (no shout); `Person.panic/observe/flee/fight` and `_fight_step()`; the walk: `Person.tick()` holds a
+  dreaded non-shadow still, and `Person._step_blocked()` refuses a step from outside into dreaded ground.
+- V21 (ruling C13's sweep): left unread on purpose -- The Informer's `_found()` (the god's turning of the contacts finds him, no
+  person's act), The Lantern's Eye's `_found()` (the mirrors' Eye, no person), Break the Hunt's `_found()` (counts the houses taken,
+  which a shadow bearer no longer takes), Face Halcyon's burn (the stake's clock; a shadowed escort keeps his place in the file, as
+  spec 5.8 counts a shadow's post held), Mira's House Venn's knock (his search reports through `_report()`, which is read), and the
+  director-placed and town-placed stands (`GuardJobs`, `at_own_post()`): the post looks manned.
 - V17: `Crowd.take()` hides the taken at once (`visible = false`): no body is drawn; the power draws its own vanishing.
 - V18: `Crowd.spared()` asks the director through `Crowd.mission_keeps` (registered in `MissionDirector.setup()` beside
   `mission_holds`, cleared with the mission hooks).

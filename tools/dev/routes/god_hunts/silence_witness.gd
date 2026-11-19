@@ -17,8 +17,6 @@ const LOADOUT := {
 	"dominion": ["whisper", "discord", "madness"],
 }
 
-## Nuclear Nova's script (it has no class_name): its RADIUS, T_BLAST and WAVE_TIME lead Veil's fallback cast.
-
 ## The pieces every Hunt's policy shares (god_t1.gd): road_ahead().
 const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
 ## A mate farther than this from the witness (Crowd.DOOM_WITNESS plus a margin for the step he takes while the Doom falls) cannot carry the word on.

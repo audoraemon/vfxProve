@@ -1167,6 +1167,8 @@ func _advance(delta: float) -> void:
 		withering.step(delta)
 	if dusk != null:
 		dusk.step(delta)
+	if not dreads.is_empty():
+		_prune_dreads()  # (Veil) a spent dread is let go, so the walk's check is free again
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1776,7 +1778,7 @@ func end_veil_all(id: int) -> void:
 ## Dread of the Dark (Veil): for `seconds`, every piece of dark ground (in_dark()) within `reach` of `at` is dreaded (dreaded()):
 ## nobody outside steps into it (Person._step_blocked()). Returns its id for end_dread(). Quiet: no danger, no alarm, no fright.
 func dread(at: Vector2, reach: float, seconds: float) -> int:
-	dreads = dreads.filter(func(d: Dictionary) -> bool: return _clock < float(d.until))
+	_prune_dreads()
 	var id := _next_dread
 	_next_dread += 1
 	dreads.append({"id": id, "at": at, "r": reach, "until": _clock + seconds})
@@ -1787,14 +1789,25 @@ func end_dread(id: int) -> void:
 	dreads = dreads.filter(func(d: Dictionary) -> bool: return int(d.id) != id)
 
 
+## Lets the spent dreads go, so `dreads` is empty again once every one has run out (the crowd's step, and dreaded()).
+func _prune_dreads() -> void:
+	dreads = dreads.filter(func(d: Dictionary) -> bool: return _clock < float(d.until))
+
+
 ## Whether `at` is dreaded now: a live dread reaches it and it is dark ground (in_dark()).
 func dreaded(at: Vector2) -> bool:
 	if dreads.is_empty():
 		return false
+	var spent := false
+	var hit := false
 	for d in dreads:
-		if _clock < float(d.until) and (d.at as Vector2).distance_to(at) <= float(d.r):
-			return in_dark(at)
-	return false
+		if _clock >= float(d.until):
+			spent = true
+		elif not hit and (d.at as Vector2).distance_to(at) <= float(d.r):
+			hit = true
+	if spent:
+		_prune_dreads()
+	return hit and in_dark(at)
 
 
 ## Whether `p` is spared Evernight's automatic takes (Veil spec 5.9): the god's own believer (profile.faith BELIEVER; the church's

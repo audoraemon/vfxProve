@@ -593,14 +593,15 @@ static func _unseen(seen: Variant) -> bool:
 ## The watcher's side of the Veil (Shadow Play, Dread of the Dark): a shadow sees and reports nothing; the dreaded can neither. `f` is a
 ## living person (the caller checked _alive()).
 static func _blind_veil(f: Variant) -> bool:
-	var p := f as Person
-	return not p.statuses.is_empty() and (p.is_shadow() or p.is_dreaded())
+	return (f as Person).veil_blind()
 
 
 ## `seer` runs to the Temple's door `door` to report what they saw, unless already carrying a report.
 func _report(seer: Person, door: Vector2) -> void:
 	if _carrying(seer) or on_lantern_errand(seer):
 		return  # (v0.11.2: nor one carrying the Lantern's flame, or escorting it)
+	if seer.veil_blind():
+		return  # (Veil, C13) a shadow or a dreaded seer carries nothing to the Temple
 	var report := TempleReport.new(seer, door)
 	report.skip = _report_skip
 	reports.append(report)

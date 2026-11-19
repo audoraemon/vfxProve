@@ -2095,6 +2095,12 @@ func is_dreaded() -> bool:
 	return statuses.has(&"dread")
 
 
+## The one read for what a person does for the town (Veil ruling C13): a shadow or a dreaded person sees, seizes, finds, reports and
+## delivers nothing (is_shadow(), is_dreaded()). Behind the cheap empty test: nothing changes without a Veil status.
+func veil_blind() -> bool:
+	return not statuses.is_empty() and (statuses.has(&"shadow") or statuses.has(&"dread"))
+
+
 ## Blight on a person (Veil): ill without a sound, he walks home -- his house's point (profile.home), a soldier to the barracks yard,
 ## one with neither to the nearest house -- and is taken indoors there for the rest of the mission, as a NIGHT mission keeps its
 ## citizens (NightRules.apply(): inside, night_indoors, hidden, out of the field). Not a death: he is alive and counted among the living.
@@ -3033,8 +3039,8 @@ func at_own_post() -> bool:
 ## away on a guard job, and either on duty or at his station (a director-stationed soldier counts; a guard away on a fire or a
 ## pile never does).
 func on_watch() -> bool:
-	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job:
-		return false
+	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or veil_blind():
+		return false  # (Veil C13: a shadow or a dreaded man keeps no watch -- he sees nothing; at_own_post() still counts his post held)
 	return mind == Mind.DUTY or ((mind == Mind.POST or mind == Mind.HOLD) and ground_pos.distance_to(anchor) <= WATCH_REACH)
 
 

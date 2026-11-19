@@ -487,6 +487,17 @@ func body_check(needs: String, ground: Vector2, hidden_too := false, r := Remain
 	return ""
 
 
+## Why a Veil cast of `key` at `ground` must be refused, else "" (ruling C2): Blight with neither a building nor a person in reach
+## ("no_blight", BlightFx.refusal()), Dread of the Dark with no dark ground in reach ("no_dark", DreadOfTheDarkFx.refusal()). cast() asks it
+## before any cooldown starts, so a refused cast spends none. The seam a test overrides to drive a refusal (ruling C17).
+func veil_refusal(key: String, ground: Vector2, extra: Dictionary) -> String:
+	if key == "blight":
+		return BlightFx.refusal(self, ground)
+	if key == "dread":
+		return DreadOfTheDarkFx.refusal(_crowd, ground, bool(extra.get("dark", _crowd != null and _crowd.in_dark(ground))))
+	return ""
+
+
 ## Start the slot's cooldown and put its effect in the world. Returns the running effect, or
 ## null when the cast was refused (and when a test's caster hands nothing back).
 func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
@@ -514,18 +525,10 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		if why != "":
 			cast_refused.emit(slot, why)
 			return null
-	if String(p.key) == "blight":
-		# Blight (Veil): with neither a building nor a person in reach it is refused, and no cooldown starts.
-		var no_blight := BlightFx.refusal(self, ground)
-		if no_blight != "":
-			cast_refused.emit(slot, no_blight)
-			return null
-	if String(p.key) == "dread":
-		# Dread of the Dark (Veil): with no dark ground in reach it is refused, and no cooldown starts.
-		var no_dark := DreadOfTheDarkFx.refusal(_crowd, ground, bool(extra.get("dark", _crowd != null and _crowd.in_dark(ground))))
-		if no_dark != "":
-			cast_refused.emit(slot, no_dark)
-			return null
+	var veil_why := veil_refusal(String(p.key), ground, extra)
+	if veil_why != "":
+		cast_refused.emit(slot, veil_why)  # refused: no cooldown starts
+		return null
 	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
 	var told := extra.duplicate()
 	if not told.has("level"):

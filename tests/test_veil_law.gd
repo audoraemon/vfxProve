@@ -237,7 +237,8 @@ static func _ring(t, made: Array) -> void:
 	rules.free()
 
 
-## Each stub builds and lands its dusk, with a crowd and without one (the VFX Sandbox).
+## Each Veil effect builds with a crowd and without one (the VFX Sandbox). When and where each lays its dusk is its own suite's to
+## check (ruling C14: The Swallowing Dark lays it at the end, Evernight uses Dusk.everywhere).
 static func _stubs(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var ctx: FxContext = made[5]
@@ -249,9 +250,8 @@ static func _stubs(t, made: Array) -> void:
 	bare.ground = Node2D.new()
 	var bad := []
 	for path: String in ["slumber", "cloak_of_night", "dreamless", "dread_of_the_dark", "shadow_play", "the_swallowing_dark", "evernight"]:
-		var before := crowd.dusk.count()
 		var fx: FxTimeline = FxTimeline.cast(load("res://src/fx/veil/%s.gd" % path), ctx, p)
-		if fx == null or crowd.dusk.count() != before + 1 or not crowd.dusk.covers(p + Vector2(2.9, 0.0)):
+		if fx == null:
 			bad.append(path)
 		if fx != null:
 			fx.free()
@@ -260,7 +260,7 @@ static func _stubs(t, made: Array) -> void:
 			bad.append(path + " (no crowd)")
 		else:
 			lone.free()
-	t.check(bad.is_empty(), "each stub lands its dusk, and builds with no crowd (%s)" % [bad])
+	t.check(bad.is_empty(), "each Veil effect builds with a crowd and with no crowd (%s)" % [bad])
 	bare.overhead.free()
 	bare.ground.free()
 	crowd.dusk.clear()

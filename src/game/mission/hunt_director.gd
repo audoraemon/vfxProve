@@ -276,7 +276,7 @@ func _found() -> bool:
 	if not head_out or not _alive(head) or head_route.is_empty() or _route_at < head_route.size() - 1:
 		return false
 	var p := head as Person
-	return not p.inside and p.ground_pos.distance_to(_quarry_point()) <= ARRIVE
+	return not p.inside and not p.veil_blind() and p.ground_pos.distance_to(_quarry_point()) <= ARRIVE  # (Veil C13: a shadow finds nothing)
 
 
 ## Everyone at the hunt's work (v0.11 M4): every guard, the head and his escorts (untyped), for a new one to leave out.

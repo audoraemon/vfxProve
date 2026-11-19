@@ -83,7 +83,7 @@ func step(delta: float, crowd: Crowd) -> void:
 		_retarget_in = RETARGET
 		_send(false)  # the first carrier is sent in the normal form: a fright he came down the tower in is respected (v0.11.2 review)
 		return
-	if carrier.ground_pos.distance_to(door) <= REACH:
+	if carrier.ground_pos.distance_to(door) <= REACH and not carrier.veil_blind():  # (Veil C13: a shadow or the dreaded delivers nothing)
 		delivered = true
 		if carrier.mind == Person.Mind.DUTY:
 			carrier.leave_shelter(false)

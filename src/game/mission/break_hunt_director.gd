@@ -921,7 +921,7 @@ func _look(i: int, evacuating: bool) -> void:
 		return
 	_mark(b)
 	if not _planted[i]:
-		if b.mind == Person.Mind.DUTY:
+		if b.mind == Person.Mind.DUTY and not b.veil_blind():  # (Veil C13: a shadow or a dreaded bearer takes no house)
 			for h in houses.size():
 				if not _taken[h] and b.ground_pos.distance_to(house_doors[h]) <= BH_TAKE_REACH:
 					_plant(i, h)

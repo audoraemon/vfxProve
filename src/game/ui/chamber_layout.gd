@@ -36,7 +36,7 @@ const STATIONS := {
 ## Pieces that are drawn but cannot be clicked.
 const SCENERY: Array = [
 	{"name": "wall", "rect": Rect2(-100.0, 0.0, 840.0, 360.0), "layer": "wall"},
-	{"name": "table", "rect": Rect2(200.0, 150.0, 240.0, 110.0), "layer": "table"},
+	{"name": "table", "rect": Rect2(180.0, 140.0, 280.0, 130.0), "layer": "table"},
 	{"name": "desk", "rect": Rect2(-100.0, 300.0, 840.0, 60.0), "layer": "desk"},
 ]
 

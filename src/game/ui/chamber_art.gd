@@ -11,7 +11,8 @@ static var _cache := {}
 
 static func greybox_color(name: String) -> Color:
 	match name:
-		"descend", "table": return Color(0.30, 0.37, 0.48)
+		"descend": return Color(0.30, 0.37, 0.48)
+		"table": return Color(0.26, 0.17, 0.10)
 		"tree": return Color(0.40, 0.25, 0.55)
 		"faith": return Color(0.75, 0.52, 0.16)
 		"awaken", "awaken_closed": return Color(0.42, 0.40, 0.38)

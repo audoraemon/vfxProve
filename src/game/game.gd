@@ -854,10 +854,10 @@ func go_to(to: int) -> void:
 			pick.action.connect(_on_god_select_action.bind(pick))
 			_screen_node = pick
 		Screen.HUB:
-			var hub := GodHub.new()
+			var hub := GodChamber.new()
 			hub.name = "Hub"
 			add_child(hub)
-			hub.setup(god, _hub_line, dev)
+			hub.setup(god, _hub_line, dev, "")
 			_hub_line = ""  # shown once
 			hub.action.connect(_on_hub_action)
 			_screen_node = hub
@@ -2556,7 +2556,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 	pick.click(GodSelectScreen.ring_rect(0).get_center())
 	pick.click(GodSelectScreen.CHOOSE_RECT.get_center())
-	var hub := _screen_node as GodHub
+	var hub := _screen_node as GodChamber
 	var saved: GodSlot = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god != null and god.type == "ruin" and saved != null and saved.type == "ruin"
 		and god.level == 1 and god.tier == 1 and god.learned == {"smite": 1, "ember": 1} and hub.lines()[6] == "Night 1"
@@ -2578,7 +2578,7 @@ func _flow_endless(step: Callable) -> void:
 		and god.level_of("smite") == 1 and god.points == 0,
 		"the Skill Tree refuses a point the god has not got (%s, %d points)" % [why, god.points])
 	tree.click(SkillTreeScreen.BACK_RECT.get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null, "Back from the tree is the hub")
 	if hub == null:
 		out.call()
@@ -2664,7 +2664,7 @@ func _flow_endless(step: Callable) -> void:
 		and saved.level_of("smite") == 2 and saved.points == points - 1,
 		"Skill Tree from the results: Smite to level 2 costs a point (%d -> %d), written at once" % [points, god.points])
 	tree.click(SkillTreeScreen.BACK_RECT.get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	if hub == null:
 		step.call(false, "Back from the tree is the hub")
 		out.call()
@@ -2681,7 +2681,7 @@ func _flow_endless(step: Callable) -> void:
 	step.call(screen == Screen.FAITH and bought and god.max_might() == 7 and saved != null and saved.max_might() == 7 and saved.faith == god.faith,
 		"Faith: +1 Might is bought (Might %d), the file agrees" % god.max_might())
 	faith.click(FaithScreen.BACK_RECT.get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null, "Back from Faith is the hub")
 	if hub == null:
 		out.call()
@@ -2718,7 +2718,7 @@ func _flow_endless(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god.night == 2 and god.level == level and god.divine_power == dp and god.faith == faith_held
 		and god.in_night == "" and saved != null and saved.night == 2 and saved.in_night == "" and hub.line == "Night 2 was abandoned: a lost night. Lantern Notice +25%.",
@@ -2748,7 +2748,7 @@ func _flow_endless(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god.night == 2 and hub.line == "" and saved != null and saved.night == 2
 		and saved.in_night == "" and god.level == level and god.faith == faith_held,
@@ -2782,7 +2782,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 	step.call(slots.slot_line(0) != "Empty", "the slot still holds the god (%s)" % slots.slot_line(0))
 	slots.click(slots.button_rect(0, "continue").get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god != null and god.night == 3 and god.in_night == "" and god.level == level
 		and god.faith == faith_held and hub.line == "Night 3 was abandoned: a lost night. Lantern Notice +25%." and saved != null and saved.night == 3
@@ -2852,7 +2852,7 @@ func _flow_title_endless(step: Callable) -> void:
 		return
 	pick.click(GodSelectScreen.ring_rect(0).get_center())
 	pick.click(GodSelectScreen.CHOOSE_RECT.get_center())
-	var hub := _screen_node as GodHub
+	var hub := _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god != null and god.type == "ruin" and hub.lines()[6] == "Night 1",
 		"choosing Ruin opens the hub at Night 1")
 	if hub == null:
@@ -2871,7 +2871,7 @@ func _flow_title_endless(step: Callable) -> void:
 		out.call()
 		return
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null, "Back from Prepare is the hub")
 	if hub == null:
 		out.call()
@@ -2912,9 +2912,9 @@ func _flow_lantern(step: Callable) -> void:
 		out.call()
 		return
 	slots.click(slots.button_rect(0, "continue").get_center())
-	var hub := _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and god != null and god.notice == 50 and hub.lines()[5] == "Lantern Notice 50%" and hub.hunt_line() == ""
-		and hub.notice_fill() == 0.5,
+	var hub := _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and god != null and god.notice == 50 and hub.lines()[5] == "Lantern Notice 50%" and hub.status.hunt_line() == ""
+		and hub.status.notice_fill() == 0.5,
 		"Continue on slot 1: the hub at Lantern Notice 50%%, no Hunt line (%s)" % [god.notice if god != null else -1])
 	if hub == null or god == null:
 		out.call()
@@ -2955,7 +2955,7 @@ func _flow_lantern(step: Callable) -> void:
 	god.seed = seed_used
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 
 	# Night 4 abandoned after the clock: a lost night, the Notice to 100%.
 	var level := god.level
@@ -2982,18 +2982,18 @@ func _flow_lantern(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	var saved: GodSlot = god_file.call()
-	step.call(screen == Screen.HUB and hub != null and god.night == night_now + 1 and god.notice == 100 and god.in_night == "" and hub.hunt_line() != ""
-		and hub.lines()[5] == "Lantern Notice 100%" and hub.notice_fill() == 1.0
+	step.call(screen == Screen.HUB and hub != null and god.night == night_now + 1 and god.notice == 100 and god.in_night == "" and hub.status.hunt_line() != ""
+		and hub.lines()[5] == "Lantern Notice 100%" and hub.status.notice_fill() == 1.0
 		and hub.line == "Night %d was abandoned: a lost night. Lantern Notice +25%%." % god.night
 		and saved != null and saved.notice == 100 and saved.night == god.night and saved.in_night == "",
-		"Abandon after the clock: a lost night, Lantern Notice 100%%, the hub says the Hunt is next, the file agrees (%s)" % [hub.hunt_line() if hub != null else ""])
+		"Abandon after the clock: a lost night, Lantern Notice 100%%, the hub says the Hunt is next, the file agrees (%s)" % [hub.status.hunt_line() if hub != null else ""])
 	if hub == null:
 		out.call()
 		return
 	hub._unhandled_input(_flow_key(KEY_A))
-	step.call(god.tier == 1 and hub.line == GodHub.AWAKEN_HUNT, "dev A while the Hunt is due is refused (tier %d, \"%s\")" % [god.tier, hub.line])
+	step.call(god.tier == 1 and hub.line == GodChamber.AWAKEN_HUNT, "dev A while the Hunt is due is refused (tier %d, \"%s\")" % [god.tier, hub.line])
 
 	# The Hunt: the real Tier 1 Hunt, its name, its stake.
 	var hunt_night := god.night
@@ -3071,9 +3071,9 @@ func _flow_lantern(step: Callable) -> void:
 		out.call()
 		return
 	res.action.emit("continue")
-	hub = _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and hub.seal_line() == GodHub.SEALED % [name_target, "3 nights"] and hub.hunt_line() == "",
-		"Continue: the hub says \"%s\" and the Hunt is no longer next" % [hub.seal_line() if hub != null else ""])
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and hub.status.seal_line() == GodChamber.SEALED % [name_target, "3 nights"] and hub.status.hunt_line() == "",
+		"Continue: the hub says \"%s\" and the Hunt is no longer next" % [hub.status.seal_line() if hub != null else ""])
 	if hub == null:
 		out.call()
 		return
@@ -3102,7 +3102,7 @@ func _flow_lantern(step: Callable) -> void:
 		"Descend after the Hunt is another night (%s); the sealed card says \"%s\" and a click on it picks nothing (\"%s\")"
 		% [mission_id, prep.card_cost_text(target), prep.refused_reason])
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god.night == hunt_night + 1 and god.sealed == target,
 		"Back from Prepare is the hub, nothing counted (Night %d)" % [god.night + 1])
 	if hub == null:
@@ -3171,11 +3171,11 @@ func _flow_rite(step: Callable) -> void:
 	fx.loadout = pair.duplicate()
 	fx.write(GodSlot.path(god_slot, god_base))
 	slots.click(slots.button_rect(0, "continue").get_center())
-	var hub := _screen_node as GodHub
+	var hub := _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god != null and god.tier == 1 and god.level == 10 and god.capped() and god.divine_power == god.need()
 		and hub.lines()[2] == "AWAKEN TO GROW" and god.notice == 50 and god.seal_nights == 0 and god.gifts.is_empty(),
 		"Continue on the fixture: Tier 1, level 10, the bar full, Notice 50%%, nothing sealed (%s)" % [hub.lines() if hub != null else []])
-	step.call(hub != null and hub.awaken_shown() and not hub.awaken_dim() and hub.gifts_line() == "" and hub.hint_text().contains("A: Awaken"),
+	step.call(hub != null and hub.status.awaken_shown() and not hub.status.awaken_dim() and hub.status.gifts_line() == "" and hub.hint_text().contains("A: Awaken"),
 		"the hub shows Awaken (not dim), no gifts line, and the A hint")
 	if hub == null or god == null:
 		out.call()
@@ -3190,7 +3190,7 @@ func _flow_rite(step: Callable) -> void:
 	god.notice = 100
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	hub.click(hub.menu_rect("awaken").get_center())
 	var prep := _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id == String(hunt0.id) and prep.header_text() == "THE LANTERN HUNT" and god.night == night0,
@@ -3199,12 +3199,12 @@ func _flow_rite(step: Callable) -> void:
 		out.call()
 		return
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god.night == night0 and god.in_night == "", "Back from the Hunt's Prepare is the hub, free")
 	god.notice = 50
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 
 	# 3. The rite: Prepare, the night, real input, the pause.
 	if not await _flow_enter_rite(step, hub, pair):
@@ -3275,9 +3275,9 @@ func _flow_rite(step: Callable) -> void:
 
 	# 5. The hub after: no Awaken, the gift; a Tier 2 night carries it.
 	res.action.emit("continue")
-	hub = _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and not hub.awaken_shown() and hub.gifts_line() == GodHub.GIFTS_LINE % RiteBook.gift_name(RiteBook.WATCHFUL_BELL),
-		"Continue: the hub has no Awaken and says \"%s\"" % [hub.gifts_line() if hub != null else ""])
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and not hub.status.awaken_shown() and hub.status.gifts_line() == GodChamber.GIFTS_LINE % RiteBook.gift_name(RiteBook.WATCHFUL_BELL),
+		"Continue: the hub has no Awaken and says \"%s\"" % [hub.status.gifts_line() if hub != null else ""])
 	if hub == null:
 		out.call()
 		return
@@ -3296,7 +3296,7 @@ func _flow_rite(step: Callable) -> void:
 		out.call()
 		return
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god.night == night0 + 1, "Back from Prepare is the hub, nothing counted")
 
 	# 6. Lost the real way: the god put back at the cap with no gift.
@@ -3308,8 +3308,8 @@ func _flow_rite(step: Callable) -> void:
 	god.notice = 50
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
-	step.call(hub != null and hub.awaken_shown() and god.capped() and god.gifts.is_empty(), "the fixture again: Tier 1 at the cap, Awaken offered")
+	hub = _screen_node as GodChamber
+	step.call(hub != null and hub.status.awaken_shown() and god.capped() and god.gifts.is_empty(), "the fixture again: Tier 1 at the cap, Awaken offered")
 	if hub == null or not await _flow_enter_rite(step, hub, pair):
 		out.call()
 		return
@@ -3332,8 +3332,8 @@ func _flow_rite(step: Callable) -> void:
 		out.call()
 		return
 	res.action.emit("continue")
-	hub = _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and hub.awaken_shown() and god.notice == 75,
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and hub.status.awaken_shown() and god.notice == 75,
 		"Continue: Awaken is offered again at Notice 75%")
 	if hub == null:
 		out.call()
@@ -3350,7 +3350,7 @@ func _flow_rite(step: Callable) -> void:
 
 ## Awaken from the hub, Prepare's rite page, MANIFEST and into the night past its intro (FLOW, god P3): the rite's header and rows are checked,
 ## the draft is `pair`. False (and a failed step) when the screens do not come up.
-func _flow_enter_rite(step: Callable, hub: GodHub, pair: PackedStringArray) -> bool:
+func _flow_enter_rite(step: Callable, hub: GodChamber, pair: PackedStringArray) -> bool:
 	hub.click(hub.menu_rect("awaken").get_center())
 	var prep := _screen_node as PrepareScreen
 	var labels := PackedStringArray()

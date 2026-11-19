@@ -6,6 +6,7 @@ extends RefCounted
 
 static func run(t) -> void:
 	GodTree.dev_fill = true
+	GodChamber.transitions = false
 	_frame(t)
 	_stations(t)
 	_blocked(t)
@@ -19,6 +20,15 @@ static func run(t) -> void:
 	_hover(t)
 	_hint_and_lines(t)
 	_resolutions(t)
+	_long_line(t)
+	_transition_out(t)
+	_transition_skip(t)
+	await _transition_freed(t)
+	_transition_none(t)
+	_transition_back(t)
+	_transitions_off(t)
+	_parallax_mouse(t)
+	GodChamber.transitions = false
 	GodTree.dev_fill = false
 
 
@@ -270,3 +280,161 @@ static func _resolutions(t) -> void:
 			t.check(got == [key], "%s: a click at the %s station still emits it (%s)" % [area, key, got])
 		ch.free()
 		UiScale.clear_test_area()
+
+
+## Task 3 review (a): a long one-off line wraps to two lines and the stack stays clear of the keys hint.
+static func _long_line(t) -> void:
+	var long := "Night 7 was abandoned: the Hunt is lost. The Lantern seals Smite for 3 nights. Lantern Notice 50%. The Hunt is lost and the Lantern is angry."
+	var made := _make(_slot(), false, long)
+	var ch: GodChamber = made[0]
+	var wrapped := UiTheme.wrap(long, GodChamber.LINE_WIDTH, UiTheme.SIZE_BODY)
+	t.check(wrapped.size() >= 2, "the long one-off line wraps to %d lines" % wrapped.size())
+	t.check(ch.one_off_baseline() <= GodChamber.HINT_Y - 16.0, "the one-off line's last row sits clear above the hint (%s)" % ch.one_off_baseline())
+	ch.free()
+
+
+static func _on(god: GodSlot = null) -> Array:
+	GodChamber.transitions = true
+	return _make(god if god != null else _capped(10))
+
+
+## Out: a click starts the zoom, the action comes when it ends.
+static func _transition_out(t) -> void:
+	var made := _on()
+	var ch: GodChamber = made[0]
+	var got: Array = made[1]
+	ch._on_gui_input(_click(ch.menu_rect("tree").get_center()))
+	t.check(got.is_empty() and ch.in_transition() and ch.zoom() == 1.0, "transitions on: a click on tree emits nothing at once (%s)" % [got])
+	ch.advance(0.2)
+	t.check(got.is_empty() and ch.zoom() > 1.0 and ch.zoom() < GodChamber.ZOOM_TO and ch.fade() == 0.0,
+		"0.2 s in: nothing yet, zoom %.2f between 1 and 2.2, fade 0" % ch.zoom())
+	ch.advance(0.2)
+	t.check(got == ["tree"] and ch.fade() == 1.0 and ch.zoom() == GodChamber.ZOOM_TO, "0.4 s in: tree emitted exactly once, fade 1 (%s)" % [got])
+	ch.advance(0.5)
+	t.check(got == ["tree"], "and never again (%s)" % [got])
+	ch.free()
+	GodChamber.transitions = false
+
+
+## Review Focus 1: any click or key during a zoom only finishes it.
+static func _transition_skip(t) -> void:
+	var made := _on()
+	var ch: GodChamber = made[0]
+	var got: Array = made[1]
+	ch._on_gui_input(_click(ch.menu_rect("tree").get_center()))
+	ch._on_gui_input(_motion(ch.menu_rect("faith").get_center()))
+	t.check(ch._hover == "", "hover does not change in a transition")
+	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
+	t.check(got == ["tree"] and not ch.in_transition(), "a click on faith during the zoom to tree skips: tree once, never faith (%s)" % [got])
+	ch.free()
+	made = _on()
+	ch = made[0]
+	got = made[1]
+	ch._on_gui_input(_click(ch.menu_rect("tree").get_center()))
+	ch._unhandled_input(_key(KEY_F))
+	t.check(got == ["tree"], "a key during the zoom does the same (%s)" % [got])
+	ch.free()
+	# Dim stations and the Title button never zoom.
+	GodTree.dev_fill = false
+	GodTree.use_table(GodTree.blank())
+	made = _on(_slot())
+	ch = made[0]
+	got = made[1]
+	ch._on_gui_input(_click(ch.menu_rect("descend").get_center()))
+	t.check(not ch.in_transition() and got.is_empty(), "a dim table starts no transition")
+	ch._on_gui_input(_click(ch.menu_rect("title").get_center()))
+	t.check(not ch.in_transition() and got == ["title"], "the Title button starts no transition and emits at once (%s)" % [got])
+	ch.free()
+	GodTree.use_table({})
+	GodTree.dev_fill = true
+	GodChamber.transitions = false
+
+
+## Review Focus 2: a room freed mid-zoom emits nothing.
+static func _transition_freed(t) -> void:
+	var made := _on()
+	var ch: GodChamber = made[0]
+	var got: Array = made[1]
+	ch._on_gui_input(_click(ch.menu_rect("tree").get_center()))
+	ch.free()
+	var tree := Engine.get_main_loop() as SceneTree
+	await tree.process_frame
+	await tree.process_frame
+	t.check(got.is_empty(), "a room freed mid-zoom emits nothing (%s)" % [got])
+	GodChamber.transitions = false
+
+
+static func _transition_none(t) -> void:
+	var made := _on(_slot())
+	var ch: GodChamber = made[0]
+	var got: Array = made[1]
+	ch._on_gui_input(_click(Vector2(5, 100)))
+	t.check(not ch.in_transition() and got.is_empty(), "a click on bare wall starts nothing")
+	ch.free()
+	GodChamber.transitions = false
+
+
+static func _transition_back(t) -> void:
+	GodChamber.transitions = true
+	var ch := GodChamber.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(ch)
+	ch.setup(_capped(10), "", false, "tree")
+	var got := []
+	ch.action.connect(func(what: String) -> void: got.append(what))
+	t.check(ch.zoom() == GodChamber.ZOOM_TO and ch.fade() == 1.0 and ch.in_transition(), "back from tree starts zoomed in, black, in transition")
+	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
+	t.check(got.is_empty() and not ch.in_transition() and ch.zoom() == 1.0, "a click during the return only skips it (%s)" % [got])
+	ch.free()
+	ch = GodChamber.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(ch)
+	ch.setup(_capped(10), "", false, "faith")
+	ch.advance(0.1)
+	t.check(ch.zoom() < GodChamber.ZOOM_TO and ch.zoom() > 1.0, "back from faith is zooming out")
+	ch.advance(0.35)
+	t.check(ch.zoom() == 1.0 and ch.fade() == 0.0 and not ch.in_transition(), "and at rest after 0.35 s")
+	ch.free()
+	ch = GodChamber.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(ch)
+	ch.setup(_capped(10), "", false, "")
+	t.check(ch.zoom() == 1.0 and not ch.in_transition(), "any other origin starts at rest")
+	ch.free()
+	GodChamber.transitions = false
+
+
+static func _transitions_off(t) -> void:
+	GodChamber.transitions = false
+	var ch := GodChamber.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(ch)
+	ch.setup(_capped(10), "", false, "tree")
+	var got := []
+	ch.action.connect(func(what: String) -> void: got.append(what))
+	t.check(ch.zoom() == 1.0 and not ch.in_transition(), "transitions off: back from tree is at rest")
+	ch._on_gui_input(_click(ch.menu_rect("tree").get_center()))
+	t.check(got == ["tree"] and not ch.in_transition(), "and a click emits in the same call (%s)" % [got])
+	ch.free()
+
+
+## Review Focus 3: the parallax at the corners and outside the area; hit rects follow the draw rects.
+static func _parallax_mouse(t) -> void:
+	GodChamber.transitions = false
+	UiScale.set_test_area(Vector2i(1280, 720))
+	var made := _make(_capped(10))
+	var ch: GodChamber = made[0]
+	var got: Array = made[1]
+	t.check(ch.mouse01() == Vector2.ZERO, "before any motion the mouse is at (0, 0)")
+	var back := UiScale.backdrop(ch._ui)
+	for p: Vector2 in [back.position, back.end, back.end + Vector2(500, 500), back.position - Vector2(300, 300)]:
+		ch._on_gui_input(_motion(p))
+		var m := ch.mouse01()
+		t.check(absf(m.x) <= 1.0 and absf(m.y) <= 1.0, "the mouse %s is clamped to -1..1 (%s)" % [p, m])
+		for key: String in ["descend", "tree", "faith", "awaken"]:
+			ch._on_gui_input(_motion(p))  # a click moves the parallax too: put the mouse back at the corner first
+			m = ch.mouse01()
+			var expect: Rect2 = ChamberLayout.STATIONS[key].rect
+			expect.position += ChamberLayout.shift(ChamberLayout.STATIONS[key].layer, m)
+			t.check(ch.menu_rect(key) == expect, "%s: the %s rect moved by its layer's shift" % [p, key])
+			got.clear()
+			ch._on_gui_input(_click(ch.menu_rect(key).get_center()))
+			t.check(got == [key], "%s: a click at the %s centre emits it (%s)" % [p, key, got])
+	ch.free()
+	UiScale.clear_test_area()

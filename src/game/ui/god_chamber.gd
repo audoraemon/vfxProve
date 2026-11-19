@@ -21,6 +21,18 @@ const LINE_WIDTH := 600.0
 const TITLE_W := 34.0
 const NOTICE_W := 36.0
 const BAR_GAP := 8.0
+## The keys hint's baseline; the lines above it stack upward by `STACK_GAP`.
+const HINT_Y := 350.0
+const STACK_GAP := 18.0
+
+## Zoom and fade between the Chamber and a station's page. Off (false) in --flow-test, --capture and headless runs, where a press emits in the same call.
+static var transitions := true
+## How far the room zooms about the station, how long that takes, and where in it the black comes in (the last 40%).
+const ZOOM_TO := 2.2
+const ZOOM_TIME := 0.35
+const FADE_FROM := 0.6
+## Transition modes: at rest, zooming into a station (the action waits), coming back out of one, and held at the end of the zoom in.
+enum Mode {REST, OUT, BACK, HELD}
 
 ## A one-off message shown near the bottom (e.g. GodNight.ABANDONED); "" for none.
 var line := ""
@@ -34,6 +46,11 @@ var _ui: Control
 var _hover := ""
 ## The mouse from the area's centre, -1..1 on each axis: what the parallax follows.
 var _mouse01 := Vector2.ZERO
+var _mode := Mode.REST
+## Seconds into the current zoom, the station it is about, and the action that waits for its end.
+var _t := 0.0
+var _focus_key := ""
+var _pending := ""
 
 
 func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodChamber:
@@ -48,7 +65,83 @@ func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodCham
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
+	if transitions and (p_from == "tree" or p_from == "faith"):
+		_mode = Mode.BACK
+		_focus_key = p_from
+		_t = 0.0
 	return self
+
+
+func _exit_tree() -> void:
+	_pending = ""  # a room torn down mid-zoom sends nothing
+
+
+func _process(delta: float) -> void:
+	advance(delta)
+
+
+## The mouse from the area's centre, -1..1 on each axis ((0, 0) before any motion).
+func mouse01() -> Vector2:
+	return _mouse01
+
+
+func in_transition() -> bool:
+	return _mode == Mode.OUT or _mode == Mode.BACK
+
+
+## Progress of the zoom in, 0 (at rest) to 1 (fully in): the zoom, the fade and the draw all read it.
+func _depth() -> float:
+	match _mode:
+		Mode.OUT: return clampf(_t / ZOOM_TIME, 0.0, 1.0)
+		Mode.BACK: return 1.0 - clampf(_t / ZOOM_TIME, 0.0, 1.0)
+		Mode.HELD: return 1.0
+	return 0.0
+
+
+## The room's scale: 1 at rest, ZOOM_TO fully in.
+func zoom() -> float:
+	return lerpf(1.0, ZOOM_TO, _depth())
+
+
+## The black over the room and bar: 0 until FADE_FROM of the way in, then up to 1 at the end.
+func fade() -> float:
+	return clampf((_depth() - FADE_FROM) / (1.0 - FADE_FROM), 0.0, 1.0)
+
+
+## One step of a transition (public so tests drive it without the clock). The end of a zoom in sends the waiting action.
+func advance(delta: float) -> void:
+	if not in_transition():
+		return
+	_t += delta
+	if _t >= ZOOM_TIME:
+		_finish()
+	_redraw()
+
+
+## Finishes a transition at once: a zoom in sends its action, a return is at rest.
+func skip() -> void:
+	if in_transition():
+		_finish()
+		_redraw()
+
+
+func _finish() -> void:
+	if _mode == Mode.BACK:
+		_mode = Mode.REST
+		return
+	_mode = Mode.HELD
+	var what := _pending
+	_pending = ""
+	if what != "":
+		action.emit(what)
+
+
+## Where the zoom is centred: the station's focus point after its layer's parallax shift.
+func _focus_point() -> Vector2:
+	if not ChamberLayout.STATIONS.has(_focus_key):
+		return ChamberLayout.FRAME.get_center()
+	var s: Dictionary = ChamberLayout.STATIONS[_focus_key]
+	return (s.focus as Vector2) + ChamberLayout.shift(s.layer, _mouse01)
 
 
 ## The Divine Power bar's words (see HubStatus.bar_text).
@@ -143,8 +236,16 @@ func _press(what: String, from_key := false) -> void:
 	if result.line != "":
 		line = result.line
 		_redraw()
-	if result.emit != "":
-		action.emit(result.emit)
+	if result.emit == "":
+		return
+	if transitions and ChamberLayout.STATIONS.has(result.emit):
+		_mode = Mode.OUT
+		_t = 0.0
+		_focus_key = result.emit
+		_pending = result.emit
+		_redraw()
+		return
+	action.emit(result.emit)
 
 
 func _redraw() -> void:
@@ -154,6 +255,9 @@ func _redraw() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	if in_transition():
+		skip()
 		return
 	if event.physical_keycode == KEY_ESCAPE:
 		_press("title")
@@ -172,6 +276,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_gui_input(event: InputEvent) -> void:
+	if in_transition():
+		if event is InputEventMouseButton and event.pressed:
+			skip()
+		return
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		_follow_mouse(event.position)
 	if event is InputEventMouseMotion:
@@ -209,6 +317,20 @@ func _draw_station(key: String) -> void:
 
 func _draw_ui() -> void:
 	var back := UiScale.backdrop(_ui)
+	var z := zoom()
+	if z != 1.0:
+		var f := _focus_point()
+		_ui.draw_set_transform_matrix(Transform2D(Vector2(z, 0.0), Vector2(0.0, z), f - f * z))
+	_draw_room(back)
+	_ui.draw_set_transform_matrix(Transform2D.IDENTITY)
+	_draw_bar()
+	_draw_under_bar()
+	_draw_bottom()
+	if fade() > 0.0:
+		_ui.draw_rect(back, Color(0.0, 0.0, 0.0, fade()))
+
+
+func _draw_room(back: Rect2) -> void:
 	_ui.draw_rect(back, ChamberArt.greybox_color("wall"))
 	# Back to front: wall, the stations on the wall, the stations layer, the table with its station, the desk.
 	for piece: Dictionary in ChamberLayout.SCENERY:
@@ -235,19 +357,16 @@ func _draw_ui() -> void:
 	for key: String in ChamberLayout.ORDER:
 		if badge(key):
 			_draw_badge(menu_rect(key))
-	_draw_bar()
-	_draw_under_bar()
-	_draw_bottom()
 
 
 func _draw_outline_and_plate(key: String) -> void:
 	var r := menu_rect(key)
 	_ui.draw_rect(r, UiTheme.COL_GOLD, false, 1.0)
-	var name: String = ChamberLayout.STATIONS[key].name
-	var w := UiTheme.width(name, UiTheme.SIZE_SMALL) + 10.0
+	var label: String = ChamberLayout.STATIONS[key].name
+	var w := UiTheme.width(label, UiTheme.SIZE_SMALL) + 10.0
 	var plate := Rect2(roundf(r.get_center().x - w * 0.5), r.end.y + 3.0, w, 15.0)
 	_ui.draw_rect(plate, Color(0.02, 0.02, 0.03, 0.85))
-	UiTheme.text(_ui, Vector2(plate.position.x + 5.0, plate.position.y + 12.0), name, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(plate.position.x + 5.0, plate.position.y + 12.0), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 
 
 func _draw_badge(r: Rect2) -> void:
@@ -297,7 +416,7 @@ func _draw_bar() -> void:
 	# Centre: the Divine Power bar, centred on the area and kept clear of the left and right groups.
 	var lo := left_end + BAR_GAP
 	var hi := rx - BAR_GAP
-	var w := minf(150.0, hi - lo)
+	var w := maxf(0.0, minf(150.0, hi - lo))
 	var cx := clampf(bar.get_center().x, lo + w * 0.5, hi - w * 0.5)
 	var pr := Rect2(roundf(cx - w * 0.5), 6.0, roundf(w), 10.0)
 	_ui.draw_rect(pr, Color(0.04, 0.04, 0.06, 0.85))
@@ -317,12 +436,11 @@ func _draw_under_bar() -> void:
 			y += UiTheme.LINE_BODY
 
 
-## The bottom block, stacked upward: the keys hint, the blocked line, the stolen gifts, the one-off line (wrapped to 600).
+## The bottom block, stacked upward from the keys hint: the blocked line, the stolen gifts, the one-off line (wrapped to 600).
 func _draw_bottom() -> void:
-	var y := 350.0
 	var hint := hint_text()
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), y), hint, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
-	y -= 14.0
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), HINT_Y), hint, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var y := HINT_Y - STACK_GAP
 	var blocked := status.blocked_line()
 	if blocked != "":
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(blocked, UiTheme.SIZE_SMALL) * 0.5), y), blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD_TEXT)
@@ -336,3 +454,13 @@ func _draw_bottom() -> void:
 		for i in range(wrapped.size() - 1, -1, -1):
 			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(wrapped[i]) * 0.5), y), wrapped[i], UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
 			y -= UiTheme.LINE_BODY
+
+
+## The baseline of the one-off line's last row (a test checks it against the hint): the stack above the hint, in the order _draw_bottom draws it.
+func one_off_baseline() -> float:
+	var y := HINT_Y - STACK_GAP
+	if status.blocked_line() != "":
+		y -= 14.0
+	if status.gifts_line() != "":
+		y -= UiTheme.LINE_BODY
+	return y

@@ -283,6 +283,8 @@ var _in_endless := false
 var _endless_from := Screen.BOARD
 ## A line the next hub shows once (god P1, Ruling P9, P21): "Night 3 was abandoned: a lost night." after an Abandon or a slot found mid-night.
 var _hub_line := ""
+## The station page the god is returning from ("tree" or "faith"), for the Chamber's zoom back out; read once by the hub.
+var _hub_from := ""
 ## Remembrance (Skill Tree wheel, Task 5): the power key being remembered ("" outside it), its level, whether the memory is at night, and
 ## the tree's state (centred Authority, selection) to give back when Leave returns to it. Never saved.
 var _remembering := ""
@@ -391,6 +393,7 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
 	dev = "--dev" in args
+	GodChamber.transitions = not ("--flow-test" in args or "--capture" in args or DisplayServer.get_name() == "headless")
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
@@ -857,8 +860,9 @@ func go_to(to: int) -> void:
 			var hub := GodChamber.new()
 			hub.name = "Hub"
 			add_child(hub)
-			hub.setup(god, _hub_line, dev, "")
+			hub.setup(god, _hub_line, dev, _hub_from)
 			_hub_line = ""  # shown once
+			_hub_from = ""
 			hub.action.connect(_on_hub_action)
 			_screen_node = hub
 		Screen.TREE:
@@ -903,6 +907,7 @@ func on_action(action: String) -> void:
 			_faded_into_mission()
 		return
 	_mission_queued = false
+	_hub_from = "tree" if action == "tree:back" else ("faith" if action == "faith:back" else "")
 	go_to(to)
 
 

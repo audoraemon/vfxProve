@@ -58,8 +58,15 @@ Rejected options:
   - **Draw only:** flames on him.
 - **Quiet:** Ember stays quiet when cast. The burning man is seen, so the fright and the alarm come from the sight of
   him, not from the cast.
-- **Level 5 "Leaping Spark":** from a person, the second spark leaps to the nearest burnable thing within `LEAP_R` of
-  him, as today.
+- **Level 5 twist "Fire Trail" (the user's change, 2026-11-19) replaces "Leaping Spark".** It lays burning ground
+  through the existing `FireManager.lay(at, radius)` patches (`GroundFire`). So the trail is the town's own fire: it
+  is a danger, it hurts whoever walks in, it can catch nearby buildings, and the beaters fight it.
+  - **On a building:** a ring of patches round the house, about 0.6 outside its footprint, one patch every
+    `TRAIL_STEP` (my call: 1.0) along the ring, laid as the house catches.
+  - **On a person:** while he burns and runs, a patch is laid behind him each time he has moved `TRAIL_STEP` since the
+    last one, `TRAIL_MOST` at most (my call: 8). The first patch is at the spot he caught fire.
+  - The leap code (`LEAP_R`, `LEAP_DELAY`, the second spark) is removed. The level row's `twist_text` becomes "Fire
+    Trail: leaves burning ground round the house, or behind the burning man".
 - **Text:** the blurb becomes "One spark sets a building or a person alight." The shape text names both.
 
 ## Checks

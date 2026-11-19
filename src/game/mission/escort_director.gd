@@ -803,6 +803,39 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "caught", "clear", "gate"])
 
 
+## Seconds to the watch's next change (Mission clarity, read-only): its clock while the watch stands, the seconds it is away and then the walk back to
+## the next change while it is gone; 0 when no change is scheduled (it starts when a charge first nears the gate, and Exodus has none).
+func watch_change_in() -> float:
+	if not watch_changes:
+		return 0.0
+	if watch_away:
+		return away_left + (WATCH_CYCLE - WATCH_GAP)
+	return maxf(change_in, 0.0)
+
+
+## Whether a cast of `key` at `at` reaches the one person standing at `g` (Mission clarity, read-only): a Mind Whisper takes the one it is
+## clicked on (PICK_R), any other power what its cast radius holds, and WHY_MARGIN more in both.
+func _reaches_one(key: String, at: Vector2, g: Vector2) -> bool:
+	var r := MindWhisperFx.PICK_R if key == "whisper" else Crowd._cast_radius(key)
+	return at.distance_to(g) <= r + WHY_MARGIN
+
+
+## Whether a cast of `key` at `at` kills one of `who` (Variants: any may be freed), the kill radius of a Kill power (Mission clarity, read-only).
+func _kills_any(key: String, at: Vector2, who: Array) -> bool:
+	for v: Variant in who:
+		if _alive(v) and _may_kill(key, at, (v as Person).ground_pos):
+			return true
+	return false
+
+
+## Whether a cast of `key` at `at` is a blow, a fire or a rot that reaches `s` (Mission clarity, read-only), so it may bring it down.
+func _blows(key: String, at: Vector2, s: Structure) -> bool:
+	var verbs := MissionVerbs.verbs_of(key)
+	if not ("burn" in verbs or "strike" in verbs or "rot" in verbs):
+		return false
+	return is_instance_valid(s) and not s.destroyed and s.distance_to(at) <= Crowd._cast_radius(key) + WHY_MARGIN
+
+
 ## What the director adds to the results (v0.11 M2): how many times he was seized, and whether he got out.
 func report() -> Dictionary:
 	return {"seizures": seizures, "out": escaped}

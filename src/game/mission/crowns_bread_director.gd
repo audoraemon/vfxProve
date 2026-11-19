@@ -530,6 +530,35 @@ func step_seconds() -> float:
 	return due_in(i) if i >= 0 and hint_phase() in ["", "not_yet"] else 0.0
 
 
+## Mission clarity (spec 5.4): why a Burn or Strike that reaches a target does not count; "" when it counts or reaches none.
+## A Burn on the bridge: `STONE - STRIKE IT, FIRE DOES NOTHING`; with an engineer on guard: `AN ENGINEER (RED) MENDS IT`; a lure that took
+## an engineer near it: `LURED, HE STILL MENDS IT` (a lured man's mind, OBSERVE, is in GUARD_MINDS). A cast that may kill one of its
+## crew is left alone (I6). Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	for i in targets.size():
+		var s := targets[i]
+		if razed(s) or not is_instance_valid(s):
+			continue
+		var men: Array = []
+		for c: Crew in crews[i]:
+			men.append(c.man)
+		if "lure" in verbs:
+			for c: Crew in crews[i]:
+				if _alive(c.man) and (c.man as Person).lured() and _on_guard(i, c) 						and at.distance_to((c.man as Person).ground_pos) <= WillOWisp.LURE_REACH + WHY_MARGIN:
+					return "" if _kills_near(key, at, men) else "LURED, HE STILL MENDS IT"
+		if not ("burn" in verbs or "strike" in verbs) or not _reached(key, at, s):
+			continue
+		if _kills_near(key, at, men):
+			return ""
+		if "burn" in verbs and not "strike" in verbs and _stone(s):
+			return "STONE - STRIKE IT, FIRE DOES NOTHING"
+		if not guards(i).is_empty():
+			return "AN ENGINEER (RED) MENDS IT"
+		return ""
+	return ""
+
+
 ## The hint's phase (v0.11 M4, decision 102), for the current target: not in use, "not_yet" when down or WORK_AHEAD or less from its
 ## time, else ""; in use, "engineers" while one is on guard, else "open".
 func hint_phase() -> String:

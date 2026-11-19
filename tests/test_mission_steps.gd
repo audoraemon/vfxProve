@@ -209,11 +209,11 @@ static func _advance_harvest(t) -> void:
 	var d: PhaseStub = s.d
 	d.phase = "empty"
 	d.secs = 35.0
-	t.check(MissionSteps.line(s.rules) == "Wait for the grain cart 0:35", "the grain cart's wait counts down (%s)" % MissionSteps.line(s.rules))
+	t.check(MissionSteps.line(s.rules) == "Scare its watch before the grain 0:35", "the grain wait counts down (%s)" % MissionSteps.line(s.rules))
 	d.secs = 0.0
-	t.check(MissionSteps.line(s.rules) == "Wait for the grain cart", "with no seconds left, no count (%s)" % MissionSteps.line(s.rules))
+	t.check(MissionSteps.line(s.rules) == "Scare its watch before the grain", "with no seconds left, no count (%s)" % MissionSteps.line(s.rules))
 	d.phase = ""
-	t.check(MissionSteps.line(s.rules).begins_with("Clear the watchmen, burn it"), "grain in, the watchmen come first (%s)" % MissionSteps.line(s.rules))
+	t.check(MissionSteps.line(s.rules).begins_with("Scare its watchmen, then burn"), "grain in, the watchmen come first (%s)" % MissionSteps.line(s.rules))
 	d.phase = "burning"
 	t.check(MissionSteps.line(s.rules).begins_with("Keep it burning"), "then keep it burning (%s)" % MissionSteps.line(s.rules))
 	s.rules.free_play = true
@@ -223,10 +223,10 @@ static func _advance_harvest(t) -> void:
 	# The real Spoiled Harvest: the line is what the director's own phase says, and the counter is the objective's.
 	s = Kit.world(MissionBook.spoiled_harvest())
 	var harvest: HarvestDirector = s.d
-	t.check(harvest.hint_phase() == "empty" and MissionSteps.line(s.rules).begins_with("Wait for the grain cart 1:"),
+	t.check(harvest.hint_phase() == "empty" and MissionSteps.line(s.rules).begins_with("Scare its watch before the grain 1:"),
 		"at its start, no grain yet: the wait (%s)" % MissionSteps.line(s.rules))
 	Kit.run_for(s, 70.0)
-	t.check(harvest.hint_phase() != "empty" and MissionSteps.line(s.rules).contains(" 0/3") and not MissionSteps.line(s.rules).begins_with("Wait"),
+	t.check(harvest.hint_phase() != "empty" and MissionSteps.line(s.rules).contains(" 0/3") and not MissionSteps.line(s.rules).begins_with("Scare its watch before"),
 		"once its grain is in, the step moves on, with Granaries spoiled 0/3 (%s / %s)" % [harvest.hint_phase(), MissionSteps.line(s.rules)])
 	Kit.done(s)
 

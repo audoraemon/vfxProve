@@ -787,6 +787,21 @@ func _begin_intro(play: MissionDef) -> void:
 			_rules.banner.emit(play.intro_banner)
 
 
+## The ability bar's open and page, as _restore_bar() takes them back; {} when the HUD has no bar (a night with no Might gauge).
+func _bar_state() -> Dictionary:
+	if _hud == null or _hud.bar == null:
+		return {}
+	return {"open": _hud.bar.open, "page": _hud.bar.page}
+
+
+## Gives the new act's ability bar the open and page the last act's had (`state` from _bar_state()); {} changes nothing.
+func _restore_bar(state: Dictionary) -> void:
+	if state.is_empty() or _hud == null or _hud.bar == null:
+		return
+	_hud.bar.open = bool(state.open) and not _hud.bar.pages().is_empty()
+	_hud.bar.page = clampi(int(state.page), 0, maxi(_hud.bar.pages().size() - 1, 0))
+
+
 ## The next act of the night (v0.09), in the same town: the old act's director hands over what it carries and lets go,
 ## the old Rules let go of the world, and the act chosen (`path` after a choice card, else the only one) begins with a
 ## fresh Rules, director, aim and HUD -- every cooldown ready -- after its own intro sweep.
@@ -816,6 +831,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_bf.end_powers()
 	_crowd.drop_held()  # v0.11.2: and so with the danger it held for its impact -- the crowd outlives the act
 	_aim.queue_free()
+	var bar_kept := _bar_state()
 	_hud.queue_free()
 	if is_inside_tree():
 		get_tree().root.gui_release_focus()  # v0.11.1: as in start()
@@ -829,6 +845,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_bf.ctx.impact.set_base_time_scale(1.0)
 	_ending = false
 	_build_act(powers if not powers.is_empty() else _act.default_loadout)
+	_restore_bar(bar_kept)
 	_begin_intro(_act)
 	_prayers_hold = 0.0
 	_sync_intro_hud()

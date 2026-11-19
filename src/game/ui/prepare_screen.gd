@@ -620,15 +620,17 @@ func brief_rows() -> Array:
 	var city := ["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]]
 	if god != null and not gift_effects().is_empty():
 		city = ["GIFTS", "; ".join(gift_effects())]
+	var temple := ["TEMPLE", "Its fall resets every cooldown, once"]
 	if read_only:
 		loadout = ["LOADOUT", "All your abilities, each cast paid in Might"]  # a gauge night drafts nothing
+		temple = ["TEMPLE", "Its fall resets every cooldown and refills your Might, once"]
 	return [
 		["TARGET", mission.brief[0] if not mission.brief.is_empty() else mission.name],
 		["WIN", mission.goal],
 		["LOSE", mission.lose],
 		city,
 		loadout,
-		["TEMPLE", "Its fall resets every cooldown, once"],
+		temple,
 	]
 
 

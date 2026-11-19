@@ -11,7 +11,7 @@ extends Node
 signal action(name: String)
 
 ## What the hub says when the god has nothing to draft (Ruling P8).
-const BLOCKED := "Nothing to draft: the tree's Tier 1 is not filled yet"
+const BLOCKED := "Nothing to cast: the tree's Tier 1 is not filled yet"
 ## The Divine Power bar, and the buttons' row.
 const BAR_RECT := Rect2(24.0, 74.0, 280.0, 14.0)
 const BUTTONS_Y := 280.0

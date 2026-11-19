@@ -516,7 +516,7 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	if not told.has("level"):
 		told["level"] = level_of(slot)
 	if might != null and not free_play:
-		might.pay(might_cost(slot))
+		might.pay(PowerBook.might(String(p.key), int(told.level)))  # the level the cooldown below uses, as the cast is told it
 	if not cast_keys.has(String(p.key)):
 		cast_keys.append(String(p.key))
 	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.

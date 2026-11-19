@@ -1468,7 +1468,7 @@ func _signature() -> String:
 	if chain_shown():
 		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
 	out += "|" + "/".join(_rite_lines)
-	for i in _rules.loadout.size():
+	for i in (0 if bar != null else _rules.loadout.size()):  # a bar's signature covers its slots
 		out += "%s%d%s%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else "",
 			"f" if _rules.can_recast(i) else ""]  # the gold card of a power that takes a follow-up order
 	if bar != null:

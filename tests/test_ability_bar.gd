@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_armed_across_pages(t)
 	_states(t)
 	_signature(t)
+	_follow_up(t)
 
 
 ## A Rules over a bare town with `keys` as its loadout and a pool of `size`.
@@ -220,3 +221,35 @@ static func _signature(t) -> void:
 	rules._cooldowns[1] = 6.0
 	t.check(bar.signature(-1) != before, "a tile's state changes it")
 	t.check(bar.signature(-1) == bar.signature(-1), "and again two calls agree")
+
+
+## A running power that takes a click as a follow-up order while `follow` is true (what Rules.can_recast reads).
+class FollowFx extends FxTimeline:
+	var follow := true
+
+	func can_follow_up() -> bool:
+		return follow
+
+
+## R6 item 1: a tile whose power would take a follow-up click is known to the bar, and the signature carries it so the gold frame redraws.
+static func _follow_up(t) -> void:
+	var rules := _rules(PackedStringArray(KEYS), 16)
+	var fx := FollowFx.new()
+	fx.busy = 0.0
+	rules.caster = func(_script: GDScript, _ground: Vector2, _extra: Dictionary) -> FxTimeline:
+		return fx
+	var bar := AbilityBar.new().setup(rules, "ruin")
+	bar.open = true
+	var before := bar.signature(-1)
+	t.check(rules.cast(1, Vector2(10, 10)) == fx, "the cast ran")
+	t.check(bar.tile_state(1) == "cooldown" and rules.can_recast(1), "its tile is cooling and would take a follow-up click")
+	var live := bar.signature(-1)
+	t.check(live != before and (live + "|").contains(":f|"), "the signature carries the follow-up flag (%s)" % [live])
+	fx.follow = false
+	t.check(not rules.can_recast(1) and bar.signature(-1) != live and not (bar.signature(-1) + "|").contains(":f|"),
+		"and drops it when the power takes no click")
+	t.check(bar.follows(1) == false, "follows() says no then")
+	fx.follow = true
+	t.check(bar.follows(1), "follows() says yes while it runs")
+	fx.free()
+	rules.free()

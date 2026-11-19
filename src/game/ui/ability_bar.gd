@@ -298,6 +298,11 @@ func tile_state(slot: int) -> String:
 	return "ready" if why == "" else why
 
 
+## Whether the slot's power is running and would take a click as a follow-up order (Rules.can_recast): its tile is framed gold.
+func follows(slot: int) -> bool:
+	return _rules != null and _rules.can_recast(slot)
+
+
 ## Everything the drawing depends on, for the HUD's redraw check.
 func signature(armed: int) -> String:
 	var parts := PackedStringArray([str(open), str(page), str(_flash_left > 0.0), str(armed)])
@@ -310,7 +315,8 @@ func signature(armed: int) -> String:
 	if armed >= 0:
 		shown.append(armed)
 	for slot: int in shown:
-		parts.append("%d:%s:%d" % [slot, tile_state(slot), ceili(_rules.cooldown_left(slot)) if _rules != null else 0])
+		parts.append("%d:%s:%d%s" % [slot, tile_state(slot), ceili(_rules.cooldown_left(slot)) if _rules != null else 0,
+			":f" if follows(slot) else ""])
 	return "|".join(parts)
 
 
@@ -350,6 +356,7 @@ static func _padlock(on: CanvasItem, c: Vector2) -> void:
 ## `key_label` is "" for no key plate; `price` draws the Might price bottom-right.
 func _draw_tile(on: CanvasItem, box: Rect2, slot: int, key_label: String, armed: bool, flash_alpha: float, price: bool) -> void:
 	var state := tile_state(slot)
+	var follow := follows(slot)
 	on.draw_rect(box, UiTheme.COL_PANEL)
 	if flash_alpha > 0.0:
 		var red := UiTheme.COL_BAD
@@ -361,16 +368,16 @@ func _draw_tile(on: CanvasItem, box: Rect2, slot: int, key_label: String, armed:
 		var tint := Color.WHITE
 		if state == "sealed":
 			tint = COL_SEALED
-		elif state != "ready":
+		elif state != "ready" and not follow:
 			tint = COL_POOR
 		on.draw_texture_rect(icon, icon_box, false, tint)
-	if armed:
+	if armed or follow:
 		UiTheme.frame(on, box, true)
 	else:
 		on.draw_rect(box, COL_EDGE, false, 1.0)
 	if state == "sealed":
 		_padlock(on, box.get_center())
-	if state == "busy":
+	if state == "busy" and not follow:
 		on.draw_rect(box, Color(0, 0, 0, 0.35))
 	if state == "cooldown":
 		var left := _rules.cooldown_left(slot)

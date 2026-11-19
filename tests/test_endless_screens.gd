@@ -307,7 +307,7 @@ static func _interlude_endless(t) -> void:
 	card.setup(result, [ln.act("festival")], NightState.new())
 	var got: Array[String] = []
 	card.action.connect(func(what: String) -> void: got.append(what))
-	t.check(_labels(card._menu) == ["Choose powers", "Abandon night"], "an Endless Night interlude's buttons (%s)" % [_labels(card._menu)])
+	t.check(_labels(card._menu) == ["Briefing", "Abandon night"], "an Endless Night interlude's buttons (%s)" % [_labels(card._menu)])
 	card._unhandled_input(_key(KEY_ESCAPE))
 	t.check(got.is_empty() and not card.confirming(), "Esc does nothing between the acts of a night (%s)" % [got])
 	card.click(card.button_rect("missions").get_center())
@@ -321,7 +321,7 @@ static func _interlude_endless(t) -> void:
 	t.check(got.is_empty() and not card.confirming() and card.confirm_line() == "", "Esc in the confirm is Stay")
 	card.click(card.button_rect("missions").get_center())
 	card.click(card.button_rect("stay").get_center())
-	t.check(got.is_empty() and not card.confirming() and _labels(card._menu) == ["Choose powers", "Abandon night"],
+	t.check(got.is_empty() and not card.confirming() and _labels(card._menu) == ["Briefing", "Abandon night"],
 		"Stay goes back to the two buttons (%s)" % [got])
 	card.click(card.button_rect("missions").get_center())
 	card.click(card.button_rect("missions").get_center())
@@ -485,6 +485,7 @@ static func _prepare_briefing(t) -> void:
 	prep.god = god
 	prep.setup(GodNight.def_for(god, "warning"), GodNight.night_loadout(god))
 	t.check(prep.read_only, "a god's gauge night is a read-only Prepare")
+	t.check(String(prep.brief_rows()[5][1]).contains("refills your Might"), "its TEMPLE row says the fall refills Might (%s)" % [prep.brief_rows()[5]])
 	t.check(prep.gauge_text() == "Might 6  ·  full refill in 55 s", "the gauge line says the size and the refill (%s)" % prep.gauge_text())
 	t.check(prep.confirm_label == "DESCEND" and prep.can_manifest() and prep.budget_text() == "", "the button is DESCEND, always lit, and no budget line")
 	t.check(prep.draft.picks.is_empty(), "nothing is picked, whatever the loadout offered (%s)" % [prep.draft.picks])

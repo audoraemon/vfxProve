@@ -75,7 +75,7 @@ func setup(result: Dictionary, next: Array, night: NightState) -> InterludeScree
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # today's 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
-	_menu = Menu.row(["draft", "missions"], ["Choose powers", "Abandon night" if endless else "Missions"], 320.0, PANEL.end.y - 28.0, 120.0)
+	_menu = Menu.row(["draft", "missions"], ["Briefing" if endless else "Choose powers", "Abandon night" if endless else "Missions"], 320.0, PANEL.end.y - 28.0, 120.0)
 	_rows = _menu
 	return self
 
@@ -225,7 +225,7 @@ func _draw_ui() -> void:
 		for i in choices.size():
 			_draw_card(card_rect(i, choices.size()), choices[i] as ActDef, i)
 		var hint := "Left and Right, then Enter, to choose the next act" if chosen == "" \
-			else ("Enter or Choose powers to draft for it" if endless else "Enter or Choose powers to draft for it, Esc for the missions")
+			else ("Enter or Briefing to see the next act" if endless else "Enter or Choose powers to draft for it, Esc for the missions")
 		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), HINT_Y), hint,
 			UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	elif choices.size() == 1:

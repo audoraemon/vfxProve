@@ -14,6 +14,9 @@ static func run(t) -> void:
 	_keys(t)
 	_covered(t)
 	_mouse(t)
+	_acts_keep_bar(t)
+	_cast_pays_told_level(t)
+	_old_god_file(t)
 
 
 ## A def that is a gauge night of `size` and `seconds`, sealed on `sealed`.
@@ -296,3 +299,73 @@ static func _mouse(t) -> void:
 	WorldView.test_mouse = Vector2.INF
 	t.check(first != off, "hovering a tile changes the signature")
 	_end(n)
+
+
+## R6 item 3: the bar's open and page go from one act's HUD to the next's; a fresh night opens hidden on its own type.
+static func _acts_keep_bar(t) -> void:
+	var a := _night(PackedStringArray(KEYS))
+	var b := _night(PackedStringArray(KEYS))
+	var fresh: AbilityBar = b.hud.bar
+	var own := fresh.page
+	t.check(not fresh.open and own == 1, "a fresh bar is hidden, on the own type's page (%d)" % own)
+	var old: AbilityBar = a.hud.bar
+	old.toggle()
+	old.turn(1)
+	var kept: Dictionary = (a.m as Mission)._bar_state()
+	(b.m as Mission)._restore_bar(kept)
+	t.check(fresh.open and fresh.page == old.page, "the next act's bar is open on the page the last one showed (%d)" % fresh.page)
+	(b.m as Mission)._restore_bar({"open": false, "page": 99})
+	t.check(not fresh.open and fresh.page < fresh.pages().size(), "a page past the new bar's pages is pulled back")
+	(b.m as Mission)._restore_bar({})
+	t.check(not fresh.open, "no kept state changes nothing")
+	var bare := _night(PackedStringArray(KEYS.slice(0, 4)), false)
+	t.check((bare.m as Mission)._bar_state().is_empty(), "a board night keeps no bar state")
+	_end(a)
+	_end(b)
+	_end(bare)
+
+
+## R6 item 7: a cast pays the Might of the level the effect is told (the one the cooldown uses), not level_of(slot).
+static func _cast_pays_told_level(t) -> void:
+	var n := _night(PackedStringArray(KEYS))
+	var rules: Rules = n.rules
+	var slot := rules.loadout.find("smite")
+	var low := PowerBook.might("smite", rules.level_of(slot))
+	var high := PowerBook.might("smite", 5)
+	t.check(high > low, "smite costs more at level 5 than at its own level (%d > %d)" % [high, low])
+	var before := rules.might.value
+	rules.cast(slot, Vector2(10, 10), {"level": 5})
+	t.check(is_equal_approx(before - rules.might.value, float(high)), "a cast told level 5 pays %d (paid %.1f)" % [high, before - rules.might.value])
+	t.check(rules.might_cost(slot) == low, "might_cost() still reads the slot's level")
+	_end(n)
+
+
+## R6 item 8: an old-style god file (a six-key loadout, bought slots, a seal, carried counts) in a gauge night.
+static func _old_god_file(t) -> void:
+	var path := "user://test_might_old_god.cfg"
+	var tree := GodTree.keys_for("ruin", 2)
+	var cfg := ConfigFile.new()
+	cfg.set_value("god", "type", "ruin")
+	cfg.set_value("god", "learned", {tree[0]: 1, tree[1]: 1, tree[2]: 1})
+	cfg.set_value("god", "bought", {"slot": 3})
+	cfg.set_value("god", "loadout", PackedStringArray([tree[0], tree[1], tree[2], tree[0], tree[1], tree[2]]))
+	cfg.set_value("god", "sealed", tree[1])
+	cfg.set_value("god", "seal_nights", 2)
+	cfg.set_value("god", "carried", {tree[0]: 4, tree[1]: 2})
+	cfg.save(path)
+	var god := GodSlot.read(path)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	t.check(god != null and god.sealed == tree[1] and int(god.bought.get("slot", 0)) == 3, "the old file reads, its seal and bought slots kept")
+	var def := GodNight.def_for(god, "warning")
+	t.check(is_equal_approx(def.might_refill, 45.0) and def.sealed == tree[1], "its night refills in 45 s and seals %s" % tree[1])
+	var kit := GodNight.night_loadout(god)
+	t.check(kit == god.in_tree() and kit.has(tree[1]) and kit.size() >= 3, "the night's loadout is the whole tree, the sealed key in it (%s)" % [kit])
+	t.check(kit != god.loadout, "and not the old six-key loadout")
+	var rules := Rules.new()
+	rules.loadout = kit
+	rules.sealed = def.sealed
+	rules.might = MightPool.make(def.might_capacity, def.might_refill)
+	var bar := AbilityBar.new().setup(rules, "ruin")
+	t.check(bar.tile_state(kit.find(tree[1])) == "sealed", "the sealed key's tile reads sealed")
+	t.check(bar.tile_state(kit.find(tree[0])) == "ready", "another key's tile is ready")
+	rules.free()

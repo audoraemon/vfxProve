@@ -3378,7 +3378,8 @@ func _flow_click_ground(ground: Vector2) -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var landed: bool = _mission._bf.mouse_ground().distance_to(ground) < 0.4 and not _mission._hud.chain_rect().has_point(at) \
-		and _mission._hud.slot_at(at) < 0 and view.get_visible_rect().has_point(at)
+		and _mission._hud.bar_hit(at) == "" and not _mission._hud.slots_rect().has_point(at) and _mission._hud.slot_at(at) < 0 \
+		and view.get_visible_rect().has_point(at)
 	if landed:
 		_mission._unhandled_input(_flow_mouse(at))
 	else:

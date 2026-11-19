@@ -558,8 +558,13 @@ func why_not(key: String, at: Vector2) -> String:
 		if _alive(v) and not (v as Person).inside:
 			crew.append(v as Person)
 	if not c.word:
-		# Before word: nothing turns him, whatever the verb; a kill or a lift is not a cast that "should have worked".
-		if not _any_verb(verbs, _WAITING_VERBS) or man.inside:
+		# Before word: nothing turns him, whatever the verb; a kill, or a lift on his company (it does clear the way), is not a cast
+		# that "should have worked". A lift on the contact himself only sets him down to walk back: too early (the user's own case).
+		if man.inside:
+			return ""
+		if "banish" in verbs and _cast_reaches(key, at, man.ground_pos) and not _may_kill(key, at, man.ground_pos):
+			return WHY_EARLY
+		if not _any_verb(verbs, _WAITING_VERBS):
 			return ""
 		for p: Person in [man] + crew:
 			if _may_kill(key, at, p.ground_pos):

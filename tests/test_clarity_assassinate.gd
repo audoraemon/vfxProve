@@ -175,6 +175,15 @@ static func _inf_waiting(t) -> void:
 	key = ClarityKit.apply(s, "banish", c.company[0])
 	t.check(d.why_not(key, s.at) == "", "a Skylift on his company says nothing")
 	ClarityKit.done(s)
+	# The user's own case: a Skylift on the contact before word turns nothing and says so.
+	s = _informer_world()
+	d = s.d
+	c = d.contacts[0]
+	key = ClarityKit.apply(s, "banish", c.man)
+	t.check(d.turned_count() == 0 and d.why_not(key, s.at) == InformerDirector.WHY_EARLY,
+		"a Skylift on the contact before word: TOO EARLY - NO WORD YET (%s)" % d.why_not(key, s.at))
+	ClarityKit.assert_read_only(t, s, "informer waiting, contact lifted")
+	ClarityKit.done(s)
 
 
 ## After word: a Discord with his company confused, or a whisper with none by, turns him; anything else says why not.

@@ -96,3 +96,16 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   muting.
 - V20: `Rules.haste` is read per slot by `advance()` only while it is non-empty, and never for a slot whose `cooldown_of()` is 999 or
   more (`Rules.ONCE_COOLDOWN`); with no haste the cooldown arithmetic is exactly as before.
+- VC1: Dread of the Dark lays its dusk (VeilRules.DUSK_R at the click) when the dread lifts (at T_FALL + HOLD, or when cut short),
+  not at the cast -- Crowd.dreaded() reads the dark live, so a patch laid at the cast would itself be dark ground in reach: every
+  Dread would freeze its own click circle and "no dark ground in reach: refused" (spec 5.7) would mean nothing. The Swallowing Dark
+  likewise lays its dusk at the end (C14). A Dread freed outside the tree lays none (the world may be going).
+- VC2: who the Dread holds is read every frame while it lasts: the living out of doors within reach on dark ground, not a shadow,
+  and not a sleeper it did not already hold. So one whose dark fades under him (a dusk patch running out) goes free, one who wakes
+  inside freezes then (asleep beats frozen; "a sleeper is not frozen again" while he sleeps), and one a new patch covers freezes.
+  Each person keeps the casts holding him as meta `dread_owners` ({instance id: true}); the status comes off with the last.
+- VC3: DreadOfTheDarkFx.refusal() reads Dusk._patches and Crowd._veils (read only) to find a patch or veil reaching into the light
+  reach: the ledgers have no public walk over their circles, and sampling points would miss a thin overlap. With no crowd it allows
+  the cast (nothing to judge: the VFX Sandbox has no Rules either).
+- VC4: Dread's `busy` is T_FALL (as Unseen Hour's): the other slots unlock once it falls, so Dreamless, Silent Doom and the
+  Swallowing Dark can be cast into it (spec 5.7: it "sets them up").

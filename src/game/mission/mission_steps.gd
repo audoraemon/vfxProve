@@ -20,15 +20,15 @@ const WISHES := {"t": "Grant the open wishes", "c": "w"}
 const HERALD := {"t": "Kill the Herald in time"}
 
 const FESTIVAL := [
-	{"t": "Kill or scatter the crowd", "c": "n"},
-	{"t": "Strike the packed crowd", "ph": ["packed"], "c": "n"},
-	{"t": "Kill the Mayor at the fountain", "ph": ["address"], "c": "n"},
+	{"t": "Kill or scare the crowd (gold)", "c": "n"},
+	{"t": "Scare the packed crowd (gold)", "ph": ["packed"], "c": "n"},
+	{"t": "Kill the Mayor (orange) now", "ph": ["address"], "c": "n"},
 ]
 
 const PROCESSION := [
-	{"t": "Kill the Prince before he boards"},
-	{"t": "Strike the Prince at the steps", "ph": ["blessing"]},
-	{"t": "Kill him before he boards", "ph": ["dock"]},
+	{"t": "Kill the Prince (gold)"},
+	{"t": "Kill him (gold) at the steps", "ph": ["blessing"], "c": "s"},
+	{"t": "Kill him (gold) before he boards", "ph": ["dock"], "c": "s"},
 ]
 
 ## Steps by mission or act id, in the order they come.
@@ -37,41 +37,42 @@ const STEPS := {
 	# --- clarity block: intercept ---
 	# The Warning and its acts (The Omen shares the Warning's), and the board's Starfall.
 	"warning": [
-		{"t": "Kill the messenger unseen"},
-		{"t": "Kill the witness unseen", "ph": ["relay"]},
-		{"t": "Kill the messenger unseen", "ph": ["stars", "running"], "c": "n"},
-		{"t": "Kill the ringer unseen", "ph": ["bell"], "c": "n"},
-		{"t": "Watch the next star's gate", "ph": ["waiting"], "c": "n"},
+		{"t": "Kill the messenger (gold) unseen"},
+		{"t": "Kill the witness (gold) unseen", "ph": ["relay"]},
+		{"t": "Kill the messenger (gold) unseen", "ph": ["stars"], "c": "n"},
+		{"t": "Kill or banish him (gold) now", "ph": ["running"], "c": "n"},
+		{"t": "Kill the ringer (gold) unseen", "ph": ["bell"], "c": "n"},
+		{"t": "Be at the next gate (gold)", "ph": ["waiting"], "c": "n"},
 	],
 	"omen": [
-		{"t": "Kill the messenger unseen"},
-		{"t": "Kill the witness unseen", "ph": ["relay"]},
-		{"t": "Kill the ringer unseen", "ph": ["bell"]},
+		{"t": "Kill the messenger (gold) unseen"},
+		{"t": "Kill the witness (gold) unseen", "ph": ["relay"]},
+		{"t": "Kill the ringer (gold) unseen", "ph": ["bell"]},
 	],
 	"long_night": [
-		{"t": "Stop the messenger unseen"},
+		{"t": "Kill the messenger (gold) unseen"},
 	],
 	# Tier 2.
 	"bell_ringers": [
-		{"t": "Kill a ringer unseen", "c": "n"},
-		{"t": "Draw his mates off first", "ph": ["mates"], "c": "n"},
-		{"t": "Kill the witness unseen", "ph": ["relay"], "c": "n"},
-		{"t": "Pull him off the bell", "ph": ["climbing"], "c": "n"},
-		{"t": "Stop the bellkeeper", "ph": ["bell"], "c": "n"},
-		{"t": "Wait for the next ringer", "ph": ["waiting"], "c": "n"},
+		{"t": "Kill a ringer (gold) unseen", "c": "n"},
+		{"t": "Lead or lure his mates (red) off", "ph": ["mates"], "c": "n"},
+		{"t": "Kill the witness (gold) unseen", "ph": ["relay"], "c": "n"},
+		{"t": "Lead or scare him off the bell", "ph": ["climbing"], "c": "n"},
+		{"t": "Kill or hold the bellkeeper", "ph": ["bell"], "c": "n"},
+		{"t": "Be at the next post (gold)", "ph": ["waiting"], "c": "n"},
 	],
 	"silence_witness": [
-		{"t": "Kill a witness out of sight", "c": "n"},
-		{"t": "Stop the mate running on", "ph": ["relay"], "c": "n"},
-		{"t": "Stop him before the Temple", "ph": ["near"], "c": "n"},
+		{"t": "Kill a witness (gold) unseen", "c": "n"},
+		{"t": "Kill the mate (gold) running on", "ph": ["relay"], "c": "n"},
+		{"t": "Kill the witness (gold) now", "ph": ["near"], "c": "n"},
 	],
 	"festival": FESTIVAL,
 	"feast_festival": FESTIVAL,
 	"market_panic": [
-		{"t": "Strike the wardens first"},
-		{"t": "Remove the last wardens", "ph": ["steadied"]},
-		{"t": "Scatter the crowd", "ph": ["open"], "c": "n"},
-		{"t": "Strike the crowd on the way", "ph": ["coming"], "c": "n"},
+		{"t": "Kill or lead wardens (red) off"},
+		{"t": "Lead off the last wardens (red)", "ph": ["steadied"]},
+		{"t": "Scare the crowd (gold) now", "ph": ["open"], "c": "n"},
+		{"t": "Scare them (gold) on the way", "ph": ["coming"], "c": "n"},
 	],
 	"procession": PROCESSION,
 	"feast_procession": PROCESSION,

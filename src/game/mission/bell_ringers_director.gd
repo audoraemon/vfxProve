@@ -285,6 +285,21 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray(["", "bell", "herald", "climbing", "relay", "mates", "waiting"])
 
 
+## Mission clarity (spec 5.1): the banner of the first warning out that a cast reaches and will not stop -- unless the cast could stop any
+## warning it reaches (the Starfall rule: a kill that stops one is "" though it lands near another's mate). Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var text := ""
+	for r in ringers:
+		if r.rules == null or r.waiting:
+			continue
+		var reach := r._cast_reach(key, at)
+		if reach == WarningDirector.Reach.MAYBE:
+			return ""
+		if reach == WarningDirector.Reach.NOT and text == "":
+			text = r.why_not(key, at)
+	return text
+
+
 ## The tour (mission spec §1): the three posts with their times (the later ones "by": the chain can bring them sooner), then the
 ## bell tower (v0.11 M3).
 func tour() -> Array:

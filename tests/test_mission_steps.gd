@@ -143,6 +143,23 @@ static func _advance(t) -> void:
 # --- clarity block: intercept ---
 static func _advance_intercept(t) -> void:
 	_advance_board(t)
+	_advance_procession(t)
+
+
+## The Procession's steps count the blessing down, then the ship's docking (Mission clarity, spec 5.1), and drop the count at 0.
+static func _advance_procession(t) -> void:
+	var s := _stub_world(MissionBook.long_night().act("procession"))
+	var d: PhaseStub = s.d
+	var seen := PackedStringArray()
+	d.secs = 15.0
+	for phase in ["", "blessing", "dock"]:
+		d.phase = phase
+		seen.append(MissionSteps.line(s.rules))
+	t.check(seen == PackedStringArray(["Kill the Prince (gold)", "Kill him (gold) at the steps 0:15", "Kill him (gold) before he boards 0:15"]),
+		"The Procession's steps follow its phases and count its waits (%s)" % [seen])
+	d.secs = 0.0
+	t.check(MissionSteps.line(s.rules) == "Kill him (gold) before he boards", "with no seconds left, no count")
+	Kit.done(s)
 
 
 ## A board night whose main objective is done: the wishes, then the ascent (as the how-to-win line does).

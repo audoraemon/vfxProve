@@ -47,6 +47,11 @@ const TRIAL_TIME := 15.0
 var _twist := false
 ## Who was named at the end (Person), for the books and the tests.
 var named: Array = []
+## The amber's hum while the law holds (a looping cue, faded at the lift), and when the next turn at the edge may sound: one
+## ting at most every TURN_SOUND_GAP, however many are turned back.
+const TURN_SOUND_GAP := 0.5
+var _hum: Node
+var _next_turn := 0.0
 
 
 func _build() -> void:
@@ -75,6 +80,7 @@ func _seal() -> void:
 	else:
 		law.hold_by(self)
 	_step_law(0.0)
+	_hum = ctx.play(&"law_hum", origin)
 	if not DominionParts.staged(self):
 		return
 	_cell = Cell.new()
@@ -106,6 +112,8 @@ func _lift() -> void:
 			p.clear_badge()
 	bound.clear()
 	_crack()
+	_hush(0.5)
+	ctx.play(&"law_crack", origin)
 	if DominionParts.staged(self):
 		DecreeParts.wave(self, origin, lv_radius * 1.3, 0.5, 0.05)
 
@@ -125,6 +133,9 @@ func _step_law(delta: float) -> void:
 	else:
 		law.step(delta, ctx.field.in_rect(law.bounds()), [])
 	turned_back = law.turned_back
+	if not law.turned.is_empty() and t >= _next_turn:
+		_next_turn = t + TURN_SOUND_GAP
+		ctx.play(&"law_turn", law.turned[0][1])
 	if _cell != null and is_instance_valid(_cell):
 		for e: Array in law.turned:
 			var edge: Vector2 = e[1]
@@ -147,6 +158,23 @@ func _step_law(delta: float) -> void:
 				bound.erase(p)
 				if is_instance_valid(p):
 					p.clear_badge()
+
+
+## The hum fades over `seconds`, if the voice is still this cell's.
+func _hush(seconds: float) -> void:
+	if _hum != null and is_instance_valid(_hum) and _hum.get_meta(&"cue", &"") == &"law_hum":
+		ctx.fade_out(_hum, seconds)
+	_hum = null
+
+
+func _finish() -> void:
+	_hush(0.3)
+	super()
+
+
+func _exit_tree() -> void:
+	_hush(0.3)
+	super()
 
 
 ## Held for Trial: whoever the cell holds at its end, and still stands inside it, is named criminal (LawMark) for TRIAL_TIME

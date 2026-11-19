@@ -173,6 +173,13 @@ var _bones: Bones
 var _twist := false
 var _scattered: Array[Animal] = []
 var _fell_once := false
+## Heard (skill-tree sound pass): the horde's groaning while it walks (faded over HUSH), and the clocks a bite, a cut and a
+## fall to ash may be heard again at (RaiseTheDeadFx's quiet gaps).
+const HUSH := 1.0
+var _groan: Node
+var _bite_heard := 0.0
+var _cut_heard := 0.0
+var _ash_heard := 0.0
 
 
 ## The grave spots of a town (R41), by rule: the candidates are every district's centre (in `districts` order), then each
@@ -366,6 +373,7 @@ func _rise() -> void:
 				var sp := Iso.ground_to_screen(a.ground_pos)
 				FxParts.debris(self, sp, 4, 5.0, Vector2(20, 60), BONE_CHIPS, Vector2(1.0, 2.0), true)
 	_rising.clear()
+	_groan = ctx.play(&"horde_groan", origin, 0.0)
 	_assemble()
 
 
@@ -614,6 +622,9 @@ func _unspeed(a: Variant) -> void:
 
 ## The horde's first bite is the town's outcry.
 func _on_bite(_a: Animal, victim: Person, first: bool) -> void:
+	if is_instance_valid(victim) and t >= _bite_heard:
+		_bite_heard = t + RaiseTheDeadFx.BITE_QUIET
+		ctx.play(&"undead_bite", victim.ground_pos, 0.0)
 	if first and not _bitten and ctx.crowd != null and is_instance_valid(victim):
 		_bitten = true
 		ctx.crowd.fright(victim.ground_pos, BITE_FRIGHT_R, 0.6, 3.0, 6.0, 8.0, &"bite", true)
@@ -628,7 +639,10 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 		_scatter(at_ground)
 		_giant_gone()
 		_bones_hold()
-		ctx.play(&"gravetide_rise", at_ground, -6.0)
+		ctx.play(&"giant_fall", at_ground, 0.0)
+	elif t >= _cut_heard:
+		_cut_heard = t + RaiseTheDeadFx.CUT_QUIET
+		ctx.play(&"undead_cut", at_ground, 0.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(at_ground)
@@ -645,7 +659,7 @@ func _on_wreck(a: Animal, s: Structure) -> void:
 		if _wreck_fx_in > 0.0:
 			return
 		_wreck_fx_in = HORDE_WRECK_FX
-	ctx.play(&"jg_crumble", a.ground_pos, -10.0 if a == giant else -14.0)
+	ctx.play(&"gt_wreck", a.ground_pos, 0.0 if a == giant else -4.0)
 	if not DominionParts.staged(self):
 		return
 	var hit := a.ground_pos.clamp(s.footprint.position, s.footprint.end)
@@ -666,14 +680,17 @@ func _giant_gone() -> void:
 
 ## LIFE: every one of the horde still up falls to ash; the giant stands on (GIANT_LIFE from its landing).
 func _end_life() -> void:
+	_hush(HUSH)
 	if visitors == null:
 		return
 	var standing := giant != null and is_instance_valid(giant) and giant.is_alive()
 	if not standing and _bones_up().is_empty():
+		_ash_sound(visitors.living())
 		_ash(visitors.living())
 		_clear_all(false)
 		return
 	var horde := visitors.living().filter(func(a: Animal) -> bool: return a != giant and not _scattered.has(a))
+	_ash_sound(horde)
 	_ash(horde)
 	for a in horde:
 		_sped.erase(a)  # freed right after: nothing to give back
@@ -686,6 +703,8 @@ func _end_giant() -> void:
 		return
 	if _twist and _fell_once and (giant == null or not is_instance_valid(giant)):
 		return  # the giant fell earlier: this is its stale end, and the skeletons it left keep their 20.0 s
+	if giant != null and is_instance_valid(giant) and giant.is_alive():
+		ctx.play(&"giant_fall", giant.ground_pos, 0.0)
 	if _twist and giant != null and is_instance_valid(giant):
 		_scatter(giant.ground_pos)
 		if not _scattered.is_empty():
@@ -757,11 +776,33 @@ func _bones_leave() -> void:
 	if visitors == null:
 		return
 	var left := _bones_up()
+	_ash_sound(left)
 	_ash(left)
 	for a in left:
 		_sped.erase(a)
 		visitors.take(a)
 	_scattered.clear()
+
+
+## Heard: `who` falling to ash at once -- one crumble at their middle, at most every RaiseTheDeadFx.ASH_QUIET.
+func _ash_sound(who: Array) -> void:
+	if who.is_empty() or t < _ash_heard:
+		return
+	_ash_heard = t + RaiseTheDeadFx.ASH_QUIET
+	var mid := Vector2.ZERO
+	for a in who:
+		mid += (a as Animal).ground_pos
+	ctx.play(&"undead_ash", mid / float(who.size()), 0.0)
+
+
+## The horde's groaning fades over `seconds` (stops at 0), if it is still this tide's to fade (sound only).
+func _hush(seconds: float) -> void:
+	if _groan != null and is_instance_valid(_groan) and _groan.get_meta(&"cue", &"") == &"horde_groan":
+		if seconds > 0.0:
+			ctx.fade_out(_groan, seconds)
+		elif _groan is AudioStreamPlayer2D:
+			(_groan as AudioStreamPlayer2D).stop()
+	_groan = null
 
 
 func _clear_all(deferred: bool) -> void:
@@ -783,6 +824,7 @@ func _release_see() -> void:
 
 ## Over, or cut short: the tide gone.
 func _finish() -> void:
+	_hush(HUSH)
 	_clear_all(false)
 	super()
 
@@ -790,6 +832,7 @@ func _finish() -> void:
 ## Freed without _finish (a mission torn down mid-tide): the same, the pack only queued for freeing (its parents may be
 ## mid-teardown).
 func _exit_tree() -> void:
+	_hush(0.0)
 	_clear_all(true)
 	super()
 

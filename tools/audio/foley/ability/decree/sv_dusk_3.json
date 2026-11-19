@@ -1,0 +1,11 @@
+{"length": 5.0, "rms_db": -20.47, "reverb": {"rt60": 2.2, "mix": 0.22, "predelay_ms": 18, "damp": 3500}, "eq": [["lowshelf", 120, 1.0], ["peak", 3000, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Ratchet1-Slow_v1_rr1_Sum.wav", "at": 0.2, "onset": true, "dur": 4.4, "pitch": -13.4, "hp": 60, "lp": 1200, "fade_in": 600, "fade_out": 400, "gain_db": -14},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.0, "from": 1.0, "dur": 4.95, "pitch": -11.4, "hp": 35, "lp": 500, "fade_in": 3200, "fade_out": 60, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 1.0, "from": 1.0, "dur": 3.95, "pitch": -18.4, "hp": 30, "lp": 300, "fade_in": 2600, "fade_out": 60, "gain_db": -7},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongscrape_pp.wav", "at": 2.4, "from": 0.4, "dur": 2.55, "pitch": -11.4, "reverse": true, "hp": 80, "lp": 2000, "fade_in": 1500, "fade_out": 60, "gain_db": -12},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/TB_hit_C4_v4_rr1.wav", "at": 0.0, "onset": true, "dur": 4.95, "pitch": -11.4, "lp": 1200, "fade_in": 10, "fade_out": 2500, "gain_db": -18},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_01.ogg", "at": 0.15, "onset": true, "pitch": -6.4, "hp": 300, "lp": 4000, "fade_out": 150, "gain_db": -12},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_02.ogg", "at": 1.35, "onset": true, "pitch": -6.9, "hp": 300, "lp": 3700, "fade_out": 150, "gain_db": -11},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_03.ogg", "at": 2.45, "onset": true, "pitch": -7.4, "hp": 300, "lp": 3400, "fade_out": 150, "gain_db": -10},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_01.ogg", "at": 3.45, "onset": true, "pitch": -7.9, "hp": 300, "lp": 3100, "fade_out": 150, "gain_db": -9},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/chain_02.ogg", "at": 4.2, "onset": true, "pitch": -8.4, "hp": 300, "lp": 2800, "fade_out": 150, "gain_db": -8}]}

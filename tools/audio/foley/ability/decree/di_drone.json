@@ -1,0 +1,6 @@
+{"length": 6.0, "loop": true, "peak_db": -3.0, "reverb": {"rt60": 2.0, "mix": 0.22, "predelay_ms": 18, "damp": 4000}, "eq": [["lowshelf", 160, 0.0], ["peak", 3200, -2.0, 0.8]], "layers": [
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.0, "from": 1.0, "dur": 7.0, "pitch": -5, "hp": 120, "lp": 3000, "fade_in": 700, "fade_out": 700, "gain_db": -4},
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.0, "from": 1.0, "dur": 7.0, "pitch": -4.82, "hp": 120, "lp": 2600, "fade_in": 700, "fade_out": 700, "gain_db": -6},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 3.0, "from": 2.5, "dur": 7.0, "pitch": -5.1, "hp": 120, "lp": 2800, "fade_in": 700, "fade_out": 700, "gain_db": -5},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 3.0, "from": 2.5, "dur": 7.0, "pitch": -4.95, "hp": 120, "lp": 2400, "fade_in": 700, "fade_out": 700, "gain_db": -7},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 1.5, "from": 1.5, "dur": 7.0, "pitch": -12, "hp": 35, "lp": 450, "fade_in": 700, "fade_out": 700, "gain_db": -12}]}

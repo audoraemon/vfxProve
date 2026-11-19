@@ -1,0 +1,5 @@
+{"length": 3.6, "rms_db": -18.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.0, "from": 0.05, "dur": 3.5, "pitch": -4.0, "hp": 80, "lp": 8000, "fade_out": 1500},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.246, "from": 0.75, "dur": 2.6, "pitch": -3.83, "hp": 200, "lp": 5000, "gain_db": -5.7, "fade_in": 300, "fade_out": 900},
+  {"src": "lib:oga/droning-sound-effects/drone56.wav", "at": 0.3, "from": 47.0, "dur": 3.0, "hp": 60, "lp": 2000, "gain_db": -10, "fade_in": 900, "fade_out": 1200, "pitch": 1.0}
+]}

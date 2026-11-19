@@ -1,0 +1,6 @@
+{"length": 1.5, "peak_db": -3.51, "reverb": {"rt60": 1.6, "mix": 0.18, "predelay_ms": 14, "damp": 4200}, "eq": [["lowshelf", 120, 1.0], ["peak", 3800, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Anvil_Hit1_v3_Sum.wav", "at": 0.0, "onset": true, "dur": 1.3, "pitch": -5.3, "lp": 3800, "fade_out": 800, "gain_db": -3},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BrakeDrum1_Hammer_v1_Sum.wav", "at": 0.0, "onset": true, "dur": 0.4, "pitch": -3.3, "lp": 3200, "fade_out": 200, "gain_db": -6},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPlate_heavy_000.ogg", "at": 0.0, "onset": true, "pitch": -3.3, "lp": 3000, "gain_db": -8},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_01.ogg", "at": 0.01, "onset": true, "dur": 0.35, "pitch": -2.3, "hp": 150, "lp": 3000, "fade_out": 150, "gain_db": -12},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub2_v1.wav", "at": 0.0, "from": 0.5, "dur": 0.5, "lp": 200, "fade_in": 10, "fade_out": 300, "gain_db": -12}]}

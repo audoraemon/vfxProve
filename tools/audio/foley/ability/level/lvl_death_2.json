@@ -1,0 +1,6 @@
+{"length": 4.0, "rms_db": -19.0, "reverb": {"rt60": 3.2, "mix": 0.3, "predelay_ms": 30, "damp": 2500}, "eq": [["lowshelf", 90, 3.0], ["peak", 2500, -6.0, 0.7]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_067_rr1.wav", "at": 0.0, "onset": true, "pitch": -13, "dur": 3.6, "lp": 240, "fade_in": 150, "fade_out": 2400, "gain_db": -3},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Timpani/Rolls/Timpani2_Roll_v3_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 1.0, "pitch": -8, "lp": 300, "fade_in": 300, "fade_out": 500, "gain_db": -7},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v7_rr2_Sum.wav", "at": 0.1, "onset": true, "pitch": -5, "lp": 200, "fade_out": 1000, "gain_db": -3},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.2, "onset": true, "pitch": -5, "lp": 900, "dur": 2.5, "fade_in": 200, "fade_out": 1500, "gain_db": -12}
+]}

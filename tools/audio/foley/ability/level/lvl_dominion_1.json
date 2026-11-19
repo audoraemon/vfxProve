@@ -1,0 +1,5 @@
+{"length": 4.0, "rms_db": -19.0, "reverb": {"rt60": 3.2, "mix": 0.3, "predelay_ms": 30, "damp": 2500}, "eq": [["lowshelf", 90, 3.0], ["peak", 2500, -6.0, 0.7]], "layers": [
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.0, "onset": true, "pitch": -7, "lp": 1400, "dur": 3.6, "fade_out": 2400, "gain_db": -6},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.1, "onset": true, "pitch": -12, "dur": 3.3, "lp": 260, "fade_in": 200, "fade_out": 2200, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub1_v1.wav", "at": 0.05, "onset": true, "pitch": -2, "lp": 220, "fade_out": 900, "gain_db": -5}
+]}

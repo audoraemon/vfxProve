@@ -1,0 +1,7 @@
+{"length": 2.0, "rms_db": -18.27, "reverb": {"rt60": 1.8, "mix": 0.25, "predelay_ms": 20, "damp": 4400}, "eq": [["lowshelf", 220, -4.0], ["peak", 3000, 1.0, 0.8]], "layers": [
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "from": 0.0, "dur": 1.5, "pitch": 1, "lp": 6500, "hp": 250, "fade_in": 80, "fade_out": 600, "gain_db": -2},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan05.wav", "at": 0.1, "from": 0.1, "dur": 1.2, "pitch": 7, "lp": 5500, "hp": 400, "fade_in": 120, "fade_out": 500, "gain_db": -6},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan01.wav", "at": 0.3, "from": 0.3, "dur": 1.0, "pitch": 9, "lp": 5500, "hp": 500, "fade_in": 120, "fade_out": 500, "gain_db": -9},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.4, "dur": 1.2, "pitch": 2, "lp": 6000, "hp": 400, "fade_in": 80, "fade_out": 500, "gain_db": -8},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/NPC/shade/shade8.wav", "at": 0.15, "onset": true, "pitch": 2, "lp": 5000, "hp": 300, "fade_out": 300, "gain_db": -11}
+]}

@@ -1,0 +1,9 @@
+{"length": 10.0, "loop": true, "rms_db": -18.38, "reverb": {"rt60": 3.0, "mix": 0.3, "predelay_ms": 30, "damp": 3000}, "eq": [["lowshelf", 160, 1.0], ["peak", 2600, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-male-a2.wav", "at": 0.0, "dur": 8.4, "pitch": -2, "lp": 1500, "hp": 60, "fade_in": 2800, "fade_out": 2800, "gain_db": -3},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-male-a2.wav", "at": 5.0, "dur": 8.4, "pitch": -2, "lp": 1500, "hp": 60, "fade_in": 2800, "fade_out": 2800, "gain_db": -3},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-male-e3.wav", "at": 2.5, "dur": 8.4, "pitch": -2, "lp": 1700, "hp": 90, "fade_in": 3000, "fade_out": 3000, "gain_db": -8},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-male-e3.wav", "at": 7.5, "dur": 8.4, "pitch": -2, "lp": 1700, "hp": 90, "fade_in": 3000, "fade_out": 3000, "gain_db": -8},
+  {"src": "lib:oga/wind1/wind2.wav", "at": 0.0, "from": 5.0, "dur": 10.0, "lp": 3000, "hp": 300, "fade_in": 3500, "fade_out": 3500, "gain_db": -9},
+  {"src": "lib:oga/wind1/wind2.wav", "at": 5.0, "from": 25.0, "dur": 10.0, "lp": 3000, "hp": 300, "fade_in": 3500, "fade_out": 3500, "gain_db": -9},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 3.0, "from": 0.3, "dur": 3.0, "pitch": -7, "lp": 2400, "hp": 200, "fade_in": 800, "fade_out": 1000, "gain_db": -14}
+]}

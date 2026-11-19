@@ -73,6 +73,10 @@ var _band := PackedInt32Array()
 var _doomed: Array = []
 var _grind: Node
 var _cage: Cage
+## When the bars' next clang on stone (a building cracked, one cut down) may sound: one at most every CLANG_SOUND_GAP, the
+## first after the bars' own clang as they stand (cg_rise), none once the cage shuts (cg_shut).
+const CLANG_SOUND_GAP := 0.4
+var _next_clang := T_LAND + CLANG_SOUND_GAP
 
 ## Dragged Cage: whether this cast has the twist, the ring's centre now (the cast's point until a drag), whether the drag has been
 ## spent and whether it is under way, where it goes from and to and when it began (the effect's clock).
@@ -222,6 +226,7 @@ func _close(r: float) -> void:
 		cracked += 1
 		_band.append(i)
 		_spark_at(_ring_point(s.center(), r), 6)
+		_clang(_ring_point(s.center(), r))
 	while _passed < _by_mid.size() and _mid[_by_mid[_passed]] >= r - EPS:
 		var i := _by_mid[_passed]
 		_passed += 1
@@ -289,6 +294,7 @@ func _cut(body: Variant) -> void:
 		(body as Animal).die()
 	cut += 1
 	_spark_at(at_g, 10)
+	_clang(at_g)
 	if DominionParts.staged(self):
 		DecreeParts.scatter(self, at_g, 6, 6.0)
 
@@ -320,6 +326,7 @@ func _fell_s(s: Structure, mid: float) -> void:
 func _shut() -> void:
 	if law == null or shut:
 		return
+	_next_clang = INF
 	# Everyone the bars still hold is inside the last ring they stood at; the law brings them in to END_R.
 	var reach := maxf(radius, END_R) + EPS
 	if _drag_on:
@@ -443,6 +450,8 @@ func _drag_frame(k: float, r: float) -> void:
 	radius = r
 	if _cage != null and is_instance_valid(_cage):
 		_cage.position = Iso.ground_to_screen(_c).round()
+	if _grind != null and is_instance_valid(_grind) and _grind.get_meta(&"cue", &"") == &"cg_grind":
+		(_grind as Node2D).position = Iso.ground_to_screen(_c)  # the grind goes with the cage's centre
 	if move.length_squared() > 0.0:
 		for body: Variant in law.members:
 			if not is_instance_valid(body) or not body.is_alive():
@@ -467,6 +476,7 @@ func _drag_frame(k: float, r: float) -> void:
 			s.shake(2.5)
 			cracked += 1
 			_spark_at(_ring_point(s.center(), r), 6)
+			_clang(_ring_point(s.center(), r))
 		_dstate[j] = st
 		var mid := f.get_center().distance_to(_c)
 		var inside_mid := 1 if mid < r - EPS else 0
@@ -534,6 +544,13 @@ func _exit_tree() -> void:
 		if ctx.crowd == null or is_instance_valid(ctx.crowd):
 			_lift()
 	super()
+
+
+## A brass bar strikes stone at ground point `g`, unless one has just sounded.
+func _clang(g: Vector2) -> void:
+	if t >= _next_clang:
+		_next_clang = t + CLANG_SOUND_GAP
+		ctx.play(&"cg_clang", g)
 
 
 ## Sparks where the bars cut, at ground point `g` (look only).

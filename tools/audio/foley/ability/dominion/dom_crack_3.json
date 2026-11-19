@@ -1,0 +1,6 @@
+{"length": 2.0, "rms_db": -15.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_crack.wav", "at": 0.0, "from": 0.0, "dur": 1.5, "pitch": 1, "hp": 40, "lp": 10000, "fade_out": 500},
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.0, "from": 0.05, "dur": 1.6, "pitch": -8, "hp": 60, "lp": 5000, "gain_db": -6, "fade_out": 900},
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/03_explosions_destruction/BreakGlass_03_s01.wav", "at": 0.01, "onset": true, "pitch": -10, "hp": 300, "lp": 6000, "gain_db": -12, "fade_out": 300},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_004.ogg", "at": 0.0, "onset": true, "pitch": -9, "hp": 30, "lp": 1200, "gain_db": -4}
+]}

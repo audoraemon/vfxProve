@@ -16,6 +16,9 @@ signal rallied
 ## points (cast_points()). Directors that judge a cast as danger read this, not Rules.cast_made.
 ## `radius` is the danger's radius at the cast's ability level (on_cast()), so a director judges the number the town fled.
 signal danger_landed(key: String, points: Array[Vector2], radius: float)
+## A cast was seen by `witness` (Town Suspicion): `look` is its Suspicion look, `before` and `after` the town's Suspicion.state()
+## around it (equal once the town knows).
+signal sign_seen(witness: Person, look: StringName, before: StringName, after: StringName)
 
 ## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
 const LIE_CALM := 8.0
@@ -130,6 +133,8 @@ var _spreads: Array = []
 var _watch_in := 0.0
 ## The town's alarm in stages (v0.04).
 var alarms := AlarmManager.new()
+## How strange the town finds the night (Town Suspicion): fed one sign per witnessed cast.
+var suspicion := Suspicion.new()
 ## Which way out each evacuee takes (v0.04); made by spawn().
 var evac: EvacuationManager
 ## Fires and the citizens fighting them (v0.04 P1); made by setup().
@@ -367,6 +372,7 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 	if soldier_count < 0:
 		soldier_count = City.current().soldiers()
 	alarms.regroup_seconds = profile.regroup_seconds  # God-Resistant evacuates sooner (v0.08.2)
+	suspicion.wary = profile.wary
 	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
 		_town.bar_postern()
 		_grid.refresh(_town.postern)
@@ -1142,6 +1148,7 @@ func advance(delta: float) -> void:
 
 func _advance(delta: float) -> void:
 	_clock += delta
+	suspicion.advance(delta)
 	if remains != null:
 		remains.step(delta)
 	if withering != null:
@@ -1487,6 +1494,9 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", lev
 		var unease := float(PowerBook.get_power(key).get("alarm", 0.0))
 		if unease > 0.0:
 			add_alarm(unease)
+		var quiet_look := PowerBook.look(key)
+		if quiet_look != Suspicion.NONE:
+			_sign([ground] as Array[Vector2], Suspicion.QUIET_SIGN_SIGHT, quiet_look)
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key, level) * scale
@@ -1529,11 +1539,43 @@ func _land_held() -> void:
 ## A loud danger lands: it is registered and everyone it reaches reacts, as on_cast() always did (v0.04), then
 ## `danger_landed` tells the directors.
 func _land(key: String, points: Array[Vector2], radius: float, reach: Array, ground: Vector2) -> void:
+	var look := PowerBook.look(key)
+	if look != Suspicion.NONE:
+		_sign(points, float(reach[0]), look)
 	for point in points:
 		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
 			StringName(key))
 	_react(points, radius, float(reach[1]), ground, StringName(key))
 	danger_landed.emit(key, points, radius)
+
+
+## The nearest living person, citizen or soldier, not inside and not asleep, within `sight` x sight_scale of any of `points`:
+## who saw a cast (Town Suspicion). Null when nobody did, and in a hushed town.
+func sign_witness(points: Array[Vector2], sight: float) -> Person:
+	if is_hushed():
+		return null
+	var best: Person = null
+	var best_d := sight * sight_scale
+	for group: Array[Person] in [citizens, soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.is_asleep():
+				continue
+			for point in points:
+				var d := p.ground_pos.distance_to(point)
+				if d <= best_d:
+					best = p
+					best_d = d
+	return best
+
+
+## One cast of `look` over `points`, if someone saw it: the town counts one sign, however many points the cast has.
+func _sign(points: Array[Vector2], sight: float, look: StringName) -> void:
+	var witness := sign_witness(points, sight)
+	if witness == null:
+		return
+	var before := suspicion.state()
+	suspicion.sign(look)
+	sign_seen.emit(witness, look, before, suspicion.state())
 
 
 ## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
@@ -1856,6 +1898,7 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			if bell != null:
 				bell.call_keeper()
 		AlarmManager.Stage.CITY_EMERGENCY:
+			suspicion.know("the town is in emergency")
 			if sfx != null:
 				sfx.play(&"town_horn", City.current().citadel_origin())
 			rally()
@@ -2021,6 +2064,7 @@ func _appoint_bellkeeper(anchors: Dictionary) -> Person:
 ## evacuation sooner.
 func ring_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:
 	alarms.bell_rung = true
+	suspicion.know("the bell rings")
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive():
 			p.awareness = maxi(p.awareness, Person.Awareness.EMERGENCY) as Person.Awareness
@@ -2147,6 +2191,7 @@ func raise_profile(p: ResponseProfile) -> PackedStringArray:
 		return on
 	profile = p
 	alarms.regroup_seconds = p.regroup_seconds
+	suspicion.wary = p.wary
 	if bell != null and bell.state in [BellNetwork.State.IDLE, BellNetwork.State.WAITING]:
 		bell.climb = p.bell_climb * climb_scale
 	if p.rite and rite != null and rite.off_by_profile and _standing(rite.cathedral):
@@ -2385,6 +2430,7 @@ func clear() -> void:
 	voices_played = 0
 	deaths.reset()
 	trail.clear()
+	suspicion.reset()
 
 
 ## Everyone alive and outside standing on a closed cell in `r` (ground units: a falling footprint, a pile cell; grown by a
@@ -2561,6 +2607,7 @@ func _on_citadel_health(_fraction: float) -> void:
 	if _citadel_hit:
 		return
 	_citadel_hit = true
+	suspicion.know("the Citadel is struck")
 	_hear_alarm(ALARM_CITADEL_HIT)
 	rally()
 

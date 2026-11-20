@@ -1027,6 +1027,10 @@ func _build_mission() -> Mission:
 		mission.levels = god.learned.duplicate()
 		mission.wish_seed = GodNight.wish_seed(god, mission_id)
 		mission.look_override = GodNight.look_for(god, mission_id)  # the night's roll: DAY or NIGHT (NightRules)
+		mission.god_night = true
+		mission.conquest = not GodNight.is_rite(mission_id) and not GodNight.is_hunt(mission_id)
+		mission.carried = Conquest.count_of(god, Conquest.HOME)  # Task 5 makes it the night's town
+		mission.believer_seed = GodNight.believer_seed(god, mission_id)
 		mission.restart_locked = true
 		mission.report_on_decision = true  # the night banks when it is decided, not after its ending (review M1)
 		mission.clock_started.connect(_on_clock_started.bind(mission))
@@ -1322,7 +1326,7 @@ func _abandon_night() -> void:
 	_hub_line = ""
 	if god == null or god.in_night == "":
 		return
-	_hub_line = String(GodNight.forfeit(god).line)
+	_hub_line = String(GodNight.forfeit(god, _mission.carried_alive() if is_instance_valid(_mission) else -1).line)
 	_write_god()
 
 

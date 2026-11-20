@@ -396,50 +396,96 @@ func _draw_badge(r: Rect2) -> void:
 	UiTheme.text(_ui, c + Vector2(-2.0, 4.0), "!", UiTheme.SIZE_SMALL, Color.WHITE)
 
 
-func _draw_bar() -> void:
+## Where the bar's parts sit, in the bar's own coordinates: text rects for the town, the Night, the Faith and the points, the Notice's
+## meter with its percent, the Divine Power bar, and the baseline `y`. Built from the Title button leftwards: Night, the town (World Map +
+## Conquer Progress), the Notice meter and percent, Faith, ability points; the Divine Power bar sits in what is left.
+func _bar_layout() -> Dictionary:
 	var bar := bar_rect()
-	_ui.draw_rect(bar, Color(0.03, 0.03, 0.05, 0.92))
-	_ui.draw_rect(Rect2(bar.position.x, bar.end.y, bar.size.x, 1.0), UiTheme.COL_GOLD_DARK)
 	var text := lines()
 	var y := bar.position.y + 15.0
-	# Left: the type's title, then the level and the tier's name.
 	var left_x := bar.position.x + 6.0
-	UiTheme.text(_ui, Vector2(left_x, y), text[0], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
-	var x := left_x + UiTheme.width(text[0], UiTheme.SIZE_SMALL) + 8.0
-	UiTheme.text(_ui, Vector2(x, y), text[1], UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	var title_w := UiTheme.width(text[0], UiTheme.SIZE_SMALL)
+	var x := left_x + title_w + 8.0
 	var left_end := x + UiTheme.width(text[1], UiTheme.SIZE_SMALL)
-	# Right, built from the Title button leftwards: Night, the Notice meter and percent, Faith, ability points.
 	var tr := title_rect()
-	_ui.draw_rect(tr, Color(0.10, 0.09, 0.07, 0.95))
-	UiTheme.frame(_ui, tr, false)
-	UiTheme.text(_ui, Vector2(roundf(tr.get_center().x - UiTheme.width("Title", UiTheme.SIZE_SMALL) * 0.5), y - 1.0), "Title", UiTheme.SIZE_SMALL,
-		UiTheme.COL_TEXT)
 	var rx := tr.position.x - BAR_GAP
-	var night := text[6]
+	var out := {"y": y, "left_x": left_x, "level_x": x, "left_end": left_end}
+	var night: String = text[6]
 	rx -= UiTheme.width(night, UiTheme.SIZE_SMALL)
-	UiTheme.text(_ui, Vector2(rx, y), night, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	out.night_text = night
+	out.night_x = rx
+	out.night = _text_rect(rx, UiTheme.width(night, UiTheme.SIZE_SMALL), bar)
+	rx -= BAR_GAP
+	var town := status.town_line()
+	rx -= UiTheme.width(town, UiTheme.SIZE_SMALL)
+	out.town_text = town
+	out.town_x = rx
+	out.town = _text_rect(rx, UiTheme.width(town, UiTheme.SIZE_SMALL), bar)
 	rx -= BAR_GAP
 	var pct := "%d%%" % _slot.notice
 	rx -= UiTheme.width(pct, UiTheme.SIZE_SMALL)
-	UiTheme.text(_ui, Vector2(rx, y), pct, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	out.pct_text = pct
+	out.pct_x = rx
 	var meter := Rect2(rx - 3.0 - NOTICE_W, bar.position.y + 8.0, NOTICE_W, 6.0)
-	_ui.draw_rect(meter, Color(0.10, 0.04, 0.04, 0.9))
-	_ui.draw_rect(Rect2(meter.position, Vector2(roundf(meter.size.x * status.notice_fill()), meter.size.y)), UiTheme.COL_BAD)
-	UiTheme.frame(_ui, meter, false)
+	out.meter = meter
+	out.notice = Rect2(meter.position.x, bar.position.y + 4.0, rx + UiTheme.width(pct, UiTheme.SIZE_SMALL) - meter.position.x, 14.0)
 	rx = meter.position.x - BAR_GAP
 	var faith := "Faith %d" % _slot.faith
 	rx -= UiTheme.width(faith, UiTheme.SIZE_SMALL)
-	UiTheme.text(_ui, Vector2(rx, y), faith, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	out.faith_text = faith
+	out.faith_x = rx
+	out.faith = _text_rect(rx, UiTheme.width(faith, UiTheme.SIZE_SMALL), bar)
 	rx -= BAR_GAP
 	var pts := "Points %d" % _slot.points
 	rx -= UiTheme.width(pts, UiTheme.SIZE_SMALL)
-	UiTheme.text(_ui, Vector2(rx, y), pts, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if _slot.points > 0 else UiTheme.COL_TEXT)
+	out.pts_text = pts
+	out.pts_x = rx
+	out.points = _text_rect(rx, UiTheme.width(pts, UiTheme.SIZE_SMALL), bar)
 	# Centre: the Divine Power bar, centred on the area and kept clear of the left and right groups.
 	var lo := left_end + BAR_GAP
 	var hi := rx - BAR_GAP
 	var w := maxf(0.0, minf(150.0, hi - lo))
 	var cx := clampf(bar.get_center().x, lo + w * 0.5, hi - w * 0.5)
-	var pr := Rect2(roundf(cx - w * 0.5), bar.position.y + 6.0, roundf(w), 10.0)
+	out.power = Rect2(roundf(cx - w * 0.5), bar.position.y + 6.0, roundf(w), 10.0)
+	return out
+
+
+func _text_rect(x: float, w: float, bar: Rect2) -> Rect2:
+	return Rect2(x, bar.position.y + 4.0, w, 14.0)
+
+
+## The rects the bar's parts take ("town", "night", "notice", "faith", "points", "power"), so a test can see they stay inside the bar and
+## clear of each other.
+func bar_parts() -> Dictionary:
+	var l := _bar_layout()
+	return {"town": l.town, "night": l.night, "notice": l.notice, "faith": l.faith, "points": l.points, "power": l.power}
+
+
+func _draw_bar() -> void:
+	var bar := bar_rect()
+	_ui.draw_rect(bar, Color(0.03, 0.03, 0.05, 0.92))
+	_ui.draw_rect(Rect2(bar.position.x, bar.end.y, bar.size.x, 1.0), UiTheme.COL_GOLD_DARK)
+	var text := lines()
+	var l := _bar_layout()
+	var y: float = l.y
+	# Left: the type's title, then the level and the tier's name.
+	UiTheme.text(_ui, Vector2(l.left_x, y), text[0], UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(l.level_x, y), text[1], UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	var tr := title_rect()
+	_ui.draw_rect(tr, Color(0.10, 0.09, 0.07, 0.95))
+	UiTheme.frame(_ui, tr, false)
+	UiTheme.text(_ui, Vector2(roundf(tr.get_center().x - UiTheme.width("Title", UiTheme.SIZE_SMALL) * 0.5), y - 1.0), "Title", UiTheme.SIZE_SMALL,
+		UiTheme.COL_TEXT)
+	UiTheme.text(_ui, Vector2(l.night_x, y), l.night_text, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	UiTheme.text(_ui, Vector2(l.town_x, y), l.town_text, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(l.pct_x, y), l.pct_text, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	var meter: Rect2 = l.meter
+	_ui.draw_rect(meter, Color(0.10, 0.04, 0.04, 0.9))
+	_ui.draw_rect(Rect2(meter.position, Vector2(roundf(meter.size.x * status.notice_fill()), meter.size.y)), UiTheme.COL_BAD)
+	UiTheme.frame(_ui, meter, false)
+	UiTheme.text(_ui, Vector2(l.faith_x, y), l.faith_text, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
+	UiTheme.text(_ui, Vector2(l.pts_x, y), l.pts_text, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if _slot.points > 0 else UiTheme.COL_TEXT)
+	var pr: Rect2 = l.power
 	_ui.draw_rect(pr, Color(0.04, 0.04, 0.06, 0.85))
 	_ui.draw_rect(Rect2(pr.position, Vector2(roundf(pr.size.x * status.bar_fill()), pr.size.y)), UiTheme.COL_GOLD_DARK)
 	UiTheme.frame(_ui, pr, false)

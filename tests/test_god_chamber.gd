@@ -20,6 +20,7 @@ static func run(t) -> void:
 	_hover(t)
 	_hint_and_lines(t)
 	_resolutions(t)
+	_bar_town(t)
 	_blocker(t)
 	_long_line(t)
 	_transition_out(t)
@@ -492,5 +493,29 @@ static func _blocker(t) -> void:
 			blocker.gui_input.emit(_motion(ch._ui.position + band * f))
 			t.check(ch._hover == "", "%s: moving into a side band clears the hover" % area)
 			t.check(ch.mouse01().x < -0.5, "%s: the parallax keeps following in the band (%s)" % [area, ch.mouse01()])
+		ch.free()
+		UiScale.clear_test_area()
+
+
+## The town line joins the bar: at the four window shapes every part lies in the bar and no two overlap.
+static func _bar_town(t) -> void:
+	for area: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(2560, 1080), Vector2i(1024, 768)]:
+		UiScale.set_test_area(area)
+		var made := _make(_capped(10))
+		var ch: GodChamber = made[0]
+		var bar := ch.bar_rect()
+		var parts := ch.bar_parts()
+		var keys := ["town", "night", "notice", "faith", "points", "power"]
+		var ok := parts.size() == keys.size()
+		for k: String in keys:
+			ok = ok and parts.has(k) and bar.encloses(parts[k])
+		t.check(ok, "%s: the bar's six parts lie inside it (%s)" % [area, parts])
+		var apart := true
+		for i in keys.size():
+			for j in range(i + 1, keys.size()):
+				if parts.has(keys[i]) and parts.has(keys[j]) and (parts[keys[i]] as Rect2).intersects(parts[keys[j]]):
+					apart = false
+					print("overlap ", keys[i], " ", keys[j])
+		t.check(apart, "%s: no two parts of the bar overlap" % area)
 		ch.free()
 		UiScale.clear_test_area()

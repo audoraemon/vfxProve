@@ -201,6 +201,11 @@ static func _apply_god(def: MissionDef, slot: GodSlot, pool: PackedStringArray) 
 	def.pool = pool.duplicate()
 
 
+## The seed of the night's carried believers for mission `id` (World Map + Conquer Progress): its own, so no other stream is touched.
+static func believer_seed(slot: GodSlot, id: String) -> int:
+	return hash([slot.seed, slot.night, id, BelieverRoll.SEED_TAG])
+
+
 ## Divine Power a night earns (spec §8, Ruling P22): from a report's "descend", the main objective's `MAIN_DP x tier` and `WISH_DP x
 ## tier` per banked wish (`kept`). A night with no main objective earns none; one caught after it has kept no wishes, so the main's only.
 static func divine_power(d: Dictionary) -> int:
@@ -242,8 +247,12 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 		slot.carried[key] = int(slot.carried.get(key, 0)) + 1
 	slot.loadout = drafted.duplicate()
 	var hunt_result := {}
+	var conquest := {}
 	if hunt.is_empty():
 		slot.add_notice(notice_delta(d))
+		var roll: Variant = outcome.get("conquest", {})
+		if roll is Dictionary and not (roll as Dictionary).is_empty():
+			conquest = Conquest.bank(slot, roll, bool(d.get("main", false)))
 	else:
 		var won := bool(d.get("main", false))
 		var bonus := 0
@@ -260,7 +269,7 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 	return {"divine_power": dp, "levels": gained.levels, "points": gained.points, "lost": gained.lost, "capped": gained.capped,
 		"level": slot.level, "bar": [slot.divine_power, slot.need()], "believers": earned, "faith": faith, "faith_total": slot.faith,
 		"notice": slot.notice, "notice_change": slot.notice - notice_before, "night": slot.night, "bests": bests,
-		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due()}
+		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due(), "conquest": conquest}
 
 
 ## Banks a finished Awaken rite (god P3, MS §1 R2-R4, Ruling P3-4, P3-5): a seal ticks, the night counts, and nothing else of an ordinary
@@ -324,8 +333,10 @@ static func _keep_bests(slot: GodSlot, id: String, d: Dictionary) -> PackedStrin
 ## nothing is earned, a seal ticks, and the Notice goes up by NOTICE_LOST -- or, if the Hunt was due, the Hunt is lost: the most-carried
 ## ability is sealed and the Notice is set to 50 (Ruling P2-6). Returns {"night": the new count, "line": the line the hub shows,
 ## "notice", "notice_change", "hunt" (as bank()'s, never won), "unsealed", "hunt_next"}. A rite left in the night goes to
-## _forfeit_rite() instead, before the Hunt, and its result adds a "rite" key.
-static func forfeit(slot: GodSlot) -> Dictionary:
+## _forfeit_rite() instead, before the Hunt, and its result adds a "rite" key. `alive` (World Map + Conquer Progress): the believers still
+## alive in the town when an ordinary night was left (Mission.carried_alive()); they become the town's count, and -1 keeps the saved one.
+## The result's "conquest" is {"town", "count", "percent"} for an ordinary night, {} for the Hunt.
+static func forfeit(slot: GodSlot, alive := -1) -> Dictionary:
 	if is_rite(slot.in_night):
 		return _forfeit_rite(slot)
 	var hunt := hunt_for(slot)
@@ -338,8 +349,13 @@ static func forfeit(slot: GodSlot) -> Dictionary:
 		slot.last_mission = slot.in_night
 	slot.in_night = ""
 	var hunt_result := {}
+	var conquest := {}
 	var line := ""
 	if hunt.is_empty():
+		var town := slot.last_town
+		if alive >= 0:
+			slot.believers[town] = clampi(alive, 0, Conquest.population(town))
+		conquest = {"town": town, "count": Conquest.count_of(slot, town), "percent": Conquest.percent_of(slot, town)}
 		var change := slot.add_notice(NOTICE_LOST)
 		line = ABANDONED % slot.night
 		if change > 0:
@@ -357,7 +373,7 @@ static func forfeit(slot: GodSlot) -> Dictionary:
 			seals = SEALS % [PowerBook.get_power(target).name, GodSlot.nights_text(GodSlot.SEAL_NIGHTS)]
 		line = HUNT_ABANDONED % slot.night + " " + seals + " " + NOTICE_AT % slot.notice
 	return {"night": slot.night, "line": line, "notice": slot.notice, "notice_change": slot.notice - notice_before,
-		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due()}
+		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due(), "conquest": conquest}
 
 
 ## An Awaken rite left once its clock had started is a lost one (god P3, MS §1 "a closed game is a lost rite", Ruling P3-4): a seal ticks,

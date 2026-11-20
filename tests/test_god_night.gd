@@ -19,6 +19,12 @@ static func run(t) -> void:
 	_wish_seed(t)
 	_bests(t)
 	_mission_hooks(t)
+	_bank_conquest(t)
+	_bank_no_conquest(t)
+	_hunt_no_conquest(t)
+	_forfeit_alive(t)
+	_believer_seed(t)
+	_results_conquest_line(t)
 	GodTree.dev_fill = false
 
 
@@ -195,3 +201,69 @@ static func _mission_hooks(t) -> void:
 	t.check(m.has_signal("clock_started"), "the mission announces its clock starting")
 	t.check(m.has_signal("decided") and m.report_on_decision == false, "the mission can report when a run is decided; off unless Endless sets it (review M1)")
 	m.free()
+
+
+static func _conquest_entry(alive: int, lost := 2) -> Dictionary:
+	return {"town": "aldermere", "carried_alive": alive, "named": 0, "fill": 0, "lost": lost}
+
+
+static func _bank_conquest(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	var out := _outcome(true, 0, 30)
+	out.descend["main"] = true
+	out["conquest"] = _conquest_entry(48)
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(int(s.believers.aldermere) == 48 and int(res.conquest.count) == 48, "the roll's 48 survivors become the town's count (%s)" % [s.believers])
+	t.check(int(res.faith) == 30 * GodSlot.FAITH_PER_BELIEVER and s.faith == int(res.faith), "Faith is still exactly what was earned (%s)" % [res.faith])
+
+
+static func _bank_no_conquest(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), _outcome(true, 0, 5))
+	t.check(int(s.believers.aldermere) == 50 and res.conquest == {}, "an outcome without a conquest leaves the counts alone and says {} (%s)" % [res.conquest])
+
+
+static func _hunt_no_conquest(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	s.notice = 100
+	t.check(GodNight.is_hunt(GodNight.draw(s)), "the Hunt is due")
+	var out := _outcome(true, 0, 5)
+	out["conquest"] = _conquest_entry(10)
+	var res := GodNight.bank(s, GodNight.draw(s), PackedStringArray(["smite"]), out)
+	t.check(int(s.believers.aldermere) == 50 and res.conquest == {}, "a Hunt changes no town count (%s)" % [s.believers])
+
+
+static func _forfeit_alive(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	s.last_town = "aldermere"
+	s.in_night = "tax_collector"
+	var out := GodNight.forfeit(s, 41)
+	t.check(int(s.believers.aldermere) == 41 and int(out.conquest.count) == 41 and out.conquest.town == "aldermere", "a forfeit keeps who was alive (%s)" % [s.believers])
+	var s2 := _slot()
+	s2.believers["aldermere"] = 50
+	s2.in_night = "tax_collector"
+	var out2 := GodNight.forfeit(s2)
+	t.check(int(s2.believers.aldermere) == 50 and int(out2.conquest.count) == 50, "no count given keeps the saved one (%s)" % [s2.believers])
+
+
+static func _believer_seed(t) -> void:
+	var s := _slot()
+	var a := GodNight.believer_seed(s, "warning")
+	t.check(a == GodNight.believer_seed(_slot(), "warning") and a != GodNight.wish_seed(s, "warning"), "the believer seed is stable and its own")
+	s.night += 1
+	t.check(a != GodNight.believer_seed(s, "warning"), "and differs by night")
+
+
+static func _results_conquest_line(t) -> void:
+	var base := {"god": {"divine_power": 5, "levels": [], "capped": false, "believers": 1, "faith": 1, "faith_total": 1, "notice": 0, "night": 2}}
+	var plain := ResultsScreen.god_lines(base)
+	var with_c := base.duplicate(true)
+	with_c.god["conquest"] = {"town": "aldermere", "percent": 12, "converts": 4, "lost": 1}
+	var got := ResultsScreen.god_lines(with_c)
+	t.check(got.size() == plain.size() + 1 and got[got.size() - 2] == "Aldermere 12%   converts +4   believers lost 1" and got[got.size() - 1] == "Night 2",
+		"the conquest line sits before the Night line (%s)" % [got])
+	t.check(ResultsScreen.god_lines(base) == plain, "without it the lines are as before")

@@ -141,6 +141,12 @@ var board := false
 var descend: DescendState
 ## The seed the board night's wishes are drawn from (Descent.seed_for()): Game sets it, and an R restart keeps it.
 var wish_seed := 0
+## An Endless night (World Map + Conquer Progress): Game sets these before start(). `god_night` is any Endless night; `conquest` an
+## ordinary one (not a rite, not a Hunt), which carries `carried` believers marked with `believer_seed`. All off: today's night, untouched.
+var god_night := false
+var conquest := false
+var carried := 0
+var believer_seed := 0
 ## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
 ## Rules is given it, and an R restart or next_act() keeps it.
 var levels := {}
@@ -172,6 +178,8 @@ var report_on_decision := false
 var _drafted := PackedStringArray()
 ## The board night being played (v0.11 M1), or null off the board.
 var _descent: Descent
+## The night's carried believers (conquest nights only), or null.
+var _believers: BelieverRoll
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
@@ -445,6 +453,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	if _descent != null:
 		_descent.release()
 		_descent = null
+	if _believers != null:
+		_believers.release()
+		_believers = null
 	_bf.reset(seed_value)
 	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay, _memory]:
 		if is_instance_valid(n):
@@ -513,6 +524,10 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_wired.clear()
 	_build_act(powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args()))
 	_apply_night_rules(seed_value)
+	if conquest and _descent != null:
+		_believers = BelieverRoll.new().setup(_crowd, Conquest.HOME, believer_seed)
+		_believers.mark_carried(carried, _reserved())
+		_believers.attach(_rules)
 	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
 	_overlay.name = "BehaviourOverlay"
 	if "--behaviour" in OS.get_cmdline_user_args():
@@ -561,11 +576,16 @@ func set_memory_level(level: int) -> void:
 
 ## The look's rules (NightRules) once the director has appointed its people: nothing but at NIGHT. The wishes' people are kept out too.
 func _apply_night_rules(seed_value: int) -> void:
+	NightRules.apply(_crowd, _town.look, _reserved(), seed_value, _director)
+
+
+## The people no night rule and no believer mark may take: the director's reserved and every wish's people.
+func _reserved() -> Array:
 	var kept: Array = _director.reserved.duplicate() if _director != null else []
 	if _descent != null:
 		for w in _descent.wishes:
 			kept.append_array(w.people())
-	NightRules.apply(_crowd, _town.look, kept, seed_value, _director)
+	return kept
 
 
 ## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the
@@ -792,6 +812,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_bf.ctx.impact.set_base_time_scale(1.0)
 	_ending = false
 	_build_act(powers if not powers.is_empty() else _act.default_loadout)
+	if _believers != null:
+		_believers.attach(_rules)
 	_begin_intro(_act)
 	_prayers_hold = 0.0
 	_sync_intro_hud()
@@ -827,6 +849,16 @@ func act() -> ActDef:
 ## The board night being played (v0.11 M1), or null.
 func descent() -> Descent:
 	return _descent
+
+
+## The night's carried believers (World Map + Conquer Progress), or null off conquest nights.
+func believers() -> BelieverRoll:
+	return _believers
+
+
+## How many carried believers are still alive, or -1 with no roll.
+func carried_alive() -> int:
+	return _believers.carried_alive() if _believers != null else -1
 
 
 ## The god ascends (v0.11 M1, spec §6): once a board night's main objective is done, F (or the ASCEND plate) ends it, won.
@@ -1230,6 +1262,8 @@ func _final_result() -> Dictionary:
 func _with_descent(res: Dictionary) -> Dictionary:
 	if _descent != null:
 		res.merge(_descent.report(_rules))
+		if _believers != null:
+			res["conquest"] = _believers.report(_rules.main_done, _rules.ascended, _reserved())
 	return res
 
 

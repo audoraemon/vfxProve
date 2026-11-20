@@ -7,6 +7,7 @@ extends RefCounted
 static func run(t) -> void:
 	GodTree.dev_fill = true
 	_lines(t)
+	_town_line(t)
 	_notice_hunt_seal(t)
 	_gifts(t)
 	_bar_fill(t)
@@ -190,3 +191,11 @@ static func _awaken_blocked(t) -> void:
 	GodTree.use_table({})
 	GodTree.dev_fill = true
 	t.check(not HubStatus.new(_capped(10)).awaken_dim(), "with a filled tree Awaken is lit again")
+
+
+static func _town_line(t) -> void:
+	var god := _slot()
+	var st := HubStatus.new(god)
+	t.check(st.town_line() == "Aldermere 0%", "a fresh god's town line (%s)" % st.town_line())
+	god.believers["aldermere"] = 132
+	t.check(st.town_line() == "Aldermere 60%", "132 believers is 60%% of Aldermere (%s, pop %d)" % [st.town_line(), Conquest.population("aldermere")])

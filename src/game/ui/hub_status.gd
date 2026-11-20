@@ -45,6 +45,12 @@ func lines() -> PackedStringArray:
 		"Night %d" % (_slot.night + 1)])
 
 
+## The town the god last played in and the percent of its people who believe: "Aldermere 0%" (World Map + Conquer Progress). Not one of
+## lines(), so the indices of those stay as they were.
+func town_line() -> String:
+	return "%s %d%%" % [Conquest.town_name(_slot.last_town), Conquest.percent_of(_slot, _slot.last_town)]
+
+
 ## "Stolen gifts: The Watchful Bell" (the names joined with ", ") when the god has stolen any, else "" (god P3, MS §4). Drawn after lines(), so
 ## P1's line indices are unchanged.
 func gifts_line() -> String:

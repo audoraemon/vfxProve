@@ -9,6 +9,29 @@ static func run(t) -> void:
 	_flat_and_none(t)
 	_fade(t)
 	_latch(t)
+	_looks(t)
+
+
+## Each power's look (PowerBook.look()).
+static func _looks(t) -> void:
+	var want := {"smite": &"lightning", "ember": &"fire", "tornado": &"storm", "tempest": &"storm", "shatter": &"quake",
+		"tsunami": &"flood", "breath": &"miasma", "disorder": Suspicion.NONE}
+	for key in want:
+		t.check(PowerBook.look(key) == want[key], "%s looks like %s" % [key, want[key]])
+	var natural := 0
+	var unnatural := 0
+	var loud_unnatural := true
+	for p: Dictionary in PowerBook.POWERS:
+		var l := PowerBook.look(p.key)
+		if Suspicion.BASE.has(l):
+			natural += 1
+		elif l == Suspicion.UNNATURAL:
+			unnatural += 1
+			loud_unnatural = loud_unnatural and not p.get("quiet", false)
+	t.check(natural == 7, "seven powers have a natural look (%d)" % natural)
+	t.check(unnatural == 29 and loud_unnatural, "29 powers are unnatural, all of them loud (%d)" % unnatural)
+	t.check(PowerBook.look("") == Suspicion.NONE, "a cast with no power (the sandbox) has no look")
+	t.check(PowerBook.look("nonesuch") == Suspicion.NONE, "an unknown key has no look")
 
 
 ## Advances `s` by `secs` in DT steps.

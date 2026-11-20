@@ -668,6 +668,8 @@ func _show_held_banners() -> void:
 func _wire_responses() -> void:
 	if _wire_once(_crowd):
 		_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
+		_crowd.suspicion.uneasy.connect(func(): _rules.banner.emit("THE TOWN GROWS UNEASY"))
+		_crowd.suspicion.became_known.connect(func(_why: String): _rules.banner.emit("THE TOWN KNOWS: A GOD IS HERE"))
 	if _crowd.bell != null and _wire_once(_crowd.bell):
 		_crowd.bell.climbing_started.connect(func():
 			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)

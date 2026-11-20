@@ -456,7 +456,7 @@ func _ready() -> void:
 		"pause":
 			go_to(Screen.MISSION)
 			_open_pause()
-		"play":  # a running night with its intro skipped, for a photograph (with --dev-zoom=Z the camera rests at Z)
+		"play", "suspicion-uneasy", "suspicion-known":  # a running night with its intro skipped, for a photograph (with --dev-zoom=Z the camera rests at Z)
 			go_to(Screen.MISSION)
 		"legend", "legend-2":  # the legend of marks open over a running night (page 1, or page 2 for legend-2): a photograph of its frame in any window
 			go_to(Screen.MISSION)
@@ -597,6 +597,25 @@ func _ready() -> void:
 		await _until(func() -> bool: return _mission.started(), 10.0)
 		_mission.skip_intro()
 		_mission.apply_dev_zoom()
+	if show in ["suspicion-uneasy", "suspicion-known"] and is_instance_valid(_mission):
+		# Town Suspicion's gauge (Task 6): two Smites seen by the town (uneasy), or an unnatural power seen (known). The signs are fed to the
+		# crowd's Suspicion as its witnesses would; nothing is cast. Photograph it on the Warning: --mission=warning.
+		await _until(func() -> bool: return _mission.started(), 60.0)
+		_mission.skip_intro()
+		for _frame in 1200:  # the opening banners cover the middle of the screen: wait them out, then stage
+			if not is_instance_valid(_mission._hud) or _mission._hud.banners().is_empty():
+				break
+			await get_tree().process_frame
+		var town_doubt := _mission._crowd.suspicion
+		if show == "suspicion-known":
+			town_doubt.sign(Suspicion.UNNATURAL)
+		else:
+			town_doubt.sign(&"lightning")
+			town_doubt.sign(&"lightning")
+		for _frame in 1200:  # and the banner the sign raised
+			if not is_instance_valid(_mission._hud) or _mission._hud.banners().is_empty():
+				break
+			await get_tree().process_frame
 	if "--capture" in args:
 		# A second for anything behind the screen to settle, then one frame to disk. This is how each screen
 		# task shows its work: SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture

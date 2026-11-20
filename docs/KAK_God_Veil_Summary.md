@@ -86,6 +86,22 @@ watch, and the second household waits for the chain or 2:20 with nothing to answ
 passing it needs a change to the Hunt's pacing or a Veil play not yet found. No power, mission or bar was changed. "Before" is the last gate recorded in docs/KAK_God_T1_Routes_Summary.md and
 docs/KAK_God_P5_Summary.md; the Hunts' third key then was Tsunami Breaker or Nuclear Nova, which the Veil tree no longer reaches.
 
+## Reference rows
+
+113 of the 508 reference rows were re-recorded (commit "test: re-record the 113 reference rows that cast a Veil power"); 395 are
+unchanged. Each moved because its scripted night casts a Veil power (Silent Doom or Blight). Name patterns: `<mission>_play_*` and
+`<mission>_b_play_*` for the Tier 1 nights, `<mission>_toll_*` for the toll nights, `hunt_play_*`, `god_veil_<mission>_play_*`,
+`{first_taste,hide_faithful,silence_witness,expel_inquisitor,break_hunt,face_halcyon}_veil_play_*`, and the `capital_*` play, b_play
+and toll rows of the same missions (see `git show` for the exact rows). No row of a family that casts no Veil power moved (336 rows
+in 122 families, the `none` cases, the other gods' rows, the calm/fire/rite/soldiers/digest/crowd rows among them).
+
+- **Lost rows.** Four recorded rows are losses: warning_toll_3, flame_toll_3, prayers_play_2, prayers_b_play_3. All four were
+  losses on the base (acb82b96, before the Veil build) with the same reason (dawn, gaze, gaze, gaze); no win turned into a loss.
+- **Families that now sit outside the gate bands** (recorded all the same; their rows cast a Veil power; gates were not run, the
+  medians are those of the three recorded rows): route a (180-240 s) heart 170.4, lamb 175.8, ringers 177.3, tax 172.2, procession
+  (2 wins of 3, median 390.0); route b (150-270 s) flame_b 129.7 (2 wins); capital: capital_lamb_play 246.4; night_b has no win
+  (0 of 3, timeout; ruled DM-side before). Prayers' route b has no floor and passes. Toll families are reported only.
+
 ## What is left
 
 - **Levels 2-5** and their level-5 twists for all ten powers (only level 1 is built; the skill tree shows level 1).
@@ -107,5 +123,10 @@ docs/KAK_God_P5_Summary.md; the Hunts' third key then was Tsunami Breaker or Nuc
   - The seven new cues were measured (each within 3 LU over the quiet floor, VD1) but nobody has listened to them in play.
   - The dusk's own look (does it read at a glance where the dark is?) and the `LIGHT` / `DARK` ring tag have only been seen in
     captures.
+- **Gate bands (Reference rows above):** these would fail `tools/dev/gate.sh` now (times of seeds 1/2/3, s): heart_play 161.3 /
+  170.4 / 173.8 (median 170.4, floor 180); lamb_play 208.0 / 175.8 / 173.1 (175.8); ringers_play 177.3 / 193.6 / 169.6 (177.3);
+  tax_play 172.2 / 207.8 / 157.8 (172.2); procession_play lost / 390.0 / 390.0 (2 wins, median 390.0, ceiling 240);
+  flame_b_play 126.0 / 133.4 / lost (129.7, B floor 150); capital_lamb_play 286.7 / 218.2 / 246.4 (246.4, ceiling 240);
+  night_b_play lost 405.5 / 357.2 / 315.2 (0 wins; timeouts, DM-side before). The idle stretch was not measured here.
 - **Landing.** The whole suite, the reference rows (the Veil-casting rows re-recorded), FLOW on a quiet machine, and the landing on
   `feat/god-progression` wait for their own steps and for your word.

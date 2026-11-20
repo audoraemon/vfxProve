@@ -318,3 +318,6 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   stand (motes at the spot, then the take). The code is what is true: the summary, the power book's shape line and the effect's
   comments now say "fade" (no walk was built). VF1 and VC9 corrected above; EnvironmentField's batch-remove comment says why a skipped
   closing reindex() is safe.
+- VH1 (reference rows, Task 13b): the 113 moved rows are recorded as the controller's run of 1f6b11c0 gave them (cbae059f differs only
+  in a no-city fallback no real town takes). A row that moved but whose family would now miss its gate band is recorded all the same
+  (it casts a Veil power); the bands are not repaired here (see the Summary's "Reference rows" and "What is left").

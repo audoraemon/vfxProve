@@ -2,9 +2,9 @@
 capital_tax_none_1	--scenario=tax --case=none --seed=1 --city=capital	-721531918
 capital_tax_none_2	--scenario=tax --case=none --seed=2 --city=capital	-972733885
 capital_tax_none_3	--scenario=tax --case=none --seed=3 --city=capital	-326975882
-capital_tax_play_1	--scenario=tax --case=play --seed=1 --city=capital	-333759974
+capital_tax_play_1	--scenario=tax --case=play --seed=1 --city=capital	-84357965
 capital_tax_play_2	--scenario=tax --case=play --seed=2 --city=capital	-209546056
-capital_tax_play_3	--scenario=tax --case=play --seed=3 --city=capital	-998560183
+capital_tax_play_3	--scenario=tax --case=play --seed=3 --city=capital	-193619932
 capital_tax_b_play_1	--scenario=tax --case=play --route=b --seed=1 --city=capital	-593917438
 capital_tax_b_play_2	--scenario=tax --case=play --route=b --seed=2 --city=capital	-355820785
 capital_tax_b_play_3	--scenario=tax --case=play --route=b --seed=3 --city=capital	-538464211

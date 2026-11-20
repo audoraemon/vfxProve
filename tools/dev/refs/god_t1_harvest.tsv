@@ -6,9 +6,9 @@ god_ruin_harvest_play_3	--scenario=harvest --case=play --seed=3 --god=ruin:1	390
 god_death_harvest_play_1	--scenario=harvest --case=play --seed=1 --god=death:1	-142812922
 god_death_harvest_play_2	--scenario=harvest --case=play --seed=2 --god=death:1	524393915
 god_death_harvest_play_3	--scenario=harvest --case=play --seed=3 --god=death:1	143826188
-god_veil_harvest_play_1	--scenario=harvest --case=play --seed=1 --god=veil:1	659601782
-god_veil_harvest_play_2	--scenario=harvest --case=play --seed=2 --god=veil:1	546566372
-god_veil_harvest_play_3	--scenario=harvest --case=play --seed=3 --god=veil:1	-37383284
+god_veil_harvest_play_1	--scenario=harvest --case=play --seed=1 --god=veil:1	-898410546
+god_veil_harvest_play_2	--scenario=harvest --case=play --seed=2 --god=veil:1	269380126
+god_veil_harvest_play_3	--scenario=harvest --case=play --seed=3 --god=veil:1	-25703124
 god_passage_harvest_play_1	--scenario=harvest --case=play --seed=1 --god=passage:1	392758947
 god_passage_harvest_play_2	--scenario=harvest --case=play --seed=2 --god=passage:1	-576752664
 god_passage_harvest_play_3	--scenario=harvest --case=play --seed=3 --god=passage:1	134103718

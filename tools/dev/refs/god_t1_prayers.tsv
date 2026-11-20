@@ -5,9 +5,9 @@ god_ruin_prayers_play_3	--scenario=prayers --case=play --god=ruin:1 --seed=3	-80
 god_death_prayers_play_1	--scenario=prayers --case=play --god=death:1 --seed=1	-588496413
 god_death_prayers_play_2	--scenario=prayers --case=play --god=death:1 --seed=2	817885735
 god_death_prayers_play_3	--scenario=prayers --case=play --god=death:1 --seed=3	-208030890
-god_veil_prayers_play_1	--scenario=prayers --case=play --god=veil:1 --seed=1	-901602410
-god_veil_prayers_play_2	--scenario=prayers --case=play --god=veil:1 --seed=2	-954333196
-god_veil_prayers_play_3	--scenario=prayers --case=play --god=veil:1 --seed=3	363121272
+god_veil_prayers_play_1	--scenario=prayers --case=play --god=veil:1 --seed=1	547680886
+god_veil_prayers_play_2	--scenario=prayers --case=play --god=veil:1 --seed=2	-335626050
+god_veil_prayers_play_3	--scenario=prayers --case=play --god=veil:1 --seed=3	-817652094
 god_passage_prayers_play_1	--scenario=prayers --case=play --god=passage:1 --seed=1	-416009958
 god_passage_prayers_play_2	--scenario=prayers --case=play --god=passage:1 --seed=2	-796666758
 god_passage_prayers_play_3	--scenario=prayers --case=play --god=passage:1 --seed=3	660390506

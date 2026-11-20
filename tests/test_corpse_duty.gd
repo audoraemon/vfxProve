@@ -32,6 +32,13 @@ static func run(t) -> void:
 	_pulled_by_guard(t)
 	_lapse_ends(t)
 	_capital_corpse(t)
+	_reported_once(t)
+	_silent_find(t)
+	_open_job_lets_go(t)
+	_taken_before_lift(t)
+	_countdown_walk(t)
+	_corps_pair_none(t)
+	_near_tie(t)
 
 
 ## A town with the ledger on as Rules would leave it.
@@ -457,6 +464,7 @@ static func _lift_takes(t) -> void:
 	_arrive(job, job.data.carry_spots)
 	_run_for(crowd, 0.2)
 	t.check(job.data.phase == CorpseDuty.LAY, "at the spot the body is laid down")
+	t.check(not job.data.carrying, "from the start of the lay-down the men are free to be pulled")
 	_run_for(crowd, DummyEnemy.DEATH_FADE + 0.1)
 	t.check(not crowd.guard_jobs.on_job(pair[0]) and not crowd.guard_jobs.on_job(pair[1]) and _live(crowd).is_empty(),
 		"then both go back to their posts and the job is over")
@@ -599,3 +607,156 @@ static func _capital_corpse(t) -> void:
 	(b.world as Node).free()
 	(b.town as Node).free()
 	City.use(&"aldermere")
+
+
+## Steps until `rem` is off the ledger (lifted), at most `frames`; whether it was.
+static func _until_lifted(crowd: Crowd, rem: Remains.Remain, frames := 600) -> bool:
+	for i in frames:
+		if not crowd.remains.holds(rem):
+			return true
+		_step(crowd)
+	return not crowd.remains.holds(rem)
+
+
+## A body dropped back and found again adds no second incident and no second alarm, and is still lifted.
+static func _reported_once(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var pair := _pair(crowd)
+	var rem := _kill(made, _far(pair, 3.5))
+	var banners := _banners(crowd)
+	var job := _until_job(crowd)
+	if job == null:
+		t.check(false, "a job")
+		_done(made)
+		return
+	var d := AlarmManager.district_of(rem.pos)
+	_arrive_now(job)
+	while banners.is_empty():
+		_step(crowd)
+	t.check(rem.reported and rem.counted, "the first find marks the body reported and counted")
+	var events := int(crowd.alarms._events.get(d, 0))
+	var alarm := crowd.alarm
+	job.crew[0].confuse(1.0)
+	_step(crowd)
+	t.check(crowd.remains.holds(rem), "(dropped back on the ledger)")
+	_run_for(crowd, 3.0)
+	var again := _until_job(crowd, 8.0)
+	t.check(again != null, "the pair comes back to the body")
+	if again != null:
+		_arrive_now(again)
+		t.check(_until_lifted(crowd, rem), "it is lifted again")
+	t.check(int(crowd.alarms._events.get(d, 0)) == events and is_equal_approx(crowd.alarm, alarm) and banners.size() == 1,
+		"found again: no second incident, no second alarm, no second banner")
+	_done(made)
+
+
+## A find while the town is hushed, or on veiled ground, reports nothing; the body is still lifted.
+static func _silent_find(t) -> void:
+	for mode in ["hush", "veil"]:
+		var made := _world()
+		var crowd: Crowd = made[0]
+		var pair := _pair(crowd)
+		var rem := _kill(made, _far(pair, 3.5))
+		var banners := _banners(crowd)
+		var job := _until_job(crowd)
+		if job == null:
+			t.check(false, "a job (%s)" % mode)
+			_done(made)
+			continue
+		var d := AlarmManager.district_of(rem.pos)
+		var events := int(crowd.alarms._events.get(d, 0))
+		var alarm := crowd.alarm
+		_arrive_now(job)
+		if mode == "hush":
+			crowd.hush(60.0)
+		else:
+			crowd.veil(rem.pos, 3.0, 60.0)
+		t.check(_until_lifted(crowd, rem), "(%s) the body is still lifted" % mode)
+		t.check(banners.is_empty() and int(crowd.alarms._events.get(d, 0)) == events and is_equal_approx(crowd.alarm, alarm)
+			and not rem.reported, "(%s) nothing is reported: no banner, incident or alarm" % mode)
+		_done(made)
+
+
+## An open job whose man is taken elsewhere ends, and the body is free for the next pair.
+static func _open_job_lets_go(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var pair := _pair(crowd)
+	crowd.mission_holds.append(func(p: Person) -> bool: return p.soldier and p != pair[0] and p != pair[1])
+	_kill(made, _far(pair, 3.5))
+	_run_for(crowd, 1.2)
+	t.check(_live(crowd).size() == 1 and _live(crowd)[0].crew.is_empty(), "(the job waits open: the pair is the group's only free men)")
+	var gone := pair[1]
+	crowd.mission_holds.append(func(p: Person) -> bool: return p == gone)
+	_run_for(crowd, 1.2)
+	t.check(_live(crowd).is_empty(), "a man of the pair taken elsewhere: the open job ends")
+	_done(made)
+
+
+## A Death power taking the body between assignment and the lift: the job ends, the tag goes.
+static func _taken_before_lift(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var pair := _pair(crowd)
+	var rem := _kill(made, _far(pair, 3.5))
+	var banners := _banners(crowd)
+	var job := _until_job(crowd)
+	if job == null:
+		t.check(false, "a job")
+		_done(made)
+		return
+	crowd.remains.take(rem)
+	_run_for(crowd, 1.2)
+	t.check(_live(crowd).is_empty() and _labels(crowd).is_empty() and banners.is_empty(), "the body used elsewhere: no job, no tag, no find")
+	_done(made)
+
+
+## FOUND IN n never rises while the pair really walks to the body.
+static func _countdown_walk(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var pair := _pair(crowd)
+	_kill(made, _far(pair, 3.5))
+	var job := _until_job(crowd)
+	if job == null:
+		t.check(false, "a job")
+		_done(made)
+		return
+	var seen: Array[int] = []
+	for i in 600:
+		if i % 15 == 0:
+			for l in _labels(crowd):
+				if l.begins_with("FOUND IN "):
+					seen.append(int(l.trim_prefix("FOUND IN ")))
+		_step(crowd)
+	var steady := seen.size() >= 4
+	for i in range(1, seen.size()):
+		steady = steady and seen[i] <= seen[i - 1]
+	t.check(steady, "walking there, FOUND IN n never rises: %s" % str(seen))
+	_done(made)
+
+
+## A beat with a corps man in it posts no job.
+static func _corps_pair_none(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var pair := _pair(crowd)
+	pair[1].corps = Person.Corps.ESCORT
+	_kill(made, _far(pair, 3.5))
+	_run_for(crowd, 1.2)
+	t.check(_live(crowd).is_empty(), "a beat with a corps man in it: no corpse job")
+	_done(made)
+
+
+## Two bodies as near: the older is first.
+static func _near_tie(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var at := Vector2(-20.0, -20.0)
+	var older := _kill(made, at + Vector2(1.0, 0.0))
+	crowd.remains.step(1.0)
+	var newer := _kill(made, at + Vector2(-1.0, 0.0))
+	var got := crowd.remains.near(at, 3.0)
+	t.check(got.size() == 2 and got[0] == older and got[1] == newer, "Remains.near(): a tie in distance goes to the older body")
+	_done(made)

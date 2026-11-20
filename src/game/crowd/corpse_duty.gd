@@ -22,8 +22,10 @@ const BANNER := "A BODY IS FOUND"
 const COLOUR := Color(0.86, 0.72, 0.4)
 ## The two carriers walk this far apart across their way.
 const CARRIER_APART := 0.25
-## Seconds a pair may spend walking (to the body, then with it) before the job gives up.
+## Seconds a pair may spend walking to the body before the job gives up.
 const WALK_LIMIT := 40.0
+## Seconds a pair may carry before it lays the body down where it stands.
+const CARRY_LIMIT := 12.0
 ## The phases of a job (job.data.phase). `data.carrying` is true in CARRY and LAY (GuardJobs.pullable() reads it).
 enum { WALK, INSPECT_PHASE, CARRY, LAY }
 
@@ -50,7 +52,9 @@ func found_in(job: GuardJobs.Job) -> int:
 		return 0
 	var insp: Person = d.inspector
 	var r: Remains.Remain = d.remain
-	return ceili(insp.ground_pos.distance_to(r.pos) / maxf(insp.walk_speed, 0.1) + float(d.left))
+	var n := mini(ceili(insp.ground_pos.distance_to(r.pos) / maxf(insp.walk_speed, 0.1) + float(d.left)), int(d.shown))
+	d.shown = n  # what the tag has said, never to be said higher
+	return n
 
 
 ## Once a second: each beat pair standing free that sees an unhidden, unassigned body gets a job on it (one body per pair, one
@@ -74,7 +78,7 @@ func post_jobs() -> void:
 			continue
 		board.post(GuardJobs.Kind.CORPSE, r.pos, 2, INF, {"remain": r, "pair": men, "phase": WALK, "carrying": false,
 				"begun": false, "over": false, "left": INSPECT, "walk_left": WALK_LIMIT, "taken_left": 0.0, "fade_left": 0.0,
-				"inspector": null, "watcher": null, "spot": Vector2.INF, "to": Vector2.INF, "carry_spots": []})
+				"inspector": null, "watcher": null, "shown": 1000000, "spot": Vector2.INF, "to": Vector2.INF, "carry_spots": []})
 
 
 func may_take(job: GuardJobs.Job, p: Person) -> bool:
@@ -112,6 +116,11 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 		for p in job.crew.duplicate():
 			board.drop(job, p)
 		return
+	if not is_instance_valid(d.inspector) or not is_instance_valid(d.watcher):
+		if int(d.phase) == CARRY:
+			_put_back(job)
+		_end(job)
+		return
 	if int(d.phase) >= CARRY:
 		d.taken_left = maxf(float(d.taken_left) - delta, 0.0)
 	match int(d.phase):
@@ -135,8 +144,8 @@ func done(job: GuardJobs.Job) -> bool:
 	if not crowd.remains.holds(r) or r.hidden:
 		return true
 	for p in d.pair:
-		if not is_instance_valid(p) or not p.is_alive():
-			return true
+		if not is_instance_valid(p) or not p.is_alive() or not board.is_free(p):
+			return true  # a man taken elsewhere: the body is free for the next pair
 	return false
 
 
@@ -269,11 +278,15 @@ func _found(job: GuardJobs.Job) -> void:
 	var insp: Person = d.inspector
 	insp.crouching = false
 	_crouched.erase(insp)
-	if crowd.alarms.incident(r.pos):
-		crowd._investigate(r.pos)
-	if not r.counted:
-		crowd._hear_alarm(Crowd.ALARM_KILL)
-	crowd.duty_event.emit(GuardJobs.Kind.CORPSE, BANNER, r.pos)
+	if not r.reported and not crowd.is_hushed() and not crowd.is_hushed_at(r.pos) and not crowd.is_veiled(r.pos):
+		# Reported once only; a hushed or veiled find reports nothing (the player's counters), though the body is still lifted.
+		r.reported = true
+		if crowd.alarms.incident(r.pos):
+			crowd._investigate(r.pos)
+		if not r.counted:
+			crowd._hear_alarm(Crowd.ALARM_KILL)
+		r.counted = true
+		crowd.duty_event.emit(GuardJobs.Kind.CORPSE, BANNER, r.pos)
 	crowd.remains.take(r)
 	var to := _lay_spot(r.pos)
 	var dir := to - r.pos
@@ -289,7 +302,7 @@ func _found(job: GuardJobs.Job) -> void:
 	d.phase = CARRY
 	d.carrying = true
 	d.taken_left = TAKEN_SHOW
-	d.walk_left = WALK_LIMIT
+	d.walk_left = CARRY_LIMIT
 
 
 ## Carrying: a held carrier drops the body where they are; both at their spots (or too long on the way) lay it down.
@@ -307,6 +320,7 @@ func _carry(job: GuardJobs.Job, delta: float) -> void:
 		there = there and (job.crew[i] as Person).ground_pos.distance_to(d.carry_spots[i]) <= Person.GOAL_REACH * 2.0
 	if there or float(d.walk_left) <= 0.0:
 		d.phase = LAY
+		d.carrying = false  # laid down: the men may be pulled again
 		d.fade_left = DummyEnemy.DEATH_FADE
 
 
@@ -334,7 +348,8 @@ func _mid(job: GuardJobs.Job) -> Vector2:
 	return at / float(n) if n > 0 else (job.data.remain as Remains.Remain).pos
 
 
-## The open cell centre nearest `at` within CARRY_REACH that is on no road (ties: the lowest y, then x), else `at` itself.
+## The open cell centre nearest `at` within CARRY_REACH that is on no road and can be walked to (ties: the lowest y, then x),
+## else `at` itself.
 func _lay_spot(at: Vector2) -> Vector2:
 	var grid := crowd._grid
 	var roads: Array = City.current().roads()
@@ -353,7 +368,7 @@ func _lay_spot(at: Vector2) -> Vector2:
 				if road.has_point(g):
 					on_road = true
 					break
-			if not on_road:
+			if not on_road and grid.reaches(at, g):
 				best = g
 				best_d = d
 	return best

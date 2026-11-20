@@ -38,6 +38,8 @@ class Remain:
 	## Whether the town heard of the death (a kill that reached the alarm, not a hushed or veiled one): a body found later adds the
 	## alarm it never gave only when this is false (soldier duties).
 	var counted := false
+	## Whether a beat pair has reported it (a body is reported once, however often it is dropped and found).
+	var reported := false
 	var body: WeakRef
 
 
@@ -171,8 +173,15 @@ func near(at: Vector2, r: float) -> Array[Remain]:
 	for b in _list:
 		if not b.hidden and b.pos.distance_to(at) <= r:
 			out.append(b)
+	var order := {}
+	for i in _list.size():
+		order[_list[i]] = i
 	out.sort_custom(func(a: Remain, b: Remain) -> bool:
-		return a.pos.distance_squared_to(at) < b.pos.distance_squared_to(at))
+		var da := a.pos.distance_squared_to(at)
+		var db := b.pos.distance_squared_to(at)
+		if da != db:
+			return da < db
+		return order[a] < order[b] if a.born == b.born else a.born < b.born)
 	return out
 
 

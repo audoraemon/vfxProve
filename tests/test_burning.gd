@@ -344,7 +344,9 @@ static func _runs_fearless(t, made: Array) -> void:
 	w.mind = Person.Mind.CALM
 	w.fearless_left = 30.0
 	_advance(crowd, Burning.SPREAD_EVERY + DT)
-	t.check(w.mind != Person.Mind.PANIC, "a fearless witness is not frightened by the sight (mind %d)" % w.mind)
+	t.check(w.mind != Person.Mind.PANIC and w.flinching(),
+		"a fearless witness saw it, flinched, and was not frightened by the sight (mind %d, flinching %s)" % [w.mind, w.flinching()]
+	)
 	crowd.burning.clear()
 
 

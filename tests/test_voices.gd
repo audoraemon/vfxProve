@@ -65,6 +65,20 @@ static func run(t) -> void:
 		and Music.calm_cue(false, true) == &"music_capital_day" and Music.calm_cue(true, true) == &"music_town_night",
 		"the calm piece: the town by day, by night (the Capital's too), the Capital's own by day")
 
+	# God's Paths: the temple piece, and over it one layer per school whose length divides the piece's, so every layer
+	# stays in step with it; only the picked god's layer sounds, and none away from the god select.
+	var base := Sfx.load_stream(Music.PATHS) if Sfx.CATALOG.has(Music.PATHS) else null
+	t.check(base != null and base.get_length() > 30.0 and bool(Sfx.CATALOG[Music.PATHS].get("loop", false)), "the paths piece is a long loop")
+	for type: String in GodTree.RING:
+		var cue: StringName = Music.PATH_LAYERS.get(type, &"")
+		var s := Sfx.load_stream(cue) if Sfx.CATALOG.has(cue) else null
+		var fits := s != null and base != null and bool(Sfx.CATALOG[cue].get("loop", false)) \
+			and int(round(base.get_length() * 44100.0)) % int(round(s.get_length() * 44100.0)) == 0
+		t.check(fits, "%s has its paths layer %s, a loop that divides the piece (%s)" % [type, cue, s.get_length() if s != null else -1.0])
+	var on := Music.layer_gains(&"paths", "death")
+	t.check(on["death"] == 1.0 and on.values().count(1.0) == 1, "on God's Paths only the picked god's layer plays (%s)" % [on])
+	t.check(Music.layer_gains(&"theme", "death").values().count(0.0) == GodTree.RING.size(), "and none plays away from it")
+
 	# The layers: a standing city hears its calm piece only; as it slips the tension comes in and the calm goes; then
 	# the battle's base, the drums from a third of the way down, the lead from two thirds.
 	var calm := Music.stem_gains(0.0)

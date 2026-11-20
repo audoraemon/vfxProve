@@ -1,10 +1,10 @@
 {
- "hash": "565d088d35d8bd1d",
- "updated": "2026-11-20T07:17:09+07:00",
+ "hash": "32c8255d9a207894",
+ "updated": "2026-11-20T12:46:36+07:00",
  "changes": {
-  "date": "<t:1795133829:f>",
+  "date": "<t:1795153596:f>",
   "items": [
-   "New: Remove dithered contact shadows (black spots round sprites)"
+   "New: Smite drag-to-widen + Ember sets people alight, Fire Trail"
   ]
  },
  "snapshot": {
@@ -939,6 +939,16 @@
     "branch": "feat/Develop-Main",
     "updated": "2026-11-17",
     "order": 221
+   },
+   "ruin-smite-ember-adjust": {
+    "title": "Smite drag-to-widen + Ember sets people alight, Fire Trail",
+    "status": "done",
+    "area": "Abilities",
+    "version": "v0.12.x",
+    "needs_you": true,
+    "branch": "god/ruin-adjust",
+    "updated": "2026-11-20",
+    "order": 305
    },
    "schism-tumult": {
     "title": "Divine Schism TUMULT mode: mad, frozen or panicked for 25 s",
@@ -1878,64 +1888,48 @@
   "branches": [
    {
     "name": "god/veil-merge",
-    "ahead": 28,
-    "behind": 4,
+    "ahead": 32,
+    "behind": 15,
     "date": "2026-11-20",
-    "subject": "fix: drop Hunt 1's break-the-watch Doom (the retired idle lead); test VE2",
-    "pushed": false
-   },
-   {
-    "name": "clarity/fix",
-    "ahead": 18,
-    "behind": 4,
-    "date": "2026-11-20",
-    "subject": "docs: mission clarity summary, rulings and README (Mission clarity T9)",
+    "subject": "fix(veil): Evernight reads no Aldermere place for its night's ground",
     "pushed": false
    },
    {
     "name": "claude/lantern-campaign-spec",
-    "ahead": 18,
-    "behind": 4,
+    "ahead": 20,
+    "behind": 11,
     "date": "2026-11-20",
-    "subject": "docs: mission clarity summary, rulings and README (Mission clarity T9)",
+    "subject": "fix: mission clarity final-review wave (F1-F3, M1-M9)",
     "pushed": false
    },
    {
     "name": "feat/might-gauge",
-    "ahead": 15,
-    "behind": 4,
+    "ahead": 18,
+    "behind": 11,
     "date": "2026-11-20",
-    "subject": "test: Might gauge photographs (--show=bar-hidden, --show=bar-open)",
+    "subject": "test: track the route suite's uid",
+    "pushed": false
+   },
+   {
+    "name": "feat/god-chamber",
+    "ahead": 11,
+    "behind": 15,
+    "date": "2026-11-20",
+    "subject": "docs: World Map and Conquer Progress design (God's Chamber step 8)",
     "pushed": false
    },
    {
     "name": "god/veil-powers",
     "ahead": 6,
-    "behind": 4,
+    "behind": 15,
     "date": "2026-11-20",
     "subject": "fix: Veil hooks review -- a shadow seizes, finds, reports and delivers nothing",
     "pushed": false
    },
    {
-    "name": "god/ruin-adjust",
-    "ahead": 10,
-    "behind": 4,
-    "date": "2026-11-19",
-    "subject": "dev: refs re-recorded after the burning man runs to the end",
-    "pushed": false
-   },
-   {
-    "name": "feat/god-chamber",
-    "ahead": 9,
-    "behind": 4,
-    "date": "2026-11-19",
-    "subject": "fix: the Chamber at ultrawide and 4:3 (Title reachable by mouse, bar at the screen's top edge), final review minors",
-    "pushed": false
-   },
-   {
     "name": "feat/wish-clarity",
     "ahead": 1,
-    "behind": 4,
+    "behind": 15,
     "date": "2026-11-19",
     "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
     "pushed": false
@@ -1943,7 +1937,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 104,
+    "behind": 115,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -1951,7 +1945,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 479,
+    "behind": 490,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -1959,7 +1953,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 977,
+    "behind": 988,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -1967,7 +1961,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 935,
+    "behind": 946,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -1976,7 +1970,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-19",
-   "subject": "feat: remove the dithered contact shadows round building bases and under trees"
+   "subject": "dev: refs re-recorded after the burning man runs to the end"
   }
  }
 }

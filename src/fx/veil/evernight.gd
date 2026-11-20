@@ -42,6 +42,8 @@ const TORCH_GLOW := 1.3
 const HUDDLE := 1.8
 ## The cells of loneliest()'s neighbour search.
 const CELL := 4.0
+## With no city map and no field bounds, the night's ground is a square this far round the click on each side.
+const BARE_HALF := 30.0
 
 ## This cast's night: 60 s, or 90 in a NIGHT mission; a take every take_every s; dawn begins at t_dawn.
 var night_time := 60.0
@@ -191,9 +193,15 @@ func _build() -> void:
 		track(wash, parent)
 
 
-static func _map() -> Rect2:
+## The ground the night covers: the active city's map; with none (a CityDef with no map), the field's bounds, as Eminent Domain and
+## Tempest read them; with no field either (a bare context), a square of BARE_HALF round the click.
+func _map() -> Rect2:
 	var m := City.current().map()
-	return m if m.size != Vector2.ZERO else TownLayout.MAP
+	if m.size != Vector2.ZERO:
+		return m
+	if ctx != null and ctx.field != null and ctx.field.bounds.size != Vector2.ZERO:
+		return ctx.field.bounds
+	return Rect2(origin - Vector2(BARE_HALF, BARE_HALF), Vector2(BARE_HALF, BARE_HALF) * 2.0)
 
 
 ## The night falls everywhere: the dark, the sight, the veil, the haste; the torches are lit and the calm walk to them.

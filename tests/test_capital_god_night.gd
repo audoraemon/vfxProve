@@ -172,8 +172,12 @@ static func _capital_wishes(t) -> void:
 	City.use(&"capital")
 	var heard := 0
 	var bad := 0
+	var tiers := PackedInt32Array()
 	for tier in range(1, 6):
-		var id := String(_hosted(1)[0])
+		if _hosted(tier).is_empty():
+			continue  # the Capital hosts nothing of this tier (dim on the map)
+		tiers.append(tier)
+		var id := String(_hosted(tier)[0])
 		var def := MissionBook.in_city(TierBook.board(id, null, tier), &"capital")
 		var s := _world(def)
 		var descent := Descent.new().setup(def, 1)
@@ -193,7 +197,7 @@ static func _capital_wishes(t) -> void:
 			descent.release()
 		_done(s)
 	City.use(&"aldermere")
-	t.check(heard > 0, "the Capital's nights hear wishes (%d)" % heard)
+	t.check(tiers.has(1) and heard > 0, "the Capital's nights hear wishes, tiers tried: %s (%d heard)" % [tiers, heard])
 	t.check(bad == 0, "every heard wish's people live in the crowd and its places stand in the town (%d bad)" % bad)
 
 

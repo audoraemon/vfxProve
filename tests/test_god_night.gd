@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_mission_hooks(t)
 	_bank_conquest(t)
 	_bank_no_conquest(t)
+	_fill_paid_to_the_clamp(t)
 	_faith_not_doubled(t)
 	_hunt_no_conquest(t)
 	_forfeit_alive(t)
@@ -287,6 +288,27 @@ static func _faith_not_doubled(t) -> void:
 	o2.descend["main"] = true
 	var r2 := GodNight.bank(s2, "tax_collector", PackedStringArray(["smite"]), o2)
 	t.check(int(r2.faith) == 40 * GodSlot.FAITH_PER_BELIEVER, "with no conquest entry, Faith is the earned alone (%s)" % [r2.faith])
+
+
+## Final review 6: Faith for a fill is paid for the converts actually banked beyond the named ones, not the fill asked for: a town one
+## short of full pays for one convert although three were asked.
+static func _fill_paid_to_the_clamp(t) -> void:
+	var pop := Conquest.population("aldermere")
+	var s := _slot()
+	var out := _outcome(true, 0, 30)
+	out.descend["main"] = true
+	out["conquest"] = {"town": "aldermere", "carried_alive": pop - 1, "named": 0, "fill": 3, "lost": 0}
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(int(res.conquest.count) == pop, "setup: the town is filled to its people (%s)" % [res.conquest])
+	t.check(int(res.faith) == (30 + 1) * GodSlot.FAITH_PER_BELIEVER + Conquest.CONQUER_FAITH,
+		"a fill of 3 into a town one short pays for 1 convert (%s)" % [res.faith])
+	var s2 := _slot()
+	var o2 := _outcome(true, 0, 30)
+	o2.descend["main"] = true
+	o2["conquest"] = {"town": "aldermere", "carried_alive": pop - 2, "named": 1, "fill": 3, "lost": 0}
+	var r2 := GodNight.bank(s2, "tax_collector", PackedStringArray(["smite"]), o2)
+	t.check(int(r2.faith) == (30 + 1) * GodSlot.FAITH_PER_BELIEVER + Conquest.CONQUER_FAITH,
+		"the named take their place first: pop-2 carried, 1 named, fill 3 pays 1 (%s)" % [r2.faith])
 
 
 ## A conquered town pays Faith on a banked ordinary night, over what the night earned and the fill paid.

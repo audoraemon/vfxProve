@@ -775,6 +775,12 @@ func all_tags(with_believers := true) -> Array[MapTag]:
 	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn
 
 
+## The tags the covered-outline layer reads (TagOutlines.refresh): the mission's own, never the believer pips -- they would take its
+## slots in tag order and colour a person gold.
+func outline_tags() -> Array[MapTag]:
+	return all_tags(false)
+
+
 ## The tags the legend lists: the map's, without the believer view's gold marks.
 func legend_tags() -> Array[MapTag]:
 	return all_tags(false)
@@ -1460,8 +1466,11 @@ func _signature() -> String:
 	out += "|%s|%d" % [_view(), UiScale.k()]  # a resize or a new scale lays everything out again
 	if chain_shown():
 		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
-	if believer_view and _aim != null:  # the aim's count follows the aim: its words and where they are drawn
-		out += "|%s|%s" % [_aim.believers_text(), (_world_xf() * Iso.ground_to_screen(_aim.aim_at())).round()]
+	if believer_view and _aim != null:  # the aim's count follows the aim: its words and (only while there are words) where they are drawn
+		var believers := _aim.believers_text()
+		out += "|" + believers
+		if believers != "":
+			out += "|%s" % (_world_xf() * Iso.ground_to_screen(_aim.aim_at())).round()
 	out += "|" + "/".join(_rite_lines)
 	for i in _rules.loadout.size():
 		out += "%s%d%s%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else "",

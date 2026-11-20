@@ -30,7 +30,10 @@ func setup(slot: GodSlot, p_dev := false) -> WorldMap:
 	_slot = slot
 	_dev = p_dev
 	status = HubStatus.new(slot)
-	selected = slot.last_town if WorldLayout.is_town(slot.last_town) and Conquest.is_open(slot, slot.last_town) else Conquest.HOME
+	# The town last played, when it is open and a night is drawn there (a Hunt due, or a tier it hosts nothing of, would only buzz).
+	selected = Conquest.HOME
+	if WorldLayout.is_town(slot.last_town) and Conquest.is_open(slot, slot.last_town) and GodNight.draw(slot, slot.last_town) != "":
+		selected = slot.last_town
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -42,16 +45,16 @@ func setup(slot: GodSlot, p_dev := false) -> WorldMap:
 	return self
 
 
-## "sealed", "locked", "conquered", "dim" (open, but no night is drawn there) or "open".
+## "sealed", "locked", "dim" (open, but no night is drawn there; a conquered town too), "conquered" or "open".
 func spot_state(id: String) -> String:
 	if not WorldLayout.is_town(id):
 		return "sealed"
 	if not Conquest.is_open(_slot, id):
 		return "locked"
+	if GodNight.draw(_slot, id) == "":
+		return "dim"  # before "conquered" (spec 4.6): a conquered town with no night to go to is dim too
 	if Conquest.conquered(_slot, id):
 		return "conquered"
-	if GodNight.draw(_slot, id) == "":
-		return "dim"
 	return "open"
 
 
@@ -63,6 +66,7 @@ func select(id: String) -> bool:
 	if not selectable(id):
 		return false
 	selected = id
+	line = ""  # a refusal's words belong to the spot it was said of
 	_redraw()
 	return true
 
@@ -131,7 +135,7 @@ func info_lines(id: String) -> PackedStringArray:
 		_:
 			out.append("%d%%" % Conquest.percent_of(_slot, id))
 			out.append("%d / %d believers" % [Conquest.count_of(_slot, id), Conquest.population(id)])
-			if spot_state(id) == "conquered":
+			if Conquest.conquered(_slot, id):
 				out.append("Conquered")
 	return out
 
@@ -233,7 +237,7 @@ func _draw_spot(id: String) -> void:
 	_ui.draw_colored_polygon(diamond, col)
 	diamond.append(diamond[0])
 	_ui.draw_polyline(diamond, Color(0.0, 0.0, 0.0, 0.8), 1.0)
-	if state == "conquered":
+	if Conquest.conquered(_slot, id):
 		_ui.draw_arc(p, r + 3.0, 0.0, TAU, 20, UiTheme.COL_GOLD, 1.5)
 	var y := p.y + r + 3.0
 	if WorldLayout.is_town(id) and state != "locked":

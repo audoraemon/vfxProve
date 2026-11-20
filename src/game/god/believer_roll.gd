@@ -102,7 +102,8 @@ func _is_named(p: Variant) -> bool:
 	if not is_instance_valid(p):
 		return false
 	var c := p as Person
-	return c.is_alive() and c.profile != null and c.profile.faith == CitizenProfile.Faith.BELIEVER 		and not _ids.has(c.get_instance_id())
+	return (c.is_alive() and c.profile != null and c.profile.faith == CitizenProfile.Faith.BELIEVER
+			and not _ids.has(c.get_instance_id()))
 
 
 ## Believers not carried: living ones in the town (a granted wish's) plus any that got away alive.

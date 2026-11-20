@@ -21,6 +21,8 @@ static func run(t) -> void:
 	_fill_never_picks(t)
 	_fill_fewer(t)
 	_named(t)
+	_escaped_named(t)
+	_cast_steers_fill(t)
 	_report_counts(t)
 
 
@@ -389,6 +391,39 @@ static func _named(t) -> void:
 	t.check(roll.named() == 1, "a granted wisher is one named convert (%d)" % roll.named())
 	(s.field as EnemyField).kill(pool[0], &"test")
 	t.check(roll.named() == 0 and roll.lost == 1, "killed, none named and lost +1 (%d, %d)" % [roll.named(), roll.lost])
+	_done(s, roll)
+
+
+## Final review 9: a granted wisher (a believer who was not carried) who got away alive still counts as named.
+static func _escaped_named(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var pool := _plain(s, [])
+	var w := Wish.new()
+	w.wisher = pool[0]
+	w.grant()
+	roll.attach(s.rules)
+	t.check(roll.named() == 1, "setup: the granted wisher is named (%d)" % roll.named())
+	(s.crowd as Crowd).escape(pool[0])
+	t.check(roll.named() == 1 and roll.lost == 0, "escaped alive, it still counts as named (%d, lost %d)" % [roll.named(), roll.lost])
+	_done(s, roll)
+
+
+## Final review 9: a landing recorded from Rules.cast_made (a quiet power) steers the fill, as a danger landing does.
+static func _cast_steers_fill(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var pool := _plain(s, [])
+	var at := pool[pool.size() / 2]
+	roll.attach(s.rules)
+	(s.rules as Rules).cast_made.emit(0, "ember", at.ground_pos)
+	t.check(roll.landings.size() == 1 and roll.landings[0] == at.ground_pos, "the cast is the one landing (%s)" % [roll.landings])
+	var got := roll.pick_fill(3, [])
+	var d: Array = []
+	for p in got:
+		d.append(_dist(p, [at.ground_pos]))
+	t.check(got.size() == 3 and float(d[0]) == 0.0 and float(d[0]) <= float(d[1]) and float(d[1]) <= float(d[2]),
+		"the fill goes nearest the cast (%s)" % [d])
 	_done(s, roll)
 
 

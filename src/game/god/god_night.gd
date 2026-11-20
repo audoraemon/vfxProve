@@ -271,7 +271,9 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 		var roll: Variant = outcome.get("conquest", {})
 		if roll is Dictionary and not (roll as Dictionary).is_empty():
 			conquest = Conquest.bank(slot, roll, bool(d.get("main", false)))
-			faith += int(conquest.get("fill", 0)) * GodSlot.FAITH_PER_BELIEVER if bool(d.get("main", false)) else 0
+			if bool(d.get("main", false)):  # the fill pays for the converts actually banked beyond the named (the count clamps to the town)
+				var banked := int(conquest.get("count", 0)) - clampi(int(roll.get("carried_alive", 0)), 0, Conquest.population(str(roll.get("town", "")))) 					- int(conquest.get("named", 0))
+				faith += clampi(banked, 0, int(conquest.get("fill", 0))) * GodSlot.FAITH_PER_BELIEVER
 			conquer_faith = Conquest.bonus(slot)  # every conquered town pays, every ordinary night
 			faith += conquer_faith
 	slot.faith += faith

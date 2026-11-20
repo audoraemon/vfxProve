@@ -10,6 +10,8 @@ static func run(t) -> void:
 	_aim_count(t)
 	_toggle_key(t)
 	_all_tags_lead(t)
+	_outline_input(t)
+	_signature_quiet(t)
 	_legend_excludes(t)
 	_signature_follows(t)
 
@@ -171,7 +173,55 @@ static func _all_tags_lead(t) -> void:
 	var ok := all.size() >= mine.size() and not mine.is_empty()
 	for i in mine.size():
 		ok = ok and all[i].who == mine[i].who and all[i].color == Hud.BELIEVER_COL
-	t.check(ok, "all_tags() begins with the believer marks when the view is on")
+	t.check(ok, "all_tags() draws the believer marks first (under the mission's) when the view is on")
+	_done(s)
+
+
+## Final review 1: the covered-outline layer reads outline_tags(): the mission's own tags, never the believer pips (20+ of them would
+## take the 12 slots in tag order and colour a granted wisher gold). A mission's person keeps its place and colour with them present.
+static func _outline_input(t) -> void:
+	var s := _world()
+	var hud: Hud = s.hud
+	var folk: Array[Person] = []
+	for p in (s.crowd as Crowd).citizens:
+		if not p.soldier and p.profile != null:
+			folk.append(p)
+	for i in 24:
+		folk[i].profile.faith = CitizenProfile.Faith.BELIEVER
+	hud.believer_view = true
+	var all := hud.all_tags()
+	t.check(all.size() >= 24, "setup: 24 believer pips are on the map (%d)" % all.size())
+	var out: Array[MapTag] = hud.outline_tags()
+	var gold := 0
+	for m in out:
+		if m.color == Hud.BELIEVER_COL:
+			gold += 1
+	t.check(gold == 0 and out.size() == hud.legend_tags().size(), "outline_tags(): no believer pip, the mission's tags as they are (%d gold, %d)" % [gold, out.size()])
+	# a mission-tagged person ahead of the believers in the layer's input keeps its colour
+	var wisher := folk[30]
+	wisher.inside = false
+	wisher.drawn_upright = true
+	wisher.visible = true
+	var mine: Array[MapTag] = [MapTag.person(wisher, Color.RED, "WISH")]
+	mine.append_array(out)
+	var want := TagOutlines.wanted(mine)
+	t.check(not want.is_empty() and want[0][0] == wisher and want[0][1] == Color.RED, "its person is first, in its own colour")
+	_done(s)
+
+
+## Final review 7: with the view on and nothing to show, the aim's position is not in the signature (no redraw on every mouse move).
+static func _signature_quiet(t) -> void:
+	var s := _world()
+	var hud: Hud = s.hud
+	var aim: Targeting = s.aim
+	aim.pick(0)
+	aim._press = Vector2(10, 10)
+	hud.believer_view = true
+	aim.believer_view = true
+	t.check(aim.believers_text() == "", "setup: no believer inside the aim")
+	var a := hud._signature()
+	aim._press = Vector2(30, 30)
+	t.check(aim.believers_text() == "" and hud._signature() == a, "the aim moves over nothing: the signature stands")
 	_done(s)
 
 

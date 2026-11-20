@@ -16,6 +16,8 @@ static func run(t) -> void:
 	_blocked(t)
 	_dim_town(t)
 	_conquered_seal(t)
+	_starts_on_aldermere_when_nothing_draws(t)
+	_conquered_dim_and_line(t)
 	_window_sizes(t)
 	GodTree.dev_fill = false
 
@@ -231,6 +233,49 @@ static func _dim_town(t) -> void:
 	map2.free()
 
 
+## The first tier (2..5) the Capital hosts no mission of; 0 when there is none.
+static func _dim_tier() -> int:
+	for k in range(2, 6):
+		var hosts := false
+		for id in TierBook.missions(k):
+			hosts = hosts or MissionBook.hostable(id, City.by_id(&"capital"))
+		if not hosts:
+			return k
+	return 0
+
+
+## Final review 4: the last town is the Capital, but no night is drawn there (a tier it hosts nothing of): the map opens on Aldermere.
+static func _starts_on_aldermere_when_nothing_draws(t) -> void:
+	var k := _dim_tier()
+	var god := _open_both()
+	god.tier = k
+	god.last_town = "capital"
+	t.check(k > 0 and GodNight.draw(god, "capital") == "", "setup: nothing is drawn in the Capital at tier %d" % k)
+	var made := _make(god)
+	var map: WorldMap = made[0]
+	t.check(map.selected == "aldermere", "the last town draws nothing: the map starts on Aldermere (%s)" % map.selected)
+	map.free()
+
+
+## Final review 5: a conquered town that draws nothing is dim (spec 4.6), still marked Conquered on its plate; and a refusal's line goes
+## when the selection moves.
+static func _conquered_dim_and_line(t) -> void:
+	var god := _open_both()
+	god.tier = _dim_tier()
+	god.believers["capital"] = Conquest.population("capital")
+	var made := _make(god)
+	var map: WorldMap = made[0]
+	t.check(map.spot_state("capital") == "dim", "a conquered Capital that hosts nothing at this tier is dim (%s)" % map.spot_state("capital"))
+	t.check(Array(map.info_lines("capital")).has("Conquered"), "its plate still says Conquered (%s)" % [map.info_lines("capital")])
+	map.select("capital")
+	t.check(map.selected == "capital", "a dim town is selectable")
+	map.press_descend()
+	t.check(map.line == WorldMap.NO_NIGHT, "a refusal says so (%s)" % map.line)
+	map.select("aldermere")
+	t.check(map.line == "", "moving the selection clears the line (%s)" % map.line)
+	map.free()
+
+
 static func _conquered_seal(t) -> void:
 	var god := _slot()
 	god.believers["aldermere"] = Conquest.population("aldermere")
@@ -253,8 +298,14 @@ static func _window_sizes(t) -> void:
 		for id in WorldLayout.ids():
 			var r := WorldLayout.spot_rect(id)
 			t.check(not r.intersects(map.back_rect()) and not r.intersects(map.descend_rect()), "%s: the buttons stay off %s" % [area, id])
+		# the real path: the blocker's units (frame units scaled and offset), through its gui_input signal
+		var blocker := map._ui.get_parent() as Control
+		var f: float = map._ui.scale.x
+		blocker.gui_input.emit(_click(map._ui.position + WorldLayout.spot("capital").place * f))
+		t.check(map.selected == "capital", "%s: a click on the Capital through the blocker selects it (%s)" % [area, map.selected])
+		blocker.gui_input.emit(_click(map._ui.position + map.back_rect().get_center() * f))
+		t.check((made[1] as Array) == ["back"], "%s: a click on Back through the blocker emits back (%s)" % [area, made[1]])
 		map._on_gui_input(_click(WorldLayout.spot("capital").place))
-		t.check(map.selected == "capital", "%s: a click on the Capital selects it (%s)" % [area, map.selected])
 		map._on_gui_input(_click(WorldLayout.spot("aldermere").place))
 		t.check(map.selected == "aldermere", "%s: a click on Aldermere selects it (%s)" % [area, map.selected])
 		map.free()

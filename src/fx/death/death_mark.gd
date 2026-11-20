@@ -232,7 +232,7 @@ func _put_ledger_back() -> void:
 		var rem: Remains = ctx.crowd.remains
 		var holders := int(rem.get_meta(HOLDERS_META, 1)) - 1
 		rem.set_meta(HOLDERS_META, maxi(holders, 0))
-		if holders <= 0:
+		if holders <= 0 and not rem.always:
 			rem.enabled = false
 	_lit_ledger = false
 

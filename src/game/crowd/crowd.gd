@@ -144,6 +144,8 @@ var piles: PileManager
 var guard_jobs: GuardJobs
 ## The Citadel guard (a duty of the board's): forms at rally().
 var guard: CitadelGuard
+## Corpse duty (a duty of the board's): a beat pair inspects a body, reports it and carries it off the street.
+var corpses: CorpseDuty
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
 var mission_holds: Array[Callable] = []
 ## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
@@ -370,6 +372,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	guard_jobs = GuardJobs.new().setup(self)
 	guard = CitadelGuard.new().setup(guard_jobs, self) as CitadelGuard
 	guard_jobs.add_duty(guard)
+	corpses = CorpseDuty.new().setup(guard_jobs, self) as CorpseDuty
+	guard_jobs.add_duty(corpses)
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
@@ -2569,6 +2573,9 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if kind == &"doom":
 		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
 		return
+	var remain := remains.of_body(p) if remains != null else null
+	if remain != null:
+		remain.counted = not is_hushed()  # a hushed kill reaches here but raises no alarm: a body found later adds it
 	if not is_hushed() and alarms.incident(p.ground_pos):
 		_investigate(p.ground_pos)
 	_hear_alarm(ALARM_KILL)

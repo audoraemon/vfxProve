@@ -247,6 +247,8 @@ var hurrying := false
 ## The way a soldier faces standing at his anchor (a Citadel guard man in his rank, later a corpse watcher or a cordon end); INF
 ## for none. send_to_post() and hold_ground() clear it, so a caller sets it right after its send_to_post().
 var stand_face := Vector2.INF
+## Down on one knee over something (a corpse inspector): the stumble pose held on its last frame while he stands still.
+var crouching := false
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
 ## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
 ## the duty -- and not to his spawn post (_soldier_back()).
@@ -3167,6 +3169,9 @@ func _sprite_pose_code() -> int:
 	elif _stumble > 0.0 or mind == Mind.ASLEEP:
 		anim = 3
 		t = STUMBLE_SECONDS - _stumble if _stumble > 0.0 else STUMBLE_SECONDS  # asleep: down, and staying down
+	elif crouching and not _stride:
+		anim = 3
+		t = STUMBLE_SECONDS  # the stumble's last frame, held
 	elif _swing_left > 0.0 and state == State.WANDER:
 		anim = 7
 		t = SWING_SHOW - _swing_left

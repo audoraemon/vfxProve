@@ -35,10 +35,16 @@ class Remain:
 	var facing := 0
 	var sick := false
 	var hidden := false
+	## Whether the town heard of the death (a kill that reached the alarm, not a hushed or veiled one): a body found later adds the
+	## alarm it never gave only when this is false (soldier duties).
+	var counted := false
 	var body: WeakRef
 
 
 var enabled := false
+## The ledger is never switched off (Rules sets it for every loadout): a Death power that lit it for itself puts it back only when
+## this is false.
+var always := false
 
 var _field: EnemyField
 var _list: Array[Remain] = []
@@ -111,6 +117,21 @@ func age(r: Remain) -> float:
 
 func has_soul(r: Remain) -> bool:
 	return age(r) < SOUL
+
+
+## The newest remain written down for `p`'s death, or null (a body whose person is not yet or no longer here, or one taken up).
+func of_body(p: Person) -> Remain:
+	var i := _list.size() - 1
+	while i >= 0:
+		if _list[i].body != null and _list[i].body.get_ref() == p:
+			return _list[i]
+		i -= 1
+	return null
+
+
+## Whether `r` is on the ledger now (not taken up, not lapsed).
+func holds(r: Remain) -> bool:
+	return _list.has(r)
 
 
 ## The nearest unhidden remain within `reach` (PICK_R) of `at` (one with its soul still near, if `need_soul`; a hidden one too, if

@@ -465,7 +465,7 @@ func _unhear() -> void:
 
 
 func _put_ledger_back() -> void:
-	if _lit_ledger and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains):
+	if _lit_ledger and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains) and not ctx.crowd.remains.always:
 		ctx.crowd.remains.enabled = false
 	_lit_ledger = false
 

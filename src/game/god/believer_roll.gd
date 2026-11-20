@@ -17,7 +17,7 @@ var marked: Array[Person] = []
 var unplaced := 0
 ## Believers lost in the night (each marked person counts once).
 var lost := 0
-## Where the believers named at casts landed (Task 3 fills it).
+## Where the god's powers landed (Crowd.danger_landed points and Rules.cast_made's `at`): the fill goes nearest these.
 var landings := PackedVector2Array()
 
 var crowd: Crowd
@@ -25,6 +25,7 @@ var _seed := 0
 var _ids := {}        # instance id -> true, for every marked person
 var _dead := {}       # instance id -> true, a marked person already counted in `lost`
 var _escaped := 0     # marked people who got away alive
+var _escaped_named := 0  # believers not carried (a granted wish's) who got away alive
 var _rules: Rules
 var _field: EnemyField
 
@@ -39,6 +40,8 @@ func setup(p_crowd: Crowd, p_town: String, p_seed: int) -> BelieverRoll:
 			_field.enemy_killed.connect(_on_killed)
 		if not crowd.escaped.is_connected(_on_escaped):
 			crowd.escaped.connect(_on_escaped)
+		if not crowd.danger_landed.is_connected(_on_landed):
+			crowd.danger_landed.connect(_on_landed)
 	return self
 
 
@@ -79,9 +82,59 @@ func is_carried(p: Variant) -> bool:
 	return is_instance_valid(p) and _ids.has((p as Object).get_instance_id())
 
 
-## One act's Rules (Task 3 connects the casts here); safe to call twice.
+## One act's Rules: its casts are recorded as landings. Connected once per Rules; safe to call twice.
 func attach(rules: Rules) -> void:
+	if is_instance_valid(_rules) and _rules != rules and _rules.cast_made.is_connected(_on_cast):
+		_rules.cast_made.disconnect(_on_cast)
 	_rules = rules
+	if is_instance_valid(rules) and not rules.cast_made.is_connected(_on_cast):
+		rules.cast_made.connect(_on_cast)
+
+
+## Remembers where a power landed.
+func record(points: Array[Vector2]) -> void:
+	for v in points:
+		landings.append(v)
+
+
+## Believers not carried: living ones in the town (a granted wish's) plus any that got away alive.
+func named() -> int:
+	var n := _escaped_named
+	if is_instance_valid(crowd):
+		for p in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER 					and not _ids.has(p.get_instance_id()):
+				n += 1
+	return n
+
+
+## Up to `count` converts to make, nearest first: to the powers' landings, else to a named convert, else in crowd order. Marks nobody.
+func pick_fill(count: int, reserved: Array) -> Array[Person]:
+	var out: Array[Person] = []
+	if count <= 0 or not is_instance_valid(crowd):
+		return out
+	var anchors: Array[Vector2] = []
+	for v in landings:
+		anchors.append(v)
+	if anchors.is_empty():
+		for p in crowd.citizens:
+			if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER 					and not _ids.has(p.get_instance_id()):
+				anchors.append(p.ground_pos)
+	var cands: Array[Person] = []
+	var keyed: Array = []
+	for p in crowd.citizens:
+		if not eligible(p, reserved) or is_carried(p):
+			continue
+		var d := 0.0
+		if not anchors.is_empty():
+			d = INF
+			for v in anchors:
+				d = minf(d, p.ground_pos.distance_to(v))
+		keyed.append([d, cands.size()])
+		cands.append(p)
+	keyed.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	for k in keyed.slice(0, mini(count, keyed.size())):
+		out.append(cands[k[1]])
+	return out
 
 
 ## The marked still alive in the town, those who got away alive, and those that never found a place.
@@ -94,8 +147,10 @@ func carried_alive() -> int:
 	return n
 
 
-func report(_main: bool, _ascended: bool, _reserved: Array) -> Dictionary:
-	return {"town": town, "carried": asked, "marked": marked.size(), "carried_alive": carried_alive(), "named": 0, "fill": 0, "lost": lost}
+func report(main: bool, ascended: bool, reserved: Array) -> Dictionary:
+	var n := named() if main else 0
+	var fill := pick_fill(Conquest.fill_target(main, ascended), reserved).size() if main else 0
+	return {"town": town, "carried": asked, "marked": marked.size(), "carried_alive": carried_alive(), "named": n, "fill": fill, "lost": lost}
 
 
 func release() -> void:
@@ -103,6 +158,10 @@ func release() -> void:
 		_field.enemy_killed.disconnect(_on_killed)
 	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
 		crowd.escaped.disconnect(_on_escaped)
+	if is_instance_valid(crowd) and crowd.danger_landed.is_connected(_on_landed):
+		crowd.danger_landed.disconnect(_on_landed)
+	if is_instance_valid(_rules) and _rules.cast_made.is_connected(_on_cast):
+		_rules.cast_made.disconnect(_on_cast)
 	_rules = null
 
 
@@ -120,3 +179,13 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 func _on_escaped(p: Person) -> void:
 	if is_carried(p):
 		_escaped += 1
+	elif is_instance_valid(p) and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER:
+		_escaped_named += 1
+
+
+func _on_landed(_key: String, points: Array[Vector2], _radius: float) -> void:
+	record(points)
+
+
+func _on_cast(_slot: int, _key: String, at: Vector2) -> void:
+	landings.append(at)

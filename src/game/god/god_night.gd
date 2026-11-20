@@ -237,7 +237,6 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 	slot.in_night = ""
 	var earned := maxi(int(d.get("earned", 0)), 0)
 	var faith := earned * GodSlot.FAITH_PER_BELIEVER
-	slot.faith += faith
 	var dp := divine_power(d)
 	var gained := slot.gain_dp(dp)
 	var bests := PackedStringArray()
@@ -253,7 +252,9 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 		var roll: Variant = outcome.get("conquest", {})
 		if roll is Dictionary and not (roll as Dictionary).is_empty():
 			conquest = Conquest.bank(slot, roll, bool(d.get("main", false)))
-	else:
+			faith += int(conquest.get("fill", 0)) * GodSlot.FAITH_PER_BELIEVER if bool(d.get("main", false)) else 0
+	slot.faith += faith
+	if not hunt.is_empty():
 		var won := bool(d.get("main", false))
 		var bonus := 0
 		if won:

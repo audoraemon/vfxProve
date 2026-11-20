@@ -2650,11 +2650,11 @@ func _flow_endless(step: Callable) -> void:
 		for item: Dictionary in res._menu.items:
 			menu.append(String(item.action))
 	step.call(up and res != null and res.endless and int(banked.get("divine_power", -1)) == 80 + 20 * kept and god.level >= 2 and god.points >= 1
-		and god.faith == int(d.get("earned", -1)) and god.night == 1 and god.in_night == "" and saved != null and saved.night == 1
+		and god.faith == int(d.get("earned", -1)) + int((banked.get("conquest", {}) as Dictionary).get("fill", 0)) and god.night == 1 and god.in_night == "" and saved != null and saved.night == 1
 		and saved.level == god.level and saved.points == god.points and saved.faith == god.faith and saved.divine_power == god.divine_power
 		and saved.in_night == "" and saved.last_mission == MissionBook.WARNING and menu == ["continue", "tree", "faith"],
-		"F ascends: banked to the god -- %d Divine Power (80 + 20 x %d wishes), level %d, %d points, Faith %d = the %s believers, Night 1 -- the file agrees; Continue / Skill Tree / Faith"
-		% [int(banked.get("divine_power", -1)), kept, god.level, god.points, god.faith, d.get("earned", "?")])
+		"F ascends: banked to the god -- %d Divine Power (80 + 20 x %d wishes), level %d, %d points, Faith %d = the %s believers + %d fill, Night 1 -- the file agrees; Continue / Skill Tree / Faith"
+		% [int(banked.get("divine_power", -1)), kept, god.level, god.points, god.faith, d.get("earned", "?"), int((banked.get("conquest", {}) as Dictionary).get("fill", 0))])
 	if not up or res == null:
 		out.call()
 		return

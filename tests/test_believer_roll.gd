@@ -13,6 +13,15 @@ static func run(t) -> void:
 	_deaths_once(t)
 	_escaped_alive(t)
 	_report_keys(t)
+	_landings(t)
+	_fill_nearest(t)
+	_fill_two_landings(t)
+	_fill_falls_back_named(t)
+	_fill_falls_back_order(t)
+	_fill_never_picks(t)
+	_fill_fewer(t)
+	_named(t)
+	_report_counts(t)
 
 
 ## Aldermere with its crowd (seed 5), a Tier 1 def's director and a Descent attached, so wishes reserve their people.
@@ -221,6 +230,173 @@ static func _report_keys(t) -> void:
 	var keys := r.keys()
 	keys.sort()
 	t.check(keys == ["carried", "carried_alive", "fill", "lost", "marked", "named", "town"], "the report's keys (%s)" % [keys])
-	t.check(r.town == "aldermere" and r.carried == 5 and r.marked == 5 and r.carried_alive == 5 and r.named == 0 and r.fill == 0 and r.lost == 0,
+	t.check(r.town == "aldermere" and r.carried == 5 and r.marked == 5 and r.carried_alive == 5 and r.named == 0 and r.fill == 3 and r.lost == 0,
 		"and values (%s)" % [r])
+	_done(s, roll)
+
+
+static func _pts(v: Array) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for x in v:
+		out.append(x)
+	return out
+
+
+static func _plain(s: Dictionary, reserved: Array) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in (s.crowd as Crowd).citizens:
+		if BelieverRoll.eligible(p, reserved):
+			out.append(p)
+	return out
+
+
+static func _dist(p: Person, points: Array) -> float:
+	var best := INF
+	for v: Vector2 in points:
+		best = minf(best, p.ground_pos.distance_to(v))
+	return best
+
+
+static func _landings(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	roll.mark_carried(0, [])
+	roll.attach(s.rules)
+	roll.attach(s.rules)
+	(s.crowd as Crowd).danger_landed.emit("ember", _pts([Vector2(1, 1)]), 1.0)
+	(s.rules as Rules).cast_made.emit(0, "ember", Vector2(5, 5))
+	t.check(roll.landings.size() == 2, "a danger landing and a cast are recorded once each (%d)" % roll.landings.size())
+	_done(s, roll)
+
+
+static func _fill_nearest(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var pool := _plain(s, [])
+	var at := pool[pool.size() / 2]
+	roll.record(_pts([at.ground_pos]))
+	var got := roll.pick_fill(3, [])
+	var d: Array = []
+	for p in got:
+		d.append(_dist(p, [at.ground_pos]))
+	t.check(got.size() == 3 and float(d[0]) == 0.0 and float(d[0]) <= float(d[1]) and float(d[1]) <= float(d[2]), "the fill is nearest first (%s)" % [d])
+	_done(s, roll)
+
+
+static func _fill_two_landings(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var pool := _plain(s, [])
+	var a := pool[0].ground_pos
+	var b := pool[pool.size() - 1].ground_pos
+	roll.record(_pts([a, b]))
+	var got := roll.pick_fill(8, [])
+	var ok := got.size() == 8
+	var last := -1.0
+	for p in got:
+		var d := _dist(p, [a, b])
+		ok = ok and d >= last
+		last = d
+	for p in pool:
+		if not got.has(p):
+			ok = ok and _dist(p, [a, b]) >= last
+	t.check(ok, "with two landings each pick is the min over both, ascending, and none left out is nearer")
+	_done(s, roll)
+
+
+static func _fill_falls_back_named(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var pool := _plain(s, [])
+	var named := pool[pool.size() / 3]
+	named.profile.faith = CitizenProfile.Faith.BELIEVER
+	var got := roll.pick_fill(4, [])
+	var last := -1.0
+	var ok := got.size() == 4
+	for p in got:
+		var d := _dist(p, [named.ground_pos])
+		ok = ok and d >= last
+		last = d
+	t.check(ok and not got.has(named), "with no landings the fill goes nearest the named convert")
+	_done(s, roll)
+
+
+static func _fill_falls_back_order(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var got := roll.pick_fill(5, [])
+	var want := _plain(s, []).slice(0, 5)
+	t.check(got == want, "with neither, the first eligible in crowd order")
+	_done(s, roll)
+
+
+static func _fill_never_picks(t) -> void:
+	var was := Children.enabled
+	Children.enabled = true
+	var s := _world()
+	var roll := _roll(s)
+	var crowd: Crowd = s.crowd
+	var pool := _plain(s, [])
+	var carried := pool[0]
+	var reserved_p := pool[1]
+	var dead := pool[2]
+	var escaped := pool[3]
+	var soldier := pool[4]
+	roll.marked.append(carried)
+	roll._ids[carried.get_instance_id()] = true
+	carried.profile.faith = CitizenProfile.Faith.BELIEVER
+	soldier.soldier = true
+	var child: Person = null
+	for p in crowd.citizens:
+		if p.profile != null and p.profile.role == CitizenProfile.Role.CHILD:
+			child = p
+			break
+	var spot := Vector2(300, 300)
+	var bad: Array = [carried, reserved_p, dead, escaped, soldier]
+	if child != null:
+		bad.append(child)
+	for p in bad:
+		p.ground_pos = spot
+	roll.record(_pts([spot]))
+	(s.field as EnemyField).kill(dead, &"test")
+	crowd.escape(escaped)
+	var got := roll.pick_fill(1000, [reserved_p])
+	var hit := false
+	for p in got:
+		hit = hit or bad.has(p)
+	t.check(not hit and got.size() > 0, "a carried believer, a reserved, dead, soldier, child or escaped person is never picked (child present: %s)" % [child != null])
+	_done(s, roll)
+	Children.enabled = was
+
+
+static func _fill_fewer(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var pool := _plain(s, [])
+	for i in range(2, pool.size()):
+		pool[i].profile.faith = CitizenProfile.Faith.BELIEVER
+	t.check(roll.pick_fill(6, []).size() == 2, "a pool of 2 gives 2 (%d)" % roll.pick_fill(6, []).size())
+	_done(s, roll)
+
+
+static func _named(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var pool := _plain(s, [])
+	var w := Wish.new()
+	w.wisher = pool[0]
+	w.grant()
+	t.check(roll.named() == 1, "a granted wisher is one named convert (%d)" % roll.named())
+	(s.field as EnemyField).kill(pool[0], &"test")
+	t.check(roll.named() == 0 and roll.lost == 1, "killed, none named and lost +1 (%d, %d)" % [roll.named(), roll.lost])
+	_done(s, roll)
+
+
+static func _report_counts(t) -> void:
+	var s := _world()
+	var roll := _roll(s)
+	var clean := roll.report(true, true, [])
+	var caught := roll.report(true, false, [])
+	var failed := roll.report(false, false, [])
+	t.check(clean.fill == 6 and caught.fill == 3 and failed.fill == 0 and failed.named == 0, "fill 6 clean, 3 caught, 0 off main (%d %d %d)" % [clean.fill, caught.fill, failed.fill])
 	_done(s, roll)

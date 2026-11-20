@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_mission_hooks(t)
 	_bank_conquest(t)
 	_bank_no_conquest(t)
+	_faith_not_doubled(t)
 	_hunt_no_conquest(t)
 	_forfeit_alive(t)
 	_believer_seed(t)
@@ -267,3 +268,20 @@ static func _results_conquest_line(t) -> void:
 	t.check(got.size() == plain.size() + 1 and got[got.size() - 2] == "Aldermere 12%   converts +4   believers lost 1" and got[got.size() - 1] == "Night 2",
 		"the conquest line sits before the Night line (%s)" % [got])
 	t.check(ResultsScreen.god_lines(base) == plain, "without it the lines are as before")
+
+
+static func _faith_not_doubled(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 0
+	var out := _outcome(true, 0, 40)
+	out.descend["main"] = true
+	out["conquest"] = {"town": "aldermere", "carried_alive": 30, "named": 2, "fill": 6, "lost": 0}
+	var before := s.faith
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(int(res.faith) == 46 * GodSlot.FAITH_PER_BELIEVER and s.faith == before + int(res.faith), "Faith is the earned plus the fill (%s)" % [res.faith])
+	t.check(int(res.conquest.count) == 38 and int(res.conquest.converts) == 8, "the count is 38 (%s)" % [res.conquest])
+	var s2 := _slot()
+	var o2 := _outcome(true, 0, 40)
+	o2.descend["main"] = true
+	var r2 := GodNight.bank(s2, "tax_collector", PackedStringArray(["smite"]), o2)
+	t.check(int(r2.faith) == 40 * GodSlot.FAITH_PER_BELIEVER, "with no conquest entry, Faith is the earned alone (%s)" % [r2.faith])

@@ -6,6 +6,7 @@ extends RefCounted
 const Corps := preload("res://tests/test_corps.gd")
 const C := preload("res://tests/test_cordon.gd")
 const CapPeople := preload("res://tests/test_capital_people.gd")
+const Warning := preload("res://tests/test_warning.gd")
 const SWEEP := GuardJobs.Kind.SWEEP
 const STEP := 1.0 / 60.0
 
@@ -34,6 +35,11 @@ static func run(t) -> void:
 	_freed_man(t)
 	_clear_resets(t)
 	_capital_sweep(t)
+	_one_power_one_charge(t)
+	_never_arrives_ends(t)
+	_lane_swept_where_seen(t)
+	_director_copy_reach(t)
+	_sweep_men_keep_nerve(t)
 
 
 static func _jobs(crowd: Crowd) -> Array[GuardJobs.Job]:
@@ -459,8 +465,13 @@ static func _extra_alarm(t) -> void:
 	_land(crowd, at)
 	t.near(crowd.alarm - before, SweepDuty.SWEEP_ALARM, 0.001, "a seen power under the sweep: +2.0")
 	_land(crowd, at)
+	t.near(crowd.alarm - before, SweepDuty.SWEEP_ALARM, 0.001, "a second power in the same frame is the same charge")
+	crowd.advance(STEP)
+	_land(crowd, at)
+	crowd.advance(STEP)
 	_land(crowd, at)
 	t.near(crowd.alarm - before, SweepDuty.SWEEP_ALARM_CAP, 0.001, "three of them: +6.0")
+	crowd.advance(STEP)
 	_land(crowd, at)
 	t.near(crowd.alarm - before, SweepDuty.SWEEP_ALARM_CAP, 0.001, "a fourth: capped")
 	t.check(texts.count(SweepDuty.BANNER_HEARS) == 3, "THE SWEEP HEARS IT three times (%d)" % texts.count(SweepDuty.BANNER_HEARS))
@@ -687,3 +698,131 @@ static func _capital_sweep(t) -> void:
 	(b.world as Node).free()
 	(b.town as Node).free()
 	City.use(&"aldermere")
+
+
+## A Silent Doom that fells three seen men in a swept district is one power: +2.0 once and one banner (and their own 0.5 each).
+static func _one_power_one_charge(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var job := _up(made, at)
+	if job == null:
+		t.check(false, "(a sweep with its crew)")
+		C._done(made)
+		return
+	_arrive(job)
+	crowd.alarms.bell_rung = true
+	var texts := _texts(crowd)
+	C._run_for(crowd, 0.5, [], 0.1)
+	var witness: Person = crowd.citizens[0]
+	_put(witness, at + Vector2(0.0, 1.0))
+	var field: EnemyField = made[3]
+	for i in 3:
+		var v: Person = crowd.citizens[1 + i]
+		_put(v, at + Vector2(0.3 * i, 0.0))
+		field.kill(v, &"doom")
+	var before := crowd.alarm
+	crowd._settle_doom()
+	t.near(crowd.alarm - before, SweepDuty.SWEEP_ALARM + 3.0 * Crowd.ALARM_KILL, 0.001, "three seen victims: 2.0 once, and 0.5 each (%.2f)" % (crowd.alarm - before))
+	t.check(texts.count(SweepDuty.BANNER_HEARS) == 1, "one banner")
+	C._done(made)
+
+
+## A begun sweep whose men are held outside the district never starts its clock: it ends at 45 s, flags cleared, no BROKEN banner.
+static func _never_arrives_ends(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var d := _busy(made)
+	var rect: Rect2 = City.current().districts()[d]
+	var at := _spot(made, d)
+	var five := _guards(crowd, rect.end + Vector2(25.0, 25.0), 5, 0.5)
+	C._only_free(crowd, five)
+	var texts := _texts(crowd)
+	crowd.sweep.request(at)
+	crowd.guard_jobs._fill()
+	var live := _jobs(crowd)
+	if live.is_empty() or live[0].crew.size() != SweepDuty.CREW:
+		t.check(false, "(a sweep with its crew)")
+		C._done(made)
+		return
+	var crew: Array = live[0].crew.duplicate()
+	for p: Person in crew:
+		p.confuse(200.0)
+	C._run_for(crowd, SweepDuty.LEG_LIMIT + SweepDuty.SWEEP_SECONDS - 3.0, [], 0.5)
+	t.check(not _jobs(crowd).is_empty(), "(still waiting at 42 s)")
+	C._run_for(crowd, 6.0, [], 0.5)
+	t.check(_jobs(crowd).is_empty(), "never inside: over after 45 s")
+	var clean := true
+	for p: Person in crew:
+		clean = clean and not p.watch_far and p.badge_left <= 0.0 and p.talk_left <= 0.0 and not crowd.guard_jobs.on_job(p)
+	t.check(clean, "flags and badges cleared")
+	t.check(not texts.has(SweepDuty.BANNER_BROKEN), "and no BROKEN banner")
+	C._done(made)
+
+
+## A lane power (points in two districts) witnessed only at its far end is swept in the far district.
+static func _lane_swept_where_seen(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var districts: Array = City.current().districts()
+	var a := _spot(made, 0)
+	var b := _spot(made, districts.size() - 1)
+	t.check(AlarmManager.district_of(a) != AlarmManager.district_of(b), "(two districts)")
+	C._hide_others(crowd, [])
+	_put(crowd.citizens[0], b + Vector2(1.0, 0.0))
+	var pts: Array[Vector2] = [a, b]
+	crowd.danger_landed.emit("lane", pts, 1.0)
+	var jobs := _jobs(crowd)
+	t.check(jobs.size() == 1 and jobs[0].data.district == AlarmManager.district_of(b) and jobs[0].data.seen_at == b,
+		"swept in the district it was witnessed in, at that point")
+	var out: Array[Vector2] = []
+	t.check(crowd.power_witness(pts, 1.0, out) == crowd.citizens[0] and out == [b], "power_witness gives the point")
+	C._done(made)
+
+
+## A director's own witness search gives a sweep man 3.5; anyone else keeps the day's 2.0.
+static func _director_copy_reach(t) -> void:
+	var s: Dictionary = Warning._setup()
+	var crowd: Crowd = s.crowd
+	var d: WarningDirector = s.d
+	for p in crowd.citizens + crowd.soldiers:
+		p.inside = true
+	var man: Person = crowd.soldiers[0]
+	man.inside = false
+	var at := Vector2(0.0, 0.0)
+	man.ground_pos = at + Vector2(3.5, 0.0)
+	t.check(d._relay_witness(at) == null, "an ordinary man 3.5 off carries nothing")
+	man.watch_far = true
+	t.check(d._relay_witness(at) == man, "a sweep man 3.5 off is the witness")
+	man.ground_pos = at + Vector2(4.5, 0.0)
+	t.check(d._relay_witness(at) == null, "not at 4.5")
+	crowd.sight_scale = 0.5
+	man.watch_far = false
+	man.ground_pos = at + Vector2(1.5, 0.0)
+	t.check(d._relay_witness(at) == man, "an ordinary man keeps the day's 2.0 even at night")
+	crowd.sight_scale = 1.0
+	Warning._done(s)
+
+
+## A sweep man is not frightened by a danger landing beside him, from assignment to the end; after it he is again.
+static func _sweep_men_keep_nerve(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var job := _up(made, at)
+	if job == null:
+		t.check(false, "(a sweep with its crew)")
+		C._done(made)
+		return
+	var crew: Array = job.crew.duplicate()
+	_arrive(job)
+	C._run_for(crowd, 3.0, [], 0.1)
+	for p: Person in crew:
+		p.panic(p.ground_pos + Vector2(0.5, 0.0), 1.0)
+	var calm := true
+	for p: Person in crew:
+		calm = calm and p.mind != Person.Mind.PANIC and p.mind != Person.Mind.FLEE
+	t.check(calm and crew[0].fearless_left > 0.0, "a danger beside them: nobody panics")
+	crowd.guard_jobs.end_job(job)
+	t.check(crew[0].fearless_left <= 0.0, "after the sweep his nerve is his own again")
+	C._done(made)

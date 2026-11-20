@@ -22,6 +22,9 @@ const OPEN_SECONDS := 20.0
 const LEG_LIMIT := 15.0
 ## How far apart the crew stands around a door.
 const SPOT_APART := 0.6
+## Seconds of nerve a sweep man is given (Person.fearless_left), renewed every board tick while he is on the job: the investigators'
+## exemption from fright.
+const NERVE_SECONDS := 2.5
 ## The badge's and the tag's colour, and how long a badge is set for (renewed every board tick).
 const COLOUR := Color(0.6, 0.82, 0.95)
 const BADGE_SECONDS := 1.5
@@ -60,13 +63,14 @@ func request(at: Vector2) -> void:
 	var job := board.post(GuardJobs.Kind.SWEEP, at, CREW, INF, {"district": district, "seen_at": at,
 			"rect": City.current().districts()[district] as Rect2, "doors": [] as Array[Vector2], "door": -1, "at_spot": {},
 			"phase": Phase.WALK, "leg": 0.0, "stand": 0.0, "left": SWEEP_SECONDS, "wait": OPEN_SECONDS, "begun": false,
-			"on": false, "over": false, "added": 0.0})
+			"on": false, "over": false, "added": 0.0, "charged": -INF, "idle": LEG_LIMIT + SWEEP_SECONDS})
 	if job != null:
 		_live.append(job)
 
 
 ## A power seen at `at`: a sweep of that district with a living, unheld man inside it hears of it (extra alarm, at most
-## SWEEP_ALARM_CAP a sweep). Nothing is heard when the town or the place is hushed or veiled.
+## SWEEP_ALARM_CAP a sweep, and one charge per district per frame: a cast that fells three seen men is one power). Nothing is
+## heard when the town or the place is hushed or veiled.
 func on_seen(at: Vector2) -> void:
 	if crowd.is_hushed() or crowd.is_hushed_at(at) or crowd.is_veiled(at):
 		return
@@ -74,8 +78,9 @@ func on_seen(at: Vector2) -> void:
 	for job in _live:
 		if job.data.district != district or not bool(job.data.begun) or bool(job.data.over):
 			continue
-		if float(job.data.added) + SWEEP_ALARM > SWEEP_ALARM_CAP + 0.001 or not _any_inside(job):
+		if float(job.data.added) + SWEEP_ALARM > SWEEP_ALARM_CAP + 0.001 or not _any_inside(job) 				or float(job.data.charged) == crowd._clock:
 			return
+		job.data.charged = crowd._clock
 		job.data.added = float(job.data.added) + SWEEP_ALARM
 		crowd._hear_alarm(SWEEP_ALARM)
 		crowd.duty_event.emit(GuardJobs.Kind.SWEEP, BANNER_HEARS, at)
@@ -139,7 +144,8 @@ func may_take(_job: GuardJobs.Job, p: Person) -> bool:
 	return p.corps == Person.Corps.NONE
 
 
-func on_taken(job: GuardJobs.Job, _p: Person) -> void:
+func on_taken(job: GuardJobs.Job, p: Person) -> void:
+	p.fearless_left = maxf(p.fearless_left, NERVE_SECONDS)
 	if job.crew.size() >= job.need:
 		_begin(job)
 
@@ -176,6 +182,10 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 	var inside := _any_inside(job)
 	if not bool(d.on):
 		d.on = inside
+		d.idle = float(d.idle) - delta
+		if not inside and float(d.idle) <= 0.0:
+			_finish(job)  # nobody ever got into the district: the sweep ends without a word
+			return
 	else:
 		d.left = float(d.left) - delta
 		if float(d.left) <= 0.0:
@@ -188,13 +198,15 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 	_walk(job, delta)
 
 
-## Once a second: every begun sweep renews its men's badges.
+## Once a second: every sweep man keeps his nerve, and every begun sweep renews its men's badges.
 func post_jobs() -> void:
 	for job in _live:
-		if bool(job.data.begun) and not bool(job.data.over):
-			for m: Variant in job.crew:
-				if is_instance_valid(m):
-					(m as Person).set_badge(GuardJobs.GLYPH_EYE, COLOUR, BADGE_SECONDS)
+		for m: Variant in job.crew:
+			if is_instance_valid(m):
+				var p: Person = m
+				p.fearless_left = maxf(p.fearless_left, NERVE_SECONDS)
+				if bool(job.data.begun) and not bool(job.data.over):
+					p.set_badge(GuardJobs.GLYPH_EYE, COLOUR, BADGE_SECONDS)
 
 
 func done(job: GuardJobs.Job) -> bool:
@@ -222,14 +234,17 @@ func clear() -> void:
 
 ## A seen power lands: a sweep hears of it, and the district is swept.
 func _on_danger(_key: String, points: Array[Vector2], radius: float) -> void:
-	if points.is_empty() or crowd.power_witness(points, radius) == null:
+	var seen: Array[Vector2] = []
+	if points.is_empty() or crowd.power_witness(points, radius, seen) == null:
 		return
-	on_seen(points[0])
-	request(points[0])
+	on_seen(seen[0])
+	request(seen[0])
 
 
-## Takes every flag a sweep put on `p` off him.
+## Takes every flag a sweep put on `p` off him (his nerve too, unless something else gave him more).
 func _release(p: Person) -> void:
+	if p.fearless_left <= NERVE_SECONDS:
+		p.fearless_left = 0.0
 	p.watch_far = false
 	p.clear_badge()
 	p.talk_left = 0.0

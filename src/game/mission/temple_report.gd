@@ -166,7 +166,7 @@ func _witness(crowd: Crowd, at: Vector2) -> Person:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.is_child() or LawMark.unseen_by_all(p) or p.guised() or bool(skip.call(p)):
 				continue
 			var d := p.ground_pos.distance_to(at)
-			if d <= best_d and d <= (Crowd.WATCH_SIGHT if p.watch_far else Crowd.DOOM_WITNESS):
+			if d <= best_d and d <= crowd.witness_reach(p, true):
 				best = p
 				best_d = d
 	return best

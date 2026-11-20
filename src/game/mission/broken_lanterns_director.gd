@@ -535,7 +535,7 @@ func _knights_come() -> void:
 
 
 ## Each living Knight to a standing shrine. One whose shrine fell goes to the standing shrine with the fewest Knights
-## (the nearest of those). One taken off his place (an investigation) is sent back to it.
+## (the nearest of those). One taken off his place (by a sweep) is sent back to it.
 func _tend_knights() -> void:
 	var standing := standing_shrines()
 	for k in knights:

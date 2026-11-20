@@ -2610,6 +2610,15 @@ func doom_witness() -> float:
 	return DOOM_WITNESS * sight_scale
 
 
+## How far `p` sees a death or a power: a sweep man (`watch_far`) WATCH_SIGHT, scaled at night; anyone else DOOM_WITNESS, scaled at
+## night (`day` true: the day's distance, as the directors that read Crowd.DOOM_WITNESS directly keep it). The one rule every witness
+## search asks; for a man who is not `watch_far` it is the reach the search had before.
+func witness_reach(p: Person, day := false) -> float:
+	if p.watch_far:
+		return WATCH_SIGHT * sight_scale
+	return DOOM_WITNESS if day else doom_witness()
+
+
 ## Whether the segment `a`-`b` crosses a live cordon's rope (false at once with none live): a lure through it fails.
 func cordon_blocks(a: Vector2, b: Vector2) -> bool:
 	return cordon != null and cordon.blocks(a, b)
@@ -2629,7 +2638,7 @@ func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 			if cordon != null and cordon.crew_blind(p, at):
 				continue  # a cordon man looks outward: nothing inside his own rope is seen by him
 			var d := p.ground_pos.distance_to(at)
-			if d <= best_d and d <= (WATCH_SIGHT * sight_scale if p.watch_far else doom_witness()):  # a sweep man sees farther
+			if d <= best_d and d <= witness_reach(p):  # a sweep man sees farther
 				best = p
 				best_d = d
 	return best
@@ -2637,10 +2646,12 @@ func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 
 ## The nearest living person -- citizen or soldier, out of doors, awake, not in the god's hand, not guised, not unseen -- who saw a
 ## power land at `points`: within his reach of a point (WATCH_SIGHT for a sweep man, else DOOM_WITNESS, both scaled at night and
-## cut by a law's NO SIGHT) or within `radius` of it. Ties go to the lower stagger. Null for none (the sweep's "seen").
-func power_witness(points: Array[Vector2], radius: float) -> Person:
+## cut by a law's NO SIGHT) or within `radius` of it. Ties go to the lower stagger. Null for none (the sweep's "seen"). `seen_at`, when
+## given, gets the point he witnessed it at (the nearest to him).
+func power_witness(points: Array[Vector2], radius: float, seen_at: Array[Vector2] = []) -> Person:
 	var best: Person = null
 	var best_d := INF
+	var best_at := Vector2.INF
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.mind == Person.Mind.ASLEEP or p.held_by_god():
@@ -2649,12 +2660,16 @@ func power_witness(points: Array[Vector2], radius: float) -> Person:
 				continue
 			for at in points:
 				var d := p.ground_pos.distance_to(at)
-				var reach := sight(p, at, WATCH_SIGHT * sight_scale if p.watch_far else doom_witness())
+				var reach := sight(p, at, witness_reach(p))
 				if d > maxf(reach, radius):
 					continue
 				if best == null or d < best_d or (d == best_d and p.stagger < best.stagger):
 					best = p
 					best_d = d
+					best_at = at
+	seen_at.clear()
+	if best != null:
+		seen_at.append(best_at)
 	return best
 
 
@@ -2675,8 +2690,9 @@ func _settle_doom() -> void:
 		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
-		sweep.on_seen(at)
-		sweep.request(at)
+		if sweep != null:
+			sweep.on_seen(at)
+			sweep.request(at)
 		threats.register(at, 0.6, 0.3, 3.0, doom_witness(), DOOM_WITNESS + 1.0, &"doom")
 		seen_at.append(at)
 		if alarms.incident(at):

@@ -2126,7 +2126,8 @@ func rally() -> void:
 		return
 	_rallied = true
 	_called_up = true
-	guard.call_up()
+	if guard_jobs.is_open():
+		guard.call_up()
 	if sfx != null:
 		sfx.play(&"sol_rally", City.current().citadel_origin())
 	rallied.emit()
@@ -2184,7 +2185,7 @@ func _refill(dead: Person) -> void:
 				rescue.refill(best, dead)
 
 
-## Up to `n` open cell centres of the barracks yard (within 3.0 of its centre, on the grid's own cells), none within 0.3 of a
+## Up to `n` open cell centres of the barracks yard (within 3.0 of its centre, the reach widening by 1.0 until `n` are found, on the grid's own cells), none within 0.3 of a
 ## living soldier's town post, nearest the centre first, ties by (y, x): where the stood-down Citadel men go. Draws no number.
 func yard_spots(n: int) -> Array[Vector2]:
 	var c := City.current().landmark(&"barracks_yard").get_center()
@@ -2194,19 +2195,25 @@ func yard_spots(n: int) -> Array[Vector2]:
 			taken.append(p.town_post)
 	var cands: Array[Vector2] = []
 	var base := _grid.world_to_id(c)
-	var r := ceili(3.0 / WalkGrid.CELL) + 1
-	for dy in range(-r, r + 1):
-		for dx in range(-r, r + 1):
-			var at := _grid.id_to_world(base + Vector2i(dx, dy))
-			if at.distance_to(c) > 3.0 or not _grid.walkable(at):
-				continue
-			var clear := true
-			for t in taken:
-				if t.distance_to(at) < 0.3:
-					clear = false
-					break
-			if clear:
-				cands.append(at)
+	var reach := 3.0
+	while true:
+		cands.clear()
+		var r := ceili(reach / WalkGrid.CELL) + 1
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var at := _grid.id_to_world(base + Vector2i(dx, dy))
+				if at.distance_to(c) > reach or not _grid.walkable(at):
+					continue
+				var clear := true
+				for t in taken:
+					if t.distance_to(at) < 0.3:
+						clear = false
+						break
+				if clear:
+					cands.append(at)
+		if cands.size() >= n or reach > 40.0:
+			break
+		reach += 1.0
 	cands.sort_custom(func(a: Vector2, b: Vector2) -> bool:
 		var da := a.distance_to(c)
 		var db := b.distance_to(c)

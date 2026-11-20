@@ -228,7 +228,7 @@ func step(delta: float) -> void:
 			(duties[kind] as Duty).post_jobs()
 	_fill()
 	for job in jobs.duplicate():
-		if duties[job.kind].done(job) or (job.started and job.crew.is_empty()):
+		if duties[job.kind].done(job) or (job.started and job.crew.is_empty() and job.kind != Kind.CITADEL):
 			end_job(job)
 
 

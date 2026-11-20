@@ -958,7 +958,7 @@ func _pick_target() -> void:
 	if queue_spot != Vector2.INF:
 		_target = queue_spot
 		return
-	if is_running():
+	if is_running() or mind == Mind.RALLY:
 		# DummyEnemy.tick() just set _idle before calling us, to pause at every target it reaches. That
 		# suits a calm stroll but not a sprint: cancel it so a runner never stops between waypoints.
 		_idle = 0.0
@@ -2768,7 +2768,7 @@ func _scurry() -> void:
 
 
 func is_running() -> bool:
-	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY or mind == Mind.FIGHT
+	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.FIGHT
 		or (mind == Mind.COMPELLED and _compel_run))
 
 

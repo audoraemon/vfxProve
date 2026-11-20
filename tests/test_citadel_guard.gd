@@ -346,6 +346,67 @@ static func _capital_guard(t) -> void:
 	City.use(&"aldermere")
 
 
+static func _walk_cadence(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	crowd.rally()
+	var p: Person = crowd.guard.job.crew[0]
+	t.check(not p.is_running() and p._walk_rate() == 5.0, "a marching guard man walks: not running, the soldier's walk rate 5.0")
+	Corps._done(made)
+
+
+static func _guard_wiped_out_refills(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	crowd.rally()
+	for p in crowd.guard.job.crew.duplicate():
+		(p as Person).die(&"test")
+	gj.step(1.0)
+	t.check(gj.jobs.has(crowd.guard.job) and not crowd.guard.job.ended, "the CITADEL job survives an empty crew")
+	gj.step(1.0)
+	t.check(crowd.guard.count() == 20, "the next ticks send free town men again (%d)" % crowd.guard.count())
+	Corps._done(made)
+
+
+static func _rally_after_fall(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	crowd._on_citadel_fallen()
+	crowd.rally()
+	t.check(crowd.guard.count() == 0 and crowd.guard_jobs.jobs.is_empty(), "a rally after the fall forms no guard")
+	Corps._done(made)
+
+
+static func _mission_man_inside_or_busy(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	var a := crowd.add_soldier(Vector2(0.0, 0.0))
+	a.inside = true
+	var b := GuardJobsTest._guard(crowd, 0)
+	b.post = b.post + Vector2(3.0, 0.0)
+	b.anchor = b.post
+	var house := GuardJobsTest._house(made[1])
+	b.assist(house, true)
+	gj.take(b, house)
+	crowd.rally()
+	t.check(crowd.guard.job.crew.has(a) and a.mind == Person.Mind.RALLY, "a mission man inside a building joins the guard")
+	t.check(crowd.guard.job.crew.has(b) and gj.kind_of(b) == GuardJobs.Kind.CITADEL, "a mission man on a fire record is pulled and joins")
+	Corps._done(made)
+
+
+static func _yard_spots_distinct(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var spots := crowd.yard_spots(80)
+	var seen := {}
+	for s in spots:
+		seen[s] = true
+	t.check(spots.size() == 80 and seen.size() == 80, "80 yard spots, no two the same (%d)" % spots.size())
+	Corps._done(made)
+
+
 static func run(t) -> void:
 	_slots(t)
 	_guard_of_twenty(t)
@@ -365,3 +426,8 @@ static func run(t) -> void:
 	_late_appointment(t)
 	_before_call_up(t)
 	_capital_guard(t)
+	_walk_cadence(t)
+	_guard_wiped_out_refills(t)
+	_rally_after_fall(t)
+	_mission_man_inside_or_busy(t)
+	_yard_spots_distinct(t)

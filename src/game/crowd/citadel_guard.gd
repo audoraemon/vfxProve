@@ -43,6 +43,8 @@ func kind() -> int:
 
 ## Forms the guard (Crowd.rally()).
 func call_up() -> void:
+	if not board.is_open():
+		return
 	var origin := City.current().citadel_origin()
 	job = board.post(GuardJobs.Kind.CITADEL, origin, GUARD_SLOTS)
 	job.started = true
@@ -50,7 +52,9 @@ func call_up() -> void:
 	_answered.clear()
 	_mission.clear()
 	for p in crowd.soldiers:
-		if _live(p) and board.mission_man(p):
+		if _live(p, true) and board.mission_man(p):
+			if board.on_job(p):
+				board.pull(p)
 			_mission[p] = true
 			_join(p, _next_slot())
 	for p in crowd.soldiers:
@@ -89,7 +93,8 @@ func call_up() -> void:
 		_join(pick, k)
 	var town: Array[Person] = []
 	for p in crowd.soldiers:
-		if _live(p) and p.post_group == 2 and not board.mission_man(p) and not job.crew.has(p):
+		if _live(p) and p.post_group == 2 and not board.mission_man(p) and not job.crew.has(p) \
+				and (not board.on_job(p) or board.pullable(p)):
 			town.append(p)
 	var spots := crowd.yard_spots(town.size())
 	var yard := City.current().landmark(&"barracks_yard").get_center()
@@ -192,19 +197,26 @@ func _join(p: Person, k: int) -> void:
 	board.assign(job, p)
 
 
-## A living soldier of no corps, out of doors.
-func _live(p: Variant) -> bool:
+## A living soldier of no corps, out of doors (`any_place`: wherever he is).
+func _live(p: Variant, any_place := false) -> bool:
 	if not is_instance_valid(p):
 		return false
 	var s := p as Person
-	return s != null and s.soldier and s.is_alive() and s.corps == Person.Corps.NONE and not s.inside
+	return s != null and s.soldier and s.is_alive() and s.corps == Person.Corps.NONE and (any_place or not s.inside)
+
+
+## The slots held by a valid, living man.
+func _used() -> Dictionary:
+	var used := {}
+	for p in _slot:
+		if is_instance_valid(p) and p.is_alive():
+			used[_slot[p]] = true
+	return used
 
 
 ## The lowest slot index nobody holds (no upper bound).
 func _next_slot() -> int:
-	var used := {}
-	for k in _slot.values():
-		used[k] = true
+	var used := _used()
 	var k := 0
 	while used.has(k):
 		k += 1
@@ -213,9 +225,7 @@ func _next_slot() -> int:
 
 ## The empty slot below GUARD_SLOTS nearest `from` (ties: the lowest).
 func _nearest_slot(from: Vector2) -> int:
-	var used := {}
-	for k in _slot.values():
-		used[k] = true
+	var used := _used()
 	var best := -1
 	var best_d := INF
 	for k in GUARD_SLOTS:

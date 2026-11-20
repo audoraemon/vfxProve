@@ -229,23 +229,27 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   Dooms the Faithful alone. After: `gate prayers route=god:veil none_lost=- wins=3/3 median=118 idle_max=39 PASS`. Tried and dropped:
   Blight on a Faithful (he lives on, sick at home, and while a Faithful lives the poor do not hurry in: seed 1 won at 224 s, idle 182);
   a foothold over the shrine's door (it is a well shrine, and no plain house stands within 2.5 of its door).
-- VE3 (Task 13a): Hide the Faithful (Hunt 1) x Veil fell from 3/3 (140 / 126 / 182 s, idle 45, docs/KAK_God_P5_Summary.md) to
-  `gate hide_faithful route=god:veil none_lost=- wins=1/3 median=128 idle_max=57 FAIL` (seed 1 lost at 103.5 s, seed 2 lost at
-  184.4 s; seed 3 kept its reference checksum). The cause is the dusk alone: seed 1 with the ledger switched off (local experiment)
-  gave its reference row's checksum (-802237474, won at 106.9 s). With it, the Doom on a patrol's seizer at 59.5 s was cast on the
-  dusk an earlier Doom left, so it was full size (1.6) and took the marched believer with his seizer: a believer lost. The policy
-  measured the believer's room with the light reach (0.8 + BLOW_GAP). Fix in the bot, in three steps, all on the law:
-  (1) every Veil Doom here is sized by the ground under its aim (`GOD_T1.doom_r()`, VE1) for the believers' room (`_seizer_aim`,
-  `_flock_clear`) and for who it takes (`_doom_ok`'s `r`) -- after it: 3/3 but idle 80 / 57 (the smaller blows the believers' room now
-  allows leave more of the watch standing, so the second household waits for the 2:20 latest time); (2) once the first household is
-  out and nothing is to answer (no seizer, no watcher near sight), the policy breaks the watch itself, one unseen man at a time
-  (`doom a watch, to break the watch`): HideFaithfulDirector sets the second household out the moment no soldier of the watch stands
-  (P5-T17-R1), so this is a real play, not an idle-clock kill (P5-T9-R9 stays retired) and not a filler -- alone it gave idle 60 on
-  seed 1, because a gate pair always has a citizen in sight; (3) `_doom_ok` judges a death in the dusk as seen from 0.6 as far
-  (NightRules.NIGHT_SIGHT, the crowd's own rule), so the Doom after the first lands unseen in the dusk the first left -- lay the dark,
-  strike inside it. After: `gate hide_faithful route=god:veil none_lost=- wins=3/3 median=199 idle_max=44 PASS` (198.7 / 204.3 /
-  127.7 s). The two longer wins sit near the Hunt's pooled band's top (200 s); the band is judged on all six types (`--judge`), which
-  this task does not run.
+- VE3 (Task 13a, fix round 1): Hide the Faithful (Hunt 1) x Veil fell from 3/3 (140 / 126 / 182 s, idle 45,
+  docs/KAK_God_P5_Summary.md) to `gate hide_faithful route=god:veil none_lost=- wins=1/3 median=128 idle_max=57 FAIL` (seed 1 lost
+  at 103.5 s, seed 2 at 184.4 s). The cause is the dusk alone: seed 1 with the ledger switched off (local experiment) gave its
+  reference row's checksum (-802237474, won at 106.9 s). With it, the Doom on a patrol's seizer at 59.5 s was cast on the dusk an
+  earlier Doom left, so it was full size (1.6) and took the marched believer with his seizer; the policy measured the believer's room
+  with the light reach. What stands in the bot: every Veil Doom here is sized by the ground under its aim (`GOD_T1.doom_r()`, VE1)
+  for the believers' room (`_seizer_aim`, `_flock_clear`) and for who it takes (`_doom_ok`'s `r`), and `_doom_ok` judges a death in
+  the dusk as seen from 0.6 as far (NightRules.NIGHT_SIGHT). No believer is lost now, but the gate fails on idle:
+  `gate hide_faithful route=god:veil none_lost=- wins=3/3 median=205 idle_max=80 FAIL` (205.6 s idle 80, 204.6 s idle 57,
+  127.7 s idle 44). The wait is the night's own: once the first household is done the policy has no watcher in its Doom's lead, and
+  the second household sets out only on the chain or at 2:20, not on a broken watch. Likely why the old night broke its watch early
+  (inferred, not measured: the reference run cast only four Dooms by 60 s, fewer than the watch's eight soldiers, yet the second
+  household set out about then): its seen deaths raised the alarm and the watch rallied to the Citadel, which counts as broken
+  (P5-T17-R1); in the dusk the same Dooms go unseen, so nothing rallies. **Gate stopped here (not forced):** Hunt 1 x Veil misses the
+  45 s idle bar. Passing it needs a change to the Hunt (its pacing: P5 summary's "the empty stretch is the shape of the night") or a
+  Veil play this task did not find; that is the user's call.
+  Withdrawn in fix round 1: a "break the watch" Doom (once the first household was out and nothing was to answer, Doom a watchman so
+  watch_broken() sets the second household out). It made the gate pass (idle 44), but it is the idle lead P5-T17-R3 retired: a kill
+  that answers no watcher in its power's lead. tests/test_hide_faithful.gd's idle night did not see it only because its spy never
+  rots the Bell Tower, so every Veil look went to Blight; the idle night now starts with the tower blighted for Veil, and with the
+  branch in place it fails (`FAIL: veil: on the idle night, with the watch 60 s from its sight, it casts nothing (6 casts)`).
 - VE4 (Task 13a, ruling C9): the four other Veil Hunts, gated with the loadout Task 2 left (doom, blight, slumber), win as they are,
   so nothing in their bots changes but stale comments. Before this build (docs/KAK_God_P5_Summary.md, the third key then Tsunami
   Breaker or Nuclear Nova) and now:

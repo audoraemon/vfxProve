@@ -586,20 +586,6 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 		if _flock_clear(bc, d, at, r + BLOW_GAP) and _doom_ok(d, crowd, at, float(th.t) > 6.0, r):
 			_cast(ctx, "doom", at)
 			return "doom a %s" % th.kind
-	# Nothing to answer: break the watch (ruling VE3). Once the first household is out, the second sets out the moment no soldier of the
-	# watch stands (HideFaithfulDirector.watch_broken()); a Doom the dusk sizes to spare the believers takes fewer of the watch with each
-	# blow, so the policy takes the rest itself, one unseen man at a time -- a real play (the household is freed by it), never a filler.
-	var hh: Array = d.households
-	var last_out: bool = (hh[hh.size() - 1] as ExodusDirector.Household).out if not hh.is_empty() else true
-	if hh.size() >= 2 and (hh[0] as ExodusDirector.Household).out and not last_out and not d.watch_broken() and _seizers(d).is_empty():
-		for w: Dictionary in _watchers(d):
-			if w.kind == "inquisitor":
-				continue
-			var at := GOD_T1.road_ahead(w.p, SilentDoom.T_STRIKE)
-			var r := GOD_T1.doom_r(crowd, at)
-			if _flock_clear(bc, d, at, r + BLOW_GAP) and _doom_ok(d, crowd, at, true, r):
-				_cast(ctx, "doom", at)
-				return "doom a %s, to break the watch" % w.kind
 	return ""
 
 

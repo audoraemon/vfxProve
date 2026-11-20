@@ -64,7 +64,9 @@ no crowd and no rules (the no-crowd checks in each power's suite), so adding the
 ## The Tier 1 nights and the Veil Hunts
 
 The bar: Veil wins at least 2 of 3 seeds, with no stretch of more than 45 s without a cast. Each line below is the gate's own
-verdict on this branch (`gate.sh <mission> --god=veil:1`, the Veil pair of `god_gate.sh`; `hunt_gate.sh --only=<hunt> --type=veil`).
+verdict on this branch. The five Tier 1 nights were run as `bash tools/dev/gate.sh <mission> --god=veil:1 --jobs=2` (with `--board`
+for The Warning); `god_gate.sh` itself, which runs all six god types, was not run. The Hunts were run as
+`bash tools/dev/hunt_gate.sh --only=<hunt> --type=veil --jobs=2`, which calls `gate.sh <hunt> --god=veil:<tier> --extra=--dev-tree`.
 
 | Night | Veil plays | Before this build | Now | Changed |
 |---|---|---|---|---|
@@ -73,7 +75,7 @@ verdict on this branch (`gate.sh <mission> --god=veil:1`, the Veil pair of `god_
 | The Spoiled Harvest | Silent Doom, Blight | 3/3, 152 s, idle 40 | 3/3, 152 s, idle 40: PASS | nothing |
 | The Lost Lamb | Silent Doom, Blight | 3/3, 50 s, idle 32 | 3/3, 50 s, idle 32: PASS | nothing |
 | First Prayers | Silent Doom, Blight | 3/3, 91 s, idle 39 | 3/3, 118 s, idle 39: PASS | the bot (VE1, VE2) |
-| Hunt 1, Hide the faithful | Silent Doom, Blight | 3/3, 140 / 126 / 182 s, idle 45 | 3/3, 199 s, idle 44: PASS | the bot (VE3) |
+| Hunt 1, Hide the faithful | Silent Doom, Blight | 3/3, 140 / 126 / 182 s, idle 45 | 3/3, 205 s, idle 80: **FAIL** (idle) | the bot (VE3); stopped, see below |
 | Hunt 2, Silence the witness | Silent Doom, Blight, Slumber | 3/3, 193 s, idle 44 (with Tsunami, later Nova) | 3/3, 206 s, idle 45: PASS | nothing (Slumber is cast) |
 | Hunt 3, Expel the inquisitor | Silent Doom, Blight (Slumber drafted) | 3/3, 181 s, idle 39 (with Nova) | 3/3, 181 s, idle 39: PASS | nothing |
 | Hunt 4, Break the hunt | Silent Doom, Blight (Slumber drafted) | 3/3, 177 s, idle 24 (with Nova) | 3/3, 177 s, idle 24: PASS | nothing |
@@ -82,8 +84,9 @@ verdict on this branch (`gate.sh <mission> --god=veil:1`, the Veil pair of `god_
 Two bots needed the law. In First Prayers the dusk made the Dooms unseen, so nobody fled and the street stayed full round the
 Faithful; the bot now Blights the one bystander who stands in a Doom's way (he walks home sick) and then Dooms the Faithful alone. In
 Hide the faithful a Doom cast on an earlier Doom's dusk was full size and took a believer with his seizer; the bot now sizes every
-Doom by the ground under it, breaks the watch itself once the first household is out, and counts a death in the dusk as seen from
-0.6 as far. No power, mission or bar was changed. "Before" is the last gate recorded in docs/KAK_God_T1_Routes_Summary.md and
+Doom by the ground under it and loses no one, but the night then misses the idle bar (80 s): most likely, with its Dooms unseen, nothing rallies the
+watch, and the second household waits for the chain or 2:20 with nothing to answer. That gate is stopped, not forced (ruling VE3):
+passing it needs a change to the Hunt's pacing or a Veil play not yet found. No power, mission or bar was changed. "Before" is the last gate recorded in docs/KAK_God_T1_Routes_Summary.md and
 docs/KAK_God_P5_Summary.md; the Hunts' third key then was Tsunami Breaker or Nuclear Nova, which the Veil tree no longer reaches.
 
 ## What is left
@@ -91,6 +94,7 @@ docs/KAK_God_P5_Summary.md; the Hunts' third key then was Tsunami Breaker or Nuc
 - **Levels 2-5** and their level-5 twists for all ten powers (only level 1 is built; the skill tree shows level 1).
 - **Veil bots for Tiers 2-5.** The Tier 1 nights play Silent Doom and Blight; the Hunts' Veil bots are listed above. No bot plays
   Slumber, Cloak of Night, Unseen Hour, Dreamless, Dread, Shadow Play, The Swallowing Dark or Evernight in a tier mission yet.
+- **Hunt 1 x Veil's idle** (80 s against 45; ruling VE3): a pacing change to Hide the faithful, or a Veil play for its empty stretch.
 - **Painted icons** for the seven new powers. They have flat generated placeholders; the painted-icon recipe is its own task.
 - **Shape lines for the three older powers.** Silent Doom, Blight and Unseen Hour's HUD shape lines and Blight's blurb ("Ruins a
   well, bell, gate, dock or rite") still read as before the rework and give one size only.

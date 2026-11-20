@@ -579,10 +579,11 @@ func why_not(key: String, at: Vector2) -> String:
 		return ""
 	if _any_verb(verbs, _AFTER_VERBS) and _cast_reaches(key, at, man.ground_pos):
 		return WHY_ONLY
-	# A company member lured or frightened off by this cast goes back to his spot (_keep()).
+	# A company member a lure or a fright takes off his spot goes back to it (_keep()). Judged by reach, not by his mind after the cast: the HUD
+	# asks as the cast is made, before a light or a loud power's impact has moved him (ordinary loud casts do not frighten a soldier, B1).
 	if "lure" in verbs or "scare" in verbs:
 		for p in crew:
-			if _cast_reaches(key, at, p.ground_pos) and not _may_kill(key, at, p.ground_pos) and (p.lured() or p.mind in FRIGHT):
+			if _cast_reaches(key, at, p.ground_pos) and not _may_kill(key, at, p.ground_pos) and ("lure" in verbs or not p.soldier):
 				return WHY_BACK
 	return ""
 

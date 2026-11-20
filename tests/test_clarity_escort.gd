@@ -353,6 +353,8 @@ static func _prisoner(t) -> void:
 		d = s.d
 		var hound: Person = d.searchers[0]
 		hound.inside = false
+		if not (s.field as EnemyField).alive().has(hound):
+			(s.field as EnemyField).add(hound)  # (a searcher out of the Citadel walks the town's field: a whisper can pick him)
 		d.hunters.append(hound)
 		_beside(hound, d._first())
 		_unsee(t, id, "hounds", verb, s, hound, d._first())
@@ -390,6 +392,7 @@ static func _prisoner_why(t) -> void:
 	t.check(d.why_not("wisp", her.ground_pos) == "BOUND - SHE CANNOT HEAR YOU" and d.why_not("whisper", her.ground_pos) == "BOUND - SHE CANNOT HEAR YOU",
 		"a lead or a lure on the bound prisoner says she cannot hear")
 	ClarityKit.apply(s, "lead", her)
+	ClarityKit.refusal(t, "whisper", "prisoner bound")
 	t.check(not bool(s.took) and her.mind != Person.Mind.WHISPERED, "and it is true: a whisper does not take her (took %s)" % s.took)
 	ClarityKit.apply(s, "lure", her, "wisp")
 	t.check(not bool(s.took) and her.mind != Person.Mind.OBSERVE, "and a light does not draw her (took %s)" % s.took)
@@ -631,6 +634,7 @@ static func _face_why(t) -> void:
 	t.check(d.why_not("whisper", believer.ground_pos) == "BOUND - HE CANNOT HEAR YOU" and d.why_not("wisp", believer.ground_pos) == "BOUND - HE CANNOT HEAR YOU",
 		"a lead or a lure on the bound believer says he cannot hear")
 	ClarityKit.apply(s, "lead", believer)
+	ClarityKit.refusal(t, "whisper", "face_halcyon bound")
 	t.check(not bool(s.took) and believer.mind != Person.Mind.WHISPERED, "and it is true: a whisper does not take him (took %s)" % s.took)
 	t.check(d.why_not("doom", first.ground_pos) == "" and d.why_not("smite", first.ground_pos) == "" and d.why_not("oath", first.ground_pos + Vector2(40.0, 0.0)) == "",
 		"a kill, a bolt that kills an escort, and a hold far from everyone say nothing")

@@ -27,7 +27,7 @@ const VERBS := [
 			"tempest", "shatter", "nova"]},
 	{"v": "rot", "word": "Rot", "does": "rots a building or a thing", "keys": ["blight"]},
 	{"v": "seal", "word": "Seal", "does": "NO LEAVING on a door", "keys": ["noleave"]},
-	{"v": "banish", "word": "Banish", "does": "sets them down outside the walls", "keys": ["mirror", "skylift"]},
+	{"v": "banish", "word": "Banish", "does": "sets them down where you choose", "keys": ["mirror", "skylift"]},
 	{"v": "calm", "word": "Calm", "does": "ALL IS WELL: the town stands down", "keys": ["belllies"]},
 ]
 

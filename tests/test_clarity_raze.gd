@@ -208,13 +208,29 @@ static func _why_harvest(t) -> void:
 	# Killing the carter spoils nothing; killing a watchman counts.
 	var carter: Person = d.carters[g0][0]
 	Kit.arrive(carter, d.doors[g0] + Vector2(6.0, 6.0))
-	k = ClarityKit.apply(s, "kill", carter)
-	t.check(d.why_not(k, s.at) == "KILLING THE CARTER SPOILS NOTHING" and d.why_not(k, FAR) == "" and not d.razed(g0),
-		"killing the carter spoils nothing (%s)" % d.why_not(k, s.at))
+	var said := ClarityKit.apply_asked(s, "kill", carter)  # (asked as the cast is made, before the bolt has struck)
+	k = "doom"
+	t.check(said == "KILLING THE CARTER SPOILS NOTHING" and d.why_not(k, FAR) == "" and not d.razed(g0),
+		"killing the carter spoils nothing (%s)" % said)
 	var man: Person = d.guards(g2)[0]
 	k = ClarityKit.apply(s, "kill", man)
 	t.check(d.why_not(k, s.at) == "", "killing a watchman counts: no banner")
 	ClarityKit.assert_read_only(t, s, "harvest (why-not)")
+	ClarityKit.done(s)
+	# The same, cast for real (ruling R2): the HUD asks as the cast is made, before the bolt falls 0.45 s later.
+	s = ClarityKit.world(MissionBook.spoiled_harvest())
+	d = s.d
+	g0 = d.targets[0]
+	d._deliver(g0)
+	carter = d.carters[g0][0]
+	Kit.arrive(carter, d.doors[g0] + Vector2(6.0, 6.0))
+	var hud := ClarityKit.attach_hud(s)
+	var fx := ClarityKit.cast_real(s, "doom", carter.ground_pos)
+	t.check(hud.banners() == PackedStringArray(["KILLING THE CARTER SPOILS NOTHING"]) and carter.is_alive(),
+		"the real Doom on the carter: the banner comes as it is cast, while he lives (%s)" % [hud.banners()])
+	for i in 20:
+		fx._process(0.1)
+	t.check(not carter.is_alive() and not d.razed(g0), "and then the bolt takes him and spoils nothing")
 	ClarityKit.done(s)
 
 
@@ -316,6 +332,20 @@ static func _why_bread(t) -> void:
 	k = ClarityKit.apply(s, "burn", granary)
 	t.check(d.why_not(k, s.at) == "", "burn with no engineer on guard: no banner")
 	ClarityKit.assert_read_only(t, s, "bread (why-not)")
+	ClarityKit.done(s)
+	# A real Smite on the guarded granary (ruling R2): the HUD says so as the cast is made, and the blow does not raze it.
+	s = ClarityKit.world(MissionBook.crowns_bread())
+	d = s.d
+	granary = d.targets[0]
+	crew = []
+	for c: CrownsBreadDirector.Crew in d.crews[0]:
+		crew.append(c.man)
+	var hud := ClarityKit.attach_hud(s)
+	var fx := ClarityKit.cast_real(s, "smite", _aim(granary, crew))
+	t.check(hud.banners() == PackedStringArray(["AN ENGINEER (RED) MENDS IT"]), "the real Smite on the guarded granary: the HUD says an engineer mends it (%s)" % [hud.banners()])
+	for i in 20:
+		fx._process(0.1)
+	t.check(not d.razed(granary), "and the blow alone does not raze it")
 	ClarityKit.done(s)
 
 

@@ -390,6 +390,34 @@ static func _bell_mates(t) -> void:
 		"ringers: a whisper or a kill on a mate says nothing")
 	t.check(d.why_not("discord", FAR) == "", "ringers: Discord far away says nothing")
 	t.check(d.why_not("discord", m.ground_pos) == WarningDirector.STOPS_BANNER, "ringers: Discord on the ringer himself says he keeps the warning")
+	ClarityKit.done(s)
+	# A Lead, a Lure or a fright on a mate standing at MATE_GAP also reaches the ringer 1.2 away: it counts (it holds the mate), so no banner.
+	for verb in ["lead", "lure", "scare"]:
+		s = _ringers_world()
+		d = s.d
+		r = d.ringers[0]
+		m = r.messenger
+		var mate: Person = r.mates[0]
+		Kit.arrive(mate, m.ground_pos + Vector2(RingerDirector.MATE_GAP, 0.0))
+		t.check(r.mates_with().has(mate) and mate.ground_pos.distance_to(m.ground_pos) < 1.5, "ringers: (set-up) a mate at MATE_GAP with him")
+		var said := ClarityKit.apply_asked(s, verb, mate)
+		t.check(said == "", "ringers: a %s on a mate at MATE_GAP says nothing (said '%s')" % [verb, said])
+		ClarityKit.done(s)
+	# A real whisper on the ringer himself picks him: the banner; on a mate beside him it picks the mate: none.
+	s = _ringers_world()
+	d = s.d
+	r = d.ringers[0]
+	m = r.messenger
+	ClarityKit.apply(s, "lead", m)
+	t.check(d.why_not("whisper", s.at) == WarningDirector.STOPS_BANNER, "ringers: a whisper on the ringer himself: he keeps the warning (%s)" % d.why_not("whisper", s.at))
+	ClarityKit.done(s)
+	s = _ringers_world()
+	d = s.d
+	r = d.ringers[0]
+	m = r.messenger
+	Kit.arrive(r.mates[0], m.ground_pos + Vector2(RingerDirector.MATE_GAP, 0.0))
+	ClarityKit.apply(s, "lead", r.mates[0])
+	t.check(d.why_not("whisper", s.at) == "", "ringers: a whisper on the mate beside him says nothing (%s)" % d.why_not("whisper", s.at))
 	t.check(d.why_not("doom", m.ground_pos) == "" and d.why_not("smite", m.ground_pos) == "", "ringers: a kill on the ringer says nothing")
 	ClarityKit.done(s)
 
@@ -426,7 +454,8 @@ static func _bell_rope(t) -> void:
 			_proved(t, r.warning_dead, "ringers: killed on the rope unseen, it stops", ["bell_ringers"], ["climbing"], "kill")
 		else:
 			var before := bell.progress
-			ClarityKit.apply(s, verb, m)
+			var said := ClarityKit.apply_asked(s, verb, m)  # (asked as the cast is made: the cast that pulls him off the rope never banners)
+			t.check(said == "", "ringers: a %s on the climbing ringer says nothing, it counts (said '%s')" % [verb, said])
 			_run(s, 0.3)
 			_proved(t, before > 0.0 and bell.state != BellNetwork.State.CLIMBING and bell.progress == 0.0,
 				"ringers: a %s pulls him off the rope, the climb starts over (progress %s -> %s)" % [verb, before, bell.progress], ["bell_ringers"],

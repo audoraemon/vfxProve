@@ -344,8 +344,8 @@ func hint_seconds() -> float:
 	return 0.0
 
 
-## The why-not banners (Mission clarity, spec 5.2, pre-flight I12). A Kill, Scare or Hold on a collector indoors whose house stands
-## unburnt: the door is the way. A Seal that does not count: not on a door he went in at, laid more than HOLD_TIME before he comes out, or
+## The why-not banners (Mission clarity, spec 5.2, pre-flight I12). A Kill, Scare or Hold on a collector visiting indoors whose house stands
+## unburnt: the door is the way (one hiding in the counting-house is for the fire: its hint says burn it). A Seal that does not count: not on a door he went in at, laid more than HOLD_TIME before he comes out, or
 ## with a guard of his by. A power that burns or breaks the house may bring him out itself, so it is judged by none of them. Only reads.
 const WHY_INDOORS := "HE IS INDOORS - WAIT AT THE DOOR"
 const WHY_DOOR := "SEAL A DOOR HE WENT IN AT"
@@ -360,7 +360,7 @@ func why_not(key: String, at: Vector2) -> String:
 	if "burn" in verbs or "strike" in verbs or not (verbs.has("kill") or verbs.has("scare") or verbs.has("hold")):
 		return ""
 	for q in quarries:
-		if q.dead or not (q.state == State.VISITING or q.state == State.HIDING) or not _alive(q.target) or not q.target.inside:
+		if q.dead or q.state != State.VISITING or not _alive(q.target) or not q.target.inside:
 			continue  # (one waiting in the counting-house is sent out by a cast at its door: the director's own handler)
 		var house := q.inside_of
 		if house == null or not is_instance_valid(house) or house.destroyed or _burning(house):

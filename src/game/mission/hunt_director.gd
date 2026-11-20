@@ -802,7 +802,7 @@ func _why_strike(key: String, at: Vector2, verbs: PackedStringArray) -> String:
 		return ""
 	for i in steps.size():
 		var s := standard(i) if steps[i].raised and not steps[i].broken else null
-		if s == null or s.destroyed or not _guarded(i) or s.distance_to(at) > Crowd._cast_radius(key):
+		if s == null or s.destroyed or not _guarded(i) or s.distance_to(at) > Crowd._cast_radius(key) + WHY_MARGIN:
 			continue
 		for g: Guard in steps[i].party:
 			if _guarding(i, g) and _may_kill(key, at, (g.man as Person).ground_pos):

@@ -1313,7 +1313,8 @@ func slot_at(point: Vector2) -> int:
 ## `quiet`: the banner comes with its own sound (a refused cast's buzz), so it does not ring ui_notice as well.
 func push_banner(text: String, quiet := false) -> void:
 	_banners.append([text, 0.0, quiet or _quiet_next_banner])
-	_quiet_next_banner = false
+	if not quiet:
+		_quiet_next_banner = false  # a quiet push (a why-not) leaves a surge's pending silence for the banner it was meant for
 
 
 func banner_up() -> bool:
@@ -1411,7 +1412,7 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 
 
 ## A cast landed (Rules.cast_made): the director says why it will not count, if it can (MissionDirector.why_not()), as one quiet banner. Free
-## play, no director, the intro, a finished night and a queue already holding a banner show none (a reason shown late reads as the answer to
+## play, no director, the intro, a finished night and a queue already holding two banners show none (a reason shown late reads as the answer to
 ## the wrong cast); WhyNotGate keeps each cause to once in REPEAT seconds and any two apart by GAP.
 func _on_cast_why(_slot: int, key: String, at: Vector2) -> void:
 	if _rules == null or _rules.director == null or _rules.free_play or _rules.finished or intro or _banners.size() > 1:

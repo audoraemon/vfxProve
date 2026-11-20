@@ -102,6 +102,15 @@ static func _clear(d: InformerDirector, c: InformerDirector.Contact, keep: Array
 		Kit.arrive(p, man.ground_pos + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * 6.0)
 
 
+## Every man of `c`'s company is confused (one Discord on the contact does it: DISCORD_R reaches the company's COMPANY_HOLD).
+static func _company_confused(t, c: InformerDirector.Contact, when: String) -> void:
+	var held := 0
+	for v: Variant in c.company:
+		if is_instance_valid(v) and (v as Person).mind == Person.Mind.CONFUSED:
+			held += 1
+	t.check(held == c.company.size() and (c.man as Person).mind == Person.Mind.CONFUSED, "one Discord confuses the contact and his company (%s: %d of %d)" % [when, held, c.company.size()])
+
+
 ## Company member `k` of `c` set 1.0 east of the contact and the rest of his company well away: a cast on him alone, the cast's own point
 ## beyond the contact's reach.
 static func _aside(c: InformerDirector.Contact, k: int) -> Person:
@@ -130,11 +139,14 @@ static func _inf_waiting(t) -> void:
 	t.check(ClarityKit.phases_of("informer").has("waiting") and not MissionHints.line("informer", "waiting").is_empty(), "waiting has its line")
 	ClarityKit.colours_ok(t, d, MissionHints.line("informer", "waiting") + " " + MissionSteps.steps("informer")[1]["t"], "informer waiting")
 	ClarityKit.assert_read_only(t, s, "informer waiting")
-	# The user's case: a Discord on the contact (his company confused with him) before word turns nothing, and the banner says so.
-	for k in c.company.size():
-		ClarityKit.apply(s, "confuse", c.company[k])
-	var key := ClarityKit.apply(s, "confuse", man)
-	var at: Vector2 = s.at
+	# The user's case, cast for real (ruling R2): one Discord on the contact before word confuses his company with him (DISCORD_R > COMPANY_HOLD),
+	# turns nothing, and the HUD's banner, asked as the cast is made, says so.
+	var hud := ClarityKit.attach_hud(s)
+	ClarityKit.cast_real(s, "discord", man.ground_pos)
+	var key := "discord"
+	var at := man.ground_pos
+	_company_confused(t, c, "before word")
+	t.check(hud.banners() == PackedStringArray([InformerDirector.WHY_EARLY]), "the real Discord on the contact before word: the HUD says TOO EARLY (%s)" % [hud.banners()])
 	t.check(d.why_not(key, at) == InformerDirector.WHY_EARLY, "a Discord on the contact before word: TOO EARLY (%s)" % d.why_not(key, at))
 	t.check(d.why_not(key, _far(key, man.ground_pos)) == "", "the same cast far from him and his company says nothing")
 	Kit.run_for(s, d.visit_in(0) - 1.0)
@@ -184,6 +196,19 @@ static func _inf_waiting(t) -> void:
 		"a Skylift on the contact before word: TOO EARLY - NO WORD YET (%s)" % d.why_not(key, s.at))
 	ClarityKit.assert_read_only(t, s, "informer waiting, contact lifted")
 	ClarityKit.done(s)
+	# The same lift cast for real: the banner is the HUD's, asked as the cast is made, and the lift then sets him down.
+	s = _informer_world()
+	d = s.d
+	c = d.contacts[0]
+	man = c.man as Person
+	var hud2 := ClarityKit.attach_hud(s)
+	var from := man.ground_pos
+	var fx := ClarityKit.cast_real(s, "skylift", from, {"to": ClarityKit.outside_point(from)})
+	t.check(hud2.banners() == PackedStringArray([InformerDirector.WHY_EARLY]), "the real Skylift on the contact before word: the HUD says TOO EARLY (%s)" % [hud2.banners()])
+	for i in 30:
+		fx._process(0.1)
+	t.check(d.turned_count() == 0 and man.ground_pos.distance_to(from) > 2.0, "and it only set him down elsewhere: nothing turned (%.1f away)" % man.ground_pos.distance_to(from))
+	ClarityKit.done(s)
 
 
 ## After word: a Discord with his company confused, or a whisper with none by, turns him; anything else says why not.
@@ -196,11 +221,13 @@ static func _inf_word(t) -> void:
 	t.check(d.hint_phase() == "" and d.hint_seconds() == 0.0, "after word the phase is the mission's, with no seconds")
 	ClarityKit.colours_ok(t, d, MissionHints.line("informer") + " " + MissionSteps.steps("informer")[0]["t"], "informer own")
 	ClarityKit.assert_read_only(t, s, "informer after word")
-	for k in c.company.size():
-		ClarityKit.apply(s, "confuse", c.company[k])
-	var key := ClarityKit.apply(s, "confuse", man)
-	_prove(t, d.turned_count() == 1, "informer", "", "confuse", "one Discord on the contact, his company confused with him, turns him at once")
-	t.check(d.why_not(key, s.at) == "", "and it says nothing")
+	ClarityKit.attach_hud(s)
+	ClarityKit.cast_real(s, "discord", man.ground_pos)
+	var key := "discord"
+	_company_confused(t, c, "after word")
+	_prove(t, d.turned_count() == 1, "informer", "", "confuse", "one real Discord on the contact, his company confused with him, turns him at once")
+	t.check(d.why_not(key, man.ground_pos) == "" and not (s.hud as Hud).banners().has(InformerDirector.WHY_ONLY) and not (s.hud as Hud).banners().has(InformerDirector.WHY_EARLY),
+		"and it says nothing of why not (%s)" % [(s.hud as Hud).banners()])
 	ClarityKit.done(s)
 	s = _informer_world()
 	d = s.d
@@ -243,8 +270,9 @@ static func _inf_word(t) -> void:
 	d._visit(0)
 	var friend := _aside(c, 0)
 	var spot := c.spots[0]
-	key = ClarityKit.apply(s, "scare", friend)
-	t.check(d.why_not(key, s.at) == InformerDirector.WHY_BACK, "a fright on his company after word: THEY WALK BACK TO HIS DOOR (%s)" % d.why_not(key, s.at))
+	var said := ClarityKit.apply_asked(s, "scare", friend)  # (asked as the cast is made: the fright has not landed yet)
+	key = "smite"
+	t.check(said == InformerDirector.WHY_BACK, "a fright on his company after word: THEY WALK BACK TO HIS DOOR (%s)" % said)
 	Kit.arrive(friend, (c.man as Person).ground_pos + Vector2(6.0, 0.0))
 	t.check(d.why_not("skylift", friend.ground_pos) == "" and d.why_not("oath", friend.ground_pos) == "",
 		"a Skylift or a Hold on a runner of his company, out of the contact's reach, says nothing")
@@ -396,6 +424,17 @@ static func _tax_smoke(t) -> void:
 	t.check(d.quarries[0].state == State.WAITING and d.why_not("doom", d.hideout.center()) in ["", TaxCollectorDirector.WHY_INDOORS],
 		"a cast at the house itself: smoked out, or HE IS INDOORS (%s)" % d.why_not("doom", d.hideout.center()))
 	t.check(far_at.distance_to(d.hide_door) > d.alarm_reach, "(set-up)")
+	ClarityKit.done(s)
+	# Hiding in the counting-house (alarmed, he ran there): the hint says burn it, so a Kill or a Hold at its door says nothing.
+	s = _tax_world()
+	d = s.d
+	q = d.quarries[0]
+	d._set_out(q)
+	d._alarm(q)
+	Kit.arrive(q.target, d.hide_door)
+	Kit.run_for(s, AssassinateDirector.TICK + DT)
+	t.check(q.state == State.HIDING and q.target.inside, "(set-up) he hides in the counting-house (%s)" % State.keys()[q.state])
+	t.check(d.why_not("doom", d.hide_door) == "" and d.why_not("oath", d.hide_door) == "", "a Kill or a Hold at the door of the house he hides in says nothing")
 	ClarityKit.done(s)
 
 

@@ -698,6 +698,31 @@ static func _lanterns(t) -> void:
 	ClarityKit.apply(s, "lure", k)
 	t.check(not bool(s.took), "broken_lanterns: a light does not draw a Knight off his post")
 	ClarityKit.done(s)
+	# The same two casts for real (ruling R2): a Knight refuses the light, so the HUD says he stands by it; a blow on his lantern says it is shielded.
+	s = ClarityKit.world(MissionBook.broken_lanterns())
+	d = s.d
+	d._knights_come()
+	k = d.knights[0]
+	sh = d.guarding[k]
+	Kit.arrive(k, d._guard_place(sh, k))
+	var hud := ClarityKit.attach_hud(s)
+	ClarityKit.cast_real(s, "wisp", k.ground_pos + Vector2(2.5, 0.0))
+	t.check(hud.banners() == PackedStringArray([BrokenLanternsDirector.WHY_STANDS]) and not k.lured() and d.guarded(sh),
+		"broken_lanterns: the real Wisp by a Knight: he is not drawn, and the HUD says %s (%s)" % [BrokenLanternsDirector.WHY_STANDS, hud.banners()])
+	ClarityKit.done(s)
+	s = ClarityKit.world(MissionBook.broken_lanterns())
+	d = s.d
+	d._knights_come()
+	k = d.knights[0]
+	sh = d.guarding[k]
+	Kit.arrive(k, d._guard_place(sh, k))
+	hud = ClarityKit.attach_hud(s)
+	var fx := ClarityKit.cast_real(s, "smite", sh.center())
+	t.check(hud.banners() == PackedStringArray([BrokenLanternsDirector.WHY_SHIELDED]), "broken_lanterns: the real Smite on a guarded lantern: the HUD says %s (%s)" % [BrokenLanternsDirector.WHY_SHIELDED, hud.banners()])
+	for i in 20:
+		fx._process(0.1)
+	t.check(not sh.destroyed, "broken_lanterns: and the real blow only shakes it")
+	ClarityKit.done(s)
 	for verb: String in ["kill", "lead"]:
 		s = ClarityKit.world(MissionBook.broken_lanterns())
 		d = s.d

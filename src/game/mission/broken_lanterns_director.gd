@@ -318,7 +318,7 @@ const WHY_SHIELDED := "A KNIGHT (BLUE) SHIELDS IT"
 
 
 ## Mission clarity (spec 5.6): a Strike or Burn on a lantern a Knight guards (a blow only shakes it), and a Confuse or compel on a Knight who
-## stands by one (only a kill, a lead or a lure takes him off). A cast that could kill him or lead him off is judged by that. Only reads.
+## stands by one (only a kill or a lead takes him off: a Knight refuses a lure, so a Wisp banners too). A cast that could kill him or lead him off is judged by that. Only reads.
 func why_not(key: String, at: Vector2) -> String:
 	if crowd == null or knights.is_empty():
 		return ""
@@ -329,7 +329,7 @@ func why_not(key: String, at: Vector2) -> String:
 			if k != null and _cast_reaches(key, at, s.center()):
 				return "" if _may_kill(key, at, k.ground_pos) else WHY_SHIELDED
 		return ""
-	if ("confuse" in verbs or "hold" in verbs) and not ("lead" in verbs or "lure" in verbs or "kill" in verbs):
+	if ("confuse" in verbs or "hold" in verbs) and not ("lead" in verbs or "kill" in verbs):
 		for k in knights:
 			if not _alive(k):
 				continue

@@ -810,7 +810,8 @@ func why_not(key: String, at: Vector2) -> String:
 				continue
 			var men := _men_of(s)
 			for c: Variant in carters.get(s, []):
-				if is_instance_valid(c) and not _alive(c) and _may_kill(key, at, (c as Person).ground_pos):
+				# Judged by the kill's radius, not by his death: the HUD asks as the cast is made, before a bolt has struck.
+				if is_instance_valid(c) and _may_kill(key, at, (c as Person).ground_pos):
 					var watch := men.filter(func(m: Variant) -> bool: return not c == m and is_instance_valid(m) and _may_kill(key, at, (m as Person).ground_pos))
 					return "" if not watch.is_empty() else "KILLING THE CARTER SPOILS NOTHING"
 	return ""

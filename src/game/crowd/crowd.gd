@@ -37,6 +37,8 @@ const POST_PATROL := 20
 ## to have arrived, and how long it stands there before walking on to its loop's next point.
 const CITY_POST_SPREAD := 0.25
 const LOOP_REACH := 0.6
+## How near his post a street beat man must be to have arrived (his first post is the pair's spread spot, not a beat point).
+const BEAT_REACH := 1.0
 const LOOP_PAUSE := 2.0
 ## How many waypoints ahead a city's faced gate (CityDef.gate_outward()) looks for itself on a waiting person's path.
 const GATE_AHEAD := 24
@@ -280,6 +282,9 @@ var _city_posts := false
 ## The wall patrols walking their loops (CityDef.patrol_loops()): [soldier, the loop's points (walkable), the point it
 ## is walking to or standing at, its loop's index, when it reached that point (-1: not yet)].
 var _loops: Array = []
+## The street pairs walking their beats (CityDef.street_beats()), shaped as `_loops`' entries with the beat's index for the
+## loop's: kept apart so loop_of() stays "walks a wall loop".
+var _beats: Array = []
 ## Steps the people (see Ticker).
 var _ticker: Ticker
 
@@ -843,6 +848,7 @@ func _marshal_exits() -> int:
 ## points snapped to open ground.
 func _start_loops() -> void:
 	_loops.clear()
+	_beats.clear()
 	var i := post_counts[0] + post_counts[1] + post_counts[2]
 	var loops := City.current().patrol_loops()
 	for k in loops.size():
@@ -857,6 +863,25 @@ func _start_loops() -> void:
 				if i < soldiers.size():
 					_loops.append([soldiers[i], points, at, k, -1.0])
 					i += 1
+	var beats := City.current().street_beats()
+	for k in beats.size():
+		var points: Array[Vector2] = []
+		for g: Vector2 in beats[k].points:
+			var w := _grid.nearest_walkable(g)
+			points.append(w if w != Vector2.INF else g)
+		for m in 2:
+			if i < soldiers.size():
+				soldiers[i].beat_index = k
+				_beats.append([soldiers[i], points, int(beats[k].start), k, -1.0])
+				i += 1
+
+
+## Which street beat `p` walks (its index in CityDef.street_beats()), or -1.
+func beat_of(p: Variant) -> int:
+	for e in _beats:
+		if e[0] == p:
+			return e[3]
+	return -1
 
 
 ## Which wall patrol loop `p` walks (its index in CityDef.patrol_loops()), or -1.
@@ -870,15 +895,23 @@ func loop_of(p: Person) -> int:
 ## The wall patrols walk on: one at its point (and without a role, at its post, not looking at an incident, the town
 ## not rallied) stands LOOP_PAUSE, then makes for the loop's next point, which becomes its post.
 func _walk_loops() -> void:
-	for e in _loops:
+	_walk_list(_loops, LOOP_REACH, false)
+	_walk_list(_beats, BEAT_REACH, true)
+
+
+## One list of walkers (`_loops` or `_beats`) walks on. The call-up stops the wall loops, not the beats; a beat man somebody
+## re-posted (a director's stationed man) or a mission names is left alone.
+func _walk_list(list: Array, reach: float, beats: bool) -> void:
+	for e in list:
 		if not is_instance_valid(e[0]):
 			continue
 		var p: Person = e[0]
-		if not p.is_alive() or _rallied or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST or p.has_goal() \
-				or guard_jobs.on_job(p):
+		if not p.is_alive() or (_rallied and not beats) or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST \
+				or p.has_goal() or guard_jobs.on_job(p) or (beats and (not p.on_beat() or held_by_mission(p))):
 			continue
 		var points: Array[Vector2] = e[1]
-		if p.ground_pos.distance_to(points[e[2]]) > LOOP_REACH or _looking(p):
+		var here: Vector2 = p.post if beats else points[e[2]]
+		if p.ground_pos.distance_to(here) > reach or _looking(p):
 			e[4] = -1.0
 			continue
 		if float(e[4]) < 0.0:
@@ -1226,7 +1259,7 @@ func _advance(delta: float) -> void:
 	_free_jams()
 	_tend_households()
 	_return_investigators()
-	if not _loops.is_empty():
+	if not _loops.is_empty() or not _beats.is_empty():
 		var t_loops := BenchProf.begin()
 		_walk_loops()
 		BenchProf.add(&"loops", t_loops)
@@ -2420,6 +2453,7 @@ func clear() -> void:
 	_gate_next.clear()
 	_spots.clear()
 	_loops.clear()
+	_beats.clear()
 	gate_interval = GATE_INTERVAL
 	# The city's LOD rate goes with its crowd: nothing built after this one inherits it (setup() sets it again).
 	Person.offscreen_every = Person.OFFSCREEN_EVERY

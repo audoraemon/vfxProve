@@ -236,6 +236,8 @@ var town_post := Vector2.INF
 var post_group := -1
 ## How near his anchor a soldier must stand to count as at it (at_own_post(), on_watch()).
 const WATCH_REACH := 1.0
+## Which street beat he walks (Crowd._start_loops(), CityDef.street_beats()), or -1: set once, never cleared.
+var beat_index := -1
 ## On a guard job (GuardJobs.take/release/prune/close/clear set and clear it, nobody else).
 var on_guard_job := false
 ## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
@@ -2880,9 +2882,15 @@ func at_own_post() -> bool:
 ## away on a guard job, and either on duty or at his station (a director-stationed soldier counts; a guard away on a fire or a
 ## pile never does).
 func on_watch() -> bool:
-	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job:
+	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or on_beat():
 		return false
 	return mind == Mind.DUTY or ((mind == Mind.POST or mind == Mind.HOLD) and ground_pos.distance_to(anchor) <= WATCH_REACH)
+
+
+## Whether he is walking his street beat: a beat man, no corps, and nobody has re-posted him (his post is his town post and his
+## anchor), so a director's stationed man (anchor away from his post) is not on his beat and watches as any guard.
+func on_beat() -> bool:
+	return beat_index >= 0 and corps == Corps.NONE and post.is_equal_approx(town_post) and anchor.is_equal_approx(post)
 
 
 ## Back to his post after a job: a soldier the god holds has his saved hold rewritten to the post (so the hold lifts into it);

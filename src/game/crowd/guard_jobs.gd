@@ -94,9 +94,22 @@ func mission_man(p: Variant) -> bool:
 			and (s.mind == Person.Mind.POST or s.mind == Person.Mind.HOLD)
 
 
-## Whether `p` may be given a job now (widened by later duties).
+## Whether `p` is a street beat man who may be given a job now though he is mid-leg: alive, a soldier, no corps, out of doors,
+## on his beat, his mind POST, not in the god's hand, not named by a mission, not guarding for an escort, not on a job.
+func beat_walker(p: Variant) -> bool:
+	if not is_instance_valid(p):
+		return false
+	var s := p as Person
+	if s == null or not s.is_alive() or not s.soldier or s.corps != Person.Corps.NONE or s.inside or not s.on_beat():
+		return false
+	if s.mind != Person.Mind.POST or s.held_by_god() or _crowd.held_by_mission(s) or mission_man(s):
+		return false
+	return not (_crowd.escorts != null and _crowd.escorts.guarding(s)) and not on_job(s)
+
+
+## Whether `p` may be given a job now: at his post, or a beat man on his way (widened by later duties).
 func is_free(p: Variant) -> bool:
-	return eligible(p)
+	return eligible(p) or beat_walker(p)
 
 
 ## A cap `base` scaled to the town's guard (Aldermere's 100 soldiers keep it as it is).

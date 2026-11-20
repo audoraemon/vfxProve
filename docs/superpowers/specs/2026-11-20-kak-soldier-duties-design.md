@@ -65,8 +65,8 @@ can be broken, lured or used.
 Goals: soldiers look like soldiers in calm and in emergency; each duty changes play in a way the player can see
 before it costs him; every mission keeps working; both towns.
 
-Non-goals: soldiers repairing; mission-placed soldiers taking town duties; a bucket chain; new PixelLab art (see the
-open questions); changing how a seen power raises alarm (another branch owns that); wall walkers for Aldermere
+Non-goals: soldiers repairing; mission-placed soldiers taking town duties; a bucket chain; new PixelLab art (answer 1 at the
+end); changing how a seen power raises alarm (another branch owns that); wall walkers for Aldermere
 `[call: "as today" read as no new wall loop; its wall men are needed at gates and towers]`.
 
 Anti-goals (a failure even if it works):
@@ -172,15 +172,15 @@ Anti-goals (a failure even if it works):
 
 ## Slice (b): corpse duty
 
-- **Bodies:** the ledger `Remains` is turned on for every loadout `[call: needed for [user 6]; otherwise only Death
-  and Decree gods ever leave a body to find. See open question 2]`. It stays simulation-neutral by itself.
+- **Bodies:** the ledger `Remains` is turned on for every loadout `[user, answer 2: otherwise only Death
+  and Decree gods ever leave a body to find]`. It stays simulation-neutral by itself.
 - **Trigger:** a free street pair, both men, on its beat within `CORPSE_NOTICE` 4.0 of an unhidden remain nobody is
   assigned to (`Remains.near()`, remains.gd:148). 4.0 sits beside `COLLAPSE_SIGHT` and Death Mark's `LOOK_R`. The
   reach is capped by `Crowd.sight()` (crowd.gd:1060), and a body on veiled ground is never noticed `[call: the Unseen
   Hour, NO SIGHT and the dark are counters here as they are for the sweep and the gate check]`.
 - **Crew:** that pair. One pair per body, one body per pair.
 - **Steps:** both walk to the body. The nearer man crouches over it for `INSPECT` 4.0 s (`stumble` clip held: the
-  crouch `[call: stand-in, open question 1]`); the other stands 0.8 away facing out. When the 4 s end the body is
+  crouch `[user, answer 1: stand-in]`); the other stands 0.8 away facing out. When the 4 s end the body is
   **found**. Then both lift it: `Remains.take()` (remains.gd:171), the body is drawn between the two as they walk
   (`walk` clip) to the nearest open ground off every road within `CARRY_REACH` 4.0, lay it down, and it fades over
   `DEATH_FADE`. They walk back to the beat.
@@ -353,14 +353,11 @@ witnesses; fix a policy, never the rule, if a bot now stalls.
 - Scaling of each cap in the Capital if `ceil(cap * soldiers / 100)` reads wrong on screen.
 - Scripted-player policy fixes when a gate pair drops below its baseline.
 
-## Open questions for the user
+## Answered by the user (2026-11-20)
 
-1. **Art.** Soldiers have no kneel, carry or point clip. The plan uses stand-ins: the crouch (the `stumble` clip held)
-   for looking a body over, two walking soldiers with the body drawn between them for the carry, and `talk` for gate
-   checks and door knocks. Ship with the stand-ins, or make new PixelLab clips for the guard (kneel-inspect, carry,
-   point) first? New art needs your go-ahead.
-2. **Bodies for every god.** Today a body stays on the street only when a Death power is in the loadout (45 s) or for
-   five kill kinds (20 s); otherwise it fades in 1.6 s, and a blast or a fire leaves none at all. For corpse duty to
-   change play for every god, the plan keeps whole bodies 45 s in every mission (mob, frenzy, plague, choke and the
-   like). Streets will show more dead. Is that wanted? And should Ruin's kills (blast, fire) leave a body too, or is
-   it right that corpse duty never touches a Ruin god?
+1. **Art [user]:** ship with the stand-ins. The crouch (`stumble` clip held) for looking a body over; two walking
+   soldiers with the body drawn between them for the carry; `talk` for gate checks and door knocks. No PixelLab work
+   in this build; new clips only later, if the stand-ins look poor in play.
+2. **Bodies for every god [user]:** whole bodies stay 45 s in every mission for every kill that leaves one today
+   (`Remains.BODY_KINDS`: quiet kills, plague, mob, frenzy, choke and the like). Streets will show more dead; that is
+   wanted. A blast or a fire still leaves no body, so corpse duty never touches a Ruin god's loud kills.

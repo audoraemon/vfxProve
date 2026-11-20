@@ -168,8 +168,10 @@ static func _close(t) -> void:
 	gj.take(g, house)
 	t.check(gj.on_job(g) and gj.job_of(g) == house and not gj.eligible(g), "a guard on a job is on it")
 	crowd.rally()
-	t.check(not gj.is_open() and not gj.on_job(g) and not g.on_guard_job, "the rally closes the board")
-	t.check(g.assist_fire == null and g.mind == Person.Mind.RALLY, "and the fire fighter goes to the ring")
+	t.check(gj.is_open() and gj.on_job(g) and g.mind == Person.Mind.ASSIST, "the call-up leaves the fire fighter on his fire and the board open")
+	crowd._on_citadel_fallen()
+	t.check(not gj.is_open() and not gj.on_job(g) and not g.on_guard_job, "the Citadel's fall closes the board")
+	t.check(g.assist_fire == null and g.mind == Person.Mind.HOLD, "and the fire fighter holds the ground")
 	Corps._done(made)
 
 
@@ -295,7 +297,7 @@ static func _forgo(t) -> void:
 	made = _made()
 	crowd = made[0]
 	crowd.rally()
-	t.check(not crowd.guard_jobs.is_open(), "while rally() closes it")
+	t.check(crowd.guard_jobs.is_open(), "while rally() leaves it open")
 	Corps._done(made)
 
 
@@ -311,9 +313,9 @@ static func _rally_clears(t) -> void:
 	for p in crowd.soldiers:
 		if p.corps == Person.Corps.NONE and (p.mind == Person.Mind.ASSIST or p.assist_fire != null):
 			left += 1
-	t.check(left == 0, "the rally takes every guard off the fire (%d left)" % left)
+	t.check(left > 0 and crowd.fires.guards_on(house) > 0, "the call-up leaves the guards at the fire (%d there)" % left)
 	crowd.fires._recruit()
-	t.check(crowd.fires.guards_on(house) == 0, "and a new recruit adds no guard")
+	t.check(crowd.fires.guards_on(house) > 0, "and the board stays open to a new recruit")
 	Corps._done(made)
 
 
@@ -324,7 +326,7 @@ static func _unprepared(t) -> void:
 	crowd.alarms.stage = crowd.profile.fire_from
 	var house := _yard_fire(crowd, made[1])
 	crowd.fires._recruit()
-	t.check(crowd.fires.guards_on(house) == 0, "an unprepared town's rally came first: no guard at the fire")
+	t.check(crowd.fires.guards_on(house) > 0, "an unprepared town's rally came first, yet its free guards turn out at the fire")
 	Corps._done(made)
 
 
@@ -462,6 +464,13 @@ static func _tags_empty(t) -> void:
 	var made := _made()
 	var crowd: Crowd = made[0]
 	t.check(crowd.guard_jobs.tags().is_empty(), "no job: no tags")
+	var hud := Hud.new()
+	var before := hud.all_tags().size()
+	hud._crowd = crowd
+	hud._rules = Rules.new()
+	t.check(hud.all_tags().size() == before, "an empty board adds nothing to the HUD's tags")
+	hud._rules.free()
+	hud.free()
 	Corps._done(made)
 
 
@@ -503,12 +512,106 @@ static func _clear_resets_jobs(t) -> void:
 	t.check(gj.jobs.size() == 1 and stub.job.crew.size() == 1, "the board filled the stub's job with one man")
 	var man: Person = stub.job.crew[0]
 	t.check(gj.on_job(man) and gj.kind_of(man) == GuardJobs.Kind.CORDON and stub.job.started, "he is on a CORDON job")
-	crowd.clear()
+	gj.clear()
 	t.check(gj.jobs.is_empty() and not gj.on_job(man) and stub.cleared, "clear() drops every job and clears each duty")
+	t.check(not man.on_guard_job and gj.clock == 0.0, "and the man is free of the flag and the clock is back to 0")
+	crowd.clear()
+	Corps._done(made)
+
+
+static func _called_up(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	t.check(not crowd.called_up(), "a new crowd is not called up")
+	crowd.forgo_rally()
+	t.check(not crowd.called_up(), "forgo_rally() alone is no call-up")
+	Corps._done(made)
+	made = _made()
+	crowd = made[0]
+	crowd.rally()
+	t.check(crowd.called_up(), "rally() calls up")
+	crowd.clear()
+	t.check(not crowd.called_up(), "clear() resets it")
+	(made[2] as Node).free()
+
+
+## A duty of `k` that posts one job of `need` men at `at`.
+class OrderDuty extends Duty:
+	## The kind it runs.
+	var k := 0
+	## Where its job is.
+	var at := Vector2.ZERO
+	## The crew it wants.
+	var need := 1
+	## Its job once posted.
+	var job: GuardJobs.Job
+
+	func kind() -> int:
+		return k
+
+	func post_jobs() -> void:
+		if job == null:
+			job = board.post(k, at, need)
+
+
+static func _only_free(crowd: Crowd, men: Array) -> void:
+	crowd.mission_holds.append(func(p: Person) -> bool: return p.soldier and not men.has(p))
+
+
+static func _fill_order(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	var men: Array = []
+	for p in crowd.soldiers:
+		if p.post_group == 0 and p.corps == Person.Corps.NONE and men.size() < 3:
+			men.append(p)
+	_only_free(crowd, men)
+	var near: Person = men[0]
+	var sweep := OrderDuty.new().setup(gj, crowd) as OrderDuty
+	sweep.k = GuardJobs.Kind.SWEEP
+	sweep.at = near.ground_pos
+	sweep.need = 1
+	var cordon := OrderDuty.new().setup(gj, crowd) as OrderDuty
+	cordon.k = GuardJobs.Kind.CORDON
+	cordon.at = near.ground_pos
+	cordon.need = 2
+	gj.add_duty(cordon)
+	gj.add_duty(sweep)
+	gj.step(1.0)
+	t.check(sweep.job.crew == [near] and sweep.job.started, "the higher kind fills first, from the nearest man")
+	t.check(cordon.job.crew.is_empty() and not cordon.job.started, "keep-one leaves one man free: the 2-man job assigns nobody")
+	Corps._done(made)
+	# Ties break by stagger.
+	made = _made()
+	crowd = made[0]
+	gj = crowd.guard_jobs
+	men = []
+	for p in crowd.soldiers:
+		if p.post_group == 0 and p.corps == Person.Corps.NONE and men.size() < 3:
+			men.append(p)
+	var spot: Vector2 = (men[1] as Person).post
+	for i in [1, 2]:
+		var m: Person = men[i]
+		m.post = spot
+		m.town_post = spot
+		m.anchor = spot
+		m.ground_pos = spot
+	_only_free(crowd, men)
+	var duty := OrderDuty.new().setup(gj, crowd) as OrderDuty
+	duty.k = GuardJobs.Kind.CORDON
+	duty.at = spot
+	duty.need = 1
+	gj.add_duty(duty)
+	gj.step(1.0)
+	var want: Person = men[1] if (men[1] as Person).stagger < (men[2] as Person).stagger else men[2]
+	t.check(duty.job.crew == [want], "two men the same distance away: the lower stagger goes")
 	Corps._done(made)
 
 
 static func run(t) -> void:
+	_called_up(t)
+	_fill_order(t)
 	_kinds_order(t)
 	_mission_man_kinds(t)
 	_step_no_change(t)

@@ -242,6 +242,9 @@ var on_guard_job := false
 var drill_face := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
+## The way a soldier faces standing at his anchor (a Citadel guard man in his rank, later a corpse watcher or a cordon end); INF
+## for none. send_to_post() and hold_ground() clear it, so a caller sets it right after its send_to_post().
+var stand_face := Vector2.INF
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
 ## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
 ## the duty -- and not to his spawn post (_soldier_back()).
@@ -879,8 +882,10 @@ func pace_hold() -> float:
 
 func _base_speed() -> float:
 	match mind:
-		Mind.PANIC, Mind.RALLY:
+		Mind.PANIC:
 			return PANIC_SPEED * pace
+		Mind.RALLY:
+			return WALK_SPEED * ASSIST_PACE * pace
 		Mind.RECOVER:
 			return WALK_SPEED * RECOVER_PACE * pace
 		Mind.ASSIST:
@@ -992,6 +997,14 @@ func _pick_target() -> void:
 		return
 	if mind == Mind.FLEE:
 		_scurry()
+		return
+	if (mind == Mind.RALLY or mind == Mind.POST) and stand_face != Vector2.INF \
+			and ground_pos.distance_to(anchor) <= GOAL_REACH * 2.0:
+		# A guard man in his rank: he stands on his spot facing the way he was given, never shifting about.
+		hurrying = false
+		_target = anchor
+		_facing = 1 if stand_face.x - stand_face.y > 0.0 else -1
+		_back = stand_face.x + stand_face.y < 0.0
 		return
 	if mind == Mind.POST and ground_pos.distance_to(anchor) <= GOAL_REACH * 2.0:
 		# At its post (the reach _think() re-paths beyond): shifting about it is at a walk again. A goal dropped short of
@@ -1923,7 +1936,9 @@ func _soldier_back() -> void:
 	_held_saved = false
 	match m:
 		Mind.RALLY:
+			var face := stand_face
 			send_to_post(at, true, hurry)
+			stand_face = face
 		Mind.DUTY:
 			go_duty(at)
 			if mind != Mind.DUTY:
@@ -2847,6 +2862,7 @@ func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 		return
 	_held_saved = false  # sent somewhere by someone (a town order -- the rally, the marshals, a rescue -- wins over any hold, WILL_FIRM too)
 	anchor = at
+	stand_face = Vector2.INF
 	mind = Mind.RALLY if rally else Mind.POST
 	hurrying = hurried
 	walk_speed = _mind_speed()
@@ -2885,6 +2901,7 @@ func hold_ground() -> void:
 	if state == State.DEAD:
 		return
 	_held_saved = false
+	stand_face = Vector2.INF
 	mind = Mind.HOLD
 	walk_speed = _mind_speed()
 	_goal = Vector2.INF
@@ -3175,7 +3192,7 @@ func _sprite_pose_code() -> int:
 		t = _still_t
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
-		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
+		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE else 1
 		if (mind == Mind.FIGHT and fight_kind == &"madness") or (anim == 1 and guised()):
 			_design()
 			if _has_own_art(6):

@@ -310,16 +310,24 @@ func _eligible(p: Variant) -> bool:
 
 
 ## The `count` free soldiers nearest `at`, nearest first (v0.11 M2): eligible, of no corps, none of `exclude`; fewer when the
-## town has fewer.
+## town has fewer. Before the call-up each one returned is taken off any guard job (the director wins); after it, the pool is
+## only the men the guard answered with, standing at a post or holding (never on the Citadel job).
 func _free_soldiers(at: Vector2, count: int, exclude: Array = []) -> Array[Person]:
 	var pool: Array[Person] = []
+	var called := crowd.called_up()
 	for s in crowd.soldiers:
 		if _eligible(s) and s.corps == Person.Corps.NONE and not exclude.has(s):
+			if called and not (crowd.guard.answered(s) and s.mind in [Person.Mind.POST, Person.Mind.HOLD] \
+					and crowd.guard_jobs.kind_of(s) != GuardJobs.Kind.CITADEL):
+				continue
 			pool.append(s)
 	pool.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
 	var out: Array[Person] = []
 	out.assign(pool.slice(0, count))
+	if not called:
+		for p in out:
+			crowd.guard_jobs.release(p)
 	return out
 
 

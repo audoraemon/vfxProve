@@ -788,8 +788,7 @@ static func _squads_after_rally(t) -> void:
 	crowd.alarms.stage = crowd.profile.fire_from
 	crowd.rally()
 	var pile := _yard_pile(crowd, made[1])
-	crowd.piles.step(1.0)
-	t.check(pile.diggers.is_empty(), "no guard digs once the rally has closed the jobs")
+	t.check(crowd.guard_jobs.is_open() and crowd.called_up(), "after the call-up the board stays open (guards may dig) and the squads help")
 	crowd.rescue.step(0.6)
 	var squad: Dictionary = {}
 	for sq in crowd.rescue.squads:

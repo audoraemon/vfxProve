@@ -140,6 +140,8 @@ var fires: FireManager
 var piles: PileManager
 ## Which ordinary guards are away on a job (fires; piles later), and the hooks by which a mission's director claims soldiers.
 var guard_jobs: GuardJobs
+## The Citadel guard (a duty of the board's): forms at rally().
+var guard: CitadelGuard
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
 var mission_holds: Array[Callable] = []
 ## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
@@ -361,6 +363,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	piles = PileManager.new().setup(self, env, grid)
 	guard_jobs = GuardJobs.new().setup(self)
+	guard = CitadelGuard.new().setup(guard_jobs, self) as CitadelGuard
+	guard_jobs.add_duty(guard)
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
@@ -2082,39 +2086,27 @@ func _return_investigators() -> void:
 	_investigating = kept
 
 
-## Every soldier leaves its post for a slot on the Citadel's ring. Only soldiers without a role (v0.07): the others have
-## their own work.
+## The call-up: the Citadel guard forms (CitadelGuard.call_up()); the rest of the soldiers keep the city. The board stays open
+## until the Citadel falls.
 func rally() -> void:
 	if _rallied:
 		return
 	_rallied = true
 	_called_up = true
-	guard_jobs.close()
-	var living: Array[Person] = []
-	for p in soldiers:
-		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:
-			living.append(p)
-	for i in living.size():
-		var p := living[i]
-		var a := TAU * float(i) / float(maxi(living.size(), 1))
-		p.send_to_post(_spot_near(City.current().citadel_origin() + Vector2(cos(a), sin(a)) * RING_RADIUS, 0.6), true)
+	guard.call_up()
 	if sfx != null:
 		sfx.play(&"sol_rally", City.current().citadel_origin())
 	rallied.emit()
 
 
-## Whether `p` stands on the rally ring (v0.09.1): a living soldier without a role, rallied, and within RING_RADIUS +
-## RING_REACH of the Citadel. Untyped: `soldiers` can still hold one freed since the last _prune_soldiers(), and a typed
-## parameter would raise on it before is_instance_valid() could look.
+## Whether `p` stands in the Citadel guard on his slot (v0.09.1's ring, now the guard's ranks): see CitadelGuard.on_slot().
+## Untyped: `soldiers` can still hold one freed since the last _prune_soldiers(), and a typed parameter would raise on it
+## before is_instance_valid() could look.
 func on_ring(p: Variant) -> bool:
-	if not is_instance_valid(p):
-		return false
-	var s := p as Person
-	return s != null and s.soldier and s.is_alive() and s.corps == Person.Corps.NONE and s.mind == Person.Mind.RALLY \
-		and s.ground_pos.distance_to(City.current().citadel_origin()) <= RING_RADIUS + RING_REACH
+	return guard.on_slot(p)
 
 
-## How many soldiers stand on the rally ring (v0.09.1): the Citadel's garrison, asked once per hit on it.
+## How many soldiers stand on their slots in the guard (v0.09.1): the Citadel's garrison, asked once per hit on it.
 func ring_count() -> int:
 	if not _rallied:
 		return 0
@@ -2125,20 +2117,26 @@ func ring_count() -> int:
 	return n
 
 
-## The reserve (v0.09.1): once the soldiers have rallied, a marshal, escort or rescuer killed is replaced by the living
-## soldier on the ring nearest it. That soldier takes the role and the dead one's post, and the role's manager puts it
-## to work: a marshal at its way out, an escort on the duty it guarded (or one short of escorts), a rescuer in its squad.
-## One replacement for each death; with the ring empty, nobody.
+## The reserve: once the soldiers were called up, a marshal, escort or rescuer killed is replaced by the nearest free guard
+## on the board, or with none, by the nearest town man of the Citadel guard (his slot reopens; a director's man never goes).
+## That soldier takes the role and the dead one's post, and the role's manager puts it to work: a marshal at its way out, an
+## escort on the duty it guarded (or one short of escorts), a rescuer in its squad. One replacement for each death.
 func _refill(dead: Person) -> void:
-	if not _rallied or not dead.corps in [Person.Corps.MARSHAL, Person.Corps.ESCORT, Person.Corps.RESCUE]:
+	if not called_up() or not dead.corps in [Person.Corps.MARSHAL, Person.Corps.ESCORT, Person.Corps.RESCUE]:
 		return
 	var best: Person = null
 	for p in soldiers:
-		if on_ring(p) and (best == null
+		if guard_jobs.is_free(p) and (best == null
 				or p.ground_pos.distance_squared_to(dead.ground_pos) < best.ground_pos.distance_squared_to(dead.ground_pos)):
 			best = p
 	if best == null:
-		return
+		for p in guard.job.crew if guard.job != null else []:
+			if is_instance_valid(p) and p.is_alive() and not guard.is_mission(p) and (best == null
+					or p.ground_pos.distance_squared_to(dead.ground_pos) < best.ground_pos.distance_squared_to(dead.ground_pos)):
+				best = p
+		if best == null:
+			return
+		guard_jobs.drop(guard.job, best)
 	best.corps = dead.corps
 	best.post = dead.post
 	match dead.corps:
@@ -2151,6 +2149,42 @@ func _refill(dead: Person) -> void:
 		Person.Corps.RESCUE:
 			if rescue != null:
 				rescue.refill(best, dead)
+
+
+## Up to `n` open cell centres of the barracks yard (within 3.0 of its centre, on the grid's own cells), none within 0.3 of a
+## living soldier's town post, nearest the centre first, ties by (y, x): where the stood-down Citadel men go. Draws no number.
+func yard_spots(n: int) -> Array[Vector2]:
+	var c := City.current().landmark(&"barracks_yard").get_center()
+	var taken: Array[Vector2] = []
+	for p in soldiers:
+		if is_instance_valid(p) and p.is_alive() and p.town_post != Vector2.INF:
+			taken.append(p.town_post)
+	var cands: Array[Vector2] = []
+	var base := _grid.world_to_id(c)
+	var r := ceili(3.0 / WalkGrid.CELL) + 1
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			var at := _grid.id_to_world(base + Vector2i(dx, dy))
+			if at.distance_to(c) > 3.0 or not _grid.walkable(at):
+				continue
+			var clear := true
+			for t in taken:
+				if t.distance_to(at) < 0.3:
+					clear = false
+					break
+			if clear:
+				cands.append(at)
+	cands.sort_custom(func(a: Vector2, b: Vector2) -> bool:
+		var da := a.distance_to(c)
+		var db := b.distance_to(c)
+		if da != db:
+			return da < db
+		if a.y != b.y:
+			return a.y < b.y
+		return a.x < b.x)
+	var out: Array[Vector2] = []
+	out.assign(cands.slice(0, n))
+	return out
 
 
 ## Raise the town's readiness mid-mission (v0.09, between the acts of a night): never lower. Responses the old profile
@@ -2597,6 +2631,7 @@ func order_collapses() -> void:
 
 
 func _on_citadel_fallen() -> void:
+	guard_jobs.close()
 	order_collapses()
 	for p in soldiers:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.NONE:

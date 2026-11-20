@@ -190,17 +190,20 @@ func prune() -> void:
 		var rec: Variant = _jobs[k]
 		if rec is Job:
 			var job: Job = rec
-			if not p.is_alive() or p.mind == Person.Mind.FIGHT or mission_man(p) or not duties[job.kind].still_on(job, p):
+			if not p.is_alive() or p.mind == Person.Mind.FIGHT or (job.kind != Kind.CITADEL and mission_man(p)) \
+					or not duties[job.kind].still_on(job, p):
 				drop(job, p)
 		elif not p.is_alive() or not _still_on(p, rec):
 			_drop(p, true)
 
 
 ## The board's frame: prune; count the jobs' clocks; once a second each duty posts its jobs, open jobs are filled and ended
-## ones go.
+## ones go. A closed board (the Citadel fell) fills nothing and posts nothing.
 func step(delta: float) -> void:
 	prune()
 	clock += delta
+	if not open:
+		return
 	for job in jobs:
 		duties[job.kind].tick(job, delta)
 	_tick_left -= delta
@@ -221,8 +224,10 @@ func add_duty(d: Duty) -> void:
 	duties[d.kind()] = d
 
 
-## Posts an open job of `kind`.
+## Posts an open job of `kind`; null (nothing posted) for a kind with no registered duty.
 func post(kind: int, at: Vector2, need: int, reach := INF, data := {}) -> Job:
+	if not duties.has(kind):
+		return null
 	var job := Job.new()
 	job.kind = kind
 	job.at = at
@@ -256,6 +261,32 @@ func end_job(job: Job) -> void:
 		drop(job, p)
 	job.ended = true
 	jobs.erase(job)
+
+
+## Whether `p` may be pulled off his job for a higher one: on a job that is not CITADEL, not SHELTER and not a corpse carry.
+func pullable(p: Variant) -> bool:
+	if not is_instance_valid(p) or not _jobs.has(p) or not (p as Person).is_alive():
+		return false
+	var rec: Variant = _jobs[p]
+	if rec is Job:
+		var job: Job = rec
+		return job.kind != Kind.CITADEL and job.kind != Kind.SHELTER \
+				and not (job.kind == Kind.CORPSE and bool(job.data.get("carrying", false)))
+	return true
+
+
+## Takes `p` off whatever job he is on, ready to be sent elsewhere: a fire man stands down, a pile man is released, a Job man
+## is dropped.
+func pull(p: Person) -> void:
+	var rec: Variant = job_of(p)
+	if rec is Structure:
+		if p.mind == Person.Mind.ASSIST and p.assist_fire == rec:
+			p.stand_down()
+	elif rec is PileManager.Pile:
+		_crowd.piles.release(p)
+	elif rec is Job:
+		drop(rec, p)
+	release(p)
 
 
 ## The kind of the job `p` is on (a Structure is FIRE, a Pile is PILE); -1 for none.
@@ -334,6 +365,24 @@ func _fill() -> void:
 			continue
 		for p in chosen:
 			assign(job, p)
+		if job.started and chosen.size() < want and duty.may_pull(job):
+			var pulls: Array[Person] = []
+			for p in _crowd.soldiers:
+				if pullable(p) and duty.may_take(job, p) and p.ground_pos.distance_to(at) <= job.reach:
+					pulls.append(p)
+			pulls.sort_custom(func(a: Person, b: Person) -> bool:
+				var da := a.ground_pos.distance_to(at)
+				var db := b.ground_pos.distance_to(at)
+				if da != db:
+					return da < db
+				return a.stagger < b.stagger)
+			var short := want - chosen.size()
+			for p in pulls:
+				if short <= 0 or not duty.may_pull(job):
+					break
+				pull(p)
+				assign(job, p)
+				short -= 1
 		left = sim
 		if not job.started and job.crew.size() >= job.need:
 			job.started = true

@@ -30,6 +30,11 @@ static func ring(crowd: Crowd) -> void:
 			p._path = PackedVector2Array()
 
 
+## Every ordinary soldier not in the guard is held by a "director": no free man is left, so the guard is the only reserve.
+static func hold_free(crowd: Crowd) -> void:
+	crowd.mission_holds.append(func(p: Person) -> bool: return p.soldier and p.corps == Person.Corps.NONE and not crowd.guard_jobs.on_job(p))
+
+
 ## The soldiers standing on the rally ring now.
 static func on_ring(crowd: Crowd) -> Array[Person]:
 	var out: Array[Person] = []
@@ -75,7 +80,7 @@ static func run(t) -> void:
 		var rallied := 0
 		for i in Crowd.POST_PATROL:
 			rallied += 1 if crowd.soldiers[first + i].mind == Person.Mind.RALLY else 0
-		t.check(rallied == Crowd.POST_PATROL - cap, "%s: and they rally (%d)" % [pr.tier_name(), rallied])
+		t.check(rallied == 0, "%s: and they are not in the guard unless chosen (%d)" % [pr.tier_name(), rallied])
 		_done(made)
 
 	for tier in [ResponseProfile.Tier.ORGANIZED, ResponseProfile.Tier.GOD_RESISTANT]:
@@ -98,9 +103,9 @@ static func run(t) -> void:
 		var wrong := 0
 		for p in crowd.soldiers:
 			var rallied := p.mind == Person.Mind.RALLY
-			if rallied != (p.corps == Person.Corps.NONE):
+			if rallied and p.corps != Person.Corps.NONE:
 				wrong += 1
-		t.check(wrong == 0, "%s: only soldiers without a role rally (%d wrong)" % [pr.tier_name(), wrong])
+		t.check(wrong == 0, "%s: only soldiers without a role join the guard (%d wrong)" % [pr.tier_name(), wrong])
 		_done(made)
 
 	# Soldiers can take a duty and be sent to a fire; off duty a soldier goes back to its post.
@@ -121,7 +126,7 @@ static func run(t) -> void:
 	t.check(s.mind == Person.Mind.ASSIST and s.assist_fire == house, "but can be, by its squad")
 	s.stand_down()
 	t.check(s.mind == Person.Mind.POST and s.anchor == s.post, "stood down, a soldier goes back to its post")
-	# An ordinary guard (corps NONE) near a fire joins the brigade until the rally; after it, a fresh fire takes none.
+	# An ordinary guard (corps NONE) near a fire joins the brigade, before and after the call-up.
 	var ordinary: Person = null
 	for p in crowd.soldiers:
 		if ordinary == null and p.post_group == 0 and p.corps == Person.Corps.NONE:
@@ -137,11 +142,12 @@ static func run(t) -> void:
 	crowd.rally()
 	var h2: Structure = null
 	for st in (made[1] as EnvironmentField).structures():
-		if st.role == &"house" and st != g_house and not st.destroyed and h2 == null:
+		if st.role == &"house" and st != g_house and not st.destroyed \
+				and (h2 == null or st.center().distance_to(ordinary.ground_pos) < h2.center().distance_to(ordinary.ground_pos)):
 			h2 = st
 	crowd.fires.ignite(h2, 0.4)
 	crowd.fires._recruit()
-	t.check(crowd.fires.guards_on(h2) == 0, "after the rally a fresh fire takes no guard")
+	t.check(crowd.fires.guards_on(h2) > 0, "after the call-up a fresh fire still takes a guard")
 	_done(made)
 	_no_refill(t)
 	_garrison(t)
@@ -173,6 +179,8 @@ static func _no_refill(t) -> void:
 	for p in standing:
 		field.kill(p, &"test")
 	t.check(on_ring(crowd).is_empty(), "the ring killed to the last soldier")
+	# Nobody else is free either (held by a director): the reserve has no man to give.
+	crowd.mission_holds.append(func(p: Person) -> bool: return p.soldier and p.corps == Person.Corps.NONE)
 	# (_count() counts the dead too: a soldier taking a role would move one from NONE to it.)
 	none = _count(crowd, Person.Corps.NONE)
 	var roles := [Person.Corps.MARSHAL, Person.Corps.RESCUE, Person.Corps.ESCORT]
@@ -244,6 +252,6 @@ static func _freed(t) -> void:
 	for p in crowd.soldiers:
 		if is_instance_valid(p) and p.is_alive() and p.corps == Person.Corps.MARSHAL and p.post == post:
 			took += 1
-	t.check(took == 1 and crowd.ring_count() == standing.size() - 2,
-		"a dead marshal is still replaced from the ring (%d, ring %d)" % [took, crowd.ring_count()])
+	t.check(took == 1 and crowd.ring_count() == standing.size() - 1,
+		"a dead marshal is replaced from the free guards first, the guard keeps its men (%d, ring %d)" % [took, crowd.ring_count()])
 	_done(made)

@@ -173,7 +173,7 @@ static func _blocked(t) -> void:
 	GodTree.use_table(GodTree.blank())
 	var st := HubStatus.new(_slot())
 	t.check(not st.can_descend() and st.blocked_line() == HubStatus.BLOCKED, "with the tree empty the god cannot Descend (%s)" % st.blocked_line())
-	t.check(st.press("descend") == {"emit": "", "buzz": true, "line": ""}, "Descend buzzes and emits nothing (%s)" % [st.press("descend")])
+	t.check(st.press("descend") == {"emit": "descend", "buzz": false, "line": ""}, "Descend still opens the map; the map says why it cannot go (%s)" % [st.press("descend")])
 	t.check(st.press("tree").emit == "tree", "the other buttons still work")
 	GodTree.use_table({})
 	GodTree.dev_fill = true

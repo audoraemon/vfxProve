@@ -763,6 +763,10 @@ func _route_god() -> void:
 	if _screen_is("GodChamber"):
 		hub = _game._screen_node
 		await os_click_design(hub._ui, hub.menu_rect("descend").get_center(), "hub Descend")
+		if check(await _until(func() -> bool: return _screen_is("WorldMap"), 5.0), "the table opens the World Map (OS click)"):
+			await _secs(0.5)
+			var map = _game._screen_node
+			await os_click_design(map._ui, map.descend_rect().get_center(), "map Descend")
 		if check(await _until(func() -> bool: return _screen_is("PrepareScreen"), 5.0), "Descend opens the god's Prepare (OS click)"):
 			await _secs(1.0)
 			await _capture("god-prepare")

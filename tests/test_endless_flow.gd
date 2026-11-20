@@ -42,7 +42,7 @@ static func _flow_table(t) -> void:
 	var want := {
 		"board:endless": Game.Screen.SLOTS, "slots:continue": Game.Screen.HUB, "slots:new": Game.Screen.GOD_SELECT,
 		"slots:back": Game.Screen.BOARD, "god:chosen": Game.Screen.HUB, "god:back": Game.Screen.SLOTS,
-		"hub:descend": Game.Screen.PREPARE, "hub:awaken": Game.Screen.PREPARE, "hub:tree": Game.Screen.TREE, "hub:faith": Game.Screen.FAITH,
+		"hub:descend": Game.Screen.WORLD, "world:descend": Game.Screen.PREPARE, "world:back": Game.Screen.HUB, "hub:awaken": Game.Screen.PREPARE, "hub:tree": Game.Screen.TREE, "hub:faith": Game.Screen.FAITH,
 		"hub:title": Game.Screen.TITLE, "tree:back": Game.Screen.HUB, "faith:back": Game.Screen.HUB,
 		"prepare:hub": Game.Screen.HUB, "results:continue": Game.Screen.HUB, "results:tree": Game.Screen.TREE,
 		"results:faith": Game.Screen.FAITH, "pause:abandon": Game.Screen.HUB, "interlude:hub": Game.Screen.HUB,
@@ -53,7 +53,7 @@ static func _flow_table(t) -> void:
 			wrong.append("%s=%d" % [action, Game.next_screen(action)])
 	t.check(wrong.is_empty(), "every Endless Night action leads to its screen (wrong: %s)" % ", ".join(wrong))
 	t.check(Game.Screen.TITLE == 0 and Game.Screen.BOARD == 1 and Game.Screen.UPGRADES == 8 and Game.Screen.SLOTS == 9
-		and Game.Screen.FAITH == 13, "the old screens keep their values and the five new ones follow (SLOTS %d, FAITH %d)" % [
+		and Game.Screen.FAITH == 13 and Game.Screen.WORLD == 14, "the old screens keep their values and the five new ones follow (SLOTS %d, FAITH %d)" % [
 		Game.Screen.SLOTS, Game.Screen.FAITH])
 	t.check(Game.next_screen("title:play") == Game.Screen.BOARD and Game.next_screen("prepare:back") == Game.Screen.BOARD
 		and Game.next_screen("results:replay") == Game.Screen.MISSION and Game.next_screen("pause:restart") == Game.Screen.MISSION

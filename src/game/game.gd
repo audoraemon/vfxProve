@@ -6,7 +6,7 @@ extends Node
 ## building a single screen.
 
 ## The last five are Endless Night's (god P1, spec §14): the slot select, the god select, the hub, the skill tree and the Faith screen.
-enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING, UPGRADES, SLOTS, GOD_SELECT, HUB, TREE, FAITH}
+enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING, UPGRADES, SLOTS, GOD_SELECT, HUB, TREE, FAITH, WORLD}
 
 ## Where every button leads (spec §1; v0.08 puts the mission board between the Title and Prepare, and Results and
 ## Pause go back to it). Pause is not a screen of its own: it sits over the mission, which is why "pause:resume"
@@ -58,7 +58,9 @@ const FLOW := {
 	"slots:title": Screen.TITLE,
 	"god:chosen": Screen.HUB,
 	"god:back": Screen.SLOTS,
-	"hub:descend": Screen.PREPARE,
+	"hub:descend": Screen.WORLD,
+	"world:descend": Screen.PREPARE,
+	"world:back": Screen.HUB,
 	"hub:awaken": Screen.PREPARE,
 	"hub:tree": Screen.TREE,
 	"hub:faith": Screen.FAITH,
@@ -285,6 +287,8 @@ var _endless_from := Screen.BOARD
 var _hub_line := ""
 ## The station page the god is returning from ("tree" or "faith"), for the Chamber's zoom back out; read once by the hub.
 var _hub_from := ""
+## The town the next night is played in (the World Map's choice; Aldermere for a rite or the Hunt).
+var night_town := "aldermere"
 ## Remembrance (Skill Tree wheel, Task 5): the power key being remembered ("" outside it), its level, whether the memory is at night, and
 ## the tree's state (centred Authority, selection) to give back when Leave returns to it. Never saved.
 var _remembering := ""
@@ -556,7 +560,7 @@ func _ready() -> void:
 			mission_id = show.get_slice("-", 0)
 			loadout = MissionBook.get_mission(mission_id).default_loadout
 			go_to(Screen.MISSION)
-		"slots", "god-select", "hub", "hub-capped", "tree", "faith", "results-endless", "prepare-endless", "pause-endless", "remembrance":
+		"slots", "god-select", "hub", "hub-capped", "world", "tree", "faith", "results-endless", "prepare-endless", "pause-endless", "remembrance":
 			# Endless Night's screens (god P1), for the photographs: a fixture god on the dev fill, in the show's own slot files.
 			_show_endless(show)
 		"hub-hunt", "hub-sealed", "prepare-hunt", "prepare-sealed", "results-hunt-won", "results-hunt-lost", "pause-hunt":
@@ -734,7 +738,7 @@ func go_to(to: int) -> void:
 		god = null
 	elif to == Screen.CAMPAIGN:
 		_in_campaign = true
-	elif to in [Screen.SLOTS, Screen.GOD_SELECT, Screen.HUB, Screen.TREE, Screen.FAITH]:
+	elif to in [Screen.SLOTS, Screen.GOD_SELECT, Screen.HUB, Screen.TREE, Screen.FAITH, Screen.WORLD]:
 		_in_endless = true
 		if to == Screen.SLOTS:
 			god = null  # the slot select puts the god down; Continue or the god select picks one up
@@ -879,11 +883,18 @@ func go_to(to: int) -> void:
 			faith.setup(god)
 			faith.action.connect(_on_faith_action)
 			_screen_node = faith
+		Screen.WORLD:
+			var world := WorldMap.new()
+			world.name = "World"
+			add_child(world)
+			world.setup(god, dev)
+			world.action.connect(_on_world_action.bind(world))
+			_screen_node = world
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
 		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES, Screen.SLOTS, Screen.GOD_SELECT, \
-				Screen.HUB, Screen.TREE, Screen.FAITH:
+				Screen.HUB, Screen.TREE, Screen.FAITH, Screen.WORLD:
 			Music.play(&"theme")
 		Screen.RESULTS, Screen.INTERLUDE:
 			Music.play(&"")  # the win or lose sting stands alone
@@ -907,7 +918,7 @@ func on_action(action: String) -> void:
 			_faded_into_mission()
 		return
 	_mission_queued = false
-	_hub_from = "tree" if action == "tree:back" else ("faith" if action == "faith:back" else "")
+	_hub_from = "tree" if action == "tree:back" else ("faith" if action == "faith:back" else ("descend" if action == "world:back" else ""))
 	go_to(to)
 
 
@@ -1029,7 +1040,7 @@ func _build_mission() -> Mission:
 		mission.look_override = GodNight.look_for(god, mission_id)  # the night's roll: DAY or NIGHT (NightRules)
 		mission.god_night = true
 		mission.conquest = not GodNight.is_rite(mission_id) and not GodNight.is_hunt(mission_id)
-		mission.carried = Conquest.count_of(god, Conquest.HOME)  # Task 5 makes it the night's town
+		mission.carried = Conquest.count_of(god, night_town)
 		mission.believer_seed = GodNight.believer_seed(god, mission_id)
 		mission.restart_locked = true
 		mission.report_on_decision = true  # the night banks when it is decided, not after its ending (review M1)
@@ -1254,15 +1265,12 @@ static func awaken_target(slot: GodSlot) -> String:
 func _on_hub_action(what: String) -> void:
 	match what:
 		"descend":
-			if god.draftable().is_empty():
-				return
-			mission_id = GodNight.draw(god)
-			loadout = god.loadout.duplicate()
-			on_action("hub:descend")
+			on_action("hub:descend")  # the World Map; it draws the night and says why one cannot be had
 		"awaken":
 			var target := awaken_target(god)
 			if target == "":
 				return
+			night_town = Conquest.HOME
 			mission_id = target
 			loadout = god.loadout.duplicate()
 			on_action("hub:awaken")
@@ -1306,6 +1314,23 @@ func _keep_tree_state(tree: SkillTreeScreen) -> void:
 
 
 ## The Faith screen: a purchase is written at once; Back is the hub.
+## The World Map (World Map + Conquer Progress, Task 5): Descend draws the chosen town's night and opens its Prepare; Back returns to the Chamber.
+func _on_world_action(what: String, map: WorldMap) -> void:
+	match what:
+		"descend":
+			if god.draftable().is_empty():
+				return
+			god.last_town = map.selected
+			night_town = map.selected
+			mission_id = GodNight.draw(god, night_town)
+			if mission_id == "":
+				return
+			loadout = god.loadout.duplicate()
+			on_action("world:descend")
+		"back":
+			on_action("world:back")
+
+
 func _on_faith_action(what: String) -> void:
 	if what == "bought":
 		_write_god()
@@ -1412,6 +1437,13 @@ func _show_endless(show: String) -> void:
 		"hub", "hub-capped":
 			_hub_line = GodNight.ABANDONED % god.night if show == "hub" else ""
 			go_to(Screen.HUB)
+		"world":
+			# The World Map on a fixture god with 132 of Aldermere's people (60%): the Capital is open (World Map + Conquer Progress, Task 5).
+			god.believers["aldermere"] = 132
+			if not god.opened.has("capital"):
+				god.opened.append("capital")
+			_write_god()
+			go_to(Screen.WORLD)
 		"tree":
 			go_to(Screen.TREE)
 		"remembrance":
@@ -1897,6 +1929,7 @@ func _flow_test() -> void:
 	await _flow_tier5(step)
 	await _flow_dev_town(step)
 	await _flow_endless(step)
+	_flow_world(step)
 	await _flow_lantern(step)
 	await _flow_rite(step)
 	_veteran()
@@ -2509,6 +2542,90 @@ func _flow_mouse(at: Vector2) -> InputEventMouseButton:
 	return e
 
 
+## FLOW (World Map + Conquer Progress, Task 5): a click on the Chamber's table, then Descend on the map it opens. Returns the map, or null when
+## the table did not open one (the screen is whatever it is then, for the caller's own check).
+func _flow_descend(hub: GodChamber) -> WorldMap:
+	hub.click(hub.menu_rect("descend").get_center())
+	var map := _screen_node as WorldMap
+	if map == null:
+		return null
+	map.press_descend()
+	return map
+
+
+## FLOW (World Map + Conquer Progress, Task 5): the World Map by its real routes, on slot 1's god (in memory only: nothing here is written, so
+## the Lantern's walk finds the god as _flow_endless() left it).
+## 1. Continue on slot 1 and the table: the map, on Aldermere; the Capital is locked and says what opens it; Esc is the hub again.
+## 2. With 132 of Aldermere's people (the god's file untouched) the Capital shows open but "dim" (no night is drawn there until Task 6): a click on
+##    it selects it, Enter buzzes with the no-night line and the screen stays.
+## 3. Enter on Aldermere opens Prepare; Prepare's back is the hub. Ends on the board with `dev` restored.
+func _flow_world(step: Callable) -> void:
+	var was := dev
+	var out := func() -> void:
+		dev = was
+		GodTree.dev_fill = false
+		go_to(Screen.BOARD)
+	dev = true
+	go_to(Screen.BOARD)
+	var board := _screen_node as MissionBoard
+	board.click(MissionBoard.ENDLESS_RECT.get_center())
+	var slots := _screen_node as SlotScreen
+	if slots == null or slots.slot_line(0) == "Empty":
+		step.call(false, "the World Map walk finds slot 1 holding the endless walk's god")
+		out.call()
+		return
+	slots.click(slots.button_rect(0, "continue").get_center())
+	var hub := _screen_node as GodChamber
+	if hub == null or god == null:
+		step.call(false, "Continue on slot 1 opens the hub for the World Map walk")
+		out.call()
+		return
+	var held_believers := god.believers.duplicate()
+	var held_opened := god.opened.duplicate()
+	god.believers = {}
+	god.opened = PackedStringArray([Conquest.HOME])
+	hub.click(hub.menu_rect("descend").get_center())
+	var map := _screen_node as WorldMap
+	step.call(screen == Screen.WORLD and map != null and map.selected == "aldermere", "the hub's table opens the World Map on Aldermere")
+	if map == null:
+		out.call()
+		return
+	step.call(map.spot_state("capital") == "locked" and map.info_lines("capital")[1] == "Conquer 60% of Aldermere",
+		"the Capital is locked and says what opens it (%s)" % [map.info_lines("capital")])
+	map._unhandled_input(_flow_key(KEY_ESCAPE))
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null, "Esc on the map returns to the hub")
+	if hub == null:
+		out.call()
+		return
+	god.believers["aldermere"] = 132
+	god.opened.append("capital")
+	hub.click(hub.menu_rect("descend").get_center())
+	map = _screen_node as WorldMap
+	if map == null:
+		step.call(false, "the table opens the map with the Capital open")
+		out.call()
+		return
+	map.click(WorldLayout.spot("capital").place)
+	map._unhandled_input(_flow_key(KEY_ENTER))
+	step.call(screen == Screen.WORLD and _screen_node == map and map.spot_state("capital") == "dim" and map.selected == "capital"
+		and map.line == WorldMap.NO_NIGHT, "the open Capital has no night yet: a click selects it, Enter buzzes with the no-night line (%s)" % map.line)
+	map.click(WorldLayout.spot("aldermere").place)
+	map._unhandled_input(_flow_key(KEY_ENTER))
+	var prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and mission_id == GodNight.draw(god) and night_town == "aldermere",
+		"Enter on Aldermere opens Prepare with the night drawn (%s)" % mission_id)
+	if prep == null:
+		out.call()
+		return
+	_on_prepare_action("back", prep)
+	step.call(screen == Screen.HUB and _screen_node is GodChamber, "Prepare's back returns to the hub")
+	god.believers = held_believers
+	god.opened = held_opened
+	god.last_town = Conquest.HOME
+	out.call()
+
+
 ## Endless Night through the real screens (god P1, spec §9.1, §14 P1's "playable at its end"; rulings C2, C7, C9, P9, pre-flight B3, R1, R2).
 ## 1. With --dev the board's ENDLESS opens the slot select: three empty slots. New -> the god select -> Ruin -> the hub (Night 1, the dev
 ##    fill's two starting abilities at level 1, the slot file written). The Skill Tree refuses a point the god has not got.
@@ -2601,7 +2718,7 @@ func _flow_endless(step: Callable) -> void:
 			break
 		s += 1
 	_write_god()
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	var prep := _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id == MissionBook.WARNING and prep.god == god
 		and prep.tabs() == PackedStringArray(["ruin"]) and prep.draft.slots == 3 and prep.draft.capacity == 6 and prep.draft.locked.is_empty(),
@@ -2700,7 +2817,7 @@ func _flow_endless(step: Callable) -> void:
 	var level := god.level
 	var dp := god.divine_power
 	var faith_held := god.faith
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id != MissionBook.WARNING and prep.draft.capacity == 7,
 		"Descend draws another night than The Warning (%s) and Prepare has 7 Might" % mission_id)
@@ -2737,7 +2854,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 
 	# The next night, abandoned during its intro -- free.
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	if prep == null:
 		step.call(false, "Descend opens Prepare again")
@@ -2767,7 +2884,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 
 	# The same night again, the game closed once its clock has run.
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	if prep == null:
 		step.call(false, "Descend opens Prepare once more")
@@ -2867,7 +2984,7 @@ func _flow_title_endless(step: Callable) -> void:
 	if hub == null:
 		out.call()
 		return
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	var prep := _screen_node as PrepareScreen
 	var offered := PackedStringArray()
 	if prep != null:
@@ -2968,7 +3085,7 @@ func _flow_lantern(step: Callable) -> void:
 
 	# Night 4 abandoned after the clock: a lost night, the Notice to 100%.
 	var level := god.level
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	var prep := _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id == picked and prep.header_text() == "PREPARE THE MANIFESTATION"
 		and target == pair[0],
@@ -3009,7 +3126,7 @@ func _flow_lantern(step: Callable) -> void:
 	var faith_before := god.faith
 	var dp_before := god.divine_power
 	var name_target: String = PowerBook.get_power(target).name
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	var if_lost := ""
 	if prep != null:
@@ -3088,7 +3205,7 @@ func _flow_lantern(step: Callable) -> void:
 		return
 
 	# The next night: the sealed card cannot be picked.
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	if prep == null:
 		step.call(false, "Descend opens Prepare after the Hunt")
@@ -3290,7 +3407,7 @@ func _flow_rite(step: Callable) -> void:
 	if hub == null:
 		out.call()
 		return
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	var gifts_row := ""
 	if prep != null:

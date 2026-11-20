@@ -71,7 +71,7 @@ func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodCham
 	# to the blocker, which swallows it. So the blocker takes the mouse and hands it on in frame units; the child ignores it.
 	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	(_ui.get_parent() as Control).gui_input.connect(_on_blocker_input)
-	if transitions and (p_from == "tree" or p_from == "faith"):
+	if transitions and (p_from == "tree" or p_from == "faith" or p_from == "descend"):
 		_mode = Mode.BACK
 		_focus_key = p_from
 		_t = 0.0
@@ -191,12 +191,11 @@ func menu_rect(what: String) -> Rect2:
 	return Rect2()
 
 
-## "", "hover", "dim" or "closed" for a station: the Rite Door is closed while the god is not capped; Descend and a Door that is not ready are
-## dim; the hovered station is "hover".
+## "", "hover", "dim" or "closed" for a station: the Rite Door is closed while the god is not capped; A Door that is not ready is dim (the table never is: the World Map it opens says why a night cannot be had); the hovered station is "hover".
 func station_state(key: String) -> String:
 	if key == "awaken" and not status.awaken_shown():
 		return "closed"
-	if (key == "descend" and not status.can_descend()) or (key == "awaken" and status.awaken_dim()):
+	if key == "awaken" and status.awaken_dim():
 		return "dim"
 	return "hover" if key == _hover else ""
 

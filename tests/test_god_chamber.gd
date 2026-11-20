@@ -10,6 +10,7 @@ static func run(t) -> void:
 	_frame(t)
 	_stations(t)
 	_blocked(t)
+	_table_opens_map(t)
 	_door_closed(t)
 	_door_rite(t)
 	_door_unwritten(t)
@@ -114,16 +115,30 @@ static func _blocked(t) -> void:
 	var made := _make(_slot())
 	var ch: GodChamber = made[0]
 	var got: Array = made[1]
-	t.check(not ch.can_descend() and ch.station_state("descend") == "dim" and ch.status.blocked_line() == GodChamber.BLOCKED,
-		"nothing to draft: the table is dim and the blocked line is set (%s)" % ch.status.blocked_line())
+	t.check(not ch.can_descend() and ch.station_state("descend") != "dim" and ch.status.blocked_line() == GodChamber.BLOCKED,
+		"nothing to draft: the table is not dim (the map says why) and the blocked line is set (%s)" % ch.status.blocked_line())
 	ch._on_gui_input(_click(ch.menu_rect("descend").get_center()))
 	ch._unhandled_input(_key(KEY_ENTER))
-	t.check(got.is_empty(), "the table click and Enter emit nothing (%s)" % [got])
+	t.check(got == ["descend", "descend"], "the table click and Enter both open the map (%s)" % [got])
+	got.clear()
 	ch._on_gui_input(_click(ch.menu_rect("tree").get_center()))
 	t.check(got == ["tree"], "the other stations still work (%s)" % [got])
 	ch.free()
 	GodTree.use_table({})
 	GodTree.dev_fill = true
+
+
+## The World Table opens the map: its action is "descend", and coming back from the map zooms back out from the table.
+static func _table_opens_map(t) -> void:
+	t.check(ChamberLayout.STATIONS.descend.action == "descend", "the table's action is descend")
+	GodChamber.transitions = true
+	var tree := Engine.get_main_loop() as SceneTree
+	var ch := GodChamber.new()
+	tree.root.add_child(ch)
+	ch.setup(_slot(), "", false, "descend")
+	t.check(ch.in_transition() and ch.zoom() == GodChamber.ZOOM_TO, "coming back from the map starts at the zoomed table (%s)" % ch.zoom())
+	ch.free()
+	GodChamber.transitions = false
 
 
 static func _door_closed(t) -> void:
@@ -182,7 +197,7 @@ static func _door_dev(t) -> void:
 	c2.free()
 
 
-## Review Focus 5: capped, nothing to draft, the Hunt due: the table and the door both refuse.
+## Review Focus 5: capped, nothing to draft, the Hunt due: the table opens the map, the door refuses.
 static func _hunt_refuses_both(t) -> void:
 	GodTree.dev_fill = false
 	GodTree.use_table(GodTree.blank())
@@ -194,8 +209,8 @@ static func _hunt_refuses_both(t) -> void:
 	ch._on_gui_input(_click(ch.menu_rect("descend").get_center()))
 	ch._on_gui_input(_click(ch.menu_rect("awaken").get_center()))
 	ch._unhandled_input(_key(KEY_A))
-	t.check(got.is_empty(), "nothing to draft with the Hunt due: the table and the door both refuse (%s)" % [got])
-	t.check(ch.station_state("descend") == "dim" and ch.station_state("awaken") == "dim", "and both are dim")
+	t.check(got == ["descend"], "nothing to draft with the Hunt due: the table opens the map (it says why), the door refuses (%s)" % [got])
+	t.check(ch.station_state("descend") != "dim" and ch.station_state("awaken") == "dim", "the door is dim, the table is not")
 	ch.free()
 	GodTree.use_table({})
 	GodTree.dev_fill = true
@@ -353,14 +368,18 @@ static func _transition_skip(t) -> void:
 	ch._unhandled_input(_key(KEY_F))
 	t.check(got == ["tree"], "a key during the zoom does the same (%s)" % [got])
 	ch.free()
-	# Dim stations and the Title button never zoom.
+	# The Title button never zooms (the table does, even when nothing can be drafted).
 	GodTree.dev_fill = false
 	GodTree.use_table(GodTree.blank())
 	made = _on(_slot())
 	ch = made[0]
 	got = made[1]
 	ch._on_gui_input(_click(ch.menu_rect("descend").get_center()))
-	t.check(not ch.in_transition() and got.is_empty(), "a dim table starts no transition")
+	t.check(ch.in_transition(), "the table zooms even with nothing to draft: the map says why")
+	ch.free()
+	made = _on(_slot())
+	ch = made[0]
+	got = made[1]
 	ch._on_gui_input(_click(ch.menu_rect("title").get_center()))
 	t.check(not ch.in_transition() and got == ["title"], "the Title button starts no transition and emits at once (%s)" % [got])
 	ch.free()

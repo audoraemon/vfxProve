@@ -118,8 +118,8 @@ func faith_affordable() -> bool:
 ## `from_key` is true for the A key (the dev hook and the "rite not written" line belong to it as to the button); `dev` is the DEV build.
 ## A press with no emit and no buzz does nothing at all.
 func press(what: String, from_key := false, dev := false) -> Dictionary:
-	if what == "descend" and not can_descend():
-		return _result("", true)
+	if what == "descend":
+		return _result("descend")  # the World Map opens always; it says why a night cannot be had (Plan note 14)
 	if what == "awaken":
 		if not from_key and not can_descend():
 			return _result("", true)  # nothing to draft: Awaken is blocked as Descend is (milestone review Minor 6)

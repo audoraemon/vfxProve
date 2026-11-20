@@ -120,8 +120,11 @@ static func notice_delta(d: Dictionary) -> int:
 ## The next night's mission (spec §9.1): the Hunt when the Notice is full (it cannot be skipped: no seed, no no-repeat; Ruling P2-4),
 ## else one of the god's tier missions (TierBook.missions()), never the last one played -- nor, after a Hunt, the one before it (review
 ## M3) -- picked by a generator seeded with
-## night_seed(). Nothing changes, so the same slot gives the same night until one counts.
-static func draw(slot: GodSlot) -> String:
+## night_seed(). Nothing changes, so the same slot gives the same night until one counts. Only Aldermere has nights until the Capital gets its
+## own (World Map + Conquer Progress, Task 6): any other `town` draws "" (no night waits there).
+static func draw(slot: GodSlot, town := "aldermere") -> String:
+	if town != "aldermere":
+		return ""
 	var hunt := hunt_for(slot)
 	if not hunt.is_empty():
 		return String(hunt.id)
@@ -247,12 +250,15 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 	slot.loadout = drafted.duplicate()
 	var hunt_result := {}
 	var conquest := {}
+	var conquer_faith := 0
 	if hunt.is_empty():
 		slot.add_notice(notice_delta(d))
 		var roll: Variant = outcome.get("conquest", {})
 		if roll is Dictionary and not (roll as Dictionary).is_empty():
 			conquest = Conquest.bank(slot, roll, bool(d.get("main", false)))
 			faith += int(conquest.get("fill", 0)) * GodSlot.FAITH_PER_BELIEVER if bool(d.get("main", false)) else 0
+			conquer_faith = Conquest.bonus(slot)  # every conquered town pays, every ordinary night
+			faith += conquer_faith
 	slot.faith += faith
 	if not hunt.is_empty():
 		var won := bool(d.get("main", false))
@@ -270,7 +276,8 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 	return {"divine_power": dp, "levels": gained.levels, "points": gained.points, "lost": gained.lost, "capped": gained.capped,
 		"level": slot.level, "bar": [slot.divine_power, slot.need()], "believers": earned, "faith": faith, "faith_total": slot.faith,
 		"notice": slot.notice, "notice_change": slot.notice - notice_before, "night": slot.night, "bests": bests,
-		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due(), "conquest": conquest}
+		"hunt": hunt_result, "unsealed": unsealed, "hunt_next": hunt.is_empty() and slot.hunt_due(), "conquest": conquest,
+		"conquer_faith": conquer_faith}
 
 
 ## Banks a finished Awaken rite (god P3, MS §1 R2-R4, Ruling P3-4, P3-5): a seal ticks, the night counts, and nothing else of an ordinary

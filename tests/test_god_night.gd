@@ -26,6 +26,8 @@ static func run(t) -> void:
 	_forfeit_alive(t)
 	_believer_seed(t)
 	_results_conquest_line(t)
+	_conquer_bonus(t)
+	_draw_town(t)
 	GodTree.dev_fill = false
 
 
@@ -285,3 +287,32 @@ static func _faith_not_doubled(t) -> void:
 	o2.descend["main"] = true
 	var r2 := GodNight.bank(s2, "tax_collector", PackedStringArray(["smite"]), o2)
 	t.check(int(r2.faith) == 40 * GodSlot.FAITH_PER_BELIEVER, "with no conquest entry, Faith is the earned alone (%s)" % [r2.faith])
+
+
+## A conquered town pays Faith on a banked ordinary night, over what the night earned and the fill paid.
+static func _conquer_bonus(t) -> void:
+	var s := _slot()
+	var pop := Conquest.population("aldermere")
+	var out := _outcome(true, 0, 30)
+	out["conquest"] = {"town": "aldermere", "carried_alive": pop - 5, "named": 0, "fill": 5, "lost": 0}
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(Conquest.conquered(s, "aldermere") and int(res.conquer_faith) == Conquest.CONQUER_FAITH, "the night fills the town: conquered, bonus 5 (%s)" % [res.get("conquer_faith")])
+	t.check(int(res.faith) == (30 + 5) * GodSlot.FAITH_PER_BELIEVER + Conquest.CONQUER_FAITH and s.faith == int(res.faith),
+		"the night pays earned + fill + the conquered bonus (%s)" % [res.faith])
+	var plain := _slot()
+	var res2 := GodNight.bank(plain, "tax_collector", PackedStringArray(["smite"]), _outcome(true, 0, 30))
+	t.check(int(res2.conquer_faith) == 0, "no conquered town: no bonus")
+	var lines := ResultsScreen.god_lines({"god": res})
+	t.check(lines.has("Conquered towns: Faith +5"), "the results say it (%s)" % [lines])
+
+
+## Only Aldermere draws a night until Task 6; its draw is as it was.
+static func _draw_town(t) -> void:
+	var same := true
+	for night in range(0, 31):
+		for sd in range(1, 21):
+			var s := _slot("ruin", sd)
+			s.night = night
+			same = same and GodNight.draw(s) == GodNight.draw(s, "aldermere")
+	t.check(same, "draw(slot) is draw(slot, aldermere) for nights 0..30 and seeds 1..20")
+	t.check(GodNight.draw(_slot(), "capital") == "", "the Capital draws no night yet")

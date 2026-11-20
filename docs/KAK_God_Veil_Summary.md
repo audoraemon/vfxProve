@@ -35,8 +35,8 @@ Sizes are written light / dark. "Taken" means gone: no body, no sound, nothing l
 | 3 | **Unseen Hour** | Nothing in the circle is seen: no alarm, no fright, nobody comes. Its veil counts as dark ground. | circle 5 for 20 s | circle 7 for 30 s |
 | 3 | **Dreamless** | The nearest sit down against a wall as if resting and never wake; for 20 s the town sees only people resting, then they are found dead. Anyone already asleep there is simply taken. | the nearest 1 within 1 | the nearest 4 within 2 |
 | 4 | **Dread of the Dark** | For 25 s every piece of dark ground in reach becomes a wall: nobody steps in, and everyone inside freezes, silent (no walking, fleeing, shouting, ringing, fighting or seizing). No dark ground in reach: refused (NO DARK HERE TO DREAD). Its dusk is laid when the dread lifts. | reach 6 | reach 12 |
-| 4 | **Shadow Play** | Everyone in the circle falls asleep for 30 s while their shadow carries on in their place: posts look manned, but a shadow sees, reports and seizes nothing. At the end the shadows lie down and the people wake. | circle 3 | circle 6; the soldiers' shadows walk off and those soldiers are taken |
-| 5 | **The Swallowing Dark** | A black circle grows unseen at 0.5 a second; when it is full size everyone and everything inside is taken, buildings too (bare dark ground is left). It spares what the mission needs and the town's gates, bridges, postern, dock and fountain. Once a descent. | grows from 0 to 10 | grows from its dusk patch to 14 |
+| 4 | **Shadow Play** | Everyone in the circle falls asleep for 30 s while their shadow carries on in their place: posts look manned, but a shadow sees, reports and seizes nothing. At the end the shadows lie down and the people wake. | circle 3 | circle 6; the soldiers' shadows fade where they stand and those soldiers are taken |
+| 5 | **The Swallowing Dark** | A black circle grows unseen at 0.5 a second; when it is full size everyone and everything inside is taken, buildings too (bare dark ground is left). It spares what the mission needs, never takes what the night wants down (a target it must raze stays to be razed), and spares the town's gates, bridges, postern, dock and fountain. Once a descent. | grows from 0 to 10 | grows from its dusk patch to 14 |
 | 5 | **Evernight** | Night rolls over the whole town: every Veil power is full size anywhere and cools twice as fast; the lone are taken one by one; up to 6 soldiers light torches and the people huddle round them (a Veil cast on a torch puts it out and takes everyone in its light); at dawn whoever shelters in a blighted building or sleeps in dusk never wakes. The town forgets the night. Once a descent. | 60 s, one taken every 2 s | cast in a NIGHT mission: 90 s, one every 1.5 s |
 
 When states meet: taken beats everything; asleep beats frozen (a frozen person hit by Slumber sleeps; a sleeper is not frozen);
@@ -93,7 +93,14 @@ docs/KAK_God_P5_Summary.md; the Hunts' third key then was Tsunami Breaker or Nuc
   Slumber, Cloak of Night, Unseen Hour, Dreamless, Dread, Shadow Play, The Swallowing Dark or Evernight in a tier mission yet.
 - **Hunt 1 x Veil's idle** (80 s against 45; ruling VE3): a pacing change to Hide the faithful, or a Veil play for its empty stretch.
 - **Painted icons** for the seven new powers. They have flat generated placeholders; the painted-icon recipe is its own task.
+- **Dread near a torch during Evernight: yours to rule.** A Dread cast near a burning torch does nothing to that torch until the
+  Dread lifts 25 s later; then its dusk lands on the torch, puts it out and takes the huddle in its light (VC1 with VC9). The spec
+  (5.10) reads "the cast puts it out", i.e. at once. Left as built; a Dread cut short (an act change) lays no dusk at all (VG6).
 - **The look and listen checks nobody has done by eye or ear:**
+  - Evernight's pale moon (new in the final fix wave, spec section 6): a faint disc with a fainter halo near the top corner of the
+    map, in the night's wash beside the stars, drawn in code; it fades in with the night and out at dawn. Is it faint enough, and
+    in the right place?
+  - Shadow Play in the dark: the soldiers' shadows fade where they stand (they do not walk off, as the spec's 5.8 has it).
   - Evernight's night is mild: the ambient is eased to about 0.86 of the day's (ruling VC8), so the town reads as dusk, not night.
   - Dreamless's clip is subtle: people sitting down against a wall looks like people resting, which is the point, but the preview
     may not read as a power at all.

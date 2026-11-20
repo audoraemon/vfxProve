@@ -334,7 +334,7 @@ const POWERS := [
 	{"key": "shadowplay", "name": "Shadow Play", "path": "res://src/fx/veil/shadow_play.gd",
 		"blurb": "A circle of people sleep while their shadows carry on in their place.",
 		"dp": 5, "cooldown": 90.0, "aim": "click",
-		"shape": "everyone within 3 (6 in the dark) sleeps for 30 s while a shadow keeps their task; in the dark soldiers' shadows walk off, taken",
+		"shape": "everyone within 3 (6 in the dark) sleeps for 30 s while a shadow keeps their task; in the dark soldiers' shadows fade, taken",
 		"quiet": true, "authority": "veil"},
 	{"key": "swallow", "name": "The Swallowing Dark", "path": "res://src/fx/veil/the_swallowing_dark.gd",
 		"blurb": "A black circle grows unseen, then all inside is gone without a sound.",

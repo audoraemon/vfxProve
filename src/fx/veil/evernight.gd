@@ -11,10 +11,11 @@ extends FxTimeline
 ##    TORCH_COUNT_R first); each lights TORCH_R, and the calm citizens within TORCH_CALL walk to the nearest and huddle. Whoever stands in
 ##    a torch's light is safe from part 2. Dusk laid over a torch (any Veil cast) puts it out and takes everyone in its light; a bearer
 ##    who dies or is taken drops his torch the same way.
-## 4. No dawn for some: at dawn whoever shelters in a blighted building (Crowd.footholds) or sleeps inside a dusk patch never wakes.
+## 4. No dawn for some: at dawn whoever shelters in a blighted building (Crowd.footholds) or sleeps inside a dusk patch (a shadow's
+##    owner counts as asleep) never wakes; a shelterer is let out of his shelter first (VeilParts.take_out()).
 ## The town forgets the night: every take is silent (no alarm, no search, no count). The town's art look is not switched (spec 11.2):
 ## the night is the light field's ambient and tint eased to the NIGHT values, the static lamps muted (LightField.mute()) and a starred
-## wash over the ground, all eased back at dawn. Everything it switches on is undone in _finish() AND _exit_tree(); the town-wide parts
+## wash with a pale moon over the ground, all eased back at dawn. Everything it switches on is undone in _finish() AND _exit_tree(); the town-wide parts
 ## are kept in a ledger of owners on the crowd and on the light field (instance ids, no statics), so two casts never undo each other.
 ## Evernight lays no dusk patch of its own: the whole town is its dark (ruling VC7).
 
@@ -69,14 +70,15 @@ var _hush: Node
 
 
 ## Up to TORCHES living soldiers out of doors who light torches: those with the most living citizens out of doors within
-## TORCH_COUNT_R first, a tie by the lower instance id (no luck).
+## TORCH_COUNT_R first, a tie by the lower instance id (no luck). One a mission holds (Crowd.held_by_mission(): a seizer with his
+## charge) is never posted with a torch.
 static func bearers(crowd: Crowd) -> Array[Person]:
 	var out: Array[Person] = []
 	if crowd == null:
 		return out
 	var rows: Array = []
 	for s in crowd.soldiers:
-		if not is_instance_valid(s) or not s.is_alive() or s.inside:
+		if not is_instance_valid(s) or not s.is_alive() or s.inside or crowd.held_by_mission(s):
 			continue
 		var n := 0
 		for c in crowd.citizens:
@@ -91,7 +93,7 @@ static func bearers(crowd: Crowd) -> Array[Person]:
 
 ## The one the dark takes next: of the living out of doors, outside every light in `lit` (torch centres, TORCH_R) and not spared,
 ## the one whose nearest living neighbour out of doors is farthest away (none at all: the farthest); a tie goes to the lower instance
-## id. Null when there is no one.
+## id. One take() cannot take (takeable()) is passed over, though he still counts as a neighbour. Null when there is no one.
 static func loneliest(crowd: Crowd, lit: Array) -> Person:
 	if crowd == null:
 		return null
@@ -115,7 +117,7 @@ static func loneliest(crowd: Crowd, lit: Array) -> Person:
 	var best: Person = null
 	var best_d := -1.0
 	for p in out:
-		if _in_light(p.ground_pos, lit) or crowd.spared(p):
+		if _in_light(p.ground_pos, lit) or crowd.spared(p) or not takeable(p):
 			continue
 		var d := _nearest(p, cells, rings, best_d)
 		if d < 0.0:
@@ -145,6 +147,12 @@ static func _nearest(p: Person, cells: Dictionary, rings: int, floor_d: float) -
 		if nd <= float(r) * CELL:
 			return nd
 	return nd
+
+
+## Whether Crowd.take() can take `p`: no Deathless hook on him (Corpse Guise, level 5: Person.deathless, which die() asks before a
+## death and which spares him). The hook itself is not called -- asking it spends the guise -- so one with a hook is passed over.
+static func takeable(p: Person) -> bool:
+	return not p.deathless.is_valid()
 
 
 static func _in_light(at: Vector2, lit: Array) -> bool:
@@ -179,6 +187,7 @@ func _build() -> void:
 		wash.fx_id = get_instance_id()
 		wash.center = origin
 		wash.map = _map()
+		wash.place_moon()
 		track(wash, parent)
 
 
@@ -224,7 +233,7 @@ func _take_lone() -> void:
 
 
 ## The calm citizens out of doors within TORCH_CALL of a burning torch walk to the nearest and huddle in its light (once each, again if
-## their torch goes out).
+## their torch goes out). One a mission holds (Crowd.held_by_mission()) is left to his mission.
 func _call_to_torches() -> void:
 	var burning: Array[int] = []
 	for i in torches.size():
@@ -234,7 +243,7 @@ func _call_to_torches() -> void:
 		return
 	var ps: Array[Person] = []
 	for c in _crowd.citizens:
-		if not is_instance_valid(c) or not c.is_alive() or c.inside or c.is_asleep() or c.mind != Person.Mind.CALM or c.home_sick:
+		if not is_instance_valid(c) or not c.is_alive() or c.inside or c.is_asleep() or c.mind != Person.Mind.CALM or c.home_sick 				or _crowd.held_by_mission(c):
 			continue
 		var called: int = int(_called.get(c.get_instance_id(), -1))
 		if called >= 0 and not torches[called].out:
@@ -315,7 +324,8 @@ func _drop_light(tc: Dictionary) -> void:
 	tc.light = 0
 
 
-## Dawn: who shelters in a blighted building or sleeps inside a dusk patch never wakes; then the night ends.
+## Dawn: who shelters in a blighted building or sleeps inside a dusk patch never wakes (a shadow's owner counts as asleep, spec 5.8;
+## one indoors is passed over); then the night ends.
 func _dawn() -> void:
 	if _live() and not _over:
 		var gone: Array[Person] = []
@@ -323,7 +333,7 @@ func _dawn() -> void:
 			if not is_instance_valid(p) or not p.is_alive() or _crowd.spared(p):
 				continue
 			var blighted := p.inside and p.shelter != null and is_instance_valid(p.shelter) and _crowd.footholds.has(p.shelter)
-			var dreaming := not p.inside and p.is_asleep() and _crowd.dusk != null and _crowd.dusk.covers(p.ground_pos)
+			var dreaming := not p.inside and (p.is_asleep() or p.is_shadow()) and _crowd.dusk != null and _crowd.dusk.covers(p.ground_pos)
 			if blighted or dreaming:
 				gone.append(p)
 		for p in gone:
@@ -480,6 +490,9 @@ func _fx_process(_delta: float) -> void:
 		wash.front = _map().size.x * t / WAVE
 		wash.lit = lit()
 		wash.queue_redraw()
+		if wash.moon != null and is_instance_valid(wash.moon):
+			wash.moon.strength = s
+			wash.moon.queue_redraw()
 
 
 func _finish() -> void:
@@ -501,20 +514,33 @@ func _notification(what: int) -> void:
 		_leave_look()
 
 
-## The look on the ground (ground units, under the people): a violet-black wash with silver stars, running out from the click as a
-## round front over the wave and fading at dawn; a faint ring round each burning torch, so the god sees the islands of light.
+## The look on the ground (ground units, under the people): a violet-black wash with silver stars and a pale moon (spec 6), running
+## out from the click as a round front over the wave and fading at dawn; a faint ring round each burning torch, so the god sees the
+## islands of light.
 class NightWash extends Node2D:
 	const STARS := 90
+	## Where the moon hangs, as a share of the map (near its top corner on screen): fixed, no luck.
+	const MOON_AT := Vector2(0.14, 0.10)
 	var fx_id := 0
 	var center := Vector2.ZERO
 	var map := Rect2()
 	var strength := 0.0
 	var front := 0.0
 	var lit: Array = []
+	## The pale moon (a child named "Moon"): drawn in code, freed with the wash.
+	var moon: NightMoon
 
 	func _init() -> void:
 		transform = Iso.BASIS
 		z_index = -2
+		moon = NightMoon.new()
+		moon.name = "Moon"
+		add_child(moon)
+
+	## Hangs the moon at its fixed place on the map, upright on screen (the wash's iso basis undone under it).
+	func place_moon() -> void:
+		var inv := Iso.BASIS.affine_inverse()
+		moon.transform = Transform2D(inv.x, inv.y, map.position + MOON_AT * map.size)
 
 	## Its cast freed without finishing: it goes too.
 	func _process(_delta: float) -> void:
@@ -542,3 +568,19 @@ class NightWash extends Node2D:
 			draw_circle(g, 0.08 + 0.05 * float(k % 3), Color(VeilParts.SILVER, 0.6 * strength * tw))
 		for c: Vector2 in lit:
 			draw_arc(c, EvernightFx.TORCH_R, 0.0, TAU, 32, Color(VeilParts.SILVER, 0.4 * strength), 0.08)
+
+
+## Evernight's pale moon (screen pixels, upright): a faint disc with a fainter halo and two soft marks, fading with the night. Drawn
+## only; no art file, no rng.
+class NightMoon extends Node2D:
+	const R := 9.0
+	var strength := 0.0
+
+	func _draw() -> void:
+		if strength <= 0.0:
+			return
+		draw_circle(Vector2.ZERO, R * 2.2, Color(VeilParts.SILVER, 0.05 * strength))
+		draw_circle(Vector2.ZERO, R * 1.4, Color(VeilParts.SILVER, 0.07 * strength))
+		draw_circle(Vector2.ZERO, R, Color(0.90, 0.91, 0.96, 0.32 * strength))
+		draw_circle(Vector2(-2.5, -1.5), R * 0.28, Color(VeilParts.DUSK, 0.10 * strength))
+		draw_circle(Vector2(3.0, 2.5), R * 0.18, Color(VeilParts.DUSK, 0.08 * strength))

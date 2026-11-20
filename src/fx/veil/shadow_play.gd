@@ -7,7 +7,7 @@ extends FxTimeline
 ## Task 2 laid make it see nothing and do nothing (no witness, no report, no shout, no fright, no fight, no chase, no seizure, not afraid
 ## of the dark), and Dreamless takes its owner at once.
 ## The end (VB4): in the light every shadow lies down for LIE seconds where it stopped (Person.knock_down(.., true): the mind is not
-## touched) and is the person again. In the dark the soldiers' shadows walk off and fade -- those soldiers are taken (Crowd.take(),
+## touched) and is the person again. In the dark the soldiers' shadows fade where they stand -- those soldiers are taken (Crowd.take(),
 ## kind &"shade": no body, no remain, no sound; C12) -- and the citizens wake as in the light. The dead are skipped.
 ## Quiet: no danger, no fright, no alarm, no cue. Its dusk is laid at the cast, radius its own (VeilParts.land(); VB0).
 ## Drawn: the person's own sprite as a flat BLACK silhouette (self_modulate) with a thin SILVER edge (an Edge drawn behind it), and where
@@ -123,7 +123,7 @@ func _end() -> void:
 			continue  # died, was taken, or another cast holds him now
 		if _dark and p.soldier:
 			if staged:
-				DominionParts.motes(self, p.ground_pos, FADE, 6)  # the shadow walks off and fades
+				DominionParts.motes(self, p.ground_pos, FADE, 6)  # the shadow fades where it stands
 			_let_go(p)
 			if ctx.crowd != null and ctx.crowd.take(p, &"shade"):
 				taken += 1

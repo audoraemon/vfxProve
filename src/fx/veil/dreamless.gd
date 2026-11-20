@@ -96,6 +96,21 @@ func _sit() -> void:
 			_breath(p)
 
 
+## A sitter who is awake again (a hurt wakes a deep sleeper) is no longer resting: his status goes and he leaves the sitters, so a later
+## deep sleep (a dark Slumber) is a plain sleep and the find does not kill him (VB1).
+func _fx_process(_delta: float) -> void:
+	if _sat.is_empty() or _undone:
+		return
+	var i := _sat.size() - 1
+	while i >= 0:
+		var p := _sat[i]
+		if not is_instance_valid(p) or not p.is_alive() or not p.is_asleep():
+			if is_instance_valid(p):
+				p.statuses.erase(&"dreamless")
+			_sat.remove_at(i)
+		i -= 1
+
+
 func _found() -> void:
 	var dying: Array[Person] = []
 	for p in _sat:

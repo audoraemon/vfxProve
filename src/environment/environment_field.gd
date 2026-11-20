@@ -146,7 +146,9 @@ func clear() -> void:
 ## nothing (a mission's relight or rebuild raises no invisible building, and the walk grid closes no cell for it).
 ## `reindex` false (a batch: The Swallowing Dark's fold takes dozens in a few frames): instead of rebuilding the whole index, `s` is
 ## struck from just the cells its footprint covers (_unindex()), so the index is never stale in between; call reindex() once after
-## the batch. The same list, index, walk grid and signals as single removes (test_environment).
+## the batch. The same list, index, walk grid and signals as single removes (test_environment). The closing reindex() may be skipped
+## -- a fold cut short (The Swallowing Dark ended before its last removal) never makes it -- and that is safe: each _unindex() has
+## already struck its structure from the same two indexes _reindex() rebuilds, so the index is already what a rebuild would give.
 func remove(s: Structure, announce := true, keep_node := false, reindex := true) -> void:
 	if keep_node and is_instance_valid(s):
 		s.taken = true

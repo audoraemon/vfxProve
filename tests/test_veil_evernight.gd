@@ -93,6 +93,7 @@ static func run(t) -> void:
 	_lone(t, made, kinds)
 	_never(t, made)
 	_bearers(t, made)
+	_held(t, made)
 	_huddle(t, made)
 	_put_out(t, made, kinds)
 	_bearer_killed(t, made, kinds)
@@ -234,6 +235,18 @@ static func _lone(t, made: Array, kinds: Dictionary) -> void:
 			low = p
 	t.check(E.loneliest(crowd, []) == low, "a tie goes to the lower instance id")
 	t.check(E.loneliest(crowd, [low.ground_pos]) != low and E.loneliest(crowd, [low.ground_pos]) != null, "one in a torch's light is passed over")
+	# One take() cannot take (Corpse Guise's Deathless: Person.deathless) is passed over, so the tick takes the next one.
+	at = _fresh(made)
+	l = _layout(crowd, at)
+	lone = l.lone
+	lone.deathless = func(_w: Person, _k: StringName) -> bool: return true
+	t.check(E.loneliest(crowd, []) != lone and E.loneliest(crowd, []) != null, "a Deathless loner is passed over by loneliest()")
+	fx = _cast(ctx, at)
+	_until(fx, E.WAVE + 2.0 + DT)
+	t.check(lone.is_alive() and fx.taken.size() == 1 and fx.taken[0] != lone.get_instance_id(),
+		"with a Deathless person the loneliest, the tick takes the next one (%d taken)" % fx.taken.size())
+	fx.end_now()
+	lone.deathless = Callable()
 
 
 ## Never taken: a BELIEVER standing alone, one the director keeps alive, one indoors, one in a torch's light. Control: an ordinary loner.
@@ -304,6 +317,34 @@ static func _bearers(t, made: Array) -> void:
 	fx.end_now()
 	t.check(fx.torches.all(func(tc: Dictionary) -> bool: return _light(ctx.lights, int(tc.light)).is_empty()) and ctx.lights._lights.is_empty(),
 		"ended: every torch light is gone")
+
+
+## A soldier a mission holds (Crowd.mission_holds: a seizer with his charge) is never a bearer while a free one is; a citizen it holds is
+## never called to a torch while a free one beside him is.
+static func _held(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var grid: WalkGrid = made[2]
+	var at := _fresh(made)
+	var held_s := _put(crowd, grid.nearest_walkable(at + Vector2(-14.0, 0.0)), true)
+	for k in 3:
+		_put(crowd, held_s.ground_pos + Vector2(1.0 + 0.6 * float(k), 1.0))
+	var free_s := _put(crowd, grid.nearest_walkable(at + Vector2(14.0, 0.0)), true)
+	var held_c := _put(crowd, grid.nearest_walkable(free_s.ground_pos + Vector2(0.0, 5.0)))
+	var free_c := _put(crowd, grid.nearest_walkable(free_s.ground_pos + Vector2(0.0, -5.0)))
+	t.check(E.bearers(crowd)[0] == held_s, "(control: unheld, the soldier with the most citizens near is the first bearer)")
+	var hold := func(p: Person) -> bool: return p == held_s or p == held_c
+	crowd.mission_holds.append(hold)
+	var got := E.bearers(crowd)
+	t.check(not got.has(held_s) and got.has(free_s), "a soldier the mission holds is never a bearer; the free one is")
+	var goal := held_c._goal
+	var fx := _cast(ctx, at)
+	_until(fx, E.WAVE + DT)
+	t.check(fx.torches.size() == 1 and int(fx.torches[0].bearer) == free_s.get_instance_id(), "one torch, the free soldier's")
+	t.check(free_c.anchor.distance_to(free_s.ground_pos) <= E.TORCH_R and free_c._goal != Vector2.INF, "(control) the free citizen is called to it")
+	t.check(held_c._goal == goal and not fx._called.has(held_c.get_instance_id()), "the held citizen is not")
+	fx.end_now()
+	crowd.mission_holds.erase(hold)
 
 
 ## Citizens within 10 of a torch walk to it and huddle in its light; one at 11 does not.
@@ -405,6 +446,13 @@ static func _dawn(t, made: Array, kinds: Dictionary) -> void:
 	var in_plain := _put(crowd, plain.center())
 	in_plain.inside = true
 	in_plain.shelter = plain
+	# Spec 5.8: a shadow's owner counts as asleep -- awake and walking as his shadow in a dusk patch at dawn, he is taken; one awake
+	# beside him in the same patch, no shadow, lives (control). Both stand in the torch's light through the night.
+	var patch := x + Vector2(-1.2, -0.8)
+	crowd.lay_dusk(patch, 0.6, 200.0)
+	var shade := _put(crowd, patch)
+	shade.statuses[&"shadow"] = 1.0
+	var beside := _put(crowd, patch + Vector2(0.0, 0.3))
 	var alarm := crowd.alarm
 	var fx := _cast(ctx, at)
 	_until(fx, fx.t_dawn - 1.0)
@@ -417,6 +465,9 @@ static func _dawn(t, made: Array, kinds: Dictionary) -> void:
 	t.check(not dreamer.is_alive() and kinds.get(dreamer.get_instance_id(), &"") == &"night", "the one asleep in a dusk patch is taken")
 	t.check(sleeper.is_alive() and in_plain.is_alive() and awake.is_alive() and s.is_alive(),
 		"the sleeper on plain ground, the one sheltering elsewhere and the awake live on")
+	t.check(not shade.is_alive() and kinds.get(shade.get_instance_id(), &"") == &"night", "a shadow's owner in a dusk patch counts as asleep: taken")
+	t.check(beside.is_alive(), "(control) one awake beside him in the same patch, no shadow, lives")
+	shade.statuses.erase(&"shadow")
 	_go(null, 2.0, [sleeper])
 	t.check(sleeper.is_alive() and not sleeper.is_asleep(), "and the sleeper wakes")
 	t.check(crowd.alarm == alarm, "nothing counted: the alarm at dawn is the alarm at the cast (%.2f / %.2f)" % [crowd.alarm, alarm])
@@ -686,8 +737,12 @@ static func _look(t, made: Array) -> void:
 		"the front runs at map-width / 3 s (%.1f)" % wash.front)
 	_until(fx, E.WAVE + DT)
 	t.check(wash.strength == 1.0 and wash.lit.size() == 1, "full at the wave's end; the torch's ring drawn")
+	# Spec 6: stars and a pale moon in the sky wash (the moon drawn in code, a fixed place: no luck).
+	var moon := wash.get_node_or_null(^"Moon")
+	t.check(moon != null and moon.get_parent() == wash, "the wash holds its pale moon while the night runs")
 	fx.end_now()
 	t.check(not is_instance_valid(wash) or wash.is_queued_for_deletion() or wash.get_parent() == null, "the wash goes with the cast")
+	t.check(moon == null or not is_instance_valid(moon) or moon.is_queued_for_deletion(), "and no moon is left after it ends")
 
 
 static func _quiet(t) -> void:

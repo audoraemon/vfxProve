@@ -195,7 +195,8 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   the town as it was, only the lowest-id owner eases the look, the last owner puts everything back (two casts never undo each other).
 - VC9: Evernight's torch is fixed where its bearer stood at nightfall (he is posted there); "a Veil cast whose area touches a torch" is
   read as a dusk patch laid over its light (`Dusk.laid`, centre distance <= patch r + TORCH_R): every Veil cast leaves its dusk where
-  it lands. The dawn's takes, like the lone's and a torch's, pass over the spared (`Crowd.spared()`). Citizens called to a torch are the
+  it lands. The dawn's takes, like the lone's and a torch's, pass over the spared (`Crowd.spared()`); sleepers indoors are passed over
+  at dawn (only one sheltering in a blighted building is taken indoors). Citizens called to a torch are the
   calm, awake ones out of doors (`walk_to` a huddle slot inside TORCH_R, nearest first, ties by instance id).
 - VC10: Evernight bench (Task 11 Step 5; Aldermere mission, `--loadout=evernight` against `--bench-cast=evernight --bench-after=4`, three
   alternating pairs on a loaded machine): avg_ms 15.75 / 18.88, 15.58 / 18.68, 15.71 / 18.77, cast/base 1.199, 1.199, 1.195: median
@@ -270,7 +271,9 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   there, VE1's `doom_r()` is the fix, as in Hunt 1.
 - VF1 (Task 13c): the VFX Sandbox's number keys reach only the first seven entries of a set, so entries 8 and up of Set2 were never
   pickable. The Veil gets its own "Set4 Veil" (values of Set2) holding the ten powers in tree order on the keys 1-9 and 0 (the HUD
-  numbers the tenth 0); Silent Doom and Blight left Set2 for it. No other set's picking changed. The Sandbox shows the light size only
+  numbers the tenth 0); Silent Doom and Blight left Set2 for it. The widened key handler (keys 1-9 and 0) is every set's: keys 8, 9
+  and 0 now also pick the entries 8-10 of a set that has them, Set2's entries 8-10 among them (corrected in the final fix wave: this
+  line once said no other set's picking changed). The Sandbox shows the light size only
   (C10). CAPTURES gets no entry for the new keys (a missing entry is skipped, not an error).
 - VF2 (Task 13c): the HUD shape lines of Silent Doom (VeilRules doom RADIUS 0.8 / 1.6), Blight (blight DUSK_R 3 / 5, BLIGHT_MAX 3,
   PICK 0.5, ILL_REACH 2 with ILL_MOST 1 / 3) and Unseen Hour (RADIUS 5 / 7, VEIL_TIME 20 / 30) give both sizes, as the seven new
@@ -300,3 +303,18 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VG6 (Important 3): a Dread ended before T_FALL + HOLD releases its hold and lays no dusk (VC1 amended). At an act change
   `Battlefield.end_powers()` ends effects in cast order, and a Dread's dusk laid there would put out a running Evernight's torches
   and take their huddles in teardown.
+- VG7 (minors, C23): Evernight's dawn treats a shadow's owner as asleep (`is_asleep() or is_shadow()`, spec 5.8: "the owner counts as
+  asleep"), out of doors in a dusk patch only, as any sleeper. `bearers()` and `_call_to_torches()` pass over anyone
+  `Crowd.held_by_mission()` names (the `mission_holds` hooks): a seizer keeps his charge, a mission's citizen keeps his errand.
+  `loneliest()` passes over one `Crowd.take()` cannot take: take() goes through `Person.die()`, which asks `Person.deathless` (Corpse
+  Guise, level 5); calling that hook spends the guise, so the read is "has a hook" (`EvernightFx.takeable()`); he still counts as
+  someone's neighbour.
+- VG8 (minors, C23): Dreamless lets a sitter go the frame he is awake again (a hurt wakes a deep sleeper): `statuses[&"dreamless"]` is
+  erased and he leaves the sitters, so a later deep sleep (a dark Slumber) is a plain sleep and the find does not kill him (VB1).
+- VG9 (minors, C23; spec section 6): Evernight's wash draws a pale moon in code (no art file): a child node "Moon" of the wash, upright
+  on screen at a fixed share of the map (MOON_AT, near its top corner), a faint disc with a fainter halo, eased with the night's
+  strength; it is freed with the wash. The stars were already drawn. By eye for the user.
+- VG10 (documents): Shadow Play's dark end. Spec 5.8 says the soldiers' shadows "walk off and fade"; the code has them fade where they
+  stand (motes at the spot, then the take). The code is what is true: the summary, the power book's shape line and the effect's
+  comments now say "fade" (no walk was built). VF1 and VC9 corrected above; EnvironmentField's batch-remove comment says why a skipped
+  closing reindex() is safe.

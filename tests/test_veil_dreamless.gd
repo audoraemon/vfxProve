@@ -258,6 +258,26 @@ static func run(t) -> void:
 	t.check(not sat3.is_alive() and kinds == [&"dreamless"], "control: left to run, he dies (%s)" % str(kinds))
 	ctl.free()
 	crowd.dusk.clear()
+
+	# --- woken by a hurt, then put into deep sleep again (a dark Slumber): no longer marked for the find, he lives (VB1)
+	kinds.clear()
+	var wk: Person = c[20]
+	_away(crowd, [wk])
+	wk.ground_pos = at + Vector2(0.2, 0.0)
+	wk.mind = Person.Mind.CALM
+	var fx6 := _cast(ctx, at, false)
+	fx6._process(DreamlessFx.T_SIT + 0.05)
+	t.check(wk.is_deep_asleep() and wk.statuses.has(&"dreamless"), "(he sits, marked)")
+	wk.hurt(0.01, null)
+	fx6._process(0.1)
+	t.check(not wk.is_asleep() and not wk.statuses.has(&"dreamless"), "woken by a hurt: the status is gone with the sleep")
+	wk.sleep(30.0, true)  # a dark Slumber's deep sleep
+	fx6._process(DreamlessFx.REST)
+	t.check(wk.is_alive() and kinds.is_empty() and not wk.statuses.has(&"dreamless"),
+		"a later deep sleep is a plain sleep: the find does not kill him (%s)" % str(kinds))
+	fx6.free()
+	wk.wake()
+	crowd.dusk.clear()
 	_done(made)
 
 	# --- quiet, dusk laid, no crowd: builds and finishes

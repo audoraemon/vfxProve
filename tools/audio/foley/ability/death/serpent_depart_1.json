@@ -1,0 +1,8 @@
+{"length": 3.2, "rms_db": -16.93, "reverb": {"rt60": 2.2, "mix": 0.24, "predelay_ms": 22, "damp": 4200}, "eq": [["lowshelf", 140, 0.5], ["peak", 3200, -0.5, 0.8]], "layers": [
+  {"src": "lib:oga/wind/wind/wind/Wind.ogg", "at": 0.0, "from": 1.0, "dur": 2.8, "pitch": -1, "lp": 4500, "hp": 120, "fade_in": 300, "fade_out": 1500, "gain_db": -2},
+  {"src": "lib:oga/wind-hit-time-morph/qubodup-timehitwind/qubodup-slomo1.wav", "at": 0.0, "onset": true, "pitch": -3, "lp": 5000, "hp": 100, "fade_in": 40, "fade_out": 400, "gain_db": -6},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.1, "onset": true, "pitch": -9, "lp": 3800, "hp": 120, "fade_out": 180, "gain_db": -3},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 0.55, "onset": true, "pitch": -7, "lp": 3800, "hp": 120, "fade_out": 180, "gain_db": -6},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 1.0, "onset": true, "pitch": -5, "lp": 3800, "hp": 120, "fade_out": 180, "gain_db": -9},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan05.wav", "at": 0.8, "from": 0.2, "dur": 1.5, "pitch": 8, "lp": 4000, "hp": 500, "fade_in": 300, "fade_out": 700, "gain_db": -17}
+]}

@@ -178,6 +178,18 @@ func _spread() -> void:
 		q.plague_src = fresh_src[k]
 		sick.append(q)
 		_puff(q)
+	_heard(fresh)
+
+
+## The spread heard (skill-tree sound pass; sound only): one wet cough where it was just passed on, out of doors and not
+## hushed -- once a spread (SPREAD_EVERY), however many caught it.
+func _heard(fresh: Array[Person]) -> void:
+	if _crowd.sfx == null or _crowd.is_hushed():
+		return
+	for q in fresh:
+		if not q.inside and not _crowd.is_hushed_at(q.ground_pos):
+			_crowd.sfx.play(&"plague_catch", q.ground_pos, -4.0)
+			return
 
 
 ## A green smoke puff where the plague was just passed on (v0.07.1), in the cast's colours, on the crowd's overlay.

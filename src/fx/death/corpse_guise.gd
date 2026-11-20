@@ -33,6 +33,11 @@ var _ids: Array[int] = []
 var shrouds: Array[Node2D] = []
 
 var _breath_in := BREATH_EVERY * 0.5
+## Heard (skill-tree sound pass): whose turn it is to be heard breathing (one of the guised a breath), and the clock a guise
+## lifting may be heard again at (at most every LIFT_QUIET).
+const LIFT_QUIET := 0.3
+var _breath_turn := 0
+var _lift_heard := 0.0
 
 
 ## Whom a click at `at` would guise: the MOST nearest living people out of doors within MARK_R, nearest first, a tie by
@@ -104,7 +109,7 @@ func _build() -> void:
 		# The grave's cold settles on each of them: ash motes drawn down, and a first breath of cold.
 		for p in marked:
 			DominionParts.motes(self, p.ground_pos, ASH, 6)
-		_breathe()
+		_breathe(false)
 
 
 ## Whether this cast still keeps `p`'s guise: it laid it, no later cast took it over, and it is still on. A Variant: `p` may be freed.
@@ -130,6 +135,7 @@ func _fx_process(delta: float) -> void:
 			continue
 		var left := float(p.statuses[KEY]) - delta
 		if left <= 0.0 or not p.is_alive():
+			_lift_sound(p)
 			_lift(p)
 		else:
 			p.statuses[KEY] = left
@@ -142,11 +148,17 @@ func _fx_process(delta: float) -> void:
 
 
 ## A thin breath of cold air from each of the guised still out of doors.
-func _breathe() -> void:
+## `heard`: one of them is heard breathing too, in turn (not with the cast's own cold breath).
+func _breathe(heard := true) -> void:
+	var out: Array[Person] = []
 	for p in marked:
 		if _keeps(p) and p.is_alive() and not p.inside:
+			out.append(p)
 			FxParts.smoke(self, Iso.ground_to_screen(p.ground_pos) + Vector2(0, -15), 1.5, 6.0, 0.25, Vector2(6, 14),
 				Vector2(1, 2), Vector2(0.6, 1.0), Color(0, 0, 0, 0), BREATH, ctx.overhead)
+	if heard and not out.is_empty():
+		ctx.play(&"guise_breath", out[_breath_turn % out.size()].ground_pos, 0.0)
+		_breath_turn += 1
 
 
 ## Asked by Person.die() of a guised one at level 5: the first death in this cast is a fall, not a death (no kill counted, no
@@ -198,7 +210,17 @@ func _lift(p: Person) -> void:
 	_owner.erase(p.get_instance_id())
 
 
+## Heard: `p` breathes in as the guise comes off (alive and out of doors), at most every LIFT_QUIET.
+func _lift_sound(p: Person) -> void:
+	if p.is_alive() and not p.inside and t >= _lift_heard:
+		_lift_heard = t + LIFT_QUIET
+		ctx.play(&"guise_lift", p.ground_pos, 0.0)
+
+
 func _finish() -> void:
+	for p in marked:
+		if _keeps(p):
+			_lift_sound(p)
 	_release()
 	_free_marks()
 	super()

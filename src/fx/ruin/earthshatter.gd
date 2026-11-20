@@ -198,7 +198,7 @@ func _start_forks() -> void:
 		var crack := Fissure.new().setup(ctx.field, where, where + way * FORK_LEN, lv_half, ctx.rng.randi())
 		ctx.ground.add_child(crack)
 		crack.hide_rubble(ctx.env)
-		ctx.play(&"hs_fissure", where, -3.0)
+		ctx.play(&"quake_fissure", where, -3.0)
 		branches.append({"from": where, "dir": way, "length": FORK_LEN, "reach": 0.0, "fissure": crack, "walls": {}})
 		_forks_made += 1
 

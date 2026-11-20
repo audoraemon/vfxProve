@@ -1,0 +1,5 @@
+{"length": 4.0, "rms_db": -19.0, "reverb": {"rt60": 3.2, "mix": 0.3, "predelay_ms": 30, "damp": 2500}, "eq": [["lowshelf", 90, 3.0], ["peak", 2500, -6.0, 0.7]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongscrape_pp.wav", "at": 0.0, "onset": true, "dur": 1.4, "reverse": true, "pitch": -8, "lp": 1500, "fade_in": 500, "fade_out": 80, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.6, "onset": true, "pitch": -12, "dur": 3.2, "lp": 260, "fade_in": 300, "fade_out": 2200, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub1_v1.wav", "at": 1.0, "onset": true, "pitch": -3, "lp": 200, "fade_out": 1000, "gain_db": -5}
+]}

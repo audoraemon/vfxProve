@@ -1,0 +1,6 @@
+{"length": 1.5, "peak_db": -1.27, "reverb": {"rt60": 1.1, "mix": 0.14, "predelay_ms": 10, "damp": 5000}, "eq": [["lowshelf", 200, -4.0], ["peak", 4200, 1.0, 0.9]], "layers": [
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_04.ogg", "at": 0.0, "onset": true, "dur": 0.2, "pitch": 4.6, "hp": 2400, "lp": 9500, "fade_in": 10, "fade_out": 50, "gain_db": -2},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/paper_01.ogg", "at": 0.17, "onset": true, "dur": 0.15, "pitch": 6.6, "hp": 2800, "lp": 9500, "fade_in": 8, "fade_out": 40, "gain_db": -4},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/book_04.ogg", "at": 0.3, "onset": true, "dur": 0.15, "lp": 1800, "fade_in": 3, "fade_out": 70, "gain_db": -14},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Glock/glock_medium_G6.wav", "at": 0.33, "dur": 1.1, "pitch": -2, "lp": 7000, "fade_out": 800, "gain_db": -11},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Glock/glock_medium_C6.wav", "at": 0.36, "dur": 1.1, "pitch": 0, "lp": 6000, "fade_out": 800, "gain_db": -16}]}

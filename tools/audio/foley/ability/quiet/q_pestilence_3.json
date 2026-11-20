@@ -1,0 +1,10 @@
+{"length": 1.7, "rms_db": -21.56, "reverb": {"rt60": 0.7, "mix": 0.08, "predelay_ms": 5}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/bug_04.ogg", "at": 0.0, "pitch": -1, "hp": 400, "fade_out": 60, "gain_db": -1},
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/bug_03.ogg", "at": 0.4, "pitch": 1, "hp": 400, "fade_out": 60, "gain_db": -1},
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/bug_02.ogg", "at": 0.85, "pitch": -1, "hp": 400, "fade_out": 60, "gain_db": -2},
+  {"src": "lib:oga/80-cc0-creture-sfx-2/80-CC0-creature-sfx-2/bug_05.ogg", "at": 0.2, "pitch": 2, "hp": 500, "gain_db": -4},
+  {"src": "lib:oga/80-cc0-creture-sfx-2/80-CC0-creature-sfx-2/bug_08.ogg", "at": 0.7, "pitch": -3, "hp": 500, "gain_db": -4},
+  {"src": "lib:oga/80-cc0-creture-sfx-2/80-CC0-creature-sfx-2/bug_11.ogg", "at": 1.1, "pitch": 0, "hp": 500, "gain_db": -5},
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/cough_03.ogg", "at": 0.3, "pitch": -5, "lp": 3600, "hp": 150, "gain_db": -4},
+  {"src": "lib:oga/80-cc0-creature-sfx/80-CC0-creature-SFX_0/cough_02.ogg", "at": 0.95, "pitch": -5, "lp": 3200, "hp": 150, "gain_db": -5}
+]}

@@ -1,0 +1,5 @@
+{"length": 1.2, "rms_db": -21.0, "reverb": {"rt60": 1.4, "mix": 0.16, "predelay_ms": 10, "damp": 3500}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_air_03.ogg", "at": 0.0, "onset": true, "dur": 0.7, "pitch": -6, "hp": 150, "lp": 2200, "fade_out": 350},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.02, "from": 2.0, "dur": 0.55, "pitch": -8, "hp": 200, "lp": 2500, "gain_db": -5, "fade_in": 40, "fade_out": 350},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Darkness3.ogg", "at": 0.0, "onset": true, "dur": 0.6, "pitch": -4, "lp": 2000, "gain_db": -10, "fade_out": 400}
+]}

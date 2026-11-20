@@ -12,6 +12,7 @@ static func run(t) -> void:
 	_cap(t)
 	_below_five(t)
 	_same_draws(t)
+	_crack(t)
 
 
 static func _ctx(seed_value: int) -> FxContext:
@@ -169,3 +170,28 @@ static func _same_draws(t) -> void:
 		_end(fx)
 		_drop(ctx)
 	t.check(states[0] == states[1], "a grown level 5 bolt draws the same random numbers as level 4 (%d vs %d)" % [states[0], states[1]])
+
+
+class Rec extends Node:
+	var cues: Array = []
+
+	func play(cue: StringName, _g: Vector2, _db := 0.0) -> Node:
+		cues.append(cue)
+		return null
+
+
+## The sound pass's twist cue, once the fork's: smite_crack plays on a gathered storm only -- a click or a twitch at level 5 is the plain bolt.
+static func _crack(t) -> void:
+	for extra: Dictionary in [{"level": 5}, {"level": 5, "to": Vector2(0.0, 1.5), "dir": Targeting.DEFAULT_DIR}]:
+		var ctx := _ctx(1)
+		var rec := Rec.new()
+		ctx.sfx = rec
+		var fx := _cast(ctx, extra)
+		fx._process(0.5)
+		var dragged: bool = extra.has("to")
+		t.check(rec.cues.has(&"smite_strike") and rec.cues.has(&"smite_crack") == dragged,
+			"level 5 %s: the strike sounds, and the crack only when the bolt is gathered (%s)" % ["drag" if dragged else "click", rec.cues])
+		ctx.sfx = null
+		rec.free()
+		_end(fx)
+		_drop(ctx)

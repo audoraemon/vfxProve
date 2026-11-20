@@ -13,6 +13,8 @@ var duration := 5.0
 var busy := -1.0
 var finished := false
 
+## How this effect is heard (LevelSound): [level, main cue, weight cue], set in cast().
+var _heard: Array = [1, &"", &""]
 var _events: Array = []
 var _tracked: Array[Node] = []
 var _stand: Node2D
@@ -23,8 +25,14 @@ static func cast(script: GDScript, c: FxContext, at_ground: Vector2, extra_data 
 	fx.ctx = c
 	fx.origin = at_ground
 	fx.extra = extra_data
+	var key := LevelSound.key_of(script)
+	if key != "" and PowerBook.has_levels(key):
+		fx._heard = [int(extra_data.get("level", 1))] + LevelSound.main_and_weight(key)
 	c.overhead.add_child(fx)
+	var was := c.hearing()
+	c.hear(fx._heard)
 	fx._build()
+	c.hear(was)
 	return fx
 
 
@@ -79,10 +87,15 @@ func _process(delta: float) -> void:
 	if finished:
 		return
 	t += delta
+	var was: Array = ctx.hearing() if ctx != null else []
+	if ctx != null:
+		ctx.hear(_heard)
 	while not _events.is_empty() and _events[0][0] <= t:
 		var ev: Array = _events.pop_front()
 		ev[1].call()
 	_fx_process(delta)
+	if ctx != null:
+		ctx.hear(was)
 	if t >= duration:
 		_finish()
 

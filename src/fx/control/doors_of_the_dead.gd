@@ -518,7 +518,7 @@ func _rise(spot: Vector2) -> void:
 	_fright_in[a] = FRIGHT_EVERY
 	risen += 1
 	raised.append(a)
-	ctx.play(&"q_wisp", spot, -2.0)
+	ctx.play(&"dead_wisp", spot, -2.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(spot)

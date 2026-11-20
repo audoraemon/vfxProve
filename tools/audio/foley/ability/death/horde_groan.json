@@ -1,0 +1,14 @@
+{"length": 10.0, "loop": true, "rms_db": -18.0, "reverb": {"rt60": 1.8, "mix": 0.24, "predelay_ms": 20, "damp": 3400}, "eq": [["lowshelf", 140, 0.5], ["peak", 2400, -1.0, 0.8]], "layers": [
+  {"src": "lib:oga/16-monster-growls/monster_-_starninjas/monster.11.ogg", "at": 0.5, "onset": true, "pitch": -5, "lp": 2500, "hp": 80, "fade_in": 100, "fade_out": 400, "gain_db": -6},
+  {"src": "lib:oga/16-monster-growls/monster_-_starninjas/monster.8.ogg", "at": 2.4, "onset": true, "pitch": -6, "lp": 2400, "hp": 80, "fade_in": 100, "fade_out": 400, "gain_db": -7},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr14.wav", "at": 3.8, "onset": true, "pitch": -7, "lp": 2300, "hp": 80, "fade_in": 80, "fade_out": 300, "gain_db": -8},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr5.wav", "at": 5.5, "onset": true, "pitch": -8, "lp": 2200, "hp": 80, "fade_in": 80, "fade_out": 300, "gain_db": -8},
+  {"src": "lib:oga/big-scary-troll-sounds/troll-idle-noises_0.ogg", "at": 6.5, "from": 1.0, "dur": 3.0, "pitch": -4, "lp": 2400, "hp": 80, "fade_in": 300, "fade_out": 700, "gain_db": -8},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan04.wav", "at": 8.0, "from": 0.5, "dur": 3.0, "pitch": -9, "lp": 2000, "hp": 80, "fade_in": 500, "fade_out": 900, "gain_db": -10},
+  {"src": "lib:oga/16-monster-growls/monster_-_starninjas/monster.6.ogg", "at": 9.2, "onset": true, "pitch": -4, "lp": 2400, "hp": 80, "fade_in": 80, "fade_out": 400, "gain_db": -9},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/NPC/gutteral beast/mnstr9.wav", "at": 1.4, "onset": true, "pitch": -9, "lp": 2000, "hp": 80, "fade_in": 80, "fade_out": 300, "gain_db": -11},
+  {"src": "lib:oga/16-monster-growls/monster_-_starninjas/monster.3.ogg", "at": 7.4, "onset": true, "pitch": -7, "lp": 2000, "hp": 80, "fade_in": 80, "fade_out": 300, "gain_db": -11},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 1.0, "dur": 10.0, "lp": 400, "hp": 25, "fade_in": 3500, "fade_out": 3500, "gain_db": -14},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 5.0, "from": 15.0, "dur": 10.0, "lp": 400, "hp": 25, "fade_in": 3500, "fade_out": 3500, "gain_db": -14},
+  {"scatter": {"srcs": ["lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth1.ogg", "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth2.ogg", "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth3.ogg", "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth4.ogg"], "seed": 31, "runners": 6, "length": 10.0, "rate": [1.3, 1.8], "gain_db": [-24, -14], "lp": [1500, 3500], "hp": 80, "pitch": [-5, -2], "run": [3.0, 8.0], "stop": [0.5, 2.0]}}
+]}

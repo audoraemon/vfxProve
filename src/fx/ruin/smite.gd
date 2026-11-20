@@ -63,6 +63,8 @@ func _strike() -> void:
 			struck += 1
 	ctx.env.damage_radius(origin, HIT_R * grow, lv_damage, &"smite")
 	ctx.play(&"smite_strike", origin, -3.0)
+	if grow > 1.0:
+		ctx.play(&"smite_crack", origin, -5.0)  # the level 5 twist's own cue (the sound pass's, once the fork's): a gathered storm cracks
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(origin)

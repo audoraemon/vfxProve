@@ -1,0 +1,9 @@
+{"length": 2.0, "rms_db": -19.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.0, "onset": true, "pitch": -2.71, "hp": 600, "lp": 9000, "gain_db": -2.5, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_3.ogg", "at": 0.168, "onset": true, "pitch": 0.1, "hp": 600, "lp": 9000, "gain_db": -2.5, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 0.2, "onset": true, "pitch": -4.69, "hp": 600, "lp": 9000, "gain_db": -3.2, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_1.ogg", "at": 0.384, "onset": true, "pitch": -1.64, "hp": 600, "lp": 9000, "gain_db": -4.6, "fade_out": 80},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.457, "onset": true, "pitch": -3.77, "hp": 600, "lp": 9000, "gain_db": -5.3, "fade_out": 80},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.298, "from": 0.54, "dur": 1.5, "pitch": -3.31, "hp": 300, "lp": 7000, "gain_db": -3.2, "fade_in": 200, "fade_out": 600},
+  {"src": "lib:oga/creepy-incoherent-chanting/chant9.wav", "at": 0.0, "from": 0.92, "dur": 1.6, "hp": 800, "lp": 10000, "gain_db": -8.1, "fade_in": 150, "fade_out": 500, "pitch": 0.35}
+]}

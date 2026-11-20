@@ -1,0 +1,5 @@
+{"length": 4.0, "rms_db": -19.0, "reverb": {"rt60": 3.2, "mix": 0.3, "predelay_ms": 30, "damp": 2500}, "eq": [["lowshelf", 90, 3.0], ["peak", 2500, -6.0, 0.7]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongHit_f.wav", "at": 0.05, "onset": true, "pitch": -7, "lp": 900, "fade_out": 2500, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.0, "onset": true, "pitch": -12, "dur": 3.4, "lp": 300, "fade_in": 80, "fade_out": 2200, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v6_rr1_Sum.wav", "at": 0.05, "onset": true, "pitch": -3, "lp": 260, "fade_out": 800, "gain_db": -3}
+]}

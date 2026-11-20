@@ -15,8 +15,14 @@ const CORDON_HALF := 3.0
 const FOOT_GROW := 0.5
 ## Seconds a cordon stands after its (last) start; an unstaffed one waits as long for its men.
 const CORDON_SECONDS := 40.0
+## Seconds an unstaffed (open) job waits for its full crew before it lets go.
+const OPEN_WAIT := 10.0
+## How far from the stretch's middle the ruin's part of the rect reaches, on each axis (a deep lot ropes no junction).
+const FOOT_CLIP := CORDON_HALF + 1.0
 ## How many waypoints ahead a citizen's path is read for a crossing of the rope.
 const PATH_AHEAD := 24
+## A goal this near his profile's home is "going home" (never turned back).
+const HOME_NEAR := 1.0
 ## Seconds a citizen is turned back for; renewed every tick while the cordon is live.
 const TURN_BACK := 1.5
 ## Seconds the nearer end man talks to a citizen he turns back.
@@ -101,8 +107,8 @@ func request(site: Structure, street_at: Vector2) -> void:
 		return
 	for job in _live:
 		if (job.data.rect as Rect2).has_point(centre):
-			job.data.left = CORDON_SECONDS
-			job.data.wait = CORDON_SECONDS
+			if bool(job.data.begun):
+				job.data.left = CORDON_SECONDS  # an unroped job's wait is not restarted
 			return
 	if _live.size() >= board.cap(CORDONS):
 		return
@@ -112,9 +118,13 @@ func request(site: Structure, street_at: Vector2) -> void:
 	var s := stretch(roads, street_at, CORDON_HALF)
 	var ends: Array[Vector2] = [s[0], s[1]]
 	var road: Rect2 = s[2]
-	var job := board.post(GuardJobs.Kind.CORDON, (ends[0] + ends[1]) * 0.5, CREW, REACH, {"site": site, "ends": ends,
-			"rect": road.merge(site.footprint.grow(FOOT_GROW)), "width": minf(road.size.x, road.size.y), "at_end": {},
-			"left": CORDON_SECONDS, "wait": CORDON_SECONDS, "begun": false, "over": false, "stood": false, "held": []})
+	var mid := (ends[0] + ends[1]) * 0.5
+	var box := Rect2(mid - Vector2(FOOT_CLIP, FOOT_CLIP), Vector2(FOOT_CLIP, FOOT_CLIP) * 2.0)
+	var foot := site.footprint.grow(FOOT_GROW)
+	var rect := road.merge(foot.intersection(box)) if foot.intersects(box) else road
+	var job := board.post(GuardJobs.Kind.CORDON, mid, CREW, REACH, {"site": site, "ends": ends,
+			"rect": rect, "width": minf(road.size.x, road.size.y), "at_end": {},
+			"left": CORDON_SECONDS, "wait": OPEN_WAIT, "begun": false, "over": false, "stood": false, "held": []})
 	if job != null:
 		_live.append(job)
 
@@ -124,10 +134,16 @@ func rect_of(job: GuardJobs.Job) -> Rect2:
 	return job.data.rect
 
 
-## Whether the segment `a`-`b` crosses a staffed cordon's rect (false at once when none is live).
+## Whether the segment `a`-`b` crosses a staffed cordon's rect (false at once when none is live). One that starts inside a rect
+## and ends outside it is not blocked by that rect (he is leaving).
 func blocks(a: Vector2, b: Vector2) -> bool:
 	for job in _live:
-		if _roped(job) and _hits(job.data.rect, a, b):
+		if not _roped(job):
+			continue
+		var r: Rect2 = job.data.rect
+		if r.has_point(a) and not r.has_point(b):
+			continue
+		if _hits(r, a, b):
 			return true
 	return false
 
@@ -307,9 +323,17 @@ func _turn_back(job: GuardJobs.Job) -> void:
 			continue
 		if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
 			continue
-		var bound := p.held_off() and p.held_rect() == rect and rect.has_point(p.bound_for())
-		if not bound and not (p.has_goal() and (rect.has_point(p.goal()) or p.path_crosses(rect, PATH_AHEAD))):
-			continue
+		if not (p.held_off() and p.held_rect() == rect):
+			# Not yet held: only one whose goal is in the rect or whose path crosses it, who is not on his way out of it or home.
+			if not p.has_goal():
+				continue
+			var goal := p.goal()
+			if rect.has_point(p.ground_pos) and not rect.has_point(goal):
+				continue
+			if p.profile != null and p.profile.home.distance_to(goal) <= HOME_NEAR:
+				continue
+			if not (rect.has_point(goal) or p.path_crosses(rect, PATH_AHEAD)):
+				continue
 		if p.hold_off(rect, TURN_BACK, p.ground_pos - centre, 1.0, true):
 			if not d.held.has(p):
 				d.held.append(p)

@@ -33,6 +33,15 @@ static func run(t) -> void:
 	_freed_man(t)
 	_clear_resets(t)
 	_talk_left(t)
+	_hold_then_flee(t)
+	_path_crosser_stays(t)
+	_charge_crosses(t)
+	_holds_overlap(t)
+	_board_closed(t)
+	_inside_leaves(t)
+	_home_goal(t)
+	_open_ten(t)
+	_deep_lot_clipped(t)
 
 
 static func _world() -> Array:
@@ -418,10 +427,8 @@ static func _never_turns_back(t) -> void:
 			break
 	soldier.send_to_post(mid)
 	_run_for(crowd, 1.2, folk)
-	var held := 0
-	for p in folk:
-		held += 1 if p.held_off() else 0
-	t.check(held == 0, "flee, panic, duty, regroup, assist, shelter: none turned back (%d)" % held)
+	for i in folk.size():
+		t.check(not folk[i].held_off(), "mind %d is never turned back" % int(minds[i]))
 	t.check(not soldier.held_off() and soldier.anchor.is_equal_approx(mid), "a soldier walks through")
 	_done(made)
 
@@ -609,10 +616,10 @@ static func _open_job_ends(t) -> void:
 	var crowd2: Crowd = made2[0]
 	Corps.hold_free(crowd2)
 	crowd2.cordon.request(_site(made2), _site(made2).center())
-	_run_for(crowd2, CordonDuty.CORDON_SECONDS - 5.0, [], 0.1)
+	_run_for(crowd2, CordonDuty.OPEN_WAIT - 2.0, [], 0.1)
 	t.check(_live(crowd2).size() == 1, "an open job waits")
-	_run_for(crowd2, 8.0, [], 0.1)
-	t.check(_live(crowd2).is_empty(), "and goes after 40 s without a crew")
+	_run_for(crowd2, 3.0, [], 0.1)
+	t.check(_live(crowd2).is_empty(), "and goes after 10 s without a crew")
 	_done(made2)
 
 
@@ -688,4 +695,204 @@ static func _talk_left(t) -> void:
 	var before := nearer.talk_left
 	nearer.tick(0.2)
 	t.check(nearer.talk_left < before, "talk_left counts down")
+	_done(made)
+
+
+## A staffed cordon with two calm citizens: the first has a goal at the rect's middle, the second a goal beyond the far end (his
+## path crosses the rect). Both start on the far side of end 0.
+static func _scene(made: Array) -> Dictionary:
+	var crowd: Crowd = made[0]
+	var job := _up(made, _site(made))
+	if job == null:
+		return {}
+	_arrive(job)
+	var rect := crowd.cordon.rect_of(job)
+	var axis := _axis(job)
+	var start := crowd._grid.nearest_walkable((job.data.ends[0] as Vector2) - axis * 5.0)
+	var beyond := crowd._grid.nearest_walkable((job.data.ends[1] as Vector2) + axis * 5.0)
+	var mid := crowd._grid.nearest_walkable(rect.get_center())
+	var folk := _citizens(crowd, 2, start)
+	folk[0].set_goal(mid)
+	folk[1].set_goal(beyond)
+	return {"job": job, "rect": rect, "axis": axis, "folk": folk, "mid": mid, "beyond": beyond, "start": start}
+
+
+## Held off, then frightened: the hold is gone, no goal comes back over the flight (flee() and panic()).
+static func _hold_then_flee(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var sc := _scene(made)
+	if sc.is_empty():
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	var folk: Array = sc.folk
+	_run_for(crowd, 1.2, folk)
+	t.check(folk[0].held_off() and folk[1].held_off(), "(both held off)")
+	folk[0].flee()
+	folk[1].panic(folk[1].ground_pos + Vector2(1.0, 0.0), 3.0, &"", true, false)
+	t.check(not folk[0].held_off() and not folk[1].held_off(), "flee() and panic() end the hold-off")
+	_run_for(crowd, 5.0, folk, 0.1)
+	var back := false
+	for c: Person in folk:
+		back = back or (c.has_goal() and (c.goal().is_equal_approx(sc.mid) or c.goal().is_equal_approx(sc.beyond)))
+	t.check(not back and folk[0].mind == Person.Mind.FLEE, "past the hold's time nothing is restored over the flight")
+	_done(made)
+
+
+## A citizen held for a path through the rope stays held while the cordon lives (renewed from its own list).
+static func _path_crosser_stays(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var sc := _scene(made)
+	if sc.is_empty():
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	var folk: Array = sc.folk
+	_run_for(crowd, 1.2, folk)
+	t.check(folk[1].held_off() and not folk[1].has_goal(), "(the path-crosser is held, his goal kept back)")
+	_run_for(crowd, 3.2, folk)
+	t.check(folk[1].held_off() and folk[0].held_off(), "three ticks on, both are still held")
+	_done(made)
+
+
+## A mission charge (answers_lure) is lured across a live cordon, and the Wisp's draw takes him.
+static func _charge_crosses(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var job := _up(made, _site(made))
+	if job == null:
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	_arrive(job)
+	var axis := _axis(job)
+	var side := crowd._grid.nearest_walkable((job.data.ends[0] as Vector2) - axis * 1.0)
+	var inside_at := crowd.cordon.rect_of(job).get_center()
+	var two := _citizens(crowd, 2, side)
+	two[0].answers_lure = true
+	two[0].lure_reach = 30.0
+	t.check(crowd.cordon_blocks(side, inside_at), "(the rope lies between)")
+	var drawn := WillOWisp.drawn(made[3], inside_at)
+	t.check(drawn.has(two[0]) and not drawn.has(two[1]), "the Wisp's draw takes a director's charge, and leaves an ordinary citizen out")
+	t.check(two[0].lure(inside_at, 5.0, Vector2.INF, 30.0), "a charge is lured across a live cordon")
+	_done(made)
+
+
+## A cordon hold and another rect's hold overlap: the cordon's end lets in only its own.
+static func _holds_overlap(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var sc := _scene(made)
+	if sc.is_empty():
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	var folk: Array = sc.folk
+	_run_for(crowd, 1.2, folk)
+	var other := Rect2((sc.start as Vector2) - Vector2(3.0, 3.0), Vector2(1.0, 1.0))
+	folk[0].hold_off(other, 30.0, Vector2.LEFT, 1.0)
+	t.check(folk[0].held_off() and folk[0].held_rect() == other, "(a foreign hold took over)")
+	crowd.alarms.stage = AlarmManager.Stage.EVACUATION
+	_run_for(crowd, 1.2, folk)
+	t.check(_live(crowd).is_empty(), "(the cordon ended)")
+	t.check(folk[0].held_off() and folk[0].held_rect() == other, "the cordon's end leaves the other rect's hold alone")
+	t.check(not folk[1].held_off(), "and lets in the one it held itself")
+	_done(made)
+
+
+## The board closed (the Citadel fell) with a live cordon: the held citizens are let in.
+static func _board_closed(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var sc := _scene(made)
+	if sc.is_empty():
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	var folk: Array = sc.folk
+	_run_for(crowd, 1.2, folk)
+	t.check(folk[0].held_off() and folk[1].held_off(), "(both held off)")
+	crowd.guard_jobs.close()
+	t.check(not folk[0].held_off() and not folk[1].held_off(), "close(): the held citizens are let in")
+	var r: Rect2 = sc.rect
+	t.check(not crowd.cordon_blocks(r.position - Vector2(3.0, 0.0), r.end + Vector2(3.0, 0.0)), "and the rope blocks nothing")
+	_done(made)
+
+
+## A citizen inside the rect bound outside walks out; he is not blocked from a lure outside; a lure point inside still fails
+## for a citizen outside.
+static func _inside_leaves(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var sc := _scene(made)
+	if sc.is_empty():
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	var rect: Rect2 = sc.rect
+	var inner := _citizens(crowd, 4, sc.mid)
+	var a: Person = inner[2]
+	var b: Person = inner[3]
+	t.check(rect.has_point(a.ground_pos), "(he stands inside)")
+	a.set_goal(sc.beyond)
+	_run_for(crowd, 1.2, inner)
+	t.check(not a.held_off(), "inside the rect, bound outside: he is not turned back")
+	var out_at: Vector2 = (sc.job.data.ends[1] as Vector2) + (sc.axis as Vector2) * 3.0
+	t.check(b.lure(out_at, 3.0), "and he is not blocked from a lure that lies outside")
+	var outer: Person = sc.folk[0]
+	outer.end_hold_off()
+	t.check(not outer.lure(sc.mid, 3.0), "a lure point inside the rect still fails for one outside")
+	_done(made)
+
+
+## A citizen whose goal is his own home is never turned back, even with the home inside the rect.
+static func _home_goal(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var sc := _scene(made)
+	if sc.is_empty():
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	var c: Person = sc.folk[0]
+	c.end_hold_off()
+	c.profile.home = sc.mid
+	c.set_goal(sc.mid)
+	_run_for(crowd, 1.2, sc.folk)
+	t.check(not c.held_off(), "bound for his own home: not turned back")
+	_done(made)
+
+
+## An open (unroped) job lets go after 10 s without a full crew, and a second site in its rect does not restart the clock.
+static func _open_ten(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	Corps.hold_free(crowd)
+	var house := _site(made)
+	crowd.cordon.request(house, house.center())
+	_run_for(crowd, 8.0, [], 0.1)
+	t.check(_live(crowd).size() == 1, "an open job waits")
+	crowd.cordon.request(house, house.center())
+	_run_for(crowd, 3.2, [], 0.1)
+	t.check(_live(crowd).is_empty(), "and is gone by 11 s: the second site did not restart its wait")
+	_done(made)
+
+
+## A deep lot ropes no more than CORDON_HALF + 1 of the stretch's middle on each axis.
+static func _deep_lot_clipped(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var lot := Structure.new().setup(Rect2(-9.0, 4.0, 16.0, 16.0), 10.0, Structure.Kind.HOUSE, 1)
+	crowd.cordon.request(lot, Vector2(0.0, 9.0))
+	var live := _live(crowd)
+	t.check(live.size() == 1, "(the lot posts a cordon)")
+	if live.size() == 1:
+		var r: Rect2 = live[0].data.rect
+		var half := CordonDuty.CORDON_HALF + 1.0
+		var mid: Vector2 = live[0].at
+		t.check(r.position.x >= mid.x - half - 0.001 and r.end.x <= mid.x + half + 0.001 and r.position.y >= mid.y - half - 0.001 \
+				and r.end.y <= mid.y + half + 0.001, "the rect stays within 4.0 of the stretch's middle (%s)" % r)
+	lot.free()
 	_done(made)

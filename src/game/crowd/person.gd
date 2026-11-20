@@ -1363,6 +1363,7 @@ func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelt
 	if may_shelter and shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
 		return
+	_drop_hold_off()  # a fright ends any hold-off: nothing is kept back to be restored over the flight
 	var from_other_mind := mind != Mind.PANIC
 	_hold_begin()
 	mind = Mind.PANIC
@@ -1491,7 +1492,7 @@ func lure(at: Vector2, seconds: float, from := Vector2.INF, reach := WillOWisp.C
 			return false
 	elif not (mind in LURABLE or (answers_lure and mind == Mind.DUTY)):
 		return false
-	elif crowd != null and crowd.cordon_blocks(ground_pos, at):
+	elif crowd != null and not answers_lure and crowd.cordon_blocks(ground_pos, at):
 		return false  # a cordon's rope lies between a citizen and the light (CordonDuty)
 	if answers_lure and not soldier:
 		_duty_lured = mind == Mind.DUTY or (_duty_lured and mind == Mind.OBSERVE and _lured)
@@ -1627,8 +1628,16 @@ func end_hold_off() -> void:
 	var g := _off_goal
 	_off_goal = Vector2.INF
 	_off_home = Vector2.INF
-	if g != Vector2.INF and state != State.DEAD and not inside:
+	if g != Vector2.INF and state != State.DEAD and not inside and _goal == Vector2.INF \
+			and (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP):
 		set_goal(g)
+
+
+## A fright (flee(), panic()) ends a hold-off with no goal given back: the flight is his own.
+func _drop_hold_off() -> void:
+	_off_left = 0.0
+	_off_goal = Vector2.INF
+	_off_home = Vector2.INF
 
 
 ## Whether it is held off a place now (hold_off()).
@@ -2805,6 +2814,7 @@ func flee() -> void:
 		_reassured_fled = true  # it will go when the calm wears off
 		return
 	mind = Mind.FLEE
+	_drop_hold_off()
 	walk_speed = _mind_speed()
 	_panic_left = 0.0
 	_goal = Vector2.INF

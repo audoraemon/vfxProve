@@ -2553,7 +2553,8 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 		clear_ground(WalkGrid.solid_rect(s.footprint))
 		var piled := piles.piles.size()
 		piles.on_fall(s)
-		cordon.request(s, piles.centre(piles.piles.back()) if piles.piles.size() > piled else s.center())
+		if cordon != null:
+			cordon.request(s, piles.centre(piles.piles.back()) if piles.piles.size() > piled else s.center())
 
 
 ## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town (or a hushed place: Pale

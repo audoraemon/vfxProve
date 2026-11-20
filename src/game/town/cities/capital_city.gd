@@ -550,6 +550,10 @@ func id() -> StringName:
 	return &"capital"
 
 
+func wishes() -> bool:
+	return true
+
+
 func map() -> Rect2:
 	return MAP
 

@@ -794,7 +794,7 @@ func go_to(to: int) -> void:
 				# Endless Night's night (god P1, spec §9.1): the drawn mission as this god plays it, drafting from what it has learned.
 				prep.god = god
 				prep.look = GodNight.look_for(god, mission_id)
-				prep.setup(GodNight.def_for(god, mission_id), loadout, save.difficulty)
+				prep.setup(GodNight.def_for(god, mission_id, night_town), loadout, save.difficulty)
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
@@ -1034,7 +1034,7 @@ func _build_mission() -> Mission:
 	if _in_endless and god != null:
 		# Endless Night's night (god P1, spec §9.1): the god's version of the drawn mission, its learned levels, wishes seeded by the
 		# god and its night (the same after a quit and a return), no restart, and the clock's start is written to the god's file (P9).
-		mission.night_def = func() -> MissionDef: return GodNight.def_for(god, mission_id)
+		mission.night_def = func() -> MissionDef: return GodNight.def_for(god, mission_id, night_town)
 		mission.levels = god.learned.duplicate()
 		mission.wish_seed = GodNight.wish_seed(god, mission_id)
 		mission.look_override = GodNight.look_for(god, mission_id)  # the night's roll: DAY or NIGHT (NightRules)
@@ -1313,24 +1313,26 @@ func _keep_tree_state(tree: SkillTreeScreen) -> void:
 	_tree_state_of = _tree_owner()
 
 
-## The Faith screen: a purchase is written at once; Back is the hub.
 ## The World Map (World Map + Conquer Progress, Task 5): Descend draws the chosen town's night and opens its Prepare; Back returns to the Chamber.
+## The town is taken only once a night was drawn there: a refused Descend leaves `last_town`, `night_town` and `mission_id` alone.
 func _on_world_action(what: String, map: WorldMap) -> void:
 	match what:
 		"descend":
 			if god.draftable().is_empty():
 				return
+			var drawn := GodNight.draw(god, map.selected)
+			if drawn == "":
+				return
 			god.last_town = map.selected
 			night_town = map.selected
-			mission_id = GodNight.draw(god, night_town)
-			if mission_id == "":
-				return
+			mission_id = drawn
 			loadout = god.loadout.duplicate()
 			on_action("world:descend")
 		"back":
 			on_action("world:back")
 
 
+## The Faith screen: a purchase is written at once; Back is the hub.
 func _on_faith_action(what: String) -> void:
 	if what == "bought":
 		_write_god()
@@ -2556,8 +2558,8 @@ func _flow_descend(hub: GodChamber) -> WorldMap:
 ## FLOW (World Map + Conquer Progress, Task 5): the World Map by its real routes, on slot 1's god (in memory only: nothing here is written, so
 ## the Lantern's walk finds the god as _flow_endless() left it).
 ## 1. Continue on slot 1 and the table: the map, on Aldermere; the Capital is locked and says what opens it; Esc is the hub again.
-## 2. With 132 of Aldermere's people (the god's file untouched) the Capital shows open but "dim" (no night is drawn there until Task 6): a click on
-##    it selects it, Enter buzzes with the no-night line and the screen stays.
+## 2. With 132 of Aldermere's people (the god's file untouched) the Capital shows open and hosts a night: a click on it selects it and Enter opens
+##    its Prepare (night_town "capital"); Prepare's back is the hub.
 ## 3. Enter on Aldermere opens Prepare; Prepare's back is the hub. Ends on the board with `dev` restored.
 func _flow_world(step: Callable) -> void:
 	var was := dev
@@ -2608,8 +2610,25 @@ func _flow_world(step: Callable) -> void:
 		return
 	map.click(WorldLayout.spot("capital").place)
 	map._unhandled_input(_flow_key(KEY_ENTER))
-	step.call(screen == Screen.WORLD and _screen_node == map and map.spot_state("capital") == "dim" and map.selected == "capital"
-		and map.line == WorldMap.NO_NIGHT, "the open Capital has no night yet: a click selects it, Enter buzzes with the no-night line (%s)" % map.line)
+	var cap_prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and cap_prep != null and night_town == "capital" and god.last_town == "capital"
+		and mission_id == GodNight.draw(god, "capital") and mission_id != "",
+		"the open Capital hosts a night: a click selects it, Enter opens its Prepare (%s in %s)" % [mission_id, night_town])
+	if cap_prep == null:
+		out.call()
+		return
+	_on_prepare_action("back", cap_prep)
+	hub = _screen_node as GodChamber
+	if hub == null:
+		step.call(false, "the Capital's Prepare backs out to the hub")
+		out.call()
+		return
+	hub.click(hub.menu_rect("descend").get_center())
+	map = _screen_node as WorldMap
+	if map == null:
+		step.call(false, "the table opens the map again")
+		out.call()
+		return
 	map.click(WorldLayout.spot("aldermere").place)
 	map._unhandled_input(_flow_key(KEY_ENTER))
 	var prep := _screen_node as PrepareScreen

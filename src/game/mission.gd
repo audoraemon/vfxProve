@@ -504,7 +504,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		# A scripted run's --board (v0.11 M1): the night's seed is the first night's, as a fresh god's.
 		wish_seed = Descent.seed_for(descend.night if descend != null else 0, _def.id)
 	# A board night (v0.11 M1): its wishes, its Tier 5 Gaze and its ascent, handed to each act's Rules in _build_act().
-	_descent = Descent.new().setup(_def, wish_seed) if has_descent(_def, on_board) else null
+	_descent = Descent.new().setup(_def, wish_seed) if has_descent(_def, on_board, god_night) else null
 	_night = NightState.new() if _def.has_acts() else null
 	if _night != null:
 		_night.bell_rang = bell_rang
@@ -528,7 +528,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_build_act(powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args()))
 	_apply_night_rules(seed_value)
 	if conquest and _descent != null:
-		_believers = BelieverRoll.new().setup(_crowd, Conquest.HOME, believer_seed)
+		_believers = BelieverRoll.new().setup(_crowd, String(_def.city), believer_seed)
 		_believers.mark_carried(carried, _reserved())
 		_believers.attach(_rules)
 	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
@@ -1106,9 +1106,14 @@ static func wanted_city(args: PackedStringArray, autostart_run: bool) -> StringN
 
 ## Whether a night of `def` has a Descent (v0.12, D20): a board night in Aldermere only -- no wishes, believers, banking or tier
 ## progress in another town. A Lantern Hunt has one too (god P5, MS §1, R6, open issue 4: it hears the tier's wishes and banks believers, as
-## the stand-ins did); a rite does not.
-static func has_descent(def: MissionDef, on_board: bool) -> bool:
-	return on_board and (TierBook.has(def.id) or HuntBook.has(def.id)) and def.city == &"aldermere"
+## the stand-ins did); a rite does not. `any_town` (a god's Endless night, World Map + Conquer Progress): a board night in another town
+## has one too when that town hears wishes (CityDef.wishes()); the DEV tab's nights there still have none.
+static func has_descent(def: MissionDef, on_board: bool, any_town := false) -> bool:
+	if not on_board or not (TierBook.has(def.id) or HuntBook.has(def.id)):
+		return false
+	if def.city == &"aldermere":
+		return true
+	return any_town and City.has(def.city) and City.by_id(def.city).wishes()
 
 
 ## This is a board night (v0.11 M1): Game said so, or a standalone run was given --board.

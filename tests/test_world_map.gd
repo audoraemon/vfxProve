@@ -160,10 +160,32 @@ static func _arrows(t) -> void:
 	t.check(map.selected == "capital", "Right from Aldermere selects the Capital (%s)" % map.selected)
 	map._unhandled_input(_key(KEY_LEFT))
 	t.check(map.selected == "aldermere", "Left returns (%s)" % map.selected)
-	for code: Key in [KEY_UP, KEY_DOWN, KEY_UP, KEY_DOWN]:
-		map._unhandled_input(_key(code))
-		t.check(WorldLayout.is_town(map.selected), "Up and Down never land on a sealed spot (%s)" % map.selected)
 	map.free()
+	# Arrows never select a sealed or locked spot, though one lies that way: with the Capital locked, no arrow leaves Aldermere; with
+	# both open, every arrow from either town ends on a spot that can be selected.
+	var dirs := {KEY_UP: Vector2.UP, KEY_DOWN: Vector2.DOWN, KEY_LEFT: Vector2.LEFT, KEY_RIGHT: Vector2.RIGHT}
+	for god: GodSlot in [_slot(), _open_both()]:
+		var m: WorldMap = _make(god)[0]
+		for start in ["aldermere", "capital"]:
+			if not m.select(start):
+				continue
+			for code: Key in dirs:
+				var from: Vector2 = WorldLayout.spot(start).place
+				var barred := false  # a spot that cannot be selected lies in this direction
+				for id in WorldLayout.ids():
+					if not m.selectable(id) and ((WorldLayout.spot(id).place as Vector2) - from).normalized().dot(dirs[code]) > 0.0:
+						barred = true
+				m.select(start)
+				m._unhandled_input(_key(code))
+				t.check(m.selectable(m.selected) and WorldLayout.is_town(m.selected),
+					"%s, arrow %d from %s lands on a selectable town, not a barred spot (%s; barred spot that way: %s)" % [god.opened, code, start, m.selected, barred])
+		m.free()
+	var locked: WorldMap = _make(_slot())[0]
+	var barred_any := false
+	for id in WorldLayout.ids():
+		barred_any = barred_any or not locked.selectable(id)
+	t.check(barred_any and not locked.select("capital") and locked.selected == "aldermere", "a locked Capital cannot be selected, and a sealed spot exists to be refused")
+	locked.free()
 
 
 static func _blocked(t) -> void:
@@ -183,11 +205,30 @@ static func _dim_town(t) -> void:
 	var made := _make(_open_both())
 	var map: WorldMap = made[0]
 	var got: Array = made[1]
-	t.check(map.spot_state("capital") == "dim", "the open Capital has no night yet: dim (%s)" % map.spot_state("capital"))
+	t.check(map.spot_state("capital") == "open", "the open Capital hosts a tier 1 night: open (%s)" % map.spot_state("capital"))
 	map.select("capital")
 	map._unhandled_input(_key(KEY_ENTER))
-	t.check(got.is_empty() and map.line == WorldMap.NO_NIGHT, "Enter on a dim town emits nothing and says so (%s, %s)" % [got, map.line])
+	t.check(got == ["descend"], "Enter on the open Capital emits descend (%s)" % [got])
 	map.free()
+	var none_tier := 0
+	for k in range(2, 6):
+		var hosts := false
+		for id in TierBook.missions(k):
+			hosts = hosts or MissionBook.hostable(id, City.by_id(&"capital"))
+		if not hosts:
+			none_tier = k
+			break
+	t.check(none_tier > 0, "some tier is hosted by nothing in the Capital (%d)" % none_tier)
+	var god := _open_both()
+	god.tier = none_tier
+	var made2 := _make(god)
+	var map2: WorldMap = made2[0]
+	var got2: Array = made2[1]
+	t.check(map2.spot_state("capital") == "dim", "at a tier the Capital hosts none of: dim (%s)" % map2.spot_state("capital"))
+	map2.select("capital")
+	map2._unhandled_input(_key(KEY_ENTER))
+	t.check(got2.is_empty() and map2.line == WorldMap.NO_NIGHT, "Enter on a dim town emits nothing and says so (%s, %s)" % [got2, map2.line])
+	map2.free()
 
 
 static func _conquered_seal(t) -> void:

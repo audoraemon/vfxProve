@@ -120,23 +120,36 @@ static func notice_delta(d: Dictionary) -> int:
 ## The next night's mission (spec §9.1): the Hunt when the Notice is full (it cannot be skipped: no seed, no no-repeat; Ruling P2-4),
 ## else one of the god's tier missions (TierBook.missions()), never the last one played -- nor, after a Hunt, the one before it (review
 ## M3) -- picked by a generator seeded with
-## night_seed(). Nothing changes, so the same slot gives the same night until one counts. Only Aldermere has nights until the Capital gets its
-## own (World Map + Conquer Progress, Task 6): any other `town` draws "" (no night waits there).
+## night_seed(). Nothing changes, so the same slot gives the same night until one counts. Town-aware (World Map + Conquer Progress): only
+## what `town` hosts is drawn (can_host()); Aldermere hosts everything, so its draw is today's. The Hunt is Aldermere's alone: while it is
+## due another town draws "" (no night waits there). "" too when the town hosts none of the tier's missions.
 static func draw(slot: GodSlot, town := "aldermere") -> String:
-	if town != "aldermere":
-		return ""
 	var hunt := hunt_for(slot)
 	if not hunt.is_empty():
-		return String(hunt.id)
+		return String(hunt.id) if can_host(town, String(hunt.id)) else ""
 	var pool := PackedStringArray()
 	for id in TierBook.missions(slot.tier):
-		if id != slot.last_mission and id != slot.before_hunt:
+		if id != slot.last_mission and id != slot.before_hunt and can_host(town, id):
 			pool.append(id)
-	if pool.is_empty():  # a tier with one mission: nothing else to draw
-		pool = TierBook.missions(slot.tier)
+	if pool.is_empty():  # a tier with one hostable mission: nothing else to draw
+		for id in TierBook.missions(slot.tier):
+			if can_host(town, id):
+				pool.append(id)
+	if pool.is_empty():
+		return ""
 	var rng := RandomNumberGenerator.new()
 	rng.seed = night_seed(slot)
 	return pool[rng.randi_range(0, pool.size() - 1)]
+
+
+## Whether `town` hosts mission `id` as a god's night: Aldermere hosts every tier mission and its Hunts (no Places call); another town
+## hosts what MissionBook.hostable() says, and never a Hunt or a rite (Plan note 9).
+static func can_host(town: String, id: String) -> bool:
+	if town == Conquest.HOME:
+		return true
+	if is_hunt(id) or is_rite(id) or not Conquest.is_town(town):
+		return false
+	return MissionBook.hostable(id, City.by_id(StringName(town)))
 
 
 ## The mission `id` as `slot`'s god plays it (spec §9.1): the board's version at the god's tier with the god's slots, Might and
@@ -144,7 +157,7 @@ static func draw(slot: GodSlot, town := "aldermere") -> String:
 ## the tier's times and only dawn comes later). A night with acts has the clock added to each act. Null for an id not on the board.
 ## A Lantern Hunt (god P5, MS §1, Ruling P5-2) is built from HuntBook at any Notice -- a stale `in_night` or a test asks for it by id -- on
 ## its own tier's frame (the Hunt's tier, not the god's: a Hunt is played at its own tier), then dressed with its title and banner.
-static func def_for(slot: GodSlot, id: String) -> MissionDef:
+static func def_for(slot: GodSlot, id: String, town := "aldermere") -> MissionDef:
 	if is_rite(id):
 		return _rite_def(slot, id)
 	var is_hunt := HuntBook.has(id)
@@ -165,6 +178,8 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 	if is_hunt:
 		_dress_hunt(def, HuntBook.row(id))
 	_carry_gifts(def, slot)
+	if StringName(town) != def.city and City.has(StringName(town)):  # played in another town: its overrides (rites ignore the town)
+		def = MissionBook.in_city(def, StringName(town))
 	return def
 
 
@@ -273,6 +288,8 @@ static func bank(slot: GodSlot, id: String, drafted: PackedStringArray, outcome:
 			if target != "":
 				unsealed = ""  # the new seal replaces the one that just ran out (Ruling P2-9)
 		hunt_result = _hunt_result(hunt, won, bonus, target)
+		conquer_faith = Conquest.bonus(slot)  # every conquered town pays on a Hunt too (a rite or a forfeit pays none)
+		slot.faith += conquer_faith
 	return {"divine_power": dp, "levels": gained.levels, "points": gained.points, "lost": gained.lost, "capped": gained.capped,
 		"level": slot.level, "bar": [slot.divine_power, slot.need()], "believers": earned, "faith": faith, "faith_total": slot.faith,
 		"notice": slot.notice, "notice_change": slot.notice - notice_before, "night": slot.night, "bests": bests,

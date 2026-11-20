@@ -306,7 +306,7 @@ static func _conquer_bonus(t) -> void:
 	t.check(lines.has("Conquered towns: Faith +5"), "the results say it (%s)" % [lines])
 
 
-## Only Aldermere draws a night until Task 6; its draw is as it was.
+## Aldermere's draw is as it was; the Capital's is proved in test_capital_god_night.
 static func _draw_town(t) -> void:
 	var same := true
 	for night in range(0, 31):
@@ -315,4 +315,5 @@ static func _draw_town(t) -> void:
 			s.night = night
 			same = same and GodNight.draw(s) == GodNight.draw(s, "aldermere")
 	t.check(same, "draw(slot) is draw(slot, aldermere) for nights 0..30 and seeds 1..20")
-	t.check(GodNight.draw(_slot(), "capital") == "", "the Capital draws no night yet")
+	var cap := GodNight.draw(_slot(), "capital")
+	t.check(cap == "" or MissionBook.hostable(cap, City.by_id(&"capital")), "the Capital draws only what it hosts (%s)" % cap)

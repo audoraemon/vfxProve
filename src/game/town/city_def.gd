@@ -20,6 +20,8 @@ func anchors() -> Dictionary: return {}                    # as TownLayout.ancho
 func spawn_roles() -> Dictionary: return {}
 ## How many citizens and soldiers a crowd spawns by default (Crowd.spawn(), Mission, town_debug).
 func citizens() -> int: return Crowd.CITIZENS
+## Whether a god's night here hears wishes (World Map + Conquer Progress): off for a town whose wishes are not proved.
+func wishes() -> bool: return false
 func soldiers() -> int: return Crowd.SOLDIERS
 ## The soldiers' posts in the crowd's post order (Crowd._soldier_posts()), by group: {"yard", "walls", "citadel",
 ## "patrol"} -> Array of Vector2. The yard's first give the rescue squads, the walls' first the marshals, the Citadel's

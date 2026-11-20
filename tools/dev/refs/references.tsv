@@ -147,7 +147,7 @@ first_taste_decree_play_1	--scenario=first_taste --case=play --seed=1 --god=decr
 first_taste_decree_play_2	--scenario=first_taste --case=play --seed=2 --god=decree:1 --dev-tree	-732573340
 first_taste_decree_play_3	--scenario=first_taste --case=play --seed=3 --god=decree:1 --dev-tree	-2076873
 first_taste_dominion_play_1	--scenario=first_taste --case=play --seed=1 --god=dominion:1 --dev-tree	-679607271
-first_taste_dominion_play_2	--scenario=first_taste --case=play --seed=2 --god=dominion:1 --dev-tree	-497569145
+first_taste_dominion_play_2	--scenario=first_taste --case=play --seed=2 --god=dominion:1 --dev-tree	-554921928
 first_taste_dominion_play_3	--scenario=first_taste --case=play --seed=3 --god=dominion:1 --dev-tree	-686159919
 hide_faithful_none_1	--scenario=hide_faithful --case=none --seed=1	-776786705
 hide_faithful_none_2	--scenario=hide_faithful --case=none --seed=2	-528821958

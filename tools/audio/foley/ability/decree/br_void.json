@@ -1,0 +1,5 @@
+{"length": 6.0, "loop": true, "peak_db": -3.0, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 16, "damp": 2500}, "eq": [["lowshelf", 100, 1.5], ["peak", 1500, -4.0, 0.7]], "layers": [
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "at": 0.0, "from": 10.0, "dur": 7.0, "hp": 50, "lp": 420, "fade_in": 700, "fade_out": 700, "gain_db": -3},
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "at": 3.0, "from": 14.5, "dur": 7.0, "pitch": -2, "hp": 50, "lp": 380, "fade_in": 700, "fade_out": 700, "gain_db": -4},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 4.0, "dur": 7.0, "lp": 140, "fade_in": 700, "fade_out": 700, "gain_db": -8},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 1.5, "from": 2.0, "dur": 7.0, "pitch": -12, "lp": 180, "fade_in": 700, "fade_out": 700, "gain_db": -14}]}

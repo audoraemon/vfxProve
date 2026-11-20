@@ -1,0 +1,5 @@
+{"length": 1.1, "rms_db": -20.83, "reverb": {"rt60": 0.7, "mix": 0.1, "predelay_ms": 6}, "eq": [["lowshelf", 220, -6.0], ["peak", 2800, 2.0, 0.8]], "layers": [
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/ignite.ogg", "at": 0.0, "pitch": -1.5, "dur": 1.0, "fade_out": 300, "gain_db": -1},
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.0, "pitch": -2.5, "gain_db": -2},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/spell_fire_05.ogg", "at": 0.082, "pitch": -0.75, "lp": 3500, "dur": 0.8, "fade_out": 300, "gain_db": -5}
+]}

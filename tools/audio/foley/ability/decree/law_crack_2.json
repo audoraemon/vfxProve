@@ -1,0 +1,10 @@
+{"length": 1.6, "peak_db": -2.68, "reverb": {"rt60": 1.2, "mix": 0.18, "predelay_ms": 10, "damp": 5000}, "eq": [["lowshelf", 200, -3.0], ["peak", 6000, -2.0, 0.8]], "layers": [
+  {"src": "lib:oga/ice-breakingshattering/IceShatters_0/IceShatters/LedasLuzta4.ogg", "at": 0.0, "onset": true, "pitch": -6.8, "hp": 250, "lp": 6500, "fade_out": 200, "gain_db": -2},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/glass_03.ogg", "at": 0.01, "onset": true, "pitch": -7.8, "hp": 300, "lp": 6000, "fade_out": 200, "gain_db": -8},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-c5.wav", "at": 0.0, "onset": true, "dur": 1.2, "pitch": -3.8, "lp": 4500, "fade_out": 800, "gain_db": -15},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub1_v1.wav", "at": 0.0, "dur": 0.5, "lp": 240, "fade_out": 250, "gain_db": -12},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_002.ogg", "at": 0.24, "onset": true, "pitch": -4.8, "hp": 600, "lp": 7000, "fade_out": 120, "gain_db": -12},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_003.ogg", "at": 0.35, "onset": true, "pitch": -4.2, "hp": 600, "lp": 7000, "fade_out": 120, "gain_db": -14},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_004.ogg", "at": 0.48, "onset": true, "pitch": -4.8, "hp": 600, "lp": 7000, "fade_out": 120, "gain_db": -16},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_000.ogg", "at": 0.6, "onset": true, "pitch": -4.2, "hp": 600, "lp": 7000, "fade_out": 120, "gain_db": -18},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_001.ogg", "at": 0.73, "onset": true, "pitch": -4.8, "hp": 600, "lp": 7000, "fade_out": 120, "gain_db": -20}]}

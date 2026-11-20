@@ -1,0 +1,7 @@
+{"length": 1.5, "rms_db": -19.03, "reverb": {"rt60": 1.2, "mix": 0.16, "predelay_ms": 16, "damp": 3800}, "eq": [["lowshelf", 200, -3.0], ["peak", 3200, 1.0, 0.8]], "layers": [
+  {"src": "lib:oga/sand-spell/sand-spell.flac", "at": 0.0, "from": 0.15, "dur": 1.0, "pitch": -4, "lp": 6000, "hp": 300, "fade_in": 30, "fade_out": 500, "gain_db": -1},
+  {"src": "lib:oga/stonerockorwoodmovednotick/stone_rock_or_wood_moved_no_tick.mp3", "at": 0.02, "onset": true, "pitch": 4, "lp": 5000, "hp": 200, "fade_out": 200, "gain_db": -7},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_05.ogg", "at": 0.12, "onset": true, "pitch": 5, "lp": 6000, "hp": 500, "fade_out": 400, "gain_db": -11},
+  {"src": "lib:wikimedia/Bones_breaking_wood_fire_ice_crackling.wav", "at": 0.05, "from": 8.1, "dur": 0.6, "lp": 6000, "hp": 500, "fade_in": 20, "fade_out": 300, "gain_db": -13},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.2, "from": 1.6, "dur": 1.0, "pitch": -5, "lp": 3000, "hp": 300, "fade_in": 150, "fade_out": 500, "gain_db": -10}
+]}

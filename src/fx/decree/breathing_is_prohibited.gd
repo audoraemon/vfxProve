@@ -39,6 +39,13 @@ const STAY_TIME := 2.0
 var _twist := false
 var _stay: LawZone
 
+## The airless hush while the law holds (a looping cue, faded as the air comes back), and when the next gasp and the next
+## gulp of air may sound: one of each at most every BREATH_SOUND_GAP, however many choke or win free.
+const BREATH_SOUND_GAP := 0.4
+var _void: Node
+var _next_gasp := 0.0
+var _next_breathe := 0.0
+
 
 ## This cast's numbers at its ability level (the consts at level 1).
 var lv_radius := RADIUS
@@ -78,6 +85,7 @@ func _land() -> void:
 			ctx.crowd.add_law(_stay)
 		_stay.hold_by(self)
 	_choke(0.0)
+	_void = ctx.play(&"br_void", origin)
 	if not DominionParts.staged(self):
 		return
 	_hush = Hush.new()
@@ -104,8 +112,18 @@ func _lift() -> void:
 			law.lift()
 	choking.clear()
 	_rooted.clear()
+	_quiet_void(0.5)
+	if t >= T_LAND + lv_hold_time:
+		ctx.play(&"br_return", origin)
 	if DominionParts.staged(self):
 		DecreeParts.wave(self, origin, lv_radius * 1.2, 0.5, 0.05)
+
+
+## The hush fades over `seconds`, if the voice is still this circle's.
+func _quiet_void(seconds: float) -> void:
+	if _void != null and is_instance_valid(_void) and _void.get_meta(&"cue", &"") == &"br_void":
+		ctx.fade_out(_void, seconds)
+	_void = null
 
 
 ## Cut short (an act of the night ends): the law is lifted with it.
@@ -118,11 +136,13 @@ func end_now() -> void:
 
 func _finish() -> void:
 	_lift_stay()
+	_quiet_void(0.3)
 	super()
 
 
 func _exit_tree() -> void:
 	_lift_stay()
+	_quiet_void(0.3)
 	super()
 
 
@@ -178,6 +198,10 @@ func _choke(delta: float) -> void:
 			_gasp(p)
 	for p: Variant in choking.keys():
 		if not is_instance_valid(p) or not p.is_alive() or p.inside or p.chained or not law.contains(p.ground_pos):
+			# Out of the circle on his own feet, alive: a great gulp of air.
+			if is_instance_valid(p) and p.is_alive() and not p.inside and not p.chained and t >= _next_breathe:
+				_next_breathe = t + BREATH_SOUND_GAP
+				ctx.play(&"br_breathe", p.ground_pos)
 			choking.erase(p)
 			_rooted.erase(p)
 			continue
@@ -189,6 +213,9 @@ func _choke(delta: float) -> void:
 
 ## The first breath that will not come: he clutches his throat, then runs straight out for the nearest edge.
 func _gasp(p: Person) -> void:
+	if t >= _next_gasp:
+		_next_gasp = t + BREATH_SOUND_GAP
+		ctx.play(&"br_gasp", p.ground_pos)
 	if _held(p):
 		return
 	p.panic(origin, lv_radius, &"choke", false)

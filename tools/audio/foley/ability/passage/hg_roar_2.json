@@ -1,0 +1,7 @@
+{"length": 2.0, "rms_db": -15.78, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/monster-snarls/monster-snarls_0.ogg", "at": 0.0, "from": 0.71, "dur": 1.6, "pitch": -6.5, "hp": 80, "lp": 6000, "fade_in": 10, "fade_out": 300},
+  {"src": "lib:oga/dog-snarl-grunt-grumble/dog/dog-growl.flac", "at": 0.035, "onset": true, "pitch": -6.75, "hp": 60, "lp": 4000, "gain_db": -3, "fade_out": 60},
+  {"src": "lib:oga/monster-snarls/monster-snarls-2_0.ogg", "at": 0.127, "from": 1.27, "dur": 1.4, "pitch": -7.5, "hp": 80, "lp": 5000, "gain_db": -4, "fade_in": 20, "fade_out": 300},
+  {"src": "lib:oga/16-monster-growls/monster_-_starninjas/monster.14.ogg", "at": 0.231, "onset": true, "pitch": -5.5, "hp": 80, "lp": 5000, "gain_db": -7, "fade_out": 60},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 6-Audio.wav", "at": 0.0, "from": 0.95, "dur": 1.2, "pitch": -5.75, "hp": 60, "lp": 2500, "gain_db": -12, "fade_in": 50, "fade_out": 400}
+]}

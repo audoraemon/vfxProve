@@ -29,10 +29,36 @@ var rules: Rules
 var flash: Callable
 
 
+## The level (1-5) of the power whose code is running now, and its main cue and school weight (LevelSound): FxTimeline
+## sets them around a power's build, events and frame, so what it plays is heard heavier at a higher level. 1 and none
+## outside a power's own code (a signal it answers, an effect that is not a power).
+var level := 1
+var main_cue: StringName = &""
+var weight_cue: StringName = &""
+
+
 func play(cue: StringName, ground_pos: Vector2, db_offset := 0.0) -> Node:
 	if sfx == null:
 		return null
-	return sfx.play(cue, ground_pos, db_offset)
+	if level <= 1:
+		return sfx.play(cue, ground_pos, db_offset)
+	var p: Node = sfx.play(cue, ground_pos, db_offset + LevelSound.db_for(level))
+	if p != null and sfx.has_method(&"set_voice_pitch"):
+		sfx.set_voice_pitch(p, LevelSound.pitch_for(level))
+	if level >= LevelSound.WEIGHT_FROM and cue == main_cue and weight_cue != &"":
+		sfx.play(weight_cue, ground_pos, db_offset + LevelSound.weight_db(level))
+	return p
+
+
+## What FxTimeline saves before a power's code runs and puts back after: [level, main cue, weight cue].
+func hearing() -> Array:
+	return [level, main_cue, weight_cue]
+
+
+func hear(was: Array) -> void:
+	level = was[0]
+	main_cue = was[1]
+	weight_cue = was[2]
 
 
 func fade_out(player: Node, seconds: float) -> void:

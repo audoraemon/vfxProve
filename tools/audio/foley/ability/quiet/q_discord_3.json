@@ -1,0 +1,21 @@
+{"length": 2.4, "rms_db": -18.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/dialog-vocal-samples/female_light_2.ogg", "at": 0.822, "onset": true, "pitch": -1.63, "gain_db": -10.2, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 0.55, "onset": true, "pitch": 0.72, "gain_db": -3.7, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 1.087, "onset": true, "pitch": 0.99, "gain_db": -2.4, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_3.ogg", "at": 0.528, "onset": true, "pitch": 2.88, "gain_db": -8.7, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/female_standard_1.ogg", "at": 0.257, "onset": true, "pitch": 0.98, "gain_db": -4.3, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_4.ogg", "at": 0.47, "onset": true, "pitch": -2.09, "gain_db": -9.8, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_standard_3.ogg", "at": 1.036, "onset": true, "pitch": -2.11, "gain_db": -6.7, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_3.ogg", "at": 0.617, "onset": true, "pitch": -2.15, "gain_db": -7.5, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/quick_2.ogg", "at": 0.31, "onset": true, "pitch": 2.66, "gain_db": -6.2, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_2.ogg", "at": 0.606, "onset": true, "pitch": 1.93, "gain_db": -9.2, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/quick_3.ogg", "at": 0.903, "onset": true, "pitch": -4.81, "gain_db": -8.3, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_3.ogg", "at": 1.103, "onset": true, "pitch": -3.21, "gain_db": -9.1, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/female_standard_3.ogg", "at": 0.673, "onset": true, "pitch": 1.21, "gain_db": -6.3, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/female_light_4.ogg", "at": 1.339, "onset": true, "pitch": -0.39, "gain_db": -6.7, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/female_standard_3.ogg", "at": 1.113, "onset": true, "pitch": -3.66, "gain_db": -5.8, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_2.ogg", "at": 0.332, "onset": true, "pitch": 1.56, "gain_db": 1.0, "hp": 200, "lp": 9000, "fade_out": 60},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 0.05, "dur": 2.2, "pitch": -2.0, "hp": 200, "lp": 9000, "gain_db": -4, "fade_out": 700},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 0.05, "dur": 2.2, "pitch": -1.0, "hp": 200, "lp": 9000, "gain_db": -5, "fade_out": 700},
+  {"src": "lib:oga/creepy-incoherent-chanting/chant19.wav", "at": 0.059, "from": 0.57, "dur": 1.8, "pitch": -0.6, "hp": 250, "lp": 8000, "gain_db": -7.7, "fade_in": 150, "fade_out": 600}
+]}

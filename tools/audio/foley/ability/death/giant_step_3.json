@@ -1,0 +1,7 @@
+{"length": 1.4, "rms_db": -16.14, "reverb": {"rt60": 1.4, "mix": 0.18, "predelay_ms": 14, "damp": 3600}, "eq": [["lowshelf", 110, 2.5], ["peak", 2600, 1.0, 0.9]], "layers": [
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_08.ogg", "at": 0.0, "onset": true, "pitch": -8, "lp": 1800, "hp": 30, "fade_out": 300, "gain_db": -2},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 14.0, "dur": 1.0, "pitch": -5, "lp": 600, "hp": 25, "fade_in": 10, "fade_out": 600, "gain_db": -8},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch01.mp3.flac", "at": 0.04, "onset": true, "pitch": -1, "lp": 5000, "hp": 160, "fade_out": 200, "gain_db": -8},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack03.mp3.flac", "at": 0.1, "onset": true, "pitch": 3, "lp": 6000, "hp": 300, "fade_out": 120, "gain_db": -14},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack10.mp3.flac", "at": 0.2, "onset": true, "pitch": 6, "lp": 6000, "hp": 350, "fade_out": 120, "gain_db": -16}
+]}

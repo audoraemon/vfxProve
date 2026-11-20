@@ -44,6 +44,13 @@ const BITE_ALARM := 0.6
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
 const PALE := [Color("eaf4ff"), Color("c8f0dc"), Color(0.5, 0.9, 0.7, 0.5), Color(0.2, 0.4, 0.35, 0.0)]
+## Heard (skill-tree sound pass): the first STAND_HEARD bodies break up out of the earth STAND_STEP apart; a bite, a cut and
+## a fall to ash sound at most once every BITE_QUIET, CUT_QUIET and ASH_QUIET.
+const STAND_HEARD := 4
+const STAND_STEP := 0.11
+const BITE_QUIET := 0.35
+const CUT_QUIET := 0.2
+const ASH_QUIET := 0.2
 
 ## The risen, how many rose, the spirits (empty in ZOMBIE), and whether they drift (a test pins them to stand).
 var visitors: Visitors
@@ -70,6 +77,10 @@ var _spirit_until: Array[float] = []
 ## Each spirit's own drift target and look timer, in the order of `spirits`.
 var _drift_to: Array[Vector2] = []
 var _look_in: Array[float] = []
+## The clock each sound may be heard again at (sound only).
+var _bite_heard := 0.0
+var _cut_heard := 0.0
+var _ash_heard := 0.0
 
 
 func _build() -> void:
@@ -117,6 +128,15 @@ func _build() -> void:
 func _rise() -> void:
 	for r in _ring:
 		_rise_one(r)
+	if _spirit_mode:
+		return
+	# Heard: the first few bodies breaking up out of the earth, one after another.
+	for i in mini(_ring.size(), STAND_HEARD):
+		var at_ground := _ring[i].pos
+		if i == 0:
+			ctx.play(&"raise_stand", at_ground, 0.0)
+		else:
+			at(t + STAND_STEP * i, func() -> void: ctx.play(&"raise_stand", at_ground, -1.0 * i))
 
 
 func _rise_one(r: Remains.Remain) -> void:
@@ -172,6 +192,7 @@ func _age_spirits(delta: float) -> void:
 			_forget_spirit(i)
 		elif t >= _spirit_until[i]:
 			_spirit_fade_fx(sp.ground_pos)
+			_ash_sound([sp])
 			visitors.take(sp)
 			_forget_spirit(i)
 		i -= 1
@@ -228,6 +249,7 @@ func _body_rises(r: Remains.Remain) -> void:
 func _first_half_ends() -> void:
 	if visitors == null:
 		return
+	_ash_sound(visitors.living())
 	if _spirit_mode:
 		for i in spirits.size():
 			if is_instance_valid(spirits[i]):
@@ -270,6 +292,9 @@ func _drift(i: int, delta: float) -> void:
 
 ## The town panics at a zombie's first bite as at a hellhound's; a bite that kills raises the dead one while the chain lasts.
 func _on_bite(_a: Animal, victim: Person, first: bool) -> void:
+	if is_instance_valid(victim) and t >= _bite_heard:
+		_bite_heard = t + BITE_QUIET
+		ctx.play(&"undead_bite", victim.ground_pos, 0.0)
 	if first and not _bitten and ctx.crowd != null:
 		_bitten = true
 		ctx.crowd.fright(victim.ground_pos, BITE_FRIGHT_R, 0.6, 3.0, 6.0, 8.0, &"bite", true)
@@ -292,6 +317,9 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 	if _twist and _owes.has(a):
 		_owes.erase(a)
 		_soul_rises(at_ground)  # its soul leaves it (a chain riser, never in _owes, gives none)
+	if t >= _cut_heard:
+		_cut_heard = t + CUT_QUIET
+		ctx.play(&"undead_cut", at_ground, 0.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(at_ground)
@@ -303,6 +331,7 @@ func _on_cut_down(a: Animal, at_ground: Vector2) -> void:
 func _end_life() -> void:
 	if visitors == null:
 		return
+	_ash_sound(visitors.living())
 	for a in visitors.living():
 		if DominionParts.staged(self):
 			var sp := Iso.ground_to_screen(a.ground_pos)
@@ -311,6 +340,17 @@ func _end_life() -> void:
 	visitors.clear()
 	spirits.clear()
 	_owes.clear()
+
+
+## Heard: `who` falling to ash (or thinning away) at once -- one crumble at their middle, at most every ASH_QUIET.
+func _ash_sound(who: Array) -> void:
+	if who.is_empty() or t < _ash_heard:
+		return
+	_ash_heard = t + ASH_QUIET
+	var mid := Vector2.ZERO
+	for a in who:
+		mid += (a as Animal).ground_pos
+	ctx.play(&"undead_ash", mid / float(who.size()), 0.0)
 
 
 func _finish() -> void:

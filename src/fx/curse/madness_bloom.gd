@@ -51,6 +51,13 @@ func _build() -> void:
 	# Dogs and cats in the circle turn on whoever is near once the madness has had a moment (AnimalPack).
 	at(ANIMAL_DELAY, func() -> void: AnimalPack.cast(ctx, origin, lv_radius, Animal.Spell.ATTACK, ANIMAL_RAGE))
 	ctx.play(&"q_madness", origin)
+	if not afflicted.is_empty():
+		# The seed taking, heard once at the middle of those who caught it, after the cast's breath.
+		var mid := Vector2.ZERO
+		for p in afflicted:
+			mid += p.ground_pos
+		mid /= float(afflicted.size())
+		at(0.6, func() -> void: ctx.play(&"md_seed", mid))
 	if ctx.impact == null or not is_inside_tree():
 		return
 	var sp := Iso.ground_to_screen(origin)

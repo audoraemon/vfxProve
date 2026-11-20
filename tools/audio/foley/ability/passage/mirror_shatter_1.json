@@ -1,0 +1,7 @@
+{"length": 1.3, "rms_db": -16.0, "reverb": {"rt60": 1.4, "mix": 0.14, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/03_explosions_destruction/BreakGlass_01_s01.wav", "at": 0.0, "onset": true, "pitch": -1, "hp": 200, "lp": 14000, "fade_out": 200},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_heavy_002.ogg", "at": 0.0, "onset": true, "hp": 300, "lp": 14000, "gain_db": -4, "fade_out": 60},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/glass_04.ogg", "at": 0.08, "onset": true, "pitch": 3, "hp": 2500, "lp": 15000, "gain_db": -9, "fade_out": 60},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_glass_falling_02.ogg", "at": 0.2, "onset": true, "hp": 400, "lp": 13000, "gain_db": -8, "fade_out": 200},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_003.ogg", "at": 0.3, "onset": true, "pitch": 5, "hp": 3000, "lp": 15000, "gain_db": -14, "fade_out": 60}
+]}

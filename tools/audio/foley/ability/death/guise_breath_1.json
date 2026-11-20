@@ -1,0 +1,5 @@
+{"length": 1.4, "rms_db": -21.83, "reverb": {"rt60": 1.2, "mix": 0.16, "predelay_ms": 14, "damp": 3500}, "eq": [["lowshelf", 200, -6.0], ["peak", 3400, 1.0, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.6, "dur": 1.1, "pitch": -6, "lp": 2600, "hp": 250, "fade_in": 300, "fade_out": 500, "gain_db": 0},
+  {"src": "lib:oga/breathing-tired/breathing tired.wav", "at": 0.05, "from": 0.4, "dur": 0.9, "pitch": -3, "lp": 2500, "hp": 200, "fade_in": 250, "fade_out": 450, "gain_db": -9},
+  {"src": "lib:oga/short-wind-sound/short wind sound.wav", "at": 0.1, "from": 0.3, "dur": 1.0, "hp": 2600, "lp": 8000, "fade_in": 300, "fade_out": 500, "gain_db": -14}
+]}

@@ -1,0 +1,6 @@
+{"length": 1.2, "rms_db": -21.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:oga/dialog-vocal-samples/whisper_3.ogg", "at": 0.0, "onset": true, "dur": 0.11, "pitch": 0, "hp": 400, "lp": 9000, "fade_in": 5, "fade_out": 6},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_1.ogg", "at": 0.02, "onset": true, "dur": 0.09, "pitch": 3, "hp": 600, "lp": 9000, "gain_db": -8, "fade_in": 5, "fade_out": 6},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_003.ogg", "at": 0.12, "onset": true, "pitch": 7, "hp": 2000, "lp": 14000, "gain_db": -6},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.12, "from": 0.05, "dur": 0.9, "pitch": 10, "hp": 1200, "lp": 12000, "gain_db": -12, "fade_out": 600}
+]}

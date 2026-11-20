@@ -1,0 +1,7 @@
+{"length": 1.2, "rms_db": -19.33, "reverb": {"rt60": 0.9, "mix": 0.14, "predelay_ms": 12, "damp": 3800}, "eq": [["lowshelf", 150, 1.0], ["peak", 2600, 1.0, 0.9]], "layers": [
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_03.ogg", "at": 0.0, "onset": true, "pitch": -3, "lp": 4500, "hp": 60, "fade_out": 250, "gain_db": -2},
+  {"src": "lib:oga/80-cc0-rpg-sfx/80-CC0-RPG-SFX_0/stones_03.ogg", "at": 0.05, "onset": true, "pitch": -3, "lp": 6000, "hp": 150, "fade_out": 250, "gain_db": -6},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.1, "onset": true, "pitch": -2, "lp": 4500, "hp": 120, "fade_out": 150, "gain_db": -4},
+  {"src": "lib:oga/150-combat-sound-effects/150gameeffectsounds/01_combat_melee/impact_punch_medium_004_48kHz_16bit_0.44s_0fa50bbe_s02.wav", "at": 0.1, "onset": true, "pitch": -6, "lp": 2000, "hp": 60, "fade_out": 150, "gain_db": -6},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan05.wav", "at": 0.2, "from": 0.7, "dur": 0.9, "pitch": -5, "lp": 2500, "hp": 150, "fade_in": 100, "fade_out": 400, "gain_db": -14}
+]}

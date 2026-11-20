@@ -1,0 +1,5 @@
+{"length": 1.1, "rms_db": -23.82, "reverb": {"rt60": 1.0, "mix": 0.16, "predelay_ms": 12, "damp": 5000}, "eq": [["lowshelf", 250, -5.0], ["peak", 4000, 1.0, 0.8]], "layers": [
+  {"src": "lib:oga/ice-spells/icespells/ice.wav", "at": 0.0, "onset": true, "pitch": -1, "lp": 9000, "hp": 500, "fade_out": 400, "gain_db": 0},
+  {"src": "lib:oga/ice-breakingshattering/IceShatters_0/IceShatters/LedasLuzta4.ogg", "at": 0.05, "onset": true, "dur": 0.35, "pitch": 2, "lp": 9000, "hp": 900, "fade_out": 150, "gain_db": -7},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 2.2, "dur": 0.7, "pitch": 2, "lp": 5000, "hp": 500, "fade_in": 40, "fade_out": 350, "gain_db": -10}
+]}

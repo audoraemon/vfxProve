@@ -90,6 +90,14 @@ func has_come(id: String) -> bool:
 	return false
 
 
+## The event `id` is on the timeline and still to come (the loss warning's deadlines: Rules.threat()). Only reads.
+func pending(id: String) -> bool:
+	for e in _events:
+		if String(e.id) == id and not bool(e.done):
+			return true
+	return false
+
+
 ## Mission seconds (v0.11.2; real at rate 1) until the event `id` comes (v0.11 M1); 0 once it has, or for no such event. v0.11 M3: to its shown time (expect()).
 func seconds_to(id: String) -> float:
 	for e in _events:

@@ -197,6 +197,14 @@ static func cooldown_text(p: Dictionary, level := 1) -> String:
 	return "%d s" % roundi(seconds) if is_equal_approx(seconds, roundf(seconds)) else "%.1f s" % seconds
 
 
+## A power card's stats line at `level`: its Might, cooldown and aim, all the level's (PowerBook.aim_in(): Smite's level 5 is a drag);
+## with a god (`with_god`) the level leads and the Might is the level's too.
+static func stats_text(key: String, p: Dictionary, level: int, with_god: bool) -> String:
+	if with_god:
+		return "L%d   %d Might   %s   %s" % [level, PowerBook.might(key, level), cooldown_text(p, level), PowerBook.aim_in(p, level)]
+	return "%d Might   %s   %s" % [int(p.dp), cooldown_text(p, level), PowerBook.aim_in(p, level)]
+
+
 ## The loadout bar's slot `i`, from 0, of `count`: the slots share the bar left of MANIFEST (v0.08: up to six).
 static func slot_rect(i: int, count := 4) -> Rect2:
 	var room := MANIFEST_RECT.position.x - 4.0 - LOADOUT_BAR.position.x
@@ -734,10 +742,7 @@ func _draw_power_card(key: String, p: Dictionary) -> void:
 	UiTheme.frame(_ui, clip_rect, true)
 	y = clip_rect.end.y + 16.0
 	var title := PowerBook.authority_title(_tab_of(key))
-	var stats := "%d Might   %s   %s" % [int(p.dp), cooldown_text(p, draft.level_of(key)), String(p.aim)]
-	if god != null:
-		stats = "L%d   %d Might   %s   %s" % [draft.level_of(key), PowerBook.might(key, draft.level_of(key)), cooldown_text(p, draft.level_of(key)), String(p.aim)]
-	UiTheme.text(_ui, Vector2(tx, y), stats, UiTheme.SIZE_SMALL)
+	UiTheme.text(_ui, Vector2(tx, y), stats_text(key, p, draft.level_of(key), god != null), UiTheme.SIZE_SMALL)
 	y += UiTheme.LINE_SMALL
 	UiTheme.text(_ui, Vector2(tx, y), title + ("   quiet" if bool(p.get("quiet", false)) else ""), UiTheme.SIZE_SMALL,
 		Color("9ab48a") if bool(p.get("quiet", false)) else UiTheme.COL_DIM)

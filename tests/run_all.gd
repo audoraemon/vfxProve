@@ -144,6 +144,7 @@ const SUITES := [
 	"res://tests/test_deaddoors.gd",
 	"res://tests/test_remains.gd",
 	"res://tests/test_death_kit.gd",
+	"res://tests/test_burning.gd",
 	"res://tests/test_fight_back.gd",
 	"res://tests/test_raise_dead.gd",
 	"res://tests/test_gravecall.gd",

@@ -245,6 +245,9 @@ const WATCH_REACH := 1.0
 var on_guard_job := false
 ## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
 var drill_face := Vector2.INF
+## The middle of the talking group a fair goer stands in (MarketPanicDirector via FairLife): standing on duty with no goal he
+## faces it and shows the talk art; INF for none (fair life, 2026-11-20).
+var chat_at := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
@@ -827,6 +830,8 @@ func _think(delta: float) -> void:
 			_whisper_left -= delta
 			if _whisper_left <= 0.0:
 				_wake()
+	if mind == Mind.DUTY and chat_at != Vector2.INF and _goal == Vector2.INF:
+		_face_chat()
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -1402,6 +1407,16 @@ func flinch(from: Vector2) -> void:
 	_flinch_step_to = Vector2.INF
 	_idle = maxf(_idle, startle_seconds())
 	_face_flinch()
+
+
+## A fair goer standing in his talking group faces its middle (fair life, 2026-11-20). The flinch's own facing wins while it
+## runs: _think() returns before it gets here.
+func _face_chat() -> void:
+	var d := chat_at - ground_pos
+	if absf(d.x - d.y) > 0.0001:
+		_facing = 1 if d.x - d.y > 0.0 else -1
+	if absf(d.x + d.y) > 0.0001:
+		_back = d.x + d.y < 0.0
 
 
 func flinching() -> bool:
@@ -3301,6 +3316,8 @@ func _sprite_pose_code() -> int:
 func _interact_anim() -> int:
 	if mind == Mind.ASSIST and assist_at_water and not has_goal():
 		return 14 if _own_art(14) else -1
+	if mind == Mind.DUTY and chat_at != Vector2.INF and not soldier and not has_goal() and _flinch_left <= 0.0 and _own_art(13):
+		return 13  # a fair goer talking in his group (fair life, 2026-11-20)
 	if soldier:
 		if mind != Mind.POST or hurrying or has_goal() or not _own_art(13):
 			return -1

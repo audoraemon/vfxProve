@@ -1,0 +1,5 @@
+Same chat as the room painting. Image 1 = BLOCKOUT GUIDE of the same room, EMPTY.
+
+TASK: Paint the same room as your last painting with pieces 1 to 4 REMOVED: only the back wall, the pillars and banners, the stone floor and the desk edge along the bottom. Where the Rite Door was (thin outline in image 1) paint an empty dark stone doorway recess of exactly that size. Same style, palette, light and proportions as your last painting. Nothing may stand on the floor: no furniture, no props, no characters.
+
+OUTPUT: one image, 7:3, no text, no numbers.

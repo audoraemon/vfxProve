@@ -1,0 +1,12 @@
+Same chat. Image 1 = BLOCKOUT GUIDE of five separate pieces on white.
+
+TASK: Paint each block as the finished piece from your room painting, each one filling its block EXACTLY (same position, width and height), each alone on a plain WHITE background. No floor, no wall, no cast shadow outside the piece.
+
+PIECES (by number):
+1 ABILITY TREE (purple).
+2 FAITH ALTAR (gold).
+3 RITE DOOR, OPEN A CRACK AND LIT: white-gold light behind it, runes glowing.
+4 RITE DOOR, SHUT AND DARK: the same door, same size, closed, no light, runes dead.
+5 WORLD TABLE with the map on top (the blue area).
+
+OUTPUT: same layout as image 1, white background, no text, no numbers.

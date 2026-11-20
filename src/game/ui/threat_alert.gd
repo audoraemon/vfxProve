@@ -3,7 +3,7 @@ extends CanvasLayer
 ## The loss warning (Discord idea "More Effect on Losing situation"): one big hit, then a reminder. When a thing that ends the night comes within
 ## WARN_AT seconds (Rules.threats(): a Herald nearing the Temple, the bell's climb that would fill the Gaze, a standard nearing its second house),
 ## a red card slams in at the screen's centre -- what happens, and what to do with the seconds counting down -- with an alarm and a small
-## camera kick, holds CARD_SECONDS and fades; then only a red pulse round the screen's edges stays until the threat is gone (stopped, back
+## kick of the picture, holds CARD_SECONDS and fades; then only a red pulse round the screen's edges stays until the threat is gone (stopped, back
 ## beyond CLEAR_AT, or the night over). A new threat (another id) gets its own hit; the same one never hits twice unless it went away first.
 ##
 ## Pure presentation: it reads Rules and changes nothing in the night. Its clocks are real time (the hit-stop's dips and the ending's 0.3 slow
@@ -49,9 +49,10 @@ const CARD_DROP := 10.0
 ## The alarm: the town's horn as an interface sound (Sfx catalogue; not in the world, so not positional), a little under its own level.
 const CUE := &"town_horn"
 const CUE_DB := -3.0
-## The camera's kick at the slam (CameraShake): a short downward punch and a little trauma.
-const KICK := Vector2(0.0, 5.0)
-const TRAUMA := 0.22
+## The kick at the slam: the world's picture (WorldView.display) punched KICK_PX units down, back in KICK_SECONDS. The picture, not the camera:
+## the camera's place decides who is stepped off screen (Person.view), and a warning must not change the night (the references stay exact).
+const KICK_PX := 4.0
+const KICK_SECONDS := 0.18
 
 var state := State.IDLE
 ## The threat on screen (a NightThreat dictionary), {} when idle.
@@ -66,7 +67,10 @@ var _pulse := 0.0
 var _over := false
 
 var _rules: Rules
-var _camera: CameraShake
+## The world's picture the kick moves (null headless, where the world is not hosted), and its rest position.
+var _display: Control
+var _display_rest := Vector2.ZERO
+var _kick_age := INF
 ## func() -> bool: may the alert be seen now (the HUD shown, no intro, no ending). Unset: always.
 var _allowed := Callable()
 var _view: Control
@@ -86,10 +90,11 @@ func _init() -> void:
 	visible = false
 
 
-## Reads `rules`' threats; kicks `camera` (may be null); shown only while `allowed` says so (unset: always). Stops for good when the act is over.
-func setup(rules: Rules, camera: CameraShake = null, allowed := Callable()) -> ThreatAlert:
+## Reads `rules`' threats; kicks `display`, the world's picture (may be null); shown only while `allowed` says so (unset: always). Stops for good
+## when the act is over.
+func setup(rules: Rules, display: Control = null, allowed := Callable()) -> ThreatAlert:
 	_rules = rules
-	_camera = camera
+	_display = display
 	_allowed = allowed
 	if rules != null and not rules.over.is_connected(finish):
 		rules.over.connect(finish)
@@ -99,6 +104,7 @@ func setup(rules: Rules, camera: CameraShake = null, allowed := Callable()) -> T
 func _process(delta: float) -> void:
 	var real := delta / maxf(Engine.time_scale, 0.001)  # real seconds, through the hit-stop and the ending's slow motion
 	tick(real, _read(real), _shown())
+	_step_kick(real)
 
 
 ## The night's threats now (or the capture's made-up one).
@@ -160,6 +166,9 @@ func tick(dt: float, list: Array, show := true) -> void:
 ## The night is over (Rules.over): the alert goes, for good.
 func finish(_won := false, _reason := "") -> void:
 	_over = true
+	if _kick_age < KICK_SECONDS and is_instance_valid(_display):
+		_display.position = _display_rest
+	_kick_age = INF
 	state = State.IDLE
 	current = {}
 	visible = false
@@ -181,15 +190,31 @@ static func act_line(t: Dictionary) -> String:
 	return "%s - %d %s" % [String(t.get("act", "")), n, "SECOND" if n == 1 else "SECONDS"]
 
 
-## The hit: the alarm and the camera's kick, once per new threat. Silent while hidden.
+## The hit: the alarm and the picture's kick, once per new threat. Silent while hidden.
 func _slam(show: bool) -> void:
 	if not show:
 		return
 	stings += 1
 	UiSound.play(CUE, CUE_DB)
-	if is_instance_valid(_camera):
-		_camera.kick(KICK)
-		_camera.add_trauma(TRAUMA)
+	if is_instance_valid(_display):
+		if _kick_age >= KICK_SECONDS:
+			_display_rest = _display.position
+		_kick_age = 0.0
+
+
+## The kick's frame: the picture down KICK_PX, easing back to rest over KICK_SECONDS, then left at rest.
+func _step_kick(dt: float) -> void:
+	if _kick_age >= KICK_SECONDS or not is_instance_valid(_display):
+		return
+	_kick_age += dt
+	var k := clampf(1.0 - _kick_age / KICK_SECONDS, 0.0, 1.0)
+	_display.position = _display_rest + Vector2(0.0, roundf(KICK_PX * k * k))
+
+
+func _exit_tree() -> void:
+	if _kick_age < KICK_SECONDS and is_instance_valid(_display):
+		_display.position = _display_rest  # never leave the picture kicked
+	_kick_age = INF
 
 
 func _area() -> Vector2:

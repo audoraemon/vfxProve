@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_states(t)
 	_hidden(t)
 	_flicker(t)
+	_kick(t)
 	_card_text(t)
 	_herald(t)
 	_starfall(t)
@@ -93,6 +94,26 @@ static func _flicker(t) -> void:
 		a.tick(DT, _threat(&"a", 30.0))
 	a.tick(DT, _threat(&"a", 12.0))
 	t.check(a.card_shown() and a.stings == 3, "a went away (beyond CLEAR_AT) and came back: a new hit")
+	a.free()
+
+
+## The kick moves the world's picture, never the camera, and puts it back where it was.
+static func _kick(t) -> void:
+	var a := ThreatAlert.new()
+	var pic := Control.new()
+	pic.position = Vector2(0.0, 0.0)
+	a.setup(null, pic)
+	a.tick(DT, _threat(&"a", 10.0))
+	a._step_kick(DT)
+	t.check(pic.position.y > 0.0, "the hit kicks the picture down (%.1f)" % pic.position.y)
+	for i in ceili(ThreatAlert.KICK_SECONDS / DT) + 1:
+		a._step_kick(DT)
+	t.check(pic.position == Vector2.ZERO, "and it springs back to rest (%s)" % pic.position)
+	a.tick(DT, _threat(&"b", 9.0))
+	a._step_kick(DT)
+	a.finish()
+	t.check(pic.position == Vector2.ZERO and not a.visible, "the night over mid-kick: the picture is put back")
+	pic.free()
 	a.free()
 
 

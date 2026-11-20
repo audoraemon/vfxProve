@@ -622,7 +622,8 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_alert = ThreatAlert.new()
 	_alert.name = "ThreatAlert"
 	_bf.ui_parent().add_child(_alert)
-	_alert.setup(_rules, _bf.camera, alert_allowed)
+	var wv := WorldView.of(_bf)
+	_alert.setup(_rules, wv.display if wv != null else null, alert_allowed)
 	# Covered-outline: a tagged person behind a stall, a tree or a house is traced in the tag's colour over what hides them. One layer
 	# per battlefield, over the world's grade; each act's HUD hands it its tags.
 	if _outlines == null or not is_instance_valid(_outlines):

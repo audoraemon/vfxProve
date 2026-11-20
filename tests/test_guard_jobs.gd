@@ -362,7 +362,160 @@ static func _capital_fire(t) -> void:
 	City.use(&"aldermere")
 
 
+static func _kinds_order(t) -> void:
+	t.check(GuardJobs.Kind.keys() == ["CITADEL", "FIRE", "PILE", "SHELTER", "SWEEP", "CORPSE", "CORDON", "GATE"], "kinds in priority order")
+	t.check(GuardJobs.Kind.CITADEL == 0 and GuardJobs.Kind.GATE == 7, "CITADEL is 0 and GATE is 7")
+
+
+static func _mission_man_kinds(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	var house := _house(made[1])
+	var a := _guard(crowd, 0)
+	t.check(not gj.mission_man(a), "an ordinary guard at spawn is not a mission man")
+	var b := _guard(crowd, 0)
+	b.post = b.post + Vector2(3.0, 0.0)
+	b.anchor = b.post
+	t.check(gj.mission_man(b), "a guard whose post was overwritten is a mission man")
+	var c := _guard(crowd, 1)
+	crowd.mission_holds.append(func(p: Person) -> bool: return p == c)
+	t.check(gj.mission_man(c), "a guard a mission hook names is a mission man")
+	var d := _guard(crowd, 1)
+	d.go_duty(d.ground_pos + Vector2(2.0, 0.0))
+	t.check(gj.mission_man(d), "a guard sent on duty is a mission man")
+	var e := _guard(crowd, 2)
+	e.send_to_post(e.post + Vector2(4.0, 0.0))
+	e.ground_pos = e.goal()
+	e._goal = Vector2.INF
+	e._path = PackedVector2Array()
+	t.check(gj.mission_man(e), "a guard a director stationed away from his post is a mission man")
+	var f := crowd.add_soldier(Vector2(0.0, 0.0))
+	t.check(gj.mission_man(f), "an add_soldier() guard is a mission man")
+	var g := _guard(crowd, 3)
+	g.assist(house, true)
+	gj.take(g, house)
+	t.check(not gj.mission_man(g), "a guard on a fire job is not a mission man")
+	var pa := _guard(crowd, 3)
+	crowd._investigate(pa.ground_pos)
+	var seen := 0
+	for p in crowd.soldiers:
+		if crowd._looking(p):
+			seen += 1
+			t.check(not gj.mission_man(p), "an investigator is not a mission man")
+	t.check(seen > 0, "someone went to investigate")
+	t.check(not gj.mission_man(null), "nobody is not a mission man")
+	crowd.clear_mission_hooks()
+	Corps._done(made)
+
+
+## Steps the crowd `frames` frames with the board pruning alone (the old way) or stepping.
+class PruneOnly extends GuardJobs:
+	## The old frame: prune only.
+	func step(_delta: float) -> void:
+		prune()
+
+
+static func _step_no_change(t) -> void:
+	var made_a := _made()
+	var made_b := _made()
+	var crowd_a: Crowd = made_a[0]
+	var crowd_b: Crowd = made_b[0]
+	crowd_b.guard_jobs = PruneOnly.new().setup(crowd_b)
+	for m in [made_a, made_b]:
+		var crowd: Crowd = m[0]
+		crowd.alarms.stage = crowd.profile.fire_from
+		_yard_fire(crowd, m[1])
+	for i in 600:
+		crowd_a.advance(1.0 / 60.0)
+		crowd_b.advance(1.0 / 60.0)
+	var same := crowd_a.soldiers.size() == crowd_b.soldiers.size()
+	var jobs := 0
+	for i in mini(crowd_a.soldiers.size(), crowd_b.soldiers.size()):
+		var x := crowd_a.soldiers[i]
+		var y := crowd_b.soldiers[i]
+		same = same and x.mind == y.mind and x.anchor.is_equal_approx(y.anchor) and x.on_guard_job == y.on_guard_job
+		if x.on_guard_job:
+			jobs += 1
+	t.check(jobs > 0, "guards went to the yard fire (%d)" % jobs)
+	t.check(same, "step() leaves every soldier's mind, anchor and job as prune() did")
+	Corps._done(made_a)
+	Corps._done(made_b)
+
+
+static func _cap_scales(t) -> void:
+	var made := _made()
+	var gj: GuardJobs = made[0].guard_jobs
+	t.check(gj.cap(2) == 2, "Aldermere (100): cap 2 stays 2")
+	Corps._done(made)
+	var b: Dictionary = CapPeople._build()
+	var crowd: Crowd = b.crowd
+	var want := ceili(2.0 * crowd.spawned_soldiers / 100.0)
+	t.check(crowd.guard_jobs.cap(2) == want and want == 4, "the Capital: cap 2 is %d (spawned %d)" % [want, crowd.spawned_soldiers])
+	crowd.clear()
+	(b.world as Node).free()
+	(b.town as Node).free()
+	City.use(&"aldermere")
+
+
+static func _tags_empty(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	t.check(crowd.guard_jobs.tags().is_empty(), "no job: no tags")
+	Corps._done(made)
+
+
+static func _duty_event_banner(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var got := []
+	crowd.duty_event.connect(func(k: int, text: String, at: Vector2) -> void: got.append([k, text, at]))
+	crowd.duty_event.emit(GuardJobs.Kind.SWEEP, "X", Vector2(1.0, 2.0))
+	t.check(got == [[GuardJobs.Kind.SWEEP, "X", Vector2(1.0, 2.0)]], "duty_event carries kind, text and place")
+	Corps._done(made)
+
+
+## A duty of kind CORDON that posts one job of one man and notes when it was cleared.
+class StubDuty extends Duty:
+	## Whether clear() ran.
+	var cleared := false
+	## The job it posted.
+	var job: GuardJobs.Job
+
+	func kind() -> int:
+		return GuardJobs.Kind.CORDON
+
+	func post_jobs() -> void:
+		if job == null:
+			job = board.post(GuardJobs.Kind.CORDON, crowd.soldiers[0].ground_pos, 1)
+
+	func clear() -> void:
+		cleared = true
+
+
+static func _clear_resets_jobs(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	var stub := StubDuty.new().setup(gj, crowd)
+	gj.add_duty(stub)
+	gj.step(1.0)
+	t.check(gj.jobs.size() == 1 and stub.job.crew.size() == 1, "the board filled the stub's job with one man")
+	var man: Person = stub.job.crew[0]
+	t.check(gj.on_job(man) and gj.kind_of(man) == GuardJobs.Kind.CORDON and stub.job.started, "he is on a CORDON job")
+	crowd.clear()
+	t.check(gj.jobs.is_empty() and not gj.on_job(man) and stub.cleared, "clear() drops every job and clears each duty")
+	Corps._done(made)
+
+
 static func run(t) -> void:
+	_kinds_order(t)
+	_mission_man_kinds(t)
+	_step_no_change(t)
+	_cap_scales(t)
+	_tags_empty(t)
+	_duty_event_banner(t)
+	_clear_resets_jobs(t)
 	_posts_and_groups(t)
 	_on_watch(t)
 	_eligible(t)

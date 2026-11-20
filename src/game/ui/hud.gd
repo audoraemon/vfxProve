@@ -752,6 +752,8 @@ func all_tags() -> Array[MapTag]:
 		out.append_array(_rules.lantern.tags())  # v0.11.2: the Herald and the Bearer, after the mission's own, before the wishes'
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
+	if _crowd != null and _crowd.guard_jobs != null:
+		out.append_array(_crowd.guard_jobs.tags())  # soldier duties: each live job's tags, after the mission's own
 	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn
 
 

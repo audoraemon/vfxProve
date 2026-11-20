@@ -16,6 +16,8 @@ signal rallied
 ## points (cast_points()). Directors that judge a cast as danger read this, not Rules.cast_made.
 ## `radius` is the danger's radius at the cast's ability level (on_cast()), so a director judges the number the town fled.
 signal danger_landed(key: String, points: Array[Vector2], radius: float)
+## A soldier duty has something to tell the player (a banner): its kind (GuardJobs.Kind), the text, and where it happened.
+signal duty_event(kind: int, text: String, at: Vector2)
 
 ## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
 const LIE_CALM := 8.0
@@ -258,6 +260,8 @@ var _clock := 0.0
 ## Loud casts whose danger has not landed yet (v0.11.2): {at: crowd-clock seconds it lands, points, radius, reach, key}.
 var _held_dangers: Array[Dictionary] = []
 var _rallied := false
+## Whether rally() ran (forgo_rally() sets _rallied alone: no guard formed).
+var _called_up := false
 var _fled_all := false
 var _citadel_hit := false
 ## Seconds until EnemyField.purge() runs again (about once a second; mirrors the gate clock's pacing).
@@ -308,6 +312,9 @@ class ResponseDrawer extends Node2D:
 				crowd.madness.draw_ground(self)
 			else:
 				crowd.madness.draw_over(self)
+		if crowd.guard_jobs != null and not ground:
+			for kind in crowd.guard_jobs.duties:
+				(crowd.guard_jobs.duties[kind] as Duty).draw(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
@@ -316,7 +323,16 @@ class ResponseDrawer extends Node2D:
 			or (crowd.engineers != null and crowd.engineers.working())
 			or (crowd.rescue != null and not crowd.rescue.trapped.is_empty())
 			or (crowd.plague != null and crowd.plague.any_in_open())
-			or (crowd.madness != null and crowd.madness.any_in_open()))
+			or (crowd.madness != null and crowd.madness.any_in_open()) or _duty_showing())
+
+	## Whether any soldier duty has something on show.
+	func _duty_showing() -> bool:
+		if crowd.guard_jobs == null:
+			return false
+		for kind in crowd.guard_jobs.duties:
+			if (crowd.guard_jobs.duties[kind] as Duty).showing():
+				return true
+		return false
 
 
 class Ticker extends Node:
@@ -1164,7 +1180,7 @@ func _advance(delta: float) -> void:
 	var t_fires := BenchProf.begin()
 	fires.step(delta)
 	BenchProf.add(&"fires", t_fires)
-	guard_jobs.prune()
+	guard_jobs.step(delta)
 	if shelters != null:
 		shelters.step(delta)
 	_stage_in -= delta
@@ -2072,6 +2088,7 @@ func rally() -> void:
 	if _rallied:
 		return
 	_rallied = true
+	_called_up = true
 	guard_jobs.close()
 	var living: Array[Person] = []
 	for p in soldiers:
@@ -2268,6 +2285,11 @@ func clear_mission_hooks() -> void:
 	mission_points.clear()
 
 
+## Whether the soldiers were called up to the Citadel: rally() ran (a leaderless town's forgo_rally() alone is not a call-up).
+func called_up() -> bool:
+	return _called_up
+
+
 ## The leaderless town (v0.09: the Prince died unseen): the soldiers never rally on the Citadel.
 func forgo_rally() -> void:
 	_rallied = true
@@ -2377,6 +2399,7 @@ func clear() -> void:
 	spawned_children = 0
 	spawned_soldiers = 0
 	_rallied = false
+	_called_up = false
 	_fled_all = false
 	_citadel_hit = false
 	_clock = 0.0

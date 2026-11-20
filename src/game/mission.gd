@@ -668,6 +668,7 @@ func _show_held_banners() -> void:
 func _wire_responses() -> void:
 	if _wire_once(_crowd):
 		_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
+		_crowd.duty_event.connect(func(_k: int, text: String, _at: Vector2): _rules.banner.emit(text))
 	if _crowd.bell != null and _wire_once(_crowd.bell):
 		_crowd.bell.climbing_started.connect(func():
 			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)

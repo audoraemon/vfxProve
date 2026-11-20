@@ -55,9 +55,6 @@ const ALARM_KILL := 0.5
 const ALARM_CITADEL_HIT := 10.0
 ## The staged alarm (AlarmManager) replaced v0.03's rally at 25 and town-wide flight at 50: the soldiers rally at
 ## City Emergency (alarm 25) and citizens evacuate at the Evacuation stage.
-## Soldiers sent to look at a district's emergency: how many, and for how long before they go back to their posts.
-const INVESTIGATORS := 2
-const INVESTIGATE_SECONDS := 20.0
 ## At City Emergency this share of citizens (and every merchant: the market closes) goes home to regroup.
 const REGROUP_SHARE := 0.3
 ## A household regrouping at home leaves together at the evacuation once every member still regrouping is home,
@@ -83,6 +80,8 @@ const THORN_LOOK := 3.0
 ## A fallen building: its danger's radius past the footprint's reach, and how far it is seen and heard.
 const COLLAPSE_RADIUS := 1.0
 const COLLAPSE_SIGHT := 4.0
+## How far a sweep man (Person.watch_far) sees a power or a death: the day's reach, scaled by sight_scale at night.
+const WATCH_SIGHT := 4.0
 const COLLAPSE_SOUND := 6.0
 const COLLAPSE_SECONDS := 3.0
 ## A frightened citizen's fright spreads to calm people within this, after SPREAD_DELAY seconds.
@@ -154,6 +153,8 @@ var guard: CitadelGuard
 var corpses: CorpseDuty
 ## The cordon duty (soldier duties, slice c): two soldiers rope off a street beside a doused fire or a fall.
 var cordon: CordonDuty
+## The sweep duty (soldier duties, slice d): four soldiers go door to door through a district after a seen power or a Local Emergency.
+var sweep: SweepDuty
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
 var mission_holds: Array[Callable] = []
 ## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
@@ -171,8 +172,6 @@ var sight_scale := 1.0
 ## Sturdy buildings people take cover in (v0.04 P2); made by spawn().
 var shelters: ShelterManager
 var _stage_in := 0.0
-## Soldiers away looking at an incident: [soldier, post to return to, clock to return].
-var _investigating: Array = []
 ## The Bell Tower and its bellkeeper (v0.05); made by spawn().
 var bell: BellNetwork
 ## The clergy's Banishing Rite at the cathedral (v0.05); made by spawn().
@@ -389,6 +388,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	guard_jobs.add_duty(corpses)
 	cordon = CordonDuty.new().setup(guard_jobs, self) as CordonDuty
 	guard_jobs.add_duty(cordon)
+	sweep = SweepDuty.new().setup(guard_jobs, self) as SweepDuty
+	guard_jobs.add_duty(sweep)
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
@@ -952,11 +953,7 @@ func _walk_list(list: Array, reach: float, beats: bool) -> void:
 		var go := stale
 		if not stale:
 			var here: Vector2 = p.post if beats else points[e[2]]
-			if _looking(p):
-				e[4] = -1.0
-				if beats:
-					e[5] = _clock
-			elif p.ground_pos.distance_to(here) > reach:
+			if p.ground_pos.distance_to(here) > reach:
 				e[4] = -1.0
 			elif float(e[4]) < 0.0:
 				e[4] = _clock + (float(e[6]) if beats else 0.0)
@@ -988,13 +985,6 @@ func _mate_ready(e: Array) -> bool:
 	if ahead == 0:
 		return float(m[4]) >= 0.0 and _clock - float(m[4]) >= LOOP_PAUSE
 	return ahead <= n - ahead
-
-
-func _looking(p: Person) -> bool:
-	for e in _investigating:
-		if e[0] == p:
-			return true
-	return false
 
 
 ## How many escorts a town keeps (v0.09.1: by need): escorts_per_duty for each duty EscortManager can give them -- the
@@ -1324,7 +1314,6 @@ func _advance(delta: float) -> void:
 	_settle_doom()
 	_free_jams()
 	_tend_households()
-	_return_investigators()
 	if not _loops.is_empty() or not _beats.is_empty():
 		var t_loops := BenchProf.begin()
 		_walk_loops()
@@ -2148,41 +2137,11 @@ func ring_bell(at := City.current().landmark(&"bell_tower").get_center()) -> voi
 	alarms.update(alarm, threats.active_count(), _clock)
 
 
-## A district's first local emergency: the two nearest patrolling soldiers go to look, and return after a while. A Lantern
-## Knight (v0.10 M3) never does: _prune_soldiers() slides the soldiers added after the spawn down the roster, into the
-## patrols' index range, so the range alone no longer says who patrols.
+## A district's emergency, or a power seen in it: asks for a sweep of the district (SweepDuty.request(): a Lantern Knight or any man
+## with a corps is never sent, and a hushed or veiled place, a swept district or a full board asks for none).
 func _investigate(at: Vector2) -> void:
-	if _rallied:
-		return
-	var first := post_counts[0] + post_counts[1] + post_counts[2]
-	var pool: Array[Person] = []
-	for i in range(first, mini(first + post_counts[3], soldiers.size())):
-		var p := soldiers[i]
-		if is_instance_valid(p) and p.is_alive() and p.mind == Person.Mind.POST and p.fearless_left <= 0.0 \
-				and p.corps != Person.Corps.KNIGHT and not (escorts != null and escorts.guarding(p)) and not guard_jobs.on_job(p):
-			pool.append(p)  # one who fears nothing (entranced, reassured) sees nothing to look into
-	pool.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(at) < b.ground_pos.distance_to(at))
-	var spot := at if _grid.walkable(at) else _grid.nearest_walkable(at)
-	if spot == Vector2.INF:
-		return
-	for k in mini(INVESTIGATORS, pool.size()):
-		_investigating.append([pool[k], pool[k].anchor, _clock + INVESTIGATE_SECONDS])
-		pool[k].send_to_post(_spot_near(spot, 0.8))
-	if sfx != null and not pool.is_empty() and soldier_voices.order(_clock):
-		sfx.play(&"sol_order", pool[0].ground_pos)
-
-
-func _return_investigators() -> void:
-	var kept: Array = []
-	for e in _investigating:
-		if not is_instance_valid(e[0]):
-			continue
-		var p: Person = e[0]
-		if _clock < float(e[2]):
-			kept.append(e)
-		elif p.is_alive() and p.mind == Person.Mind.POST and not (escorts != null and escorts.guarding(p)):
-			p.send_to_post(e[1])  # (one since taken as an escort stays with its duty)
-	_investigating = kept
+	if sweep != null:
+		sweep.request(at)
 
 
 ## The call-up: the Citadel guard forms (CitadelGuard.call_up()); the rest of the soldiers keep the city. The board stays open
@@ -2498,7 +2457,6 @@ func clear() -> void:
 		withering.clear()
 	if burning != null:
 		burning.clear()
-	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
 			(d as Node).queue_free()
@@ -2662,7 +2620,7 @@ func cordon_blocks(a: Vector2, b: Vector2) -> bool:
 ## walking dead (Corpse Guise) is no witness.
 func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 	var best: Person = null
-	var best_d := doom_witness()
+	var best_d := INF
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p) or p.guised():
@@ -2670,9 +2628,32 @@ func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 			if cordon != null and cordon.crew_blind(p, at):
 				continue  # a cordon man looks outward: nothing inside his own rope is seen by him
 			var d := p.ground_pos.distance_to(at)
-			if d <= best_d:
+			if d <= best_d and d <= (WATCH_SIGHT * sight_scale if p.watch_far else doom_witness()):  # a sweep man sees farther
 				best = p
 				best_d = d
+	return best
+
+
+## The nearest living person -- citizen or soldier, out of doors, awake, not in the god's hand, not guised, not unseen -- who saw a
+## power land at `points`: within his reach of a point (WATCH_SIGHT for a sweep man, else DOOM_WITNESS, both scaled at night and
+## cut by a law's NO SIGHT) or within `radius` of it. Ties go to the lower stagger. Null for none (the sweep's "seen").
+func power_witness(points: Array[Vector2], radius: float) -> Person:
+	var best: Person = null
+	var best_d := INF
+	for group: Array[Person] in [citizens, soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.mind == Person.Mind.ASLEEP or p.held_by_god():
+				continue
+			if p.guised() or LawMark.unseen_by_all(p):
+				continue
+			for at in points:
+				var d := p.ground_pos.distance_to(at)
+				var reach := sight(p, at, WATCH_SIGHT * sight_scale if p.watch_far else doom_witness())
+				if d > maxf(reach, radius):
+					continue
+				if best == null or d < best_d or (d == best_d and p.stagger < best.stagger):
+					best = p
+					best_d = d
 	return best
 
 
@@ -2693,6 +2674,8 @@ func _settle_doom() -> void:
 		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
+		sweep.on_seen(at)
+		sweep.request(at)
 		threats.register(at, 0.6, 0.3, 3.0, doom_witness(), DOOM_WITNESS + 1.0, &"doom")
 		seen_at.append(at)
 		if alarms.incident(at):

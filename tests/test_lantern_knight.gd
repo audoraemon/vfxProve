@@ -57,7 +57,7 @@ static func run(t) -> void:
 	t.check(k.mind == Person.Mind.POST and k.anchor == at, "and he goes back to his post once they let go")
 
 	# Soldiers freed before him slide him down the roster (_prune_soldiers() compacts it) into the patrols' index range,
-	# [80, 100): the patrols' investigations must still leave him alone, and take him as any soldier without his corps.
+	# [80, 100): a sweep must still leave him alone, and may take him as any soldier without his corps.
 	for i in 20:
 		crowd.soldiers[i].free()
 	crowd._prune_soldiers()
@@ -66,14 +66,12 @@ static func run(t) -> void:
 	var look := Vector2(-10.0, 3.0)
 	k.corps = Person.Corps.NONE
 	crowd._investigate(look)
-	t.check(crowd._investigating.size() == 1 and crowd._investigating[0][0] == k,
-		"control: a soldier without a corps in the patrols' range is sent to look")
-	crowd._investigating.clear()
-	k.send_to_post(at)
+	var sweep_job: GuardJobs.Job = crowd.guard_jobs.live(GuardJobs.Kind.SWEEP)[0]
+	t.check(crowd.sweep.may_take(sweep_job, k), "control: a soldier without a corps in the patrols' range may be sent to sweep")
 	k.corps = Person.Corps.KNIGHT
-	crowd._investigate(look)
-	t.check(crowd._investigating.is_empty() and k.mind == Person.Mind.POST and k.anchor == at,
-		"a Knight in the patrols' range is not sent to look")
+	crowd.guard_jobs._fill()
+	t.check(not crowd.sweep.may_take(sweep_job, k) and not sweep_job.crew.has(k) and k.mind == Person.Mind.POST and k.anchor == at,
+		"a Knight in the patrols' range is not sent to sweep")
 
 	var plain := crowd.add_soldier(at + Vector2(1.0, 0.0))
 	crowd.rally()

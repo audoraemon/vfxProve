@@ -91,13 +91,14 @@ static func _eligible(t) -> void:
 	crowd.mission_holds.append(func(p: Person) -> bool: return p == m)
 	t.check(not gj.eligible(m), "a guard covered by a mission hold is not eligible")
 	var pa := _guard(crowd, 3)
-	crowd._investigate(pa.ground_pos)
+	crowd.sweep.request(pa.ground_pos)
+	gj._fill()
 	var seen := 0
 	for p in crowd.soldiers:
-		if crowd._looking(p):
+		if gj.kind_of(p) == GuardJobs.Kind.SWEEP:
 			seen += 1
-			t.check(not gj.eligible(p), "an investigator is not eligible")
-	t.check(seen > 0, "someone went to investigate")
+			t.check(not gj.eligible(p), "a sweep man is not eligible")
+	t.check(seen > 0, "someone went to sweep")
 	Corps._done(made)
 
 
@@ -399,13 +400,14 @@ static func _mission_man_kinds(t) -> void:
 	gj.take(g, house)
 	t.check(not gj.mission_man(g), "a guard on a fire job is not a mission man")
 	var pa := _guard(crowd, 3)
-	crowd._investigate(pa.ground_pos)
+	crowd.sweep.request(pa.ground_pos)
+	gj._fill()
 	var seen := 0
 	for p in crowd.soldiers:
-		if crowd._looking(p):
+		if gj.kind_of(p) == GuardJobs.Kind.SWEEP:
 			seen += 1
-			t.check(not gj.mission_man(p), "an investigator is not a mission man")
-	t.check(seen > 0, "someone went to investigate")
+			t.check(not gj.mission_man(p), "a sweep man is not a mission man")
+	t.check(seen > 0, "someone went to sweep")
 	t.check(not gj.mission_man(null), "nobody is not a mission man")
 	crowd.clear_mission_hooks()
 	Corps._done(made)

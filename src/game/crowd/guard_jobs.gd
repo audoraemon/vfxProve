@@ -12,6 +12,8 @@ const GROUP_KEEP := 1
 enum Kind { CITADEL, FIRE, PILE, SHELTER, SWEEP, CORPSE, CORDON, GATE }
 ## Seconds between the board's ticks (duties post jobs, open jobs are filled).
 const EVERY := 1.0
+## The sweep's badge: an eye (five rows of five bits, as Person's glyphs).
+const GLYPH_EYE: Array[int] = [0b00000, 0b01110, 0b11011, 0b01110, 0b00000]
 
 
 ## One open job of a new kind.
@@ -72,7 +74,7 @@ func at_post(p: Variant) -> bool:
 		return false
 	if s.town_post == Vector2.INF or not s.post.is_equal_approx(s.town_post) or s.post_group < 0:
 		return false
-	if not s.at_own_post() or s.has_goal() or _crowd._looking(s):
+	if not s.at_own_post() or s.has_goal():
 		return false
 	if _crowd.escorts != null and _crowd.escorts.guarding(s):
 		return false
@@ -81,7 +83,7 @@ func at_post(p: Variant) -> bool:
 
 ## Whether `p` is a director's soldier (never taken by a town duty): an `add_soldier()` guard with no town post, one re-posted
 ## away from the town's post, held by a mission hook, on a duty errand, or stationed away from his post by a director's
-## send_to_post() (an investigator is not stationed; he is looking).
+## send_to_post() (a man on a board job is not stationed; his job sent him).
 func mission_man(p: Variant) -> bool:
 	if not is_instance_valid(p):
 		return false
@@ -90,7 +92,7 @@ func mission_man(p: Variant) -> bool:
 		return false
 	if s.post_group < 0 or not s.post.is_equal_approx(s.town_post) or _crowd.held_by_mission(s) or s.mind == Person.Mind.DUTY:
 		return true
-	return not s.anchor.is_equal_approx(s.post) and not on_job(s) and not _crowd._looking(s) \
+	return not s.anchor.is_equal_approx(s.post) and not on_job(s) \
 			and (s.mind == Person.Mind.POST or s.mind == Person.Mind.HOLD)
 
 

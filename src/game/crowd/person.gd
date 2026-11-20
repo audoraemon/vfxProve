@@ -252,6 +252,8 @@ var crouching := false
 ## Seconds a soldier still stands talking (a cordon man to a citizen he turns back; later duties reuse it): while above zero and
 ## not striding, _interact_anim() shows the talk loop in any mind. Counted down in tick(); every duty that sets it clears it.
 var talk_left := 0.0
+## A sweep man sees a power or a death from Crowd.WATCH_SIGHT, not DOOM_WITNESS. Set and cleared only by SweepDuty and GateCheck.
+var watch_far := false
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
 ## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
 ## the duty -- and not to his spawn post (_soldier_back()).

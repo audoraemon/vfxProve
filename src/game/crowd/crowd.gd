@@ -135,6 +135,16 @@ var _watch_in := 0.0
 var alarms := AlarmManager.new()
 ## How strange the town finds the night (Town Suspicion): fed one sign per witnessed cast.
 var suspicion := Suspicion.new()
+## How long a witness's thought tag stays up (seconds).
+const THOUGHT_SECONDS := 2.5
+## What a calm witness says of each natural look (Town Suspicion); the state after the sign overrides it once the town is uneasy or knows.
+const THOUGHT_CALM := {&"lightning": "JUST A STORM", &"storm": "JUST A STORM", &"fire": "FIRE!", &"quake": "EARTHQUAKE!",
+	&"flood": "THE RIVER!", &"miasma": "BAD AIR"}
+## The newest sign's witness, its words and colour, and the seconds left to show them.
+var _thought_who: Person = null
+var _thought_text := ""
+var _thought_color := Color.WHITE
+var _thought_left := 0.0
 ## True once keeper_due() has sent the bellkeeper (one call); cleared by clear().
 var _keeper_sent := false
 ## Which way out each evacuee takes (v0.04); made by spawn().
@@ -350,6 +360,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
 	suspicion.became_known.connect(func(_why: String) -> void: _send_keeper())
+	sign_seen.connect(_on_sign_seen)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	piles = PileManager.new().setup(self, env, grid)
 	guard_jobs = GuardJobs.new().setup(self)
@@ -1152,6 +1163,7 @@ func advance(delta: float) -> void:
 func _advance(delta: float) -> void:
 	_clock += delta
 	suspicion.advance(delta)
+	_thought_left = maxf(0.0, _thought_left - delta)
 	if remains != null:
 		remains.step(delta)
 	if withering != null:
@@ -1581,6 +1593,34 @@ func _sign(points: Array[Vector2], sight: float, look: StringName, clear := 0.0)
 	var before := suspicion.state()
 	suspicion.sign(look)
 	sign_seen.emit(witness, look, before, suspicion.state())
+
+
+## The witness of a sign says what the town thinks: a tag over his head for THOUGHT_SECONDS (the newest replaces the last), and a
+## shout the first time the town turns uneasy. The shout spends a voice token: tokens gate only the sound and voices_played, never
+## behaviour or a random draw, so no simulation state moves.
+func _on_sign_seen(witness: Person, look: StringName, before: StringName, after: StringName) -> void:
+	_thought_who = witness
+	_thought_left = THOUGHT_SECONDS
+	match after:
+		&"known":
+			_thought_text = "THIS IS NO ACCIDENT"
+			_thought_color = UiTheme.COL_BAD
+		&"uneasy":
+			_thought_text = "AGAIN?"
+			_thought_color = UiTheme.COL_GOLD
+		_:
+			_thought_text = String(THOUGHT_CALM.get(look, ""))
+			_thought_color = UiTheme.COL_DIM
+	if after == &"uneasy" and before == &"calm":
+		_voice(witness, &"cit_shout")
+
+
+## The witness's thought as a map tag: at most one, none once its time is up or its witness is gone.
+func thought_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if _thought_left > 0.0 and _thought_text != "" and is_instance_valid(_thought_who) and _thought_who.is_alive():
+		out.append(MapTag.person(_thought_who, _thought_color, _thought_text, false))
+	return out
 
 
 ## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
@@ -2450,6 +2490,8 @@ func clear() -> void:
 	trail.clear()
 	suspicion.reset()
 	_keeper_sent = false
+	_thought_who = null
+	_thought_left = 0.0
 
 
 ## Everyone alive and outside standing on a closed cell in `r` (ground units: a falling footprint, a pile cell; grown by a

@@ -756,6 +756,8 @@ func all_tags() -> Array[MapTag]:
 		out.append_array(_rules.director.tags())
 	if _rules.lantern != null:
 		out.append_array(_rules.lantern.tags())  # v0.11.2: the Herald and the Bearer, after the mission's own, before the wishes'
+	if _crowd != null:
+		out.append_array(_crowd.thought_tags())  # Town Suspicion: a witness's thought, after the Lantern's, before the descent's
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
 	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn

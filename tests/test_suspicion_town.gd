@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_ways_to_know(t)
 	_deterministic(t)
 	_keeper(t)
+	_thought(t)
 
 
 static func _world() -> Dictionary:
@@ -391,3 +392,95 @@ static func _arrive(p: Person) -> void:
 	p.ground_pos = p.goal()
 	p._goal = Vector2.INF
 	p._path = PackedVector2Array()
+
+
+## A fresh world with one citizen standing `d` units from AT, cast `key`; returns [crowd, world dict, witness].
+static func _thought_world(key: String, d: float) -> Array:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var c := _stand(crowd.citizens[0], AT + Vector2(d, 0.0))
+	_cast(crowd, key)
+	return [crowd, s, c]
+
+
+## The witness's thought tag: what the sign said, in the gauge's colours, for 2.5 s; one at a time; none for an unseen cast.
+static func _thought(t) -> void:
+	var words := {"smite": ["JUST A STORM", 3.0], "tornado": ["JUST A STORM", 5.0], "tempest": ["JUST A STORM", 5.0], "ember": ["FIRE!", 3.0],
+		"shatter": ["EARTHQUAKE!", 5.0], "tsunami": ["THE RIVER!", 5.0], "breath": ["BAD AIR", 5.0]}
+	for key: String in words:
+		var r := _thought_world(key, float(words[key][1]))
+		var crowd: Crowd = r[0]
+		var tags := crowd.thought_tags()
+		t.check(tags.size() == 1 and tags[0].label == String(words[key][0]) and tags[0].who == r[2],
+			"%s, seen calm: the witness says %s (%s)" % [key, words[key][0], str(tags.map(func(x: MapTag) -> String: return x.label))])
+		if tags.size() == 1:
+			t.check(tags[0].color == UiTheme.COL_DIM, "%s: a calm town's thought is the dim colour" % key)
+		_done(r[1])
+
+	var r := _thought_world("smite", 3.0)
+	var crowd: Crowd = r[0]
+	t.check(crowd.thought_tags().size() == 1, "the tag is up at once")
+	_run(crowd, 2.0)
+	t.check(crowd.thought_tags().size() == 1, "and still up about 2.2 s after the sign (the cast ran 0.2 s past it)")
+	_run(crowd, 0.4)
+	t.check(crowd.thought_tags().is_empty(), "gone after 2.5 s")
+	_done(r[1])
+
+	var s := _world()
+	crowd = s.crowd
+	var first := _stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
+	_cast(crowd, "smite")
+	t.check(crowd.thought_tags()[0].who == first and crowd.thought_tags()[0].label == "JUST A STORM", "the first sign: JUST A STORM, calm at 20")
+	_cast(crowd, "smite")
+	var tags := crowd.thought_tags()
+	t.check(tags.size() == 1 and tags[0].label == "AGAIN?" and tags[0].color == UiTheme.COL_GOLD,
+		"a second sign replaces the first: AGAIN? in gold (value %.0f)" % crowd.suspicion.value)
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	_stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
+	_cast(crowd, "disorder")
+	t.check(crowd.thought_tags().is_empty(), "a cast with no look has no thought")
+	_cast(crowd, "heaven")
+	tags = crowd.thought_tags()
+	t.check(tags.size() == 1 and tags[0].label == "THIS IS NO ACCIDENT" and tags[0].color == UiTheme.COL_BAD,
+		"an unnatural sign: THIS IS NO ACCIDENT in red (%s)" % str(tags.map(func(x: MapTag) -> String: return x.label)))
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	_cast(crowd, "smite")
+	t.check(crowd.thought_tags().is_empty(), "an unwitnessed cast: no tag")
+	_done(s)
+
+	# The witness dies: the tag goes with him.
+	s = _world()
+	crowd = s.crowd
+	var seer := _stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
+	_cast(crowd, "smite")
+	(s.field as EnemyField).kill(seer, &"test")
+	t.check(not seer.is_alive() and crowd.thought_tags().is_empty(), "the witness dies: his tag is gone")
+	_done(s)
+
+	# Uneasy for the first time: the witness cries out through the voice budget; the tag alone changes nothing else.
+	s = _world()
+	crowd = s.crowd
+	_stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
+	_cast(crowd, "smite")
+	var voices := crowd.voices_played
+	_cast(crowd, "smite")
+	t.check(crowd.suspicion.state() == &"uneasy" and crowd.voices_played > voices, "calm to uneasy: the witness shouts (voices %d -> %d)" % [voices, crowd.voices_played])
+	voices = crowd.voices_played
+	_cast(crowd, "smite")
+	t.check(crowd.voices_played == voices, "uneasy to uneasy: no shout")
+	_done(s)
+
+	# The thought draws nothing from the random stream and moves no simulation state but the voice budget.
+	s = _world()
+	crowd = s.crowd
+	var w := _stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
+	var rng_before := crowd._rng.state
+	crowd.sign_seen.emit(w, &"lightning", &"calm", &"uneasy")
+	t.check(crowd._rng.state == rng_before, "the thought spends no random draw")
+	_done(s)

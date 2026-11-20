@@ -192,6 +192,7 @@ static func run(t) -> void:
 	_crisp_source(t)
 	_spaced_hints(t)
 	_suspicion(t, hud, crowd, rules)
+	_thought(t, hud, crowd)
 
 	# The marks over people (v0.10; M5 made them bigger and outlined, so they read on the cobbles): a diamond MARK_R each
 	# way from its centre.
@@ -797,3 +798,17 @@ static func _suspicion(t, hud: Hud, crowd: Crowd, rules: Rules) -> void:
 	t.check(BehaviourOverlay.suspicion_line(s) == "Suspicion: 100 (known: the bell rings)", "and for a town that knows (%s)" % BehaviourOverlay.suspicion_line(s))
 	s.reset()
 	t.check(BehaviourOverlay.suspicion_line(s) == "Suspicion: 0 (calm)", "and for a calm one (%s)" % BehaviourOverlay.suspicion_line(s))
+
+
+## A witness's thought is on the map's tag layer: after the Lantern's tags, gone with its time.
+static func _thought(t, hud: Hud, crowd: Crowd) -> void:
+	var seer: Person = crowd.citizens[0]
+	seer.inside = false
+	var before := hud.all_tags().size()
+	crowd.sign_seen.emit(seer, &"lightning", &"calm", &"calm")
+	var tags := hud.all_tags()
+	t.check(tags.size() == before + 1 and tags[tags.size() - 1].label == "JUST A STORM" and tags[tags.size() - 1].who == seer,
+		"the HUD's tag layer carries the witness's thought")
+	for _i in 100:  # a hit-stop freeze left by an earlier check holds the crowd for a moment
+		crowd.advance(0.1)
+	t.check(hud.all_tags().size() == before, "and drops it after its time")

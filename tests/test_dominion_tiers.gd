@@ -175,11 +175,23 @@ static func run(t) -> void:
 	turn = _cast(ctx, "turncoat.gd", at)
 	t.check(turn.turned == a and turn.aim == well and a.mind == Person.Mind.COMPELLED, "a turned citizen makes for the nearest thing of use")
 	a.ground_pos = well.center() + Vector2(0.0, 0.6)
+	var alarm0 := crowd.alarm
 	for k in 12:
 		turn._process(0.25)
 	t.check(well.blighted and turn.ruined == 1, "and ruins it")
+	# Final review, Important 1: what Turncoat does is seen -- its ruin raises the alarm by BLIGHT_ALARM, as before the Veil rework.
+	t.check(is_equal_approx(crowd.alarm - alarm0, Crowd.BLIGHT_ALARM), "a Turncoat ruin raises the alarm by BLIGHT_ALARM (%.2f)" % (crowd.alarm - alarm0))
 	turn._process(TurncoatFx.TURN_TIME)
 	turn.free()
+	# Control: a Veil Blight on the same building raises none (spec 11.1).
+	env.unblight(well)
+	var alarm1 := crowd.alarm
+	var bl: FxTimeline = FxTimeline.cast(load("res://src/fx/quiet/blight.gd"), ctx, well.center())
+	bl._process(BlightFx.T_ROT + 0.05)
+	t.check(well.blighted and crowd.alarm == alarm1, "(control) a Veil Blight on the same well raises no alarm")
+	bl.end_now()
+	for s in crowd.footholds.duplicate():
+		BlightFx.heal(crowd, env, s)
 
 	# --- Manufactured Hatred: accusation, then they go for the hated kind and no one else.
 	_scatter(crowd)

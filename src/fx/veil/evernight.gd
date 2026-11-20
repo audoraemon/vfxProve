@@ -327,7 +327,8 @@ func _dawn() -> void:
 			if blighted or dreaming:
 				gone.append(p)
 		for p in gone:
-			if _crowd.take(p, KIND):
+			# Let out of his shelter first (the release The Swallowing Dark uses): a shelter's next flush must not raise a body.
+			if VeilParts.take_out(_crowd, p, KIND):
 				taken.append(p.get_instance_id())
 	_end_night()
 

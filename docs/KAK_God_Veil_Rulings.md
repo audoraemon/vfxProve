@@ -169,6 +169,9 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   not at the cast -- Crowd.dreaded() reads the dark live, so a patch laid at the cast would itself be dark ground in reach: every
   Dread would freeze its own click circle and "no dark ground in reach: refused" (spec 5.7) would mean nothing. The Swallowing Dark
   likewise lays its dusk at the end (C14). A Dread freed outside the tree lays none (the world may be going).
+  Amended (final fix wave, VG6): only a Dread that runs its course lays its dusk, when it lifts at T_FALL + HOLD. One ended before
+  that (end_now(), an act change through Battlefield.end_powers(), a freed node) lets everyone go and lays none: "or when cut short"
+  above no longer holds.
 - VC2: who the Dread holds is read every frame while it lasts: the living out of doors within reach on dark ground, not a shadow,
   and not a sleeper it did not already hold. So one whose dark fades under him (a dusk patch running out) goes free, one who wakes
   inside freezes then (asleep beats frozen; "a sleeper is not frozen again" while he sleeps), and one a new patch covers freezes.
@@ -286,3 +289,14 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VG3 (Critical 3): Blight passes over everyone `Crowd.spared()` names (the god's BELIEVER and every director's `keeps_alive`), in the
   pick (`_nearest_person()`) and when the sick are made (`_make_ill()`): a click on a kept charge takes the next thing in Blight's order
   (or is refused "no_blight" with nothing else there), and the dark's others are the next nearest. No rng: distance, then instance id.
+- VG4 (Important 1): Turncoat (Dominion) keeps its alarm: it adds `Crowd.BLIGHT_ALARM` itself right after its
+  `EnvironmentField.blight()` (a null crowd guarded). `Crowd._on_blighted()` stays alarm-free, as spec 11.1 wants for Blight; before
+  the Veil rework that handler raised the alarm for every blight, Turncoat's included, so Turncoat's own effect now does what the
+  handler did for it. No reference row casts Turncoat.
+- VG5 (Important 2; ruling C23): Evernight's dawn lets a shelterer out of his shelter before it takes him, with the one release The
+  Swallowing Dark uses, now written once as `VeilParts.take_out(crowd, p, kind)` (`ShelterManager.release()`, a no-op for one not
+  sheltering, then `Crowd.take()`). `Crowd.take()` is not changed: every power's kills pass through it. A shelter's later flush can
+  no longer set a taken person visible and put him back in the field.
+- VG6 (Important 3): a Dread ended before T_FALL + HOLD releases its hold and lays no dusk (VC1 amended). At an act change
+  `Battlefield.end_powers()` ends effects in cast order, and a Dread's dusk laid there would put out a running Evernight's torches
+  and take their huddles in teardown.

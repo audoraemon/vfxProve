@@ -20,6 +20,17 @@ static func size(fx: FxTimeline, key: String, stat: String) -> float:
 	return VeilRules.size(key, stat, dark(fx))
 
 
+## Takes `p` without a trace (Crowd.take()), first letting him out of any shelter he is in (ShelterManager.release(): no-op for one
+## not sheltering), so no shelter's list holds a taken person -- its next flush would set him visible and put him back in the field.
+## The one release every Veil take of a shelterer uses (The Swallowing Dark, Evernight's dawn). False when nobody was taken.
+static func take_out(crowd: Crowd, p: Person, kind: StringName) -> bool:
+	if crowd == null or p == null or not is_instance_valid(p) or not p.is_alive():
+		return false
+	if crowd.shelters != null:
+		crowd.shelters.release(p)
+	return crowd.take(p, kind)
+
+
 ## Lays the dusk a Veil cast leaves where it lands: a patch of `r` (at least VeilRules.DUSK_R) at `at` for VeilRules.DUSK_TIME.
 ## Returns its id; 0 with no crowd or with the ledger off.
 static func land(fx: FxTimeline, at: Vector2, r := VeilRules.DUSK_R) -> int:

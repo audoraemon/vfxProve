@@ -221,10 +221,9 @@ func _remove(entry: Array) -> void:
 			if house != null:
 				if not _gone.has(house):
 					return  # out of reach in a standing building, whenever he went in
-				crowd.shelters.release(p)
 			elif p.ground_pos.distance_to(origin) > full_r:
 				return
-			if crowd.take(p, KIND):
+			if VeilParts.take_out(crowd, p, KIND):  # a shelterer is let out of his shelter first
 				removed += 1
 		&"animal":
 			var a: Animal = entry[1]
@@ -273,8 +272,7 @@ func _take_building(s: Structure) -> void:
 		if crowd.shelters != null and crowd.shelters.shelters.has(s):
 			for p in (crowd.shelters.shelters[s].inside as Array).duplicate():
 				if is_instance_valid(p) and (p as Person).is_alive():
-					crowd.shelters.release(p)
-					crowd.take(p, KIND)
+					VeilParts.take_out(crowd, p, KIND)
 			crowd.shelters.shelters.erase(s)
 	ctx.env.remove(s, true, true, false)
 	_batched = true

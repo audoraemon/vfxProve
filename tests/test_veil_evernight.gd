@@ -97,7 +97,9 @@ static func run(t) -> void:
 	_put_out(t, made, kinds)
 	_bearer_killed(t, made, kinds)
 	_dawn(t, made, kinds)
+	_dawn_shelter(t, made, kinds)
 	_dread(t, made)
+	_dread_cut_short(t, made)
 	_rules(t, made)
 	_teardown(t, made)
 	_two(t, made)
@@ -424,6 +426,52 @@ static func _dawn(t, made: Array, kinds: Dictionary) -> void:
 	crowd.footholds.clear()
 
 
+## Final review, Important 2: a real shelterer (ShelterManager's own list) in a blighted building is taken at dawn and let out of the
+## shelter first, so when that shelter is next flushed he stays taken: not visible, not back in the field. Control: one sheltering in
+## the same way in a plain building lives and is flushed out as ever.
+static func _dawn_shelter(t, made: Array, kinds: Dictionary) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var field: EnemyField = made[3]
+	var at := _fresh(made)
+	var sm := crowd.shelters
+	var houses: Array[Structure] = []
+	for s: Structure in sm.shelters:
+		if is_instance_valid(s) and not s.destroyed and (sm.shelters[s].inside as Array).is_empty():
+			houses.append(s)
+	houses.sort_custom(func(a: Structure, b: Structure) -> bool: return a.get_instance_id() < b.get_instance_id())
+	t.check(houses.size() >= 2, "(two empty shelters)")
+	if houses.size() < 2:
+		return
+	var blighted := houses[0]
+	var plain := houses[1]
+	crowd.footholds.append(blighted)
+	var into := func(s: Structure) -> Person:
+		var p := _put(crowd, s.center() + Vector2(0.0, 3.0))
+		p.seek_shelter(s, s.center() + Vector2(0.0, 2.0))
+		sm._enter(p, s)
+		(sm.shelters[s].inside as Array).append(p)
+		return p
+	var doomed: Person = into.call(blighted)
+	var spared: Person = into.call(plain)
+	t.check(doomed.inside and doomed.shelter == blighted and (sm.shelters[blighted].inside as Array).has(doomed) and not field._enemies.has(doomed),
+		"(a real shelterer: inside, on the shelter's list, out of the field)")
+	var fx := _cast(ctx, at)
+	_until(fx, fx.t_dawn + DT)
+	t.check(not doomed.is_alive() and kinds.get(doomed.get_instance_id(), &"") == &"night" and not doomed.visible,
+		"at dawn the shelterer in the blighted building is taken")
+	t.check(not (sm.shelters[blighted].inside as Array).has(doomed), "and he is off the shelter's list")
+	sm._flush(blighted, sm.shelters[blighted], false)
+	sm._flush(plain, sm.shelters[plain], false)
+	# (The field keeps a dead entry until its purge(), as for any death in the open: "in the field" is its living.)
+	t.check(not doomed.is_alive() and not doomed.visible and not field.alive().has(doomed),
+		"the shelter flushed: he stays taken, not visible, not back in the field")
+	t.check(spared.is_alive() and spared.visible and not spared.inside and field._enemies.has(spared),
+		"(control) the one in the plain shelter lives and is flushed out as ever")
+	fx.end_now()
+	crowd.footholds.clear()
+
+
 ## Cast during a running Dread: the Dread's people stay held.
 static func _dread(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
@@ -443,6 +491,50 @@ static func _dread(t, made: Array) -> void:
 	fx.end_now()
 	t.check(p.is_dreaded() and not crowd.dreads.is_empty(), "Evernight ended: the Dread still holds him")
 	dread.end_now()
+
+
+## Final review, Important 3: a Dread cast before a running Evernight, both ended by the act change (Battlefield.end_powers(): every
+## FxTimeline in the overhead layer ended in cast order -- the loop below is that method's), lays no dusk of its own: no torch goes out
+## and nobody is taken in that frame. Control: a Dread that runs its course lays one patch at the click when it lifts (VC1).
+static func _dread_cut_short(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	var d := at + Vector2(4.0, 0.0)
+	crowd.lay_dusk(d, 1.5, 120.0)
+	var held := _put(crowd, d)
+	var bearer := _put(crowd, at + Vector2(1.5, 0.0), true)
+	var huddler := _put(crowd, at + Vector2(1.5, 1.0))
+	huddler.sleep(200.0, true)  # stays in the torch's light
+	var dread := FxTimeline.cast(DreadOfTheDarkFx, ctx, at) as DreadOfTheDarkFx
+	_go(dread, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(held.is_dreaded(), "(the Dread holds him)")
+	var fx := _cast(ctx, at + Vector2(-10.0, 0.0))
+	for i in roundi((E.WAVE + DT) / DT):
+		fx._process(DT)
+		dread._process(DT)
+	t.check(fx.torches.size() == 1 and not fx.torches[0].out and E._in_light(huddler.ground_pos, fx.lit())
+		and (fx.torches[0].at as Vector2).distance_to(at) <= VeilRules.DUSK_R + E.TORCH_R, "(a torch burns within a Dread dusk's reach of the click)")
+	var patches := crowd.dusk.count()
+	var alive := (crowd.citizens + crowd.soldiers).filter(func(p: Person) -> bool: return p.is_alive()).size()
+	for c in ctx.overhead.get_children():
+		# (Off the tree an ended effect frees its tracked nodes at once -- the Dread's shade is a sibling here.)
+		if is_instance_valid(c) and c is FxTimeline:
+			(c as FxTimeline).end_now()
+	t.check(dread.finished and fx.finished and crowd.dusk.count() == patches, "the act ends: the Dread cut short lays no dusk (%d / %d patches)"
+		% [crowd.dusk.count(), patches])
+	t.check(fx.taken.is_empty() and bearer.is_alive() and huddler.is_alive() and held.is_alive()
+		and (crowd.citizens + crowd.soldiers).filter(func(p: Person) -> bool: return p.is_alive()).size() == alive,
+		"no torch goes out on it: nobody is taken in that frame")
+	t.check(not held.is_dreaded() and crowd.dreads.is_empty(), "and the Dread lets go of its own")
+	# Control: left to run, the Dread lays one patch when it lifts.
+	at = _fresh(made)
+	crowd.lay_dusk(at + Vector2(4.0, 0.0), 1.5, 120.0)
+	var run := FxTimeline.cast(DreadOfTheDarkFx, ctx, at) as DreadOfTheDarkFx
+	patches = crowd.dusk.count()
+	_go(run, DreadOfTheDarkFx.T_FALL + DreadOfTheDarkFx.HOLD + DT)
+	t.check(crowd.dusk.count() == patches + 1 and crowd.dusk.covers(at), "(control) a Dread that runs its course lays one patch at the click")
+	run.end_now()
 
 
 ## C16 and the haste, through Rules: Evernight locks the other slots only for its wave; then a Veil power casts while the night runs,

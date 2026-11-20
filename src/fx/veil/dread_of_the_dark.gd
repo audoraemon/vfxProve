@@ -11,7 +11,8 @@ extends FxTimeline
 ## With no dark ground in reach the cast is refused ("no_dark", refusal(); Rules.cast() spends no cooldown).
 ## Each person carries the instance ids of the casts holding him (meta OWNERS; no statics), so two Dreads never undo each other.
 ## Silent: no danger, no alarm, no fright, no voice. Drawn for the god only (the overhead layer): the dark ground inside the reach
-## thickens, and its edge shows pale eyes. Its dusk is laid at the click when the dread lifts (ruling VC1).
+## thickens, and its edge shows pale eyes. Its dusk is laid at the click when the dread lifts (ruling VC1); a Dread cut short
+## (end_now(), an act change, a freed node) lays none.
 
 ## How long the dread holds, from the fall.
 const HOLD := 25.0
@@ -30,7 +31,7 @@ var reach := 6.0
 var _ids: Array[int] = []
 ## The crowd's dread this cast laid (Crowd.dread()), 0 when none is on.
 var _dread := 0
-## Whether the dread has lifted (and the dusk been laid).
+## Whether the dread has lifted (its dusk laid if it ran its course; none when cut short).
 var _lifted := false
 ## The god's look: the thickened dark and the eyes at its edge.
 var shade: DreadShade
@@ -174,8 +175,13 @@ func _release() -> void:
 	_dread = 0
 
 
+## Ended before the dread lifts (end_now(), an act change): everyone goes free and no dusk is laid -- a patch laid in teardown would
+## put out a running Evernight's torches and take their huddles at the act change (final review, Important 3; VC1 as amended). One
+## that ran its course has lifted already and laid its dusk then.
 func _finish() -> void:
-	_lift()
+	if not _lifted:
+		_lifted = true
+		_release()
 	super()
 
 

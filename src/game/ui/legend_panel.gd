@@ -11,7 +11,7 @@ signal closed
 ## The design frame the panel is laid out in; it is centred in the UI area (design_offset()), the dimmer behind it fills the whole area.
 const VIEW := Vector2(640.0, 360.0)
 const PANEL := Rect2(20.0, 12.0, 600.0, 336.0)
-const FOOTER := "H next   Esc close   the night waits"
+const FOOTER := "H next   B believers   Esc close   the night waits"
 const TITLES := ["WHAT THE MARKS MEAN", "OVER HEADS AND ON THE HUD"]
 const NIGHT_TITLE := "This night"
 const NOTHING := "Nothing is marked yet."

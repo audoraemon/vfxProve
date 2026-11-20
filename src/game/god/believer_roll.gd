@@ -97,12 +97,20 @@ func record(points: Array[Vector2]) -> void:
 		landings.append(v)
 
 
+## A living believer who was not carried (a granted wish's).
+func _is_named(p: Variant) -> bool:
+	if not is_instance_valid(p):
+		return false
+	var c := p as Person
+	return c.is_alive() and c.profile != null and c.profile.faith == CitizenProfile.Faith.BELIEVER 		and not _ids.has(c.get_instance_id())
+
+
 ## Believers not carried: living ones in the town (a granted wish's) plus any that got away alive.
 func named() -> int:
 	var n := _escaped_named
 	if is_instance_valid(crowd):
 		for p in crowd.citizens:
-			if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER 					and not _ids.has(p.get_instance_id()):
+			if _is_named(p):
 				n += 1
 	return n
 
@@ -117,7 +125,7 @@ func pick_fill(count: int, reserved: Array) -> Array[Person]:
 		anchors.append(v)
 	if anchors.is_empty():
 		for p in crowd.citizens:
-			if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER 					and not _ids.has(p.get_instance_id()):
+			if _is_named(p):
 				anchors.append(p.ground_pos)
 	var cands: Array[Person] = []
 	var keyed: Array = []

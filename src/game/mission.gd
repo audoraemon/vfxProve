@@ -163,6 +163,8 @@ var night_def: Callable
 var look_override := -1
 ## True in Endless Night (god P1, Ruling P9): the R key does nothing, so a night cannot be restarted.
 var restart_locked := false
+## The believer view (B), kept across acts; off at every start().
+var believer_view := false
 ## The chain's aim is up (god P3, MS §2): C was pressed in a rite with the chain ready, and the next click on the map chains the marked victim under
 ## it. A slot key or click, Esc or a right-click ends it; a refused click keeps it. The HUD's plate turns gold while it is up.
 var chain_aim := false:
@@ -430,6 +432,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		return
 	_close_legend()
 	chain_aim = false
+	believer_view = false
 	if remembrance != "":
 		powers = PackedStringArray([remembrance])  # Remembrance plays its one power, whatever Game or an R restart passes
 	if powers.is_empty():
@@ -637,6 +640,8 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_hud.set_pause_hidden(_pause_hidden)
+	_hud.believer_view = believer_view
+	_aim.believer_view = believer_view
 	# Covered-outline: a tagged person behind a stall, a tree or a house is traced in the tag's colour over what hides them. One layer
 	# per battlefield, over the world's grade; each act's HUD hands it its tags.
 	if _outlines == null or not is_instance_valid(_outlines):
@@ -1297,6 +1302,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if legend_open():
 		return  # R, F, the slots and every cast wait for the legend to close
+	if toggles_believers(event) and started() and not _ending:
+		var bvp := get_viewport()
+		if bvp != null:
+			bvp.set_input_as_handled()
+		set_believer_view(not believer_view)
+		return
 	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):
 		if skips_tour(event):  # a sweep and the prayers' hold skip as a tour does (v0.11.1, spec §2)
 			if is_inside_tree():
@@ -1380,6 +1391,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _pressing:
 			_pressing = false
 			_aim.release(_bf.mouse_ground())
+
+
+## Whether `event` is B pressed: the believer view's key.
+const BELIEVER_KEY := KEY_B
+
+
+static func toggles_believers(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == BELIEVER_KEY 		and not event.alt_pressed and not event.ctrl_pressed and not event.meta_pressed
+
+
+## Turns the believer view on or off: gold marks over believers and a count in the aim.
+func set_believer_view(on: bool) -> void:
+	believer_view = on
+	if is_instance_valid(_hud):
+		_hud.believer_view = on
+		_hud.queue_redraw()
+	if is_instance_valid(_aim):
+		_aim.believer_view = on
+		_aim.queue_redraw()
 
 
 ## Whether `event` is H pressed: the legend's key (spec §4, Decision 1).

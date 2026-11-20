@@ -219,6 +219,7 @@ const SUITES := [
 	"res://tests/test_starfall.gd",
 	"res://tests/test_descent.gd",
 	"res://tests/test_believer_roll.gd",
+	"res://tests/test_believer_view.gd",
 	"res://tests/test_wishes.gd",
 	"res://tests/test_wish_kinds.gd",
 	"res://tests/test_tier_board.gd",

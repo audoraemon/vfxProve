@@ -10,6 +10,9 @@ extends Control
 ## intro tour's caption above the slots.
 
 ## How long one banner stays up.
+## The believer view (B): the gold of its marks and the aim's count, and how high its marks sit (under a mission's diamond).
+const BELIEVER_COL := Color("ffd75a")
+const BELIEVER_LIFT := 14.0
 const BANNER_SECONDS := 2.2
 ## Cael's lines (v0.10 M5, spec §5.2): how long one stays up (longer than a banner: it is a sentence to read), the top of
 ## its plate (just under the banner's bar, 116 to 144), and the gap between his name and the line.
@@ -144,6 +147,8 @@ const STATUS_MARGIN := 6.0
 ## The viewport the world is drawn in (the mission's battlefield's). Hosted, the HUD lives in the root and the world in a SubViewport, so
 ## tag positions use this viewport's camera transform; null means the HUD's own viewport (not hosted, as before).
 var world_viewport: Viewport
+## Whether the believer view (B) is on: its gold marks are in all_tags().
+var believer_view := false
 var _rules: Rules
 var _crowd: Crowd
 var _town: Town
@@ -740,12 +745,26 @@ func ascend_rect() -> Rect2:
 	return Rect2(roundf((_view().x - wide) * 0.5), _bottom(ASCEND_TOP, ASCEND_SIZE.y), wide, ASCEND_SIZE.y)
 
 
+## The believer view's gold head marks (B): one pip over every living believer, unlabelled; none with the view off.
+func believer_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if not believer_view or _crowd == null:
+		return out
+	for p in _crowd.citizens:
+		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER:
+			var m := MapTag.pip(p, BELIEVER_COL)
+			m.lift = BELIEVER_LIFT
+			out.append(m)
+	return out
+
+
 ## Everything on the map's tag layer (v0.11 M1): the director's tags, then the wishes' (spec §5.1), so a crowded view keeps
 ## the mission's own labels.
 func all_tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if _rules == null:
 		return out
+	out.append_array(believer_tags())  # under the mission's own marks
 	if _rules.director != null:
 		out.append_array(_rules.director.tags())
 	if _rules.lantern != null:
@@ -1500,6 +1519,7 @@ func _draw() -> void:
 	var w := _view().x
 	_frame_wishes = _build_wish_rows()  # v0.11.1: the wish rows are built once a draw, not once a plate
 	_draw_rise()
+	_draw_believers_text()
 	if clock_shown():
 		_draw_clock(w)
 	_draw_rite(w)
@@ -1516,6 +1536,17 @@ func _draw() -> void:
 		_draw_chain()
 		_draw_slots(w)
 	_frame_wishes = null
+
+
+## The aim's believer count, beside the aim point.
+func _draw_believers_text() -> void:
+	if _aim == null:
+		return
+	var s := _aim.believers_text()
+	if s == "":
+		return
+	var at := (_world_xf() * Iso.ground_to_screen(_aim.aim_at())).round() + Vector2(10.0, -10.0)
+	UiTheme.text(self, at, s, UiTheme.TEXT_S, BELIEVER_COL)
 
 
 ## The night's clock: not in Remembrance, which has no night to count down.

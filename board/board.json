@@ -1,10 +1,10 @@
 {
- "hash": "32c8255d9a207894",
- "updated": "2026-11-20T12:46:36+07:00",
+ "hash": "c181614fb9b415a5",
+ "updated": "2026-11-21T06:00:19+07:00",
  "changes": {
-  "date": "<t:1795153596:f>",
+  "date": "<t:1795215619:f>",
   "items": [
-   "New: Smite drag-to-widen + Ember sets people alight, Fire Trail"
+   "New: Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune (in progress)"
   ]
  },
  "snapshot": {
@@ -247,6 +247,15 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-19",
     "order": 5
+   },
+   "death-path-t1": {
+    "title": "Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune",
+    "status": "doing",
+    "area": "Gameplay",
+    "version": "vfx",
+    "needs_you": false,
+    "updated": "2026-11-20",
+    "order": 23
    },
    "death-review-2": {
     "title": "Death powers: your second review",
@@ -1608,9 +1617,9 @@
     "title": "Veil authority tree and powers",
     "status": "doing",
     "area": "Abilities",
-    "needs_you": false,
+    "needs_you": true,
     "branch": "god/veil-powers",
-    "updated": "2026-11-19",
+    "updated": "2026-11-21",
     "order": 5
    },
    "vfx-anathema": {
@@ -1888,43 +1897,91 @@
   "branches": [
    {
     "name": "god/veil-merge",
-    "ahead": 32,
+    "ahead": 33,
     "behind": 15,
-    "date": "2026-11-20",
-    "subject": "fix(veil): Evernight reads no Aldermere place for its night's ground",
+    "date": "2026-11-21",
+    "subject": "test: re-record the 113 reference rows that cast a Veil power",
+    "pushed": false
+   },
+   {
+    "name": "god/veil-powers",
+    "ahead": 33,
+    "behind": 15,
+    "date": "2026-11-21",
+    "subject": "test: re-record the 113 reference rows that cast a Veil power",
+    "pushed": false
+   },
+   {
+    "name": "feat/soldier-duties",
+    "ahead": 14,
+    "behind": 0,
+    "date": "2026-11-21",
+    "subject": "fix: cordon review wave (a hold never overrides a flight, mission charges cross, path-crossers stay held, open jobs let go)",
+    "pushed": false
+   },
+   {
+    "name": "feat/town-suspicion",
+    "ahead": 12,
+    "behind": 0,
+    "date": "2026-11-21",
+    "subject": "fix: Town Suspicion review wave (only a natural cast excuses a death; soldiers scenario keeps its keeper; the town's one call; quiet banner)",
     "pushed": false
    },
    {
     "name": "claude/lantern-campaign-spec",
-    "ahead": 20,
-    "behind": 11,
+    "ahead": 22,
+    "behind": 0,
     "date": "2026-11-20",
-    "subject": "fix: mission clarity final-review wave (F1-F3, M1-M9)",
+    "subject": "fix: why-not judges a Gathered Storm by the bolt it cast",
+    "pushed": false
+   },
+   {
+    "name": "feat/god-chamber",
+    "ahead": 21,
+    "behind": 15,
+    "date": "2026-11-20",
+    "subject": "test: track test_capital_god_night's uid",
     "pushed": false
    },
    {
     "name": "feat/might-gauge",
-    "ahead": 18,
-    "behind": 11,
+    "ahead": 19,
+    "behind": 0,
     "date": "2026-11-20",
     "subject": "test: track the route suite's uid",
     "pushed": false
    },
    {
-    "name": "feat/god-chamber",
-    "ahead": 11,
-    "behind": 15,
+    "name": "claude/natural-people",
+    "ahead": 7,
+    "behind": 0,
     "date": "2026-11-20",
-    "subject": "docs: World Map and Conquer Progress design (God's Chamber step 8)",
+    "subject": "feat: the fair's goers stand in talking groups and stroll (fair life T3)",
     "pushed": false
    },
    {
-    "name": "god/veil-powers",
-    "ahead": 6,
-    "behind": 15,
+    "name": "feat/loss-warning",
+    "ahead": 4,
+    "behind": 11,
     "date": "2026-11-20",
-    "subject": "fix: Veil hooks review -- a shadow seizes, finds, reports and delivers nothing",
+    "subject": "fix: the loss warning kicks the world's picture, not the camera",
     "pushed": false
+   },
+   {
+    "name": "god/ember-trail",
+    "ahead": 2,
+    "behind": 0,
+    "date": "2026-11-20",
+    "subject": "feat: Ember's Fire Trail is its own short-lived trail fire that hurts who crosses it; the burning man burns brighter",
+    "pushed": false
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-20",
+    "subject": "feat: God's Paths music (temple piece + one layer per school for the picked god)",
+    "pushed": true
    },
    {
     "name": "feat/wish-clarity",

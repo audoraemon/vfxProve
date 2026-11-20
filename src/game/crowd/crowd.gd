@@ -1163,6 +1163,9 @@ func advance(delta: float) -> void:
 func _advance(delta: float) -> void:
 	_clock += delta
 	suspicion.advance(delta)
+	# The town's one call is spent once the bell has left idle by any route during an emergency (as the first Local Emergency was).
+	if not _keeper_sent and bell != null and bell.state != BellNetwork.State.IDLE and alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY:
+		_keeper_sent = true
 	_thought_left = maxf(0.0, _thought_left - delta)
 	if remains != null:
 		remains.step(delta)
@@ -1503,6 +1506,7 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1, scale := 1.0) -> void:
 	if is_veiled(ground):
 		return  # cast where nothing is seen (Unseen Hour): no look, no danger, no unease
+	suspicion.excuse(PowerBook.look(key))  # a natural-looking cast excuses its kinds of death, seen or not
 	if PowerBook.is_quiet(key):
 		# Nothing for the town to see (v0.05): Silent Doom and Blight report their own effects. A quiet power may still
 		# unsettle it a little (its book entry's "alarm": a congregation forming, a bloom of madness).
@@ -1599,6 +1603,8 @@ func _sign(points: Array[Vector2], sight: float, look: StringName, clear := 0.0)
 ## shout the first time the town turns uneasy. The shout spends a voice token: tokens gate only the sound and voices_played, never
 ## behaviour or a random draw, so no simulation state moves.
 func _on_sign_seen(witness: Person, look: StringName, before: StringName, after: StringName) -> void:
+	if before == &"known":
+		return  # the town already knows: nothing left to say
 	_thought_who = witness
 	_thought_left = THOUGHT_SECONDS
 	match after:

@@ -9,6 +9,7 @@ static func run(t) -> void:
 	_flat_and_none(t)
 	_fade(t)
 	_latch(t)
+	_excuses(t)
 	_looks(t)
 
 
@@ -151,10 +152,52 @@ static func _latch(t) -> void:
 	t.check(s.reason == "an unnatural power", "the first reason wins")
 
 	s = Suspicion.new()
-	t.check(s.explains(&"lightning") and s.explains(&"collapse"), "lightning and collapse are explained")
-	t.check(not s.explains(&"plague") and not s.explains(&"doom"), "plague and doom are not")
+	s.excuse(&"lightning")
 	s.know("x")
 	t.check(not s.explains(&"lightning"), "nothing is explained once the town knows")
 	s.reset()
 	t.check(s.value == 0.0 and not s.known and s.reason == "" and s.recent().is_empty(), "reset() forgets everything")
-	t.check(s.explains(&"lightning"), "and explains again")
+	t.check(not s.explains(&"lightning"), "and forgets every excuse")
+
+
+## What a natural-looking cast excuses: its kinds of death and collapses, for EXCUSE_SECONDS from the cast; nothing otherwise.
+static func _excuses(t) -> void:
+	var kinds := [&"lightning", &"fire", &"wind", &"water", &"choke", &"pit", &"collapse", &"plague", &"doom"]
+	var s := Suspicion.new()
+	var any := false
+	for k in kinds:
+		any = any or s.explains(k)
+	t.check(not any, "a fresh town, no cast: no kind is explained")
+	s.excuse(Suspicion.UNNATURAL)
+	s.excuse(Suspicion.NONE)
+	for k in kinds:
+		any = any or s.explains(k)
+	t.check(not any, "NONE and UNNATURAL excuse nothing")
+	var want := {&"lightning": [&"lightning"], &"fire": [&"fire"], &"storm": [&"wind", &"lightning"], &"quake": [&"pit"],
+		&"flood": [&"water"], &"miasma": [&"choke"]}
+	for look: StringName in want:
+		s = Suspicion.new()
+		s.excuse(look)
+		var got := []
+		for k in kinds:
+			if s.explains(k):
+				got.append(k)
+		var expect: Array = want[look] + [&"collapse"]
+		got.sort()
+		expect.sort()
+		t.check(got == expect, "%s excuses %s and collapse (%s)" % [look, want[look], got])
+	s = Suspicion.new()
+	s.excuse(&"lightning")
+	_wait(s, 89.0)
+	t.check(s.explains(&"lightning"), "still excused 89 s after the cast")
+	_wait(s, 2.0)
+	t.check(not s.explains(&"lightning") and not s.explains(&"collapse"), "not excused 91 s after it")
+	s.excuse(&"lightning")
+	_wait(s, 60.0)
+	s.excuse(&"storm")
+	_wait(s, 60.0)
+	t.check(s.explains(&"lightning") and s.explains(&"wind"), "a later cast extends the excuse (120 s from the first, 60 s from the second)")
+	s = Suspicion.new()
+	s.excuse(&"fire")
+	s.know("x")
+	t.check(not s.explains(&"fire"), "an excuse explains nothing once the town knows")

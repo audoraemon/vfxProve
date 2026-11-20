@@ -786,6 +786,7 @@ static func _watched(t) -> void:
 	var crowd: Crowd = s.crowd
 	var q: AssassinateDirector.Quarry = (s.d as TaxCollectorDirector).quarries[0]
 	crowd.suspicion.add(20.0)
+	crowd.suspicion.excuse(&"lightning")  # a Smite was cast: lightning is an accident
 	var before := crowd.suspicion.value
 	_seen_kill(s, 0, &"lightning")
 	t.check(q.dead and q.judged and not q.unseen and (s.banners as Array).has("THE GUARDS CRY MURDER"),
@@ -824,6 +825,12 @@ static func _watched(t) -> void:
 	_seen_kill(k, 0, &"lightning")
 	t.check(kc.bell.state != BellNetwork.State.IDLE, "the town already knows: a seen lightning kill calls the keeper at once")
 	_done(k)
+	var n := _world()
+	var nc: Crowd = n.crowd
+	_seen_kill(n, 0, &"lightning")
+	t.check(nc.bell.state != BellNetwork.State.IDLE and not nc.suspicion.known,
+		"no natural cast in the run: a seen kill by kind lightning is no accident, the keeper is called at once as on the base")
+	_done(n)
 
 
 static func _freed(t) -> void:

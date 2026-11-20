@@ -772,19 +772,29 @@ static func _suspicion(t, hud: Hud, crowd: Crowd, rules: Rules) -> void:
 	m._crowd = crowd
 	m._rules = rules
 	var heard := PackedStringArray()
+	var quiet := PackedStringArray()
 	var listen := func(text: String) -> void: heard.append(text)
+	var listen_quiet := func(text: String) -> void: quiet.append(text)
 	rules.banner.connect(listen)
+	rules.quiet_banner.connect(listen_quiet)
 	s.reset()
 	m._wire_responses()
 	m._wire_responses()
 	s.value = 0.0
 	s.add(50.0 / s.wary)
-	t.check(heard == PackedStringArray(["THE TOWN GROWS UNEASY"]), "the town grows uneasy: one banner (%s)" % ", ".join(heard))
+	t.check(quiet == PackedStringArray(["THE TOWN GROWS UNEASY"]) and heard.is_empty(), "the town grows uneasy: one quiet banner (%s)" % ", ".join(quiet))
 	s.add(1.0)
-	t.check(heard.size() == 1, "and not again while it stays uneasy")
+	t.check(quiet.size() == 1, "and not again while it stays uneasy")
 	s.know("an unnatural power")
-	t.check(heard == PackedStringArray(["THE TOWN GROWS UNEASY", "THE TOWN KNOWS: A GOD IS HERE"]), "the town knows: its banner, once (%s)" % ", ".join(heard))
+	t.check(heard == PackedStringArray(["THE TOWN KNOWS: A GOD IS HERE"]) and quiet.size() == 1, "the town knows: its loud banner, once (%s)" % ", ".join(heard))
+	hud._banners.clear()
+	rules.quiet_banner.emit("THE TOWN GROWS UNEASY")
+	rules.banner.emit("THE TOWN KNOWS: A GOD IS HERE")
+	t.check(hud._banners.size() == 2 and bool(hud._banners[0][2]) and not bool(hud._banners[1][2]),
+		"the HUD queues the uneasy banner as quiet (no ui_notice) and the knows banner as loud")
+	hud._banners.clear()
 	rules.banner.disconnect(listen)
+	rules.quiet_banner.disconnect(listen_quiet)
 	m.free()
 	s.reset()
 	# The F4 overlay's line.

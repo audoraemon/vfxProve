@@ -256,6 +256,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	for i in _rules.loadout.size():
 		_slot_names.append(String(_rules.power(i).get("name", "")))
 	_rules.banner.connect(push_banner)
+	_rules.quiet_banner.connect(func(text: String) -> void: push_banner(text, true))
 	_rules.subtitle.connect(push_subtitle)
 	_rules.cast_refused.connect(_on_cast_refused)
 	_rules.recharged.connect(_on_recharged)

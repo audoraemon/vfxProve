@@ -143,11 +143,11 @@ every rule is today's.
 
 ### 5.5 What changes in today's rules
 
-**Explained deaths.** A death or collapse is *explained* while the town does not know and a natural-looking power
-caused it: the kill kinds of the natural powers (`lightning`, Ember's `fire`, the tornado's `wind`, the tsunami's
-`water`, the haze's `choke`, Earthshatter's and Wrath of the Sky's own kinds; the builder reads each natural power's FX
-for the kind it kills with and lists them in one table in `Suspicion`), and any building's collapse. Every other death
-is *unexplained*, as is every death once the town knows.
+**Explained deaths.** A natural-looking cast (Smite, Ember, the tornado, Wrath of the Sky, Earthshatter, the tsunami, the haze)
+excuses the kinds of death it can cause, and any building's collapse, for 90 s from the cast, whether anyone saw it or not
+(`Suspicion.excuse()`; the table `EXCUSES` lists each look's kinds). A death or collapse is *explained* only while its kind
+is excused and the town does not know; every other death is *unexplained*, so in a run where no natural power is ever cast
+nothing is explained and the keeper is sent exactly as today, even when an unnatural power kills with the same kinds.
 
 1. **The keeper's call at a district emergency.** Today: the first Local Emergency calls him. New: he is called when a
    district holds `LOCAL_EVENTS` (4) *unexplained* incidents, or when a district is in Local Emergency and the town
@@ -241,6 +241,6 @@ nothing special.
 ## 9. Numbers to tune (all in one place, `Suspicion` and `ResponseProfile`)
 
 `UNEASY_AT` 40, `KNOWN_AT` 100, `MEMORY` 60 s, `CALM_DELAY` 15 s, fade 0.4/s, the base of each look, the 0.5 for other
-looks, `TARGET_SIGN` 40, `QUIET_SIGN_SIGHT` 5.0, `wary` per profile. Tuning order if a gate that passed on the base
+looks, `TARGET_SIGN` 40, `QUIET_SIGN_SIGHT` 5.0, `EXCUSE_SECONDS` 90, `wary` per profile. Tuning order if a gate that passed on the base
 fails: fix the bot's policy; then `wary`; then the bases. Any number that ends different from this document is reported
 to the user before landing.

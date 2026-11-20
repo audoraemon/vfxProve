@@ -1083,6 +1083,7 @@ static func _watched(t) -> void:
 			near = p
 	Kit.arrive(near, q.target.ground_pos + Vector2(1.5, 0.0))
 	crowd.suspicion.add(20.0)
+	crowd.suspicion.excuse(&"lightning")  # a Smite was cast: lightning is an accident
 	var before := crowd.suspicion.value
 	crowd._field.kill(q.target, &"lightning")
 	Kit.run_for(s, 0.5)

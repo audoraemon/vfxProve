@@ -18,7 +18,7 @@
 - Shared files (`crowd.gd`, `hud.gd`, `mission.gd`, `alarm_manager.gd`, `power_book.gd`): hooks only, smallest diff.
 - Numbers (spec 5.2, 5.3, 9), all constants of `Suspicion` unless said: `UNEASY_AT` 40, `KNOWN_AT` 100, `MEMORY` 60 s, `CALM_DELAY` 15 s, `FADE` 0.4/s, `OTHER_LOOKS` 0.5, `TARGET_SIGN` 40, `QUIET_SIGN_SIGHT` 5.0; bases lightning 20, fire 20, storm 25, quake 30, flood 30, miasma 30; `ResponseProfile.wary` Unprepared 0.8, Unaware 1.0, Organized 1.0, Prepared 1.25, God-Resistant 1.5.
 - Looks (spec 5.2): `smite` lightning; `ember` fire; `tornado`, `tempest` storm; `shatter` quake; `tsunami` flood; `breath` miasma; `disorder` none. Every other loud power unnatural, every other quiet power none.
-- Explained death kinds: `lightning`, `fire`, `wind`, `water`, `choke`, `pit`, `collapse` (checked against the natural powers' FX: smite.gd:62, tempest.gd:257, tornado_tempest.gd:473, tsunami_breaker.gd:404, breathing_is_prohibited.gd:211, earthshatter.gd:231, burning.gd:130, rescue_manager.gd:269), and any building's collapse.
+- Excuse rule (Ruling R7): a natural-looking cast (smite, ember, tornado, tempest, shatter, tsunami, breath) excuses its kinds of death (`EXCUSES`: lightning, fire, storm = wind + lightning, quake = pit, flood = water, miasma = choke) and collapses for `EXCUSE_SECONDS` 90 s from the cast, witnessed or not; a death is explained only while its kind is excused and the town does not know. With no natural cast in the run nothing is explained and the keeper is sent as on the base.
 - Project style: tests first; a `##` doc comment on every new member; no commented-out code; a new suite is registered in `tests/run_all.gd` SUITES; test files write only `user://test_*`; no new audio files; no PixelLab.
 - Commits end with `Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>`.
 
@@ -68,7 +68,8 @@ signal became_known(reason: String) ## once
 const UNNATURAL := &"unnatural"
 const NONE := &""
 const BASE := {&"lightning": 20.0, &"fire": 20.0, &"storm": 25.0, &"quake": 30.0, &"flood": 30.0, &"miasma": 30.0}
-const EXPLAINED: Array[StringName] = [&"lightning", &"fire", &"wind", &"water", &"choke", &"pit", &"collapse"]
+const EXCUSES := {&"lightning": [&"lightning"], &"fire": [&"fire"], &"storm": [&"wind", &"lightning"], &"quake": [&"pit"], &"flood": [&"water"], &"miasma": [&"choke"]}
+const EXCUSE_SECONDS := 90.0
 var value := 0.0
 var known := false
 var reason := ""        ## why the town knows; "" until it does
@@ -79,7 +80,8 @@ func know(why: String) -> void         ## latch; value = 100; first reason wins
 func advance(delta: float) -> void     ## clock, memory, fade
 func state() -> StringName             ## &"calm", &"uneasy" (value >= UNEASY_AT), &"known"
 func recent() -> Array                 ## [[look, seconds ago]] newest last, for the overlay
-func explains(kind: StringName) -> bool  ## not known and kind in EXPLAINED
+func excuse(look: StringName) -> void  ## a cast of a natural look excuses its kinds (and collapse) for EXCUSE_SECONDS
+func explains(kind: StringName) -> bool  ## not known and kind excused now
 func reset() -> void
 ```
 `added = BASE[look] * (1 + same) * (1 + OTHER_LOOKS * others) * wary`, `same` = signs of that look in memory, `others` = distinct other looks in memory. The fade starts `CALM_DELAY` after the last sign or `add`; a known town does not fade.

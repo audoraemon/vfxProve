@@ -1664,6 +1664,7 @@ func _soldiers(which: String) -> void:
 		"escort", "noescort":
 			crowd.alarms.stage = AlarmManager.Stage.CONCERN
 			crowd._on_stage(AlarmManager.Stage.LOCAL_EMERGENCY, "test")
+			crowd.bell.call_keeper()  # the town no longer sends him at a bare Local Emergency
 			var killed := false
 			# Stepped by half seconds so that the kill falls on a set point of the climb; a line every 2 s.
 			for k in 60:

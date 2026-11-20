@@ -17,9 +17,11 @@ const UNNATURAL := &"unnatural"
 const NONE := &""
 ## What a first sign of each natural look adds (wary 1.0, nothing else in memory).
 const BASE := {&"lightning": 20.0, &"fire": 20.0, &"storm": 25.0, &"quake": 30.0, &"flood": 30.0, &"miasma": 30.0}
-## The kinds of death a natural-looking power explains while the town does not know (the kills of Smite, Ember, the
-## tornado, the tsunami, the haze, Earthshatter; the collapse of any building).
-const EXPLAINED: Array[StringName] = [&"lightning", &"fire", &"wind", &"water", &"choke", &"pit", &"collapse"]
+## The kinds of death each natural look excuses (a cast of that look; every natural look also excuses a collapse).
+const EXCUSES := {&"lightning": [&"lightning"], &"fire": [&"fire"], &"storm": [&"wind", &"lightning"], &"quake": [&"pit"],
+	&"flood": [&"water"], &"miasma": [&"choke"]}
+## Seconds a natural-looking cast excuses its kinds of death, from the cast.
+const EXCUSE_SECONDS := 90.0
 ## The value from which the town is uneasy.
 const UNEASY_AT := 40.0
 ## The value at which the town knows.
@@ -56,6 +58,8 @@ var _clock := 0.0
 var _idle := 0.0
 ## True while the value is at or past UNEASY_AT, so the uneasy signal fires once per rise.
 var _is_uneasy := false
+## Kind of death -> the clock until which a natural-looking cast excuses it.
+var _excused: Dictionary = {}
 
 
 ## One witnessed cast of `look`. Returns what it added to the value (0 for NONE; UNNATURAL knows at once and returns
@@ -136,9 +140,20 @@ func recent() -> Array:
 	return out
 
 
-## True when a death of `kind` is explained by weather or accident: the town does not know and the kind is in EXPLAINED.
+## A cast of `look` was made, seen or not: its kinds of death (and collapses) are excused for EXCUSE_SECONDS from now, a later cast
+## extending them. NONE and UNNATURAL excuse nothing.
+func excuse(look: StringName) -> void:
+	if not EXCUSES.has(look):
+		return
+	var until := _clock + EXCUSE_SECONDS
+	for kind: StringName in EXCUSES[look] + [&"collapse"]:
+		_excused[kind] = until
+
+
+## True when a death of `kind` is explained by weather or accident: the town does not know and a natural-looking cast excuses
+## the kind now. With no such cast in the run nothing is explained.
 func explains(kind: StringName) -> bool:
-	return not known and EXPLAINED.has(kind)
+	return not known and float(_excused.get(kind, -1.0)) >= _clock
 
 
 ## Back to a calm town that knows nothing (R restart, Crowd.clear()).
@@ -150,6 +165,7 @@ func reset() -> void:
 	_clock = 0.0
 	_idle = 0.0
 	_is_uneasy = false
+	_excused.clear()
 	changed.emit()
 
 

@@ -13,6 +13,7 @@ static func run(t) -> void:
 	_ways_to_know(t)
 	_deterministic(t)
 	_keeper(t)
+	_excuse_rules(t)
 	_thought(t)
 
 
@@ -261,6 +262,7 @@ static func _keeper(t) -> void:
 	var s := _world()
 	var crowd: Crowd = s.crowd
 	var bell := crowd.bell
+	crowd.suspicion.excuse(&"lightning")
 	_deaths(s, &"lightning", 4, at)
 	t.check(crowd.alarms.stage == AlarmManager.Stage.LOCAL_EMERGENCY and crowd._investigating.size() == Crowd.INVESTIGATORS,
 		"four lightning deaths in a district: Local Emergency, the two investigators sent")
@@ -283,6 +285,7 @@ static func _keeper(t) -> void:
 
 	s = _world()
 	crowd = s.crowd
+	crowd.suspicion.excuse(&"lightning")
 	_deaths(s, &"lightning", 3, at)
 	_deaths(s, &"plague", 1, at, 3)
 	t.check(crowd.bell.state == BellNetwork.State.IDLE and not crowd.keeper_due(), "three lightning and one plague: not called")
@@ -290,11 +293,15 @@ static func _keeper(t) -> void:
 	t.check(crowd.bell.state != BellNetwork.State.IDLE, "three more plague deaths (four unexplained): called")
 	_done(s)
 
-	for knows in [false, true]:
+	for mode in ["excused", "known", "no natural cast"]:
+		var knows: bool = mode != "excused"
 		s = _world()
 		crowd = s.crowd
-		if knows:
+		if mode == "known":
 			crowd.suspicion.know("test")
+		elif mode == "excused":
+			crowd.on_cast(AT, Vector2.ZERO, 0.0, "tornado")
+			_run(crowd, 5.0)
 		var in_district: Array[Structure] = []
 		var by_district := {}
 		for st: Structure in (s.env as EnvironmentField).structures():
@@ -310,7 +317,7 @@ static func _keeper(t) -> void:
 			crowd._on_structure_destroyed(st, &"test")
 		crowd.advance(0.6)  # the stage follows the incidents on the alarm's half-second tick
 		t.check(in_district.size() == AlarmManager.LOCAL_EVENTS and (crowd.bell.state != BellNetwork.State.IDLE) == knows,
-			"four collapses in a district: the keeper is called only if the town knows (%s)" % [knows])
+			"four collapses in a district: called unless a Tornado cast 5 s ago excuses them (%s)" % [mode])
 		_done(s)
 
 	s = _world()
@@ -378,6 +385,7 @@ static func _keeper(t) -> void:
 	s = _world()
 	crowd = s.crowd
 	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	crowd.suspicion.excuse(&"fire")
 	crowd.suspicion.know("act one")
 	crowd.clear_mission_hooks()
 	crowd.drop_held()
@@ -385,6 +393,78 @@ static func _keeper(t) -> void:
 	t.check(crowd.suspicion.known and crowd._keeper_sent, "a new act keeps what the town knows and the keeper's call")
 	crowd.clear()
 	t.check(not crowd.suspicion.known and not crowd._keeper_sent, "an R restart forgets both")
+	_done(s)
+
+
+## The excuse rule: only a natural-looking cast excuses a kind of death, for Suspicion.EXCUSE_SECONDS from the cast; and the town's
+## one call is spent once the bell has left idle.
+static func _excuse_rules(t) -> void:
+	var at := _district_at(0)
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	_deaths(s, &"lightning", 3, at)
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "three lightning deaths, no cast: not yet")
+	_deaths(s, &"lightning", 1, at, 3)
+	t.check(crowd.bell.state != BellNetwork.State.IDLE and not crowd.suspicion.known,
+		"four lightning deaths and no Smite ever cast (Heaven Splitter): the keeper is sent at the fourth, as on the base")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	crowd.on_cast(AT, Vector2.ZERO, 0.0, "smite")
+	_run(crowd, 10.0)
+	_deaths(s, &"lightning", 4, at)
+	t.check(crowd.alarms.stage == AlarmManager.Stage.LOCAL_EMERGENCY and crowd.bell.state == BellNetwork.State.IDLE,
+		"the same after a Smite cast 10 s earlier (seen or not): explained, no keeper")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	crowd.on_cast(AT, Vector2.ZERO, 0.0, "smite")
+	_run(crowd, 100.0)
+	_deaths(s, &"lightning", 4, at)
+	t.check(crowd.bell.state != BellNetwork.State.IDLE, "after a Smite cast 100 s earlier the excuse has run out: the keeper is sent")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	_deaths(s, &"fire", 4, at)
+	t.check(crowd.bell.state != BellNetwork.State.IDLE, "four fire deaths and no Ember cast: unexplained, the keeper is sent")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	crowd.on_cast(AT, Vector2.ZERO, 0.0, "ember")
+	_run(crowd, 1.0)
+	_deaths(s, &"fire", 4, at)
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "four fire deaths 1 s after an Ember (cast in a quiet town): explained")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	crowd.on_cast(AT, Vector2.ZERO, 0.0, "tempest")
+	t.check(crowd.suspicion.explains(&"lightning") and crowd.suspicion.explains(&"wind") and not crowd.suspicion.explains(&"fire"),
+		"Wrath of the Sky excuses lightning and wind, not fire")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	crowd.veil(AT, 10.0, 30.0)
+	crowd.on_cast(AT, Vector2.ZERO, 0.0, "smite")
+	t.check(not crowd.suspicion.explains(&"lightning"), "a cast under the Unseen Hour excuses nothing")
+	_done(s)
+
+	# The town's one call is spent once the bell has left idle by any route: a script's call, a restore, then the town comes to know.
+	s = _world()
+	crowd = s.crowd
+	crowd.suspicion.excuse(&"lightning")
+	_deaths(s, &"lightning", 4, at)
+	t.check(crowd.alarms.stage == AlarmManager.Stage.LOCAL_EMERGENCY and crowd.bell.state == BellNetwork.State.IDLE, "excused deaths: Local Emergency, no keeper")
+	crowd.bell.call_keeper()
+	crowd.advance(0.1)
+	crowd.bell.restore(crowd.bell.keeper)
+	crowd.suspicion.know("x")
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "a script called him and restored the bell: the town's one call is spent, no second")
 	_done(s)
 
 
@@ -483,4 +563,13 @@ static func _thought(t) -> void:
 	var rng_before := crowd._rng.state
 	crowd.sign_seen.emit(w, &"lightning", &"calm", &"uneasy")
 	t.check(crowd._rng.state == rng_before, "the thought spends no random draw")
+	_done(s)
+
+	# A town that already knows has nothing to say: no tag for a sign (the signal is still emitted).
+	s = _world()
+	crowd = s.crowd
+	_stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
+	crowd.suspicion.know("test")
+	var seen := _cast(crowd, "smite")
+	t.check(seen.size() == 1 and crowd.thought_tags().is_empty(), "the town knows: the sign is seen, no thought tag (%d)" % crowd.thought_tags().size())
 	_done(s)

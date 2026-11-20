@@ -152,6 +152,8 @@ var guard_jobs: GuardJobs
 var guard: CitadelGuard
 ## Corpse duty (a duty of the board's): a beat pair inspects a body, reports it and carries it off the street.
 var corpses: CorpseDuty
+## The cordon duty (soldier duties, slice c): two soldiers rope off a street beside a doused fire or a fall.
+var cordon: CordonDuty
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
 var mission_holds: Array[Callable] = []
 ## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
@@ -329,9 +331,12 @@ class ResponseDrawer extends Node2D:
 				crowd.madness.draw_ground(self)
 			else:
 				crowd.madness.draw_over(self)
-		if crowd.guard_jobs != null and not ground:
+		if crowd.guard_jobs != null:
 			for kind in crowd.guard_jobs.duties:
-				(crowd.guard_jobs.duties[kind] as Duty).draw(self)
+				if ground:
+					(crowd.guard_jobs.duties[kind] as Duty).draw_ground(self)
+				else:
+					(crowd.guard_jobs.duties[kind] as Duty).draw(self)
 
 	## Whether anything is on show now.
 	func showing() -> bool:
@@ -382,6 +387,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	guard_jobs.add_duty(guard)
 	corpses = CorpseDuty.new().setup(guard_jobs, self) as CorpseDuty
 	guard_jobs.add_duty(corpses)
+	cordon = CordonDuty.new().setup(guard_jobs, self) as CordonDuty
+	guard_jobs.add_duty(cordon)
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
@@ -2586,7 +2593,9 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 				p.replan()
 	if s.leaves_ruin():
 		clear_ground(WalkGrid.solid_rect(s.footprint))
+		var piled := piles.piles.size()
 		piles.on_fall(s)
+		cordon.request(s, piles.centre(piles.piles.back()) if piles.piles.size() > piled else s.center())
 
 
 ## The sound of a body falling (v0.11.2, DeathVoices): positional, at the body. In a hushed town (or a hushed place: Pale
@@ -2642,6 +2651,11 @@ func doom_witness() -> float:
 	return DOOM_WITNESS * sight_scale
 
 
+## Whether the segment `a`-`b` crosses a live cordon's rope (false at once with none live): a lure through it fails.
+func cordon_blocks(a: Vector2, b: Vector2) -> bool:
+	return cordon != null and cordon.blocks(a, b)
+
+
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
 ## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
 ## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too. One passing as the
@@ -2653,6 +2667,8 @@ func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 		for p in group:
 			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p) or p.guised():
 				continue
+			if cordon != null and cordon.crew_blind(p, at):
+				continue  # a cordon man looks outward: nothing inside his own rope is seen by him
 			var d := p.ground_pos.distance_to(at)
 			if d <= best_d:
 				best = p

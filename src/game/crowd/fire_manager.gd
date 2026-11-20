@@ -271,6 +271,8 @@ func _put_out(s: Structure, doused: bool) -> void:
 	fires.erase(s)
 	if doused and is_instance_valid(s):
 		_crowd.threats.register(s.center(), s.footprint.size.length() * 0.5, 0.2, 0.1, 3.0, 4.0, &"smoke")
+		if not s.destroyed and _crowd.cordon != null:
+			_crowd.cordon.request(s, s.center())
 
 
 ## A bucket of water on `s`.

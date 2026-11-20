@@ -249,6 +249,9 @@ var hurrying := false
 var stand_face := Vector2.INF
 ## Down on one knee over something (a corpse inspector): the stumble pose held on its last frame while he stands still.
 var crouching := false
+## Seconds a soldier still stands talking (a cordon man to a citizen he turns back; later duties reuse it): while above zero and
+## not striding, _interact_anim() shows the talk loop in any mind. Counted down in tick(); every duty that sets it clears it.
+var talk_left := 0.0
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
 ## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
 ## the duty -- and not to his spawn post (_soldier_back()).
@@ -643,6 +646,8 @@ func tick(delta: float) -> void:
 		_run_carried_laws(delta)
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
+	if talk_left > 0.0:
+		talk_left = maxf(talk_left - delta, 0.0)
 	if _bend_to != Vector2.INF:
 		_bend_left -= delta
 		if _bend_left <= 0.0:
@@ -1484,6 +1489,8 @@ func lure(at: Vector2, seconds: float, from := Vector2.INF, reach := WillOWisp.C
 			return false
 	elif not (mind in LURABLE or (answers_lure and mind == Mind.DUTY)):
 		return false
+	elif crowd != null and crowd.cordon_blocks(ground_pos, at):
+		return false  # a cordon's rope lies between a citizen and the light (CordonDuty)
 	if answers_lure and not soldier:
 		_duty_lured = mind == Mind.DUTY or (_duty_lured and mind == Mind.OBSERVE and _lured)
 	else:
@@ -1577,12 +1584,13 @@ func wrap_to(to: Vector2, walk_on := true) -> bool:
 ## route it means to take into `r` -- its goal now, a post, a street, an errand -- is kept for later and not walked
 ## (set_goal()); a goal outside `r` it walks as ever (a fright sends it off as usual). When the time is up (or
 ## end_hold_off()) it takes up the goal it was kept from, if any. Its mind is untouched; nothing is drawn from any rng
-## here. No path is walked while it mills, so the stuck watchdog has nothing to count. False when it is dead or inside.
-func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float) -> bool:
+## here. No path is walked while it mills, so the stuck watchdog has nothing to count. With `path_too` a goal outside `r` whose
+## path runs through it (path_crosses(), CordonDuty.PATH_AHEAD ahead) is kept back too. False when it is dead or inside.
+func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float, path_too := false) -> bool:
 	if state == State.DEAD or inside or seconds <= 0.0:
 		return false
 	var kept := _off_goal if _off_left > 0.0 else Vector2.INF
-	if _goal != Vector2.INF and r.has_point(_goal):
+	if _goal != Vector2.INF and (r.has_point(_goal) or (path_too and path_crosses(r, CordonDuty.PATH_AHEAD))):
 		kept = _goal
 	_off_rect = r
 	_off_left = seconds
@@ -1624,6 +1632,11 @@ func end_hold_off() -> void:
 ## Whether it is held off a place now (hold_off()).
 func held_off() -> bool:
 	return _off_left > 0.0
+
+
+## The ground it is held off now (hold_off()); an empty rect when it is not.
+func held_rect() -> Rect2:
+	return _off_rect if _off_left > 0.0 else Rect2()
 
 
 ## Where it means to be: its goal; or, kept from one (hold_off()), that goal; else its anchor (a citizen's street, a
@@ -3232,6 +3245,8 @@ func _interact_anim() -> int:
 	if mind == Mind.ASSIST and assist_at_water and not has_goal():
 		return 14 if _own_art(14) else -1
 	if soldier:
+		if talk_left > 0.0 and not _stride:
+			return 13 if _own_art(13) else -1
 		if mind != Mind.POST or hurrying or has_goal() or not _own_art(13):
 			return -1
 		var every := TALK_EVERY.x + (TALK_EVERY.y - TALK_EVERY.x) * float(posmod(rng.seed * 40503, 997)) / 996.0

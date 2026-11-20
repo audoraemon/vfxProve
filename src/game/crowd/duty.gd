@@ -80,6 +80,11 @@ func draw(_canvas: Node2D) -> void:
 	pass
 
 
+## Drawing on the ground, under the people (the response drawer's ground layer).
+func draw_ground(_canvas: Node2D) -> void:
+	pass
+
+
 ## Whether anything of this duty is on show now (the response drawer redraws while any duty shows).
 func showing() -> bool:
 	return false

@@ -1,0 +1,5 @@
+{"length": 3.6, "rms_db": -15.0, "reverb": {"rt60": 3.4, "mix": 0.26, "predelay_ms": 30, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_voice.wav", "at": 0.0, "from": 0.0, "dur": 3.4, "hp": 40, "lp": 11000, "fade_out": 900, "pitch": 1.0},
+  {"src": "lib:oga/heartbeat-sounds/heartbeat_slow_0.wav", "at": 0.0, "onset": true, "dur": 1.0, "hp": 30, "lp": 500, "gain_db": -2.0, "fade_out": 300, "pitch": -0.86},
+  {"src": "lib:oga/creepy-incoherent-chanting/chant3.wav", "at": 0.0, "from": 0.24, "dur": 3.0, "pitch": -4.32, "hp": 60, "lp": 3000, "gain_db": -5.9, "fade_in": 50, "fade_out": 900}
+]}

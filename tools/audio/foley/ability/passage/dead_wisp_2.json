@@ -1,0 +1,6 @@
+{"length": 2.8, "rms_db": -18.0, "reverb": {"rt60": 3.0, "mix": 0.24, "predelay_ms": 26, "damp": 5000}, "layers": [
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan02.wav", "at": 0.0, "from": 0.94, "dur": 2.4, "pitch": 2.25, "hp": 300, "lp": 7000, "fade_in": 200, "fade_out": 900},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.119, "from": 0.55, "dur": 2.0, "pitch": 1.0, "hp": 500, "lp": 6000, "gain_db": -5, "fade_in": 200, "fade_out": 700},
+  {"src": "lib:oga/wind1/wind1.wav", "at": 0.0, "from": 19.7, "dur": 2.6, "pitch": 1.75, "hp": 600, "lp": 8000, "gain_db": -8, "fade_in": 500, "fade_out": 900},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_001.ogg", "at": 0.0, "onset": true, "pitch": 7.5, "hp": 3000, "lp": 15000, "gain_db": -16, "fade_out": 60}
+]}

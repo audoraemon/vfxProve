@@ -1,0 +1,6 @@
+{"length": 4.0, "rms_db": -19.0, "reverb": {"rt60": 3.2, "mix": 0.3, "predelay_ms": 30, "damp": 2500}, "eq": [["lowshelf", 90, 3.0], ["peak", 2500, -6.0, 0.7]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/cymbal-crash1_mf_rr2.wav", "at": 0.0, "onset": true, "dur": 1.1, "reverse": true, "pitch": -12, "lp": 1200, "fade_in": 500, "fade_out": 60, "gain_db": -8},
+  {"src": "lib:oga/wind/wind/wind/Wind3.ogg", "at": 0.0, "from": 0.4, "dur": 3.6, "pitch": -7, "hp": 40, "lp": 700, "fade_in": 300, "fade_out": 2200, "gain_db": -5},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v7_rr2_Sum.wav", "at": 0.9, "onset": true, "pitch": -6, "lp": 220, "fade_out": 900, "gain_db": -4},
+  {"src": "lib:oga/rain-long-thunder/rain-thunder.ogg", "at": 0.9, "from": 17.0, "dur": 3.0, "pitch": -7, "lp": 260, "fade_out": 2000, "gain_db": -8}
+]}

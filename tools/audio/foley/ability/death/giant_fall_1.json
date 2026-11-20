@@ -1,0 +1,17 @@
+{"length": 3.2, "rms_db": -16.84, "reverb": {"rt60": 1.8, "mix": 0.2, "predelay_ms": 18, "damp": 3600}, "eq": [["lowshelf", 110, 2.0], ["peak", 2600, 1.0, 0.9]], "layers": [
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_hit_03.ogg", "at": 0.0, "onset": true, "pitch": -9, "lp": 1800, "hp": 30, "fade_out": 400, "gain_db": 0},
+  {"src": "lib:oga/5-break-crunch-impacts/impcrunch/impactcrunch05.mp3.flac", "at": 0.05, "onset": true, "pitch": -4, "lp": 6000, "hp": 100, "fade_out": 300, "gain_db": -3},
+  {"src": "lib:wikimedia/Bones_breaking_wood_fire_ice_crackling.wav", "at": 0.1, "from": 43.2, "dur": 1.0, "lp": 8000, "hp": 200, "fade_in": 2, "fade_out": 400, "gain_db": -3},
+  {"src": "lib:wikimedia/Bones_breaking_wood_fire_ice_crackling.wav", "at": 0.45, "from": 44.3, "dur": 0.8, "lp": 8000, "hp": 200, "fade_in": 2, "fade_out": 400, "gain_db": -6},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_04.ogg", "at": 0.4, "onset": true, "pitch": -2, "lp": 5000, "hp": 80, "fade_out": 500, "gain_db": -8},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 6.0, "dur": 1.6, "pitch": -5, "lp": 500, "hp": 25, "fade_in": 10, "fade_out": 900, "gain_db": -7},
+  {"src": "lib:oga/earthquake-and-open-sesame/shake.flac", "at": 0.05, "from": 0.5, "dur": 1.5, "pitch": -4, "lp": 2000, "hp": 40, "fade_in": 20, "fade_out": 800, "gain_db": -10},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan03.wav", "at": 0.2, "from": 0.5, "dur": 2.0, "pitch": -8, "lp": 1600, "hp": 80, "fade_in": 200, "fade_out": 900, "gain_db": -14},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack01.mp3.flac", "at": 0.3, "onset": true, "pitch": 4, "lp": 7500, "hp": 350, "fade_out": 120, "gain_db": -8},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack03.mp3.flac", "at": 0.45, "onset": true, "pitch": 5, "lp": 7500, "hp": 350, "fade_out": 120, "gain_db": -9},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack05.mp3.flac", "at": 0.62, "onset": true, "pitch": 3, "lp": 7500, "hp": 350, "fade_out": 120, "gain_db": -10},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack07.mp3.flac", "at": 0.82, "onset": true, "pitch": 6, "lp": 7500, "hp": 350, "fade_out": 120, "gain_db": -11},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack09.mp3.flac", "at": 1.05, "onset": true, "pitch": 4, "lp": 7500, "hp": 350, "fade_out": 120, "gain_db": -12},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood03.mp3.flac", "at": 1.22, "onset": true, "pitch": 6, "lp": 7000, "hp": 400, "fade_out": 120, "gain_db": -14},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood04.mp3.flac", "at": 1.45, "onset": true, "pitch": 6, "lp": 7000, "hp": 400, "fade_out": 120, "gain_db": -16}
+]}

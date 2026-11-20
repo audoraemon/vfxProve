@@ -25,6 +25,9 @@ const FADE := 0.6
 ## The cold glow under each wraith.
 const GLOW := 0.35
 ## Cold grave light and pale fire (Death's palette).
+## Heard (skill-tree sound pass): a soldier frozen at most once every FREEZE_QUIET; the haunt's loop fades over HUSH.
+const FREEZE_QUIET := 0.4
+const HUSH := 0.8
 const PALE := [Color("eaf4ff"), Color("c8f0dc"), Color(0.5, 0.9, 0.7, 0.5), Color(0.2, 0.4, 0.35, 0.0)]
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 
@@ -51,6 +54,9 @@ const HOST_MAX := 4
 var _twist := false
 var _hosted := 0
 var _hearing: EnemyField
+## The haunt's loop while it plays, and the clock a frozen soldier may be heard again at (sound only).
+var _haunt_snd: Node
+var _freeze_heard := 0.0
 
 
 func _build() -> void:
@@ -91,6 +97,8 @@ func _rise() -> void:
 		a.speed_mul *= mul
 		spirits.append(a)
 		_passed[a] = {}
+		if k == 0:
+			ctx.play(&"wraith_rise", origin, 0.0)
 		if DominionParts.staged(self):
 			var at := a.ground_pos
 			_glows[k] = FxParts.ground_light(self, at, 1.0, DeathParts.GRAVE_GREEN, GLOW,
@@ -126,6 +134,7 @@ func _fx_process(delta: float) -> void:
 	if all_there and not haunting:
 		haunting = true
 		_started = t
+		_haunt_snd = ctx.play(&"wraith_haunt", _to, 0.0)
 	_fright_in -= delta
 	if _fright_in <= 0.0:
 		_fright_in = FRIGHT_EVERY
@@ -148,6 +157,7 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 	spirits.append(a)
 	_slots.append(at)
 	_passed[a] = {}
+	ctx.play(&"wraith_rise", at, -6.0)
 	if DominionParts.staged(self):
 		_glows[k] = FxParts.ground_light(self, at, 1.0, DeathParts.GRAVE_GREEN, GLOW,
 			func() -> Vector2: return a.ground_pos if is_instance_valid(a) else at)
@@ -186,6 +196,9 @@ func _freeze_soldiers(a: Animal) -> void:
 		if s.ground_pos.distance_to(a.ground_pos) <= PASS_R:
 			seen[s] = true
 			s.stun(lv_freeze)
+			if t >= _freeze_heard:
+				_freeze_heard = t + FREEZE_QUIET
+				ctx.play(&"wraith_freeze", s.ground_pos, 0.0)
 
 
 ## The 20 s are up: every spirit is recalled and thins away.
@@ -195,8 +208,11 @@ func _end_life() -> void:
 	_ended = true
 	haunting = false
 	_unhear()
+	_hush(HUSH)
 	if visitors == null:
 		return
+	if not visitors.living().is_empty():
+		ctx.play(&"undead_ash", _to, 0.0)
 	for q: QuadFx in _glows.values():
 		q.tween_param("intensity", GLOW, 0.0, FADE)
 	if DominionParts.staged(self):
@@ -206,8 +222,19 @@ func _end_life() -> void:
 	duration = t + FADE + 0.1
 
 
+## The haunt's loop fades over `seconds`, if it is still this cast's to fade (sound only).
+func _hush(seconds: float) -> void:
+	if _haunt_snd != null and is_instance_valid(_haunt_snd) and _haunt_snd.get_meta(&"cue", &"") == &"wraith_haunt":
+		if seconds > 0.0:
+			ctx.fade_out(_haunt_snd, seconds)
+		elif _haunt_snd is AudioStreamPlayer2D:
+			(_haunt_snd as AudioStreamPlayer2D).stop()
+	_haunt_snd = null
+
+
 func _finish() -> void:
 	_unhear()
+	_hush(HUSH)
 	if visitors != null:
 		visitors.clear()
 	super()
@@ -217,6 +244,7 @@ func _finish() -> void:
 ## freeing (its parents may be mid-teardown). After _finish there is nothing left to do here.
 func _exit_tree() -> void:
 	_unhear()
+	_hush(0.0)
 	if visitors != null:
 		visitors.clear(true)
 	spirits.clear()

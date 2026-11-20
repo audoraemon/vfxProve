@@ -1,0 +1,4 @@
+{"length": 4.0, "rms_db": -17.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_amen.wav", "at": 0.0, "from": 0.0, "dur": 4.0, "hp": 80, "lp": 11000, "fade_out": 900, "pitch": -1.0},
+  {"src": "lib:oga/droning-sound-effects/drone65.wav", "at": 0.0, "from": 30.0, "dur": 3.6, "hp": 50, "lp": 1500, "gain_db": -12, "fade_in": 600, "fade_out": 1200, "pitch": -1.0}
+]}

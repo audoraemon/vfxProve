@@ -1,0 +1,4 @@
+{"length": 2.6, "rms_db": -19.0, "reverb": {"rt60": 2.0, "mix": 0.22, "predelay_ms": 18, "damp": 4200}, "eq": [["lowshelf", 160, 0.5], ["peak", 3200, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-d#4.wav", "at": 0.0, "onset": true, "dur": 2.4, "pitch": -5.5, "lp": 4000, "fade_out": 1300, "gain_db": -3},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-d#4.wav", "at": 0.0, "onset": true, "dur": 2.4, "pitch": -5.5, "lp": 3000, "fade_out": 1300, "gain_db": -12},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Percussion/chimes-a3.wav", "at": 0.18, "onset": true, "dur": 2.2, "pitch": -5.5, "lp": 3200, "fade_out": 1200, "gain_db": -10}]}

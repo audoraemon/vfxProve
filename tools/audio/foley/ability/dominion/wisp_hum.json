@@ -1,0 +1,10 @@
+{"length": 6.0, "loop": true, "rms_db": -22.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:oga/droning-sound-effects/drone69.wav", "at": 0.0, "from": 30.0, "dur": 6.0, "pitch": 7, "hp": 1500, "lp": 9000, "gain_db": -6, "fade_in": 10, "fade_out": 10},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 2.5, "dur": 4.0, "pitch": 7, "hp": 600, "lp": 12000, "gain_db": -4, "fade_in": 1500, "fade_out": 1500},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 3.0, "from": 2.5, "dur": 4.0, "pitch": 7.15, "hp": 600, "lp": 12000, "gain_db": -4, "fade_in": 1500, "fade_out": 1500},
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 1.5, "from": 3.0, "dur": 4.0, "pitch": 12, "hp": 900, "lp": 12000, "gain_db": -9, "fade_in": 1500, "fade_out": 1500},
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 4.5, "from": 3.0, "dur": 4.0, "pitch": 12.1, "hp": 900, "lp": 12000, "gain_db": -9, "fade_in": 1500, "fade_out": 1500},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_001.ogg", "at": 0.8, "onset": true, "pitch": 12, "hp": 3000, "lp": 14000, "gain_db": -20},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_003.ogg", "at": 3.4, "onset": true, "pitch": 11, "hp": 3000, "lp": 14000, "gain_db": -21},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_004.ogg", "at": 5.1, "onset": true, "pitch": 13, "hp": 3000, "lp": 14000, "gain_db": -22}
+]}

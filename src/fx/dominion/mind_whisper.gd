@@ -58,6 +58,8 @@ var _building: Structure
 ## Burn: when (the effect's own clock) they got to the building, or -1 while on the way; whether it has been lit.
 var _arrived := -1.0
 var _lit := false
+## The whisper's hold has been heard letting go (dom_release, once).
+var _let_go := false
 ## The attack order's length at this cast's level (ATTACK_SECS at level 1).
 var lv_attack_secs := ATTACK_SECS
 
@@ -201,6 +203,7 @@ func _build() -> void:
 	said["to"] = _to
 	if _target == null or not order(ctx, _target, said, _seconds()):
 		duration = 0.1  # nothing happens, as for a whisper that does not take
+		_let_go = true  # (nothing took, so nothing lets go)
 		return
 	# The attack and burn orders: the ring marks the foe, or the spot at the building's edge they were sent to.
 	if _order == "attack":
@@ -212,6 +215,7 @@ func _build() -> void:
 	if PowerBook.twist_at(extra, "whisper"):
 		_target.hold_string()  # Held String (level 5): no shake-off when it wears off
 	ctx.play(&"q_whisper", _to)
+	ctx.play(&"dom_turn", _target.ground_pos)  # the mind turning, at the one whispered to
 	# A solid ring in a faint halo, no telegraph's scan or crosshair: a mark, not a threat.
 	_ring = _mark(RING_R, COL_RING, 0.25)
 	_halo = _mark(HALO_R, COL_HALO, 0.0)
@@ -244,6 +248,10 @@ func _fx_process(_delta: float) -> void:
 		_halo.position = _foe.ground_pos
 	if not _holds():
 		duration = minf(duration, t + 0.4)  # fade out with the whisper
+		if not _let_go:
+			_let_go = true
+			if is_instance_valid(_target) and _target.is_alive():  # a death is heard as a death
+				ctx.play(&"dom_release", _target.ground_pos)  # a breath out as the hold lets go
 	var fade := clampf(minf(t / 0.3, (duration - t) / 0.4), 0.0, 1.0)
 	var beat := sin(t * PULSE_RATE)
 	if is_instance_valid(_ring):

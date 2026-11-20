@@ -1,0 +1,5 @@
+{"length": 2.0, "rms_db": -19.0, "reverb": {"rt60": 1.4, "mix": 0.2, "predelay_ms": 14, "damp": 4500}, "eq": [["lowshelf", 120, -1.0], ["peak", 3500, -1.5, 0.8]], "layers": [
+  {"src": "lib:oga/air-whoosh/whoosh2_0.wav", "at": 0.0, "onset": true, "dur": 1.2, "pitch": -5.0, "hp": 120, "lp": 4000, "fade_in": 250, "fade_out": 500, "gain_db": -3},
+  {"src": "lib:oga/wind/wind/wind/Wind3.ogg", "at": 0.05, "from": 0.1, "dur": 1.4, "pitch": -2.0, "hp": 150, "lp": 5000, "fade_in": 300, "fade_out": 700, "gain_db": -5},
+  {"src": "lib:oga/100-cc0-sfx-2/sfx_100_v2/sfx100v2_air_01.ogg", "at": 0.1, "dur": 0.9, "pitch": -3.0, "hp": 500, "lp": 6000, "fade_in": 200, "fade_out": 400, "gain_db": -12},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub1_v1.wav", "at": 0.15, "dur": 0.7, "lp": 220, "fade_in": 60, "fade_out": 400, "gain_db": -9}]}

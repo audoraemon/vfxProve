@@ -1,0 +1,5 @@
+{"length": 0.7, "rms_db": -21.26, "reverb": {"rt60": 0.5, "mix": 0.06, "predelay_ms": 6, "damp": 4000}, "eq": [["lowshelf", 180, -2.0]], "layers": [
+  {"src": "lib:kenney/impact-sounds/Audio/footstep_concrete_001.ogg", "at": 0.0, "onset": true, "pitch": -4, "lp": 2500, "hp": 80, "fade_out": 80, "gain_db": -4},
+  {"src": "lib:oga/footsteps-leather-cloth-armor/footsteps/step_cloth1.ogg", "at": 0.01, "onset": true, "pitch": -3, "lp": 5000, "hp": 150, "fade_out": 120, "gain_db": 0},
+  {"src": "lib:oga/stonerockorwoodmovednotick/stone_rock_or_wood_moved_no_tick.mp3", "at": 0.06, "onset": true, "dur": 0.38, "pitch": -3, "lp": 3000, "hp": 300, "fade_in": 40, "fade_out": 200, "gain_db": -9}
+]}

@@ -1,0 +1,5 @@
+{"length": 1.8, "rms_db": -21.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 14, "damp": 6000}, "eq": [["lowshelf", 120, 3.0]], "layers": [
+  {"src": "lib:oga/heartbeat-sounds/heartbeat_slow_0.wav", "at": 0.0, "onset": true, "dur": 1.0, "pitch": -3, "hp": 30, "lp": 500, "fade_out": 300},
+  {"src": "lib:oga/theremin-laser-sfx/theremin_lasers/Zane's Theremin Lasers/Long/Spirit 2.wav", "at": 0.1, "onset": true, "dur": 1.3, "pitch": -7, "lp": 3500, "gain_db": -8, "fade_in": 200, "fade_out": 500},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_1.ogg", "at": 0.35, "onset": true, "reverse": true, "pitch": -6, "hp": 500, "lp": 7000, "gain_db": -10, "fade_out": 40}
+]}

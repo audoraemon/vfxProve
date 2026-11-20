@@ -179,7 +179,7 @@ func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
 	quarry = best
 	marks += 1
 	visitors.mark(best)
-	ctx.play(&"dr_roar", best.ground_pos, -6.0)
+	ctx.play(&"hg_roar", best.ground_pos, -6.0)
 	if DominionParts.staged(self):
 		if _mark_node != null and is_instance_valid(_mark_node):
 			_mark_node.queue_free()

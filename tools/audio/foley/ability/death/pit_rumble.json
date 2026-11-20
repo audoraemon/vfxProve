@@ -1,0 +1,10 @@
+{"length": 8.0, "loop": true, "rms_db": -15.99, "reverb": {"rt60": 2.0, "mix": 0.2, "predelay_ms": 20, "damp": 3200}, "eq": [["lowshelf", 120, 1.5], ["peak", 2400, -1.0, 0.8]], "layers": [
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 0.0, "from": 3.0, "dur": 8.0, "pitch": -3, "lp": 700, "hp": 25, "fade_in": 2500, "fade_out": 2500, "gain_db": -1},
+  {"src": "lib:oga/low-rumbling/low-rumbling-176033.mp3", "at": 4.0, "from": 12.0, "dur": 8.0, "pitch": -3, "lp": 700, "hp": 25, "fade_in": 2500, "fade_out": 2500, "gain_db": -1},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "at": 1.0, "from": 0.5, "dur": 3.0, "pitch": -6, "lp": 2500, "hp": 50, "fade_in": 600, "fade_out": 900, "gain_db": -11},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "at": 5.2, "from": 1.4, "dur": 3.0, "pitch": -7, "lp": 2400, "hp": 50, "fade_in": 600, "fade_out": 900, "gain_db": -12},
+  {"src": "lib:oga/stone-door/stone_door.ogg", "at": 2.5, "onset": true, "dur": 2.5, "pitch": -9, "lp": 2500, "hp": 60, "fade_in": 300, "fade_out": 800, "gain_db": -12},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan03.wav", "at": 3.0, "from": 0.5, "dur": 4.0, "pitch": -7, "lp": 1800, "hp": 120, "fade_in": 1000, "fade_out": 1200, "gain_db": -15},
+  {"src": "lib:oga/ghost-monster-voice-moaning-growling/qubodup-GhostMoans/qubodup-GhostMoans/wav/qubodup-GhostMoan02.wav", "at": 6.5, "from": 0.4, "dur": 3.5, "pitch": -8, "lp": 1800, "hp": 120, "fade_in": 1000, "fade_out": 1200, "gain_db": -16},
+  {"src": "lib:wikimedia/Bones_breaking_wood_fire_ice_crackling.wav", "at": 0.5, "from": 35.0, "dur": 3.0, "lp": 4000, "hp": 300, "fade_in": 500, "fade_out": 800, "gain_db": -17}
+]}

@@ -238,6 +238,12 @@ var _frost_at := -1.0
 var _vis := RandomNumberGenerator.new()
 ## The pieces as last posed (souls fly to the nearest).
 var _posed: Array[Dictionary] = []
+## Heard (skill-tree sound pass): whether the loop's turn and the climb away have sounded, and the clock the shadow's hush may
+## be heard again at (at most every SHADOW_QUIET).
+const SHADOW_QUIET := 0.4
+var _coil_heard := false
+var _depart_heard := false
+var _shadow_heard := 0.0
 
 
 ## The white disc (DISC_TEX across, its texels in where their middles fall within its radius), made once.
@@ -430,6 +436,12 @@ func _fx_process(delta: float) -> void:
 		_sweep(from, to)
 		_swept_to = to
 	_souls_arrive()
+	if not _coil_heard and t >= T_RISE + GLIDE:
+		_coil_heard = true
+		ctx.play(&"serpent_coil", head_at(t), 0.0)
+	if not _depart_heard and t >= glide_end():
+		_depart_heard = true
+		ctx.play(&"serpent_depart", head_at(t), 0.0)
 	while _next_fright < glide_end() and t >= _next_fright:
 		var back := s_at(_next_fright) - (lv_band + 3.0 + Person.THREAT_MARGIN)
 		if ctx.crowd != null and back >= 0.0:
@@ -559,6 +571,9 @@ func _shadow(a: Vector2, b: Vector2, when: float, span: float) -> void:
 		if not ctx.field.kill(p, &"shadow", at_pt):
 			continue
 		taken.append(p)
+		if t >= _shadow_heard:
+			_shadow_heard = t + SHADOW_QUIET
+			ctx.play(&"serpent_shadow", at_pt, 0.0)
 		var fell := when + span * u
 		if first_kill_at < 0.0:
 			first_kill_at = fell

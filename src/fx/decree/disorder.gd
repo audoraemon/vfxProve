@@ -26,6 +26,8 @@ const CROOKED_BELL: Array[int] = [0b00010, 0b00111, 0b01110, 0b11110, 0b01000]
 var law: LawZone
 
 var _ring: Askew
+## The two bowls beating out of tune while the law holds (a looping cue, faded at the lift).
+var _drone: Node
 
 ## Bad Counsel (level 5): this cast's twist (PowerBook.twist_at), read once in _build.
 var _twist := false
@@ -68,6 +70,7 @@ func _land() -> void:
 		ctx.crowd.add_law(law, self)
 	else:
 		law.hold_by(self)
+	_drone = ctx.play(&"di_drone", origin)
 	if not DominionParts.staged(self):
 		return
 	_ring = Askew.new()
@@ -95,8 +98,18 @@ func _lift() -> void:
 			ctx.crowd.remove_law(law)
 		else:
 			law.lift()
+	_still(0.6)
+	if t >= T_LAND + lv_hold_time:
+		ctx.play(&"di_lift", origin)
 	if DominionParts.staged(self):
 		DecreeParts.wave(self, origin, lv_radius * 1.15, 0.5, 0.05)
+
+
+## The drone fades over `seconds`, if the voice is still this law's.
+func _still(seconds: float) -> void:
+	if _drone != null and is_instance_valid(_drone) and _drone.get_meta(&"cue", &"") == &"di_drone":
+		ctx.fade_out(_drone, seconds)
+	_drone = null
 
 
 ## Cut short (an act of the night ends): the law is lifted with it.
@@ -109,11 +122,13 @@ func end_now() -> void:
 
 func _finish() -> void:
 	_forget()
+	_still(0.3)
 	super()
 
 
 func _exit_tree() -> void:
 	_forget()
+	_still(0.3)
 	super()
 
 

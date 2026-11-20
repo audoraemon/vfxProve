@@ -40,6 +40,7 @@ static func run(t) -> void:
 	_running(t)
 	_lost(t)
 	_kill(t)
+	_watched(t)
 	_freed(t)
 	_rallied(t)
 	_reserved(t)
@@ -761,6 +762,68 @@ static func _kill(t) -> void:
 		and cw.bell.state != BellNetwork.State.IDLE and int(dw.report().seen) == 1,
 		"killed where someone sees: he is dead all the same, but the guards cry murder and the bellkeeper is called")
 	_done(w)
+
+
+## Quarry `i` set out and killed of `kind` with a citizen standing by to see it, then stepped 0.5 s (Town Suspicion, Task 5).
+static func _seen_kill(s: Dictionary, i: int, kind: StringName) -> void:
+	var d: TaxCollectorDirector = s.d
+	var crowd: Crowd = s.crowd
+	var q := d.quarries[i]
+	d._set_out(q)
+	_clear_round(crowd, q.target)
+	var near: Person = null
+	for p in crowd.citizens:
+		if near == null and is_instance_valid(p) and p != q.target and p.is_alive() and not p.inside:
+			near = p
+	_arrive(near, q.target.ground_pos + Vector2(1.5, 0.0))
+	crowd._field.kill(q.target, kind)
+	_run(s, 0.5)
+
+
+## Town Suspicion (Task 5): a seen kill of an explained kind is a sign, not a call, until the town knows.
+static func _watched(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var q: AssassinateDirector.Quarry = (s.d as TaxCollectorDirector).quarries[0]
+	crowd.suspicion.add(20.0)
+	var before := crowd.suspicion.value
+	_seen_kill(s, 0, &"lightning")
+	t.check(q.dead and q.judged and not q.unseen and (s.banners as Array).has("THE GUARDS CRY MURDER"),
+		"a collector struck by lightning in plain sight: seen, the guards cry murder")
+	t.near(crowd.suspicion.value - before, Suspicion.TARGET_SIGN * crowd.suspicion.wary, 0.01, "the seen lightning kill adds TARGET_SIGN")
+	t.check(crowd.bell.state == BellNetwork.State.IDLE and not crowd.suspicion.known, "no bell: the town does not know")
+	var again := (s.d as TaxCollectorDirector).quarries[1]
+	crowd.suspicion.add(30.0)
+	_seen_kill(s, 1, &"lightning")
+	t.check(again.dead and crowd.suspicion.known and crowd.bell.state != BellNetwork.State.IDLE,
+		"a second seen lightning kill inside the minute: the town knows, the keeper is called")
+	_done(s)
+	var w := _world()
+	var wc: Crowd = w.crowd
+	wc.suspicion.add(20.0)
+	var wv := wc.suspicion.value
+	_seen_kill(w, 0, &"doom")
+	t.check(wc.bell.state != BellNetwork.State.IDLE and is_equal_approx(wc.suspicion.value, wv),
+		"a seen Silent Doom kill: keeper called at once, suspicion unchanged")
+	_done(w)
+	var u := _world()
+	var uc: Crowd = u.crowd
+	uc.suspicion.add(20.0)
+	var uv := uc.suspicion.value
+	var uq: AssassinateDirector.Quarry = (u.d as TaxCollectorDirector).quarries[0]
+	(u.d as TaxCollectorDirector)._set_out(uq)
+	_clear_round(uc, uq.target)
+	uc._field.kill(uq.target, &"lightning")
+	_run(u, 0.5)
+	t.check(uq.unseen and not (u.banners as Array).has("THE GUARDS CRY MURDER") and is_equal_approx(uc.suspicion.value, uv)
+		and uc.bell.state == BellNetwork.State.IDLE, "an unseen lightning kill: no banner, no sign from the kill, no bell")
+	_done(u)
+	var k := _world()
+	var kc: Crowd = k.crowd
+	kc.suspicion.know("test")
+	_seen_kill(k, 0, &"lightning")
+	t.check(kc.bell.state != BellNetwork.State.IDLE, "the town already knows: a seen lightning kill calls the keeper at once")
+	_done(k)
 
 
 static func _freed(t) -> void:

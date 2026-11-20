@@ -21,6 +21,7 @@ static func run(t) -> void:
 	_smother(t)
 	_flight(t)
 	_relief(t)
+	_watched(t)
 	_square(t)
 	_ends(t)
 	_evacuate(t)
@@ -486,3 +487,42 @@ static func _walls_off(t) -> void:
 	t.check(not d.walls_stop and q.state != AssassinateDirector.State.OUT and d.out_count() == 0 and not d.is_leaving(q.target),
 		"with walls_stop at its default he is not OUT and not sent off the map")
 	Kit.done(s)
+
+
+## Town Suspicion (Task 5): a seen lightning kill of the bishop is a sign (TARGET_SIGN), not a call; once the town knows it calls the keeper.
+static func _watched(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var d: AssassinateDirector = s.d
+	var q := d.quarries[0]
+	d._set_out(q)
+	
+	var near: Person = null
+	for p in crowd.citizens:
+		if near == null and is_instance_valid(p) and p != q.target and p.is_alive() and not p.inside:
+			near = p
+	Kit.arrive(near, q.target.ground_pos + Vector2(1.5, 0.0))
+	crowd.suspicion.add(20.0)
+	var before := crowd.suspicion.value
+	crowd._field.kill(q.target, &"lightning")
+	Kit.run_for(s, 0.5)
+	t.check(q.dead and q.judged and not q.unseen, "bishop: the lightning kill is seen")
+	t.near(crowd.suspicion.value - before, Suspicion.TARGET_SIGN * crowd.suspicion.wary, 0.01, "bishop: the seen kill adds TARGET_SIGN")
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "bishop: no bell while the town does not know")
+	Kit.done(s)
+	var k := _world()
+	var kc: Crowd = k.crowd
+	var kd: AssassinateDirector = k.d
+	var kq := kd.quarries[0]
+	kd._set_out(kq)
+	
+	var kn: Person = null
+	for p in kc.citizens:
+		if kn == null and is_instance_valid(p) and p != kq.target and p.is_alive() and not p.inside:
+			kn = p
+	Kit.arrive(kn, kq.target.ground_pos + Vector2(1.5, 0.0))
+	kc.suspicion.know("test")
+	kc._field.kill(kq.target, &"lightning")
+	Kit.run_for(k, 0.5)
+	t.check(kc.bell.state != BellNetwork.State.IDLE, "bishop: the town knows, the seen kill calls the keeper")
+	Kit.done(k)

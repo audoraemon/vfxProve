@@ -141,7 +141,7 @@ Centre rule: drawn uniformly in the disk of radius FAIR_R about HEART, walkable,
 ### Task 4: The mission's gate and the references
 
 **Files:**
-- Modify: `tools/dev/refs/references.tsv` (the 9 `panic_*` rows; any other row only with a stated cause)
+- Modify: `tools/dev/refs/references.tsv` (the 6 `panic_none_*`/`panic_play_*` rows) and `tools/dev/refs/routes_t2.tsv` (the 3 `panic_b_play_*` rows); any other row only with a stated cause
 - Modify: `docs/KAK_Version_0.11_Summary.md` (one paragraph: what moved and why) or a new `docs/KAK_Fair_Life_Notes.md`
 
 - [ ] **Step 1: Market Panic gate.** Run `--scenario=panic --case=none|play --seed=1..3` and `--case=play --route=b` as the refs rows do (`$G --headless --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- <args>`). Pass: `play` wins >= 2 of 3 with median win time 180-240 s; `none` loses 3 of 3; longest idle <= 45 s; `b_play` wins as its rows did (won/lost per seed unchanged). If it fails, tune only FairLife's GROUP_MAX (down to 3) and APART (up to 2.2), never a rule number, and re-run.

@@ -9,6 +9,9 @@ static func run(t) -> void:
 	_in_shape(t)
 	_aim_count(t)
 	_toggle_key(t)
+	_all_tags_lead(t)
+	_legend_excludes(t)
+	_signature_follows(t)
 
 
 static func _world() -> Dictionary:
@@ -156,3 +159,54 @@ static func _toggle_key(t) -> void:
 	t.check(not Mission.toggles_believers(_key(KEY_B, false)), "B released does not")
 	t.check(not Mission.toggles_believers(_key(KEY_B, true, false, true)), "Ctrl+B does not")
 	t.check(not Mission.toggles_believers(_key(KEY_H)), "H does not")
+
+
+static func _all_tags_lead(t) -> void:
+	var s := _world()
+	_believe(s, 3)
+	var hud: Hud = s.hud
+	hud.believer_view = true
+	var all := hud.all_tags()
+	var mine := hud.believer_tags()
+	var ok := all.size() >= mine.size() and not mine.is_empty()
+	for i in mine.size():
+		ok = ok and all[i].who == mine[i].who and all[i].color == Hud.BELIEVER_COL
+	t.check(ok, "all_tags() begins with the believer marks when the view is on")
+	_done(s)
+
+
+static func _legend_excludes(t) -> void:
+	var s := _world()
+	_believe(s, 3)
+	var hud: Hud = s.hud
+	hud.believer_view = true
+	var gold := false
+	for m in hud.legend_tags():
+		gold = gold or m.color == Hud.BELIEVER_COL
+	t.check(not gold and hud.all_tags().size() >= hud.legend_tags().size() + 3, "the legend's tags leave the believer marks out")
+	_done(s)
+
+
+static func _signature_follows(t) -> void:
+	var s := _world()
+	_believe(s, 4)
+	var hud: Hud = s.hud
+	var aim: Targeting = s.aim
+	aim.pick(0)
+	var r := float(aim.area().r)
+	aim._press = Vector2(10, 10)
+	for i in 4:
+		(s.folk[i] as Person).ground_pos = Vector2(10, 10) + Vector2(r * 0.5, 0)
+	var off := hud._signature()
+	hud.believer_view = true
+	aim.believer_view = true
+	var a := hud._signature()
+	(s.folk[0] as Person).ground_pos = Vector2(10, 10) + Vector2(r * 3.0, 0)
+	var b := hud._signature()
+	t.check(a != b, "view on: a changed believer count changes the signature")
+	aim._press = Vector2(10.0 + r * 3.0, 10.0)
+	t.check(hud._signature() != b, "view on: a moved aim point changes the signature")
+	hud.believer_view = false
+	aim.believer_view = false
+	t.check(hud._signature() == off, "view off again: the signature is exactly what it was")
+	_done(s)

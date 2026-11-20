@@ -1393,12 +1393,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			_aim.release(_bf.mouse_ground())
 
 
-## Whether `event` is B pressed: the believer view's key.
 const BELIEVER_KEY := KEY_B
 
 
+## Whether `event` is B pressed: the believer view's key.
 static func toggles_believers(event: InputEvent) -> bool:
-	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == BELIEVER_KEY 		and not event.alt_pressed and not event.ctrl_pressed and not event.meta_pressed
+	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == BELIEVER_KEY \
+			and not event.alt_pressed and not event.ctrl_pressed and not event.meta_pressed
 
 
 ## Turns the believer view on or off: gold marks over believers and a count in the aim.
@@ -1429,7 +1430,7 @@ func open_legend() -> void:
 		return
 	_pressing = false
 	_aim.cancel()
-	_legend = LegendPanel.new().setup(_hud.all_tags())
+	_legend = LegendPanel.new().setup(_hud.legend_tags())
 	_legend.name = "Legend"
 	_bf.hud_layer.add_child(_legend)
 	_legend.closed.connect(_on_legend_closed)

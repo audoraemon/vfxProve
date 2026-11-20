@@ -10,10 +10,10 @@ extends Control
 ## intro tour's caption above the slots.
 
 ## How long one banner stays up.
+const BANNER_SECONDS := 2.2
 ## The believer view (B): the gold of its marks and the aim's count, and how high its marks sit (under a mission's diamond).
 const BELIEVER_COL := Color("ffd75a")
 const BELIEVER_LIFT := 14.0
-const BANNER_SECONDS := 2.2
 ## Cael's lines (v0.10 M5, spec §5.2): how long one stays up (longer than a banner: it is a sentence to read), the top of
 ## its plate (just under the banner's bar, 116 to 144), and the gap between his name and the line.
 const SUBTITLE_SECONDS := 4.0
@@ -760,11 +760,12 @@ func believer_tags() -> Array[MapTag]:
 
 ## Everything on the map's tag layer (v0.11 M1): the director's tags, then the wishes' (spec §5.1), so a crowded view keeps
 ## the mission's own labels.
-func all_tags() -> Array[MapTag]:
+func all_tags(with_believers := true) -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if _rules == null:
 		return out
-	out.append_array(believer_tags())  # under the mission's own marks
+	if with_believers:
+		out.append_array(believer_tags())  # under the mission's own marks
 	if _rules.director != null:
 		out.append_array(_rules.director.tags())
 	if _rules.lantern != null:
@@ -772,6 +773,11 @@ func all_tags() -> Array[MapTag]:
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
 	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn
+
+
+## The tags the legend lists: the map's, without the believer view's gold marks.
+func legend_tags() -> Array[MapTag]:
+	return all_tags(false)
 
 
 ## The camera's canvas transform of the world the HUD marks (ground-side screen points to HUD px).
@@ -1454,6 +1460,8 @@ func _signature() -> String:
 	out += "|%s|%d" % [_view(), UiScale.k()]  # a resize or a new scale lays everything out again
 	if chain_shown():
 		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
+	if believer_view and _aim != null:  # the aim's count follows the aim: its words and where they are drawn
+		out += "|%s|%s" % [_aim.believers_text(), (_world_xf() * Iso.ground_to_screen(_aim.aim_at())).round()]
 	out += "|" + "/".join(_rite_lines)
 	for i in _rules.loadout.size():
 		out += "%s%d%s%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else "",

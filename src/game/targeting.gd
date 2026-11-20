@@ -808,7 +808,8 @@ static func in_shape(a: Dictionary, at: Vector2, dir: Vector2, run: float, point
 			return point.distance_to(at + seg * t) <= float(a.get("half", 0.0))
 		"cone":
 			var off := point - at
-			return off.length() <= float(a.get("r", 0.0)) 				and (off.length() < 0.0001 or absf(dir.angle_to(off)) <= deg_to_rad(float(a.get("arc", 0.0))) * 0.5)
+			return off.length() <= float(a.get("r", 0.0)) \
+				and (off.length() < 0.0001 or absf(dir.angle_to(off)) <= deg_to_rad(float(a.get("arc", 0.0))) * 0.5)
 	return false
 
 
@@ -824,7 +825,8 @@ func believers_in() -> int:
 	var start := lane_start(_rules.key(slot), _press, dir) if String(a.get("shape", "")) == "lane" else _press
 	var n := 0
 	for p in _crowd.citizens:
-		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER 				and in_shape(a, start, dir, run, p.ground_pos):
+		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER \
+				and in_shape(a, start, dir, run, p.ground_pos):
 			n += 1
 	return n
 

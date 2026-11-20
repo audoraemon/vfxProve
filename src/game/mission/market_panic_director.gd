@@ -353,9 +353,9 @@ func steadied(p: Person) -> bool:
 
 
 ## A steadied goer, or one waiting for his crowd to set out, is not broken by a fright or a loud cast's danger (v0.11 M3); a death
-## still counts.
+## still counts. A goer on fire is no longer steadied: he runs and breaks (fair life, 2026-11-20).
 func _may_break(p: Person) -> bool:
-	return not steadied(p) and not is_waiting(p)
+	return p.burning() or (not steadied(p) and not is_waiting(p))
 
 
 ## Goer `p` waits at his stand for his crowd to set out (v0.11 M3).

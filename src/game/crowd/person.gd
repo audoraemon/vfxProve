@@ -1331,8 +1331,8 @@ func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelt
 		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
 		return
-	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
-		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
+	if held_by_will(WILL_ABSOLUTE) or (fearless_left > 0.0 and not burning()):
+		return  # a Dominion stronger than fear, or a mind told there is nothing to fear -- unless he is on fire (fair life, 2026-11-20)
 	# A sturdy building nearby may be better than running (ShelterManager).
 	if may_shelter and shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
@@ -2718,7 +2718,7 @@ func go_duty(at: Vector2) -> void:
 ## Whether go_duty() would take now: not dead, fleeing or fighting, nor held by a firm compulsion (god T1R H8: a mission picks its
 ## errand-runners from those who can).
 func can_take_duty() -> bool:
-	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM))
+	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or burning())  # a man on fire takes no duty (fair life, 2026-11-20)
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.
@@ -2843,8 +2843,8 @@ func _step_blocked(step: Vector2) -> bool:
 ## Soldiers only: stand at `at` (its starting post, or a slot on the Citadel's rally ring), at a walk or, `hurried`
 ## (escorts, marshals, rescue squads), at a run.
 func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
-	if state == State.DEAD:
-		return
+	if state == State.DEAD or burning():
+		return  # a man on fire is sent nowhere (fair life, 2026-11-20)
 	_held_saved = false  # sent somewhere by someone (a town order -- the rally, the marshals, a rescue -- wins over any hold, WILL_FIRM too)
 	anchor = at
 	mind = Mind.RALLY if rally else Mind.POST

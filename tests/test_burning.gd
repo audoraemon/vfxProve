@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_cleared(t, made)
 	_runs_from_shelter(t, made)
 	_runs_free(t, made)
+	_runs_fearless(t, made)
 	_relay(t, made)
 	_runs_to_the_end(t, made)
 	_trail_stops(t, made)
@@ -301,9 +302,49 @@ static func _runs_free(t, made: Array) -> void:
 	var calm := _put(made, 36, at + Vector2(0.0, -2.0))
 	calm.reassure(10.0)
 	crowd.burn(calm, Burning.BURN_FOR, calm.ground_pos)
-	t.check(calm.burning() and calm.mind != Person.Mind.PANIC and calm.fearless_left > 0.0,
-		"a god's hold wins: told there is nothing to fear, he burns but does not run (mind %d)" % calm.mind)
+	t.check(calm.burning() and calm.mind == Person.Mind.PANIC and calm.fearless_left > 0.0,
+		"told there is nothing to fear, a burning man still runs: fire beats fearless (fair life, 2026-11-20) (mind %d)" % calm.mind)
 	soldier.stop_fighting()
+	crowd.burning.clear()
+
+
+## A man on fire runs whatever he was told (fair life, 2026-11-20): fearless does not save him, a duty does not hold him, a
+## fearless witness still looks away from the sight, and only a Dominion held absolutely keeps him where he is.
+static func _runs_fearless(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var p := _put(made, 38, at)
+	p.fearless_left = 5.0
+	var from := p.ground_pos
+	crowd.burn(p, Burning.BURN_FOR, p.ground_pos + Vector2(0.5, 0.0))
+	t.check(p.burning() and p.mind == Person.Mind.PANIC, "a fearless man set alight panics (mind %d)" % p.mind)
+	for i in roundi(1.0 / DT):
+		p.frame(DT)  # his feet move between the town's steps
+		crowd.advance(DT)
+	t.check(p.ground_pos.distance_to(from) > 0.5, "and he runs (moved %.2f)" % p.ground_pos.distance_to(from))
+	crowd.burning.clear()
+	var d := _put(made, 39, at + Vector2(0.0, 3.0))
+	d.fearless_left = 5.0
+	crowd.burn(d, Burning.BURN_FOR, d.ground_pos + Vector2(0.5, 0.0))
+	d.go_duty(d.ground_pos)
+	t.check(d.burning() and d.mind == Person.Mind.PANIC and d.mind != Person.Mind.DUTY,
+		"a duty called on a burning man is refused (mind %d)" % d.mind)
+	crowd.burning.clear()
+	var held := _put(made, 40, at + Vector2(0.0, -3.0))
+	held.compel(held.ground_pos, 20.0, Person.WILL_ABSOLUTE, Color.WHITE, false, &"")
+	crowd.burn(held, Burning.BURN_FOR, held.ground_pos)
+	t.check(held.burning() and held.mind != Person.Mind.PANIC, "one held absolutely burns but does not run (mind %d)" % held.mind)
+	crowd.burning.clear()
+	var src := _put(made, 41, at + Vector2(3.0, 0.0))
+	var w := _put(made, 42, at + Vector2(3.0, 2.0))
+	w.fearless_left = 30.0
+	crowd.burn(src, Burning.BURN_FOR, src.ground_pos)
+	w.ground_pos = src.ground_pos + Vector2(0.0, 1.0)
+	w.mind = Person.Mind.CALM
+	w.fearless_left = 30.0
+	_advance(crowd, Burning.SPREAD_EVERY + DT)
+	t.check(w.mind != Person.Mind.PANIC, "a fearless witness is not frightened by the sight (mind %d)" % w.mind)
 	crowd.burning.clear()
 
 

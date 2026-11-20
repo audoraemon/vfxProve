@@ -174,6 +174,7 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VC3: DreadOfTheDarkFx.refusal() reads Dusk._patches and Crowd._veils (read only) to find a patch or veil reaching into the light
   reach: the ledgers have no public walk over their circles, and sampling points would miss a thin overlap. With no crowd it allows
   the cast (nothing to judge: the VFX Sandbox has no Rules either).
+  Note (Task 13c, VF3): the private reads are gone; the refusal uses Dusk.reaches() and Crowd.veil_reaches().
 - VC4: Dread's `busy` is T_FALL (as Unseen Hour's): the other slots unlock once it falls, so Dreamless, Silent Doom and the
   Swallowing Dark can be cast into it (spec 5.7: it "sets them up").
 - VC5: Cloak of Night's `marked_at` skips people indoors (`Person.inside`), as Corpse Guise's does: the watch's sight is out of doors, a
@@ -262,3 +263,12 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   drafted in their LOADOUT, as Task 2 left it, so the loadout the reference rows and test_hunt_tools' PLAYS name does not move. Their
   Dooms are still measured with the light reach and their gates lost no one by it; were a believer ever to fall with an escort
   there, VE1's `doom_r()` is the fix, as in Hunt 1.
+- VF1 (Task 13c): the VFX Sandbox's number keys reach only the first seven entries of a set, so entries 8 and up of Set2 were never
+  pickable. The Veil gets its own "Set4 Veil" (values of Set2) holding the ten powers in tree order on the keys 1-9 and 0 (the HUD
+  numbers the tenth 0); Silent Doom and Blight left Set2 for it. No other set's picking changed. The Sandbox shows the light size only
+  (C10). CAPTURES gets no entry for the new keys (a missing entry is skipped, not an error).
+- VF2 (Task 13c): the HUD shape lines of Silent Doom (VeilRules doom RADIUS 0.8 / 1.6), Blight (blight DUSK_R 3 / 5, BLIGHT_MAX 3,
+  PICK 0.5, ILL_REACH 2 with ILL_MOST 1 / 3) and Unseen Hour (RADIUS 5 / 7, VEIL_TIME 20 / 30) give both sizes, as the seven new
+  powers' do. Blight's blurb now says what the rework does (a building rots, a person is sickened).
+- VF3 (Task 13c): VC3's private reads are gone: Dread's refusal asks Dusk.reaches(at, r) and Crowd.veil_reaches(at, r), and Shadow
+  Play's edge asks Person.silhouette_src(). Nothing outside src/game/crowd reads _patches, _veils or _design_info.

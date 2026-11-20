@@ -44,6 +44,8 @@ static func run(t) -> void:
 	_stamp(t, made)
 	_ring(t, made)
 	_stubs(t, made)
+	_reads(t, made)
+	_picker(t, made)
 	_done(made)
 
 
@@ -264,3 +266,70 @@ static func _stubs(t, made: Array) -> void:
 	bare.overhead.free()
 	bare.ground.free()
 	crowd.dusk.clear()
+
+
+## The public reads (Task 13c): Dusk.reaches(), Crowd.veil_reaches(), Person.silhouette_src().
+static func _reads(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var p := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	crowd.dusk.enabled = true
+	crowd.dusk.clear()
+	t.check(not crowd.dusk.reaches(p, 5.0), "Dusk.reaches: an empty ledger reaches nothing")
+	var id := crowd.lay_dusk(p, 3.0, 20.0)
+	t.check(id > 0 and crowd.dusk.reaches(p, 0.0) and crowd.dusk.reaches(p + Vector2(7.5, 0.0), 5.0)
+		and not crowd.dusk.reaches(p + Vector2(8.5, 0.0), 5.0), "Dusk.reaches: a patch reaches a circle that touches it, not one beyond")
+	crowd.dusk.end(id)
+	t.check(not crowd.dusk.reaches(p, 5.0), "Dusk.reaches: an ended patch reaches nothing")
+	crowd.dusk.everywhere = true
+	t.check(crowd.dusk.reaches(p + Vector2(500.0, 0.0), 0.0), "Dusk.reaches: everywhere reaches any ground")
+	crowd.dusk.everywhere = false
+	t.check(not crowd.veil_reaches(p, 5.0), "Crowd.veil_reaches: no veil reaches nothing")
+	crowd.veil(p, 5.0, 10.0)
+	t.check(crowd.veil_reaches(p, 0.0) and crowd.veil_reaches(p + Vector2(9.0, 0.0), 4.5) and not crowd.veil_reaches(p + Vector2(11.0, 0.0), 5.0),
+		"Crowd.veil_reaches: a veil reaches a circle that touches it, not one beyond")
+	crowd._clock += 11.0
+	t.check(not crowd.veil_reaches(p, 5.0), "Crowd.veil_reaches: a veil that has run out reaches nothing")
+	crowd._veils.clear()
+	crowd.threats.blind = crowd.is_veiled
+	var person: Person = crowd.citizens[0]
+	var told := [Vector2(1.0, 2.0), Vector2(3.0, 4.0)]
+	person._design_info = told
+	t.check(person.silhouette_src() == told and (person.silhouette_src()[1] as Vector2) == Vector2(3.0, 4.0),
+		"Person.silhouette_src: the design table _design_info holds")
+	var fresh := Person.new()
+	t.check(fresh.silhouette_src().is_empty(), "Person.silhouette_src: empty before a design is picked")
+	fresh.free()
+	crowd.dusk.clear()
+
+
+## Every Veil power is in the VFX Sandbox's picker ("Set4 Veil", keys 1-9 and 0), and builds and ends there: no crowd, no rules.
+static func _picker(t, made: Array) -> void:
+	var ctx: FxContext = made[5]
+	var p := Vector2(0.0, 0.0)
+	var sbx := FxContext.new()
+	sbx.env = ctx.env
+	sbx.field = ctx.field
+	sbx.rng = RandomNumberGenerator.new()
+	sbx.overhead = Node2D.new()
+	sbx.ground = Node2D.new()
+	var listed: Array = []
+	var bad := []
+	for e: Dictionary in (load("res://src/sandbox/sandbox.gd") as GDScript).get_script_constant_map().EFFECTS:
+		if int(e.set) != 3:
+			continue
+		listed.append(e.key)
+		var fx: FxTimeline = FxTimeline.cast(load(e.path), sbx, p)
+		if fx == null:
+			bad.append(String(e.key))
+			continue
+		fx._process(0.2)
+		fx.end_now()
+		if not fx.finished:
+			bad.append(String(e.key) + " (not finished)")
+		fx.free()
+	t.check(listed == ["doom", "blight", "slumber", "cloak", "unseen", "dreamless", "dread", "shadowplay", "swallow", "evernight"],
+		"the Sandbox's Set4 Veil lists the ten powers in tree order (%s)" % [listed])
+	t.check(bad.is_empty(), "each Set4 Veil entry builds and ends in the Sandbox's own way, no crowd, no rules (%s)" % [bad])
+	sbx.overhead.free()
+	sbx.ground.free()

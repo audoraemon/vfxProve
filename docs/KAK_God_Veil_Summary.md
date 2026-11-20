@@ -53,13 +53,10 @@ Dread of the Dark is refused where no dark lies in reach, and in the DAY memory 
 dusk yet: press N for the NIGHT memory to try it.
 Blight shows both of its targets: click a house, then a person in the street.
 
-**VFX Sandbox** (light size only; it has no people, so nothing is dark there). Silent Doom and Blight are in its "Set2 Fantasy"
-list (TAB to reach the set), but they are its 8th and 9th entries and the 1-7 keys pick only the first seven of a list, so today
-the picker cannot select them (an older gap of the Sandbox, not of this build). The seven new powers and Unseen Hour are **not** in
-the Sandbox's picker at all:
-without a crowd most of them would show nothing (Slumber, Cloak, Dreamless and Shadow Play need people; Dread with no crowd builds
-nothing), so their preview clips were recorded in the town instead (ruling VD2). Every Veil effect still builds and ends cleanly with
-no crowd and no rules (the no-crowd checks in each power's suite), so adding them to the picker later is a list entry each.
+**VFX Sandbox** (light size only; it has no people and no rules, so nothing is dark there). All ten Veil powers are in their own
+"Set4 Veil" list (TAB to reach the set), in tree order, on the keys 1-9 and 0. Silent Doom and Blight moved there from Set2. Without a
+crowd some show little (Slumber, Cloak, Dreamless and Shadow Play need people; Dread builds and ends at once), so their preview clips
+were recorded in the town (ruling VD2); every one builds and ends cleanly with no crowd and no rules.
 
 ## The Tier 1 nights and the Veil Hunts
 
@@ -96,8 +93,6 @@ docs/KAK_God_P5_Summary.md; the Hunts' third key then was Tsunami Breaker or Nuc
   Slumber, Cloak of Night, Unseen Hour, Dreamless, Dread, Shadow Play, The Swallowing Dark or Evernight in a tier mission yet.
 - **Hunt 1 x Veil's idle** (80 s against 45; ruling VE3): a pacing change to Hide the faithful, or a Veil play for its empty stretch.
 - **Painted icons** for the seven new powers. They have flat generated placeholders; the painted-icon recipe is its own task.
-- **Shape lines for the three older powers.** Silent Doom, Blight and Unseen Hour's HUD shape lines and Blight's blurb ("Ruins a
-  well, bell, gate, dock or rite") still read as before the rework and give one size only.
 - **The look and listen checks nobody has done by eye or ear:**
   - Evernight's night is mild: the ambient is eased to about 0.86 of the day's (ruling VC8), so the town reads as dusk, not night.
   - Dreamless's clip is subtle: people sitting down against a wall looks like people resting, which is the point, but the preview

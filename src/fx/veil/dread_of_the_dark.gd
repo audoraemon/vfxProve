@@ -52,15 +52,7 @@ static func dark_in_reach(crowd: Crowd, at: Vector2, reach: float) -> bool:
 		return false
 	if crowd.night_mission or (crowd.dusk != null and crowd.dusk.everywhere) or crowd.in_dark(at):
 		return true
-	# The ledgers have no public walk over their circles; reading them is read-only.
-	if crowd.dusk != null:
-		for p: Dictionary in crowd.dusk._patches:
-			if (p.at as Vector2).distance_to(at) <= reach + float(p.r):
-				return true
-	for v: Dictionary in crowd._veils:
-		if crowd._clock < float(v.until) and (v.at as Vector2).distance_to(at) <= reach + float(v.r):
-			return true
-	return false
+	return (crowd.dusk != null and crowd.dusk.reaches(at, reach)) or crowd.veil_reaches(at, reach)
 
 
 func _build() -> void:

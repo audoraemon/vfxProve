@@ -232,8 +232,11 @@ class Mark extends Node2D:
 
 ## The white silhouette frame of what `p` drew last (PeopleArt's silhouette block sits beside the frame's), or an empty rect.
 static func sil_of(p: Person) -> Rect2:
-	if not is_instance_valid(p) or p.drawn_src.size == Vector2.ZERO or p._design_info.size() < 2:
+	if not is_instance_valid(p) or p.drawn_src.size == Vector2.ZERO:
 		return Rect2()
-	var block: Vector2 = p._design_info[0]
-	var sil: Vector2 = p._design_info[1]
+	var info: Array = p.silhouette_src()
+	if info.size() < 2:
+		return Rect2()
+	var block: Vector2 = info[0]
+	var sil: Vector2 = info[1]
 	return Rect2(p.drawn_src.position - block + sil, p.drawn_src.size)

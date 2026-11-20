@@ -2,7 +2,7 @@
 
 Date: 2026-11-20. Branch `feat/town-suspicion` (worktree `.claude/worktrees/town-suspicion`), cut from `feat/Develop-Main` a5825501.
 Source: Discord #ideas "About alarm and alert on ability use" (id 1573203747956588564) and the conversation that followed.
-Marks: **[user]** = decided by the user; **[call]** = my proposal, open to correction; **[open]** = waits for the user's answer.
+Marks: **[user]** = decided by the user; **[call]** = my proposal, which the user read and approved with this document on 2026-11-20.
 
 ## 1. Intent
 
@@ -157,7 +157,7 @@ is *unexplained*, as is every death once the town knows.
    natural power, a run with no natural power behaves exactly as today.
 2. `RingerDirector` (ringer_director.gd:224: re-calls the keeper at Local Emergency after a stand-in gives the rope
    back) uses the same condition as item 1.
-3. **[open, question 1]** The watched-target missions (`AssassinateDirector._judge`). Proposal: a witnessed kill of an
+3. **[user: approved with this document, 2026-11-20]** The watched-target missions (`AssassinateDirector._judge`): a witnessed kill of an
    *explained* kind no longer calls the keeper outright. It adds a flat `TARGET_SIGN` 40 to the suspicion ("the tax
    collector, struck by lightning, on tax day?"), and calls the keeper only if the town knows after that. The "seen"
    banner, the guards' cry and `q.unseen` (bonus objectives, results) keep meaning "somebody saw it". A witnessed kill

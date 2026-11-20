@@ -132,6 +132,20 @@ static func _flinch_refused(t, made: Array) -> void:
 	inside.inside = true
 	for q in [panicked, fled, dead, inside]:
 		q.flinch(at)
+	var fighter := _put(made, 30, at + Vector2(-5.0, 5.0))
+	fighter.mind = Person.Mind.FIGHT
+	fighter.fearless_left = 30.0
+	fighter.panic(at, 1.0)
+	fighter.observe(at)
+	var runner: Person = crowd.soldiers.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive())[1]
+	runner.ground_pos = at + Vector2(8.0, 8.0)
+	runner.mind = Person.Mind.POST
+	runner.hurrying = true
+	runner.fearless_left = 30.0
+	runner.observe(at)
+	runner.panic(at, 1.0)
+	t.check(not fighter.flinching() and not runner.flinching(),
+		"a fearless fighter and a soldier hurrying to his post do not flinch, by observe() or panic()")
 	t.check(not (panicked.flinching() or fled.flinching() or dead.flinching() or inside.flinching()),
 		"the frightened, the fleeing, the dead and those indoors do not flinch")
 

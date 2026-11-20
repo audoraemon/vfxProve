@@ -1386,11 +1386,15 @@ func startled() -> bool:
 ## A steadied person's start at `from` (fair life, 2026-11-20): freeze startle_seconds() facing it, step FLINCH_STEP away if
 ## he is a duty-bound citizen with room, stare until FLINCH_SECONDS from the start, then carry on. His mind, anchor and
 ## awareness are untouched and nothing is drawn from any generator. Refused while one runs, and for the dead, those
-## indoors, the sleeping and anyone already frightened, fleeing or sheltering.
+## indoors, and anyone not calm, recovering, looking or on duty (a soldier: not at his post, or hurrying).
 func flinch(from: Vector2) -> void:
 	if _flinch_left > 0.0 or state == State.DEAD or inside or night_indoors or held_by_will(WILL_ABSOLUTE) or resists_mind():
 		return
-	if mind == Mind.ASLEEP or mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.SHELTER:
+	# The same eligibility observe() always had: a soldier standing at his post, a citizen calm, recovering, looking or on duty.
+	if soldier:
+		if mind != Mind.POST or hurrying:
+			return
+	elif not (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.OBSERVE or mind == Mind.DUTY):
 		return
 	_flinch_left = FLINCH_SECONDS
 	_flinch_t = 0.0
@@ -1439,7 +1443,8 @@ func _flinch_think(delta: float) -> bool:
 	if before < freeze:
 		# The freeze is over: a duty-bound citizen (never a soldier or a warden) steps away if the way is clear.
 		var away := ground_pos - _flinch_from
-		if mind == Mind.DUTY and not soldier and _goal == Vector2.INF and away.length() > 0.01 				and not (profile != null and profile.role == CitizenProfile.Role.WATCHMAN):
+		if mind == Mind.DUTY and not soldier and _goal == Vector2.INF and away.length() > 0.01 \
+				and not (profile != null and profile.role == CitizenProfile.Role.WATCHMAN):
 			var to := ground_pos + away.normalized() * FLINCH_STEP
 			if straight_clear(to):
 				_flinch_step_to = to

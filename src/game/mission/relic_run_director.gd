@@ -850,7 +850,7 @@ func tour() -> Array:
 	var out := [[temple_door, "The relic cart at the Temple. It halts at two checkpoints, where its reliquary opens."]]
 	if _alive(wren):
 		out.append([wren.ground_pos, "Pip. Bring him to the first halt: he slips aboard there and swaps the relic at the second."])
-	out.append([shrine, "Your believers' house. Pip must bring the relic here. Four seen deaths in a district call the bell."])
+	out.append([shrine, "Your believers' house. Pip must bring the relic here. Four deaths in a district that no accident explains call the bell."])
 	return out
 
 

@@ -812,7 +812,7 @@ func hint_phase() -> String:
 func tour() -> Array:
 	return [[pulpit, "The preacher at the south-west well. While he preaches, his crowd hears only him."],
 		[door, "The god's house. Lead eight of his crowd here, unseen by the Faithful."],
-		[temple_door, "The Temple. A Faithful who sees you runs here. Four seen deaths in a district call the bell."]]
+		[temple_door, "The Temple. A Faithful who sees you runs here. Four deaths in a district that no accident explains call the bell."]]
 
 
 ## What the results show (v0.11 M5): the Believers, the reports, whether the preacher lives, the reliefs.

@@ -137,7 +137,9 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   outermost first (an inward fold), then by instance id, PER_FRAME a frame, of which at most BUILDINGS_PER_FRAME (2) buildings (VA9);
   the effect stays up until the last is made. Ended or freed
   before full size it takes nothing and lays no dusk; ended after, the removals not yet made are dropped. No cast sound here (Task 12's
-  cues): the fold is soundless. The bare dark earth is a node left on `ctx.ground` (not tracked), freed with the mission's ground layer.
+  cues): the fold is soundless. The bare dark earth is a node left on `ctx.ground` (not tracked) in the lasting-effects group
+  (`SolarisPit.GROUP`, "fx_lasting"), so `Battlefield.clear_effects()` frees it on a restart as it frees Solaris's pit (VG2; the
+  ground plane itself is the Battlefield's and outlives the mission).
 - VA9 (Task 10): bench (`--bench --loadout=swallow` against `--bench-cast=swallow --bench-after=4`, the market square, light: r 10;
   machine loaded by other sessions). avg_ms base / cast: 16.22 / 16.11, 15.56 / 15.91, 15.87 / 16.37; ratios 0.993, 1.022, 1.032;
   median 1.02 (bar 1.55). Worst frame in those cast windows (t 4-13 s, the growing disc): 34.1 ms (bases 33.8-39.9). The fold itself
@@ -272,3 +274,15 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   powers' do. Blight's blurb now says what the rework does (a building rots, a person is sickened).
 - VF3 (Task 13c): VC3's private reads are gone: Dread's refusal asks Dusk.reaches(at, r) and Crowd.veil_reaches(at, r), and Shadow
   Play's edge asks Person.silhouette_src(). Nothing outside src/game/crowd reads _patches, _veils or _design_info.
+
+## Final fix wave (VG; controller ruling C23)
+- VG1 (Critical 1): The Swallowing Dark never takes a building the night wants down (`director.wants_down(s)`): `_inside()` skips it
+  beside `MissionKeeps.spared()`. MissionKeeps lets a power that destroys fell such a building (a fall there is the god's work), but
+  the dark only takes it (`EnvironmentField.remove(..)` sets `taken`, never `destroyed`), and the directors raze only a destroyed or
+  freed target: a swallowed granary, refuge, shrine, standard, stocks or Citadel would leave the night unwinnable. Spec 5.9's "a
+  mission's own object" is read as both: what the mission keeps and what it wants down.
+- VG2 (Critical 2): The Swallowing Dark's `BareEarth` joins `SolarisPit.GROUP` ("fx_lasting") in its `_init()`, so
+  `Battlefield.clear_effects()` frees it on a restart (R, the Sandbox's R/TAB). VA8 is corrected to match.
+- VG3 (Critical 3): Blight passes over everyone `Crowd.spared()` names (the god's BELIEVER and every director's `keeps_alive`), in the
+  pick (`_nearest_person()`) and when the sick are made (`_make_ill()`): a click on a kept charge takes the next thing in Blight's order
+  (or is refused "no_blight" with nothing else there), and the dark's others are the next nearest. No rng: distance, then instance id.

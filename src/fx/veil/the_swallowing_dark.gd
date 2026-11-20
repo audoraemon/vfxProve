@@ -6,8 +6,9 @@ extends FxTimeline
 ## size everything inside is gone without a sound: every person (Crowd.take(p, &"void"): no body, no voice, no remain), every animal
 ## and visitor, every lying remain, every decor piece whose `at` is inside, and every building whose footprint lies wholly inside
 ## (wholly_inside()) by Eminent Domain's quiet path (EnvironmentField.remove(s, true, true), batched: the walk grid opens, no rubble), with
-## whoever shelters in it. Spared: a building MissionKeeps.spared() names (the Citadel and Temple, the hallowed, the mission's own)
-## and the town's own gates, bridges, postern, dock and fountain, which its managers go on using (as Eminent Domain keeps them). A
+## whoever shelters in it. Spared: a building MissionKeeps.spared() names (the Citadel and Temple, the hallowed, the mission's own),
+## one the night wants down (director.wants_down(): the dark takes, it does not destroy, and a taken target is never razed) and the
+## town's own gates, bridges, postern, dock and fountain, which its managers go on using (as Eminent Domain keeps them). A
 ## blighted foothold that goes is healed first (BlightFx.heal()), so no foothold points at a removed building. The removals are spread
 ## over frames, PER_FRAME at most each (BUILDINGS_PER_FRAME of them buildings), outermost first (an inward fold). The emptied ground is dusk for VeilRules.DUSK_TIME and
 ## stays bare dark earth (a ground mark left for the mission). Nothing of it is remembered: no incident, no search, no count.
@@ -118,7 +119,7 @@ func _swallow() -> void:
 		var mark := BareEarth.new()
 		mark.at = origin
 		mark.r = full_r
-		ctx.ground.add_child(mark)  # not tracked: the bare earth stays for the mission
+		ctx.ground.add_child(mark)  # not tracked: the bare earth stays for the mission (Battlefield.clear_effects() frees it)
 
 
 ## Everything to take, outermost first (then by instance id): no rng decides it.
@@ -139,7 +140,9 @@ func _inside() -> Array:
 		for s in ctx.env.structures():
 			if not is_instance_valid(s) or s.taken or keep.has(s) or not wholly_inside(s, origin, r):
 				continue
-			if MissionKeeps.spared(s, crowd, director):
+			# MissionKeeps lets a power that destroys fell what the night wants down; the dark only takes (no `destroyed`), and a
+			# taken target is never razed: the objective would be lost for good (final review, Critical 1).
+			if MissionKeeps.spared(s, crowd, director) or (director != null and director.wants_down(s)):
 				continue
 			gone[s] = true
 	_gone = gone
@@ -300,13 +303,15 @@ class SwallowDisc extends Node2D:
 			draw_arc(at, r * (1.0 - fold), 0.0, TAU, 64, Color(VeilParts.SILVER, 0.9 * (1.0 - fold)), 0.08)
 
 
-## Bare dark earth where the dark closed: one flat disc on the ground, kept for the mission.
+## Bare dark earth where the dark closed: one flat disc on the ground, kept for the mission. A lasting effect node
+## (SolarisPit.GROUP): Battlefield.clear_effects() frees it on a restart, so it never lies on a fresh town.
 class BareEarth extends Node2D:
 	var at := Vector2.ZERO
 	var r := 0.0
 
 	func _init() -> void:
 		z_index = 1
+		add_to_group(SolarisPit.GROUP)
 
 	func _draw() -> void:
 		draw_circle(at, r, Color("1a1410", 0.92))

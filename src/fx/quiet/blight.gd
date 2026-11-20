@@ -11,7 +11,8 @@ extends FxTimeline
 ##   light back, its dusk gone). The foothold outlives the effect; it ends only by the cap or with Crowd.clear().
 ## - A person falls ill without a sound and walks home to bed (Person.send_home_sick()); in the dark the ILL_MOST - 1 nearest within
 ##   ILL_REACH of them too. A mission's quarry (MissionDirector.quarry()) is only ill for ILL_TIME (Person.make_ill()); the god's own
-##   believers are passed over. Not a death: no witness, no alarm, no kill credit.
+##   believers and whoever the mission keeps alive (Crowd.spared(): a director's keeps_alive, the Escort's charge) are passed over --
+##   the pick, and the dark's others, go to the next by distance. Not a death: no witness, no alarm, no kill credit.
 ## Silent (spec 11.1): Blight raises no alarm, for a building and a director's thing alike. Everything happens at T_ROT; before it the
 ## cast has changed nothing, so an effect cut short leaves nothing behind.
 
@@ -121,7 +122,7 @@ static func _nearest_person(crowd: Crowd, at: Vector2, reach: float, skip: Array
 	var best: Person = null
 	var best_d := INF
 	for p in crowd.citizens + crowd.soldiers:
-		if not ill_able(p) or skip.has(p):
+		if not ill_able(p) or skip.has(p) or crowd.spared(p):
 			continue
 		var d := p.ground_pos.distance_to(at)
 		if d > reach:
@@ -254,7 +255,7 @@ func _make_ill(sick: Array[Person]) -> void:
 		return
 	var d: MissionDirector = ctx.rules.director if ctx.rules != null else null
 	for p in sick:
-		if not ill_able(p):
+		if not ill_able(p) or (ctx.crowd != null and ctx.crowd.spared(p)):
 			continue
 		if d != null and d.quarry(p):
 			p.make_ill(ILL_TIME)

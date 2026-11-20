@@ -8,12 +8,16 @@ extends RefCounted
 const DT := 1.0 / 60.0
 
 
-## A director that needs one building standing.
+## A director that needs one building standing and wants another down (its objective: a Raze target, a granary, the stocks).
 class TestDirector extends MissionDirector:
 	var keep: Structure
+	var want: Structure
 
 	func needs_standing(s: Structure) -> bool:
 		return s != null and s == keep
+
+	func wants_down(s: Structure) -> bool:
+		return s != null and s == want
 
 
 static func _setup() -> Array:
@@ -105,6 +109,8 @@ static func run(t) -> void:
 		_full(t, made, shelter, grid)
 		_control(t, made, far)
 	_done(made)
+	_mission_things(t)
+	_restart(t)
 	_no_crowd(t)
 	_market(t)
 
@@ -422,6 +428,83 @@ static func _control(t, made: Array, h: Structure) -> void:
 	t.check(not c.is_alive() and not env.structures().has(h) and h.taken and crowd.dusk.count() == 1 and _marks(ctx) == marks0 + 1,
 		"(control) left to run: the person and the house are taken, dusk and bare earth laid")
 	t.check(fx.finished, "(control) it ends")
+
+
+## Final review, Critical 1: a building the night wants down (`director.wants_down()`: a Raze target, a granary, the stocks) is never
+## swallowed -- taken, not destroyed, it would stay un-razed for ever. Control: a plain house wholly inside beside it is gone. And the
+## deferred Task 10 case (C20 clarified): one night-indoors at a home point inside the circle (no shelter building) is taken; one at a
+## home point outside is not.
+static func _mission_things(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var field: EnemyField = made[3]
+	var ctx: FxContext = made[5]
+	const R := 10.0
+	var want: Structure = null
+	var plain: Structure = null
+	for h in _houses(env):
+		if MissionKeeps.spared(h, crowd, null):
+			continue
+		var other: Structure = null
+		for o in _houses(env):
+			if o != h and TheSwallowingDarkFx.wholly_inside(o, h.center(), R) and not MissionKeeps.spared(o, crowd, null):
+				other = o
+				break
+		if other != null:
+			want = h
+			plain = other
+			break
+	t.check(want != null and plain != null, "a house with a plain house wholly inside 10 of it")
+	if want == null:
+		_done(made)
+		return
+	var at := want.center()
+	var d := TestDirector.new()
+	d.want = want
+	ctx.rules.director = d
+	t.check(not MissionKeeps.spared(want, crowd, d) and TheSwallowingDarkFx.wholly_inside(want, at, R),
+		"(the wanted building is not spared by MissionKeeps and lies wholly inside)")
+	# Night-indoors at a home point (NightRules / send_home_sick(): inside, hidden, out of the field; no shelter building).
+	var home_in: Person = crowd.citizens[8]
+	var home_out: Person = crowd.citizens[9]
+	for pair in [[home_in, at + Vector2(3.0, 0.0)], [home_out, at + Vector2(R + 3.0, 0.0)]]:
+		var p: Person = pair[0]
+		crowd.shelters.release(p)
+		p.ground_pos = pair[1]
+		p.inside = true
+		p.night_indoors = true
+		p.visible = false
+		field.remove(p)
+	var fx := _cast(ctx, at)
+	_go(fx, 23.0)
+	t.check(fx.finished and fx.swallowed, "(the light cast has run its course)")
+	t.check(env.structures().has(want) and not want.taken and is_instance_valid(want),
+		"a building the night wants down stands after the fold, though wholly inside")
+	t.check(not env.structures().has(plain) and plain.taken, "(control) the plain house beside it is gone")
+	t.check(not home_in.is_alive() and not home_in.visible, "one night-indoors at a home point inside the circle is taken")
+	t.check(home_out.is_alive(), "one night-indoors at a home point outside it is not")
+	ctx.rules.director = null
+	_done(made)
+
+
+## Final review, Critical 2: the bare earth is a lasting ground mark, freed with the rest by Battlefield.clear_effects() (a restart, the
+## Sandbox's R/TAB): before it there is one on the ground plane (control); after it and a frame, none.
+static func _restart(t) -> void:
+	const FxStage := preload("res://tests/fx_stage.gd")
+	var bf := FxStage.make(3)
+	var marks := func() -> int:
+		var n := 0
+		for c in bf.ctx.ground.get_children():
+			if c is TheSwallowingDarkFx.BareEarth and not c.is_queued_for_deletion():
+				n += 1
+		return n
+	var fx := FxTimeline.cast(TheSwallowingDarkFx, bf.ctx, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+	_go(fx, 23.0)
+	t.check(fx.finished and marks.call() == 1, "(control) the fold leaves one bare earth on the ground plane (%d)" % marks.call())
+	bf.clear_effects()
+	t.check(marks.call() == 0, "after clear_effects() no bare earth is left on the ground plane (%d)" % marks.call())
+	FxStage.drop(bf)
 
 
 ## No crowd, no rules (the VFX Sandbox): it grows at the light size, takes the town's buildings and decor and finishes.

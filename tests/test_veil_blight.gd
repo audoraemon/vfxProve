@@ -141,6 +141,7 @@ static func run(t) -> void:
 	_pick(t, made, open)
 	_buildings(t, made)
 	_people(t, made, open)
+	_kept(t, made, open)
 	_refusal(t, made, open)
 	_teardown(t, made)
 	_done(made)
@@ -315,6 +316,50 @@ static func _people(t, made: Array, open: Vector2) -> void:
 	fx._process(0.6)
 	t.check(not v.is_alive() and not v.home_sick and not w.home_sick, "the picked person dies before T_ROT: nobody sent home")
 	fx.end_now()
+	_scatter(crowd)
+
+
+## Final review, Critical 3: one the mission keeps alive (Crowd.spared(): a director's keeps_alive -- the Escort's charge) is never
+## sent home sick. A dark Blight on a guard beside him leaves him well and takes the next nearest instead; a click on him picks the
+## next thing in Blight's order, or nothing ("no_blight") when nothing else is there. No luck: distance, then instance id.
+static func _kept(t, made: Array, open: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var ctx: FxContext = made[5]
+	_scatter(crowd)
+	crowd.dusk.clear()
+	for p in crowd.citizens + crowd.soldiers:
+		p.home_sick = false
+	var g: Person = crowd.soldiers[0]
+	var k: Person = crowd.citizens[20]
+	var o1: Person = crowd.citizens[21]
+	var o2: Person = crowd.citizens[22]
+	var keep := func(p: Person) -> bool: return p == k
+	crowd.mission_keeps.append(keep)
+	t.check(crowd.spared(k) and not crowd.spared(o1), "(the charge is kept alive: Crowd.spared())")
+	g.ground_pos = open
+	k.ground_pos = open + Vector2(0.5, 0.0)
+	o1.ground_pos = open + Vector2(1.0, 0.0)
+	o2.ground_pos = open + Vector2(1.5, 0.0)
+	_cast(ctx, open, true).end_now()
+	t.check(g.home_sick and not k.home_sick and o1.home_sick and o2.home_sick,
+		"dark Blight beside a kept charge: he stays well, the next nearest go instead (guard %s, kept %s, %s, %s)"
+		% [g.home_sick, k.home_sick, o1.home_sick, o2.home_sick])
+	# A click on the charge himself: the next by Blight's order (a person within PICK).
+	_scatter(crowd)
+	for p in crowd.citizens + crowd.soldiers:
+		p.home_sick = false
+	k.ground_pos = open
+	o1.ground_pos = open + Vector2(0.4, 0.0)
+	var took := BlightFx.pick(ctx, open)
+	t.check(took.kind == &"person" and took.p == o1, "a click on the kept charge picks the next one within reach (%s)" % took.kind)
+	_cast(ctx, open).end_now()
+	t.check(not k.home_sick and o1.home_sick, "and that one goes home sick, not the charge")
+	o1.home_sick = false
+	o1.ground_pos = Vector2(-27.0, -27.0)
+	t.check(BlightFx.choose(env, crowd, null, open).kind == &"none", "the charge alone: nothing to blight (refused \"no_blight\")")
+	crowd.mission_keeps.erase(keep)
+	crowd.dusk.clear()
 	_scatter(crowd)
 
 

@@ -889,6 +889,8 @@ func _base_speed() -> float:
 		Mind.PANIC:
 			return PANIC_SPEED * pace
 		Mind.RALLY:
+			if corps != Corps.NONE:
+				return PANIC_SPEED * pace
 			return WALK_SPEED * ASSIST_PACE * pace
 		Mind.RECOVER:
 			return WALK_SPEED * RECOVER_PACE * pace
@@ -2771,6 +2773,7 @@ func _scurry() -> void:
 
 func is_running() -> bool:
 	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.FIGHT
+		or (mind == Mind.RALLY and corps != Corps.NONE)
 		or (mind == Mind.COMPELLED and _compel_run))
 
 
@@ -3205,7 +3208,7 @@ func _sprite_pose_code() -> int:
 		t = _still_t
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
-		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE else 1
+		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or (mind == Mind.RALLY and corps != Corps.NONE) else 1
 		if (mind == Mind.FIGHT and fight_kind == &"madness") or (anim == 1 and guised()):
 			_design()
 			if _has_own_art(6):

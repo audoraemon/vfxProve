@@ -360,12 +360,32 @@ static func _guard_wiped_out_refills(t) -> void:
 	var crowd: Crowd = made[0]
 	var gj := crowd.guard_jobs
 	crowd.rally()
+	_hold_rest(crowd)
 	for p in crowd.guard.job.crew.duplicate():
 		(p as Person).die(&"test")
 	gj.step(1.0)
+	t.check(crowd.guard.count() == 0, "with nobody free the dead guard is not refilled (%d)" % crowd.guard.count())
 	t.check(gj.jobs.has(crowd.guard.job) and not crowd.guard.job.ended, "the CITADEL job survives an empty crew")
+	crowd.mission_holds.clear()
 	gj.step(1.0)
-	t.check(crowd.guard.count() == 20, "the next ticks send free town men again (%d)" % crowd.guard.count())
+	t.check(crowd.guard.count() == 20, "once men are free the next tick sends them (%d)" % crowd.guard.count())
+	Corps._done(made)
+
+
+static func _stand_down_skips_busy(t) -> void:
+	var made := _made()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	var b := _group(crowd, 2)[0]
+	gj.add_duty(StubShelter.new().setup(gj, crowd))
+	var job := gj.post(GuardJobs.Kind.SHELTER, b.ground_pos, 1)
+	gj.assign(job, b)
+	var post := b.post
+	crowd.add_soldier(Vector2(0.0, 0.0))
+	crowd.add_soldier(Vector2(1.0, 0.0))
+	crowd.rally()
+	t.check(gj.kind_of(b) == GuardJobs.Kind.SHELTER and b.post_group == 2 and b.post == post and not crowd.guard.job.crew.has(b),
+		"a man on a job that cannot be pulled is not stood down: he keeps his job and his group")
 	Corps._done(made)
 
 
@@ -428,6 +448,7 @@ static func run(t) -> void:
 	_capital_guard(t)
 	_walk_cadence(t)
 	_guard_wiped_out_refills(t)
+	_stand_down_skips_busy(t)
 	_rally_after_fall(t)
 	_mission_man_inside_or_busy(t)
 	_yard_spots_distinct(t)

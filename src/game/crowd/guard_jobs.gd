@@ -123,11 +123,11 @@ func eligible(p: Variant) -> bool:
 	return at_post(p) and not on_job(p)
 
 
-## The eligible guards within `reach` of `at`, nearest first (ties by stagger).
+## The free guards (is_free(): at their posts or walking a beat) within `reach` of `at`, nearest first (ties by stagger).
 func free_near(at: Vector2, reach: float) -> Array[Person]:
 	var out: Array[Person] = []
 	for p in _crowd.soldiers:
-		if eligible(p) and p.ground_pos.distance_to(at) <= reach:
+		if is_free(p) and p.ground_pos.distance_to(at) <= reach:
 			out.append(p)
 	out.sort_custom(func(a: Person, b: Person) -> bool:
 		var da := a.ground_pos.distance_to(at)
@@ -149,7 +149,7 @@ func pick(at: Vector2, reach: float, on_here: int, cap: int) -> Array[Person]:
 		return out
 	var left := {}
 	for p in _crowd.soldiers:
-		if at_post(p):
+		if is_free(p):
 			left[p.post_group] = int(left.get(p.post_group, 0)) + 1
 	for p in free:
 		if out.size() >= want:

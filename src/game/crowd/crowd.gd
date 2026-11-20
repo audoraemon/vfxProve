@@ -39,6 +39,12 @@ const CITY_POST_SPREAD := 0.25
 const LOOP_REACH := 0.6
 ## How near his post a street beat man must be to have arrived (his first post is the pair's spread spot, not a beat point).
 const BEAT_REACH := 1.0
+## How long a beat man may spend on one leg before he takes the next point (ground that cannot be reached never strands him), and
+## the seconds each beat adds to its pair's first pause.
+const BEAT_LEG_LIMIT := 20.0
+## How near his post a beat man counts as arrived though his goal is still set (a post on ground's edge is a jitter, not a reach).
+const BEAT_ARRIVED := 0.3
+const BEAT_FIRST_PAUSE := 0.35
 const LOOP_PAUSE := 2.0
 ## How many waypoints ahead a city's faced gate (CityDef.gate_outward()) looks for itself on a waiting person's path.
 const GATE_AHEAD := 24
@@ -285,7 +291,9 @@ var _city_posts := false
 ## is walking to or standing at, its loop's index, when it reached that point (-1: not yet)].
 var _loops: Array = []
 ## The street pairs walking their beats (CityDef.street_beats()), shaped as `_loops`' entries with the beat's index for the
-## loop's: kept apart so loop_of() stays "walks a wall loop".
+## loop's, each man his own points (the beat's, moved by his spawn offset from the pair's post and kept between the beat's ends), then [5] when his current leg
+## began, [6] the extra seconds of his first pause (0.35 a beat, so the pairs' path searches do not bunch) and [7] the index in
+## this list of his pair's other man (-1: none): kept apart so loop_of() stays "walks a wall loop".
 var _beats: Array = []
 ## Steps the people (see Ticker).
 var _ticker: Ticker
@@ -869,15 +877,28 @@ func _start_loops() -> void:
 					i += 1
 	var beats := City.current().street_beats()
 	for k in beats.size():
-		var points: Array[Vector2] = []
-		for g: Vector2 in beats[k].points:
-			var w := _grid.nearest_walkable(g)
-			points.append(w if w != Vector2.INF else g)
+		var first := _beats.size()
 		for m in 2:
 			if i < soldiers.size():
+				var off: Vector2 = soldiers[i].post - (beats[k].post as Vector2)
+				var points: Array[Vector2] = []
+				var raw := Rect2(beats[k].points[0], Vector2.ZERO)
+				for g: Vector2 in beats[k].points:
+					raw = raw.expand(g)
+				for g: Vector2 in beats[k].points:
+					var at := g + off
+					if raw.size.y >= raw.size.x:
+						at.y = clampf(at.y, raw.position.y, raw.end.y)
+					else:
+						at.x = clampf(at.x, raw.position.x, raw.end.x)
+					var w := _grid.nearest_walkable(at)
+					points.append(w if w != Vector2.INF else at)
 				soldiers[i].beat_index = k
-				_beats.append([soldiers[i], points, int(beats[k].start), k, -1.0])
+				_beats.append([soldiers[i], points, int(beats[k].start), k, -1.0, _clock, BEAT_FIRST_PAUSE * k, -1])
 				i += 1
+		if _beats.size() - first == 2:
+			_beats[first][7] = first + 1
+			_beats[first + 1][7] = first
 
 
 ## Which street beat `p` walks (its index in CityDef.street_beats()), or -1.
@@ -910,22 +931,56 @@ func _walk_list(list: Array, reach: float, beats: bool) -> void:
 		if not is_instance_valid(e[0]):
 			continue
 		var p: Person = e[0]
-		if not p.is_alive() or (_rallied and not beats) or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST \
-				or p.has_goal() or guard_jobs.on_job(p) or (beats and (not p.on_beat() or held_by_mission(p))):
+		if not p.is_alive() or (_rallied and not beats) or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST 				or guard_jobs.on_job(p) or (beats and (not p.on_beat() or held_by_mission(p))):
+			if beats:
+				e[4] = -1.0
+				e[5] = _clock
+			continue
+		var stale: bool = beats and _clock - float(e[5]) > BEAT_LEG_LIMIT
+		if p.has_goal() and not stale and not (beats and p.ground_pos.distance_to(p.post) <= BEAT_ARRIVED):
+			if beats:
+				e[4] = -1.0
 			continue
 		var points: Array[Vector2] = e[1]
-		var here: Vector2 = p.post if beats else points[e[2]]
-		if p.ground_pos.distance_to(here) > reach or _looking(p):
-			e[4] = -1.0
-			continue
-		if float(e[4]) < 0.0:
-			e[4] = _clock
-		elif _clock - float(e[4]) >= LOOP_PAUSE:
+		var go := stale
+		if not stale:
+			var here: Vector2 = p.post if beats else points[e[2]]
+			if _looking(p):
+				e[4] = -1.0
+				if beats:
+					e[5] = _clock
+			elif p.ground_pos.distance_to(here) > reach:
+				e[4] = -1.0
+			elif float(e[4]) < 0.0:
+				e[4] = _clock + (float(e[6]) if beats else 0.0)
+				if beats:
+					e[6] = 0.0
+			else:
+				go = _clock - float(e[4]) >= LOOP_PAUSE and (not beats or _mate_ready(e))
+		if go:
 			e[2] = (int(e[2]) + 1) % points.size()
 			e[4] = -1.0
+			if beats:
+				e[5] = _clock
 			p.post = points[e[2]]
 			p.town_post = p.post
 			p.send_to_post(p.post)
+
+
+## Whether a beat man's pair mate lets him move on: he is gone from the beat (dead, on a job, stationed, held), or stands at the
+## same point and has paused his full time, or is already a step ahead. A mate still a step behind is waited for, so a pair walks together.
+func _mate_ready(e: Array) -> bool:
+	if int(e[7]) < 0:
+		return true
+	var m: Array = _beats[e[7]]
+	var q: Person = m[0]
+	if not is_instance_valid(q) or not q.is_alive() or not q.on_beat() or guard_jobs.on_job(q) or held_by_mission(q):
+		return true
+	var n: int = (e[1] as Array).size()
+	var ahead := posmod(int(m[2]) - int(e[2]), n)
+	if ahead == 0:
+		return float(m[4]) >= 0.0 and _clock - float(m[4]) >= LOOP_PAUSE
+	return ahead <= n - ahead
 
 
 func _looking(p: Person) -> bool:

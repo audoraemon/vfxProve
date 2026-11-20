@@ -152,6 +152,22 @@ static func run(t) -> void:
 	_no_refill(t)
 	_garrison(t)
 	_freed(t)
+	_corps_man_runs(t)
+
+
+## Only a Citadel guard man walks to the ring: a corps man (marshal, escort, rescuer) called in runs and counts as running.
+static func _corps_man_runs(t) -> void:
+	var made := _crowd()
+	var crowd: Crowd = made[0]
+	var m := first_of(crowd, Person.Corps.MARSHAL)
+	var n := first_of(crowd, Person.Corps.NONE)
+	m.send_to_post(m.post + Vector2(4.0, 0.0), true)
+	n.send_to_post(n.post + Vector2(4.0, 0.0), true)
+	t.check(m.mind == Person.Mind.RALLY and m.is_running() and m._walk_rate() == 8.0, "a marshal in RALLY runs and counts as running")
+	t.near(m._base_speed(), Person.PANIC_SPEED * m.pace, 0.0001, "at the run's speed")
+	t.check(not n.is_running() and n._walk_rate() == 5.0, "an ordinary man in RALLY walks")
+	t.near(n._base_speed(), Person.WALK_SPEED * Person.ASSIST_PACE * n.pace, 0.0001, "at the walk's speed")
+	_done(made)
 
 
 ## The first living soldier of `corps`.

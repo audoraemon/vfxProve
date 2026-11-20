@@ -4,7 +4,14 @@ extends RefCounted
 
 const Corps := preload("res://tests/test_corps.gd")
 const CapPeople := preload("res://tests/test_capital_people.gd")
+const GJ := preload("res://tests/test_guard_jobs.gd")
 const STEP := 1.0 / 30.0
+
+
+## A duty that only registers the SHELTER kind.
+class StubShelter extends Duty:
+	func kind() -> int:
+		return GuardJobs.Kind.SHELTER
 
 
 static func run(t) -> void:
@@ -19,6 +26,10 @@ static func run(t) -> void:
 	_walker_free(t)
 	_escort_stands(t)
 	_mission_man_never(t)
+	_pairs_keep_spread(t)
+	_taken_by_fire_rejoins(t)
+	_stale_leg(t)
+	_fill_takes_walker(t)
 
 
 ## Every soldier thinks and moves one step, then the crowd's own tick.
@@ -277,4 +288,117 @@ static func _mission_man_never(t) -> void:
 	t.check(not crowd.guard_jobs.is_free(p), "a held beat man is not free")
 	_run_for(crowd, 8.0)
 	t.check(p.post == at and not p.has_goal(), "his entry never re-posts him")
+	_done(made)
+
+
+## Two ordinary men of one beat (neither an escort).
+static func _whole_pair(crowd: Crowd) -> Array[Person]:
+	for p in _beat_men(crowd):
+		for q in _beat_men(crowd):
+			if q != p and crowd.beat_of(q) == crowd.beat_of(p):
+				return [p, q]
+	return []
+
+
+## The crowd's entry for beat man `p`, or null.
+static func _entry(crowd: Crowd, p: Person) -> Variant:
+	for e in crowd._beats:
+		if e[0] == p:
+			return e
+	return null
+
+
+## The two men of a pair keep their own spread (never stacked on one point) and stay within 2.5 of each other for 120 s (they spawn up to 1.6 apart, and one waits for the other).
+static func _pairs_keep_spread(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var pairs := {}
+	for p in _beat_men(crowd):
+		var men: Array = pairs.get(crowd.beat_of(p), [])
+		men.append(p)
+		pairs[crowd.beat_of(p)] = men
+	var far := 0.0
+	var apart := 0
+	var counted := 0
+	for i in roundi(120.0 / STEP):
+		_step(crowd)
+		if i % 15 != 0:
+			continue
+		for k in pairs:
+			var men: Array = pairs[k]
+			if men.size() != 2 or not men[0].on_beat() or not men[1].on_beat():
+				continue
+			far = maxf(far, men[0].ground_pos.distance_to(men[1].ground_pos))
+			counted += 1
+			apart += 1 if men[0].post.distance_to(men[1].post) > 0.05 else 0
+	t.check(counted > 0 and far <= 2.5, "the two men of a pair stay within 2.5 of each other for 120 s (%.2f)" % far)
+	t.check(counted > 0 and apart >= counted * 0.9, "and keep their own spread, never one point (%d of %d samples)" % [apart, counted])
+	_done(made)
+
+
+## A beat man taken by a fire goes back to his beat when it is over, pauses, and walks on.
+static func _taken_by_fire_rejoins(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	var p: Person = _beat_men(crowd)[0]
+	var house := GJ._house(made[1])
+	p.assist(house, true)
+	gj.take(p, house)
+	_run_for(crowd, 3.0)
+	t.check(gj.on_job(p) and not p.on_watch(), "a beat man is taken by a fire")
+	gj.release(p)
+	p.back_to_post()
+	var e: Array = _entry(crowd, p)
+	var at: int = e[2]
+	_run_for(crowd, 0.5)
+	t.check(float(e[4]) < 0.0 or crowd._clock - float(e[4]) < Crowd.LOOP_PAUSE, "back from the job his pause clock starts afresh")
+	var walked := _moved_on(crowd, [p] as Array[Person], 60.0)
+	t.check(not gj.on_job(p) and (walked.has(p) or int(e[2]) != at), "and he rejoins his beat, walking on")
+	_done(made)
+
+
+## A beat with one point nobody can reach is still walked: a leg of more than 20 s takes the next point.
+static func _stale_leg(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var p: Person = _beat_men(crowd)[0]
+	var e: Array = _entry(crowd, p)
+	var n: int = (e[1] as Array).size()
+	var bad := (int(e[2]) + 1) % n
+	e[1][bad] = Vector2(1000.0, 1000.0)
+	var steps := 0
+	var last: int = e[2]
+	for i in roundi(70.0 / STEP):
+		_step(crowd)
+		if int(e[2]) != last:
+			steps += 1
+			last = e[2]
+	t.check(steps >= 3, "a beat man whose next point is out of reach goes on to the points after it (%d points taken in 70 s)" % steps)
+	_done(made)
+
+
+## A real board tick takes a walking beat man for a job.
+static func _fill_takes_walker(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var gj := crowd.guard_jobs
+	var pair := _whole_pair(crowd)
+	var p: Person = pair[0]
+	var mate: Person = pair[1]
+	var to := p.post + Vector2(0.0, 2.0)
+	p.post = to
+	p.town_post = to
+	p.send_to_post(to)
+	crowd.mission_holds.append(func(q: Person) -> bool: return q.soldier and q != p and q != mate)
+	t.check(p.has_goal(), "he is mid-leg")
+	gj.add_duty(StubShelter.new().setup(gj, crowd))
+	t.check(gj.free_near(p.ground_pos, 5.0).has(p), "fires and piles see him too: free_near() counts a walking beat man")
+	var job := gj.post(GuardJobs.Kind.SHELTER, p.ground_pos, 1)
+	gj.step(1.0)
+	t.check(gj.job_of(p) == job, "a board tick takes a beat man who is mid-leg")
 	_done(made)

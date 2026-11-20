@@ -135,6 +135,8 @@ var _watch_in := 0.0
 var alarms := AlarmManager.new()
 ## How strange the town finds the night (Town Suspicion): fed one sign per witnessed cast.
 var suspicion := Suspicion.new()
+## True once keeper_due() has sent the bellkeeper (one call); cleared by clear().
+var _keeper_sent := false
 ## Which way out each evacuee takes (v0.04); made by spawn().
 var evac: EvacuationManager
 ## Fires and the citizens fighting them (v0.04 P1); made by setup().
@@ -347,6 +349,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_added.connect(_on_structure_added)
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
+	suspicion.became_known.connect(func(_why: String) -> void: _send_keeper())
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	piles = PileManager.new().setup(self, env, grid)
 	guard_jobs = GuardJobs.new().setup(self)
@@ -1496,7 +1499,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", lev
 			add_alarm(unease)
 		var quiet_look := PowerBook.look(key)
 		if quiet_look != Suspicion.NONE:
-			_sign([ground] as Array[Vector2], Suspicion.QUIET_SIGN_SIGHT, quiet_look)
+			_sign([ground] as Array[Vector2], Suspicion.QUIET_SIGN_SIGHT, quiet_look, 1.0)
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key, level) * scale
@@ -1541,7 +1544,7 @@ func _land_held() -> void:
 func _land(key: String, points: Array[Vector2], radius: float, reach: Array, ground: Vector2) -> void:
 	var look := PowerBook.look(key)
 	if look != Suspicion.NONE:
-		_sign(points, float(reach[0]), look)
+		_sign(points, float(reach[0]), look, minf(radius, float(reach[0]) * 0.5))
 	for point in points:
 		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
 			StringName(key))
@@ -1550,8 +1553,9 @@ func _land(key: String, points: Array[Vector2], radius: float, reach: Array, gro
 
 
 ## The nearest living person, citizen or soldier, not inside and not asleep, within `sight` x sight_scale of any of `points`:
-## who saw a cast (Town Suspicion). Null when nobody did, and in a hushed town.
-func sign_witness(points: Array[Vector2], sight: float) -> Person:
+## who saw a cast (Town Suspicion). Anyone within `clear` of a point is inside the cast's own danger, its victim and no witness.
+## Null when nobody saw, and in a hushed town.
+func sign_witness(points: Array[Vector2], sight: float, clear := 0.0) -> Person:
 	if is_hushed():
 		return null
 	var best: Person = null
@@ -1560,17 +1564,18 @@ func sign_witness(points: Array[Vector2], sight: float) -> Person:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.is_asleep():
 				continue
+			var near := INF
 			for point in points:
-				var d := p.ground_pos.distance_to(point)
-				if d <= best_d:
-					best = p
-					best_d = d
+				near = minf(near, p.ground_pos.distance_to(point))
+			if near >= clear and near <= best_d:
+				best = p
+				best_d = near
 	return best
 
 
 ## One cast of `look` over `points`, if someone saw it: the town counts one sign, however many points the cast has.
-func _sign(points: Array[Vector2], sight: float, look: StringName) -> void:
-	var witness := sign_witness(points, sight)
+func _sign(points: Array[Vector2], sight: float, look: StringName, clear := 0.0) -> void:
+	var witness := sign_witness(points, sight, clear)
 	if witness == null:
 		return
 	var before := suspicion.state()
@@ -1894,9 +1899,6 @@ func add_alarm(points: float) -> void:
 ## A new alarm stage (AlarmManager.stage_changed): what the town does about it.
 func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 	match stage:
-		AlarmManager.Stage.LOCAL_EMERGENCY:
-			if bell != null:
-				bell.call_keeper()
 		AlarmManager.Stage.CITY_EMERGENCY:
 			suspicion.know("the town is in emergency")
 			if sfx != null:
@@ -1914,6 +1916,22 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			if marshals != null:
 				marshals.begin()
 			_evacuate()
+	_send_keeper()
+
+
+## Whether the town sends the bellkeeper now (Town Suspicion): there is a bell, a district is in local emergency or worse, and
+## the town either knows or the district's incidents are not all explained by a natural power. Deaths a natural power explains
+## wait until the town knows: delay only, never sooner than the old first Local Emergency.
+func keeper_due() -> bool:
+	return bell != null and alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY and (suspicion.known or alarms.unexplained_emergency())
+
+
+## Sends the bellkeeper the first time keeper_due() holds; asked after every incident, every stage change and when the town knows.
+func _send_keeper() -> void:
+	if _keeper_sent or not keeper_due():
+		return
+	_keeper_sent = true
+	bell.call_keeper()
 
 
 ## Everyone still in town makes for the gates.
@@ -2431,6 +2449,7 @@ func clear() -> void:
 	deaths.reset()
 	trail.clear()
 	suspicion.reset()
+	_keeper_sent = false
 
 
 ## Everyone alive and outside standing on a closed cell in `r` (ground units: a falling footprint, a pile cell; grown by a
@@ -2462,8 +2481,10 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
 		if s.role != &"citadel":
 			_hear_alarm(ALARM_BUILDING)
-		if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
-			_investigate(at)
+		if s.role != &"citadel" and not is_hushed():
+			if alarms.incident(at, suspicion.explains(&"collapse")):
+				_investigate(at)
+			_send_keeper()
 		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
 		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale, COLLAPSE_SOUND, &"collapse")
 		var points: Array[Vector2] = [at]
@@ -2517,9 +2538,10 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if kind == &"doom":
 		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
 		return
-	if not is_hushed() and alarms.incident(p.ground_pos):
+	if not is_hushed() and alarms.incident(p.ground_pos, suspicion.explains(kind)):
 		_investigate(p.ground_pos)
 	_hear_alarm(ALARM_KILL)
+	_send_keeper()
 
 
 ## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night. The directors that read Crowd.DOOM_WITNESS
@@ -2570,6 +2592,7 @@ func _settle_doom() -> void:
 		_hear_alarm(ALARM_KILL)
 	if not seen_at.is_empty():
 		_react(seen_at, 0.6, DOOM_WITNESS + 1.0, seen_at[0], &"doom")
+	_send_keeper()
 
 
 ## Something built mid-mission (v0.06): the gate spots are found again round it; a thorn wall is noticed.

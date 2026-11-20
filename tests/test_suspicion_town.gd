@@ -12,6 +12,7 @@ static func run(t) -> void:
 	_once_per_cast(t)
 	_ways_to_know(t)
 	_deterministic(t)
+	_keeper(t)
 
 
 static func _world() -> Dictionary:
@@ -91,6 +92,15 @@ static func _signs(t) -> void:
 	_done(s)
 
 	t.near(_value_after("smite", 6.0), 0.0, 0.01, "nobody within 5 units: no sign")
+	t.near(_value_after("smite", 0.0), 0.0, 0.01, "a lone man on the point is the victim, no witness")
+
+	s = _world()
+	crowd = s.crowd
+	_stand(crowd.citizens[0], AT)
+	_stand(crowd.citizens[1], AT + Vector2(3.0, 0.0))
+	_cast(crowd, "smite")
+	t.near(crowd.suspicion.value, 20.0, 0.01, "a second man 3 units away saw the strike on the first")
+	_done(s)
 
 	s = _world()
 	crowd = s.crowd
@@ -133,7 +143,7 @@ static func _signs(t) -> void:
 
 	s = _world()
 	crowd = s.crowd
-	_stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
+	_stand(crowd.citizens[0], AT + Vector2(5.0, 0.0))
 	_cast(crowd, "dragon")
 	t.check(crowd.suspicion.known and crowd.suspicion.reason == "an unnatural power", "Dragonfire witnessed: the town knows")
 	_done(s)
@@ -157,9 +167,9 @@ static func _sight(t) -> void:
 static func _once_per_cast(t) -> void:
 	var s := _world()
 	var crowd: Crowd = s.crowd
-	_stand(crowd.citizens[0], AT + Vector2(3.0, 0.0))
-	_stand(crowd.citizens[1], AT + Vector2(-3.0, 0.0))
-	_stand(crowd.citizens[2], AT + Vector2(0.0, 3.0))
+	_stand(crowd.citizens[0], AT + Vector2(5.0, 0.0))
+	_stand(crowd.citizens[1], AT + Vector2(-5.0, 0.0))
+	_stand(crowd.citizens[2], AT + Vector2(0.0, 5.0))
 	var seen := []
 	crowd.sign_seen.connect(func(w: Person, look: StringName, _b: StringName, _a: StringName) -> void: seen.append([w, look]))
 	crowd.on_cast(AT, Vector2(1.0, 0.0), float(Targeting.AREAS.tsunami.length), "tsunami")
@@ -229,3 +239,155 @@ static func _deterministic(t) -> void:
 		states.append([crowd._rng.state, crowd.suspicion.value])
 		_done(s)
 	t.check(states[0] == states[1], "the same cast twice gives the same stream and value")
+
+
+## Where a district's incidents happen: the centre of district `i`.
+static func _district_at(i: int) -> Vector2:
+	return (City.current().districts()[i] as Rect2).get_center()
+
+
+## `n` deaths of `kind` in the district at `at`, each a different citizen from index `from` on.
+static func _deaths(s: Dictionary, kind: StringName, n: int, at: Vector2, from := 0) -> void:
+	var crowd: Crowd = s.crowd
+	for i in n:
+		var p := crowd.citizens[from + i]
+		p.ground_pos = at
+		(s.field as EnemyField).kill(p, kind)
+
+
+static func _keeper(t) -> void:
+	var at := _district_at(0)
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var bell := crowd.bell
+	_deaths(s, &"lightning", 4, at)
+	t.check(crowd.alarms.stage == AlarmManager.Stage.LOCAL_EMERGENCY and crowd._investigating.size() == Crowd.INVESTIGATORS,
+		"four lightning deaths in a district: Local Emergency, the two investigators sent")
+	t.check(bell.state == BellNetwork.State.IDLE and not crowd.keeper_due(), "but the bellkeeper is not called")
+	crowd.suspicion.know("x")
+	t.check(bell.state != BellNetwork.State.IDLE and crowd.keeper_due(), "once the town knows, he is")
+	bell.state = BellNetwork.State.IDLE
+	_deaths(s, &"plague", 4, _district_at(1), 4)
+	crowd.suspicion.know("y")
+	t.check(bell.state == BellNetwork.State.IDLE, "called once: a second district's emergency and a second know() do not call again")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	_deaths(s, &"plague", 3, at)
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "three plague deaths: not yet")
+	_deaths(s, &"plague", 1, at, 3)
+	t.check(crowd.bell.state != BellNetwork.State.IDLE and not crowd.suspicion.known, "four plague deaths, no sign ever: the keeper is called, as today")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	_deaths(s, &"lightning", 3, at)
+	_deaths(s, &"plague", 1, at, 3)
+	t.check(crowd.bell.state == BellNetwork.State.IDLE and not crowd.keeper_due(), "three lightning and one plague: not called")
+	_deaths(s, &"plague", 3, at, 4)
+	t.check(crowd.bell.state != BellNetwork.State.IDLE, "three more plague deaths (four unexplained): called")
+	_done(s)
+
+	for knows in [false, true]:
+		s = _world()
+		crowd = s.crowd
+		if knows:
+			crowd.suspicion.know("test")
+		var in_district: Array[Structure] = []
+		var by_district := {}
+		for st: Structure in (s.env as EnvironmentField).structures():
+			if st.role == &"citadel" or st.role == &"thorns" or st.role == &"windfall" or st.role == LawRubble.ROLE:
+				continue
+			var d := AlarmManager.district_of(st.center())
+			by_district[d] = by_district.get(d, []) + [st]
+		for d in by_district:
+			if by_district[d].size() >= AlarmManager.LOCAL_EVENTS:
+				in_district.assign(by_district[d].slice(0, AlarmManager.LOCAL_EVENTS))
+				break
+		for st in in_district:
+			crowd._on_structure_destroyed(st, &"test")
+		crowd.advance(0.6)  # the stage follows the incidents on the alarm's half-second tick
+		t.check(in_district.size() == AlarmManager.LOCAL_EVENTS and (crowd.bell.state != BellNetwork.State.IDLE) == knows,
+			"four collapses in a district: the keeper is called only if the town knows (%s)" % [knows])
+		_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	_stand(crowd.citizens[8], at + Vector2(2.0, 0.0))
+	_deaths(s, &"doom", 4, at)
+	crowd._settle_doom()
+	t.check(crowd.alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY and crowd.bell.state != BellNetwork.State.IDLE,
+		"four witnessed dooms in a district: called, as today")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	crowd.add_alarm(AlarmManager.CITY_ALARM)
+	t.check(crowd.alarms.stage == AlarmManager.Stage.CITY_EMERGENCY and crowd.suspicion.known and crowd.bell.state != BellNetwork.State.IDLE,
+		"City Emergency with no district emergency: the town knows, the keeper is called")
+	_done(s)
+
+	# The Bell Lies: the town still knows and the bell's own retry still sends him.
+	s = _world()
+	crowd = s.crowd
+	bell = crowd.bell
+	crowd.suspicion.know("test")
+	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	crowd._send_keeper()
+	_arrive(bell.keeper)
+	bell.state = BellNetwork.State.RUNG
+	crowd.alarms.bell_rung = true
+	crowd.unring_bell()
+	t.check(bell.state == BellNetwork.State.WAITING and crowd.suspicion.known, "the Bell Lies: the bell waits to ring again, the town still knows")
+	bell.keeper.mind = Person.Mind.CALM
+	bell.step(BellNetwork.RETRY + 0.1)
+	t.check(bell.state == BellNetwork.State.CALLED, "and the keeper is sent again by the bell's own retry")
+	_done(s)
+
+	# No bell, a dead keeper, a held keeper: no error, no second call.
+	s = _world()
+	crowd = s.crowd
+	crowd.bell = null
+	_deaths(s, &"plague", 4, at)
+	crowd.suspicion.know("test")
+	t.check(not crowd.keeper_due() and crowd.alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY, "an Unprepared town (no bell): keeper_due() is false, nothing breaks")
+	crowd.bell = BellNetwork.new()
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	bell = crowd.bell
+	(s.field as EnemyField).kill(bell.keeper, &"test")
+	_deaths(s, &"plague", 4, at, 1)
+	t.check(bell.state == BellNetwork.State.SILENCED, "a dead keeper silences the bell, as today")
+	_done(s)
+
+	s = _world()
+	crowd = s.crowd
+	bell = crowd.bell
+	bell.hold_on_death = true
+	bell.keeper_held = func() -> bool: return true
+	(s.field as EnemyField).kill(bell.keeper, &"test")
+	_deaths(s, &"plague", 4, at, 1)
+	t.check(bell.state == BellNetwork.State.CALLED and bell.keeper_held.is_valid(), "a held, dead keeper: called and waiting, as today")
+	_done(s)
+
+	# The crowd outlives an act (Mission.next_act() drops the act's hooks and held dangers, and raises the profile); an R restart clears.
+	s = _world()
+	crowd = s.crowd
+	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	crowd.suspicion.know("act one")
+	crowd.clear_mission_hooks()
+	crowd.drop_held()
+	crowd.raise_profile(ResponseProfile.for_tier(ResponseProfile.Tier.GOD_RESISTANT))
+	t.check(crowd.suspicion.known and crowd._keeper_sent, "a new act keeps what the town knows and the keeper's call")
+	crowd.clear()
+	t.check(not crowd.suspicion.known and not crowd._keeper_sent, "an R restart forgets both")
+	_done(s)
+
+
+static func _arrive(p: Person) -> void:
+	p.ground_pos = p.goal()
+	p._goal = Vector2.INF
+	p._path = PackedVector2Array()

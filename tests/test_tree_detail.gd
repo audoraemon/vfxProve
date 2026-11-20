@@ -39,8 +39,8 @@ static func _rows(t) -> void:
 static func _same_text(t) -> void:
 	t.check(PowerBook.level_change("wisp", 3) == "lure cap 27 -> 30, lure time 13.0 -> 14.0, enthrall 32.0 -> 34.0, cooldown 28.0 -> 26.0",
 		"wisp 3 reads as before (%s)" % [PowerBook.level_change("wisp", 3)])
-	t.check(PowerBook.level_change("smite", 5) == "kill radius 0.75 -> 0.8, damage 60.0 -> 65.0, cooldown 8.5 -> 8.0, Forked Bolt: leaps to one more nearby",
-		"smite 5 reads as before (%s)" % [PowerBook.level_change("smite", 5)])
+	t.check(PowerBook.level_change("smite", 5) == "kill radius 0.75 -> 0.8, damage 60.0 -> 65.0, cooldown 8.5 -> 8.0, Gathered Storm: drag to widen the bolt (2.5x at most)",
+		"smite 5 reads its stats and the Gathered Storm twist, no \"aim\" among them (%s)" % [PowerBook.level_change("smite", 5)])
 	t.check(PowerBook.level_change("schism", 5) == "region 17.0 -> 18.0, fighters 170 -> 180, length 32.0 -> 35.0, Turn the Tide: click a fighter to turn them",
 		"schism 5 reads as before (%s)" % [PowerBook.level_change("schism", 5)])
 	t.check(PowerBook.level_change("smite", 1) == "" and PowerBook.level_change("thorns", 2) == PowerBook.NO_LEVELS

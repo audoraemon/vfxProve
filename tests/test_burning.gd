@@ -468,7 +468,7 @@ static func _perf(t, made: Array) -> void:
 		var g := grid.nearest_walkable(Vector2(-18.0 + float(i % 4) * 12.0, -14.0 + float(i / 4) * 12.0))
 		var p := _put(made, 60 + i, g)
 		crowd.burn(p, 20.0, g + Vector2(0.4, 0.0))
-		crowd.burning.trail(p, crowd.fires.lay, 1.0, 8)
+		crowd.burning.trail(p, crowd.trail_fires().lay.bind(p.get_instance_id()), EmberFx.TRAIL_STEP, EmberFx.TRAIL_MOST)
 		burners.append(p)
 	# Neighbours to frighten: the town spread about them.
 	for i in 60:
@@ -482,8 +482,9 @@ static func _perf(t, made: Array) -> void:
 		crowd.burning.step(DT)
 		spent += Time.get_ticks_usec() - t0
 	var ms := float(spent) / 200.0 / 1000.0
-	print("burning perf: 12 burning, %d people, %.4f ms a step on average over 200 frames, %d patches laid"
-		% [crowd.citizens.size() + crowd.soldiers.size(), ms, crowd.fires.patches_laid])
+	print("burning perf: 12 burning, %d people, %.4f ms a step on average over 200 frames, %d trail fire patches laid"
+		% [crowd.citizens.size() + crowd.soldiers.size(), ms, crowd.trail_fire.laid])
 	t.check(ms < 1.0, "12 burning people: %.4f ms a step averaged over 200 frames (under 1 ms)" % ms)
 	crowd.burning.clear()
 	crowd.fires.clear()
+	crowd.trail_fire.clear()

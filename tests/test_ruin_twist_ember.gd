@@ -1,9 +1,10 @@
 extends RefCounted
 ## Ember on a person, and its level 5 Fire Trail (Smite and Ember adjustments, 2026-11-19). A living person out in the
 ## open and not guised within PERSON_R of the click takes the spark (the nearest; a tie to the lower instance id) and
-## burns (Burning); else it falls on a building as before. Quiet when cast. Level 5, Fire Trail: on a building a ring of
-## burning ground (FireManager.lay) round the house as it catches; on a person a patch behind him every TRAIL_STEP he
-## runs, TRAIL_MOST at most, the first where he caught fire. Levels 1-4 lay no patch.
+## burns (Burning); else it falls on a building as before. Quiet when cast. Level 5, Fire Trail: the town's trail fire
+## (TrailFire, not the town's GroundFire: 2026-11-20) -- on a building a ring of it round the house as it catches; on a person
+## a patch behind him every TRAIL_STEP he runs, TRAIL_MOST at most, the first where he caught fire, his own trail sparing him.
+## Levels 1-4 lay no patch.
 
 const EMBER := preload("res://src/fx/ruin/ember.gd")
 const RD := preload("res://tests/test_raise_dead.gd")
@@ -48,9 +49,25 @@ static func _ctx(seed_value: int, with_town := true) -> FxContext:
 	return ctx
 
 
+## The trail fire's patches in the town (none when it never laid one).
+static func _trail(crowd: Crowd) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if crowd.trail_fire != null:
+		for i in crowd.trail_fire.count():
+			out.append(crowd.trail_fire.spot(i))
+	return out
+
+
+## How many trail fire patches the town has laid so far.
+static func _laid(crowd: Crowd) -> int:
+	return crowd.trail_fire.laid if crowd.trail_fire != null else 0
+
+
 static func _drop(ctx: FxContext) -> void:
 	if ctx.crowd != null:
 		ctx.crowd.fires.clear()
+		if ctx.crowd.trail_fire != null:
+			ctx.crowd.trail_fire.clear()
 		ctx.crowd.free()
 	ctx.field.clear()
 	ctx.field.free()
@@ -76,7 +93,8 @@ static func _end(fx: EmberFx) -> void:
 
 
 static func _consts(t) -> void:
-	t.check(EmberFx.PERSON_R == 0.6 and EmberFx.TRAIL_STEP == 1.0 and EmberFx.TRAIL_MOST == 8, "the brief's numbers")
+	t.check(EmberFx.PERSON_R == 0.6 and EmberFx.TRAIL_STEP == 0.6 and EmberFx.TRAIL_MOST == 14,
+		"the brief's numbers (the trail: 0.6 and 14, 2026-11-20)")
 	var src := FileAccess.get_file_as_string("res://src/fx/ruin/ember.gd")
 	t.check(not src.contains("LEAP_R") and not src.contains("LEAP_DELAY") and not src.contains("leap_target"),
 		"the Leaping Spark is gone")
@@ -106,23 +124,24 @@ static func _ring_spots(t) -> void:
 	_drop(ctx)
 
 
-## Level 5 on a house: as it catches, a ring of burning ground round it, about perimeter / TRAIL_STEP patches, each 0.6-1.2
-## off the footprint. Levels 1-4 lay none.
+## Level 5 on a house: as it catches, a ring of trail fire round it (not the town's GroundFire), about perimeter / TRAIL_STEP
+## patches, each 0.6-1.2 off the footprint. Levels 1-4 lay none.
 static func _house_ring(t) -> void:
 	var ctx := _ctx(1)
 	var a := _house(ctx, Vector2(10.0, 10.0))
 	var fx := _cast(ctx, a.center(), 5)
 	fx._process(EmberFx.T_LAND - 0.05)
-	var none_before := ctx.crowd.fires.patches.is_empty()
+	var none_before := _trail(ctx.crowd).is_empty()
 	fx._process(0.1)
-	var patches := ctx.crowd.fires.patches
+	var patches := _trail(ctx.crowd)
 	var perim := 4.0 * (0.6 + 1.2)
 	var ok := absf(float(patches.size()) - perim / EmberFx.TRAIL_STEP) <= 1.0
-	for p in patches:
-		var d := a.distance_to(p.at)
+	for g in patches:
+		var d := a.distance_to(g)
 		ok = ok and d >= 0.6 - 0.001 and d <= 1.2
 	t.check(none_before and fx.lit and ctx.crowd.fires.is_burning(a) and ok,
 		"level 5 on a house: it catches and %d patches ring it (perimeter %.1f), each 0.6-1.2 off it" % [patches.size(), perim])
+	t.check(ctx.crowd.fires.patches.is_empty(), "the ring is trail fire, not the town's ground fire")
 	_end(fx)
 	_drop(ctx)
 	for level in [1, 2, 3, 4]:
@@ -130,7 +149,8 @@ static func _house_ring(t) -> void:
 		a = _house(ctx, Vector2(10.0, 10.0))
 		fx = _cast(ctx, a.center(), level)
 		fx._process(EmberFx.T_LAND + 1.0)
-		t.check(fx.lit and ctx.crowd.fires.patches.is_empty(), "level %d on a house: lit, no patch" % level)
+		t.check(fx.lit and ctx.crowd.fires.patches.is_empty() and _trail(ctx.crowd).is_empty(),
+			"level %d on a house: lit, no patch" % level)
 		_end(fx)
 		_drop(ctx)
 	# A spot inside another building is left out.
@@ -140,10 +160,10 @@ static func _house_ring(t) -> void:
 	fx = _cast(ctx, a.center(), 5)
 	fx._process(EmberFx.T_LAND + 0.05)
 	var inside := 0
-	for p in ctx.crowd.fires.patches:
-		if b.contains(p.at, 0.0):
+	for g in _trail(ctx.crowd):
+		if b.contains(g, 0.0):
 			inside += 1
-	t.check(not ctx.crowd.fires.patches.is_empty() and inside == 0, "no patch is laid inside a building (%d)" % inside)
+	t.check(not _trail(ctx.crowd).is_empty() and inside == 0, "no patch is laid inside a building (%d)" % inside)
 	_end(fx)
 	_drop(ctx)
 
@@ -167,12 +187,12 @@ static func _ring_dry(t) -> void:
 	var fx := _cast(ctx, a.center(), 5)
 	fx._process(EmberFx.T_LAND + 0.05)
 	var in_river := 0
-	for p in ctx.crowd.fires.patches:
+	for g in _trail(ctx.crowd):
 		for r: Rect2 in City.current().rivers():
-			if r.has_point(p.at):
+			if r.has_point(g):
 				in_river += 1
-	t.check(fx.lit and not ctx.crowd.fires.patches.is_empty() and in_river == 0,
-		"level 5 on a house by the river: %d patches, none on the water" % ctx.crowd.fires.patches.size())
+	t.check(fx.lit and not _trail(ctx.crowd).is_empty() and in_river == 0,
+		"level 5 on a house by the river: %d patches, none on the water" % _trail(ctx.crowd).size())
 	_end(fx)
 	_drop(ctx)
 	# The walk grid: in the town, every ring spot is on a walkable cell.
@@ -192,21 +212,21 @@ static func _ring_dry(t) -> void:
 	RD._done(made)
 
 
-## A large building's ring is thinned evenly to RING_MOST (16) patches.
+## A large building's ring is thinned evenly to RING_MOST (28) patches.
 static func _ring_most(t) -> void:
 	var ctx := _ctx(1)
 	var big := ctx.env.add_structure(Rect2(Vector2(5.0, 5.0), Vector2(6.0, 5.0)), 40.0, Structure.Kind.TEMPLE, &"temple")
-	var spots := EmberFx.ring_spots(big, 1.0)
+	var spots := EmberFx.ring_spots(big, EmberFx.TRAIL_STEP)
 	var fx := _cast(ctx, big.center(), 5)
 	fx._process(EmberFx.T_LAND + 0.05)
-	var n := ctx.crowd.fires.patches.size()
+	var n := _trail(ctx.crowd).size()
 	var lo := INF
 	var hi := 0.0
 	for k in spots.size():
 		var d := spots[k].distance_to(spots[(k + 1) % spots.size()])
 		lo = minf(lo, d)
 		hi = maxf(hi, d)
-	t.check(EmberFx.RING_MOST == 16 and spots.size() == 16 and fx.lit and n == 16 and hi <= lo * 2.0 + 0.01,
+	t.check(EmberFx.RING_MOST == 28 and spots.size() == 28 and fx.lit and n == 28 and hi <= lo * 2.0 + 0.01,
 		"a 6 x 5 temple (perimeter 26.8): %d spots, %d patches, gaps %.2f-%.2f" % [spots.size(), n, lo, hi])
 	_end(fx)
 	_drop(ctx)
@@ -244,6 +264,8 @@ static func _reset(made: Array) -> void:
 	var crowd: Crowd = made[0]
 	crowd.burning.clear()
 	crowd.fires.clear()
+	if crowd.trail_fire != null:
+		crowd.trail_fire.clear()
 	RD._clear_all(made)
 
 
@@ -387,8 +409,8 @@ static func _quiet(t, made: Array) -> void:
 	_end(fx)
 
 
-## Level 5 on a man: as he runs, a patch behind him each TRAIL_STEP, TRAIL_MOST at most, the first where he caught fire, all
-## on walkable ground and none inside a building (Review Focus 4).
+## Level 5 on a man: as he runs, a patch of trail fire behind him each TRAIL_STEP, TRAIL_MOST at most, the first where he
+## caught fire, all on walkable ground and none inside a building (Review Focus 4), each sparing him.
 static func _man_trail(t, made: Array) -> void:
 	_reset(made)
 	var crowd: Crowd = made[0]
@@ -396,7 +418,7 @@ static func _man_trail(t, made: Array) -> void:
 	var grid: WalkGrid = made[2]
 	var at := RD._empty(made)
 	var p := _put(made, 13, at)
-	var laid0 := crowd.fires.patches_laid
+	var laid0 := _laid(crowd)
 	var fx := _town_cast(made, at, 5)
 	var spots: Array[Vector2] = []
 	var caught := Vector2.INF
@@ -408,11 +430,14 @@ static func _man_trail(t, made: Array) -> void:
 		if caught == Vector2.INF and p.burning():
 			caught = p.ground_pos
 		crowd.advance(DT)
-	for g in crowd.fires.patches:
-		spots.append(g.at)
-	var laid := crowd.fires.patches_laid - laid0
-	# He runs the whole BURN_FOR (Burning._keep_running()), so his trail is three patches at least.
-	var ok := laid >= 3 and laid <= EmberFx.TRAIL_MOST and spots.size() == laid
+	spots = _trail(crowd)
+	var laid := _laid(crowd) - laid0
+	var spared := crowd.trail_fire != null
+	if spared:
+		for i in crowd.trail_fire.count():
+			spared = spared and crowd.trail_fire._spare[i] == p.get_instance_id()
+	# He runs the whole BURN_FOR (Burning._keep_running()), so his trail is five patches at least.
+	var ok := laid >= 5 and laid <= EmberFx.TRAIL_MOST and spots.size() == laid and crowd.fires.patches.is_empty()
 	if ok:
 		ok = spots[0].distance_to(caught) < 0.2
 		for k in range(1, spots.size()):
@@ -420,19 +445,21 @@ static func _man_trail(t, made: Array) -> void:
 	for g in spots:
 		ok = ok and grid.walkable(g) and not env.blocked(g, 0.0)
 	t.check(ok and not p.is_alive(),
-		"level 5 on a man: %d patches behind him, the first where he caught fire, each 1.0 on, on walkable ground (%s)" % [laid, spots])
+		"level 5 on a man: %d trail fire patches behind him, the first where he caught fire, each 0.6 on, on walkable ground (%s)"
+		% [laid, spots])
+	t.check(spared, "each patch of his trail spares him")
 	_end(fx)
-	# TRAIL_MOST holds: walked far, he leaves 8 at most.
+	# TRAIL_MOST holds: walked far, he leaves 14 at most.
 	_reset(made)
 	at = RD._empty(made)
 	var q := _put(made, 14, at)
 	fx = _town_cast(made, at, 5)
 	fx._process(EmberFx.T_LAND + 0.05)
-	laid0 = crowd.fires.patches_laid
+	laid0 = _laid(crowd)
 	for i in 60:
 		q.ground_pos = grid.nearest_walkable(at + Vector2(0.25 * float(i + 1), 0.0).rotated(float(i) * 0.02))
 		crowd.advance(DT)
-	var most := crowd.fires.patches_laid - laid0
+	var most := _laid(crowd) - laid0
 	t.check(q.burning() or not q.is_alive(), "(set-up) he burned on")
 	t.check(most == EmberFx.TRAIL_MOST, "never more than TRAIL_MOST (%d laid over 15 units)" % most)
 	_end(fx)
@@ -447,12 +474,12 @@ static func _man_low_levels(t, made: Array) -> void:
 		var grid: WalkGrid = made[2]
 		var at := RD._empty(made)
 		var p := _put(made, 15, at)
-		var laid0 := crowd.fires.patches_laid
+		var laid0 := _laid(crowd) + crowd.fires.patches_laid
 		var fx := _town_cast(made, at, level)
 		fx._process(EmberFx.T_LAND + 0.05)
 		for i in 40:
 			p.ground_pos = grid.nearest_walkable(at + Vector2(0.25 * float(i + 1), 0.0))
 			crowd.advance(DT)
-		t.check(p.burning() and crowd.fires.patches_laid == laid0, "level %d on a man: he burns, no patch" % level)
+		t.check(p.burning() and _laid(crowd) + crowd.fires.patches_laid == laid0, "level %d on a man: he burns, no patch" % level)
 		_end(fx)
 	_reset(made)

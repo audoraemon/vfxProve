@@ -83,7 +83,8 @@ Anti-goals (a failure even if it works):
 - Frame rate: CPU bound at 100 soldiers plus crowd. The board ticks once a second (`EVERY` 1.0, as PileManager). One
   path search per man per order, never per frame.
 - Both towns: every number below is for Aldermere; caps scale as `ceil(cap * soldiers / 100)` `[call: the Capital has
-  about 180 soldiers]`.
+  about 180 soldiers]`. The Citadel guard does **not** scale: 20 slots and a floor of 15 in any town `[call: the
+  garrison cap is 15 men in any town]`.
 - Alarm: this design only **calls** `Crowd._hear_alarm()` (crowd.gd:1690; half before the bell, nothing when hushed)
   and `AlarmManager.incident()` (alarm_manager.gd:60), **reads** `AlarmManager.district_of()`, `alarms.stage`,
   `is_hushed()`, `is_veiled()`, and **listens** to `Crowd.danger_landed` (crowd.gd:18, emitted in `_land()`,
@@ -118,7 +119,7 @@ Anti-goals (a failure even if it works):
   does not count as standing his duty while held, as today.
 - **The board no longer closes at the rally.** It closes when the Citadel falls. At Evacuation FIRE, PILE and SHELTER
   stop as today (fire_manager.gd:321, pile_manager.gd:579). Idle rescue squads help with piles from the call-up on;
-  rescue_manager.gd:157 reads `Crowd._rallied` instead of the closed board `[call: keeps their help]`.
+  rescue_manager.gd:159 reads `Crowd._rallied` instead of the closed board `[call: keeps their help]`.
 - Each kind's steps may live in its own small file; the board alone decides who goes where `[call: keeps
   guard_jobs.gd readable without becoming approach 2]`.
 - **What the player sees:** `GuardJobs.tags()` returns `MapTag`s, added in `Hud.all_tags()` (hud.gd:745) after the
@@ -135,8 +136,10 @@ Anti-goals (a failure even if it works):
   (south, the gateway, first), centre out, so 15 men still cover all four sides. Each man faces straight out from his
   side; the four ground axes map onto the four sprite facings (as the drill branch does, person.gd:1000).
 - **Who:** every mission man first (see "Missions"; if there are more than 20 the extra stand in a rear rank). Then
-  town men up to 20: the Citadel post group first, then the nearest free. Men of the Citadel group not chosen stay
-  ordinary guards at their posts.
+  town men up to 20: the Citadel post group first, then the nearest free. Men of the Citadel group not chosen (the
+  Capital has 30 there; Aldermere one per mission man) are **stood down to the yard**: at the call-up their `post` and
+  `town_post` move to the nearest free yard spots and they walk there as ordinary free guards `[call: a spare man
+  standing among the ranks would refill a dead guard at once and remove the counter below]`.
 - **What they do:** march to the slot as `Mind.RALLY` at `WALK_SPEED * ASSIST_PACE` (0.9) with the `walk` clip
   `[call: the run is half of the panic look]`. At the slot: stand on it, face out, `idle` clip, no `_drift()`, no talk.
   Change `_base_speed()` (person.gd:882), the pose (person.gd:3178) and add a stand-still branch in `_pick_target()`.
@@ -172,7 +175,9 @@ Anti-goals (a failure even if it works):
 - **Bodies:** the ledger `Remains` is turned on for every loadout `[call: needed for [user 6]; otherwise only Death
   and Decree gods ever leave a body to find. See open question 2]`. It stays simulation-neutral by itself.
 - **Trigger:** a free street pair, both men, on its beat within `CORPSE_NOTICE` 4.0 of an unhidden remain nobody is
-  assigned to (`Remains.near()`, remains.gd:148). 4.0 sits beside `COLLAPSE_SIGHT` and Death Mark's `LOOK_R`.
+  assigned to (`Remains.near()`, remains.gd:148). 4.0 sits beside `COLLAPSE_SIGHT` and Death Mark's `LOOK_R`. The
+  reach is capped by `Crowd.sight()` (crowd.gd:1060), and a body on veiled ground is never noticed `[call: the Unseen
+  Hour, NO SIGHT and the dark are counters here as they are for the sweep and the gate check]`.
 - **Crew:** that pair. One pair per body, one body per pair.
 - **Steps:** both walk to the body. The nearer man crouches over it for `INSPECT` 4.0 s (`stumble` clip held: the
   crouch `[call: stand-in, open question 1]`); the other stands 0.8 away facing out. When the 4 s end the body is
@@ -215,14 +220,17 @@ Anti-goals (a failure even if it works):
 
 ## Slice (d): sweep
 
-- **Trigger:** a power is seen in a district: `danger_landed`, or the seen branch of `_settle_doom()`. Also every
+- **Trigger:** a power is **seen** in a district: `danger_landed` with a living witness (citizen or soldier, awake,
+  not held by the god) within `DOOM_WITNESS` 2.0 of the landing or inside the danger's own radius, or the seen
+  branch of `_settle_doom()` `[call: [user 5] says "seen"; `danger_landed` alone fires on every loud landing, even in
+  an empty district]`. The same witness test gates the extra alarm below (a sweep man's 4.0 counts). Also every
   place `_investigate()` is called today: **the sweep replaces `_investigate()`** `[call: same idea, one system]`.
   Never when hushed or veiled. Not while that district is already swept. At most `SWEEPS` 2 at once.
 - **Crew:** 4, the nearest free men of any group.
 - **Steps:** run to the district (`hurried`). The clock starts when the first man is inside its rect. They visit up to
   `SWEEP_DOORS` 6 house doors nearest the seen point, nearest next, standing `SWEEP_STAND` 3.0 s at each (`talk`),
   for `SWEEP_SECONDS` 30 `[user]`, then walk back to their posts.
-- **Play:** a sweeping man witnesses to `WATCH_SIGHT` 4.0 instead of 2.0 (`nearest_witness()`; TempleReport keeps a
+- **Play:** a sweeping man witnesses to `WATCH_SIGHT` 4.0 (a **new** constant, beside `COLLAPSE_SIGHT`) instead of 2.0 (`nearest_witness()`; TempleReport keeps a
   copy of that search, temple_report.gd:164: change both). Each further power seen in that district while a squad
   man is inside it adds `_hear_alarm(SWEEP_ALARM)` 2.0 (= `ALARM_BUILDING`), at most 6.0 per sweep `[call: capped so
   loud play is taxed, not ended]`. Sweep men do not count for `on_watch()` (they are on a job).
@@ -233,8 +241,12 @@ Anti-goals (a failure even if it works):
 
 ## Slice (e): gate check
 
-- **Who:** corps-NONE wall-group men whose town post lies within 2.5 of a standing, open gate. Up to 2 per gate. It is
-  their standing duty at their own post, lowest priority: a fire or a sweep may take them `[call: the lure stays]`.
+- **Who:** wall-group men whose town post lies within 2.5 of a standing, open gate, corps NONE **or MARSHAL**. Up to
+  2 per gate `[call: `_assign_corps()` makes the in-gate guards marshals (crowd.gd:806; every Capital gate, most
+  Aldermere gates at high tiers), so without them no gate would be checked; a marshal checks while he stands at his
+  gate and while he works its queue; nobody is re-posted]`. It is their standing duty at their own post, lowest
+  priority: a fire or a sweep may take a corps-NONE checker `[call: the lure stays]`; a marshal leaves only as he does
+  today.
 - **A gate is checked** while at least one of them stands his spot beside the mouth, free and not held by the god.
 - **Steps:** when a queue forms or anyone walks within `GATE_LOOK` 2.5 of the mouth, the checkers step to spots
   behind the marshals' (`MarshalManager._spot()`) and face the nearest person (`talk`). A calm town has no queue, so
@@ -274,19 +286,26 @@ Anti-goals (a failure even if it works):
 or on a director's duty (`Mind.DUTY`), or anchored away from his post with no board job (a director's
 `send_to_post()`). At the call-up **every mission man goes to the Citadel guard and never comes back**, exactly as
 today `[call: every mission was tuned on "going loud takes my watch away"; this keeps each director's mind tests
-unchanged]`. The acceptance check: the mission tests that assert `Mind.RALLY` after `crowd.rally()` pass unedited.
+unchanged]`. The acceptance check: the mission tests that assert `Mind.RALLY` after `crowd.rally()` pass unedited,
+with two known exceptions that assert the old all-rally and are rewritten in slice a1: tests/test_crowd.gd:116-123
+(every corps-NONE soldier rallies on the first Citadel hit) and tests/test_lost_lamb.gd:402-426 (its man put back on
+his post must be one who answered the call-up).
 
 - `hide_faithful_director.gd` `watch_broken()` (:503) and its tags (:1413, :1418): unchanged code and meaning.
 - `escort_director.gd` `_watching()` (:546) and `POST_MINDS`: unchanged. Its watch still leaves at the call-up.
 - `procession_director.gd` (:178): takes its escorts from the Citadel post range at the start; unchanged.
 - `festival_director.gd` `_post_guards()` (:144): its square guards are mission men and still leave at the call-up.
-- `MissionDirector._free_soldiers()` (:314): also skip `Mind.RALLY` and release any board job the man holds
-  (the director wins). Calls at mission start see everyone at his post, as today.
-- `heretic_hunt_director.gd` (:118), `informer_director.gd` (:183), `heart_of_faith_director.gd` (:375): they read
+- `MissionDirector._free_soldiers()` (:314): before the call-up it works as today, and releases any board job the man
+  holds (the director wins). **After the call-up it hands out no town man**: only a man who answered the call-up (a
+  guard man, marked at the call-up) and stands at his post again can be taken `[call: today a late appointment
+  (`EscortDirector._appoint_hunters()`, escort_director.gd:312, Lost Lamb at 150 s; watch changes, quarry guards,
+  Halcyon escorts) finds nobody because everyone is on the ring; this keeps "going loud takes my watch away" for
+  late appointments too, so no mission is retuned]`.
+- `heretic_hunt_director.gd` (:119), `informer_director.gd` (:184), `heart_of_faith_director.gd` (:376): they read
   `on_watch()`. Beat men and men on a job do not count. **Change:** posted guards now stay in the streets after City
   Emergency, so going loud no longer un-watches a door `[call: accepted, it follows from user 1; a fire or a collapse
   still pulls them. Report every win/loss flip to the user]`.
-- `judgement_director.gd` (:31): `rally()` forms the guard at the act's start; `forgo_rally()` as today.
+- `judgement_director.gd` (:32): `rally()` forms the guard at the act's start; `forgo_rally()` as today.
 - `armoury_director.gd` (its own `reserve`), `bishop_director.gd` and Lantern Knights (corps KNIGHT),
   `lantern_bearer.gd` (its escorts are mission men): no change.
 - No mission may place its win on a town patrol, cordon or sweep. A director that needs a soldier holds him.
@@ -300,7 +319,7 @@ within noise on a quiet machine. A reference that moves outside the "may move" c
 
 | Slice | References that may move | Must not move | Tests |
 |---|---|---|---|
-| a1 guard | rows that reach the call-up | rows that never reach it | test_corps, test_citadel, test_guard_jobs (close moves), test_alarm, test_soldier_minds, test_person, test_lost_lamb, test_judgement, test_escorts/marshals/rescue (refill), test_piles |
+| a1 guard | rows that reach the call-up | rows that never reach it | test_crowd (:116), test_corps, test_citadel, test_guard_jobs (close moves), test_alarm, test_soldier_minds, test_person, test_lost_lamb, test_judgement, test_escorts/marshals/rescue (refill), test_piles |
 | a2 beats | every row (crowd_check hashes each soldier) | none; judge by the gates | test_watch_posts (beat men off watch), test_capital_evac, new test_beats |
 | b corpse | rows with a whole body near a beat | `none` cases; rows with no body kind | test_remains, new test_corpse_duty |
 | c cordon | rows with a fire put out or a fall | `none` cases; quiet rows | test_piles, new test_cordon |

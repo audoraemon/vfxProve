@@ -26,6 +26,7 @@ static func run(t) -> void:
 	_whispered(t)
 	_kit(t)
 	_read_only(t)
+	_storm(t)
 	Hud.reset_session()
 
 
@@ -221,4 +222,25 @@ static func _kit(t) -> void:
 static func _read_only(t) -> void:
 	var s := ClarityKit.world(MissionBook.tax_collector())
 	ClarityKit.assert_read_only(t, s, "the Tax Collector's base")
+	ClarityKit.done(s)
+
+
+## A Gathered Storm (Smite level 5, dragged) kills up to 2.5x as wide as its level-1 bolt: the cast just made is judged by its own effect's
+## kill radius and growth, so a kill it makes never banners. A cast only asked about (another spot) keeps the level-1 radius.
+static func _storm(t) -> void:
+	var s := ClarityKit.world(MissionBook.first_prayers())
+	var d: MissionDirector = s.d
+	var at := Vector2(40.0, 40.0)
+	var fx := ClarityKit.cast_real(s, "smite", at, {"level": 5, "to": at + Vector2(1.5, 0.0)})
+	var grow := float(fx.get("grow")) if fx != null and "grow" in fx else 0.0
+	var kill_r := float(fx.get("lv_kill_r")) * grow if fx != null else 0.0
+	t.check(grow > 1.5 and kill_r > 1.2, "the storm grew (grow %.2f, kill radius %.2f)" % [grow, kill_r])
+	var near := at + Vector2(kill_r - 0.05, 0.0)
+	t.check(d._may_kill("smite", at, near) and not d._may_kill("smite", at, at + Vector2(kill_r + 0.3, 0.0)),
+		"the storm just cast kills within its own grown radius, not beyond it")
+	t.check(d._cast_reaches("smite", at, at + Vector2(Crowd._cast_radius("smite") * grow + MissionDirector.WHY_MARGIN - 0.05, 0.0)),
+		"and reaches as far as it grew")
+	var other := at + Vector2(10.0, 0.0)
+	t.check(not d._may_kill("smite", other, other + Vector2(kill_r - 0.05, 0.0)) and d._cast_grow("smite", other) == 1.0,
+		"a cast only asked about, elsewhere, keeps the level-1 radius")
 	ClarityKit.done(s)

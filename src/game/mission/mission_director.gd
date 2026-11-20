@@ -114,18 +114,40 @@ func hint_phases() -> PackedStringArray:
 	return PackedStringArray([""])
 
 
-## Whether a cast of `key` at `at` reaches a target standing at `g`: within the power's cast radius plus WHY_MARGIN.
+## Whether a cast of `key` at `at` reaches a target standing at `g`: within the power's cast radius plus WHY_MARGIN (widened as the cast
+## itself was: a Gathered Storm, _cast_grow()).
 func _cast_reaches(key: String, at: Vector2, g: Vector2) -> bool:
-	return at.distance_to(g) <= Crowd._cast_radius(key) + WHY_MARGIN
+	return at.distance_to(g) <= Crowd._cast_radius(key) * _cast_grow(key, at) + WHY_MARGIN
 
 
 ## Whether a cast of `key` at `at` kills what stands at `g` (pre-flight I6): a Kill power, and `g` within the kill radius of its level 1
-## (the area's r, or its KILL_R stat).
+## (the area's r, or its KILL_R stat) -- or, when the HUD asks about the cast just made, of the effect itself: its level's kill radius,
+## times a Gathered Storm's growth (Smite level 5: a dragged bolt kills up to 2.5x as wide, and a kill it makes must never banner).
 func _may_kill(key: String, at: Vector2, g: Vector2) -> bool:
 	if not "kill" in MissionVerbs.verbs_of(key):
 		return false
 	var r := maxf(float(Targeting.area_at(key, 1).get("r", 0.0)), float(PowerBook.level_stat(key, 1, "KILL_R", 0.0)))
-	return at.distance_to(g) <= r
+	var fx := _this_cast(key, at)
+	if fx != null and "lv_kill_r" in fx:
+		r = maxf(r, float(fx.get("lv_kill_r")))
+	return at.distance_to(g) <= r * _cast_grow(key, at)
+
+
+## The effect of the cast just made, if it is this one (`key` at `at`, the latest Rules cast); null for a cast only asked about. Only reads.
+func _this_cast(key: String, at: Vector2) -> FxTimeline:
+	if rules == null or rules._casts.is_empty():
+		return null
+	var last: Dictionary = rules._casts.back()
+	if String(last.get("key", "")) != key or not (last.get("at", Vector2.INF) as Vector2).is_equal_approx(at):
+		return null
+	var fx: Variant = last.get("fx")
+	return fx as FxTimeline if is_instance_valid(fx) else null
+
+
+## How much wider than its level-1 area the cast just made struck (a Gathered Storm's `grow`); 1.0 for any other cast. Only reads.
+func _cast_grow(key: String, at: Vector2) -> float:
+	var fx := _this_cast(key, at)
+	return maxf(1.0, float(fx.get("grow"))) if fx != null and "grow" in fx else 1.0
 
 
 ## The mode the latest cast took (The Bell Lies' "well" or "guard"), read from its effect; "" when there is none or it has no mode.

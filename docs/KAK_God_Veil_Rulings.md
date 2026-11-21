@@ -377,3 +377,47 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   (no overhead_back) the shade draws both. Whatever its half, a pillar whose shape could cover a held person's screen rect (14 x 32
   px at his feet) is cut to the NEAR share and thinned to 0.45 of its alpha; this is re-run at every read of the dark and whenever
   the held change. Eye heights are cached then too.
+- VRD1 (review round, Evernight's front): the look's front runs out from the click as (t / WAVE)^1.7 of the way to the map's farthest
+  corner (EvernightFx.FRONT_EASE), slow by the click and fast across the town, so the god sees the wall of night rise and stand before
+  it runs; at dawn it rolls back to the click the same way. Linear (map-width / WAVE) it crossed the screen in under half a second.
+  The wash's own `front` (pinned by test_veil_evernight: map-width / WAVE * t) is kept as it was and draws nothing now. Looks only:
+  the night still falls everywhere at WAVE.
+- VRD2 (review round, Evernight's dark): the night over the town is a shade multiplied over everything in view (ground, houses,
+  people) on the overhead_back layer, under every effect and the HUD, with a vignette, a lift under the moon and a warm island round
+  each burning torch (EvernightSky.View, evernight_shade.gdshader). The LightField ambient and tint keep their numbers (TownLook's
+  NIGHT): no pinned number moved. A town already in its NIGHT look gets a lighter shade (it is graded dark once already). Frame means:
+  day 98 -> 48, night look 65 -> 50; people, torches and the HUD read.
+- VRD3 (review round, Evernight's wash): NightWash set its own Iso.BASIS inside ctx.ground, which carries it already: it was drawn a
+  basis too far, off the town (the before frames show no wash at all). It now has no transform of its own and draws only the silver
+  rings round the burning torches on the ground; the stars moved into the air shader (fixed to the town, glittering), and the moon
+  (still the wash's child "Moon") is top-level and hangs at a fixed place in the camera's view, the same size at any zoom, between the
+  shade and the drifting mist.
+- VRD4 (review round, The Swallowing Dark's fold; replaced by VRD7 in fix round 1): the heave and a dome rising before full size,
+  so the dark stood over the circle when the fold's first removals go. Look timing only: GROW, T_OPEN, FOLD and the removals are
+  untouched, and the fold carries nothing per building.
+- VRD5 (review round, The Swallowing Dark's hole): the hole draws at ground z 7 (absolute -3), above the town's lamp pools (absolute
+  -4): a lamp's light no longer lies on a hole. Its tendrils stand in the y-sorted world, so the houses before the far rim hide their
+  feet.
+- VRD6 (review round, both): the heave and the fold give the camera a small shake (trauma 0.35, then 0.3): the player feels the ground
+  move; the town still sees nothing (no danger, alarm or fright). A cast freed off the tree (no _exit_tree()) frees its look's pieces
+  as it goes (NOTIFICATION_PREDELETE).
+- VRD7 (fix round 1, controller's ruling: the fold must read at zoom 1.0, where the circle fills the view): the dome is gone (seen
+  from inside it was a flat tint). The dark rises from the ground: for HEAVE (now 1.4 s) before full size a rim of darkness stands up
+  at the circle's edge (the wall Evernight's front uses, RIM_H 210 px) and closes in to the middle, everything behind it, ground,
+  houses and people, going black (swallow_under.gdshader over the town, the ground point under each pixel worked out, so it reads at
+  any zoom), the tendrils pulled down with it. At full size the whole circle is under, so the fold's removals go unseen; from
+  DRAIN_FROM (0.4) of FOLD the black drains back into the ground from the edge inward, leaving the bowl. Look timing only.
+- VRD8 (fix round 1, the moon): the moon stays screen-anchored (a fixed place in the view, any zoom), but it is part of the sky now:
+  a wide glow falling off in many faint steps, a face painted once into a small texture (soft edge, no rim, mottled seas, a waning
+  crescent of the night's own colour), only a little brighter than its glow. The NIGHT-town check reads TownLook.active (the public
+  read music, ambience and the animals use), not the crowd's private town.
+- VRD9 (fix round 1, the wall of night): the wall is no longer a strip of quads (its crown broke at every join: per-quad UVs, then an
+  8-bit vertex colour, could not carry the place along the ring). It is one quad over the ring's bounds and the shader works out the
+  near and far walls at each pixel, its noise running by the pixel's x along the wall and as wide as it is tall on screen. The shared
+  value noise (common.gdshaderinc fbm) still drew straight upright and diagonal cuts through it on the GPU, though a CPU copy of the
+  same shader is smooth and a sine-built crown drew none; the wall now uses its own smooth noise of warped sines (wn()), and the cuts
+  are gone at both zooms. Coverage follows the body alone, the colour steps are dithered, and the wall thins out toward the ring's
+  ends. The night's shade and air quads cover a fixed rect far past any town (EvernightSky.COVER) instead of the camera's view.
+- VRD10 (fix round 2): the hole's falling motes are removed (keyed to a whole terrace and an angle wedge, each lit a flat silver quad
+  in the black); the funnel's depth `s` is interpolated between rings (stepped, it drew stair edges); the going-under dark uses the
+  Veil's own smooth noise (shaders/veil_noise.gdshaderinc, shared with the wall), never the shared fbm.

@@ -253,6 +253,10 @@ var remains: Remains
 var withering: Withering
 ## The burning (Burning: Ember on a person): laid by burn(), stepped after the town's orders (_advance()), cleared with the town.
 var burning: Burning
+## The trail fire (TrailFire: Ember's level 5 Fire Trail, short-lived burning ground that hurts who crosses it): null until the
+## first is laid (trail_fires()), so a town that never lays one makes nothing for it and nothing in it moves; stepped after the
+## burning (_advance()), cleared with the town.
+var trail_fire: TrailFire
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -1219,6 +1223,8 @@ func _advance(delta: float) -> void:
 	# frame is running again before his feet move (Burning._keep_running()).
 	if burning != null:
 		burning.step(delta)
+	if trail_fire != null:
+		trail_fire.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1838,6 +1844,15 @@ func burn(p: Person, seconds: float, from: Vector2, level := Burning.LIGHT_AT) -
 	return burning != null and burning.lay(p, seconds, from, level)
 
 
+## The town's trail fire (TrailFire), made on the first ask with its look in the town's world: lay patches with its lay().
+func trail_fires() -> TrailFire:
+	if trail_fire == null:
+		trail_fire = TrailFire.new(_field, _env)
+	if is_instance_valid(_parent):
+		trail_fire.attach(_parent)
+	return trail_fire
+
+
 ## The town is told what `s` is, for `seconds` (Anathema): a `mark` the managers read -- &"cursed": nobody will be
 ## inside it, fight its fire or climb it; &"hallowed": everyone must be inside and stays. A later mark replaces an
 ## earlier one.
@@ -2445,6 +2460,9 @@ func clear() -> void:
 		withering.clear()
 	if burning != null:
 		burning.clear()
+	if trail_fire != null:
+		trail_fire.clear()
+		trail_fire.free_layer()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):

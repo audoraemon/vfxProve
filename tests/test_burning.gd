@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_indoors(t, made)
 	_lapses(t, made)
 	_trail(t, made)
+	_trail_refused(t, made)
 	_cleared(t, made)
 	_runs_from_shelter(t, made)
 	_runs_free(t, made)
@@ -188,6 +189,32 @@ static func _lapses(t, made: Array) -> void:
 	t.check(got.size() == 1 and got[0][0] == slain and got[0][1] == &"frenzy" and not slain.burning()
 		and crowd.burning.count() == 0,
 		"killed by something else or freed mid-burn: no error, no fire death (%s)" % [got])
+
+
+## A spot the hook refuses (it returns false, as TrailFire.lay() on the water) does not count toward `most`: with every
+## other spot refused and `most` 3, he is still given 3 that were taken (Review Minor 2).
+static func _trail_refused(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var p := _put(made, 30, at)
+	var calls := [0]
+	var took: Array[Vector2] = []
+	crowd.burn(p, Burning.BURN_FOR, at)
+	var hook := func(g: Vector2) -> bool:
+		calls[0] += 1
+		if calls[0] % 2 == 0:
+			return false
+		took.append(g)
+		return true
+	crowd.burning.trail(p, hook, 1.0, 3)
+	crowd.advance(DT)
+	for i in 40:
+		p.ground_pos += Vector2(0.25, 0.0)
+		crowd.advance(DT)
+	t.check(took.size() == 3 and calls[0] == 5,
+		"refused spots are not counted: %d taken in %d calls (3 taken, 2 refused between)" % [took.size(), calls[0]])
+	crowd.burning.clear()
 
 
 ## The trail hook: called with the spot he caught fire once he is `every` from it, then each time he has gone `every`
@@ -468,7 +495,7 @@ static func _perf(t, made: Array) -> void:
 		var g := grid.nearest_walkable(Vector2(-18.0 + float(i % 4) * 12.0, -14.0 + float(i / 4) * 12.0))
 		var p := _put(made, 60 + i, g)
 		crowd.burn(p, 20.0, g + Vector2(0.4, 0.0))
-		crowd.burning.trail(p, crowd.fires.lay, 1.0, 8)
+		crowd.burning.trail(p, crowd.trail_fires().lay.bind(p.get_instance_id()), EmberFx.TRAIL_STEP, EmberFx.TRAIL_MOST)
 		burners.append(p)
 	# Neighbours to frighten: the town spread about them.
 	for i in 60:
@@ -482,8 +509,9 @@ static func _perf(t, made: Array) -> void:
 		crowd.burning.step(DT)
 		spent += Time.get_ticks_usec() - t0
 	var ms := float(spent) / 200.0 / 1000.0
-	print("burning perf: 12 burning, %d people, %.4f ms a step on average over 200 frames, %d patches laid"
-		% [crowd.citizens.size() + crowd.soldiers.size(), ms, crowd.fires.patches_laid])
+	print("burning perf: 12 burning, %d people, %.4f ms a step on average over 200 frames, %d trail fire patches laid"
+		% [crowd.citizens.size() + crowd.soldiers.size(), ms, crowd.trail_fire.laid])
 	t.check(ms < 1.0, "12 burning people: %.4f ms a step averaged over 200 frames (under 1 ms)" % ms)
 	crowd.burning.clear()
 	crowd.fires.clear()
+	crowd.trail_fire.clear()

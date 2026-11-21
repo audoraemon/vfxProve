@@ -15,12 +15,14 @@ const START_LEVEL := 0.45
 const FALL := 150.0
 ## A person within this of the click takes the spark before any building.
 const PERSON_R := 0.6
-## Level 5, Fire Trail: burning ground (FireManager.lay) one patch every TRAIL_STEP -- round a house as it catches, about
-## RING_OUT outside its footprint; behind a burning man as he runs, TRAIL_MOST at most, the first where he caught fire.
-const TRAIL_STEP := 1.0
-const TRAIL_MOST := 8
+## Level 5, Fire Trail: the town's trail fire (TrailFire: about 12 s, hurts who crosses it, frightens nobody, catches no
+## building; Crowd.trail_fires()), one patch every TRAIL_STEP -- round a house as it catches, about RING_OUT outside its
+## footprint; behind a burning man as he runs, TRAIL_MOST at most, the first where he caught fire, his own trail sparing him.
+## 0.6 and 14 (were 1.0 and 8, of the town's GroundFire): the patches (TrailFire.RADIUS 0.45) overlap into one strip.
+const TRAIL_STEP := 0.6
+const TRAIL_MOST := 14
 const RING_OUT := 0.6
-## A ring has at most this many patches (a cathedral's is thinned evenly).
+## A ring has at most this many patches (a cathedral's is thinned evenly): 28.
 const RING_MOST := TRAIL_MOST * 2
 const SPARK := [Color("fff6d8"), Color("ffc14a"), Color("ff6a1a"), Color(0.6, 0.15, 0.05, 0.6)]
 ## How high on a person the spark comes down (screen pixels).
@@ -144,7 +146,9 @@ func _land() -> void:
 		if is_instance_valid(victim) and ctx.crowd != null and not victim.guised():
 			lit = ctx.crowd.burn(victim, Burning.BURN_FOR, victim.ground_pos, lv_start_level)
 			if lit and twist:
-				ctx.crowd.burning.trail(victim, ctx.crowd.fires.lay, TRAIL_STEP, TRAIL_MOST)
+				# His own trail spares him (TrailFire.lay()'s `spare`).
+				ctx.crowd.burning.trail(victim, ctx.crowd.trail_fires().lay.bind(victim.get_instance_id()), TRAIL_STEP,
+					TRAIL_MOST)
 		if not lit:
 			# Gone from under it while it fell (dead, carried off, guised, indoors, alight already): it falls on the building the
 			# click would have lit with nobody there, else gutters on the ground.
@@ -157,8 +161,9 @@ func _land() -> void:
 			ctx.crowd.fires.ignite(fuel, lv_start_level)
 			lit = ctx.crowd.fires.is_burning(fuel)
 			if lit and twist:
+				var trail := ctx.crowd.trail_fires()
 				for g in ring_spots(fuel, TRAIL_STEP, ctx.env, ctx.crowd._grid, City.current().rivers()):
-					ctx.crowd.fires.lay(g)
+					trail.lay(g)
 		else:
 			# No town to keep the fire: the blow itself is fire's.
 			fuel.damage(1.0, where, &"fire")

@@ -108,6 +108,7 @@ func setup() -> GodSelectScreen:
 			rng.randf_range(0.0, TAU), rng.randf_range(-1.5, 1.5)]))
 	GodSelectArt.frame_set("brazier")
 	_load_god(GodTree.RING[selected])
+	Music.set_path(GodTree.RING[selected])  # the picked god's school plays over the paths piece
 	_queue_rest()
 	_build_ring_points()
 	for k in SPARK_COUNT:
@@ -309,6 +310,7 @@ func select(i: int) -> void:
 	selected = clampi(i, 0, GodTree.RING.size() - 1)
 	if selected != was:
 		_load_god(GodTree.RING[selected])
+		Music.set_path(GodTree.RING[selected])
 		_prev_type = GodTree.RING[was]
 		_prev_scale = entrance_scale()
 		_prev_bob = _bob()

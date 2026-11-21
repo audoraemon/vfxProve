@@ -1,7 +1,7 @@
 class_name Music
 extends Node
 ## Background music, played by orchestral samples (tools/audio/music/, tools/audio/music_render.py): a dark choral theme on
-## the title and the draft, and in the
+## the title and the draft, its own piece on God's Paths (the god select: a base and, over it, the picked god's school), and in the
 ## mission a calm piece for the town as it is (CALM: by day, by night, the Capital's own), a tension stem as it starts to
 ## slip, and a battle loop in three stems -- base, drums, lead -- layered in as the city falls (the music pass). Not positional, not
 ## tied to a battlefield, and alive across every screen change so one track can fade into the next. Built the way
@@ -24,6 +24,13 @@ const DUCK_DB := -12.0
 ## won, lost -- played over the music at STING_DB above it, while the loops dip by STING_DIP_DB so it stands clear.
 const STINGS := [&"music_sting_start", &"music_sting_objective", &"music_sting_win", &"music_sting_lose"]
 const STING_DB := 3.0
+## God's Paths (the god select): a temple piece (PATHS, 64 beats) and, over it, one layer per school (PATH_LAYERS, 16 beats on the
+## same four-bar progression, so each fits any block of the base); the layer of the god picked now fades in, the others out.
+const PATHS := &"music_paths"
+const PATH_LAYERS := {
+	"ruin": &"music_paths_ruin", "passage": &"music_paths_passage", "veil": &"music_paths_veil",
+	"decree": &"music_paths_decree", "death": &"music_paths_death", "dominion": &"music_paths_dominion",
+}
 const STING_DIP_DB := -8.0
 
 static var _node: Music
@@ -32,6 +39,11 @@ var _theme: AudioStreamPlayer
 var _stems: Array[AudioStreamPlayer] = []
 var _calm: Array[AudioStreamPlayer] = []
 var _tension: AudioStreamPlayer
+var _paths: AudioStreamPlayer
+var _layers: Dictionary = {}  ## school type -> its layer's player
+var _paths_gain := 0.0
+var _layer_gain: Dictionary = {}  ## school type -> its layer's gain (0..1)
+var _path := ""  ## the school type picked on God's Paths
 var _calm_gain: Array[float] = [0.0, 0.0, 0.0]
 var _tension_gain := 0.0
 ## Current gain (0..1) of the theme and of each stem, eased toward their targets.
@@ -50,11 +62,26 @@ var _pending: AudioStream  ## a stinger asked for before the node was in the tre
 var _stopped := false
 
 
-## What should be playing: &"theme", &"battle", or &"" for silence. Fades from whatever is playing now.
+## What should be playing: &"theme", &"paths", &"battle", or &"" for silence. Fades from whatever is playing now.
 static func play(track: StringName) -> void:
 	var m := _instance()
 	if m != null:
 		m._switch(track)
+
+
+## The god picked on God's Paths (a GodTree.RING type): its school's layer plays over the paths piece.
+static func set_path(type: String) -> void:
+	var m := _instance()
+	if m != null:
+		m._path = type
+
+
+## Each school layer's volume while `track` plays with `type` picked: full for that school on God's Paths, else silent.
+static func layer_gains(track: StringName, type: String) -> Dictionary:
+	var out := {}
+	for k: String in PATH_LAYERS:
+		out[k] = 1.0 if track == &"paths" and k == type else 0.0
+	return out
 
 
 ## How far the city has fallen, 0 (standing) to 1 (falling): how many battle layers are in.
@@ -142,6 +169,10 @@ func _ready() -> void:
 	for cue: StringName in CALM:
 		_calm.append(_player(cue))
 	_tension = _player(TENSION)
+	_paths = _player(PATHS)
+	for k: String in PATH_LAYERS:
+		_layers[k] = _player(PATH_LAYERS[k])
+		_layer_gain[k] = 0.0
 
 
 func _player(cue: StringName) -> AudioStreamPlayer:
@@ -182,6 +213,8 @@ func _switch(track: StringName) -> void:
 		_start_battle()
 	elif track == &"theme" and not _theme.playing:
 		_theme.play(0.0)
+	elif track == &"paths" and not _paths.playing:
+		_start_paths()
 
 
 func _process(delta: float) -> void:
@@ -191,6 +224,8 @@ func _process(delta: float) -> void:
 		_start_battle()
 	elif _want == &"theme" and not _theme.playing:
 		_theme.play(0.0)
+	elif _want == &"paths" and not _paths.playing:
+		_start_paths()
 	var step := delta / FADE
 	_theme_gain = move_toward(_theme_gain, 1.0 if _want == &"theme" else 0.0, step)
 	var targets: Array[float] = [0.0, 0.0, 0.0]
@@ -216,6 +251,15 @@ func _process(delta: float) -> void:
 		if _calm_gain[i] <= 0.0 and _calm[i].playing:
 			_calm[i].stop()
 	_apply(_tension, _tension_gain, duck)
+	_paths_gain = move_toward(_paths_gain, 1.0 if _want == &"paths" else 0.0, step)
+	_apply(_paths, _paths_gain, duck)
+	var lg := layer_gains(_want, _path)
+	for k: String in _layers:
+		_layer_gain[k] = move_toward(float(_layer_gain[k]), float(lg[k]), step)
+		_apply(_layers[k], float(_layer_gain[k]), duck)
+	if _want != &"paths" and _paths_gain <= 0.0 and _paths.playing:
+		for p: AudioStreamPlayer in [_paths] + _layers.values():
+			p.stop()  # the layers run with the base all along, to stay in step; they stop with it
 	# A track faded right out stops, so nothing plays silently forever -- except a battle stem while the battle
 	# is on, which must keep running to stay in step.
 	if _theme_gain <= 0.0 and _theme.playing:
@@ -233,6 +277,13 @@ func _start_battle() -> void:
 	_tension.play(0.0)
 
 
+## Starts the paths piece and every school layer together: the layers' 16 beats divide the base's 64, so they stay in step.
+func _start_paths() -> void:
+	_paths.play(0.0)
+	for p: AudioStreamPlayer in _layers.values():
+		p.play(0.0)
+
+
 func _apply(p: AudioStreamPlayer, gain: float, duck: float) -> void:
 	p.volume_db = DB + duck + (linear_to_db(gain) if gain > 0.0005 else -80.0)
 
@@ -247,3 +298,7 @@ func _stop_all() -> void:
 		p.stop()
 	if _tension != null:
 		_tension.stop()
+	if _paths != null:
+		_paths.stop()
+	for p: AudioStreamPlayer in _layers.values():
+		p.stop()

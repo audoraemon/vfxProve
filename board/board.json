@@ -1,9 +1,11 @@
 {
- "hash": "8dee2640b4237f14",
- "updated": "2026-11-22T03:37:03+07:00",
+ "hash": "6ad650dad286b45e",
+ "updated": "2026-11-22T04:38:59+07:00",
  "changes": {
-  "date": "<t:1795293423:f>",
-  "items": []
+  "date": "<t:1795297139:f>",
+  "items": [
+   "New: Loss warning: big red alarm when the night is about to be lost"
+  ]
  },
  "snapshot": {
   "project": {
@@ -699,6 +701,15 @@
     "needs_you": false,
     "updated": "2026-10-05",
     "order": 0
+   },
+   "loss-warning": {
+    "title": "Loss warning: big red alarm when the night is about to be lost",
+    "status": "done",
+    "area": "UI",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-22",
+    "order": 905
    },
    "music-dark-choral": {
     "title": "Music recomposed: dark and choral, orchestral samples, stereo",
@@ -1924,15 +1935,23 @@
    {
     "name": "god/veil-review",
     "ahead": 56,
-    "behind": 21,
+    "behind": 26,
     "date": "2026-11-22",
     "subject": "perf: Dread of the Dark's wall and shade are drawn in a few pieces",
     "pushed": false
    },
    {
+    "name": "feat/god-chamber",
+    "ahead": 25,
+    "behind": 26,
+    "date": "2026-11-22",
+    "subject": "docs: Capital at every tier, the four open questions decided",
+    "pushed": false
+   },
+   {
     "name": "god/veil-powers",
     "ahead": 33,
-    "behind": 21,
+    "behind": 26,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
@@ -1940,23 +1959,15 @@
    {
     "name": "claude/lantern-campaign-spec",
     "ahead": 23,
-    "behind": 0,
+    "behind": 5,
     "date": "2026-11-21",
     "subject": "test: loudness rows for the God's Paths music",
     "pushed": false
    },
    {
-    "name": "feat/god-chamber",
-    "ahead": 23,
-    "behind": 21,
-    "date": "2026-11-21",
-    "subject": "docs: Capital at every tier, spec and plan (draft, awaiting review)",
-    "pushed": false
-   },
-   {
     "name": "feat/soldier-duties",
     "ahead": 22,
-    "behind": 6,
+    "behind": 11,
     "date": "2026-11-21",
     "subject": "fix: a beat man whose mate's body is freed walks on (no read of the freed body)",
     "pushed": false
@@ -1964,7 +1975,7 @@
    {
     "name": "feat/town-suspicion",
     "ahead": 15,
-    "behind": 0,
+    "behind": 5,
     "date": "2026-11-21",
     "subject": "test: references re-recorded where the bellkeeper now waits (41 rows)",
     "pushed": false
@@ -1972,23 +1983,15 @@
    {
     "name": "claude/natural-people",
     "ahead": 8,
-    "behind": 6,
+    "behind": 11,
     "date": "2026-11-21",
     "subject": "fix: late goers and merges only into reachable groups; none after the close; no re-send of the broken (fair life T3 review)",
     "pushed": false
    },
    {
-    "name": "feat/loss-warning",
-    "ahead": 5,
-    "behind": 0,
-    "date": "2026-11-21",
-    "subject": "test: loudness rows for the God's Paths music",
-    "pushed": true
-   },
-   {
     "name": "claude/sound-natural-2",
     "ahead": 1,
-    "behind": 4,
+    "behind": 9,
     "date": "2026-11-21",
     "subject": "feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)",
     "pushed": true
@@ -1996,7 +1999,7 @@
    {
     "name": "feat/might-gauge",
     "ahead": 19,
-    "behind": 6,
+    "behind": 11,
     "date": "2026-11-20",
     "subject": "test: track the route suite's uid",
     "pushed": false
@@ -2004,7 +2007,7 @@
    {
     "name": "feat/wish-clarity",
     "ahead": 1,
-    "behind": 21,
+    "behind": 26,
     "date": "2026-11-19",
     "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
     "pushed": false
@@ -2012,7 +2015,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 121,
+    "behind": 126,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2020,7 +2023,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 496,
+    "behind": 501,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2028,7 +2031,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 994,
+    "behind": 999,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2036,7 +2039,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 952,
+    "behind": 957,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true

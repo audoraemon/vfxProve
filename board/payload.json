@@ -7,16 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **169** done\n**15** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **170** done\n**14** active branches besides Develop-Main\n\n**Since the last update** (<t:1795297139:f>)\n• New: Loss warning: big red alarm when the night is about to be lost",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-22T03:37:03+07:00"
+     "timestamp": "2026-11-22T04:38:59+07:00"
     },
     {
      "title": "god/veil-review",
      "description": "56 commits not in Develop-Main · last commit today · local only\n> perf: Dread of the Dark's wall and shade are drawn in a few pieces\n\n**In progress** (1)\n• Veil abilities review: previews and stronger effects — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "feat/god-chamber",
+     "description": "25 commits not in Develop-Main · last commit today · local only\n> docs: Capital at every tier, the four open questions decided\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -27,11 +32,6 @@
     {
      "title": "claude/lantern-campaign-spec",
      "description": "23 commits not in Develop-Main · last commit yesterday · local only\n> test: loudness rows for the God's Paths music\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/god-chamber",
-     "description": "23 commits not in Develop-Main · last commit yesterday · local only\n> docs: Capital at every tier, spec and plan (draft, awaiting review)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -50,13 +50,13 @@
      "color": 5016537
     },
     {
-     "title": "feat/loss-warning",
-     "description": "5 commits not in Develop-Main · last commit yesterday\n> test: loudness rows for the God's Paths music\n\n_No Ledger task points at this branch._",
+     "title": "claude/sound-natural-2",
+     "description": "1 commit not in Develop-Main · last commit yesterday\n> feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
-     "title": "claude/sound-natural-2",
-     "description": "1 commit not in Develop-Main · last commit yesterday\n> feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)\n\n_No Ledger task points at this branch._",
+     "title": "feat/might-gauge",
+     "description": "19 commits not in Develop-Main · last commit 2 days ago · local only\n> test: track the route suite's uid\n\n_No Ledger task points at this branch._",
      "color": 5016537
     }
    ]
@@ -66,11 +66,6 @@
     "parse": []
    },
    "embeds": [
-    {
-     "title": "feat/might-gauge",
-     "description": "19 commits not in Develop-Main · last commit 2 days ago · local only\n> test: track the route suite's uid\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
     {
      "title": "feat/wish-clarity",
      "description": "1 commit not in Develop-Main · last commit 3 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
@@ -103,7 +98,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• God's Paths music (temple base + one layer per school) _(11-21)_\n• Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• Smite drag-to-widen + Ember sets people alight, Fire Trail _(11-20)_\n• Remove dithered contact shadows (black spots round sprites) _(11-20)_\n• PixelLab ability icons for the 47 drawn powers + 6 flat Decree _(11-19)_\n• God progression merged into Develop-Main (Death, Decree, levels) _(11-19)_\n• Death and Decree ability levels _(11-19)_",
+     "description": "• Loss warning: big red alarm when the night is about to be lost _(11-22)_\n• God's Paths music (temple base + one layer per school) _(11-21)_\n• Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• Smite drag-to-widen + Ember sets people alight, Fire Trail _(11-20)_\n• Remove dithered contact shadows (black spots round sprites) _(11-20)_\n• PixelLab ability icons for the 47 drawn powers + 6 flat Decree _(11-19)_\n• God progression merged into Develop-Main (Death, Decree, levels) _(11-19)_",
      "color": 10185686
     }
    ]

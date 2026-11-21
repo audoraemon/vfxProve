@@ -543,15 +543,14 @@ replace consts are bit-equal: citadel gate, Temple centre, map centre equals tow
 the last task replaces it with `_draw_every_tier` (each tier 1-5 draws a Capital night) and keeps the empty-draw path through
 `_hunt_aldermere_only`.
 
-## 9. Open questions for the user
+## 9. Decisions (the user, 2026-11-22: "go with your picks")
 
-1. The Crown's Bread in the Capital: market hall as the granary and the bakery as the mill (section 6.2.3), or the Keep yard's
-   granary set and the far windmill?
-2. Last Judgement and the Long Night's Act III: if the measured policy cannot break the whole Capital in time, should stability count
-   the old town only (a rule change for the Capital), or should the Capital's Tier 5 drop Last Judgement until play-tested?
-3. The gate towers: the west river gate (section 3), or another gatehouse the player should read as "the gate barracks"?
-4. The Procession ends at the harbour dock with no ship drawn. Accept it until an art round, or add the ship decor to the Capital
-   (a `ship_at()` value with the existing ship sprite)?
+1. The Crown's Bread in the Capital: the market hall is the granary and the bakery is the mill (section 6.2.3). Both are in the
+   old town.
+2. Last Judgement and the Long Night's Act III: the task measures first. If the scripted play cannot break the whole Capital in
+   time (fewer than 2 wins of 3), City Stability in the Capital counts the old town only. Aldermere's rule does not change.
+3. The gate towers are the old town's west river gate (section 3).
+4. The Procession's ship: the Capital gets a `ship_at()` value at its harbour dock and draws the existing ship sprite. No new art.
 
 ## 10. Order of work
 

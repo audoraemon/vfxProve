@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**12** in progress · **29** to do · **168** done\n**15** active branches besides Develop-Main\n\n**Since the last update** (<t:1795253908:f>)\n• New: God's Paths music (temple base + one layer per school)",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **169** done\n**15** active branches besides Develop-Main\n\n**Since the last update** (<t:1795256465:f>)\n• New: Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses)\n• New: Veil abilities review: previews and stronger effects (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-21T16:38:28+07:00"
+     "timestamp": "2026-11-21T17:21:05+07:00"
     },
     {
      "title": "god/veil-powers",
@@ -25,23 +25,23 @@
      "color": 5016537
     },
     {
+     "title": "god/veil-review",
+     "description": "33 commits not in Develop-Main · last commit today · local only\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil abilities review: previews and stronger effects",
+     "color": 5016537
+    },
+    {
      "title": "feat/god-chamber",
      "description": "22 commits not in Develop-Main · last commit today · local only\n> test: the screen table has fifteen screens with the World Map\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/soldier-duties",
-     "description": "21 commits not in Develop-Main · last commit today · local only\n> fix: soldier duties final review wave (a director releases only the men it takes, a taken man leaves his duty, gate check and sweep scans trimmed, bo…\n\n_No Ledger task points at this branch._",
+     "description": "22 commits not in Develop-Main · last commit today · local only\n> fix: a beat man whose mate's body is freed walks on (no read of the freed body)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/town-suspicion",
      "description": "12 commits not in Develop-Main · last commit today · local only\n> fix: Town Suspicion review wave (only a natural cast excuses a death; soldiers scenario keeps its keeper; the town's one call; quiet banner)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/ember-trail",
-     "description": "3 commits not in Develop-Main · last commit today · local only\n> fix: a crossing scorches, lingering or a second crossing kills; the flames stay bright at night; the trail redraws at 15 Hz\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -68,7 +68,7 @@
    "embeds": [
     {
      "title": "feat/loss-warning",
-     "description": "4 commits not in Develop-Main · last commit yesterday · local only\n> fix: the loss warning kicks the world's picture, not the camera\n\n_No Ledger task points at this branch._",
+     "description": "4 commits not in Develop-Main · last commit yesterday\n> fix: the loss warning kicks the world's picture, not the camera\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -103,7 +103,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• God's Paths music (temple base + one layer per school) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• Smite drag-to-widen + Ember sets people alight, Fire Trail _(11-20)_\n• Remove dithered contact shadows (black spots round sprites) _(11-20)_\n• PixelLab ability icons for the 47 drawn powers + 6 flat Decree _(11-19)_\n• God progression merged into Develop-Main (Death, Decree, levels) _(11-19)_\n• Death and Decree ability levels _(11-19)_\n• Zoomed-out fps: render with Forward+ (Vulkan) _(11-18)_",
+     "description": "• God's Paths music (temple base + one layer per school) _(11-21)_\n• Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• Smite drag-to-widen + Ember sets people alight, Fire Trail _(11-20)_\n• Remove dithered contact shadows (black spots round sprites) _(11-20)_\n• PixelLab ability icons for the 47 drawn powers + 6 flat Decree _(11-19)_\n• God progression merged into Develop-Main (Death, Decree, levels) _(11-19)_\n• Death and Decree ability levels _(11-19)_",
      "color": 10185686
     }
    ]

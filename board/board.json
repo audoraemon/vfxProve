@@ -1,10 +1,11 @@
 {
- "hash": "d93a70415353fe1b",
- "updated": "2026-11-21T16:38:28+07:00",
+ "hash": "eba9bc24a8310456",
+ "updated": "2026-11-21T17:21:05+07:00",
  "changes": {
-  "date": "<t:1795253908:f>",
+  "date": "<t:1795256465:f>",
   "items": [
-   "New: God's Paths music (temple base + one layer per school)"
+   "New: Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses)",
+   "New: Veil abilities review: previews and stronger effects (in progress)"
   ]
  },
  "snapshot": {
@@ -311,6 +312,16 @@
     "branch": "feat/god-progression",
     "updated": "2026-11-04",
     "order": 205
+   },
+   "ember-trail-fire": {
+    "title": "Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses)",
+    "status": "done",
+    "area": "Abilities",
+    "version": "v0.12.x",
+    "needs_you": true,
+    "branch": "god/ember-trail",
+    "updated": "2026-11-21",
+    "order": 306
    },
    "eng-followups": {
     "title": "Decide: engineers' fire duty follow-ups",
@@ -1631,6 +1642,15 @@
     "updated": "2026-11-21",
     "order": 5
    },
+   "veil-review-adjust": {
+    "title": "Veil abilities review: previews and stronger effects",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "god/veil-review",
+    "updated": "2026-11-21",
+    "order": 6
+   },
    "vfx-anathema": {
     "title": "Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed",
     "status": "done",
@@ -1907,7 +1927,7 @@
    {
     "name": "god/veil-powers",
     "ahead": 33,
-    "behind": 17,
+    "behind": 21,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
@@ -1915,7 +1935,15 @@
    {
     "name": "god/veil-merge",
     "ahead": 33,
-    "behind": 17,
+    "behind": 21,
+    "date": "2026-11-21",
+    "subject": "test: re-record the 113 reference rows that cast a Veil power",
+    "pushed": false
+   },
+   {
+    "name": "god/veil-review",
+    "ahead": 33,
+    "behind": 21,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": false
@@ -1923,39 +1951,31 @@
    {
     "name": "feat/god-chamber",
     "ahead": 22,
-    "behind": 17,
+    "behind": 21,
     "date": "2026-11-21",
     "subject": "test: the screen table has fifteen screens with the World Map",
     "pushed": false
    },
    {
     "name": "feat/soldier-duties",
-    "ahead": 21,
-    "behind": 2,
+    "ahead": 22,
+    "behind": 6,
     "date": "2026-11-21",
-    "subject": "fix: soldier duties final review wave (a director releases only the men it takes, a taken man leaves his duty, gate check and sweep scans trimmed, bots use the town's witness reach)",
+    "subject": "fix: a beat man whose mate's body is freed walks on (no read of the freed body)",
     "pushed": false
    },
    {
     "name": "feat/town-suspicion",
     "ahead": 12,
-    "behind": 2,
+    "behind": 6,
     "date": "2026-11-21",
     "subject": "fix: Town Suspicion review wave (only a natural cast excuses a death; soldiers scenario keeps its keeper; the town's one call; quiet banner)",
     "pushed": false
    },
    {
-    "name": "god/ember-trail",
-    "ahead": 3,
-    "behind": 2,
-    "date": "2026-11-21",
-    "subject": "fix: a crossing scorches, lingering or a second crossing kills; the flames stay bright at night; the trail redraws at 15 Hz",
-    "pushed": false
-   },
-   {
     "name": "claude/lantern-campaign-spec",
     "ahead": 22,
-    "behind": 2,
+    "behind": 6,
     "date": "2026-11-20",
     "subject": "fix: why-not judges a Gathered Storm by the bolt it cast",
     "pushed": false
@@ -1963,7 +1983,7 @@
    {
     "name": "feat/might-gauge",
     "ahead": 19,
-    "behind": 2,
+    "behind": 6,
     "date": "2026-11-20",
     "subject": "test: track the route suite's uid",
     "pushed": false
@@ -1971,7 +1991,7 @@
    {
     "name": "claude/natural-people",
     "ahead": 7,
-    "behind": 2,
+    "behind": 6,
     "date": "2026-11-20",
     "subject": "feat: the fair's goers stand in talking groups and stroll (fair life T3)",
     "pushed": false
@@ -1979,15 +1999,15 @@
    {
     "name": "feat/loss-warning",
     "ahead": 4,
-    "behind": 13,
+    "behind": 17,
     "date": "2026-11-20",
     "subject": "fix: the loss warning kicks the world's picture, not the camera",
-    "pushed": false
+    "pushed": true
    },
    {
     "name": "feat/wish-clarity",
     "ahead": 1,
-    "behind": 17,
+    "behind": 21,
     "date": "2026-11-19",
     "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
     "pushed": false
@@ -1995,7 +2015,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 117,
+    "behind": 121,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2003,7 +2023,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 492,
+    "behind": 496,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2011,7 +2031,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 990,
+    "behind": 994,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2019,7 +2039,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 948,
+    "behind": 952,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true

@@ -81,6 +81,8 @@ func _build() -> void:
 		if parent == ctx.overhead and ctx.overhead_back != null:
 			var back := WallBack.new()
 			back.shade = shade
+			# Absolute 4 (VRF1): over the world, under the aim (Targeting, 5) and under the near half on the overhead layer (10).
+			back.z_as_relative = false
 			back.z_index = 4
 			shade.back = track(back, ctx.overhead_back) as Node2D
 		shade.refresh(ctx.crowd)

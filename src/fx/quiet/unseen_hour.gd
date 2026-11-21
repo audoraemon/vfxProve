@@ -38,6 +38,8 @@ func _build() -> void:
 		blanket = Blanket.new()
 		blanket.fx = self
 		blanket.position = Iso.ground_to_screen(origin).round()
+		# Absolute 4 (VRF1): over the world (roofs and people, 0-1) and Evernight's night (2-3), under the aim (Targeting, 5).
+		blanket.z_as_relative = false
 		blanket.z_index = 4
 		track(blanket, layer)
 	if ctx.ground != null:

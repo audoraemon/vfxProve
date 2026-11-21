@@ -31,6 +31,12 @@ const EMBERS := [Color("ffe2a0"), Color("ffb25a"), Color("e0702a"), Color(0.55, 
 const WISP := [Color(0.06, 0.03, 0.10, 0.9), Color(0.12, 0.05, 0.20, 0.85), Color(0.22, 0.09, 0.38, 0.7),
 	Color(0.42, 0.30, 0.62, 0.45), Color(0.62, 0.52, 0.82, 0.2)]
 
+## The night's absolute z (VRF1): the shade just over the world (0-1: people, houses and the pieces standing among them), the moon,
+## the air and the wall over it (in that tree order), all under the aim (Targeting, absolute 5), so the ring, the previews, the kill
+## colour and the DARK / LIGHT tag are never multiplied by the night. The HUD is a CanvasLayer of its own, over all of it.
+const Z_SHADE := 2
+const Z_AIR := 3
+
 static var _white: ImageTexture
 
 

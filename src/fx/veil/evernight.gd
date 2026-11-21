@@ -202,13 +202,15 @@ func _build() -> void:
 	_build_sky()
 
 
-## The look over the town, on the layer above the town and under the effects (ctx.overhead_back): the shade, the air over it and
-## the wall over both. The town's own NIGHT look is darkened once already, so the shade is lighter there.
+## The look over the town (ctx.overhead_back, but at absolute z: EvernightSky.Z_SHADE / Z_AIR, over the world and under the aim, VRF1):
+## the shade, the air over it and the wall over both. The town's own NIGHT look is darkened once already, so the shade is lighter there.
 func _build_sky() -> void:
 	if ctx == null or ctx.overhead_back == null:
 		return
 	var on_night: bool = TownLook.active == Town.Look.NIGHT
 	_shade = EvernightSky.View.new(EvernightSky.SH_SHADE)
+	_shade.z_as_relative = false
+	_shade.z_index = EvernightSky.Z_SHADE
 	_shade.set_param(&"night", EvernightSky.NIGHT_ON_NIGHT if on_night else EvernightSky.NIGHT)
 	_shade.set_param(&"edge_night", EvernightSky.NIGHT_ON_NIGHT_EDGE if on_night else EvernightSky.NIGHT_EDGE)
 	_shade.set_param(&"torch_r", TORCH_R)
@@ -217,14 +219,16 @@ func _build_sky() -> void:
 	_shade.set_param(&"center", origin)
 	track(_shade, ctx.overhead_back)
 	_air = EvernightSky.View.new(EvernightSky.SH_AIR)
-	_air.z_index = 1
+	_air.z_as_relative = false
+	_air.z_index = EvernightSky.Z_AIR
 	_air.set_param(&"center", origin)
 	_air.set_param(&"silver", VeilParts.SILVER)
 	_air.set_param(&"veil", VeilParts.VEIL)
 	_air.set_param(&"black", VeilParts.BLACK)
 	track(_air, ctx.overhead_back)
 	_wall = EvernightSky.Wall.new()
-	_wall.z_index = 2
+	_wall.z_as_relative = false
+	_wall.z_index = EvernightSky.Z_AIR  # after the air in the tree: over it
 	_wall.center = origin
 	_wall.mat.set_shader_parameter(&"black", VeilParts.BLACK)
 	_wall.mat.set_shader_parameter(&"dusk", VeilParts.DUSK)
@@ -693,7 +697,7 @@ class NightMoon extends Node2D:
 	func _init() -> void:
 		top_level = true
 		z_as_relative = false
-		z_index = 9  # the overhead_back layer (8) + 1: over the shade, under the air (which is later in the tree)
+		z_index = EvernightSky.Z_AIR  # the air's z: over the shade (Z_SHADE), under the aim (5); the same z as the air, as before VRF1
 
 	func _process(_delta: float) -> void:
 		if not is_inside_tree() or strength <= 0.0:

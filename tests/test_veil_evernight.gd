@@ -106,6 +106,7 @@ static func run(t) -> void:
 	_two(t, made)
 	_look(t, made)
 	_sky(t, made)
+	await _layers(t, made)
 	field.enemy_killed.disconnect(on_kill)
 	ctx.lights.free()
 	ctx.lights = null
@@ -771,10 +772,14 @@ static func _sky(t, made: Array) -> void:
 		_put(crowd, at + Vector2(0.0, -6.0), true)
 		_put(crowd, at + Vector2(12.0, 12.0))
 		var fx := _cast(ctx, at)
-		t.check(fx._shade != null and fx._shade.get_parent() == ctx.overhead_back and fx._shade.z_index == 0
-			and fx._shade.mat.shader == EvernightSky.SH_SHADE, "%s: the night's shade over the town (overhead_back)" % mode)
-		t.check(fx._air != null and fx._air.get_parent() == ctx.overhead_back and fx._air.z_index == 1 and fx._wall != null
-			and fx._wall.get_parent() == ctx.overhead_back and fx._wall.z_index == 2, "%s: the air over it, the wall over both" % mode)
+		# Absolute z (VRF1): the shade at 2, the air, the wall and the moon at 3 (tree order: the moon, the air, the wall), all under the
+		# aim's 5 and over the world's 0-1. Pinned on purpose; _layers() reads the order against a real Battlefield.
+		t.check(fx._shade != null and fx._shade.get_parent() == ctx.overhead_back and not fx._shade.z_as_relative and fx._shade.z_index == 2
+			and fx._shade.mat.shader == EvernightSky.SH_SHADE, "%s: the night's shade over the town (overhead_back, absolute 2)" % mode)
+		t.check(fx._air != null and fx._air.get_parent() == ctx.overhead_back and not fx._air.z_as_relative and fx._air.z_index == 3
+			and fx._wall != null and fx._wall.get_parent() == ctx.overhead_back and not fx._wall.z_as_relative and fx._wall.z_index == 3
+			and fx._wall.get_index() > fx._air.get_index() and fx.wash.moon.z_index == 3,
+			"%s: the air over it, the wall over both (absolute 3)" % mode)
 		t.check(fx.wash.moon.top_level and not fx.wash.moon.z_as_relative, "%s: the moon hangs in the sky (top level)" % mode)
 		_go(fx, 1.0)
 		t.check(fx._wall.amount > 0.0 and is_equal_approx(fx._wall.front, fx.look_front()) and fx._wall.front > 0.0,
@@ -804,6 +809,56 @@ static func _sky(t, made: Array) -> void:
 		t.check(left.is_empty(), "%s: every piece of the look is gone (%d left)" % [mode, left.size()])
 		ctx.overhead_back.free()
 		ctx.overhead_back = null
+
+
+## The absolute z of `n`: its own z and its parents' while they are relative.
+static func _abs_z(n: CanvasItem) -> int:
+	var z := 0
+	var at: Node = n
+	while at is CanvasItem:
+		z += (at as CanvasItem).z_index
+		if not (at as CanvasItem).z_as_relative:
+			break
+		at = at.get_parent()
+	return z
+
+
+## Final review, Important 1 (VRF1): on a real Battlefield the aim (Targeting, where the mission puts it) draws over Evernight's
+## shade, air, wall and moon, Unseen Hour's blanket and Dread's far wall; the shade still lies over the world. Read from the nodes.
+static func _layers(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	_fresh(made)
+	var bf := Battlefield.new()
+	t.root.add_child(bf)
+	await t.process_frame
+	var rules := Rules.new()
+	var aim := Targeting.new()
+	bf.ground_plane.add_child(aim)
+	aim.setup(rules, crowd)
+	var at := Vector2(10.0, 10.0)
+	var night := _cast(bf.ctx, at)
+	var veil := FxTimeline.cast(UnseenHourFx, bf.ctx, at) as UnseenHourFx
+	bf.ctx.crowd = crowd
+	var dread := FxTimeline.cast(DreadOfTheDarkFx, bf.ctx, at) as DreadOfTheDarkFx
+	bf.ctx.crowd = null
+	var aim_z := _abs_z(aim)
+	var world_z := _abs_z(bf.ctx.world)
+	t.check(night._shade != null and _abs_z(night._shade) < aim_z and _abs_z(night._shade) > world_z + 1,
+		"the night's shade lies over the world and under the aim (%d < %d)" % [_abs_z(night._shade) if night._shade else 0, aim_z])
+	t.check(_abs_z(night._air) < aim_z and _abs_z(night._wall) < aim_z and _abs_z(night.wash.moon) < aim_z
+		and _abs_z(night.wash.moon) > _abs_z(night._shade) and _abs_z(night._air) >= _abs_z(night.wash.moon),
+		"the air, the wall and the moon under the aim; the moon over the shade, the air over the moon")
+	t.check(veil.blanket != null and _abs_z(veil.blanket) < aim_z and _abs_z(veil.blanket) > world_z + 1,
+		"Unseen Hour's blanket hangs over the world and under the aim (%d)" % (_abs_z(veil.blanket) if veil.blanket else 0))
+	var back: Node2D = dread.shade.back if dread.shade != null else null
+	t.check(back != null and _abs_z(back) < aim_z and _abs_z(back) > world_z + 1,
+		"Dread's far wall stands over the world and under the aim (%d)" % (_abs_z(back) if back else 0))
+	for fx: FxTimeline in [night, veil, dread]:
+		fx.end_now()
+	await t.process_frame
+	rules.free()
+	t.root.remove_child(bf)
+	bf.free()
 
 
 static func _quiet(t) -> void:

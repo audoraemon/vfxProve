@@ -424,8 +424,15 @@ static func _look(t, made: Array) -> void:
 	var p := _put(crowd, 34, d)
 	var fx := _cast(made[5], at)
 	t.check(fx.shade != null and is_instance_valid(fx.shade) and fx.shade.get_parent() == (made[5] as FxContext).overhead, "a shade in the god's overhead layer")
+	t.check(not fx.shade.runs.is_empty() and fx.shade.front() < fx.shade._d_max, "the dark is read at the click and its front starts short of it (VRC2)")
 	_go(fx, DreadOfTheDarkFx.T_FALL + DT)
 	var shade := fx.shade
+	var walled := shade.pillars.size() > 0 and shade.pillars.size() <= DreadOfTheDarkFx.DreadShade.PILLARS
+	for g: Vector2 in shade.pillars:
+		walled = walled and g.distance_to(d) <= 1.5 + 0.8
+	t.check(walled, "a wall of pillars stands at the border of the dreaded ground, not round the reach (%d)" % shade.pillars.size())
+	_go(fx, DreadOfTheDarkFx.DreadShade.SPREAD)
+	t.check(shade.front() >= shade._d_max, "the front has crossed all the dreaded ground")
 	t.check(not shade.runs.is_empty() and shade.eyes.size() > 0 and shade.eyes.size() <= DreadOfTheDarkFx.DreadShade.EYES, "the dark thickens; eyes at its edge (%d)" % shade.eyes.size())
 	var inside := true
 	for r: Array in shade.runs:

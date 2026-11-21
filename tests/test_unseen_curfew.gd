@@ -71,6 +71,7 @@ static func run(t) -> void:
 	victim.ground_pos = at - Vector2(1.0, 0.0)
 	var hour: UnseenHourFx = FxTimeline.cast(load("res://src/fx/quiet/unseen_hour.gd"), ctx, at)
 	t.check(not crowd.is_veiled(at) and not hour.veiled, "Unseen Hour: everything is seen until the veil falls")
+	t.check(hour.blanket != null and hour.blanket.get_parent() == ctx.overhead, "a bare context (no overhead_back) hangs the blanket on overhead, without error")
 	hour._process(UnseenHourFx.T_FALL + 0.05)
 	t.check(hour.veiled and crowd.is_veiled(at) and crowd.is_veiled(at + Vector2(UnseenHourFx.RADIUS - 0.1, 0.0))
 		and not crowd.is_veiled(at + Vector2(UnseenHourFx.RADIUS + 0.5, 0.0)), "then nothing within its circle is seen, and everything outside is")
@@ -151,3 +152,31 @@ static func run(t) -> void:
 	night._process(CurfewFx.SLEEP_TIME + 2.0)
 	night.free()
 	_done(made)
+	_blanket(t)
+
+
+## The god's blanket (review round, VRC1): a staged cast hangs it on overhead_back; by the time the veil has fallen it has spread to
+## the veil's radius and hangs raised, its edge sagging below its middle, with its shadow and hem on the ground plane; it goes with
+## end_now() and with a cast freed outright.
+static func _blanket(t) -> void:
+	const FxStage := preload("res://tests/fx_stage.gd")
+	var bf := FxStage.make(5)
+	var fx := FxTimeline.cast(UnseenHourFx, bf.ctx, Vector2(-200.0, -200.0)) as UnseenHourFx
+	var b := fx.blanket
+	t.check(b != null and is_instance_valid(b) and b.get_parent() == bf.ctx.overhead_back, "Unseen Hour: a blanket on the overhead_back layer")
+	t.check(fx.spread() < 0.2, "thrown from the click: small at first (%.2f)" % fx.spread())
+	for i in 60:
+		fx._process(0.05)
+	t.check(is_equal_approx(fx.spread(), 1.0) and b.height(1.0, 0.0) > 0.0 and b.height(0.0, 0.0) > b.height(1.0, PI / 9.0),
+		"spread to the veil's edge (%.2f), hanging raised (edge %.1f px), its edge sagging below its middle" % [fx.spread(), b.height(1.0, 0.0)])
+	var hems := bf.ctx.ground.get_children().filter(func(c: Node) -> bool: return c is UnseenHourFx.Hem)
+	t.check(hems.size() == 1, "its shadow and hem on the ground plane (%d)" % hems.size())
+	fx.end_now()
+	t.check(not is_instance_valid(b) or b.is_queued_for_deletion(), "the blanket goes with end_now()")
+	var other := FxTimeline.cast(UnseenHourFx, bf.ctx, Vector2(-200.0, -200.0)) as UnseenHourFx
+	var b2 := other.blanket
+	other.free()
+	if is_instance_valid(b2) and not b2.is_queued_for_deletion():
+		b2._process(0.05)  # a cast freed off the tree has no _exit_tree: the blanket sees it gone on its next frame
+	t.check(b2 != null and (not is_instance_valid(b2) or b2.is_queued_for_deletion()), "and with a cast freed outright")
+	FxStage.drop(bf)

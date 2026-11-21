@@ -1351,15 +1351,16 @@ func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
 ## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
 ## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
 ## `startle` false skips the freeze of a fresh fright (a person in a ground fire does not stand still in it). `may_shelter` false
-## skips the shelter roll (a status that kills him where he stands: Withering.SHELTERS).
-func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true) -> void:
+## skips the shelter roll (a status that kills him where he stands: Withering.SHELTERS). `forced` is a power's own touch on this very person
+## (Divine Schism, the law mark): a shelter escort never steadies it away.
+func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true, forced := false) -> void:
 	if mind == Mind.ASLEEP and state != State.DEAD:
 		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
 		return
 	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
 		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
-	if crowd != null and crowd.shelter_escort != null and crowd.shelter_escort.steadied(self, from, radius):
+	if not forced and crowd != null and crowd.shelter_escort != null and crowd.shelter_escort.steadied(self, from, radius):
 		return  # a household led to shelter holds against a near miss while its escort stands by (ShelterEscort)
 	# A sturdy building nearby may be better than running (ShelterManager).
 	if may_shelter and shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):

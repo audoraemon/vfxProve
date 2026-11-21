@@ -2034,8 +2034,6 @@ func _tend_households() -> void:
 	if _households.is_empty():
 		return
 	for fam in _households.keys():
-		if shelter_escort != null and shelter_escort.escorting(fam):
-			continue  # led to shelter by two soldiers (ShelterEscort): a household waits for them, it does not flee
 		var members: Array[Person] = []
 		var home_all := true
 		for p in citizens:

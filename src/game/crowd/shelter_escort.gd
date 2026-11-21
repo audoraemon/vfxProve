@@ -6,7 +6,8 @@ extends Duty
 ## within STEADY_R of a member a near miss (a danger that does not reach him) does not scatter him; a direct hit does. If the last
 ## squad man dies the members still outside panic and a banner says so. The job ends when everyone is in; at the Evacuation (the
 ## members are left to flee as without an escort); when the shelter fills or is lost and no other has room, when no crew comes in
-## OPEN_WAIT s, or after LEAD_LIMIT s: the members outside are then handed back to the normal flow. Only a started job holds a family
+## OPEN_WAIT s, or after LEAD_LIMIT s: the members outside are then handed back to the normal flow (home to wait; at the Evacuation
+## the one at the door goes in and the rest flee). Only a started job holds a family
 ## from fleeing. Nothing here draws a number from any rng.
 
 ## Squads at once (scaled by the board's cap()), the men of one, how far from the house a shelter may be.
@@ -25,11 +26,15 @@ const BADGE_SECONDS := 1.5
 ## Seconds an unstaffed (open) job waits for its full crew, and the longest a started one lasts.
 const OPEN_WAIT := 10.0
 const LEAD_LIMIT := 60.0
+## Seconds a family whose open job timed out is not posted again.
+const COOLDOWN := 10.0
 
 ## The jobs that are not over (the near-miss test loops these; empty means nothing is steadied).
 var _live: Array[GuardJobs.Job] = []
 ## Person -> the started job whose household he belongs to.
 var _in := {}
+## Family -> the crowd clock until which it is not posted again (its open job timed out).
+var _cool := {}
 
 
 func kind() -> int:
@@ -109,6 +114,7 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 	if not job.started:
 		d.wait = float(d.wait) - delta
 		if float(d.wait) <= 0.0:
+			_cool[d.family] = crowd._clock + COOLDOWN
 			_finish(job, true)
 		return
 	d.age = float(d.age) + delta
@@ -150,14 +156,17 @@ func tags(job: GuardJobs.Job) -> Array[MapTag]:
 	return out
 
 
-## The board closed (the Citadel fell): every badge this duty set comes off and the jobs are forgotten.
+## The board closed (the Citadel fell): every job ends and its members are handed back as at any other end.
 func on_close() -> void:
+	for job in _live.duplicate():
+		_finish(job, true)
 	_release_all(false)
 
 
 ## A new crowd or act: every badge comes off, a squad man out on his orders goes back to his post, every job is forgotten.
 func clear() -> void:
 	_release_all(true)
+	_cool.clear()
 
 
 ## Takes this duty's badges off, forgets the jobs; with `home`, a living squad man still on his order goes back to his post.
@@ -195,7 +204,7 @@ func _post(by_fam: Dictionary) -> void:
 	keys.sort()
 	var cands: Array = []
 	for fam in keys:
-		if have.has(fam):
+		if have.has(fam) or float(_cool.get(fam, -INF)) > crowd._clock:
 			continue
 		var members: Array = by_fam[fam]
 		if not _waiting(members):
@@ -342,7 +351,8 @@ func _follow(job: GuardJobs.Job, pending: Array[Person]) -> void:
 			d.orders[p] = spot
 
 
-## The job is over: badges and membership go; with `hand` the members still outside are given back to the normal flow.
+## The job is over: badges and membership go; with `hand` the members still outside are given back (home to wait, or at the
+## Evacuation the one by the door goes in and the rest flee).
 func _finish(job: GuardJobs.Job, hand: bool) -> void:
 	var d: Dictionary = job.data
 	if bool(d.over):
@@ -362,8 +372,9 @@ func _finish(job: GuardJobs.Job, hand: bool) -> void:
 		if not p.is_alive() or p.inside or p.mind != Person.Mind.REGROUP:
 			continue
 		if crowd.alarms.stage >= AlarmManager.Stage.EVACUATION:
-			if not crowd._households.has(p.profile.family):
-				crowd._households[p.profile.family] = crowd._clock
+			if p.ground_pos.distance_to(d.door) <= ShelterManager.DOOR_REACH and crowd.shelters.send_in(p, d.shelter):
+				continue  # by the door at the Evacuation: in
+			p.flee()  # no household wait away from home
 		elif not p.anchor.is_equal_approx(d.home):
 			p.regroup(d.home)
 

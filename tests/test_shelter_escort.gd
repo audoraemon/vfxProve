@@ -19,13 +19,17 @@ static func run(t) -> void:
 	_crew_two(t)
 	_mission_man_never(t)
 	_mission_member_never(t)
-	_not_tended(t)
 	_walk_in(t)
 	_steady(t)
 	_direct_hit(t)
 	_held_unsteadies(t)
 	_scatter(t)
 	_evacuation_ends(t)
+	_citadel_falls(t)
+	_forced_lands(t)
+	_cooldown(t)
+	_end_to_end(t)
+	_own_home(t)
 	_capital_escort(t)
 	_open_ends(t)
 	_shelter_full_midwalk(t)
@@ -286,44 +290,6 @@ static func _mission_member_never(t) -> void:
 	C._done(made)
 
 
-## An escorted family is not sent to flee by _tend_households(); an unescorted one is as before.
-static func _not_tended(t) -> void:
-	var made := _world()
-	var crowd: Crowd = made[0]
-	var f := _setup(made)
-	if f.is_empty():
-		t.check(false, "(a household)")
-		C._done(made)
-		return
-	var job := _up(crowd, f)
-	t.check(job != null, "(a job with a crew)")
-	if job == null:
-		C._done(made)
-		return
-	crowd._households[f.fam] = crowd._clock - 100.0
-	for i in 30:
-		crowd._tend_households()
-		_run(crowd, 1.0, f.members)
-	var fled := false
-	for p: Person in f.members:
-		fled = fled or p.mind == Person.Mind.FLEE
-	t.check(not fled,
-			"30 s with the family waiting in _households: nobody sent to flee")
-	C._done(made)
-	var made2 := _world()
-	var crowd2: Crowd = made2[0]
-	var g := _setup(made2)
-	crowd2.mission_holds.append(func(p: Person) -> bool: return p.soldier)
-	_tick(crowd2)
-	crowd2._households[g.fam] = crowd2._clock - 100.0
-	crowd2._tend_households()
-	var flees := true
-	for p: Person in g.members:
-		flees = flees and p.mind == Person.Mind.FLEE
-	t.check(flees, "without an escort the family still flees at once (no behaviour change)")
-	C._done(made2)
-
-
 ## The squad runs to the house, the members walk in REGROUP to the door and go in.
 static func _walk_in(t) -> void:
 	var made := _world()
@@ -468,7 +434,8 @@ static func _scatter(t) -> void:
 	C._done(made)
 
 
-## At the Evacuation the job ends: the members are left to flee as today, the squad goes back to its posts.
+## At the Evacuation the escort hands its people on at once: a member by the door goes in, the rest flee directly (no household
+## wait away from home), the squad goes back to its posts, no badge is left.
 static func _evacuation_ends(t) -> void:
 	var made := _world()
 	var crowd: Crowd = made[0]
@@ -482,21 +449,152 @@ static func _evacuation_ends(t) -> void:
 		t.check(false, "(a job with a crew)")
 		C._done(made)
 		return
+	_arrive(job)
+	_tick(crowd)
+	_tick(crowd)
+	var near: Person = f.members[0]
+	near.ground_pos = job.data.door
+	near._goal = Vector2.INF
 	var crew: Array = job.crew.duplicate()
 	_stage(crowd, AlarmManager.Stage.EVACUATION)
 	crowd._evacuate()
-	t.check(not crowd.shelter_escort.escorting(f.fam), "at the Evacuation the family is not escorted")
 	_tick(crowd)
-	t.check(crowd.guard_jobs.live(SHELTER).is_empty(), "the job is over")
+	t.check(crowd.guard_jobs.live(SHELTER).is_empty() and not crowd.shelter_escort.escorting(f.fam), "the job is over")
+	t.check(near.mind == Person.Mind.SHELTER, "the member at the door goes in")
+	for p: Person in f.members:
+		if p != near:
+			t.check(p.mind == Person.Mind.FLEE, "every other member outside flees at once")
+		t.check(p.badge_left <= 0.0 or p.badge_glyph != GuardJobs.GLYPH_SHIELD, "no badge is left on a member")
 	for p: Person in crew:
 		t.check(p.anchor.is_equal_approx(p.post) and not crowd.guard_jobs.on_job(p), "the squad goes back to post")
-	crowd._tend_households()
-	var fled := true
+	C._done(made)
+
+
+## The Citadel falls mid-walk: the board closes, the members are handed back to wait at home, the squad goes to its posts.
+static func _citadel_falls(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var f := _setup(made)
+	if f.is_empty():
+		t.check(false, "(a household)")
+		C._done(made)
+		return
+	var job := _up(crowd, f)
+	if job == null:
+		t.check(false, "(a job with a crew)")
+		C._done(made)
+		return
+	_arrive(job)
+	_tick(crowd)
+	_tick(crowd)
+	var crew: Array = job.crew.duplicate()
+	var m: Person = f.members[0]
+	t.check(m.badge_left > 0.0 and not m.anchor.is_equal_approx(f.home), "(the members are on their way to the door)")
+	crowd.guard_jobs.close()
+	t.check(crowd.guard_jobs.live(SHELTER).is_empty() and not crowd.shelter_escort.escorting(f.fam), "no job is left")
 	for p: Person in f.members:
-		fled = fled and p.mind == Person.Mind.FLEE
-	t.check(fled, "the members flee as without an escort")
+		t.check(p.mind == Person.Mind.REGROUP and p.anchor.is_equal_approx(f.home), "a member is handed back to wait at home")
+		t.check(p.badge_left <= 0.0 or p.badge_glyph != GuardJobs.GLYPH_SHIELD, "no badge is left on him")
+	for p: Person in crew:
+		t.check(p.anchor.is_equal_approx(p.post), "a squad man is back at his post")
+	t.check(not crowd.shelter_escort.steadied(m, m.ground_pos + Vector2(3.0, 0.0), 1.0), "and nobody is steadied")
+	C._done(made)
+
+
+## A power's own touch is never steadied away: Divine Schism's (and the law mark's) fright lands on an escorted member.
+static func _forced_lands(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var f := _setup(made)
+	if f.is_empty():
+		t.check(false, "(a household)")
+		C._done(made)
+		return
+	var job := _beside(crowd, f)
+	if job == null:
+		t.check(false, "(a job with a crew)")
+		C._done(made)
+		return
+	var m: Person = f.members[0]
+	t.check(crowd.shelter_escort.steadied(m, m.ground_pos + Vector2(3.0, 0.0), 0.5), "(a near miss would be steadied)")
+	m.mind = Person.Mind.CALM
+	m.panic(m.ground_pos + Vector2(3.0, 0.0), 0.5, &"schism", true, false, true)
+	t.check(m.mind == Person.Mind.PANIC, "a forced fright on an escorted member lands")
+	C._done(made)
+
+
+## A family whose open job timed out is not posted again for 10 s.
+static func _cooldown(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var f := _setup(made)
+	if f.is_empty():
+		t.check(false, "(a household)")
+		C._done(made)
+		return
+	crowd.shelter_escort.post_jobs()
+	crowd.mission_holds.append(func(p: Person) -> bool: return p.soldier)
+	C._run_for(crowd, 11.0, [], 0.1)
+	t.check(crowd.guard_jobs.live(SHELTER).is_empty(), "(the open job timed out)")
+	crowd.mission_holds.clear()
+	for i in 4:
+		C._run_for(crowd, 1.0, [], 0.1)
+	t.check(crowd.guard_jobs.live(SHELTER).is_empty(), "the family is not posted again within 10 s")
+	C._run_for(crowd, 8.0, [], 0.1)
+	t.check(not crowd.guard_jobs.live(SHELTER).is_empty(), "and is posted again after it")
+	C._done(made)
+
+
+## End to end: the real stage change makes some of the town regroup; with those families home a started SHELTER job appears.
+static func _end_to_end(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	crowd.alarms.stage = AlarmManager.Stage.CITY_EMERGENCY
+	crowd._on_stage(AlarmManager.Stage.CITY_EMERGENCY, "test")
+	var home: Array[Person] = []
+	for p in crowd.citizens:
+		if is_instance_valid(p) and p.mind == Person.Mind.REGROUP and p.profile != null:
+			p.ground_pos = p.profile.home
+			p._goal = Vector2.INF
+			p._path = PackedVector2Array()
+			p._target = p.ground_pos
+			home.append(p)
+	t.check(not home.is_empty(), "(the stage change sent some citizens home to regroup: %d)" % home.size())
+	C._run_for(crowd, 3.0, home, 0.1)
+	var started := 0
+	for job in crowd.guard_jobs.live(SHELTER):
+		if job.started:
+			started += 1
+	t.check(started >= 1, "a real regrouping household gets a started SHELTER job (%d)" % started)
+	C._done(made)
+
+
+## A household whose own house is the shelter: led in at once.
+static func _own_home(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var f := _setup(made)
+	if f.is_empty():
+		t.check(false, "(a household)")
+		C._done(made)
+		return
+	var s: Structure = f.shelter
+	var door: Vector2 = crowd.shelter_escort._door(s, s.center() + Vector2.DOWN * 5.0)
 	for p: Person in f.members:
-		t.check(p.badge_left <= 0.0 or p.badge_glyph != GuardJobs.GLYPH_SHIELD, "no badge is left on a member")
+		p.profile.home = door
+	f.home = door
+	_wait(f)
+	var job := _up(crowd, f)
+	t.check(job != null, "(a job with a crew)")
+	if job != null:
+		_arrive(job)
+		_tick(crowd)
+		_until_over(crowd, job, f.members, 30)
+		var inside := 0
+		for p: Person in f.members:
+			if p.inside and p.mind == Person.Mind.SHELTER:
+				inside += 1
+		t.check(inside == f.members.size(), "a household at its own shelter's door is led in (%d of %d)" % [inside, f.members.size()])
 	C._done(made)
 
 

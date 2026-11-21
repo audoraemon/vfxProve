@@ -336,7 +336,10 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   particles the powers already had keep their FxParts.particles() calls in the same order, so ctx.rng is drawn exactly as before.
 - VRB4: Blight's mark is the person's own badge (Person.set_badge), renewed every frame for HOLD 0.5 s while he is ill out of doors,
   so it never outlives its mark by more than HOLD even when the mark is freed off the tree. A badge another power set when he is struck
-  is left alone (only the rot motes show); one that comes over ours later ends our claim and stays. The glyph is a drop of sickness,
+  is left alone (only the rot motes show); one that comes over ours later ends our claim and stays. Another power's badge can be rule
+  state, not only drawing: Decree's BARS are read by the rite, hide-the-faithful and Halcyon directors (a man in a cell is passed
+  over), which is why Blight never overwrites or clears a badge that is not its own (test_veil_blight: bars up before the strike and
+  after it, and the mark ending). The glyph is a drop of sickness,
   in BlightFx.ROT's lightest lightened to a7b46e so it reads on the badge's dark plate. It is laid with or without a staged context
   (it is the person's drawn state, as the Death Mark's skull).
 - VRB5: Dreamless's thread snaps when the sitter is found, woken by a hurt, or otherwise no longer rests under the cast
@@ -372,8 +375,10 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   open in the wall at half its height. The shade reads the dark once at the click (it read it first at the fall before) so the
   spread has ground to cross; it stays on the overhead layer (the tests pin it there).
 - VRC3 (fix round 1, Dread's wall and the held): the wall is drawn in two halves. The far half (pillars above the dreaded patch's
-  middle on screen, 0.55 to 1.0 of HIGH) stands on overhead_back (z 4, a WallBack node the shade draws, tracked and torn down with the
-  cast); the near half (NEAR share) stays on the shade on overhead, under the frozen's marks, which now draw last. In a bare context
+  middle on screen, 0.55 to 1.0 of HIGH) stands on overhead_back (a WallBack node the shade draws, tracked and torn down with the
+  cast); the near half (NEAR share) stays on the shade on overhead, under the frozen's marks, which now draw last. As built in this
+  round the far half drew at absolute 12, above the overhead layer (10), so over the near half too; the held stayed clear by the cut
+  below alone, not by any layer. VRF1 moved it to absolute 4 (under the aim and under the near half). In a bare context
   (no overhead_back) the shade draws both. Whatever its half, a pillar whose shape could cover a held person's screen rect (14 x 32
   px at his feet) is cut to the NEAR share and thinned to 0.45 of its alpha; this is re-run at every read of the dark and whenever
   the held change. Eye heights are cached then too.
@@ -383,7 +388,8 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   The wash's own `front` (pinned by test_veil_evernight: map-width / WAVE * t) is kept as it was and draws nothing now. Looks only:
   the night still falls everywhere at WAVE.
 - VRD2 (review round, Evernight's dark): the night over the town is a shade multiplied over everything in view (ground, houses,
-  people) on the overhead_back layer, under every effect and the HUD, with a vignette, a lift under the moon and a warm island round
+  people) on the overhead_back layer (absolute z 2 since VRF1: over the world, under the aim, every effect over the town and the
+  HUD), with a vignette, a lift under the moon and a warm island round
   each burning torch (EvernightSky.View, evernight_shade.gdshader). The LightField ambient and tint keep their numbers (TownLook's
   NIGHT): no pinned number moved. A town already in its NIGHT look gets a lighter shade (it is graded dark once already). Frame means:
   day 98 -> 48, night look 65 -> 50; people, torches and the HUD read.
@@ -398,8 +404,11 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VRD5 (review round, The Swallowing Dark's hole): the hole draws at ground z 7 (absolute -3), above the town's lamp pools (absolute
   -4): a lamp's light no longer lies on a hole. Its tendrils stand in the y-sorted world, so the houses before the far rim hide their
   feet.
-- VRD6 (review round, both): the heave and the fold give the camera a small shake (trauma 0.35, then 0.3): the player feels the ground
-  move; the town still sees nothing (no danger, alarm or fright). A cast freed off the tree (no _exit_tree()) frees its look's pieces
+- VRD6 (review round, The Swallowing Dark only; "both" meant its two beats): the heave and the fold give the camera a small shake
+  (trauma 0.35, then 0.3): the player feels the ground move; the town still sees nothing (no danger, alarm or fright). Evernight does
+  not shake the camera. The shake moves the camera's view by a pixel or so for a few frames, and Person.view (read from the
+  camera's screen centre) moves with it, so a tick cadence at the view's edge can change as on any pan; no scripted row casts The
+  Swallowing Dark, so no row can see it. A cast freed off the tree (no _exit_tree()) frees its look's pieces
   as it goes (NOTIFICATION_PREDELETE).
 - VRD7 (fix round 1, controller's ruling: the fold must read at zoom 1.0, where the circle fills the view): the dome is gone (seen
   from inside it was a flat tint). The dark rises from the ground: for HEAVE (now 1.4 s) before full size a rim of darkness stands up
@@ -436,3 +445,32 @@ All recorded with `timeout 1200 $G --path . --fixed-fps 60 --audio-driver Dummy 
 - VRE8: shadowplay: `--setup=dark --zoom=2.2 --seconds=8`.
 - VRE9: swallow: `--whole --zoom=1.0 --fx-clock --times=2,4,6,8,10,12,14,16,18.2,18.8,19.2,19.6,20.0,20.4,21.0,22.0` (eight frames of the hole growing, six on the last 2 s before full size: the rim closing in and the town going under, then the black, then two of the bare bowl).
 - VRE10: evernight: by day, `--whole --zoom=0.8 --fx-clock --times=0.3,0.6,1.0,1.4,5,8,12,18,24,30,38,46,54,60,64,65.5` (four frames of the wall of night crossing the lit town, ten of the night with its torch islands, stars and the moon in the corner, and the last, at 65.5 s, the dawn rolling back).
+
+## Final review fixes (2026-11-22, prefix VRF)
+
+- VRF1 (the aim over the night): Targeting draws at absolute z 5 (over the world, under the overhead layers). Evernight's night now
+  sits between: the multiplied shade at absolute 2 (EvernightSky.Z_SHADE; the world's pieces are at 1 or lower), the moon, the air
+  and the wall at 3 (Z_AIR; the moon and the air at one z as before, the wall after the air in the tree). The aim ring, the previews,
+  the kill colour and the DARK / LIGHT tag are never multiplied; the HUD's tags and banners are a CanvasLayer over all of it. The
+  relative order of the night's pieces is kept, except that the moon may now draw over the wall of night while the wall runs (it was
+  under it). test_veil_evernight reads Targeting's and every piece's absolute z on a real Battlefield. Unseen Hour's blanket and
+  Dread's far wall were lowered too, to absolute 4, as their looks survive it: the blanket still hangs over the roofs and the people
+  (the world, 0-1) and over Evernight's night, as before; Dread's far half still stands behind the held by the cut alone, and now
+  also behind its near half (frames/_final/unseen, frames/_final/dread). Dread's darkened ground and near half stay on the overhead
+  layer (they were there before this round) and still draw over the ring: a "For your eye" line.
+- VRF2 (one sky): every Evernight builds its own shade, air, wall and moon, but only the sky's owner shows them: the first owner of
+  the light look's ledger (LOOK_KEY, the one that already eases the light); with no light field a cast is alone and shows its own.
+  The owner draws the night of every cast sharing the look: the farthest front (that cast's centre and its wall), every burning
+  torch's island (at most TORCHES, the same spot once), and the moon at the darkest night's strength; the light's ease follows that
+  darkest strength too, so one night's dawn under another's night eases nothing. When the owner leaves, the next takes the sky over
+  at once (before the frame is drawn): no frame without a sky, never two. Each cast still frees only what it built.
+- VRF3 (Unseen Hour's cost): the blanket draws nothing when the game runs headless, and from 5 s after the throw (the landing's
+  ripple under 0.15 px) until it lifts it is redrawn 12 times a second, not every frame (the slow breath moves under 0.2 px a step);
+  each ring's heights are kept for the next ring's folds (half the height() calls). No rule reads it.
+- VRF4 (the stack's bench): `--bench-cast` takes a comma list (`--bench-cast=evernight,unseen,dread`), cast in turn at the same
+  spot 4 s apart; one key is as before. On a loaded machine (base 15.1 ms): Evernight 1.11, Unseen Hour 1.11-1.13, both 1.16-1.18,
+  Evernight with Dread 2.05, all three 2.11-2.14: over the 1.55 bar, and Dread at its dark size is nearly all of it (about +15 ms).
+  Not fixed in this wave (the brief's cheap cut was the blanket's); for the controller.
+- VRF5 (minors): the shade's `torches[6]` and EvernightSky.SHADE_TORCHES are named on both sides and the effect asserts TORCHES fits;
+  at dawn the torches are out for the rules at once (as before), but their glows, islands and rings fade with the night over DAWN
+  (look_lit(); the rules read lit()).

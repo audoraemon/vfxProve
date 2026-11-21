@@ -169,6 +169,29 @@ static func _mark(t, made: Array, open: Vector2) -> void:
 	fx2.end_now()
 	m2.free()
 	t.check(o.badge_glyph == DominionParts.EYE and o.badge_left > 0.0, "and freeing the mark leaves the other badge")
+	# Decree's bars are rule state (rite, hide-the-faithful and Halcyon directors read them; VRB4): never overwritten, never cleared.
+	for order in ["bars first", "bars after"]:
+		_scatter(crowd)
+		var cell: Person = crowd.citizens[17]
+		cell.ground_pos = open
+		cell.home_sick = false
+		cell.clear_badge()
+		if order == "bars first":
+			cell.set_badge(DecreeParts.BARS, DecreeParts.GILT, 30.0)
+		var fb := _cast(ctx, open) as BlightFx
+		var mk: VeilCastLooks.BlightMark = fb.marks[0] if fb.marks.size() == 1 else null
+		if order == "bars after":
+			cell.set_badge(DecreeParts.BARS, DecreeParts.GILT, 30.0)
+		mk._process(0.1)
+		t.check(cell.home_sick and mk != null and cell.badge_glyph == DecreeParts.BARS and cell.badge_color == DecreeParts.GILT
+			and cell.badge_left > 29.0, "%s: Blight strikes a man in a Decree cell: his bars stay" % order)
+		fb.end_now()
+		cell.inside = true
+		mk._process(0.1)
+		t.check(mk.is_queued_for_deletion() and cell.badge_glyph == DecreeParts.BARS and cell.badge_left > 29.0,
+			"%s: and when Blight's mark ends the bars are not cleared" % order)
+		cell.inside = false
+		cell.clear_badge()
 	# A quarry carries it while ill, and loses it when well.
 	_scatter(crowd)
 	var q: Person = crowd.citizens[14]

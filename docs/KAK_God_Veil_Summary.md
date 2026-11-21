@@ -45,8 +45,8 @@ The Swallowing Dark and Evernight take sleepers, the frozen and shadows' owners 
 ## Review round (2026-11-21)
 
 You played the Veil's powers and asked for seven things. All of it is looks only: no rule, size, timing, cooldown or sound cue
-changed, and nothing new frightens anyone or raises an alarm. The ten skill-tree preview clips were re-recorded to show the new looks
-(Silent Doom's look did not change, so its clip is untouched).
+changed, and nothing new frightens anyone or raises an alarm. Nine skill-tree preview clips were re-recorded to show the new looks
+(Silent Doom's look did not change, so its clip, the tenth, is kept).
 
 1. **Target preview on Slumber, Cloak of Night, Dreamless and Shadow Play.** While you aim, each person the cast would take (at the
    size the ground under the ring gives) gets a small ring. Anyone the cast would kill outright (Dreamless's sleepers and shadows,
@@ -59,7 +59,8 @@ changed, and nothing new frightens anyone or raises an alarm. The ten skill-tree
    out, then each shadow peels up from its owner's feet; in the dark a soldier's shadow stretches thin and fades with a ring and motes.
    Dread of the Dark: see 5.
 3. **Blight's indicator.** A person made ill carries a green rot glyph above their head from the strike until they are indoors (and
-   again if they come out while still ill), with a few drifting motes. Two Blights on one person share it.
+   again if they come out while still ill), with a few drifting motes, unless another mark is already over his head (a Decree cell's
+   bars, a Death Mark, a Hunt bearer's pennant), which Blight leaves alone. Two Blights on one person share it.
 4. **Unseen Hour's blanket.** A thin violet-black sheet is thrown from the click, opens and hangs over the whole veil, its middle
    raised and its edge drooping in scallops with a fringe, a faint weave, a dark seam and a shadow on the ground; people and roofs
    under it stay readable. In the last second it lifts and fades.
@@ -68,11 +69,14 @@ changed, and nothing new frightens anyone or raises an alarm. The ten skill-tree
    side is low and faint so the frozen people inside stay in plain sight. At the end the wall sinks.
 6. **The Swallowing Dark from the ground.** It is a hole now: a funnel of slumped terraces with a swirl, tendrils of darkness curling
    in, dust falling. Just before it is full the dark rises from the ground at its rim and closes inward, taking the town black; then it
-   drains back into the earth and leaves a scorched bowl of bare ground. The camera shakes a little.
+   drains back into the earth and leaves a scorched bowl of bare ground. The camera shakes a little, at the heave and at the fold
+   (the only Veil power that shakes it).
 7. **Evernight over the city.** A tall wall of night rises at the click and runs across the town, near-black at its foot with a ragged,
    violet-edged crown. Behind it the whole view is a violet-black night, deeper at the edges, with warm islands round each torch, a slow
    mist over the roofs, silver stars, a falling star now and then, motes of dark rising, and a pale moon in the upper right. Each person
-   taken raises a small dark wisp. At dawn the wall comes back and rolls the night away. The camera shakes a little.
+   taken raises a small dark wisp. At dawn the wall comes back and rolls the night away, and the torches' glows fade with it. The
+   night lies under your aim: the ring, the previews and the DARK / LIGHT tag stay bright. Two Evernights at once show one night,
+   not a doubled dark.
 
 Also corrected: Shadow Play's lying outline under its peeling shadows and Evernight's night wash were drawn off the town (a doubled
 screen basis) and had never shown; both show now.
@@ -86,14 +90,24 @@ Things only you can judge in play:
 - The Cloak's violet hem: it is strong; is it too strong?
 - The busy second of a dark Shadow Play (about 40 short-lived pieces as the soldiers' shadows fade).
 - No mark on a blighted building (ruling VRB7): only people carry the glyph.
-- The camera shake on The Swallowing Dark and Evernight: a new thing for a Veil power (a small shake only, no sound, no fright).
+- The camera shake on The Swallowing Dark, at the heave and at the fold: a new thing for a Veil power (a small shake only, no sound,
+  no fright). Evernight does not shake.
 - Evernight's wall of night hides the town for about 2 s while it crosses.
-- Evernight's night multiplies the view, so it dims other powers' effects cast during it.
+- Evernight's night multiplies the town under it (ground, houses, people, and effects that stand among them), so those effects dim;
+  effects drawn over the town, the aim and the HUD do not.
 - The moon is fixed to the screen (upper right, the same size at any zoom): does that read as sky?
 - Dread's wall at night: black on dark ground, it reads mainly by its violet haze and its eyes, which are small at far zoom; and
   people standing behind its far side, outside the patch, are covered by it.
-- Dread's cost was only roughly measured (a wall-clock ratio of two runs, since the mission bench cannot lay dusk), not benched.
+- Dread's wall can shift a little on its 0.5 s refresh (it re-reads the dark), and its darkened ground and near half still draw over
+  your aim ring (only its far half was moved under the aim).
+- The cost of the Veil's end-game stack (final review): on a loaded machine (base 15.1 ms, about 66 fps, against about 124 quiet),
+  Evernight alone 1.11 of the base, Unseen Hour alone 1.11-1.13, both 1.16-1.18; Dread cast inside Evernight (its dark size)
+  2.05, and all three 2.11-2.14: over the 1.55 bar. Dread at its dark size is nearly all of it (about +15 ms); Unseen Hour's sheet
+  was made cheaper this round (about -1.6 ms). Dread at its dark size needs a cost pass before this lands (not profiled yet:
+  its wall, its darkened ground and its hold all grow with the reach; draw calls rise by about 430).
 - Dreamless's silver thread is thin and does not show in its skill-tree clip.
+- At close zoom The Swallowing Dark's fold comes in from the frame's edges (the rim is wider than the view).
+- Evernight's wall of night has soft, feathered ends at the two sides of its ring, where it thins out.
 
 ## How to try them
 

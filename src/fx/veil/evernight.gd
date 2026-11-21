@@ -207,7 +207,7 @@ func _build() -> void:
 func _build_sky() -> void:
 	if ctx == null or ctx.overhead_back == null:
 		return
-	var on_night := _crowd != null and is_instance_valid(_crowd._town) and _crowd._town.look == Town.Look.NIGHT
+	var on_night: bool = TownLook.active == Town.Look.NIGHT
 	_shade = EvernightSky.View.new(EvernightSky.SH_SHADE)
 	_shade.set_param(&"night", EvernightSky.NIGHT_ON_NIGHT if on_night else EvernightSky.NIGHT)
 	_shade.set_param(&"edge_night", EvernightSky.NIGHT_ON_NIGHT_EDGE if on_night else EvernightSky.NIGHT_EDGE)
@@ -680,11 +680,14 @@ class NightWash extends Node2D:
 			draw_arc(c, EvernightFx.TORCH_R, 0.0, TAU, 32, Color(VeilParts.SILVER, 0.4 * strength), 0.08)
 
 
-## Evernight's pale moon, part of the night's sky: hung at a fixed place in the camera's view (EvernightSky.MOON_UV), the same
-## size at any zoom, above the night's shade (its light lifts the dark round it) and under the drifting mist, which crosses it. A
-## wide soft halo, a pale disc with a cold rim and its seas. Drawn only; no art file, no luck.
+## Evernight's pale moon, part of the night's sky: hung at a fixed place in the camera's view (EvernightSky.MOON_UV: screen-anchored,
+## VRD3), the same size at any zoom, above the night's shade (its light lifts the dark round it) and under the drifting mist, which
+## crosses it. No hard rim: a wide glow falling off in many faint steps, and a face (painted once into a small texture) only a little
+## brighter than its glow, soft at its edge, its seas mottled in, a waning crescent of the night's own colour over one side. Drawn
+## only; no art file, no luck (the mottling is a fixed hash).
 class NightMoon extends Node2D:
-	const R := 16.0
+	const R := 15
+	static var _face: ImageTexture
 	var strength := 0.0
 
 	func _init() -> void:
@@ -699,15 +702,40 @@ class NightMoon extends Node2D:
 		global_position = (ct.affine_inverse() * (get_viewport_rect().size * EvernightSky.MOON_UV)).round()
 		scale = Vector2.ONE / maxf(ct.get_scale().x, 0.01)
 
+	## The moon's face: a soft disc, mottled seas, a crescent shadow, in a (2R+4)-pixel square.
+	static func face() -> ImageTexture:
+		if _face != null:
+			return _face
+		var size := R * 2 + 4
+		var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+		var c := Vector2(size, size) * 0.5
+		var shadow_at := c + Vector2(R * 0.62, R * 0.22)
+		var dusk := VeilParts.DUSK.darkened(0.45)
+		for y in size:
+			for x in size:
+				var p := Vector2(x, y) + Vector2(0.5, 0.5)
+				var d := p.distance_to(c) / float(R)
+				if d > 1.08:
+					continue
+				var edge := clampf((1.08 - d) / 0.22, 0.0, 1.0)
+				var cell := Vector2(floorf(x / 3.0), floorf(y / 3.0))
+				var h := fposmod(sin(cell.x * 12.9898 + cell.y * 78.233) * 43758.5453, 1.0)
+				var h2 := fposmod(sin(floorf(x / 6.0) * 39.346 + floorf(y / 6.0) * 11.135) * 24634.6345, 1.0)
+				var lum := 0.86 - 0.10 * h2 - 0.05 * h - 0.06 * d
+				var col := Color(lum * 0.97, lum * 0.98, lum * 1.06)
+				var sh := clampf((float(R) * 0.98 - p.distance_to(shadow_at)) / (float(R) * 0.35), 0.0, 1.0)
+				col = col.lerp(dusk, sh * 0.8)
+				img.set_pixel(x, y, Color(col, edge * lerpf(0.55, 0.35, sh)))
+		_face = ImageTexture.create_from_image(img)
+		return _face
+
 	func _draw() -> void:
 		if strength <= 0.0:
 			return
 		var s := strength
-		draw_circle(Vector2.ZERO, R * 4.5, Color(VeilParts.SILVER, 0.04 * s))
-		draw_circle(Vector2.ZERO, R * 2.6, Color(VeilParts.SILVER, 0.06 * s))
-		draw_circle(Vector2.ZERO, R * 1.5, Color(VeilParts.SILVER, 0.09 * s))
-		draw_circle(Vector2.ZERO, R + 1.0, Color(0.62, 0.64, 0.80, 0.55 * s))
-		draw_circle(Vector2.ZERO, R, Color(0.86, 0.87, 0.94, 0.72 * s))
-		draw_circle(Vector2(-6.0, -4.0), R * 0.30, Color(0.74, 0.75, 0.86, 0.8 * s))
-		draw_circle(Vector2(7.0, 5.0), R * 0.20, Color(0.76, 0.77, 0.88, 0.8 * s))
-		draw_circle(Vector2(-2.0, 9.0), R * 0.14, Color(0.78, 0.79, 0.90, 0.7 * s))
+		# The glow: many faint discs, wide to narrow, so it falls off softly into the night.
+		for k in 10:
+			var f := float(k) / 9.0
+			draw_circle(Vector2.ZERO, float(R) * lerpf(6.0, 1.1, f), Color(0.78, 0.80, 0.92, 0.022 * s))
+		var tex := face()
+		draw_texture(tex, -tex.get_size() * 0.5, Color(1, 1, 1, s))

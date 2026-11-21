@@ -31,16 +31,18 @@ const KIND := &"void"
 ## The look (spec 6; looks only: nothing here decides who or what is taken, or when). The circle is a hole: a funnel on the ground
 ## (SH_HOLE) with an apron of APRON ground units round its rim whose dust and loose ground are drawn in over the edge, and TENDRILS
 ## of dark reaching up over the rim and curling inward (in the y-sorted world, so the town's houses stand in front of the far ones).
-## The ground heaves for HEAVE before full size; the dark rises as a low dome (SH_DOME, DOME of the circle's depth on screen) over
-## RISE before full size, so it stands over the circle when the fold's first removals go, and closes down over FOLD, leaving the
-## bare earth (a shallow scorched bowl, SH_EARTH).
-const HEAVE := 0.8
-const RISE := 0.4
+## For HEAVE before full size the ground heaves and the dark rises from it (VRD7): a rim of darkness (EvernightSky.Wall, RIM_H pixels
+## tall) stands up at the circle's edge and closes in to the middle, everything behind it, ground, houses and people, going black
+## (SH_UNDER, over the town), the tendrils pulled down with it. At full size the whole circle is under, so the fold's removals go
+## unseen; over FOLD the black drains back into the ground from the edge inward (from DRAIN_FROM of the fold), leaving the bare earth
+## (a shallow scorched bowl, BareEarth.SHADER).
+const HEAVE := 1.4
+const RIM_H := 210.0
+const DRAIN_FROM := 0.4
 const APRON := 2.2
 const TENDRILS := 22
-const DOME := 0.75
 const SH_HOLE := preload("res://shaders/swallow_hole.gdshader")
-const SH_DOME := preload("res://shaders/swallow_dome.gdshader")
+const SH_UNDER := preload("res://shaders/swallow_under.gdshader")
 ## Dust and loose ground drawn in over the rim (spawns a second), and their colours: street dust going into the violet dark.
 const DUST_RATE := 34.0
 const CHUNK_RATE := 6.0
@@ -63,12 +65,13 @@ var _gone := {}
 ## Buildings removed by the batch path since the last full index rebuild.
 var _batched := false
 ## The look's pieces (any may be missing in a bare context): the hole on the ground plane, the tendrils in the world, the dust and
-## the loose ground over the town, the dome over everything.
+## the loose ground over the town, the closing rim and the dark under it over everything.
 var _hole: QuadFx
 var _tendrils: Array[SwallowTendril] = []
 var _dust: PixelParticles
 var _chunks: PixelParticles
-var _dome: QuadFx
+var _under: QuadFx
+var _rim: EvernightSky.Wall
 ## The look's own scatter (seeded from the click: never the shared stream) and its spawn clock.
 var _scatter := RandomNumberGenerator.new()
 var _dust_due := 0.0
@@ -106,7 +109,7 @@ func _build_look() -> void:
 	_scatter.seed = _look_seed()
 	# The fold's shaders drawn once now, all but unseen, so the renderer compiles them at the cast and not on the fold's frame.
 	if ctx.ground != null:
-		for sh: Shader in [SH_DOME, BareEarth.SHADER]:
+		for sh: Shader in [SH_UNDER, EvernightSky.SH_WALL, BareEarth.SHADER]:
 			var warm := FxParts.quad(self, sh, Vector2.ONE * 0.1, ctx.ground)
 			warm.position = origin
 			warm.modulate.a = 0.02
@@ -135,6 +138,27 @@ func _build_look() -> void:
 		_chunks = _particles(PixelParticles.Shape.CHUNK, CHUNK_LIFE, sp, 2)
 		_chunks.gravity = 380.0
 		_chunks.shadows = true
+		# The dark under the closing rim: a quad over the circle's ellipse (and a margin) with the rim's wall just above it.
+		var semi := Iso.radius_to_screen(full_r + 1.5)
+		_under = FxParts.quad(self, SH_UNDER, semi * 2.0, ctx.overhead_back)
+		_under.position = sp
+		_under.z_index = 1
+		_under.visible = false
+		_under.set_param("center", origin)
+		_under.set_param("seed", float(_look_seed() % 89))
+		_under.set_param("black", VeilParts.BLACK)
+		_under.set_param("dusk", VeilParts.DUSK)
+		_under.set_param("veil", VeilParts.VEIL)
+		_rim = EvernightSky.Wall.new()
+		_rim.z_index = 2
+		_rim.center = origin
+		_rim.height = RIM_H
+		_rim.rise_with_front = false
+		_rim.mat.set_shader_parameter(&"black", VeilParts.BLACK)
+		_rim.mat.set_shader_parameter(&"dusk", VeilParts.DUSK)
+		_rim.mat.set_shader_parameter(&"veil", VeilParts.VEIL)
+		_rim.mat.set_shader_parameter(&"silver", VeilParts.SILVER)
+		track(_rim, ctx.overhead_back)
 
 
 ## A particle system over the town at `sp`, on its own seed (never the shared stream), kept until the cast ends.
@@ -191,7 +215,10 @@ func _look(delta: float) -> void:
 	var r := radius()
 	var opened := clampf(t / T_OPEN, 0.0, 1.0)
 	var folded := clampf((t - t_full) / FOLD, 0.0, 1.0) if swallowed else 0.0
-	var heave := clampf((t - (t_full - HEAVE)) / HEAVE, 0.0, 1.0) * (1.0 - folded)
+	var closing := clampf((t - (t_full - HEAVE)) / HEAVE, 0.0, 1.0)
+	var heave := closing * (1.0 - folded)
+	# The rim's place: at the edge when the heave begins, in the middle at full size.
+	var front := r * (1.0 - pow(closing, 1.15))
 	if is_instance_valid(_hole):
 		_hole.set_param("hole", r / (full_r + APRON))
 		_hole.set_param("open", opened)
@@ -202,10 +229,10 @@ func _look(delta: float) -> void:
 		if not is_instance_valid(td):
 			continue
 		var a := float(td.k) * TAU / float(TENDRILS) + 0.09 * sin(t * 0.3 + float(td.k))
-		td.position = Iso.ground_to_screen(origin + Vector2.from_angle(a) * r * 0.985)
+		td.position = Iso.ground_to_screen(origin + Vector2.from_angle(a) * front * 0.985)
 		td.inward = centre - td.position
 		td.clock = t
-		td.reach = opened * clampf(0.35 + r / 8.0, 0.35, 1.0) * (1.0 + 0.6 * heave) * (1.0 - folded)
+		td.reach = opened * clampf(0.35 + r / 8.0, 0.35, 1.0) * (1.0 - closing) * (1.0 - folded)
 		td.fade = opened * (1.0 - folded)
 		td.queue_redraw()
 	if heave > 0.0 and not _heaved:
@@ -216,7 +243,7 @@ func _look(delta: float) -> void:
 		if ctx.shake != null:
 			ctx.shake.add_trauma(0.3)
 	_pull_dust(delta, r, heave, folded)
-	_dome_look(heave, folded)
+	_under_look(r, front, closing, folded)
 
 
 ## The ground heaves: loose ground thrown up all round the rim (falling back in), and the camera feels it.
@@ -252,27 +279,20 @@ func _pull_dust(delta: float, r: float, heave: float, folded: float) -> void:
 			"size": Vector2(2, 3.5)})
 
 
-## The dome: rises over RISE before full size, stands while the fold takes what is inside, and closes down into the ground.
-func _dome_look(heave: float, folded: float) -> void:
-	var rising := clampf((t - (t_full - RISE)) / RISE, 0.0, 1.0)
-	if rising <= 0.0 or ctx.overhead == null:
-		return
-	var semi := Iso.radius_to_screen(full_r)
-	if not is_instance_valid(_dome):
-		var tall := semi.y * DOME
-		_dome = FxParts.quad(self, SH_DOME, Vector2(semi.x * 2.0, semi.y * 2.0 + tall), ctx.overhead,
-			Vector2(0.5, (semi.y + tall) / (semi.y * 2.0 + tall)))
-		_dome.position = Iso.ground_to_screen(origin)
-		_dome.set_param("base_px", semi.y)
-		_dome.set_param("dome_px", tall)
-		_dome.set_param("seed", float(_look_seed() % 89))
-		_dome.set_param("black", VeilParts.BLACK)
-		_dome.set_param("dusk", VeilParts.DUSK)
-		_dome.set_param("veil", VeilParts.VEIL)
-		_dome.set_param("silver", VeilParts.SILVER)
-	var up := 1.0 - pow(1.0 - rising, 3.0)
-	_dome.set_param("rise", up * pow(1.0 - folded, 1.6) * (0.9 + 0.1 * heave))
-	_dome.set_param("amount", minf(rising * 2.0, 1.0) * (1.0 - smoothstep(0.55, 1.0, folded)))
+## The dark rising from the ground: the rim stands up at the edge as the heave begins and closes in to the middle by full size, the
+## circle going black behind it; over the fold the black drains back into the ground from the edge inward.
+func _under_look(r: float, front: float, closing: float, folded: float) -> void:
+	var drain := smoothstep(DRAIN_FROM, 1.0, folded)
+	if is_instance_valid(_under):
+		_under.visible = closing > 0.0 and drain < 1.0
+		_under.set_param("edge", r)
+		_under.set_param("front", front if closing < 1.0 else -2.0)
+		_under.set_param("drain", drain)
+	if is_instance_valid(_rim):
+		_rim.front = front
+		_rim.height = RIM_H * clampf(front / 3.0, 0.25, 1.0)
+		_rim.amount = smoothstep(0.0, 0.12, closing) * (1.0 - smoothstep(0.85, 1.0, closing))
+		_rim.queue_redraw()
 
 
 ## Freed without finishing off the tree (no _exit_tree() comes): the look's pieces go too.

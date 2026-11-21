@@ -13,9 +13,8 @@ extends RefCounted
 const SH_SHADE := preload("res://shaders/evernight_shade.gdshader")
 const SH_AIR := preload("res://shaders/evernight_air.gdshader")
 const SH_WALL := preload("res://shaders/evernight_wall.gdshader")
-## The wall's height in pixels at full size, its segments round the ring, and the pixels of wall per noise tile along it.
+## The wall's height in pixels at full size, and the pixels of wall per noise tile along it.
 const WALL_H := 420.0
-const WALL_SEGMENTS := 96
 const WALL_TILE := 240.0
 ## The torch is held this far above the bearer's feet (pixels).
 const HELD := 20.0
@@ -43,21 +42,15 @@ static func white() -> ImageTexture:
 	return _white
 
 
-## The camera's view in world pixels (with a margin), or a wide square round the origin off the tree.
-static func view_rect(n: CanvasItem) -> Rect2:
-	if not n.is_inside_tree():
-		return Rect2(-2048, -2048, 4096, 4096)
-	var inv := n.get_canvas_transform().affine_inverse()
-	var size := n.get_viewport_rect().size
-	var a := inv * Vector2.ZERO
-	var b := inv * size
-	return Rect2(a, b - a).abs().grow(96.0)
+## The rect every town-wide quad draws (world pixels): far past any town and any zoom, so no edge of it is ever in view. (Fitting it to
+## the camera's view left its edges on screen at zoom 2.2: hard upright and level lines through the night, fix round 1.) The GPU
+## shades only the pixels in view.
+const COVER := Rect2(-20000.0, -20000.0, 40000.0, 40000.0)
 
 
-## A quad over the camera's view with one of the night's shaders (the shade or the air).
+## A quad over the whole town (COVER) with one of the night's shaders (the shade or the air).
 class View extends Node2D:
 	var mat := ShaderMaterial.new()
-	var _rect := Rect2()
 
 	func _init(shader: Shader) -> void:
 		mat.shader = shader
@@ -66,23 +59,20 @@ class View extends Node2D:
 	func set_param(param: StringName, value: Variant) -> void:
 		mat.set_shader_parameter(param, value)
 
-	func _process(_delta: float) -> void:
-		var r := EvernightSky.view_rect(self)
-		if r != _rect:
-			_rect = r
-			queue_redraw()
-
 	func _draw() -> void:
-		if _rect.size == Vector2.ZERO:
-			_rect = EvernightSky.view_rect(self)
-		draw_texture_rect(EvernightSky.white(), _rect, false)
+		draw_texture_rect(EvernightSky.white(), EvernightSky.COVER, false)
 
 
-## The front: a strip standing on the ring of `front` ground units round `center`, far side first.
+## A wall of night standing on the ring of `front` ground units round `center` (Evernight's front; The Swallowing Dark's rim). One
+## quad over the ring's bounds; the shader finds the near and far walls at each pixel, so the wall has no joins at all
+## (drawn as a strip of quads it broke at every join, fix round 1). `height` in pixels; with `rise_with_front` it is lower while the
+## ring is small.
 class Wall extends Node2D:
 	var center := Vector2.ZERO
 	var front := 0.0
 	var amount := 0.0
+	var height := EvernightSky.WALL_H
+	var rise_with_front := true
 	var mat := ShaderMaterial.new()
 
 	func _init() -> void:
@@ -92,27 +82,17 @@ class Wall extends Node2D:
 	func _draw() -> void:
 		if amount <= 0.0 or front <= 0.05:
 			return
+		var semi := Iso.radius_to_screen(front)
+		var h := height * (clampf(front / 12.0, 0.45, 1.0) if rise_with_front else 1.0)
+		var c := Iso.ground_to_screen(center)
+		var box := Rect2(c.x - semi.x, c.y - semi.y - h * 1.3, semi.x * 2.0, semi.y * 2.0 + h * 1.3)
 		mat.set_shader_parameter(&"amount", amount)
-		var n := EvernightSky.WALL_SEGMENTS
-		var h := EvernightSky.WALL_H * clampf(front / 12.0, 0.45, 1.0)
-		var seg := Iso.radius_to_screen(front).x * TAU / float(n)
-		var view := EvernightSky.view_rect(self).grow(h)
-		var rows: Array = []
-		for i in n:
-			var b0 := Iso.ground_to_screen(center + Vector2.from_angle(TAU * float(i) / float(n)) * front)
-			var b1 := Iso.ground_to_screen(center + Vector2.from_angle(TAU * float(i + 1) / float(n)) * front)
-			if view.has_point(b0) or view.has_point(b1):
-				rows.append([minf(b0.y, b1.y), i, b0, b1])
-		rows.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
-		var white := PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
-		for r: Array in rows:
-			var i: int = r[1]
-			var b0: Vector2 = r[2]
-			var b1: Vector2 = r[3]
-			var u0 := float(i) * seg / EvernightSky.WALL_TILE
-			var u1 := float(i + 1) * seg / EvernightSky.WALL_TILE
-			draw_primitive(PackedVector2Array([b0, b1, b1 + Vector2(0, -h), b0 + Vector2(0, -h)]), white,
-				PackedVector2Array([Vector2(u0, 0.0), Vector2(u1, 0.0), Vector2(u1, 1.0), Vector2(u0, 1.0)]))
+		mat.set_shader_parameter(&"ring_c", c)
+		mat.set_shader_parameter(&"ring_a", semi.x)
+		mat.set_shader_parameter(&"ring_b", semi.y)
+		mat.set_shader_parameter(&"wall_h", h)
+		mat.set_shader_parameter(&"tiles", maxf(semi.x / EvernightSky.WALL_TILE, 0.25))
+		draw_texture_rect(EvernightSky.white(), box, false)
 
 
 ## A burning torch's warm halo (added light, flickering on its own beat: no luck) with sparks rising off it. Stands where the torch

@@ -599,9 +599,9 @@ static func _gone(n: Variant) -> bool:
 
 
 ## Review round (VRD, spec 6): the look. The hole on the ground plane (over the town's lamp pools), the tendrils standing in the world,
-## the dust drawn in over the town while it grows; the dome rises over the circle before full size, and when the fold is done the bare
-## earth lies there (its bowl). Every piece goes when the cast runs out, with end_now() and with a freed cast; a bare context (an
-## overhead layer only) builds and finishes.
+## the dust drawn in over the town while it grows; over the heave a rim of dark stands up at the edge and closes in, the circle going
+## black behind it (over the town), all under by full size; when the fold is done the bare earth lies there (its bowl). Every piece
+## goes when the cast runs out, with end_now() and with a freed cast; a bare context (an overhead layer only) builds and finishes.
 static func _look(t) -> void:
 	for mode in ["run", "end_now", "free"]:
 		var ctx := FxContext.new()
@@ -619,11 +619,15 @@ static func _look(t) -> void:
 		t.check(standing.size() == TheSwallowingDarkFx.TENDRILS, "%s: its tendrils stand in the world (%d)" % [mode, standing.size()])
 		t.check(fx._dust != null and fx._dust.get_parent() == ctx.overhead_back and fx._dust._particles.size() > 0,
 			"%s: dust drawn in over the rim (%d motes)" % [mode, fx._dust._particles.size() if fx._dust != null else -1])
-		t.check(fx._dome == null, "%s: no dome while it grows" % mode)
-		_go(fx, fx.t_full - TheSwallowingDarkFx.RISE * 0.5 - fx.t)
-		t.check(fx._dome != null and fx._dome.get_parent() == ctx.overhead and not fx.swallowed,
-			"%s: the dome rises over the circle before full size" % mode)
-		var pieces: Array = [hole, fx._dome, fx._dust, fx._chunks]
+		t.check(fx._under != null and fx._under.get_parent() == ctx.overhead_back and not fx._under.visible and fx._rim != null
+			and fx._rim.get_parent() == ctx.overhead_back and fx._rim.amount == 0.0, "%s: nothing goes under while it grows" % mode)
+		_go(fx, fx.t_full - TheSwallowingDarkFx.HEAVE * 0.5 - fx.t)
+		t.check(fx._under.visible and fx._rim.amount > 0.0 and fx._rim.front > 0.5 and fx._rim.front < fx.radius() - 0.5
+			and not fx.swallowed, "%s: over the heave the rim closes in, the circle going black behind it (rim at %.1f of %.1f)"
+			% [mode, fx._rim.front, fx.radius()])
+		_go(fx, fx.t_full - fx.t + 0.02)
+		t.check(fx.swallowed and fx._under.visible and fx._rim.front <= 0.01, "%s: at full size the whole circle is under" % mode)
+		var pieces: Array = [hole, fx._under, fx._rim, fx._dust, fx._chunks]
 		pieces.append_array(fx._tendrils)
 		match mode:
 			"run":

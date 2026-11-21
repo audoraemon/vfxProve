@@ -1,9 +1,11 @@
 {
- "hash": "23d5d210b3c42539",
- "updated": "2026-11-21T15:53:17+07:00",
+ "hash": "d93a70415353fe1b",
+ "updated": "2026-11-21T16:38:28+07:00",
  "changes": {
-  "date": "<t:1795251197:f>",
-  "items": []
+  "date": "<t:1795253908:f>",
+  "items": [
+   "New: God's Paths music (temple base + one layer per school)"
+  ]
  },
  "snapshot": {
   "project": {
@@ -1050,6 +1052,15 @@
     "updated": "2026-11-11",
     "order": 905
    },
+   "sound-gods-paths-music": {
+    "title": "God's Paths music (temple base + one layer per school)",
+    "status": "done",
+    "area": "Sound",
+    "needs_you": "Listen (https://claude.ai/artifact/5UFxFgYW4iDEUEdey8iZG4) and say which god's layer or the base needs rework",
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-21",
+    "order": 915
+   },
    "sound-hit-aftermath": {
     "title": "Hit aftermath sounds (skill-tree Ruin abilities first)",
     "status": "done",
@@ -1896,7 +1907,7 @@
    {
     "name": "god/veil-powers",
     "ahead": 33,
-    "behind": 15,
+    "behind": 17,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
@@ -1904,7 +1915,7 @@
    {
     "name": "god/veil-merge",
     "ahead": 33,
-    "behind": 15,
+    "behind": 17,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": false
@@ -1912,7 +1923,7 @@
    {
     "name": "feat/god-chamber",
     "ahead": 22,
-    "behind": 15,
+    "behind": 17,
     "date": "2026-11-21",
     "subject": "test: the screen table has fifteen screens with the World Map",
     "pushed": false
@@ -1920,7 +1931,7 @@
    {
     "name": "feat/soldier-duties",
     "ahead": 21,
-    "behind": 0,
+    "behind": 2,
     "date": "2026-11-21",
     "subject": "fix: soldier duties final review wave (a director releases only the men it takes, a taken man leaves his duty, gate check and sweep scans trimmed, bots use the town's witness reach)",
     "pushed": false
@@ -1928,7 +1939,7 @@
    {
     "name": "feat/town-suspicion",
     "ahead": 12,
-    "behind": 0,
+    "behind": 2,
     "date": "2026-11-21",
     "subject": "fix: Town Suspicion review wave (only a natural cast excuses a death; soldiers scenario keeps its keeper; the town's one call; quiet banner)",
     "pushed": false
@@ -1936,7 +1947,7 @@
    {
     "name": "god/ember-trail",
     "ahead": 3,
-    "behind": 0,
+    "behind": 2,
     "date": "2026-11-21",
     "subject": "fix: a crossing scorches, lingering or a second crossing kills; the flames stay bright at night; the trail redraws at 15 Hz",
     "pushed": false
@@ -1944,7 +1955,7 @@
    {
     "name": "claude/lantern-campaign-spec",
     "ahead": 22,
-    "behind": 0,
+    "behind": 2,
     "date": "2026-11-20",
     "subject": "fix: why-not judges a Gathered Storm by the bolt it cast",
     "pushed": false
@@ -1952,7 +1963,7 @@
    {
     "name": "feat/might-gauge",
     "ahead": 19,
-    "behind": 0,
+    "behind": 2,
     "date": "2026-11-20",
     "subject": "test: track the route suite's uid",
     "pushed": false
@@ -1960,7 +1971,7 @@
    {
     "name": "claude/natural-people",
     "ahead": 7,
-    "behind": 0,
+    "behind": 2,
     "date": "2026-11-20",
     "subject": "feat: the fair's goers stand in talking groups and stroll (fair life T3)",
     "pushed": false
@@ -1968,23 +1979,15 @@
    {
     "name": "feat/loss-warning",
     "ahead": 4,
-    "behind": 11,
+    "behind": 13,
     "date": "2026-11-20",
     "subject": "fix: the loss warning kicks the world's picture, not the camera",
     "pushed": false
    },
    {
-    "name": "claude/sound-natural-2",
-    "ahead": 1,
-    "behind": 0,
-    "date": "2026-11-20",
-    "subject": "feat: God's Paths music (temple piece + one layer per school for the picked god)",
-    "pushed": true
-   },
-   {
     "name": "feat/wish-clarity",
     "ahead": 1,
-    "behind": 15,
+    "behind": 17,
     "date": "2026-11-19",
     "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
     "pushed": false
@@ -1992,7 +1995,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 115,
+    "behind": 117,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2000,7 +2003,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 490,
+    "behind": 492,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2008,7 +2011,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 988,
+    "behind": 990,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2016,7 +2019,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 946,
+    "behind": 948,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -2024,8 +2027,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-19",
-   "subject": "dev: refs re-recorded after the burning man runs to the end"
+   "date": "2026-11-21",
+   "subject": "test: loudness rows for the God's Paths music"
   }
  }
 }

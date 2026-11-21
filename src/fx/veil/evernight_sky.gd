@@ -36,6 +36,9 @@ const WISP := [Color(0.06, 0.03, 0.10, 0.9), Color(0.12, 0.05, 0.20, 0.85), Colo
 ## colour and the DARK / LIGHT tag are never multiplied by the night. The HUD is a CanvasLayer of its own, over all of it.
 const Z_SHADE := 2
 const Z_AIR := 3
+## The size of evernight_shade.gdshader's `uniform vec2 torches[6]` (a shader cannot read GDScript: the pair is named on both sides).
+## EvernightFx asserts its TORCHES fits.
+const SHADE_TORCHES := 6
 
 static var _white: ImageTexture
 
@@ -107,6 +110,8 @@ class TorchGlow extends Node2D:
 	var phase := 0.0
 	var clock := 0.0
 	var lit := true
+	## 0..1: how much of it shows (at dawn it fades with the night, VRF5d).
+	var fade := 1.0
 	var sparks: PixelParticles
 
 	func _init(seed_value: int) -> void:
@@ -130,18 +135,18 @@ class TorchGlow extends Node2D:
 
 	func _process(delta: float) -> void:
 		clock += delta
-		sparks.emitting = lit
+		sparks.emitting = lit and fade > 0.5
 		queue_redraw()
 
 	func _draw() -> void:
-		if not lit:
+		if not lit or fade <= 0.0:
 			return
 		var f := 0.84 + 0.09 * sin(clock * 11.0 + phase) + 0.07 * sin(clock * 23.7 + phase * 2.0)
 		# The flame's own halo where it is held up (its light on the ground and the people is the light field's and the shade's
 		# warm island: more here blew the huddle out to white).
-		draw_circle(Vector2.ZERO, 18.0 * f, Color(1.0, 0.55, 0.25, 0.07))
-		draw_circle(Vector2.ZERO, 8.0 * f, Color(1.0, 0.68, 0.34, 0.16))
-		draw_circle(Vector2.ZERO, 3.0 * f, Color(1.0, 0.86, 0.58, 0.5))
+		draw_circle(Vector2.ZERO, 18.0 * f, Color(1.0, 0.55, 0.25, 0.07 * fade))
+		draw_circle(Vector2.ZERO, 8.0 * f, Color(1.0, 0.68, 0.34, 0.16 * fade))
+		draw_circle(Vector2.ZERO, 3.0 * f, Color(1.0, 0.86, 0.58, 0.5 * fade))
 
 
 ## A brief dark wisp rising from `screen_pos` (where a lone one was taken), on its own seed; it frees itself when spent.

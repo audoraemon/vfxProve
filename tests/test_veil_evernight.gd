@@ -106,6 +106,8 @@ static func run(t) -> void:
 	_two(t, made)
 	_look(t, made)
 	_sky(t, made)
+	_one_sky(t, made)
+	_dawn_glow(t, made)
 	await _layers(t, made)
 	field.enemy_killed.disconnect(on_kill)
 	ctx.lights.free()
@@ -809,6 +811,80 @@ static func _sky(t, made: Array) -> void:
 		t.check(left.is_empty(), "%s: every piece of the look is gone (%d left)" % [mode, left.size()])
 		ctx.overhead_back.free()
 		ctx.overhead_back = null
+
+
+## Final review, Important 2 (VRF2): two overlapping Evernights show one sky. The first cast (the light look's owner) shows its shade,
+## air, wall and moon; the second adds none. Through the first's dawn the sky stays at the second's full night (no roll-back, no flash
+## of day); the first ended, the second's pieces show at once; both ended, none is left.
+static func _one_sky(t, made: Array) -> void:
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	ctx.overhead_back = Node2D.new()
+	var a := _cast(ctx, at)
+	var b: EvernightFx = null
+	var shown := func(n: Variant) -> bool: return not _gone(n) and (n as CanvasItem).visible
+	var worst := {"shade": 0, "air": 0, "wall": 0, "moon": 0, "none": 0}
+	var rolled := [false, false]  # the front shown rolled back during the first's dawn; the ambient eased toward the day
+	var i := 0
+	while a.t < a.duration - 0.2:
+		if i == roundi(30.0 / DT):  # well inside the first night: the second's dawn is half a minute after the first's
+			b = _cast(ctx, at + Vector2(4.0, 0.0))
+		i += 1
+		a._process(DT)
+		if b != null:
+			b._process(DT)
+		if b != null and a.t > a.t_dawn + 0.2:
+			var sh: EvernightSky.View = a._shade if shown.call(a._shade) else b._shade
+			if float(sh.mat.get_shader_parameter(&"front")) < b.look_front() - 0.01:
+				rolled[0] = true
+			if ctx.lights.ambient > TownLook.ambient(Town.Look.NIGHT) + 0.01:
+				rolled[1] = true
+		for k in ["shade", "air", "wall", "moon"]:
+			var c := 0
+			for fx: EvernightFx in ([a, b] if b != null else [a]):
+				if shown.call(fx.wash.moon if k == "moon" else fx.get("_" + k)):
+					c += 1
+			worst[k] = maxi(int(worst[k]), c)
+			if c == 0:
+				worst.none = int(worst.none) + 1
+	t.check(b != null and int(worst.shade) == 1 and int(worst.air) == 1 and int(worst.moon) == 1 and int(worst.wall) <= 1
+		and int(worst.none) == 0, "two nights: one shade, one air, one moon at any time (%s)" % [worst])
+	t.check(shown.call(a._shade) and not shown.call(b._shade) and not shown.call(b._air) and not shown.call(b.wash.moon),
+		"the first cast's sky shows; the second adds none")
+	t.check(not rolled[0] and not rolled[1], "through the first's dawn the sky holds the second's night (front %s, day %s)" % rolled)
+	var pieces: Array = [a._shade, a._air, a._wall, a.wash.moon, b._shade, b._air, b._wall, b.wash.moon]
+	a.end_now()
+	t.check(shown.call(b._shade) and shown.call(b._air) and shown.call(b.wash.moon) and b.wash.moon.strength == 1.0
+		and float(b._shade.mat.get_shader_parameter(&"front")) >= b.look_front() - 0.01,
+		"the first ended: the second's sky shows at once, at its full night")
+	b.end_now()
+	var left := pieces.filter(func(n: Variant) -> bool: return not _gone(n))
+	t.check(left.is_empty(), "both ended: no piece of either sky is left (%d)" % left.size())
+	ctx.overhead_back.free()
+	ctx.overhead_back = null
+
+
+## VRF5c, VRF5d: the shade's torch array fits TORCHES (the pair named on both sides); at dawn the torches are out for the rules at
+## once, but their glows and islands fade with the night over DAWN.
+static func _dawn_glow(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var code := EvernightSky.SH_SHADE.code
+	t.check(E.TORCHES <= EvernightSky.SHADE_TORCHES and code.contains("uniform vec2 torches[%d];" % EvernightSky.SHADE_TORCHES)
+		and code.contains("SHADE_TORCHES"), "the shade's torches[] is EvernightSky.SHADE_TORCHES, and TORCHES fits")
+	var at := _fresh(made)
+	_put(crowd, at + Vector2(0.0, -6.0), true)
+	var fx := _cast(ctx, at)
+	_until(fx, E.WAVE + 0.5)
+	var glow: EvernightSky.TorchGlow = fx._glows[0] if fx._glows.size() == 1 else null
+	t.check(glow != null and glow.lit and glow.fade == 1.0, "a torch's glow burns through the night")
+	_until(fx, fx.t_dawn + E.DAWN * 0.5)
+	t.check(fx.lit().is_empty() and fx.look_lit().size() == 1 and glow.lit and glow.fade > 0.3 and glow.fade < 0.7,
+		"half way through the dawn: out for the rules, its glow and island half faded (%.2f)" % glow.fade)
+	_until(fx, fx.duration - 0.05)
+	t.check(fx.look_lit().size() <= 1 and glow.fade < 0.05, "faded by the dawn's end (%.2f)" % glow.fade)
+	fx.end_now()
+	t.check(_gone(glow), "and gone with the cast")
 
 
 ## The absolute z of `n`: its own z and its parents' while they are relative.

@@ -14,7 +14,7 @@ uniform vec4 night : source_color = vec4(0.46, 0.43, 0.66, 1.0);
 uniform vec4 edge_night : source_color = vec4(0.28, 0.25, 0.44, 1.0);
 uniform vec4 warm : source_color = vec4(0.92, 0.80, 0.64, 1.0);
 uniform float vignette = 1.0;
-uniform vec2 torches[6];
+uniform vec2 torches[6];  // the size is EvernightSky.SHADE_TORCHES (EvernightFx.TORCHES must fit): change both together
 uniform int torch_count = 0;
 uniform float torch_r = 2.5;
 uniform vec2 moon_uv = vec2(0.82, 0.16);

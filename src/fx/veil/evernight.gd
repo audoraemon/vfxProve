@@ -204,9 +204,11 @@ func _build() -> void:
 
 ## The look over the town (ctx.overhead_back, but at absolute z: EvernightSky.Z_SHADE / Z_AIR, over the world and under the aim, VRF1):
 ## the shade, the air over it and the wall over both. The town's own NIGHT look is darkened once already, so the shade is lighter there.
+## Every cast builds its own; only the sky's owner shows them (_sky_owner(), VRF2).
 func _build_sky() -> void:
 	if ctx == null or ctx.overhead_back == null:
 		return
+	assert(TORCHES <= EvernightSky.SHADE_TORCHES, "evernight_shade.gdshader's torches[] is too small for TORCHES")
 	var on_night: bool = TownLook.active == Town.Look.NIGHT
 	_shade = EvernightSky.View.new(EvernightSky.SH_SHADE)
 	_shade.z_as_relative = false
@@ -426,6 +428,7 @@ func _end_night() -> void:
 		_drop_light(tc)
 		if not tc.out:
 			tc.out = true
+			tc.dawn = true  # the look's glow and island fade with the night (look_lit(), VRF5d); the rules see it out now
 			var b := instance_from_id(int(tc.bearer)) as Person
 			if b != null and b.is_alive() and b.anchor.is_equal_approx(tc.at):
 				b.send_to_post(b.post if b.post != Vector2.INF else b.ground_pos)
@@ -523,6 +526,10 @@ func _leave_look() -> void:
 	var g: Dictionary = _lights.get_meta(LOOK_KEY)
 	(g.owners as Array).erase(get_instance_id())
 	if not (g.owners as Array).is_empty():
+		# The next night takes the sky over now, before this frame is drawn: no frame without a sky, never two (VRF2).
+		var next := instance_from_id(int((g.owners as Array)[0])) as EvernightFx
+		if next != null and not next.is_queued_for_deletion():
+			next._sky_look()
 		return
 	_lights.remove_meta(LOOK_KEY)
 	if is_equal_approx(_lights.ambient, float(g.amb_last)):
@@ -547,6 +554,8 @@ func _fx_process(_delta: float) -> void:
 	if _look_on and _live_lights():
 		var g: Dictionary = _lights.get_meta(LOOK_KEY, {})
 		if not g.is_empty() and (g.owners as Array)[0] == get_instance_id():
+			# The light follows the darkest of the nights sharing it (VRF2): one night's dawn under another's night eases nothing.
+			s = _shared_strength()
 			# The battlefield sets the ambient afresh each frame (its dim); a value it set is the new base.
 			if not is_equal_approx(_lights.ambient, float(g.amb_last)):
 				g.amb_base = _lights.ambient
@@ -560,16 +569,12 @@ func _fx_process(_delta: float) -> void:
 				g.mute = share
 	if not _over and t >= WAVE and _live():
 		_watch_bearers()
-	var front := look_front()
 	if wash != null and is_instance_valid(wash):
-		wash.strength = s
+		wash.strength = strength()
 		wash.front = _look_map().size.x * t / WAVE
-		wash.lit = lit()
+		wash.lit = look_lit()
 		wash.queue_redraw()
-		if wash.moon != null and is_instance_valid(wash.moon):
-			wash.moon.strength = s
-			wash.moon.queue_redraw()
-	_sky_look(front)
+	_sky_look()
 
 
 ## The front's reach for the look: out from the click over WAVE to the map's farthest corner, slow near the click and fast across
@@ -595,16 +600,85 @@ func _reach(m: Rect2) -> float:
 	return reach
 
 
-## The look over the town this frame: the shade and the air follow the front, the torches' islands; the wall stands while the
-## night runs out and while it rolls back; each torch's glow goes out with its torch.
-func _sky_look(front: float) -> void:
+## The torches the look still shows: those burning, and (VRF5d) those the dawn put away, fading with the night over DAWN. The rules
+## read lit() alone.
+func look_lit() -> Array:
+	var out: Array = []
+	var dawning := strength() > 0.0
+	for tc in torches:
+		if not tc.out or (bool(tc.get("dawn", false)) and dawning):
+			out.append(tc.at)
+	return out
+
+
+## The wall's amount for this cast's own front: it stands while the night runs out and while it rolls back.
+func _wall_amount() -> float:
+	var reach := _reach(_look_map())
+	if t < t_dawn:
+		return smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(reach - 4.0, reach + 2.0, look_front()))
+	var k := (t - t_dawn) / DAWN
+	return smoothstep(0.0, 0.1, k) * (1.0 - smoothstep(0.9, 1.0, k))
+
+
+## Whether this cast shows the sky (VRF2): one sky at a time, the light look's owner's (the first in LOOK_KEY's ledger, the one that
+## eases the light); a cast with no ledger (no light field) is alone and shows its own.
+func _sky_owner() -> bool:
+	if not _look_on or not _live_lights():
+		return true
+	var owners: Array = _lights.get_meta(LOOK_KEY, {}).get("owners", [])
+	return owners.is_empty() or owners[0] == get_instance_id()
+
+
+## The nights sharing this one's look (the ledger's live owners), this one first.
+func _sharing() -> Array[EvernightFx]:
+	var out: Array[EvernightFx] = [self]
+	if _look_on and _live_lights():
+		for id in (_lights.get_meta(LOOK_KEY, {}).get("owners", []) as Array):
+			var o := instance_from_id(int(id)) as EvernightFx
+			if o != null and o != self:
+				out.append(o)
+	return out
+
+
+## The darkest of the nights sharing the look.
+func _shared_strength() -> float:
+	var s := 0.0
+	for c in _sharing():
+		s = maxf(s, c.strength())
+	return s
+
+
+## The look over the town this frame, shown by the sky's owner only (the others' pieces hidden): the shade and the air follow the
+## farthest front of the nights sharing it (its cast leads: its centre, its wall), with every burning torch's island; the moon at the
+## darkest night's strength. Each cast's torch glows are its own, out with their torch, fading over the dawn (VRF5d).
+func _sky_look() -> void:
+	var own := _sky_owner()
+	var moon: NightMoon = wash.moon if wash != null and is_instance_valid(wash) and is_instance_valid(wash.moon) else null
+	for n in [_shade, _air, _wall, moon]:
+		if n != null and is_instance_valid(n):
+			(n as CanvasItem).visible = own
+	_glows_look()
+	if not own:
+		return
+	var casts := _sharing()
+	var lead: EvernightFx = self
+	var s := 0.0
 	var pts := PackedVector2Array()
-	for p: Vector2 in lit():
-		if pts.size() < TORCHES:
-			pts.append(p)
+	for c in casts:
+		s = maxf(s, c.strength())
+		if c.look_front() > lead.look_front():
+			lead = c
+		for p: Vector2 in c.look_lit():
+			var dup := false
+			for q in pts:
+				dup = dup or q.distance_to(p) < 0.01
+			if not dup and pts.size() < TORCHES:
+				pts.append(p)
+	var front := lead.look_front()
 	for v in [_shade, _air]:
 		if v != null and is_instance_valid(v):
 			(v as EvernightSky.View).set_param(&"front", front)
+			(v as EvernightSky.View).set_param(&"center", lead.origin)
 	if _shade != null and is_instance_valid(_shade):
 		var arr := PackedVector2Array(pts)
 		arr.resize(TORCHES)
@@ -612,19 +686,22 @@ func _sky_look(front: float) -> void:
 		_shade.set_param(&"torch_count", pts.size())
 	if _wall != null and is_instance_valid(_wall):
 		_wall.front = front
-		var reach := _reach(_look_map())
-		var amount := 0.0
-		if t < t_dawn:
-			amount = smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(reach - 4.0, reach + 2.0, front))
-		else:
-			var k := (t - t_dawn) / DAWN
-			amount = smoothstep(0.0, 0.1, k) * (1.0 - smoothstep(0.9, 1.0, k))
-		_wall.amount = amount
+		_wall.center = lead.origin
+		_wall.amount = lead._wall_amount()
 		_wall.queue_redraw()
+	if moon != null:
+		moon.strength = s
+		moon.queue_redraw()
+
+
+func _glows_look() -> void:
+	var fade := strength()
 	for i in _glows.size():
 		var g: Variant = _glows[i]
 		if g != null and is_instance_valid(g) and i < torches.size():
-			(g as EvernightSky.TorchGlow).lit = not torches[i].out
+			var dawned := bool(torches[i].get("dawn", false))
+			(g as EvernightSky.TorchGlow).lit = not torches[i].out or (dawned and fade > 0.0)
+			(g as EvernightSky.TorchGlow).fade = fade if dawned else 1.0
 
 
 func _finish() -> void:

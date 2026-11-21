@@ -66,8 +66,8 @@ static func run(t) -> void:
 		var to: int = Game.FLOW[action]
 		t.check(to >= 0 and to < Game.Screen.size(), "%s leads to a real screen (%d)" % [action, to])
 		reachable[to] = true
-	t.check(Game.Screen.size() == 14 and reachable.size() == 13 and not reachable.has(Game.Screen.UPGRADES),
-		"all fourteen screens exist and thirteen are reachable: Endless Night's five too (god P1); the Upgrades are not, as the test-mode board has no button (%d)" % reachable.size())
+	t.check(Game.Screen.size() == 15 and reachable.size() == 14 and not reachable.has(Game.Screen.UPGRADES),
+		"all fifteen screens exist and fourteen are reachable: Endless Night's six too (god P1, the World Map); the Upgrades are not, as the test-mode board has no button (%d)" % reachable.size())
 
 	# The board's cards sit side by side inside the screen, above its hint, without touching (v0.08).
 	for count in [1, 2, 3]:

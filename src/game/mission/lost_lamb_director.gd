@@ -355,3 +355,8 @@ func tour() -> Array:
 	out.append([gate_at, "The west gate. Its watch changes soon after he draws near."])
 	out.append([return_to, "The Temple. At %s it sends searchers after him." % UiTheme.clock(hunt_at)])
 	return out
+
+
+## Music by situation: the chase while the lamb bolts, or the hunters are out.
+func music_mood() -> StringName:
+	return &"chase" if bolting else super()

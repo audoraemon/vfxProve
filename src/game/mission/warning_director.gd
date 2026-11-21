@@ -651,3 +651,8 @@ func teardown() -> void:
 		if is_instance_valid(crowd) and (_slowed as Person).mind == Person.Mind.DUTY:
 			crowd.off_duty(_slowed as Person)
 	_slowed = null
+
+
+## Music by situation: the chase while the messenger runs.
+func music_mood() -> StringName:
+	return &"chase" if phase == Phase.RUN else &""

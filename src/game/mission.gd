@@ -175,6 +175,8 @@ var _descent: Descent
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
+## The music's heat now (Music.heat, cooled by Music.cool): what Music.set_intensity hears.
+var _music_heat := 0.0
 ## A mission played in acts (v0.09): the night so far and the act being played; both null for a single mission.
 var _night: NightState
 var _act: ActDef
@@ -1410,7 +1412,12 @@ func _process(delta: float) -> void:
 		_music_in -= delta
 		if _music_in <= 0.0:
 			_music_in = 0.5
-			Music.set_intensity(1.0 - _rules.stability.total())
+			# Music by situation: the city's fall, the alarm and the panic heat the music; the director names its mood.
+			var stage: int = _crowd.alarms.stage if _crowd != null else 0
+			var panic := _crowd.panic_level() if _crowd != null else 0.0
+			_music_heat = Music.cool(_music_heat, Music.heat(1.0 - _rules.stability.total(), stage, panic), 0.5)
+			Music.set_intensity(_music_heat)
+			Music.set_mood(_rules.director.music_mood() if _rules.director != null else &"")
 	_sync_intro_hud()
 	# A limit raised in the pause Options: a camera further out than it now allows steps back in on resume.
 	if _intro_left <= 0.0 and not _ending and _bf.camera.logical_zoom() < zoom_min() - 0.0005 and not _bench_zoomed:

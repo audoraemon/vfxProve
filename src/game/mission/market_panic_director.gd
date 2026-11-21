@@ -516,3 +516,8 @@ func tour() -> Array:
 		var close := " The guard closes the market at %s." % UiTheme.clock(MARKET_CLOSE) if i == SOURCES.size() - 1 else ""
 		out.append([_walkable(SOURCES[i]), "More come from %s by %s.%s" % [SOURCE_NAMES[i], UiTheme.clock(float(WAVE_AT[i])), close]])
 	return out
+
+
+## Music by situation: no festival here: the market is the town's own.
+func music_mood() -> StringName:
+	return &""

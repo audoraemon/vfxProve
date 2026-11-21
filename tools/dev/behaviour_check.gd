@@ -60,13 +60,16 @@ extends SceneTree
 ##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac|cross|body|bodies|dusk] [--zoom=z]; --setup=dusk lays a dusk patch DUSK_AT from the cast (Dread of the
+##          [--setup=rite|evac|cross|body|bodies|dusk|dark] [--zoom=z] [--cam=dx,dy] [--frames=n] [--no-sheet]; --setup=dark lays a dusk
+##          patch on the cast itself just before it (the cast is stamped dark); --no-sheet leaves assets/clips alone; --frames=n is how many
+##          whole frames --full-frames saves (the sheet keeps its 16; the folder is made); --look=night is the town's (a night town);
+##          --setup=dusk lays a dusk patch DUSK_AT from the cast (Dread of the
 ##          Dark: dark ground in reach); --setup=cross sends the citizens nearest the cast walking across it
 ##          (a power that acts on walkers has some: The Folded Ward); --setup=body kills the citizen nearest --at and casts
 ##          on their body (Raise the Dead, --mode=); --setup=bodies kills the CLIP_BODIES citizens nearest --at and casts
 ##          BODIES_CAST_OFF east of them (Grave Tide: the heap rises, its giant too, and walks to the click); --zoom frames a
 ##          wide area (default 1.5);
-##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
+##          --cam=dx,dy (or --look=dx,dy when both are numbers) centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
 ##          --mode=<key> picks a mode; --to=dx,dy sets a second click that far from the cast (Gravecall); for Bound in
 ##          Law (--power=bound) --to=x,y is instead the second place itself, taken as the citizen nearest it;
@@ -1445,9 +1448,15 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 			if is_instance_valid(p) and p.is_alive() and not p.inside and p != who and p.ground_pos.distance_to(want) < best_to:
 				best_to = p.ground_pos.distance_to(want)
 				extra["to"] = p.ground_pos
-	var look_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--look")
-	if look_arg != "":
-		var off := look_arg.split(",")
+	# The camera offset: --cam=dx,dy, or --look=dx,dy when it is two numbers (a word, as --look=night, is the town's own).
+	var cam_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--cam")
+	if cam_arg == "":
+		var look_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--look")
+		var look_xy := look_arg.split(",")
+		if look_xy.size() == 2 and look_xy[0].is_valid_float() and look_xy[1].is_valid_float():
+			cam_arg = look_arg
+	if cam_arg != "":
+		var off := cam_arg.split(",")
 		look = at + Vector2(float(off[0]), float(off[1]))
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
@@ -1461,35 +1470,66 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	if to_arg != "" and key != "bound" and String(PowerBook.get_power(key).get("aim", "")) == "drag" \
 			and (extra["to"] as Vector2).distance_to(at) > 0.01:
 		cast_dir = ((extra["to"] as Vector2) - at).normalized()
+	if setup == "dark":
+		# A dusk patch on the cast itself, laid at the last moment (it lasts VeilRules.DUSK_TIME, and the clip has waited 20 s of
+		# calm), so Rules.cast stamps the cast dark (Crowd.in_dark) and shows its dark size.
+		crowd.lay_dusk(at, VeilRules.DUSK_R, VeilRules.DUSK_TIME)
+		print("BEHAVIOUR clip dark in_dark=", crowd.in_dark(at))
 	var fx := _force_cast(0, at, cast_dir, extra)
 	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
 	var fx_clock := "--fx-clock" in OS.get_cmdline_user_args()
 	var full_dir := Battlefield.arg_value(OS.get_cmdline_user_args(), "--full-frames")
+	if full_dir != "":
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(full_dir))
+	var frames_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--frames")
+	var full_count := maxi(int(frames_arg), 1) if frames_arg != "" else PowerBook.CLIP_FRAMES
+	var no_sheet := "--no-sheet" in OS.get_cmdline_user_args()
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
 	var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false,
 		Image.FORMAT_RGBA8)
-	var t := 0.0
+	# The shots in time order: the sheet's CLIP_FRAMES, and (with --full-frames) `full_count` whole frames; one that falls on
+	# both is taken once.
+	var shots: Array[Dictionary] = []
 	for i in PowerBook.CLIP_FRAMES:
-		var due := run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)
+		shots.append({"due": run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES), "sheet": i, "full": -1})
+	if full_dir != "":
+		for i in full_count:
+			var due := run * (float(i) + 0.5) / float(full_count)
+			var merged := false
+			if full_count == PowerBook.CLIP_FRAMES:
+				shots[i]["full"] = i
+				merged = true
+			if not merged:
+				shots.append({"due": due, "sheet": -1, "full": i})
+	shots.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return float(x["due"]) < float(y["due"]))
+	var t := 0.0
+	for shot in shots:
+		var due: float = shot["due"]
 		if fx_clock and is_instance_valid(fx):
 			# A long power's moment (The Sealed Verdict's stroke) caught on its own clock, which a busy machine slows.
 			while is_instance_valid(fx) and not fx.finished and fx.t < due:
 				await process_frame
 		else:
 			await _frames(maxi(roundi((due - t) * 60.0), 0))
-		t = due
+		t = maxf(t, due)
 		await RenderingServer.frame_post_draw
 		var img := bf.get_viewport().get_texture().get_image()
-		if full_dir != "":
-			img.save_png(full_dir.path_join("%s_%02d.png" % [key, i]))
+		if int(shot["full"]) >= 0:
+			img.save_png(full_dir.path_join("%s_%02d.png" % [key, int(shot["full"])]))
+		var si: int = shot["sheet"]
+		if si < 0:
+			continue
 		var from := Vector2i((img.get_width() - crop.x) / 2, (img.get_height() - crop.y) / 2)
 		var frame := img.get_region(Rect2i(from, crop))
 		frame.convert(Image.FORMAT_RGBA8)
 		frame.resize(PowerBook.CLIP_SIZE.x, PowerBook.CLIP_SIZE.y, Image.INTERPOLATE_BILINEAR)
-		sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(i).position))
-		if i == PowerBook.CLIP_FRAMES / 2 or i == PowerBook.CLIP_FRAMES - 1:
+		sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(si).position))
+		if si == PowerBook.CLIP_FRAMES / 2 or si == PowerBook.CLIP_FRAMES - 1:
 			_clip_report(key, at, t)
+	if no_sheet:
+		print("BEHAVIOUR clip no sheet written")
+		return
 	var out := ProjectSettings.globalize_path(PowerBook.clip_path(key))
 	sheet.save_png(out)
 	print("BEHAVIOUR clip ", out)

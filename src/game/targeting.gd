@@ -1246,6 +1246,11 @@ func _draw() -> void:
 			# Who it would take.
 			for v in SilentDoom.victims_at(_crowd._field, _press, float(area().get("r", SilentDoom.RADIUS))):
 				_ring(v.ground_pos, 0.22, COL_INNER)
+		"slumber", "cloak", "dreamless", "shadowplay":
+			# Who it would take, at the size this ground gives (the cast's own pick and its own numbers); the ones the cast would take
+			# at once rather than set to rest or make a shadow of, in the kill colour.
+			for m in veil_ringed(String(_rules.key(slot)), _crowd, _press, _crowd != null and _crowd.in_dark(_press)):
+				_ring(m.p.ground_pos, 0.22, COL_MAD if bool(m.kill) else COL_INNER)
 		"oath", "echo":
 			# Whom it would bind, or start with.
 			for p in OathboundFx.bound_at(_crowd._field, first if placed else _press, 5 if _rules.key(slot) == "echo" else 4):
@@ -1348,8 +1353,7 @@ func _draw() -> void:
 				# only takes the banner, so its ring is red.
 				_ring(mine, 0.45, COL_ROT if _rules.director.blight_takes(mine) else COL_BAD)
 			elif took.kind == &"person":
-				var most := int(VeilRules.size("blight", "ILL_MOST", ring_tag() == "DARK"))
-				for p in BlightFx.sick_with(_crowd, took.p, most):
+				for p in blight_ill(_crowd, took.p, _crowd != null and _crowd.in_dark(_press)):
 					_ring(p.ground_pos, 0.22, COL_ROT)
 			elif s != null:
 				var r := s.footprint.grow(0.08)
@@ -1611,3 +1615,39 @@ func _cone(from: Vector2, r: float, arc: float, col: Color, start: float) -> voi
 			points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / float(steps)) * (r + grow))
 		points.append(from)
 		draw_polyline(points, SHADE if pass_i == 0 else col, -1.0)
+
+
+## Who a Veil power's cast at `at` takes hold of, from the power's own pick and the size VeilRules gives on this ground (`dark`: the
+## cast's dark, Crowd.in_dark() under the click): [{"p": Person, "kill": bool}], `kill` for one the cast takes at once instead of the
+## power's plain effect -- Dreamless on one already asleep or a shadow, Shadow Play in the dark on a soldier (his shadow is taken at the
+## end). Empty for any other key or no crowd.
+static func veil_ringed(key: String, crowd: Crowd, at: Vector2, dark: bool) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if crowd == null or crowd._field == null:
+		return out
+	var who: Array[Person] = []
+	match key:
+		"slumber":
+			who = SlumberFx.sleepers_at(crowd._field, at, VeilRules.size("slumber", "RADIUS", dark))
+		"cloak":
+			who = CloakOfNightFx.marked_at(crowd._field, at, VeilRules.size("cloak", "MARK_R", dark), int(VeilRules.size("cloak", "MOST", dark)))
+		"dreamless":
+			who = DreamlessFx.victims_at(crowd._field, at, VeilRules.size("dreamless", "REACH", dark), int(VeilRules.size("dreamless", "MOST", dark)))
+		"shadowplay":
+			who = ShadowPlayFx.shadows_at(crowd._field, at, VeilRules.size("shadowplay", "RADIUS", dark))
+		_:
+			return out
+	for p in who:
+		var kill := false
+		if key == "dreamless":
+			kill = p.is_asleep() or p.is_shadow()
+		elif key == "shadowplay":
+			kill = dark and p.soldier
+		out.append({"p": p, "kill": kill})
+	return out
+
+
+## Who falls ill when Blight takes `p` at `dark` (Crowd.in_dark() under the click, as Rules.cast() stamps it): the cast's own count.
+## Blight has no ring radius (VeilRules.RING), so ring_tag() says nothing for it: the dark is asked of the crowd directly.
+static func blight_ill(crowd: Crowd, p: Person, dark: bool) -> Array[Person]:
+	return BlightFx.sick_with(crowd, p, int(VeilRules.size("blight", "ILL_MOST", dark)))

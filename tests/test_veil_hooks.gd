@@ -77,6 +77,7 @@ static func run(t) -> void:
 	_refusals(t, made)
 	_remembrance(t, made)
 	_ring(t, made)
+	await _previews(t, made)
 	_directors(t, made)
 	_acts(t, made)
 	var crowd: Crowd = made[0]
@@ -605,6 +606,123 @@ static func _ring(t, made: Array) -> void:
 	t.check(not aim.ring_stale() or aim.ring_tag() == "", "a power with one size never goes stale")
 	aim.free()
 	rules.free()
+
+
+## Task A: the aim ring shows who Slumber, Cloak of Night, Dreamless and Shadow Play take, and Blight's dark preview shows all it takes.
+## The set the preview rings equals the set a cast at that point takes hold of, light and dark.
+static func _previews(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var grid: WalkGrid = made[2]
+	var ctx := FxContext.new()
+	ctx.env = made[1]
+	ctx.field = made[3]
+	ctx.crowd = crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	crowd.dusk.enabled = true
+	_clear_round(crowd)
+	var at := grid.nearest_walkable(TownLayout.MARKET_SQUARE.get_center())
+	var paths := {"slumber": "res://src/fx/veil/slumber.gd", "cloak": "res://src/fx/veil/cloak_of_night.gd",
+		"dreamless": "res://src/fx/veil/dreamless.gd", "shadowplay": "res://src/fx/veil/shadow_play.gd"}
+	for key: String in paths:
+		for dark in [false, true]:
+			_clear_round(crowd)
+			var i := 0
+			for p in crowd.citizens + crowd.soldiers:
+				if i >= 40:
+					break
+				p.inside = false
+				p.mind = Person.Mind.CALM
+				p.ground_pos = at + Vector2.from_angle(float(i) * 0.9) * (0.3 + 0.12 * float(i))
+				i += 1
+			var shown := Targeting.veil_ringed(key, crowd, at, dark)
+			var ids := []
+			for m in shown:
+				ids.append((m.p as Person).get_instance_id())
+			var fx: FxTimeline = FxTimeline.cast(load(paths[key]), ctx, at, {"dark": dark})
+			fx._process(1.1)
+			var took := []
+			match key:
+				"slumber":
+					for p in crowd.citizens + crowd.soldiers:
+						if p.is_asleep():
+							took.append(p.get_instance_id())
+				"cloak":
+					for id in (fx as CloakOfNightFx)._ids:
+						took.append(id)
+				"dreamless":
+					for p in (fx as DreamlessFx)._victims:
+						took.append(p.get_instance_id())
+				"shadowplay":
+					for p in crowd.citizens + crowd.soldiers:
+						if p.is_shadow():
+							took.append(p.get_instance_id())
+			ids.sort()
+			took.sort()
+			t.check(not ids.is_empty() and ids == took, "%s %s: the preview rings who the cast takes (%d / %d)" % [key, "dark" if dark else "light", ids.size(), took.size()])
+			fx.end_now()
+			fx.free()
+	# The kill colour: Dreamless on one asleep or a shadow; Shadow Play, in the dark only, on a soldier.
+	_clear_round(crowd)
+	var a: Person = crowd.citizens[10]
+	var b: Person = crowd.citizens[11]
+	var c: Person = crowd.citizens[12]
+	var s: Person = crowd.soldiers[0]
+	for p in [a, b, c, s]:
+		p.inside = false
+		p.mind = Person.Mind.CALM
+	a.ground_pos = at
+	b.ground_pos = at + Vector2(0.2, 0.0)
+	c.ground_pos = at + Vector2(0.4, 0.0)
+	s.ground_pos = at + Vector2(0.6, 0.0)
+	b.sleep(20.0)
+	c.statuses[&"shadow"] = 1
+	var kills := {}
+	for m in Targeting.veil_ringed("dreamless", crowd, at, true):
+		kills[m.p] = m.kill
+	t.check(kills.get(a) == false and kills.get(b) == true and kills.get(c) == true, "Dreamless rings in the kill colour one asleep or a shadow, not the awake (%s %s %s %s)" % [kills.get(a), kills.get(b), kills.get(c), [a.ground_pos, at, kills.size(), a.inside, a.is_alive()]])
+	for dark in [false, true]:
+		var soldier_kill := false
+		var citizen_kill := false
+		for m in Targeting.veil_ringed("shadowplay", crowd, at, dark):
+			if m.p == s:
+				soldier_kill = m.kill
+			elif m.p == a:
+				citizen_kill = m.kill
+		t.check(soldier_kill == dark and not citizen_kill, "Shadow Play rings a soldier in the kill colour in the dark only (%s)" % [dark])
+	for key in ["slumber", "cloak"]:
+		for m in Targeting.veil_ringed(key, crowd, at, true):
+			t.check(not m.kill, "%s never rings in the kill colour" % key)
+			break
+	t.check(Targeting.veil_ringed("smite", crowd, at, true).is_empty() and Targeting.veil_ringed("slumber", null, at, true).is_empty(),
+		"another power, or no crowd: nothing ringed")
+	# Blight: in the dark the preview rings the dark count, in the light one.
+	_clear_round(crowd)
+	for i in 5:
+		var p: Person = crowd.citizens[i]
+		p.inside = false
+		p.mind = Person.Mind.CALM
+		p.ground_pos = at + Vector2(0.4 * float(i), 0.0)
+	var picked: Person = crowd.citizens[0]
+	t.check(Targeting.blight_ill(crowd, picked, true) == BlightFx.sick_with(crowd, picked, int(VeilRules.size("blight", "ILL_MOST", true)))
+		and Targeting.blight_ill(crowd, picked, true).size() == 3 and Targeting.blight_ill(crowd, picked, false).size() == 1,
+		"Blight's preview rings the dark count (3) in the dark and one in the light")
+	var rules := Rules.new().setup(PackedStringArray(["blight"]), null, made[1], made[3], crowd, made[5])
+	var aim := Targeting.new().setup(rules, crowd)
+	t.root.add_child(aim)
+	aim.pick(0)
+	crowd.dusk.enabled = true
+	var id := crowd.lay_dusk(at, 4.0, 20.0)
+	aim.hover(at)
+	await t.process_frame
+	t.check(crowd.in_dark(at) and aim.ring_tag() == "" and not aim.area().is_empty(), "Blight's aim ring is unchanged: no tag, no radius of its own")
+	crowd.dusk.end(id)
+	aim.free()
+	rules.free()
+	ctx.overhead.free()
+	ctx.ground.free()
+	_clear_round(crowd)
 
 
 static func _mute(t) -> void:

@@ -428,11 +428,11 @@ All recorded with `timeout 1200 $G --path . --fixed-fps 60 --audio-driver Dummy 
 
 - VRE1: doom: not re-recorded (its look did not change).
 - VRE2: blight: `--setup=dark --zoom=2.2` (the glyph shows over the sick in the dark).
-- VRE3: unseen: `--setup=dark --zoom=1.0 --seconds=12` (the blanket is wider than the frame at 2.2).
+- VRE3: unseen: the light size (no --setup), `--zoom=0.5 --seconds=21.7 --fx-clock` (0.5 is the tool's zoom floor, 0.3 gives the same frames; the radius-5 circle is still wider than the clip's crop, so the sheet shows the lit town, the thrown blanket at the click, then the whole frame under violet, and the lit town again at the lift; the hem itself is outside the crop at any zoom).
 - VRE4: slumber: `--setup=dark --zoom=2.2 --seconds=4`.
 - VRE5: cloak: `--setup=dark --zoom=2.2 --seconds=6`.
 - VRE6: dreamless: `--zoom=2.2 --seconds=20` (lit size, the whole rest to the find). Its thread is too thin to read at 152 x 86.
 - VRE7: dread: `--setup=dusk --zoom=1.2 --cam=1,0 --seconds=20` (the wall stands round the dusk patch east of the cast; at the dark size the whole frame is dreaded and the wall is off screen).
 - VRE8: shadowplay: `--setup=dark --zoom=2.2 --seconds=8`.
-- VRE9: swallow: `--zoom=1.0 --seconds=22` (growth, hole, the fold and the bare bowl).
-- VRE10: evernight: `--look=night --zoom=1.0 --seconds=20` (the wall of night, then the night with torch islands).
+- VRE9: swallow: `--zoom=1.0 --seconds=22.8 --fx-clock` (_clip spaces frames evenly and has no start offset, so the growth takes 13 frames and the 1.4 s closing rim falls between two frames and is not caught: the sheet shows the funnel and tendrils, the hole filling the frame, then the town black and the last two frames the bare bowl).
+- VRE10: evernight: by day, `--zoom=0.7 --seconds=14 --fx-clock` (no --look=night: frame 1 the wall of night over the lit market, the rest the night with its torch islands and stars; the moon sits in the screen's corner, outside the clip's centre crop).

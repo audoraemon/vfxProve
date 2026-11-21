@@ -474,3 +474,10 @@ All recorded with `timeout 1200 $G --path . --fixed-fps 60 --audio-driver Dummy 
 - VRF5 (minors): the shade's `torches[6]` and EvernightSky.SHADE_TORCHES are named on both sides and the effect asserts TORCHES fits;
   at dawn the torches are out for the rules at once (as before), but their glows, islands and rings fade with the night over DAWN
   (look_lit(); the rules read lit()).
+- VRG1 (Dread's cost, Task G): each half of the wall is one MultiMesh of tongues (shaders/dread_wall.gdshader moves every vertex
+  from the shade's clock: the rise, the breath, the sway, the taper, the fade and the middle tongue's rim, as the per-frame GDScript
+  did), laid out only on a read of the dark that changed it or a change of the held; the eyes, wisps and the frozen's marks stay
+  drawn by hand, over the wall (a WallTop child of the shade; the back node draws its own over its MultiMesh, which stands behind
+  it). The dark rows are redrawn only while the front moves or the strength changes. A read of the dark asks in_dark() nothing when
+  the whole town is dark (night_mission or dusk.everywhere: in_dark() is true everywhere then) and keeps the wall when its runs are
+  the same. Nothing of the wall is made or drawn headless. Evernight + Dread on the stack bench: 2.10 to 1.22 of base.

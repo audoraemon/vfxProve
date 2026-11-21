@@ -227,14 +227,26 @@ class DreadShade extends Node2D:
 	const HIGH := 58.0
 	const NEAR := 0.28
 	const THICK := 0.42
-	## A tongue's rungs, and its triangle strip's indices (two per rung).
+	## A tongue's rungs (the shader's unit strip has these plus the soft foot below the ground line).
 	const TONGUE_STEPS := 6
 	const FOOT := 6.0
+	## The wall's shader and its unit tongue (VRG1): each half of the wall is one MultiMesh of tongues, laid out on each read of the dark
+	## or change of the held, and moved by the shader from the shade's clock. Made once.
+	const WALL_SHADER := preload("res://shaders/dread_wall.gdshader")
+	static var _tongue_mesh: ArrayMesh
+	## 1 when the game runs headless (nothing is drawn), 0 when not, -1 not asked yet.
+	static var _headless := -1
 	## A held person's screen rect round his feet (half width, height), which no pillar taller than NEAR may cover.
 	const PERSON := Vector2(7.0, 30.0)
-	var _tongue_idx := PackedInt32Array()
 	## The node on overhead_back that draws the wall's far half (null in a bare context: the shade draws it all).
 	var back: Node2D
+	## The near half's (or the whole wall's, with no back node) MultiMesh, and the node over it that draws its eyes and wisps and the
+	## frozen's marks; the wall's shader material, shared by both halves. Made in the tree only, never headless.
+	var _near_mm: MultiMeshInstance2D
+	var _near_top: WallTop
+	var _mat: ShaderMaterial
+	## What the dark rows were last drawn with (the front and the strength): they are redrawn only when one moves.
+	var _rows_key := Vector2(-1.0, -1.0)
 
 	var fx_id := 0
 	var center := Vector2.ZERO
@@ -264,8 +276,11 @@ class DreadShade extends Node2D:
 	var _eye_h := PackedFloat32Array()
 	var _eye_far: Array[bool] = []
 	var _held_key := 0
-	## The dark cells of the last read (Vector2i -> true), for the front's line.
+	var _held_n := -1
+	## The dark cells of the last read (Vector2i -> true), for the front's line; a signature of its runs, and the eyes laid for it.
 	var _dark := {}
+	var _dark_sig := 0
+	var _eyes_kept := PackedVector2Array()
 	## The front's nearest and farthest dark ground from the click.
 	var _d_min := 0.0
 	var _d_max := 0.0
@@ -278,9 +293,22 @@ class DreadShade extends Node2D:
 		_since += delta
 		if crowd != null and _since >= REFRESH:
 			refresh(crowd)
-		elif hash(held) != _held_key:
+		elif held.size() != _held_n or hash(held) != _held_key:
 			_recut()
-		queue_redraw()
+		if not is_inside_tree() or headless():
+			return
+		var k := _shown()
+		if _mat != null:
+			_mat.set_shader_parameter(&"clock", _clock)
+			_mat.set_shader_parameter(&"shown", k)
+		var key := Vector2(minf(front(), _d_max + CELL * 2.0), k)
+		if key != _rows_key:
+			_rows_key = key
+			queue_redraw()
+		if _near_top != null:
+			_near_top.queue_redraw()
+		if is_instance_valid(back):
+			back.queue_redraw()
 
 	## Its cast freed without finishing (outside the tree): it goes too.
 	func _process(_delta: float) -> void:
@@ -294,10 +322,12 @@ class DreadShade extends Node2D:
 		var edge: Array[Vector2] = []
 		var n := int(ceil(reach / CELL))
 		var dark := {}
+		# A NIGHT mission or Evernight: in_dark() is true everywhere (VRG1: the same cells, without 2,300 calls).
+		var everywhere := crowd.night_mission or (crowd.dusk != null and crowd.dusk.everywhere)
 		for j in range(-n, n + 1):
 			for i in range(-n, n + 1):
 				var g := center + Vector2((float(i) + 0.5) * CELL, (float(j) + 0.5) * CELL)
-				if g.distance_to(center) <= reach and crowd.in_dark(g):
+				if g.distance_to(center) <= reach and (everywhere or crowd.in_dark(g)):
 					dark[Vector2i(i, j)] = true
 		for j in range(-n, n + 1):
 			var start := -1000
@@ -321,9 +351,20 @@ class DreadShade extends Node2D:
 			var count := mini(EYES, edge.size())
 			for k in count:
 				eyes.append(edge[int(float(k) * float(edge.size()) / float(count))])
+		# The same dark ground as last time (the usual case: a dread over a lasting dark): the wall, the eyes and the cut stand as
+		# they are.
+		var sig := hash(runs)
+		if sig == _dark_sig and not pillars.is_empty():
+			eyes = _eyes_kept
+			if held.size() != _held_n or hash(held) != _held_key:
+				_recut()
+			return
+		_dark_sig = sig
+		_eyes_kept = eyes
 		_dark = dark
 		_lay_wall(dark, edge)
 		_recut()
+		_rows_key = Vector2(-1.0, -1.0)
 		queue_redraw()
 
 	## The front's span and the wall's pillars, from the dark cells and their edge (sorted round the click).
@@ -382,10 +423,99 @@ class DreadShade extends Node2D:
 		var at := SPREAD * (g.distance_to(center) - _d_min) / span
 		return smoothstep(0.0, 1.0, (_clock - at) / RISE) * k
 
-	func _init() -> void:
+	static func headless() -> bool:
+		if _headless < 0:
+			_headless = 1 if DisplayServer.get_name() == "headless" else 0
+		return _headless == 1
+
+	## The unit tongue: TONGUE_STEPS + 1 rungs and the soft foot, two vertices each (UV.x -1 / 1, UV.y the rung's share, -1 the foot),
+	## as a strip of triangles. The shader places every vertex.
+	static func tongue_mesh() -> ArrayMesh:
+		if _tongue_mesh != null:
+			return _tongue_mesh
+		var verts := PackedVector2Array()
+		var uvs := PackedVector2Array()
+		var idx := PackedInt32Array()
+		for n in TONGUE_STEPS + 2:
+			var q := -1.0 if n == 0 else float(n - 1) / float(TONGUE_STEPS)
+			verts.append_array([Vector2(-1.0, -q), Vector2(1.0, -q)])
+			uvs.append_array([Vector2(-1.0, q), Vector2(1.0, q)])
 		for n in TONGUE_STEPS + 1:
 			var b := n * 2
-			_tongue_idx.append_array([b, b + 1, b + 3, b, b + 3, b + 2])
+			idx.append_array([b, b + 1, b + 3, b, b + 3, b + 2])
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		arrays[Mesh.ARRAY_INDEX] = idx
+		_tongue_mesh = ArrayMesh.new()
+		_tongue_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		# The shader moves every vertex far from its rest place: never cull it by the rest shape.
+		_tongue_mesh.custom_aabb = AABB(Vector3(-4096.0, -4096.0, -1.0), Vector3(8192.0, 8192.0, 2.0))
+		return _tongue_mesh
+
+	## A MultiMeshInstance2D for one half of the wall, with the shared material.
+	func _wall_node() -> MultiMeshInstance2D:
+		if _mat == null:
+			_mat = ShaderMaterial.new()
+			_mat.shader = WALL_SHADER
+			_mat.set_shader_parameter(&"rim_color", VeilParts.VEIL)
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_2D
+		mm.use_colors = true
+		mm.use_custom_data = true
+		mm.mesh = tongue_mesh()
+		var node := MultiMeshInstance2D.new()
+		node.multimesh = mm
+		node.material = _mat
+		return node
+
+	func _ready() -> void:
+		if headless():
+			return
+		_near_mm = _wall_node()
+		add_child(_near_mm)
+		_near_top = WallTop.new()
+		_near_top.shade = self
+		add_child(_near_top)
+		_rebuild_wall()
+
+	## Lays the wall's tongues into its MultiMeshes (far pillars first, each pillar's haze then its three tongues): which half, where,
+	## how tall (after the cut), how wide, when it rises, its phases and colours. The shader does the rest every frame.
+	func _rebuild_wall() -> void:
+		if _near_mm == null:
+			return
+		var split := is_instance_valid(back) and back is WallBack and (back as WallBack).mm != null
+		var near_buf := PackedFloat32Array()
+		var far_buf := PackedFloat32Array()
+		var span := maxf(_d_max - _d_min + CELL * 2.0, 0.01)
+		var haze := VeilParts.DUSK.lerp(VeilParts.VEIL, 0.35)
+		for i in _p_order:
+			var far := _p_far[i]
+			var a := 0.85 if far else 0.62
+			if i < _p_thin.size() and _p_thin[i]:
+				a *= 0.45
+			var foot := Iso.ground_to_screen(pillars[i])
+			var at := SPREAD * (pillars[i].distance_to(center) - _d_min) / span
+			var tall := HIGH * share(i)
+			var ph := _p_phase[i]
+			var buf := far_buf if split and far else near_buf
+			_instance(buf, foot, Color(haze, 0.34 * a), ph + 1.3, at, tall, _p_wide[i], 0)
+			for t in 3:
+				_instance(buf, foot, Color(VeilParts.BLACK, a), ph + float(t) * 2.1, at, tall, _p_wide[i], t + 1)
+		_fill(_near_mm.multimesh, near_buf)
+		if split:
+			_fill((back as WallBack).mm.multimesh, far_buf)
+
+	## One tongue's 16 floats: a 2D transform (the pillar's foot), its colour, its custom data (phase, rise time, height, width + kind).
+	static func _instance(buf: PackedFloat32Array, foot: Vector2, c: Color, ph: float, at: float, tall: float, wide: float,
+			kind: int) -> void:
+		buf.append_array([1.0, 0.0, 0.0, foot.x, 0.0, 1.0, 0.0, foot.y, c.r, c.g, c.b, c.a, ph, at, tall, wide + 1000.0 * float(kind)])
+
+	static func _fill(mm: MultiMesh, buf: PackedFloat32Array) -> void:
+		mm.instance_count = buf.size() / 16
+		if mm.instance_count > 0:
+			mm.buffer = buf
 
 	## Keeps the held clear of the wall: a pillar whose shape could cover a held person's rect is cut to the NEAR share and thinned.
 	## Then each eye takes its nearest pillar's height and half. Run on every read of the dark and whenever the held change.
@@ -418,6 +548,8 @@ class DreadShade extends Node2D:
 					best = i
 			_eye_h.append(HIGH * (_p_cap[best] if best >= 0 else 1.0) * 0.55)
 			_eye_far.append(_p_far[best] if best >= 0 else false)
+		_held_n = held.size()
+		_rebuild_wall()
 
 	## A held person's screen rect, standing at ground `g`.
 	static func person_rect(g: Vector2) -> Rect2:
@@ -439,27 +571,41 @@ class DreadShade extends Node2D:
 		var k := _shown()
 		if k <= 0.0:
 			return
+		# The dark rows here; over them (children, in order) the near half of the wall (all of it with no back node), then its eyes and
+		# wisps and the frozen's marks (WallTop).
 		_draw_ground(k)
-		# The near half of the wall here (all of it with no back node), then the frozen's marks on top of it.
-		draw_wall(self, 1 if is_instance_valid(back) else 2, k)
+
+	## The frozen stand rigid: a hard dark mark under each (drawn over the near wall).
+	func draw_marks(on: CanvasItem, k: float) -> void:
 		for id in held:
 			var p := instance_from_id(id) as Person
 			if p == null or not p.is_alive() or p.inside:
 				continue
 			var f := Iso.ground_to_screen(p.ground_pos)
-			draw_rect(Rect2(f + Vector2(-4, -1), Vector2(8, 2)), Color(VeilParts.BLACK, 0.7 * k))
-			draw_rect(Rect2(f + Vector2(-3, -2), Vector2(6, 1)), Color(VeilParts.VEIL, 0.35 * k))
+			on.draw_rect(Rect2(f + Vector2(-4, -1), Vector2(8, 2)), Color(VeilParts.BLACK, 0.7 * k))
+			on.draw_rect(Rect2(f + Vector2(-3, -2), Vector2(6, 1)), Color(VeilParts.VEIL, 0.35 * k))
 
 	## Spreading and holding at full strength; sinking with it once the dread has lifted.
 	func _shown() -> float:
 		return strength if lifted else 1.0
 
-	## The wall on `on`: `which` 0 the far half, 1 the near half, 2 both; far pillars first; then the eyes in that half, each pair
-	## blinking on its own slow beat at half the wall's height there.
+	## Over one half of the wall (`which` 0 the far half, 1 the near half, 2 both): the wisps leaving its pillars' tops, then its eyes,
+	## each pair blinking on its own slow beat at half the wall's height there. The pillars themselves are the MultiMeshes'.
 	func draw_wall(on: CanvasItem, which: int, k: float) -> void:
+		var span := maxf(_d_max - _d_min + CELL * 2.0, 0.01)
 		for i in _p_order:
-			if which == 2 or _p_far[i] == (which == 0):
-				_draw_pillar(on, i, k)
+			if not (which == 2 or _p_far[i] == (which == 0)):
+				continue
+			var up := smoothstep(0.0, 1.0, (_clock - SPREAD * (pillars[i].distance_to(center) - _d_min) / span) / RISE) * k
+			if up <= 0.0:
+				continue
+			var ph := _p_phase[i]
+			var a := (0.85 if _p_far[i] else 0.62) * (0.45 if i < _p_thin.size() and _p_thin[i] else 1.0)
+			var tip := Iso.ground_to_screen(pillars[i]) + Vector2(3.0 * sin(_clock * 2.2 + ph + 2.7), -HIGH * share(i) * up)
+			for m in 2:
+				var c := fposmod(_clock * 0.5 + ph * 0.3 + float(m) * 0.5, 1.0)
+				var wp := tip + Vector2(2.5 * sin(_clock * 1.7 + ph + float(m) * 2.0), -c * 16.0)
+				on.draw_rect(Rect2(wp - Vector2(1.5, 1.5), Vector2(3, 3)), Color(VeilParts.BLACK, (1.0 - c) * 0.5 * a * up))
 		for e in eyes.size():
 			if e >= _eye_h.size() or not (which == 2 or _eye_far[e] == (which == 0)):
 				continue
@@ -530,76 +676,39 @@ class DreadShade extends Node2D:
 		draw_primitive(PackedVector2Array([Iso.ground_to_screen(Vector2(x0, y)), Iso.ground_to_screen(Vector2(x1, y)),
 			Iso.ground_to_screen(Vector2(x1, y + tall)), Iso.ground_to_screen(Vector2(x0, y + tall))]), PackedColorArray([c]), PackedVector2Array())
 
-	## One pillar of darkness on `on`: three tongues of dark rising from one foot, each swaying and breathing on its own beat, dense
-	## at the ground and thinning to nothing at its point (vertex colours), in a violet haze; a pale rim on the tallest; wisps leaving
-	## the top. One cut for a held person stands low and thin.
-	func _draw_pillar(on: CanvasItem, i: int, k: float) -> void:
-		var up := _risen(pillars[i], k)
-		if up <= 0.0:
-			return
-		var ph := _p_phase[i]
-		var foot := Iso.ground_to_screen(pillars[i])
-		var tall := HIGH * share(i) * up
-		var w := _p_wide[i] * (0.7 + 0.3 * up)
-		var a := 0.85 if _p_far[i] else 0.62
-		if i < _p_thin.size() and _p_thin[i]:
-			a *= 0.45
-		# The haze: one wide soft violet tongue behind the three, so the wall reads on night ground too.
-		_tongue(on, foot, w * 1.5, tall * 1.05, ph + 1.3, Color(VeilParts.DUSK.lerp(VeilParts.VEIL, 0.35), 0.34 * a * up), false)
-		for s in 3:
-			var sp := ph + float(s) * 2.1
-			var hi := tall * (0.62 + 0.38 * (0.5 + 0.5 * sin(_clock * (0.9 + 0.3 * float(s)) + sp)))
-			if s == 1:
-				hi = tall * (0.9 + 0.1 * sin(_clock * 1.3 + ph))
-			_tongue(on, foot + Vector2((float(s) - 1.0) * w * 0.28, 0.0), w * (0.62 if s == 1 else 0.5), hi, sp,
-				Color(VeilParts.BLACK, a * up), s == 1)
-		# Wisps leaving the top, each on its own slow loop.
-		var tip := foot + Vector2(3.0 * sin(_clock * 2.2 + ph + 2.7), -tall)
-		for m in 2:
-			var c := fposmod(_clock * 0.5 + ph * 0.3 + float(m) * 0.5, 1.0)
-			var wp := tip + Vector2(2.5 * sin(_clock * 1.7 + ph + float(m) * 2.0), -c * 16.0)
-			on.draw_rect(Rect2(wp - Vector2(1.5, 1.5), Vector2(3, 3)), Color(VeilParts.BLACK, (1.0 - c) * 0.5 * a * up))
 
-	## One tongue on `on`: `wide` at its foot, `high` tall, tapering to a swaying point, `col` at the ground fading out toward the
-	## point; with `rim`, a pale line up its left side. A strip of triangles (no triangulation: a tongue just rising is all but flat).
-	func _tongue(on: CanvasItem, foot: Vector2, wide: float, high: float, ph: float, col: Color, rim: bool) -> void:
-		var pts := PackedVector2Array()
-		var cols := PackedColorArray()
-		var left := PackedVector2Array()
-		# A soft foot: a rung a little below the ground line with nothing in it, so the tongue fades into the ground, not cut off.
-		var foot_w := wide * 0.55
-		pts.append(foot + Vector2(-foot_w, FOOT))
-		pts.append(foot + Vector2(foot_w, FOOT))
-		cols.append(Color(col, 0.0))
-		cols.append(Color(col, 0.0))
-		for n in TONGUE_STEPS + 1:
-			var q := float(n) / float(TONGUE_STEPS)
-			var sway := 4.0 * sin(_clock * 2.0 + ph + q * 2.7) * q * q
-			var hw := wide * 0.5 * (1.0 - pow(q, 1.2)) * (1.0 + 0.1 * sin(_clock * 3.7 + ph + q * 5.0))
-			var c := Color(col, col.a * (1.0 - 0.85 * q * q))
-			var l := foot + Vector2(-hw + sway, -high * q)
-			pts.append(l)
-			pts.append(foot + Vector2(hw + sway, -high * q))
-			cols.append(c)
-			cols.append(c)
-			left.append(l)
-		RenderingServer.canvas_item_add_triangle_array(on.get_canvas_item(), _tongue_idx, pts, cols)
-		if rim:
-			on.draw_polyline(left, Color(VeilParts.VEIL, col.a * 0.22), 1.0)
-
-
-## The far half of a Dread's wall (screen space, overhead_back, as the Cage and Fence stand): drawn by its shade, gone with it.
+## The far half of a Dread's wall (screen space, overhead_back, as the Cage and Fence stand): its pillars are a MultiMesh child drawn
+## behind it, its eyes and wisps its own drawing; laid and moved by its shade, gone with it.
 class WallBack extends Node2D:
 	var shade: DreadShade
+	var mm: MultiMeshInstance2D
+
+	func _ready() -> void:
+		if DreadShade.headless() or not is_instance_valid(shade):
+			return
+		mm = shade._wall_node()
+		mm.show_behind_parent = true
+		add_child(mm)
+		shade._rebuild_wall()
 
 	func _process(_delta: float) -> void:
 		if not is_instance_valid(shade) or shade.is_queued_for_deletion():
 			queue_free()
-			return
-		queue_redraw()
 
 	func _draw() -> void:
 		if is_instance_valid(shade):
 			var k := shade._shown()
 			if k > 0.0:
 				shade.draw_wall(self, 0, k)
+
+
+## Over the shade's near MultiMesh: the near half's wisps and eyes (all of them with no back node), then the frozen's marks.
+class WallTop extends Node2D:
+	var shade: DreadShade
+
+	func _draw() -> void:
+		if is_instance_valid(shade):
+			var k := shade._shown()
+			if k > 0.0:
+				shade.draw_wall(self, 1 if is_instance_valid(shade.back) else 2, k)
+				shade.draw_marks(self, k)

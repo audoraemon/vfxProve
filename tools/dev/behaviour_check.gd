@@ -73,6 +73,9 @@ extends SceneTree
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
 ##          --mode=<key> picks a mode; --to=dx,dy sets a second click that far from the cast (Gravecall); for Bound in
 ##          Law (--power=bound) --to=x,y is instead the second place itself, taken as the citizen nearest it;
+##          --whole cuts each sheet frame from the largest centred region of the view with the clip's aspect (a low --zoom then shows
+##          the whole view), not the fixed centre crop; --times=t1,..,t16 takes the sheet's 16 frames at those seconds after the cast
+##          (rising; otherwise a message and the even spacing; --full-frames follows them);
 ##          --fx-clock spaces the frames on the effect's own clock, not the frame count (a long power whose moment
 ##          must be caught: The Sealed Verdict, --setup=cross --zoom=1.0 --seconds=33.3 --fx-clock, its 15th frame just
 ##          after the stroke); --full-frames=<dir> also saves each frame whole, uncropped, as <dir>/<key>_<i>.png;
@@ -1484,6 +1487,7 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	var frames_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--frames")
 	var full_count := maxi(int(frames_arg), 1) if frames_arg != "" else PowerBook.CLIP_FRAMES
 	var no_sheet := "--no-sheet" in OS.get_cmdline_user_args()
+	var whole := "--whole" in OS.get_cmdline_user_args()
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
 	var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false,
@@ -1491,8 +1495,21 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	# The shots in time order: the sheet's CLIP_FRAMES, and (with --full-frames) `full_count` whole frames; one that falls on
 	# both is taken once.
 	var shots: Array[Dictionary] = []
+	# --times=t1,...,t16: the sheet's frames at these times (seconds after the cast, rising; on the effect's clock with --fx-clock).
+	var times: Array[float] = []
+	var times_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--times")
+	if times_arg != "":
+		for part in times_arg.split(","):
+			times.append(float(part))
+		var rising := true
+		for i in range(1, times.size()):
+			rising = rising and times[i] > times[i - 1]
+		if times.size() != PowerBook.CLIP_FRAMES or not rising:
+			print("BEHAVIOUR clip --times needs exactly %d rising values; using the even spacing" % PowerBook.CLIP_FRAMES)
+			times.clear()
 	for i in PowerBook.CLIP_FRAMES:
-		shots.append({"due": run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES), "sheet": i, "full": -1})
+		var shot_due := times[i] if not times.is_empty() else run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)
+		shots.append({"due": shot_due, "sheet": i, "full": -1})
 	if full_dir != "":
 		for i in full_count:
 			var due := run * (float(i) + 0.5) / float(full_count)
@@ -1520,8 +1537,15 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		var si: int = shot["sheet"]
 		if si < 0:
 			continue
-		var from := Vector2i((img.get_width() - crop.x) / 2, (img.get_height() - crop.y) / 2)
-		var frame := img.get_region(Rect2i(from, crop))
+		var cut := crop
+		if whole:
+			# --whole: the largest centred region with the clip's aspect, scaled down to the clip size.
+			var aspect := float(PowerBook.CLIP_SIZE.x) / float(PowerBook.CLIP_SIZE.y)
+			cut = Vector2i(img.get_width(), roundi(img.get_width() / aspect))
+			if cut.y > img.get_height():
+				cut = Vector2i(roundi(img.get_height() * aspect), img.get_height())
+		var from := Vector2i((img.get_width() - cut.x) / 2, (img.get_height() - cut.y) / 2)
+		var frame := img.get_region(Rect2i(from, cut))
 		frame.convert(Image.FORMAT_RGBA8)
 		frame.resize(PowerBook.CLIP_SIZE.x, PowerBook.CLIP_SIZE.y, Image.INTERPOLATE_BILINEAR)
 		sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(si).position))

@@ -16,28 +16,29 @@ const _HIT_LAYERS: Array[String] = ["table", "stations", "wall"]
 
 const STATIONS := {
 	"descend": {
-		"name": "World Table", "rect": Rect2(200.0, 150.0, 240.0, 110.0), "focus": Vector2(320.0, 205.0),
-		"layer": "table", "keys": [KEY_ENTER, KEY_KP_ENTER, KEY_1], "action": "descend",
+		"name": "World Table", "rect": Rect2(207.0, 232.0, 218.0, 88.0), "focus": Vector2(316.0, 262.0),
+		"layer": "wall", "keys": [KEY_ENTER, KEY_KP_ENTER, KEY_1], "action": "descend",
 	},
 	"tree": {
-		"name": "Ability Tree", "rect": Rect2(40.0, 70.0, 110.0, 130.0), "focus": Vector2(95.0, 135.0),
-		"layer": "stations", "keys": [KEY_T, KEY_2], "action": "tree",
+		"name": "Ability Tree", "rect": Rect2(0.0, 125.0, 68.0, 182.0), "focus": Vector2(34.0, 215.0),
+		"layer": "wall", "keys": [KEY_T, KEY_2], "action": "tree",
 	},
 	"faith": {
-		"name": "Faith Altar", "rect": Rect2(490.0, 80.0, 110.0, 120.0), "focus": Vector2(545.0, 140.0),
-		"layer": "stations", "keys": [KEY_F, KEY_3], "action": "faith",
+		"name": "Faith Altar", "rect": Rect2(548.0, 192.0, 82.0, 110.0), "focus": Vector2(590.0, 245.0),
+		"layer": "wall", "keys": [KEY_F, KEY_3], "action": "faith",
 	},
 	"awaken": {
-		"name": "Rite Door", "rect": Rect2(170.0, 62.0, 80.0, 78.0), "focus": Vector2(210.0, 100.0),
+		"name": "Rite Door", "rect": Rect2(122.0, 82.0, 112.0, 148.0), "focus": Vector2(178.0, 156.0), "art": Rect2(116.0, 62.0, 132.0, 226.0),
 		"layer": "wall", "keys": [KEY_A, KEY_4], "action": "awaken",
 	},
 }
 
-## Pieces that are drawn but cannot be clicked.
+## Pieces that are drawn but cannot be clicked. The stations are painted in the wall's own picture (one scene, one camera),
+## so they ride the wall's layer; a station's optional "art" rect is where its picture is drawn when that is larger than
+## the rect that is clicked (the Rite Door's step and the light it throws).
 const SCENERY: Array = [
 	{"name": "wall", "rect": Rect2(-100.0, 0.0, 840.0, 360.0), "layer": "wall"},
-	{"name": "table", "rect": Rect2(180.0, 140.0, 280.0, 130.0), "layer": "table"},
-	{"name": "desk", "rect": Rect2(-100.0, 300.0, 840.0, 60.0), "layer": "desk"},
+	{"name": "desk", "rect": Rect2(-100.0, 283.0, 840.0, 77.0), "layer": "desk"},
 ]
 
 

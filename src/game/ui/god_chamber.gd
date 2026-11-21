@@ -332,7 +332,11 @@ func _draw_station(key: String) -> void:
 	var state := station_state(key)
 	if state == "hover":
 		state = ""  # hovering lights the outline, not the picture
-	ChamberArt.draw(_ui, key, menu_rect(key), state)
+	var st: Dictionary = ChamberLayout.STATIONS[key]
+	var at := menu_rect(key)
+	if st.has("art"):  # the picture is larger than the rect that is clicked
+		at = _layer_rect(st["art"], st["layer"])
+	ChamberArt.draw(_ui, key, at, state)
 
 
 func _draw_ui() -> void:
@@ -498,12 +502,20 @@ func under_bar_baseline(i: int) -> float:
 	return bar_rect().end.y + 14.0 + UiTheme.LINE_BODY * float(i)
 
 
+## One centred line on a dark plate, so it reads over the painted room (the desk's papers sit under the bottom lines).
+func _centred(text: String, baseline: float, size: int, col: Color) -> void:
+	var w := UiTheme.width(text, size)
+	var x := roundf(320.0 - w * 0.5)
+	_ui.draw_rect(Rect2(x - 5.0, baseline - 10.0, w + 10.0, 14.0), Color(0.03, 0.03, 0.05, 0.78))
+	UiTheme.text(_ui, Vector2(x, baseline), text, size, col)
+
+
 ## The Hunt and the seal, in red, centred under the bar.
 func _draw_under_bar() -> void:
 	var i := 0
 	for s: String in [status.hunt_line(), status.seal_line()]:
 		if s != "":
-			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(s) * 0.5), under_bar_baseline(i)), s, UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
+			_centred(s, under_bar_baseline(i), UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
 			i += 1
 
 
@@ -524,19 +536,19 @@ func _stack() -> Dictionary:
 ## The bottom block, stacked upward from the keys hint: the blocked line, the stolen gifts, the one-off line (wrapped to 600).
 func _draw_bottom() -> void:
 	var hint := hint_text()
-	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), HINT_Y), hint, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	_centred(hint, HINT_Y, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
 	var at := _stack()
 	var blocked := status.blocked_line()
 	if blocked != "":
-		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(blocked, UiTheme.SIZE_SMALL) * 0.5), at.blocked), blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD_TEXT)
+		_centred(blocked, at.blocked, UiTheme.SIZE_SMALL, UiTheme.COL_BAD_TEXT)
 	var gifts := status.gifts_line()
 	if gifts != "":
-		UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(gifts) * 0.5), at.gifts), gifts, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
+		_centred(gifts, at.gifts, UiTheme.SIZE_BODY, UiTheme.COL_GOLD)
 	if line != "":
 		var wrapped := UiTheme.wrap(line, LINE_WIDTH, UiTheme.SIZE_BODY)
 		var y: float = at.line
 		for i in range(wrapped.size() - 1, -1, -1):
-			UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(wrapped[i]) * 0.5), y), wrapped[i], UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
+			_centred(wrapped[i], y, UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
 			y -= UiTheme.LINE_BODY
 
 

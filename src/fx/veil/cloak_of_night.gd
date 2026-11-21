@@ -17,8 +17,13 @@ const KEY := &"cloak"
 ## The person's meta that names the cast keeping his cloak.
 const OWNER := &"cloak_owner"
 
+## The cast's look (Veil review): how high over the click the cloth unfurls.
+const CLOTH_UP := -34.0
+
 ## The instance ids of the people this cast cloaked (they may be freed meanwhile).
 var _ids: Array[int] = []
+## The cast's look while it plays (tests): the cloth, the strands and the wraps.
+var cast_look: Node2D
 ## The shimmers, one per cloaked person.
 var shimmers: Array[Node2D] = []
 
@@ -48,6 +53,15 @@ func _build() -> void:
 	VeilParts.land(self, origin, r)
 	if ctx != null:
 		ctx.play(&"v_cloak", origin)
+	if ctx != null and ctx.overhead != null and DominionParts.staged(self):
+		# The cast's look (Veil review, spec 5): the dark cloth unfurls over the click, a strand flies to each one it hides and
+		# wraps him.
+		var c := VeilCastLooks.CloakCast.new()
+		c.cloth_at = Iso.ground_to_screen(origin) + Vector2(0, CLOTH_UP)
+		c.land = T_LAND
+		for p in marked:
+			c.ids.append(p.get_instance_id())
+		cast_look = track(c, ctx.overhead) as Node2D
 	if marked.is_empty():
 		duration = 1.0
 		return
@@ -120,6 +134,8 @@ func _notification(what: int) -> void:
 ## The dark shimmer over one cloaked person, for as long as `fx_id`'s cast keeps him. Drawn only (no simulation state); it frees
 ## itself when the cloak lifts or he is gone, and hides while he is indoors.
 class CloakShimmer extends Node2D:
+	## The hem's mean alpha (Veil review).
+	const EDGE_A := 0.45
 	var who_id := 0
 	var fx_id := 0
 	var _head := 20.0
@@ -160,6 +176,10 @@ class CloakShimmer extends Node2D:
 		var top := -_head - 1.0
 		var veil := PackedVector2Array([Vector2(-w, top + 3), Vector2(0, top), Vector2(w, top + 3), Vector2(w + 1, 1), Vector2(-w - 1, 1)])
 		draw_colored_polygon(veil, Color(VeilParts.BLACK, 0.42))
+		# Its edge, a little stronger (Veil review): a violet hem that breathes, so the player finds his own cloaked people.
+		var hem := veil.duplicate()
+		hem.append(veil[0])
+		draw_polyline(hem, Color(VeilParts.VEIL, EDGE_A + 0.12 * sin(_clock * 2.4)), 1.0)
 		# Violet motes drift up the body and fade: the shimmer.
 		for i in 4:
 			var ph := fposmod(_clock * 0.9 + float(i) * 0.25, 1.0)

@@ -3,6 +3,8 @@ extends RefCounted
 ## town sees only people resting; then they are found dead (&"dreamless", a body). Anyone asleep at the sit is taken at once (&"dreamt",
 ## no body). Skips the gone; quiet; teardown with a control; the dusk; no crowd.
 
+const FxStage := preload("res://tests/fx_stage.gd")
+
 
 static func _setup() -> Array:
 	var env := EnvironmentField.new()
@@ -66,6 +68,62 @@ static func _away(crowd: Crowd, keep: Array) -> void:
 		if not keep.has(p) and p.is_alive():
 			p.ground_pos = Vector2(-30.0 + float(i % 20) * 0.3, 30.0 + float(i / 20) * 0.3)
 		i += 1
+
+
+## The cast's look (Veil review), staged in the tree: the dark breath on the ground out to the reach, a thread over each sitter that
+## thins with the rest left (read from the effect) and snaps when he is found or woken; all gone at end_now() and with a freed cast.
+static func _looks(t, made: Array, at: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var s: Person = crowd.citizens[21]
+	var w: Person = crowd.citizens[22]
+	_away(crowd, [s, w])
+	s.ground_pos = at + Vector2(0.2, 0.0)
+	s.mind = Person.Mind.CALM
+	var keep := [ctx.overhead, ctx.ground]
+	var stage := Node2D.new()
+	t.root.add_child(stage)
+	await t.process_frame
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	stage.add_child(ctx.ground)
+	stage.add_child(ctx.overhead)
+	var stub := FxStage.StageImpact.new()
+	ctx.impact = stub
+	var fx := _cast(ctx, at, false)
+	t.check(fx.breath != null and fx.breath.get_parent() == ctx.ground and is_equal_approx((fx.breath as VeilCastLooks.Wave).r, 1.0)
+		and fx.threads != null and fx.threads.get_parent() == ctx.overhead, "staged: the dark breath on the ground out to the light reach (1.0); the threads overhead")
+	fx._process(DreamlessFx.T_SIT + 0.05)
+	t.check(fx.resting == 1 and fx.threads.up() == 1 and fx.rests(s) and absf(fx.rest_left() - (DreamlessFx.REST - 0.05)) < 0.001,
+		"staged: a thread rises over the sitter; the rest left is the effect's own (%.2f)" % fx.rest_left())
+	fx._process(DreamlessFx.REST)
+	fx.threads._process(0.01)
+	t.check(not s.is_alive() and fx.threads.up() == 0 and fx.rest_left() == 0.0, "staged: found -- his thread snaps")
+	var pieces: Array = [fx.breath, fx.threads]
+	fx.end_now()
+	await t.process_frame
+	t.check(pieces.all(func(n: Variant) -> bool: return n == null or not is_instance_valid(n)), "staged: end_now takes every piece of the look")
+	# Woken by a hurt: his thread snaps too.
+	_away(crowd, [w])
+	w.ground_pos = at + Vector2(0.2, 0.0)
+	w.mind = Person.Mind.CALM
+	var fx2 := _cast(ctx, at, false)
+	fx2._process(DreamlessFx.T_SIT + 0.05)
+	var up := fx2.threads.up()
+	w.hurt(0.01, null)
+	fx2._process(0.1)
+	fx2.threads._process(0.01)
+	t.check(up == 1 and fx2.threads.up() == 0 and w.is_alive(), "staged: woken by a hurt, his thread snaps")
+	var th2: Node = fx2.threads
+	fx2.free()
+	await t.process_frame
+	t.check(not is_instance_valid(th2), "staged: a freed cast leaves no thread")
+	crowd.dusk.clear()
+	ctx.impact = null
+	stub.free()
+	ctx.overhead = keep[0]
+	ctx.ground = keep[1]
+	stage.free()
 
 
 static func run(t) -> void:
@@ -278,6 +336,7 @@ static func run(t) -> void:
 	fx6.free()
 	wk.wake()
 	crowd.dusk.clear()
+	await _looks(t, made, at)
 	_done(made)
 
 	# --- quiet, dusk laid, no crowd: builds and finishes

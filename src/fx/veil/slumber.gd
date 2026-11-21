@@ -10,8 +10,20 @@ const SLEEP_TIME := 20.0
 const T_FALL := 0.6
 const LID := [Color("b98cff"), Color("5a2aa8"), Color("2a1050"), Color(0.04, 0.02, 0.09, 0.5)]
 
+## The cast's look (Veil review): how long the mist wave lies at the edge after the landing and fades; the eye's life and height
+## over the click; how long the dust takes to sink.
+const WAVE_HOLD := 0.35
+const WAVE_FADE := 0.75
+const EYE_LIFE := 1.6
+const EYE_UP := -30.0
+const DUST_LIFE := 1.1
+
 ## How many fell asleep.
 var asleep := 0
+## The look's pieces while they play (tests): the mist wave, the eye, the dust.
+var waves: Array[Node2D] = []
+var glyph: Node2D
+var dust: Node2D
 var _dark := false
 var _r := 0.0
 
@@ -36,6 +48,28 @@ func _build() -> void:
 	down.gravity = 18.0
 	down.burst(14, {"radius": _r * 12.0, "speed": Vector2(2, 8), "dir": PixelParticles.Dir.INWARD, "alt": Vector2(0, 6),
 		"alt_speed": Vector2(-8, 0), "life": Vector2(0.6, 0.9), "size": Vector2(2, 3), "size_end_mul": 0.4})
+	_cast_look()
+
+
+## The cast's look (Veil review, spec 5): a low wave of violet mist rolls out from the click to the edge of the reach (the true
+## reach, light or dark), and an eye over the middle that blinks shut at the landing. The dust onto each sleeper is _fall()'s.
+func _cast_look() -> void:
+	var wave := VeilCastLooks.Wave.new()
+	wave.r = _r
+	wave.rim = Color(VeilParts.VEIL, 0.6)
+	wave.fill = Color(VeilParts.DUSK, 0.18)
+	wave.edge = Color(VeilParts.SILVER, 0.35)
+	wave.grow = T_FALL
+	wave.hold = WAVE_HOLD
+	wave.fade = WAVE_FADE
+	wave.position = origin
+	wave.z_index = 2
+	waves.append(track(wave, ctx.ground) as Node2D)
+	var eye := VeilCastLooks.EyeGlyph.new()
+	eye.shut_at = T_FALL
+	eye.life = EYE_LIFE
+	eye.position = Iso.ground_to_screen(origin) + Vector2(0, EYE_UP)
+	glyph = track(eye, ctx.overhead) as Node2D
 
 
 ## The living out in the open within `r` of `at`, nearest first and then by instance id (no luck): who Slumber puts to sleep.
@@ -52,14 +86,22 @@ static func sleepers_at(field: EnemyField, at: Vector2, r: float) -> Array[Perso
 
 func _fall() -> void:
 	var staged := DominionParts.staged(self)
+	var spots: Array[Vector2] = []
 	if ctx.field != null:
 		for p in sleepers_at(ctx.field, origin, _r):
 			if p.sleep(SLEEP_TIME, _dark):
 				asleep += 1
 				if staged:
 					DominionParts.motes(self, p.ground_pos, LID, 4)
+					spots.append(Iso.ground_to_screen(p.ground_pos))
 	if not staged:
 		return
+	if not spots.is_empty():
+		# Heavy silver dust sinks onto each sleeper.
+		var d := VeilCastLooks.DustFall.new()
+		d.spots = spots
+		d.life = DUST_LIFE
+		dust = track(d, ctx.overhead) as Node2D
 	# A slow violet hush: a soft ring settles to the edge. No flash.
 	var w := FxParts.shockwave(self, origin, _r, FxParts.VOID)
 	w.set_param("thickness", 0.1)

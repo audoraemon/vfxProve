@@ -2,6 +2,8 @@ extends RefCounted
 ## Slumber (Veil, Tier 2): everyone in the open within 1.5 (light) / 3.5 (dark) sleeps 20 s; light sleep wakes to a loud blow, dark sleep
 ## only to a hurt; quiet; the dusk it leaves; two casts; teardown; no crowd.
 
+const FxStage := preload("res://tests/fx_stage.gd")
+
 
 static func _setup() -> Array:
 	var env := EnvironmentField.new()
@@ -38,6 +40,58 @@ static func _done(made: Array) -> void:
 	ctx.overhead.free()
 	ctx.ground.free()
 	(made[4] as Node).free()
+
+
+## A piece of a look that is gone (freed or on its way).
+static func _gone(n: Variant) -> bool:
+	return n == null or not is_instance_valid(n) or (n as Node).is_queued_for_deletion()
+
+
+## The cast's look (Veil review), staged in the tree: the mist wave on the ground out to the true reach, the eye overhead, the dust
+## once they sleep; all gone at end_now() and with a freed cast.
+static func _looks(t, made: Array, at: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var p: Person = crowd.citizens[7]
+	p.ground_pos = at + Vector2(0.3, 0.0)
+	p.mind = Person.Mind.CALM
+	var keep := [ctx.overhead, ctx.ground]
+	var stage := Node2D.new()
+	t.root.add_child(stage)
+	await t.process_frame
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	stage.add_child(ctx.ground)
+	stage.add_child(ctx.overhead)
+	var stub := FxStage.StageImpact.new()
+	ctx.impact = stub
+	var fx := _cast(ctx, at, false)
+	var wave: Node2D = fx.waves[0] if fx.waves.size() == 1 else null
+	t.check(wave != null and wave.get_parent() == ctx.ground and is_equal_approx((wave as VeilCastLooks.Wave).r, 1.5)
+		and fx.glyph != null and fx.glyph.get_parent() == ctx.overhead,
+		"staged: the mist wave on the ground out to the light reach (1.5), the eye overhead")
+	fx._process(SlumberFx.T_FALL + 0.05)
+	t.check(fx.asleep >= 1 and fx.dust != null and fx.dust.get_parent() == ctx.overhead and (fx.dust as VeilCastLooks.DustFall).spots.size() == fx.asleep,
+		"staged: silver dust sinks onto each sleeper (%d)" % fx.asleep)
+	var pieces: Array = [wave, fx.glyph, fx.dust]
+	fx.end_now()
+	await t.process_frame
+	t.check(pieces.all(func(n: Variant) -> bool: return _gone(n)), "staged: end_now takes every piece of the look")
+	p.wake()
+	crowd.dusk.clear()
+	var dfx := _cast(ctx, at, true)
+	var dwave: Node2D = dfx.waves[0]
+	var deye := dfx.glyph
+	t.check(is_equal_approx((dwave as VeilCastLooks.Wave).r, 3.5), "staged dark: the wave runs to the dark reach (3.5)")
+	dfx.free()
+	await t.process_frame
+	t.check(_gone(dwave) and _gone(deye), "staged: a freed cast leaves no piece of its look")
+	crowd.dusk.clear()
+	ctx.impact = null
+	stub.free()
+	ctx.overhead = keep[0]
+	ctx.ground = keep[1]
+	stage.free()
 
 
 static func _cast(ctx: FxContext, at: Vector2, dark: bool) -> SlumberFx:
@@ -172,6 +226,7 @@ static func run(t) -> void:
 	t.check(c.is_deep_asleep(), "control: left to run, they sleep")
 	control.free()
 	crowd.dusk.clear()
+	await _looks(t, made, at)
 	_done(made)
 
 	# --- no crowd: builds and finishes

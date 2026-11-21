@@ -16,6 +16,13 @@ const WALL_REACH := 2.0
 const WALL_GAP := 0.3
 const BREATH := [Color("3a2a55"), Color("1a1030"), Color("0b0716"), Color(0.03, 0.02, 0.06, 0.5)]
 
+## The cast's look (Veil review): the dark breath sinking at the click.
+const SINK := [Color("4a3470"), Color("2a1a48"), Color("140c24"), Color(0.05, 0.03, 0.09, 0.4)]
+
+## The look's pieces while they play (tests): the breath on the ground, the threads.
+var breath: Node2D
+var threads: VeilCastLooks.Threads
+
 var _victims: Array[Person] = []
 var _sat: Array[Person] = []
 var _undone := false
@@ -51,6 +58,43 @@ func _build() -> void:
 			p.set_goal(spot)
 	at(T_SIT, _sit)
 	at(T_SIT + REST, _found)
+	if DominionParts.staged(self):
+		_cast_look(r)
+
+
+## The cast's look (Veil review, spec 5): a slow dark breath sinks at the click and spreads over the reach; the threads over the
+## sitters are drawn by one node, fed at the sit.
+func _cast_look(r: float) -> void:
+	var screen := Iso.ground_to_screen(origin)
+	var sink := VeilCastLooks.particles(self, ctx.overhead, screen, PixelParticles.Shape.PUFF, SINK,
+		VeilCastLooks.seed_of(origin, 31))
+	sink.drag = 0.7
+	sink.burst(18, {"radius": 7.0, "speed": Vector2(4, 16), "dir": PixelParticles.Dir.OUTWARD, "alt": Vector2(30, 46),
+		"alt_speed": Vector2(-44, -24), "life": Vector2(0.8, 1.1), "size": Vector2(3, 5), "size_end_mul": 1.5})
+	var wave := VeilCastLooks.Wave.new()
+	wave.r = r
+	wave.rim = Color(VeilParts.BLACK, 0.5)
+	wave.fill = Color(VeilParts.BLACK, 0.2)
+	wave.edge = Color(VeilParts.SILVER, 0.4)
+	wave.grow = T_SIT
+	wave.hold = 0.5
+	wave.fade = 1.0
+	wave.position = origin
+	wave.z_index = 2
+	breath = track(wave, ctx.ground) as Node2D
+	var th := VeilCastLooks.Threads.new()
+	th.fx_id = get_instance_id()
+	threads = track(th, ctx.overhead) as VeilCastLooks.Threads
+
+
+## Seconds of the rest still to run (0 once he is found).
+func rest_left() -> float:
+	return maxf(T_SIT + REST - t, 0.0)
+
+
+## Whether `p` rests under this cast now (sat, asleep, the status on him).
+func rests(p: Person) -> bool:
+	return p != null and _sat.has(p) and p.statuses.has(&"dreamless")
 
 
 ## Where `p` sits: against the nearest standing wall within WALL_REACH, else where he stands (Vector2.INF: stay).
@@ -127,6 +171,8 @@ func _found() -> void:
 func _breath(p: Person) -> void:
 	if not DominionParts.staged(self):
 		return
+	if threads != null and is_instance_valid(threads):
+		threads.add(p)  # his thread rises
 	var m := FxParts.particles(self, ctx.overhead, Iso.ground_to_screen(p.ground_pos) + Vector2(0, -10), PixelParticles.Shape.PUFF, BREATH)
 	m.gravity = -14.0
 	m.drag = 1.6

@@ -30,6 +30,7 @@ static func run(t) -> void:
 	_taken_by_fire_rejoins(t)
 	_stale_leg(t)
 	_fill_takes_walker(t)
+	_freed_mate(t)
 
 
 ## Every soldier thinks and moves one step, then the crowd's own tick.
@@ -402,3 +403,26 @@ static func _fill_takes_walker(t) -> void:
 	gj.step(1.0)
 	t.check(gj.job_of(p) == job, "a board tick takes a beat man who is mid-leg")
 	_done(made)
+
+
+## A beat man whose mate's body has been freed (the dead fade out) walks on alone; the freed body is never read
+## (the whole suite found this as 316 runtime errors in the Face Halcyon suite).
+static func _freed_mate(t) -> void:
+	City.use(&"aldermere")
+	var made := Corps._crowd()
+	var crowd: Crowd = made[0]
+	var e: Array = []
+	for b in crowd._beats:
+		if int(b[7]) >= 0 and is_instance_valid(b[0]) and (b[0] as Person).corps == Person.Corps.NONE:
+			e = b
+			break
+	t.check(not e.is_empty(), "a beat man with a mate is there")
+	if not e.is_empty():
+		var mate: Person = crowd._beats[int(e[7])][0]
+		crowd.soldiers.erase(mate)
+		mate.free()
+		t.check(crowd._mate_ready(e), "a freed mate is not waited for")
+		_run_for(crowd, 10.0)
+		t.check(is_instance_valid(e[0]) and (e[0] as Person).is_alive(), "the man left walks on after his mate's body is freed")
+	_done(made)
+

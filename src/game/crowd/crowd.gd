@@ -986,8 +986,10 @@ func _mate_ready(e: Array) -> bool:
 	if int(e[7]) < 0:
 		return true
 	var m: Array = _beats[e[7]]
+	if not is_instance_valid(m[0]):
+		return true  # the mate's body is freed: a typed assignment of it would be a runtime error
 	var q: Person = m[0]
-	if not is_instance_valid(q) or not q.is_alive() or not q.on_beat() or guard_jobs.on_job(q) or held_by_mission(q):
+	if not q.is_alive() or not q.on_beat() or guard_jobs.on_job(q) or held_by_mission(q):
 		return true
 	var n: int = (e[1] as Array).size()
 	var ahead := posmod(int(m[2]) - int(e[2]), n)

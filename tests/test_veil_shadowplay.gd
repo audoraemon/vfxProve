@@ -476,7 +476,18 @@ static func _staged(t, made: Array, at: Vector2, c: Array) -> void:
 	var stub := FxStage.StageImpact.new()
 	ctx.impact = stub
 	var fx := _cast(ctx, at, true)
+	var ripple := fx.ripple
+	t.check(ripple != null and ripple.get_parent() == ctx.ground and is_equal_approx((ripple as VeilCastLooks.Wave).r, 6.0)
+		and (ripple as VeilCastLooks.Wave).kind == VeilCastLooks.Wave.Kind.RIPPLE,
+		"staged: a dark ripple crosses the ground out to the dark reach (6)")
 	fx._process(ShadowPlayFx.T_RISE + 0.05)
+	var peel := fx.peel
+	t.check(peel != null and peel.get_parent() == ctx.overhead and (peel as VeilCastLooks.Peel).ids.size() == 1 and (peel as VeilCastLooks.Peel).ids[0] == p.get_instance_id(),
+		"staged: his shadow peels up from his feet (the peel holds him, overhead)")
+	var lying: Node2D = fx._marks[0] if not fx._marks.is_empty() else null
+	t.check(lying != null and lying.get_parent() == ctx.ground
+		and (Iso.BASIS * lying.transform).origin.is_equal_approx(Iso.ground_to_screen(p.ground_pos)),
+		"VRB1: the lying outline sits at his feet in screen pixels (the ground layer's basis undone)")
 	await t.process_frame
 	var edges := fx.edges()
 	var marks := fx.marks()
@@ -489,8 +500,34 @@ static func _staged(t, made: Array, at: Vector2, c: Array) -> void:
 		"staged: the shadow is a BLACK silhouette with its edge, and a lying outline where he stood (%d, %d)" % [edges, marks])
 	t.check(after == 0 and p.self_modulate == Color.WHITE and p.get_children().filter(func(n: Node) -> bool: return n is ShadowPlayFx.Edge).is_empty(),
 		"staged: at the end no edge or outline is left")
+	t.check(not is_instance_valid(ripple) and not is_instance_valid(peel), "staged: the ripple and the peel are gone with the cast")
 	if is_instance_valid(fx):
 		fx.free()
+	# The dark's end: a soldier's shadow fades as an event that outlives the cast, then frees itself.
+	var s := _guard(crowd, [p])
+	_away(crowd, [s])
+	s.ground_pos = at
+	s.mind = Person.Mind.POST
+	var dfx := _cast(ctx, at, true)
+	dfx._process(ShadowPlayFx.T_RISE + 0.05)
+	dfx._process(ShadowPlayFx.SPAN)
+	var fades: Array = ctx.overhead.get_children().filter(func(n: Node) -> bool: return n is VeilCastLooks.ShadeFade)
+	t.check(dfx.taken == 1 and dfx.fades == 1 and fades.size() == 1 and (fades[0] as Node).is_in_group(SolarisPit.GROUP),
+		"staged dark end: the soldier's shadow fades as an event (a ShadeFade, a lasting piece) (%d, %d)" % [dfx.fades, fades.size()])
+	if fades.size() == 1:
+		(fades[0] as Node)._process(VeilCastLooks.ShadeFade.LIFE + 0.05)
+		await t.process_frame
+		t.check(not is_instance_valid(fades[0]), "and frees itself when it has faded")
+	if is_instance_valid(dfx):
+		dfx.free()
+	# A freed cast mid-rise leaves no piece of its look.
+	_away(crowd, [p])
+	p.ground_pos = at
+	var ffx := _cast(ctx, at, false)
+	var r2 := ffx.ripple
+	ffx.free()
+	await t.process_frame
+	t.check(not is_instance_valid(r2), "staged: a freed cast leaves no ripple")
 	ctx.impact = null
 	stub.free()
 	stage.remove_child(world)

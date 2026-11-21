@@ -324,3 +324,37 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VRA1 (Task A, previews): the kill colour is Targeting.COL_MAD (Death Mark's "this one is marked to die"); Silent Doom's own ring
   colour COL_INNER is the normal ring, so the two read apart. The preview is pure (Targeting.veil_ringed, Targeting.blight_ill): it asks
   the power's own pick with VeilRules.size at Crowd.in_dark(press), the dark Rules.cast() stamps. Blight keeps no ring radius and no tag.
+
+## Veil review, Task B: stronger casts and Blight's mark (VRB)
+
+- VRB1: Shadow Play's lying outline (ShadowPlayFx.Mark) was never seen: it sat on ctx.ground, which carries Iso.BASIS, at a screen
+  position, so it was drawn far off. It now undoes the basis (transform = BASIS^-1 * the screen point), so it lies at the feet in
+  screen pixels, under the people; at z 3 and alpha 0.34 (was 0.22) so the god can find it on lit stone.
+- VRB2: The new looks live in a new file, src/fx/veil/veil_cast_looks.gd (VeilCastLooks), not in veil_parts.gd: the shared file is
+  untouched, so the other review tasks cannot clash with it.
+- VRB3: Every new particle system takes its own seed (VeilCastLooks.seed_of: the cast point and a constant), never ctx.rng; the
+  particles the powers already had keep their FxParts.particles() calls in the same order, so ctx.rng is drawn exactly as before.
+- VRB4: Blight's mark is the person's own badge (Person.set_badge), renewed every frame for HOLD 0.5 s while he is ill out of doors,
+  so it never outlives its mark by more than HOLD even when the mark is freed off the tree. A badge another power set when he is struck
+  is left alone (only the rot motes show); one that comes over ours later ends our claim and stays. The glyph is a drop of sickness,
+  in BlightFx.ROT's lightest lightened to a7b46e so it reads on the badge's dark plate. It is laid with or without a staged context
+  (it is the person's drawn state, as the Death Mark's skull).
+- VRB5: Dreamless's thread snaps when the sitter is found, woken by a hurt, or otherwise no longer rests under the cast
+  (DreamlessFx.rests()); its length and fraying read DreamlessFx.rest_left(). Cut short (end_now, a freed cast) it goes with the
+  cast, without a snap.
+- VRB6: Shadow Play's dark fade of a soldier's shadow (VeilCastLooks.ShadeFade) is a lasting piece in SolarisPit.GROUP: the end and the
+  cast's finish fall on the same frame, so it cannot be one of the cast's tracked nodes. It frees itself after 1.4 s.
+- VRB7: A blighted building gets no new mark this round. By day it reads only through the dusk round it and the rot's puff at the cast;
+  the dimmed windows show at night. Left for the user's eye (see the Task B report).
+- VRB8 (polish, fix round 2): Blight's glyph colour is a deep rot green 3c9646 (a7b46e and then 8fd04a were lifted and warmed
+  by the town's day grade into a yellow, gold-looking token). The badge is drawn through the same light and grade as the body (no
+  hue-keeping path), so the base is chosen dark and low in red: measured after the grade, day (108,197,65), dusk (93,179,62).
+  VRB4's colour line is superseded.
+- VRB9 (polish): two Blight marks on one man share his SICK glyph (a count of live marks per person, drawing only); only the last mark
+  standing lets it go, so freeing one cast's mark never drops the glyph while he is still ill. Another power's glyph is still never
+  touched, and one that comes over ours ends that mark's share. A mark freed off the tree gives its share up too (PREDELETE).
+- VRB10 (polish): a mission's quarry keeps his mark while ill_left() runs: hidden while he is indoors (the badge cleared), shown again
+  when he comes out, gone when the illness ends. A citizen sent home sick keeps it until indoors, as before.
+- VRB11 (polish): Slumber's eye is an almond outline with a violet pupil, every lit pixel outlined in black, 13 x 7 at 2 px: it reads
+  as an eye that half-closes and shuts (lid curve with lashes) on dusk and on lit stone. Dreamless's thread is a silver pixel line with
+  a dark pixel either side, alpha at least 0.8 x the fray, 16-28 px tall, so it reads on bright cobbles.

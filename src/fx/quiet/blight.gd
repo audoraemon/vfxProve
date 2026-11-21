@@ -30,6 +30,9 @@ const LIGHT_R := 0.25
 ## What a foothold keeps on its building: {"dusk": its lasting patch's id, "ledger": the Dusk it was laid in}.
 const FOOTHOLD := &"blight_foothold"
 
+## The marks this cast laid on the sick (Veil review; they outlive it: tests read them while it lives).
+var marks: Array[Node] = []
+
 
 ## Whether Blight has a use to ruin in `s` (v0.05: the well and fountain, the Bell Tower, a gate or the postern, the dock, the
 ## cathedral). Such a building is blighted through EnvironmentField.blight(); Turncoat reads it too.
@@ -261,3 +264,16 @@ func _make_ill(sick: Array[Person]) -> void:
 			p.make_ill(ILL_TIME)
 		else:
 			p.send_home_sick()
+		_mark(p)
+
+
+## The mark of the sick (Veil review, spec 4): a sickness glyph over his head in the rot colour while he walks home (or, a quarry,
+## while he is ill), and a faint drift of rot motes behind him. A badge another power set stays (VeilCastLooks.BlightMark). It
+## outlives the cast (SolarisPit.GROUP) and frees itself, clearing the badge, when he is indoors, well or gone.
+func _mark(p: Person) -> void:
+	if ctx.overhead == null or not VeilCastLooks.BlightMark.ill(p):
+		return
+	var m := VeilCastLooks.BlightMark.new()
+	m.start(p)
+	ctx.overhead.add_child(m)
+	marks.append(m)

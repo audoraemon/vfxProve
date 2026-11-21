@@ -3,6 +3,8 @@ extends RefCounted
 ## 25 s. hidden_from_watch() answers for the witness check, the watch's sight and a soldier's choice of whom to fight; it is not a
 ## guise. The cloak counts down, a second cast takes over the count, and a cast ending, cut short or freed lifts only its own.
 
+const FxStage := preload("res://tests/fx_stage.gd")
+
 const RD := preload("res://tests/test_raise_dead.gd")
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const DT := 0.05
@@ -35,6 +37,7 @@ static func run(t) -> void:
 	_busy(t, made)
 	_indoors(t, made)
 	_shimmer(t, made)
+	await _looks(t, made)
 	RD._done(made)
 	_watcher(t)
 	_no_crowd(t)
@@ -243,6 +246,45 @@ static func _shimmer(t, made: Array) -> void:
 	m0._process(0.1)
 	t.check(m0.is_queued_for_deletion(), "it frees itself when the cloak lifts")
 	fx.end_now()
+
+
+## The cast's look (Veil review), staged in the tree: the cloth, a strand to each one it hides and the wrap, on the overhead layer,
+## gone at end_now() and with a freed cast; the shimmer's hem.
+static func _looks(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := RD._empty(made)
+	var ps := _ring(crowd, at, 3, 40)
+	var keep := [ctx.overhead, ctx.ground]
+	var stage := Node2D.new()
+	t.root.add_child(stage)
+	await t.process_frame
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	stage.add_child(ctx.ground)
+	stage.add_child(ctx.overhead)
+	var stub := FxStage.StageImpact.new()
+	ctx.impact = stub
+	var fx := _cast(ctx, at)
+	var look := fx.cast_look as VeilCastLooks.CloakCast
+	t.check(look != null and look.get_parent() == ctx.overhead and look.ids.size() == 3 and is_equal_approx(look.land, CloakOfNightFx.T_LAND)
+		and look.ids.has(ps[0].get_instance_id()), "staged: the cloth over the click, a strand and a wrap for each of the 3, overhead")
+	fx.end_now()
+	await t.process_frame
+	t.check(not is_instance_valid(look), "staged: end_now takes the cast's look")
+	var fx2 := _cast(ctx, at)
+	var look2 := fx2.cast_look
+	fx2.free()
+	await t.process_frame
+	t.check(not is_instance_valid(look2), "staged: a freed cast leaves no look")
+	t.check(CloakOfNightFx.CloakShimmer.EDGE_A > 0.0 and CloakOfNightFx.CloakShimmer.EDGE_A + 0.12 < 1.0,
+		"the shimmer keeps a violet hem (alpha %.2f)" % CloakOfNightFx.CloakShimmer.EDGE_A)
+	ctx.impact = null
+	stub.free()
+	ctx.overhead = keep[0]
+	ctx.ground = keep[1]
+	stage.free()
 
 
 ## The watch's sight: a patrol soldier beside a cloaked believer in the Hunt does not see him; the uncloaked control does.

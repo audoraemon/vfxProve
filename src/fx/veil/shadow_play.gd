@@ -21,12 +21,17 @@ const KEY := &"shadow"
 ## How long a shadow lies down at the end before the person gets up.
 const LIE := 1.5
 const RISE := [Color("b98cff"), Color("3b1470"), Color("07050c"), Color(0.03, 0.02, 0.05, 0.5)]
+## The lying outline: over the ground's own pieces, and how strong (VRB1: drawn where he stood at last, so a little stronger).
+const MARK_Z := 3
+const MARK_A := 0.34
 const FADE := [Color("cfd3e6"), Color("3b1470"), Color("07050c"), Color(0.03, 0.02, 0.05, 0.4)]
 
 ## How many became shadows, how many lay down and woke at the end, and how many were taken (dark).
 var shadows := 0
 var lain := 0
 var taken := 0
+## How many fades were drawn (staged, dark soldiers; tests).
+var fades := 0
 
 var _dark := false
 var _r := 0.0
@@ -36,6 +41,9 @@ var _held: Array[Person] = []
 var _edges := {}
 var _marks: Array[Node] = []
 var _undone := false
+## The cast's look while it plays (tests): the ripple across the ground, the shadows peeling up.
+var ripple: Node2D
+var peel: Node2D
 
 
 ## The living out in the open within `r` of `at`, nearest first and then by instance id (no luck): who becomes a shadow.
@@ -66,6 +74,18 @@ func _build() -> void:
 	mark.set_param("scan", 0.0)
 	mark.tween_param("reveal", 0.0, 1.0, T_RISE, 0.0, Tween.TRANS_SINE, Tween.EASE_OUT)
 	mark.life = T_RISE + 0.1
+	# The cast's look (Veil review, spec 5): a dark ripple crosses the ground out to the reach before the shadows rise.
+	var wave := VeilCastLooks.Wave.new()
+	wave.kind = VeilCastLooks.Wave.Kind.RIPPLE
+	wave.r = _r
+	wave.rim = Color(VeilParts.VEIL, 0.7)
+	wave.fill = Color(VeilParts.BLACK, 0.45)
+	wave.grow = T_RISE * 0.8
+	wave.hold = 0.2
+	wave.fade = 0.5
+	wave.position = origin
+	wave.z_index = 2
+	ripple = track(wave, ctx.ground) as Node2D
 
 
 ## Whether `p` is a shadow of this cast now.
@@ -77,6 +97,10 @@ func _rise() -> void:
 	if ctx.field == null:
 		return
 	var staged := DominionParts.staged(self)
+	var up: VeilCastLooks.Peel = null
+	if staged:
+		up = VeilCastLooks.Peel.new()
+		peel = track(up, ctx.overhead) as Node2D
 	for p in shadows_at(ctx.field, origin, _r):
 		p.statuses[KEY] = _me  # (a shadow of another cast is taken over: its end is this one's now)
 		p.self_modulate = VeilParts.BLACK
@@ -84,6 +108,7 @@ func _rise() -> void:
 		shadows += 1
 		if staged:
 			_dress(p)
+			up.ids.append(p.get_instance_id())  # his shadow peels up from his feet and stands
 			DominionParts.motes(self, p.ground_pos, RISE, 4)
 
 
@@ -95,7 +120,9 @@ func _dress(p: Person) -> void:
 	p.add_child(e)
 	_edges[p] = e
 	var m := Mark.new()
-	m.position = Iso.ground_to_screen(p.ground_pos)
+	# (VRB1) The ground layer carries the iso basis: undo it, so the outline is drawn in screen pixels at his feet, under the people.
+	m.transform = Iso.BASIS.affine_inverse() * Transform2D(0.0, Iso.ground_to_screen(p.ground_pos))
+	m.z_index = MARK_Z
 	m.take(p)
 	track(m, ctx.ground)
 	_marks.append(m)
@@ -124,6 +151,7 @@ func _end() -> void:
 		if _dark and p.soldier:
 			if staged:
 				DominionParts.motes(self, p.ground_pos, FADE, 6)  # the shadow fades where it stands
+				_fade_look(p)
 			_let_go(p)
 			if ctx.crowd != null and ctx.crowd.take(p, &"shade"):
 				taken += 1
@@ -133,6 +161,17 @@ func _end() -> void:
 		lain += 1
 	_held.clear()
 	_undo()
+
+
+## A soldier's shadow fading in the dark, made an event (Veil review): his silhouette stretches up and thins with a silver edge, a
+## ring goes out at his feet. It outlives the cast, which ends this frame (VeilCastLooks.ShadeFade: SolarisPit.GROUP, frees itself).
+func _fade_look(p: Person) -> void:
+	if ctx.overhead == null:
+		return
+	var f := VeilCastLooks.ShadeFade.new()
+	f.take(p, VeilCastLooks.seed_of(p.ground_pos, 47))
+	ctx.overhead.add_child(f)
+	fades += 1
 
 
 ## Lifts this cast's status from `p` and gives his look back (only when it is still this cast's: never another's).
@@ -227,7 +266,7 @@ class Mark extends Node2D:
 		if _sil.size == Vector2.ZERO or _dst.size == Vector2.ZERO:
 			return
 		draw_set_transform(Vector2.ZERO, -PI * 0.5, Vector2.ONE)
-		draw_texture_rect_region(PeopleArt.atlas(), _dst, _sil, Color(VeilParts.VEIL, 0.22))
+		draw_texture_rect_region(PeopleArt.atlas(), _dst, _sil, Color(VeilParts.VEIL, ShadowPlayFx.MARK_A))
 
 
 ## The white silhouette frame of what `p` drew last (PeopleArt's silhouette block sits beside the frame's), or an empty rect.

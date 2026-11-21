@@ -129,6 +129,111 @@ static func _cast(ctx: FxContext, at: Vector2, dark := false, run := BlightFx.T_
 	return fx
 
 
+## Blight's mark (Veil review, spec 4): the sick carry a sickness glyph over the head in the rot colour -- the game's own badge -- while
+## they walk home; it goes when they are indoors. A badge another power set is left alone. A quarry carries it while ill. The mark is a
+## lasting piece (SolarisPit.GROUP) on the overhead layer; freed, it leaves at most its HOLD of badge, which runs down on its own.
+static func _mark(t, made: Array, open: Vector2) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var sick := VeilCastLooks.BlightMark.SICK
+	_scatter(crowd)
+	crowd.dusk.clear()
+	var p: Person = crowd.citizens[12]
+	p.ground_pos = open
+	p.home_sick = false
+	p.clear_badge()
+	var fx := _cast(ctx, open) as BlightFx
+	var m: VeilCastLooks.BlightMark = fx.marks[0] if fx.marks.size() == 1 else null
+	t.check(p.home_sick and m != null and m.get_parent() == ctx.overhead and m.is_in_group(SolarisPit.GROUP)
+		and p.badge_glyph == sick and p.badge_left > 0.0 and p.badge_color == VeilCastLooks.ROT and m.owns,
+		"the sick carry the sickness glyph over the head in the rot colour (a lasting mark, overhead)")
+	fx.end_now()
+	p._think(2.0)
+	m._process(0.1)
+	t.check(is_instance_valid(m) and not m.is_queued_for_deletion() and p.badge_glyph == sick and p.badge_left > 0.0,
+		"it outlives the cast and is kept up on the way home")
+	p.inside = true
+	m._process(0.1)
+	t.check(m.is_queued_for_deletion() and p.badge_left == 0.0, "indoors: the mark goes, and the badge with it")
+	p.inside = false
+	# Another power's badge is left alone.
+	_scatter(crowd)
+	var o: Person = crowd.citizens[13]
+	o.ground_pos = open
+	o.set_badge(DominionParts.EYE, Color.WHITE, 5.0)
+	var fx2 := _cast(ctx, open) as BlightFx
+	var m2: VeilCastLooks.BlightMark = fx2.marks[0] if fx2.marks.size() == 1 else null
+	m2._process(0.1)
+	t.check(o.home_sick and m2 != null and not m2.owns and o.badge_glyph == DominionParts.EYE,
+		"a badge another power set stays: the mark does not overwrite it")
+	fx2.end_now()
+	m2.free()
+	t.check(o.badge_glyph == DominionParts.EYE and o.badge_left > 0.0, "and freeing the mark leaves the other badge")
+	# A quarry carries it while ill, and loses it when well.
+	_scatter(crowd)
+	var q: Person = crowd.citizens[14]
+	q.ground_pos = open
+	q.clear_badge()
+	var dir := TestDirector.new()
+	dir.mine = q
+	ctx.rules.director = dir
+	var fx3 := _cast(ctx, open) as BlightFx
+	ctx.rules.director = null
+	var m3: VeilCastLooks.BlightMark = fx3.marks[0] if fx3.marks.size() == 1 else null
+	t.check(not q.home_sick and q.ill_left() > 0.0 and m3 != null and q.badge_glyph == sick, "a quarry carries the mark while ill")
+	fx3.end_now()
+	# A quarry who steps indoors keeps his mark, hidden; out again it shows; it goes only when he is well.
+	q.inside = true
+	m3._process(0.1)
+	t.check(is_instance_valid(m3) and not m3.is_queued_for_deletion() and not m3.visible and q.badge_left == 0.0,
+		"a quarry indoors while ill: the mark stays, hidden (no badge)")
+	q.inside = false
+	m3._process(0.1)
+	t.check(m3.visible and q.badge_glyph == sick and q.badge_left > 0.0, "out again while ill: the glyph is back")
+	q._ill_left = 0.0
+	m3._process(0.1)
+	t.check(m3.is_queued_for_deletion() and q.badge_left == 0.0, "well again: the mark goes")
+	# A citizen sent home loses it indoors (control: not the quarry's rule).
+	p.inside = true
+	t.check(p.home_sick and not VeilCastLooks.BlightMark.ill(p), "a citizen sent home and indoors is not marked (until indoors)")
+	p.inside = false
+	# Two casts on one man: the glyph is shared; the first mark freed, he is still ill, the glyph stays.
+	_scatter(crowd)
+	var two: Person = crowd.citizens[16]
+	two.ground_pos = open
+	two.clear_badge()
+	dir.mine = two
+	ctx.rules.director = dir
+	var fa := _cast(ctx, open) as BlightFx
+	var fb := _cast(ctx, open) as BlightFx
+	ctx.rules.director = null
+	var ma: VeilCastLooks.BlightMark = fa.marks[0] if fa.marks.size() == 1 else null
+	var mb: VeilCastLooks.BlightMark = fb.marks[0] if fb.marks.size() == 1 else null
+	fa.end_now()
+	fb.end_now()
+	t.check(ma != null and mb != null and ma.owns and mb.owns, "two casts on one man: both marks share his glyph")
+	ma.free()
+	two._think(VeilCastLooks.BlightMark.HOLD + 0.05)
+	mb._process(0.05)
+	t.check(two.ill_left() > 0.0 and two.badge_glyph == sick and two.badge_left > 0.0,
+		"the first mark freed, he is still ill: the glyph stays (the second keeps it)")
+	two._ill_left = 0.0
+	mb._process(0.05)
+	t.check(mb.is_queued_for_deletion() and two.badge_left == 0.0, "the last mark standing lets it go")
+	# Freed outside the tree: the badge runs down on its own within HOLD.
+	_scatter(crowd)
+	var f: Person = crowd.citizens[15]
+	f.ground_pos = open
+	f.home_sick = false
+	f.clear_badge()
+	var fx4 := _cast(ctx, open) as BlightFx
+	fx4.end_now()
+	(fx4.marks[0] as Node).free()
+	f._think(VeilCastLooks.BlightMark.HOLD + 0.05)
+	t.check(f.badge_left == 0.0, "a freed mark leaves no badge past its HOLD")
+	_scatter(crowd)
+
+
 static func run(t) -> void:
 	var made := _setup()
 	var crowd: Crowd = made[0]
@@ -144,6 +249,7 @@ static func run(t) -> void:
 	_kept(t, made, open)
 	_refusal(t, made, open)
 	_teardown(t, made)
+	_mark(t, made, open)
 	_done(made)
 	_no_crowd(t)
 

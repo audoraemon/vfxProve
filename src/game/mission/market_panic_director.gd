@@ -130,9 +130,9 @@ func _add_events() -> void:
 
 func _close() -> void:
 	_sound(&"msn_shut", HEART)
-	for v: Variant in goers:  # the market is shut: no more talk
+	life.close()  # the market is shut: no more talk, and no late goer joins a group
+	for v: Variant in goers:
 		if is_instance_valid(v):
-			life.drop(v as Person)
 			(v as Person).chat_at = Vector2.INF
 
 
@@ -190,6 +190,8 @@ func _to_fair(p: Person) -> void:
 	if not _spots.has(id):
 		if life.spot_of(p) == Vector2.INF:
 			_apply(life.join(p), p)
+		if life.spot_of(p) == Vector2.INF:
+			return  # the market has closed: he is given no spot
 		_spots[id] = life.spot_of(p)
 	p.go_duty(_spots[id])
 
@@ -198,7 +200,7 @@ func _to_fair(p: Person) -> void:
 ## `except` is sent by the caller. They are no longer arrived, so they stop talking while they walk.
 func _apply(changed: Array, except: Person = null) -> void:
 	for v: Variant in changed:
-		if not _alive(v) or v == except:
+		if not _alive(v) or v == except or _broke.has(v) or _left.has(v):
 			continue
 		var p := v as Person
 		var id := p.get_instance_id()

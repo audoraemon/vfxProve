@@ -15,6 +15,9 @@ static func run(t) -> void:
 	_group_losses(t)
 	_rules_kept(t)
 	_no_town_draw(t)
+	_late_goer(t)
+	_after_close(t)
+	_no_resend(t)
 
 
 static func _world() -> Dictionary:
@@ -79,6 +82,7 @@ static func _stroll_inside(t) -> void:
 	var moved := {}
 	var inside := true
 	var reach := true
+	var ring := true
 	var apart_bad := 0
 	for step in roundi(120.0 / DT):
 		Kit.run_for(s, DT)
@@ -95,6 +99,7 @@ static func _stroll_inside(t) -> void:
 				inside = inside and c.distance_to(MarketPanicDirector.HEART) <= MarketPanicDirector.FAIR_R + 0.01
 				for v: Variant in grp:
 					reach = reach and d._reaches(v, c)
+					ring = ring and d.life.spot_of(v).distance_to(MarketPanicDirector.HEART) <= MarketPanicDirector.FAIR_R + 0.01
 			last[id] = c
 		if changed:
 			var bad := false
@@ -106,6 +111,7 @@ static func _stroll_inside(t) -> void:
 	for k in keys:
 		all_moved = all_moved and moved.has(k)
 	t.check(all_moved and inside and reach, "in 120 s every first-crowd group strolled; each centre within FAIR_R and reachable by its people (moved %d/%d)" % [moved.size(), keys.size()])
+	t.check(ring, "every ring spot of a stroll stays within FAIR_R + 0.01 of the fountain")
 	t.check(apart_bad <= 1, "centres stay APART at each stroll (%d strolls under)" % apart_bad)
 	Kit.done(s)
 
@@ -176,4 +182,62 @@ static func _no_town_draw(t) -> void:
 	for i in roundi(60.0 / DT):
 		life.step(DT)
 	t.check(crowd._rng.state == before and life.groups().size() > 0, "forming groups and 60 s of strolling draw nothing from the town's stream")
+	Kit.done(s)
+
+
+## A goer with no spot when his crowd set out is given one he can walk to (fair life review, 2026-11-21).
+static func _late_goer(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	var late: Person = null
+	for v: Variant in d.waves[1]:  # a crowd still waiting: in no group yet
+		late = v as Person
+		break
+	Kit.arrive(late, MarketPanicDirector.HEART + Vector2(1.0, 1.0))
+	var changed := d.life.join(late)
+	var spot := d.life.spot_of(late)
+	var ok := not changed.is_empty() and spot != Vector2.INF and d._reaches(late, spot) and d._reaches(late, d.life.centre_of(late))
+	for v: Variant in changed:
+		ok = ok and d._reaches(v, d.life.centre_of(v))
+	t.check(ok, "a late goer joins a group at a centre he can walk to, with a spot of his own")
+	# One no group's centre can be walked to stands alone, as form() would place him.
+	var shut := Person.new()
+	var life := FairLife.new(5, MarketPanicDirector.HEART, MarketPanicDirector.FAIR_R,
+		func(p: Person, at: Vector2) -> bool: return p != shut or at.distance_to(MarketPanicDirector.HEART) < 0.0, d._walkable)
+	life.form(d.waves[0])
+	life.join(shut)
+	var alone := false
+	for grp: Array in life.groups():
+		alone = alone or (grp.size() == 1 and grp[0] == shut)
+	t.check(alone, "a goer who can reach no group's centre stands alone, not merged into one he cannot walk to")
+	shut.free()
+	Kit.done(s)
+
+
+static func _after_close(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	d._close()
+	var late := (d.waves[2] as Array)[0] as Person
+	var changed := d.life.join(late)
+	t.check(changed.is_empty() and d.life.spot_of(late) == Vector2.INF and d.life.groups().is_empty(),
+		"after the close nobody joins a group")
+	d._to_fair(late)
+	t.check(not d._spots.has(late.get_instance_id()), "a late goer sent after the close is given no spot")
+	Kit.done(s)
+
+
+static func _no_resend(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	var grp: Array = d.life.groups()[0]
+	var mate := grp[0] as Person
+	var control := grp[1] as Person
+	d._broke[mate] = true
+	for p in [mate, control]:
+		p.go_duty(p.ground_pos)  # his anchor is off his spot
+	var held := mate.anchor
+	d._apply([mate, control])
+	t.check(mate.anchor == held and control.anchor.distance_to(d._spots[control.get_instance_id()]) < 0.01,
+		"_apply sends a goer on duty to his new spot but leaves a broken one where he is")
 	Kit.done(s)

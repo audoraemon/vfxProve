@@ -33,6 +33,8 @@ var _radius := 0.0
 var _reaches: Callable
 var _walkable: Callable
 var _groups: Array[Group] = []
+## True once the market has closed: nobody joins a group or is placed any more (fair life, 2026-11-20).
+var closed := false
 
 
 func _init(seed_value: int, heart: Vector2, radius: float, reaches: Callable, walkable: Callable) -> void:
@@ -64,11 +66,12 @@ func form(people: Array) -> void:
 
 
 ## A goer sent late (indoors as his crowd set out) joins the nearest group with room, else stands as a group of his own.
-## Returns the people whose spot changed (the group is spaced afresh).
+## Only a group whose centre he can walk to will do; none does, and he stands as a group of his own at a centre drawn for him.
+## Returns the people whose spot changed (the group is spaced afresh); none once closed.
 func join(p: Person) -> Array:
-	if spot_of(p) != Vector2.INF:
+	if closed or spot_of(p) != Vector2.INF:
 		return []
-	var g := _nearest_with_room(p.ground_pos, null)
+	var g := _nearest_with_room(p.ground_pos, null, [p])
 	if g == null:
 		g = Group.new()
 		g.next_in = _rng.randf_range(STROLL.x, STROLL.y)
@@ -107,7 +110,7 @@ func step(delta: float) -> Array:
 			continue
 		g.next_in = _rng.randf_range(STROLL.x, STROLL.y)
 		if g.members.size() < GROUP_MIN:
-			var host := _nearest_with_room(g.centre, g)
+			var host := _nearest_with_room(g.centre, g, g.members)
 			if host != null:
 				host.members.append_array(g.members)
 				_groups.erase(g)
@@ -121,6 +124,12 @@ func step(delta: float) -> Array:
 			if not moved.has(v):
 				moved.append(v)
 	return moved
+
+
+## The market has closed: the groups are let go and no one is placed again.
+func close() -> void:
+	closed = true
+	_groups.clear()
 
 
 ## `p` is out of his group (broken, dead, left).
@@ -156,10 +165,15 @@ func _prune(g: Group) -> void:
 			g.members.erase(v)
 
 
-func _nearest_with_room(at: Vector2, except: Group) -> Group:
+func _nearest_with_room(at: Vector2, except: Group, newcomers: Array) -> Group:
 	var best: Group = null
 	for g in _groups:
-		if g == except or g.members.size() >= GROUP_MAX or g.centre == Vector2.INF:
+		if g == except or g.members.size() + newcomers.size() > GROUP_MAX or g.centre == Vector2.INF:
+			continue
+		var reach := true
+		for v: Variant in newcomers:
+			reach = reach and is_instance_valid(v) and _reaches.call(v, g.centre)
+		if not reach:
 			continue
 		_prune(g)
 		if g.members.is_empty():

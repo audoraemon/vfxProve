@@ -60,6 +60,15 @@ func on_dropped(_job: GuardJobs.Job, _p: Person) -> void:
 	pass
 
 
+## A director took a crew man off the job (GuardJobs.release(): he is not sent home): whatever this duty set on him comes off. By
+## default his look, talk, crouch and far sight; a duty with more of its own overrides it.
+func on_taken_away(_job: GuardJobs.Job, p: Person) -> void:
+	p.watch_far = false
+	p.talk_left = 0.0
+	p.stand_face = Vector2.INF
+	p.crouching = false
+
+
 ## Every frame for each live job of this kind: only counts clocks, never searches.
 func tick(_job: GuardJobs.Job, _delta: float) -> void:
 	pass

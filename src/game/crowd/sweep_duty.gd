@@ -78,7 +78,8 @@ func on_seen(at: Vector2) -> void:
 	for job in _live:
 		if job.data.district != district or not bool(job.data.begun) or bool(job.data.over):
 			continue
-		if float(job.data.added) + SWEEP_ALARM > SWEEP_ALARM_CAP + 0.001 or not _any_inside(job) 				or float(job.data.charged) == crowd._clock:
+		if float(job.data.added) + SWEEP_ALARM > SWEEP_ALARM_CAP + 0.001 or not _any_inside(job) \
+				or float(job.data.charged) == crowd._clock:
 			return
 		job.data.charged = crowd._clock
 		job.data.added = float(job.data.added) + SWEEP_ALARM
@@ -154,13 +155,17 @@ func still_on(_job: GuardJobs.Job, p: Person) -> bool:
 	return p.mind == Person.Mind.POST
 
 
-func on_dropped(job: GuardJobs.Job, p: Person) -> void:
+func on_taken_away(job: GuardJobs.Job, p: Person) -> void:
 	_release(p)
 	(job.data.at_spot as Dictionary).erase(p)
-	if p.is_alive() and (p.mind == Person.Mind.POST or p.held_by_god()) and not board.mission_man(p):
-		p.back_to_post()
 	if job.crew.is_empty():
 		_stop(job)
+
+
+func on_dropped(job: GuardJobs.Job, p: Person) -> void:
+	on_taken_away(job, p)
+	if p.is_alive() and (p.mind == Person.Mind.POST or p.held_by_god()) and not board.mission_man(p):
+		p.back_to_post()
 
 
 ## Counts the clocks: an open job's wait, the 30 s, who is inside, the stage, the walk from door to door.
@@ -168,9 +173,7 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 	var d: Dictionary = job.data
 	if bool(d.over):
 		return
-	for i in range(job.crew.size() - 1, -1, -1):
-		if not is_instance_valid(job.crew[i]):
-			job.crew.remove_at(i)
+	_drop_strays(job)
 	if crowd.alarms.stage >= AlarmManager.Stage.EVACUATION:
 		_finish(job)
 		return
@@ -234,11 +237,25 @@ func clear() -> void:
 
 ## A seen power lands: a sweep hears of it, and the district is swept.
 func _on_danger(_key: String, points: Array[Vector2], radius: float) -> void:
+	if board == null or not board.is_open() or crowd.is_hushed() \
+			or (_live.is_empty() and crowd.alarms.stage >= AlarmManager.Stage.EVACUATION):
+		return  # no sweep could follow and none live could hear it
 	var seen: Array[Vector2] = []
 	if points.is_empty() or crowd.power_witness(points, radius, seen) == null:
 		return
 	on_seen(seen[0])
 	request(seen[0])
+
+
+## Drops the freed and the men whose record is no longer this job's from the crew.
+func _drop_strays(job: GuardJobs.Job) -> void:
+	for i in range(job.crew.size() - 1, -1, -1):
+		var m: Variant = job.crew[i]
+		if not is_instance_valid(m):
+			job.crew.remove_at(i)
+		elif board.job_of(m) != job:
+			job.crew.remove_at(i)
+			on_taken_away(job, m as Person)
 
 
 ## Takes every flag a sweep put on `p` off him (his nerve too, unless something else gave him more).

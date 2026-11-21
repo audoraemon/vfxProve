@@ -76,7 +76,7 @@ func begin() -> void:
 			if pool.is_empty():
 				break
 			var p: Person = pool.pop_front()
-			p.send_to_post(_spot(mouth, out_dir, j), false, true)  # at a run
+			p.send_to_post(spot(mouth, out_dir, j), false, true)  # at a run
 			mine.append(p)
 			sent += 1
 		posts[mouth] = mine
@@ -94,11 +94,6 @@ func spot(mouth: Vector2, out_dir: Vector2, j: int) -> Vector2:
 		var near := _grid.nearest_walkable(at, 3)
 		at = near if near != Vector2.INF else mouth
 	return at
-
-
-## The old name of spot().
-func _spot(mouth: Vector2, out_dir: Vector2, j: int) -> Vector2:
-	return spot(mouth, out_dir, j)
 
 
 ## A soldier from the rally ring takes the dead marshal `dead`'s place (Crowd._refill(), v0.09.1). Before the evacuation
@@ -144,7 +139,7 @@ func refill(p: Person, dead: Person) -> void:
 	else:
 		mine[slot] = p
 	posts[at[0]] = mine
-	p.send_to_post(_spot(at[0], at[1], slot), false, true)  # at a run
+	p.send_to_post(spot(at[0], at[1], slot), false, true)  # at a run
 
 
 ## How much faster the way out at `mouth` runs: 1 + SPEED for each living marshal within REACH of it, once the

@@ -206,9 +206,16 @@ func on_job(p: Variant) -> bool:
 	return is_instance_valid(p) and _jobs.has(p)
 
 
+## Lets `p`'s record go. A man of a Job leaves its crew and his duty is told he was taken away (no walk home: whoever took him
+## sends him), so no duty goes on ordering, badging or watching with a man a director took.
 func release(p: Variant) -> void:
 	if not is_instance_valid(p):
 		return
+	var rec: Variant = _jobs.get(p)
+	if rec is Job:
+		var job: Job = rec
+		job.crew.erase(p)
+		duties[job.kind].on_taken_away(job, p as Person)
 	_drop(p as Person, true)
 
 

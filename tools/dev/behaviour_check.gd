@@ -2221,7 +2221,7 @@ func _tax_unseen(p: Person, crowd: Crowd) -> bool:
 				continue
 			if o.ground_pos.distance_to(p.ground_pos) <= SilentDoom.RADIUS:
 				continue
-			var reach := Crowd.DOOM_WITNESS + TAX_MARGIN
+			var reach := crowd.witness_reach(o, true) + TAX_MARGIN
 			if o.ground_pos.distance_to(fall) <= reach or (o.ground_pos + _tax_lead(o)).distance_to(fall) <= reach:
 				return false
 	return true
@@ -2735,7 +2735,7 @@ func _heart_seers(crowd: Crowd, p: Person) -> Array[Person]:
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for o in group:
 			if is_instance_valid(o) and o.is_alive() and not o.inside and o != p \
-					and o.ground_pos.distance_to(p.ground_pos) <= Crowd.DOOM_WITNESS + SilentDoom.RADIUS:
+					and o.ground_pos.distance_to(p.ground_pos) <= crowd.witness_reach(o, true) + SilentDoom.RADIUS:
 				out.append(o)
 	return out
 
@@ -4237,7 +4237,7 @@ func _eye_unseen(crowd: Crowd, at: Vector2) -> bool:
 				moving.append(p)
 	for v in victims:
 		for o in moving:
-			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN:
+			if o.ground_pos.distance_to(v.ground_pos) <= crowd.witness_reach(o, true) + EYE_DOOM_MARGIN:
 				return false
 	return true
 
@@ -4274,7 +4274,7 @@ func _eye_lure(d: LanternEyeDirector, crowd: Crowd, i: int, p: Person) -> Vector
 			if not is_instance_valid(o) or o == p or not o.is_alive() or o.inside:
 				continue
 			var gap := o.ground_pos.distance_to(p.ground_pos)
-			if gap > Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN:
+			if gap > crowd.witness_reach(o, true) + EYE_DOOM_MARGIN:
 				continue
 			if gap <= SilentDoom.RADIUS or o.soldier or not o.mind in Person.LURABLE:
 				return Vector2.INF
@@ -4301,7 +4301,7 @@ func _eye_onlookers(d: LanternEyeDirector, crowd: Crowd, i: int) -> Vector2:
 			if not is_instance_valid(o) or not o.is_alive() or o.inside:
 				continue
 			for at in posts:
-				if o.ground_pos.distance_to(at) <= Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN and (o.soldier or not o.mind in Person.LURABLE):
+				if o.ground_pos.distance_to(at) <= crowd.witness_reach(o, true) + EYE_DOOM_MARGIN and (o.soldier or not o.mind in Person.LURABLE):
 					return Vector2.INF
 	if posts.is_empty():
 		return Vector2.INF
@@ -4510,7 +4510,7 @@ func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = [], margin := 0.0) -
 		if spare.has(v):
 			return false
 		for o in others:
-			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + margin:
+			if o.ground_pos.distance_to(v.ground_pos) <= crowd.witness_reach(o, true) + margin:
 				return false
 	return true
 
@@ -5286,11 +5286,11 @@ func _witnesses(crowd: Crowd, of: Person) -> Vector2i:
 	var n := Vector2i.ZERO
 	for p in crowd.soldiers:
 		if is_instance_valid(p) and p.is_alive() and not p.inside \
-				and p.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS:
+				and p.ground_pos.distance_to(of.ground_pos) <= crowd.witness_reach(p, true):
 			n.x += 1
 	for p in crowd.citizens:
 		if is_instance_valid(p) and p != of and p.is_alive() and not p.inside \
-				and p.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS:
+				and p.ground_pos.distance_to(of.ground_pos) <= crowd.witness_reach(p, true):
 			n.y += 1
 	return n
 
@@ -5300,7 +5300,7 @@ func _nearest_hearer(crowd: Crowd, of: Person) -> Person:
 	var best: Person = null
 	for c in crowd.citizens:
 		if is_instance_valid(c) and c != of and c.is_alive() and not c.inside and not c.shaken() \
-				and c.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS \
+				and c.ground_pos.distance_to(of.ground_pos) <= crowd.witness_reach(c, true) \
 				and (best == null or c.ground_pos.distance_squared_to(of.ground_pos) < best.ground_pos.distance_squared_to(of.ground_pos)):
 			best = c
 	return best

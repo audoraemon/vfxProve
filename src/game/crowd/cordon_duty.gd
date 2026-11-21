@@ -178,13 +178,16 @@ func still_on(_job: GuardJobs.Job, p: Person) -> bool:
 	return p.mind == Person.Mind.POST
 
 
-func on_dropped(job: GuardJobs.Job, p: Person) -> void:
-	p.stand_face = Vector2.INF
-	p.talk_left = 0.0
-	if p.is_alive() and (p.mind == Person.Mind.POST or p.held_by_god()) and not board.mission_man(p):
-		p.back_to_post()
+func on_taken_away(job: GuardJobs.Job, p: Person) -> void:
+	super(job, p)
 	if job.crew.is_empty():
 		_stop(job)
+
+
+func on_dropped(job: GuardJobs.Job, p: Person) -> void:
+	on_taken_away(job, p)
+	if p.is_alive() and (p.mind == Person.Mind.POST or p.held_by_god()) and not board.mission_man(p):
+		p.back_to_post()
 
 
 ## Counts the clocks: the cordon's 40 s (an open one waits as long for its men), the stage, who stands his end.
@@ -196,6 +199,9 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 		var m: Variant = job.crew[i]
 		if not is_instance_valid(m):
 			job.crew.remove_at(i)
+		elif board.job_of(m) != job:
+			job.crew.remove_at(i)
+			on_taken_away(job, m as Person)
 	if not is_instance_valid(d.site) or crowd.alarms.stage >= AlarmManager.Stage.EVACUATION:
 		_finish(job)
 		return

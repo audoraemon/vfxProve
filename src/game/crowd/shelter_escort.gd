@@ -95,6 +95,18 @@ func on_dropped(job: GuardJobs.Job, p: Person) -> void:
 	if is_instance_valid(p) and p.is_alive() and spot is Vector2 and (p.mind == Person.Mind.POST or p.held_by_god()) \
 			and p.anchor.is_equal_approx(spot) and not p.anchor.is_equal_approx(p.post):
 		p.back_to_post()
+	_last_out(job, p)
+
+
+## A director took a man off the squad: his order goes and the job ends when he was its last man.
+func on_taken_away(job: GuardJobs.Job, p: Person) -> void:
+	job.data.orders.erase(p)
+	_last_out(job, p)
+
+
+## The last man of a started job having left ends it (dead: the household scatters; else it is handed back).
+func _last_out(job: GuardJobs.Job, p: Person) -> void:
+	var d: Dictionary = job.data
 	if bool(d.over) or not job.started or not job.crew.is_empty():
 		return
 	if is_instance_valid(p) and not p.is_alive():
@@ -109,8 +121,12 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 	if bool(d.over):
 		return
 	for i in range(job.crew.size() - 1, -1, -1):
-		if not is_instance_valid(job.crew[i]):
+		var m: Variant = job.crew[i]
+		if not is_instance_valid(m):
 			job.crew.remove_at(i)
+		elif board.job_of(m) != job:
+			job.crew.remove_at(i)
+			on_taken_away(job, m as Person)
 	if not job.started:
 		d.wait = float(d.wait) - delta
 		if float(d.wait) <= 0.0:

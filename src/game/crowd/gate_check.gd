@@ -76,7 +76,12 @@ func checkers(gate: Structure) -> Array[Person]:
 ## Whether at least one checker of `gate` is looking now: a NONE man on his spot, or a marshal within GATE_LOOK of the mouth, free and
 ## in no hand but the town's.
 func checked(gate: Structure) -> bool:
-	for c in checkers(gate):
+	return _looking(checkers(gate), gate)
+
+
+## Whether at least one of `list` (the checkers of `gate`) is looking now.
+func _looking(list: Array[Person], gate: Structure) -> bool:
+	for c in list:
 		if _active(c, gate):
 			return true
 	return false
@@ -86,6 +91,11 @@ func checked(gate: Structure) -> bool:
 ## (unmask(), an incident, GATE_SPOT_ALARM, the "!" badge, the banner) and the call is true. Soldiers are never checked, nobody is
 ## checked twice at a gate within REPEAT_SECONDS, and a hushed town hears and writes nothing (the banner still shows).
 func check(p: Person, gate: Structure) -> bool:
+	return _check(p, gate, null)
+
+
+## check() with the gate's checkers already worked out (`list`; null: worked out here).
+func _check(p: Person, gate: Structure, list: Variant) -> bool:
 	if not board.is_open() or not is_instance_valid(p) or not is_instance_valid(gate) or p.soldier or not p.is_alive() or p.inside:
 		return false
 	if p.answers_lure:
@@ -96,7 +106,7 @@ func check(p: Person, gate: Structure) -> bool:
 	var seen: Dictionary = _spotted.get(gid, {})
 	if crowd._clock - float(seen.get(p.get_instance_id(), -INF)) < REPEAT_SECONDS:
 		return false
-	var by := _watcher(gate, p)
+	var by := _watcher(list if list != null else checkers(gate), gate, p)
 	if by == null:
 		return false
 	seen[p.get_instance_id()] = crowd._clock
@@ -143,9 +153,13 @@ func still_on(job: GuardJobs.Job, p: Person) -> bool:
 	return p.anchor.is_equal_approx(p.post) or (bool(job.data.out) and p.anchor.is_equal_approx(job.data.spot))
 
 
-func on_dropped(job: GuardJobs.Job, p: Person) -> void:
+func on_taken_away(_job: GuardJobs.Job, p: Person) -> void:
 	_unflag(p)
 	_marked.erase(p)
+
+
+func on_dropped(job: GuardJobs.Job, p: Person) -> void:
+	on_taken_away(job, p)
 	# Dropped for good (his record is still this job's, not a higher job's): a checker out on his spot goes back to his post.
 	if board.job_of(p) == job and p.is_alive() and (p.mind == Person.Mind.POST or p.held_by_god()) and bool(job.data.out) \
 			and not board.mission_man(p) and p.anchor.is_equal_approx(job.data.spot) and not p.anchor.is_equal_approx(p.post):
@@ -159,7 +173,7 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 		if not is_instance_valid(m):
 			job.crew.remove_at(i)
 		elif board.job_of(m) != job:
-			# A director took him (GuardJobs.release() skips on_dropped): the record is dead; the flags go, he is not ours.
+			# A record that is not this job's any more: the flags go, he is not ours.
 			job.crew.remove_at(i)
 			_unflag(m)
 			_marked.erase(m)
@@ -179,29 +193,46 @@ func done(job: GuardJobs.Job) -> bool:
 
 ## Once a second: every standing gate's NONE checkers get their jobs and their orders (out when anyone is near the mouth, back after
 ## STAND_DOWN s), flags and badges are renewed on the men who are looking, the people near each checked gate are looked at, and the
-## tags are refreshed.
+## tags are refreshed. One pass over the citizens buckets them by gate mouth for all of it.
 func post_jobs() -> void:
 	var now := crowd._clock
 	var have := {}
 	for job in board.live(GuardJobs.Kind.GATE):
 		if is_instance_valid(job.data.who):
 			have[(job.data.who as Person).get_instance_id()] = true
-	var suspects: Array[Person] = []
-	for p in crowd.citizens:
-		if is_instance_valid(p) and (p.guised() or p.held_by_god()):
-			suspects.append(p)
-	var kept := {}
-	var shown: Array[Vector2] = []
+	var gates: Array[Structure] = []
+	var mouths: Array[Vector2] = []
+	var lists: Array = []
+	var reaches: Array[float] = []
 	for gate in crowd._town.gates:
 		if not _standing(gate):
 			continue
-		var gid := gate.get_instance_id()
 		var mouth := _mouth(gate)
-		var near := _near(gate, mouth)
+		var list := checkers(gate)
+		# A checker on his spot turns to whoever is within GATE_LOOK of him: that is within GATE_LOOK + his own distance of the mouth.
+		var reach := GATE_LOOK
+		for c in list:
+			reach = maxf(reach, GATE_LOOK + c.ground_pos.distance_to(mouth))
+		gates.append(gate)
+		mouths.append(mouth)
+		lists.append(list)
+		reaches.append(reach)
+	var buckets := _bucket(mouths, reaches)
+	var kept := {}
+	var shown: Array[Vector2] = []
+	for g in gates.size():
+		var gate := gates[g]
+		var gid := gate.get_instance_id()
+		var mouth := mouths[g]
+		var list: Array[Person] = lists[g]
+		var folk: Array[Person] = buckets[g]
+		var near := crowd.waiting_at(gate) > 0
+		for p in folk:
+			if not near and p.ground_pos.distance_to(mouth) <= GATE_LOOK:
+				near = true
 		if near:
 			_near_at[gid] = now
 		var quiet := now - float(_near_at.get(gid, -INF))
-		var list := checkers(gate)
 		var tagged := false
 		for i in list.size():
 			var c := list[i]
@@ -219,15 +250,15 @@ func post_jobs() -> void:
 				_flag(c)
 				tagged = true
 				if c.corps == Person.Corps.NONE and near:
-					_face(c)
+					_face(c, folk)
 			elif c.corps == Person.Corps.NONE and board.gate_checker(c):
 				tagged = true
 		if tagged:
 			shown.append(gate.center())
-		if checked(gate):
-			for p in suspects:
-				if p.ground_pos.distance_to(mouth) <= GATE_LOOK:
-					check(p, gate)
+		if _looking(list, gate):
+			for p in folk:
+				if (p.guised() or p.held_by_god()) and p.ground_pos.distance_to(mouth) <= GATE_LOOK:
+					_check(p, gate, list)
 	for p in _marked.keys():
 		if not is_instance_valid(p):
 			_marked.erase(p)
@@ -284,14 +315,19 @@ func _standing(gate: Variant) -> bool:
 	return is_instance_valid(gate) and not (gate as Structure).destroyed and (gate as Structure).walkable
 
 
-## Whether anyone waits at the gate or a living citizen is out of doors within GATE_LOOK of its mouth.
-func _near(gate: Structure, mouth: Vector2) -> bool:
-	if crowd.waiting_at(gate) > 0:
-		return true
+## One pass over the citizens: for each mouth, the living ones out of doors within its reach, in the crowd's order.
+func _bucket(mouths: Array[Vector2], reaches: Array[float]) -> Array:
+	var out: Array = []
+	for i in mouths.size():
+		var none: Array[Person] = []
+		out.append(none)
 	for p in crowd.citizens:
-		if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(mouth) <= GATE_LOOK:
-			return true
-	return false
+		if not is_instance_valid(p) or not p.is_alive() or p.inside:
+			continue
+		for i in mouths.size():
+			if p.ground_pos.distance_to(mouths[i]) <= reaches[i]:
+				(out[i] as Array[Person]).append(p)
+	return out
 
 
 ## Whether `c` is looking at `gate` now: alive, out of doors, in no hand but the town's, and either a marshal standing within
@@ -308,8 +344,8 @@ func _active(c: Person, gate: Structure) -> bool:
 
 
 ## The first checker of `gate` (nearest first) who is looking and sees `p`: not veiled himself, and `p` within his sight.
-func _watcher(gate: Structure, p: Person) -> Person:
-	for c in checkers(gate):
+func _watcher(list: Array[Person], gate: Structure, p: Person) -> Person:
+	for c in list:
 		if _active(c, gate) and not crowd.is_veiled(c.ground_pos) \
 				and c.ground_pos.distance_to(p.ground_pos) <= crowd.sight(c, p.ground_pos, Crowd.WATCH_SIGHT * crowd.sight_scale):
 			return c
@@ -357,13 +393,12 @@ func _unflag(c: Person) -> void:
 	c.stand_face = Vector2.INF
 
 
-## The checker on his spot turns to the nearest living citizen within GATE_LOOK (ties by stagger) and talks to him.
-func _face(c: Person) -> void:
+## The checker on his spot turns to the nearest of `folk` (the living citizens out of doors near his gate) within GATE_LOOK of
+## him (ties by stagger) and talks to him.
+func _face(c: Person, folk: Array[Person]) -> void:
 	var best: Person = null
 	var best_d := GATE_LOOK
-	for p in crowd.citizens:
-		if not is_instance_valid(p) or not p.is_alive() or p.inside:
-			continue
+	for p in folk:
 		var d := p.ground_pos.distance_to(c.ground_pos)
 		if d < best_d or (d == best_d and best != null and p.stagger < best.stagger):
 			best = p

@@ -94,7 +94,7 @@ func still_on(_job: GuardJobs.Job, p: Person) -> bool:
 	return p.mind == Person.Mind.POST
 
 
-func on_dropped(job: GuardJobs.Job, p: Person) -> void:
+func on_taken_away(job: GuardJobs.Job, p: Person) -> void:
 	var d: Dictionary = job.data
 	p.crouching = false
 	p.stand_face = Vector2.INF
@@ -104,12 +104,23 @@ func on_dropped(job: GuardJobs.Job, p: Person) -> void:
 		if int(d.phase) == CARRY:
 			_put_back(job)
 		d.over = true
+
+
+func on_dropped(job: GuardJobs.Job, p: Person) -> void:
+	on_taken_away(job, p)
 	if p.is_alive() and (p.mind == Person.Mind.POST or p.held_by_god()) and not board.mission_man(p):
 		p.back_to_post()
 
 
 func tick(job: GuardJobs.Job, delta: float) -> void:
 	var d: Dictionary = job.data
+	for i in range(job.crew.size() - 1, -1, -1):
+		var m: Variant = job.crew[i]
+		if not is_instance_valid(m):
+			job.crew.remove_at(i)
+		elif board.job_of(m) != job:
+			job.crew.remove_at(i)
+			on_taken_away(job, m as Person)
 	if not bool(d.begun):
 		return
 	if bool(d.over):

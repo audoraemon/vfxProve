@@ -2,8 +2,8 @@ class_name Remains
 extends Node2D
 ## The town's whole dead (Death authority, spec §4). A death that leaves the body whole is written down here as a value
 ## copy -- where, when, who, what killed them -- so the body stays usable for LIFE seconds (its soul for SOUL) after the
-## Person node has freed. Death's powers pick a remain, raise it or move it. Off by default: with the ledger off nothing is
-## recorded, stepped or drawn, and the town is exactly what it was.
+## Person node has freed. Death's powers pick a remain, raise it or move it. Always on in a mission (Rules turns it on for every
+## loadout: a beat pair finds bodies everywhere); with the ledger off (a test, the sandbox) nothing is recorded, stepped or drawn.
 
 ## How long a body can be used, and how long its soul is still near.
 const LIFE := 45.0

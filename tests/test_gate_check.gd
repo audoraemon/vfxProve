@@ -612,7 +612,12 @@ static func _freed_man(t) -> void:
 	c.free()
 	_tick(crowd)
 	C._run_for(crowd, 2.5)
-	t.check(true, "a freed checker: the board went on")
+	var dead_records := 0
+	for job in crowd.guard_jobs.live(GuardJobs.Kind.GATE):
+		for m in job.crew:
+			if not is_instance_valid(m):
+				dead_records += 1
+	t.check(dead_records == 0, "a freed checker: the board went on and holds no dead crew record of him")
 	t.check(not crowd.gate_check.checked(gate) or not crowd.gate_check.checkers(gate).has(c), "and he is no checker")
 	C._done(made)
 

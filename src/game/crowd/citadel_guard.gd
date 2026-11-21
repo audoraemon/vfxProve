@@ -183,6 +183,10 @@ func on_dropped(_j: GuardJobs.Job, p: Person) -> void:
 	_slot.erase(p)
 
 
+func on_taken_away(_j: GuardJobs.Job, p: Person) -> void:
+	_slot.erase(p)
+
+
 func clear() -> void:
 	job = null
 	_slot.clear()

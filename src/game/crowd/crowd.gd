@@ -248,7 +248,7 @@ var deaths := DeathVoices.new()
 ## Blows and orders you can hear (natural sound pass 5). Pure; draws no number from any rng.
 var soldier_voices := SoldierVoices.new()
 var _bed_level := 0.0
-## The town's whole dead (Death's powers raise and move them). Off unless Rules turns it on (Remains.wants()). Freed by clear()
+## The town's whole dead (Death's powers raise and move them). Always on. Freed by clear()
 ## (null after it): a reader checks it.
 var remains: Remains
 ## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
@@ -947,7 +947,8 @@ func _walk_list(list: Array, reach: float, beats: bool) -> void:
 		if not is_instance_valid(e[0]):
 			continue
 		var p: Person = e[0]
-		if not p.is_alive() or (_rallied and not beats) or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST 				or guard_jobs.on_job(p) or (beats and (not p.on_beat() or held_by_mission(p))):
+		if not p.is_alive() or (_rallied and not beats) or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST \
+				or guard_jobs.on_job(p) or (beats and (not p.on_beat() or held_by_mission(p))):
 			if beats:
 				e[4] = -1.0
 				e[5] = _clock
@@ -2628,9 +2629,8 @@ func doom_witness() -> float:
 ## night (`day` true: the day's distance, as the directors that read Crowd.DOOM_WITNESS directly keep it). The one rule every witness
 ## search asks; for a man who is not `watch_far` it is the reach the search had before.
 func witness_reach(p: Person, day := false) -> float:
-	if p.watch_far:
-		return WATCH_SIGHT * sight_scale
-	return DOOM_WITNESS if day else doom_witness()
+	var plain := DOOM_WITNESS if day else doom_witness()
+	return maxf(WATCH_SIGHT * sight_scale, plain) if p.watch_far else plain
 
 
 ## Whether the segment `a`-`b` crosses a live cordon's rope (false at once with none live): a lure through it fails.
@@ -2672,10 +2672,10 @@ func power_witness(points: Array[Vector2], radius: float, seen_at: Array[Vector2
 				continue
 			if p.guised() or LawMark.unseen_by_all(p):
 				continue
+			var far := maxf(witness_reach(p), radius)
 			for at in points:
 				var d := p.ground_pos.distance_to(at)
-				var reach := sight(p, at, witness_reach(p))
-				if d > maxf(reach, radius):
+				if d > far or d > maxf(sight(p, at, witness_reach(p)), radius):
 					continue
 				if best == null or d < best_d or (d == best_d and p.stagger < best.stagger):
 					best = p

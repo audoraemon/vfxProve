@@ -15,8 +15,8 @@ extends FxTimeline
 ## - Every whole-body death in the district during the span (any kind the Remains ledger keeps: the reign's own, a
 ##   servant's bite) rises at once as the god's pale servant, MAX_RISEN a cast at most: a zombie in their own look with
 ##   ash-grey eyes (DeathParts.zombie, eyes ASH), in this effect's own Visitors pack, for SERVANT_LIFE from its rising; the
-##   body is taken off the ledger (Remains.take hides the corpse). The ledger is on for a Pale night (Remains.wants); were
-##   it off (a test, the sandbox), the reign keeps it on for itself and puts it back as it was at its end.
+##   body is taken off the ledger (Remains.take hides the corpse). The ledger is always on in a mission; were it off
+##   (a test, the sandbox), the reign keeps it on for itself and puts it back as it was at its end.
 ## - The horde (R10): with the reign's first tick (its first death) HORDE_START pale ghosts pour out of the middle
 ##   (DeathParts.pale_ghost: wraiths in a pale tint, through walls, at PALE_GHOST_PACE of a walk, in this effect's own
 ##   `horde` pack). They run the district for the nearest living person inside it -- never one outside RADIUS, never a

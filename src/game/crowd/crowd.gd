@@ -234,6 +234,12 @@ var _bed_level := 0.0
 var remains: Remains
 ## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
 var withering: Withering
+## The burning (Burning: Ember on a person): laid by burn(), stepped after the town's orders (_advance()), cleared with the town.
+var burning: Burning
+## The trail fire (TrailFire: Ember's level 5 Fire Trail, short-lived burning ground that hurts who crosses it): null until the
+## first is laid (trail_fires()), so a town that never lays one makes nothing for it and nothing in it moves; stepped after the
+## burning (_advance()), cleared with the town.
+var trail_fire: TrailFire
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -346,6 +352,7 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
+	burning = Burning.new(self)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
 	if town.citadel != null:
@@ -1187,6 +1194,12 @@ func _advance(delta: float) -> void:
 	if rescue != null:
 		rescue.step(delta)
 	piles.step(delta)
+	# After the town's orders (a rescue squad's recall, the marshals, the escorts): a burning man any of them sent off this
+	# frame is running again before his feet move (Burning._keep_running()).
+	if burning != null:
+		burning.step(delta)
+	if trail_fire != null:
+		trail_fire.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1469,8 +1482,9 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 ## calm who see the build-up look at it; below, what the impact does): it registers a threat (PowerBook.REACH), and the people it reaches react
 ## by how near they are -- inside its area plus Person.THREAT_MARGIN they run clear of it, within sight or earshot
 ## they stop and look, beyond that nobody notices. A lane power (`dir` set, `length` above zero) is a threat along
-## its whole lane: a tsunami's far end runs through streets the player never pressed on.
-func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1) -> void:
+## its whole lane: a tsunami's far end runs through streets the player never pressed on. `scale` widens the danger with the
+## cast (Smite's Gathered Storm: SmiteFx.grow_of(), Targeting._on_cast_made()).
+func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1, scale := 1.0) -> void:
 	if is_veiled(ground):
 		return  # cast where nothing is seen (Unseen Hour): no look, no danger, no unease
 	if PowerBook.is_quiet(key):
@@ -1481,7 +1495,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", lev
 			add_alarm(unease)
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
-	var radius := _cast_radius(key, level)
+	var radius := _cast_radius(key, level) * scale
 	var points := cast_points(ground, dir, length, radius)
 	var impact := PowerBook.impact(key)
 	if impact <= 0.0:
@@ -1729,6 +1743,21 @@ func is_veiled(at: Vector2) -> bool:
 ## (gone, dead, inside, or withering already).
 func wither(p: Person, seconds: float, from: Vector2) -> bool:
 	return withering != null and withering.lay(p, seconds, from)
+
+
+## Sets `p` alight for `seconds`, from `from` (Burning.lay()); a building he brushes catches at `level`: false when nothing
+## was laid (gone, dead, inside, or burning already).
+func burn(p: Person, seconds: float, from: Vector2, level := Burning.LIGHT_AT) -> bool:
+	return burning != null and burning.lay(p, seconds, from, level)
+
+
+## The town's trail fire (TrailFire), made on the first ask with its look in the town's world: lay patches with its lay().
+func trail_fires() -> TrailFire:
+	if trail_fire == null:
+		trail_fire = TrailFire.new(_field, _env)
+	if is_instance_valid(_parent):
+		trail_fire.attach(_parent)
+	return trail_fire
 
 
 ## The town is told what `s` is, for `seconds` (Anathema): a `mark` the managers read -- &"cursed": nobody will be
@@ -2320,6 +2349,11 @@ func clear() -> void:
 	_struct_marks.clear()
 	if withering != null:
 		withering.clear()
+	if burning != null:
+		burning.clear()
+	if trail_fire != null:
+		trail_fire.clear()
+		trail_fire.free_layer()
 	_investigating.clear()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):

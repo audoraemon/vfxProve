@@ -885,9 +885,11 @@ func go_to(to: int) -> void:
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
-		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES, Screen.SLOTS, Screen.GOD_SELECT, \
+		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES, Screen.SLOTS, \
 				Screen.HUB, Screen.TREE, Screen.FAITH:
 			Music.play(&"theme")
+		Screen.GOD_SELECT:
+			Music.play(&"paths")  # its own piece; GodSelectScreen names the picked god's school (Music.set_path)
 		Screen.RESULTS, Screen.INTERLUDE:
 			Music.play(&"")  # the win or lose sting stands alone
 

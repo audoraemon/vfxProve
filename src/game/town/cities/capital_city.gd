@@ -598,6 +598,14 @@ func exits() -> Array[Vector2]:
 	return [Vector2(7, 39.6), Vector2(-39.6, -13), FERRY_LANDING]
 
 
+## The towers of the old town's west river gate (INNER_GATES[1], the spec's decision: the Armoury's and the Crowns' Bread's
+## "gate towers"), west tower first. Read by no running Capital mission yet.
+func gate_towers() -> Array[Rect2]:
+	if _gate_towers.is_empty():
+		_gate_towers = _gatehouses(INNER, [INNER_GATES[1]]).towers
+	return _gate_towers.duplicate()
+
+
 ## The gates out of the walls (the exits' gates of soldier_posts()): the old town's west gate, its harbour gate and the
 ## new town's south barbican. The river gates only cross between the rings.
 func gate_exits() -> Array[Vector2]:
@@ -1621,6 +1629,7 @@ static var _props_done := false
 static var _avenue: Array[Dictionary] = []
 static var _avenue_done := false
 static var _fans: Array[PackedVector2Array] = []
+static var _gate_towers: Array[Rect2] = []
 static var _posts := {}
 static var _outward := {}
 

@@ -358,3 +358,22 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VRB11 (polish): Slumber's eye is an almond outline with a violet pupil, every lit pixel outlined in black, 13 x 7 at 2 px: it reads
   as an eye that half-closes and shuts (lid curve with lashes) on dusk and on lit stone. Dreamless's thread is a silver pixel line with
   a dark pixel either side, alpha at least 0.8 x the fray, 16-28 px tall, so it reads on bright cobbles.
+- VRC1 (review round, Unseen Hour's blanket): the blanket is a screen-space sheet on overhead_back (z 4, as the Decree fences), its
+  middle raised 30 px above the ground ring and its edge drooping 16 px in nine scallops, so it reads as hung over the town rather
+  than laid on it; it is thrown from the click over T_FALL + 0.6 (it lands just after the veil falls) and lifts away over the last
+  second of the cast (the cast's own duration, T_FALL + VEIL_TIME + 1). The Hem stays at the ground ring as the line it hangs over,
+  and now also lays the blanket's soft shadow; the Hem is built at the cast (not at the fall) so the shadow follows the throw.
+  Opacity 0.3 in the middle to 0.5 at the edge: a veil, not a lid.
+- VRC2 (review round, Dread of the Dark's wall): the front crosses the dreaded ground over 1.2 s from the click (from the nearest
+  dark ground to the farthest), running past T_FALL: the look keeps spreading after the rules have fallen, as the brief's "during the
+  fall" is 0.8 s, too short to see a front cross 12 ground units. The wall stands on the shade's edge cells (the border of the dark
+  within reach, which is the reach itself where the dark runs on), at most 72 pillars evenly round it; far pillars (high on screen) are
+  58 px tall, near ones a 0.28 share of that, so the frozen inside stay in sight. The eyes (still at most 12, on the same edge cells)
+  open in the wall at half its height. The shade reads the dark once at the click (it read it first at the fall before) so the
+  spread has ground to cross; it stays on the overhead layer (the tests pin it there).
+- VRC3 (fix round 1, Dread's wall and the held): the wall is drawn in two halves. The far half (pillars above the dreaded patch's
+  middle on screen, 0.55 to 1.0 of HIGH) stands on overhead_back (z 4, a WallBack node the shade draws, tracked and torn down with the
+  cast); the near half (NEAR share) stays on the shade on overhead, under the frozen's marks, which now draw last. In a bare context
+  (no overhead_back) the shade draws both. Whatever its half, a pillar whose shape could cover a held person's screen rect (14 x 32
+  px at his feet) is cut to the NEAR share and thinned to 0.45 of its alpha; this is re-run at every read of the dark and whenever
+  the held change. Eye heights are cached then too.

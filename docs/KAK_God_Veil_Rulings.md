@@ -343,8 +343,10 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   cast's finish fall on the same frame, so it cannot be one of the cast's tracked nodes. It frees itself after 1.4 s.
 - VRB7: A blighted building gets no new mark this round. By day it reads only through the dusk round it and the rot's puff at the cast;
   the dimmed windows show at night. Left for the user's eye (see the Task B report).
-- VRB8 (polish): Blight's glyph colour is a sickly green 8fd04a (was a7b46e, which read as a gold token on the badge's plate): apart
-  from gold and from the Veil's violet. VRB4's colour line is superseded.
+- VRB8 (polish, fix round 2): Blight's glyph colour is a deep rot green 3c9646 (a7b46e and then 8fd04a were lifted and warmed
+  by the town's day grade into a yellow, gold-looking token). The badge is drawn through the same light and grade as the body (no
+  hue-keeping path), so the base is chosen dark and low in red: measured after the grade, day (108,197,65), dusk (93,179,62).
+  VRB4's colour line is superseded.
 - VRB9 (polish): two Blight marks on one man share his SICK glyph (a count of live marks per person, drawing only); only the last mark
   standing lets it go, so freeing one cast's mark never drops the glyph while he is still ill. Another power's glyph is still never
   touched, and one that comes over ours ends that mark's share. A mark freed off the tree gives its share up too (PREDELETE).

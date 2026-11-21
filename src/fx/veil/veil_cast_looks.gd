@@ -7,9 +7,9 @@ extends RefCounted
 ## effect made with FxTimeline.track() also goes with the effect. The two that outlive their cast (ShadeFade, BlightMark) join
 ## SolarisPit.GROUP and free themselves.
 
-## The rot of Blight's mark: a sickly green, greener than BlightFx.ROT's olive so it reads apart from gold and the Veil's violet
-## on the badge's dark plate (VRB8).
-const ROT := Color("8fd04a")
+## The rot of Blight's mark: a deep green, low in red, so that after the town's day grade (which lifts and warms it) it is still green,
+## apart from gold and the Veil's violet on the badge's dark plate (VRB8: day (108,197,65), dusk (93,179,62) measured).
+const ROT := Color("3c9646")
 ## Silver of the threads and the dust.
 const SILVER := Color("cfd3e6")
 ## A pale violet-silver for the glyph over Slumber.

@@ -7,8 +7,9 @@ extends RefCounted
 ## effect made with FxTimeline.track() also goes with the effect. The two that outlive their cast (ShadeFade, BlightMark) join
 ## SolarisPit.GROUP and free themselves.
 
-## The rot of Blight's mark: BlightFx.ROT's lightest, a shade lighter so the glyph reads on its dark plate.
-const ROT := Color("a7b46e")
+## The rot of Blight's mark: a sickly green, greener than BlightFx.ROT's olive so it reads apart from gold and the Veil's violet
+## on the badge's dark plate (VRB8).
+const ROT := Color("8fd04a")
 ## Silver of the threads and the dust.
 const SILVER := Color("cfd3e6")
 ## A pale violet-silver for the glyph over Slumber.
@@ -111,9 +112,13 @@ class Wave extends Node2D:
 
 ## Slumber's closed eye: over the middle of the reach an eye opens, blinks shut at the landing, and fades (screen space).
 class EyeGlyph extends Node2D:
-	const OPEN := ["..#######..", ".#..###..#.", "#..##.##..#", ".#..###..#.", "..#######.."]
-	const HALF := ["...........", "...........", ".#########.", "#..#####..#", "..#######.."]
-	const SHUT := ["...........", "...........", "#.........#", "##.......##", ".###...###.", "...#####..."]
+	## '#' a pale lid, 'p' the violet pupil; each lit pixel gets a dark outline, so the lids read against dusk as well as lit stone.
+	const OPEN := ["....#####....", "..##.....##..", ".#...ppp...#.", "#...ppppp...#", ".#...ppp...#.", "..##.....##..",
+		"....#####...."]
+	const HALF := [".............", ".............", ".###########.", "#...ppppp...#", ".#...ppp...#.", "..##.....##..",
+		"....#####...."]
+	const SHUT := [".............", ".............", ".............", "#...........#", ".##.......##.", "...#######...",
+		"...#..#..#..."]
 	## When it shuts (the landing).
 	var shut_at := 0.6
 	var life := 1.6
@@ -140,13 +145,13 @@ class EyeGlyph extends Node2D:
 			for y in rows.size():
 				var row := String(rows[y])
 				for x in w:
-					if row[x] != "#":
+					if row[x] == ".":
 						continue
-					var at := Vector2((float(x) - float(w) * 0.5) * px, (float(y) - 2.5) * px + lift).round()
+					var at := Vector2((float(x) - float(w) * 0.5) * px, (float(y) - 3.5) * px + lift).round()
 					if pass_i == 0:
-						draw_rect(Rect2(at + Vector2.ONE, Vector2.ONE * px), Color(VeilParts.BLACK, 0.6 * a))
+						draw_rect(Rect2(at - Vector2.ONE, Vector2.ONE * (px + 2.0)), Color(VeilParts.BLACK, 0.85 * a))
 					else:
-						draw_rect(Rect2(at, Vector2.ONE * px), Color(VeilCastLooks.PALE, a))
+						draw_rect(Rect2(at, Vector2.ONE * px), Color(VeilCastLooks.PALE if row[x] == "#" else VeilParts.VEIL, a))
 
 
 ## Slumber's heavy silver dust sinking onto each sleeper: a few specks falling from above the head to the shoulders (screen
@@ -310,7 +315,7 @@ class Threads extends Node2D:
 
 	func _height(fx: DreamlessFx, since: float) -> float:
 		var grow := clampf((clock - since) / 0.5, 0.0, 1.0)
-		return lerpf(14.0, 26.0, _left(fx)) * grow
+		return lerpf(16.0, 28.0, _left(fx)) * grow
 
 	## How many threads are still up (tests).
 	func up() -> int:
@@ -375,9 +380,10 @@ class Threads extends Node2D:
 			if fray > left + 0.7:
 				continue
 			var sway := sin(fy * 0.35 + clock * 1.6) * 1.6 * (float(y) / maxf(h, 1.0))
-			var al := (0.6 + 0.35 * left) * a * (1.0 - 0.5 * float(y) / maxf(h, 1.0))
+			var al := (0.8 + 0.2 * left) * a * (1.0 - 0.3 * float(y) / maxf(h, 1.0))
 			var at := (base + Vector2(sway, -float(y))).round()
-			draw_rect(Rect2(at + Vector2(1, 0), Vector2.ONE), Color(VeilParts.BLACK, 0.6 * al))  # a dark side, so it reads on lit stone
+			# A dark line either side, so the silver reads on bright cobbles as well as in the dark.
+			draw_rect(Rect2(at + Vector2(-1, 0), Vector2(3, 1)), Color(VeilParts.BLACK, 0.7 * al))
 			draw_rect(Rect2(at, Vector2.ONE), Color(VeilCastLooks.SILVER, al))
 		if h > 4.0:
 			# A bead of silver climbing it.
@@ -477,7 +483,9 @@ class ShadeFade extends Node2D:
 ## Blight's mark on a person it made ill: a small sickness glyph over the head in the rot colour -- the game's own badge
 ## (Person.set_badge()), kept up while he walks home sick (until he is indoors) or, a quarry, while he is ill -- and a faint drift of
 ## rot motes where he passes. A badge another power set is left alone (then only the motes show), and one that replaces ours ends
-## our claim. SolarisPit.GROUP; frees itself, clearing our badge, when he is home, well, dead or gone.
+## our claim. Two casts on one man share the glyph: only the last mark standing lets it go (VRB9). A citizen sent home keeps it until
+## indoors; a quarry keeps it while ill_left() runs, hidden while he is inside and back when he comes out (VRB10). SolarisPit.GROUP;
+## frees itself, clearing our badge, when he is home, well, dead or gone.
 class BlightMark extends Node2D:
 	const SICK: Array[int] = [0b00100, 0b01110, 0b11101, 0b11111, 0b01110]
 	## The badge's seconds, renewed every frame while he is ill (a badge runs down on its own: one never outlives the mark by more).
@@ -485,8 +493,10 @@ class BlightMark extends Node2D:
 	const TRAIL := 6
 	const EVERY := 0.3
 	var who_id := 0
-	## Whether the badge over him is ours.
+	## Whether this mark keeps the SICK glyph over him (shared with any other Blight mark on him).
 	var owns := false
+	## How many live marks keep each person's glyph: person id -> count (drawing only; never read by the town).
+	static var _holders := {}
 	var clock := 0.0
 	var _trail: Array[Vector2] = []
 	var _next := 0.0
@@ -498,13 +508,24 @@ class BlightMark extends Node2D:
 	func start(p: Person) -> void:
 		who_id = p.get_instance_id()
 		add_to_group(SolarisPit.GROUP)
-		owns = p.badge_left <= 0.0
+		# Ours to keep when nothing is up, or when another Blight mark's SICK glyph is (then it is shared).
+		owns = p.badge_left <= 0.0 or p.badge_glyph == SICK
 		if owns:
-			p.set_badge(SICK, VeilCastLooks.ROT, HOLD)
+			_holders[who_id] = int(_holders.get(who_id, 0)) + 1
+			if shown(p):
+				p.set_badge(SICK, VeilCastLooks.ROT, HOLD)
 
-	## Whether `p` is still ill out of doors.
+	## Whether `p` is still ill: a citizen sent home until he is indoors; a quarry while his illness runs (indoors or not).
 	static func ill(p: Person) -> bool:
-		return p != null and is_instance_valid(p) and p.is_alive() and not p.inside and (p.home_sick or p.ill_left() > 0.0)
+		if p == null or not is_instance_valid(p) or not p.is_alive():
+			return false
+		if p.home_sick:
+			return not p.inside
+		return p.ill_left() > 0.0
+
+	## Whether his mark shows now (he is out of doors).
+	static func shown(p: Person) -> bool:
+		return ill(p) and not p.inside
 
 	func _process(delta: float) -> void:
 		var p := _who()
@@ -513,11 +534,17 @@ class BlightMark extends Node2D:
 			queue_free()
 			return
 		clock += delta
+		var out := shown(p)
 		if owns:
-			if p.badge_glyph != SICK:
-				owns = false  # another power's badge came over ours: it stays
-			else:
+			if p.badge_left > 0.0 and p.badge_glyph != SICK:
+				_release()  # another power's badge came over ours: it stays
+			elif out:
 				p.set_badge(SICK, VeilCastLooks.ROT, HOLD)
+			elif p.badge_glyph == SICK:
+				p.clear_badge()  # a quarry gone indoors: hidden until he comes out
+		visible = out
+		if not out:
+			return
 		if clock >= _next:
 			_next = clock + EVERY
 			_trail.push_front(Iso.ground_to_screen(p.ground_pos))
@@ -525,14 +552,34 @@ class BlightMark extends Node2D:
 				_trail.pop_back()
 		queue_redraw()
 
-	func _drop() -> void:
-		var p := _who()
-		if owns and p != null and is_instance_valid(p) and p.badge_glyph == SICK:
-			p.clear_badge()
+	## Gives up this mark's share of the glyph (the count goes down; nothing else).
+	func _release() -> void:
+		if not owns:
+			return
 		owns = false
+		var n := int(_holders.get(who_id, 1)) - 1
+		if n <= 0:
+			_holders.erase(who_id)
+		else:
+			_holders[who_id] = n
+
+	## Lets the glyph go: cleared only when this was the last Blight mark keeping it, and only when it is still SICK.
+	func _drop() -> void:
+		var was := owns
+		_release()
+		if not was or _holders.has(who_id):
+			return
+		var p := _who()
+		if p != null and is_instance_valid(p) and p.badge_glyph == SICK:
+			p.clear_badge()
 
 	func _exit_tree() -> void:
 		_drop()
+
+	## Freed off the tree (no _exit_tree): its share is still given up.
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_PREDELETE:
+			_drop()
 
 	func _draw() -> void:
 		# Rot motes rising and fading where he walked (the oldest faintest).

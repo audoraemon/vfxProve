@@ -182,9 +182,44 @@ static func _mark(t, made: Array, open: Vector2) -> void:
 	var m3: VeilCastLooks.BlightMark = fx3.marks[0] if fx3.marks.size() == 1 else null
 	t.check(not q.home_sick and q.ill_left() > 0.0 and m3 != null and q.badge_glyph == sick, "a quarry carries the mark while ill")
 	fx3.end_now()
+	# A quarry who steps indoors keeps his mark, hidden; out again it shows; it goes only when he is well.
+	q.inside = true
+	m3._process(0.1)
+	t.check(is_instance_valid(m3) and not m3.is_queued_for_deletion() and not m3.visible and q.badge_left == 0.0,
+		"a quarry indoors while ill: the mark stays, hidden (no badge)")
+	q.inside = false
+	m3._process(0.1)
+	t.check(m3.visible and q.badge_glyph == sick and q.badge_left > 0.0, "out again while ill: the glyph is back")
 	q._ill_left = 0.0
 	m3._process(0.1)
 	t.check(m3.is_queued_for_deletion() and q.badge_left == 0.0, "well again: the mark goes")
+	# A citizen sent home loses it indoors (control: not the quarry's rule).
+	p.inside = true
+	t.check(p.home_sick and not VeilCastLooks.BlightMark.ill(p), "a citizen sent home and indoors is not marked (until indoors)")
+	p.inside = false
+	# Two casts on one man: the glyph is shared; the first mark freed, he is still ill, the glyph stays.
+	_scatter(crowd)
+	var two: Person = crowd.citizens[16]
+	two.ground_pos = open
+	two.clear_badge()
+	dir.mine = two
+	ctx.rules.director = dir
+	var fa := _cast(ctx, open) as BlightFx
+	var fb := _cast(ctx, open) as BlightFx
+	ctx.rules.director = null
+	var ma: VeilCastLooks.BlightMark = fa.marks[0] if fa.marks.size() == 1 else null
+	var mb: VeilCastLooks.BlightMark = fb.marks[0] if fb.marks.size() == 1 else null
+	fa.end_now()
+	fb.end_now()
+	t.check(ma != null and mb != null and ma.owns and mb.owns, "two casts on one man: both marks share his glyph")
+	ma.free()
+	two._think(VeilCastLooks.BlightMark.HOLD + 0.05)
+	mb._process(0.05)
+	t.check(two.ill_left() > 0.0 and two.badge_glyph == sick and two.badge_left > 0.0,
+		"the first mark freed, he is still ill: the glyph stays (the second keeps it)")
+	two._ill_left = 0.0
+	mb._process(0.05)
+	t.check(mb.is_queued_for_deletion() and two.badge_left == 0.0, "the last mark standing lets it go")
 	# Freed outside the tree: the badge runs down on its own within HOLD.
 	_scatter(crowd)
 	var f: Person = crowd.citizens[15]

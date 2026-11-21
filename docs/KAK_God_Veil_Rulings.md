@@ -343,3 +343,13 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   cast's finish fall on the same frame, so it cannot be one of the cast's tracked nodes. It frees itself after 1.4 s.
 - VRB7: A blighted building gets no new mark this round. By day it reads only through the dusk round it and the rot's puff at the cast;
   the dimmed windows show at night. Left for the user's eye (see the Task B report).
+- VRB8 (polish): Blight's glyph colour is a sickly green 8fd04a (was a7b46e, which read as a gold token on the badge's plate): apart
+  from gold and from the Veil's violet. VRB4's colour line is superseded.
+- VRB9 (polish): two Blight marks on one man share his SICK glyph (a count of live marks per person, drawing only); only the last mark
+  standing lets it go, so freeing one cast's mark never drops the glyph while he is still ill. Another power's glyph is still never
+  touched, and one that comes over ours ends that mark's share. A mark freed off the tree gives its share up too (PREDELETE).
+- VRB10 (polish): a mission's quarry keeps his mark while ill_left() runs: hidden while he is indoors (the badge cleared), shown again
+  when he comes out, gone when the illness ends. A citizen sent home sick keeps it until indoors, as before.
+- VRB11 (polish): Slumber's eye is an almond outline with a violet pupil, every lit pixel outlined in black, 13 x 7 at 2 px: it reads
+  as an eye that half-closes and shuts (lid curve with lashes) on dusk and on lit stone. Dreamless's thread is a silver pixel line with
+  a dark pixel either side, alpha at least 0.8 x the fray, 16-28 px tall, so it reads on bright cobbles.

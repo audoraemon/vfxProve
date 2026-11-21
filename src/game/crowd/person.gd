@@ -1359,6 +1359,8 @@ func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelt
 		return
 	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
 		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
+	if crowd != null and crowd.shelter_escort != null and crowd.shelter_escort.steadied(self, from, radius):
+		return  # a household led to shelter holds against a near miss while its escort stands by (ShelterEscort)
 	# A sturdy building nearby may be better than running (ShelterManager).
 	if may_shelter and shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED

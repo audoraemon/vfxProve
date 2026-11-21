@@ -16,6 +16,8 @@ const EVERY := 1.0
 const GLYPH_EYE: Array[int] = [0b00000, 0b01110, 0b11011, 0b01110, 0b00000]
 ## The gate guard's badge when he sees through someone: an exclamation mark.
 const GLYPH_ALERT: Array[int] = [0b00100, 0b00100, 0b00100, 0b00000, 0b00100]
+## The badge of a household led to shelter: a shield.
+const GLYPH_SHIELD: Array[int] = [0b11111, 0b11111, 0b11111, 0b01110, 0b00100]
 
 
 ## One open job of a new kind.

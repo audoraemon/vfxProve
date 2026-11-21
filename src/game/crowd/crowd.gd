@@ -157,6 +157,8 @@ var cordon: CordonDuty
 var sweep: SweepDuty
 ## The gate check (soldier duties, slice e): the wall guards at a gate see through a guise or the god's hold on someone passing.
 var gate_check: GateCheck
+## The shelter escort (soldier duties, slice f): two soldiers lead a household waiting at home to a shelter with room.
+var shelter_escort: ShelterEscort
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
 var mission_holds: Array[Callable] = []
 ## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
@@ -394,6 +396,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	guard_jobs.add_duty(sweep)
 	gate_check = GateCheck.new().setup(guard_jobs, self) as GateCheck
 	guard_jobs.add_duty(gate_check)
+	shelter_escort = ShelterEscort.new().setup(guard_jobs, self) as ShelterEscort
+	guard_jobs.add_duty(shelter_escort)
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
@@ -2028,6 +2032,8 @@ func _tend_households() -> void:
 	if _households.is_empty():
 		return
 	for fam in _households.keys():
+		if shelter_escort != null and shelter_escort.escorting(fam):
+			continue  # led to shelter by two soldiers (ShelterEscort): a household waits for them, it does not flee
 		var members: Array[Person] = []
 		var home_all := true
 		for p in citizens:

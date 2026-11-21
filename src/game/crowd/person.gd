@@ -1887,6 +1887,28 @@ func guised() -> bool:
 	return statuses.has(&"guise")
 
 
+## A gate guard sees through him (GateCheck): the guise comes off and any hold of the god's ends as if it had worn off -- a whisper
+## (end_whisper()), a confusion (_come_to()), a compulsion (release_compulsion()), a stare at a lure (it ends at his next think).
+## True when anything ended.
+func unmask() -> bool:
+	var ended := statuses.erase(&"guise")
+	match mind:
+		Mind.WHISPERED:
+			end_whisper()
+			ended = true
+		Mind.CONFUSED:
+			_come_to()
+			ended = true
+		Mind.COMPELLED:
+			release_compulsion()
+			ended = true
+		Mind.OBSERVE:
+			if _lured:
+				_observe_left = 0.0
+				ended = true
+	return ended
+
+
 ## Whether a withering is on him now (Withering, R36: statuses[&"wither"] holds the seconds left, laid, counted down and
 ## taken off by the crowd's Withering). Drawn grey (Withering.TINT), as the guised are.
 func withered() -> bool:

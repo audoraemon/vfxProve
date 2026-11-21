@@ -511,7 +511,7 @@ static func _clear_resets_jobs(t) -> void:
 	var stub := StubDuty.new().setup(gj, crowd)
 	gj.add_duty(stub)
 	gj.step(1.0)
-	t.check(gj.jobs.size() == 1 and stub.job.crew.size() == 1, "the board filled the stub's job with one man")
+	t.check(gj.live(GuardJobs.Kind.CORDON).size() == 1 and stub.job.crew.size() == 1, "the board filled the stub's job with one man")
 	var man: Person = stub.job.crew[0]
 	t.check(gj.on_job(man) and gj.kind_of(man) == GuardJobs.Kind.CORDON and stub.job.started, "he is on a CORDON job")
 	gj.clear()

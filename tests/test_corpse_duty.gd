@@ -150,7 +150,8 @@ static func _arrive_now(job: GuardJobs.Job) -> void:
 static func _labels(crowd: Crowd) -> Array[String]:
 	var out: Array[String] = []
 	for tag in crowd.guard_jobs.tags():
-		out.append(tag.label)
+		if tag.label != GateCheck.TAG:  # the gate guards' standing tag is not a corpse tag
+			out.append(tag.label)
 	return out
 
 
@@ -264,7 +265,7 @@ static func _crew_pair_only(t) -> void:
 		var who: Array = jobs[0].data.pair
 		var on := 0
 		for p in crowd.soldiers:
-			on += 1 if crowd.guard_jobs.on_job(p) else 0
+			on += 1 if crowd.guard_jobs.on_job(p) and crowd.guard_jobs.kind_of(p) != GuardJobs.Kind.GATE else 0
 		t.check(on == 2 and who.size() == 2 and jobs[0].crew.all(func(p: Person) -> bool: return who.has(p)),
 			"only the pair named by the job is on it (%d men on jobs)" % on)
 	_kill(made, _far(pair, 2.5))

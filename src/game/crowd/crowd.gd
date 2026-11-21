@@ -155,6 +155,8 @@ var corpses: CorpseDuty
 var cordon: CordonDuty
 ## The sweep duty (soldier duties, slice d): four soldiers go door to door through a district after a seen power or a Local Emergency.
 var sweep: SweepDuty
+## The gate check (soldier duties, slice e): the wall guards at a gate see through a guise or the god's hold on someone passing.
+var gate_check: GateCheck
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
 var mission_holds: Array[Callable] = []
 ## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
@@ -390,6 +392,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	guard_jobs.add_duty(cordon)
 	sweep = SweepDuty.new().setup(guard_jobs, self) as SweepDuty
 	guard_jobs.add_duty(sweep)
+	gate_check = GateCheck.new().setup(guard_jobs, self) as GateCheck
+	guard_jobs.add_duty(gate_check)
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
@@ -1475,6 +1479,8 @@ func _gates() -> void:
 			_gate_next[gate] = _clock + interval / (marshals.speed_at(face) if marshals != null else 1.0)
 			crowd_here[0].release_from_queue()
 			crowd_here[0].passing_gate = gate
+			if gate_check != null:
+				gate_check.check(crowd_here[0], gate)  # the one let out is looked at; the gate's own clock is already set
 			first = 1
 		for i in range(first, crowd_here.size()):
 			var slot := i - first
@@ -2196,6 +2202,8 @@ func _refill(dead: Person) -> void:
 		if best == null:
 			return
 		guard_jobs.drop(guard.job, best)
+	if guard_jobs.on_job(best):
+		guard_jobs.pull(best)  # a gate checker (the only free man with a record) gives his GATE job up before he takes a role
 	best.corps = dead.corps
 	best.post = dead.post
 	match dead.corps:

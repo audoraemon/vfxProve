@@ -14,6 +14,8 @@ enum Kind { CITADEL, FIRE, PILE, SHELTER, SWEEP, CORPSE, CORDON, GATE }
 const EVERY := 1.0
 ## The sweep's badge: an eye (five rows of five bits, as Person's glyphs).
 const GLYPH_EYE: Array[int] = [0b00000, 0b01110, 0b11011, 0b01110, 0b00000]
+## The gate guard's badge when he sees through someone: an exclamation mark.
+const GLYPH_ALERT: Array[int] = [0b00100, 0b00100, 0b00100, 0b00000, 0b00100]
 
 
 ## One open job of a new kind.
@@ -109,9 +111,23 @@ func beat_walker(p: Variant) -> bool:
 	return not (_crowd.escorts != null and _crowd.escorts.guarding(s)) and not on_job(s)
 
 
-## Whether `p` may be given a job now: at his post, or a beat man on his way (widened by later duties).
+## Whether `p` is a gate checker who may be given a higher job: his only record is a GATE job, he is out of doors on a post mind, in
+## no hand but the town's, no corps, not named by a mission and not guarding for an escort. He may be mid-step to his spot.
+func gate_checker(p: Variant) -> bool:
+	if not is_instance_valid(p) or kind_of(p) != Kind.GATE:
+		return false
+	var s := p as Person
+	if not s.is_alive() or not s.soldier or s.corps != Person.Corps.NONE or s.inside or s.mind != Person.Mind.POST:
+		return false
+	if s.held_by_god() or _crowd.held_by_mission(s) or (_crowd.escorts != null and _crowd.escorts.guarding(s)):
+		return false
+	return s.post_group >= 0 and s.post.is_equal_approx(s.town_post)
+
+
+## Whether `p` may be given a job now: at his post, a beat man on his way, or a gate checker (the lowest job: any other kind may
+## take him and that is not a pull).
 func is_free(p: Variant) -> bool:
-	return eligible(p) or beat_walker(p)
+	return eligible(p) or beat_walker(p) or gate_checker(p)
 
 
 ## A cap `base` scaled to the town's guard (Aldermere's 100 soldiers keep it as it is).
@@ -165,12 +181,17 @@ func pick(at: Vector2, reach: float, on_here: int, cap: int) -> Array[Person]:
 
 ## `spot`: where the job stands him (a dig spot); a guard dropped while still anchored there walks home.
 func take(p: Person, job: Variant, spot := Vector2.INF) -> void:
+	var old: Variant = _jobs.get(p)
 	_jobs[p] = job
+	if old is Job and old != job and (old as Job).kind == Kind.GATE:
+		# A gate checker taken by a higher job: his GATE record yields (his job is no longer his record, so he is not sent to his post).
+		(old as Job).crew.erase(p)
+		duties[Kind.GATE].on_dropped(old, p)
 	if spot != Vector2.INF:
 		_spots[p] = spot
 	else:
 		_spots.erase(p)
-	p.on_guard_job = true
+	p.on_guard_job = not (job is Job and (job as Job).kind == Kind.GATE)  # a gate guard still counts as a watcher
 
 
 func job_of(p: Variant) -> Variant:
@@ -332,6 +353,7 @@ func tags() -> Array[MapTag]:
 		if duties.has(kind):
 			for job in live(kind):
 				out.append_array((duties[kind] as Duty).tags(job))
+			out.append_array((duties[kind] as Duty).standing_tags())
 	return out
 
 
@@ -423,6 +445,8 @@ func close() -> void:
 	for job in jobs:
 		job.ended = true
 	jobs.clear()
+	for kind in duties:
+		(duties[kind] as Duty).on_close()
 
 
 ## A new crowd or act: forget everything and open again.

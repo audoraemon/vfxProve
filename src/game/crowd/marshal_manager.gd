@@ -84,15 +84,21 @@ func begin() -> void:
 		posted.emit()
 
 
-## Where the `j`-th marshal at a way out stands: either side of its mouth, each next pair farther out.
-func _spot(mouth: Vector2, out_dir: Vector2, j: int) -> Vector2:
+## Where the `j`-th marshal at a way out stands: either side of its mouth, each next pair farther out (the gate checkers' spots
+## are the places after the marshals').
+func spot(mouth: Vector2, out_dir: Vector2, j: int) -> Vector2:
 	var side := Vector2(-out_dir.y, out_dir.x)
 	var sgn := -1.0 if j % 2 == 0 else 1.0
-	var spot := mouth - out_dir * BACK + side * sgn * (FLANK + FLANK_STEP * float(j / 2))
-	if not _grid.walkable(spot):
-		var near := _grid.nearest_walkable(spot, 3)
-		spot = near if near != Vector2.INF else mouth
-	return spot
+	var at := mouth - out_dir * BACK + side * sgn * (FLANK + FLANK_STEP * float(j / 2))
+	if not _grid.walkable(at):
+		var near := _grid.nearest_walkable(at, 3)
+		at = near if near != Vector2.INF else mouth
+	return at
+
+
+## The old name of spot().
+func _spot(mouth: Vector2, out_dir: Vector2, j: int) -> Vector2:
+	return spot(mouth, out_dir, j)
 
 
 ## A soldier from the rally ring takes the dead marshal `dead`'s place (Crowd._refill(), v0.09.1). Before the evacuation

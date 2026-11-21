@@ -75,6 +75,16 @@ func tags(_job: GuardJobs.Job) -> Array[MapTag]:
 	return []
 
 
+## Map tags of this duty that belong to no job (a standing duty's: the gate guards), after the jobs' own.
+func standing_tags() -> Array[MapTag]:
+	return []
+
+
+## The board closed (the Citadel fell): the duty lets go of whatever it set on men that no job of its holds.
+func on_close() -> void:
+	pass
+
+
 ## Drawing over the people (the response drawer's).
 func draw(_canvas: Node2D) -> void:
 	pass

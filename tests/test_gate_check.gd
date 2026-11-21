@@ -32,6 +32,11 @@ static func run(t) -> void:
 	_released_hook(t)
 	_soldier_not_checked(t)
 	_unmask_minds(t)
+	_one_gate_one_charge(t)
+	_director_release(t)
+	_watch_same(t)
+	_charge_not_spotted(t)
+	_closed_board_checks_nothing(t)
 
 
 static func _world() -> Array:
@@ -266,8 +271,20 @@ static func _spot_guised(t) -> void:
 	alarm = crowd.alarm
 	_tick(crowd)
 	t.check(not g2.guised(), "a second guised citizen is seen too")
+	t.near(crowd.alarm - alarm, 0.0, 0.001, "one charge per gate per 10 s: the second spot adds no alarm")
+	_run_for_ten(crowd)
+	crowd.alarms.bell_rung = false
+	var g3 := _guised_at(crowd, gate, 3)
+	alarm = crowd.alarm
+	_tick(crowd)
+	t.check(not g3.guised(), "a third is seen after 10 s")
 	t.near(crowd.alarm - alarm, GateCheck.GATE_SPOT_ALARM * Crowd.UNWARNED_ALARM, 0.001, "before the bell the alarm counts half")
 	C._done(made)
+
+
+## Ten seconds on (the checker's spot and the walker stay put).
+static func _run_for_ten(crowd: Crowd) -> void:
+	C._run_for(crowd, GateCheck.REPEAT_SECONDS + 0.5)
 
 
 ## A whispered citizen at a checked gate is no longer held by the god (and is left in a sane mind).
@@ -367,7 +384,7 @@ static func _veiled(t) -> void:
 
 
 ## A fleeing queue at a gate with the check on and off: the same release clocks and queue, whatever the check does.
-static func _queue_trace(checks_on: bool) -> Dictionary:
+static func _queue_trace(checks_on: bool, confused := false) -> Dictionary:
 	var made := _world()
 	var crowd: Crowd = made[0]
 	var gate: Structure = (made[5] as Town).gates[0]
@@ -385,6 +402,13 @@ static func _queue_trace(checks_on: bool) -> Dictionary:
 		if k % 2 == 0:
 			p.statuses[&"guise"] = 90.0
 		group.append(p)
+	if confused:
+		var q: Person = crowd.citizens[8]
+		q.inside = false
+		q.confuse(120.0)
+		q.ground_pos = spots[8]
+		q.queue_spot = spots[8]
+		group.append(q)
 	var trace := []
 	var last := -2.0
 	for i in roundi(60.0 / STEP):
@@ -405,6 +429,10 @@ static func _queue_trace(checks_on: bool) -> Dictionary:
 
 
 static func _never_slows(t) -> void:
+	var c_on := _queue_trace(true, true)
+	var c_off := _queue_trace(false, true)
+	t.check(c_on.trace == c_off.trace and c_on.queue == c_off.queue,
+			"a queued confused non-fleer: the same release clocks, turns and escapes with and without the check")
 	var on := _queue_trace(true)
 	var off := _queue_trace(false)
 	t.check(not (on.trace as Array).is_empty() and on.trace == off.trace, "the gate's release clocks are the same with and without the check (%d releases)" % (on.trace as Array).size())
@@ -683,4 +711,150 @@ static func _unmask_minds(t) -> void:
 	t.check(p.unmask() and not p.guised(), "a guised citizen: true, the guise off")
 	p.whisper(p.ground_pos, 30.0)
 	t.check(p.unmask() and p.mind == Person.Mind.RECOVER, "a whispered one: true, he recovers")
+	C._done(made)
+
+
+## Four guised people crossing one checked gate together: all four unmasked, one incident, one alarm of 2.0, one banner, four "!" shown.
+static func _one_gate_one_charge(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var gate := _none_gate(crowd)
+	var c := _ready_gate(crowd, gate) if gate != null else null
+	t.check(c != null, "(a checker on his spot)")
+	if c == null:
+		C._done(made)
+		return
+	var texts := _texts(crowd)
+	var district := AlarmManager.district_of(gate.center())
+	var four: Array[Person] = []
+	for i in 4:
+		four.append(_guised_at(crowd, gate, 1 + i, 0.8 + 0.1 * float(i)))
+	crowd.alarms.bell_rung = true
+	var events := int(crowd.alarms._events.get(district, 0))
+	var alarm := crowd.alarm
+	_tick(crowd)
+	var gone := 0
+	for p in four:
+		gone += 0 if p.guised() else 1
+	t.check(gone == 4, "all four lose the guise (%d)" % gone)
+	t.check(int(crowd.alarms._events.get(district, 0)) == events + 1, "one incident")
+	t.near(crowd.alarm - alarm, GateCheck.GATE_SPOT_ALARM, 0.001, "one alarm of 2.0")
+	t.check(texts.count(GateCheck.BANNER) == 1, "one banner")
+	t.check(c.badge_glyph == GuardJobs.GLYPH_ALERT and c.badge_left > 0.0, "and the \"!\" shows")
+	C._done(made)
+
+
+## A director takes a checker (release(): no on_dropped) and gives him back: no dead job, and he checks again.
+static func _director_release(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var gate := _none_gate(crowd)
+	var c := _ready_gate(crowd, gate) if gate != null else null
+	t.check(c != null, "(a checker on his spot)")
+	if c == null:
+		C._done(made)
+		return
+	var gj := crowd.guard_jobs
+	_tick(crowd)
+	gj.release(c)
+	_tick(crowd)
+	var dead := false
+	for job in gj.live(GATE):
+		for m in job.crew:
+			dead = dead or gj.job_of(m) != job
+	t.check(not dead and not c.watch_far, "released by a director: no job holds him dead, his flags are off")
+	c.send_to_post(c.post)
+	_arrive(c)
+	for i in 3:
+		_tick(crowd)
+	t.check(gj.kind_of(c) == GATE, "given back: he holds a new GATE job")
+	for job in gj.live(GATE):
+		for m in job.crew:
+			dead = dead or gj.job_of(m) != job
+	t.check(not dead, "and no dead record is left")
+	C._run_for(crowd, 1.5, [crowd.citizens[0]])
+	_arrive(c)
+	var g := _guised_at(crowd, gate, 1)
+	_tick(crowd)
+	t.check(not g.guised(), "and he checks again")
+	C._done(made)
+
+
+## A gate guard's watch is the same at his post and on his spot.
+static func _watch_same(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var gate := _none_gate(crowd)
+	var c := _ready_gate(crowd, gate) if gate != null else null
+	t.check(c != null, "(a checker on his spot)")
+	if c == null:
+		C._done(made)
+		return
+	t.check(c.on_watch() and c.watch_at().is_equal_approx(c.town_post), "on his spot: he watches, judged at his post")
+	var there := c.ground_pos
+	c.ground_pos = c.post + Vector2(0.0, 3.0)
+	t.check(c.on_watch() and c.watch_at().is_equal_approx(c.town_post), "mid-step, far from both: still the same watch")
+	c.ground_pos = there
+	crowd.guard_jobs.release(c)
+	c.send_to_post(c.post)
+	_arrive(c)
+	for i in 3:
+		_tick(crowd)
+	t.check(c.on_watch() and c.watch_at().is_equal_approx(c.town_post), "at his post: the same")
+	var other: Person = null
+	for p in crowd.soldiers:
+		if p != c and not crowd.guard_jobs.on_job(p):
+			other = p
+			break
+	t.check(other.watch_at().is_equal_approx(other.ground_pos), "a man with no record is judged where he stands")
+	C._done(made)
+
+
+## A director's charge (answers_lure) is never spotted, whispered or guised; anyone else is.
+static func _charge_not_spotted(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var gate := _none_gate(crowd)
+	var c := _ready_gate(crowd, gate) if gate != null else null
+	t.check(c != null, "(a checker on his spot)")
+	if c == null:
+		C._done(made)
+		return
+	var charge: Person = crowd.citizens[1]
+	_calm_at(charge, _mouth(gate) - Crowd.outward_of(gate) * 0.8)
+	charge.answers_lure = true
+	t.check(charge.whisper(charge.ground_pos, 30.0), "(the charge is whispered)")
+	var guised: Person = crowd.citizens[2]
+	_calm_at(guised, _mouth(gate) - Crowd.outward_of(gate) * 0.9)
+	guised.answers_lure = true
+	guised.statuses[&"guise"] = 60.0
+	var plain: Person = crowd.citizens[3]
+	_calm_at(plain, _mouth(gate) - Crowd.outward_of(gate) * 1.0)
+	plain.whisper(plain.ground_pos, 30.0)
+	_tick(crowd)
+	t.check(charge.held_by_god() and guised.guised(), "a charge passes the checked gate untouched")
+	t.check(not plain.held_by_god(), "while an ordinary whispered man is seen")
+	C._done(made)
+
+
+## A closed board checks nothing and shows no tag.
+static func _closed_board_checks_nothing(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var gate := _gate_of(crowd, Person.Corps.MARSHAL)
+	var marshal: Person = null
+	for p in crowd.gate_check.checkers(gate):
+		if p.corps == Person.Corps.MARSHAL:
+			marshal = p
+			break
+	C._only_free(crowd, [marshal])
+	_quiet(crowd, gate)
+	C._place(marshal, _mouth(gate) + Vector2(0.4, 0.0))
+	marshal.mind = Person.Mind.POST
+	_tick(crowd)
+	t.check(_has_tag(crowd, gate), "(the tag shows)")
+	crowd.guard_jobs.close()
+	var g := _guised_at(crowd, gate, 1)
+	t.check(not crowd.gate_check.check(g, gate) and g.guised(), "a closed board: nothing is checked")
+	t.check(not _has_tag(crowd, gate), "and no tag shows")
 	C._done(made)

@@ -35,6 +35,10 @@ var _spotted := {}
 var _near_at := {}
 ## The men this duty set `watch_far` and the eye badge on (checkers on their spot, marshals at their gate).
 var _marked := {}
+## Gate instance id -> the crowd clock of its last incident and alarm (one charge per gate per REPEAT_SECONDS).
+var _charged := {}
+## The ones let out of a queue this frame, [person, gate], looked at after the queue loop.
+var _pending: Array = []
 ## The gates' centres whose tag shows (refreshed on every board tick).
 var _shown: Array[Vector2] = []
 
@@ -82,8 +86,10 @@ func checked(gate: Structure) -> bool:
 ## (unmask(), an incident, GATE_SPOT_ALARM, the "!" badge, the banner) and the call is true. Soldiers are never checked, nobody is
 ## checked twice at a gate within REPEAT_SECONDS, and a hushed town hears and writes nothing (the banner still shows).
 func check(p: Person, gate: Structure) -> bool:
-	if not is_instance_valid(p) or not is_instance_valid(gate) or p.soldier or not p.is_alive() or p.inside:
+	if not board.is_open() or not is_instance_valid(p) or not is_instance_valid(gate) or p.soldier or not p.is_alive() or p.inside:
 		return false
+	if p.answers_lure:
+		return false  # a director's charge (the Lamb, the prisoner, First Prayers' people) passes untouched
 	if not (p.guised() or p.held_by_god()) or crowd.is_veiled(p.ground_pos):
 		return false
 	var gid := gate.get_instance_id()
@@ -97,13 +103,33 @@ func check(p: Person, gate: Structure) -> bool:
 	_spotted[gid] = seen
 	p.unmask()
 	var at := gate.center()
+	by.set_badge(GuardJobs.GLYPH_ALERT, COLOUR, ALERT_SECONDS)
+	# One gate, one charge: the incident, the alarm and the banner come once per REPEAT_SECONDS however many are spotted.
+	if crowd._clock - float(_charged.get(gid, -INF)) < REPEAT_SECONDS:
+		return true
+	_charged[gid] = crowd._clock
 	if not crowd.is_hushed() and not crowd.is_hushed_at(at):
 		if crowd.alarms.incident(at):
 			crowd._investigate(at)
 		crowd._hear_alarm(GATE_SPOT_ALARM)
-	by.set_badge(GuardJobs.GLYPH_ALERT, COLOUR, ALERT_SECONDS)
 	crowd.duty_event.emit(GuardJobs.Kind.GATE, BANNER, at)
 	return true
+
+
+## The one let out of the queue at `gate` (Crowd._gates()): looked at once the queue's loop is over, so the queue, the release
+## clock and the counts are as without checkers.
+func note_release(p: Person, gate: Structure) -> void:
+	if p.guised() or p.held_by_god():
+		_pending.append([p, gate])
+
+
+## Looks at everyone noted since the last call (Crowd._gates(), after its loop).
+func apply_pending() -> void:
+	var list := _pending
+	_pending = []
+	for e in list:
+		if is_instance_valid(e[0]) and is_instance_valid(e[1]):
+			check(e[0], e[1])
 
 
 func may_take(job: GuardJobs.Job, p: Person) -> bool:
@@ -122,15 +148,21 @@ func on_dropped(job: GuardJobs.Job, p: Person) -> void:
 	_marked.erase(p)
 	# Dropped for good (his record is still this job's, not a higher job's): a checker out on his spot goes back to his post.
 	if board.job_of(p) == job and p.is_alive() and (p.mind == Person.Mind.POST or p.held_by_god()) and bool(job.data.out) \
-			and p.anchor.is_equal_approx(job.data.spot) and not p.anchor.is_equal_approx(p.post):
+			and not board.mission_man(p) and p.anchor.is_equal_approx(job.data.spot) and not p.anchor.is_equal_approx(p.post):
 		p.back_to_post()
 
 
 ## Counts an unfilled job's wait; a freed man leaves the crew.
 func tick(job: GuardJobs.Job, delta: float) -> void:
 	for i in range(job.crew.size() - 1, -1, -1):
-		if not is_instance_valid(job.crew[i]):
+		var m: Variant = job.crew[i]
+		if not is_instance_valid(m):
 			job.crew.remove_at(i)
+		elif board.job_of(m) != job:
+			# A director took him (GuardJobs.release() skips on_dropped): the record is dead; the flags go, he is not ours.
+			job.crew.remove_at(i)
+			_unflag(m)
+			_marked.erase(m)
 	if not job.started and not bool(job.data.over):
 		job.data.wait = float(job.data.wait) - delta
 		if float(job.data.wait) <= 0.0:
@@ -216,12 +248,16 @@ func standing_tags() -> Array[MapTag]:
 ## The board closed: every flag this duty set comes off.
 func on_close() -> void:
 	_release_all(false)
+	_shown.clear()
+	_pending.clear()
 
 
 ## A new crowd or act: every flag comes off and a checker out on his spot goes back to his post.
 func clear() -> void:
 	_release_all(true)
 	_spotted.clear()
+	_charged.clear()
+	_pending.clear()
 	_near_at.clear()
 	_shown.clear()
 

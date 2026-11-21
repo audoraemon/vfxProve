@@ -2938,7 +2938,20 @@ func at_own_post() -> bool:
 func on_watch() -> bool:
 	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or on_beat():
 		return false
+	if _gate_guard():
+		return mind == Mind.POST or mind == Mind.HOLD  # a gate guard keeps his watch wherever his check has taken him
 	return mind == Mind.DUTY or ((mind == Mind.POST or mind == Mind.HOLD) and ground_pos.distance_to(anchor) <= WATCH_REACH)
+
+
+## Where a watcher is judged to stand: a gate guard holding a GATE record (GateCheck) at his town post, wherever his check has stepped
+## him (so a door's verdict does not flip with traffic); anyone else where he is.
+func watch_at() -> Vector2:
+	return town_post if _gate_guard() else ground_pos
+
+
+## Whether he holds a GATE record (GateCheck) and has a town post.
+func _gate_guard() -> bool:
+	return town_post != Vector2.INF and crowd != null and crowd.guard_jobs != null and crowd.guard_jobs.kind_of(self) == GuardJobs.Kind.GATE
 
 
 ## Whether he is walking his street beat: a beat man, no corps, and nobody has re-posted him (his post is his town post and his

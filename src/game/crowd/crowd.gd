@@ -1484,7 +1484,7 @@ func _gates() -> void:
 			crowd_here[0].release_from_queue()
 			crowd_here[0].passing_gate = gate
 			if gate_check != null:
-				gate_check.check(crowd_here[0], gate)  # the one let out is looked at; the gate's own clock is already set
+				gate_check.note_release(crowd_here[0], gate)  # looked at after the loop: the queue is as without checkers
 			first = 1
 		for i in range(first, crowd_here.size()):
 			var slot := i - first
@@ -1492,6 +1492,8 @@ func _gates() -> void:
 			if p.queue_since < 0.0:
 				p.queue_since = _clock
 			p.queue_spot = spots[mini(slot, spots.size() - 1)]
+	if gate_check != null:
+		gate_check.apply_pending()
 
 
 ## Whether `p` is on its way through `gate`: the gate lies within GATE_AHEAD waypoints of its path. While it has no

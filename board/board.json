@@ -1,12 +1,9 @@
 {
- "hash": "eba9bc24a8310456",
- "updated": "2026-11-21T17:21:05+07:00",
+ "hash": "8dee2640b4237f14",
+ "updated": "2026-11-22T03:37:03+07:00",
  "changes": {
-  "date": "<t:1795256465:f>",
-  "items": [
-   "New: Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses)",
-   "New: Veil abilities review: previews and stronger effects (in progress)"
-  ]
+  "date": "<t:1795293423:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1646,9 +1643,9 @@
     "title": "Veil abilities review: previews and stronger effects",
     "status": "doing",
     "area": "Abilities",
-    "needs_you": false,
+    "needs_you": true,
     "branch": "god/veil-review",
-    "updated": "2026-11-21",
+    "updated": "2026-11-22",
     "order": 6
    },
    "vfx-anathema": {
@@ -1925,6 +1922,14 @@
   },
   "branches": [
    {
+    "name": "god/veil-review",
+    "ahead": 56,
+    "behind": 21,
+    "date": "2026-11-22",
+    "subject": "perf: Dread of the Dark's wall and shade are drawn in a few pieces",
+    "pushed": false
+   },
+   {
     "name": "god/veil-powers",
     "ahead": 33,
     "behind": 21,
@@ -1933,27 +1938,19 @@
     "pushed": true
    },
    {
-    "name": "god/veil-merge",
-    "ahead": 33,
-    "behind": 21,
+    "name": "claude/lantern-campaign-spec",
+    "ahead": 23,
+    "behind": 0,
     "date": "2026-11-21",
-    "subject": "test: re-record the 113 reference rows that cast a Veil power",
-    "pushed": false
-   },
-   {
-    "name": "god/veil-review",
-    "ahead": 33,
-    "behind": 21,
-    "date": "2026-11-21",
-    "subject": "test: re-record the 113 reference rows that cast a Veil power",
+    "subject": "test: loudness rows for the God's Paths music",
     "pushed": false
    },
    {
     "name": "feat/god-chamber",
-    "ahead": 22,
+    "ahead": 23,
     "behind": 21,
     "date": "2026-11-21",
-    "subject": "test: the screen table has fifteen screens with the World Map",
+    "subject": "docs: Capital at every tier, spec and plan (draft, awaiting review)",
     "pushed": false
    },
    {
@@ -1966,19 +1963,35 @@
    },
    {
     "name": "feat/town-suspicion",
-    "ahead": 12,
-    "behind": 6,
+    "ahead": 15,
+    "behind": 0,
     "date": "2026-11-21",
-    "subject": "fix: Town Suspicion review wave (only a natural cast excuses a death; soldiers scenario keeps its keeper; the town's one call; quiet banner)",
+    "subject": "test: references re-recorded where the bellkeeper now waits (41 rows)",
     "pushed": false
    },
    {
-    "name": "claude/lantern-campaign-spec",
-    "ahead": 22,
+    "name": "claude/natural-people",
+    "ahead": 8,
     "behind": 6,
-    "date": "2026-11-20",
-    "subject": "fix: why-not judges a Gathered Storm by the bolt it cast",
+    "date": "2026-11-21",
+    "subject": "fix: late goers and merges only into reachable groups; none after the close; no re-send of the broken (fair life T3 review)",
     "pushed": false
+   },
+   {
+    "name": "feat/loss-warning",
+    "ahead": 5,
+    "behind": 0,
+    "date": "2026-11-21",
+    "subject": "test: loudness rows for the God's Paths music",
+    "pushed": true
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 1,
+    "behind": 4,
+    "date": "2026-11-21",
+    "subject": "feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)",
+    "pushed": true
    },
    {
     "name": "feat/might-gauge",
@@ -1987,22 +2000,6 @@
     "date": "2026-11-20",
     "subject": "test: track the route suite's uid",
     "pushed": false
-   },
-   {
-    "name": "claude/natural-people",
-    "ahead": 7,
-    "behind": 6,
-    "date": "2026-11-20",
-    "subject": "feat: the fair's goers stand in talking groups and stroll (fair life T3)",
-    "pushed": false
-   },
-   {
-    "name": "feat/loss-warning",
-    "ahead": 4,
-    "behind": 17,
-    "date": "2026-11-20",
-    "subject": "fix: the loss warning kicks the world's picture, not the camera",
-    "pushed": true
    },
    {
     "name": "feat/wish-clarity",

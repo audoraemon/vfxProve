@@ -164,6 +164,15 @@ class Blanket extends Node2D:
 	const SHADOW := 0.07
 	## Ground units between the weave's threads.
 	const WEAVE := 0.8
+	## The landing's ripple is under 0.15 px this long after the throw; from then until it lifts the sheet is redrawn CALM_HZ times
+	## a second (VRF3).
+	const RIPPLE_DONE := 5.0
+	const CALM_HZ := 12.0
+	## 1 when the game runs headless (nothing is drawn), 0 when not, -1 not asked yet.
+	static var _headless := -1
+	var _since := 0.0
+	## The heights of the ring inside the one being laid (each is read twice: its own fold and the next ring's).
+	var _prev_h := PackedFloat32Array()
 	var fx: UnseenHourFx
 	var _idx := PackedInt32Array()
 	var _pts := PackedVector2Array()
@@ -187,12 +196,28 @@ class Blanket extends Node2D:
 				var j := (i + 1) % SPOKES
 				_idx.append_array([a + i, b + i, b + j, a + i, b + j, a + j])
 
-	func _process(_delta: float) -> void:
+	func _process(delta: float) -> void:
 		# Its cast freed outright (outside the tree, no _exit_tree): it goes too.
 		if not is_instance_valid(fx) or fx.t > fx.duration:
 			queue_free()
 			return
+		# The cost (final review, Important 4; VRF3): nothing to draw when the game runs headless (scripted rows: no rule reads the
+		# sheet); once the landing's ripple has died and until it lifts, only the slow breath stirs it (under 0.25 px a step at
+		# CALM_HZ), so it is redrawn at that rate, not every frame.
+		if headless():
+			return
+		_since += delta
+		var c := fx.t
+		var calm := c > THROW + RIPPLE_DONE and fx.lifting() <= 0.0 and c < fx.duration - 1.5
+		if calm and _since < 1.0 / CALM_HZ:
+			return
+		_since = 0.0
 		queue_redraw()
+
+	static func headless() -> bool:
+		if _headless < 0:
+			_headless = 1 if DisplayServer.get_name() == "headless" else 0
+		return _headless == 1
 
 	## The sheet's height above the ground (screen pixels) at `rho` (0 middle .. 1 edge) and angle `ang`, now.
 	func height(rho: float, ang: float) -> float:
@@ -217,6 +242,9 @@ class Blanket extends Node2D:
 		_pts[0] = Vector2(0.0, -height(0.0, 0.0))
 		_cols[0] = Color(VeilParts.BLACK, A_MID * a)
 		var edge := PackedVector2Array()
+		_prev_h.resize(SPOKES)
+		for i in SPOKES:
+			_prev_h[i] = height(0.0, TAU * float(i) / float(SPOKES))
 		for k in RINGS:
 			var rho := float(k + 1) / float(RINGS)
 			var al := lerpf(A_MID, A_EDGE, rho * rho) * a
@@ -225,8 +253,10 @@ class Blanket extends Node2D:
 				var z := height(rho, ang)
 				var p := _unit[i] * h * rho + Vector2(0.0, -z)
 				_pts[1 + k * SPOKES + i] = p
-				# Folds: where the sheet rises toward the edge it catches a little dusk light, where it falls it is darker.
-				var fold := clampf(0.5 + (z - height(rho - 1.0 / float(RINGS), ang)) * 0.12, 0.0, 1.0)
+				# Folds: where the sheet rises toward the edge it catches a little dusk light, where it falls it is darker (the ring
+				# inside's height, kept from the last ring: the same value height() gave it).
+				var fold := clampf(0.5 + (z - _prev_h[i]) * 0.12, 0.0, 1.0)
+				_prev_h[i] = z
 				_cols[1 + k * SPOKES + i] = Color(VeilParts.BLACK.lerp(VeilParts.DUSK, 0.15 + 0.7 * fold), al)
 				if k == RINGS - 1:
 					edge.append(p)

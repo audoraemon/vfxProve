@@ -7,12 +7,17 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**12** in progress · **29** to do · **167** done\n**16** active branches besides Develop-Main\n\n**Since the last update** (<t:1795215619:f>)\n• New: Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune (in progress)",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**12** in progress · **29** to do · **167** done\n**16** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-21T06:00:19+07:00"
+     "timestamp": "2026-11-21T15:53:17+07:00"
+    },
+    {
+     "title": "god/veil-powers",
+     "description": "33 commits not in Develop-Main · last commit today\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
+     "color": 5016537
     },
     {
      "title": "god/veil-merge",
@@ -20,13 +25,13 @@
      "color": 5016537
     },
     {
-     "title": "god/veil-powers",
-     "description": "33 commits not in Develop-Main · last commit today · local only\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
+     "title": "feat/god-chamber",
+     "description": "22 commits not in Develop-Main · last commit today · local only\n> test: the screen table has fifteen screens with the World Map\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/soldier-duties",
-     "description": "14 commits not in Develop-Main · last commit today · local only\n> fix: cordon review wave (a hold never overrides a flight, mission charges cross, path-crossers stay held, open jobs let go)\n\n_No Ledger task points at this branch._",
+     "description": "21 commits not in Develop-Main · last commit today · local only\n> fix: soldier duties final review wave (a director releases only the men it takes, a taken man leaves his duty, gate check and sweep scans trimmed, bo…\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -35,13 +40,13 @@
      "color": 5016537
     },
     {
-     "title": "claude/lantern-campaign-spec",
-     "description": "22 commits not in Develop-Main · last commit yesterday · local only\n> fix: why-not judges a Gathered Storm by the bolt it cast\n\n_No Ledger task points at this branch._",
+     "title": "god/ember-trail",
+     "description": "3 commits not in Develop-Main · last commit today · local only\n> fix: a crossing scorches, lingering or a second crossing kills; the flames stay bright at night; the trail redraws at 15 Hz\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
-     "title": "feat/god-chamber",
-     "description": "21 commits not in Develop-Main · last commit yesterday · local only\n> test: track test_capital_god_night's uid\n\n_No Ledger task points at this branch._",
+     "title": "claude/lantern-campaign-spec",
+     "description": "22 commits not in Develop-Main · last commit yesterday · local only\n> fix: why-not judges a Gathered Storm by the bolt it cast\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -53,11 +58,6 @@
      "title": "claude/natural-people",
      "description": "7 commits not in Develop-Main · last commit yesterday · local only\n> feat: the fair's goers stand in talking groups and stroll (fair life T3)\n\n_No Ledger task points at this branch._",
      "color": 5016537
-    },
-    {
-     "title": "feat/loss-warning",
-     "description": "4 commits not in Develop-Main · last commit yesterday · local only\n> fix: the loss warning kicks the world's picture, not the camera\n\n_No Ledger task points at this branch._",
-     "color": 5016537
     }
    ]
   },
@@ -67,8 +67,8 @@
    },
    "embeds": [
     {
-     "title": "god/ember-trail",
-     "description": "2 commits not in Develop-Main · last commit yesterday · local only\n> feat: Ember's Fire Trail is its own short-lived trail fire that hurts who crosses it; the burning man burns brighter\n\n_No Ledger task points at this branch._",
+     "title": "feat/loss-warning",
+     "description": "4 commits not in Develop-Main · last commit yesterday · local only\n> fix: the loss warning kicks the world's picture, not the camera\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {

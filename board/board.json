@@ -1,11 +1,9 @@
 {
- "hash": "c181614fb9b415a5",
- "updated": "2026-11-21T06:00:19+07:00",
+ "hash": "23d5d210b3c42539",
+ "updated": "2026-11-21T15:53:17+07:00",
  "changes": {
-  "date": "<t:1795215619:f>",
-  "items": [
-   "New: Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune (in progress)"
-  ]
+  "date": "<t:1795251197:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1896,6 +1894,14 @@
   },
   "branches": [
    {
+    "name": "god/veil-powers",
+    "ahead": 33,
+    "behind": 15,
+    "date": "2026-11-21",
+    "subject": "test: re-record the 113 reference rows that cast a Veil power",
+    "pushed": true
+   },
+   {
     "name": "god/veil-merge",
     "ahead": 33,
     "behind": 15,
@@ -1904,19 +1910,19 @@
     "pushed": false
    },
    {
-    "name": "god/veil-powers",
-    "ahead": 33,
+    "name": "feat/god-chamber",
+    "ahead": 22,
     "behind": 15,
     "date": "2026-11-21",
-    "subject": "test: re-record the 113 reference rows that cast a Veil power",
+    "subject": "test: the screen table has fifteen screens with the World Map",
     "pushed": false
    },
    {
     "name": "feat/soldier-duties",
-    "ahead": 14,
+    "ahead": 21,
     "behind": 0,
     "date": "2026-11-21",
-    "subject": "fix: cordon review wave (a hold never overrides a flight, mission charges cross, path-crossers stay held, open jobs let go)",
+    "subject": "fix: soldier duties final review wave (a director releases only the men it takes, a taken man leaves his duty, gate check and sweep scans trimmed, bots use the town's witness reach)",
     "pushed": false
    },
    {
@@ -1928,19 +1934,19 @@
     "pushed": false
    },
    {
+    "name": "god/ember-trail",
+    "ahead": 3,
+    "behind": 0,
+    "date": "2026-11-21",
+    "subject": "fix: a crossing scorches, lingering or a second crossing kills; the flames stay bright at night; the trail redraws at 15 Hz",
+    "pushed": false
+   },
+   {
     "name": "claude/lantern-campaign-spec",
     "ahead": 22,
     "behind": 0,
     "date": "2026-11-20",
     "subject": "fix: why-not judges a Gathered Storm by the bolt it cast",
-    "pushed": false
-   },
-   {
-    "name": "feat/god-chamber",
-    "ahead": 21,
-    "behind": 15,
-    "date": "2026-11-20",
-    "subject": "test: track test_capital_god_night's uid",
     "pushed": false
    },
    {
@@ -1965,14 +1971,6 @@
     "behind": 11,
     "date": "2026-11-20",
     "subject": "fix: the loss warning kicks the world's picture, not the camera",
-    "pushed": false
-   },
-   {
-    "name": "god/ember-trail",
-    "ahead": 2,
-    "behind": 0,
-    "date": "2026-11-20",
-    "subject": "feat: Ember's Fire Trail is its own short-lived trail fire that hurts who crosses it; the burning man burns brighter",
     "pushed": false
    },
    {

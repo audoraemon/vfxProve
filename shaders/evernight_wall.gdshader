@@ -6,6 +6,7 @@
 // motes carried up in it. Keeps its own time (TIME).
 shader_type canvas_item;
 #include "res://shaders/common.gdshaderinc"
+#include "res://shaders/veil_noise.gdshaderinc"
 
 uniform float amount = 1.0;
 uniform vec4 black : source_color = vec4(0.027, 0.020, 0.047, 1.0);
@@ -28,14 +29,6 @@ void vertex() {
 // A hash without the lattice's period (hash21 repeats on whole cells).
 float hash_s(vec2 p) {
 	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-// The wall's own smooth noise, about 0..1: a few warped sines at unrelated frequencies. (The shared value noise drew straight
-// upright and diagonal cuts through this wall on the GPU, though a CPU copy of it is smooth; a sine-built crown drew none: fix round 1.)
-float wn(vec2 p) {
-	float w = sin(p.y * 1.3 + 0.7) * 1.4;
-	return 0.5 + 0.2 * sin(p.x * 1.9 + w) + 0.15 * sin(p.y * 2.3 + p.x * 0.7 + 1.7)
-		+ 0.09 * sin((p.x - p.y) * 3.7 + 4.1) + 0.06 * sin(p.x * 7.3 + p.y * 5.1 + w);
 }
 
 // One side of the ring (sgn +1 near, -1 far) at this pixel: colour and coverage.

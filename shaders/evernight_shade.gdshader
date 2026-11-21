@@ -1,7 +1,8 @@
 // Evernight's dark (Veil): multiplied over the whole town in view (the ground, the houses and the people), under the effects. A
 // violet-black night inside the front (ground units round the click, its edge churning), deeper at the screen's edge (a
 // vignette), a little lighter under the moon; each burning torch keeps a warm round island of the day's light. The quad is drawn
-// over the camera's view in world pixels; the shader works out the ground point under each pixel.
+// over the whole town (EvernightSky.COVER, far past any view) and never reads its own UV: the world position (vertex()) gives the
+// ground point under each pixel, SCREEN_UV the vignette and the moon.
 shader_type canvas_item;
 render_mode blend_mul, unshaded;
 #include "res://shaders/common.gdshaderinc"

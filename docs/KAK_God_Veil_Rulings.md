@@ -362,3 +362,6 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
   same shader is smooth and a sine-built crown drew none; the wall now uses its own smooth noise of warped sines (wn()), and the cuts
   are gone at both zooms. Coverage follows the body alone, the colour steps are dithered, and the wall thins out toward the ring's
   ends. The night's shade and air quads cover a fixed rect far past any town (EvernightSky.COVER) instead of the camera's view.
+- VRD10 (fix round 2): the hole's falling motes are removed (keyed to a whole terrace and an angle wedge, each lit a flat silver quad
+  in the black); the funnel's depth `s` is interpolated between rings (stepped, it drew stair edges); the going-under dark uses the
+  Veil's own smooth noise (shaders/veil_noise.gdshaderinc, shared with the wall), never the shared fbm.

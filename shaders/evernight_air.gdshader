@@ -1,6 +1,6 @@
 // Evernight's air (Veil): over the town in view, inside the night's front. A slow violet mist drifting over the roofs; silver
 // stars glittering where the night has fallen (fixed to the town, each on its own beat); now and then a star falling across the
-// screen; motes of dark rising off the ground, each ringed in faint violet. The quad is drawn over the camera's view in world
+// screen; motes of dark rising off the ground, each ringed in faint violet. The quad covers the whole town (EvernightSky.COVER) and never reads its own UV: the world position and SCREEN_UV place everything, in world
 // pixels. Everything is a hash of a fixed grid and the time: no luck.
 shader_type canvas_item;
 #include "res://shaders/common.gdshaderinc"

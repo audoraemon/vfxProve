@@ -5,6 +5,7 @@
 // circle as well as from outside it. Keeps its own time (TIME).
 shader_type canvas_item;
 #include "res://shaders/common.gdshaderinc"
+#include "res://shaders/veil_noise.gdshaderinc"
 
 uniform vec2 center = vec2(0.0);
 uniform float edge = 10.0;
@@ -27,7 +28,8 @@ void fragment() {
 	float d = length(rel);
 	// Noise by direction (never by angle: atan's jump would draw a seam along one ray).
 	vec2 dir = d > 0.001 ? rel / d : vec2(1.0, 0.0);
-	float ragged = (fbm(dir * 2.6 + vec2(d * 0.4 - TIME * 1.6, seed)) - 0.5) * 1.6;
+	// The Veil's smooth noise (veil_noise.gdshaderinc), never the shared fbm: it cut straight sawtooth steps here (fix round 2).
+	float ragged = (wn(dir * 2.6 + vec2(d * 0.4 - TIME * 1.6, seed)) - 0.5) * 1.6;
 	// Behind the closing rim (between it and the edge), under the dark.
 	float under = smoothstep(front - 0.3, front + 0.9, d + ragged);
 	// The drain: the black left only inside a disc that shrinks to the middle.
@@ -40,7 +42,7 @@ void fragment() {
 	float lip = (1.0 - smoothstep(0.0, 1.4, keep_r - d)) * step(0.001, drain);
 	float ca = cos(TIME * 0.5);
 	float sa = sin(TIME * 0.5);
-	float swirl = fbm(vec2(dir.x * ca - dir.y * sa, dir.x * sa + dir.y * ca) * 1.8 + vec2(d * 0.5 + seed, TIME * 0.3));
+	float swirl = wn(vec2(dir.x * ca - dir.y * sa, dir.x * sa + dir.y * ca) * 1.8 + vec2(d * 0.5 + seed, TIME * 0.3));
 	vec3 col = mix(black.rgb, dusk.rgb * 0.7, quant(swirl * 0.6, 3.0));
 	col = mix(col, veil.rgb * 0.7, quant(max(rim, lip) * (0.6 + 0.4 * swirl), 3.0));
 	float alpha = quant_d(a, 5.0, FRAGCOORD.xy);

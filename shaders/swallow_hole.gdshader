@@ -68,13 +68,19 @@ vec4 shade(vec2 uv, vec2 fc, float time) {
 	// Down the funnel: the first ring (from the rim down) whose wall this pixel meets.
 	float s = 1.0;
 	bool wall = false;
+	// Then between that ring and the one above it, where the wall crosses (linear): `s` runs on smoothly, not in 22 steps (stepped,
+	// its light and swirl drew stair-step edges through the funnel: fix round 2).
+	float prev_d = length(q) - 1.0;
 	for (int i = 1; i <= STEPS; i++) {
 		float si = float(i) / float(STEPS);
-		if (length(q - DN * si * SLIDE) - (1.0 - NARROW * si) >= 0.0) {
-			s = si;
+		float di = length(q - DN * si * SLIDE) - (1.0 - NARROW * si);
+		if (di >= 0.0) {
+			float sp = float(i - 1) / float(STEPS);
+			s = sp + (si - sp) * clamp(-prev_d / max(di - prev_d, 1e-4), 0.0, 1.0);
 			wall = true;
 			break;
 		}
+		prev_d = di;
 	}
 	vec3 col = black.rgb;
 	if (wall) {
@@ -93,11 +99,6 @@ vec4 shade(vec2 uv, vec2 fc, float time) {
 		// The swirl: violet arms turning down into the dark.
 		float arm = step(0.78, 0.5 + 0.5 * sin(a2 * 3.0 + s * 14.0 - time * (0.9 + heave * 3.0) + seed));
 		col = mix(col, dusk.rgb * 1.4, arm * 0.55 * (1.0 - light));
-		// Motes of the town's light falling in: short silver flecks sliding down the wall.
-		float bin = floor(fract(a2 / TAU + 0.5) * 56.0);
-		float hb = hash21(vec2(bin, seed + 7.0));
-		float mote = step(0.6, hb) * step(fract(s * 4.0 - time * (0.45 + 0.4 * hb) + hb * 9.0), 0.035);
-		col = mix(col, silver.rgb, mote * (0.4 + 0.6 * light));
 	} else {
 		// The bottom: a black that breathes, a faint violet turning in it.
 		vec2 c = q - DN * SLIDE;

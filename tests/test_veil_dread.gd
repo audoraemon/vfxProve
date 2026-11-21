@@ -67,6 +67,7 @@ static func run(t) -> void:
 	_teardown(t, made)
 	_quiet(t, made)
 	_look(t, made)
+	_wall_halves(t, made)
 	RD._done(made)
 	_seizer(t)
 	_no_crowd(t)
@@ -441,6 +442,58 @@ static func _look(t, made: Array) -> void:
 	t.check(shade.strength == 1.0 and shade.held.has(p.get_instance_id()), "full while it holds; the frozen are marked")
 	fx.end_now()
 	t.check(not is_instance_valid(shade) or shade.is_queued_for_deletion(), "the shade goes with the cast")
+
+
+
+## Fix round 1 (VRC3): with overhead_back the wall's far half stands on a back node there, and it goes with end_now() and with a cast
+## freed outright; a held person at the patch's side edge is covered by no pillar taller than the near share.
+static func _wall_halves(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var base: FxContext = made[5]
+	var ctx := FxContext.new()
+	ctx.env = base.env
+	ctx.field = base.field
+	ctx.crowd = crowd
+	ctx.world = base.world
+	ctx.rng = base.rng
+	ctx.overhead = base.overhead
+	ctx.ground = base.ground
+	ctx.overhead_back = Node2D.new()
+	var at := _fresh(made)
+	var d := at + Vector2(4.0, 0.0)
+	crowd.lay_dusk(d, 1.5, 120.0)
+	# The patch's right-hand side on screen: ground (1, -1) is screen right.
+	var p := _put(crowd, 34, d + Vector2(1.0, -1.0).normalized() * 1.1)
+	var fx := _cast(ctx, at)
+	_go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	var shade := fx.shade
+	var back := shade.back
+	t.check(back != null and is_instance_valid(back) and back.get_parent() == ctx.overhead_back and shade.get_parent() == ctx.overhead,
+		"the wall's far half on a node on overhead_back, the shade (near half) on overhead")
+	var rect := DreadOfTheDarkFx.DreadShade.person_rect(p.ground_pos)
+	var cut := 0
+	var bad := 0
+	for i in shade.pillars.size():
+		if shade.pillar_rect(i, shade.share(i)).intersects(rect):
+			cut += 1
+			if shade.share(i) > DreadOfTheDarkFx.DreadShade.NEAR + 0.001:
+				bad += 1
+	t.check(p.is_dreaded() and shade.held.has(p.get_instance_id()) and cut > 0 and bad == 0,
+		"a held man at the side edge: the %d pillars that reach his rect are all cut to the near share (%d too tall)" % [cut, bad])
+	fx.end_now()
+	t.check(not is_instance_valid(back) or back.is_queued_for_deletion(), "the back half goes with end_now()")
+	var other := _cast(ctx, at)
+	var back2: Node2D = other.shade.back if other.shade != null else null
+	var shade2 := other.shade
+	other.free()
+	if is_instance_valid(shade2):
+		shade2._process(DT)
+	if is_instance_valid(back2) and not back2.is_queued_for_deletion():
+		back2._process(DT)
+	t.check(back2 != null and (not is_instance_valid(back2) or back2.is_queued_for_deletion()), "and with a cast freed outright")
+	for c in ctx.overhead_back.get_children():
+		c.free()
+	ctx.overhead_back.free()
 
 
 ## The watch's seizing: a patrol soldier standing in dreaded ground does not see a believer beside him; the control does.

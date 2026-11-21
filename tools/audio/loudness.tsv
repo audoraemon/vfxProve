@@ -1019,6 +1019,13 @@ music_town_day	res://assets/audio/music/music_town_day.wav	-14.29	-1.16
 music_town_night	res://assets/audio/music/music_town_night.wav	-16.61	-2.14
 music_capital_day	res://assets/audio/music/music_capital_day.wav	-14.13	-0.46
 music_tension	res://assets/audio/music/music_tension.wav	-12.93	-0.53
+music_paths	res://assets/audio/music/music_paths.wav	-14.38	-1.08
+music_paths_ruin	res://assets/audio/music/music_paths_ruin.wav	-21.57	-1.51
+music_paths_passage	res://assets/audio/music/music_paths_passage.wav	-20.67	-3.40
+music_paths_veil	res://assets/audio/music/music_paths_veil.wav	-21.61	-6.64
+music_paths_decree	res://assets/audio/music/music_paths_decree.wav	-22.28	-7.73
+music_paths_death	res://assets/audio/music/music_paths_death.wav	-22.97	-3.25
+music_paths_dominion	res://assets/audio/music/music_paths_dominion.wav	-22.37	-7.88
 music_sting_start	res://assets/audio/music/music_sting_start.wav	-12.58	0.76
 music_sting_objective	res://assets/audio/music/music_sting_objective.wav	-12.57	-1.10
 music_sting_win	res://assets/audio/music/music_sting_win.wav	-11.98	-0.37

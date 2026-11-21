@@ -44,6 +44,8 @@ const HUDDLE := 1.8
 const CELL := 4.0
 ## With no city map and no field bounds, the night's ground is a square this far round the click on each side.
 const BARE_HALF := 30.0
+## The look's front runs out as (t / WAVE) to this power: slow by the click, fast across the town (VRD1).
+const FRONT_EASE := 1.7
 
 ## This cast's night: 60 s, or 90 in a NIGHT mission; a take every take_every s; dawn begins at t_dawn.
 var night_time := 60.0
@@ -69,6 +71,12 @@ var _crowd: Crowd
 var _lights: LightField
 ## The held night's sound (v_evernight_loop), from the fall to the end of the night; faded out at dawn.
 var _hush: Node
+## The look over the town (EvernightSky; spec 7): the night multiplied over the view, the air (mist, stars, motes), the wall of
+## the front, a glow per torch (by torch index). Each is missing where its layer is (a bare context has none of them).
+var _shade: EvernightSky.View
+var _air: EvernightSky.View
+var _wall: EvernightSky.Wall
+var _glows: Array = []
 
 
 ## Up to TORCHES living soldiers out of doors who light torches: those with the most living citizens out of doors within
@@ -191,6 +199,38 @@ func _build() -> void:
 		wash.map = _map()
 		wash.place_moon()
 		track(wash, parent)
+	_build_sky()
+
+
+## The look over the town, on the layer above the town and under the effects (ctx.overhead_back): the shade, the air over it and
+## the wall over both. The town's own NIGHT look is darkened once already, so the shade is lighter there.
+func _build_sky() -> void:
+	if ctx == null or ctx.overhead_back == null:
+		return
+	var on_night := _crowd != null and is_instance_valid(_crowd._town) and _crowd._town.look == Town.Look.NIGHT
+	_shade = EvernightSky.View.new(EvernightSky.SH_SHADE)
+	_shade.set_param(&"night", EvernightSky.NIGHT_ON_NIGHT if on_night else EvernightSky.NIGHT)
+	_shade.set_param(&"edge_night", EvernightSky.NIGHT_ON_NIGHT_EDGE if on_night else EvernightSky.NIGHT_EDGE)
+	_shade.set_param(&"torch_r", TORCH_R)
+	_shade.set_param(&"moon_uv", EvernightSky.MOON_UV)
+	_shade.set_param(&"moon_light", EvernightSky.MOON_LIGHT)
+	_shade.set_param(&"center", origin)
+	track(_shade, ctx.overhead_back)
+	_air = EvernightSky.View.new(EvernightSky.SH_AIR)
+	_air.z_index = 1
+	_air.set_param(&"center", origin)
+	_air.set_param(&"silver", VeilParts.SILVER)
+	_air.set_param(&"veil", VeilParts.VEIL)
+	_air.set_param(&"black", VeilParts.BLACK)
+	track(_air, ctx.overhead_back)
+	_wall = EvernightSky.Wall.new()
+	_wall.z_index = 2
+	_wall.center = origin
+	_wall.mat.set_shader_parameter(&"black", VeilParts.BLACK)
+	_wall.mat.set_shader_parameter(&"dusk", VeilParts.DUSK)
+	_wall.mat.set_shader_parameter(&"veil", VeilParts.VEIL)
+	_wall.mat.set_shader_parameter(&"silver", VeilParts.SILVER)
+	track(_wall, ctx.overhead_back)
 
 
 ## The ground the night covers: the active city's map; with none (a CityDef with no map), the field's bounds, as Eminent Domain and
@@ -216,6 +256,7 @@ func _fall() -> void:
 		var light := _lights.add_static(b.ground_pos, TORCH_R, TORCH_COLOR, TORCH_GLOW, 0.35) if _live_lights() else 0
 		torches.append({"at": b.ground_pos, "bearer": b.get_instance_id(), "light": light, "out": false, "n": 0})
 		b.send_to_post(b.ground_pos)  # he stands where he is, holding it up
+		_glow_for(b.ground_pos)
 	_call_to_torches()
 	if _crowd.dusk != null and not _crowd.dusk.laid.is_connected(_on_laid):
 		_crowd.dusk.laid.connect(_on_laid)
@@ -235,9 +276,27 @@ func _take_lone() -> void:
 		return
 	_watch_bearers()
 	var p := loneliest(_crowd, lit())
+	var where := p.ground_pos if p != null else Vector2.ZERO
 	if p != null and _crowd.take(p, KIND):
 		taken.append(p.get_instance_id())
+		_wisp(where, taken.size())
 	_call_to_torches()
+
+
+## A torch's glow (the look): over the town, where the torch is held up. Index-matched to `torches`.
+func _glow_for(at_g: Vector2) -> void:
+	if ctx == null or ctx.overhead == null:
+		_glows.append(null)
+		return
+	var g := EvernightSky.TorchGlow.new(4217 + 31 * _glows.size())
+	g.position = Iso.ground_to_screen(at_g) + Vector2(0, -EvernightSky.HELD)
+	_glows.append(track(g, ctx.overhead))
+
+
+## A brief dark wisp rising where one was taken (the look; one small burst a take).
+func _wisp(at_g: Vector2, n: int) -> void:
+	if ctx != null and ctx.overhead != null:
+		EvernightSky.wisp(self, ctx.overhead, Iso.ground_to_screen(at_g), 9011 + 13 * n)
 
 
 ## The calm citizens out of doors within TORCH_CALL of a burning torch walk to the nearest and huddle in its light (once each, again if
@@ -322,8 +381,10 @@ func put_out(i: int) -> void:
 			in_light.append(p)
 	in_light.sort_custom(func(a: Person, b: Person) -> bool: return a.get_instance_id() < b.get_instance_id())
 	for p in in_light:
+		var where := p.ground_pos
 		if _crowd.take(p, KIND):
 			taken.append(p.get_instance_id())
+			_wisp(where, taken.size())
 
 
 func _drop_light(tc: Dictionary) -> void:
@@ -346,8 +407,10 @@ func _dawn() -> void:
 				gone.append(p)
 		for p in gone:
 			# Let out of his shelter first (the release The Swallowing Dark uses): a shelter's next flush must not raise a body.
+			var where := p.ground_pos
 			if VeilParts.take_out(_crowd, p, KIND):
 				taken.append(p.get_instance_id())
+				_wisp(where, taken.size())
 	_end_night()
 
 
@@ -493,14 +556,71 @@ func _fx_process(_delta: float) -> void:
 				g.mute = share
 	if not _over and t >= WAVE and _live():
 		_watch_bearers()
+	var front := look_front()
 	if wash != null and is_instance_valid(wash):
 		wash.strength = s
-		wash.front = _map().size.x * t / WAVE
+		wash.front = _look_map().size.x * t / WAVE
 		wash.lit = lit()
 		wash.queue_redraw()
 		if wash.moon != null and is_instance_valid(wash.moon):
 			wash.moon.strength = s
 			wash.moon.queue_redraw()
+	_sky_look(front)
+
+
+## The front's reach for the look: out from the click over WAVE to the map's farthest corner, slow near the click and fast across
+## the town beyond (eased, so the god sees the wall rise and stand before it runs: VRD1); at dawn it rolls back to the click over
+## DAWN the same way.
+func look_front() -> float:
+	var reach := _reach(_look_map())
+	if t < t_dawn:
+		return reach * pow(clampf(t / WAVE, 0.0, 1.0), FRONT_EASE) + (6.0 if t >= WAVE else 0.0)
+	return reach * pow(clampf(1.0 - (t - t_dawn) / DAWN, 0.0, 1.0), FRONT_EASE)
+
+
+## The map the look covers (the wash's, read once at the cast).
+func _look_map() -> Rect2:
+	return wash.map if wash != null and is_instance_valid(wash) else _map()
+
+
+## From the click to the map's farthest corner, and a little past it.
+func _reach(m: Rect2) -> float:
+	var reach := 4.0
+	for c in [m.position, m.end, Vector2(m.position.x, m.end.y), Vector2(m.end.x, m.position.y)]:
+		reach = maxf(reach, (c as Vector2).distance_to(origin) + 4.0)
+	return reach
+
+
+## The look over the town this frame: the shade and the air follow the front, the torches' islands; the wall stands while the
+## night runs out and while it rolls back; each torch's glow goes out with its torch.
+func _sky_look(front: float) -> void:
+	var pts := PackedVector2Array()
+	for p: Vector2 in lit():
+		if pts.size() < TORCHES:
+			pts.append(p)
+	for v in [_shade, _air]:
+		if v != null and is_instance_valid(v):
+			(v as EvernightSky.View).set_param(&"front", front)
+	if _shade != null and is_instance_valid(_shade):
+		var arr := PackedVector2Array(pts)
+		arr.resize(TORCHES)
+		_shade.set_param(&"torches", arr)
+		_shade.set_param(&"torch_count", pts.size())
+	if _wall != null and is_instance_valid(_wall):
+		_wall.front = front
+		var reach := _reach(_look_map())
+		var amount := 0.0
+		if t < t_dawn:
+			amount = smoothstep(0.0, 0.15, t) * (1.0 - smoothstep(reach - 4.0, reach + 2.0, front))
+		else:
+			var k := (t - t_dawn) / DAWN
+			amount = smoothstep(0.0, 0.1, k) * (1.0 - smoothstep(0.9, 1.0, k))
+		_wall.amount = amount
+		_wall.queue_redraw()
+	for i in _glows.size():
+		var g: Variant = _glows[i]
+		if g != null and is_instance_valid(g) and i < torches.size():
+			(g as EvernightSky.TorchGlow).lit = not torches[i].out
 
 
 func _finish() -> void:
@@ -520,14 +640,14 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		_end_night()
 		_leave_look()
+		_free_tracked(true)  # the look's pieces too (off the tree no _exit_tree() comes)
 
 
-## The look on the ground (ground units, under the people): a violet-black wash with silver stars and a pale moon (spec 6), running
-## out from the click as a round front over the wave and fading at dawn; a faint ring round each burning torch, so the god sees the
-## islands of light.
+## The look on the ground (ground units: ctx.ground already carries Iso.BASIS, so the wash has none of its own -- it once did, and
+## was drawn a basis too far, off the town): a faint silver ring round each burning torch, so the god sees the islands of light, and
+## the pale moon in the sky (a child "Moon"). The night over the town itself is EvernightSky's (the cast's shade, air and wall).
 class NightWash extends Node2D:
-	const STARS := 90
-	## Where the moon hangs, as a share of the map (near its top corner on screen): fixed, no luck.
+	## Where the moon first hangs, as a share of the map, before it finds the camera's sky.
 	const MOON_AT := Vector2(0.14, 0.10)
 	var fx_id := 0
 	var center := Vector2.ZERO
@@ -539,16 +659,14 @@ class NightWash extends Node2D:
 	var moon: NightMoon
 
 	func _init() -> void:
-		transform = Iso.BASIS
-		z_index = -2
+		z_index = 3
 		moon = NightMoon.new()
 		moon.name = "Moon"
 		add_child(moon)
 
-	## Hangs the moon at its fixed place on the map, upright on screen (the wash's iso basis undone under it).
+	## Hangs the moon over its fixed place on the map (in world pixels: the moon is top-level); once in the tree it keeps to the sky.
 	func place_moon() -> void:
-		var inv := Iso.BASIS.affine_inverse()
-		moon.transform = Transform2D(inv.x, inv.y, map.position + MOON_AT * map.size)
+		moon.position = Iso.ground_to_screen(map.position + MOON_AT * map.size)
 
 	## Its cast freed without finishing: it goes too.
 	func _process(_delta: float) -> void:
@@ -558,37 +676,38 @@ class NightWash extends Node2D:
 	func _draw() -> void:
 		if strength <= 0.0:
 			return
-		var wash := Color(VeilParts.BLACK, 0.30 * strength)
-		var whole := front >= center.distance_to(map.position) and front >= center.distance_to(map.end) \
-				and front >= center.distance_to(Vector2(map.position.x, map.end.y)) and front >= center.distance_to(Vector2(map.end.x, map.position.y))
-		if whole:
-			draw_rect(map, wash)
-		else:
-			draw_circle(center, front, wash)
-			draw_arc(center, front, 0.0, TAU, 64, Color(VeilParts.VEIL, 0.35 * strength), 0.3)
-		# Stars: fixed points over the map (a hash of the index: no luck), only where the night has reached.
-		for k in STARS:
-			var h := Vector2(fposmod(float(k) * 0.618034, 1.0), fposmod(float(k) * 0.754878 + 0.31, 1.0))
-			var g := map.position + h * map.size
-			if not whole and g.distance_to(center) > front:
-				continue
-			var tw := 0.55 + 0.45 * sin(float(k) * 1.7)
-			draw_circle(g, 0.08 + 0.05 * float(k % 3), Color(VeilParts.SILVER, 0.6 * strength * tw))
 		for c: Vector2 in lit:
 			draw_arc(c, EvernightFx.TORCH_R, 0.0, TAU, 32, Color(VeilParts.SILVER, 0.4 * strength), 0.08)
 
 
-## Evernight's pale moon (screen pixels, upright): a faint disc with a fainter halo and two soft marks, fading with the night. Drawn
-## only; no art file, no rng.
+## Evernight's pale moon, part of the night's sky: hung at a fixed place in the camera's view (EvernightSky.MOON_UV), the same
+## size at any zoom, above the night's shade (its light lifts the dark round it) and under the drifting mist, which crosses it. A
+## wide soft halo, a pale disc with a cold rim and its seas. Drawn only; no art file, no luck.
 class NightMoon extends Node2D:
-	const R := 9.0
+	const R := 16.0
 	var strength := 0.0
+
+	func _init() -> void:
+		top_level = true
+		z_as_relative = false
+		z_index = 9  # the overhead_back layer (8) + 1: over the shade, under the air (which is later in the tree)
+
+	func _process(_delta: float) -> void:
+		if not is_inside_tree() or strength <= 0.0:
+			return
+		var ct := get_canvas_transform()
+		global_position = (ct.affine_inverse() * (get_viewport_rect().size * EvernightSky.MOON_UV)).round()
+		scale = Vector2.ONE / maxf(ct.get_scale().x, 0.01)
 
 	func _draw() -> void:
 		if strength <= 0.0:
 			return
-		draw_circle(Vector2.ZERO, R * 2.2, Color(VeilParts.SILVER, 0.05 * strength))
-		draw_circle(Vector2.ZERO, R * 1.4, Color(VeilParts.SILVER, 0.07 * strength))
-		draw_circle(Vector2.ZERO, R, Color(0.90, 0.91, 0.96, 0.32 * strength))
-		draw_circle(Vector2(-2.5, -1.5), R * 0.28, Color(VeilParts.DUSK, 0.10 * strength))
-		draw_circle(Vector2(3.0, 2.5), R * 0.18, Color(VeilParts.DUSK, 0.08 * strength))
+		var s := strength
+		draw_circle(Vector2.ZERO, R * 4.5, Color(VeilParts.SILVER, 0.04 * s))
+		draw_circle(Vector2.ZERO, R * 2.6, Color(VeilParts.SILVER, 0.06 * s))
+		draw_circle(Vector2.ZERO, R * 1.5, Color(VeilParts.SILVER, 0.09 * s))
+		draw_circle(Vector2.ZERO, R + 1.0, Color(0.62, 0.64, 0.80, 0.55 * s))
+		draw_circle(Vector2.ZERO, R, Color(0.86, 0.87, 0.94, 0.72 * s))
+		draw_circle(Vector2(-6.0, -4.0), R * 0.30, Color(0.74, 0.75, 0.86, 0.8 * s))
+		draw_circle(Vector2(7.0, 5.0), R * 0.20, Color(0.76, 0.77, 0.88, 0.8 * s))
+		draw_circle(Vector2(-2.0, 9.0), R * 0.14, Color(0.78, 0.79, 0.90, 0.7 * s))

@@ -321,3 +321,27 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VH1 (reference rows, Task 13b): the 113 moved rows are recorded as the controller's run of 1f6b11c0 gave them (cbae059f differs only
   in a no-city fallback no real town takes). A row that moved but whose family would now miss its gate band is recorded all the same
   (it casts a Veil power); the bands are not repaired here (see the Summary's "Reference rows" and "What is left").
+- VRD1 (review round, Evernight's front): the look's front runs out from the click as (t / WAVE)^1.7 of the way to the map's farthest
+  corner (EvernightFx.FRONT_EASE), slow by the click and fast across the town, so the god sees the wall of night rise and stand before
+  it runs; at dawn it rolls back to the click the same way. Linear (map-width / WAVE) it crossed the screen in under half a second.
+  The wash's own `front` (pinned by test_veil_evernight: map-width / WAVE * t) is kept as it was and draws nothing now. Looks only:
+  the night still falls everywhere at WAVE.
+- VRD2 (review round, Evernight's dark): the night over the town is a shade multiplied over everything in view (ground, houses,
+  people) on the overhead_back layer, under every effect and the HUD, with a vignette, a lift under the moon and a warm island round
+  each burning torch (EvernightSky.View, evernight_shade.gdshader). The LightField ambient and tint keep their numbers (TownLook's
+  NIGHT): no pinned number moved. A town already in its NIGHT look gets a lighter shade (it is graded dark once already). Frame means:
+  day 98 -> 48, night look 65 -> 50; people, torches and the HUD read.
+- VRD3 (review round, Evernight's wash): NightWash set its own Iso.BASIS inside ctx.ground, which carries it already: it was drawn a
+  basis too far, off the town (the before frames show no wash at all). It now has no transform of its own and draws only the silver
+  rings round the burning torches on the ground; the stars moved into the air shader (fixed to the town, glittering), and the moon
+  (still the wash's child "Moon") is top-level and hangs at a fixed place in the camera's view, the same size at any zoom, between the
+  shade and the drifting mist.
+- VRD4 (review round, The Swallowing Dark's fold): the ground heaves HEAVE (0.8 s) and the dome rises RISE (0.4 s) before full size,
+  so the dome stands over the whole circle when the fold's first removals go (they go in the fold's first frames); it closes down over
+  FOLD. Look timing only: GROW, T_OPEN, FOLD and the removals are untouched, and the fold carries nothing per building.
+- VRD5 (review round, The Swallowing Dark's hole): the hole draws at ground z 7 (absolute -3), above the town's lamp pools (absolute
+  -4): a lamp's light no longer lies on a hole. Its tendrils stand in the y-sorted world, so the houses before the far rim hide their
+  feet.
+- VRD6 (review round, both): the heave and the fold give the camera a small shake (trauma 0.35, then 0.3): the player feels the ground
+  move; the town still sees nothing (no danger, alarm or fright). A cast freed off the tree (no _exit_tree()) frees its look's pieces
+  as it goes (NOTIFICATION_PREDELETE).

@@ -28,6 +28,26 @@ const FOLD := 0.6
 ## The silent kill kind (Crowd.SILENT_KINDS).
 const KIND := &"void"
 
+## The look (spec 6; looks only: nothing here decides who or what is taken, or when). The circle is a hole: a funnel on the ground
+## (SH_HOLE) with an apron of APRON ground units round its rim whose dust and loose ground are drawn in over the edge, and TENDRILS
+## of dark reaching up over the rim and curling inward (in the y-sorted world, so the town's houses stand in front of the far ones).
+## The ground heaves for HEAVE before full size; the dark rises as a low dome (SH_DOME, DOME of the circle's depth on screen) over
+## RISE before full size, so it stands over the circle when the fold's first removals go, and closes down over FOLD, leaving the
+## bare earth (a shallow scorched bowl, SH_EARTH).
+const HEAVE := 0.8
+const RISE := 0.4
+const APRON := 2.2
+const TENDRILS := 22
+const DOME := 0.75
+const SH_HOLE := preload("res://shaders/swallow_hole.gdshader")
+const SH_DOME := preload("res://shaders/swallow_dome.gdshader")
+## Dust and loose ground drawn in over the rim (spawns a second), and their colours: street dust going into the violet dark.
+const DUST_RATE := 34.0
+const CHUNK_RATE := 6.0
+const DUST_LIFE := [Color(0.40, 0.35, 0.30, 0.9), Color(0.33, 0.29, 0.27, 0.85), Color(0.22, 0.13, 0.30, 0.65),
+	Color(0.11, 0.05, 0.17, 0.35)]
+const CHUNK_LIFE := [Color("4b4440"), Color("3a3432"), Color("261d2e"), Color(0.08, 0.04, 0.12, 0.6)]
+
 ## This cast's sizes: where it starts, where it ends, and when it gets there.
 var start_r := 0.0
 var full_r := 10.0
@@ -42,7 +62,19 @@ var _queue: Array = []
 var _gone := {}
 ## Buildings removed by the batch path since the last full index rebuild.
 var _batched := false
-var _disc: SwallowDisc
+## The look's pieces (any may be missing in a bare context): the hole on the ground plane, the tendrils in the world, the dust and
+## the loose ground over the town, the dome over everything.
+var _hole: QuadFx
+var _tendrils: Array[SwallowTendril] = []
+var _dust: PixelParticles
+var _chunks: PixelParticles
+var _dome: QuadFx
+## The look's own scatter (seeded from the click: never the shared stream) and its spawn clock.
+var _scatter := RandomNumberGenerator.new()
+var _dust_due := 0.0
+var _chunk_due := 0.0
+var _heaved := false
+var _folding := false
 
 
 ## True when all four corners of `s`'s footprint lie within `r` of `at`.
@@ -66,11 +98,60 @@ func _build() -> void:
 	duration = t_full + FOLD
 	at(t_full, _swallow)
 	ctx.play(&"v_swallow", origin)
+	_build_look()
+
+
+## The look's pieces, each only where its layer exists (a bare test context has an overhead layer only).
+func _build_look() -> void:
+	_scatter.seed = _look_seed()
+	# The fold's shaders drawn once now, all but unseen, so the renderer compiles them at the cast and not on the fold's frame.
 	if ctx.ground != null:
-		_disc = SwallowDisc.new()
-		_disc.at = origin
-		_disc.r = start_r
-		track(_disc, ctx.ground)
+		for sh: Shader in [SH_DOME, BareEarth.SHADER]:
+			var warm := FxParts.quad(self, sh, Vector2.ONE * 0.1, ctx.ground)
+			warm.position = origin
+			warm.modulate.a = 0.02
+			warm.life = 0.2
+	if ctx.ground != null:
+		_hole = FxParts.quad(self, SH_HOLE, Vector2.ONE * (full_r + APRON) * 2.0, ctx.ground)
+		_hole.position = origin
+		_hole.z_index = 7  # over the town's lamp pools (absolute -4): light does not lie on a hole
+		_hole.set_param("apron", APRON / (full_r + APRON))
+		_hole.set_param("hole", 0.0)
+		_hole.set_param("open", 0.0)
+		_hole.set_param("seed", float(_look_seed() % 97))
+		_hole.set_param("black", VeilParts.BLACK)
+		_hole.set_param("dusk", VeilParts.DUSK)
+		_hole.set_param("veil", VeilParts.VEIL)
+		_hole.set_param("silver", VeilParts.SILVER)
+	if ctx.world != null:
+		for k in TENDRILS:
+			var td := SwallowTendril.new()
+			td.k = k
+			td.height = 52.0 + 44.0 * fposmod(float(k) * 0.754878, 1.0)
+			_tendrils.append(track(td, ctx.world) as SwallowTendril)
+	if ctx.overhead_back != null:
+		var sp := Iso.ground_to_screen(origin)
+		_dust = _particles(PixelParticles.Shape.SQUARE, DUST_LIFE, sp, 1)
+		_chunks = _particles(PixelParticles.Shape.CHUNK, CHUNK_LIFE, sp, 2)
+		_chunks.gravity = 380.0
+		_chunks.shadows = true
+
+
+## A particle system over the town at `sp`, on its own seed (never the shared stream), kept until the cast ends.
+func _particles(shape: PixelParticles.Shape, ramp: Array, sp: Vector2, salt: int) -> PixelParticles:
+	var p := PixelParticles.new()
+	p.rng.seed = _look_seed() + salt
+	p.shape = shape
+	p.ramp = PackedColorArray(ramp)
+	p.position = sp
+	p.auto_free = false
+	track(p, ctx.overhead_back)
+	return p
+
+
+## The look's seed: from the click, so a replay looks the same.
+func _look_seed() -> int:
+	return absi(int(origin.x * 977.0) * 31 + int(origin.y * 613.0))
 
 
 ## The circle's radius now.
@@ -83,12 +164,8 @@ func left() -> int:
 	return _queue.size()
 
 
-func _fx_process(_delta: float) -> void:
-	if is_instance_valid(_disc):
-		_disc.r = radius()
-		_disc.open = clampf(t / T_OPEN, 0.0, 1.0)
-		_disc.fold = clampf((t - t_full) / FOLD, 0.0, 1.0) if swallowed else 0.0
-		_disc.queue_redraw()
+func _fx_process(delta: float) -> void:
+	_look(delta)
 	if not swallowed:
 		return
 	var n := 0
@@ -107,6 +184,101 @@ func _fx_process(_delta: float) -> void:
 		# The buildings went by the batch remove (each struck from its own index cells); one full rebuild closes the batch.
 		_batched = false
 		ctx.env.reindex()
+
+
+## The look this frame, from the cast's own clock and radius (nothing per building or per person).
+func _look(delta: float) -> void:
+	var r := radius()
+	var opened := clampf(t / T_OPEN, 0.0, 1.0)
+	var folded := clampf((t - t_full) / FOLD, 0.0, 1.0) if swallowed else 0.0
+	var heave := clampf((t - (t_full - HEAVE)) / HEAVE, 0.0, 1.0) * (1.0 - folded)
+	if is_instance_valid(_hole):
+		_hole.set_param("hole", r / (full_r + APRON))
+		_hole.set_param("open", opened)
+		_hole.set_param("heave", heave)
+		_hole.set_param("fold", folded)
+	var centre := Iso.ground_to_screen(origin)
+	for td in _tendrils:
+		if not is_instance_valid(td):
+			continue
+		var a := float(td.k) * TAU / float(TENDRILS) + 0.09 * sin(t * 0.3 + float(td.k))
+		td.position = Iso.ground_to_screen(origin + Vector2.from_angle(a) * r * 0.985)
+		td.inward = centre - td.position
+		td.clock = t
+		td.reach = opened * clampf(0.35 + r / 8.0, 0.35, 1.0) * (1.0 + 0.6 * heave) * (1.0 - folded)
+		td.fade = opened * (1.0 - folded)
+		td.queue_redraw()
+	if heave > 0.0 and not _heaved:
+		_heaved = true
+		_heave_burst(r)
+	if swallowed and not _folding:
+		_folding = true
+		if ctx.shake != null:
+			ctx.shake.add_trauma(0.3)
+	_pull_dust(delta, r, heave, folded)
+	_dome_look(heave, folded)
+
+
+## The ground heaves: loose ground thrown up all round the rim (falling back in), and the camera feels it.
+func _heave_burst(r: float) -> void:
+	if ctx.shake != null:
+		ctx.shake.add_trauma(0.35)
+	if not is_instance_valid(_chunks):
+		return
+	for i in 40:
+		var dir := Vector2.from_angle(_scatter.randf() * TAU)
+		_chunks.burst(1, {"offset": Iso.ground_to_screen(dir * (r + _scatter.randf_range(-0.3, 0.8))),
+			"velocity": -Iso.ground_to_screen(dir) * _scatter.randf_range(0.8, 2.0), "alt_speed": Vector2(70, 170),
+			"life": Vector2(0.9, 1.5), "size": Vector2(2, 4)})
+
+
+## Dust and loose ground drawn in from the apron over the rim while the circle grows (faster as the ground heaves).
+func _pull_dust(delta: float, r: float, heave: float, folded: float) -> void:
+	if not is_instance_valid(_dust) or swallowed or r <= 0.0:
+		return
+	_dust_due += DUST_RATE * (1.0 + 1.5 * heave) * minf(1.0, 0.3 + r / full_r) * delta
+	_chunk_due += CHUNK_RATE * (1.0 + heave) * delta
+	while _dust_due >= 1.0:
+		_dust_due -= 1.0
+		var dir := Vector2.from_angle(_scatter.randf() * TAU)
+		_dust.burst(1, {"offset": Iso.ground_to_screen(dir * (r + _scatter.randf_range(0.2, APRON))),
+			"velocity": -Iso.ground_to_screen(dir) * _scatter.randf_range(0.9, 1.6) * (1.0 + 1.5 * heave),
+			"alt": Vector2(0, 3), "life": Vector2(1.4, 2.2), "size": Vector2(1, 2)})
+	while _chunk_due >= 1.0:
+		_chunk_due -= 1.0
+		var dir := Vector2.from_angle(_scatter.randf() * TAU)
+		_chunks.burst(1, {"offset": Iso.ground_to_screen(dir * (r + _scatter.randf_range(0.3, 1.6))),
+			"velocity": -Iso.ground_to_screen(dir) * _scatter.randf_range(0.5, 0.9), "life": Vector2(1.6, 2.4),
+			"size": Vector2(2, 3.5)})
+
+
+## The dome: rises over RISE before full size, stands while the fold takes what is inside, and closes down into the ground.
+func _dome_look(heave: float, folded: float) -> void:
+	var rising := clampf((t - (t_full - RISE)) / RISE, 0.0, 1.0)
+	if rising <= 0.0 or ctx.overhead == null:
+		return
+	var semi := Iso.radius_to_screen(full_r)
+	if not is_instance_valid(_dome):
+		var tall := semi.y * DOME
+		_dome = FxParts.quad(self, SH_DOME, Vector2(semi.x * 2.0, semi.y * 2.0 + tall), ctx.overhead,
+			Vector2(0.5, (semi.y + tall) / (semi.y * 2.0 + tall)))
+		_dome.position = Iso.ground_to_screen(origin)
+		_dome.set_param("base_px", semi.y)
+		_dome.set_param("dome_px", tall)
+		_dome.set_param("seed", float(_look_seed() % 89))
+		_dome.set_param("black", VeilParts.BLACK)
+		_dome.set_param("dusk", VeilParts.DUSK)
+		_dome.set_param("veil", VeilParts.VEIL)
+		_dome.set_param("silver", VeilParts.SILVER)
+	var up := 1.0 - pow(1.0 - rising, 3.0)
+	_dome.set_param("rise", up * pow(1.0 - folded, 1.6) * (0.9 + 0.1 * heave))
+	_dome.set_param("amount", minf(rising * 2.0, 1.0) * (1.0 - smoothstep(0.55, 1.0, folded)))
+
+
+## Freed without finishing off the tree (no _exit_tree() comes): the look's pieces go too.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_free_tracked(true)
 
 
 ## Full size: what is inside is fixed now and taken over the next frames; the ground is left dusk and bare.
@@ -279,38 +451,71 @@ func _take_building(s: Structure) -> void:
 	removed += 1
 
 
-## The growing circle: a flat black disc with a thin silver rim, drawn on the ground over its art (ground units: ctx.ground is
-## Iso.BASIS). At full size the rim folds inward and the disc fades onto the bare earth left beneath.
-class SwallowDisc extends Node2D:
-	var at := Vector2.ZERO
-	var r := 0.0
-	var open := 0.0
-	var fold := 0.0
-
-	func _init() -> void:
-		z_index = 2
+## A tendril of the dark (screen pixels, standing on the rim; in the y-sorted world, so the houses before it hide its foot): it
+## reaches up, curls in over the hole and sinks back, on its own phase. Drawn only; the cast sets where it stands each frame.
+class SwallowTendril extends Node2D:
+	const SEGMENTS := 8
+	var k := 0
+	## Its full height in pixels, toward the middle of the hole, the cast's clock, and how far it reaches now (0 = gone).
+	var height := 40.0
+	var inward := Vector2.ZERO
+	var clock := 0.0
+	var reach := 0.0
+	## How strongly it shows (0 = gone).
+	var fade := 1.0
 
 	func _draw() -> void:
-		if r <= 0.0:
+		var c := fposmod(clock * 0.42 + float(k) * 0.618034, 1.0)
+		var grow := sin(c * PI)
+		var span := height * grow * reach
+		if span < 2.0:
 			return
-		var a := open * (1.0 - fold)
-		draw_circle(at, r, Color(VeilParts.BLACK, 0.96 * a))
-		draw_arc(at, r, 0.0, TAU, 64, Color(VeilParts.SILVER, 0.85 * a), 0.06)
-		if fold > 0.0:
-			# The soundless fold: the rim draws in to the middle.
-			draw_arc(at, r * (1.0 - fold), 0.0, TAU, 64, Color(VeilParts.SILVER, 0.9 * (1.0 - fold)), 0.08)
+		var curl := smoothstep(0.2, 0.85, c)
+		var inw := inward.normalized() if inward.length() > 0.01 else Vector2.UP
+		var side := Vector2(-inw.y, inw.x)
+		var pts := PackedVector2Array()
+		for j in SEGMENTS + 1:
+			var u := float(j) / float(SEGMENTS)
+			pts.append(Vector2(0.0, -span * u * (1.0 - 0.5 * curl * u)) + inw * span * curl * u * u * 0.9
+				+ side * sin(u * 4.0 + clock * 2.3 + float(k)) * 3.0 * u)
+		for pass_i in 2:
+			var col := Color(VeilParts.VEIL, 0.5 * fade) if pass_i == 0 else Color(VeilParts.BLACK, 0.95 * fade)
+			var grow_w := 1.5 if pass_i == 0 else 0.0
+			for j in SEGMENTS:
+				var a := pts[j]
+				var b := pts[j + 1]
+				var nrm := (b - a).normalized()
+				nrm = Vector2(-nrm.y, nrm.x)
+				var wa := lerpf(7.0, 1.0, float(j) / float(SEGMENTS)) + grow_w
+				var wb := lerpf(7.0, 1.0, float(j + 1) / float(SEGMENTS)) + grow_w
+				draw_primitive(PackedVector2Array([(a - nrm * wa).round(), (b - nrm * wb).round(), (b + nrm * wb).round(),
+					(a + nrm * wa).round()]), PackedColorArray([col, col, col, col]), PackedVector2Array())
+		if grow > 0.5:
+			draw_rect(Rect2(pts[SEGMENTS].round(), Vector2.ONE), Color(VeilParts.SILVER, 0.8 * fade))
 
 
-## Bare dark earth where the dark closed: one flat disc on the ground, kept for the mission. A lasting effect node
-## (SolarisPit.GROUP): Battlefield.clear_effects() frees it on a restart, so it never lies on a fresh town.
+## Bare dark earth where the dark closed: a shallow scorched bowl on the ground (its shader), kept for the mission. A lasting
+## effect node (SolarisPit.GROUP): Battlefield.clear_effects() frees it on a restart, so it never lies on a fresh town.
 class BareEarth extends Node2D:
+	const SHADER := preload("res://shaders/swallow_earth.gdshader")
+	static var _white: ImageTexture
 	var at := Vector2.ZERO
 	var r := 0.0
 
 	func _init() -> void:
 		z_index = 1
 		add_to_group(SolarisPit.GROUP)
+		var mat := ShaderMaterial.new()
+		mat.shader = SHADER
+		mat.set_shader_parameter("dusk", VeilParts.DUSK)
+		mat.set_shader_parameter("veil", VeilParts.VEIL)
+		material = mat
 
 	func _draw() -> void:
-		draw_circle(at, r, Color("1a1410", 0.92))
-		draw_circle(at, r * 0.97, Color("120d0b", 0.5))
+		if _white == null:
+			var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+			img.fill(Color.WHITE)
+			_white = ImageTexture.create_from_image(img)
+		(material as ShaderMaterial).set_shader_parameter("seed", fposmod(at.x * 3.7 + at.y * 1.9, 50.0))
+		var span := r * 1.06
+		draw_texture_rect(_white, Rect2(at - Vector2(span, span), Vector2(span, span) * 2.0), false)

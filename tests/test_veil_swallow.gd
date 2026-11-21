@@ -113,6 +113,7 @@ static func run(t) -> void:
 	_restart(t)
 	_no_crowd(t)
 	_market(t)
+	_look(t)
 
 
 static func _wholly(t) -> void:
@@ -583,3 +584,66 @@ static func _market(t) -> void:
 	_go(fx, 2.0)
 	t.check(fx.finished, "market square: the effect ends")
 	_done(made)
+
+
+## True when `n` is freed or on its way out (it, or a parent, queued for deletion).
+static func _gone(n: Variant) -> bool:
+	if n == null or not is_instance_valid(n):
+		return true
+	var at: Node = n
+	while at != null:
+		if at.is_queued_for_deletion():
+			return true
+		at = at.get_parent()
+	return false
+
+
+## Review round (VRD, spec 6): the look. The hole on the ground plane (over the town's lamp pools), the tendrils standing in the world,
+## the dust drawn in over the town while it grows; the dome rises over the circle before full size, and when the fold is done the bare
+## earth lies there (its bowl). Every piece goes when the cast runs out, with end_now() and with a freed cast; a bare context (an
+## overhead layer only) builds and finishes.
+static func _look(t) -> void:
+	for mode in ["run", "end_now", "free"]:
+		var ctx := FxContext.new()
+		ctx.rng = RandomNumberGenerator.new()
+		ctx.overhead = Node2D.new()
+		ctx.overhead_back = Node2D.new()
+		ctx.ground = Node2D.new()
+		ctx.world = Node2D.new()
+		var fx := FxTimeline.cast(TheSwallowingDarkFx, ctx, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+		_go(fx, 2.0)
+		var hole := fx._hole
+		t.check(hole != null and hole.get_parent() == ctx.ground and hole.z_index == 7
+			and (hole.material as ShaderMaterial).shader == TheSwallowingDarkFx.SH_HOLE, "%s: the hole on the ground plane, over the lamp pools" % mode)
+		var standing := fx._tendrils.filter(func(n: Node) -> bool: return is_instance_valid(n) and n.get_parent() == ctx.world)
+		t.check(standing.size() == TheSwallowingDarkFx.TENDRILS, "%s: its tendrils stand in the world (%d)" % [mode, standing.size()])
+		t.check(fx._dust != null and fx._dust.get_parent() == ctx.overhead_back and fx._dust._particles.size() > 0,
+			"%s: dust drawn in over the rim (%d motes)" % [mode, fx._dust._particles.size() if fx._dust != null else -1])
+		t.check(fx._dome == null, "%s: no dome while it grows" % mode)
+		_go(fx, fx.t_full - TheSwallowingDarkFx.RISE * 0.5 - fx.t)
+		t.check(fx._dome != null and fx._dome.get_parent() == ctx.overhead and not fx.swallowed,
+			"%s: the dome rises over the circle before full size" % mode)
+		var pieces: Array = [hole, fx._dome, fx._dust, fx._chunks]
+		pieces.append_array(fx._tendrils)
+		match mode:
+			"run":
+				_go(fx, 2.0)
+				var earth: Array = ctx.ground.get_children().filter(func(c: Node) -> bool: return c is TheSwallowingDarkFx.BareEarth)
+				t.check(fx.finished and earth.size() == 1 and (earth[0] as Node2D).material is ShaderMaterial,
+					"run: the fold done, the bare earth (a bowl) is left on the ground plane")
+			"end_now":
+				fx.end_now()
+			"free":
+				fx.free()
+		var left := pieces.filter(func(n: Variant) -> bool: return not _gone(n))
+		t.check(left.is_empty(), "%s: every piece of the look is gone (%d left)" % [mode, left.size()])
+		for n: Node in [ctx.overhead, ctx.overhead_back, ctx.ground, ctx.world]:
+			n.free()
+	var bare := FxContext.new()
+	bare.rng = RandomNumberGenerator.new()
+	bare.overhead = Node2D.new()
+	var lone := FxTimeline.cast(TheSwallowingDarkFx, bare, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+	t.check(lone._hole == null and lone._tendrils.is_empty() and lone._dust == null, "a bare context: no ground, world or back layer, none of theirs")
+	_go(lone, 23.0)
+	t.check(lone.finished, "a bare context builds the look it can and finishes without an error")
+	bare.overhead.free()

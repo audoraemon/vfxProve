@@ -105,6 +105,7 @@ static func run(t) -> void:
 	_teardown(t, made)
 	_two(t, made)
 	_look(t, made)
+	_sky(t, made)
 	field.enemy_killed.disconnect(on_kill)
 	ctx.lights.free()
 	ctx.lights = null
@@ -743,6 +744,66 @@ static func _look(t, made: Array) -> void:
 	fx.end_now()
 	t.check(not is_instance_valid(wash) or wash.is_queued_for_deletion() or wash.get_parent() == null, "the wash goes with the cast")
 	t.check(moon == null or not is_instance_valid(moon) or moon.is_queued_for_deletion(), "and no moon is left after it ends")
+
+
+## True when `n` is freed or on its way out (it, or a parent, queued for deletion).
+static func _gone(n: Variant) -> bool:
+	if n == null or not is_instance_valid(n):
+		return true
+	var at: Node = n
+	while at != null:
+		if at.is_queued_for_deletion():
+			return true
+		at = at.get_parent()
+	return false
+
+
+## Review round (VRD, spec 7): the night seen over the town. With the layers there: the shade (multiplied), the air over it and the wall
+## over both on the overhead_back layer; the moon top-level in the sky; a warm glow per torch on the overhead layer, out with its torch;
+## a dark wisp for each take; the wall stands on the running front and is down through the night. All go with end_now() and with a
+## freed cast.
+static func _sky(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	for mode in ["end_now", "free"]:
+		var at := _fresh(made)
+		ctx.overhead_back = Node2D.new()
+		_put(crowd, at + Vector2(0.0, -6.0), true)
+		_put(crowd, at + Vector2(12.0, 12.0))
+		var fx := _cast(ctx, at)
+		t.check(fx._shade != null and fx._shade.get_parent() == ctx.overhead_back and fx._shade.z_index == 0
+			and fx._shade.mat.shader == EvernightSky.SH_SHADE, "%s: the night's shade over the town (overhead_back)" % mode)
+		t.check(fx._air != null and fx._air.get_parent() == ctx.overhead_back and fx._air.z_index == 1 and fx._wall != null
+			and fx._wall.get_parent() == ctx.overhead_back and fx._wall.z_index == 2, "%s: the air over it, the wall over both" % mode)
+		t.check(fx.wash.moon.top_level and not fx.wash.moon.z_as_relative, "%s: the moon hangs in the sky (top level)" % mode)
+		_go(fx, 1.0)
+		t.check(fx._wall.amount > 0.0 and is_equal_approx(fx._wall.front, fx.look_front()) and fx._wall.front > 0.0,
+			"%s: the wall stands on the running front (%.1f)" % [mode, fx._wall.front])
+		_until(fx, E.WAVE + 0.5)
+		t.check(fx._wall.amount == 0.0, "%s: through the night the wall is down" % mode)
+		t.check(fx._glows.size() == 1 and fx.torches.size() == 1 and (fx._glows[0] as Node).get_parent() == ctx.overhead
+			and (fx._glows[0] as EvernightSky.TorchGlow).lit, "%s: a warm glow round the torch" % mode)
+		var wisps := func() -> int:
+			var n := 0
+			for c in ctx.overhead.get_children():
+				if c is PixelParticles and not c.is_queued_for_deletion() and (c as PixelParticles).ramp[0] == EvernightSky.WISP[0]:
+					n += 1
+			return n
+		var before: int = wisps.call()
+		_until(fx, E.WAVE + fx.take_every + DT)
+		t.check(fx.taken.size() == 1 and wisps.call() == before + 1, "%s: the take leaves a dark wisp (%d taken)" % [mode, fx.taken.size()])
+		fx.put_out(0)
+		fx._process(DT)
+		t.check(not (fx._glows[0] as EvernightSky.TorchGlow).lit, "%s: the glow goes out with its torch" % mode)
+		var pieces: Array = [fx._shade, fx._air, fx._wall, fx._glows[0], fx.wash.moon]
+		if mode == "end_now":
+			fx.end_now()
+		else:
+			fx.free()
+		var left := pieces.filter(func(n: Variant) -> bool: return not _gone(n))
+		t.check(left.is_empty(), "%s: every piece of the look is gone (%d left)" % [mode, left.size()])
+		ctx.overhead_back.free()
+		ctx.overhead_back = null
 
 
 static func _quiet(t) -> void:

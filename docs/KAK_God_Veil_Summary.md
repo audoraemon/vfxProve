@@ -29,18 +29,71 @@ Sizes are written light / dark. "Taken" means gone: no body, no sound, nothing l
 | Tier | Power | What it does | Light | Dark |
 |---|---|---|---|---|
 | 1 | **Silent Doom** | Everyone within reach falls dead a moment later, unseen. | reach 0.8 | reach 1.6 |
-| 1 | **Blight** (reworked) | Click a building: it rots, its light goes out, and the ground round it stays dusk until the night ends (your foothold; at most 3, a fourth heals the oldest). A building with a use (well, bell, gate, dock, temple) loses it as before. Click a person: they fall ill without a sound and walk home to bed for the rest of the night. A mission's key person is only ill for 20 s (half pace); your own believers are passed over. Nothing in reach: refused (NOTHING HERE TO BLIGHT). | dusk 3 round the building; 1 person ill | dusk 5; the person and the 2 nearest within 2 |
+| 1 | **Blight** (reworked) | Click a building: it rots, its light goes out, and the ground round it stays dusk until the night ends (your foothold; at most 3, a fourth heals the oldest). A building with a use (well, bell, gate, dock, temple) loses it as before. Click a person: they fall ill without a sound, carry a small green rot glyph over their head, and walk home to bed for the rest of the night. A mission's key person is only ill for 20 s (half pace); your own believers are passed over. Nothing in reach: refused (NOTHING HERE TO BLIGHT). | dusk 3 round the building; 1 person ill | dusk 5; the person and the 2 nearest within 2 |
 | 2 | **Slumber** | Everyone in the circle sleeps where they stand for 20 s. | circle 1.5; a loud blow or a hurt wakes them | circle 3.5; deep sleep, only a hurt wakes them |
 | 2 | **Cloak of Night** | The nearest few are hidden from the watch for 25 s: guards, searchers, inquisitors and witnesses look past them. They walk normally, under a dark shimmer. | 3 people within 2 | 8 people within 4 |
 | 3 | **Unseen Hour** | Nothing in the circle is seen: no alarm, no fright, nobody comes. Its veil counts as dark ground. | circle 5 for 20 s | circle 7 for 30 s |
 | 3 | **Dreamless** | The nearest sit down against a wall as if resting and never wake; for 20 s the town sees only people resting, then they are found dead. Anyone already asleep there is simply taken. | the nearest 1 within 1 | the nearest 4 within 2 |
 | 4 | **Dread of the Dark** | For 25 s every piece of dark ground in reach becomes a wall: nobody steps in, and everyone inside freezes, silent (no walking, fleeing, shouting, ringing, fighting or seizing). No dark ground in reach: refused (NO DARK HERE TO DREAD). Its dusk is laid when the dread lifts. | reach 6 | reach 12 |
 | 4 | **Shadow Play** | Everyone in the circle falls asleep for 30 s while their shadow carries on in their place: posts look manned, but a shadow sees, reports and seizes nothing. At the end the shadows lie down and the people wake. | circle 3 | circle 6; the soldiers' shadows fade where they stand and those soldiers are taken |
-| 5 | **The Swallowing Dark** | A black circle grows unseen at 0.5 a second; when it is full size everyone and everything inside is taken, buildings too (bare dark ground is left). It spares what the mission needs, never takes what the night wants down (a target it must raze stays to be razed), and spares the town's gates, bridges, postern, dock and fountain. Once a descent. | grows from 0 to 10 | grows from its dusk patch to 14 |
+| 5 | **The Swallowing Dark** | A hole in the ground opens and grows at 0.5 a second (a funnel of terraces, a swirl, dark tendrils curling in); when it is full size everyone and everything inside is taken, buildings too (bare dark ground is left). It spares what the mission needs, never takes what the night wants down (a target it must raze stays to be razed), and spares the town's gates, bridges, postern, dock and fountain. Once a descent. | grows from 0 to 10 | grows from its dusk patch to 14 |
 | 5 | **Evernight** | Night rolls over the whole town: every Veil power is full size anywhere and cools twice as fast; the lone are taken one by one; up to 6 soldiers light torches and the people huddle round them (a Veil cast on a torch puts it out and takes everyone in its light); at dawn whoever shelters in a blighted building or sleeps in dusk never wakes. The town forgets the night. Once a descent. | 60 s, one taken every 2 s | cast in a NIGHT mission: 90 s, one every 1.5 s |
 
 When states meet: taken beats everything; asleep beats frozen (a frozen person hit by Slumber sleeps; a sleeper is not frozen);
 The Swallowing Dark and Evernight take sleepers, the frozen and shadows' owners alike.
+
+## Review round (2026-11-21)
+
+You played the Veil's powers and asked for seven things. All of it is looks only: no rule, size, timing, cooldown or sound cue
+changed, and nothing new frightens anyone or raises an alarm. The ten skill-tree preview clips were re-recorded to show the new looks
+(Silent Doom's look did not change, so its clip is untouched).
+
+1. **Target preview on Slumber, Cloak of Night, Dreamless and Shadow Play.** While you aim, each person the cast would take (at the
+   size the ground under the ring gives) gets a small ring. Anyone the cast would kill outright (Dreamless's sleepers and shadows,
+   a dark Shadow Play's soldiers) is ringed in the kill colour. The preview is the set the real cast takes, checked line for line.
+   Blight's person preview likewise follows the size: 1 person in the light, 3 in the dark.
+2. **More vfx on casting.** Slumber: a violet mist rolls out to the true edge of the reach, an eye opens over the click and shuts as
+   they fall, silver dust settles on each sleeper. Cloak of Night: a dark cloth unfurls over the click, a strand flies to each person
+   it hides and wraps them, and the cloaked carry a violet hem. Unseen Hour: see 4. Dreamless: a dark breath spreads over the reach,
+   a silver thread rises over each sitter, thins as the rest runs out and snaps when they are found. Shadow Play: dark bands ripple
+   out, then each shadow peels up from its owner's feet; in the dark a soldier's shadow stretches thin and fades with a ring and motes.
+   Dread of the Dark: see 5.
+3. **Blight's indicator.** A person made ill carries a green rot glyph above their head from the strike until they are indoors (and
+   again if they come out while still ill), with a few drifting motes. Two Blights on one person share it.
+4. **Unseen Hour's blanket.** A thin violet-black sheet is thrown from the click, opens and hangs over the whole veil, its middle
+   raised and its edge drooping in scallops with a fringe, a faint weave, a dark seam and a shadow on the ground; people and roofs
+   under it stay readable. In the last second it lifts and fades.
+5. **Dread of the Dark as a spreading wall.** A front of darkness crosses the dark ground, and as it passes, a wall of dark tongues
+   rises along the border of the dreaded ground in a violet haze, with pairs of eyes opening in it. The far side stands tall; the near
+   side is low and faint so the frozen people inside stay in plain sight. At the end the wall sinks.
+6. **The Swallowing Dark from the ground.** It is a hole now: a funnel of slumped terraces with a swirl, tendrils of darkness curling
+   in, dust falling. Just before it is full the dark rises from the ground at its rim and closes inward, taking the town black; then it
+   drains back into the earth and leaves a scorched bowl of bare ground. The camera shakes a little.
+7. **Evernight over the city.** A tall wall of night rises at the click and runs across the town, near-black at its foot with a ragged,
+   violet-edged crown. Behind it the whole view is a violet-black night, deeper at the edges, with warm islands round each torch, a slow
+   mist over the roofs, silver stars, a falling star now and then, motes of dark rising, and a pale moon in the upper right. Each person
+   taken raises a small dark wisp. At dawn the wall comes back and rolls the night away. The camera shakes a little.
+
+Also corrected: Shadow Play's lying outline under its peeling shadows and Evernight's night wash were drawn off the town (a doubled
+screen basis) and had never shown; both show now.
+
+### For your eye
+
+Things only you can judge in play:
+
+- The kill colour of the target previews (Dreamless, a dark Shadow Play): does it read on lit ground, and are many rings in a crowd
+  too dense at the dark sizes?
+- The Cloak's violet hem: it is strong; is it too strong?
+- The busy second of a dark Shadow Play (about 40 short-lived pieces as the soldiers' shadows fade).
+- No mark on a blighted building (ruling VRB7): only people carry the glyph.
+- The camera shake on The Swallowing Dark and Evernight: a new thing for a Veil power (a small shake only, no sound, no fright).
+- Evernight's wall of night hides the town for about 2 s while it crosses.
+- Evernight's night multiplies the view, so it dims other powers' effects cast during it.
+- The moon is fixed to the screen (upper right, the same size at any zoom): does that read as sky?
+- Dread's wall at night: black on dark ground, it reads mainly by its violet haze and its eyes, which are small at far zoom; and
+  people standing behind its far side, outside the patch, are covered by it.
+- Dread's cost was only roughly measured (a wall-clock ratio of two runs, since the mission bench cannot lay dusk), not benched.
+- Dreamless's silver thread is thin and does not show in its skill-tree clip.
 
 ## How to try them
 
@@ -113,13 +166,10 @@ in 122 families, the `none` cases, the other gods' rows, the calm/fire/rite/sold
   Dread lifts 25 s later; then its dusk lands on the torch, puts it out and takes the huddle in its light (VC1 with VC9). The spec
   (5.10) reads "the cast puts it out", i.e. at once. Left as built; a Dread cut short (an act change) lays no dusk at all (VG6).
 - **The look and listen checks nobody has done by eye or ear:**
-  - Evernight's pale moon (new in the final fix wave, spec section 6): a faint disc with a fainter halo near the top corner of the
-    map, in the night's wash beside the stars, drawn in code; it fades in with the night and out at dawn. Is it faint enough, and
-    in the right place?
+  - Evernight's moon: now fixed to the screen (upper right, the same size at any zoom); see the review round above.
   - Shadow Play in the dark: the soldiers' shadows fade where they stand (they do not walk off, as the spec's 5.8 has it).
-  - Evernight's night is mild: the ambient is eased to about 0.86 of the day's (ruling VC8), so the town reads as dusk, not night.
-  - Dreamless's clip is subtle: people sitting down against a wall looks like people resting, which is the point, but the preview
-    may not read as a power at all.
+  - Evernight's night is no longer mild: a violet-black shade multiplies the whole view (day frame mean 98 to 48) with warm islands round the torches; see the review round above.
+  - Dreamless's clip is still subtle: the silver thread over each sitter is too thin to read at the clip's 152 x 86 size; the dark breath at the cast does.
   - The seven new cues were measured (each within 3 LU over the quiet floor, VD1) but nobody has listened to them in play.
   - The dusk's own look (does it read at a glance where the dark is?) and the `LIGHT` / `DARK` ring tag have only been seen in
     captures.

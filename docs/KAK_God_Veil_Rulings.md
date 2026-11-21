@@ -421,3 +421,18 @@ References at the base commit (`refs_check.sh --jobs=2 --only='^(digest|crowd_ch
 - VRD10 (fix round 2): the hole's falling motes are removed (keyed to a whole terrace and an angle wedge, each lit a flat silver quad
   in the black); the funnel's depth `s` is interpolated between rings (stepped, it drew stair edges); the going-under dark uses the
   Veil's own smooth noise (shaders/veil_noise.gdshaderinc, shared with the wall), never the shared fbm.
+
+## Review round, Task E: the skill-tree clips (VRE)
+
+All recorded with `timeout 1200 $G --path . --fixed-fps 60 --audio-driver Dummy -s tools/dev/behaviour_check.gd -- --scenario=clip --power=<key> --at=0.8,2.0 --snap <flags>` (no --no-sheet).
+
+- VRE1: doom: not re-recorded (its look did not change).
+- VRE2: blight: `--setup=dark --zoom=2.2` (the glyph shows over the sick in the dark).
+- VRE3: unseen: `--setup=dark --zoom=1.0 --seconds=12` (the blanket is wider than the frame at 2.2).
+- VRE4: slumber: `--setup=dark --zoom=2.2 --seconds=4`.
+- VRE5: cloak: `--setup=dark --zoom=2.2 --seconds=6`.
+- VRE6: dreamless: `--zoom=2.2 --seconds=20` (lit size, the whole rest to the find). Its thread is too thin to read at 152 x 86.
+- VRE7: dread: `--setup=dusk --zoom=1.2 --cam=1,0 --seconds=20` (the wall stands round the dusk patch east of the cast; at the dark size the whole frame is dreaded and the wall is off screen).
+- VRE8: shadowplay: `--setup=dark --zoom=2.2 --seconds=8`.
+- VRE9: swallow: `--zoom=1.0 --seconds=22` (growth, hole, the fold and the bare bowl).
+- VRE10: evernight: `--look=night --zoom=1.0 --seconds=20` (the wall of night, then the night with torch islands).

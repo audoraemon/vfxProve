@@ -816,3 +816,8 @@ func tour() -> Array:
 	if temple_door != Vector2.INF:
 		out.append([temple_door, "The Temple. A Faithful who sees you runs here."])
 	return out
+
+
+## Music by situation: the prayers' chant.
+func music_mood() -> StringName:
+	return &"rite"

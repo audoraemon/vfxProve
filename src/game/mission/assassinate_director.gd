@@ -889,3 +889,11 @@ func teardown() -> void:
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Music by situation: the chase while a quarry flees to his hideout.
+func music_mood() -> StringName:
+	for q: Quarry in quarries:
+		if q.state == State.FLEEING:
+			return &"chase"
+	return &""

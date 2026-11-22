@@ -888,3 +888,8 @@ func report() -> Dictionary:
 	for done in halts_done:
 		halts += 1 if done else 0
 	return {"swapped": swapped, "halts": halts, "touches": touches, "reports": reports_started, "home": home}
+
+
+## Music by situation: the town's own: the relic's road is no vigil.
+func music_mood() -> StringName:
+	return &""

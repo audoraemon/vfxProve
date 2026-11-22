@@ -1100,3 +1100,8 @@ func teardown() -> void:
 			if is_instance_valid(s):
 				crowd.engineers.hands_off.erase(s)
 	super()
+
+
+## Music by situation: the chant while Odran's rite is on at the altar.
+func music_mood() -> StringName:
+	return &"rite" if rite_on else &""

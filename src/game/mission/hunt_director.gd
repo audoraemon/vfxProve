@@ -887,3 +887,8 @@ func teardown() -> void:
 				s.broken.disconnect(_on_broken)
 	_unhook_kills(_on_killed)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Music by situation: the chase while the head is out or being searched for, until it is found.
+func music_mood() -> StringName:
+	return &"chase" if (head_out or searching) and not found else &""

@@ -617,3 +617,8 @@ class LanternGaze extends GazeMeter:
 
 	func seen_death() -> void:
 		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE * toll_scale)
+
+
+## Music by situation: the prayers' chant.
+func music_mood() -> StringName:
+	return &"rite"

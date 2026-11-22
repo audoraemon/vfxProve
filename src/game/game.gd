@@ -676,6 +676,9 @@ func _ready() -> void:
 				hud.push_subtitle(Battlefield.arg_value(args, "--hud-subtitle"))
 			if "--hud-zoom" in args:
 				_mission._zoom_readout.show_zoom(0.75)
+			if Battlefield.arg_value(args, "--hud-threat") != "" and is_instance_valid(_mission._alert):
+				# The loss warning's photographs: a made-up Herald 12 s out -- `card` photographs the slam, `edge` the pulse after it.
+				_mission._alert.dev_threat = NightThreat.make(&"dev", "THE HERALD REACHES THE TEMPLE", "STOP HIM", 12.5)
 			if Battlefield.arg_value(args, "--hud-cast") != "":
 				_mission.rules().cast(int(Battlefield.arg_value(args, "--hud-cast")), Vector2.ZERO)
 			if Battlefield.arg_value(args, "--hud-legend") != "":
@@ -683,6 +686,10 @@ func _ready() -> void:
 				if Battlefield.arg_value(args, "--hud-legend") == "2":
 					_mission._legend.open_next()
 		var wait := 1.0
+		if Battlefield.arg_value(args, "--hud-threat") == "card":
+			wait = 0.5
+		elif Battlefield.arg_value(args, "--hud-threat") == "edge":
+			wait = ThreatAlert.CARD_SECONDS + 1.0
 		if show == "first_taste-win":
 			wait = 0.6  # at the ending's 0.3 time scale: about 2 s real, inside the win plate's 4
 		elif show.begins_with("flame"):
@@ -919,6 +926,7 @@ func _faded_into_mission() -> void:
 		return
 	_fading = true
 	await _fader.fade_out(FADE_OUT)
+	Music.set_mood(&"")  # the last mission's chase or rite does not carry over
 	Music.play(&"battle")  # rises behind the fade
 	Music.sting(&"music_sting_start")  # the night begins
 	go_to(Screen.MISSION)
@@ -954,6 +962,7 @@ func _continue_night() -> void:
 	screen = Screen.MISSION
 	_mission.next_act(loadout, _next_path)
 	_mission.set_frozen(false)
+	Music.set_mood(&"")  # the last mission's chase or rite does not carry over
 	Music.play(&"battle")
 	await get_tree().process_frame
 	await get_tree().process_frame

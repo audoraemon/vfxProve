@@ -838,3 +838,8 @@ func teardown() -> void:
 	if house != null and is_instance_valid(house):
 		house.damage_filter = Callable()
 	super()
+
+
+## Music by situation: the sermon's chant.
+func music_mood() -> StringName:
+	return &"rite"

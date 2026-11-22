@@ -756,3 +756,8 @@ func teardown() -> void:
 			if is_instance_valid(s):
 				crowd.engineers.hands_off.erase(s)
 	super()
+
+
+## Music by situation: the chase while the Bishop is in flight, or a quarry flees.
+func music_mood() -> StringName:
+	return &"chase" if in_flight else super()

@@ -155,6 +155,11 @@ func step(delta: float) -> void:
 		_roof()
 
 
+## Loss warning: with no Lantern the toll fills the Gaze outright (step()); with one, the base's GAZE_TOLL.
+func toll_gaze() -> float:
+	return GazeMeter.FULL if rules.lantern == null else super()
+
+
 ## The house is kept standing (R45): brought down, its readers are flushed and no more can be made Believers (_flush()). First
 ## Prayers' well shrine and the Sermon's house are this `house` too.
 func needs_standing(s: Structure) -> bool:

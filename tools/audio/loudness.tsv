@@ -1019,6 +1019,10 @@ music_town_day	res://assets/audio/music/music_town_day.wav	-14.29	-1.16
 music_town_night	res://assets/audio/music/music_town_night.wav	-16.61	-2.14
 music_capital_day	res://assets/audio/music/music_capital_day.wav	-14.13	-0.46
 music_tension	res://assets/audio/music/music_tension.wav	-12.93	-0.53
+music_chase_base	res://assets/audio/music/music_chase_base.wav	-12.57	0.03
+music_chase_drums	res://assets/audio/music/music_chase_drums.wav	-14.26	0.03
+music_calm_festival	res://assets/audio/music/music_calm_festival.wav	-14.57	-0.61
+music_calm_rite	res://assets/audio/music/music_calm_rite.wav	-16.15	-2.22
 music_paths	res://assets/audio/music/music_paths.wav	-14.38	-1.08
 music_paths_ruin	res://assets/audio/music/music_paths_ruin.wav	-21.57	-1.51
 music_paths_passage	res://assets/audio/music/music_paths_passage.wav	-20.67	-3.40

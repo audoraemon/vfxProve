@@ -615,3 +615,8 @@ func bench_beams() -> void:
 class FlameGaze extends GazeMeter:
 	func seen_death() -> void:
 		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE)
+
+
+## Music by situation: the vigil's chant.
+func music_mood() -> StringName:
+	return &"rite"

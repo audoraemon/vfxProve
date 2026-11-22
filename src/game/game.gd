@@ -701,6 +701,9 @@ func _ready() -> void:
 				hud.push_subtitle(Battlefield.arg_value(args, "--hud-subtitle"))
 			if "--hud-zoom" in args:
 				_mission._zoom_readout.show_zoom(0.75)
+			if Battlefield.arg_value(args, "--hud-threat") != "" and is_instance_valid(_mission._alert):
+				# The loss warning's photographs: a made-up Herald 12 s out -- `card` photographs the slam, `edge` the pulse after it.
+				_mission._alert.dev_threat = NightThreat.make(&"dev", "THE HERALD REACHES THE TEMPLE", "STOP HIM", 12.5)
 			if Battlefield.arg_value(args, "--hud-cast") != "":
 				_mission.rules().cast(int(Battlefield.arg_value(args, "--hud-cast")), Vector2.ZERO)
 			if Battlefield.arg_value(args, "--hud-legend") != "":
@@ -708,6 +711,10 @@ func _ready() -> void:
 				if Battlefield.arg_value(args, "--hud-legend") == "2":
 					_mission._legend.open_next()
 		var wait := 1.0
+		if Battlefield.arg_value(args, "--hud-threat") == "card":
+			wait = 0.5
+		elif Battlefield.arg_value(args, "--hud-threat") == "edge":
+			wait = ThreatAlert.CARD_SECONDS + 1.0
 		if show == "first_taste-win":
 			wait = 0.6  # at the ending's 0.3 time scale: about 2 s real, inside the win plate's 4
 		elif show.begins_with("flame"):

@@ -770,6 +770,50 @@ func mission_time() -> float:
 	return _mission_elapsed
 
 
+## The loss warning (Discord idea "More Effect on Losing situation"): the soonest thing that ends the night if nobody interferes -- the
+## director's threats(), the Lantern's own Heralds and a deadline on the main objective (an EventObjective's event: the market closing, the
+## knights coming) -- as a NightThreat dictionary; {} for none, once the act is over, and in free play. Dawn is not one: the clock already
+## pulses red in its last half minute, and on most nights it is the win. Only reads.
+func threat() -> Dictionary:
+	return NightThreat.soonest(threats())
+
+
+## Every night-ending threat running now (threat()'s candidates, any order); none once the act is over, and in free play. Only reads.
+func threats() -> Array[Dictionary]:
+	var all: Array[Dictionary] = []
+	if finished or free_play:
+		return all
+	if is_instance_valid(director):
+		all.append_array(director.threats())
+	if lantern != null:
+		all.append_array(lantern.threats())
+	if not main_done:
+		all.append_array(_deadline_threats())
+	return all
+
+
+## The main objective's deadlines still to come (EventObjective): what comes, and what to have done first.
+func _deadline_threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var tl := director.timeline if is_instance_valid(director) else null
+	if tl == null:
+		return out
+	for o in objectives:
+		if o is EventObjective and tl.pending((o as EventObjective).event_id) and o.label != "":
+			var id := (o as EventObjective).event_id
+			out.append(NightThreat.make(StringName("deadline_" + id), o.label.to_upper(), _first_task(), tl.seconds_to(id)))
+	return out
+
+
+## "TURN THE CROWD FIRST": the night's first objective that is a task of the player's (not the Gaze, a Herald, the clock or a deadline).
+func _first_task() -> String:
+	for o in objectives:
+		if o is GazeObjective or o is HeraldObjective or o is ClockObjective or o is EventObjective or o.label == "":
+			continue
+		return "%s FIRST" % o.label.to_upper()
+	return "ACT NOW"
+
+
 ## End the act now, as a tool or a test asks (v0.09); an act already over stays as it ended.
 func force_end(win: bool, reason: String) -> void:
 	if not finished:

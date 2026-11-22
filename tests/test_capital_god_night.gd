@@ -11,6 +11,7 @@ const SETTINGS := "user://test_capital_god_night_settings.cfg"
 static func run(t) -> void:
 	GodTree.dev_fill = true
 	_draw_hostable(t)
+	_tier2_drawn(t)
 	_draw_none(t)
 	_hunt_aldermere_only(t)
 	_def_in_capital(t)
@@ -73,6 +74,28 @@ static func _draw_hostable(t) -> void:
 	t.check(same, "Aldermere's draw is today's for tiers 1-5 and nights 0..20")
 	t.check(GodNight.can_host("aldermere", "bishop") and GodNight.can_host("aldermere", "warning"), "Aldermere hosts every tier mission")
 	t.check(GodNight.can_host("capital", "warning") == MissionBook.hostable("warning", City.by_id(&"capital")), "can_host asks the book for another town")
+
+
+static func _tier2_drawn(t) -> void:
+	var tier2 := PackedStringArray(["miras_house", "broken_lanterns", "bell_ringers", "market_panic", "informer"])
+	var hosted := _hosted(2)
+	t.check(hosted.size() == tier2.size(), "the Capital hosts all five Tier 2 missions (%s)" % [hosted])
+	var seen := {}
+	var bad := 0
+	for night in range(0, 12):
+		for seed_value in range(1, 6):
+			var s := _slot(2, seed_value)
+			s.night = night
+			var id := GodNight.draw(s, "capital")
+			if id == "" or not tier2.has(id) or not hosted.has(id):
+				bad += 1
+			else:
+				seen[id] = true
+	var s2 := _slot(2)
+	var one := GodNight.draw(s2, "capital")
+	t.check(one != "" and tier2.has(one), "a Tier 2 god night in the Capital draws a Tier 2 id (%s)" % one)
+	t.check(bad == 0 and seen.size() >= 2, "every Tier 2 draw over 60 slots is a hosted Tier 2 id, several distinct (%d bad, %s)" % [bad, seen.keys()])
+	print("tier2 drawn ids: ", seen.keys())
 
 
 static func _draw_none(t) -> void:

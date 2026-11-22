@@ -493,3 +493,22 @@ All recorded with `timeout 1200 $G --path . --fixed-fps 60 --audio-driver Dummy 
 - VR2S7: LevelSound and tests/test_level_sound.gd are not on this branch (it was cut before Develop-Main's LevelSound, d57337d1): no row to add here. When it merges, v_swallow stays the power's main cue as the brief names it.
 - VR2S8: the blurb's "gone without a sound" is now untrue: "A black circle grows unseen, then the dark swallows all inside." (61 characters, was 70).
 - VR2S9: sources are CC0 or public domain only (OpenGameArt CC0 packs, Kenney, VSCO-2-CE, Wikimedia Commons public domain), none from Sonniss or a model, Sonatina (CC Sampling Plus) left out. The one creature source, OpenGameArt's "CC0 Deep Monster Roar", is wordless: reversed for the cast's in-drawn breath and pitched an octave down under the fold's tail.
+
+## Veil review, second pass: Evernight (2026-11-22, prefix VR2N)
+
+- VR2N1 (the takes): take k of K collects `take_count(k)` = TAKE_FIRST 5 rising evenly to TAKE_LAST 10 (rounded half up; K = 29 by day,
+  59 in a NIGHT mission; K = 1 gives 5). Each group is claimed one take ahead (at the fall, after the torches and the call; then after
+  every take but the last) by `loneliest_n()`: one pass that measures every candidate's nearest neighbour and sorts. `loneliest()` is
+  `loneliest_n(.., 1, {})`'s first, so the two always agree. A claimed one who is no longer alive, out of doors, outside every burning
+  torch's light, unspared and takeable at his take is let go and may be claimed again. A whole night in the bench town (seed 7, cast on
+  the market square by day) takes 214 people (182 citizens, 32 soldiers), against about 30 before.
+- VR2N2 (who leaves a shadow): every take by the claim and every take by a torch put out leaves a shadow where he stood; the dawn's
+  takes (blighted shelterers, dusk sleepers) leave none: they are taken as the shadows fade, and a shelterer stands in a building.
+- VR2N3 (the claim's layer): each claimed person's dark (EvernightMarks.Claim: a pool under his feet, his own outline filled from the
+  feet up to a licking violet rim, his pale eyes last) is drawn at absolute z 4: over the night's shade and air (the multiply would
+  swallow a black on black) and under the aim (5). So it also draws over a wall or a roof in front of him: the god finds the claimed
+  even behind a house, which reads as the Veil's mark rather than a fault. Built only where ctx.overhead_back is (nothing headless).
+- VR2N4 (the shadows' layer): all of the night's shadows are one EvernightMarks.Stains node on ctx.ground (z 2, under the wash's torch
+  rings), one triangle list, rebuilt only when one is added, while one fades in (0.45 s) or over the dawn. A faint violet rim keeps
+  each readable under the night's multiply. They are tracked by the cast and go with it however it ends.
+- VR2N5 (the wisp): one wisp per person taken, as before (the cost holds, see the report's bench).

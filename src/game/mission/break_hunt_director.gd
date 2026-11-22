@@ -1063,6 +1063,21 @@ func soonest_eta() -> float:
 	return best
 
 
+## Loss warning: once a house is taken, each standard still marching on one (the next house taken loses the night, BH_LOSE_TAKEN), as eta(i).
+## The first house taken does not end the night, so it is not warned.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if taken() < BH_LOSE_TAKEN - 1 or broken_all():
+		return out
+	for i in steps.size():
+		var left := eta(i)
+		if left < INF and steps[i].raised and not steps[i].broken and not _planted[i]:
+			var b := bearer(i)
+			out.append(NightThreat.make(StringName("standard_%d" % i), "THE STANDARD TAKES A SECOND HOUSE", "BREAK THE STANDARD", left,
+				b.ground_pos if b != null else Vector2.INF))
+	return out
+
+
 ## The banner when a standard is within BH_NEAR_WARN of a house, once for each standard.
 func _warn_near() -> void:
 	for i in steps.size():

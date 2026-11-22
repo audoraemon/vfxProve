@@ -252,6 +252,66 @@ func herald_eta() -> float:
 	return INF
 
 
+## The loss warning (Discord idea "More Effect on Losing situation"): the nearest thing that ends this night if nobody interferes, a
+## NightThreat dictionary, {} for none. Only reads. Rules.threat() adds what is not the director's (the Lantern's own Heralds, a deadline).
+func threat() -> Dictionary:
+	return NightThreat.soonest(threats())
+
+
+## Virtual: every night-ending threat running now (NightThreat dictionaries, any order). An override appends its own to `super()`, which
+## gives the ones every director shares: a Faithful's report running for the Temple, and the bell's climb, where either fills a Gaze that
+## loses the night. Only reads.
+func threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if not _gaze_loses():
+		return out
+	var rate := mission_delta(1.0)
+	for r in reports:
+		if r.is_open() and _alive(r.carrier):
+			var eta := (r.descend_left() + TempleReport.walk_seconds(r.carrier, r.door, r.slow)) * rate
+			out.append(NightThreat.make(StringName("report_%d" % r.get_instance_id()), "A FAITHFUL REACHES THE TEMPLE", "STOP HIM", eta,
+				(r.carrier as Person).ground_pos))
+	var bell := crowd.bell if crowd != null else null
+	var gain := toll_gaze()
+	if bell != null and gain > 0.0 and gaze.value + gain >= GazeMeter.FULL and _alive(bell.keeper) and not _bell_mute(bell):
+		var left := INF
+		if bell.state == BellNetwork.State.CLIMBING:
+			left = maxf(bell.climb - bell.progress, 0.0)
+		elif bell.state == BellNetwork.State.CALLED and bell.keeper.mind == Person.Mind.DUTY:
+			left = TempleReport.walk_seconds(bell.keeper, bell.foot) + bell.climb
+		if left < INF:
+			out.append(NightThreat.make(&"bell", "THE BELL TOLLS - HALCYON LOOKS", "STOP THE BELLKEEPER", left * rate, bell.foot))
+	return out
+
+
+## Virtual: what the bell's next toll adds to this night's Gaze (threats()): LanternWatch.GAZE_TOLL on a gaze Lantern's night before its
+## first toll (a later toll adds nothing, a blind Lantern turns no more), 0 elsewhere. Mira's House fills it where there is no Lantern.
+func toll_gaze() -> float:
+	var lw := rules.lantern if is_instance_valid(rules) else null
+	if lw == null or lw.kind != LanternWatch.KIND_GAZE or lw.tolled or lw.stage == LanternWatch.Stage.BLIND:
+		return 0.0
+	return LanternWatch.GAZE_TOLL
+
+
+## This night has a Gaze, not yet full, that loses it when full (a GazeObjective among its objectives).
+func _gaze_loses() -> bool:
+	if gaze == null or gaze.is_full() or not is_instance_valid(rules):
+		return false
+	for o in rules.objectives:
+		if o is GazeObjective:
+			return true
+	return false
+
+
+## The bell would make no sound at the top of its climb (BellNetwork._ring()): a hushed town or place, or a bell that lies.
+func _bell_mute(bell: BellNetwork) -> bool:
+	if crowd == null:
+		return false
+	if crowd.is_hushed() or crowd.is_bell_lying():
+		return true
+	return is_instance_valid(bell.tower) and crowd.is_hushed_at(bell.tower.center())
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}

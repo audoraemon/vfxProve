@@ -484,6 +484,15 @@ func shattered_now() -> int:
 	return n
 
 
+## Loss warning: the three mirrors standing together, the Eye's countdown running (_found() loses the night when it opens), as eye_left().
+## Each run of the countdown is its own warning.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if _eye_since >= 0.0 and not found and not broken_all():
+		out.append(NightThreat.make(StringName("eye_%d" % _eye_run), "THE EYE OPENS", "SHATTER A MIRROR", eye_left(), SPIRE))
+	return out
+
+
 ## Seconds until the Eye opens while the three stand together; EYE_OPENS while they do not (v0.11 M6).
 func eye_left() -> float:
 	return maxf(EYE_OPENS - (_clock - _eye_since), 0.0) if _eye_since >= 0.0 else EYE_OPENS

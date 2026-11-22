@@ -117,6 +117,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## The loss warning (ThreatAlert): the big red card and the edge pulse when a thing that ends the night is near. One per act, as the HUD.
+var _alert: ThreatAlert
 ## Covered-outline (TagOutlines): the tagged people's outlines over what stands in front of them.
 var _outlines: TagOutlines
 ## The centre the wheel zooms about (wheel_zoom()), and where that put the camera: a camera found elsewhere was moved by something else.
@@ -448,7 +450,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_descent.release()
 		_descent = null
 	_bf.reset(seed_value)
-	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay, _memory]:
+	for n: Node in [_town, _crowd, _rules, _aim, _hud, _alert, _overlay, _memory]:
 		if is_instance_valid(n):
 			if n is Town:
 				(n as Town).teardown()
@@ -619,6 +621,11 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_hud.set_pause_hidden(_pause_hidden)
+	_alert = ThreatAlert.new()
+	_alert.name = "ThreatAlert"
+	_bf.ui_parent().add_child(_alert)
+	var wv := WorldView.of(_bf)
+	_alert.setup(_rules, wv.display if wv != null else null, alert_allowed)
 	# Covered-outline: a tagged person behind a stall, a tree or a house is traced in the tag's colour over what hides them. One layer
 	# per battlefield, over the world's grade; each act's HUD hands it its tags.
 	if _outlines == null or not is_instance_valid(_outlines):
@@ -644,6 +651,11 @@ func set_ui_hidden(on: bool) -> void:
 			_aim.unfocus()
 		_aim.visible = not on
 		_aim.set_process_unhandled_input(not on)
+
+
+## The loss warning may be seen now: the night under way (no intro, tour or ending), the interface shown (F1, the pause menu), not a memory.
+func alert_allowed() -> bool:
+	return started() and not in_intro() and not _ending and not ui_hidden and not _pause_hidden and remembrance == "" 		and _bf != null and _bf.hud_layer != null and _bf.hud_layer.visible
 
 
 ## Whether `event` is HIDE_UI_KEY pressed.
@@ -782,6 +794,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_crowd.drop_held()  # v0.11.2: and so with the danger it held for its impact -- the crowd outlives the act
 	_aim.queue_free()
 	_hud.queue_free()
+	if is_instance_valid(_alert):
+		_alert.queue_free()
 	if is_inside_tree():
 		get_tree().root.gui_release_focus()  # v0.11.1: as in start()
 	_pressing = false  # a press held over the old aim is not the new one's to release

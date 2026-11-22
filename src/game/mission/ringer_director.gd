@@ -220,7 +220,7 @@ func _give_back() -> void:
 	if on_rope == own_keeper or _alive(on_rope):
 		return
 	bell.restore(own_keeper)
-	if _alive(own_keeper) and crowd.alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY:
+	if _alive(own_keeper) and crowd.keeper_due():
 		bell.call_keeper()
 
 

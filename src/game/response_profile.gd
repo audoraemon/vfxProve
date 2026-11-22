@@ -49,6 +49,8 @@ var rite_clergy := 4
 var marshals_per_exit := 3
 var escorts_per_duty := 1
 var rescue_squads := 3
+## How readily the town reads a strange sign as a god's work (Town Suspicion): Suspicion's rises are multiplied by it.
+var wary := 1.0
 
 
 static func for_tier(t: Tier) -> ResponseProfile:
@@ -61,6 +63,7 @@ static func for_tier(t: Tier) -> ResponseProfile:
 			p.fire_from = AlarmManager.Stage.CITY_EMERGENCY
 			p.marshals_per_exit = 2
 			p.rescue_squads = 2
+			p.wary = 0.8
 		Tier.ORGANIZED:
 			pass
 		Tier.PREPARED:
@@ -70,6 +73,7 @@ static func for_tier(t: Tier) -> ResponseProfile:
 			p.marshals_per_exit = 4
 			p.escorts_per_duty = 2
 			p.rescue_squads = 4
+			p.wary = 1.25
 		Tier.GOD_RESISTANT:
 			p.bell_climb = 5.0
 			p.fire_crew = 5
@@ -84,6 +88,7 @@ static func for_tier(t: Tier) -> ResponseProfile:
 			p.marshals_per_exit = 5
 			p.escorts_per_duty = 2
 			p.rescue_squads = 5
+			p.wary = 1.5
 	return p
 
 

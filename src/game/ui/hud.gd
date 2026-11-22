@@ -141,6 +141,12 @@ const RITE_PLATE_WRAP := 560.0
 ## The status line's margin from the area's right edge (top right).
 const STATUS_MARGIN := 6.0
 
+## Town Suspicion's gauge (spec 5.6): the bar (design units), the words it can say (the plate is as wide as the widest, so it does not shift
+## as the word changes), and the room the badge of a Lantern night's clock needs right of its plate.
+const SUSPICION_BAR := Vector2(48.0, 5.0)
+const SUSPICION_WORDS := ["Calm", "Uneasy", "A GOD!"]
+const CLOCK_BADGE_ROOM := 34.0
+
 ## The viewport the world is drawn in (the mission's battlefield's). Hosted, the HUD lives in the root and the world in a SubViewport, so
 ## tag positions use this viewport's camera transform; null means the HUD's own viewport (not hosted, as before).
 var world_viewport: Viewport
@@ -253,6 +259,7 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	for i in _rules.loadout.size():
 		_slot_names.append(String(_rules.power(i).get("name", "")))
 	_rules.banner.connect(push_banner)
+	_rules.quiet_banner.connect(func(text: String) -> void: push_banner(text, true))
 	_rules.subtitle.connect(push_subtitle)
 	# After the director's own handler (it connected in its own set-up), so a cast that turned a target is judged on what it did.
 	_rules.cast_made.connect(_on_cast_why)
@@ -756,6 +763,8 @@ func all_tags() -> Array[MapTag]:
 		out.append_array(_rules.director.tags())
 	if _rules.lantern != null:
 		out.append_array(_rules.lantern.tags())  # v0.11.2: the Herald and the Bearer, after the mission's own, before the wishes'
+	if _crowd != null:
+		out.append_array(_crowd.thought_tags())  # Town Suspicion: a witness's thought, after the Lantern's, before the descent's
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
 	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn
@@ -1450,6 +1459,7 @@ func _signature() -> String:
 	out += "|%s" % intro
 	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
 	out += "|%s|%s" % [details, wish_summary()]
+	out += "|%d|%s" % [int(_crowd.suspicion.value), _crowd.suspicion.state()]  # the town's suspicion gauge
 	out += "|%s|%d" % [_view(), UiScale.k()]  # a resize or a new scale lays everything out again
 	if chain_shown():
 		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
@@ -1773,6 +1783,7 @@ func _draw_play_plates(w: float) -> void:
 	_draw_task()
 	_draw_wishes()
 	_draw_status(w)
+	_draw_suspicion()
 
 
 ## The town prays (v0.11 M1, spec §5.1): during the night's first intro, a plate in the middle of the screen with
@@ -1889,6 +1900,73 @@ func _draw_status(_w: float) -> void:
 		x += UiTheme.width(String(seg[0]), UiTheme.TEXT_S) + gap
 
 
+## Is the town's suspicion on the HUD: it has risen, or the town knows.
+func suspicion_shown() -> bool:
+	return _crowd != null and _crowd.suspicion != null and (_crowd.suspicion.value > 0.0 or _crowd.suspicion.known)
+
+
+## What the gauge says: Calm, Uneasy (from UNEASY_AT) or A GOD! (the town knows).
+func suspicion_word() -> String:
+	match _crowd.suspicion.state():
+		&"known":
+			return SUSPICION_WORDS[2]
+		&"uneasy":
+			return SUSPICION_WORDS[1]
+	return SUSPICION_WORDS[0]
+
+
+## The gauge's colour: dim while calm, gold when uneasy, red when the town knows.
+func suspicion_color() -> Color:
+	match _crowd.suspicion.state():
+		&"known":
+			return UiTheme.COL_BAD
+		&"uneasy":
+			return UiTheme.COL_GOLD
+	return UiTheme.COL_DIM
+
+
+## The gauge's plate, Rect2() while it is not shown: left of the status plate when the clock (and its Lantern badge) leave room there, else
+## directly under the status plate (TAB expanded, 640 x 360).
+func suspicion_plate() -> Rect2:
+	if not suspicion_shown():
+		return Rect2()
+	var words := 0.0
+	for word: String in SUSPICION_WORDS:
+		words = maxf(words, UiTheme.width(word, UiTheme.TEXT_S))
+	var box := Vector2(SUSPICION_BAR.x + words + 12.0, PLATE_H)
+	var status := status_rect()
+	var right := status.position.x if status.has_area() else status_right()
+	var x := right - 4.0 - box.x
+	if x >= clock_reach(_view().x).end.x + 4.0:
+		return Rect2(x, 2.0 + roundf((status.size.y - box.y) * 0.5), box.x, box.y)
+	return Rect2((status.end.x if status.has_area() else status_right()) - box.x, status.end.y + 2.0, box.x, box.y)
+
+
+## The gauge's bar inside its plate (design units), Rect2() while it is not shown.
+func suspicion_rect() -> Rect2:
+	var plate := suspicion_plate()
+	if not plate.has_area():
+		return Rect2()
+	return Rect2(plate.position + Vector2(4.0, 3.5), SUSPICION_BAR)
+
+
+## The gauge as drawn: the plate, the bar filled to the value with a tick at UNEASY_AT, and the word beside it.
+func _draw_suspicion() -> void:
+	var plate := suspicion_plate()
+	if not plate.has_area():
+		return
+	var bar := suspicion_rect()
+	var s := _crowd.suspicion
+	var col := suspicion_color()
+	draw_rect(plate, UiTheme.COL_PANEL)
+	draw_rect(bar, Color(0, 0, 0, 0.6))
+	draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * clampf(s.value / Suspicion.KNOWN_AT, 0.0, 1.0)), bar.size.y)), col)
+	var tick := bar.position.x + roundf(bar.size.x * Suspicion.UNEASY_AT / Suspicion.KNOWN_AT)
+	draw_line(Vector2(tick, bar.position.y - 1.0), Vector2(tick, bar.end.y + 1.0), UiTheme.COL_TEXT, 1.0)
+	UiTheme.text(self, Vector2(bar.end.x + 4.0, plate.position.y + PLATE_H - 3.0), suspicion_word(), UiTheme.TEXT_S,
+		UiTheme.COL_BAD_TEXT if s.known else col)
+
+
 ## The bar of the banner on screen, Rect2() for none: what tag labels keep clear of while it is up.
 func banner_rect(w: float) -> Rect2:
 	if _banners.is_empty():
@@ -1914,13 +1992,23 @@ func clock_rect(w: float) -> Rect2:
 	return Rect2(roundf((w - wide) * 0.5) - 7.0, 2.0, wide + 14.0, CLOCK_PLATE_H)
 
 
-## The plates drawn over the map that no tag label may sit under: the clock, the status line, the banner's bar and Cael's plate (the last two only
-## while up; the tags are laid out again every frame).
+## The clock's plate with the room its Lantern mark (left) and badge (right) take, Rect2() when the night has no clock: what the gauge keeps clear of.
+func clock_reach(w: float) -> Rect2:
+	var plate := clock_rect(w)
+	if not plate.has_area():
+		return plate
+	if clock_badge() == "":
+		return plate
+	return Rect2(plate.position.x - 12.0, plate.position.y, plate.size.x + 12.0 + CLOCK_BADGE_ROOM, plate.size.y)
+
+
+## The plates drawn over the map that no tag label may sit under: the clock, the status line, the gauge, the banner's bar and Cael's plate (the
+## last two only while up; the tags are laid out again every frame).
 func overlay_rects() -> Array[Rect2]:
 	var w := _view().x
 	var out: Array[Rect2] = []
 	var playing := not intro and not rite_plate_up()  # the status line is a play plate: not drawn in the intro or under a rite's win plate
-	for r: Rect2 in [clock_rect(w), status_rect() if playing else Rect2(), banner_rect(w), subtitle_rect(w)]:
+	for r: Rect2 in [clock_rect(w), status_rect() if playing else Rect2(), suspicion_plate() if playing else Rect2(), banner_rect(w), subtitle_rect(w)]:
 		if r.has_area():
 			out.append(r)
 	return out

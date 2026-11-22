@@ -424,6 +424,9 @@ const HEART_GUARD := 3.0
 ## (v0.11 M6).
 const HEART_HUSH := 8.0
 const HEART_SETTLE := 3.0
+## The most citizens a hush may stand to send off, one whisper at a time, before a strike on one of them (the new rule: the town's bell
+## no longer comes soon, so a bearer's few watchers are worth clearing rather than waiting out).
+const HEART_HUSH_MAX := 3
 ## The Gaze the policy lets a seen strike bring it to (v0.11 M6): a player's budget, short of THE LANTERN LOOKS.
 const HEART_GAZE_CAP := 60.0
 const EXODUS_SOON := 8.0
@@ -1664,6 +1667,7 @@ func _soldiers(which: String) -> void:
 		"escort", "noescort":
 			crowd.alarms.stage = AlarmManager.Stage.CONCERN
 			crowd._on_stage(AlarmManager.Stage.LOCAL_EMERGENCY, "test")
+			crowd.bell.call_keeper()  # the town no longer sends him at a bare Local Emergency
 			var killed := false
 			# Stepped by half seconds so that the kill falls on a set point of the climb; a line every 2 s.
 			for k in 60:
@@ -2746,9 +2750,17 @@ func _heart_seers(crowd: Crowd, p: Person) -> Array[Person]:
 func _heart_hush(rules: Rules, slots: Dictionary, crowd: Crowd, who: Array[Person], what: String) -> String:
 	for p in who:
 		var seers := _heart_seers(crowd, p)
-		if seers.size() != 1 or seers[0].soldier or seers[0].shaken():
+		if seers.is_empty() or seers.size() > HEART_HUSH_MAX:
 			continue
-		var w := seers[0]
+		var w: Person = null
+		var whole := true
+		for o in seers:
+			if o.soldier:
+				whole = false
+			elif w == null and not o.shaken():
+				w = o
+		if w == null or not whole:
+			continue
 		var away := w.ground_pos - p.ground_pos
 		away = away.normalized() if away.length() > 0.01 else Vector2.RIGHT
 		rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": MindWhisperFx.clamp_to(crowd._grid, w.ground_pos, w.ground_pos + away * HEART_HUSH)})

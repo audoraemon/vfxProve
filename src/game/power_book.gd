@@ -344,7 +344,7 @@ const POWERS := [
 	{"key": "evernight", "name": "Evernight", "path": "res://src/fx/veil/evernight.gd",
 		"blurb": "Night falls on the whole town, and the dark takes the lone.",
 		"dp": 6, "cooldown": 999.0, "aim": "click",
-		"shape": "night over the town for 60 s (90 on a NIGHT mission): every Veil power full size, the lone taken every 2 s (1.5), soldiers' torches the only light; once a descent",
+		"shape": "night over the town for 60 s (90 on a NIGHT mission): every Veil power full size, the lone taken every 2 s (1.5), 5 at a time rising to 10, each claimed by the dark a take ahead, soldiers' torches the only light; once a descent",
 		"quiet": true, "authority": "veil"},
 	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",

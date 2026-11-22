@@ -5,8 +5,12 @@ extends FxTimeline
 ## 1. The night is the god's: everywhere is dark (Dusk.everywhere: every Veil power is full size anywhere), people see 0.6 as far (once,
 ##    never 0.36), the whole town is under Unseen Hour's rule (Crowd.veil_all()) and the Veil's cooldown clocks run twice as fast
 ##    (Rules.haste; never a once-a-descent power's).
-## 2. The dark takes the lone: every 2 s (1.5 in a NIGHT mission) the living person out of doors, outside every torch's light and not
-##    spared (Crowd.spared()), whose nearest neighbour is farthest away is taken (`&"night"`; a tie: the lower instance id).
+## 2. The dark takes the lone (Veil review 2): every 2 s (1.5 in a NIGHT mission) a group is taken, TAKE_FIRST at the first take rising
+##    evenly to TAKE_LAST at the last (take_count()). Each group is claimed one take ahead (at the fall, then after every take but the
+##    last): the loneliest_n() living out of doors, outside every torch's light, not spared (Crowd.spared()), takeable and not already
+##    claimed (whose nearest neighbour is farthest away first; a tie: the lower instance id). At the take each claimed one who still
+##    qualifies is taken (`&"night"`); one who does not is let go (he may be claimed again). Nobody claimed is held or told. The look:
+##    the dark eats the claimed where they stand and each taken leaves his shadow on the ground (EvernightMarks).
 ## 3. Islands of light: when the night falls up to TORCHES soldiers light torches where they stand (bearers(): the most citizens within
 ##    TORCH_COUNT_R first); each lights TORCH_R, and the calm citizens within TORCH_CALL walk to the nearest and huddle. Whoever stands in
 ##    a torch's light is safe from part 2. Dusk laid over a torch (any Veil cast) puts it out and takes everyone in its light; a bearer
@@ -28,6 +32,11 @@ const TORCHES := 6
 const TORCH_R := 2.5
 const TORCH_COUNT_R := 6.0
 const TORCH_CALL := 10.0
+## A take collects this many at the first take, rising evenly to this many at the last (rounded; one take alone: TAKE_FIRST).
+const TAKE_FIRST := 5
+const TAKE_LAST := 10
+## The puffs of each taken one's wisp (11 when one was taken at a time; up to 10 wisps a take now).
+const WISP_PUFFS := 7
 ## The kill kind of every take (Crowd.SILENT_KINDS).
 const KIND := &"night"
 ## The Veil's cooldown clocks run this many times as fast while the night lasts.
@@ -55,6 +64,13 @@ var t_dawn := WAVE + 60.0
 var torches: Array[Dictionary] = []
 ## The instance ids this cast took, in order.
 var taken: Array[int] = []
+## The instance ids claimed for the next take, in the order claimed.
+var claimed: Array[int] = []
+## The takes scheduled this night (K in take_count()).
+var takes := 0
+## The shadows the takes left (one node on the ground layer, made at the first), and the claims' looks (instance id -> Claim).
+var stains: EvernightMarks.Stains
+var _claim_looks := {}
 ## The look on the ground: the wash, its stars, the wave front, the torches' rings.
 var wash: NightWash
 ## The crowd's town-wide veil this cast laid (Crowd.veil_all()), 0 when none.
@@ -101,12 +117,20 @@ static func bearers(crowd: Crowd) -> Array[Person]:
 	return out
 
 
-## The one the dark takes next: of the living out of doors, outside every light in `lit` (torch centres, TORCH_R) and not spared,
-## the one whose nearest living neighbour out of doors is farthest away (none at all: the farthest); a tie goes to the lower instance
-## id. One take() cannot take (takeable()) is passed over, though he still counts as a neighbour. Null when there is no one.
+## The one the dark takes next: loneliest_n()'s first (null when there is no one).
 static func loneliest(crowd: Crowd, lit: Array) -> Person:
-	if crowd == null:
-		return null
+	var one := loneliest_n(crowd, lit, 1, {})
+	return one[0] if not one.is_empty() else null
+
+
+## The `n` the dark claims next: of the living out of doors, outside every light in `lit` (torch centres, TORCH_R), not spared and not in
+## `skip` (instance ids), those whose nearest living neighbour out of doors is farthest away first (none at all: the farthest); a tie
+## goes to the lower instance id. One take() cannot take (takeable()) is passed over. Everyone living out of doors still counts as a
+## neighbour (the claimed, the lit, the spared). One pass that measures every candidate and sorts (it runs once a take).
+static func loneliest_n(crowd: Crowd, lit: Array, n: int, skip: Dictionary) -> Array[Person]:
+	var picked: Array[Person] = []
+	if crowd == null or n <= 0:
+		return picked
 	var out: Array[Person] = []
 	var lo := Vector2(INF, INF)
 	var hi := -lo
@@ -116,7 +140,7 @@ static func loneliest(crowd: Crowd, lit: Array) -> Person:
 			lo = lo.min(p.ground_pos)
 			hi = hi.max(p.ground_pos)
 	if out.is_empty():
-		return null
+		return picked
 	var cells := {}
 	for p in out:
 		var key := Vector2i(floori(p.ground_pos.x / CELL), floori(p.ground_pos.y / CELL))
@@ -124,18 +148,15 @@ static func loneliest(crowd: Crowd, lit: Array) -> Person:
 			cells[key] = []
 		(cells[key] as Array).append(p)
 	var rings := int(ceil(maxf(hi.x - lo.x, hi.y - lo.y) / CELL)) + 1
-	var best: Person = null
-	var best_d := -1.0
+	var rows: Array = []
 	for p in out:
-		if _in_light(p.ground_pos, lit) or crowd.spared(p) or not takeable(p):
+		if skip.has(p.get_instance_id()) or _in_light(p.ground_pos, lit) or crowd.spared(p) or not takeable(p):
 			continue
-		var d := _nearest(p, cells, rings, best_d)
-		if d < 0.0:
-			continue
-		if best == null or d > best_d or (d == best_d and p.get_instance_id() < best.get_instance_id()):
-			best = p
-			best_d = d
-	return best
+		rows.append([_nearest(p, cells, rings, -1.0), p.get_instance_id(), p])
+	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0] if a[0] != b[0] else a[1] < b[1])
+	for r: Array in rows.slice(0, n):
+		picked.append(r[2])
+	return picked
 
 
 ## The distance from `p` to his nearest neighbour in `cells`, searched ring by ring outward; -1 as soon as one is found nearer than
@@ -185,11 +206,11 @@ func _build() -> void:
 	if ctx != null:
 		ctx.play(&"v_evernight", origin)
 	at(WAVE, _fall)
-	if _crowd != null:
-		var k := 1
-		while float(k) * take_every < night_time - 0.001:
-			at(WAVE + float(k) * take_every, _take_lone)
-			k += 1
+	takes = 0
+	while float(takes + 1) * take_every < night_time - 0.001:
+		takes += 1
+		if _crowd != null:
+			at(WAVE + float(takes) * take_every, _take.bind(takes))
 	at(t_dawn, _dawn)
 	var parent: Node2D = ctx.ground if ctx != null and ctx.ground != null else null
 	if parent != null:
@@ -266,6 +287,16 @@ func _fall() -> void:
 	_call_to_torches()
 	if _crowd.dusk != null and not _crowd.dusk.laid.is_connected(_on_laid):
 		_crowd.dusk.laid.connect(_on_laid)
+	if takes >= 1:
+		_claim(1)
+
+
+## How many take `k` (1..takes) collects: TAKE_FIRST at the first rising evenly to TAKE_LAST at the last, rounded.
+func take_count(k: int) -> int:
+	if takes <= 1:
+		return TAKE_FIRST
+	var f := float(clampi(k, 1, takes) - 1) / float(takes - 1)
+	return roundi(lerpf(float(TAKE_FIRST), float(TAKE_LAST), f))
 
 
 ## The centres of the torches still burning.
@@ -277,16 +308,72 @@ func lit() -> Array:
 	return out
 
 
-func _take_lone() -> void:
+## The dark claims the group for take `k`: the take_count(k) loneliest not already claimed. Nothing is done to them; the look marks them.
+func _claim(k: int) -> void:
+	var skip := {}
+	for id in claimed:
+		skip[id] = true
+	var wait := WAVE + float(k) * take_every - t
+	for p in loneliest_n(_crowd, lit(), take_count(k) - claimed.size(), skip):
+		claimed.append(p.get_instance_id())
+		_claim_look(p, wait)
+
+
+## Take `k`: every one claimed for it who is still alive, out of doors, outside every burning torch's light, not spared and takeable
+## is taken, in the order claimed; the rest are let go. Then the next group is claimed (not after the last take).
+func _take(k: int) -> void:
 	if not _live() or _over:
 		return
 	_watch_bearers()
-	var p := loneliest(_crowd, lit())
-	var where := p.ground_pos if p != null else Vector2.ZERO
-	if p != null and _crowd.take(p, KIND):
-		taken.append(p.get_instance_id())
-		_wisp(where, taken.size())
+	var light := lit()
+	var group := claimed.duplicate()
+	claimed.clear()
+	for id: int in group:
+		var p := instance_from_id(id) as Person
+		var ok := p != null and p.is_alive() and not p.inside and not _in_light(p.ground_pos, light) and not _crowd.spared(p) \
+			and takeable(p)
+		var where := p.ground_pos if p != null else Vector2.ZERO
+		if ok and _crowd.take(p, KIND):
+			taken.append(id)
+			_wisp(where, taken.size())
+			_stain(where, id)
+			_drop_claim_look(id, true)
+		else:
+			_drop_claim_look(id, false)
+	if k < takes:
+		_claim(k + 1)
 	_call_to_torches()
+
+
+## The dark eating one claimed (the look; over the night's shade, under the aim). Only where a screen layer is (none headless).
+func _claim_look(p: Person, wait: float) -> void:
+	if ctx == null or ctx.overhead_back == null or not is_instance_valid(ctx.overhead_back):
+		return
+	var c := EvernightMarks.Claim.new(p, wait)
+	_claim_looks[p.get_instance_id()] = track(c, ctx.overhead_back)
+
+
+## His claim's look ends: taken, it goes with him; let go, it falls away.
+func _drop_claim_look(id: int, was_taken: bool) -> void:
+	var c: Variant = _claim_looks.get(id)
+	_claim_looks.erase(id)
+	if c == null or not is_instance_valid(c):
+		return
+	if was_taken:
+		(c as Node).queue_free()
+	else:
+		(c as EvernightMarks.Claim).let_go()
+
+
+## His shadow where he was taken (the look; on the ground layer, all of them one node).
+func _stain(at_g: Vector2, id: int) -> void:
+	if ctx == null or ctx.ground == null or not is_instance_valid(ctx.ground):
+		return
+	if stains == null or not is_instance_valid(stains):
+		stains = EvernightMarks.Stains.new()
+		stains.fx_id = get_instance_id()
+		track(stains, ctx.ground)
+	stains.add(at_g, id)
 
 
 ## A torch's glow (the look): over the town, where the torch is held up. Index-matched to `torches`.
@@ -299,10 +386,10 @@ func _glow_for(at_g: Vector2) -> void:
 	_glows.append(track(g, ctx.overhead))
 
 
-## A brief dark wisp rising where one was taken (the look; one small burst a take).
+## A brief dark wisp rising where one was taken (the look; one small burst a person, WISP_PUFFS: takes come in groups now).
 func _wisp(at_g: Vector2, n: int) -> void:
 	if ctx != null and ctx.overhead != null:
-		EvernightSky.wisp(self, ctx.overhead, Iso.ground_to_screen(at_g), 9011 + 13 * n)
+		EvernightSky.wisp(self, ctx.overhead, Iso.ground_to_screen(at_g), 9011 + 13 * n, WISP_PUFFS)
 
 
 ## The calm citizens out of doors within TORCH_CALL of a burning torch walk to the nearest and huddle in its light (once each, again if
@@ -391,6 +478,7 @@ func put_out(i: int) -> void:
 		if _crowd.take(p, KIND):
 			taken.append(p.get_instance_id())
 			_wisp(where, taken.size())
+			_stain(where, p.get_instance_id())
 
 
 func _drop_light(tc: Dictionary) -> void:
@@ -424,6 +512,9 @@ func _dawn() -> void:
 ## posts, the veil lifts and this cast leaves the night's ledger. Safe to call twice and with the crowd freed.
 func _end_night() -> void:
 	_over = true
+	for id: int in claimed:
+		_drop_claim_look(id, false)
+	claimed.clear()
 	for tc in torches:
 		_drop_light(tc)
 		if not tc.out:
@@ -569,6 +660,8 @@ func _fx_process(_delta: float) -> void:
 				g.mute = share
 	if not _over and t >= WAVE and _live():
 		_watch_bearers()
+	if stains != null and is_instance_valid(stains):
+		stains.set_fade(strength() if t >= t_dawn else 1.0)
 	if wash != null and is_instance_valid(wash):
 		wash.strength = strength()
 		wash.front = _look_map().size.x * t / WAVE

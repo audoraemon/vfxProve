@@ -149,8 +149,8 @@ class TorchGlow extends Node2D:
 		draw_circle(Vector2.ZERO, 3.0 * f, Color(1.0, 0.86, 0.58, 0.5 * fade))
 
 
-## A brief dark wisp rising from `screen_pos` (where a lone one was taken), on its own seed; it frees itself when spent.
-static func wisp(fx: FxTimeline, parent: Node, screen_pos: Vector2, seed_value: int) -> PixelParticles:
+## A brief dark wisp rising from `screen_pos` (where one was taken), `puffs` puffs on its own seed; it frees itself when spent.
+static func wisp(fx: FxTimeline, parent: Node, screen_pos: Vector2, seed_value: int, puffs := 11) -> PixelParticles:
 	var p := PixelParticles.new()
 	p.rng.seed = seed_value
 	p.shape = PixelParticles.Shape.PUFF
@@ -159,6 +159,6 @@ static func wisp(fx: FxTimeline, parent: Node, screen_pos: Vector2, seed_value: 
 	p.gravity = -35.0
 	p.drag = 1.2
 	fx.track(p, parent)
-	p.burst(11, {"radius": 5.0, "speed": Vector2(2, 10), "alt": Vector2(2, 12), "alt_speed": Vector2(18, 42),
+	p.burst(puffs, {"radius": 5.0, "speed": Vector2(2, 10), "alt": Vector2(2, 12), "alt_speed": Vector2(18, 42),
 		"life": Vector2(1.0, 1.7), "size": Vector2(2.5, 4.5), "size_end_mul": 1.9})
 	return p

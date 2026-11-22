@@ -1,6 +1,7 @@
 extends RefCounted
 ## Evernight (Veil, Tier 5; spec 5.10): night over the whole town for 60 s (90 in a NIGHT mission). Everywhere dark, sight 0.6, the
-## town veiled, the Veil's cooldowns at twice the pace; the lone taken one every 2 s (1.5); soldiers' torches keep the living and can
+## town veiled, the Veil's cooldowns at twice the pace; the lone taken every 2 s (1.5), 5 at a time rising to 10, each group claimed one
+## take ahead (the dark eats them where they stand; each taken leaves his shadow on the ground); soldiers' torches keep the living and can
 ## be put out; at dawn who shelters in a blighted building or sleeps in dusk never wakes. Silent; all undone at dawn, by end_now() and
 ## by a freed node, owned by the cast (a second Evernight, a Dread, a Cloak, a veil and dusk patches are left alone).
 
@@ -91,6 +92,11 @@ static func run(t) -> void:
 	_night(t, made)
 	_night_mission(t, made, kinds)
 	_lone(t, made, kinds)
+	_counts(t, made)
+	_claims(t, made, kinds)
+	_few(t, made)
+	_claims_end(t, made)
+	_stains(t, made)
 	_never(t, made)
 	_bearers(t, made)
 	_held(t, made)
@@ -191,14 +197,16 @@ static func _night_mission(t, made: Array, kinds: Dictionary) -> void:
 	t.check(fx.night_time == 90.0 and fx.take_every == 1.5 and fx.duration == E.WAVE + 90.0 + E.DAWN, "NIGHT: 90 s, a take every 1.5 s")
 	_until(fx, E.WAVE + DT)
 	t.check(is_equal_approx(crowd.sight_scale, 0.6), "NIGHT: sight 0.6, not 0.36 (%.2f)" % crowd.sight_scale)
+	t.check(fx.claimed.size() == 5 and fx.claimed[0] == (l.lone as Person).get_instance_id(), "NIGHT: the night falls: 5 claimed, the lone first")
 	_until(fx, E.WAVE + 1.5 - DT)
 	t.check(fx.taken.is_empty(), "NIGHT: nobody taken before WAVE + 1.5")
 	_until(fx, E.WAVE + 1.5 + DT)
-	t.check(fx.taken == [(l.lone as Person).get_instance_id()] and kinds.get(fx.taken[0], &"") == &"night", "NIGHT: the lone taken at WAVE + 1.5")
+	t.check(fx.taken.size() == 5 and fx.taken[0] == (l.lone as Person).get_instance_id() and kinds.get(fx.taken[0], &"") == &"night",
+		"NIGHT: at WAVE + 1.5 five are taken, the lone first (%d)" % fx.taken.size())
 	_until(fx, E.WAVE + 3.0 - DT)
-	t.check(fx.taken.size() == 1, "NIGHT: no second before WAVE + 3.0")
+	t.check(fx.taken.size() == 5, "NIGHT: no second take before WAVE + 3.0")
 	_until(fx, E.WAVE + 3.0 + DT)
-	t.check(fx.taken.size() == 2, "NIGHT: the second at WAVE + 3.0")
+	t.check(fx.taken.size() == 10, "NIGHT: the second take at WAVE + 3.0, the last five (%d)" % fx.taken.size())
 	fx.end_now()
 	t.check(is_equal_approx(crowd.sight_scale, NightRules.NIGHT_SIGHT) and crowd.night_mission, "NIGHT: ended, the night's own sight stays")
 	crowd.night_mission = false
@@ -218,15 +226,19 @@ static func _lone(t, made: Array, kinds: Dictionary) -> void:
 	_until(fx, E.WAVE + 2.0 - DT)
 	t.check(lone.is_alive() and fx.taken.is_empty(), "nobody taken before WAVE + 2.0")
 	_until(fx, E.WAVE + 2.0 + DT)
-	t.check(not lone.is_alive() and fx.taken == [lone.get_instance_id()] and kinds.get(lone.get_instance_id(), &"") == &"night",
-		"at WAVE + 2.0 the lone is taken, &\"night\" (%s)" % [kinds.get(lone.get_instance_id(), &"")])
+	t.check(not lone.is_alive() and fx.taken.size() == 5 and fx.taken[0] == lone.get_instance_id()
+		and kinds.get(lone.get_instance_id(), &"") == &"night",
+		"at WAVE + 2.0 five are taken, the lone first, &\"night\" (%s, %d)" % [kinds.get(lone.get_instance_id(), &""), fx.taken.size()])
 	_until(fx, E.WAVE + 4.0 - DT)
-	t.check(fx.taken.size() == 1, "no second before WAVE + 4.0")
+	t.check(fx.taken.size() == 5, "no second take before WAVE + 4.0")
 	_until(fx, E.WAVE + 4.0 + DT)
-	t.check(fx.taken.size() == 2 and (l.clusters as Array).any(func(p: Person) -> bool: return p.get_instance_id() == fx.taken[1]),
-		"the next at WAVE + 4.0, from the clusters")
+	var from_clusters := fx.taken.size() == 10
+	for id in fx.taken.slice(1):
+		from_clusters = from_clusters and (l.clusters as Array).any(func(p: Person) -> bool: return p.get_instance_id() == id)
+	t.check(from_clusters,
+		"the next take at WAVE + 4.0, from the clusters: everyone left (%d)" % fx.taken.size())
 	_until(fx, E.WAVE + 6.0 + DT)
-	t.check(fx.taken.size() == 3, "and one every 2 s")
+	t.check(fx.taken.size() == 10 and fx.claimed.is_empty(), "and nobody is left to take or claim")
 	t.check(crowd.alarm == alarm and crowd.voices_played == voiced, "nobody heard: alarm and voices unchanged")
 	fx.end_now()
 	# A tie: two pairs, each 5 apart: all four tie; the lowest instance id goes.
@@ -238,6 +250,8 @@ static func _lone(t, made: Array, kinds: Dictionary) -> void:
 		if p.get_instance_id() < low.get_instance_id():
 			low = p
 	t.check(E.loneliest(crowd, []) == low, "a tie goes to the lower instance id")
+	t.check(E.loneliest_n(crowd, [], 1, {}).size() == 1 and E.loneliest_n(crowd, [], 1, {})[0] == low and E.loneliest_n(crowd, [], 4, {})[0] == low
+		and E.loneliest_n(crowd, [], 4, {}).size() == 4, "loneliest_n(): the same first, ties by the lower instance id")
 	t.check(E.loneliest(crowd, [low.ground_pos]) != low and E.loneliest(crowd, [low.ground_pos]) != null, "one in a torch's light is passed over")
 	# One take() cannot take (Corpse Guise's Deathless: Person.deathless) is passed over, so the tick takes the next one.
 	at = _fresh(made)
@@ -247,10 +261,215 @@ static func _lone(t, made: Array, kinds: Dictionary) -> void:
 	t.check(E.loneliest(crowd, []) != lone and E.loneliest(crowd, []) != null, "a Deathless loner is passed over by loneliest()")
 	fx = _cast(ctx, at)
 	_until(fx, E.WAVE + 2.0 + DT)
-	t.check(lone.is_alive() and fx.taken.size() == 1 and fx.taken[0] != lone.get_instance_id(),
-		"with a Deathless person the loneliest, the tick takes the next one (%d taken)" % fx.taken.size())
+	t.check(lone.is_alive() and fx.taken.size() == 5 and not fx.taken.has(lone.get_instance_id()),
+		"with a Deathless person the loneliest, the take passes him over (%d taken)" % fx.taken.size())
 	fx.end_now()
 	lone.deathless = Callable()
+
+
+## Review 2: take k of K collects 5 at the first rising evenly to 10 at the last (rounded), for both night lengths; the rhythm is unchanged.
+static func _counts(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	for night in [false, true]:
+		_fresh(made)
+		crowd.night_mission = night
+		var fx := _cast(ctx, Vector2.ZERO)
+		var k_last := 59 if night else 29
+		var mid := (k_last + 1) / 2
+		t.check(fx.takes == k_last and fx.take_count(1) == E.TAKE_FIRST and fx.take_count(mid) == 8 and fx.take_count(k_last) == E.TAKE_LAST,
+			"%s: %d takes, 5 at the first, 8 at the middle (%d), 10 at the last" % ["NIGHT" if night else "day", fx.takes, fx.take_count(mid)])
+		var rising := true
+		for k in range(2, k_last + 1):
+			rising = rising and fx.take_count(k) >= fx.take_count(k - 1) and fx.take_count(k) - fx.take_count(k - 1) <= 1
+		t.check(rising, "%s: the count rises evenly, never by more than one a take" % ("NIGHT" if night else "day"))
+		fx.end_now()
+		crowd.night_mission = false
+	t.check(E.TAKE_FIRST == 5 and E.TAKE_LAST == 10, "the brief's numbers: 5 rising to 10")
+
+
+## Every living out of doors as neighbours; the candidates (not lit, not spared, takeable, not in `skip`) loneliest first, ties by id.
+static func _expected(crowd: Crowd, lit: Array, n: int) -> Array[int]:
+	var all: Array[Person] = []
+	for p in crowd.citizens + crowd.soldiers:
+		if p.is_alive() and not p.inside:
+			all.append(p)
+	var rows: Array = []
+	for p in all:
+		if E._in_light(p.ground_pos, lit) or crowd.spared(p) or not E.takeable(p):
+			continue
+		var d := INF
+		for q in all:
+			if q != p:
+				d = minf(d, p.ground_pos.distance_to(q.ground_pos))
+		rows.append([d, p.get_instance_id()])
+	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0] if a[0] != b[0] else a[1] < b[1])
+	var out: Array[int] = []
+	for r in rows.slice(0, n):
+		out.append(int(r[1]))
+	return out
+
+
+## Review 2, the claim and the take: at the fall the 5 loneliest are claimed in order, none in a torch's light, none spared; take 1 takes
+## exactly the claimed who still qualify, in order; one who walked into the light, one gone indoors and one spared meanwhile are let go
+## and live; the next group is claimed at once, nobody twice. The claims' looks follow them (overhead_back), the let go fall away.
+static func _claims(t, made: Array, kinds: Dictionary) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	ctx.overhead_back = Node2D.new()
+	var torch := at + Vector2(0.0, -14.0)
+	_put(crowd, torch, true)
+	var by_torch := _put(crowd, torch + Vector2(1.5, 0.0))
+	var believer := _put(crowd, at + Vector2(-24.0, 0.0))
+	believer.profile.faith = CitizenProfile.Faith.BELIEVER
+	var spots := [Vector2(-12.0, 10.0), Vector2(12.0, 10.0), Vector2(15.0, -4.0), Vector2(-14.0, -7.0), Vector2(0.0, 15.0), Vector2(6.0, 4.0),
+		Vector2(-5.0, 5.0), Vector2(8.0, 5.5), Vector2(-3.0, 18.0), Vector2(20.0, 12.0), Vector2(-20.0, 14.0), Vector2(2.0, 4.5)]
+	var folk: Array[Person] = [by_torch, believer]
+	for o in spots:
+		folk.append(_put(crowd, at + o))
+	for p in folk:
+		p.sleep(200.0, true)  # they stay where they are (a calm one near a torch would walk to it)
+	var fx := _cast(ctx, at)
+	_until(fx, E.WAVE - DT)
+	t.check(fx.claimed.is_empty(), "nobody is claimed before the night falls")
+	_until(fx, E.WAVE + DT)
+	var want := _expected(crowd, fx.lit(), 5)
+	t.check(fx.torches.size() == 1 and fx.claimed.size() == 5 and fx.claimed == want,
+		"the night falls: the 5 loneliest are claimed, in order (%s / %s)" % [fx.claimed, want])
+	var ps: Array[Person] = []
+	for id in fx.claimed:
+		ps.append(instance_from_id(id) as Person)
+	t.check(ps.all(func(p: Person) -> bool: return not E._in_light(p.ground_pos, fx.lit()) and not crowd.spared(p))
+		and not fx.claimed.has(believer.get_instance_id()) and not fx.claimed.has(by_torch.get_instance_id()),
+		"none claimed is in a torch's light or spared")
+	t.check(E.loneliest(crowd, fx.lit()) == E.loneliest_n(crowd, fx.lit(), 1, {})[0] and E.loneliest(crowd, fx.lit()).get_instance_id() == want[0],
+		"loneliest() agrees with loneliest_n(.., 1, {})")
+	t.check(E.loneliest_n(crowd, fx.lit(), 3, {want[0]: true}) == E.loneliest_n(crowd, fx.lit(), 4, {}).slice(1),
+		"loneliest_n() skips the ones in `skip`")
+	var looks := fx._claim_looks.values()
+	var looks_ok := looks.size() == 5 and EvernightMarks.Z_CLAIM < 5 and EvernightMarks.Z_CLAIM > EvernightSky.Z_AIR
+	for c in looks:
+		looks_ok = looks_ok and c is EvernightMarks.Claim and (c as Node).get_parent() == ctx.overhead_back \
+			and not (c as CanvasItem).z_as_relative and (c as CanvasItem).z_index == EvernightMarks.Z_CLAIM
+	t.check(looks_ok,
+		"a claim's look on each claimed (overhead_back, absolute z 4: over the night, under the aim)")
+	# Meanwhile: one walks into the torch's light, one goes indoors, one is spared.
+	Kit.arrive(ps[0], torch + Vector2(-1.0, 0.5))
+	ps[1].inside = true
+	ps[2].profile.faith = CitizenProfile.Faith.BELIEVER
+	var alive_before := (crowd.citizens + crowd.soldiers).filter(func(p: Person) -> bool: return p.is_alive()).size()
+	_until(fx, E.WAVE + 2.0 + DT)
+	t.check(fx.taken == [ps[3].get_instance_id(), ps[4].get_instance_id()] and not ps[3].is_alive() and not ps[4].is_alive()
+		and kinds.get(ps[3].get_instance_id(), &"") == &"night",
+		"take 1 takes exactly the claimed who still qualify, in order (%d)" % fx.taken.size())
+	t.check(ps[0].is_alive() and ps[1].is_alive() and ps[2].is_alive()
+		and (crowd.citizens + crowd.soldiers).filter(func(p: Person) -> bool: return p.is_alive()).size() == alive_before - 2,
+		"the one in the light, the one indoors and the spared one are let go and live")
+	t.check(not is_instance_valid(looks[0]) or (looks[0] as EvernightMarks.Claim).gone >= 0.0 or (looks[0] as Node).is_queued_for_deletion(),
+		"a let go claim's look falls away")
+	t.check(_gone(looks[3]) and _gone(looks[4]), "a taken one's look goes with him")
+	var uniq := {}
+	for id in fx.claimed:
+		uniq[id] = true
+	var want2 := _expected(crowd, fx.lit(), fx.take_count(2))
+	t.check(fx.claimed == want2 and uniq.size() == fx.claimed.size() and not fx.claimed.has(ps[1].get_instance_id()),
+		"the next group is claimed at once, nobody twice (%s / %s)" % [fx.claimed, want2])
+	t.check(fx.stains != null and fx.stains.get_parent() == ctx.ground and fx.stains.marks.size() == 2,
+		"the two taken leave their shadows on the ground layer, one node")
+	var stains := fx.stains
+	fx.end_now()
+	t.check(fx.claimed.is_empty() and _gone(stains), "ended: no claim left, the shadows gone with the cast")
+	ps[1].inside = true
+	ps[2].profile.faith = CitizenProfile.Faith.NONE
+	believer.profile.faith = CitizenProfile.Faith.NONE
+	ctx.overhead_back.free()
+	ctx.overhead_back = null
+
+
+## Review 2: with fewer candidates than the take's count, the claim holds them all.
+static func _few(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	var three: Array[Person] = [_put(crowd, at + Vector2(-8.0, 0.0)), _put(crowd, at + Vector2(8.0, 0.0)), _put(crowd, at + Vector2(0.0, 9.0))]
+	var fx := _cast(ctx, at)
+	_until(fx, E.WAVE + DT)
+	t.check(fx.claimed.size() == 3 and three.all(func(p: Person) -> bool: return fx.claimed.has(p.get_instance_id())),
+		"three out of doors, five to claim: all three claimed (%d)" % fx.claimed.size())
+	_until(fx, E.WAVE + 2.0 + DT)
+	t.check(fx.taken.size() == 3 and fx.claimed.is_empty(), "all three taken; nobody left to claim")
+	fx.end_now()
+
+
+## Review 2: the night's end drops every claim. Cut short with a group claimed: nobody is taken after. Run to its dawn: nothing is
+## claimed past the last take, nobody taken after it. Two casts keep their own claims.
+static func _claims_end(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	var l := _layout(crowd, at)
+	var fx := _cast(ctx, at)
+	_until(fx, E.WAVE + DT)
+	var held := fx.claimed.duplicate()
+	t.check(held.size() == 5, "(five claimed)")
+	fx.end_now()
+	t.check(fx.claimed.is_empty(), "end_now(): the claims are dropped")
+	t.check(held.all(func(id: int) -> bool: return (instance_from_id(id) as Person).is_alive()), "and the claimed live")
+	# Two casts, each its own claims; the first take takes the one both claimed.
+	var a := _cast(ctx, at)
+	var b := _cast(ctx, at + Vector2(2.0, 0.0))
+	for i in roundi((E.WAVE + DT) / DT):
+		a._process(DT)
+		b._process(DT)
+	t.check(a.claimed.size() == 5 and b.claimed == a.claimed, "two casts: each claims its own group (the same loneliest)")
+	var both := a.claimed.duplicate()
+	for i in roundi(2.0 / DT):
+		a._process(DT)
+		b._process(DT)
+	t.check(a.taken == both and b.taken.is_empty(), "the one both claimed is taken by the first take (%d / %d)" % [a.taken.size(), b.taken.size()])
+	a.end_now()
+	b.end_now()
+	# Run to the dawn: one set down after the last take is never claimed or taken.
+	at = _fresh(made)
+	var fx2 := _cast(ctx, at)
+	_until(fx2, E.WAVE + float(fx2.takes) * fx2.take_every + DT)
+	var late := _put(crowd, at + Vector2(0.0, 12.0))
+	_until(fx2, fx2.t_dawn + DT)
+	t.check(fx2.claimed.is_empty() and late.is_alive(), "after the last take nothing is claimed; at dawn none is held")
+	_until(fx2, fx2.duration - DT)
+	t.check(late.is_alive() and fx2.taken.is_empty(), "nobody taken after the night is over")
+	fx2.end_now()
+	l.clear()
+
+
+## Review 2, the shadows: one node on the ground layer for all of the night's shadows, a mark for each taken (a torch put out too); they
+## fade over the dawn; gone with end_now() and with a freed cast.
+static func _stains(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	for mode in ["end_now", "free", "dawn"]:
+		var at := _fresh(made)
+		_layout(crowd, at)
+		var fx := _cast(ctx, at)
+		_until(fx, E.WAVE + 2.0 - DT)
+		t.check(fx.stains == null, "%s: no shadow before the first take" % mode)
+		_until(fx, E.WAVE + 4.0 + DT)
+		var st := fx.stains
+		var on_ground := ctx.ground.get_children().filter(func(n: Node) -> bool: return n is EvernightMarks.Stains and not n.is_queued_for_deletion())
+		t.check(st != null and st.get_parent() == ctx.ground and on_ground.size() == 1 and st.marks.size() == fx.taken.size() and fx.taken.size() == 10,
+			"%s: ten taken, ten shadows, one node on the ground layer (%d)" % [mode, st.marks.size() if st else -1])
+		if mode == "dawn":
+			_until(fx, fx.t_dawn + E.DAWN * 0.5)
+			t.check(st.fade > 0.3 and st.fade < 0.7, "the shadows fade over the dawn (%.2f)" % st.fade)
+			_until(fx, fx.duration + DT)
+			t.check(fx.finished and _gone(st), "and go with the cast")
+			continue
+		if mode == "end_now":
+			fx.end_now()
+		else:
+			fx.free()
+		t.check(_gone(st), "%s: the shadows go with the cast" % mode)
 
 
 ## Never taken: a BELIEVER standing alone, one the director keeps alive, one indoors, one in a torch's light. Control: an ordinary loner.
@@ -797,12 +1016,16 @@ static func _sky(t, made: Array) -> void:
 					n += 1
 			return n
 		var before: int = wisps.call()
+		var look: Variant = fx._claim_looks.values()[0] if fx._claim_looks.size() == 1 else null
+		t.check(fx.claimed.size() == 1 and look != null and (look as Node).get_parent() == ctx.overhead_back,
+			"%s: the claimed one's look on overhead_back" % mode)
 		_until(fx, E.WAVE + fx.take_every + DT)
+		t.check(_gone(look), "%s: taken, his claim's look goes with him" % mode)
 		t.check(fx.taken.size() == 1 and wisps.call() == before + 1, "%s: the take leaves a dark wisp (%d taken)" % [mode, fx.taken.size()])
 		fx.put_out(0)
 		fx._process(DT)
 		t.check(not (fx._glows[0] as EvernightSky.TorchGlow).lit, "%s: the glow goes out with its torch" % mode)
-		var pieces: Array = [fx._shade, fx._air, fx._wall, fx._glows[0], fx.wash.moon]
+		var pieces: Array = [fx._shade, fx._air, fx._wall, fx._glows[0], fx.wash.moon, fx.stains]
 		if mode == "end_now":
 			fx.end_now()
 		else:
@@ -967,3 +1190,13 @@ static func _no_crowd(t) -> void:
 		ctx.overhead.free()
 		ctx.ground.free()
 		ctx.world.free()
+	# A bare context: no ground, no crowd.
+	var bare := FxContext.new()
+	bare.rng = RandomNumberGenerator.new()
+	bare.overhead = Node2D.new()
+	var fb := _cast(bare, Vector2.ZERO)
+	for i in roundi((fb.duration + 0.5) / DT):
+		if not fb.finished:
+			fb._process(DT)
+	t.check(fb.finished and fb.stains == null and fb.claimed.is_empty() and fb.takes == 29, "a bare context (no ground, no crowd): builds and finishes")
+	bare.overhead.free()

@@ -1,16 +1,18 @@
 {
- "hash": "b5f3002314f80f87",
- "updated": "2026-11-23T00:01:09+07:00",
+ "hash": "c68b10c3befaef24",
+ "updated": "2026-11-23T05:41:42+07:00",
  "changes": {
-  "date": "<t:1795366869:f>",
-  "items": []
+  "date": "<t:1795387302:f>",
+  "items": [
+   "New: Town Suspicion: weather-like powers raise doubt before the bell"
+  ]
  },
  "snapshot": {
   "project": {
    "version": "v0.12",
    "tag": "kak-ui-resolution",
-   "tests": 22112,
-   "updated": "2026-11-19"
+   "tests": 23250,
+   "updated": "2026-11-23"
   },
   "tasks": {
    "ability-icons-pixellab": {
@@ -1269,6 +1271,15 @@
     "updated": "2026-11-13",
     "order": 901
    },
+   "town-suspicion": {
+    "title": "Town Suspicion: weather-like powers raise doubt before the bell",
+    "status": "done",
+    "area": "Crowd",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-23",
+    "order": 917
+   },
    "ui-font-atlas": {
     "title": "Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)",
     "status": "todo",
@@ -1940,25 +1951,33 @@
   },
   "branches": [
    {
+    "name": "feat/god-chamber",
+    "ahead": 38,
+    "behind": 46,
+    "date": "2026-11-23",
+    "subject": "fix: DEV tab marker pages from the window; the Capital's gate towers in test_places",
+    "pushed": false
+   },
+   {
+    "name": "claude/natural-people",
+    "ahead": 10,
+    "behind": 31,
+    "date": "2026-11-23",
+    "subject": "fix: fair life gate -- GROUP_MAX 3, APART 2.0, RING 0.6; centres found APART, ring spots kept inside the fair and in reach (fair life T4)",
+    "pushed": false
+   },
+   {
     "name": "god/veil-review",
     "ahead": 64,
-    "behind": 28,
+    "behind": 46,
     "date": "2026-11-22",
     "subject": "docs: the final review's corrections to the second pass's summary, rulings and spec",
     "pushed": true
    },
    {
-    "name": "feat/god-chamber",
-    "ahead": 34,
-    "behind": 28,
-    "date": "2026-11-22",
-    "subject": "docs: capital_panic references say why b_play_1 is omitted",
-    "pushed": false
-   },
-   {
     "name": "feat/soldier-duties",
     "ahead": 27,
-    "behind": 13,
+    "behind": 31,
     "date": "2026-11-22",
     "subject": "fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)",
     "pushed": false
@@ -1966,31 +1985,15 @@
    {
     "name": "feat/soldier-duties-r20",
     "ahead": 25,
-    "behind": 13,
+    "behind": 31,
     "date": "2026-11-22",
     "subject": "fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)",
     "pushed": false
    },
    {
-    "name": "feat/town-suspicion",
-    "ahead": 18,
-    "behind": 0,
-    "date": "2026-11-22",
-    "subject": "docs: Town Suspicion rulings, moved references and gate table",
-    "pushed": false
-   },
-   {
-    "name": "claude/natural-people",
-    "ahead": 9,
-    "behind": 13,
-    "date": "2026-11-22",
-    "subject": "test: re-record the 40 non-panic references moved by the flinch; fair life gate notes (fair life T4, panic rows pending)",
-    "pushed": false
-   },
-   {
     "name": "god/veil-powers",
     "ahead": 33,
-    "behind": 28,
+    "behind": 46,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
@@ -1998,7 +2001,7 @@
    {
     "name": "claude/lantern-campaign-spec",
     "ahead": 24,
-    "behind": 0,
+    "behind": 18,
     "date": "2026-11-21",
     "subject": "feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)",
     "pushed": false
@@ -2006,7 +2009,7 @@
    {
     "name": "feat/might-gauge",
     "ahead": 19,
-    "behind": 13,
+    "behind": 31,
     "date": "2026-11-20",
     "subject": "test: track the route suite's uid",
     "pushed": false
@@ -2014,7 +2017,7 @@
    {
     "name": "feat/wish-clarity",
     "ahead": 1,
-    "behind": 28,
+    "behind": 46,
     "date": "2026-11-19",
     "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
     "pushed": false
@@ -2022,7 +2025,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 128,
+    "behind": 146,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2030,7 +2033,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 503,
+    "behind": 521,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2038,7 +2041,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1001,
+    "behind": 1019,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2046,7 +2049,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 959,
+    "behind": 977,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -2054,8 +2057,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-21",
-   "subject": "feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)"
+   "date": "2026-11-22",
+   "subject": "docs: Town Suspicion rulings, moved references and gate table"
   }
  }
 }

@@ -11,6 +11,6 @@ static func overrides() -> Dictionary:
 	var camera := Vector2(-4.0, -6.0)
 	return {
 		"def": {"camera_at": camera, "intro_from": camera + Vector2(0.0, 6.0)},
-		"director": {"shrine_spots": [Vector2(2.0, -11.5), Vector2(7.0, -14.5), Vector2(14.5, -11.0), Vector2(5.5, 0.0),
+		"director": {"shrine_spots": [Vector2(2.0, -11.5), Vector2(7.0, -14.5), Vector2(9.5, -11.5), Vector2(5.5, 0.0),
 			Vector2(-3.0, -0.5), Vector2(-16.5, -14.5)]},
 	}

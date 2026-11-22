@@ -49,11 +49,20 @@ static func _policy_reads_vars(t) -> void:
 	place = place.substr(0, place.find("\n\n\n"))
 	t.check("shrine_spots" in place and not "SHRINE_SPOTS" in place, "_place_shrines reads shrine_spots, not SHRINE_SPOTS")
 	var bc := FileAccess.get_file_as_string("res://tools/dev/behaviour_check.gd")
-	var policy := bc.substr(bc.find("func _lanterns("))
-	policy = policy.substr(0, policy.find("func _slot_ready("))
-	for fn in ["func _lantern_doom_target(", "func _lantern_line(", "func _lantern_target("]:
-		var body := bc.substr(bc.find(fn))
-		policy += body.substr(0, body.find("\nfunc ", 10))
+	var policy := ""
+	var found := true
+	var ends := {"func _lanterns(": "func _slot_ready(", "func _lantern_doom_target(": "\nfunc ", "func _lantern_line(": "\nfunc ",
+		"func _lantern_target(": "\nfunc "}
+	for fn: String in ends:
+		var at := bc.find(fn)
+		found = found and at >= 0
+		if at < 0:
+			continue
+		var body := bc.substr(at + fn.length())
+		var end := body.find(String(ends[fn]))
+		found = found and end > 0
+		policy += body.substr(0, end) if end > 0 else ""
+	t.check(found and policy.length() > 1000, "the lanterns policy functions are all found and sliced (%d chars)" % policy.length())
 	t.check(not "SHRINE_SPOTS" in policy and not "TownLayout." in policy and not "CAMERA_AT" in policy,
 		"the lanterns policy reads no shrine const, CAMERA_AT or TownLayout coordinate")
 
@@ -95,7 +104,7 @@ static func _spots_land(t, d: BrokenLanternsDirector, cap: Dictionary) -> void:
 		tight = minf(tight, p0.distance_to(p1))
 	t.check(clear, "no shrine footprint overlaps a road or a building")
 	# GUARD_OFFSETS put the posts exactly 1.6 apart; a post the grid snapped would be nearer.
-	t.check(tight >= 1.6 - 0.001, "the two Knights' posts of each shrine stand the full 1.6 apart, none snapped nearer (%.3f)" % tight)
+	t.check(tight >= 1.6 - 0.001, "no post snapped closer than 1.6: the two Knights' posts of each shrine (nearest pair %.3f)" % tight)
 
 
 ## The Vigil's round (the Temple door, then the six relight points in order: six legs) and each shrine's walk to the Temple door, Capital against

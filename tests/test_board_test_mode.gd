@@ -478,14 +478,41 @@ static func _dev_tab_paging(t) -> void:
 		"a marker click pages by one page without picking (first %d, selected %d, %s)" % [board.dev_first, board.selected, picked])
 	t.check(board.hit(board.marker_rect(-1).get_center()) == "page:-1", "the left marker is hit as a page")
 	board.click(board.marker_rect(-1).get_center())
-	t.check(board.dev_first == 0 and board.selected == 0, "the left marker pages back (first %d, selected %d)" % [board.dev_first, board.selected])
+	t.check(board.dev_first == 0 and board.selected == MissionBoard.DEV_PAGE - 1, "the left marker pages back (selects the last card of the new window) (first %d, selected %d)" % [board.dev_first, board.selected])
 	board.dev_first = 2
 	board.selected = 2
 	var hidden_slot := MissionBoard.card_rect(0, MissionBoard.DEV_PAGE)  # where card 0 was; card 2 is first now
 	var got := board.hit(hidden_slot.get_center())
 	t.check(got == "card:2", "a click on the first slot picks the window's first card, not a hidden one (%s)" % got)
-	board.click(Vector2(630.0, 200.0))
-	t.check(picked.is_empty() or picked == ["pick"], "no stray action")
+	var gap_point := Vector2(MissionBoard.card_rect(0, MissionBoard.DEV_PAGE).end.x + MissionBoard.CARD_GAP * 0.5, 150.0)
+	t.check(board.hit(gap_point) == "", "a point between two visible cards hits nothing (%s)" % board.hit(gap_point))
+	board.click(gap_point)
+	t.check(picked.is_empty(), "a click in the gap between cards picks nothing (%s)" % [picked])
+	# Every real id, twice round (the wrap is crossed): the selected card is always drawn, inside the frame, a page of cards at a time.
+	board.row2 = false
+	board._select(0)
+	var steps_bad := []
+	for step in 2 * n + 1:
+		var sr := board.row1_rect(board.selected)
+		var shown := 0
+		for i in n:
+			if board.row1_rect(i).size != Vector2.ZERO:
+				shown += 1
+		if sr.size == Vector2.ZERO or not Rect2(0, 0, 640, 360).encloses(sr) or shown != mini(n, MissionBoard.DEV_PAGE):
+			steps_bad.append("step %d selected %d rect %s shown %d" % [step, board.selected, sr, shown])
+		board._select(board.selected + 1)
+	t.check(steps_bad.is_empty(), "stepping Right over all %d ids twice: the selection is always shown, a page of cards at a time (%s)" % [n, steps_bad])
+	# A marker clicked while the Hunt row is selected pages from the window, not from a Hunt index.
+	board.row2 = false
+	board.dev_first = 0
+	board.selected = 0
+	board._cross_rows(true)
+	t.check(board.row2, "Down crosses to the Hunt row")
+	board.selected = 3
+	board.click(board.marker_rect(1).get_center())
+	var win2 := board.dev_window()
+	t.check(not board.row2 and board.selected >= win2.x and board.selected < win2.x + win2.y and win2.x == MissionBoard.DEV_PAGE and picked.is_empty(),
+		"a marker click from the Hunt row leaves it and pages the window (row2 %s, selected %d, window %s)" % [board.row2, board.selected, win2])
 	# Arithmetic with 27 cards, stepping Right from the first to the last: every card is visible in turn, the window moves by one.
 	var first := 0
 	var reached := 0

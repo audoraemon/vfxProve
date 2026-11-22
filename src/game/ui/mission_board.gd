@@ -585,9 +585,11 @@ func click(point: Vector2) -> void:
 	elif h.begins_with("tab:"):
 		open_tab(int(h.substr(4)))
 	elif h.begins_with("page:"):
+		var dir := int(h.substr(5))
+		var w := dev_window()
+		dev_first = clampi(w.x + dir * DEV_PAGE, 0, missions().size() - DEV_PAGE)
 		row2 = false
-		selected = clampi(selected + int(h.substr(5)) * DEV_PAGE, 0, missions().size() - 1)
-		dev_first = clampi(dev_first + int(h.substr(5)) * DEV_PAGE, 0, missions().size() - DEV_PAGE)
+		selected = dev_first if dir > 0 else dev_first + DEV_PAGE - 1
 		_follow()
 		UiSound.play(&"ui_hover")
 		_redraw()

@@ -41,8 +41,18 @@ static func _aldermere_exact(t) -> void:
 
 static func _capital(t) -> void:
 	var c := City.by_id(&"capital")
-	t.check(c.place(&"citadel_gate") == CapitalCity.CITADEL_ORIGIN + Vector2(0.0, 2.9) and c.gate_towers().is_empty(),
-		"the Capital's Citadel gate, and no gate towers")
+	t.check(c.place(&"citadel_gate") == CapitalCity.CITADEL_ORIGIN + Vector2(0.0, 2.9) and true,
+		"the Capital's Citadel gate")
+	var towers := c.gate_towers()
+	var at_gate := CapitalCity.INNER_GATES[1] as Vector2
+	var far := 0
+	for r in towers:
+		if r.get_center().distance_to(at_gate) > 4.0:
+			far += 1
+	t.check(not towers.is_empty() and towers == c._gatehouses(CapitalCity.INNER, [CapitalCity.INNER_GATES[1]]).towers and far == 0,
+		"the Capital has gate towers, at its west river gate (%d, %d far)" % [towers.size(), far])
+	towers.clear()
+	t.check(not c.gate_towers().is_empty(), "the Capital's gate towers are a fresh copy each call")
 	t.check(c.place(&"citadel") == CapitalCity.CITADEL_ORIGIN, "the Capital's citadel")
 	t.check(c.landmark(&"fountain") == CapitalCity.FOUNTAINS[0], "the Great Market's fountain")
 	t.check(c.landmark(&"side_gate").has_area() and c.landmark(&"side_gate") == c.landmark(&"harbour_gate"), "the harbour gate")
@@ -53,7 +63,7 @@ static func _capital(t) -> void:
 static func _has(t) -> void:
 	var al := City.by_id(&"aldermere")
 	var c := City.by_id(&"capital")
-	t.check(Places.has(c, &"citadel") and not Places.has(c, &"gate_towers") and Places.has(c, &"taverns:2"), "needs in the Capital")
+	t.check(Places.has(c, &"citadel") and Places.has(c, &"gate_towers") and Places.has(c, &"taverns:2"), "needs in the Capital: gate towers are there since Task 1")
 	t.check(not Places.has(c, &"taverns:9") and not Places.has(c, &"no_such_place"), "too few of a list, an unknown name")
 	for n: StringName in [&"temple", &"bell_tower", &"citadel", &"citadel_gate", &"market_square", &"gate_towers", &"barns:4",
 			&"fountain", &"taverns:2", &"districts", &"wells", &"fountains"]:

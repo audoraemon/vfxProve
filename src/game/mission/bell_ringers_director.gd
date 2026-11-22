@@ -12,6 +12,8 @@ extends MissionDirector
 
 ## Where the posts stand (the wall tower nearest each) (v0.11 M3, mission spec §1).
 const POST_SPOTS := [Vector2(6.6, -15.65), Vector2(-8.0, 15.65), Vector2(15.65, -8.0)]
+## The names a town's overrides may set (Overrides, v0.12): the town vars below, seeded from POST_SPOTS, POST_NAMES and SET_OUT_AT; setup reads them and never assigns them.
+const TOWN_VARS := ["post_spots", "post_names", "set_out_at"]
 ## The posts' names on the banners, the strip and the tour (v0.11 M3).
 const POST_NAMES := ["north-east", "south-west", "east"]
 ## Seconds into the night each post sends its ringer at the latest (v0.11 M3, Decision 8): the spec's first guesses, kept by Task
@@ -32,14 +34,23 @@ const CAMERA_AT := Vector2(6.0, -5.0)
 ## bellkeeper steel blue (WarningDirector's).
 const MARK_POST := Color("ff9a3a")
 
+## Where this town's posts stand (a town var, POST_SPOTS in Aldermere): the wall tower nearest each.
+var post_spots: Array = POST_SPOTS
 ## The posts' towers, in the order their ringers set out (v0.11 M3).
 var posts: Array[Structure] = []
 ## Each post's door, where its ringer and his mates come out (v0.11 M3).
 var doors: Array[Vector2] = []
-## Each post's name (v0.11 M3): "north-east", "south-west", "east".
+## Each post's name (v0.11 M3): "north-east", "south-west", "east" in Aldermere (a town var, POST_NAMES). Seeded here from the const as the town's words;
+## _begin keeps the names of the posts that stand, in their order.
 var post_names: Array[String] = []
 ## The numbers a Lantern Hunt changes (god P5, MS H11, Ruling C1), each equal to its const and read in its place: when each post sends its ringer,
 var tune_set_out_at: Array = SET_OUT_AT.duplicate()
+## The town's name for it (a town var, SET_OUT_AT in Aldermere): the same array, so an override and a Hunt's change are one.
+var set_out_at: Array:
+	get:
+		return tune_set_out_at
+	set(v):
+		tune_set_out_at = v
 ## and the seconds after the warning before it is stopped that the next post sends at the latest.
 var tune_chain_wait := CHAIN_WAIT
 ## Each post's warning (v0.11 M3), set up at the start: its ringer and his mates wait inside until sent.
@@ -52,23 +63,30 @@ var _stone: Array[Structure] = []
 var _clock := 0.0
 
 
+## Seeds the town's post names from the const (the town var: setup keeps those of the posts that stand).
+func _init() -> void:
+	post_names.assign(POST_NAMES)
+
+
 ## The night's setup (v0.11 M3): the three posts and their doors, the stone, each post's ringer and mates taken inside its tower,
 ## the ringers' times on the strip, and the casts watched.
 func _begin() -> void:
 	var bell := crowd.bell
 	var foot := bell.foot if bell != null else _walkable(Places.at(&"bell_tower"))
-	for i in POST_SPOTS.size():
+	var words: Array[String] = post_names.duplicate()
+	post_names.clear()
+	for i in post_spots.size():
 		var tried: Array = []
 		tried.append_array(posts)
 		for k in TOWER_TRIES:
-			var tower := _tower_near(POST_SPOTS[i], tried)
+			var tower := _tower_near(post_spots[i], tried)
 			if tower == null:
 				break
 			var door := _town_door(tower, foot)
 			if door != Vector2.INF:
 				posts.append(tower)
 				doors.append(door)
-				post_names.append(String(POST_NAMES[i]))
+				post_names.append(String(words[i]))
 				break
 			tried.append(tower)
 	for s in posts:
@@ -111,7 +129,7 @@ func _tower_near(spot: Vector2, exclude: Array) -> Structure:
 ## _open_door()'s first face with a route (Vector2.INF for none).
 func _town_door(tower: Structure, foot: Vector2) -> Vector2:
 	var half := tower.footprint.size * 0.5 + Vector2(0.5, 0.5)
-	var inward := tower.center().direction_to(City.current().map().get_center())
+	var inward := tower.center().direction_to(City.current().town().get_center())
 	var best := Vector2.ZERO
 	for off: Vector2 in [Vector2(0.0, half.y), Vector2(0.0, -half.y), Vector2(half.x, 0.0), Vector2(-half.x, 0.0)]:
 		if best == Vector2.ZERO or off.normalized().dot(inward) > best.normalized().dot(inward):
@@ -290,11 +308,32 @@ func tour() -> Array:
 		if i == 1:
 			line = "The %s post. Its ringer comes by %s." % [post_names[i], when]
 		elif i >= 2:
-			line = "The %s post. Its ringer comes by %s, by the shortest way." % [post_names[i], when]
+			line = "The %s post. Its ringer comes by %s%s." % [post_names[i], when, ", by the shortest way" if _runs_shortest(i) else ""]
 		out.append([doors[i], line])
 	if crowd.bell != null:
 		out.append([crowd.bell.foot, "The bell tower. A ringer who reaches it climbs and rings it himself."])
 	return out
+
+
+## Post `i`'s door is nearer the bell's foot by the real walk than every other post's (the tour says so only when it is true in this town).
+func _runs_shortest(i: int) -> bool:
+	if crowd.bell == null or crowd._grid == null:
+		return true
+	var mine := _run_length(doors[i], crowd.bell.foot)
+	for k in doors.size():
+		if k != i and _run_length(doors[k], crowd.bell.foot) < mine:
+			return false
+	return true
+
+
+## The length of the grid walk `from` -> `to`.
+func _run_length(from: Vector2, to: Vector2) -> float:
+	var way := 0.0
+	var at := from
+	for step: Vector2 in crowd._grid.path(from, to):
+		way += at.distance_to(step)
+		at = step
+	return way
 
 
 ## The toll fell (v0.11.2, spec 4.6): every ringer's warning hears of it (a Herald's errand is the Temple); one still inside his tower runs

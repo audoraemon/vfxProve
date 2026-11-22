@@ -60,6 +60,7 @@ var _announced: Array[bool] = []
 
 ## The numbers into the base's vars (MS H11): the witnesses' times and the chain.
 func _init() -> void:
+	post_names.clear()
 	tune_set_out_at = SW_OUT_AT.duplicate()
 	tune_chain_wait = SW_CHAIN
 

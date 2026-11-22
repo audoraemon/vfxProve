@@ -236,6 +236,7 @@ const SUITES := [
 	"res://tests/test_capital_lamb.gd",
 	"res://tests/test_capital_miras.gd",
 	"res://tests/test_capital_lanterns.gd",
+	"res://tests/test_capital_ringers.gd",
 	"res://tests/test_capital_gate_towers.gd",
 	"res://tests/test_town_vars_t2_5.gd",
 	"res://tests/test_first_prayers.gd",

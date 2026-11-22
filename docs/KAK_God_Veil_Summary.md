@@ -29,7 +29,7 @@ Sizes are written light / dark. "Taken" means gone: no body, no sound, nothing l
 | Tier | Power | What it does | Light | Dark |
 |---|---|---|---|---|
 | 1 | **Silent Doom** | Everyone within reach falls dead a moment later, unseen. | reach 0.8 | reach 1.6 |
-| 1 | **Blight** (reworked) | Click a building: it rots, its light goes out, and the ground round it stays dusk until the night ends (your foothold; at most 3, a fourth heals the oldest). A building with a use (well, bell, gate, dock, temple) loses it as before. Click a person: they fall ill without a sound, carry a small green rot glyph over their head, and walk home to bed for the rest of the night. A mission's key person is only ill for 20 s (half pace); your own believers are passed over. Nothing in reach: refused (NOTHING HERE TO BLIGHT). | dusk 3 round the building; 1 person ill | dusk 5; the person and the 2 nearest within 2 |
+| 1 | **Blight** (reworked) | Click a building: it rots, its light goes out, and the ground round it stays dusk until the night ends (your foothold; at most 3, a fourth heals the oldest). A building with a use (well, bell, gate, dock, temple) loses it as before. Click a person: they fall ill without a sound, carry a small green rot glyph over their head, and walk home to bed for the rest of the night. A mission's key person is only ill for 20 s (half pace); your own believers are passed over. Nothing in reach: refused (NOTHING HERE TO BLIGHT). Cooldown 20 s. | dusk 3 round the building; 1 person ill | dusk 5; the person and the 2 nearest within 2 |
 | 2 | **Slumber** | Everyone in the circle sleeps where they stand for 20 s. | circle 1.5; a loud blow or a hurt wakes them | circle 3.5; deep sleep, only a hurt wakes them |
 | 2 | **Cloak of Night** | The nearest few are hidden from the watch for 25 s: guards, searchers, inquisitors and witnesses look past them. They walk normally, under a dark shimmer. | 3 people within 2 | 8 people within 4 |
 | 3 | **Unseen Hour** | Nothing in the circle is seen: no alarm, no fright, nobody comes. Its veil counts as dark ground. | circle 5 for 20 s | circle 7 for 30 s |
@@ -37,7 +37,7 @@ Sizes are written light / dark. "Taken" means gone: no body, no sound, nothing l
 | 4 | **Dread of the Dark** | For 25 s every piece of dark ground in reach becomes a wall: nobody steps in, and everyone inside freezes, silent (no walking, fleeing, shouting, ringing, fighting or seizing). No dark ground in reach: refused (NO DARK HERE TO DREAD). Its dusk is laid when the dread lifts. | reach 6 | reach 12 |
 | 4 | **Shadow Play** | Everyone in the circle falls asleep for 30 s while their shadow carries on in their place: posts look manned, but a shadow sees, reports and seizes nothing. At the end the shadows lie down and the people wake. | circle 3 | circle 6; the soldiers' shadows fade where they stand and those soldiers are taken |
 | 5 | **The Swallowing Dark** | A hole in the ground opens and grows at 0.5 a second (a funnel of terraces, a swirl, dark tendrils curling in); when it is full size everyone and everything inside is taken, buildings too (bare dark ground is left). It spares what the mission needs, never takes what the night wants down (a target it must raze stays to be razed), and spares the town's gates, bridges, postern, dock and fountain. Once a descent. | grows from 0 to 10 | grows from its dusk patch to 14 |
-| 5 | **Evernight** | Night rolls over the whole town: every Veil power is full size anywhere and cools twice as fast; the lone are taken one by one; up to 6 soldiers light torches and the people huddle round them (a Veil cast on a torch puts it out and takes everyone in its light); at dawn whoever shelters in a blighted building or sleeps in dusk never wakes. The town forgets the night. Once a descent. | 60 s, one taken every 2 s | cast in a NIGHT mission: 90 s, one every 1.5 s |
+| 5 | **Evernight** | Night rolls over the whole town: every Veil power is full size anywhere and cools twice as fast; the lone are taken in groups, 5 at a time rising to 10 by the end of the night, each group claimed one take ahead (the dark climbs them; their shadows stay on the ground); up to 6 soldiers light torches and the people huddle round them (a Veil cast on a torch puts it out and takes everyone in its light); at dawn whoever shelters in a blighted building or sleeps in dusk never wakes. The town forgets the night. Once a descent. | 60 s, a group taken every 2 s | cast in a NIGHT mission: 90 s, a group every 1.5 s |
 
 When states meet: taken beats everything; asleep beats frozen (a frozen person hit by Slumber sleeps; a sleeper is not frozen);
 The Swallowing Dark and Evernight take sleepers, the frozen and shadows' owners alike.
@@ -108,6 +108,45 @@ Things only you can judge in play:
 - Dreamless's silver thread is thin and does not show in its skill-tree clip.
 - At close zoom The Swallowing Dark's fold comes in from the frame's edges (the rim is wider than the view).
 - Evernight's wall of night has soft, feathered ends at the two sides of its ring, where it thins out.
+
+## Second pass (2026-11-22)
+
+You played the review round on the other PC and wrote three points. Spec: `docs/superpowers/specs/2026-11-22-kak-veil-review-2-design.md`;
+rulings VR2S, VR2N and VR2B in `docs/KAK_God_Veil_Rulings.md`.
+
+1. **Blight's cooldown: 36 s to 20 s.** The other Tier 1 powers run 10 to 20 s (Silent Doom 10, Smite 10, Ember 15, Death Mark 20,
+   Leaving Is Prohibited 20, Skylift 20). The scripted nights were written and recorded at 36 s and keep that pace (they wait longer
+   than they must), so no reference row moved. Run at 20 s, the First Prayers script casts Blight more often and loses one seed in
+   three to the Gaze: a script matter, not the game's, left for the next bot pass.
+2. **The Swallowing Dark's sound.** Four sounds instead of two breaths with 20 s of silence between: a deep opening at the cast (a
+   sub drop, stone grinding open, a long inhale); a low rumble that swells while the circle grows; a rising rush over the 1.4 s of
+   the heave; and the fold, a sub boom with an implosion, earth falling in and a 4 s tail, the loudest Tier 5 hit as played (-13.0
+   against Doors of the Dead's -13.5), under which the music and the town's ambience duck by 6 dB. The town still hears nothing.
+   The blurb reads "A black circle grows unseen, then the dark swallows all inside." All sources are CC0 or public domain.
+3. **Evernight eats in groups.** A take every 2 s (1.5 in a NIGHT mission) as before, but each take collects a group: 5 at the
+   first take, rising evenly to 10 at the last. Each group is claimed one take ahead: a pool of shadow opens under each claimed
+   person and the dark climbs his body from the feet to the head, reaching it as his take comes. Where he is taken a fallen figure's
+   shadow stays on the ground until the dawn fades it. A claimed person is not held: one who reaches a torch's light, goes indoors
+   or is spared before his take is let go, and his dark falls away. One whole night by day in the test town now takes 214 people
+   (182 citizens, 32 soldiers), against about 30 before.
+
+Cost (mission bench on a machine shared with 14 to 20 other Godot runs, so read the ratios loosely; the bar is 1.55 of the base):
+Evernight 1.19 to 1.46, with Dread inside it 1.36 to 1.50. Against the first pass's Evernight in the same minutes the claims,
+wisps and shadows add about 2.5 ms a frame (17.2-18.8 ms to 19.7-21.7 ms). Evernight's skill-tree clip is recorded again (the
+same flags, VRE10); at that size the claims are too small to show.
+
+### For your eye and ear (second pass)
+
+- Blight at 20 s: say if you want 15 or 25.
+- Evernight's "5 - 10" is read as a rise over the night, not a random number each take. 214 people a night is most of a district:
+  say if the rise should stop lower.
+- The claimed keep walking and can escape into torchlight or indoors. Say if the dark should hold them where they stand.
+- A claimed person's dark is drawn over walls and roofs in front of him, so you can always find him (VR2N3).
+- At close zoom the pool under a claimed person can read as a small portal; the dark hides who is being eaten.
+- Evernight costs about 2.5 ms a frame more than before (under the bar; a cost pass can cut it if you feel it).
+- No sound for each of Evernight's takes (60 s of a cue every 2 s needs your ear first).
+- The Swallowing Dark's sounds were only measured, never heard: the reversed roar in the opening, the rush's hard end, whether
+  the rumble carries on small speakers (it is mostly low), and whether the fold is too loud.
 
 ## How to try them
 

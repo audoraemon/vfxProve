@@ -512,3 +512,15 @@ All recorded with `timeout 1200 $G --path . --fixed-fps 60 --audio-driver Dummy 
   rings), one triangle list, rebuilt only when one is added, while one fades in (0.45 s) or over the dawn. A faint violet rim keeps
   each readable under the night's multiply. They are tracked by the cast and go with it however it ends.
 - VR2N5 (the wisp): one wisp per person taken, as before (the cost holds, see the report's bench).
+
+## Veil review, second pass: Blight and the scripted nights (2026-11-22, prefix VR2B)
+
+- VR2B1: Blight's cooldown is 20 s (was 36): the user's word "too long for Tier 1"; the other Tier 1 powers run 10 to 20 s. Blight
+  leaves the v0.07 floor table of tests/test_power_book.gd (floor 25): the Veil build remade it into another power.
+- VR2B2: the scripted nights keep Blight's recorded pace of 36 s (static `Rules.pace`, set by tools/dev/behaviour_check.gd `BOT_PACE`;
+  empty in the game; never for a once-a-descent power). At 20 s without it, 8 of the 50 rows that cast Blight moved:
+  god_veil_prayers_play_1 lost to the Gaze and _3 moved; judgement_b_play_1-3 and night_b_play_1-3 moved (lost before and after).
+  With the pace no row moves. A play that waits longer than it must is still a play; the next bot pass may drop the pace and
+  record the rows again.
+- VR2B3: Evernight takes 5 rising to 10 a take (the user's "5 - 10" read as a rise, no luck); the claimed are not held in place.
+- VR2B4: no sound for Evernight's takes in this pass (not asked; a cue every 2 s for 60 s needs the user's ear).

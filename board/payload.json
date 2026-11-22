@@ -12,16 +12,21 @@
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-22T14:40:48+07:00"
+     "timestamp": "2026-11-22T22:07:24+07:00"
     },
     {
      "title": "god/veil-review",
-     "description": "56 commits not in Develop-Main · last commit today\n> perf: Dread of the Dark's wall and shade are drawn in a few pieces\n\n**In progress** (1)\n• Veil abilities review: previews and stronger effects — **needs you**",
+     "description": "64 commits not in Develop-Main · last commit today\n> docs: the final review's corrections to the second pass's summary, rulings and spec\n\n**In progress** (1)\n• Veil abilities review: previews, stronger effects, second pass — **needs you**",
      "color": 5016537
     },
     {
      "title": "feat/god-chamber",
-     "description": "31 commits not in Develop-Main · last commit today · local only\n> feat: Bell-Ringers in the Capital: its spots, gates and references\n\n_No Ledger task points at this branch._",
+     "description": "34 commits not in Develop-Main · last commit today · local only\n> docs: capital_panic references say why b_play_1 is omitted\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/soldier-duties",
+     "description": "25 commits not in Develop-Main · last commit today · local only\n> fix: a found body adds no incident or alarm when its death was already counted (ruling R18)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -36,12 +41,7 @@
     },
     {
      "title": "claude/lantern-campaign-spec",
-     "description": "23 commits not in Develop-Main · last commit yesterday · local only\n> test: loudness rows for the God's Paths music\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/soldier-duties",
-     "description": "22 commits not in Develop-Main · last commit yesterday · local only\n> fix: a beat man whose mate's body is freed walks on (no read of the freed body)\n\n_No Ledger task points at this branch._",
+     "description": "24 commits not in Develop-Main · last commit yesterday · local only\n> feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {

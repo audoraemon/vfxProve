@@ -1,8 +1,8 @@
 {
- "hash": "ac980daf48d66868",
- "updated": "2026-11-22T14:40:48+07:00",
+ "hash": "bcfd51356043910a",
+ "updated": "2026-11-22T22:07:24+07:00",
  "changes": {
-  "date": "<t:1795333248:f>",
+  "date": "<t:1795360044:f>",
   "items": []
  },
  "snapshot": {
@@ -1658,7 +1658,7 @@
     "order": 5
    },
    "veil-review-adjust": {
-    "title": "Veil abilities review: previews and stronger effects",
+    "title": "Veil abilities review: previews, stronger effects, second pass",
     "status": "doing",
     "area": "Abilities",
     "needs_you": true,
@@ -1941,18 +1941,26 @@
   "branches": [
    {
     "name": "god/veil-review",
-    "ahead": 56,
+    "ahead": 64,
     "behind": 28,
     "date": "2026-11-22",
-    "subject": "perf: Dread of the Dark's wall and shade are drawn in a few pieces",
+    "subject": "docs: the final review's corrections to the second pass's summary, rulings and spec",
     "pushed": true
    },
    {
     "name": "feat/god-chamber",
-    "ahead": 31,
+    "ahead": 34,
     "behind": 28,
     "date": "2026-11-22",
-    "subject": "feat: Bell-Ringers in the Capital: its spots, gates and references",
+    "subject": "docs: capital_panic references say why b_play_1 is omitted",
+    "pushed": false
+   },
+   {
+    "name": "feat/soldier-duties",
+    "ahead": 25,
+    "behind": 13,
+    "date": "2026-11-22",
+    "subject": "fix: a found body adds no incident or alarm when its death was already counted (ruling R18)",
     "pushed": false
    },
    {
@@ -1973,18 +1981,10 @@
    },
    {
     "name": "claude/lantern-campaign-spec",
-    "ahead": 23,
-    "behind": 7,
+    "ahead": 24,
+    "behind": 0,
     "date": "2026-11-21",
-    "subject": "test: loudness rows for the God's Paths music",
-    "pushed": false
-   },
-   {
-    "name": "feat/soldier-duties",
-    "ahead": 22,
-    "behind": 13,
-    "date": "2026-11-21",
-    "subject": "fix: a beat man whose mate's body is freed walks on (no read of the freed body)",
+    "subject": "feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)",
     "pushed": false
    },
    {

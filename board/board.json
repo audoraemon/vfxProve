@@ -1,11 +1,9 @@
 {
- "hash": "0b50a424867e7066",
- "updated": "2026-11-22T14:16:07+07:00",
+ "hash": "ac980daf48d66868",
+ "updated": "2026-11-22T14:40:48+07:00",
  "changes": {
-  "date": "<t:1795331767:f>",
-  "items": [
-   "New: Music by situation: panic heat, chase, festival and rite"
-  ]
+  "date": "<t:1795333248:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1947,7 +1945,7 @@
     "behind": 28,
     "date": "2026-11-22",
     "subject": "perf: Dread of the Dark's wall and shade are drawn in a few pieces",
-    "pushed": false
+    "pushed": true
    },
    {
     "name": "feat/god-chamber",
@@ -1955,6 +1953,14 @@
     "behind": 28,
     "date": "2026-11-22",
     "subject": "feat: Bell-Ringers in the Capital: its spots, gates and references",
+    "pushed": false
+   },
+   {
+    "name": "feat/town-suspicion",
+    "ahead": 18,
+    "behind": 0,
+    "date": "2026-11-22",
+    "subject": "docs: Town Suspicion rulings, moved references and gate table",
     "pushed": false
    },
    {
@@ -1979,14 +1985,6 @@
     "behind": 13,
     "date": "2026-11-21",
     "subject": "fix: a beat man whose mate's body is freed walks on (no read of the freed body)",
-    "pushed": false
-   },
-   {
-    "name": "feat/town-suspicion",
-    "ahead": 16,
-    "behind": 2,
-    "date": "2026-11-21",
-    "subject": "test: references re-recorded where the bellkeeper now waits (41 rows)",
     "pushed": false
    },
    {

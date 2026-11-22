@@ -7,21 +7,26 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **171** done\n**13** active branches besides Develop-Main\n\n**Since the last update** (<t:1795331767:f>)\n• New: Music by situation: panic heat, chase, festival and rite",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **171** done\n**13** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-22T14:16:07+07:00"
+     "timestamp": "2026-11-22T14:40:48+07:00"
     },
     {
      "title": "god/veil-review",
-     "description": "56 commits not in Develop-Main · last commit today · local only\n> perf: Dread of the Dark's wall and shade are drawn in a few pieces\n\n**In progress** (1)\n• Veil abilities review: previews and stronger effects — **needs you**",
+     "description": "56 commits not in Develop-Main · last commit today\n> perf: Dread of the Dark's wall and shade are drawn in a few pieces\n\n**In progress** (1)\n• Veil abilities review: previews and stronger effects — **needs you**",
      "color": 5016537
     },
     {
      "title": "feat/god-chamber",
      "description": "31 commits not in Develop-Main · last commit today · local only\n> feat: Bell-Ringers in the Capital: its spots, gates and references\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/town-suspicion",
+     "description": "18 commits not in Develop-Main · last commit today · local only\n> docs: Town Suspicion rulings, moved references and gate table\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -37,11 +42,6 @@
     {
      "title": "feat/soldier-duties",
      "description": "22 commits not in Develop-Main · last commit yesterday · local only\n> fix: a beat man whose mate's body is freed walks on (no read of the freed body)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/town-suspicion",
-     "description": "16 commits not in Develop-Main · last commit yesterday · local only\n> test: references re-recorded where the bellkeeper now waits (41 rows)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {

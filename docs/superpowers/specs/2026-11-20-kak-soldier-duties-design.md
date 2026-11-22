@@ -209,6 +209,7 @@ Anti-goals (a failure even if it works):
   crosses it (`Person.path_crosses()`, person.gd:908) is turned back with `Person.hold_off()` (person.gd:1562; the
   call FoldWard uses, fold_ward.gd:166). `hold_off()` today only keeps goals inside the rect; the builder adds the path
   case. **Nobody fleeing, panicking, on duty, assisting, or a soldier is ever turned back**, so no route is sealed.
+- **Danger:** a cordon is not formed, and a man whose end lies inside a live danger stands off outside it (and goes back to his end when it is over), while a lingering power (`ThreatManager`: an airless cell, a fire, a storm; not the ruin's own collapse) is live there; an open job waits out its window and forms if the danger ends in it; a sweep's door in a live danger is held off the same way `[ruling R19]`.
 - **Play:** fewer witnesses and no gawkers at the ruin; the two men face out and see only `DOOM_WITNESS` 2.0, so the
   inside of a cordon is unwatched `[call: else "fewer witnesses" would not hold]`. `Person.lure()` (person.gd:1458)
   returns false for a citizen when the line from him to the lure crosses a live cordon. Will-o'-Wisp's preview ring

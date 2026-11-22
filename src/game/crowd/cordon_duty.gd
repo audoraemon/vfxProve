@@ -123,7 +123,7 @@ func request(site: Structure, street_at: Vector2) -> void:
 	var foot := site.footprint.grow(FOOT_GROW)
 	var rect := road.merge(foot.intersection(box)) if foot.intersects(box) else road
 	var job := board.post(GuardJobs.Kind.CORDON, mid, CREW, REACH, {"site": site, "ends": ends,
-			"rect": rect, "width": minf(road.size.x, road.size.y), "at_end": {},
+			"rect": rect, "width": minf(road.size.x, road.size.y), "at_end": {}, "home": {},
 			"left": CORDON_SECONDS, "wait": OPEN_WAIT, "begun": false, "over": false, "stood": false, "held": []})
 	if job != null:
 		_live.append(job)
@@ -165,8 +165,10 @@ func crew_blind(p: Person, at: Vector2) -> bool:
 			and (job.data.rect as Rect2).has_point(at)
 
 
-func may_take(_job: GuardJobs.Job, p: Person) -> bool:
-	return p.corps == Person.Corps.NONE
+## No man is sent to a site while a danger is live there: the open job waits out its window, and forms if the danger ends in it (R19).
+func may_take(job: GuardJobs.Job, p: Person) -> bool:
+	var site: Variant = job.data.site
+	return p.corps == Person.Corps.NONE and danger_near(job.at).is_empty() 			and not (is_instance_valid(site) and not danger_near((site as Structure).center()).is_empty())
 
 
 func on_taken(job: GuardJobs.Job, _p: Person) -> void:
@@ -214,6 +216,7 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 	if float(d.left) <= 0.0:
 		_finish(job)
 		return
+	_keep_off_danger(job)
 	var standing := 0
 	for p in job.crew:
 		if _stands(d, p):
@@ -278,6 +281,27 @@ func clear() -> void:
 	_live.clear()
 
 
+## A man whose end lies in a live danger stands off outside it (he is sent there once), and goes back to his end when the danger is
+## over: no man stands inside a lingering power he is cordoning (R19).
+func _keep_off_danger(job: GuardJobs.Job) -> void:
+	var d: Dictionary = job.data
+	for m: Variant in job.crew:
+		if not is_instance_valid(m) or not d.home.has(m):
+			continue
+		var p: Person = m
+		var home: Vector2 = d.home[p]
+		var want := home
+		var danger := danger_near(home)
+		if not danger.is_empty():
+			want = off_spot(danger, p.ground_pos if p.ground_pos.distance_to(home) > 0.01 else home)
+		if not (d.at_end[p] as Vector2).is_equal_approx(want) and p.is_alive() and not p.held_by_god():
+			d.at_end[p] = want
+			d.stood = false  # on his way to the new spot: nobody "has left" the cordon
+			p.send_to_post(want)
+			var out := want - (d.rect as Rect2).get_center()
+			p.stand_face = out.normalized() if out.length() > 0.05 else Vector2.DOWN
+
+
 ## Whether the job's men are sent and its rope is up.
 func _roped(job: GuardJobs.Job) -> bool:
 	return bool(job.data.begun) and not bool(job.data.over) and not job.ended
@@ -313,6 +337,7 @@ func _begin(job: GuardJobs.Job) -> void:
 		var out := spot - centre
 		p.stand_face = out.normalized() if out.length() > 0.05 else Vector2.DOWN
 		d.at_end[p] = spot
+		d.home[p] = spot
 	d.begun = true
 	d.left = CORDON_SECONDS
 

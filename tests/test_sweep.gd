@@ -40,6 +40,7 @@ static func run(t) -> void:
 	_lane_swept_where_seen(t)
 	_director_copy_reach(t)
 	_sweep_men_keep_nerve(t)
+	_stands_off_danger(t)
 
 
 static func _jobs(crowd: Crowd) -> Array[GuardJobs.Job]:
@@ -825,4 +826,29 @@ static func _sweep_men_keep_nerve(t) -> void:
 	t.check(calm and crew[0].fearless_left > 0.0, "a danger beside them: nobody panics")
 	crowd.guard_jobs.end_job(job)
 	t.check(crew[0].fearless_left <= 0.0, "after the sweep his nerve is his own again")
+	C._done(made)
+
+
+## A sweep whose door lies in a live danger (an airless cell, a fire) does not walk into it: its men stand off outside until the danger
+## is over, then go to the door (R19: the men stand off until it is safe).
+static func _stands_off_danger(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var job := _up(made, at)
+	if job == null:
+		t.check(false, "(a sweep with its crew)")
+		C._done(made)
+		return
+	var door: Vector2 = job.data.doors[0]
+	crowd.threats.register(door, 2.0, 0.6, 6.0, 6.0, 6.0, &"breath")
+	C._run_for(crowd, 1.0, [], 0.1)
+	t.check(bool(job.data.held) and not job.crew.is_empty(), "the door in a live danger: the sweep holds")
+	for p: Person in job.crew:
+		t.check(crowd.threats.first_near(job.data.at_spot[p], 0.0).is_empty(), "no spot a man is sent to lies in it")
+	C._run_for(crowd, 6.0, [], 0.1)
+	var back := true
+	for p: Person in job.crew:
+		back = back and (job.data.at_spot[p] as Vector2).distance_to(door) <= 2.0 * SweepDuty.SPOT_APART + 0.5
+	t.check(back and not bool(job.data.held), "the danger over, the men are sent to the door")
 	C._done(made)

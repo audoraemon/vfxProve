@@ -42,6 +42,9 @@ static func run(t) -> void:
 	_home_goal(t)
 	_open_ten(t)
 	_deep_lot_clipped(t)
+	_danger_holds_posting(t)
+	_danger_outlasts_window(t)
+	_danger_moves_ends(t)
 
 
 static func _world() -> Array:
@@ -895,4 +898,68 @@ static func _deep_lot_clipped(t) -> void:
 		t.check(r.position.x >= mid.x - half - 0.001 and r.end.x <= mid.x + half + 0.001 and r.position.y >= mid.y - half - 0.001 \
 				and r.end.y <= mid.y + half + 0.001, "the rect stays within 4.0 of the stretch's middle (%s)" % r)
 	lot.free()
+	_done(made)
+
+
+## A live danger at the site (an airless cell, a fire) keeps the cordon from forming: it is posted and waits unstaffed; it forms
+## when the danger has ended inside its window [ruling R19].
+static func _danger_holds_posting(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var house := _site(made)
+	var at := house.center()
+	crowd.threats.register(at, 3.0, 0.6, 5.0, 6.0, 6.0, &"breath")
+	crowd.cordon.request(house, at)
+	crowd.guard_jobs._fill()
+	var live := _live(crowd)
+	t.check(live.size() == 1 and live[0].crew.is_empty() and not bool(live[0].data.begun), "a live danger at the site: the job waits, no man goes")
+	_run_for(crowd, 3.0, [], 0.1)
+	t.check(live[0].crew.is_empty(), "and still none at 3 s")
+	_run_for(crowd, 4.0, [], 0.1)
+	t.check(not crowd.threats.unsafe(at) or crowd.threats.active_count() == 0, "(the danger has ended)")
+	t.check(live[0].crew.size() == CordonDuty.CREW and bool(live[0].data.begun), "danger ended inside the window: the cordon forms")
+	_done(made)
+
+
+## A danger that outlasts the open window leaves no cordon at all.
+static func _danger_outlasts_window(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var house := _site(made)
+	var at := house.center()
+	crowd.threats.register(at, 3.0, 0.6, CordonDuty.OPEN_WAIT + 8.0, 6.0, 6.0, &"breath")
+	crowd.cordon.request(house, at)
+	_run_for(crowd, CordonDuty.OPEN_WAIT + 2.0, [], 0.1)
+	t.check(_live(crowd).is_empty() and not crowd.guard_jobs.live(CORDON).any(func(j): return not j.crew.is_empty()), "danger past the window: no cordon, no man sent")
+	_done(made)
+
+
+## A cordon already up: the man whose end falls in a danger stands off outside it, and goes back to his end when it is over; no
+## crew man ever has a stand spot inside a live danger.
+static func _danger_moves_ends(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var job := _up(made, _site(made))
+	if job == null:
+		t.check(false, "(a cordon with its crew)")
+		_done(made)
+		return
+	_arrive(job)
+	var end: Vector2 = job.data.ends[0]
+	var man: Person = job.crew[0]
+	for p: Person in job.crew:
+		if (job.data.at_end[p] as Vector2).distance_to(end) < (job.data.at_end[man] as Vector2).distance_to(end):
+			man = p
+	var home: Vector2 = job.data.at_end[man]
+	crowd.threats.register(home, 2.0, 0.6, 6.0, 6.0, 6.0, &"breath")
+	var clear := true
+	for i in 30:
+		_step(crowd, [], 0.1)
+		for p: Person in job.crew:
+			var z := crowd.threats.first_near(job.data.at_end[p], 0.0)
+			clear = clear and z.is_empty()
+	t.check(clear, "no man's stand spot lies inside a live danger")
+	t.check(not (job.data.at_end[man] as Vector2).is_equal_approx(home) and _live(crowd).size() == 1 and job.crew.has(man), "he stands off, still on the job")
+	_run_for(crowd, 5.0, [], 0.1)
+	t.check((job.data.at_end[man] as Vector2).is_equal_approx(home), "the danger over, he is sent back to his end")
 	_done(made)

@@ -8,6 +8,10 @@ var board: GuardJobs
 var crowd: Crowd
 
 
+## How far past a live danger's edge a soldier on a duty keeps (ruling R19).
+const DANGER_MARGIN := 1.0
+
+
 ## Wires the duty to its board and crowd.
 func setup(b: GuardJobs, c: Crowd) -> Duty:
 	board = b
@@ -112,3 +116,24 @@ func showing() -> bool:
 ## A new crowd or act: forget everything.
 func clear() -> void:
 	pass
+
+
+## The first danger the town's ThreatManager holds live within DANGER_MARGIN of `at` (a lingering power: an airless cell, a fire,
+## a held cage, a storm), or an empty dictionary. A building's own collapse is no danger to a duty that answers it.
+func danger_near(at: Vector2) -> Dictionary:
+	if crowd.threats.active_count() == 0:
+		return {}
+	for t: Dictionary in crowd.threats.nearby(at, DANGER_MARGIN):
+		if t.kind != &"collapse":
+			return t
+	return {}
+
+
+## Open ground just outside `danger`, on the side of `from`, for a man to stand off on (the shared rng is never drawn from).
+func off_spot(danger: Dictionary, from: Vector2) -> Vector2:
+	var centre: Vector2 = danger.at
+	var out := from - centre
+	out = out.normalized() if out.length() > 0.01 else Vector2.RIGHT
+	var at := centre + out * (float(danger.radius) + DANGER_MARGIN + 0.5)
+	var s := crowd._grid.nearest_walkable(at)
+	return at if s == Vector2.INF else s

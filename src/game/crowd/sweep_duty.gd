@@ -62,7 +62,7 @@ func request(at: Vector2) -> void:
 		return
 	var job := board.post(GuardJobs.Kind.SWEEP, at, CREW, INF, {"district": district, "seen_at": at,
 			"rect": City.current().districts()[district] as Rect2, "doors": [] as Array[Vector2], "door": -1, "at_spot": {},
-			"phase": Phase.WALK, "leg": 0.0, "stand": 0.0, "left": SWEEP_SECONDS, "wait": OPEN_SECONDS, "begun": false,
+			"phase": Phase.WALK, "held": false, "leg": 0.0, "stand": 0.0, "left": SWEEP_SECONDS, "wait": OPEN_SECONDS, "begun": false,
 			"on": false, "over": false, "added": 0.0, "charged": -INF, "idle": LEG_LIMIT + SWEEP_SECONDS})
 	if job != null:
 		_live.append(job)
@@ -307,8 +307,12 @@ func _go(job: GuardJobs.Job) -> void:
 		if p.held_by_god():
 			continue
 		var spot := _snap(door + Vector2(SPOT_APART * (float(i) - float(n - 1) * 0.5), 0.0))
+		var danger := danger_near(door)
+		if not danger.is_empty():
+			spot = off_spot(danger, p.ground_pos)  # a live danger at the door: he stands off outside it
 		d.at_spot[p] = spot
 		p.send_to_post(spot, false, int(d.door) == 0)
+	d.held = not danger_near(door).is_empty()
 	d.phase = Phase.WALK
 	d.leg = 0.0
 
@@ -316,6 +320,13 @@ func _go(job: GuardJobs.Job) -> void:
 ## The walk: to a door, stand there SWEEP_STAND s talking, on to the next; after the last door wait at it.
 func _walk(job: GuardJobs.Job, delta: float) -> void:
 	var d: Dictionary = job.data
+	if int(d.phase) != Phase.WAIT:
+		# A door in a live danger is not walked to: the men stand off until it is over, then go (R19).
+		var live := not danger_near((d.doors as Array[Vector2])[d.door]).is_empty()
+		if live != bool(d.held):
+			_go(job)
+		if live:
+			return
 	match int(d.phase):
 		Phase.WALK:
 			d.leg = float(d.leg) + delta

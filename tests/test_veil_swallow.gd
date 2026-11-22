@@ -114,6 +114,7 @@ static func run(t) -> void:
 	_no_crowd(t)
 	_market(t)
 	_look(t)
+	_sound(t)
 
 
 static func _wholly(t) -> void:
@@ -150,6 +151,27 @@ static func _sizes(t, made: Array) -> void:
 	t.check(fx.swallowed and is_equal_approx(fx.radius(), 14.0), "dark: full at 22 s")
 	fx.end_now()
 	crowd.dusk.clear()
+	# Review pass 2 (sound): a growth shorter than the heave (a dusk patch of 13.5: full 14 after 1 s) still gives its rush, started that
+	# far into the cue so it ends on the fold, and the fold's hit at full size.
+	var spy := _spy()
+	ctx.sfx = spy
+	crowd.lay_dusk(at, 13.5, 60.0)
+	fx = _cast(ctx, at, true)
+	spy.fx = fx
+	t.check(is_equal_approx(fx.t_full, 1.0), "dark in a dusk patch of 13.5: full after 1 s (%.2f)" % fx.t_full)
+	_go(fx, DT)
+	var short_heave := spy.when(&"v_swallow_heave")
+	t.check(short_heave.size() == 1 and short_heave[0] <= DT + 0.001
+		and absf(fx.rush_from - (TheSwallowingDarkFx.HEAVE - fx.t_full + DT)) < 0.002,
+		"short growth: the rush starts at once, %.2f s into its cue, so it still ends on the fold (%s)" % [fx.rush_from, short_heave])
+	_go(fx, 1.0)
+	var short_take := spy.when(&"v_swallow_take")
+	t.check(short_take.size() == 1 and absf(short_take[0] - 1.0) <= DT + 0.001 and spy.faded_cue(&"v_swallow_loop"),
+		"short growth: the fold hits at full size (%s) and the rumble is let go" % [short_take])
+	fx.end_now()
+	crowd.dusk.clear()
+	ctx.sfx = null
+	spy.queue_free()
 
 
 ## C16: through Rules the other slots are locked only until the circle has opened (busy = T_OPEN); after it Silent Doom casts while the
@@ -650,4 +672,110 @@ static func _look(t) -> void:
 	t.check(lone._hole == null and lone._tendrils.is_empty() and lone._dust == null, "a bare context: no ground, world or back layer, none of theirs")
 	_go(lone, 23.0)
 	t.check(lone.finished, "a bare context builds the look it can and finishes without an error")
+	bare.overhead.free()
+
+
+## Review pass 2 (spec 4): a stand-in for the stage's Sfx, in the tree (so the effect fades its voices through it): each cue asked
+## for, with the cast's clock then, a voice per cue (marked with its cue, as Sfx's pool does) and the voices faded out.
+class SfxSpy extends Node:
+	var fx: FxTimeline
+	var asked: Array = []  # [cue, the cast's clock]
+	var voices := {}  # cue -> its last voice
+	var faded: Array[Node] = []
+
+	func play(cue: StringName, _ground_pos: Vector2, db_offset := 0.0) -> Node:
+		asked.append([cue, fx.t if is_instance_valid(fx) else 0.0])
+		var v := AudioStreamPlayer2D.new()
+		v.set_meta(&"cue", cue)
+		v.volume_db = float(Sfx.CATALOG[cue].get("db", 0.0)) + db_offset
+		add_child(v)
+		voices[cue] = v
+		return v
+
+	func fade_out(player: Node, _seconds: float) -> void:
+		faded.append(player)
+
+	## The cast's clock at each time `cue` was asked for.
+	func when(cue: StringName) -> Array:
+		return asked.filter(func(a: Array) -> bool: return a[0] == cue).map(func(a: Array) -> float: return a[1])
+
+	func faded_cue(cue: StringName) -> bool:
+		return voices.has(cue) and faded.has(voices[cue])
+
+
+## Steps the effect in frames of DT up to the last frame before its clock reaches `when`.
+static func _until(fx: FxTimeline, when: float) -> void:
+	while fx.t + DT < when and not fx.finished:
+		fx._process(DT)
+
+
+static func _spy() -> SfxSpy:
+	var spy := SfxSpy.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(spy)
+	return spy
+
+
+## Review pass 2 (spec 4): the sound. The cast opens (v_swallow) and the rumble starts with it (v_swallow_loop), quiet at first and
+## swelling with the circle; the heave's rush is asked for HEAVE before the fold (the look's own times), the fold's hit at full size,
+## and the rumble is let go at the fold. With end_now() over the heave the rumble and the rush both go; a cast freed mid-growth lets
+## its rumble go too. A bare context (no sfx) builds, grows and finishes without an error (the look's own check above).
+static func _sound(t) -> void:
+	for mode in ["run", "end_now", "free"]:
+		var spy := _spy()
+		var ctx := FxContext.new()
+		ctx.rng = RandomNumberGenerator.new()
+		ctx.overhead = Node2D.new()
+		ctx.sfx = spy
+		var fx := FxTimeline.cast(TheSwallowingDarkFx, ctx, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+		spy.fx = fx
+		var loop: Node = spy.voices.get(&"v_swallow_loop")
+		var base := float(Sfx.CATALOG[&"v_swallow_loop"].get("db", 0.0))
+		t.check(spy.when(&"v_swallow") == [0.0] and spy.when(&"v_swallow_loop") == [0.0] and loop != null
+			and absf((loop as AudioStreamPlayer2D).volume_db - (base + TheSwallowingDarkFx.RUMBLE_FROM_DB)) < 0.01,
+			"%s: the cast opens and the rumble starts with it, %.0f dB under its level" % [mode, -TheSwallowingDarkFx.RUMBLE_FROM_DB])
+		_go(fx, 5.0)
+		var at_5 := (loop as AudioStreamPlayer2D).volume_db
+		_go(fx, 5.0)
+		var at_10 := (loop as AudioStreamPlayer2D).volume_db
+		t.check(at_10 > at_5 and at_5 > base + TheSwallowingDarkFx.RUMBLE_FROM_DB and not spy.faded.has(loop)
+			and spy.when(&"v_swallow_heave").is_empty(),
+			"%s: while it grows the rumble plays on and swells (%.1f at 5 s, %.1f at 10 s); no rush yet" % [mode, at_5, at_10])
+		if mode == "free":
+			fx.free()
+			t.check(spy.faded.has(loop), "free: a cast freed while it grows lets its rumble go")
+		else:
+			_until(fx, fx.t_full - TheSwallowingDarkFx.HEAVE)
+			t.check(spy.when(&"v_swallow_heave").is_empty(), "%s: no rush before the heave (%.3f s)" % [mode, fx.t])
+			_go(fx, 2.0 * DT)
+			var heave := spy.when(&"v_swallow_heave")
+			t.check(heave.size() == 1 and absf(heave[0] - (fx.t_full - TheSwallowingDarkFx.HEAVE)) <= DT + 0.001 and fx.rush_from == 0.0,
+				"%s: the rush is asked for at the heave, %.2f s before the fold (%s)" % [mode, TheSwallowingDarkFx.HEAVE, heave])
+			var rush: Node = spy.voices.get(&"v_swallow_heave")
+			if mode == "end_now":
+				_go(fx, 0.5)
+				fx.end_now()
+				t.check(spy.faded.has(loop) and spy.faded.has(rush) and spy.when(&"v_swallow_take").is_empty(),
+					"end_now: ended over the heave, the rumble and the rush both go, and no fold sounds")
+			else:
+				_until(fx, fx.t_full)
+				t.check(absf((loop as AudioStreamPlayer2D).volume_db - base) < 0.2 and not spy.faded.has(loop) and not fx.swallowed,
+					"run: just before the fold the rumble is at full (%.2f of %.2f)" % [(loop as AudioStreamPlayer2D).volume_db, base])
+				_go(fx, 2.0 * DT)
+				var take := spy.when(&"v_swallow_take")
+				t.check(take.size() == 1 and absf(take[0] - fx.t_full) <= DT + 0.001 and spy.faded.has(loop) and not spy.faded.has(rush),
+					"run: the fold hits at full size (%s), the rumble is let go, the rush runs on into the hit" % [take])
+				_go(fx, 2.0)
+				t.check(fx.finished and spy.faded.count(loop) == 1, "run: the cast ends, the rumble let go once")
+		var asked := spy.asked.size()
+		ctx.overhead.free()
+		t.check(spy.asked.size() == asked, "%s: nothing more is asked for after the cast is gone" % mode)
+		spy.free()
+	# A bare context (no sfx at all): the cast plays nothing, grows, folds and finishes without an error.
+	var bare := FxContext.new()
+	bare.rng = RandomNumberGenerator.new()
+	bare.overhead = Node2D.new()
+	var lone := FxTimeline.cast(TheSwallowingDarkFx, bare, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+	t.check(lone._rumble == null, "a bare context: no rumble voice")
+	_go(lone, 23.0)
+	t.check(lone.finished and lone._rumble == null and lone._rush == null, "a bare context: it grows, folds and finishes with no sound and no error")
 	bare.overhead.free()

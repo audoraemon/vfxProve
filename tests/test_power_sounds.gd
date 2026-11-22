@@ -23,9 +23,14 @@ const VEIL_SEVEN := ["slumber", "cloak", "dreamless", "dread", "shadowplay", "sw
 const VEIL_BAND := 3.0
 ## A Veil moment cue -> the script that plays it.
 const VEIL_MOMENTS := {
-	&"v_swallow_take": "res://src/fx/veil/the_swallowing_dark.gd",
 	&"q_blight_ill": "res://src/fx/quiet/blight.gd",
 }
+## Review pass 2 (spec 4, VR2S): the Swallowing Dark is the one Veil power the god hears as a doomsday, so its cues leave the quiet band:
+## its fold hits at least as loud as the Tier 5 doomsdays' main hits as played (and no more than SWALLOW_OVER over the loudest), ducks
+## the music within their ducks, and its rumble loops under the cast. The town still hears none of it (the power stays quiet).
+const DOOMSDAYS := ["tempest", "shatter", "tsunami", "gravetide", "deaddoors", "cage"]
+const SWALLOW_CUES := [&"v_swallow", &"v_swallow_loop", &"v_swallow_heave", &"v_swallow_take"]
+const SWALLOW_OVER := 2.0
 const TSV := "res://tools/audio/loudness.tsv"
 ## Spec 6.3 row 4: the death cues' played levels relative to the loud median, and how far either way is allowed.
 const DEATH_REL := {&"cit_death": -4.0, &"sol_death": -4.0, &"cit_fall": -9.0}
@@ -48,6 +53,7 @@ static func run(t) -> void:
 	_deaths(t, lufs, median)
 	_hits_and_lantern(t, lufs, median)
 	_veil(t, lufs)
+	_swallow(t, lufs, mains)
 	_sanity(t)
 
 
@@ -265,7 +271,8 @@ static func _hits_and_lantern(t, lufs: Dictionary, median: float) -> void:
 static func _veil(t, lufs: Dictionary) -> void:
 	var moments := {}
 	for key in VEIL_SEVEN:
-		moments[StringName("v_" + key)] = PowerBook.get_power(key).path
+		if key != "swallow":
+			moments[StringName("v_" + key)] = PowerBook.get_power(key).path
 	moments.merge(VEIL_MOMENTS)
 	for cue: StringName in moments:
 		var path: String = moments[cue]
@@ -287,8 +294,47 @@ static func _veil(t, lufs: Dictionary) -> void:
 		"%s plays at %.1f, under Evernight's cast %.1f" % [loop, held, played(&"v_evernight", 0.0, lufs)])
 	t.check(FileAccess.get_file_as_string(night).contains("fade_out("), "evernight.gd fades its held night out")
 	for cue in Sfx.CATALOG:
-		if String(cue).begins_with("v_") or cue == &"q_blight_ill":
+		if (String(cue).begins_with("v_") or cue == &"q_blight_ill") and cue != &"v_swallow_take":
 			t.check(not Sfx.DUCKS.has(cue) and not Sfx.AFTERMATH.has(cue), "%s neither ducks nor has an aftermath" % cue)
+
+
+## Review pass 2 (spec 4): the Swallowing Dark's four cues, as played, against the doomsdays.
+static func _swallow(t, lufs: Dictionary, mains: Dictionary) -> void:
+	var path: String = PowerBook.get_power("swallow").path
+	var level := {}
+	for p in plays(path):
+		if p[0] in SWALLOW_CUES:
+			level[p[0]] = played(p[0], p[1], lufs)
+	for cue: StringName in SWALLOW_CUES:
+		t.check(Sfx.CATALOG.has(cue) and level.has(cue) and not is_nan(level[cue]), "%s is catalogued, measured and played by %s" % [cue, path.get_file()])
+	if level.size() < SWALLOW_CUES.size():
+		return
+	var loudest := -INF
+	var ducks: Array = []
+	for key in DOOMSDAYS:
+		t.check(mains.has(key) and not PowerBook.is_quiet(key), "%s is a loud doomsday with a main cue" % key)
+		if mains.has(key):
+			loudest = maxf(loudest, float(mains[key][1]))
+			if Sfx.DUCKS.has(mains[key][0]):
+				ducks.append(float(Sfx.DUCKS[mains[key][0]]))
+	var take: float = level[&"v_swallow_take"]
+	t.check(take >= loudest - 0.001 and take <= loudest + SWALLOW_OVER,
+		"v_swallow_take plays at %.1f: at least the loudest doomsday hit %.1f, at most %.0f over it" % [take, loudest, SWALLOW_OVER])
+	t.check(level[&"v_swallow"] > QUIET_FLOOR + VEIL_BAND and level[&"v_swallow"] < take,
+		"v_swallow (the cast) plays at %.1f: over the quiet Veil band (%.1f), under the fold %.1f" % [level[&"v_swallow"], QUIET_FLOOR + VEIL_BAND, take])
+	t.check(level[&"v_swallow_heave"] < take, "v_swallow_heave plays at %.1f, under the fold %.1f" % [level[&"v_swallow_heave"], take])
+	var loop: Dictionary = Sfx.CATALOG[&"v_swallow_loop"]
+	t.check(loop.get("loop", false) and int(loop.get("voices", 2)) == 1 and level[&"v_swallow_loop"] < level[&"v_swallow"],
+		"v_swallow_loop is a one-voice loop at %.1f, under the cast %.1f" % [level[&"v_swallow_loop"], level[&"v_swallow"]])
+	t.check(FileAccess.get_file_as_string(path).contains("ctx.fade_out("), "the_swallowing_dark.gd fades its rumble out")
+	ducks.sort()
+	var duck := float(Sfx.DUCKS.get(&"v_swallow_take", 0.0))
+	t.check(ducks.size() >= 3 and duck >= ducks[0] and duck <= ducks[-1],
+		"v_swallow_take ducks the music by %.0f dB, within the doomsdays' ducks %s" % [duck, ducks])
+	for cue: StringName in SWALLOW_CUES:
+		t.check(not Sfx.AFTERMATH.has(cue) and (cue == &"v_swallow_take" or not Sfx.DUCKS.has(cue)),
+			"%s: only the fold ducks, none has an aftermath" % cue)
+	t.check(PowerBook.is_quiet("swallow"), "the Swallowing Dark stays quiet to the town")
 
 
 ## The reader itself: a few known calls, so a parser that silently reads nothing cannot pass the floor by default.

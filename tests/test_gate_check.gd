@@ -38,6 +38,7 @@ static func run(t) -> void:
 	_charge_not_spotted(t)
 	_closed_board_checks_nothing(t)
 	_calm_gate_spots_nobody(t)
+	_falls_back_stands_down(t)
 	_tag_from_local_emergency(t)
 	_watched_banner_once(t)
 
@@ -876,19 +877,21 @@ static func _closed_board_checks_nothing(t) -> void:
 	C._done(made)
 
 
-## R17: in a calm town and at Concern a guised and a whispered citizen cross a checked gate unseen: nothing ends, no incident, no
-## alarm, no tag, no banner.
+## R20: below Local Emergency the duty sleeps: a wall guard near a gate holds no GATE record, is eligible like any wall guard, stays at
+## his post when a walker comes to the mouth, has no far sight, no badge, no tag, and nobody is spotted (no incident, alarm, banner).
 static func _calm_gate_spots_nobody(t) -> void:
 	for stage in [AlarmManager.Stage.NORMAL, AlarmManager.Stage.CONCERN]:
 		var made := _calm_world()
 		var crowd: Crowd = made[0]
 		crowd.alarms.stage = stage
 		var gate := _none_gate(crowd)
-		var c := _ready_gate(crowd, gate) if gate != null else null
-		t.check(c != null, "(a checker on his spot, stage %d)" % stage)
-		if c == null:
+		t.check(gate != null, "(a gate with NONE checkers, stage %d)" % stage)
+		if gate == null:
 			C._done(made)
 			continue
+		var list := crowd.gate_check.checkers(gate)
+		_quiet(crowd, gate)
+		_calm_at(crowd.citizens[0], _mouth(gate) - Crowd.outward_of(gate) * 1.0)
 		var texts := _texts(crowd)
 		var district := AlarmManager.district_of(gate.center())
 		var g := _guised_at(crowd, gate, 1)
@@ -897,22 +900,26 @@ static func _calm_gate_spots_nobody(t) -> void:
 		t.check(w.whisper(w.ground_pos, 30.0) and w.held_by_god(), "(whispered)")
 		var alarm := crowd.alarm
 		var events := int(crowd.alarms._events.get(district, 0))
-		_tick(crowd)
-		_tick(crowd)
+		for i in 4:
+			_tick(crowd)
+		for c in list:
+			t.check(crowd.guard_jobs.kind_of(c) != GATE, "stage %d: no GATE record" % stage)
+			t.check(crowd.guard_jobs.eligible(c), "stage %d: eligible as a plain wall guard" % stage)
+			t.check(c.anchor.is_equal_approx(c.post) and c.mind == Person.Mind.POST, "stage %d: never leaves his post" % stage)
+			t.check(not c.watch_far, "stage %d: no far sight" % stage)
+			t.check(c.badge_glyph != GuardJobs.GLYPH_EYE and c.badge_glyph != GuardJobs.GLYPH_ALERT, "stage %d: no badge" % stage)
 		t.check(g.guised() and w.held_by_god(), "stage %d: the guise and the hold stand" % stage)
 		t.check(crowd.gate_check.check(g, gate) == false and g.guised(), "stage %d: a direct check spots nobody" % stage)
 		t.near(crowd.alarm, alarm, 0.0001, "stage %d: the alarm is unchanged" % stage)
 		t.check(int(crowd.alarms._events.get(district, 0)) == events, "stage %d: no incident" % stage)
-		t.check(c.badge_glyph != GuardJobs.GLYPH_ALERT, "stage %d: no \"!\" badge" % stage)
 		t.check(not _has_tag(crowd, gate), "stage %d: no GATE CHECK tag" % stage)
 		t.check(texts.is_empty(), "stage %d: no banner" % stage)
-		t.check(c.watch_far, "stage %d: the checker still stands out and looks" % stage)
 		C._done(made)
 
 
-## R17: the tag shows only from Local Emergency (the standing tag of a marshal-only gate too).
-static func _tag_from_local_emergency(t) -> void:
-	var made := _calm_world()
+## R20: when the stage falls back below Local Emergency the jobs end, the flags come off and a man out on his spot walks back.
+static func _falls_back_stands_down(t) -> void:
+	var made := _world()
 	var crowd: Crowd = made[0]
 	var gate := _none_gate(crowd)
 	var c := _ready_gate(crowd, gate) if gate != null else null
@@ -921,8 +928,42 @@ static func _tag_from_local_emergency(t) -> void:
 		C._done(made)
 		return
 	_tick(crowd)
-	t.check(not _has_tag(crowd, gate), "no tag in a calm town")
+	t.check(c.watch_far and _has_tag(crowd, gate) and not c.anchor.is_equal_approx(c.post), "live: out on his spot, far sight, tag")
+	crowd.alarms.stage = AlarmManager.Stage.CONCERN
+	_tick(crowd)
+	t.check(crowd.guard_jobs.kind_of(c) != GATE, "the GATE job ended")
+	t.check(not c.watch_far and c.badge_left <= 0.0, "far sight and badge are off")
+	t.check(c.anchor.is_equal_approx(c.post), "the man out on his spot is sent back to his post")
+	t.check(not _has_tag(crowd, gate), "the tag is gone")
+	t.check(crowd.guard_jobs.eligible(c) or c.has_goal(), "and he is free again (or walking home)")
+	_tick(crowd)
+	t.check(crowd.guard_jobs.kind_of(c) != GATE and c.anchor.is_equal_approx(c.post), "no job is posted again while calm")
+	_arrive(c)
 	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	_tick(crowd)
+	_tick(crowd)
+	_tick(crowd)
+	t.check(crowd.guard_jobs.kind_of(c) == GATE or crowd.guard_jobs.job_of(c) != null, "at Local Emergency the check goes live again")
+	C._done(made)
+
+
+## R17: the tag shows only from Local Emergency (the standing tag of a marshal-only gate too).
+static func _tag_from_local_emergency(t) -> void:
+	var made := _world()
+	var crowd: Crowd = made[0]
+	var gate := _none_gate(crowd)
+	var c := _ready_gate(crowd, gate) if gate != null else null
+	crowd.alarms.stage = AlarmManager.Stage.NORMAL
+	t.check(c != null, "(a checker on his spot)")
+	if c == null:
+		C._done(made)
+		return
+	_tick(crowd)
+	t.check(not _has_tag(crowd, gate), "no tag in a calm town")
+	_arrive(c)
+	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	_tick(crowd)
+	_tick(crowd)
 	_tick(crowd)
 	t.check(_has_tag(crowd, gate), "the tag shows at Local Emergency")
 	crowd.alarms.stage = AlarmManager.Stage.CITY_EMERGENCY
@@ -946,19 +987,24 @@ static func _tag_from_local_emergency(t) -> void:
 ## R17: "THE GATES ARE WATCHED" comes once, the first time the stage is at Local Emergency with a gate checked; not while hushed;
 ## once per night.
 static func _watched_banner_once(t) -> void:
-	var made := _calm_world()
+	var made := _world()
 	var crowd: Crowd = made[0]
 	var gate := _none_gate(crowd)
 	var c := _ready_gate(crowd, gate) if gate != null else null
+	crowd.alarms.stage = AlarmManager.Stage.NORMAL
 	t.check(c != null, "(a checker on his spot)")
 	if c == null:
 		C._done(made)
 		return
+	crowd.gate_check._warned = false  # the set-up went live once (nobody listening): this night's warning is still to come
 	var texts := _texts(crowd)
 	_tick(crowd)
 	t.check(not texts.has(GateCheck.WATCHED), "no warning in a calm town")
+	_arrive(c)
 	crowd.hush(30.0)
 	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	_tick(crowd)
+	_tick(crowd)
 	_tick(crowd)
 	t.check(not texts.has(GateCheck.WATCHED) and _has_tag(crowd, gate), "hushed: the tag shows, no banner")
 	crowd._hush_until = -INF

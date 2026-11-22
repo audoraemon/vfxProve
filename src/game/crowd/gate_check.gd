@@ -209,6 +209,10 @@ func done(job: GuardJobs.Job) -> bool:
 ## tags are refreshed. One pass over the citizens buckets them by gate mouth for all of it.
 func post_jobs() -> void:
 	var now := crowd._clock
+	if not spotting():
+		_stand_down()
+		_forget(now)
+		return
 	var have := {}
 	for job in board.live(GuardJobs.Kind.GATE):
 		if is_instance_valid(job.data.who):
@@ -231,7 +235,6 @@ func post_jobs() -> void:
 		lists.append(list)
 		reaches.append(reach)
 	var buckets := _bucket(mouths, reaches)
-	var live := spotting()
 	var kept := {}
 	var shown: Array[Vector2] = []
 	for g in gates.size():
@@ -267,9 +270,9 @@ func post_jobs() -> void:
 					_face(c, folk)
 			elif c.corps == Person.Corps.NONE and board.gate_checker(c):
 				tagged = true
-		if tagged and live:
+		if tagged:
 			shown.append(gate.center())
-		if live and _looking(list, gate):
+		if _looking(list, gate):
 			for p in folk:
 				if (p.guised() or p.held_by_god()) and p.ground_pos.distance_to(mouth) <= GATE_LOOK:
 					_check(p, gate, list)
@@ -284,6 +287,15 @@ func post_jobs() -> void:
 		_warned = true
 		crowd.duty_event.emit(GuardJobs.Kind.GATE, WATCHED, shown[0])
 	_forget(now)
+
+
+## Below Local Emergency the check sleeps (ruling R20): every GATE job ends (a man out on his spot walks back to his post), every
+## flag, badge and tag comes off, and a wall guard at a gate is the plain soldier he was.
+func _stand_down() -> void:
+	for job in board.live(GuardJobs.Kind.GATE):
+		board.end_job(job)
+	_release_all(true)
+	_shown.clear()
 
 
 func standing_tags() -> Array[MapTag]:

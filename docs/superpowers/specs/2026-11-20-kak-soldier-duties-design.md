@@ -251,8 +251,9 @@ Anti-goals (a failure even if it works):
   today.
 - **Only when the town is alarmed:** a guard sees through a guise or the god's hold only while `alarms.stage` is Local
   Emergency or higher; below it nobody is spotted (no unmask, incident, alarm, "!" badge or banner), and the "GATE CHECK"
-  tag stays down. Checkers still stand at their gates, step out to look at walkers and witness to `WATCH_SIGHT` in every
-  stage. The first time the stage is at or above Local Emergency with a gate checked, one banner "THE GATES ARE WATCHED"
+  tag stays down. `[ruling R20]` Below Local Emergency the whole duty sleeps: no GATE job or record, nobody steps out to a spot,
+  no far sight, no eye badge and no tag, so a wall guard near a gate is the plain soldier he was; when the stage falls back below
+  it the jobs end, the flags come off and a man out on his spot walks back to his post. The first time the stage is at or above Local Emergency with a gate checked, one banner "THE GATES ARE WATCHED"
   warns the player (once a night; not while the town is hushed) `[user, 2026-11-22: all Dominion pairs lost with
   spotting in a calm town; from Local Emergency they return to baseline]`.
 - **A gate is checked** while at least one of them stands his spot beside the mouth, free and not held by the god.

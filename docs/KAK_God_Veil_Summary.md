@@ -117,7 +117,8 @@ rulings VR2S, VR2N and VR2B in `docs/KAK_God_Veil_Rulings.md`.
 1. **Blight's cooldown: 36 s to 20 s.** The other Tier 1 powers run 10 to 20 s (Silent Doom 10, Smite 10, Ember 15, Death Mark 20,
    Leaving Is Prohibited 20, Skylift 20). The scripted nights were written and recorded at 36 s and keep that pace (they wait longer
    than they must), so no reference row moved. Run at 20 s, the First Prayers script casts Blight more often and loses one seed in
-   three to the Gaze: a script matter, not the game's, left for the next bot pass.
+   three to the Gaze; the route B scripts of Last Judgement and of the night in acts (`judgement_b`, `night_b`) (which lost before) also play differently.
+   A script matter, not the game's, left for the next bot pass.
 2. **The Swallowing Dark's sound.** Four sounds instead of two breaths with 20 s of silence between: a deep opening at the cast (a
    sub drop, stone grinding open, a long inhale); a low rumble that swells while the circle grows; a rising rush over the 1.4 s of
    the heave; and the fold, a sub boom with an implosion, earth falling in and a 4 s tail, the loudest Tier 5 hit as played (-13.0
@@ -127,7 +128,8 @@ rulings VR2S, VR2N and VR2B in `docs/KAK_God_Veil_Rulings.md`.
    first take, rising evenly to 10 at the last. Each group is claimed one take ahead: a pool of shadow opens under each claimed
    person and the dark climbs his body from the feet to the head, reaching it as his take comes. Where he is taken a fallen figure's
    shadow stays on the ground until the dawn fades it. A claimed person is not held: one who reaches a torch's light, goes indoors
-   or is spared before his take is let go, and his dark falls away. One whole night by day in the test town now takes 214 people
+   or is spared before his take is let go at his take: the dark stays on him until then and then falls away (indoors it falls
+   away at once). One whole night by day in the test town now takes 214 people
    (182 citizens, 32 soldiers), against about 30 before.
 
 Cost (mission bench on a machine shared with 14 to 20 other Godot runs, so read the ratios loosely; the bar is 1.55 of the base):
@@ -143,6 +145,8 @@ same flags, VRE10); at that size the claims are too small to show.
 - The claimed keep walking and can escape into torchlight or indoors. Say if the dark should hold them where they stand.
 - A claimed person's dark is drawn over walls and roofs in front of him, so you can always find him (VR2N3).
 - At close zoom the pool under a claimed person can read as a small portal; the dark hides who is being eaten.
+- A claimed person who reaches torchlight keeps his dark until his take, though he is already safe. A claim made before an
+  Unseen Hour draws under its blanket, a later one over it (they share a layer).
 - Evernight costs about 2.5 ms a frame more than before (under the bar; a cost pass can cut it if you feel it).
 - No sound for each of Evernight's takes (60 s of a cue every 2 s needs your ear first).
 - The Swallowing Dark's sounds were only measured, never heard: the reversed roar in the opening, the rush's hard end, whether
@@ -165,6 +169,9 @@ crowd some show little (Slumber, Cloak, Dreamless and Shadow Play need people; D
 were recorded in the town (ruling VD2); every one builds and ends cleanly with no crowd and no rules.
 
 ## The Tier 1 nights and the Veil Hunts
+
+(Since the second pass, 2026-11-22: every result below is of scripts that pace Blight at its old 36 s; the game's cooldown is
+20 s.)
 
 The bar: Veil wins at least 2 of 3 seeds, with no stretch of more than 45 s without a cast. Each line below is the gate's own
 verdict on this branch. The five Tier 1 nights were run as `bash tools/dev/gate.sh <mission> --god=veil:1 --jobs=2` (with `--board`

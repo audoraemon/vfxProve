@@ -13,8 +13,9 @@ branch. Design choices below that the user did not state are mine and marked (mi
 ## 2. What changes, and what does not
 
 Unlike the first pass, this one changes rules, but only these two: Blight's cooldown, and how many Evernight takes at a time
-(with the claim that comes before each take). Every other rule of every power stays. Reference rows that cast Blight may move
-and are then recorded again, each still winning as before; rows that cast no Veil power must not move. No reference row casts
+(with the claim that comes before each take). Every other rule of every power stays. Reference rows that cast Blight would move
+at the new cooldown; the scripted nights keep Blight's old 36 s pace instead, so none moves (ruling VR2B2 in
+`docs/KAK_God_Veil_Rulings.md`, which replaced the first plan of recording them again); rows that cast no Veil power must not move. No reference row casts
 Evernight or The Swallowing Dark.
 
 ## 3. Blight

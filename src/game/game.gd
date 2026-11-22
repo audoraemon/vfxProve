@@ -1717,6 +1717,7 @@ func _stage_duty(show: String) -> void:
 			_look_at(lead.ground_pos)
 		"duty-gate":
 			await _pass(2.0)
+			crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY  # the gate check and its tag are live only from here
 			var gate: Structure = null
 			for g in crowd._town.gates:
 				if is_instance_valid(g) and not g.destroyed and g.walkable:

@@ -4,7 +4,8 @@ extends Duty
 ## within POST_REACH of it -- look over everyone who comes through it. A person who is guised (Corpse Guise) or in the god's hand
 ## (whispered, confused, compelled, staring at a lure) and stands within a checker's sight (WATCH_SIGHT, NO SIGHT caps it, a veil
 ## hides him) is spotted: the guise or the hold ends, an incident and an alarm are written, the checker wears a "!" and a banner
-## says so. A corps-NONE checker holds a GATE record (so no one takes him for a director's man), steps to a spot beside the mouth
+## says so; all of it only once the town is in Local Emergency (below it nobody is spotted and the tag stays down; one banner warns
+## when it goes live). A corps-NONE checker holds a GATE record (so no one takes him for a director's man), steps to a spot beside the mouth
 ## when anyone comes near it and steps back after STAND_DOWN s of nobody; a marshal checks where he stands. The check never touches a
 ## gate's own clock or queue, and nothing here draws a number from any rng.
 
@@ -25,6 +26,8 @@ const WALL_GROUP := 1
 ## The tag and the banner, the colour of the tag and the eye badge, and how long each badge is set for.
 const TAG := "GATE CHECK"
 const BANNER := "THE GATE GUARD SEES THROUGH IT"
+## The warning banner, once a night, when spotting goes live with a gate checked.
+const WATCHED := "THE GATES ARE WATCHED"
 const COLOUR := Color(0.95, 0.8, 0.35)
 const BADGE_SECONDS := 1.5
 const ALERT_SECONDS := 2.0
@@ -39,8 +42,10 @@ var _marked := {}
 var _charged := {}
 ## The ones let out of a queue this frame, [person, gate], looked at after the queue loop.
 var _pending: Array = []
-## The gates' centres whose tag shows (refreshed on every board tick).
+## The gates' centres whose tag shows (refreshed on every board tick; empty below Local Emergency).
 var _shown: Array[Vector2] = []
+## Whether this night's WATCHED warning has been given.
+var _warned := false
 
 
 func kind() -> int:
@@ -87,9 +92,15 @@ func _looking(list: Array[Person], gate: Structure) -> bool:
 	return false
 
 
+## Whether the guards see through a guise or the god's hold now: the town is in Local Emergency or worse (user, 2026-11-22).
+func spotting() -> bool:
+	return crowd.alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY
+
+
 ## `p`, within sight of a checker of `gate` (and not veiled), is looked at: when he is guised or the god holds him he is spotted
 ## (unmask(), an incident, GATE_SPOT_ALARM, the "!" badge, the banner) and the call is true. Soldiers are never checked, nobody is
-## checked twice at a gate within REPEAT_SECONDS, and a hushed town hears and writes nothing (the banner still shows).
+## checked twice at a gate within REPEAT_SECONDS, and a hushed town hears and writes nothing (the banner still shows). Below Local
+## Emergency nobody is spotted at all.
 func check(p: Person, gate: Structure) -> bool:
 	return _check(p, gate, null)
 
@@ -97,6 +108,8 @@ func check(p: Person, gate: Structure) -> bool:
 ## check() with the gate's checkers already worked out (`list`; null: worked out here).
 func _check(p: Person, gate: Structure, list: Variant) -> bool:
 	if not board.is_open() or not is_instance_valid(p) or not is_instance_valid(gate) or p.soldier or not p.is_alive() or p.inside:
+		return false
+	if not spotting():
 		return false
 	if p.answers_lure:
 		return false  # a director's charge (the Lamb, the prisoner, First Prayers' people) passes untouched
@@ -218,6 +231,7 @@ func post_jobs() -> void:
 		lists.append(list)
 		reaches.append(reach)
 	var buckets := _bucket(mouths, reaches)
+	var live := spotting()
 	var kept := {}
 	var shown: Array[Vector2] = []
 	for g in gates.size():
@@ -253,9 +267,9 @@ func post_jobs() -> void:
 					_face(c, folk)
 			elif c.corps == Person.Corps.NONE and board.gate_checker(c):
 				tagged = true
-		if tagged:
+		if tagged and live:
 			shown.append(gate.center())
-		if _looking(list, gate):
+		if live and _looking(list, gate):
 			for p in folk:
 				if (p.guised() or p.held_by_god()) and p.ground_pos.distance_to(mouth) <= GATE_LOOK:
 					_check(p, gate, list)
@@ -266,6 +280,9 @@ func post_jobs() -> void:
 			_unflag(p)
 			_marked.erase(p)
 	_shown = shown
+	if not _warned and not shown.is_empty() and not crowd.is_hushed():
+		_warned = true
+		crowd.duty_event.emit(GuardJobs.Kind.GATE, WATCHED, shown[0])
 	_forget(now)
 
 
@@ -288,6 +305,7 @@ func clear() -> void:
 	_release_all(true)
 	_spotted.clear()
 	_charged.clear()
+	_warned = false
 	_pending.clear()
 	_near_at.clear()
 	_shown.clear()

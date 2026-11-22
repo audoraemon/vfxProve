@@ -44,7 +44,7 @@ can be broken, lured or used.
    stands still in ranks facing out. The Citadel's protection stays as today. The rest keep working the city.
 2. Calm: street pairs walk real patrol routes; wall walkers; yard drills as today.
 3. Gate check: gate guards look over each person in the gate queue. A gate guard counts as a watcher; a possessed or
-   guised person passing a checked gate can be spotted.
+   guised person passing a checked gate can be spotted, only when the town is alarmed (Local Emergency or higher).
 4. Cordon: after a fire or a collapse 2 soldiers block that street; citizens turn back. Fewer witnesses near the
    ruin, but a lure through a cordon fails.
 5. Sweep: after a power is seen a 4-man squad walks that district door to door for about 30 s. More watchers there
@@ -247,6 +247,12 @@ Anti-goals (a failure even if it works):
   gate and while he works its queue; nobody is re-posted]`. It is their standing duty at their own post, lowest
   priority: a fire or a sweep may take a corps-NONE checker `[call: the lure stays]`; a marshal leaves only as he does
   today.
+- **Only when the town is alarmed:** a guard sees through a guise or the god's hold only while `alarms.stage` is Local
+  Emergency or higher; below it nobody is spotted (no unmask, incident, alarm, "!" badge or banner), and the "GATE CHECK"
+  tag stays down. Checkers still stand at their gates, step out to look at walkers and witness to `WATCH_SIGHT` in every
+  stage. The first time the stage is at or above Local Emergency with a gate checked, one banner "THE GATES ARE WATCHED"
+  warns the player (once a night; not while the town is hushed) `[user, 2026-11-22: all Dominion pairs lost with
+  spotting in a calm town; from Local Emergency they return to baseline]`.
 - **A gate is checked** while at least one of them stands his spot beside the mouth, free and not held by the god.
 - **Steps:** when a queue forms or anyone walks within `GATE_LOOK` 2.5 of the mouth, the checkers step to spots
   behind the marshals' (`MarshalManager._spot()`) and face the nearest person (`talk`). A calm town has no queue, so

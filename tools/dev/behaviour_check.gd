@@ -3039,13 +3039,13 @@ func _panic_act(rules: Rules, slots: Dictionary, d: MarketPanicDirector) -> Stri
 	if d.next_wave() < 0 and _slot_ready(rules, slots, "heaven"):
 		var best := -1
 		var best_dir := Vector2.RIGHT
-		if wardens.is_empty() and _panic_near(d, MarketPanicDirector.HEART, MarketPanicDirector.FAIR_R).size() >= PANIC_PACK:
+		if wardens.is_empty() and _panic_near(d, d.heart, MarketPanicDirector.FAIR_R).size() >= PANIC_PACK:
 			for dir: Vector2 in [Vector2.RIGHT, Vector2.DOWN]:
-				var n := _panic_lane(d, d.unbroken(), MarketPanicDirector.HEART, dir)
+				var n := _panic_lane(d, d.unbroken(), d.heart, dir)
 				if n > best:
 					best = n
 					best_dir = dir
-			rules.cast(slots.heaven, MarketPanicDirector.HEART, {"dir": best_dir})
+			rules.cast(slots.heaven, d.heart, {"dir": best_dir})
 			return "heaven through the fair (%d)" % best
 		var walkers := d.walkers()
 		if walkers.size() >= PANIC_WALKERS:
@@ -3070,7 +3070,7 @@ func _panic_act(rules: Rules, slots: Dictionary, d: MarketPanicDirector) -> Stri
 		var left := d.unbroken()
 		if not left.is_empty():
 			left.sort_custom(func(a: Person, b: Person) -> bool:
-				return a.ground_pos.distance_to(MarketPanicDirector.HEART) < b.ground_pos.distance_to(MarketPanicDirector.HEART))
+				return a.ground_pos.distance_to(d.heart) < b.ground_pos.distance_to(d.heart))
 			rules.cast(slots.smite, left[0].ground_pos)
 			return "smite a goer"
 	if _slot_ready(rules, slots, "doom") and not wardens.is_empty():

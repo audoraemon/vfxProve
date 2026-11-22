@@ -3,7 +3,7 @@ extends FxTimeline
 ## The Swallowing Dark (Veil, Tier V; spec 5.9): a black circle opens at the click and grows from its centre at GROW a second, from 0
 ## to its light FULL_R (VeilRules: 10), or, cast in the dark, from the radius of the dusk patch it was cast in (Dusk.r_at()) to its dark
 ## FULL_R (14). Nobody sees it grow: it registers no danger, frightens nobody, raises no alarm; one who walks out in time lives. At full
-## size everything inside is gone without a sound: every person (Crowd.take(p, &"void"): no body, no voice, no remain), every animal
+## size everything inside is gone, unheard by the town: every person (Crowd.take(p, &"void"): no body, no voice, no remain), every animal
 ## and visitor, every lying remain, every decor piece whose `at` is inside, and every building whose footprint lies wholly inside
 ## (wholly_inside()) by Eminent Domain's quiet path (EnvironmentField.remove(s, true, true), batched: the walk grid opens, no rubble), with
 ## whoever shelters in it. Spared: a building MissionKeeps.spared() names (the Citadel and Temple, the hallowed, the mission's own),
@@ -50,6 +50,18 @@ const DUST_LIFE := [Color(0.40, 0.35, 0.30, 0.9), Color(0.33, 0.29, 0.27, 0.85),
 	Color(0.11, 0.05, 0.17, 0.35)]
 const CHUNK_LIFE := [Color("4b4440"), Color("3a3432"), Color("261d2e"), Color(0.08, 0.04, 0.12, 0.6)]
 
+## The sound (review pass 2, spec 4; sound only: nothing here decides who or what is taken, or when). The cast opens deep (v_swallow);
+## a low rumble (CUE_LOOP, one voice) is held from the cast to the fold, swelling with the circle from RUMBLE_FROM_DB under its catalog
+## level to full just before the fold; over the heave a rising inward rush (CUE_HEAVE) ends on the fold, scheduled from HEAVE and
+## t_full (the look's own times); the fold hits (v_swallow_take). The rumble fades out in RUMBLE_FADE at the fold, and with the cast
+## however it ends (_finish(), _exit_tree(), freed); a rush whose fold never comes goes with it. The town hears none of it.
+const CUE_LOOP := &"v_swallow_loop"
+const CUE_HEAVE := &"v_swallow_heave"
+const RUMBLE_FROM_DB := -12.0
+const RUMBLE_FADE := 0.25
+## The meta a voice of this cast's carries (its instance id), so a voice handed to another cue or cast is left alone.
+const VOICE_OWNER := &"swallow_cast"
+
 ## This cast's sizes: where it starts, where it ends, and when it gets there.
 var start_r := 0.0
 var full_r := 10.0
@@ -78,6 +90,11 @@ var _dust_due := 0.0
 var _chunk_due := 0.0
 var _heaved := false
 var _folding := false
+## The held rumble's voice and the heave's rush (null in a bare context, or once let go).
+var _rumble: Variant = null
+var _rush: Variant = null
+## How far into the rush it was started (0 on time; more when the growth was shorter than the heave).
+var rush_from := 0.0
 
 
 ## True when all four corners of `s`'s footprint lie within `r` of `at`.
@@ -100,7 +117,11 @@ func _build() -> void:
 	busy = T_OPEN
 	duration = t_full + FOLD
 	at(t_full, _swallow)
+	if t_full > 0.0:
+		at(maxf(t_full - HEAVE, 0.0), _heave_sound)
 	ctx.play(&"v_swallow", origin)
+	_rumble = _own(ctx.play(&"v_swallow_loop", origin))
+	_swell()
 	_build_look()
 
 
@@ -191,6 +212,7 @@ func left() -> int:
 func _fx_process(delta: float) -> void:
 	_look(delta)
 	if not swallowed:
+		_swell()
 		return
 	var n := 0
 	var built := 0
@@ -295,9 +317,79 @@ func _under_look(r: float, front: float, closing: float, folded: float) -> void:
 		_rim.queue_redraw()
 
 
-## Freed without finishing off the tree (no _exit_tree() comes): the look's pieces go too.
+## The rumble's level now: RUMBLE_FROM_DB under its catalog level at the cast, rising with the circle to full just before the fold.
+func rumble_db() -> float:
+	var grown := clampf(t / t_full, 0.0, 1.0) if t_full > 0.0 else 1.0
+	return float(Sfx.CATALOG[CUE_LOOP].get("db", 0.0)) + lerpf(RUMBLE_FROM_DB, 0.0, grown)
+
+
+func _swell() -> void:
+	if _mine(_rumble, CUE_LOOP):
+		(_rumble as AudioStreamPlayer2D).volume_db = rumble_db()
+
+
+## The heave's rush, from HEAVE before the fold: its rise ends on the fold. Started late (a growth shorter than the heave, or a slow
+## frame), it starts that far into the cue, so it still ends on the fold.
+func _heave_sound() -> void:
+	if swallowed or finished:
+		return
+	_rush = _own(ctx.play(&"v_swallow_heave", origin))
+	var late := t - (t_full - HEAVE)
+	if late > 0.02:
+		rush_from = late
+		if _mine(_rush, CUE_HEAVE) and (_rush as AudioStreamPlayer2D).playing:
+			(_rush as AudioStreamPlayer2D).seek(late)
+
+
+## A voice this cast just asked for, marked as its own (null stays null).
+func _own(v: Variant) -> Variant:
+	if v != null and is_instance_valid(v) and v is Node:
+		(v as Node).set_meta(VOICE_OWNER, get_instance_id())
+		return v
+	return null
+
+
+## True while `v` is still this cast's voice of `cue` (not freed, not handed to another cue or another cast by the pool). Untyped, so
+## a voice freed with the pool (a torn-down stage) is read without an error.
+func _mine(v: Variant, cue: StringName) -> bool:
+	if v == null or not is_instance_valid(v) or not v is AudioStreamPlayer2D:
+		return false
+	var n := v as Node
+	return n.get_meta(&"cue", &"") == cue and int(n.get_meta(VOICE_OWNER, 0)) == get_instance_id()
+
+
+## Lets the rumble go (faded out over `seconds`); and the rush too when the fold never came. Sound only; safe to call twice.
+func _sound_off(seconds: float) -> void:
+	var voices := [[_rumble, CUE_LOOP]]
+	if not swallowed:
+		voices.append([_rush, CUE_HEAVE])
+	_rumble = null
+	if not swallowed:
+		_rush = null
+	for pair: Array in voices:
+		var v: Variant = pair[0]
+		if not _mine(v, pair[1]):
+			continue
+		if ctx != null and ctx.sfx != null and is_instance_valid(ctx.sfx):
+			ctx.fade_out(v as Node, seconds)  # Sfx stops it at once when it is off the tree (a torn-down stage)
+		else:
+			(v as AudioStreamPlayer2D).stop()
+
+
+func _finish() -> void:
+	_sound_off(RUMBLE_FADE)
+	super()
+
+
+func _exit_tree() -> void:
+	_sound_off(RUMBLE_FADE)
+	super()
+
+
+## Freed without finishing off the tree (no _exit_tree() comes): the look's pieces go too, and the rumble stops.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
+		_sound_off(RUMBLE_FADE)
 		_free_tracked(true)
 
 
@@ -306,6 +398,7 @@ func _swallow() -> void:
 	swallowed = true
 	_queue = _inside()
 	VeilParts.land(self, origin, full_r)
+	_sound_off(RUMBLE_FADE)
 	ctx.play(&"v_swallow_take", origin)
 	if ctx.ground != null:
 		var mark := BareEarth.new()

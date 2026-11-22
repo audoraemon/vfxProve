@@ -1,0 +1,8 @@
+{"length": 2.0, "rms_db": -14.0, "reverb": {"rt60": 1.2, "mix": 0.15, "predelay_ms": 12, "damp": 3500}, "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/susCymb1-cresc-Short_v1.wav", "at": 0.0, "from": 0.35, "dur": 1.45, "pitch": -5, "hp": 200, "lp": 6000, "fade_in": 200, "fade_out": 50, "gain_db": -2},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Timpani/Rolls/Timpani1_Roll_v5_rr1_Sum.wav", "at": 0.0, "from": 2.0, "dur": 1.45, "pitch": -5, "hp": 40, "lp": 900, "fade_in": 1300, "fade_out": 50, "gain_db": -2},
+  {"src": "lib:oga/space-winds/space-wind_0.mp3", "at": 0.0, "from": 8.0, "dur": 1.45, "pitch": -5, "reverse": true, "hp": 300, "lp": 4000, "fade_in": 1300, "fade_out": 50, "gain_db": -6},
+  {"src": "lib:oga/gravity-inverter/gravity_inverter.ogg", "at": 0.27, "from": 0.0, "reverse": true, "pitch": -5, "lp": 3000, "fade_in": 100, "fade_out": 30, "gain_db": -3},
+  {"src": "lib:oga/dark-ambiences/dark_ambiences/dark_ambiences/ambience-3.wav", "at": 0.02, "from": 0.29, "reverse": true, "lp": 400, "fade_in": 300, "fade_out": 30, "gain_db": -2},
+  {"src": "lib:oga/dull-explosion/explosion_dull.flac", "at": 1.15, "from": 0.0, "reverse": true, "pitch": -8, "lp": 2500, "fade_in": 20, "fade_out": 15, "gain_db": -4}
+]}

@@ -337,7 +337,7 @@ const POWERS := [
 		"shape": "everyone within 3 (6 in the dark) sleeps for 30 s while a shadow keeps their task; in the dark soldiers' shadows fade, taken",
 		"quiet": true, "authority": "veil"},
 	{"key": "swallow", "name": "The Swallowing Dark", "path": "res://src/fx/veil/the_swallowing_dark.gd",
-		"blurb": "A black circle grows unseen, then all inside is gone without a sound.",
+		"blurb": "A black circle grows unseen, then the dark swallows all inside.",
 		"dp": 6, "cooldown": 999.0, "aim": "click",
 		"shape": "a black circle grows unseen to 10 (from its dusk to 14 in the dark) at 0.5 a second, then everyone and everything inside is gone; once a descent",
 		"quiet": true, "authority": "veil"},

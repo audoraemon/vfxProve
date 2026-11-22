@@ -281,8 +281,8 @@ func _look(job: GuardJobs.Job, delta: float) -> void:
 		_end(job)
 
 
-## The find: the district's incident (a sweep if it tipped the district into emergency), the alarm the kill never gave, the
-## banner; then the body is lifted and the pair sets off with it.
+## The find: for a death never counted the district's incident (a sweep if it tipped the district into emergency) and the alarm
+## the kill never gave, else neither (R18); the banner; then the body is lifted and the pair sets off with it.
 func _found(job: GuardJobs.Job) -> void:
 	var d: Dictionary = job.data
 	var r: Remains.Remain = d.remain
@@ -292,9 +292,10 @@ func _found(job: GuardJobs.Job) -> void:
 	if not r.reported and not crowd.is_hushed() and not crowd.is_hushed_at(r.pos) and not crowd.is_veiled(r.pos):
 		# Reported once only; a hushed or veiled find reports nothing (the player's counters), though the body is still lifted.
 		r.reported = true
-		if crowd.alarms.incident(r.pos):
-			crowd._investigate(r.pos)
 		if not r.counted:
+			# A death the town already counted (a seen, loud one) wrote its incident and alarm when it fell [ruling R18].
+			if crowd.alarms.incident(r.pos):
+				crowd._investigate(r.pos)
 			crowd._hear_alarm(Crowd.ALARM_KILL)
 		r.counted = true
 		crowd.duty_event.emit(GuardJobs.Kind.CORPSE, BANNER, r.pos)

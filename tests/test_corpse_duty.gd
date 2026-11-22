@@ -39,6 +39,7 @@ static func run(t) -> void:
 	_countdown_walk(t)
 	_corps_pair_none(t)
 	_near_tie(t)
+	_doom_counted(t)
 
 
 ## A town with the ledger on as Rules would leave it.
@@ -406,7 +407,7 @@ static func _incident_and_alarm(t) -> void:
 	_done(made)
 
 
-## A kill the town saw (counted): the find is one more incident and adds no alarm.
+## A kill the town saw (counted): the find adds no incident and no alarm [ruling R18]; the banner shows and the body is lifted.
 static func _counted_no_alarm(t) -> void:
 	var made := _world()
 	var crowd: Crowd = made[0]
@@ -429,9 +430,45 @@ static func _counted_no_alarm(t) -> void:
 		events = int(crowd.alarms._events.get(d, 0))
 		_step(crowd)
 		frames += 1
-	t.check(int(crowd.alarms._events.get(d, 0)) == events + 1, "the find is one more incident")
+	t.check(not banners.is_empty(), "the banner shows")
+	t.check(int(crowd.alarms._events.get(d, 0)) == events, "the find adds no incident to a counted death")
 	t.near(crowd.alarm, alarm, 0.0001, "and the alarm is unchanged by it")
+	t.check(_until_lifted(crowd, rem), "the body is still lifted")
 	_done(made)
+
+
+## A doom judged seen leaves its body counted; one judged unseen does not [ruling R18].
+static func _doom_counted(t) -> void:
+	for seen in [true, false]:
+		var made := _world()
+		var crowd: Crowd = made[0]
+		var victim: Person = null
+		for c in crowd.citizens:
+			if is_instance_valid(c) and c.is_alive():
+				victim = c
+				break
+		var at := Vector2(-60.0, -60.0) if not seen else victim.ground_pos
+		victim.ground_pos = at
+		victim.inside = false
+		for p in crowd.citizens + crowd.soldiers:
+			if is_instance_valid(p) and p != victim and p.ground_pos.distance_to(at) < 12.0:
+				p.ground_pos = at + Vector2(80.0, 80.0) if not seen else p.ground_pos
+		if seen:
+			var w: Person = null
+			for p in crowd.citizens:
+				if is_instance_valid(p) and p != victim and p.is_alive():
+					w = p
+					break
+			w.ground_pos = at + Vector2(0.5, 0.0)
+			w.inside = false
+		var rem := Remains.Remain.new()
+		rem.pos = at
+		rem.body = weakref(victim)
+		crowd.remains._list.append(rem)
+		(made[3] as EnemyField).kill(victim, &"doom")  # the town files it to be judged; no body kind writes a remain for it
+		crowd._settle_doom()
+		t.check(rem.counted == seen, "a doom judged %s leaves its body %s" % ["seen" if seen else "unseen", "counted" if seen else "uncounted"])
+		_done(made)
 
 
 ## After the find the body is off the ledger, TAKEN shows 2.0 s, and it is laid off every road within 4.0, then they go home.

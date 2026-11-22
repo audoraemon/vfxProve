@@ -2706,6 +2706,9 @@ func _settle_doom() -> void:
 		var seen := nearest_witness(at) != null
 		if not seen:
 			continue
+		var body := remains.of_body(v) if remains != null else null
+		if body != null:
+			body.counted = true  # a doom judged seen wrote its incident and alarm below: a found body adds none (R18)
 		if sweep != null:
 			sweep.on_seen(at)
 			sweep.request(at)

@@ -184,10 +184,11 @@ Anti-goals (a failure even if it works):
   **found**. Then both lift it: `Remains.take()` (remains.gd:171), the body is drawn between the two as they walk
   (`walk` clip) to the nearest open ground off every road within `CARRY_REACH` 4.0, lay it down, and it fades over
   `DEATH_FADE`. They walk back to the beat.
-- **Play:** on found: one `alarms.incident(body)` always (the district's count, 4 make a Local Emergency), plus
-  `_hear_alarm(ALARM_KILL)` (0.5) only if the death was never counted (a quiet, hushed or veiled kill; a new
-  `Remain.counted` flag set where `_on_killed()` reaches `_hear_alarm`, crowd.gd:2476) `[call: a seen death is not
-  taxed twice in alarm; loud play stays valid]`. From the lift on no Death power can use the body.
+- **Play:** on found: a death the town already counted (a seen, loud one, or a doom judged seen: `Remain.counted`) writes no incident,
+  no alarm and no sweep request, though the banner shows and the body is lifted; a death never counted (a quiet, hushed or veiled
+  kill, or a doom judged unseen) writes one `alarms.incident(body)` (a sweep if it tips the district) and `_hear_alarm(ALARM_KILL)`
+  (0.5) `[ruling R18]` `[call: a seen death is not taxed twice, in count or alarm; loud play stays valid]`. From the lift on no Death
+  power can use the body.
 - **What the player sees:** from assignment the body carries a tag "FOUND IN n" counting down the walk plus the 4 s.
   At zero the banner "A BODY IS FOUND". The lift shows the tag "TAKEN" for 2 s and the body visibly leaves.
 - **Counter:** use or move the body before the count ends (it stays on the ledger until the lift); kill, hold or lure

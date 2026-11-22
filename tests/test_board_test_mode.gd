@@ -23,6 +23,7 @@ static func run(t) -> void:
 	_levels_carried(t)
 	_dev_tab_rite(t)
 	_dev_tab_hunts(t)
+	_dev_tab_paging(t)
 
 
 static func _key(code: Key) -> InputEventKey:
@@ -275,7 +276,7 @@ static func _dev_tab_rite(t) -> void:
 	t.check(board.card_title("warning") == TierBook.board("warning").name and board.card_title(MissionBook.CAPITAL_SANDBOX) == MissionBook.capital_sandbox().name,
 		"other cards keep their names")
 	# It fits the card: every wrapped title line, the kind line and the best are inside the card, and the type lines clear the rule.
-	var r := MissionBoard.card_rect(0, ids.size())
+	var r := MissionBoard.card_rect(0, mini(ids.size(), MissionBoard.DEV_PAGE))
 	var room := r.size.x - 2.0 * MissionBoard.PAD
 	var wide := []
 	# (No tick sits at the title's right: a rite is never "cleared", so the whole room is the title's.)
@@ -288,7 +289,17 @@ static func _dev_tab_rite(t) -> void:
 	for line in board.kind_lines(MissionBook.FIRST_TASTE):
 		if UiTheme.width(line, UiTheme.SIZE_SMALL) > room:
 			wide.append(line)
-	t.check(wide.is_empty(), "every line of the rite's card fits %d cards (%s)" % [ids.size(), wide])
+	t.check(wide.is_empty(), "every line of the rite's card fits the %d cards of a page (%s)" % [mini(ids.size(), MissionBoard.DEV_PAGE), wide])
+	var rite_at := ids.find(MissionBook.FIRST_TASTE)
+	t.check(rite_at >= 0, "the rite is on the DEV tab (%d)" % rite_at)
+	if rite_at >= 0:
+		board.selected = rite_at
+		board._select(rite_at - 1)
+		board._select(rite_at)
+		var rr := board.row1_rect(rite_at)
+		var win := board.dev_window()
+		t.check(rite_at >= win.x and rite_at < win.x + win.y and rr.size != Vector2.ZERO and Rect2(0, 0, 640, 360).encloses(rr),
+			"the rite is reachable: the window %s holds it, inside the frame (%s)" % [win, rr])
 	t.check(board.brief_top(MissionBook.FIRST_TASTE, r) < MissionBoard.rule_y(r, board.best_rows()),
 		"its title and kind line end above the rule (%s < %s)" % [board.brief_top(MissionBook.FIRST_TASTE, r), MissionBoard.rule_y(r, board.best_rows())])
 	var picked := []
@@ -324,7 +335,7 @@ static func _dev_tab_hunts(t) -> void:
 	t.check(not in_row1, "none of the five is in row 1 (%s)" % [row1])
 	t.check(board.tab_of(HuntBook.ids()[0]) == MissionBoard.DEV_TIER and board.tab_of(MissionBook.FIRST_TASTE) == MissionBoard.DEV_TIER,
 		"a Hunt id is on the DEV tab")
-	var row1_end := MissionBoard.card_rect(0, row1.size()).end.y
+	var row1_end := MissionBoard.card_rect(0, mini(row1.size(), MissionBoard.DEV_PAGE)).end.y
 	var bad := []
 	for i in hunts.size():
 		var r := MissionBoard.hunt_rect(i, hunts.size())
@@ -405,4 +416,89 @@ static func _dev_tab_hunt_keys(t, save: SaveFile) -> void:
 	board._unhandled_input(_key(KEY_DOWN))
 	t.check(not board.row2 and board.selected == before and board.hint_text() == MissionBoard.HINT,
 		"on a tier tab Down does nothing and the hint is the plain one (%s, %d)" % [board.row2, board.selected])
+	board.free()
+
+
+## The DEV tab's row 1 is paged: DEV_PAGE cards at a time, the window follows the selection, markers show what is hidden.
+static func _dev_tab_paging(t) -> void:
+	var save := SaveFile.new()
+	var board := MissionBoard.new()
+	board.dev = true
+	board.setup(save, "warning")
+	board.open_tab(MissionBoard.DEV_TIER)
+	var ids := board.missions()
+	var n := ids.size()
+	t.check(n > MissionBoard.DEV_PAGE, "the DEV tab has more than a page of cards (%d)" % n)
+	var visible := 0
+	var outside := 0
+	for i in n:
+		var r := board.row1_rect(i)
+		if r.size != Vector2.ZERO:
+			visible += 1
+			if not Rect2(0, 0, 640, 360).encloses(r):
+				outside += 1
+	t.check(visible == MissionBoard.DEV_PAGE and outside == 0, "exactly a page of cards has a rect, inside the frame (%d, %d outside)" % [visible, outside])
+	t.check(board.dev_window() == Vector2i(0, MissionBoard.DEV_PAGE) and board.dev_first == 0, "the window opens at the first card (%s)" % [board.dev_window()])
+	var wide := []
+	var r0 := board.row1_rect(0)
+	for line in UiTheme.wrap(board.card_title(ids[0]), board.title_room(ids[0], r0), board.title_size(ids[0], r0)):
+		if UiTheme.width(line, board.title_size(ids[0], r0)) > board.title_room(ids[0], r0) + 0.01:
+			wide.append(line)
+	t.check(wide.is_empty(), "card 0's title lines fit (%s)" % [wide])
+	var h := board.hidden_sides()
+	t.check(h == Vector2i(0, n - MissionBoard.DEV_PAGE) and board.marker_rect(-1).size == Vector2.ZERO and board.marker_rect(1).size != Vector2.ZERO,
+		"only the right marker shows at first (%s)" % [h])
+	var m := board.marker_rect(1)
+	var cards_hit := false
+	for i in n:
+		var r := board.row1_rect(i)
+		cards_hit = cards_hit or (r.size != Vector2.ZERO and r.intersects(m))
+	t.check(not cards_hit and Rect2(0, 0, 640, 360).encloses(m), "the marker overlaps no card and is inside the frame (%s)" % [m])
+	# Right from the last visible card scrolls by one.
+	board.selected = MissionBoard.DEV_PAGE - 1
+	board._select(MissionBoard.DEV_PAGE)
+	t.check(board.selected == MissionBoard.DEV_PAGE and board.dev_first == 1 and board.row1_rect(0).size == Vector2.ZERO,
+		"Right from the last visible card scrolls by one (%d, first %d)" % [board.selected, board.dev_first])
+	# Left from the first visible card scrolls back.
+	board._select(0)
+	t.check(board.dev_first == 0 and board.selected == 0, "going back to card 0 scrolls to it (first %d)" % board.dev_first)
+	# Wrap: Left from the first goes to the last, Right from the last to the first.
+	board._select(-1)
+	t.check(board.selected == n - 1 and board.dev_first == n - MissionBoard.DEV_PAGE and board.row1_rect(n - 1).size != Vector2.ZERO,
+		"Left from the first wraps to the last, the window at the end (%d, first %d)" % [board.selected, board.dev_first])
+	t.check(board.hidden_sides().y == 0 and board.marker_rect(1).size == Vector2.ZERO and board.marker_rect(-1).size != Vector2.ZERO, "and only the left marker shows")
+	board._select(n)
+	t.check(board.selected == 0 and board.dev_first == 0, "Right from the last wraps to the first and resets the window (%d, first %d)" % [board.selected, board.dev_first])
+	# A click on a marker pages; one where a hidden card would have been picks nothing.
+	var picked := []
+	board.action.connect(func(what: String) -> void: picked.append(what))
+	t.check(board.hit(board.marker_rect(1).get_center()) == "page:1", "the right marker is hit as a page")
+	board.click(board.marker_rect(1).get_center())
+	t.check(board.dev_first == MissionBoard.DEV_PAGE and board.selected == MissionBoard.DEV_PAGE and picked.is_empty(),
+		"a marker click pages by one page without picking (first %d, selected %d, %s)" % [board.dev_first, board.selected, picked])
+	t.check(board.hit(board.marker_rect(-1).get_center()) == "page:-1", "the left marker is hit as a page")
+	board.click(board.marker_rect(-1).get_center())
+	t.check(board.dev_first == 0 and board.selected == 0, "the left marker pages back (first %d, selected %d)" % [board.dev_first, board.selected])
+	board.dev_first = 2
+	board.selected = 2
+	var hidden_slot := MissionBoard.card_rect(0, MissionBoard.DEV_PAGE)  # where card 0 was; card 2 is first now
+	var got := board.hit(hidden_slot.get_center())
+	t.check(got == "card:2", "a click on the first slot picks the window's first card, not a hidden one (%s)" % got)
+	board.click(Vector2(630.0, 200.0))
+	t.check(picked.is_empty() or picked == ["pick"], "no stray action")
+	# Arithmetic with 27 cards, stepping Right from the first to the last: every card is visible in turn, the window moves by one.
+	var first := 0
+	var reached := 0
+	var bad := 0
+	for sel in 27:
+		var next := MissionBoard.follow_first(first, sel, 27)
+		if sel >= next and sel < next + MissionBoard.DEV_PAGE:
+			reached += 1
+		if next - first > 1 or next < 0 or next + MissionBoard.DEV_PAGE > 27:
+			bad += 1
+		first = next
+	for k in MissionBoard.DEV_PAGE:
+		if not Rect2(0, 0, 640, 360).encloses(MissionBoard.card_rect(k, MissionBoard.DEV_PAGE)):
+			bad += 1
+	t.check(reached == 27 and bad == 0 and first == 27 - MissionBoard.DEV_PAGE, "27 cards: all reachable, the window steps by one, rects inside the frame (%d, %d bad, first %d)" % [reached, bad, first])
 	board.free()

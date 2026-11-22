@@ -91,7 +91,7 @@ static func _frames(t) -> void:
 		board.open_tab(tab)
 		var ids := board.missions()
 		for i in ids.size():
-			var r := MissionBoard.card_rect(i, ids.size())
+			var r := MissionBoard.card_rect(mini(i, MissionBoard.DEV_PAGE - 1), mini(ids.size(), MissionBoard.DEV_PAGE))
 			var size := board.title_size(ids[i], r)
 			var room := board.title_room(ids[i], r)
 			for line in UiTheme.wrap(board.card_title(ids[i]), room, size):

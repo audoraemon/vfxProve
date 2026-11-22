@@ -43,6 +43,12 @@ const HINT := "Left and Right: missions   Tab or number keys: tiers   Enter: pre
 const HINT_DEV := "Up and Down: rows   Left and Right: missions   Tab or number keys: tiers   Enter: prepare   Esc: title"
 ## The DEV tab (--dev only): its tier number, past the five, and its button in the header beside the title.
 const DEV_TIER := 6
+## Row 1 of the DEV tab shows at most this many cards at a time (it holds the sandbox, every town's missions and the rite).
+const DEV_PAGE := 6
+## The paging markers "< N" and "N >" above row 1's ends: where they are drawn and clicked (between the tabs and the cards).
+const MARK_Y := 52.0
+const MARK_W := 56.0
+const MARK_H := 10.0
 const DEV_RECT := Rect2(112.0, 8.0, 40.0, 20.0)
 ## The ENDLESS button (god P1, Ruling P14; --dev only), beside DEV in the header: it opens Endless Night's slot select. A card would need
 ## a fake MissionDef, so it is a button. A click emits "endless".
@@ -66,6 +72,8 @@ var tier := 1
 var selected := 0
 ## Whether the selection is on the DEV tab's Hunt row (god P5): `selected` then indexes dev_hunts(), else missions().
 var row2 := false
+## The first card of row 1's window on the DEV tab (see dev_window()).
+var dev_first := 0
 
 var _save: SaveFile
 var _ui: Control
@@ -95,6 +103,7 @@ func setup(save: SaveFile, current: String) -> MissionBoard:
 		if at == DEV_TIER and dev_hunts().has(current):  # the board reopens on the Hunt last picked (god P5)
 			row2 = true
 			selected = dev_hunts().find(current)
+	_follow()
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -160,6 +169,64 @@ func hunt_label(id: String) -> String:
 ## The DEV tab's button (--dev only).
 static func dev_rect() -> Rect2:
 	return DEV_RECT
+
+
+## Whether row 1 is paged: the DEV tab with more than DEV_PAGE cards.
+func dev_paged() -> bool:
+	return dev and tier == DEV_TIER and missions().size() > DEV_PAGE
+
+
+## Row 1's window as (first card, cards shown): all of them unless paged.
+func dev_window() -> Vector2i:
+	var n := missions().size()
+	if not dev_paged():
+		return Vector2i(0, n)
+	return Vector2i(clampi(dev_first, 0, n - DEV_PAGE), DEV_PAGE)
+
+
+## Row 1's card `i`, where it is drawn and hit; Rect2() when it is outside the window.
+func row1_rect(i: int) -> Rect2:
+	var w := dev_window()
+	if i < w.x or i >= w.x + w.y:
+		return Rect2()
+	return card_rect(i - w.x, w.y)
+
+
+## Moves the window the least that holds the selected card of row 1 (nothing while the selection is on the Hunts).
+func _follow() -> void:
+	if not dev_paged():
+		dev_first = 0
+		return
+	if row2:
+		return
+	dev_first = follow_first(dev_first, selected, missions().size())
+
+
+## The window start after the selection moved to `sel` among `count` cards: the least movement that holds it.
+static func follow_first(first: int, sel: int, count: int) -> int:
+	if sel < first:
+		first = sel
+	elif sel >= first + DEV_PAGE:
+		first = sel - DEV_PAGE + 1
+	return clampi(first, 0, maxi(count - DEV_PAGE, 0))
+
+
+## The cards hidden left and right of the window.
+func hidden_sides() -> Vector2i:
+	if not dev_paged():
+		return Vector2i.ZERO
+	var w := dev_window()
+	return Vector2i(w.x, missions().size() - w.x - w.y)
+
+
+## The marker "page:-1" or "page:1": its rect, or Rect2() when no card is hidden that way.
+func marker_rect(dir: int) -> Rect2:
+	var h := hidden_sides()
+	if (h.x if dir < 0 else h.y) <= 0:
+		return Rect2()
+	if dir < 0:
+		return Rect2(BOARD_MARGIN, MARK_Y, MARK_W, MARK_H)
+	return Rect2(640.0 - BOARD_MARGIN - MARK_W, MARK_Y, MARK_W, MARK_H)
 
 
 ## The open tab's missions, by id.
@@ -268,7 +335,7 @@ func best_lines(id: String, room: float) -> PackedStringArray:
 ## of a row sit level, a short best on one card and a long one beside it.
 func best_rows() -> int:
 	var ids := missions()
-	var room := card_rect(0, ids.size()).size.x - PAD * 2.0
+	var room := card_rect(0, dev_window().y).size.x - PAD * 2.0
 	var rows := 1
 	for id in ids:
 		rows = maxi(rows, best_lines(id, room).size())
@@ -368,6 +435,7 @@ func open_tab(t: int) -> void:
 	tier = t
 	selected = 0
 	row2 = false
+	dev_first = 0
 	UiSound.play(&"ui_click")
 	_redraw()
 
@@ -382,6 +450,7 @@ func choose(id: String) -> void:
 	tier = t
 	row2 = dev_hunts().has(id)
 	selected = maxi((dev_hunts() if row2 else _missions_of(t)).find(id), 0)
+	_follow()
 	if _is_open(t):
 		_pick()
 	else:
@@ -397,9 +466,12 @@ func hit(point: Vector2) -> String:
 	for i in TierBook.NAMES.size():
 		if tab_rect(i).has_point(point):
 			return "tab:%d" % (i + 1)
+	for dir in [-1, 1]:
+		if marker_rect(dir).has_point(point):
+			return "page:%d" % dir
 	var ids := missions()
 	for i in ids.size():
-		if card_rect(i, ids.size()).has_point(point):
+		if row1_rect(i).has_point(point):
 			return "card:%d" % i
 	if dev and tier == DEV_TIER:
 		var hunts := dev_hunts()
@@ -430,6 +502,7 @@ func _select(i: int) -> void:
 	i = posmod(i, ids.size())
 	if i != selected:
 		selected = i
+		_follow()
 		UiSound.play(&"ui_hover")
 		_redraw()
 
@@ -439,17 +512,21 @@ func _cross_rows(to_hunts: bool) -> void:
 	if not dev or tier != DEV_TIER or row2 == to_hunts or dev_hunts().is_empty() or missions().is_empty():
 		return
 	var from := _row().size()
-	var here := (hunt_rect(selected, from) if row2 else card_rect(selected, from)).get_center().x
+	var here := (hunt_rect(selected, from) if row2 else row1_rect(selected)).get_center().x
 	var ids := dev_hunts() if to_hunts else missions()
 	var best := 0
 	var gap := INF
 	for i in ids.size():
-		var at := (hunt_rect(i, ids.size()) if to_hunts else card_rect(i, ids.size())).get_center().x
+		var r := hunt_rect(i, ids.size()) if to_hunts else row1_rect(i)
+		if r.size == Vector2.ZERO:
+			continue
+		var at := r.get_center().x
 		if absf(at - here) < gap:
 			gap = absf(at - here)
 			best = i
 	row2 = to_hunts
 	selected = best
+	_follow()
 	UiSound.play(&"ui_hover")
 	_redraw()
 
@@ -507,6 +584,13 @@ func click(point: Vector2) -> void:
 		action.emit("endless")
 	elif h.begins_with("tab:"):
 		open_tab(int(h.substr(4)))
+	elif h.begins_with("page:"):
+		row2 = false
+		selected = clampi(selected + int(h.substr(5)) * DEV_PAGE, 0, missions().size() - 1)
+		dev_first = clampi(dev_first + int(h.substr(5)) * DEV_PAGE, 0, missions().size() - DEV_PAGE)
+		_follow()
+		UiSound.play(&"ui_hover")
+		_redraw()
 	elif h.begins_with("card:"):
 		row2 = false
 		selected = int(h.substr(5))
@@ -531,7 +615,15 @@ func _draw_ui() -> void:
 		var ids := missions()
 		var rows := best_rows()
 		for i in ids.size():
-			_draw_card(card_rect(i, ids.size()), ids[i], i == selected and not row2, rows)
+			var r := row1_rect(i)
+			if r.size != Vector2.ZERO:
+				_draw_card(r, ids[i], i == selected and not row2, rows)
+		var hid := hidden_sides()
+		if hid.x > 0:
+			UiTheme.text(_ui, Vector2(BOARD_MARGIN, MARK_Y + MARK_H - 1.0), "< %d" % hid.x, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+		if hid.y > 0:
+			var label := "%d >" % hid.y
+			UiTheme.text(_ui, Vector2(640.0 - BOARD_MARGIN - UiTheme.width(label, UiTheme.SIZE_SMALL), MARK_Y + MARK_H - 1.0), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 		if dev and tier == DEV_TIER:
 			var hunts := dev_hunts()
 			for i in hunts.size():

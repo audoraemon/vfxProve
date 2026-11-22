@@ -678,9 +678,11 @@ func _route_main() -> void:
 		if pick < 0 and ids.size() > 1:
 			pick = 1
 		if pick >= 0:
-			await os_click_design(board._ui, MissionBoard.card_rect(pick, ids.size()).get_center(), "card " + ids[pick])
+			board.selected = pick  # the DEV tab pages its row: scroll the window to the card, then click its real rect
+			board._follow()
+			await os_click_design(board._ui, board.row1_rect(pick).get_center(), "card " + ids[pick])
 			if not await _until(func() -> bool: return _game._screen_node is PrepareScreen, 4.0):
-				await os_click_design(board._ui, MissionBoard.card_rect(pick, ids.size()).get_center(), "card again")
+				await os_click_design(board._ui, board.row1_rect(pick).get_center(), "card again")
 			if await _until(func() -> bool: return _game._screen_node is PrepareScreen, 5.0):
 				await _secs(0.8)
 				var prep = _game._screen_node

@@ -54,7 +54,7 @@ const LINES := {
 	"informer.found": "He is found and runs for the Temple (red). Kill him before he gets in. Unseen, no cry is raised.",
 	"informer.hiding": "Alarmed, he hides (gold). Burn the house: the fire drives him out. Or wait for him.",
 	"informer.running": "No hiding place: he runs for the Temple (red). Kill him before he gets in.",
-	"tax_collector": "Kill each collector (gold) on his round, unseen (red) if you can: a seen kill no accident explains rings the bell. Or banish him.",
+	"tax_collector": "Kill each collector (gold) on his round, unseen (red): a seen kill no accident explains rings the bell. Or banish him.",
 	"tax_collector.ready": "The first collector (gold) leaves the counting-house (orange) in {n} s. Be ready to kill him on his round.",
 	"tax_collector.inside": "He is in a debtor's house (gold) for {n} s. Be at the door and seal it as he comes out, his guards away.",
 	"tax_collector.hiding": "Alarmed, he hides in the counting-house (orange). Burn it: everyone inside runs for the Citadel.",

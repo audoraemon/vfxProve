@@ -3,15 +3,16 @@ extends RefCounted
 
 ## v0.07's cooldowns (kak-v0.07.1), which v0.08's may lengthen but never shorten (spec §2).
 const V07_COOLDOWNS := {
-	"doom": 2.5, "wisp": 25.0, "discord": 20.0, "heaven": 20.0, "blight": 25.0, "thorns": 30.0, "tornado": 30.0,
+	"doom": 2.5, "wisp": 25.0, "discord": 20.0, "heaven": 20.0, "thorns": 30.0, "tornado": 30.0,
 	"pestilence": 40.0, "dragon": 35.0, "tsunami": 40.0, "gravity": 45.0, "laser": 45.0, "orbital": 45.0,
 	"cinder": 50.0, "judgement": 60.0, "glacial": 60.0, "nova": 120.0,
 }
-## The powers added since v0.07, which have no v0.07 cooldown to keep to.
+## The powers added since v0.07, which have no v0.07 cooldown to keep to. Blight is among them since the Veil build remade it
+## (v0.07: 25 s; 20 s by the user's word of 2026-11-22: "too long for Tier 1").
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
 	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "breath", "belllies", "magnify", "redefine", "bound", "disorder", "erase", "eminent", "fenced", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
 	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors", "cage", "sealed", "raise", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide",
-	"slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight"]
+	"slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight", "blight"]
 
 
 static func run(t) -> void:

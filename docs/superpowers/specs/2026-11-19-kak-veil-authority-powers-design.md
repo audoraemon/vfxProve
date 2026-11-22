@@ -108,7 +108,7 @@ New kill kinds (`&"void"`, `&"night"`, `&"dreamt"`, `&"shadow"`) leave no body a
 Reach 0.8 / 1.6. Nothing else changes: victims fixed at the cast, fall `T_STRIKE` later, the witness rule as today.
 
 ### 5.2 Blight `blight` (rework; the user's call: both parts)
-Might 2, cooldown 36 s, aim: click a building or a person. What a click picks, in order: (1) a mission's own blight
+Might 2, cooldown 20 s (36 s until the second review pass, 2026-11-22), aim: click a building or a person. What a click picks, in order: (1) a mission's own blight
 target (`MissionDirector.blight_target()`), as today; (2) the building whose footprint is under the click; (3) the
 nearest person within 0.5; (4) the nearest building within today's `REACH` of 1. So a click on a building always takes
 the building, and today's routes, which click buildings, pick what they picked before.

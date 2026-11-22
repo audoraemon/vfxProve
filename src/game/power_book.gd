@@ -171,7 +171,7 @@ const POWERS := [
 			{"RADIUS": 2.1, "SEED": 0.1, "cooldown": 32.0, "twist": true, "twist_text": "Directed Frenzy: the broken hunt soldiers"}]},
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
 		"blurb": "Rots a building and leaves dusk round it, or sickens a person.",
-		"dp": 2, "cooldown": 36.0, "aim": "click", "shape": "a building rots, losing its use or its light, and the ground within 3 (5 in the dark) of it stays dusk, 3 buildings at most; a person within 0.5 falls ill and goes home to bed (with the 2 nearest within 2 in the dark)", "quiet": true,
+		"dp": 2, "cooldown": 20.0, "aim": "click", "shape": "a building rots, losing its use or its light, and the ground within 3 (5 in the dark) of it stays dusk, 3 buildings at most; a person within 0.5 falls ill and goes home to bed (with the 2 nearest within 2 in the dark)", "quiet": true,
 		"authority": "veil"},
 	{"key": "thorns", "name": "Thornwall", "path": "res://src/fx/control/thornwall.gd",
 		"blurb": "A bramble wall rises and blocks the way for a while.",

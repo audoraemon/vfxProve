@@ -12,7 +12,8 @@ extends MissionDirector
 ## Where Mira lived: her house is the one nearest this point (ground units).
 const MIRA_SPOT := Vector2(-12.0, 2.0)
 ## The names a town's overrides may set (Overrides, v0.12): the town var below, seeded from MIRA_SPOT; setup reads it and never assigns it.
-## (SermonDirector inherits it and never reads it; First Prayers declares its own list.)
+## (SermonDirector inherits it and never reads it.) Convention: a subclass lists its own names in a `<NAME>_TOWN_VARS` const (it cannot redeclare
+## TOWN_VARS) and Overrides.town_vars joins them up the base chain (First Prayers: PRAYERS_TOWN_VARS).
 const TOWN_VARS := ["mira_spot"]
 ## How many grieving there are, and how many Faithful besides the clergy.
 const GRIEVING := 12

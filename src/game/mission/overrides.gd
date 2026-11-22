@@ -53,12 +53,20 @@ static func apply(target: Object, values: Dictionary, allowed: Variant = null) -
 	return bad
 
 
-## The names a town may override on `director`: the TOWN_VARS its script declares (none: none).
+## The names a town may override on `director`: the TOWN_VARS its script declares and those of the scripts it extends (a subclass cannot
+## redeclare TOWN_VARS, so it names its own list <WHAT>_TOWN_VARS and the lists are joined); none: none.
 static func town_vars(director: Object) -> Array:
+	var out := []
 	var script := director.get_script() as Script
-	if script == null:
-		return []
-	return script.get_script_constant_map().get("TOWN_VARS", [])
+	while script != null:
+		var consts := script.get_script_constant_map()
+		for key: String in consts:
+			if key == "TOWN_VARS" or key.ends_with("_TOWN_VARS"):
+				for n: Variant in consts[key]:
+					if not out.has(n):
+						out.append(n)
+		script = script.get_base_script()
+	return out
 
 
 static func _name_of(target: Object) -> String:

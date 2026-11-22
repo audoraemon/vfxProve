@@ -7,56 +7,56 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **171** done\n**13** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **171** done\n**14** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-22T22:07:24+07:00"
+     "timestamp": "2026-11-23T00:01:09+07:00"
     },
     {
      "title": "god/veil-review",
-     "description": "64 commits not in Develop-Main · last commit today\n> docs: the final review's corrections to the second pass's summary, rulings and spec\n\n**In progress** (1)\n• Veil abilities review: previews, stronger effects, second pass — **needs you**",
+     "description": "64 commits not in Develop-Main · last commit yesterday\n> docs: the final review's corrections to the second pass's summary, rulings and spec\n\n**In progress** (1)\n• Veil abilities review: previews, stronger effects, second pass — **needs you**",
      "color": 5016537
     },
     {
      "title": "feat/god-chamber",
-     "description": "34 commits not in Develop-Main · last commit today · local only\n> docs: capital_panic references say why b_play_1 is omitted\n\n_No Ledger task points at this branch._",
+     "description": "34 commits not in Develop-Main · last commit yesterday · local only\n> docs: capital_panic references say why b_play_1 is omitted\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/soldier-duties",
-     "description": "25 commits not in Develop-Main · last commit today · local only\n> fix: a found body adds no incident or alarm when its death was already counted (ruling R18)\n\n_No Ledger task points at this branch._",
+     "description": "27 commits not in Develop-Main · last commit yesterday · local only\n> fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/soldier-duties-r20",
+     "description": "25 commits not in Develop-Main · last commit yesterday · local only\n> fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/town-suspicion",
-     "description": "18 commits not in Develop-Main · last commit today · local only\n> docs: Town Suspicion rulings, moved references and gate table\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/veil-powers",
-     "description": "33 commits not in Develop-Main · last commit yesterday\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "claude/lantern-campaign-spec",
-     "description": "24 commits not in Develop-Main · last commit yesterday · local only\n> feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)\n\n_No Ledger task points at this branch._",
+     "description": "18 commits not in Develop-Main · last commit yesterday · local only\n> docs: Town Suspicion rulings, moved references and gate table\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/natural-people",
-     "description": "8 commits not in Develop-Main · last commit yesterday · local only\n> fix: late goers and merges only into reachable groups; none after the close; no re-send of the broken (fair life T3 review)\n\n_No Ledger task points at this branch._",
+     "description": "9 commits not in Develop-Main · last commit yesterday · local only\n> test: re-record the 40 non-panic references moved by the flinch; fair life gate notes (fair life T4, panic rows pending)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "god/veil-powers",
+     "description": "33 commits not in Develop-Main · last commit 2 days ago\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "claude/lantern-campaign-spec",
+     "description": "24 commits not in Develop-Main · last commit 2 days ago · local only\n> feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/might-gauge",
-     "description": "19 commits not in Develop-Main · last commit 2 days ago · local only\n> test: track the route suite's uid\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/wish-clarity",
-     "description": "1 commit not in Develop-Main · last commit 3 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
+     "description": "19 commits not in Develop-Main · last commit 3 days ago · local only\n> test: track the route suite's uid\n\n_No Ledger task points at this branch._",
      "color": 5016537
     }
    ]
@@ -67,23 +67,28 @@
    },
    "embeds": [
     {
+     "title": "feat/wish-clarity",
+     "description": "1 commit not in Develop-Main · last commit 4 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
      "title": "feat/god-progression",
-     "description": "merged into Develop-Main · last commit 5 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "merged into Develop-Main · last commit 6 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     },
     {
      "title": "god/dominion-t3-old",
-     "description": "2 commits not in Develop-Main · last commit 16 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "description": "2 commits not in Develop-Main · last commit 17 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 7041664
     },
     {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 44 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 45 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 44 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 45 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {

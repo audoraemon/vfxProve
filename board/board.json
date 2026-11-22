@@ -1,8 +1,8 @@
 {
- "hash": "bcfd51356043910a",
- "updated": "2026-11-22T22:07:24+07:00",
+ "hash": "b5f3002314f80f87",
+ "updated": "2026-11-23T00:01:09+07:00",
  "changes": {
-  "date": "<t:1795360044:f>",
+  "date": "<t:1795366869:f>",
   "items": []
  },
  "snapshot": {
@@ -1957,10 +1957,18 @@
    },
    {
     "name": "feat/soldier-duties",
+    "ahead": 27,
+    "behind": 13,
+    "date": "2026-11-22",
+    "subject": "fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)",
+    "pushed": false
+   },
+   {
+    "name": "feat/soldier-duties-r20",
     "ahead": 25,
     "behind": 13,
     "date": "2026-11-22",
-    "subject": "fix: a found body adds no incident or alarm when its death was already counted (ruling R18)",
+    "subject": "fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)",
     "pushed": false
    },
    {
@@ -1969,6 +1977,14 @@
     "behind": 0,
     "date": "2026-11-22",
     "subject": "docs: Town Suspicion rulings, moved references and gate table",
+    "pushed": false
+   },
+   {
+    "name": "claude/natural-people",
+    "ahead": 9,
+    "behind": 13,
+    "date": "2026-11-22",
+    "subject": "test: re-record the 40 non-panic references moved by the flinch; fair life gate notes (fair life T4, panic rows pending)",
     "pushed": false
    },
    {
@@ -1985,14 +2001,6 @@
     "behind": 0,
     "date": "2026-11-21",
     "subject": "feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)",
-    "pushed": false
-   },
-   {
-    "name": "claude/natural-people",
-    "ahead": 8,
-    "behind": 13,
-    "date": "2026-11-21",
-    "subject": "fix: late goers and merges only into reachable groups; none after the close; no re-send of the broken (fair life T3 review)",
     "pushed": false
    },
    {

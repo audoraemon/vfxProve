@@ -83,6 +83,16 @@ const MARK_PALE := Color("9a948a", 0.55)
 ## The banner when a whisper on a contact is seen (v0.11 M3, decision 56).
 const SEEN_BANNER := "SEEN - HE SAYS NOTHING"
 
+## The names a town's overrides may set (Overrides): these vars and the base's `safe_at`, seeded in _init() (setup reads them and never
+## assigns them). TRADES and ORDINALS stay consts: they are trades and counting words, not places.
+const TOWN_VARS := ["contact_spots", "lodging_at", "temple_door_at", "visit_at", "safe_at"]
+
+## The contacts' points, where he lodges, the Temple's door and when word reaches each (a town's own: Aldermere's are the consts).
+var contact_spots: Array = CONTACT_SPOTS
+var lodging_at: Vector2 = LODGING_AT
+var temple_door_at: Vector2 = TEMPLE_DOOR
+var visit_at: Array = VISIT_AT
+
 ## The contacts, in the order he visits them (v0.11 M3).
 var contacts: Array[Contact] = []
 ## The informer's lodging, where he waits unseen (v0.11 M3).
@@ -95,14 +105,19 @@ var cold := false
 var _keep_in := 0.0
 
 
+## AssassinateDirector's `safe_at` starts at the Temple's door (v0.12, R31): set at .new(), so a town's override survives setup.
+func _init() -> void:
+	safe_at = temple_door_at
+
+
 ## The contacts, their company and houses; the hiding place (the carpenter's house) and the lodging; the numbers (v0.11 M3). The
 ## informer is the one quarry: no stops, no guards, never sent by his time (scheduled false), never smoked out.
 func _plan() -> void:
-	var temple := _walkable(TEMPLE_DOOR)
+	var temple := _walkable(temple_door_at)
 	var houses: Array = []
 	var claimed: Array = []
-	for i in CONTACT_SPOTS.size():
-		var h := _contact_house(CONTACT_SPOTS[i], temple, houses)
+	for i in contact_spots.size():
+		var h := _contact_house(contact_spots[i], temple, houses)
 		if h == null:
 			continue
 		houses.append(h)
@@ -124,8 +139,7 @@ func _plan() -> void:
 		contacts.append(c)
 	if not contacts.is_empty():
 		hideout = contacts[contacts.size() - 1].house
-	lodging = _house_near(LODGING_AT, houses)
-	safe_at = TEMPLE_DOOR
+	lodging = _house_near(lodging_at, houses)
 	hide_seconds = HIDE_SECONDS
 	alarm_reach = ALARM_REACH
 	smoke_out = false
@@ -152,10 +166,10 @@ func _begin() -> void:
 		q.target.ground_pos = lodging.center()
 		q.target.go_duty(lodging.center())
 	for i in contacts.size():
-		timeline.add(float(VISIT_AT[i]), "visit_%d" % i, _visit_label(i), _visit.bind(i),
+		timeline.add(float(visit_at[i]), "visit_%d" % i, _visit_label(i), _visit.bind(i),
 			func() -> bool: return not contacts[i].word and not cold)
 	if not contacts.is_empty():
-		timeline.add(float(VISIT_AT[contacts.size() - 1]) + FOUND_LIMIT, "names", "The names reach the Temple", _names_in,
+		timeline.add(float(visit_at[contacts.size() - 1]) + FOUND_LIMIT, "names", "The names reach the Temple", _names_in,
 			func() -> bool: return not found and not cold and quarries[0].state != State.SAFE)
 
 
@@ -202,7 +216,7 @@ func _company_spot(c: Contact, k: int, n: int) -> Vector2:
 
 ## The resident nearest his lodging, none of the contacts nor their company (v0.11 M3, mission spec §3).
 func _appoint_target(_q: Quarry) -> Person:
-	return _citizen_near(LODGING_AT, CitizenProfile.Role.RESIDENT, _appointed() + _claimed())
+	return _citizen_near(lodging_at, CitizenProfile.Role.RESIDENT, _appointed() + _claimed())
 
 
 ## `p` is the informer, a guard, a contact or one of a contact's company (v0.11.2: the Lantern-Bearer must not take them).
@@ -252,8 +266,8 @@ func _visit(i: int) -> void:
 
 ## The second into the night word reaches contact `i` at the latest (v0.11 M3, Decision 23): his own time, or CHAIN_WAIT after the
 ## one before was turned if that is sooner.
-func visit_at(i: int) -> float:
-	var at := float(VISIT_AT[i]) * timeline.stretch_factor()
+func visit_time(i: int) -> float:
+	var at := float(visit_at[i]) * timeline.stretch_factor()
 	if i > 0 and contacts[i - 1].turned_at >= 0.0:
 		at = minf(at, contacts[i - 1].turned_at + CHAIN_WAIT)
 	return at
@@ -261,7 +275,7 @@ func visit_at(i: int) -> float:
 
 ## Seconds until word reaches contact `i` at the latest; 0 once it has (v0.11 M3).
 func visit_in(i: int) -> float:
-	return 0.0 if contacts[i].word else maxf(visit_at(i) - _clock, 0.0)
+	return 0.0 if contacts[i].word else maxf(visit_time(i) - _clock, 0.0)
 
 
 ## One step (v0.11 M3): the Assassinate type's (the timeline; the informer once found), then the visits' chain, the names' deadline
@@ -271,7 +285,7 @@ func step(delta: float) -> void:
 	if found or cold or contacts.is_empty():
 		return
 	for i in range(1, contacts.size()):
-		if not contacts[i].word and contacts[i - 1].turned_at >= 0.0 and _clock >= visit_at(i):
+		if not contacts[i].word and contacts[i - 1].turned_at >= 0.0 and _clock >= visit_time(i):
 			rules.banner.emit(_visit_label(i).to_upper())
 			_visit(i)
 	var last := contacts[contacts.size() - 1]
@@ -291,7 +305,7 @@ func _names_in() -> void:
 	if found or q.state == State.SAFE:
 		return
 	q.state = State.SAFE
-	_sound(&"msn_door", _walkable(TEMPLE_DOOR))
+	_sound(&"msn_door", _walkable(temple_door_at))
 
 
 ## The contacts not yet turned, and their company, are kept at their places (v0.11 M3, Decision 25): one moved off (a whisper, a
@@ -369,7 +383,7 @@ func _turn(c: Contact) -> void:
 	if i + 1 < contacts.size():
 		var next := contacts[i + 1]
 		rules.banner.emit("THE %s NAMES THE %s" % [c.trade.to_upper(), next.trade.to_upper()])
-		timeline.expect("visit_%d" % (i + 1), visit_at(i + 1))
+		timeline.expect("visit_%d" % (i + 1), visit_time(i + 1))
 	else:
 		rules.banner.emit("THE %s NAMES HIS HIDING PLACE" % c.trade.to_upper())
 		_found()
@@ -527,7 +541,7 @@ func tour() -> Array:
 	if not contacts.is_empty() and _alive(contacts[0].man):
 		var many: String = ["no", "one", "two", "three", "four", "five"][mini(contacts.size(), 5)]
 		out.append([(contacts[0].man as Person).ground_pos, "The %s, first of the informer's %s contacts. Word reaches him at %s. Turn him with a whisper: do not kill him." % [
-			contacts[0].trade, many, UiTheme.clock(float(VISIT_AT[0]))]])
+			contacts[0].trade, many, UiTheme.clock(float(visit_at[0]))]])
 	out.append([safe_at, "The Temple. The informer takes your believers' names here."])
 	return out
 

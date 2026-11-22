@@ -372,12 +372,13 @@ const SERMON_ALONE := 2.0
 const SERMON_AWAY := 8.0
 ## The Relic Run's policy (v0.11 M5): how near its time the first halt's wardens are cleared, and the second's from the leg (the
 ## controller's ruling: clearing the watch on Pip's road is work, and no stretch passes 45 s -- a relief walking in is cleared too); how
-## near its time a warden whose death would be seen is taken all the same; how far from the next checkpoint Pip waits for the cart (out
+## near its time a warden was taken though seen (no longer: a pair walking its beat makes it a report); how far from the next checkpoint Pip waits for the cart (out
 ## of sight of its wardens' deaths), and how much nearer than that counts as there; how near its time he is sent from there to the
 ## checkpoint itself, so he stands by the cart as it stops.
 const RELIC_AHEAD := 25.0
 const RELIC_LEG := 40.0
-const RELIC_LATE := 10.0
+## How long a whisper may cool before the lone watcher of the halted cart is held by Discord instead of waiting for it (the halt is short).
+const RELIC_SOON := 2.0
 const RELIC_PARK := 3.0
 const RELIC_NEAR := 0.8
 const RELIC_COME := 10.0
@@ -3902,7 +3903,7 @@ func _relic(which: String) -> void:
 ## 4. before a halt, Pip not aboard: within RELIC_COME of it, Mind Whisper sends him to its checkpoint; earlier, more than RELIC_NEAR
 ##    from his waiting place RELIC_PARK short of it on his side, toward that place (up to its reach);
 ## 5. the next halt within RELIC_AHEAD (the first) or RELIC_LEG (the second): Silent Doom on a warden of it with no one else within its
-##    radius whose death goes unseen, or in its last RELIC_LATE seconds on one seen; else Mind Whisper sends one still at his post to
+##    radius whose death goes unseen when cast (a death seen is never taken: the street's pairs walk in and report it); else Mind Whisper sends one still at his post to
 ##    a quiet spot (_relic_quiet()), where his death will go unseen;
 ## (aboard at the first halt, nothing more: the count runs and the cart rolls on);
 ## 6. halted, Pip neither within the cart's reach nor aboard: Mind Whisper sends him to the cart;
@@ -3965,7 +3966,7 @@ func _relic_act(rules: Rules, slots: Dictionary, d: RelicRunDirector, crowd: Cro
 	if d.halt < 0 and k >= 0 and due <= (RELIC_AHEAD if k == 0 else RELIC_LEG):
 		if doom:
 			for p in d.wardens_at(k):
-				if _none_within(crowd, p, SilentDoom.RADIUS) and (due <= RELIC_LATE or _tax_unseen(p, crowd)):
+				if _none_within(crowd, p, SilentDoom.RADIUS) and _tax_unseen(p, crowd):
 					rules.cast(slots.doom, p.ground_pos)
 					return "doom a warden ahead"
 		if whisper:
@@ -3987,7 +3988,7 @@ func _relic_act(rules: Rules, slots: Dictionary, d: RelicRunDirector, crowd: Cro
 	var seen := d.watchers_now()
 	if seen.is_empty():
 		return ""
-	var lone := seen.size() == 1 and _whisperable(seen[0])  # one watcher: a whisper (soon ready), not the slow Discord
+	var lone := seen.size() == 1 and _whisperable(seen[0]) and _slot_wait(rules, slots, "whisper") <= RELIC_SOON  # one watcher: a whisper (soon ready), else Discord
 	if discord and not lone:
 		var mid := Vector2.ZERO
 		for p in seen:

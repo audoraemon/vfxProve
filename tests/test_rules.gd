@@ -4,6 +4,13 @@ extends RefCounted
 
 
 static func run(t) -> void:
+	# A caster's own pace (scripted play): empty in the game; longer than the cooldown it wins, shorter it does nothing, never once-a-descent.
+	t.check(Rules.pace.is_empty() and Rules.paced("blight", 20.0) == 20.0, "the game sets no pace: a cooldown is the power's own")
+	Rules.pace = {"blight": 36.0, "doom": 4.0, "swallow": 5000.0}
+	t.check(Rules.paced("blight", 20.0) == 36.0 and Rules.paced("doom", 10.0) == 10.0 and Rules.paced("smite", 10.0) == 10.0,
+		"a pace longer than the cooldown is kept; a shorter one, or none, changes nothing")
+	t.check(Rules.paced("swallow", Rules.ONCE_COOLDOWN) == Rules.ONCE_COOLDOWN, "a once-a-descent power has no pace")
+	Rules.pace = {}
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)

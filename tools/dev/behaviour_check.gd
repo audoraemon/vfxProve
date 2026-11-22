@@ -499,7 +499,13 @@ var mission: Mission
 var route := ""
 
 
+## The pace the scripted nights keep (Rules.pace): they were written and recorded when Blight cooled for 36 s; the game's is 20 s since
+## the Veil's second review pass (2026-11-22). A play that waits longer than it must is still a play.
+const BOT_PACE := {"blight": 36.0}
+
+
 func _initialize() -> void:
+	Rules.pace = BOT_PACE.duplicate()
 	AnimalPack.enabled = false  # the references are of the town without its animals (AnimalPack)
 	Children.enabled = false  # nor its children (Children)
 	mission = load("res://scenes/mission.tscn").instantiate()

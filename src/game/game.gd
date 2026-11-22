@@ -951,6 +951,7 @@ func _faded_into_mission() -> void:
 		return
 	_fading = true
 	await _fader.fade_out(FADE_OUT)
+	Music.set_mood(&"")  # the last mission's chase or rite does not carry over
 	Music.play(&"battle")  # rises behind the fade
 	Music.sting(&"music_sting_start")  # the night begins
 	go_to(Screen.MISSION)
@@ -986,6 +987,7 @@ func _continue_night() -> void:
 	screen = Screen.MISSION
 	_mission.next_act(loadout, _next_path)
 	_mission.set_frozen(false)
+	Music.set_mood(&"")  # the last mission's chase or rite does not carry over
 	Music.play(&"battle")
 	await get_tree().process_frame
 	await get_tree().process_frame

@@ -975,3 +975,11 @@ func teardown() -> void:
 		if is_instance_valid(h.house):
 			h.house.damage_filter = _own_filters[i]
 	super()
+
+
+## Music by situation: the chase while searchers are out after a household.
+func music_mood() -> StringName:
+	for h: Household in households:
+		if h.sent and not h.done:
+			return &"chase"
+	return &""

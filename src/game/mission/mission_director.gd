@@ -317,6 +317,12 @@ func report() -> Dictionary:
 	return {}
 
 
+## Virtual (music by situation): the mood the music takes now -- &"chase" while a pursuit is on, &"festival" or &"rite" for a
+## mission's own calm piece, &"" for the town's own (Music.set_mood). Only reads: it changes nothing and draws no random numbers.
+func music_mood() -> StringName:
+	return &""
+
+
 ## Virtual: what this act hands the next one, written into the night before the director is let go (v0.09).
 func carry(_n: NightState) -> void:
 	pass

@@ -808,3 +808,13 @@ func teardown() -> void:
 	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
 		crowd.escaped.disconnect(_on_escaped)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Music by situation: the chase once the hunters are out, until every charge has escaped, been taken or died.
+func music_mood() -> StringName:
+	if hunters.is_empty():
+		return &""
+	for c: Charge in charges:
+		if not c.escaped and not c.taken and _alive(c.man):
+			return &"chase"
+	return &""

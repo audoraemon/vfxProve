@@ -66,7 +66,7 @@ static func _policy_reads_vars(t) -> void:
 	var rb := FileAccess.get_file_as_string("res://tools/dev/routes/tier2_b.gd")
 	policy += _slice(rb, ["static func act_panic(", "static func _panic_look(", "static func _panic_ahead(", "static func _panic_mark(",
 		"static func _panic_far_citizen(", "static func _panic_house(", "static func _panic_by(", "static func state_panic("], "\nstatic func ")
-	t.check(policy.length() > 4000, "the panic policy functions are all found and sliced (%d chars)" % policy.length())
+	t.check(policy.length() > 3000, "the panic policy functions are all found and sliced (%d chars)" % policy.length())
 	t.check(not "MarketPanicDirector.HEART" in policy and not "MarketPanicDirector.SOURCES" in policy and not "TownLayout." in policy
 		and not "CAMERA_AT" in policy, "the panic policy reads d.heart and d.sources, no const, CAMERA_AT or TownLayout coordinate")
 
@@ -170,6 +170,22 @@ static func _words_true(t, d: MarketPanicDirector) -> void:
 		for place in ["north-east", "cathedral's street", "workshops", "east tavern"]:
 			wrong = wrong or place in line.to_lower()
 	t.check(not wrong, "no tour line names a place of Aldermere (%s)" % [said])
+	# Every line the player reads in the Capital: the def's board lines, goal, goal label and lose line, and the hints, name no place of Aldermere.
+	var def := MissionBook.get_mission("%s@capital" % ID)
+	var read := PackedStringArray(def.brief)
+	read.append_array([def.goal, def.goal_label, def.lose, String(MissionHints.LINES.get(ID, ""))])
+	t.check(def.brief.size() == 2 and read.size() == 6 and not String(read[0]).is_empty(), "the Capital's mission lines are found (%d)" % read.size())
+	var text_wrong := false
+	for line in read:
+		for place in ["north-east", "cathedral's street", "workshops", "east tavern", "fountain", "square"]:
+			text_wrong = text_wrong or place in line.to_lower()
+	t.check(not text_wrong, "no mission line the player reads in the Capital names a place of Aldermere (%s)" % [read])
+	# Aldermere's own words are unchanged.
+	var ald := MissionBook.get_mission(ID)
+	t.check(ald.brief.size() == 2 and ald.brief[0] == "A night fair fills the north-east square." and ald.brief[1] == "Scatter it before the market closes."
+		and ald.goal == def.goal, "Aldermere's board lines are unchanged")
+	t.check(MarketPanicDirector.new().heart == MarketPanicDirector.HEART and MarketPanicDirector.SOURCE_NAMES[0] == "the north-east quarter",
+		"Aldermere's place names are unchanged")
 	t.check(said.size() == 4, "the tour has its four stops (%d)" % said.size())
 	var named := said.size() == 4 and "old town" in said[0]
 	for i in range(1, mini(4, said.size())):

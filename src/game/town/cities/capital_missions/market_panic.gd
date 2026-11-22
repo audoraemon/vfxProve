@@ -6,7 +6,8 @@ extends RefCounted
 
 static func overrides() -> Dictionary:
 	return {
-		"def": {"camera_at": Vector2(-5.0, -3.5), "intro_from": Vector2(-5.0, 2.5)},
+		"def": {"camera_at": Vector2(-5.0, -3.5), "intro_from": Vector2(-5.0, 2.5),
+			"brief": PackedStringArray(["A night fair fills the old town's streets.", "Scatter it before the market closes."])},
 		"director": {"heart": Vector2(-3.5, -5.0),
 			"sources": [Vector2(-3.5, -5.0), Vector2(-4.0, -14.0), Vector2(9.0, -3.0), Vector2(-13.0, -9.0)],
 			"source_names": ["the old town", "the northern lanes", "the eastern lanes", "the western lanes"]},

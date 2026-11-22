@@ -8,12 +8,14 @@ extends RefCounted
 ## A group's size, the ring its people stand on round the centre, the least between two centres (centre to centre, a floor), and
 ## the seconds between a group's strolls.
 const GROUP_MIN := 2
-const GROUP_MAX := 4
-const RING := 0.45
-const APART := 1.6
+const GROUP_MAX := 3
+const RING := 0.6
+const APART := 2.0
 const STROLL := Vector2(20.0, 40.0)
 ## Tries at a centre before the best of them is taken.
 const TRIES := 16
+## The grid step of the sweep that finds a centre APART when the tries did not (not a tuning knob: it only widens the search).
+const SCAN := 0.4
 
 ## One group: its people (Variants: any may be a body freed after its death fade), its centre, each one's spot by instance id,
 ## and the seconds to its next stroll.
@@ -203,10 +205,34 @@ func _place(g: Group) -> void:
 			best_ok = ok
 		if ok:
 			break
+	if not best_ok:
+		best = _scan(g, best)
 	if best == Vector2.INF:
 		best = _walkable.call(_heart)
 	g.centre = best
 	_space(g)
+
+
+## When the random tries found no room APART from the other centres: a sweep of the centre disk on a SCAN grid for a walkable point
+## reachable by all of `g` that is APART from every other centre, the one nearest `near` (the best try, or the heart). `near` itself
+## if none fits (a full fair). No random draws.
+func _scan(g: Group, near: Vector2) -> Vector2:
+	var from := near if near != Vector2.INF else _heart
+	var found := Vector2.INF
+	var reach := _radius - RING
+	var steps := int(ceil(reach / SCAN))
+	for ix in range(-steps, steps + 1):
+		for iy in range(-steps, steps + 1):
+			var c := _heart + Vector2(ix, iy) * SCAN
+			if c.distance_to(_heart) > reach or _gap(c, g) < APART:
+				continue
+			if found != Vector2.INF and c.distance_to(from) >= found.distance_to(from):
+				continue
+			var ground: Vector2 = _walkable.call(c)
+			if ground.distance_to(c) > 0.05 or not _all_reach(g, c):
+				continue
+			found = c
+	return found if found != Vector2.INF else near
 
 
 ## The least distance from `c` to any other group's centre.
@@ -233,4 +259,15 @@ func _space(g: Group) -> void:
 	var turn := _rng.randf() * TAU
 	for k in n:
 		var slot: Vector2 = g.centre + Vector2.from_angle(turn + TAU * float(k) / float(n)) * RING
-		g.spots[(g.members[k] as Person).get_instance_id()] = _walkable.call(slot)
+		g.spots[(g.members[k] as Person).get_instance_id()] = _spot_for(g.members[k], g.centre, slot)
+
+
+## `who`'s spot for a ring slot: the slot nudged to walkable ground, but only if that is inside the fair's radius and he has a way
+## to it; else the slot pulled toward the centre by a quarter at a time, down to the centre itself (which _place() chose walkable and
+## reachable by all). A wide RING never puts a spot outside the fair or out of reach.
+func _spot_for(who: Variant, centre: Vector2, slot: Vector2) -> Vector2:
+	for f: float in [1.0, 0.75, 0.5, 0.25]:
+		var w: Vector2 = _walkable.call(centre + (slot - centre) * f)
+		if w.distance_to(_heart) <= _radius + 0.005 and (not is_instance_valid(who) or _reaches.call(who, w)):
+			return w
+	return centre

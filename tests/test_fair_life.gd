@@ -131,10 +131,17 @@ static func _group_losses(t) -> void:
 	for k in range(1, mine.size() - 1):
 		d._broke[mine[k]] = true
 		broke.append(mine[k] as Person)
-	var spare := false
+	# The survivor joins a group with room below GROUP_MAX. When every other group stands full, one of its people breaks too, which
+	# leaves that group the room: the check states the invariant (a survivor joins a group with room), not a group size.
+	var room_at_start := false
 	for grp: Array in groups:
-		spare = spare or (grp != mine and grp.size() < FairLife.GROUP_MAX)
+		room_at_start = room_at_start or (grp != mine and grp.size() < FairLife.GROUP_MAX)
+	if not room_at_start:
+		d._broke[(groups[groups.size() - 1] as Array)[0]] = true
 	Kit.run_for(s, MarketPanicDirector.TICK * 2.0 + DT)
+	var spare := false
+	for grp: Array in d.life.groups():
+		spare = spare or (not grp.has(survivor) and grp.size() >= FairLife.GROUP_MIN and grp.size() < FairLife.GROUP_MAX)
 	var out := dead.chat_at == Vector2.INF and d.life.spot_of(dead) == Vector2.INF
 	for p in broke:
 		out = out and p.chat_at == Vector2.INF and d.life.spot_of(p) == Vector2.INF and p._interact_anim() != 13

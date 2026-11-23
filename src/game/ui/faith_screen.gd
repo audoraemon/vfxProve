@@ -69,12 +69,13 @@ func row_line(what: String) -> String:
 	if row.is_empty():
 		return ""
 	var count := int(_slot.bought.get(what, 0))
+	var title := GodSlot.faith_name(row)
 	var limit := int(row.limit)
 	if limit > 0 and count >= limit:
-		return "%s   All bought" % row.name
+		return "%s   All bought" % title
 	if limit > 0:
-		return "%s   %d Faith   %d / %d" % [row.name, _slot.faith_price(what), count, limit]
-	return "%s   %d Faith   bought %d" % [row.name, _slot.faith_price(what), count]
+		return "%s   %d Faith   %d / %d" % [title, _slot.faith_price(what), count, limit]
+	return "%s   %d Faith   bought %d" % [title, _slot.faith_price(what), count]
 
 
 ## A left click at a screen point: Back goes back; a row is bought if it can be.
@@ -110,9 +111,9 @@ func buy(what: String) -> bool:
 func effect_line(what: String) -> String:
 	match what:
 		"slot":
-			return "Full refill: %d s" % int(_slot.refill_seconds())
+			return "Slots in a draft: %d" % _slot.slots() if GodNight.draft else "Full refill: %d s" % int(_slot.refill_seconds())
 		"might":
-			return "Might gauge: %d" % _slot.max_might()
+			return ("Might to spend: %d" if GodNight.draft else "Might gauge: %d") % _slot.max_might()
 		"clock":
 			return "Extra descent time: %d s" % int(_slot.extra_clock())
 		"respec":

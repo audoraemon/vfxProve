@@ -12,6 +12,8 @@ signal action(name: String)
 
 ## What the hub says when the god has nothing to draft (Ruling P8).
 const BLOCKED := "Nothing to cast: the tree's Tier 1 is not filled yet"
+## The same line in the draft mode (GodNight.draft).
+const BLOCKED_DRAFT := "Nothing to draft: the tree's Tier 1 is not filled yet"
 ## The Divine Power bar, and the buttons' row.
 const BAR_RECT := Rect2(24.0, 74.0, 280.0, 14.0)
 const BUTTONS_Y := 280.0
@@ -146,12 +148,12 @@ func status_layout() -> Dictionary:
 
 ## True when the god has an ability in its tree (the night brings all of them, the sealed one locked); a god with none cannot Descend (Ruling P8).
 func can_descend() -> bool:
-	return not _slot.in_tree().is_empty()
+	return not GodNight.pool_for(_slot).is_empty()
 
 
 ## BLOCKED when the god cannot Descend, else "".
 func blocked_line() -> String:
-	return "" if can_descend() else BLOCKED
+	return "" if can_descend() else (BLOCKED_DRAFT if GodNight.draft else BLOCKED)
 
 
 ## Where the button for `what` ("descend", "awaken", "tree", "faith", "title") is drawn; empty for none.

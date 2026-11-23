@@ -394,6 +394,7 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
 	dev = "--dev" in args
+	GodNight.draft = "--god-draft" in args  # the old Endless Night draft, hidden (Ruling R10)
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
@@ -1130,7 +1131,7 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 		# Endless Night (god P1, Rulings P9, P10, C7): the night is banked to the god and only the god's file is written -- already
 		# done when the night was decided (review M1), which put "god" in this same result.
 		if not outcome.has("god"):
-			bank_god_night(god, mission_id, PackedStringArray(outcome.get("cast", PackedStringArray())), result)
+			bank_god_night(god, mission_id, GodNight.carried_keys(loadout, outcome), result)
 			_write_god()
 	else:
 		bank_night(save, mission_id, loadout, result, _in_campaign)
@@ -1143,7 +1144,7 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 func _on_night_decided(outcome: Dictionary) -> void:
 	if not _in_endless or god == null:
 		return
-	bank_god_night(god, mission_id, PackedStringArray(outcome.get("cast", PackedStringArray())), outcome)
+	bank_god_night(god, mission_id, GodNight.carried_keys(loadout, outcome), outcome)
 	_write_god()
 
 
@@ -1273,7 +1274,7 @@ func _on_god_select_action(what: String, pick: GodSelectScreen) -> void:
 ## (exactly Descend's draw: the Hunt cannot be skipped, P2-4; the rite waits for the next night), else the rite for its level. A static so
 ## a suite can prove it.
 static func awaken_target(slot: GodSlot) -> String:
-	if slot == null or slot.in_tree().is_empty():
+	if slot == null or GodNight.pool_for(slot).is_empty():
 		return ""
 	var state := GodNight.awaken_state(slot)
 	if state == "":
@@ -1289,7 +1290,7 @@ static func awaken_target(slot: GodSlot) -> String:
 func _on_hub_action(what: String) -> void:
 	match what:
 		"descend":
-			if god.in_tree().is_empty():
+			if GodNight.pool_for(god).is_empty():
 				return
 			mission_id = GodNight.draw(god)
 			loadout = GodNight.night_loadout(god)

@@ -366,6 +366,12 @@ func max_might() -> int:
 	return TierBook.dp(tier) + int(bought.get("might", 0))
 
 
+## The Faith row's name: the first row ("slot") reads +1 SLOT in the draft mode (GodNight.draft), FASTER MIGHT otherwise; its stored count
+## is the same number.
+static func faith_name(row: Dictionary) -> String:
+	return "+1 SLOT" if GodNight.draft and row.key == "slot" else String(row.name)
+
+
 ## Slots in a draft: BASE_SLOTS plus the Faith upgrades, never above TierBook.MAX_SLOTS (spec §6). A night no longer drafts by them
 ## (the Might gauge); the Hunt bots' loadout check still reads it.
 func slots() -> int:

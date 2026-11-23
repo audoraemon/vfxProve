@@ -11,6 +11,13 @@ extends RefCounted
 const MAIN_DP := 80
 ## Divine Power one banked wish earns, times the night's mission tier (spec §8; *tunable*).
 const WISH_DP := 20
+## The old Endless Night draft, kept but hidden (Ruling R10): false (the default) is the Might gauge night -- every learned ability comes
+## along and a cast is paid from the gauge; true is the draft of before the gauge -- Prepare picks abilities inside a Might budget and a slot
+## count, the night has no gauge or ability bar (the six slot cards), and the drafted loadout is what is carried and saved. Nothing in the
+## game's menus turns it on; the command line flag `--god-draft` does for that run (Game reads it once at startup). The god's file is the
+## same in both modes. Every mode test goes through the helpers below (pool_for, night_loadout, carried_keys) or reads this directly.
+static var draft := false
+
 ## The pool of a god with nothing to draft (Ruling P8): no power is allowed. An empty pool would mean every power
 ## (MissionDef.powers()), which would hand an empty god the whole book.
 const NO_POWERS := "none"
@@ -148,7 +155,7 @@ static func def_for(slot: GodSlot, id: String) -> MissionDef:
 	var def := HuntBook.def(id) if is_hunt else TierBook.board(id, null)
 	if def == null:
 		return null
-	var pool := slot.in_tree()
+	var pool := pool_for(slot)
 	if pool.is_empty():
 		pool = PackedStringArray([NO_POWERS])
 	var extra := slot.extra_clock()
@@ -171,7 +178,7 @@ static func _rite_def(slot: GodSlot, id: String) -> MissionDef:
 	var def := RiteBook.def(id)
 	if def == null:
 		return null
-	var pool := slot.in_tree()
+	var pool := pool_for(slot)
 	if pool.is_empty():
 		pool = PackedStringArray([NO_POWERS])
 	def.tier = slot.tier
@@ -194,9 +201,29 @@ static func _dress_hunt(def: MissionDef, hunt: Dictionary) -> void:
 	def.intro_banner = String(hunt.title).to_upper()
 
 
-## What Game starts a god's night with: every learned key in the tree, sealed ones included (the gauge, not a draft, limits the night).
+## The keys a god's night allows: every learned key in the tree, the sealed one too (the bar shows it locked); in the draft mode only the
+## draftable ones.
+static func pool_for(slot: GodSlot) -> PackedStringArray:
+	return slot.draftable() if draft else slot.in_tree()
+
+
+## What Game starts a god's night with: every learned key in the tree, sealed ones included (the gauge, not a draft, limits the night); in the
+## draft mode the loadout last drafted and saved on the slot.
 static func night_loadout(slot: GodSlot) -> PackedStringArray:
-	return slot.in_tree()
+	return slot.loadout.duplicate() if draft else slot.in_tree()
+
+
+## The keys a finished night counts as carried (bank()'s third argument): the drafted loadout in the draft mode, else what the night cast.
+static func carried_keys(drafted: PackedStringArray, outcome: Dictionary) -> PackedStringArray:
+	return drafted if draft else PackedStringArray(outcome.get("cast", PackedStringArray()))
+
+
+## Counts each of `keys` carried once more, and in the draft mode remembers them as the god's loadout.
+static func _carry(slot: GodSlot, keys: PackedStringArray) -> void:
+	for key in keys:
+		slot.carried[key] = int(slot.carried.get(key, 0)) + 1
+	if draft:
+		slot.loadout = keys.duplicate()
 
 
 ## The god's numbers on one def (the mission or an act). The pool is every learned key, the sealed one too (the bar shows it locked);
@@ -205,6 +232,8 @@ static func _apply_god(def: MissionDef, slot: GodSlot, pool: PackedStringArray) 
 	def.slots = slot.slots()
 	def.dp_capacity = slot.max_might()
 	def.pool = pool.duplicate()
+	if draft:
+		return  # no gauge, no seal, no type: Rules has no Might and the HUD draws the slot cards
 	def.might_capacity = slot.max_might()
 	def.might_refill = slot.refill_seconds()
 	def.sealed = slot.sealed
@@ -248,8 +277,7 @@ static func bank(slot: GodSlot, id: String, cast: PackedStringArray, outcome: Di
 	var bests := PackedStringArray()
 	if hunt.is_empty():  # a Hunt keeps no best (Ruling P2-10)
 		bests = _keep_bests(slot, id, d)
-	for key in cast:
-		slot.carried[key] = int(slot.carried.get(key, 0)) + 1
+	_carry(slot, cast)
 	var hunt_result := {}
 	if hunt.is_empty():
 		slot.add_notice(notice_delta(d))
@@ -284,8 +312,7 @@ static func _bank_rite(slot: GodSlot, id: String, cast: PackedStringArray, outco
 	var unsealed := slot.tick_seal()
 	slot.night += 1
 	slot.in_night = ""
-	for key in cast:
-		slot.carried[key] = int(slot.carried.get(key, 0)) + 1
+	_carry(slot, cast)
 	var stolen := ""
 	if won:
 		slot.awaken()

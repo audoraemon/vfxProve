@@ -125,12 +125,12 @@ panic_b_play_1 204.6 unchanged.
 | god_ruin_lamb_play_1 | true 53.3 | true 53.3 | checksum equals the pre-flinch reference (flinch no longer touches him) |
 | god_ruin_lamb_play_2 | true 49.9 | true 49.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
 | god_ruin_lamb_play_3 | true 44.0 | true 44.0 | checksum equals the pre-flinch reference (flinch no longer touches him) |
-| hide_faithful_death_play_1 | true 207.2 | true 207.2 | different checksum, same outcome (re-recorded) |
+| hide_faithful_death_play_1 | true 207.2 | true 207.2 | different checksum, same outcome (re-recorded); final review: back at its pre-flinch checksum |
 | hide_faithful_death_play_2 | true 203.2 | true 203.2 | checksum equals the pre-flinch reference (flinch no longer touches him) |
 | hide_faithful_death_play_3 | true 205.9 | true 205.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
 | hide_faithful_decree_play_3 | true 102.1 | true 102.1 | checksum equals the pre-flinch reference (flinch no longer touches him) |
 | hide_faithful_ruin_play_1 | true 98.1 | true 98.1 | checksum equals the pre-flinch reference (flinch no longer touches him) |
-| hide_faithful_ruin_play_2 | true 187.8 | true 187.8 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_ruin_play_2 | true 187.8 | true 187.8 | checksum equals the pre-flinch reference at T5; final review: moved, same outcome (re-recorded) |
 | hide_faithful_ruin_play_3 | true 104.3 | true 104.3 | checksum equals the pre-flinch reference (flinch no longer touches him) |
 | hide_faithful_veil_play_1 | true 106.9 | true 106.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
 | hide_faithful_veil_play_2 | true 189.6 | true 189.6 | checksum equals the pre-flinch reference (flinch no longer touches him) |

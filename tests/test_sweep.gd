@@ -47,6 +47,9 @@ static func run(t) -> void:
 	_outside_witness_at_once(t)
 	_victim_under_a_sweep(t)
 	_clear_forgets_sightings(t)
+	_forms_after_danger(t)
+	_forms_at_once_without_danger(t)
+	_no_witness_of_own_cast(t)
 
 
 static func _jobs(crowd: Crowd) -> Array[GuardJobs.Job]:
@@ -992,4 +995,69 @@ static func _clear_forgets_sightings(t) -> void:
 	crowd.threats.end(id)
 	_board(crowd, 3)
 	t.check(_jobs(crowd).is_empty(), "R21: clear() forgot the sighting: no sweep when the danger ends")
+	C._done(made)
+
+
+## A sweep posted over a live danger: its crew of 4 (five guards free) and the post only.
+static func _danger_sweep(made: Array, at: Vector2, life: float) -> Array:
+	var crowd: Crowd = made[0]
+	C._only_free(crowd, _guards(crowd, at, 5, 0.5))
+	var id := crowd.threats.register(at, 2.0, 0.6, life, 6.0, 6.0, &"breath")
+	crowd.sweep.request(at)
+	return [id, _jobs(crowd)]
+
+
+## [ruling R22] A sweep takes no man while a danger is live where its power was seen, and its wait does not run down meanwhile.
+static func _forms_after_danger(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var up := _danger_sweep(made, at, 600.0)
+	var jobs: Array[GuardJobs.Job] = up[1]
+	t.check(jobs.size() == 1 and crowd.sweep.swept(AlarmManager.district_of(at)), "R22: the open job is posted at once")
+	_board(crowd, 25)
+	var far := 0
+	for p in crowd.soldiers:
+		if p.watch_far:
+			far += 1
+	t.check(_jobs(crowd).size() == 1 and _jobs(crowd)[0].crew.is_empty() and far == 0,
+			"R22: 25 s of live danger: no crew, no far sight, the job still live (%d)" % _jobs(crowd).size())
+	t.check(crowd.sweep.swept(AlarmManager.district_of(at)), "R22: the district still counts as swept")
+	crowd.threats.end(up[0])
+	_board(crowd, 3)
+	var job := _jobs(crowd)[0] if not _jobs(crowd).is_empty() else null
+	t.check(job != null and job.crew.size() == SweepDuty.CREW and bool(job.data.begun), "R22: the danger over: the crew of 4, begun")
+	var far_after := 0
+	for p in job.crew if job != null else []:
+		if p.watch_far:
+			far_after += 1
+	t.check(far_after == SweepDuty.CREW, "R22: and its men see far")
+	C._done(made)
+
+
+## [ruling R22] A power with no lingering danger: the crew is taken at the next board step.
+static func _forms_at_once_without_danger(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	C._only_free(crowd, _guards(crowd, at, 5, 0.5))
+	crowd.sweep.request(at)
+	_board(crowd, 1)
+	var jobs := _jobs(crowd)
+	t.check(jobs.size() == 1 and jobs[0].crew.size() == SweepDuty.CREW, "R22: no lingering danger: the crew at the next step")
+	C._done(made)
+
+
+## [ruling R22] A free soldier 3.5 from a kill inside the live danger is not taken, so he is no far witness of it.
+static func _no_witness_of_own_cast(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var five := _guards(crowd, at, 5, 3.5)
+	C._only_free(crowd, five)
+	crowd.threats.register(at, 2.0, 0.6, 600.0, 6.0, 6.0, &"breath")
+	crowd.sweep.request(at)
+	_board(crowd, 3)
+	t.check(not five[0].watch_far, "R22: not taken, no far sight")
+	t.near(crowd.witness_reach(five[0], true), Crowd.DOOM_WITNESS, 0.001, "R22: his reach is the ordinary one")
 	C._done(made)

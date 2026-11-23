@@ -228,6 +228,9 @@ Anti-goals (a failure even if it works):
   an empty district]`. The same witness test gates the extra alarm below (a sweep man's 4.0 counts). Also every
   place `_investigate()` is called today: **the sweep replaces `_investigate()`** `[call: same idea, one system]`.
   Never when hushed or veiled. Not while that district is already swept. At most `SWEEPS` 2 at once.
+- **A sweep forms when the danger is over `[ruling R22]`:** no man is taken for a sweep while a danger is live at the place its power
+  was seen (the cordon's test). The open job is posted at once and the district counts as swept, but its 20 s wait does not run down
+  while the danger lives; it forms when the danger ends. A sweep answers a cast and is never the judge of the cast that called it.
 - **A power's own victim `[ruling R21]`:** a man inside the danger's radius tells the soldiers only if he comes out of it alive.
   A witness who stands outside the radius of every point and within his reach (DOOM_WITNESS, or WATCH_SIGHT for a sweep man)
   calls the sweep at the landing, as above. With none, the qualifying men inside are remembered (a pending sighting) and

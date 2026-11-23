@@ -146,8 +146,9 @@ func counts_inside(job: GuardJobs.Job, p: Variant) -> bool:
 	return s.is_alive() and not s.held_by_god() and (job.data.rect as Rect2).has_point(s.ground_pos)
 
 
-func may_take(_job: GuardJobs.Job, p: Person) -> bool:
-	return p.corps == Person.Corps.NONE
+## No man is taken while a danger is live where the power was seen: a sweep answers a cast, it is not the judge of it (R22).
+func may_take(job: GuardJobs.Job, p: Person) -> bool:
+	return p.corps == Person.Corps.NONE and danger_near(job.data.seen_at).is_empty()
 
 
 func on_taken(job: GuardJobs.Job, p: Person) -> void:
@@ -183,6 +184,8 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 		_finish(job)
 		return
 	if not bool(d.begun):
+		if not danger_near(d.seen_at).is_empty():
+			return  # the wait does not run down while the danger lives: the sweep forms when it ends (R22)
 		d.wait = float(d.wait) - delta
 		if float(d.wait) <= 0.0:
 			_finish(job)

@@ -41,5 +41,5 @@ static func _needs(t) -> void:
 	var capital := City.by_id(&"capital")
 	t.check(Places.can_host("crowns_bread", capital), "the Capital has the places of the Crowns' Bread")
 	t.check(Places.can_host("armoury", capital), "the Capital has the places of the Armoury")
-	t.check(not MissionBook.hostable("crowns_bread", capital), "but does not host the Crowns' Bread yet (no overrides file)")
+	t.check(MissionBook.hostable("crowns_bread", capital), "and hosts the Crowns' Bread (Task 10: its overrides file)")
 	t.check(not MissionBook.hostable("armoury", capital), "nor the Armoury")

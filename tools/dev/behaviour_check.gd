@@ -3282,10 +3282,10 @@ func _bread_act(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: 
 			if cur < 2 and not d.burning(s):
 				if _slot_ready(rules, slots, "ember"):
 					rules.cast(slots.ember, s.center())
-					return "ember the %s" % CrownsBreadDirector.WORDS[cur]
+					return "ember the %s" % d.words[cur]
 				if _slot_ready(rules, slots, "smite"):
 					rules.cast(slots.smite, s.center())
-					return "smite the %s" % CrownsBreadDirector.WORDS[cur]
+					return "smite the %s" % d.words[cur]
 			elif cur == 2 and _slot_ready(rules, slots, "smite"):
 				rules.cast(slots.smite, s.center())
 				return "smite the bridge"
@@ -3300,7 +3300,7 @@ func _bread_act(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: 
 		var walker := d.relief_walking(cur)
 		if walker != null and _slot_ready(rules, slots, "doom"):
 			rules.cast(slots.doom, walker.ground_pos)
-			return "doom a relief for the %s" % CrownsBreadDirector.WORDS[cur]
+			return "doom a relief for the %s" % d.words[cur]
 	return ""
 
 
@@ -3308,7 +3308,7 @@ func _bread_act(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: 
 ## else stands within its radius of (else the first); else Mind Whisper sends one not shaking a whisper off BREAD_AWAY from it.
 func _bread_clear(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: Crowd, i: int, on: Array[Person], smite_ok: bool) -> String:
 	var s := d.targets[i]
-	var word := String(CrownsBreadDirector.WORDS[i])
+	var word := String(d.words[i])
 	if smite_ok and _slot_ready(rules, slots, "smite"):
 		for p in on:
 			if s.distance_to(p.ground_pos) <= SmiteFx.HIT_R:

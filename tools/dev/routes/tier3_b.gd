@@ -418,12 +418,12 @@ static func act_bread(bc, ctx: Dictionary) -> String:
 		memo["prep%d" % up] = true
 		if up != 1 and verdict_ready:
 			rules.cast(slots.wisp, _mob_centre(crowd, d.targets[up], true))
-			return "wisp a crowd to the %s ahead of its time" % CrownsBreadDirector.WORDS[up]
+			return "wisp a crowd to the %s ahead of its time" % d.words[up]
 		rules.cast(slots.wisp, _mob_centre(crowd, d.targets[up], false))
-		return "wisp the bystanders off the %s ahead of its time" % CrownsBreadDirector.WORDS[up]
+		return "wisp the bystanders off the %s ahead of its time" % d.words[up]
 	if cur < 0 and up >= 0 and (up == 1 or not verdict_ready) and d.due_in(up) <= BREAD_LEAD and bc._slot_ready(rules, slots, "heaven"):
 		rules.cast(slots.heaven, d.targets[up].center(), {"dir": Vector2(1, 0)})  # its strike falls as the stage opens
-		return "heaven the %s as it opens" % CrownsBreadDirector.WORDS[up]
+		return "heaven the %s as it opens" % d.words[up]
 	if cur < 0 or not is_instance_valid(d.targets[cur]) or d.targets[cur].destroyed:
 		return ""
 	var s := d.targets[cur]
@@ -432,10 +432,10 @@ static func act_bread(bc, ctx: Dictionary) -> String:
 		var to: Vector2 = _mob_centre(crowd, s, true)
 		memo["verdict_at"] = now
 		rules.cast(slots.verdict, s.center(), {"to": to})
-		return "verdict on the %s (%d near)" % [CrownsBreadDirector.WORDS[cur], _near_count(crowd, to)]
+		return "verdict on the %s (%d near)" % [d.words[cur], _near_count(crowd, to)]
 	if bc._slot_ready(rules, slots, "heaven") and (cur == 1 or not memo.has("verdict_at") or now >= float(memo.verdict_at) + BREAD_HEAVEN_AFTER):
 		rules.cast(slots.heaven, s.center(), {"dir": Vector2(1, 0)})
-		return "heaven the %s" % CrownsBreadDirector.WORDS[cur]
+		return "heaven the %s" % d.words[cur]
 	return ""
 
 

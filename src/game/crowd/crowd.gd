@@ -18,6 +18,9 @@ signal rallied
 signal danger_landed(key: String, points: Array[Vector2], radius: float)
 ## A soldier duty has something to tell the player (a banner): its kind (GuardJobs.Kind), the text, and where it happened.
 signal duty_event(kind: int, text: String, at: Vector2)
+## A cast was seen by `witness` (Town Suspicion): `look` is its Suspicion look, `before` and `after` the town's Suspicion.state()
+## around it (equal once the town knows).
+signal sign_seen(witness: Person, look: StringName, before: StringName, after: StringName)
 
 ## What a lying bell takes off the alarm, and how long its hearers take heart (false_bell()).
 const LIE_CALM := 8.0
@@ -139,6 +142,20 @@ var _spreads: Array = []
 var _watch_in := 0.0
 ## The town's alarm in stages (v0.04).
 var alarms := AlarmManager.new()
+## How strange the town finds the night (Town Suspicion): fed one sign per witnessed cast.
+var suspicion := Suspicion.new()
+## How long a witness's thought tag stays up (seconds).
+const THOUGHT_SECONDS := 2.5
+## What a calm witness says of each natural look (Town Suspicion); the state after the sign overrides it once the town is uneasy or knows.
+const THOUGHT_CALM := {&"lightning": "JUST A STORM", &"storm": "JUST A STORM", &"fire": "FIRE!", &"quake": "EARTHQUAKE!",
+	&"flood": "THE RIVER!", &"miasma": "BAD AIR"}
+## The newest sign's witness, its words and colour, and the seconds left to show them.
+var _thought_who: Person = null
+var _thought_text := ""
+var _thought_color := Color.WHITE
+var _thought_left := 0.0
+## True once keeper_due() has sent the bellkeeper (one call); cleared by clear().
+var _keeper_sent := false
 ## Which way out each evacuee takes (v0.04); made by spawn().
 var evac: EvacuationManager
 ## Fires and the citizens fighting them (v0.04 P1); made by setup().
@@ -255,6 +272,10 @@ var remains: Remains
 var withering: Withering
 ## The burning (Burning: Ember on a person): laid by burn(), stepped after the town's orders (_advance()), cleared with the town.
 var burning: Burning
+## The trail fire (TrailFire: Ember's level 5 Fire Trail, short-lived burning ground that hurts who crosses it): null until the
+## first is laid (trail_fires()), so a town that never lays one makes nothing for it and nothing in it moves; stepped after the
+## burning (_advance()), cleared with the town.
+var trail_fire: TrailFire
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -383,6 +404,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	env.structure_added.connect(_on_structure_added)
 	env.structure_removed.connect(func(_s: Structure) -> void: _spots.clear())
 	alarms.stage_changed.connect(_on_stage)
+	suspicion.became_known.connect(func(_why: String) -> void: _send_keeper())
+	sign_seen.connect(_on_sign_seen)
 	fires = FireManager.new().setup(self, env, seed_value + 17)
 	piles = PileManager.new().setup(self, env, grid)
 	guard_jobs = GuardJobs.new().setup(self)
@@ -420,6 +443,7 @@ func spawn(citizen_count := -1, soldier_count := -1) -> void:
 	if soldier_count < 0:
 		soldier_count = City.current().soldiers()
 	alarms.regroup_seconds = profile.regroup_seconds  # God-Resistant evacuates sooner (v0.08.2)
+	suspicion.wary = profile.wary
 	if not profile.boats and is_instance_valid(_town.postern) and _town.postern.walkable:
 		_town.bar_postern()
 		_grid.refresh(_town.postern)
@@ -1262,6 +1286,11 @@ func advance(delta: float) -> void:
 
 func _advance(delta: float) -> void:
 	_clock += delta
+	suspicion.advance(delta)
+	# The town's one call is spent once the bell has left idle by any route during an emergency (as the first Local Emergency was).
+	if not _keeper_sent and bell != null and bell.state != BellNetwork.State.IDLE and alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY:
+		_keeper_sent = true
+	_thought_left = maxf(0.0, _thought_left - delta)
 	if remains != null:
 		remains.step(delta)
 	if withering != null:
@@ -1314,6 +1343,8 @@ func _advance(delta: float) -> void:
 	# frame is running again before his feet move (Burning._keep_running()).
 	if burning != null:
 		burning.step(delta)
+	if trail_fire != null:
+		trail_fire.step(delta)
 	if is_instance_valid(_drawer):
 		# Redrawn while something shows, and once more as it stops, to clear it.
 		var showing := (_drawer as ResponseDrawer).showing()
@@ -1604,12 +1635,16 @@ func _yelp(frightened: Array[Person], at: Vector2) -> void:
 func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", level := 1, scale := 1.0) -> void:
 	if is_veiled(ground):
 		return  # cast where nothing is seen (Unseen Hour): no look, no danger, no unease
+	suspicion.excuse(PowerBook.look(key))  # a natural-looking cast excuses its kinds of death, seen or not
 	if PowerBook.is_quiet(key):
 		# Nothing for the town to see (v0.05): Silent Doom and Blight report their own effects. A quiet power may still
 		# unsettle it a little (its book entry's "alarm": a congregation forming, a bloom of madness).
 		var unease := float(PowerBook.get_power(key).get("alarm", 0.0))
 		if unease > 0.0:
 			add_alarm(unease)
+		var quiet_look := PowerBook.look(key)
+		if quiet_look != Suspicion.NONE:
+			_sign([ground] as Array[Vector2], Suspicion.QUIET_SIGN_SIGHT, quiet_look, 1.0)
 		return
 	var reach: Array = PowerBook.REACH.get(key, PowerBook.REACH_DEFAULT)
 	var radius := _cast_radius(key, level) * scale
@@ -1652,11 +1687,75 @@ func _land_held() -> void:
 ## A loud danger lands: it is registered and everyone it reaches reacts, as on_cast() always did (v0.04), then
 ## `danger_landed` tells the directors.
 func _land(key: String, points: Array[Vector2], radius: float, reach: Array, ground: Vector2) -> void:
+	var look := PowerBook.look(key)
+	if look != Suspicion.NONE:
+		_sign(points, float(reach[0]), look, minf(radius, float(reach[0]) * 0.5))
 	for point in points:
 		threats.register(point, radius, float(reach[2]), float(reach[3]), float(reach[0]), float(reach[1]),
 			StringName(key))
 	_react(points, radius, float(reach[1]), ground, StringName(key))
 	danger_landed.emit(key, points, radius)
+
+
+## The nearest living person, citizen or soldier, not inside and not asleep, within `sight` x sight_scale of any of `points`:
+## who saw a cast (Town Suspicion). Anyone within `clear` of a point is inside the cast's own danger, its victim and no witness.
+## Null when nobody saw, and in a hushed town.
+func sign_witness(points: Array[Vector2], sight: float, clear := 0.0) -> Person:
+	if is_hushed():
+		return null
+	var best: Person = null
+	var best_d := sight * sight_scale
+	for group: Array[Person] in [citizens, soldiers]:
+		for p in group:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.is_asleep():
+				continue
+			var near := INF
+			for point in points:
+				near = minf(near, p.ground_pos.distance_to(point))
+			if near >= clear and near <= best_d:
+				best = p
+				best_d = near
+	return best
+
+
+## One cast of `look` over `points`, if someone saw it: the town counts one sign, however many points the cast has.
+func _sign(points: Array[Vector2], sight: float, look: StringName, clear := 0.0) -> void:
+	var witness := sign_witness(points, sight, clear)
+	if witness == null:
+		return
+	var before := suspicion.state()
+	suspicion.sign(look)
+	sign_seen.emit(witness, look, before, suspicion.state())
+
+
+## The witness of a sign says what the town thinks: a tag over his head for THOUGHT_SECONDS (the newest replaces the last), and a
+## shout the first time the town turns uneasy. The shout spends a voice token: tokens gate only the sound and voices_played, never
+## behaviour or a random draw, so no simulation state moves.
+func _on_sign_seen(witness: Person, look: StringName, before: StringName, after: StringName) -> void:
+	if before == &"known":
+		return  # the town already knows: nothing left to say
+	_thought_who = witness
+	_thought_left = THOUGHT_SECONDS
+	match after:
+		&"known":
+			_thought_text = "THIS IS NO ACCIDENT"
+			_thought_color = UiTheme.COL_BAD
+		&"uneasy":
+			_thought_text = "AGAIN?"
+			_thought_color = UiTheme.COL_GOLD
+		_:
+			_thought_text = String(THOUGHT_CALM.get(look, ""))
+			_thought_color = UiTheme.COL_DIM
+	if after == &"uneasy" and before == &"calm":
+		_voice(witness, &"cit_shout")
+
+
+## The witness's thought as a map tag: at most one, none once its time is up or its witness is gone.
+func thought_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if _thought_left > 0.0 and _thought_text != "" and is_instance_valid(_thought_who) and _thought_who.is_alive():
+		out.append(MapTag.person(_thought_who, _thought_color, _thought_text, false))
+	return out
 
 
 ## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
@@ -1868,6 +1967,15 @@ func burn(p: Person, seconds: float, from: Vector2, level := Burning.LIGHT_AT) -
 	return burning != null and burning.lay(p, seconds, from, level)
 
 
+## The town's trail fire (TrailFire), made on the first ask with its look in the town's world: lay patches with its lay().
+func trail_fires() -> TrailFire:
+	if trail_fire == null:
+		trail_fire = TrailFire.new(_field, _env)
+	if is_instance_valid(_parent):
+		trail_fire.attach(_parent)
+	return trail_fire
+
+
 ## The town is told what `s` is, for `seconds` (Anathema): a `mark` the managers read -- &"cursed": nobody will be
 ## inside it, fight its fire or climb it; &"hallowed": everyone must be inside and stays. A later mark replaces an
 ## earlier one.
@@ -1975,10 +2083,8 @@ func add_alarm(points: float) -> void:
 ## A new alarm stage (AlarmManager.stage_changed): what the town does about it.
 func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 	match stage:
-		AlarmManager.Stage.LOCAL_EMERGENCY:
-			if bell != null:
-				bell.call_keeper()
 		AlarmManager.Stage.CITY_EMERGENCY:
+			suspicion.know("the town is in emergency")
 			if sfx != null:
 				sfx.play(&"town_horn", City.current().citadel_origin())
 			rally()
@@ -1994,6 +2100,22 @@ func _on_stage(stage: AlarmManager.Stage, _reason: String) -> void:
 			if marshals != null:
 				marshals.begin()
 			_evacuate()
+	_send_keeper()
+
+
+## Whether the town sends the bellkeeper now (Town Suspicion): there is a bell, a district is in local emergency or worse, and
+## the town either knows or the district's incidents are not all explained by a natural power. Deaths a natural power explains
+## wait until the town knows: delay only, never sooner than the old first Local Emergency.
+func keeper_due() -> bool:
+	return bell != null and alarms.stage >= AlarmManager.Stage.LOCAL_EMERGENCY and (suspicion.known or alarms.unexplained_emergency())
+
+
+## Sends the bellkeeper the first time keeper_due() holds; asked after every incident, every stage change and when the town knows.
+func _send_keeper() -> void:
+	if _keeper_sent or not keeper_due():
+		return
+	_keeper_sent = true
+	bell.call_keeper()
 
 
 ## Everyone still in town makes for the gates.
@@ -2144,6 +2266,7 @@ func _appoint_bellkeeper(anchors: Dictionary) -> Person:
 ## evacuation sooner.
 func ring_bell(at := City.current().landmark(&"bell_tower").get_center()) -> void:
 	alarms.bell_rung = true
+	suspicion.know("the bell rings")
 	for p in citizens:
 		if is_instance_valid(p) and p.is_alive():
 			p.awareness = maxi(p.awareness, Person.Awareness.EMERGENCY) as Person.Awareness
@@ -2280,6 +2403,7 @@ func raise_profile(p: ResponseProfile) -> PackedStringArray:
 		return on
 	profile = p
 	alarms.regroup_seconds = p.regroup_seconds
+	suspicion.wary = p.wary
 	if bell != null and bell.state in [BellNetwork.State.IDLE, BellNetwork.State.WAITING]:
 		bell.climb = p.bell_climb * climb_scale
 	if p.rite and rite != null and rite.off_by_profile and _standing(rite.cathedral):
@@ -2474,6 +2598,9 @@ func clear() -> void:
 		withering.clear()
 	if burning != null:
 		burning.clear()
+	if trail_fire != null:
+		trail_fire.clear()
+		trail_fire.free_layer()
 	for d in [_drawer, _ground_drawer]:
 		if is_instance_valid(d):
 			(d as Node).queue_free()
@@ -2524,6 +2651,10 @@ func clear() -> void:
 	voices_played = 0
 	deaths.reset()
 	trail.clear()
+	suspicion.reset()
+	_keeper_sent = false
+	_thought_who = null
+	_thought_left = 0.0
 
 
 ## Everyone alive and outside standing on a closed cell in `r` (ground units: a falling footprint, a pile cell; grown by a
@@ -2555,8 +2686,10 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 	if not is_veiled(at):  # a fall nobody sees (Unseen Hour) is no incident
 		if s.role != &"citadel":
 			_hear_alarm(ALARM_BUILDING)
-		if s.role != &"citadel" and not is_hushed() and alarms.incident(at):
-			_investigate(at)
+		if s.role != &"citadel" and not is_hushed():
+			if alarms.incident(at, suspicion.explains(&"collapse")):
+				_investigate(at)
+			_send_keeper()
 		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
 		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale, COLLAPSE_SOUND, &"collapse")
 		var points: Array[Vector2] = [at]
@@ -2616,9 +2749,10 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	var remain := remains.of_body(p) if remains != null else null
 	if remain != null:
 		remain.counted = not is_hushed()  # a hushed kill reaches here but raises no alarm: a body found later adds it
-	if not is_hushed() and alarms.incident(p.ground_pos):
+	if not is_hushed() and alarms.incident(p.ground_pos, suspicion.explains(kind)):
 		_investigate(p.ground_pos)
 	_hear_alarm(ALARM_KILL)
+	_send_keeper()
 
 
 ## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night. The directors that read Crowd.DOOM_WITNESS
@@ -2719,6 +2853,7 @@ func _settle_doom() -> void:
 		_hear_alarm(ALARM_KILL)
 	if not seen_at.is_empty():
 		_react(seen_at, 0.6, DOOM_WITNESS + 1.0, seen_at[0], &"doom")
+	_send_keeper()
 
 
 ## Something built mid-mission (v0.06): the gate spots are found again round it; a thorn wall is noticed.
@@ -2756,6 +2891,7 @@ func _on_citadel_health(_fraction: float) -> void:
 	if _citadel_hit:
 		return
 	_citadel_hit = true
+	suspicion.know("the Citadel is struck")
 	_hear_alarm(ALARM_CITADEL_HIT)
 	rally()
 

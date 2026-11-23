@@ -36,7 +36,7 @@ const SPEC := [
 	["vigil_flame.homeward", "The Vigil turns for home: have the flame swapped before its bearer reaches the Temple."],
 	["vigil_flame.carry", "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight."],
 	# The Tax Collector (v0.11 M2; three collectors, the controller's Task 2 ruling).
-	["tax_collector", "Stop each collector (gold): kill him, unseen if you can (red), or send him out of the walls. A seen kill rings the bell."],
+	["tax_collector", "Stop each collector (gold): kill him unseen (red) or send him out of the walls. A seen kill that is no accident rings the bell."],
 	["tax_collector.inside", "He is indoors (gold). Leaving Is Prohibited on a door he went in at, his guards drawn off, sets the debtors on him."],
 	["tax_collector.hiding", "Alarmed, he hides in the counting-house. Set it alight: every collector inside runs for the Citadel."],
 	["tax_collector.running", "No hiding place: he runs for the Citadel (red). Kill him before he gets in."],
@@ -115,7 +115,7 @@ const SPEC := [
 	["sermon.watched", "Sentries (red) watch the door: anyone seen going in is turned away and reported. Remove them first."],
 	["sermon.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
 	["sermon.coming", "More come to hear him (gold). Whisper them on the way, before they come within his voice. Do not kill them."],
-	["sermon.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: +40 Gaze, and the Lantern turns."],
+	["sermon.seen", "A death was seen: the Gaze rises. Four deaths in a district no accident explains call the bell: +40 Gaze, the Lantern turns."],
 	["sermon.bell", "The bellkeeper (red) runs to ring the bell: it raises the Gaze by 40 and turns the Lantern. Stop him, unseen."],
 	# The Relic Run (v0.11 M5).
 	["relic_run", "Bring Pip (blue) to the cart's first halt, by whisper or lure. He slips aboard there, and swaps the relic at the next."],
@@ -126,7 +126,7 @@ const SPEC := [
 	["relic_run.last_halt", "The cart rolls to its last halt before the Citadel. Bring Pip (blue) there: he can board and swap in that one halt."],
 	["relic_run.citadel", "The cart makes for the Citadel (red) and halts no more: the relic is lost when it gets there."],
 	["relic_run.report", "A Faithful runs to the Temple. Stop him before he gets there, unseen."],
-	["relic_run.seen", "A death was seen: the Gaze rises. Four seen deaths in a district call the bell: +40 Gaze, and the Lantern turns."],
+	["relic_run.seen", "A death was seen: the Gaze rises. Four deaths in a district no accident explains call the bell: +40 Gaze, the Lantern turns."],
 	["relic_run.bell", "The bellkeeper (red) runs to ring the bell: it raises the Gaze by 40 and turns the Lantern. Stop him, unseen."],
 	# The Lantern's Eye (v0.11 M6).
 	["lantern_eye", "Clear a mirror's guards (red), shatter it (gold), keep it shattered 20 s. Never cast in the light."],

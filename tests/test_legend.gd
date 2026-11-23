@@ -45,7 +45,7 @@ static func _rows(t) -> void:
 	for w in ["A", "B", "C", "D"]:
 		many.append(MapTag.person(Vector2.ZERO, GOLD, w))
 	t.check(LegendPanel.night_rows(many)[0][1] == "A, B, C", "up to three labels a row")
-	t.check(LegendPanel.MARKS.size() == 12 and LegendPanel.OVERHEAD.size() == 21, "every mark of the spec's two tables (page 2 gained the Lantern's four rows)")
+	t.check(LegendPanel.MARKS.size() == 12 and LegendPanel.OVERHEAD.size() == 22 and LegendPanel.OVERHEAD[21][0] == "suspicion", "every mark of the spec's two tables (page 2 gained the Lantern's four rows and the town's suspicion)")
 
 
 static func _pages(t) -> void:
@@ -189,14 +189,14 @@ static func _hold_waits(t) -> void:
 	_drop(m)
 
 
-## v0.11.2 Task 12 (spec 5.5, R33): page 2 lays its 21 rows in two columns; each column's rows fit between the title and the footer, and the
+## v0.11.2 Task 12 (spec 5.5, R33): page 2 lays its 22 rows in two columns; each column's rows fit between the title and the footer, and the
 ## four Lantern rows carry the spec's words.
 static func _columns(t) -> void:
 	var split := LegendPanel.OVERHEAD_SPLIT
 	t.check(split > 0 and split < LegendPanel.OVERHEAD.size(), "page 2 splits into two columns (the first holds %d)" % split)
 	var cols := LegendPanel.overhead_columns()
-	t.check(cols.size() == 2 and (cols[0] as Array).size() == split and (cols[0] as Array).size() + (cols[1] as Array).size() == 21,
-		"the columns hold all 21 rows, in order")
+	t.check(cols.size() == 2 and (cols[0] as Array).size() == split and (cols[0] as Array).size() + (cols[1] as Array).size() == 22,
+		"the columns hold all 22 rows, in order")
 	var top := LegendPanel.PANEL.position.y + 44.0
 	var bottom := LegendPanel.PANEL.end.y - 24.0
 	var room := LegendPanel.column_room()

@@ -272,6 +272,15 @@ func herald_eta() -> float:
 	return (_descend + TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW)) * rules.clock_rate
 
 
+## Loss warning: this warning's Herald while he runs for the Temple (HeraldObjective loses the night when he gets in), as herald_eta().
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := herald_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"herald", "THE HERALD REACHES THE TEMPLE", "STOP HIM", eta, messenger.ground_pos))
+	return out
+
+
 ## The toll fell (LanternWatch.on_toll()): the keeper who rang, if he carries this warning, comes down the tower before he runs; the others
 ## (a messenger still on his way, a watchman still staring) simply have the Temple for their errand from their next look.
 func on_toll() -> void:
@@ -651,3 +660,8 @@ func teardown() -> void:
 		if is_instance_valid(crowd) and (_slowed as Person).mind == Person.Mind.DUTY:
 			crowd.off_duty(_slowed as Person)
 	_slowed = null
+
+
+## Music by situation: the chase while the messenger runs.
+func music_mood() -> StringName:
+	return &"chase" if phase == Phase.RUN else &""

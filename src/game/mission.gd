@@ -117,6 +117,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## The loss warning (ThreatAlert): the big red card and the edge pulse when a thing that ends the night is near. One per act, as the HUD.
+var _alert: ThreatAlert
 ## Covered-outline (TagOutlines): the tagged people's outlines over what stands in front of them.
 var _outlines: TagOutlines
 ## The centre the wheel zooms about (wheel_zoom()), and where that put the camera: a camera found elsewhere was moved by something else.
@@ -175,6 +177,8 @@ var _descent: Descent
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
+## The music's heat now (Music.heat, cooled by Music.cool): what Music.set_intensity hears.
+var _music_heat := 0.0
 ## A mission played in acts (v0.09): the night so far and the act being played; both null for a single mission.
 var _night: NightState
 var _act: ActDef
@@ -446,7 +450,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_descent.release()
 		_descent = null
 	_bf.reset(seed_value)
-	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay, _memory]:
+	for n: Node in [_town, _crowd, _rules, _aim, _hud, _alert, _overlay, _memory]:
 		if is_instance_valid(n):
 			if n is Town:
 				(n as Town).teardown()
@@ -617,6 +621,11 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_bf.hud_layer.add_child(_hud)
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_hud.set_pause_hidden(_pause_hidden)
+	_alert = ThreatAlert.new()
+	_alert.name = "ThreatAlert"
+	_bf.ui_parent().add_child(_alert)
+	var wv := WorldView.of(_bf)
+	_alert.setup(_rules, wv.display if wv != null else null, alert_allowed)
 	# Covered-outline: a tagged person behind a stall, a tree or a house is traced in the tag's colour over what hides them. One layer
 	# per battlefield, over the world's grade; each act's HUD hands it its tags.
 	if _outlines == null or not is_instance_valid(_outlines):
@@ -644,6 +653,11 @@ func set_ui_hidden(on: bool) -> void:
 		_aim.set_process_unhandled_input(not on)
 
 
+## The loss warning may be seen now: the night under way (no intro, tour or ending), the interface shown (F1, the pause menu), not a memory.
+func alert_allowed() -> bool:
+	return started() and not in_intro() and not _ending and not ui_hidden and not _pause_hidden and remembrance == "" 		and _bf != null and _bf.hud_layer != null and _bf.hud_layer.visible
+
+
 ## Whether `event` is HIDE_UI_KEY pressed.
 static func toggles_ui(event: InputEvent) -> bool:
 	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == HIDE_UI_KEY
@@ -669,6 +683,8 @@ func _wire_responses() -> void:
 	if _wire_once(_crowd):
 		_crowd.rallied.connect(func(): _rules.banner.emit(CitadelGuard.BANNER))
 		_crowd.duty_event.connect(func(_k: int, text: String, _at: Vector2): _rules.banner.emit(text))
+		_crowd.suspicion.uneasy.connect(func(): _rules.quiet_banner.emit("THE TOWN GROWS UNEASY"))
+		_crowd.suspicion.became_known.connect(func(_why: String): _rules.banner.emit("THE TOWN KNOWS: A GOD IS HERE"))
 	if _crowd.bell != null and _wire_once(_crowd.bell):
 		_crowd.bell.climbing_started.connect(func():
 			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)
@@ -781,6 +797,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_crowd.drop_held()  # v0.11.2: and so with the danger it held for its impact -- the crowd outlives the act
 	_aim.queue_free()
 	_hud.queue_free()
+	if is_instance_valid(_alert):
+		_alert.queue_free()
 	if is_inside_tree():
 		get_tree().root.gui_release_focus()  # v0.11.1: as in start()
 	_pressing = false  # a press held over the old aim is not the new one's to release
@@ -1411,7 +1429,12 @@ func _process(delta: float) -> void:
 		_music_in -= delta
 		if _music_in <= 0.0:
 			_music_in = 0.5
-			Music.set_intensity(1.0 - _rules.stability.total())
+			# Music by situation: the city's fall, the alarm and the panic heat the music; the director names its mood.
+			var stage: int = _crowd.alarms.stage if _crowd != null else 0
+			var panic := _crowd.panic_level() if _crowd != null else 0.0
+			_music_heat = Music.cool(_music_heat, Music.heat(1.0 - _rules.stability.total(), stage, panic), 0.5)
+			Music.set_intensity(_music_heat)
+			Music.set_mood(_rules.director.music_mood() if _rules.director != null else &"")
 	_sync_intro_hud()
 	# A limit raised in the pause Options: a camera further out than it now allows steps back in on resume.
 	if _intro_left <= 0.0 and not _ending and _bf.camera.logical_zoom() < zoom_min() - 0.0005 and not _bench_zoomed:

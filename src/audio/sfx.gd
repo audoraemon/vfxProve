@@ -545,6 +545,19 @@ const CATALOG := {
 	&"music_town_night": {"path": "res://assets/audio/music/music_town_night.wav", "db": 0.0, "loop": true},
 	&"music_capital_day": {"path": "res://assets/audio/music/music_capital_day.wav", "db": 0.0, "loop": true},
 	&"music_tension": {"path": "res://assets/audio/music/music_tension.wav", "db": 0.0, "loop": true},
+	# Music by situation: the chase's two stems (Music.CHASE) and the moods' own calm pieces (Music.MOOD_CALM).
+	&"music_chase_base": {"path": "res://assets/audio/music/music_chase_base.wav", "db": 0.0, "loop": true},
+	&"music_chase_drums": {"path": "res://assets/audio/music/music_chase_drums.wav", "db": 0.0, "loop": true},
+	&"music_calm_festival": {"path": "res://assets/audio/music/music_calm_festival.wav", "db": 0.0, "loop": true},
+	&"music_calm_rite": {"path": "res://assets/audio/music/music_calm_rite.wav", "db": 0.0, "loop": true},
+	# God's Paths (the god select): the temple piece and one layer per school over it (Music.PATHS, Music.PATH_LAYERS).
+	&"music_paths": {"path": "res://assets/audio/music/music_paths.wav", "db": 0.0, "loop": true},
+	&"music_paths_ruin": {"path": "res://assets/audio/music/music_paths_ruin.wav", "db": 0.0, "loop": true},
+	&"music_paths_passage": {"path": "res://assets/audio/music/music_paths_passage.wav", "db": 0.0, "loop": true},
+	&"music_paths_veil": {"path": "res://assets/audio/music/music_paths_veil.wav", "db": 0.0, "loop": true},
+	&"music_paths_decree": {"path": "res://assets/audio/music/music_paths_decree.wav", "db": 0.0, "loop": true},
+	&"music_paths_death": {"path": "res://assets/audio/music/music_paths_death.wav", "db": 0.0, "loop": true},
+	&"music_paths_dominion": {"path": "res://assets/audio/music/music_paths_dominion.wav", "db": 0.0, "loop": true},
 	# Stingers (natural sound pass 6, Music.sting()): the night begins, its main objective is done, won, lost.
 	&"music_sting_start": {"path": "res://assets/audio/music/music_sting_start.wav", "db": 0.0},
 	&"music_sting_objective": {"path": "res://assets/audio/music/music_sting_objective.wav", "db": 0.0},

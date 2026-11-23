@@ -297,6 +297,7 @@ func _found(job: GuardJobs.Job) -> void:
 			if crowd.alarms.incident(r.pos):
 				crowd._investigate(r.pos)
 			crowd._hear_alarm(Crowd.ALARM_KILL)
+			crowd._send_keeper()  # Town Suspicion: every incident asks whether the bellkeeper is due
 		r.counted = true
 		crowd.duty_event.emit(GuardJobs.Kind.CORPSE, BANNER, r.pos)
 	crowd.remains.take(r)

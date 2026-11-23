@@ -338,3 +338,8 @@ func teardown() -> void:
 		if is_instance_valid(fire) and not fire.finished:
 			fire._finish()
 	_fires.clear()
+
+
+## Music by situation: the festival's own dance.
+func music_mood() -> StringName:
+	return &"festival"

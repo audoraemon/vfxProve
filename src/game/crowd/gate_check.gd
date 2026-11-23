@@ -135,6 +135,7 @@ func _check(p: Person, gate: Structure, list: Variant) -> bool:
 		if crowd.alarms.incident(at):
 			crowd._investigate(at)
 		crowd._hear_alarm(GATE_SPOT_ALARM)
+		crowd._send_keeper()  # Town Suspicion: every incident asks whether the bellkeeper is due
 	crowd.duty_event.emit(GuardJobs.Kind.GATE, BANNER, at)
 	return true
 

@@ -523,7 +523,7 @@ static func act_prisoner(bc, ctx: Dictionary) -> String:
 	if bc._slot_ready(rules, slots, "wisp") and her.mind == Person.Mind.DUTY and not d.held:
 		var watched := not d.watch_away and d._watch_standing()
 		var to: Vector2 = bc._road_ahead(road, her.ground_pos, PrisonerDirector.WISP_R - 0.8)
-		var wait: Vector2 = d._walkable(d.gate_at + bc.PRISONER_WAIT)
+		var wait: Vector2 = d._walkable(bc._prisoner_wait(d))
 		if watched and bc._road_progress(road, to) > bc._road_progress(road, wait):
 			to = wait
 		# the light within her reach (PrisonerDirector.WISP_R) of where she stands now, toward the road ahead

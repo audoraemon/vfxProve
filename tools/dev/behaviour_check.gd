@@ -357,6 +357,8 @@ const PRISONER_NEAR := 4.0
 const PRISONER_STRETCH := 6.0
 const PRISONER_AWAY := 8.0
 const PRISONER_WAIT := Vector2(0.0, -3.0)
+const PRISONER_BACK := 3.0
+const PRISONER_ON_ROAD := 1.0
 const PRISONER_SOON := 10.0
 ## The Heretic Hunt's policy (v0.11 M4): how near its time the next sweep's guards are cleared; how far a guard is whispered off; how
 ## far from a standard's centre, away from its guards, the Smite lands.
@@ -3409,7 +3411,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 	var watched := not d.watch_away and d._watch_standing()
 	if _slot_ready(rules, slots, "whisper") and not her.shaken():
 		var to := _road_ahead(road, her.ground_pos, MindWhisperFx.REACH - 0.5)
-		var wait := d._walkable(d.gate_at + PRISONER_WAIT)
+		var wait := d._walkable(_prisoner_wait(d))
 		if watched and _road_progress(road, to) > _road_progress(road, wait):
 			to = wait
 		to = MindWhisperFx.clamp_to(crowd._grid, her.ground_pos, d._walkable(to))
@@ -3422,8 +3424,21 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 		for v: Variant in d.watch:
 			if d._watching(v) and not (v as Person).shaken():
 				rules.cast(slots.whisper, (v as Person).ground_pos, {"target": v, "to": _prisoner_away(crowd, v as Person, d.gate_at)})
-				return "whisper the postern's watch off"
+				return "whisper the gate's watch off"
 	return ""
+
+
+## Where she waits short of a watched gate (Task 11): PRISONER_WAIT beyond the gate's mouth where that lies on her road (Aldermere: the
+## postern's street comes down from the north, bit for bit as before), else the point on her road PRISONER_BACK units back from the gate
+## (the Capital's road reaches its harbour gate along the avenue from the west).
+func _prisoner_wait(d: PrisonerDirector) -> Vector2:
+	var old := d.gate_at + PRISONER_WAIT
+	var near := INF
+	for k in range(d.road.size() - 1):
+		near = minf(near, _seg_dist(old, d.road[k], d.road[k + 1]))
+	if near <= PRISONER_ON_ROAD:
+		return old
+	return _road_ahead(d.road, d.gate_at, -PRISONER_BACK)
 
 
 ## Where Mind Whisper sends `p` (v0.11 M4): PRISONER_AWAY straight away from `from`, on ground the whisper can reach.

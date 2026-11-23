@@ -153,6 +153,14 @@ static func _policy_reads_vars(t) -> void:
 		var m := re.search(body)
 		t.check(m == null, "a prisoner policy reads no Prisoner const or TownLayout coordinate (%s)" % [m.get_string() if m != null else ""])
 	t.check("d.road" in act and "d.road" in rb, "each prisoner policy reads d.road")
+	# the wait point: derived from the director (`_prisoner_wait`), never a hard-coded offset from the gate
+	var wait := _slice(bc, "func _prisoner_wait(", "
+func ")
+	t.check(wait.length() > 300, "the wait derivation is found and sliced (%d chars)" % wait.length())
+	var off := RegEx.create_from_string("\bPRISONER_WAIT\b")
+	for body: String in [act, rb]:
+		t.check(off.search(body) == null and "_prisoner_wait(d)" in body, "a prisoner policy takes its wait point from _prisoner_wait(d), not PRISONER_WAIT")
+	t.check("d.road" in wait and "d.gate_at" in wait and "_road_ahead(" in wait, "the wait derivation reads d.road and d.gate_at and walks back along the road")
 
 
 ## The text from `from` to the next `to` after it ("" when either is missing: a missing marker fails the length checks).

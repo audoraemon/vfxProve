@@ -4,8 +4,8 @@
 capital_prisoner_none_1	--scenario=prisoner --case=none --seed=1 --city=capital	-205750789
 capital_prisoner_none_2	--scenario=prisoner --case=none --seed=2 --city=capital	-742743107
 capital_prisoner_none_3	--scenario=prisoner --case=none --seed=3 --city=capital	-462929191
-capital_prisoner_play_2	--scenario=prisoner --case=play --seed=2 --city=capital	-429823978
-capital_prisoner_play_3	--scenario=prisoner --case=play --seed=3 --city=capital	-242398030
+capital_prisoner_play_2	--scenario=prisoner --case=play --seed=2 --city=capital	-741214150
+capital_prisoner_play_3	--scenario=prisoner --case=play --seed=3 --city=capital	-246756568
 capital_prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1 --city=capital	-143441426
 capital_prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2 --city=capital	-633889220
 capital_prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3 --city=capital	-899129732

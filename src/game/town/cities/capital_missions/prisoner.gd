@@ -18,6 +18,7 @@ static func overrides() -> Dictionary:
 		"director": {
 			"stocks_at": stocks,
 			"lane_foot": Vector2(4.0, -21.0),
+			# a first guess: PrisonerDirector._plan() replaces it from where the stocks were placed
 			"charge_start": stocks + Vector2(0.0, 1.0),
 			"gate_at": mouth,
 			"exit_at": out,

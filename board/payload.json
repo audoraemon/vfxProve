@@ -7,31 +7,36 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **172** done\n**13** active branches besides Develop-Main\n\n**Since the last update** (<t:1795387302:f>)\n• New: Town Suspicion: weather-like powers raise doubt before the bell",
+     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **173** done\n**12** active branches besides Develop-Main\n\n**Since the last update** (<t:1795447249:f>)\n• New: Might gauge: every learned ability in an Endless Night, paid from a refilling gauge",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-23T05:41:42+07:00"
+     "timestamp": "2026-11-23T22:20:49+07:00"
     },
     {
      "title": "feat/god-chamber",
-     "description": "38 commits not in Develop-Main · last commit today · local only\n> fix: DEV tab marker pages from the window; the Capital's gate towers in test_places\n\n_No Ledger task points at this branch._",
+     "description": "43 commits not in Develop-Main · last commit today · local only\n> feat: The Prisoner in the Capital: its spots, gates and references\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/soldier-duties",
+     "description": "31 commits not in Develop-Main · last commit today · local only\n> fix: Decree's First Prayers route picks cells nobody outside sees (R21, Town Suspicion)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/lantern-campaign-spec",
+     "description": "26 commits not in Develop-Main · last commit today · local only\n> fix: the Tax Collector's hint fits its plate after the Suspicion wording\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/natural-people",
-     "description": "10 commits not in Develop-Main · last commit today · local only\n> fix: fair life gate -- GROUP_MAX 3, APART 2.0, RING 0.6; centres found APART, ring spots kept inside the fair and in reach (fair life T4)\n\n_No Ledger task points at this branch._",
+     "description": "14 commits not in Develop-Main · last commit today · local only\n> docs: fair life notes -- two T5 rows updated for the final-review re-record\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/veil-review",
      "description": "64 commits not in Develop-Main · last commit yesterday\n> docs: the final review's corrections to the second pass's summary, rulings and spec\n\n**In progress** (1)\n• Veil abilities review: previews, stronger effects, second pass — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "feat/soldier-duties",
-     "description": "27 commits not in Develop-Main · last commit yesterday · local only\n> fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -45,18 +50,13 @@
      "color": 5016537
     },
     {
-     "title": "claude/lantern-campaign-spec",
-     "description": "24 commits not in Develop-Main · last commit 2 days ago · local only\n> feat: music by situation (panic and alarm heat the music; chase, festival and rite moods)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/might-gauge",
-     "description": "19 commits not in Develop-Main · last commit 3 days ago · local only\n> test: track the route suite's uid\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
      "title": "feat/wish-clarity",
      "description": "1 commit not in Develop-Main · last commit 4 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/god-progression",
+     "description": "merged into Develop-Main · last commit 6 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
     }
    ]
@@ -66,11 +66,6 @@
     "parse": []
    },
    "embeds": [
-    {
-     "title": "feat/god-progression",
-     "description": "merged into Develop-Main · last commit 6 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
-     "color": 5016537
-    },
     {
      "title": "god/dominion-t3-old",
      "description": "2 commits not in Develop-Main · last commit 17 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
@@ -88,12 +83,12 @@
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-22\n> docs: Town Suspicion rulings, moved references and gate table\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (24)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-23\n> docs: Might gauge rulings, gate tables and landing checks\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you**\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (24)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_\n• Loss warning: big red alarm when the night is about to be lost _(11-22)_\n• God's Paths music (temple base + one layer per school) _(11-21)_\n• Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• Smite drag-to-widen + Ember sets people alight, Fire Trail _(11-20)_\n• Remove dithered contact shadows (black spots round sprites) _(11-20)_",
+     "description": "• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_\n• Loss warning: big red alarm when the night is about to be lost _(11-22)_\n• God's Paths music (temple base + one layer per school) _(11-21)_\n• Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• Smite drag-to-widen + Ember sets people alight, Fire Trail _(11-20)_",
      "color": 10185686
     }
    ]

@@ -49,6 +49,20 @@ const DOOR_APART := 2.0 * HuntDirector.ARRIVE
 ## How hard the stone cellar shakes when struck (v0.11 M4).
 const STONE_SHAKE := 2.0
 
+## The names a town's overrides may set (Overrides, v0.12): the sweeps' spots, words and areas, the cellar's point and area, the Temple's door
+## and the sweeps' times. SWEEP_DISTRICTS and CELLAR_DISTRICT stay Aldermere's: a town with its own areas gives them (sweep_areas, cellar_area).
+const TOWN_VARS := ["sweep_spots", "sweep_words", "sweep_areas", "cellar_at", "cellar_area", "temple_door_at", "step_at"]
+
+## A town's own (Aldermere's: the consts, copies). `sweep_areas` empty: the sweeps' quarters are `districts()[SWEEP_DISTRICTS[i]]`;
+## `cellar_area` with no area (Rect2()): `districts()[CELLAR_DISTRICT]`.
+var sweep_spots: Array = SWEEP_SPOTS.duplicate(true)
+var sweep_words: Array = SWEEP_WORDS.duplicate(true)
+var sweep_areas: Array = []
+var cellar_at: Vector2 = CELLAR_AT
+var cellar_area := Rect2()
+var temple_door_at: Vector2 = TEMPLE_DOOR
+var step_at: Array = STEP_AT.duplicate(true)
+
 ## The cellar and its door; the Temple (v0.11 M4).
 var cellar: Structure
 var cellar_door := Vector2.INF
@@ -70,18 +84,19 @@ func _plan() -> void:
 	head_stop = CAPTAIN_STOP
 	head_pace = HEAD_PACE
 	escort_gap = ESCORT_GAP
-	head_at = float(STEP_AT[3])
-	head_door = TEMPLE_DOOR
+	head_at = float(step_at[3])
+	head_door = temple_door_at
 	lost_word = "cellar"
-	for i in SWEEP_SPOTS.size():
-		steps.append(_step(String(SWEEP_WORDS[i]), SWEEP_SPOTS[i], City.current().districts()[SWEEP_DISTRICTS[i]], float(STEP_AT[i]), PARTY))
+	for i in sweep_spots.size():
+		var area: Rect2 = sweep_areas[i] if not sweep_areas.is_empty() else City.current().districts()[SWEEP_DISTRICTS[i]]
+		steps.append(_step(String(sweep_words[i]), sweep_spots[i], area, float(step_at[i]), PARTY))
 	for s: Structure in town._built:
 		if is_instance_valid(s) and s.role == &"temple":
 			temple = s
 			break
 	cellar = _cellar_house()
 	if cellar != null:
-		cellar_door = _open_door(cellar, _walkable(TEMPLE_DOOR))
+		cellar_door = _open_door(cellar, _walkable(temple_door_at))
 		_cellar_filter = cellar.damage_filter
 		cellar.damage_filter = _stone
 	else:
@@ -92,12 +107,12 @@ func _plan() -> void:
 ## soldier's post watches; the nearest reachable one there when every one tried is watched; null for none. Never a wish's building
 ## (_house_near()).
 func _cellar_house() -> Structure:
-	var area: Rect2 = City.current().districts()[CELLAR_DISTRICT]
-	var from := _walkable(TEMPLE_DOOR)
+	var area: Rect2 = cellar_area if cellar_area.has_area() else City.current().districts()[CELLAR_DISTRICT]
+	var from := _walkable(temple_door_at)
 	var skip: Array = []
 	var first: Structure = null
 	for k in HOUSE_TRIES:
-		var h := _house_near(CELLAR_AT, skip)
+		var h := _house_near(cellar_at, skip)
 		if h == null:
 			break
 		skip.append(h)
@@ -129,7 +144,7 @@ func _stone(s: Structure, _amount: float, _source: Vector2, _kind: StringName) -
 ## The captain (v0.11 M4, Decision 77): the resident nearest the Temple's door, made a noble (the purple cape and crown), on duty and
 ## taken inside the Temple.
 func _appoint_head() -> Person:
-	var door := _walkable(TEMPLE_DOOR)
+	var door := _walkable(temple_door_at)
 	var p := _citizen_near(door, CitizenProfile.Role.RESIDENT, _in_use())
 	if p == null:
 		return null
@@ -142,7 +157,7 @@ func _appoint_head() -> Person:
 
 ## His escorts (v0.11 M4): the lay citizens nearest the Temple's door, made watchmen, on duty and waiting inside with him.
 func _appoint_escorts() -> Array:
-	var door := _walkable(TEMPLE_DOOR)
+	var door := _walkable(temple_door_at)
 	var out: Array = []
 	for k in ESCORTS:
 		var crew := _lay_near(door, 1, _in_use() + out)
@@ -249,15 +264,20 @@ func _blight_step(at: Vector2) -> int:
 	return -1
 
 
-## The tour (v0.11 M4, mission spec §3): the cellar, the north quarter, the Temple.
+## The tour (v0.11 M4, mission spec §3): the cellar, the first quarter (its words, the town's own), the Temple.
 func tour() -> Array:
 	var out := []
 	if cellar_door != Vector2.INF:
 		out.append([cellar_door, "Your believers' cellar. If the hunt finds it, the night is lost."])
 	if not steps.is_empty():
-		out.append([steps[0].spot, "The north quarter. The hunt raises its first standard here at %s." % UiTheme.clock(float(STEP_AT[0]))])
-	out.append([_walkable(TEMPLE_DOOR), "The Temple. Its captain leads the last sweep by %s." % UiTheme.clock(float(STEP_AT[3]))])
+		out.append([steps[0].spot, "%s. The hunt raises its first standard here at %s." % [_sentence(String(steps[0].words)), UiTheme.clock(float(step_at[0]))]])
+	out.append([_walkable(temple_door_at), "The Temple. Its captain leads the last sweep by %s." % UiTheme.clock(float(step_at[3]))])
 	return out
+
+
+## `words` as the start of a sentence ("the north quarter" -> "The north quarter").
+func _sentence(words: String) -> String:
+	return words.substr(0, 1).to_upper() + words.substr(1)
 
 
 ## The cellar (found, the night is lost) and the Temple (the captain waits in it) are kept standing (R45).

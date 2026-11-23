@@ -163,6 +163,12 @@ var finished := false
 ## Remembrance (the Skill Tree's free memory): casts leave no cooldown, the clock never falls and nothing ends the run -- no clock,
 ## no escape, no fall. busy_left() still applies. False everywhere else.
 var free_play := false
+## The Might gauge (Endless Night): a pool that casts pay from, or null for no gauge (the board, the campaign, Remembrance).
+var might: MightPool = null
+## A PowerBook key that refuses "sealed" for the whole act, or "" for none.
+var sealed := ""
+## The keys cast at least once this act, in first-cast order, without repeats.
+var cast_keys := PackedStringArray()
 ## Buildings destroyed this mission, by BUILDING_ROLES.
 var buildings_down := 0
 ## How many casts chained.
@@ -283,6 +289,8 @@ func advance(delta: float) -> void:
 		_cooldowns[i] = maxf(0.0, was - delta)
 		if was > 0.0 and _cooldowns[i] == 0.0:
 			recharged.emit(i)
+	if might != null:
+		might.advance(delta)
 	_elapsed += delta
 	_forget_old_casts()
 	_step_abolished(delta)
@@ -413,11 +421,22 @@ func refusal(slot: int) -> String:
 		return "over"
 	if power(slot).is_empty():
 		return "empty"
+	if sealed != "" and key(slot) == sealed:
+		return "sealed"
 	if cooldown_left(slot) > 0.0:
 		return "cooldown"
+	if might != null and not free_play and not might.can_pay(might_cost(slot)):
+		return "might"
 	if busy_left() > 0.0:
 		return "busy"
 	return ""
+
+
+## What the slot's power costs in Might at its ability level; 0 for an empty slot.
+func might_cost(slot: int) -> int:
+	if power(slot).is_empty():
+		return 0
+	return PowerBook.might(key(slot), level_of(slot))
 
 
 ## Seconds until the power now playing has finished (0 when none is): one cataclysm at a time, so a player cannot
@@ -498,6 +517,10 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	var told := extra.duplicate()
 	if not told.has("level"):
 		told["level"] = level_of(slot)
+	if might != null and not free_play:
+		might.pay(PowerBook.might(String(p.key), int(told.level)))  # the level the cooldown below uses, as the cast is told it
+	if not cast_keys.has(String(p.key)):
+		cast_keys.append(String(p.key))
 	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.
 	_cooldowns[slot] = PowerBook.cooldown(String(p.key), int(told.level))
 	# A mode that carries its own cooldown (Will-o'-Wisp's ENTHRALL) waits that instead; no mode, or one without, changes nothing.
@@ -653,6 +676,8 @@ func _on_structure_destroyed(s: Structure, kind: StringName) -> void:
 		# The Divine Surge (v0.08): the Temple's fall resets every cooldown, once.
 		surged_once = true
 		_cooldowns.fill(0.0)
+		if might != null:
+			might.refill()
 		surged.emit()
 		banner.emit("DIVINE SURGE")
 	var c := _credit(kind)
@@ -871,6 +896,7 @@ func result() -> Dictionary:
 		out["score"] = score()
 		out["rank"] = rank()
 		out["lines"] = stat_lines()
+	out["cast"] = cast_keys.duplicate()
 	out["tolled"] = lantern != null and lantern.tolled  # v0.11.2: the campaign reads Night 1's bell from this, not from the loss
 	if director != null:
 		out.merge(director.report())

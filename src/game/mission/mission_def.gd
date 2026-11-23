@@ -20,6 +20,14 @@ var slots := 4
 var dp_capacity := 0
 ## The powers it allows; empty for every power.
 var pool := PackedStringArray()
+## Might gauge (a god's night): > 0 makes it a gauge night of this size; 0 is every other mission. An ActDef inherits it.
+var might_capacity := 0
+## Seconds a full refill of the gauge takes, in a gauge night.
+var might_refill := 60.0
+## The god's sealed key (the Lantern's seal), "" for none.
+var sealed := ""
+## The god's own type (the bar's middle page), "" outside a god's night.
+var god_type := ""
 var clock := 360.0
 ## Seconds a completed Banishing Rite takes off the clock (v0.09.1: The Long Night's acts take 20, every other mission
 ## BanishingRite.PENALTY).
@@ -77,6 +85,11 @@ func camera() -> Vector2:
 ## What a town must have for this mission (MissionNeeds, Places.has()).
 func needs() -> PackedStringArray:
 	return MissionNeeds.of(id)
+
+
+## True for a god's gauge night: Mission gives its Rules a Might pool.
+func gauge() -> bool:
+	return might_capacity > 0
 
 
 func has_acts() -> bool:

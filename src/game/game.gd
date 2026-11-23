@@ -116,6 +116,9 @@ const TIER5_SHOWS := ["lantern_eye", "exodus", "heart_of_faith", "lantern_eye-hu
 ## kneeling (the shrine's ring) and `win` the third shard (the win plate). Staged by `_stage_rite()`.
 const RITE_SHOWS := ["first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk",
 	"first_taste-cleanse", "first_taste-win"]
+## The Might gauge's photographs: a Tier 5 god mid-night in an Endless gauge night, one ability on cooldown and the gauge part spent. `bar-hidden`
+## has the strip (the armed ability, the gauge, the hint), `bar-open` the ability bar open on the god's own type's page. Staged by `_stage_bar()`.
+const BAR_SHOWS := ["bar-hidden", "bar-open"]
 ## The Lantern Hunts' photographs (god P5, Task 14, MS §1-§6): each Hunt as the god of its tier plays it (GodNight.def_for()). `-start` is the
 ## intro's end with the banners gone; the others are staged through the director's own paths by `_stage_hunt()`: `hide_faithful-trail` the search
 ## on the north-west household's trail, `silence_witness-relay` a witness killed in sight of his mate, `expel_inquisitor-captain` the captain out
@@ -391,6 +394,7 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
 	dev = "--dev" in args
+	GodNight.draft = "--god-draft" in args  # the old Endless Night draft, hidden (Ruling R10)
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
@@ -564,6 +568,9 @@ func _ready() -> void:
 			_show_endless(show)
 		"first_taste-start", "first_taste-six", "first_taste-modes", "first_taste-drag", "first_taste-march", "first_taste-walk", "first_taste-cleanse", "first_taste-win":
 			_show_endless(show)
+		"bar-hidden", "bar-open":
+			# The Might gauge's ability bar in a Tier 5 god's night, hidden (the strip) and open.
+			_show_endless(show)
 		"prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5", \
 		"hide_faithful-start", "hide_faithful-trail", "hide_faithful-broken", "hide_faithful-march", "silence_witness-start", "silence_witness-relay", \
 		"expel_inquisitor-start", "expel_inquisitor-captain", \
@@ -629,7 +636,7 @@ func _ready() -> void:
 		# which takes longer than that second -- the first pause capture showed the menu over bare grass.
 		if is_instance_valid(_mission) and not _mission.started():
 			await _mission.prewarmed
-		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission):
+		if (show in ["miras", "cael", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS or show in BAR_SHOWS) and is_instance_valid(_mission):
 			# Their photographs are of play (v0.10 M6): the tour is skipped, as a player would.
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -646,7 +653,7 @@ func _ready() -> void:
 				heart._open(1)
 				heart._raze(heart.targets[1])
 				heart._odran_comes()
-		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS) and is_instance_valid(_mission) \
+		if (show in ["miras", "lanterns", "flame", "flame-beams"] or show in RITE_SHOWS or show in HUNT_SHOWS or show in TIER1_SHOWS or show in TIER2_SHOWS or show in TIER3_SHOWS or show in TIER4_SHOWS or show in TIER5_SHOWS or show in BAR_SHOWS) and is_instance_valid(_mission) \
 				and is_instance_valid(_mission._hud):
 			# The opening banners cover the middle of the screen for their first seconds (v0.10 M6): wait them out, so the
 			# tags are photographed clear. (Bounded in frames, so a HUD that never empties still gets its photograph.)
@@ -658,6 +665,8 @@ func _ready() -> void:
 			await _stage_rite(show)
 		if show in HUNT_SHOWS and is_instance_valid(_mission):
 			await _stage_hunt(show)
+		if show in BAR_SHOWS and is_instance_valid(_mission):
+			_stage_bar(show)
 		if show == "ascend" and is_instance_valid(_mission):
 			await _until(func() -> bool: return _mission.started(), 10.0)
 			_mission.skip_intro()
@@ -1122,7 +1131,7 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 		# Endless Night (god P1, Rulings P9, P10, C7): the night is banked to the god and only the god's file is written -- already
 		# done when the night was decided (review M1), which put "god" in this same result.
 		if not outcome.has("god"):
-			bank_god_night(god, mission_id, loadout, result)
+			bank_god_night(god, mission_id, GodNight.carried_keys(loadout, outcome), result)
 			_write_god()
 	else:
 		bank_night(save, mission_id, loadout, result, _in_campaign)
@@ -1135,7 +1144,7 @@ func _on_mission_finished(outcome: Dictionary) -> void:
 func _on_night_decided(outcome: Dictionary) -> void:
 	if not _in_endless or god == null:
 		return
-	bank_god_night(god, mission_id, loadout, outcome)
+	bank_god_night(god, mission_id, GodNight.carried_keys(loadout, outcome), outcome)
 	_write_god()
 
 
@@ -1265,7 +1274,7 @@ func _on_god_select_action(what: String, pick: GodSelectScreen) -> void:
 ## (exactly Descend's draw: the Hunt cannot be skipped, P2-4; the rite waits for the next night), else the rite for its level. A static so
 ## a suite can prove it.
 static func awaken_target(slot: GodSlot) -> String:
-	if slot == null or slot.draftable().is_empty():
+	if slot == null or GodNight.pool_for(slot).is_empty():
 		return ""
 	var state := GodNight.awaken_state(slot)
 	if state == "":
@@ -1281,17 +1290,17 @@ static func awaken_target(slot: GodSlot) -> String:
 func _on_hub_action(what: String) -> void:
 	match what:
 		"descend":
-			if god.draftable().is_empty():
+			if GodNight.pool_for(god).is_empty():
 				return
 			mission_id = GodNight.draw(god)
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			on_action("hub:descend")
 		"awaken":
 			var target := awaken_target(god)
 			if target == "":
 				return
 			mission_id = target
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			on_action("hub:awaken")
 		"awaken_dev":
 			god.awaken()
@@ -1402,6 +1411,19 @@ func _show_god(level: int, tier := 1) -> GodSlot:
 	return g
 
 
+## The god of a Might gauge photograph: a ruin god of tier 5 on its tenth level that has learned all ten abilities of its own type and the first three
+## of each neighbouring type, every one at level 2.
+func _show_bar_god() -> GodSlot:
+	var g := _show_god(10, 5)
+	g.learned = {}
+	for key in GodTree.keys_for(g.type, 5):
+		g.learned[key] = 2
+	for type in GodTree.neighbours(g.type):
+		for key in GodTree.keys_for(type, 2).slice(0, 3):
+			g.learned[key] = 2
+	return g
+
+
 ## --show=<name> for Endless Night's screens (god P1): the fixture god on the dev fill, written to the show's own slot files. `hub-capped` is
 ## the same god at level 10 (the tier's cap); `pause-endless` has the night's clock started, so Abandon's confirm says the night is lost.
 func _show_endless(show: String) -> void:
@@ -1412,6 +1434,8 @@ func _show_endless(show: String) -> void:
 	var rite_night := show in RITE_SHOWS
 	var hunt_id := hunt_of_show(show)
 	match show:
+		"bar-hidden", "bar-open":
+			god = _show_bar_god()
 		"hub-unwritten":
 			god = _show_god(20, 2)  # capped at the next cap, no rite written there yet: the dim Awaken
 		"hub-gifts", "prepare-gifts":
@@ -1425,7 +1449,7 @@ func _show_endless(show: String) -> void:
 	if hunt_id != "":
 		god = _show_god(10, int(HuntBook.row(hunt_id).tier))  # the god of the Hunt's tier (god P5)
 		god.notice = GodSlot.NOTICE_MAX
-		loadout = god.loadout.duplicate()
+		loadout = GodNight.night_loadout(god)
 	_write_god()
 	match show:
 		"slots":
@@ -1452,11 +1476,11 @@ func _show_endless(show: String) -> void:
 			go_to(Screen.RESULTS)
 		"prepare-endless":
 			mission_id = MissionBook.WARNING
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			go_to(Screen.PREPARE)
 		"pause-endless":
 			mission_id = MissionBook.WARNING
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			god.in_night = mission_id
 			go_to(Screen.MISSION)
 			_open_pause()
@@ -1480,7 +1504,7 @@ func _show_endless(show: String) -> void:
 			god.notice = GodSlot.NOTICE_MAX
 			_write_god()
 			mission_id = GodNight.draw(god)
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			go_to(Screen.PREPARE)
 		"prepare-sealed":
 			god.seal(god.seal_target())
@@ -1488,7 +1512,7 @@ func _show_endless(show: String) -> void:
 			god.notice = 50
 			_write_god()
 			mission_id = GodNight.draw(god)
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			go_to(Screen.PREPARE)
 		"results-hunt-won", "results-hunt-lost":
 			result = (SAMPLE_HUNT_WON if show == "results-hunt-won" else SAMPLE_HUNT_LOST).duplicate(true)
@@ -1497,7 +1521,7 @@ func _show_endless(show: String) -> void:
 			# The Hunt's pause menu with Abandon's confirm up: it names what the Lantern would seal (god P2, pre-flight G2).
 			god.notice = GodSlot.NOTICE_MAX
 			mission_id = GodNight.draw(god)
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			god.in_night = mission_id
 			go_to(Screen.MISSION)
 			_open_pause()
@@ -1508,11 +1532,11 @@ func _show_endless(show: String) -> void:
 			go_to(Screen.HUB)
 		"prepare-rite":
 			mission_id = RiteBook.FIRST_TASTE
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			go_to(Screen.PREPARE)
 		"prepare-gifts":
 			mission_id = GodNight.draw(god)
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			go_to(Screen.PREPARE)
 		"results-rite-won", "results-rite-lost":
 			# The rite's results as banking makes them (god P3, P2's Task 4 M5): GodNight.bank() on the fixture god, from a result shaped
@@ -1521,14 +1545,14 @@ func _show_endless(show: String) -> void:
 			result = {"mission": RiteBook.FIRST_TASTE, "won": won, "reason": "shards" if won else "cleansed", "time": 197.0 if won else 143.0,
 				"goal": {"label": "Three Lantern shards", "done": won}, "bonuses": [], "best": false,
 				"rite": {"id": RiteBook.FIRST_TASTE, "shards": 3 if won else 2, "need": 3, "flame_out": not won, "marches": 2}}
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			god.in_night = RiteBook.FIRST_TASTE
 			bank_god_night(god, RiteBook.FIRST_TASTE, loadout, result)
 			go_to(Screen.RESULTS)
 		"pause-rite":
 			# The rite's pause menu with Abandon's confirm up: it says the rite is lost and what that costs (god P3, MS §1).
 			mission_id = RiteBook.FIRST_TASTE
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			god.in_night = mission_id
 			go_to(Screen.MISSION)
 			_open_pause()
@@ -1536,7 +1560,7 @@ func _show_endless(show: String) -> void:
 				_pause._set_confirm(true)
 		"prepare-hunt-1", "prepare-hunt-2", "prepare-hunt-3", "prepare-hunt-4", "prepare-hunt-5":
 			mission_id = hunt_id
-			loadout = god.loadout.duplicate()
+			loadout = GodNight.night_loadout(god)
 			go_to(Screen.PREPARE)
 		_:
 			if rite_night:
@@ -1544,6 +1568,10 @@ func _show_endless(show: String) -> void:
 				go_to(Screen.MISSION)
 			elif hunt_id != "":
 				mission_id = hunt_id
+				go_to(Screen.MISSION)
+			elif show in BAR_SHOWS:
+				mission_id = MissionBook.WARNING
+				loadout = GodNight.night_loadout(god)
 				go_to(Screen.MISSION)
 
 
@@ -1556,10 +1584,10 @@ static func hunt_of_show(show: String) -> String:
 	return ""
 
 
-## The god of a First Taste photograph (god P3): `six` and `modes` have six slots and six learned abilities (`modes`: Decree's, The Bell Lies last), the
-## others the fixture's three. Sets `loadout` as the draft would.
+## The god of a First Taste photograph (god P3): `six` and `modes` learn six abilities and The Bell Lies (`modes` focuses it), the others the
+## fixture's. Sets `loadout` as a god's night starts: the whole tree, shown on the Might gauge's ability bar.
 func _show_rite_loadout(show: String) -> void:
-	loadout = god.loadout.duplicate()
+	loadout = GodNight.night_loadout(god)
 	if show not in ["first_taste-six", "first_taste-modes"]:
 		return
 	god.bought["slot"] = 3
@@ -1570,12 +1598,23 @@ func _show_rite_loadout(show: String) -> void:
 				keys.append(key)
 				god.learned[key] = maxi(int(god.learned.get(key, 0)), 1)
 	god.learned["belllies"] = 1
-	loadout = PackedStringArray()
-	for key in keys:
-		if loadout.size() < (5 if show == "first_taste-modes" else 6):
-			loadout.append(key)
-	if show == "first_taste-modes":
-		loadout.append("belllies")
+	loadout = GodNight.night_loadout(god)
+	if show == "first_taste-modes" and not loadout.has("belllies"):
+		loadout.append("belllies")  # no spot of the tree holds it, so the whole tree lacks it: the photograph adds it, as the draft once did
+
+
+## Stages a Might gauge photograph past its intro: the second own-type ability armed, the third on cooldown, the gauge at about half; `bar-open`
+## shows the bar. The mission is up and started and the opening banners are waited out by the caller.
+func _stage_bar(show: String) -> void:
+	var rules := _mission.rules()
+	var bar := _mission._hud.bar
+	if rules == null or bar == null:
+		return
+	var slots: PackedInt32Array = bar.pages()[bar.page].slots
+	rules._cooldowns[slots[2]] = rules.cooldown_of(slots[2]) * 0.6
+	rules.might.value = rules.might.capacity * 0.45
+	_mission._aim.pick(slots[1])
+	bar.open = show == "bar-open"
 
 
 ## Stages a First Taste photograph past its intro (god P3, Task 8): the director's own paths, as the Tier 5 shots are staged. The mission is up
@@ -1592,7 +1631,7 @@ func _stage_rite(show: String) -> void:
 		await get_tree().process_frame
 	match show:
 		"first_taste-modes":
-			_mission._aim.pick(5)  # The Bell Lies, last of six: its modes plate lies where the chain plate would sit
+			_mission._aim.pick(_mission.rules().loadout.find("belllies"))  # The Bell Lies: its modes plate lies where the chain plate would sit
 		"first_taste-drag":
 			var victim: Person = d.marked[0]
 			d.chain(victim)
@@ -1737,10 +1776,10 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		if _fading:
 			return
 		if what == "manifest":
-			if _in_endless and prep.draft.picks.is_empty():
+			if _in_endless and not prep.read_only and prep.draft.picks.is_empty():
 				prep.refuse(PrepareScreen.REFUSE_EMPTY)  # as the button does (pre-flight R2)
 				return
-			loadout = prep.draft.picks
+			loadout = GodNight.night_loadout(god) if prep.read_only else prep.draft.picks  # a gauge night brings the whole tree
 			if not _in_campaign and not _in_endless:
 				levels = prep.draft.levels.duplicate()
 				if is_instance_valid(_mission):
@@ -1756,15 +1795,15 @@ func _on_prepare_action(what: String, prep: PrepareScreen) -> void:
 		on_action("prepare:campaign")
 		return
 	if _in_endless:
-		# Endless Night's Prepare (god P1): back to the hub is free (nothing started); MANIFEST needs a pick (pre-flight R2) and writes no
-		# save of the board's (R1): the loadout is the god's, kept when the night is banked.
+		# Endless Night's Prepare (god P1): back to the hub is free (nothing started); a draft's MANIFEST needs a pick (pre-flight R2), a gauge
+		# night's DESCEND none (the whole tree goes); it writes no save of the board's (R1): the god's file banks what was cast.
 		if what == "back":
 			on_action("prepare:hub")
 		elif what == "manifest":
-			if prep.draft.picks.is_empty():
+			if prep.draft.picks.is_empty() and not prep.read_only:
 				prep.refuse(PrepareScreen.REFUSE_EMPTY)
 				return
-			loadout = prep.draft.picks
+			loadout = GodNight.night_loadout(god) if prep.read_only else prep.draft.picks
 			on_action("prepare:manifest")
 		return
 	if what == "manifest":
@@ -2546,8 +2585,9 @@ func _flow_mouse(at: Vector2) -> InputEventMouseButton:
 ## Endless Night through the real screens (god P1, spec §9.1, §14 P1's "playable at its end"; rulings C2, C7, C9, P9, pre-flight B3, R1, R2).
 ## 1. With --dev the board's ENDLESS opens the slot select: three empty slots. New -> the god select -> Ruin -> the hub (Night 1, the dev
 ##    fill's two starting abilities at level 1, the slot file written). The Skill Tree refuses a point the god has not got.
-## 2. Descend (a fixture seed that draws The Warning): Prepare is the god's (one ruin tab, 3 slots, 6 Might, nothing locked); the night is
-##    played with the god's pool, `in_night` is written once the clock starts, and R does not restart it.
+## 2. Descend (a fixture seed that draws The Warning): Prepare is the god's read-only briefing (one ruin tab, "Might 6  ·  full refill in 60 s",
+##    nothing locked); DESCEND picks nothing and the night is played with the god's whole tree, `in_night` is written once the clock starts, and
+##    R does not restart it.
 ## 3. The warnings stopped, F ascends: banked to the god (Divine Power, a level, a point, Faith 1:1, Night 1), the file agrees, and the results offer
 ##    Continue / Skill Tree / Faith. The tree raises Smite; Faith buys +1 Might (7).
 ## 4. No escape by quitting (spec §9.1): Abandon after the clock is a lost night (Night 2, the lost-night line, nothing earned); Abandon during
@@ -2566,7 +2606,6 @@ func _flow_endless(step: Callable) -> void:
 		GodTree.dev_fill = false
 		go_to(Screen.BOARD)
 	var god_file := func() -> GodSlot: return GodSlot.read(GodSlot.path(god_slot, god_base))
-	var pair := PackedStringArray(["smite", "ember"])
 	dev = true
 	go_to(Screen.BOARD)
 	var board := _screen_node as MissionBoard
@@ -2638,12 +2677,14 @@ func _flow_endless(step: Callable) -> void:
 	hub.click(hub.menu_rect("descend").get_center())
 	var prep := _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id == MissionBook.WARNING and prep.god == god
-		and prep.tabs() == PackedStringArray(["ruin"]) and prep.draft.slots == 3 and prep.draft.capacity == 6 and prep.draft.locked.is_empty(),
-		"Descend draws The Warning (seed %d) and opens the god's Prepare: one Ruin tab, 3 slots, 6 Might, nothing locked" % s)
+		and prep.tabs() == PackedStringArray(["ruin"]) and prep.read_only and prep.confirm_label == "DESCEND"
+		and prep.gauge_text() == "Might 6  ·  full refill in 60 s" and prep.draft.locked.is_empty(),
+		"Descend draws The Warning (seed %d) and opens the god's briefing: one Ruin tab, \"%s\", DESCEND, nothing locked" % [s, prep.gauge_text() if prep != null else ""])
 	if prep == null:
 		out.call()
 		return
-	prep.draft.preselect(pair)
+	prep.click(PrepareScreen.cell_rect(0, prep.shown().size()).get_center())  # a card cannot be picked: nothing is drafted
+	step.call(prep.draft.picks.is_empty() and prep.refused_reason == "", "a click on a card picks nothing and refuses nothing")
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 15.0)
 	if not is_instance_valid(_mission) or _mission.rules() == null:
@@ -2652,11 +2693,8 @@ func _flow_endless(step: Callable) -> void:
 		return
 	var pool := _mission.rules().mission.pool
 	var kit := _mission.rules().loadout
-	var inside := not kit.is_empty()
-	for key in kit:
-		inside = inside and god.draftable().has(key)
-	step.call(screen == Screen.MISSION and pool == god.draftable() and inside and god.in_night == "",
-		"MANIFEST starts the night on the god's pool, its kit (%s) inside it, the clock not started so nothing in the file yet" % ", ".join(kit))
+	step.call(screen == Screen.MISSION and pool == god.in_tree() and kit == GodNight.night_loadout(god) and not kit.is_empty() and god.in_night == "",
+		"DESCEND starts the night on the god's pool with its whole tree as the kit (%s), the clock not started so nothing in the file yet" % ", ".join(kit))
 	await _past_intro()
 	await _until(func() -> bool: return god.in_night != "", 3.0)
 	var rules_before := _mission.rules()
@@ -2689,6 +2727,11 @@ func _flow_endless(step: Callable) -> void:
 		and saved.in_night == "" and saved.last_mission == MissionBook.WARNING and menu == ["continue", "tree", "faith"],
 		"F ascends: banked to the god -- %d Divine Power (80 + 20 x %d wishes), level %d, %d points, Faith %d = the %s believers, Night 1 -- the file agrees; Continue / Skill Tree / Faith"
 		% [int(banked.get("divine_power", -1)), kept, god.level, god.points, god.faith, d.get("earned", "?")])
+	var cast: PackedStringArray = PackedStringArray(result.get("cast", PackedStringArray()))
+	var carried_ok := god.carried.size() == cast.size()
+	for key in cast:
+		carried_ok = carried_ok and int(god.carried.get(key, 0)) == 1
+	step.call(carried_ok, "the night banked what was cast (%s) and nothing else: carried %s" % [", ".join(cast), god.carried])
 	if not up or res == null:
 		out.call()
 		return
@@ -2736,13 +2779,12 @@ func _flow_endless(step: Callable) -> void:
 	var faith_held := god.faith
 	hub.click(hub.menu_rect("descend").get_center())
 	prep = _screen_node as PrepareScreen
-	step.call(screen == Screen.PREPARE and prep != null and mission_id != MissionBook.WARNING and prep.draft.capacity == 7,
-		"Descend draws another night than The Warning (%s) and Prepare has 7 Might" % mission_id)
+	step.call(screen == Screen.PREPARE and prep != null and mission_id != MissionBook.WARNING and prep.gauge_text() == "Might 7  ·  full refill in 60 s",
+		"Descend draws another night than The Warning (%s) and the briefing says Might 7" % mission_id)
 	if prep == null:
 		out.call()
 		return
 	var second := mission_id
-	prep.draft.preselect(pair)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 15.0)
 	await _past_intro()
@@ -2777,7 +2819,6 @@ func _flow_endless(step: Callable) -> void:
 		step.call(false, "Descend opens Prepare again")
 		out.call()
 		return
-	prep.draft.preselect(pair)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 15.0)
 	var intro := is_instance_valid(_mission) and _mission.in_intro()
@@ -2807,7 +2848,6 @@ func _flow_endless(step: Callable) -> void:
 		step.call(false, "Descend opens Prepare once more")
 		out.call()
 		return
-	prep.draft.preselect(pair)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 15.0)
 	await _past_intro()
@@ -3010,7 +3050,6 @@ func _flow_lantern(step: Callable) -> void:
 	if prep == null:
 		out.call()
 		return
-	prep.draft.preselect(pair)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 15.0)
 	await _past_intro()
@@ -3056,7 +3095,6 @@ func _flow_lantern(step: Callable) -> void:
 	if prep == null:
 		out.call()
 		return
-	prep.draft.preselect(pair)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 15.0)
 	await _past_intro()
@@ -3141,8 +3179,8 @@ func _flow_lantern(step: Callable) -> void:
 		prep.set_tab(at_tab)
 		prep.click(PrepareScreen.cell_rect(at_card, prep.shown().size()).get_center())
 	step.call(mission_id != String(hunt0.id) and at_tab >= 0 and prep.card_cost_text(target) == "Sealed: 3 nights" and not prep.draft.picks.has(target)
-		and prep.refused_reason == PrepareScreen.REFUSE_SEALED % "3 nights",
-		"Descend after the Hunt is another night (%s); the sealed card says \"%s\" and a click on it picks nothing (\"%s\")"
+		and prep.refused_reason == "" and prep.read_only,
+		"Descend after the Hunt is another night (%s); the sealed card says \"%s\" and a click on it does nothing (\"%s\")"
 		% [mission_id, prep.card_cost_text(target), prep.refused_reason])
 	_on_prepare_action("back", prep)
 	hub = _screen_node as GodHub
@@ -3250,7 +3288,7 @@ func _flow_rite(step: Callable) -> void:
 	hub = _screen_node as GodHub
 
 	# 3. The rite: Prepare, the night, real input, the pause.
-	if not await _flow_enter_rite(step, hub, pair):
+	if not await _flow_enter_rite(step, hub):
 		out.call()
 		return
 	var d := _mission.rules().director as FirstTasteDirector
@@ -3353,7 +3391,7 @@ func _flow_rite(step: Callable) -> void:
 	go_to(Screen.HUB)
 	hub = _screen_node as GodHub
 	step.call(hub != null and hub.awaken_shown() and god.capped() and god.gifts.is_empty(), "the fixture again: Tier 1 at the cap, Awaken offered")
-	if hub == null or not await _flow_enter_rite(step, hub, pair):
+	if hub == null or not await _flow_enter_rite(step, hub):
 		out.call()
 		return
 	var lost_night := god.night
@@ -3392,8 +3430,8 @@ func _flow_rite(step: Callable) -> void:
 
 
 ## Awaken from the hub, Prepare's rite page, MANIFEST and into the night past its intro (FLOW, god P3): the rite's header and rows are checked,
-## the draft is `pair`. False (and a failed step) when the screens do not come up.
-func _flow_enter_rite(step: Callable, hub: GodHub, pair: PackedStringArray) -> bool:
+## nothing is drafted (the rite takes the whole tree). False (and a failed step) when the screens do not come up.
+func _flow_enter_rite(step: Callable, hub: GodHub) -> bool:
 	hub.click(hub.menu_rect("awaken").get_center())
 	var prep := _screen_node as PrepareScreen
 	var labels := PackedStringArray()
@@ -3408,7 +3446,6 @@ func _flow_enter_rite(step: Callable, hub: GodHub, pair: PackedStringArray) -> b
 		"Awaken opens THE AWAKENING RITE (%s): its six rows and IF LOST \"%s\"" % [", ".join(labels), if_lost])
 	if prep == null or mission_id != RiteBook.FIRST_TASTE:
 		return false
-	prep.draft.preselect(pair)
 	_on_prepare_action("manifest", prep)
 	await _until(func() -> bool: return _mission_up(null), 15.0)
 	await _past_intro()
@@ -3426,7 +3463,8 @@ func _flow_click_ground(ground: Vector2) -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var landed: bool = _mission._bf.mouse_ground().distance_to(ground) < 0.4 and not _mission._hud.chain_rect().has_point(at) \
-		and _mission._hud.slot_at(at) < 0 and view.get_visible_rect().has_point(at)
+		and _mission._hud.bar_hit(at) == "" and not _mission._hud.slots_rect().has_point(at) and _mission._hud.slot_at(at) < 0 \
+		and view.get_visible_rect().has_point(at)
 	if landed:
 		_mission._unhandled_input(_flow_mouse(at))
 	else:

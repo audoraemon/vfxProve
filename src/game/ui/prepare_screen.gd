@@ -50,6 +50,8 @@ const PANEL := Rect2(8.0, 40.0, 180.0, 274.0)
 const BADGE := 15.0
 ## The gap between the briefing's widest label and its values.
 const LABEL_GAP := 6.0
+## The read-only briefing's panel hint, where a draft says how many powers to pick.
+const HINT_BRIEFING := "Every ability you have learned comes with you"
 
 ## The mission being prepared (v0.08): its briefing, its slots and the powers it allows. Last Judgement until setup().
 var mission: MissionDef = MissionBook.last_judgement()
@@ -64,6 +66,9 @@ var levels := {}
 ## learned level -- a tab per god type holding one (the spot decides the tab, spec §5.2), the god's slots and Might, no level
 ## picker. null for every other mission.
 var god: GodSlot = null
+## A god's gauge night (the Might gauge): Prepare is a briefing. The cards are looked at, never picked; the loadout bar is the gauge
+## line; the confirm button is DESCEND. Set in setup(): a god and a def that is a gauge night.
+var read_only := false
 ## The look Endless Night rolled for this night (a Town.Look), or -1 for none: Game sets it with `god`; the header then says Day or Night.
 var look := -1
 ## The open tab: an index into tabs().
@@ -110,6 +115,10 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 	draft = Draft.new().for_mission(mission)
 	draft.locked = locked
 	_god_tabs.clear()
+	read_only = god != null and def.gauge()
+	if read_only:
+		confirm_label = "DESCEND"
+		preselect = PackedStringArray()  # nothing is drafted: the whole tree descends
 	if god != null:
 		# Endless Night (god P1): the god's slots, Might and learned levels. A power's level is the god's, so every learned level
 		# stays in the draft, picked or not.
@@ -254,7 +263,7 @@ func set_tab(i: int) -> void:
 
 ## MANIFEST is lit: there is at least one pick (v0.08: empty slots are allowed).
 func can_manifest() -> bool:
-	return draft.can_manifest()
+	return read_only or draft.can_manifest()
 
 
 ## The level badge of loadout slot `i` of `count` (god P1, ruling P13): LEVEL_BADGE at the slot's top right.
@@ -279,7 +288,7 @@ func hit(point: Vector2) -> String:
 		for i in draft.picks.size():
 			if level_rect(i, draft.slots).has_point(point):
 				return "level:%d" % i
-	for i in draft.slots:
+	for i in 0 if read_only else draft.slots:
 		if slot_rect(i, draft.slots).has_point(point):
 			return "slot:%d" % i
 	if MANIFEST_RECT.has_point(point):
@@ -317,7 +326,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.physical_keycode == KEY_TAB:
 			UiSound.play(&"ui_click")
 			set_tab(tab + (-1 if event.shift_pressed else 1))
-		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and draft.can_manifest():
+		elif event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER] and can_manifest():
 			UiSound.play(&"ui_manifest")
 			action.emit("manifest")
 
@@ -366,6 +375,8 @@ func click(point: Vector2) -> void:
 			action.emit("manifest")
 		else:
 			refuse(REFUSE_EMPTY)
+	elif read_only:
+		pass  # a card is only looked at
 	elif god != null and h != "" and h == god.sealed:
 		refuse(REFUSE_SEALED % GodSlot.nights_text(god.seal_nights))
 	elif h != "":
@@ -493,6 +504,8 @@ func is_rite() -> bool:
 ## "4 / 6 slots   12 / 14 Might" at the header's right (v0.08's budget meter): gold once the slots or the Might
 ## are used up, dim before.
 func budget_text() -> String:
+	if read_only:
+		return ""
 	if draft.capacity <= 0:
 		return "%d / %d slots" % [draft.picks.size(), draft.slots]
 	return "%d / %d slots   %d / %d Might" % [draft.picks.size(), draft.slots, draft.spent(), draft.capacity]
@@ -500,6 +513,8 @@ func budget_text() -> String:
 
 func _draw_budget() -> void:
 	var s := budget_text()
+	if s == "":
+		return
 	var full := draft.is_full() or (draft.capacity > 0 and draft.spent() >= draft.capacity)
 	UiTheme.text(_ui, Vector2(632.0 - UiTheme.width(s, UiTheme.SIZE_SMALL), 24.0), s, UiTheme.SIZE_SMALL,
 		UiTheme.COL_GOLD if full else UiTheme.COL_DIM)
@@ -613,13 +628,17 @@ func brief_rows() -> Array:
 	var city := ["CITY", "%d citizens, %d soldiers, a nine-part fortress" % [Crowd.CITIZENS, Crowd.SOLDIERS]]
 	if god != null and not gift_effects().is_empty():
 		city = ["GIFTS", "; ".join(gift_effects())]
+	var temple := ["TEMPLE", "Its fall resets every cooldown, once"]
+	if read_only:
+		loadout = ["LOADOUT", "All your abilities, each cast paid in Might"]  # a gauge night drafts nothing
+		temple = ["TEMPLE", "Its fall resets every cooldown and refills your Might, once"]
 	return [
 		["TARGET", mission.brief[0] if not mission.brief.is_empty() else mission.name],
 		["WIN", mission.goal],
 		["LOSE", mission.lose],
 		city,
 		loadout,
-		["TEMPLE", "Its fall resets every cooldown, once"],
+		temple,
 	]
 
 
@@ -690,6 +709,8 @@ func brief_bottom() -> float:
 
 ## The panel's hint when no refusal is showing: how many powers within how much Might.
 func hint_text() -> String:
+	if read_only:
+		return HINT_BRIEFING
 	return "Pick up to %d powers within %d Might%s" % [draft.slots, draft.capacity,
 		". Click the L on a slot to set its level" if level_picker else ""]
 
@@ -757,7 +778,7 @@ func _draw_card(i: int, key: String) -> void:
 	var slot := draft.slot_of(key)
 	# A card that would not fit -- no free slot, or over the Might -- is dimmed (v0.08); a picked one never is.
 	var sealed := god != null and key == god.sealed
-	var refused := sealed or draft.refusal(key) != ""
+	var refused := sealed or (not read_only and draft.refusal(key) != "")
 	_ui.draw_rect(r, UiTheme.COL_PANEL if key != _hover else Color(0.1, 0.09, 0.07, 0.9))
 	var icon_box := _icon_box(key, r.position + Vector2(4.0 + icon_px * 0.5, 4.0 + icon_px * 0.5), icon_px)
 	if icon_box.tex != null:
@@ -816,10 +837,19 @@ func _draw_level_badge(i: int, key: String) -> void:
 		UiTheme.SIZE_SMALL, UiTheme.COL_GOLD if level > 1 else UiTheme.COL_DIM)
 
 
+## A gauge night's gauge line (the read-only briefing's loadout bar): the god's Might and how long a full refill takes.
+func gauge_text() -> String:
+	return "Might %d  ·  full refill in %d s" % [god.max_might(), roundi(god.refill_seconds())] if god != null else ""
+
+
 ## The loadout bar: the picks in slot order, whichever tab they came from (a click gives one back), then MANIFEST,
 ## lit once there is one (v0.08: empty slots are allowed).
 func _draw_loadout() -> void:
 	_ui.draw_rect(LOADOUT_BAR, UiTheme.COL_PANEL)
+	if read_only:
+		UiTheme.text(_ui, Vector2(LOADOUT_BAR.position.x + 8.0, LOADOUT_BAR.position.y + 21.0), gauge_text(), UiTheme.SIZE_BODY, UiTheme.COL_TEXT)
+		_draw_confirm()
+		return
 	for i in draft.slots:
 		var r := slot_rect(i, draft.slots)
 		var key := draft.picks[i] if i < draft.picks.size() else ""
@@ -840,7 +870,12 @@ func _draw_loadout() -> void:
 			continue
 		var name := UiTheme.fit(String(PowerBook.get_power(key).name), r.size.x - 32.0 - (LEVEL_BADGE.x + 2.0 if level_picker else 0.0))
 		UiTheme.text(_ui, r.position + Vector2(29.0, 17.0), name, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)
-	var full := draft.can_manifest()  # not "ready": that is Node's own signal, and shadowing it warns
+	_draw_confirm()
+
+
+## The confirm button (MANIFEST, BEGIN or DESCEND), lit once it can be pressed.
+func _draw_confirm() -> void:
+	var full := can_manifest()  # not "ready": that is Node's own signal, and shadowing it warns
 	_ui.draw_rect(MANIFEST_RECT, Color(0.12, 0.1, 0.04, 0.95) if full else Color(0, 0, 0, 0.35))
 	UiTheme.frame(_ui, MANIFEST_RECT, full and _hover == "manifest")
 	var label := confirm_label

@@ -65,6 +65,8 @@ static func _aldermere_pin(t) -> void:
 	t.check(ok, "Aldermere's three sweeps keep their words, districts and times")
 	t.check(d.head_at == 240.0 and d.head_door == HereticHuntDirector.TEMPLE_DOOR, "Aldermere's captain comes at 240 s by the Temple's door const")
 	t.check(String(d.tour()[1][1]) == "The north quarter. The hunt raises its first standard here at %s." % UiTheme.clock(60.0), "Aldermere's tour line is as before")
+	t.check(d.cellar != null and TownLayout.DISTRICTS[HereticHuntDirector.CELLAR_DISTRICT].has_point(d.cellar.center()),
+		"Aldermere's cellar is a dwelling in its district (the fallback to the districts holds)")
 	print("ALDERMERE hunt cellar_door %s" % [d.cellar_door])
 	Kit.done(s)
 
@@ -81,12 +83,12 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	var ok := d.steps.size() == 3
 	for i in d.steps.size():
 		ok = ok and d.steps[i].words == dov.sweep_words[i] and d.steps[i].district == dov.sweep_areas[i] and d.steps[i].spot.distance_to(dov.sweep_spots[i]) < 1.0 \
-			and d.steps[i].at == float(HereticHuntDirector.STEP_AT[i])
-	t.check(ok, "the three sweeps are the Capital's: words, areas, spots, and Aldermere's times")
-	t.check(d.head_door == dov.temple_door_at and d.head_at == 240.0, "the captain comes out of the Capital's Temple door at 240 s")
+			and d.steps[i].at == float(dov.step_at[i])
+	t.check(ok and dov.step_at.slice(0, 3) == HereticHuntDirector.STEP_AT.slice(0, 3), "the three sweeps are the Capital's: words, areas, spots, and Aldermere's times")
+	t.check(d.head_door == dov.temple_door_at and d.head_at == 200.0, "the captain comes out of the Capital's Temple door at 200 s")
 	t.check(d.cellar != null and dov.cellar_area.has_point(d.cellar.center()), "the cellar is a dwelling in the south-west corner (%s)" % [d.cellar.center() if d.cellar != null else null])
 	var def := MissionBook.get_mission("%s@capital" % ID)
-	t.check(def.camera_at == Vector2(-18.0, -8.0) and def.intro_from == Vector2(-18.0, -2.0), "camera_at and intro_from are overridden together (C9)")
+	t.check(def.camera_at == Vector2(-9.0, 9.0) and def.intro_from == Vector2(-9.0, 15.0), "camera_at and intro_from are overridden together (C9)")
 	_cellar_quiet(t, d)
 	var points: Array = []
 	for st in d.steps:
@@ -117,10 +119,18 @@ static func _walk_parity(t, d: HereticHuntDirector, cap: Dictionary, ald: Dictio
 	var cw := Cap.walk(cap.grid, d.head_door, d.cellar_door)
 	var aw := Cap.walk(ald.grid, ad.head_door, ad.cellar_door)
 	Cap.parity(t, "the captain's walk, Temple door to cellar", cw, aw)
+	var near_c := INF
+	var near_a := INF
+	var walks: Array[float] = []
 	for i in d.steps.size():
 		var c := Cap.walk(cap.grid, d.steps[i].spot, d.cellar_door)
 		var al := Cap.walk(ald.grid, ad.steps[i].spot, ad.cellar_door)
+		walks.append(c)
+		near_c = minf(near_c, c)
+		near_a = minf(near_a, al)
 		print("CAPITAL hunt sweep %d -> cellar %.1f (Aldermere %.1f, %.2fx)" % [i, c, al, c / maxf(al, 0.01)])
+	t.check(near_c <= 1.5 * near_a, "the nearest sweep to the cellar walks %.1f, within 1.5x Aldermere's nearest %.1f" % [near_c, near_a])
+	t.check(walks[0] > walks[1] and walks[1] > walks[2], "the sweeps close in on the cellar: walks %s" % [walks])
 	Kit.done(a)
 	City.use(&"capital")
 

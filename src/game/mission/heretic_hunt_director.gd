@@ -88,7 +88,7 @@ func _plan() -> void:
 	head_door = temple_door_at
 	lost_word = "cellar"
 	for i in sweep_spots.size():
-		var area: Rect2 = sweep_areas[i] if not sweep_areas.is_empty() else City.current().districts()[SWEEP_DISTRICTS[i]]
+		var area: Rect2 = sweep_areas[i] if i < sweep_areas.size() else City.current().districts()[SWEEP_DISTRICTS[i]]
 		steps.append(_step(String(sweep_words[i]), sweep_spots[i], area, float(step_at[i]), PARTY))
 	for s: Structure in town._built:
 		if is_instance_valid(s) and s.role == &"temple":

@@ -1,5 +1,5 @@
 extends RefCounted
-## Talking groups at Market Panic's fair (fair life, 2026-11-20, FairLife): each crowd that sets out stands in knots of 2..4
+## Talking groups at Market Panic's fair (fair life, 2026-11-20, FairLife): each crowd that sets out stands in knots of GROUP_MIN..GROUP_MAX (3)
 ## round a centre (the director's spots are the ring slots), the arrived talk (anim 13) facing the middle, every knot strolls to a
 ## new centre now and then -- inside the fair's radius, with a way for every member, APART from the other knots -- a knot that
 ## loses people mends itself, the fair's rules (steadied, _may_break) are untouched, and nothing is drawn from the town's stream.
@@ -39,7 +39,7 @@ static func _groups_form(t) -> void:
 	var covers := seen.size() == (d.waves[0] as Array).size()
 	for v: Variant in d.waves[0]:
 		covers = covers and int(seen.get((v as Person).get_instance_id(), 0)) == 1
-	t.check(sized and covers and spots, "the first crowd stands in groups of 2..4, each goer in exactly one, spots from the groups (%d groups)" % d.life.groups().size())
+	t.check(sized and covers and spots, "the first crowd stands in groups of GROUP_MIN..GROUP_MAX (3), each goer in exactly one, spots from the groups (%d groups)" % d.life.groups().size())
 	Kit.done(s)
 
 

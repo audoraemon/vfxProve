@@ -1403,6 +1403,8 @@ func flinch(from: Vector2) -> void:
 		return
 	elif mind == Mind.DUTY and has_goal():
 		return  # on his way somewhere on purpose (a bolting lamb, an escort): he keeps going (fair life T5)
+	if soldier and has_goal():
+		return  # a soldier walking back to his post keeps going the same way (fair life final review M5)
 	_flinch_left = FLINCH_SECONDS
 	_flinch_t = 0.0
 	_flinch_from = from
@@ -1434,8 +1436,36 @@ func _face_flinch() -> void:
 		_back = d.x + d.y < 0.0
 
 
+## Something else has taken the mind while a flinch runs (a whisper, a compel, a confuse, a fight, a director's duty order):
+## the flinch is over, as the startle is (final review I1). The flinch's own step uses _target and never _goal, so a goal
+## on a duty citizen is always someone else's order.
+func _flinch_overruled() -> bool:
+	if held_by_will(WILL_ABSOLUTE) or resists_mind():
+		return true
+	if soldier:
+		return mind != Mind.POST or hurrying
+	if not (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.OBSERVE or mind == Mind.DUTY):
+		return true
+	return mind == Mind.DUTY and _goal != Vector2.INF
+
+
+## A flinch cut short by an order that takes the mind (final review I1): no stare left and no step to finish, and he stands
+## where he is, so the order's own goal is the next thing he walks to.
+func _flinch_end() -> void:
+	if _flinch_left <= 0.0:
+		return
+	_flinch_left = 0.0
+	_flinch_step_to = Vector2.INF
+	_target = ground_pos
+	_idle = 0.0
+
+
 ## One think of a flinch; true when it holds the person this think (he freezes, steps or stares).
 func _flinch_think(delta: float) -> bool:
+	if _flinch_overruled():
+		_flinch_step_to = Vector2.INF
+		_flinch_left = 0.0
+		return false
 	if state != State.WANDER or inside or mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.SHELTER or mind == Mind.ASLEEP:
 		_flinch_left = 0.0
 		return false
@@ -1985,6 +2015,7 @@ func held_by_god() -> bool:
 ## A soldier's hold begins: remember what he was doing (once; a hold that replaces a hold keeps the first). Minds that are
 ## themselves a hold or a pause (a fright, a look, a fight) are no state to go back to: his post then.
 func _hold_begin() -> void:
+	_flinch_end()
 	if not soldier or _held_saved:
 		return
 	_held_saved = true
@@ -2211,6 +2242,7 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 	release_from_queue()
 	passing_gate = null
 	_held_saved = false  # a fight takes him over: nothing of an earlier hold is left to go back to
+	_flinch_end()
 	_ordered = false
 	mind = Mind.FIGHT
 	fight_target = target
@@ -2822,6 +2854,7 @@ func go_duty(at: Vector2) -> void:
 	if not can_take_duty():
 		return
 	_held_saved = false
+	_flinch_end()
 	mind = Mind.DUTY
 	anchor = at
 	walk_speed = _mind_speed()

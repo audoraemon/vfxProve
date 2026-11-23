@@ -17,6 +17,8 @@ static func run(t) -> void:
 	_flinch_refused(t, made)
 	_walking_duty(t, made)
 	_absolute_wins(t, made)
+	_overruled(t, made)
+	_soldier_goal(t, made)
 	RD._done(made)
 
 
@@ -97,6 +99,7 @@ static func _warden_no_step(t, made: Array) -> void:
 	s.ground_pos = w.ground_pos + Vector2(4.0, 4.0)
 	s.mind = Person.Mind.POST
 	s.anchor = s.ground_pos
+	s._goal = Vector2.INF
 	s.fearless_left = 30.0
 	var s_from := s.ground_pos
 	s.panic(s.ground_pos + Vector2(1.0, 0.0), 1.0)
@@ -178,3 +181,46 @@ static func _absolute_wins(t, made: Array) -> void:
 	p.panic(p.ground_pos + Vector2(1.0, 0.0), 1.0)
 	p.observe(p.ground_pos + Vector2(1.0, 0.0))
 	t.check(not p.flinching() and p.mind != Person.Mind.PANIC, "held absolutely he neither panics nor flinches (mind %d)" % p.mind)
+
+
+## Final review I1: a flinch ends when something else takes the mind (whisper, a god's absolute hold, a director's duty order).
+static func _overruled(t, made: Array) -> void:
+	for how in ["whisper", "compel", "duty"]:
+		RD._clear_all(made)
+		var crowd: Crowd = made[0]
+		var at := RD._empty(made)
+		var p := _on_duty(made, 20, at)
+		p.flinch(at + Vector2(1.0, 0.0))
+		_advance(crowd, [p], 0.1)
+		t.check(p.flinching(), "set up (%s): he is flinching" % how)
+		var start := p.ground_pos
+		var goal := (made[2] as WalkGrid).nearest_walkable(at + Vector2(0.0, 4.0))
+		match how:
+			"whisper":
+				p.whisper(goal, 3.0)
+			"compel":
+				p.compel(goal, 10.0, Person.WILL_ABSOLUTE, Color.WHITE, false, &"")
+			"duty":
+				p.go_duty(goal)
+		_advance(crowd, [p], 1.0)
+		t.check(not p.flinching() and p.ground_pos.distance_to(start) > 0.15,
+			"a running flinch gives way to %s: he moves within a second (%.2f)" % [how, p.ground_pos.distance_to(start)])
+
+
+## Final review M5: a soldier walking back to his post (a goal) does not flinch; one standing at it does.
+static func _soldier_goal(t, made: Array) -> void:
+	RD._clear_all(made)
+	var at := RD._empty(made)
+	var soldiers: Array = (made[0] as Crowd).soldiers.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive())
+	var s: Person = soldiers[2]
+	s.ground_pos = at
+	s.mind = Person.Mind.POST
+	s.anchor = at
+	s.fearless_left = 30.0
+	s.set_goal(at + Vector2(5.0, 0.0))
+	t.check(s.has_goal(), "set up: a soldier with a goal ahead")
+	s.flinch(at + Vector2(-1.0, 0.0))
+	t.check(not s.flinching(), "a soldier walking back to his post does not flinch")
+	s._goal = Vector2.INF
+	s.flinch(at + Vector2(-1.0, 0.0))
+	t.check(s.flinching(), "the same soldier standing at his post does")

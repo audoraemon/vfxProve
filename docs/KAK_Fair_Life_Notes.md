@@ -11,7 +11,7 @@ goers broke faster, so the chain (45 s after the crowd before scatters) sent the
 (broken by the next 10 s sample): A, Smite on a knot at 75.1 s +11 (old Smite at 73.3 s +1), at 120.5 s +7; B, Ember at 27.1 s with 7 goers by
 the house (old 4), 153.1 s 8 (old 6), 168.2 s 10.
 
-## Gate table (win time s, seeds 1/2/3)
+## Gate table (win time s, seeds 1/2/3) -- history: the T4 tuning runs; the final gate is in the last section
 | GROUP_MAX / APART / RING | route A | route B | none |
 |---|---|---|---|
 | 4 / 1.6 / 0.45 (as built) | 187.3 x3 | 169.6, 168.3, 279.8 (169.6) | lost 3/3 |
@@ -21,7 +21,7 @@ the house (old 4), 153.1 s 8 (old 6), 168.2 s 10.
 | 3 / 2.0 / 0.6 (first code) | 187.5, 221.4, 187.3 (187.5) | 200.9, 235.8, 241.1 (235.8) | |
 | 3 / 2.0 / 0.7 | 187.3, 221.4, 187.3 (187.3) | 236.8, 238.4, 261.2 (238.4) | |
 | 3 / 1.7 / 0.6 | 187.5, 207.7, 197.3 | 200.9, 228.6, 177.6 | |
-| **3 / 2.0 / 0.6 (final code)** | **187.5, 221.4, 187.3 (187.5), idle 15/23/16** | **204.6, 235.8, 241.1 (235.8), idle 20 or less** | **lost 3/3 (market_closed, 0/36 broken)** |
+| 3 / 2.0 / 0.6 (T4 code; A superseded by T5: 197.3, 221.4, 187.3, median 197.3) | 187.5, 221.4, 187.3 (187.5), idle 15/23/16 | 204.6, 235.8, 241.1 (235.8), idle 20 or less | lost 3/3 (market_closed, 0/36 broken) |
 Before: A median 213 (idle 25), B 221 (idle 20). Accepted: 3 / 2.0 / 0.6, both medians inside 180-240, all nine rows as expected.
 RING 0.6 is well under APART/2 (1.0). B's third seed wins at 241.1 s; only the median is in the pass rule.
 
@@ -36,7 +36,7 @@ RING 0.6 is well under APART/2 (1.0). B's third seed wins at 241.1 s; only the m
   group can be full. It now breaks one member of the largest other group when none has room, then checks the survivor joins a group with room.
   The invariant is unchanged (a survivor with room joins a group); only the hardcoded precondition went.
 
-## Non-panic rows
+## Non-panic rows (T4 history; the T5 and final-review sections below supersede it)
 40 moved at HEAD; each matches its old checksum with only T1 (a burning person runs) on 7519cc08 and moves with T2 on (flinch). Outcomes
 compared (won/reason/time) against the T1-only run:
 - 39 keep their outcome (largest shifts: hide_faithful_veil_play_1 106.9 -> 205.1 s, prisoner_b_play_1 179.2 -> 233.9 s, prisoner_b_play_2 238.7 -> 211.2 s,
@@ -84,24 +84,18 @@ Re-recorded rows:
 - prisoner_b_play_2
 - prisoner_b_play_3
 - prisoner_play_3
-Panic rows re-recorded (all 9 reproduce under refs_check: ok=9 bad=0):
-- panic_none_1: -899542793
-- panic_none_2: -121522359
-- panic_none_3: -400893264
-- panic_play_1: -448373651
-- panic_play_2: -82784894
-- panic_play_3: -961653177
-- panic_b_play_1: -871968472
-- panic_b_play_2: -816928688
-- panic_b_play_3: -143323611
+Panic rows as T4 recorded them (history; the references now hold the values in the last section):
+- panic_none_1 -899542793, panic_none_2 -121522359, panic_none_3 -400893264 (unchanged since)
+- panic_play_1 -448373651, panic_play_2 -82784894, panic_play_3 -961653177 (T5 moved all three; play_3 is now -786045975)
+- panic_b_play_1 -871968472, panic_b_play_2 -816928688, panic_b_play_3 -143323611 (unchanged since)
 
-## T5: nobody on his way somewhere freezes in a flinch (2026-11-23)
+## T5 (history of the walking-goer fix; counts as at f82e0041): nobody on his way somewhere freezes in a flinch (2026-11-23)
 Cause: god_decree_lamb_play_3 lost (lamb_taken 61.6 s) because the Decree breath called panic() on the bolting lamb's seizer's neighbourhood and the
 lamb, a DUTY citizen walking to the exit (LostLambDirector._run_for_it, go_duty), flinched: _think returned for FLINCH_SECONDS, he stood, patrol re-seized
 him. Same cause for escorted and bound walkers (hide_faithful_veil_play_1, prisoner_b_play_1) and the fair's own DUTY goers walking to the fair.
 Fix: Person.flinch() refuses a DUTY citizen with a goal he has not reached (has_goal()). Standing goers, calm people and soldiers at their post flinch as before.
 Result: god_decree_lamb_play_3 wins again at 87.2 s (lamb_out) with its old checksum -230395448. 26 of the 49 rows reach their exact pre-flinch
-(641e5fe4) checksum again; 22 differ but keep the pre-flinch outcome; no row flips. Rows re-recorded: the 36 that no longer match T4's recording.
+(641e5fe4) checksum again; 22 differ but keep the pre-flinch outcome; no row flips. Rows re-recorded: the 36 that no longer match the recording made on top of f82e0041 (T4's).
 Pre-flinch times are 641e5fe4 runs; T5 times are this tree. Gate (final 3 / 2.0 / 0.6 unchanged): A 197.3, 221.4, 187.3 (median 197.3, idle 14/33/14);
 B 204.6, 235.8, 241.1 (median 235.8, idle 20); none lost 3/3 (market_closed). Walking goers change panic timings only: panic_play_1 187.5 -> 197.3 s,
 panic_b_play_1 204.6 unchanged.
@@ -157,3 +151,27 @@ panic_b_play_1 204.6 unchanged.
 | prisoner_play_3 | true 219.8 | true 196.3 | different checksum, same outcome (re-recorded) |
 | sermon_play_1 | true 230.5 | true 230.5 | different checksum, same outcome (re-recorded) |
 | sermon_play_3 | true 222.7 | true 222.7 | different checksum, same outcome (re-recorded) |
+
+## Final review fix wave (2026-11-23)
+Review findings fixed on top of T5:
+- I1: a running flinch was never cancelled by whisper(), compel(), confuse(), fight() or go_duty() (a later god hold or director order waited
+  up to 2 s: whisper 0.98 -> 0.03 tiles in 1.5 s, go_duty 2.19 -> 0.10). Person._flinch_end() now runs in _hold_begin() (whisper, compel,
+  confuse and the other holds), go_duty() and fight(), and _flinch_think() ends the flinch itself when the mind is no longer eligible
+  (citizen not CALM/RECOVER/OBSERVE/DUTY; soldier not at POST or hurrying), when held_by_will(WILL_ABSOLUTE) or resists_mind(), or when a
+  DUTY citizen has a goal (the flinch's own step uses _target, never _goal, so a goal is always someone else's order).
+- M5: flinch() also refuses a soldier with a goal (walking back to his post), as it does a DUTY citizen.
+- Known, left as is: the flinch's step back (FLINCH_STEP 0.5) can carry a goer across WARD_R. steadied() reads position, so a goer standing
+  near the edge can be unsteadied for a look. It is part of why the difficulty moved (panic A/B and the prisoner times); no code change.
+
+Re-measure (49 rows of the T5 table, against the pre-flinch tree 641e5fe4): no outcome flips. Moved checksums re-recorded:
+- panic_play_1 -414808058 (197.3 s), panic_play_2 -418723233 (221.4 s)
+- prisoner_play_1 -17556210 (178.4 s), prisoner_play_2 -674301658 (200.6 s), prisoner_play_3 569348637 (196.3 s)
+- hide_faithful_ruin_play_2 -418018406 (187.8 s), hide_faithful_death_play_1 -661230196 (207.2 s)
+The other 42 rows reproduce their T5 recordings. Gate (3 / 2.0 / 0.6 unchanged): A 197.3, 221.4, 187.3 (median 197.3); B 204.6, 235.8, 241.1 (median 235.8);
+none lost 3/3 (market_closed).
+
+Prisoner times (s), seeds 1 / 2 / 3, median in brackets:
+| route | pre-flinch (641e5fe4) | T5 | now |
+|---|---|---|---|
+| A (prisoner_play) | 208.3, 202.4, 219.8 (208.3) | 192.6, 207.0, 196.3 (196.3) | 178.4, 200.6, 196.3 (196.3) |
+| B (prisoner_b_play) | 179.2, 238.7, 207.2 (207.2) | 270.2, 236.3, 207.8 (236.3) | 270.2, 236.3, 207.8 (236.3) |

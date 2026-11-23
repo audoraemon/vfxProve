@@ -51,8 +51,8 @@ ringers_play_3	--scenario=ringers --case=play --seed=3	-207103601
 panic_none_1	--scenario=panic --case=none --seed=1	-899542793
 panic_none_2	--scenario=panic --case=none --seed=2	-121522359
 panic_none_3	--scenario=panic --case=none --seed=3	-400893264
-panic_play_1	--scenario=panic --case=play --seed=1	-677224482
-panic_play_2	--scenario=panic --case=play --seed=2	-246605114
+panic_play_1	--scenario=panic --case=play --seed=1	-414808058
+panic_play_2	--scenario=panic --case=play --seed=2	-418723233
 panic_play_3	--scenario=panic --case=play --seed=3	-786045975
 informer_none_1	--scenario=informer --case=none --seed=1	-320359011
 informer_none_2	--scenario=informer --case=none --seed=2	-546877417
@@ -69,9 +69,9 @@ bread_play_3	--scenario=bread --case=play --seed=3	-355029877
 prisoner_none_1	--scenario=prisoner --case=none --seed=1	-712916423
 prisoner_none_2	--scenario=prisoner --case=none --seed=2	-879962305
 prisoner_none_3	--scenario=prisoner --case=none --seed=3	-715328072
-prisoner_play_1	--scenario=prisoner --case=play --seed=1	-216214103
-prisoner_play_2	--scenario=prisoner --case=play --seed=2	-907569215
-prisoner_play_3	--scenario=prisoner --case=play --seed=3	988476786
+prisoner_play_1	--scenario=prisoner --case=play --seed=1	-17556210
+prisoner_play_2	--scenario=prisoner --case=play --seed=2	-674301658
+prisoner_play_3	--scenario=prisoner --case=play --seed=3	569348637
 hunt_none_1	--scenario=hunt --case=none --seed=1	-88417007
 hunt_none_2	--scenario=hunt --case=none --seed=2	-207761814
 hunt_none_3	--scenario=hunt --case=none --seed=3	-272016789
@@ -153,9 +153,9 @@ hide_faithful_none_1	--scenario=hide_faithful --case=none --seed=1	-776786705
 hide_faithful_none_2	--scenario=hide_faithful --case=none --seed=2	-528821958
 hide_faithful_none_3	--scenario=hide_faithful --case=none --seed=3	-729639375
 hide_faithful_ruin_play_1	--scenario=hide_faithful --case=play --seed=1 --god=ruin:1 --dev-tree	-274533754
-hide_faithful_ruin_play_2	--scenario=hide_faithful --case=play --seed=2 --god=ruin:1 --dev-tree	-893890206
+hide_faithful_ruin_play_2	--scenario=hide_faithful --case=play --seed=2 --god=ruin:1 --dev-tree	-418018406
 hide_faithful_ruin_play_3	--scenario=hide_faithful --case=play --seed=3 --god=ruin:1 --dev-tree	-940100161
-hide_faithful_death_play_1	--scenario=hide_faithful --case=play --seed=1 --god=death:1 --dev-tree	-759858844
+hide_faithful_death_play_1	--scenario=hide_faithful --case=play --seed=1 --god=death:1 --dev-tree	-661230196
 hide_faithful_death_play_2	--scenario=hide_faithful --case=play --seed=2 --god=death:1 --dev-tree	-329722643
 hide_faithful_death_play_3	--scenario=hide_faithful --case=play --seed=3 --god=death:1 --dev-tree	995618277
 hide_faithful_veil_play_1	--scenario=hide_faithful --case=play --seed=1 --god=veil:1 --dev-tree	-802237474

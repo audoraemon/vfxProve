@@ -23,6 +23,7 @@ static func run(t) -> void:
 static func _scene() -> Dictionary:
 	var made := C._world()
 	var crowd: Crowd = made[0]
+	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY  # the gate check is live only from Local Emergency (R20)
 	var gate := TG._none_gate(crowd)
 	var checker := TG._ready_gate(crowd, gate) if gate != null else null
 	var house := C._site(made)

@@ -5399,6 +5399,11 @@ func _stability(rules: Rules) -> String:
 		roundi(s.resources * 100.0)]
 
 
+## Where the capture aid looks: Aldermere's literal there, the square's centre in any other town (Task 9 of the Capital plan).
+func _festival_look_at() -> Vector2:
+	return FESTIVAL_LOOK_AT if City.current().id() == &"aldermere" else Places.at(&"market_square")
+
+
 ## Act II-A's capture aid (v0.09 Task 13): a frame of the market at FESTIVAL_SHOTS' marks of the act -- the bonfires lit
 ## and the crowd packing (0:30, 0:50), the Mayor on the fountain (1:35) -- and the festival's count at each.
 func _festival_shots() -> void:
@@ -5410,7 +5415,7 @@ func _festival_shots() -> void:
 		if not is_instance_valid(rules) or rules.finished:
 			return
 		bf.camera.zoom = Vector2.ONE * 1.5
-		bf.camera.position = Iso.ground_to_screen(FESTIVAL_LOOK_AT).round()
+		bf.camera.position = Iso.ground_to_screen(_festival_look_at()).round()
 		await _frames(3)
 		await bf.save_capture("behaviour_festival_%d.png" % roundi(mark))
 		var mayor := (rules.director as FestivalDirector).mayor

@@ -113,11 +113,12 @@ static func camera_clear(t, def: MissionDef, tag_at: Array) -> void:
 
 
 ## A Capital world for mission `id` from the god's own def (GodNight.def_for in the Capital, the mission's tier), the director set up:
-## the caller reads its vars, then calls release(). Leaves the Capital active.
-static func starts(t, id: String) -> MissionDirector:
+## the caller reads its vars, then calls release(). Leaves the Capital active. `tier`: the god's tier for an id MissionBook.get_mission() does not
+## know (the Festival: a board act), 0 = the mission's own.
+static func starts(t, id: String, tier := 0) -> MissionDirector:
 	City.use(&"capital")
 	var slot := GodSlot.make(1, "ruin", 3)
-	slot.tier = MissionBook.get_mission(id).tier
+	slot.tier = tier if tier > 0 else MissionBook.get_mission(id).tier
 	var def := GodNight.def_for(slot, id, "capital")
 	t.check(def != null and def.city == &"capital", "%s: the god's def in the Capital is the Capital's" % id)
 	var env := EnvironmentField.new()

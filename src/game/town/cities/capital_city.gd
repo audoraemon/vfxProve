@@ -1188,6 +1188,12 @@ func outcrops() -> Array:
 	return OUTCROPS.duplicate(true)
 
 
+## The ferry's ship lies moored beside the pier's end, drawn with the existing ship sprite (Aldermere's formula: the pier's middle,
+## 0.75 past its end); the Procession's Prince boards it, the river ferry sails it.
+func ship_at() -> Vector2:
+	return Vector2(DOCK.get_center().x, DOCK.end.y + 0.75)
+
+
 func boats() -> Array[Vector2]:
 	return _vectors(BOATS)
 

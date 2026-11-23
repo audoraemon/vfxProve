@@ -28,6 +28,8 @@ const NERVE_SECONDS := 2.5
 ## The badge's and the tag's colour, and how long a badge is set for (renewed every board tick).
 const COLOUR := Color(0.6, 0.82, 0.95)
 const BADGE_SECONDS := 1.5
+## Seconds a man inside a power's danger is remembered as its witness-to-be (R21) before the danger counts as over: anyone alive then tells.
+const TELL_SECONDS := 20.0
 ## The banners.
 const BANNER := "SOLDIERS SWEEP THE DISTRICT"
 const BANNER_HEARS := "THE SWEEP HEARS IT"
@@ -38,6 +40,9 @@ enum Phase { WALK, STAND, WAIT }
 
 ## The sweep jobs that are not over (a district is swept while it holds one).
 var _live: Array[GuardJobs.Job] = []
+## The sightings still to be settled (R21): each {"people": Array[Person] by stagger, "at": the point nearest each, "points",
+## "radius", "born": the board's clock}, a power whose only witnesses stood inside its own danger.
+var _pending: Array[Dictionary] = []
 
 
 func kind() -> int:
@@ -203,6 +208,7 @@ func tick(job: GuardJobs.Job, delta: float) -> void:
 
 ## Once a second: every sweep man keeps his nerve, and every begun sweep renews its men's badges.
 func post_jobs() -> void:
+	_settle()
 	for job in _live:
 		for m: Variant in job.crew:
 			if is_instance_valid(m):
@@ -224,6 +230,7 @@ func tags(job: GuardJobs.Job) -> Array[MapTag]:
 
 
 func clear() -> void:
+	_pending.clear()
 	for job in _live.duplicate():
 		_stop(job)
 		for m: Variant in job.crew:
@@ -235,16 +242,57 @@ func clear() -> void:
 	_live.clear()
 
 
-## A seen power lands: a sweep hears of it, and the district is swept.
+## A seen power lands: a sweep hears of it, and the district is swept, when a man outside its danger saw it. When only men inside
+## the danger did, they are remembered and tell the soldiers only if they come out of it alive (R21, see `_settle()`).
 func _on_danger(_key: String, points: Array[Vector2], radius: float) -> void:
-	if board == null or not board.is_open() or crowd.is_hushed() \
-			or (_live.is_empty() and crowd.alarms.stage >= AlarmManager.Stage.EVACUATION):
+	if board == null or not board.is_open() or crowd.is_hushed() 			or (_live.is_empty() and crowd.alarms.stage >= AlarmManager.Stage.EVACUATION):
 		return  # no sweep could follow and none live could hear it
-	var seen: Array[Vector2] = []
-	if points.is_empty() or crowd.power_witness(points, radius, seen) == null:
+	if points.is_empty():
 		return
-	on_seen(seen[0])
-	request(seen[0])
+	var seen: Array[Vector2] = []
+	var inside: Array[Person] = []
+	var inside_at: Array[Vector2] = []
+	if crowd.power_witness(points, radius, seen, inside, inside_at) != null:
+		on_seen(seen[0])
+		request(seen[0])
+	elif not inside.is_empty():
+		_pending.append({"people": inside, "at": inside_at, "points": points.duplicate(), "radius": radius, "born": board.clock})
+
+
+## Settles every pending sighting once a board step: the dead and the freed are dropped; a man still alive who stands outside the
+## radius of every point, or at whose point no danger is live any more, or any man alive once TELL_SECONDS have passed, tells the
+## soldiers (the lowest stagger first) and the sighting is done; none left alive, it is dropped with no sweep.
+func _settle() -> void:
+	for i in range(_pending.size() - 1, -1, -1):
+		var s := _pending[i]
+		var people: Array[Person] = s.people
+		var at: Array[Vector2] = s.at
+		var over: bool = board.clock - float(s.born) > TELL_SECONDS
+		var told := Vector2.INF
+		var alive := false
+		for k in range(people.size() - 1, -1, -1):
+			if not is_instance_valid(people[k]) or not people[k].is_alive():
+				people.remove_at(k)
+				at.remove_at(k)
+		for k in people.size():
+			alive = true
+			if over or _out_of_it(people[k], s.points, float(s.radius)) or danger_near(at[k]).is_empty():
+				told = at[k]
+				break
+		if told != Vector2.INF:
+			_pending.remove_at(i)
+			on_seen(told)
+			request(told)
+		elif not alive:
+			_pending.remove_at(i)
+
+
+## Whether `p` stands outside the radius of every one of `points`.
+func _out_of_it(p: Person, points: Array[Vector2], radius: float) -> bool:
+	for at in points:
+		if p.ground_pos.distance_to(at) <= radius:
+			return false
+	return true
 
 
 ## Drops the freed and the men whose record is no longer this job's from the crew.

@@ -2795,13 +2795,17 @@ func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 
 
 ## The nearest living person -- citizen or soldier, out of doors, awake, not in the god's hand, not guised, not unseen -- who saw a
-## power land at `points`: within his reach of a point (WATCH_SIGHT for a sweep man, else DOOM_WITNESS, both scaled at night and
-## cut by a law's NO SIGHT) or within `radius` of it. Ties go to the lower stagger. Null for none (the sweep's "seen"). `seen_at`, when
-## given, gets the point he witnessed it at (the nearest to him).
-func power_witness(points: Array[Vector2], radius: float, seen_at: Array[Vector2] = []) -> Person:
+## power land at `points` from OUTSIDE its danger: farther than `radius` from every point and within his reach of one (WATCH_SIGHT
+## for a sweep man, else DOOM_WITNESS, both scaled at night and cut by a law's NO SIGHT). Ties go to the lower stagger. Null for
+## none. `seen_at`, when given, gets the point he witnessed it at (the nearest to him). A man within `radius` of a point is that
+## cast's own victim and no witness yet (R21: he tells only if he comes out alive): the people who qualify otherwise are put in
+## `inside` (sorted by stagger) and the point nearest each in `inside_at`, when those are given.
+func power_witness(points: Array[Vector2], radius: float, seen_at: Array[Vector2] = [], inside: Array[Person] = [],
+		inside_at: Array[Vector2] = []) -> Person:
 	var best: Person = null
 	var best_d := INF
 	var best_at := Vector2.INF
+	var in_found: Array = []
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.mind == Person.Mind.ASLEEP or p.held_by_god():
@@ -2809,17 +2813,37 @@ func power_witness(points: Array[Vector2], radius: float, seen_at: Array[Vector2
 			if p.guised() or LawMark.unseen_by_all(p):
 				continue
 			var far := maxf(witness_reach(p), radius)
+			var in_d := INF
+			var in_pt := Vector2.INF
+			var out_d := INF
+			var out_pt := Vector2.INF
 			for at in points:
 				var d := p.ground_pos.distance_to(at)
-				if d > far or d > maxf(sight(p, at, witness_reach(p)), radius):
+				if d <= radius:
+					if d < in_d:
+						in_d = d
+						in_pt = at
 					continue
-				if best == null or d < best_d or (d == best_d and p.stagger < best.stagger):
-					best = p
-					best_d = d
-					best_at = at
+				if d > far or d > sight(p, at, witness_reach(p)):
+					continue
+				if d < out_d:
+					out_d = d
+					out_pt = at
+			if in_pt != Vector2.INF:
+				in_found.append([p, in_pt])
+			elif out_pt != Vector2.INF and (best == null or out_d < best_d or (out_d == best_d and p.stagger < best.stagger)):
+				best = p
+				best_d = out_d
+				best_at = out_pt
 	seen_at.clear()
 	if best != null:
 		seen_at.append(best_at)
+	inside.clear()
+	inside_at.clear()
+	in_found.sort_custom(func(x: Array, y: Array) -> bool: return (x[0] as Person).stagger < (y[0] as Person).stagger)
+	for e: Array in in_found:
+		inside.append(e[0])
+		inside_at.append(e[1])
 	return best
 
 

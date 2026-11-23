@@ -228,6 +228,13 @@ Anti-goals (a failure even if it works):
   an empty district]`. The same witness test gates the extra alarm below (a sweep man's 4.0 counts). Also every
   place `_investigate()` is called today: **the sweep replaces `_investigate()`** `[call: same idea, one system]`.
   Never when hushed or veiled. Not while that district is already swept. At most `SWEEPS` 2 at once.
+- **A power's own victim `[ruling R21]`:** a man inside the danger's radius tells the soldiers only if he comes out of it alive.
+  A witness who stands outside the radius of every point and within his reach (DOOM_WITNESS, or WATCH_SIGHT for a sweep man)
+  calls the sweep at the landing, as above. With none, the qualifying men inside are remembered (a pending sighting) and
+  settled at each board step: the dead and the freed are dropped; the lowest-stagger man still alive who stands outside the
+  radius of every point, or at whose point no danger is live any more, calls the sweep (and the sweep's alarm) once at his
+  nearest point; none left alive, no sweep. A sighting older than `TELL_SECONDS` 20 counts as over (anyone alive tells).
+  `clear()` forgets pending sightings. This matches Town Suspicion's `sign_witness()`: the cast's own victim is no witness.
 - **Crew:** 4, the nearest free men of any group.
 - **Steps:** run to the district (`hurried`). The clock starts when the first man is inside its rect. They visit up to
   `SWEEP_DOORS` 6 house doors nearest the seen point, nearest next, standing `SWEEP_STAND` 3.0 s at each (`talk`),

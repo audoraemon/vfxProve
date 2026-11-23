@@ -41,6 +41,12 @@ static func run(t) -> void:
 	_director_copy_reach(t)
 	_sweep_men_keep_nerve(t)
 	_stands_off_danger(t)
+	_victim_calls_none(t)
+	_victim_walks_out(t)
+	_victim_lives_to_the_end(t)
+	_outside_witness_at_once(t)
+	_victim_under_a_sweep(t)
+	_clear_forgets_sightings(t)
 
 
 static func _jobs(crowd: Crowd) -> Array[GuardJobs.Job]:
@@ -175,7 +181,10 @@ static func _witness_rules(t) -> void:
 	var far: Person = crowd.citizens[4]
 	_put(far, at + Vector2(3.0, 0.0))
 	t.check(crowd.power_witness(pts, 1.0) == null, "3.0 away with radius 1.0: out of reach (2.0)")
-	t.check(crowd.power_witness(pts, 3.5) == far, "inside the radius at 3.0: a witness")
+	var in_people: Array[Person] = []
+	var in_points: Array[Vector2] = []
+	t.check(crowd.power_witness(pts, 3.5, [], in_people, in_points) == null and in_people.has(far) and in_points.has(at) and in_people.size() == in_points.size(),
+		"R21: inside the radius at 3.0: the cast's own victim, no witness, remembered as inside")
 	var near: Person = crowd.citizens[5]
 	_put(near, at + Vector2(1.9, 0.0))
 	t.check(crowd.power_witness(pts, 1.0) == near, "1.9 away: within DOOM_WITNESS")
@@ -185,12 +194,14 @@ static func _witness_rules(t) -> void:
 	t.check(crowd.power_witness(pts, 1.0) == far, "a watch_far man sees from 3.0 (4.0)")
 	_put(far, at + Vector2(4.5, 0.0))
 	t.check(crowd.power_witness(pts, 1.0) == null, "but not from 4.5")
-	_put(far, at + Vector2(1.0, 0.0))
+	_put(far, at + Vector2(1.5, 0.0))
 	var law: Person = crowd.citizens[6]
 	_put(law, at + Vector2(0.5, 0.0))
 	far.mind = Person.Mind.PANIC
-	t.check(crowd.power_witness(pts, 1.0) == law or crowd.power_witness(pts, 1.0) == far, "the nearest of those who qualify")
-	t.check(crowd.power_witness(pts, 1.0) == law, "the nearest of two is chosen (0.5 < 1.0)")
+	var near_in: Person = crowd.citizens[7]
+	_put(near_in, at + Vector2(1.7, 0.0))
+	t.check(crowd.power_witness(pts, 1.0, [], in_people) == far, "the nearest outside the radius of those who qualify (1.5 < 1.7)")
+	t.check(in_people.has(law) and not in_people.has(far), "R21: the man at 0.5 is inside, no witness")
 	C._done(made)
 
 
@@ -238,21 +249,21 @@ static func _hushed_veiled_none(t) -> void:
 	var made := C._world()
 	var crowd: Crowd = made[0]
 	var at := _spot(made, _busy(made))
-	_put(crowd.citizens[0], at + Vector2(1.0, 0.0))
+	_put(crowd.citizens[0], at + Vector2(1.5, 0.0))
 	crowd.hush(30.0)
 	_land(crowd, at)
 	t.check(_jobs(crowd).is_empty(), "a hushed town: no sweep")
 	C._done(made)
 	var made2 := C._world()
 	var crowd2: Crowd = made2[0]
-	_put(crowd2.citizens[0], at + Vector2(1.0, 0.0))
+	_put(crowd2.citizens[0], at + Vector2(1.5, 0.0))
 	crowd2.hush_at(at, 6.0, 30.0)
 	_land(crowd2, at)
 	t.check(_jobs(crowd2).is_empty(), "a hushed place: no sweep")
 	C._done(made2)
 	var made3 := C._world()
 	var crowd3: Crowd = made3[0]
-	_put(crowd3.citizens[0], at + Vector2(1.0, 0.0))
+	_put(crowd3.citizens[0], at + Vector2(1.5, 0.0))
 	crowd3.veil(at, 6.0, 30.0)
 	_land(crowd3, at)
 	t.check(_jobs(crowd3).is_empty(), "a veiled place: no sweep")
@@ -264,7 +275,7 @@ static func _one_per_district(t) -> void:
 	var made := C._world()
 	var crowd: Crowd = made[0]
 	var at := _spot(made, _busy(made))
-	_put(crowd.citizens[0], at + Vector2(1.0, 0.0))
+	_put(crowd.citizens[0], at + Vector2(1.5, 0.0))
 	_land(crowd, at)
 	_land(crowd, at + Vector2(0.5, 0.0))
 	crowd.sweep.request(at)
@@ -461,7 +472,7 @@ static func _extra_alarm(t) -> void:
 	crowd.alarms.bell_rung = true
 	C._run_for(crowd, 0.5, [], 0.1)
 	var texts := _texts(crowd)
-	_put(crowd.citizens[0], at + Vector2(1.0, 0.0))
+	_put(crowd.citizens[0], at + Vector2(1.5, 0.0))
 	var before := crowd.alarm
 	_land(crowd, at)
 	t.near(crowd.alarm - before, SweepDuty.SWEEP_ALARM, 0.001, "a seen power under the sweep: +2.0")
@@ -481,7 +492,7 @@ static func _extra_alarm(t) -> void:
 	var job2 := _up(made2, at)
 	if job2 != null:
 		crowd2.alarms.bell_rung = true
-		_put(crowd2.citizens[0], at + Vector2(1.0, 0.0))
+		_put(crowd2.citizens[0], at + Vector2(1.5, 0.0))
 		crowd2.hush(30.0)
 		var b2 := crowd2.alarm
 		crowd2.sweep.on_seen(at)
@@ -770,7 +781,7 @@ static func _lane_swept_where_seen(t) -> void:
 	var b := _spot(made, districts.size() - 1)
 	t.check(AlarmManager.district_of(a) != AlarmManager.district_of(b), "(two districts)")
 	C._hide_others(crowd, [])
-	_put(crowd.citizens[0], b + Vector2(1.0, 0.0))
+	_put(crowd.citizens[0], b + Vector2(1.5, 0.0))
 	var pts: Array[Vector2] = [a, b]
 	crowd.danger_landed.emit("lane", pts, 1.0)
 	var jobs := _jobs(crowd)
@@ -851,4 +862,134 @@ static func _stands_off_danger(t) -> void:
 	for p: Person in job.crew:
 		back = back and (job.data.at_spot[p] as Vector2).distance_to(door) <= 2.0 * SweepDuty.SPOT_APART + 0.5
 	t.check(back and not bool(job.data.held), "the danger over, the men are sent to the door")
+	C._done(made)
+
+
+## A power lands on `man` alone inside its radius 1.0 (everyone else indoors, a live threat at `at`): the threat's id.
+static func _victim_lands(made: Array, at: Vector2, man: Person) -> int:
+	var crowd: Crowd = made[0]
+	C._hide_others(crowd, [man])
+	_put(man, at + Vector2(0.5, 0.0))
+	var id := crowd.threats.register(at, 1.0, 0.6, 60.0, 6.0, 6.0, &"test")
+	_land(crowd, at)
+	return id
+
+
+## Steps the board `n` whole seconds.
+static func _board(crowd: Crowd, n: int) -> void:
+	for i in n:
+		crowd.guard_jobs.step(1.0)
+
+
+## [ruling R21] A man alone inside the danger who dies before the next board step calls no sweep and shows no banner.
+static func _victim_calls_none(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var man: Person = crowd.citizens[0]
+	var texts := _texts(crowd)
+	_victim_lands(made, at, man)
+	t.check(_jobs(crowd).is_empty(), "R21: the victim alone inside: no sweep at the landing")
+	man.state = Person.State.DEAD
+	_board(crowd, 5)
+	t.check(_jobs(crowd).is_empty() and not crowd.sweep.swept(AlarmManager.district_of(at)), "R21: he dies: no sweep ever")
+	t.check(texts.is_empty(), "R21: and no banner (%s)" % [texts])
+	C._done(made)
+
+
+## [ruling R21] The same man walking out of the radius alive tells the soldiers at the first board step that finds him outside.
+static func _victim_walks_out(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var man: Person = crowd.citizens[0]
+	_victim_lands(made, at, man)
+	_board(crowd, 2)
+	t.check(_jobs(crowd).is_empty(), "R21: still inside a live danger: no sweep")
+	man.ground_pos = at + Vector2(3.0, 0.0)
+	_board(crowd, 1)
+	var jobs := _jobs(crowd)
+	t.check(jobs.size() == 1 and jobs[0].data.seen_at == at, "R21: out of it alive: the sweep is requested at the next step")
+	C._done(made)
+
+
+## [ruling R21] The same man staying inside and living until the danger is over tells the soldiers then.
+static func _victim_lives_to_the_end(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var man: Person = crowd.citizens[0]
+	var id := _victim_lands(made, at, man)
+	_board(crowd, 3)
+	t.check(_jobs(crowd).is_empty(), "R21: inside a live danger for three steps: no sweep")
+	crowd.threats.end(id)
+	_board(crowd, 1)
+	t.check(_jobs(crowd).size() == 1, "R21: the danger over, he lives: the sweep")
+	C._done(made)
+	var made2 := C._world()
+	var crowd2: Crowd = made2[0]
+	var man2: Person = crowd2.citizens[0]
+	_victim_lands(made2, at, man2)
+	_board(crowd2, int(SweepDuty.TELL_SECONDS) + 2)
+	t.check(_jobs(crowd2).size() == 1, "R21: a sighting older than TELL_SECONDS is settled as over: anyone alive tells")
+	C._done(made2)
+
+
+## [ruling R21] A man outside the radius within DOOM_WITNESS sees it at the landing, the victim beside him or not.
+static func _outside_witness_at_once(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var man: Person = crowd.citizens[0]
+	var onlooker: Person = crowd.citizens[1]
+	C._hide_others(crowd, [man, onlooker])
+	_put(man, at + Vector2(0.5, 0.0))
+	_put(onlooker, at + Vector2(1.5, 0.0))
+	crowd.threats.register(at, 1.0, 0.6, 60.0, 6.0, 6.0, &"test")
+	_land(crowd, at)
+	t.check(_jobs(crowd).size() == 1, "R21: an onlooker outside the radius: the sweep at the landing")
+	C._done(made)
+
+
+## [ruling R21] Under a begun sweep a power whose only witness dies inside it adds nothing; one whose witness walks out adds once.
+static func _victim_under_a_sweep(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var job := _up(made, at)
+	if job == null:
+		t.check(false, "(a sweep with its crew)")
+		C._done(made)
+		return
+	crowd.alarms.bell_rung = true
+	_arrive(job)
+	C._run_for(crowd, 0.5, [], 0.1)
+	var texts := _texts(crowd)
+	var man: Person = crowd.citizens[0]
+	var before := crowd.alarm
+	_victim_lands(made, at, man)
+	man.state = Person.State.DEAD
+	_board(crowd, 3)
+	t.near(crowd.alarm - before, 0.0, 0.001, "R21: the victim dies inside: no extra alarm")
+	t.check(not texts.has(SweepDuty.BANNER_HEARS), "R21: and no THE SWEEP HEARS IT")
+	var man2: Person = crowd.citizens[1]
+	_victim_lands(made, at, man2)
+	man2.ground_pos = at + Vector2(3.0, 0.0)
+	_board(crowd, 1)
+	t.near(crowd.alarm - before, SweepDuty.SWEEP_ALARM, 0.001, "R21: one who walks out alive: +2.0")
+	t.check(texts.count(SweepDuty.BANNER_HEARS) == 1, "R21: THE SWEEP HEARS IT once (%d)" % texts.count(SweepDuty.BANNER_HEARS))
+	C._done(made)
+
+
+## [ruling R21] clear() forgets the pending sightings: a new night starts clean.
+static func _clear_forgets_sightings(t) -> void:
+	var made := C._world()
+	var crowd: Crowd = made[0]
+	var at := _spot(made, _busy(made))
+	var man: Person = crowd.citizens[0]
+	var id := _victim_lands(made, at, man)
+	crowd.guard_jobs.clear()
+	crowd.threats.end(id)
+	_board(crowd, 3)
+	t.check(_jobs(crowd).is_empty(), "R21: clear() forgot the sighting: no sweep when the danger ends")
 	C._done(made)

@@ -3388,7 +3388,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 			rules.cast(slots.doom, s.ground_pos)
 			return "doom her seizer"
 		return ""
-	var road: Array = PrisonerDirector.ROAD
+	var road: Array = d.road
 	var ahead := _road_ahead(road, her.ground_pos, PRISONER_STRETCH)
 	for v: Variant in d._watchers():
 		if d.watch.has(v) or not d._watching(v):

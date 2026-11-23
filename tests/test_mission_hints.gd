@@ -81,12 +81,12 @@ const SPEC := [
 	["crowns_bread.engineers", "Engineers (red) mend it, put out its fires and rebuild it. Remove every one first."],
 	["crowns_bread.open", "No engineer stands. Bring it down now, before a relief comes. The bridge takes blows, not fire."],
 	# The Prisoner (v0.11 M4).
-	["prisoner", "Whisper or lure her (blue) toward the postern, and again before she stops. Watchmen (red) seize her on sight."],
+	["prisoner", "Whisper or lure her (blue) toward the way out, and again before she stops. Watchmen (red) seize her on sight."],
 	["prisoner.bound", "Remove both gaolers (red): one left seizes her for the Citadel. Then burn the stocks (orange) or strike their far side."],
 	["prisoner.caught", "She is caught. Whisper or Discord the man taking her back (red), or strike once she is clear of him."],
 	["prisoner.hounds", "The Citadel's hounds (red) follow her. Strike them or turn them before they see her."],
-	["prisoner.gate", "The watch (red) holds the postern. It changes soon: bring her close, or draw the watch off."],
-	["prisoner.clear", "The guard is changing. Send her through the postern now."],
+	["prisoner.gate", "The watch (red) holds the way out. It changes soon: bring her close, or draw the watch off."],
+	["prisoner.clear", "The guard is changing. Send her out now."],
 	# The Heretic Hunt (v0.11 M4).
 	["heretic_hunt", "Clear a standard's guards (red), then break the standard (gold). Three standards, then the captain."],
 	["heretic_hunt.guarded", "Its guards (red) hold the standard: blows only shake it. Remove every one first."],

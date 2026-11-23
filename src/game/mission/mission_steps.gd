@@ -135,12 +135,12 @@ const STEPS := {
 		{"t": "Bring it down now", "ph": ["open"], "c": "n"},
 	],
 	"prisoner": [
-		{"t": "Lead her to the postern"},
+		{"t": "Lead her to the way out"},
 		{"t": "Remove both gaolers", "ph": ["bound"]},
 		{"t": "Stop the man taking her back", "ph": ["caught"]},
 		{"t": "Turn the hounds from her", "ph": ["hounds"]},
-		{"t": "Draw the watch off the postern", "ph": ["gate"]},
-		{"t": "Send her through the postern", "ph": ["clear"]},
+		{"t": "Draw the watch off the way out", "ph": ["gate"]},
+		{"t": "Send her out", "ph": ["clear"]},
 	],
 	"heretic_hunt": [
 		{"t": "Clear a standard's guards", "c": "n"},

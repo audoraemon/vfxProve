@@ -509,7 +509,7 @@ static func act_prisoner(bc, ctx: Dictionary) -> String:
 		return ""
 	if d.held and MissionDirector._alive(d.seizer):
 		return _prisoner_remove(bc, rules, slots, ctx, d, d.seizer as Person)
-	var road: Array = PrisonerDirector.ROAD
+	var road: Array = d.road
 	var ahead: Vector2 = bc._road_ahead(road, her.ground_pos, float(bc.PRISONER_STRETCH))
 	for v: Variant in d._watchers():
 		if not d._watching(v):

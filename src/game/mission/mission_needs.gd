@@ -23,7 +23,7 @@ const TABLE := {
 	"vigil_flame": ["temple"],
 	"festival": ["temple", "market_square", "fountain"],
 	"crowns_bread": ["temple", "barns:4", "gate_towers:2"],
-	"prisoner": ["temple"],
+	"prisoner": ["temple", "citadel_gate"],
 	"heretic_hunt": ["temple", "districts:8"],
 	# Tier 4: the Procession's route, the Armoury's two taverns, two gate towers and barracks, the Sermon's third well.
 	"procession": ["temple", "citadel", "citadel_court", "market_square", "dock", "dock_wait"],

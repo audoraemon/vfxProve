@@ -43,6 +43,10 @@ const BEATS := [[Vector2(-14.0, -5.1), Vector2(-7.0, -5.1)], [Vector2(-14.0, 9.0
 ## Her road (v0.11 M4, decision 106): from the stocks down the long west street to the postern and out. For the policy, the tests and
 ## the tour only.
 const ROAD := [STOCKS_AT + Vector2(0.0, HER_OFF), Vector2(-6.25, 13.5), GATE_MOUTH, EXIT]
+## The words the player reads of the way out (v0.12 Task 11, spec 6.2.4): the tour's line and the plates' and the label's name, which a town
+## whose way out is another gate replaces (the game's words must stay true there).
+const GATE_WORDS := "The postern, down to the dock. Its guard changes soon after she draws near."
+const EXIT_NAME := "POSTERN"
 ## Mission spec §2's numbers (v0.11 M4), first guesses, tuned by Task 3's gate in this order: PACE (0.33-0.45), the beats, HUE_AFTER
 ## (20-45); then stop and report (WATCH_GAP is The Lost Lamb's too, decision 107). Freed by; the gaolers and how far from her; her
 ## pace; a patrol's size; the hue and cry; the searchers.
@@ -71,6 +75,19 @@ const GAOLER_LIFT := 0.0
 ## general CHARGE_LURE_R is 3.0): her road is long and her pace slow, and a Wisp is cast once in thirty seconds.
 const WISP_R := 5.0
 
+## The town's places and words (v0.12, spec 1.5 and 6.2.4): seeded from Aldermere's consts, which a town's overrides replace. `road` and
+## `beat_spots` are copies, never the consts themselves. EscortDirector's own vars (the gate, exit, return, guardhouse, watch posts and the
+## charge's start) are seeded in _init() and setup reads them, never replaces them; `charge_start` is the one setup still derives, from where
+## the stocks were placed (a ring away from `stocks_at` when it has no room), so an override of it only sets the first guess.
+const TOWN_VARS := ["stocks_at", "lane_foot", "road", "beat_spots", "gate_words", "exit_name", "charge_start", "gate_at", "exit_at",
+	"return_to", "guardhouse", "watch_posts"]
+var stocks_at: Vector2 = STOCKS_AT
+var lane_foot: Vector2 = LANE_FOOT
+var road: Array = ROAD.duplicate()
+var beat_spots: Array = BEATS.duplicate(true)
+var gate_words: String = GATE_WORDS
+var exit_name: String = EXIT_NAME
+
 ## The stocks; the aim on their far side, where their tag sits (v0.11 M4).
 var stocks: Structure
 var stocks_far := Vector2.INF
@@ -87,6 +104,17 @@ var _pace_walk := -1.0
 var _pace_lure := -1.0
 
 
+## EscortDirector's places start at Aldermere's (v0.12, R31): set at .new(), so a town's override survives setup. The return spot is the
+## active town's Citadel gate (Places.point; Aldermere's is CITADEL_GATE, bit for bit).
+func _init() -> void:
+	charge_start = STOCKS_AT + Vector2(0.0, HER_OFF)
+	gate_at = GATE_MOUTH
+	exit_at = EXIT
+	return_to = Places.point(&"citadel_gate")
+	guardhouse = GUARDHOUSE
+	watch_posts.assign(POSTS)
+
+
 ## The Escort type's setup, then the cast signal (v0.11.1: a Wisp cast near her).
 func _begin() -> void:
 	super()
@@ -96,22 +124,16 @@ func _begin() -> void:
 
 ## The mission's places and numbers (v0.11 M4): the stocks placed and binding her; the postern, the beats, the hue and cry.
 func _plan() -> void:
-	citadel_door = _walkable(CITADEL_GATE)
+	citadel_door = _walkable(Places.point(&"citadel_gate"))
 	stocks = _place_stocks()
 	if stocks == null:
 		push_warning("PrisonerDirector: no room for the stocks; she starts free")
-	var c := stocks.center() if stocks != null else STOCKS_AT
+	var c := stocks.center() if stocks != null else stocks_at
 	bound_by = stocks
 	free_by = FREE_BY
 	charge_start = c + Vector2(0.0, HER_OFF)
 	stocks_far = c - Vector2(0.0, FAR_OFF)
-	gate_at = GATE_MOUTH
-	exit_at = EXIT
-	return_to = CITADEL_GATE
-	guardhouse = GUARDHOUSE
-	for p: Vector2 in POSTS:
-		watch_posts.append(p)
-	for b: Array in BEATS:
+	for b: Array in beat_spots:
 		var line := PackedVector2Array()
 		for at: Vector2 in b:
 			line.append(_walkable(at))
@@ -122,7 +144,7 @@ func _plan() -> void:
 	hunt_size = HOUNDS
 	charge_pace = PACE
 	charge_label = "PRISONER"
-	exit_label = "POSTERN"
+	exit_label = exit_name
 	return_label = "CITADEL"
 
 
@@ -130,11 +152,11 @@ func _plan() -> void:
 ## more from the Citadel's gate, whose stall leaves a walk path from the Citadel's gate to the lane's foot and walkable ground where she
 ## stands, with a way from the gate to her; each one tried is added, tested and, failing, taken away. Null for none.
 func _place_stocks() -> Structure:
-	var lane := _walkable(LANE_FOOT)
+	var lane := _walkable(lane_foot)
 	for ring in STOCKS_RINGS + 1:
 		var n := maxi(1, ring * 6)
 		for k in n:
-			var at := STOCKS_AT + Vector2.from_angle(TAU * float(k) / float(n)) * STOCKS_STEP * float(ring)
+			var at := stocks_at + Vector2.from_angle(TAU * float(k) / float(n)) * STOCKS_STEP * float(ring)
 			var her := at + Vector2(0.0, HER_OFF)
 			if at.distance_to(citadel_door) < LANE_DOWN or her.distance_to(citadel_door) < LANE_DOWN:
 				continue
@@ -432,7 +454,7 @@ func tags() -> Array[MapTag]:
 	else:
 		out.append(MapTag.person(charge, MARK_CHARGE, "PRISONER", true))
 	var clear := watch_away or not _gate_watched()
-	out.append(MapTag.place(exit_at, MARK_CLEAR if clear else MARK_WATCHED, "POSTERN - CLEAR" if clear else "POSTERN - WATCHED", 0.0, true))
+	out.append(MapTag.place(exit_at, MARK_CLEAR if clear else MARK_WATCHED, "%s - CLEAR" % exit_name if clear else "%s - WATCHED" % exit_name, 0.0, true))
 	if held and _alive(seizer):
 		out.append(MapTag.person((seizer as Person), MARK_WATCHED, "TAKING HER BACK", true))
 		out.append(MapTag.place(return_to, MARK_WATCHED, "CITADEL"))
@@ -479,7 +501,7 @@ func tour() -> Array:
 	var out := []
 	if _alive(charge):
 		out.append([charge.ground_pos, "The prisoner in the stocks by the Citadel. Break her free by %s: do not kill her." % UiTheme.clock(FREE_BY)])
-	out.append([gate_at, "The postern, down to the dock. Its guard changes soon after she draws near."])
+	out.append([gate_at, gate_words])
 	out.append([citadel_door, "The Citadel. Once she is free it sends its hounds after her."])
 	return out
 

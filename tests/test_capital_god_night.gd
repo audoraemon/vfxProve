@@ -98,6 +98,28 @@ static func _tier2_drawn(t) -> void:
 	print("tier2 drawn ids: ", seen.keys())
 
 
+static func _tier3_drawn(t) -> void:
+	var tier3 := PackedStringArray(["vigil_flame", "festival", "crowns_bread", "prisoner", "heretic_hunt"])
+	var hosted := _hosted(3)
+	t.check(hosted.size() == tier3.size(), "the Capital hosts all five Tier 3 missions (%s)" % [hosted])
+	var seen := {}
+	var bad := 0
+	for night in range(0, 12):
+		for seed_value in range(1, 6):
+			var s := _slot(3, seed_value)
+			s.night = night
+			var id := GodNight.draw(s, "capital")
+			if id == "" or not tier3.has(id) or not hosted.has(id):
+				bad += 1
+			else:
+				seen[id] = true
+	var s2 := _slot(3)
+	var one := GodNight.draw(s2, "capital")
+	t.check(one != "" and tier3.has(one), "a Tier 3 god night in the Capital draws a Tier 3 id (%s)" % one)
+	t.check(bad == 0 and seen.size() >= 2, "every Tier 3 draw over 60 slots is a hosted Tier 3 id, several distinct (%d bad, %s)" % [bad, seen.keys()])
+	print("tier3 drawn ids: ", seen.keys())
+
+
 static func _draw_none(t) -> void:
 	var tier := 0
 	for k in range(1, 6):

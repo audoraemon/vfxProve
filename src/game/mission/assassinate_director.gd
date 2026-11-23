@@ -83,6 +83,8 @@ class Quarry:
 	var judged := false
 	var unseen := true
 	var killed_by := ""
+	## The kind of death he died of (what struck him), kept for _judge(): Town Suspicion reads whether a natural power explains it.
+	var killed_kind: StringName = &""
 	## The building he is inside, or null (out of doors, or inside the safe place).
 	var inside_of: Structure
 	## v0.11.1: the hideout alight or fallen flushed him (flush_waiting): he runs for the safe place for good -- his flight shows
@@ -551,6 +553,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 			q.died_at = _clock
 			q.fell_at = e.ground_pos
 			q.killed_by = rules.credited_key(kind)
+			q.killed_kind = kind
 			q.state = State.DEAD
 			q.inside_of = null
 			_release_guards(q)
@@ -575,6 +578,10 @@ func _judge(q: Quarry) -> void:
 	if not q.unseen:
 		rules.banner.emit(_seen_banner())
 		_sound(&"msn_scatter", at)
+		if crowd.suspicion.explains(q.killed_kind):
+			crowd.suspicion.add(Suspicion.TARGET_SIGN)
+			if not crowd.suspicion.known:
+				return  # an accident in plain sight is a sign, not proof: the town waits to know before it sends the keeper
 		if crowd.bell != null and crowd.bell.state == BellNetwork.State.IDLE:
 			crowd.bell.call_keeper()
 
@@ -878,3 +885,11 @@ func teardown() -> void:
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Music by situation: the chase while a quarry flees to his hideout.
+func music_mood() -> StringName:
+	for q: Quarry in quarries:
+		if q.state == State.FLEEING:
+			return &"chase"
+	return &""

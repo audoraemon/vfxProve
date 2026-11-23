@@ -34,7 +34,8 @@ static func run(t) -> void:
 		"its foot can be reached from the market")
 
 	# The first Local Emergency sends the bellkeeper; at the foot it climbs, and at the top it rings.
-	crowd.alarms.stage = AlarmManager.Stage.CONCERN
+	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	crowd.suspicion.know("test")  # Town Suspicion: a keeper is sent at a Local Emergency once the town knows
 	crowd._on_stage(AlarmManager.Stage.LOCAL_EMERGENCY, "test")
 	t.check(bell.state == BellNetwork.State.CALLED and bell.keeper.mind == Person.Mind.DUTY, "Local Emergency calls the bellkeeper")
 	_arrive(bell.keeper)

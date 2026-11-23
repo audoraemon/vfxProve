@@ -196,6 +196,16 @@ func herald_open() -> bool:
 	return false
 
 
+## Loss warning: each of the stars' own threats (a Herald, a witness's word), its id numbered by the star it is, so a second one running is a
+## new warning; then the base's.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	for i in stars.size():
+		if stars[i].rules != null:
+			out.append_array(NightThreat.suffixed(stars[i].threats(), str(i)))
+	return out
+
+
 ## The soonest of the Heralds' arrivals, in mission seconds (v0.11.2).
 func herald_eta() -> float:
 	var best := INF

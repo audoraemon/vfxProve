@@ -489,6 +489,15 @@ func captain_eta() -> float:
 	return _eta
 
 
+## Loss warning: the captain on his last walk to the Citadel (any_safe() loses the night when he gets in), as captain_eta().
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := captain_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"captain", "THE CAPTAIN REACHES THE CITADEL", "STOP HIM", eta, (captain().target as Person).ground_pos))
+	return out
+
+
 ## How many times the countdown's road has been searched (captain_eta() answers from the last search when nothing it reads has moved).
 func eta_runs() -> int:
 	return _eta_runs

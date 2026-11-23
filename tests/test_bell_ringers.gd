@@ -304,6 +304,7 @@ static func _recall(t) -> void:
 	Kit.run_for(s, RingerDirector.OUT_PAUSE + DT * 4.0)
 	_climb(a, bell)
 	crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY
+	crowd.suspicion.know("test")  # Town Suspicion: the town calls its keeper at a Local Emergency once it knows
 	bell.call_keeper()
 	var held := bell.keeper == a.messenger and bell.state == BellNetwork.State.CLIMBING and not d.called()
 	_stop(s, a)

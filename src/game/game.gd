@@ -459,7 +459,7 @@ func _ready() -> void:
 		"pause":
 			go_to(Screen.MISSION)
 			_open_pause()
-		"play":  # a running night with its intro skipped, for a photograph (with --dev-zoom=Z the camera rests at Z)
+		"play", "suspicion-uneasy", "suspicion-known", "suspicion-thought":  # a running night with its intro skipped, for a photograph (with --dev-zoom=Z the camera rests at Z)
 			go_to(Screen.MISSION)
 		"legend", "legend-2":  # the legend of marks open over a running night (page 1, or page 2 for legend-2): a photograph of its frame in any window
 			go_to(Screen.MISSION)
@@ -603,6 +603,31 @@ func _ready() -> void:
 		await _until(func() -> bool: return _mission.started(), 10.0)
 		_mission.skip_intro()
 		_mission.apply_dev_zoom()
+	if show in ["suspicion-uneasy", "suspicion-known", "suspicion-thought"] and is_instance_valid(_mission):
+		# Town Suspicion's gauge (Task 6): two Smites seen by the town (uneasy), or an unnatural power seen (known). The signs are fed to the
+		# crowd's Suspicion as its witnesses would; nothing is cast. Photograph it on the Warning: --mission=warning.
+		await _until(func() -> bool: return _mission.started(), 60.0)
+		_mission.skip_intro()
+		for _frame in 1200:  # the opening banners cover the middle of the screen: wait them out, then stage
+			if not is_instance_valid(_mission._hud) or _mission._hud.banners().is_empty():
+				break
+			await get_tree().process_frame
+		var town_doubt := _mission._crowd.suspicion
+		if show == "suspicion-thought":  # one witnessed Smite sign over the first citizen in the open and the middle of the view: his tag is up for the photograph
+			for witness in _mission._crowd.citizens:
+				if witness.is_alive() and not witness.inside and witness.tag_drawn() and _show_in_middle(witness):
+					_mission._crowd._sign([witness.ground_pos + Vector2(2.0, 0.0)] as Array[Vector2], 8.0, &"lightning")
+					_mission._crowd._thought_left = 30.0  # the photograph is taken seconds later: keep his tag up for it
+					break
+		elif show == "suspicion-known":
+			town_doubt.sign(Suspicion.UNNATURAL)
+		else:
+			town_doubt.sign(&"lightning")
+			town_doubt.sign(&"lightning")
+		for _frame in 1200:  # and the banner the sign raised
+			if not is_instance_valid(_mission._hud) or _mission._hud.banners().is_empty():
+				break
+			await get_tree().process_frame
 	if "--capture" in args:
 		# A second for anything behind the screen to settle, then one frame to disk. This is how each screen
 		# task shows its work: SCENE=res://scenes/game.tscn bash tools/capture.sh --show=prepare --capture
@@ -684,6 +709,9 @@ func _ready() -> void:
 				hud.push_subtitle(Battlefield.arg_value(args, "--hud-subtitle"))
 			if "--hud-zoom" in args:
 				_mission._zoom_readout.show_zoom(0.75)
+			if Battlefield.arg_value(args, "--hud-threat") != "" and is_instance_valid(_mission._alert):
+				# The loss warning's photographs: a made-up Herald 12 s out -- `card` photographs the slam, `edge` the pulse after it.
+				_mission._alert.dev_threat = NightThreat.make(&"dev", "THE HERALD REACHES THE TEMPLE", "STOP HIM", 12.5)
 			if Battlefield.arg_value(args, "--hud-cast") != "":
 				_mission.rules().cast(int(Battlefield.arg_value(args, "--hud-cast")), Vector2.ZERO)
 			if Battlefield.arg_value(args, "--hud-legend") != "":
@@ -691,6 +719,10 @@ func _ready() -> void:
 				if Battlefield.arg_value(args, "--hud-legend") == "2":
 					_mission._legend.open_next()
 		var wait := 1.0
+		if Battlefield.arg_value(args, "--hud-threat") == "card":
+			wait = 0.5
+		elif Battlefield.arg_value(args, "--hud-threat") == "edge":
+			wait = ThreatAlert.CARD_SECONDS + 1.0
 		if show == "first_taste-win":
 			wait = 0.6  # at the ending's 0.3 time scale: about 2 s real, inside the win plate's 4
 		elif show.begins_with("flame"):
@@ -886,9 +918,11 @@ func go_to(to: int) -> void:
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
-		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES, Screen.SLOTS, Screen.GOD_SELECT, \
+		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES, Screen.SLOTS, \
 				Screen.HUB, Screen.TREE, Screen.FAITH:
 			Music.play(&"theme")
+		Screen.GOD_SELECT:
+			Music.play(&"paths")  # its own piece; GodSelectScreen names the picked god's school (Music.set_path)
 		Screen.RESULTS, Screen.INTERLUDE:
 			Music.play(&"")  # the win or lose sting stands alone
 
@@ -925,6 +959,7 @@ func _faded_into_mission() -> void:
 		return
 	_fading = true
 	await _fader.fade_out(FADE_OUT)
+	Music.set_mood(&"")  # the last mission's chase or rite does not carry over
 	Music.play(&"battle")  # rises behind the fade
 	Music.sting(&"music_sting_start")  # the night begins
 	go_to(Screen.MISSION)
@@ -960,6 +995,7 @@ func _continue_night() -> void:
 	screen = Screen.MISSION
 	_mission.next_act(loadout, _next_path)
 	_mission.set_frozen(false)
+	Music.set_mood(&"")  # the last mission's chase or rite does not carry over
 	Music.play(&"battle")
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1847,6 +1883,13 @@ func _on_title_action(what: String) -> void:
 			on_action("title:campaign")
 		_:
 			on_action("title:" + what)
+
+
+## True when `p`'s tag point lies in the middle of the HUD's view, clear of its corner plates (the Suspicion thought photograph).
+func _show_in_middle(p: Person) -> bool:
+	var at := Hud.tag_point(MapTag.person(p, Color.WHITE), _mission._hud._world_xf())
+	var view: Vector2 = _mission._hud._view()
+	return Rect2(view * Vector2(0.3, 0.4), view * Vector2(0.4, 0.3)).has_point(at)
 
 
 ## One frame of the root to res://captures/<file_name>: window-sized (the root draws at full resolution), the same shape as the

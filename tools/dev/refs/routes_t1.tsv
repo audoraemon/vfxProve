@@ -5,7 +5,7 @@ warning_b_play_2	--scenario=warning --case=play --route=b --board --seed=2	-7591
 warning_b_play_3	--scenario=warning --case=play --route=b --board --seed=3	72082198
 tax_b_play_1	--scenario=tax --case=play --route=b --seed=1	-5193673
 tax_b_play_2	--scenario=tax --case=play --route=b --seed=2	-234741817
-tax_b_play_3	--scenario=tax --case=play --route=b --seed=3	-472876270
+tax_b_play_3	--scenario=tax --case=play --route=b --seed=3	367212874
 harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1	162367900
 harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2	269548035
 harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3	133083421

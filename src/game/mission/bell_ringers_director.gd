@@ -321,6 +321,16 @@ func herald_open() -> bool:
 	return false
 
 
+## Loss warning: each of the ringers' own threats (a Herald, a witness's word), its id numbered by the ringer it is, so a second one running is a
+## new warning; then the base's.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	for i in ringers.size():
+		if ringers[i].rules != null:
+			out.append_array(NightThreat.suffixed(ringers[i].threats(), str(i)))
+	return out
+
+
 ## The soonest of the Heralds' arrivals, in mission seconds (v0.11.2).
 func herald_eta() -> float:
 	var best := INF

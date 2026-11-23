@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_policies(t)
 	_door_policies(t)
 	_death_last_leg(t)
+	_watched(t)
 	_bloom_casts(t)
 	_no_filler_casts(t)
 	_guards_walk(t)
@@ -1066,3 +1067,43 @@ static func _wishes(t) -> void:
 		descent.release()
 		Kit.done(n)
 	t.check(heard > 0 and hit == 0, "wishes heard (%d), none on the director's own people or buildings (%d)" % [heard, hit])
+
+
+## Town Suspicion (Task 5): a seen lightning kill of the inquisitor is a sign (TARGET_SIGN), not a call; once the town knows it calls the keeper.
+static func _watched(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var d: AssassinateDirector = s.d
+	var q := d.quarries[0]
+	d._set_out(q)
+	
+	var near: Person = null
+	for p in crowd.citizens:
+		if near == null and is_instance_valid(p) and p != q.target and p.is_alive() and not p.inside:
+			near = p
+	Kit.arrive(near, q.target.ground_pos + Vector2(1.5, 0.0))
+	crowd.suspicion.add(20.0)
+	crowd.suspicion.excuse(&"lightning")  # a Smite was cast: lightning is an accident
+	var before := crowd.suspicion.value
+	crowd._field.kill(q.target, &"lightning")
+	Kit.run_for(s, 0.5)
+	t.check(q.dead and q.judged and not q.unseen, "inquisitor: the lightning kill is seen")
+	t.near(crowd.suspicion.value - before, Suspicion.TARGET_SIGN * crowd.suspicion.wary, 0.01, "inquisitor: the seen kill adds TARGET_SIGN")
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "inquisitor: no bell while the town does not know")
+	Kit.done(s)
+	var k := _world()
+	var kc: Crowd = k.crowd
+	var kd: AssassinateDirector = k.d
+	var kq := kd.quarries[0]
+	kd._set_out(kq)
+	
+	var kn: Person = null
+	for p in kc.citizens:
+		if kn == null and is_instance_valid(p) and p != kq.target and p.is_alive() and not p.inside:
+			kn = p
+	Kit.arrive(kn, kq.target.ground_pos + Vector2(1.5, 0.0))
+	kc.suspicion.know("test")
+	kc._field.kill(kq.target, &"lightning")
+	Kit.run_for(k, 0.5)
+	t.check(kc.bell.state != BellNetwork.State.IDLE, "inquisitor: the town knows, the seen kill calls the keeper")
+	Kit.done(k)

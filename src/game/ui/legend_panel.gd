@@ -50,7 +50,7 @@ const MARKS := [
 	["plate", DANGER, "DO NOT KILL: that death loses the night"],
 ]
 
-## Page 2: the same shape (spec §4.2). v0.11.2 (spec 5.5, R33): 21 rows, laid in two columns -- the first OVERHEAD_SPLIT rows on the left, the rest
+## Page 2: the same shape (spec §4.2). v0.11.2 (spec 5.5, R33): 22 rows, laid in two columns -- the first OVERHEAD_SPLIT rows on the left, the rest
 ## on the right -- with the Lantern's four after Halcyon's light (its clock ring leads the HUD's column).
 const OVERHEAD := [
 	["eye", Color("ffe9a8"), "Gold eye: whispered, walking where you sent them"],
@@ -74,6 +74,7 @@ const OVERHEAD := [
 	["aim_ring", UiTheme.COL_TEXT, "Where the power will land"],
 	["district", PLACE, "The district the power will reach"],
 	["topline", NOT_YET, "Citizens, soldiers, buildings down, and the town's alarm"],
+	["suspicion", UiTheme.COL_GOLD, "How strange the town finds this night. Full: it calls a god's hand, and the bell"],
 ]
 
 ## How many of OVERHEAD's rows the first column holds (the marks over the town and the Lantern's beam and people; the HUD's own are the second's).
@@ -387,3 +388,7 @@ func _swatch(kind: String, col: Color, x: float, cy: float) -> void:
 		"topline":
 			for i in 3:
 				draw_rect(Rect2(x + 1.0 + 8.0 * float(i), cy - 1.0, 6.0, 2.0), col)
+		"suspicion":
+			draw_rect(Rect2(x + 1.0, cy - 2.0, 24.0, 4.0), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(x + 1.0, cy - 2.0, 14.0, 4.0), col)
+			draw_line(Vector2(x + 11.0, cy - 3.0), Vector2(x + 11.0, cy + 3.0), UiTheme.COL_TEXT, 1.0)

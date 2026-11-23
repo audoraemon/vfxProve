@@ -38,6 +38,9 @@ var history: Array = []
 var _city_at := -1.0
 ## District index -> incidents (collapses, deaths) there.
 var _events := {}
+## District index -> the incidents there that nothing natural explains (Town Suspicion): what sends the bellkeeper before
+## the town knows.
+var _unexplained := {}
 
 
 ## The district (City.current().districts() index) a ground point is in, or the nearest one.
@@ -56,11 +59,22 @@ static func district_of(g: Vector2) -> int:
 	return best
 
 
-## A collapse or a death at `g`. True when it just put its district into local emergency.
-func incident(g: Vector2) -> bool:
+## A collapse or a death at `g`. True when it just put its district into local emergency (of all its incidents).
+## `explained`: a natural power's doing (Suspicion.explains()); it counts for the stage, not for `unexplained_emergency()`.
+func incident(g: Vector2, explained := false) -> bool:
 	var d := district_of(g)
 	_events[d] = int(_events.get(d, 0)) + 1
+	if not explained:
+		_unexplained[d] = int(_unexplained.get(d, 0)) + 1
 	return int(_events[d]) == LOCAL_EVENTS
+
+
+## True when some district holds LOCAL_EVENTS incidents that nothing natural explains.
+func unexplained_emergency() -> bool:
+	for d in _unexplained:
+		if int(_unexplained[d]) >= LOCAL_EVENTS:
+			return true
+	return false
 
 
 func districts_in_emergency() -> int:
@@ -113,3 +127,4 @@ func reset() -> void:
 	_city_at = -1.0
 	history.clear()
 	_events.clear()
+	_unexplained.clear()

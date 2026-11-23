@@ -3428,7 +3428,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 	return ""
 
 
-## Where she waits short of a watched gate (Task 11): PRISONER_WAIT beyond the gate's mouth where that lies on her road (Aldermere: the
+## Where she waits short of a watched gate (Task 11): the old offset from the gate's mouth where that lies on her road (Aldermere: the
 ## postern's street comes down from the north, bit for bit as before), else the point on her road PRISONER_BACK units back from the gate
 ## (the Capital's road reaches its harbour gate along the avenue from the west).
 func _prisoner_wait(d: PrisonerDirector) -> Vector2:

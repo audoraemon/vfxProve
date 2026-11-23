@@ -154,12 +154,15 @@ static func _policy_reads_vars(t) -> void:
 		t.check(m == null, "a prisoner policy reads no Prisoner const or TownLayout coordinate (%s)" % [m.get_string() if m != null else ""])
 	t.check("d.road" in act and "d.road" in rb, "each prisoner policy reads d.road")
 	# the wait point: derived from the director (`_prisoner_wait`), never a hard-coded offset from the gate
-	var wait := _slice(bc, "func _prisoner_wait(", "
-func ")
+	var wait := _slice(bc, "func _prisoner_wait(", "\nfunc ")
 	t.check(wait.length() > 300, "the wait derivation is found and sliced (%d chars)" % wait.length())
-	var off := RegEx.create_from_string("\bPRISONER_WAIT\b")
+	var off := RegEx.create_from_string("\\bPRISONER_WAIT\\b")
+	var plus := RegEx.create_from_string("gate_at\\s*\\+")
+	t.check(off.search("x PRISONER_WAIT y") != null and plus.search("d.gate_at + Vector2(0.0, -3.0)") != null and plus.search("d.gate_at,") == null,
+		"the wait regexes bite on a sample and pass a bare gate_at")
 	for body: String in [act, rb]:
-		t.check(off.search(body) == null and "_prisoner_wait(d)" in body, "a prisoner policy takes its wait point from _prisoner_wait(d), not PRISONER_WAIT")
+		t.check(off.search(body) == null and "_prisoner_wait(d)" in body and plus.search(body) == null,
+			"a prisoner policy takes its wait point from _prisoner_wait(d), not PRISONER_WAIT or a hard-coded offset from gate_at")
 	t.check("d.road" in wait and "d.gate_at" in wait and "_road_ahead(" in wait, "the wait derivation reads d.road and d.gate_at and walks back along the road")
 
 

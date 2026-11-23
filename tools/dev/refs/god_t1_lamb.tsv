@@ -1,11 +1,11 @@
 # KAK The Lost Lamb for every god type (god T1R Task 5): the per-type gate's play runs, seeds 1-3 in Aldermere (tools/dev/routes/god_t1/lamb.gd; bash tools/dev/gate.sh lamb --god=<type>:1). name<TAB>how<TAB>expected
 # The *_startle_* rows (D22): Ember (ruin) or Blight (veil) at 0:00 and then no cast must lose 3/3 -- the short nights are won by the play, not the bolt.
-god_ruin_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=ruin:1	-244048359
-god_ruin_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=ruin:1	-666921060
-god_ruin_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=ruin:1	-116704511
+god_ruin_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=ruin:1	-737100172
+god_ruin_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=ruin:1	-124221920
+god_ruin_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=ruin:1	-17134823
 god_death_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=death:1	320091270
-god_death_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=death:1	-360216341
-god_death_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=death:1	-934827455
+god_death_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=death:1	-257603057
+god_death_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=death:1	-561901564
 god_veil_lamb_play_1	--scenario=lamb --case=play --seed=1 --god=veil:1	-723991320
 god_veil_lamb_play_2	--scenario=lamb --case=play --seed=2 --god=veil:1	-405853607
 god_veil_lamb_play_3	--scenario=lamb --case=play --seed=3 --god=veil:1	-537829484

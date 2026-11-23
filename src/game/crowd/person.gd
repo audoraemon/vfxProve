@@ -1391,7 +1391,7 @@ func startled() -> bool:
 ## A steadied person's start at `from` (fair life, 2026-11-20): freeze startle_seconds() facing it, step FLINCH_STEP away if
 ## he is a duty-bound citizen with room, stare until FLINCH_SECONDS from the start, then carry on. His mind, anchor and
 ## awareness are untouched and nothing is drawn from any generator. Refused while one runs, and for the dead, those
-## indoors, and anyone not calm, recovering, looking or on duty (a soldier: not at his post, or hurrying).
+## indoors, and anyone not calm, recovering, looking or on duty (a duty citizen still walking to a goal keeps going; a soldier: not at his post, or hurrying).
 func flinch(from: Vector2) -> void:
 	if _flinch_left > 0.0 or state == State.DEAD or inside or night_indoors or held_by_will(WILL_ABSOLUTE) or resists_mind():
 		return
@@ -1401,6 +1401,8 @@ func flinch(from: Vector2) -> void:
 			return
 	elif not (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.OBSERVE or mind == Mind.DUTY):
 		return
+	elif mind == Mind.DUTY and has_goal():
+		return  # on his way somewhere on purpose (a bolting lamb, an escort): he keeps going (fair life T5)
 	_flinch_left = FLINCH_SECONDS
 	_flinch_t = 0.0
 	_flinch_from = from

@@ -94,3 +94,66 @@ Panic rows re-recorded (all 9 reproduce under refs_check: ok=9 bad=0):
 - panic_b_play_1: -871968472
 - panic_b_play_2: -816928688
 - panic_b_play_3: -143323611
+
+## T5: nobody on his way somewhere freezes in a flinch (2026-11-23)
+Cause: god_decree_lamb_play_3 lost (lamb_taken 61.6 s) because the Decree breath called panic() on the bolting lamb's seizer's neighbourhood and the
+lamb, a DUTY citizen walking to the exit (LostLambDirector._run_for_it, go_duty), flinched: _think returned for FLINCH_SECONDS, he stood, patrol re-seized
+him. Same cause for escorted and bound walkers (hide_faithful_veil_play_1, prisoner_b_play_1) and the fair's own DUTY goers walking to the fair.
+Fix: Person.flinch() refuses a DUTY citizen with a goal he has not reached (has_goal()). Standing goers, calm people and soldiers at their post flinch as before.
+Result: god_decree_lamb_play_3 wins again at 87.2 s (lamb_out) with its old checksum -230395448. 26 of the 49 rows reach their exact pre-flinch
+(641e5fe4) checksum again; 22 differ but keep the pre-flinch outcome; no row flips. Rows re-recorded: the 36 that no longer match T4's recording.
+Pre-flinch times are 641e5fe4 runs; T5 times are this tree. Gate (final 3 / 2.0 / 0.6 unchanged): A 197.3, 221.4, 187.3 (median 197.3, idle 14/33/14);
+B 204.6, 235.8, 241.1 (median 235.8, idle 20); none lost 3/3 (market_closed). Walking goers change panic timings only: panic_play_1 187.5 -> 197.3 s,
+panic_b_play_1 204.6 unchanged.
+
+| row | pre-flinch (641e5fe4) | T5 | note |
+|---|---|---|---|
+| armoury_play_2 | true 214.1 | true 214.1 | different checksum, same outcome (re-recorded) |
+| armoury_play_3 | true 214.1 | true 214.1 | different checksum, same outcome (re-recorded) |
+| face_halcyon_passage_play_2 | true 194.2 | true 194.2 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| face_halcyon_ruin_play_1 | true 186.2 | true 186.2 | different checksum, same outcome (re-recorded) |
+| face_halcyon_ruin_play_2 | true 163.0 | true 163.0 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| face_halcyon_ruin_play_3 | false 286.4 | false 286.4 | different checksum, same outcome (re-recorded) |
+| face_halcyon_veil_play_1 | true 194.7 | true 194.7 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| face_halcyon_veil_play_2 | true 195.8 | true 195.8 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| face_halcyon_veil_play_3 | true 199.2 | true 199.2 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_decree_play_1 | true 183.9 | true 183.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_decree_play_2 | true 185.5 | true 185.5 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_decree_play_3 | true 184.1 | true 184.1 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_ruin_play_1 | true 207.0 | true 207.0 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_ruin_play_2 | true 183.3 | true 183.3 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_ruin_play_3 | true 224.9 | true 224.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_veil_play_2 | true 201.1 | true 201.1 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| first_taste_veil_play_3 | true 201.2 | true 201.2 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| god_death_lamb_play_2 | true 121.6 | true 121.6 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| god_death_lamb_play_3 | true 120.3 | true 120.3 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| god_decree_lamb_play_3 | true 87.2 | true 87.2 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| god_ruin_lamb_play_1 | true 53.3 | true 53.3 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| god_ruin_lamb_play_2 | true 49.9 | true 49.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| god_ruin_lamb_play_3 | true 44.0 | true 44.0 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_death_play_1 | true 207.2 | true 207.2 | different checksum, same outcome (re-recorded) |
+| hide_faithful_death_play_2 | true 203.2 | true 203.2 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_death_play_3 | true 205.9 | true 205.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_decree_play_3 | true 102.1 | true 102.1 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_ruin_play_1 | true 98.1 | true 98.1 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_ruin_play_2 | true 187.8 | true 187.8 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_ruin_play_3 | true 104.3 | true 104.3 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_veil_play_1 | true 106.9 | true 106.9 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| hide_faithful_veil_play_2 | true 189.6 | true 189.6 | checksum equals the pre-flinch reference (flinch no longer touches him) |
+| panic_b_play_1 | true 224.0 | true 204.6 | different checksum, same outcome (re-recorded) |
+| panic_b_play_2 | true 222.4 | true 235.8 | different checksum, same outcome (re-recorded) |
+| panic_b_play_3 | true 221.5 | true 241.1 | different checksum, same outcome (re-recorded) |
+| panic_none_1 | false 300.0 | false 300.0 | different checksum, same outcome (re-recorded) |
+| panic_none_2 | false 300.0 | false 300.0 | different checksum, same outcome (re-recorded) |
+| panic_none_3 | false 300.0 | false 300.0 | different checksum, same outcome (re-recorded) |
+| panic_play_1 | true 221.4 | true 197.3 | different checksum, same outcome (re-recorded) |
+| panic_play_2 | true 197.3 | true 221.4 | different checksum, same outcome (re-recorded) |
+| panic_play_3 | true 187.3 | true 187.3 | different checksum, same outcome (re-recorded) |
+| prisoner_b_play_1 | true 179.2 | true 270.2 | different checksum, same outcome (re-recorded) |
+| prisoner_b_play_2 | true 238.7 | true 236.3 | different checksum, same outcome (re-recorded) |
+| prisoner_b_play_3 | true 207.2 | true 207.8 | different checksum, same outcome (re-recorded) |
+| prisoner_play_1 | true 208.3 | true 192.6 | different checksum, same outcome (re-recorded) |
+| prisoner_play_2 | true 202.4 | true 207.0 | different checksum, same outcome (re-recorded) |
+| prisoner_play_3 | true 219.8 | true 196.3 | different checksum, same outcome (re-recorded) |
+| sermon_play_1 | true 230.5 | true 230.5 | different checksum, same outcome (re-recorded) |
+| sermon_play_3 | true 222.7 | true 222.7 | different checksum, same outcome (re-recorded) |

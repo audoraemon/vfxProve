@@ -15,6 +15,7 @@ static func run(t) -> void:
 	_observe_flinch(t, made)
 	_warden_no_step(t, made)
 	_flinch_refused(t, made)
+	_walking_duty(t, made)
 	_absolute_wins(t, made)
 	RD._done(made)
 
@@ -148,6 +149,25 @@ static func _flinch_refused(t, made: Array) -> void:
 		"a fearless fighter and a soldier hurrying to his post do not flinch, by observe() or panic()")
 	t.check(not (panicked.flinching() or fled.flinching() or dead.flinching() or inside.flinching()),
 		"the frightened, the fleeing, the dead and those indoors do not flinch")
+
+
+## Fair life T5: a duty citizen walking to a goal he has not reached keeps going (the bolting lamb, an escort); one standing at his spot flinches.
+static func _walking_duty(t, made: Array) -> void:
+	RD._clear_all(made)
+	var crowd: Crowd = made[0]
+	var at := RD._empty(made)
+	var walker := _put(made, 31, at)
+	walker.go_duty(at + Vector2(6.0, 0.0))
+	walker.fearless_left = 30.0
+	t.check(walker.mind == Person.Mind.DUTY and walker.has_goal(), "set up: a duty citizen with a goal ahead")
+	walker.panic(at + Vector2(-1.0, 0.0), 1.0)
+	walker.observe(at + Vector2(-1.0, 0.0))
+	t.check(not walker.flinching() and walker.mind == Person.Mind.DUTY, "a duty citizen on his way somewhere does not flinch")
+	var stander := _on_duty(made, 32, at + Vector2(0.0, 6.0), 30.0)
+	t.check(stander.mind == Person.Mind.DUTY and not stander.has_goal(), "set up: a duty citizen standing at his spot")
+	stander.panic(stander.ground_pos + Vector2(1.0, 0.0), 1.0)
+	t.check(stander.flinching(), "a duty citizen standing at his spot still flinches")
+	_advance(crowd, [walker, stander], 0.5)
 
 
 static func _absolute_wins(t, made: Array) -> void:

@@ -210,15 +210,18 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	# door -- a Faithful, or any who is not of the poor -- and takes him there, so that his soul is near the door when the spirit is wanted.
 	if _ready(bc, ctx, "deathmark") and crit > DeathMarkFx.MARK_TIME and crit <= DOOR_BODY and watchers_near(d) \
 			and GodT1.body_near(ctx.crowd, d.door, RISE_NEAR, true) == Vector2.INF:
-		var near := _door_victim(ctx, d)
+		var near := _door_victim(ctx, d, doomed.size())
 		if near != null:
 			return _cast(ctx, "deathmark", near.ground_pos, "death mark one by the door, so a soul is near it at the crit")
-		return ""
+		if _gaze_bears(d, doomed.size() + 1):
+			return ""  # kept for one by the door; when the Gaze could not bear that extra death, a Faithful is marked below instead
 	# Death Mark: one at a time, the nearest the door first, each alone where he stands (seen, while the Gaze can bear it, once the night is under way).
 	if _ready(bc, ctx, "deathmark"):
 		var room := d.gaze.value + GazeMeter.SEEN_DEATH <= BEAR_GAZE and d.timeline.elapsed() > 8.0
 		for f in doomed:
-			if _alone(d, f, 2.6) or room:
+			# The last Faithful left may be taken seen up to LAST_GAZE: with him gone the door stands empty and the night is all but won.
+			var last := doomed.size() == 1 and _gaze_bears(d, 1) and GodT1.deaths_left(ctx.crowd, f.ground_pos) >= 1
+			if _alone(d, f, 2.6) or room or last:
 				return _cast(ctx, "deathmark", f.ground_pos, "death mark a Faithful")
 	return ""
 
@@ -237,17 +240,31 @@ static func watchers_near(d: FirstPrayersDirector) -> bool:
 	return false
 
 
+## The Gaze can bear `deaths` more seen deaths (each adds GazeMeter.SEEN_DEATH) and stay within LAST_GAZE: a mark's death falls ten seconds
+## on, where nobody can tell now who will stand by, so each is counted as seen. A death spent on one who is not a Faithful is one more the
+## Faithful still to be taken must find room for.
+static func _gaze_bears(d: FirstPrayersDirector, deaths: int) -> bool:
+	return d.gaze.value + GazeMeter.SEEN_DEATH * float(deaths) <= LAST_GAZE
+
+
+## The most the Gaze may stand at after the last Faithful's death, seen: one seen death beyond BEAR_GAZE, for the one whose death empties the door.
+const LAST_GAZE := BEAR_GAZE + GazeMeter.SEEN_DEATH
+
+
 ## How far from the door a Faithful may be and still come to watch it by the crit.
 const DOOR_WATCH := 14.0
 
 
 ## Who stands within DOOR_VICTIM of the door and may be taken: alive, out of doors, not of the poor, not carrying a report, not marked, and
-## his death unseen or the Gaze able to bear it; a Faithful first, then the nearest the door. null for none.
-static func _door_victim(ctx: Dictionary, d: FirstPrayersDirector) -> Person:
+## his death unseen or the Gaze able to bear it; one who is not a Faithful only while the Gaze can bear his death and those of the `left`
+## Faithful still to be taken (_gaze_bears()); a Faithful first, then the nearest the door. null for none.
+static func _door_victim(ctx: Dictionary, d: FirstPrayersDirector, left: int) -> Person:
 	var spare := _spare(d)
 	var best: Person = null
 	for p in ctx.crowd.citizens:
 		if not MissionDirector._alive(p) or p.inside or spare.has(p) or p.statuses.has(&"frail") or d._carrying(p):
+			continue
+		if not d.faithful.has(p) and not _gaze_bears(d, left + 1):
 			continue
 		if p.ground_pos.distance_to(d.door) > DOOR_VICTIM:
 			continue

@@ -165,6 +165,10 @@ var _quiet_next_banner := false
 var _subtitles: Array = []
 ## Seconds of red left per slot, for the refused-cast flash.
 var _flash := PackedFloat32Array()
+## The god's ability bar of a Might night (setup() makes it when the Rules carry a pool); null on every other night, where the slot row is drawn.
+var bar: AbilityBar = null
+## The god type the bar's own page is (Mission sets it from the def before setup()).
+var bar_type := ""
 ## What the last frame drew, so an unchanged HUD costs nothing.
 var _drawn := ""
 ## The slot icons, taken once. PowerBook.hud_icon() goes through load(), and a texture asked for during
@@ -255,6 +259,8 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	_name_lines.clear()
 	for i in _rules.loadout.size():
 		_slot_names.append(String(_rules.power(i).get("name", "")))
+	if _rules.might != null:
+		bar = AbilityBar.new().setup(_rules, bar_type)
 	_rules.banner.connect(push_banner)
 	_rules.quiet_banner.connect(func(text: String) -> void: push_banner(text, true))
 	_rules.subtitle.connect(push_subtitle)
@@ -303,6 +309,8 @@ func _process(delta: float) -> void:
 ## Age the banners and Cael's lines, and redraw when anything on screen has changed. v0.11 M6's final review: the objective rows and
 ## the how-to-win line are taken once for the whole advance (_frame_rows, _frame_hint, _frame_lines).
 func advance(delta: float) -> void:
+	if bar != null:
+		bar.advance(delta)
 	if _rules != null and _rules.mission != null:
 		_frame_rows = objective_rows()
 		_frame_wishes = _build_wish_rows()
@@ -1202,6 +1210,8 @@ func _middle(y: float, h: float) -> float:
 
 ## Where the slot row's top is on this area: SLOT_TOP from the bottom edge.
 func slot_top() -> float:
+	if bar != null:
+		return bar.rect(_view()).position.y
 	return _bottom(SLOT_TOP, SLOT_SIZE)
 
 
@@ -1270,6 +1280,8 @@ func name_room() -> float:
 
 ## The slot bar (v0.11 M6's final review): every slot's rectangle in one, Rect2() with none -- tag_layout() keeps the labels off it.
 func slots_rect() -> Rect2:
+	if bar != null:
+		return bar.rect(_view())
 	var out := Rect2()
 	for i in _rules.loadout.size():
 		out = slot_rect(i) if i == 0 else out.merge(slot_rect(i))
@@ -1309,10 +1321,26 @@ func slot_name(i: int) -> String:
 
 ## The slot under a screen point, or -1.
 func slot_at(point: Vector2) -> int:
+	if bar != null:
+		var hit := bar_hit(point)
+		return int(hit.substr(5)) if hit.begins_with("tile:") else -1
 	for i in _rules.loadout.size():
 		if slot_rect(i).has_point(point):
 			return i
 	return -1
+
+
+## What the bar has under a screen point: "tile:<slot>", "tab:<i>", "strip" or ""; "" on a night without a bar.
+func bar_hit(point: Vector2) -> String:
+	return bar.hit(point, _view()) if bar != null else ""
+
+
+## The slot of the bar's tile under the mouse, -1 for none (the bar shown open only: the strip has no tiles to hover).
+func _bar_hover() -> int:
+	if bar == null or not bar.open or (not is_inside_tree() and WorldView.test_mouse == Vector2.INF):
+		return -1
+	var hit := bar_hit(WorldView.mouse_in_view(self))
+	return int(hit.substr(5)) if hit.begins_with("tile:") else -1
 
 
 ## `quiet`: the banner comes with its own sound (a refused cast's buzz), so it does not ring ui_notice as well.
@@ -1395,6 +1423,10 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 	elif reason == "missed":
 		# A live power's follow-up order that found nothing at the click (a Tide click on no fighter, a second word with nobody near).
 		push_banner("NOTHING THERE TO COMMAND", true)
+	elif reason == "might":
+		push_banner("NOT ENOUGH MIGHT", true)
+	elif reason == "sealed":
+		push_banner("SEALED BY THE LANTERN", true)
 	elif reason == "foe":
 		push_banner("NO ONE THERE TO ATTACK", true)
 	elif reason == "building":
@@ -1448,9 +1480,11 @@ func _signature() -> String:
 	if chain_shown():
 		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
 	out += "|" + "/".join(_rite_lines)
-	for i in _rules.loadout.size():
+	for i in (0 if bar != null else _rules.loadout.size()):  # a bar's signature covers its slots
 		out += "%s%d%s%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else "",
 			"f" if _rules.can_recast(i) else ""]  # the gold card of a power that takes a follow-up order
+	if bar != null:
+		out += "|%s|%d" % [bar.signature(_aim.slot if _aim != null else -1), _bar_hover()]
 	return out
 
 
@@ -1526,7 +1560,10 @@ func _draw() -> void:
 	if not rite_plate_up():
 		_draw_ascend()
 		_draw_chain()
-		_draw_slots(w)
+		if bar != null:
+			_draw_bar()
+		else:
+			_draw_slots(w)
 	_frame_wishes = null
 
 
@@ -2110,6 +2147,23 @@ func _draw_slots(_w: float) -> void:
 				UiTheme.COL_GOLD if follow else UiTheme.COL_TEXT)
 
 
+## A Might night's bar in place of the slot row, with the focused power's modes plate over its tile.
+func _draw_bar() -> void:
+	var picked := _aim.slot if _aim != null else -1
+	bar.draw(self, _view(), picked, _bar_hover(), _flash)
+	if picked >= 0:
+		_draw_modes(_bar_modes_box(picked))
+
+
+## The box the focused power's modes plate stands over on a Might night: its tile's column, at the top of what the bar draws (so the plate
+## clears the name line, the tabs and the gauge when the bar is open), or the strip's tile when hidden or on another page.
+func _bar_modes_box(slot: int) -> Rect2:
+	var tile := bar.armed_rect(slot, _view())
+	if bar.open and bar.page_of(slot) == bar.page:
+		tile.position.y = bar.rect(_view()).position.y
+	return tile
+
+
 ## The focused power's modes (Voice of God's commands, Divine Schism's ways to divide) in a row above its slot: the
 ## picked one gold, with the keys that step through them.
 func _draw_modes(box: Rect2) -> void:
@@ -2143,7 +2197,7 @@ func modes_rect(box := Rect2()) -> Rect2:
 	if modes.is_empty():
 		return Rect2()
 	if not box.has_area():
-		box = slot_rect(_aim.slot)
+		box = _bar_modes_box(_aim.slot) if bar != null else slot_rect(_aim.slot)
 	var total := 0.0
 	for l in _modes_labels(modes):
 		total += UiTheme.width(l, UiTheme.TEXT_S) + 6.0

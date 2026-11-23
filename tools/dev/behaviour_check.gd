@@ -7,7 +7,7 @@ extends SceneTree
 ##   --dev-tree, --god=<type>:<tier>, --level=<n> (god P1, C6; spec §5.2's per-type win check): --dev-tree turns GodTree.dev_fill on for
 ##          the run; --god restricts the drafted loadout to GodTree.keys_for(type, tier) (tier 1 when omitted) -- a key outside it prints
 ##          `BEHAVIOUR refused scenario=<s> god=<type>:<tier> outside=<k1,k2>` and quits 1 (gate.sh reads that as a FAIL), else the run
-##          prints `BEHAVIOUR god=<type>:<tier>` (in no checksum); --level=1..5 plays every drafted key at that level (Mission.levels).
+##          prints `BEHAVIOUR god=<type>:<tier>` and `BEHAVIOUR might=<capacity>/<refill>` (the tier's gauge the bots pay from; neither in a checksum); --level=1..5 plays every drafted key at that level (Mission.levels).
 ##          No flag: the run is exactly as before.
 ##          God T1R: `--god=<type>:1` with NO --route on a scenario of tools/dev/routes/god_t1.gd (warning, tax, harvest, lamb, prayers) plays
 ##          that type's own policy for the mission (god_t1/<scenario>.gd act_<type>) with the real tree's two Tier 1 keys, hit-stop off, printing
@@ -686,6 +686,8 @@ func _run() -> void:
 		for key in drafted:
 			at[key] = int(level_arg)
 		mission.levels = at
+	if god_type != "":
+		mission.might_tier = god_tier  # the Might gauge's bots pay: the tier's Divine Power as the gauge, only with --god
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if mission.refused != "":
 		# v0.12 C6: a mission the town cannot host is not run; gate.sh reads this line as a FAIL.
@@ -695,6 +697,8 @@ func _run() -> void:
 	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
 	if god_type != "":
 		print("BEHAVIOUR god=%s:%d%s" % [god_type, god_tier, " route=god" if god_route else (" route=hunt" if hunt_route else "")])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
+		var pool: MightPool = mission._rules.might
+		print("BEHAVIOUR might=%d/%d" % [int(pool.capacity), roundi(pool.refill_seconds)])  # the gauge the bots pay from; not in any checksum
 	if route == "b" or god_type != "" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"] or scenario in GOD_HUNTS.SCENARIOS:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0

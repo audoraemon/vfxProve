@@ -2844,9 +2844,10 @@ func _ringers(which: String) -> void:
 
 ## One look of The Bell-Ringers' policy (v0.11 M3, as a player plays it): what was cast, or "" for nothing. The first
 ## that applies: Silent Doom on the town's bellkeeper once called; Silent Doom on a carrier whose death would go unseen; Silent Doom
-## on his mates -- both at once, or one -- where it takes no one else; Mind Whisper sends a mate with him off, or one of one or two
-## other witnesses (none a soldier); Mind Whisper sends a carrier left without his mates to a quiet spot (_ringers_quiet()) when
-## Silent Doom will be ready as he gets there; Discord on a carrier near the bell's foot or on the rope; and between ringers, the
+## on his mates -- both at once, or one -- where it takes no one else; Mind Whisper sends a mate with him off; Mind Whisper sends a
+## carrier left without his mates to a quiet spot (_ringers_quiet()) when Silent Doom will be ready as he gets there (soldier duties:
+## before a bystander is whispered off, since the streets' patrols and sweeps leave a carrier among passers-by more often, and one
+## shooed off leaves him in the street); else one of one or two other witnesses (none a soldier) whispered off; Discord on a carrier near the bell's foot or on the rope; and between ringers, the
 ## next post's door cleared of watchers before its ringer comes out (_ringers_prep()). Never a loud power.
 func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd) -> String:
 	var bell := crowd.bell
@@ -2885,6 +2886,14 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 					rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": _ringers_off(d, m, r.messenger.ground_pos)})
 					return "whisper a mate off"
 		for r in going:
+			if not r.mates_with().is_empty() or not _whisperable(r.messenger) or (bell != null and bell.keeper == r.messenger) \
+					or _slot_wait(rules, slots, "doom") > RINGERS_DOOM_SOON:
+				continue
+			var quiet := _ringers_quiet(d, crowd, r.messenger)
+			if quiet != Vector2.INF:
+				rules.cast(slots.whisper, r.messenger.ground_pos, {"target": r.messenger, "to": quiet})
+				return "whisper the ringer aside to (%.1f, %.1f)" % [quiet.x, quiet.y]
+		for r in going:
 			var seeing := r.witnesses()
 			var soldier := false
 			var lone: Person = null
@@ -2896,14 +2905,6 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 			if seeing.size() <= 2 and not soldier and lone != null:
 				rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": _ringers_off(d, lone, r.messenger.ground_pos)})
 				return "whisper a witness off"
-		for r in going:
-			if not r.mates_with().is_empty() or not _whisperable(r.messenger) or (bell != null and bell.keeper == r.messenger) \
-					or _slot_wait(rules, slots, "doom") > RINGERS_DOOM_SOON:
-				continue
-			var quiet := _ringers_quiet(d, crowd, r.messenger)
-			if quiet != Vector2.INF:
-				rules.cast(slots.whisper, r.messenger.ground_pos, {"target": r.messenger, "to": quiet})
-				return "whisper the ringer aside to (%.1f, %.1f)" % [quiet.x, quiet.y]
 	for r in going:
 		if bell != null and (r.messenger.ground_pos.distance_to(bell.foot) <= RINGERS_DISCORD or bell.keeper == r.messenger) \
 				and _slot_ready(rules, slots, "discord"):

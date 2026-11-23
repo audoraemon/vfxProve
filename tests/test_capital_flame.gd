@@ -86,6 +86,7 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	var def := MissionBook.get_mission("%s@capital" % ID)
 	t.check(def.camera_at == Vector2(-3.0, -12.0) and def.intro_from == Vector2(-3.0, -6.0), "camera_at and intro_from are overridden together (C9)")
 	t.check(d.vigil != null and d.vigil.route.size() == 6, "the Vigil walks six points")
+	_in_reach(t, "the Capital", d.mira_shrine, d.searchlight.spire)
 	t.check(d.shrine.distance_to(d.mira_shrine) <= 0.6 and cap.grid.walkable(d.shrine), "Mira's shrine %s lands on walkable ground (var %s)" % [d.shrine, d.mira_shrine])
 	_walk_parity(t, d, cap, ald)
 	City.use(&"capital")
@@ -100,8 +101,14 @@ static func _walk_parity(t, d: VigilFlameDirector, cap: Dictionary, ald: Diction
 	var ad: VigilFlameDirector = a.d
 	Cap.parity(t, "the Vigil's round (six legs)", _round(cap.grid, d), _round(ald.grid, ad))
 	Cap.parity(t, "Wren's carry (nearest round point to Mira's shrine)", _carry(cap.grid, d), _carry(ald.grid, ad))
+	_in_reach(t, "Aldermere", ad.mira_shrine, ad.searchlight.spire)
 	Kit.done(a)
 	City.use(&"capital")
+
+
+## Mira's shrine lies within the Searchlight's sweep of its spire (FAR, the beam's reach), as Aldermere's does (about 23 of 26): the carry's last stretch is under the Lantern's threat.
+static func _in_reach(t, town: String, shrine: Vector2, spire: Vector2) -> void:
+	t.check(spire != Vector2.INF and shrine.distance_to(spire) <= Searchlight.FAR, "%s: Mira's shrine is %.1f from the spire, inside the beams' reach %.0f" % [town, shrine.distance_to(spire), Searchlight.FAR])
 
 
 static func _round(grid: WalkGrid, d: VigilFlameDirector) -> float:

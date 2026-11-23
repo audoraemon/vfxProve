@@ -34,7 +34,7 @@ const SPEC := [
 	["vigil_flame", "Soon the boy Wren comes for the flame (gold). Its acolytes would see him: draw them off first."],
 	["vigil_flame.wren", "Whisper or lure Wren (blue) to the flame (gold) while no Faithful but its bearer is near him (red)."],
 	["vigil_flame.homeward", "The Vigil turns for home: have the flame swapped before its bearer reaches the Temple."],
-	["vigil_flame.carry", "Walk Wren to Mira's shrine (orange), west past the wall. Keep him out of the searchlight."],
+	["vigil_flame.carry", "Walk Wren to Mira's shrine (orange), out past the walls. Keep him out of the searchlight."],
 	# The Tax Collector (v0.11 M2; three collectors, the controller's Task 2 ruling).
 	["tax_collector", "Stop each collector (gold): kill him, unseen if you can (red), or send him out of the walls. A seen kill rings the bell."],
 	["tax_collector.inside", "He is indoors (gold). Leaving Is Prohibited on a door he went in at, his guards drawn off, sets the debtors on him."],

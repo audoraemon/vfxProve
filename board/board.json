@@ -1,18 +1,18 @@
 {
- "hash": "6157808d0025e0af",
- "updated": "2026-11-23T22:20:49+07:00",
+ "hash": "ae8af805012dea96",
+ "updated": "2026-11-24T12:24:09+07:00",
  "changes": {
-  "date": "<t:1795447249:f>",
+  "date": "<t:1795497849:f>",
   "items": [
-   "New: Might gauge: every learned ability in an Endless Night, paid from a refilling gauge"
+   "New: Mission clarity: every step says what to do; why-not banners"
   ]
  },
  "snapshot": {
   "project": {
    "version": "v0.12",
-   "tag": "kak-ui-resolution",
+   "tag": "kak-mission-clarity",
    "tests": 23583,
-   "updated": "2026-11-23"
+   "updated": "2026-11-24"
   },
   "tasks": {
    "ability-icons-pixellab": {
@@ -719,6 +719,15 @@
     "branch": "feat/Develop-Main",
     "updated": "2026-11-23",
     "order": 918
+   },
+   "mission-clarity": {
+    "title": "Mission clarity: every step says what to do; why-not banners",
+    "status": "done",
+    "area": "UI",
+    "needs_you": "Play the missions you found unclear (The Informer first) and say if any step, hint or why-not banner still leaves you guessing; open rule questions Q1-Q8 in docs/KAK_Mission_Clarity_Rulings.md",
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-24",
+    "order": 919
    },
    "music-dark-choral": {
     "title": "Music recomposed: dark and choral, orchestral samples, stereo",
@@ -1961,32 +1970,24 @@
   "branches": [
    {
     "name": "feat/god-chamber",
-    "ahead": 43,
-    "behind": 68,
-    "date": "2026-11-23",
-    "subject": "feat: The Prisoner in the Capital: its spots, gates and references",
+    "ahead": 56,
+    "behind": 95,
+    "date": "2026-11-24",
+    "subject": "fix: The Sermon in the Capital placed to Aldermere's shape: route A and the toll pass",
     "pushed": false
    },
    {
     "name": "feat/soldier-duties",
-    "ahead": 31,
-    "behind": 22,
-    "date": "2026-11-23",
-    "subject": "fix: Decree's First Prayers route picks cells nobody outside sees (R21, Town Suspicion)",
-    "pushed": false
-   },
-   {
-    "name": "claude/lantern-campaign-spec",
-    "ahead": 26,
-    "behind": 22,
-    "date": "2026-11-23",
-    "subject": "fix: the Tax Collector's hint fits its plate after the Suspicion wording",
+    "ahead": 38,
+    "behind": 27,
+    "date": "2026-11-24",
+    "subject": "test: re-record the references the soldier duties move (499 of 508 rows)",
     "pushed": false
    },
    {
     "name": "claude/natural-people",
     "ahead": 14,
-    "behind": 53,
+    "behind": 80,
     "date": "2026-11-23",
     "subject": "docs: fair life notes -- two T5 rows updated for the final-review re-record",
     "pushed": false
@@ -1994,7 +1995,7 @@
    {
     "name": "god/veil-review",
     "ahead": 64,
-    "behind": 68,
+    "behind": 95,
     "date": "2026-11-22",
     "subject": "docs: the final review's corrections to the second pass's summary, rulings and spec",
     "pushed": true
@@ -2002,7 +2003,7 @@
    {
     "name": "feat/soldier-duties-r20",
     "ahead": 25,
-    "behind": 53,
+    "behind": 80,
     "date": "2026-11-22",
     "subject": "fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)",
     "pushed": false
@@ -2010,7 +2011,7 @@
    {
     "name": "god/veil-powers",
     "ahead": 33,
-    "behind": 68,
+    "behind": 95,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
@@ -2018,7 +2019,7 @@
    {
     "name": "feat/wish-clarity",
     "ahead": 1,
-    "behind": 68,
+    "behind": 95,
     "date": "2026-11-19",
     "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
     "pushed": false
@@ -2026,7 +2027,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 168,
+    "behind": 195,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2034,7 +2035,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 543,
+    "behind": 570,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2042,7 +2043,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1041,
+    "behind": 1068,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2050,7 +2051,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 999,
+    "behind": 1026,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true

@@ -7,57 +7,57 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-ui-resolution`)\n**13** in progress · **29** to do · **173** done\n**12** active branches besides Develop-Main\n\n**Since the last update** (<t:1795447249:f>)\n• New: Might gauge: every learned ability in an Endless Night, paid from a refilling gauge",
+     "description": "**v0.12** is the latest release (`kak-mission-clarity`)\n**13** in progress · **29** to do · **174** done\n**11** active branches besides Develop-Main\n\n**Since the last update** (<t:1795497849:f>)\n• New: Mission clarity: every step says what to do; why-not banners",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-23T22:20:49+07:00"
+     "timestamp": "2026-11-24T12:24:09+07:00"
     },
     {
      "title": "feat/god-chamber",
-     "description": "43 commits not in Develop-Main · last commit today · local only\n> feat: The Prisoner in the Capital: its spots, gates and references\n\n_No Ledger task points at this branch._",
+     "description": "56 commits not in Develop-Main · last commit today · local only\n> fix: The Sermon in the Capital placed to Aldermere's shape: route A and the toll pass\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/soldier-duties",
-     "description": "31 commits not in Develop-Main · last commit today · local only\n> fix: Decree's First Prayers route picks cells nobody outside sees (R21, Town Suspicion)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "claude/lantern-campaign-spec",
-     "description": "26 commits not in Develop-Main · last commit today · local only\n> fix: the Tax Collector's hint fits its plate after the Suspicion wording\n\n_No Ledger task points at this branch._",
+     "description": "38 commits not in Develop-Main · last commit today · local only\n> test: re-record the references the soldier duties move (499 of 508 rows)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/natural-people",
-     "description": "14 commits not in Develop-Main · last commit today · local only\n> docs: fair life notes -- two T5 rows updated for the final-review re-record\n\n_No Ledger task points at this branch._",
+     "description": "14 commits not in Develop-Main · last commit yesterday · local only\n> docs: fair life notes -- two T5 rows updated for the final-review re-record\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/veil-review",
-     "description": "64 commits not in Develop-Main · last commit yesterday\n> docs: the final review's corrections to the second pass's summary, rulings and spec\n\n**In progress** (1)\n• Veil abilities review: previews, stronger effects, second pass — **needs you**",
+     "description": "64 commits not in Develop-Main · last commit 2 days ago\n> docs: the final review's corrections to the second pass's summary, rulings and spec\n\n**In progress** (1)\n• Veil abilities review: previews, stronger effects, second pass — **needs you**",
      "color": 5016537
     },
     {
      "title": "feat/soldier-duties-r20",
-     "description": "25 commits not in Develop-Main · last commit yesterday · local only\n> fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)\n\n_No Ledger task points at this branch._",
+     "description": "25 commits not in Develop-Main · last commit 2 days ago · local only\n> fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "god/veil-powers",
-     "description": "33 commits not in Develop-Main · last commit 2 days ago\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
+     "description": "33 commits not in Develop-Main · last commit 3 days ago\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
      "color": 5016537
     },
     {
      "title": "feat/wish-clarity",
-     "description": "1 commit not in Develop-Main · last commit 4 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
+     "description": "1 commit not in Develop-Main · last commit 5 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/god-progression",
-     "description": "merged into Develop-Main · last commit 6 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
+     "description": "merged into Develop-Main · last commit 7 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 5016537
+    },
+    {
+     "title": "god/dominion-t3-old",
+     "description": "2 commits not in Develop-Main · last commit 18 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
+     "color": 7041664
     }
    ]
   },
@@ -67,18 +67,13 @@
    },
    "embeds": [
     {
-     "title": "god/dominion-t3-old",
-     "description": "2 commits not in Develop-Main · last commit 17 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
-     "color": 7041664
-    },
-    {
      "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 45 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "description": "1 commit not in Develop-Main · last commit 46 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
      "title": "feat/capital-city",
-     "description": "merged into Develop-Main · last commit 45 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
+     "description": "merged into Develop-Main · last commit 46 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     },
     {
@@ -88,7 +83,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_\n• Loss warning: big red alarm when the night is about to be lost _(11-22)_\n• God's Paths music (temple base + one layer per school) _(11-21)_\n• Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_\n• Smite drag-to-widen + Ember sets people alight, Fire Trail _(11-20)_",
+     "description": "• Mission clarity: every step says what to do; why-not banners _(11-24)_\n• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_\n• Loss warning: big red alarm when the night is about to be lost _(11-22)_\n• God's Paths music (temple base + one layer per school) _(11-21)_\n• Ember: clearer burning man + real Fire Trail (trail fire hurts who crosses) _(11-21)_\n• Skill-tree ability sound pass (moments, own cues, takes, level weight) _(11-20)_",
      "color": 10185686
     }
    ]

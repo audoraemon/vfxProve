@@ -22,6 +22,8 @@ const SINK := [Color("4a3470"), Color("2a1a48"), Color("140c24"), Color(0.05, 0.
 ## The look's pieces while they play (tests): the breath on the ground, the threads.
 var breath: Node2D
 var threads: VeilCastLooks.Threads
+## This cast's rest, at its level (REST at level 1).
+var lv_rest := REST
 
 var _victims: Array[Person] = []
 var _sat: Array[Person] = []
@@ -44,9 +46,10 @@ static func victims_at(field: EnemyField, at: Vector2, r: float, most: int) -> A
 
 
 func _build() -> void:
+	lv_rest = PowerBook.stat(extra, "dreamless", "REST", REST)
 	var r := VeilParts.size(self, "dreamless", "REACH")
 	var most := int(VeilParts.size(self, "dreamless", "MOST"))
-	duration = T_SIT + REST + 1.0
+	duration = T_SIT + lv_rest + 1.0
 	busy = T_SIT
 	VeilParts.land(self, origin, r)
 	ctx.play(&"v_dreamless", origin)
@@ -57,7 +60,7 @@ func _build() -> void:
 		if spot != Vector2.INF:
 			p.set_goal(spot)
 	at(T_SIT, _sit)
-	at(T_SIT + REST, _found)
+	at(T_SIT + lv_rest, _found)
 	if DominionParts.staged(self):
 		_cast_look(r)
 
@@ -89,7 +92,7 @@ func _cast_look(r: float) -> void:
 
 ## Seconds of the rest still to run (0 once he is found).
 func rest_left() -> float:
-	return maxf(T_SIT + REST - t, 0.0)
+	return maxf(T_SIT + lv_rest - t, 0.0)
 
 
 ## Whether `p` rests under this cast now (sat, asleep, the status on him).
@@ -133,7 +136,7 @@ func _sit() -> void:
 		var spot := _wall_spot(p)
 		if spot != Vector2.INF:
 			p.ground_pos = spot  # the last steps to the wall, settled
-		if p.sleep(REST + 5.0, true):
+		if p.sleep(lv_rest + 5.0, true):
 			p.statuses[&"dreamless"] = 1.0
 			_sat.append(p)
 			resting += 1

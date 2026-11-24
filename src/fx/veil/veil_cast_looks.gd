@@ -311,7 +311,7 @@ class Threads extends Node2D:
 
 	## The share of the rest still to run (1 at the sit, 0 at the find).
 	func _left(fx: DreamlessFx) -> float:
-		return clampf(fx.rest_left() / DreamlessFx.REST, 0.0, 1.0) if fx != null else 0.0
+		return clampf(fx.rest_left() / fx.lv_rest, 0.0, 1.0) if fx != null else 0.0
 
 	func _height(fx: DreamlessFx, since: float) -> float:
 		var grow := clampf((clock - since) / 0.5, 0.0, 1.0)

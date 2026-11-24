@@ -66,6 +66,8 @@ const VOICE_OWNER := &"swallow_cast"
 var start_r := 0.0
 var full_r := 10.0
 var t_full := 20.0
+## This cast's growth a second, at its level (GROW at level 1).
+var lv_grow := GROW
 ## Whether full size has been reached (the removals begun).
 var swallowed := false
 ## How many things it has taken so far (people, animals, remains, decor, buildings).
@@ -110,10 +112,11 @@ static func wholly_inside(s: Structure, at: Vector2, r: float) -> bool:
 
 
 func _build() -> void:
+	lv_grow = PowerBook.stat(extra, "swallow", "GROW", GROW)
 	full_r = VeilParts.size(self, "swallow", "FULL_R")
 	if VeilParts.dark(self) and ctx.crowd != null and ctx.crowd.dusk != null:
 		start_r = minf(ctx.crowd.dusk.r_at(origin), full_r)
-	t_full = (full_r - start_r) / GROW
+	t_full = (full_r - start_r) / lv_grow
 	busy = T_OPEN
 	duration = t_full + FOLD
 	at(t_full, _swallow)
@@ -201,7 +204,7 @@ func _look_seed() -> int:
 
 ## The circle's radius now.
 func radius() -> float:
-	return minf(start_r + GROW * t, full_r)
+	return minf(start_r + lv_grow * t, full_r)
 
 
 ## How many removals are still to make.

@@ -136,7 +136,7 @@ static func _level_one(t) -> void:
 		and PowerBook.level_stat("tempest", 1, "VOLLEY", Vector2i.ZERO) == TempestFx.VOLLEY,
 		"BLASTS and STONES stay int, VOLLEY stays a Vector2i")
 	t.check(PowerBook.cooldown("tempest", 5) == 999.0 and PowerBook.cooldown("shatter", 3) == 999.0 and PowerBook.cooldown("nosuch", 3) == 0.0
-		and PowerBook.cooldown("doom", 5) == 10.0,
+		and PowerBook.cooldown("nova", 5) == PowerBook.get_power("nova").cooldown,
 		"Tempest and Earthshatter stay 999 at every level, an unknown key is 0.0, a power with no table keeps its cooldown")
 
 
@@ -308,7 +308,7 @@ static func _twist_gate(t) -> void:
 			and not PowerBook.twist_at({}, key) and not PowerBook.twist_at({"level": 1}, key)
 	t.check(all, "twist_at is true at level 5 of each of the ten, false at 4, 1 and with no level")
 	t.check(not PowerBook.twist_at({"level": 9}, "smite") and not PowerBook.twist_at({"level": 6}, "smite"), "and false above the top level (9, 6)")
-	t.check(not PowerBook.twist_at({"level": 5}, "doom") and not PowerBook.twist_at({"level": 5}, "nosuch"),
+	t.check(not PowerBook.twist_at({"level": 5}, "nova") and not PowerBook.twist_at({"level": 5}, "nosuch"),
 		"and false for a power with no table, or no power")
 
 
@@ -348,7 +348,7 @@ static func _tree_text(t) -> void:
 		all_five = all_five and PowerBook.level_change(key, 5).ends_with(PowerBook.twist(key))
 		all_one = all_one and PowerBook.level_change(key, 1) == ""
 	t.check(all_five and all_one, "level 5's change ends with the twist text; level 1 changes nothing")
-	t.check(PowerBook.level_change("doom", 2) == PowerBook.NO_LEVELS, "a power with no table still says Levels to come")
+	t.check(PowerBook.level_change("nova", 2) == PowerBook.NO_LEVELS, "a power with no table still says Levels to come")
 	t.check(PrepareScreen.cooldown_text(PowerBook.get_power("smite"), 5) == "8 s" and PrepareScreen.cooldown_text(PowerBook.get_power("smite"), 2) == "9.5 s"
 		and PrepareScreen.cooldown_text(PowerBook.get_power("smite")) == "10 s" and PrepareScreen.cooldown_text({"cooldown": 2.5}) == "2.5 s",
 		"the cards print the level's cooldown (8 s at level 5, 9.5 s at 2)")

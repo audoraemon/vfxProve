@@ -26,9 +26,12 @@ var glyph: Node2D
 var dust: Node2D
 var _dark := false
 var _r := 0.0
+## This cast's sleep, at its level (SLEEP_TIME at level 1).
+var lv_sleep_time := SLEEP_TIME
 
 
 func _build() -> void:
+	lv_sleep_time = PowerBook.stat(extra, "slumber", "SLEEP_TIME", SLEEP_TIME)
 	_dark = VeilParts.dark(self)
 	_r = VeilParts.size(self, "slumber", "RADIUS")
 	duration = T_FALL + 1.2
@@ -89,7 +92,7 @@ func _fall() -> void:
 	var spots: Array[Vector2] = []
 	if ctx.field != null:
 		for p in sleepers_at(ctx.field, origin, _r):
-			if p.sleep(SLEEP_TIME, _dark):
+			if p.sleep(lv_sleep_time, _dark):
 				asleep += 1
 				if staged:
 					DominionParts.motes(self, p.ground_pos, LID, 4)

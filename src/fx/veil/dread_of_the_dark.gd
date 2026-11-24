@@ -29,6 +29,8 @@ const OWNERS := &"dread_owners"
 
 ## The cast's reach (light or dark size).
 var reach := 6.0
+## This cast's hold, at its level (HOLD at level 1).
+var lv_hold := HOLD
 ## The instance ids of the people this cast holds now (they may be freed meanwhile).
 var _ids: Array[int] = []
 ## The crowd's dread this cast laid (Crowd.dread()), 0 when none is on.
@@ -42,10 +44,10 @@ var shade: DreadShade
 ## Why a Dread cast at `ground` must be refused: "no_dark" when no dark ground lies within its reach, else "" (Rules.cast() asks;
 ## a refused cast spends no cooldown). `dark` is the cast's own stamp: a cast made in the dark stands on dark ground already. With
 ## no crowd (the VFX Sandbox) nothing can be judged and the cast goes.
-static func refusal(crowd: Crowd, ground: Vector2, dark: bool) -> String:
+static func refusal(crowd: Crowd, ground: Vector2, dark: bool, level := 1) -> String:
 	if crowd == null or dark:
 		return ""
-	return "" if dark_in_reach(crowd, ground, VeilRules.size("dread", "REACH", false)) else "no_dark"
+	return "" if dark_in_reach(crowd, ground, VeilRules.size("dread", "REACH", false, level)) else "no_dark"
 
 
 ## Whether any dark ground (Crowd.in_dark()) lies within `reach` of `at`: the whole town is dark (a NIGHT mission, Evernight), `at`
@@ -59,6 +61,7 @@ static func dark_in_reach(crowd: Crowd, at: Vector2, reach: float) -> bool:
 
 
 func _build() -> void:
+	lv_hold = PowerBook.stat(extra, "dread", "HOLD", HOLD)
 	reach = VeilParts.size(self, "dread", "REACH")
 	if ctx != null:
 		ctx.play(&"v_dread", origin)
@@ -66,10 +69,10 @@ func _build() -> void:
 		duration = 1.0  # the VFX Sandbox: nothing to dread, no dusk to lay
 		_lifted = true
 		return
-	duration = T_FALL + HOLD + T_FADE
+	duration = T_FALL + lv_hold + T_FADE
 	busy = T_FALL
 	at(T_FALL, _fall)
-	at(T_FALL + HOLD, _lift)
+	at(T_FALL + lv_hold, _lift)
 	var parent: Node2D = ctx.overhead if ctx.overhead != null else ctx.world
 	if parent != null:
 		shade = DreadShade.new()
@@ -91,7 +94,7 @@ func _build() -> void:
 func _fall() -> void:
 	if not _live_crowd():
 		return
-	_dread = ctx.crowd.dread(origin, reach, HOLD)
+	_dread = ctx.crowd.dread(origin, reach, lv_hold)
 	_hold_all()
 	if shade != null and is_instance_valid(shade):
 		shade.refresh(ctx.crowd)
@@ -119,7 +122,7 @@ func _fx_process(delta: float) -> void:
 func _strength() -> float:
 	if not _lifted:
 		return clampf(t / T_FALL, 0.0, 1.0)
-	return clampf(1.0 - (t - T_FALL - HOLD) / T_FADE, 0.0, 1.0) if t >= T_FALL + HOLD else 0.0
+	return clampf(1.0 - (t - T_FALL - lv_hold) / T_FADE, 0.0, 1.0) if t >= T_FALL + lv_hold else 0.0
 
 
 func _live_crowd() -> bool:
@@ -156,7 +159,7 @@ func _hold(p: Person) -> void:
 	var owners: Dictionary = p.get_meta(OWNERS, {})
 	owners[get_instance_id()] = true
 	p.set_meta(OWNERS, owners)
-	p.statuses[KEY] = maxf(float(p.statuses.get(KEY, 0.0)), maxf(T_FALL + HOLD - t, 0.0))
+	p.statuses[KEY] = maxf(float(p.statuses.get(KEY, 0.0)), maxf(T_FALL + lv_hold - t, 0.0))
 
 
 ## Takes this cast off `p`; the dread leaves him only when no other cast holds him.

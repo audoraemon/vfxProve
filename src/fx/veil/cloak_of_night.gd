@@ -26,6 +26,8 @@ var _ids: Array[int] = []
 var cast_look: Node2D
 ## The shimmers, one per cloaked person.
 var shimmers: Array[Node2D] = []
+## This cast's span, at its level (SPAN at level 1).
+var lv_span := SPAN
 
 
 ## Whom a click at `at` would cloak: the `most` nearest living people out of doors within `r`, nearest first, a tie by id.
@@ -45,7 +47,8 @@ static func marked_at(field: EnemyField, at: Vector2, r := 2.0, most := 3) -> Ar
 
 
 func _build() -> void:
-	duration = SPAN
+	lv_span = PowerBook.stat(extra, "cloak", "SPAN", SPAN)
+	duration = lv_span
 	busy = T_LAND
 	var r := VeilParts.size(self, "cloak", "MARK_R")
 	var most := int(VeilParts.size(self, "cloak", "MOST"))
@@ -66,7 +69,7 @@ func _build() -> void:
 		duration = 1.0
 		return
 	for p in marked:
-		p.statuses[KEY] = SPAN
+		p.statuses[KEY] = lv_span
 		p.set_meta(OWNER, get_instance_id())
 		_ids.append(p.get_instance_id())
 	var parent: Node2D = ctx.overhead if ctx.overhead != null else ctx.world

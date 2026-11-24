@@ -340,6 +340,7 @@ const SUITES := [
 	"res://tests/test_tag_outlines.gd",
 	"res://tests/test_mission_keeps.gd",
 	# The Veil authority powers (registered together by Task 1; each later task replaces its own file).
+	"res://tests/test_veil_levels.gd",
 	"res://tests/test_veil_law.gd",
 	"res://tests/test_veil_hooks.gd",
 	"res://tests/test_veil_sizes.gd",

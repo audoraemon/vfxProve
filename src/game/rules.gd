@@ -503,7 +503,8 @@ func veil_refusal(key: String, ground: Vector2, extra: Dictionary) -> String:
 	if key == "blight":
 		return BlightFx.refusal(self, ground)
 	if key == "dread":
-		return DreadOfTheDarkFx.refusal(_crowd, ground, bool(extra.get("dark", _crowd != null and _crowd.in_dark(ground))))
+		return DreadOfTheDarkFx.refusal(_crowd, ground, bool(extra.get("dark", _crowd != null and _crowd.in_dark(ground))),
+				int(extra.get("level", 1)))
 	return ""
 
 
@@ -534,10 +535,6 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 		if why != "":
 			cast_refused.emit(slot, why)
 			return null
-	var veil_why := veil_refusal(String(p.key), ground, extra)
-	if veil_why != "":
-		cast_refused.emit(slot, veil_why)  # refused: no cooldown starts
-		return null
 	# The effect is told its level (god P1): on a copy, so the caller's dictionary is never changed. Ruin's ten read it.
 	var told := extra.duplicate()
 	if not told.has("level"):
@@ -546,6 +543,11 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	# already given wins: tests).
 	if not told.has("dark") and _crowd != null and PowerBook.authority_of(String(p.key)) == "veil":
 		told["dark"] = _crowd.in_dark(ground)
+	# Whether a Veil cast is refused is judged on what the effect will be told: its dark ground and its level (Dread's light reach).
+	var veil_why := veil_refusal(String(p.key), ground, told)
+	if veil_why != "":
+		cast_refused.emit(slot, veil_why)  # refused: no cooldown starts
+		return null
 	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.
 	_cooldowns[slot] = paced(String(p.key), PowerBook.cooldown(String(p.key), int(told.level)))
 	# A mode that carries its own cooldown (Will-o'-Wisp's ENTHRALL) waits that instead; no mode, or one without, changes nothing.

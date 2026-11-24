@@ -9,6 +9,9 @@ extends RefCounted
 ## A dusk patch's least radius and how long it lasts.
 const DUSK_R := 3.0
 const DUSK_TIME := 20.0
+## The same two by the casting power's level 1-5 (Veil ability levels spec 5.1); level 1 is DUSK_R and DUSK_TIME.
+const DUSK_RS := [3.0, 3.25, 3.5, 3.75, 4.0]
+const DUSK_TIMES := [20.0, 22.0, 24.0, 26.0, 28.0]
 ## At most this many blighted buildings hold lasting dusk at once (Blight's footholds).
 const BLIGHT_MAX := 3
 ## key -> stat -> [light, dark]
@@ -37,10 +40,43 @@ static func wants(loadout: PackedStringArray) -> bool:
 	return false
 
 
-## A Veil power's number for `stat`, its light or its dark size (SIZES); 0.0 for a key or stat SIZES does not name.
-static func size(key: String, stat: String, dark: bool) -> float:
+## The dusk patch's least radius at `level` (clamped 1-5).
+static func dusk_r(level := 1) -> float:
+	return float(DUSK_RS[clampi(level, 1, DUSK_RS.size()) - 1])
+
+
+## How long a dusk patch lasts at `level` (clamped 1-5).
+static func dusk_time(level := 1) -> float:
+	return float(DUSK_TIMES[clampi(level, 1, DUSK_TIMES.size()) - 1])
+
+
+## A Veil power's [light, dark] pair for `stat` at `level`: its levels table's, else SIZES' (a stat the table does not name, as
+## Evernight's TAKE_EVERY); [] for a key or stat neither names.
+static func pair(key: String, stat: String, level := 1) -> Array:
+	var from_table: Variant = PowerBook.level_stat(key, level, stat, null)
+	if from_table is Array and (from_table as Array).size() >= 2:
+		return from_table
 	var stats: Dictionary = SIZES.get(key, {})
-	var pair: Array = stats.get(stat, [])
-	if pair.size() < 2:
+	var base: Array = stats.get(stat, [])
+	return base if base.size() >= 2 else []
+
+
+## A Veil power's number for `stat` at `level`, its light or its dark size; 0.0 for a key or stat nothing names.
+static func size(key: String, stat: String, dark: bool, level := 1) -> float:
+	var both := pair(key, stat, level)
+	if both.size() < 2:
 		return 0.0
-	return float(pair[1] if dark else pair[0])
+	return float(both[1] if dark else both[0])
+
+
+## The tree's extra row for a Veil power at `level`: the dusk it leaves, `{"label", "old", "new"}`; {} below level 2, for Evernight
+## (it lays none) and for a key that is not a Veil power.
+static func dusk_row(key: String, level: int) -> Dictionary:
+	if level < 2 or key == "evernight" or not SIZES.has(key):
+		return {}
+	var lv := mini(level, DUSK_RS.size())
+	return {"label": "dusk", "old": _dusk_text(lv - 1), "new": _dusk_text(lv)}
+
+
+static func _dusk_text(level: int) -> String:
+	return "%s for %d s" % [str(dusk_r(level)), int(dusk_time(level))]

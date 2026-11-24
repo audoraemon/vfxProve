@@ -15,9 +15,14 @@ static func dark(fx: FxTimeline) -> bool:
 	return bool(fx.extra.get("dark", false))
 
 
-## The cast's number for `stat`: its dark size when cast in the dark, else its light size.
+## The cast's level (extra["level"], which Rules.cast() stamps): 1 when absent, clamped 1-5.
+static func level(fx: FxTimeline) -> int:
+	return clampi(int(fx.extra.get("level", 1)), 1, PowerBook.MAX_LEVEL)
+
+
+## The cast's number for `stat`: its dark size when cast in the dark, else its light size, at the cast's level.
 static func size(fx: FxTimeline, key: String, stat: String) -> float:
-	return VeilRules.size(key, stat, dark(fx))
+	return VeilRules.size(key, stat, dark(fx), level(fx))
 
 
 ## Takes `p` without a trace (Crowd.take()), first letting him out of any shelter he is in (ShelterManager.release(): no-op for one
@@ -31,9 +36,10 @@ static func take_out(crowd: Crowd, p: Person, kind: StringName) -> bool:
 	return crowd.take(p, kind)
 
 
-## Lays the dusk a Veil cast leaves where it lands: a patch of `r` (at least VeilRules.DUSK_R) at `at` for VeilRules.DUSK_TIME.
-## Returns its id; 0 with no crowd or with the ledger off.
-static func land(fx: FxTimeline, at: Vector2, r := VeilRules.DUSK_R) -> int:
+## Lays the dusk a Veil cast leaves where it lands: a patch of `r` (at least the level's VeilRules.dusk_r()) at `at` for the level's
+## VeilRules.dusk_time(). Returns its id; 0 with no crowd or with the ledger off.
+static func land(fx: FxTimeline, at: Vector2, r := 0.0) -> int:
 	if fx.ctx == null or fx.ctx.crowd == null:
 		return 0
-	return fx.ctx.crowd.lay_dusk(at, maxf(r, VeilRules.DUSK_R), VeilRules.DUSK_TIME)
+	var lv := level(fx)
+	return fx.ctx.crowd.lay_dusk(at, maxf(r, VeilRules.dusk_r(lv)), VeilRules.dusk_time(lv))

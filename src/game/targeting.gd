@@ -713,7 +713,7 @@ func area() -> Dictionary:
 		# The law of the Veil: the ring is drawn at the size the cast would get on the ground under the cursor.
 		var key := _rules.key(slot)
 		a = a.duplicate()
-		a["r"] = VeilRules.size(key, String(VeilRules.RING[key]), veil == "DARK")
+		a["r"] = VeilRules.size(key, String(VeilRules.RING[key]), veil == "DARK", _rules.level_of(slot))
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
 		return a
@@ -1249,7 +1249,7 @@ func _draw() -> void:
 		"slumber", "cloak", "dreamless", "shadowplay":
 			# Who it would take, at the size this ground gives (the cast's own pick and its own numbers); the ones the cast would take
 			# at once rather than set to rest or make a shadow of, in the kill colour.
-			for m in veil_ringed(String(_rules.key(slot)), _crowd, _press, _crowd != null and _crowd.in_dark(_press)):
+			for m in veil_ringed(String(_rules.key(slot)), _crowd, _press, _crowd != null and _crowd.in_dark(_press), _rules.level_of(slot)):
 				_ring(m.p.ground_pos, 0.22, COL_MAD if bool(m.kill) else COL_INNER)
 		"oath", "echo":
 			# Whom it would bind, or start with.
@@ -1353,7 +1353,7 @@ func _draw() -> void:
 				# only takes the banner, so its ring is red.
 				_ring(mine, 0.45, COL_ROT if _rules.director.blight_takes(mine) else COL_BAD)
 			elif took.kind == &"person":
-				for p in blight_ill(_crowd, took.p, _crowd != null and _crowd.in_dark(_press)):
+				for p in blight_ill(_crowd, took.p, _crowd != null and _crowd.in_dark(_press), _rules.level_of(slot)):
 					_ring(p.ground_pos, 0.22, COL_ROT)
 			elif s != null:
 				var r := s.footprint.grow(0.08)
@@ -1620,21 +1620,21 @@ func _cone(from: Vector2, r: float, arc: float, col: Color, start: float) -> voi
 ## Who a Veil power's cast at `at` takes hold of, from the power's own pick and the size VeilRules gives on this ground (`dark`: the
 ## cast's dark, Crowd.in_dark() under the click): [{"p": Person, "kill": bool}], `kill` for one the cast takes at once instead of the
 ## power's plain effect -- Dreamless on one already asleep or a shadow, Shadow Play in the dark on a soldier (his shadow is taken at the
-## end). Empty for any other key or no crowd.
-static func veil_ringed(key: String, crowd: Crowd, at: Vector2, dark: bool) -> Array[Dictionary]:
+## end). Empty for any other key or no crowd. `level` is the slot's: the numbers are that level's.
+static func veil_ringed(key: String, crowd: Crowd, at: Vector2, dark: bool, level := 1) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	if crowd == null or crowd._field == null:
 		return out
 	var who: Array[Person] = []
 	match key:
 		"slumber":
-			who = SlumberFx.sleepers_at(crowd._field, at, VeilRules.size("slumber", "RADIUS", dark))
+			who = SlumberFx.sleepers_at(crowd._field, at, VeilRules.size("slumber", "RADIUS", dark, level))
 		"cloak":
-			who = CloakOfNightFx.marked_at(crowd._field, at, VeilRules.size("cloak", "MARK_R", dark), int(VeilRules.size("cloak", "MOST", dark)))
+			who = CloakOfNightFx.marked_at(crowd._field, at, VeilRules.size("cloak", "MARK_R", dark, level), int(VeilRules.size("cloak", "MOST", dark, level)))
 		"dreamless":
-			who = DreamlessFx.victims_at(crowd._field, at, VeilRules.size("dreamless", "REACH", dark), int(VeilRules.size("dreamless", "MOST", dark)))
+			who = DreamlessFx.victims_at(crowd._field, at, VeilRules.size("dreamless", "REACH", dark, level), int(VeilRules.size("dreamless", "MOST", dark, level)))
 		"shadowplay":
-			who = ShadowPlayFx.shadows_at(crowd._field, at, VeilRules.size("shadowplay", "RADIUS", dark))
+			who = ShadowPlayFx.shadows_at(crowd._field, at, VeilRules.size("shadowplay", "RADIUS", dark, level))
 		_:
 			return out
 	for p in who:
@@ -1649,5 +1649,6 @@ static func veil_ringed(key: String, crowd: Crowd, at: Vector2, dark: bool) -> A
 
 ## Who falls ill when Blight takes `p` at `dark` (Crowd.in_dark() under the click, as Rules.cast() stamps it): the cast's own count.
 ## Blight has no ring radius (VeilRules.RING), so ring_tag() says nothing for it: the dark is asked of the crowd directly.
-static func blight_ill(crowd: Crowd, p: Person, dark: bool) -> Array[Person]:
-	return BlightFx.sick_with(crowd, p, int(VeilRules.size("blight", "ILL_MOST", dark)))
+static func blight_ill(crowd: Crowd, p: Person, dark: bool, level := 1) -> Array[Person]:
+	return BlightFx.sick_with(crowd, p, int(VeilRules.size("blight", "ILL_MOST", dark, level)),
+			float(PowerBook.level_stat("blight", level, "ILL_REACH", BlightFx.ILL_REACH)))

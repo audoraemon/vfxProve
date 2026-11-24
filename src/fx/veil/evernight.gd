@@ -59,6 +59,9 @@ const FRONT_EASE := 1.7
 ## This cast's night: 60 s, or 90 in a NIGHT mission; a take every take_every s; dawn begins at t_dawn.
 var night_time := 60.0
 var take_every := 2.0
+## This cast's last take's size and its torch count, at its level (TAKE_LAST and TORCHES at level 1).
+var lv_take_last := TAKE_LAST
+var lv_torches := TORCHES
 var t_dawn := WAVE + 60.0
 ## The torches: {"at", "bearer" (instance id), "light" (LightField id, 0 = none), "out", "n" (huddle slots handed out)}.
 var torches: Array[Dictionary] = []
@@ -98,7 +101,7 @@ var _glows: Array = []
 ## Up to TORCHES living soldiers out of doors who light torches: those with the most living citizens out of doors within
 ## TORCH_COUNT_R first, a tie by the lower instance id (no luck). One a mission holds (Crowd.held_by_mission(): a seizer with his
 ## charge) is never posted with a torch.
-static func bearers(crowd: Crowd) -> Array[Person]:
+static func bearers(crowd: Crowd, most := TORCHES) -> Array[Person]:
 	var out: Array[Person] = []
 	if crowd == null:
 		return out
@@ -112,7 +115,7 @@ static func bearers(crowd: Crowd) -> Array[Person]:
 				n += 1
 		rows.append([n, s.get_instance_id(), s])
 	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0] if a[0] != b[0] else a[1] < b[1])
-	for r in rows.slice(0, TORCHES):
+	for r in rows.slice(0, most):
 		out.append(r[2])
 	return out
 
@@ -197,8 +200,10 @@ func _build() -> void:
 	_crowd = ctx.crowd if ctx != null and ctx.crowd != null and is_instance_valid(ctx.crowd) else null
 	_lights = ctx.lights if ctx != null and ctx.lights != null and is_instance_valid(ctx.lights) else null
 	var night := _crowd != null and _crowd.night_mission
-	night_time = VeilRules.size("evernight", "NIGHT_TIME", night)
-	take_every = VeilRules.size("evernight", "TAKE_EVERY", night)
+	lv_take_last = PowerBook.stat(extra, "evernight", "TAKE_LAST", TAKE_LAST)
+	lv_torches = PowerBook.stat(extra, "evernight", "TORCHES", TORCHES)
+	night_time = VeilRules.size("evernight", "NIGHT_TIME", night, VeilParts.level(self))
+	take_every = VeilRules.size("evernight", "TAKE_EVERY", night, VeilParts.level(self))
 	t_dawn = WAVE + night_time
 	duration = t_dawn + DAWN
 	busy = WAVE
@@ -279,7 +284,7 @@ func _fall() -> void:
 	if ctx != null:
 		_hush = ctx.play(&"v_evernight_loop", origin)
 	_veil = _crowd.veil_all(night_time + DAWN)
-	for b in bearers(_crowd):
+	for b in bearers(_crowd, lv_torches):
 		var light := _lights.add_static(b.ground_pos, TORCH_R, TORCH_COLOR, TORCH_GLOW, 0.35) if _live_lights() else 0
 		torches.append({"at": b.ground_pos, "bearer": b.get_instance_id(), "light": light, "out": false, "n": 0})
 		b.send_to_post(b.ground_pos)  # he stands where he is, holding it up
@@ -291,12 +296,12 @@ func _fall() -> void:
 		_claim(1)
 
 
-## How many take `k` (1..takes) collects: TAKE_FIRST at the first rising evenly to TAKE_LAST at the last, rounded.
+## How many take `k` (1..takes) collects: TAKE_FIRST at the first rising evenly to the level's TAKE_LAST at the last, rounded.
 func take_count(k: int) -> int:
 	if takes <= 1:
 		return TAKE_FIRST
 	var f := float(clampi(k, 1, takes) - 1) / float(takes - 1)
-	return roundi(lerpf(float(TAKE_FIRST), float(TAKE_LAST), f))
+	return roundi(lerpf(float(TAKE_FIRST), float(lv_take_last), f))
 
 
 ## The centres of the torches still burning.

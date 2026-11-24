@@ -136,12 +136,12 @@ static func _nearest_person(crowd: Crowd, at: Vector2, reach: float, skip: Array
 	return best
 
 
-## Who falls ill when Blight takes `p`: `p`, then (the dark's ILL_MOST) the nearest others within ILL_REACH of them, by distance then
-## instance id.
-static func sick_with(crowd: Crowd, p: Person, most: int) -> Array[Person]:
+## Who falls ill when Blight takes `p`: `p`, then (the dark's ILL_MOST) the nearest others within `reach` (ILL_REACH; a cast's own
+## level's) of them, by distance then instance id.
+static func sick_with(crowd: Crowd, p: Person, most: int, reach := ILL_REACH) -> Array[Person]:
 	var out: Array[Person] = [p]
 	while out.size() < most:
-		var next := _nearest_person(crowd, p.ground_pos, ILL_REACH, out)
+		var next := _nearest_person(crowd, p.ground_pos, reach, out)
 		if next == null:
 			break
 		out.append(next)
@@ -211,13 +211,14 @@ static func lit(s: Structure) -> bool:
 
 func _build() -> void:
 	duration = 1.6
+	var lv_ill_reach: float = PowerBook.stat(extra, "blight", "ILL_REACH", ILL_REACH)
 	var took := pick(ctx, origin)
 	var mine: Vector2 = took.at if took.kind == &"director" else Vector2.INF
 	var s: Structure = took.s
 	var picked: Person = took.p
 	var sick: Array[Person] = []
 	if picked != null:
-		sick = sick_with(ctx.crowd, picked, int(VeilParts.size(self, "blight", "ILL_MOST")))
+		sick = sick_with(ctx.crowd, picked, int(VeilParts.size(self, "blight", "ILL_MOST")), lv_ill_reach)
 	var where: Vector2 = took.at
 	var screen := Iso.ground_to_screen(where)
 	ctx.play(&"q_blight", where)

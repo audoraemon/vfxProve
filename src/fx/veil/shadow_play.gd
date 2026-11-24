@@ -35,6 +35,8 @@ var fades := 0
 
 var _dark := false
 var _r := 0.0
+## This cast's span, at its level (SPAN at level 1).
+var lv_span := SPAN
 var _me := 0
 var _held: Array[Person] = []
 ## Person -> its Edge (only when staged).
@@ -60,14 +62,15 @@ static func shadows_at(field: EnemyField, at: Vector2, r: float) -> Array[Person
 
 func _build() -> void:
 	_me = get_instance_id()
+	lv_span = PowerBook.stat(extra, "shadowplay", "SPAN", SPAN)
 	_dark = VeilParts.dark(self)
 	_r = VeilParts.size(self, "shadowplay", "RADIUS")
-	duration = T_RISE + SPAN
+	duration = T_RISE + lv_span
 	busy = T_RISE
 	VeilParts.land(self, origin, _r)
 	ctx.play(&"v_shadowplay", origin)
 	at(T_RISE, _rise)
-	at(T_RISE + SPAN, _end)
+	at(T_RISE + lv_span, _end)
 	if not DominionParts.staged(self):
 		return
 	var mark := FxParts.rings(self, origin, _r, VeilParts.VEIL, 2, 30.0)

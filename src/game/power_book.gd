@@ -16,7 +16,13 @@ const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
 		"blurb": "Everyone within reach is struck down, unseen.",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "everyone within 0.8 (1.6 in the dark) struck down, unseen", "quiet": true,
-		"authority": "veil"},
+		"authority": "veil",
+		"levels": [
+			{"RADIUS": [0.8, 1.6], "cooldown": 10.0},
+			{"RADIUS": [0.8, 1.75], "cooldown": 9.5},
+			{"RADIUS": [0.85, 1.9], "cooldown": 9.0},
+			{"RADIUS": [0.85, 2.05], "cooldown": 8.5},
+			{"RADIUS": [0.9, 2.2], "cooldown": 8.0, "twist": true, "twist_text": "No Witness: the nearest who saw it falls too"}]},
 	{"key": "whisper", "name": "Mind Whisper", "path": "res://src/fx/dominion/mind_whisper.gd",
 		"blurb": "Press a person: send them walking, at someone, or to burn a building.",
 		"dp": 1, "cooldown": 8.0, "aim": "whisper",
@@ -172,7 +178,13 @@ const POWERS := [
 	{"key": "blight", "name": "Blight", "path": "res://src/fx/quiet/blight.gd",
 		"blurb": "Rots a building and leaves dusk round it, or sickens a person.",
 		"dp": 2, "cooldown": 20.0, "aim": "click", "shape": "a building rots, losing its use or its light, and the ground within 3 (5 in the dark) of it stays dusk, 3 buildings at most; a person within 0.5 falls ill and goes home to bed (with the 2 nearest within 2 in the dark)", "quiet": true,
-		"authority": "veil"},
+		"authority": "veil",
+		"levels": [
+			{"DUSK_R": [3.0, 5.0], "ILL_MOST": [1, 3], "ILL_REACH": 2.0, "cooldown": 20.0},
+			{"DUSK_R": [3.1, 5.3], "ILL_MOST": [1, 3], "ILL_REACH": 2.2, "cooldown": 19.0},
+			{"DUSK_R": [3.2, 5.6], "ILL_MOST": [1, 4], "ILL_REACH": 2.4, "cooldown": 18.0},
+			{"DUSK_R": [3.3, 5.9], "ILL_MOST": [1, 4], "ILL_REACH": 2.6, "cooldown": 17.0},
+			{"DUSK_R": [3.4, 6.2], "ILL_MOST": [1, 5], "ILL_REACH": 2.8, "cooldown": 16.0, "twist": true, "twist_text": "Watchful Rot: the watch falls ill in your rot"}]},
 	{"key": "thorns", "name": "Thornwall", "path": "res://src/fx/control/thornwall.gd",
 		"blurb": "A bramble wall rises and blocks the way for a while.",
 		"dp": 2, "cooldown": 42.0, "aim": "drag", "shape": "3-unit bramble wall, 25 s", "quiet": true,
@@ -308,44 +320,92 @@ const POWERS := [
 	{"key": "unseen", "name": "Unseen Hour", "path": "res://src/fx/quiet/unseen_hour.gd",
 		"blurb": "For a while nothing in the circle is seen: no alarm, nobody comes.",
 		"dp": 3, "cooldown": 60.0, "aim": "click", "shape": "for 20 s (30 in the dark) nothing within 5 (7 in the dark) is seen: no alarm, no fright, nobody comes",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"RADIUS": [5.0, 7.0], "VEIL_TIME": [20.0, 30.0], "cooldown": 60.0},
+			{"RADIUS": [5.1, 7.4], "VEIL_TIME": [20.5, 32.0], "cooldown": 58.0},
+			{"RADIUS": [5.2, 7.8], "VEIL_TIME": [21.0, 34.0], "cooldown": 56.0},
+			{"RADIUS": [5.3, 8.2], "VEIL_TIME": [21.5, 36.0], "cooldown": 54.0},
+			{"RADIUS": [5.4, 8.6], "VEIL_TIME": [22.0, 38.0], "cooldown": 52.0, "twist": true, "twist_text": "Eyes Within: see the watch; leavers stay blind"}]},
 	# The Veil's seven (Veil authority powers spec §5.3-§5.10). Each is small in the light and full size in the dark (VeilRules):
 	# the shape line gives both.
 	{"key": "slumber", "name": "Slumber", "path": "res://src/fx/veil/slumber.gd",
 		"blurb": "Everyone in a small circle falls asleep where they stand.",
 		"dp": 3, "cooldown": 40.0, "aim": "click",
 		"shape": "everyone within 1.5 (3.5 in the dark) sleeps where they stand, 20 s; a blow or a hurt wakes them (in the dark only a hurt)",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"RADIUS": [1.5, 3.5], "SLEEP_TIME": 20.0, "cooldown": 40.0},
+			{"RADIUS": [1.55, 3.75], "SLEEP_TIME": 22.0, "cooldown": 38.0},
+			{"RADIUS": [1.6, 4.0], "SLEEP_TIME": 24.0, "cooldown": 36.0},
+			{"RADIUS": [1.65, 4.25], "SLEEP_TIME": 26.0, "cooldown": 34.0},
+			{"RADIUS": [1.7, 4.5], "SLEEP_TIME": 28.0, "cooldown": 32.0, "twist": true, "twist_text": "Heavy Air: who walks in sleeps too"}]},
 	{"key": "cloak", "name": "Cloak of Night", "path": "res://src/fx/veil/cloak_of_night.gd",
 		"blurb": "The nearest few walk hidden from the watch for a while.",
 		"dp": 3, "cooldown": 45.0, "aim": "click",
 		"shape": "the 3 nearest within 2 (8 within 4 in the dark) are hidden from the watch for 25 s",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"MARK_R": [2.0, 4.0], "MOST": [3, 8], "SPAN": 25.0, "cooldown": 45.0},
+			{"MARK_R": [2.05, 4.25], "MOST": [3, 9], "SPAN": 27.0, "cooldown": 43.0},
+			{"MARK_R": [2.1, 4.5], "MOST": [3, 10], "SPAN": 29.0, "cooldown": 41.0},
+			{"MARK_R": [2.15, 4.75], "MOST": [4, 11], "SPAN": 31.0, "cooldown": 39.0},
+			{"MARK_R": [2.2, 5.0], "MOST": [4, 12], "SPAN": 33.0, "cooldown": 37.0, "twist": true, "twist_text": "Averted Eyes: the watch near them turns away"}]},
 	{"key": "dreamless", "name": "Dreamless", "path": "res://src/fx/veil/dreamless.gd",
 		"blurb": "The nearest sit down to rest and never wake; a sleeper just vanishes.",
 		"dp": 3, "cooldown": 35.0, "aim": "click",
 		"shape": "the nearest within 1 (4 within 2 in the dark) sit down and never wake, found in 20 s; one asleep is taken at once",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"REACH": [1.0, 2.0], "MOST": [1, 4], "REST": 20.0, "cooldown": 35.0},
+			{"REACH": [1.05, 2.25], "MOST": [1, 5], "REST": 22.0, "cooldown": 33.5},
+			{"REACH": [1.1, 2.5], "MOST": [1, 6], "REST": 24.0, "cooldown": 32.0},
+			{"REACH": [1.15, 2.75], "MOST": [2, 7], "REST": 26.0, "cooldown": 30.5},
+			{"REACH": [1.2, 3.0], "MOST": [2, 8], "REST": 28.0, "cooldown": 29.0, "twist": true, "twist_text": "Found by No One: never found; a finder rests"}]},
 	{"key": "dread", "name": "Dread of the Dark", "path": "res://src/fx/veil/dread_of_the_dark.gd",
 		"blurb": "The dark nearby becomes a wall, and those inside it freeze.",
 		"dp": 4, "cooldown": 70.0, "aim": "click",
 		"shape": "for 25 s the dark ground within 6 (12 in the dark) is dreaded: nobody steps in, everyone inside freezes; no dark, refused",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"REACH": [6.0, 12.0], "HOLD": 25.0, "cooldown": 70.0},
+			{"REACH": [6.25, 12.0], "HOLD": 27.5, "cooldown": 67.0},
+			{"REACH": [6.5, 12.0], "HOLD": 30.0, "cooldown": 64.0},
+			{"REACH": [6.75, 12.0], "HOLD": 32.5, "cooldown": 61.0},
+			{"REACH": [7.0, 12.0], "HOLD": 35.0, "cooldown": 58.0, "twist": true, "twist_text": "The Dark Looks Back: who stops to look is held"}]},
 	{"key": "shadowplay", "name": "Shadow Play", "path": "res://src/fx/veil/shadow_play.gd",
 		"blurb": "A circle of people sleep while their shadows carry on in their place.",
 		"dp": 5, "cooldown": 90.0, "aim": "click",
 		"shape": "everyone within 3 (6 in the dark) sleeps for 30 s while a shadow keeps their task; in the dark soldiers' shadows fade, taken",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"RADIUS": [3.0, 6.0], "SPAN": 30.0, "cooldown": 90.0},
+			{"RADIUS": [3.1, 6.3], "SPAN": 32.0, "cooldown": 87.0},
+			{"RADIUS": [3.15, 6.6], "SPAN": 34.0, "cooldown": 84.0},
+			{"RADIUS": [3.25, 6.9], "SPAN": 36.0, "cooldown": 81.0},
+			{"RADIUS": [3.3, 7.2], "SPAN": 38.0, "cooldown": 78.0, "twist": true, "twist_text": "The Shadows Keep Watch: who comes close joins"}]},
 	{"key": "swallow", "name": "The Swallowing Dark", "path": "res://src/fx/veil/the_swallowing_dark.gd",
 		"blurb": "A black circle grows unseen, then the dark swallows all inside.",
 		"dp": 6, "cooldown": 999.0, "aim": "click",
 		"shape": "a black circle grows unseen to 10 (from its dusk to 14 in the dark) at 0.5 a second, then everyone and everything inside is gone; once a descent",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"FULL_R": [10.0, 14.0], "GROW": 0.5},
+			{"FULL_R": [10.2, 14.5], "GROW": 0.55},
+			{"FULL_R": [10.4, 15.0], "GROW": 0.6},
+			{"FULL_R": [10.6, 15.5], "GROW": 0.65},
+			{"FULL_R": [10.8, 16.0], "GROW": 0.7, "twist": true, "twist_text": "Nothing Leaves: who walks out is taken too"}]},
 	{"key": "evernight", "name": "Evernight", "path": "res://src/fx/veil/evernight.gd",
 		"blurb": "Night falls on the whole town, and the dark takes the lone.",
 		"dp": 6, "cooldown": 999.0, "aim": "click",
 		"shape": "night over the town for 60 s (90 on a NIGHT mission): every Veil power full size, the lone taken every 2 s (1.5), 5 at a time rising to 10, each claimed by the dark a take ahead, soldiers' torches the only light; once a descent",
-		"quiet": true, "authority": "veil"},
+		"quiet": true, "authority": "veil",
+		"levels": [
+			{"NIGHT_TIME": [60.0, 90.0], "TAKE_LAST": 10, "TORCHES": 6},
+			{"NIGHT_TIME": [62.0, 93.0], "TAKE_LAST": 10, "TORCHES": 6},
+			{"NIGHT_TIME": [64.0, 96.0], "TAKE_LAST": 11, "TORCHES": 6},
+			{"NIGHT_TIME": [66.0, 99.0], "TAKE_LAST": 11, "TORCHES": 5},
+			{"NIGHT_TIME": [68.0, 102.0], "TAKE_LAST": 12, "TORCHES": 5, "twist": true, "twist_text": "The Light Gives Way: the torchlight shrinks"}]},
 	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",
 		"quiet": true, "alarm": 0.3, "authority": "dominion"},
@@ -885,6 +945,10 @@ const STAT_LABELS := {
 	"SLAM_WRECK": "slam on walls", "HOLD_TIME": "hold", "MAX_NAMED": "named", "redefine.SPAN": "time", "bound.SPAN": "time",
 	"MAX_LEN": "line", "CRUSH_W": "crush", "THROW_W": "throw", "HALF_W": "width", "CLOSE_TIME": "closes in",
 	"COUNTDOWN": "bell in",
+	# The Veil's ten (the Veil ability levels spec). A sized stat prints "light / dark".
+	"ILL_MOST": "fall ill", "ILL_REACH": "ill reach", "blight.DUSK_R": "rot dusk", "SLEEP_TIME": "sleep", "cloak.SPAN": "hidden for",
+	"VEIL_TIME": "veil time", "dreamless.MOST": "sit down", "REST": "found in", "HOLD": "hold", "shadowplay.SPAN": "play",
+	"FULL_R": "full size", "GROW": "growth", "NIGHT_TIME": "night", "TAKE_LAST": "most taken", "TORCHES": "torches",
 }
 
 
@@ -938,6 +1002,9 @@ static func level_rows_in(entry: Dictionary, level: int) -> Array:
 			continue
 		if not before.has(name) or before[name] != after[name]:
 			out.append({"label": _stat_label(entry, name), "old": _stat_text(before.get(name, "?")), "new": _stat_text(after[name])})
+	var dusk := VeilRules.dusk_row(String(entry.get("key", "")), level)
+	if not dusk.is_empty():
+		out.append(dusk)
 	return out
 
 
@@ -947,8 +1014,10 @@ static func _stat_label(entry: Dictionary, name: String) -> String:
 	return String(STAT_LABELS.get(own, STAT_LABELS.get(name, name)))
 
 
-## A stat's value as level_change() prints it: a Vector2i "5-7", anything else as str().
+## A stat's value as level_change() prints it: a Vector2i "5-7", a Veil pair "light / dark", anything else as str().
 static func _stat_text(v: Variant) -> String:
+	if v is Array and (v as Array).size() == 2:
+		return "%s / %s" % [str((v as Array)[0]), str((v as Array)[1])]
 	if v is Vector2i:
 		return "%d-%d" % [(v as Vector2i).x, (v as Vector2i).y]
 	return str(v)

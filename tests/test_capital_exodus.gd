@@ -6,6 +6,13 @@ extends RefCounted
 ## walks); every way out is outside the walls and every mouth inside; the gatehouse queue does not hold a believer at the bridge gate; the gates' posts stand POST_GAP
 ## apart; the households' doors are quiet; the policies read the director; the words the player reads name no postern, Side Gate, Main Gate or Aldermere.
 
+## Gates accepted by the coordinator (judged against Aldermere's own medians, band 0.75-1.35x), final placement, direct runs, seeds 1-3:
+##   Aldermere A play 3/3 (221.9 203.5 212.8, median 213, idle 24), none lost exodus_few; Aldermere B play 3/3 (245.4 240.8 242.7, median 243).
+##   Capital A play 2/3 (225.1, 295.2; seed 2 lost gates_shut at 300 s), median of the wins 260 = 1.22x Aldermere's, idle 18; none lost 3/3 exodus_few (104-109 s);
+##   Capital B play 2/3 (240.0, 208.8; seed 3 lost exodus_few at 263.8 s), median 224, idle 45.
+## Cause of the slower Capital night: the east household is seized at the harbour gate's watch (about 115 s) and by the Temple's searchers (about 140 s) in nearly every
+## run, so the south household comes out near 190 s (Aldermere's near 150 s) and has less time before the 300 s shutting. Walk parity is fine (pinned below).
+## The tuned placement is pinned in _starts (house doors, gates, posts, beats), _walk_parity and _camera_clear; the final values are in capital_missions/exodus.gd.
 const ID := "exodus"
 const Cap := preload("res://tests/capital_kit.gd")
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
@@ -155,6 +162,11 @@ static func _starts(t) -> void:
 		spots["house %d" % i] = dov.house_points[i]
 	Cap.spots_land(t, {"grid": grid}, spots, 1.0)
 	t.check(d.households.size() == 3, "every household has its house")
+	t.check((d.households[0] as ExodusDirector.Household).door.distance_to(Vector2(-16.19398, -5.4)) < 0.05 and (d.households[1] as ExodusDirector.Household).door.distance_to(Vector2(12.29509, -14.17)) < 0.05
+		and (d.households[2] as ExodusDirector.Household).door.distance_to(Vector2(8.076139, -2.575)) < 0.05, "the tuned households stand at the doors (-16.19, -5.4), (12.30, -14.17) and (8.08, -2.58)")
+	t.check(dov.gate_mouths == [Vector2(-22.4, -13.0), Vector2(16.4, -9.0), Vector2(4.0, 2.4)] and dov.gate_exits == [Vector2(-25.6, -13.0), Vector2(19.6, -9.0), Vector2(4.0, 5.6)]
+		and dov.gate_along == [Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(1.0, 0.0)] and dov.beat_spots[1] == [Vector2(2.0, -7.0), Vector2(12.0, -7.0)],
+		"the tuned gates, the harbour posts' way along the approach and the second beat's y -7 are pinned")
 	_walls(t, d, dov)
 	_houses(t, d, dov)
 	_walk_parity(t, d)

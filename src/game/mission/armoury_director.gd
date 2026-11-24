@@ -80,7 +80,7 @@ const ARMED_HOLD := 1.0
 const OFF_GUARD := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER, Person.Mind.WHISPERED, Person.Mind.CONFUSED]
 ## Where the camera rests (v0.11 M5, Decision 159): the north barracks just above the centre, the other two pointed at from the bottom.
 const CAMERA_AT := Vector2(-5.5, -4.5)
-## Aldermere's Citadel gate (v0.11 M5), kept as data for the tests and the Tiers 2-5 alias: the director reads the place citadel_gate (the reserve waits there, the reinforcements march from it).
+## Aldermere's Citadel gate (v0.11 M5), kept as data for the tests: the director reads the place citadel_gate (the reserve waits there, the reinforcements march from it).
 const CITADEL_GATE := HarvestDirector.CITADEL_GATE
 ## Seconds between looks at the armed men (v0.11 M5).
 const TICK := 0.5

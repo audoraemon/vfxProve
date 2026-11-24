@@ -12,6 +12,9 @@ static func overrides() -> Dictionary:
 		"def": {"camera_at": camera, "intro_from": camera + Vector2(0.0, 6.0)},
 		"director": {
 			"words": ["west barracks", "gate barracks", "armoury"],
+			# The third horn at 150 s at the latest: the previous horn (110) plus CHAIN (40). Measured (task-16-report.md): route A stage 3 is 1.05x Aldermere's
+			# horn-to-raze time, route B 0.50x (its policy clears the night watch before the horn and the Keep's gate stands beside its barracks, so the
+			# reinforcements arrive in 8 of walking, not 36); a lower value would pull route A's median under 180 s.
 			"stage_at": [40.0, 110.0, 150.0],
 			"horn_labels": ["The muster horn: the west barracks turns out", "The muster horn: the gate barracks turns out", "The muster horn: the garrison arms"],
 		},

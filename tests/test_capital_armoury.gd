@@ -71,6 +71,8 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	var dov: Dictionary = City.by_id(&"capital").mission_overrides(ID).director
 	var d := Cap.starts(t, ID) as ArmouryDirector
 	t.check(d != null and d.words == dov.words and d.horn_labels == dov.horn_labels and d.stage_at == dov.stage_at, "the director reads back the Capital's words and horn labels after setup")
+	t.check(d != null and d.stage_at == [40.0, 110.0, 150.0]
+		and d.stage_at[2] <= d.stage_at[1] + ArmouryDirector.CHAIN, "the Capital's horns are 40, 110 and 150, the third within the second plus CHAIN, as the second is not within the first plus CHAIN in either town (%s)" % [d.stage_at])
 	if d == null:
 		return
 	var def := MissionBook.get_mission("%s@capital" % ID)
@@ -126,8 +128,8 @@ static func _walk_parity(t, d: ArmouryDirector, cap: Dictionary, ald: Dictionary
 	print("CAPITAL parity the Citadel's gate to the armoury: capital %.1f, aldermere %.1f" % [Cap.walk(cap.grid, d.citadel_door, d.faces[2]), Cap.walk(ald.grid, ad.citadel_door, ad.faces[2])])
 	Cap.parity(t, "the three targets in order", c[0] + c[1], al[0] + al[1])
 	# Measured consequence (Task 16 fix round 1): the Keep's gate stands beside its barracks, so the reinforcements and reliefs of the third stage
-	# reach the armoury in 8 of walking where Aldermere's take 36 (4.4x faster); the gates and the per-stage table (task-16-report.md) show the stage still
-	# plays in Aldermere's band. A layout change that moves either walk out of its range changes that stage and fails here.
+	# reach the armoury in 8 of walking where Aldermere's take 36 (4.4x faster); the per-stage table (task-16-report.md): route A stage 3 plays at 1.05x Aldermere's
+	# time, route B at 0.50x (its reinforcements 0.3 against 1.3). A layout change that moves either walk out of its range changes that stage and fails here.
 	var cw: float = Cap.walk(cap.grid, d.citadel_door, d.faces[2])
 	var aw: float = Cap.walk(ald.grid, ad.citadel_door, ad.faces[2])
 	t.check(cw >= 4.0 and cw <= 16.0, "the Capital's reinforcement walk, the Keep's gate to the armoury, is 4-16 (%.1f)" % cw)

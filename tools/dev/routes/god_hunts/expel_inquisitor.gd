@@ -14,7 +14,7 @@ extends RefCounted
 ##            where the cell holds him (the user's Decree tree, 2026-11-12; MS §9 open issue 1 found no route in the old keys); the same two on the
 ##            next warden's guard at his door.
 ##   dominion Mind Whisper in relayed hops toward the way off the map, wardens and captain alike; Madness Bloom on the captain's company
-##            when the whisper is cooling.
+##            when the whisper is cooling; Discord on a watched gate's checkers as a whispered man nears it.
 
 ## The god types whose policy is written (all six).
 const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
@@ -549,6 +549,7 @@ static func _visiting(d: ExpelInquisitorDirector) -> Array[AssassinateDirector.Q
 ## Mind Whisper in hops of WHISPER_HOP toward the way off the map along the road the grid gives, on the first man in the street who is free:
 ## a new hop when he has reached the last, always before the linger runs out, so he never turns back (Person.SHAKE_OFF); out of the walls he
 ## is stopped. With no one in the street, Madness Bloom once on the next target's guards at his door, while they stand at it (_bloom_aim()).
+## From Local Emergency the gates are watched: Discord on a gate's checkers as a whispered man nears it (_gate_discord()).
 static func act_dominion(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as ExpelInquisitorDirector
 	if d == null:
@@ -563,6 +564,11 @@ static func act_dominion(bc, ctx: Dictionary) -> String:
 			_bloom_done(d, ctx.memo)
 			rules.cast(int(slots.madness), aim)
 			return "madness bloom on the guards at the door"
+	if bc._slot_ready(rules, slots, "discord"):
+		var blind := _gate_discord(crowd, street)
+		if blind != Vector2.INF:
+			rules.cast(int(slots.discord), blind)
+			return "discord the gate's checkers as a whispered man nears it, so they look at nobody"
 	if not bc._slot_ready(rules, slots, "whisper"):
 		return ""
 	for q in street:
@@ -583,3 +589,56 @@ static func act_dominion(bc, ctx: Dictionary) -> String:
 		rules.cast(int(slots.whisper), p.ground_pos, {"target": p, "to": hop})
 		return "whisper %s %.1f toward the way off, to (%.1f, %.1f)" % [q.label, hop.distance_to(p.ground_pos), hop.x, hop.y]
 	return ""
+
+
+## Dominion: from Local Emergency the gates are watched (GateCheck, "THE GATES ARE WATCHED"): a man in the god's hand at a gate's mouth is seen
+## through by its checkers -- the whisper ends there and he goes back to his round. So when a man in the street is on his way to a hop within
+## GATE_HOP of a gate, and is GATE_NEAR of it or nearer, Discord is laid on its checkers standing their watch (each wears the gate's tag; one
+## fighting or held looks at nobody already): confused, they look at nobody while he passes. Only where one Discord takes them all (the nearest
+## the gate of the tries) and no man in the street within GATE_CLEAR of it; Vector2.INF for none.
+static func _gate_discord(crowd: Crowd, street: Array[AssassinateDirector.Quarry]) -> Vector2:
+	if crowd.gate_check == null or not crowd.gate_check.spotting():
+		return Vector2.INF
+	for q in street:
+		var p: Person = q.target
+		if p.mind != Person.Mind.WHISPERED or not p.has_goal():
+			continue
+		for gate: Structure in crowd._town.gates:
+			if not is_instance_valid(gate) or gate.destroyed:
+				continue
+			var at := gate.center()
+			if p.anchor.distance_to(at) > GATE_HOP or p.ground_pos.distance_to(at) > GATE_NEAR:
+				continue
+			var eyes: Array[Person] = []
+			for c in crowd.gate_check.checkers(gate):
+				if c.is_alive() and not c.inside and c.mind == Person.Mind.POST:
+					eyes.append(c)
+			if eyes.is_empty():
+				continue  # nobody checks this gate: he walks through
+			var tries: Array[Vector2] = []
+			var mid := Vector2.ZERO
+			for c in eyes:
+				tries.append(c.ground_pos)
+				mid += c.ground_pos
+			tries.append(mid / float(eyes.size()))
+			var best := Vector2.INF
+			for t in tries:
+				var all := true
+				for c in eyes:
+					all = all and c.ground_pos.distance_to(t) <= DiscordFx.DISCORD_R - 0.1
+				for o in street:
+					all = all and (o.target as Person).ground_pos.distance_to(t) > GATE_CLEAR
+				if all and (best == Vector2.INF or t.distance_to(at) < best.distance_to(at)):
+					best = t
+			if best != Vector2.INF:
+				return best
+	return Vector2.INF
+
+
+## Dominion: the gate's checkers are put out of sight when a whispered man's hop lies within GATE_HOP of the gate and he is within GATE_NEAR
+## of it (Discord's DISCORD_TIME covers his walk through the mouth).
+const GATE_HOP := 6.0
+const GATE_NEAR := 9.0
+## ...and only while every man in the street stands farther than this from the Discord's aim: out of its circle, and out of reach of those it
+## confuses while their confusion still spreads (Tangled Threads: TANGLE_R for TANGLE_TIME, at a whispered man's pace).
+const GATE_CLEAR := DiscordFx.DISCORD_R + DiscordFx.TANGLE_R + DiscordFx.TANGLE_TIME * 0.6

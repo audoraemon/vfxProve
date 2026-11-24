@@ -119,7 +119,7 @@ var loads := {}
 ## Structure -> its carters (v0.11 M2; untyped: a carter may be a freed body).
 var carters := {}
 ## Structure -> its Watch records (v0.11 M2).
-var watches := {}
+var watch_posts := {}
 ## Structure -> true once its grain has arrived (v0.11 M2).
 var grain := {}
 ## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight", "seized", "held" or "dropped" (god T1R, for the report and the
@@ -184,7 +184,7 @@ func _begin() -> void:
 				w.man = crew[0]
 				_set_down(crew[0], w.post)
 			posts.append(w)
-		watches[s] = posts
+		watch_posts[s] = posts
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	for i in targets.size():
@@ -217,7 +217,7 @@ func _busy() -> Array:
 	var out: Array = []
 	for crew: Array in carters.values():
 		out.append_array(crew)
-	for posts: Array in watches.values():
+	for posts: Array in watch_posts.values():
 		for w: Watch in posts:
 			if w.man != null:
 				out.append(w.man)
@@ -515,7 +515,7 @@ func _on_guard(s: Structure, w: Watch) -> bool:
 ## The watchmen of `s` on guard now (v0.11 M2).
 func guards(s: Structure) -> Array[Person]:
 	var out: Array[Person] = []
-	for w: Watch in watches.get(s, []):
+	for w: Watch in watch_posts.get(s, []):
 		if _on_guard(s, w):
 			out.append(w.man as Person)
 	return out
@@ -529,7 +529,7 @@ func guarding(s: Structure) -> bool:
 ## The watchmen of `s` alive and out of doors, on guard or not (v0.11 M2).
 func watchmen(s: Structure) -> Array[Person]:
 	var out: Array[Person] = []
-	for w: Watch in watches.get(s, []):
+	for w: Watch in watch_posts.get(s, []):
 		if _alive(w.man) and not (w.man as Person).inside:
 			out.append(w.man as Person)
 	return out
@@ -541,7 +541,7 @@ func watchmen(s: Structure) -> Array[Person]:
 ## after he fell.
 func _watch(s: Structure, delta: float, looking: bool) -> void:
 	var on_guard := false
-	for w: Watch in watches[s]:
+	for w: Watch in watch_posts[s]:
 		if _on_guard(s, w):
 			on_guard = true
 			w.away = 0.0
@@ -558,7 +558,7 @@ func _watch(s: Structure, delta: float, looking: bool) -> void:
 	if not (on_guard and has_grain(s) and burning(s)):
 		_alight[s] = 0.0
 		return
-	for w: Watch in watches[s]:
+	for w: Watch in watch_posts[s]:
 		if _on_guard(s, w):
 			var man := w.man as Person
 			man.fearless_left = maxf(man.fearless_left, HOLD_POST)
@@ -648,7 +648,7 @@ func _on_razed(s: Structure) -> void:
 			if p.mind == Person.Mind.DUTY:
 				crowd.off_duty(p)
 	carters[s] = []
-	for w: Watch in watches.get(s, []):
+	for w: Watch in watch_posts.get(s, []):
 		_release(w)
 
 
@@ -739,7 +739,7 @@ func tags() -> Array[MapTag]:
 	for s in targets:
 		if razed(s):
 			continue
-		for w: Watch in watches[s]:
+		for w: Watch in watch_posts[s]:
 			if not _alive(w.man) or (w.man as Person).inside:
 				continue
 			var p := w.man as Person

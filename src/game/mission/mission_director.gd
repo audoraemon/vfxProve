@@ -54,6 +54,7 @@ func setup(r: Rules, c: Crowd, t: Town, x: FxContext, n: NightState = null) -> M
 		c.mission_holds.append(_holds_soldier)
 		c.mission_points.append(route_points)
 		c.mission_keeps.append(keeps_alive)
+		c.mission_watch.append(watches)
 	_begin()
 	return self
 
@@ -188,6 +189,12 @@ func quarry(_p: Person) -> bool:
 ## automatic takes pass him over (Crowd.spared()). A separate question from quarry(). False by default.
 func keeps_alive(_p: Person) -> bool:
 	return false
+
+
+## Virtual (Veil, the twists, VL3): `p` keeps watch for this director beside the soldiers -- its Faithful by default (registered in
+## Crowd.mission_watch; Crowd.is_watch() asks).
+func watches(p: Person) -> bool:
+	return faithful.has(p)
 
 
 ## Virtual (v0.11.1): the banner for a Blight that landed on this director's thing at `at`, taken or not ("BLIGHT - THE STANDARD ROTS",

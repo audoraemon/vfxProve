@@ -254,6 +254,12 @@ var footholds: Array[Structure] = []
 const SILENT_KINDS: Array[StringName] = [&"void", &"night", &"dreamt", &"shade"]
 ## Who a mission's director keeps alive (MissionDirector.keeps_alive, registered by its setup()): spared() asks them.
 var mission_keeps: Array[Callable] = []
+## Who a mission's director counts as keeping watch beside the soldiers (MissionDirector.watches(), registered by its setup()): is_watch() asks.
+var mission_watch: Array[Callable] = []
+## The Veil's Pale Eye ledger (PaleEye.mark() makes it on first use); null until a level-5 twist eyes someone. Cleared with the town.
+var pale_eye: PaleEye
+## Silent Doom's victims whose witnesses a twist answers (answer_doom()): [victim, answer] pairs, forgotten when the settle has named them.
+var _doom_answers: Array = []
 ## The town's sound: its beds, the crowd's panic and the calls (natural sound passes 2 and 3).
 var _ambience: Ambience
 ## Set by stop_bed(): once the mission is quitting, _update_bed() must not revive the bed even though the
@@ -1831,6 +1837,18 @@ func spared(p: Person) -> bool:
 	return false
 
 
+## Whether `p` keeps the town's watch (Veil, VL3): any soldier, or whoever a mission's director names (mission_watch).
+func is_watch(p: Person) -> bool:
+	if p == null or not is_instance_valid(p):
+		return false
+	if p.soldier:
+		return true
+	for c in mission_watch:
+		if c.is_valid() and c.call(p):
+			return true
+	return false
+
+
 ## Takes `p` without a trace (Veil): killed with a silent kind (SILENT_KINDS: no body, no sound, no remain; _on_killed() lets it pass
 ## unseen) and hidden at once. False when there is nobody to take (gone, dead, or spared by Corpse Guise's Deathless).
 func take(p: Person, kind: StringName) -> bool:
@@ -2386,6 +2404,7 @@ func clear_mission_hooks() -> void:
 	mission_holds.clear()
 	mission_points.clear()
 	mission_keeps.clear()
+	mission_watch.clear()
 
 
 ## The leaderless town (v0.09: the Prince died unseen): the soldiers never rally on the Citadel.
@@ -2443,6 +2462,10 @@ func clear() -> void:
 		shelters.clear()
 	_households.clear()
 	_doomed.clear()
+	_doom_answers.clear()
+	if pale_eye != null and is_instance_valid(pale_eye):
+		pale_eye.queue_free()
+	pale_eye = null
 	_jams.clear()
 	_held.clear()
 	_thorn_alarm_at = -INF
@@ -2615,8 +2638,9 @@ func doom_witness(at := Vector2.INF) -> float:
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
 ## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
 ## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too. One hidden from the
-## watch (Corpse Guise, Cloak of Night: Person.hidden_from_watch()), a shadow and the dreaded (Veil) are no witness.
-func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
+## watch (Corpse Guise, Cloak of Night: Person.hidden_from_watch()), a shadow, the dreaded and the blind (Veil: Person.veil_blind()) are no
+## witness; `skip` (instance ids) are never chosen either.
+func nearest_witness(at: Vector2, exclude: Person = null, skip: Dictionary = {}) -> Person:
 	var best: Person = null
 	var best_d := doom_witness()
 	# The law of the Veil: dusk at the witness or at the death shortens each line on its own (sight_scale_at()); an empty ledger
@@ -2628,7 +2652,9 @@ func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
 		for p in group:
 			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p):
 				continue
-			if not p.statuses.is_empty() and (p.hidden_from_watch() or p.is_shadow() or p.is_dreaded()):
+			if not p.statuses.is_empty() and (p.hidden_from_watch() or p.veil_blind()):
+				continue
+			if not skip.is_empty() and skip.has(p.get_instance_id()):
 				continue
 			var d := p.ground_pos.distance_to(at)
 			if each and d > DOOM_WITNESS * sight_scale_at(p.ground_pos, at):
@@ -2648,6 +2674,8 @@ func _settle_doom() -> void:
 		return
 	var dead := _doomed
 	_doomed = []
+	if not _doom_answers.is_empty():
+		_answer_doomed(dead)
 	var seen_at: Array[Vector2] = []
 	for v in dead:
 		if not is_instance_valid(v):
@@ -2663,6 +2691,50 @@ func _settle_doom() -> void:
 		_hear_alarm(ALARM_KILL)
 	if not seen_at.is_empty():
 		_react(seen_at, 0.6, DOOM_WITNESS + 1.0, seen_at[0], &"doom")
+
+
+## A level-5 Silent Doom asks for its victim's witness (VL8): `answer` is called once with whoever the settle names as `victim`'s witness
+## (the answer may take him). Forgotten when the settle has named the witnesses, or by unanswer_doom().
+func answer_doom(victim: Person, answer: Callable) -> void:
+	if victim != null and answer.is_valid():
+		_doom_answers.append([victim, answer])
+
+
+## Takes back every victim `answer` was registered for (a cast ending before it struck).
+func unanswer_doom(answer: Callable) -> void:
+	var keep: Array = []
+	for e in _doom_answers:
+		if e[1] != answer:
+			keep.append(e)
+	_doom_answers = keep
+
+
+## _settle_doom(), before it judges: every registered victim among `dead` (in order) names his nearest witness first (nobody is
+## answered before all are named: a chain of deaths is one hop); then each distinct witness (first naming wins) is answered once.
+func _answered_witnesses(dead: Array[Person]) -> Array:
+	var named: Array = []  # [witness, answer], in the order named
+	var seen := {}
+	var rest: Array = []
+	for e in _doom_answers:
+		var v: Person = e[0] if is_instance_valid(e[0]) else null
+		if v == null or not dead.has(v):
+			if v != null:
+				rest.append(e)  # not dead (spared by a Deathless): keeps its place until its cast takes it back
+			continue
+		var w := nearest_witness(v.ground_pos)
+		if w != null and not seen.has(w.get_instance_id()):
+			seen[w.get_instance_id()] = true
+			named.append([w, e[1]])
+	_doom_answers = rest
+	return named
+
+
+func _answer_doomed(dead: Array[Person]) -> void:
+	for n in _answered_witnesses(dead):
+		var w: Person = n[0]
+		var answer: Callable = n[1]
+		if is_instance_valid(w) and answer.is_valid():
+			answer.call(w)
 
 
 ## Something built mid-mission (v0.06): the gate spots are found again round it; a thorn wall is noticed.

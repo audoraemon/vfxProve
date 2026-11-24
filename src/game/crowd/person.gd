@@ -421,6 +421,12 @@ var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
 ## reads and steps it; the person only carries it, and responds to what the manager asks of it.
 var statuses := {}
+## Blind (Veil, Person.blind_for()): seconds left; the status &"blind" stands while it runs. Turned away (turn_away()): seconds he takes
+## up no new fight target.
+var _blind_left := 0.0
+var _turn_left := 0.0
+## The crowd clock of the last step a dread refused him (_step_blocked()); -INF for none (Veil: Dread of the Dark's twist reads it).
+var dread_balked_at := -INF
 ## Powers' holds on its pace, by the power's instance id -> the share kept (hold_pace()).
 var pace_holds := {}
 ## Decree's law on it (LawMark), while one holds it; null for none. Only LawMark sets it: ask LawMark, never this.
@@ -674,6 +680,8 @@ func tick(delta: float) -> void:
 		if _ill_left <= 0.0:
 			_ill_left = 0.0
 			free_pace(ILL_HOLD)
+	if _blind_left > 0.0 or _turn_left > 0.0:
+		_run_blind(delta)
 	if (mind == Mind.ASLEEP or _scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0) and state == State.WANDER:
 		_idle = maxf(_idle, delta + 0.01)  # held (asleep, screaming, down): a goal set from outside cannot creep it for a tick, whatever the tick
 	elif state == State.WANDER and not statuses.is_empty() and is_dreaded() and not is_shadow():
@@ -2034,6 +2042,8 @@ func magnify(k: float) -> bool:
 		any = true
 	if badge_left > 0.0:
 		badge_left *= k
+	if _blind_left > 0.0:
+		_blind_left *= k
 	return any
 
 
@@ -2105,7 +2115,54 @@ func is_dreaded() -> bool:
 ## The one read for what a person does for the town (Veil ruling C13): a shadow or a dreaded person sees, seizes, finds, reports and
 ## delivers nothing (is_shadow(), is_dreaded()). Behind the cheap empty test: nothing changes without a Veil status.
 func veil_blind() -> bool:
-	return not statuses.is_empty() and (statuses.has(&"shadow") or statuses.has(&"dread"))
+	return not statuses.is_empty() and (statuses.has(&"shadow") or statuses.has(&"dread") or statuses.has(&"blind"))
+
+
+## Blind (Veil, the twists): for `seconds` he sees, seizes, finds, reports and delivers nothing (veil_blind()) -- but he still walks, flees,
+## fights and cries out. The longest wins; nothing for the dead. The status is erased when it runs out (tick()).
+func blind_for(seconds: float) -> void:
+	if state == State.DEAD or seconds <= 0.0:
+		return
+	_blind_left = maxf(_blind_left, seconds)
+	statuses[&"blind"] = true
+
+
+func is_blind() -> bool:
+	return statuses.has(&"blind")
+
+
+## Cloak of Night's turned watch (Veil, VL10): drops a pursuit and takes up no new fight target for `seconds`, and is blind for the same
+## time. A soldier is back at his post; anyone else calm, with no goal. False for the dead and the indoors.
+func turn_away(seconds: float) -> bool:
+	if inside or state == State.DEAD or seconds <= 0.0:
+		return false
+	_turn_left = maxf(_turn_left, seconds)
+	blind_for(seconds)
+	if mind == Mind.ASLEEP:
+		return true  # a sleeper is not woken: he is blind, and turned
+	release_from_queue()
+	passing_gate = null
+	fight_target = null
+	_fight_left = 0.0
+	_ordered = false
+	if soldier:
+		send_to_post(post if post != Vector2.INF else ground_pos)
+	elif mind != Mind.FLEE and mind != Mind.PANIC and mind != Mind.SHELTER:
+		mind = Mind.CALM
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+	return true
+
+
+## tick(): the blind and the turned run down; the status goes at 0.
+func _run_blind(delta: float) -> void:
+	if _turn_left > 0.0:
+		_turn_left = maxf(_turn_left - delta, 0.0)
+	if _blind_left > 0.0:
+		_blind_left -= delta
+		if _blind_left <= 0.0:
+			_blind_left = 0.0
+			statuses.erase(&"blind")
 
 
 ## Blight on a person (Veil): ill without a sound, he walks home -- his house's point (profile.home), a soldier to the barracks yard,
@@ -2390,6 +2447,8 @@ func _fightable(p: Person) -> bool:
 		return false  # nobody is beaten on the ground; a mob set on one person (a verdict) still finishes it
 	if p.law != null and LawMark.spares(self, p, _fight_rule):
 		return false  # the law hides him (a NOBODY, or an OFFICER from a guard)
+	if _turn_left > 0.0 and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND):
+		return false  # turned away (turn_away()): he takes up no new target for now
 	if soldier and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND) and p.hidden_from_watch():
 		return false  # Corpse Guise or Cloak of Night: the watch's own choice looks straight past them (a frenzy or a power's order does not)
 	match _fight_rule:
@@ -3013,6 +3072,7 @@ func _step_blocked(step: Vector2) -> bool:
 	# not afraid of the dark; one already inside is held by the dread on him (is_dreaded()), not by the edge.
 	if crowd != null and not crowd.dreads.is_empty() and not is_shadow() and crowd.dreaded(ground_pos + step) \
 			and not crowd.dreaded(ground_pos):
+		dread_balked_at = crowd.clock()
 		return true
 	if grid == null:
 		return false

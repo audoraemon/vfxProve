@@ -349,7 +349,7 @@ static func _unguarded(t) -> void:
 	_kill_all(s, a)
 	var held := d.watchmen(b)
 	for p in held:
-		_arrive(p, d.watches[b][0].post + Vector2(8.0, 0.0))
+		_arrive(p, d.watch_posts[b][0].post + Vector2(8.0, 0.0))
 	var indoors := d.watchmen(c)
 	for p in indoors:
 		p.inside = true
@@ -388,7 +388,7 @@ static func _return(t) -> void:
 	var g := d.targets[0]
 	var man := d.watchmen(g)[0]
 	var other := d.watchmen(g)[1]
-	var post: Vector2 = d.watches[g][0].post
+	var post: Vector2 = d.watch_posts[g][0].post
 	_arrive(man, post + Vector2(8.0, 0.0))
 	_hold(s, man, Person.Mind.CALM, HarvestDirector.RETURN_AFTER - 3.0)
 	var early := man.mind == Person.Mind.CALM and not man.has_goal()
@@ -407,7 +407,7 @@ static func _relief(t) -> void:
 	var g := d.targets[0]
 	var pair := d.watchmen(g)
 	var old := pair[0]
-	var post: Vector2 = d.watches[g][0].post
+	var post: Vector2 = d.watch_posts[g][0].post
 	_free(s, old)
 	_run(s, HarvestDirector.RELIEF_AFTER - 2.0)
 	var none := d.watchmen(g).size() == 1

@@ -24,6 +24,7 @@ const VEIL_BAND := 3.0
 ## A Veil moment cue -> the script that plays it.
 const VEIL_MOMENTS := {
 	&"q_blight_ill": "res://src/fx/quiet/blight.gd",
+	&"v_pale_eye": "res://src/fx/veil/pale_eye.gd",
 }
 ## Review pass 2 (spec 4, VR2S): the Swallowing Dark is the one Veil power the god hears as a doomsday, so its cues leave the quiet band:
 ## its fold hits at least as loud as the Tier 5 doomsdays' main hits as played (and no more than SWALLOW_OVER over the loudest), ducks

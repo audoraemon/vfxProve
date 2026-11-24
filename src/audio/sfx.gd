@@ -167,6 +167,7 @@ const CATALOG := {
 	# night (a loop) and Blight's sickness on a person. None ducks the music or has an aftermath; the Swallowing Dark's are below.
 	&"v_slumber": {"path": "res://assets/audio/ability/veil/v_slumber.wav", "db": 0.0},
 	&"v_cloak": {"path": "res://assets/audio/ability/veil/v_cloak.wav", "db": 1.6},
+	&"v_pale_eye": {"path": "res://assets/audio/ability/veil/v_pale_eye.wav", "db": 2.8, "voices": 1},
 	&"v_dreamless": {"path": "res://assets/audio/ability/veil/v_dreamless.wav", "db": 1.0},
 	&"v_dread": {"path": "res://assets/audio/ability/veil/v_dread.wav", "db": 0.9},
 	&"v_shadowplay": {"path": "res://assets/audio/ability/veil/v_shadowplay.wav", "db": -0.3},

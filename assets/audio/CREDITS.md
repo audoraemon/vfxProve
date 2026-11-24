@@ -25,7 +25,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_001.ogg` | CC0 | Kenney | mission/msn_shatter_1 |
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_002.ogg` | CC0 | Kenney | mission/msn_shatter_2 |
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_heavy_003.ogg` | CC0 | Kenney | mission/msn_shatter_3 |
-| [Kenney impact-sounds](https://kenney.nl) `impactGlass_light_002.ogg` | CC0 | Kenney | ability/quiet/q_wisp |
+| [Kenney impact-sounds](https://kenney.nl) `impactGlass_light_002.ogg` | CC0 | Kenney | ability/quiet/q_wisp, ability/veil/v_pale_eye |
 | [Kenney impact-sounds](https://kenney.nl) `impactGlass_light_004.ogg` | CC0 | Kenney | ability/dominion/dom_strain |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_000.ogg` | CC0 | Kenney | ability/decree/fe_posts |
 | [Kenney impact-sounds](https://kenney.nl) `impactMetal_heavy_001.ogg` | CC0 | Kenney | ability/decree/cg_rise, ability/decree/fe_posts, ability/passage/wf_land, ability/quiet/q_oath, mission/msn_shut_1 |
@@ -496,7 +496,7 @@ Recordings used by tools/audio/foley.py recipes, from the sound library outside 
 | [Saw or Wood Impact](https://opengameart.org/content/saw-or-wood-impact) `saw_-_starninjas_0.ogg` | CC0 | StarNinjas | mission/msn_rebuild_1, mission/msn_rebuild_2 |
 | [Sea and river wave sounds](https://opengameart.org/content/sea-and-river-wave-sounds) `VistulaShort_0.mp3` | CC0 | RandomMind | ability/passage/deep_swirl, ability/water/ts_roar |
 | [Seamless Energy Emission Loop](https://opengameart.org/content/seamless-energy-emission-loop) `movingshield_sound.ogg` | CC0 | zeroisnotnull | ability/arcane/grav_drone, ability/energy/laser_hum |
-| [Short wind sound](https://opengameart.org/content/short-wind-sound) `short wind sound.wav` | CC0 | remaxim | ability/quiet/q_guise, ability/veil/q_blight_ill, ability/veil/v_cloak, ability/veil/v_slumber, building/collapse_tree_1, building/collapse_tree_2, building/collapse_tree_3, building/collapse_tree_4, building/collapse_tree_5 |
+| [Short wind sound](https://opengameart.org/content/short-wind-sound) `short wind sound.wav` | CC0 | remaxim | ability/quiet/q_guise, ability/veil/q_blight_ill, ability/veil/v_cloak, ability/veil/v_pale_eye, ability/veil/v_slumber, building/collapse_tree_1, building/collapse_tree_2, building/collapse_tree_3, building/collapse_tree_4, building/collapse_tree_5 |
 | [User login](https://opengameart.org/content/sick-noises) `sickness.wav` | CC0 | frosty ham | ability/passage/wf_plague |
 | [Skippy Fish Water Sound Collection](https://opengameart.org/content/skippy-fish-water-sound-collection) `bubbles.wav` | CC0 | jcpmcdonald | ability/fire/dr_sink, ability/passage/deep_gulp_1, ability/passage/deep_open |
 | [Skippy Fish Water Sound Collection](https://opengameart.org/content/skippy-fish-water-sound-collection) `eating.wav` | CC0 | jcpmcdonald | ability/passage/deep_gulp_2 |

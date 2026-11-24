@@ -451,8 +451,8 @@ static func _dusk_by_level(t, made: Array) -> void:
 static func _previews(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var at := EV._fresh(made)
-	var rules := Rules.new().setup(PackedStringArray(["cloak", "dreamless", "blight"]), null, made[1], made[3], crowd, made[6])
-	rules.levels = {"cloak": 3, "dreamless": 5, "blight": 5}
+	var rules := Rules.new().setup(PackedStringArray(["cloak", "dreamless", "blight", "dread"]), null, made[1], made[3], crowd, made[6])
+	rules.levels = {"cloak": 3, "dreamless": 5, "blight": 5, "dread": 5}
 	var aim := Targeting.new().setup(rules, crowd)
 	aim.pick(0)
 	aim.hover(at)
@@ -460,6 +460,12 @@ static func _previews(t, made: Array) -> void:
 	crowd.lay_dusk(at, 1.0, 120.0)
 	t.check(crowd.in_dark(at) and is_equal_approx(float(aim.area().r), 4.5), "and over dark ground 4.5 (%s)" % [aim.area()])
 	t.check(Targeting.AREAS.cloak.r == 2.0 and Targeting.area_at("cloak", 5) == Targeting.AREAS.cloak, "AREAS stays level 1")
+	aim.pick(3)
+	aim.hover(at + Vector2(9.0, 0.0))
+	t.check(not crowd.in_dark(at + Vector2(9.0, 0.0)) and is_equal_approx(float(aim.area().r), 7.0),
+		"Dread at level 5 over light ground rings 7.0 (level 1: 6.0) (%s)" % [aim.area()])
+	aim.hover(at)
+	t.check(crowd.in_dark(at) and is_equal_approx(float(aim.area().r), 12.0), "and over dark ground 12.0 (%s)" % [aim.area()])
 	aim.free()
 	rules.free()
 	crowd.dusk.clear()

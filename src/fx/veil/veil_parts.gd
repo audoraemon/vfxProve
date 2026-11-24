@@ -25,6 +25,13 @@ static func size(fx: FxTimeline, key: String, stat: String) -> float:
 	return VeilRules.size(key, stat, dark(fx), level(fx))
 
 
+## Whether another Veil power holds `p` already (the twists' answers skip him): asleep, a shadow or dreaded. Cloaked, blind and sick are not held.
+static func held(p: Person) -> bool:
+	if p == null or not is_instance_valid(p):
+		return false
+	return p.is_asleep() or p.is_shadow() or p.is_dreaded()
+
+
 ## Takes `p` without a trace (Crowd.take()), first letting him out of any shelter he is in (ShelterManager.release(): no-op for one
 ## not sheltering), so no shelter's list holds a taken person -- its next flush would set him visible and put him back in the field.
 ## The one release every Veil take of a shelterer uses (The Swallowing Dark, Evernight's dawn). False when nobody was taken.

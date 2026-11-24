@@ -3940,7 +3940,7 @@ func _relic_act(rules: Rules, slots: Dictionary, d: RelicRunDirector, crowd: Cro
 			rules.cast(slots.doom, keeper.ground_pos)
 			return "doom the bellkeeper"
 		if not crowd.is_bell_lying() and _slot_ready(rules, slots, "belllies"):
-			rules.cast(slots.belllies, TownLayout.BELL_TOWER.get_center(), {"mode": "well"})
+			rules.cast(slots.belllies, Places.at(&"bell_tower"), {"mode": "well"})
 			return "the bell lies"
 		if discord and not keeper.mind in MissionDirector.BLIND:
 			rules.cast(slots.discord, keeper.ground_pos)

@@ -42,4 +42,4 @@ static func _needs(t) -> void:
 	t.check(Places.can_host("crowns_bread", capital), "the Capital has the places of the Crowns' Bread")
 	t.check(Places.can_host("armoury", capital), "the Capital has the places of the Armoury")
 	t.check(MissionBook.hostable("crowns_bread", capital), "and hosts the Crowns' Bread (Task 10: its overrides file)")
-	t.check(not MissionBook.hostable("armoury", capital), "nor the Armoury")
+	t.check(MissionBook.hostable("armoury", capital), "and hosts the Armoury (Task 16: its overrides file)")

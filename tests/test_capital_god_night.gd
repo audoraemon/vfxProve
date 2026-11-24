@@ -12,6 +12,8 @@ static func run(t) -> void:
 	GodTree.dev_fill = true
 	_draw_hostable(t)
 	_tier2_drawn(t)
+	_tier3_drawn(t)
+	_tier4_drawn(t)
 	_draw_none(t)
 	_hunt_aldermere_only(t)
 	_def_in_capital(t)
@@ -118,6 +120,28 @@ static func _tier3_drawn(t) -> void:
 	t.check(one != "" and tier3.has(one), "a Tier 3 god night in the Capital draws a Tier 3 id (%s)" % one)
 	t.check(bad == 0 and seen.size() >= 2, "every Tier 3 draw over 60 slots is a hosted Tier 3 id, several distinct (%d bad, %s)" % [bad, seen.keys()])
 	print("tier3 drawn ids: ", seen.keys())
+
+
+static func _tier4_drawn(t) -> void:
+	var tier4 := PackedStringArray(["procession", "bishop", "armoury", "sermon", "relic_run"])
+	var hosted := _hosted(4)
+	t.check(hosted.size() == tier4.size(), "the Capital hosts all five Tier 4 missions (%s)" % [hosted])
+	var seen := {}
+	var bad := 0
+	for night in range(0, 12):
+		for seed_value in range(1, 6):
+			var s := _slot(4, seed_value)
+			s.night = night
+			var id := GodNight.draw(s, "capital")
+			if id == "" or not tier4.has(id) or not hosted.has(id):
+				bad += 1
+			else:
+				seen[id] = true
+	var s2 := _slot(4)
+	var one := GodNight.draw(s2, "capital")
+	t.check(one != "" and tier4.has(one), "a Tier 4 god night in the Capital draws a Tier 4 id (%s)" % one)
+	t.check(bad == 0 and seen.size() >= 2, "every Tier 4 draw over 60 slots is a hosted Tier 4 id, several distinct (%d bad, %s)" % [bad, seen.keys()])
+	print("tier4 drawn ids: ", seen.keys())
 
 
 static func _draw_none(t) -> void:

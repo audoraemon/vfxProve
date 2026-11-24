@@ -33,9 +33,8 @@ const STARTLE := Vector2(0.4, 0.8)
 ## Closer than this (tiles) to what frightened it, a startled citizen cowers; farther, it points and shouts (drawing only).
 const COWER_REACH := 3.0
 ## The flinch of a steadied person (fair life, 2026-11-20): a man told there is nothing to fear still turns at a blow. He
-## freezes his own startle_seconds() facing it, a duty-bound citizen steps FLINCH_STEP tiles away, and he stares at it
-## until FLINCH_SECONDS from the start. No mind, anchor or awareness changes.
-const FLINCH_STEP := 0.5
+## freezes his own startle_seconds() facing it and stares at it until FLINCH_SECONDS from the start, then carries on. He
+## never moves (no step: user ruling 2026-11-24). No mind, anchor or awareness changes.
 const FLINCH_SECONDS := 2.0
 ## How often a soldier standing at its post plays its talk (seconds, min and max; drawing only).
 const TALK_EVERY := Vector2(8.0, 15.0)
@@ -473,7 +472,6 @@ var _startle_left := 0.0
 var _flinch_left := 0.0
 var _flinch_t := 0.0
 var _flinch_from := Vector2.INF
-var _flinch_step_to := Vector2.INF
 ## Drawing state for the people sprites (PeopleArt), never read by the brain: it stepped this tick, the step went
 ## toward the back of the screen (a back view), and which of a role's two looks it wears (hashed from its home or
 ## post, never drawn from rng; -1 until first drawn).
@@ -1388,8 +1386,8 @@ func startled() -> bool:
 	return _startle_left > 0.0
 
 
-## A steadied person's start at `from` (fair life, 2026-11-20): freeze startle_seconds() facing it, step FLINCH_STEP away if
-## he is a duty-bound citizen with room, stare until FLINCH_SECONDS from the start, then carry on. His mind, anchor and
+## A steadied person's start at `from` (fair life, 2026-11-20): turn to it, freeze startle_seconds(), stare until
+## FLINCH_SECONDS from the start, then carry on; he does not move meanwhile. His mind, anchor and
 ## awareness are untouched and nothing is drawn from any generator. Refused while one runs, and for the dead, those
 ## indoors, and anyone not calm, recovering, looking or on duty (a duty citizen still walking to a goal keeps going; a soldier: not at his post, or hurrying).
 func flinch(from: Vector2) -> void:
@@ -1408,7 +1406,6 @@ func flinch(from: Vector2) -> void:
 	_flinch_left = FLINCH_SECONDS
 	_flinch_t = 0.0
 	_flinch_from = from
-	_flinch_step_to = Vector2.INF
 	_idle = maxf(_idle, startle_seconds())
 	_face_flinch()
 
@@ -1437,7 +1434,7 @@ func _face_flinch() -> void:
 
 
 ## Something else has taken the mind while a flinch runs (a whisper, a compel, a confuse, a fight, a director's duty order):
-## the flinch is over, as the startle is (final review I1). The flinch's own step uses _target and never _goal, so a goal
+## the flinch is over, as the startle is (final review I1). A flinch never sets a goal, so a goal
 ## on a duty citizen is always someone else's order.
 func _flinch_overruled() -> bool:
 	if held_by_will(WILL_ABSOLUTE) or resists_mind():
@@ -1449,34 +1446,30 @@ func _flinch_overruled() -> bool:
 	return mind == Mind.DUTY and _goal != Vector2.INF
 
 
-## A flinch cut short by an order that takes the mind (final review I1): no stare left and no step to finish, and he stands
+## A flinch cut short by an order that takes the mind (final review I1): no stare left, and he stands
 ## where he is, so the order's own goal is the next thing he walks to.
 func _flinch_end() -> void:
 	if _flinch_left <= 0.0:
 		return
 	_flinch_left = 0.0
-	_flinch_step_to = Vector2.INF
 	_target = ground_pos
 	_idle = 0.0
 
 
-## One think of a flinch; true when it holds the person this think (he freezes, steps or stares).
+## One think of a flinch; true when it holds the person this think (he freezes and stares).
 func _flinch_think(delta: float) -> bool:
 	if _flinch_overruled():
-		_flinch_step_to = Vector2.INF
 		_flinch_left = 0.0
 		return false
 	if state != State.WANDER or inside or mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.SHELTER or mind == Mind.ASLEEP:
 		_flinch_left = 0.0
 		return false
 	var freeze := startle_seconds()
-	var before := _flinch_t
 	_flinch_t += delta
 	_flinch_left = maxf(FLINCH_SECONDS - _flinch_t, 0.0)
 	if _flinch_left <= 0.0:
-		_flinch_step_to = Vector2.INF
 		if mind == Mind.DUTY:
-			# Back to his place: straight from the step he took, else by the road as a duty always does.
+			# Back to his place (he never left it): as a duty always does.
 			if _goal == Vector2.INF and ground_pos.distance_to(anchor) < 2.0 and straight_clear(anchor):
 				_target = anchor
 				_idle = 0.0
@@ -1487,20 +1480,6 @@ func _flinch_think(delta: float) -> bool:
 		_idle = maxf(_idle, 0.25)  # thinking is half-rate: hold him past the next think
 		_face_flinch()
 		return true
-	if before < freeze:
-		# The freeze is over: a duty-bound citizen (never a soldier or a warden) steps away if the way is clear.
-		var away := ground_pos - _flinch_from
-		if mind == Mind.DUTY and not soldier and _goal == Vector2.INF and away.length() > 0.01 \
-				and not (profile != null and profile.role == CitizenProfile.Role.WATCHMAN):
-			var to := ground_pos + away.normalized() * FLINCH_STEP
-			if straight_clear(to):
-				_flinch_step_to = to
-	if _flinch_step_to != Vector2.INF:
-		if ground_pos.distance_to(_flinch_step_to) > ARRIVE:
-			_target = _flinch_step_to
-			_idle = 0.0
-			return true
-		_flinch_step_to = Vector2.INF
 	_idle = maxf(_idle, 0.25)
 	_face_flinch()
 	return true

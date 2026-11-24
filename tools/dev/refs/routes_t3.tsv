@@ -9,9 +9,9 @@ festival_b_play_3	--scenario=feast --path=festival --board --case=play --route=b
 bread_b_play_1	--scenario=bread --case=play --route=b --seed=1	-576025873
 bread_b_play_2	--scenario=bread --case=play --route=b --seed=2	-183217397
 bread_b_play_3	--scenario=bread --case=play --route=b --seed=3	-59340820
-prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-812838736
-prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	-691901551
-prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	545734018
+prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1	-60240995
+prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2	267735572
+prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3	27916167
 hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1	-152867874
 hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2	-424421200
 hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3	-886121897

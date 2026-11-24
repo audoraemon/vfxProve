@@ -1,7 +1,7 @@
 extends RefCounted
 ## The flinch (fair life, 2026-11-20): a steadied person (fearless_left > 0) no longer ignores a blow. He freezes his own
-## startle_seconds() facing it, a duty-bound citizen steps FLINCH_STEP away, he stares until FLINCH_SECONDS from the start
-## and carries on -- his mind, anchor and awareness untouched, a warden and a soldier never moved off their place. A god's
+## startle_seconds() facing it, stares until FLINCH_SECONDS from the start and carries on, never moving (no step: user ruling
+## 2026-11-24) -- his mind, anchor and awareness untouched, a warden and a soldier never moved off their place. A god's
 ## absolute hold still beats it, and the dead, the frightened and those indoors do not flinch.
 
 const RD := preload("res://tests/test_raise_dead.gd")
@@ -13,7 +13,7 @@ static func run(t) -> void:
 	_consts(t)
 	_steadied_flinch(t, made)
 	_observe_flinch(t, made)
-	_warden_no_step(t, made)
+	_warden_stands(t, made)
 	_flinch_refused(t, made)
 	_walking_duty(t, made)
 	_absolute_wins(t, made)
@@ -50,7 +50,7 @@ static func _on_duty(made: Array, n: int, at: Vector2, fear := 30.0) -> Person:
 
 
 static func _consts(t) -> void:
-	t.check(Person.FLINCH_STEP == 0.5 and Person.FLINCH_SECONDS == 2.0, "the brief's numbers: a half-tile step, a two-second stare")
+	t.check(Person.FLINCH_SECONDS == 2.0, "the brief's number: a two-second stare")
 
 
 static func _steadied_flinch(t, made: Array) -> void:
@@ -64,10 +64,14 @@ static func _steadied_flinch(t, made: Array) -> void:
 	p.panic(from, 1.0)
 	t.check(p.flinching() and p.mind == Person.Mind.DUTY and p.fearless_left > 0.0,
 		"a steadied man's fright is a flinch: still on duty, still steadied (mind %d)" % p.mind)
-	_advance(crowd, [p], p.startle_seconds() + 0.6)
-	var d := p.ground_pos.distance_to(anchor)
-	t.check(d > 0.2 and d < Person.FLINCH_STEP + 0.05 and p.ground_pos.distance_to(from) > start.distance_to(from) + 0.15,
-		"he steps back from it, no more than half a tile (%.2f from his anchor)" % d)
+	var moved := 0.0
+	var faced := true
+	for i in roundi((Person.FLINCH_SECONDS - 0.2) / DT):
+		_advance(crowd, [p], DT)
+		moved = maxf(moved, p.ground_pos.distance_to(start))
+		faced = faced and p._facing == 1
+	t.check(moved < 0.05 and p.flinching(), "he never moves during the flinch (%.3f at most)" % moved)
+	t.check(faced, "and he faces the danger the whole time")
 	_advance(crowd, [p], Person.FLINCH_SECONDS + 3.0)
 	t.check(p.ground_pos.distance_to(anchor) < 0.3 and not p.flinching() and p.mind == Person.Mind.DUTY,
 		"then he is back at his anchor, done flinching (%.2f off)" % p.ground_pos.distance_to(anchor))
@@ -87,8 +91,8 @@ static func _observe_flinch(t, made: Array) -> void:
 	t.check(not p.flinching() and not c.flinching(), "both are done after the stare")
 
 
-## A warden and a soldier at his post are steadied too, and stand where they stood.
-static func _warden_no_step(t, made: Array) -> void:
+## A warden and a soldier at his post are steadied too, and do not move: nobody steps in a flinch.
+static func _warden_stands(t, made: Array) -> void:
 	RD._clear_all(made)
 	var crowd: Crowd = made[0]
 	var w := _on_duty(made, 23, RD._empty(made))

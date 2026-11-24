@@ -160,7 +160,7 @@ Review findings fixed on top of T5:
   (citizen not CALM/RECOVER/OBSERVE/DUTY; soldier not at POST or hurrying), when held_by_will(WILL_ABSOLUTE) or resists_mind(), or when a
   DUTY citizen has a goal (the flinch's own step uses _target, never _goal, so a goal is always someone else's order).
 - M5: flinch() also refuses a soldier with a goal (walking back to his post), as it does a DUTY citizen.
-- Known, left as is: the flinch's step back (FLINCH_STEP 0.5) can carry a goer across WARD_R. steadied() reads position, so a goer standing
+- (History, gone with the step on 2026-11-24: see the last section.) The flinch's step back (FLINCH_STEP 0.5) can carry a goer across WARD_R. steadied() reads position, so a goer standing
   near the edge can be unsteadied for a look. It is part of why the difficulty moved (panic A/B and the prisoner times); no code change.
 
 Re-measure (49 rows of the T5 table, against the pre-flinch tree 641e5fe4): no outcome flips. Moved checksums re-recorded:
@@ -175,3 +175,21 @@ Prisoner times (s), seeds 1 / 2 / 3, median in brackets:
 |---|---|---|---|
 | A (prisoner_play) | 208.3, 202.4, 219.8 (208.3) | 192.6, 207.0, 196.3 (196.3) | 178.4, 200.6, 196.3 (196.3) |
 | B (prisoner_b_play) | 179.2, 238.7, 207.2 (207.2) | 270.2, 236.3, 207.8 (236.3) | 270.2, 236.3, 207.8 (236.3) |
+
+## Step dropped (2026-11-24)
+User ruling: "Drop the step". A flinch is turn, freeze, stare, carry on, and nobody moves. Person.FLINCH_STEP, _flinch_step_to and the step branch of
+_flinch_think are gone; the freeze, the facing, the stare, the carry-on and the cancel rules of the final review stay. The step had carried goers across
+WARD_R and the guard reaches (the M4 note above): with it gone the difficulty is back where it was. test_flinch now asserts a flinched person moves less
+than 0.05 tiles the whole flinch and keeps facing the danger; the warden and soldier test asserts they did not move.
+
+Re-measure (49 rows against 641e5fe4): no outcome flips. 15 checksums re-recorded (panic_play_1/2/3, panic_b_play_1/2/3, prisoner_play_1/2/3,
+prisoner_b_play_1/2/3, hide_faithful_ruin_play_2, face_halcyon_ruin_play_1 and _3); the other 34 reproduce. Gate (3 / 2.0 / 0.6): A median 207.5,
+B median 221.6, both inside 180-240; none still loses (the three none rows reproduce, market_closed).
+
+Times (s), seeds 1 / 2 / 3, median in brackets:
+| run | pre-flinch (641e5fe4) | final review | now (no step) |
+|---|---|---|---|
+| prisoner A | 208.3, 202.4, 219.8 (208.3) | 178.4, 200.6, 196.3 (196.3) | 176.3, 217.4, 196.3 (196.3) |
+| prisoner B | 179.2, 238.7, 207.2 (207.2) | 270.2, 236.3, 207.8 (236.3) | 215.5, 201.4, 183.8 (201.4) |
+| panic A | 221.4, 197.3, 187.3 (197.3) | 197.3, 221.4, 187.3 (197.3) | 187.3, 216.1, 207.5 (207.5) |
+| panic B | 224.0, 222.4, 221.5 (222.4) | 204.6, 235.8, 241.1 (235.8) | 204.6, 221.6, 241.1 (221.6) |

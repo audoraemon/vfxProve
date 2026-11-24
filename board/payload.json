@@ -7,26 +7,41 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-mission-clarity`)\n**13** in progress · **29** to do · **174** done\n**11** active branches besides Develop-Main\n\n**Since the last update** (<t:1795497849:f>)\n• New: Mission clarity: every step says what to do; why-not banners",
+     "description": "**v0.12** is the latest release (`kak-mission-clarity`)\n**14** in progress · **29** to do · **174** done\n**14** active branches besides Develop-Main\n\n**Since the last update** (<t:1795508620:f>)\n• New: Veil ability levels: the dark watches back (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-24T12:24:09+07:00"
+     "timestamp": "2026-11-24T15:23:40+07:00"
+    },
+    {
+     "title": "god/veil-levels",
+     "description": "65 commits not in Develop-Main · last commit today · local only\n> docs: the Veil's ability levels design (the dark watches back: the Pale Eye and ten twists)\n\n**In progress** (1)\n• Veil ability levels: the dark watches back",
+     "color": 5016537
     },
     {
      "title": "feat/god-chamber",
-     "description": "56 commits not in Develop-Main · last commit today · local only\n> fix: The Sermon in the Capital placed to Aldermere's shape: route A and the toll pass\n\n_No Ledger task points at this branch._",
+     "description": "58 commits not in Develop-Main · last commit today · local only\n> fix: The Relic Run in the Capital placed to Aldermere's shape\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/soldier-duties",
-     "description": "38 commits not in Develop-Main · last commit today · local only\n> test: re-record the references the soldier duties move (499 of 508 rows)\n\n_No Ledger task points at this branch._",
+     "description": "42 commits not in Develop-Main · last commit today · local only\n> test: re-record the three rows the Decree and Dominion route fixes move\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "claude/natural-people",
-     "description": "14 commits not in Develop-Main · last commit yesterday · local only\n> docs: fair life notes -- two T5 rows updated for the final-review re-record\n\n_No Ledger task points at this branch._",
+     "description": "17 commits not in Develop-Main · last commit today · local only\n> docs: no step left in the flinch's wording; spec amended for the step ruling\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/loss-warning-all",
+     "description": "6 commits not in Develop-Main · last commit today · local only\n> test: Hide the faithful warns the later of two marches when none is lost yet\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/sound-natural-2",
+     "description": "1 commit not in Develop-Main · last commit today\n> fix: remove the soldiers' march sound (sol_step)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -43,7 +58,14 @@
      "title": "god/veil-powers",
      "description": "33 commits not in Develop-Main · last commit 3 days ago\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
      "color": 5016537
-    },
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "feat/wish-clarity",
      "description": "1 commit not in Develop-Main · last commit 5 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
@@ -58,14 +80,7 @@
      "title": "god/dominion-t3-old",
      "description": "2 commits not in Develop-Main · last commit 18 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 7041664
-    }
-   ]
-  },
-  {
-   "allowed_mentions": {
-    "parse": []
-   },
-   "embeds": [
+    },
     {
      "title": "fix/evac-recalm",
      "description": "1 commit not in Develop-Main · last commit 46 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",

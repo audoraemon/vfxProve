@@ -1,10 +1,10 @@
 {
- "hash": "ae8af805012dea96",
- "updated": "2026-11-24T12:24:09+07:00",
+ "hash": "8ab15cf0907d29da",
+ "updated": "2026-11-24T15:23:40+07:00",
  "changes": {
-  "date": "<t:1795497849:f>",
+  "date": "<t:1795508620:f>",
   "items": [
-   "New: Mission clarity: every step says what to do; why-not banners"
+   "New: Veil ability levels: the dark watches back (in progress)"
   ]
  },
  "snapshot": {
@@ -1677,6 +1677,15 @@
     "updated": "2026-10-07",
     "order": 0
    },
+   "veil-ability-levels": {
+    "title": "Veil ability levels: the dark watches back",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "god/veil-levels",
+    "updated": "2026-11-24",
+    "order": 7
+   },
    "veil-authority-powers": {
     "title": "Veil authority tree and powers",
     "status": "doing",
@@ -1969,28 +1978,52 @@
   },
   "branches": [
    {
-    "name": "feat/god-chamber",
-    "ahead": 56,
+    "name": "god/veil-levels",
+    "ahead": 65,
     "behind": 95,
     "date": "2026-11-24",
-    "subject": "fix: The Sermon in the Capital placed to Aldermere's shape: route A and the toll pass",
+    "subject": "docs: the Veil's ability levels design (the dark watches back: the Pale Eye and ten twists)",
+    "pushed": false
+   },
+   {
+    "name": "feat/god-chamber",
+    "ahead": 58,
+    "behind": 95,
+    "date": "2026-11-24",
+    "subject": "fix: The Relic Run in the Capital placed to Aldermere's shape",
     "pushed": false
    },
    {
     "name": "feat/soldier-duties",
-    "ahead": 38,
-    "behind": 27,
+    "ahead": 42,
+    "behind": 0,
     "date": "2026-11-24",
-    "subject": "test: re-record the references the soldier duties move (499 of 508 rows)",
+    "subject": "test: re-record the three rows the Decree and Dominion route fixes move",
     "pushed": false
    },
    {
     "name": "claude/natural-people",
-    "ahead": 14,
-    "behind": 80,
-    "date": "2026-11-23",
-    "subject": "docs: fair life notes -- two T5 rows updated for the final-review re-record",
+    "ahead": 17,
+    "behind": 0,
+    "date": "2026-11-24",
+    "subject": "docs: no step left in the flinch's wording; spec amended for the step ruling",
     "pushed": false
+   },
+   {
+    "name": "feat/loss-warning-all",
+    "ahead": 6,
+    "behind": 0,
+    "date": "2026-11-24",
+    "subject": "test: Hide the faithful warns the later of two marches when none is lost yet",
+    "pushed": false
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-24",
+    "subject": "fix: remove the soldiers' march sound (sol_step)",
+    "pushed": true
    },
    {
     "name": "god/veil-review",

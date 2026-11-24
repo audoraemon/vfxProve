@@ -585,6 +585,33 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "near", "captain"])
+
+
+## The why-not banners (Mission clarity, spec 5.2): a fright on a warden only sends him to hide; one on the captain within EI_FRIGHT_GAP of
+## the last count is not counted. A power that kills what it reaches counts, so says nothing. Only reads.
+const EI_WHY_WARDEN := "A WARDEN ONLY HIDES - KILL HIM"
+const EI_WHY_SHAKEN := "STILL SHAKEN - SCARE HIM AGAIN SOON"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	if not "scare" in MissionVerbs.verbs_of(key) or "banish" in MissionVerbs.verbs_of(key):
+		return ""
+	for q in quarries:
+		if q.dead or q.state == State.OUT or q.state == State.SAFE or not _alive(q.target) or q.target.inside:
+			continue
+		var g := q.target.ground_pos
+		if not _cast_reaches(key, at, g) or _may_kill(key, at, g):
+			continue
+		if not _is_captain(q):
+			return EI_WHY_WARDEN
+		if _fright_wait > PowerBook.impact(key):  # the count is made when the danger lands, not at the click
+			return EI_WHY_SHAKEN
+	return ""
+
+
 ## The map tags, most important first: the captain, each warden out (or his door while he is inside), each waiting target's countdown, the
 ## stop each walks to, the Citadel's gate, then the guards of every target in the street (red, pointed at) and anyone who would see a target die.
 func tags() -> Array[MapTag]:

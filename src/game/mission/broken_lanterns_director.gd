@@ -308,6 +308,37 @@ func hint_phase() -> String:
 	return "knights" if living_knights() > 0 else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "knights"])
+
+
+const WHY_STANDS := "HE STILL STANDS BY IT - LEAD HIM OFF"
+const WHY_SHIELDED := "A KNIGHT (BLUE) SHIELDS IT"
+
+
+## Mission clarity (spec 5.6): a Strike or Burn on a lantern a Knight guards (a blow only shakes it), and a Confuse or compel on a Knight who
+## stands by one (only a kill or a lead takes him off: a Knight refuses a lure, so a Wisp banners too). A cast that could kill him or lead him off is judged by that. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	if crowd == null or knights.is_empty():
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	if "strike" in verbs or "burn" in verbs:
+		for s in standing_shrines():
+			var k := guard_of(s)
+			if k != null and _cast_reaches(key, at, s.center()):
+				return "" if _may_kill(key, at, k.ground_pos) else WHY_SHIELDED
+		return ""
+	if ("confuse" in verbs or "hold" in verbs) and not ("lead" in verbs or "kill" in verbs):
+		for k in knights:
+			if not _alive(k):
+				continue
+			for s in standing_shrines():
+				if s.distance_to(k.ground_pos) <= GUARD_REACH and _cast_reaches(key, at, k.ground_pos):
+					return WHY_STANDS
+	return ""
+
+
 ## The tour (v0.10 M6, spec §5): a lantern, the flame-bearer, the Temple the Knights come out of.
 func tour() -> Array:
 	var out := []

@@ -363,6 +363,74 @@ func hint_phase() -> String:
 	return "four" if believers_outside() >= need else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "burning", "four"])
+
+
+## The why-not banner of a Faithful held but still watching the door (Mission clarity, spec 5.6).
+const WHY_HELD := "HELD, HE STILL SEES - CONFUSE HIM"
+
+
+## Mission clarity (spec 5.6): a lead or lure to the door that will be turned away or is not for the grieving, and a hold on a Faithful who
+## watches the door (he still sees). Only reads. A whisper is read from the person it just sent (MissionDirector._whispered_at); a light and a
+## compel take hold after the cast is made, so they are judged by who stands in their reach.
+func why_not(key: String, at: Vector2) -> String:
+	if burning or roof_fallen or crowd == null or door == Vector2.INF:
+		return ""
+	var text := _why_brought(key, at)
+	return text if text != "" else _why_held(key, at)
+
+
+## What a turned-away grieving is told (First Prayers says "he").
+func _turned_words() -> String:
+	return "WATCHED - SHE WILL BE TURNED AWAY"
+
+
+## What the one who is not of the grieving is told.
+func _only_words() -> String:
+	return "ONLY THE GRIEVING (GOLD) GO IN"
+
+
+## A Lead or Lure that brings someone to the house: not one of the grieving, or one a Faithful sees at the door.
+func _why_brought(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if "kill" in verbs:
+		return ""
+	if "lead" in verbs:
+		var w := _whispered_at(at)
+		if w == null or not _near_house(w.goal() if w.has_goal() else w.ground_pos, DOOR_REACH):  # (one already standing there has no goal)
+			return ""
+		if not grieving.has(w):
+			return _only_words()
+		return _turned_words() if faithful_seeing(door, SIGHT, null, w) != null else ""
+	if "lure" in verbs and _near_house(at, LURE_REACH):
+		var poor := false
+		var other := false
+		for p in crowd.citizens:
+			if not _alive(p) or p.inside or not _cast_reaches(key, at, p.ground_pos):
+				continue
+			if grieving.has(p) and not believers.has(p):
+				poor = true
+			elif not faithful.has(p):
+				other = true
+		if poor:
+			return _turned_words() if faithful_seeing(door, SIGHT) != null else ""
+		return _only_words() if other else ""
+	return ""
+
+
+## A Hold that only holds (a compel) on a Faithful who watches the door: held, he still sees; only a whisper or Discord blinds him.
+func _why_held(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if verbs.size() != 1 or verbs[0] != "hold":
+		return ""
+	for f in watchers(door, SIGHT):
+		if _cast_reaches(key, at, f.ground_pos):
+			return WHY_HELD
+	return ""
+
+
 ## The tour (v0.10 M6, spec §5): her door, the Temple, the Inquisitor.
 func tour() -> Array:
 	var out := []

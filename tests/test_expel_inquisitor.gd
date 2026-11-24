@@ -86,9 +86,9 @@ static func _frame(t) -> void:
 		and objectives[1] is ClockObjective, "the Assassinate objective runs ahead of the dawn: the winning strike never also loses")
 	t.check(m.goal == "Stop his three wardens, then kill the captain or drive him out of the town" and m.goal_label == "The inquisitor is gone"
 		and m.lose == "The captain reaches the Citadel, or dawn comes", "the goal, label and lose are the spec's")
-	t.check(MissionHints.line("expel_inquisitor") == "Stop each lantern-warden (gold): kill him, or put him out of the walls."
-		and MissionHints.line("expel_inquisitor", "captain") == "The captain walks his rounds: kill him, or frighten him three times."
-		and MissionHints.line("expel_inquisitor", "near") == "The captain nears the Citadel: stop him now.", "the three hints")
+	t.check(MissionHints.line("expel_inquisitor") == "Kill or banish each lantern-warden (gold). A fright only sends a warden to hide."
+		and MissionHints.line("expel_inquisitor", "captain") == "The captain (gold) walks his rounds. Kill him, or scare him three times, each 8 s or more apart, while he walks."
+		and MissionHints.line("expel_inquisitor", "near") == "The captain (gold) nears the Citadel (red). Kill or banish him now.", "the three hints")
 	t.check(m.camera_at == ExpelInquisitorDirector.EI_CAMERA_AT and m.intro_from == m.camera_at + Vector2(0.0, 6.0), "the camera is the director's")
 	# C2: no parent const name is redeclared (a parse error otherwise); the Hunt's numbers carry its prefix.
 	var own := (ExpelInquisitorDirector as GDScript).get_script_constant_map()
@@ -487,7 +487,7 @@ static func _captain_safe(t) -> void:
 	Kit.arrive(cap.target, near_pos)
 	cap.target.go_duty(d.safe_at)
 	Kit.run_for(s, AssassinateDirector.TICK + DT)
-	t.check(banners.has("THE CAPTAIN NEARS THE CITADEL") and d.hint_phase() == "near" and MissionHints.line("expel_inquisitor", d.hint_phase()) == "The captain nears the Citadel: stop him now.",
+	t.check(banners.has("THE CAPTAIN NEARS THE CITADEL") and d.hint_phase() == "near" and MissionHints.line("expel_inquisitor", d.hint_phase()) == "The captain (gold) nears the Citadel (red). Kill or banish him now.",
 		"within 20 s: THE CAPTAIN NEARS THE CITADEL and the hint says stop him now (%s)" % [banners])
 	t.check(!rules.finished, "(set-up) the night is not lost yet")
 	Kit.arrive(cap.target, d.safe_at)

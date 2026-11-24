@@ -1493,7 +1493,7 @@ func open_legend() -> void:
 		return
 	_pressing = false
 	_aim.cancel()
-	_legend = LegendPanel.new().setup(_hud.all_tags())
+	_legend = LegendPanel.new().setup(_hud.all_tags(), _rules.loadout)
 	_legend.name = "Legend"
 	_bf.hud_layer.add_child(_legend)
 	_legend.closed.connect(_on_legend_closed)

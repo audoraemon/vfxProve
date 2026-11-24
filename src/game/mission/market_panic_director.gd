@@ -507,6 +507,57 @@ func hint_phase() -> String:
 	return "steadied" if standing < wards.size() else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "coming", "open", "steadied"])
+
+
+const STANDS_BANNER := "THE WARDEN STANDS FAST"
+const STEADIES_BANNER := "A WARDEN (RED) STEADIES THEM"
+
+
+## Whether a cast of `key` at `at` takes warden `w` (on guard, reached) off his post (Mission clarity, spec 5.1; pre-flight I6): a kill in
+## reach of him, a whisper, Discord, a compel or a set-down outside; a lure only if he can be lured (a man on duty is deaf to it) and the
+## light lies beyond GUARD_REACH of his post. A fright does nothing to a fearless man. Only reads.
+func _moves_warden(key: String, at: Vector2, w: Ward, verbs: PackedStringArray) -> bool:
+	var man := w.man as Person
+	if "kill" in verbs and _may_kill(key, at, man.ground_pos):
+		return true
+	if "lead" in verbs or "confuse" in verbs or "banish" in verbs or "calm" in verbs:
+		return true
+	if "lure" in verbs:
+		return man.mind in Person.LURABLE and at.distance_to(w.post) > HarvestDirector.GUARD_REACH
+	return "hold" in verbs
+
+
+## Mission clarity (spec 5.1): the Festival's Lead, Lure or Confuse on goers; a fright or a lure on a warden on guard (`THE WARDEN STANDS
+## FAST`); a fright that lands only on goers a warden steadies (`A WARDEN (RED) STEADIES THEM`). "" whenever the cast could take a warden
+## off his post, break a goer or kill one.
+func why_not(key: String, at: Vector2) -> String:
+	if broken():
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	var warden_hit := false
+	for w in wards:
+		if _on_guard(w) and _cast_reaches(key, at, (w.man as Person).ground_pos):
+			if _moves_warden(key, at, w, verbs):
+				return ""
+			warden_hit = true
+	var scares := "scare" in verbs
+	var steadied_hit := false
+	for p in _goers_reached(key, at):
+		if "kill" in verbs and _may_kill(key, at, p.ground_pos):
+			return ""
+		if scares and not steadied(p) and not is_waiting(p):
+			return ""
+		steadied_hit = steadied_hit or (scares and steadied(p))
+	if warden_hit and (scares or "lure" in verbs):
+		return STANDS_BANNER
+	if steadied_hit:
+		return STEADIES_BANNER
+	return super(key, at)
+
+
 ## The tour (mission spec §2, v0.11 M3): the fair and its wardens, then the three later crowds' sources with their times ("by": the
 ## chain can bring them sooner), the last with the close.
 func tour() -> Array:

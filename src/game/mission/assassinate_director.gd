@@ -644,6 +644,12 @@ func _door_in(q: Quarry) -> Vector2:
 	return q.stop_doors[i] if i >= 0 else q.target.ground_pos
 
 
+## Where a cast must land to reach `q` (Mission clarity, for the why-not banners): his feet in the street, the door he is behind indoors.
+## Only reads.
+func _reach_point(q: Quarry) -> Vector2:
+	return _door_in(q) if q.target.inside else q.target.ground_pos
+
+
 ## Where `q`'s round takes him next (v0.11 M2): the stop he walks to, or the safe place.
 func _leg_goal(q: Quarry) -> Vector2:
 	return q.stop_doors[q.leg] if q.leg < q.stops.size() else safe_at
@@ -841,6 +847,11 @@ func hint_phase() -> String:
 		State.WAITING:
 			return "next" if stopped() > 0 else "inside"
 	return "safe" if q.leg >= q.stops.size() else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "hiding", "inside", "next", "safe"])
 
 
 ## The results' report (v0.11 M2): how the night ended for the targets ("escaped" if one got away; with all dead, "seen" if any

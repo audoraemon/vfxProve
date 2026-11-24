@@ -328,6 +328,72 @@ func hint_phase() -> String:
 	return "mates" if not mates_with().is_empty() else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "herald", "climbing", "relay", "mates"])
+
+
+const MATE_SEES_BANNER := "CONFUSED, HE STILL SEES - LEAD HIM"
+
+
+## What a cast does to this warning (Mission clarity, spec 5.1): the carrier's (WarningDirector.Reach), else a mate with him that a
+## Discord cannot take off the road. Only reads.
+func _cast_reach(key: String, at: Vector2) -> Reach:
+	var reach := _carrier_reach(key, at)
+	if reach != Reach.NONE or waiting or phase == Phase.OVER or warning_dead:
+		return reach
+	var verbs := MissionVerbs.verbs_of(key)
+	if "confuse" in verbs and not ("kill" in verbs or "lead" in verbs or "lure" in verbs or "banish" in verbs):
+		for p in mates_with():
+			if _cast_reaches(key, at, p.ground_pos):
+				return Reach.NOT
+	return Reach.NONE
+
+
+## Mission clarity (spec 5.1): the carrier's banner; or, for a Discord on a mate, `CONFUSED, HE STILL SEES - LEAD HIM` (a confused man is
+## still a witness; a whispered one walks off, a lured one stares at the light and sees nothing of the road).
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if not (waiting or phase == Phase.OVER or warning_dead) and _alive(messenger) and not messenger.inside:
+		# A cast that counted never also banners (pre-flight I6): on the rope a lead, lure or fright pulls him off it; and a lead, lure or
+		# fright that takes a mate holds him back (the mates stand ~1.4 off the carrier, so a radius or a pick that reaches one reaches both).
+		if _on_rope() and _cast_reaches(key, at, messenger.ground_pos) and _moves(verbs, messenger):
+			return ""
+		if _takes_mate(key, at, verbs):
+			return ""
+		if "lead" in verbs:
+			# A whisper is judged by the one it picked (MissionDirector._whispered_at), not by the radius round the click.
+			return STOPS_BANNER if _whispered_at(at) == messenger else ""
+	if _cast_reach(key, at) != Reach.NOT:
+		return ""
+	return STOPS_BANNER if _carrier_reach(key, at) == Reach.NOT else MATE_SEES_BANNER
+
+
+## Whether the carrier is on the rope, climbing (the phase "climbing").
+func _on_rope() -> bool:
+	var bell := crowd.bell if crowd != null else null
+	return bell != null and bell.keeper == messenger and bell.state == BellNetwork.State.CLIMBING
+
+
+## Whether a power with `verbs` takes `p` off his feet or his way: a lead, a lure, or a fright (an ordinary loud cast does not frighten a
+## soldier, pre-flight B1).
+func _moves(verbs: PackedStringArray, p: Person) -> bool:
+	return "lead" in verbs or "lure" in verbs or ("scare" in verbs and not p.soldier)
+
+
+## Whether this cast takes a mate with the carrier: the one a whisper picked, or any a lure or a fright reaches.
+func _takes_mate(key: String, at: Vector2, verbs: PackedStringArray) -> bool:
+	var with_him := mates_with()
+	if "lead" in verbs:
+		var w := _whispered_at(at)
+		return w != null and with_him.has(w)
+	if "lure" in verbs or "scare" in verbs:
+		for p in with_him:
+			if _moves(verbs, p) and _cast_reaches(key, at, p.ground_pos):
+				return true
+	return false
+
+
 ## No tour of its own: BellRingersDirector shows the posts (v0.11 M3).
 func tour() -> Array:
 	return []

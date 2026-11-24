@@ -920,6 +920,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "caught", "waiting", "hounds", "shut", "gate"])
+
+
 ## The gate household `i` is heading for (v0.11 M6, Task 6's review): the one its file walks on to behind a lamp already out (out_to);
 ## else the gate whose mouth is nearest where its lamp is whispered to, or, standing, where he stands -- shut or open, so the hint can
 ## say a household makes for a shut gate; -1 with no lamp. Only reads.

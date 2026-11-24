@@ -621,6 +621,47 @@ func hint_phase() -> String:
 	return "relay" if phase == Phase.RUN and relays > 0 else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "herald", "bell", "relay"])
+
+
+## What a cast does to the carrier (Mission clarity, spec 5.1; pre-flight I6): NONE when it does nothing to him (it does not reach him, or
+## is no verb that moves him), MAYBE when it reaches him and could stop the warning (a kill in reach of him, a banish where the walls stop it,
+## a calm), NOT when it reaches him and will not: a fright, Discord, a whisper or a lure only stops him until he is on his feet. Only reads.
+enum Reach { NONE, MAYBE, NOT }
+const STOPS_BANNER := "HE STOPS, BUT KEEPS THE WARNING"
+
+
+func _carrier_reach(key: String, at: Vector2) -> Reach:
+	# A kill that has just taken the carrier is the cast that counted: where he fell (waiting to be judged, or stopped by it).
+	var fell := _fell_at
+	if fell == Vector2.INF and stopped_how == "kill" and is_instance_valid(messenger):
+		fell = messenger.ground_pos
+	if fell != Vector2.INF and "kill" in MissionVerbs.verbs_of(key) and _may_kill(key, at, fell):
+		return Reach.MAYBE
+	if warning_dead or phase == Phase.OVER or not _alive(messenger) or messenger.inside:
+		return Reach.NONE
+	if not _cast_reaches(key, at, messenger.ground_pos):
+		return Reach.NONE
+	var verbs := MissionVerbs.verbs_of(key)
+	if ("kill" in verbs and _may_kill(key, at, messenger.ground_pos)) or "calm" in verbs or ("banish" in verbs and walls_stop):
+		return Reach.MAYBE
+	for v: String in ["scare", "confuse", "lead", "lure"]:
+		# An ordinary loud cast does not frighten a soldier (pre-flight B1); every other hold takes him.
+		if v in verbs and not (v == "scare" and messenger.soldier):
+			# The watchman of a barred postern holds its key: a fright takes him out through it and the walls stop the warning (W3).
+			if v == "scare" and key_door() != Vector2.INF:
+				return Reach.MAYBE
+			return Reach.NOT
+	return Reach.NONE
+
+
+## Mission clarity (spec 5.1): a fright, Discord, a whisper or a lure on the carrier stops him only until he is back on his feet.
+func why_not(key: String, at: Vector2) -> String:
+	return STOPS_BANNER if _carrier_reach(key, at) == Reach.NOT else ""
+
+
 ## The tour (board tags, spec §4): the watchman at the gate, then the bellkeeper.
 func tour() -> Array:
 	var out := []

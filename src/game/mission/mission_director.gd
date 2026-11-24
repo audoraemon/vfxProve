@@ -91,6 +91,91 @@ func route_points() -> Array[Vector2]:
 	return out
 
 
+## How far past a cast's reach a target may stand and still count as "reached" for a why-not banner (Mission clarity, spec 6.1).
+const WHY_MARGIN := 1.0
+
+
+## Virtual (Mission clarity, spec 6.1): the banner for a cast of `key` at `at` that reaches one of this director's targets in the
+## current phase and will not count; "" when it counts, or reaches none of them. ONLY READS: no rng, no state, no signal, no timeline,
+## no helper that refreshes a cache; it judges the state after the director's own cast handlers ran (the HUD asks after them).
+## Rules for every override (pre-flight I6, M3):
+##  - A cast is "" if ANY of MissionVerbs.verbs_of(key) could count in this phase (a key with several verbs is judged by all of them:
+##    Smite kills within its KILL_R, so a bolt that kills a warden on guard never banners "stands fast"; see _may_kill()).
+##  - A key with modes (The Bell Lies: Calm or Hold) is judged by the mode the cast took: _last_mode(); "" when unknown.
+##  - "" when the director's own handler already bannered this cast (Informer's SEEN_BANNER, the Tax mob, Heretic's THEIR GUARD KEEPS IT).
+##  - Gate on _cast_reaches() to the phase's targets first, so a cast far from every target says nothing.
+func why_not(_key: String, _at: Vector2) -> String:
+	return ""
+
+
+## Virtual (Mission clarity, spec 6.1): every phase hint_phase() can return, "" for the mission's own. A subclass that adds phases
+## returns its own and what its parent's hint_phase() it calls can return. The key-resolution test reads it (MissionSteps, MissionHints).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray([""])
+
+
+## Whether a cast of `key` at `at` reaches a target standing at `g`: within the power's cast radius plus WHY_MARGIN (widened as the cast
+## itself was: a Gathered Storm, _cast_grow()).
+func _cast_reaches(key: String, at: Vector2, g: Vector2) -> bool:
+	return at.distance_to(g) <= Crowd._cast_radius(key) * _cast_grow(key, at) + WHY_MARGIN
+
+
+## Whether a cast of `key` at `at` kills what stands at `g` (pre-flight I6): a Kill power, and `g` within the kill radius of its level 1
+## (the area's r, or its KILL_R stat) -- or, when the HUD asks about the cast just made, of the effect itself: its level's kill radius,
+## times a Gathered Storm's growth (Smite level 5: a dragged bolt kills up to 2.5x as wide, and a kill it makes must never banner).
+func _may_kill(key: String, at: Vector2, g: Vector2) -> bool:
+	if not "kill" in MissionVerbs.verbs_of(key):
+		return false
+	var r := maxf(float(Targeting.area_at(key, 1).get("r", 0.0)), float(PowerBook.level_stat(key, 1, "KILL_R", 0.0)))
+	var fx := _this_cast(key, at)
+	if fx != null and "lv_kill_r" in fx:
+		r = maxf(r, float(fx.get("lv_kill_r")))
+	return at.distance_to(g) <= r * _cast_grow(key, at)
+
+
+## The effect of the cast just made, if it is this one (`key` at `at`, the latest Rules cast); null for a cast only asked about. Only reads.
+func _this_cast(key: String, at: Vector2) -> FxTimeline:
+	if rules == null or rules._casts.is_empty():
+		return null
+	var last: Dictionary = rules._casts.back()
+	if String(last.get("key", "")) != key or not (last.get("at", Vector2.INF) as Vector2).is_equal_approx(at):
+		return null
+	var fx: Variant = last.get("fx")
+	return fx as FxTimeline if is_instance_valid(fx) else null
+
+
+## How much wider than its level-1 area the cast just made struck (a Gathered Storm's `grow`); 1.0 for any other cast. Only reads.
+func _cast_grow(key: String, at: Vector2) -> float:
+	var fx := _this_cast(key, at)
+	return maxf(1.0, float(fx.get("grow"))) if fx != null and "grow" in fx else 1.0
+
+
+## The mode the latest cast took (The Bell Lies' "well" or "guard"), read from its effect; "" when there is none or it has no mode.
+func _last_mode() -> String:
+	var fx: Variant = rules.last_fx() if rules != null else null
+	if fx == null or not "mode" in (fx as Object):
+		return ""
+	return String((fx as Object).get("mode"))
+
+
+## The person a Mind Whisper just sent at `at` (pre-flight I7): the nearest WHISPERED within MindWhisperFx.PICK_R of it with the whole
+## LINGER still to run. His goal (`_goal`) is where he was sent. Null for none. Only reads.
+func _whispered_at(at: Vector2) -> Person:
+	if crowd == null:
+		return null
+	var best: Person = null
+	var best_d := MindWhisperFx.PICK_R
+	for list: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in list:
+			if not is_instance_valid(p) or p.mind != Person.Mind.WHISPERED or p.whispered_left() < MindWhisperFx.LINGER - 0.01:
+				continue
+			var d := at.distance_to(p.ground_pos)
+			if d <= best_d:
+				best_d = d
+				best = p
+	return best
+
+
 ## Virtual (v0.10 M6, spec §3): the phase whose how-to-win line the HUD shows (MissionHints), "" for the mission's own.
 func hint_phase() -> String:
 	return ""

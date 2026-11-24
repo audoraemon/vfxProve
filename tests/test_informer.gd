@@ -384,7 +384,7 @@ static func _warn(t) -> void:
 	var s := _world()
 	var d: InformerDirector = s.d
 	var stops := d.tour()
-	t.check(MissionHints.line("informer").contains("Do not kill") and MissionHints.line("informer", "waiting").contains("Do not kill")
+	t.check(MissionHints.line("informer").contains("Do not kill") and MissionHints.line("informer", "waiting").contains("Nothing turns him")
 		and String(stops[0][1]).contains("do not kill him") and String(Kit.labels(d)[0]).contains("DO NOT KILL"),
 		"the hint (from the first second), the tour and the contact's tag say plainly: turn him, do not kill him (ruling on Decision 26)")
 	d._visit(0)

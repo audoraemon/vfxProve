@@ -1158,6 +1158,29 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "taken", "carried"])
+
+
+## Mission clarity (spec 5.5): a fright on a bearer whose escort guards him only shakes him (_look(): afraid while guarded, he keeps the
+## standard), unless the cast kills him within its kill radius. Only reads. A Kill on a guarded bearer is not asked about: the escort who
+## takes the standard up has his own banner (BH_TAKEN_UP, said at the next look), so there is no second.
+const BH_WHY_STEADIED := "HIS ESCORT (RED) STEADIES HIM"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	if not "scare" in MissionVerbs.verbs_of(key):
+		return ""
+	for i in steps.size():
+		var b := bearer(i)
+		if b == null or not steps[i].raised or steps[i].broken or not _cast_reaches(key, at, b.ground_pos) or _may_kill(key, at, b.ground_pos):
+			continue
+		if _guarded(i) or _snap_guarded(i):
+			return BH_WHY_STEADIED
+	return ""
+
+
 ## The map tags (MS §5), most important first: each standard's bearer (gold, pointed at) with his seconds to the house; the believers' houses
 ## (blue, a taken one red) with the nearest standard's seconds; the musters not yet raised (grey) with their countdown; the escorts (red,
 ## pointed at once the march begins).

@@ -246,6 +246,7 @@ const SUITES := [
 	"res://tests/test_herald.gd",
 	"res://tests/test_herald_nights.gd",
 	"res://tests/test_threat_alert.gd",
+	"res://tests/test_threat_wiring.gd",
 	"res://tests/test_bell_ringers.gd",
 	"res://tests/test_market_panic.gd",
 	"res://tests/test_informer.gd",

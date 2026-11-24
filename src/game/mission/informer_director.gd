@@ -412,6 +412,29 @@ func _seen_banner() -> String:
 	return "THE TOWN CRIES MURDER"
 
 
+## Loss warning: the base's (the found informer running for the Temple's door, `safe_0`), and the names' deadline once the last contact has
+## the word (`names`, the strip's time: _names_in() loses the night unless he is found first). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := names_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"names", "THE NAMES REACH THE TEMPLE", "FIND THE INFORMER", eta, safe_at))
+	return out
+
+
+## Mission seconds until the names reach the Temple by the back lanes (_names_in()): the timeline's "names", or the last visit's
+## FOUND_LIMIT if that comes first (step()); INF once he is found, the trail cold, or the night decided. Only reads.
+func names_eta() -> float:
+	if found or cold or contacts.is_empty() or quarries.is_empty() or quarries[0].state == State.SAFE or all_fallen() or timeline == null \
+			or not timeline.pending("names"):
+		return INF
+	var eta := timeline.seconds_to("names")
+	var last := contacts[contacts.size() - 1]
+	if last.word:
+		eta = minf(eta, maxf(last.word_at + FOUND_LIMIT - _clock, 0.0))
+	return eta
+
+
 ## The night is lost: a contact died, or left the town, before he was turned (v0.11 M3).
 func lost_reason() -> String:
 	return "cold" if cold else ""

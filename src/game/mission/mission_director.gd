@@ -369,6 +369,14 @@ func threats() -> Array[Dictionary]:
 	return out
 
 
+## Real seconds `p` still needs to reach `to` at the speed he moves now (his mind, a power's hold on his pace, a slow status, the ground
+## under him: his walk_speed), along the rest of his path (TempleReport.walk_seconds()). The loss warning's walks. Only reads.
+static func walk_left(p: Person, to: Vector2) -> float:
+	if not is_instance_valid(p):
+		return INF
+	return TempleReport.walk_seconds(p, to, p.walk_speed / maxf(Person.PANIC_SPEED * p.pace, 0.0001))
+
+
 ## Virtual: what the bell's next toll adds to this night's Gaze (threats()): LanternWatch.GAZE_TOLL on a gaze Lantern's night before its
 ## first toll (a later toll adds nothing, a blind Lantern turns no more), 0 elsewhere. Mira's House fills it where there is no Lantern.
 func toll_gaze() -> float:

@@ -66,9 +66,10 @@ static func _other_escorts(t) -> void:
 	t.check(l.gate_at == LostLambDirector.GATE_MOUTH and l.exit_at == LostLambDirector.EXIT and l.charge_start == LostLambDirector.START
 		and l.return_to == LostLambDirector.TEMPLE_DOOR and l.guardhouse == LostLambDirector.GUARDHOUSE and l.watch_posts.size() == 2
 		and l.watch_posts[0] == LostLambDirector.POSTS[0] and l.watch_posts[1] == LostLambDirector.POSTS[1], "the Lost Lamb starts with its own places")
+	# Task 22: the Exodus seeds gate_at and exit_at (the last gate's mouth and way out) in _init(); FaceHalcyon and HideFaithful inherit them and assign both in _plan()
 	for d: EscortDirector in [ExodusDirector.new(), FaceHalcyonDirector.new(), HideFaithfulDirector.new()]:
-		t.check(d.gate_at == Vector2.INF and d.exit_at == Vector2.INF and d.guardhouse == Vector2.INF and d.return_to == Vector2.INF
-			and d.charge_start == Vector2.INF and d.watch_posts.is_empty(), "%s starts with no place seeded (its setup assigns them)" % [d.get_script().resource_path.get_file()])
+		t.check(d.gate_at == ExodusDirector.GATE_MOUTHS[2] and d.exit_at == ExodusDirector.GATE_EXITS[2] and d.guardhouse == Vector2.INF and d.return_to == Vector2.INF
+			and d.charge_start == Vector2.INF and d.watch_posts.is_empty(), "%s starts with only the Exodus gate_at and exit_at seeded (its setup assigns the rest)" % [d.get_script().resource_path.get_file()])
 	t.check(not "road" in Overrides.town_vars(LostLambDirector.new()) and not "stocks_at" in Overrides.town_vars(ExodusDirector.new()),
 		"the Prisoner's town vars are not the others'")
 

@@ -110,6 +110,20 @@ const CAMERA_AT := Vector2(-7.0, 9.0)
 const MARK_NOT_YET := Color("9a948a")
 const MARK_PLACE := Color("ff9a3a")
 
+## The town's own places (Capital spec 6.4.4): the households' points, the gates' mouths, ways out, names, words and the way along the wall at each, the patrols' beats and the
+## Temple's door, each seeded from its const (a copy for the nested ones) and read in the const's place; a town overrides them (Overrides). EscortDirector's gate_at and
+## exit_at are the last gate's mouth and way out, seeded in _init() (setup() no longer assigns them, so the town's value survives). The households' words and names, the
+## gates' count and SHUT_AT stay consts.
+const TOWN_VARS := ["house_points", "gate_mouths", "gate_exits", "gate_labels", "gate_words", "gate_along", "beat_spots", "temple_door_at", "gate_at", "exit_at"]
+var house_points: Array = HOUSE_POINTS.duplicate(true)
+var gate_mouths: Array = GATE_MOUTHS.duplicate(true)
+var gate_exits: Array = GATE_EXITS.duplicate(true)
+var gate_labels: Array = GATE_LABELS.duplicate(true)
+var gate_words: Array = GATE_WORDS.duplicate(true)
+var gate_along: Array = GATE_ALONG.duplicate(true)
+var beat_spots: Array = BEATS.duplicate(true)
+var temple_door_at: Vector2 = TEMPLE_DOOR
+
 ## The households and the gates (v0.11 M6).
 var households: Array = []
 var gates: Array = []
@@ -156,44 +170,52 @@ var _roads := {}
 var _keep_in := 0.0
 
 
+## The seeds (Capital spec 6.4.4): gate_at and exit_at are the last gate's mouth and way out (setup() snaps them to walkable ground after _plan(), as it did when _plan()
+## assigned them); a town's overrides replace them with its own.
+func _init() -> void:
+	gate_at = GATE_MOUTHS[2]
+	exit_at = GATE_EXITS[2]
+
+
 ## The plan (v0.11 M6): the Gaze, no guard change, the Temple, the gates and their posts, the beats, the households' houses.
 func _plan() -> void:
 	gaze = GazeMeter.new()
 	watch_changes = false
-	temple_door = _walkable(TEMPLE_DOOR)
-	return_to = TEMPLE_DOOR
-	guardhouse = TEMPLE_DOOR
-	gate_at = GATE_MOUTHS[2]
-	exit_at = GATE_EXITS[2]
+	temple_door = _walkable(temple_door_at)
+	return_to = temple_door_at
+	guardhouse = temple_door_at
 	hunt_at = -1.0
 	charge_label = "LAMP"
 	for s: Structure in town._built:
 		if is_instance_valid(s) and s.role == &"temple":
 			temple = s
 			break
-	for g in GATE_MOUTHS.size():
+	for g in gate_mouths.size():
 		var gate := Gate.new()
-		gate.label = String(GATE_LABELS[g])
-		gate.words = String(GATE_WORDS[g])
-		gate.mouth = _walkable(GATE_MOUTHS[g])
-		gate.way_out = _walkable(GATE_EXITS[g])
+		gate.label = String(gate_labels[g])
+		gate.words = String(gate_words[g])
+		gate.mouth = _walkable(gate_mouths[g])
+		gate.way_out = _walkable(gate_exits[g])
 		gate.shut_at = float(SHUT_AT[g])
 		gates.append(gate)
 		for k in GATE_WATCH:
-			watch_posts.append(_walkable(gate.mouth + (GATE_ALONG[g] as Vector2) * POST_GAP * (float(k) - 0.5)))
-	for b: Array in BEATS:
+			watch_posts.append(_walkable(gate.mouth + (gate_along[g] as Vector2) * POST_GAP * (float(k) - 0.5)))
+	# a town's beats are the quiet test's too, unless a Lantern Hunt's ruling already set tune_beats (it still holds BEATS until something does)
+	if tune_beats == BEATS:
+		tune_beats = beat_spots.duplicate(true)
+	for b: Array in beat_spots:
 		var line := PackedVector2Array()
 		for at: Vector2 in b:
 			line.append(_walkable(at))
 		beats.append(line)
 	patrol_size = PATROL_SIZE
 	var skip: Array = []
-	for i in HOUSE_POINTS.size():
+	for i in house_points.size():
 		var h := Household.new()
 		h.words = String(HOUSE_WORDS[i])
 		h.name = String(HOUSE_NAMES[i])
 		h.gate = i
-		h.house = _quiet_house(HOUSE_POINTS[i], gates[i].mouth, skip)
+		h.house = _quiet_house(house_points[i], gates[i].mouth, skip)
 		if h.house == null:
 			push_warning("ExodusDirector: no house for %s" % h.words)
 			continue
@@ -951,12 +973,18 @@ func hint_seconds() -> float:
 func tour() -> Array:
 	var out := []
 	if not households.is_empty():
-		out.append([(households[0] as Household).door, "The west household hides here. At %s, whisper its lamp to the postern; the rest follow." % UiTheme.clock(float(tune_out_at[0]))])
+		out.append([(households[0] as Household).door, "The west household hides here. At %s, whisper its lamp to %s; the rest follow." % [
+			UiTheme.clock(float(tune_out_at[0])), String((gates[0] as Gate).words)]])
 	if not gates.is_empty():
-		out.append([(gates[0] as Gate).mouth, "Gates shut: postern %s, Side Gate %s, Main Gate %s (lost unless ten are out)." % [
-			UiTheme.clock(float(SHUT_AT[0])), UiTheme.clock(float(SHUT_AT[1])), UiTheme.clock(float(SHUT_AT[2]))]])
+		out.append([(gates[0] as Gate).mouth, "Gates shut: %s %s, %s %s, %s %s (lost unless ten are out)." % [
+			_bare(0), UiTheme.clock(float(SHUT_AT[0])), _bare(1), UiTheme.clock(float(SHUT_AT[1])), _bare(2), UiTheme.clock(float(SHUT_AT[2]))]])
 	out.append([temple_door, "The Temple. Inquisitors take any believer they catch here. Ten must get out."])
 	return out
+
+
+## Gate `g`'s words without the leading "the" (the tour's "postern", "Side Gate").
+func _bare(g: int) -> String:
+	return String((gates[g] as Gate).words).trim_prefix("the ")
 
 
 ## What the results show (v0.11 M6): the believers out and taken, the seizures, the reliefs, the Gaze.

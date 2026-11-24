@@ -468,7 +468,7 @@ var _getup_left := 0.0
 var _swing_left := 0.0
 ## Seconds left frozen in fright before running (v0.11.2, STARTLE); see startled().
 var _startle_left := 0.0
-## The flinch (fair life, 2026-11-20): seconds left of it, how long it has run, where it looks, and where its step goes.
+## The flinch (fair life, 2026-11-20): seconds left of it, how long it has run and where it looks.
 var _flinch_left := 0.0
 var _flinch_t := 0.0
 var _flinch_from := Vector2.INF

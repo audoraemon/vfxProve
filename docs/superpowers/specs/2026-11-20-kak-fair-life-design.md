@@ -2,6 +2,9 @@
 
 Date: 2026-11-20. Source: Discord #ideas "Mission Adjust" (2026-11-20). Size: a small change.
 
+Amended 2026-11-24 (user ruling): the flinch takes no step. It is turn, freeze, stare, carry on: a step carried goers out of a
+warden's or guard's reach and moved mission times (docs/KAK_Fair_Life_Notes.md, "Step dropped").
+
 ## Why
 
 The user: the fair's crowd "looks unnatural. They stand still like nothing happened; even when Ember burns them they

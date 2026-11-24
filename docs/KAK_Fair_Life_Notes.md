@@ -158,7 +158,7 @@ Review findings fixed on top of T5:
   up to 2 s: whisper 0.98 -> 0.03 tiles in 1.5 s, go_duty 2.19 -> 0.10). Person._flinch_end() now runs in _hold_begin() (whisper, compel,
   confuse and the other holds), go_duty() and fight(), and _flinch_think() ends the flinch itself when the mind is no longer eligible
   (citizen not CALM/RECOVER/OBSERVE/DUTY; soldier not at POST or hurrying), when held_by_will(WILL_ABSOLUTE) or resists_mind(), or when a
-  DUTY citizen has a goal (the flinch's own step uses _target, never _goal, so a goal is always someone else's order).
+  DUTY citizen has a goal (the flinch never sets _goal, so a goal is always someone else's order).
 - M5: flinch() also refuses a soldier with a goal (walking back to his post), as it does a DUTY citizen.
 - (History, gone with the step on 2026-11-24: see the last section.) The flinch's step back (FLINCH_STEP 0.5) can carry a goer across WARD_R. steadied() reads position, so a goer standing
   near the edge can be unsteadied for a look. It is part of why the difficulty moved (panic A/B and the prisoner times); no code change.
@@ -180,7 +180,7 @@ Prisoner times (s), seeds 1 / 2 / 3, median in brackets:
 User ruling: "Drop the step". A flinch is turn, freeze, stare, carry on, and nobody moves. Person.FLINCH_STEP, _flinch_step_to and the step branch of
 _flinch_think are gone; the freeze, the facing, the stare, the carry-on and the cancel rules of the final review stay. The step had carried goers across
 WARD_R and the guard reaches (the M4 note above): with it gone the difficulty is back where it was. test_flinch now asserts a flinched person moves less
-than 0.05 tiles the whole flinch and keeps facing the danger; the warden and soldier test asserts they did not move.
+than 0.05 tiles through the flinch (checked to 0.2 s before its end) and keeps facing the danger; the warden and soldier test asserts they did not move.
 
 Re-measure (49 rows against 641e5fe4): no outcome flips. 15 checksums re-recorded (panic_play_1/2/3, panic_b_play_1/2/3, prisoner_play_1/2/3,
 prisoner_b_play_1/2/3, hide_faithful_ruin_play_2, face_halcyon_ruin_play_1 and _3); the other 34 reproduce. Gate (3 / 2.0 / 0.6): A median 207.5,

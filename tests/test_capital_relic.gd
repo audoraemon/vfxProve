@@ -79,9 +79,9 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	if d == null:
 		return
 	var def := MissionBook.get_mission("%s@capital" % ID)
-	t.check(def.camera_at == Vector2(5.0, -3.5) and def.intro_from == Vector2(5.0, 2.5), "camera_at and intro_from are overridden together (C9)")
-	t.check(d.cart_route == [Vector2(14.0, 1.5), Vector2(14.0, -9.0), Vector2(-2.0, -9.0), Vector2(-2.0, -13.0), Vector2(4.0, -13.0), Vector2(0.0, -22.6)]
-		and d.drop_spot == Vector2(16.0, -14.0) and d.pip_spot == Vector2(8.0, -6.0), "the Capital's route, drop-off and Pip's spot are as pinned (%s)" % [d.cart_route])
+	t.check(def.camera_at == Vector2(-12.0, -9.5) and def.intro_from == Vector2(-12.0, -3.5), "camera_at and intro_from are overridden together (C9)")
+	t.check(d.cart_route == [Vector2(-13.0, -14.0), Vector2(3.0, -10.0), Vector2(10.0, -9.0), Vector2(9.0, -13.0), Vector2(5.5, -17.5), Vector2(0.0, -22.6)]
+		and d.drop_spot == Vector2(-16.0, -5.0) and d.pip_spot == Vector2(-7.0, -7.0), "the Capital's route, drop-off and Pip's spot are as pinned (%s)" % [d.cart_route])
 	t.check(d.route.size() == 6 and d.checkpoints.size() == 2, "six route points and two halts (%d, %d)" % [d.route.size(), d.checkpoints.size()])
 	var gate := Places.point(&"citadel_gate")
 	t.check(gate != Vector2.INF and d.route[d.route.size() - 1].distance_to(gate) <= 0.6, "the route's last point is the Capital's Citadel gate %s (%s)" % [gate, d.route[d.route.size() - 1]])
@@ -115,8 +115,9 @@ static func _alive_near(p: Person, at: Vector2, within: float) -> bool:
 	return p != null and p.is_alive() and p.ground_pos.distance_to(at) <= within and not p.profile.role in Wish.NOT_LAY
 
 
-## The cart's route (route point 0 to 5: five legs; the walk from the Temple's door to the first halt apart) and Pip's walk to the first halt, Capital against Aldermere on
-## the real grids (band 0.75-1.35); each leg printed.
+## The cart's route (route point 0 to 5: five legs), the walk from the Temple's door to the first halt (when the cart halts first), the second halt's walk back to the Temple's
+## door (a seen death's report run), Pip's walk to the first halt and his carry from the second halt to the drop-off's door, Capital against Aldermere on the real grids
+## (band 0.75-1.35); each leg printed.
 static func _walk_parity(t, d: RelicRunDirector, cap: Dictionary, ald: Dictionary) -> void:
 	City.use(&"aldermere")
 	var a := Kit.world(MissionBook.relic_run())
@@ -132,11 +133,11 @@ static func _walk_parity(t, d: RelicRunDirector, cap: Dictionary, ald: Dictionar
 	var door_a := Cap.walk(ald.grid, ad.temple_door, ad.checkpoints[0])
 	Cap.parity(t, "the cart's walk between the halts", rc[0] + rc[1], ra[0] + ra[1])
 	print("CAPITAL relic Temple's door to the first halt: capital %.1f, aldermere %.1f (%.2fx)" % [door_c, door_a, door_c / door_a])
-	# Measured (the gates, Task 18 report): the spec's first halt (14.0, 1.5) is 27.6 of walking from the Temple's door (Aldermere's 9.3), so the cart reaches it about 35 s
-	# later and the policy idles 63-67 s before it (Aldermere 35-49). The brief's only knob is leg 2's end, which does not move this; it is pinned as measured, out of the band.
-	t.check(door_c / door_a >= 2.5 and door_c / door_a <= 3.5, "the cart's walk from the Temple's door to the first halt is 2.5-3.5x Aldermere's, longer as measured (%.1f vs %.1f)" % [door_c, door_a])
-	print("CAPITAL relic Pip's carry (the second halt to the drop-off's door): capital %.1f, aldermere %.1f" % [
-		Cap.walk(cap.grid, d.checkpoints[1], d.shrine), Cap.walk(ald.grid, ad.checkpoints[1], ad.shrine)])
+	# The Task 18 placement search: the spec's first halt (14.0, 1.5) was 27.6 of walking from the Temple's door (2.99x), so the cart halted about 35 s late and the policy
+	# idled 63-67 s; its second halt was 6.8 from the door, so a seen death's runner reached the Temple in seconds. Both halts moved to Aldermere's shape.
+	Cap.parity(t, "the Temple's door to the first halt", door_c, door_a)
+	Cap.parity(t, "the second halt back to the Temple's door", Cap.walk(cap.grid, d.checkpoints[1], d.temple_door), Cap.walk(ald.grid, ad.checkpoints[1], ad.temple_door))
+	Cap.parity(t, "Pip's carry (the second halt to the drop-off's door)", Cap.walk(cap.grid, d.checkpoints[1], d.shrine), Cap.walk(ald.grid, ad.checkpoints[1], ad.shrine))
 	Kit.done(a)
 	City.use(&"capital")
 
@@ -219,7 +220,7 @@ static func _words_true(t, d: RelicRunDirector) -> void:
 		if tag.label != "":
 			said.append(tag.label)
 	var re := RegEx.create_from_string("\\b(east watch-house|west watch-house|market square|poor quarter|south-west|east well|west well|main gate)\\b")
-	t.check(re.search("the east watch-house") != null and re.search("the south-east gate watch-house") == null, "the words regex bites on a sample")
+	t.check(re.search("the east watch-house") != null and re.search("the bathhouse watch-house") == null, "the words regex bites on a sample")
 	var wrong := false
 	for line in said:
 		var m := re.search(line.to_lower())
@@ -228,14 +229,14 @@ static func _words_true(t, d: RelicRunDirector) -> void:
 			print("CAPITAL relic line names '%s': %s" % [m.get_string(), line])
 	t.check(not wrong, "no line names a place of Aldermere (%s)" % [said])
 	t.check(d.tour().size() == 3 and said.size() >= 25, "the lines were gathered (%d)" % said.size())
-	t.check(d.check_words == ["the south-east gate watch-house", "the plaza watch-house"], "the halts' words are the south-east gate's and the plaza's (%s)" % [d.check_words])
-	# The words are true where the halts stand: the first by a real gate in the old town's south-east corner, the second by the pilgrim plaza.
-	var gate_near := INF
+	t.check(d.check_words == ["the noble quarter watch-house", "the bathhouse watch-house"], "the halts' words are the noble quarter's and the bathhouse's (%s)" % [d.check_words])
+	# The words are true where the halts stand: the first in the noble quarter (its patrician street, west of the cathedral), the second before the old town's bathhouse.
+	t.check(Places.rect(&"noble_quarter").has_area() and Places.rect(&"noble_quarter").has_point(d.checkpoints[0]), "the first halt stands in the noble quarter (%s)" % [d.checkpoints[0]])
+	var bath := INF
 	for s: Dictionary in City.current().structures():
-		if s.role == &"gate" and (s.rect as Rect2).get_center().x > 10.0 and (s.rect as Rect2).get_center().y > 0.0:
-			gate_near = minf(gate_near, (s.rect as Rect2).get_center().distance_to(d.checkpoints[0]))
-	t.check(gate_near <= 3.0, "the first halt is %.1f from a gate in the south-east of the old town" % gate_near)
-	t.check(Places.rect(&"pilgrim_plaza").grow(2.0).has_point(d.checkpoints[1]), "the second halt is within 2 of the pilgrim plaza (%s)" % [d.checkpoints[1]])
+		if s.get("tag", &"") == &"gpt_bathhouse":
+			bath = minf(bath, (s.rect as Rect2).get_center().distance_to(d.checkpoints[1]))
+	t.check(bath <= 3.0, "the second halt is %.1f from the bathhouse" % bath)
 
 
 ## The cart's start, both halts, Pip, the drop-off's door and the Citadel's gate (or their edge arrows) are clear of the padded HUD stack at the camera's resting place and at

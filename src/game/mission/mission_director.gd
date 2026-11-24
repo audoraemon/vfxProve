@@ -377,6 +377,30 @@ static func walk_left(p: Person, to: Vector2) -> float:
 	return TempleReport.walk_seconds(p, to, p.walk_speed / maxf(Person.PANIC_SPEED * p.pace, 0.0001))
 
 
+## The loss warning's road lengths (road_len()), each [grid version, length] by its two ends.
+var _warn_roads := {}
+
+
+## The length of the grid's road from `a` to `b` (straight where there is none), kept while the grid stands as it was (WalkGrid.version):
+## the loss warning's legs not yet begun. Changes nothing in the night.
+func road_len(a: Vector2, b: Vector2) -> float:
+	var grid: WalkGrid = crowd._grid if crowd != null else null
+	if grid == null:
+		return a.distance_to(b)
+	var key := Vector4(a.x, a.y, b.x, b.y)
+	var kept: Variant = _warn_roads.get(key)
+	if kept != null and int(kept[0]) == grid.version:
+		return float(kept[1])
+	var total := 0.0
+	var at := a
+	for pt in grid.path(a, b):
+		total += at.distance_to(pt)
+		at = pt
+	total += at.distance_to(b)
+	_warn_roads[key] = [grid.version, total]
+	return total
+
+
 ## Virtual: what the bell's next toll adds to this night's Gaze (threats()): LanternWatch.GAZE_TOLL on a gaze Lantern's night before its
 ## first toll (a later toll adds nothing, a blind Lantern turns no more), 0 elsewhere. Mira's House fills it where there is no Lantern.
 func toll_gaze() -> float:

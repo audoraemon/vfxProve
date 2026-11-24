@@ -209,6 +209,10 @@ func _found_banner() -> String:
 	return "THE CELLAR IS FOUND"
 
 
+func _find_title() -> String:
+	return "THE CAPTAIN FINDS THE CELLAR"
+
+
 ## Blight's mark (v0.11.1, spec §7.3, Heretic Hunt row 15): a raised standard within BlightFx.REACH of `at`, guarded or not (a guarded one
 ## is still a mark, so the player is told THEIR GUARD KEEPS IT). Only reads.
 func blight_target(at: Vector2) -> Vector2:

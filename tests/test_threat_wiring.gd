@@ -11,6 +11,9 @@ const PR := preload("res://tests/test_prisoner.gd")
 const EX := preload("res://tests/test_exodus.gd")
 const SH := preload("res://tests/test_spoiled_harvest.gd")
 const HO := preload("res://tests/test_heart_of_faith.gd")
+const HH := preload("res://tests/test_heretic_hunt.gd")
+const FT := preload("res://tests/test_first_taste.gd")
+const PN := preload("res://tests/test_procession.gd")
 const DT := 0.05
 
 
@@ -27,6 +30,10 @@ static func run(t) -> void:
 	_granary(t)
 	_blessed(t)
 	_kindled(t)
+	_cellar(t)
+	_cleanse(t)
+	_ship(t)
+	_escape(t)
 
 
 static func _find(list: Array, id: StringName) -> Dictionary:
@@ -241,4 +248,91 @@ static func _kindled(t) -> void:
 	o.whisper(o.ground_pos + Vector2(4.0, 0.0), MindWhisperFx.LINGER)
 	Kit.run_for(s, DT)
 	t.check(_find(d.threats(), &"kindled").is_empty(), "the rite broken: no threat")
+	Kit.done(s)
+
+
+## The Heretic Hunt: the captain on his search, `found` at the rest of his route and stops; at its last leg his walk to the cellar.
+static func _cellar(t) -> void:
+	var s := HH._world()
+	var d: HereticHuntDirector = s.d
+	t.check(_find(d.threats(), &"found").is_empty(), "the captain in the Temple: no threat")
+	for i in 3:
+		HH._break(s, d, i)
+	d._call_head()
+	var head := d.head as Person
+	Kit.run_for(s, DT)
+	var far := _find(d.threats(), &"found")
+	t.check(far.is_empty() or float(far.eta) > HereticHuntDirector.CAPTAIN_STOP * float(d.head_route.size() - 1),
+		"out on his search: the cellar is at least his stops away (%s)" % [far])
+	for k in d.head_route.size() - 1:
+		Kit.arrive(head, d.head_route[k])
+		Kit.run_for(s, HereticHuntDirector.CAPTAIN_STOP + 0.3)
+	var th := _find(d.threats(), &"found")
+	t.check(d._route_at == d.head_route.size() - 1 and _at(th, d.find_eta()) and String(th.title) == "THE CAPTAIN FINDS THE CELLAR"
+		and float(th.eta) <= MissionDirector.walk_left(head, d.cellar_door) + 0.01, "on his last leg: his walk to the cellar (%s)" % [th])
+	head.confuse(3.0)
+	t.check(_find(d.threats(), &"found").is_empty(), "confused, he leaves his search a while: no threat")
+	Kit.done(s)
+
+
+## The First Taste: two clergy kneeling run the ring, `cleanse` at its seconds left (real seconds); a march still mustering is far off.
+static func _cleanse(t) -> void:
+	var s := FT._world()
+	var d: FirstTasteDirector = s.d
+	d.offer(d.marked[0])
+	t.check(d.cleanse_eta() > 15.0, "a march mustering: the cleanse is far off (%.1f)" % d.cleanse_eta())
+	var m: FirstTasteDirector.March = d.marches[0]
+	FT._kneel_all(m, d)
+	t.check(is_equal_approx(d.cleanse_eta(), FirstTasteDirector.CLEANSE_SECONDS), "all kneeling, the ring not yet run: the whole ring (%.2f)" % d.cleanse_eta())
+	FT._run(s, 1.0)
+	var th := _find(d.threats(), &"cleanse")
+	t.check(d.cleansing() and _at(th, FirstTasteDirector.CLEANSE_SECONDS - d.cleanse) and float(th.eta) < FirstTasteDirector.CLEANSE_SECONDS,
+		"the ring runs: its seconds left (%s)" % [th])
+	FT._done(s)
+
+
+## The Procession: the Prince waiting at the dock is `ship` at the ship's docking and his last leg; walking to the steps, far off.
+static func _ship(t) -> void:
+	var s := PN._setup()
+	var d: ProcessionDirector = s.d
+	var p := d.prince
+	PN._to(s, 30.0)
+	t.check(d.ship_eta() > 60.0, "at 30 s, on his way to the steps: the ship is far off (%.1f)" % d.ship_eta())
+	PN._arrive(p)
+	PN._to(s, 82.0)
+	PN._arrive(p)
+	PN._to(s, 100.0)
+	PN._arrive(p)
+	PN._to(s, 110.0)
+	var walk := (d.road_len(d.route[3], d.route[4]) - ProcessionDirector.ARRIVE) / p.walk_speed
+	var th := _find(d.threats(), &"ship")
+	t.check(d.leg == 3 and _at(th, d.ship_eta()) and absf(float(th.eta) - (d.timeline.seconds_to("ship") + walk)) < 0.2,
+		"at the dock at 110 s: the ship's docking and his last leg (%s, walk %.2f)" % [th, walk])
+	p.panic(p.ground_pos + Vector2(1.0, 0.0), 2.0)
+	t.check(_find(d.threats(), &"ship").is_empty(), "frightened, he is halted: no threat")
+	PN._done(s)
+
+
+## Last Judgement: one escape short of the limit, a citizen running for a way out is `escape` at his run there.
+static func _escape(t) -> void:
+	var s := Kit.world(MissionBook.last_judgement())
+	var d: LastJudgementDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	t.check(d.escapes_left() > 1 and _find(d.threats(), &"escape").is_empty(), "nobody fleeing: no threat")
+	crowd.escaped_count = rules._escaped0 + Rules.ESCAPE_LIMIT - 1
+	var p: Person = null
+	for c in crowd.citizens:
+		if is_instance_valid(c) and c.is_alive() and not c.inside:
+			p = c
+			break
+	p.mind = Person.Mind.FLEE
+	p.walk_speed = p._mind_speed()
+	p._goal = p.ground_pos + Vector2(4.0, 0.0)
+	p._path = PackedVector2Array()
+	var th := _find(d.threats(), &"escape")
+	t.check(d.escapes_left() == 1 and _at(th, (4.0 - Person.GOAL_REACH) / p.walk_speed) and String(th.title) == "THE PEOPLE ESCAPE",
+		"one short of the limit: his run to the way out (%s)" % [th])
+	rules._escaped0 -= 1
+	t.check(_find(d.threats(), &"escape").is_empty(), "two short, one running: no threat")
 	Kit.done(s)

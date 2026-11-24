@@ -332,6 +332,30 @@ func under_way() -> bool:
 	return WarningDirector._alive(prince) and not boarded
 
 
+## Loss warning: the Prince on his way to the ship (PrinceObjective: boarded, the night is lost), `ship` at ship_eta(). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := ship_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"ship", "THE PRINCE SAILS", "KILL THE PRINCE", eta, prince.ground_pos))
+	return out
+
+
+## Mission seconds until the Prince steps aboard (_walk(), _board()): his walk to the point he is on, then each leg after it at his walk,
+## each start no sooner than its hold (the blessing at the steps, the ship at the waiting ground); INF while he is in his carriage, halted
+## by a fright or a power (he walks on once it ends), or gone. Only reads.
+func ship_eta() -> float:
+	if not under_way() or prince.inside or prince.mind != Person.Mind.CALM or timeline == null or route.is_empty():
+		return INF
+	var speed := maxf(prince.walk_speed, 0.05)
+	var last := route.size() - 1
+	var t := maxf(walk_left(prince, route[leg]) - ARRIVE / speed, 0.0)
+	for k in range(leg, last):
+		t = maxf(t, maxf(_hold_until(k) - timeline.elapsed(), 0.0) * timeline.stretch_factor())
+		t += maxf(road_len(route[k], route[k + 1]) - ARRIVE, 0.0) / speed
+	return t * mission_delta(1.0)
+
+
 ## Everyone who would see the Prince die where they stand: living, out of doors, within Crowd.DOOM_WITNESS (the rule
 ## Crowd.nearest_witness() judges by). Only reads.
 func witnesses() -> Array[Person]:

@@ -1816,10 +1816,22 @@ func _gates(hazard: bool, shots := false) -> void:
 
 
 ## The judgement scenario's targets, cast in turn (v0.08): a ring closing on the Citadel.
-const JUDGEMENT_TARGETS := [Vector2(-9.0, -11.0), Vector2(0.8, 2.2), Vector2(-12.0, 1.0), Vector2(-4.0, -6.0),
-	TownLayout.CITADEL_ORIGIN, Vector2(-6.0, -12.0), Vector2(4.0, -4.0), Vector2(-10.5, -8.0)]
+## The ring is a per-city table (Task 20 of the Capital plan; read by City.current().id()): Aldermere's list is v0.08's, unchanged; the Capital's eight
+## are the Keep's gate side first, then the old town's ring round the Citadel (each snapped to a real, hittable place, Task 20 report).
+const JUDGEMENT_TARGETS := {
+	&"aldermere": [Vector2(-9.0, -11.0), Vector2(0.8, 2.2), Vector2(-12.0, 1.0), Vector2(-4.0, -6.0),
+		TownLayout.CITADEL_ORIGIN, Vector2(-6.0, -12.0), Vector2(4.0, -4.0), Vector2(-10.5, -8.0)],
+	&"capital": [Vector2(0.0, -25.5), Vector2(-8.0, -12.0), Vector2(-7.5, -2.5), Vector2(6.0, -4.0),
+		Vector2(-18.0, -15.0), Vector2(10.0, -14.0), Vector2(-3.9, -17.7), Vector2(-20.0, -4.0)],
+}
 ## A cap on the judgement scenario's frames, so a run ends even if the mission does not: twice the mission's clock.
 const JUDGEMENT_MAX_FRAMES := int(Rules.MISSION_SECONDS * 2.0 * 60.0)
+
+
+## The next ring target of the active city (Aldermere's list if the city has none).
+func _judgement_target(next: int) -> Vector2:
+	var list: Array = JUDGEMENT_TARGETS.get(City.current().id(), JUDGEMENT_TARGETS[&"aldermere"])
+	return list[next % list.size()]
 
 
 ## Written only against what exists both before and after v0.08 M2 (refusal(), cast(), loadout, an optional `dp`),
@@ -1845,7 +1857,7 @@ func _judgement() -> void:
 		for slot in rules.loadout.size():
 			if rules.refusal(slot) == "":
 				var at: Vector2 = _richest(rules, mission._bf.ctx.env, mission._crowd) if rich \
-					else JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
+					else _judgement_target(next)
 				next += 1
 				rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()})
 				break
@@ -5345,7 +5357,7 @@ func _play_judgement() -> void:
 			continue
 		for slot in rules.loadout.size():
 			if rules.refusal(slot) == "":
-				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()] if fixed \
+				var at: Vector2 = _judgement_target(next) if fixed \
 					else _richest(rules, mission._bf.ctx.env, mission._crowd)
 				next += 1
 				if rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()}) != null:
@@ -5393,7 +5405,7 @@ func _richest(rules: Rules, env: EnvironmentField, crowd: Crowd) -> Vector2:
 		if w > 0.0 and is_instance_valid(p) and p.is_alive() and not p.inside:
 			pts.append(p.ground_pos)
 			ws.append(w)
-	var best := TownLayout.CITADEL_ORIGIN
+	var best := City.current().citadel_origin()
 	var best_w := -1.0
 	for c in pts:
 		var sum := 0.0

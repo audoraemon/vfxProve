@@ -3,6 +3,10 @@ extends RefCounted
 ## boats. The Capital's overrides (src/game/town/cities/capital_missions/last_judgement.gd) change the brief and the intro's start only, and the camera stays unset (the Citadel).
 ## The scripted play's ring is a per-city table in tools/dev/behaviour_check.gd: Aldermere's list is v0.08's, element for element; the Capital's eight targets each lie within reach of a standing building and the Citadel is clear of the padded HUD stack at the camera; the policy reads the active city, no TownLayout
 ## coordinate. The words are true in the Capital.
+## Step 0 (spec 9 decision 2), measured: no scripted play wins Last Judgement in either town. Every run ends on the 50-escape limit, long before the clock or City Stability:
+## Aldermere route A ring 0/3 (55-58 s), A rich 0/3 (64-78 s), B 0/3 (66-78 s); the Capital A ring 0/3 (40-47 s), A rich 0/3 (43-47 s), B 0/3 (50-80 s, stability left 69-78%).
+## Decision 2 (old-town stability) is NOT applied: a smaller counted area cannot change an escapes loss, and the Capital loses as Aldermere does (accepted parity with Aldermere's
+## known debt). tools/dev/refs/capital_judgement.tsv keeps the three route b runs as references (losses, like routes_t5.tsv's judgement_b_play_*).
 
 const ID := "last_judgement"
 const Cap := preload("res://tests/capital_kit.gd")

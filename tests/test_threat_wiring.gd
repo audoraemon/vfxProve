@@ -17,6 +17,7 @@ const PN := preload("res://tests/test_procession.gd")
 const VF := preload("res://tests/test_vigil_flame.gd")
 const RR := preload("res://tests/test_relic_run.gd")
 const BL := preload("res://tests/test_broken_lanterns.gd")
+const HF := preload("res://tests/test_hide_faithful.gd")
 const DT := 0.05
 
 
@@ -41,6 +42,7 @@ static func run(t) -> void:
 	_vigil_prayer(t)
 	_relic(t)
 	_lantern_prayer(t)
+	_two_held(t)
 
 
 static func _find(list: Array, id: StringName) -> Dictionary:
@@ -413,3 +415,33 @@ static func _lantern_prayer(t) -> void:
 	var th := _find(d.threats(), &"prayer")
 	t.check(d.praying_count() > 0 and _at(th, 1.0 / rate * (s.rules as Rules).clock_rate), "at prayer, Gaze 99: they fill it (%s)" % [th])
 	BL._done(s)
+
+
+## Hide the faithful: one seized with none lost is no threat; two marched at once, the second delivery loses -- the later of the two.
+static func _two_held(t) -> void:
+	var s := HF._world()
+	var d: HideFaithfulDirector = s.d
+	HF._clear_watch(d)
+	d._come_out(0)
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var lead := d.lamp(0)
+	var by := d.patrols[0][0] as Person
+	Kit.arrive(by, (lead.man as Person).ground_pos + Vector2(1.0, 0.0))
+	by.send_to_post(by.ground_pos)
+	Kit.run_for(s, 2.0 * EscortDirector.TICK + DT)
+	t.check(lead.held and d.lost() == 0 and d.threats().is_empty(), "(set-up) one seized, none lost: no threat")
+	var other: EscortDirector.Charge = null
+	for c in d.charges:
+		if c != lead and MissionDirector._alive(c.man):
+			other = c
+			break
+	other.held = true
+	other.seizer = d.patrols[1][0]
+	d._seized_at[other] = d._clock - 5.0
+	d._refresh_march()
+	var th := NightThreat.soonest(d.threats())
+	var later := maxf(d._temple_in(lead), d._temple_in(other))
+	t.check(not th.is_empty() and absf(float(th.eta) - later) < 0.001, "two marched with none lost: the later delivery is the loss (%s, %.2f)" % [th, later])
+	other.held = false
+	other.seizer = null
+	Kit.done(s)

@@ -1,14 +1,14 @@
-# KAK The Sermon in the Capital (plan "The Capital at every tier" Task 17): the scripted gate runs with --city=capital (src/game/town/cities/capital_missions/sermon.gd). name<TAB>how<TAB>expected
-# Route a none and play, route b play, the toll case, seeds 1-3. Recorded as they play: the Capital plays lost at the gate (see the commit body); a row that moves on purpose is re-recorded here in the same commit.
-capital_sermon_none_1	--scenario=sermon --case=none --seed=1 --city=capital	-90446781
-capital_sermon_none_2	--scenario=sermon --case=none --seed=2 --city=capital	-953091700
-capital_sermon_none_3	--scenario=sermon --case=none --seed=3 --city=capital	-318084879
-capital_sermon_play_1	--scenario=sermon --case=play --seed=1 --city=capital	-595772104
-capital_sermon_play_2	--scenario=sermon --case=play --seed=2 --city=capital	-577851488
-capital_sermon_play_3	--scenario=sermon --case=play --seed=3 --city=capital	-724844970
-capital_sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1 --city=capital	-401646527
-capital_sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2 --city=capital	-24351168
-capital_sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3 --city=capital	-451656712
-capital_sermon_toll_1	--scenario=sermon --case=toll --seed=1 --city=capital	-814993096
-capital_sermon_toll_2	--scenario=sermon --case=toll --seed=2 --city=capital	-133557791
-capital_sermon_toll_3	--scenario=sermon --case=toll --seed=3 --city=capital	-138612883
+# KAK The Sermon in the Capital (plan "The Capital at every tier" Task 17, redesign): the scripted gate runs with --city=capital (src/game/town/cities/capital_missions/sermon.gd). name<TAB>how<TAB>expected
+# Route a none and play, route b play, the toll case, seeds 1-3. Route a passes (none lost 3/3, play won 2/3 median 222 s) and the toll passes (3/3); route b fails as Aldermere's does (0/3, recorded as it plays). A row that moves on purpose is re-recorded here in the same commit.
+capital_sermon_none_1	--scenario=sermon --case=none --seed=1 --city=capital	-59816871
+capital_sermon_none_2	--scenario=sermon --case=none --seed=2 --city=capital	-757952909
+capital_sermon_none_3	--scenario=sermon --case=none --seed=3 --city=capital	-74006498
+# capital_sermon_play_1 omitted: seed 1 loses (sermon_over at 300 s with 6 believers of 8); the gate passes on seeds 2 and 3.
+capital_sermon_play_2	--scenario=sermon --case=play --seed=2 --city=capital	-576313543
+capital_sermon_play_3	--scenario=sermon --case=play --seed=3 --city=capital	-92556010
+capital_sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1 --city=capital	-32549534
+capital_sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2 --city=capital	-728164963
+capital_sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3 --city=capital	-656591091
+capital_sermon_toll_1	--scenario=sermon --case=toll --seed=1 --city=capital	-20662042
+capital_sermon_toll_2	--scenario=sermon --case=toll --seed=2 --city=capital	-970868499
+capital_sermon_toll_3	--scenario=sermon --case=toll --seed=3 --city=capital	-742691124

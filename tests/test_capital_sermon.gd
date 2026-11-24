@@ -1,6 +1,6 @@
 extends RefCounted
-## Plan "The Capital at every tier", Task 17: the Sermon in the Capital (spec 6.3.4). The pulpit is the Capital's well number pulpit_well (3, the old town houses' well,
-## east of x = 8), the god's house the dwelling nearest house_spot, the later waves come from `sources`, and `wave_at` is the waves' times; all four are town vars seeded
+## Plan "The Capital at every tier", Task 17: the Sermon in the Capital (spec 6.3.4). The pulpit is the Capital's well number pulpit_well (1, in the south-west
+## houses, chosen by search for Aldermere's shape), the god's house the dwelling nearest house_spot, the later waves come from `sources`, and `wave_at` is the waves' times; all four are town vars seeded
 ## from the consts (a fresh director in Aldermere reads Aldermere's own, and its pulpit is the same well as before). The town's overrides
 ## (src/game/town/cities/capital_missions/sermon.gd) are valid and hold after setup; the walks are in Aldermere's band (real grid walks); the sentries stand more than 1.6 apart;
 ## the words the player reads name no Aldermere place; the camera keeps the key points clear of the padded HUD stack; the policies read the director and Places.
@@ -74,12 +74,18 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	if d == null:
 		return
 	var def := MissionBook.get_mission("%s@capital" % ID)
-	t.check(def.camera_at == Vector2(8.0, 4.0) and def.intro_from == Vector2(8.0, 10.0), "camera_at and intro_from are overridden together (C9)")
-	t.check(d.pulpit_well == 3 and d.house_spot == Vector2(1.5, -5.0) and d.sources == [Vector2(-6.0, -9.0), Vector2(14.0, -5.5), Vector2(-2.0, -3.0)],
-		"the Capital's well is 3, its house spot (13.0, -2.5), its sources the spec's (%s %s)" % [d.house_spot, d.sources])
-	var well: Rect2 = City.current().wells()[3]
-	t.check(well.get_center().x > 8.0, "the Capital's well 3 stands east of x = 8 (%s)" % [well.get_center()])
-	t.check(d.pulpit == d._walkable(well.get_center() + Vector2(0.0, -0.8)) and d.pulpit.distance_to(well.get_center()) < 1.5, "the pulpit is by well 3 (%s)" % [d.pulpit])
+	t.check(def.camera_at == Vector2(-23.0, 20.0) and def.intro_from == Vector2(-23.0, 26.0), "camera_at and intro_from are overridden together (C9)")
+	t.check(d.pulpit_well == 1 and d.house_spot == Vector2(-20.5, 18.7) and d.sources == [Vector2(-27.75, 13.45), Vector2(-10.25, 22.95), Vector2(-25.75, 22.95)],
+		"the Capital's well is 1, its house spot (-20.5, 18.7), its sources (-27.75, 13.45) (-10.25, 22.95) (-25.75, 22.95) (%s %s)" % [d.house_spot, d.sources])
+	var well: Rect2 = City.current().wells()[1]
+	t.check(d.pulpit == d._walkable(well.get_center() + Vector2(0.0, -0.8)) and d.pulpit.distance_to(well.get_center()) < 1.5, "the pulpit is by the Capital's well 1, a real well (%s)" % [d.pulpit])
+	# Measured (redesign): the first wave's ring places (slots 0-2, the west end of the north arc) are the listeners the policy first whispers to the house once the preacher
+	# falls; Aldermere's stand 3.0-4.1 from its door, so one whisper (reach 10) lands. A door east of the pulpit, 12+ from them, gave 0 believers in the first 100 s.
+	var reach := INF
+	for l: SermonDirector.Listener in d.listeners:
+		if l.wave == 0:
+			reach = minf(reach, l.spot.distance_to(d.door))
+	t.check(reach <= MindWhisperFx.REACH - 2.0, "the first wave's ring place nearest the god's door is well inside one Mind Whisper (%.1f, reach %.0f)" % [reach, MindWhisperFx.REACH])
 	t.check(d.house != null, "the Capital has a god's house")
 	if d.house == null:
 		return
@@ -99,7 +105,7 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 		spots.append(l.spot)
 	t.check(spots.size() == 12, "twelve listeners in four waves (%d)" % spots.size())
 	Cap.spread(t, spots, 0.35)
-	t.check(d.wave_at == [0.0, 85.0, 160.0, 230.0] and d.wave_at == dov.wave_at, "the waves are at 0, 85, 160 and 230 (%s)" % [d.wave_at])
+	t.check(d.wave_at == [0.0, 95.0, 185.0, 260.0] and d.wave_at == dov.wave_at, "the waves are at Aldermere's 0, 95, 185 and 260 (%s)" % [d.wave_at])
 	print("CAPITAL sermon pulpit %s door %s house %s temple door %s" % [d.pulpit, d.door, d.house.center(), d.temple_door])
 	_opening(d, "CAPITAL")
 	_walk_parity(t, d, cap, ald)
@@ -114,18 +120,16 @@ static func _walk_parity(t, d: SermonDirector, cap: Dictionary, ald: Dictionary)
 	var a := Kit.world(MissionBook.sermon())
 	var ad: SermonDirector = a.d
 	_opening(ad, "ALDERMERE")
-	var hw: float = Cap.walk(cap.grid, d.pulpit, d.door)
-	var haw: float = Cap.walk(ald.grid, ad.pulpit, ad.door)
-	print("CAPITAL parity the pulpit to the god's house: capital %.1f, aldermere %.1f (%.2fx)" % [hw, haw, hw / haw])
-	# Measured (Task 17): a whisper reaches 10 along the street (MindWhisperFx.REACH) and a listener is brought in only if he lands by the house, so the Capital's house must lie within one
-	# whisper of the pulpit; every dwelling that does is 5-11 away, 0.45-0.69x Aldermere's 15.1. The spec's spot east of x = 8 has no dwelling beyond the preacher's voice (the nearest east of it is 14+ away: with the house south at (8.25, 14.1) the whisper never landed, 0 of 3 wins, 0 believers in seed 1).
-	t.check(hw <= MindWhisperFx.REACH + 1.0 and hw > SermonDirector.VOICE and haw >= 12.0 and haw <= 18.0, "the Capital's house door is one whisper from the pulpit (%.1f, reach %.0f), Aldermere's is 12-18 (%.1f)" % [hw, MindWhisperFx.REACH, haw])
+	Cap.parity(t, "the pulpit to the god's house", Cap.walk(cap.grid, d.pulpit, d.door), Cap.walk(ald.grid, ad.pulpit, ad.door))
 	for w in 3:
 		Cap.parity(t, "source %d to the pulpit" % (w + 1), Cap.walk(cap.grid, d._wave_source(w + 1), d.pulpit), Cap.walk(ald.grid, ad._wave_source(w + 1), ad.pulpit))
 	var rc: float = Cap.walk(cap.grid, d.door, d.temple_door)
 	var ra: float = Cap.walk(ald.grid, ad.door, ad.temple_door)
-	print("CAPITAL parity the god's house to the Temple's door: capital %.1f, aldermere %.1f (%.2fx)" % [rc, ra, rc / ra])
-	t.check(rc >= 10.0 and rc <= 20.0 and ra >= 26.0 and ra <= 36.0, "the report run is 10-20 in the Capital and 26-36 in Aldermere (%.1f, %.1f): the Faithful's report arrives sooner, measured in the gates" % [rc, ra])
+	print("CAPITAL parity the god's house to the Temple's door (the report run): capital %.1f, aldermere %.1f (%.2fx)" % [rc, ra, rc / ra])
+	# Measured (redesign: a search of every Capital well and dwelling, the candidate table in the Task 17 report): of the dwellings a first-wave listener
+	# reaches with one whisper and whose pulpit walk is in the band, the two with a report run in the band (1.33x, 1.38x) have 11 soldiers within 8 of the door (Aldermere 4-7),
+	# and the gate at the first lost 2 of 3 (2-5 reports a night). The chosen house trades the band for a quiet door: the Faithful's run to the Temple is 1.40-1.50x Aldermere's.
+	t.check(rc / ra >= 1.40 and rc / ra <= 1.50, "the report run is 1.40-1.50x Aldermere's (%.1f vs %.1f): longer, measured in the gates" % [rc, ra])
 	Kit.done(a)
 	City.use(&"capital")
 

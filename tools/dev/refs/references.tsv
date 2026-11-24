@@ -209,8 +209,8 @@ expel_inquisitor_passage_play_3	--scenario=expel_inquisitor --case=play --seed=3
 expel_inquisitor_decree_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=decree:3 --dev-tree	-524646050
 expel_inquisitor_decree_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=decree:3 --dev-tree	-132702527
 expel_inquisitor_decree_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=decree:3 --dev-tree	-332185961
-expel_inquisitor_dominion_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=dominion:3 --dev-tree	-990282567
-expel_inquisitor_dominion_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=dominion:3 --dev-tree	-774539334
+expel_inquisitor_dominion_play_1	--scenario=expel_inquisitor --case=play --seed=1 --god=dominion:3 --dev-tree	-182042168
+expel_inquisitor_dominion_play_2	--scenario=expel_inquisitor --case=play --seed=2 --god=dominion:3 --dev-tree	-855019516
 expel_inquisitor_dominion_play_3	--scenario=expel_inquisitor --case=play --seed=3 --god=dominion:3 --dev-tree	-141926995
 break_hunt_none_1	--scenario=break_hunt --case=none --seed=1	496033989
 break_hunt_none_2	--scenario=break_hunt --case=none --seed=2	-376396901

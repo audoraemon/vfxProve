@@ -715,6 +715,36 @@ func _blight_granary(at: Vector2) -> int:
 	return -1
 
 
+## Loss warning: a carter walking to his granary's door for its last load (taking it empties the granary and loses the night), `emptied_<i>`
+## at his walk there. A carter hauling to the Citadel is not warned: the haul and the walk back are more than a card's time on every granary.
+## Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if emptied != null:
+		return out
+	for i in targets.size():
+		var s := targets[i]
+		if razed(s) or not carters.has(s) or not doors.has(s) or int(loads.get(s, 0)) != 1 or not has_grain(s):
+			continue
+		for c: Variant in carters[s]:
+			var eta := last_load_eta(s, c)
+			if eta < INF:
+				out.append(NightThreat.make(StringName("emptied_%d" % i), "A GRANARY IS EMPTIED", "STOP THE CARTER", eta, (c as Person).ground_pos))
+	return out
+
+
+## Mission seconds until carter `c` takes a load at `s`'s door (_cart(): within TAKE_REACH of it), walking there on his errand at the pace
+## he goes now; INF while he hauls one, is indoors, or is held off his errand by the god or a fright. Only reads.
+func last_load_eta(s: Structure, c: Variant) -> float:
+	if not _alive(c):
+		return INF
+	var p := c as Person
+	if p.inside or p.mind != Person.Mind.DUTY or _hauling.has(p.get_instance_id()):
+		return INF
+	var door: Vector2 = doors[s]
+	return maxf(walk_left(p, door) - TAKE_REACH / maxf(p.walk_speed, 0.05), 0.0) * mission_delta(1.0)
+
+
 ## The night is lost once a granary is emptied (v0.11 M2).
 func lost_reason() -> String:
 	return "emptied" if emptied != null else ""

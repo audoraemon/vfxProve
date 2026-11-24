@@ -9,6 +9,8 @@ const IN := preload("res://tests/test_informer.gd")
 const LL := preload("res://tests/test_lost_lamb.gd")
 const PR := preload("res://tests/test_prisoner.gd")
 const EX := preload("res://tests/test_exodus.gd")
+const SH := preload("res://tests/test_spoiled_harvest.gd")
+const HO := preload("res://tests/test_heart_of_faith.gd")
 const DT := 0.05
 
 
@@ -22,6 +24,9 @@ static func run(t) -> void:
 	_prisoner(t)
 	_exodus_march(t)
 	_exodus_gates(t)
+	_granary(t)
+	_blessed(t)
+	_kindled(t)
 
 
 static func _find(list: Array, id: StringName) -> Dictionary:
@@ -180,4 +185,60 @@ static func _exodus_gates(t) -> void:
 	for k in d.tune_need:
 		d.charges[k].escaped = true
 	t.check(_find(d.threats(), &"gates_shut").is_empty(), "enough out: the gates shutting loses nothing")
+	Kit.done(s)
+
+
+## Spoiled Harvest: a carter walking for a granary's last load is `emptied_<i>` at his walk to its door; more loads left, or confused, none.
+static func _granary(t) -> void:
+	var s := SH._world()
+	var d: HarvestDirector = s.d
+	var g := d.targets[0]
+	d._deliver(g)
+	var c: Person = d.carters[g][0]
+	Kit.arrive(c, d.doors[g] + Vector2(3.0, 0.0))
+	c.go_duty(d.doors[g])
+	t.check(_find(d.threats(), &"emptied_0").is_empty(), "five loads left: no threat")
+	d.loads[g] = 1
+	var th := _find(d.threats(), &"emptied_0")
+	t.check(_at(th, d.last_load_eta(g, c)) and float(th.eta) < 6.0 / maxf(c.walk_speed, 0.05) and String(th.title) == "A GRANARY IS EMPTIED",
+		"the last load: his walk to the door (%s)" % [th])
+	c.confuse(3.0)
+	t.check(_find(d.threats(), &"emptied_0").is_empty(), "confused, he is off his errand: no threat")
+	SH._done(s)
+
+
+## The Heart of Faith: the flame's blessing at BLESSED_AT (`blessed`, the strip's time) while it burns; out, none.
+static func _blessed(t) -> void:
+	var s := HO._world()
+	var d: HeartOfFaithDirector = s.d
+	var th := _find(d.threats(), &"blessed")
+	t.check(_at(th, d.timeline.seconds_to("blessed")) and String(th.title) == "THE GREAT FLAME IS BLESSED", "the flame burns: blessed at its time (%s)" % [th])
+	d.timeline.step(HeartOfFaithDirector.BLESSED_AT - 10.0)
+	t.check(absf(float(_find(d.threats(), &"blessed").get("eta", INF)) - 10.0) < 0.2, "ten seconds before: ten seconds")
+	HO._put_out(d)
+	t.check(_find(d.threats(), &"blessed").is_empty(), "the flame out: no blessing")
+	Kit.done(s)
+
+
+## The Heart of Faith: Odran's rekindling on the steps (`kindled`, the rite's seconds left); broken by a whisper, gone.
+static func _kindled(t) -> void:
+	var s := HO._world()
+	var d: HeartOfFaithDirector = s.d
+	HO._put_out(d)
+	Kit.run_for(s, DT)
+	for p: HeartOfFaithDirector.Post in d.bearers:
+		Kit.free_body(s, p.man)
+	d._odran_comes()
+	var o := d.odran as Person
+	t.check(_find(d.threats(), &"kindled").is_empty(), "Odran out, not at the steps: no threat")
+	Kit.arrive(o, d.steps_at)
+	d._road_at = d._road.size() - 1
+	o.go_duty(d.steps_at)
+	Kit.run_for(s, 1.0)
+	var th := _find(d.threats(), &"kindled")
+	t.check(d.rite_on and _at(th, d.rite_left * (s.rules as Rules).clock_rate) and float(th.eta) < HeartOfFaithDirector.RITE,
+		"at the steps he rekindles: the rite's seconds left (%s)" % [th])
+	o.whisper(o.ground_pos + Vector2(4.0, 0.0), MindWhisperFx.LINGER)
+	Kit.run_for(s, DT)
+	t.check(_find(d.threats(), &"kindled").is_empty(), "the rite broken: no threat")
 	Kit.done(s)

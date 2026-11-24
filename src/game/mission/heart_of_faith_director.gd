@@ -901,6 +901,22 @@ func stages_done() -> bool:
 	return flame_out and odran_down()
 
 
+## Loss warning: the Great Flame blessed at BLESSED_AT while it burns (`blessed`, the strip's time), and once it is out, Odran's rekindling
+## on the steps (`kindled`, the rite's seconds left: broken, it starts again from RITE). His walk to the steps is not warned: the rite itself
+## is longer than the card's time. Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if lost_reason() != "" or stages_done():
+		return out
+	if not flame_out and timeline != null and timeline.pending("blessed"):
+		out.append(NightThreat.make(&"blessed", "THE GREAT FLAME IS BLESSED", "PUT OUT THE FLAME", timeline.seconds_to("blessed"),
+			temple.center() if is_instance_valid(temple) else steps_at))
+	if flame_out and odran_out and rite_on and not odran_down():
+		out.append(NightThreat.make(&"kindled", "ODRAN REKINDLES THE FLAME", "STOP ODRAN", maxf(rite_left, 0.0) * mission_delta(1.0),
+			(odran as Person).ground_pos))
+	return out
+
+
 ## Why the night is lost now (v0.11 M6): the flame kindled anew; the flame blessed; else "".
 func lost_reason() -> String:
 	if kindled:

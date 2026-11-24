@@ -36,7 +36,7 @@ const TABLE := {
 	"long_night": ["temple", "bell_tower", "citadel", "citadel_court", "market_square", "fountain", "dock", "dock_wait"],
 	"lantern_eye": ["temple"],
 	"exodus": ["temple"],
-	"heart_of_faith": ["temple"],
+	"heart_of_faith": ["temple", "citadel_gate"],
 	# The campaign's Feast nights are the Long Night's acts as nights of their own.
 	"feast_festival": ["temple", "market_square", "fountain"],
 	"feast_procession": ["temple", "citadel", "citadel_court", "market_square", "dock", "dock_wait"],

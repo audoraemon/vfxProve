@@ -26,6 +26,13 @@ const TOWER_WORDS := ["the north tower", "the east tower", "the south-west tower
 ## Each mirror's time at the latest, in the timeline's seconds (v0.11 M6, mission spec §1; tuned by the gate in the spec's order: CHAIN
 ## (30-45), STEP_AT[0] (40-60), DRAIN (15-20), MIRROR_HP (90-135), PARTY (2-3); EYE_OPENS (20-30) if doing nothing does not lose).
 const STEP_AT := [40.0, 115.0, 180.0]
+## The town's own spire, mirror towers, their words and times (spec 6.4.3: town vars, seeded from SPIRE, TOWER_POINTS, TOWER_WORDS and STEP_AT as copies).
+## `spire` keeps SPIRE as its default, not a lookup of the Temple (Places.at(&"temple") is one ulp off SPIRE in Aldermere); the Capital sets it by its overrides.
+const TOWN_VARS := ["spire", "tower_points", "tower_words", "step_at"]
+var spire: Vector2 = SPIRE
+var tower_points: Array = TOWER_POINTS.duplicate()
+var tower_words: Array = TOWER_WORDS.duplicate()
+var step_at: Array = STEP_AT.duplicate()
 ## Seconds after a mirror is gone for good that the next goes up at the latest (v0.11 M6).
 const CHAIN := 30.0
 ## Watchmen in each tower's party (v0.11 M6).
@@ -143,10 +150,10 @@ func _plan() -> void:
 			temple = s
 			break
 	var taken: Array = []
-	for i in TOWER_POINTS.size():
-		var tw := _tower_near(TOWER_POINTS[i], taken)
+	for i in tower_points.size():
+		var tw := _tower_near(tower_points[i], taken)
 		if tw == null:
-			push_warning("LanternEyeDirector: no tower for %s" % TOWER_WORDS[i])
+			push_warning("LanternEyeDirector: no tower for %s" % tower_words[i])
 			continue
 		taken.append(tw)
 		towers.append(tw)
@@ -154,13 +161,13 @@ func _plan() -> void:
 		_plan_posts(towers.size() - 1)
 		_own_filters.append(tw.damage_filter)
 		tw.damage_filter = _stone
-		steps.append(_step(String(TOWER_WORDS[i]), feet.back(), Rect2(), float(STEP_AT[i]), PARTY))
+		steps.append(_step(String(tower_words[i]), feet.back(), Rect2(), float(step_at[i]), PARTY))
 		glass.append(MIRROR_HP)
 		shattered.append(false)
 		drain_left.append(0.0)
 		hang_work.append(0.0)
 		_heaven_at.append(-INF)
-	searchlight = Searchlight.new().setup(SPIRE)
+	searchlight = Searchlight.new().setup(spire)
 	searchlight.hold = HOLD
 
 
@@ -201,7 +208,7 @@ func _tower_near(spot: Vector2, exclude: Array) -> Structure:
 
 ## The way out of tower `tw`'s town-side face (v0.11 M6): of its four faces, the one turned most toward the town's middle.
 func _face(tw: Structure) -> Vector2:
-	var inward := tw.center().direction_to(City.current().map().get_center())
+	var inward := tw.center().direction_to(City.current().town().get_center())
 	var best := Vector2.ZERO
 	for dir: Vector2 in [Vector2.DOWN, Vector2.UP, Vector2.RIGHT, Vector2.LEFT]:
 		if best == Vector2.ZERO or dir.dot(inward) > best.dot(inward):
@@ -468,7 +475,7 @@ func _hunting() -> bool:
 
 ## All three mirrors stand raised and whole together (v0.11 M6): the Eye's countdown runs.
 func _all_standing() -> bool:
-	if steps.size() < TOWER_POINTS.size():
+	if steps.size() < tower_points.size():
 		return false
 	for i in steps.size():
 		if not steps[i].raised or steps[i].broken or shattered[i]:
@@ -538,7 +545,7 @@ func _step_eye() -> void:
 		eye_open = true
 		found = true
 		rules.banner.emit(_found_banner())
-		_sound(&"msn_doom", SPIRE)
+		_sound(&"msn_doom", spire)
 
 
 ## The light (v0.11 M6): hunting while a mirror stands, its noise forgotten when it goes quiet; swept on.
@@ -663,7 +670,7 @@ func tags() -> Array[MapTag]:
 	if found or broken_all():
 		return out
 	if _eye_since >= 0.0:
-		out.append(MapTag.place(SPIRE, MARK_WATCHED, "THE EYE OPENS IN %d" % ceili(eye_left()), temple.height if temple != null else 0.0, true))
+		out.append(MapTag.place(spire, MARK_WATCHED, "THE EYE OPENS IN %d" % ceili(eye_left()), temple.height if temple != null else 0.0, true))
 	var cur := current()
 	for i in steps.size():
 		if not steps[i].raised or steps[i].broken:
@@ -728,11 +735,11 @@ func hint_seconds() -> float:
 func tour() -> Array:
 	var out := []
 	if not towers.is_empty():
-		out.append([towers[0].center(), "The north tower. A mirror goes up here at %s: shatter it and keep it shattered %d s." % [
-			UiTheme.clock(float(STEP_AT[0])), roundi(DRAIN)]])
-	out.append([SPIRE, "Halcyon's Searchlight. While a mirror stands, its beams hunt your casts. A cast in the light is seen."])
+		out.append([towers[0].center(), "%s. A mirror goes up here at %s: shatter it and keep it shattered %d s." % [
+			String(tower_words[0]).substr(0, 1).to_upper() + String(tower_words[0]).substr(1), UiTheme.clock(float(step_at[0])), roundi(DRAIN)]])
+	out.append([spire, "Halcyon's Searchlight. While a mirror stands, its beams hunt your casts. A cast in the light is seen."])
 	if towers.size() > 1:
-		out.append([towers[1].center(), "The east and south-west towers: the next mirrors. If all three stand at once, the Eye opens."])
+		out.append([towers[1].center(), "The %s and %s towers: the next mirrors. If all three stand at once, the Eye opens." % [_bare(1), _bare(2)]])
 	return out
 
 
@@ -763,3 +770,8 @@ func teardown() -> void:
 	if is_instance_valid(crowd) and crowd.engineers != null:
 		for v: Variant in _hired:
 			crowd.engineers.not_hired.erase(v)
+
+
+## Tower `i`'s words without "the" and "tower" (the tour's "east and south-west towers").
+func _bare(i: int) -> String:
+	return String(tower_words[i]).trim_prefix("the ").trim_suffix(" tower")

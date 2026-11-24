@@ -12,6 +12,7 @@ static func overrides() -> Dictionary:
 		"def": {"camera_at": camera, "intro_from": camera + Vector2(0.0, 6.0)},
 		"director": {
 			"words": ["west barracks", "gate barracks", "armoury"],
+			"stage_at": [40.0, 110.0, 150.0],
 			"horn_labels": ["The muster horn: the west barracks turns out", "The muster horn: the gate barracks turns out", "The muster horn: the garrison arms"],
 		},
 	}

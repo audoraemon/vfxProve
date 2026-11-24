@@ -70,7 +70,7 @@ static func _aldermere_pin(t) -> void:
 static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	var dov: Dictionary = City.by_id(&"capital").mission_overrides(ID).director
 	var d := Cap.starts(t, ID) as ArmouryDirector
-	t.check(d != null and d.words == dov.words and d.horn_labels == dov.horn_labels and d.stage_at == ArmouryDirector.STAGE_AT, "the director reads back the Capital's words and horn labels after setup")
+	t.check(d != null and d.words == dov.words and d.horn_labels == dov.horn_labels and d.stage_at == dov.stage_at, "the director reads back the Capital's words and horn labels after setup")
 	if d == null:
 		return
 	var def := MissionBook.get_mission("%s@capital" % ID)
@@ -83,7 +83,11 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	t.check(d.targets[0].footprint.position.is_equal_approx(City.current().taverns()[0].position) and d.targets[0].center().distance_to(Vector2(-21.8, -7.7)) < 2.0,
 		"the first target is the west market tavern (%s)" % [d.targets[0].center()])
 	var tower: Rect2 = City.current().gate_towers()[1]
-	t.check(d.targets[1].footprint.position.is_equal_approx(tower.position) and d.targets[1].role == &"tower", "the second target is the west river gate's east tower (%s)" % [d.targets[1].center()])
+	var west_tower: Rect2 = City.current().gate_towers()[0]
+	t.check(d.targets[1].footprint.position.is_equal_approx(tower.position) and d.targets[1].role == &"tower"
+		and d.targets[1].center().distance_to(tower.get_center()) < 2.0 and d.targets[1].center().distance_to(west_tower.get_center()) > 2.0
+		and d.targets[1].center().distance_to(CapitalCity.INNER_GATES[1]) < 4.0,
+		"the second target is the west river gate's east tower, by place: beside that gate, not its west tower or another gate's (%s)" % [d.targets[1].center()])
 	t.check(d.targets[2].footprint.position.is_equal_approx(Places.rect(&"barracks").position) and d.targets[2].center().distance_to(Vector2(-7.8, -28.2)) < 2.5,
 		"the third target is the Keep's barracks (%s)" % [d.targets[2].center()])
 	print("CAPITAL armoury targets %s %s %s; distances %.1f %.1f; faces %s" % [d.targets[0].center(), d.targets[1].center(), d.targets[2].center(),
@@ -121,6 +125,13 @@ static func _walk_parity(t, d: ArmouryDirector, cap: Dictionary, ald: Dictionary
 		print("CAPITAL parity leg %d (%s to %s): capital %.1f, aldermere %.1f (%.2fx)" % [k + 1, d.words[k], d.words[k + 1], c[k], al[k], c[k] / al[k]])
 	print("CAPITAL parity the Citadel's gate to the armoury: capital %.1f, aldermere %.1f" % [Cap.walk(cap.grid, d.citadel_door, d.faces[2]), Cap.walk(ald.grid, ad.citadel_door, ad.faces[2])])
 	Cap.parity(t, "the three targets in order", c[0] + c[1], al[0] + al[1])
+	# Measured consequence (Task 16 fix round 1): the Keep's gate stands beside its barracks, so the reinforcements and reliefs of the third stage
+	# reach the armoury in 8 of walking where Aldermere's take 36 (4.4x faster); the gates and the per-stage table (task-16-report.md) show the stage still
+	# plays in Aldermere's band. A layout change that moves either walk out of its range changes that stage and fails here.
+	var cw: float = Cap.walk(cap.grid, d.citadel_door, d.faces[2])
+	var aw: float = Cap.walk(ald.grid, ad.citadel_door, ad.faces[2])
+	t.check(cw >= 4.0 and cw <= 16.0, "the Capital's reinforcement walk, the Keep's gate to the armoury, is 4-16 (%.1f)" % cw)
+	t.check(aw >= 28.0 and aw <= 44.0, "Aldermere's reinforcement walk, the Citadel's gate to the armoury, is 28-44 (%.1f)" % aw)
 	Kit.done(a)
 	City.use(&"capital")
 

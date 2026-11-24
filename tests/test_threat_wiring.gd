@@ -6,6 +6,9 @@ extends RefCounted
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const BI := preload("res://tests/test_bishop.gd")
 const IN := preload("res://tests/test_informer.gd")
+const LL := preload("res://tests/test_lost_lamb.gd")
+const PR := preload("res://tests/test_prisoner.gd")
+const EX := preload("res://tests/test_exodus.gd")
 const DT := 0.05
 
 
@@ -14,6 +17,11 @@ static func run(t) -> void:
 	_bishop(t)
 	_informer_names(t)
 	_informer_runs(t)
+	_decisive(t)
+	_lamb(t)
+	_prisoner(t)
+	_exodus_march(t)
+	_exodus_gates(t)
 
 
 static func _find(list: Array, id: StringName) -> Dictionary:
@@ -92,4 +100,84 @@ static func _informer_runs(t) -> void:
 	t.check(_find(d.threats(), &"safe_0").is_empty(), "alarmed, he runs back to hide: no threat")
 	(s.crowd as Crowd).fires.ignite(d.hideout, 0.6)
 	t.check(d.fleeing_to_safe(q) and not _find(d.threats(), &"safe_0").is_empty(), "his hiding place alight: he runs for the Temple again")
+	Kit.done(s)
+
+
+## NightThreat.decisive(): with k more to lose, the k-th soonest on; nothing with fewer than k, or k < 1.
+static func _decisive(t) -> void:
+	var list := [NightThreat.make(&"a", "A", "X", 9.0), NightThreat.make(&"b", "B", "X", 3.0), NightThreat.make(&"c", "C", "X", 6.0)]
+	var two := NightThreat.decisive(list, 2)
+	t.check(two.size() == 2 and NightThreat.soonest(two).id == &"c", "two to lose: the second soonest is the moment (%s)" % [two])
+	t.check(NightThreat.decisive(list, 1).size() == 3 and NightThreat.decisive(list, 4).is_empty() and NightThreat.decisive(list, 0).is_empty(),
+		"one to lose: all of them; more than there are, or none: nothing")
+
+
+## The Lost Lamb: seized, the acolyte marched back to the Temple is `seized_0` at the later of his seizer's walk and his own; free, none.
+static func _lamb(t) -> void:
+	var s := Kit.world(MissionBook.lost_lamb())
+	var d: LostLambDirector = s.d
+	LL._clear_watchers(d)
+	t.check(d.threats().is_empty(), "the acolyte free: no threat")
+	var p: Person = d.patrols[0][0]
+	Kit.arrive(p, d.charge.ground_pos + Vector2(EscortDirector.SIGHT - 0.5, 0.0))
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var th := _find(d.threats(), &"seized_0")
+	t.check(d.held and _at(th, d.march_eta(d.charges[0])) and String(th.title) == "THE ACOLYTE IS TAKEN BACK"
+		and float(th.eta) >= MissionDirector.walk_left(p, d.return_to) - 1.0, "seized: he is marched back to the Temple (%s)" % [th])
+	p.mind = Person.Mind.CONFUSED
+	t.check(d.threats().is_empty(), "his seizer confused: no march, no threat")
+	Kit.done(s)
+
+
+## The Prisoner: bound, the gaolers taking her inside at FREE_BY (`inside`, the strip's time); the stocks down, gone; seized, her march back.
+static func _prisoner(t) -> void:
+	var s := PR._world()
+	var d: PrisonerDirector = s.d
+	var th := _find(d.threats(), &"inside")
+	t.check(_at(th, d.timeline.seconds_to("inside")) and String(th.title) == "THE GAOLERS TAKE HER INSIDE", "bound in the stocks: taken inside at FREE_BY (%s)" % [th])
+	d.timeline.step(PrisonerDirector.FREE_BY - 10.0)
+	t.check(absf(float(_find(d.threats(), &"inside").get("eta", INF)) - 10.0) < 0.2, "ten seconds before FREE_BY: ten seconds")
+	PR._break(s, d)
+	t.check(_find(d.threats(), &"inside").is_empty(), "the stocks down: she is not taken inside")
+	th = _find(d.threats(), &"seized_0")
+	t.check(d.held and _at(th, d.march_eta(d.charges[0])) and String(th.title) == "THE PRISONER IS TAKEN BACK" and String(th.act) == "FREE HER",
+		"seized the moment she is free: her march back to the Citadel (%s)" % [th])
+	Kit.done(s)
+
+
+## Exodus: a seized believer with two to spare is no threat (the third delivered loses); with none to spare he is.
+static func _exodus_march(t) -> void:
+	var s := EX._world()
+	var d: ExodusDirector = s.d
+	EX._clear_watch(d)
+	d._come_out(0)
+	var c: EscortDirector.Charge = (d.households[0] as ExodusDirector.Household).members[0]
+	Kit.arrive(d.watch[0], (c.man as Person).ground_pos + Vector2(EscortDirector.SIGHT - 0.5, 0.0))
+	Kit.run_for(s, EscortDirector.TICK + DT)
+	var i := d.charges.find(c)
+	t.check(c.held and d.takings_to_lose() == 3 and _find(d.threats(), StringName("seized_%d" % i)).is_empty(),
+		"seized with two to spare: no threat")
+	var gone := 0
+	for o in d.charges:
+		if gone < 2 and o != c and MissionDirector._alive(o.man) and not o.held:
+			Kit.free_body(s, o.man)
+			gone += 1
+	var th := _find(d.threats(), StringName("seized_%d" % i))
+	t.check(d.takings_to_lose() == 1 and _at(th, d.march_eta(c)) and String(th.title) == "A SEIZED BELIEVER REACHES THE TEMPLE",
+		"none to spare: his march is the loss (%s)" % [th])
+	Kit.done(s)
+
+
+## Exodus: the last gate's shutting while too few are out (`gates_shut`, the strip's time); enough out, none.
+static func _exodus_gates(t) -> void:
+	var s := EX._world()
+	var d: ExodusDirector = s.d
+	var th := _find(d.threats(), &"gates_shut")
+	t.check(_at(th, d.timeline.seconds_to("shut_2")) and float(th.eta) > 200.0, "the last gate shuts at its time (%s)" % [th])
+	d.timeline.step(float(ExodusDirector.SHUT_AT[2]) - 12.0)
+	th = (s.rules as Rules).threat()
+	t.check(th.get("id", &"") == &"gates_shut" and absf(float(th.eta) - 12.0) < 0.3, "twelve seconds before: the soonest (%s)" % [th])
+	for k in d.tune_need:
+		d.charges[k].escaped = true
+	t.check(_find(d.threats(), &"gates_shut").is_empty(), "enough out: the gates shutting loses nothing")
 	Kit.done(s)

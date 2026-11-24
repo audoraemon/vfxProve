@@ -405,6 +405,23 @@ func _change_banner() -> String:
 	return "THE GUARD CHANGES"
 
 
+func _march_act() -> String:
+	return "FREE HER"
+
+
+## Loss warning: the Escort type's (her march back to the Citadel), and while she is bound in standing stocks, the gaolers taking her
+## inside at FREE_BY (`inside`, the strip's time: the night is lost). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if lost_reason() != "" or charges.is_empty() or timeline == null or not timeline.pending("inside"):
+		return out
+	var c := charges[0]
+	if c.bound and is_instance_valid(bound_by) and not bound_by.destroyed and not c.escaped and _alive(c.man):
+		out.append(NightThreat.make(&"inside", "THE GAOLERS TAKE HER INSIDE", "BREAK THE STOCKS", timeline.seconds_to("inside"),
+			bound_by.center()))
+	return out
+
+
 ## The timeline's words when the gaolers take her inside (v0.11 M4).
 func _inside_label() -> String:
 	return "The gaolers take her inside"

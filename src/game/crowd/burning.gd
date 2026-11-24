@@ -73,8 +73,8 @@ func lay(p: Person, seconds: float, from: Vector2, level := LIGHT_AT) -> bool:
 
 ## While `p` burns, `on_step` is called with each spot he leaves behind: first the spot he stands on now (where he caught
 ## fire, when called as he is laid), once he is `every` from it; then the spot he had reached when the last was given, once
-## he is `every` from that -- `most` in all (below 1: no end). A spot inside a building is passed over. False when he is
-## not burning.
+## he is `every` from that -- `most` in all (below 1: no end). A spot inside a building is passed over; one `on_step`
+## refuses (it returns false, as TrailFire.lay() on the water) is not counted toward `most`. False when he is not burning.
 func trail(p: Person, on_step: Callable, every := 1.0, most := 0) -> bool:
 	for b: Dictionary in _on:
 		if is_instance_valid(b.p) and b.p == p:
@@ -198,8 +198,9 @@ func _lay_trail(b: Dictionary, p: Person) -> void:
 	b.anchor = p.ground_pos
 	if _crowd != null and _crowd._env != null and _crowd._env.blocked(anchor, 0.0):
 		return  # never inside a building
-	b.laid = int(b.laid) + 1
-	(b.trail as Callable).call(anchor)
+	var took = (b.trail as Callable).call(anchor)
+	if typeof(took) != TYPE_BOOL or took:
+		b.laid = int(b.laid) + 1  # a spot the hook refuses (it returns false: on the water) does not count toward `most`
 
 
 ## The nearest standing burnable building within SPREAD_R of him that is not burning yet catches at `level`.

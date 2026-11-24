@@ -7,7 +7,7 @@ extends SceneTree
 ##   --dev-tree, --god=<type>:<tier>, --level=<n> (god P1, C6; spec §5.2's per-type win check): --dev-tree turns GodTree.dev_fill on for
 ##          the run; --god restricts the drafted loadout to GodTree.keys_for(type, tier) (tier 1 when omitted) -- a key outside it prints
 ##          `BEHAVIOUR refused scenario=<s> god=<type>:<tier> outside=<k1,k2>` and quits 1 (gate.sh reads that as a FAIL), else the run
-##          prints `BEHAVIOUR god=<type>:<tier>` (in no checksum); --level=1..5 plays every drafted key at that level (Mission.levels).
+##          prints `BEHAVIOUR god=<type>:<tier>` and `BEHAVIOUR might=<capacity>/<refill>` (the tier's gauge the bots pay from; neither in a checksum); --level=1..5 plays every drafted key at that level (Mission.levels).
 ##          No flag: the run is exactly as before.
 ##          God T1R: `--god=<type>:1` with NO --route on a scenario of tools/dev/routes/god_t1.gd (warning, tax, harvest, lamb, prayers) plays
 ##          that type's own policy for the mission (god_t1/<scenario>.gd act_<type>) with the real tree's two Tier 1 keys, hit-stop off, printing
@@ -424,6 +424,9 @@ const HEART_GUARD := 3.0
 ## (v0.11 M6).
 const HEART_HUSH := 8.0
 const HEART_SETTLE := 3.0
+## The most citizens a hush may stand to send off, one whisper at a time, before a strike on one of them (the new rule: the town's bell
+## no longer comes soon, so a bearer's few watchers are worth clearing rather than waiting out).
+const HEART_HUSH_MAX := 3
 ## The Gaze the policy lets a seen strike bring it to (v0.11 M6): a player's budget, short of THE LANTERN LOOKS.
 const HEART_GAZE_CAP := 60.0
 const EXODUS_SOON := 8.0
@@ -682,6 +685,8 @@ func _run() -> void:
 		for key in drafted:
 			at[key] = int(level_arg)
 		mission.levels = at
+	if god_type != "":
+		mission.might_tier = god_tier  # the Might gauge's bots pay: the tier's Divine Power as the gauge, only with --god
 	mission.start(powers, int(seed_arg) if seed_arg != "" else SEED)
 	if mission.refused != "":
 		# v0.12 C6: a mission the town cannot host is not run; gate.sh reads this line as a FAIL.
@@ -691,6 +696,8 @@ func _run() -> void:
 	print("BEHAVIOUR city=%s" % City.current().id())  # v0.12: the town this run is played in (--city=, capital_*); not in any checksum
 	if god_type != "":
 		print("BEHAVIOUR god=%s:%d%s" % [god_type, god_tier, " route=god" if god_route else (" route=hunt" if hunt_route else "")])  # god P1, C6: the type and tier the loadout was held to; not in any checksum
+		var pool: MightPool = mission._rules.might
+		print("BEHAVIOUR might=%d/%d" % [int(pool.capacity), roundi(pool.refill_seconds)])  # the gauge the bots pay from; not in any checksum
 	if route == "b" or god_type != "" or Battlefield.arg_value(args, "--case") == "toll" or scenario in ["panic", "bread", "hunt", "bishop", "armoury", "eye", "heart"] or scenario in GOD_HUNTS.SCENARIOS:
 		mission._bf.ctx.impact.hitstop_enabled = false  # v0.11 M3-M6: Smite's and Heaven Splitter's hit-stop is wall clock; an exact replay needs none
 	mission._intro_left = 0.0
@@ -1664,6 +1671,7 @@ func _soldiers(which: String) -> void:
 		"escort", "noescort":
 			crowd.alarms.stage = AlarmManager.Stage.CONCERN
 			crowd._on_stage(AlarmManager.Stage.LOCAL_EMERGENCY, "test")
+			crowd.bell.call_keeper()  # the town no longer sends him at a bare Local Emergency
 			var killed := false
 			# Stepped by half seconds so that the kill falls on a set point of the climb; a line every 2 s.
 			for k in 60:
@@ -2746,9 +2754,17 @@ func _heart_seers(crowd: Crowd, p: Person) -> Array[Person]:
 func _heart_hush(rules: Rules, slots: Dictionary, crowd: Crowd, who: Array[Person], what: String) -> String:
 	for p in who:
 		var seers := _heart_seers(crowd, p)
-		if seers.size() != 1 or seers[0].soldier or seers[0].shaken():
+		if seers.is_empty() or seers.size() > HEART_HUSH_MAX:
 			continue
-		var w := seers[0]
+		var w: Person = null
+		var whole := true
+		for o in seers:
+			if o.soldier:
+				whole = false
+			elif w == null and not o.shaken():
+				w = o
+		if w == null or not whole:
+			continue
 		var away := w.ground_pos - p.ground_pos
 		away = away.normalized() if away.length() > 0.01 else Vector2.RIGHT
 		rules.cast(slots.whisper, w.ground_pos, {"target": w, "to": MindWhisperFx.clamp_to(crowd._grid, w.ground_pos, w.ground_pos + away * HEART_HUSH)})

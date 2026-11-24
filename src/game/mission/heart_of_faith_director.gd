@@ -1027,6 +1027,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "coming", "litter", "rite", "on_foot", "guarded", "burning", "open", "not_yet"])
+
+
 ## The seconds the hint counts down (v0.11 M6): Odran's chain in "coming", the rite's in "rite"; else 0.
 func hint_seconds() -> float:
 	match hint_phase():
@@ -1035,6 +1040,34 @@ func hint_seconds() -> float:
 		"rite":
 			return maxf(rite_left, 0.0)
 	return 0.0
+
+
+## Mission clarity (spec 5.4): why a cast that reaches a target or Odran does not count; "" when it counts or reaches none.
+## A Burn before the target's time: `NOT IN USE - THE FIRE GOES OUT`; a Burn or Strike with a Knight on guard: `A KNIGHT (RED) PUTS IT OUT`;
+## any cast on Odran in his litter: `IN HIS LITTER - KILL HIS BEARERS`. A cast that may kill one of the target's Knights, or a bearer, is left
+## alone (I6). Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if riding and litter_at != Vector2.INF and _cast_reaches(key, at, litter_at):
+		return "" if _kills_near(key, at, bearers_standing()) else "IN HIS LITTER - KILL HIS BEARERS"
+	if not ("burn" in verbs or "strike" in verbs) or flame_out:
+		return ""
+	for i in targets.size():
+		var s := targets[i]
+		if not _reached(key, at, s):
+			continue
+		var men: Array = []
+		for p: Post in posts:
+			if p.target == i:
+				men.append(p.man)
+		if _kills_near(key, at, men):
+			return ""
+		if "burn" in verbs and not in_use[i]:
+			return "NOT IN USE - THE FIRE GOES OUT"
+		if not guards_at(i).is_empty():
+			return "A KNIGHT (RED) PUTS IT OUT"
+		return ""
+	return ""
 
 
 ## The tour (v0.11 M6, mission spec §3): the oil-house, the Temple, the Citadel.
@@ -1067,3 +1100,8 @@ func teardown() -> void:
 			if is_instance_valid(s):
 				crowd.engineers.hands_off.erase(s)
 	super()
+
+
+## Music by situation: the chant while Odran's rite is on at the altar.
+func music_mood() -> StringName:
+	return &"rite" if rite_on else &""

@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_sweep_skips(t)
 	_hold_waits(t)
 	_areas(t)
+	_page3(t)
 
 
 static func _tags(list: Array) -> Array[MapTag]:
@@ -45,7 +46,7 @@ static func _rows(t) -> void:
 	for w in ["A", "B", "C", "D"]:
 		many.append(MapTag.person(Vector2.ZERO, GOLD, w))
 	t.check(LegendPanel.night_rows(many)[0][1] == "A, B, C", "up to three labels a row")
-	t.check(LegendPanel.MARKS.size() == 12 and LegendPanel.OVERHEAD.size() == 21, "every mark of the spec's two tables (page 2 gained the Lantern's four rows)")
+	t.check(LegendPanel.MARKS.size() == 12 and LegendPanel.OVERHEAD.size() == 22 and LegendPanel.OVERHEAD[21][0] == "suspicion", "every mark of the spec's two tables (page 2 gained the Lantern's four rows and the town's suspicion)")
 
 
 static func _pages(t) -> void:
@@ -57,9 +58,11 @@ static func _pages(t) -> void:
 	t.check(p.page == 1, "H once: page 1")
 	p.open_next()
 	t.check(p.page == 2, "H again: page 2")
+	p.open_next()
+	t.check(p.page == 3, "H a third time: page 3")
 	t.check(shut[0] == 0, "not closed yet")
 	p.open_next()
-	t.check(p.page == 0 and shut[0] == 1, "H a third time closes it, once")
+	t.check(p.page == 0 and shut[0] == 1, "H a fourth time closes it, once")
 	p.close()
 	t.check(shut[0] == 1, "closing a closed panel says nothing")
 	p.free()
@@ -120,7 +123,8 @@ static func _keys_while_open(t) -> void:
 	m._unhandled_input(_key(KEY_H))
 	m._legend._unhandled_input(_key(KEY_H))
 	m._legend._unhandled_input(_key(KEY_H))
-	t.check(not m.legend_open() and m.process_mode == Node.PROCESS_MODE_INHERIT, "page 1, page 2, then H closes it")
+	m._legend._unhandled_input(_key(KEY_H))
+	t.check(not m.legend_open() and m.process_mode == Node.PROCESS_MODE_INHERIT, "page 1, 2, 3, then H closes it")
 	m._ending = true
 	m._unhandled_input(_key(KEY_H))
 	t.check(not m.legend_open(), "during the ending H does nothing")
@@ -189,14 +193,14 @@ static func _hold_waits(t) -> void:
 	_drop(m)
 
 
-## v0.11.2 Task 12 (spec 5.5, R33): page 2 lays its 21 rows in two columns; each column's rows fit between the title and the footer, and the
+## v0.11.2 Task 12 (spec 5.5, R33): page 2 lays its 22 rows in two columns; each column's rows fit between the title and the footer, and the
 ## four Lantern rows carry the spec's words.
 static func _columns(t) -> void:
 	var split := LegendPanel.OVERHEAD_SPLIT
 	t.check(split > 0 and split < LegendPanel.OVERHEAD.size(), "page 2 splits into two columns (the first holds %d)" % split)
 	var cols := LegendPanel.overhead_columns()
-	t.check(cols.size() == 2 and (cols[0] as Array).size() == split and (cols[0] as Array).size() + (cols[1] as Array).size() == 21,
-		"the columns hold all 21 rows, in order")
+	t.check(cols.size() == 2 and (cols[0] as Array).size() == split and (cols[0] as Array).size() + (cols[1] as Array).size() == 22,
+		"the columns hold all 22 rows, in order")
 	var top := LegendPanel.PANEL.position.y + 44.0
 	var bottom := LegendPanel.PANEL.end.y - 24.0
 	var room := LegendPanel.column_room()
@@ -247,3 +251,32 @@ static func _areas(t) -> void:
 	var marks := LegendPanel.rows_height(LegendPanel.MARKS, LegendPanel.LEFT_W - LegendPanel.SWATCH_W - 8.0)
 	t.check(top + h0 <= bottom + 12.0 and top + h1 <= bottom and top + marks <= bottom,
 		"with the wider spaces on, page 2's columns (%.0f, %.0f) and page 1's marks (%.0f) fit above the footer (%.0f)" % [h0, h1, marks, bottom - top])
+
+
+## Mission clarity Task 1: page 3 ("WHAT YOUR POWERS DO") has its title and 12 rows that fit the panel above the footer, and the
+## widest row (Hold's 19 names, all equipped) is cut to its room with "+N". The panel is design-space scaled, so one size proves all.
+static func _page3(t) -> void:
+	t.check(LegendPanel.TITLES.size() == 3 and LegendPanel.TITLES[2] == "WHAT YOUR POWERS DO", "page 3 is titled WHAT YOUR POWERS DO")
+	var left := LegendPanel.PANEL.position.x + 16.0
+	var top := LegendPanel.PANEL.position.y + 44.0
+	var rows := MissionVerbs.legend_rows(PackedStringArray())
+	t.check(rows.size() == 12 and top + float(rows.size()) * LegendPanel.VERB_ROW <= LegendPanel.PANEL.end.y - 24.0,
+		"twelve rows end above the footer (%.0f)" % (top + float(rows.size()) * LegendPanel.VERB_ROW))
+	var cols := LegendPanel.verb_columns(left)
+	t.check(cols.room > 120.0 and cols.names_x < LegendPanel.PANEL.end.x - 16.0, "the names have room (%.0f px)" % cols.room)
+	var full := MissionVerbs.legend_rows(MissionVerbs.powers("hold"))
+	var hold: Array = full[5]
+	var parts := LegendPanel.fit_names(hold[2], hold[3], cols.room)
+	var text := ""
+	for i in parts.size():
+		text += ("" if i == 0 else ", ") + String(parts[i][0])
+	t.check(parts.size() > 1 and String(parts[parts.size() - 1][0]).begins_with("+") and UiTheme.width(text, UiTheme.TEXT_S) <= cols.room,
+		"Hold with all 19 equipped is cut with +N and fits (%s)" % text)
+	var few := LegendPanel.fit_names(["Mind Whisper"], [], cols.room)
+	t.check(few == [["Mind Whisper", true]], "a short list is shown whole")
+	var p := LegendPanel.new().setup(_tags([]), PackedStringArray(["smite"]))
+	p.open_next()
+	p.open_next()
+	p.open_next()
+	t.check(p.page == 3, "the panel reaches page 3 with a loadout")
+	p.free()

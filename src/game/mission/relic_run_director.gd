@@ -845,12 +845,40 @@ func hint_phase() -> String:
 	return "moving" if set_out else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "bell", "report", "seen", "carry", "watched", "aboard", "citadel", "last_halt", "moving"])
+
+
+## No line of the Relic Run counts down (the Vigil Flame's counts Wren's coming).
+func hint_seconds() -> float:
+	return 0.0
+
+
+const WHY_NO_LURE := "NO LURE YET - PIP MUST FOLLOW YOU"
+
+
+## Mission clarity (spec 5.6): a Lure of the watch before Pip follows the god's light or oath -- the watch is on duty and answers no light
+## until then (pip_led). A cast that also kills, leads or confuses is judged by those. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if swapped or home or pip_led or crowd == null or not "lure" in verbs or "kill" in verbs or "lead" in verbs or "confuse" in verbs:
+		return ""
+	var watch: Array = escorts.duplicate()
+	for w: Warden in wardens:
+		watch.append(w.man)
+	for v: Variant in watch:
+		if _alive(v) and not (v as Person).inside and _cast_reaches(key, at, (v as Person).ground_pos):
+			return WHY_NO_LURE
+	return ""
+
+
 ## The tour (v0.11 M5, mission spec §4): the cart at the Temple, Pip, your believers' house.
 func tour() -> Array:
 	var out := [[temple_door, "The relic cart at the Temple. It halts at two checkpoints, where its reliquary opens."]]
 	if _alive(wren):
 		out.append([wren.ground_pos, "Pip. Bring him to the first halt: he slips aboard there and swaps the relic at the second."])
-	out.append([shrine, "Your believers' house. Pip must bring the relic here. Four seen deaths in a district call the bell."])
+	out.append([shrine, "Your believers' house. Pip must bring the relic here. Four deaths in a district that no accident explains call the bell."])
 	return out
 
 
@@ -860,3 +888,8 @@ func report() -> Dictionary:
 	for done in halts_done:
 		halts += 1 if done else 0
 	return {"swapped": swapped, "halts": halts, "touches": touches, "reports": reports_started, "home": home}
+
+
+## Music by situation: the town's own: the relic's road is no vigil.
+func music_mood() -> StringName:
+	return &""

@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_policies(t)
 	_door_policies(t)
 	_death_last_leg(t)
+	_watched(t)
 	_bloom_casts(t)
 	_no_filler_casts(t)
 	_guards_walk(t)
@@ -85,9 +86,9 @@ static func _frame(t) -> void:
 		and objectives[1] is ClockObjective, "the Assassinate objective runs ahead of the dawn: the winning strike never also loses")
 	t.check(m.goal == "Stop his three wardens, then kill the captain or drive him out of the town" and m.goal_label == "The inquisitor is gone"
 		and m.lose == "The captain reaches the Citadel, or dawn comes", "the goal, label and lose are the spec's")
-	t.check(MissionHints.line("expel_inquisitor") == "Stop each lantern-warden (gold): kill him, or put him out of the walls."
-		and MissionHints.line("expel_inquisitor", "captain") == "The captain walks his rounds: kill him, or frighten him three times."
-		and MissionHints.line("expel_inquisitor", "near") == "The captain nears the Citadel: stop him now.", "the three hints")
+	t.check(MissionHints.line("expel_inquisitor") == "Kill or banish each lantern-warden (gold). A fright only sends a warden to hide."
+		and MissionHints.line("expel_inquisitor", "captain") == "The captain (gold) walks his rounds. Kill him, or scare him three times, each 8 s or more apart, while he walks."
+		and MissionHints.line("expel_inquisitor", "near") == "The captain (gold) nears the Citadel (red). Kill or banish him now.", "the three hints")
 	t.check(m.camera_at == ExpelInquisitorDirector.EI_CAMERA_AT and m.intro_from == m.camera_at + Vector2(0.0, 6.0), "the camera is the director's")
 	# C2: no parent const name is redeclared (a parse error otherwise); the Hunt's numbers carry its prefix.
 	var own := (ExpelInquisitorDirector as GDScript).get_script_constant_map()
@@ -486,7 +487,7 @@ static func _captain_safe(t) -> void:
 	Kit.arrive(cap.target, near_pos)
 	cap.target.go_duty(d.safe_at)
 	Kit.run_for(s, AssassinateDirector.TICK + DT)
-	t.check(banners.has("THE CAPTAIN NEARS THE CITADEL") and d.hint_phase() == "near" and MissionHints.line("expel_inquisitor", d.hint_phase()) == "The captain nears the Citadel: stop him now.",
+	t.check(banners.has("THE CAPTAIN NEARS THE CITADEL") and d.hint_phase() == "near" and MissionHints.line("expel_inquisitor", d.hint_phase()) == "The captain (gold) nears the Citadel (red). Kill or banish him now.",
 		"within 20 s: THE CAPTAIN NEARS THE CITADEL and the hint says stop him now (%s)" % [banners])
 	t.check(!rules.finished, "(set-up) the night is not lost yet")
 	Kit.arrive(cap.target, d.safe_at)
@@ -1066,3 +1067,43 @@ static func _wishes(t) -> void:
 		descent.release()
 		Kit.done(n)
 	t.check(heard > 0 and hit == 0, "wishes heard (%d), none on the director's own people or buildings (%d)" % [heard, hit])
+
+
+## Town Suspicion (Task 5): a seen lightning kill of the inquisitor is a sign (TARGET_SIGN), not a call; once the town knows it calls the keeper.
+static func _watched(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var d: AssassinateDirector = s.d
+	var q := d.quarries[0]
+	d._set_out(q)
+	
+	var near: Person = null
+	for p in crowd.citizens:
+		if near == null and is_instance_valid(p) and p != q.target and p.is_alive() and not p.inside:
+			near = p
+	Kit.arrive(near, q.target.ground_pos + Vector2(1.5, 0.0))
+	crowd.suspicion.add(20.0)
+	crowd.suspicion.excuse(&"lightning")  # a Smite was cast: lightning is an accident
+	var before := crowd.suspicion.value
+	crowd._field.kill(q.target, &"lightning")
+	Kit.run_for(s, 0.5)
+	t.check(q.dead and q.judged and not q.unseen, "inquisitor: the lightning kill is seen")
+	t.near(crowd.suspicion.value - before, Suspicion.TARGET_SIGN * crowd.suspicion.wary, 0.01, "inquisitor: the seen kill adds TARGET_SIGN")
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "inquisitor: no bell while the town does not know")
+	Kit.done(s)
+	var k := _world()
+	var kc: Crowd = k.crowd
+	var kd: AssassinateDirector = k.d
+	var kq := kd.quarries[0]
+	kd._set_out(kq)
+	
+	var kn: Person = null
+	for p in kc.citizens:
+		if kn == null and is_instance_valid(p) and p != kq.target and p.is_alive() and not p.inside:
+			kn = p
+	Kit.arrive(kn, kq.target.ground_pos + Vector2(1.5, 0.0))
+	kc.suspicion.know("test")
+	kc._field.kill(kq.target, &"lightning")
+	Kit.run_for(k, 0.5)
+	t.check(kc.bell.state != BellNetwork.State.IDLE, "inquisitor: the town knows, the seen kill calls the keeper")
+	Kit.done(k)

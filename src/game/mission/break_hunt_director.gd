@@ -1063,6 +1063,21 @@ func soonest_eta() -> float:
 	return best
 
 
+## Loss warning: once a house is taken, each standard still marching on one (the next house taken loses the night, BH_LOSE_TAKEN), as eta(i).
+## The first house taken does not end the night, so it is not warned.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if taken() < BH_LOSE_TAKEN - 1 or broken_all():
+		return out
+	for i in steps.size():
+		var left := eta(i)
+		if left < INF and steps[i].raised and not steps[i].broken and not _planted[i]:
+			var b := bearer(i)
+			out.append(NightThreat.make(StringName("standard_%d" % i), "THE STANDARD TAKES A SECOND HOUSE", "BREAK THE STANDARD", left,
+				b.ground_pos if b != null else Vector2.INF))
+	return out
+
+
 ## The banner when a standard is within BH_NEAR_WARN of a house, once for each standard.
 func _warn_near() -> void:
 	for i in steps.size():
@@ -1140,6 +1155,29 @@ func hint_phase() -> String:
 	for i in steps.size():
 		if _took_up[i] and steps[i].raised and not steps[i].broken and bearer(i) != null:
 			return "carried"
+	return ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "taken", "carried"])
+
+
+## Mission clarity (spec 5.5): a fright on a bearer whose escort guards him only shakes him (_look(): afraid while guarded, he keeps the
+## standard), unless the cast kills him within its kill radius. Only reads. A Kill on a guarded bearer is not asked about: the escort who
+## takes the standard up has his own banner (BH_TAKEN_UP, said at the next look), so there is no second.
+const BH_WHY_STEADIED := "HIS ESCORT (RED) STEADIES HIM"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	if not "scare" in MissionVerbs.verbs_of(key):
+		return ""
+	for i in steps.size():
+		var b := bearer(i)
+		if b == null or not steps[i].raised or steps[i].broken or not _cast_reaches(key, at, b.ground_pos) or _may_kill(key, at, b.ground_pos):
+			continue
+		if _guarded(i) or _snap_guarded(i):
+			return BH_WHY_STEADIED
 	return ""
 
 

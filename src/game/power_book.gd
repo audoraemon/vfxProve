@@ -11,6 +11,7 @@ extends RefCounted
 ## adds one alarm; a quiet power with an "alarm" unsettles the town by that much when cast. A power with "modes" is cast
 ## in one of them (Targeting: Q and E step through them; the effect is told which in extra["mode"]); a mode may aim
 ## its own way ("aim"), cover its own ground ("area") and wait its own cooldown ("cooldown", mode_cooldown()).
+## A row's "look" (Town Suspicion) is what the town takes the cast for; see look().
 
 const POWERS := [
 	{"key": "doom", "name": "Silent Doom", "path": "res://src/fx/quiet/silent_doom.gd",
@@ -28,7 +29,7 @@ const POWERS := [
 			{"REACH": 12.0, "ATTACK_SECS": 12.0, "cooldown": 7.0},
 			{"REACH": 13.0, "ATTACK_SECS": 13.0, "cooldown": 6.5},
 			{"REACH": 14.0, "ATTACK_SECS": 14.0, "cooldown": 6.0, "twist": true, "twist_text": "Held String: whisper the same one again"}]},
-	{"key": "smite", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
+	{"key": "smite", "look": "lightning", "name": "Smite", "path": "res://src/fx/ruin/smite.gd",
 		"blurb": "A bolt falls where you click. It kills all there and hurts a building.",
 		"dp": 1, "cooldown": 10.0, "aim": "click", "shape": "one bolt: whoever stands there, and a blow to one building",
 		"authority": "ruin",
@@ -39,7 +40,7 @@ const POWERS := [
 			{"KILL_R": 0.75, "DAMAGE": 60.0, "cooldown": 8.5},
 			{"KILL_R": 0.8, "DAMAGE": 65.0, "cooldown": 8.0, "twist": true, "twist_text": "Gathered Storm: drag to widen the bolt (2.5x at most)",
 				"aim": "drag"}]},
-	{"key": "ember", "name": "Ember", "path": "res://src/fx/ruin/ember.gd",
+	{"key": "ember", "look": "fire", "name": "Ember", "path": "res://src/fx/ruin/ember.gd",
 		"blurb": "One spark sets a building or a person alight.",
 		"dp": 1, "cooldown": 15.0, "aim": "click", "shape": "one spark that sets one building or one person alight (he runs burning, lights what he brushes, and dies)", "quiet": true,
 		"authority": "ruin",
@@ -139,7 +140,7 @@ const POWERS := [
 		"dp": 2, "cooldown": 60.0, "aim": "click", "shape": "the bell tolls all is well, now and for 45 s; or calls the guard to a place; Q/E",
 		"quiet": true, "authority": "decree", "modes": [
 			{"key": "well", "name": "ALL IS WELL"}, {"key": "guard", "name": "CALL THE GUARD", "area": {"r": 1.5}}]},
-	{"key": "breath", "name": "Breathing Is Prohibited", "path": "res://src/fx/decree/breathing_is_prohibited.gd",
+	{"key": "breath", "look": "miasma", "name": "Breathing Is Prohibited", "path": "res://src/fx/decree/breathing_is_prohibited.gd",
 		"blurb": "The air goes out of a circle. Three seconds inside kills.",
 		"dp": 2, "cooldown": 25.0, "aim": "click", "shape": "no air in the circle for 8 s: 3 s inside kills, leaving saves",
 		"authority": "decree",
@@ -212,7 +213,7 @@ const POWERS := [
 			{"SPIRITS": 4, "HAUNT": 22.0, "FREEZE": 3.5, "cooldown": 28.0},
 			{"SPIRITS": 4, "HAUNT": 23.0, "FREEZE": 3.75, "cooldown": 27.0},
 			{"SPIRITS": 5, "HAUNT": 24.0, "FREEZE": 4.0, "cooldown": 26.0, "twist": true, "twist_text": "Swelling Host: those who die there haunt too"}]},
-	{"key": "tornado", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
+	{"key": "tornado", "look": "storm", "name": "Tornado Tempest", "path": "res://src/fx/set2/tornado_tempest.gd",
 		"blurb": "A roaming vortex tears through the town and flings people about.",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "roaming vortex, 10 s", "authority": "ruin",
 		"levels": [
@@ -296,7 +297,7 @@ const POWERS := [
 			{"REACH": 11.0, "SPAN": 24.0, "cooldown": 41.0},
 			{"REACH": 11.5, "SPAN": 26.0, "cooldown": 39.0},
 			{"REACH": 12.0, "SPAN": 28.0, "cooldown": 37.0, "twist": true, "twist_text": "Party to the Bond: attackers join the bond"}]},
-	{"key": "disorder", "name": "Disorder", "path": "res://src/fx/decree/disorder.gd",
+	{"key": "disorder", "look": "none", "name": "Disorder", "path": "res://src/fx/decree/disorder.gd",
 		"blurb": "For 15 s every choice in a circle goes wrong.",
 		"dp": 3, "cooldown": 45.0, "aim": "click", "shape": "a circle of 5 for 15 s: the frightened run toward the danger, a guard goes for the farthest man, no shelter takes anyone in, the farthest gate",
 		"authority": "decree",
@@ -448,7 +449,7 @@ const POWERS := [
 			{"HALF": 3.5, "SPAN": 29.0, "cooldown": 84.0},
 			{"HALF": 3.75, "SPAN": 31.0, "cooldown": 81.0},
 			{"HALF": 4.0, "SPAN": 33.0, "cooldown": 78.0, "twist": true, "twist_text": "Pocket Square: click to carry the square away"}]},
-	{"key": "tsunami", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
+	{"key": "tsunami", "look": "flood", "name": "Tsunami Breaker", "path": "res://src/fx/set2/tsunami_breaker.gd",
 		"blurb": "A wall of water rolls across the town and sweeps away all in its path.",
 		"dp": 4, "cooldown": 60.0, "aim": "drag", "shape": "moving wall", "authority": "ruin",
 		"levels": [
@@ -516,7 +517,7 @@ const POWERS := [
 		"quiet": true, "alarm": 4.0, "authority": "decree", "modes": [
 			{"key": "clock", "name": "THE CLOCK"}, {"key": "escape", "name": "THE ESCAPE LIMIT"},
 			{"key": "ward", "name": "THE CITADEL'S WARD"}]},
-	{"key": "tempest", "name": "Wrath of the Sky", "path": "res://src/fx/ruin/tempest.gd",
+	{"key": "tempest", "look": "storm", "name": "Wrath of the Sky", "path": "res://src/fx/ruin/tempest.gd",
 		"blurb": "A storm covers the town; bolts fall, rain drives people in. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "click", "shape": "a storm over the whole town: 25 s of bolts, the rain drives people in; once",
 		"authority": "ruin",
@@ -526,7 +527,7 @@ const POWERS := [
 			{"STORM_TIME": 29.0, "VOLLEY": Vector2i(6, 8), "VOLLEY_EVERY": 1.3},
 			{"STORM_TIME": 31.0, "VOLLEY": Vector2i(6, 8), "VOLLEY_EVERY": 1.2},
 			{"STORM_TIME": 33.0, "VOLLEY": Vector2i(7, 9), "VOLLEY_EVERY": 1.2, "twist": true, "twist_text": "Called Bolts: click to call a bolt every 3 s"}]},
-	{"key": "shatter", "name": "Earthshatter", "path": "res://src/fx/ruin/earthshatter.gd",
+	{"key": "shatter", "look": "quake", "name": "Earthshatter", "path": "res://src/fx/ruin/earthshatter.gd",
 		"blurb": "The ground tears open from click to click, and stays so. Once only.",
 		"dp": 5, "cooldown": 999.0, "aim": "two clicks", "shape": "the ground torn open from one click to the next, slowly; the crack stays; once",
 		"authority": "ruin",
@@ -718,6 +719,19 @@ const REACH_DEFAULT := [7.0, 10.0, 0.6, 4.0]
 ## Seconds from a loud power's cast to its first impact (IMPACT), 0.0 for any other key.
 static func impact(key: String) -> float:
 	return float(IMPACT.get(key, 0.0))
+
+
+## What a witness of this power's cast takes it for (Suspicion): the row's "look" (the word "none" is Suspicion.NONE);
+## without one a quiet power, or an unknown key (the sandbox's and scripted tests' cast), has none and a loud power is
+## Suspicion.UNNATURAL.
+static func look(key: String) -> StringName:
+	var row := get_power(key)
+	if row.is_empty():
+		return Suspicion.NONE
+	if row.has("look"):
+		var word: String = row["look"]
+		return Suspicion.NONE if word == "none" else StringName(word)
+	return Suspicion.NONE if row.get("quiet", false) else Suspicion.UNNATURAL
 
 
 static func get_power(key: String) -> Dictionary:

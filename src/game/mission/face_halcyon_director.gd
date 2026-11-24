@@ -1079,6 +1079,26 @@ func burn_left(i: int) -> float:
 	return maxf(pr.burn_end - _clock, 0.0) if pr.phase == Procession.Phase.BURNING else 0.0
 
 
+## Loss warning: once one believer has burned, each procession on its way to the pyre or bound to it (the next burned loses the night,
+## FH_LOSE_BURNED): bound, burn_left(i); forming or marching, its time to the pyre (pyre_in(i), the strip's) and the burn. A procession still
+## waiting in its house is not warned.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if burned() < FH_LOSE_BURNED - 1 or lost_reason() != "":
+		return out
+	for i in procs.size():
+		var pr: Procession = procs[i]
+		var left := INF
+		match pr.phase:
+			Procession.Phase.BURNING:
+				left = burn_left(i)
+			Procession.Phase.FORMING, Procession.Phase.MARCHING:
+				left = pyre_in(i) + FH_BURN
+		if left < INF and pr.charge != null and _alive(pr.charge.man):
+			out.append(NightThreat.make(StringName("pyre_%d" % i), "A SECOND BELIEVER BURNS", "FREE HIM", left, (pr.charge.man as Person).ground_pos))
+	return out
+
+
 ## Procession `i`'s phase.
 func phase_of(i: int) -> Procession.Phase:
 	return (procs[i] as Procession).phase
@@ -1186,6 +1206,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "pyre", "gaze"])
+
+
 ## The map tags, most important first (MS §6): each believer bound to the stake and the pyre ("BURNING 0:12" with its ring filling), the leading
 ## procession's believer "PYRE IN 0:40", every other believer "BELIEVER", all "- DO NOT KILL", blue and pointed at; each able escort "ESCORT",
 ## red and pointed at; the pyre ("PYRE IN" its soonest procession's seconds, "PYRE" otherwise), orange, its pile outlined; each house still waiting
@@ -1254,9 +1279,47 @@ func _waiting_tag(i: int) -> MapTag:
 	return MapTag.place(h.door, MARK_NOT_YET, "PROCESSION IN %s" % UiTheme.clock(due_in(i)), h.house.height, i == upcoming())
 
 
-## No hint counts down (the base's "waiting" phase is not this Hunt's).
+## The seconds the hint counts down (Mission clarity, read-only): in "pyre", the soonest burning believer's seconds left (burn_left()); 0
+## elsewhere (the base's "waiting" phase is not this Hunt's).
 func hint_seconds() -> float:
-	return 0.0
+	if hint_phase() != "pyre":
+		return 0.0
+	var left := INF
+	for i in procs.size():
+		if phase_of(i) == Procession.Phase.BURNING:
+			left = minf(left, burn_left(i))
+	return 0.0 if left == INF else left
+
+
+## Why a cast that reached a believer or his escort did not count (Mission clarity, read-only; pre-flight I6, minor 4):
+## - a Hold that landed on an escort while enough stay able to keep him (FH_ESCORT_HOLD or more): the words are fixed, so the gate's
+##   REPEAT dedupes them whatever the count;
+## - a Lead or a Lure on a believer: he is bound, deaf to the god and past fear.
+## A cast that could also kill an escort or leave too few of them able says nothing.
+func why_not(key: String, at: Vector2) -> String:
+	if lost_reason() != "" or out_count() >= tune_need:
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	var custody := [Procession.Phase.FORMING, Procession.Phase.MARCHING, Procession.Phase.BURNING]
+	var held_one := false
+	var bound_one := false
+	for i in procs.size():
+		var pr: Procession = procs[i]
+		if not pr.phase in custody or pr.charge == null or not _alive(pr.charge.man):
+			continue
+		if _kills_any(key, at, pr.escorts):
+			return ""
+		if "hold" in verbs:
+			for v: Variant in pr.escorts:
+				if _alive(v) and not (v as Person).inside and _reaches_one(key, at, (v as Person).ground_pos) and _disabled(v as Person):
+					if able_escort(i) < FH_ESCORT_HOLD:
+						return ""
+					held_one = true
+		if ("lead" in verbs or "lure" in verbs) and _reaches_one(key, at, (pr.charge.man as Person).ground_pos):
+			bound_one = true
+	if held_one:
+		return "STILL GUARDED - HOLD MORE ESCORTS"
+	return "BOUND - HE CANNOT HEAR YOU" if bound_one else ""
 
 
 ## The tour (MS §6, *my call*): the first procession's house, the pyre; each line fits the caption's plate.

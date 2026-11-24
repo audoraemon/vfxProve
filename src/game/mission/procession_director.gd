@@ -383,6 +383,41 @@ func hint_phase() -> String:
 	return "blessing" if at_steps and t >= BLESSING_AT and t < BLESSING_AT + BLESSING_SECONDS else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "dock", "blessing"])
+
+
+## Read-only (Mission clarity, spec 5.1): the seconds the hint counts -- the blessing left in "blessing", the seconds to the ship's docking in
+## "dock" (he boards as soon as his ship is in), else 0.
+func hint_seconds() -> float:
+	if not under_way() or timeline == null:
+		return 0.0
+	match hint_phase():
+		"blessing":
+			return maxf(BLESSING_AT + BLESSING_SECONDS - timeline.elapsed(), 0.0) * timeline.stretch_factor()
+		"dock":
+			return timeline.seconds_to("ship")
+	return 0.0
+
+
+const HALTS_BANNER := "THAT ONLY HALTS HIM - KILL HIM"
+
+
+## Mission clarity (spec 5.1): a fright, Discord, a whisper or a lure on the Prince only halts his walk; only his death counts. Nothing
+## reaches him in his carriage.
+func why_not(key: String, at: Vector2) -> String:
+	if not under_way() or prince.inside or not _cast_reaches(key, at, prince.ground_pos):
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	if ("kill" in verbs and _may_kill(key, at, prince.ground_pos)) or "banish" in verbs or "calm" in verbs:
+		return ""
+	for v: String in ["scare", "lead", "confuse", "lure"]:
+		if v in verbs:
+			return HALTS_BANNER
+	return ""
+
+
 ## The tour (board tags, spec §4): the Prince, the cathedral steps, the dock.
 func tour() -> Array:
 	var out := []

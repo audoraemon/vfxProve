@@ -114,6 +114,18 @@ const SCORCH_COLOR := Color(0.12, 0.09, 0.08)
 const SCORCH_STRENGTH := 0.45
 ## How many flame frames a burning person flickers through (_draw_flames()).
 const FLAME_FRAMES := 6
+## A burning person's flames (_draw_flames(), the user's playtest 2026-11-20): this many tongues across his body, each rising to
+## its share of twice his height (the middle ones tallest), and their colours from the edge in; sparks and smoke over them.
+const FLAME_REACH: Array[float] = [0.4, 0.62, 0.85, 1.0, 0.8, 0.6, 0.38]
+const COL_FLAME_EDGE := Color(1.0, 0.33, 0.08, 0.8)
+const COL_FLAME_MID := Color("ffa030")
+const COL_FLAME_CORE := Color("fff0a0")
+const COL_FIRE_GLOW := Color(1.0, 0.5, 0.15, 0.22)
+const COL_FIRE_SMOKE := Color(0.24, 0.21, 0.19, 0.4)
+const FIRE_SPARKS := 3
+## The least light a channel is divided by when his fire is drawn unlit (unlit()).
+const UNLIT_FLOOR := 0.2
+const FIRE_SMOKE := 3
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
@@ -420,6 +432,8 @@ var badge_color := Color.WHITE
 var badge_left := 0.0
 ## Seconds left that this person shows soot from a ground fire (GroundFire.SCORCH_SHOW when scorched).
 var scorched_left := 0.0
+## How many times his flames were drawn (_draw_flames(); the tests count it). Drawing only.
+var flame_draws := 0
 ## Health, for blows (hurt()); set by setup_person().
 var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
@@ -3096,6 +3110,8 @@ static func _screen_box(fp: Rect2, h: float) -> Rect2:
 
 func _draw_body(lift: int, top_only: int) -> void:
 	drawn_upright = false
+	if state != State.DEAD and burning() and _lift <= 8.0:
+		_draw_fire_glow()
 	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD 			and not (SpriteArt.on() and PeopleArt.ready() and _prays()):
 		# On its knees: the body down, no legs under it (unless the sprite has a pray of its own).
 		lift += 3
@@ -3112,18 +3128,61 @@ func _draw_body(lift: int, top_only: int) -> void:
 			_draw_flames(lift)
 
 
-## Alight (Burning): tongues of flame licking up his body, flickering with the seconds he has left. Drawing only.
+## Alight (Burning; made bigger after the user's playtest, 2026-11-20): FLAME_REACH's tongues of flame over his whole body,
+## the middle ones rising to about twice his height, each red at the edge, orange within and pale at the root; FIRE_SPARKS
+## sparks rising over them and a thin wisp of smoke above. They flicker with the seconds he has left (_flame_frame()), each
+## person on his own phase (his instance id: drawing only). Drawn untinted (fire is not dimmed by his soot) and unlit (not
+## dimmed by the night: fire_colour()). Drawing only.
 func _draw_flames(lift: int) -> void:
+	flame_draws += 1
 	var k := _flame_frame()
-	var top := -18 if SpriteArt.on() and PeopleArt.ready() else -14
-	for i in 5:
-		var x := (i * 2 - 4) + ((k + i) % 2)
-		var h := 3 + (k * 3 + i * 5) % 5
-		var y := -2 - (i * 7 + k * 3) % 10 + lift
-		y = maxi(y - h, top + lift) + h
-		_px(x, y - h, 1, h, COL_EMBER)
-		_px(x, y - h, 1, 1 + h / 3, COL_HOT)
-	_px(-1, top + lift - 1 - k % 2, 1, 2, Color(COL_HOT, 0.8))
+	var tall := 18 if SpriteArt.on() and PeopleArt.ready() else 14
+	var ph := (get_instance_id() & 0xffff) % FLAME_FRAMES
+	var n := FLAME_REACH.size()
+	for i in n:
+		var x := i * 2 - n + ((k + i + ph) % 2)
+		var flick := 0.8 + 0.05 * float((k * 3 + i * 5 + ph) % 5)
+		var h := maxi(roundi(float(tall) * 2.0 * FLAME_REACH[i] * flick), 3)
+		# A wide red root over his body, narrowing to a one-pixel tongue: orange within, pale at the heart.
+		var root := h * 3 / 5 if i % 2 == 1 else h * 2 / 5
+		_fire_px(x - 1 + i % 2, lift - root, 2, root, COL_FLAME_EDGE)
+		_fire_px(x, lift - h, 1, h, COL_FLAME_EDGE)
+		_fire_px(x, lift - h * 3 / 4, 1, h * 3 / 4, COL_FLAME_MID)
+		_fire_px(x, lift - h * 2 / 5, 1, h * 2 / 5, COL_FLAME_CORE)
+	var top := lift - tall * 2
+	for j in FIRE_SPARKS:
+		var rise := (k * 4 + j * 7 + ph * 3) % 12
+		_fire_px((j * 5 + ph + k) % 9 - 4, top + 2 - rise, 1, 1, Color(COL_HOT, 1.0 - float(rise) / 12.0))
+	for j in FIRE_SMOKE:
+		var sx := (j + (k + ph) / 2) % 3 - 1
+		_fire_px(sx, top - 4 - j * 4 - k % 2, 2, 2, Color(COL_FIRE_SMOKE, COL_FIRE_SMOKE.a * (1.0 - 0.3 * float(j))))
+
+
+## Alight: a warm glow on the ground under him, under his body. Unlit, as his flames (fire_colour()). Drawing only.
+func _draw_fire_glow() -> void:
+	draw_set_transform(_draw_origin, 0.0, Vector2(1.0, 0.5))
+	draw_circle(Vector2.ZERO, 13.0, fire_colour(COL_FIRE_GLOW))
+	draw_circle(Vector2.ZERO, 7.0, fire_colour(Color(COL_FLAME_MID, 0.28)))
+	draw_set_transform(_draw_origin)
+
+
+## A pixel run of fire, untinted (DummyEnemy._px() would tint it with his soot or a flash) and unlit (fire_colour()).
+func _fire_px(x: int, y: int, w: int, h: int, c: Color) -> void:
+	draw_rect(Rect2(x, y, w, h), fire_colour(c))
+
+
+## The colour to draw his fire in so that it shows as `c` under the light on him: his modulate (DummyEnemy._refresh(): the
+## ambient, the night's tint and the lamplight) multiplies all he draws, and fire is its own light, so it is not dimmed or
+## cooled at night (the user's playtest: "I barely see the burning effect"). Drawing only. It lags the light by at most one of
+## his redraws (the light is read at LIGHT_HZ, the flames redraw with their frames).
+func fire_colour(c: Color) -> Color:
+	return unlit(c, modulate)
+
+
+## `c` divided by the light `m` (each channel floored at UNLIT_FLOOR, so a dark spot cannot blow it up): drawn under `m` it
+## shows as `c` (the renderer clamps after the multiply). Its alpha is kept (his fade on death is not light).
+static func unlit(c: Color, m: Color) -> Color:
+	return Color(c.r / maxf(m.r, UNLIT_FLOOR), c.g / maxf(m.g, UNLIT_FLOOR), c.b / maxf(m.b, UNLIT_FLOOR), c.a)
 
 
 ## Which of FLAME_FRAMES the flames show now: they flicker as his seconds run down.

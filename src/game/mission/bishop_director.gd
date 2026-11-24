@@ -687,6 +687,36 @@ func hint_phase() -> String:
 	return "burning" if _burning(refuges[cur]) else "open"
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "square", "waiting", "guarded", "burning", "open"])
+
+
+## The why-not banner (Mission clarity, spec 5.2): a fire or a blow on the refuge he is in while a Knight stands guard at it. The Knights
+## beat a fire out and turn a blow aside. A power that kills or holds the Knight it reaches counts (he leaves the guard), so says nothing.
+## Only reads.
+const WHY_KNIGHTS := "HIS KNIGHTS (RED) BEAT IT OUT"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if not ("burn" in verbs or "strike" in verbs) or "hold" in verbs or in_square:
+		return ""
+	var cur := current_refuge()
+	if cur < 0:
+		return ""
+	var s := refuges[cur]
+	var guards := guards_at(cur)
+	if guards.is_empty() or not is_instance_valid(s) or s.destroyed:
+		return ""
+	if s.distance_to(at) > Crowd._cast_radius(key) + WHY_MARGIN:
+		return ""
+	for g in guards:
+		if _may_kill(key, at, g.ground_pos):
+			return ""
+	return WHY_KNIGHTS
+
+
 ## The seconds the hint counts down (v0.11 M5, MissionHints.SECONDS): to his next refuge while he waits or is on his way; else 0.
 func hint_seconds() -> float:
 	return arrive_in() if hint_phase() == "waiting" else 0.0
@@ -726,3 +756,8 @@ func teardown() -> void:
 			if is_instance_valid(s):
 				crowd.engineers.hands_off.erase(s)
 	super()
+
+
+## Music by situation: the chase while the Bishop is in flight, or a quarry flees.
+func music_mood() -> StringName:
+	return &"chase" if in_flight else super()

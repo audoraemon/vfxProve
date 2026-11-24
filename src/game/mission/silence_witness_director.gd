@@ -252,6 +252,11 @@ func hint_phase() -> String:
 	return best
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "near", "relay"])
+
+
 ## The tour (MS §3): the four houses with their times (the later ones "by": the chain can bring them sooner), then the Temple's door.
 func tour() -> Array:
 	var out := []

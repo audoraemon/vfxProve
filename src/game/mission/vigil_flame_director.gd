@@ -433,6 +433,34 @@ func hint_phase() -> String:
 	return "wren" if appeared else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "carry", "homeward", "wren"])
+
+
+## Seconds to Wren's coming, in mission seconds (Mission clarity, spec 5.6): the "" step counts it down; 0 once he has come.
+func hint_seconds() -> float:
+	return timeline.seconds_to("wren") if timeline != null and not appeared else 0.0
+
+
+const WHY_SEEN := "AN ACOLYTE (RED) WOULD SEE"
+const WHY_ONLY_WREN := "ONLY WREN (BLUE) CAN TAKE IT"
+
+
+## Mission clarity (spec 5.6): a Lead that takes someone but Wren to the lantern, or Wren to it while an unheld Faithful (the bearer aside) stands
+## within sight of it. The destination is the whispered one's goal. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	if swapped or home or crowd == null or _lantern == Vector2.INF or not "lead" in MissionVerbs.verbs_of(key):
+		return ""
+	var w := _whispered_at(at)
+	if w == null or (w.goal() if w.has_goal() else w.ground_pos).distance_to(_lantern) > SWAP_REACH + 0.5:  # (one already standing there has no goal)
+		return ""
+	if w != wren:
+		return WHY_ONLY_WREN
+	var seer := faithful_seeing(_lantern, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null, wren)
+	return WHY_SEEN if seer != null else ""
+
+
 ## The tour (v0.10 M6, spec §5): the flame on its bearer, Mira's shrine, the Temple.
 func tour() -> Array:
 	var out := []
@@ -587,3 +615,8 @@ func bench_beams() -> void:
 class FlameGaze extends GazeMeter:
 	func seen_death() -> void:
 		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE)
+
+
+## Music by situation: the vigil's chant.
+func music_mood() -> StringName:
+	return &"rite"

@@ -116,6 +116,26 @@ func _on_razed(_s: Structure) -> void:
 	pass
 
 
+## Whether a cast of `key` at `at` could kill any of `men` (Mission clarity, pre-flight I6): a person of the list, alive or fallen, within
+## the cast's kill radius (MissionDirector._may_kill()). A why_not() that sees one says nothing: the cast may have counted. Only reads.
+func _kills_near(key: String, at: Vector2, men: Array) -> bool:
+	for p: Variant in men:
+		if is_instance_valid(p) and _may_kill(key, at, (p as Person).ground_pos):
+			return true
+	return false
+
+
+## Whether a cast of `key` at `at` reaches target `s`: it stands, is not razed, and its footprint lies within the cast radius and WHY_MARGIN
+## (Mission clarity). Only reads.
+func _reached(key: String, at: Vector2, s: Structure) -> bool:
+	return is_instance_valid(s) and not s.destroyed and not razed(s) and s.distance_to(at) <= Crowd._cast_radius(key) + WHY_MARGIN
+
+
+## Whether `s` is stone to fire (its kind is not in FireManager.BURNABLE): a Burn only fails on it (Mission clarity). Only reads.
+func _stone(s: Structure) -> bool:
+	return not s.kind in FireManager.BURNABLE
+
+
 ## One step (v0.11 M2): the timeline, then each target judged.
 func step(delta: float) -> void:
 	if timeline != null:

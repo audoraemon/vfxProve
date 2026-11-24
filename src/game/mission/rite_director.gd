@@ -684,3 +684,8 @@ func teardown() -> void:
 			(p as Person).chained = false
 	captive = null
 	grip_by = null
+
+
+## Music by situation: the rite's chant.
+func music_mood() -> StringName:
+	return &"rite"

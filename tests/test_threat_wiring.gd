@@ -14,6 +14,9 @@ const HO := preload("res://tests/test_heart_of_faith.gd")
 const HH := preload("res://tests/test_heretic_hunt.gd")
 const FT := preload("res://tests/test_first_taste.gd")
 const PN := preload("res://tests/test_procession.gd")
+const VF := preload("res://tests/test_vigil_flame.gd")
+const RR := preload("res://tests/test_relic_run.gd")
+const BL := preload("res://tests/test_broken_lanterns.gd")
 const DT := 0.05
 
 
@@ -34,6 +37,10 @@ static func run(t) -> void:
 	_cleanse(t)
 	_ship(t)
 	_escape(t)
+	_flame_home(t)
+	_vigil_prayer(t)
+	_relic(t)
+	_lantern_prayer(t)
 
 
 static func _find(list: Array, id: StringName) -> Dictionary:
@@ -336,3 +343,73 @@ static func _escape(t) -> void:
 	rules._escaped0 -= 1
 	t.check(_find(d.threats(), &"escape").is_empty(), "two short, one running: no threat")
 	Kit.done(s)
+
+
+## The Vigil Flame: nothing before the route turns home; then the bearer's walk to the Temple's door, `flame_home`; swapped, none.
+static func _flame_home(t) -> void:
+	var s := VF._setup()
+	var d: VigilFlameDirector = s.d
+	t.check(_find(d.threats(), &"flame_home").is_empty(), "the Vigil on its round: no threat")
+	VF._arrive(d.vigil.bearer, d.vigil.route[d.vigil.route.size() / 2])  # out on its round, far from the Temple (headless people never walk)
+	d.timeline.step(VigilFlameDirector.ROUTE_AT)
+	VF._run(s, VigilRoute.TICK + DT)
+	var th := _find(d.threats(), &"flame_home")
+	t.check(d.going_home() and _at(th, d.home_eta()) and String(th.title) == "THE FLAME GOES HOME"
+		and absf(float(th.eta) - (MissionDirector.walk_left(d.vigil.bearer, d.temple_door) - VigilFlameDirector.HOME_REACH / d.vigil.bearer.walk_speed)
+			* (s.rules as Rules).clock_rate) < 0.01,
+		"the route turned home: the bearer's walk to the Temple (%s)" % [th])
+	d.swapped = true
+	t.check(_find(d.threats(), &"flame_home").is_empty(), "the flame swapped: he carries nothing that loses")
+	VF._done(s)
+
+
+## The Vigil Flame: a prayer under way fills the Gaze only when what it can add is enough; `prayer` then, at the time it does.
+static func _vigil_prayer(t) -> void:
+	var s := VF._setup()
+	var d: VigilFlameDirector = s.d
+	var f: Person = null
+	for v: Variant in d.faithful:
+		if MissionDirector._alive(v) and not (v as Person).inside:
+			f = v
+			break
+	f.go_duty(f.ground_pos)
+	d.praying[f] = [VigilFlameDirector.PRAY_SECONDS, f.ground_pos]
+	d.gaze.value = 90.0
+	t.check(_find(d.threats(), &"prayer").is_empty(), "one prayer at Gaze 90: it cannot fill it, no threat")
+	d.gaze.value = 99.0
+	var th := _find(d.threats(), &"prayer")
+	var want := 1.0 / (GazeMeter.PRAYER_PER_SECOND * VigilFlameDirector.PRAYER_SCALE) * (s.rules as Rules).clock_rate
+	t.check(_at(th, want), "Gaze 99: the prayer fills it in %.2f s (%s)" % [want, th])
+	VF._done(s)
+
+
+## The Relic Run: past its last checkpoint the cart walks for the Citadel's gate, `flame_home` (THE RELIC REACHES THE CITADEL); a checkpoint
+## still to come, none.
+static func _relic(t) -> void:
+	var s := RR._world()
+	var d: RelicRunDirector = s.d
+	RR._out_on_road(s, d)
+	t.check(_find(d.threats(), &"flame_home").is_empty(), "on the road, its checkpoints ahead: no threat")
+	d.halts_done[0] = true
+	d.halts_done[1] = true
+	var th := _find(d.threats(), &"flame_home")
+	t.check(_at(th, d.home_eta()) and String(th.title) == "THE RELIC REACHES THE CITADEL"
+		and float(th.eta) > MissionDirector.walk_left(d.vigil.bearer, d.vigil.goal()) * (s.rules as Rules).clock_rate,
+		"no checkpoint left: its walk on to the Citadel's gate (%s)" % [th])
+	Kit.done(s)
+
+
+## Broken Lanterns: the Faithful at prayer fill the Gaze at a steady rate, `prayer` at (FULL - Gaze) / rate.
+static func _lantern_prayer(t) -> void:
+	var s := BL._setup()
+	var d: BrokenLanternsDirector = s.d
+	BL._away(d)
+	t.check(_find(d.threats(), &"prayer").is_empty(), "nobody at prayer: no threat")
+	BL._break(d.shrines[0])
+	for k: Variant in d.praying.keys():
+		BL._arrive(k as Person, d.praying[k][1])
+	d.gaze.value = 99.0
+	var rate := minf(float(d.praying_count()), GazeMeter.PRAYER_CAP) * BrokenLanternsDirector.PRAYER_SCALE * d._toll_scale()
+	var th := _find(d.threats(), &"prayer")
+	t.check(d.praying_count() > 0 and _at(th, 1.0 / rate * (s.rules as Rules).clock_rate), "at prayer, Gaze 99: they fill it (%s)" % [th])
+	BL._done(s)

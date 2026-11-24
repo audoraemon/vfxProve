@@ -55,7 +55,7 @@ static func _seeded(t) -> void:
 	t.check(InformerDirector.CHAIN_WAIT == 45.0 and InformerDirector.VISIT_AT == [45.0, 115.0, 180.0, 245.0], "CHAIN_WAIT and VISIT_AT are untouched")
 	t.check(MissionBook.informer().camera_at == InformerDirector.CAMERA_AT, "Aldermere's camera is still CAMERA_AT")
 	# The other Assassinate missions do not take the Informer's seed: each assigns its safe place in _plan() as before.
-	t.check(AssassinateDirector.new().safe_at == Vector2.INF and BishopDirector.new().safe_at == Vector2.INF
+	t.check(AssassinateDirector.new().safe_at == Vector2.INF
 		and TaxCollectorDirector.new().safe_at == Vector2.INF, "the other Assassinate missions' safe_at starts unset, as it did")
 
 

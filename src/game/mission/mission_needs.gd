@@ -27,7 +27,7 @@ const TABLE := {
 	"heretic_hunt": ["temple", "districts:8"],
 	# Tier 4: the Procession's route, the Armoury's two taverns, two gate towers and barracks, the Sermon's third well.
 	"procession": ["temple", "citadel", "citadel_court", "market_square", "dock", "dock_wait"],
-	"bishop": ["temple"],
+	"bishop": ["temple", "citadel_gate"],
 	"armoury": ["temple", "barracks", "taverns:2", "gate_towers:2"],
 	"sermon": ["temple", "wells:3"],
 	"relic_run": ["temple"],

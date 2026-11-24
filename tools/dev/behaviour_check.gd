@@ -3686,7 +3686,7 @@ func _armoury_act(rules: Rules, slots: Dictionary, d: ArmouryDirector, crowd: Cr
 	var cur := d.mustering_now()
 	if cur >= 0:
 		var s := d.targets[cur]
-		var word := String(ArmouryDirector.WORDS[cur])
+		var word := String(d.words[cur])
 		var on := d.guards(cur)
 		if not on.is_empty():
 			if _slot_ready(rules, slots, "smite"):

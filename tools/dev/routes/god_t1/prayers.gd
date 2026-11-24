@@ -637,6 +637,8 @@ static func _way_near(way: PackedVector2Array, at: Vector2, reach: float) -> boo
 ## the market's report will cost a breath at the crowded door, and its dead must stay explained. A report's runner and the door's watchers
 ## (who would make a report) are taken whatever the gauge says. Under R21 a cast whose seers all die in it calls no sweep; a man held by the
 ## cell and walking out of the breath alive does, so the fewest others in the cell still matter.
+## While a prayer inside ends within RESERVE with nobody to see the door then, no Faithful is taken: the poor go in by themselves, and the
+## cell's dead (a crowd may walk into the breath) could only cost the Gaze.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
 	var follow := GodT1.amber_breath(bc, ctx)
@@ -661,6 +663,9 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 			return "leaving is prohibited round the %d Faithful who would see the door at the crit (%d others by them): the breath follows" % [
 				eyes.size(), int(eye_cell.doomed)]
 	if crit <= RESERVE and (not d.liners.is_empty() or _line_left(ctx, crit) > 0.0 or not _watchers(d).is_empty()):
+		return ""
+	# A prayer inside ends soon with nobody to see the door then: the poor go in by themselves, and a death now could only cost the Gaze.
+	if crit <= RESERVE and d.reading_left() != INF and _eyes_at(ctx, crit).is_empty():
 		return ""
 	var best := {}
 	for f in _faithful(d):

@@ -28,6 +28,7 @@ static func run(t) -> void:
 		spots["route spot %d" % i] = dov.route_spots[i]
 	Cap.spots_land(t, cap, spots, 1.0)
 	_ship(t, cap)
+	_decor_seeds(t)
 	_starts(t, cap, ald)
 	Cap.drop(cap)
 	Cap.drop(ald)
@@ -138,6 +139,8 @@ static func _starts(t, cap: Dictionary, ald: Dictionary) -> void:
 	var ar := ad.route
 	City.use(&"capital")
 	t.check(_tightest(d.route) >= _tightest(ar) - 0.01, "no two route points stand closer than Aldermere's closest (%.2f vs %.2f)" % [_tightest(d.route), _tightest(ar)])
+	t.check(d.route[3].distance_to(d.route[4]) >= 1.1, "the waiting ground and the boarding point stand at least 1.1 apart (%.2f)" % d.route[3].distance_to(d.route[4]))
+	_override_data_kept(t, d, dov)
 	_walk_parity(t, d, ar, cap, ald)
 	_no_bridge(t, d, cap)
 	Kit.done(a)
@@ -205,6 +208,26 @@ static func _no_queue(t, d: ProcessionDirector) -> void:
 		crowd.advance(0.1)
 		for p in party:
 			d._place(p, p.ground_pos)  # held where set down
+	# The control: a fleeing citizen at that gate's mouth, walking out through it, is in the gate's crowd by the crowd's own rule.
+	var gate: Structure = null
+	for g in crowd._town.gates:
+		if is_instance_valid(g) and (gate == null or (g as Structure).center().distance_to(mouth) < gate.center().distance_to(mouth)):
+			gate = g
+	var spots := crowd.queue_spots(gate)
+	var runner: Person = null
+	for c in crowd.citizens:
+		if is_instance_valid(c) and not c.inside and c != d.prince and not d.attendants.has(c):
+			runner = c
+			break
+	var held := false
+	if runner != null and not spots.is_empty():
+		runner.ground_pos = spots[0]
+		runner.mind = Person.Mind.FLEE
+		runner.walk_to(gate.center() + Crowd.outward_of(gate) * 4.0)
+		for i in 5:
+			crowd._gates()
+		held = runner.queue_spot != Vector2.INF or runner.passing_gate == gate
+	t.check(held, "the control bites: a fleeing citizen at the gate's mouth is taken into its crowd (queue spot %s)" % [runner.queue_spot if runner != null else null])
 	var queued := 0
 	for p in party:
 		if p.queue_spot != Vector2.INF or p.passing_gate != null:
@@ -292,3 +315,37 @@ static func _tightest(route: PackedVector2Array) -> float:
 		for j in range(i + 1, route.size()):
 			tight = minf(tight, route[i].distance_to(route[j]))
 	return tight
+
+
+## Mutating a director's route_spots leaves the override data (the Capital's own dictionary) untouched.
+static func _override_data_kept(t, d: ProcessionDirector, dov: Dictionary) -> void:
+	var before: Array = (City.by_id(&"capital").mission_overrides(ID).director.route_spots as Array).duplicate()
+	d.route_spots.append(Vector2.ZERO)
+	d.route_spots[0] = Vector2(99.0, 99.0)
+	var after: Array = City.by_id(&"capital").mission_overrides(ID).director.route_spots
+	t.check(after == before and after.size() == 5 and after[0] == Vector2(0.0, -20.5), "changing a director's route_spots leaves the override data as it was")
+	d.route_spots.remove_at(d.route_spots.size() - 1)
+	d.route_spots[0] = before[0]
+
+
+## The Capital's ship is added to the decor after every other piece: the pieces without it are exactly what they were before the ship existed
+## (kind, place, seed, size, scale, bake hashed; pinned from a build with no ship), and Aldermere's decor, ship at its index, is as it was.
+static func _decor_seeds(t) -> void:
+	for want: Array in [[&"aldermere", false, 2634930211, 1748, 350], [&"capital", true, 1261021701, 2011, -1]]:
+		City.use(want[0])
+		var h := 0
+		var n := 0
+		var ship := -1
+		var list := TownDecor.spots()
+		for i in list.size():
+			var d: Dictionary = list[i]
+			if d.kind == Decor.Kind.SHIP:
+				ship = i
+				if want[1]:
+					continue
+			n += 1
+			h = hash([h, int(d.kind), d.at, d.seed, d.size, d.get("scale", 1.0), d.bake])
+		t.check(h == want[2] and n == want[3] and (ship == want[4] or want[1]), "%s decor %s: hash %d (want %d), %d pieces, ship at %d" % [want[0], "without the ship" if want[1] else "as it was", h, want[2], n, ship])
+		if want[1]:
+			t.check(ship > 0 and list[ship].at == City.current().ship_at(), "the Capital's ship is in the decor at its dock (index %d of %d)" % [ship, list.size()])
+	City.use(&"aldermere")

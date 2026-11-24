@@ -69,6 +69,7 @@ func pastures() -> Array[Rect2]: return []
 func market_piles() -> Array[Rect2]: return []             # market clutter (Aldermere: TownLayout.MARKET_PILES)
 func torches() -> Array[Vector2]: return []                # torch posts; the first four are the market's corners
 func ship_at() -> Vector2: return Vector2.INF              # where the moored ship lies (INF = no ship)
+func ship_last() -> bool: return false                  # true: the ship is added to the decor after every other piece (the capital: no seed moves)
 func citadel_origin() -> Vector2: return Vector2.INF       # INF = this city has no Aldermere-style Citadel node
 func landmark(name: StringName) -> Rect2: return Rect2()   # empty Rect2 = unknown
 ## A named point missions read (v0.12): the Citadel's gate, the postern, the Citadel's origin. Vector2.INF = unknown. Missions

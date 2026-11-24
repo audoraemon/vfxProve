@@ -1194,6 +1194,11 @@ func ship_at() -> Vector2:
 	return Vector2(DOCK.get_center().x, DOCK.end.y + 0.75)
 
 
+## Added to the decor last, so no other piece's seed (SEED + index * 7919) moves for it.
+func ship_last() -> bool:
+	return true
+
+
 func boats() -> Array[Vector2]:
 	return _vectors(BOATS)
 

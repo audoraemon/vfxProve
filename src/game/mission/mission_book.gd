@@ -581,7 +581,7 @@ static func armoury() -> MissionDef:
 ## The Sermon (v0.11 M5, Tier 4, mission spec §3 and §8 row 19): silence a preacher who holds the poor quarter and lead eight of his
 ## crowd, in four waves, to the god's house unseen by the Faithful, before the sermon ends (SermonDirector, Mira's House's Convert).
 static func sermon() -> MissionDef:
-	var m := _tier4(SERMON, "The Sermon", PackedStringArray(["A preacher holds the poor quarter.", "Silence him. Turn eight of his crowd."]))
+	var m := _tier4(SERMON, "The Sermon", PackedStringArray(["A preacher holds a quarter of the town.", "Silence him. Turn eight of his crowd."]))
 	m.goal = "Silence the preacher and lead eight of his crowd to the god's house, unseen, before the sermon ends at %s" % UiTheme.clock(
 		SermonDirector.SERMON_ENDS)
 	m.goal_label = "The crowd believes"

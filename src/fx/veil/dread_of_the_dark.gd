@@ -26,6 +26,13 @@ const T_FADE := 0.6
 const KEY := &"dread"
 ## The person's meta that holds the casts keeping the dread on him: {instance id: true}.
 const OWNERS := &"dread_owners"
+## Level 5, The Dark Looks Back: at most this many are held at the edge in one cast, a poll every TICK, and the stand that holds a man
+## (seconds within EDGE_NEAR of the dreaded ground); the pale eye's key.
+const EDGE_MOST := 16
+const EDGE_NEAR := 1.0
+const EDGE_STAND := 2.0
+const TICK := 0.25
+const EYE_KEY := "dread"
 
 ## The cast's reach (light or dark size).
 var reach := 6.0
@@ -39,6 +46,13 @@ var _dread := 0
 var _lifted := false
 ## The god's look: the thickened dark and the eyes at its edge.
 var shade: DreadShade
+## Level 5 twist (The Dark Looks Back): the instance ids of the men held at the edge, outside the dreaded ground (`_hold_all()` never
+## lets them go; `_release()` does), each one's seconds stood near it, the poll's accumulator and the crowd clock of the fall.
+var _twist := false
+var _edge_ids: Array[int] = []
+var _stood := {}
+var _acc := 0.0
+var _fall_clock := INF
 
 
 ## Why a Dread cast at `ground` must be refused: "no_dark" when no dark ground lies within its reach, else "" (Rules.cast() asks;
@@ -61,6 +75,7 @@ static func dark_in_reach(crowd: Crowd, at: Vector2, reach: float) -> bool:
 
 
 func _build() -> void:
+	_twist = PowerBook.twist_at(extra, "dread")
 	lv_hold = PowerBook.stat(extra, "dread", "HOLD", HOLD)
 	reach = VeilParts.size(self, "dread", "REACH")
 	if ctx != null:
@@ -95,6 +110,7 @@ func _fall() -> void:
 	if not _live_crowd():
 		return
 	_dread = ctx.crowd.dread(origin, reach, lv_hold)
+	_fall_clock = ctx.crowd.clock()
 	_hold_all()
 	if shade != null and is_instance_valid(shade):
 		shade.refresh(ctx.crowd)
@@ -111,6 +127,8 @@ func _lift() -> void:
 func _fx_process(delta: float) -> void:
 	if _dread != 0:
 		_hold_all()
+		if _twist:
+			_edge_poll(delta)
 	if shade != null and is_instance_valid(shade):
 		shade.strength = _strength()
 		shade.lifted = _lifted
@@ -149,7 +167,7 @@ func _hold_all() -> void:
 				_ids.append(id)
 	var i := _ids.size() - 1
 	while i >= 0:
-		if not now.has(_ids[i]):
+		if not now.has(_ids[i]) and not _edge_ids.has(_ids[i]):
 			_let_go(_person(_ids[i]))
 			_ids.remove_at(i)
 		i -= 1
@@ -180,11 +198,87 @@ static func _person(id: int) -> Person:
 	return instance_from_id(id) as Person
 
 
+## Level 5: whether any of this cast's dreaded ground (within `reach` of the click and dark) lies within EDGE_NEAR of `q`: probed
+## along the line to the click and on two rings round him.
+func _near_dreaded(q: Vector2) -> bool:
+	var toward := (origin - q).normalized()
+	for k in 10:
+		if _dreaded_here(q + toward * (0.1 * float(k + 1))):
+			return true
+	for r: float in [0.5, EDGE_NEAR]:
+		for a in 12:
+			if _dreaded_here(q + Vector2.from_angle(TAU * float(a) / 12.0) * r):
+				return true
+	return false
+
+
+func _dreaded_here(g: Vector2) -> bool:
+	return origin.distance_to(g) <= reach and ctx.crowd.in_dark(g)
+
+
+## Level 5, every TICK from the fall to the lift: the living out of doors within reach + 1 who are neither asleep nor a shadow, are not held
+## by this cast and stand outside its dreaded ground are held at its edge -- one it just refused (`dread_balked_at`) and who is within
+## EDGE_NEAR of it, or who has stood within EDGE_NEAR of it for EDGE_STAND seconds. EDGE_MOST a cast, nearest the click first. Eyed.
+func _edge_poll(delta: float) -> void:
+	if not _live_crowd() or ctx.field == null:
+		return
+	_acc += delta
+	if _acc < TICK - 0.001:
+		return
+	var step := _acc
+	_acc = 0.0
+	var i := _edge_ids.size() - 1
+	while i >= 0:
+		var held := _person(_edge_ids[i])
+		if held == null or not held.is_alive() or held.inside:
+			_let_go(held)
+			_edge_ids.remove_at(i)
+		i -= 1
+	var ready: Array[Person] = []
+	var seen := {}
+	for e in ctx.field.in_radius(origin, reach + 1.0):
+		var p := e as Person
+		if p == null or not p.is_alive() or p.inside or p.is_asleep() or p.is_shadow():
+			continue
+		var id := p.get_instance_id()
+		seen[id] = true
+		if _edge_ids.has(id) or _ids.has(id):
+			continue
+		if _dreaded_here(p.ground_pos):
+			continue
+		if not _near_dreaded(p.ground_pos):
+			_stood.erase(id)
+			continue
+		_stood[id] = float(_stood.get(id, 0.0)) + step
+		if p.dread_balked_at >= _fall_clock or float(_stood[id]) >= EDGE_STAND - 0.001:
+			ready.append(p)
+	for id: int in _stood.keys():
+		if not seen.has(id):
+			_stood.erase(id)
+	ready.sort_custom(func(a: Person, b: Person) -> bool:
+		var da := a.ground_pos.distance_squared_to(origin)
+		var db := b.ground_pos.distance_squared_to(origin)
+		return a.get_instance_id() < b.get_instance_id() if is_equal_approx(da, db) else da < db)
+	for p in ready:
+		if _edge_ids.size() >= EDGE_MOST:
+			break
+		_hold(p)
+		_edge_ids.append(p.get_instance_id())
+		_stood.erase(p.get_instance_id())
+		PaleEye.mark(self, p, EYE_KEY, INF)
+
+
 ## Everyone this cast holds is let go and its dread ends. Safe to call twice, and with people or the crowd freed meanwhile.
 func _release() -> void:
 	for id in _ids:
 		_let_go(_person(id))
 	_ids.clear()
+	for id in _edge_ids:
+		_let_go(_person(id))
+	_edge_ids.clear()
+	_stood.clear()
+	if _twist and ctx != null and is_instance_valid(ctx.crowd):
+		PaleEye.release(self)
 	if _dread != 0 and _live_crowd():
 		ctx.crowd.end_dread(_dread)
 	_dread = 0

@@ -19,6 +19,10 @@ const OWNER := &"cloak_owner"
 
 ## The cast's look (Veil review): how high over the click the cloth unfurls.
 const CLOTH_UP := -34.0
+## Averted Eyes: how often the cast looks for the watch near the cloaked (seconds), how near (ground units) and how long he is turned.
+const TICK := 0.25
+const TURN_R := 2.0
+const TURN_TIME := 6.0
 
 ## The instance ids of the people this cast cloaked (they may be freed meanwhile).
 var _ids: Array[int] = []
@@ -28,6 +32,12 @@ var cast_look: Node2D
 var shimmers: Array[Node2D] = []
 ## This cast's span, at its level (SPAN at level 1).
 var lv_span := SPAN
+## Averted Eyes (level 5, Veil ability levels B2): the twist's gate, the polling accumulator, the watch this cast has turned (instance
+## ids: once each) and how many.
+var _twist := false
+var _tick := 0.0
+var _turned := {}
+var turned := 0
 
 
 ## Whom a click at `at` would cloak: the `most` nearest living people out of doors within `r`, nearest first, a tie by id.
@@ -48,6 +58,7 @@ static func marked_at(field: EnemyField, at: Vector2, r := 2.0, most := 3) -> Ar
 
 func _build() -> void:
 	lv_span = PowerBook.stat(extra, "cloak", "SPAN", SPAN)
+	_twist = PowerBook.twist_at(extra, "cloak")
 	duration = lv_span
 	busy = T_LAND
 	var r := VeilParts.size(self, "cloak", "MARK_R")
@@ -93,6 +104,7 @@ func _keeps(p: Person) -> bool:
 
 
 func _fx_process(delta: float) -> void:
+	var keeps := false
 	for id in _ids:
 		var p := _person(id)
 		if not _keeps(p):
@@ -102,6 +114,40 @@ func _fx_process(delta: float) -> void:
 			_lift(p)
 		else:
 			p.statuses[KEY] = left
+			keeps = true
+	if _twist and keeps:
+		_tick += delta
+		if _tick >= TICK:
+			_tick = 0.0
+			_avert()
+
+
+## Averted Eyes (level 5): the watch within TURN_R of a man this cast keeps -- alive, out of doors, not held by another Veil power, not
+## turned by this cast before -- is eyed and turned away for TURN_TIME. Nearest to the cloaked first (the cloaked in the order they
+## were marked), a tie by instance id: no luck. The turned run down on their own timer, so ending the cast turns nobody back.
+func _avert() -> void:
+	if ctx == null or ctx.field == null or ctx.crowd == null:
+		return
+	for id in _ids:
+		var c := _person(id)
+		if not _keeps(c):
+			continue
+		var near: Array[Person] = []
+		for e in ctx.field.in_radius(c.ground_pos, TURN_R):
+			var w := e as Person
+			if w != null and w != c and w.is_alive() and not w.inside and ctx.crowd.is_watch(w) 					and not _turned.has(w.get_instance_id()) and not VeilParts.held(w):
+				near.append(w)
+		near.sort_custom(func(a: Person, b: Person) -> bool:
+			var da := a.ground_pos.distance_squared_to(c.ground_pos)
+			var db := b.ground_pos.distance_squared_to(c.ground_pos)
+			return da < db if da != db else a.get_instance_id() < b.get_instance_id())
+		for w in near:
+			if w.ground_pos.distance_to(c.ground_pos) > TURN_R or _turned.has(w.get_instance_id()):
+				continue
+			if w.turn_away(TURN_TIME):
+				_turned[w.get_instance_id()] = true
+				turned += 1
+				PaleEye.mark(self, w, "cloak")
 
 
 func _lift(p: Person) -> void:

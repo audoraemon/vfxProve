@@ -126,8 +126,9 @@ procession_none_3	--scenario=feast --path=procession --board --case=none --seed=
 procession_play_1	--scenario=feast --path=procession --board --case=play --seed=1	-766720488
 procession_play_2	--scenario=feast --path=procession --board --case=play --seed=2	755184607
 procession_play_3	--scenario=feast --path=procession --board --case=play --seed=3	-635831169
-capital_calm	--scenario=capital_calm --seconds=60	-998002054
-capital_evac	--scenario=capital_evac	242945023
+# capital_calm, capital_evac: re-recorded when Last Judgement (the default mission these town scenarios start) got its Capital overrides (f716686d); the town and its crowd code did not change.
+capital_calm	--scenario=capital_calm --seconds=60	-112219378
+capital_evac	--scenario=capital_evac	41568922
 first_taste_none_1	--scenario=first_taste --case=none --seed=1	-994220142
 first_taste_none_2	--scenario=first_taste --case=none --seed=2	-400311310
 first_taste_none_3	--scenario=first_taste --case=none --seed=3	-184378012

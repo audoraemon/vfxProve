@@ -1,7 +1,8 @@
 extends RefCounted
-## World Map + Conquer Progress, Task 6: nights in the Capital. The draw and the def are town-aware (only what the Capital hosts is
-## drawn; Aldermere's draw is today's, bit for bit), a night there has a Descent (wishes) and banks into the Capital's believers, and
-## Game's World Map handler assigns the town only once a night was drawn.
+## World Map + Conquer Progress, Task 6 (Task 25): nights in the Capital. The draw and the def are town-aware (only what the Capital
+## hosts is drawn; Aldermere's draw is today's, bit for bit). The Capital hosts all five missions of every tier, so every tier is
+## drawn there; the one empty draw is a full Notice (the Hunt is Aldermere-only). A night in the Capital has a Descent (wishes) and
+## banks into the Capital's believers, and Game's World Map handler assigns the town only once a night was drawn.
 
 const BASE := "user://test_capital_god_night_"
 const SAVE := "user://test_capital_god_night_save.cfg"
@@ -14,7 +15,8 @@ static func run(t) -> void:
 	_tier2_drawn(t)
 	_tier3_drawn(t)
 	_tier4_drawn(t)
-	_draw_none(t)
+	_tier5_drawn(t)
+	_draw_every_tier(t)
 	_hunt_aldermere_only(t)
 	_def_in_capital(t)
 	_has_descent(t)
@@ -144,23 +146,46 @@ static func _tier4_drawn(t) -> void:
 	print("tier4 drawn ids: ", seen.keys())
 
 
-static func _draw_none(t) -> void:
-	var tier := 0
+static func _tier5_drawn(t) -> void:
+	var tier5 := PackedStringArray(["last_judgement", "lantern_eye", "exodus", "heart_of_faith", "long_night"])
+	var hosted := _hosted(5)
+	t.check(hosted.size() == tier5.size(), "the Capital hosts all five Tier 5 missions (%s)" % [hosted])
+	var seen := {}
+	var bad := 0
+	for night in range(0, 12):
+		for seed_value in range(1, 6):
+			var s := _slot(5, seed_value)
+			s.night = night
+			var id := GodNight.draw(s, "capital")
+			if id == "" or not tier5.has(id) or not hosted.has(id):
+				bad += 1
+			else:
+				seen[id] = true
+	var s2 := _slot(5)
+	var one := GodNight.draw(s2, "capital")
+	t.check(one != "" and tier5.has(one), "a Tier 5 god night in the Capital draws a Tier 5 id (%s)" % one)
+	t.check(bad == 0 and seen.size() >= 2, "every Tier 5 draw over 60 slots is a hosted Tier 5 id, several distinct (%d bad, %s)" % [bad, seen.keys()])
+	print("tier5 drawn ids: ", seen.keys())
+
+
+## Every tier is drawn in the Capital: it hosts all five of that tier's missions and a god night there draws one of them.
+static func _draw_every_tier(t) -> void:
 	for k in range(1, 6):
-		if _hosted(k).is_empty():
-			tier = k
-			break
-	if tier == 0:  # Task 24: the Long Night is the last mission the Capital gained, so every tier is hosted now and each tier draws a hosted night
-		var all_drawn := true
-		for k in range(1, 6):
-			all_drawn = all_drawn and _hosted(k).has(GodNight.draw(_slot(k), "capital"))
-		t.check(all_drawn, "every tier is hosted in the Capital and draws a hosted night")
-		return
-	t.check(tier > 0, "some tier is hosted by no mission in the Capital (tier %d)" % tier)
-	if tier > 0:
-		var s := _slot(tier)
-		t.check(GodNight.draw(s, "capital") == "", "a tier the Capital hosts nothing of draws no night")
-		t.check(GodNight.draw(s, "aldermere") == _old_draw(s), "and Aldermere still draws its own")
+		var hosted := _hosted(k)
+		t.check(hosted.size() == 5, "the Capital hosts five Tier %d missions (%s)" % [k, hosted])
+		var bad := 0
+		var seen := {}
+		for night in range(0, 6):
+			for seed_value in range(1, 4):
+				var s := _slot(k, seed_value)
+				s.night = night
+				var id := GodNight.draw(s, "capital")
+				if id == "" or not hosted.has(id):
+					bad += 1
+				else:
+					seen[id] = true
+		var one := GodNight.draw(_slot(k), "capital")
+		t.check(one != "" and hosted.has(one) and bad == 0, "Tier %d draws one of its hosted ids in the Capital (%s, %d bad, %d distinct)" % [k, one, bad, seen.size()])
 
 
 static func _hunt_aldermere_only(t) -> void:
@@ -249,8 +274,6 @@ static func _capital_wishes(t) -> void:
 	var bad := 0
 	var tiers := PackedInt32Array()
 	for tier in range(1, 6):
-		if _hosted(tier).is_empty():
-			continue  # the Capital hosts nothing of this tier (dim on the map)
 		tiers.append(tier)
 		var id := String(_hosted(tier)[0])
 		var def := MissionBook.in_city(TierBook.board(id, null, tier), &"capital")
@@ -318,22 +341,6 @@ static func _world_action(t) -> void:
 	var map := WorldMap.new()
 	t.root.add_child(map)
 	map.setup(god)
-	# A refused Descend (a tier the Capital hosts none of) leaves everything alone.
-	var none_tier := 0
-	for k in range(2, 6):
-		if _hosted(k).is_empty():
-			none_tier = k
-			break
-	if none_tier > 0:
-		god.tier = none_tier
-		game.mission_id = "keep"
-		game.night_town = "aldermere"
-		god.last_town = "aldermere"
-		map.selected = "capital"
-		game._on_world_action("descend", map)
-		t.check(god.last_town == "aldermere" and game.night_town == "aldermere" and game.mission_id == "keep",
-			"a refused Descend leaves last_town, night_town and mission_id alone (%s, %s, %s)" % [god.last_town, game.night_town, game.mission_id])
-		god.tier = 1
 	# The Capital.
 	map.selected = "capital"
 	game._on_world_action("descend", map)

@@ -7,21 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**15** in progress · **30** to do · **177** done\n**10** active branches besides Develop-Main\n\n**Since the last update** (<t:1795595372:f>)\n• New: Loss warning on every mission (Informer, Escort, Raze, Assassinate...)",
+     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**15** in progress · **30** to do · **177** done\n**10** active branches besides Develop-Main",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-25T15:29:32+07:00"
+     "timestamp": "2026-11-25T20:55:34+07:00"
+    },
+    {
+     "title": "god/veil-levels",
+     "description": "81 commits not in Develop-Main · last commit today · local only\n> test: the sound catalog counts the Pale Eye's cue (605 files, 591 recipes)\n\n**In progress** (1)\n• Veil ability levels: the dark watches back",
+     "color": 5016537
     },
     {
      "title": "feat/god-chamber",
      "description": "71 commits not in Develop-Main · last commit today · local only\n> docs: the God's Chamber branch's rulings, open decision and play-test items\n\n**In progress** (1)\n• God's Chamber (hub replacement) — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "god/veil-levels",
-     "description": "68 commits not in Develop-Main · last commit today · local only\n> feat: the Pale Eye and the Veil twists' shared hooks (inert below level 5)\n\n**In progress** (1)\n• Veil ability levels: the dark watches back",
      "color": 5016537
     },
     {

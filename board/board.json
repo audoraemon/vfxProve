@@ -1,11 +1,9 @@
 {
- "hash": "aab1dc511e3b1b67",
- "updated": "2026-11-25T15:29:32+07:00",
+ "hash": "f6b7080ae2493f0e",
+ "updated": "2026-11-25T20:55:34+07:00",
  "changes": {
-  "date": "<t:1795595372:f>",
-  "items": [
-   "New: Loss warning on every mission (Informer, Escort, Raze, Assassinate...)"
-  ]
+  "date": "<t:1795614934:f>",
+  "items": []
  },
  "snapshot": {
   "project": {
@@ -1728,7 +1726,7 @@
     "area": "Abilities",
     "needs_you": false,
     "branch": "god/veil-levels",
-    "updated": "2026-11-24",
+    "updated": "2026-11-25",
     "order": 7
    },
    "veil-authority-powers": {
@@ -2023,19 +2021,19 @@
   },
   "branches": [
    {
+    "name": "god/veil-levels",
+    "ahead": 81,
+    "behind": 150,
+    "date": "2026-11-25",
+    "subject": "test: the sound catalog counts the Pale Eye's cue (605 files, 591 recipes)",
+    "pushed": false
+   },
+   {
     "name": "feat/god-chamber",
     "ahead": 71,
     "behind": 150,
     "date": "2026-11-25",
     "subject": "docs: the God's Chamber branch's rulings, open decision and play-test items",
-    "pushed": false
-   },
-   {
-    "name": "god/veil-levels",
-    "ahead": 68,
-    "behind": 150,
-    "date": "2026-11-25",
-    "subject": "feat: the Pale Eye and the Veil twists' shared hooks (inert below level 5)",
     "pushed": false
    },
    {

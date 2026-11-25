@@ -217,7 +217,7 @@ in 122 families, the `none` cases, the other gods' rows, the calm/fire/rite/sold
 
 ## What is left
 
-- **Levels 2-5** and their level-5 twists for all ten powers (only level 1 is built; the skill tree shows level 1).
+- ~~Levels 2-5 and their level-5 twists~~: built; see "Levels (2026-11-24)" below.
 - **Veil bots for Tiers 2-5.** The Tier 1 nights play Silent Doom and Blight; the Hunts' Veil bots are listed above. No bot plays
   Slumber, Cloak of Night, Unseen Hour, Dreamless, Dread, Shadow Play, The Swallowing Dark or Evernight in a tier mission yet.
 - **Hunt 1 x Veil's idle** (80 s against 45; ruling VE3): a pacing change to Hide the faithful, or a Veil play for its empty stretch.
@@ -346,7 +346,8 @@ nothing the town does: no alarm, no fright, nobody hears it.
 - **Edge marker.** If the eyed person is off screen, a small eye sits at the screen's edge with an arrow toward him.
 - **The cue.** One soft sound, `v_pale_eye`, in the quiet band, at most once a second however many eyes open. Only you hear it.
 - **How long.** 4 s unless the twist names another time (some stay open until their power ends). It closes at once, for good for that
-  cast, when the person is taken, dies or goes indoors. Being eyed again later by another cast is a new entry.
+  cast, when the person is taken, dies or goes indoors; the drawing of a dead or taken man's eye lingers where he last stood for 0.4 s and
+  fades (VL69), so the one Silent Doom silences is still seen. Being eyed again later by another cast is a new entry.
 - **One drawing.** One node per town, over the heads and under the aim ring. It does not use the person's badge, so Blight's glyph,
   a Decree bar or a Death Mark stay.
 - **A night with no level-5 Veil power builds and draws nothing.** A test holds this for every Veil power at level 4.
@@ -367,16 +368,20 @@ pick is the nearest, a tie to the lower id), and the town's spared are eyed at m
 - **Unseen Hour, Eyes Within.** The watch within the veil's radius plus 4 is eyed while it is there. Anyone who walks out of the veil is
   blind for 6 s. The veil lifting blinds nobody. Narrower than the spec in one place: the town's spared are not blinded (VL44).
 - **Slumber, Heavy Air.** Anyone who walks into the circle in the open after the fall sleeps for the rest of the sleep, and is eyed.
-  Those held already (asleep, a shadow, dreaded) are skipped. A violet ring marks the circle (a new look).
+  Those held already (asleep, a shadow, dreaded) are skipped. Your own believers and whoever the mission keeps alive are eyed but never
+  slept (VL68). A violet ring marks the circle (a new look).
 - **Cloak of Night, Averted Eyes.** The watch within 2.0 of a hidden person turns away for 6 s: it drops the chase, stops fighting, is
-  blind for those 6 s, and is eyed. A soldier goes back to his post.
+  blind for those 6 s, and is eyed. A soldier goes back to his post. A soldier you hold (Dominion) or the mission holds, and one on a
+  duty, is eyed only: his hold or errand is never broken (VL67). Your believers and whoever the mission keeps alive are eyed only too (VL68).
 - **Dreamless, Found by No One.** A sitter is never found: he is taken instead. The nearest witness (who would have found him) rests
   asleep for half the rest, eyed; when he has rested, the next nearest witness judges him: none near, he is taken too, else he falls.
   If that first witness is one the town spares, the sitter is killed as today.
 - **Dread of the Dark, The Dark Looks Back.** Anyone who stops at the edge of the dreaded ground (he balked at it, or stood within 1 of
-  it for 2 s) is held frozen until the dread lifts, eyed. Up to 16, the nearest first.
+  it for 2 s) is held frozen until the dread lifts, eyed. Up to 16, the nearest first. Your believers and whoever the mission keeps alive
+  are eyed for 4 s but never frozen, and use up none of the 16 (VL68).
 - **Shadow Play, The Shadows Keep Watch.** Anyone who comes within 1.0 of one of the cast's shadows joins them as a shadow too (up to
-  12; a joined man can draw in the next), eyed until the cast ends.
+  12; a joined man can draw in the next), eyed until the cast ends. Your believers and whoever the mission keeps alive are eyed for 4 s
+  but never join, are never taken, and use up none of the 12 (VL68).
 - **The Swallowing Dark, Nothing Leaves.** Anyone who stood inside the growing circle and walks out of it is marked (a thin dark thread
   to him, and eyed) and is taken at the fold wherever he has gone, even into a shelter. The spared are eyed and marked but only taken
   if they are inside at the fold, as today (VL13).

@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_rf1_two_dreads(t, made)
 	_rf2_end_now_frozen(t, made)
 	_rf3_held(t, made)
+	_spared(t, made)
 	_level_four(t, made)
 	RD._done(made)
 	_bare(t)
@@ -230,6 +231,37 @@ static func _rf3_held(t, made: Array) -> void:
 	fx.free()
 	shadow.statuses.erase(&"shadow")
 	sleeper.wake()
+
+
+## The spared at the edge (a believer, a man the mission keeps alive) are eyed (timed, not open-ended), never frozen, and use up none of
+## the 16.
+static func _spared(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var at: Vector2 = pt[0]
+	var d: Vector2 = pt[1]
+	var believer := _pp(crowd, 20, _rim(d, 0.8) + Vector2(-0.6, 0.0))
+	var faith := believer.profile.faith
+	believer.profile.faith = CitizenProfile.Faith.BELIEVER
+	var kept := _pp(crowd, 21, _rim(d, 0.8) + Vector2(0.6, 0.0))
+	crowd.mission_keeps.append(func(p: Person) -> bool: return p == kept)
+	var control := _pp(crowd, 22, _rim(d, 0.8))
+	var fx := _cast(made, at)
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT + 4.0)
+	var eye := PaleEye.of(crowd)
+	t.check(_held_by_edge(fx, control) and fx._edge_ids.size() == 1, "(the control at the edge is held, the only one counted)")
+	t.check(not believer.is_dreaded() and not kept.is_dreaded() and not believer.has_meta(DreadOfTheDarkFx.OWNERS) and not kept.has_meta(DreadOfTheDarkFx.OWNERS),
+		"a believer and a mission-kept man at the edge: never frozen")
+	t.check(eye != null and eye.is_eyed(believer) and eye.is_eyed(kept) and eye.record.size() == 3,
+		"... but eyed, once each (%d records)" % (eye.record.size() if eye != null else -1))
+	fx.end_now()
+	t.check(eye.is_eyed(believer) and eye.is_eyed(kept) and not eye.is_eyed(control),
+		"the lift closes the held man's open eye; the spared's timed eyes run on")
+	eye.step(PaleEye.TIME + 0.1)
+	t.check(not eye.is_eyed(believer) and not eye.is_eyed(kept), "... and run out")
+	fx.free()
+	believer.profile.faith = faith
+	crowd.mission_keeps.clear()
 
 
 static func _level_four(t, made: Array) -> void:

@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_time_out(t, made)
 	_open_ended(t, made)
 	_gone_for_good(t, made)
+	_lingers(t, made)
 	_cue(t, made)
 	_quiet(t, made)
 	_badge(t, made)
@@ -165,6 +166,56 @@ static func _gone_for_good(t, made: Array) -> void:
 	inside.inside = false
 	t.check(not PaleEye.mark(a, inside, "slumber") and eye.record.size() == entries, "back outside, the same cast's mark: false and no entry")
 	t.check(PaleEye.mark(b, inside, "slumber") and eye.record.size() == entries + 1 and eye.is_eyed(inside), "another cast's mark: true, a new entry")
+	a.free()
+	b.free()
+
+
+## An eye whose man died or was taken stays where he last stood for FADE, drawn fading, then closes for good; is_eyed()/eyed()/held_by()
+## count it closed at once. Going indoors closes at once. A man eyed by two casts is drawn once, with the larger alpha.
+static func _lingers(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	var taken := EV._put(crowd, at)
+	var killed := EV._put(crowd, at + Vector2(0.5, 0.0))
+	var inside := EV._put(crowd, at + Vector2(1.0, 0.0))
+	var two := EV._put(crowd, at + Vector2(1.5, 0.0))
+	var a := _cast(made, at)
+	var b := _cast(made, at)
+	for p in [taken, killed, inside]:
+		PaleEye.mark(a, p, "slumber", INF)
+	PaleEye.mark(a, two, "slumber", 0.2)
+	PaleEye.mark(b, two, "slumber", 3.0)
+	var eye := PaleEye.of(crowd)
+	var drawn := eye.drawn()
+	t.check(drawn.size() == 4,
+		"(four drawn, the man of two casts once: %d)" % drawn.size())
+	var where := {taken.get_instance_id(): taken.ground_pos, killed.get_instance_id(): killed.ground_pos}
+	crowd.take(taken, &"night")
+	(made[3] as EnemyField).kill(killed, &"doom", at)
+	inside.inside = true
+	eye.step(0.1)
+	t.check(not eye.is_eyed(taken) and not eye.is_eyed(killed) and not eye.is_eyed(inside) and eye.held_by(a.get_instance_id()) == 1,
+		"closed at once for is_eyed() and held_by()")
+	var ids := {}
+	for d in eye.drawn():
+		ids[d["id"]] = d
+	t.check(ids.has(taken.get_instance_id()) and ids.has(killed.get_instance_id()) and not ids.has(inside.get_instance_id()),
+		"drawn: the taken and the killed still, the one who went indoors not")
+	t.check(ids[killed.get_instance_id()]["at"] == where[killed.get_instance_id()] and ids[taken.get_instance_id()]["at"] == where[taken.get_instance_id()],
+		"... where each last stood")
+	t.check(float(ids[killed.get_instance_id()]["a"]) < 1.0 and float(ids[killed.get_instance_id()]["a"]) > 0.0, "... fading")
+	var seen := 0
+	for d in eye.drawn():
+		if d["id"] == two.get_instance_id():
+			seen += 1
+			t.check(float(d["a"]) == 1.0, "a man eyed by two casts: one entry, the larger alpha (the longer eye, full)")
+	t.check(seen == 1, "... drawn once")
+	eye.step(PaleEye.FADE + 0.1)
+	ids.clear()
+	for d in eye.drawn():
+		ids[d["id"]] = d
+	t.check(not ids.has(taken.get_instance_id()) and not ids.has(killed.get_instance_id()), "after FADE the dead are not drawn")
+	inside.inside = false
 	a.free()
 	b.free()
 

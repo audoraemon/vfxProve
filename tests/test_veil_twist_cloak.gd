@@ -51,6 +51,8 @@ static func run(t) -> void:
 	_again(t, made)
 	_others(t, made)
 	_rf3_held_walker(t, made)
+	_spared(t, made)
+	_held_duty(t, made)
 	_two_casts(t, made)
 	_level_four(t, made)
 	_ended(t, made)
@@ -155,6 +157,55 @@ static func _rf3_held_walker(t, made: Array) -> void:
 	fx.free()
 	dreaded.statuses.clear()
 	asleep.wake()
+
+
+## The spared (a man the mission keeps alive) near the cloaked are eyed, never turned.
+static func _spared(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	EV._put(crowd, at)
+	var kept := EV._put(crowd, at + Vector2(9.0, 0.0), true)
+	crowd.mission_keeps.append(func(p: Person) -> bool: return p == kept)
+	var fx := _cast(ctx, at)
+	kept.ground_pos = at + Vector2(1.5, 0.0)
+	_until(fx, 2.0)
+	t.check(_eyed(crowd, kept) and PaleEye.of(crowd).record.size() == 1, "a mission-kept soldier near: eyed, once (not again every tick)")
+	t.check(not kept.is_blind() and fx.turned == 0 and kept.mind == Person.Mind.POST, "... and not turned away, not blind, still at his post")
+	fx.end_now()
+	fx.free()
+	crowd.mission_keeps.clear()
+
+
+## A soldier the god holds (Dominion), one the mission holds (a seizer with his charge) and one on a duty are eyed only: no turn_away,
+## his mind and his hold unchanged, not blind, not counted as turned.
+static func _held_duty(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	EV._put(crowd, at)
+	var god := EV._put(crowd, at + Vector2(9.0, 0.0), true)
+	var seizer := EV._put(crowd, at + Vector2(9.0, 3.0), true)
+	var duty := EV._put(crowd, at + Vector2(9.0, 6.0), true)
+	var fx := _cast(ctx, at)
+	god.mind = Person.Mind.WHISPERED
+	seizer.mind = Person.Mind.FIGHT
+	duty.mind = Person.Mind.DUTY
+	crowd.mission_holds.append(func(p: Person) -> bool: return p == seizer)
+	t.check(god.held_by_god() and crowd.held_by_mission(seizer), "controls: held by the god, held by the mission")
+	god.ground_pos = at + Vector2(1.5, 0.0)
+	seizer.ground_pos = at + Vector2(0.0, 1.5)
+	duty.ground_pos = at + Vector2(-1.5, 0.0)
+	_until(fx, 2.0)
+	t.check(_eyed(crowd, god) and _eyed(crowd, seizer) and _eyed(crowd, duty), "the held and the one on a duty are eyed")
+	t.check(not god.is_blind() and not seizer.is_blind() and not duty.is_blind() and fx.turned == 0, "... and neither blind nor turned")
+	t.check(god.mind == Person.Mind.WHISPERED and god.held_by_god() and seizer.mind == Person.Mind.FIGHT
+		and crowd.held_by_mission(seizer) and duty.mind == Person.Mind.DUTY, "... and his mind, his hold and his duty are as they were")
+	fx.end_now()
+	fx.free()
+	crowd.mission_holds.clear()
+	for p in [god, seizer, duty]:
+		p.mind = Person.Mind.CALM
 
 
 static func _two_casts(t, made: Array) -> void:

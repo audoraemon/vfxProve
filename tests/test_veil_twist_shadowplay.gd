@@ -16,6 +16,7 @@ static func run(t) -> void:
 	_end_dark(t, made)
 	_most(t, made)
 	_rf3_held(t, made)
+	_spared(t, made)
 	_two_casts(t, made)
 	_teardown(t, made)
 	_level_four(t, made)
@@ -173,6 +174,40 @@ static func _rf3_held(t, made: Array) -> void:
 	other.statuses.erase(&"shadow")
 	dreaded.statuses.erase(&"dread")
 	sleeper.wake()
+
+
+## The spared (a believer, a man the mission keeps alive) near a shadow are eyed (timed), never joined, never taken, and use up none of
+## the 12.
+static func _spared(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var c: Array = crowd.citizens
+	var s0: Person = c[0]
+	var believer: Person = c[1]
+	var kept: Person = c[2]
+	var control: Person = c[3]
+	var at := _begin(made, [s0, believer, kept, control])
+	var faith := believer.profile.faith
+	believer.profile.faith = CitizenProfile.Faith.BELIEVER
+	crowd.mission_keeps.append(func(p: Person) -> bool: return p == kept)
+	_put(s0, at + Vector2(3.25, 0.0))
+	_put(believer, at + Vector2(3.8, 0.0))
+	_put(kept, at + Vector2(3.8, 0.5))
+	_put(control, at + Vector2(4.15, 0.0))
+	var fx := _cast(made, at)
+	_rise(fx)
+	var eye := PaleEye.of(crowd)
+	t.check(control.is_shadow() and fx.joined == 1, "(the control joined and was the only one counted)")
+	t.check(not believer.is_shadow() and not kept.is_shadow() and eye != null and eye.is_eyed(believer) and eye.is_eyed(kept),
+		"a believer and a mission-kept man near a shadow: eyed, not joined")
+	t.check(eye.record.size() == 3, "eyed once each, not again every tick (%d records)" % eye.record.size())
+	fx.end_now()
+	t.check(fx.taken == 0 and believer.is_alive() and kept.is_alive() and eye.is_eyed(believer),
+		"the end takes neither; their eyes are timed, so they outlive the cast")
+	eye.step(PaleEye.TIME + 0.1)
+	t.check(not eye.is_eyed(believer) and not eye.is_eyed(kept), "... and run out")
+	fx.free()
+	believer.profile.faith = faith
+	crowd.mission_keeps.clear()
 
 
 static func _two_casts(t, made: Array) -> void:

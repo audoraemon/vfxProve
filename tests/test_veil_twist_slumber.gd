@@ -42,6 +42,7 @@ static func run(t) -> void:
 	_noted(t, made)
 	_again(t, made)
 	_rf3_held_walker(t, made)
+	_spared(t, made)
 	_rf1_two_circles(t, made)
 	_rf5_slumber_mixed(t, made)
 	_level_four(t, made)
@@ -113,6 +114,35 @@ static func _noted(t, made: Array) -> void:
 		"one in the circle at the fall, woken and standing in it: never slept by the twist, never eyed")
 	fx.end_now()
 	fx.free()
+	crowd.dusk.clear()
+
+
+## The spared who walk in (a believer, a man the mission keeps alive) are eyed (once), never slept, never counted as caught.
+static func _spared(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _fresh(made)
+	var believer := EV._put(crowd, at + Vector2(6.0, 0.0))
+	var faith := believer.profile.faith
+	believer.profile.faith = CitizenProfile.Faith.BELIEVER
+	var kept := EV._put(crowd, at + Vector2(6.0, 1.0))
+	crowd.mission_keeps.append(func(p: Person) -> bool: return p == kept)
+	var control := EV._put(crowd, at + Vector2(6.0, -1.0))
+	var fx := _cast(ctx, at)
+	_until(fx, 5.0)
+	for p in [believer, kept, control]:
+		p.ground_pos = at + Vector2(1.0, 0.0)
+	_until(fx, 6.0)
+	t.check(control.is_asleep() and fx.caught == 1, "(the control walked in and sleeps, the only one caught)")
+	t.check(not believer.is_asleep() and not kept.is_asleep(), "a believer and a mission-kept man walking in: not slept")
+	var eye := PaleEye.of(crowd)
+	t.check(eye != null and eye.is_eyed(believer) and eye.is_eyed(kept) and eye.record.size() == 3,
+		"... but eyed, once each (%d records)" % (eye.record.size() if eye != null else -1))
+	fx.end_now()
+	fx.free()
+	believer.profile.faith = faith
+	crowd.mission_keeps.clear()
+	control.wake()
 	crowd.dusk.clear()
 
 

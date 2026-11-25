@@ -53,6 +53,8 @@ var _twist := false
 var joined := 0
 var _rose := false
 var _acc := 0.0
+## The spared this cast has eyed (instance ids: once each): eyed, never joined (VL68).
+var _eyed_spared := {}
 var _peel: VeilCastLooks.Peel
 ## The cast's look while it plays (tests): the ripple across the ground, the shadows peeling up.
 var ripple: Node2D
@@ -189,9 +191,15 @@ func _join_poll(delta: float) -> void:
 		return float(a[0]) < float(b[0]))
 	var staged := DominionParts.staged(self)
 	for f: Array in found:
+		var p := f[1] as Person
+		if ctx.crowd != null and ctx.crowd.spared(p):
+			# The god's believers and whom the mission keeps alive: eyed once (timed), never joined, not one of the JOIN_MOST (VL68).
+			if not _eyed_spared.has(p.get_instance_id()):
+				_eyed_spared[p.get_instance_id()] = true
+				PaleEye.mark(self, p, EYE_KEY)
+			continue
 		if joined >= JOIN_MOST:
 			break
-		var p := f[1] as Person
 		p.statuses[KEY] = _me
 		p.self_modulate = VeilParts.BLACK
 		_held.append(p)

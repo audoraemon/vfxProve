@@ -378,7 +378,9 @@ class RotWatch extends Node:
 	func _process(delta: float) -> void:
 		if stopped:
 			return
-		if crowd == null or not is_instance_valid(crowd) or not is_instance_valid(building) or building.destroyed or building.taken 				or not building.has_meta(FOOTHOLD):
+		if (crowd == null or not is_instance_valid(crowd) or not is_instance_valid(building) or building.destroyed or building.taken
+				or not building.has_meta(FOOTHOLD) or not crowd.footholds.has(building)
+				or not is_instance_valid(field)):
 			stop()
 			return
 		rest_left = maxf(0.0, rest_left - delta)

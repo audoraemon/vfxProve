@@ -35,6 +35,8 @@ var _twist := false
 var _tick := 0.0
 var _noted := {}
 var _caught := {}
+## The spared walkers this cast has eyed (instance ids: once each): eyed, never slept (VL68).
+var _eyed_spared := {}
 var caught := 0
 var heavy_ring: Node2D
 ## This cast's sleep, at its level (SLEEP_TIME at level 1).
@@ -155,6 +157,12 @@ func _fx_process(delta: float) -> void:
 	for p in sleepers_at(ctx.field, origin, _r):
 		var id := p.get_instance_id()
 		if not p.is_alive() or _noted.has(id) or _caught.has(id) or VeilParts.held(p):
+			continue
+		if ctx.crowd != null and ctx.crowd.spared(p):
+			# The god's believers and whom the mission keeps alive: eyed once, never slept (VL68).
+			if not _eyed_spared.has(id):
+				_eyed_spared[id] = true
+				PaleEye.mark(self, p, "slumber")
 			continue
 		if p.sleep(left, _dark):
 			_caught[id] = true

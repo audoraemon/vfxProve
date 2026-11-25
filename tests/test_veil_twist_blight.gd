@@ -263,6 +263,24 @@ static func _building_gone(t, made: Array) -> void:
 	w2._process(0.3)
 	t.check(w2.stopped and w2.is_queued_for_deletion(), "its building freed: the watch frees itself")
 	w2.free()
+	# Its field freed (a town torn down): it stops before it asks the field anything.
+	var m4 := _plant(made, houses[0])
+	var w4: BlightFx.RotWatch = m4[1]
+	(m4[0] as FxTimeline).end_now()
+	var gone_field := EnemyField.new()
+	w4.field = gone_field
+	gone_field.free()
+	w4._process(0.3)
+	t.check(w4.stopped and w4.is_queued_for_deletion(), "its field freed: the watch frees itself")
+	BlightFx.heal(crowd, env, houses[0])
+	# Its building no longer a foothold of the crowd (the list lost it, the meta stayed): it stops.
+	var m5 := _plant(made, houses[1])
+	var w5: BlightFx.RotWatch = m5[1]
+	(m5[0] as FxTimeline).end_now()
+	crowd.footholds.erase(houses[1])
+	w5._process(0.3)
+	t.check(w5.stopped and w5.is_queued_for_deletion(), "its building off the crowd's footholds: the watch frees itself")
+	BlightFx.heal(crowd, env, houses[1])
 
 
 static func _person_cast(t, made: Array) -> void:

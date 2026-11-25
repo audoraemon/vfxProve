@@ -722,6 +722,24 @@ plan says "Claude Fable 5.2" (the dispatch's reminder named Sonnet); a trailer a
   fade at `END_R`. -- one uniform serves the whole sky -- a level-1 night's islands sharing the sky with a level-5 night are drawn
   as small as the level-5 one (a look only).
 
+### Final review fix wave
+
+- VL67 Averted Eyes never breaks a hold or an errand: a watcher held by the god's Dominion power (`held_by_god()`), held by the mission
+  (`Crowd.held_by_mission()`, a seizer with his charge) or on a duty (`Mind.DUTY`) is eyed only (once per cast), not turned, not
+  counted, not blind; if his hold ends while the cast lasts he may be turned then. -- Evernight's bearers skip the mission-held for
+  the same reason -- if wrong, one line in `_eyed_only()`.
+- VL68 In the four walk-in twists the spared are eyed only -- the spec's anti-goal allows a twist to do to the spared "what its power
+  already does at level 1", but a walk-in is not an aimed act, and a mission-kept soldier taken by a dark Shadow Play or a believer
+  put to sleep by walking into Heavy Air can lose a night the player did not choose to risk; the plan's Global rule says "eyed, never
+  answered" -- cost if wrong: the owner wants Heavy Air to sleep everyone; one line per power to revert. Slumber's walker is eyed, not
+  slept, not caught; Dread's edge man is eyed (timed), not frozen, uses none of the 16; Shadow Play's near man is eyed (timed), does
+  not join, is never taken, uses none of the 12; Cloak's watcher is eyed only. Each is eyed once per cast. Level 1 of each power
+  still does to the spared what it does today.
+- VL69 The Pale Eye lingers on the dead: an eye whose man died or was taken stays where he last stood for `FADE` (0.4 s), drawn
+  fading (the edge marker too), then closes for good. `is_eyed()`, `eyed()` and `held_by()` count it closed at once (no existing check
+  changed); going indoors still closes at once. A man eyed by two casts is drawn once, with the larger alpha (`PaleEye.drawn()`). --
+  Silent Doom's silenced witness is eyed and killed in one call and would never show an eye -- a look only, if wrong.
+
 ### Bench
 
 Bench: filled in by the controller.

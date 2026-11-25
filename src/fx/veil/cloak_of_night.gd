@@ -38,6 +38,8 @@ var _twist := false
 var _tick := 0.0
 var _turned := {}
 var turned := 0
+## The people this cast has eyed without turning them (instance ids: once each).
+var _eyed_once := {}
 
 
 ## Whom a click at `at` would cloak: the `most` nearest living people out of doors within `r`, nearest first, a tie by id.
@@ -135,7 +137,8 @@ func _avert() -> void:
 		var near: Array[Person] = []
 		for e in ctx.field.in_radius(c.ground_pos, TURN_R):
 			var w := e as Person
-			if w != null and w != c and w.is_alive() and not w.inside and ctx.crowd.is_watch(w) 					and not _turned.has(w.get_instance_id()) and not VeilParts.held(w):
+			if (w != null and w != c and w.is_alive() and not w.inside and ctx.crowd.is_watch(w)
+					and not _turned.has(w.get_instance_id()) and not VeilParts.held(w)):
 				near.append(w)
 		near.sort_custom(func(a: Person, b: Person) -> bool:
 			var da := a.ground_pos.distance_squared_to(c.ground_pos)
@@ -144,10 +147,22 @@ func _avert() -> void:
 		for w in near:
 			if w.ground_pos.distance_to(c.ground_pos) > TURN_R or _turned.has(w.get_instance_id()):
 				continue
+			if _eyed_only(w):
+				# The spared, a man the god or the mission holds and one on a duty: eyed (once), never turned (VL67, VL68).
+				if not _eyed_once.has(w.get_instance_id()):
+					_eyed_once[w.get_instance_id()] = true
+					PaleEye.mark(self, w, "cloak")
+				continue
 			if w.turn_away(TURN_TIME):
 				_turned[w.get_instance_id()] = true
 				turned += 1
 				PaleEye.mark(self, w, "cloak")
+
+
+## Whether `w` is only eyed, never turned: one of the spared (the god's believers, whom the mission keeps alive), one the god's own
+## Dominion power holds, one the mission holds (a seizer with his charge) or one on a duty.
+func _eyed_only(w: Person) -> bool:
+	return ctx.crowd.spared(w) or w.held_by_god() or ctx.crowd.held_by_mission(w) or w.mind == Person.Mind.DUTY
 
 
 func _lift(p: Person) -> void:

@@ -51,6 +51,7 @@ var shade: DreadShade
 var _twist := false
 var _edge_ids: Array[int] = []
 var _stood := {}
+var _eyed_spared := {}
 var _acc := 0.0
 var _fall_clock := INF
 
@@ -260,6 +261,12 @@ func _edge_poll(delta: float) -> void:
 		var db := b.ground_pos.distance_squared_to(origin)
 		return a.get_instance_id() < b.get_instance_id() if is_equal_approx(da, db) else da < db)
 	for p in ready:
+		if ctx.crowd.spared(p):
+			# The god's believers and whom the mission keeps alive: eyed once (timed), never frozen, not one of the EDGE_MOST (VL68).
+			if not _eyed_spared.has(p.get_instance_id()):
+				_eyed_spared[p.get_instance_id()] = true
+				PaleEye.mark(self, p, EYE_KEY)
+			continue
 		if _edge_ids.size() >= EDGE_MOST:
 			break
 		_hold(p)

@@ -26,8 +26,11 @@ var record: Array[Dictionary] = []
 ## Cue requests made (tests).
 var cues := 0
 
-## Open eyes: {"p": Person, "id": int, "owner": int, "left": float (INF = until unmark/release)}.
+## Open eyes: {"p": Person, "id": int, "owner": int, "left": float (INF = until unmark/release), "pos": ground point he last stood on}.
 var _open: Array[Dictionary] = []
+## Eyes whose person died or was taken, lingering where he last stood for FADE, drawn fading (VL69): {"id": int, "pos": Vector2, "left": float}.
+## Not counted as open: is_eyed(), eyed() and held_by() see them closed at once.
+var _fading: Array[Dictionary] = []
 ## (owner, person) pairs closed for good ("owner:id" -> true): the person was taken, died or went inside.
 var _gone := {}
 var _crowd: Crowd
@@ -180,13 +183,24 @@ func step(delta: float) -> void:
 			var p: Person = e["p"] if is_instance_valid(e["p"]) else null
 			if p == null or not p.is_alive() or p.inside:
 				_gone["%d:%d" % [e["owner"], e["id"]]] = true
+				if (p == null or not p.is_alive()):
+					# Died or taken: the eye lingers where he last stood and fades (VL69). Going indoors closes at once.
+					_fading.append({"id": e["id"], "pos": p.ground_pos if p != null else e["pos"], "left": FADE})
 				continue
+			e["pos"] = p.ground_pos
 			if not is_inf(float(e["left"])):
 				e["left"] = float(e["left"]) - delta
 				if float(e["left"]) <= 0.0:
 					continue
 			keep.append(e)
 		_open = keep
+	if not _fading.is_empty():
+		var still: Array[Dictionary] = []
+		for f in _fading:
+			f["left"] = float(f["left"]) - delta
+			if float(f["left"]) > 0.0:
+				still.append(f)
+		_fading = still
 	_keep_last()
 	if not _headless:
 		queue_redraw()
@@ -200,7 +214,7 @@ func _open_eye(owner_id: int, p: Person, key: String, seconds: float) -> bool:
 		if int(e["owner"]) == owner_id and int(e["id"]) == id:
 			e["left"] = maxf(float(e["left"]), seconds)
 			return true
-	_open.append({"p": p, "id": id, "owner": owner_id, "left": seconds})
+	_open.append({"p": p, "id": id, "owner": owner_id, "left": seconds, "pos": p.ground_pos})
 	record.append({"id": id, "key": key, "fx": owner_id, "at": _crowd.clock() if _crowd != null else 0.0})
 	_cue(p)
 	return true
@@ -238,23 +252,41 @@ func _keep_last() -> void:
 		par.move_child(self, par.get_child_count() - 1)
 
 
+## What is drawn now, one entry per person (he may be eyed by two casts: the largest alpha of his entries): {"id", "at": his ground
+## point (where he last stood, for a fading eye), "a": alpha}. Open eyes fade over their last FADE seconds, a dead man's eye over FADE.
+func drawn() -> Array[Dictionary]:
+	var best := {}
+	for e in _open:
+		if not is_instance_valid(e["p"]):
+			continue
+		var life := float(e["left"])
+		var a := clampf(life / FADE, 0.0, 1.0) if not is_inf(life) else 1.0
+		var at: Vector2 = (e["p"] as Person).ground_pos
+		if not best.has(e["id"]) or a > float(best[e["id"]]["a"]):
+			best[e["id"]] = {"id": e["id"], "at": at, "a": a}
+	for f in _fading:
+		var a := clampf(float(f["left"]) / FADE, 0.0, 1.0)
+		if not best.has(f["id"]) or a > float(best[f["id"]]["a"]):
+			best[f["id"]] = {"id": f["id"], "at": f["pos"], "a": a}
+	var ids: Array = best.keys()
+	ids.sort()
+	var out: Array[Dictionary] = []
+	for id in ids:
+		out.append(best[id])
+	return out
+
+
 func _draw() -> void:
 	_edges = 0
-	if _headless or _open.is_empty() or not is_inside_tree():
+	if _headless or (_open.is_empty() and _fading.is_empty()) or not is_inside_tree():
 		return
 	var xf := get_global_transform_with_canvas()
 	var inv := xf.affine_inverse()
 	var view := get_viewport_rect()
-	var seen := {}
-	for e in _open:
-		if seen.has(e["id"]) or not is_instance_valid(e["p"]):
-			continue
-		seen[e["id"]] = true
-		var p: Person = e["p"]
-		var local := Iso.ground_to_screen(p.ground_pos) + HEAD
+	for d in drawn():
+		var local := Iso.ground_to_screen(d["at"]) + HEAD
 		var on := xf * local
-		var life := float(e["left"])
-		var a := clampf(life / FADE, 0.0, 1.0) if not is_inf(life) else 1.0
+		var a := float(d["a"])
 		if view.has_point(on):
 			_eye(local, a, 1.0)
 		else:

@@ -1,8 +1,8 @@
 {
- "hash": "f6b7080ae2493f0e",
- "updated": "2026-11-25T20:55:34+07:00",
+ "hash": "d9b805e1125f5548",
+ "updated": "2026-11-26T03:28:14+07:00",
  "changes": {
-  "date": "<t:1795614934:f>",
+  "date": "<t:1795638494:f>",
   "items": []
  },
  "snapshot": {
@@ -1724,9 +1724,9 @@
     "title": "Veil ability levels: the dark watches back",
     "status": "doing",
     "area": "Abilities",
-    "needs_you": false,
+    "needs_you": true,
     "branch": "god/veil-levels",
-    "updated": "2026-11-25",
+    "updated": "2026-11-26",
     "order": 7
    },
    "veil-authority-powers": {
@@ -2022,10 +2022,10 @@
   "branches": [
    {
     "name": "god/veil-levels",
-    "ahead": 81,
+    "ahead": 83,
     "behind": 150,
-    "date": "2026-11-25",
-    "subject": "test: the sound catalog counts the Pale Eye's cue (605 files, 591 recipes)",
+    "date": "2026-11-26",
+    "subject": "docs: the Swallowing Dark's bench note names its cause as a guess",
     "pushed": false
    },
    {

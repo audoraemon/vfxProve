@@ -7,10 +7,18 @@ extends FxTimeline
 ## is done to them is done. The veil does not hold the eye out of it: a danger from outside still frightens those
 ## inside. Quiet when cast; nothing of it is seen but by the god, as a shimmer and a ring of dusk on the ground, and (review
 ## round, ruling VRC1) a thin dark blanket thrown from the click that hangs over the whole circle for as long as the veil lasts.
+## Level 5, Eyes Within (Veil ability levels, A3): from the fall to the rise the watch within radius + EYE_RING is eyed (the Pale Eye,
+## open-ended, closed when he leaves that ring); everyone within radius joins the cast's insiders, and an insider who walks out of
+## the circle is blind for LEAVER_BLIND seconds (Person.blind_for) and leaves the list. The rise and teardown close every eye; the lift
+## blinds nobody (VL15). Polled every TICK s.
 
 const RADIUS := 5.0
 const VEIL_TIME := 20.0
 const T_FALL := 0.7
+const KEY := "unseen"
+const TICK := 0.25
+const EYE_RING := 4.0
+const LEAVER_BLIND := 6.0
 const VEIL := Color("b98cff")
 const DUSK := Color("3b1470")
 const DUSK_LIFE := [Color("f4ecff"), Color("b98cff"), Color("7a3cf0"), Color(0.12, 0.03, 0.2, 0.5)]
@@ -23,6 +31,13 @@ var blanket: Blanket
 var radius := RADIUS
 var veil_time := VEIL_TIME
 
+var _twist := false
+var _watching := false
+var _acc := 0.0
+## The watch eyed now, and those who have been inside the circle and not yet walked out (instance id -> Person).
+var _eyed := {}
+var _insiders := {}
+
 
 func _build() -> void:
 	radius = VeilParts.size(self, "unseen", "RADIUS")
@@ -30,6 +45,9 @@ func _build() -> void:
 	duration = T_FALL + veil_time + 1.0
 	busy = T_FALL
 	at(T_FALL, _fall)
+	_twist = PowerBook.twist_at(extra, "unseen")
+	if _twist:
+		at(T_FALL + veil_time, _lift)
 	ctx.play(&"q_unseen", origin)
 	# The blanket is thrown from the click now and lands as the veil falls; its shadow and hem lie on the ground under it. Drawing
 	# only: built on whatever layers the context has (none in a bare one), staged or not.
@@ -67,6 +85,9 @@ func _fall() -> void:
 	if ctx.crowd != null:
 		ctx.crowd.veil(origin, radius, veil_time)
 		VeilParts.land(self, origin, radius)
+		if _twist:
+			_watching = true
+			_tick()
 	if not DominionParts.staged(self):
 		return
 	# The veil settles: a ring of dusk out to the edge, then the shimmer that is all the god sees of it.
@@ -85,6 +106,79 @@ func _fall() -> void:
 
 func _rise() -> void:
 	veiled = false
+
+
+## Eyes Within: one poll. The watch within the eye ring is eyed (and unmarked when he leaves it); everyone within the circle joins the
+## insiders; an insider now outside it (alive, out of doors, not one the town spares) is blind for LEAVER_BLIND seconds and is let go.
+func _tick() -> void:
+	var crowd := ctx.crowd
+	if crowd == null or ctx.field == null:
+		return
+	var in_ring := {}
+	for e in ctx.field.in_radius(origin, radius + EYE_RING):
+		var p := e as Person
+		if p == null or not p.is_alive() or p.inside:
+			continue
+		var id := p.get_instance_id()
+		if p.ground_pos.distance_to(origin) <= radius:
+			_insiders[id] = p
+		if crowd.is_watch(p):
+			in_ring[id] = p
+			if not _eyed.has(id):
+				PaleEye.mark(self, p, KEY, INF)
+				_eyed[id] = p
+	for id in _eyed.keys():
+		var q: Person = _eyed[id]
+		if not in_ring.has(id):
+			if is_instance_valid(q):
+				PaleEye.unmark(self, q)
+			_eyed.erase(id)
+	for id in _insiders.keys():
+		var w: Person = _insiders[id]
+		if not is_instance_valid(w) or not w.is_alive():
+			_insiders.erase(id)
+		elif not w.inside and w.ground_pos.distance_to(origin) > radius:
+			if not crowd.spared(w):
+				w.blind_for(LEAVER_BLIND)
+			_insiders.erase(id)
+
+
+## The rise: every eye of the cast closes, the list is let go, nobody is blinded by the lift (VL15).
+func _lift() -> void:
+	_rise()
+	_undo()
+
+
+func _undo() -> void:
+	_watching = false
+	if not _eyed.is_empty() or _twist:
+		PaleEye.release(self)
+	_eyed.clear()
+	_insiders.clear()
+
+
+func _fx_process(delta: float) -> void:
+	if not _watching:
+		return
+	_acc += delta
+	while _acc >= TICK:
+		_acc -= TICK
+		_tick()
+
+
+func _finish() -> void:
+	_undo()
+	super._finish()
+
+
+func _exit_tree() -> void:
+	_undo()
+	super._exit_tree()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_undo()
 
 
 ## How much of the veil shows: in as it falls, out as the hour ends.

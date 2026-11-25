@@ -1,10 +1,10 @@
 {
- "hash": "2c40d69ee06899ea",
- "updated": "2026-11-25T13:15:33+07:00",
+ "hash": "aab1dc511e3b1b67",
+ "updated": "2026-11-25T15:29:32+07:00",
  "changes": {
-  "date": "<t:1795587333:f>",
+  "date": "<t:1795595372:f>",
   "items": [
-   "New: God's Chamber (hub replacement) (in progress)"
+   "New: Loss warning on every mission (Informer, Escort, Raze, Assassinate...)"
   ]
  },
  "snapshot": {
@@ -710,6 +710,15 @@
     "needs_you": false,
     "updated": "2026-10-05",
     "order": 0
+   },
+   "loss-warning-all": {
+    "title": "Loss warning on every mission (Informer, Escort, Raze, Assassinate...)",
+    "status": "done",
+    "area": "UI",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-25",
+    "order": 906
    },
    "loss-warning": {
     "title": "Loss warning: big red alarm when the night is about to be lost",
@@ -2016,7 +2025,7 @@
    {
     "name": "feat/god-chamber",
     "ahead": 71,
-    "behind": 143,
+    "behind": 150,
     "date": "2026-11-25",
     "subject": "docs: the God's Chamber branch's rulings, open decision and play-test items",
     "pushed": false
@@ -2024,7 +2033,7 @@
    {
     "name": "god/veil-levels",
     "ahead": 68,
-    "behind": 143,
+    "behind": 150,
     "date": "2026-11-25",
     "subject": "feat: the Pale Eye and the Veil twists' shared hooks (inert below level 5)",
     "pushed": false
@@ -2032,23 +2041,15 @@
    {
     "name": "claude/natural-people",
     "ahead": 18,
-    "behind": 48,
+    "behind": 55,
     "date": "2026-11-25",
     "subject": "test: re-record 8 references the Develop-Main merge moved (panic_play_3, panic_b_play_1-3, prisoner_play_1-3, prisoner_b_play_2); same outcome as b748cf70",
     "pushed": false
    },
    {
-    "name": "feat/loss-warning-all",
-    "ahead": 7,
-    "behind": 0,
-    "date": "2026-11-25",
-    "subject": "docs: soldier duties rulings, reference flips, gate tables and landing checks",
-    "pushed": false
-   },
-   {
     "name": "god/veil-review",
     "ahead": 64,
-    "behind": 143,
+    "behind": 150,
     "date": "2026-11-22",
     "subject": "docs: the final review's corrections to the second pass's summary, rulings and spec",
     "pushed": true
@@ -2056,7 +2057,7 @@
    {
     "name": "god/veil-powers",
     "ahead": 33,
-    "behind": 143,
+    "behind": 150,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
@@ -2064,7 +2065,7 @@
    {
     "name": "feat/wish-clarity",
     "ahead": 1,
-    "behind": 143,
+    "behind": 150,
     "date": "2026-11-19",
     "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
     "pushed": false
@@ -2072,7 +2073,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 243,
+    "behind": 250,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2080,7 +2081,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 618,
+    "behind": 625,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2088,7 +2089,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1116,
+    "behind": 1123,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2096,7 +2097,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 1074,
+    "behind": 1081,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true

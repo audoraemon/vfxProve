@@ -7,12 +7,12 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**15** in progress · **30** to do · **176** done\n**11** active branches besides Develop-Main\n\n**Since the last update** (<t:1795587333:f>)\n• New: God's Chamber (hub replacement) (in progress)",
+     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**15** in progress · **30** to do · **177** done\n**10** active branches besides Develop-Main\n\n**Since the last update** (<t:1795595372:f>)\n• New: Loss warning on every mission (Informer, Escort, Raze, Assassinate...)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-25T13:15:33+07:00"
+     "timestamp": "2026-11-25T15:29:32+07:00"
     },
     {
      "title": "feat/god-chamber",
@@ -27,11 +27,6 @@
     {
      "title": "claude/natural-people",
      "description": "18 commits not in Develop-Main · last commit today · local only\n> test: re-record 8 references the Develop-Main merge moved (panic_play_3, panic_b_play_1-3, prisoner_play_1-3, prisoner_b_play_2); same outcome as b74…\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "feat/loss-warning-all",
-     "description": "7 commits not in Develop-Main · last commit today · local only\n> docs: soldier duties rulings, reference flips, gate tables and landing checks\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -58,6 +53,11 @@
      "title": "god/dominion-t3-old",
      "description": "2 commits not in Develop-Main · last commit 19 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 7041664
+    },
+    {
+     "title": "fix/evac-recalm",
+     "description": "1 commit not in Develop-Main · last commit 47 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "color": 7041664
     }
    ]
   },
@@ -66,11 +66,6 @@
     "parse": []
    },
    "embeds": [
-    {
-     "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 47 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
-     "color": 7041664
-    },
     {
      "title": "feat/capital-city",
      "description": "merged into Develop-Main · last commit 47 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
@@ -83,7 +78,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Remove the soldiers' march sound _(11-25)_\n• Soldier duties: Citadel guard, patrols, corpse duty, cordon, sweep, gate check, shelter escort _(11-25)_\n• Mission clarity: every step says what to do; why-not banners _(11-24)_\n• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_\n• Loss warning: big red alarm when the night is about to be lost _(11-22)_\n• God's Paths music (temple base + one layer per school) _(11-21)_",
+     "description": "• Remove the soldiers' march sound _(11-25)_\n• Loss warning on every mission (Informer, Escort, Raze, Assassinate...) _(11-25)_\n• Soldier duties: Citadel guard, patrols, corpse duty, cordon, sweep, gate check, shelter escort _(11-25)_\n• Mission clarity: every step says what to do; why-not banners _(11-24)_\n• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_\n• Loss warning: big red alarm when the night is about to be lost _(11-22)_",
      "color": 10185686
     }
    ]

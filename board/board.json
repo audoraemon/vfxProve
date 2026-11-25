@@ -1,11 +1,10 @@
 {
- "hash": "081d747688db4338",
- "updated": "2026-11-25T05:55:16+07:00",
+ "hash": "2c40d69ee06899ea",
+ "updated": "2026-11-25T13:15:33+07:00",
  "changes": {
-  "date": "<t:1795560916:f>",
+  "date": "<t:1795587333:f>",
   "items": [
-   "New: Soldier duties: frame-rate bench on a quiet machine",
-   "New: Soldier duties: Citadel guard, patrols, corpse duty, cordon, sweep, gate check, shelter escort"
+   "New: God's Chamber (hub replacement) (in progress)"
   ]
  },
  "snapshot": {
@@ -368,6 +367,15 @@
     "needs_you": false,
     "updated": "2026-11-12",
     "order": 303
+   },
+   "god-chamber": {
+    "title": "God's Chamber (hub replacement)",
+    "status": "doing",
+    "area": "UI",
+    "needs_you": true,
+    "branch": "feat/god-chamber",
+    "updated": "2026-11-25",
+    "order": 1
    },
    "god-decree-powers": {
     "title": "Decree authority powers built (god branch)",
@@ -2006,19 +2014,19 @@
   },
   "branches": [
    {
+    "name": "feat/god-chamber",
+    "ahead": 71,
+    "behind": 143,
+    "date": "2026-11-25",
+    "subject": "docs: the God's Chamber branch's rulings, open decision and play-test items",
+    "pushed": false
+   },
+   {
     "name": "god/veil-levels",
     "ahead": 68,
     "behind": 143,
     "date": "2026-11-25",
     "subject": "feat: the Pale Eye and the Veil twists' shared hooks (inert below level 5)",
-    "pushed": false
-   },
-   {
-    "name": "feat/god-chamber",
-    "ahead": 65,
-    "behind": 143,
-    "date": "2026-11-25",
-    "subject": "feat: The Heart of Faith in the Capital: its spots, gates and references",
     "pushed": false
    },
    {
@@ -2031,10 +2039,10 @@
    },
    {
     "name": "feat/loss-warning-all",
-    "ahead": 6,
-    "behind": 48,
-    "date": "2026-11-24",
-    "subject": "test: Hide the faithful warns the later of two marches when none is lost yet",
+    "ahead": 7,
+    "behind": 0,
+    "date": "2026-11-25",
+    "subject": "docs: soldier duties rulings, reference flips, gate tables and landing checks",
     "pushed": false
    },
    {
@@ -2044,14 +2052,6 @@
     "date": "2026-11-22",
     "subject": "docs: the final review's corrections to the second pass's summary, rulings and spec",
     "pushed": true
-   },
-   {
-    "name": "feat/soldier-duties-r20",
-    "ahead": 1,
-    "behind": 104,
-    "date": "2026-11-22",
-    "subject": "fix: the gate check sleeps until Local Emergency (no gate jobs, stepping out or far sight in a calm town)",
-    "pushed": false
    },
    {
     "name": "god/veil-powers",

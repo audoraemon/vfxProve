@@ -524,3 +524,204 @@ All recorded with `timeout 1200 $G --path . --fixed-fps 60 --audio-driver Dummy 
   record the rows again.
 - VR2B3: Evernight takes 5 rising to 10 a take (the user's "5 - 10" read as a rise, no luck); the claimed are not held in place.
 - VR2B4: no sound for Evernight's takes in this pass (not asked; a cue every 2 s for 60 s needs the user's ear).
+
+## Levels (prefix VL)
+
+The Veil's ability levels (branch god/veil-levels; spec 2026-11-24-kak-veil-ability-levels-design.md). Each line: what was decided --
+why -- what it costs if wrong. VL1-VL16 are the plan's decisions; VL17-VL30 the controller's rulings R1-R14; VL31 on are the
+implementers' `Ruling:` lines (G1, G2, then tracks A, B, C, D). Note: the tracks' commits end with "Claude Sonnet 5.5" where the
+plan says "Claude Fable 5.2" (the dispatch's reminder named Sonnet); a trailer amend is the only cost.
+
+### The plan's decisions
+
+- VL1 Pair storage: a sized stat's table value is `[light, dark]` (an Array, ints for counts). `VeilRules.SIZES` stays the level-1
+  pairs; `VeilRules.size()` reads the row's table at the level and falls back to `SIZES` for a stat the table does not name
+  (Evernight's `TAKE_EVERY`). Printed `0.8 / 1.6` by `PowerBook._stat_text()`. -- level 1 must equal today's constants -- a table
+  Array of the wrong type would shift a reference row.
+- VL2 Dusk by level lives once, in `VeilRules` (`DUSK_RS`, `DUSK_TIMES`); the tree shows it as one extra row "dusk" (`3.0 for 20 s ->
+  3.25 for 22 s`) on every Veil row but Evernight's; `VeilParts.land()` reads the cast's level. -- one rule for all ten, not ten
+  copies -- a power wanting its own dusk later needs a table column.
+- VL3 The watch is `Crowd.is_watch(p)`: every soldier, plus whoever a mission director's `watches(p)` names (default: its `faithful`).
+  `assassinate`'s and `procession`'s `witnesses()` are "anyone near", not the watch. -- Unseen Hour would otherwise eye the whole town
+  -- a mission whose watch is not its faithful needs its own `watches()`.
+- VL4 Blind is `Person.blind_for(seconds)`: `statuses[&"blind"]`, run down in `Person.tick()`. It joins `veil_blind()` (sees, seizes,
+  finds, reports, delivers nothing), the two copied witness skip lists (`Crowd.nearest_witness()`, `TempleReport._witness()`) and the
+  bell keeper. He still walks, flees and fights. Standing inside a veil does not blind (the law of the Veil is unchanged): only
+  Unseen Hour's leavers and Cloak's turned watch are blind. -- the spec's non-goal -- a blind fighter may surprise you.
+- VL5 Pale Eye life: one `(person, cast)` entry with `seconds` (default 4.0, INF = until `unmark`/`release`). It closes on time, on
+  `unmark`, on `release` (open-ended ones only), and for good for that cast when the person is taken, dies or goes inside; another
+  cast may eye him again. Timed eyes outlive their cast; `release(fx)` in a twist's teardown closes the cast's open-ended ones. --
+  each cast owns its eyes, so two casts never close each other's -- a forgotten `release` leaves an eye until the town clears.
+- VL6 Pale Eye place: one `PaleEye` node per crowd (`crowd.pale_eye`), made on the first `mark()`, on `ctx.overhead_back` (else
+  `ctx.overhead`), absolute `z_index 4` (under Targeting's 5), kept the layer's last child so an Unseen Hour blanket or a Dread wall
+  at the same z never covers it. Headless: the ledger works, nothing is drawn. -- one drawing, cheap -- an eye hidden under some
+  layer you have not seen yet.
+- VL7 Pale Eye cue `&"v_pale_eye"`: when an eye opens, at most once per `CUE_GAP 1.0` s (eye clock), through the context's play at the
+  eyed man when on screen, else at the screen centre's ground point; quiet band (`test_power_sounds` VEIL_MOMENTS). -- it is the one
+  new sound -- too soft or too sharp to your ear.
+- VL8 Silent Doom's witnesses are named and answered inside `Crowd._settle_doom()` through `answer_doom()`: the effect stays out of
+  `crowd.gd`. A silenced witness is killed `&"doom"`, so his own death is judged at the next settle by today's rule. -- the witness
+  must be the one today's rule finds -- a hook in the shared crowd file.
+- VL9 Dreamless judges with `nearest_witness(at, null, skip)`, `skip` = every sitter and resting finder of this cast. -- a sitter or a
+  finder must not count as a witness of the sitter -- a finder judged by a fellow finder.
+- VL10 Cloak's "drop the pursuit" is `Person.turn_away(6.0)`: stop fighting, out of a queue, back to post (a soldier) or calm with no
+  goal (one of the watch who is not a soldier), and blind 6 s. A director's own errand stops through `_sees()`/`veil_blind()`. --
+  reuses nothing that exists; one named, reusable state -- a soldier turned away can be ordered to fight at once (VL37).
+- VL11 Dread's "stopped at its edge" is `Person.dread_balked_at` (crowd clock of his last step refused by a dread), set in
+  `_step_blocked()`; Track C counts it only within 1.0 of its own dreaded ground. -- the walker's own refusal is the only truth -- a
+  man blocked by something else near the edge is held.
+- VL12 Blight's watch outlives the cast. It is the foothold's (a node in `SolarisPit.GROUP`, its id in the foothold meta), ended by
+  `BlightFx.heal()`, by its building freed, destroyed or taken, by its crowd freed and by `Battlefield.clear_effects()`. -- the rot
+  lasts the night, the cast only 1.6 s -- a watch that is not freed on some exit goes on ticking.
+- VL13 The Swallowing Dark's marked spared (believers, the mission-kept) are eyed and marked but not taken outside the circle at the
+  fold; inside it the power takes them as today. -- the anti-goal over "as today" -- a believer who walked out lives.
+- VL14 Evernight's huddle keeps level 1's slots (`TORCH_R - 0.3`); only the light shrinks. The static light is re-added when its
+  radius has shrunk by `LIGHT_STEP 0.05` (no `LightField` change). -- the claims must be able to grow -- a few extra light updates.
+- VL15 Slumber's "not in it at the cast" is anyone within its circle at `T_FALL`, slept or not. Unseen Hour's leavers include anyone
+  inside at the fall; the veil lifting blinds nobody. -- simple, testable -- a man inside who was not slept is never slept by the twist.
+- VL16 Twist texts (they fit the tree's detail line; shorten words, never the name, if the fit check fails): doom "No Witness: the
+  nearest who saw it falls too"; blight "Watchful Rot: the watch falls ill in your rot"; slumber "Heavy Air: who walks in sleeps
+  too"; cloak "Averted Eyes: the watch near them turns away"; unseen "Eyes Within: see the watch; leavers stay blind"; dreamless
+  "Found by No One: never found; a finder rests"; dread "The Dark Looks Back: who stops to look is held"; shadowplay "The Shadows
+  Keep Watch: who comes close joins"; swallow "Nothing Leaves: who walks out is taken too"; evernight "The Light Gives Way: the
+  torchlight shrinks". -- the tree's line is short -- a word you would change.
+
+### The controller's rulings (R1-R14 of the pre-flight scan and G2's review)
+
+- VL17 (R1, G2 and Track A) `PaleEye` gains an owner-id form beside the cast form: `mark_by(crowd, owner_id, p, key, seconds, layer)`
+  and `release_by(crowd, owner_id)`; `mark(fx, ..)` and `release(fx)` call them with the cast's instance id. Blight's rot watch
+  (which outlives its 1.6 s cast, VL12) uses them with its own id. -- the watch has no cast to pass -- one small API.
+- VL18 (R2, G1) `veil_cast_looks.gd` joins G1's files: wherever a look divides by or reads a constant that now has a level (the
+  Dreamless Threads look read `DreamlessFx.REST`), it reads the cast's level value. Level 1 draws exactly as today. -- else the look is
+  wrong above level 1 and no track may edit that file -- none.
+- VL19 (R3, G2 and Track B) A blind man still fights. `Person.turn_away(seconds)` carries its own timer: for those seconds he takes up
+  no new pursuit, search or fight target (one check beside `hidden_from_watch()`), and he is blind for the same seconds. Cloak's
+  test "may fight again after 6.1 s" tests `turn_away`, not blind. -- VL4 and VL10 disagreed -- one more timer on Person, named and
+  reusable.
+- VL20 (R4, Tracks A and B) The "skip anyone `VeilParts.held(p)` names" rule covers answers to people who walk in or come near
+  (Slumber, Cloak, Dread, Shadow Play, Blight, Swallow). It does not shield a witness named by today's witness rule
+  (`Crowd.nearest_witness()`): Silent Doom silences him and Dreamless rests him even if he is asleep (shadows and the dreaded are never
+  witnesses today, so they are never named). -- a sleeper who counts as a witness today must be answerable, or the twist fails exactly
+  where the alarm would rise -- a sleeping witness dies to No Witness.
+- VL21 (R5, Track C) Dread's twist holds anyone "not asleep and not a shadow" (not "not `held()`"): a man already frozen by another
+  Dread cast is held by this cast too, per cast id, and stays frozen until both lift. -- the brief's rule made its own two-casts test
+  impossible -- none.
+- VL22 (R6, G2) `Crowd.answer_doom()` names the nearest witness of every registered victim first, then answers each distinct named
+  witness once. Never alternate naming and answering. -- else the second victim names a farther witness after the first is killed (a
+  chain the spec forbids: one hop) -- none.
+- VL23 (R7, G1 and F) G1 does not run all 508 reference rows: every task runs the 36 `veil` rows and `digest|crowd_check|warning_doom`,
+  G1 also nine families of play rows that cast Silent Doom or Blight outside the god rows. All 508 run at Task F, machine load
+  allowing. -- 508 rows took 19 h under load -- a moved non-Veil row is found at F, not G1.
+- VL24 (R8, G2 and F) A stub twist suite's placeholder check must fail the gate if left: Task F runs
+  `grep -l "pending (Track" tests/test_veil_twist_*.gd` and it must print nothing. -- a stub `check(true)` asserts nothing -- none.
+- VL25 (R9, Track A) Blight's test reads "no cue but `v_pale_eye`" for the rot's sick. -- eyeing plays the Pale Eye's cue -- none.
+- VL26 (R10, Track A) The callback given to `Crowd.answer_doom()` checks `is_instance_valid(w) and w.is_alive()` before it answers a
+  witness. -- one answer may already have killed a witness another was handed, and tracks may not edit crowd.gd -- none.
+- VL27 (R11, all tracks) The first `PaleEye.mark`/`mark_by` in a crowd with no eye node needs a layer to build on: the cast's
+  `ctx.overhead_back` (else `ctx.overhead`). An open-ended (INF) eye is closed by the twist's own teardown (`release`/`release_by`);
+  the hook does not close it when its owner is freed. -- the hook has no owner to watch -- a leaked eye until the town clears.
+- VL28 (R12, all tracks) G2's report is the interface reference: every shared hook's exact signature. No track edits a file G1 or G2
+  own; a missing or wrong hook is NEEDS_CONTEXT with the signature needed. -- keeps the merge conflict-free -- none.
+- VL29 (R13, tracks A-D) Four tracks at once on a loaded machine run only `digest|crowd_check|warning_doom` and
+  `god_veil_(prayers|tax|lamb|harvest|warning)_play_1` (8 rows); the controller runs all 36 `veil` rows and the play rows once on the
+  merged head. -- 4 x 39 rows at once would take many hours -- a moved row is found at the merge and bisected by track.
+- VL30 (R14, tracks A-D) Each track works in `vfxProve-veil-<a|b|c|d>` on `god/veil-levels-<a|b|c|d>` (import first); the workspace
+  stays in the main veil worktree, each track writing only its own report; other tracks' twist suites are stubs there: left alone.
+  -- no shared writes -- none.
+
+### G1: tables, sizes and dusk by level, the aim, the tree
+
+- VL31 Blight's `lv_ill_reach` is a local in `_build()`, not a member. -- Blight's cast has no member state for it and only
+  `sick_with` reads it -- none (a test reads the effect through `sick_with`/`blight_ill`).
+- VL32 `VeilRules.dusk_row()` returns `{}` for any key not in `SIZES` (the ten Veil keys). -- "non-Veil key" per the brief -- none.
+- VL33 `Rules.cast()` moves the `told` build (level and dark stamp) wholly above `veil_refusal`; the dark stamp is only made for a Veil
+  key with a crowd, as before. -- Dread's refusal needs the level -- same stamp, none.
+- VL34 `_gate_builds` compares child-count deltas of `ctx.overhead`, `ctx.ground` and the world, not absolute counts. -- casts leave
+  nodes until freed -- stable under repeat; none.
+
+### G2: the Pale Eye and the shared hooks
+
+- VL35 `HarvestDirector.watches` (a dict of watch posts) clashed with the mandated `MissionDirector.watches(p)` method (a subclass
+  member may not shadow a parent member): the dict is renamed `watch_posts`, with its readers in four tests. -- the method name is
+  fixed by the brief, the dict was an internal -- a rename back plus a differently named hook.
+- VL36 `turn_away()` leaves a sleeper asleep (blind and turned only) and does not calm a fleeing, panicking or sheltering non-soldier
+  (it drops fights, queues and goals and sets CALM for the rest); a soldier goes `send_to_post(post)` regardless. -- VL10 names "stop
+  fighting, out of a queue, back to post / calm" and the twist skips held men anyway -- a sleeper woken or a runner calmed by a Cloak.
+- VL37 `_fightable()` refuses new targets while turned only under the HOSTILES and OWN_KIND rules (the watch's own choice, like the
+  cloak check beside it); a frenzy or power's ordered target (TARGET_ONLY, ANYONE, OF_KIND, OTHER_SIDE) still stands. -- R3 says
+  "beside `hidden_from_watch()`" -- a turned soldier may be ordered to fight.
+- VL38 `answer_doom` registrations of victims who did not die (Deathless) stay until `unanswer_doom` or the town clears; those in
+  `dead` are forgotten after naming. -- the brief says the registered victims are then forgotten -- a stale entry answering a later
+  death of the same man.
+- VL39 The Pale Eye's cue goes through the crowd's `sfx` (a `FxContext` is not at hand in `mark_by`) at the positions VL7 names. --
+  same sound -- none.
+- VL40 `Crowd.clear()` `queue_free()`s the eye node (VL6: cleared with the town). -- none.
+
+### Track A: Silent Doom, Blight, Unseen Hour
+
+- VL41 Blight's watch, when its first-in-order man is spared (or cannot fall ill), lets the next man who stepped in fall ill the same
+  tick (the brief says only that a spared one starts no rest). -- reads "the first while not resting falls ill" as the first who can --
+  if wrong, a `break` after the first stepped-in.
+- VL42 The watch's ill man gets the same `BlightMark` glyph the cast's `_make_ill` gives, but no `q_blight_ill` cue. -- the glyph is the
+  existing sickness look, not a cue -- drop the mark in `RotWatch._tick`.
+- VL43 Blight's eyes are timed (`PaleEye.TIME`), so a watch has nothing open-ended; its teardown test reads `held_by(cast) == 0` at
+  once and `held_by(watch)` after the eye clock runs 4.1 s. -- a timed eye outlives its owner by design (VL5) -- none.
+- VL44 Unseen Hour does not blind a leaver the town spares (believers, mission-kept); held leavers (asleep, shadow, dreaded) are
+  blinded. -- the "Spared" global rule; VS names leavers -- if wrong, drop the `spared` test in `_tick`.
+- VL45 Unseen Hour's `_rise()` (which was never called) is called at `T_FALL + veil_time`, under the twist only, so `veiled` goes false
+  at the lift at level 5; levels 1-4 keep `veiled == true` as today. -- the twist needs a lift to stop its eyes -- none below level 5.
+- VL46 Doom registers an answer only for victims actually struck (not those gone indoors); an insider who walks back in after being
+  blinded rejoins Unseen Hour's list and can be blinded again on leaving. -- "who saw it" needs a strike -- a victim gone indoors names
+  no witness.
+- VL47 The "freed building" Blight test uses a stand-in `Structure` outside the town's list. -- freeing one of the town's own
+  structures leaves `EnvironmentField.structures()` holding a dead node and breaks later callers -- none.
+
+### Track B: Slumber, Cloak of Night, Dreamless
+
+- VL48 "One standing in the circle at the fall but awake (a shadow) is never slept" is tested as "in the circle at the fall, woken,
+  standing in it: not slept by the twist, not eyed". -- today's `_fall` sleeps everyone in the circle, a shadow too (`Person.sleep()`
+  does not refuse one) -- if wrong: `_fall` should skip shadows, a level-1 change that was not made.
+- VL49 `held_by(fx_id) == 0` after teardown is checked after `PaleEye.step(TIME + 0.1)`. -- the twists' eyes are timed (VL5), only INF
+  eyes are closed by `release` -- a twist would have to `unmark` its eyes at teardown, against VL5.
+- VL50 Cloak skips the hidden man himself as an object of his own cloak, but a hidden soldier next to another hidden man is turned by
+  that other. -- the spec says "the watch within 2.0 of a person this cast keeps" -- one extra `turn_away` on a hidden soldier.
+- VL51 Cloak's turn counts and eyes a man only when `turn_away()` returns true (the dead and the indoors return false, already
+  excluded). -- consistent -- none.
+- VL52 Dreamless sitters' status `&"dreamless"` is erased as the sitter is taken or killed in `_found_by_none` (as `_found` does before
+  killing). -- same as today -- none.
+- VL53 Dreamless finder judgement uses `skip` = all sitters plus all finders and excludes the finder himself; a finder who died or woke
+  before the judgement is not judged. -- VL9 -- a finder woken by a hurt is left unjudged (he is awake and was not "found").
+- VL54 Slumber's ring is a new inner class `HeavyRing` (violet arc and faint dusk disc, breathing) in `slumber.gd`. -- the shared looks
+  file is G1/G2's -- untested on a real screen.
+- VL55 Dreamless's `NOTIFICATION_PREDELETE` releases only the twist's finders (not the sitters). -- level 1 stays unchanged -- none.
+
+### Track C: Dread of the Dark, Shadow Play
+
+- VL56 Shadow Play's joined are eyed open-ended (released in `_undo()`), like Dread's. -- the brief says only "eyed" and the teardown
+  contract needs `held_by(fx_id) == 0` -- if wrong, a timed 4 s eye.
+- VL57 Joined shadows count as "a shadow this cast owns", so joining can chain from a joined man (capped by `JOIN_MOST` 12). -- a
+  reading of the brief's wording -- if wrong, poll from the original shadows only.
+- VL58 Polls run every `TICK 0.25` s (the "Cheap" rule) with a 0.001 tolerance on the accumulator and the 2.0 s stand, so 8 ticks reach
+  exactly 2.0 s; "within one tick" is up to 0.25 s. -- the cheap-poll rule -- a hold arrives up to 0.25 s late.
+- VL59 `ShadowPlayFx.shadows` stays counting only the rise; the new `joined` counts joiners. -- keeps level-1 tests unchanged -- none.
+- VL60 One commit for both of Track C's twists, not one each. -- they share one test round -- a bisect between them is not possible.
+
+### Track D: The Swallowing Dark, Evernight
+
+- VL61 A marked man who is spared (believer or mission-kept) is eyed and marked but skipped at the fold only when beyond `full_r`;
+  inside he is taken as today. -- VL13 -- none.
+- VL62 Marked men are taken even if `VeilParts.held()` (asleep, shadow, dreaded). -- the spec names every marked man alive; "held" is
+  for answers to people who walk in or come near -- a sleeping marked man is taken too.
+- VL63 "Stood inside" and "marked" ignore people who are indoors; leaving is judged on `ground_pos` distance to the click. -- an indoor
+  man cannot walk out -- none.
+- VL64 The brief's "claimable by WAVE + 27" is tested as "claimed by WAVE + 28". -- claims happen on the take beat (every 2 s) and the
+  light is 1.965 then -- off by one beat.
+- VL65 The `put_out` late test places the bystander at 1.8 and calls it at WAVE + 37. -- at 2.0 the normal claim and take already
+  remove him before WAVE + 60, so the brief's scenario cannot isolate `put_out()` -- none.
+- VL66 The shared shade takes the smallest `torch_r()` among the sharing level-5 casts (one uniform for all islands), and keeps the dawn
+  fade at `END_R`. -- one uniform serves the whole sky -- a level-1 night's islands sharing the sky with a level-5 night are drawn
+  as small as the level-5 one (a look only).
+
+### Bench
+
+Bench: filled in by the controller.

@@ -240,3 +240,189 @@ in 122 families, the `none` cases, the other gods' rows, the calm/fire/rite/sold
   night_b_play lost 405.5 / 357.2 / 315.2 (0 wins; timeouts, DM-side before). The idle stretch was not measured here.
 - **Landing.** The whole suite, the reference rows (the Veil-casting rows re-recorded), FLOW on a quiet machine, and the landing on
   `feat/god-progression` wait for their own steps and for your word.
+
+## Levels (2026-11-24)
+
+The Veil's ten powers now have five levels, and each has a twist at level 5. This settles the first line of "What is left" above:
+levels 2-5 and the twists are built. The Veil bots, the painted icons and the other items there are not. Level 1 is exactly what it
+was: no number and no reference row moved.
+
+### The idea
+
+Your words: "I want Veil god in level 5 to be feel like a real master of darkness. No one will see or barely see what's he doing or
+coming after for. If someone feel his presence he'll know immediately."
+
+So there are two halves. The god stays unseen. And if anyone does sense him, you know at once. The line all ten twists share is
+**"the dark watches back"**: whoever notices a Veil power is shown to you with a Pale Eye, and the power answers him.
+
+### What grows with level
+
+- **The dark size grows the most.** Each power's size in the dark rises at every level. The size in the light barely moves, so the
+  law of the Veil stays: small in the light, full size in the dark.
+- **The dusk a cast leaves grows.** One rule for every Veil cast (it lives in `VeilRules`). The skill tree shows it as one extra row,
+  "dusk", on every Veil power except Evernight, which lays none:
+
+  | Level | 1 | 2 | 3 | 4 | 5 |
+  |---|---|---|---|---|---|
+  | Least dusk radius | 3.0 | 3.25 | 3.5 | 3.75 | 4.0 |
+  | Dusk lasts, s | 20 | 22 | 24 | 26 | 28 |
+
+- **Cooldowns fall** at every level. The two once-a-descent powers have none.
+- **Times grow** where a power has one: sleep, hiding, rest, dread, the veil, the growth of the Swallowing Dark, the night.
+- **Might.** Levels 1-2 cost the power's own Might, levels 3-4 one more, level 5 two more. At level 5: The Swallowing Dark 8 and
+  Evernight 8 (16, your cap), Dread of the Dark 6 and Shadow Play 7 (13).
+
+### The numbers, level 1 and level 5
+
+Written light / dark. Read from `src/game/power_book.gd` as built. They match the spec's tables exactly: nothing differs. Levels 2-4
+sit in between in even steps (see the tree or the book).
+
+**Tier 1**
+
+| Power | Stat | Level 1 | Level 5 |
+|---|---|---|---|
+| Silent Doom | radius | 0.8 / 1.6 | 0.9 / 2.2 |
+| | cooldown, s | 10 | 8 |
+| Blight | dusk round a rotted building | 3.0 / 5.0 | 3.4 / 6.2 |
+| | fall ill from one person cast | 1 / 3 | 1 / 5 |
+| | reach for the extra sick | 2.0 | 2.8 |
+| | cooldown, s | 20 | 16 |
+
+**Tier 2**
+
+| Power | Stat | Level 1 | Level 5 |
+|---|---|---|---|
+| Slumber | radius | 1.5 / 3.5 | 1.7 / 4.5 |
+| | sleep, s | 20 | 28 |
+| | cooldown, s | 40 | 32 |
+| Cloak of Night | reach to the first | 2.0 / 4.0 | 2.2 / 5.0 |
+| | hidden at most | 3 / 8 | 4 / 12 |
+| | hidden for, s | 25 | 33 |
+| | cooldown, s | 45 | 37 |
+
+**Tier 3**
+
+| Power | Stat | Level 1 | Level 5 |
+|---|---|---|---|
+| Unseen Hour | radius | 5.0 / 7.0 | 5.4 / 8.6 |
+| | veil lasts, s | 20 / 30 | 22 / 38 |
+| | cooldown, s | 60 | 52 |
+| Dreamless | reach | 1.0 / 2.0 | 1.2 / 3.0 |
+| | sit down at most | 1 / 4 | 2 / 8 |
+| | found after, s | 20 | 28 |
+| | cooldown, s | 35 | 29 |
+
+**Tier 4**
+
+| Power | Stat | Level 1 | Level 5 |
+|---|---|---|---|
+| Dread of the Dark | reach | 6.0 / 12.0 | 7.0 / 12.0 |
+| | holds, s | 25 | 35 |
+| | cooldown, s | 70 | 58 |
+| Shadow Play | radius | 3.0 / 6.0 | 3.3 / 7.2 |
+| | lasts, s | 30 | 38 |
+| | cooldown, s | 90 | 78 |
+
+Dread's dark reach stays 12 at every level: it is already the Veil's costliest power to draw. It grows by time, and its light reach
+grows so a cast in the light finds dark ground more easily.
+
+**Tier 5** (once a descent, no cooldown)
+
+| Power | Stat | Level 1 | Level 5 |
+|---|---|---|---|
+| The Swallowing Dark | final radius | 10.0 / 14.0 | 10.8 / 16.0 |
+| | grows, per second | 0.5 | 0.7 |
+| Evernight | night, s (day / NIGHT mission) | 60 / 90 | 68 / 102 |
+| | the last take | 10 | 12 |
+| | torches | 6 | 5 |
+
+Fewer torches is less light for the town. Evernight's level-5 night takes about 280 by day (level 1 about 214).
+
+### The Pale Eye
+
+A pale eye opens over the head of whoever a level-5 Veil power notices. It is **for you only**: a drawing and a list. It changes
+nothing the town does: no alarm, no fright, nobody hears it.
+
+- **Edge marker.** If the eyed person is off screen, a small eye sits at the screen's edge with an arrow toward him.
+- **The cue.** One soft sound, `v_pale_eye`, in the quiet band, at most once a second however many eyes open. Only you hear it.
+- **How long.** 4 s unless the twist names another time (some stay open until their power ends). It closes at once, for good for that
+  cast, when the person is taken, dies or goes indoors. Being eyed again later by another cast is a new entry.
+- **One drawing.** One node per town, over the heads and under the aim ring. It does not use the person's badge, so Blight's glyph,
+  a Decree bar or a Death Mark stay.
+- **A night with no level-5 Veil power builds and draws nothing.** A test holds this for every Veil power at level 4.
+- **"The watch"** in the twists means every soldier, plus whoever the night's director names (by default its faithful).
+- **"Blind"** is a new timed state: a blind man is no witness and reports and seizes nothing, as if he stood in the veil. He still
+  walks, flees and fights. Standing inside a veil does not blind him: only the leavers and the turned watch below are blind.
+
+### The ten twists (level 5), as built
+
+Each runs only at level 5 and answers only the people the twist names. None raises an alarm or a fright, none draws on luck (every
+pick is the nearest, a tie to the lower id), and the town's spared are eyed at most, never answered (except where noted).
+
+- **Silent Doom, No Witness.** When the doom strikes, the nearest witness of each victim (by today's witness rule) falls too, and is
+  eyed. One hop only: that second death names nobody. A sleeping witness is answered too (VL20).
+- **Blight, Watchful Rot.** A rotted building gets a rot watch that outlives the cast (it stops when the rot heals, the building is
+  lost, or the town clears). The first of the watch to step into the dusk round it falls ill (home to bed; a quarry man is ill for
+  20 s), then the watch rests 15 s. All who step in are eyed. A man the town spares is eyed only, and the next may fall ill (VL41).
+- **Unseen Hour, Eyes Within.** The watch within the veil's radius plus 4 is eyed while it is there. Anyone who walks out of the veil is
+  blind for 6 s. The veil lifting blinds nobody. Narrower than the spec in one place: the town's spared are not blinded (VL44).
+- **Slumber, Heavy Air.** Anyone who walks into the circle in the open after the fall sleeps for the rest of the sleep, and is eyed.
+  Those held already (asleep, a shadow, dreaded) are skipped. A violet ring marks the circle (a new look).
+- **Cloak of Night, Averted Eyes.** The watch within 2.0 of a hidden person turns away for 6 s: it drops the chase, stops fighting, is
+  blind for those 6 s, and is eyed. A soldier goes back to his post.
+- **Dreamless, Found by No One.** A sitter is never found: he is taken instead. The nearest witness (who would have found him) rests
+  asleep for half the rest, eyed; when he has rested, the next nearest witness judges him: none near, he is taken too, else he falls.
+  If that first witness is one the town spares, the sitter is killed as today.
+- **Dread of the Dark, The Dark Looks Back.** Anyone who stops at the edge of the dreaded ground (he balked at it, or stood within 1 of
+  it for 2 s) is held frozen until the dread lifts, eyed. Up to 16, the nearest first.
+- **Shadow Play, The Shadows Keep Watch.** Anyone who comes within 1.0 of one of the cast's shadows joins them as a shadow too (up to
+  12; a joined man can draw in the next), eyed until the cast ends.
+- **The Swallowing Dark, Nothing Leaves.** Anyone who stood inside the growing circle and walks out of it is marked (a thin dark thread
+  to him, and eyed) and is taken at the fold wherever he has gone, even into a shelter. The spared are eyed and marked but only taken
+  if they are inside at the fold, as today (VL13).
+- **Evernight, The Light Gives Way.** Each torch's light shrinks over the night, from 2.5 to 1.2 round it. The huddle's slots stay where
+  they were, so the dark claims more. Every torch-bearer is eyed. One wider effect than you might expect: the sky's shade is shared,
+  so a level-1 night's islands sharing the sky with a level-5 night are drawn as small as the level-5 ones (look only, VL66).
+
+### How to try them
+
+- **Remembrance:** open the Skill Tree, the Veil wheel, pick a power, press REMEMBRANCE. The level keys 1-5 set the level of the
+  power you try; level 5 has the twist. See "How to try them" above for both sizes.
+- **One cast on the bench:** `--bench-cast=KEY --bench-level=5`, for example
+  `--scene res://scenes/mission.tscn -- --bench --loadout=dread --bench-cast=dread --bench-level=5 --bench-after=4`
+  (the Swallowing Dark wants `--bench-after=17`).
+
+### For your eye and ear (levels)
+
+What only you can judge:
+
+- **The numbers.** All first guesses.
+- **The Pale Eye's drawing and its edge arrow.** Code-drawn, tested headless only: never seen on a real screen.
+- **Heavy Air's ring** (Slumber): the violet arc and faint disc. Never seen on a real screen.
+- **Joined shadows** (Shadow Play): the peel, edge and marks of a joined man. Never seen on a real screen.
+- **The marked's threads** (The Swallowing Dark): the thin dark thread to each marked man. Never seen on a real screen.
+- **The shrinking torch glow** (Evernight): the light field, the ring, the shade's islands and the halo shrinking together. Never seen
+  on a real screen.
+- **The Pale Eye's cue.** Measured into the quiet band; nobody has listened to it in play.
+- **Evernight's twist is the weakest fit** to "the dark watches back": it is about those who resist, not those who notice. You
+  accepted it with the rest.
+- **Evernight's size.** 214 a night at level 1 was not yet judged; level 5 is about 280.
+- **Evernight's cost.** About 2.5 ms a frame more than before, under the bar; a cost pass can cut it.
+- **No sound for each of Evernight's takes.** A cue every 2 s for 60 s needs your ear first.
+- **The Swallowing Dark's sounds.** Only measured, never heard: the reversed roar, the rush's hard end, the low rumble on small
+  speakers, and whether the fold is too loud.
+- **Lines B and C** (other twist lines) were set aside "first", not for ever.
+- **Readings an implementer made that you may want otherwise** (each is a VL line in the rulings):
+  - Silent Doom's No Witness answers a sleeping witness too (VL20).
+  - Blight's watch lets the next man fall ill when the first is spared (VL41).
+  - Unseen Hour does not blind a spared leaver (VL44).
+  - Shadow Play's joined are eyed until the cast ends, and can draw in others (VL56, VL57).
+  - Slumber's twist leaves a shadow standing in the circle at the fall asleep as today (VL48).
+  - Cloak turns a soldier who stands next to another hidden man (VL50).
+  - The Swallowing Dark takes a sleeping marked man (VL62).
+  - A turned man still obeys an ordered fight (VL37).
+
+### Bench and checks
+
+Bench: filled in by the controller.
+Check results (suite, reference rows, FLOW): filled in by the controller.

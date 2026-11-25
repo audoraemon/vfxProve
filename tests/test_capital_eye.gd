@@ -120,7 +120,11 @@ static func _towers(t, d: LanternEyeDirector) -> void:
 			plain = plain and c.distance_to(gate) > 3.0
 		near = near and c.distance_to(d.spire) <= Searchlight.FAR
 		print("CAPITAL eye tower %d %s (spire %.1f) foot %s face %s" % [i, c, c.distance_to(d.spire), d.feet[i], d._face(tw)])
-	t.check(seen.size() == 3 and real, "three distinct standing wall towers (never the bell tower)")
+	var no_bell := true
+	for tw: Structure in d.towers:
+		no_bell = no_bell and tw.art_tag != &"bell_tower"
+	t.check(seen.size() == 3 and real, "three distinct standing wall towers")
+	t.check(no_bell, "no mirror tower is the bell tower")
 	t.check(ring, "each mirror tower stands on the old town's wall ring")
 	t.check(plain, "no mirror tower is a gate tower or beside a gate")
 	t.check(near, "each tower is within the Searchlight's FAR of the spire")

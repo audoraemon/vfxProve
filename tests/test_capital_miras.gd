@@ -51,6 +51,7 @@ static func _policy_reads_vars(t) -> void:
 	var bc := FileAccess.get_file_as_string("res://tools/dev/behaviour_check.gd")
 	var policy := bc.substr(bc.find("func _faith_night("))
 	policy = policy.substr(0, policy.find("\nfunc ", 10))
+	t.check(policy.length() > 500, "the miras policy (_faith_night) is found and sliced (%d chars)" % policy.length())
 	t.check(not "MIRA_SPOT" in policy and not "TownLayout." in policy, "the miras policy (_faith_night) reads no Mira const or TownLayout coordinate")
 
 

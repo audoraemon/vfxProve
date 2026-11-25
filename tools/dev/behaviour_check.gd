@@ -1830,7 +1830,10 @@ const JUDGEMENT_MAX_FRAMES := int(Rules.MISSION_SECONDS * 2.0 * 60.0)
 
 ## The next ring target of the active city (Aldermere's list if the city has none).
 func _judgement_target(next: int) -> Vector2:
-	var list: Array = JUDGEMENT_TARGETS.get(City.current().id(), JUDGEMENT_TARGETS[&"aldermere"])
+	var id := City.current().id()
+	if not JUDGEMENT_TARGETS.has(id):
+		push_error("behaviour_check: no judgement ring for city '%s'; using Aldermere's" % [id])
+	var list: Array = JUDGEMENT_TARGETS.get(id, JUDGEMENT_TARGETS[&"aldermere"])
 	return list[next % list.size()]
 
 

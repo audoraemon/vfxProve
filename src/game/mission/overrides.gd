@@ -55,6 +55,8 @@ static func apply(target: Object, values: Dictionary, allowed: Variant = null) -
 
 ## The names a town may override on `director`: the TOWN_VARS its script declares and those of the scripts it extends (a subclass cannot
 ## redeclare TOWN_VARS, so it names its own list <WHAT>_TOWN_VARS and the lists are joined); none: none.
+## A subclass inherits its base's town vars, so an override of an inherited var the subclass never reads is accepted silently (today: Sermon's
+## mira_spot, RelicRun's route_spots and mira_shrine, SilenceWitness's post_spots, FaceHalcyon's and HideFaithful's Exodus list; no file sets them).
 static func town_vars(director: Object) -> Array:
 	var out := []
 	var script := director.get_script() as Script

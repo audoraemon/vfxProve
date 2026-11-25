@@ -599,7 +599,7 @@ func exits() -> Array[Vector2]:
 
 
 ## The towers of the old town's west river gate (INNER_GATES[1], the spec's decision: the Armoury's and the Crowns' Bread's
-## "gate towers"), west tower first. Read by no running Capital mission yet.
+## "gate towers"), west tower first. Read by the Armoury and the Crown's Bread.
 func gate_towers() -> Array[Rect2]:
 	if _gate_towers.is_empty():
 		_gate_towers = _gatehouses(INNER, [INNER_GATES[1]]).towers

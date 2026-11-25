@@ -77,9 +77,9 @@ const WISP_R := 5.0
 
 ## The town's places and words (v0.12, spec 1.5 and 6.2.4): seeded from Aldermere's consts, which a town's overrides replace. `road` and
 ## `beat_spots` are copies, never the consts themselves. EscortDirector's own vars (the gate, exit, return, guardhouse, watch posts and the
-## charge's start) are seeded in _init() and setup reads them, never replaces them; `charge_start` is the one setup still derives, from where
-## the stocks were placed (a ring away from `stocks_at` when it has no room), so an override of it only sets the first guess.
-const TOWN_VARS := ["stocks_at", "lane_foot", "road", "beat_spots", "gate_words", "exit_name", "charge_start", "gate_at", "exit_at",
+## charge's start) are seeded in _init() and setup reads them, never replaces them; `charge_start` is not a town var: _plan() always derives it, from where
+## the stocks were placed (a ring away from `stocks_at` when it has no room).
+const TOWN_VARS := ["stocks_at", "lane_foot", "road", "beat_spots", "gate_words", "exit_name", "gate_at", "exit_at",
 	"return_to", "guardhouse", "watch_posts"]
 var stocks_at: Vector2 = STOCKS_AT
 var lane_foot: Vector2 = LANE_FOOT

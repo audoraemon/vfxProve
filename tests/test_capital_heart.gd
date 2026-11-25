@@ -140,8 +140,9 @@ static func _policy_reads_vars(t) -> void:
 	var a := _slice(bc, "func _heart(which", "\nfunc _ringers(")
 	var route_b := FileAccess.get_file_as_string("res://tools/dev/routes/tier5_b.gd").replace("\r\n", "\n")
 	var r1 := _slice(route_b, "static func _heart_fells(", "\nstatic func state_heart(")
-	var r2 := _slice(route_b, "static func state_heart(", "\nstatic func ")
-	t.check(a.length() > 5000 and r1.length() > 8000, "the heart policy functions are found and sliced (%d, %d chars)" % [a.length(), r1.length()])
+	# state_heart is the last function of the file, so it is sliced to the end
+	var r2 := route_b.substr(route_b.find("static func state_heart(")) if "static func state_heart(" in route_b else ""
+	t.check(a.length() > 5000 and r1.length() > 8000 and r2.length() > 150, "the heart policy functions are found and sliced (%d, %d, %d chars)" % [a.length(), r1.length(), r2.length()])
 	var re := RegEx.create_from_string("\\bHeartOfFaithDirector\\.(OIL_AT|CITADEL_GATE|LANE_FOOT|STEPS_AT|QUIET_AT|STAGE_AT|CAMERA_AT)\\b|TownLayout\\b")
 	var plus := RegEx.create_from_string("\\bd\\.(oil_at|steps_at_spot|steps_at|lane_foot|quiet_at|citadel_door|oil_house)(\\[\\w+\\])?\\s*[+-]|[+-]\\s*d\\.(oil_at|steps_at_spot|steps_at|lane_foot|quiet_at|citadel_door)\\b")
 	t.check(re.search("x HeartOfFaithDirector.STEPS_AT") != null and re.search("TownLayout.TEMPLE") != null and re.search("HeartOfFaithDirector.WORDS[i]") == null
@@ -149,7 +150,7 @@ static func _policy_reads_vars(t) -> void:
 		and plus.search("d.steps_at + Vector2(1.0, 0.0)") != null and plus.search("o - d.citadel_door") != null and plus.search("d.steps_at,") == null
 		and plus.search("d.temple.center() - x") == null, "the policy regexes bite on a sample and pass the director's vars")
 	# existing offsets from director structures (not town vars): _heart_act's `o.ground_pos + (o.ground_pos - d.temple.center()).normalized() * HEART_OFF` (the Temple's centre, a structure).
-	for body: String in [a, r1]:
+	for body: String in [a, r1, r2]:
 		var m := re.search(body)
 		t.check(m == null, "a heart policy reads no Heart const that is a var and no TownLayout coordinate (%s)" % [m.get_string() if m != null else ""])
 		var o := plus.search(body)

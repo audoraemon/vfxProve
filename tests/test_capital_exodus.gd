@@ -139,7 +139,8 @@ static func _starts(t) -> void:
 	if d == null:
 		return
 	var grid: WalkGrid = d.crowd._grid
-	t.check(d.gate_at.distance_to(dov.gate_at) < 1.0 and d.exit_at.distance_to(dov.exit_at) < 1.0 and dov.gate_at == dov.gate_mouths[2] and dov.exit_at == dov.gate_exits[2],
+	t.check(dov.gate_at == dov.gate_mouths[2] and dov.exit_at == dov.gate_exits[2], "the overrides' gate_at and exit_at are gate_mouths[2] and gate_exits[2] (the bridge gate)")
+	t.check(d.gate_at.distance_to(dov.gate_mouths[2]) < 1.0 and d.exit_at.distance_to(dov.gate_exits[2]) < 1.0,
 		"gate_at and exit_at hold after setup: the bridge gate's mouth and way out (%s %s)" % [d.gate_at, d.exit_at])
 	t.check(d.temple_door.distance_to(dov.temple_door_at) < 1.0 and d.return_to == dov.temple_door_at and d.guardhouse == dov.temple_door_at,
 		"the Temple's door, the return spot and the guardhouse are temple_door_at (%s)" % d.temple_door)

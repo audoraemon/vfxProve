@@ -130,9 +130,9 @@ static func _policy_reads_vars(t) -> void:
 	var rb := _slice(route_b, "static func act_bishop(", "\nstatic func state_bishop(")
 	t.check(act.length() > 1500 and rb.length() > 3000, "the bishop policy functions are found and sliced (%d, %d chars)" % [act.length(), rb.length()])
 	var re := RegEx.create_from_string("\\b(REFUGE_SPOTS|CITADEL_GATE|CAMERA_AT|ARRIVE_AT|TAKEN_AT|REFUGE_WORDS)\\b|TownLayout\\b")
-	var plus := RegEx.create_from_string("\\b(safe_at|refuge_spots|doors\\[\\d\\])\\s*\\+")
+	var plus := RegEx.create_from_string("\\b(safe_at|refuge_spots|doors\\[\\d\\])\\s*[+-]")
 	t.check(re.search("x BishopDirector.REFUGE_SPOTS[0]") != null and re.search("TownLayout.CITADEL_ORIGIN") != null and re.search("d.refuges[0]") == null
-		and plus.search("d.safe_at + Vector2(1.0, 0.0)") != null and plus.search("d.safe_at,") == null, "the policy regexes bite on a sample and pass the director's vars")
+		and plus.search("d.safe_at + Vector2(1.0, 0.0)") != null and plus.search("d.safe_at - Vector2(1.0, 0.0)") != null and plus.search("d.safe_at,") == null, "the policy regexes bite on a sample and pass the director's vars")
 	for body: String in [act, rb]:
 		var m := re.search(body)
 		t.check(m == null, "a bishop policy reads no Bishop const or TownLayout coordinate (%s)" % [m.get_string() if m != null else ""])

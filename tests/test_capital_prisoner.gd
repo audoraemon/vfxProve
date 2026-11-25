@@ -54,7 +54,7 @@ static func _seeded(t) -> void:
 		and d.watch_posts.size() == 2 and d.watch_posts[0] == PrisonerDirector.POSTS[0] and d.watch_posts[1] == PrisonerDirector.POSTS[1]
 		and d.return_to == PrisonerDirector.CITADEL_GATE and d.charge_start == PrisonerDirector.STOCKS_AT + Vector2(0.0, PrisonerDirector.HER_OFF),
 		"EscortDirector's places are seeded in _init() at Aldermere's (the return spot is the Citadel gate place, bit for bit)")
-	t.check(Overrides.town_vars(d) == ["stocks_at", "lane_foot", "road", "beat_spots", "gate_words", "exit_name", "charge_start", "gate_at", "exit_at",
+	t.check(Overrides.town_vars(d) == ["stocks_at", "lane_foot", "road", "beat_spots", "gate_words", "exit_name", "gate_at", "exit_at",
 		"return_to", "guardhouse", "watch_posts"], "the Prisoner's town vars (%s)" % [Overrides.town_vars(d)])
 	t.check(MissionBook.prisoner().camera_at == PrisonerDirector.CAMERA_AT, "Aldermere's camera is still CAMERA_AT")
 	t.check(PrisonerDirector.FREE_BY == 120.0 and PrisonerDirector.LANE_DOWN == 4.0 and PrisonerDirector.PACE == 0.33, "FREE_BY, LANE_DOWN and PACE are untouched")

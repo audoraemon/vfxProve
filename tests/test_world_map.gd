@@ -212,45 +212,30 @@ static func _dim_town(t) -> void:
 	map._unhandled_input(_key(KEY_ENTER))
 	t.check(got == ["descend"], "Enter on the open Capital emits descend (%s)" % [got])
 	map.free()
-	var none_tier := 0
-	for k in range(2, 6):
-		var hosts := false
-		for id in TierBook.missions(k):
-			hosts = hosts or MissionBook.hostable(id, City.by_id(&"capital"))
-		if not hosts:
-			none_tier = k
-			break
-	t.check(none_tier > 0, "some tier is hosted by nothing in the Capital (%d)" % none_tier)
-	var god := _open_both()
-	god.tier = none_tier
+	var god := _dim_god()
+	t.check(GodNight.draw(god, "capital") == "" and GodNight.draw(god, "aldermere") != "", "setup: a Hunt is due; the Capital draws nothing, Aldermere still does (%s, %s)" % [GodNight.draw(god, "capital"), GodNight.draw(god, "aldermere")])
 	var made2 := _make(god)
 	var map2: WorldMap = made2[0]
 	var got2: Array = made2[1]
-	t.check(map2.spot_state("capital") == "dim", "at a tier the Capital hosts none of: dim (%s)" % map2.spot_state("capital"))
+	t.check(map2.spot_state("capital") == "dim", "a Hunt night is due and the Capital does not host it: dim (%s)" % map2.spot_state("capital"))
 	map2.select("capital")
 	map2._unhandled_input(_key(KEY_ENTER))
 	t.check(got2.is_empty() and map2.line == WorldMap.NO_NIGHT, "Enter on a dim town emits nothing and says so (%s, %s)" % [got2, map2.line])
 	map2.free()
 
 
-## The first tier (2..5) the Capital hosts no mission of; 0 when there is none.
-static func _dim_tier() -> int:
-	for k in range(2, 6):
-		var hosts := false
-		for id in TierBook.missions(k):
-			hosts = hosts or MissionBook.hostable(id, City.by_id(&"capital"))
-		if not hosts:
-			return k
-	return 0
-
-
-## Final review 4: the last town is the Capital, but no night is drawn there (a tier it hosts nothing of): the map opens on Aldermere.
-static func _starts_on_aldermere_when_nothing_draws(t) -> void:
-	var k := _dim_tier()
+## An open Capital where no night is drawn: Notice is full, so a Hunt night is due, and the Hunt is Aldermere-only.
+static func _dim_god() -> GodSlot:
 	var god := _open_both()
-	god.tier = k
+	god.notice = 100
+	return god
+
+
+## Final review 4: the last town is the Capital, but no night is drawn there (a Hunt is due, and the Hunt is not hosted in the Capital): the map opens on Aldermere.
+static func _starts_on_aldermere_when_nothing_draws(t) -> void:
+	var god := _dim_god()
 	god.last_town = "capital"
-	t.check(k > 0 and GodNight.draw(god, "capital") == "", "setup: nothing is drawn in the Capital at tier %d" % k)
+	t.check(GodNight.draw(god, "capital") == "" and GodNight.draw(god, "aldermere") != "", "setup: a Hunt is due, nothing is drawn in the Capital")
 	var made := _make(god)
 	var map: WorldMap = made[0]
 	t.check(map.selected == "aldermere", "the last town draws nothing: the map starts on Aldermere (%s)" % map.selected)
@@ -260,12 +245,11 @@ static func _starts_on_aldermere_when_nothing_draws(t) -> void:
 ## Final review 5: a conquered town that draws nothing is dim (spec 4.6), still marked Conquered on its plate; and a refusal's line goes
 ## when the selection moves.
 static func _conquered_dim_and_line(t) -> void:
-	var god := _open_both()
-	god.tier = _dim_tier()
+	var god := _dim_god()
 	god.believers["capital"] = Conquest.population("capital")
 	var made := _make(god)
 	var map: WorldMap = made[0]
-	t.check(map.spot_state("capital") == "dim", "a conquered Capital that hosts nothing at this tier is dim (%s)" % map.spot_state("capital"))
+	t.check(map.spot_state("capital") == "dim", "a conquered Capital where no night is drawn is dim (%s)" % map.spot_state("capital"))
 	t.check(Array(map.info_lines("capital")).has("Conquered"), "its plate still says Conquered (%s)" % [map.info_lines("capital")])
 	map.select("capital")
 	t.check(map.selected == "capital", "a dim town is selectable")

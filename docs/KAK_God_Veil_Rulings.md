@@ -757,5 +757,5 @@ The bar is level 5 against the base at 1.55 or under.
 | Evernight + Dread of the Dark | 26.27 | 33.43 | 39.70 | 1.51 |
 
 Every pair is under the bar. The closest is Evernight with Dread of the Dark: 1.51 on the means, 1.53 on its worst single
-pair (42.05 against 27.45). The Swallowing Dark runs faster than the base because the town it has swallowed is no longer
-drawn or stepped. No run logged a script error. A bench on a quiet machine is still owed.
+pair (42.05 against 27.45). The Swallowing Dark runs faster than the base, most likely because the people it has taken are no
+longer drawn or stepped (cause not measured). No run logged a script error. A bench on a quiet machine is still owed.

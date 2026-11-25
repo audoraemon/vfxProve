@@ -429,5 +429,14 @@ What only you can judge:
 
 ### Bench and checks
 
-Bench: filled in by the controller.
-Check results (suite, reference rows, FLOW): filled in by the controller.
+Bench (2026-11-25, `961a9046`, loaded machine, level 5 against the base, bar 1.55): Dread of the Dark 0.99, Shadow Play 1.23,
+The Swallowing Dark 0.52, Evernight 1.25, Evernight + Unseen Hour 1.38, Evernight + Dread of the Dark 1.51 (worst single
+pair 1.53). The table is in `docs/KAK_God_Veil_Rulings.md`, section "Bench". A bench on a quiet machine is still owed.
+
+Check results on `961a9046` (2026-11-25):
+
+- Whole suite: 360 suites in 16 parts, 24,029 checks, 0 failures, 0 script errors.
+- Reference rows: 508 of 508 OK (73 Veil and mission rows, 435 others), none re-recorded.
+- FLOW: 209 checks, 0 failures, run alone.
+- The 36 suites of the levels (the level tables, the Pale Eye, the shared hooks, the ten twists, the ten powers) also pass
+  one by one.

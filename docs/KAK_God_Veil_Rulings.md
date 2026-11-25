@@ -742,4 +742,20 @@ plan says "Claude Fable 5.2" (the dispatch's reminder named Sonnet); a trailer a
 
 ### Bench
 
-Bench: filled in by the controller.
+Measured 2026-11-25 on `961a9046` with `--bench --seed=7 --loadout=<cast>`, then the same with `--bench-cast=<cast>
+--bench-after=4` (17 for the Swallowing Dark) at `--bench-level=1` and `--bench-level=5`. Mean frame time in ms; two or three
+runs per cell. The machine was loaded (a second check run ran beside this one), so read the ratios, not the absolute times.
+The bar is level 5 against the base at 1.55 or under.
+
+| Cast | Base | Level 1 | Level 5 | Level 5 : base |
+|---|---|---|---|---|
+| Dread of the Dark | 26.70 | 27.04 | 26.35 | 0.99 |
+| Shadow Play | 26.06 | 27.03 | 32.14 | 1.23 |
+| The Swallowing Dark | 26.70 | 20.32 | 13.79 | 0.52 |
+| Evernight | 26.40 | 33.08 | 32.96 | 1.25 |
+| Evernight + Unseen Hour | 27.32 | 34.54 | 37.79 | 1.38 |
+| Evernight + Dread of the Dark | 26.27 | 33.43 | 39.70 | 1.51 |
+
+Every pair is under the bar. The closest is Evernight with Dread of the Dark: 1.51 on the means, 1.53 on its worst single
+pair (42.05 against 27.45). The Swallowing Dark runs faster than the base because the town it has swallowed is no longer
+drawn or stepped. No run logged a script error. A bench on a quiet machine is still owed.

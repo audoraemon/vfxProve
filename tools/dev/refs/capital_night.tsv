@@ -1,0 +1,4 @@
+# KAK The Long Night in the Capital (plan "The Capital at every tier" Task 24): route b, --board, --city=capital, seeds 1-3 (name<TAB>how<TAB>expected). Mirrors Aldermere's night_b_play_* rows in routes_t5.tsv, which are recorded LOSSES (Act III is lost in both towns: Aldermere timeout/gaze, the Capital by the 50-escape limit at 84.9-143.9 s of the night); the Omen (3/3 won) and the Festival (3/3 won) are won in both. Kept as regression checksums, not as wins.
+capital_night_b_play_1	--scenario=night --case=play --route=b --board --seed=1 --city=capital	-537085608
+capital_night_b_play_2	--scenario=night --case=play --route=b --board --seed=2 --city=capital	-78791690
+capital_night_b_play_3	--scenario=night --case=play --route=b --board --seed=3 --city=capital	-570223163

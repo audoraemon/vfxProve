@@ -18,6 +18,9 @@ extends MissionDirector
 
 enum Phase { OMEN, STARE, RUN, DELIVERED, OVER }
 
+## The names a town's overrides may set (Overrides): the post and the name of the gate the star falls over (a WarningDirector subclass lists its own in its own `*_TOWN_VARS`).
+const WARNING_TOWN_VARS := ["post", "post_name"]
+
 const OMEN_AT := 2.0
 const STARE := 4.0
 const RETARGET := 0.5
@@ -72,8 +75,9 @@ var delayed_by := {}
 var gate_spot := Vector2.INF
 ## Where the watchman keeps his post, snapped to walkable ground in gate_spot, and the gate's name for the star's banner
 ## (v0.11 M1: the board's three stars fall over three gates). Set before setup(); the Main Gate's by default.
-var post := GATE_SPOT
-var post_name := "THE MAIN GATE"
+## Both are town vars (v0.12 Task 24, WARNING_TOWN_VARS): the Capital's Omen posts its watchman at the west gate. `gate_spot` is not one: setup derives it (the snapped post), so an override of it would be replaced.
+var post: Vector2 = GATE_SPOT
+var post_name: String = "THE MAIN GATE"
 ## The star has fallen (it falls at OMEN_AT whatever the phase: a relay before it skips the stare, not the omen).
 var omen_fallen := false
 ## Seconds (real) the keeper who rang still has to come down the bell tower before he walks as the Herald (v0.11.2).

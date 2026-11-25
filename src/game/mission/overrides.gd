@@ -4,8 +4,8 @@ extends RefCounted
 ## from CityDef.mission_overrides(). apply() sets each key with set() and reports every key it could not set, so an override
 ## can never be silent: an unknown key, a value of another type than the property holds, or a value the property did not take.
 
-## The two sections of an overrides dictionary.
-const KEYS := ["def", "director"]
+## The sections of an overrides dictionary: the mission's def and director, and (a night in acts, v0.12 Task 24) `acts`: act id -> {"def", "director"}.
+const KEYS := ["def", "director", "acts"]
 
 
 ## Sets each of `values` on `target`. Returns (and push_errors) the keys it did not set: no such property, a value whose type

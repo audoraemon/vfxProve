@@ -253,6 +253,7 @@ const SUITES := [
 	"res://tests/test_capital_exodus.gd",
 	"res://tests/test_capital_heart.gd",
 	"res://tests/test_capital_judgement.gd",
+	"res://tests/test_capital_night.gd",
 	"res://tests/test_capital_gate_towers.gd",
 	"res://tests/test_town_vars_t2_5.gd",
 	"res://tests/test_first_prayers.gd",

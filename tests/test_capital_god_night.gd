@@ -150,6 +150,12 @@ static func _draw_none(t) -> void:
 		if _hosted(k).is_empty():
 			tier = k
 			break
+	if tier == 0:  # Task 24: the Long Night is the last mission the Capital gained, so every tier is hosted now and each tier draws a hosted night
+		var all_drawn := true
+		for k in range(1, 6):
+			all_drawn = all_drawn and _hosted(k).has(GodNight.draw(_slot(k), "capital"))
+		t.check(all_drawn, "every tier is hosted in the Capital and draws a hosted night")
+		return
 	t.check(tier > 0, "some tier is hosted by no mission in the Capital (tier %d)" % tier)
 	if tier > 0:
 		var s := _slot(tier)

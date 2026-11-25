@@ -5081,7 +5081,7 @@ func _night() -> void:
 					# world by the old act's caster: its Rules is over and refuses a cast, and the night has no Heaven.
 					Engine.time_scale = 0.3
 					var heaven := load(String(PowerBook.get_power("heaven").path)) as GDScript
-					mission._rules.caster.call(heaven, TownLayout.CITADEL_ORIGIN, {"dir": Vector2(1, 0)})
+					mission._rules.caster.call(heaven, City.current().citadel_origin(), {"dir": Vector2(1, 0)})
 				mission.next_act(_loadout_for_next(outcome, path), path)
 				if seen == 1:
 					var rules: Rules = mission._rules

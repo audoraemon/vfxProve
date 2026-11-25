@@ -13,6 +13,9 @@ extends FxTimeline
 ##   ILL_REACH of them too. A mission's quarry (MissionDirector.quarry()) is only ill for ILL_TIME (Person.make_ill()); the god's own
 ##   believers and whoever the mission keeps alive (Crowd.spared(): a director's keeps_alive, the Escort's charge) are passed over --
 ##   the pick, and the dark's others, go to the next by distance. Not a death: no witness, no alarm, no kill credit.
+## Level 5, Watchful Rot (Veil ability levels, A2): a building's foothold gets a RotWatch (VL12; it outlives the cast, is the foothold's and
+## ends with it). Each tick the watch (Crowd.is_watch()) who step into its dusk are eyed (Pale Eye "blight"); the first of them while it is
+## not resting falls ill as the cast makes a man ill, with no cue, and it rests REST_AFTER s. The spared are eyed only.
 ## Silent (spec 11.1): Blight raises no alarm, for a building and a director's thing alike. Everything happens at T_ROT; before it the
 ## cast has changed nothing, so an effect cut short leaves nothing behind.
 
@@ -29,6 +32,7 @@ const ROT := [Color("1c2416"), Color("3a4a2a"), Color("5c6a3a"), Color("8a9658")
 const LIGHT_R := 0.25
 ## What a foothold keeps on its building: {"dusk": its lasting patch's id, "ledger": the Dusk it was laid in}.
 const FOOTHOLD := &"blight_foothold"
+const KEY := "blight"
 
 ## The marks this cast laid on the sick (Veil review; they outlive it: tests read them while it lives).
 var marks: Array[Node] = []
@@ -200,6 +204,9 @@ static func heal(crowd: Crowd, env: EnvironmentField, s: Structure) -> void:
 	TownPools.undim(s.get_instance_id())
 	var held: Dictionary = s.get_meta(FOOTHOLD, {})
 	s.remove_meta(FOOTHOLD)
+	var watch := instance_from_id(int(held.get("watch", 0))) as RotWatch
+	if watch != null and is_instance_valid(watch):
+		watch.stop()
 	if crowd.dusk != null and int(held.get("dusk", 0)) != 0 and int(held.get("ledger", 0)) == crowd.dusk.get_instance_id():
 		crowd.dusk.end(int(held.dusk))
 
@@ -209,8 +216,12 @@ static func lit(s: Structure) -> bool:
 	return TownPools.dim_factor(s.footprint.end) > 0.0
 
 
+var _twist := false
+
+
 func _build() -> void:
 	duration = 1.6
+	_twist = PowerBook.twist_at(extra, "blight")
 	var lv_ill_reach: float = PowerBook.stat(extra, "blight", "ILL_REACH", ILL_REACH)
 	var took := pick(ctx, origin)
 	var mine: Vector2 = took.at if took.kind == &"director" else Vector2.INF
@@ -245,7 +256,10 @@ func _build() -> void:
 			VeilParts.land(self, where)
 		elif s != null:
 			if is_instance_valid(s) and not s.destroyed:
-				plant(ctx.crowd, ctx.env, s, VeilParts.size(self, "blight", "DUSK_R"))
+				var r := VeilParts.size(self, "blight", "DUSK_R")
+				plant(ctx.crowd, ctx.env, s, r)
+				if _twist:
+					_watch(s, r)
 		elif picked != null:
 			if not sick.is_empty() and is_instance_valid(sick[0]) and sick[0].is_alive():
 				ctx.play(&"q_blight_ill", where)
@@ -261,11 +275,31 @@ func _make_ill(sick: Array[Person]) -> void:
 	for p in sick:
 		if not ill_able(p) or (ctx.crowd != null and ctx.crowd.spared(p)):
 			continue
-		if d != null and d.quarry(p):
-			p.make_ill(ILL_TIME)
-		else:
-			p.send_home_sick()
+		_sicken(p, d)
 		_mark(p)
+
+
+## Makes `p` ill as Blight does: a quarry (`d`'s) only for ILL_TIME, anyone else sent home to bed.
+static func _sicken(p: Person, d: MissionDirector) -> void:
+	if d != null and d.quarry(p):
+		p.make_ill(ILL_TIME)
+	else:
+		p.send_home_sick()
+
+
+## Watchful Rot: the foothold `s` (dusk radius `r`) gets its watch, its id in the foothold's meta. Nothing with no crowd or no layer
+## to hang it on, or when plant() left no foothold (a gate that holds one keeps its watch).
+func _watch(s: Structure, r: float) -> void:
+	if ctx.crowd == null or ctx.overhead == null or not s.has_meta(FOOTHOLD):
+		return
+	var held: Dictionary = s.get_meta(FOOTHOLD)
+	if is_instance_valid(instance_from_id(int(held.get("watch", 0)))):
+		return
+	var w := RotWatch.new()
+	w.setup(self, s, r)
+	held["watch"] = w.get_instance_id()
+	s.set_meta(FOOTHOLD, held)
+	ctx.overhead.add_child(w)
 
 
 ## The mark of the sick (Veil review, spec 4): a sickness glyph over his head in the rot colour while he walks home (or, a quarry,
@@ -278,3 +312,101 @@ func _mark(p: Person) -> void:
 	m.start(p)
 	ctx.overhead.add_child(m)
 	marks.append(m)
+
+
+## Watchful Rot (level 5, VL12): the foothold's watch on who steps into its dusk. A lasting node (SolarisPit.GROUP: a restart frees it)
+## that outlives the cast that planted it; it ends by BlightFx.heal(), its building freed, destroyed or taken, or its crowd freed.
+## It polls every TICK s. The eyes it opens are timed (PaleEye.TIME), so it has nothing open-ended to close.
+class RotWatch extends Node:
+	const TICK := 0.25
+	## The seconds the rot rests after one of the watch falls ill.
+	const REST_AFTER := 15.0
+	var building: Structure
+	var crowd: Crowd
+	var field: EnemyField
+	var rules: Rules
+	var layer: Node
+	var overhead: Node
+	var radius := 0.0
+	var rest_left := 0.0
+	var stopped := false
+	var _acc := 0.0
+	## Who was in the dusk at the last tick (instance ids).
+	var _was := {}
+
+	func setup(fx: BlightFx, s: Structure, r: float) -> void:
+		building = s
+		crowd = fx.ctx.crowd
+		field = fx.ctx.field
+		rules = fx.ctx.rules
+		layer = fx.ctx.overhead_back if fx.ctx.overhead_back != null else fx.ctx.overhead
+		overhead = fx.ctx.overhead
+		radius = r
+		name = "RotWatch"
+		add_to_group(SolarisPit.GROUP)
+		_was = _ids(_inside())
+
+	## The watch standing in the dusk now, alive, out of doors and not held.
+	func _inside() -> Array[Person]:
+		var out: Array[Person] = []
+		if crowd == null or not is_instance_valid(building):
+			return out
+		var c := building.center()
+		var near: Array = field.in_radius(c, radius) if field != null else crowd.citizens + crowd.soldiers
+		for e in near:
+			var p := e as Person
+			if p == null or not is_instance_valid(p) or not p.is_alive() or p.inside or p.ground_pos.distance_to(c) > radius:
+				continue
+			if crowd.is_watch(p) and not VeilParts.held(p):
+				out.append(p)
+		return out
+
+	static func _ids(people: Array[Person]) -> Dictionary:
+		var out := {}
+		for p in people:
+			out[p.get_instance_id()] = true
+		return out
+
+	func stop() -> void:
+		if stopped:
+			return
+		stopped = true
+		if crowd != null and is_instance_valid(crowd):
+			PaleEye.release_by(crowd, get_instance_id())
+		queue_free()
+
+	func _process(delta: float) -> void:
+		if stopped:
+			return
+		if crowd == null or not is_instance_valid(crowd) or not is_instance_valid(building) or building.destroyed or building.taken 				or not building.has_meta(FOOTHOLD):
+			stop()
+			return
+		rest_left = maxf(0.0, rest_left - delta)
+		_acc += delta
+		while _acc >= TICK:
+			_acc -= TICK
+			_tick()
+
+	func _tick() -> void:
+		var now := _inside()
+		var stepped: Array[Person] = []
+		for p in now:
+			if not _was.has(p.get_instance_id()):
+				stepped.append(p)
+		_was = _ids(now)
+		var c := building.center()
+		stepped.sort_custom(func(a: Person, b: Person) -> bool:
+			var da := a.ground_pos.distance_to(c)
+			var db := b.ground_pos.distance_to(c)
+			return da < db or (da == db and a.get_instance_id() < b.get_instance_id()))
+		var d: MissionDirector = rules.director if rules != null and is_instance_valid(rules) else null
+		for p in stepped:
+			PaleEye.mark_by(crowd, get_instance_id(), p, KEY, PaleEye.TIME, layer)
+			if rest_left > 0.0 or crowd.spared(p) or not BlightFx.ill_able(p):
+				continue
+			BlightFx._sicken(p, d)
+			rest_left = REST_AFTER
+			if overhead != null and is_instance_valid(overhead) and VeilCastLooks.BlightMark.ill(p):
+				var m := VeilCastLooks.BlightMark.new()
+				m.start(p)
+				overhead.add_child(m)

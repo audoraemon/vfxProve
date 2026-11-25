@@ -24,6 +24,11 @@ const RISE := [Color("b98cff"), Color("3b1470"), Color("07050c"), Color(0.03, 0.
 ## The lying outline: over the ground's own pieces, and how strong (VRB1: drawn where he stood at last, so a little stronger).
 const MARK_Z := 3
 const MARK_A := 0.34
+## Level 5, The Shadows Keep Watch: at most this many join a cast, each within JOIN_R of a shadow of it, polled every TICK.
+const JOIN_MOST := 12
+const JOIN_R := 1.0
+const TICK := 0.25
+const EYE_KEY := "shadowplay"
 const FADE := [Color("cfd3e6"), Color("3b1470"), Color("07050c"), Color(0.03, 0.02, 0.05, 0.4)]
 
 ## How many became shadows, how many lay down and woke at the end, and how many were taken (dark).
@@ -43,6 +48,12 @@ var _held: Array[Person] = []
 var _edges := {}
 var _marks: Array[Node] = []
 var _undone := false
+## Level 5 twist: whether it is on, how many joined, whether the shadows have risen, the poll's accumulator and the peel they stand up in.
+var _twist := false
+var joined := 0
+var _rose := false
+var _acc := 0.0
+var _peel: VeilCastLooks.Peel
 ## The cast's look while it plays (tests): the ripple across the ground, the shadows peeling up.
 var ripple: Node2D
 var peel: Node2D
@@ -62,6 +73,7 @@ static func shadows_at(field: EnemyField, at: Vector2, r: float) -> Array[Person
 
 func _build() -> void:
 	_me = get_instance_id()
+	_twist = PowerBook.twist_at(extra, "shadowplay")
 	lv_span = PowerBook.stat(extra, "shadowplay", "SPAN", SPAN)
 	_dark = VeilParts.dark(self)
 	_r = VeilParts.size(self, "shadowplay", "RADIUS")
@@ -99,11 +111,13 @@ func _owns(p: Person) -> bool:
 func _rise() -> void:
 	if ctx.field == null:
 		return
+	_rose = true
 	var staged := DominionParts.staged(self)
 	var up: VeilCastLooks.Peel = null
 	if staged:
 		up = VeilCastLooks.Peel.new()
 		peel = track(up, ctx.overhead) as Node2D
+		_peel = up
 	for p in shadows_at(ctx.field, origin, _r):
 		p.statuses[KEY] = _me  # (a shadow of another cast is taken over: its end is this one's now)
 		p.self_modulate = VeilParts.BLACK
@@ -132,7 +146,7 @@ func _dress(p: Person) -> void:
 
 
 ## While the shadows walk: one who died meanwhile (or was taken) is let go at once, his look given back.
-func _fx_process(_delta: float) -> void:
+func _fx_process(delta: float) -> void:
 	if _held.is_empty():
 		return
 	for i in range(_held.size() - 1, -1, -1):
@@ -140,6 +154,55 @@ func _fx_process(_delta: float) -> void:
 		if not is_instance_valid(p) or not (p as Person).is_alive() or not _owns(p):
 			_let_go(p)
 			_held.remove_at(i)
+	if _twist and _rose and not _undone:
+		_join_poll(delta)
+
+
+## Level 5, every TICK from the rise to the end: whoever is alive, out of doors and not held by another Veil power (VeilParts.held())
+## and within JOIN_R of a shadow this cast owns becomes a shadow as _rise() makes one, eyed; nearest the shadow first, JOIN_MOST a cast.
+func _join_poll(delta: float) -> void:
+	if ctx.field == null or joined >= JOIN_MOST:
+		return
+	_acc += delta
+	if _acc < TICK - 0.001:
+		return
+	_acc = 0.0
+	var near := {}
+	for v: Variant in _held:
+		var sh := v as Person
+		if sh == null or not is_instance_valid(sh) or not sh.is_alive() or not _owns(sh):
+			continue
+		for e in ctx.field.in_radius(sh.ground_pos, JOIN_R):
+			var p := e as Person
+			if p == null or not p.is_alive() or p.inside or VeilParts.held(p):
+				continue
+			var d := p.ground_pos.distance_to(sh.ground_pos)
+			if d > JOIN_R:
+				continue
+			var id := p.get_instance_id()
+			if not near.has(id) or d < float(near[id][0]):
+				near[id] = [d, p]
+	var found: Array = near.values()
+	found.sort_custom(func(a: Array, b: Array) -> bool:
+		if is_equal_approx(float(a[0]), float(b[0])):
+			return (a[1] as Person).get_instance_id() < (b[1] as Person).get_instance_id()
+		return float(a[0]) < float(b[0]))
+	var staged := DominionParts.staged(self)
+	for f: Array in found:
+		if joined >= JOIN_MOST:
+			break
+		var p := f[1] as Person
+		p.statuses[KEY] = _me
+		p.self_modulate = VeilParts.BLACK
+		_held.append(p)
+		joined += 1
+		if staged:
+			_dress(p)
+			if _peel != null and is_instance_valid(_peel):
+				_peel.ids.append(p.get_instance_id())
+			DominionParts.motes(self, p.ground_pos, RISE, 4)
+		if ctx.crowd != null:
+			PaleEye.mark(self, p, EYE_KEY, INF)
 
 
 func _end() -> void:
@@ -197,6 +260,8 @@ func _undo() -> void:
 	if _undone:
 		return
 	_undone = true
+	if _twist and ctx != null and is_instance_valid(ctx.crowd):
+		PaleEye.release(self)
 	for p: Variant in _held:
 		_let_go(p)
 	_held.clear()
@@ -236,6 +301,12 @@ func _finish() -> void:
 func _exit_tree() -> void:
 	_undo()
 	super._exit_tree()
+
+
+## Freed off the tree without finishing (level 5 only): the joined and the eyes are let go all the same.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and _twist:
+		_undo()
 
 
 ## A thin SILVER edge round the person's silhouette: his own white silhouette frame drawn one pixel out on each side, behind him.

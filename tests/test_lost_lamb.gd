@@ -416,13 +416,15 @@ static func _rallied_hunt(t) -> void:
 	crowd.rally()
 	var back: Person = null
 	for p in crowd.soldiers:
-		if not d._watchers().has(p) and p.corps == Person.Corps.NONE and p.mind == Person.Mind.RALLY:
+		if not d._watchers().has(p) and p.corps == Person.Corps.NONE and crowd.guard.answered(p):
 			back = p
 			break
+	t.check(back != null, "a guard man answered the call-up")
+	crowd.guard_jobs.drop(crowd.guard.job, back)
 	back.send_to_post(back.ground_pos)
 	_run(s, LostLambDirector.HUNT_AT + DT * 2.0)
 	t.check(d.hunters.size() == 1 and d.hunters[0] == back and back.mind == Person.Mind.DUTY,
-		"one soldier back on his post is the only searcher")
+		"one guard man back on his post is the only searcher")
 	_done(s)
 
 

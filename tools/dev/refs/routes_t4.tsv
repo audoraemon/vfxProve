@@ -1,16 +1,16 @@
 # KAK Tier 4 second routes (v0.11.1 Task 11, fix round R6): the scripted player's loadout-B runs, seeds 1-3. name<TAB>how<TAB>expected (a checksum). Re-recorded for v0.11.2 awareness (Task 5).
-procession_b_play_1	--scenario=feast --path=procession --board --case=play --route=b --seed=1	323305528
-procession_b_play_2	--scenario=feast --path=procession --board --case=play --route=b --seed=2	-540563443
-procession_b_play_3	--scenario=feast --path=procession --board --case=play --route=b --seed=3	-564176548
-bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1	111201399
-bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2	318143164
-bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3	362369816
-armoury_b_play_1	--scenario=armoury --case=play --route=b --seed=1	-889948114
-armoury_b_play_2	--scenario=armoury --case=play --route=b --seed=2	-575202724
-armoury_b_play_3	--scenario=armoury --case=play --route=b --seed=3	-225475472
-sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1	-119434094
-sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2	-36872068
-sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3	-88065984
-relic_b_play_1	--scenario=relic --case=play --route=b --seed=1	-377045916
-relic_b_play_2	--scenario=relic --case=play --route=b --seed=2	-326937545
-relic_b_play_3	--scenario=relic --case=play --route=b --seed=3	-770276290
+procession_b_play_1	--scenario=feast --path=procession --board --case=play --route=b --seed=1	532681312
+procession_b_play_2	--scenario=feast --path=procession --board --case=play --route=b --seed=2	-936875662
+procession_b_play_3	--scenario=feast --path=procession --board --case=play --route=b --seed=3	-163166294
+bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1	982551841
+bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2	170279452
+bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3	530845182
+armoury_b_play_1	--scenario=armoury --case=play --route=b --seed=1	-262033670
+armoury_b_play_2	--scenario=armoury --case=play --route=b --seed=2	-355506518
+armoury_b_play_3	--scenario=armoury --case=play --route=b --seed=3	-621706836
+sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1	-598924480
+sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2	-98670814
+sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3	-333488406
+relic_b_play_1	--scenario=relic --case=play --route=b --seed=1	-830280057
+relic_b_play_2	--scenario=relic --case=play --route=b --seed=2	-349746345
+relic_b_play_3	--scenario=relic --case=play --route=b --seed=3	-656952239

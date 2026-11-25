@@ -372,12 +372,13 @@ const SERMON_ALONE := 2.0
 const SERMON_AWAY := 8.0
 ## The Relic Run's policy (v0.11 M5): how near its time the first halt's wardens are cleared, and the second's from the leg (the
 ## controller's ruling: clearing the watch on Pip's road is work, and no stretch passes 45 s -- a relief walking in is cleared too); how
-## near its time a warden whose death would be seen is taken all the same; how far from the next checkpoint Pip waits for the cart (out
+## near its time a warden was taken though seen (no longer: a pair walking its beat makes it a report); how far from the next checkpoint Pip waits for the cart (out
 ## of sight of its wardens' deaths), and how much nearer than that counts as there; how near its time he is sent from there to the
 ## checkpoint itself, so he stands by the cart as it stops.
 const RELIC_AHEAD := 25.0
 const RELIC_LEG := 40.0
-const RELIC_LATE := 10.0
+## How long a whisper may cool before the lone watcher of the halted cart is held by Discord instead of waiting for it (the halt is short).
+const RELIC_SOON := 2.0
 const RELIC_PARK := 3.0
 const RELIC_NEAR := 0.8
 const RELIC_COME := 10.0
@@ -2229,7 +2230,7 @@ func _tax_unseen(p: Person, crowd: Crowd) -> bool:
 				continue
 			if o.ground_pos.distance_to(p.ground_pos) <= SilentDoom.RADIUS:
 				continue
-			var reach := Crowd.DOOM_WITNESS + TAX_MARGIN
+			var reach := crowd.witness_reach(o, true) + TAX_MARGIN
 			if o.ground_pos.distance_to(fall) <= reach or (o.ground_pos + _tax_lead(o)).distance_to(fall) <= reach:
 				return false
 	return true
@@ -2743,7 +2744,7 @@ func _heart_seers(crowd: Crowd, p: Person) -> Array[Person]:
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for o in group:
 			if is_instance_valid(o) and o.is_alive() and not o.inside and o != p \
-					and o.ground_pos.distance_to(p.ground_pos) <= Crowd.DOOM_WITNESS + SilentDoom.RADIUS:
+					and o.ground_pos.distance_to(p.ground_pos) <= crowd.witness_reach(o, true) + SilentDoom.RADIUS:
 				out.append(o)
 	return out
 
@@ -2847,9 +2848,10 @@ func _ringers(which: String) -> void:
 
 ## One look of The Bell-Ringers' policy (v0.11 M3, as a player plays it): what was cast, or "" for nothing. The first
 ## that applies: Silent Doom on the town's bellkeeper once called; Silent Doom on a carrier whose death would go unseen; Silent Doom
-## on his mates -- both at once, or one -- where it takes no one else; Mind Whisper sends a mate with him off, or one of one or two
-## other witnesses (none a soldier); Mind Whisper sends a carrier left without his mates to a quiet spot (_ringers_quiet()) when
-## Silent Doom will be ready as he gets there; Discord on a carrier near the bell's foot or on the rope; and between ringers, the
+## on his mates -- both at once, or one -- where it takes no one else; Mind Whisper sends a mate with him off; Mind Whisper sends a
+## carrier left without his mates to a quiet spot (_ringers_quiet()) when Silent Doom will be ready as he gets there (soldier duties:
+## before a bystander is whispered off, since the streets' patrols and sweeps leave a carrier among passers-by more often, and one
+## shooed off leaves him in the street); else one of one or two other witnesses (none a soldier) whispered off; Discord on a carrier near the bell's foot or on the rope; and between ringers, the
 ## next post's door cleared of watchers before its ringer comes out (_ringers_prep()). Never a loud power.
 func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd: Crowd) -> String:
 	var bell := crowd.bell
@@ -2888,6 +2890,14 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 					rules.cast(slots.whisper, m.ground_pos, {"target": m, "to": _ringers_off(d, m, r.messenger.ground_pos)})
 					return "whisper a mate off"
 		for r in going:
+			if not r.mates_with().is_empty() or not _whisperable(r.messenger) or (bell != null and bell.keeper == r.messenger) \
+					or _slot_wait(rules, slots, "doom") > RINGERS_DOOM_SOON:
+				continue
+			var quiet := _ringers_quiet(d, crowd, r.messenger)
+			if quiet != Vector2.INF:
+				rules.cast(slots.whisper, r.messenger.ground_pos, {"target": r.messenger, "to": quiet})
+				return "whisper the ringer aside to (%.1f, %.1f)" % [quiet.x, quiet.y]
+		for r in going:
 			var seeing := r.witnesses()
 			var soldier := false
 			var lone: Person = null
@@ -2899,14 +2909,6 @@ func _ringers_act(rules: Rules, slots: Dictionary, d: BellRingersDirector, crowd
 			if seeing.size() <= 2 and not soldier and lone != null:
 				rules.cast(slots.whisper, lone.ground_pos, {"target": lone, "to": _ringers_off(d, lone, r.messenger.ground_pos)})
 				return "whisper a witness off"
-		for r in going:
-			if not r.mates_with().is_empty() or not _whisperable(r.messenger) or (bell != null and bell.keeper == r.messenger) \
-					or _slot_wait(rules, slots, "doom") > RINGERS_DOOM_SOON:
-				continue
-			var quiet := _ringers_quiet(d, crowd, r.messenger)
-			if quiet != Vector2.INF:
-				rules.cast(slots.whisper, r.messenger.ground_pos, {"target": r.messenger, "to": quiet})
-				return "whisper the ringer aside to (%.1f, %.1f)" % [quiet.x, quiet.y]
 	for r in going:
 		if bell != null and (r.messenger.ground_pos.distance_to(bell.foot) <= RINGERS_DISCORD or bell.keeper == r.messenger) \
 				and _slot_ready(rules, slots, "discord"):
@@ -3918,7 +3920,7 @@ func _relic(which: String) -> void:
 ## 4. before a halt, Pip not aboard: within RELIC_COME of it, Mind Whisper sends him to its checkpoint; earlier, more than RELIC_NEAR
 ##    from his waiting place RELIC_PARK short of it on his side, toward that place (up to its reach);
 ## 5. the next halt within RELIC_AHEAD (the first) or RELIC_LEG (the second): Silent Doom on a warden of it with no one else within its
-##    radius whose death goes unseen, or in its last RELIC_LATE seconds on one seen; else Mind Whisper sends one still at his post to
+##    radius whose death goes unseen when cast (a death seen is never taken: the street's pairs walk in and report it); else Mind Whisper sends one still at his post to
 ##    a quiet spot (_relic_quiet()), where his death will go unseen;
 ## (aboard at the first halt, nothing more: the count runs and the cart rolls on);
 ## 6. halted, Pip neither within the cart's reach nor aboard: Mind Whisper sends him to the cart;
@@ -3981,7 +3983,7 @@ func _relic_act(rules: Rules, slots: Dictionary, d: RelicRunDirector, crowd: Cro
 	if d.halt < 0 and k >= 0 and due <= (RELIC_AHEAD if k == 0 else RELIC_LEG):
 		if doom:
 			for p in d.wardens_at(k):
-				if _none_within(crowd, p, SilentDoom.RADIUS) and (due <= RELIC_LATE or _tax_unseen(p, crowd)):
+				if _none_within(crowd, p, SilentDoom.RADIUS) and _tax_unseen(p, crowd):
 					rules.cast(slots.doom, p.ground_pos)
 					return "doom a warden ahead"
 		if whisper:
@@ -4003,7 +4005,7 @@ func _relic_act(rules: Rules, slots: Dictionary, d: RelicRunDirector, crowd: Cro
 	var seen := d.watchers_now()
 	if seen.is_empty():
 		return ""
-	var lone := seen.size() == 1 and _whisperable(seen[0])  # one watcher: a whisper (soon ready), not the slow Discord
+	var lone := seen.size() == 1 and _whisperable(seen[0]) and _slot_wait(rules, slots, "whisper") <= RELIC_SOON  # one watcher: a whisper (soon ready), else Discord
 	if discord and not lone:
 		var mid := Vector2.ZERO
 		for p in seen:
@@ -4253,7 +4255,7 @@ func _eye_unseen(crowd: Crowd, at: Vector2) -> bool:
 				moving.append(p)
 	for v in victims:
 		for o in moving:
-			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN:
+			if o.ground_pos.distance_to(v.ground_pos) <= crowd.witness_reach(o, true) + EYE_DOOM_MARGIN:
 				return false
 	return true
 
@@ -4290,7 +4292,7 @@ func _eye_lure(d: LanternEyeDirector, crowd: Crowd, i: int, p: Person) -> Vector
 			if not is_instance_valid(o) or o == p or not o.is_alive() or o.inside:
 				continue
 			var gap := o.ground_pos.distance_to(p.ground_pos)
-			if gap > Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN:
+			if gap > crowd.witness_reach(o, true) + EYE_DOOM_MARGIN:
 				continue
 			if gap <= SilentDoom.RADIUS or o.soldier or not o.mind in Person.LURABLE:
 				return Vector2.INF
@@ -4317,7 +4319,7 @@ func _eye_onlookers(d: LanternEyeDirector, crowd: Crowd, i: int) -> Vector2:
 			if not is_instance_valid(o) or not o.is_alive() or o.inside:
 				continue
 			for at in posts:
-				if o.ground_pos.distance_to(at) <= Crowd.DOOM_WITNESS + EYE_DOOM_MARGIN and (o.soldier or not o.mind in Person.LURABLE):
+				if o.ground_pos.distance_to(at) <= crowd.witness_reach(o, true) + EYE_DOOM_MARGIN and (o.soldier or not o.mind in Person.LURABLE):
 					return Vector2.INF
 	if posts.is_empty():
 		return Vector2.INF
@@ -4526,7 +4528,7 @@ func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = [], margin := 0.0) -
 		if spare.has(v):
 			return false
 		for o in others:
-			if o.ground_pos.distance_to(v.ground_pos) <= Crowd.DOOM_WITNESS + margin:
+			if o.ground_pos.distance_to(v.ground_pos) <= crowd.witness_reach(o, true) + margin:
 				return false
 	return true
 
@@ -5302,11 +5304,11 @@ func _witnesses(crowd: Crowd, of: Person) -> Vector2i:
 	var n := Vector2i.ZERO
 	for p in crowd.soldiers:
 		if is_instance_valid(p) and p.is_alive() and not p.inside \
-				and p.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS:
+				and p.ground_pos.distance_to(of.ground_pos) <= crowd.witness_reach(p, true):
 			n.x += 1
 	for p in crowd.citizens:
 		if is_instance_valid(p) and p != of and p.is_alive() and not p.inside \
-				and p.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS:
+				and p.ground_pos.distance_to(of.ground_pos) <= crowd.witness_reach(p, true):
 			n.y += 1
 	return n
 
@@ -5316,7 +5318,7 @@ func _nearest_hearer(crowd: Crowd, of: Person) -> Person:
 	var best: Person = null
 	for c in crowd.citizens:
 		if is_instance_valid(c) and c != of and c.is_alive() and not c.inside and not c.shaken() \
-				and c.ground_pos.distance_to(of.ground_pos) <= Crowd.DOOM_WITNESS \
+				and c.ground_pos.distance_to(of.ground_pos) <= crowd.witness_reach(c, true) \
 				and (best == null or c.ground_pos.distance_squared_to(of.ground_pos) < best.ground_pos.distance_squared_to(of.ground_pos)):
 			best = c
 	return best

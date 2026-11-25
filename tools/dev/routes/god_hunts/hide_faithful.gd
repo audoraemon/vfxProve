@@ -550,7 +550,7 @@ static func _doom_ok(d: HideFaithfulDirector, crowd: Crowd, at: Vector2, strict:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
 				continue
-			if p.ground_pos.distance_to(at) <= Crowd.DOOM_WITNESS + 0.3 and not watchers.has(p):
+			if p.ground_pos.distance_to(at) <= crowd.witness_reach(p, true) + 0.3 and not watchers.has(p):
 				return false
 	return true
 

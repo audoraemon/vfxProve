@@ -44,16 +44,31 @@ static func run(t) -> void:
 	t.check(a.stage == AlarmManager.Stage.EVACUATION, "stages never fall")
 	t.check(seen == [1, 2, 3, 4], "each stage is announced in turn (%s)" % [seen])
 
-	# A district's emergency sends two patrolling soldiers to look.
+	# A district's Local Emergency posts a sweep of four soldiers in that district, which is over after 30 s.
 	var made := _crowd()
 	var crowd: Crowd = made[0]
 	var env: EnvironmentField = made[1]
 	var at := Vector2(-10.0, 3.0)
-	crowd._investigate(at)
-	t.check(crowd._investigating.size() == Crowd.INVESTIGATORS, "two soldiers go to look (%d)" % crowd._investigating.size())
-	crowd._clock += Crowd.INVESTIGATE_SECONDS + 1.0
-	crowd._return_investigators()
-	t.check(crowd._investigating.is_empty(), "and go back to their posts after a while")
+	for k in AlarmManager.LOCAL_EVENTS - 1:
+		crowd.alarms.incident(at)
+	t.check(crowd.guard_jobs.live(GuardJobs.Kind.SWEEP).is_empty(), "three incidents: no sweep yet")
+	if crowd.alarms.incident(at):
+		crowd._investigate(at)
+	var sweeps := crowd.guard_jobs.live(GuardJobs.Kind.SWEEP)
+	t.check(sweeps.size() == 1 and sweeps[0].need == SweepDuty.CREW and sweeps[0].data.district == AlarmManager.district_of(at),
+		"a Local Emergency posts a sweep of 4 in that district (%d)" % sweeps.size())
+	crowd.guard_jobs._fill()
+	t.check(sweeps[0].crew.size() == SweepDuty.CREW, "four soldiers go to look (%d)" % sweeps[0].crew.size())
+	var crew: Array = sweeps[0].crew.duplicate()
+	for p: Person in crew:
+		p.ground_pos = at
+	for i in roundi((SweepDuty.SWEEP_SECONDS + 2.0) / 0.1):
+		crowd.advance(0.1)
+	t.check(crowd.guard_jobs.live(GuardJobs.Kind.SWEEP).is_empty(), "and the sweep is over after 30 s")
+	var back := true
+	for p: Person in crew:
+		back = back and not crowd.guard_jobs.on_job(p) and p.anchor.is_equal_approx(p.post)
+	t.check(back, "the men go back to their posts")
 
 	# City Emergency: the soldiers rally, merchants go home.
 	crowd.add_alarm(AlarmManager.CITY_ALARM)

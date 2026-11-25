@@ -775,6 +775,8 @@ func all_tags() -> Array[MapTag]:
 		out.append_array(_crowd.thought_tags())  # Town Suspicion: a witness's thought, after the Lantern's, before the descent's
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
+	if _crowd != null and _crowd.guard_jobs != null:
+		out.append_array(_crowd.guard_jobs.tags())  # soldier duties: each live job's tags, after the mission's own
 	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn
 
 

@@ -1392,21 +1392,39 @@ func soldier_posts() -> Dictionary:
 			var at: Vector2 = points[CityDef.loop_start(k, pairs, points.size())]
 			patrol.append(at)
 			patrol.append(at)
+	for pair: Dictionary in _street_pairs():
+		patrol.append(pair.at)
+		patrol.append(pair.at)
+	_posts = {"yard": yard, "walls": walls, "citadel": citadel, "patrol": patrol}
+	return _posts.duplicate(true)
+
+
+## The street patrols' pairs, STREET_PAIRS of them: {"road": the street (a road inside a ring's walls), "at": the pair's
+## unspread post on its centre line}. Both soldier_posts() and street_beats() read it, so they cannot drift.
+func _street_pairs() -> Array[Dictionary]:
 	var streets: Array[Rect2] = []
 	for ring: Rect2 in [INNER, OUTER]:
 		for road: Rect2 in roads():
 			var r := road.intersection(ring.grow(-TownLayout.WALL_T - 1.0))
 			if r.size.x > 2.0 or r.size.y > 2.0:
 				streets.append(r)
+	var out: Array[Dictionary] = []
 	for i in STREET_PAIRS:
 		var road := streets[i % streets.size()]
 		var along := (float(i / streets.size()) + 0.5) / ceilf(float(STREET_PAIRS) / streets.size())
 		var at := Vector2(road.get_center().x, lerpf(road.position.y, road.end.y, along)) if road.size.y > road.size.x \
-			else Vector2(lerpf(road.position.x, road.end.x, along), road.get_center().y)
-		patrol.append(at)
-		patrol.append(at)
-	_posts = {"yard": yard, "walls": walls, "citadel": citadel, "patrol": patrol}
-	return _posts.duplicate(true)
+				else Vector2(lerpf(road.position.x, road.end.x, along), road.get_center().y)
+		out.append({"road": road, "at": at})
+	return out
+
+
+## The street pairs' beats (CityDef.street_beats()): one per pair in post order, on the street the pair's post stands on.
+func street_beats() -> Array:
+	var out: Array = []
+	for pair: Dictionary in _street_pairs():
+		var beat := CityDef.beat_of_road(pair.road, pair.at)
+		out.append({"points": beat.points, "start": beat.start, "post": pair.at})
+	return out
 
 
 ## The wall patrols' loops: one just inside each ring's wall (LOOP_IN from its inner face), a point about every

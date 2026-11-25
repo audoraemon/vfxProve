@@ -1,16 +1,16 @@
 # KAK second routes, Tier 2 (v0.11.1 Task 9): loadout B's three seeds of each mission (scenario --case=play --route=b). name<TAB>how<TAB>expected Re-recorded for v0.11.2 awareness (Task 5).
-miras_b_play_1	--scenario=miras --case=play --route=b --seed=1 --board	-610110491
-miras_b_play_2	--scenario=miras --case=play --route=b --seed=2 --board	-604829715
-miras_b_play_3	--scenario=miras --case=play --route=b --seed=3 --board	-151606793
-lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	253327281
-lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	567644000
-lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	700991072
-ringers_b_play_1	--scenario=ringers --case=play --route=b --seed=1	-994432003
-ringers_b_play_2	--scenario=ringers --case=play --route=b --seed=2	-586752350
-ringers_b_play_3	--scenario=ringers --case=play --route=b --seed=3	-866646582
-panic_b_play_1	--scenario=panic --case=play --route=b --seed=1	-673809690
-panic_b_play_2	--scenario=panic --case=play --route=b --seed=2	-45704869
-panic_b_play_3	--scenario=panic --case=play --route=b --seed=3	-886069057
-informer_b_play_1	--scenario=informer --case=play --route=b --seed=1	-307473830
-informer_b_play_2	--scenario=informer --case=play --route=b --seed=2	736469267
-informer_b_play_3	--scenario=informer --case=play --route=b --seed=3	436940168
+miras_b_play_1	--scenario=miras --case=play --route=b --seed=1 --board	-196229368
+miras_b_play_2	--scenario=miras --case=play --route=b --seed=2 --board	-941573720
+miras_b_play_3	--scenario=miras --case=play --route=b --seed=3 --board	-778131032
+lanterns_b_play_1	--scenario=lanterns --case=play --route=b --seed=1 --board	620895432
+lanterns_b_play_2	--scenario=lanterns --case=play --route=b --seed=2 --board	453757748
+lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	660236699
+ringers_b_play_1	--scenario=ringers --case=play --route=b --seed=1	-437196962
+ringers_b_play_2	--scenario=ringers --case=play --route=b --seed=2	34454095
+ringers_b_play_3	--scenario=ringers --case=play --route=b --seed=3	-647313308
+panic_b_play_1	--scenario=panic --case=play --route=b --seed=1	-585567419
+panic_b_play_2	--scenario=panic --case=play --route=b --seed=2	-341465239
+panic_b_play_3	--scenario=panic --case=play --route=b --seed=3	-405034318
+informer_b_play_1	--scenario=informer --case=play --route=b --seed=1	-764014766
+informer_b_play_2	--scenario=informer --case=play --route=b --seed=2	126109034
+informer_b_play_3	--scenario=informer --case=play --route=b --seed=3	-820629054

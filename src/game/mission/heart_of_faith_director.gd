@@ -373,7 +373,7 @@ func _post_fits(i: int, at: Vector2, mates: Array) -> bool:
 ## No on-watch soldier of the town's own stands within QUIET of `at` (v0.11 M6; where he stands, not his post): the Knights' own are left out. Only reads.
 func _quiet(at: Vector2) -> bool:
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.on_watch() and p.corps != Person.Corps.KNIGHT and p.ground_pos.distance_to(at) <= QUIET:
+		if is_instance_valid(p) and p.on_watch() and p.corps != Person.Corps.KNIGHT and p.watch_at().distance_to(at) <= QUIET:
 			return false
 	return true
 
@@ -388,7 +388,7 @@ func _quiet_placing(at: Vector2) -> bool:
 		if crowd.guard_jobs.on_job(p):
 			if p.town_post != Vector2.INF and p.town_post.distance_to(at) <= QUIET:
 				return false
-		elif p.on_watch() and p.ground_pos.distance_to(at) <= QUIET:
+		elif p.on_watch() and p.watch_at().distance_to(at) <= QUIET:
 			return false
 	return true
 

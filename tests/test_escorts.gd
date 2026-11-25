@@ -145,6 +145,7 @@ static func _reserve(t) -> void:
 	esc.step(1.0)
 	crowd.rally()
 	CorpsTest.ring(crowd)
+	CorpsTest.hold_free(crowd)
 	var ring := CorpsTest.on_ring(crowd)
 	var dead: Person = (esc.guards["bell"] as Array)[0]
 	var nearest: Person = ring[0]

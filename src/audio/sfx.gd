@@ -214,8 +214,7 @@ const CATALOG := {
 	&"child_cry": {"path": "res://assets/audio/citizen/child_cry_%d.wav", "variants": 5, "db": -8.8, "voices": 3, "jitter": 0.06},
 	&"child_play": {"path": "res://assets/audio/citizen/child_play_%d.wav", "variants": 6, "db": -3.0, "voices": 2, "jitter": 0.05},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
-	# Soldiers at work (natural sound pass 5): boots on the march once the alarm is up (Ambience.march_heard()), a spear's thrust, a shouted order; a citizen's blow.
-	&"sol_step": {"path": "res://assets/audio/citizen/sol_step_%d.wav", "variants": 6, "db": -7.3, "voices": 3, "jitter": 0.06},
+	# Soldiers at work (natural sound pass 5): a spear's thrust, a shouted order; a citizen's blow. (Their march was removed.)
 	&"sol_strike": {"path": "res://assets/audio/citizen/sol_strike_%d.wav", "variants": 5, "db": -0.1, "voices": 3, "jitter": 0.06},
 	&"cit_blow": {"path": "res://assets/audio/citizen/cit_blow_%d.wav", "variants": 4, "db": -2.4, "voices": 3, "jitter": 0.08},
 	&"sol_order": {"path": "res://assets/audio/citizen/sol_order_%d.wav", "variants": 6, "db": -5.4, "voices": 2, "jitter": 0.03},

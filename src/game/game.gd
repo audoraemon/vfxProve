@@ -98,6 +98,9 @@ const SHOW_SAVE := "user://test_show.cfg"
 const FLOW_TEST_GOD := "user://test_flow_god_"
 ## Where a --show photograph keeps its god slots: the player's `user://kak_god_<n>.cfg` is neither read nor written by a photograph.
 const SHOW_GOD := "user://test_show_god_"
+
+## The --show names of the soldier duties' photographs (soldier duties Task 9): a board night with one duty staged through the crowd's own calls.
+const DUTY_SHOWS := ["duty-guard", "duty-beat", "duty-corpse", "duty-cordon", "duty-sweep", "duty-gate", "duty-escort"]
 ## The new Tier 1 missions' photographs (v0.11 M2): each its board night as the tour lands, its tags and HUD in view.
 const TIER1_SHOWS := ["tax_collector", "spoiled_harvest", "lost_lamb", "first_prayers"]
 ## The new Tier 2 missions' photographs (v0.11 M3): each its board night as the tour lands, its tags and HUD in view.
@@ -460,6 +463,11 @@ func _ready() -> void:
 		"pause":
 			go_to(Screen.MISSION)
 			_open_pause()
+		"duty-guard", "duty-beat", "duty-corpse", "duty-cordon", "duty-sweep", "duty-gate", "duty-escort":
+			# A plain board night in Aldermere with one soldier duty staged by _stage_duty(); the show's own save (SHOW_SAVE).
+			mission_id = MissionBook.WARNING
+			loadout = MissionBook.warning().default_loadout
+			go_to(Screen.MISSION)
 		"play", "suspicion-uneasy", "suspicion-known", "suspicion-thought":  # a running night with its intro skipped, for a photograph (with --dev-zoom=Z the camera rests at Z)
 			go_to(Screen.MISSION)
 		"legend", "legend-2":  # the legend of marks open over a running night (page 1, or page 2 for legend-2): a photograph of its frame in any window
@@ -665,6 +673,8 @@ func _ready() -> void:
 			await _stage_rite(show)
 		if show in HUNT_SHOWS and is_instance_valid(_mission):
 			await _stage_hunt(show)
+		if show in DUTY_SHOWS and is_instance_valid(_mission):
+			await _stage_duty(show)
 		if show in BAR_SHOWS and is_instance_valid(_mission):
 			_stage_bar(show)
 		if show == "ascend" and is_instance_valid(_mission):
@@ -1660,6 +1670,220 @@ func _stage_rite(show: String) -> void:
 		"first_taste-win":
 			for _shard in d.need():
 				d.offer(d.marked[0])  # the ending runs at 0.3 time scale: the generic wait below is short, so the plate (4 s real) is still up
+
+
+## The game's seconds pass (frames, so a fixed-fps capture counts game time) with the nodes alive.
+func _pass(seconds: float) -> void:
+	await get_tree().create_timer(seconds).timeout
+
+
+## Stages a soldier duty's photograph (soldier duties Task 9): the night is up and its intro skipped, and the duty is begun through the
+## crowd's own calls; men are set down on the spots the duty sent them to, as its tests do, and the duty's own code draws the rest.
+func _stage_duty(show: String) -> void:
+	await _until(func() -> bool: return _mission.started(), 10.0)
+	_mission.skip_intro()
+	_mission.apply_dev_zoom()
+	if not is_instance_valid(_mission._hud) or _mission._crowd == null:
+		return
+	for _frame in 1200:
+		if _mission._hud.banners().is_empty():
+			break
+		await get_tree().process_frame
+	var crowd: Crowd = _mission._crowd
+	var field: EnemyField = _mission._bf.ctx.field
+	var jobs := crowd.guard_jobs
+	match show:
+		"duty-guard":
+			crowd.rally()
+			await _pass(1.0)
+			for p in crowd.soldiers:
+				var slot: Vector2 = crowd.guard.slot_of(p)
+				if slot != Vector2.INF:
+					_put(p, slot)
+			_look_at(City.current().citadel_origin())
+			await _pass(1.5)
+		"duty-beat":
+			await _pass(30.0)
+			var pair := _beat_pair(crowd)
+			if pair.size() == 2:
+				_look_at((pair[0].ground_pos + pair[1].ground_pos) * 0.5)
+		"duty-corpse":
+			await _pass(2.0)
+			var pair := _beat_pair(crowd)
+			if pair.size() < 2:
+				return
+			for p in pair:
+				_put(p, p.post)
+			var dir: Vector2 = pair[0].ground_pos - pair[1].ground_pos
+			dir = dir.normalized() if dir.length() > 0.01 else Vector2.LEFT
+			var at: Vector2 = _mission._grid.nearest_walkable(pair[0].ground_pos + dir * 3.0)
+			for c in crowd.citizens:
+				if is_instance_valid(c) and c.is_alive():
+					c.ground_pos = at
+					c.inside = false
+					field.kill(c, &"mob")
+					break
+			var job := await _await_job(jobs, GuardJobs.Kind.CORPSE, 2)
+			if job == null:
+				return
+			for p: Person in job.crew:
+				_put(p, job.data.spot if p == job.data.inspector else p.anchor)
+			for _frame in 600:
+				if int(job.data.phase) == CorpseDuty.INSPECT_PHASE:
+					break
+				await get_tree().process_frame
+			await _pass(0.3)
+			_look_at(job.data.spot)
+		"duty-cordon":
+			await _pass(2.0)
+			var yard: Vector2 = City.current().landmark(&"barracks_yard").get_center()
+			var house: Structure = null
+			for s in _mission._bf.ctx.env.structures():
+				if s.role != &"house" or s.destroyed or not s.leaves_ruin() or not FireManager.burns(s) or crowd.piles.cells_for(s).is_empty():
+					continue
+				if house == null or s.center().distance_to(yard) < house.center().distance_to(yard):
+					house = s
+			if house == null:
+				return
+			crowd.fires.ignite(house, 0.5)
+			crowd.fires.fires[house].intensity = 0.05
+			crowd.fires.douse(house)
+			var job := await _await_job(jobs, GuardJobs.Kind.CORDON, 2)
+			if job == null:
+				return
+			for _frame in 300:
+				for p: Person in job.crew:
+					if job.data.at_end.has(p):
+						_put(p, job.data.at_end[p])
+				if bool(job.data.begun):
+					break
+				await get_tree().process_frame
+			await _pass(0.5)
+			_look_at(house.center())
+		"duty-sweep":
+			await _pass(2.0)
+			var districts: Array = City.current().districts()
+			var best := 0
+			var best_n := -1
+			for i in districts.size():
+				var n := 0
+				for s in _mission._bf.ctx.env.structures():
+					if s.kind == Structure.Kind.HOUSE and not s.destroyed and (districts[i] as Rect2).has_point(s.center()):
+						n += 1
+				if n > best_n:
+					best_n = n
+					best = i
+			var at: Vector2 = _mission._grid.nearest_walkable((districts[best] as Rect2).get_center())
+			for c in crowd.citizens:
+				if is_instance_valid(c) and c.is_alive():
+					_put(c, at + Vector2(1.5, 0.0))
+					c.inside = false
+					c.mind = Person.Mind.CALM
+					break
+			var points: Array[Vector2] = [at]
+			crowd.danger_landed.emit("show", points, 1.0)
+			var job := await _await_job(jobs, GuardJobs.Kind.SWEEP, SweepDuty.CREW)
+			if job == null:
+				return
+			for p: Person in job.crew:
+				_put(p, job.data.at_spot[p])
+			await _pass(0.5)
+			var lead: Person = job.crew[0]
+			_look_at(lead.ground_pos)
+		"duty-gate":
+			await _pass(2.0)
+			crowd.alarms.stage = AlarmManager.Stage.LOCAL_EMERGENCY  # the gate check and its tag are live only from here
+			var gate: Structure = null
+			for g in crowd._town.gates:
+				if is_instance_valid(g) and not g.destroyed and g.walkable:
+					for p in crowd.gate_check.checkers(g):
+						if p.corps == Person.Corps.NONE:
+							gate = g
+							break
+				if gate != null:
+					break
+			if gate == null:
+				return
+			var out := Crowd.outward_of(gate)
+			var mouth: Vector2 = gate.center() - out * (absf(gate.footprint.size.dot(out)) * 0.5 + Crowd.GATE_DOOR)
+			var walkers: Array[Person] = []
+			for c in crowd.citizens:
+				if walkers.size() < 2 and is_instance_valid(c) and c.is_alive() and not c.night_indoors:
+					walkers.append(c)
+			for k in walkers.size():
+				walkers[k].inside = false
+				walkers[k].visible = true
+				walkers[k].mind = Person.Mind.CALM
+				_put(walkers[k], mouth - out * (1.0 + 0.4 * float(k)))
+			await _pass(3.5)
+			for p in crowd.gate_check.checkers(gate):
+				if p.corps == Person.Corps.NONE and jobs.kind_of(p) == GuardJobs.Kind.GATE:
+					_put(p, p.anchor)
+			if not walkers.is_empty():
+				_put(walkers[0], mouth - out * 0.8)
+			_look_at(mouth)
+			await _pass(0.3)
+		"duty-escort":
+			await _pass(2.0)
+			crowd.alarms.stage = AlarmManager.Stage.CITY_EMERGENCY
+			crowd._on_stage(AlarmManager.Stage.CITY_EMERGENCY, "show")
+			var by := {}
+			for p in crowd.citizens:
+				if is_instance_valid(p) and p.profile != null and not p.night_indoors:
+					var list: Array = by.get(p.profile.family, [])
+					list.append(p)
+					by[p.profile.family] = list
+			var keys := by.keys()
+			keys.sort()
+			for fam in keys:
+				var members: Array = by[fam]
+				var home: Vector2 = (members[0] as Person).profile.home
+				var shelter: Structure = crowd.shelters.nearest_with_room(home, ShelterEscort.SHELTER_REACH, members.size())
+				var d: float = shelter.distance_to(home) if shelter != null else INF
+				if shelter == null or d > 8.0 or d < 2.0:
+					continue
+				for p: Person in members:
+					p.inside = false
+					p.visible = true
+					p.mind = Person.Mind.REGROUP
+					_put(p, home)
+					p.anchor = home
+				var job := await _await_job(jobs, GuardJobs.Kind.SHELTER, 2)
+				if job == null:
+					continue
+				for m: Variant in job.crew:
+					if is_instance_valid(m):
+						_put(m as Person, (m as Person).anchor)
+				await _pass(0.5)
+				_look_at(home)
+				break
+
+
+## The job of `kind` once it has `crew` men (a frame at a time, at most 20 s), or null.
+func _await_job(jobs: GuardJobs, kind: int, crew: int) -> GuardJobs.Job:
+	for _frame in 1200:
+		for j in jobs.live(kind):
+			if j.crew.size() >= crew:
+				return j
+		await get_tree().process_frame
+	return null
+
+
+## A pair of ordinary street-beat men (one beat, both corps NONE), or empty.
+func _beat_pair(crowd: Crowd) -> Array[Person]:
+	var by := {}
+	for e in crowd._beats:
+		if is_instance_valid(e[0]):
+			var men: Array = by.get(e[3], [])
+			men.append(e[0])
+			by[e[3]] = men
+	var out: Array[Person] = []
+	for k in by:
+		var men: Array = by[k]
+		if men.size() == 2 and men.all(func(p: Person) -> bool: return p.corps == Person.Corps.NONE):
+			out.assign(men)
+			break
+	return out
 
 
 ## Puts `p` down at `at` as his walk would have brought him (the tests' Kit.arrive()): standing there, no goal and no path left.

@@ -181,7 +181,7 @@ func _contact_house(spot: Vector2, from: Vector2, exclude: Array) -> Structure:
 ## Some living soldier stands within SPEAK_SEEN of `door`, on watch (where he stands, not the post he was given) (v0.11 M3). Only reads.
 func _watched(door: Vector2) -> bool:
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.on_watch() and p.ground_pos.distance_to(door) <= SPEAK_SEEN:
+		if is_instance_valid(p) and p.on_watch() and p.watch_at().distance_to(door) <= SPEAK_SEEN:
 			return true
 	return false
 

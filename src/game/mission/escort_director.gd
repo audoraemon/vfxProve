@@ -311,9 +311,10 @@ func _appoint_patrol(c: Person, beat: PackedVector2Array, n: int) -> Array[Perso
 ## him, and at their posts -- never one on the rally's ring or under another town order (the controller's M2 Task 4 fix ruling).
 func _appoint_hunters(_c: Person, n: int) -> Array[Person]:
 	var out: Array[Person] = []
-	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers()):
+	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers(), false):
 		if p.mind in POST_MINDS and not p.held_by_god() and out.size() < n:
 			out.append(p)
+			take_soldier(p)  # only the men kept lose their duty records
 	return out
 
 

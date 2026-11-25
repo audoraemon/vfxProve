@@ -78,6 +78,8 @@ static func drawn(field: EnemyField, at: Vector2, cap := LURE_MAX) -> Array[Pers
 		var p := e as Person
 		if p == null or p.resists_mind() or p.inside:
 			continue
+		if not p.soldier and not p.answers_lure and p.crowd != null and p.crowd.cordon_blocks(p.ground_pos, at):
+			continue  # a cordon's rope lies between him and the light
 		if p.answers_lure:
 			if p.ground_pos.distance_to(at) <= p.lure_reach and (p.mind == Person.Mind.DUTY or p.mind in Person.LURABLE):
 				out.append(p)

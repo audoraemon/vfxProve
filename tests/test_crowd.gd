@@ -114,13 +114,13 @@ static func run(t) -> void:
 	t.check(crowd.alarm >= alarm_before + Crowd.ALARM_CITADEL_HIT * Crowd.UNWARNED_ALARM,
 		"the first hit on the Citadel is worth 10 (half before the bell)")
 	var rallying := 0
-	var free := 0
+	var others := 0
 	for p in crowd.soldiers:
 		if p.mind == Person.Mind.RALLY:
 			rallying += 1
-		if p.corps == Person.Corps.NONE:
-			free += 1
-	t.check(rallying == free and free > 0, "every soldier without a role rallies to the Citadel (%d of %d)" % [rallying, free])
+			if p.corps != Person.Corps.NONE:
+				others += 1
+	t.check(rallying == 20 and others == 0, "the first Citadel hit forms a guard of 20; the rest keep the city (%d)" % rallying)
 
 	# Kills raise the alarm and are counted by kind (after the bell, events count in full).
 	crowd.alarms.bell_rung = true

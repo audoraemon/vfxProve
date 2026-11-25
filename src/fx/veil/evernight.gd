@@ -53,6 +53,13 @@ const HUDDLE := 1.8
 const CELL := 4.0
 ## With no city map and no field bounds, the night's ground is a square this far round the click on each side.
 const BARE_HALF := 30.0
+## Level 5 (VS 7, "The Light Gives Way"): each torch's light shrinks evenly from TORCH_R at the fall to END_R at the dawn (torch_r()); every
+## reader of "is he in the light" asks it at that moment (a claim, a take's re-check, put_out(), a dusk laid over a torch, the light
+## field, the wash's ring, the shade, the glows). The huddle's slots stay level 1's (VL14). The light field's static light is re-added
+## each time its radius has shrunk by LIGHT_STEP. Each torch bearer is eyed (open-ended) from the fall to the dawn.
+const END_R := 1.2
+const LIGHT_STEP := 0.05
+const TWIST_KEY := "evernight"
 ## The look's front runs out as (t / WAVE) to this power: slow by the click, fast across the town (VRD1).
 const FRONT_EASE := 1.7
 
@@ -63,6 +70,9 @@ var take_every := 2.0
 var lv_take_last := TAKE_LAST
 var lv_torches := TORCHES
 var t_dawn := WAVE + 60.0
+## The level-5 twist (PowerBook.twist_at, once in _build()) and the radius the shade was last given.
+var _twist := false
+var _shade_r := TORCH_R
 ## The torches: {"at", "bearer" (instance id), "light" (LightField id, 0 = none), "out", "n" (huddle slots handed out)}.
 var torches: Array[Dictionary] = []
 ## The instance ids this cast took, in order.
@@ -121,8 +131,8 @@ static func bearers(crowd: Crowd, most := TORCHES) -> Array[Person]:
 
 
 ## The one the dark takes next: loneliest_n()'s first (null when there is no one).
-static func loneliest(crowd: Crowd, lit: Array) -> Person:
-	var one := loneliest_n(crowd, lit, 1, {})
+static func loneliest(crowd: Crowd, lit: Array, light_r := TORCH_R) -> Person:
+	var one := loneliest_n(crowd, lit, 1, {}, light_r)
 	return one[0] if not one.is_empty() else null
 
 
@@ -130,7 +140,7 @@ static func loneliest(crowd: Crowd, lit: Array) -> Person:
 ## `skip` (instance ids), those whose nearest living neighbour out of doors is farthest away first (none at all: the farthest); a tie
 ## goes to the lower instance id. One take() cannot take (takeable()) is passed over. Everyone living out of doors still counts as a
 ## neighbour (the claimed, the lit, the spared). One pass that measures every candidate and sorts (it runs once a take).
-static func loneliest_n(crowd: Crowd, lit: Array, n: int, skip: Dictionary) -> Array[Person]:
+static func loneliest_n(crowd: Crowd, lit: Array, n: int, skip: Dictionary, light_r := TORCH_R) -> Array[Person]:
 	var picked: Array[Person] = []
 	if crowd == null or n <= 0:
 		return picked
@@ -153,7 +163,7 @@ static func loneliest_n(crowd: Crowd, lit: Array, n: int, skip: Dictionary) -> A
 	var rings := int(ceil(maxf(hi.x - lo.x, hi.y - lo.y) / CELL)) + 1
 	var rows: Array = []
 	for p in out:
-		if skip.has(p.get_instance_id()) or _in_light(p.ground_pos, lit) or crowd.spared(p) or not takeable(p):
+		if skip.has(p.get_instance_id()) or _in_light(p.ground_pos, lit, light_r) or crowd.spared(p) or not takeable(p):
 			continue
 		rows.append([_nearest(p, cells, rings, -1.0), p.get_instance_id(), p])
 	rows.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0] if a[0] != b[0] else a[1] < b[1])
@@ -189,14 +199,15 @@ static func takeable(p: Person) -> bool:
 	return not p.deathless.is_valid()
 
 
-static func _in_light(at: Vector2, lit: Array) -> bool:
+static func _in_light(at: Vector2, lit: Array, r := TORCH_R) -> bool:
 	for c: Vector2 in lit:
-		if c.distance_to(at) <= TORCH_R:
+		if c.distance_to(at) <= r:
 			return true
 	return false
 
 
 func _build() -> void:
+	_twist = PowerBook.twist_at(extra, TWIST_KEY)
 	_crowd = ctx.crowd if ctx != null and ctx.crowd != null and is_instance_valid(ctx.crowd) else null
 	_lights = ctx.lights if ctx != null and ctx.lights != null and is_instance_valid(ctx.lights) else null
 	var night := _crowd != null and _crowd.night_mission
@@ -287,6 +298,8 @@ func _fall() -> void:
 	for b in bearers(_crowd, lv_torches):
 		var light := _lights.add_static(b.ground_pos, TORCH_R, TORCH_COLOR, TORCH_GLOW, 0.35) if _live_lights() else 0
 		torches.append({"at": b.ground_pos, "bearer": b.get_instance_id(), "light": light, "out": false, "n": 0})
+		if _twist:
+			PaleEye.mark(self, b, TWIST_KEY, INF)
 		b.send_to_post(b.ground_pos)  # he stands where he is, holding it up
 		_glow_for(b.ground_pos)
 	_call_to_torches()
@@ -313,13 +326,20 @@ func lit() -> Array:
 	return out
 
 
+## The light's radius now: TORCH_R at levels 1-4; at level 5 it shrinks evenly from TORCH_R at the fall to END_R when the dawn begins.
+func torch_r() -> float:
+	if not _twist:
+		return TORCH_R
+	return lerpf(TORCH_R, END_R, clampf((t - WAVE) / night_time, 0.0, 1.0))
+
+
 ## The dark claims the group for take `k`: the take_count(k) loneliest not already claimed. Nothing is done to them; the look marks them.
 func _claim(k: int) -> void:
 	var skip := {}
 	for id in claimed:
 		skip[id] = true
 	var wait := WAVE + float(k) * take_every - t
-	for p in loneliest_n(_crowd, lit(), take_count(k) - claimed.size(), skip):
+	for p in loneliest_n(_crowd, lit(), take_count(k) - claimed.size(), skip, torch_r()):
 		claimed.append(p.get_instance_id())
 		_claim_look(p, wait)
 
@@ -331,11 +351,12 @@ func _take(k: int) -> void:
 		return
 	_watch_bearers()
 	var light := lit()
+	var reach := torch_r()
 	var group := claimed.duplicate()
 	claimed.clear()
 	for id: int in group:
 		var p := instance_from_id(id) as Person
-		var ok := p != null and p.is_alive() and not p.inside and not _in_light(p.ground_pos, light) and not _crowd.spared(p) \
+		var ok := p != null and p.is_alive() and not p.inside and not _in_light(p.ground_pos, light, reach) and not _crowd.spared(p) \
 			and takeable(p)
 		var where := p.ground_pos if p != null else Vector2.ZERO
 		if ok and _crowd.take(p, KIND):
@@ -459,7 +480,7 @@ func _on_laid(at_g: Vector2, r: float) -> void:
 	if _over or not _live():
 		return
 	for i in torches.size():
-		if not torches[i].out and (torches[i].at as Vector2).distance_to(at_g) <= r + TORCH_R:
+		if not torches[i].out and (torches[i].at as Vector2).distance_to(at_g) <= r + torch_r():
 			put_out(i)
 
 
@@ -473,7 +494,7 @@ func put_out(i: int) -> void:
 	if not _live():
 		return
 	var in_light: Array[Person] = []
-	for e in ctx.field.in_radius(tc.at, TORCH_R) if ctx.field != null else []:
+	for e in ctx.field.in_radius(tc.at, torch_r()) if ctx.field != null else []:
 		var p := e as Person
 		if p != null and p.is_alive() and not p.inside and not _crowd.spared(p):
 			in_light.append(p)
@@ -484,6 +505,19 @@ func put_out(i: int) -> void:
 			taken.append(p.get_instance_id())
 			_wisp(where, taken.size())
 			_stain(where, p.get_instance_id())
+
+
+## Level 5: a burning torch's static light is re-added at the light's radius now once it has shrunk by LIGHT_STEP (no LightField change).
+func _shrink_lights() -> void:
+	if not _twist or _over or not _live_lights():
+		return
+	var r := torch_r()
+	for tc in torches:
+		if tc.out or int(tc.light) == 0 or float(tc.get("r", TORCH_R)) - r < LIGHT_STEP:
+			continue
+		_lights.remove(int(tc.light))
+		tc.light = _lights.add_static(tc.at, r, TORCH_COLOR, TORCH_GLOW, 0.35)
+		tc.r = r
 
 
 func _drop_light(tc: Dictionary) -> void:
@@ -517,6 +551,8 @@ func _dawn() -> void:
 ## posts, the veil lifts and this cast leaves the night's ledger. Safe to call twice and with the crowd freed.
 func _end_night() -> void:
 	_over = true
+	if _twist:
+		PaleEye.release(self)
 	for id: int in claimed:
 		_drop_claim_look(id, false)
 	claimed.clear()
@@ -665,12 +701,15 @@ func _fx_process(_delta: float) -> void:
 				g.mute = share
 	if not _over and t >= WAVE and _live():
 		_watch_bearers()
+	_shrink_lights()
 	if stains != null and is_instance_valid(stains):
 		stains.set_fade(strength() if t >= t_dawn else 1.0)
 	if wash != null and is_instance_valid(wash):
 		wash.strength = strength()
 		wash.front = _look_map().size.x * t / WAVE
 		wash.lit = look_lit()
+		if _twist:
+			wash.torch_r = torch_r()
 		wash.queue_redraw()
 	_sky_look()
 
@@ -778,6 +817,13 @@ func _sky_look() -> void:
 			(v as EvernightSky.View).set_param(&"front", front)
 			(v as EvernightSky.View).set_param(&"center", lead.origin)
 	if _shade != null and is_instance_valid(_shade):
+		var shade_r := TORCH_R
+		for c in casts:
+			if c._twist:
+				shade_r = minf(shade_r, c.torch_r())
+		if not is_equal_approx(shade_r, _shade_r):
+			_shade_r = shade_r
+			_shade.set_param(&"torch_r", shade_r)
 		var arr := PackedVector2Array(pts)
 		arr.resize(TORCHES)
 		_shade.set_param(&"torches", arr)
@@ -800,6 +846,8 @@ func _glows_look() -> void:
 			var dawned := bool(torches[i].get("dawn", false))
 			(g as EvernightSky.TorchGlow).lit = not torches[i].out or (dawned and fade > 0.0)
 			(g as EvernightSky.TorchGlow).fade = fade if dawned else 1.0
+			if _twist:
+				(g as EvernightSky.TorchGlow).reach = torch_r() / TORCH_R
 
 
 func _finish() -> void:
@@ -834,6 +882,8 @@ class NightWash extends Node2D:
 	var strength := 0.0
 	var front := 0.0
 	var lit: Array = []
+	## The ring's radius (level 5 shrinks it).
+	var torch_r := EvernightFx.TORCH_R
 	## The pale moon (a child named "Moon"): drawn in code, freed with the wash.
 	var moon: NightMoon
 
@@ -856,7 +906,7 @@ class NightWash extends Node2D:
 		if strength <= 0.0:
 			return
 		for c: Vector2 in lit:
-			draw_arc(c, EvernightFx.TORCH_R, 0.0, TAU, 32, Color(VeilParts.SILVER, 0.4 * strength), 0.08)
+			draw_arc(c, torch_r, 0.0, TAU, 32, Color(VeilParts.SILVER, 0.4 * strength), 0.08)
 
 
 ## Evernight's pale moon, part of the night's sky: hung at a fixed place in the camera's view (EvernightSky.MOON_UV: screen-anchored,

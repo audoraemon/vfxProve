@@ -112,6 +112,8 @@ class TorchGlow extends Node2D:
 	var lit := true
 	## 0..1: how much of it shows (at dawn it fades with the night, VRF5d).
 	var fade := 1.0
+	## Its halo's size as a share of the torch's full light (level 5 shrinks it with the light).
+	var reach := 1.0
 	var sparks: PixelParticles
 
 	func _init(seed_value: int) -> void:
@@ -144,8 +146,8 @@ class TorchGlow extends Node2D:
 		var f := 0.84 + 0.09 * sin(clock * 11.0 + phase) + 0.07 * sin(clock * 23.7 + phase * 2.0)
 		# The flame's own halo where it is held up (its light on the ground and the people is the light field's and the shade's
 		# warm island: more here blew the huddle out to white).
-		draw_circle(Vector2.ZERO, 18.0 * f, Color(1.0, 0.55, 0.25, 0.07 * fade))
-		draw_circle(Vector2.ZERO, 8.0 * f, Color(1.0, 0.68, 0.34, 0.16 * fade))
+		draw_circle(Vector2.ZERO, 18.0 * f * reach, Color(1.0, 0.55, 0.25, 0.07 * fade))
+		draw_circle(Vector2.ZERO, 8.0 * f * reach, Color(1.0, 0.68, 0.34, 0.16 * fade))
 		draw_circle(Vector2.ZERO, 3.0 * f, Color(1.0, 0.86, 0.58, 0.5 * fade))
 
 

@@ -30,6 +30,9 @@ const RIBBON_CUT := 0.115
 const NAME_FONT := "res://assets/fonts/Jersey10-Regular.ttf"
 const NAME_SIZE := 13
 const HEAD_SIZE := 16
+## Every picture the map draws (names under assets/chamber/), for the warm-up.
+const PIECES := ["map", "map/land", "map/note", "map/seal", "map/seal_off", "map/tag", "map/pointer", "map/plate", "map/ribbon", "map/ship_0", "map/ship_1",
+	"map/cloud_0", "map/cloud_1", "map/cloud_2", "map/cloud_3", "map/cloud_4", "map/cloud_5"]
 const RISE_SECONDS := 0.7
 const SINK_SECONDS := 0.45
 ## How long a newly opened town's fog takes to burn away.
@@ -541,13 +544,103 @@ static func prewarm() -> void:
 	if _prewarmed or DisplayServer.get_name() == "headless":
 		return
 	_prewarmed = true
-	var paths := PackedStringArray([ChamberArt.DIR + "map.png", "res://src/game/ui/world_faith.gdshader"])
-	for name: String in ["land", "note", "seal", "seal_off", "tag", "pointer", "plate", "ribbon", "ship_0", "ship_1",
-			"cloud_0", "cloud_1", "cloud_2", "cloud_3", "cloud_4", "cloud_5"]:
-		paths.append(ChamberArt.DIR + "map/" + name + ".png")
+	var paths := PackedStringArray(["res://src/game/ui/world_faith.gdshader", NAME_FONT])
+	for name: String in PIECES:
+		paths.append(ChamberArt.DIR + name + ".png")
 	for path in paths:
 		if ResourceLoader.exists(path):
 			ResourceLoader.load_threaded_request(path)
+	_warm_pipelines()
+
+
+## Draws one near-invisible pixel through the faith shader and through an additive material for a few frames, so the renderer builds
+## their pipelines now and not on the map's first frame (as the Chamber does for its own shader).
+static func _warm_pipelines() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null or not ResourceLoader.exists("res://src/game/ui/world_faith.gdshader"):
+		return
+	var layer := CanvasLayer.new()
+	layer.name = "WorldMapWarm"
+	layer.layer = 10
+	var faith := ShaderMaterial.new()
+	faith.shader = load("res://src/game/ui/world_faith.gdshader")
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	var x := 0.0
+	for mat: Material in [faith, add]:
+		for filter: int in [CanvasItem.TEXTURE_FILTER_LINEAR, CanvasItem.TEXTURE_FILTER_NEAREST]:
+			var dot := ColorRect.new()
+			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			dot.position = Vector2(x, 0.0)
+			dot.size = Vector2.ONE
+			dot.color = Color(0.0, 0.0, 0.0, 0.004)
+			dot.texture_filter = filter
+			dot.material = mat
+			layer.add_child(dot)
+			x += 1.0
+	var warm := Warm.new()
+	warm.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	warm.position = Vector2(8.0, 0.0)
+	warm.size = Vector2(2.0, 2.0)
+	warm.clip_contents = true
+	warm.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	layer.add_child(warm)
+	tree.root.add_child.call_deferred(layer)
+
+
+## The second part of the warm-up: once the map's pictures have loaded, it draws each of them and the map's lettering once, clipped to a
+## near-invisible corner, so their first upload and the letters' first drawing are not paid on the map's first frame. Then it removes
+## the warm-up layer.
+class Warm extends Control:
+	var _shown := 0
+	var _waited := 0.0
+
+	func _process(delta: float) -> void:
+		_waited += delta
+		if _shown == 0:
+			for name: String in WorldMap.PIECES:
+				var path := ChamberArt.DIR + name + ".png"
+				if ResourceLoader.exists(path) and ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS and _waited < 10.0:
+					return  # still reading
+			WorldMap._warm_sea()
+			WorldMap._warm_nights()
+		_shown += 1
+		queue_redraw()
+		if _shown > 3:
+			get_parent().queue_free()
+
+	func _draw() -> void:
+		if _shown == 0:
+			return
+		var faint := Color(1.0, 1.0, 1.0, 0.004)
+		for name: String in WorldMap.PIECES:
+			var tex := ChamberArt.texture(name)
+			if tex != null:
+				draw_texture_rect(tex, Rect2(0.0, 0.0, 2.0, 2.0), false, faint)
+		var letters := "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789 %/:+"
+		for size: int in [WorldMap.NAME_SIZE, WorldMap.HEAD_SIZE]:
+			draw_string(WorldMap.bold(), Vector2(0.0, 2.0), letters, HORIZONTAL_ALIGNMENT_LEFT, -1, size, faint)
+		draw_string(UiTheme.font_for(UiTheme.SIZE_SMALL), Vector2(0.0, 2.0), letters, HORIZONTAL_ALIGNMENT_LEFT, -1, UiTheme.SIZE_SMALL, faint)
+
+
+## Asks for a night in each town once, for a throw-away god: the first asking builds the mission tables, which the map's first frame
+## would otherwise wait for.
+static func _warm_nights() -> void:
+	var god := GodSlot.make(1, "ruin", 1)
+	for town in Conquest.towns():
+		var drawn := GodNight.draw(god, town)
+		if drawn != "":
+			GodNight.def_for(god, drawn, town)
+	HubStatus.new(god).can_descend()
+
+
+## Finds the sea's glints ahead of the first map.
+static func _warm_sea() -> void:
+	if not _sparks.is_empty():
+		return
+	var probe := WorldMap.new()
+	probe._find_sea()
+	probe.free()
 
 
 ## A cut-out of the map's art (assets/chamber/map/), or null when it is not painted yet.

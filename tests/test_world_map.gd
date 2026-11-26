@@ -311,10 +311,13 @@ static func _painted_map(t) -> void:
 		t.check(rib.size.x > 40.0 and WorldLayout.LAND.encloses(rib), "%s has a ribbon on the vellum (%s)" % [id, rib])
 		t.check(rib.end.y < p.y and absf(rib.get_center().x - p.x) < span.x, "%s's ribbon is above its picture" % id)
 		t.check(not rib.intersects(WorldMap.PLATE) and not Rect2(p - span, span * 2.0).intersects(WorldMap.PLATE), "%s keeps clear of the info card" % id)
-		var named := WorldMap.ribbon_name(WorldLayout.name_of(id), rib.size.x + 5.0)
-		if WorldLayout.is_town(id):  # a sealed spot's ribbon stays blank
-			var w := WorldMap.bold_width(named[0], UiTheme.SIZE_SMALL) if named[1] != null else UiTheme.width(named[0], UiTheme.SIZE_SMALL)
-			t.check(w <= rib.size.x + 5.0, "%s's name fits its ribbon at the UI's size (%s, %.1f in %.1f)" % [id, named[0], w, rib.size.x])
+		if WorldLayout.is_town(id):  # a sealed spot keeps its painted ribbon, blank
+			var words := WorldLayout.name_of(id).to_upper()
+			var w := WorldMap.bold_width(words, UiTheme.SIZE_SMALL)
+			var drawn := WorldMap.name_ribbon(id, w)
+			t.check(drawn.size.x - WorldMap.RIBBON_END * 2.0 >= w + 8.0 and drawn.encloses(rib.grow_individual(0.0, -3.0, 0.0, -3.0)) and WorldLayout.LAND.encloses(drawn),
+				"%s's name ribbon holds its name at the UI's size and covers the painted one (%s over %s)" % [id, drawn, rib])
+			t.check(not drawn.intersects(WorldMap.PLATE), "%s's name ribbon keeps clear of the card" % id)
 	for r: Dictionary in WorldLayout.ROUTES:
 		t.check(WorldLayout.is_town(r.from) and not WorldLayout.is_town(r.to) and WorldLayout.LAND.has_point(r.via), "a way runs from a town to a sealed spot (%s to %s)" % [r.from, r.to])
 	var fresh: WorldMap = _make(_slot())[0]

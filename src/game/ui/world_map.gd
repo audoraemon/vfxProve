@@ -22,6 +22,10 @@ const LINE_Y := 262.0
 ## The match cut with the Chamber's World Table (GodChamber.end_frame("descend")): the table's little map as the room shows it at rest
 ## (room units), and how long the map page takes to rise out of it and to sink back into it.
 const TABLE_MAP := Rect2(215.0, 232.0, 200.0, 28.0)
+## A name ribbon's height, the width of each folded end, and how much of the art's width one end takes.
+const RIBBON_H := 17.0
+const RIBBON_END := 12.0
+const RIBBON_CUT := 0.115
 const RISE_SECONDS := 0.7
 const SINK_SECONDS := 0.45
 ## How long a newly opened town's fog takes to burn away.
@@ -40,6 +44,9 @@ const GOD_COL := {
 static var moving := true
 ## The towns each god slot's map has already shown open, this session: a town that opens later burns its fog away once.
 static var _known := {}
+## Where the sea glints, found once for the session.
+static var _sparks := PackedVector2Array()
+static var _prewarmed := false
 static var _blob: Texture2D
 static var _flat: Texture2D
 static var _hole: Texture2D
@@ -64,6 +71,9 @@ var _t := 0.0
 ## Seconds left of the scene that plays when a town has just opened (input waits), and of the Descend seal's press.
 var _scene := 0.0
 var _press := 0.0
+var _drawn_memo := {}
+var _night_memo := {}
+var _descend_memo := -1
 ## The match cut: the Chamber's end frame, seconds into the rise (-1: none) and into the sink, what to call when the sink ends, and
 ## the two full-area sheets that carry the table's colour behind and over the page while it moves.
 var _frame := {}
@@ -75,9 +85,6 @@ var _over: ColorRect
 var _page_sound := true
 ## Town id -> seconds since its fog began to burn away.
 var _reveal := {}
-var _map_tex: Texture2D
-var _map_px := Vector2i.ZERO
-var _sparks := PackedVector2Array()
 
 
 func setup(slot: GodSlot, p_dev := false) -> WorldMap:
@@ -100,7 +107,7 @@ func setup(slot: GodSlot, p_dev := false) -> WorldMap:
 	layer.layer = 10
 	add_child(layer)
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)
-	_ui.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_ui.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_ui.draw.connect(_draw_ui)
 	# As the Chamber: the blocker takes the mouse and hands it on in frame units; the 640x360 child ignores it.
 	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -216,6 +223,10 @@ func _pose(u: float) -> void:
 	_ui.scale = Vector2(f * rect.size.x / 640.0, f * rect.size.y / 360.0)
 	_ui.position = base + rect.position * f
 	var col: Color = _frame.get("color", Color(0.1, 0.2, 0.42))
+	# The writing is laid on once the page has nearly risen: text redrawn at a new scale every frame is what made the move stutter.
+	if _top != null:
+		_top.visible = u > 0.82
+		_top.modulate.a = clampf((u - 0.82) / 0.18, 0.0, 1.0)
 	if _under != null:
 		_under.color = col.lerp(WOOD, e)
 		_over.color = Color(col.r, col.g, col.b, pow(1.0 - u, 1.6))
@@ -256,13 +267,27 @@ func _process(delta: float) -> void:
 	_redraw()
 
 
+## The night drawn in a town, asked once for the life of this map (the god does not change while the map is up, and the map is drawn
+## many times a second).
+func drawn_in(id: String) -> String:
+	if not _drawn_memo.has(id):
+		_drawn_memo[id] = GodNight.draw(_slot, id)
+	return _drawn_memo[id]
+
+
+func _can_descend() -> bool:
+	if _descend_memo < 0:
+		_descend_memo = 1 if status.can_descend() else 0
+	return _descend_memo == 1
+
+
 ## "sealed", "locked", "dim" (open, but no night is drawn there; a conquered town too), "conquered" or "open".
 func spot_state(id: String) -> String:
 	if not WorldLayout.is_town(id):
 		return "sealed"
 	if not Conquest.is_open(_slot, id):
 		return "locked"
-	if GodNight.draw(_slot, id) == "":
+	if drawn_in(id) == "":
 		return "dim"  # before "conquered" (spec 4.6): a conquered town with no night to go to is dim too
 	if Conquest.conquered(_slot, id):
 		return "conquered"
@@ -353,10 +378,13 @@ func info_lines(id: String) -> PackedStringArray:
 ## What Descend would give in a town, for the card: the night drawn there, and what the town is worth. Empty for a spot that is no
 ## open town.
 func night_lines(id: String) -> PackedStringArray:
+	if _night_memo.has(id):
+		return _night_memo[id]
 	var out := PackedStringArray()
 	if not WorldLayout.is_town(id) or not Conquest.is_open(_slot, id):
+		_night_memo[id] = out
 		return out
-	var drawn := GodNight.draw(_slot, id)
+	var drawn := drawn_in(id)
 	if drawn == "":
 		out.append("The Hunt is abroad" if not GodNight.hunt_for(_slot).is_empty() else NO_NIGHT)
 	else:
@@ -364,12 +392,13 @@ func night_lines(id: String) -> PackedStringArray:
 		var title := def.name if def != null and def.name != "" else drawn.capitalize()
 		out.append(("The Hunt: %s" if GodNight.is_hunt(drawn) else "Tonight: %s") % title)
 	out.append(("Conquered: +%d Faith" if Conquest.conquered(_slot, id) else "When conquered: +%d Faith") % Conquest.CONQUER_FAITH)
+	_night_memo[id] = out
 	return out
 
 
 ## True when the night drawn in a town is a Lantern Hunt.
 func hunt_due(id: String) -> bool:
-	return WorldLayout.is_town(id) and Conquest.is_open(_slot, id) and GodNight.is_hunt(GodNight.draw(_slot, id))
+	return WorldLayout.is_town(id) and Conquest.is_open(_slot, id) and GodNight.is_hunt(drawn_in(id))
 
 
 ## The mouse at a frame point: which spot (its picture or its ribbon) and which button lie under it.
@@ -502,6 +531,21 @@ func fog_of(id: String) -> float:
 	return 0.0
 
 
+## Starts loading the map's art on other threads, so the first map of a session does not stop to read it (the Chamber may call this
+## when the room comes up). Asking twice, or never, is harmless.
+static func prewarm() -> void:
+	if _prewarmed or DisplayServer.get_name() == "headless":
+		return
+	_prewarmed = true
+	var paths := PackedStringArray([ChamberArt.DIR + "map.png", "res://src/game/ui/world_faith.gdshader"])
+	for name: String in ["land", "note", "seal", "seal_off", "tag", "pointer", "plate", "ribbon", "ship_0", "ship_1",
+			"cloud_0", "cloud_1", "cloud_2", "cloud_3", "cloud_4", "cloud_5"]:
+		paths.append(ChamberArt.DIR + "map/" + name + ".png")
+	for path in paths:
+		if ResourceLoader.exists(path):
+			ResourceLoader.load_threaded_request(path)
+
+
 ## A cut-out of the map's art (assets/chamber/map/), or null when it is not painted yet.
 static func piece(name: String) -> Texture2D:
 	return ChamberArt.texture("map/" + name)
@@ -558,39 +602,34 @@ static func bold_width(s: String, size: int) -> float:
 	return bold().get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 
 
-## The painting at the page's real size on this screen (resampled once per size, so it is sharp at any window).
+## The painting. It is drawn with mipmaps and a linear filter, so it is smooth at any window without resampling it here (that froze the
+## map's first frame).
 func _painting() -> Texture2D:
-	var src := ChamberArt.texture("map")
-	if src == null:
-		return null
-	var f := _ui.scale.x if _ui.scale.x > 0.0 else 1.0
-	var want := Vector2i((Vector2(640.0, 360.0) * f * float(UiScale.k())).round())
-	if _map_tex == null or want != _map_px:
-		var img := src.get_image()
-		if img == null:
-			return src
-		if img.is_compressed():
-			img.decompress()
-		if _sparks.is_empty():
-			_find_sea(img)
-		if want != img.get_size():
-			img.resize(want.x, want.y, Image.INTERPOLATE_LANCZOS)
-		_map_tex = ImageTexture.create_from_image(img)
-		_map_px = want
-	return _map_tex
+	if _sparks.is_empty():
+		_find_sea()
+	return ChamberArt.texture("map")
 
 
-## Where the sea glints: a fixed scatter of points whose painted pixel is sea blue.
-func _find_sea(img: Image) -> void:
+## Where the sea glints: a fixed scatter of points on water (the land mask is black there), away from the vellum's edge.
+func _find_sea() -> void:
+	var land := piece("land")
+	var img := land.get_image() if land != null else null
+	if img == null:
+		_sparks.append(Vector2(-10.0, -10.0))  # no mask: one glint off the page, so this is not asked again
+		return
+	if img.is_compressed():
+		img.decompress()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var tries := 0
+	var inner := WorldLayout.LAND.grow(-10.0)
 	while _sparks.size() < 46 and tries < 4000:
 		tries += 1
-		var p := Vector2(rng.randf_range(WorldLayout.LAND.position.x, WorldLayout.LAND.end.x), rng.randf_range(WorldLayout.LAND.position.y, WorldLayout.LAND.end.y))
-		var c := img.get_pixel(int(p.x / 640.0 * img.get_width()), int(p.y / 360.0 * img.get_height()))
-		if c.b > c.r + 0.08 and c.b > 0.25:
+		var p := Vector2(rng.randf_range(inner.position.x, inner.end.x), rng.randf_range(inner.position.y, inner.end.y))
+		if img.get_pixel(int(p.x / 640.0 * img.get_width()), int(p.y / 360.0 * img.get_height())).r < 0.12:
 			_sparks.append(p)
+	if _sparks.is_empty():
+		_sparks.append(Vector2(-10.0, -10.0))
 
 
 func _draw_ui() -> void:
@@ -782,14 +821,24 @@ func _draw_glow() -> void:
 			_stain(_glow, p, WorldLayout.span(id) * 3.0, Color(1.0, 0.80, 0.42, 0.13))
 
 
-## A town's name as its ribbon takes it, at the UI's smallest size (11): bold capitals when they fit in `room`, else bold, else plain.
-## [words, face (null: the plain font)].
-static func ribbon_name(s: String, room: float) -> Array:
-	if bold_width(s.to_upper(), UiTheme.SIZE_SMALL) <= room:
-		return [s.to_upper(), bold()]
-	if bold_width(s, UiTheme.SIZE_SMALL) <= room:
-		return [s, bold()]
-	return [s, null]
+## The name ribbon drawn over a town's painted one: wide enough for `words` at the UI's size, centred where the painted ribbon is.
+static func name_ribbon(id: String, words_width: float) -> Rect2:
+	var c := WorldLayout.ribbon(id).get_center()
+	var w := maxf(words_width + 12.0 + RIBBON_END * 2.0, 58.0)
+	return Rect2(roundf(c.x - w * 0.5), roundf(c.y - RIBBON_H * 0.5 - 1.0), w, RIBBON_H)
+
+
+## Draws the ribbon art in `rect`: its two folded ends at their own shape, its flat band stretched between them.
+func _draw_ribbon(rect: Rect2, tint := Color.WHITE) -> void:
+	var tex := piece("ribbon")
+	if tex == null:
+		return
+	var tw := float(tex.get_width())
+	var th := float(tex.get_height())
+	var cut := tw * RIBBON_CUT
+	_top.draw_texture_rect_region(tex, Rect2(rect.position, Vector2(RIBBON_END, rect.size.y)), Rect2(0.0, 0.0, cut, th), tint)
+	_top.draw_texture_rect_region(tex, Rect2(rect.position.x + RIBBON_END, rect.position.y, rect.size.x - RIBBON_END * 2.0, rect.size.y), Rect2(cut, 0.0, tw - cut * 2.0, th), tint)
+	_top.draw_texture_rect_region(tex, Rect2(rect.end.x - RIBBON_END, rect.position.y, RIBBON_END, rect.size.y), Rect2(tw - cut, 0.0, cut, th), tint)
 
 
 ## `s` cut to fit `room` at the small size, ".." where it was cut.
@@ -839,49 +888,49 @@ func _draw_top() -> void:
 		UiTheme.text(_top, Vector2(pill.position.x + 6.0, LINE_Y), line, UiTheme.SIZE_SMALL, UiTheme.COL_BAD_TEXT)
 
 
-## A spot's writing: its name on its ribbon (a sealed spot's ribbon stays blank), the people's bar under it, the pointer over the chosen
-## town, a conquered town's seal, and under a locked town a tag that says what opens it.
+## A spot's writing: its name on a ribbon wide enough for it (a sealed spot keeps its painted ribbon, blank), the people's bar under
+## it, the pointer over the chosen town, a conquered town's seal, and under a locked town a tag that says what opens it.
 func _draw_spot(id: String) -> void:
-	var rib := WorldLayout.ribbon(id)
 	var state := spot_state(id)
 	var god := god_color()
+	var rib := WorldLayout.ribbon(id)
+	var label := WorldLayout.name_of(id).to_upper()
+	var size := UiTheme.SIZE_SMALL
+	if state != "sealed":
+		rib = name_ribbon(id, bold_width(label, size))
 	if id == selected or (id == hovered and selectable(id)):
 		var chosen := id == selected
 		var bob := sin(_t * 2.4) * 1.2 if moving and chosen else 0.0
 		var ptr := piece("pointer")
 		if ptr != null:
-			var size := Vector2(10.0, 10.0 * float(ptr.get_height()) / float(ptr.get_width()))
-			_top.draw_texture_rect(ptr, Rect2(Vector2(rib.get_center().x - size.x * 0.5, rib.position.y - size.y - 1.5 + bob), size), false,
+			var ptr_size := Vector2(10.0, 10.0 * float(ptr.get_height()) / float(ptr.get_width()))
+			_top.draw_texture_rect(ptr, Rect2(Vector2(rib.get_center().x - ptr_size.x * 0.5, rib.position.y - ptr_size.y - 1.0 + bob), ptr_size), false,
 				Color(1.0, 1.0, 1.0, 1.0 if chosen else 0.55))
 	if state == "sealed":
 		if id == hovered:
 			_draw_tag(rib, SEALED_LINE)
 		return
-	var named := ribbon_name(WorldLayout.name_of(id), rib.size.x + 5.0)  # the ribbon's curled ends take a little more than its flat
-	var label: String = named[0]
-	var face: Font = named[1]
-	var size := UiTheme.SIZE_SMALL
-	var label_w := bold_width(label, size) if face != null else UiTheme.width(label, size)
 	var dim := state == "locked" and not _reveal.has(id)
-	var col := Color(INK.r, INK.g, INK.b, 0.6) if dim else INK
-	_ink(Vector2(roundf(rib.get_center().x - label_w * 0.5), rib.get_center().y + float(size) * 0.36), label, size, col, face)
+	_draw_ribbon(rib, Color(0.72, 0.70, 0.74) if dim else Color.WHITE)
+	var col := Color(INK.r, INK.g, INK.b, 0.7) if dim else INK
+	_ink(Vector2(roundf(rib.get_center().x - bold_width(label, size) * 0.5), roundf(rib.position.y + rib.size.y * 0.5 + 2.5)), label, size, col, bold())
 	if state == "locked":
 		_draw_tag(rib, LOCK_LINE % [Conquest.UNLOCK_PERCENT, Conquest.town_name(Conquest.opener_of(id))])
 		return
 	if hunt_due(id):  # the Lantern hunts here tonight: a red mark on the ribbon's near end
-		var at := Vector2(rib.position.x - 4.0, rib.get_center().y)
+		var at := Vector2(rib.position.x - 5.0, rib.get_center().y)
 		_top.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -6), at + Vector2(6, 0), at + Vector2(0, 6), at + Vector2(-6, 0)]), Color(0.16, 0.03, 0.03))
 		_top.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -5), at + Vector2(5, 0), at + Vector2(0, 5), at + Vector2(-5, 0)]), UiTheme.COL_BAD)
 		_top.draw_rect(Rect2(at + Vector2(-0.5, -3.0), Vector2(1.0, 3.5)), Color.WHITE)
 		_top.draw_rect(Rect2(at + Vector2(-0.5, 1.5), Vector2(1.0, 1.0)), Color.WHITE)
 	# The people's bar, under the ribbon.
-	var bar := Rect2(roundf(rib.get_center().x - 15.0), rib.end.y + 4.0, 30.0, 3.0)
+	var bar := Rect2(roundf(rib.get_center().x - 15.0), rib.end.y + 3.0, 30.0, 3.0)
 	_top.draw_rect(bar.grow(1.0), Color(0.12, 0.07, 0.04))
 	_top.draw_rect(bar, Color(0.30, 0.20, 0.11))
 	var part := float(Conquest.percent_of(_slot, id)) / 100.0
 	_top.draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * part), bar.size.y)), god)
 	if Conquest.conquered(_slot, id):  # the god's wax seal on the ribbon's end
-		var at := Vector2(rib.end.x + 3.0, rib.get_center().y)
+		var at := Vector2(rib.end.x - 3.0, rib.get_center().y + 1.0)
 		_top.draw_circle(at, 5.5, god.darkened(0.55))
 		_top.draw_circle(at, 4.5, god.darkened(0.15))
 		_top.draw_arc(at, 2.6, 0.0, TAU, 16, god.lightened(0.35), 1.0)
@@ -919,7 +968,7 @@ func _draw_plate() -> void:
 		_ink(Vector2(left, PLATE.position.y + 42.0), _clip(night[0], room), UiTheme.SIZE_SMALL, UiTheme.COL_BAD.darkened(0.25) if hunt_due(selected) else INK)
 	if night.size() >= 2:
 		_ink(Vector2(left, PLATE.position.y + 53.0), _clip(night[1], room), UiTheme.SIZE_SMALL, Color(soft.r, soft.g, soft.b, 0.85))
-	var lit := status.can_descend() and GodNight.draw(_slot, selected) != ""
+	var lit := _can_descend() and drawn_in(selected) != ""
 	var r := descend_rect()
 	var seal := piece("seal" if lit else "seal_off")
 	var seal_rect := Rect2(r.get_center().x - 19.0, r.get_center().y - 19.5, 38.0, 39.0)  # the arrow on the wax says Descend

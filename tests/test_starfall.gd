@@ -280,6 +280,7 @@ static func _main_gate_runs(t) -> void:
 	for m in men:
 		starts.append(m.ground_pos)
 	for step in roundi(25.0 / DT):
+		Person.frame_no = step  # the frames advance as in play (the LOD staggers by them), not by this process's instance ids
 		crowd.advance(DT)
 		crowd.step_people(DT)
 		(s.rules as Rules).advance(DT)
@@ -289,6 +290,7 @@ static func _main_gate_runs(t) -> void:
 				left[i] = left[i] or Walls.outside(men[i].ground_pos)
 				y_top[i] = maxf(y_top[i], men[i].ground_pos.y)
 				far[i] = maxf(far[i], men[i].ground_pos.distance_to(starts[i]))
+	Person.frame_no = -1
 	for i in 3:
 		var w := d.stars[i]
 		t.check(far[i] > 2.0 and not left[i] and w.stopped_how != "out", "W-R14: %s's runner really runs (%.1f from his post) and never leaves the walls (his y reached %.1f, the post at %.1f; %s)"

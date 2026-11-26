@@ -52,7 +52,7 @@ static func soldiers(crowd: Crowd, taken: Array) -> Array[Person]:
 		if not MissionDirector._alive(v):
 			continue
 		var p := v as Person
-		if not p.inside and p.corps == Person.Corps.NONE and not taken.has(p):
+		if not p.inside and p.corps == Person.Corps.NONE and not taken.has(p) and not Wish.kept_out(crowd, p):
 			out.append(p)
 	return out
 

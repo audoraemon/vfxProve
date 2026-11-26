@@ -15,6 +15,20 @@ const STARS := [
 	[60.0, Vector2(14.5, 9.0), "THE SIDE GATE"],
 ]
 
+## The quiet posts (spec 4, G3): no one but the watchman may stand within QUIET_R of a held post (first guess), so a kill there is unseen. The men moved
+## out of a ring are put QUIET_R + QUIET_MARGIN from every post, along the line out from the post.
+const QUIET_R := 3.0
+const QUIET_MARGIN := 0.5
+## Seconds between one turning-away of the same person.
+const HUSH_EVERY := 0.5
+## An idle citizen drifts about his anchor: one anchored within this of a post (QUIET_R plus his drift) is re-anchored at setup, past ANCHOR_R + QUIET_MARGIN.
+const ANCHOR_R := 4.5
+## The minds the hush leaves alone: a fright, a fight, the god's hold, a sleeper.
+const HUSH_SKIP := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER, Person.Mind.FIGHT, Person.Mind.ASLEEP, Person.Mind.WHISPERED,
+	Person.Mind.CONFUSED, Person.Mind.COMPELLED, Person.Mind.RALLY]
+## How a man's nearness to a post is read: where he stands, where he stands or is posted, or where he is anchored.
+enum Gap { HERE, HERE_OR_POSTED, ANCHORED }
+
 ## The mission second the one star falls over the town (first guess): each watchman looks up at it (STARE), then keeps his post.
 const OMEN_AT := 1.0
 
@@ -32,6 +46,18 @@ var _clock := 0.0
 var _omen_done := false
 ## The warnings have been set up (the first step, after NightRules has made the town its own).
 var _set_up := false
+## The posts' ground (each post's walkable spot), set by _quiet_posts().
+var _spots: Array[Vector2] = []
+## The soldiers this director holds for the posts, each Person -> {"post": the post's index, "moved": whether he was moved out, "was": his own `post`}.
+var _men := {}
+## The idle citizens re-anchored out of a ring, each Person -> {"post": index, "was": his anchor}.
+var _folk := {}
+## Which posts have been held (by _quiet_posts()) and which have been let go.
+var _held_once: Array[bool] = []
+var _freed: Array[bool] = []
+## Each person turned away -> the hush clock he was turned at.
+var _turned := {}
+var _hush_clock := 0.0
 
 
 func _begin() -> void:
@@ -63,6 +89,7 @@ func step(delta: float) -> void:
 			if not w.warning_dead:
 				w.reserved = _reserved_for(w)
 				w.setup(rules, crowd, town, ctx, night)
+		_quiet_posts()
 	for w in stars:
 		if w.rules != null:
 			w.step(delta)
@@ -72,6 +99,249 @@ func step(delta: float) -> void:
 		if stars[i].at_post() and _clock >= float(star_falls[i][0]):
 			stars[i].set_off()
 	_say_broken()
+	_release_posts()
+	_hush_step(delta)
+
+
+## The places the wishes may not pick a person from (spec 4, I9): each post's ring, with its margin. Read before setup(), so the posts are the raw spots.
+func wish_keepout() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for st: Array in star_falls:
+		var at: Vector2 = st[1]
+		out.append(Vector3(at.x, at.y, QUIET_R + QUIET_MARGIN))
+	return out
+
+
+## `p` is one of the men this director holds for a post (the moved soldiers and the gate checkers): no town duty takes him (_holds_soldier).
+func busy(p: Person) -> bool:
+	return _men.has(p)
+
+
+## The posts held now, by index: the watchman is at his post (not set off, not stopped). Only reads.
+func posts_held() -> Array[int]:
+	var out: Array[int] = []
+	for i in stars.size():
+		if stars[i].rules != null and stars[i].at_post():
+			out.append(i)
+	return out
+
+
+## Spec 4 (G3), once, in the first step right after the three appointments (NightRules has run): every soldier whose post anchor or position lies within
+## QUIET_R of a post is moved out and held, so is each checker of the three gates, and each idle citizen anchored in a ring is re-anchored. Deterministic:
+## nearest first, then instance order; no RNG.
+func _quiet_posts() -> void:
+	_spots.clear()
+	for st: Array in star_falls:
+		_spots.append(_walkable(st[1]))
+	_held_once.resize(stars.size())
+	_freed.resize(stars.size())
+	_held_once.fill(false)
+	_freed.fill(false)
+	var held := posts_held()
+	for i in held:
+		_held_once[i] = true
+	var used: Array[Vector2] = []
+	# The gate checkers first (GateCheck.checkers() skips a man this director holds), each held where he stands unless he is in a ring.
+	if crowd.gate_check != null and town != null:
+		for i in held:
+			var gate := _gate_of(_spots[i])
+			if gate == null:
+				continue
+			for c in crowd.gate_check.checkers(gate):
+				_hold(c, i, false, c.post)
+	var movers: Array = []
+	for v: Variant in crowd.soldiers:
+		if not _alive(v) or (v as Person).inside:
+			continue
+		var p := v as Person
+		var i := _ring_of(p, held, QUIET_R, Gap.HERE_OR_POSTED)
+		if i >= 0:
+			movers.append([p, i, _gap(p, i, Gap.HERE_OR_POSTED)])
+	for m: Array in _nearest_first(movers):
+		_move_soldier(m[0] as Person, int(m[1]), used)
+	var folk: Array = []
+	for v: Variant in crowd.citizens:
+		if not _alive(v):
+			continue
+		var p := v as Person
+		if p.inside or p.mind != Person.Mind.CALM or p.has_goal() or reserved.has(p) or _is_watchman(p):
+			continue
+		var i := _ring_of(p, held, ANCHOR_R, Gap.ANCHORED)
+		if i >= 0:
+			folk.append([p, i, _gap(p, i, Gap.ANCHORED)])
+	for m: Array in _nearest_first(folk):
+		var p := m[0] as Person
+		var at := _out_spot(p.anchor, int(m[1]), used, ANCHOR_R + QUIET_MARGIN)
+		if at == Vector2.INF:
+			continue
+		used.append(at)
+		_folk[p] = {"post": int(m[1]), "was": p.anchor}
+		if p.ground_pos.distance_to(_spots[int(m[1])]) <= ANCHOR_R:  # (before the first frame: nobody sees him set down)
+			p.ground_pos = at
+			p._path = PackedVector2Array()
+			p._target = at
+		p.anchor = at
+
+
+## [person, post, gap] rows, the nearest first, then in instance order (the same order on every run: no RNG).
+func _nearest_first(rows: Array) -> Array:
+	rows.sort_custom(func(a: Array, b: Array) -> bool:
+		if not is_equal_approx(float(a[2]), float(b[2])):
+			return float(a[2]) < float(b[2])
+		return (a[0] as Person).get_instance_id() < (b[0] as Person).get_instance_id())
+	return rows
+
+
+## Whether `p` is one of the three watchmen, a messenger of a warning or a leaver (never moved or turned away).
+func _is_watchman(p: Person) -> bool:
+	for w in stars:
+		if p == w.watchman or p == w.messenger or w.leaving.has(p):
+			return true
+	return false
+
+
+## The gate nearest to `at`, or null.
+func _gate_of(at: Vector2) -> Structure:
+	var best: Structure = null
+	for g in town.gates:
+		if is_instance_valid(g) and (best == null or g.center().distance_to(at) < best.center().distance_to(at)):
+			best = g
+	return best
+
+
+## The index of the held post whose ring (`r`) holds `p`, the nearest first; -1 for none.
+func _ring_of(p: Person, held: Array[int], r: float, how: Gap) -> int:
+	var best := -1
+	var best_d := INF
+	for i in held:
+		var d := _gap(p, i, how)
+		if d <= r and d < best_d:
+			best = i
+			best_d = d
+	return best
+
+
+## How near `p` is to post `i`, read as `how`.
+func _gap(p: Person, i: int, how: Gap) -> float:
+	match how:
+		Gap.HERE:
+			return p.ground_pos.distance_to(_spots[i])
+		Gap.ANCHORED:
+			return p.anchor.distance_to(_spots[i])
+	return minf(p.ground_pos.distance_to(_spots[i]), p.anchor.distance_to(_spots[i]))
+
+
+## A soldier out of a ring (B2): his `post` saved and set to the new spot, sent there and placed, `watch_far` off; held until the post is let go.
+func _move_soldier(p: Person, i: int, used: Array[Vector2]) -> void:
+	var from := p.anchor if p.anchor.distance_to(_spots[i]) < p.ground_pos.distance_to(_spots[i]) else p.ground_pos
+	var at := _out_spot(from, i, used, QUIET_R + QUIET_MARGIN)
+	if at == Vector2.INF:
+		_hold(p, i, false, p.post)
+		return
+	used.append(at)
+	_hold(p, i, true, p.post)
+	p.post = at
+	p.ground_pos = at
+	p.send_to_post(at)
+	p._path = PackedVector2Array()
+	p._target = at
+
+
+## Holds `p` for post `i` (busy): `moved` says his `post` was changed and must be given back, `was` what it was.
+func _hold(p: Person, i: int, moved: bool, was: Vector2) -> void:
+	if _men.has(p):
+		return
+	_men[p] = {"post": i, "moved": moved, "was": was}
+	p.watch_far = false
+
+
+## The nearest ground to post `i` along the line out from it through `from`, at least `r` from every post and not already taken, inside the walls and
+## walkable (unless `within_walls` is off, for a walker turned back through the gate): tries each distance (nearest first) at the line's angle, then turning away from it. Vector2.INF for none. No RNG.
+func _out_spot(from: Vector2, i: int, used: Array[Vector2], r: float, within_walls := true, walk_from := Vector2.INF) -> Vector2:
+	var away := from - _spots[i]
+	var dir := away.normalized() if away.length() > 0.05 else (-_spots[i]).normalized()
+	if dir == Vector2.ZERO:
+		dir = Vector2.UP
+	var grid := crowd._grid
+	for step in 10:
+		var d := r + 0.5 * float(step)
+		for a: float in [0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5, 2.0, -2.0, 2.5, -2.5, PI]:
+			var v := _spots[i] + dir.rotated(a) * d
+			if grid != null and not grid.walkable(v):
+				continue
+			if within_walls and Walls.outside(v):
+				continue
+			if walk_from != Vector2.INF and grid != null and not grid.clear_line(walk_from, v):
+				continue  # a walker is sent where he can walk, in a straight line
+			var fits := true
+			for sp in _spots:
+				fits = fits and sp.distance_to(v) >= r - 0.01
+			for u in used:
+				fits = fits and u.distance_to(v) >= 0.8
+			if fits:
+				return v
+	return Vector2.INF
+
+
+## Spec 4: while a post is held, anyone else within its ring is turned away -- not a carrier, a reserved man, one the god holds or one in flight: a goal
+## inside the ring is moved out past it, one idle inside is walked out. A far-seeing man (`watch_far`) is turned from WATCH_SIGHT. A soldier at a post of
+## the town (POST or HOLD, not on a job) who stands inside is taken as the first step took the rest. Each is turned at most every HUSH_EVERY seconds.
+func _hush_step(delta: float) -> void:
+	_hush_clock += delta
+	var held := posts_held()
+	if held.is_empty():
+		return
+	for group: Array in [crowd.soldiers, crowd.citizens]:
+		for v: Variant in group:
+			if not _alive(v):
+				continue
+			var p := v as Person
+			# A wisher or wish target who is out walking his day is turned away too (I9): the wish is his, not the ring.
+			if p.inside or p.mind in HUSH_SKIP or (reserved.has(p) and (p.soldier or p.mind != Person.Mind.CALM)) or _is_watchman(p):
+				continue
+			if _men.has(p):
+				p.watch_far = false
+				continue
+			var r := maxf(QUIET_R + QUIET_MARGIN, Crowd.WATCH_SIGHT + 0.5) if p.watch_far else QUIET_R + QUIET_MARGIN  # turned on the ring's margin, so he is out before he can see
+			var i := _ring_of(p, held, r, Gap.HERE)
+			if i < 0 or _hush_clock - float(_turned.get(p, -INF)) < HUSH_EVERY:
+				continue
+			_turned[p] = _hush_clock
+			var used: Array[Vector2] = []
+			if p.soldier and (p.mind == Person.Mind.POST or p.mind == Person.Mind.HOLD) and not p.has_goal() and p.corps == Person.Corps.NONE:
+				_move_soldier(p, i, used)
+				continue
+			var at := _out_spot(p.ground_pos, i, used, r + QUIET_MARGIN, false, p.ground_pos)  # a walker is turned back the way he came, even out through the gate
+			if at != Vector2.INF:
+				p.set_goal(at)
+
+
+## A post that stops being held (its warning stopped or its watchman set off) gives its men back: each moved soldier's `post` is restored and he goes
+## back to it (B2: Crowd.off_duty() would do nothing for a man on a post), each re-anchored citizen's anchor too.
+func _release_posts() -> void:
+	for i in _freed.size():
+		if _freed[i] or not _held_once[i] or (stars[i].rules != null and stars[i].at_post()):
+			continue
+		_freed[i] = true
+		for p: Variant in _men.keys():
+			if int((_men[p] as Dictionary).post) == i:
+				_give_back(p, _men[p] as Dictionary)
+				_men.erase(p)
+		for p: Variant in _folk.keys():
+			if int((_folk[p] as Dictionary).post) == i:
+				if _alive(p):
+					(p as Person).anchor = (_folk[p] as Dictionary).was
+				_folk.erase(p)
+
+
+## One soldier given back: his own `post` again (so `post == town_post`: GateCheck and GuardJobs take him as before), and back to it.
+func _give_back(p: Variant, rec: Dictionary) -> void:
+	if not _alive(p) or not bool(rec.moved):
+		return
+	var s := p as Person
+	s.post = rec.was
+	if s.mind == Person.Mind.POST or s.mind == Person.Mind.HOLD:
+		s.back_to_post()
 
 
 ## The one star over the Main Gate's post (the middle post), the banners, and each live watchman's look-up (his own `_omen()`, quiet).
@@ -322,6 +592,9 @@ func report() -> Dictionary:
 
 
 func teardown() -> void:
+	for p: Variant in _men.keys():
+		_give_back(p, _men[p] as Dictionary)
+	_men.clear()
 	for w in stars:
 		if w.rules != null:
 			w.teardown()

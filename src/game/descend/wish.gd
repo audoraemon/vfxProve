@@ -144,11 +144,19 @@ static func pick_lay(crowd: Crowd, rng: RandomNumberGenerator, taken: Array) -> 
 	return p
 
 
-## The lay citizens not in `taken`, in the crowd's order: alive, out of doors, of no faith, of no role in NOT_LAY.
+## `p` stands in a place the director keeps quiet (Crowd.wish_keepout): no wish takes him. Always false off the board Warning.
+static func kept_out(crowd: Crowd, p: Person) -> bool:
+	for k in crowd.wish_keepout:
+		if p.ground_pos.distance_to(Vector2(k.x, k.y)) <= k.z:
+			return true
+	return false
+
+
+## The lay citizens not in `taken`, in the crowd's order: alive, out of doors, of no faith, of no role in NOT_LAY, not in a kept-out place.
 static func lay(crowd: Crowd, taken: Array) -> Array[Person]:
 	var out: Array[Person] = []
 	for p in crowd.citizens:
-		if MissionDirector._alive(p) and not p.inside and p.profile != null and not p.profile.role in NOT_LAY \
+		if MissionDirector._alive(p) and not kept_out(crowd, p) and not p.inside and p.profile != null and not p.profile.role in NOT_LAY \
 				and p.profile.faith == CitizenProfile.Faith.NONE and not taken.has(p):
 			out.append(p)
 	return out

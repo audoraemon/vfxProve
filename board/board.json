@@ -1,10 +1,10 @@
 {
- "hash": "62fc5fb3f141100c",
- "updated": "2026-11-26T14:24:11+07:00",
+ "hash": "7e9f5899ecbcd3c4",
+ "updated": "2026-11-26T16:42:35+07:00",
  "changes": {
-  "date": "<t:1795677851:f>",
+  "date": "<t:1795686155:f>",
   "items": [
-   "New: Veil twists, second round: Dread, Swallowing Dark, Evernight (in progress)"
+   "New: Veil ability icons (Codex CLI)"
   ]
  },
  "snapshot": {
@@ -1740,6 +1740,15 @@
     "updated": "2026-11-21",
     "order": 5
    },
+   "veil-icons": {
+    "title": "Veil ability icons (Codex CLI)",
+    "status": "done",
+    "area": "UI",
+    "needs_you": false,
+    "branch": "god/veil-levels",
+    "updated": "2026-11-26",
+    "order": 907
+   },
    "veil-review-adjust": {
     "title": "Veil abilities review: previews, stronger effects, second pass",
     "status": "doing",
@@ -2033,11 +2042,19 @@
   "branches": [
    {
     "name": "god/veil-twists-2",
+    "ahead": 91,
+    "behind": 150,
+    "date": "2026-11-26",
+    "subject": "fix: Veil twists 2 final-review wave (edge kind, craters end with the act, pull and eye fixes, docs)",
+    "pushed": false
+   },
+   {
+    "name": "god/veil-icons",
     "ahead": 85,
     "behind": 150,
     "date": "2026-11-26",
-    "subject": "docs: plan for the second round of Veil twists",
-    "pushed": false
+    "subject": "feat: repaint Silent Doom, Blight and Unseen Hour to match the Veil's new icon set",
+    "pushed": true
    },
    {
     "name": "god/veil-levels",
@@ -2048,6 +2065,22 @@
     "pushed": true
    },
    {
+    "name": "feat/god-chamber",
+    "ahead": 75,
+    "behind": 150,
+    "date": "2026-11-26",
+    "subject": "feat: God's Chamber step 7: the room's idle life, state objects and sound",
+    "pushed": true
+   },
+   {
+    "name": "feat/world-map-art",
+    "ahead": 75,
+    "behind": 150,
+    "date": "2026-11-26",
+    "subject": "feat: the World Map is a painted map: names on its ribbons, fog on what is out of reach, the god's faith on the land",
+    "pushed": false
+   },
+   {
     "name": "claude/natural-people",
     "ahead": 20,
     "behind": 0,
@@ -2056,11 +2089,27 @@
     "pushed": false
    },
    {
-    "name": "feat/god-chamber",
-    "ahead": 71,
-    "behind": 150,
-    "date": "2026-11-25",
-    "subject": "docs: the God's Chamber branch's rulings, open decision and play-test items",
+    "name": "feat/wish-clarity",
+    "ahead": 3,
+    "behind": 0,
+    "date": "2026-11-26",
+    "subject": "fix: wish how-lines move from the TAB list to the hint plate (the first open wish), keeping the HUD stack's depth",
+    "pushed": false
+   },
+   {
+    "name": "feat/warning-rework",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-26",
+    "subject": "docs: The Warning rework spec and plan",
+    "pushed": false
+   },
+   {
+    "name": "warning/t6",
+    "ahead": 1,
+    "behind": 0,
+    "date": "2026-11-26",
+    "subject": "docs: The Warning rework spec and plan",
     "pushed": false
    },
    {

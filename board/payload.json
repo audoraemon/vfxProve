@@ -7,16 +7,21 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**16** in progress · **30** to do · **177** done\n**11** active branches besides Develop-Main\n\n**Since the last update** (<t:1795677851:f>)\n• New: Veil twists, second round: Dread, Swallowing Dark, Evernight (in progress)",
+     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**16** in progress · **30** to do · **178** done\n**16** active branches besides Develop-Main\n\n**Since the last update** (<t:1795686155:f>)\n• New: Veil ability icons (Codex CLI)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-26T14:24:11+07:00"
+     "timestamp": "2026-11-26T16:42:35+07:00"
     },
     {
      "title": "god/veil-twists-2",
-     "description": "85 commits not in Develop-Main · last commit today · local only\n> docs: plan for the second round of Veil twists\n\n**In progress** (1)\n• Veil twists, second round: Dread, Swallowing Dark, Evernight",
+     "description": "91 commits not in Develop-Main · last commit today · local only\n> fix: Veil twists 2 final-review wave (edge kind, craters end with the act, pull and eye fixes, docs)\n\n**In progress** (1)\n• Veil twists, second round: Dread, Swallowing Dark, Evernight",
+     "color": 5016537
+    },
+    {
+     "title": "god/veil-icons",
+     "description": "85 commits not in Develop-Main · last commit today\n> feat: repaint Silent Doom, Blight and Unseen Hour to match the Veil's new icon set\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -25,15 +30,42 @@
      "color": 5016537
     },
     {
+     "title": "feat/god-chamber",
+     "description": "75 commits not in Develop-Main · last commit today\n> feat: God's Chamber step 7: the room's idle life, state objects and sound\n\n**In progress** (1)\n• God's Chamber (hub replacement) — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "feat/world-map-art",
+     "description": "75 commits not in Develop-Main · last commit today · local only\n> feat: the World Map is a painted map: names on its ribbons, fog on what is out of reach, the god's faith on the land\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
      "title": "claude/natural-people",
      "description": "20 commits not in Develop-Main · last commit today · local only\n> fix: a duty order (a goal) ends a soldier's flinch -- gate checker stepping out is not held for the stare\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
-     "title": "feat/god-chamber",
-     "description": "71 commits not in Develop-Main · last commit yesterday · local only\n> docs: the God's Chamber branch's rulings, open decision and play-test items\n\n**In progress** (1)\n• God's Chamber (hub replacement) — **needs you**",
+     "title": "feat/wish-clarity",
+     "description": "3 commits not in Develop-Main · last commit today · local only\n> fix: wish how-lines move from the TAB list to the hint plate (the first open wish), keeping the HUD stack's depth\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
+    {
+     "title": "feat/warning-rework",
+     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: The Warning rework spec and plan\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "warning/t6",
+     "description": "1 commit not in Develop-Main · last commit today · local only\n> docs: The Warning rework spec and plan\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "land/wish-clarity",
      "description": "2 commits not in Develop-Main · last commit yesterday · local only\n> docs: soldier duties rulings, reference flips, gate tables and landing checks\n\n_No Ledger task points at this branch._",
@@ -58,14 +90,7 @@
      "title": "god/dominion-t3-old",
      "description": "2 commits not in Develop-Main · last commit 20 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
      "color": 7041664
-    }
-   ]
-  },
-  {
-   "allowed_mentions": {
-    "parse": []
-   },
-   "embeds": [
+    },
     {
      "title": "fix/evac-recalm",
      "description": "1 commit not in Develop-Main · last commit 48 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
@@ -83,7 +108,7 @@
     },
     {
      "title": "Recently done",
-     "description": "• Remove the soldiers' march sound _(11-25)_\n• Loss warning on every mission (Informer, Escort, Raze, Assassinate...) _(11-25)_\n• Soldier duties: Citadel guard, patrols, corpse duty, cordon, sweep, gate check, shelter escort _(11-25)_\n• Mission clarity: every step says what to do; why-not banners _(11-24)_\n• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_\n• Loss warning: big red alarm when the night is about to be lost _(11-22)_",
+     "description": "• Veil ability icons (Codex CLI) _(11-26)_\n• Remove the soldiers' march sound _(11-25)_\n• Loss warning on every mission (Informer, Escort, Raze, Assassinate...) _(11-25)_\n• Soldier duties: Citadel guard, patrols, corpse duty, cordon, sweep, gate check, shelter escort _(11-25)_\n• Mission clarity: every step says what to do; why-not banners _(11-24)_\n• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_\n• Music by situation: panic heat, chase, festival and rite _(11-22)_",
      "color": 10185686
     }
    ]

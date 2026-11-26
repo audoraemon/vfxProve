@@ -32,6 +32,10 @@ const THREAT_MARGIN := 1.5
 const STARTLE := Vector2(0.4, 0.8)
 ## Closer than this (tiles) to what frightened it, a startled citizen cowers; farther, it points and shouts (drawing only).
 const COWER_REACH := 3.0
+## The flinch of a steadied person (fair life, 2026-11-20): a man told there is nothing to fear still turns at a blow. He
+## freezes his own startle_seconds() facing it and stares at it until FLINCH_SECONDS from the start, then carries on. He
+## never moves (no step: user ruling 2026-11-24). No mind, anchor or awareness changes.
+const FLINCH_SECONDS := 2.0
 ## How often a soldier standing at its post plays its talk (seconds, min and max; drawing only).
 const TALK_EVERY := Vector2(8.0, 15.0)
 ## How long, of every TALK_EVERY, a soldier at its post talks in its pauses (seconds).
@@ -259,6 +263,9 @@ var beat_index := -1
 var on_guard_job := false
 ## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
 var drill_face := Vector2.INF
+## The middle of the talking group a fair goer stands in (MarketPanicDirector via FairLife): standing on duty with no goal he
+## faces it and shows the talk art; INF for none (fair life, 2026-11-20).
+var chat_at := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
 ## The way a soldier faces standing at his anchor (a Citadel guard man in his rank, later a corpse watcher or a cordon end); INF
@@ -505,6 +512,10 @@ var _getup_left := 0.0
 var _swing_left := 0.0
 ## Seconds left frozen in fright before running (v0.11.2, STARTLE); see startled().
 var _startle_left := 0.0
+## The flinch (fair life, 2026-11-20): seconds left of it, how long it has run and where it looks.
+var _flinch_left := 0.0
+var _flinch_t := 0.0
+var _flinch_from := Vector2.INF
 ## Drawing state for the people sprites (PeopleArt), never read by the brain: it stepped this tick, the step went
 ## toward the back of the screen (a back view), and which of a role's two looks it wears (hashed from its home or
 ## post, never drawn from rng; -1 until first drawn).
@@ -676,7 +687,7 @@ func frame(delta: float) -> void:
 func unhurried() -> bool:
 	var calm := mind == Mind.CALM or mind == Mind.POST or mind == Mind.OBSERVE or mind == Mind.RECOVER \
 		or mind == Mind.REGROUP or mind == Mind.COMPELLED
-	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and _startle_left <= 0.0 and wait <= 0.0 and not hurrying \
+	return calm and state == State.WANDER and not is_frozen() and _stumble <= 0.0 and _startle_left <= 0.0 and _flinch_left <= 0.0 and wait <= 0.0 and not hurrying \
 		and _scream_left <= 0.0 and _down_left <= 0.0 and _getup_left <= 0.0 and not _down_pending
 
 
@@ -815,6 +826,8 @@ func _think(delta: float) -> void:
 		_panic_left = maxf(_panic_left - delta, 0.0)
 		_idle = maxf(_idle, 0.05)
 		return
+	if _flinch_left > 0.0 and _flinch_think(delta):
+		return
 	if _startle_left > 0.0 and mind != Mind.PANIC:
 		_startle_left = 0.0  # something else took the mind (a whisper, a Dominion): no freeze left to serve
 	if _startle_left > 0.0:
@@ -882,6 +895,8 @@ func _think(delta: float) -> void:
 			_whisper_left -= delta
 			if _whisper_left <= 0.0:
 				_wake()
+	if mind == Mind.DUTY and chat_at != Vector2.INF and _goal == Vector2.INF:
+		_face_chat()
 	match mind:
 		Mind.FLEE:
 			if _goal == Vector2.INF:
@@ -1415,8 +1430,11 @@ func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelt
 		return
 	if home_sick or (not statuses.is_empty() and (is_shadow() or is_dreaded())):
 		return  # the sick walk home whatever happens; a shadow sees nothing; the dreaded cannot run (Veil)
-	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
-		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
+	if held_by_will(WILL_ABSOLUTE):
+		return  # a Dominion stronger than fear
+	if fearless_left > 0.0 and not burning():
+		flinch(from)  # a mind told there is nothing to fear still turns -- unless he is on fire (fair life, 2026-11-20)
+		return
 	if not forced and crowd != null and crowd.shelter_escort != null and crowd.shelter_escort.steadied(self, from, radius):
 		return  # a household led to shelter holds against a near miss while its escort stands by (ShelterEscort)
 	# A sturdy building nearby may be better than running (ShelterManager).
@@ -1455,14 +1473,116 @@ func startled() -> bool:
 	return _startle_left > 0.0
 
 
+## A steadied person's start at `from` (fair life, 2026-11-20): turn to it, freeze startle_seconds(), stare until
+## FLINCH_SECONDS from the start, then carry on; he does not move meanwhile. His mind, anchor and
+## awareness are untouched and nothing is drawn from any generator. Refused while one runs, and for the dead, those
+## indoors, and anyone not calm, recovering, looking or on duty (a duty citizen still walking to a goal keeps going; a soldier: not at his post, or hurrying).
+func flinch(from: Vector2) -> void:
+	if _flinch_left > 0.0 or state == State.DEAD or inside or night_indoors or held_by_will(WILL_ABSOLUTE) or resists_mind():
+		return
+	# The same eligibility observe() always had: a soldier standing at his post, a citizen calm, recovering, looking or on duty.
+	if soldier:
+		if mind != Mind.POST or hurrying:
+			return
+	elif not (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.OBSERVE or mind == Mind.DUTY):
+		return
+	elif mind == Mind.DUTY and has_goal():
+		return  # on his way somewhere on purpose (a bolting lamb, an escort): he keeps going (fair life T5)
+	if soldier and has_goal():
+		return  # a soldier walking back to his post keeps going the same way (fair life final review M5)
+	_flinch_left = FLINCH_SECONDS
+	_flinch_t = 0.0
+	_flinch_from = from
+	_idle = maxf(_idle, startle_seconds())
+	_face_flinch()
+
+
+## A fair goer standing in his talking group faces its middle (fair life, 2026-11-20). The flinch's own facing wins while it
+## runs: _think() returns before it gets here.
+func _face_chat() -> void:
+	var d := chat_at - ground_pos
+	if absf(d.x - d.y) > 0.0001:
+		_facing = 1 if d.x - d.y > 0.0 else -1
+	if absf(d.x + d.y) > 0.0001:
+		_back = d.x + d.y < 0.0
+
+
+func flinching() -> bool:
+	return _flinch_left > 0.0
+
+
+## Where the flinch looks: the one place his facing is set while it runs (a talk pose must give way to it).
+func _face_flinch() -> void:
+	var d := _flinch_from - ground_pos
+	if absf(d.x - d.y) > 0.0001:
+		_facing = 1 if d.x - d.y > 0.0 else -1
+	if absf(d.x + d.y) > 0.0001:
+		_back = d.x + d.y < 0.0
+
+
+## Something else has taken the mind while a flinch runs (a whisper, a compel, a confuse, a fight, a director's duty order):
+## the flinch is over, as the startle is (final review I1). A flinch never sets a goal, so a goal
+## on a duty citizen is always someone else's order.
+func _flinch_overruled() -> bool:
+	if held_by_will(WILL_ABSOLUTE) or resists_mind():
+		return true
+	if soldier:
+		return mind != Mind.POST or hurrying or has_goal()  # a duty order (a gate checker stepping out, a beat) ends the stare (soldier duties merge)
+	if not (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.OBSERVE or mind == Mind.DUTY):
+		return true
+	return mind == Mind.DUTY and _goal != Vector2.INF
+
+
+## A flinch cut short by an order that takes the mind (final review I1): no stare left, and he stands
+## where he is, so the order's own goal is the next thing he walks to.
+func _flinch_end() -> void:
+	if _flinch_left <= 0.0:
+		return
+	_flinch_left = 0.0
+	_target = ground_pos
+	_idle = 0.0
+
+
+## One think of a flinch; true when it holds the person this think (he freezes and stares).
+func _flinch_think(delta: float) -> bool:
+	if _flinch_overruled():
+		_flinch_left = 0.0
+		return false
+	if state != State.WANDER or inside or mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.SHELTER or mind == Mind.ASLEEP:
+		_flinch_left = 0.0
+		return false
+	var freeze := startle_seconds()
+	_flinch_t += delta
+	_flinch_left = maxf(FLINCH_SECONDS - _flinch_t, 0.0)
+	if _flinch_left <= 0.0:
+		if mind == Mind.DUTY:
+			# Back to his place (he never left it): as a duty always does.
+			if _goal == Vector2.INF and ground_pos.distance_to(anchor) < 2.0 and straight_clear(anchor):
+				_target = anchor
+				_idle = 0.0
+			else:
+				set_goal(anchor)
+		return false
+	if _flinch_t < freeze:
+		_idle = maxf(_idle, 0.25)  # thinking is half-rate: hold him past the next think
+		_face_flinch()
+		return true
+	_idle = maxf(_idle, 0.25)
+	_face_flinch()
+	return true
+
+
 ## Something happened within sight or earshot at `from`: stop and look at it for a moment. Only a calm or recovering
 ## citizen does (v0.11.1: and a soldier standing at his post); the frightened and the fleeing are past looking. A positive `seconds` sets how long (v0.08: the
 ## watchman staring at the falling star), else it is OBSERVE_SECONDS at random.
 func observe(from: Vector2, seconds := -1.0) -> void:
-	if night_indoors or resists_mind() or state == State.DEAD or fearless_left > 0.0:
+	if night_indoors or resists_mind() or state == State.DEAD:
 		return
 	if home_sick or (not statuses.is_empty() and (is_shadow() or is_dreaded())):
 		return  # (Veil) the sick, a shadow and the dreaded look at nothing
+	if fearless_left > 0.0:
+		flinch(from)  # told there is nothing to fear, he still turns to look (fair life, 2026-11-20)
+		return
 	if soldier:
 		if mind != Mind.POST or hurrying:
 			return  # a soldier looks up from his post; one going somewhere has no time
@@ -1805,6 +1925,7 @@ func rewind(was: Dictionary, daze := 0.0) -> bool:
 	wait = 0.0
 	_stumble = 0.0
 	_startle_left = 0.0
+	_flinch_left = 0.0
 	_get_up_now()
 	_unstick_left = 0.0
 	_unstick_way = PackedVector2Array()
@@ -2000,6 +2121,7 @@ func held_by_god() -> bool:
 ## A soldier's hold begins: remember what he was doing (once; a hold that replaces a hold keeps the first). Minds that are
 ## themselves a hold or a pause (a fright, a look, a fight) are no state to go back to: his post then.
 func _hold_begin() -> void:
+	_flinch_end()
 	if not soldier or _held_saved:
 		return
 	_held_saved = true
@@ -2155,6 +2277,7 @@ func sleep(seconds: float, deep := false) -> bool:
 	_fight_left = 0.0
 	_panic_left = 0.0
 	_startle_left = 0.0
+	_flinch_left = 0.0
 	mind = Mind.ASLEEP
 	_sleep_left = seconds
 	_goal = Vector2.INF
@@ -2419,6 +2542,7 @@ func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE
 	release_from_queue()
 	passing_gate = null
 	_held_saved = false  # a fight takes him over: nothing of an earlier hold is left to go back to
+	_flinch_end()
 	_ordered = false
 	mind = Mind.FIGHT
 	fight_target = target
@@ -3035,6 +3159,7 @@ func go_duty(at: Vector2) -> void:
 	if not can_take_duty():
 		return
 	_held_saved = false
+	_flinch_end()
 	mind = Mind.DUTY
 	anchor = at
 	walk_speed = _mind_speed()
@@ -3044,7 +3169,7 @@ func go_duty(at: Vector2) -> void:
 ## Whether go_duty() would take now: not dead, fleeing or fighting, nor held by a firm compulsion (god T1R H8: a mission picks its
 ## errand-runners from those who can).
 func can_take_duty() -> bool:
-	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or home_sick)
+	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or home_sick or burning())  # a man on fire takes no duty (fair life, 2026-11-20)
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.
@@ -3179,8 +3304,8 @@ func _step_blocked(step: Vector2) -> bool:
 ## Soldiers only: stand at `at` (its starting post, or a slot on the Citadel's rally ring), at a walk or, `hurried`
 ## (escorts, marshals, rescue squads), at a run.
 func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
-	if state == State.DEAD:
-		return
+	if state == State.DEAD or burning():
+		return  # a man on fire is sent nowhere (fair life, 2026-11-20)
 	_held_saved = false  # sent somewhere by someone (a town order -- the rally, the marshals, a rescue -- wins over any hold, WILL_FIRM too)
 	anchor = at
 	stand_face = Vector2.INF
@@ -3553,6 +3678,13 @@ func _sprite_pose_code() -> int:
 		span = SWING_SHOW
 	elif _lift > 8.0 or state == State.PULLED or state == State.KNOCKBACK:
 		anim = 2
+	elif _flinch_left > 0.0 and _flinch_t < startle_seconds() and state == State.WANDER and _own_art(12):
+		# A steadied person's start (fair life): the same cower or point as a fright's freeze.
+		anim = 12 if ground_pos.distance_to(_flinch_from) < COWER_REACH else 10
+		if anim == 10 and not _own_art(10):
+			anim = 12
+		span = startle_seconds()
+		t = _flinch_t
 	elif _startle_left > 0.0 and state == State.WANDER and _own_art(12):
 		# Frozen in fright: a threat close by, it cowers; farther off, it points and shouts (phase 2).
 		anim = 12 if ground_pos.distance_to(_threat) < COWER_REACH else 10
@@ -3603,6 +3735,8 @@ func _sprite_pose_code() -> int:
 func _interact_anim() -> int:
 	if mind == Mind.ASSIST and assist_at_water and not has_goal():
 		return 14 if _own_art(14) else -1
+	if mind == Mind.DUTY and chat_at != Vector2.INF and not soldier and not has_goal() and _flinch_left <= 0.0 and _own_art(13):
+		return 13  # a fair goer talking in his group (fair life, 2026-11-20)
 	if soldier:
 		if talk_left > 0.0 and not _stride:
 			return 13 if _own_art(13) else -1

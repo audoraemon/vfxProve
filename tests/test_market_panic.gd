@@ -30,6 +30,7 @@ static func run(t) -> void:
 	_texts(t)
 	_impact(t)
 	_ember_breaks(t)
+	_burning_goer_runs(t)
 
 
 static func _world() -> Dictionary:
@@ -514,4 +515,30 @@ static func _ember_breaks(t) -> void:
 	Kit.run_for(s, 8.0)
 	t.check(d.broke_list().has(g) and d.hint_phase() == "open",
 		"with no warden on guard the fire's fright breaks the goer by the house (%s)" % [d.hint_phase()])
+	Kit.done(s)
+
+
+## A steadied goer set alight runs and breaks, then burns to death counted once (fair life, 2026-11-20).
+static func _burning_goer_runs(t) -> void:
+	var s := _world()
+	var d: MarketPanicDirector = s.d
+	var crowd: Crowd = s.crowd
+	var a := d.wards[0].man as Person
+	var g := (d.waves[0] as Array)[0] as Person
+	Kit.arrive(g, a.ground_pos + Vector2(0.0, 1.5))
+	var spot := g.ground_pos
+	Kit.run_for(s, MarketPanicDirector.TICK + DT)
+	t.check(d.steadied(g), "a goer by a warden is steadied")
+	var before := d.count()
+	crowd.burn(g, Burning.BURN_FOR, g.ground_pos + Vector2(0.5, 0.0))
+	for i in roundi(1.5 / DT):
+		g.frame(DT)  # his feet move between the town's steps
+		Kit.run_for(s, DT)
+	t.check(g.mind == Person.Mind.PANIC and g.ground_pos.distance_to(spot) > 1.0 and d.broke_list().has(g),
+		"set alight, the steadied goer runs and breaks (mind %d, moved %.2f)" % [g.mind, g.ground_pos.distance_to(spot)])
+	for i in roundi(Burning.BURN_FOR / DT):
+		if g.is_alive():
+			g.frame(DT)
+		Kit.run_for(s, DT)
+	t.check(not g.is_alive() and d.count() == before + 1, "he burns to death and counts once (%d -> %d)" % [before, d.count()])
 	Kit.done(s)

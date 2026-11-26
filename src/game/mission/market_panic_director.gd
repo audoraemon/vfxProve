@@ -86,6 +86,8 @@ var _stands := {}
 ## Seconds into the night, and to the next look (v0.11 M3).
 var _clock := 0.0
 var _tick_in := 0.0
+## The fair's talking groups: where each goer stands and when a group strolls on (fair life, 2026-11-20).
+var life: FairLife
 
 
 ## The night's setup (v0.11 M3): no Mayor, one bonfire, the need; the wardens set down at their posts; then the Festival's own
@@ -93,6 +95,7 @@ var _tick_in := 0.0
 func _begin() -> void:
 	has_mayor = false
 	need = FAIR_NEED
+	life = FairLife.new(hash(crowd._rng.seed) ^ 0x7A1E, HEART, FAIR_R, _reaches, _walkable)
 	fire_spots = [_walkable(HEART + BONFIRE_OFF)]
 	for i in SOURCES.size():
 		waves.append([])
@@ -127,6 +130,10 @@ func _add_events() -> void:
 
 func _close() -> void:
 	_sound(&"msn_shut", HEART)
+	life.close()  # the market is shut: no more talk, and no late goer joins a group
+	for v: Variant in goers:
+		if is_instance_valid(v):
+			(v as Person).chat_at = Vector2.INF
 
 
 ## Crowd `i` is appointed as the night begins (v0.11 M3, Decision 14 and Task 3's fix rounds): the WAVE lay citizens nearest its
@@ -159,6 +166,7 @@ func _send_wave(i: int) -> void:
 	wave_out[i] = _clock
 	if i > 0:
 		_sound(&"msn_gather", _walkable(SOURCES[i]))
+	var out: Array = []
 	for v: Variant in waves[i]:
 		if is_instance_valid(v):
 			_stands.erase((v as Person).get_instance_id())
@@ -169,26 +177,40 @@ func _send_wave(i: int) -> void:
 			continue
 		if p.fearless_left <= HarvestDirector.HOLD_POST:
 			p.fearless_left = 0.0
+		out.append(p)
+	life.form(out)  # talking groups, spots drawn from the fair's own stream
+	for p: Person in out:
 		_to_fair(p)
 
 
-## Goer `p` walks on duty to his spot at the fair (v0.11 M3 final review), drawn now if he has none yet (_fair_spot()).
+## Goer `p` walks on duty to his spot at the fair (v0.11 M3 final review): his place in a talking group (FairLife); one sent late,
+## who was in no group when his crowd set out, joins the nearest group with room.
 func _to_fair(p: Person) -> void:
 	var id := p.get_instance_id()
 	if not _spots.has(id):
-		_spots[id] = _fair_spot(p)
+		if life.spot_of(p) == Vector2.INF:
+			_apply(life.join(p), p)
+		if life.spot_of(p) == Vector2.INF:
+			return  # the market has closed: he is given no spot
+		_spots[id] = life.spot_of(p)
 	p.go_duty(_spots[id])
 
 
-## A spot within FAIR_R of the fountain on walkable ground (v0.11 M3: the plaza, the street and the gaps between houses) that `p`
-## has a way on foot to (the final review: a goer walks in on duty, and one bound for a yard shut behind the houses would stand
-## short of it for good, where a calm stroller drifted on); the fountain's nearest ground if none of the tries is.
-func _fair_spot(p: Person) -> Vector2:
-	for attempt in 12:
-		var spot := HEART + Vector2(crowd._rng.randf_range(-FAIR_R, FAIR_R), crowd._rng.randf_range(-FAIR_R, FAIR_R))
-		if spot.distance_to(HEART) <= FAIR_R and (crowd._grid == null or crowd._grid.walkable(spot)) and _reaches(p, spot):
-			return spot
-	return _walkable(HEART)
+## The people whose spot the groups changed (a stroll, a merge, a late joiner; fair life, 2026-11-20) are sent to the new one;
+## `except` is sent by the caller. They are no longer arrived, so they stop talking while they walk.
+func _apply(changed: Array, except: Person = null) -> void:
+	for v: Variant in changed:
+		if not _alive(v) or v == except or _broke.has(v) or _left.has(v):
+			continue
+		var p := v as Person
+		var id := p.get_instance_id()
+		if not _spots.has(id):
+			continue
+		_spots[id] = life.spot_of(p)
+		_arrived.erase(id)
+		p.chat_at = Vector2.INF
+		if not p.inside and (p.mind == Person.Mind.DUTY or p.mind in WarningDirector.RESUMABLE):
+			p.go_duty(_spots[id])
 
 
 ## Everyone at work for the fair (v0.11 M3): its goers, the waiting ones too, and its wardens, for a new one to leave out.
@@ -215,6 +237,7 @@ func step(delta: float) -> void:
 	_clock += delta
 	super(delta)
 	_chain()
+	_apply(life.step(delta))
 	_tick_in -= delta
 	var looking := _tick_in <= 0.0
 	if looking:
@@ -223,6 +246,7 @@ func step(delta: float) -> void:
 	if looking:
 		var evacuating := _evacuation_began()
 		_steady()
+		_let_go()
 		_hold_fair(evacuating)
 		_hold_waiting(evacuating)
 
@@ -353,9 +377,9 @@ func steadied(p: Person) -> bool:
 
 
 ## A steadied goer, or one waiting for his crowd to set out, is not broken by a fright or a loud cast's danger (v0.11 M3); a death
-## still counts.
+## still counts. A goer on fire is no longer steadied: he runs and breaks (fair life, 2026-11-20).
 func _may_break(p: Person) -> bool:
-	return not steadied(p) and not is_waiting(p)
+	return p.burning() or (not steadied(p) and not is_waiting(p))
 
 
 ## Goer `p` waits at his stand for his crowd to set out (v0.11 M3).
@@ -399,6 +423,21 @@ func _hold_fair(evacuating := false) -> void:
 				_arrived[id] = true
 		if p.mind in WarningDirector.RESUMABLE or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(spot) > 0.3):
 			p.go_duty(spot)
+		# Arrived and standing at his spot he talks, facing his group's middle; walking he does not.
+		var centre := life.centre_of(p)
+		p.chat_at = centre if _arrived.has(id) and centre != Vector2.INF and p.mind == Person.Mind.DUTY \
+			and p.ground_pos.distance_to(spot) <= ARRIVE else Vector2.INF
+
+
+## A goer broken, dead or out of the town is out of his talking group and talks no more (fair life, 2026-11-20).
+func _let_go() -> void:
+	for v: Variant in goers:
+		if not is_instance_valid(v):
+			continue
+		var p := v as Person
+		if _broke.has(p) or _left.has(p) or not p.is_alive():
+			life.drop(p)
+			p.chat_at = Vector2.INF
 
 
 ## The people waiting for their crowd to set out stay at their stands (v0.11 M3): they are held fearless (HOLD_POST past the next

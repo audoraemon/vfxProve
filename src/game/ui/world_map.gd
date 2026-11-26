@@ -26,6 +26,10 @@ const TABLE_MAP := Rect2(215.0, 232.0, 200.0, 28.0)
 const RIBBON_H := 17.0
 const RIBBON_END := 12.0
 const RIBBON_CUT := 0.115
+## The lettering face and its sizes: names and title, and the card's heading.
+const NAME_FONT := "res://assets/fonts/Jersey10-Regular.ttf"
+const NAME_SIZE := 13
+const HEAD_SIZE := 16
 const RISE_SECONDS := 0.7
 const SINK_SECONDS := 0.45
 ## How long a newly opened town's fog takes to burn away.
@@ -50,7 +54,7 @@ static var _prewarmed := false
 static var _blob: Texture2D
 static var _flat: Texture2D
 static var _hole: Texture2D
-static var _bold: FontVariation
+static var _bold: Font
 static var _visits := {}
 
 var selected := ""
@@ -589,12 +593,18 @@ static func _stain(on: CanvasItem, c: Vector2, size: Vector2, col: Color) -> voi
 	on.draw_texture_rect(_soft(), Rect2(c - size * 0.5, size), false, col)
 
 
-## The bold face of the pixel font, for the names on the ribbons.
-static func bold() -> FontVariation:
+## The map's lettering face (Jersey 10: its C, G and O read apart, which Pixelify Sans's do not), for town names, the title and the
+## card's heading; drawn like the pixel font, with every smoothing trick off. The pixel font when the file is missing.
+static func bold() -> Font:
 	if _bold == null:
-		_bold = FontVariation.new()
-		_bold.base_font = UiTheme.base_font()
-		_bold.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): 700}
+		if ResourceLoader.exists(NAME_FONT):
+			var f: FontFile = load(NAME_FONT)
+			f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+			f.hinting = TextServer.HINTING_NONE
+			f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+			_bold = f
+		else:
+			_bold = UiTheme.font_for(NAME_SIZE)
 	return _bold
 
 
@@ -862,7 +872,7 @@ static func _roman(n: int) -> String:
 func _draw_top() -> void:
 	for id in WorldLayout.ids():
 		_draw_spot(id)
-	_ink(Vector2(roundf(WorldLayout.TITLE_AT.x - bold_width(TITLE, UiTheme.SIZE_SMALL) * 0.5), WorldLayout.TITLE_AT.y), TITLE, UiTheme.SIZE_SMALL, INK, bold())
+	_ink(Vector2(roundf(WorldLayout.TITLE_AT.x - bold_width(TITLE, NAME_SIZE) * 0.5), WorldLayout.TITLE_AT.y), TITLE, NAME_SIZE, INK, bold())
 	# Whose map this is: the god's tier and Faith on the frame, its emblem on the compass.
 	var god := god_color()
 	var tier := "TIER %s" % _roman(_slot.tier)
@@ -895,7 +905,7 @@ func _draw_spot(id: String) -> void:
 	var god := god_color()
 	var rib := WorldLayout.ribbon(id)
 	var label := WorldLayout.name_of(id).to_upper()
-	var size := UiTheme.SIZE_SMALL
+	var size := NAME_SIZE
 	if state != "sealed":
 		rib = name_ribbon(id, bold_width(label, size))
 	if id == selected or (id == hovered and selectable(id)):
@@ -959,7 +969,7 @@ func _draw_plate() -> void:
 	var left := PLATE.position.x + 18.0
 	var room := descend_rect().position.x - left - 2.0
 	var soft := Color(0.30, 0.18, 0.09)
-	_ink(Vector2(left, PLATE.position.y + 19.0), lines[0], UiTheme.SIZE_BODY, INK, bold())
+	_ink(Vector2(left, PLATE.position.y + 19.0), lines[0], HEAD_SIZE, INK, bold())
 	if lines.size() >= 3:  # an open town: its people on one line, then what waits there
 		var people := "%s   %s" % [lines[1], lines[2]]
 		_ink(Vector2(left, PLATE.position.y + 30.5), _clip(people, room), UiTheme.SIZE_SMALL, soft)

@@ -394,7 +394,7 @@ const POWERS := [
 			{"FULL_R": [10.2, 14.5], "GROW": 0.55},
 			{"FULL_R": [10.4, 15.0], "GROW": 0.6},
 			{"FULL_R": [10.6, 15.5], "GROW": 0.65},
-			{"FULL_R": [10.8, 16.0], "GROW": 0.7, "twist": true, "twist_text": "Nothing Leaves: who walks out is taken too"}]},
+			{"FULL_R": [10.8, 16.0], "GROW": 0.7, "twist": true, "twist_text": "The Moon's Face: craters eat who stays"}]},
 	{"key": "evernight", "name": "Evernight", "path": "res://src/fx/veil/evernight.gd",
 		"blurb": "Night falls on the whole town, and the dark takes the lone.",
 		"dp": 6, "cooldown": 999.0, "aim": "click",

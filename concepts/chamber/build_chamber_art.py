@@ -109,12 +109,13 @@ def closed_door(patch):
             r, g, b, a = px[x, y]
             hh, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
             warm = hh < 0.17 or hh > 0.95
+            # Put out, the light becomes the wall's own cool stone: red over green, blue a little over red (no green, no teal).
             if v > 0.55 and warm:          # the crack, the runes, the lit edges
                 d = 0.16 if v > 0.8 else 0.22
-                px[x, y] = (int(255 * d), int(255 * d * 0.95), int(255 * d * 0.95), a)
+                px[x, y] = (int(255 * d), int(255 * d * 0.86), int(255 * d * 1.02), a)
             elif warm and s > 0.25:        # the glow on stone and floor
                 g2 = (r * 0.3 + g * 0.5 + b * 0.2) * 0.62
-                px[x, y] = (int(g2 * 0.95), int(g2), int(min(255, g2 * 1.08)), a)
+                px[x, y] = (int(g2), int(g2 * 0.88), int(min(255, g2 * 1.05)), a)
     return out
 
 
@@ -526,6 +527,284 @@ def _placed(canvas, patch, rect):
     return out
 
 
+# Each station's silhouette is traced from the painting's own pixels (round 3b), within a box round it (room units): the pixels that
+# look like the object, the connected piece of them that holds the seed, closed and filled. Seeds and boxes are the only numbers.
+TRACE = {
+    # key: (box x0, y0, x1, y1 inclusive, seed)
+    "descend": ((205, 228, 430, 268), (316, 246)),
+    "tree": ((-8, 131, 53, 286), (30, 200)),
+    "awaken": ((128, 84, 236, 251), (150, 180)),
+    "faith": ((549, 226, 639, 300), (590, 232)),
+}
+HOVER_BOOST = GLOW_BOOST                           # a hovered object is its own picture this much brighter
+RIM = (236, 196, 112)                              # the hover rim's warm gold
+RIM_ALPHA = (0.85, 0.35)                           # its inner and outer pixel
+VIGNETTE_MAX = 0.2                                 # the darkest the vignette gets (corners and the ceiling)
+
+
+def _hsv_array(im):
+    import numpy as np
+    a = np.asarray(im.convert("RGB"), dtype=np.float64) / 255.0
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    mx, mn = a.max(axis=2), a.min(axis=2)
+    d = mx - mn
+    h = np.zeros_like(mx)
+    nz = d > 1e-9
+    rr = nz & (mx == r)
+    gg = nz & (mx == g) & ~rr
+    bb = nz & ~rr & ~gg
+    h[rr] = ((g - b)[rr] / d[rr]) % 6.0
+    h[gg] = (b - r)[gg] / d[gg] + 2.0
+    h[bb] = (r - g)[bb] / d[bb] + 4.0
+    h = h / 6.0
+    s_ = np.where(mx > 1e-9, d / np.maximum(mx, 1e-9), 0.0)
+    return h, s_, mx
+
+
+def _traced(like, box, seed):
+    """The piece of `like` (a bool array over the wall canvas) inside `box` that holds `seed`, closed (3x3), holes filled, then opened
+    (3x3) so no 1-px spur makes a rim corner."""
+    import numpy as np
+    from scipy import ndimage
+    x0, y0, x1, y1 = box
+    inside = np.zeros_like(like)
+    inside[y0:y1 + 1, x0 + 100:x1 + 101] = True
+    m = like & inside
+    m = ndimage.binary_closing(m, structure=np.ones((3, 3)), iterations=1) & inside
+    keep = _piece(m, seed)
+    keep = ndimage.binary_fill_holes(keep)
+    keep = ndimage.binary_opening(keep, structure=np.ones((3, 3)))
+    return _piece(keep, seed)
+
+
+def _piece(m, seed):
+    """The connected piece of `m` nearest the seed (the largest piece found within 6 px of it)."""
+    import numpy as np
+    from scipy import ndimage
+    lab, _ = ndimage.label(m)
+    sx, sy = seed[0] + 100, seed[1]
+    near = lab[sy - 6:sy + 7, sx - 6:sx + 7]
+    ids, counts = np.unique(near[near > 0], return_counts=True)
+    assert len(ids), ("no traced pixel near the seed", seed)
+    return lab == ids[np.argmax(counts)]
+
+
+DOOR_SNAP = 4
+TABLE_REACH = 18                   # how far past the map's ends the table's frame may run to its dark outline
+ALTAR_FLOOR = 286                  # room y from which warm pixels left of the altar are the floor
+
+
+def _arch_mask():
+    import numpy as np
+    from PIL import ImageDraw
+    m = Image.new("L", (840, 360), 0)
+    d = ImageDraw.Draw(m)
+    x0, x1, top, bottom = DOOR_ARCH
+    r = (x1 - x0) / 2.0
+    d.ellipse((x0 + 100, top, x1 + 100, top + 2 * r), fill=255)
+    d.rectangle((x0 + 100, top + r, x1 + 100, bottom), fill=255)
+    return np.asarray(m) > 127
+
+
+def _snapped(shape, v, reach):
+    """`shape` with each row's left and right ends moved to the strongest change of light (|v[x] - v[x-1]|) within `reach` px, then
+    each end smoothed as the median of its row and the rows either side."""
+    import numpy as np
+    grad = np.abs(np.diff(v, axis=1, prepend=v[:, :1]))
+    rows = [y for y in range(shape.shape[0]) if shape[y].any()]
+    ends = {}
+    for y in rows:
+        xs = np.where(shape[y])[0]
+        a, b = xs.min(), xs.max()
+        la = max(1, a - reach) + int(np.argmax(grad[y, max(1, a - reach):a + reach + 1]))
+        rb = b - reach + int(np.argmax(grad[y, b - reach + 1:b + reach + 2]))
+        ends[y] = (la, rb)
+    out = np.zeros_like(shape)
+    for y in rows:
+        trio = [ends[k] for k in (y - 1, y, y + 1) if k in ends]
+        a = sorted(e[0] for e in trio)[len(trio) // 2]
+        b = sorted(e[1] for e in trio)[len(trio) // 2]
+        out[y, a:b + 1] = True
+    return out
+
+
+def silhouette(key):
+    """The station's shape as an L mask over the whole wall canvas (840 x 360), traced from the painting:
+    - the World Table: its map's blue (the pins filled in), widened by the table's frame, and the front slab under it;
+    - the Ability Tree: the stone's lit purple, which a dark seam parts from the wall and the shelves;
+    - the Rite Door: the doors' warm wood and their light, inside the stone arch;
+    - the Faith Altar: the altar's lit stone, cloth and step left of the dark block (each row from its first lit pixel to the
+      painting's edge), the brazier's dark iron bowl, its flame and the candles by their own pixels."""
+    import numpy as np
+    from scipy import ndimage
+    canvas = with_clone(wall(raw("scene")))
+    h, s_, v = _hsv_array(canvas)
+    box, seed = TRACE[key]
+    warm = ((h < 0.14) | (h > 0.95)) & (s_ > 0.2)
+    if key == "descend":
+        blue = (h > 0.5) & (h < 0.72) & (s_ > 0.3) & (v > 0.4)
+        mp = _traced(blue, box, seed)
+        mp = ndimage.binary_closing(mp, structure=np.ones((5, 5)), iterations=2)
+        mp = ndimage.binary_fill_holes(mp)
+        mp = ndimage.binary_dilation(mp, structure=np.ones((3, 3)), iterations=2)   # the frame round the map
+        widths = mp.sum(axis=1)
+        bottom = int(np.where(widths >= 0.9 * widths.max())[0].max())  # the map's front edge (its light spilling lower is not table)
+        mp[bottom + 1:, :] = False
+        cols = np.where(mp[bottom])[0]
+        # The front slab under the map runs from the dark outline the painting draws at its left end to the one at its right (looked
+        # for within TABLE_REACH px of the map's bottom corners); the table's top is then the hull of the map and the slab -- its
+        # edges are straight in the painting.
+        slab = np.zeros_like(mp)
+        for y in range(bottom + 1, min(box[3], bottom + 7) + 1):
+            a, b = cols.min(), cols.max()
+            for k in range(1, TABLE_REACH + 1):
+                if v[y, cols.min() - k] < 0.14:
+                    a = cols.min() - k + 1
+                    break
+            for k in range(1, TABLE_REACH + 1):
+                if v[y, cols.max() + k] < 0.14:
+                    b = cols.max() + k - 1
+                    break
+            slab[y, a:b + 1] = True
+        from scipy.spatial import ConvexHull
+        from PIL import ImageDraw
+        pts = np.argwhere(mp | slab)[:, ::-1]
+        hull = pts[ConvexHull(pts).vertices]
+        poly = Image.new("L", (840, 360), 0)
+        ImageDraw.Draw(poly).polygon([tuple(map(int, p)) for p in hull], fill=255)
+        mp = np.asarray(poly) > 127
+        out = mp
+    elif key == "tree":
+        out = _traced(v >= 0.2, box, seed)
+    elif key == "awaken":
+        # The doors and the arch's stones are one purple-grey, and the dark joint round the doors is broken, so colour cannot part
+        # them: the arch's outline is found instead on the painting's own edges -- each row's sides moved to the strongest change of
+        # light within DOOR_SNAP px of the round-topped arch, the rows then smoothed (median of three).
+        out = _snapped(_arch_mask(), v, DOOR_SNAP)
+    else:  # faith
+        x0, y0, x1, y1 = box
+        lit = v >= 0.27
+        floor = np.zeros_like(lit)
+        floor[ALTAR_FLOOR:, :] = warm[ALTAR_FLOOR:, :]  # below the step the warm floorboards are not the altar
+        lit &= ~floor
+        out = np.zeros_like(lit)
+        for y in range(y0, y1 + 1):
+            xs = np.where(lit[y, x0 + 100:x1 + 101])[0]
+            if len(xs):
+                out[y, x0 + 100 + xs.min():x1 + 101] = True
+        # each row from its first lit pixel: a lone lit speck must not pull the edge out, so take the median of three rows
+        left = [np.argmax(out[y]) if out[y].any() else None for y in range(360)]
+        for y in range(y0 + 1, y1):
+            trio = [left[k] for k in (y - 1, y, y + 1) if left[k] is not None]
+            if len(trio) == 3:
+                out[y, :] = False
+                out[y, sorted(trio)[1]:x1 + 101] = True
+        mp = Image.fromarray((out * 255).astype("uint8"), "L").copy()
+        mpx = mp.load()
+        for rect in ALTAR_CANDLES:
+            for ry, (a, b) in _spans(canvas, rect).items():
+                for rx in range(a, b + 1):
+                    mpx[rx + 100, ry] = 255
+        fl = brazier_flame(canvas)
+        for y in range(fl.height):
+            for x in range(fl.width):
+                if fl.getpixel((x, y))[3]:
+                    mpx[BRAZIER_FLAME[0] + x + 100, BRAZIER_FLAME[1] + y] = 255
+        bowl = (v < 0.27)
+        bowl_m = np.zeros_like(bowl)
+        bowl_m[214:233, 586 + 100:617 + 100] = bowl[214:233, 586 + 100:617 + 100]
+        out = (np.asarray(mp) > 127) | bowl_m
+        out = ndimage.binary_closing(out, structure=np.ones((3, 3)))
+        out = ndimage.binary_fill_holes(out)
+    return Image.fromarray((out * 255).astype("uint8"), "L")
+
+
+def in_front(key):
+    """What stands in front of the station (its hover and rim are hidden there): the World Table before the Rite Door; the desk's
+    books before the altar's foot (from ALTAR_FLOOR down, where the plinth meets the floor out of sight)."""
+    if key == "awaken":
+        # the table's top, and its slab, legs and shadow below it down to the floor
+        import numpy as np
+        top = np.asarray(silhouette("descend")) > 127
+        under = top.copy()
+        for x in np.where(top.any(axis=0))[0]:
+            under[np.where(top[:, x])[0].max():300, x] = True
+        return Image.fromarray((under * 255).astype("uint8"), "L").filter(ImageFilter.MaxFilter(3))
+    m = Image.new("L", (840, 360), 0)
+    if key == "faith":
+        m.paste(255, (0, ALTAR_FLOOR - 1, 840, 360))
+    return m
+
+
+def _bbox_rect(mask, margin):
+    x0, y0, x1, y1 = mask.getbbox()
+    x0, y0 = max(0, x0 - margin), max(0, y0 - margin)
+    x1, y1 = min(840, x1 + margin), min(360, y1 + margin)
+    return (x0 - 100, y0, x1 - x0, y1 - y0)
+
+
+def hover_pieces(key, canvas, lit_door):
+    """hover_<key>: the object's own picture, GLOW_BOOST brighter, inside its silhouette (a 1-px soft edge); rim_<key>: a warm 2-px rim
+    just outside it (the inner pixel strong, the outer faint)."""
+    sil = silhouette(key)
+    src = canvas.copy()
+    if key == "awaken":
+        src.alpha_composite(lit_door, (DOOR_ART[0] + 100, DOOR_ART[1]))
+    rect = _bbox_rect(sil, 2)
+    box = _box("wall", rect)
+    front = in_front(key)
+    soft = ImageChops.subtract(sil.filter(ImageFilter.GaussianBlur(0.6)), front).crop(box)
+    pic = src.crop(box)
+    glow = Image.new("RGBA", pic.size, (0, 0, 0, 0))
+    gp, pp, sp = glow.load(), pic.load(), soft.load()
+    for y in range(pic.height):
+        for x in range(pic.width):
+            if sp[x, y] > 4:
+                glow.putpixel((x, y), _lit(pp[x, y], HOVER_BOOST) + (sp[x, y],))
+    d1 = sil.filter(ImageFilter.MaxFilter(3))
+    d2 = sil.filter(ImageFilter.MaxFilter(5))
+    rim_rect = _bbox_rect(sil, 4)
+    rbox = _box("wall", rim_rect)
+    rim = Image.new("RGBA", (rim_rect[2], rim_rect[3]), (0, 0, 0, 0))
+    s0, s1, s2, f0 = sil.crop(rbox).load(), d1.crop(rbox).load(), d2.crop(rbox).load(), front.crop(rbox).load()
+    for y in range(rim.height):
+        for x in range(rim.width):
+            if s0[x, y] > 127 or f0[x, y] > 0:
+                continue
+            if s1[x, y] > 127:
+                rim.putpixel((x, y), RIM + (int(255 * RIM_ALPHA[0]),))
+            elif s2[x, y] > 127:
+                rim.putpixel((x, y), RIM + (int(255 * RIM_ALPHA[1]),))
+    return (rect, glow), (rim_rect, rim)
+
+
+def vignette():
+    """The room's value hierarchy: the frame's corners and the ceiling darkened by up to VIGNETTE_MAX, the four stations and the lantern
+    left alone (their shapes, widened and feathered), so the eye goes to the lit objects and the map table stays the brightest."""
+    from PIL import ImageDraw
+    keep = Image.new("L", (840, 360), 0)
+    for key in ("descend", "tree", "faith", "awaken"):
+        keep = ImageChops.lighter(keep, silhouette(key))
+    ImageDraw.Draw(keep).rectangle((298 + 100, 40, 332 + 100, 100), fill=255)  # the lantern hangs from the ceiling: keep its light
+    keep = keep.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(5))
+    out = Image.new("RGBA", (840, 360), (0, 0, 0, 0))
+    op, kp = out.load(), keep.load()
+
+    def smooth(a, b, x):
+        t = min(1.0, max(0.0, (x - a) / (b - a)))
+        return t * t * (3.0 - 2.0 * t)
+
+    for y in range(360):
+        for x in range(840):
+            rx = x - 100
+            nx, ny = (rx - 320) / 320.0, (y - 180) / 180.0
+            corner = VIGNETTE_MAX * smooth(0.45, 0.9, (0.6 * nx * nx + 0.4 * ny * ny) ** 0.5)
+            ceiling = 0.18 * (1.0 - smooth(20.0, 80.0, y))
+            a = min(VIGNETTE_MAX, max(corner, ceiling)) * (1.0 - kp[x, y] / 255.0)
+            op[x, y] = (0, 0, 0, int(255 * a))
+    return out
+
+
 def life():
     """Writes assets/chamber/life/*.png and returns {name: (layer, rect, image)} for the contact sheet."""
     os.makedirs(LIFE, exist_ok=True)
@@ -554,6 +833,12 @@ def life():
         out["window_stars_%d" % i] = ("wall", WINDOW, im)
     for i, im in enumerate(map_pins(canvas)):
         out["map_pins_%d" % i] = ("wall", GLOWS["map_lit"][1], im)
+    door = room_crop(raw("scene"), DOOR_ART)
+    for key in ("descend", "tree", "faith", "awaken"):
+        (grect, gim), (rrect, rim) = hover_pieces(key, base, door)
+        out["hover_" + key] = ("wall", grect, gim)
+        out["rim_" + key] = ("wall", rrect, rim)
+    out["vignette"] = ("wall", (-100, 0, 840, 360), vignette())
     empty, low, up, low_red, up_red, glow = hourglass(deskim)
     out["hourglass_empty"] = ("desk", HOURGLASS, empty)
     out["hourglass_sand_low"] = ("desk", HOURGLASS, low)
@@ -570,6 +855,7 @@ def life():
             if os.path.exists(os.path.join(LIFE, old + ".import")):
                 os.remove(os.path.join(LIFE, old + ".import"))
     print("life:", len(out), "pieces,", n, "stars; wicks", [WICKS[r] for r in ALTAR_CANDLES])
+    print("hover rects:", {k: v[1] for k, v in out.items() if k.startswith(("hover_", "rim_"))})
     return out, base, canvas, deskim
 
 

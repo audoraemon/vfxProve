@@ -710,9 +710,14 @@ func _ready() -> void:
 		if show == "upgrades" and _screen_node is UpgradesScreen and Battlefield.arg_value(args, "--hover") != "":
 			(_screen_node as UpgradesScreen).preview(Battlefield.arg_value(args, "--hover"))  # after the window's own mouse motion
 			await get_tree().process_frame
+		if show.begins_with("hub") and _screen_node is GodChamber and Battlefield.arg_value(args, "--chamber-hover") != "":
+			(_screen_node as GodChamber).hold_hover(Battlefield.arg_value(args, "--chamber-hover"))
+			await get_tree().process_frame
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
 		if show.begins_with("hub") and _screen_node is GodChamber and Battlefield.arg_value(args, "--chamber-strip") != "":
 			await _capture_chamber_strip(int(Battlefield.arg_value(args, "--chamber-strip")))
+		if show.begins_with("hub") and _screen_node is GodChamber and Battlefield.arg_value(args, "--chamber-transitions") != "":
+			await _capture_chamber_transitions(int(Battlefield.arg_value(args, "--chamber-transitions")))
 		if god_base == SHOW_GOD:
 			_remove_gods()
 		await _quit_cleanly()
@@ -1437,6 +1442,19 @@ func _capture_chamber_strip(frames: int) -> void:
 		hub._redraw()
 		await _capture("screen_hub_strip_%03d.png" % k)
 	ChamberLife.moving = false
+
+
+## --chamber-transitions=<n> (capture only, with --show=hub*): each station's zoom out and back in n steps, held pose by pose
+## (screen_hub_tr_<station>_000.png ...): the colour each fade passes through.
+func _capture_chamber_transitions(steps: int) -> void:
+	var hub := _screen_node as GodChamber
+	for key: String in ChamberLayout.ORDER:
+		var k := 0
+		for back in [false, true]:
+			for i in steps + 1:
+				hub.pose_transition(key, back, GodChamber.ZOOM_TIME * float(i) / float(steps))
+				await _capture("screen_hub_tr_%s_%03d.png" % [key, k])
+				k += 1
 
 
 ## --show=<name> for Endless Night's screens (god P1): the fixture god on the dev fill, written to the show's own slot files. `hub-capped` is

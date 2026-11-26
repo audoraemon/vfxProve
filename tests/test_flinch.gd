@@ -100,7 +100,7 @@ static func _warden_stands(t, made: Array) -> void:
 	var wat_from := w.ground_pos
 	w.panic(w.ground_pos + Vector2(1.0, 0.0), 1.0)
 	var s: Person = crowd.soldiers.filter(func(q: Person) -> bool: return is_instance_valid(q) and q.is_alive())[0]
-	s.ground_pos = w.ground_pos + Vector2(4.0, 4.0)
+	s.ground_pos = s.post  # at his own post: the town's routine walks a soldier found away from it back (a goal ends a flinch)
 	s.mind = Person.Mind.POST
 	s.anchor = s.ground_pos
 	s._goal = Vector2.INF
@@ -228,3 +228,9 @@ static func _soldier_goal(t, made: Array) -> void:
 	s._goal = Vector2.INF
 	s.flinch(at + Vector2(-1.0, 0.0))
 	t.check(s.flinching(), "the same soldier standing at his post does")
+	# Soldier duties merge: an order that sends him on (a gate checker stepping out) ends the stare at once and he moves.
+	var start := s.ground_pos
+	s.send_to_post(at + Vector2(5.0, 0.0))
+	_advance(made[0] as Crowd, [s], 1.0)
+	t.check(not s.flinching() and s.ground_pos.distance_to(start) > 0.15,
+		"a duty order sent to a flinching soldier ends the flinch: he moves (%.2f)" % s.ground_pos.distance_to(start))

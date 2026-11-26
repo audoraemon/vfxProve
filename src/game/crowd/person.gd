@@ -1484,7 +1484,7 @@ func _flinch_overruled() -> bool:
 	if held_by_will(WILL_ABSOLUTE) or resists_mind():
 		return true
 	if soldier:
-		return mind != Mind.POST or hurrying
+		return mind != Mind.POST or hurrying or has_goal()  # a duty order (a gate checker stepping out, a beat) ends the stare (soldier duties merge)
 	if not (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.OBSERVE or mind == Mind.DUTY):
 		return true
 	return mind == Mind.DUTY and _goal != Vector2.INF

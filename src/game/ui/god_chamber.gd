@@ -121,6 +121,7 @@ func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodCham
 	from = p_from
 	status = HubStatus.new(slot)
 	_life.st = ChamberLife.state(slot, status)
+	WorldMap.prewarm()  # the World Map's art starts loading now, so the table's zoom into it does not stall on the first open
 	if ChamberSound.enabled and (DisplayServer.get_name() != "headless" or ChamberSound.force):
 		_sound = ChamberSound.new()
 		_sound.name = "RoomSound"

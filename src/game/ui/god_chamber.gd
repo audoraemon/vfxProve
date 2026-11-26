@@ -109,6 +109,11 @@ var _sound: ChamberSound
 ## The room's own canvas item (step 8): drawn behind the bar and the lines, through pixel_aa while it moves.
 var _room: Control
 var _aa: ShaderMaterial
+## The render warm-up (_prewarm()): once a session, two clear canvas items (one through the room's pixel_aa) drawn for WARM_FRAMES frames.
+const WARM_FRAMES := 3
+static var _aa_warm := false
+var _warm: Array[Control] = []
+var _warm_frames := 0
 ## Photographs only (Game's capture flags): a station shown hovered whatever the window's mouse does, and a transition held at a pose.
 var _hover_held := false
 var _pose_held := false
@@ -148,6 +153,8 @@ func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodCham
 		_focus_key = p_from
 		_t = 0.0
 	_sync_canvas()
+	if transitions:
+		_prewarm()
 	return self
 
 
@@ -155,7 +162,80 @@ func _exit_tree() -> void:
 	_pending = ""  # a room torn down mid-zoom sends nothing
 
 
+## Called once from setup() where transitions play. The stations' pages and the transition's sounds start loading on other threads
+## (ChamberPrewarm; the Rite Door's Prepare only while the door is lit; nothing headless), and the first room of the session draws two
+## clear canvas items for WARM_FRAMES frames, so the first zoom and the first page do not stop to build their render pipelines.
+func _prewarm() -> void:
+	var paths := PackedStringArray()
+	for cue: StringName in [WHOOSH, WHOOSH_BACK] + STATION_CUES.values():
+		paths.append_array(Sfx.paths_for(cue))
+	var tree := SkillTreeScreen.prewarm_paths(_slot)
+	paths.append_array(tree.paths)
+	if status.awaken_shown() and not status.awaken_dim():
+		paths.append_array(PrepareScreen.prewarm_paths())  # the door can open a Prepare
+	ChamberPrewarm.start(paths, tree.grey)
+	if _aa_warm or DisplayServer.get_name() == "headless":
+		return
+	_aa = ShaderMaterial.new()
+	_aa.shader = PIXEL_AA
+	# Two clear canvas items: one through the room's pixel_aa (its zoom), one plain with the shapes the pages draw and the room never
+	# does at rest (lines, strips, discs, textured polygons, a rounded panel: the Ability Tree's wheel).
+	for aa: bool in [true, false]:
+		var item := Control.new()
+		item.name = "AaWarm" if aa else "PlainWarm"
+		item.size = Vector2(4.0, 4.0)
+		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if aa:
+			item.material = _aa
+			item.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		item.draw.connect(_draw_warm.bind(item, aa))
+		_ui.add_child(item)
+		_warm.append(item)
+
+
+## The warm-up's frame, all fully clear so nothing on screen changes: through pixel_aa what the room draws while it moves (a rect, a
+## texture, a polygon); plain, the pages' shapes.
+func _draw_warm(item: Control, aa: bool) -> void:
+	var clear := Color(1.0, 1.0, 1.0, 0.0)
+	var tri := PackedVector2Array([Vector2.ZERO, Vector2(2.0, 0.0), Vector2(0.0, 2.0)])
+	item.draw_rect(Rect2(0.0, 0.0, 1.0, 1.0), clear)
+	item.draw_texture_rect(ChamberSignature.bloom_texture(), Rect2(0.0, 0.0, 2.0, 2.0), false, clear)
+	item.draw_polygon(tri, PackedColorArray([clear, clear, clear]))
+	if aa:
+		return
+	item.draw_line(Vector2.ZERO, Vector2(2.0, 2.0), clear, 1.0)
+	item.draw_line(Vector2.ZERO, Vector2(2.0, 2.0), clear, 2.0)
+	item.draw_polyline(tri, clear, 1.0)
+	item.draw_polyline(tri, clear, 3.0)
+	item.draw_arc(Vector2(2.0, 2.0), 1.5, 0.0, TAU, 8, clear, 2.0)
+	item.draw_arc(Vector2(2.0, 2.0), 1.5, 0.0, TAU, 8, clear, 1.0)
+	item.draw_circle(Vector2(2.0, 2.0), 1.5, clear)
+	item.draw_colored_polygon(tri, clear, PackedVector2Array([Vector2.ZERO, Vector2(1.0, 0.0), Vector2(0.0, 1.0)]), ChamberSignature.bloom_texture())
+	item.draw_rect(Rect2(0.0, 0.0, 2.0, 2.0), clear, false, 1.0)
+	var box := StyleBoxFlat.new()
+	box.bg_color = clear
+	box.border_color = clear
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(2)
+	item.draw_style_box(box, Rect2(0.0, 0.0, 4.0, 4.0))
+
+
+## The warm-up runs for WARM_FRAMES frames, then goes; the room keeps loading while it is at rest (never during a zoom).
+func _prewarm_step() -> void:
+	if not _warm.is_empty():
+		_warm_frames += 1
+		if _warm_frames >= WARM_FRAMES:
+			for item in _warm:
+				item.queue_free()
+			_warm.clear()
+			_aa_warm = true
+	if _mode == Mode.REST:
+		ChamberPrewarm.step()
+
+
 func _process(delta: float) -> void:
+	if transitions:
+		_prewarm_step()
 	advance(delta)
 	if ChamberLife.moving and not life_hold and not is_queued_for_deletion():
 		life_t += delta

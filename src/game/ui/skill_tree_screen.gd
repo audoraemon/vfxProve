@@ -89,6 +89,9 @@ var _clip_shown := -1
 var _pulse_t := 0.0
 var _label_cache := {}
 var _wide_style: StyleBoxFlat
+## node_state()'s answers, and the hash of what they were read from.
+var _states := {}
+var _state_sig := 0
 
 
 func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
@@ -116,6 +119,31 @@ func setup(slot: GodSlot, p_state := {}) -> SkillTreeScreen:
 	_ui.draw.connect(_draw_ui)
 	_ui.gui_input.connect(_on_gui_input)
 	return self
+
+
+## What the screen will read when it opens for `slot` (ChamberPrewarm, from the Chamber): {"paths": every shown spot's two icons and the
+## first selection's clip, "grey": the icons of the spots it will draw locked}.
+static func prewarm_paths(slot: GodSlot) -> Dictionary:
+	var paths := PackedStringArray()
+	var grey := PackedStringArray()
+	var probe := SkillTreeScreen.new()
+	probe._slot = slot
+	for col in probe.columns().size():
+		for tier in range(1, GodTree.TIERS + 1):
+			for i in GodTree.PER_TIER:
+				var key := probe.key_at(col, tier, i)
+				if key == "":
+					continue
+				var pair := PackedStringArray([PowerBook.ICON_DIR + "hud/" + key + ".png", PowerBook.ICON_DIR + key + ".png"])
+				paths.append_array(pair)
+				if probe.node_state(col, tier, i) == "lock":
+					grey.append_array(pair)
+	var pick := probe._first_pick()
+	var first := probe.key_at(pick.x, pick.y, pick.z)
+	if first != "":
+		paths.append(PowerBook.clip_path(first))
+	probe.free()
+	return {"paths": paths, "grey": grey}
 
 
 ## The three types shown, left to right: the god's left ring neighbour, its own type, its right neighbour. Far types never appear.
@@ -204,15 +232,25 @@ func _load_selected() -> void:
 ## The state of a spot on the wheel: "empty", "learned", "can" (buyable now), "poor" (open but not buyable now), "lock" (tier above
 ## the god's).
 func node_state(col: int, tier: int, i: int) -> String:
+	# Memoised while what it reads stays the same (the slot's points, tier, type and levels, and the tree's table): a draw asks for
+	# every spot several times, and each answer walks the whole tree (GodTree.spot_of), which made every redraw cost ~25 ms.
+	var sig := [_slot.points, _slot.tier, _slot.type, _slot.learned.hash(), GodTree.table().hash()].hash()
+	if sig != _state_sig:
+		_state_sig = sig
+		_states.clear()
+	var at := Vector3i(col, tier, i)
+	if _states.has(at):
+		return _states[at]
 	var key := key_at(col, tier, i)
-	if key == "":
-		return "empty"
-	if _slot.level_of(key) > 0:
-		return "learned"
-	var why := _slot.refusal(key)
-	if why == "":
-		return "can"
-	return "lock" if why == "tier" else "poor"
+	var out := "empty"
+	if key != "":
+		if _slot.level_of(key) > 0:
+			out = "learned"
+		else:
+			var why := _slot.refusal(key)
+			out = "can" if why == "" else ("lock" if why == "tier" else "poor")
+	_states[at] = out
+	return out
 
 
 # ------------------------------------------------------------------------------------------------ layout

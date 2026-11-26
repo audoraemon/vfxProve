@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_sound_moments(t)
 	_flood_cap(t)
 	_edge_veil(t)
+	_prewarm(t)
 	GodChamber.transitions = false
 	GodTree.dev_fill = false
 
@@ -549,3 +550,59 @@ static func _edge_veil(t) -> void:
 		UiScale.clear_test_area()
 	t.check(exposed_seen.has("(1280, 720) tree") and exposed_seen.has("(1280, 720) faith"), "the Tree and the Altar do reach the dark sides at 16:9 (%s)" % [exposed_seen.keys()])
 	t.check(not exposed_seen.has("(1280, 720) awaken") and not exposed_seen.has("(1280, 720) descend"), "the Door and the Table never do at 16:9")
+
+
+## The prewarm hook (ChamberPrewarm): each room with transitions calls it once from setup; headless it does nothing (no loads, no
+## warm-up canvas items); forced, it asks for the transition's sounds, the tree's icons and (door open) Prepare's art, a second room asks
+## for nothing again, and step() takes it all in. With transitions off it is never called.
+static func _prewarm(t) -> void:
+	ChamberPrewarm.reset()
+	var calls := ChamberPrewarm.calls
+	var ch := _make()
+	t.check(ChamberPrewarm.calls == calls + 1, "prewarm: a room with transitions calls it once (%d)" % (ChamberPrewarm.calls - calls))
+	t.check(ChamberPrewarm.requested == 0 and ChamberPrewarm.pending() == 0, "prewarm: headless, nothing is loaded")
+	t.check(ch._warm.is_empty() and ch._ui.get_child_count() == 1, "prewarm: headless, no warm-up canvas item")
+	ch.free()
+	calls = ChamberPrewarm.calls
+	ch = _make("", false)
+	t.check(ChamberPrewarm.calls == calls, "prewarm: never called with transitions off")
+	ch.free()
+	ChamberPrewarm.force = true
+	ch = _make()
+	var whoosh := Sfx.paths_for(GodChamber.WHOOSH)[0]
+	var tree: Dictionary = SkillTreeScreen.prewarm_paths(_slot())
+	var prep := PrepareScreen.prewarm_paths()
+	t.check(ChamberPrewarm.asked(whoosh) and ChamberPrewarm.asked(Sfx.paths_for(GodChamber.WHOOSH_BACK)[0]), "prewarm: the whooshes are asked for")
+	var all_cues := true
+	for cue: StringName in GodChamber.STATION_CUES.values():
+		all_cues = all_cues and ChamberPrewarm.asked(Sfx.paths_for(cue)[0])
+	t.check(all_cues, "prewarm: every station's sound is asked for")
+	t.check(ChamberPrewarm.asked(tree.paths[0]) and ChamberPrewarm.asked(tree.paths[-1]), "prewarm: the tree's icons and clip are asked for")
+	t.check(ChamberPrewarm.asked(prep[0]) and ChamberPrewarm.asked(prep[-1]), "prewarm: the door is open, so Prepare's art is asked for")
+	var asked := ChamberPrewarm.requested
+	t.check(asked > 0, "prewarm: forced, it loads (%d)" % asked)
+	ch.free()
+	ch = _make()
+	t.check(ChamberPrewarm.requested == asked, "prewarm: a second room asks for nothing again (%d)" % (ChamberPrewarm.requested - asked))
+	t.check(ChamberPrewarm.start(tree.paths, tree.grey) == 0, "prewarm: start() with the same paths asks for nothing")
+	ch.free()
+	var done := false
+	for i in 2000:
+		done = ChamberPrewarm.step(1000000)
+		if done:
+			break
+		OS.delay_msec(2)
+	t.check(done and ChamberPrewarm.pending() == 0 and ChamberPrewarm.held(whoosh) and ChamberPrewarm.held(tree.paths[0]),
+		"prewarm: step() takes everything in and keeps it")
+	t.check(Sfx.load_stream(GodChamber.WHOOSH) == ChamberPrewarm._held[whoosh], "prewarm: the sound plays from the kept stream")
+	ChamberPrewarm.reset()
+	var closed := _slot()
+	closed.level = 5
+	GodChamber.transitions = true
+	ch = GodChamber.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(ch)
+	ch.setup(closed)
+	t.check(not ChamberPrewarm.asked(prep[0]) and ChamberPrewarm.asked(whoosh), "prewarm: the door closed, Prepare's art waits")
+	ch.free()
+	ChamberPrewarm.reset()
+	ChamberPrewarm.force = false

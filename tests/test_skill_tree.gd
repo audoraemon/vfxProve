@@ -32,6 +32,8 @@ static func run(t) -> void:
 	_twists_whole(t)
 	_word_spacing(t)
 	_death_decree_twists(t)
+	_state_memo(t)
+	_prewarm_paths(t)
 	GodTree.dev_fill = false
 
 
@@ -613,3 +615,64 @@ static func _death_decree_twists(t) -> void:
 		s.free()
 	t.check(found.size() == 20 and no_table.is_empty(), "all twenty spots on the Death and Decree wheels have a levels table (%d found; none: %s)" % [found.size(), no_table])
 	t.check(cut.is_empty(), "each level-5 twist line fits the level column's three lines (cut: %s)" % [cut])
+
+
+## node_state() is memoised for the draw, but follows the slot at once: a point, a learn, a tier and the tree's table each change it.
+static func _state_memo(t) -> void:
+	var s := _screen("ruin", 2, 0)
+	var at := Vector2i(-1, -1)
+	for tier in [1, 2]:
+		for i in GodTree.PER_TIER:
+			if at.x < 0 and s.key_at(1, tier, i) != "" and s._slot.level_of(s.key_at(1, tier, i)) == 0:
+				at = Vector2i(tier, i)
+	t.check(at.x > 0, "memo: an open power not yet learned")
+	if at.x < 0:
+		s.free()
+		return
+	var key := s.key_at(1, at.x, at.y)
+	t.check(s.node_state(1, at.x, at.y) == "poor" and s.node_state(1, at.x, at.y) == "poor", "memo: no points, an open power is poor (asked twice)")
+	s._slot.points = 1
+	t.check(s.node_state(1, at.x, at.y) == "can", "memo: a point makes it buyable at once")
+	s._slot.learn(key)
+	t.check(s.node_state(1, at.x, at.y) == "learned", "memo: learned at once")
+	t.check(s.node_state(1, 3, 0) == "lock", "memo: a tier above is locked")
+	s._slot.tier = 3
+	t.check(s.node_state(1, 3, 0) != "lock", "memo: a tier raise opens it at once (%s)" % s.node_state(1, 3, 0))
+	var before := {}
+	for col in s.columns().size():
+		for tier in range(1, GodTree.TIERS + 1):
+			for i in GodTree.PER_TIER:
+				before[Vector3i(col, tier, i)] = s.node_state(col, tier, i)
+	GodTree.dev_fill = false
+	var follows := true
+	for spot: Vector3i in before:
+		var fresh: String = "empty" if s.key_at(spot.x, spot.y, spot.z) == "" else String(before[spot])
+		follows = follows and (s.node_state(spot.x, spot.y, spot.z) == "empty") == (fresh == "empty")
+	t.check(follows, "memo: a change of the tree's table (the dev fill off) is followed at once")
+	GodTree.dev_fill = true
+	s.free()
+
+
+## What the Chamber preloads for the tree (ChamberPrewarm): both icons of every shown spot, the first pick's clip, and as grey exactly
+## the icons of the spots drawn locked.
+static func _prewarm_paths(t) -> void:
+	var slot := GodSlot.make(1, "ruin", 7)
+	slot.tier = 1
+	var got := SkillTreeScreen.prewarm_paths(slot)
+	var s := SkillTreeScreen.new().setup(slot)
+	var want := PackedStringArray()
+	var grey := PackedStringArray()
+	for col in s.columns().size():
+		for tier in range(1, GodTree.TIERS + 1):
+			for i in GodTree.PER_TIER:
+				var key := s.key_at(col, tier, i)
+				if key == "":
+					continue
+				var pair := [PowerBook.ICON_DIR + "hud/" + key + ".png", PowerBook.ICON_DIR + key + ".png"]
+				want.append_array(pair)
+				if s.node_state(col, tier, i) == "lock":
+					grey.append_array(pair)
+	want.append(PowerBook.clip_path(s.selected_key()))
+	t.check(got.paths == want, "prewarm: every shown spot's two icons and the first pick's clip (%d paths)" % got.paths.size())
+	t.check(got.grey == grey and not grey.is_empty(), "prewarm: the locked spots' icons are the grey ones (%d)" % grey.size())
+	s.free()

@@ -477,6 +477,34 @@ func _tend_prayers() -> void:
 			p.go_duty(e[1])
 
 
+## Loss warning: the shrines' prayers filling the Gaze (`prayer`, prayer_eta()); the base's report and bell besides. Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := prayer_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"prayer", "THEIR PRAYER FILLS HALCYON'S GAZE", "SCATTER THE PRAYERS", eta,
+			kneel_shrine.center() if is_instance_valid(kneel_shrine) else _prayer_at()))
+	return out
+
+
+## Mission seconds until the prayers kneeling now fill the Gaze (_prayers_step(): GazeMeter.pray() at PRAYER_SCALE, halved once the Lantern
+## has tolled), on a night whose full Gaze loses it; INF with none at prayer. They pray on until broken, so the rate holds. Only reads.
+func prayer_eta() -> float:
+	if not _gaze_loses():
+		return INF
+	var rate := minf(float(praying_count()) * GazeMeter.PRAYER_PER_SECOND, GazeMeter.PRAYER_CAP) * PRAYER_SCALE * _toll_scale()
+	if rate <= 0.0:
+		return INF
+	return (GazeMeter.FULL - gaze.value) / rate * mission_delta(1.0)
+
+
+## Where one at prayer kneels (the warning's point when no shrine is the kneelers').
+func _prayer_at() -> Vector2:
+	for k: Variant in praying.keys():
+		return praying[k][1]
+	return Vector2.INF
+
+
 ## The Faithful praying now: alive and out, on their duty within PRAY_REACH of their place, at a standing shrine.
 func praying_count() -> int:
 	var n := 0
@@ -566,7 +594,7 @@ func _knights_come() -> void:
 
 
 ## Each living Knight to a standing shrine. One whose shrine fell goes to the standing shrine with the fewest Knights
-## (the nearest of those). One taken off his place (an investigation) is sent back to it.
+## (the nearest of those). One taken off his place (by a sweep) is sent back to it.
 func _tend_knights() -> void:
 	var standing := standing_shrines()
 	for k in knights:

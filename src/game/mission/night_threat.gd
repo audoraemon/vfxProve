@@ -31,6 +31,19 @@ static func soonest(list: Array) -> Dictionary:
 	return best
 
 
+## The threats of `list` from its `k`-th soonest on, when `k` more of them end the night (the first of two seized believers delivered is no
+## loss, the second is): the soonest of what is left is then the moment the night is lost. Nothing for `k` < 1 or fewer than `k`.
+static func decisive(list: Array, k: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if k < 1 or list.size() < k:
+		return out
+	var sorted := list.duplicate()
+	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.eta) < float(b.eta))
+	for i in range(k - 1, sorted.size()):
+		out.append(sorted[i])
+	return out
+
+
 ## `list`'s threats with each id given `suffix` (a sub-director's: "herald" of the second star is "herald_1").
 static func suffixed(list: Array, suffix: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

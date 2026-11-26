@@ -148,7 +148,7 @@ func _hunt(p: Person) -> void:
 				if q.mind == Person.Mind.FIGHT and not hunters.has(q):
 					hunters.append(q)
 		elif d <= FLEE_R:
-			q.panic(p.ground_pos, 1.0, &"law")
+			q.panic(p.ground_pos, 1.0, &"law", true, true, true)
 
 
 ## After a change to `p`'s laws: no longer wanted, his hunters are called off; no law left, he holds none.

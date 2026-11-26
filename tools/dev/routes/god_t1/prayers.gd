@@ -205,13 +205,76 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	for f in faithful:
 		if not f.statuses.has(&"frail") and not d._carrying(f):
 			doomed.append(f)
+	# A body by the door for the crit (the street's pairs lift the dead off it within seconds, so the Faithful the mark takes far from the door give
+	# the spirit none): in the DOOR_BODY seconds before the Death Mark's fuse can fall in time for it, the mark waits for someone standing by the
+	# door -- a Faithful, or any who is not of the poor -- and takes him there, so that his soul is near the door when the spirit is wanted.
+	if _ready(bc, ctx, "deathmark") and crit > DeathMarkFx.MARK_TIME and crit <= DOOR_BODY and watchers_near(d) \
+			and GodT1.body_near(ctx.crowd, d.door, RISE_NEAR, true) == Vector2.INF:
+		var near := _door_victim(ctx, d, doomed.size())
+		if near != null:
+			return _cast(ctx, "deathmark", near.ground_pos, "death mark one by the door, so a soul is near it at the crit")
+		if _gaze_bears(d, doomed.size() + 1):
+			return ""  # kept for one by the door; when the Gaze could not bear that extra death, a Faithful is marked below instead
 	# Death Mark: one at a time, the nearest the door first, each alone where he stands (seen, while the Gaze can bear it, once the night is under way).
 	if _ready(bc, ctx, "deathmark"):
 		var room := d.gaze.value + GazeMeter.SEEN_DEATH <= BEAR_GAZE and d.timeline.elapsed() > 8.0
 		for f in doomed:
-			if _alone(d, f, 2.6) or room:
+			# The last Faithful left may be taken seen up to LAST_GAZE: with him gone the door stands empty and the night is all but won.
+			var last := doomed.size() == 1 and _gaze_bears(d, 1) and GodT1.deaths_left(ctx.crowd, f.ground_pos) >= 1
+			if _alone(d, f, 2.6) or room or last:
 				return _cast(ctx, "deathmark", f.ground_pos, "death mark a Faithful")
 	return ""
+
+
+## The seconds before a crit in which the Death Mark is kept for a victim by the door (its fuse, MARK_TIME, and the time the spirit is cast in, LEAD).
+const DOOR_BODY := 34.0
+## How near the door a victim stands for his body to lie within RISE_NEAR of it (he is slowed by the mark and goes little farther).
+const DOOR_VICTIM := 2.5
+
+
+## A Faithful alive stands within DOOR_WATCH of the door: one who may be there to watch it at the crit.
+static func watchers_near(d: FirstPrayersDirector) -> bool:
+	for f in _faithful(d):
+		if f.ground_pos.distance_to(d.door) <= DOOR_WATCH:
+			return true
+	return false
+
+
+## The Gaze can bear `deaths` more seen deaths (each adds GazeMeter.SEEN_DEATH) and stay within LAST_GAZE: a mark's death falls ten seconds
+## on, where nobody can tell now who will stand by, so each is counted as seen. A death spent on one who is not a Faithful is one more the
+## Faithful still to be taken must find room for.
+static func _gaze_bears(d: FirstPrayersDirector, deaths: int) -> bool:
+	return d.gaze.value + GazeMeter.SEEN_DEATH * float(deaths) <= LAST_GAZE
+
+
+## The most the Gaze may stand at after the last Faithful's death, seen: one seen death beyond BEAR_GAZE, for the one whose death empties the door.
+const LAST_GAZE := BEAR_GAZE + GazeMeter.SEEN_DEATH
+
+
+## How far from the door a Faithful may be and still come to watch it by the crit.
+const DOOR_WATCH := 14.0
+
+
+## Who stands within DOOR_VICTIM of the door and may be taken: alive, out of doors, not of the poor, not carrying a report, not marked, and
+## his death unseen or the Gaze able to bear it; one who is not a Faithful only while the Gaze can bear his death and those of the `left`
+## Faithful still to be taken (_gaze_bears()); a Faithful first, then the nearest the door. null for none.
+static func _door_victim(ctx: Dictionary, d: FirstPrayersDirector, left: int) -> Person:
+	var spare := _spare(d)
+	var best: Person = null
+	for p in ctx.crowd.citizens:
+		if not MissionDirector._alive(p) or p.inside or spare.has(p) or p.statuses.has(&"frail") or d._carrying(p):
+			continue
+		if not d.faithful.has(p) and not _gaze_bears(d, left + 1):
+			continue
+		if p.ground_pos.distance_to(d.door) > DOOR_VICTIM:
+			continue
+		if ctx.crowd.nearest_witness(p.ground_pos, p) != null and d.gaze.value + GazeMeter.SEEN_DEATH > BEAR_GAZE:
+			continue
+		var faithful: bool = d.faithful.has(p)
+		if best == null or (faithful and not d.faithful.has(best)) \
+				or (faithful == d.faithful.has(best) and p.ground_pos.distance_to(d.door) < best.ground_pos.distance_to(d.door)):
+			best = p
+	return best
 
 
 ## A body with its soul still near within RISE_NEAR of `at` whose spirit's fright reaches none of the poor (they must reach the shrine); its place, or
@@ -567,6 +630,15 @@ static func _way_near(way: PackedVector2Array, at: Vector2, reach: float) -> boo
 ## (RESERVE), the two are kept for that report. Otherwise the most Faithful for the fewest others doomed with them (DOOMED_OK at most: a death
 ## someone sees adds 10 to the Gaze), never holding one of the poor, and while their deaths leave the district short of Local Emergency
 ## (GodT1.deaths_left(): its bell would toll, and the toll adds 40).
+##
+## Town Suspicion (the HUD's gauge): the breath looks like miasma, so the choking deaths it brings are explained while the town does not
+## know, and a Local Emergency made of them sends no bellkeeper (Crowd.keeper_due()). The town comes to know from the signs alone: a breath
+## seen adds 30, 60 when one is remembered (a minute). So a Faithful is taken only while the gauge has room for that breath (_town_bears()):
+## the market's report will cost a breath at the crowded door, and its dead must stay explained. A report's runner and the door's watchers
+## (who would make a report) are taken whatever the gauge says. Under R21 a cast whose seers all die in it calls no sweep; a man held by the
+## cell and walking out of the breath alive does, so the fewest others in the cell still matter.
+## While a prayer inside ends within RESERVE with nobody to see the door then, no Faithful is taken: the poor go in by themselves, and the
+## cell's dead (a crowd may walk into the breath) could only cost the Gaze.
 static func act_decree(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as FirstPrayersDirector
 	var follow := GodT1.amber_breath(bc, ctx)
@@ -580,8 +652,20 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 		if not cell.is_empty() and GodT1.cast_amber(bc, ctx, cell.at, [c]):
 			ctx.memo["plast"] = _t(ctx)
 			return "leaving is prohibited round a runner to the Temple: the breath follows"
+	if not _runners(d).is_empty():
+		return ""  # the cell and the breath wait for the runner (one of the poor stands by him now): a report delivered fills the Gaze
 	var crit := crit_in(bc, ctx)
+	var eyes := _decree_eyes(ctx, crit)
+	if not eyes.is_empty():
+		var eye_cell := _cell_on(ctx, eyes)
+		if not eye_cell.is_empty() and int(eye_cell.doomed) <= EYES_DOOMED and GodT1.cast_amber(bc, ctx, eye_cell.at, eyes):
+			ctx.memo["plast"] = _t(ctx)
+			return "leaving is prohibited round the %d Faithful who would see the door at the crit (%d others by them): the breath follows" % [
+				eyes.size(), int(eye_cell.doomed)]
 	if crit <= RESERVE and (not d.liners.is_empty() or _line_left(ctx, crit) > 0.0 or not _watchers(d).is_empty()):
+		return ""
+	# A prayer inside ends soon with nobody to see the door then: the poor go in by themselves, and a death now could only cost the Gaze.
+	if crit <= RESERVE and d.reading_left() != INF and _eyes_at(ctx, crit).is_empty():
 		return ""
 	var best := {}
 	for f in _faithful(d):
@@ -591,7 +675,8 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 			if GodT1.road_ahead(o, NoLeaveFx.T_SEAL).distance_to(at) <= NoLeaveFx.RADIUS - CELL_IN * 2.0:
 				group.append(o)
 		var cell := _cell_on(ctx, group)
-		if cell.is_empty() or int(cell.doomed) > DOOMED_OK or group.size() + int(cell.doomed) > GodT1.deaths_left(ctx.crowd, cell.at):
+		if cell.is_empty() or int(cell.doomed) > DOOMED_OK or group.size() + int(cell.doomed) > GodT1.deaths_left(ctx.crowd, cell.at) \
+				or not _town_bears(ctx.crowd):
 			continue
 		if best.is_empty() or group.size() - int(cell.doomed) > (best.group as Array).size() - int(best.doomed):
 			best = {"at": cell.at, "group": group, "doomed": int(cell.doomed)}
@@ -605,6 +690,58 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 const RESERVE := 30.0
 ## A cell is laid on the Faithful where it dooms at most DOOMED_OK others with them.
 const DOOMED_OK := 1
+
+
+## The Faithful who will see the door at the crit `crit` seconds off (_eyes_at()), when the cell and the breath can take them before it: the
+## crit within EYES_LEAD and no nearer than EYES_LAST. A line standing at the door is taken only when every liner is among them (the priests'
+## lone one, not the market's four); while a line is still to form by the crit nobody knows who will stand in it. Empty otherwise.
+static func _decree_eyes(ctx: Dictionary, crit: float) -> Array[Person]:
+	var d := ctx.d as FirstPrayersDirector
+	var none: Array[Person] = []
+	if crit > EYES_LEAD or crit < EYES_LAST or (d.liners.is_empty() and _line_left(ctx, crit) > 0.0):
+		return none
+	var eyes := _eyes_at(ctx, crit)
+	for f: Variant in d.liners:
+		if MissionDirector._alive(f) and not (f as Person).inside and not eyes.has(f):
+			return none  # a liner the cell would not take still sees the door at the crit
+	return eyes
+
+
+## The door's watchers are taken when the crit is this near...
+const EYES_LEAD := 9.0
+## ...and no nearer than this (the cell's seal, the breath's landing and its choke, and a look's wait).
+const EYES_LAST := NoLeaveFx.T_SEAL + BreathFx.T_LAND + BreathFx.CHOKE + 0.4
+## A cell on the door's watchers may doom this many others with them.
+const EYES_DOOMED := 2
+
+
+## What a breath seen now would add to the town's suspicion: Suspicion.sign()'s sum for a miasma, from the signs the town still remembers
+## (each one more doubles it); 0 once the town knows.
+static func _breath_sign(crowd: Crowd) -> float:
+	var s: Suspicion = crowd.suspicion
+	if s.known:
+		return 0.0
+	var same := 0
+	var others := {}
+	for e: Array in s.recent():
+		if e[0] == &"miasma":
+			same += 1
+		else:
+			others[e[0]] = true
+	return float(Suspicion.BASE[&"miasma"]) * float(1 + same) * (1.0 + Suspicion.OTHER_LOOKS * float(others.size())) * s.wary
+
+
+## The town can bear one more breath seen (a breath is all but always seen: its sight is 6) and stay within SUSP_ROOM, room left for the
+## report's breath to come; or nothing is left to lose (the town knows, or the bellkeeper is called already).
+static func _town_bears(crowd: Crowd) -> bool:
+	if crowd.suspicion.known or crowd._keeper_sent:
+		return true
+	return crowd.suspicion.value + _breath_sign(crowd) <= SUSP_ROOM
+
+
+## The most the suspicion gauge may stand at after a breath on a Faithful: one first sign (30) on a quiet gauge, never a second within the
+## minute the town remembers it (30 + 60 would leave a report's breath no room before the town knows).
+const SUSP_ROOM := 45.0
 
 
 ## The cell for `group` (Faithful, or a runner): laid on the middle of where they will stand as it seals, shifted as far as keeps each CELL_IN

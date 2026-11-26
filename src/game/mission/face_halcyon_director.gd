@@ -1079,13 +1079,14 @@ func burn_left(i: int) -> float:
 	return maxf(pr.burn_end - _clock, 0.0) if pr.phase == Procession.Phase.BURNING else 0.0
 
 
-## Loss warning: once one believer has burned, each procession on its way to the pyre or bound to it (the next burned loses the night,
-## FH_LOSE_BURNED): bound, burn_left(i); forming or marching, its time to the pyre (pyre_in(i), the strip's) and the burn. A procession still
-## waiting in its house is not warned.
+## Loss warning: each procession on its way to the pyre or bound to it, from the (FH_LOSE_BURNED - burned())-th soonest on (the burn that
+## loses the night, NightThreat.decisive()): bound, burn_left(i); forming or marching, its time to the pyre (pyre_in(i), the strip's) and the
+## burn. A procession still waiting in its house is not warned.
 func threats() -> Array[Dictionary]:
 	var out := super()
-	if burned() < FH_LOSE_BURNED - 1 or lost_reason() != "":
+	if lost_reason() != "":
 		return out
+	var pyres: Array[Dictionary] = []
 	for i in procs.size():
 		var pr: Procession = procs[i]
 		var left := INF
@@ -1095,8 +1096,14 @@ func threats() -> Array[Dictionary]:
 			Procession.Phase.FORMING, Procession.Phase.MARCHING:
 				left = pyre_in(i) + FH_BURN
 		if left < INF and pr.charge != null and _alive(pr.charge.man):
-			out.append(NightThreat.make(StringName("pyre_%d" % i), "A SECOND BELIEVER BURNS", "FREE HIM", left, (pr.charge.man as Person).ground_pos))
+			pyres.append(NightThreat.make(StringName("pyre_%d" % i), "A SECOND BELIEVER BURNS", "FREE HIM", left, (pr.charge.man as Person).ground_pos))
+	out.append_array(NightThreat.decisive(pyres, FH_LOSE_BURNED - burned()))
 	return out
+
+
+## Nobody seizes here (a held believer goes with his procession, no seizer): the Escort type's march is not this night's loss.
+func takings_to_lose() -> int:
+	return 0
 
 
 ## Procession `i`'s phase.

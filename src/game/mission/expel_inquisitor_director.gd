@@ -489,9 +489,10 @@ func captain_eta() -> float:
 	return _eta
 
 
-## Loss warning: the captain on his last walk to the Citadel (any_safe() loses the night when he gets in), as captain_eta().
-func threats() -> Array[Dictionary]:
-	var out := super()
+## Loss warning: the captain on his last walk to the Citadel (any_safe() loses the night when he gets in), as captain_eta(); a warden never
+## goes there (his rounds loop), so the base's walk to the safe place is not asked.
+func safe_threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
 	var eta := captain_eta()
 	if eta < INF:
 		out.append(NightThreat.make(&"captain", "THE CAPTAIN REACHES THE CITADEL", "STOP HIM", eta, (captain().target as Person).ground_pos))

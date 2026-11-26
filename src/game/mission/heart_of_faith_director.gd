@@ -373,7 +373,7 @@ func _post_fits(i: int, at: Vector2, mates: Array) -> bool:
 ## No on-watch soldier of the town's own stands within QUIET of `at` (v0.11 M6; where he stands, not his post): the Knights' own are left out. Only reads.
 func _quiet(at: Vector2) -> bool:
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.on_watch() and p.corps != Person.Corps.KNIGHT and p.ground_pos.distance_to(at) <= QUIET:
+		if is_instance_valid(p) and p.on_watch() and p.corps != Person.Corps.KNIGHT and p.watch_at().distance_to(at) <= QUIET:
 			return false
 	return true
 
@@ -388,7 +388,7 @@ func _quiet_placing(at: Vector2) -> bool:
 		if crowd.guard_jobs.on_job(p):
 			if p.town_post != Vector2.INF and p.town_post.distance_to(at) <= QUIET:
 				return false
-		elif p.on_watch() and p.ground_pos.distance_to(at) <= QUIET:
+		elif p.on_watch() and p.watch_at().distance_to(at) <= QUIET:
 			return false
 	return true
 
@@ -899,6 +899,22 @@ func odran_down() -> bool:
 ## The stages are done (v0.11 M6): the flame out and Odran down -- StagesObjective's win.
 func stages_done() -> bool:
 	return flame_out and odran_down()
+
+
+## Loss warning: the Great Flame blessed at BLESSED_AT while it burns (`blessed`, the strip's time), and once it is out, Odran's rekindling
+## on the steps (`kindled`, the rite's seconds left: broken, it starts again from RITE). His walk to the steps is not warned: the rite itself
+## is longer than the card's time. Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if lost_reason() != "" or stages_done():
+		return out
+	if not flame_out and timeline != null and timeline.pending("blessed"):
+		out.append(NightThreat.make(&"blessed", "THE GREAT FLAME IS BLESSED", "PUT OUT THE FLAME", timeline.seconds_to("blessed"),
+			temple.center() if is_instance_valid(temple) else steps_at))
+	if flame_out and odran_out and rite_on and not odran_down():
+		out.append(NightThreat.make(&"kindled", "ODRAN REKINDLES THE FLAME", "STOP ODRAN", maxf(rite_left, 0.0) * mission_delta(1.0),
+			(odran as Person).ground_pos))
+	return out
 
 
 ## Why the night is lost now (v0.11 M6): the flame kindled anew; the flame blessed; else "".

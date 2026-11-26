@@ -821,4 +821,8 @@ static func _thought(t, hud: Hud, crowd: Crowd) -> void:
 		"the HUD's tag layer carries the witness's thought")
 	for _i in 100:  # a hit-stop freeze left by an earlier check holds the crowd for a moment
 		crowd.advance(0.1)
-	t.check(hud.all_tags().size() == before, "and drops it after its time")
+	var left := 0  # a soldier duty may have put its own tag up in those 10 s: only the thought is counted
+	for g in hud.all_tags():
+		if g.label == "JUST A STORM" and g.who == seer:
+			left += 1
+	t.check(left == 0, "and drops it after its time")

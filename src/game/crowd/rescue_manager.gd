@@ -156,7 +156,7 @@ func _assign() -> void:
 		var fire: Structure = null if evacuating else _nearest_fire((crew[0] as Person).ground_pos)
 		# No fire, and the guards' jobs are closed (the rally came): a squad already on a pile stays, an idle one takes the
 		# nearest pile that needs hands (also during the evacuation). Order: trapped, fire, pile.
-		if fire == null and not _crowd.guard_jobs.is_open():
+		if fire == null and _crowd.called_up():
 			var digging := false
 			for m in crew:
 				digging = digging or _crowd.piles.digging(m)

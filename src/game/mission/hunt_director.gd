@@ -639,6 +639,43 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 			crowd.off_duty(v as Person)
 
 
+## Loss warning: the head on his search, its last point the quarry (_found() loses the night: The Heretic Hunt's cellar), `found` at
+## find_eta(). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := find_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"found", _find_title(), "STOP THE %s" % head_label, eta, (head as Person).ground_pos))
+	return out
+
+
+## Virtual: the loss warning's words for the hunt finding its quarry.
+func _find_title() -> String:
+	return "THE %s FINDS HIS QUARRY" % head_label
+
+
+## Mission seconds until the head reaches the quarry (_step_head()): the walk to the point he is on and what is left of his stop there,
+## then each leg after it at his pace with a stop at each point but the last; INF while he is not out, down, indoors, or held off his
+## errand (a fright, a whisper: he starts that stop again after), and on a hunt with no quarry. Only reads.
+func find_eta() -> float:
+	if found or not head_out or head_down() or head_route.is_empty() or _quarry_point() == Vector2.INF or lost_reason() != "":
+		return INF
+	var p := head as Person
+	if p.inside or p.mind != Person.Mind.DUTY:
+		return INF
+	var last := head_route.size() - 1
+	var speed := maxf(p.walk_speed, 0.05)
+	var goal := head_route[_route_at]
+	var t := 0.0
+	if p.ground_pos.distance_to(goal) <= ARRIVE:
+		t = 0.0 if _route_at >= last else maxf(_stop_left, 0.0)
+	else:
+		t = maxf(walk_left(p, goal) - ARRIVE / speed, 0.0) + (head_stop if _route_at < last else 0.0)
+	for k in range(_route_at + 1, last + 1):
+		t += maxf(road_len(head_route[k - 1], head_route[k]) - (ARRIVE if k == last else 0.0), 0.0) / speed + (head_stop if k < last else 0.0)
+	return t * mission_delta(1.0)
+
+
 ## The head is down (v0.11 M4, decision 113): there is none, he was killed, or his body is gone.
 func head_down() -> bool:
 	return not has_head or head_fell or not _alive(head)

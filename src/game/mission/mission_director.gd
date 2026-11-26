@@ -369,6 +369,38 @@ func threats() -> Array[Dictionary]:
 	return out
 
 
+## Real seconds `p` still needs to reach `to` at the speed he moves now (his mind, a power's hold on his pace, a slow status, the ground
+## under him: his walk_speed), along the rest of his path (TempleReport.walk_seconds()). The loss warning's walks. Only reads.
+static func walk_left(p: Person, to: Vector2) -> float:
+	if not is_instance_valid(p):
+		return INF
+	return TempleReport.walk_seconds(p, to, p.walk_speed / maxf(Person.PANIC_SPEED * p.pace, 0.0001))
+
+
+## The loss warning's road lengths (road_len()), each [grid version, length] by its two ends.
+var _warn_roads := {}
+
+
+## The length of the grid's road from `a` to `b` (straight where there is none), kept while the grid stands as it was (WalkGrid.version):
+## the loss warning's legs not yet begun. Changes nothing in the night.
+func road_len(a: Vector2, b: Vector2) -> float:
+	var grid: WalkGrid = crowd._grid if crowd != null else null
+	if grid == null:
+		return a.distance_to(b)
+	var key := Vector4(a.x, a.y, b.x, b.y)
+	var kept: Variant = _warn_roads.get(key)
+	if kept != null and int(kept[0]) == grid.version:
+		return float(kept[1])
+	var total := 0.0
+	var at := a
+	for pt in grid.path(a, b):
+		total += at.distance_to(pt)
+		at = pt
+	total += at.distance_to(b)
+	_warn_roads[key] = [grid.version, total]
+	return total
+
+
 ## Virtual: what the bell's next toll adds to this night's Gaze (threats()): LanternWatch.GAZE_TOLL on a gaze Lantern's night before its
 ## first toll (a later toll adds nothing, a blind Lantern turns no more), 0 elsewhere. Mira's House fills it where there is no Lantern.
 func toll_gaze() -> float:
@@ -461,17 +493,33 @@ func _eligible(p: Variant) -> bool:
 
 
 ## The `count` free soldiers nearest `at`, nearest first (v0.11 M2): eligible, of no corps, none of `exclude`; fewer when the
-## town has fewer.
-func _free_soldiers(at: Vector2, count: int, exclude: Array = []) -> Array[Person]:
+## town has fewer. Before the call-up each one returned is taken off any guard job (the director wins); after it, the pool is
+## only the men the guard answered with, standing at a post or holding (never on the Citadel job). A caller that asks for more
+## men than it keeps passes `take` false and calls take_soldier() on the ones it keeps: only a man a director takes loses his duty.
+func _free_soldiers(at: Vector2, count: int, exclude: Array = [], take := true) -> Array[Person]:
 	var pool: Array[Person] = []
+	var called := crowd.called_up()
 	for s in crowd.soldiers:
 		if _eligible(s) and s.corps == Person.Corps.NONE and not exclude.has(s):
+			if called and not (crowd.guard.answered(s) and s.mind in [Person.Mind.POST, Person.Mind.HOLD] \
+					and crowd.guard_jobs.kind_of(s) != GuardJobs.Kind.CITADEL):
+				continue
 			pool.append(s)
 	pool.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
 	var out: Array[Person] = []
 	out.assign(pool.slice(0, count))
+	if take:
+		for p in out:
+			take_soldier(p)
 	return out
+
+
+## A director takes soldier `p` (v0.11 M2): before the call-up his guard job goes through GuardJobs.pull() (his duty lets go of
+## him; the director wins); after it nothing is pulled (the pool is only the men the guard answered with).
+func take_soldier(p: Person) -> void:
+	if not crowd.called_up():
+		crowd.guard_jobs.pull(p)
 
 
 ## The `count` lay citizens nearest `at`, nearest first (v0.11 M2): eligible, of no faith, of no role in Wish.NOT_LAY (the

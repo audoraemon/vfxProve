@@ -660,18 +660,14 @@ func march_left(c: Charge) -> float:
 	return maxf(HF_MARCH_MIN - (_clock - float(_seized_at[c])), 0.0)
 
 
-## Loss warning: once one believer is lost, each seized believer being marched to the Temple (the next one delivered loses the night,
-## HF_LOSE), as the strip's _temple_in(c).
-func threats() -> Array[Dictionary]:
-	var out := super()
-	if lost() < HF_LOSE - 1 or lost_reason() != "":
-		return out
-	for i in charges.size():
-		var c: Charge = charges[i]
-		if c.held and not c.taken and _march.has(c) and _alive(c.man):
-			out.append(NightThreat.make(StringName("seized_%d" % i), "A SEIZED BELIEVER REACHES THE TEMPLE", "FREE HIM", _temple_in(c),
-				(c.man as Person).ground_pos))
-	return out
+## Loss warning (the Escort type's threats(), `seized_<i>`): each seized believer being marched to the Temple, as the strip's _temple_in(c);
+## the (HF_LOSE - lost())-th delivered loses the night (two held at once with none lost: the second).
+func takings_to_lose() -> int:
+	return HF_LOSE - lost()
+
+
+func march_eta(c: Charge) -> float:
+	return _temple_in(c) if c.held and not c.taken and _march.has(c) and _alive(c.man) else INF
 
 
 ## Held (ruling P5-T17-R2): within HF_MARCH_MIN of his seizure a marched believer is not delivered. His seizer stands with him where he seized him

@@ -252,6 +252,8 @@ var town_post := Vector2.INF
 var post_group := -1
 ## How near his anchor a soldier must stand to count as at it (at_own_post(), on_watch()).
 const WATCH_REACH := 1.0
+## Which street beat he walks (Crowd._start_loops(), CityDef.street_beats()), or -1: set once, never cleared.
+var beat_index := -1
 ## On a guard job (GuardJobs.take/release/prune/close/clear set and clear it, nobody else).
 var on_guard_job := false
 ## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
@@ -261,6 +263,16 @@ var drill_face := Vector2.INF
 var chat_at := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
+## The way a soldier faces standing at his anchor (a Citadel guard man in his rank, later a corpse watcher or a cordon end); INF
+## for none. send_to_post() and hold_ground() clear it, so a caller sets it right after its send_to_post().
+var stand_face := Vector2.INF
+## Down on one knee over something (a corpse inspector): the stumble pose held on its last frame while he stands still.
+var crouching := false
+## Seconds a soldier still stands talking (a cordon man to a citizen he turns back; later duties reuse it): while above zero and
+## not striding, _interact_anim() shows the talk loop in any mind. Counted down in tick(); every duty that sets it clears it.
+var talk_left := 0.0
+## A sweep man sees a power or a death from Crowd.WATCH_SIGHT, not DOOM_WITNESS. Set and cleared only by SweepDuty and GateCheck.
+var watch_far := false
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
 ## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
 ## the duty -- and not to his spawn post (_soldier_back()).
@@ -661,6 +673,8 @@ func tick(delta: float) -> void:
 		_run_carried_laws(delta)
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
+	if talk_left > 0.0:
+		talk_left = maxf(talk_left - delta, 0.0)
 	if _bend_to != Vector2.INF:
 		_bend_left -= delta
 		if _bend_left <= 0.0:
@@ -908,8 +922,12 @@ func pace_hold() -> float:
 
 func _base_speed() -> float:
 	match mind:
-		Mind.PANIC, Mind.RALLY:
+		Mind.PANIC:
 			return PANIC_SPEED * pace
+		Mind.RALLY:
+			if corps != Corps.NONE:
+				return PANIC_SPEED * pace
+			return WALK_SPEED * ASSIST_PACE * pace
 		Mind.RECOVER:
 			return WALK_SPEED * RECOVER_PACE * pace
 		Mind.ASSIST:
@@ -980,7 +998,7 @@ func _pick_target() -> void:
 	if queue_spot != Vector2.INF:
 		_target = queue_spot
 		return
-	if is_running():
+	if is_running() or mind == Mind.RALLY:
 		# DummyEnemy.tick() just set _idle before calling us, to pause at every target it reaches. That
 		# suits a calm stroll but not a sprint: cancel it so a runner never stops between waypoints.
 		_idle = 0.0
@@ -1021,6 +1039,14 @@ func _pick_target() -> void:
 		return
 	if mind == Mind.FLEE:
 		_scurry()
+		return
+	if (mind == Mind.RALLY or mind == Mind.POST) and stand_face != Vector2.INF \
+			and ground_pos.distance_to(anchor) <= GOAL_REACH * 2.0:
+		# A guard man in his rank: he stands on his spot facing the way he was given, never shifting about.
+		hurrying = false
+		_target = anchor
+		_facing = 1 if stand_face.x - stand_face.y > 0.0 else -1
+		_back = stand_face.x + stand_face.y < 0.0
 		return
 	if mind == Mind.POST and ground_pos.distance_to(anchor) <= GOAL_REACH * 2.0:
 		# At its post (the reach _think() re-paths beyond): shifting about it is at a walk again. A goal dropped short of
@@ -1354,8 +1380,9 @@ func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
 ## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
 ## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
 ## `startle` false skips the freeze of a fresh fright (a person in a ground fire does not stand still in it). `may_shelter` false
-## skips the shelter roll (a status that kills him where he stands: Withering.SHELTERS).
-func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true) -> void:
+## skips the shelter roll (a status that kills him where he stands: Withering.SHELTERS). `forced` is a power's own touch on this very person
+## (Divine Schism, the law mark): a shelter escort never steadies it away.
+func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true, forced := false) -> void:
 	if mind == Mind.ASLEEP and state != State.DEAD:
 		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
@@ -1365,10 +1392,13 @@ func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelt
 	if fearless_left > 0.0 and not burning():
 		flinch(from)  # a mind told there is nothing to fear still turns -- unless he is on fire (fair life, 2026-11-20)
 		return
+	if not forced and crowd != null and crowd.shelter_escort != null and crowd.shelter_escort.steadied(self, from, radius):
+		return  # a household led to shelter holds against a near miss while its escort stands by (ShelterEscort)
 	# A sturdy building nearby may be better than running (ShelterManager).
 	if may_shelter and shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
 		return
+	_drop_hold_off()  # a fright ends any hold-off: nothing is kept back to be restored over the flight
 	var from_other_mind := mind != Mind.PANIC
 	_hold_begin()
 	mind = Mind.PANIC
@@ -1599,6 +1629,8 @@ func lure(at: Vector2, seconds: float, from := Vector2.INF, reach := WillOWisp.C
 			return false
 	elif not (mind in LURABLE or (answers_lure and mind == Mind.DUTY)):
 		return false
+	elif crowd != null and not answers_lure and crowd.cordon_blocks(ground_pos, at):
+		return false  # a cordon's rope lies between a citizen and the light (CordonDuty)
 	if answers_lure and not soldier:
 		_duty_lured = mind == Mind.DUTY or (_duty_lured and mind == Mind.OBSERVE and _lured)
 	else:
@@ -1692,12 +1724,13 @@ func wrap_to(to: Vector2, walk_on := true) -> bool:
 ## route it means to take into `r` -- its goal now, a post, a street, an errand -- is kept for later and not walked
 ## (set_goal()); a goal outside `r` it walks as ever (a fright sends it off as usual). When the time is up (or
 ## end_hold_off()) it takes up the goal it was kept from, if any. Its mind is untouched; nothing is drawn from any rng
-## here. No path is walked while it mills, so the stuck watchdog has nothing to count. False when it is dead or inside.
-func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float) -> bool:
+## here. No path is walked while it mills, so the stuck watchdog has nothing to count. With `path_too` a goal outside `r` whose
+## path runs through it (path_crosses(), CordonDuty.PATH_AHEAD ahead) is kept back too. False when it is dead or inside.
+func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float, path_too := false) -> bool:
 	if state == State.DEAD or inside or seconds <= 0.0:
 		return false
 	var kept := _off_goal if _off_left > 0.0 else Vector2.INF
-	if _goal != Vector2.INF and r.has_point(_goal):
+	if _goal != Vector2.INF and (r.has_point(_goal) or (path_too and path_crosses(r, CordonDuty.PATH_AHEAD))):
 		kept = _goal
 	_off_rect = r
 	_off_left = seconds
@@ -1732,13 +1765,26 @@ func end_hold_off() -> void:
 	var g := _off_goal
 	_off_goal = Vector2.INF
 	_off_home = Vector2.INF
-	if g != Vector2.INF and state != State.DEAD and not inside:
+	if g != Vector2.INF and state != State.DEAD and not inside and _goal == Vector2.INF \
+			and (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP):
 		set_goal(g)
+
+
+## A fright (flee(), panic()) ends a hold-off with no goal given back: the flight is his own.
+func _drop_hold_off() -> void:
+	_off_left = 0.0
+	_off_goal = Vector2.INF
+	_off_home = Vector2.INF
 
 
 ## Whether it is held off a place now (hold_off()).
 func held_off() -> bool:
 	return _off_left > 0.0
+
+
+## The ground it is held off now (hold_off()); an empty rect when it is not.
+func held_rect() -> Rect2:
+	return _off_rect if _off_left > 0.0 else Rect2()
 
 
 ## Where it means to be: its goal; or, kept from one (hold_off()), that goal; else its anchor (a citizen's street, a
@@ -1979,6 +2025,28 @@ func guised() -> bool:
 	return statuses.has(&"guise")
 
 
+## A gate guard sees through him (GateCheck): the guise comes off and any hold of the god's ends as if it had worn off -- a whisper
+## (end_whisper()), a confusion (_come_to()), a compulsion (release_compulsion()), a stare at a lure (it ends at his next think).
+## True when anything ended.
+func unmask() -> bool:
+	var ended := statuses.erase(&"guise")
+	match mind:
+		Mind.WHISPERED:
+			end_whisper()
+			ended = true
+		Mind.CONFUSED:
+			_come_to()
+			ended = true
+		Mind.COMPELLED:
+			release_compulsion()
+			ended = true
+		Mind.OBSERVE:
+			if _lured:
+				_observe_left = 0.0
+				ended = true
+	return ended
+
+
 ## Whether a withering is on him now (Withering, R36: statuses[&"wither"] holds the seconds left, laid, counted down and
 ## taken off by the crowd's Withering). Drawn grey (Withering.TINT), as the guised are.
 func withered() -> bool:
@@ -2059,7 +2127,9 @@ func _soldier_back() -> void:
 	_held_saved = false
 	match m:
 		Mind.RALLY:
+			var face := stand_face
 			send_to_post(at, true, hurry)
+			stand_face = face
 		Mind.DUTY:
 			go_duty(at)
 			if mind != Mind.DUTY:
@@ -2890,7 +2960,8 @@ func _scurry() -> void:
 
 
 func is_running() -> bool:
-	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY or mind == Mind.FIGHT
+	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.FIGHT
+		or (mind == Mind.RALLY and corps != Corps.NONE)
 		or (mind == Mind.COMPELLED and _compel_run))
 
 
@@ -2907,6 +2978,7 @@ func flee() -> void:
 		_reassured_fled = true  # it will go when the calm wears off
 		return
 	mind = Mind.FLEE
+	_drop_hold_off()
 	walk_speed = _mind_speed()
 	_panic_left = 0.0
 	_goal = Vector2.INF
@@ -2986,6 +3058,7 @@ func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 		return  # a man on fire is sent nowhere (fair life, 2026-11-20)
 	_held_saved = false  # sent somewhere by someone (a town order -- the rally, the marshals, a rescue -- wins over any hold, WILL_FIRM too)
 	anchor = at
+	stand_face = Vector2.INF
 	mind = Mind.RALLY if rally else Mind.POST
 	hurrying = hurried
 	walk_speed = _mind_speed()
@@ -3003,9 +3076,28 @@ func at_own_post() -> bool:
 ## away on a guard job, and either on duty or at his station (a director-stationed soldier counts; a guard away on a fire or a
 ## pile never does).
 func on_watch() -> bool:
-	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job:
+	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or on_beat():
 		return false
+	if _gate_guard():
+		return mind == Mind.POST or mind == Mind.HOLD  # a gate guard keeps his watch wherever his check has taken him
 	return mind == Mind.DUTY or ((mind == Mind.POST or mind == Mind.HOLD) and ground_pos.distance_to(anchor) <= WATCH_REACH)
+
+
+## Where a watcher is judged to stand: a gate guard holding a GATE record (GateCheck) at his town post, wherever his check has stepped
+## him (so a door's verdict does not flip with traffic); anyone else where he is.
+func watch_at() -> Vector2:
+	return town_post if _gate_guard() else ground_pos
+
+
+## Whether he holds a GATE record (GateCheck) and has a town post.
+func _gate_guard() -> bool:
+	return town_post != Vector2.INF and crowd != null and crowd.guard_jobs != null and crowd.guard_jobs.kind_of(self) == GuardJobs.Kind.GATE
+
+
+## Whether he is walking his street beat: a beat man, no corps, and nobody has re-posted him (his post is his town post and his
+## anchor), so a director's stationed man (anchor away from his post) is not on his beat and watches as any guard.
+func on_beat() -> bool:
+	return beat_index >= 0 and corps == Corps.NONE and post.is_equal_approx(town_post) and anchor.is_equal_approx(post)
 
 
 ## Back to his post after a job: a soldier the god holds has his saved hold rewritten to the post (so the hold lifts into it);
@@ -3024,6 +3116,7 @@ func hold_ground() -> void:
 	if state == State.DEAD:
 		return
 	_held_saved = false
+	stand_face = Vector2.INF
 	mind = Mind.HOLD
 	walk_speed = _mind_speed()
 	_goal = Vector2.INF
@@ -3326,6 +3419,9 @@ func _sprite_pose_code() -> int:
 	elif _stumble > 0.0 or mind == Mind.ASLEEP:
 		anim = 3
 		t = STUMBLE_SECONDS - _stumble if _stumble > 0.0 else STUMBLE_SECONDS  # asleep: down, and staying down
+	elif crouching and not _stride:
+		anim = 3
+		t = STUMBLE_SECONDS  # the stumble's last frame, held
 	elif _swing_left > 0.0 and state == State.WANDER:
 		anim = 7
 		t = SWING_SHOW - _swing_left
@@ -3366,7 +3462,7 @@ func _sprite_pose_code() -> int:
 		t = _still_t
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
-		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
+		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or (mind == Mind.RALLY and corps != Corps.NONE) else 1
 		if (mind == Mind.FIGHT and fight_kind == &"madness") or (anim == 1 and guised()):
 			_design()
 			if _has_own_art(6):
@@ -3392,6 +3488,8 @@ func _interact_anim() -> int:
 	if mind == Mind.DUTY and chat_at != Vector2.INF and not soldier and not has_goal() and _flinch_left <= 0.0 and _own_art(13):
 		return 13  # a fair goer talking in his group (fair life, 2026-11-20)
 	if soldier:
+		if talk_left > 0.0 and not _stride:
+			return 13 if _own_art(13) else -1
 		if mind != Mind.POST or hurrying or has_goal() or not _own_art(13):
 			return -1
 		var every := TALK_EVERY.x + (TALK_EVERY.y - TALK_EVERY.x) * float(posmod(rng.seed * 40503, 997)) / 996.0

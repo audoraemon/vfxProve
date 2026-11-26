@@ -527,13 +527,13 @@ func _judge() -> void:
 ## other warnings own as well.
 func _relay_witness(at: Vector2) -> Person:
 	var best: Person = null
-	var best_d := Crowd.DOOM_WITNESS
+	var best_d := INF
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or on_lantern_errand(p) or p.is_child():
 				continue  # (a child, Children, carries no warning)
 			var d := p.ground_pos.distance_to(at)
-			if d <= best_d:
+			if d <= best_d and d <= crowd.witness_reach(p, true):
 				best = p
 				best_d = d
 	return best
@@ -606,7 +606,7 @@ func witnesses() -> Array[Person]:
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if is_instance_valid(p) and p != messenger and p.is_alive() and not p.inside and not on_lantern_errand(p) and not LawMark.unseen_by_all(p) \
-					and p.ground_pos.distance_to(messenger.ground_pos) <= Crowd.DOOM_WITNESS:
+					and p.ground_pos.distance_to(messenger.ground_pos) <= crowd.witness_reach(p, true):
 				out.append(p)
 	return out
 

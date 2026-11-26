@@ -265,12 +265,12 @@ func _lay_side(p: Person, s: int, left: float) -> void:
 	if condemned and not p.soldier:
 		# The condemned citizen does not stand and fight a town: it runs.
 		p.mind = Person.Mind.CALM
-		p.panic(origin, 0.5, &"schism")
+		p.panic(origin, 0.5, &"schism", true, true, true)
 	elif fights(p):
 		p.fight(null, left, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.OTHER_SIDE, SIGHT)
 	else:
 		p.mind = Person.Mind.CALM
-		p.panic(origin, 0.5, &"schism")
+		p.panic(origin, 0.5, &"schism", true, true, true)
 
 
 ## Tumult: the wave reaches `p` -- mad, frozen where it stands, or panicked, rolled with the cast's rng. A caregiver is

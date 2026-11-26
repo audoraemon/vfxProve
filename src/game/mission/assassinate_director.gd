@@ -740,6 +740,41 @@ func any_safe() -> bool:
 	return false
 
 
+## Loss warning: every target on his way to the safe place, where his arriving loses the night (any_safe()): safe_threats().
+func threats() -> Array[Dictionary]:
+	var out := super()
+	out.append_array(safe_threats())
+	return out
+
+
+## Virtual: the loss warning's targets bound for the safe place (threats()), each `safe_<index>` at safe_eta(); none once the night is
+## decided. Expel the inquisitor's is its captain's own countdown. Only reads.
+func safe_threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if any_safe() or all_fallen() or lost_reason() != "":
+		return out
+	for q in quarries:
+		var eta := safe_eta(q)
+		if eta < INF:
+			out.append(NightThreat.make(StringName("safe_%d" % q.index), "THE %s REACHES THE %s" % [q.label, safe_label], "STOP HIM", eta,
+				q.target.ground_pos))
+	return out
+
+
+## Mission seconds until `q` walks in at the safe place: his walk there at the pace he goes now, while he is on his way to it in his own
+## mind -- past his round's last stop, or alarmed with no hideout left (fleeing_to_safe()); INF otherwise (on his round, indoors, hiding,
+## held by the god). Only reads.
+func safe_eta(q: Quarry) -> float:
+	if q.dead or not _alive(q.target) or safe_at == Vector2.INF:
+		return INF
+	var t: Person = q.target
+	if t.inside or t.mind != Person.Mind.DUTY:
+		return INF
+	if not ((q.state == State.WALKING and q.leg >= q.stops.size()) or fleeing_to_safe(q)):
+		return INF
+	return walk_left(t, safe_at) * mission_delta(1.0)
+
+
 ## Everyone who would see `q` (the current target when null) die by a Silent Doom cast on him (v0.11 M2): living, out of doors,
 ## within Crowd.DOOM_WITNESS of him but beyond SilentDoom.RADIUS (those nearer fall with him). Only reads.
 func witnesses(q: Quarry = null) -> Array[Person]:
@@ -752,7 +787,7 @@ func witnesses(q: Quarry = null) -> Array[Person]:
 		for p in group:
 			if is_instance_valid(p) and p != w.target and p.is_alive() and not p.inside and not LawMark.unseen_by_all(p):
 				var d := p.ground_pos.distance_to(at)
-				if d <= Crowd.DOOM_WITNESS and d > SilentDoom.RADIUS:
+				if d <= crowd.witness_reach(p, true) and d > SilentDoom.RADIUS:
 					out.append(p)
 	return out
 

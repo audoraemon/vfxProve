@@ -11,6 +11,7 @@ static func run(t) -> void:
 	_judge(t, "informer")
 	_judge(t, "heart")
 	_placing(t)
+	_beat_man_off_watch(t)
 
 
 ## Whether director `kind` counts `at` as watched.
@@ -39,14 +40,15 @@ static func _arrive(p: Person) -> void:
 	p._path = PackedVector2Array()
 
 
-## An ordinary guard at his post with no other soldier within 2R (R = 2.5 at most) of him.
-static func _lone(crowd: Crowd) -> Person:
+## An ordinary guard at his post (not a street beat man unless `beat`) with no other soldier within 2R (R = 2.5 at most) of him
+## (for a beat man his own pair and the other beat men do not count: they are off watch).
+static func _lone(crowd: Crowd, beat := false) -> Person:
 	for p in crowd.soldiers:
-		if p.corps != Person.Corps.NONE or not crowd.guard_jobs.at_post(p):
+		if p.corps != Person.Corps.NONE or not crowd.guard_jobs.at_post(p) or (p.beat_index >= 0) != beat:
 			continue
 		var alone := true
 		for q in crowd.soldiers:
-			if q != p and q.ground_pos.distance_to(p.ground_pos) < 6.0:
+			if q != p and q.ground_pos.distance_to(p.ground_pos) < 6.0 and not (beat and q.beat_index >= 0):
 				alone = false
 				break
 		if alone:
@@ -137,3 +139,17 @@ static func _placing(t) -> void:
 	t.check(not d._quiet_placing(at), "placing: but bearers are placed as if he were back at his post")
 	crowd.clear()
 	Piles._free(made)
+
+
+## A door next to a paused beat man is not watched, whichever mission asks.
+static func _beat_man_off_watch(t) -> void:
+	for kind in ["hunt", "informer", "heart"]:
+		City.use(&"aldermere")
+		var made := Piles._crowd()
+		var crowd: Crowd = made[0]
+		var b := _lone(crowd, true)
+		t.check(b != null and b.on_beat(), "%s: a lone beat man stands at his point" % kind)
+		if b != null:
+			t.check(not _watched(kind, crowd, b.ground_pos + Vector2(0.3, 0.0)), "%s: a door next to a paused beat man is not watched" % kind)
+		crowd.clear()
+		Piles._free(made)

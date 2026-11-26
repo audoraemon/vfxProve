@@ -232,7 +232,8 @@ static func _soldiers(t, b: Dictionary) -> void:
 		moved_on += 1 if (start[p] as Vector2).distance_to(p.post) > 1.0 else 0
 	var off := 0
 	for p: Person in crowd.soldiers:
-		if crowd.loop_of(p) < 0 and p.corps == Person.Corps.NONE and p.ground_pos.distance_to(p.post) > 1.5:
+		if crowd.loop_of(p) < 0 and crowd.beat_of(p) < 0 and p.corps == Person.Corps.NONE and p.ground_pos.distance_to(p.post) > 1.5 \
+				and not _stepped_out(crowd, p):  # a gate checker stepped out for a check is away by design
 			off += 1
 	t.check(not walkers.is_empty() and moved_on >= walkers.size() * 0.8,
 		"the wall patrols walk on round their loops (%d of %d moved on)" % [moved_on, walkers.size()])
@@ -406,3 +407,9 @@ static func _in_water(g: Vector2, rivers: Array[Rect2]) -> bool:
 		if r.has_point(g):
 			return true
 	return false
+
+
+## Whether `p` is a gate checker stepped out to his spot for a check (his GATE job says so).
+static func _stepped_out(crowd: Crowd, p: Person) -> bool:
+	var job: Variant = crowd.guard_jobs.job_of(p)
+	return job is GuardJobs.Job and (job as GuardJobs.Job).kind == GuardJobs.Kind.GATE and bool((job as GuardJobs.Job).data.out)

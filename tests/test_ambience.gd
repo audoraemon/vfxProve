@@ -187,7 +187,7 @@ static func run(t) -> void:
 		a.free()
 	prey.free()
 
-	# Soldiers (pass 5): a soldier's blow is a spear, anyone else's a fist; orders rest; the horn; the march.
+	# Soldiers (pass 5): a soldier's blow is a spear, anyone else's a fist; orders rest; the horn; no march (removed).
 	var sv := SoldierVoices.new()
 	t.check(sv.blow(true, 0.0) == &"sol_strike" and sv.blow(false, 0.0) == &"cit_blow", "a spear for a soldier, a fist for the rest")
 	for i in 3:
@@ -205,9 +205,6 @@ static func run(t) -> void:
 	t.check(blows_heard.size() == 1 and blows_heard[0][0] == struck, "a blow that lands is heard by the field")
 	struck.free()
 	field.free()
-	for cue: StringName in [&"sol_step", &"sol_strike", &"cit_blow", &"sol_order", &"town_horn"]:
+	for cue: StringName in [&"sol_strike", &"cit_blow", &"sol_order", &"town_horn"]:
 		t.check(Sfx.CATALOG.has(cue), "%s is in the catalog" % cue)
-	t.check(Ambience.marching(0.1, Ambience.MARCH_EVERY) and not Ambience.marching(0.01, Ambience.MARCH_EVERY)
-		and not Ambience.marching(0.1, 0.0), "a walking soldier marches, one at its post does not")
-	t.check(not Ambience.march_heard(AlarmManager.Stage.NORMAL) and Ambience.march_heard(AlarmManager.Stage.CONCERN),
-		"a calm town's patrols are silent; the march is heard once the alarm rises")
+	t.check(not Sfx.CATALOG.has(&"sol_step"), "the soldiers' march is not heard")

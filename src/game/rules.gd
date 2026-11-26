@@ -251,9 +251,10 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	_field = field
 	_crowd = crowd
 	_town = town
-	# The night's slots are set: the ledger of bodies runs only when a Death power that uses them is carried.
-	if crowd.remains != null and Remains.wants(loadout):
+	# The ledger of bodies is always on (soldier duties: a beat pair finds bodies in every mission).
+	if crowd.remains != null:
 		crowd.remains.enabled = true
+		crowd.remains.always = true
 	_escaped0 = crowd.escaped_count
 	_citizens0 = crowd.killed_citizens
 	_soldiers0 = crowd.killed_soldiers

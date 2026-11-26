@@ -311,9 +311,10 @@ func _appoint_patrol(c: Person, beat: PackedVector2Array, n: int) -> Array[Perso
 ## him, and at their posts -- never one on the rally's ring or under another town order (the controller's M2 Task 4 fix ruling).
 func _appoint_hunters(_c: Person, n: int) -> Array[Person]:
 	var out: Array[Person] = []
-	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers()):
+	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers(), false):
 		if p.mind in POST_MINDS and not p.held_by_god() and out.size() < n:
 			out.append(p)
+			take_soldier(p)  # only the men kept lose their duty records
 	return out
 
 
@@ -378,6 +379,55 @@ func _unbound_banner() -> String:
 ## fails with it; The Prisoner's "prisoner_inside".
 func lost_reason() -> String:
 	return ""
+
+
+## Loss warning: the charges being marched back to return_to by their seizers (march_eta()), from the takings_to_lose()-th soonest on
+## (NightThreat.decisive()), each `seized_<i>`; none once the night is decided. Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if lost_reason() != "":
+		return out
+	var k := takings_to_lose()
+	if k < 1:
+		return out
+	var marches: Array[Dictionary] = []
+	for i in charges.size():
+		var c := charges[i]
+		if c.taken or c.escaped or not _alive(c.man):
+			continue
+		var eta := march_eta(c)
+		if eta < INF:
+			marches.append(NightThreat.make(StringName("seized_%d" % i), _march_title(), _march_act(), eta, (c.man as Person).ground_pos))
+	out.append_array(NightThreat.decisive(marches, k))
+	return out
+
+
+## Virtual: how many more charges taken back lose the night (the loss warning): one on a night of one charge (EscortObjective fails on
+## his taking), none on a night of many unless it says (Exodus, Hide the faithful).
+func takings_to_lose() -> int:
+	return 1 if charges.size() == 1 else 0
+
+
+## Virtual: mission seconds until charge `c`, held, is taken back (_step_held(): his seizer within RETURN_REACH of return_to, he within
+## TAKE_REACH x 2 of his seizer): the later of the seizer's walk and the charge's trailing walk, each at the pace he goes now; INF while he
+## is not marched (free, bound, his seizer gone or off his errand). Only reads.
+func march_eta(c: Charge) -> float:
+	if not c.held or not _alive(c.man) or not _alive(c.seizer) or (c.seizer as Person).mind != Person.Mind.DUTY:
+		return INF
+	var s := c.seizer as Person
+	var p := c.man as Person
+	var lead := maxf(walk_left(s, return_to) - RETURN_REACH / maxf(s.walk_speed, 0.05), 0.0)
+	var trail := maxf(walk_left(p, return_to) - (RETURN_REACH + TAKE_REACH * 2.0) / maxf(p.walk_speed, 0.05), 0.0)
+	return maxf(lead, trail) * mission_delta(1.0)
+
+
+## Virtual: the loss warning's words for a charge marched back.
+func _march_title() -> String:
+	return "THE %s IS TAKEN BACK" % charge_label
+
+
+func _march_act() -> String:
+	return "FREE HIM"
 
 
 ## Virtual (v0.11 M4): the HUD's row in place of the objective's label, "" for the label (The Prisoner's while she is bound).

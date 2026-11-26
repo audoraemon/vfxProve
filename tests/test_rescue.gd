@@ -163,6 +163,7 @@ static func _reserve(t) -> void:
 	t.check(not squad.is_empty() and r.trapped_at(s) >= 2, "a squad goes to dig %d out" % r.trapped_at(s))
 	crowd.rally()
 	CorpsTest.ring(crowd)
+	CorpsTest.hold_free(crowd)
 	var first: Person = squad.members[0]
 	var ring := CorpsTest.on_ring(crowd)
 	field.kill(first, &"test")

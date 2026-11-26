@@ -717,7 +717,8 @@ func _show_held_banners() -> void:
 ## played shows it; each manager is wired once (v0.09: an act after the first, or a raised town, calls this again).
 func _wire_responses() -> void:
 	if _wire_once(_crowd):
-		_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
+		_crowd.rallied.connect(func(): _rules.banner.emit(CitadelGuard.BANNER))
+		_crowd.duty_event.connect(func(_k: int, text: String, _at: Vector2): _rules.banner.emit(text))
 		_crowd.suspicion.uneasy.connect(func(): _rules.quiet_banner.emit("THE TOWN GROWS UNEASY"))
 		_crowd.suspicion.became_known.connect(func(_why: String): _rules.banner.emit("THE TOWN KNOWS: A GOD IS HERE"))
 	if _crowd.bell != null and _wire_once(_crowd.bell):

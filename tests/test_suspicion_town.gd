@@ -264,8 +264,8 @@ static func _keeper(t) -> void:
 	var bell := crowd.bell
 	crowd.suspicion.excuse(&"lightning")
 	_deaths(s, &"lightning", 4, at)
-	t.check(crowd.alarms.stage == AlarmManager.Stage.LOCAL_EMERGENCY and crowd._investigating.size() == Crowd.INVESTIGATORS,
-		"four lightning deaths in a district: Local Emergency, the two investigators sent")
+	t.check(crowd.alarms.stage == AlarmManager.Stage.LOCAL_EMERGENCY and crowd.sweep.swept(AlarmManager.district_of(at)),
+		"four lightning deaths in a district: Local Emergency, the district's sweep asked for (soldier duties: the investigators' heir)")
 	t.check(bell.state == BellNetwork.State.IDLE and not crowd.keeper_due(), "but the bellkeeper is not called")
 	crowd.suspicion.know("x")
 	t.check(bell.state != BellNetwork.State.IDLE and crowd.keeper_due(), "once the town knows, he is")

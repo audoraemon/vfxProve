@@ -24,6 +24,11 @@ static func run(t) -> void:
 	_reach_key(t)
 	_reach_walls_only(t)
 	_omen_body(t)
+	_broken_gain(t)
+	_broken_blight(t)
+	_broken_keeper(t)
+	_broken_off(t)
+	_broken_why(t)
 
 
 ## A world for one WarningDirector, `flags` set before it is set up. `at_postern`: its post is the postern's (a barred gate in the unaware town).
@@ -292,4 +297,109 @@ static func _omen_body(t) -> void:
 	t.check(w._drawn_to != Vector2.INF and m.mind == Person.Mind.DUTY, "W3 early: he goes out to the body (%s)" % Person.Mind.keys()[m.mind])
 	_run(s, 1.5, false)
 	t.check(w.omen_fallen and m.mind == Person.Mind.DUTY and w._drawn_to != Vector2.INF, "W3 early: the omen's look-up leaves his walk alone (%s)" % Person.Mind.keys()[m.mind])
+	ClarityKit.done(s)
+
+
+## ---- T2: the broken bell buys time (spec 5, W-R3) --------------------------------------------------------------------------------------------
+
+## A Warning world with the bell broken by `bell_breaks` and a Herald Lantern on its Rules (the Kit worlds carry none).
+static func _bell_world(flags: Dictionary) -> Dictionary:
+	var s := _world(flags)
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, LanternWatch.KIND_HERALD)
+	(s.rules as Rules).lantern = lw
+	s["lw"] = lw
+	return s
+
+
+## A real Blight cast on the bell tower, its effect run to the end by hand (the kit's world has no tree to run it).
+static func _blight_bell(s: Dictionary) -> void:
+	var tower: Structure = (s.crowd as Crowd).bell.tower
+	var fx := ClarityKit.cast_real(s, "blight", tower.center())
+	for i in 20:
+		fx._process(0.1)
+	_run(s, 0.1, false)
+
+
+## The gain test: from every post of the schedule the broken bell's walk takes at least BROKEN_GAIN longer than the intact chain.
+static func _broken_gain(t) -> void:
+	var s := _bell_world({"bell_breaks": true})
+	var w: WarningDirector = s.d
+	for st: Array in StarfallDirector.STARS:
+		var post: Vector2 = (s.crowd as Crowd)._grid.nearest_walkable(st[1])
+		var intact := w._eta_intact(post)
+		var broken := w._eta_broken(post)
+		print("  broken-bell gain at %s: intact %.1f s, broken %.1f s (+%.1f)" % [st[2], intact, broken, broken - intact])
+		t.check(broken >= intact + WarningDirector.BROKEN_GAIN, "gain: %s: broken %.1f >= intact %.1f + %.0f" % [st[2], broken, intact, WarningDirector.BROKEN_GAIN])
+	ClarityKit.done(s)
+
+
+## Blight on an idle bell breaks it at once: the banner once, a later set-off walks at BROKEN_PACE to the Temple, the Herald is open, and the ETA reads that pace.
+static func _broken_blight(t) -> void:
+	var s := _bell_world({"bell_breaks": true, "holds_post": true, "quiet_omen": true})
+	var w: WarningDirector = s.d
+	var tower: Structure = (s.crowd as Crowd).bell.tower
+	_run(s, 1.0, false)
+	t.check(not w.bell_broken() and not w.heralding() and is_equal_approx(w.carrier_pace(), LanternWatch.HERALD_SLOW), "broken: intact bell, no Herald, the Herald's pace")
+	_blight_bell(s)
+	_run(s, 0.3, false)
+	t.check(tower.blighted and w.bell_broken() and w.heralding(), "broken: a blighted idle bell is broken at once")
+	t.check(is_equal_approx(w.carrier_pace(), WarningDirector.BROKEN_PACE), "broken: carrier_pace() is BROKEN_PACE")
+	t.check((s.banners as Array).count(WarningDirector.BROKEN_BANNER) == 1, "broken: THE BELL IS BROKEN once")
+	_run(s, 1.0, false)
+	t.check((s.banners as Array).count(WarningDirector.BROKEN_BANNER) == 1, "broken: ... and not again")
+	t.check(not w.herald_open(), "broken: the Herald is not open before the set-off")
+	w.set_off()
+	_run(s, 0.6, false)
+	var m := w.messenger
+	t.check(w.herald_open() and m.mind == Person.Mind.DUTY, "broken: after the set-off the Herald is open")
+	t.check(is_equal_approx(float(m.statuses.get(&"slow", 1.0)), WarningDirector.BROKEN_PACE), "broken: he walks at BROKEN_PACE (%s)" % str(m.statuses.get(&"slow", 1.0)))
+	t.check(m.goal().distance_to(w.lantern_door()) < 1.5, "broken: his goal is the Temple's door")
+	var want := TempleReport.walk_seconds(m, w.lantern_door(), WarningDirector.BROKEN_PACE) * (s.rules as Rules).clock_rate
+	t.check(absf(w.herald_eta() - want) < 0.01, "broken: herald_eta() uses BROKEN_PACE (%.1f vs %.1f)" % [w.herald_eta(), want])
+	t.check(w.herald_label().begins_with("TO THE TEMPLE "), "broken: his tag reads TO THE TEMPLE (%s)" % w.herald_label())
+	ClarityKit.done(s)
+
+
+## The keeper already carrying it walks at BROKEN_PACE with no climb and no descent.
+static func _broken_keeper(t) -> void:
+	var s := _bell_world({"bell_breaks": true, "holds_post": true, "quiet_omen": true})
+	var w: WarningDirector = s.d
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	w.messenger = bell.keeper
+	w.phase = WarningDirector.Phase.DELIVERED
+	_blight_bell(s)
+	_run(s, 0.8, false)
+	var k := bell.keeper
+	t.check(w.herald_open() and w._descend == 0.0, "keeper: carrying it, the Herald is open with no descent")
+	t.check(is_equal_approx(float(k.statuses.get(&"slow", 1.0)), WarningDirector.BROKEN_PACE) and k.goal().distance_to(w.lantern_door()) < 1.5,
+		"keeper: he walks to the Temple at BROKEN_PACE")
+	ClarityKit.done(s)
+
+
+## bell_breaks off: a blighted tower changes nothing (no Herald before the toll, the old pace).
+static func _broken_off(t) -> void:
+	var s := _bell_world({})
+	var w: WarningDirector = s.d
+	(s.env as EnvironmentField).blight((s.crowd as Crowd).bell.tower)
+	_run(s, 0.5, false)
+	t.check(not w.bell_broken() and not w.heralding() and is_equal_approx(w.carrier_pace(), LanternWatch.HERALD_SLOW), "off: a blighted tower breaks nothing")
+	t.check(w.bell_why("blight", (s.crowd as Crowd).bell.tower.center()) == "" and not (s.banners as Array).has(WarningDirector.BROKEN_BANNER), "off: no banner, no bell_why")
+	ClarityKit.done(s)
+
+
+## bell_why: TIME at his post, SOONER for a carrier near the door, TOLLED once the bell has tolled; "" for any other key or structure; read-only.
+static func _broken_why(t) -> void:
+	var s := _bell_world({"bell_breaks": true})
+	var w: WarningDirector = s.d
+	var bell: BellNetwork = (s.crowd as Crowd).bell
+	var at := bell.tower.center()
+	_run(s, 0.5, false)
+	t.check(w.bell_why("blight", at) == WarningDirector.BELL_TIME, "bell_why: a watchman at his post: IT ONLY BUYS TIME (%s)" % w.bell_why("blight", at))
+	t.check(w.why_not("blight", at) == WarningDirector.BELL_TIME, "why_not carries it")
+	t.check(w.bell_why("smite", at) == "" and w.bell_why("blight", at + Vector2(0.0, 12.0)) == "", "bell_why: another key or another place says nothing")
+	Kit.arrive(w.messenger, w.lantern_door() + Vector2(0.0, 1.0))
+	t.check(w.bell_why("blight", at) == WarningDirector.BELL_SOONER, "bell_why: a carrier at the Temple's door: HE RUNS SOONER (%s)" % w.bell_why("blight", at))
+	ClarityKit.assert_read_only(t, s, "warning rework, bell_why")
+	(s.lw as LanternWatch).tolled = true
+	t.check(w.bell_why("blight", at) == WarningDirector.BELL_TOLLED, "bell_why: THE BELL HAS TOLLED ALREADY")
 	ClarityKit.done(s)

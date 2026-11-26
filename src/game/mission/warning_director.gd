@@ -50,6 +50,17 @@ const KEY_STEP := 1.2
 ## him out, when his whisper leads beyond the wall -- farther than KEY_REACH, so he is first walked to the postern's inner face.
 const KEY_WALK := 4.0
 ## Said when the watchman, confused at his post, decides he dreamt the star (`dreams_stop`).
+## (the Warning rework, T2, W-R3) The share of a walker's pace kept on the farther, slower way to the Temple when the bell is broken (first guess; the
+## gain test pins BROKEN_GAIN from every post, lower it in 0.05 steps if a post fails).
+const BROKEN_PACE := 0.25
+## Real seconds the broken way must cost over the intact bell, at every post (first guess; the test only).
+const BROKEN_GAIN := 10.0
+const BROKEN_BANNER := "THE BELL IS BROKEN"
+const BELL_TOLLED := "THE BELL HAS TOLLED ALREADY"
+const BELL_SOONER := "BROKEN BELL: HE RUNS SOONER"
+const BELL_TIME := "BROKEN BELL: IT ONLY BUYS TIME"
+## The keeper's walk from where the warning reaches him to the tower's foot, in the intact chain's estimate (spec 5, the gain test).
+const FOOT_WALK := 2.0
 const DREAMT_BANNER := "THE WATCHMAN THINKS HE DREAMT IT"
 
 ## (god T1R, spec 4.1; both default off, so the campaign's Warning, the Omen and The Bell-Ringers play as ever -- StarfallDirector sets them.)
@@ -72,6 +83,10 @@ var dreams_stop := false
 var lead_key := false
 ## The rework's why_not reach (the lead, the seal): only StarfallDirector sets it (`walls_stop` is set elsewhere, e.g. by Silence the Witness, which must read as ever).
 var rework_reach := false
+## (the Warning rework, T2, W-R3) A blighted or fallen bell tower breaks the bell at once: every warning's errand is the Temple's door at BROKEN_PACE.
+var bell_breaks := false
+## THE BELL IS BROKEN has been shown (one night, one banner: StarfallDirector sets it on all but one of its warnings).
+var broken_said := false
 ## How the warning was stopped, once it is: "kill" (an unseen kill), "out" (W1) or "lie" (W2); "" while it lives.
 var stopped_how := ""
 
@@ -171,6 +186,9 @@ func step(delta: float) -> void:
 			return
 	if not omen_fallen and _clock >= OMEN_AT:
 		_omen()
+	if bell_breaks and not broken_said and bell_broken():
+		broken_said = true
+		rules.banner.emit(BROKEN_BANNER)
 	if gate_keeps:
 		_use_key()
 	if walls_stop and _out_of_walls():
@@ -309,7 +327,22 @@ func _run(relay := false) -> void:
 func heralding() -> bool:
 	if rules == null or rules.lantern == null or rules.lantern.kind != LanternWatch.KIND_HERALD:
 		return false
-	return rules.lantern.tolled or rules.lantern.bell_silenced
+	return rules.lantern.tolled or rules.lantern.bell_silenced or bell_broken()
+
+
+## (the Warning rework, T2, W-R3) The bell is broken: the rule is on, the tower is blighted or fallen, and the bell has not tolled. Only reads.
+func bell_broken() -> bool:
+	if not bell_breaks or crowd == null or crowd.bell == null or rules == null or rules.lantern == null:
+		return false
+	if rules.lantern.tolled:
+		return false
+	var tower := crowd.bell.tower
+	return not is_instance_valid(tower) or tower.blighted or tower.destroyed
+
+
+## The share of his pace a Herald keeps: BROKEN_PACE on the broken bell's way, HERALD_SLOW otherwise (so with bell_breaks off, as ever).
+func carrier_pace() -> float:
+	return BROKEN_PACE if bell_broken() else LanternWatch.HERALD_SLOW
 
 
 ## The Herald runs: not yet stopped, not yet in (spec 4.6). A warning still staring at its star is not a Herald yet.
@@ -321,7 +354,7 @@ func herald_open() -> bool:
 func herald_eta() -> float:
 	if not herald_open() or not _alive(messenger):
 		return INF
-	return (_descend + TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW)) * rules.clock_rate
+	return (_descend + TempleReport.walk_seconds(messenger, lantern_door(), carrier_pace())) * rules.clock_rate
 
 
 ## Loss warning: this warning's Herald while he runs for the Temple (HeraldObjective loses the night when he gets in), as herald_eta().
@@ -387,14 +420,14 @@ func _herald_run(relay: bool) -> void:
 	elif ready:
 		_herald_pace()
 		messenger.go_duty(door)
-	elif is_equal_approx(float(messenger.statuses.get(&"slow", 1.0)), LanternWatch.HERALD_SLOW):
+	elif is_equal_approx(float(messenger.statuses.get(&"slow", 1.0)), carrier_pace()):
 		messenger.statuses.erase(&"slow")  # frightened: he flees at his own pace; the Herald's is written again when he is sent (v0.11.2 review)
 
 
 ## The Herald's pace, written just before he is given the Temple's door (go_duty() reads it): never on a frightened one.
 func _herald_pace() -> void:
-	if float(messenger.statuses.get(&"slow", 1.0)) != LanternWatch.HERALD_SLOW:
-		messenger.statuses[&"slow"] = LanternWatch.HERALD_SLOW
+	if not is_equal_approx(float(messenger.statuses.get(&"slow", 1.0)), carrier_pace()):
+		messenger.statuses[&"slow"] = carrier_pace()
 
 
 ## The label on the Herald's tag (spec 5.2): while he comes down the tower, then the walk, each in mission seconds.
@@ -402,7 +435,9 @@ func herald_label() -> String:
 	var rate := rules.clock_rate if rules != null else 1.0
 	if _descend > 0.0:
 		return "HERALD - COMES DOWN IN %s" % UiTheme.clock(_descend * rate)
-	return "HERALD - AT THE TEMPLE IN %s" % UiTheme.clock(TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW) * rate)
+	if bell_broken():
+		return "TO THE TEMPLE %s" % UiTheme.clock(TempleReport.walk_seconds(messenger, lantern_door(), carrier_pace()) * rate)
+	return "HERALD - AT THE TEMPLE IN %s" % UiTheme.clock(TempleReport.walk_seconds(messenger, lantern_door(), carrier_pace()) * rate)
 
 
 ## The keeper is told: the bell is called, and the warning is the keeper's to carry now. (A bell already called -- by
@@ -767,7 +802,69 @@ func _lead_reach(at: Vector2) -> Reach:
 
 ## Mission clarity (spec 5.1): a fright, Discord, a whisper or a lure on the carrier stops him only until he is back on his feet.
 func why_not(key: String, at: Vector2) -> String:
+	var bell := bell_why(key, at)
+	if bell != "":
+		return bell
 	return STOPS_BANNER if _carrier_reach(key, at) == Reach.NOT else ""
+
+
+## (the Warning rework, T2, W-R3) What Blight on the bell tower does, honestly: TOLLED when the bell has tolled, SOONER when this warning's live carrier would reach
+## the Temple sooner by the broken bell than by the intact one, else TIME. "" for any other key, any other structure, or with bell_breaks off. Only reads, no RNG.
+## Each warning answers for its own carrier (StarfallDirector gathers them).
+func bell_why(key: String, at: Vector2) -> String:
+	if not bell_breaks or crowd == null or crowd.bell == null or not is_instance_valid(crowd.bell.tower):
+		return ""
+	if not "rot" in MissionVerbs.verbs_of(key) or BlightFx.target(crowd._env, at) != crowd.bell.tower:
+		return ""
+	if rules != null and rules.lantern != null and rules.lantern.tolled:
+		return BELL_TOLLED
+	return BELL_SOONER if _broken_sooner() else BELL_TIME
+
+
+## This warning's live carrier would be at the Temple's door sooner by the broken bell than by the intact one. Only reads.
+func _broken_sooner() -> bool:
+	if warning_dead or phase == Phase.OVER or not _alive(messenger):
+		return false
+	var bell := crowd.bell
+	var from := messenger.ground_pos
+	var is_keeper := _alive(bell.keeper) and messenger == bell.keeper
+	return _eta_broken(from, messenger.pace) < _eta_intact(from, messenger.pace, is_keeper)
+
+
+## Real seconds from `from` to the Temple's door by the intact bell (spec 5): the run to the keeper, FOOT_WALK to the tower's foot, the climb, the
+## descent, and the walk from the foot to the door at HERALD_SLOW. A keeper (`is_keeper`) needs no run, and one already climbing owes only what is left
+## of it. Over the grid's own road, uncached (why_not may not refresh a cache). Only reads.
+func _eta_intact(from: Vector2, pace := 1.0, is_keeper := false) -> float:
+	var bell := crowd.bell
+	var speed := maxf(Person.PANIC_SPEED * pace, 0.05)
+	var total := 0.0
+	if not is_keeper:
+		var keeper_at: Vector2 = bell.keeper.ground_pos if _alive(bell.keeper) else bell.foot
+		total += _road(from, keeper_at) / speed + FOOT_WALK
+	elif bell.state != BellNetwork.State.CLIMBING:
+		total += _road(from, bell.foot) / speed
+	total += maxf(bell.climb - (bell.progress if bell.state == BellNetwork.State.CLIMBING else 0.0), 0.0)
+	total += LanternWatch.HERALD_DESCEND
+	total += _road(bell.foot, lantern_door()) / maxf(Person.PANIC_SPEED * pace * LanternWatch.HERALD_SLOW, 0.05)
+	return total
+
+
+## Real seconds from `from` to the Temple's door by the broken bell: the road at BROKEN_PACE, no climb and no descent. Only reads.
+func _eta_broken(from: Vector2, pace := 1.0) -> float:
+	return _road(from, lantern_door()) / maxf(Person.PANIC_SPEED * pace * BROKEN_PACE, 0.05)
+
+
+## The length of the grid's road from `a` to `b`, straight where there is none; recomputed each time (MissionDirector.road_len() fills a cache). Only reads.
+func _road(a: Vector2, b: Vector2) -> float:
+	var grid: WalkGrid = crowd._grid if crowd != null else null
+	if grid == null:
+		return a.distance_to(b)
+	var total := 0.0
+	var at := a
+	for pt in grid.path(a, b):
+		total += at.distance_to(pt)
+		at = pt
+	return total + at.distance_to(b)
 
 
 ## The tour (board tags, spec §4): the watchman at the gate, then the bellkeeper.

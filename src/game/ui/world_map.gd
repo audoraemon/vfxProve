@@ -19,6 +19,11 @@ const PLATE := Rect2(238.0, 268.0, 196.0, 64.0)
 const BACK := Rect2(18.0, 339.0, 46.0, 15.0)
 const HINT_Y := 357.0
 const LINE_Y := 262.0
+## The match cut with the Chamber's World Table (GodChamber.end_frame("descend")): the table's little map as the room shows it at rest
+## (room units), and how long the map page takes to rise out of it and to sink back into it.
+const TABLE_MAP := Rect2(215.0, 232.0, 200.0, 28.0)
+const RISE_SECONDS := 0.7
+const SINK_SECONDS := 0.45
 ## How long a newly opened town's fog takes to burn away.
 const REVEAL_SECONDS := 2.6
 ## Ink on parchment, the parchment card, the wax of the Descend seal, the wood outside the painting.
@@ -59,6 +64,15 @@ var _t := 0.0
 ## Seconds left of the scene that plays when a town has just opened (input waits), and of the Descend seal's press.
 var _scene := 0.0
 var _press := 0.0
+## The match cut: the Chamber's end frame, seconds into the rise (-1: none) and into the sink, what to call when the sink ends, and
+## the two full-area sheets that carry the table's colour behind and over the page while it moves.
+var _frame := {}
+var _rise := -1.0
+var _sink := -1.0
+var _sink_then := Callable()
+var _under: ColorRect
+var _over: ColorRect
+var _page_sound := true
 ## Town id -> seconds since its fog began to burn away.
 var _reveal := {}
 var _map_tex: Texture2D
@@ -79,7 +93,6 @@ func setup(slot: GodSlot, p_dev := false) -> WorldMap:
 		moving = false
 	_note_opened()
 	_visits[slot.index] = int(_visits.get(slot.index, 0)) + 1
-	UiSound.play(&"chamber_page")  # the map is unrolled
 	if not _reveal.is_empty():
 		UiSound.play(&"chamber_chime")
 		_scene = REVEAL_SECONDS + 0.4  # the opening is watched: the map waits for it
@@ -139,13 +152,99 @@ func _note_opened() -> void:
 	_known[_slot.index] = now
 
 
-## True while a newly opened town's scene plays: clicks and keys wait.
+## True while a newly opened town's scene plays, or the page is rising from or sinking into the table: clicks and keys wait.
 func busy() -> bool:
-	return _scene > 0.0
+	return _scene > 0.0 or _rise >= 0.0 or _sink >= 0.0
+
+
+## The Chamber's zoom into the World Table ended on `frame` (GodChamber.end_frame): the page rises out of the table's little map, in
+## the table's colour at first, in place of the generic fade. False when the map is at rest (a test, a capture): the fade is used.
+func chamber_arrival(frame: Dictionary) -> bool:
+	_page_sound = false  # the Chamber unrolls the map itself on this way in
+	if not moving or _ui == null:
+		return false
+	_frame = frame
+	_sheets()
+	_rise = 0.0
+	_sink = -1.0
+	_pose(0.0)
+	return true
+
+
+## Back to the Chamber: the page sinks into the table's little map, then calls `then` once. False when the map is at rest.
+func chamber_departure(frame: Dictionary, then: Callable) -> bool:
+	if not moving or _ui == null:
+		return false
+	if _sink >= 0.0:
+		return true
+	_frame = frame
+	_sheets()
+	_sink_then = then
+	_sink = 0.0
+	_rise = -1.0
+	return true
+
+
+## The table's map on the frame at the end of the Chamber's zoom: the room scaled by `zoom` about `focus`, the focus on `centre`.
+func table_rect() -> Rect2:
+	var zoom: float = _frame.get("zoom", 2.2)
+	var focus: Vector2 = _frame.get("focus", Vector2(316.0, 262.0))
+	var centre: Vector2 = _frame.get("centre", Vector2(320.0, 180.0))
+	return Rect2(centre + (TABLE_MAP.position - focus) * zoom, TABLE_MAP.size * zoom)
+
+
+func _sheets() -> void:
+	if _under != null:
+		return
+	var layer := _ui.get_parent().get_parent()
+	_under = ColorRect.new()
+	_over = ColorRect.new()
+	for sheet: ColorRect in [_under, _over]:
+		sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
+		layer.add_child(sheet)
+	layer.move_child(_under, 0)
+
+
+## Places the page `u` of the way (0: lying in the table's map, 1: filling the frame) and colours the sheets.
+func _pose(u: float) -> void:
+	var f := UiScale.frame_scale()
+	var base := UiScale.design_offset()
+	var from := table_rect()
+	var e := u * u * (3.0 - 2.0 * u)
+	var rect := Rect2(from.position.lerp(Vector2.ZERO, e), from.size.lerp(Vector2(640.0, 360.0), e))
+	_ui.scale = Vector2(f * rect.size.x / 640.0, f * rect.size.y / 360.0)
+	_ui.position = base + rect.position * f
+	var col: Color = _frame.get("color", Color(0.1, 0.2, 0.42))
+	if _under != null:
+		_under.color = col.lerp(WOOD, e)
+		_over.color = Color(col.r, col.g, col.b, pow(1.0 - u, 1.6))
+		_under.visible = u < 1.0
+		_over.visible = u < 1.0
 
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _page_sound:
+		_page_sound = false
+		UiSound.play(&"chamber_page")  # the map is unrolled (not on the way in from the table: the Chamber's own unroll is heard)
+	if _rise >= 0.0:
+		_rise += delta
+		if _rise >= RISE_SECONDS:
+			_rise = -1.0
+			_pose(1.0)
+		else:
+			_pose(_rise / RISE_SECONDS)
+	elif _sink >= 0.0:
+		_sink += delta
+		_pose(1.0 - minf(1.0, _sink / SINK_SECONDS))
+		if _sink >= SINK_SECONDS:
+			_sink = -1.0
+			var then := _sink_then
+			_sink_then = Callable()
+			if then.is_valid():
+				then.call()
+			return
 	_scene = maxf(0.0, _scene - delta)
 	_press = maxf(0.0, _press - delta)
 	for id: String in _reveal.keys():
@@ -495,7 +594,8 @@ func _find_sea(img: Image) -> void:
 
 
 func _draw_ui() -> void:
-	_ui.draw_rect(UiScale.backdrop(_ui), WOOD)
+	if _rise < 0.0 and _sink < 0.0:  # while the page moves, the sheet under it is the backdrop
+		_ui.draw_rect(UiScale.backdrop(_ui), WOOD)
 	var page := Rect2(0.0, 0.0, 640.0, 360.0)
 	var tex := _painting()
 	if tex != null:

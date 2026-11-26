@@ -387,6 +387,30 @@ static func _painted_map(t) -> void:
 	m3.free()
 	var held: WorldMap = _make(_open_both())[0]
 	t.check(ResourceLoader.exists("res://assets/chamber/map/plate.png"), "the Back plate is in the project")
+	# The match cut with the World Table: at rest the generic fade is used; moving, the page rises from the table's map and sinks back.
+	var frame := GodChamber.end_frame("descend")
+	t.check(not held.chamber_arrival(frame) and not held.chamber_departure(frame, func() -> void: pass), "a map at rest leaves the fade to the Chamber")
+	t.check(held.TABLE_MAP == ChamberLife.FILES["map_lit"].rect, "the table's map is where the room's life has it")
+	var cut: WorldMap = _make(_open_both())[0]
+	WorldMap.moving = true  # after setup: a headless setup puts the map at rest
+	t.check(cut.chamber_arrival(frame) and cut.busy(), "moving: the map takes its own way in, and waits while it rises")
+	var from := cut.table_rect()
+	t.check(Rect2(0.0, 0.0, 640.0, 360.0).encloses(from) and from.size.x > 300.0 and from.size.y < 100.0, "it starts lying in the table's map (%s)" % from)
+	t.check(cut._ui.scale.y < cut._ui.scale.x * 0.5 and cut._over.color.a == 1.0 and cut._over.color.r == (frame.color as Color).r,
+		"its first frame is the table's colour, the page a strip")
+	for i in 60:
+		cut._process(0.02)
+	t.check(not cut.busy() and is_equal_approx(cut._ui.scale.x, cut._ui.scale.y) and cut._ui.position.is_equal_approx(UiScale.design_offset()) and not cut._over.visible,
+		"then it fills the frame, square, and the sheets are gone (%s %s)" % [cut._ui.scale, cut._ui.position])
+	var calls := [0]
+	t.check(cut.chamber_departure(frame, func() -> void: calls[0] += 1) and cut.busy(), "Back: the map takes its own way out")
+	t.check(cut.chamber_departure(frame, func() -> void: calls[0] += 100), "a second Back is taken, and dropped")
+	for i in 60:
+		cut._process(0.02)
+	t.check(calls[0] == 1 and cut._ui.scale.y < cut._ui.scale.x * 0.5, "it sinks into the table's map and calls on once (%d)" % calls[0])
+	cut.free()
+	WorldMap.moving = false
+
 	held.free()
 
 	m2.free()

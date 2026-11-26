@@ -46,7 +46,7 @@ const TWISTS := {
 	"slumber": "Heavy Air: who walks in sleeps too", "cloak": "Averted Eyes: the watch near them turns away",
 	"unseen": "Eyes Within: see the watch; leavers stay blind", "dreamless": "Found by No One: never found; a finder rests",
 	"dread": "The Dark Takes Who Looks: who stops is taken", "shadowplay": "The Shadows Keep Watch: who comes close joins",
-	"swallow": "The Moon's Face: craters eat who stays", "evernight": "The Light Gives Way: the torchlight shrinks",
+	"swallow": "The Moon's Face: craters eat who stays", "evernight": "The False Light: at dawn the torches take",
 }
 ## The plain (not paired) stats' effect constants: a level-1 table value must equal them, same type.
 const BASE := {

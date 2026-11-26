@@ -405,7 +405,7 @@ const POWERS := [
 			{"NIGHT_TIME": [62.0, 93.0], "TAKE_LAST": 10, "TORCHES": 6},
 			{"NIGHT_TIME": [64.0, 96.0], "TAKE_LAST": 11, "TORCHES": 6},
 			{"NIGHT_TIME": [66.0, 99.0], "TAKE_LAST": 11, "TORCHES": 5},
-			{"NIGHT_TIME": [68.0, 102.0], "TAKE_LAST": 12, "TORCHES": 5, "twist": true, "twist_text": "The Light Gives Way: the torchlight shrinks"}]},
+			{"NIGHT_TIME": [68.0, 102.0], "TAKE_LAST": 12, "TORCHES": 5, "twist": true, "twist_text": "The False Light: at dawn the torches take"}]},
 	{"key": "congregation", "name": "Divine Congregation", "path": "res://src/fx/dominion/divine_congregation.gd",
 		"dp": 4, "cooldown": 60.0, "aim": "two clicks", "shape": "a district walks to the place of the first click, 25 s",
 		"quiet": true, "alarm": 0.3, "authority": "dominion"},

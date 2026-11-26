@@ -96,12 +96,33 @@ and a short animated strip of the idle life.
 1. Build pass: masks and patches; contact sheet to the user.
 2. `ChamberLife` and its tests.
 3. Drawing in `GodChamber`.
-4. Captures and the animated strip to the user; tune on their word.
-5. Suite and FLOW; refs untouched (spot-check the digest).
+4. Room sound (section 9).
+5. Captures, the animated strip and the sound takes to the user; tune on their word.
+6. Suite and FLOW; refs untouched (spot-check the digest).
 
-## 9. Questions for the user
+## 9. Room sound
 
-1. Candles count the tier (five altar candles). Yes?
-2. Trophies mark conquered towns; a third town later needs a third cup painted. Yes?
-3. Hourglass = Lantern's Notice; window and hourglass turn red when the Hunt is due. Yes?
-4. Room sound: add a quiet fire crackle from the sound library under the room's music? (Default in this design: no sound.)
+The user asked for a fire crackle and any sound that makes the working room more alive.
+
+- **Bed:** one quiet room loop on the Ambience bus while the Chamber is shown: the brazier's crackle and a soft room tone, from
+  the existing fire recordings (`amb_fire`, `fire_burn_*`) and the library's CC0 sources, built by `tools/audio/foley.py` like
+  every other bed. It fades in with the room and out when a page opens; it ducks under the music.
+- **Occasional room sounds**, one every 8-20 s, never the same take twice in a row, quiet, panned to where they happen:
+  a candle sputter (near a lit candle), a log settling in the brazier (louder while it burns high), wind against the window
+  (a red Hunt sky makes it a low moan instead), the hourglass's sand hiss, a page turning on the desk, a quill scratch, the lantern's
+  chain creaking.
+- **State sounds**, once when the state is first seen on entering the room: a soft chime when a trophy gleams for the first time;
+  a low swell when the Hunt is due.
+- Sources: only CC0 / public-domain library sounds or synth renders (the repo is public; no Sonniss, no Stable Audio output).
+  Credits in `assets/audio/CREDITS.md`.
+- Switches: silent in FLOW, `--capture` and headless runs (like the music); a calm-minute probe counts what plays (at most about
+  6 occasional sounds a minute).
+- Tests: every room cue is in the Sfx catalog with its takes; the bed starts and stops with the room; no back-to-back repeat;
+  the probe's count stays in bounds.
+
+## 10. Decisions (the user, 2026-11-26)
+
+1. Candles count the tier: yes.
+2. Trophies mark conquered towns; a third town later needs a third cup painted: yes.
+3. Hourglass = the Lantern's Notice; window and hourglass turn red when the Hunt is due: yes.
+4. Room sound: yes, the fire crackle and other sounds that make the room alive (section 9).

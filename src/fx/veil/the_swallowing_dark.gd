@@ -59,10 +59,7 @@ const CUE_LOOP := &"v_swallow_loop"
 const CUE_HEAVE := &"v_swallow_heave"
 const RUMBLE_FROM_DB := -12.0
 const RUMBLE_FADE := 0.25
-## Level 5 (VS 7, "Nothing Leaves"): whoever has stood inside the growing circle and then walks out of it is eyed (open-ended, the
-## Pale Eye) and marked with a thin dark thread; at the fold, after those inside, every marked man still alive is taken wherever he is
-## (sheltering or indoors too), except a spared one outside the circle (VL13). Polled every TICK, not every frame.
-const TICK := 0.25
+## Level 5 (Veil twists 2, "The Moon's Face"): at the fold the circle is left pitted with MoonCraters (about a third of it), which hurt and take whoever stays in them.
 const TWIST_KEY := "swallow"
 ## The meta a voice of this cast's carries (its instance id), so a voice handed to another cue or cast is left alone.
 const VOICE_OWNER := &"swallow_cast"
@@ -102,13 +99,8 @@ var _rumble: Variant = null
 var _rush: Variant = null
 ## How far into the rush it was started (0 on time; more when the growth was shorter than the heave).
 var rush_from := 0.0
-## The level-5 twist (PowerBook.twist_at, once in _build()), who has stood inside so far (Person -> true), who is marked (Person -> true,
-## in the order marked), the poll's accumulator and the marks' thread look (one node, staged only).
+## The level-5 twist (PowerBook.twist_at, once in _build()): the Moon's Face, craters laid at the fold (MoonCraters).
 var _twist := false
-var _stood := {}
-var _marked := {}
-var _tick_acc := 0.0
-var _threads: MarkThreads
 
 
 ## True when all four corners of `s`'s footprint lie within `r` of `at`.
@@ -139,11 +131,6 @@ func _build() -> void:
 	_rumble = _own(ctx.play(&"v_swallow_loop", origin))
 	_swell()
 	_build_look()
-	if _twist and ctx.overhead_back != null and DominionParts.staged(self):
-		_threads = MarkThreads.new()
-		_threads.cast = self
-		_threads.z_index = 2
-		track(_threads, ctx.overhead_back)
 
 
 ## The look's pieces, each only where its layer exists (a bare test context has an overhead layer only).
@@ -234,13 +221,6 @@ func _fx_process(delta: float) -> void:
 	_look(delta)
 	if not swallowed:
 		_swell()
-		if _twist:
-			_tick_acc += delta
-			if _tick_acc >= TICK:
-				_tick_acc = 0.0
-				_watch_leavers()
-			if is_instance_valid(_threads):
-				_threads.queue_redraw()
 		return
 	var n := 0
 	var built := 0
@@ -406,13 +386,11 @@ func _sound_off(seconds: float) -> void:
 
 func _finish() -> void:
 	_sound_off(RUMBLE_FADE)
-	_twist_off()
 	super()
 
 
 func _exit_tree() -> void:
 	_sound_off(RUMBLE_FADE)
-	_twist_off()
 	super()
 
 
@@ -420,7 +398,6 @@ func _exit_tree() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		_sound_off(RUMBLE_FADE)
-		_twist_off()
 		_free_tracked(true)
 
 
@@ -428,9 +405,6 @@ func _notification(what: int) -> void:
 func _swallow() -> void:
 	swallowed = true
 	_queue = _inside()
-	if _twist:
-		_queue_marked()
-		_twist_off()
 	VeilParts.land(self, origin, full_r)
 	_sound_off(RUMBLE_FADE)
 	ctx.play(&"v_swallow_take", origin)
@@ -439,60 +413,50 @@ func _swallow() -> void:
 		mark.at = origin
 		mark.r = full_r
 		ctx.ground.add_child(mark)  # not tracked: the bare earth stays for the mission (Battlefield.clear_effects() frees it)
+		if _twist:
+			var craters := MoonCraters.new()
+			craters.circles = MoonCraters.place(origin, full_r, int(MoonCraters.COUNT[1 if VeilParts.dark(self) else 0]),
+				hash(origin.round()), _crater_keep_out())
+			craters.crowd = ctx.crowd
+			craters.field = ctx.field
+			craters.eye_layer = ctx.overhead_back if ctx.overhead_back != null else ctx.overhead
+			ctx.ground.add_child(craters)  # not tracked, like the bare earth: it stays for the mission
 
 
-## The twist's poll: everyone within the circle joins "stood inside"; one of them now beyond it (alive, in the open) is eyed
-## open-ended and marked. Spared men are marked too (VL13: only the take at the fold spares them).
-func _watch_leavers() -> void:
-	var crowd: Crowd = ctx.crowd
-	if crowd == null or ctx.field == null:
-		return
-	var r := radius()
-	for e in ctx.field.in_radius(origin, r):
-		var p := e as Person
-		if p != null and is_instance_valid(p) and p.is_alive() and not p.inside:
-			_stood[p] = true
-	for p: Person in _stood.keys():
-		if not is_instance_valid(p) or not p.is_alive():
-			_stood.erase(p)
-			_marked.erase(p)
+## The town's own gates, bridges, postern, dock and fountain, which its managers go on using: neither the fold nor the craters touch them.
+func _kept_structures() -> Array:
+	var keep: Array = []
+	var town: Town = ctx.crowd._town if ctx.crowd != null else null
+	if is_instance_valid(town):
+		keep.append_array(town.gates)
+		keep.append_array(town.bridges)
+		keep.append_array([town.bridge, town.postern, town.dock, town.fountain])
+	return keep
+
+
+## Whether the mission needs `s` standing: MissionKeeps lets a power that destroys fell what the night wants down; the dark only takes
+## (no `destroyed`), and a taken target is never razed: the objective would be lost for good (final review, Critical 1).
+func _needed(s: Structure) -> bool:
+	var director: MissionDirector = ctx.rules.director if ctx.rules != null else null
+	return MissionKeeps.spared(s, ctx.crowd, director) or (director != null and director.wants_down(s))
+
+
+## Footprints (Rect2, padded) of everything the fold spares within the circle: the town's own structures and the mission's own. The craters
+## are laid clear of them.
+func _crater_keep_out() -> Array:
+	var out: Array = []
+	if ctx.env == null:
+		return out
+	var kept := _kept_structures()
+	for s in ctx.env.structures():
+		if not is_instance_valid(s) or s.taken:
 			continue
-		if _marked.has(p) or p.inside or p.ground_pos.distance_to(origin) <= r:
+		var f: Rect2 = s.footprint.grow(0.5)
+		if not Rect2(origin - Vector2(full_r, full_r), Vector2(full_r, full_r) * 2.0).intersects(f):
 			continue
-		_marked[p] = true
-		PaleEye.mark(self, p, TWIST_KEY, INF)
-
-
-## At the fold, after `_inside()`: every marked man still alive and not already queued is taken where he stands (a &"marked" entry:
-## the circle and the shelter decide nothing), outermost first then by instance id.
-func _queue_marked() -> void:
-	var queued := {}
-	for entry: Array in _queue:
-		if entry[0] == &"person":
-			queued[entry[1]] = true
-	var list: Array = []
-	for p: Person in _marked:
-		if is_instance_valid(p) and p.is_alive() and not queued.has(p):
-			list.append(p)
-	list.sort_custom(func(x: Person, y: Person) -> bool:
-		var dx := x.ground_pos.distance_to(origin)
-		var dy := y.ground_pos.distance_to(origin)
-		if not is_equal_approx(dx, dy):
-			return dx > dy
-		return x.get_instance_id() < y.get_instance_id())
-	for p: Person in list:
-		_queue.append([&"marked", p, null])
-
-
-## Lets the twist go: the eyes this cast holds closed, the marks forgotten, the threads gone. Safe to call twice.
-func _twist_off() -> void:
-	if not _twist:
-		return
-	PaleEye.release(self)
-	_marked.clear()
-	_stood.clear()
-	if is_instance_valid(_threads):
-		_threads.queue_redraw()
+		if kept.has(s) or _needed(s):
+			out.append(f)
+	return out
 
 
 ## Everything to take, outermost first (then by instance id): no rng decides it.
@@ -501,21 +465,13 @@ func _inside() -> Array:
 	var crowd: Crowd = ctx.crowd
 	var groups: Array = []  # [distance, id, entries]
 	# Buildings wholly inside, minus the spared.
-	var keep: Array = []
-	var town: Town = crowd._town if crowd != null else null
-	if is_instance_valid(town):
-		keep.append_array(town.gates)
-		keep.append_array(town.bridges)
-		keep.append_array([town.bridge, town.postern, town.dock, town.fountain])
-	var director: MissionDirector = ctx.rules.director if ctx.rules != null else null
+	var keep := _kept_structures()
 	var gone := {}
 	if ctx.env != null:
 		for s in ctx.env.structures():
 			if not is_instance_valid(s) or s.taken or keep.has(s) or not wholly_inside(s, origin, r):
 				continue
-			# MissionKeeps lets a power that destroys fell what the night wants down; the dark only takes (no `destroyed`), and a
-			# taken target is never razed: the objective would be lost for good (final review, Critical 1).
-			if MissionKeeps.spared(s, crowd, director) or (director != null and director.wants_down(s)):
+			if _needed(s):
 				continue
 			gone[s] = true
 	_gone = gone
@@ -598,15 +554,6 @@ func _remove(entry: Array) -> void:
 				return
 			if VeilParts.take_out(crowd, p, KIND):  # a shelterer is let out of his shelter first
 				removed += 1
-		&"marked":
-			var p: Person = entry[1]
-			if not is_instance_valid(p) or not p.is_alive():
-				return
-			# The power's own sparing holds (VL13): a believer or one the mission keeps, outside the circle, is let be.
-			if crowd.spared(p) and p.ground_pos.distance_to(origin) > full_r:
-				return
-			if VeilParts.take_out(crowd, p, KIND):
-				removed += 1
 		&"animal":
 			var a: Animal = entry[1]
 			if is_instance_valid(a):
@@ -659,23 +606,6 @@ func _take_building(s: Structure) -> void:
 	ctx.env.remove(s, true, true, false)
 	_batched = true
 	removed += 1
-
-
-## The marks' threads (level 5): a thin dark line from each marked man toward the circle's middle, drawn over the town. Look only.
-class MarkThreads extends Node2D:
-	var cast: TheSwallowingDarkFx
-
-	func _draw() -> void:
-		if cast == null or not is_instance_valid(cast) or cast.swallowed:
-			return
-		var centre := Iso.ground_to_screen(cast.origin)
-		for p: Person in cast._marked:
-			if not is_instance_valid(p) or not p.is_alive():
-				continue
-			var a := Iso.ground_to_screen(p.ground_pos) + Vector2(0.0, -10.0)
-			var b := a + (centre - a).limit_length(26.0)
-			draw_line(a.round(), b.round(), Color(VeilParts.VEIL, 0.55), 3.0)
-			draw_line(a.round(), b.round(), Color(VeilParts.BLACK, 0.95), 1.0)
 
 
 ## A tendril of the dark (screen pixels, standing on the rim; in the y-sorted world, so the houses before it hide its foot): it

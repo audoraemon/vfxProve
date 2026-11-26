@@ -1,26 +1,25 @@
 extends RefCounted
-## Dread of the Dark's level-5 twist (Veil ability levels, C1 The Dark Looks Back): from the fall to the lift, who stops at the edge of
-## the dreaded ground (a step it refused him, or 2.0 s within 1.0 of it) is held there, eyed open-ended, 16 a cast at most, nearest the
-## click first; the lift (or an early end, or a freed cast) lets every one of them go and closes the eyes. Level 4 has none of it.
+## Dread of the Dark's level-5 twist (The Dark Takes Who Looks): from the fall to the lift, who stops at the edge of the dreaded ground
+## (a step it refused him, or 2.0 s within 1.0 of it) is eyed, held, slid PULL_DRIFT toward the click over PULL while he fades, and then
+## taken (no body); 16 a cast at most, nearest the click first. The spared are eyed and never taken. An early end lets the ones in the
+## pull go and closes the eyes. Level 4 has none of it.
 
 const RD := preload("res://tests/test_raise_dead.gd")
 const DD := preload("res://tests/test_veil_dread.gd")
+const Kit := preload("res://tests/test_tier2_groundwork.gd")
 const L5 := {"level": 5}
 const L4 := {"level": 4}
 const DT := 0.05
 
 
 static func run(t) -> void:
-	var made := RD._setup()
-	_balked(t, made)
-	_stand(t, made)
-	_most(t, made)
-	_rf1_two_dreads(t, made)
-	_rf2_end_now_frozen(t, made)
-	_rf3_held(t, made)
-	_spared(t, made)
-	_level_four(t, made)
-	RD._done(made)
+	# Each case builds its own town: a taken citizen is gone for good, and the next case wants him again.
+	for each: Callable in [_edge_stopper_taken, _stander_taken, _cap_16, _two_dreads, _spared_eyed_never_taken, _held_soldier_taken,
+			_pull_drifts_and_fades, _teardown_mid_pull, _indoors_mid_pull, _edge_kind_credited, _killed_mid_pull_opaque,
+			_spared_at_take_let_go, _inside_at_take_let_go, _two_casts_one_pull, _shadow_sleeper_passed_over, _level4_no_twist]:
+		var made := RD._setup()
+		each.call(t, made)
+		RD._done(made)
 	_bare(t)
 
 
@@ -51,11 +50,17 @@ static func _pp(crowd: Crowd, n: int, at: Vector2) -> Person:
 	var p := DD._put(crowd, n, at)
 	p.dread_balked_at = -INF
 	p.statuses.erase(&"shadow")
+	p.modulate.a = 1.0
 	return p
 
 
-static func _held_by_edge(fx: DreadOfTheDarkFx, p: Person) -> bool:
-	return fx._edge_ids.has(p.get_instance_id()) and p.is_dreaded()
+static func _taken(fx: DreadOfTheDarkFx, p: Person) -> bool:
+	return not p.is_alive() and fx.taken_at_edge.has(p.get_instance_id())
+
+
+## Whether any body was laid within 3 of `g` (the ledger is on).
+static func _body_near(crowd: Crowd, g: Vector2) -> bool:
+	return not crowd.remains.near(g, 3.0).is_empty()
 
 
 static func _both(a: FxTimeline, b: FxTimeline, seconds: float) -> void:
@@ -65,8 +70,18 @@ static func _both(a: FxTimeline, b: FxTimeline, seconds: float) -> void:
 				fx._process(DT)
 
 
-static func _balked(t, made: Array) -> void:
+## Steps the cast until `p`'s pull has begun (at most `limit` s).
+static func _until_pull(fx: DreadOfTheDarkFx, p: Person, limit := 6.0) -> bool:
+	var spent := 0.0
+	while not fx._pulls.has(p.get_instance_id()) and spent < limit:
+		DD._go(fx, DT)
+		spent += DT
+	return fx._pulls.has(p.get_instance_id())
+
+
+static func _edge_stopper_taken(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
+	crowd.remains.enabled = true
 	var pt := _begin(made)
 	var at: Vector2 = pt[0]
 	var d: Vector2 = pt[1]
@@ -75,56 +90,44 @@ static func _balked(t, made: Array) -> void:
 	var fx := _cast(made, at)
 	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
 	w.set_goal(goal)
-	DD._go(fx, 5.0, [w], d)
+	var spent := 0.0
+	while w.dread_balked_at < fx._fall_clock and spent < 8.0:
+		DD._go(fx, DT, [w], d)
+		spent += DT
+	t.check(w.dread_balked_at >= fx._fall_clock and w.is_alive(), "stopper: the edge stopped him (%.2f s)" % spent)
+	var spot := w.ground_pos
+	DD._go(fx, DreadOfTheDarkFx.PULL + DreadOfTheDarkFx.TICK + 0.1)
 	var eye := PaleEye.of(crowd)
-	t.check(_held_by_edge(fx, w) and w.ground_pos.distance_to(d) > 1.5 - 0.01 and fx._ids.is_empty(),
-		"balked: a walker with a goal across stops at the edge and is held there by the edge, not by the ground (%.2f)" % w.ground_pos.distance_to(d))
-	t.check(eye != null and eye.is_eyed(w) and eye.record.size() == 1 and eye.record[0]["key"] == "dread" and eye.held_by(fx.get_instance_id()) == 1,
-		"balked: eyed, the record's key is dread")
-	var from := w.ground_pos
-	DD._go(fx, 5.0, [w], d)
-	t.check(w.ground_pos.distance_to(from) < 0.001 and eye.is_eyed(w), "held: he does not move and the eye stays open (open-ended)")
+	t.check(_taken(fx, w) and fx.taken_at_edge.size() == 1, "stopper: taken within PULL + TICK + 0.1 of the stop, his id kept")
+	t.check(not _body_near(crowd, spot), "... no body laid")
+	var keyed := false
+	if eye != null:
+		for r in eye.record:
+			keyed = keyed or r["key"] == "dread"
+	t.check(keyed, "... and he was eyed (record key dread)")
 	fx.end_now()
-	t.check(not w.is_dreaded() and not w.has_meta(DreadOfTheDarkFx.OWNERS) and not eye.is_eyed(w) and eye.held_by(fx.get_instance_id()) == 0,
-		"the lift: free, unmarked, the eye closed")
 	fx.free()
 
 
-static func _stand(t, made: Array) -> void:
+static func _stander_taken(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var pt := _begin(made)
-	var at: Vector2 = pt[0]
 	var d: Vector2 = pt[1]
 	var near := _pp(crowd, 20, _rim(d, 0.8))
 	var far := _pp(crowd, 21, _rim(d, 1.2))
-	var fx := _cast(made, at)
+	var fx := _cast(made, pt[0])
 	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
-	DD._go(fx, 1.6)
-	t.check(not near.is_dreaded(), "standing 0.8 from the edge for under 2 s (1.9): not held")
-	DD._go(fx, 0.5)
-	t.check(_held_by_edge(fx, near), "... and 2.1 s: held")
-	DD._go(fx, 6.0)
-	t.check(not far.is_dreaded() and not PaleEye.of(crowd).is_eyed(far), "at 1.2 from the edge: never held, never eyed")
+	DD._go(fx, DreadOfTheDarkFx.EDGE_STAND - 0.4)
+	t.check(near.is_alive(), "stander: 1.6 s at 0.8 from the edge: still here")
+	DD._go(fx, 0.4 + DreadOfTheDarkFx.TICK + DreadOfTheDarkFx.PULL + 0.2)
+	t.check(_taken(fx, near) and not _body_near(crowd, near.ground_pos), "stander: EDGE_STAND at 0.8 from the edge: taken, no body")
+	DD._go(fx, 4.0)
+	t.check(far.is_alive() and not far.is_dreaded() and not PaleEye.of(crowd).is_eyed(far), "at 1.2 from the edge: never eyed, never taken")
 	fx.end_now()
 	fx.free()
-	# The timer resets when he steps away.
-	var pt2 := _begin(made)
-	var p := _pp(crowd, 22, _rim(pt2[1], 0.8))
-	var fx2 := _cast(made, pt2[0])
-	DD._go(fx2, DreadOfTheDarkFx.T_FALL + DT)
-	DD._go(fx2, 1.5)
-	p.ground_pos = _rim(pt2[1], 1.5)
-	DD._go(fx2, 0.5)
-	p.ground_pos = _rim(pt2[1], 0.8)
-	DD._go(fx2, 1.5)
-	t.check(not p.is_dreaded(), "his stand starts over when he is away from the edge")
-	DD._go(fx2, 0.8)
-	t.check(p.is_dreaded(), "... and holds him 2 s after he is back")
-	fx2.end_now()
-	fx2.free()
 
 
-static func _most(t, made: Array) -> void:
+static func _cap_16(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var pt := _begin(made)
 	var at: Vector2 = pt[0]
@@ -134,111 +137,53 @@ static func _most(t, made: Array) -> void:
 		people.append(_pp(crowd, 20 + i, d + Vector2(2.3, 0.0).rotated(deg_to_rad(7.0 + 18.0 * float(i)))))
 	var fx := _cast(made, at)
 	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
-	DD._go(fx, 3.0)
+	DD._go(fx, 9.0)
 	var order := people.duplicate()
 	order.sort_custom(func(a: Person, b: Person) -> bool:
 		var da := a.ground_pos.distance_squared_to(at)
 		var db := b.ground_pos.distance_squared_to(at)
 		return a.get_instance_id() < b.get_instance_id() if is_equal_approx(da, db) else da < db)
-	var held := 0
+	var gone := 0
 	var nearest_ok := true
+	var rest_free := true
 	for i in order.size():
-		if (order[i] as Person).is_dreaded():
-			held += 1
-		if (i < 16) != (order[i] as Person).is_dreaded():
+		var p := order[i] as Person
+		if not p.is_alive():
+			gone += 1
+		elif p.is_dreaded() or p.has_meta(DreadOfTheDarkFx.OWNERS):
+			rest_free = false
+		if (i < 16) == p.is_alive():
 			nearest_ok = false
-	t.check(held == 16 and fx._edge_ids.size() == 16, "20 candidates: 16 held (%d)" % held)
-	t.check(nearest_ok, "... the 16 nearest the click")
+	t.check(gone == 16 and fx.taken_at_edge.size() == 16, "20 candidates: exactly 16 taken (%d)" % gone)
+	t.check(nearest_ok, "... the 16 nearest the click first")
+	t.check(rest_free, "... the other 4 alive and not frozen by the twist")
 	fx.end_now()
-	var left := 0
-	for p in people:
-		if p.is_dreaded() or p.has_meta(DreadOfTheDarkFx.OWNERS):
-			left += 1
-	t.check(left == 0 and PaleEye.of(crowd).eyed().is_empty(), "at the lift every edge-held man is free and unmarked")
+	t.check(PaleEye.of(crowd).eyed().is_empty(), "at the end no eye is open")
 	fx.free()
 
 
-static func _rf1_two_dreads(t, made: Array) -> void:
+## Two casts at one man: he is taken once, the other pull ends quietly.
+static func _two_dreads(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var pt := _begin(made)
-	var at: Vector2 = pt[0]
 	var d: Vector2 = pt[1]
 	var m := _pp(crowd, 20, _rim(d, 0.8))
-	var a := _cast(made, at)
-	DD._go(a, 10.0)
-	var b := _cast(made, at)
+	var a := _cast(made, pt[0])
+	var b := _cast(made, pt[0])
+	_both(a, b, DreadOfTheDarkFx.T_FALL + DT)
 	_both(a, b, 4.0)
-	var owners: Dictionary = m.get_meta(DreadOfTheDarkFx.OWNERS, {})
-	t.check(m.is_dreaded() and owners.size() == 2 and a._edge_ids.has(m.get_instance_id()) and b._edge_ids.has(m.get_instance_id()),
-		"two dreads: one man held at the edge by both casts, per cast id")
-	var eye := PaleEye.of(crowd)
-	t.check(eye.held_by(a.get_instance_id()) == 1 and eye.held_by(b.get_instance_id()) == 1, "... and eyed by each")
-	_both(a, b, 22.5)  # A is at 36.5 s: its dread lifted at 35.8; B (cast 10 s later) is at 26.5
-	t.check(a.finished or a._lifted, "(A has lifted)")
-	t.check(m.is_dreaded() and not a._edge_ids.has(m.get_instance_id()) and eye.held_by(a.get_instance_id()) == 0 and eye.held_by(b.get_instance_id()) == 1,
-		"A lifts: still held (by B), A's eye closed, B's open")
+	t.check(not m.is_alive() and a.taken_at_edge.size() + b.taken_at_edge.size() == 1, "two dreads: one man, taken once")
+	t.check(a._pulls.is_empty() and b._pulls.is_empty(), "... both pulls over, nothing breaks")
+	a.end_now()
 	b.end_now()
-	t.check(not m.is_dreaded() and not m.has_meta(DreadOfTheDarkFx.OWNERS) and eye.held_by(b.get_instance_id()) == 0, "B lifts: free")
+	t.check(crowd.dreads.is_empty(), "... and both dreads end")
 	a.free()
 	b.free()
 
 
-static func _rf2_end_now_frozen(t, made: Array) -> void:
+static func _spared_eyed_never_taken(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var pt := _begin(made)
-	var at: Vector2 = pt[0]
-	var d: Vector2 = pt[1]
-	var three: Array[Person] = []
-	for i in 3:
-		three.append(_pp(crowd, 20 + i, _rim(d, 0.8) + Vector2(0.4 * float(i), 0.0)))
-	var fx := _cast(made, at)
-	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT + 3.0)
-	t.check(three.all(func(p: Person) -> bool: return p.is_dreaded()) and fx._edge_ids.size() == 3, "(three men held at the edge)")
-	fx.end_now()
-	var eye := PaleEye.of(crowd)
-	t.check(three.all(func(p: Person) -> bool: return not p.is_dreaded() and not p.has_meta(DreadOfTheDarkFx.OWNERS)) and crowd.dreads.is_empty(),
-		"end_now(): all free, the dread gone")
-	t.check(eye.eyed().is_empty() and eye.held_by(fx.get_instance_id()) == 0 and not crowd.in_dark(at), "no eye open, no dusk laid at the click")
-	fx.free()
-	# Freed without finishing (off the tree).
-	var pt2 := _begin(made)
-	var q := _pp(crowd, 23, _rim(pt2[1], 0.8))
-	var fx2 := _cast(made, pt2[0])
-	DD._go(fx2, DreadOfTheDarkFx.T_FALL + DT + 3.0)
-	var id := fx2.get_instance_id()
-	t.check(q.is_dreaded(), "(held)")
-	fx2.free()
-	t.check(not q.is_dreaded() and not q.has_meta(DreadOfTheDarkFx.OWNERS) and PaleEye.of(crowd).held_by(id) == 0 and crowd.dreads.is_empty(),
-		"freed off the tree: the hold lifted, the eye closed, the dread ended")
-
-
-static func _rf3_held(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var pt := _begin(made)
-	var at: Vector2 = pt[0]
-	var d: Vector2 = pt[1]
-	var shadow := _pp(crowd, 20, _rim(d, 0.8) + Vector2(-0.6, 0.0))
-	shadow.statuses[&"shadow"] = 424242
-	var sleeper := _pp(crowd, 21, _rim(d, 0.8) + Vector2(0.6, 0.0))
-	sleeper.sleep(200.0, true)
-	var control := _pp(crowd, 22, _rim(d, 0.8))
-	var fx := _cast(made, at)
-	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT + 4.0)
-	t.check(_held_by_edge(fx, control), "(the control at the edge is held)")
-	t.check(not shadow.is_dreaded() and not sleeper.is_dreaded() and not sleeper.has_meta(DreadOfTheDarkFx.OWNERS) and fx._edge_ids.size() == 1,
-		"a shadow and a sleeper at the edge: never held")
-	fx.end_now()
-	fx.free()
-	shadow.statuses.erase(&"shadow")
-	sleeper.wake()
-
-
-## The spared at the edge (a believer, a man the mission keeps alive) are eyed (timed, not open-ended), never frozen, and use up none of
-## the 16.
-static func _spared(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var pt := _begin(made)
-	var at: Vector2 = pt[0]
 	var d: Vector2 = pt[1]
 	var believer := _pp(crowd, 20, _rim(d, 0.8) + Vector2(-0.6, 0.0))
 	var faith := believer.profile.faith
@@ -246,33 +191,232 @@ static func _spared(t, made: Array) -> void:
 	var kept := _pp(crowd, 21, _rim(d, 0.8) + Vector2(0.6, 0.0))
 	crowd.mission_keeps.append(func(p: Person) -> bool: return p == kept)
 	var control := _pp(crowd, 22, _rim(d, 0.8))
-	var fx := _cast(made, at)
-	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT + 4.0)
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	DD._go(fx, DreadOfTheDarkFx.EDGE_STAND + DreadOfTheDarkFx.PULL + 1.0)
 	var eye := PaleEye.of(crowd)
-	t.check(_held_by_edge(fx, control) and fx._edge_ids.size() == 1, "(the control at the edge is held, the only one counted)")
-	t.check(not believer.is_dreaded() and not kept.is_dreaded() and not believer.has_meta(DreadOfTheDarkFx.OWNERS) and not kept.has_meta(DreadOfTheDarkFx.OWNERS),
-		"a believer and a mission-kept man at the edge: never frozen")
-	t.check(eye != null and eye.is_eyed(believer) and eye.is_eyed(kept) and eye.record.size() == 3,
-		"... but eyed, once each (%d records)" % (eye.record.size() if eye != null else -1))
+	t.check(_taken(fx, control) and fx.taken_at_edge.size() == 1, "(the control at the edge is taken, the only one)")
+	t.check(believer.is_alive() and kept.is_alive() and not believer.is_dreaded() and not kept.is_dreaded() and believer.modulate.a == 1.0,
+		"a believer and a mission-kept man at the edge: alive after the stand and the pull, never frozen or faded")
+	var eyed := 0
+	if eye != null:
+		for r in eye.record:
+			eyed += 1
+	t.check(eye != null and eyed >= 3, "... but eyed (%d records)" % eyed)
 	fx.end_now()
-	t.check(eye.is_eyed(believer) and eye.is_eyed(kept) and not eye.is_eyed(control),
-		"the lift closes the held man's open eye; the spared's timed eyes run on")
-	eye.step(PaleEye.TIME + 0.1)
-	t.check(not eye.is_eyed(believer) and not eye.is_eyed(kept), "... and run out")
 	fx.free()
 	believer.profile.faith = faith
 	crowd.mission_keeps.clear()
 
 
-static func _level_four(t, made: Array) -> void:
+static func _held_soldier_taken(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var d: Vector2 = pt[1]
+	var s: Person = crowd.soldiers[1]
+	Kit.arrive(s, _rim(d, 0.8))
+	s.dread_balked_at = -INF
+	s.send_to_post(s.ground_pos)
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	DD._go(fx, DreadOfTheDarkFx.EDGE_STAND + DreadOfTheDarkFx.TICK + DreadOfTheDarkFx.PULL + 0.4, [s], d)
+	t.check(_taken(fx, s), "a soldier on a duty at the edge is taken like anyone")
+	fx.end_now()
+	fx.free()
+
+
+static func _pull_drifts_and_fades(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var pt := _begin(made)
 	var at: Vector2 = pt[0]
 	var d: Vector2 = pt[1]
 	var w := _pp(crowd, 20, _rim(d, 0.8))
-	var fx := _cast(made, at, L4)
+	var fx := _cast(made, at)
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(_until_pull(fx, w), "(the pull begins)")
+	var d0 := w.ground_pos.distance_to(at)
+	DD._go(fx, DreadOfTheDarkFx.PULL * 0.5)
+	var gain := d0 - w.ground_pos.distance_to(at)
+	t.check(absf(gain - DreadOfTheDarkFx.PULL_DRIFT * 0.5) <= 0.15, "halfway: nearer the click by about half the drift (%.2f)" % gain)
+	t.check(w.modulate.a < 1.0 and w.modulate.a > 0.0, "... and fading (alpha %.2f)" % w.modulate.a)
+	fx.end_now()
+	fx.free()
+	w.modulate.a = 1.0
+
+
+static func _teardown_mid_pull(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var d: Vector2 = pt[1]
+	var w := _pp(crowd, 20, _rim(d, 0.8))
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(_until_pull(fx, w), "(the pull begins)")
+	DD._go(fx, 0.2)
+	var id := fx.get_instance_id()
+	fx.end_now()
+	DD._go(null, 1.0, [w])
+	var eye := PaleEye.of(crowd)
+	t.check(w.is_alive() and not w.is_dreaded() and not w.has_meta(DreadOfTheDarkFx.OWNERS) and w.modulate.a == 1.0 and fx.taken_at_edge.is_empty(),
+		"end_now() mid-pull: alive, let go, opaque, nothing taken")
+	t.check(eye.held_by(id) == 0 and eye.eyed().is_empty(), "... no eye open for the cast")
+	fx.free()
+
+
+static func _indoors_mid_pull(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var w := _pp(crowd, 20, _rim(pt[1], 0.8))
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(_until_pull(fx, w), "(the pull begins)")
+	DD._go(fx, 0.3)
+	t.check(w.modulate.a < 1.0, "(he is fading)")
+	w.inside = true
+	DD._go(fx, 0.5)
+	t.check(w.is_alive() and w.modulate.a == 1.0 and not w.is_dreaded() and fx.taken_at_edge.is_empty(),
+		"indoors mid-pull: alive, opaque again, let go, not taken")
+	w.inside = false
+	fx.end_now()
+	fx.free()
+
+
+## The twist's take is its own silent kind (edge): credited to Dread, no body, no voice.
+static func _edge_kind_credited(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	crowd.remains.enabled = true
+	var pt := _begin(made)
+	var d: Vector2 = pt[1]
+	var w := _pp(crowd, 20, _rim(d, 0.8))
+	var fx := _cast(made, pt[0])
+	var rules := Rules.new()
+	rules._casts.append({"key": "dread", "fx": fx, "at": pt[0], "buildings": 0, "kills": 0, "chained": false, "until": INF})
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	DD._go(fx, DreadOfTheDarkFx.EDGE_STAND + DreadOfTheDarkFx.TICK + DreadOfTheDarkFx.PULL + 0.4)
+	t.check(_taken(fx, w) and not _body_near(crowd, d + Vector2(0.0, 1.5)), "edge: a level-5 edge take: taken, no body")
+	t.check(Crowd.SILENT_KINDS.has(&"edge") and not Remains.BODY_KINDS.has(&"edge") and DeathVoices.QUIET_KINDS.has(&"edge"),
+		"edge: silent, no body kind, no voice")
+	t.check(rules.credited_key(&"edge") == "dread", "edge: credited to dread (%s)" % rules.credited_key(&"edge"))
+	rules.free()
+	fx.end_now()
+	fx.free()
+
+
+## A man something else killed mid-pull is not left half-faded.
+static func _killed_mid_pull_opaque(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var w := _pp(crowd, 20, _rim(pt[1], 0.8))
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(_until_pull(fx, w), "(the pull begins)")
+	DD._go(fx, 0.3)
+	t.check(w.modulate.a < 1.0, "(he is fading)")
+	crowd.take(w, &"void")
+	DD._go(fx, 0.3)
+	t.check(not w.is_alive() and w.modulate.a == 1.0 and not fx._pulls.has(w.get_instance_id()), "killed by another mid-pull: opaque again, pull dropped")
+	fx.end_now()
+	fx.free()
+
+
+## At the take, a man who has become spared meanwhile is let go, not taken.
+static func _spared_at_take_let_go(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var w := _pp(crowd, 20, _rim(pt[1], 0.8))
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(_until_pull(fx, w), "(the pull begins)")
+	crowd.mission_keeps.append(func(p: Person) -> bool: return p == w)
+	DD._go(fx, DreadOfTheDarkFx.PULL + 0.3)
+	t.check(w.is_alive() and w.modulate.a == 1.0 and not w.is_dreaded() and fx.taken_at_edge.is_empty() and fx._pulls.is_empty(),
+		"spared at the take: alive, opaque, let go, nothing taken")
+	crowd.mission_keeps.clear()
+	fx.end_now()
+	fx.free()
+
+
+## At the take, a man who has gone indoors in the same tick is let go, not taken.
+static func _inside_at_take_let_go(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var w := _pp(crowd, 20, _rim(pt[1], 0.8))
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(_until_pull(fx, w), "(the pull begins)")
+	var id := w.get_instance_id()
+	# Step the pull itself to its end with the poll out of the way (he walks in just before the take).
+	var pull: Array = fx._pulls[id]
+	pull[1] = DreadOfTheDarkFx.PULL - 0.01
+	w.inside = true
+	fx._pull_step(0.05)
+	t.check(w.is_alive() and w.modulate.a == 1.0 and not w.is_dreaded() and fx.taken_at_edge.is_empty() and not fx._pulls.has(id),
+		"indoors at the take: alive, opaque, let go, nothing taken")
+	w.inside = false
+	fx.end_now()
+	fx.free()
+
+
+## Two casts, one man at the edge: one pull, one take, and he slides smoothly toward one origin.
+static func _two_casts_one_pull(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var at: Vector2 = pt[0]
+	var d: Vector2 = pt[1]
+	var m := _pp(crowd, 20, _rim(d, 0.8))
+	var a := _cast(made, at)
+	var b := _cast(made, at + Vector2(0.0, -2.0))
+	_both(a, b, DreadOfTheDarkFx.T_FALL + DT)
+	var spent := 0.0
+	while a._pulls.is_empty() and b._pulls.is_empty() and spent < 6.0:
+		_both(a, b, DT)
+		spent += DT
+	t.check(a._pulls.size() + b._pulls.size() == 1, "two casts: exactly one pull on the man (%d)" % [a._pulls.size() + b._pulls.size()])
+	var last := m.ground_pos
+	var steady := true
+	var puller: DreadOfTheDarkFx = a if not a._pulls.is_empty() else b
+	var home := puller.origin
+	var dist := m.ground_pos.distance_to(home)
+	for i in roundi(DreadOfTheDarkFx.PULL / DT) - 2:
+		_both(a, b, DT)
+		var nd := m.ground_pos.distance_to(home)
+		steady = steady and nd <= dist + 0.001
+		dist = nd
+	t.check(steady, "... and he slides steadily toward one origin")
+	_both(a, b, 1.0)
+	t.check(not m.is_alive() and a.taken_at_edge.size() + b.taken_at_edge.size() == 1, "... and is taken once")
+	a.end_now()
+	b.end_now()
+	a.free()
+	b.free()
+
+
+static func _shadow_sleeper_passed_over(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var d: Vector2 = pt[1]
+	var shadow := _pp(crowd, 20, _rim(d, 0.8) + Vector2(-0.6, 0.0))
+	shadow.statuses[&"shadow"] = 424242
+	var sleeper := _pp(crowd, 21, _rim(d, 0.8) + Vector2(0.6, 0.0))
+	sleeper.sleep(200.0, true)
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT + 5.0)
+	t.check(shadow.is_alive() and sleeper.is_alive() and fx.taken_at_edge.is_empty(), "a shadow and a sleeper at the edge: never taken")
+	fx.end_now()
+	fx.free()
+	shadow.statuses.erase(&"shadow")
+	sleeper.wake()
+
+
+static func _level4_no_twist(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var d: Vector2 = pt[1]
+	var w := _pp(crowd, 20, _rim(d, 0.8))
+	var fx := _cast(made, pt[0], L4)
 	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT + 6.0)
-	t.check(not w.is_dreaded() and fx._edge_ids.is_empty() and PaleEye.of(crowd) == null, "level 4: its edge holds nobody, no eye")
+	t.check(w.is_alive() and not w.is_dreaded() and fx.taken_at_edge.is_empty() and PaleEye.of(crowd) == null,
+		"level 4: a man at the edge waits, never taken, no eye")
 	fx.end_now()
 	fx.free()
 
@@ -284,7 +428,7 @@ static func _bare(t) -> void:
 	var fx := FxTimeline.cast(DreadOfTheDarkFx, bare, Vector2.ZERO, L5) as DreadOfTheDarkFx
 	fx._process(1.0)
 	fx.end_now()
-	t.check(fx.finished and fx._edge_ids.is_empty(), "bare (no crowd, no field): builds and finishes")
+	t.check(fx.finished and fx._edge_ids.is_empty() and fx.taken_at_edge.is_empty(), "bare (no crowd, no field): builds and finishes")
 	fx.free()
 	bare.overhead.free()
 	bare.ground.free()

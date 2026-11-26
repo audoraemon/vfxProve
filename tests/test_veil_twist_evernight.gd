@@ -1,8 +1,8 @@
 extends RefCounted
-## Evernight's level-5 twist, "The Light Gives Way" (Veil ability levels, VS 7 / VL14): every torch's light shrinks evenly from TORCH_R at
-## the fall to END_R when the dawn begins, and every reader of "is he in the light" (a claim, a take's re-check, put_out(), a dusk laid over
-## a torch, the light field) reads the radius at that moment; the huddle's slots stay level 1's; each bearer is eyed from the fall to the
-## dawn. Level 4 does none of it.
+## Evernight's level-5 twist, "The False Light" (Veil ability levels, second round): the torches' light is a false cold blue (FALSE_COLOR in
+## the light field), its radius stays TORCH_R all night and nobody in it is touched; in the last FLARE_EYE seconds before the dawn every
+## huddler and bearer is eyed; at the dawn each burning torch flares black and takes its huddle (no body, ids in `flared`) before the
+## dawn's own takes. A cast cut short never flares. Level 4 does none of it.
 
 const RD := preload("res://tests/test_raise_dead.gd")
 const EV := preload("res://tests/test_veil_evernight.gd")
@@ -16,14 +16,18 @@ static func run(t) -> void:
 	var made := RD._setup()
 	var ctx: FxContext = made[5]
 	ctx.lights = LightField.new()
+	(made[0] as Crowd).remains.enabled = true
 	_radius(t, made)
-	_claims(t, made)
+	_colour(t, made)
 	_huddle(t, made)
-	_laid(t, made)
-	_put_out_late(t, made)
-	_eyes(t, made)
-	_night_mission(t, made)
-	_lights(t, made)
+	_safe_all_night(t, made)
+	_eyed_last_seconds(t, made)
+	_leaver_unmarked(t, made)
+	_flare_takes_huddle(t, made)
+	_flare_spares(t, made)
+	_two_evernights(t, made)
+	_no_flare_on_teardown(t, made)
+	_level4_unchanged(t, made)
 	_rf4_haste(t, made)
 	_teardown(t, made)
 	_bare(t)
@@ -45,48 +49,52 @@ static func _cast(made: Array, at: Vector2, extra := L5) -> EvernightFx:
 	return FxTimeline.cast(EvernightFx, made[5], at, extra) as EvernightFx
 
 
-## torch_r(): 2.5 at the fall, 1.85 half way (WAVE + 34 of 68 s), 1.2 at t_dawn; level 4: 2.5 throughout.
+## Whether any body was laid within 3 of `g`.
+static func _body_near(crowd: Crowd, g: Vector2) -> bool:
+	return not crowd.remains.near(g, 3.0).is_empty()
+
+
+## A torch (a soldier) with `n` citizens round it, 1.0 away: {x, s, huddle}.
+static func _torch_with_huddle(made: Array, at: Vector2, n := 3) -> Dictionary:
+	var crowd: Crowd = made[0]
+	var x := at + Vector2(0.0, -6.0)
+	var s := EV._put(crowd, x, true)
+	var h: Array[Person] = []
+	for i in n:
+		h.append(EV._put(crowd, x + Vector2.from_angle(float(i) * 2.1) * 1.0))
+	return {"x": x, "s": s, "huddle": h}
+
+
+## torch_r() is TORCH_R at the fall, mid-night and just before the dawn, at level 5 too.
 static func _radius(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	EV._put(crowd, at + Vector2(0.0, -6.0), true)
+	var fx := _cast(made, at)
+	t.check(is_equal_approx(fx.night_time, 68.0) and fx._twist, "level 5: night 68 s, twist")
+	EV._until(fx, E.WAVE + DT)
+	var a := fx.torch_r()
+	EV._until(fx, E.WAVE + 34.0)
+	var b := fx.torch_r()
+	EV._until(fx, fx.t_dawn - DT)
+	var c := fx.torch_r()
+	t.check(a == E.TORCH_R and b == E.TORCH_R and c == E.TORCH_R, "level 5: torch_r() is TORCH_R at the fall, mid-night and before the dawn (%.2f %.2f %.2f)" % [a, b, c])
+	fx.end_now()
+
+
+## Level 5's torches light with FALSE_COLOR (the light field's static light); level 4's with TORCH_COLOR.
+static func _colour(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
 	for lv in [5, 4]:
 		var at := _begin(made)
 		EV._put(crowd, at + Vector2(0.0, -6.0), true)
 		var fx := _cast(made, at, L5 if lv == 5 else L4)
-		t.check(is_equal_approx(fx.night_time, 68.0) == (lv == 5) and fx._twist == (lv == 5), "level %d: night %.0f s, twist %s" % [lv, fx.night_time, fx._twist])
 		EV._until(fx, E.WAVE + DT)
-		var at_fall := fx.torch_r()
-		EV._until(fx, E.WAVE + 34.0)
-		var mid := fx.torch_r()
-		EV._until(fx, fx.t_dawn - DT)
-		var late := fx.torch_r()
-		if lv == 5:
-			t.check(absf(at_fall - 2.5) < 0.01 and absf(mid - 1.85) < 0.01 and absf(late - 1.2) < 0.02,
-				"level 5: torch_r() 2.5 at the fall, 1.85 at WAVE + 34, 1.2 at the dawn (%.3f, %.3f, %.3f)" % [at_fall, mid, late])
-		else:
-			t.check(at_fall == 2.5 and mid == 2.5 and late == 2.5 and PaleEye.of(crowd) == null, "level 4: 2.5 throughout, no eye")
-		fx.end_now()
-
-
-## A citizen 2.0 from a torch is not claimable at the fall and is claimed on the first take's beat after the light has shrunk below 2.0.
-static func _claims(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	for lv in [5, 4]:
-		var at := _begin(made)
-		var x := at + Vector2(0.0, -6.0)
-		EV._put(crowd, x, true)
-		var c := EV._put(crowd, x + Vector2(2.0, 0.0))
-		var fx := _cast(made, at, L5 if lv == 5 else L4)
-		EV._until(fx, E.WAVE + DT)
-		var id := c.get_instance_id()
-		t.check(not fx.claimed.has(id), "level %d: 2.0 from the torch is not claimable at the fall" % lv)
-		EV._until(fx, E.WAVE + 28.0 + DT)
-		if lv == 5:
-			t.check(fx.claimed.has(id) or fx.taken.has(id), "level 5: by WAVE + 28 (the first claim beat after the light fell below 2.0) he is claimed")
-			EV._until(fx, E.WAVE + 31.0)
-			t.check(fx.taken.has(id), "level 5: and taken at the next take")
-		else:
-			EV._until(fx, E.WAVE + 40.0)
-			t.check(not fx.claimed.has(id) and not fx.taken.has(id) and c.is_alive(), "level 4: never claimed in the light")
+		var l := EV._light(ctx.lights, int(fx.torches[0].light))
+		var want: Color = E.FALSE_COLOR if lv == 5 else E.TORCH_COLOR
+		t.check(not l.is_empty() and (l.color as Color).is_equal_approx(want) and is_equal_approx(float(l.radius), E.TORCH_R) and fx.torch_color() == want,
+			"level %d: the torch's light is %s at TORCH_R" % [lv, "FALSE_COLOR" if lv == 5 else "TORCH_COLOR"])
 		fx.end_now()
 
 
@@ -104,95 +112,154 @@ static func _huddle(t, made: Array) -> void:
 	t.check(fx.torches.size() == 1 and near._goal != Vector2.INF and near._goal.distance_to(x) <= E.TORCH_R - 0.3 + 0.001,
 		"level 5: the huddle slot is within TORCH_R - 0.3 of the torch (%.2f; %d torches, near at %.1f)" % [near._goal.distance_to(x), fx.torches.size(), near.ground_pos.distance_to(x)])
 	fx.end_now()
+	crowd.mission_keeps.clear()
 
 
-## A 0.5 patch laid 2.3 from a torch at WAVE + 60: it puts the torch out at level 4 (2.3 <= 0.5 + 2.5), not at level 5 (0.5 + about 1.35).
-static func _laid(t, made: Array) -> void:
+## A huddler in a torch's light is never claimed or taken before the dawn.
+static func _safe_all_night(t, made: Array) -> void:
+	var at := _begin(made)
+	var d := _torch_with_huddle(made, at)
+	var fx := _cast(made, at)
+	EV._until(fx, fx.t_dawn - DT)
+	var alive := (d.s as Person).is_alive()
+	for p: Person in d.huddle:
+		alive = alive and p.is_alive() and not fx.claimed.has(p.get_instance_id())
+	t.check(alive and fx.taken.is_empty() and fx.flared.is_empty(), "level 5: huddlers and bearer live all night, nothing taken before the dawn (%d taken)" % fx.taken.size())
+	fx.end_now()
+
+
+## Nobody eyed at FLARE_EYE + 1 s before the dawn; every huddler and bearer eyed at FLARE_EYE - 0.5 s before it; all released after.
+static func _eyed_last_seconds(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
-	for lv in [4, 5]:
-		var at := _begin(made)
-		var x := at + Vector2(0.0, -6.0)
-		EV._put(crowd, x, true)
-		var fx := _cast(made, at, L5 if lv == 5 else L4)
-		EV._until(fx, E.WAVE + 60.0)
-		crowd.lay_dusk(x + Vector2(2.3, 0.0), 0.5, 5.0)
-		t.check(fx.torches[0].out == (lv == 4), "level %d: a 0.5 patch 2.3 off at WAVE + 60 %s the torch (%.2f)" % [lv, "puts out" if lv == 4 else "leaves", fx.torch_r()])
-		fx.end_now()
+	var at := _begin(made)
+	var d := _torch_with_huddle(made, at)
+	var fx := _cast(made, at)
+	var id := fx.get_instance_id()
+	EV._until(fx, fx.t_dawn - E.FLARE_EYE - 1.0)
+	var eye := PaleEye.of(crowd)
+	t.check(eye == null or eye.held_by(id) == 0, "level 5: nobody eyed at FLARE_EYE + 1 s before the dawn")
+	EV._until(fx, fx.t_dawn - E.FLARE_EYE + 0.5)
+	eye = PaleEye.of(crowd)
+	var all := eye != null and eye.is_eyed(d.s)
+	for p: Person in d.huddle:
+		all = all and eye != null and eye.is_eyed(p)
+	t.check(all and eye.held_by(id) == 4, "level 5: every huddler and the bearer eyed at FLARE_EYE - 0.5 s (%d held)" % (eye.held_by(id) if eye != null else -1))
+	EV._until(fx, fx.t_dawn + DT)
+	t.check(eye.held_by(id) == 0, "level 5: the eyes are released at the dawn")
+	fx.end_now()
 
 
-## put_out() late takes only those within torch_r(): one at 1.8 is out of the light by then and lives.
-static func _put_out_late(t, made: Array) -> void:
+## A huddler who walks out of every huddle before the dawn is unmarked at the next refresh and is not taken.
+static func _leaver_unmarked(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	var d := _torch_with_huddle(made, at)
+	var fx := _cast(made, at)
+	EV._until(fx, fx.t_dawn - E.FLARE_EYE + 0.5)
+	var eye := PaleEye.of(crowd)
+	var leaver: Person = d.huddle[0]
+	t.check(eye != null and eye.is_eyed(leaver), "(the huddler is eyed)")
+	leaver.ground_pos = at + Vector2(0.0, 30.0)
+	leaver._sync_position()
+	EV._until(fx, fx.t_dawn - E.FLARE_EYE + 1.2)
+	t.check(not eye.is_eyed(leaver) and eye.is_eyed(d.huddle[1]), "a huddler who walked out is unmarked at once, the rest stay eyed")
+	fx.end_now()
+
+
+## At the dawn every huddler and the bearer of each burning torch is taken (no body), their ids in `flared`; the torch is out.
+static func _flare_takes_huddle(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	var d := _torch_with_huddle(made, at)
+	var fx := _cast(made, at)
+	EV._until(fx, fx.t_dawn - DT)
+	t.check((d.s as Person).is_alive(), "level 5: all alive just before the dawn")
+	EV._until(fx, fx.t_dawn + DT)
+	var all_gone := not (d.s as Person).is_alive()
+	var ids: Array[int] = [(d.s as Person).get_instance_id()]
+	for p: Person in d.huddle:
+		all_gone = all_gone and not p.is_alive()
+		ids.append(p.get_instance_id())
+	var flagged := true
+	for id in ids:
+		flagged = flagged and fx.flared.has(id) and fx.taken.has(id)
+	t.check(all_gone and flagged and fx.torches[0].out and not _body_near(crowd, d.x),
+		"level 5: the flare takes the huddle and the bearer (no body, in flared), the torch is out (%d flared)" % fx.flared.size())
+	fx.end_now()
+
+
+## A spared huddler and one indoors are alive after the dawn.
+static func _flare_spares(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	var d := _torch_with_huddle(made, at, 3)
+	var spared: Person = d.huddle[0]
+	crowd.mission_keeps.append(func(p: Person) -> bool: return p == spared)
+	var indoors: Person = d.huddle[1]
+	var gone: Person = d.huddle[2]
+	var fx := _cast(made, at)
+	EV._until(fx, fx.t_dawn - 1.0)
+	indoors.inside = true
+	EV._until(fx, fx.t_dawn + DT)
+	t.check(spared.is_alive() and indoors.is_alive() and not gone.is_alive() and not fx.flared.has(spared.get_instance_id()),
+		"level 5: a spared huddler and one indoors live; the other is taken")
+	fx.end_now()
+	crowd.mission_keeps.clear()
+	indoors.inside = false
+
+
+## Two level-5 Evernights with torches 1.0 apart: a huddler in both lights is taken once, no error.
+static func _two_evernights(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var at := _begin(made)
 	var x := at + Vector2(0.0, -6.0)
-	var s := EV._put(crowd, x, true)
-	var inner := EV._put(crowd, x + Vector2(0.8, 0.0))
-	var outer := EV._put(crowd, x + Vector2(1.8, 0.0))
-	for p in [inner, outer]:
-		p.sleep(400.0, true)  # held where they stand: the take's claims pass them by
-	var fx := _cast(made, at)
-	EV._until(fx, E.WAVE + 37.0)  # the light is 1.79 now; the claim beat that would take him at 1.8 is at WAVE + 38
-	fx.put_out(0)
-	t.check(not inner.is_alive() and outer.is_alive() and not s.is_alive(), "level 5: put_out() late takes those within torch_r() and the bearer, not one at 1.8 (%s %s %s r %.2f)" % [inner.is_alive(), outer.is_alive(), s.is_alive(), fx.torch_r()])
-	fx.end_now()
+	var s1 := EV._put(crowd, x, true)
+	var s2 := EV._put(crowd, x + Vector2(1.0, 0.0), true)
+	var both := EV._put(crowd, x + Vector2(0.5, 0.5))
+	var a := _cast(made, at)
+	var b := _cast(made, at)
+	EV._until(a, a.t_dawn + DT)
+	EV._until(b, b.t_dawn + DT)
+	var n := 0
+	for f: EvernightFx in [a, b]:
+		n += f.flared.count(both.get_instance_id())
+	t.check(not both.is_alive() and n == 1 and not s1.is_alive() and not s2.is_alive(), "two Evernights: a huddler in both lights is taken once (%d times)" % n)
+	a.end_now()
+	b.end_now()
 
 
-## Five bearers eyed from the fall (open-ended), none at the dawn; the record names the power.
-static func _eyes(t, made: Array) -> void:
+## end_now() before the dawn: nobody taken, no eye left open.
+static func _no_flare_on_teardown(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var at := _begin(made)
-	var spots := [Vector2(-24.0, -20.0), Vector2(-8.0, -20.0), Vector2(8.0, -20.0), Vector2(24.0, -20.0), Vector2(-24.0, 4.0), Vector2(-8.0, 4.0), Vector2(8.0, 4.0)]
-	for sp in spots:
-		EV._put(crowd, sp, true)
+	var d := _torch_with_huddle(made, at)
 	var fx := _cast(made, at)
 	var id := fx.get_instance_id()
-	EV._until(fx, E.WAVE - DT)
-	t.check(PaleEye.of(crowd) == null, "no eye before the fall")
-	EV._until(fx, E.WAVE + DT)
-	var eye := PaleEye.of(crowd)
-	t.check(fx.torches.size() == 5 and eye != null and eye.held_by(id) == 5, "level 5: five torches, five bearers eyed (%d torches, eye %s, lv_torches %d)" % [fx.torches.size(), eye, fx.lv_torches])
-	var all_eyed := true
-	for tc in fx.torches:
-		all_eyed = all_eyed and eye.is_eyed(instance_from_id(int(tc.bearer)) as Person)
-	t.check(all_eyed and eye.record.size() == 5 and eye.record[0]["key"] == "evernight", "each torch's bearer, the record names Evernight")
-	EV._until(fx, fx.t_dawn - DT)
-	t.check(eye.held_by(id) == 5, "the eyes are still open just before the dawn")
+	EV._until(fx, fx.t_dawn - 2.0)
+	t.check(PaleEye.of(crowd).held_by(id) == 4, "level 5: eyed in the last seconds")
+	fx.end_now()
+	var alive := (d.s as Person).is_alive()
+	for p: Person in d.huddle:
+		alive = alive and p.is_alive()
+	t.check(alive and fx.taken.is_empty() and fx.flared.is_empty() and PaleEye.of(crowd).held_by(id) == 0, "end_now() before the dawn: no flare, nobody taken, no eye open")
+
+
+## Level 4: the dawn takes only what it took before (a sleeper in dusk); the huddle lives and no eye opens.
+static func _level4_unchanged(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	var d := _torch_with_huddle(made, at)
+	var dreamer := EV._put(crowd, d.x + Vector2(1.5, 0.0))
+	crowd.lay_dusk(dreamer.ground_pos, 0.6, 200.0)
+	dreamer.sleep(200.0, true)
+	var fx := _cast(made, at, L4)
+	EV._until(fx, fx.t_dawn - 1.0)
+	t.check(PaleEye.of(crowd) == null, "level 4: no eye in the last seconds")
 	EV._until(fx, fx.t_dawn + DT)
-	t.check(eye.held_by(id) == 0, "none at the dawn")
-	fx.end_now()
-
-
-## A NIGHT mission's night is 102 s at level 5: the light shrinks over all of it.
-static func _night_mission(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var at := _begin(made)
-	crowd.night_mission = true
-	crowd.sight_scale = NightRules.NIGHT_SIGHT
-	EV._put(crowd, at + Vector2(0.0, -6.0), true)
-	var fx := _cast(made, at, {"level": 5, "dark": true})
-	t.check(is_equal_approx(fx.night_time, 102.0), "NIGHT: 102 s at level 5 (%.1f)" % fx.night_time)
-	EV._until(fx, E.WAVE + 51.0)
-	t.check(absf(fx.torch_r() - 1.85) < 0.01, "NIGHT: half way through 102 s the light is 1.85 (%.3f)" % fx.torch_r())
-	EV._until(fx, fx.t_dawn - DT)
-	t.check(absf(fx.torch_r() - 1.2) < 0.02, "NIGHT: 1.2 at the dawn")
-	fx.end_now()
-	crowd.night_mission = false
-
-
-## The light field's static light follows the shrinking radius (re-added every LIGHT_STEP).
-static func _lights(t, made: Array) -> void:
-	var crowd: Crowd = made[0]
-	var ctx: FxContext = made[5]
-	var at := _begin(made)
-	EV._put(crowd, at + Vector2(0.0, -6.0), true)
-	var fx := _cast(made, at)
-	EV._until(fx, E.WAVE + DT)
-	var l0 := EV._light(ctx.lights, int(fx.torches[0].light))
-	t.check(not l0.is_empty() and is_equal_approx(float(l0.radius), 2.5), "the torch's light starts at 2.5")
-	EV._until(fx, E.WAVE + 34.0)
-	var l1 := EV._light(ctx.lights, int(fx.torches[0].light))
-	t.check(not l1.is_empty() and float(l1.radius) < 2.0 and float(l1.radius) - fx.torch_r() < E.LIGHT_STEP + 0.001 and EV._light(ctx.lights, int(l0.id)).is_empty(),
-		"half way the light field's torch is smaller (%.2f) and the old one is gone" % float(l1.radius))
+	var live := (d.s as Person).is_alive()
+	for p: Person in d.huddle:
+		live = live and p.is_alive()
+	t.check(live and not dreamer.is_alive() and fx.flared.is_empty() and fx.taken.size() == 1, "level 4: the dawn takes only the sleeper in the dusk, the huddle lives (%d taken)" % fx.taken.size())
 	fx.end_now()
 
 
@@ -228,7 +295,7 @@ static func _rf4_haste(t, made: Array) -> void:
 	rules.free()
 
 
-## end_now() mid-night and a freed cast: no light-field static of the cast left, no eye open.
+## end_now() and a freed cast in the last seconds: no light-field static of the cast left, no eye open, nobody flared.
 static func _teardown(t, made: Array) -> void:
 	var crowd: Crowd = made[0]
 	var ctx: FxContext = made[5]
@@ -238,11 +305,11 @@ static func _teardown(t, made: Array) -> void:
 		EV._put(crowd, at + Vector2(12.0, 6.0), true)
 		var fx := _cast(made, at)
 		var id := fx.get_instance_id()
-		EV._until(fx, E.WAVE + 30.0)
+		EV._until(fx, fx.t_dawn - 2.0)
 		var ids: Array[int] = []
 		for tc in fx.torches:
 			ids.append(int(tc.light))
-		t.check(PaleEye.of(crowd).held_by(id) == 2 and not ids.has(0), "%s: mid-night two bearers eyed, two lights" % mode)
+		t.check(PaleEye.of(crowd).held_by(id) == 2 and not ids.has(0), "%s: in the last seconds two bearers eyed, two lights" % mode)
 		if mode == "end_now":
 			fx.end_now()
 		else:

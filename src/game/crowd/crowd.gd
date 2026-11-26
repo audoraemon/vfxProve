@@ -251,7 +251,7 @@ var _next_veil_all := 1
 var footholds: Array[Structure] = []
 ## The kill kinds that take a person without a trace (Veil: The Swallowing Dark, Evernight, Dreamless on a sleeper, Shadow Play's
 ## soldiers): no voice, no incident, no alarm, no remain (take()).
-const SILENT_KINDS: Array[StringName] = [&"void", &"night", &"dreamt", &"shade"]
+const SILENT_KINDS: Array[StringName] = [&"void", &"night", &"dreamt", &"shade", &"edge"]
 ## Who a mission's director keeps alive (MissionDirector.keeps_alive, registered by its setup()): spared() asks them.
 var mission_keeps: Array[Callable] = []
 ## Who a mission's director counts as keeping watch beside the soldiers (MissionDirector.watches(), registered by its setup()): is_watch() asks.

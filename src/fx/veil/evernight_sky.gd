@@ -27,6 +27,8 @@ const NIGHT_ON_NIGHT_EDGE := Color(0.44, 0.40, 0.60)
 ## Where the moon hangs on the screen (a share of the view), and how much its light lifts the night round it.
 const MOON_UV := Vector2(0.82, 0.16)
 const MOON_LIGHT := 0.12
+const FALSE_EMBERS := [Color("e0f0ff"), Color("8cc0ff"), Color("4a78d0"), Color(0.15, 0.25, 0.55, 0.6)]
+const FLARE := [Color(0.03, 0.02, 0.05, 1.0), Color(0.07, 0.05, 0.12, 0.9), Color(0.1, 0.12, 0.3, 0.6), Color(0.1, 0.12, 0.3, 0.0)]
 const EMBERS := [Color("ffe2a0"), Color("ffb25a"), Color("e0702a"), Color(0.55, 0.2, 0.08, 0.6)]
 const WISP := [Color(0.06, 0.03, 0.10, 0.9), Color(0.12, 0.05, 0.20, 0.85), Color(0.22, 0.09, 0.38, 0.7),
 	Color(0.42, 0.30, 0.62, 0.45), Color(0.62, 0.52, 0.82, 0.2)]
@@ -112,8 +114,8 @@ class TorchGlow extends Node2D:
 	var lit := true
 	## 0..1: how much of it shows (at dawn it fades with the night, VRF5d).
 	var fade := 1.0
-	## Its halo's size as a share of the torch's full light (level 5 shrinks it with the light).
-	var reach := 1.0
+	## Level 5: the false light, cold blue (EvernightFx.FALSE_COLOR) instead of the flame's warm.
+	var false_light := false
 	var sparks: PixelParticles
 
 	func _init(seed_value: int) -> void:
@@ -138,6 +140,7 @@ class TorchGlow extends Node2D:
 	func _process(delta: float) -> void:
 		clock += delta
 		sparks.emitting = lit and fade > 0.5
+		sparks.ramp = PackedColorArray(FALSE_EMBERS if false_light else EMBERS)
 		queue_redraw()
 
 	func _draw() -> void:
@@ -146,8 +149,14 @@ class TorchGlow extends Node2D:
 		var f := 0.84 + 0.09 * sin(clock * 11.0 + phase) + 0.07 * sin(clock * 23.7 + phase * 2.0)
 		# The flame's own halo where it is held up (its light on the ground and the people is the light field's and the shade's
 		# warm island: more here blew the huddle out to white).
-		draw_circle(Vector2.ZERO, 18.0 * f * reach, Color(1.0, 0.55, 0.25, 0.07 * fade))
-		draw_circle(Vector2.ZERO, 8.0 * f * reach, Color(1.0, 0.68, 0.34, 0.16 * fade))
+		if false_light:
+			var c := EvernightFx.FALSE_COLOR
+			draw_circle(Vector2.ZERO, 18.0 * f, Color(c, 0.07 * fade))
+			draw_circle(Vector2.ZERO, 8.0 * f, Color(c.lerp(Color.WHITE, 0.2), 0.16 * fade))
+			draw_circle(Vector2.ZERO, 3.0 * f, Color(c.lerp(Color.WHITE, 0.6), 0.5 * fade))
+			return
+		draw_circle(Vector2.ZERO, 18.0 * f, Color(1.0, 0.55, 0.25, 0.07 * fade))
+		draw_circle(Vector2.ZERO, 8.0 * f, Color(1.0, 0.68, 0.34, 0.16 * fade))
 		draw_circle(Vector2.ZERO, 3.0 * f, Color(1.0, 0.86, 0.58, 0.5 * fade))
 
 
@@ -163,4 +172,26 @@ static func wisp(fx: FxTimeline, parent: Node, screen_pos: Vector2, seed_value: 
 	fx.track(p, parent)
 	p.burst(puffs, {"radius": 5.0, "speed": Vector2(2, 10), "alt": Vector2(2, 12), "alt_speed": Vector2(18, 42),
 		"life": Vector2(1.0, 1.7), "size": Vector2(2.5, 4.5), "size_end_mul": 1.9})
+	return p
+
+
+## The shade's island colour: the day's warm at levels 1-4; the false light's own cold white-blue at level 5.
+static func island_of(torch_color: Color) -> Color:
+	if torch_color == EvernightFx.FALSE_COLOR:
+		return Color(0.64, 0.78, 1.0)
+	return Color(0.92, 0.80, 0.64)
+
+
+## A short black flare (the false light going out, taking its huddle): a burst of black puffs at `screen_pos`.
+static func flare(fx: FxTimeline, parent: Node, screen_pos: Vector2, seed_value: int, puffs := 14) -> PixelParticles:
+	var p := PixelParticles.new()
+	p.rng.seed = seed_value
+	p.shape = PixelParticles.Shape.PUFF
+	p.ramp = PackedColorArray(FLARE)
+	p.position = screen_pos
+	p.gravity = -20.0
+	p.drag = 1.6
+	fx.track(p, parent)
+	p.burst(puffs, {"radius": 3.0, "speed": Vector2(20, 60), "alt": Vector2(0, 8), "alt_speed": Vector2(10, 40),
+		"life": Vector2(0.4, 0.8), "size": Vector2(3.0, 5.5), "size_end_mul": 1.4})
 	return p

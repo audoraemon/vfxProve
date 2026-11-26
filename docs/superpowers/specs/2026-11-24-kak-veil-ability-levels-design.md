@@ -287,6 +287,7 @@ Anyone the dreaded ground stops at its edge (today he waits there, `Person._step
 of its edge for 2 s, is eyed and frozen where he stands, silent, until the dread lifts (the same hold as those inside,
 under the cast's own id, so it lifts with the cast). At most 16 a cast (cost), nearest the click
 first.
+(Replaced 2026-11-26 by "The Dark Takes Who Looks": see docs/superpowers/specs/2026-11-26-kak-veil-twists-2-design.md.)
 
 **Shadow Play -- The Shadows Keep Watch.** "Who comes close joins the play."
 Anyone awake who comes within 1.0 of a shadow of a level-5 cast is eyed and joins the play exactly as the cast's own
@@ -300,6 +301,7 @@ taken). At most 12 more a cast (cost).
 From the cast to the fold, anyone who has stood inside the growing circle and then walks out of it is eyed and marked
 (a thin dark thread on him until the fold). At the fold, after those inside, every marked person still alive is taken
 wherever he is, indoors too. The power's own sparing holds (what the mission needs, the believers as today).
+(Replaced 2026-11-26 by "The Moon's Face": see docs/superpowers/specs/2026-11-26-kak-veil-twists-2-design.md.)
 
 **Evernight -- The Light Gives Way.** "The torchlight shrinks all night."
 Each torch's light shrinks evenly through a level-5 night, from `TORCH_R` 2.5 at the fall to 1.2 as the dawn begins
@@ -308,6 +310,7 @@ Everything that asks "is he in a torch's light" (a claim, a take's re-check, the
 warm island's look) reads the light's radius at that moment; a person already claimed stays claimed. Where the people
 huddle does not shrink: they stand where they would at level 1, which is what leaves the outer ones in the dark. Each
 torch bearer is eyed from the fall to the dawn (he is the one who sees the night).
+(Replaced 2026-11-26 by "The False Light": see docs/superpowers/specs/2026-11-26-kak-veil-twists-2-design.md.)
 
 ## 8. Text and tools
 

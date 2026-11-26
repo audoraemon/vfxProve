@@ -82,7 +82,7 @@ static func _book_and_tree(t) -> void:
 	t.check(String(PowerBook.get_power("unseen").get("blurb", "")) != "", "Unseen Hour has a blurb of its own")
 	t.check(Rules.POWER_KINDS["dreamless"] == [&"dreamless", &"dreamt"] and Rules.POWER_KINDS["shadowplay"] == [&"shade"]
 		and Rules.POWER_KINDS["swallow"] == [&"void"] and Rules.POWER_KINDS["evernight"] == [&"night"]
-		and Rules.POWER_KINDS["blight"] == [] and Rules.POWER_KINDS["slumber"] == [], "the new kill kinds are the powers' credit")
+		and Rules.POWER_KINDS["dread"] == [&"edge"] and Rules.POWER_KINDS["blight"] == [] and Rules.POWER_KINDS["slumber"] == [], "the new kill kinds are the powers' credit")
 	var keys := PowerBook.of_authority("veil")
 	t.check(keys.find("unseen") >= 0 and keys.find("slumber") == keys.find("unseen") + 1
 		and keys.find("evernight") == keys.find("unseen") + 7, "the seven rows follow Unseen Hour in the book (%s)" % [keys])

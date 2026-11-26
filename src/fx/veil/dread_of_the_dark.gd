@@ -26,12 +26,17 @@ const T_FADE := 0.6
 const KEY := &"dread"
 ## The person's meta that holds the casts keeping the dread on him: {instance id: true}.
 const OWNERS := &"dread_owners"
-## Level 5, The Dark Looks Back: at most this many are held at the edge in one cast, a poll every TICK, and the stand that holds a man
-## (seconds within EDGE_NEAR of the dreaded ground); the pale eye's key.
+## The person's meta that holds the instance id of the one cast pulling him at the edge (twist); another cast leaves him be.
+const PULLER := &"dread_puller"
+## Level 5, The Dark Takes Who Looks: at most this many are taken at the edge in one cast, a poll every TICK, and the stand that marks a
+## man (seconds within EDGE_NEAR of the dreaded ground); the pale eye's key; the pull (seconds) and how far it slides him toward the
+## click while he fades.
 const EDGE_MOST := 16
 const EDGE_NEAR := 1.0
 const EDGE_STAND := 2.0
 const TICK := 0.25
+const PULL := 0.6
+const PULL_DRIFT := 1.0
 const EYE_KEY := "dread"
 
 ## The cast's reach (light or dark size).
@@ -46,10 +51,13 @@ var _dread := 0
 var _lifted := false
 ## The god's look: the thickened dark and the eyes at its edge.
 var shade: DreadShade
-## Level 5 twist (The Dark Looks Back): the instance ids of the men held at the edge, outside the dreaded ground (`_hold_all()` never
-## lets them go; `_release()` does), each one's seconds stood near it, the poll's accumulator and the crowd clock of the fall.
+## Level 5 twist (The Dark Takes Who Looks): the instance ids of the men being pulled in at the edge (`_hold_all()` never lets them go;
+## `_release()` does), each one's pull (`_pulls`: id -> [from, age, alpha]), each one's seconds stood near the edge, the poll's
+## accumulator and the crowd clock of the fall. `taken_at_edge`: the ids taken by the twist, in order.
 var _twist := false
 var _edge_ids: Array[int] = []
+var _pulls := {}
+var taken_at_edge: Array[int] = []
 var _stood := {}
 var _eyed_spared := {}
 var _acc := 0.0
@@ -129,6 +137,7 @@ func _fx_process(delta: float) -> void:
 	if _dread != 0:
 		_hold_all()
 		if _twist:
+			_pull_step(delta)
 			_edge_poll(delta)
 	if shade != null and is_instance_valid(shade):
 		shade.strength = _strength()
@@ -218,8 +227,8 @@ func _dreaded_here(g: Vector2) -> bool:
 
 
 ## Level 5, every TICK from the fall to the lift: the living out of doors within reach + 1 who are neither asleep nor a shadow, are not held
-## by this cast and stand outside its dreaded ground are held at its edge -- one it just refused (`dread_balked_at`) and who is within
-## EDGE_NEAR of it, or who has stood within EDGE_NEAR of it for EDGE_STAND seconds. EDGE_MOST a cast, nearest the click first. Eyed.
+## by this cast and stand outside its dreaded ground are eyed, held and pulled in (PULL, then taken, no body) -- one it just refused (`dread_balked_at`) and who is within
+## EDGE_NEAR of it, or who has stood within EDGE_NEAR of it for EDGE_STAND seconds. EDGE_MOST a cast (taken or in the pull), nearest the click first. The spared are only eyed.
 func _edge_poll(delta: float) -> void:
 	if not _live_crowd() or ctx.field == null:
 		return
@@ -232,7 +241,10 @@ func _edge_poll(delta: float) -> void:
 	while i >= 0:
 		var held := _person(_edge_ids[i])
 		if held == null or not held.is_alive() or held.inside:
+			if held != null and _pulls.has(_edge_ids[i]):
+				held.modulate.a = float(_pulls[_edge_ids[i]][2])
 			_let_go(held)
+			_end_pull(_edge_ids[i])
 			_edge_ids.remove_at(i)
 		i -= 1
 	var ready: Array[Person] = []
@@ -245,6 +257,8 @@ func _edge_poll(delta: float) -> void:
 		seen[id] = true
 		if _edge_ids.has(id) or _ids.has(id):
 			continue
+		if p.has_meta(PULLER) and int(p.get_meta(PULLER)) != get_instance_id() and instance_from_id(int(p.get_meta(PULLER))) != null:
+			continue  # another cast is already pulling him
 		if _dreaded_here(p.ground_pos):
 			continue
 		if not _near_dreaded(p.ground_pos):
@@ -267,12 +281,52 @@ func _edge_poll(delta: float) -> void:
 				_eyed_spared[p.get_instance_id()] = true
 				PaleEye.mark(self, p, EYE_KEY)
 			continue
-		if _edge_ids.size() >= EDGE_MOST:
+		if _edge_ids.size() + taken_at_edge.size() >= EDGE_MOST:
 			break
 		_hold(p)
 		_edge_ids.append(p.get_instance_id())
+		p.set_meta(PULLER, get_instance_id())
+		_pulls[p.get_instance_id()] = [p.ground_pos, 0.0, 1.0]  # the base alpha is 1.0, never a faded one read off another cast's pull
 		_stood.erase(p.get_instance_id())
-		PaleEye.mark(self, p, EYE_KEY, INF)
+		PaleEye.mark(self, p, EYE_KEY, INF)  # open through the pull; the take (or release()) closes it
+
+
+## Every frame: each man at the edge is slid PULL_DRIFT toward the click over PULL while he fades; at the end of the pull the dark
+## takes him (no body). Whoever is gone, dead or indoors meanwhile is dropped by the poll.
+func _pull_step(delta: float) -> void:
+	for id: int in _pulls.keys():
+		var p := _person(id)
+		if p == null or not p.is_alive():
+			if p != null:
+				p.modulate.a = 1.0  # a man something else killed keeps no half-faded look
+			_end_pull(id)
+			continue
+		var pull: Array = _pulls[id]
+		pull[1] = float(pull[1]) + delta
+		var k := clampf(float(pull[1]) / PULL, 0.0, 1.0)
+		var from: Vector2 = pull[0]
+		var way := origin - from
+		p.ground_pos = from + way.normalized() * minf(PULL_DRIFT, way.length()) * k
+		p._sync_position()
+		p.modulate.a = float(pull[2]) * (1.0 - k)
+		if k >= 1.0:
+			_end_pull(id)
+			_edge_ids.erase(id)
+			p.modulate.a = float(pull[2])
+			_let_go(p)
+			if ctx.crowd.spared(p) or p.inside:
+				PaleEye.unmark(self, p)  # spared or gone indoors by the take: let go, not taken
+				continue
+			if VeilParts.take_out(ctx.crowd, p, &"edge"):
+				taken_at_edge.append(id)
+
+
+## Ends the pull on `id` (this cast's record and its marker on the man).
+func _end_pull(id: int) -> void:
+	_pulls.erase(id)
+	var p := _person(id)
+	if p != null and p.has_meta(PULLER) and int(p.get_meta(PULLER)) == get_instance_id():
+		p.remove_meta(PULLER)
 
 
 ## Everyone this cast holds is let go and its dread ends. Safe to call twice, and with people or the crowd freed meanwhile.
@@ -281,8 +335,13 @@ func _release() -> void:
 		_let_go(_person(id))
 	_ids.clear()
 	for id in _edge_ids:
-		_let_go(_person(id))
+		var p := _person(id)
+		if p != null and _pulls.has(id):
+			p.modulate.a = float(_pulls[id][2])
+		_let_go(p)
+		_end_pull(id)
 	_edge_ids.clear()
+	_pulls.clear()
 	_stood.clear()
 	if _twist and ctx != null and is_instance_valid(ctx.crowd):
 		PaleEye.release(self)

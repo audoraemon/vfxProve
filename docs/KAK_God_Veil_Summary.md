@@ -378,16 +378,16 @@ pick is the nearest, a tie to the lower id), and the town's spared are eyed at m
   If that first witness is one the town spares, the sitter is killed as today.
 - **Dread of the Dark, The Dark Looks Back.** Anyone who stops at the edge of the dreaded ground (he balked at it, or stood within 1 of
   it for 2 s) is held frozen until the dread lifts, eyed. Up to 16, the nearest first. Your believers and whoever the mission keeps alive
-  are eyed for 4 s but never frozen, and use up none of the 16 (VL68).
+  are eyed for 4 s but never frozen, and use up none of the 16 (VL68). (Replaced 2026-11-26, see Twists, second round.)
 - **Shadow Play, The Shadows Keep Watch.** Anyone who comes within 1.0 of one of the cast's shadows joins them as a shadow too (up to
   12; a joined man can draw in the next), eyed until the cast ends. Your believers and whoever the mission keeps alive are eyed for 4 s
   but never join, are never taken, and use up none of the 12 (VL68).
 - **The Swallowing Dark, Nothing Leaves.** Anyone who stood inside the growing circle and walks out of it is marked (a thin dark thread
   to him, and eyed) and is taken at the fold wherever he has gone, even into a shelter. The spared are eyed and marked but only taken
-  if they are inside at the fold, as today (VL13).
+  if they are inside at the fold, as today (VL13). (Replaced 2026-11-26, see Twists, second round.)
 - **Evernight, The Light Gives Way.** Each torch's light shrinks over the night, from 2.5 to 1.2 round it. The huddle's slots stay where
   they were, so the dark claims more. Every torch-bearer is eyed. One wider effect than you might expect: the sky's shade is shared,
-  so a level-1 night's islands sharing the sky with a level-5 night are drawn as small as the level-5 ones (look only, VL66).
+  so a level-1 night's islands sharing the sky with a level-5 night are drawn as small as the level-5 ones (look only, VL66). (Replaced 2026-11-26, see Twists, second round.)
 
 ### How to try them
 
@@ -440,3 +440,63 @@ Check results on `961a9046` (2026-11-25):
 - FLOW: 209 checks, 0 failures, run alone.
 - The 36 suites of the levels (the level tables, the Pale Eye, the shared hooks, the ten twists, the ten powers) also pass
   one by one.
+
+## Twists, second round (2026-11-26)
+
+### Why
+
+After reading the level-5 twists you said Dread's twist "is too much like Slumber's twist", and that the Tier 5 twists "don't feel
+different from the ability". So a twist now has to add a new kind of effect, not more of what the power already does. Three
+twists are replaced, on their own branch (`god/veil-twists-2`, cut from `god/veil-levels` `850e22de`). Levels 1-4 change nothing,
+no number in the level tables moves, and the other seven twists stand. The full design is
+`docs/superpowers/specs/2026-11-26-kak-veil-twists-2-design.md`; rulings are in `docs/KAK_God_Veil_Rulings.md` (prefix VT).
+
+### The three new twists, as built
+
+All three run only at level 5. In all three the town's spared (your believers and whoever the mission keeps alive) are eyed, never
+taken or hurt. Whoever is taken leaves no body (the town's take, as The Swallowing Dark's: no one saw a death).
+
+- **Dread of the Dark, The Dark Takes Who Looks.** The edge still blocks, as at levels 1-4. Anyone it stops, or who stands within 1.0
+  of the dreaded ground for 2 s, is eyed and pulled into the dark: he slides 1.0 toward the dread's middle over 0.6 s while he fades
+  out, then he is taken (its own silent kind `edge`, credited to Dread, no body). Up to 16 a cast, nearest the click first, a poll every 0.25 s. A soldier on duty or
+  held is taken like anyone (he is eaten, not turned). The spared are eyed once, never pulled, and use up none of the 16. If the dread
+  ends mid-pull the man is let go, fully visible again.
+- **The Swallowing Dark, The Moon's Face.** After the fold has taken everyone inside, the emptied ground is left pitted with
+  craters: dark round pits with a rim of slumped earth and a faint violet swirl at the bottom, like the face of the moon. They cover
+  about a third of the circle (checked as 22 to 40 percent): 9 craters at the light size, 20 at the dark size, each radius 1.2 to 2.8.
+  Placed from a seed taken from the click (the same click, the same craters), never overlapping one another, never on a gate, bridge,
+  postern, dock, fountain or a building the mission needs. Whoever stands in one loses 0.25 health a second (a citizen of health 1.0
+  dies in 4 s, a soldier of 2.0 in 8 s), so a quick walk through is survived. The hurt is silent: no attacker, no fright, no alarm,
+  no waking; a sleeper is hurt but stays asleep. Whoever it kills is taken, no body. Each one hurt is eyed while he stands in it. People
+  indoors are passed over. The craters last until the act changes (an act change frees them, so an old act's cast kills nobody in the next) and the town does not avoid them. A crater's take after the cast's own grace has run out is credited to no power, as Dragonfire's ground fire is.
+- **Evernight, The False Light.** The torches burn pale blue (0.55, 0.75, 1.0) instead of warm, with a pale halo and sparks. The
+  town does not notice: people huddle round them all night. The torchlight keeps its 2.5 radius all night (the shrinking is gone), so
+  the huddles grow and the takes still skip the light. In the last 5 s before the dawn every huddler and bearer is eyed, so you see who
+  is about to go. At the dawn each torch flares black (a burst of black puffs) and takes its whole huddle, the bearer too, with no bodies; the torch
+  goes out; then the dawn's own rules run as today. If the mission ends before the dawn nothing flares. Two Evernights at once take a
+  huddler once.
+
+### What was removed
+
+- Dread's old hold ("held frozen until the dread lifts") and its edge-stand freeze.
+- The Swallowing Dark's marks and threads: the leavers' watch, the marked list and the take of the marked at the fold.
+- Evernight's shrinking light: the end radius `END_R` 1.2, the shrink steps and the lights' resizing. Everything that read the light's
+  radius now reads `TORCH_R`.
+
+No new sound was made. The ruling about the shared sky's small islands (VL66) no longer applies, as nothing shrinks.
+
+### For your eye and ear (second round)
+
+Nothing here has been seen on a real screen; every check was headless. Please look at:
+
+- The pull: the slide (1.0 over 0.6 s) and the fade of the man being taken. Is it readable, too quick, too slow?
+- The craters' look: the rim, the pit, the faint swirl, how a third of the circle looks like a moon face, and whether the swirl
+  spinning is noticeable or too faint.
+- The pace: 0.25 health a second. Is dying in 4 s (citizen) right, or should it be slower or faster?
+- The crater count and size: 9 and 20, radius 1.2 to 2.8. Too many, too big, too small?
+- The pale-blue torches: is the blue clear against the night, and does it read as "wrong" rather than just cold?
+- The black flare at the dawn, and the eyes opening in the last 5 s: do they warn you in time to see who is about to go?
+
+### Bench and checks
+
+Bench and check results: filled in by the controller.

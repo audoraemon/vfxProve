@@ -1,14 +1,18 @@
 class_name FamilyWish
 extends Wish
-## "Show yourself to my family" (v0.11 M1, spec §5.3, Sign): whisper three of the wisher's household -- the three lay citizens
-## living nearest the wisher's home, within REACH of it, marked -- each once; the third granted. One dying before being shown
-## fails it. The lists are untyped: a member may die and be freed while the wish still holds them.
+## "Show yourself to my family" (v0.11 M1, spec §5.3, Sign): show the god to three of the wisher's household -- the three lay
+## citizens living nearest the wisher's home, within REACH of it, marked FAMILY -- each once; the third granted. One dying before
+## being shown fails it. Shown (Discord #ideas "Wish not clear", 2026-11-19; it was a Mind Whisper, which only Dominion has):
+## a power of any kind cast within SEE of a member out of doors, as Show me a sign is seen. The lists are untyped: a member
+## may die and be freed while the wish still holds them.
 
 ## How many of the family must be shown, and how near the wisher's home they live.
 const COUNT := 3
 const REACH := 6.0
 ## The family's tag.
 const LABEL := "FAMILY"
+## How near a cast must land for a member out of doors to see it: Show me a sign's reach.
+const SEE := SignWish.REACH
 
 ## The three to be shown, and those already whispered. Untyped: they may hold freed bodies.
 var family := []
@@ -52,10 +56,11 @@ func people() -> Array[Person]:
 	return out
 
 
-## Each member whispered counts once, shown.
-func step(_rules: Rules, _delta: float) -> void:
+## Each member out of doors within SEE of a cast sees it, and counts once, shown.
+func on_cast(_key: String, at: Vector2) -> void:
 	for p: Variant in family:
-		if MissionDirector._alive(p) and (p as Person).mind == Person.Mind.WHISPERED and not shown.has(p):
+		var seen := MissionDirector._alive(p) and not (p as Person).inside and (p as Person).ground_pos.distance_to(at) <= SEE
+		if seen and not shown.has(p):
 			shown.append(p)
 
 

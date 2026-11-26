@@ -18,6 +18,12 @@ var clashes := PackedStringArray()
 ## The lowest tier whose nights can hear it (v0.11 M3): 1 for most, Omen's own two 2. WishBook.pool_for() leaves out the higher
 ## ones before the draw shuffles, so a Tier 1 night shuffles exactly the wishes it always did.
 var min_tier := 1
+## Exactly what the player must do (Discord #ideas "Wish not clear", 2026-11-19): shown under the wish on the prayers plate and
+## in the opened wish list, naming the act and the tag to look for.
+var how := ""
+## A power key the wish cannot be granted without ("whisper": only Mind Whisper whispers); "" for none. WishBook.draw() skips
+## the wish on a night whose loadout lacks it.
+var needs := ""
 
 
 static func make(p_id: String, p_text: String, p_kind: String, p_reward: int, p_runner: GDScript, p_params := {},
@@ -32,6 +38,13 @@ static func make(p_id: String, p_text: String, p_kind: String, p_reward: int, p_
 	d.clashes = p_clashes
 	d.min_tier = p_min_tier
 	return d
+
+
+## This def with its how-line and, optionally, the power it needs (chained onto make()).
+func with_how(p_how: String, p_needs := "") -> WishDef:
+	how = p_how
+	needs = p_needs
+	return self
 
 
 ## A fresh Wish for one night, not yet given its people (Wish.choose()).

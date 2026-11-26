@@ -239,6 +239,8 @@ func _edge_poll(delta: float) -> void:
 	while i >= 0:
 		var held := _person(_edge_ids[i])
 		if held == null or not held.is_alive() or held.inside:
+			if held != null and _pulls.has(_edge_ids[i]):
+				held.modulate.a = float(_pulls[_edge_ids[i]][2])
 			_let_go(held)
 			_pulls.erase(_edge_ids[i])
 			_edge_ids.remove_at(i)
@@ -279,7 +281,7 @@ func _edge_poll(delta: float) -> void:
 			break
 		_hold(p)
 		_edge_ids.append(p.get_instance_id())
-		_pulls[p.get_instance_id()] = [p.ground_pos, 0.0, p.modulate.a]
+		_pulls[p.get_instance_id()] = [p.ground_pos, 0.0, 1.0]  # the base alpha is 1.0, never a faded one read off another cast's pull
 		_stood.erase(p.get_instance_id())
 		PaleEye.mark(self, p, EYE_KEY, INF)  # open through the pull; the take (or release()) closes it
 

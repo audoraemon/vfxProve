@@ -15,7 +15,7 @@ const DT := 0.05
 static func run(t) -> void:
 	# Each case builds its own town: a taken citizen is gone for good, and the next case wants him again.
 	for each: Callable in [_edge_stopper_taken, _stander_taken, _cap_16, _two_dreads, _spared_eyed_never_taken, _held_soldier_taken,
-			_pull_drifts_and_fades, _teardown_mid_pull, _shadow_sleeper_passed_over, _level4_no_twist]:
+			_pull_drifts_and_fades, _teardown_mid_pull, _indoors_mid_pull, _shadow_sleeper_passed_over, _level4_no_twist]:
 		var made := RD._setup()
 		each.call(t, made)
 		RD._done(made)
@@ -259,6 +259,24 @@ static func _teardown_mid_pull(t, made: Array) -> void:
 	t.check(w.is_alive() and not w.is_dreaded() and not w.has_meta(DreadOfTheDarkFx.OWNERS) and w.modulate.a == 1.0 and fx.taken_at_edge.is_empty(),
 		"end_now() mid-pull: alive, let go, opaque, nothing taken")
 	t.check(eye.held_by(id) == 0 and eye.eyed().is_empty(), "... no eye open for the cast")
+	fx.free()
+
+
+static func _indoors_mid_pull(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var pt := _begin(made)
+	var w := _pp(crowd, 20, _rim(pt[1], 0.8))
+	var fx := _cast(made, pt[0])
+	DD._go(fx, DreadOfTheDarkFx.T_FALL + DT)
+	t.check(_until_pull(fx, w), "(the pull begins)")
+	DD._go(fx, 0.3)
+	t.check(w.modulate.a < 1.0, "(he is fading)")
+	w.inside = true
+	DD._go(fx, 0.5)
+	t.check(w.is_alive() and w.modulate.a == 1.0 and not w.is_dreaded() and fx.taken_at_edge.is_empty(),
+		"indoors mid-pull: alive, opaque again, let go, not taken")
+	w.inside = false
+	fx.end_now()
 	fx.free()
 
 

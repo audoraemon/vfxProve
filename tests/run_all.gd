@@ -202,6 +202,7 @@ const SUITES := [
 	"res://tests/test_whisper.gd",
 	"res://tests/test_whisper_wheel.gd",
 	"res://tests/test_warning.gd",
+	"res://tests/test_warning_rework.gd",
 	"res://tests/test_night.gd",
 	"res://tests/test_raise.gd",
 	"res://tests/test_events.gd",

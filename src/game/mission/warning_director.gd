@@ -46,6 +46,11 @@ const MARK_WATCHED := Color("c8342a")
 const GATE_SIGHT := 4.0
 const KEY_REACH := 1.5
 const KEY_STEP := 1.2
+## K2 (the Warning rework, spec 3.1; first guess): how near the postern's centre a whispered watchman of that gate must stand for his key to take
+## him out, when his whisper leads beyond the wall -- farther than KEY_REACH, so he is first walked to the postern's inner face.
+const KEY_WALK := 4.0
+## Said when the watchman, confused at his post, decides he dreamt the star (`dreams_stop`).
+const DREAMT_BANNER := "THE WATCHMAN THINKS HE DREAMT IT"
 
 ## (god T1R, spec 4.1; both default off, so the campaign's Warning, the Omen and The Bell-Ringers play as ever -- StarfallDirector sets them.)
 ## W1 Out of the walls: the carrier, in any phase, who stands outside Walls (however he got there) stops the warning for the night; he
@@ -57,6 +62,14 @@ var lie_stops := false
 ## killed just outside his gate (out of the walls, within GATE_SIGHT of his post) draws him out to the body; and the watchman of a barred
 ## postern holds its key: whatever takes him beyond it (a fright, that body) takes him out through it. Either way W1 then stops the warning.
 var gate_keeps := false
+## (The Warning rework, spec 3, 3.1, 7; every one defaults off, so the campaign's Warning, the Omen and The Bell-Ringers play as ever -- StarfallDirector
+## sets them.) `holds_post`: the watchman stays at his post, phase OMEN then STARE, until set_off() starts the run. `quiet_omen`: _omen() plays no star and
+## no banners (the director plays the one star). `dreams_stop`: a Discord on the watchman at his post is a stop ("dreamt"). `lead_key` (K2, needs
+## gate_keeps): a whisper that leads the postern's watchman beyond the wall is let out through its key.
+var holds_post := false
+var quiet_omen := false
+var dreams_stop := false
+var lead_key := false
 ## How the warning was stopped, once it is: "kill" (an unseen kill), "out" (W1) or "lie" (W2); "" while it lives.
 var stopped_how := ""
 
@@ -87,6 +100,9 @@ var _fell_at := Vector2.INF
 ## W3: where the body lies that the watchman goes out to (INF for none), and the barred postern whose key he holds (null for none).
 var _drawn_to := Vector2.INF
 var _key_gate: Structure = null
+## K2: the whisper's goal the postern's watchman is being walked through the key for (INF for none): latched, as `_drawn_to` is, because walking him to
+## the inner face replaces his goal.
+var _led_to := Vector2.INF
 ## The town's own bellkeeper, for the rope to go back to when a called bell is called off by the lie (D27; a Variant: he may be freed).
 var _town_keeper: Variant = null
 
@@ -130,7 +146,7 @@ func _appoint_watchman() -> Person:
 	best._path = PackedVector2Array()
 	best._target = gate_spot
 	best.last_place = RoutineManager.Place.WORK
-	best.stay_left = 60.0
+	best.stay_left = NightRules.HOLD_STAY if holds_post else 60.0
 	return best
 
 
@@ -140,6 +156,11 @@ func step(delta: float) -> void:
 	if phase == Phase.OVER:
 		return
 	_clock += delta
+	if dreams_stop and at_post() and watchman.mind == Person.Mind.CONFUSED:
+		_dreamt()
+		return
+	if at_post():
+		watchman.stay_left = NightRules.HOLD_STAY  # kept at his post (RoutineManager would walk him off at 0)
 	# Judged once the crowd has judged its own doomed (Crowd._settle_doom()), so a cast's victims never witness each
 	# other and a witness the doom frightened is already frightened when the relay overrides it.
 	if _fell_at != Vector2.INF and crowd._doomed.is_empty():
@@ -159,17 +180,45 @@ func step(delta: float) -> void:
 		_herald_tick(delta)
 	match phase:
 		Phase.STARE:
-			if _clock >= OMEN_AT + STARE:
-				phase = Phase.RUN
-				_retarget_in = RETARGET
-				if _alive(messenger):
-					_sound(&"msn_bolt", messenger.ground_pos)
-				_run()
+			if _clock >= OMEN_AT + STARE and not holds_post:
+				_start_run()
 		Phase.RUN:
 			_tick_run(delta)
 		Phase.DELIVERED:
 			if herald:
 				_tick_run(delta)  # the keeper who rang runs on as the Herald (v0.11.2)
+
+
+## The stare is over: the watchman runs.
+func _start_run() -> void:
+	phase = Phase.RUN
+	_retarget_in = RETARGET
+	if _alive(messenger):
+		_sound(&"msn_bolt", messenger.ground_pos)
+	_run()
+
+
+## The watchman, holding his post (`holds_post`), is sent: the run starts as the stare's end starts it. Nothing unless he holds his post and lives.
+func set_off() -> void:
+	if not at_post():
+		return
+	_led_to = Vector2.INF
+	watchman.stay_left = 0.0  # his post is no longer held
+	_start_run()
+
+
+## The watchman still holds his post: `holds_post`, alive, not stopped, before his set-off (phase OMEN or STARE). Only reads.
+func at_post() -> bool:
+	return holds_post and not warning_dead and (phase == Phase.OMEN or phase == Phase.STARE) and _alive(watchman) and messenger == watchman
+
+
+## Confused at his post: he decides he dreamt it (`dreams_stop`). The warning stops for good; his day resumes once the confusion wears off.
+func _dreamt() -> void:
+	var gone := watchman
+	_end("dreamt")
+	gone.stay_left = 0.0
+	crowd.off_duty(gone)  # (a confused man is not on duty: this is a no-op, his day resumes through Person._come_to())
+	rules.banner.emit(DREAMT_BANNER)
 
 
 func _tick_run(delta: float) -> void:
@@ -183,10 +232,11 @@ func _omen() -> void:
 	omen_fallen = true
 	if phase == Phase.OMEN:
 		phase = Phase.STARE
-	if ctx != null:
-		FxTimeline.cast(FallingStarFx, ctx, gate_spot + Vector2(0.0, 0.8))
-	rules.banner.emit("A STAR FALLS OVER %s" % post_name)
-	rules.banner.emit("STOP THE WARNING")
+	if not quiet_omen:
+		if ctx != null:
+			FxTimeline.cast(FallingStarFx, ctx, gate_spot + Vector2(0.0, 0.8))
+		rules.banner.emit("A STAR FALLS OVER %s" % post_name)
+		rules.banner.emit("STOP THE WARNING")
 	if phase == Phase.STARE and _alive(watchman):
 		watchman.observe(gate_spot + Vector2(0.0, 0.8), STARE)
 		watchman.look_up = true  # the star is up in the sky (people art phase 2)
@@ -434,7 +484,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if e == messenger and phase != Phase.OVER and _fell_at == Vector2.INF:
 		_fell_at = e.ground_pos
 		killed_by = rules.credited_key(kind)
-	elif gate_keeps and phase == Phase.STARE and _fell_at == Vector2.INF and _alive(messenger) and messenger == watchman \
+	elif gate_keeps and (phase == Phase.STARE or (holds_post and phase == Phase.OMEN)) and _fell_at == Vector2.INF and _alive(messenger) and messenger == watchman \
 			and not messenger.inside and not City.current().town().has_point(e.ground_pos) and e.ground_pos.distance_to(gate_spot) <= GATE_SIGHT:
 		_draw_out(e.ground_pos)
 
@@ -470,9 +520,14 @@ static func _beyond_walls(at: Vector2) -> Vector2:
 ## body he goes out to), he unbars it and steps out through it (set down just beyond; it is barred behind him). Only the gate's own watchman, while he carries the
 ## warning; anyone else goes round as ever.
 func _use_key() -> void:
-	if not omen_fallen or key_door() == Vector2.INF or messenger.inside or Walls.outside(messenger.ground_pos):
+	if key_door() == Vector2.INF or messenger.inside or Walls.outside(messenger.ground_pos):
 		return
 	var at := _key_gate.center()
+	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
+	if lead_key and _use_key_led(at, out_dir):
+		return
+	if not omen_fallen:
+		return
 	var bound := messenger.goal()
 	if messenger.ground_pos.distance_to(at) > KEY_REACH or bound == Vector2.INF or City.current().town().has_point(bound):
 		return
@@ -481,10 +536,36 @@ func _use_key() -> void:
 	var frightened := messenger.mind == Person.Mind.PANIC
 	if not frightened and not (_drawn_to != Vector2.INF and bound.distance_to(_drawn_to) <= RETARGET_MOVE):
 		return
-	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
 	if messenger.fold(at + out_dir * KEY_STEP):
 		_sound(&"msn_unbar", at)
 		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
+
+
+## K2 (the Warning rework, spec 3.1): the postern's watchman, WHISPERED to ground beyond the wall, within KEY_WALK of the postern, is walked to its inner
+## face (once: set_goal() keeps the whisper) and set down beyond it as W3's key does. It needs no star fallen. True when K2 holds him this frame (so the
+## W3 rules leave him alone); the walk is latched in `_led_to`, as the whisper's goal is replaced by the walk to the face.
+func _use_key_led(at: Vector2, out_dir: Vector2) -> bool:
+	if messenger.mind != Person.Mind.WHISPERED:
+		_led_to = Vector2.INF
+		return false
+	if _led_to == Vector2.INF:
+		var bound := messenger.goal()
+		if bound == Vector2.INF or City.current().town().has_point(bound) or messenger.ground_pos.distance_to(at) > KEY_WALK:
+			return false
+		_led_to = bound
+		if messenger.ground_pos.distance_to(at) > KEY_REACH:
+			messenger.set_goal(gate_spot)  # to the inner face first (the post is just inside it)
+	if messenger.ground_pos.distance_to(at) > KEY_REACH:
+		if not messenger.has_goal():
+			messenger.set_goal(gate_spot)
+		return true
+	var to := _led_to
+	_led_to = Vector2.INF
+	if messenger.fold(at + out_dir * KEY_STEP):
+		messenger.set_goal(to)  # on to where the whisper led him
+		_sound(&"msn_unbar", at)
+		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
+	return true
 
 
 ## W3: the barred postern whose key the carrier holds -- its centre -- while he is this gate's own watchman, alive; Vector2.INF otherwise. Only reads
@@ -647,14 +728,39 @@ func _carrier_reach(key: String, at: Vector2) -> Reach:
 	var verbs := MissionVerbs.verbs_of(key)
 	if ("kill" in verbs and _may_kill(key, at, messenger.ground_pos)) or "calm" in verbs or ("banish" in verbs and walls_stop):
 		return Reach.MAYBE
+	var reworked := walls_stop or dreams_stop  # the rework's rules: with both off, this reads as it always did (spec G9)
+	if dreams_stop and at_post() and "confuse" in verbs:
+		return Reach.MAYBE  # he dreams it
+	if reworked and "seal" in verbs:
+		return Reach.NONE if at_post() else Reach.NOT  # a man at his post is no runner: only a runner, a relay or the keeper is held
 	for v: String in ["scare", "confuse", "lead", "lure"]:
 		# An ordinary loud cast does not frighten a soldier (pre-flight B1); every other hold takes him.
 		if v in verbs and not (v == "scare" and messenger.soldier):
 			# The watchman of a barred postern holds its key: a fright takes him out through it and the walls stop the warning (W3).
 			if v == "scare" and key_door() != Vector2.INF:
 				return Reach.MAYBE
+			if v == "lead" and reworked:
+				return _lead_reach(at)
 			return Reach.NOT
 	return Reach.NONE
+
+
+## A whisper's reach on the carrier (the Warning rework, spec 7): judged by the man it took (`_whispered_at()`). MAYBE when it is the carrier and his goal
+## lies outside the walls (W1), or when it is the postern's watchman led through his key (K2); NOT when it is the carrier and his goal lies inside;
+## NONE when it took another. Only reads.
+func _lead_reach(at: Vector2) -> Reach:
+	var led := _whispered_at(at)
+	if led == null or led != messenger:
+		return Reach.NONE
+	var goal := led.goal()
+	if goal == Vector2.INF:
+		return Reach.NONE
+	if walls_stop and Walls.outside(goal):
+		return Reach.MAYBE
+	if lead_key and key_door() != Vector2.INF and not City.current().town().has_point(goal) \
+			and led.ground_pos.distance_to(key_door()) <= KEY_WALK:
+		return Reach.MAYBE
+	return Reach.NOT
 
 
 ## Mission clarity (spec 5.1): a fright, Discord, a whisper or a lure on the carrier stops him only until he is back on his feet.

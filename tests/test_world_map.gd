@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_starts_on_aldermere_when_nothing_draws(t)
 	_conquered_dim_and_line(t)
 	_window_sizes(t)
+	_painted_map(t)
 	GodTree.dev_fill = false
 
 
@@ -294,3 +295,33 @@ static func _window_sizes(t) -> void:
 		t.check(map.selected == "aldermere", "%s: a click on Aldermere selects it (%s)" % [area, map.selected])
 		map.free()
 		UiScale.clear_test_area()
+
+
+## The painted map: every spot has its ribbon and picture on the vellum, the card and the tab keep clear of them, names fit their ribbons,
+## the fog lies on what the god cannot reach, and the god's colour is the type's.
+static func _painted_map(t) -> void:
+	t.check(ResourceLoader.exists("res://assets/chamber/map.png"), "the painted map is in the project")
+	var page := Rect2(0.0, 0.0, 640.0, 360.0)
+	t.check(page.encloses(WorldMap.PLATE) and WorldLayout.LAND.encloses(WorldMap.PLATE), "the info card lies on the vellum")
+	t.check(page.encloses(WorldMap.BACK), "the Back tab is on the page")
+	for id in WorldLayout.ids():
+		var rib := WorldLayout.ribbon(id)
+		var span := WorldLayout.span(id)
+		var p: Vector2 = WorldLayout.spot(id).place
+		t.check(rib.size.x > 40.0 and WorldLayout.LAND.encloses(rib), "%s has a ribbon on the vellum (%s)" % [id, rib])
+		t.check(rib.end.y < p.y and absf(rib.get_center().x - p.x) < span.x, "%s's ribbon is above its picture" % id)
+		t.check(not rib.intersects(WorldMap.PLATE) and not Rect2(p - span, span * 2.0).intersects(WorldMap.PLATE), "%s keeps clear of the info card" % id)
+		var size := WorldMap._fit_size(WorldLayout.name_of(id), rib.size.x - 4.0)
+		t.check(size >= 7 and UiTheme.width(WorldLayout.name_of(id), size) <= rib.size.x - 4.0, "%s's name fits its ribbon at size %d" % [id, size])
+	for r: Dictionary in WorldLayout.ROUTES:
+		t.check(WorldLayout.is_town(r.from) and not WorldLayout.is_town(r.to) and WorldLayout.LAND.has_point(r.via), "a way runs from a town to a sealed spot (%s to %s)" % [r.from, r.to])
+	var fresh: WorldMap = _make(_slot())[0]
+	t.check(fresh.fog_of("aldermere") == 0.0 and fresh.fog_of("capital") > 0.5 and fresh.fog_of("capital") < 1.0 and fresh.fog_of("vael") == 1.0,
+		"fog: none on an open town, some on a locked one, all on a sealed one (%s %s %s)" % [fresh.fog_of("aldermere"), fresh.fog_of("capital"), fresh.fog_of("vael")])
+	t.check(fresh.god_color() == WorldMap.GOD_COL["ruin"], "the faith on the map is the god's colour")
+	t.check(not WorldMap.moving and fresh._reveal.is_empty(), "a headless map is at rest: nothing drifts, nothing is revealed")
+	fresh.free()
+	var both: WorldMap = _make(_open_both())[0]
+	t.check(both.fog_of("capital") == 0.0, "an opened Capital has no fog")
+	both.free()
+	t.check(WorldMap.GOD_COL == GodSelectScreen.GOD_COL, "the map's god colours are the God's Paths screen's")

@@ -1,0 +1,13 @@
+Use the $imagegen skill to generate ONE image and save it in the current directory as world_map_concept_v1.png. Do not write code, do not edit any other file.
+
+The image: a pixel-art fantasy world map for a dark medieval god game, seen straight from above, as a cartographer's map lying on a god's table. 16:9 landscape.
+Style: crisp pixel art, limited palette, matching image 1 (the game's painted room): warm candle light from the upper left, deep navy shadows, aged vellum ground that is warm in the centre and burnt toward the edges, hand-inked coastlines and rivers, terrain as small pictograms (mountain ridges, tree clusters, marsh reeds, little waves in the sea). A carved dark-wood and brass frame around the map, a compass rose in one corner, an empty title cartouche at the top centre.
+Layout: keep the six town positions of image 2 (same relative places on the page). Geography to paint around them:
+- centre-right town (the Capital): a walled city on a sea coast with a harbour; the sea fills the east and north-east edge.
+- centre-left town (Aldermere): a small walled town on a river that flows to the sea.
+- lower-right town (Saltmere): in a salt marsh by the sea.
+- upper-right town (Vael Crossing): at a river ford.
+- upper-left town (Thornwick): in deep dark woods.
+- lower-left town (Greyhollow): in a grey hill valley.
+Each town is a tiny isometric cluster of buildings with walls and a spire, about 5% of the image width. One winding dashed road joins Aldermere and the Capital, following the land.
+No text, no letters, no labels, no UI boxes, no buttons, no watermark. Leave the bottom centre of the map calm (plain vellum) because a UI panel sits there.

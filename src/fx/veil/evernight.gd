@@ -61,6 +61,8 @@ const FALSE_COLOR := Color(0.55, 0.75, 1.0)
 const FLARE_EYE := 5.0
 const FLARE_BURST := 14
 const TWIST_KEY := "evernight"
+## Level 5: instance ids of the huddlers this cast eyes now.
+var _eyed_huddlers := {}
 ## The look's front runs out as (t / WAVE) to this power: slow by the click, fast across the town (VRD1).
 const FRONT_EASE := 1.7
 
@@ -363,10 +365,20 @@ func _eye_huddles() -> void:
 	if not _twist or _over or not _live() or t < t_dawn - FLARE_EYE or t >= t_dawn or t < _eye_next:
 		return
 	_eye_next = t + 0.25
+	var now := {}
 	for tc in torches:
 		if not tc.out:
 			for p in huddle_of(tc):
+				now[p.get_instance_id()] = true
+				_eyed_huddlers[p.get_instance_id()] = true
 				PaleEye.mark(self, p, TWIST_KEY, INF)
+	# A man who walked out of every huddle is no longer eyed (his eye would stay open till the dawn).
+	for id: int in _eyed_huddlers.keys():
+		if not now.has(id):
+			var gone := instance_from_id(id) as Person
+			if gone != null:
+				PaleEye.unmark(self, gone)
+			_eyed_huddlers.erase(id)
 
 
 ## Level 5, at the dawn: each burning torch flares black and takes its huddle (no body); the torch goes out.

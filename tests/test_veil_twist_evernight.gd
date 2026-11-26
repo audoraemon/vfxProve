@@ -22,6 +22,7 @@ static func run(t) -> void:
 	_huddle(t, made)
 	_safe_all_night(t, made)
 	_eyed_last_seconds(t, made)
+	_leaver_unmarked(t, made)
 	_flare_takes_huddle(t, made)
 	_flare_spares(t, made)
 	_two_evernights(t, made)
@@ -145,6 +146,23 @@ static func _eyed_last_seconds(t, made: Array) -> void:
 	t.check(all and eye.held_by(id) == 4, "level 5: every huddler and the bearer eyed at FLARE_EYE - 0.5 s (%d held)" % (eye.held_by(id) if eye != null else -1))
 	EV._until(fx, fx.t_dawn + DT)
 	t.check(eye.held_by(id) == 0, "level 5: the eyes are released at the dawn")
+	fx.end_now()
+
+
+## A huddler who walks out of every huddle before the dawn is unmarked at the next refresh and is not taken.
+static func _leaver_unmarked(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	var d := _torch_with_huddle(made, at)
+	var fx := _cast(made, at)
+	EV._until(fx, fx.t_dawn - E.FLARE_EYE + 0.5)
+	var eye := PaleEye.of(crowd)
+	var leaver: Person = d.huddle[0]
+	t.check(eye != null and eye.is_eyed(leaver), "(the huddler is eyed)")
+	leaver.ground_pos = at + Vector2(0.0, 30.0)
+	leaver._sync_position()
+	EV._until(fx, fx.t_dawn - E.FLARE_EYE + 1.2)
+	t.check(not eye.is_eyed(leaver) and eye.is_eyed(d.huddle[1]), "a huddler who walked out is unmarked at once, the rest stay eyed")
 	fx.end_now()
 
 

@@ -767,8 +767,9 @@ Form: what -- why -- cost if wrong.
 
 ### The controller's decisions
 
-- VT1 Dread's take kind is `&"void"` (the kind The Swallowing Dark uses: no body). -- the spec says "no body, gone for good"; a kind
-  outside `Remains.BODY_KINDS` is how a take leaves none -- if wrong, one constant changes and a body is left.
+- VT1 Dread's take kind is its own silent kind `&"edge"` (in `Crowd.SILENT_KINDS`, the quiet list of `DeathVoices` and `Rules.POWER_KINDS["dread"]`; not in
+  `Remains.BODY_KINDS`, so no body). -- the spec says "no body, gone for good"; `&"void"` would have stolen a Swallowing Dark's fold credit below
+  level 5 and left Dread's kills credited to nobody -- if wrong, one more kind to keep in the lists.
 - VT2 Crater numbers: radius 1.2 to 2.8, 9 craters at the light size, 20 at the dark size (the spec's guess was 9/15 and 0.8 to 2.2). --
   the spec states "about a third of the circle" as the intent and marks its numbers as first guesses; 0.8 to 2.2 covered only about
   15 percent; the tests pin a cover of 0.22 to 0.40 -- if wrong, the user wanted fewer, smaller pits: two constants.
@@ -780,6 +781,12 @@ Form: what -- why -- cost if wrong.
   go, and every reader of the light's radius reads `TORCH_R`. -- the spec's "pale blue" and "the shrinking is removed" -- if wrong,
   one colour constant; the shrink is back only by revert.
 
+- VT23 The craters are freed at an act change (`Battlefield.end_powers()` frees every `MoonCraters`). -- the v0.09 rule "an old act's cast kills
+  nobody in the next act" outranks the spec's "rest of the mission", which meant the rest of the act's play -- cost if wrong: craters vanish at an
+  act change the user wanted kept (move the free out of `end_powers()`). This changes VT8 only for the act change; `clear_effects()` still frees them.
+- VT24 A crater's take after the cast's grace has run out stays credited to no power, as Dragonfire's ground fire. -- existing precedent;
+  crediting a finished cast needs new machinery -- cost if wrong: a descent wish whose target a crater takes fails (rare).
+
 ### Task rulings and parked minors
 
 - VT5 The craters' placement is seeded from the cast (`hash(origin.round())`): the same click lays the same craters; there is no per-run
@@ -790,7 +797,7 @@ Form: what -- why -- cost if wrong.
   if wrong, the keep-out list grows by one source.
 - VT7 The keep-out source is extracted (`_kept_structures()`, `_needed(s)` in The Swallowing Dark) and used by both the fold's
   `_inside()` and the craters. -- one list for both, so they cannot drift -- none.
-- VT8 The craters are laid under `ctx.ground`, untracked, in the group `SolarisPit.GROUP`, so `clear_effects()` frees them; their eyes
+- VT8 The craters are laid under `ctx.ground`, untracked (VT23: an act change frees them too), in the group `SolarisPit.GROUP`, so `clear_effects()` frees them; their eyes
   are closed in `_exit_tree` and on predelete. -- they last the rest of the mission and the teardown contract needs
   `held_by(fx_id) == 0` -- if wrong, an eye outlives a crater until the town clears.
 - VT9 A person indoors is passed over by the craters and by Evernight's flare. -- an indoor man is not on the ground the pit lies on, and

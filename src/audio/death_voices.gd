@@ -15,7 +15,7 @@ extends RefCounted
 ## without a sound; Borrowed Life's, which leaves no body; and the Veil's: Dreamless's found body, and the silent takes, which
 ## Crowd._on_killed() lets pass before any voice -- named here so no voice is ever made for them).
 const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"pale", &"shadow", &"choke", &"verdict", &"grave", &"borrowed", &"dreamless",
-	&"void", &"night", &"dreamt", &"shade"]
+	&"void", &"night", &"dreamt", &"shade", &"edge"]
 ## Deaths this close after a wave's first belong to it, seconds.
 const WAVE_WINDOW := 0.25
 ## How many bodies of one wave are voiced.

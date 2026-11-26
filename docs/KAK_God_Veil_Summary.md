@@ -458,7 +458,7 @@ taken or hurt. Whoever is taken leaves no body (the town's take, as The Swallowi
 
 - **Dread of the Dark, The Dark Takes Who Looks.** The edge still blocks, as at levels 1-4. Anyone it stops, or who stands within 1.0
   of the dreaded ground for 2 s, is eyed and pulled into the dark: he slides 1.0 toward the dread's middle over 0.6 s while he fades
-  out, then he is taken (kind `void`, no body). Up to 16 a cast, nearest the click first, a poll every 0.25 s. A soldier on duty or
+  out, then he is taken (its own silent kind `edge`, credited to Dread, no body). Up to 16 a cast, nearest the click first, a poll every 0.25 s. A soldier on duty or
   held is taken like anyone (he is eaten, not turned). The spared are eyed once, never pulled, and use up none of the 16. If the dread
   ends mid-pull the man is let go, fully visible again.
 - **The Swallowing Dark, The Moon's Face.** After the fold has taken everyone inside, the emptied ground is left pitted with
@@ -468,11 +468,11 @@ taken or hurt. Whoever is taken leaves no body (the town's take, as The Swallowi
   postern, dock, fountain or a building the mission needs. Whoever stands in one loses 0.25 health a second (a citizen of health 1.0
   dies in 4 s, a soldier of 2.0 in 8 s), so a quick walk through is survived. The hurt is silent: no attacker, no fright, no alarm,
   no waking; a sleeper is hurt but stays asleep. Whoever it kills is taken, no body. Each one hurt is eyed while he stands in it. People
-  indoors are passed over. The craters last the rest of the mission and the town does not avoid them.
+  indoors are passed over. The craters last until the act changes (an act change frees them, so an old act's cast kills nobody in the next) and the town does not avoid them. A crater's take after the cast's own grace has run out is credited to no power, as Dragonfire's ground fire is.
 - **Evernight, The False Light.** The torches burn pale blue (0.55, 0.75, 1.0) instead of warm, with a pale halo and sparks. The
   town does not notice: people huddle round them all night. The torchlight keeps its 2.5 radius all night (the shrinking is gone), so
   the huddles grow and the takes still skip the light. In the last 5 s before the dawn every huddler and bearer is eyed, so you see who
-  is about to go. At the dawn each torch flares black (14 sparks) and takes its whole huddle, the bearer too, with no bodies; the torch
+  is about to go. At the dawn each torch flares black (a burst of black puffs) and takes its whole huddle, the bearer too, with no bodies; the torch
   goes out; then the dawn's own rules run as today. If the mission ends before the dawn nothing flares. Two Evernights at once take a
   huddler once.
 

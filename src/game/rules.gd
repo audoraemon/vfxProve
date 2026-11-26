@@ -102,12 +102,12 @@ const POWER_KINDS := {
 	"magnify": [&"magnify"],
 	"unseen": [],
 	# The Veil's (Veil authority powers spec §5): taken, no body (void, night, dreamt, shadow); Dreamless's found body (dreamless).
-	# Blight sickens and Slumber, Cloak and Dread take nobody.
+	# Blight sickens and Slumber and Cloak take nobody; Dread's level-5 edge pull takes with its own silent kind (edge).
 	"blight": [],
 	"slumber": [],
 	"cloak": [],
 	"dreamless": [&"dreamless", &"dreamt"],
-	"dread": [],
+	"dread": [&"edge"],
 	"shadowplay": [&"shade"],
 	"swallow": [&"void"],
 	"evernight": [&"night"],

@@ -29,6 +29,8 @@ static func run(t) -> void:
 	_t_spared_never_hurt(t, made)
 	_t_indoors_passed_over(t, made)
 	_t_stay_for_mission(t, made)
+	_t_act_change(t, made)
+	_t_eye_after_indoors(t, made)
 	_t_teardown(t, made)
 	_bare(t, made)
 	ctx.lights.free()
@@ -316,6 +318,58 @@ static func _t_stay_for_mission(t, made: Array) -> void:
 	t.check(is_instance_valid(mc) and mc.is_in_group(SolarisPit.GROUP), "the craters still stand 120 s on, in the group clear_effects() frees")
 	(r[0] as FxTimeline).end_now()
 	t.check(is_instance_valid(mc) and not mc.is_queued_for_deletion(), "the cast's end leaves them for the mission")
+	_clear(made)
+
+
+## An act change (Battlefield.end_powers()) frees the craters: nobody is hurt in the next act.
+static func _t_act_change(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := _begin(made)
+	var r := _fold(made, at)
+	var mc: MoonCraters = (r[1] as Array)[0]
+	var centre: Vector2 = mc.circles[0][0]
+	var c := _man(crowd, centre)
+	Kit.arrive(c, centre)
+	var bf := Battlefield.new()
+	bf.ctx = ctx
+	ctx.impact = Impact.new()
+	bf.end_powers()
+	t.check(_craters(made).is_empty() and (not is_instance_valid(mc) or mc.is_queued_for_deletion()), "an act change: no crater remains")
+	var hp := c.health
+	for i in 20:
+		if is_instance_valid(mc) and not mc.is_queued_for_deletion():
+			mc.step(0.25)
+	t.check(c.is_alive() and is_equal_approx(c.health, hp), "... and nobody is hurt after it")
+	ctx.impact.free()
+	ctx.impact = null
+	bf.free()
+	_clear(made)
+	Kit.arrive(c, at + Vector2(0.0, 40.0))
+
+
+## A man eyed in a crater who goes indoors, comes out and stays again is eyed again.
+static func _t_eye_after_indoors(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var at := _begin(made)
+	var r := _fold(made, at)
+	var mc: MoonCraters = (r[1] as Array)[0]
+	var centre: Vector2 = mc.circles[0][0]
+	var c := _man(crowd, centre)
+	Kit.arrive(c, centre)
+	_step(mc, 0.5)
+	t.check(_eyed(made, c), "(eyed in the crater)")
+	c.inside = true
+	_step(mc, DT)
+	t.check(not _eyed(made, c), "indoors: unmarked at once")
+	PaleEye.of(crowd).step(0.05)
+	c.inside = false
+	_step(mc, 0.5)
+	t.check(_eyed(made, c), "out again, in the crater again: eyed again")
+	Kit.arrive(c, at + Vector2(0.0, 40.0))
+	_step(mc, 0.5)
+	t.check(not _eyed(made, c), "walked out of every crater: unmarked at once")
+	(r[0] as FxTimeline).end_now()
 	_clear(made)
 
 

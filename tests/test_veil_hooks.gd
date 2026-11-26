@@ -425,7 +425,7 @@ static func _take(t, made: Array) -> void:
 	var watcher: Person = crowd.citizens[70]
 	watcher.ground_pos = at + Vector2(0.5, 0.0)  # in plain sight of every take
 	var i := 71
-	for kind: StringName in [&"void", &"night", &"dreamt", &"shade"]:
+	for kind: StringName in [&"void", &"night", &"dreamt", &"shade", &"edge"]:
 		var p: Person = crowd.citizens[i]
 		i += 1
 		p.ground_pos = at

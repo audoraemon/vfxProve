@@ -106,12 +106,28 @@ func step(delta: float) -> void:
 	for s in _swirls:
 		if is_instance_valid(s):
 			s.rotation += delta * SPIN * (1.0 if s.k % 2 == 0 else -1.0)
+	_drop_leavers()
 	_acc += delta
 	if _acc < TICK - 0.001:
 		return
 	var span := _acc
 	_acc = 0.0
 	_hurt(span)
+
+
+## Whoever went indoors or left every crater since the last look is unmarked at once: PaleEye would close his eye for good once he
+## is indoors, and a later stay would never be eyed again.
+func _drop_leavers() -> void:
+	if _eyed.is_empty():
+		return
+	for id: int in _eyed.keys():
+		var p: Person = _eyed[id] if is_instance_valid(_eyed[id]) else null
+		if p == null:
+			_eyed.erase(id)
+		elif not p.is_alive() or p.inside or not covers(p.ground_pos):
+			if is_instance_valid(crowd):
+				PaleEye.unmark_by(crowd, get_instance_id(), p)
+			_eyed.erase(id)
 
 
 func _hurt(span: float) -> void:
@@ -130,9 +146,9 @@ func _hurt(span: float) -> void:
 		if p == null or not is_instance_valid(p) or not p.is_alive() or p.inside or not covers(p.ground_pos):
 			continue
 		now[p.get_instance_id()] = p
-		if crowd != null:
+		if is_instance_valid(crowd):
 			PaleEye.mark_by(crowd, get_instance_id(), p, EYE_KEY, TICK + 0.6, eye_layer)
-		if crowd != null and crowd.spared(p):
+		if is_instance_valid(crowd) and crowd.spared(p):
 			continue
 		p.health -= CRATER_HURT * span
 		p.flash(0.08)

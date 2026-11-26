@@ -115,3 +115,12 @@ static func run(t) -> void:
 		"after a rung bell the Feast's Prepare shows the Organized town")
 	t.check(MissionBook.long_night().response_profile(ResponseProfile.DEFAULT).tier_name() == "Unaware",
 		"The Long Night still opens on a sleeping town")
+
+	# The Warning rework, section 10: two Tier 1 cards are renamed; ids and the banners derived from the names follow.
+	var tc := MissionBook.tax_collector()
+	var sh := MissionBook.spoiled_harvest()
+	t.check(tc.id == "tax_collector" and tc.name == "The King's Tribute" and tc.intro_banner == "THE KING'S TRIBUTE",
+		"the tax collector's card is The King's Tribute, its id unchanged (%s)" % [tc.intro_banner])
+	t.check(sh.id == "spoiled_harvest" and sh.name == "The Broken Harvest" and sh.intro_banner == "THE BROKEN HARVEST",
+		"the harvest card is The Broken Harvest, its id unchanged (%s)" % [sh.intro_banner])
+	t.check(UiTheme.base_font().has_char("'".unicode_at(0)), "the pixel font draws the apostrophe")

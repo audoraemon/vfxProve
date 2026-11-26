@@ -345,7 +345,7 @@ static func _tier5(id: String, name: String, brief: PackedStringArray) -> Missio
 ## them out of the walls, or (god T1R) have the debtors mob them. A seen kill still counts, but calls the bell; v0.11.2: the toll turns
 ## the Lantern (a watch night) instead of losing the night.
 static func tax_collector() -> MissionDef:
-	var m := _tier1(TAX_COLLECTOR, "The Tax Collector", PackedStringArray(["Three tax collectors make their rounds.",
+	var m := _tier1(TAX_COLLECTOR, "The King's Tribute", PackedStringArray(["Three tax collectors make their rounds.",
 		"Kill them before the taxes arrive."]))
 	m.goal = "Stop the tax collector and his two deputies before the taxes reach the Citadel"
 	m.goal_label = "The collectors are stopped"
@@ -366,7 +366,7 @@ static func tax_collector() -> MissionDef:
 ## granaries one at a time as their grain arrives, each watched by two men who beat out its fire, before their carts empty them
 ## to the Citadel (HarvestDirector).
 static func spoiled_harvest() -> MissionDef:
-	var m := _tier1(SPOILED_HARVEST, "Spoiled Harvest", PackedStringArray(["Carts empty the granaries to the Citadel.",
+	var m := _tier1(SPOILED_HARVEST, "The Broken Harvest", PackedStringArray(["Carts empty the granaries to the Citadel.",
 		"Spoil the harvest before they do."]))
 	m.goal = "Spoil the three granaries before their carts empty them"
 	m.goal_label = "The harvest is spoiled"

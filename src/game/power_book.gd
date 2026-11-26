@@ -372,7 +372,7 @@ const POWERS := [
 			{"REACH": [6.25, 12.0], "HOLD": 27.5, "cooldown": 67.0},
 			{"REACH": [6.5, 12.0], "HOLD": 30.0, "cooldown": 64.0},
 			{"REACH": [6.75, 12.0], "HOLD": 32.5, "cooldown": 61.0},
-			{"REACH": [7.0, 12.0], "HOLD": 35.0, "cooldown": 58.0, "twist": true, "twist_text": "The Dark Looks Back: who stops to look is held"}]},
+			{"REACH": [7.0, 12.0], "HOLD": 35.0, "cooldown": 58.0, "twist": true, "twist_text": "The Dark Takes Who Looks: who stops is taken"}]},
 	{"key": "shadowplay", "name": "Shadow Play", "path": "res://src/fx/veil/shadow_play.gd",
 		"blurb": "A circle of people sleep while their shadows carry on in their place.",
 		"dp": 5, "cooldown": 90.0, "aim": "click",

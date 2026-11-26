@@ -2,12 +2,12 @@
 capital_tax_none_1	--scenario=tax --case=none --seed=1 --city=capital	-713158377
 capital_tax_none_2	--scenario=tax --case=none --seed=2 --city=capital	-359135175
 capital_tax_none_3	--scenario=tax --case=none --seed=3 --city=capital	-601454989
-capital_tax_play_1	--scenario=tax --case=play --seed=1 --city=capital	-624981259
-capital_tax_play_2	--scenario=tax --case=play --seed=2 --city=capital	-500214263
-capital_tax_play_3	--scenario=tax --case=play --seed=3 --city=capital	-368640957
+capital_tax_play_1	--scenario=tax --case=play --seed=1 --city=capital	-311447928
+capital_tax_play_2	--scenario=tax --case=play --seed=2 --city=capital	-517639355
+capital_tax_play_3	--scenario=tax --case=play --seed=3 --city=capital	-306754118
 capital_tax_b_play_1	--scenario=tax --case=play --route=b --seed=1 --city=capital	-604739342
 capital_tax_b_play_2	--scenario=tax --case=play --route=b --seed=2 --city=capital	-64556442
 capital_tax_b_play_3	--scenario=tax --case=play --route=b --seed=3 --city=capital	-213930397
 capital_tax_toll_1	--scenario=tax --case=toll --seed=1 --city=capital	-373326008
-capital_tax_toll_2	--scenario=tax --case=toll --seed=2 --city=capital	-440411804
-capital_tax_toll_3	--scenario=tax --case=toll --seed=3 --city=capital	-629777540
+capital_tax_toll_2	--scenario=tax --case=toll --seed=2 --city=capital	-513892
+capital_tax_toll_3	--scenario=tax --case=toll --seed=3 --city=capital	-233897353

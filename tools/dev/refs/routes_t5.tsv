@@ -12,5 +12,5 @@ judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1	6
 judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2	105876725
 judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3	-896559105
 night_b_play_1	--scenario=night --case=play --route=b --board --seed=1	-163905986
-night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	300887547
+night_b_play_2	--scenario=night --case=play --route=b --board --seed=2	-14164987
 night_b_play_3	--scenario=night --case=play --route=b --board --seed=3	-172824733

@@ -5,8 +5,8 @@ god_ruin_tax_play_3	--scenario=tax --case=play --seed=3 --god=ruin:1	-422506276
 god_death_tax_play_1	--scenario=tax --case=play --seed=1 --god=death:1	-64123467
 god_death_tax_play_2	--scenario=tax --case=play --seed=2 --god=death:1	-970171667
 god_death_tax_play_3	--scenario=tax --case=play --seed=3 --god=death:1	-740245467
-god_veil_tax_play_1	--scenario=tax --case=play --seed=1 --god=veil:1	-794224864
-god_veil_tax_play_2	--scenario=tax --case=play --seed=2 --god=veil:1	-631358749
+god_veil_tax_play_1	--scenario=tax --case=play --seed=1 --god=veil:1	-970048835
+god_veil_tax_play_2	--scenario=tax --case=play --seed=2 --god=veil:1	-233449154
 god_veil_tax_play_3	--scenario=tax --case=play --seed=3 --god=veil:1	-177645829
 god_passage_tax_play_1	--scenario=tax --case=play --seed=1 --god=passage:1	-260574278
 god_passage_tax_play_2	--scenario=tax --case=play --seed=2 --god=passage:1	-980063268

@@ -398,6 +398,8 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	dev = "--dev" in args
 	GodChamber.transitions = not ("--flow-test" in args or "--capture" in args or DisplayServer.get_name() == "headless")
+	ChamberLife.moving = GodChamber.transitions  # the room's life and sound (step 7) are off where its zoom is
+	ChamberSound.enabled = GodChamber.transitions
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
@@ -709,6 +711,8 @@ func _ready() -> void:
 			(_screen_node as UpgradesScreen).preview(Battlefield.arg_value(args, "--hover"))  # after the window's own mouse motion
 			await get_tree().process_frame
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
+		if show.begins_with("hub") and _screen_node is GodChamber and Battlefield.arg_value(args, "--chamber-strip") != "":
+			await _capture_chamber_strip(int(Battlefield.arg_value(args, "--chamber-strip")))
 		if god_base == SHOW_GOD:
 			_remove_gods()
 		await _quit_cleanly()
@@ -1402,6 +1406,39 @@ func _show_god(level: int, tier := 1) -> GodSlot:
 	return g
 
 
+## Photographs of the God's Chamber's state objects (step 7; --show=hub* only): --god-tier=<1-5> (the candles), --god-faith=<n> (the
+## brazier), --god-notice=<n> (the hourglass), --god-conquer=<town,town> (the cups: those towns' people all believe).
+func _show_chamber_state(args: PackedStringArray) -> void:
+	if Battlefield.arg_value(args, "--god-tier") != "":
+		var capped := god.capped()
+		god.tier = clampi(int(Battlefield.arg_value(args, "--god-tier")), 1, 5)
+		god.level = god.cap() if capped else mini(god.level, god.cap())
+	if Battlefield.arg_value(args, "--god-faith") != "":
+		god.faith = int(Battlefield.arg_value(args, "--god-faith"))
+	if Battlefield.arg_value(args, "--god-notice") != "":
+		god.notice = clampi(int(Battlefield.arg_value(args, "--god-notice")), 0, GodSlot.NOTICE_MAX)
+	for town in Battlefield.arg_value(args, "--god-conquer").split(",", false):
+		god.believers[town] = Conquest.population(town)
+		if not god.opened.has(town):
+			god.opened.append(town)
+
+
+## --chamber-strip=<n> (capture only, with --show=hub*): n frames of the room's idle life at CHAMBER_STRIP_FPS, the clock held and set
+## frame by frame (screen_hub_strip_000.png ...), so the strip is the same on any machine.
+const CHAMBER_STRIP_FPS := 15.0
+
+
+func _capture_chamber_strip(frames: int) -> void:
+	var hub := _screen_node as GodChamber
+	ChamberLife.moving = true
+	hub.life_hold = true
+	for k in frames:
+		hub.life_t = k / CHAMBER_STRIP_FPS
+		hub._redraw()
+		await _capture("screen_hub_strip_%03d.png" % k)
+	ChamberLife.moving = false
+
+
 ## --show=<name> for Endless Night's screens (god P1): the fixture god on the dev fill, written to the show's own slot files. `hub-capped` is
 ## the same god at level 10 (the tier's cap); `pause-endless` has the night's clock started, so Abandon's confirm says the night is lost.
 func _show_endless(show: String) -> void:
@@ -1426,6 +1463,8 @@ func _show_endless(show: String) -> void:
 		god = _show_god(10, int(HuntBook.row(hunt_id).tier))  # the god of the Hunt's tier (god P5)
 		god.notice = GodSlot.NOTICE_MAX
 		loadout = god.loadout.duplicate()
+	if show.begins_with("hub"):
+		_show_chamber_state(OS.get_cmdline_user_args())
 	_write_god()
 	match show:
 		"slots":

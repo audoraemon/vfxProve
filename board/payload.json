@@ -7,16 +7,26 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**15** in progress · **30** to do · **177** done\n**10** active branches besides Develop-Main",
+     "description": "**v0.12** is the latest release (`kak-soldier-duties`)\n**16** in progress · **30** to do · **177** done\n**11** active branches besides Develop-Main\n\n**Since the last update** (<t:1795677851:f>)\n• New: Veil twists, second round: Dread, Swallowing Dark, Evernight (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-26T12:46:10+07:00"
+     "timestamp": "2026-11-26T14:24:11+07:00"
+    },
+    {
+     "title": "god/veil-twists-2",
+     "description": "85 commits not in Develop-Main · last commit today · local only\n> docs: plan for the second round of Veil twists\n\n**In progress** (1)\n• Veil twists, second round: Dread, Swallowing Dark, Evernight",
+     "color": 5016537
     },
     {
      "title": "god/veil-levels",
      "description": "83 commits not in Develop-Main · last commit today\n> docs: the Swallowing Dark's bench note names its cause as a guess\n\n**In progress** (1)\n• Veil ability levels: the dark watches back — **needs you**",
+     "color": 5016537
+    },
+    {
+     "title": "claude/natural-people",
+     "description": "20 commits not in Develop-Main · last commit today · local only\n> fix: a duty order (a goal) ends a soldier's flinch -- gate checker stepping out is not held for the stare\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -25,8 +35,8 @@
      "color": 5016537
     },
     {
-     "title": "claude/natural-people",
-     "description": "18 commits not in Develop-Main · last commit yesterday · local only\n> test: re-record 8 references the Develop-Main merge moved (panic_play_3, panic_b_play_1-3, prisoner_play_1-3, prisoner_b_play_2); same outcome as b74…\n\n_No Ledger task points at this branch._",
+     "title": "land/wish-clarity",
+     "description": "2 commits not in Develop-Main · last commit yesterday · local only\n> docs: soldier duties rulings, reference flips, gate tables and landing checks\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
@@ -40,11 +50,6 @@
      "color": 5016537
     },
     {
-     "title": "feat/wish-clarity",
-     "description": "1 commit not in Develop-Main · last commit 7 days ago · local only\n> feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
      "title": "feat/god-progression",
      "description": "merged into Develop-Main · last commit 9 days ago\n> test: the walker also credits Borrowed Life's kills\n\n**To do** (5)\n• First Prayers x Passage and x Decree idle over the bar — **needs you**\n• Play the new Tier 1 routes by hand — **needs you**\n• Short Tier 1 wins reported: are these too quick? — **needs you**\n• Capital per-type Tier 1 rows: 22 of 30 pass — **needs you**\n• Level tables, batch 1: five levels and the level-5 twist — **needs you**",
      "color": 7041664
@@ -52,11 +57,6 @@
     {
      "title": "god/dominion-t3-old",
      "description": "2 commits not in Develop-Main · last commit 20 days ago · local only\n> feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner\n\n_No Ledger task points at this branch._",
-     "color": 7041664
-    },
-    {
-     "title": "fix/evac-recalm",
-     "description": "1 commit not in Develop-Main · last commit 48 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
     }
    ]
@@ -66,6 +66,11 @@
     "parse": []
    },
    "embeds": [
+    {
+     "title": "fix/evac-recalm",
+     "description": "1 commit not in Develop-Main · last commit 48 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
+     "color": 7041664
+    },
     {
      "title": "feat/capital-city",
      "description": "merged into Develop-Main · last commit 48 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",

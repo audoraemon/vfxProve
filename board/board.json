@@ -1,9 +1,11 @@
 {
- "hash": "24a27566348366a3",
- "updated": "2026-11-26T12:46:10+07:00",
+ "hash": "62fc5fb3f141100c",
+ "updated": "2026-11-26T14:24:11+07:00",
  "changes": {
-  "date": "<t:1795671970:f>",
-  "items": []
+  "date": "<t:1795677851:f>",
+  "items": [
+   "New: Veil twists, second round: Dread, Swallowing Dark, Evernight (in progress)"
+  ]
  },
  "snapshot": {
   "project": {
@@ -1747,6 +1749,15 @@
     "updated": "2026-11-22",
     "order": 6
    },
+   "veil-twists-2": {
+    "title": "Veil twists, second round: Dread, Swallowing Dark, Evernight",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "god/veil-twists-2",
+    "updated": "2026-11-26",
+    "order": 7
+   },
    "vfx-anathema": {
     "title": "Anathema (Dominion, Tier IV): a district's buildings cursed or hallowed",
     "status": "done",
@@ -2021,12 +2032,28 @@
   },
   "branches": [
    {
+    "name": "god/veil-twists-2",
+    "ahead": 85,
+    "behind": 150,
+    "date": "2026-11-26",
+    "subject": "docs: plan for the second round of Veil twists",
+    "pushed": false
+   },
+   {
     "name": "god/veil-levels",
     "ahead": 83,
     "behind": 150,
     "date": "2026-11-26",
     "subject": "docs: the Swallowing Dark's bench note names its cause as a guess",
     "pushed": true
+   },
+   {
+    "name": "claude/natural-people",
+    "ahead": 20,
+    "behind": 0,
+    "date": "2026-11-26",
+    "subject": "fix: a duty order (a goal) ends a soldier's flinch -- gate checker stepping out is not held for the stare",
+    "pushed": false
    },
    {
     "name": "feat/god-chamber",
@@ -2037,11 +2064,11 @@
     "pushed": false
    },
    {
-    "name": "claude/natural-people",
-    "ahead": 18,
-    "behind": 55,
+    "name": "land/wish-clarity",
+    "ahead": 2,
+    "behind": 0,
     "date": "2026-11-25",
-    "subject": "test: re-record 8 references the Develop-Main merge moved (panic_play_3, panic_b_play_1-3, prisoner_play_1-3, prisoner_b_play_2); same outcome as b748cf70",
+    "subject": "docs: soldier duties rulings, reference flips, gate tables and landing checks",
     "pushed": false
    },
    {
@@ -2059,14 +2086,6 @@
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
-   },
-   {
-    "name": "feat/wish-clarity",
-    "ahead": 1,
-    "behind": 150,
-    "date": "2026-11-19",
-    "subject": "feat: every wish says exactly what to do; Show yourself to my family is a power seen (Discord #ideas \"Wish not clear\")",
-    "pushed": false
    },
    {
     "name": "feat/god-progression",

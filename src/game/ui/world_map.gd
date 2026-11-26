@@ -13,12 +13,15 @@ const NO_NIGHT := "No night waits there yet"
 const HINT := "Arrows: choose   Enter: Descend   Esc: Back"
 const BACK_W := 60.0
 const BACK_H := 18.0
-const PLATE := Rect2(190.0, 290.0, 260.0, 56.0)
+## Inside the land's frame (it ends at y 324), clear of every spot.
+const PLATE := Rect2(190.0, 264.0, 260.0, 54.0)
 const HINT_Y := 356.0
-const LINE_Y := 284.0
+const LINE_Y := 342.0
+## Half a spot marker's width.
+const SPOT_R := 9.0
 
 var selected := ""
-## A one-off message shown above the info plate ("" for none).
+## A one-off message shown under the land ("" for none).
 var line := ""
 var status: HubStatus
 var _slot: GodSlot
@@ -212,7 +215,10 @@ func _draw_ui() -> void:
 		_ui.draw_rect(WorldLayout.LAND, ChamberArt.greybox_color("table").lerp(Color(0.22, 0.30, 0.22), 0.7))
 		_ui.draw_rect(WorldLayout.LAND, UiTheme.COL_GOLD_DARK, false, 1.0)
 	for road: Array in WorldLayout.ROADS:
-		_ui.draw_line(WorldLayout.spot(road[0]).place, WorldLayout.spot(road[1]).place, Color(0.62, 0.52, 0.34), 2.0)
+		var a: Vector2 = WorldLayout.spot(road[0]).place
+		var b: Vector2 = WorldLayout.spot(road[1]).place
+		var gap := (b - a).normalized() * (SPOT_R + 4.0)  # the road stops short of the markers
+		_ui.draw_line(a + gap, b - gap, Color(0.62, 0.52, 0.34), 2.0)
 	for id in WorldLayout.ids():
 		_draw_spot(id)
 	var title := "THE WORLD"
@@ -232,22 +238,36 @@ func _draw_spot(id: String) -> void:
 	var p: Vector2 = WorldLayout.spot(id).place
 	var state := spot_state(id)
 	var col := _spot_color(id)
-	var r := 9.0
+	var r := SPOT_R
 	var diamond := PackedVector2Array([p + Vector2(0, -r), p + Vector2(r, 0), p + Vector2(0, r), p + Vector2(-r, 0)])
 	_ui.draw_colored_polygon(diamond, col)
 	diamond.append(diamond[0])
 	_ui.draw_polyline(diamond, Color(0.0, 0.0, 0.0, 0.8), 1.0)
+	if id == selected:
+		var s := r + 4.0  # the chosen spot wears a gold outline
+		_ui.draw_polyline(PackedVector2Array([p + Vector2(0, -s), p + Vector2(s, 0), p + Vector2(0, s), p + Vector2(-s, 0), p + Vector2(0, -s)]),
+			UiTheme.COL_GOLD, 1.0)
 	if Conquest.conquered(_slot, id):
-		_ui.draw_arc(p, r + 3.0, 0.0, TAU, 20, UiTheme.COL_GOLD, 1.5)
-	var y := p.y + r + 3.0
-	if WorldLayout.is_town(id) and state != "locked":
-		var bar := Rect2(p.x - 14.0, y, 28.0, 3.0)
-		_ui.draw_rect(bar, Color(0.08, 0.08, 0.1))
-		_ui.draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * float(Conquest.percent_of(_slot, id)) / 100.0), bar.size.y)), UiTheme.COL_GOLD)
-		y += 5.0
+		_ui.draw_arc(p, r + 7.0, 0.0, TAU, 20, UiTheme.COL_GOLD, 1.5)
+	# The percent bar and the name go under the marker, or over it where a road leaves downward (WorldLayout "label": "above").
+	var above := str(WorldLayout.spot(id).get("label", "")) == "above"
+	var has_bar := WorldLayout.is_town(id) and state != "locked"
 	var label := WorldLayout.name_of(id)
 	var tcol := UiTheme.COL_TEXT if state in ["open", "conquered", "dim"] else UiTheme.COL_DIM
-	UiTheme.text(_ui, Vector2(roundf(p.x - UiTheme.width(label, UiTheme.SIZE_SMALL) * 0.5), y + 10.0), label, UiTheme.SIZE_SMALL, tcol)
+	var label_x := roundf(p.x - UiTheme.width(label, UiTheme.SIZE_SMALL) * 0.5)
+	var bar_y := p.y - r - 9.0 if above else p.y + r + 6.0
+	if has_bar:
+		# An empty bar is a framed track, not a black dash.
+		var bar := Rect2(p.x - 14.0, bar_y, 28.0, 3.0)
+		_ui.draw_rect(bar.grow(1.0), UiTheme.COL_GOLD_DARK, false, 1.0)
+		_ui.draw_rect(bar, Color(0.08, 0.08, 0.1))
+		_ui.draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * float(Conquest.percent_of(_slot, id)) / 100.0), bar.size.y)), UiTheme.COL_GOLD)
+	var text_y: float
+	if above:
+		text_y = (bar_y - 5.0) if has_bar else (p.y - r - 7.0)
+	else:
+		text_y = (bar_y + 15.0) if has_bar else (p.y + r + 15.0)
+	UiTheme.text(_ui, Vector2(label_x, text_y), label, UiTheme.SIZE_SMALL, tcol)
 
 
 func _draw_plate() -> void:

@@ -8,10 +8,11 @@ const LAND := Rect2(40.0, 34.0, 560.0, 290.0)
 ## A spot's hit radius: its rect is a square of twice this about its place.
 const HIT_R := 16.0
 
-## `source` "town": the name is read from Conquest.town_name(); "sealed": the spot is beyond the god's reach.
+## `source` "town": the name is read from Conquest.town_name(); "sealed": the spot is beyond the god's reach. `label` "above": the name and bar sit over the
+## marker (a road leaves it downward).
 const SPOTS: Array = [
 	{"id": "aldermere", "name": "", "place": Vector2(250.0, 220.0), "source": "town"},
-	{"id": "capital", "name": "", "place": Vector2(420.0, 140.0), "source": "town"},
+	{"id": "capital", "name": "", "place": Vector2(420.0, 140.0), "source": "town", "label": "above"},
 	{"id": "thornwick", "name": "Thornwick", "place": Vector2(110.0, 110.0), "source": "sealed"},
 	{"id": "saltmere", "name": "Saltmere", "place": Vector2(540.0, 260.0), "source": "sealed"},
 	{"id": "greyhollow", "name": "Greyhollow", "place": Vector2(130.0, 290.0), "source": "sealed"},

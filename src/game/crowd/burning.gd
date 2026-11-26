@@ -170,11 +170,11 @@ func count() -> int:
 
 ## Whatever he was set on that would keep him from running is dropped first, through the town's own ways out of it, so the
 ## burning's panic takes: on his way into a shelter (ShelterManager drops him from its list as his mind changes), leaving the
-## town, or a citizen in a fight. A god's hold wins -- held absolutely (Person.held_by_will), told there is nothing to fear
-## (Person.fearless_left), or beyond the mind's reach (Person.resists_mind): he is left as he is, and panic() refuses him
-## too. A soldier in a fight fights on.
+## town, or a citizen in a fight. A god's hold wins -- held absolutely (Person.held_by_will)
+## or beyond the mind's reach (Person.resists_mind): he is left as he is, and panic() refuses him too. Told there is nothing
+## to fear (Person.fearless_left) does not hold: fire beats fearless (fair life, 2026-11-20). A soldier in a fight fights on.
 func _free_to_run(p: Person) -> void:
-	if p.resists_mind() or p.held_by_will(Person.WILL_ABSOLUTE) or p.fearless_left > 0.0:
+	if p.resists_mind() or p.held_by_will(Person.WILL_ABSOLUTE):
 		return
 	match p.mind:
 		Person.Mind.SHELTER:

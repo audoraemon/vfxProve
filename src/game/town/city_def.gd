@@ -57,6 +57,53 @@ func fallen_bridge(footprint: Rect2) -> Array[Rect2]: return [footprint]
 ## Where pair `k` of `pairs` walking a loop of `n` points starts: evenly spaced round it.
 static func loop_start(k: int, pairs: int, n: int) -> int:
 	return (k * n) / maxi(pairs, 1)
+
+## How far apart a street beat's points lie.
+const BEAT_STEP := 3.0
+
+
+## The beat a street pair walks on `road`: the long-axis centre line from one end to the other, a point every BEAT_STEP
+## (n = max(1, round(length / BEAT_STEP)) legs, n + 1 points), then back without repeating the ends, so the walk is a closed
+## loop there and back. {"points": Array[Vector2], "start": the point nearest `at`, ties the lowest index}.
+static func beat_of_road(road: Rect2, at: Vector2) -> Dictionary:
+	var from := Vector2(road.get_center().x, road.position.y) if road.size.y > road.size.x \
+			else Vector2(road.position.x, road.get_center().y)
+	var to := Vector2(road.get_center().x, road.end.y) if road.size.y > road.size.x \
+			else Vector2(road.end.x, road.get_center().y)
+	var n := maxi(1, roundi(from.distance_to(to) / BEAT_STEP))
+	var points: Array[Vector2] = []
+	for i in n + 1:
+		points.append(from.lerp(to, float(i) / n))
+	for i in range(n - 1, 0, -1):
+		points.append(from.lerp(to, float(i) / n))
+	var start := 0
+	for i in points.size():
+		if points[i].distance_to(at) < points[start].distance_to(at):
+			start = i
+	return {"points": points, "start": start}
+
+
+## The street pairs' beats, one {"points", "start", "post"} per pair in post order. Aldermere's posting (Crowd._soldier_posts()):
+## the streets are the roads inside the walls, pair k walks street k % streets, `post` the point that formula gives; no
+## street, no beats.
+func street_beats() -> Array:
+	var streets: Array[Rect2] = []
+	for road: Rect2 in roads():
+		if town().encloses(road):
+			streets.append(road)
+	var out: Array = []
+	if streets.is_empty():
+		return out
+	var pairs := Crowd.POST_PATROL / 2
+	for k in pairs:
+		var road := streets[k % streets.size()]
+		var along := (float(k / streets.size()) + 0.5) / ceilf(float(pairs) / streets.size())
+		var at := Vector2(road.get_center().x, lerpf(road.position.y, road.end.y, along)) if road.size.y > road.size.x \
+				else Vector2(lerpf(road.position.x, road.end.x, along), road.get_center().y)
+		var beat := beat_of_road(road, at)
+		out.append({"points": beat.points, "start": beat.start, "post": at})
+	return out
+
 func street_props() -> Array[Dictionary]: return []
 func gardens() -> Array[Rect2]: return []
 func queue_fans(margin := 0.3) -> Array[PackedVector2Array]: return []

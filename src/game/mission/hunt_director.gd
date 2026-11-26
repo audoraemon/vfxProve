@@ -639,6 +639,43 @@ func _on_killed(e: DummyEnemy, _kind: StringName) -> void:
 			crowd.off_duty(v as Person)
 
 
+## Loss warning: the head on his search, its last point the quarry (_found() loses the night: The Heretic Hunt's cellar), `found` at
+## find_eta(). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := find_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"found", _find_title(), "STOP THE %s" % head_label, eta, (head as Person).ground_pos))
+	return out
+
+
+## Virtual: the loss warning's words for the hunt finding its quarry.
+func _find_title() -> String:
+	return "THE %s FINDS HIS QUARRY" % head_label
+
+
+## Mission seconds until the head reaches the quarry (_step_head()): the walk to the point he is on and what is left of his stop there,
+## then each leg after it at his pace with a stop at each point but the last; INF while he is not out, down, indoors, or held off his
+## errand (a fright, a whisper: he starts that stop again after), and on a hunt with no quarry. Only reads.
+func find_eta() -> float:
+	if found or not head_out or head_down() or head_route.is_empty() or _quarry_point() == Vector2.INF or lost_reason() != "":
+		return INF
+	var p := head as Person
+	if p.inside or p.mind != Person.Mind.DUTY:
+		return INF
+	var last := head_route.size() - 1
+	var speed := maxf(p.walk_speed, 0.05)
+	var goal := head_route[_route_at]
+	var t := 0.0
+	if p.ground_pos.distance_to(goal) <= ARRIVE:
+		t = 0.0 if _route_at >= last else maxf(_stop_left, 0.0)
+	else:
+		t = maxf(walk_left(p, goal) - ARRIVE / speed, 0.0) + (head_stop if _route_at < last else 0.0)
+	for k in range(_route_at + 1, last + 1):
+		t += maxf(road_len(head_route[k - 1], head_route[k]) - (ARRIVE if k == last else 0.0), 0.0) / speed + (head_stop if k < last else 0.0)
+	return t * mission_delta(1.0)
+
+
 ## The head is down (v0.11 M4, decision 113): there is none, he was killed, or his body is gone.
 func head_down() -> bool:
 	return not has_head or head_fell or not _alive(head)
@@ -778,6 +815,65 @@ func step_seconds() -> float:
 	return hint_seconds()
 
 
+## Mission clarity (spec 5.5): the banners a cast that reaches the hunt's guards or standard and will not count gets. Both read state only.
+const WHY_STRIKE := "GUARDED (RED) - IT ONLY SHAKES"
+const WHY_HELD := "HELD, HE STILL GUARDS - LEAD HIM OFF"
+
+
+## Why a cast of `key` at `at` does not count here, "" when it does or reaches nothing of the hunt's:
+##  - a blow (Strike) on a standard its party guards only shakes it -- unless the cast also kills a guard within its kill radius, which
+##    counts (Blight has its own banner, blight_words(), so it is never asked here);
+##  - a Hold or Lure that has taken a guard within its reach leaves him guarding (the rule is BLIND: whispered or confused only), so
+##    the player is told to lead him off. A Lead or a Discord is BLIND, so a cast that leads or confuses never gets this banner.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	var held := _why_held(key, at, verbs)
+	if held != "":
+		return held
+	return _why_strike(key, at, verbs)
+
+
+## A blow on a guarded standard (why_not()).
+func _why_strike(key: String, at: Vector2, verbs: PackedStringArray) -> String:
+	if not "strike" in verbs:
+		return ""
+	for i in steps.size():
+		var s := standard(i) if steps[i].raised and not steps[i].broken else null
+		if s == null or s.destroyed or not _guarded(i) or s.distance_to(at) > Crowd._cast_radius(key) + WHY_MARGIN:
+			continue
+		for g: Guard in steps[i].party:
+			if _guarding(i, g) and _may_kill(key, at, (g.man as Person).ground_pos):
+				return ""
+		return WHY_STRIKE
+	return ""
+
+
+## A guard held (compelled or lured) and still guarding, within the cast's reach (why_not()).
+func _why_held(key: String, at: Vector2, verbs: PackedStringArray) -> String:
+	if not _holds_only(key, verbs):
+		return ""
+	for i in steps.size():
+		if steps[i].broken:
+			continue
+		for g: Guard in steps[i].party:
+			if _held_still(g, i) and _cast_reaches(key, at, (g.man as Person).ground_pos) and not _may_kill(key, at, (g.man as Person).ground_pos):
+				return WHY_HELD
+	return ""
+
+
+## Whether `key` holds minds and does nothing that would count against a hunt's guard or worker: no Lead, no Confuse (both BLIND him),
+## and The Bell Lies only in its guard mode (its other mode calms the town).
+func _holds_only(key: String, verbs: PackedStringArray) -> bool:
+	if not ("hold" in verbs or "lure" in verbs) or "lead" in verbs or "confuse" in verbs:
+		return false
+	return key != "belllies" or _last_mode() == "guard"
+
+
+## Guard `g` of step `i` is held by the god and so would be taken off his post by anything but the hold itself, and still guards.
+func _held_still(g: Guard, i: int) -> bool:
+	return _alive(g.man) and (g.man as Person).held_by_god() and _guarding(i, g)
+
+
 ## The hint's phase (v0.11 M4, decision 110; the final review put a standing standard first): "guarded" or "open" for the current
 ## standard while one stands; else "searching" or "captain" while the head is out; "coming" once every step is broken and the head is
 ## still to come out (the controller's ruling: the seconds to him, hint_seconds(), on the line); "waiting" while none stands and a step
@@ -796,6 +892,11 @@ func hint_phase() -> String:
 	if broken_count() > 0 and next_step() >= 0:
 		return "waiting"
 	return ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "guarded", "open", "searching", "captain", "coming", "waiting"])
 
 
 ## The seconds the hint's line counts down (v0.11 M4, MissionHints.SECONDS): in the "coming" phase, until the head comes out at the
@@ -823,3 +924,8 @@ func teardown() -> void:
 				s.broken.disconnect(_on_broken)
 	_unhook_kills(_on_killed)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Music by situation: the chase while the head is out or being searched for, until it is found.
+func music_mood() -> StringName:
+	return &"chase" if (head_out or searching) and not found else &""

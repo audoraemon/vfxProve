@@ -1,0 +1,123 @@
+<style>
+  .kak { position: relative; width: 800px; max-width: 100%; height: 190px; margin-top: 10px; overflow: hidden;
+    background: linear-gradient(180deg, #1c2733 0%, #18222a 45%, #10161b 100%); border: 1px solid #000;
+    font-family: "Trebuchet MS", Verdana, sans-serif; color: #e8e2d0; }
+  .kak.mid { height: 215px; }
+  .kak img { image-rendering: pixelated; display: block; }
+  .kak .town { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-size: 11px; color: #5d6b78; letter-spacing: 2px; }
+  .gauge { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; font-size: 12px; white-space: nowrap; }
+  .gauge .lab { color: #9cc4de; letter-spacing: 1px; font-weight: bold; }
+  .segs { display: flex; gap: 2px; padding: 2px; background: rgba(0,0,0,.65); }
+  .seg { width: 13px; height: 9px; background: #1d2a36; position: relative; }
+  .seg.on { background: #6fa8c8; }
+  .seg.part::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 45%; background: #6fa8c8; opacity: .7; }
+  .line { position: absolute; left: 0; right: 0; text-align: center; font-size: 12px; }
+  .line b { color: #d8b23a; }
+  .dim { color: #9a9484; }
+  .mp { color: #9cc4de; }
+  .row { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; }
+  .tile { position: relative; width: 46px; height: 46px; background: rgba(10,10,15,.7); outline: 1px solid #2c2c33; }
+  .tile img { width: 46px; height: 46px; }
+  .tile .k { position: absolute; left: 0; top: 0; font-size: 10px; line-height: 12px; padding: 0 3px; background: rgba(8,8,12,.85); color: #e8e2d0; }
+  .tile .c { position: absolute; right: 0; bottom: 0; font-size: 10px; line-height: 12px; padding: 0 3px; background: rgba(8,8,12,.85); color: #9cc4de; font-weight: bold; }
+  .tile.sel { outline: 2px solid #d8b23a; }
+  .tile.poor img { filter: grayscale(1) brightness(.5); }
+  .tile.poor .c { color: #e8604f; }
+  .tile.cd img { filter: brightness(.55); }
+  .tile.cd::after { content: attr(data-cd); position: absolute; left: 0; right: 0; top: 14px; text-align: center; font-size: 14px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
+  .tabs { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; font-size: 11px; letter-spacing: 1px; }
+  .tab { padding: 2px 10px; background: rgba(10,10,15,.7); color: #9a9484; }
+  .tab.on { color: #10161b; background: #d8b23a; font-weight: bold; }
+  .tab.key { background: none; padding: 2px 4px; }
+  .mini { position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; background: rgba(10,10,15,.7); font-size: 12px; white-space: nowrap; }
+  .mini .tile { width: 34px; height: 34px; } .mini .tile img { width: 34px; height: 34px; }
+  .hint { position: absolute; right: 8px; bottom: 6px; font-size: 10px; color: #9a9484; }
+  .block { position: absolute; left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(5, 46px); gap: 5px; }
+  .tiers { position: absolute; left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(5, 46px); gap: 5px; font-size: 10px; color: #9a9484; text-align: center; }
+  .option .content { min-width: 0; }
+  .note { font-size: .8rem; color: var(--text-secondary); margin-top: 6px; }
+  .fixed { border: 2px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; background: var(--bg-secondary); }
+  .fixed h3 { font-size: .95rem; margin-bottom: .15rem; }
+  .fixed p { color: var(--text-secondary); font-size: .85rem; margin: 0; }
+</style>
+
+<h2>Option B, made cleaner</h2>
+<p class="subtitle">Example: a Tier 5 Ruin god with all 10 Ruin abilities and a Might gauge of 16. First the hidden state, then two ways to show a full page of ten. Click the open bar you prefer.</p>
+
+<div class="fixed">
+  <h3>Bar hidden (the normal view) &mdash; Ctrl shows it</h3>
+  <p>Only the Might gauge and the ability you have armed stay on screen. The number keys still arm abilities while the bar is hidden.</p>
+  <div class="kak">
+    <div class="town">THE TOWN</div>
+    <div class="mini" style="top:136px">
+      <div class="tile sel"><img src="/files/tornado.png"><span class="k">3</span></div>
+      <span><b style="color:#d8b23a">Tornado Tempest</b> &nbsp;<span class="mp">2 Might</span></span>
+      <span class="mp" style="font-weight:bold;letter-spacing:1px">MIGHT</span>
+      <div class="segs"><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg part"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div></div>
+      <span>9 / 16</span>
+    </div>
+    <div class="hint">Ctrl: abilities</div>
+  </div>
+</div>
+
+<div class="options">
+
+  <div class="option" data-choice="b1" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Bar shown: one row of ten icons</h3>
+      <p>Icons only, no cards. Keys 1 to 0 read left to right like the keyboard. The armed ability's name, cost and cooldown show in one line above.</p>
+      <div class="kak mid">
+        <div class="town">THE TOWN</div>
+        <div class="gauge" style="top:86px"><span class="lab">MIGHT</span>
+          <div class="segs"><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg part"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div></div>
+          <span>9 / 16</span></div>
+        <div class="tabs" style="top:108px"><span class="tab key dim">Z</span><span class="tab">DOMINION 4</span><span class="tab on">RUIN 10</span><span class="tab">PASSAGE 3</span><span class="tab key dim">X</span></div>
+        <div class="line" style="top:134px"><b>Tornado Tempest</b> &nbsp; <span class="mp">2 Might</span> &nbsp; <span class="dim">ready</span></div>
+        <div class="row" style="top:158px">
+          <div class="tile"><img src="/files/smite.png"><span class="k">1</span><span class="c">1</span></div>
+          <div class="tile cd" data-cd="7"><img src="/files/ember.png"><span class="k">2</span><span class="c">1</span></div>
+          <div class="tile sel"><img src="/files/tornado.png"><span class="k">3</span><span class="c">2</span></div>
+          <div class="tile"><img src="/files/scatter.png"><span class="k">4</span><span class="c">2</span></div>
+          <div class="tile"><img src="/files/solaris.png"><span class="k">5</span><span class="c">4</span></div>
+          <div class="tile"><img src="/files/dragon.png"><span class="k">6</span><span class="c">4</span></div>
+          <div class="tile"><img src="/files/tsunami.png"><span class="k">7</span><span class="c">5</span></div>
+          <div class="tile"><img src="/files/cinder.png"><span class="k">8</span><span class="c">5</span></div>
+          <div class="tile poor"><img src="/files/tempest.png"><span class="k">9</span><span class="c">10</span></div>
+          <div class="tile poor"><img src="/files/shatter.png"><span class="k">0</span><span class="c">10</span></div>
+        </div>
+      </div>
+      <p class="note">About three quarters of the screen's width and one icon tall. Ten of today's cards with names would not fit across the screen at all.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b2" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Bar shown: a small block, five tiers by two</h3>
+      <p>The page is laid out like the skill tree: one column per tier, two abilities in each. Half as wide, twice as tall.</p>
+      <div class="kak mid">
+        <div class="town">THE TOWN</div>
+        <div class="gauge" style="top:44px"><span class="lab">MIGHT</span>
+          <div class="segs"><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg on"></div><div class="seg part"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div></div>
+          <span>9 / 16</span></div>
+        <div class="tabs" style="top:64px"><span class="tab key dim">Z</span><span class="tab">DOMINION 4</span><span class="tab on">RUIN 10</span><span class="tab">PASSAGE 3</span><span class="tab key dim">X</span></div>
+        <div class="line" style="top:88px"><b>Tornado Tempest</b> &nbsp; <span class="mp">2 Might</span> &nbsp; <span class="dim">ready</span></div>
+        <div class="block" style="top:110px">
+          <div class="tile"><img src="/files/smite.png"><span class="k">1</span><span class="c">1</span></div>
+          <div class="tile sel"><img src="/files/tornado.png"><span class="k">2</span><span class="c">2</span></div>
+          <div class="tile"><img src="/files/solaris.png"><span class="k">3</span><span class="c">4</span></div>
+          <div class="tile"><img src="/files/tsunami.png"><span class="k">4</span><span class="c">5</span></div>
+          <div class="tile poor"><img src="/files/tempest.png"><span class="k">5</span><span class="c">10</span></div>
+          <div class="tile cd" data-cd="7"><img src="/files/ember.png"><span class="k">6</span><span class="c">1</span></div>
+          <div class="tile"><img src="/files/scatter.png"><span class="k">7</span><span class="c">2</span></div>
+          <div class="tile"><img src="/files/dragon.png"><span class="k">8</span><span class="c">4</span></div>
+          <div class="tile"><img src="/files/cinder.png"><span class="k">9</span><span class="c">5</span></div>
+          <div class="tile poor"><img src="/files/shatter.png"><span class="k">0</span><span class="c">10</span></div>
+        </div>
+      </div>
+      <p class="note">Covers less of the street left and right, but more of the town above it. The keys run 1 to 5 on top and 6 to 0 below, which is less natural to reach.</p>
+    </div>
+  </div>
+
+</div>

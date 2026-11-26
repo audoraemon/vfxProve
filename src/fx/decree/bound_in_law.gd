@@ -47,6 +47,9 @@ var flare := 0.0
 
 ## Everyone the bond holds (BondEnds): a, b, then the joiners (Party to the Bond) in the order they joined.
 var _ends: Array[BondEnd] = []
+## When the next fate passed along the chain may sound: one rattle at most every PASS_SOUND_GAP.
+const PASS_SOUND_GAP := 0.3
+var _next_pass := 0.0
 ## Party to the Bond (level 5): who has joined (Persons, in order; either may since have been freed).
 var joiners: Array = []
 ## This cast's twist (PowerBook.twist_at), read once in _build.
@@ -141,7 +144,7 @@ func _build() -> void:
 		LawMark.set_law(p, LawMark.BOUND, lv_span, get_instance_id())
 	for s in _ends:
 		_see(s)
-	at(lv_span, _unlink)
+	at(lv_span, _snap)
 	ctx.play(&"q_bound", (a as Person).ground_pos.lerp((b as Person).ground_pos, 0.5))
 	if DominionParts.staged(self):
 		_show()
@@ -176,7 +179,7 @@ func _fx_process(delta: float) -> void:
 				_kill(s.p as Person, gone)
 	for s in _ends:
 		if not (s.p as Person).is_alive():
-			_unlink()
+			_snap()
 			return
 	for s in _ends:
 		_see(s)
@@ -225,6 +228,7 @@ func _add(p: Person, left: float) -> void:
 	_ends.append(s)
 	joiners.append(p)
 	LawMark.set_law(p, LawMark.BOUND, left, get_instance_id())
+	ctx.play(&"q_bound", p.ground_pos, -4.0)
 
 
 ## What is seen of `s` now: the baseline the next frame's onsets are read against.
@@ -278,6 +282,9 @@ func _lay(from: BondEnd, to: BondEnd) -> void:
 			q.free_pace(get_instance_id())
 	if mirrored > before:
 		flare = 1.0
+		if t >= _next_pass:
+			_next_pass = t + PASS_SOUND_GAP
+			ctx.play(&"bd_pass", q.ground_pos)
 
 
 ## Held by a seizure: a rite's chain, or a mission's seizer.
@@ -293,6 +300,13 @@ func _kill(q: Person, by: Person) -> void:
 		ctx.field.kill(q, KIND, by.ground_pos)
 	elif q.is_alive():
 		q.die(KIND, by.ground_pos)
+
+
+## The bond ends in the town (its span runs out, or one fate takes them): the chain snaps, then it is unlinked.
+func _snap() -> void:
+	if linked and is_instance_valid(a) and is_instance_valid(b):
+		ctx.play(&"bd_snap", (a as Person).ground_pos.lerp((b as Person).ground_pos, 0.5))
+	_unlink()
 
 
 ## The bond is over: the law is lifted from both and any hold it laid is let go (only its own; a freed one is skipped).

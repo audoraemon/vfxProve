@@ -339,11 +339,11 @@ func move(dir: Vector2) -> void:
 		select(best)
 
 
-## Enter or the Descend button: refused when the god has nothing to draft or no night waits in the town; else emits "descend".
+## Enter or the Descend button: refused when the god has nothing for the night (HubStatus.can_descend) or no night waits in the town; else emits "descend".
 func press_descend() -> void:
 	if not status.can_descend():
 		UiSound.play(&"ui_buzz")
-		line = HubStatus.BLOCKED
+		line = status.blocked_line()  # "Nothing to cast", or "Nothing to draft" in the draft mode (GodNight.draft)
 		_redraw()
 		return
 	if GodNight.draw(_slot, selected) == "":

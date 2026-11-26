@@ -305,6 +305,46 @@ func hint_phase() -> String:
 	return "packed" if t >= BONFIRE_AT else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "address", "packed"])
+
+
+## Read-only (Mission clarity, spec 5.1): the mission seconds until the guard closes the square, 0 once he has (the hint's `{n}`).
+func hint_seconds() -> float:
+	return timeline.seconds_to("close") if timeline != null else 0.0
+
+
+const GOERS_BANNER := "ONLY FEAR OR DEATH BREAKS THEM"
+
+
+## Whether the verbs `verbs` only draw a man where you point (Lead, Lure, Confuse), and nothing in them frightens, kills or sets him out.
+static func _gentle(verbs: PackedStringArray) -> bool:
+	for v: String in ["kill", "scare", "banish", "burn", "strike", "calm"]:
+		if v in verbs:
+			return false
+	for v: String in ["lead", "lure", "confuse"]:
+		if v in verbs:
+			return true
+	return false
+
+
+## The goers still to break that a cast of `key` at `at` reaches (out of doors, alive). Only reads.
+func _goers_reached(key: String, at: Vector2) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in goers:
+		if WarningDirector._alive(p) and not p.inside and not _broke.has(p) and not _left.has(p) and _cast_reaches(key, at, p.ground_pos):
+			out.append(p)
+	return out
+
+
+## Mission clarity (spec 5.1): Lead, Lure or Confuse on goers moves them and breaks none: only a fright from the god or a death does.
+func why_not(key: String, at: Vector2) -> String:
+	if broken() or not _gentle(MissionVerbs.verbs_of(key)):
+		return ""
+	return GOERS_BANNER if not _goers_reached(key, at).is_empty() else ""
+
+
 ## The tour (board tags, spec §4): the fountain, then the Mayor.
 func tour() -> Array:
 	var out := []
@@ -338,3 +378,8 @@ func teardown() -> void:
 		if is_instance_valid(fire) and not fire.finished:
 			fire._finish()
 	_fires.clear()
+
+
+## Music by situation: the festival's own dance.
+func music_mood() -> StringName:
+	return &"festival"

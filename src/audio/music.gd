@@ -1,7 +1,7 @@
 class_name Music
 extends Node
 ## Background music, played by orchestral samples (tools/audio/music/, tools/audio/music_render.py): a dark choral theme on
-## the title and the draft, and in the
+## the title and the draft, its own piece on God's Paths (the god select: a base and, over it, the picked god's school), and in the
 ## mission a calm piece for the town as it is (CALM: by day, by night, the Capital's own), a tension stem as it starts to
 ## slip, and a battle loop in three stems -- base, drums, lead -- layered in as the city falls (the music pass). Not positional, not
 ## tied to a battlefield, and alive across every screen change so one track can fade into the next. Built the way
@@ -9,8 +9,22 @@ extends Node
 
 const THEME := &"music_theme"
 const BATTLE := [&"music_battle_base", &"music_battle_drums", &"music_battle_lead"]
-## The mission's calm pieces: the town by day, the town by night, the Capital by day (calm_cue()).
-const CALM := [&"music_town_day", &"music_town_night", &"music_capital_day"]
+## The mission's calm pieces: the town by day, the town by night, the Capital by day, and the moods' own -- the festival's
+## dance and the rite's chant (calm_cue()).
+const CALM := [&"music_town_day", &"music_town_night", &"music_capital_day", &"music_calm_festival", &"music_calm_rite"]
+## A mood's own calm piece, in place of the town's (MissionDirector.music_mood()).
+const MOOD_CALM := {&"festival": &"music_calm_festival", &"rite": &"music_calm_rite"}
+## The chase (music by situation): two stems in step, the run and its drums, played while a mission's pursuit is on
+## (mood &"chase") in place of the calm piece, the tension and the battle -- until the city is falling (CHASE_UNTIL), when the
+## battle takes over.
+const CHASE := [&"music_chase_base", &"music_chase_drums"]
+const CHASE_UNTIL := 0.66
+## What raises the music (music by situation): the heat is the most of the city's fall, the alarm's stage (ALARM_HEAT, by
+## AlarmManager.Stage) and the crowd's panic (PANIC_HEAT at full panic), so a cast that sends people running brings the
+## tension and the battle in before a single building falls. It rises at once and cools by COOL_RATE a second.
+const ALARM_HEAT := [0.0, 0.12, 0.25, 0.4, 0.55, 1.0]
+const PANIC_HEAT := 0.75
+const COOL_RATE := 0.03
 ## The dread before the fight: the battle's harmony and length, started with its stems so it stays in step.
 const TENSION := &"music_tension"
 ## The music's level under everything else (v0.11.2: -10 -> -16, the playtest's "too loud"; its own bus, so the Options slider moves it).
@@ -24,6 +38,13 @@ const DUCK_DB := -12.0
 ## won, lost -- played over the music at STING_DB above it, while the loops dip by STING_DIP_DB so it stands clear.
 const STINGS := [&"music_sting_start", &"music_sting_objective", &"music_sting_win", &"music_sting_lose"]
 const STING_DB := 3.0
+## God's Paths (the god select): a temple piece (PATHS, 64 beats) and, over it, one layer per school (PATH_LAYERS, 16 beats on the
+## same four-bar progression, so each fits any block of the base); the layer of the god picked now fades in, the others out.
+const PATHS := &"music_paths"
+const PATH_LAYERS := {
+	"ruin": &"music_paths_ruin", "passage": &"music_paths_passage", "veil": &"music_paths_veil",
+	"decree": &"music_paths_decree", "death": &"music_paths_death", "dominion": &"music_paths_dominion",
+}
 const STING_DIP_DB := -8.0
 
 static var _node: Music
@@ -32,7 +53,15 @@ var _theme: AudioStreamPlayer
 var _stems: Array[AudioStreamPlayer] = []
 var _calm: Array[AudioStreamPlayer] = []
 var _tension: AudioStreamPlayer
-var _calm_gain: Array[float] = [0.0, 0.0, 0.0]
+var _paths: AudioStreamPlayer
+var _layers: Dictionary = {}  ## school type -> its layer's player
+var _paths_gain := 0.0
+var _layer_gain: Dictionary = {}  ## school type -> its layer's gain (0..1)
+var _path := ""  ## the school type picked on God's Paths
+var _calm_gain: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0]
+var _chase: Array[AudioStreamPlayer] = []
+var _chase_gain := 0.0
+var _mood := &""  ## the mission's mood now (MissionDirector.music_mood())
 var _tension_gain := 0.0
 ## Current gain (0..1) of the theme and of each stem, eased toward their targets.
 var _theme_gain := 0.0
@@ -50,11 +79,48 @@ var _pending: AudioStream  ## a stinger asked for before the node was in the tre
 var _stopped := false
 
 
-## What should be playing: &"theme", &"battle", or &"" for silence. Fades from whatever is playing now.
+## What should be playing: &"theme", &"paths", &"battle", or &"" for silence. Fades from whatever is playing now.
 static func play(track: StringName) -> void:
 	var m := _instance()
 	if m != null:
 		m._switch(track)
+
+
+## The god picked on God's Paths (a GodTree.RING type): its school's layer plays over the paths piece.
+static func set_path(type: String) -> void:
+	var m := _instance()
+	if m != null:
+		m._path = type
+
+
+## Each school layer's volume while `track` plays with `type` picked: full for that school on God's Paths, else silent.
+static func layer_gains(track: StringName, type: String) -> Dictionary:
+	var out := {}
+	for k: String in PATH_LAYERS:
+		out[k] = 1.0 if track == &"paths" and k == type else 0.0
+	return out
+
+
+## The mission's mood now: &"" (the town's own), &"chase", &"festival" or &"rite".
+static func set_mood(mood: StringName) -> void:
+	var m := _instance()
+	if m != null:
+		m._mood = mood
+
+
+## The music's heat from the situation: the city's fall (0..1), the alarm's stage (AlarmManager.Stage) and the crowd's panic (0..1).
+static func heat(fall: float, stage: int, panic: float) -> float:
+	return clampf(maxf(fall, maxf(float(ALARM_HEAT[clampi(stage, 0, ALARM_HEAT.size() - 1)]), panic * PANIC_HEAT)), 0.0, 1.0)
+
+
+## The heat after `dt` seconds of the situation at `target`: up at once, down by COOL_RATE a second.
+static func cool(was: float, target: float, dt: float) -> float:
+	return target if target >= was else maxf(target, was - COOL_RATE * dt)
+
+
+## Whether the chase plays: the mood is the chase and the city is not yet falling.
+static func chasing(mood: StringName, intensity: float) -> bool:
+	return mood == &"chase" and intensity < CHASE_UNTIL
 
 
 ## How far the city has fallen, 0 (standing) to 1 (falling): how many battle layers are in.
@@ -103,8 +169,10 @@ static func tension_gain(intensity: float) -> float:
 	return smoothstep(0.06, 0.22, intensity)
 
 
-## Which of CALM the mission plays: the town by night, else the Capital's own by day, else the town by day.
-static func calm_cue(night: bool, capital: bool) -> StringName:
+## Which of CALM the mission plays: a mood's own piece, else the town by night, else the Capital's own by day, else the town by day.
+static func calm_cue(night: bool, capital: bool, mood := &"") -> StringName:
+	if MOOD_CALM.has(mood):
+		return MOOD_CALM[mood]
 	return CALM[1] if night else (CALM[2] if capital else CALM[0])
 
 
@@ -142,6 +210,12 @@ func _ready() -> void:
 	for cue: StringName in CALM:
 		_calm.append(_player(cue))
 	_tension = _player(TENSION)
+	for cue: StringName in CHASE:
+		_chase.append(_player(cue))
+	_paths = _player(PATHS)
+	for k: String in PATH_LAYERS:
+		_layers[k] = _player(PATH_LAYERS[k])
+		_layer_gain[k] = 0.0
 
 
 func _player(cue: StringName) -> AudioStreamPlayer:
@@ -182,6 +256,8 @@ func _switch(track: StringName) -> void:
 		_start_battle()
 	elif track == &"theme" and not _theme.playing:
 		_theme.play(0.0)
+	elif track == &"paths" and not _paths.playing:
+		_start_paths()
 
 
 func _process(delta: float) -> void:
@@ -191,20 +267,27 @@ func _process(delta: float) -> void:
 		_start_battle()
 	elif _want == &"theme" and not _theme.playing:
 		_theme.play(0.0)
+	elif _want == &"paths" and not _paths.playing:
+		_start_paths()
 	var step := delta / FADE
 	_theme_gain = move_toward(_theme_gain, 1.0 if _want == &"theme" else 0.0, step)
 	var targets: Array[float] = [0.0, 0.0, 0.0]
-	if _want == &"battle":
+	var chase := _want == &"battle" and chasing(_mood, _intensity)
+	if _want == &"battle" and not chase:
 		targets = stem_gains(_intensity)
 	for i in _stems.size():
 		_stem_gain[i] = move_toward(_stem_gain[i], float(targets[i]), step)
 	var battle := _want == &"battle"
-	var calm := calm_cue(TownLook.active == Town.Look.NIGHT, City.current().id() == &"capital") if battle else &""
+	var calm := calm_cue(TownLook.active == Town.Look.NIGHT, City.current().id() == &"capital", _mood) if battle and not chase else &""
 	for i in _calm.size():
 		_calm_gain[i] = move_toward(_calm_gain[i], calm_gain(_intensity) if CALM[i] == calm else 0.0, step)
 		if _calm_gain[i] > 0.0 and not _calm[i].playing:
 			_calm[i].play(0.0)
-	_tension_gain = move_toward(_tension_gain, tension_gain(_intensity) if battle else 0.0, step)
+	_tension_gain = move_toward(_tension_gain, tension_gain(_intensity) if battle and not chase else 0.0, step)
+	_chase_gain = move_toward(_chase_gain, 1.0 if chase else 0.0, step)
+	if _chase_gain > 0.0 and not _chase[0].playing:
+		for p in _chase:
+			p.play(0.0)  # together, so the two stems stay in step
 	_sting_left = maxf(_sting_left - delta, 0.0)
 	_sting_dip = move_toward(_sting_dip, STING_DIP_DB if _sting_left > 0.5 else 0.0, 24.0 * delta if _sting_left > 0.5 else 4.0 * delta)
 	var duck := (DUCK_DB if _ducked else 0.0) + _sting_dip
@@ -216,6 +299,20 @@ func _process(delta: float) -> void:
 		if _calm_gain[i] <= 0.0 and _calm[i].playing:
 			_calm[i].stop()
 	_apply(_tension, _tension_gain, duck)
+	for p in _chase:
+		_apply(p, _chase_gain, duck)
+	if _chase_gain <= 0.0 and _chase[0].playing:
+		for p in _chase:
+			p.stop()
+	_paths_gain = move_toward(_paths_gain, 1.0 if _want == &"paths" else 0.0, step)
+	_apply(_paths, _paths_gain, duck)
+	var lg := layer_gains(_want, _path)
+	for k: String in _layers:
+		_layer_gain[k] = move_toward(float(_layer_gain[k]), float(lg[k]), step)
+		_apply(_layers[k], float(_layer_gain[k]), duck)
+	if _want != &"paths" and _paths_gain <= 0.0 and _paths.playing:
+		for p: AudioStreamPlayer in [_paths] + _layers.values():
+			p.stop()  # the layers run with the base all along, to stay in step; they stop with it
 	# A track faded right out stops, so nothing plays silently forever -- except a battle stem while the battle
 	# is on, which must keep running to stay in step.
 	if _theme_gain <= 0.0 and _theme.playing:
@@ -233,6 +330,13 @@ func _start_battle() -> void:
 	_tension.play(0.0)
 
 
+## Starts the paths piece and every school layer together: the layers' 16 beats divide the base's 64, so they stay in step.
+func _start_paths() -> void:
+	_paths.play(0.0)
+	for p: AudioStreamPlayer in _layers.values():
+		p.play(0.0)
+
+
 func _apply(p: AudioStreamPlayer, gain: float, duck: float) -> void:
 	p.volume_db = DB + duck + (linear_to_db(gain) if gain > 0.0005 else -80.0)
 
@@ -243,7 +347,11 @@ func _stop_all() -> void:
 		_theme.stop()
 	if _sting != null:
 		_sting.stop()
-	for p in _stems + _calm:
+	for p in _stems + _calm + _chase:
 		p.stop()
 	if _tension != null:
 		_tension.stop()
+	if _paths != null:
+		_paths.stop()
+	for p: AudioStreamPlayer in _layers.values():
+		p.stop()

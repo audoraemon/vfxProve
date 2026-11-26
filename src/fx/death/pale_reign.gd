@@ -15,8 +15,8 @@ extends FxTimeline
 ## - Every whole-body death in the district during the span (any kind the Remains ledger keeps: the reign's own, a
 ##   servant's bite) rises at once as the god's pale servant, MAX_RISEN a cast at most: a zombie in their own look with
 ##   ash-grey eyes (DeathParts.zombie, eyes ASH), in this effect's own Visitors pack, for SERVANT_LIFE from its rising; the
-##   body is taken off the ledger (Remains.take hides the corpse). The ledger is on for a Pale night (Remains.wants); were
-##   it off (a test, the sandbox), the reign keeps it on for itself and puts it back as it was at its end.
+##   body is taken off the ledger (Remains.take hides the corpse). The ledger is always on in a mission; were it off
+##   (a test, the sandbox), the reign keeps it on for itself and puts it back as it was at its end.
 ## - The horde (R10): with the reign's first tick (its first death) HORDE_START pale ghosts pour out of the middle
 ##   (DeathParts.pale_ghost: wraiths in a pale tint, through walls, at PALE_GHOST_PACE of a walk, in this effect's own
 ##   `horde` pack). They run the district for the nearest living person inside it -- never one outside RADIUS, never a
@@ -54,6 +54,12 @@ const SHADER := preload("res://shaders/pale_reign.gdshader")
 const DUST := [Color(0.85, 0.82, 0.74, 0.5), Color(0.6, 0.6, 0.6, 0.38), Color(0.42, 0.42, 0.44, 0.2), Color(0.3, 0.3, 0.32, 0.0)]
 const ASH_FALL := [Color("d8d8d8"), Color("a8a8aa"), Color(0.55, 0.55, 0.57, 0.6), Color(0.4, 0.4, 0.42, 0.0)]
 const BONE_CHIPS := [Color("d8d2bf"), Color("b8b2a0"), Color("8a8a8c")]
+## Heard (skill-tree sound pass): more ghosts at most every GHOSTS_QUIET, a ghost's touch every TOUCH_QUIET, a servant's fall
+## to ash every ASH_QUIET; the reign's bed fades out over HUSH as the colour comes back.
+const GHOSTS_QUIET := 1.0
+const TOUCH_QUIET := 0.35
+const ASH_QUIET := 0.2
+const HUSH := 1.5
 
 ## The servants' pack; the dead, in the order they fell; when the first fell; the fires put out.
 var visitors: Visitors
@@ -94,6 +100,11 @@ const PALL_STEP := 0.25
 const PALL_MOST := 3.0
 var _twist := false
 var _pall_max := 0.0
+## The reign's bed while it holds, and the clocks each moment may be heard again at (sound only).
+var _bed: Node
+var _ghosts_heard := 0.0
+var _touch_heard := 0.0
+var _ash_heard := 0.0
 
 
 func _build() -> void:
@@ -116,6 +127,7 @@ func _build() -> void:
 			ctx.crowd.remains.enabled = true
 			_lit_ledger = true
 	ctx.play(&"pale_drone", origin, 0.0)
+	_bed = ctx.play(&"pale_reign", origin, 0.0)
 	if not DominionParts.staged(self):
 		return
 	var sp := Iso.ground_to_screen(origin)
@@ -309,6 +321,8 @@ func _grow() -> void:
 ## The reign's first tick: HORDE_START ghosts pour out of the middle.
 func _pour() -> void:
 	_poured = true
+	ctx.play(&"pale_ghosts", origin, 0.0)
+	_ghosts_heard = t + GHOSTS_QUIET
 	for i in HORDE_START:
 		_ghost_at(origin + Vector2.from_angle(TAU * float(i) / float(HORDE_START)) * POUR_R)
 
@@ -321,13 +335,19 @@ func _ghost_at(at: Vector2, touch := false) -> void:
 		return
 	DeathParts.pale_ghost(horde, at, origin, lv_radius)
 	ghosts_made += 1
+	if t >= _ghosts_heard:
+		_ghosts_heard = t + GHOSTS_QUIET
+		ctx.play(&"pale_ghosts", at, -8.0)
 	if DominionParts.staged(self):
 		FxParts.smoke(self, Iso.ground_to_screen(at), 5.0, 20.0, 0.3, Vector2(6, 16), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
 
 
 ## A ghost touched someone (Visitors.bitten): its kills are counted (Visitors.kills: only a touch that killed); at the
 ## HORDE_KILLS-th the horde is spent (R39), and runs on to the end of the reign.
-func _on_touch(_a: Animal, _who: Person, _first: bool) -> void:
+func _on_touch(_a: Animal, who: Person, _first: bool) -> void:
+	if is_instance_valid(who) and t >= _touch_heard:
+		_touch_heard = t + TOUCH_QUIET
+		ctx.play(&"wraith_touch", who.ground_pos, 0.0)
 	horde_kills = horde.kills
 	if horde_kills >= lv_horde_kills:
 		_spend()
@@ -372,6 +392,8 @@ func _rise(p: Person, when: float) -> void:
 ## SPAN: the district has its colour and pace back, and the horde sinks. The servants stay up out their own 20 s.
 func _lift() -> void:
 	over = true
+	_hush(HUSH)
+	ctx.play(&"pale_lift", origin, 0.0)
 	_let_all_go()
 	_sink()
 
@@ -387,6 +409,9 @@ func _expire() -> void:
 		if t < float(s.until):
 			still.append(s)
 			continue
+		if t >= _ash_heard:
+			_ash_heard = t + ASH_QUIET
+			ctx.play(&"undead_ash", a.ground_pos, 0.0)
 		if DominionParts.staged(self):
 			FxParts.smoke(self, Iso.ground_to_screen(a.ground_pos), 6.0, 24.0, 0.3, Vector2(10, 26), Vector2(2, 4), Vector2(0.5, 1.0), Color(0, 0, 0, 0), DUST)
 		visitors.take(a)
@@ -395,8 +420,19 @@ func _expire() -> void:
 		duration = minf(duration, maxf(lv_span + FADE, t) + 0.05)
 
 
+## The reign's bed fades over `seconds` (stops at 0), if it is still this reign's to fade (sound only).
+func _hush(seconds: float) -> void:
+	if _bed != null and is_instance_valid(_bed) and _bed.get_meta(&"cue", &"") == &"pale_reign":
+		if seconds > 0.0:
+			ctx.fade_out(_bed, seconds)
+		elif _bed is AudioStreamPlayer2D:
+			(_bed as AudioStreamPlayer2D).stop()
+	_bed = null
+
+
 ## Over or cut short: every pace let go, the servants and the ghosts gone, the ledger as it was.
 func _finish() -> void:
+	_hush(HUSH)
 	_unhear()
 	_let_all_go()
 	_servants.clear()
@@ -411,6 +447,7 @@ func _finish() -> void:
 ## Freed without _finish (a mission torn down mid-reign): the same, the pack only queued for freeing (its parents may be
 ## mid-teardown).
 func _exit_tree() -> void:
+	_hush(0.0)
 	_unhear()
 	_let_all_go()
 	_servants.clear()
@@ -428,7 +465,7 @@ func _unhear() -> void:
 
 
 func _put_ledger_back() -> void:
-	if _lit_ledger and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains):
+	if _lit_ledger and is_instance_valid(ctx.crowd) and is_instance_valid(ctx.crowd.remains) and not ctx.crowd.remains.always:
 		ctx.crowd.remains.enabled = false
 	_lit_ledger = false
 

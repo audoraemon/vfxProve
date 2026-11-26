@@ -1,0 +1,7 @@
+{"length": 2.2, "rms_db": -14.85, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/impactwood05.mp3.flac", "at": 0.0, "onset": true, "pitch": -4.5, "hp": 80, "lp": 8000, "fade_out": 150},
+  {"src": "lib:oga/6-short-water-splashes/ezwa-water_splash/water_splash-04.flac", "at": 0.0, "onset": true, "pitch": -6.0, "hp": 60, "lp": 7000, "gain_db": -4, "fade_out": 300},
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.015, "onset": true, "pitch": -3.5, "hp": 50, "lp": 8000, "gain_db": -1, "fade_out": 300},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 2-Audio.wav", "at": 0.012, "from": 0.87, "dur": 1.8, "hp": 60, "lp": 8000, "gain_db": -3, "fade_in": 10, "fade_out": 700, "pitch": -1.5},
+  {"src": "lib:oga/dull-explosion/explosion_dull.flac", "at": 0.0, "onset": true, "pitch": -7.25, "hp": 25, "lp": 800, "gain_db": -6, "fade_out": 500}
+]}

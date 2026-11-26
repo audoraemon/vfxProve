@@ -1,0 +1,5 @@
+{"length": 1.5, "rms_db": -21.05, "reverb": {"rt60": 1.2, "mix": 0.2, "predelay_ms": 16, "damp": 4000}, "eq": [["lowshelf", 200, -5.0], ["peak", 3000, 1.0, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.4, "dur": 1.0, "reverse": true, "pitch": -3, "lp": 4200, "hp": 250, "fade_in": 200, "fade_out": 120, "gain_db": -3},
+  {"src": "lib:oga/breathing-tired/breathing tired.wav", "at": 0.55, "from": 0.2, "dur": 0.7, "pitch": -1, "lp": 4500, "hp": 200, "fade_in": 60, "fade_out": 400, "gain_db": -2},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 0.7, "onset": true, "pitch": -5, "lp": 4000, "hp": 150, "fade_out": 150, "gain_db": -11}
+]}

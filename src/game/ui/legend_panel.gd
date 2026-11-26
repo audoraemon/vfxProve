@@ -1,7 +1,7 @@
 class_name LegendPanel
 extends Control
 ## The legend of marks (v0.11.1, spec §4): H opens it over a mission, page 1 "WHAT THE MARKS MEAN" (the HUD's colours, with this
-## night's own tags listed beside them), H again page 2 "OVER HEADS AND ON THE HUD", H once more closes it; Esc closes it at once.
+## night's own tags listed beside them), H again page 2 "OVER HEADS AND ON THE HUD", H again page 3 "WHAT YOUR POWERS DO" (the mission verbs and the powers that do them), H once more closes it; Esc closes it at once.
 ## The night waits while it is open (Mission freezes itself), so this node runs whatever the mission's state and takes H and
 ## Esc itself. It is drawn with the HUD's own primitives and redrawn only when the page changes. It reads, and changes nothing.
 
@@ -12,7 +12,7 @@ signal closed
 const VIEW := Vector2(640.0, 360.0)
 const PANEL := Rect2(20.0, 12.0, 600.0, 336.0)
 const FOOTER := "H next   B believers   Esc close   the night waits"
-const TITLES := ["WHAT THE MARKS MEAN", "OVER HEADS AND ON THE HUD"]
+const TITLES := ["WHAT THE MARKS MEAN", "OVER HEADS AND ON THE HUD", "WHAT YOUR POWERS DO"]
 const NIGHT_TITLE := "This night"
 const NOTHING := "Nothing is marked yet."
 const UNNAMED := "(unnamed)"
@@ -50,7 +50,7 @@ const MARKS := [
 	["plate", DANGER, "DO NOT KILL: that death loses the night"],
 ]
 
-## Page 2: the same shape (spec §4.2). v0.11.2 (spec 5.5, R33): 21 rows, laid in two columns -- the first OVERHEAD_SPLIT rows on the left, the rest
+## Page 2: the same shape (spec §4.2). v0.11.2 (spec 5.5, R33): 22 rows, laid in two columns -- the first OVERHEAD_SPLIT rows on the left, the rest
 ## on the right -- with the Lantern's four after Halcyon's light (its clock ring leads the HUD's column).
 const OVERHEAD := [
 	["eye", Color("ffe9a8"), "Gold eye: whispered, walking where you sent them"],
@@ -74,13 +74,21 @@ const OVERHEAD := [
 	["aim_ring", UiTheme.COL_TEXT, "Where the power will land"],
 	["district", PLACE, "The district the power will reach"],
 	["topline", NOT_YET, "Citizens, soldiers, buildings down, and the town's alarm"],
+	["suspicion", UiTheme.COL_GOLD, "How strange the town finds this night. Full: it calls a god's hand, and the bell"],
 ]
 
 ## How many of OVERHEAD's rows the first column holds (the marks over the town and the Lantern's beam and people; the HUD's own are the second's).
 const OVERHEAD_SPLIT := 10
 
-## 0 closed, 1 or 2 the page showing.
+## Page 3 (Mission clarity, spec §4): the verb's word column and the row's height (px).
+const VERB_W := 54.0
+const VERB_ROW := 20.0
+const NAMES_GAP := 12.0
+
+## 0 closed, 1, 2 or 3 the page showing.
 var page := 0
+## The powers the player brought (page 3 shows these first); empty when the caller gave none.
+var _loadout := PackedStringArray()
 ## This night's rows, built when the panel is set up: [[Color, String]].
 var _night: Array = []
 ## Where the design frame starts and how much it is scaled, for the drawing helpers that reset the transform (_ellipse).
@@ -128,14 +136,15 @@ func _init() -> void:
 
 
 ## The panel for a night whose live tags are `tags` (Hud.all_tags()).
-func setup(tags: Array[MapTag]) -> LegendPanel:
+func setup(tags: Array[MapTag], loadout := PackedStringArray()) -> LegendPanel:
 	_night = night_rows(tags)
+	_loadout = loadout
 	return self
 
 
-## 0 -> 1 -> 2 -> 0: closing on the third press emits `closed`.
+## 0 -> 1 -> 2 -> 3 -> 0: closing on the fourth press emits `closed`.
 func open_next() -> void:
-	if page >= 2:
+	if page >= 3:
 		close()
 		return
 	page += 1
@@ -205,7 +214,7 @@ func _draw() -> void:
 	var title: String = TITLES[page - 1]
 	UiTheme.text(self, Vector2(roundf(PANEL.get_center().x - UiTheme.width(title, UiTheme.TEXT_L) * 0.5), PANEL.position.y + 28.0),
 		title, UiTheme.TEXT_L, UiTheme.COL_GOLD)
-	var count := "%d / 2" % page
+	var count := "%d / 3" % page
 	UiTheme.text(self, Vector2(PANEL.end.x - 14.0 - UiTheme.width(count, UiTheme.TEXT_S), PANEL.position.y + 26.0), count,
 		UiTheme.TEXT_S, UiTheme.COL_DIM)
 	var left := PANEL.position.x + 16.0
@@ -222,12 +231,68 @@ func _draw() -> void:
 		else:
 			var room := PANEL.end.x - 16.0 - right - SWATCH_W - 8.0
 			_draw_rows(fit_rows(rows, room, top + 10.0, PANEL.end.y - 24.0), right, top + 10.0, room)
+	elif page == 3:
+		_draw_verbs(left, top)
 	else:
 		var cols := overhead_columns()
 		var room := column_room()
 		_draw_rows(cols[0], left, top, room)
 		_draw_rows(cols[1], left + room + SWATCH_W + 8.0 + COL_GAP, top, room)
 	_draw_footer()
+
+
+## Page 3's three columns for `loadout`: the x of the words, of the legend words and of the power names, and the room the
+## names have (design px, from the panel's left inner edge `left`).
+static func verb_columns(left: float) -> Dictionary:
+	var wide := 0.0
+	for r: Array in MissionVerbs.legend_rows(PackedStringArray()):
+		wide = maxf(wide, UiTheme.width(String(r[1]), UiTheme.TEXT_S))
+	var does_x := left + VERB_W
+	var names_x := does_x + wide + NAMES_GAP
+	return {"does_x": does_x, "names_x": names_x, "room": PANEL.end.x - 16.0 - names_x}
+
+
+## The power names one verb row shows within `room` px: the equipped ones first, then the rest, as [[name, equipped], ...],
+## cut with a last ["+N", false] when they do not all fit.
+static func fit_names(equipped: Array, others: Array, room: float) -> Array:
+	var all := []
+	for n in equipped:
+		all.append([String(n), true])
+	for n in others:
+		all.append([String(n), false])
+	var joined := ""
+	for i in all.size():
+		joined += ("" if i == 0 else ", ") + String(all[i][0])
+	if UiTheme.width(joined, UiTheme.TEXT_S) <= room:
+		return all
+	for keep in range(all.size() - 1, -1, -1):
+		var text := ""
+		for i in keep:
+			text += ("" if i == 0 else ", ") + String(all[i][0])
+		text += (", " if keep > 0 else "") + "+%d" % (all.size() - keep)
+		if UiTheme.width(text, UiTheme.TEXT_S) <= room:
+			var out := all.slice(0, keep)
+			out.append(["+%d" % (all.size() - keep), false])
+			return out
+	return []
+
+
+## Page 3: one line per verb, in table order (the verb in gold, what it does, then its powers by name).
+func _draw_verbs(left: float, top: float) -> void:
+	var cols := verb_columns(left)
+	var y := top
+	for r: Array in MissionVerbs.legend_rows(_loadout):
+		var live := not (r[2] as Array).is_empty()
+		var base := y + 10.0
+		UiTheme.text(self, Vector2(left, base), String(r[0]), UiTheme.TEXT_S, UiTheme.COL_GOLD if live else UiTheme.COL_DIM)
+		UiTheme.text(self, Vector2(cols.does_x, base), String(r[1]), UiTheme.TEXT_S, UiTheme.COL_TEXT if live else UiTheme.COL_DIM)
+		var x: float = cols.names_x
+		var parts := fit_names(r[2], r[3], cols.room)
+		for i in parts.size():
+			var piece := String(parts[i][0]) + (", " if i < parts.size() - 1 and not String(parts[i + 1][0]).begins_with("+") else (" " if i < parts.size() - 1 else ""))
+			UiTheme.text(self, Vector2(x, base), piece, UiTheme.TEXT_S, UiTheme.COL_TEXT if bool(parts[i][1]) else UiTheme.COL_DIM)
+			x += UiTheme.width(piece, UiTheme.TEXT_S)
+		y += VERB_ROW
 
 
 ## Page 2's two columns, as [left rows, right rows].
@@ -387,3 +452,7 @@ func _swatch(kind: String, col: Color, x: float, cy: float) -> void:
 		"topline":
 			for i in 3:
 				draw_rect(Rect2(x + 1.0 + 8.0 * float(i), cy - 1.0, 6.0, 2.0), col)
+		"suspicion":
+			draw_rect(Rect2(x + 1.0, cy - 2.0, 24.0, 4.0), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(x + 1.0, cy - 2.0, 14.0, 4.0), col)
+			draw_line(Vector2(x + 11.0, cy - 3.0), Vector2(x + 11.0, cy + 3.0), UiTheme.COL_TEXT, 1.0)

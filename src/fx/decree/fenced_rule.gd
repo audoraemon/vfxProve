@@ -43,6 +43,11 @@ var third_at := 0.0
 ## The fence's centre sigil (level 5): the subject the order wheel opens on. Tracked, so it goes with the cast.
 var sigil: Node2D
 var _twist := false
+## The law's hum while it holds (a looping cue, faded at the lift), and when the next turn at the fence may sound (NO LEAVING):
+## one ting at most every TURN_SOUND_GAP.
+const TURN_SOUND_GAP := 0.5
+var _hum: Node
+var _next_turn := 0.0
 
 
 ## The two rules a mode names, in order; a mode that names no two of them is NO RUNNING + NO ARMS.
@@ -108,6 +113,7 @@ func _land() -> void:
 		ctx.crowd.step_law(law, 0.0)  # whoever stands inside is bound from this frame
 	else:
 		law.hold_by(self)
+	_hum = ctx.play(&"law_hum", origin)
 	if not DominionParts.staged(self):
 		return
 	DecreeParts.wave(self, origin, lv_radius * 1.05, 0.7, 0.05)
@@ -123,8 +129,28 @@ func _lift() -> void:
 			ctx.crowd.remove_law(law)
 		else:
 			law.lift()
+	_hush(0.6)
+	if t >= T_LAND + lv_hold_time:
+		ctx.play(&"fe_sink", origin)
 	if DominionParts.staged(self):
 		DecreeParts.wave(self, origin, lv_radius * 1.1, 0.5, 0.04)
+
+
+## The hum fades over `seconds`, if the voice is still this fence's.
+func _hush(seconds: float) -> void:
+	if _hum != null and is_instance_valid(_hum) and _hum.get_meta(&"cue", &"") == &"law_hum":
+		ctx.fade_out(_hum, seconds)
+	_hum = null
+
+
+func _finish() -> void:
+	_hush(0.3)
+	super()
+
+
+func _exit_tree() -> void:
+	_hush(0.3)
+	super()
 
 
 ## Third Clause (level 5): the law holds now and no third rule has been added.
@@ -186,6 +212,9 @@ func _fx_process(delta: float) -> void:
 		ctx.crowd.step_law(law, dt)
 	else:
 		law.step(dt, [], [])
+	if not law.turned.is_empty() and t >= _next_turn:
+		_next_turn = t + TURN_SOUND_GAP
+		ctx.play(&"law_turn", law.turned[0][1])
 
 
 ## When post `i` of `n` is driven home: one after another round the ring, the last at T_LAND.

@@ -188,7 +188,7 @@ static func _words_true(t, d: InformerDirector, def: MissionDef) -> void:
 	var ald := MissionBook.get_mission(ID)
 	t.check(ald.brief.size() == 2 and ald.brief[0] == "An informer carries your believers' names." and ald.brief[1] == "Find him by his contacts. Kill him."
 		and ald.goal == def.goal and ald.lose == def.lose and ald.camera_at == InformerDirector.CAMERA_AT
-		and String(MissionHints.LINES.get(ID, "")).begins_with("Whisper or Discord the contact"), "Aldermere's own board lines and camera are unchanged")
+		and String(MissionHints.LINES.get(ID, "")).begins_with("Confuse the contact"), "Aldermere's own board lines and camera are unchanged")
 
 
 ## Every contact's arrow, the Temple's door and the hiding place are clear of the padded HUD stack at the camera's resting place and at the intro's start.

@@ -145,6 +145,18 @@ func _draw_statuses(ci: CanvasItem, p: Person, at: Vector2) -> void:
 		ci.draw_line(at, Iso.ground_to_screen(p.fight_target.ground_pos), Color(1, 0.2, 0.2, 0.8), 1.0)
 
 
+## The F4 line for the town's suspicion: its value and state (with the reason once the town knows) and the signs it remembers, newest first.
+static func suspicion_line(s: Suspicion) -> String:
+	var state := "known: %s" % s.reason if s.known else String(s.state())
+	var out := "Suspicion: %d (%s)" % [roundi(s.value), state]
+	var signs := PackedStringArray()
+	for e: Array in s.recent():
+		signs.insert(0, "%s %ds" % [e[0], roundi(float(e[1]))])
+	if not signs.is_empty():
+		out += "  signs: " + ", ".join(signs)
+	return out
+
+
 func _draw_panel(ci: Control) -> void:
 	var lines: Array = []
 	var a := crowd.alarms
@@ -214,6 +226,7 @@ func _draw_panel(ci: Control) -> void:
 		lines.append(["Madness: %d afflicted (%d uneasy, %d disturbed, %d unstable, %d broken), %d broken in all, alarm +%.1f" % [
 			m.afflicted.size(), by_stage[0], by_stage[1], by_stage[2], by_stage[3], m.broken, m.alarm_generated],
 			MadnessManager.COL_STAGES[2]])
+	lines.append([suspicion_line(crowd.suspicion), UiTheme.COL_GOLD])
 	for h in a.history:
 		lines.append(["  %5.1fs  %s  (%s)" % [float(h[0]), AlarmManager.NAMES[h[1]], h[2]], UiTheme.COL_DIM])
 	var counts := {}

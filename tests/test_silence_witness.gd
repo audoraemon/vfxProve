@@ -751,10 +751,10 @@ static func _texts(t) -> void:
 	t.check(m.brief == PackedStringArray(["Four witnesses saw you work.", "Stop them before they reach the Temple."])
 		and m.goal == "Stop all four witnesses before word of you reaches the Temple" and m.goal_label == "The witnesses are silent"
 		and m.lose == "A witness reaches the Temple, or dawn comes", "the brief, goal, label and lose are the spec's")
-	t.check(MissionHints.line("silence_witness") == "A witness (gold) walks to the Temple with two mates (red). Kill him where his mates cannot see."
-		and MissionHints.line("silence_witness", "relay") == "His mate saw it and runs on: stop him too."
-		and MissionHints.line("silence_witness", "near") == "The witness nears the Temple: stop him now.",
-		"the three hint lines are MS §3's")
+	t.check(MissionHints.line("silence_witness") == "A witness (gold) walks to the Temple with two mates (red). Kill him unseen by them, or hold them first."
+		and MissionHints.line("silence_witness", "relay") == "His mate saw it and runs on with the word (gold). Kill him too."
+		and MissionHints.line("silence_witness", "near") == "The witness (gold) nears the Temple. Kill or banish him now.",
+		"the three hint lines are MS §3's, in Mission clarity's verbs")
 	var s := _world()
 	var d: SilenceWitnessDirector = s.d
 	var tour := d.tour()

@@ -123,6 +123,16 @@ func step(delta: float) -> void:
 			rules.banner.emit("A WITNESS NEARS THE TEMPLE")
 
 
+## Loss warning: the word on its way to the Temple (SilenceWitnessDirector.lost_reason() loses the night when it gets in), as eta(). A mate who
+## carries it on keeps the same id: it is the same word.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var left := eta()
+	if left < INF and not in_temple:
+		out.append(NightThreat.make(&"word", "THE WITNESS REACHES THE TEMPLE", "SILENCE HIM", left, messenger.ground_pos))
+	return out
+
+
 ## Mission seconds until the messenger reaches the Temple's door at his pace (the remaining walk in real seconds times the clock's rate); INF for
 ## none walking. A witness sheltering indoors (review of Task 5, M8) still counts: the seconds until he comes out (shelter_left()) and then the street.
 func eta() -> float:
@@ -382,3 +392,15 @@ func hint_phase() -> String:
 	if eta() <= near_warn:
 		return "near"
 	return "relay" if relays > 0 else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "near", "relay"])
+
+
+## What a cast does to this warning (Mission clarity, spec 5.1): his mates are held, not confused, to blind them (_could_carry()), so only the
+## carrier is judged.
+func _cast_reach(key: String, at: Vector2) -> Reach:
+	return _carrier_reach(key, at)
+

@@ -4,8 +4,10 @@ extends RefCounted
 ## seal lines, the stolen gifts, whether the god can Descend, what Awaken offers, and what one press does. GodChamber (the screen) draws and plays
 ## sounds from it. It holds no node and plays no sound.
 
-## What the hub says when the god has nothing to draft (Ruling P8).
-const BLOCKED := "Nothing to draft: the tree's Tier 1 is not filled yet"
+## What the hub says when the god has nothing to cast (Ruling P8; Might gauge R6.5).
+const BLOCKED := "Nothing to cast: the tree's Tier 1 is not filled yet"
+## The same line in the draft mode (GodNight.draft, Might gauge R10).
+const BLOCKED_DRAFT := "Nothing to draft: the tree's Tier 1 is not filled yet"
 ## What the hub says when the Hunt is next (god P2, spec §10.2, Ruling P2-11; *my call*): `%s` is the Hunt's title.
 const HUNT_DUE := "THE LANTERN HUNTS: the next night is the Hunt, %s"
 ## What the hub says of a sealed ability (spec §10.3, Ruling P2-11; *my call*): its name, the nights left.
@@ -95,14 +97,15 @@ func seal_line() -> String:
 	return SEALED % [PowerBook.get_power(_slot.sealed).name, GodSlot.nights_text(_slot.seal_nights)]
 
 
-## True when the god has an ability to draft; a god with none cannot Descend (Ruling P8).
+## True when the god has an ability for the night (GodNight.pool_for: every ability in its tree, the sealed one locked on the bar; in the draft
+## mode the draftable ones); a god with none cannot Descend (Ruling P8).
 func can_descend() -> bool:
-	return not _slot.draftable().is_empty()
+	return not GodNight.pool_for(_slot).is_empty()
 
 
-## BLOCKED when the god cannot Descend, else "".
+## BLOCKED (BLOCKED_DRAFT in the draft mode) when the god cannot Descend, else "".
 func blocked_line() -> String:
-	return "" if can_descend() else BLOCKED
+	return "" if can_descend() else (BLOCKED_DRAFT if GodNight.draft else BLOCKED)
 
 
 ## True when the god's Faith buys at least one Faith row now (no row refuses it).

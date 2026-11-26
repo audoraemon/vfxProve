@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_max_level(t)
 	_points_total(t)
 	_faith_prices(t)
+	_refill(t)
 	_faith_short(t)
 	_respec(t)
 	_draftable(t)
@@ -238,6 +239,24 @@ static func _points_total(t) -> void:
 	t.check(s.level == 50 and s.tier == 5, "four rites and a great deal of Divine Power: level 50, tier 5 (%d, %d)" % [s.level, s.tier])
 	t.check(s.points_earned() == 57 and s.points == 57, "points earned are 49 + 8 = 57 (%d, %d)" % [s.points_earned(), s.points])
 	t.check(_slot().points_earned() == 0, "a new god has earned none")
+
+
+## FASTER MIGHT (Might gauge Task 3): the slot row's buys shorten the refill; an old file still reads.
+static func _refill(t) -> void:
+	var s := _slot()
+	var got := [s.refill_seconds()]
+	s.faith = 2000
+	for i in 3:
+		s.buy("slot")
+		got.append(s.refill_seconds())
+	t.check(got == [60.0, 55.0, 50.0, 45.0], "refill is 60, 55, 50, 45 s after 0..3 buys (%s)" % [got])
+	var old := _read_with("oldgauge", {"type": "ruin", "bought": {"slot": 3}, "sealed": "smite", "seal_nights": 2,
+		"loadout": PackedStringArray(["smite", "ember", "a", "b", "c", "d"])})
+	t.check(old != null and old.refill_seconds() == 45.0 and old.slots() == 6, "an old file (slot 3) reads 45 s and slots() 6")
+	t.check(old != null and old.sealed == "smite", "its sealed key is kept")
+	var pool := MightPool.for_god(old)
+	t.check(pool.capacity == float(old.max_might()) and pool.refill_seconds == old.refill_seconds(), "for_god: the god's size and refill")
+	t.check(GodSlot.FAITH[0].name == "FASTER MIGHT" and GodSlot.FAITH[0].key == "slot", "row 0 is FASTER MIGHT, key kept")
 
 
 static func _faith_prices(t) -> void:

@@ -587,13 +587,16 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 		if seen.is_empty():
 			return ""
 		# Not before the watch has gathered: the wardens step up to the cart a few seconds after it halts, and a cast on the first two to
-		# arrive leaves the other two a clear view.
+		# arrive leaves the other two a clear view. One who stands off staring elsewhere (OBSERVE) or held (Discord, a whisper) is not coming
+		# and is not waited for (soldier duties: the streets hold more to stare at, and a warden who stood staring held the cast 10 s).
 		var core := d.escorts.size() + d.wardens_at(d.halt).size()
 		var here := 0
 		for esc: Variant in d.escorts:
 			here += 1 if WarningDirector._alive(esc) and (esc as Person).ground_pos.distance_to(cart) <= RelicRunDirector.WATCH + RELIC_GATHER else 0
+			core -= 1 if WarningDirector._alive(esc) and _relic_not_coming(esc as Person, cart) else 0
 		for p in d.wardens_at(d.halt):
 			here += 1 if p.ground_pos.distance_to(cart) <= RelicRunDirector.WATCH + RELIC_GATHER else 0
+			core -= 1 if _relic_not_coming(p, cart) else 0
 		if here < mini(core, RELIC_GATHERED) and d.halt_time < RELIC_GATHER_WAIT:
 			return ""
 		# Only passers-by left (Faithful going about their day who stopped to look at the cart): a Wisp lit RELIC_LURE past them, away from the
@@ -658,6 +661,13 @@ static func act_relic(bc, ctx: Dictionary) -> String:
 
 
 ## How many of `seen` walk off already under the Oath (Person.Mind.COMPELLED): they leave the cart's watch within seconds.
+## `p`, one of the cart's watch, stands off it (beyond RelicRunDirector.WATCH and RELIC_GATHER) staring elsewhere or held: he is not on
+## his way to the cart. Only reads.
+static func _relic_not_coming(p: Person, cart: Vector2) -> bool:
+	return p.ground_pos.distance_to(cart) > RelicRunDirector.WATCH + RELIC_GATHER \
+			and (p.mind == Person.Mind.OBSERVE or p.mind in MissionDirector.BLIND)
+
+
 static func _relic_leaving(seen: Array[Person]) -> int:
 	var n := 0
 	for p in seen:

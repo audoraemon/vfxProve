@@ -1,0 +1,5 @@
+{"length": 1.8, "rms_db": -21.0, "reverb": {"rt60": 1.6, "mix": 0.16, "predelay_ms": 14, "damp": 6000}, "layers": [
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 0.05, "dur": 1.6, "pitch": -4, "hp": 200, "lp": 6000, "fade_out": 800},
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 0.05, "dur": 1.6, "pitch": -3.6, "hp": 200, "lp": 6000, "gain_db": -1, "fade_out": 800},
+  {"src": "lib:oga/heartbeat-sounds/heartbeat_fast_0.wav", "at": 0.15, "onset": true, "dur": 0.5, "pitch": -2, "hp": 30, "lp": 500, "gain_db": -3, "fade_out": 200}
+]}

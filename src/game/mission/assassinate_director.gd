@@ -83,6 +83,8 @@ class Quarry:
 	var judged := false
 	var unseen := true
 	var killed_by := ""
+	## The kind of death he died of (what struck him), kept for _judge(): Town Suspicion reads whether a natural power explains it.
+	var killed_kind: StringName = &""
 	## The building he is inside, or null (out of doors, or inside the safe place).
 	var inside_of: Structure
 	## v0.11.1: the hideout alight or fallen flushed him (flush_waiting): he runs for the safe place for good -- his flight shows
@@ -551,6 +553,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 			q.died_at = _clock
 			q.fell_at = e.ground_pos
 			q.killed_by = rules.credited_key(kind)
+			q.killed_kind = kind
 			q.state = State.DEAD
 			q.inside_of = null
 			_release_guards(q)
@@ -575,6 +578,10 @@ func _judge(q: Quarry) -> void:
 	if not q.unseen:
 		rules.banner.emit(_seen_banner())
 		_sound(&"msn_scatter", at)
+		if crowd.suspicion.explains(q.killed_kind):
+			crowd.suspicion.add(Suspicion.TARGET_SIGN)
+			if not crowd.suspicion.known:
+				return  # an accident in plain sight is a sign, not proof: the town waits to know before it sends the keeper
 		if crowd.bell != null and crowd.bell.state == BellNetwork.State.IDLE:
 			crowd.bell.call_keeper()
 
@@ -635,6 +642,12 @@ func _door_in(q: Quarry) -> Vector2:
 		return hide_door
 	var i := q.stops.find(q.inside_of)
 	return q.stop_doors[i] if i >= 0 else q.target.ground_pos
+
+
+## Where a cast must land to reach `q` (Mission clarity, for the why-not banners): his feet in the street, the door he is behind indoors.
+## Only reads.
+func _reach_point(q: Quarry) -> Vector2:
+	return _door_in(q) if q.target.inside else q.target.ground_pos
 
 
 ## Where `q`'s round takes him next (v0.11 M2): the stop he walks to, or the safe place.
@@ -727,6 +740,41 @@ func any_safe() -> bool:
 	return false
 
 
+## Loss warning: every target on his way to the safe place, where his arriving loses the night (any_safe()): safe_threats().
+func threats() -> Array[Dictionary]:
+	var out := super()
+	out.append_array(safe_threats())
+	return out
+
+
+## Virtual: the loss warning's targets bound for the safe place (threats()), each `safe_<index>` at safe_eta(); none once the night is
+## decided. Expel the inquisitor's is its captain's own countdown. Only reads.
+func safe_threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if any_safe() or all_fallen() or lost_reason() != "":
+		return out
+	for q in quarries:
+		var eta := safe_eta(q)
+		if eta < INF:
+			out.append(NightThreat.make(StringName("safe_%d" % q.index), "THE %s REACHES THE %s" % [q.label, safe_label], "STOP HIM", eta,
+				q.target.ground_pos))
+	return out
+
+
+## Mission seconds until `q` walks in at the safe place: his walk there at the pace he goes now, while he is on his way to it in his own
+## mind -- past his round's last stop, or alarmed with no hideout left (fleeing_to_safe()); INF otherwise (on his round, indoors, hiding,
+## held by the god). Only reads.
+func safe_eta(q: Quarry) -> float:
+	if q.dead or not _alive(q.target) or safe_at == Vector2.INF:
+		return INF
+	var t: Person = q.target
+	if t.inside or t.mind != Person.Mind.DUTY:
+		return INF
+	if not ((q.state == State.WALKING and q.leg >= q.stops.size()) or fleeing_to_safe(q)):
+		return INF
+	return walk_left(t, safe_at) * mission_delta(1.0)
+
+
 ## Everyone who would see `q` (the current target when null) die by a Silent Doom cast on him (v0.11 M2): living, out of doors,
 ## within Crowd.DOOM_WITNESS of him but beyond SilentDoom.RADIUS (those nearer fall with him). Only reads.
 func witnesses(q: Quarry = null) -> Array[Person]:
@@ -739,7 +787,7 @@ func witnesses(q: Quarry = null) -> Array[Person]:
 		for p in group:
 			if is_instance_valid(p) and p != w.target and p.is_alive() and not p.inside and not LawMark.unseen_by_all(p):
 				var d := p.ground_pos.distance_to(at)
-				if d <= Crowd.DOOM_WITNESS and d > SilentDoom.RADIUS:
+				if d <= crowd.witness_reach(p, true) and d > SilentDoom.RADIUS:
 					out.append(p)
 	return out
 
@@ -836,6 +884,11 @@ func hint_phase() -> String:
 	return "safe" if q.leg >= q.stops.size() else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "hiding", "inside", "next", "safe"])
+
+
 ## The results' report (v0.11 M2): how the night ended for the targets ("escaped" if one got away; with all dead, "seen" if any
 ## death was seen, else "unseen"; else "alive"), how many died, how many were stopped out of the walls (god T1R) and how many deaths were seen, and the alarms.
 func report() -> Dictionary:
@@ -878,3 +931,11 @@ func teardown() -> void:
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):
 		rules.cast_made.disconnect(_on_cast)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Music by situation: the chase while a quarry flees to his hideout.
+func music_mood() -> StringName:
+	for q: Quarry in quarries:
+		if q.state == State.FLEEING:
+			return &"chase"
+	return &""

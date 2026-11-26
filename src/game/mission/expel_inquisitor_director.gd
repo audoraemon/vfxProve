@@ -489,6 +489,16 @@ func captain_eta() -> float:
 	return _eta
 
 
+## Loss warning: the captain on his last walk to the Citadel (any_safe() loses the night when he gets in), as captain_eta(); a warden never
+## goes there (his rounds loop), so the base's walk to the safe place is not asked.
+func safe_threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var eta := captain_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"captain", "THE CAPTAIN REACHES THE CITADEL", "STOP HIM", eta, (captain().target as Person).ground_pos))
+	return out
+
+
 ## How many times the countdown's road has been searched (captain_eta() answers from the last search when nothing it reads has moved).
 func eta_runs() -> int:
 	return _eta_runs
@@ -573,6 +583,33 @@ func hint_phase() -> String:
 		return "near"
 	if _is_out(q):
 		return "captain"
+	return ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "near", "captain"])
+
+
+## The why-not banners (Mission clarity, spec 5.2): a fright on a warden only sends him to hide; one on the captain within EI_FRIGHT_GAP of
+## the last count is not counted. A power that kills what it reaches counts, so says nothing. Only reads.
+const EI_WHY_WARDEN := "A WARDEN ONLY HIDES - KILL HIM"
+const EI_WHY_SHAKEN := "STILL SHAKEN - SCARE HIM AGAIN SOON"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	if not "scare" in MissionVerbs.verbs_of(key) or "banish" in MissionVerbs.verbs_of(key):
+		return ""
+	for q in quarries:
+		if q.dead or q.state == State.OUT or q.state == State.SAFE or not _alive(q.target) or q.target.inside:
+			continue
+		var g := q.target.ground_pos
+		if not _cast_reaches(key, at, g) or _may_kill(key, at, g):
+			continue
+		if not _is_captain(q):
+			return EI_WHY_WARDEN
+		if _fright_wait > PowerBook.impact(key):  # the count is made when the danger lands, not at the click
+			return EI_WHY_SHAKEN
 	return ""
 
 

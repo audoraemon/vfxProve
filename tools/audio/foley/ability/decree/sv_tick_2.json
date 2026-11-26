@@ -1,0 +1,4 @@
+{"length": 1.0, "peak_db": -1.06, "reverb": {"rt60": 1.4, "mix": 0.16, "predelay_ms": 12, "damp": 3500}, "eq": [["lowshelf", 140, 1.0], ["peak", 3000, -2.0, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/LogDrumLo_MedM_v3_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 0.6, "pitch": -7.6, "lp": 1800, "fade_out": 300, "gain_db": -2},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v4_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 0.7, "lp": 220, "fade_out": 350, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/Claves1_Hit_v3_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 0.3, "pitch": -14.6, "hp": 250, "lp": 3000, "fade_out": 150, "gain_db": -12}]}

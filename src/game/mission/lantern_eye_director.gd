@@ -491,6 +491,15 @@ func shattered_now() -> int:
 	return n
 
 
+## Loss warning: the three mirrors standing together, the Eye's countdown running (_found() loses the night when it opens), as eye_left().
+## Each run of the countdown is its own warning.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if _eye_since >= 0.0 and not found and not broken_all():
+		out.append(NightThreat.make(StringName("eye_%d" % _eye_run), "THE EYE OPENS", "SHATTER A MIRROR", eye_left(), spire))
+	return out
+
+
 ## Seconds until the Eye opens while the three stand together; EYE_OPENS while they do not (v0.11 M6).
 func eye_left() -> float:
 	return maxf(EYE_OPENS - (_clock - _eye_since), 0.0) if _eye_since >= 0.0 else EYE_OPENS
@@ -716,6 +725,29 @@ func hint_phase() -> String:
 		return "guarded" if guarded(cur) else "open"
 	if broken_count() > 0 and next_step() >= 0:
 		return "waiting"
+	return ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "eye", "shattered", "guarded", "open", "waiting"])
+
+
+## Mission clarity (spec 5.5): the guards' banners (HuntDirector), and a wright held (compelled or lured) within the cast's reach who still
+## works (_working(): only BLIND stops him). Only reads.
+const WHY_WRIGHT := "HELD, HE STILL WORKS - LEAD HIM OFF"
+
+
+func why_not(key: String, at: Vector2) -> String:
+	var text := super(key, at)
+	if text != "" or not _holds_only(key, MissionVerbs.verbs_of(key)):
+		return text
+	for i in wrights.size():
+		if not shattered[i] or steps[i].broken:
+			continue
+		for w: Guard in wrights[i]:
+			if _alive(w.man) and (w.man as Person).held_by_god() and _working(w) 					and _cast_reaches(key, at, (w.man as Person).ground_pos) and not _may_kill(key, at, (w.man as Person).ground_pos):
+				return WHY_WRIGHT
 	return ""
 
 

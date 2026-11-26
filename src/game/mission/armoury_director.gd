@@ -616,6 +616,37 @@ func step_seconds() -> float:
 	return due_in(i) if i >= 0 and hint_phase() in ["", "not_yet"] else 0.0
 
 
+## The seconds the hint's `{n}` counts down (Mission clarity): in "not_yet", the wait for the horn (step_seconds()); else 0. Only reads.
+func hint_seconds() -> float:
+	return step_seconds() if hint_phase() == "not_yet" else 0.0
+
+
+## Mission clarity (spec 5.4): why a Burn or Strike that reaches a target does not count; "" when it counts or reaches none.
+## Before its horn: `NOT MUSTERING - IT TAKES NO HARM`; a Burn on the stone gate barracks: `STONE - STRIKE IT, FIRE DOES NOTHING`; with an
+## armed man on guard: `ARMED MEN (RED) GUARD IT`. A cast that may kill one of its men is left alone (I6). Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if not ("burn" in verbs or "strike" in verbs):
+		return ""
+	for i in targets.size():
+		var s := targets[i]
+		if not _reached(key, at, s):
+			continue
+		var men: Array = []
+		for a: Armed in armed[i]:
+			men.append(a.man)
+		if _kills_near(key, at, men):
+			return ""
+		if not mustering[i]:
+			return "NOT MUSTERING - IT TAKES NO HARM"
+		if "burn" in verbs and not "strike" in verbs and _stone(s):
+			return "STONE - STRIKE IT, FIRE DOES NOTHING"
+		if not guards(i).is_empty():
+			return "ARMED MEN (RED) GUARD IT"
+		return ""
+	return ""
+
+
 ## The hint's phase (v0.11 M5), for the current target: not mustering, "not_yet" when down or WORK_AHEAD or less from its horn, else
 ## ""; mustering, "guarded" while one stands guard, else "stone" for a target fire cannot take, else "open".
 func hint_phase() -> String:
@@ -628,6 +659,11 @@ func hint_phase() -> String:
 	if not guards(i).is_empty():
 		return "guarded"
 	return "stone" if is_instance_valid(s) and not s.kind in FireManager.BURNABLE else "open"
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "not_yet", "guarded", "stone", "open"])
 
 
 ## The tour (v0.11 M5, mission spec §2): the north barracks, the gate barracks, the armoury.

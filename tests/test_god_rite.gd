@@ -97,7 +97,7 @@ static func _rite_def(t) -> void:
 	if d == null:
 		return
 	t.check(d.slots == 4 and d.dp_capacity == 8, "a bought slot and 2 bought Might reach the rite (%d, %d)" % [d.slots, d.dp_capacity])
-	t.check(d.slots == s.slots() and d.dp_capacity == s.max_might() and d.pool == s.draftable(), "the god's slots, Might and pool (%d, %d)" % [d.slots, d.dp_capacity])
+	t.check(d.slots == s.slots() and d.dp_capacity == s.max_might() and d.pool == s.in_tree(), "the god's slots, Might and pool (%d, %d)" % [d.slots, d.dp_capacity])
 	t.check(is_equal_approx(d.clock, TierBook.clock(1) + s.extra_clock()) and is_equal_approx(d.clock, 315.0), "clock 300 + one Faith clock (%f)" % d.clock)
 	t.check(d.lantern == "watch" and d.profile == "unaware", "the Watch's bell and the Unaware town (%s, %s)" % [d.lantern, d.profile])
 	t.check(d.gifts == s.gifts, "the god's gifts ride on it")
@@ -178,7 +178,7 @@ static func _bank_rite_won(t) -> void:
 	t.check(s.night == 4 and s.in_night == "", "the night counts and closes")
 	t.check(s.last_mission == "warning" and s.before_hunt == "lost_lamb", "last_mission and before_hunt are untouched")
 	t.check(s.bests.is_empty() and out.bests.is_empty(), "no best is kept")
-	t.check(int(s.carried.get(keys[0], 0)) == 1 and s.loadout == PackedStringArray([keys[0]]), "the draft is carried and remembered")
+	t.check(int(s.carried.get(keys[0], 0)) == 1 and s.loadout.is_empty(), "the cast key is carried and no loadout is remembered")
 	t.check(out.rite.won == true and out.rite.tier == 2 and out.rite.points == 2 and out.rite.gift == "watchful_bell" and out.rite.shards == 3
 		and out.rite.need == 3 and out.rite.id == "first_taste" and out.rite.name == "The First Taste", "the rite result (%s)" % [out.rite])
 	t.check(out.points == 2 and out.hunt.is_empty() and out.hunt_next == false and out.night == 4 and out.level == s.level, "the result's other keys")

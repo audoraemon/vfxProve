@@ -311,9 +311,10 @@ func _appoint_patrol(c: Person, beat: PackedVector2Array, n: int) -> Array[Perso
 ## him, and at their posts -- never one on the rally's ring or under another town order (the controller's M2 Task 4 fix ruling).
 func _appoint_hunters(_c: Person, n: int) -> Array[Person]:
 	var out: Array[Person] = []
-	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers()):
+	for p in _free_soldiers(return_to, crowd.soldiers.size(), _watchers(), false):
 		if p.mind in POST_MINDS and not p.held_by_god() and out.size() < n:
 			out.append(p)
+			take_soldier(p)  # only the men kept lose their duty records
 	return out
 
 
@@ -378,6 +379,55 @@ func _unbound_banner() -> String:
 ## fails with it; The Prisoner's "prisoner_inside".
 func lost_reason() -> String:
 	return ""
+
+
+## Loss warning: the charges being marched back to return_to by their seizers (march_eta()), from the takings_to_lose()-th soonest on
+## (NightThreat.decisive()), each `seized_<i>`; none once the night is decided. Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if lost_reason() != "":
+		return out
+	var k := takings_to_lose()
+	if k < 1:
+		return out
+	var marches: Array[Dictionary] = []
+	for i in charges.size():
+		var c := charges[i]
+		if c.taken or c.escaped or not _alive(c.man):
+			continue
+		var eta := march_eta(c)
+		if eta < INF:
+			marches.append(NightThreat.make(StringName("seized_%d" % i), _march_title(), _march_act(), eta, (c.man as Person).ground_pos))
+	out.append_array(NightThreat.decisive(marches, k))
+	return out
+
+
+## Virtual: how many more charges taken back lose the night (the loss warning): one on a night of one charge (EscortObjective fails on
+## his taking), none on a night of many unless it says (Exodus, Hide the faithful).
+func takings_to_lose() -> int:
+	return 1 if charges.size() == 1 else 0
+
+
+## Virtual: mission seconds until charge `c`, held, is taken back (_step_held(): his seizer within RETURN_REACH of return_to, he within
+## TAKE_REACH x 2 of his seizer): the later of the seizer's walk and the charge's trailing walk, each at the pace he goes now; INF while he
+## is not marched (free, bound, his seizer gone or off his errand). Only reads.
+func march_eta(c: Charge) -> float:
+	if not c.held or not _alive(c.man) or not _alive(c.seizer) or (c.seizer as Person).mind != Person.Mind.DUTY:
+		return INF
+	var s := c.seizer as Person
+	var p := c.man as Person
+	var lead := maxf(walk_left(s, return_to) - RETURN_REACH / maxf(s.walk_speed, 0.05), 0.0)
+	var trail := maxf(walk_left(p, return_to) - (RETURN_REACH + TAKE_REACH * 2.0) / maxf(p.walk_speed, 0.05), 0.0)
+	return maxf(lead, trail) * mission_delta(1.0)
+
+
+## Virtual: the loss warning's words for a charge marched back.
+func _march_title() -> String:
+	return "THE %s IS TAKEN BACK" % charge_label
+
+
+func _march_act() -> String:
+	return "FREE HIM"
 
 
 ## Virtual (v0.11 M4): the HUD's row in place of the objective's label, "" for the label (The Prisoner's while she is bound).
@@ -798,6 +848,44 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "caught", "clear", "gate"])
+
+
+## Seconds to the watch's next change (Mission clarity, read-only): its clock while the watch stands, the seconds it is away and then the walk back to
+## the next change while it is gone; 0 when no change is scheduled (it starts when a charge first nears the gate, and Exodus has none).
+func watch_change_in() -> float:
+	if not watch_changes:
+		return 0.0
+	if watch_away:
+		return away_left + (WATCH_CYCLE - WATCH_GAP)
+	return maxf(change_in, 0.0)
+
+
+## Whether a cast of `key` at `at` reaches the one person standing at `g` (Mission clarity, read-only): a Mind Whisper takes the one it is
+## clicked on (PICK_R), any other power what its cast radius holds, and WHY_MARGIN more in both.
+func _reaches_one(key: String, at: Vector2, g: Vector2) -> bool:
+	var r := MindWhisperFx.PICK_R if key == "whisper" else Crowd._cast_radius(key)
+	return at.distance_to(g) <= r + WHY_MARGIN
+
+
+## Whether a cast of `key` at `at` kills one of `who` (Variants: any may be freed), the kill radius of a Kill power (Mission clarity, read-only).
+func _kills_any(key: String, at: Vector2, who: Array) -> bool:
+	for v: Variant in who:
+		if _alive(v) and _may_kill(key, at, (v as Person).ground_pos):
+			return true
+	return false
+
+
+## Whether a cast of `key` at `at` is a blow, a fire or a rot that reaches `s` (Mission clarity, read-only), so it may bring it down.
+func _blows(key: String, at: Vector2, s: Structure) -> bool:
+	var verbs := MissionVerbs.verbs_of(key)
+	if not ("burn" in verbs or "strike" in verbs or "rot" in verbs):
+		return false
+	return is_instance_valid(s) and not s.destroyed and s.distance_to(at) <= Crowd._cast_radius(key) + WHY_MARGIN
+
+
 ## What the director adds to the results (v0.11 M2): how many times he was seized, and whether he got out.
 func report() -> Dictionary:
 	return {"seizures": seizures, "out": escaped}
@@ -808,3 +896,13 @@ func teardown() -> void:
 	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
 		crowd.escaped.disconnect(_on_escaped)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Music by situation: the chase once the hunters are out, until every charge has escaped, been taken or died.
+func music_mood() -> StringName:
+	if hunters.is_empty():
+		return &""
+	for c: Charge in charges:
+		if not c.escaped and not c.taken and _alive(c.man):
+			return &"chase"
+	return &""

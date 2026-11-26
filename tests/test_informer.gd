@@ -17,6 +17,7 @@ static func run(t) -> void:
 	_word(t)
 	_turn(t)
 	_seen(t)
+	_watched(t)
 	_discord_turns(t)
 	_found(t)
 	_cold(t)
@@ -383,7 +384,7 @@ static func _warn(t) -> void:
 	var s := _world()
 	var d: InformerDirector = s.d
 	var stops := d.tour()
-	t.check(MissionHints.line("informer").contains("Do not kill") and MissionHints.line("informer", "waiting").contains("Do not kill")
+	t.check(MissionHints.line("informer").contains("Do not kill") and MissionHints.line("informer", "waiting").contains("Nothing turns him")
 		and String(stops[0][1]).contains("do not kill him") and String(Kit.labels(d)[0]).contains("DO NOT KILL"),
 		"the hint (from the first second), the tour and the contact's tag say plainly: turn him, do not kill him (ruling on Decision 26)")
 	d._visit(0)
@@ -577,3 +578,43 @@ static func _walls_off(t) -> void:
 	t.check(not d.walls_stop and q.state != AssassinateDirector.State.OUT and d.out_count() == 0 and not d.is_leaving(q.target),
 		"with walls_stop at its default he is not OUT and not sent off the map")
 	Kit.done(s)
+
+
+## Town Suspicion (Task 5): a seen lightning kill of the informer is a sign (TARGET_SIGN), not a call; once the town knows it calls the keeper.
+static func _watched(t) -> void:
+	var s := _world()
+	var crowd: Crowd = s.crowd
+	var d: AssassinateDirector = s.d
+	var q := d.quarries[0]
+	d._set_out(q)
+	
+	var near: Person = null
+	for p in crowd.citizens:
+		if near == null and is_instance_valid(p) and p != q.target and p.is_alive() and not p.inside:
+			near = p
+	Kit.arrive(near, q.target.ground_pos + Vector2(1.5, 0.0))
+	crowd.suspicion.add(20.0)
+	crowd.suspicion.excuse(&"lightning")  # a Smite was cast: lightning is an accident
+	var before := crowd.suspicion.value
+	crowd._field.kill(q.target, &"lightning")
+	Kit.run_for(s, 0.5)
+	t.check(q.dead and q.judged and not q.unseen, "informer: the lightning kill is seen")
+	t.near(crowd.suspicion.value - before, Suspicion.TARGET_SIGN * crowd.suspicion.wary, 0.01, "informer: the seen kill adds TARGET_SIGN")
+	t.check(crowd.bell.state == BellNetwork.State.IDLE, "informer: no bell while the town does not know")
+	Kit.done(s)
+	var k := _world()
+	var kc: Crowd = k.crowd
+	var kd: AssassinateDirector = k.d
+	var kq := kd.quarries[0]
+	kd._set_out(kq)
+	
+	var kn: Person = null
+	for p in kc.citizens:
+		if kn == null and is_instance_valid(p) and p != kq.target and p.is_alive() and not p.inside:
+			kn = p
+	Kit.arrive(kn, kq.target.ground_pos + Vector2(1.5, 0.0))
+	kc.suspicion.know("test")
+	kc._field.kill(kq.target, &"lightning")
+	Kit.run_for(k, 0.5)
+	t.check(kc.bell.state != BellNetwork.State.IDLE, "informer: the town knows, the seen kill calls the keeper")
+	Kit.done(k)

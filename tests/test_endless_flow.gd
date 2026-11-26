@@ -11,6 +11,7 @@ static func run(t) -> void:
 	_clear()
 	_flow_table(t)
 	_bank_leaves_save(t)
+	_no_draft(t)
 	_load_god_forfeits(t)
 	_load_god_hunt(t)
 	_load_god_hunt_real(t)
@@ -79,7 +80,7 @@ static func _bank_leaves_save(t) -> void:
 	t.check(out.god.divine_power == 120, "main plus two wishes at tier 1 is 120 Divine Power (%s)" % [out.get("god")])
 	t.check(out.god.faith == 30 and god.faith == 30 and god.night == 1 and god.last_mission == "warning",
 		"the god banks the night: Faith %d, night %d, last %s" % [god.faith, god.night, god.last_mission])
-	t.check(god.carried == {"smite": 1} and god.loadout == kit, "and carries the drafted ability (%s)" % [god.carried])
+	t.check(god.carried == {"smite": 1}, "and carries the cast ability (%s)" % [god.carried])
 	t.check(out.best == false, "the results show no NEW BEST (the board's best is not touched)")
 	t.check(save.descend.night == 3 and save.descend.believers == 40 and save.descend.cleared == PackedStringArray(["warning"]),
 		"the board's night, believers and cleared are unchanged (%d, %d, %s)" % [save.descend.night, save.descend.believers, save.descend.cleared])
@@ -92,6 +93,30 @@ static func _bank_leaves_save(t) -> void:
 	Game.bank_god_night(lost, "warning", kit, out2)
 	t.check(out2.god.divine_power == 0 and lost.night == 1 and lost.faith == 0 and lost.in_night == "",
 		"a lost night earns nothing and counts (%d, night %d)" % [out2.god.divine_power, lost.night])
+	GodTree.dev_fill = false
+
+
+## The god descends with every ability and no draft: a god holding only a sealed key still descends, every start or photograph of a god's
+## night takes `GodNight.night_loadout()`, and banking carries the keys cast, not the keys the god brought.
+static func _no_draft(t) -> void:
+	GodTree.dev_fill = true
+	var god := GodSlot.make(1, "ruin", 9)
+	god.learned = {"smite": 1, "ember": 1}
+	var out := _outcome(true, 0, 10)
+	Game.bank_god_night(god, "warning", PackedStringArray(["ember"]), out)
+	t.check(god.carried == {"ember": 1}, "a night with two learned abilities and one cast carries only the cast one (%s)" % [god.carried])
+	var only := _capped()
+	only.learned = {"smite": 1}
+	only.sealed = "smite"
+	only.seal_nights = 2
+	t.check(only.draftable().is_empty() and Game.awaken_target(only) != "", "a god whose one key is sealed can still Awaken (%s)" % Game.awaken_target(only))
+	t.check(GodNight.night_loadout(only) == PackedStringArray(["smite"]), "and its night is the whole tree (%s)" % [GodNight.night_loadout(only)])
+	var hub := HubStatus.new(only)
+	t.check(hub.can_descend(), "and the hub lets it Descend")
+	var text := FileAccess.get_file_as_string("res://src/game/game.gd")
+	t.check(not text.contains("loadout = god.loadout.duplicate()"), "game.gd starts no god's night or photograph from the god's old loadout")
+	t.check(not text.contains("slot.draftable().is_empty()") and not text.contains("god.draftable().is_empty()"),
+		"and no Descend or Awaken asks what is draftable")
 	GodTree.dev_fill = false
 
 

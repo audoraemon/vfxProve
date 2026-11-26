@@ -14,6 +14,7 @@ signal action(name: String)
 
 ## The words the screen says, kept here under their old names (HubStatus holds them).
 const BLOCKED := HubStatus.BLOCKED
+const BLOCKED_DRAFT := HubStatus.BLOCKED_DRAFT
 const HUNT_DUE := HubStatus.HUNT_DUE
 const SEALED := HubStatus.SEALED
 const AWAKEN_HUNT := HubStatus.AWAKEN_HUNT

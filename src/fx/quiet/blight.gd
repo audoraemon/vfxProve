@@ -60,6 +60,8 @@ func _build() -> void:
 			"life": Vector2(0.6, 0.8), "size": Vector2(1, 2)})
 		if mine != Vector2.INF or (s != null and is_instance_valid(s) and not s.destroyed):
 			ctx.play(&"q_blight_hit", where)
+		else:
+			ctx.play(&"veil_fizzle", where)  # nothing of use in reach: the rot fizzles
 		if mine != Vector2.INF:
 			var d: MissionDirector = ctx.rules.director if ctx.rules != null else null
 			if d != null:

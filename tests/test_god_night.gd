@@ -29,6 +29,7 @@ static func run(t) -> void:
 	_results_conquest_line(t)
 	_conquer_bonus(t)
 	_draw_town(t)
+	_gauge(t)
 	GodTree.dev_fill = false
 
 
@@ -96,7 +97,7 @@ static func _def(t) -> void:
 	var d := GodNight.def_for(s, "warning")
 	t.check(d.slots == 4, "slots are the god's: 3 + 1 (%d)" % d.slots)
 	t.check(d.dp_capacity == 8, "Might is the tier's 6 + 2 (%d)" % d.dp_capacity)
-	t.check(d.pool == s.draftable(), "the pool is the god's draftable abilities (%s)" % [d.pool])
+	t.check(d.pool == s.in_tree(), "the pool is the god's draftable abilities (%s)" % [d.pool])
 	t.check(is_equal_approx(d.clock, TierBook.clock(1) + 30.0), "the clock is the tier's + 30 s (%s)" % d.clock)
 	t.check(is_equal_approx(d.stretch, TierBook.board("warning").stretch), "the event stretch keeps the tier's (%s)" % d.stretch)
 	t.check(d.director == StarfallDirector, "The Warning keeps its StarfallDirector")
@@ -125,7 +126,7 @@ static func _def_acts(t) -> void:
 		var b: ActDef = plain.acts[i]
 		t.check(a.slots == s.slots(), "act %s: the god's slots (%d)" % [a.id, a.slots])
 		t.check(a.dp_capacity == s.max_might(), "act %s: the god's Might (%d)" % [a.id, a.dp_capacity])
-		t.check(a.pool == s.draftable(), "act %s: the god's pool" % a.id)
+		t.check(a.pool == s.in_tree(), "act %s: the god's pool" % a.id)
 		t.check(is_equal_approx(a.clock, b.clock + s.extra_clock()), "act %s: its board clock + the Faith clock (%s vs %s)" % [a.id, a.clock, b.clock])
 
 
@@ -139,7 +140,7 @@ static func _dp(t) -> void:
 	t.check(s.night == 1 and out.night == 1, "the night counts (%d)" % s.night)
 	t.check(s.last_mission == "warning", "the mission is remembered (%s)" % s.last_mission)
 	t.check(s.carried == {"smite": 1}, "the drafted ability is carried once (%s)" % [s.carried])
-	t.check(s.loadout == PackedStringArray(["smite"]), "the loadout is the last draft")
+	t.check(s.loadout.is_empty(), "bank no longer remembers a loadout")
 	t.check(out.bar == [s.divine_power, s.need()], "the bar is the god's (%s)" % [out.bar])
 	t.check(out.notice == 10 and out.notice_change == 10, "this fixture has no ascent, so it is a caught win: Notice +10 (%d)" % out.notice)
 	t.check(out.believers == 30, "believers banked: 30 (%d)" % out.believers)
@@ -196,11 +197,43 @@ static func _bests(t) -> void:
 	t.check(s.carried.get("smite", 0) == 2, "two nights, carried twice")
 
 
+## A gauge night (Might gauge, Task 4): the def carries the gauge, the seal, the god's type and every learned key; bank counts the keys cast.
+static func _gauge(t) -> void:
+	var s := _slot()
+	s.bought = {"might": 2, "slot": 3}
+	var keys := s.in_tree()
+	s.sealed = keys[0]
+	s.seal_nights = 2
+	s.loadout = PackedStringArray(["ember"])
+	var defs: Array = [GodNight.def_for(s, "warning"), GodNight.def_for(s, "first_taste"), GodNight.def_for(s, GodNight.HUNTS[0].id)]
+	var long := GodNight.def_for(s, "long_night")
+	for a: ActDef in long.acts:
+		defs.append(a)
+	defs.append(long)
+	for d: MissionDef in defs:
+		t.check(d.pool == s.in_tree() and d.pool.has(s.sealed), "%s: the pool is every learned key, the sealed one too" % d.id)
+		t.check(d.sealed == s.sealed and d.god_type == s.type, "%s: the seal and the god's type (%s, %s)" % [d.id, d.sealed, d.god_type])
+		t.check(d.might_capacity == s.max_might() and is_equal_approx(d.might_refill, s.refill_seconds()) and d.gauge(),
+			"%s: the gauge's size and refill (%d, %s)" % [d.id, d.might_capacity, d.might_refill])
+	t.check(is_equal_approx(s.refill_seconds(), 45.0), "the fixture's refill is 45 s")
+	var plain := TierBook.board("warning", null)
+	t.check(not plain.gauge() and plain.sealed == "" and plain.god_type == "" and plain.might_capacity == 0, "a board def has no gauge")
+	var before := s.carried.duplicate()
+	var other := keys[1]
+	GodNight.bank(s, "warning", PackedStringArray([keys[0]]), _outcome(true, 0, 0))
+	t.check(int(s.carried.get(keys[0], 0)) == int(before.get(keys[0], 0)) + 1, "a cast key is carried once more")
+	t.check(int(s.carried.get(other, 0)) == int(before.get(other, 0)), "a key not cast is unchanged")
+	t.check(s.loadout == PackedStringArray(["ember"]), "bank leaves the loadout alone (%s)" % [s.loadout])
+	t.check(GodNight.night_loadout(s) == s.in_tree(), "night_loadout is everything learned")
+	s.learned = {}
+	t.check(GodNight.night_loadout(s).is_empty(), "nothing learned: an empty loadout")
+
+
 static func _mission_hooks(t) -> void:
 	var s := _slot()
 	var m := Mission.new()
 	m.night_def = func() -> MissionDef: return GodNight.def_for(s, "warning")
-	t.check(m._mission_def(PackedStringArray()).pool == s.draftable(), "night_def replaces the mission's def")
+	t.check(m._mission_def(PackedStringArray()).pool == s.in_tree(), "night_def replaces the mission's def")
 	t.check(m.restart_locked == false, "R restarts unless locked")
 	t.check(m.has_signal("clock_started"), "the mission announces its clock starting")
 	t.check(m.has_signal("decided") and m.report_on_decision == false, "the mission can report when a run is decided; off unless Endless sets it (review M1)")

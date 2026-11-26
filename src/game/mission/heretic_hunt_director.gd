@@ -131,7 +131,7 @@ func _cellar_house() -> Structure:
 ## Some living soldier stands within QUIET_R of `door`, on watch (where he stands, not the post he was given) (v0.11 M4, The Informer's quiet doors). Only reads.
 func _watched(door: Vector2) -> bool:
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.on_watch() and p.ground_pos.distance_to(door) <= QUIET_R:
+		if is_instance_valid(p) and p.on_watch() and p.watch_at().distance_to(door) <= QUIET_R:
 			return true
 	return false
 
@@ -222,6 +222,10 @@ func _opening_banner() -> String:
 ## The banner when the captain finds the cellar (v0.11 M4).
 func _found_banner() -> String:
 	return "THE CELLAR IS FOUND"
+
+
+func _find_title() -> String:
+	return "THE CAPTAIN FINDS THE CELLAR"
 
 
 ## Blight's mark (v0.11.1, spec §7.3, Heretic Hunt row 15): a raised standard within BlightFx.REACH of `at`, guarded or not (a guarded one

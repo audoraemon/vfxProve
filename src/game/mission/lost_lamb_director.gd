@@ -347,6 +347,45 @@ func hint_phase() -> String:
 	return phase
 
 
+## Every phase hint_phase() can return: the escort's and the two the lamb adds (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	var out := super()
+	out.append_array(PackedStringArray(["running", "led"]))
+	return out
+
+
+## The seconds the hint counts down (Mission clarity, read-only): to his bolt while the god has neither led him nor he runs (bolt_left(), the
+## timeline's, stretch and all), to the watch's change at the gate; 0 elsewhere.
+func hint_seconds() -> float:
+	match hint_phase():
+		"":
+			return bolt_left()
+		"gate":
+			return watch_change_in()
+	return 0.0
+
+
+## Why a cast that reached him did not count (Mission clarity, read-only; pre-flight I5, I6):
+## - caught: a Lead or a Lure on him while a soldier still marches him back does not free him -- the captor must be held, scared off or
+##   killed (a captor already off duty is freed at the next look: that cast counts);
+## - a Will-o'-Wisp whose light lies beyond WISP_HAND of him draws him not. A Death Mark's or a Windfall's lure draws him by the Person rule but
+##   never leads him (`led`): no banner for it.
+func why_not(key: String, at: Vector2) -> String:
+	if escaped or taken or not _alive(charge) or charge.inside:
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	var gap := charge.ground_pos.distance_to(at)
+	if held:
+		if _alive(seizer) and (seizer as Person).mind != Person.Mind.DUTY:
+			return ""
+		if ("lead" in verbs or "lure" in verbs) and _reaches_one(key, at, charge.ground_pos):
+			return "HE IS HELD - FREE HIM FIRST"
+		return ""
+	if key == "wisp" and gap > WISP_HAND and gap <= Crowd._cast_radius(key) + WHY_MARGIN:
+		return "TOO FAR - HE ANSWERS A NEAR LIGHT"
+	return ""
+
+
 ## The tour (v0.11 M2, spec §3): him, the west gate, the Temple.
 func tour() -> Array:
 	var out := []
@@ -355,3 +394,8 @@ func tour() -> Array:
 	out.append([gate_at, "The west gate. Its watch changes soon after he draws near."])
 	out.append([return_to, "The Temple. At %s it sends searchers after him." % UiTheme.clock(hunt_at)])
 	return out
+
+
+## Music by situation: the chase while the lamb bolts, or the hunters are out.
+func music_mood() -> StringName:
+	return &"chase" if bolting else super()

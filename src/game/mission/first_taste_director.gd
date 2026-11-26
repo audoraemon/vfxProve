@@ -618,6 +618,45 @@ func _keep_file(m: March) -> void:
 		ahead = p
 
 
+# --- The loss warning ---------------------------------------------------------------------------
+
+## Loss warning: the clergy cleansing the shrine (RiteFlameObjective: the flame out loses the night), `cleanse` at cleanse_eta(). Real
+## seconds, as every rite timer and the strip's march rows. Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := cleanse_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"cleanse", CLEANSE, "BREAK THE MARCH", eta, shrine()))
+	return out
+
+
+## Real seconds until the ring puts the flame out: with CLEANSE_NEED kneeling, what is left of CLEANSE_SECONDS; else the CLEANSE_NEED-th
+## soonest marcher on his spot (his walk there at the pace he goes now; one waiting in the file counts his walk as if he went on, so the
+## warning can come early, never late; one held by the god kneels for nothing and is left out) and then the whole ring. Marches still mustering are far off. INF once the flame is out or
+## the shards are won. Only reads.
+func cleanse_eta() -> float:
+	if flame_out or stages_done():
+		return INF
+	if _kneeling() >= CLEANSE_NEED:
+		return maxf(CLEANSE_SECONDS - cleanse, 0.0)
+	var soon: Array[float] = []
+	for m in marches:
+		if m.done or not m.walking:
+			continue
+		for v: Variant in m.people:
+			if not _alive(v) or not m.spots.has(v) or held(v):
+				continue
+			var p := v as Person
+			if _kneels(m, p):
+				soon.append(0.0)
+			else:
+				soon.append(maxf(walk_left(p, m.spots[p]) - KNEEL_REACH / maxf(p.walk_speed, 0.05), 0.0))
+	if soon.size() < CLEANSE_NEED:
+		return INF
+	soon.sort()
+	return soon[CLEANSE_NEED - 1] + CLEANSE_SECONDS
+
+
 # --- Reports for the HUD -----------------------------------------------------------------------
 
 ## A march's seconds to the shrine: the muster still to run and the leader's walk (review-t4 I4: counted once, smooth through the set-out).
@@ -660,6 +699,30 @@ func hint_phase() -> String:
 	if chain_state == Chain.BITE or chain_state == Chain.DRAG:
 		return "drag"
 	return "chain"
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["drag", "cleanse", "march", "chain"])
+
+
+const WHY_HELD := "HELD, HE ONLY LOSES TIME"
+
+
+## Mission clarity (spec 5.6): a Hold that is no kill and no fright on a marcher while a file walks -- he only loses time. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	if hint_phase() != "march":
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	if not "hold" in verbs or "kill" in verbs or "scare" in verbs:
+		return ""
+	for m in marches:
+		if m.done or not m.walking:
+			continue
+		for v: Variant in m.people:
+			if _alive(v) and _cast_reaches(key, at, (v as Person).ground_pos):
+				return WHY_HELD
+	return ""
 
 
 ## The shrine and the two ways in: the gate pair and the camera's resting place.

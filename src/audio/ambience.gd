@@ -10,7 +10,8 @@ extends Node
 ## single cries, a scream or a man's yell from a running citizen near the camera, more often the more the town panics,
 ## each heard at its own distance and side. Before, one short loop with the same screams in it played every few seconds.
 ## Pass 4 made the beds full range and drier, with the feet of the running crowd under them for weight.
-## Pass 5 added the soldiers' march (_march()); their blows and orders are SoldierVoices, the animals AnimalVoices.
+## Pass 5 added the soldiers' march, since removed (the user found it grating); their blows and orders are
+## SoldierVoices, the animals AnimalVoices.
 ## Pass 6 lets a dog or cat near the camera call now and then (_animal_call()), by day and by night, and places fire
 ## where it burns (FireSounds): the town-wide fire bed is now the far-off part of it.
 ## The town's children (Children) are heard too: a frightened child's cry is its own (cry_cue()), and by day one at play
@@ -50,15 +51,6 @@ const NIGHT_CALLS := Vector2(8.0, 20.0)
 const CALL_QUIET := 0.35
 ## How far from the screen's centre a call can be, in screen pixels at zoom 1.
 const CALL_SPREAD := Vector2(300.0, 170.0)
-## The soldiers' march (natural sound pass 5): every MARCH_EVERY seconds one of the MARCH_PICKS soldiers nearest the
-## screen's centre takes a step, in turn, so their feet fall one after another. Only those that walk at MARCH_SPEED
-## (ground units a second) or more and stand within MARCH_REACH of the screen (a share of its centre-to-corner) count:
-## a soldier at its post is silent. A calm town's patrols are silent too (march_heard()): the march is heard once the
-## alarm has risen, when the soldiers move with purpose -- a patrol's steady tread was a clatter under every quiet day.
-const MARCH_EVERY := 0.3
-const MARCH_PICKS := 2
-const MARCH_SPEED := 0.25
-const MARCH_REACH := 0.9
 ## The town's dogs and cats (natural sound pass 6): every ANIMAL_DAY (by night ANIMAL_NIGHT) seconds one of the
 ## ANIMAL_PICKS animals nearest the screen's centre, at random, barks or meows (AnimalVoices.Act.CALL), if it is within
 ## ANIMAL_REACH of the screen (a share of its centre-to-corner; a little past the edge is heard far off, muffled). None
@@ -80,11 +72,8 @@ var _gain := {"amb_day": 0.0, "amb_night": 0.0, "amb_fire": 0.0, "crowd_unrest":
 var _rng := RandomNumberGenerator.new()
 var _next_call := 3.0
 var _next_cry := 0.0
-var _next_march := 0.0
-var _march_turn := 0
 var _next_animal := 4.0
 var _next_child := 6.0
-var _last_at := {}  ## soldier instance id -> ground position at the last march tick
 var _stopped := false
 ## Fire where it burns (pass 6): the nearest burning buildings' own crackle, catching, cracking and dousing.
 var _fire: FireSounds
@@ -170,7 +159,6 @@ func _process(delta: float) -> void:
 			p.play(_rng.randf() * p.stream.get_length())
 		p.volume_db = float(Sfx.CATALOG[cue].get("db", 0.0)) + linear_to_db(_gain[cue])
 	_cries(delta, _crowd.panic_level())
-	_march(delta)
 	if _fire != null:
 		_fire.step(delta)
 	_animal_call(delta, night)
@@ -265,52 +253,6 @@ func _animal_call(delta: float, night: bool) -> void:
 	near.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 	var who: Animal = near[_rng.randi() % mini(ANIMAL_PICKS, near.size())][1]
 	_crowd.animals.voices.say(_crowd.sfx, who, AnimalVoices.Act.CALL)
-
-
-## Whether the soldiers' march is heard at all at this alarm stage: not in a calm town.
-static func march_heard(stage: AlarmManager.Stage) -> bool:
-	return stage != AlarmManager.Stage.NORMAL
-
-
-## Whether a soldier that moved `moved` ground units in `seconds` is marching.
-static func marching(moved: float, seconds: float) -> bool:
-	return seconds > 0.0 and moved / seconds >= MARCH_SPEED
-
-
-## The nearest marching soldiers to the screen's centre take a step in mail.
-func _march(delta: float) -> void:
-	_next_march -= delta
-	if _next_march > 0.0 or _crowd.sfx == null:
-		return
-	if not march_heard(_crowd.alarms.stage):
-		_last_at.clear()
-		return
-	_next_march = MARCH_EVERY
-	var cam := get_viewport().get_camera_2d()
-	if cam == null:
-		return
-	var centre := cam.get_screen_center_position()
-	var reach := maxf((get_viewport().get_visible_rect().size * 0.5 / cam.zoom).length(), 1.0)
-	var near: Array = []  # [screen distance, soldier]
-	var seen := {}
-	for p in _crowd.soldiers:
-		if not is_instance_valid(p) or not p.is_alive() or p.inside:
-			continue
-		var id := p.get_instance_id()
-		seen[id] = true
-		var moved := p.ground_pos.distance_to(_last_at.get(id, p.ground_pos))
-		_last_at[id] = p.ground_pos
-		var d := (Iso.ground_to_screen(p.ground_pos) - centre).length() / reach
-		if marching(moved, MARCH_EVERY) and d < MARCH_REACH:
-			near.append([d, p])
-	for id in _last_at.keys():
-		if not seen.has(id):
-			_last_at.erase(id)
-	near.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	if near.is_empty():
-		return
-	_march_turn += 1
-	_crowd.sfx.play(&"sol_step", near[_march_turn % mini(MARCH_PICKS, near.size())][1].ground_pos)
 
 
 ## A call somewhere near the camera, so it is heard at its distance and side.

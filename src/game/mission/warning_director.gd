@@ -276,6 +276,15 @@ func herald_eta() -> float:
 	return (_descend + TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW)) * rules.clock_rate
 
 
+## Loss warning: this warning's Herald while he runs for the Temple (HeraldObjective loses the night when he gets in), as herald_eta().
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := herald_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"herald", "THE HERALD REACHES THE TEMPLE", "STOP HIM", eta, messenger.ground_pos))
+	return out
+
+
 ## The toll fell (LanternWatch.on_toll()): the keeper who rang, if he carries this warning, comes down the tower before he runs; the others
 ## (a messenger still on his way, a watchman still staring) simply have the Temple for their errand from their next look.
 func on_toll() -> void:
@@ -522,13 +531,13 @@ func _judge() -> void:
 ## other warnings own as well.
 func _relay_witness(at: Vector2) -> Person:
 	var best: Person = null
-	var best_d := Crowd.DOOM_WITNESS
+	var best_d := INF
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or on_lantern_errand(p) or p.is_child():
 				continue  # (a child, Children, carries no warning)
 			var d := p.ground_pos.distance_to(at)
-			if d <= best_d:
+			if d <= best_d and d <= crowd.witness_reach(p, true):
 				best = p
 				best_d = d
 	return best
@@ -601,7 +610,7 @@ func witnesses() -> Array[Person]:
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if is_instance_valid(p) and p != messenger and p.is_alive() and not p.inside and not on_lantern_errand(p) and not LawMark.unseen_by_all(p) \
-					and p.ground_pos.distance_to(messenger.ground_pos) <= Crowd.DOOM_WITNESS:
+					and p.ground_pos.distance_to(messenger.ground_pos) <= crowd.witness_reach(p, true):
 				out.append(p)
 	return out
 
@@ -614,6 +623,47 @@ func hint_phase() -> String:
 	if phase == Phase.DELIVERED:
 		return "bell"
 	return "relay" if phase == Phase.RUN and relays > 0 else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "herald", "bell", "relay"])
+
+
+## What a cast does to the carrier (Mission clarity, spec 5.1; pre-flight I6): NONE when it does nothing to him (it does not reach him, or
+## is no verb that moves him), MAYBE when it reaches him and could stop the warning (a kill in reach of him, a banish where the walls stop it,
+## a calm), NOT when it reaches him and will not: a fright, Discord, a whisper or a lure only stops him until he is on his feet. Only reads.
+enum Reach { NONE, MAYBE, NOT }
+const STOPS_BANNER := "HE STOPS, BUT KEEPS THE WARNING"
+
+
+func _carrier_reach(key: String, at: Vector2) -> Reach:
+	# A kill that has just taken the carrier is the cast that counted: where he fell (waiting to be judged, or stopped by it).
+	var fell := _fell_at
+	if fell == Vector2.INF and stopped_how == "kill" and is_instance_valid(messenger):
+		fell = messenger.ground_pos
+	if fell != Vector2.INF and "kill" in MissionVerbs.verbs_of(key) and _may_kill(key, at, fell):
+		return Reach.MAYBE
+	if warning_dead or phase == Phase.OVER or not _alive(messenger) or messenger.inside:
+		return Reach.NONE
+	if not _cast_reaches(key, at, messenger.ground_pos):
+		return Reach.NONE
+	var verbs := MissionVerbs.verbs_of(key)
+	if ("kill" in verbs and _may_kill(key, at, messenger.ground_pos)) or "calm" in verbs or ("banish" in verbs and walls_stop):
+		return Reach.MAYBE
+	for v: String in ["scare", "confuse", "lead", "lure"]:
+		# An ordinary loud cast does not frighten a soldier (pre-flight B1); every other hold takes him.
+		if v in verbs and not (v == "scare" and messenger.soldier):
+			# The watchman of a barred postern holds its key: a fright takes him out through it and the walls stop the warning (W3).
+			if v == "scare" and key_door() != Vector2.INF:
+				return Reach.MAYBE
+			return Reach.NOT
+	return Reach.NONE
+
+
+## Mission clarity (spec 5.1): a fright, Discord, a whisper or a lure on the carrier stops him only until he is back on his feet.
+func why_not(key: String, at: Vector2) -> String:
+	return STOPS_BANNER if _carrier_reach(key, at) == Reach.NOT else ""
 
 
 ## The tour (board tags, spec §4): the watchman at the gate, then the bellkeeper.
@@ -655,3 +705,8 @@ func teardown() -> void:
 		if is_instance_valid(crowd) and (_slowed as Person).mind == Person.Mind.DUTY:
 			crowd.off_duty(_slowed as Person)
 	_slowed = null
+
+
+## Music by situation: the chase while the messenger runs.
+func music_mood() -> StringName:
+	return &"chase" if phase == Phase.RUN else &""

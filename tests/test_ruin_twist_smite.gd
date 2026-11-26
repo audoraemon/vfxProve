@@ -1,16 +1,18 @@
 extends RefCounted
-## Smite level 5, Forked Bolt (Ruin ability levels, Task 2): 0.12 s after the strike a full bolt leaps to the nearest person within 2.5 of the click.
+## Smite level 5, Gathered Storm (Smite and Ember adjustments, Task 1): a drag from the press grows the bolt -- kill radius KILL_R * s,
+## every building within HIT_R * s hit -- with s = 1 + drag / GROW_PER, GROW_MAX at most. A click (or a twitch) is the plain bolt.
 
 const SMITE := preload("res://src/fx/ruin/smite.gd")
 
 
 static func run(t) -> void:
-	_forks(t)
-	_level_four(t)
-	_nobody_near(t)
-	_nobody_at_the_click(t)
-	_inside_and_ties(t)
+	_grow_for(t)
+	_click_is_plain(t)
+	_drag_grows(t)
+	_cap(t)
+	_below_five(t)
 	_same_draws(t)
+	_crack(t)
 
 
 static func _ctx(seed_value: int) -> FxContext:
@@ -45,9 +47,25 @@ static func _man(ctx: FxContext, at: Vector2, inside := false) -> Person:
 	return p
 
 
-## Cast at the origin at `level`, run past the strike and the fork.
-static func _cast(ctx: FxContext, level: int) -> SmiteFx:
-	var fx: SmiteFx = FxTimeline.cast(SMITE, ctx, Vector2.ZERO, {"level": level})
+## A small house whose nearest edge is `d` east of the origin, too stout for one blow to fell (so the blow shows in its hp).
+static func _house(ctx: FxContext, d: float) -> Structure:
+	return _stout(ctx.env.add_structure(Rect2(Vector2(d, -0.3), Vector2(0.6, 0.6)), 18.0, Structure.Kind.HOUSE, &"house"))
+
+
+## The same, `d` west of the origin.
+static func _west_house(ctx: FxContext, d: float) -> Structure:
+	return _stout(ctx.env.add_structure(Rect2(Vector2(-d - 0.6, -0.3), Vector2(0.6, 0.6)), 18.0, Structure.Kind.HOUSE, &"house"))
+
+
+static func _stout(s: Structure) -> Structure:
+	s.max_hp = 500.0
+	s.hp = 500.0
+	return s
+
+
+## Cast at the origin with `extra`, run past the strike.
+static func _cast(ctx: FxContext, extra: Dictionary) -> SmiteFx:
+	var fx: SmiteFx = FxTimeline.cast(SMITE, ctx, Vector2.ZERO, extra)
 	fx._process(SmiteFx.T_STRIKE + 0.01)
 	return fx
 
@@ -57,79 +75,84 @@ static func _end(fx: SmiteFx) -> void:
 	fx.free()
 
 
-static func _forks(t) -> void:
+static func _kill_r(level: int) -> float:
+	return float(PowerBook.level_stat("smite", level, "KILL_R", SmiteFx.KILL_R))
+
+
+static func _grow_for(t) -> void:
+	t.check(SmiteFx.GROW_PER == 1.5 and SmiteFx.GROW_MAX == 2.5, "GROW_PER 1.5, GROW_MAX 2.5")
+	t.check(SmiteFx.grow_for(0.0) == 1.0 and is_equal_approx(SmiteFx.grow_for(1.5), 2.0) and SmiteFx.grow_for(9.0) == 2.5,
+		"grow_for: no drag 1.0, a drag of 1.5 doubles, a long one stops at 2.5 (%.2f, %.2f, %.2f)"
+		% [SmiteFx.grow_for(0.0), SmiteFx.grow_for(1.5), SmiteFx.grow_for(9.0)])
+	t.check(SmiteFx.grow_for(-1.0) == 1.0, "grow_for never shrinks the bolt")
+	t.check(SmiteFx.grow_of({"level": 5}, Vector2.ZERO) == 1.0 and SmiteFx.grow_of({"level": 4, "to": Vector2(1.5, 0.0)}, Vector2.ZERO) == 1.0
+		and is_equal_approx(SmiteFx.grow_of({"level": 5, "to": Vector2(1.5, 0.0)}, Vector2.ZERO), 2.0)
+		and SmiteFx.grow_of({"level": 5, "to": Vector2(Targeting.DRAG_MIN - 0.1, 0.0)}, Vector2.ZERO) == 1.0,
+		"grow_of: level 5 with no drag, below level 5, and a twitch under the dead zone are 1.0; a level 5 drag of 1.5 is 2.0")
+
+
+## A level 5 cast with no drag is the level 4 bolt with the level 5 numbers, and lays no fork.
+static func _click_is_plain(t) -> void:
+	var r := _kill_r(5)
+	for extra: Dictionary in [{"level": 5}, {"level": 5, "to": Vector2(0.2, 0.0), "dir": Targeting.DEFAULT_DIR}]:
+		var ctx := _ctx(1)
+		var a := _man(ctx, Vector2(0.0, -(r - 0.02)))
+		var b := _man(ctx, Vector2(0.0, r + 0.05))
+		var c := _man(ctx, Vector2(0.0, 2.0))
+		var near := _house(ctx, SmiteFx.HIT_R - 0.05)
+		var far := _west_house(ctx, SmiteFx.HIT_R + 0.05)
+		var fx := _cast(ctx, extra)
+		fx._process(0.5)
+		t.check(fx.grow == 1.0 and not a.is_alive() and b.is_alive() and c.is_alive() and fx.struck == 1,
+			"level 5 %s: only the one inside KILL_R(5) %.2f dies, nobody else is struck afterwards (struck %d)" % [extra, r, fx.struck])
+		t.check(is_equal_approx(near.hp, near.max_hp - fx.lv_damage) and far.hp == far.max_hp,
+			"level 5 %s: the house within HIT_R takes DAMAGE, the one past it none" % [extra])
+		t.check(not ("forked_at" in fx) and not (load("res://src/fx/ruin/smite.gd") as GDScript).get_script_constant_map().has("FORK_R"),
+			"the fork is gone")
+		_end(fx)
+		_drop(ctx)
+
+
+## A level 5 drag of 1.5: s = 2.0.
+static func _drag_grows(t) -> void:
+	var r := _kill_r(5)
 	var ctx := _ctx(1)
-	var a := _man(ctx, Vector2(0.3, 0.0))
-	var b := _man(ctx, Vector2(0.0, 2.0))
-	var c := _man(ctx, Vector2(-3.0, 0.0))
-	var fx := _cast(ctx, 5)
-	t.check(not a.is_alive() and b.is_alive() and fx.struck == 1 and fx.forked_at == Vector2.INF,
-		"level 5: the first bolt takes the one at 0.3 and the fork is still in the air (struck %d)" % fx.struck)
-	fx._process(SmiteFx.FORK_DELAY + 0.01)
-	t.check(not a.is_alive() and not b.is_alive() and c.is_alive() and fx.struck == 2,
-		"level 5: both nearer die, the one at 3.0 lives (struck %d)" % fx.struck)
-	t.check(fx.forked_at == Vector2(0.0, 2.0), "level 5: forked_at is the second one's spot (%s)" % fx.forked_at)
+	var inside := _man(ctx, Vector2(0.0, -1.9 * r))
+	var outside := _man(ctx, Vector2(0.0, 2.1 * r))
+	var indoors := _man(ctx, Vector2(0.0, 1.0 * r), true)
+	var near := _house(ctx, SmiteFx.HIT_R * 2.0 - 0.05)
+	var far := _west_house(ctx, SmiteFx.HIT_R * 2.0 + 0.05)
+	var fx := _cast(ctx, {"level": 5, "to": Vector2(0.0, -1.5), "dir": Vector2(0.0, -1.0)})
+	t.check(is_equal_approx(fx.grow, 2.0), "a level 5 drag of 1.5 grows the bolt 2x (%.2f)" % fx.grow)
+	t.check(not inside.is_alive() and outside.is_alive() and indoors.is_alive() and fx.struck == 1,
+		"it kills at 1.9 x KILL_R(5) and spares 2.1 x, and indoors is safe (struck %d)" % fx.struck)
+	t.check(is_equal_approx(near.hp, near.max_hp - fx.lv_damage) and far.hp == far.max_hp,
+		"a house within HIT_R x 2 takes DAMAGE (hp %.1f), one past it none (hp %.1f)" % [near.hp, far.hp])
 	_end(fx)
 	_drop(ctx)
 
 
-static func _level_four(t) -> void:
+## A drag of 10: the radius stops at GROW_MAX.
+static func _cap(t) -> void:
+	var r := _kill_r(5)
 	var ctx := _ctx(1)
-	var a := _man(ctx, Vector2(0.3, 0.0))
-	var b := _man(ctx, Vector2(0.0, 2.0))
-	var fx := _cast(ctx, 4)
-	fx._process(SmiteFx.FORK_DELAY + 0.5)
-	t.check(not a.is_alive() and b.is_alive() and fx.struck == 1 and fx.forked_at == Vector2.INF,
-		"level 4: only the first dies, forked_at stays INF")
+	var inside := _man(ctx, Vector2(2.45 * r, 0.0))
+	var outside := _man(ctx, Vector2(-2.55 * r, 0.0))
+	var fx := _cast(ctx, {"level": 5, "to": Vector2(10.0, 0.0), "dir": Vector2(1.0, 0.0)})
+	t.check(fx.grow == SmiteFx.GROW_MAX and not inside.is_alive() and outside.is_alive(),
+		"a drag of 10 is capped at 2.5x: 2.45 x KILL_R(5) dies, 2.55 x lives (grow %.2f)" % fx.grow)
 	_end(fx)
 	_drop(ctx)
 
 
-static func _nobody_near(t) -> void:
+## Below level 5 a drag (a bot's "to") grows nothing.
+static func _below_five(t) -> void:
 	var ctx := _ctx(1)
-	var a := _man(ctx, Vector2(0.3, 0.0))
-	var far := _man(ctx, Vector2(0.0, 2.6))
-	var fx := _cast(ctx, 5)
-	fx._process(SmiteFx.FORK_DELAY + 0.5)
-	t.check(not a.is_alive() and far.is_alive() and fx.forked_at == Vector2.INF, "level 5 with the only other person at 2.6: no fork")
-	_end(fx)
-	_drop(ctx)
-	ctx = _ctx(1)
-	fx = _cast(ctx, 5)
-	fx._process(SmiteFx.FORK_DELAY + 0.5)
-	t.check(fx.forked_at == Vector2.INF and fx.struck == 0, "level 5 with nobody anywhere: no fork, no error")
-	_end(fx)
-	_drop(ctx)
-
-
-static func _nobody_at_the_click(t) -> void:
-	var ctx := _ctx(1)
-	var b := _man(ctx, Vector2(2.0, 0.0))
-	var fx := _cast(ctx, 5)
-	t.check(b.is_alive() and fx.struck == 0, "nobody at the click: the first bolt strikes nobody")
-	fx._process(SmiteFx.FORK_DELAY + 0.01)
-	t.check(not b.is_alive() and fx.forked_at == Vector2(2.0, 0.0) and fx.struck == 1, "...and it still forks to the one at 2.0")
-	_end(fx)
-	_drop(ctx)
-
-
-static func _inside_and_ties(t) -> void:
-	# A person indoors is never the fork's target, even the nearest.
-	var ctx := _ctx(1)
-	var indoors := _man(ctx, Vector2(1.0, 0.0), true)
-	var open := _man(ctx, Vector2(0.0, 2.2))
-	var fx := _cast(ctx, 5)
-	fx._process(SmiteFx.FORK_DELAY + 0.01)
-	t.check(indoors.is_alive() and not open.is_alive() and fx.forked_at == Vector2(0.0, 2.2), "an indoor person is skipped; the one in the open at 2.2 is struck")
-	_end(fx)
-	_drop(ctx)
-	# Equal distance: the field's order decides (the one added first).
-	ctx = _ctx(1)
-	var first := _man(ctx, Vector2(1.5, 0.0))
-	var second := _man(ctx, Vector2(-1.5, 0.0))
-	fx = _cast(ctx, 5)
-	fx._process(SmiteFx.FORK_DELAY + 0.01)
-	t.check(not first.is_alive() and second.is_alive() and fx.forked_at == Vector2(1.5, 0.0), "a tie goes to the field's order")
+	var r := _kill_r(4)
+	var a := _man(ctx, Vector2(r - 0.02, 0.0))
+	var b := _man(ctx, Vector2(1.5 * r, 0.0))
+	var fx := _cast(ctx, {"level": 4, "to": Vector2(0.0, 3.0)})
+	t.check(fx.grow == 1.0 and not a.is_alive() and b.is_alive() and fx.struck == 1, "level 4 with a \"to\": the plain level 4 bolt")
 	_end(fx)
 	_drop(ctx)
 
@@ -137,13 +160,38 @@ static func _inside_and_ties(t) -> void:
 ## The twist adds no random draw to a headless cast: the rng ends where a level-4 cast leaves it.
 static func _same_draws(t) -> void:
 	var states: Array[int] = []
-	for level in [4, 5]:
+	for extra: Dictionary in [{"level": 4}, {"level": 5, "to": Vector2(2.0, 0.0)}]:
 		var ctx := _ctx(7)
 		_man(ctx, Vector2(0.3, 0.0))
 		_man(ctx, Vector2(0.0, 2.0))
-		var fx := _cast(ctx, level)
-		fx._process(SmiteFx.FORK_DELAY + 0.5)
+		var fx := _cast(ctx, extra)
+		fx._process(0.5)
 		states.append(ctx.rng.state)
 		_end(fx)
 		_drop(ctx)
-	t.check(states[0] == states[1], "level 5 draws the same random numbers as level 4 (%d vs %d)" % [states[0], states[1]])
+	t.check(states[0] == states[1], "a grown level 5 bolt draws the same random numbers as level 4 (%d vs %d)" % [states[0], states[1]])
+
+
+class Rec extends Node:
+	var cues: Array = []
+
+	func play(cue: StringName, _g: Vector2, _db := 0.0) -> Node:
+		cues.append(cue)
+		return null
+
+
+## The sound pass's twist cue, once the fork's: smite_crack plays on a gathered storm only -- a click or a twitch at level 5 is the plain bolt.
+static func _crack(t) -> void:
+	for extra: Dictionary in [{"level": 5}, {"level": 5, "to": Vector2(0.0, 1.5), "dir": Targeting.DEFAULT_DIR}]:
+		var ctx := _ctx(1)
+		var rec := Rec.new()
+		ctx.sfx = rec
+		var fx := _cast(ctx, extra)
+		fx._process(0.5)
+		var dragged: bool = extra.has("to")
+		t.check(rec.cues.has(&"smite_strike") and rec.cues.has(&"smite_crack") == dragged,
+			"level 5 %s: the strike sounds, and the crack only when the bolt is gathered (%s)" % ["drag" if dragged else "click", rec.cues])
+		ctx.sfx = null
+		rec.free()
+		_end(fx)
+		_drop(ctx)

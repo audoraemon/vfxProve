@@ -100,6 +100,7 @@ static func _reserve(t) -> void:
 	var m := crowd.marshals
 	crowd.rally()
 	CorpsTest.ring(crowd)
+	CorpsTest.hold_free(crowd)
 	# On the walls, before the evacuation.
 	var dead: Person = CorpsTest.first_of(crowd, Person.Corps.MARSHAL)
 	var ring := CorpsTest.on_ring(crowd)

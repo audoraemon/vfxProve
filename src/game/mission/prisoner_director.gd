@@ -427,6 +427,23 @@ func _change_banner() -> String:
 	return "THE GUARD CHANGES"
 
 
+func _march_act() -> String:
+	return "FREE HER"
+
+
+## Loss warning: the Escort type's (her march back to the Citadel), and while she is bound in standing stocks, the gaolers taking her
+## inside at FREE_BY (`inside`, the strip's time: the night is lost). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if lost_reason() != "" or charges.is_empty() or timeline == null or not timeline.pending("inside"):
+		return out
+	var c := charges[0]
+	if c.bound and is_instance_valid(bound_by) and not bound_by.destroyed and not c.escaped and _alive(c.man):
+		out.append(NightThreat.make(&"inside", "THE GAOLERS TAKE HER INSIDE", "BREAK THE STOCKS", timeline.seconds_to("inside"),
+			bound_by.center()))
+	return out
+
+
 ## The timeline's words when the gaolers take her inside (v0.11 M4).
 func _inside_label() -> String:
 	return "The gaolers take her inside"
@@ -493,6 +510,35 @@ func hint_phase() -> String:
 	for v: Variant in hunters:
 		if _alive(v) and v != seizer and not (v as Person).inside:
 			return "hounds"
+	return ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "bound", "caught", "clear", "gate", "hounds"])
+
+
+## The seconds the hint counts down (Mission clarity, read-only): to the watch's change at the postern; 0 elsewhere.
+func hint_seconds() -> float:
+	return watch_change_in() if hint_phase() == "gate" else 0.0
+
+
+## Why a cast that reached her or a gaoler did not count (Mission clarity, read-only; pre-flight I6):
+## - a Lead or a Lure on her while she is bound: she is deaf to the god until the stocks fall;
+## - a loud power near a gaoler while she is bound: he is held past fear (BOUND_HOLD), so only a kill, a lead or a confusion moves him.
+## A cast that could also kill him, bring the stocks down or lead him is judged by that and says nothing.
+func why_not(key: String, at: Vector2) -> String:
+	if not bound or bound_lost or escaped or taken or not _alive(charge):
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	if _kills_any(key, at, gaolers) or _blows(key, at, stocks):
+		return ""
+	if ("lead" in verbs or "lure" in verbs) and _reaches_one(key, at, charge.ground_pos):
+		return "BOUND - SHE CANNOT HEAR YOU"
+	if "scare" in verbs and not ("lead" in verbs or "confuse" in verbs):
+		for v: Variant in gaolers:
+			if _alive(v) and not (v as Person).inside and _reaches_one(key, at, (v as Person).ground_pos):
+				return "PAST FEAR WHILE SHE IS BOUND"
 	return ""
 
 

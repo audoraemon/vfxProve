@@ -1,0 +1,5 @@
+{"length": 2.2, "rms_db": -20.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 1.4, "dur": 2.0, "pitch": 4, "hp": 400, "lp": 11000, "fade_in": 60, "fade_out": 1300},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 1.9, "dur": 1.2, "pitch": -2, "hp": 600, "lp": 7000, "gain_db": -5, "fade_in": 60, "fade_out": 700},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_000.ogg", "at": 0.0, "onset": true, "reverse": true, "pitch": 4, "hp": 2000, "lp": 12000, "gain_db": -14}
+]}

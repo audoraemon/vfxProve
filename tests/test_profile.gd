@@ -8,6 +8,8 @@ static func run(t) -> void:
 	var o := ResponseProfile.for_tier(ResponseProfile.Tier.ORGANIZED)
 	var p := ResponseProfile.for_tier(ResponseProfile.Tier.PREPARED)
 	var g := ResponseProfile.for_tier(ResponseProfile.Tier.GOD_RESISTANT)
+	t.check(u.wary == 0.8 and ResponseProfile.unaware().wary == 1.0 and o.wary == 1.0 and p.wary == 1.25 and g.wary == 1.5,
+		"wary: Unprepared 0.8, Unaware 1.0, Organized 1.0, Prepared 1.25, God-Resistant 1.5")
 	t.check(not u.bell and u.fire_crew == 2 and u.fire_from == AlarmManager.Stage.CITY_EMERGENCY,
 		"Unprepared: no bell, a late and small fire brigade")
 	t.check(o.bell and o.fire_crew == 4 and o.engineer_teams == 0 and not o.boats and not o.rite,

@@ -51,3 +51,66 @@ func hint_phase() -> String:
 	if rite_running():
 		return "rite"
 	return "fallen" if town != null and is_instance_valid(town.citadel) and town.citadel.is_fallen() else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "rite", "fallen"])
+
+
+## The loss warning looks at fleers no more than this many seconds from their way out (well past ThreatAlert.CLEAR_AT): a mass flight is
+## hundreds of runners, and the far ones cannot be the warned escape.
+const ESCAPE_LOOK := 25.0
+
+
+## Loss warning: the last escapes the limit allows (EscapeLimitObjective: that many more out and the night is lost), `escape` at escape_eta().
+## Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := escape_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"escape", "THE PEOPLE ESCAPE", "STOP THEM AT THE GATES", eta, _escape_at))
+	return out
+
+
+## The escapes still allowed before the limit fails the night (EscapeLimitObjective), 0 with no limit or the law of escape abolished.
+func escapes_left() -> int:
+	if not is_instance_valid(rules) or rules.is_abolished(Rules.LAW_ESCAPE):
+		return 0
+	for o in rules.objectives:
+		if o is EscapeLimitObjective:
+			return maxi((o as EscapeLimitObjective).limit - rules.escaped_this_act(), 0)
+	return 0
+
+
+## Mission seconds until the escape that fails the night: of every citizen fleeing for a way out by land (Person.has_escaped(): a FLEE at
+## its goal; the boats carry theirs off on their own time and are not counted), the escapes_left()-th soonest walk there at the pace he
+## runs now; INF with fewer than that within ESCAPE_LOOK of their way out, every door shut, or the main objective held. Only reads. The gates' queues are not counted,
+## so the warning can come early, never late.
+func escape_eta() -> float:
+	var left := escapes_left()
+	if left < 1 or crowd == null or crowd.doors_shut() or rules.main_done:
+		return INF
+	var soon: Array = []
+	for p in crowd.citizens:
+		if not is_instance_valid(p) or not p.is_alive() or p.inside or p.mind != Person.Mind.FLEE or p._goal == Vector2.INF:
+			continue
+		if p.evac != null and p.evac.is_boat_exit(p._goal):
+			continue
+		if p.ground_pos.distance_to(p._goal) > ESCAPE_LOOK * maxf(p.walk_speed, 0.05):
+			continue  # farther than ESCAPE_LOOK even in a straight line: no card's time, and no road to sum
+		soon.append([maxf(walk_left(p, p._goal) - Person.GOAL_REACH / maxf(p.walk_speed, 0.05), 0.0), p._goal])
+	if soon.size() < left:
+		return INF
+	soon.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	_escape_at = soon[left - 1][1]
+	return float(soon[left - 1][0]) * mission_delta(1.0)
+
+
+## Where the escape escape_eta() last named happens (its way out).
+var _escape_at := Vector2.INF
+
+
+## Music by situation: the chant while the rite runs.
+func music_mood() -> StringName:
+	return &"rite" if rite_running() else &""

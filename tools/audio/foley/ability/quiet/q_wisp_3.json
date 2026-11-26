@@ -1,0 +1,5 @@
+{"length": 4.0, "rms_db": -18.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/SingingBowl2.ogg", "at": 0.0, "from": 0.05, "dur": 3.9, "pitch": 6.0, "hp": 400, "lp": 12000, "fade_out": 1500},
+  {"src": "repo:tools/audio/music/render/dom_choir_wisp.wav", "at": 0.2, "from": 0.0, "dur": 3.6, "hp": 300, "lp": 11000, "gain_db": -4, "fade_in": 300, "fade_out": 1200, "pitch": 1.0},
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_004.ogg", "at": 0.0, "onset": true, "pitch": 7.31, "hp": 2000, "lp": 14000, "gain_db": -13.7}
+]}

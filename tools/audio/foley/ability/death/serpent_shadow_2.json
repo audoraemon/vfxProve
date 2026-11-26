@@ -1,0 +1,6 @@
+{"length": 1.4, "rms_db": -20.56, "reverb": {"rt60": 1.4, "mix": 0.22, "predelay_ms": 16, "damp": 4600}, "eq": [["lowshelf", 220, -5.0], ["peak", 3600, 1.0, 0.8]], "layers": [
+  {"src": "lib:oga/short-wind-sound/short wind sound.wav", "at": 0.0, "from": 0.5, "dur": 0.8, "pitch": -3, "lp": 7000, "hp": 1200, "fade_in": 40, "fade_out": 400, "gain_db": 0},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.02, "from": 1.8, "dur": 0.7, "pitch": 0, "lp": 6000, "hp": 400, "fade_in": 40, "fade_out": 350, "gain_db": -4},
+  {"src": "lib:oga/ice-spells/icespells/ice.wav", "at": 0.04, "onset": true, "dur": 0.4, "pitch": 5, "lp": 9000, "hp": 2000, "fade_out": 200, "gain_db": -14},
+  {"src": "lib:oga/sand-spell/sand-spell.flac", "at": 0.05, "from": 0.3, "dur": 0.6, "hp": 3000, "lp": 9000, "fade_in": 40, "fade_out": 300, "gain_db": -13}
+]}

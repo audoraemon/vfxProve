@@ -144,6 +144,12 @@ const RITE_PLATE_WRAP := 560.0
 ## The status line's margin from the area's right edge (top right).
 const STATUS_MARGIN := 6.0
 
+## Town Suspicion's gauge (spec 5.6): the bar (design units), the words it can say (the plate is as wide as the widest, so it does not shift
+## as the word changes), and the room the badge of a Lantern night's clock needs right of its plate.
+const SUSPICION_BAR := Vector2(48.0, 5.0)
+const SUSPICION_WORDS := ["Calm", "Uneasy", "A GOD!"]
+const CLOCK_BADGE_ROOM := 34.0
+
 ## The viewport the world is drawn in (the mission's battlefield's). Hosted, the HUD lives in the root and the world in a SubViewport, so
 ## tag positions use this viewport's camera transform; null means the HUD's own viewport (not hosted, as before).
 var world_viewport: Viewport
@@ -164,6 +170,10 @@ var _quiet_next_banner := false
 var _subtitles: Array = []
 ## Seconds of red left per slot, for the refused-cast flash.
 var _flash := PackedFloat32Array()
+## The god's ability bar of a Might night (setup() makes it when the Rules carry a pool); null on every other night, where the slot row is drawn.
+var bar: AbilityBar = null
+## The god type the bar's own page is (Mission sets it from the def before setup()).
+var bar_type := ""
 ## What the last frame drew, so an unchanged HUD costs nothing.
 var _drawn := ""
 ## The slot icons, taken once. PowerBook.hud_icon() goes through load(), and a texture asked for during
@@ -198,6 +208,9 @@ var intro := false
 ## The ascent's column (v0.11 M1): its ground point (Vector2.INF for none) and its real seconds so far.
 var _rise_at := Vector2.INF
 var _rise_age := 0.0
+## The why-not banners' rate limit (Mission clarity, spec 6.1) and the real seconds it counts on (advance() keeps it, as _rise_age is kept).
+var _why := WhyNotGate.new()
+var _why_clock := 0.0
 ## How wide the column is drawn, 1.0 for the ascent's (god P3, MS §5: a won rite's rises larger, Mission.RITE_RISE).
 var _rise_scale := 1.0
 ## The chain plate (god P3, MS §2): Mission sets `chain_aiming` while C's aim is up (the plate's frame turns gold); a refused chain flashes it
@@ -254,8 +267,13 @@ func setup(rules: Rules, crowd: Crowd, town: Town, aim: Targeting) -> Hud:
 	_name_lines.clear()
 	for i in _rules.loadout.size():
 		_slot_names.append(String(_rules.power(i).get("name", "")))
+	if _rules.might != null:
+		bar = AbilityBar.new().setup(_rules, bar_type)
 	_rules.banner.connect(push_banner)
+	_rules.quiet_banner.connect(func(text: String) -> void: push_banner(text, true))
 	_rules.subtitle.connect(push_subtitle)
+	# After the director's own handler (it connected in its own set-up), so a cast that turned a target is judged on what it did.
+	_rules.cast_made.connect(_on_cast_why)
 	_rules.cast_refused.connect(_on_cast_refused)
 	_rules.recharged.connect(_on_recharged)
 	_rules.surged.connect(_on_surged)
@@ -301,6 +319,8 @@ func _process(delta: float) -> void:
 ## Age the banners and Cael's lines, and redraw when anything on screen has changed. v0.11 M6's final review: the objective rows and
 ## the how-to-win line are taken once for the whole advance (_frame_rows, _frame_hint, _frame_lines).
 func advance(delta: float) -> void:
+	if bar != null:
+		bar.advance(delta)
 	if _rules != null and _rules.mission != null:
 		_frame_rows = objective_rows()
 		_frame_wishes = _build_wish_rows()
@@ -318,6 +338,7 @@ func advance(delta: float) -> void:
 
 ## advance()'s work, with the frame's rows and line taken (v0.11 M6's final review).
 func _advance(delta: float) -> void:
+	_why_clock += delta / maxf(Engine.time_scale, 0.001)
 	_age(_banners, delta, BANNER_SECONDS)
 	_age(_subtitles, delta, SUBTITLE_SECONDS)
 	if _rise_at != Vector2.INF:
@@ -770,8 +791,12 @@ func all_tags(with_believers := true) -> Array[MapTag]:
 		out.append_array(_rules.director.tags())
 	if _rules.lantern != null:
 		out.append_array(_rules.lantern.tags())  # v0.11.2: the Herald and the Bearer, after the mission's own, before the wishes'
+	if _crowd != null:
+		out.append_array(_crowd.thought_tags())  # Town Suspicion: a witness's thought, after the Lantern's, before the descent's
 	if _rules.descent != null:
 		out.append_array(_rules.descent.tags())
+	if _crowd != null and _crowd.guard_jobs != null:
+		out.append_array(_crowd.guard_jobs.tags())  # soldier duties: each live job's tags, after the mission's own
 	return MapTag.shown(out)  # 2026-11-17 tag fix: a tag over a person no one can see is never drawn
 
 
@@ -1222,6 +1247,8 @@ func _middle(y: float, h: float) -> float:
 
 ## Where the slot row's top is on this area: SLOT_TOP from the bottom edge.
 func slot_top() -> float:
+	if bar != null:
+		return bar.rect(_view()).position.y
 	return _bottom(SLOT_TOP, SLOT_SIZE)
 
 
@@ -1290,6 +1317,8 @@ func name_room() -> float:
 
 ## The slot bar (v0.11 M6's final review): every slot's rectangle in one, Rect2() with none -- tag_layout() keeps the labels off it.
 func slots_rect() -> Rect2:
+	if bar != null:
+		return bar.rect(_view())
 	var out := Rect2()
 	for i in _rules.loadout.size():
 		out = slot_rect(i) if i == 0 else out.merge(slot_rect(i))
@@ -1329,16 +1358,33 @@ func slot_name(i: int) -> String:
 
 ## The slot under a screen point, or -1.
 func slot_at(point: Vector2) -> int:
+	if bar != null:
+		var hit := bar_hit(point)
+		return int(hit.substr(5)) if hit.begins_with("tile:") else -1
 	for i in _rules.loadout.size():
 		if slot_rect(i).has_point(point):
 			return i
 	return -1
 
 
+## What the bar has under a screen point: "tile:<slot>", "tab:<i>", "strip" or ""; "" on a night without a bar.
+func bar_hit(point: Vector2) -> String:
+	return bar.hit(point, _view()) if bar != null else ""
+
+
+## The slot of the bar's tile under the mouse, -1 for none (the bar shown open only: the strip has no tiles to hover).
+func _bar_hover() -> int:
+	if bar == null or not bar.open or (not is_inside_tree() and WorldView.test_mouse == Vector2.INF):
+		return -1
+	var hit := bar_hit(WorldView.mouse_in_view(self))
+	return int(hit.substr(5)) if hit.begins_with("tile:") else -1
+
+
 ## `quiet`: the banner comes with its own sound (a refused cast's buzz), so it does not ring ui_notice as well.
 func push_banner(text: String, quiet := false) -> void:
 	_banners.append([text, 0.0, quiet or _quiet_next_banner])
-	_quiet_next_banner = false
+	if not quiet:
+		_quiet_next_banner = false  # a quiet push (a why-not) leaves a surge's pending silence for the banner it was meant for
 
 
 func banner_up() -> bool:
@@ -1415,6 +1461,10 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 	elif reason == "missed":
 		# A live power's follow-up order that found nothing at the click (a Tide click on no fighter, a second word with nobody near).
 		push_banner("NOTHING THERE TO COMMAND", true)
+	elif reason == "might":
+		push_banner("NOT ENOUGH MIGHT", true)
+	elif reason == "sealed":
+		push_banner("SEALED BY THE LANTERN", true)
 	elif reason == "foe":
 		push_banner("NO ONE THERE TO ATTACK", true)
 	elif reason == "building":
@@ -1433,6 +1483,17 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 		var words := _rules.director.refused_words(slot, reason) if _rules.director != null else ""
 		push_banner(words if words != "" else "THEY SHAKE OFF THE WHISPER", true)
 	UiSound.play(&"ui_buzz")
+
+
+## A cast landed (Rules.cast_made): the director says why it will not count, if it can (MissionDirector.why_not()), as one quiet banner. Free
+## play, no director, the intro, a finished night and a queue already holding two banners show none (a reason shown late reads as the answer to
+## the wrong cast); WhyNotGate keeps each cause to once in REPEAT seconds and any two apart by GAP.
+func _on_cast_why(_slot: int, key: String, at: Vector2) -> void:
+	if _rules == null or _rules.director == null or _rules.free_play or _rules.finished or intro or _banners.size() > 1:
+		return
+	var text := _rules.director.why_not(key, at)
+	if _why.allow(text, _why_clock):
+		push_banner(text, true)
 
 
 func _on_recharged(_slot: int) -> void:
@@ -1463,6 +1524,7 @@ func _signature() -> String:
 	out += "|%s" % intro
 	out += "|%s|%s|%s|%d" % [str(wish_rows()), ascend_shown(), praying, roundi(gaze_of(_rules) * 100.0)]
 	out += "|%s|%s" % [details, wish_summary()]
+	out += "|%d|%s" % [int(_crowd.suspicion.value), _crowd.suspicion.state()]  # the town's suspicion gauge
 	out += "|%s|%d" % [_view(), UiScale.k()]  # a resize or a new scale lays everything out again
 	if chain_shown():
 		out += "|%s|%s|%s" % [chain_state(), chain_aiming, chain_rect().position.y]  # god P3: the chain plate's words, aim and lift
@@ -1472,9 +1534,11 @@ func _signature() -> String:
 		if believers != "":
 			out += "|%s" % (_world_xf() * Iso.ground_to_screen(_aim.aim_at())).round()
 	out += "|" + "/".join(_rite_lines)
-	for i in _rules.loadout.size():
+	for i in (0 if bar != null else _rules.loadout.size()):  # a bar's signature covers its slots
 		out += "%s%d%s%s," % [slot_state(i), roundi(_rules.cooldown_left(i) * 4.0), ("p%d" % _aim.mode_index()) if is_picked(i) else "",
 			"f" if _rules.can_recast(i) else ""]  # the gold card of a power that takes a follow-up order
+	if bar != null:
+		out += "|%s|%d" % [bar.signature(_aim.slot if _aim != null else -1), _bar_hover()]
 	return out
 
 
@@ -1551,7 +1615,10 @@ func _draw() -> void:
 	if not rite_plate_up():
 		_draw_ascend()
 		_draw_chain()
-		_draw_slots(w)
+		if bar != null:
+			_draw_bar()
+		else:
+			_draw_slots(w)
 	_frame_wishes = null
 
 
@@ -1803,6 +1870,7 @@ func _draw_play_plates(w: float) -> void:
 	_draw_task()
 	_draw_wishes()
 	_draw_status(w)
+	_draw_suspicion()
 
 
 ## The town prays (v0.11 M1, spec §5.1): during the night's first intro, a plate in the middle of the screen with
@@ -1919,6 +1987,73 @@ func _draw_status(_w: float) -> void:
 		x += UiTheme.width(String(seg[0]), UiTheme.TEXT_S) + gap
 
 
+## Is the town's suspicion on the HUD: it has risen, or the town knows.
+func suspicion_shown() -> bool:
+	return _crowd != null and _crowd.suspicion != null and (_crowd.suspicion.value > 0.0 or _crowd.suspicion.known)
+
+
+## What the gauge says: Calm, Uneasy (from UNEASY_AT) or A GOD! (the town knows).
+func suspicion_word() -> String:
+	match _crowd.suspicion.state():
+		&"known":
+			return SUSPICION_WORDS[2]
+		&"uneasy":
+			return SUSPICION_WORDS[1]
+	return SUSPICION_WORDS[0]
+
+
+## The gauge's colour: dim while calm, gold when uneasy, red when the town knows.
+func suspicion_color() -> Color:
+	match _crowd.suspicion.state():
+		&"known":
+			return UiTheme.COL_BAD
+		&"uneasy":
+			return UiTheme.COL_GOLD
+	return UiTheme.COL_DIM
+
+
+## The gauge's plate, Rect2() while it is not shown: left of the status plate when the clock (and its Lantern badge) leave room there, else
+## directly under the status plate (TAB expanded, 640 x 360).
+func suspicion_plate() -> Rect2:
+	if not suspicion_shown():
+		return Rect2()
+	var words := 0.0
+	for word: String in SUSPICION_WORDS:
+		words = maxf(words, UiTheme.width(word, UiTheme.TEXT_S))
+	var box := Vector2(SUSPICION_BAR.x + words + 12.0, PLATE_H)
+	var status := status_rect()
+	var right := status.position.x if status.has_area() else status_right()
+	var x := right - 4.0 - box.x
+	if x >= clock_reach(_view().x).end.x + 4.0:
+		return Rect2(x, 2.0 + roundf((status.size.y - box.y) * 0.5), box.x, box.y)
+	return Rect2((status.end.x if status.has_area() else status_right()) - box.x, status.end.y + 2.0, box.x, box.y)
+
+
+## The gauge's bar inside its plate (design units), Rect2() while it is not shown.
+func suspicion_rect() -> Rect2:
+	var plate := suspicion_plate()
+	if not plate.has_area():
+		return Rect2()
+	return Rect2(plate.position + Vector2(4.0, 3.5), SUSPICION_BAR)
+
+
+## The gauge as drawn: the plate, the bar filled to the value with a tick at UNEASY_AT, and the word beside it.
+func _draw_suspicion() -> void:
+	var plate := suspicion_plate()
+	if not plate.has_area():
+		return
+	var bar := suspicion_rect()
+	var s := _crowd.suspicion
+	var col := suspicion_color()
+	draw_rect(plate, UiTheme.COL_PANEL)
+	draw_rect(bar, Color(0, 0, 0, 0.6))
+	draw_rect(Rect2(bar.position, Vector2(roundf(bar.size.x * clampf(s.value / Suspicion.KNOWN_AT, 0.0, 1.0)), bar.size.y)), col)
+	var tick := bar.position.x + roundf(bar.size.x * Suspicion.UNEASY_AT / Suspicion.KNOWN_AT)
+	draw_line(Vector2(tick, bar.position.y - 1.0), Vector2(tick, bar.end.y + 1.0), UiTheme.COL_TEXT, 1.0)
+	UiTheme.text(self, Vector2(bar.end.x + 4.0, plate.position.y + PLATE_H - 3.0), suspicion_word(), UiTheme.TEXT_S,
+		UiTheme.COL_BAD_TEXT if s.known else col)
+
+
 ## The bar of the banner on screen, Rect2() for none: what tag labels keep clear of while it is up.
 func banner_rect(w: float) -> Rect2:
 	if _banners.is_empty():
@@ -1944,13 +2079,23 @@ func clock_rect(w: float) -> Rect2:
 	return Rect2(roundf((w - wide) * 0.5) - 7.0, 2.0, wide + 14.0, CLOCK_PLATE_H)
 
 
-## The plates drawn over the map that no tag label may sit under: the clock, the status line, the banner's bar and Cael's plate (the last two only
-## while up; the tags are laid out again every frame).
+## The clock's plate with the room its Lantern mark (left) and badge (right) take, Rect2() when the night has no clock: what the gauge keeps clear of.
+func clock_reach(w: float) -> Rect2:
+	var plate := clock_rect(w)
+	if not plate.has_area():
+		return plate
+	if clock_badge() == "":
+		return plate
+	return Rect2(plate.position.x - 12.0, plate.position.y, plate.size.x + 12.0 + CLOCK_BADGE_ROOM, plate.size.y)
+
+
+## The plates drawn over the map that no tag label may sit under: the clock, the status line, the gauge, the banner's bar and Cael's plate (the
+## last two only while up; the tags are laid out again every frame).
 func overlay_rects() -> Array[Rect2]:
 	var w := _view().x
 	var out: Array[Rect2] = []
 	var playing := not intro and not rite_plate_up()  # the status line is a play plate: not drawn in the intro or under a rite's win plate
-	for r: Rect2 in [clock_rect(w), status_rect() if playing else Rect2(), banner_rect(w), subtitle_rect(w)]:
+	for r: Rect2 in [clock_rect(w), status_rect() if playing else Rect2(), suspicion_plate() if playing else Rect2(), banner_rect(w), subtitle_rect(w)]:
 		if r.has_area():
 			out.append(r)
 	return out
@@ -2068,6 +2213,23 @@ func _draw_slots(_w: float) -> void:
 				UiTheme.COL_GOLD if follow else UiTheme.COL_TEXT)
 
 
+## A Might night's bar in place of the slot row, with the focused power's modes plate over its tile.
+func _draw_bar() -> void:
+	var picked := _aim.slot if _aim != null else -1
+	bar.draw(self, _view(), picked, _bar_hover(), _flash)
+	if picked >= 0:
+		_draw_modes(_bar_modes_box(picked))
+
+
+## The box the focused power's modes plate stands over on a Might night: its tile's column, at the top of what the bar draws (so the plate
+## clears the name line, the tabs and the gauge when the bar is open), or the strip's tile when hidden or on another page.
+func _bar_modes_box(slot: int) -> Rect2:
+	var tile := bar.armed_rect(slot, _view())
+	if bar.open and bar.page_of(slot) == bar.page:
+		tile.position.y = bar.rect(_view()).position.y
+	return tile
+
+
 ## The focused power's modes (Voice of God's commands, Divine Schism's ways to divide) in a row above its slot: the
 ## picked one gold, with the keys that step through them.
 func _draw_modes(box: Rect2) -> void:
@@ -2101,7 +2263,7 @@ func modes_rect(box := Rect2()) -> Rect2:
 	if modes.is_empty():
 		return Rect2()
 	if not box.has_area():
-		box = slot_rect(_aim.slot)
+		box = _bar_modes_box(_aim.slot) if bar != null else slot_rect(_aim.slot)
 	var total := 0.0
 	for l in _modes_labels(modes):
 		total += UiTheme.width(l, UiTheme.TEXT_S) + 6.0

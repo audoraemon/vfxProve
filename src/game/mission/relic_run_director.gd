@@ -298,6 +298,29 @@ func next_halt() -> int:
 	return -1
 
 
+## Loss warning: the relic's cart walking for the Citadel's gate with no checkpoint left (no swap can come: _home_check() keeps it and the
+## night is lost), `flame_home` as The Vigil Flame's: its carter's walk on along the route, by the road, at his pace now; INF before the last
+## halt is done, while it halts or stands (its three dead, or the carter held), and once swapped. Only reads.
+func home_eta() -> float:
+	if swapped or kept or not set_out or halt >= 0 or next_halt() >= 0 or vigil == null or not vigil.active or not _alive(vigil.bearer) \
+			or route.is_empty() or not _walks_on():
+		return INF
+	var last := route.size() - 1
+	var at := mini(_leg_base + vigil.leg, last)
+	var t := _route_left(route[at])
+	for i in range(at, last):
+		t += road_len(route[i], route[i + 1]) / maxf(vigil.bearer.walk_speed, 0.05)
+	return maxf(t - CITADEL_REACH / maxf(vigil.bearer.walk_speed, 0.05), 0.0) * mission_delta(1.0)
+
+
+func _home_title() -> String:
+	return "THE RELIC REACHES THE CITADEL"
+
+
+func _home_act() -> String:
+	return "STOP THE CART"
+
+
 ## Where the cart (and the relic) is (v0.11 M5). Only reads.
 func cart_at() -> Vector2:
 	return _lantern
@@ -853,12 +876,40 @@ func hint_phase() -> String:
 	return "moving" if set_out else ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "bell", "report", "seen", "carry", "watched", "aboard", "citadel", "last_halt", "moving"])
+
+
+## No line of the Relic Run counts down (the Vigil Flame's counts Wren's coming).
+func hint_seconds() -> float:
+	return 0.0
+
+
+const WHY_NO_LURE := "NO LURE YET - PIP MUST FOLLOW YOU"
+
+
+## Mission clarity (spec 5.6): a Lure of the watch before Pip follows the god's light or oath -- the watch is on duty and answers no light
+## until then (pip_led). A cast that also kills, leads or confuses is judged by those. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	if swapped or home or pip_led or crowd == null or not "lure" in verbs or "kill" in verbs or "lead" in verbs or "confuse" in verbs:
+		return ""
+	var watch: Array = escorts.duplicate()
+	for w: Warden in wardens:
+		watch.append(w.man)
+	for v: Variant in watch:
+		if _alive(v) and not (v as Person).inside and _cast_reaches(key, at, (v as Person).ground_pos):
+			return WHY_NO_LURE
+	return ""
+
+
 ## The tour (v0.11 M5, mission spec §4): the cart at the Temple, Pip, your believers' house.
 func tour() -> Array:
 	var out := [[temple_door, "The relic cart at the Temple. It halts at two checkpoints, where its reliquary opens."]]
 	if _alive(wren):
 		out.append([wren.ground_pos, "Pip. Bring him to the first halt: he slips aboard there and swaps the relic at the second."])
-	out.append([shrine, "Your believers' house. Pip must bring the relic here. Four seen deaths in a district call the bell."])
+	out.append([shrine, "Your believers' house. Pip must bring the relic here. Four deaths in a district that no accident explains call the bell."])
 	return out
 
 
@@ -868,3 +919,8 @@ func report() -> Dictionary:
 	for done in halts_done:
 		halts += 1 if done else 0
 	return {"swapped": swapped, "halts": halts, "touches": touches, "reports": reports_started, "home": home}
+
+
+## Music by situation: the town's own: the relic's road is no vigil.
+func music_mood() -> StringName:
+	return &""

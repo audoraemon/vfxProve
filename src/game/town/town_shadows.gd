@@ -30,10 +30,6 @@ const BLOB_RX := 5.0
 const TINY_AREA := 0.1
 ## A destroyed structure without a sprite casts the shadow of its ruin: this much of its height.
 const RUIN_FACTOR := 0.15
-## The contact band reaches this far out from a footprint (ground units: about 2 to 4 px on screen), a tree's blob this
-## much of its height across.
-const CONTACT_GROW := 0.2
-const CONTACT_TREE := 0.16
 ## Round 9: the small decor that stands (barrels, crates, benches, tables, carts, logs, goods piles, signposts, lamps,
 ## animals, rocks, bushes) casts a mask baked from its sprite as a building does, so it no longer floats. Runs other
 ## than benches (fences, bunting), plants, trees and the water's decor cast none.
@@ -71,10 +67,6 @@ var _look_props: TownLookDecor
 var _tex_of := {}
 ## Structure instance id -> its mask's texture.
 var _mask_of := {}
-## The contact shadows: a dithered band round every structure's base and a blob under every tree, in a group of their
-## own (darker than the cast shadows; TownLook.contact_colour()).
-var contact: CanvasGroup
-var _contact_poly: Polygon2D
 var _pending := false
 ## How many times rebuild() has run (for tests).
 var rebuilds := 0
@@ -317,16 +309,6 @@ func setup(field: EnvironmentField, look_value, forest_trees: Array[Dictionary] 
 	tree_poly.name = "Trees"
 	tree_poly.color = Color.WHITE
 	tree_group.add_child(tree_poly)
-	contact = CanvasGroup.new()
-	contact.name = "ContactGroup"
-	contact.self_modulate = TownLook.contact_colour(look)
-	add_child(contact)
-	_contact_poly = Polygon2D.new()
-	_contact_poly.name = "Contact"
-	var cm := ShaderMaterial.new()
-	cm.shader = preload("res://src/game/town/town_contact.gdshader")
-	_contact_poly.material = cm
-	contact.add_child(_contact_poly)
 	env.structure_destroyed.connect(_on_change)
 	env.structure_restored.connect(_on_change)
 	env.structure_added.connect(_on_change)
@@ -402,7 +384,6 @@ func rebuild() -> void:
 	if is_instance_valid(_look_props):
 		add_look_props(_look_props)
 	silhouettes.queue_redraw()
-	_rebuild_contact()
 
 
 static func _append_poly(pts: PackedVector2Array, polys: Array, poly: PackedVector2Array) -> void:
@@ -623,53 +604,6 @@ static func paint_silhouettes(c: CanvasItem, quads: Dictionary) -> void:
 ## How many mask textures are drawn (one draw call each).
 func silhouette_textures() -> int:
 	return _sil.size()
-
-
-## The contact band of every structure that casts (a ruin's too: it still sits on the ground), as quads from its
-## footprint's edge (alpha 1) out to the footprint grown by CONTACT_GROW (alpha 0), and a blob under every forest tree.
-func _rebuild_contact() -> void:
-	if _contact_poly == null:
-		return
-	var pts := PackedVector2Array()
-	var cols := PackedColorArray()
-	var polys: Array = []
-	for s in env.structures():
-		if not is_instance_valid(s) or not casts(s):
-			continue
-		var inner := diamond_of(s.footprint)
-		var outer := diamond_of(s.footprint.grow(CONTACT_GROW))
-		var base := pts.size()
-		for p in inner:
-			pts.append(p)
-			cols.append(Color(1, 1, 1, 1))
-		for p in outer:
-			pts.append(p)
-			cols.append(Color(1, 1, 1, 0))
-		for i in 4:
-			var j := (i + 1) % 4
-			polys.append(PackedInt32Array([base + i, base + j, base + 4 + j, base + 4 + i]))
-	for d in trees:
-		var tall: float = (d.size as Vector2).x if (d.size as Vector2).x > 0.0 else 52.0
-		var c := Iso.ground_to_screen(d.at as Vector2)
-		var rx := tall * CONTACT_TREE
-		var base := pts.size()
-		pts.append(c)
-		cols.append(Color(1, 1, 1, 0.9))
-		for i in 8:
-			var a := TAU * float(i) / 8.0
-			pts.append(c + Vector2(cos(a) * rx, sin(a) * rx * 0.5))
-			cols.append(Color(1, 1, 1, 0))
-		for i in 8:
-			polys.append(PackedInt32Array([base, base + 1 + i, base + 1 + (i + 1) % 8]))
-	_contact_poly.polygons = []
-	_contact_poly.polygon = pts
-	_contact_poly.vertex_colors = cols
-	_contact_poly.polygons = polys
-
-
-## How many contact shapes the band holds (for tests).
-func contact_count() -> int:
-	return _contact_poly.polygons.size() if _contact_poly != null else 0
 
 
 ## The shadow polygon of a structure (empty if it casts none): its hull, its mask's quad, or its ellipse or blob.

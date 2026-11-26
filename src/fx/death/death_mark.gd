@@ -45,6 +45,9 @@ var _left := 0
 var _lure_end := 0.0
 ## True when this cast turned the remains ledger on (it puts it back off at its end).
 var _lit_ledger := false
+## The clock the risen's bite and cut may be heard again at (sound only; RaiseTheDeadFx's quiet gaps).
+var _bite_heard := 0.0
+var _cut_heard := 0.0
 ## This cast's numbers at its ability level (the consts at level 1): the time to death, who comes to look, and from how far.
 var lv_mark_time := MARK_TIME
 var lv_gawkers := GAWKERS
@@ -169,6 +172,7 @@ func _watch_wake() -> void:
 	var parent: Node2D = ctx.world if ctx.world != null else ctx.overhead
 	visitors = Visitors.new().setup(ctx.field, ctx.crowd, ctx.crowd._grid, parent)
 	visitors.bitten.connect(_on_bite)
+	visitors.cut_down.connect(_on_cut_down)
 	DeathParts.zombie(visitors, r, r.sick)
 	raised = 1
 	_left = RaiseTheDeadFx.CHAIN - 1
@@ -184,17 +188,34 @@ func _watch_wake() -> void:
 
 ## A zombie's bite that kills raises the dead one while the chain lasts (no outcry of the cast's own: Death Mark is quiet).
 func _on_bite(_a: Animal, victim: Person, _first: bool) -> void:
+	if is_instance_valid(victim) and t >= _bite_heard:
+		_bite_heard = t + RaiseTheDeadFx.BITE_QUIET
+		ctx.play(&"undead_bite", victim.ground_pos, 0.0)
 	if not is_instance_valid(victim) or victim.is_alive() or ctx.crowd == null:
 		return
 	var before := _left
 	_left = DeathParts.on_kill_rise(visitors, ctx.crowd.remains, victim, _left)
 	if _left != before:
 		raised += 1
+		ctx.play(&"raise_rise", victim.ground_pos, -6.0)
+
+
+## Heard only: a soldier cuts one of the risen down (the Visitors free it).
+func _on_cut_down(_a: Animal, at_ground: Vector2) -> void:
+	if t >= _cut_heard:
+		_cut_heard = t + RaiseTheDeadFx.CUT_QUIET
+		ctx.play(&"undead_cut", at_ground, 0.0)
 
 
 ## The zombie's time is up: it falls to ash.
 func _end_life() -> void:
 	if visitors != null:
+		var left := visitors.living()
+		if not left.is_empty():
+			var mid := Vector2.ZERO
+			for a in left:
+				mid += a.ground_pos
+			ctx.play(&"undead_ash", mid / float(left.size()), 0.0)
 		visitors.clear()
 
 
@@ -211,7 +232,7 @@ func _put_ledger_back() -> void:
 		var rem: Remains = ctx.crowd.remains
 		var holders := int(rem.get_meta(HOLDERS_META, 1)) - 1
 		rem.set_meta(HOLDERS_META, maxi(holders, 0))
-		if holders <= 0:
+		if holders <= 0 and not rem.always:
 			rem.enabled = false
 	_lit_ledger = false
 

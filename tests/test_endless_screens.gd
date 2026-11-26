@@ -23,6 +23,7 @@ static func run(t) -> void:
 	_pause_hunt(t)
 	_pause_lost_notice(t)
 	_prepare_god(t)
+	_prepare_briefing(t)
 	_prepare_sealed(t)
 	_prepare_hunt(t)
 	_prepare_hunt_fits(t)
@@ -306,7 +307,7 @@ static func _interlude_endless(t) -> void:
 	card.setup(result, [ln.act("festival")], NightState.new())
 	var got: Array[String] = []
 	card.action.connect(func(what: String) -> void: got.append(what))
-	t.check(_labels(card._menu) == ["Choose powers", "Abandon night"], "an Endless Night interlude's buttons (%s)" % [_labels(card._menu)])
+	t.check(_labels(card._menu) == ["Briefing", "Abandon night"], "an Endless Night interlude's buttons (%s)" % [_labels(card._menu)])
 	card._unhandled_input(_key(KEY_ESCAPE))
 	t.check(got.is_empty() and not card.confirming(), "Esc does nothing between the acts of a night (%s)" % [got])
 	card.click(card.button_rect("missions").get_center())
@@ -320,7 +321,7 @@ static func _interlude_endless(t) -> void:
 	t.check(got.is_empty() and not card.confirming() and card.confirm_line() == "", "Esc in the confirm is Stay")
 	card.click(card.button_rect("missions").get_center())
 	card.click(card.button_rect("stay").get_center())
-	t.check(got.is_empty() and not card.confirming() and _labels(card._menu) == ["Choose powers", "Abandon night"],
+	t.check(got.is_empty() and not card.confirming() and _labels(card._menu) == ["Briefing", "Abandon night"],
 		"Stay goes back to the two buttons (%s)" % [got])
 	card.click(card.button_rect("missions").get_center())
 	card.click(card.button_rect("missions").get_center())
@@ -473,6 +474,63 @@ static func _fixture_god(t, tier := 1) -> GodSlot:
 	for key in GodTree.starting(type):
 		god.learned[key] = 1
 	return god
+
+
+## A god's Prepare as the Might gauge's briefing: read-only cards, the gauge line, DESCEND, no picks, no refusals; the board's is unchanged.
+static func _prepare_briefing(t) -> void:
+	var god := GodSlot.make(1, "ruin", 7)
+	god.learned = {"smite": 3, "ember": 1, "deathmark": 1}
+	god.bought["slot"] = 1
+	var prep := PrepareScreen.new()
+	prep.god = god
+	prep.setup(GodNight.def_for(god, "warning"), GodNight.night_loadout(god))
+	t.check(prep.read_only, "a god's gauge night is a read-only Prepare")
+	t.check(String(prep.brief_rows()[5][1]).contains("refills your Might"), "its TEMPLE row says the fall refills Might (%s)" % [prep.brief_rows()[5]])
+	t.check(prep.gauge_text() == "Might 6  ·  full refill in 55 s", "the gauge line says the size and the refill (%s)" % prep.gauge_text())
+	t.check(prep.confirm_label == "DESCEND" and prep.can_manifest() and prep.budget_text() == "", "the button is DESCEND, always lit, and no budget line")
+	t.check(prep.draft.picks.is_empty(), "nothing is picked, whatever the loadout offered (%s)" % [prep.draft.picks])
+	var seen_pick := false
+	for x in range(0, 640, 4):
+		for y in range(0, 360, 4):
+			var h := prep.hit(Vector2(x, y))
+			seen_pick = seen_pick or h.begins_with("slot:") or h.begins_with("level:")
+	t.check(not seen_pick, "hit() never answers a loadout slot or a level badge")
+	t.check(prep.hit(PrepareScreen.cell_rect(0, prep.shown().size()).get_center()) == prep.shown()[0], "a card still answers a hover")
+	prep.click(PrepareScreen.cell_rect(0, prep.shown().size()).get_center())
+	prep.click(PrepareScreen.cell_rect(1, prep.shown().size()).get_center())
+	t.check(prep.draft.picks.is_empty() and prep.refused_reason == "", "a click on a card picks nothing and buzzes nothing (%s, \"%s\")" % [prep.draft.picks, prep.refused_reason])
+	var loadout_row := ""
+	for row: Array in prep.brief_rows():
+		if String(row[0]) == "LOADOUT":
+			loadout_row = String(row[1])
+	t.check(loadout_row != "" and not loadout_row.contains("slots"), "the LOADOUT row no longer counts slots to spend (\"%s\")" % loadout_row)
+	t.check(prep.brief_bottom() < PrepareScreen.PANEL.end.y - 8.0 - UiTheme.LINE_SMALL * 2.0, "and the rows clear the hint line (%.0f)" % prep.brief_bottom())
+	t.check(not prep.hint_text().begins_with("Pick up to"), "and the hint does not ask for picks (%s)" % prep.hint_text())
+	var got: Array[String] = []
+	prep.action.connect(func(what: String) -> void: got.append(what))
+	t.check(prep.hit(PrepareScreen.MANIFEST_RECT.get_center()) == "manifest", "the button sits where MANIFEST does")
+	prep.click(PrepareScreen.MANIFEST_RECT.get_center())
+	prep._unhandled_input(_key(KEY_ENTER))
+	t.check(got == ["manifest", "manifest"] and prep.refused_reason == "", "a click and Enter both descend with nothing picked (%s)" % [got])
+	prep.free()
+	# The sealed card keeps its note and cannot be clicked.
+	var sealed := GodSlot.make(1, "ruin", 7)
+	sealed.learned = {"smite": 1, "ember": 1}
+	sealed.sealed = "smite"
+	sealed.seal_nights = 2
+	var lock := PrepareScreen.new()
+	lock.god = sealed
+	lock.setup(GodNight.def_for(sealed, "warning"), GodNight.night_loadout(sealed))
+	t.check(lock.authority_keys(0).has("smite") and lock.card_cost_text("smite").begins_with("Sealed:"), "the sealed card is listed with its note (%s)" % lock.card_cost_text("smite"))
+	lock.click(PrepareScreen.cell_rect(lock.shown().find("smite"), lock.shown().size()).get_center())
+	t.check(lock.refused_reason == "" and lock.draft.picks.is_empty(), "and a click on it does nothing")
+	lock.free()
+	# The board's Prepare is what it was.
+	var board := PrepareScreen.new()
+	board.setup(TierBook.board("warning"), PackedStringArray())
+	t.check(not board.read_only and board.confirm_label == "MANIFEST" and not board.can_manifest(), "the board's Prepare is not read-only, MANIFEST dim with nothing picked")
+	t.check(board.budget_text() == "%d / %d slots   %d / %d Might" % [0, board.draft.slots, 0, board.draft.capacity], "and its budget line is unchanged (%s)" % board.budget_text())
+	board.free()
 
 
 static func _prepare_sealed(t) -> void:

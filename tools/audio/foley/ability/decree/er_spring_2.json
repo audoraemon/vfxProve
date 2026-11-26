@@ -1,0 +1,6 @@
+{"length": 1.5, "peak_db": -2.78, "reverb": {"rt60": 1.3, "mix": 0.14, "predelay_ms": 12, "damp": 5500}, "layers": [
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Whip.ogg", "at": 0.0, "onset": true, "dur": 0.4, "pitch": -4.0, "hp": 250, "lp": 9000, "fade_out": 120, "gain_db": -1},
+  {"src": "lib:oga/35-wooden-crackshitsdestructions/wood_impact/crack05.mp3.flac", "at": 0.01, "onset": true, "pitch": 0.0, "hp": 700, "lp": 8000, "fade_out": 150, "gain_db": -6},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth-heavy.wav", "at": 0.0, "onset": true, "dur": 0.3, "pitch": 1.0, "hp": 300, "lp": 8000, "fade_out": 100, "gain_db": -8},
+  {"src": "lib:oga/100-cc0-sfx/100-CC0-SFX_0/slam_04.ogg", "at": 0.04, "onset": true, "pitch": -7.0, "hp": 40, "lp": 2500, "fade_out": 200, "gain_db": -4},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/bassdrum_rub4_v1.wav", "at": 0.04, "dur": 0.9, "lp": 220, "fade_out": 450, "gain_db": -5}]}

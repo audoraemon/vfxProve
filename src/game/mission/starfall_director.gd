@@ -38,6 +38,7 @@ func _begin() -> void:
 		var w := WarningDirector.new()
 		w.post = s[1]
 		w.post_name = String(s[2])
+		w.rework_reach = true  # (the Warning rework, W-R1) the new why_not reach, on the board only
 		w.walls_stop = true  # (god T1R, spec 4.1) a carrier out of the walls, or one who reaches a keeper who heard ALL IS WELL, stops the warning
 		w.lie_stops = true
 		w.gate_keeps = true  # (god T1R fix round, D26) W3: a death just outside his gate draws the staring watchman out; the postern's has its key

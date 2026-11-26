@@ -70,6 +70,8 @@ var holds_post := false
 var quiet_omen := false
 var dreams_stop := false
 var lead_key := false
+## The rework's why_not reach (the lead, the seal): only StarfallDirector sets it (`walls_stop` is set elsewhere, e.g. by Silence the Witness, which must read as ever).
+var rework_reach := false
 ## How the warning was stopped, once it is: "kill" (an unseen kill), "out" (W1) or "lie" (W2); "" while it lives.
 var stopped_how := ""
 
@@ -237,7 +239,7 @@ func _omen() -> void:
 			FxTimeline.cast(FallingStarFx, ctx, gate_spot + Vector2(0.0, 0.8))
 		rules.banner.emit("A STAR FALLS OVER %s" % post_name)
 		rules.banner.emit("STOP THE WARNING")
-	if phase == Phase.STARE and _alive(watchman):
+	if phase == Phase.STARE and _alive(watchman) and _drawn_to == Vector2.INF:  # (not over the walk W3 gave him out to a body)
 		watchman.observe(gate_spot + Vector2(0.0, 0.8), STARE)
 		watchman.look_up = true  # the star is up in the sky (people art phase 2)
 
@@ -562,9 +564,9 @@ func _use_key_led(at: Vector2, out_dir: Vector2) -> bool:
 	var to := _led_to
 	_led_to = Vector2.INF
 	if messenger.fold(at + out_dir * KEY_STEP):
-		messenger.set_goal(to)  # on to where the whisper led him
 		_sound(&"msn_unbar", at)
 		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
+	messenger.set_goal(to)  # on to where the whisper led him (kept, too, when the fold found no ground)
 	return true
 
 
@@ -728,7 +730,7 @@ func _carrier_reach(key: String, at: Vector2) -> Reach:
 	var verbs := MissionVerbs.verbs_of(key)
 	if ("kill" in verbs and _may_kill(key, at, messenger.ground_pos)) or "calm" in verbs or ("banish" in verbs and walls_stop):
 		return Reach.MAYBE
-	var reworked := walls_stop or dreams_stop  # the rework's rules: with both off, this reads as it always did (spec G9)
+	var reworked := rework_reach  # the rework's rules: off, this reads as it always did (spec G9, W-R1)
 	if dreams_stop and at_post() and "confuse" in verbs:
 		return Reach.MAYBE  # he dreams it
 	if reworked and "seal" in verbs:

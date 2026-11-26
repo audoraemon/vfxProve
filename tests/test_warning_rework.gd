@@ -21,6 +21,9 @@ static func run(t) -> void:
 	_key_lead_evacuation(t)
 	_reach(t)
 	_reach_off(t)
+	_reach_key(t)
+	_reach_walls_only(t)
+	_omen_body(t)
 
 
 ## A world for one WarningDirector, `flags` set before it is set up. `at_postern`: its post is the postern's (a barred gate in the unaware town).
@@ -32,7 +35,7 @@ static func _world(flags: Dictionary, at_postern := false) -> Dictionary:
 		w.post = POSTERN
 		w.post_name = "THE POSTERN"
 		w.gate_keeps = true
-		w.walls_stop = true
+		w.walls_stop = bool(flags.get("walls_stop", true))
 	return ClarityKit.world(MissionBook.warning(), w)
 
 
@@ -183,7 +186,7 @@ static func _key_lead_evacuation(t) -> void:
 
 ## why_not(): the dream, the seal, the lead.
 static func _reach(t) -> void:
-	var s := _world({"holds_post": true, "dreams_stop": true, "walls_stop": true, "lead_key": false})
+	var s := _world({"holds_post": true, "dreams_stop": true, "walls_stop": true, "rework_reach": true, "lead_key": false})
 	var w: WarningDirector = s.d
 	_run(s, 3.0)
 	var man := w.watchman
@@ -198,7 +201,7 @@ static func _reach(t) -> void:
 	t.check(w.why_not("whisper", s.at) == "", "why_not: a whisper out of the walls says nothing")
 	ClarityKit.assert_read_only(t, s, "warning rework, whispered out")
 	ClarityKit.done(s)
-	s = _world({"holds_post": true, "dreams_stop": true, "walls_stop": true})
+	s = _world({"holds_post": true, "dreams_stop": true, "walls_stop": true, "rework_reach": true})
 	w = s.d
 	_run(s, 3.0)
 	man = w.watchman
@@ -207,7 +210,7 @@ static func _reach(t) -> void:
 	t.check(w.why_not("whisper", s.at) == WarningDirector.STOPS_BANNER, "why_not: a whisper inside the walls says he keeps the warning")
 	ClarityKit.done(s)
 	# A runner: Discord and the seal only pause him.
-	s = _world({"holds_post": true, "dreams_stop": true, "walls_stop": true})
+	s = _world({"holds_post": true, "dreams_stop": true, "walls_stop": true, "rework_reach": true})
 	w = s.d
 	_run(s, 3.0, false)
 	w.set_off()
@@ -227,4 +230,66 @@ static func _reach_off(t) -> void:
 	var man := w.watchman
 	t.check(w.why_not("discord", man.ground_pos) == WarningDirector.STOPS_BANNER, "flags off: Discord on him says STOPS_BANNER as ever")
 	t.check(w.why_not("noleave", man.ground_pos) == "", "flags off: a seal says nothing as ever")
+	ClarityKit.done(s)
+
+
+## K2's why_not: a whisper to ground beyond the postern from within KEY_WALK says nothing; from beyond KEY_WALK it keeps the warning.
+static func _reach_key(t) -> void:
+	var s := _world({"holds_post": true, "lead_key": true, "rework_reach": true}, true)
+	var w: WarningDirector = s.d
+	_run(s, 0.1, false)
+	var man := w.watchman
+	s["to"] = BEYOND
+	ClarityKit.apply(s, "lead", man)
+	t.check(w.why_not("whisper", s.at) == "", "why_not: a whisper beyond the postern, within KEY_WALK, says nothing (K2)")
+	ClarityKit.done(s)
+	s = _world({"holds_post": true, "lead_key": true, "rework_reach": true, "walls_stop": false}, true)  # (no walls rule: K2 alone is judged)
+	w = s.d
+	_run(s, 0.1, false)
+	man = w.watchman
+	Kit.arrive(man, w.gate_spot + Vector2(0.0, -5.5))
+	t.check(man.ground_pos.distance_to(w.key_door()) > WarningDirector.KEY_WALK, "K2 reach: he stands beyond KEY_WALK")
+	s["to"] = BEYOND
+	ClarityKit.apply(s, "lead", man)
+	t.check(w.why_not("whisper", s.at) == WarningDirector.STOPS_BANNER, "why_not: the same whisper from beyond KEY_WALK keeps the warning")
+	ClarityKit.done(s)
+	# dreams_stop off: a Discord at the post is only a pause.
+	s = _world({"holds_post": true, "walls_stop": true, "rework_reach": true})
+	w = s.d
+	_run(s, 3.0, false)
+	t.check(w.why_not("discord", w.watchman.ground_pos) == WarningDirector.STOPS_BANNER, "why_not: Discord at the post without dreams_stop says STOPS_BANNER")
+	ClarityKit.done(s)
+
+
+## W-R1: a director with walls_stop and no rework flag (Silence the Witness) reads as ever: a seal on a carrier says nothing.
+static func _reach_walls_only(t) -> void:
+	var s := _world({"walls_stop": true})
+	var w: WarningDirector = s.d
+	_run(s, 6.5, false)
+	var man := w.messenger
+	t.check(w.why_not("noleave", man.ground_pos) == "", "walls_stop alone: a seal on a carrier says nothing, as ever")
+	s["to"] = man.ground_pos + Vector2(1.5, 0.0)
+	ClarityKit.apply(s, "lead", man)
+	t.check(w.why_not("whisper", s.at) == WarningDirector.STOPS_BANNER, "walls_stop alone: a whisper keeps the old banner")
+	ClarityKit.done(s)
+
+
+## W3 under holds_post before the star falls: a body outside the gate at once draws him out, and the omen's look-up does not call him back.
+static func _omen_body(t) -> void:
+	var s := _world({"holds_post": true, "gate_keeps": true, "walls_stop": true, "quiet_omen": true})
+	var w: WarningDirector = s.d
+	_run(s, 1.0, false)
+	t.check(w.phase == WarningDirector.Phase.OMEN and not w.omen_fallen, "W3 early: the star has not fallen yet")
+	var g: Person = null
+	for p in (s.crowd as Crowd).soldiers:
+		if is_instance_valid(p) and p.is_alive() and not p.inside:
+			g = p
+			break
+	Kit.arrive(g, Vector2(2.7, 17.2))
+	g.anchor = g.ground_pos
+	(s.field as EnemyField).kill(g, &"lightning", g.ground_pos)
+	var m := w.watchman
+	t.check(w._drawn_to != Vector2.INF and m.mind == Person.Mind.DUTY, "W3 early: he goes out to the body (%s)" % Person.Mind.keys()[m.mind])
+	_run(s, 1.5, false)
+	t.check(w.omen_fallen and m.mind == Person.Mind.DUTY and w._drawn_to != Vector2.INF, "W3 early: the omen's look-up leaves his walk alone (%s)" % Person.Mind.keys()[m.mind])
 	ClarityKit.done(s)

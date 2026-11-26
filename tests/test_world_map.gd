@@ -311,8 +311,10 @@ static func _painted_map(t) -> void:
 		t.check(rib.size.x > 40.0 and WorldLayout.LAND.encloses(rib), "%s has a ribbon on the vellum (%s)" % [id, rib])
 		t.check(rib.end.y < p.y and absf(rib.get_center().x - p.x) < span.x, "%s's ribbon is above its picture" % id)
 		t.check(not rib.intersects(WorldMap.PLATE) and not Rect2(p - span, span * 2.0).intersects(WorldMap.PLATE), "%s keeps clear of the info card" % id)
-		var size := WorldMap._fit_size(WorldLayout.name_of(id), rib.size.x - 4.0)
-		t.check(size >= 7 and UiTheme.width(WorldLayout.name_of(id), size) <= rib.size.x - 4.0, "%s's name fits its ribbon at size %d" % [id, size])
+		var named := WorldMap.ribbon_name(WorldLayout.name_of(id), rib.size.x + 5.0)
+		if WorldLayout.is_town(id):  # a sealed spot's ribbon stays blank
+			var w := WorldMap.bold_width(named[0], UiTheme.SIZE_SMALL) if named[1] != null else UiTheme.width(named[0], UiTheme.SIZE_SMALL)
+			t.check(w <= rib.size.x + 5.0, "%s's name fits its ribbon at the UI's size (%s, %.1f in %.1f)" % [id, named[0], w, rib.size.x])
 	for r: Dictionary in WorldLayout.ROUTES:
 		t.check(WorldLayout.is_town(r.from) and not WorldLayout.is_town(r.to) and WorldLayout.LAND.has_point(r.via), "a way runs from a town to a sealed spot (%s to %s)" % [r.from, r.to])
 	var fresh: WorldMap = _make(_slot())[0]
@@ -383,7 +385,7 @@ static func _painted_map(t) -> void:
 	hunted.notice = 100
 	var m3: WorldMap = _make(hunted)[0]
 	t.check(m3.hunt_due("aldermere") and m3.night_lines("aldermere")[0].begins_with("The Hunt: "), "a due Hunt is named on the card (%s)" % [m3.night_lines("aldermere")])
-	t.check(m3.night_lines("capital")[0] == "The Hunt is abroad: no night here", "and the Capital says why no night waits there")
+	t.check(m3.night_lines("capital")[0] == "The Hunt is abroad", "and the Capital says why no night waits there")
 	m3.free()
 	var held: WorldMap = _make(_open_both())[0]
 	t.check(ResourceLoader.exists("res://assets/chamber/map/plate.png"), "the Back plate is in the project")

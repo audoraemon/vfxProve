@@ -15,7 +15,7 @@ const HINT := "Arrows: choose   Enter: Descend   Esc: Back"
 const HINT_VISITS := 3
 const TITLE := "THE KNOWN WORLD"
 ## The parchment card on the map's calm vellum, the brass Back tab on the frame, and where the hint and a refusal's line are written.
-const PLATE := Rect2(238.0, 268.0, 196.0, 64.0)
+const PLATE := Rect2(229.0, 268.0, 214.0, 64.0)
 const BACK := Rect2(18.0, 339.0, 46.0, 15.0)
 const HINT_Y := 357.0
 const LINE_Y := 262.0
@@ -201,7 +201,7 @@ func _sheets() -> void:
 	_over = ColorRect.new()
 	for sheet: ColorRect in [_under, _over]:
 		sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		sheet.set_anchors_preset(Control.PRESET_FULL_RECT)
+		sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		layer.add_child(sheet)
 	layer.move_child(_under, 0)
 
@@ -358,7 +358,7 @@ func night_lines(id: String) -> PackedStringArray:
 		return out
 	var drawn := GodNight.draw(_slot, id)
 	if drawn == "":
-		out.append("The Hunt is abroad: no night here" if not GodNight.hunt_for(_slot).is_empty() else NO_NIGHT)
+		out.append("The Hunt is abroad" if not GodNight.hunt_for(_slot).is_empty() else NO_NIGHT)
 	else:
 		var def := GodNight.def_for(_slot, drawn, id)
 		var title := def.name if def != null and def.name != "" else drawn.capitalize()
@@ -782,12 +782,24 @@ func _draw_glow() -> void:
 			_stain(_glow, p, WorldLayout.span(id) * 3.0, Color(1.0, 0.80, 0.42, 0.13))
 
 
-## The largest of the small sizes at which `s` fits in `room`, in the bold face.
-static func _fit_size(s: String, room: float) -> int:
-	for size: int in [10, 9, 8, 7]:
-		if bold_width(s, size) <= room:
-			return size
-	return 6
+## A town's name as its ribbon takes it, at the UI's smallest size (11): bold capitals when they fit in `room`, else bold, else plain.
+## [words, face (null: the plain font)].
+static func ribbon_name(s: String, room: float) -> Array:
+	if bold_width(s.to_upper(), UiTheme.SIZE_SMALL) <= room:
+		return [s.to_upper(), bold()]
+	if bold_width(s, UiTheme.SIZE_SMALL) <= room:
+		return [s, bold()]
+	return [s, null]
+
+
+## `s` cut to fit `room` at the small size, ".." where it was cut.
+static func _clip(s: String, room: float) -> String:
+	if UiTheme.width(s, UiTheme.SIZE_SMALL) <= room:
+		return s
+	var out := s
+	while out.length() > 1 and UiTheme.width(out + "..", UiTheme.SIZE_SMALL) > room:
+		out = out.substr(0, out.length() - 1)
+	return out.strip_edges() + ".."
 
 
 func _ink(at: Vector2, s: String, size: int, col := INK, face: Font = null) -> void:
@@ -845,11 +857,14 @@ func _draw_spot(id: String) -> void:
 		if id == hovered:
 			_draw_tag(rib, SEALED_LINE)
 		return
-	var label := WorldLayout.name_of(id).to_upper()
-	var size := _fit_size(label, rib.size.x - 4.0)
+	var named := ribbon_name(WorldLayout.name_of(id), rib.size.x + 5.0)  # the ribbon's curled ends take a little more than its flat
+	var label: String = named[0]
+	var face: Font = named[1]
+	var size := UiTheme.SIZE_SMALL
+	var label_w := bold_width(label, size) if face != null else UiTheme.width(label, size)
 	var dim := state == "locked" and not _reveal.has(id)
 	var col := Color(INK.r, INK.g, INK.b, 0.6) if dim else INK
-	_ink(Vector2(roundf(rib.get_center().x - bold_width(label, size) * 0.5), rib.get_center().y + float(size) * 0.36), label, size, col, bold())
+	_ink(Vector2(roundf(rib.get_center().x - label_w * 0.5), rib.get_center().y + float(size) * 0.36), label, size, col, face)
 	if state == "locked":
 		_draw_tag(rib, LOCK_LINE % [Conquest.UNLOCK_PERCENT, Conquest.town_name(Conquest.opener_of(id))])
 		return
@@ -875,11 +890,11 @@ func _draw_spot(id: String) -> void:
 ## A tag hanging under a ribbon, with a line in ink.
 func _draw_tag(rib: Rect2, words: String) -> void:
 	var tag := piece("tag")
-	var tag_rect := Rect2(roundf(rib.get_center().x - 70.0), rib.end.y - 3.0, 140.0, 0.0)
+	var tag_rect := Rect2(roundf(rib.get_center().x - 84.0), rib.end.y - 3.0, 168.0, 0.0)
 	if tag != null:
 		tag_rect.size.y = tag_rect.size.x * float(tag.get_height()) / float(tag.get_width())
 		_top.draw_texture_rect(tag, tag_rect, false)
-	_ink(Vector2(roundf(tag_rect.get_center().x - UiTheme.width(words, 8) * 0.5), tag_rect.position.y + tag_rect.size.y * 0.80), words, 8)
+	_ink(Vector2(roundf(tag_rect.get_center().x - UiTheme.width(words, UiTheme.SIZE_SMALL) * 0.5), tag_rect.position.y + tag_rect.size.y * 0.80), words, UiTheme.SIZE_SMALL)
 
 
 ## The info card, pinned on the calm vellum: the chosen town in ink, and the Descend seal.
@@ -898,16 +913,16 @@ func _draw_plate() -> void:
 	_ink(Vector2(left, PLATE.position.y + 19.0), lines[0], UiTheme.SIZE_BODY, INK, bold())
 	if lines.size() >= 3:  # an open town: its people on one line, then what waits there
 		var people := "%s   %s" % [lines[1], lines[2]]
-		_ink(Vector2(left, PLATE.position.y + 30.5), people, _plain_fit(people, room), soft)
+		_ink(Vector2(left, PLATE.position.y + 30.5), _clip(people, room), UiTheme.SIZE_SMALL, soft)
 	var night := night_lines(selected)
 	if night.size() >= 1:
-		_ink(Vector2(left, PLATE.position.y + 42.0), night[0], _plain_fit(night[0], room), UiTheme.COL_BAD.darkened(0.25) if hunt_due(selected) else INK)
+		_ink(Vector2(left, PLATE.position.y + 42.0), _clip(night[0], room), UiTheme.SIZE_SMALL, UiTheme.COL_BAD.darkened(0.25) if hunt_due(selected) else INK)
 	if night.size() >= 2:
-		_ink(Vector2(left, PLATE.position.y + 53.0), night[1], _plain_fit(night[1], room, 9), Color(soft.r, soft.g, soft.b, 0.85))
+		_ink(Vector2(left, PLATE.position.y + 53.0), _clip(night[1], room), UiTheme.SIZE_SMALL, Color(soft.r, soft.g, soft.b, 0.85))
 	var lit := status.can_descend() and GodNight.draw(_slot, selected) != ""
 	var r := descend_rect()
 	var seal := piece("seal" if lit else "seal_off")
-	var seal_rect := Rect2(r.get_center().x - 16.0, r.position.y, 32.0, 33.0)
+	var seal_rect := Rect2(r.get_center().x - 19.0, r.get_center().y - 19.5, 38.0, 39.0)  # the arrow on the wax says Descend
 	var down := _press > 0.0  # pressed: it sits on the card, no shadow
 	if down:
 		seal_rect.position += Vector2(0.5, 1.0)
@@ -918,16 +933,6 @@ func _draw_plate() -> void:
 		_top.draw_texture_rect(seal, seal_rect, false, Color(shine, shine, shine))
 	else:
 		_top.draw_rect(seal_rect, WAX if lit else Color(0.42, 0.33, 0.24))
-	var label := "DESCEND"
-	_ink(Vector2(roundf(r.get_center().x - bold_width(label, 8) * 0.5), seal_rect.end.y + 10.0), label, 8, INK if lit else Color(INK.r, INK.g, INK.b, 0.45), bold())
-
-
-## The largest plain size, from `top` down, at which `s` fits in `room`.
-static func _plain_fit(s: String, room: float, top := 11) -> int:
-	for size in range(top, 7, -1):
-		if UiTheme.width(s, size) <= room:
-			return size
-	return 7
 
 
 ## The Back plate: brass, on the frame.

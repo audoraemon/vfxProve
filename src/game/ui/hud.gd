@@ -526,7 +526,7 @@ func hint_key() -> String:
 		if lantern_line != "":
 			return lantern_line
 	if _rules.main_done:
-		return MissionHints.WISHES_LINE if _open_wishes() else MissionHints.ASCEND_LINE
+		return MissionHints.wishes_line(first_how()) if _open_wishes() else MissionHints.ASCEND_LINE
 	if _rules.director == null:
 		return MissionHints.line(_rules.mission.id)
 	return MissionHints.line(_rules.mission.id, _rules.director.hint_phase())
@@ -741,6 +741,14 @@ func wish_hows() -> Array:
 	for w in _rules.descent.wishes:
 		out.append(w.def.how if w.def != null and w.status == Objective.Status.PENDING else "")
 	return out
+
+
+## The first open wish's how-line, "" for none (the hint's line once the main objective is done, MissionHints.wishes_line()).
+func first_how() -> String:
+	for how: String in wish_hows():
+		if how != "":
+			return how
+	return ""
 
 
 ## The wishes' rows as drawn: collapsed, the one summary row (never nothing: a failed wish still shows in the count).

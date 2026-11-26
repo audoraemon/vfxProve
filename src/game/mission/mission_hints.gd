@@ -14,6 +14,15 @@ const RITE_LINE := "The clergy (red) chant the Banishing Rite. Kill or scare the
 ## out of LINES: they belong to no mission, and replace any.
 const WISHES_LINE := "Grant the wishes still open (blue), or ascend when you are ready: press F."
 const ASCEND_LINE := "Ascend when you are ready: press F."
+## The open wishes' line saying what to do for the first of them (Discord #ideas "Wish not clear", 2026-11-26): its how-line
+## (WishDef.how), then the ascent's key; WISHES_LINE when it has none. The TAB list keeps its old depth (the mission cameras
+## are checked clear of it), so this plate and the prayers plate are where a wish's how-line shows.
+const WISH_NEXT := "%s (blue), or ascend when you are ready: press F."
+
+
+static func wishes_line(how: String) -> String:
+	return WISHES_LINE if how == "" else WISH_NEXT % how
+
 ## Lines by the played mission's or act's id, and by "<id>.<phase>" for a phase's own. The Feast plays The Long Night's
 ## act, so it has the act's line.
 const LINES := {

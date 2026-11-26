@@ -73,12 +73,12 @@ static func _rows(t) -> void:
 		and String(rows[0][0]) == d.wishes[0].hud_text(s.rules), "the wishes heard, each a row, open (%s)" % [rows])
 	var hows := hud.wish_hows()
 	t.check(hows.size() == 2 and String(hows[0]) == d.wishes[0].def.how and String(hows[0]) != ""
-		and hud.wishes_rect().size.y == 5.0 + Hud.ROW_H * 2.0,
-		"open, each wish knows what to do (2026-11-19, Discord 'Wish not clear'); the left stack keeps one row a wish (%s)" % [hows])
+		and hud.wishes_rect().size.y == 5.0 + Hud.ROW_H * 2.0 and hud.first_how() == String(hows[0]),
+		"open, each wish knows what to do (Discord 'Wish not clear'); the TAB list keeps one row a wish (%s)" % [hows])
 	d.wishes[0].status = Objective.Status.DONE
 	d.wishes[1].status = Objective.Status.FAILED
 	t.check(String(hud.wish_rows()[0][1]) == "granted" and String(hud.wish_rows()[1][1]) == "failed", "granted ticks, failed crosses")
-	t.check(hud.wish_hows() == ["", ""] and hud.wishes_rect().size.y == 5.0 + Hud.ROW_H * 2.0,
+	t.check(hud.wish_hows() == ["", ""] and hud.first_how() == "",
 		"a granted or failed wish has nothing left to do: no how-line")
 	t.check(hud.wishes_top() >= hud.hint_rect().end.y, "under the how-to-win plate")
 	var before := hud._signature()
@@ -98,11 +98,19 @@ static func _ascend(t) -> void:
 	var r := hud.ascend_rect()
 	t.check(hud.ascend_shown() and is_equal_approx(r.get_center().x, 320.0) and r.end.y <= Hud.SLOT_TOP - Hud.PLATE_H - 3.0,
 		"main objective done: the ASCEND plate, centred above the slots and their modes (%s)" % r)
-	t.check(hud.hint_text() == MissionHints.WISHES_LINE, "the hint turns to the wishes still open")
+	var first: Wish = (s.descent as Descent).wishes[0]
+	t.check(hud.hint_text() == MissionHints.wishes_line(first.def.how) and hud.hint_text().begins_with(first.def.how),
+		"the hint turns to the wishes still open, saying what to do for the first (%s)" % hud.hint_text())
+	first.status = Objective.Status.DONE
+	var second: Wish = (s.descent as Descent).wishes[1]
+	t.check(hud.hint_text().begins_with(second.def.how), "granted, the hint moves to the next open wish (%s)" % hud.hint_text())
 	for w in (s.descent as Descent).wishes:
 		w.status = Objective.Status.FAILED
 	t.check(hud.hint_text() == MissionHints.ASCEND_LINE, "with none open, to the ascent")
 	var fits := Hud.hint_lines(MissionHints.WISHES_LINE).size() <= Hud.HINT_LINES and Hud.hint_lines(MissionHints.ASCEND_LINE).size() == 1
+	for d in WishBook.pool():
+		var line := MissionHints.wishes_line(d.how)
+		fits = fits and UiTheme.wrap(line, Hud.HINT_W, UiTheme.TEXT_S).size() <= Hud.HINT_LINES
 	t.check(fits, "both fit the plate")
 	rules.ascend()
 	t.check(not hud.ascend_shown(), "ascended: the plate goes")

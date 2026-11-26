@@ -313,7 +313,7 @@ static func _painted_map(t) -> void:
 		t.check(not rib.intersects(WorldMap.PLATE) and not Rect2(p - span, span * 2.0).intersects(WorldMap.PLATE), "%s keeps clear of the info card" % id)
 		if WorldLayout.is_town(id):  # a sealed spot keeps its painted ribbon, blank
 			var words := WorldLayout.name_of(id).to_upper()
-			var w := WorldMap.bold_width(words, UiTheme.SIZE_SMALL)
+			var w := WorldMap.bold_width(words, WorldMap.NAME_SIZE)
 			var drawn := WorldMap.name_ribbon(id, w)
 			t.check(drawn.size.x - WorldMap.RIBBON_END * 2.0 >= w + 8.0 and drawn.encloses(rib.grow_individual(0.0, -3.0, 0.0, -3.0)) and WorldLayout.LAND.encloses(drawn),
 				"%s's name ribbon holds its name at the UI's size and covers the painted one (%s over %s)" % [id, drawn, rib])

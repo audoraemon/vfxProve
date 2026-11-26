@@ -42,6 +42,9 @@ static var _bold: FontVariation
 static var _visits := {}
 
 var selected := ""
+## The spot under the mouse ("" for none), and the button under it ("descend", "back" or "").
+var hovered := ""
+var hovered_button := ""
 ## A one-off message shown above the info plate ("" for none).
 var line := ""
 var status: HubStatus
@@ -53,6 +56,9 @@ var _glow: Control
 var _top: Control
 var _dev := false
 var _t := 0.0
+## Seconds left of the scene that plays when a town has just opened (input waits), and of the Descend seal's press.
+var _scene := 0.0
+var _press := 0.0
 ## Town id -> seconds since its fog began to burn away.
 var _reveal := {}
 var _map_tex: Texture2D
@@ -76,6 +82,7 @@ func setup(slot: GodSlot, p_dev := false) -> WorldMap:
 	UiSound.play(&"chamber_page")  # the map is unrolled
 	if not _reveal.is_empty():
 		UiSound.play(&"chamber_chime")
+		_scene = REVEAL_SECONDS + 0.4  # the opening is watched: the map waits for it
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -132,8 +139,15 @@ func _note_opened() -> void:
 	_known[_slot.index] = now
 
 
+## True while a newly opened town's scene plays: clicks and keys wait.
+func busy() -> bool:
+	return _scene > 0.0
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	_scene = maxf(0.0, _scene - delta)
+	_press = maxf(0.0, _press - delta)
 	for id: String in _reveal.keys():
 		_reveal[id] += delta
 		if _reveal[id] >= REVEAL_SECONDS:
@@ -237,16 +251,63 @@ func info_lines(id: String) -> PackedStringArray:
 	return out
 
 
+## What Descend would give in a town, for the card: the night drawn there, and what the town is worth. Empty for a spot that is no
+## open town.
+func night_lines(id: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	if not WorldLayout.is_town(id) or not Conquest.is_open(_slot, id):
+		return out
+	var drawn := GodNight.draw(_slot, id)
+	if drawn == "":
+		out.append("The Hunt is abroad: no night here" if not GodNight.hunt_for(_slot).is_empty() else NO_NIGHT)
+	else:
+		var def := GodNight.def_for(_slot, drawn, id)
+		var title := def.name if def != null and def.name != "" else drawn.capitalize()
+		out.append(("The Hunt: %s" if GodNight.is_hunt(drawn) else "Tonight: %s") % title)
+	out.append(("Conquered: +%d Faith" if Conquest.conquered(_slot, id) else "When conquered: +%d Faith") % Conquest.CONQUER_FAITH)
+	return out
+
+
+## True when the night drawn in a town is a Lantern Hunt.
+func hunt_due(id: String) -> bool:
+	return WorldLayout.is_town(id) and Conquest.is_open(_slot, id) and GodNight.is_hunt(GodNight.draw(_slot, id))
+
+
+## The mouse at a frame point: which spot (its picture or its ribbon) and which button lie under it.
+func hover(point: Vector2) -> void:
+	var spot := WorldLayout.at(point)
+	if spot == "":
+		for id in WorldLayout.ids():
+			if WorldLayout.ribbon(id).grow(3.0).has_point(point):
+				spot = id
+	var button := ""
+	if descend_rect().has_point(point):
+		button = "descend"
+	elif back_rect().has_point(point):
+		button = "back"
+	if spot != hovered or button != hovered_button:
+		hovered = spot
+		hovered_button = button
+		_redraw()
+
+
 ## A left click at a frame point.
 func click(point: Vector2) -> void:
+	if busy():
+		return
 	if back_rect().has_point(point):
 		UiSound.play(&"ui_click")
 		action.emit("back")
 		return
 	if descend_rect().has_point(point):
+		_press = 0.14
 		press_descend()
 		return
 	var id := WorldLayout.at(point)
+	if id == "":
+		for other in WorldLayout.ids():
+			if WorldLayout.ribbon(other).grow(3.0).has_point(point):
+				id = other
 	if id == "":
 		return
 	if id == selected:
@@ -260,6 +321,8 @@ func click(point: Vector2) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	if busy():
 		return
 	match event.physical_keycode:
 		KEY_LEFT: move(Vector2.LEFT)
@@ -279,6 +342,8 @@ func _on_blocker_input(event: InputEvent) -> void:
 
 
 func _on_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		hover(event.position)
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		click(event.position)
 
@@ -480,27 +545,33 @@ func _draw_road(points: Array, part: float) -> void:
 		walked += seg
 
 
-## The cloud banks over a spot, back row first: [texture index, middle, width] each. A sealed spot is covered; `ring` leaves the
-## middle open (a locked town shows through its cloud).
+## The cloud banks over a spot, back row first: [texture index, middle, width] each: a few large banks of uneven size, overlapping.
+## A sealed spot is covered; `ring` leaves the middle open (a locked town shows through its cloud). The spot's ribbon is left in sight.
 static func cloud_bank(id: String, ring := false) -> Array:
 	var p: Vector2 = WorldLayout.spot(id).place
 	var span: Vector2 = WorldLayout.span(id)
-	var w := clampf(span.x * 1.7, 58.0, 84.0)
-	var step := Vector2(w * 0.62, w * 0.27)
-	var cols := maxi(2, int(round(span.x * (2.3 if ring else 3.0) / step.x)))
-	var rows := maxi(2, int(round(span.y * (2.0 if ring else 2.7) / step.y)))
+	var w := clampf(span.x * 2.5, 84.0, 124.0)
+	var step := Vector2(w * 0.50, w * 0.21)
+	var cols := maxi(2, int(round(span.x * (2.3 if ring else 2.9) / step.x)))
+	var rows := maxi(3, int(round(span.y * (2.1 if ring else 2.6) / step.y)))
 	var out := []
-	var n := id.hash() % 6
+	var n := absi(id.hash())
 	for row in rows:
 		for col in cols:
+			var k := n + row * 7 + col * 13
+			var jitter := Vector2(float(k % 9) - 4.0, float((k / 9) % 5) - 2.0)
 			var off := Vector2((float(col) - float(cols - 1) * 0.5 + (0.5 if row % 2 == 1 else 0.0)) * step.x,
-				(float(row) - float(rows - 1) * 0.5) * step.y)
-			if ring and (off / span).length() < 0.62:
+				(float(row) - float(rows - 1) * 0.5) * step.y) + jitter
+			if ring and (off / span).length() < 0.66:
 				continue
-			var cw := w * (0.85 + 0.3 * float((row * 3 + col * 5) % 3) / 2.0)
-			if Rect2(p + off - Vector2(cw, cw * 0.4) * 0.5, Vector2(cw, cw * 0.4)).grow(-6.0).intersects(WorldLayout.ribbon(id)):
-				continue  # the ribbon stays in sight: blank over a sealed spot, named over a locked town
-			out.append([(n + row * 2 + col * 3) % 6, p + off, cw])
+			var cw := w * (0.72 + 0.56 * float(k % 5) / 4.0)
+			var body := Rect2(p + off - Vector2(cw, cw * 0.4) * 0.5, Vector2(cw, cw * 0.4)).grow(-6.0)
+			var on_ribbon := false  # every ribbon stays in sight: its own (blank, or named over a locked town) and its neighbours'
+			for other in WorldLayout.ids():
+				on_ribbon = on_ribbon or body.intersects(WorldLayout.ribbon(other).grow(2.0))
+			if on_ribbon:
+				continue
+			out.append([k % 6, p + off, cw])
 	return out
 
 
@@ -560,6 +631,9 @@ func _draw_fx() -> void:
 	_fx.draw_rect(Rect2(land.position.x, hole.end.y, land.size.x, maxf(0.0, land.end.y - hole.end.y)), dusk)
 	_fx.draw_rect(Rect2(land.position.x, hole.position.y, maxf(0.0, hole.position.x - land.position.x), hole.size.y), dusk)
 	_fx.draw_rect(Rect2(hole.end.x, hole.position.y, maxf(0.0, land.end.x - hole.end.x), hole.size.y), dusk)
+	# A town has just opened: the rest of the map holds its breath.
+	if _scene > 0.0:
+		_fx.draw_rect(WorldLayout.LAND, Color(0.02, 0.02, 0.06, 0.30 * minf(1.0, _scene)))
 	# Cloud on what is locked or beyond reach: night under it, then the banks, drifting; a town that opens sheds them.
 	for id in WorldLayout.ids():
 		var f := fog_of(id)
@@ -569,6 +643,10 @@ func _draw_fx() -> void:
 		var span: Vector2 = WorldLayout.span(id)
 		var sealed := spot_state(id) == "sealed"
 		_wash(_fx, p + Vector2(0.0, -2.0), span * 3.3, Color(0.035, 0.045, 0.10, (0.72 if sealed else 0.5) * f))
+		if sealed:  # its blank ribbon is no brighter than its cloud
+			var rib := WorldLayout.ribbon(id)
+			_wash(_fx, rib.get_center(), rib.size * Vector2(1.7, 3.2), Color(0.05, 0.05, 0.10, 0.50))
+		var stir := 2.6 if id == hovered else 1.0  # the mouse stirs the cloud
 		var u := float(_reveal[id]) / REVEAL_SECONDS if _reveal.has(id) else 0.0
 		var bank := cloud_bank(id, not sealed)
 		for i in bank.size():
@@ -576,8 +654,8 @@ func _draw_fx() -> void:
 			if tex == null:
 				continue
 			var ph := float(i) * 1.7 + float(id.hash() % 7)
-			var drift := Vector2(sin(_t * 0.10 + ph) * 5.0, cos(_t * 0.07 + ph) * 1.5) if moving else Vector2.ZERO
-			var at: Vector2 = (bank[i][1] as Vector2) + drift + ((bank[i][1] as Vector2) - p).normalized() * 46.0 * u
+			var drift := Vector2(sin(_t * 0.10 * stir + ph) * 5.0, cos(_t * 0.07 * stir + ph) * 1.5) * minf(stir, 1.6) if moving else Vector2.ZERO
+			var at: Vector2 = (bank[i][1] as Vector2) + drift + ((bank[i][1] as Vector2) - p).normalized() * 60.0 * u
 			var w: float = bank[i][2]
 			var size := Vector2(w, w * float(tex.get_height()) / float(tex.get_width()))
 			_fx.draw_texture_rect(tex, Rect2(at - size * 0.5, size), false, Color(0.88, 0.88, 0.94, (0.97 if sealed else 0.90) * (1.0 - u)))
@@ -600,6 +678,8 @@ func _draw_glow() -> void:
 		if id == selected:
 			var pulse := 0.5 + 0.5 * sin(_t * 2.0) if moving else 0.5
 			_stain(_glow, p, WorldLayout.span(id) * 3.4, Color(1.0, 0.80, 0.42, 0.20 + 0.07 * pulse))
+		elif id == hovered and selectable(id):
+			_stain(_glow, p, WorldLayout.span(id) * 3.0, Color(1.0, 0.80, 0.42, 0.13))
 
 
 ## The largest of the small sizes at which `s` fits in `room`, in the bold face.
@@ -653,13 +733,17 @@ func _draw_spot(id: String) -> void:
 	var rib := WorldLayout.ribbon(id)
 	var state := spot_state(id)
 	var god := god_color()
-	if id == selected:
-		var bob := sin(_t * 2.4) * 1.2 if moving else 0.0
+	if id == selected or (id == hovered and selectable(id)):
+		var chosen := id == selected
+		var bob := sin(_t * 2.4) * 1.2 if moving and chosen else 0.0
 		var ptr := piece("pointer")
 		if ptr != null:
 			var size := Vector2(10.0, 10.0 * float(ptr.get_height()) / float(ptr.get_width()))
-			_top.draw_texture_rect(ptr, Rect2(Vector2(rib.get_center().x - size.x * 0.5, rib.position.y - size.y - 1.5 + bob), size), false)
+			_top.draw_texture_rect(ptr, Rect2(Vector2(rib.get_center().x - size.x * 0.5, rib.position.y - size.y - 1.5 + bob), size), false,
+				Color(1.0, 1.0, 1.0, 1.0 if chosen else 0.55))
 	if state == "sealed":
+		if id == hovered:
+			_draw_tag(rib, SEALED_LINE)
 		return
 	var label := WorldLayout.name_of(id).to_upper()
 	var size := _fit_size(label, rib.size.x - 4.0)
@@ -667,15 +751,14 @@ func _draw_spot(id: String) -> void:
 	var col := Color(INK.r, INK.g, INK.b, 0.6) if dim else INK
 	_ink(Vector2(roundf(rib.get_center().x - bold_width(label, size) * 0.5), rib.get_center().y + float(size) * 0.36), label, size, col, bold())
 	if state == "locked":
-		var lock := LOCK_LINE % [Conquest.UNLOCK_PERCENT, Conquest.town_name(Conquest.opener_of(id))]
-		var tag := piece("tag")
-		var tag_rect := Rect2(roundf(rib.get_center().x - 70.0), rib.end.y - 3.0, 140.0, 0.0)
-		if tag != null:
-			tag_rect.size.y = tag_rect.size.x * float(tag.get_height()) / float(tag.get_width())
-			_top.draw_texture_rect(tag, tag_rect, false)
-		var lock_size := 8
-		_ink(Vector2(roundf(tag_rect.get_center().x - UiTheme.width(lock, lock_size) * 0.5), tag_rect.position.y + tag_rect.size.y * 0.80), lock, lock_size)
+		_draw_tag(rib, LOCK_LINE % [Conquest.UNLOCK_PERCENT, Conquest.town_name(Conquest.opener_of(id))])
 		return
+	if hunt_due(id):  # the Lantern hunts here tonight: a red mark on the ribbon's near end
+		var at := Vector2(rib.position.x - 4.0, rib.get_center().y)
+		_top.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -6), at + Vector2(6, 0), at + Vector2(0, 6), at + Vector2(-6, 0)]), Color(0.16, 0.03, 0.03))
+		_top.draw_colored_polygon(PackedVector2Array([at + Vector2(0, -5), at + Vector2(5, 0), at + Vector2(0, 5), at + Vector2(-5, 0)]), UiTheme.COL_BAD)
+		_top.draw_rect(Rect2(at + Vector2(-0.5, -3.0), Vector2(1.0, 3.5)), Color.WHITE)
+		_top.draw_rect(Rect2(at + Vector2(-0.5, 1.5), Vector2(1.0, 1.0)), Color.WHITE)
 	# The people's bar, under the ribbon.
 	var bar := Rect2(roundf(rib.get_center().x - 15.0), rib.end.y + 4.0, 30.0, 3.0)
 	_top.draw_rect(bar.grow(1.0), Color(0.12, 0.07, 0.04))
@@ -689,6 +772,16 @@ func _draw_spot(id: String) -> void:
 		_top.draw_arc(at, 2.6, 0.0, TAU, 16, god.lightened(0.35), 1.0)
 
 
+## A tag hanging under a ribbon, with a line in ink.
+func _draw_tag(rib: Rect2, words: String) -> void:
+	var tag := piece("tag")
+	var tag_rect := Rect2(roundf(rib.get_center().x - 70.0), rib.end.y - 3.0, 140.0, 0.0)
+	if tag != null:
+		tag_rect.size.y = tag_rect.size.x * float(tag.get_height()) / float(tag.get_width())
+		_top.draw_texture_rect(tag, tag_rect, false)
+	_ink(Vector2(roundf(tag_rect.get_center().x - UiTheme.width(words, 8) * 0.5), tag_rect.position.y + tag_rect.size.y * 0.80), words, 8)
+
+
 ## The info card, pinned on the calm vellum: the chosen town in ink, and the Descend seal.
 func _draw_plate() -> void:
 	var note := piece("note")
@@ -699,30 +792,53 @@ func _draw_plate() -> void:
 		_top.draw_rect(PLATE, CARD)
 		_top.draw_rect(PLATE, Color(0.36, 0.22, 0.10), false, 1.0)
 	var lines := info_lines(selected)
-	for i in lines.size():
-		var at := Vector2(PLATE.position.x + 18.0, PLATE.position.y + 19.0 + 11.5 * float(i))
-		if i == 0:
-			_ink(at, lines[i], UiTheme.SIZE_BODY, INK, bold())
-		else:
-			_ink(at, lines[i], UiTheme.SIZE_SMALL, Color(0.30, 0.18, 0.09))
+	var left := PLATE.position.x + 18.0
+	var room := descend_rect().position.x - left - 2.0
+	var soft := Color(0.30, 0.18, 0.09)
+	_ink(Vector2(left, PLATE.position.y + 19.0), lines[0], UiTheme.SIZE_BODY, INK, bold())
+	if lines.size() >= 3:  # an open town: its people on one line, then what waits there
+		var people := "%s   %s" % [lines[1], lines[2]]
+		_ink(Vector2(left, PLATE.position.y + 30.5), people, _plain_fit(people, room), soft)
+	var night := night_lines(selected)
+	if night.size() >= 1:
+		_ink(Vector2(left, PLATE.position.y + 42.0), night[0], _plain_fit(night[0], room), UiTheme.COL_BAD.darkened(0.25) if hunt_due(selected) else INK)
+	if night.size() >= 2:
+		_ink(Vector2(left, PLATE.position.y + 53.0), night[1], _plain_fit(night[1], room, 9), Color(soft.r, soft.g, soft.b, 0.85))
 	var lit := status.can_descend() and GodNight.draw(_slot, selected) != ""
 	var r := descend_rect()
 	var seal := piece("seal" if lit else "seal_off")
 	var seal_rect := Rect2(r.get_center().x - 16.0, r.position.y, 32.0, 33.0)
+	var down := _press > 0.0  # pressed: it sits on the card, no shadow
+	if down:
+		seal_rect.position += Vector2(0.5, 1.0)
 	if seal != null:
-		_top.draw_texture_rect(seal, Rect2(seal_rect.position + Vector2(1.0, 1.5), seal_rect.size), false, Color(0.0, 0.0, 0.0, 0.35))
-		_top.draw_texture_rect(seal, seal_rect, false)
+		if not down:
+			_top.draw_texture_rect(seal, Rect2(seal_rect.position + Vector2(1.0, 1.5), seal_rect.size), false, Color(0.0, 0.0, 0.0, 0.35))
+		var shine := 1.18 if hovered_button == "descend" and lit and not down else 1.0
+		_top.draw_texture_rect(seal, seal_rect, false, Color(shine, shine, shine))
 	else:
 		_top.draw_rect(seal_rect, WAX if lit else Color(0.42, 0.33, 0.24))
 	var label := "DESCEND"
 	_ink(Vector2(roundf(r.get_center().x - bold_width(label, 8) * 0.5), seal_rect.end.y + 10.0), label, 8, INK if lit else Color(INK.r, INK.g, INK.b, 0.45), bold())
 
 
-## The Back tab: brass, on the frame.
+## The largest plain size, from `top` down, at which `s` fits in `room`.
+static func _plain_fit(s: String, room: float, top := 11) -> int:
+	for size in range(top, 7, -1):
+		if UiTheme.width(s, size) <= room:
+			return size
+	return 7
+
+
+## The Back plate: brass, on the frame.
 func _draw_back() -> void:
 	var r := back_rect()
-	_top.draw_rect(r, Color(0.36, 0.25, 0.09))
-	_top.draw_rect(r, UiTheme.COL_GOLD_MID, false, 1.0)
-	_top.draw_rect(Rect2(r.position + Vector2(2.0, 2.0), Vector2(r.size.x - 4.0, 1.0)), Color(1.0, 0.9, 0.6, 0.25))
+	var plate := piece("plate")
+	var shine := 1.2 if hovered_button == "back" else 1.0
+	if plate != null:
+		_top.draw_texture_rect(plate, r.grow_individual(3.0, 2.0, 3.0, 2.0), false, Color(shine, shine, shine))
+	else:
+		_top.draw_rect(r, Color(0.36, 0.25, 0.09))
+		_top.draw_rect(r, UiTheme.COL_GOLD_MID, false, 1.0)
 	var label := "Back"
 	UiTheme.text(_top, Vector2(roundf(r.get_center().x - UiTheme.width(label, UiTheme.SIZE_SMALL) * 0.5), r.position.y + 11.0), label, UiTheme.SIZE_SMALL, UiTheme.COL_TEXT)

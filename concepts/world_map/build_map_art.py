@@ -3,6 +3,7 @@
   j4/world_map_v4.png  -> map.png              the painting (no road, smoke or ships: the code draws those)
   jfog/fog_sheet.png   -> map/cloud_0..5.png   the cloud banks that lie on what the god cannot reach
   jui/ui_sheet.png     -> map/note.png, seal.png, seal_off.png, tag.png, ship_0.png, ship_1.png, pointer.png
+  jtab/tab_sheet.png   -> map/plate.png       the brass Back plate
   map.png              -> map/land.png         320 x 180 mask: white on land, black on sea and rivers (the god's faith stays on land)
 
 The sheets are painted on flat magenta; it is keyed out here (a sheet has no real alpha).
@@ -110,3 +111,5 @@ if __name__ == "__main__":
     save(low[1][0], "ship_0", 120)
     save(low[2][0], "ship_1", 120)
     save(low[3][0], "pointer", 64)
+    plate = max(pieces(os.path.join(HERE, "jtab", "tab_sheet.png")), key=lambda q: q[2])
+    save(plate[0], "plate", 240)

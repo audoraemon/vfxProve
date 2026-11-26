@@ -357,5 +357,37 @@ static func _painted_map(t) -> void:
 	var m2: WorldMap = _make(_open_both())[0]
 	t.check(m2.road_part("capital") == 1.0, "the road to an open Capital is whole")
 	t.check(page2.encloses(m2.descend_rect()) and WorldMap.PLATE.encloses(m2.descend_rect()), "the Descend seal is on the card")
+	# The third round: what waits in a town, the mouse, the opening scene.
+	var night := m2.night_lines("aldermere")
+	t.check(night.size() == 2 and night[0].begins_with("Tonight: ") and night[0].length() > 9 and night[1] == "When conquered: +%d Faith" % Conquest.CONQUER_FAITH,
+		"the card says the night drawn in Aldermere and what the town is worth (%s)" % [night])
+	t.check(m2.night_lines("vael").is_empty() and not m2.hunt_due("aldermere"), "a sealed spot has no night; no Hunt is due for a fresh god")
+	m2.hover(WorldLayout.spot("thornwick").place)
+	t.check(m2.hovered == "thornwick" and m2.selected != "thornwick", "the mouse over a sealed spot hovers it without choosing it")
+	m2.hover(WorldLayout.ribbon("capital").get_center())
+	t.check(m2.hovered == "capital", "a ribbon is its town to the mouse")
+	m2.hover(m2.descend_rect().get_center())
+	t.check(m2.hovered_button == "descend" and m2.hovered == "", "the seal knows the mouse is on it")
+	m2.hover(m2.back_rect().get_center())
+	t.check(m2.hovered_button == "back", "so does the Back plate")
+	m2.click(WorldLayout.ribbon("capital").get_center())
+	t.check(m2.selected == "capital", "a click on a ribbon chooses its town")
+	t.check(not m2.busy(), "a map at rest takes input")
+	m2._scene = 1.0
+	var was := m2.selected
+	m2.click(WorldLayout.spot("aldermere").place)
+	m2._unhandled_input(_key(KEY_ESCAPE))
+	t.check(m2.selected == was, "while a town's opening plays, clicks and keys wait")
+	m2._scene = 0.0
+	var hunted := _open_both()
+	hunted.notice = 100
+	var m3: WorldMap = _make(hunted)[0]
+	t.check(m3.hunt_due("aldermere") and m3.night_lines("aldermere")[0].begins_with("The Hunt: "), "a due Hunt is named on the card (%s)" % [m3.night_lines("aldermere")])
+	t.check(m3.night_lines("capital")[0] == "The Hunt is abroad: no night here", "and the Capital says why no night waits there")
+	m3.free()
+	var held: WorldMap = _make(_open_both())[0]
+	t.check(ResourceLoader.exists("res://assets/chamber/map/plate.png"), "the Back plate is in the project")
+	held.free()
+
 	m2.free()
 

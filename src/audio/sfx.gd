@@ -412,6 +412,19 @@ const CATALOG := {
 	&"amb_fire": {"path": "res://assets/audio/ambience/amb_fire.wav", "db": -3.0, "loop": true},
 	&"amb_bird": {"path": "res://assets/audio/ambience/amb_bird_%d.wav", "variants": 4, "db": -16.0, "voices": 2, "jitter": 0.08},
 	&"amb_night_call": {"path": "res://assets/audio/ambience/amb_night_call_%d.wav", "variants": 3, "db": -16.0, "voices": 1, "jitter": 0.05},
+	# The God's Chamber (step 7, ChamberSound plays them on the Ambience bus; tools/audio/foley/chamber/): the room's bed -- the brazier's
+	# crackle over a soft room tone -- the occasional room sounds, and the chime and swell of a state first seen.
+	&"chamber_bed": {"path": "res://assets/audio/chamber/chamber_bed.wav", "db": -10.0, "loop": true},
+	&"chamber_sputter": {"path": "res://assets/audio/chamber/chamber_sputter_%d.wav", "variants": 3, "db": -14.0},
+	&"chamber_log": {"path": "res://assets/audio/chamber/chamber_log_%d.wav", "variants": 3, "db": -14.0},
+	&"chamber_wind": {"path": "res://assets/audio/chamber/chamber_wind_%d.wav", "variants": 3, "db": -13.0},
+	&"chamber_moan": {"path": "res://assets/audio/chamber/chamber_moan_%d.wav", "variants": 2, "db": -12.0},
+	&"chamber_sand": {"path": "res://assets/audio/chamber/chamber_sand_%d.wav", "variants": 2, "db": -15.0},
+	&"chamber_page": {"path": "res://assets/audio/chamber/chamber_page_%d.wav", "variants": 3, "db": -15.0},
+	&"chamber_quill": {"path": "res://assets/audio/chamber/chamber_quill_%d.wav", "variants": 2, "db": -15.0},
+	&"chamber_chain": {"path": "res://assets/audio/chamber/chamber_chain_%d.wav", "variants": 2, "db": -17.0},
+	&"chamber_chime": {"path": "res://assets/audio/chamber/chamber_chime.wav", "db": -11.0},
+	&"chamber_swell": {"path": "res://assets/audio/chamber/chamber_swell.wav", "db": -10.0},
 	# Music: real instrument samples (tools/audio/music/, rendered by tools/audio/music_render.py). Music plays these at its own level (Music.DB), so their db is not used.
 	&"music_theme": {"path": "res://assets/audio/music/music_theme.wav", "db": 0.0, "loop": true},
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},

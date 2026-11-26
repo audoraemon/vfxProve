@@ -3,7 +3,8 @@ extends Node
 ## The God's Chamber (spec docs/superpowers/specs/2026-11-19-kak-god-chamber-design.md): where a god stands between nights. It replaces the
 ## hub on Screen.HUB: four stations (World Table, Ability Tree, Faith Altar, Rite Door) in a room that shifts a little against the mouse, a
 ## slim top bar with the god's status, the Hunt and seal lines, and the bottom lines. The words and decisions come from HubStatus, the
-## rects and keys from ChamberLayout, the pictures from ChamberArt (greybox until art is painted).
+## rects and keys from ChamberLayout, the pictures from ChamberArt (greybox until art is painted). Step 7: the room lives and shows the god's
+## progress (ChamberLife: flames, candles per tier, cups, the hourglass, the Hunt's red sky), with its own sound (ChamberSound).
 
 ## "descend", "awaken", "tree", "faith", "title" or "awaken_dev".
 signal action(name: String)
@@ -25,6 +26,8 @@ const BAR_GAP := 8.0
 const HINT_Y := 350.0
 const STACK_GAP := 18.0
 
+## The order the stations are drawn in, back to front (ChamberLayout.ORDER is the order they are listed and hit-tested in).
+const DRAW_ORDER: Array[String] = ["awaken", "descend", "tree", "faith"]
 ## Zoom and fade between the Chamber and a station's page. Off (false) in --flow-test, --capture and headless runs, where a press emits in the same call.
 static var transitions := true
 ## How far the room zooms about the station, how long that takes, and where in it the black comes in (the last 40%).
@@ -54,6 +57,12 @@ var _mode := Mode.REST
 var _t := 0.0
 var _focus_key := ""
 var _pending := ""
+## The room's life (step 7): what it shows of the god, and its own running time (seconds since the room opened; it only runs while
+## ChamberLife.moving). `life_hold` stops the clock where it is (the photographs of the idle life set `life_t` frame by frame).
+var _life := ChamberLife.new()
+var life_t := 0.0
+var life_hold := false
+var _sound: ChamberSound
 
 
 func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodChamber:
@@ -62,6 +71,12 @@ func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodCham
 	dev = p_dev
 	from = p_from
 	status = HubStatus.new(slot)
+	_life.st = ChamberLife.state(slot, status)
+	if ChamberSound.enabled and (DisplayServer.get_name() != "headless" or ChamberSound.force):
+		_sound = ChamberSound.new()
+		_sound.name = "RoomSound"
+		_sound.setup(_life.st, -1, "%d:%d" % [slot.index, slot.seed], slot.night)
+		add_child(_sound)
 	var layer := CanvasLayer.new()
 	layer.layer = 10
 	add_child(layer)
@@ -84,6 +99,19 @@ func _exit_tree() -> void:
 
 func _process(delta: float) -> void:
 	advance(delta)
+	if ChamberLife.moving and not life_hold and not is_queued_for_deletion():
+		life_t += delta
+		_redraw()
+
+
+## The room's sound (null when it is off: FLOW, --capture, headless).
+func room_sound() -> ChamberSound:
+	return _sound if is_instance_valid(_sound) else null
+
+
+## What the room shows of the god (ChamberLife.state()).
+func life_state() -> Dictionary:
+	return _life.st
 
 
 ## The mouse from the area's centre, -1..1 on each axis ((0, 0) before any motion).
@@ -249,6 +277,8 @@ func _press(what: String, from_key := false) -> void:
 		_redraw()
 	if result.emit == "":
 		return
+	if is_instance_valid(_sound):
+		_sound.leave()  # a page is opening: the room's bed fades with the zoom
 	if transitions and ChamberLayout.STATIONS.has(result.emit):
 		_mode = Mode.OUT
 		_t = 0.0
@@ -365,22 +395,53 @@ func _draw_room(back: Rect2) -> void:
 			for piece: Dictionary in ChamberLayout.SCENERY:
 				if piece.name == "table":
 					ChamberArt.draw(_ui, "table", _layer_rect(piece.rect, piece.layer))
-		for key: String in ChamberLayout.ORDER:
+		# The Rite Door first: the World Table stands in front of it, so the table's map is drawn over the door's dimmed or
+		# put-out light, never darkened by it.
+		for key: String in DRAW_ORDER:
 			if ChamberLayout.STATIONS[key].layer == layer:
 				_draw_station(key)
+	var life := _life.frame(life_t)
+	_draw_life(life, "wall")
 	for piece: Dictionary in ChamberLayout.SCENERY:
 		if piece.name == "desk":
 			# The desk is wider than the frame so a wide window still meets it; extend it to the backdrop's edges.
 			var r := _layer_rect(piece.rect, piece.layer)
 			var left := minf(r.position.x, back.position.x)
 			var right := maxf(r.end.x, back.end.x)
-			ChamberArt.draw(_ui, "desk", Rect2(left, r.position.y, right - left, r.size.y))
+			var at := Rect2(left, r.position.y, right - left, r.size.y)
+			ChamberArt.draw(_ui, "desk", at)
+			_draw_life(life, "desk", r, at)
 	for key: String in ChamberLayout.ORDER:
 		if _hover == key and station_state(key) != "closed":
 			_draw_outline_and_plate(key)
 	for key: String in ChamberLayout.ORDER:
 		if badge(key):
 			_draw_badge(menu_rect(key))
+
+
+## The room's life on one layer (ChamberLife.frame()), each piece moved by its layer's parallax. On the desk, a piece follows the desk
+## from where it sits (`desk`, its layer rect) to where it is drawn (`at`): the same, except in a window so wide the desk is stretched.
+func _draw_life(pieces: Array, layer: String, desk := Rect2(), at := Rect2()) -> void:
+	var k := at.size.x / desk.size.x if desk.size.x > 0.0 else 1.0
+	for p: Dictionary in pieces:
+		if p.layer != layer:
+			continue
+		var r := ChamberLife.placed(p, _mouse01)
+		if k != 1.0:
+			r = Rect2(at.position.x + (r.position.x - desk.position.x) * k, r.position.y, r.size.x * k, r.size.y)
+		var tex_name: String = p.tex
+		if tex_name == "":
+			var c: Color = p.color
+			_ui.draw_rect(r, Color(c.r, c.g, c.b, c.a * float(p.alpha)))
+			continue
+		var tex := ChamberArt.texture(ChamberLife.DIR + tex_name)
+		if tex == null:
+			continue  # a missing mask or patch: that source is skipped
+		var mod := Color(1.0, 1.0, 1.0, float(p.alpha))
+		if p.has("src"):
+			_ui.draw_texture_rect_region(tex, r, p.src, mod)
+		else:
+			_ui.draw_texture_rect(tex, r, false, mod)
 
 
 func _draw_outline_and_plate(key: String) -> void:

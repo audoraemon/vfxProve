@@ -108,6 +108,20 @@ const COL_LIGHTNING_FLASH := Color("5aa8ff")
 ## Ground fire (Dragonfire): the soot a scorched person shows, darkest at 0.45 and fading over the last 2 s.
 const SCORCH_COLOR := Color(0.12, 0.09, 0.08)
 const SCORCH_STRENGTH := 0.45
+## How many flame frames a burning person flickers through (_draw_flames()).
+const FLAME_FRAMES := 6
+## A burning person's flames (_draw_flames(), the user's playtest 2026-11-20): this many tongues across his body, each rising to
+## its share of twice his height (the middle ones tallest), and their colours from the edge in; sparks and smoke over them.
+const FLAME_REACH: Array[float] = [0.4, 0.62, 0.85, 1.0, 0.8, 0.6, 0.38]
+const COL_FLAME_EDGE := Color(1.0, 0.33, 0.08, 0.8)
+const COL_FLAME_MID := Color("ffa030")
+const COL_FLAME_CORE := Color("fff0a0")
+const COL_FIRE_GLOW := Color(1.0, 0.5, 0.15, 0.22)
+const COL_FIRE_SMOKE := Color(0.24, 0.21, 0.19, 0.4)
+const FIRE_SPARKS := 3
+## The least light a channel is divided by when his fire is drawn unlit (unlit()).
+const UNLIT_FLOOR := 0.2
+const FIRE_SMOKE := 3
 ## Drawn above a building's footprint: its height plus a roof or battlements (HouseArt.RISE_MAX and a chimney).
 const ROOF_MARGIN := 40.0
 ## Each person's speed is scaled by a pace drawn from this range, so a crowd is not a marching column.
@@ -239,12 +253,24 @@ var town_post := Vector2.INF
 var post_group := -1
 ## How near his anchor a soldier must stand to count as at it (at_own_post(), on_watch()).
 const WATCH_REACH := 1.0
+## Which street beat he walks (Crowd._start_loops(), CityDef.street_beats()), or -1: set once, never cleared.
+var beat_index := -1
 ## On a guard job (GuardJobs.take/release/prune/close/clear set and clear it, nobody else).
 var on_guard_job := false
 ## Soldiers drilling (CityDef.drill_spots()): what it faces at its post (a practice dummy); INF for none.
 var drill_face := Vector2.INF
 ## A soldier sent somewhere at a run (v0.07: escorts, marshals, rescue squads); send_to_post() sets it.
 var hurrying := false
+## The way a soldier faces standing at his anchor (a Citadel guard man in his rank, later a corpse watcher or a cordon end); INF
+## for none. send_to_post() and hold_ground() clear it, so a caller sets it right after its send_to_post().
+var stand_face := Vector2.INF
+## Down on one knee over something (a corpse inspector): the stumble pose held on its last frame while he stands still.
+var crouching := false
+## Seconds a soldier still stands talking (a cordon man to a citizen he turns back; later duties reuse it): while above zero and
+## not striding, _interact_anim() shows the talk loop in any mind. Counted down in tick(); every duty that sets it clears it.
+var talk_left := 0.0
+## A sweep man sees a power or a death from Crowd.WATCH_SIGHT, not DOOM_WITNESS. Set and cleared only by SweepDuty and GateCheck.
+var watch_far := false
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
 ## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
 ## the duty -- and not to his spawn post (_soldier_back()).
@@ -416,6 +442,8 @@ var badge_color := Color.WHITE
 var badge_left := 0.0
 ## Seconds left that this person shows soot from a ground fire (GroundFire.SCORCH_SHOW when scorched).
 var scorched_left := 0.0
+## How many times his flames were drawn (_draw_flames(); the tests count it). Drawing only.
+var flame_draws := 0
 ## Health, for blows (hurt()); set by setup_person().
 var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
@@ -661,6 +689,8 @@ func tick(delta: float) -> void:
 		_run_carried_laws(delta)
 	if _shaken_left > 0.0:
 		_shaken_left = maxf(_shaken_left - delta, 0.0)
+	if talk_left > 0.0:
+		talk_left = maxf(talk_left - delta, 0.0)
 	if _bend_to != Vector2.INF:
 		_bend_left -= delta
 		if _bend_left <= 0.0:
@@ -916,8 +946,12 @@ func pace_hold() -> float:
 
 func _base_speed() -> float:
 	match mind:
-		Mind.PANIC, Mind.RALLY:
+		Mind.PANIC:
 			return PANIC_SPEED * pace
+		Mind.RALLY:
+			if corps != Corps.NONE:
+				return PANIC_SPEED * pace
+			return WALK_SPEED * ASSIST_PACE * pace
 		Mind.RECOVER:
 			return WALK_SPEED * RECOVER_PACE * pace
 		Mind.ASSIST:
@@ -988,7 +1022,7 @@ func _pick_target() -> void:
 	if queue_spot != Vector2.INF:
 		_target = queue_spot
 		return
-	if is_running():
+	if is_running() or mind == Mind.RALLY:
 		# DummyEnemy.tick() just set _idle before calling us, to pause at every target it reaches. That
 		# suits a calm stroll but not a sprint: cancel it so a runner never stops between waypoints.
 		_idle = 0.0
@@ -1029,6 +1063,14 @@ func _pick_target() -> void:
 		return
 	if mind == Mind.FLEE:
 		_scurry()
+		return
+	if (mind == Mind.RALLY or mind == Mind.POST) and stand_face != Vector2.INF \
+			and ground_pos.distance_to(anchor) <= GOAL_REACH * 2.0:
+		# A guard man in his rank: he stands on his spot facing the way he was given, never shifting about.
+		hurrying = false
+		_target = anchor
+		_facing = 1 if stand_face.x - stand_face.y > 0.0 else -1
+		_back = stand_face.x + stand_face.y < 0.0
 		return
 	if mind == Mind.POST and ground_pos.distance_to(anchor) <= GOAL_REACH * 2.0:
 		# At its post (the reach _think() re-paths beyond): shifting about it is at a walk again. A goal dropped short of
@@ -1362,8 +1404,9 @@ func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
 ## from a danger the god lays on him as a citizen does (the town's own frights are not laid on him: Crowd._react()); he
 ## never takes cover, and settled he goes back to what he was doing (_soldier_back()).
 ## `startle` false skips the freeze of a fresh fright (a person in a ground fire does not stand still in it). `may_shelter` false
-## skips the shelter roll (a status that kills him where he stands: Withering.SHELTERS).
-func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true) -> void:
+## skips the shelter roll (a status that kills him where he stands: Withering.SHELTERS). `forced` is a power's own touch on this very person
+## (Divine Schism, the law mark): a shelter escort never steadies it away.
+func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true, forced := false) -> void:
 	if mind == Mind.ASLEEP and state != State.DEAD:
 		if _deep_sleep:
 			return  # a deep sleep (Veil) sleeps through any noise; only a hurt wakes it
@@ -1374,10 +1417,13 @@ func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelt
 		return  # the sick walk home whatever happens; a shadow sees nothing; the dreaded cannot run (Veil)
 	if held_by_will(WILL_ABSOLUTE) or fearless_left > 0.0:
 		return  # a Dominion stronger than fear, or a mind that has been told there is nothing to fear
+	if not forced and crowd != null and crowd.shelter_escort != null and crowd.shelter_escort.steadied(self, from, radius):
+		return  # a household led to shelter holds against a near miss while its escort stands by (ShelterEscort)
 	# A sturdy building nearby may be better than running (ShelterManager).
 	if may_shelter and shelters != null and mind != Mind.PANIC and shelters.try_shelter(self, from, radius, kind):
 		awareness = Awareness.THREATENED
 		return
+	_drop_hold_off()  # a fright ends any hold-off: nothing is kept back to be restored over the flight
 	var from_other_mind := mind != Mind.PANIC
 	_hold_begin()
 	mind = Mind.PANIC
@@ -1508,6 +1554,8 @@ func lure(at: Vector2, seconds: float, from := Vector2.INF, reach := WillOWisp.C
 			return false
 	elif not (mind in LURABLE or (answers_lure and mind == Mind.DUTY)):
 		return false
+	elif crowd != null and not answers_lure and crowd.cordon_blocks(ground_pos, at):
+		return false  # a cordon's rope lies between a citizen and the light (CordonDuty)
 	if answers_lure and not soldier:
 		_duty_lured = mind == Mind.DUTY or (_duty_lured and mind == Mind.OBSERVE and _lured)
 	else:
@@ -1601,12 +1649,13 @@ func wrap_to(to: Vector2, walk_on := true) -> bool:
 ## route it means to take into `r` -- its goal now, a post, a street, an errand -- is kept for later and not walked
 ## (set_goal()); a goal outside `r` it walks as ever (a fright sends it off as usual). When the time is up (or
 ## end_hold_off()) it takes up the goal it was kept from, if any. Its mind is untouched; nothing is drawn from any rng
-## here. No path is walked while it mills, so the stuck watchdog has nothing to count. False when it is dead or inside.
-func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float) -> bool:
+## here. No path is walked while it mills, so the stuck watchdog has nothing to count. With `path_too` a goal outside `r` whose
+## path runs through it (path_crosses(), CordonDuty.PATH_AHEAD ahead) is kept back too. False when it is dead or inside.
+func hold_off(r: Rect2, seconds: float, heading: Vector2, walk_away: float, path_too := false) -> bool:
 	if state == State.DEAD or inside or seconds <= 0.0:
 		return false
 	var kept := _off_goal if _off_left > 0.0 else Vector2.INF
-	if _goal != Vector2.INF and r.has_point(_goal):
+	if _goal != Vector2.INF and (r.has_point(_goal) or (path_too and path_crosses(r, CordonDuty.PATH_AHEAD))):
 		kept = _goal
 	_off_rect = r
 	_off_left = seconds
@@ -1641,13 +1690,26 @@ func end_hold_off() -> void:
 	var g := _off_goal
 	_off_goal = Vector2.INF
 	_off_home = Vector2.INF
-	if g != Vector2.INF and state != State.DEAD and not inside:
+	if g != Vector2.INF and state != State.DEAD and not inside and _goal == Vector2.INF \
+			and (mind == Mind.CALM or mind == Mind.RECOVER or mind == Mind.REGROUP):
 		set_goal(g)
+
+
+## A fright (flee(), panic()) ends a hold-off with no goal given back: the flight is his own.
+func _drop_hold_off() -> void:
+	_off_left = 0.0
+	_off_goal = Vector2.INF
+	_off_home = Vector2.INF
 
 
 ## Whether it is held off a place now (hold_off()).
 func held_off() -> bool:
 	return _off_left > 0.0
+
+
+## The ground it is held off now (hold_off()); an empty rect when it is not.
+func held_rect() -> Rect2:
+	return _off_rect if _off_left > 0.0 else Rect2()
 
 
 ## Where it means to be: its goal; or, kept from one (hold_off()), that goal; else its anchor (a citizen's street, a
@@ -1887,10 +1949,38 @@ func guised() -> bool:
 	return statuses.has(&"guise")
 
 
+## A gate guard sees through him (GateCheck): the guise comes off and any hold of the god's ends as if it had worn off -- a whisper
+## (end_whisper()), a confusion (_come_to()), a compulsion (release_compulsion()), a stare at a lure (it ends at his next think).
+## True when anything ended.
+func unmask() -> bool:
+	var ended := statuses.erase(&"guise")
+	match mind:
+		Mind.WHISPERED:
+			end_whisper()
+			ended = true
+		Mind.CONFUSED:
+			_come_to()
+			ended = true
+		Mind.COMPELLED:
+			release_compulsion()
+			ended = true
+		Mind.OBSERVE:
+			if _lured:
+				_observe_left = 0.0
+				ended = true
+	return ended
+
+
 ## Whether a withering is on him now (Withering, R36: statuses[&"wither"] holds the seconds left, laid, counted down and
 ## taken off by the crowd's Withering). Drawn grey (Withering.TINT), as the guised are.
 func withered() -> bool:
 	return statuses.has(&"wither")
+
+
+## Whether he is alight now (Burning: statuses[&"burning"] holds the seconds left, laid, counted down and taken off by the
+## crowd's Burning). Flames are drawn on him (_draw_flames()); drawing only.
+func burning() -> bool:
+	return statuses.has(&"burning")
 
 
 ## The grey his sprite is drawn in: the withering's, else the walking dead's (Corpse Guise), else none (white). 2, 1, 0 in
@@ -1960,7 +2050,9 @@ func _soldier_back() -> void:
 	_held_saved = false
 	match m:
 		Mind.RALLY:
+			var face := stand_face
 			send_to_post(at, true, hurry)
+			stand_face = face
 		Mind.DUTY:
 			go_duty(at)
 			if mind != Mind.DUTY:
@@ -2985,7 +3077,8 @@ func _scurry() -> void:
 
 
 func is_running() -> bool:
-	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY or mind == Mind.FIGHT
+	return state != State.DEAD and (mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.FIGHT
+		or (mind == Mind.RALLY and corps != Corps.NONE)
 		or (mind == Mind.COMPELLED and _compel_run))
 
 
@@ -3004,6 +3097,7 @@ func flee() -> void:
 		_reassured_fled = true  # it will go when the calm wears off
 		return
 	mind = Mind.FLEE
+	_drop_hold_off()
 	walk_speed = _mind_speed()
 	_panic_left = 0.0
 	_goal = Vector2.INF
@@ -3089,6 +3183,7 @@ func send_to_post(at: Vector2, rally := false, hurried := false) -> void:
 		return
 	_held_saved = false  # sent somewhere by someone (a town order -- the rally, the marshals, a rescue -- wins over any hold, WILL_FIRM too)
 	anchor = at
+	stand_face = Vector2.INF
 	mind = Mind.RALLY if rally else Mind.POST
 	hurrying = hurried
 	walk_speed = _mind_speed()
@@ -3106,9 +3201,28 @@ func at_own_post() -> bool:
 ## away on a guard job, and either on duty or at his station (a director-stationed soldier counts; a guard away on a fire or a
 ## pile never does).
 func on_watch() -> bool:
-	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or veil_blind():
+	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or on_beat() or veil_blind():
 		return false  # (Veil C13: a shadow or a dreaded man keeps no watch -- he sees nothing; at_own_post() still counts his post held)
+	if _gate_guard():
+		return mind == Mind.POST or mind == Mind.HOLD  # a gate guard keeps his watch wherever his check has taken him
 	return mind == Mind.DUTY or ((mind == Mind.POST or mind == Mind.HOLD) and ground_pos.distance_to(anchor) <= WATCH_REACH)
+
+
+## Where a watcher is judged to stand: a gate guard holding a GATE record (GateCheck) at his town post, wherever his check has stepped
+## him (so a door's verdict does not flip with traffic); anyone else where he is.
+func watch_at() -> Vector2:
+	return town_post if _gate_guard() else ground_pos
+
+
+## Whether he holds a GATE record (GateCheck) and has a town post.
+func _gate_guard() -> bool:
+	return town_post != Vector2.INF and crowd != null and crowd.guard_jobs != null and crowd.guard_jobs.kind_of(self) == GuardJobs.Kind.GATE
+
+
+## Whether he is walking his street beat: a beat man, no corps, and nobody has re-posted him (his post is his town post and his
+## anchor), so a director's stationed man (anchor away from his post) is not on his beat and watches as any guard.
+func on_beat() -> bool:
+	return beat_index >= 0 and corps == Corps.NONE and post.is_equal_approx(town_post) and anchor.is_equal_approx(post)
 
 
 ## Back to his post after a job: a soldier the god holds has his saved hold rewritten to the post (so the hold lifts into it);
@@ -3127,6 +3241,7 @@ func hold_ground() -> void:
 	if state == State.DEAD:
 		return
 	_held_saved = false
+	stand_face = Vector2.INF
 	mind = Mind.HOLD
 	walk_speed = _mind_speed()
 	_goal = Vector2.INF
@@ -3213,6 +3328,8 @@ static func _screen_box(fp: Rect2, h: float) -> Rect2:
 
 func _draw_body(lift: int, top_only: int) -> void:
 	drawn_upright = false
+	if state != State.DEAD and burning() and _lift <= 8.0:
+		_draw_fire_glow()
 	if mind == Mind.COMPELLED and compel_pose == &"kneel" and state != State.DEAD 			and not (SpriteArt.on() and PeopleArt.ready() and _prays()):
 		# On its knees: the body down, no legs under it (unless the sprite has a pray of its own).
 		lift += 3
@@ -3225,6 +3342,70 @@ func _draw_body(lift: int, top_only: int) -> void:
 		_draw_citizen(lift, top_only)
 	if state != State.DEAD:
 		_draw_marks(lift)
+		if burning():
+			_draw_flames(lift)
+
+
+## Alight (Burning; made bigger after the user's playtest, 2026-11-20): FLAME_REACH's tongues of flame over his whole body,
+## the middle ones rising to about twice his height, each red at the edge, orange within and pale at the root; FIRE_SPARKS
+## sparks rising over them and a thin wisp of smoke above. They flicker with the seconds he has left (_flame_frame()), each
+## person on his own phase (his instance id: drawing only). Drawn untinted (fire is not dimmed by his soot) and unlit (not
+## dimmed by the night: fire_colour()). Drawing only.
+func _draw_flames(lift: int) -> void:
+	flame_draws += 1
+	var k := _flame_frame()
+	var tall := 18 if SpriteArt.on() and PeopleArt.ready() else 14
+	var ph := (get_instance_id() & 0xffff) % FLAME_FRAMES
+	var n := FLAME_REACH.size()
+	for i in n:
+		var x := i * 2 - n + ((k + i + ph) % 2)
+		var flick := 0.8 + 0.05 * float((k * 3 + i * 5 + ph) % 5)
+		var h := maxi(roundi(float(tall) * 2.0 * FLAME_REACH[i] * flick), 3)
+		# A wide red root over his body, narrowing to a one-pixel tongue: orange within, pale at the heart.
+		var root := h * 3 / 5 if i % 2 == 1 else h * 2 / 5
+		_fire_px(x - 1 + i % 2, lift - root, 2, root, COL_FLAME_EDGE)
+		_fire_px(x, lift - h, 1, h, COL_FLAME_EDGE)
+		_fire_px(x, lift - h * 3 / 4, 1, h * 3 / 4, COL_FLAME_MID)
+		_fire_px(x, lift - h * 2 / 5, 1, h * 2 / 5, COL_FLAME_CORE)
+	var top := lift - tall * 2
+	for j in FIRE_SPARKS:
+		var rise := (k * 4 + j * 7 + ph * 3) % 12
+		_fire_px((j * 5 + ph + k) % 9 - 4, top + 2 - rise, 1, 1, Color(COL_HOT, 1.0 - float(rise) / 12.0))
+	for j in FIRE_SMOKE:
+		var sx := (j + (k + ph) / 2) % 3 - 1
+		_fire_px(sx, top - 4 - j * 4 - k % 2, 2, 2, Color(COL_FIRE_SMOKE, COL_FIRE_SMOKE.a * (1.0 - 0.3 * float(j))))
+
+
+## Alight: a warm glow on the ground under him, under his body. Unlit, as his flames (fire_colour()). Drawing only.
+func _draw_fire_glow() -> void:
+	draw_set_transform(_draw_origin, 0.0, Vector2(1.0, 0.5))
+	draw_circle(Vector2.ZERO, 13.0, fire_colour(COL_FIRE_GLOW))
+	draw_circle(Vector2.ZERO, 7.0, fire_colour(Color(COL_FLAME_MID, 0.28)))
+	draw_set_transform(_draw_origin)
+
+
+## A pixel run of fire, untinted (DummyEnemy._px() would tint it with his soot or a flash) and unlit (fire_colour()).
+func _fire_px(x: int, y: int, w: int, h: int, c: Color) -> void:
+	draw_rect(Rect2(x, y, w, h), fire_colour(c))
+
+
+## The colour to draw his fire in so that it shows as `c` under the light on him: his modulate (DummyEnemy._refresh(): the
+## ambient, the night's tint and the lamplight) multiplies all he draws, and fire is its own light, so it is not dimmed or
+## cooled at night (the user's playtest: "I barely see the burning effect"). Drawing only. It lags the light by at most one of
+## his redraws (the light is read at LIGHT_HZ, the flames redraw with their frames).
+func fire_colour(c: Color) -> Color:
+	return unlit(c, modulate)
+
+
+## `c` divided by the light `m` (each channel floored at UNLIT_FLOOR, so a dark spot cannot blow it up): drawn under `m` it
+## shows as `c` (the renderer clamps after the multiply). Its alpha is kept (his fade on death is not light).
+static func unlit(c: Color, m: Color) -> Color:
+	return Color(c.r / maxf(m.r, UNLIT_FLOOR), c.g / maxf(m.g, UNLIT_FLOOR), c.b / maxf(m.b, UNLIT_FLOOR), c.a)
+
+
+## Which of FLAME_FRAMES the flames show now: they flicker as his seconds run down.
+func _flame_frame() -> int:
+	return int(float(statuses.get(&"burning", 0.0)) * 10.0) % FLAME_FRAMES
 
 
 ## What a power has laid on it, over the head: a compulsion's mark (its glyph, drifting up and down with its steps,
@@ -3363,6 +3544,9 @@ func _sprite_pose_code() -> int:
 	elif _stumble > 0.0 or mind == Mind.ASLEEP:
 		anim = 3
 		t = STUMBLE_SECONDS - _stumble if _stumble > 0.0 else STUMBLE_SECONDS  # asleep: down, and staying down
+	elif crouching and not _stride:
+		anim = 3
+		t = STUMBLE_SECONDS  # the stumble's last frame, held
 	elif _swing_left > 0.0 and state == State.WANDER:
 		anim = 7
 		t = SWING_SHOW - _swing_left
@@ -3396,7 +3580,7 @@ func _sprite_pose_code() -> int:
 		t = _still_t
 	elif _stride:
 		# is_frozen() and is_running(), inline: it is not dead here.
-		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or mind == Mind.RALLY else 1
+		anim = 2 if mind == Mind.PANIC or mind == Mind.FLEE or (mind == Mind.RALLY and corps != Corps.NONE) else 1
 		if (mind == Mind.FIGHT and fight_kind == &"madness") or (anim == 1 and guised()):
 			_design()
 			if _has_own_art(6):
@@ -3420,6 +3604,8 @@ func _interact_anim() -> int:
 	if mind == Mind.ASSIST and assist_at_water and not has_goal():
 		return 14 if _own_art(14) else -1
 	if soldier:
+		if talk_left > 0.0 and not _stride:
+			return 13 if _own_art(13) else -1
 		if mind != Mind.POST or hurrying or has_goal() or not _own_art(13):
 			return -1
 		var every := TALK_EVERY.x + (TALK_EVERY.y - TALK_EVERY.x) * float(posmod(rng.seed * 40503, 997)) / 996.0
@@ -3709,6 +3895,9 @@ func _pose_signature() -> int:
 func _art_signature() -> int:
 	if SpriteArt.on() and PeopleArt.ready():
 		return _sprite_signature()
+	if statuses.has(&"burning") and state != State.DEAD:
+		# Alight (Burning): the whole fold, and the flames' frame on top.
+		return (super() + _mark_signature() * SIG_MARK) * (FLAME_FRAMES + 1) + 1 + _flame_frame()
 	if state != State.WANDER or _lift != 0.0 or _frozen > 0.0 or _flash > 0.0:
 		return super() + _mark_signature() * SIG_MARK
 	var running := is_running()
@@ -3736,7 +3925,7 @@ func _sprite_signature() -> int:
 	var sig: int = (code >> 2 & 31) * 4 + (code & 3)
 	sig = sig * 16 + (code >> 7) % 16
 	if _lift == 0.0 and _frozen <= 0.0 and _flash <= 0.0 and sick_left <= 0.0 and mind != Mind.CONFUSED \
-			and scorched_left <= 0.0:
+			and scorched_left <= 0.0 and not statuses.has(&"burning"):
 		# The common case, nothing lifting, freezing, flashing, sickening or confusing it: the fold below with its
 		# zero terms multiplied out ahead of time, the same integer (int arithmetic wraps the same either way).
 		return ((sig * SIG_SPRITE_QUIET + int(state)) * 131 + int(_draw_origin.y) + 64) * SIG_SPRITE_OVERLAYS \
@@ -3757,6 +3946,9 @@ func _sprite_signature() -> int:
 	if scorched_left > 0.0:
 		# Soot (ground fire) fades in steps; unscorched, the integer is the quiet fold's.
 		sig = sig * 5 + int(clampf(scorched_left / 2.0, 0.0, 1.0) * 4.0) + 1
+	if statuses.has(&"burning"):
+		# Alight (Burning): the flames' frame on top; not alight, the integer is as it was.
+		sig = sig * (FLAME_FRAMES + 1) + 1 + _flame_frame()
 	return sig
 
 

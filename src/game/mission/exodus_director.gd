@@ -794,6 +794,47 @@ func lost_reason() -> String:
 	return ""
 
 
+## Loss warning: the Escort type's marches (a believer seized and walked to the Temple: with S to spare, the (S+1)-th delivered loses the
+## night, "exodus_few"), and the last gate shutting with fewer than tune_need out (`gates_shut`, the strip's time). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if lost_reason() != "" or out_count() >= tune_need:
+		return out
+	var g := _last_gate()
+	if g >= 0:
+		out.append(NightThreat.make(&"gates_shut", "THE LAST GATE SHUTS", "LEAD THEM OUT", timeline.seconds_to("shut_%d" % g),
+			(gates[g] as Gate).mouth))
+	return out
+
+
+## The Escort type's rule for many: with out + left - tune_need to spare, one more than that taken loses the night.
+func takings_to_lose() -> int:
+	return out_count() + left_count() - tune_need + 1 if tune_need > 0 else 0
+
+
+func _march_title() -> String:
+	return "A SEIZED BELIEVER REACHES THE TEMPLE"
+
+
+## The gate whose shutting closes the last way out (the latest shutting still to come on the timeline); -1 when some gate never shuts
+## (none set for it) or every gate is shut. Only reads.
+func _last_gate() -> int:
+	if timeline == null or gates.is_empty():
+		return -1
+	var last := -1
+	var latest := -1.0
+	for g in gates.size():
+		if (gates[g] as Gate).shut:
+			continue
+		var id := "shut_%d" % g
+		if g >= tune_shut_at.size() or not timeline.pending(id):
+			return -1
+		if timeline.seconds_to(id) > latest:
+			latest = timeline.seconds_to(id)
+			last = g
+	return last
+
+
 ## "Lead them out 3 / 10, 2 to spare" (v0.11 M6).
 func hud_line() -> String:
 	return "Lead them out %d / %d, %d to spare" % [out_count(), tune_need, maxi(out_count() + left_count() - tune_need, 0)]
@@ -920,6 +961,11 @@ func hint_phase() -> String:
 	return ""
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "caught", "waiting", "hounds", "shut", "gate"])
+
+
 ## The gate household `i` is heading for (v0.11 M6, Task 6's review): the one its file walks on to behind a lamp already out (out_to);
 ## else the gate whose mouth is nearest where its lamp is whispered to, or, standing, where he stands -- shut or open, so the hint can
 ## say a household makes for a shut gate; -1 with no lamp. Only reads.
@@ -986,3 +1032,11 @@ func keeps_alive(p: Person) -> bool:
 			if is_instance_valid(c.man) and c.man == p:
 				return true
 	return false
+
+
+## Music by situation: the chase while searchers are out after a household.
+func music_mood() -> StringName:
+	for h: Household in households:
+		if h.sent and not h.done:
+			return &"chase"
+	return &""

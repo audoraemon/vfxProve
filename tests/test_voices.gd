@@ -65,6 +65,47 @@ static func run(t) -> void:
 		and Music.calm_cue(false, true) == &"music_capital_day" and Music.calm_cue(true, true) == &"music_town_night",
 		"the calm piece: the town by day, by night (the Capital's too), the Capital's own by day")
 
+	# Music by situation: panic and the alarm heat the music before a building falls; it cools slowly; a chase has its own
+	# two stems in step; a festival and a rite play their own calm piece.
+	t.check(Music.heat(0.0, AlarmManager.Stage.NORMAL, 0.0) == 0.0, "a quiet town is calm")
+	t.check(Music.heat(0.0, AlarmManager.Stage.NORMAL, 0.4) > 0.22 and Music.stem_gains(Music.heat(0.0, 0, 0.4))[0] > 0.0,
+		"a cast that sets people running brings the tension and the battle's base in, the city still standing")
+	t.check(Music.heat(0.0, AlarmManager.Stage.CITY_EMERGENCY, 0.0) >= 0.33, "a City Emergency brings the drums in")
+	t.check(Music.heat(0.9, AlarmManager.Stage.NORMAL, 0.0) == 0.9 and Music.heat(0.0, AlarmManager.Stage.COLLAPSE, 0.0) == 1.0,
+		"the city's fall and its collapse still lead")
+	t.check(Music.cool(0.2, 0.6, 0.5) == 0.6 and is_equal_approx(Music.cool(0.6, 0.0, 10.0), 0.6 - 10.0 * Music.COOL_RATE)
+		and Music.cool(0.6, 0.0, 100.0) == 0.0, "the heat rises at once and cools slowly")
+	t.check(Music.chasing(&"chase", 0.3) and not Music.chasing(&"chase", Music.CHASE_UNTIL) and not Music.chasing(&"", 0.0),
+		"the chase plays while a pursuit is on, until the city is falling")
+	var chase_len: Array[float] = []
+	for cue: StringName in Music.CHASE:
+		var cs := Sfx.load_stream(cue) if Sfx.CATALOG.has(cue) else null
+		chase_len.append(cs.get_length() if cs != null else -1.0)
+	t.check(chase_len[0] > 20.0 and is_equal_approx(chase_len[0], chase_len[1]), "the chase's two stems are one length (%s)" % [chase_len])
+	t.check(Music.calm_cue(true, false, &"festival") == &"music_calm_festival" and Music.calm_cue(false, true, &"rite") == &"music_calm_rite"
+		and Music.calm_cue(false, false, &"chase") == &"music_town_day", "a festival and a rite play their own calm piece")
+	t.check(FestivalDirector.new().music_mood() == &"festival" and MarketPanicDirector.new().music_mood() == &""
+		and RiteDirector.new().music_mood() == &"rite" and SermonDirector.new().music_mood() == &"rite"
+		and RelicRunDirector.new().music_mood() == &"" and MissionDirector.new().music_mood() == &"",
+		"the festival dances, the rites chant, the market and the relic's road keep the town's own")
+	t.check(HuntDirector.new().music_mood() == &"" and EscortDirector.new().music_mood() == &""
+		and WarningDirector.new().music_mood() == &"" and AssassinateDirector.new().music_mood() == &"",
+		"a pursuit mission is calm until its chase is on")
+
+	# God's Paths: the temple piece, and over it one layer per school whose length divides the piece's, so every layer
+	# stays in step with it; only the picked god's layer sounds, and none away from the god select.
+	var base := Sfx.load_stream(Music.PATHS) if Sfx.CATALOG.has(Music.PATHS) else null
+	t.check(base != null and base.get_length() > 30.0 and bool(Sfx.CATALOG[Music.PATHS].get("loop", false)), "the paths piece is a long loop")
+	for type: String in GodTree.RING:
+		var cue: StringName = Music.PATH_LAYERS.get(type, &"")
+		var s := Sfx.load_stream(cue) if Sfx.CATALOG.has(cue) else null
+		var fits := s != null and base != null and bool(Sfx.CATALOG[cue].get("loop", false)) \
+			and int(round(base.get_length() * 44100.0)) % int(round(s.get_length() * 44100.0)) == 0
+		t.check(fits, "%s has its paths layer %s, a loop that divides the piece (%s)" % [type, cue, s.get_length() if s != null else -1.0])
+	var on := Music.layer_gains(&"paths", "death")
+	t.check(on["death"] == 1.0 and on.values().count(1.0) == 1, "on God's Paths only the picked god's layer plays (%s)" % [on])
+	t.check(Music.layer_gains(&"theme", "death").values().count(0.0) == GodTree.RING.size(), "and none plays away from it")
+
 	# The layers: a standing city hears its calm piece only; as it slips the tension comes in and the calm goes; then
 	# the battle's base, the drums from a third of the way down, the lead from two thirds.
 	var calm := Music.stem_gains(0.0)

@@ -141,7 +141,7 @@ func shatter(tw: Person) -> void:
 			continue
 		q.hurt_from(SHARD_CUT, at)
 		cut += 1
-	ctx.play(&"glac_shatter", at, -6.0)
+	ctx.play(&"mirror_shatter", at, -6.0)
 	if not DominionParts.staged(fx):
 		return
 	var sp := Iso.ground_to_screen(at) + Vector2(0, -6)

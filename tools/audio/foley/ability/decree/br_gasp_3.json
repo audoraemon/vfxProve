@@ -1,0 +1,4 @@
+{"length": 0.9, "rms_db": -18.48, "reverb": {"rt60": 0.6, "mix": 0.08, "predelay_ms": 6, "damp": 4500}, "eq": [["peak", 1500, 3.0, 1.0], ["lowshelf", 250, -3.0]], "layers": [
+  {"src": "lib:oga/breathing-tired/breathing tired.wav", "at": 0.0, "from": 2.47, "dur": 0.3, "pitch": 0.0, "hp": 700, "lp": 3800, "fade_in": 25, "fade_out": 60, "gain_db": 0},
+  {"src": "lib:oga/sick-noises/sickness.wav", "at": 0.2, "from": 4.91, "dur": 0.22, "pitch": -1.0, "hp": 350, "lp": 4200, "fade_in": 5, "fade_out": 80, "gain_db": -5},
+  {"src": "lib:oga/hurt-sound-effects/hurt_04.mp3", "at": 0.24, "onset": true, "dur": 0.2, "pitch": 1.0, "hp": 300, "lp": 4000, "fade_out": 80, "gain_db": -11}]}

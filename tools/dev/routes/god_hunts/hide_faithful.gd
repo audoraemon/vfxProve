@@ -548,12 +548,12 @@ static func _doom_ok(d: HideFaithfulDirector, crowd: Crowd, at: Vector2, strict:
 	for w: Dictionary in _watchers(d):
 		watchers[w.p] = true
 	# A death in the dusk is seen from 0.6 as far (the law of the Veil, ruling VE3): the last Doom's dusk makes the next one there unseen.
-	var seen_from := Crowd.DOOM_WITNESS * (NightRules.NIGHT_SIGHT if crowd.dusk != null and crowd.dusk.covers(at) else 1.0)
+	var dusk_k := NightRules.NIGHT_SIGHT if crowd.dusk != null and crowd.dusk.covers(at) else 1.0
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.ground_pos.distance_to(at) <= r:
 				continue
-			if p.ground_pos.distance_to(at) <= seen_from + 0.3 and not watchers.has(p):
+			if p.ground_pos.distance_to(at) <= crowd.witness_reach(p, true) * dusk_k + 0.3 and not watchers.has(p):
 				return false
 	return true
 

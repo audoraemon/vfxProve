@@ -112,10 +112,13 @@ static func _faith_rows(t) -> void:
 			if r.intersects(FaithScreen.row_rect(j)):
 				bad += 1
 	t.check(bad == 0, "every row is on the screen and clear of Back and of the other rows (%d)" % bad)
-	t.check(screen.row_line("slot") == "+1 SLOT   150 Faith   0 / 3", "the slot row (%s)" % screen.row_line("slot"))
+	t.check(screen.row_line("slot") == "FASTER MIGHT   150 Faith   0 / 3", "the slot row (%s)" % screen.row_line("slot"))
 	t.check(screen.row_line("respec") == "RESET ABILITY POINTS   100 Faith   bought 0", "a row with no limit says bought (%s)" % screen.row_line("respec"))
+	t.check(screen.effect_line("slot") == "Full refill: 60 s" and screen.effect_line("might") == "Might gauge: 6",
+		"the detail lines (%s, %s)" % [screen.effect_line("slot"), screen.effect_line("might")])
 	god.bought["slot"] = 3
-	t.check(screen.row_line("slot") == "+1 SLOT   All bought", "a row at its limit (%s)" % screen.row_line("slot"))
+	t.check(screen.effect_line("slot") == "Full refill: 45 s", "three buys read 45 s (%s)" % screen.effect_line("slot"))
+	t.check(screen.row_line("slot") == "FASTER MIGHT   All bought", "a row at its limit (%s)" % screen.row_line("slot"))
 	t.check(screen.hit(FaithScreen.row_rect(1).get_center()) == "might" and screen.hit(FaithScreen.BACK_RECT.get_center()) == "back"
 		and screen.hit(Vector2(639, 359)) == "", "hit finds a row, Back, or nothing")
 	screen.free()
@@ -129,8 +132,8 @@ static func _faith_buy(t) -> void:
 	screen.action.connect(func(what: String) -> void: emitted.append(what))
 	screen.click(FaithScreen.row_rect(0).get_center())
 	t.check(emitted == ["bought"] and god.faith == 0 and int(god.bought.get("slot", 0)) == 1,
-		"a click on +1 SLOT with 150 Faith buys it (%s, faith %d)" % [emitted, god.faith])
-	t.check(screen.row_line("slot") == "+1 SLOT   300 Faith   1 / 3", "and the row reads the next price (%s)" % screen.row_line("slot"))
+		"a click on FASTER MIGHT with 150 Faith buys it (%s, faith %d)" % [emitted, god.faith])
+	t.check(screen.row_line("slot") == "FASTER MIGHT   300 Faith   1 / 3", "and the row reads the next price (%s)" % screen.row_line("slot"))
 	emitted.clear()
 	god.faith = 10
 	screen.click(FaithScreen.row_rect(1).get_center())

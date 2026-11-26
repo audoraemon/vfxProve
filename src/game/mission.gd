@@ -43,6 +43,8 @@ const ZOOM_MIN := 0.85
 const ZOOM_MAX := 1.6
 ## A slot's hotkey: 1-6, for up to six slots (v0.08).
 const SLOT_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6]
+## A Might night's number keys: tiles 1..9 and 10 of the bar's page.
+const BAR_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
 ## Hides the whole interface, to watch the town (v0.11.2, the user's ask): the HUD, its tags and the aim. The camera still moves,
 ## and no click casts while it is hidden; F1 again, or a slot key, TAB or H, brings it back.
 const HIDE_UI_KEY := KEY_F1
@@ -117,6 +119,8 @@ var _crowd: Crowd
 var _rules: Rules
 var _aim: Targeting
 var _hud: Hud
+## The loss warning (ThreatAlert): the big red card and the edge pulse when a thing that ends the night is near. One per act, as the HUD.
+var _alert: ThreatAlert
 ## Covered-outline (TagOutlines): the tagged people's outlines over what stands in front of them.
 var _outlines: TagOutlines
 ## The centre the wheel zooms about (wheel_zoom()), and where that put the camera: a camera found elsewhere was moved by something else.
@@ -144,6 +148,8 @@ var wish_seed := 0
 ## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
 ## Rules is given it, and an R restart or next_act() keeps it.
 var levels := {}
+## The bots' switch (Might gauge): above 0, every act's Rules gets MightPool.for_tier(might_tier), whatever the def says.
+var might_tier := 0
 ## Remembrance (Skill Tree wheel, Task 4): the power key to try, set before add_child. When non-empty the mission is the free memory of the
 ## capital (MissionBook.remembrance()): loadout [key], Rules.free_play, no score, no results, `finished` never emitted, a MemoryOverlay on top.
 var remembrance := ""
@@ -175,8 +181,12 @@ var _descent: Descent
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
+## The music's heat now (Music.heat, cooled by Music.cool): what Music.set_intensity hears.
+var _music_heat := 0.0
 ## A mission played in acts (v0.09): the night so far and the act being played; both null for a single mission.
 var _night: NightState
+## Keys cast in the acts already played this night (the current act's are still on its Rules).
+var _cast_before := PackedStringArray()
 var _act: ActDef
 ## The town's response managers whose banners are wired, by instance id: each is wired once (_wire_responses()).
 var _wired := {}
@@ -455,7 +465,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		_descent.release()
 		_descent = null
 	_bf.reset(seed_value)
-	for n: Node in [_town, _crowd, _rules, _aim, _hud, _overlay, _memory]:
+	for n: Node in [_town, _crowd, _rules, _aim, _hud, _alert, _overlay, _memory]:
 		if is_instance_valid(n):
 			if n is Town:
 				(n as Town).teardown()
@@ -501,6 +511,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	# A board night (v0.11 M1): its wishes, its Tier 5 Gaze and its ascent, handed to each act's Rules in _build_act().
 	_descent = Descent.new().setup(_def, wish_seed) if has_descent(_def, on_board) else null
 	_night = NightState.new() if _def.has_acts() else null
+	_cast_before = PackedStringArray()
 	if _night != null:
 		_night.bell_rang = bell_rang
 	_act = _def.first_act() if _night != null else null
@@ -577,6 +588,33 @@ func _apply_night_rules(seed_value: int) -> void:
 	NightRules.apply(_crowd, _town.look, kept, seed_value, _director)
 
 
+## The gauge and the seal of the act being played (Might gauge): the bots' tier pool, else the def's own when it is a gauge night. A
+## remembrance never has one; with neither switch the Rules keep the pool null and the seal empty.
+func _arm_might(play: MissionDef) -> void:
+	if remembrance != "":
+		return
+	if might_tier > 0:
+		_rules.might = MightPool.for_tier(might_tier)
+	elif play.gauge():
+		_rules.might = MightPool.make(play.might_capacity, play.might_refill)
+	_rules.sealed = play.sealed
+
+
+## The keys cast this night: the acts played so far and the one being played.
+func cast_keys() -> PackedStringArray:
+	var out := _cast_before.duplicate()
+	if _rules != null:
+		for key in _rules.cast_keys:
+			if not out.has(key):
+				out.append(key)
+	return out
+
+
+## Folds the finished act's cast keys into the night's, before its Rules are let go.
+func _carry_cast() -> void:
+	_cast_before = cast_keys()
+
+
 ## One act's Rules, director, aim and HUD (v0.09): start() builds the first, next_act() each one after. The order the
 ## nodes are made in is Last Judgement's and The Warning's since v0.08 -- their instance order feeds the staggers.
 func _build_act(loadout: PackedStringArray) -> void:
@@ -587,6 +625,7 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_rules.setup(loadout, _bf.ctx, _bf.ctx.env, _bf.ctx.field, _crowd, _town, play)
 	_rules.levels = levels
 	_rules.free_play = remembrance != ""
+	_arm_might(play)
 	_bf.ctx.rules = _rules
 	_rules.over.connect(_on_over)
 	_rules.main_won.connect(func() -> void: Music.sting(&"music_sting_objective"))
@@ -624,8 +663,14 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_hud.name = "Hud"
 	_hud.world_viewport = _bf.get_viewport()  # the HUD lives in the root; its tags are placed with the world camera's transform
 	_bf.hud_layer.add_child(_hud)
+	_hud.bar_type = play.god_type
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_hud.set_pause_hidden(_pause_hidden)
+	_alert = ThreatAlert.new()
+	_alert.name = "ThreatAlert"
+	_bf.ui_parent().add_child(_alert)
+	var wv := WorldView.of(_bf)
+	_alert.setup(_rules, wv.display if wv != null else null, alert_allowed)
 	# Covered-outline: a tagged person behind a stall, a tree or a house is traced in the tag's colour over what hides them. One layer
 	# per battlefield, over the world's grade; each act's HUD hands it its tags.
 	if _outlines == null or not is_instance_valid(_outlines):
@@ -653,6 +698,11 @@ func set_ui_hidden(on: bool) -> void:
 		_aim.set_process_unhandled_input(not on)
 
 
+## The loss warning may be seen now: the night under way (no intro, tour or ending), the interface shown (F1, the pause menu), not a memory.
+func alert_allowed() -> bool:
+	return started() and not in_intro() and not _ending and not ui_hidden and not _pause_hidden and remembrance == "" 		and _bf != null and _bf.hud_layer != null and _bf.hud_layer.visible
+
+
 ## Whether `event` is HIDE_UI_KEY pressed.
 static func toggles_ui(event: InputEvent) -> bool:
 	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == HIDE_UI_KEY
@@ -676,7 +726,10 @@ func _show_held_banners() -> void:
 ## played shows it; each manager is wired once (v0.09: an act after the first, or a raised town, calls this again).
 func _wire_responses() -> void:
 	if _wire_once(_crowd):
-		_crowd.rallied.connect(func(): _rules.banner.emit("SOLDIERS RALLY"))
+		_crowd.rallied.connect(func(): _rules.banner.emit(CitadelGuard.BANNER))
+		_crowd.duty_event.connect(func(_k: int, text: String, _at: Vector2): _rules.banner.emit(text))
+		_crowd.suspicion.uneasy.connect(func(): _rules.quiet_banner.emit("THE TOWN GROWS UNEASY"))
+		_crowd.suspicion.became_known.connect(func(_why: String): _rules.banner.emit("THE TOWN KNOWS: A GOD IS HERE"))
 	if _crowd.bell != null and _wire_once(_crowd.bell):
 		_crowd.bell.climbing_started.connect(func():
 			_rules.banner.emit(bell_hand(_crowd.bell) + " CLIMBS THE TOWER"))  # (after a takeover too)
@@ -760,6 +813,21 @@ func _begin_intro(play: MissionDef) -> void:
 			_rules.banner.emit(play.intro_banner)
 
 
+## The ability bar's open and page, as _restore_bar() takes them back; {} when the HUD has no bar (a night with no Might gauge).
+func _bar_state() -> Dictionary:
+	if _hud == null or _hud.bar == null:
+		return {}
+	return {"open": _hud.bar.open, "page": _hud.bar.page}
+
+
+## Gives the new act's ability bar the open and page the last act's had (`state` from _bar_state()); {} changes nothing.
+func _restore_bar(state: Dictionary) -> void:
+	if state.is_empty() or _hud == null or _hud.bar == null:
+		return
+	_hud.bar.open = bool(state.open) and not _hud.bar.pages().is_empty()
+	_hud.bar.page = clampi(int(state.page), 0, maxi(_hud.bar.pages().size() - 1, 0))
+
+
 ## The next act of the night (v0.09), in the same town: the old act's director hands over what it carries and lets go,
 ## the old Rules let go of the world, and the act chosen (`path` after a choice card, else the only one) begins with a
 ## fresh Rules, director, aim and HUD -- every cooldown ready -- after its own intro sweep.
@@ -781,6 +849,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_director = null
 	if _descent != null:
 		_descent.next_act(_rules)  # its seconds count toward the night's time
+	_carry_cast()
 	_rules.teardown()
 	_rules.queue_free()
 	# Every power still playing ends here, with the act that cast it: an Act I Heaven Splitter must not fall on the
@@ -788,7 +857,10 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_bf.end_powers()
 	_crowd.drop_held()  # v0.11.2: and so with the danger it held for its impact -- the crowd outlives the act
 	_aim.queue_free()
+	var bar_kept := _bar_state()
 	_hud.queue_free()
+	if is_instance_valid(_alert):
+		_alert.queue_free()
 	if is_inside_tree():
 		get_tree().root.gui_release_focus()  # v0.11.1: as in start()
 	_pressing = false  # a press held over the old aim is not the new one's to release
@@ -801,6 +873,7 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_bf.ctx.impact.set_base_time_scale(1.0)
 	_ending = false
 	_build_act(powers if not powers.is_empty() else _act.default_loadout)
+	_restore_bar(bar_kept)
 	_begin_intro(_act)
 	_prayers_hold = 0.0
 	_sync_intro_hud()
@@ -1222,6 +1295,7 @@ func _play_ending() -> void:
 		return
 	var res := _rules.result()
 	_night.record(_act.id, res, _crowd)
+	res["cast"] = cast_keys()
 	act_over.emit(res)
 
 
@@ -1229,10 +1303,13 @@ func _play_ending() -> void:
 ## Descent's report.
 func _final_result() -> Dictionary:
 	var res := _rules.result()
+	res["cast"] = cast_keys()
 	if _night == null:
 		return _with_descent(res)
 	_night.record(_act.id, res, _crowd)
-	return _with_descent(_night.result(res, _def.id, _def.scored))
+	var out := _night.result(res, _def.id, _def.scored)
+	out["cast"] = cast_keys()
+	return _with_descent(out)
 
 
 ## A board night's result (v0.11 M1) with its Descent's report merged in ("descend"); any other as it is.
@@ -1257,7 +1334,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			return
 		if event is InputEventKey and event.pressed and not event.echo \
-				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H] or (chains(event) and _rite() != null)):
+				and (event.physical_keycode in SLOT_KEYS or event.physical_keycode in [KEY_TAB, KEY_H] or (chains(event) and _rite() != null) \
+				or wakes_bar(event)):
 			set_ui_hidden(false)
 	if toggles_legend(event):
 		# H opens the legend (over the intro's tour too), or turns its page. Handled here, so the panel it opens cannot take the
@@ -1277,6 +1355,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if is_inside_tree():
 				get_viewport().set_input_as_handled()
 			skip_intro()
+		return
+	if _hud.bar != null and bar_input(event):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var i := SLOT_KEYS.find(event.physical_keycode)
@@ -1357,6 +1437,54 @@ func _unhandled_input(event: InputEvent) -> void:
 			_aim.release(_bf.mouse_ground())
 
 
+## Whether `event` is a Ctrl key pressed alone: it shows or hides the ability bar of a Might night.
+static func toggles_bar(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_CTRL \
+		and not (event.alt_pressed or event.meta_pressed or event.shift_pressed)
+
+
+## Whether `event` is a key of the ability bar (a number key, Ctrl, Z or X) on a night that has one.
+func wakes_bar(event: InputEvent) -> bool:
+	if _hud == null or _hud.bar == null or not event is InputEventKey:
+		return false
+	return event.physical_keycode in BAR_KEYS or event.physical_keycode in [KEY_Z, KEY_X] or toggles_bar(event)
+
+
+## A Might night's bar takes its keys and clicks before the slot row's: 1..9 and 0 arm a tile of the page shown (a key past the page's
+## last arms nothing), Ctrl shows or hides the bar, Z and X turn the page, a click on the strip opens the bar and a click on a tab turns
+## to it, any other click inside the open bar is swallowed. True when the event was the bar's. A click on a tile is left to the slot branch (HUD.slot_at answers for the bar).
+func bar_input(event: InputEvent) -> bool:
+	var bar := _hud.bar
+	if event is InputEventKey and event.pressed and not event.echo:
+		var digit := BAR_KEYS.find(event.physical_keycode)
+		if digit >= 0:
+			var slot := bar.slot_for_digit(digit)
+			if slot >= 0 and slot < _rules.loadout.size():
+				_pick(slot)
+			return true
+		if toggles_bar(event):
+			bar.toggle()
+			UiSound.play(&"ui_click")
+			return true
+		if event.physical_keycode in [KEY_Z, KEY_X]:
+			bar.turn(-1 if event.physical_keycode == KEY_Z else 1)
+			UiSound.play(&"ui_mode")
+			return true
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var hit := _hud.bar_hit(event.position)
+		if hit == "strip":
+			bar.toggle()
+			UiSound.play(&"ui_click")
+			return true
+		if hit.begins_with("tab:"):
+			bar.turn(int(hit.substr(4)) - bar.page)
+			UiSound.play(&"ui_mode")
+			return true
+		if hit == "" and bar.open and not bar.pages().is_empty() and _hud.slots_rect().has_point(event.position):
+			return true  # the open bar's gauge, tabs line or name line: the click is the bar's, never a cast into the town under it
+	return false
+
+
 ## Whether `event` is H pressed: the legend's key (spec §4, Decision 1).
 static func toggles_legend(event: InputEvent) -> bool:
 	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_H
@@ -1374,7 +1502,7 @@ func open_legend() -> void:
 		return
 	_pressing = false
 	_aim.cancel()
-	_legend = LegendPanel.new().setup(_hud.all_tags())
+	_legend = LegendPanel.new().setup(_hud.all_tags(), _rules.loadout)
 	_legend.name = "Legend"
 	_bf.hud_layer.add_child(_legend)
 	_legend.closed.connect(_on_legend_closed)
@@ -1419,7 +1547,12 @@ func _process(delta: float) -> void:
 		_music_in -= delta
 		if _music_in <= 0.0:
 			_music_in = 0.5
-			Music.set_intensity(1.0 - _rules.stability.total())
+			# Music by situation: the city's fall, the alarm and the panic heat the music; the director names its mood.
+			var stage: int = _crowd.alarms.stage if _crowd != null else 0
+			var panic := _crowd.panic_level() if _crowd != null else 0.0
+			_music_heat = Music.cool(_music_heat, Music.heat(1.0 - _rules.stability.total(), stage, panic), 0.5)
+			Music.set_intensity(_music_heat)
+			Music.set_mood(_rules.director.music_mood() if _rules.director != null else &"")
 	_sync_intro_hud()
 	# A limit raised in the pause Options: a camera further out than it now allows steps back in on resume.
 	if _intro_left <= 0.0 and not _ending and _bf.camera.logical_zoom() < zoom_min() - 0.0005 and not _bench_zoomed:

@@ -3,6 +3,7 @@ extends RefCounted
 ## state, the line is up in both detail modes and meets none of the HUD's other plates at 640x360 and 960x495.
 
 const Kit := preload("res://tests/test_tier2_groundwork.gd")
+const ClarityKit := preload("res://tests/clarity_kit.gd")
 
 
 ## A director that sits in the phase a test sets, counting down the seconds it sets.
@@ -19,6 +20,7 @@ class PhaseStub extends MissionDirector:
 
 static func run(t) -> void:
 	_coverage(t)
+	_resolve(t)
 	_advance(t)
 	_modes(t)
 	_layout(t)
@@ -94,69 +96,74 @@ static func _coverage(t) -> void:
 	t.check(MissionDirector.new().step_seconds() == 0.0, "a director counts nothing by default")
 
 
+## Every key resolves (Mission clarity, spec 6.4.7): each phase a step or a hint line names is one the mission's directors can be in
+## (hint_phases(), the union over every def that plays the id, a city twin's included), and every phase they can be in has a step (a
+## named one or the default).
+static func _resolve(t) -> void:
+	var bad := PackedStringArray()
+	var checked := 0
+	for id in _all_ids():
+		var phases := ClarityKit.phases_of(id)
+		var list := MissionSteps.steps(id)
+		var twin := MissionSteps.steps(MissionBook.city_id(id, &"capital"))
+		if twin != list:
+			bad.append("%s: its Capital twin has other steps" % id)
+		for step: Dictionary in list:
+			for ph: String in step.get("ph", []):
+				checked += 1
+				if not phases.has(ph):
+					bad.append("%s: step phase '%s'" % [id, ph])
+		for key: String in MissionHints.LINES:
+			if key.begins_with(id + ".") and not phases.has(key.substr(id.length() + 1)):
+				bad.append("%s: hint '%s'" % [id, key])
+		for ph in phases:
+			checked += 1
+			if MissionSteps.index_for(list, ph) < 0:
+				bad.append("%s: phase '%s' has no step" % [id, ph])
+	t.check(checked > 100 and bad.is_empty(), "every step and hint key is a phase of its director, every phase has a step (%d checked; %s)" % [checked, "; ".join(bad)])
+
+
 static func _stub_world(def: MissionDef) -> Dictionary:
 	var stub := PhaseStub.new()
 	return Kit.world(def, stub)
 
 
+## The steps follow the phases, one function per mission, each in its group's block (Mission clarity, pre-flight I9: a group task edits only
+## its own block's functions, so the six merge without touching one function).
+## The dispatcher names groups only: a group adds its missions inside its own `_advance_<group>()`, never here.
 static func _advance(t) -> void:
-	# Scripted phases: each step shows while the director sits in its phase, and the next one when it moves on.
-	var s := _stub_world(MissionBook.lost_lamb())
+	_advance_escort(t)
+	_advance_assassinate(t)
+	_advance_raze(t)
+	_advance_convert(t)
+	_advance_intercept(t)
+	_advance_hunt(t)
+
+
+# --- clarity block: intercept ---
+static func _advance_intercept(t) -> void:
+	_advance_board(t)
+	_advance_procession(t)
+
+
+## The Procession's steps count the blessing down, then the ship's docking (Mission clarity, spec 5.1), and drop the count at 0.
+static func _advance_procession(t) -> void:
+	var s := _stub_world(MissionBook.long_night().act("procession"))
 	var d: PhaseStub = s.d
 	var seen := PackedStringArray()
-	for phase in ["", "running", "led", "caught", "gate", "clear"]:
+	d.secs = 15.0
+	for phase in ["", "blessing", "dock"]:
 		d.phase = phase
 		seen.append(MissionSteps.line(s.rules))
-	t.check(seen == PackedStringArray(["Get the acolyte to the gate", "Clear his road to the gate", "Lure him on to the west gate",
-		"Stop the soldier taking him", "Draw the watch off the gate", "Send him through the gate"]), "The Lost Lamb's steps follow its phases (%s)" % [seen])
-	d.phase = "unknown"
-	t.check(MissionSteps.line(s.rules) == "Get the acolyte to the gate", "a phase no step names gives the default step")
-	Kit.done(s)
-
-	s = _stub_world(MissionBook.tax_collector())
-	d = s.d
-	seen = PackedStringArray()
-	for phase in ["inside", "hiding", "running", "next"]:
-		d.phase = phase
-		seen.append(String(MissionSteps.current(s.rules)["t"]))
-	t.check(seen == PackedStringArray(["Seal his door, draw guards off", "Burn the counting-house", "Kill him before the Citadel",
-		"Be ready for the next collector"]), "The Tax Collector's steps follow its phases (%s)" % [seen])
-	var cur := MissionSteps.current(s.rules)
-	t.check(int(cur["of"]) == 5 and int(cur["index"]) == 4, "a step knows its place (%s)" % [cur])
-	Kit.done(s)
-
-	# The seconds count down, then drop once there are none.
-	s = _stub_world(MissionBook.spoiled_harvest())
-	d = s.d
-	d.phase = "empty"
-	d.secs = 35.0
-	t.check(MissionSteps.line(s.rules) == "Wait for the grain cart 0:35", "the grain cart's wait counts down (%s)" % MissionSteps.line(s.rules))
+	t.check(seen == PackedStringArray(["Kill the Prince (gold)", "Kill him (gold) at the steps 0:15", "Kill him (gold) before he boards 0:15"]),
+		"The Procession's steps follow its phases and count its waits (%s)" % [seen])
 	d.secs = 0.0
-	t.check(MissionSteps.line(s.rules) == "Wait for the grain cart", "with no seconds left, no count (%s)" % MissionSteps.line(s.rules))
-	d.phase = ""
-	t.check(MissionSteps.line(s.rules).begins_with("Clear the watchmen, burn it"), "grain in, the watchmen come first (%s)" % MissionSteps.line(s.rules))
-	d.phase = "burning"
-	t.check(MissionSteps.line(s.rules).begins_with("Keep it burning"), "then keep it burning (%s)" % MissionSteps.line(s.rules))
-	s.rules.free_play = true
-	t.check(MissionSteps.line(s.rules) == "", "free play has no task line")
+	t.check(MissionSteps.line(s.rules) == "Kill him (gold) before he boards", "with no seconds left, no count")
 	Kit.done(s)
 
-	# The real Spoiled Harvest: the line is what the director's own phase says, and the counter is the objective's.
-	s = Kit.world(MissionBook.spoiled_harvest())
-	var harvest: HarvestDirector = s.d
-	t.check(harvest.hint_phase() == "empty" and MissionSteps.line(s.rules).begins_with("Wait for the grain cart 1:"),
-		"at its start, no grain yet: the wait (%s)" % MissionSteps.line(s.rules))
-	Kit.run_for(s, 70.0)
-	t.check(harvest.hint_phase() != "empty" and MissionSteps.line(s.rules).contains(" 0/3") and not MissionSteps.line(s.rules).begins_with("Wait"),
-		"once its grain is in, the step moves on, with Granaries spoiled 0/3 (%s / %s)" % [harvest.hint_phase(), MissionSteps.line(s.rules)])
-	Kit.done(s)
 
-	# A counter read from the objective: First Prayers' believers.
-	s = Kit.world(MissionBook.first_prayers())
-	t.check(MissionSteps.line(s.rules) == "Wait for a believer to pray 0/3", "First Prayers: %s" % MissionSteps.line(s.rules))
-	Kit.done(s)
-
-	# A board night whose main objective is done: the wishes, then the ascent (as the how-to-win line does).
+## A board night whose main objective is done: the wishes, then the ascent (as the how-to-win line does).
+static func _advance_board(t) -> void:
 	var b := _board_world(TierBook.board("warning"))
 	var rules: Rules = b.rules
 	rules.main_done = true
@@ -167,6 +174,124 @@ static func _advance(t) -> void:
 		w.status = Objective.Status.DONE
 	t.check(MissionSteps.line(rules) == "Ascend when ready: press F", "every wish settled: the ascent (%s)" % MissionSteps.line(rules))
 	_board_done(b)
+
+
+# --- clarity block: assassinate ---
+static func _advance_assassinate(t) -> void:
+	_advance_tax(t)
+
+
+static func _advance_tax(t) -> void:
+	var s := _stub_world(MissionBook.tax_collector())
+	var d: PhaseStub = s.d
+	var seen := PackedStringArray()
+	for phase in ["", "ready", "inside", "hiding", "running", "next"]:
+		d.phase = phase
+		seen.append(String(MissionSteps.current(s.rules)["t"]))
+	t.check(seen == PackedStringArray(["Kill the collector (gold)", "Ambush the first collector", "Ambush him at the door (gold)",
+		"Burn the counting-house (orange)", "Kill him before the Citadel", "Ambush the next collector"]),
+		"The Tax Collector's steps follow its phases (%s)" % [seen])
+	var cur := MissionSteps.current(s.rules)
+	t.check(int(cur["of"]) == 6 and int(cur["index"]) == 5, "a step knows its place (%s)" % [cur])
+	Kit.done(s)
+
+
+# --- clarity block: escort ---
+static func _advance_escort(t) -> void:
+	_advance_lamb(t)
+
+
+static func _advance_lamb(t) -> void:
+	# Scripted phases: each step shows while the director sits in its phase, and the next one when it moves on.
+	var s := _stub_world(MissionBook.lost_lamb())
+	var d: PhaseStub = s.d
+	var seen := PackedStringArray()
+	for phase in ["", "running", "led", "caught", "gate", "clear"]:
+		d.phase = phase
+		seen.append(MissionSteps.line(s.rules))
+	t.check(seen == PackedStringArray(["Lead or scare the acolyte (blue)", "Hold the soldiers (red) ahead", "Lead or lure him west (blue)",
+		"Hold or kill his captor (red)", "Hold the gate's watch (red)", "Lead him through the gate now"]), "The Lost Lamb's steps follow its phases (%s)" % [seen])
+	d.phase = "unknown"
+	t.check(MissionSteps.line(s.rules) == "Lead or scare the acolyte (blue)", "a phase no step names gives the default step")
+	Kit.done(s)
+
+
+# --- clarity block: raze ---
+static func _advance_raze(t) -> void:
+	_advance_harvest(t)
+
+
+static func _advance_harvest(t) -> void:
+	# The seconds count down, then drop once there are none.
+	var s := _stub_world(MissionBook.spoiled_harvest())
+	var d: PhaseStub = s.d
+	d.phase = "empty"
+	d.secs = 35.0
+	t.check(MissionSteps.line(s.rules) == "Scare its watch before the grain 0:35", "the grain wait counts down (%s)" % MissionSteps.line(s.rules))
+	d.secs = 0.0
+	t.check(MissionSteps.line(s.rules) == "Scare its watch before the grain", "with no seconds left, no count (%s)" % MissionSteps.line(s.rules))
+	d.phase = ""
+	t.check(MissionSteps.line(s.rules).begins_with("Scare its watchmen, then burn"), "grain in, the watchmen come first (%s)" % MissionSteps.line(s.rules))
+	d.phase = "burning"
+	t.check(MissionSteps.line(s.rules).begins_with("Keep it burning"), "then keep it burning (%s)" % MissionSteps.line(s.rules))
+	s.rules.free_play = true
+	t.check(MissionSteps.line(s.rules) == "", "free play has no task line")
+	Kit.done(s)
+
+	# The real Spoiled Harvest: the line is what the director's own phase says, and the counter is the objective's.
+	s = Kit.world(MissionBook.spoiled_harvest())
+	var harvest: HarvestDirector = s.d
+	t.check(harvest.hint_phase() == "empty" and MissionSteps.line(s.rules).begins_with("Scare its watch before the grain 1:"),
+		"at its start, no grain yet: the wait (%s)" % MissionSteps.line(s.rules))
+	Kit.run_for(s, 70.0)
+	t.check(harvest.hint_phase() != "empty" and MissionSteps.line(s.rules).contains(" 0/3") and not MissionSteps.line(s.rules).begins_with("Scare its watch before"),
+		"once its grain is in, the step moves on, with Granaries spoiled 0/3 (%s / %s)" % [harvest.hint_phase(), MissionSteps.line(s.rules)])
+	Kit.done(s)
+
+
+# --- clarity block: convert ---
+static func _advance_convert(t) -> void:
+	_advance_prayers(t)
+
+
+static func _advance_prayers(t) -> void:
+	# A counter read from the objective: First Prayers' believers.
+	var s := Kit.world(MissionBook.first_prayers())
+	t.check(MissionSteps.line(s.rules) == "Lead the poor (gold) to the well 0/3", "First Prayers: %s" % MissionSteps.line(s.rules))
+	Kit.done(s)
+
+
+# --- clarity block: hunt ---
+static func _advance_hunt(t) -> void:
+	# The hunts' steps follow the director's phase; the waits count down.
+	var s := _stub_world(MissionBook.heretic_hunt())
+	var d: PhaseStub = s.d
+	d.phase = "waiting"
+	d.secs = 35.0
+	t.check(MissionSteps.line(s.rules) == "Be at the next standard (grey) 0:35", "the Heretic Hunt's wait counts down (%s)" % MissionSteps.line(s.rules))
+	d.phase = "coming"
+	d.secs = 20.0
+	t.check(MissionSteps.line(s.rules) == "Be at the captain's road 0:20", "and the captain's: %s" % MissionSteps.line(s.rules))
+	d.phase = "captain"
+	t.check(MissionSteps.line(s.rules) == "Kill the captain (gold)", "then he is the target (%s)" % MissionSteps.line(s.rules))
+	d.phase = "open"
+	t.check(MissionSteps.line(s.rules).begins_with("Strike or rot it (gold) now"), "an open standard: strike or rot (%s)" % MissionSteps.line(s.rules))
+	Kit.done(s)
+	s = _stub_world(MissionBook.lantern_eye())
+	d = s.d
+	d.phase = "shattered"
+	d.secs = 12.0
+	t.check(MissionSteps.line(s.rules) == "Lead or kill the wrights (red) 0:12", "the Lantern's Eye: the wrights, counted (%s)" % MissionSteps.line(s.rules))
+	d.phase = "waiting"
+	d.secs = 30.0
+	t.check(MissionSteps.line(s.rules) == "Be at the next mirror (grey) 0:30", "and the next mirror's wait (%s)" % MissionSteps.line(s.rules))
+	Kit.done(s)
+	s = _stub_world(MissionBook.break_hunt())
+	d = s.d
+	d.phase = "carried"
+	t.check(MissionSteps.line(s.rules).begins_with("Kill or scare the new bearer"), "Break the Hunt: the new bearer (%s)" % MissionSteps.line(s.rules))
+	Kit.done(s)
+
 
 
 static func _board_world(def: MissionDef) -> Dictionary:

@@ -181,7 +181,7 @@ func _contact_house(spot: Vector2, from: Vector2, exclude: Array) -> Structure:
 ## Some living soldier stands within SPEAK_SEEN of `door`, on watch (where he stands, not the post he was given) (v0.11 M3). Only reads.
 func _watched(door: Vector2) -> bool:
 	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.on_watch() and p.ground_pos.distance_to(door) <= SPEAK_SEEN:
+		if is_instance_valid(p) and p.on_watch() and p.watch_at().distance_to(door) <= SPEAK_SEEN:
 			return true
 	return false
 
@@ -412,6 +412,29 @@ func _seen_banner() -> String:
 	return "THE TOWN CRIES MURDER"
 
 
+## Loss warning: the base's (the found informer running for the Temple's door, `safe_0`), and the names' deadline once the last contact has
+## the word (`names`, the strip's time: _names_in() loses the night unless he is found first). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := names_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"names", "THE NAMES REACH THE TEMPLE", "FIND THE INFORMER", eta, safe_at))
+	return out
+
+
+## Mission seconds until the names reach the Temple by the back lanes (_names_in()): the timeline's "names", or the last visit's
+## FOUND_LIMIT if that comes first (step()); INF once he is found, the trail cold, or the night decided. Only reads.
+func names_eta() -> float:
+	if found or cold or contacts.is_empty() or quarries.is_empty() or quarries[0].state == State.SAFE or all_fallen() or timeline == null \
+			or not timeline.pending("names"):
+		return INF
+	var eta := timeline.seconds_to("names")
+	var last := contacts[contacts.size() - 1]
+	if last.word:
+		eta = minf(eta, maxf(last.word_at + FOUND_LIMIT - _clock, 0.0))
+	return eta
+
+
 ## The night is lost: a contact died, or left the town, before he was turned (v0.11 M3).
 func lost_reason() -> String:
 	return "cold" if cold else ""
@@ -518,6 +541,82 @@ func hint_phase() -> String:
 		return "found"
 	var c := contact_now()
 	return "waiting" if c != null and not c.word else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "running", "hiding", "found", "waiting"])
+
+
+## Seconds until word reaches the contact to work on (Mission clarity, spec 5.2): the strip's own mission seconds, while his hint is
+## "waiting"; 0 in every other phase. Only reads.
+func hint_seconds() -> float:
+	var c := contact_now()
+	if c == null or hint_phase() != "waiting":
+		return 0.0
+	return visit_in(contacts.find(c))
+
+
+## The why-not banners (Mission clarity, spec 5.2; pre-flight I1, I6): before word, a fright, a lead, a lure or a confuse on the contact
+## or his company turns nothing -- and a lone Skylift or kill is judged by no cause here; after word, only a Mind Whisper or a Discord turns
+## the contact, and a company member lured or frightened off walks back. A Mind Whisper or Discord after word is the director's own to
+## judge (it turns him, or its banner says he was seen), so says nothing here. Only reads.
+const WHY_EARLY := "TOO EARLY - NO WORD YET"
+const WHY_BACK := "THEY WALK BACK TO HIS DOOR"
+const WHY_ONLY := "ONLY CONFUSE OR LEAD TURNS HIM"
+const _WAITING_VERBS := ["scare", "lead", "lure", "confuse"]
+const _AFTER_VERBS := ["scare", "lure", "hold", "banish"]
+
+
+func why_not(key: String, at: Vector2) -> String:
+	if found or cold or contacts.is_empty():
+		return ""
+	var c := contact_now()
+	if c == null or not _alive(c.man):
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	var man := c.man as Person
+	var crew: Array[Person] = []
+	for v: Variant in c.company:
+		if _alive(v) and not (v as Person).inside:
+			crew.append(v as Person)
+	if not c.word:
+		# Before word: nothing turns him, whatever the verb; a kill, or a lift on his company (it does clear the way), is not a cast
+		# that "should have worked". A lift on the contact himself only sets him down to walk back: too early (the user's own case).
+		if man.inside:
+			return ""
+		if "banish" in verbs and _cast_reaches(key, at, man.ground_pos) and not _may_kill(key, at, man.ground_pos):
+			return WHY_EARLY
+		if not _any_verb(verbs, _WAITING_VERBS):
+			return ""
+		for p: Person in [man] + crew:
+			if _may_kill(key, at, p.ground_pos):
+				return ""
+		for p: Person in [man] + crew:
+			if _cast_reaches(key, at, p.ground_pos):
+				return WHY_EARLY
+		return ""
+	if key == "whisper" or key == "discord" or man.inside:
+		return ""
+	if _may_kill(key, at, man.ground_pos):
+		return ""
+	if _any_verb(verbs, _AFTER_VERBS) and _cast_reaches(key, at, man.ground_pos):
+		return WHY_ONLY
+	# A company member a lure or a fright takes off his spot goes back to it (_keep()). Judged by reach, not by his mind after the cast: the HUD
+	# asks as the cast is made, before a light or a loud power's impact has moved him (ordinary loud casts do not frighten a soldier, B1).
+	if "lure" in verbs or "scare" in verbs:
+		for p in crew:
+			if _cast_reaches(key, at, p.ground_pos) and not _may_kill(key, at, p.ground_pos) and ("lure" in verbs or not p.soldier):
+				return WHY_BACK
+	return ""
+
+
+## Whether `verbs` holds any of `wanted`.
+func _any_verb(verbs: PackedStringArray, wanted: Array) -> bool:
+	for v in verbs:
+		if wanted.has(v):
+			return true
+	return false
 
 
 ## The tour (mission spec §3, the controller's ruling on Decision 26): the first contact -- how many there are, and the plain warning

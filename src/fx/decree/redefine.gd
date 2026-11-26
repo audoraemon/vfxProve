@@ -86,6 +86,8 @@ func _lift() -> void:
 		LawMark.lift(p, get_instance_id())
 	for p: Variant in copied:
 		LawMark.lift(p, get_instance_id())
+	if t >= lv_span:
+		ctx.play(&"rd_lift", origin)  # the word withdrawn at its time (not when cut short)
 
 
 ## Precedent (level 5): the names still hold and fewer than COPIES copies are given.
@@ -136,6 +138,7 @@ func follow_up(at_pos: Vector2, _extra: Dictionary) -> bool:
 		return false
 	LawMark.set_law(best, kind, left, get_instance_id())
 	copied.append(best)
+	ctx.play(&"rd_write", best.ground_pos)
 	if DominionParts.staged(self):
 		DecreeParts.scatter(self, best.ground_pos, 6, Words.HEAD)
 	return true

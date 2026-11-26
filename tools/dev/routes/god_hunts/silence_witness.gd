@@ -491,7 +491,7 @@ static func _seen_by(crowd: Crowd, w: Person, file: Array[Person]) -> int:
 	var n := 0
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if is_instance_valid(p) and p.is_alive() and not p.inside and not file.has(p) and p.ground_pos.distance_to(w.ground_pos) <= Crowd.DOOM_WITNESS + 0.3:
+			if is_instance_valid(p) and p.is_alive() and not p.inside and not file.has(p) and p.ground_pos.distance_to(w.ground_pos) <= crowd.witness_reach(p, true) + 0.3:
 				n += 1
 	return n
 

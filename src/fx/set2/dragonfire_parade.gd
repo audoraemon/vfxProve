@@ -297,7 +297,7 @@ func _lay(angle: float, i: int) -> void:
 	var sprite := GroundFireSprite.new().setup(patch, ctx)
 	var strip: Array = strips.back()
 	if strip.is_empty():
-		var voice := ctx.play(&"orb_embers", g, -6.0)
+		var voice := ctx.play(&"dr_embers", g, -6.0)
 		if voice != null:
 			sprite.hold_voice(voice, strip)
 	strip.append(patch)
@@ -306,7 +306,7 @@ func _lay(angle: float, i: int) -> void:
 
 func _sink() -> void:
 	ctx.play(&"dr_sink", origin)
-	_burn_voice = ctx.play(&"laser_fire", origin, -6.0)
+	_burn_voice = ctx.play(&"dr_burn", origin, -6.0)
 	var tw := create_tween()
 	tw.tween_property(_dragon, "rise", 0.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.parallel().tween_property(_dragon, "fade", 0.0, 1.2).set_delay(0.4)

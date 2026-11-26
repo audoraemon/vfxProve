@@ -54,6 +54,8 @@ func _build() -> void:
 			struck += 1
 		if struck > 0:
 			ctx.play(&"q_doom_hit", origin)
+		else:
+			ctx.play(&"veil_fizzle", origin)  # nobody to take: the dark puff dies
 		VeilParts.land(self, origin))
 
 

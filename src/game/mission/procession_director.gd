@@ -332,6 +332,30 @@ func under_way() -> bool:
 	return WarningDirector._alive(prince) and not boarded
 
 
+## Loss warning: the Prince on his way to the ship (PrinceObjective: boarded, the night is lost), `ship` at ship_eta(). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	var eta := ship_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"ship", "THE PRINCE SAILS", "KILL THE PRINCE", eta, prince.ground_pos))
+	return out
+
+
+## Mission seconds until the Prince steps aboard (_walk(), _board()): his walk to the point he is on, then each leg after it at his walk,
+## each start no sooner than its hold (the blessing at the steps, the ship at the waiting ground); INF while he is in his carriage, halted
+## by a fright or a power (he walks on once it ends), or gone. Only reads.
+func ship_eta() -> float:
+	if not under_way() or prince.inside or prince.mind != Person.Mind.CALM or timeline == null or route.is_empty():
+		return INF
+	var speed := maxf(prince.walk_speed, 0.05)
+	var last := route.size() - 1
+	var t := maxf(walk_left(prince, route[leg]) - ARRIVE / speed, 0.0)
+	for k in range(leg, last):
+		t = maxf(t, maxf(_hold_until(k) - timeline.elapsed(), 0.0) * timeline.stretch_factor())
+		t += maxf(road_len(route[k], route[k + 1]) - ARRIVE, 0.0) / speed
+	return t * mission_delta(1.0)
+
+
 ## Everyone who would see the Prince die where they stand: living, out of doors, within Crowd.DOOM_WITNESS (the rule
 ## Crowd.nearest_witness() judges by). Only reads.
 func witnesses() -> Array[Person]:
@@ -341,7 +365,7 @@ func witnesses() -> Array[Person]:
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if is_instance_valid(p) and p != prince and p.is_alive() and not p.inside and not LawMark.unseen_by_all(p) \
-					and p.ground_pos.distance_to(prince.ground_pos) <= Crowd.DOOM_WITNESS:
+					and p.ground_pos.distance_to(prince.ground_pos) <= crowd.witness_reach(p, true):
 				out.append(p)
 	return out
 
@@ -381,6 +405,41 @@ func hint_phase() -> String:
 	var t := timeline.elapsed()
 	var at_steps := leg == STEPS_LEG and prince.ground_pos.distance_to(route[STEPS_LEG]) <= ARRIVE * 2.0
 	return "blessing" if at_steps and t >= BLESSING_AT and t < BLESSING_AT + BLESSING_SECONDS else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "dock", "blessing"])
+
+
+## Read-only (Mission clarity, spec 5.1): the seconds the hint counts -- the blessing left in "blessing", the seconds to the ship's docking in
+## "dock" (he boards as soon as his ship is in), else 0.
+func hint_seconds() -> float:
+	if not under_way() or timeline == null:
+		return 0.0
+	match hint_phase():
+		"blessing":
+			return maxf(BLESSING_AT + BLESSING_SECONDS - timeline.elapsed(), 0.0) * timeline.stretch_factor()
+		"dock":
+			return timeline.seconds_to("ship")
+	return 0.0
+
+
+const HALTS_BANNER := "THAT ONLY HALTS HIM - KILL HIM"
+
+
+## Mission clarity (spec 5.1): a fright, Discord, a whisper or a lure on the Prince only halts his walk; only his death counts. Nothing
+## reaches him in his carriage.
+func why_not(key: String, at: Vector2) -> String:
+	if not under_way() or prince.inside or not _cast_reaches(key, at, prince.ground_pos):
+		return ""
+	var verbs := MissionVerbs.verbs_of(key)
+	if ("kill" in verbs and _may_kill(key, at, prince.ground_pos)) or "banish" in verbs or "calm" in verbs:
+		return ""
+	for v: String in ["scare", "lead", "confuse", "lure"]:
+		if v in verbs:
+			return HALTS_BANNER
+	return ""
 
 
 ## The tour (board tags, spec §4): the Prince, the cathedral steps, the dock.

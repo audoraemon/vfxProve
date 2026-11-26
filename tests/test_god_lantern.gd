@@ -178,7 +178,7 @@ static func _hunt_lost(t) -> void:
 	var out := GodNight.bank(s, id, PackedStringArray([keys[0], keys[1]]), _outcome(false, false, 6))
 	t.check(s.sealed == want and s.seal_nights == 3, "a lost Hunt seals the target for 3 nights (%s, %d)" % [s.sealed, s.seal_nights])
 	t.check(s.notice == 50 and out.notice == 50 and out.notice_change == -50, "and sets the Notice to 50, no +25 on top (%d, %d)" % [s.notice, out.notice_change])
-	t.check(not s.loadout.has(want) and s.loadout.has(keys[1]), "the sealed key leaves the remembered loadout (%s)" % [s.loadout])
+	t.check(s.loadout.is_empty(), "bank no longer remembers a loadout (%s)" % [s.loadout])
 	t.check(out.hunt.won == false and out.hunt.sealed == want and out.hunt.seal_nights == 3 and out.hunt.faith == 0, "the Hunt result: lost, sealed (%s)" % [out.hunt])
 	t.check(s.faith == 10 and out.faith == 6 and out.faith_total == 10, "no bonus Faith, the believers bank (%d)" % s.faith)
 	t.check(out.divine_power == 0, "no Divine Power")
@@ -412,7 +412,7 @@ static func _hunt_def(t) -> void:
 		var real := HuntBook.def(h.id)
 		t.check(def.tier == tier and def.name == h.title and def.intro_banner == String(h.title).to_upper(),
 			"tier %d Hunt: tier, the Hunt's title and its banner (%d, %s, %s)" % [tier, def.tier, def.name, def.intro_banner])
-		t.check(def.slots == s.slots() and def.dp_capacity == s.max_might() and def.pool == s.draftable(),
+		t.check(def.slots == s.slots() and def.dp_capacity == s.max_might() and def.pool == s.in_tree(),
 			"tier %d Hunt: the god's slots, Might and pool (%d, %d)" % [tier, def.slots, def.dp_capacity])
 		t.check(absf(def.clock - (TierBook.clock(tier) + s.extra_clock())) < 0.001, "tier %d Hunt: the tier's clock plus the Faith clock (%s)" % [tier, def.clock])
 		t.check(def.goal == real.goal and def.lose == real.lose and def.brief == real.brief, "tier %d Hunt: brief, goal and lose are the real Hunt's" % tier)

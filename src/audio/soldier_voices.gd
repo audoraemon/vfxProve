@@ -1,7 +1,7 @@
 class_name SoldierVoices
 extends RefCounted
 ## Fighting and orders, heard (natural sound pass 5). Crowd asks blow() for every blow that lands and order() when it
-## sends soldiers out; Ambience plays the soldiers' march (sol_step) itself. Pure logic, like DeathVoices: it draws no
+## sends soldiers out. Pure logic, like DeathVoices: it draws no
 ## random number, reads no person and changes nothing the simulation reads.
 ##
 ## A soldier's blow is a spear's thrust (sol_strike), anyone else's a fist or a shove (cit_blow). A token budget (TOKENS,

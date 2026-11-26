@@ -93,6 +93,91 @@ func route_points() -> Array[Vector2]:
 	return out
 
 
+## How far past a cast's reach a target may stand and still count as "reached" for a why-not banner (Mission clarity, spec 6.1).
+const WHY_MARGIN := 1.0
+
+
+## Virtual (Mission clarity, spec 6.1): the banner for a cast of `key` at `at` that reaches one of this director's targets in the
+## current phase and will not count; "" when it counts, or reaches none of them. ONLY READS: no rng, no state, no signal, no timeline,
+## no helper that refreshes a cache; it judges the state after the director's own cast handlers ran (the HUD asks after them).
+## Rules for every override (pre-flight I6, M3):
+##  - A cast is "" if ANY of MissionVerbs.verbs_of(key) could count in this phase (a key with several verbs is judged by all of them:
+##    Smite kills within its KILL_R, so a bolt that kills a warden on guard never banners "stands fast"; see _may_kill()).
+##  - A key with modes (The Bell Lies: Calm or Hold) is judged by the mode the cast took: _last_mode(); "" when unknown.
+##  - "" when the director's own handler already bannered this cast (Informer's SEEN_BANNER, the Tax mob, Heretic's THEIR GUARD KEEPS IT).
+##  - Gate on _cast_reaches() to the phase's targets first, so a cast far from every target says nothing.
+func why_not(_key: String, _at: Vector2) -> String:
+	return ""
+
+
+## Virtual (Mission clarity, spec 6.1): every phase hint_phase() can return, "" for the mission's own. A subclass that adds phases
+## returns its own and what its parent's hint_phase() it calls can return. The key-resolution test reads it (MissionSteps, MissionHints).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray([""])
+
+
+## Whether a cast of `key` at `at` reaches a target standing at `g`: within the power's cast radius plus WHY_MARGIN (widened as the cast
+## itself was: a Gathered Storm, _cast_grow()).
+func _cast_reaches(key: String, at: Vector2, g: Vector2) -> bool:
+	return at.distance_to(g) <= Crowd._cast_radius(key) * _cast_grow(key, at) + WHY_MARGIN
+
+
+## Whether a cast of `key` at `at` kills what stands at `g` (pre-flight I6): a Kill power, and `g` within the kill radius of its level 1
+## (the area's r, or its KILL_R stat) -- or, when the HUD asks about the cast just made, of the effect itself: its level's kill radius,
+## times a Gathered Storm's growth (Smite level 5: a dragged bolt kills up to 2.5x as wide, and a kill it makes must never banner).
+func _may_kill(key: String, at: Vector2, g: Vector2) -> bool:
+	if not "kill" in MissionVerbs.verbs_of(key):
+		return false
+	var r := maxf(float(Targeting.area_at(key, 1).get("r", 0.0)), float(PowerBook.level_stat(key, 1, "KILL_R", 0.0)))
+	var fx := _this_cast(key, at)
+	if fx != null and "lv_kill_r" in fx:
+		r = maxf(r, float(fx.get("lv_kill_r")))
+	return at.distance_to(g) <= r * _cast_grow(key, at)
+
+
+## The effect of the cast just made, if it is this one (`key` at `at`, the latest Rules cast); null for a cast only asked about. Only reads.
+func _this_cast(key: String, at: Vector2) -> FxTimeline:
+	if rules == null or rules._casts.is_empty():
+		return null
+	var last: Dictionary = rules._casts.back()
+	if String(last.get("key", "")) != key or not (last.get("at", Vector2.INF) as Vector2).is_equal_approx(at):
+		return null
+	var fx: Variant = last.get("fx")
+	return fx as FxTimeline if is_instance_valid(fx) else null
+
+
+## How much wider than its level-1 area the cast just made struck (a Gathered Storm's `grow`); 1.0 for any other cast. Only reads.
+func _cast_grow(key: String, at: Vector2) -> float:
+	var fx := _this_cast(key, at)
+	return maxf(1.0, float(fx.get("grow"))) if fx != null and "grow" in fx else 1.0
+
+
+## The mode the latest cast took (The Bell Lies' "well" or "guard"), read from its effect; "" when there is none or it has no mode.
+func _last_mode() -> String:
+	var fx: Variant = rules.last_fx() if rules != null else null
+	if fx == null or not "mode" in (fx as Object):
+		return ""
+	return String((fx as Object).get("mode"))
+
+
+## The person a Mind Whisper just sent at `at` (pre-flight I7): the nearest WHISPERED within MindWhisperFx.PICK_R of it with the whole
+## LINGER still to run. His goal (`_goal`) is where he was sent. Null for none. Only reads.
+func _whispered_at(at: Vector2) -> Person:
+	if crowd == null:
+		return null
+	var best: Person = null
+	var best_d := MindWhisperFx.PICK_R
+	for list: Array[Person] in [crowd.citizens, crowd.soldiers]:
+		for p in list:
+			if not is_instance_valid(p) or p.mind != Person.Mind.WHISPERED or p.whispered_left() < MindWhisperFx.LINGER - 0.01:
+				continue
+			var d := at.distance_to(p.ground_pos)
+			if d <= best_d:
+				best_d = d
+				best = p
+	return best
+
+
 ## Virtual (v0.10 M6, spec §3): the phase whose how-to-win line the HUD shows (MissionHints), "" for the mission's own.
 func hint_phase() -> String:
 	return ""
@@ -267,9 +352,107 @@ func herald_eta() -> float:
 	return INF
 
 
+## The loss warning (Discord idea "More Effect on Losing situation"): the nearest thing that ends this night if nobody interferes, a
+## NightThreat dictionary, {} for none. Only reads. Rules.threat() adds what is not the director's (the Lantern's own Heralds, a deadline).
+func threat() -> Dictionary:
+	return NightThreat.soonest(threats())
+
+
+## Virtual: every night-ending threat running now (NightThreat dictionaries, any order). An override appends its own to `super()`, which
+## gives the ones every director shares: a Faithful's report running for the Temple, and the bell's climb, where either fills a Gaze that
+## loses the night. Only reads.
+func threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if not _gaze_loses():
+		return out
+	var rate := mission_delta(1.0)
+	for r in reports:
+		if r.is_open() and _alive(r.carrier):
+			var eta := (r.descend_left() + TempleReport.walk_seconds(r.carrier, r.door, r.slow)) * rate
+			out.append(NightThreat.make(StringName("report_%d" % r.get_instance_id()), "A FAITHFUL REACHES THE TEMPLE", "STOP HIM", eta,
+				(r.carrier as Person).ground_pos))
+	var bell := crowd.bell if crowd != null else null
+	var gain := toll_gaze()
+	if bell != null and gain > 0.0 and gaze.value + gain >= GazeMeter.FULL and _alive(bell.keeper) and not _bell_mute(bell):
+		var left := INF
+		if bell.state == BellNetwork.State.CLIMBING:
+			left = maxf(bell.climb - bell.progress, 0.0)
+		elif bell.state == BellNetwork.State.CALLED and bell.keeper.mind == Person.Mind.DUTY:
+			left = TempleReport.walk_seconds(bell.keeper, bell.foot) + bell.climb
+		if left < INF:
+			out.append(NightThreat.make(&"bell", "THE BELL TOLLS - HALCYON LOOKS", "STOP THE BELLKEEPER", left * rate, bell.foot))
+	return out
+
+
+## Real seconds `p` still needs to reach `to` at the speed he moves now (his mind, a power's hold on his pace, a slow status, the ground
+## under him: his walk_speed), along the rest of his path (TempleReport.walk_seconds()). The loss warning's walks. Only reads.
+static func walk_left(p: Person, to: Vector2) -> float:
+	if not is_instance_valid(p):
+		return INF
+	return TempleReport.walk_seconds(p, to, p.walk_speed / maxf(Person.PANIC_SPEED * p.pace, 0.0001))
+
+
+## The loss warning's road lengths (road_len()), each [grid version, length] by its two ends.
+var _warn_roads := {}
+
+
+## The length of the grid's road from `a` to `b` (straight where there is none), kept while the grid stands as it was (WalkGrid.version):
+## the loss warning's legs not yet begun. Changes nothing in the night.
+func road_len(a: Vector2, b: Vector2) -> float:
+	var grid: WalkGrid = crowd._grid if crowd != null else null
+	if grid == null:
+		return a.distance_to(b)
+	var key := Vector4(a.x, a.y, b.x, b.y)
+	var kept: Variant = _warn_roads.get(key)
+	if kept != null and int(kept[0]) == grid.version:
+		return float(kept[1])
+	var total := 0.0
+	var at := a
+	for pt in grid.path(a, b):
+		total += at.distance_to(pt)
+		at = pt
+	total += at.distance_to(b)
+	_warn_roads[key] = [grid.version, total]
+	return total
+
+
+## Virtual: what the bell's next toll adds to this night's Gaze (threats()): LanternWatch.GAZE_TOLL on a gaze Lantern's night before its
+## first toll (a later toll adds nothing, a blind Lantern turns no more), 0 elsewhere. Mira's House fills it where there is no Lantern.
+func toll_gaze() -> float:
+	var lw := rules.lantern if is_instance_valid(rules) else null
+	if lw == null or lw.kind != LanternWatch.KIND_GAZE or lw.tolled or lw.stage == LanternWatch.Stage.BLIND:
+		return 0.0
+	return LanternWatch.GAZE_TOLL
+
+
+## This night has a Gaze, not yet full, that loses it when full (a GazeObjective among its objectives).
+func _gaze_loses() -> bool:
+	if gaze == null or gaze.is_full() or not is_instance_valid(rules):
+		return false
+	for o in rules.objectives:
+		if o is GazeObjective:
+			return true
+	return false
+
+
+## The bell would make no sound at the top of its climb (BellNetwork._ring()): a hushed town or place, or a bell that lies.
+func _bell_mute(bell: BellNetwork) -> bool:
+	if crowd == null:
+		return false
+	if crowd.is_hushed() or crowd.is_bell_lying():
+		return true
+	return is_instance_valid(bell.tower) and crowd.is_hushed_at(bell.tower.center())
+
+
 ## What the director adds to the results (The Warning's "solved_by").
 func report() -> Dictionary:
 	return {}
+
+
+## Virtual (music by situation): the mood the music takes now -- &"chase" while a pursuit is on, &"festival" or &"rite" for a
+## mission's own calm piece, &"" for the town's own (Music.set_mood). Only reads: it changes nothing and draws no random numbers.
+func music_mood() -> StringName:
+	return &""
 
 
 ## Virtual: what this act hands the next one, written into the night before the director is let go (v0.09).
@@ -325,17 +508,33 @@ func _eligible(p: Variant) -> bool:
 
 
 ## The `count` free soldiers nearest `at`, nearest first (v0.11 M2): eligible, of no corps, none of `exclude`; fewer when the
-## town has fewer.
-func _free_soldiers(at: Vector2, count: int, exclude: Array = []) -> Array[Person]:
+## town has fewer. Before the call-up each one returned is taken off any guard job (the director wins); after it, the pool is
+## only the men the guard answered with, standing at a post or holding (never on the Citadel job). A caller that asks for more
+## men than it keeps passes `take` false and calls take_soldier() on the ones it keeps: only a man a director takes loses his duty.
+func _free_soldiers(at: Vector2, count: int, exclude: Array = [], take := true) -> Array[Person]:
 	var pool: Array[Person] = []
+	var called := crowd.called_up()
 	for s in crowd.soldiers:
 		if _eligible(s) and s.corps == Person.Corps.NONE and not exclude.has(s):
+			if called and not (crowd.guard.answered(s) and s.mind in [Person.Mind.POST, Person.Mind.HOLD] \
+					and crowd.guard_jobs.kind_of(s) != GuardJobs.Kind.CITADEL):
+				continue
 			pool.append(s)
 	pool.sort_custom(func(a: Person, b: Person) -> bool:
 		return a.ground_pos.distance_squared_to(at) < b.ground_pos.distance_squared_to(at))
 	var out: Array[Person] = []
 	out.assign(pool.slice(0, count))
+	if take:
+		for p in out:
+			take_soldier(p)
 	return out
+
+
+## A director takes soldier `p` (v0.11 M2): before the call-up his guard job goes through GuardJobs.pull() (his duty lets go of
+## him; the director wins); after it nothing is pulled (the pool is only the men the guard answered with).
+func take_soldier(p: Person) -> void:
+	if not crowd.called_up():
+		crowd.guard_jobs.pull(p)
 
 
 ## The `count` lay citizens nearest `at`, nearest first (v0.11 M2): eligible, of no faith, of no role in Wish.NOT_LAY (the

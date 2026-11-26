@@ -176,11 +176,11 @@ static func _man(d: FaceHalcyonDirector, i: int) -> Person:
 
 
 ## Everyone living out of doors within `radius` of `at`, citizens and soldiers: who a blow there takes.
-static func _within(crowd: Crowd, at: Vector2, radius: float) -> Array[Person]:
+static func _within(crowd: Crowd, at: Vector2, radius: float, witness := false) -> Array[Person]:
 	var out: Array[Person] = []
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= radius:
+			if is_instance_valid(p) and p.is_alive() and not p.inside 					and p.ground_pos.distance_to(at) <= (crowd.witness_reach(p, true) + radius if witness else radius):
 				out.append(p)
 	return out
 
@@ -188,7 +188,7 @@ static func _within(crowd: Crowd, at: Vector2, radius: float) -> Array[Person]:
 ## How many living people out of doors, `victims` bar, stand where they would see a death at `at` (Crowd.DOOM_WITNESS and a hair; the file's places are FH_APART, 2.2, apart): the believer too.
 static func _seers(crowd: Crowd, at: Vector2, victims: Array) -> int:
 	var n := 0
-	for p in _within(crowd, at, Crowd.DOOM_WITNESS + 0.1):
+	for p in _within(crowd, at, 0.1, true):
 		n += 0 if victims.has(p) else 1
 	return n
 

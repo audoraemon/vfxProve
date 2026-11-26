@@ -1,0 +1,7 @@
+{"length": 2.0, "rms_db": -18.26, "reverb": {"rt60": 2.2, "mix": 0.18, "predelay_ms": 20, "damp": 5000}, "layers": [
+  {"src": "lib:oga/catching-fire/flame_0.ogg", "at": 0.0, "onset": true, "pitch": -8.25, "hp": 40, "lp": 7000, "fade_out": 300},
+  {"src": "lib:oga/dull-explosion/explosion_dull.flac", "at": 0.0, "onset": true, "pitch": -8.75, "hp": 25, "lp": 1200, "gain_db": -3, "fade_out": 500},
+  {"src": "lib:oga/fire-staff-sound-effects/legit_audio_fire_staff_-_free_0/LEGIT Audio_FIRE STAFF - FREE/Wavs/LEGIT_FIR_Fire_Staff 20-Audio.wav", "at": 0.072, "from": 0.88, "dur": 1.2, "pitch": -5.5, "hp": 60, "lp": 7000, "gain_db": -4, "fade_out": 500},
+  {"src": "lib:oga/steam-release-sounds/steam hisses - Marker #2.wav", "at": 0.119, "onset": true, "dur": 1.6, "hp": 1500, "lp": 9000, "gain_db": -8, "fade_out": 700, "pitch": -1.25},
+  {"src": "lib:oga/demon-voice/DL DEMON FIGHT GRUNT 2.wav", "at": 0.069, "onset": true, "dur": 1.5, "pitch": -6.5, "hp": 60, "lp": 2500, "gain_db": -12, "fade_out": 400}
+]}

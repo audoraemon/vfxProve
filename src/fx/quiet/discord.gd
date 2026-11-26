@@ -12,6 +12,8 @@ const DISCORD_TIME := 15.0
 const TANGLE_TIME := 5.0
 const TANGLE_EVERY := 0.1
 const TANGLE_R := 1.0
+## The least gap between two of the caught heard losing their thought (sound only).
+const FORGET_GAP := 0.5
 const SWIRL := [Color("f0d8ff"), Color("c890ff"), Color("8a50d0"), Color("4a2a70")]
 
 
@@ -33,6 +35,8 @@ var confused: Array[Person] = []
 var caught := {}
 var _tangle := false
 var _last_scan := 0.0
+## Tangled Threads: when the next one caught may be heard losing his thought (ds_forget, at most every FORGET_GAP s).
+var _next_forget := 0.0
 
 
 func _build() -> void:
@@ -51,6 +55,14 @@ func _build() -> void:
 	confused = taken(ctx.field, origin, lv_discord_r)
 	for p in confused:
 		p.confuse(lv_discord_time)
+	if not confused.is_empty():
+		# Their thoughts lost, heard once at the middle of them a moment after the swirl.
+		var mid := Vector2.ZERO
+		for p in confused:
+			mid += p.ground_pos
+		mid /= float(confused.size())
+		at(0.35, func() -> void: ctx.play(&"ds_forget", mid))
+		_next_forget = 0.35 + FORGET_GAP
 	if PowerBook.twist_at(extra, "discord"):
 		_tangle = true
 		duration = TANGLE_TIME + 0.2
@@ -68,3 +80,6 @@ func _fx_process(_delta: float) -> void:
 				continue
 			p.confuse(lv_discord_time)
 			caught[p] = true
+			if t >= _next_forget:
+				_next_forget = t + FORGET_GAP
+				ctx.play(&"ds_forget", p.ground_pos, -3.0)

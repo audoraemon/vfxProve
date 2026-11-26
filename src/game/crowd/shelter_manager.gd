@@ -22,6 +22,8 @@ const CLEAR_SECONDS := 5.0
 ## How near its door a citizen must be to go in.
 const DOOR_REACH := 0.6
 const HZ := 4.0
+## What room() answers for a hallowed building: everyone must be inside it, past its capacity.
+const HALLOWED_ROOM := 9999
 ## A building under this share of its health throws its sheltering people out.
 const FLUSH_HP := 0.5
 ## What sends people in without frightening them: Tempest's rain sends the calm indoors (try_shelter() with this kind).
@@ -101,6 +103,32 @@ func try_shelter(p: Person, from: Vector2, radius: float, kind: StringName) -> b
 		_calm.erase(p.get_instance_id())
 	p.seek_shelter(best, _door(best, p.ground_pos))
 	return true
+
+
+## How many more people `s` takes now: its capacity less those inside and those on their way (very many for a hallowed one); none
+## when it is no shelter, not usable, barred, or every door is shut or open (Every Door). Only reads.
+func room(s: Structure) -> int:
+	if not shelters.has(s) or not _usable(s) or _barred(s) or _crowd.doors() != &"":
+		return 0
+	if _hallowed(s):
+		return HALLOWED_ROOM
+	var e: Dictionary = shelters[s]
+	return maxi(capacity(s) - (e.inside as Array).size() - (e.coming as Array).size(), 0)
+
+
+## The shelter nearest `at` (by distance to its footprint, ties in `shelters` order) within `reach` that has room for `need`; null
+## for none. Only reads.
+func nearest_with_room(at: Vector2, reach: float, need: int) -> Structure:
+	var best: Structure = null
+	var best_d := INF
+	for s: Structure in shelters.keys():
+		if room(s) < need:
+			continue
+		var d := s.distance_to(at)
+		if d <= reach and d < best_d:
+			best_d = d
+			best = s
+	return best
 
 
 ## `p` is in cover (Mind.SHELTER) because a danger frightened him: false for one the rain or a hallowed building sent in (a compulsion, not

@@ -660,6 +660,16 @@ func march_left(c: Charge) -> float:
 	return maxf(HF_MARCH_MIN - (_clock - float(_seized_at[c])), 0.0)
 
 
+## Loss warning (the Escort type's threats(), `seized_<i>`): each seized believer being marched to the Temple, as the strip's _temple_in(c);
+## the (HF_LOSE - lost())-th delivered loses the night (two held at once with none lost: the second).
+func takings_to_lose() -> int:
+	return HF_LOSE - lost()
+
+
+func march_eta(c: Charge) -> float:
+	return _temple_in(c) if c.held and not c.taken and _march.has(c) and _alive(c.man) else INF
+
+
 ## Held (ruling P5-T17-R2): within HF_MARCH_MIN of his seizure a marched believer is not delivered. His seizer stands with him where he seized him
 ## while the walk to the Temple's door would end before the march's time, then walks him there (so he reaches the door as the time runs out, and a
 ## believer let go is let go on the road, not in the crowd at the Temple's door); one who gets there early stands at the door. Whatever lets him go
@@ -1429,6 +1439,11 @@ func hint_phase() -> String:
 		if c.held and not _resolved(c):
 			return "seized"
 	return "trail" if _trail >= 0 else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "seized", "trail"])
 
 
 ## The tour (MS §2, *my call*): the north-west household's door, the Main Gate, the Temple's door; each line fits the caption's plate.

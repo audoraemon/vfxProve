@@ -352,3 +352,9 @@ static func _tree_text(t) -> void:
 	t.check(PrepareScreen.cooldown_text(PowerBook.get_power("smite"), 5) == "8 s" and PrepareScreen.cooldown_text(PowerBook.get_power("smite"), 2) == "9.5 s"
 		and PrepareScreen.cooldown_text(PowerBook.get_power("smite")) == "10 s" and PrepareScreen.cooldown_text({"cooldown": 2.5}) == "2.5 s",
 		"the cards print the level's cooldown (8 s at level 5, 9.5 s at 2)")
+	var smite: Dictionary = PowerBook.get_power("smite")
+	var plain5 := PrepareScreen.stats_text("smite", smite, 5, false)
+	var god5 := PrepareScreen.stats_text("smite", smite, 5, true)
+	var plain4 := PrepareScreen.stats_text("smite", smite, 4, false)
+	t.check(plain5.ends_with("   drag") and god5.begins_with("L5") and god5.ends_with("   drag") and plain4.ends_with("   click"),
+		"the card's stats line prints the level's aim, with a god or without: Smite's level 5 is a drag (%s / %s / %s)" % [plain5, god5, plain4])

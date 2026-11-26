@@ -1,0 +1,14 @@
+{"length": 2.2, "rms_db": -18.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "repo:tools/audio/music/render/dom_choir_murmur.wav", "at": 0.0, "from": 0.0, "dur": 2.2, "hp": 60, "lp": 10000, "fade_in": 100, "fade_out": 200, "pitch": 1.0},
+  {"src": "lib:oga/droning-sound-effects/drone66.wav", "at": 0.0, "from": 27.0, "dur": 2.0, "hp": 40, "lp": 1500, "gain_db": -6, "fade_in": 1200, "fade_out": 200, "pitch": 1.0},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_1.ogg", "at": 0.742, "onset": true, "pitch": -4.02, "gain_db": -8.6, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_1.ogg", "at": 0.764, "onset": true, "pitch": -5.84, "gain_db": -11.1, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 0.863, "onset": true, "pitch": -2.19, "gain_db": -6.6, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_4.ogg", "at": 0.531, "onset": true, "pitch": -3.55, "gain_db": -8.7, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_2.ogg", "at": 0.552, "onset": true, "pitch": -3.49, "gain_db": -10.7, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 1.011, "onset": true, "pitch": -5.31, "gain_db": -8.9, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 0.845, "onset": true, "pitch": -4.6, "gain_db": -8.1, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_1.ogg", "at": 0.708, "onset": true, "pitch": -6.1, "gain_db": -9.0, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/whisper_4.ogg", "at": 0.118, "onset": true, "pitch": -6.14, "gain_db": -7.9, "hp": 300, "lp": 7000, "fade_out": 60},
+  {"src": "lib:oga/dialog-vocal-samples/male_deep_1.ogg", "at": 0.485, "onset": true, "pitch": -2.48, "gain_db": -9.2, "hp": 300, "lp": 7000, "fade_out": 60}
+]}

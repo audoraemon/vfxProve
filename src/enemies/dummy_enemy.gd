@@ -458,7 +458,7 @@ func bound_for() -> Vector2:
 
 
 ## Turned away from a place `r` for `seconds` (Person.hold_off()). A plain unit knows no place to be held off: false.
-func hold_off(_r: Rect2, _seconds: float, _heading: Vector2, _walk_away: float) -> bool:
+func hold_off(_r: Rect2, _seconds: float, _heading: Vector2, _walk_away: float, _path_too := false) -> bool:
 	return false
 
 

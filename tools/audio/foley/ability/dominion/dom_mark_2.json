@@ -1,0 +1,4 @@
+{"length": 2.6, "rms_db": -19.0, "reverb": {"rt60": 2.8, "mix": 0.22, "predelay_ms": 24, "damp": 5000}, "layers": [
+  {"src": "lib:wikimedia/SingingBowl1.ogg", "at": 0.0, "from": 0.05, "dur": 2.5, "pitch": -10.0, "hp": 60, "lp": 5000, "fade_out": 1000},
+  {"src": "lib:kenney/impact-sounds/Audio/impactWood_heavy_001.ogg", "at": 0.0, "onset": true, "pitch": -5.85, "hp": 40, "lp": 2000, "gain_db": -7.0}
+]}

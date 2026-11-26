@@ -37,6 +37,8 @@ const PROCESSION_SPEED := DummyEnemy.WALK_SPEED
 const REGOAL_EVERY := 0.5
 ## A moving light re-paths this many slices of the held in turn.
 const REGOAL_SLICES := 4
+## The least gap between two of the seized heard being taken (sound only).
+const TAKE_GAP := 0.4
 
 var _light: QuadFx
 var _enthrall := false
@@ -64,6 +66,9 @@ var _regoal_in := 0.0
 ## Procession's re-path ticks so far: each tick re-paths one slice of the held (the rest keep their updated spot), all of them when the light arrives.
 var _regoal_n := 0
 var _motes: PixelParticles
+## Sound only: the hovering light's shimmer (a loop, carried with the light), and when the next one seized may be heard (TAKE_GAP).
+var _hum: AudioStreamPlayer2D
+var _next_take := 0.0
 
 
 ## Who it would draw from `at`: people within reach it can lure (v0.11.1: soldiers at their post too; a charge only within CHARGE_LURE_R), nearest first, LURE_MAX at most.
@@ -73,6 +78,8 @@ static func drawn(field: EnemyField, at: Vector2, cap := LURE_MAX) -> Array[Pers
 		var p := e as Person
 		if p == null or p.resists_mind() or p.inside:
 			continue
+		if not p.soldier and not p.answers_lure and p.crowd != null and p.crowd.cordon_blocks(p.ground_pos, at):
+			continue  # a cordon's rope lies between him and the light
 		if p.answers_lure:
 			if p.ground_pos.distance_to(at) <= p.lure_reach and (p.mind == Person.Mind.DUTY or p.mind in Person.LURABLE):
 				out.append(p)
@@ -152,6 +159,7 @@ func _build() -> void:
 		if p.lure(spot, lv_wisp_time - 0.5, origin, p.lure_reach) and _procession:
 			_offsets[p] = spot - origin
 	ctx.play(&"q_wisp", origin)
+	_hum = ctx.play(&"wisp_hum", origin) as AudioStreamPlayer2D
 	_light = FxParts.ground_light(self, origin, 1.4, LIGHT, 0.0, func() -> Vector2: return light_at)
 	var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin) + Vector2(0, -14),
 		PixelParticles.Shape.SQUARE, GLOW, 6.0, lv_wisp_time - 1.0,
@@ -165,8 +173,10 @@ func _build() -> void:
 func _build_enthrall() -> void:
 	duration = lv_enthrall_time
 	busy = 1.0
+	_next_take = TAKE_GAP  # the first taking is heard in the cast itself
 	_take()
-	ctx.play(&"q_wisp", origin)
+	ctx.play(&"wisp_enthrall", origin)
+	_hum = ctx.play(&"wisp_hum", origin) as AudioStreamPlayer2D
 	_light = FxParts.ground_light(self, origin, 2.2, LIGHT, 0.0, func() -> Vector2: return light_at)
 	var motes := FxParts.emitter(self, ctx.overhead, Iso.ground_to_screen(origin) + Vector2(0, -14),
 		PixelParticles.Shape.SQUARE, GLOW, 10.0, lv_enthrall_time - 1.0,
@@ -193,6 +203,9 @@ func _take() -> void:
 		if p.compel(spot, left, Person.WILL_ABSOLUTE, GLOW[1], false, &""):
 			_held[p] = spot
 			used[spot] = true
+			if t >= _next_take:
+				_next_take = t + TAKE_GAP
+				ctx.play(&"wisp_take", p.ground_pos)
 
 
 ## The nearest free spot on the rings round the light that `p` can stand on: rings grow outward, each spot used once (`used`); the
@@ -251,6 +264,8 @@ func _drift(delta: float) -> void:
 		_light.position = light_at
 	if is_instance_valid(_motes):
 		_motes.position = Iso.ground_to_screen(light_at) + Vector2(0, -14)
+	if _hum_live():
+		_hum.position = Iso.ground_to_screen(light_at)  # the shimmer goes with the light
 
 
 ## Procession: those the light holds are sent after it. LURE: each lured person is re-sent to the light plus its own offset; ENTHRALL: the
@@ -298,6 +313,33 @@ func end_now() -> void:
 	if _enthrall and not finished:
 		_release_all()
 	super.end_now()
+
+
+## The light goes out, at its end or cut short: the shimmer fades and the light is heard going.
+func _finish() -> void:
+	if not finished:
+		_hush(0.6)
+		ctx.play(&"wisp_out", light_at)
+	super._finish()
+
+
+## Freed without _finish (a restart clears the effects): the shimmer stops at once (no fade: its parents may be mid-teardown).
+func _exit_tree() -> void:
+	if _hum_live():
+		_hum.stop()
+	_hum = null
+	super._exit_tree()
+
+
+## Whether the shimmer's player is still this light's (the pool may have handed it to another cue since).
+func _hum_live() -> bool:
+	return is_instance_valid(_hum) and _hum.get_meta(&"cue", &"") == &"wisp_hum"
+
+
+func _hush(seconds: float) -> void:
+	if _hum_live():
+		ctx.fade_out(_hum, seconds)
+	_hum = null
 
 
 func _fade() -> float:

@@ -158,6 +158,27 @@ func hint_phase() -> String:
 	return "stars"
 
 
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "herald", "bell", "relay", "stars", "running", "waiting"])
+
+
+## Mission clarity (spec 5.1, review focus 3): the banner of the first warning a cast reaches and will not stop -- unless the cast could stop
+## any warning it reaches (two stars may be out together: a kill that stops one is "" though it lands near the other's carrier). A warning
+## a kill has just stopped counts too: its carrier's body is where the kill fell. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var text := ""
+	for w in stars:
+		if w.rules == null:
+			continue
+		var reach := w._carrier_reach(key, at)
+		if reach == WarningDirector.Reach.MAYBE:
+			return ""
+		if reach == WarningDirector.Reach.NOT and text == "":
+			text = WarningDirector.STOPS_BANNER
+	return text
+
+
 ## The tour (v0.11 M1): the three gates the stars fall over, then the bellkeeper. v0.11 M2 (M1 final review): the first star
 ## falls at its time; a later one may fall sooner (stop_wait), so it falls "by" its time.
 func tour() -> Array:
@@ -194,6 +215,16 @@ func herald_open() -> bool:
 		if w.rules != null and w.herald_open():
 			return true
 	return false
+
+
+## Loss warning: each of the stars' own threats (a Herald, a witness's word), its id numbered by the star it is, so a second one running is a
+## new warning; then the base's.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	for i in stars.size():
+		if stars[i].rules != null:
+			out.append_array(NightThreat.suffixed(stars[i].threats(), str(i)))
+	return out
 
 
 ## The soonest of the Heralds' arrivals, in mission seconds (v0.11.2).

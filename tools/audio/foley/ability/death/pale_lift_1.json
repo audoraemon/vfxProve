@@ -1,0 +1,6 @@
+{"length": 2.8, "rms_db": -18.26, "reverb": {"rt60": 2.4, "mix": 0.28, "predelay_ms": 26, "damp": 4200}, "eq": [["lowshelf", 200, -3.0], ["peak", 2800, 1.0, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "from": 0.3, "dur": 2.2, "pitch": -3, "lp": 4500, "hp": 200, "fade_in": 250, "fade_out": 1000, "gain_db": 0},
+  {"src": "lib:orchestra/sso-4.0/Sonatina Symphonic Orchestra/Samples/Chorus/chorus-female-e5.wav", "at": 0.2, "dur": 2.3, "lp": 5000, "hp": 250, "fade_in": 700, "fade_out": 1200, "gain_db": -10},
+  {"src": "lib:wikimedia/Striking_a_bell_15cm_large.wav", "at": 0.25, "onset": true, "dur": 2.4, "pitch": -5, "lp": 3000, "hp": 150, "fade_out": 1500, "gain_db": -14},
+  {"src": "lib:oga/short-wind-sound/short wind sound.wav", "at": 0.0, "from": 0.2, "dur": 1.8, "hp": 1500, "lp": 8000, "fade_in": 200, "fade_out": 800, "gain_db": -10}
+]}

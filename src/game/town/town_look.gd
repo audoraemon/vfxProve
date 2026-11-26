@@ -50,14 +50,6 @@ static func shadow_colour(look) -> Color:
 	return Color(0.14, 0.17, 0.38, 0.58)
 
 
-## The contact shadows (TownShadows' contact group, dithered): a dark band at every building's base and under every
-## tree, a little darker than the cast shadows; NIGHT's a deep blue.
-static func contact_colour(look) -> Color:
-	if look == Town.Look.NIGHT:
-		return Color(0.02, 0.03, 0.10, 0.6)
-	return Color(0.10, 0.06, 0.08, 0.72)
-
-
 ## The trees' silhouette shadows (TownShadows' tree group, round 4): DAY a dark green-slate tuned to the grass (the
 ## buildings' cool slate read as blue blotches in the forest), NIGHT the buildings' faint moon shadow.
 static func tree_shadow_colour(look) -> Color:

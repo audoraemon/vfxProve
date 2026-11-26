@@ -63,6 +63,8 @@ const COL_EDGE := Color(0.05, 0.02, 0.06)
 const TENDRILS := 5
 const HALO_SECONDS := 0.6
 const WHISPER_MAX := 24
+## Sound only: the least gap between two md_stage, and between two md_spread, across the crowd.
+const SOUND_GAP := 1.0
 
 ## The afflicted: Person -> {"stage", "since", "outcome", "broken_at", "secondary", "tic", "concern", "shove"}.
 var afflicted := {}
@@ -82,6 +84,9 @@ var _clock := 0.0
 var _scan_in := 0.0
 var _propagate_in := PROPAGATE_EVERY
 var _whispers: Array = []
+## Sound only: when the crowd was last heard turning Disturbed (md_stage) and passing it on (md_spread).
+var _stage_sound_at := -INF
+var _spread_sound_at := -INF
 
 
 func setup(crowd: Crowd, field: EnemyField, seed_value: int) -> MadnessManager:
@@ -210,6 +215,9 @@ func _enter(p: Person, rec: Dictionary, stage: Stage) -> void:
 			# Some drop what they were doing and wander.
 			if not p.soldier and _rng.randf() < 0.5:
 				p.confuse(ERRATIC_SECONDS, false)
+			if _clock - _stage_sound_at >= SOUND_GAP and _crowd.sfx != null and not _crowd.is_hushed():
+				_stage_sound_at = _clock
+				_crowd.sfx.play(&"md_stage", p.ground_pos)
 		Stage.UNSTABLE:
 			_crowd._voice(p, &"cit_shout")
 			if not p.soldier and _rng.randf() < 0.3:
@@ -346,6 +354,9 @@ func _propagate() -> void:
 				rec.secondary = int(rec.secondary) + 1
 				fresh.append([p.ground_pos, q.ground_pos, _clock + 1.2])
 	links.append_array(fresh)
+	if not fresh.is_empty() and _clock - _spread_sound_at >= SOUND_GAP and _crowd.sfx != null and not _crowd.is_hushed():
+		_spread_sound_at = _clock
+		_crowd.sfx.play(&"md_spread", fresh[0][1])
 
 
 # --- Looks -------------------------------------------------------------------
@@ -493,5 +504,7 @@ func clear() -> void:
 	alarm_generated = 0.0
 	broken = 0
 	_clock = 0.0
+	_stage_sound_at = -INF
+	_spread_sound_at = -INF
 	_scan_in = 0.0
 	_propagate_in = PROPAGATE_EVERY

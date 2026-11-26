@@ -715,6 +715,36 @@ func _blight_granary(at: Vector2) -> int:
 	return -1
 
 
+## Loss warning: a carter walking to his granary's door for its last load (taking it empties the granary and loses the night), `emptied_<i>`
+## at his walk there. A carter hauling to the Citadel is not warned: the haul and the walk back are more than a card's time on every granary.
+## Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if emptied != null:
+		return out
+	for i in targets.size():
+		var s := targets[i]
+		if razed(s) or not carters.has(s) or not doors.has(s) or int(loads.get(s, 0)) != 1 or not has_grain(s):
+			continue
+		for c: Variant in carters[s]:
+			var eta := last_load_eta(s, c)
+			if eta < INF:
+				out.append(NightThreat.make(StringName("emptied_%d" % i), "A GRANARY IS EMPTIED", "STOP THE CARTER", eta, (c as Person).ground_pos))
+	return out
+
+
+## Mission seconds until carter `c` takes a load at `s`'s door (_cart(): within TAKE_REACH of it), walking there on his errand at the pace
+## he goes now; INF while he hauls one, is indoors, or is held off his errand by the god or a fright. Only reads.
+func last_load_eta(s: Structure, c: Variant) -> float:
+	if not _alive(c):
+		return INF
+	var p := c as Person
+	if p.inside or p.mind != Person.Mind.DUTY or _hauling.has(p.get_instance_id()):
+		return INF
+	var door: Vector2 = doors[s]
+	return maxf(walk_left(p, door) - TAKE_REACH / maxf(p.walk_speed, 0.05), 0.0) * mission_delta(1.0)
+
+
 ## The night is lost once a granary is emptied (v0.11 M2).
 func lost_reason() -> String:
 	return "emptied" if emptied != null else ""
@@ -768,6 +798,55 @@ func step_seconds() -> float:
 	return soon if soon != INF else 0.0
 
 
+## The seconds the hint's `{n}` counts down (Mission clarity): in "empty", the wait for the soonest grain (step_seconds()); else 0. Only reads.
+func hint_seconds() -> float:
+	return step_seconds() if hint_phase() == "empty" else 0.0
+
+
+## Every person of granary `s`'s watch and its carters, alive or fallen (Mission clarity). Only reads.
+func _men_of(s: Structure) -> Array:
+	var out: Array = []
+	for w: Watch in watch_posts.get(s, []):
+		out.append(w.man)
+	out.append_array(carters.get(s, []))
+	return out
+
+
+## Mission clarity (spec 5.4): why a cast that reaches a granary or its people does not count; "" when it counts or reaches none.
+##  - Burn on a granary with no grain in: `NO GRAIN YET - THE FIRE GOES OUT`; with a watchman on guard: `A WATCHMAN (RED) PUTS IT OUT`.
+##  - A lure that took a watchman near it: `LURED, HE STILL WATCHES IT` (a lured man's mind, OBSERVE, is in GUARD_MINDS).
+##  - A kill on a carter (his fall spoils nothing): `KILLING THE CARTER SPOILS NOTHING`.
+## Rot says nothing here: BlightFx puts its own words up (NO GRAIN TO ROT YET, THEIR WATCH KEEPS IT). A cast that may kill a watchman is
+## left alone (I6: the kill may have counted). Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	var verbs := MissionVerbs.verbs_of(key)
+	for s in targets:
+		if razed(s) or not is_instance_valid(s):
+			continue
+		if "lure" in verbs:
+			for w: Watch in watch_posts[s]:
+				if _alive(w.man) and (w.man as Person).lured() and _on_guard(s, w) 						and at.distance_to((w.man as Person).ground_pos) <= WillOWisp.LURE_REACH + WHY_MARGIN:
+					return "" if _kills_near(key, at, _men_of(s)) else "LURED, HE STILL WATCHES IT"
+		if "burn" in verbs and _reached(key, at, s):
+			if _kills_near(key, at, _men_of(s)):
+				return ""
+			if not has_grain(s):
+				return "NO GRAIN YET - THE FIRE GOES OUT"
+			if guarding(s):
+				return "A WATCHMAN (RED) PUTS IT OUT"
+	if "kill" in verbs:
+		for s in targets:
+			if razed(s):
+				continue
+			var men := _men_of(s)
+			for c: Variant in carters.get(s, []):
+				# Judged by the kill's radius, not by his death: the HUD asks as the cast is made, before a bolt has struck.
+				if is_instance_valid(c) and _may_kill(key, at, (c as Person).ground_pos):
+					var watch := men.filter(func(m: Variant) -> bool: return not c == m and is_instance_valid(m) and _may_kill(key, at, (m as Person).ground_pos))
+					return "" if not watch.is_empty() else "KILLING THE CARTER SPOILS NOTHING"
+	return ""
+
+
 ## The hint's phase (v0.11 M2): "burning" while a granary burns with no watchman on guard to beat it out, "watchman" while one
 ## burns under a watchman's eye, "empty" while every granary left is waiting for its grain; else "" (the mission's own line).
 func hint_phase() -> String:
@@ -786,6 +865,11 @@ func hint_phase() -> String:
 	if phase == "" and waiting and razed_count() < targets.size():
 		return "empty"
 	return phase
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "burning", "watchman", "empty"])
 
 
 ## The tour (spec §2, v0.11 M2): the three granaries with their watchmen and when their grain arrives, then the Citadel.

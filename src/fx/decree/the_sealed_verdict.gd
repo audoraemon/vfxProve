@@ -52,16 +52,29 @@ var _next_tally := 0.0
 ## of the countdown (one frame counts); at the bell each listed one still alive dies by verdict wherever he is.
 var _twist := false
 var _listed := {}
+## The countdown heard (sound only): the last whole second ticked, whether the bell has begun to come down, and its voice.
+var _last_tick := -1
+var _dusk_heard := false
+var _dusk: Node
 
 
 func _finish() -> void:
 	_listed.clear()
+	_hush_dusk()
 	super._finish()
 
 
 func _exit_tree() -> void:
 	_listed.clear()
+	_hush_dusk()
 	super._exit_tree()
+
+
+## Cut short before the stroke: the bell's coming down is not heard to the end.
+func _hush_dusk() -> void:
+	if not struck and _dusk != null and is_instance_valid(_dusk) and _dusk.get_meta(&"cue", &"") == &"sv_dusk":
+		ctx.fade_out(_dusk, 0.3)
+	_dusk = null
 
 
 ## Seconds until the stroke (0 once it has struck).
@@ -101,6 +114,8 @@ func _build() -> void:
 
 ## The ledger page's tally, counted every TALLY_EVERY until the stroke (only when it is drawn).
 func _fx_process(_delta: float) -> void:
+	if not struck and not finished:
+		_count_down()
 	if _twist and not struck and not finished:
 		# One query a step, a set of ids: no scan of the town; quiet (no alarm, fright or on_cast).
 		for e in ctx.field.in_radius(origin, lv_radius):
@@ -115,6 +130,19 @@ func _fx_process(_delta: float) -> void:
 		return
 	_next_tally = t + TALLY_EVERY
 	_ledger.souls = souls_at(ctx.crowd, ctx.field, origin, lv_radius)
+
+
+## The last TOLL_FROM seconds heard: a heavy tick on each whole second left, louder toward the stroke; and once, DUSK seconds
+## out, the bell lowered over the district (sv_dusk, which ends just short of the stroke). Sound only.
+func _count_down() -> void:
+	var sec := ceili(left())
+	if sec >= 1 and sec <= int(TOLL_FROM) and sec != _last_tick:
+		_last_tick = sec
+		var tick_db := -6.0 * float(sec - 1) / (TOLL_FROM - 1.0)
+		ctx.play(&"sv_tick", origin, tick_db)
+	if not _dusk_heard and left() <= DUSK and lv_countdown > DUSK:
+		_dusk_heard = true
+		_dusk = ctx.play(&"sv_dusk", origin)
 
 
 ## Everyone the verdict takes at `at`, but those sheltering (their houses are found by shelters_at()): every living person

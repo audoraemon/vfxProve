@@ -246,8 +246,8 @@ const AREA_STATS := {
 	"heavendoor": {"r": "PULL_R"},
 }
 ## What a power's level-5 twist changes in its area, laid over AREA_STATS' (area_at()): Heaven's Door's Twin Doors pull the whole
-## circle, not the half before one door.
-const AREA_TWIST := {"heavendoor": {"arc": TAU}}
+## circle, not the half before one door. Smite's Gathered Storm ("grow") is a circle that widens with the drag (SmiteFx.grow_of(), preview_r()).
+const AREA_TWIST := {"heavendoor": {"arc": TAU}, "smite": {"grow": true}}
 
 ## The focused slot, or -1 when nothing is: the area is only drawn while a power is focused.
 var slot := -1
@@ -260,6 +260,9 @@ var aiming := false
 var placed := false
 ## That first place.
 var first := Vector2.ZERO
+## The focused power's ability level when the button went down, 0 when no press is held: the press and its release are aimed, and cast,
+## at that level even if it changes in between (Smite's level 5 is a drag, its level 4 a click).
+var _press_level := 0
 ## The lane a drag-then-click power's drag laid at `first`: which way, and how long (clamped to its area's min..length).
 var _lane_dir := DEFAULT_DIR
 var _lane_len := 0.0
@@ -319,6 +322,7 @@ func pick(new_slot: int) -> void:
 	aiming = false
 	placed = false
 	_fresh = false
+	_press_level = 0
 	_end_wheel()
 	picked.emit(slot)
 	queue_redraw()
@@ -330,6 +334,7 @@ func unfocus() -> void:
 	aiming = false
 	placed = false
 	_fresh = false
+	_press_level = 0
 	_end_wheel()
 	picked.emit(slot)
 	queue_redraw()
@@ -385,14 +390,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## How the focused power is aimed: its mode's own way when the mode has one. A power that is running and can take a follow-up
-## (Rules.can_recast) is aimed as a plain click, whatever its own kind: the click is the order.
+## How the focused power is aimed: its mode's own way when the mode has one, else its level's (PowerBook.aim_in(): Smite's level 5 is a
+## drag). A power that is running and can take a follow-up (Rules.can_recast) is aimed as a plain click, whatever its own kind: the click
+## is the order.
 func _aim_kind() -> String:
 	if slot >= 0 and not _fresh and _rules.can_recast(slot):
 		# A follow-up through Mind Whisper's wheel (Walking Corpse's orders) is aimed as a whisper: press, drag and release, and its wheel.
 		# A fresh cast over it (R26, _fresh) is aimed the power's own way.
 		return "whisper" if _wheel_fx() != null else "click"
-	return String(mode().get("aim", _rules.power(slot).get("aim", "click")))
+	return String(mode().get("aim", PowerBook.aim_in(_rules.power(slot), _aim_level())))
+
+
+## The level the focused power is aimed at: the one it had when the held press went down (_press_level), else its level now.
+func _aim_level() -> int:
+	return _press_level if _press_level > 0 else _rules.level_of(slot)
 
 
 ## The focused slot's live effect when it takes its follow-up through Mind Whisper's wheel (its follow_up_wheel() is true: Walking
@@ -469,9 +480,17 @@ func hover(ground: Vector2) -> void:
 	queue_redraw()
 
 
+## The button went down. The focused power's level is held from here until the release (_press_level); a press that arms nothing holds none.
 func press(ground: Vector2) -> void:
 	if slot < 0:
 		return
+	_press_level = _rules.level_of(slot)
+	_press_down(ground)
+	if not armed:
+		_press_level = 0
+
+
+func _press_down(ground: Vector2) -> void:
 	_at = ground
 	if _is_whisper() and _order != "":
 		# The pick step: this press names the target (the release acts on where it went down).
@@ -541,12 +560,20 @@ func press(ground: Vector2) -> void:
 ## whisper from the citizen it picked. A two-click power keeps its first click as its place (`first`) and fires from
 ## there on the second, told where that one landed ("to"). A drag-then-click power's first release lays a lane from
 ## the press along the drag (`first`, "dir", "length"); the click after casts it, told where it landed ("to").
+## It is aimed and cast at the level the press went down at (_press_level), which then lets go.
 func release(ground: Vector2) -> void:
 	if not armed:
 		return
+	_release(ground)
+	_press_level = 0
+
+
+func _release(ground: Vector2) -> void:
 	_at = ground
 	armed = false
 	var extra := {}
+	if _press_level > 0 and _press_level != _rules.level_of(slot):
+		extra["level"] = _press_level  # the level changed while the button was held: the cast is the press's (Rules.cast() keeps it)
 	if not modes().is_empty():
 		extra["mode"] = String(mode().key)
 	if _is_wheel():
@@ -668,6 +695,7 @@ func cancel() -> bool:
 	aiming = false
 	placed = false
 	_fresh = false
+	_press_level = 0
 	_end_wheel()
 	queue_redraw()
 	return had
@@ -707,13 +735,13 @@ func area() -> Dictionary:
 		return follow
 	if _wheel_fx() != null:
 		return AREAS["whisper"]  # a follow-up through Mind Whisper's wheel shows the whisper's pick ring
-	var a := area_at(_rules.key(slot), _rules.level_of(slot))
+	var a := area_at(_rules.key(slot), _aim_level())
 	var veil := ring_tag()
 	if veil != "":
 		# The law of the Veil: the ring is drawn at the size the cast would get on the ground under the cursor.
 		var key := _rules.key(slot)
 		a = a.duplicate()
-		a["r"] = VeilRules.size(key, String(VeilRules.RING[key]), veil == "DARK", _rules.level_of(slot))
+		a["r"] = VeilRules.size(key, String(VeilRules.RING[key]), veil == "DARK", _aim_level())
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
 		return a
@@ -729,6 +757,16 @@ func ring_tag() -> String:
 	if slot < 0 or _crowd == null or not VeilRules.RING.has(_rules.key(slot)):
 		return ""
 	return "DARK" if _crowd.in_dark(_press) else "LIGHT"
+
+
+## The radius the preview rings a "circle" area at: its "r", widened for a drag that grows it ("grow": Smite's Gathered Storm, as far as
+## SmiteFx.grow_of() widens the bolt the release would cast).
+func preview_r() -> float:
+	var a := area()
+	var r := float(a.get("r", 0.0))
+	if not bool(a.get("grow", false)) or not aiming:
+		return r
+	return r * SmiteFx.grow_of({"level": _aim_level(), "to": _at}, _press)
 
 
 ## A power's area at an ability level: AREAS[key] with each AREA_STATS number read from the level's table. Level 1 (and a power with
@@ -1050,9 +1088,18 @@ func _order_extra(who: Person) -> Dictionary:
 	return {}
 
 
+## A cast went out: the town is told of it at the level it was cast at -- the press's, for the cast this aim's release made
+## (_press_level is held until the release is done), else the slot's now -- and as wide as it was cast: a Gathered Storm's
+## danger grows with its drag (SmiteFx.grow_of(), as the bolt and the preview ring do).
 func _on_cast_made(from_slot: int, key: String, at: Vector2) -> void:
-	var level := _rules.level_of(from_slot)
+	var mine := from_slot == slot and _press_level > 0
+	var level := _press_level if mine else _rules.level_of(from_slot)
 	var a := area_at(key, level)
+	if bool(a.get("grow", false)):
+		var grow := SmiteFx.grow_of({"level": level, "to": _at}, at) if mine else 1.0
+		_crowd.on_cast(at, Vector2.ZERO, 0.0, key, level, grow)
+		unfocus()
+		return
 	if String(a.get("shape", "")) == "lane" and bool(a.get("follow", false)):
 		# A lane run by a creature that comes on slowly (The Pale Serpent): the town sees the cast at the press, not a
 		# warning the length of the street ahead (the effect frightens the street it has passed).
@@ -1100,11 +1147,11 @@ func _draw() -> void:
 	match String(a.shape):
 		"circle":
 			if not _whisper_ordering():
-				_ring(_press, float(a.r), edge)
+				_ring(_press, preview_r(), edge)
 			var tag := ring_tag()
 			if tag != "":
 				# Which size this cast would get here, by the ring's lower edge.
-				_label(_press + Vector2(1.0, 1.0).normalized() * (float(a.r) + 0.45), tag,
+				_label(_press + Vector2(1.0, 1.0).normalized() * (preview_r() + 0.45), tag,
 					VeilParts.VEIL if tag == "DARK" else COL_EDGE)
 			if a.has("inner"):
 				_ring(_press, float(a.inner), COL_INNER)
@@ -1311,9 +1358,12 @@ func _draw() -> void:
 		"whisper":
 			_draw_whisper()
 		"ember":
-			# What it would light, or a red ring for nothing that burns in reach.
-			var burns := EmberFx.target(_crowd._env, _press, float(area().get("r", EmberFx.REACH)))
-			if burns != null:
+			# Who or what it would light (a person under the click first), or a red ring for nothing that burns in reach.
+			var alight := EmberFx.pick_person(_crowd._field, _press)
+			var burns := EmberFx.target(_crowd._env, _press, float(area().get("r", EmberFx.REACH))) if alight == null else null
+			if alight != null:
+				_ring(alight.ground_pos, 0.25, COL_INNER)
+			elif burns != null:
 				var box := burns.footprint.grow(0.08)
 				draw_polyline(PackedVector2Array([box.position, Vector2(box.end.x, box.position.y), box.end,
 					Vector2(box.position.x, box.end.y), box.position]), COL_INNER, -1.0)

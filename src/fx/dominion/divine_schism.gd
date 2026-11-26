@@ -265,12 +265,12 @@ func _lay_side(p: Person, s: int, left: float) -> void:
 	if condemned and not p.soldier:
 		# The condemned citizen does not stand and fight a town: it runs.
 		p.mind = Person.Mind.CALM
-		p.panic(origin, 0.5, &"schism")
+		p.panic(origin, 0.5, &"schism", true, true, true)
 	elif fights(p):
 		p.fight(null, left, Person.SOLDIER_BLOW if p.soldier else CIVIL_BLOW, Person.FightRule.OTHER_SIDE, SIGHT)
 	else:
 		p.mind = Person.Mind.CALM
-		p.panic(origin, 0.5, &"schism")
+		p.panic(origin, 0.5, &"schism", true, true, true)
 
 
 ## Tumult: the wave reaches `p` -- mad, frozen where it stands, or panicked, rolled with the cast's rng. A caregiver is
@@ -468,7 +468,7 @@ func _beat(k: int) -> void:
 	beat.tween_param("intensity", 0.9, 0.0, 0.4, 0.0, Tween.TRANS_QUAD, Tween.EASE_OUT)
 	beat.life = 0.42
 	ctx.shake.add_trauma(0.2 + 0.1 * float(k))
-	ctx.play(&"jg_punch", origin, -10.0 if k == 0 else -7.0)  # the same two levels as -10 + 3k, literal for the loudness measure
+	ctx.play(&"dom_crack", origin, -10.0 if k == 0 else -7.0)  # the same two levels as -10 + 3k, literal for the loudness measure
 
 
 ## The break: lightning down the middle, the sigil torn in two and the halves driven apart -- one white-gold, one

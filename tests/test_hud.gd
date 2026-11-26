@@ -191,6 +191,8 @@ static func run(t) -> void:
 	_labels_clear_of_plates(t, hud)
 	_crisp_source(t)
 	_spaced_hints(t)
+	_suspicion(t, hud, crowd, rules)
+	_thought(t, hud, crowd)
 
 	# The marks over people (v0.10; M5 made them bigger and outlined, so they read on the cobbles): a diamond MARK_R each
 	# way from its centre.
@@ -371,6 +373,12 @@ class _StubLantern extends LanternWatch:
 class _HeraldLantern extends LanternWatch:
 	func hint_phase() -> String:
 		return "herald"
+
+
+## A Lantern that only wears a badge (the clock's plate keeps clear of the badge).
+class _BadgeLantern extends LanternWatch:
+	func badge() -> String:
+		return "x2.0"
 
 
 ## A director whose hint phase and seconds the test sets.
@@ -698,3 +706,123 @@ static func _labels_clear_of_plates(t, hud: Hud) -> void:
 	t.check(bad == 0, "with a banner and Cael's line up, no tag label that shows lies under a plate (%d)" % bad)
 	hud.advance(10.0)
 	hud.advance(10.0)
+
+
+## Town Suspicion on the HUD (Task 6): the gauge's states and words, its place among the plates at every size and with the Lantern's badge,
+## the redraw signature, the banners, and the F4 line.
+static func _suspicion(t, hud: Hud, crowd: Crowd, rules: Rules) -> void:
+	var s := crowd.suspicion
+	s.reset()
+	t.check(not hud.suspicion_shown() and not hud.suspicion_plate().has_area() and not hud.suspicion_rect().has_area(), "value 0: no gauge")
+	s.value = 20.0
+	t.check(hud.suspicion_shown() and hud.suspicion_word() == "Calm", "value 20: the gauge shows, Calm (%s)" % hud.suspicion_word())
+	s.value = 54.0
+	t.check(hud.suspicion_word() == "Uneasy", "value 54: Uneasy (%s)" % hud.suspicion_word())
+	var calm_sig := hud._signature()
+	s.value = 55.0
+	t.check(hud._signature() != calm_sig, "a value one more redraws the HUD")
+	s.reset()
+	s.value = 20.0
+	var at20 := hud._signature()
+	s.value = 21.0
+	t.check(hud._signature() != at20, "the signature differs between 20 and 21")
+	s.reset()
+	s.value = 100.0
+	var full := hud._signature()
+	s.known = true
+	t.check(hud.suspicion_word() == "A GOD!" and hud.suspicion_shown() and hud._signature() != full,
+		"known: A GOD! and the signature tells known from a full value that is not (%s)" % hud.suspicion_word())
+	s.reset()
+	s.know("test")
+	t.check(hud.suspicion_shown() and hud.suspicion_word() == "A GOD!", "known by a sign: shown, A GOD!")
+	# Where the gauge sits: its plate keeps clear of the status plate and the clock's (and the Lantern's badge) at every size, TAB either way.
+	var badge := _BadgeLantern.new()
+	var bad := PackedStringArray()
+	var beside := 0
+	var under := 0
+	for view: Vector2 in [Vector2(640.0, 360.0), Vector2(1280.0, 720.0), Vector2(1920.0, 1080.0)]:
+		hud.size = view
+		for details in [false, true]:
+			for lantern in [false, true]:
+				for known in [false, true]:
+					Hud.details = details
+					rules.lantern = badge if lantern else null
+					s.reset()
+					if known:
+						s.know("test")
+					else:
+						s.value = 54.0
+					var plate := hud.suspicion_plate()
+					var tag := "%s tab=%s lantern=%s known=%s" % [view, details, lantern, known]
+					if not (plate.has_area() and plate.encloses(hud.suspicion_rect()) and Rect2(Vector2.ZERO, view).encloses(plate)):
+						bad.append("no room " + tag)
+					elif plate.intersects(hud.status_rect()) or plate.intersects(hud.clock_reach(view.x)):
+						bad.append("overlap " + tag)
+					elif plate.position.y < hud.status_rect().end.y:
+						beside += 1
+					else:
+						under += 1
+	rules.lantern = null
+	Hud.details = true
+	hud.size = Vector2.ZERO
+	t.check(bad.is_empty(), "the gauge overlaps neither the status plate nor the clock at 640x360, 1280x720, 1920x1080 (%s)" % ", ".join(bad))
+	t.check(beside > 0 and under > 0, "it sits beside the status plate where there is room and under it where there is not (%d, %d)" % [beside, under])
+	# The banners: once per signal, each once however often it is wired.
+	var m := Mission.new()
+	m._crowd = crowd
+	m._rules = rules
+	var heard := PackedStringArray()
+	var quiet := PackedStringArray()
+	var listen := func(text: String) -> void: heard.append(text)
+	var listen_quiet := func(text: String) -> void: quiet.append(text)
+	rules.banner.connect(listen)
+	rules.quiet_banner.connect(listen_quiet)
+	s.reset()
+	m._wire_responses()
+	m._wire_responses()
+	s.value = 0.0
+	s.add(50.0 / s.wary)
+	t.check(quiet == PackedStringArray(["THE TOWN GROWS UNEASY"]) and heard.is_empty(), "the town grows uneasy: one quiet banner (%s)" % ", ".join(quiet))
+	s.add(1.0)
+	t.check(quiet.size() == 1, "and not again while it stays uneasy")
+	s.know("an unnatural power")
+	t.check(heard == PackedStringArray(["THE TOWN KNOWS: A GOD IS HERE"]) and quiet.size() == 1, "the town knows: its loud banner, once (%s)" % ", ".join(heard))
+	hud._banners.clear()
+	rules.quiet_banner.emit("THE TOWN GROWS UNEASY")
+	rules.banner.emit("THE TOWN KNOWS: A GOD IS HERE")
+	t.check(hud._banners.size() == 2 and bool(hud._banners[0][2]) and not bool(hud._banners[1][2]),
+		"the HUD queues the uneasy banner as quiet (no ui_notice) and the knows banner as loud")
+	hud._banners.clear()
+	rules.banner.disconnect(listen)
+	rules.quiet_banner.disconnect(listen_quiet)
+	m.free()
+	s.reset()
+	# The F4 overlay's line.
+	s.value = 57.0
+	s._memory = [[&"lightning", 18.0], [&"lightning", 48.0]]
+	s._clock = 60.0
+	t.check(BehaviourOverlay.suspicion_line(s) == "Suspicion: 57 (uneasy)  signs: lightning 12s, lightning 42s",
+		"the overlay's line for an uneasy town (%s)" % BehaviourOverlay.suspicion_line(s))
+	s.reset()
+	s.know("the bell rings")
+	t.check(BehaviourOverlay.suspicion_line(s) == "Suspicion: 100 (known: the bell rings)", "and for a town that knows (%s)" % BehaviourOverlay.suspicion_line(s))
+	s.reset()
+	t.check(BehaviourOverlay.suspicion_line(s) == "Suspicion: 0 (calm)", "and for a calm one (%s)" % BehaviourOverlay.suspicion_line(s))
+
+
+## A witness's thought is on the map's tag layer: after the Lantern's tags, gone with its time.
+static func _thought(t, hud: Hud, crowd: Crowd) -> void:
+	var seer: Person = crowd.citizens[0]
+	seer.inside = false
+	var before := hud.all_tags().size()
+	crowd.sign_seen.emit(seer, &"lightning", &"calm", &"calm")
+	var tags := hud.all_tags()
+	t.check(tags.size() == before + 1 and tags[tags.size() - 1].label == "JUST A STORM" and tags[tags.size() - 1].who == seer,
+		"the HUD's tag layer carries the witness's thought")
+	for _i in 100:  # a hit-stop freeze left by an earlier check holds the crowd for a moment
+		crowd.advance(0.1)
+	var left := 0  # a soldier duty may have put its own tag up in those 10 s: only the thought is counted
+	for g in hud.all_tags():
+		if g.label == "JUST A STORM" and g.who == seer:
+			left += 1
+	t.check(left == 0, "and drops it after its time")

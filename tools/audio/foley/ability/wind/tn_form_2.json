@@ -1,0 +1,4 @@
+{"length": 1.6, "peak_db": -1.67, "reverb": {"rt60": 1.2, "mix": 0.1, "predelay_ms": 15, "damp": 6000}, "layers": [
+  {"src": "lib:oga/wind/wind/wind/Wind2.ogg", "gain_db": -3, "dur": 1.6, "at": 0.0, "pitch": -1.25},
+  {"src": "lib:oga/sound-effects-from-monster-rpg-2/Monster RPG 2 Sound Effects - OGG/Monster RPG 2 Sound Effects - OGG/Twister.ogg", "gain_db": -7, "onset": true, "at": 0.062, "pitch": -1.0}
+]}

@@ -27,6 +27,7 @@ const DUCKS := {
 	&"smite_strike": -6.0, &"scatter_burst": -4.0, &"scatter_boom": -3.0, &"solar_blaze": -6.0, &"sky_clap": -6.0, &"sky_bolt": -5.0,
 	&"quake_open": -5.0, &"wf_land": -5.0, &"hg_doors": -3.0, &"hm_open": -4.0, &"deep_burst": -5.0, &"dead_door": -5.0,
 	&"hd_land": -8.0, &"hd_shut": -5.0, &"v_swallow_take": -6.0,
+	&"smite_crack": -6.0, &"mirror_shatter": -5.0, &"dr_burn": -4.0, &"wf_erupt": -5.0, &"wf_impact": -5.0, &"hm_erupt": -5.0, &"hg_roar": -4.0,
 }
 const DUCK_BUSES := [&"Music", &"Ambience"]
 const DUCK_REACH := {&"SFX": 1.0, &"SFX_Mid": 0.75, &"SFX_Far": 0.5}
@@ -42,6 +43,8 @@ const AFTERMATH := {&"jg_crumble": [&"debris_big", 0.25], &"hs_fissure": [&"debr
 	&"nova_crack": [&"debris_small", 0.25], &"tn_dissipate": [&"debris_fall", 0.2],
 	&"smite_strike": [&"debris_small", 0.2], &"sky_bolt": [&"debris_small", 0.2], &"scatter_burst": [&"debris_small", 0.15],
 	&"quake_open": [&"debris_big", 0.35], &"quake_settle": [&"debris_big", 0.25], &"hd_land": [&"debris_big", 0.3],
+	&"smite_crack": [&"debris_small", 0.2], &"quake_fissure": [&"debris_big", 0.35], &"wf_impact": [&"debris_small", 0.15],
+	&"wf_crumble": [&"debris_big", 0.25],
 	&"wf_land": [&"debris_fall", 0.2]}
 const AFTER_REST := 0.5
 
@@ -87,21 +90,21 @@ const CATALOG := {
 	&"hs_erupt": {"path": "res://assets/audio/ability/holy/hs_erupt_%d.wav", "variants": 4, "db": -1.2, "voices": 4, "jitter": 0.1},
 	&"hs_static": {"path": "res://assets/audio/ability/holy/hs_static.wav", "db": -12.1, "loop": true},
 	&"hs_rumble": {"path": "res://assets/audio/ability/holy/hs_rumble.wav", "db": -3.5},
-	&"cf_rumble": {"path": "res://assets/audio/ability/fire/cf_rumble.wav", "db": -3.2},
-	&"cf_rise": {"path": "res://assets/audio/ability/fire/cf_rise.wav", "db": 5.3},
-	&"cf_erupt": {"path": "res://assets/audio/ability/fire/cf_erupt.wav", "db": 2.2},
+	&"cf_rumble": {"path": "res://assets/audio/ability/fire/cf_rumble_%d.wav", "variants": 3, "db": -3.2, "voices": 2, "jitter": 0.05},
+	&"cf_rise": {"path": "res://assets/audio/ability/fire/cf_rise_%d.wav", "variants": 3, "db": 5.3, "voices": 2, "jitter": 0.05},
+	&"cf_erupt": {"path": "res://assets/audio/ability/fire/cf_erupt_%d.wav", "variants": 3, "db": 2.2, "voices": 2, "jitter": 0.05},
 	&"cf_lava": {"path": "res://assets/audio/ability/fire/cf_lava.wav", "db": -8.7, "loop": true},
 	&"cf_fall": {"path": "res://assets/audio/ability/fire/cf_fall_%d.wav", "variants": 4, "db": -9.7, "voices": 3, "jitter": 0.15},
 	&"cf_impact": {"path": "res://assets/audio/ability/fire/cf_impact_%d.wav", "variants": 4, "db": 4.8, "voices": 4, "jitter": 0.1},
-	&"ts_surge": {"path": "res://assets/audio/ability/water/ts_surge.wav", "db": -2.3},
-	&"ts_rise": {"path": "res://assets/audio/ability/water/ts_rise.wav", "db": 0.9},
-	&"ts_roar": {"path": "res://assets/audio/ability/water/ts_roar.wav", "db": -1.1},
-	&"ts_crash": {"path": "res://assets/audio/ability/water/ts_crash.wav", "db": 2.7},
-	&"ts_drip": {"path": "res://assets/audio/ability/water/ts_drip.wav", "db": 2.8},
+	&"ts_surge": {"path": "res://assets/audio/ability/water/ts_surge_%d.wav", "variants": 3, "db": -2.3, "voices": 2, "jitter": 0.05},
+	&"ts_rise": {"path": "res://assets/audio/ability/water/ts_rise_%d.wav", "variants": 3, "db": 0.9, "voices": 2, "jitter": 0.05},
+	&"ts_roar": {"path": "res://assets/audio/ability/water/ts_roar_%d.wav", "variants": 3, "db": -1.1, "voices": 2, "jitter": 0.05},
+	&"ts_crash": {"path": "res://assets/audio/ability/water/ts_crash_%d.wav", "variants": 3, "db": 2.7, "voices": 2, "jitter": 0.05},
+	&"ts_drip": {"path": "res://assets/audio/ability/water/ts_drip_%d.wav", "variants": 3, "db": 2.8, "voices": 2, "jitter": 0.05},
 	&"tn_gust": {"path": "res://assets/audio/ability/wind/tn_gust_%d.wav", "variants": 4, "db": -5.9, "voices": 3, "jitter": 0.12},
-	&"tn_form": {"path": "res://assets/audio/ability/wind/tn_form.wav", "db": -4.4},
+	&"tn_form": {"path": "res://assets/audio/ability/wind/tn_form_%d.wav", "variants": 3, "db": -4.4, "voices": 2, "jitter": 0.05},
 	&"tn_wind": {"path": "res://assets/audio/ability/wind/tn_wind.wav", "db": -0.5, "loop": true},
-	&"tn_dissipate": {"path": "res://assets/audio/ability/wind/tn_dissipate.wav", "db": -11.0},
+	&"tn_dissipate": {"path": "res://assets/audio/ability/wind/tn_dissipate_%d.wav", "variants": 3, "db": -11.0, "voices": 2, "jitter": 0.05},
 	&"jg_rumble": {"path": "res://assets/audio/ability/holy/jg_rumble.wav", "db": -4.4},
 	&"jg_hands": {"path": "res://assets/audio/ability/holy/jg_hands.wav", "db": -1.5},
 	&"jg_rise": {"path": "res://assets/audio/ability/holy/jg_rise.wav", "db": 1.2},
@@ -109,58 +112,58 @@ const CATALOG := {
 	&"jg_windup": {"path": "res://assets/audio/ability/holy/jg_windup.wav", "db": -1.3},
 	&"jg_slam": {"path": "res://assets/audio/ability/holy/jg_slam.wav", "db": -0.9},
 	&"jg_crumble": {"path": "res://assets/audio/ability/holy/jg_crumble.wav", "db": -5.6},
-	&"dr_rumble": {"path": "res://assets/audio/ability/fire/dr_rumble.wav", "db": -5.3},
-	&"dr_erupt": {"path": "res://assets/audio/ability/fire/dr_erupt.wav", "db": 4.0},
-	&"dr_roar": {"path": "res://assets/audio/ability/fire/dr_roar.wav", "db": 2.7},
-	&"dr_inhale": {"path": "res://assets/audio/ability/fire/dr_inhale.wav", "db": -0.2},
-	&"dr_ignite": {"path": "res://assets/audio/ability/fire/dr_ignite.wav", "db": 2.1},
+	&"dr_rumble": {"path": "res://assets/audio/ability/fire/dr_rumble_%d.wav", "variants": 3, "db": -5.3, "voices": 2, "jitter": 0.05},
+	&"dr_erupt": {"path": "res://assets/audio/ability/fire/dr_erupt_%d.wav", "variants": 3, "db": 4.0, "voices": 2, "jitter": 0.05},
+	&"dr_roar": {"path": "res://assets/audio/ability/fire/dr_roar_%d.wav", "variants": 3, "db": 2.7, "voices": 2, "jitter": 0.05},
+	&"dr_inhale": {"path": "res://assets/audio/ability/fire/dr_inhale_%d.wav", "variants": 3, "db": -0.2, "voices": 2, "jitter": 0.05},
+	&"dr_ignite": {"path": "res://assets/audio/ability/fire/dr_ignite_%d.wav", "variants": 3, "db": 2.1, "voices": 2, "jitter": 0.05},
 	&"dr_breath": {"path": "res://assets/audio/ability/fire/dr_breath.wav", "db": -3.7, "loop": true},
-	&"dr_sink": {"path": "res://assets/audio/ability/fire/dr_sink.wav", "db": -5.5},
+	&"dr_sink": {"path": "res://assets/audio/ability/fire/dr_sink_%d.wav", "variants": 3, "db": -5.5, "voices": 2, "jitter": 0.05},
 	&"laser_depart": {"path": "res://assets/audio/ability/energy/laser_depart.wav", "db": -6.5},
 	# The quiet powers' own sounds, part I (v0.11.2 Task 13, spec 2.3; tools/audio/foley/ability/quiet/): a cast cue q_<key> each, and a q_<key>_hit
 	# where the power has a moment of effect. Levels measured by tools/audio/loudness.py: every cast plays between the quiet floor and the loud median + 2.
-	&"q_doom": {"path": "res://assets/audio/ability/quiet/q_doom.wav", "db": 0.6},
+	&"q_doom": {"path": "res://assets/audio/ability/quiet/q_doom_%d.wav", "variants": 3, "db": 0.0},
 	&"q_doom_hit": {"path": "res://assets/audio/ability/quiet/q_doom_hit_%d.wav", "variants": 4, "db": -0.4, "voices": 3, "jitter": 0.06},
-	&"q_blight": {"path": "res://assets/audio/ability/quiet/q_blight.wav", "db": 0.5},
+	&"q_blight": {"path": "res://assets/audio/ability/quiet/q_blight_%d.wav", "variants": 3, "db": 0.5},
 	&"q_blight_hit": {"path": "res://assets/audio/ability/quiet/q_blight_hit_%d.wav", "variants": 4, "db": -0.2, "voices": 3, "jitter": 0.08},
-	&"q_deathmark": {"path": "res://assets/audio/ability/quiet/q_deathmark.wav", "db": -0.2},
-	&"q_deathmark_hit": {"path": "res://assets/audio/ability/quiet/q_deathmark_hit.wav", "db": -0.7},
+	&"q_deathmark": {"path": "res://assets/audio/ability/quiet/q_deathmark_%d.wav", "variants": 3, "db": -0.2},
+	&"q_deathmark_hit": {"path": "res://assets/audio/ability/quiet/q_deathmark_hit_%d.wav", "variants": 3, "db": -0.7},
 	# Raise the Dead (Death I, tools/audio/foley/ability/death/): the dead getting up -- bone grinding under a cold low choir's breath -- and
 	# the spirit's wail (its rising).
-	&"raise_rise": {"path": "res://assets/audio/ability/death/raise_rise.wav", "db": 0.0},
-	&"raise_wail": {"path": "res://assets/audio/ability/death/raise_wail.wav", "db": 0.0},
+	&"raise_rise": {"path": "res://assets/audio/ability/death/raise_rise_%d.wav", "variants": 3, "db": 0.0},
+	&"raise_wail": {"path": "res://assets/audio/ability/death/raise_wail_%d.wav", "variants": 3, "db": 0.0},
 	# Gravecall (Death II): three spirits called up out of the ground -- a ghostly chorus of moans over cold breath.
-	&"gravecall_rise": {"path": "res://assets/audio/ability/death/gravecall_rise.wav", "db": 0.0},
+	&"gravecall_rise": {"path": "res://assets/audio/ability/death/gravecall_rise_%d.wav", "variants": 3, "db": 0.0},
 	# Corpse Guise (Death III, quiet): a near-inaudible cold breath, barely over the quiet floor.
-	&"q_guise": {"path": "res://assets/audio/ability/quiet/q_guise.wav", "db": 0.0},
+	&"q_guise": {"path": "res://assets/audio/ability/quiet/q_guise_%d.wav", "variants": 3, "db": 0.0},
 	# Walking Corpse (Death III, quiet): a body gets up -- a shuffle of cloth and a stiff joint's creak, under the quiet floor's edge.
-	&"q_walker": {"path": "res://assets/audio/ability/quiet/q_walker.wav", "db": 0.0},
+	&"q_walker": {"path": "res://assets/audio/ability/quiet/q_walker_%d.wav", "variants": 3, "db": 0.0},
 	# The Gate Below (Death IV): the ground opening -- a deep rumble, stone grinding, a cold choir's breath -- and its closing, ground
 	# grinding shut under a wraith's wail.
-	&"gatebelow_open": {"path": "res://assets/audio/ability/death/gatebelow_open.wav", "db": 2.0},
-	&"gatebelow_close": {"path": "res://assets/audio/ability/death/gatebelow_close.wav", "db": 1.0},
+	&"gatebelow_open": {"path": "res://assets/audio/ability/death/gatebelow_open_%d.wav", "variants": 3, "db": 2.0},
+	&"gatebelow_close": {"path": "res://assets/audio/ability/death/gatebelow_close_%d.wav", "variants": 3, "db": 1.0},
 	# Pale Reign (Death IV): the colour going out of a district -- a low choir held under a great bell's slow toll.
-	&"pale_drone": {"path": "res://assets/audio/ability/death/pale_drone.wav", "db": 0.0},
+	&"pale_drone": {"path": "res://assets/audio/ability/death/pale_drone_%d.wav", "variants": 3, "db": 0.0},
 	# The Pale Serpent (Death V): bursting up out of the ground in a gust of wind and a flurry of great wings; then the long
 	# rush of wind over feathers as it glides.
-	&"serpent_rise": {"path": "res://assets/audio/ability/death/serpent_rise.wav", "db": 1.5},
+	&"serpent_rise": {"path": "res://assets/audio/ability/death/serpent_rise_%d.wav", "variants": 3, "db": 1.5},
 	&"serpent_glide": {"path": "res://assets/audio/ability/death/serpent_glide.wav", "db": 0.0},
 	# Grave Tide (Death V): the town's dead getting up at once -- a deep grinding of bones under the earth's rumble and a low
 	# choir; the bone giant's heavy step, a thud and a rattle of bones.
-	&"gravetide_rise": {"path": "res://assets/audio/ability/death/gravetide_rise.wav", "db": 2.5},
-	&"giant_step": {"path": "res://assets/audio/ability/death/giant_step.wav", "db": 2.0},
-	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence.wav", "db": 1.2},
-	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember.wav", "db": -0.8},
-	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit.wav", "db": 2.8},
-	&"q_noleave": {"path": "res://assets/audio/ability/quiet/q_noleave.wav", "db": 0.5},
+	&"gravetide_rise": {"path": "res://assets/audio/ability/death/gravetide_rise_%d.wav", "variants": 3, "db": 2.5},
+	&"giant_step": {"path": "res://assets/audio/ability/death/giant_step_%d.wav", "variants": 3, "db": 2.0},
+	&"q_pestilence": {"path": "res://assets/audio/ability/quiet/q_pestilence_%d.wav", "variants": 3, "db": 1.2},
+	&"q_ember": {"path": "res://assets/audio/ability/quiet/q_ember_%d.wav", "variants": 3, "db": -0.8, "voices": 2, "jitter": 0.05},
+	&"q_ember_hit": {"path": "res://assets/audio/ability/quiet/q_ember_hit_%d.wav", "variants": 3, "db": 2.8, "voices": 2, "jitter": 0.05},
+	&"q_noleave": {"path": "res://assets/audio/ability/quiet/q_noleave_%d.wav", "variants": 3, "db": 0.5, "voices": 2, "jitter": 0.05},
 	&"q_belllies": {"path": "res://assets/audio/ability/quiet/q_belllies.wav", "db": 1.2},
 	&"q_magnify": {"path": "res://assets/audio/ability/quiet/q_magnify.wav", "db": -1.3},
 	&"q_abolition": {"path": "res://assets/audio/ability/quiet/q_abolition.wav", "db": 1.0},
-	&"q_redefine": {"path": "res://assets/audio/ability/quiet/q_redefine.wav", "db": 3.5},
-	&"q_bound": {"path": "res://assets/audio/ability/quiet/q_bound.wav", "db": 0.5},
+	&"q_redefine": {"path": "res://assets/audio/ability/quiet/q_redefine_%d.wav", "variants": 3, "db": 3.5, "voices": 2, "jitter": 0.05},
+	&"q_bound": {"path": "res://assets/audio/ability/quiet/q_bound_%d.wav", "variants": 3, "db": 0.5, "voices": 2, "jitter": 0.05},
 	# The Sealed Verdict: a quill writing a district into the brass ledger, the clasp shut on it; and its one bell stroke.
-	&"q_sealed": {"path": "res://assets/audio/ability/quiet/q_sealed.wav", "db": 0.5},
-	&"q_sealed_hit": {"path": "res://assets/audio/ability/quiet/q_sealed_hit.wav", "db": 2.0},
+	&"q_sealed": {"path": "res://assets/audio/ability/quiet/q_sealed_%d.wav", "variants": 3, "db": 0.5, "voices": 2, "jitter": 0.05},
+	&"q_sealed_hit": {"path": "res://assets/audio/ability/quiet/q_sealed_hit_%d.wav", "variants": 3, "db": 2.0, "voices": 2, "jitter": 0.05},
 	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
 	# The Veil's seven (Veil authority powers spec 6; tools/audio/foley/ability/veil/): the silent god's cues are quiet, low and close --
 	# a breath, cloth, a held low note, a lamp guttering -- never a bang, a scream or an alarm. A cast cue v_<key> each, Evernight's held
@@ -182,22 +185,22 @@ const CATALOG := {
 	&"v_evernight": {"path": "res://assets/audio/ability/veil/v_evernight.wav", "db": 1.6},
 	&"v_evernight_loop": {"path": "res://assets/audio/ability/veil/v_evernight_loop.wav", "db": 1.5, "loop": true, "voices": 1},
 	&"q_blight_ill": {"path": "res://assets/audio/ability/veil/q_blight_ill.wav", "db": 0.7},
-	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind.wav", "db": 1.8},
-	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema.wav", "db": 0.2},
-	&"q_sanctuary": {"path": "res://assets/audio/ability/quiet/q_sanctuary.wav", "db": 0.8},
-	&"q_skylift": {"path": "res://assets/audio/ability/quiet/q_skylift.wav", "db": 0.0},
-	&"q_allroads": {"path": "res://assets/audio/ability/quiet/q_allroads.wav", "db": 0.0},
+	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind_%d.wav", "variants": 3, "db": 1.8},
+	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema_%d.wav", "variants": 3, "db": 0.2},
+	&"q_sanctuary": {"path": "res://assets/audio/ability/quiet/q_sanctuary_%d.wav", "variants": 3, "db": 0.7},
+	&"q_skylift": {"path": "res://assets/audio/ability/quiet/q_skylift_%d.wav", "variants": 3, "db": 0.0, "voices": 2},
+	&"q_allroads": {"path": "res://assets/audio/ability/quiet/q_allroads_%d.wav", "variants": 3, "db": 0.0, "voices": 2},
 	&"q_yesterday": {"path": "res://assets/audio/ability/quiet/q_yesterday.wav", "db": 0.0},
 	&"q_everydoor": {"path": "res://assets/audio/ability/quiet/q_everydoor.wav", "db": 0.0},
 	&"q_fargate": {"path": "res://assets/audio/ability/quiet/q_fargate.wav", "db": 0.0},
-	&"q_foldward": {"path": "res://assets/audio/ability/quiet/q_foldward.wav", "db": 0.0},
-	&"q_saint": {"path": "res://assets/audio/ability/quiet/q_saint.wav", "db": 0.7},
+	&"q_foldward": {"path": "res://assets/audio/ability/quiet/q_foldward_%d.wav", "variants": 3, "db": 0.0, "voices": 2},
+	&"q_saint": {"path": "res://assets/audio/ability/quiet/q_saint_%d.wav", "variants": 3, "db": 0.3},
 	&"q_curfew": {"path": "res://assets/audio/ability/quiet/q_curfew.wav", "db": 0.0},
 	&"q_thorns": {"path": "res://assets/audio/ability/quiet/q_thorns.wav", "db": -0.2},
 	&"q_thorns_hit": {"path": "res://assets/audio/ability/quiet/q_thorns_hit_%d.wav", "variants": 4, "db": -2.1, "voices": 3, "jitter": 0.08},
-	&"q_mirror": {"path": "res://assets/audio/ability/quiet/q_mirror.wav", "db": -0.7},
+	&"q_mirror": {"path": "res://assets/audio/ability/quiet/q_mirror_%d.wav", "variants": 3, "db": -0.7, "voices": 2},
 	&"q_mirror_hit": {"path": "res://assets/audio/ability/quiet/q_mirror_hit_%d.wav", "variants": 4, "db": -3.6, "voices": 3, "jitter": 0.08},
-	&"q_madness": {"path": "res://assets/audio/ability/quiet/q_madness.wav", "db": 0.3},
+	&"q_madness": {"path": "res://assets/audio/ability/quiet/q_madness_%d.wav", "variants": 3, "db": -0.3},
 	&"q_madness_hit": {"path": "res://assets/audio/ability/quiet/q_madness_hit_%d.wav", "variants": 4, "db": -0.8, "voices": 3, "jitter": 0.06},
 	# The powers' sounds above are recordings over tools/audio/synth.py's renders (tools/audio/foley/ability/<element>/,
 	# built by tools/audio/foley.py). Below, the rest, sorted by kind into assets/audio/<category>/:
@@ -231,8 +234,7 @@ const CATALOG := {
 	&"child_cry": {"path": "res://assets/audio/citizen/child_cry_%d.wav", "variants": 5, "db": -8.8, "voices": 3, "jitter": 0.06},
 	&"child_play": {"path": "res://assets/audio/citizen/child_play_%d.wav", "variants": 6, "db": -3.0, "voices": 2, "jitter": 0.05},
 	&"sol_rally": {"path": "res://assets/audio/citizen/sol_rally.wav", "db": -3.5},
-	# Soldiers at work (natural sound pass 5): boots on the march once the alarm is up (Ambience.march_heard()), a spear's thrust, a shouted order; a citizen's blow.
-	&"sol_step": {"path": "res://assets/audio/citizen/sol_step_%d.wav", "variants": 6, "db": -7.3, "voices": 3, "jitter": 0.06},
+	# Soldiers at work (natural sound pass 5): a spear's thrust, a shouted order; a citizen's blow. (Their march was removed.)
 	&"sol_strike": {"path": "res://assets/audio/citizen/sol_strike_%d.wav", "variants": 5, "db": -0.1, "voices": 3, "jitter": 0.06},
 	&"cit_blow": {"path": "res://assets/audio/citizen/cit_blow_%d.wav", "variants": 4, "db": -2.4, "voices": 3, "jitter": 0.08},
 	&"sol_order": {"path": "res://assets/audio/citizen/sol_order_%d.wav", "variants": 6, "db": -5.4, "voices": 2, "jitter": 0.03},
@@ -251,9 +253,9 @@ const CATALOG := {
 	&"sol_death": {"path": "res://assets/audio/citizen/sol_death_%d.wav", "variants": 3, "db": -4.2, "voices": 4, "jitter": 0.1},
 	&"crowd_death_wave": {"path": "res://assets/audio/citizen/crowd_death_wave_%d.wav", "variants": 2, "db": -2.0, "voices": 2, "jitter": 0.08},
 	# The quiet powers' own cast cues, part II (v0.11.2 Task 14; spec 2.3): one per power, none shared, each at a played level in [QUIET_FLOOR, loud median + 2] (tools/audio/loudness.py).
-	&"q_whisper": {"path": "res://assets/audio/ability/quiet/q_whisper.wav", "db": -1.6},
-	&"q_wisp": {"path": "res://assets/audio/ability/quiet/q_wisp.wav", "db": 0.3},
-	&"q_discord": {"path": "res://assets/audio/ability/quiet/q_discord.wav", "db": -0.1},
+	&"q_whisper": {"path": "res://assets/audio/ability/quiet/q_whisper_%d.wav", "variants": 3, "db": -1.9},
+	&"q_wisp": {"path": "res://assets/audio/ability/quiet/q_wisp_%d.wav", "variants": 3, "db": -0.1},
+	&"q_discord": {"path": "res://assets/audio/ability/quiet/q_discord_%d.wav", "variants": 3, "db": -0.2},
 	&"q_congregation": {"path": "res://assets/audio/ability/quiet/q_congregation.wav", "db": 0.0},
 	&"q_oath": {"path": "res://assets/audio/ability/quiet/q_oath.wav", "db": -0.7},
 	&"q_echo": {"path": "res://assets/audio/ability/quiet/q_echo.wav", "db": -0.4},
@@ -263,23 +265,24 @@ const CATALOG := {
 	&"q_verdict": {"path": "res://assets/audio/ability/quiet/q_verdict.wav", "db": 0.0},
 	&"q_verdict_hit": {"path": "res://assets/audio/ability/quiet/q_verdict_hit.wav", "db": 0.0},
 	&"q_delusion": {"path": "res://assets/audio/ability/quiet/q_delusion.wav", "db": -2.5},
-	&"q_voice": {"path": "res://assets/audio/ability/quiet/q_voice.wav", "db": 0.8},
+	&"q_voice": {"path": "res://assets/audio/ability/quiet/q_voice_%d.wav", "variants": 3, "db": 0.4},
 	# Decree's loud powers (tools/audio/foley/ability/decree/): Breathing Is Prohibited's hollow, airless hush.
-	&"br_hush": {"path": "res://assets/audio/ability/decree/br_hush.wav", "db": 3.4},
+	&"br_hush": {"path": "res://assets/audio/ability/decree/br_hush_%d.wav", "variants": 3, "db": 3.3, "voices": 2, "jitter": 0.05},
 	# Erasing Distance: a cloth tear as the seam runs and the fold draws in, and the crash as it shuts.
-	&"er_tear": {"path": "res://assets/audio/ability/decree/er_tear.wav", "db": 3.0},
-	&"er_crash": {"path": "res://assets/audio/ability/decree/er_crash.wav", "db": 2.5},
-	# Disorder's crooked bell: two chimes a little out of tune with each other, and a late, lower toll that does not fit.
-	&"di_bell": {"path": "res://assets/audio/ability/decree/di_bell.wav", "db": 2.0},
+	&"er_tear": {"path": "res://assets/audio/ability/decree/er_tear_%d.wav", "variants": 3, "db": 3.0, "voices": 2, "jitter": 0.05},
+	&"er_crash": {"path": "res://assets/audio/ability/decree/er_crash_%d.wav", "variants": 3, "db": 2.3, "voices": 2, "jitter": 0.05},
+	# Disorder's crooked bell: two chimes a little out of tune with each other, and a lower toll that does not fit, struck as
+	# the crooked bell is seen to toll (0.85 s).
+	&"di_bell": {"path": "res://assets/audio/ability/decree/di_bell_%d.wav", "variants": 3, "db": 1.8, "voices": 2, "jitter": 0.05},
 	# Eminent Domain: a low groan as the strip is claimed, then the demolition roar as everything on it comes down.
-	&"ed_roar": {"path": "res://assets/audio/ability/decree/ed_roar.wav", "db": 2.5},
+	&"ed_roar": {"path": "res://assets/audio/ability/decree/ed_roar_%d.wav", "variants": 3, "db": 2.5, "voices": 2, "jitter": 0.05},
 	# Fenced Rule: iron posts driven into the ground one after another round the ring, the last struck home with a long ring.
-	&"fe_posts": {"path": "res://assets/audio/ability/decree/fe_posts.wav", "db": 3.5},
+	&"fe_posts": {"path": "res://assets/audio/ability/decree/fe_posts_%d.wav", "variants": 3, "db": 3.5, "voices": 2, "jitter": 0.05},
 	# The Closing Cage: the brass bars rise out of the ground with a clang and begin to grind; the grind of them closing in
 	# (a loop, faded out at the end); and the cage shutting on its middle.
-	&"cg_rise": {"path": "res://assets/audio/ability/decree/cg_rise.wav", "db": 3.0},
+	&"cg_rise": {"path": "res://assets/audio/ability/decree/cg_rise_%d.wav", "variants": 3, "db": 3.0, "voices": 2, "jitter": 0.05},
 	&"cg_grind": {"path": "res://assets/audio/ability/decree/cg_grind.wav", "db": 0.0, "loop": true},
-	&"cg_shut": {"path": "res://assets/audio/ability/decree/cg_shut.wav", "db": 3.0},
+	&"cg_shut": {"path": "res://assets/audio/ability/decree/cg_shut_%d.wav", "variants": 3, "db": 3.0, "voices": 2, "jitter": 0.05},
 	# Buildings and the town: recordings (tools/audio/foley/building/). A building or tree coming down (Town plays them) is capped at four voices each, so a
 	# stone rain felling a dozen things at once is a roar, not a pile-up.
 	&"collapse_stone": {"path": "res://assets/audio/building/collapse_stone_%d.wav", "variants": 5, "db": -0.1, "voices": 4, "jitter": 0.08},
@@ -288,82 +291,82 @@ const CATALOG := {
 	&"town_bell": {"path": "res://assets/audio/building/town_bell.wav", "db": -1.5},
 	# Dominion's own moments (skill-tree audit): the mind -- whispers, breath, bowls, drones, choir -- in place of borrowed
 	# Heaven Splitter, Nova and Judgement cues.
-	&"dom_trance": {"path": "res://assets/audio/ability/dominion/dom_trance.wav", "db": -1.6, "voices": 2},
-	&"dom_sinner": {"path": "res://assets/audio/ability/dominion/dom_sinner.wav", "db": 1.1, "voices": 2},
-	&"dom_bind": {"path": "res://assets/audio/ability/dominion/dom_bind.wav", "db": -1.1, "voices": 2},
-	&"dom_wall": {"path": "res://assets/audio/ability/dominion/dom_wall.wav", "db": -2.0, "voices": 2},
-	&"dom_hallowed": {"path": "res://assets/audio/ability/dominion/dom_hallowed.wav", "db": -0.5, "voices": 2},
-	&"dom_mark": {"path": "res://assets/audio/ability/dominion/dom_mark.wav", "db": -1.9, "voices": 2},
-	&"dom_speak": {"path": "res://assets/audio/ability/dominion/dom_speak.wav", "db": 0.9, "voices": 2},
-	&"dom_strain": {"path": "res://assets/audio/ability/dominion/dom_strain.wav", "db": -3.6, "voices": 2},
-	&"dom_break": {"path": "res://assets/audio/ability/dominion/dom_break.wav", "db": -0.1, "voices": 2},
+	&"dom_trance": {"path": "res://assets/audio/ability/dominion/dom_trance_%d.wav", "variants": 3, "db": -2.0, "voices": 2},
+	&"dom_sinner": {"path": "res://assets/audio/ability/dominion/dom_sinner_%d.wav", "variants": 3, "db": 0.9, "voices": 2},
+	&"dom_bind": {"path": "res://assets/audio/ability/dominion/dom_bind_%d.wav", "variants": 3, "db": -1.5, "voices": 2},
+	&"dom_wall": {"path": "res://assets/audio/ability/dominion/dom_wall_%d.wav", "variants": 3, "db": -2.0, "voices": 2},
+	&"dom_hallowed": {"path": "res://assets/audio/ability/dominion/dom_hallowed_%d.wav", "variants": 3, "db": -0.9, "voices": 2},
+	&"dom_mark": {"path": "res://assets/audio/ability/dominion/dom_mark_%d.wav", "variants": 3, "db": -1.9, "voices": 2},
+	&"dom_speak": {"path": "res://assets/audio/ability/dominion/dom_speak_%d.wav", "variants": 3, "db": 0.7, "voices": 2},
+	&"dom_strain": {"path": "res://assets/audio/ability/dominion/dom_strain_%d.wav", "variants": 3, "db": -3.6, "voices": 2},
+	&"dom_break": {"path": "res://assets/audio/ability/dominion/dom_break_%d.wav", "variants": 3, "db": -0.7, "voices": 2},
 	# Ruin's own (skill-tree sound audit): Smite, Scatter Strike, Light of Solaris, Wrath of the Sky, Earthshatter.
-	&"smite_call": {"path": "res://assets/audio/ability/ruin/smite_call.wav", "db": -2.0},
+	&"smite_call": {"path": "res://assets/audio/ability/ruin/smite_call_%d.wav", "variants": 3, "db": -2.0, "voices": 2, "jitter": 0.05},
 	&"smite_strike": {"path": "res://assets/audio/ability/ruin/smite_strike_%d.wav", "variants": 3, "db": -1.6, "voices": 4, "jitter": 0.08},
-	&"scatter_mark": {"path": "res://assets/audio/ability/ruin/scatter_mark.wav", "db": 3.0},
-	&"scatter_draw": {"path": "res://assets/audio/ability/ruin/scatter_draw.wav", "db": 0.3},
+	&"scatter_mark": {"path": "res://assets/audio/ability/ruin/scatter_mark_%d.wav", "variants": 3, "db": 3.0, "voices": 2, "jitter": 0.05},
+	&"scatter_draw": {"path": "res://assets/audio/ability/ruin/scatter_draw_%d.wav", "variants": 3, "db": 0.3, "voices": 2, "jitter": 0.05},
 	&"scatter_burst": {"path": "res://assets/audio/ability/ruin/scatter_burst_%d.wav", "variants": 4, "db": -1.8, "voices": 4, "jitter": 0.08},
-	&"scatter_boom": {"path": "res://assets/audio/ability/ruin/scatter_boom.wav", "db": 3.2},
-	&"solar_call": {"path": "res://assets/audio/ability/ruin/solar_call.wav", "db": 1.1},
-	&"solar_blaze": {"path": "res://assets/audio/ability/ruin/solar_blaze.wav", "db": 6.0},
+	&"scatter_boom": {"path": "res://assets/audio/ability/ruin/scatter_boom_%d.wav", "variants": 3, "db": 3.2, "voices": 2, "jitter": 0.05},
+	&"solar_call": {"path": "res://assets/audio/ability/ruin/solar_call_%d.wav", "variants": 3, "db": 1.1, "voices": 2},
+	&"solar_blaze": {"path": "res://assets/audio/ability/ruin/solar_blaze_%d.wav", "variants": 3, "db": 6.0, "voices": 2},
 	&"solar_burn": {"path": "res://assets/audio/ability/ruin/solar_burn.wav", "db": 0.2, "loop": true},
-	&"solar_fade": {"path": "res://assets/audio/ability/ruin/solar_fade.wav", "db": 4.2},
-	&"sky_gather": {"path": "res://assets/audio/ability/ruin/sky_gather.wav", "db": -2.0},
+	&"solar_fade": {"path": "res://assets/audio/ability/ruin/solar_fade_%d.wav", "variants": 3, "db": 4.2, "voices": 2},
+	&"sky_gather": {"path": "res://assets/audio/ability/ruin/sky_gather_%d.wav", "variants": 3, "db": -2.0, "voices": 2, "jitter": 0.05},
 	&"sky_rain": {"path": "res://assets/audio/ability/ruin/sky_rain.wav", "db": -6.2, "loop": true},
-	&"sky_clap": {"path": "res://assets/audio/ability/ruin/sky_clap.wav", "db": 6.3},
+	&"sky_clap": {"path": "res://assets/audio/ability/ruin/sky_clap_%d.wav", "variants": 3, "db": 6.3, "voices": 2, "jitter": 0.05},
 	&"sky_bolt": {"path": "res://assets/audio/ability/ruin/sky_bolt_%d.wav", "variants": 4, "db": -2.7, "voices": 4, "jitter": 0.08},
 	&"sky_roll": {"path": "res://assets/audio/ability/ruin/sky_roll_%d.wav", "variants": 3, "db": 5.4, "voices": 4, "jitter": 0.08},
-	&"sky_clear": {"path": "res://assets/audio/ability/ruin/sky_clear.wav", "db": -2.6},
-	&"quake_groan": {"path": "res://assets/audio/ability/ruin/quake_groan.wav", "db": 1.5},
-	&"quake_open": {"path": "res://assets/audio/ability/ruin/quake_open.wav", "db": 0.0},
+	&"sky_clear": {"path": "res://assets/audio/ability/ruin/sky_clear_%d.wav", "variants": 3, "db": -2.6, "voices": 2, "jitter": 0.05},
+	&"quake_groan": {"path": "res://assets/audio/ability/ruin/quake_groan_%d.wav", "variants": 3, "db": 1.5, "voices": 2, "jitter": 0.05},
+	&"quake_open": {"path": "res://assets/audio/ability/ruin/quake_open_%d.wav", "variants": 3, "db": 0.0, "voices": 2, "jitter": 0.05},
 	&"quake_run": {"path": "res://assets/audio/ability/ruin/quake_run_%d.wav", "variants": 3, "db": -5.7, "voices": 4, "jitter": 0.08},
-	&"quake_settle": {"path": "res://assets/audio/ability/ruin/quake_settle.wav", "db": -5.4},
+	&"quake_settle": {"path": "res://assets/audio/ability/ruin/quake_settle_%d.wav", "variants": 3, "db": -5.4, "voices": 2, "jitter": 0.05},
 	# Passage's own (skill-tree sound audit): Skylift, Windfall, Hound Gate, Hellmouth Spark, Door to the Deep, Doors of the
 	# Dead, Heaven's Door, and the hellhounds, demons and ghosts that come through them.
-	&"lift_beam": {"path": "res://assets/audio/ability/passage/lift_beam.wav", "db": -2.8},
-	&"lift_take": {"path": "res://assets/audio/ability/passage/lift_take.wav", "db": -4.0},
-	&"lift_drop": {"path": "res://assets/audio/ability/passage/lift_drop.wav", "db": 0.3},
-	&"wf_portal": {"path": "res://assets/audio/ability/passage/wf_portal.wav", "db": -6.7},
-	&"wf_land": {"path": "res://assets/audio/ability/passage/wf_land.wav", "db": -1.4},
+	&"lift_beam": {"path": "res://assets/audio/ability/passage/lift_beam_%d.wav", "variants": 3, "db": -2.8, "voices": 2, "jitter": 0.05},
+	&"lift_take": {"path": "res://assets/audio/ability/passage/lift_take_%d.wav", "variants": 3, "db": -4.0, "voices": 2, "jitter": 0.05},
+	&"lift_drop": {"path": "res://assets/audio/ability/passage/lift_drop_%d.wav", "variants": 3, "db": 0.3, "voices": 2, "jitter": 0.05},
+	&"wf_portal": {"path": "res://assets/audio/ability/passage/wf_portal_%d.wav", "variants": 3, "db": -6.7, "voices": 2, "jitter": 0.05},
+	&"wf_land": {"path": "res://assets/audio/ability/passage/wf_land_%d.wav", "variants": 3, "db": -1.4, "voices": 2, "jitter": 0.05},
 	&"wf_settle": {"path": "res://assets/audio/ability/passage/wf_settle_%d.wav", "variants": 3, "db": -2.8, "voices": 4, "jitter": 0.08},
-	&"wf_burst": {"path": "res://assets/audio/ability/passage/wf_burst.wav", "db": -0.4},
-	&"wf_loot": {"path": "res://assets/audio/ability/passage/wf_loot.wav", "db": -2.0},
-	&"wf_plague": {"path": "res://assets/audio/ability/passage/wf_plague.wav", "db": 0.4},
+	&"wf_burst": {"path": "res://assets/audio/ability/passage/wf_burst_%d.wav", "variants": 3, "db": -0.4, "voices": 2, "jitter": 0.05},
+	&"wf_loot": {"path": "res://assets/audio/ability/passage/wf_loot_%d.wav", "variants": 3, "db": -2.0, "voices": 2, "jitter": 0.05},
+	&"wf_plague": {"path": "res://assets/audio/ability/passage/wf_plague_%d.wav", "variants": 3, "db": 0.4, "voices": 2, "jitter": 0.05},
 	&"hound_howl": {"path": "res://assets/audio/ability/passage/hound_howl_%d.wav", "variants": 4, "db": 1.2, "voices": 4, "jitter": 0.08},
-	&"hound_burn": {"path": "res://assets/audio/ability/passage/hound_burn.wav", "db": 2.3},
+	&"hound_burn": {"path": "res://assets/audio/ability/passage/hound_burn_%d.wav", "variants": 3, "db": 2.3, "voices": 2, "jitter": 0.05},
 	&"hound_die": {"path": "res://assets/audio/ability/passage/hound_die_%d.wav", "variants": 2, "db": 2.9, "voices": 3, "jitter": 0.08},
-	&"hg_rise": {"path": "res://assets/audio/ability/passage/hg_rise.wav", "db": -3.7},
-	&"hg_doors": {"path": "res://assets/audio/ability/passage/hg_doors.wav", "db": 2.2},
-	&"hg_settle": {"path": "res://assets/audio/ability/passage/hg_settle.wav", "db": -1.0},
-	&"hg_shut": {"path": "res://assets/audio/ability/passage/hg_shut.wav", "db": 1.3},
-	&"hg_sink": {"path": "res://assets/audio/ability/passage/hg_sink.wav", "db": -6.1},
-	&"hm_tear": {"path": "res://assets/audio/ability/passage/hm_tear.wav", "db": -5.2},
-	&"hm_open": {"path": "res://assets/audio/ability/passage/hm_open.wav", "db": 5.0},
+	&"hg_rise": {"path": "res://assets/audio/ability/passage/hg_rise_%d.wav", "variants": 3, "db": -3.7, "voices": 2, "jitter": 0.05},
+	&"hg_doors": {"path": "res://assets/audio/ability/passage/hg_doors_%d.wav", "variants": 3, "db": 2.2, "voices": 2, "jitter": 0.05},
+	&"hg_settle": {"path": "res://assets/audio/ability/passage/hg_settle_%d.wav", "variants": 3, "db": -1.0, "voices": 2, "jitter": 0.05},
+	&"hg_shut": {"path": "res://assets/audio/ability/passage/hg_shut_%d.wav", "variants": 3, "db": 1.3, "voices": 2, "jitter": 0.05},
+	&"hg_sink": {"path": "res://assets/audio/ability/passage/hg_sink_%d.wav", "variants": 3, "db": -6.1, "voices": 2, "jitter": 0.05},
+	&"hm_tear": {"path": "res://assets/audio/ability/passage/hm_tear_%d.wav", "variants": 3, "db": -5.2, "voices": 2, "jitter": 0.05},
+	&"hm_open": {"path": "res://assets/audio/ability/passage/hm_open_%d.wav", "variants": 3, "db": 5.0, "voices": 2, "jitter": 0.05},
 	&"hm_roar": {"path": "res://assets/audio/ability/passage/hm_roar.wav", "db": 0.5, "loop": true},
 	&"hm_pulse": {"path": "res://assets/audio/ability/passage/hm_pulse_%d.wav", "variants": 3, "db": -8.6, "voices": 4, "jitter": 0.08},
-	&"hm_shut": {"path": "res://assets/audio/ability/passage/hm_shut.wav", "db": -0.1},
-	&"deep_open": {"path": "res://assets/audio/ability/passage/deep_open.wav", "db": -4.4},
-	&"deep_burst": {"path": "res://assets/audio/ability/passage/deep_burst.wav", "db": -0.9},
-	&"deep_spread": {"path": "res://assets/audio/ability/passage/deep_spread.wav", "db": -0.9},
+	&"hm_shut": {"path": "res://assets/audio/ability/passage/hm_shut_%d.wav", "variants": 3, "db": -0.1, "voices": 2, "jitter": 0.05},
+	&"deep_open": {"path": "res://assets/audio/ability/passage/deep_open_%d.wav", "variants": 3, "db": -4.4, "voices": 2, "jitter": 0.05},
+	&"deep_burst": {"path": "res://assets/audio/ability/passage/deep_burst_%d.wav", "variants": 3, "db": -0.9, "voices": 2, "jitter": 0.05},
+	&"deep_spread": {"path": "res://assets/audio/ability/passage/deep_spread_%d.wav", "variants": 3, "db": -0.9, "voices": 2, "jitter": 0.05},
 	&"deep_swirl": {"path": "res://assets/audio/ability/passage/deep_swirl.wav", "db": 2.2, "loop": true},
 	&"deep_gulp": {"path": "res://assets/audio/ability/passage/deep_gulp_%d.wav", "variants": 3, "db": -8.1, "voices": 4, "jitter": 0.08},
 	&"deep_take": {"path": "res://assets/audio/ability/passage/deep_take_%d.wav", "variants": 3, "db": -0.5, "voices": 4, "jitter": 0.08},
-	&"deep_drain": {"path": "res://assets/audio/ability/passage/deep_drain.wav", "db": 0.3},
-	&"dead_chill": {"path": "res://assets/audio/ability/passage/dead_chill.wav", "db": -2.3},
-	&"dead_door": {"path": "res://assets/audio/ability/passage/dead_door.wav", "db": -2.8},
+	&"deep_drain": {"path": "res://assets/audio/ability/passage/deep_drain_%d.wav", "variants": 3, "db": 0.3, "voices": 2, "jitter": 0.05},
+	&"dead_chill": {"path": "res://assets/audio/ability/passage/dead_chill_%d.wav", "variants": 3, "db": -2.3, "voices": 2, "jitter": 0.05},
+	&"dead_door": {"path": "res://assets/audio/ability/passage/dead_door_%d.wav", "variants": 3, "db": -2.8, "voices": 2, "jitter": 0.05},
 	&"dead_creak": {"path": "res://assets/audio/ability/passage/dead_creak_%d.wav", "variants": 4, "db": 0.8, "voices": 4, "jitter": 0.08},
 	&"ghost_moan": {"path": "res://assets/audio/ability/passage/ghost_moan_%d.wav", "variants": 3, "db": 0.7, "voices": 4, "jitter": 0.08},
 	&"demon_snarl": {"path": "res://assets/audio/ability/passage/demon_snarl_%d.wav", "variants": 3, "db": 1.7, "voices": 4, "jitter": 0.08},
-	&"dead_fall": {"path": "res://assets/audio/ability/passage/dead_fall.wav", "db": 3.6},
-	&"dead_recall": {"path": "res://assets/audio/ability/passage/dead_recall.wav", "db": -3.4},
-	&"dead_close": {"path": "res://assets/audio/ability/passage/dead_close.wav", "db": 1.5},
-	&"hd_fall": {"path": "res://assets/audio/ability/passage/hd_fall.wav", "db": 2.2},
-	&"hd_land": {"path": "res://assets/audio/ability/passage/hd_land.wav", "db": 1.8},
-	&"hd_swell": {"path": "res://assets/audio/ability/passage/hd_swell.wav", "db": 1.0},
+	&"dead_fall": {"path": "res://assets/audio/ability/passage/dead_fall_%d.wav", "variants": 3, "db": 3.6, "voices": 2, "jitter": 0.05},
+	&"dead_recall": {"path": "res://assets/audio/ability/passage/dead_recall_%d.wav", "variants": 3, "db": -3.4, "voices": 2, "jitter": 0.05},
+	&"dead_close": {"path": "res://assets/audio/ability/passage/dead_close_%d.wav", "variants": 3, "db": 1.5, "voices": 2, "jitter": 0.05},
+	&"hd_fall": {"path": "res://assets/audio/ability/passage/hd_fall_%d.wav", "variants": 3, "db": 2.2, "voices": 2},
+	&"hd_land": {"path": "res://assets/audio/ability/passage/hd_land_%d.wav", "variants": 3, "db": 1.8, "voices": 2},
+	&"hd_swell": {"path": "res://assets/audio/ability/passage/hd_swell_%d.wav", "variants": 3, "db": 1.0, "voices": 2},
 	&"hd_draw": {"path": "res://assets/audio/ability/passage/hd_draw.wav", "db": 0.6, "loop": true},
 	&"hd_take": {"path": "res://assets/audio/ability/passage/hd_take_%d.wav", "variants": 3, "db": -1.9, "voices": 4, "jitter": 0.08},
-	&"hd_shut": {"path": "res://assets/audio/ability/passage/hd_shut.wav", "db": -2.0},
-	&"hd_rise": {"path": "res://assets/audio/ability/passage/hd_rise.wav", "db": -4.6},
+	&"hd_shut": {"path": "res://assets/audio/ability/passage/hd_shut_%d.wav", "variants": 3, "db": -2.0, "voices": 2},
+	&"hd_rise": {"path": "res://assets/audio/ability/passage/hd_rise_%d.wav", "variants": 3, "db": -4.6, "voices": 2},
 	# The visitors heard while they roam (VisitorVoices): what each says, and its bite, claws or touch.
 	&"hound_roam": {"path": "res://assets/audio/ability/passage/hound_roam_%d.wav", "variants": 5, "db": -7.4, "voices": 4, "jitter": 0.08},
 	&"hound_bite": {"path": "res://assets/audio/ability/passage/hound_bite_%d.wav", "variants": 3, "db": -4.9, "voices": 4, "jitter": 0.08},
@@ -425,6 +428,125 @@ const CATALOG := {
 	&"msn_rebuild": {"path": "res://assets/audio/mission/msn_rebuild_%d.wav", "variants": 2, "db": -0.6, "voices": 1, "jitter": 0.05},
 	&"msn_rope": {"path": "res://assets/audio/mission/msn_rope_%d.wav", "variants": 3, "db": 0.6, "voices": 1, "jitter": 0.05},
 	&"msn_lock": {"path": "res://assets/audio/mission/msn_lock_%d.wav", "variants": 3, "db": -5.5, "voices": 1, "jitter": 0.05},
+	# == skill-tree sound pass: Death ==
+	# The risen (every Death power that raises the dead): a bite's tear and snap, cut down to a crunch of bone, falling to ash; a wraith's cold touch.
+	&"undead_bite": {"path": "res://assets/audio/ability/death/undead_bite_%d.wav", "variants": 3, "db": -4.5, "voices": 2, "jitter": 0.08},
+	&"undead_cut": {"path": "res://assets/audio/ability/death/undead_cut_%d.wav", "variants": 3, "db": -4.6, "voices": 2, "jitter": 0.06},
+	&"undead_ash": {"path": "res://assets/audio/ability/death/undead_ash_%d.wav", "variants": 3, "db": -6.5, "voices": 2, "jitter": 0.05},
+	&"wraith_touch": {"path": "res://assets/audio/ability/death/wraith_touch_%d.wav", "variants": 3, "db": -8.0, "voices": 2, "jitter": 0.06},
+	# Raise the Dead: each body breaking up out of the earth as it stands.
+	&"raise_stand": {"path": "res://assets/audio/ability/death/raise_stand_%d.wav", "variants": 3, "db": -4.0, "voices": 3, "jitter": 0.06},
+	# Pestilence: the sickness caught -- a wet wheezing cough and a hiss (the cast's victims, then each spread).
+	&"plague_catch": {"path": "res://assets/audio/ability/death/plague_catch_%d.wav", "variants": 3, "db": -5.0, "voices": 2, "jitter": 0.06},
+	# Gravecall (and the Gate Below's souls): wraiths standing up in a swell of moans; their haunting; a soldier frozen.
+	&"wraith_rise": {"path": "res://assets/audio/ability/death/wraith_rise_%d.wav", "variants": 3, "db": -3.0, "voices": 2, "jitter": 0.04},
+	&"wraith_haunt": {"path": "res://assets/audio/ability/death/wraith_haunt.wav", "db": -6.0, "loop": true},
+	&"wraith_freeze": {"path": "res://assets/audio/ability/death/wraith_freeze_%d.wav", "variants": 3, "db": -4.0, "voices": 2, "jitter": 0.06},
+	# Corpse Guise: the guised breathing cold, and breathing in again when it lifts.
+	&"guise_breath": {"path": "res://assets/audio/ability/death/guise_breath_%d.wav", "variants": 3, "db": -10.0, "voices": 1, "jitter": 0.05},
+	&"guise_lift": {"path": "res://assets/audio/ability/death/guise_lift_%d.wav", "variants": 3, "db": -8.5, "voices": 2, "jitter": 0.05},
+	# Walking Corpse: its dragging steps, its quiet kill, lying back down.
+	&"walker_step": {"path": "res://assets/audio/ability/death/walker_step_%d.wav", "variants": 3, "db": -7.0, "voices": 1, "jitter": 0.06},
+	&"walker_kill": {"path": "res://assets/audio/ability/death/walker_kill_%d.wav", "variants": 3, "db": -5.5, "voices": 1, "jitter": 0.04},
+	&"walker_lie": {"path": "res://assets/audio/ability/death/walker_lie_%d.wav", "variants": 3, "db": -8.0, "voices": 1, "jitter": 0.04},
+	# The Gate Below: the pit's rumble while it is open; the earth bursting as an arm takes someone.
+	&"pit_rumble": {"path": "res://assets/audio/ability/death/pit_rumble.wav", "db": -2.0, "loop": true},
+	&"pit_grab": {"path": "res://assets/audio/ability/death/pit_grab_%d.wav", "variants": 3, "db": -5.0, "voices": 2, "jitter": 0.06},
+	# Pale Reign: the reign held (a low choir under ash wind), the ghosts pouring out, the colour coming back.
+	&"pale_reign": {"path": "res://assets/audio/ability/death/pale_reign.wav", "db": -6.0, "loop": true},
+	&"pale_ghosts": {"path": "res://assets/audio/ability/death/pale_ghosts_%d.wav", "variants": 3, "db": -3.5, "voices": 2, "jitter": 0.05},
+	&"pale_lift": {"path": "res://assets/audio/ability/death/pale_lift_%d.wav", "variants": 3, "db": -3.5, "voices": 1, "jitter": 0.03},
+	# The Pale Serpent: the loop's great turn of wings, its climb away, the cold hush of its shadow taking someone.
+	&"serpent_coil": {"path": "res://assets/audio/ability/death/serpent_coil_%d.wav", "variants": 3, "db": -3.0, "voices": 1, "jitter": 0.03},
+	&"serpent_depart": {"path": "res://assets/audio/ability/death/serpent_depart_%d.wav", "variants": 3, "db": -2.0, "voices": 1, "jitter": 0.03},
+	&"serpent_shadow": {"path": "res://assets/audio/ability/death/serpent_shadow_%d.wav", "variants": 3, "db": -6.0, "voices": 2, "jitter": 0.06},
+	# Grave Tide: the horde's groaning while it walks, the bone giant's fall, claws and bone on stone.
+	&"horde_groan": {"path": "res://assets/audio/ability/death/horde_groan.wav", "db": -4.0, "loop": true},
+	&"giant_fall": {"path": "res://assets/audio/ability/death/giant_fall_%d.wav", "variants": 3, "db": 0.5, "voices": 1, "jitter": 0.03},
+	&"gt_wreck": {"path": "res://assets/audio/ability/death/gt_wreck_%d.wav", "variants": 3, "db": -2.2, "voices": 2, "jitter": 0.08},
+	# == skill-tree sound pass: Decree ==
+	# Leaving Is Prohibited / Fenced Rule: a brass ting where one is turned back at the edge; the amber hum while the law holds (a loop).
+	&"law_turn": {"path": "res://assets/audio/ability/decree/law_turn_%d.wav", "variants": 3, "db": -7.2, "voices": 2, "jitter": 0.05},
+	&"law_hum": {"path": "res://assets/audio/ability/decree/law_hum.wav", "db": -12.8, "voices": 2, "loop": true},
+	# Leaving Is Prohibited: the amber cracking and its shards falling. Fenced Rule: the posts sinking back with an iron scrape.
+	&"law_crack": {"path": "res://assets/audio/ability/decree/law_crack_%d.wav", "variants": 3, "db": -4.7, "voices": 1, "jitter": 0.05},
+	&"fe_sink": {"path": "res://assets/audio/ability/decree/fe_sink_%d.wav", "variants": 3, "db": -3.8, "voices": 1, "jitter": 0.05},
+	# Breathing Is Prohibited: the airless hush (a loop), a strangled gasp, a gulp of air once out, and the air rushing back.
+	&"br_void": {"path": "res://assets/audio/ability/decree/br_void.wav", "db": -7.0, "voices": 2, "loop": true},
+	&"br_gasp": {"path": "res://assets/audio/ability/decree/br_gasp_%d.wav", "variants": 3, "db": -8.1, "voices": 3, "jitter": 0.05},
+	&"br_breathe": {"path": "res://assets/audio/ability/decree/br_breathe_%d.wav", "variants": 3, "db": -8.9, "voices": 2, "jitter": 0.05},
+	&"br_return": {"path": "res://assets/audio/ability/decree/br_return_%d.wav", "variants": 3, "db": -4.1, "voices": 1, "jitter": 0.05},
+	# Redefine: a name copied by Precedent (quill and gilt chime), and the names withdrawn.
+	&"rd_write": {"path": "res://assets/audio/ability/decree/rd_write_%d.wav", "variants": 3, "db": -0.3, "voices": 2, "jitter": 0.05},
+	&"rd_lift": {"path": "res://assets/audio/ability/decree/rd_lift_%d.wav", "variants": 3, "db": -6.3, "voices": 1, "jitter": 0.05},
+	# Bound in Law: a fate passing down the chain, and the chain snapping when the bond ends.
+	&"bd_pass": {"path": "res://assets/audio/ability/decree/bd_pass_%d.wav", "variants": 3, "db": -5.9, "voices": 2, "jitter": 0.05},
+	&"bd_snap": {"path": "res://assets/audio/ability/decree/bd_snap_%d.wav", "variants": 3, "db": -1.2, "voices": 1, "jitter": 0.05},
+	# Erasing Distance: the ground stretching as it folds, and the whip crack of the spring back.
+	&"er_fold": {"path": "res://assets/audio/ability/decree/er_fold_%d.wav", "variants": 3, "db": 3.2, "voices": 1, "jitter": 0.05},
+	&"er_spring": {"path": "res://assets/audio/ability/decree/er_spring_%d.wav", "variants": 3, "db": -2.8, "voices": 1, "jitter": 0.05},
+	# Disorder: two bowls beating out of tune while the law holds (a loop), and the bell set true as it lifts.
+	&"di_drone": {"path": "res://assets/audio/ability/decree/di_drone.wav", "db": -12.5, "voices": 2, "loop": true},
+	&"di_lift": {"path": "res://assets/audio/ability/decree/di_lift_%d.wav", "variants": 3, "db": -4.0, "voices": 1, "jitter": 0.05},
+	# Eminent Domain: the rubble settling in its heaps. The Closing Cage: a brass bar striking stone.
+	&"ed_settle": {"path": "res://assets/audio/ability/decree/ed_settle_%d.wav", "variants": 3, "db": -5.1, "voices": 2, "jitter": 0.05},
+	&"cg_clang": {"path": "res://assets/audio/ability/decree/cg_clang_%d.wav", "variants": 3, "db": -2.5, "voices": 2, "jitter": 0.05},
+	# The Sealed Verdict: a heavy clock's tick over the last ten seconds, and the bell lowered over the last five.
+	&"sv_tick": {"path": "res://assets/audio/ability/decree/sv_tick_%d.wav", "variants": 3, "db": -1.8, "voices": 1, "jitter": 0.05},
+	&"sv_dusk": {"path": "res://assets/audio/ability/decree/sv_dusk_%d.wav", "variants": 3, "db": -0.9, "voices": 1, "jitter": 0.05},
+	# == skill-tree sound pass: Dominion and Veil ==
+	# Mind Whisper: the mind turning at the one whispered to, and the breath out when the whisper lets go.
+	&"dom_turn": {"path": "res://assets/audio/ability/dominion/dom_turn_%d.wav", "variants": 3, "db": -2.8, "voices": 2, "jitter": 0.04},
+	&"dom_release": {"path": "res://assets/audio/ability/dominion/dom_release_%d.wav", "variants": 3, "db": -4.7, "voices": 2, "jitter": 0.04},
+	# Discord: a thought lost (a syllable cut off, a glassy blip), at the cast and as Tangled Threads catch more.
+	&"ds_forget": {"path": "res://assets/audio/ability/dominion/ds_forget_%d.wav", "variants": 3, "db": -2.4, "voices": 3, "jitter": 0.05},
+	# Madness Bloom: the seed taking; one turning Disturbed; the madness passing on (MadnessManager, rate-limited).
+	&"md_seed": {"path": "res://assets/audio/ability/dominion/md_seed_%d.wav", "variants": 3, "db": -2.0, "voices": 2, "jitter": 0.04},
+	&"md_stage": {"path": "res://assets/audio/ability/dominion/md_stage_%d.wav", "variants": 3, "db": -5.7, "voices": 2, "jitter": 0.05},
+	&"md_spread": {"path": "res://assets/audio/ability/dominion/md_spread_%d.wav", "variants": 3, "db": -9.4, "voices": 2, "jitter": 0.05},
+	# Will-o'-Wisp: Enthrall's own cast, the hovering light's shimmer (loop), one more seized, the light going out.
+	&"wisp_enthrall": {"path": "res://assets/audio/ability/dominion/wisp_enthrall_%d.wav", "variants": 3, "db": 0.5, "voices": 2},
+	&"wisp_hum": {"path": "res://assets/audio/ability/dominion/wisp_hum.wav", "db": -4.9, "voices": 2, "loop": true},
+	&"wisp_take": {"path": "res://assets/audio/ability/dominion/wisp_take_%d.wav", "variants": 3, "db": -6.4, "voices": 3, "jitter": 0.06},
+	&"wisp_out": {"path": "res://assets/audio/ability/dominion/wisp_out_%d.wav", "variants": 3, "db": -4.2, "voices": 2, "jitter": 0.04},
+	# Divine Schism: the strain's beats (was Judgement's jg_punch): a choir chord cut short, a cracked bowl, a low thud.
+	&"dom_crack": {"path": "res://assets/audio/ability/dominion/dom_crack_%d.wav", "variants": 3, "db": 0.6, "voices": 3, "jitter": 0.08},
+	# Silent Doom / Blight with nothing to take: a dark puff that dies.
+	&"veil_fizzle": {"path": "res://assets/audio/ability/veil/veil_fizzle_%d.wav", "variants": 3, "db": -7.1, "voices": 2, "jitter": 0.05},
+	# == skill-tree sound pass: Ruin and Passage ==
+	# Own cues for moments that borrowed from powers outside the tree (played where the borrowed cue played, same level).
+	# Smite: the holy crack under the strike (was Heaven Splitter's hs_strike).
+	&"smite_crack": {"path": "res://assets/audio/ability/ruin/smite_crack_%d.wav", "variants": 3, "db": -2.7, "voices": 2, "jitter": 0.05},
+	# Earthshatter: a fork of the crack splitting off (was hs_fissure).
+	&"quake_fissure": {"path": "res://assets/audio/ability/ruin/quake_fissure_%d.wav", "variants": 3, "db": 3.6, "voices": 2, "jitter": 0.05},
+	# Dragonfire: a ground-fire strip's embers (was the orbital's orb_embers) and the fire left where it sank (was laser_fire).
+	&"dr_embers": {"path": "res://assets/audio/ability/fire/dr_embers.wav", "db": -10.5, "loop": true},
+	&"dr_burn": {"path": "res://assets/audio/ability/fire/dr_burn.wav", "db": -5.8, "loop": true},
+	# Mirrorfold: a glass twin bursting (was Glacial's glac_shatter).
+	&"mirror_shatter": {"path": "res://assets/audio/ability/passage/mirror_shatter_%d.wav", "variants": 3, "db": 4.4, "voices": 4, "jitter": 0.12},
+	# Windfall: the meteor dropping out of the portal, an oil barrel bursting, a heap slamming down, the boulder crumbling
+	# (were Cinderfall's cf_fall / cf_erupt / cf_impact and Judgement's jg_crumble).
+	&"wf_fall": {"path": "res://assets/audio/ability/passage/wf_fall_%d.wav", "variants": 3, "db": -6.6, "voices": 3, "jitter": 0.15},
+	&"wf_erupt": {"path": "res://assets/audio/ability/passage/wf_erupt_%d.wav", "variants": 3, "db": -1.3, "voices": 2, "jitter": 0.08},
+	&"wf_impact": {"path": "res://assets/audio/ability/passage/wf_impact_%d.wav", "variants": 3, "db": 3.0, "voices": 4, "jitter": 0.1},
+	&"wf_crumble": {"path": "res://assets/audio/ability/passage/wf_crumble_%d.wav", "variants": 3, "db": -1.7, "voices": 2, "jitter": 0.05},
+	# Hellmouth Spark's Wandering Mouth: the old mouth bursting shut, the ground groaning, the new mouth catching, its breath
+	# (were cf_erupt, Heaven Splitter's hs_rumble, Dragonfire's dr_ignite and dr_breath).
+	&"hm_erupt": {"path": "res://assets/audio/ability/passage/hm_erupt_%d.wav", "variants": 3, "db": 1.1, "voices": 2, "jitter": 0.05},
+	&"hm_rumble": {"path": "res://assets/audio/ability/passage/hm_rumble_%d.wav", "variants": 3, "db": -2.4, "voices": 2, "jitter": 0.05},
+	&"hm_ignite": {"path": "res://assets/audio/ability/passage/hm_ignite_%d.wav", "variants": 3, "db": 4.1, "voices": 2, "jitter": 0.05},
+	&"hm_breath": {"path": "res://assets/audio/ability/passage/hm_breath.wav", "db": -0.1, "loop": true},
+	# Hound Gate: the pack giving tongue at its quarry (was Dragonfire's dr_roar).
+	&"hg_roar": {"path": "res://assets/audio/ability/passage/hg_roar_%d.wav", "variants": 3, "db": 2.6, "voices": 2, "jitter": 0.05},
+	# Doors of the Dead: a ghost rising out of a door (was Will-o'-Wisp's q_wisp).
+	&"dead_wisp": {"path": "res://assets/audio/ability/passage/dead_wisp_%d.wav", "variants": 3, "db": -0.6, "voices": 2, "jitter": 0.05},
+	# A high level heard (LevelSound): each school's weight, a low swell and a long tail under a level-4/5 power's main cue.
+	&"lvl_ruin": {"path": "res://assets/audio/ability/level/lvl_ruin_%d.wav", "variants": 2, "db": 2.0, "voices": 2},
+	&"lvl_passage": {"path": "res://assets/audio/ability/level/lvl_passage_%d.wav", "variants": 2, "db": 2.0, "voices": 2},
+	&"lvl_veil": {"path": "res://assets/audio/ability/level/lvl_veil_%d.wav", "variants": 2, "db": 2.0, "voices": 2},
+	&"lvl_decree": {"path": "res://assets/audio/ability/level/lvl_decree_%d.wav", "variants": 2, "db": 2.0, "voices": 2},
+	&"lvl_death": {"path": "res://assets/audio/ability/level/lvl_death_%d.wav", "variants": 2, "db": 2.0, "voices": 2},
+	&"lvl_dominion": {"path": "res://assets/audio/ability/level/lvl_dominion_%d.wav", "variants": 2, "db": 2.0, "voices": 2},
 	# Ambience (natural sound pass 2, Ambience plays them): the town's beds by day and by night and its fire bed, loops on
 	# the Ambience bus; and the calls now and then near the camera, birds by day, a night call by night.
 	&"amb_day": {"path": "res://assets/audio/ambience/amb_day.wav", "db": -10.0, "loop": true},
@@ -442,6 +564,19 @@ const CATALOG := {
 	&"music_town_night": {"path": "res://assets/audio/music/music_town_night.wav", "db": 0.0, "loop": true},
 	&"music_capital_day": {"path": "res://assets/audio/music/music_capital_day.wav", "db": 0.0, "loop": true},
 	&"music_tension": {"path": "res://assets/audio/music/music_tension.wav", "db": 0.0, "loop": true},
+	# Music by situation: the chase's two stems (Music.CHASE) and the moods' own calm pieces (Music.MOOD_CALM).
+	&"music_chase_base": {"path": "res://assets/audio/music/music_chase_base.wav", "db": 0.0, "loop": true},
+	&"music_chase_drums": {"path": "res://assets/audio/music/music_chase_drums.wav", "db": 0.0, "loop": true},
+	&"music_calm_festival": {"path": "res://assets/audio/music/music_calm_festival.wav", "db": 0.0, "loop": true},
+	&"music_calm_rite": {"path": "res://assets/audio/music/music_calm_rite.wav", "db": 0.0, "loop": true},
+	# God's Paths (the god select): the temple piece and one layer per school over it (Music.PATHS, Music.PATH_LAYERS).
+	&"music_paths": {"path": "res://assets/audio/music/music_paths.wav", "db": 0.0, "loop": true},
+	&"music_paths_ruin": {"path": "res://assets/audio/music/music_paths_ruin.wav", "db": 0.0, "loop": true},
+	&"music_paths_passage": {"path": "res://assets/audio/music/music_paths_passage.wav", "db": 0.0, "loop": true},
+	&"music_paths_veil": {"path": "res://assets/audio/music/music_paths_veil.wav", "db": 0.0, "loop": true},
+	&"music_paths_decree": {"path": "res://assets/audio/music/music_paths_decree.wav", "db": 0.0, "loop": true},
+	&"music_paths_death": {"path": "res://assets/audio/music/music_paths_death.wav", "db": 0.0, "loop": true},
+	&"music_paths_dominion": {"path": "res://assets/audio/music/music_paths_dominion.wav", "db": 0.0, "loop": true},
 	# Stingers (natural sound pass 6, Music.sting()): the night begins, its main objective is done, won, lost.
 	&"music_sting_start": {"path": "res://assets/audio/music/music_sting_start.wav", "db": 0.0},
 	&"music_sting_objective": {"path": "res://assets/audio/music/music_sting_objective.wav", "db": 0.0},

@@ -163,6 +163,10 @@ static func run(t) -> void:
 	there.hidden = true
 	t.check(rules.body_check("body", Vector2(7, 7)) == "no_dead", "a hidden remain is no body for a body cast")
 
+	# The ledger is always on (soldier duties): any loadout lights it, and Remains.wants() still names the powers that need bodies.
+	var any_rules := Rules.new().setup(PackedStringArray(["smite"]), null, made[1], made[2], crowd, made[4])
+	t.check(crowd.remains.enabled and crowd.remains.always and not Remains.wants([]), "always on: a loadout that wants no bodies still keeps them")
+	any_rules.free()
 	t.check(Remains.wants(["smite", "raise"]) and not Remains.wants(["smite"]) and Remains.wants(["gravetide"]) and Remains.wants(["walker"]),
 		"Remains.wants(['smite','raise']) is true, wants(['smite']) is false")
 	var on_rules := Rules.new().setup(PackedStringArray(["smite", "raise"]), null, made[1], made[2], crowd, made[4])

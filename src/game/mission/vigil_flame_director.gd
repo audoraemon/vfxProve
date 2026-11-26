@@ -417,6 +417,88 @@ func going_home() -> bool:
 	return homeward and not swapped and vigil != null and vigil.active and _alive(vigil.bearer)
 
 
+## Loss warning: the bearer taking the real flame home (FlameObjective: kept, the night is lost), `flame_home` at home_eta(); and the
+## prayers under way filling a Gaze that loses the night (`prayer`, prayer_eta()). Only reads.
+func threats() -> Array[Dictionary]:
+	var out := super()
+	if kept or wren_lost():
+		return out
+	var eta := home_eta()
+	if eta < INF:
+		out.append(NightThreat.make(&"flame_home", _home_title(), _home_act(), eta, vigil.bearer.ground_pos))
+	var pray := prayer_eta()
+	if pray < INF:
+		out.append(NightThreat.make(&"prayer", "THEIR PRAYER FILLS HALCYON'S GAZE", "BREAK THEIR PRAYER", pray, _prayer_at()))
+	return out
+
+
+## Virtual: the loss warning's words for the flame (The Relic Run's relic) reaching where it is kept.
+func _home_title() -> String:
+	return "THE FLAME GOES HOME"
+
+
+func _home_act() -> String:
+	return "TAKE THE FLAME"
+
+
+## Virtual: mission seconds until the bearer carries the real flame within HOME_REACH of the Temple's door (_home_check()): his walk there at
+## the pace he goes now (by his detour, if he is turned aside); INF until the route has turned home, once swapped, while he carries a report
+## (the walk waits for him) or is held off it. Only reads.
+func home_eta() -> float:
+	if not going_home() or not _walks_on():
+		return INF
+	return maxf(_route_left(temple_door) - HOME_REACH / maxf(vigil.bearer.walk_speed, 0.05), 0.0) * mission_delta(1.0)
+
+
+## The Vigil's bearer walks his route now: on his duty, not held by what the route waits for (VigilRoute.busy).
+func _walks_on() -> bool:
+	var b := vigil.bearer
+	return not b.inside and b.mind == Person.Mind.DUTY and not (vigil.busy.is_valid() and bool(vigil.busy.call(b)))
+
+
+## Real seconds for the bearer to walk to his goal now (VigilRoute.goal()), then to `to` by the road; at his pace now.
+func _route_left(to: Vector2) -> float:
+	var b := vigil.bearer
+	var at := vigil.goal()
+	var t := walk_left(b, at)
+	if at.distance_to(to) > 0.01:
+		t += road_len(at, to) / maxf(b.walk_speed, 0.05)
+	return t
+
+
+## Mission seconds until the prayers under way fill the Gaze (GazeMeter.pray(): each kneeler adds PRAYER_PER_SECOND, PRAYER_CAP in all,
+## times PRAYER_SCALE, for the PRAY_SECONDS each has left), on a night whose full Gaze loses it; INF when they end first. Prayers a beam has
+## not begun yet are not counted. Only reads.
+func prayer_eta() -> float:
+	if not _gaze_loses():
+		return INF
+	var left: Array[float] = []
+	for k: Variant in praying.keys():
+		if not _alive(k):
+			continue
+		var p := k as Person
+		if not p.inside and p.mind == Person.Mind.DUTY and p.ground_pos.distance_to(praying[k][1]) <= PRAY_REACH:
+			left.append(maxf(float(praying[k][0]), 0.0))
+	left.sort()
+	var need := GazeMeter.FULL - gaze.value
+	var t := 0.0
+	for i in left.size():
+		var rate := minf(float(left.size() - i) * GazeMeter.PRAYER_PER_SECOND, GazeMeter.PRAYER_CAP) * PRAYER_SCALE
+		var gain := rate * (left[i] - t)
+		if gain >= need:
+			return (t + need / rate) * mission_delta(1.0)
+		need -= gain
+		t = left[i]
+	return INF
+
+
+## Where a prayer under way kneels (the warning's point).
+func _prayer_at() -> Vector2:
+	for k: Variant in praying.keys():
+		return praying[k][1]
+	return Vector2.INF
+
+
 ## Virtual (v0.11 M5): the HUD's line for the main objective in place of FlameObjective's own ("" keeps its own): The Relic Run's
 ## "The relic: Pip at the lock".
 func hud_line() -> String:
@@ -431,6 +513,34 @@ func hint_phase() -> String:
 	if going_home():
 		return "homeward"
 	return "wren" if appeared else ""
+
+
+## Every phase hint_phase() can return (Mission clarity, spec 6.1).
+func hint_phases() -> PackedStringArray:
+	return PackedStringArray(["", "carry", "homeward", "wren"])
+
+
+## Seconds to Wren's coming, in mission seconds (Mission clarity, spec 5.6): the "" step counts it down; 0 once he has come.
+func hint_seconds() -> float:
+	return timeline.seconds_to("wren") if timeline != null and not appeared else 0.0
+
+
+const WHY_SEEN := "AN ACOLYTE (RED) WOULD SEE"
+const WHY_ONLY_WREN := "ONLY WREN (BLUE) CAN TAKE IT"
+
+
+## Mission clarity (spec 5.6): a Lead that takes someone but Wren to the lantern, or Wren to it while an unheld Faithful (the bearer aside) stands
+## within sight of it. The destination is the whispered one's goal. Only reads.
+func why_not(key: String, at: Vector2) -> String:
+	if swapped or home or crowd == null or _lantern == Vector2.INF or not "lead" in MissionVerbs.verbs_of(key):
+		return ""
+	var w := _whispered_at(at)
+	if w == null or (w.goal() if w.has_goal() else w.ground_pos).distance_to(_lantern) > SWAP_REACH + 0.5:  # (one already standing there has no goal)
+		return ""
+	if w != wren:
+		return WHY_ONLY_WREN
+	var seer := faithful_seeing(_lantern, Crowd.DOOM_WITNESS, vigil.bearer if vigil != null else null, wren)
+	return WHY_SEEN if seer != null else ""
 
 
 ## The tour (v0.10 M6, spec §5): the flame on its bearer, Mira's shrine, the Temple.
@@ -592,3 +702,8 @@ class FlameGaze extends GazeMeter:
 ## Veil (spec 5.9): Wren -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
 func keeps_alive(p: Person) -> bool:
 	return p != null and p == wren
+
+
+## Music by situation: the vigil's chant.
+func music_mood() -> StringName:
+	return &"rite"

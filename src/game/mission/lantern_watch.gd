@@ -528,6 +528,21 @@ func _herald_rows() -> Array[Dictionary]:
 	return out
 
 
+## Loss warning: the Lantern's own Heralds (the keeper who rang with no warning to carry), each its own warning, as _herald_rows() counts them
+## (the warnings' Heralds are their directors' threats()). Only on a Herald night, before the Lantern has heard. Only reads.
+func threats() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if _released or heard or kind != KIND_HERALD:
+		return out
+	var rate := rules.clock_rate
+	for h in heralds:
+		if h.is_open() and is_instance_valid(h.carrier):
+			var eta := (h.descend_left() + TempleReport.walk_seconds(h.carrier, h.door, h.slow)) * rate
+			out.append(NightThreat.make(StringName("herald_keeper_%d" % h.get_instance_id()), "THE HERALD REACHES THE TEMPLE", "STOP HIM", eta,
+				(h.carrier as Person).ground_pos))
+	return out
+
+
 ## The act ends: the reports' carriers get their pace and their day back.
 func _herald_teardown() -> void:
 	for h in heralds:

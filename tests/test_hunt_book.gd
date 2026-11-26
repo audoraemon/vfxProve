@@ -158,7 +158,7 @@ static func _hunt_def(t) -> void:
 			"tier %d Hunt: its tier, id, title and banner" % tier)
 		if def == null:
 			continue
-		t.check(def.slots == s.slots() and def.dp_capacity == s.max_might() and def.pool == s.draftable(),
+		t.check(def.slots == s.slots() and def.dp_capacity == s.max_might() and def.pool == s.in_tree(),
 			"tier %d Hunt: the god's slots, Might and pool (%d, %d)" % [tier, def.slots, def.dp_capacity])
 		t.check(absf(def.clock - (TierBook.clock(tier) + s.extra_clock())) < 0.001 and s.extra_clock() > 0.0,
 			"tier %d Hunt: the tier's clock plus the Faith clock (%s)" % [tier, def.clock])

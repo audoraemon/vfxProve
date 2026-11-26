@@ -503,6 +503,8 @@ func _mid_shove() -> void:
 ## Where the shoved stop: the rubble is piled along both sides.
 func _settle() -> void:
 	_lay()
+	if not heaps.is_empty():
+		ctx.play(&"ed_settle", middle())
 	if not DominionParts.staged(self):
 		return
 	ctx.shake.add_trauma(0.35)

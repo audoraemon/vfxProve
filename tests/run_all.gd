@@ -349,6 +349,7 @@ const SUITES := [
 	"res://tests/test_god_select_art.gd",
 	"res://tests/test_faith_hub.gd",
 	"res://tests/test_god_chamber.gd",
+	"res://tests/test_chamber_transitions.gd",
 	"res://tests/test_world_map.gd",
 	"res://tests/test_capital_god_night.gd",
 	"res://tests/test_chamber_layout.gd",

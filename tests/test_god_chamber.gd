@@ -318,7 +318,8 @@ static func _hint_strip(t) -> void:
 		UiScale.clear_test_area()
 
 
-## Round 3: the zoom's fade passes through the station's own colour and ends dark; the way back mirrors it; the timings are the same.
+## Round 3: the zoom's fade passes through the station's own colour; step 8: it ends in the station's end colour (the page fades in from
+## it), and the way back passes through the same colours (test_chamber_transitions.gd has the curves).
 static func _fade_colours(t) -> void:
 	for key: String in ChamberLayout.ORDER:
 		GodChamber.transitions = true
@@ -331,22 +332,18 @@ static func _fade_colours(t) -> void:
 			ch.advance(1.0 / 120.0)
 			mid = ch.fade_color()
 		t.check(mid.v > 0.15 and absf(wrapf(mid.h - hue.h, -0.5, 0.5)) < 0.06, "%s: half way, the fade is the station's colour (%s vs %s)" % [key, mid, hue])
-		ch.advance(GodChamber.ZOOM_TIME)
+		ch.advance(GodChamber.CUE_TIME + GodChamber.OUT_TIME)
 		var end := ch.fade_color()
-		t.check(ch.fade() == 1.0 and end.a == 1.0 and end.v < 0.06, "%s: it ends dark and opaque, so the page cut is clean (%s)" % [key, end])
+		t.check(ch.fade() == 1.0 and end.a == 1.0 and Color(end, 1.0).is_equal_approx(GodChamber.end_color(key)),
+			"%s: it ends opaque in the station's end colour, which the page fades in from (%s)" % [key, end])
 		ch.free()
 		var back := GodChamber.new()
 		(Engine.get_main_loop() as SceneTree).root.add_child(back)
 		back.setup(_capped(10), "", false, key)
-		if key == "descend" or key == "tree" or key == "faith":
-			back.advance(GodChamber.ZOOM_TIME * 0.5)
-			var out := _make(_capped(10))
-			var o: GodChamber = out[0]
-			o._press(key)
-			o.advance(GodChamber.ZOOM_TIME * 0.5)
-			t.check(o.fade_color().is_equal_approx(back.fade_color()) and is_equal_approx(o.fade(), back.fade()),
-				"%s: the way back passes through the same colours (%s vs %s)" % [key, back.fade_color(), o.fade_color()])
-			o.free()
+		while back.in_transition() and back.fade() > 0.5:
+			back.advance(1.0 / 120.0)
+		var bm := back.fade_color()
+		t.check(bm.v > 0.15 and absf(wrapf(bm.h - hue.h, -0.5, 0.5)) < 0.06, "%s: the way back passes through the same colour (%s)" % [key, bm])
 		back.free()
 	GodChamber.transitions = false
 
@@ -425,9 +422,9 @@ static func _transition_out(t) -> void:
 	t.check(got.is_empty() and ch.in_transition() and ch.zoom() == 1.0, "transitions on: a click on tree emits nothing at once (%s)" % [got])
 	ch.advance(0.2)
 	t.check(got.is_empty() and ch.zoom() > 1.0 and ch.zoom() < GodChamber.ZOOM_TO and ch.fade() == 0.0,
-		"0.2 s in: nothing yet, zoom %.2f between 1 and 2.2, fade 0" % ch.zoom())
-	ch.advance(0.2)
-	t.check(got == ["tree"] and ch.fade() == 1.0 and ch.zoom() == GodChamber.ZOOM_TO, "0.4 s in: tree emitted exactly once, fade 1 (%s)" % [got])
+		"0.2 s in (0.1 s of anticipation, then the zoom): nothing yet, zoom %.2f between 1 and 2.2, fade 0" % ch.zoom())
+	ch.advance(GodChamber.CUE_TIME + GodChamber.OUT_TIME - 0.2)
+	t.check(got == ["tree"] and ch.fade() == 1.0 and ch.zoom() == GodChamber.ZOOM_TO, "0.55 s in: tree emitted exactly once, fade 1 (%s)" % [got])
 	ch.advance(0.1)
 	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
 	t.check(got == ["tree"] and ch.in_transition() and ch.fade() == 1.0, "held black after the zoom: a click neither restarts it nor re-sends (%s)" % [got])
@@ -436,7 +433,7 @@ static func _transition_out(t) -> void:
 		"a room Game did not replace comes back to rest (zoom %.2f, fade %.2f)" % [ch.zoom(), ch.fade()])
 	got.clear()
 	ch._on_gui_input(_click(ch.menu_rect("faith").get_center()))
-	ch.advance(GodChamber.ZOOM_TIME)
+	ch.advance(GodChamber.CUE_TIME + GodChamber.OUT_TIME)
 	t.check(got == ["faith"], "and its stations work again (%s)" % [got])
 	ch.free()
 	GodChamber.transitions = false
@@ -532,8 +529,8 @@ static func _transition_back(t) -> void:
 	ch.setup(_capped(10), "", false, "faith")
 	ch.advance(0.1)
 	t.check(ch.zoom() < GodChamber.ZOOM_TO and ch.zoom() > 1.0, "back from faith is zooming out")
-	ch.advance(0.35)
-	t.check(ch.zoom() == 1.0 and ch.fade() == 0.0 and not ch.in_transition(), "and at rest after 0.35 s")
+	ch.advance(GodChamber.BACK_TIME - 0.1)
+	t.check(ch.zoom() == 1.0 and ch.fade() == 0.0 and not ch.in_transition(), "and at rest after 0.4 s")
 	ch.free()
 	ch = GodChamber.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(ch)

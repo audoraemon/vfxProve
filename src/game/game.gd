@@ -287,6 +287,11 @@ var _endless_from := Screen.BOARD
 var _hub_line := ""
 ## The station page the god is returning from ("tree" or "faith"), for the Chamber's zoom back out; read once by the hub.
 var _hub_from := ""
+## God's Chamber step 8: the cover over a page as it fades in from (or out to) its station's colour (ChamberPageFade), the station whose
+## zoom brought the page up ("" for none), and a page Back whose fade out has finished, now going on to the room.
+var _page_fade: ChamberPageFade
+var _page_station := ""
+var _page_back_through := ""
 ## The town the next night is played in (the World Map's choice; Aldermere for a rite or the Hunt).
 var night_town := "aldermere"
 ## Remembrance (Skill Tree wheel, Task 5): the power key being remembered ("" outside it), its level, whether the memory is at night, and
@@ -731,6 +736,8 @@ func _ready() -> void:
 ## Put up a screen, taking down whatever was there.
 func go_to(to: int) -> void:
 	_close_pause()
+	_drop_page_fade()
+	_page_station = ""
 	if to != Screen.MISSION:
 		_remembering = ""
 	var from := screen
@@ -926,9 +933,61 @@ func on_action(action: String) -> void:
 		else:
 			_faded_into_mission()
 		return
+	if _page_fades_out(action):
+		return  # the page fades out to its station's colour first; this runs again when it has
 	_mission_queued = false
 	_hub_from = "tree" if action == "tree:back" else ("faith" if action == "faith:back" else ("descend" if action == "world:back" else ""))
+	if action == "prepare:hub" and _page_station == "awaken":
+		_hub_from = "awaken"  # step 8: a Prepare the Rite Door opened goes back to the door
 	go_to(to)
+	var arrive := ChamberPageFade.arrival(action)
+	if arrive != "":
+		_page_fades_in(arrive)
+
+
+## God's Chamber step 8: a page brought up by a station's zoom fades in from the colour the zoom ended in. A page with a method
+## `chamber_arrival(frame: Dictionary) -> bool` (GodChamber.end_frame()) may play its own opening instead (the World Table's match cut,
+## later) by returning true. Only with transitions on (ChamberPageFade.arrival()).
+func _page_fades_in(key: String) -> void:
+	_page_station = key
+	if is_instance_valid(_screen_node) and _screen_node.has_method("chamber_arrival") and _screen_node.call("chamber_arrival", GodChamber.end_frame(key)):
+		return
+	_page_fade = ChamberPageFade.new()
+	_page_fade.name = "PageFade"
+	add_child(_page_fade)
+	_page_fade.fade_in(key)
+
+
+## A page's Back (step 8): the page fades out to its station's colour, then the action goes on (the room starts in that colour and pulls
+## back). True when the fade was started, or one is already under way (a second Back is dropped). A page with a method
+## `chamber_departure(frame: Dictionary, then: Callable) -> bool` may play its own leaving and call `then` itself.
+func _page_fades_out(action: String) -> bool:
+	if _page_back_through == action:
+		_page_back_through = ""
+		return false
+	var key := ChamberPageFade.departure(action, _page_station)
+	if key == "":
+		return false
+	if is_instance_valid(_page_fade) and _page_fade.phase == ChamberPageFade.Phase.OUT:
+		return true
+	var then := func() -> void:
+		_page_back_through = action
+		on_action(action)
+	if is_instance_valid(_screen_node) and _screen_node.has_method("chamber_departure") and _screen_node.call("chamber_departure", GodChamber.end_frame(key), then):
+		return true
+	_drop_page_fade()
+	_page_fade = ChamberPageFade.new()
+	_page_fade.name = "PageFade"
+	add_child(_page_fade)
+	_page_fade.fade_out(key, then)
+	return true
+
+
+## Takes the page's cover down (a new screen is going up; the room's own cover takes over from a fade out).
+func _drop_page_fade() -> void:
+	if is_instance_valid(_page_fade):
+		_page_fade.queue_free()
+	_page_fade = null
 
 
 ## Into a mission behind the fade. Not awaited by the caller: the button that asked for it has done its part.
@@ -1444,17 +1503,80 @@ func _capture_chamber_strip(frames: int) -> void:
 	ChamberLife.moving = false
 
 
-## --chamber-transitions=<n> (capture only, with --show=hub*): each station's zoom out and back in n steps, held pose by pose
-## (screen_hub_tr_<station>_000.png ...): the colour each fade passes through.
-func _capture_chamber_transitions(steps: int) -> void:
-	var hub := _screen_node as GodChamber
+## --chamber-transitions=<fps> (capture only, with --show=hub*): each station's whole round trip at that many frames a second, held pose by
+## pose (screen_hub_rt_<station>_000.png ...): the room at rest, the anticipation and the zoom, the real page fading in from the station's
+## colour, the page held CHAMBER_RT_HOLD s, fading out to it, and the room pulling back to rest (step 8).
+const CHAMBER_RT_REST := 0.2
+const CHAMBER_RT_HOLD := 0.5
+
+
+func _capture_chamber_transitions(fps: int) -> void:
+	var dt := 1.0 / float(maxi(fps, 1))
 	for key: String in ChamberLayout.ORDER:
-		var k := 0
-		for back in [false, true]:
-			for i in steps + 1:
-				hub.pose_transition(key, back, GodChamber.ZOOM_TIME * float(i) / float(steps))
-				await _capture("screen_hub_tr_%s_%03d.png" % [key, k])
-				k += 1
+		var k := [0]
+		var shot := func() -> void:
+			await _capture("screen_hub_rt_%s_%03d.png" % [key, k[0]])
+			k[0] += 1
+		var hub := _screen_node as GodChamber
+		for _i in _rt_times(CHAMBER_RT_REST, dt, false):
+			await shot.call()
+		for t in _rt_times(GodChamber.CUE_TIME + GodChamber.OUT_TIME, dt, true):
+			hub.pose_transition(key, false, t)
+			await shot.call()
+		if not _rt_page(key):
+			go_to(Screen.HUB)
+			continue
+		var cover := ChamberPageFade.new()
+		add_child(cover)
+		for t in _rt_times(ChamberPageFade.IN_TIME, dt, true):
+			cover.pose(key, false, t)
+			await shot.call()
+		for _i in _rt_times(CHAMBER_RT_HOLD, dt, false):
+			await shot.call()
+		for t in _rt_times(ChamberPageFade.OUT_TIME, dt, true):
+			cover.pose(key, true, t)
+			await shot.call()
+		_hub_from = ""
+		go_to(Screen.HUB)
+		cover.free()
+		hub = _screen_node as GodChamber
+		for t in _rt_times(GodChamber.BACK_TIME, dt, true):
+			hub.pose_transition(key, true, t)
+			await shot.call()
+		go_to(Screen.HUB)
+		for _i in _rt_times(CHAMBER_RT_REST, dt, false):
+			await shot.call()
+
+
+## The moments of a part `length` s long at `dt` apart: 0, dt, ... (and `length` itself when `last`).
+static func _rt_times(length: float, dt: float, last: bool) -> Array:
+	var out := []
+	var t := 0.0
+	while t < length - 1e-6:
+		out.append(t)
+		t += dt
+	if last:
+		out.append(length)
+	return out
+
+
+## Photographs only: the page `key`'s press brings up, as Game would put it up; false when there is none (a door with no rite).
+func _rt_page(key: String) -> bool:
+	match key:
+		"tree": go_to(Screen.TREE)
+		"faith": go_to(Screen.FAITH)
+		"descend": go_to(Screen.WORLD)
+		"awaken":
+			var target := awaken_target(god)
+			if target == "":
+				return false
+			night_town = Conquest.HOME
+			mission_id = target
+			loadout = god.loadout.duplicate()
+			go_to(Screen.PREPARE)
+		_:
+			return false
+	return true
 
 
 ## --show=<name> for Endless Night's screens (god P1): the fixture god on the dev fill, written to the show's own slot files. `hub-capped` is

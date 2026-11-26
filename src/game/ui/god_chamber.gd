@@ -4,7 +4,10 @@ extends Node
 ## hub on Screen.HUB: four stations (World Table, Ability Tree, Faith Altar, Rite Door) in a room that shifts a little against the mouse, a
 ## slim top bar with the god's status, the Hunt and seal lines, and the bottom lines. The words and decisions come from HubStatus, the
 ## rects and keys from ChamberLayout, the pictures from ChamberArt (greybox until art is painted). Step 7: the room lives and shows the god's
-## progress (ChamberLife: flames, candles per tier, cups, the hourglass, the Hunt's red sky), with its own sound (ChamberSound).
+## progress (ChamberLife: flames, candles per tier, cups, the hourglass, the Hunt's red sky), with its own sound (ChamberSound). Step 8: the
+## move into a station is a camera move (a log-space zoom whose focus pans to the screen's centre, the layers dollying at their own rates,
+## drawn through pixel_aa), led by the station's signature (ChamberSignature) and its sounds; the page then fades in from the colour the zoom
+## ended in (Game's ChamberPageFade), and Back fades the page out to it before the room pulls back.
 
 ## "descend", "awaken", "tree", "faith", "title" or "awaken_dev".
 signal action(name: String)
@@ -32,9 +35,19 @@ const HOVER_BOX := false
 ## How strongly the hovered object's brightened picture is laid over it.
 const HOVER_ALPHA := 0.9
 ## The colour each station's zoom fades through before the page (round 3): the Ability Tree's purple, the altar's warm gold, the
-## World Table's blue, the Rite Door's warm white-gold; the fade ends at FADE_DARK, so the page cut is clean.
+## World Table's blue, the Rite Door's warm white-gold. Step 8: the fade ends in the station's END_COLORS (a deeper tone of the same
+## light; the Rite Door's floods out white-gold), the page fades in from it, and Back fades the page out to it. FADE_DARK is the end of a
+## zoom about no station.
 const FADE_COLORS := {"descend": Color(0.24, 0.48, 0.88), "tree": Color(0.5, 0.24, 0.72), "faith": Color(0.9, 0.62, 0.22),
-	"awaken": Color(1.0, 0.88, 0.6)}
+	"awaken": Color(0.8, 0.7, 0.48)}
+const END_COLORS := {"descend": Color(0.1, 0.2, 0.42), "tree": Color(0.24, 0.1, 0.36), "faith": Color(0.46, 0.28, 0.08),
+	"awaken": Color(0.8, 0.68, 0.44)}
+## The brightest any channel of the Rite Door's covers may be (the user, step 8 review): it floods warm gold, never near-white.
+const COVER_CAP := 0.8
+## The soft inner edge of the veil over the dark sides (veil_edges()), in frame units at full depth; and the depth by which the dark sides
+## a very wide window shows at rest are fully covered (veil_soft_edges()).
+const VEIL_RAMP := 28.0
+const VEIL_SOFT_D := 0.3
 const FADE_DARK := Color(0.02, 0.016, 0.02)
 ## The keys hint's strip on the desk (round 3): dark parchment, translucent, edge to edge, with a worn edge above and the hint in ink.
 const HINT_STRIP := Color(0.25, 0.17, 0.1, 0.8)
@@ -45,10 +58,25 @@ const HINT_STRIP_H := 15.0
 const DRAW_ORDER: Array[String] = ["awaken", "descend", "tree", "faith"]
 ## Zoom and fade between the Chamber and a station's page. Off (false) in --flow-test, --capture and headless runs, where a press emits in the same call.
 static var transitions := true
-## How far the room zooms about the station, how long that takes, and where in it the black comes in (the last 40%).
+## Step 8, the camera move. On a press the station's signature swells for CUE_TIME (the anticipation, the room still), then the room
+## zooms in over OUT_TIME: scale = ZOOM_TO ^ depth (log space), depth a strong ease-out (out_depth), while the station's focus pans to
+## the screen's centre; coming back it takes BACK_TIME with a soft settle (back_depth), no overshoot. The cover rises over the zoom's last
+## (1 - FADE_FROM) of its time and lifts over the first (1 - FADE_FROM) of the way back. Each layer scales about the same focus at its own
+## rate, ZOOM_TO ^ (depth x (1 + DOLLY x (its factor - the station's layer's factor))): the desk rushes past, the wall moves least.
 const ZOOM_TO := 2.2
-const ZOOM_TIME := 0.35
-const FADE_FROM := 0.6
+const CUE_TIME := 0.1
+const OUT_TIME := 0.45
+const BACK_TIME := 0.4
+const FADE_FROM := 0.55
+const DOLLY := 0.8
+## The transition's sounds (UiSound, the UI bus; tools/audio/foley/chamber/): a soft whoosh with the zoom, each station's own sound with
+## the press, and the reverse whoosh as a page's Back fades it out (ChamberPageFade). Only where transitions play.
+const WHOOSH := &"chamber_whoosh"
+const WHOOSH_BACK := &"chamber_whoosh_back"
+const STATION_CUES := {"tree": &"chamber_riffle", "faith": &"chamber_coin", "descend": &"chamber_unroll", "awaken": &"chamber_groan"}
+## The room's draw while it moves: pixel-art anti-aliasing (src/core/pixel_aa.gdshader, the town floor's), so a texel at 2.2 x k screen
+## pixels never shows as 4 or 5 and never shimmers; at rest the room is drawn plain, as before.
+const PIXEL_AA := preload("res://src/core/pixel_aa.gdshader")
 ## How long the room waits, black, for Game to replace it after a zoom in before it comes back to rest. Every hub action Game accepts frees the room
 ## inside the emit call, so this only times out after a refusal.
 const HELD_TIME := 0.25
@@ -78,6 +106,9 @@ var _life := ChamberLife.new()
 var life_t := 0.0
 var life_hold := false
 var _sound: ChamberSound
+## The room's own canvas item (step 8): drawn behind the bar and the lines, through pixel_aa while it moves.
+var _room: Control
+var _aa: ShaderMaterial
 ## Photographs only (Game's capture flags): a station shown hovered whatever the window's mouse does, and a transition held at a pose.
 var _hover_held := false
 var _pose_held := false
@@ -100,14 +131,22 @@ func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodCham
 	add_child(layer)
 	_ui = UiScale.design_frame(layer, Control.MOUSE_FILTER_STOP)  # 640x360 coordinates, centred in the area
 	_ui.draw.connect(_draw_ui)
+	_room = Control.new()
+	_room.name = "Room"
+	_room.size = ChamberLayout.FRAME.size
+	_room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_room.show_behind_parent = true
+	_room.draw.connect(_draw_room_canvas)
+	_ui.add_child(_room)
 	# The Design child is only 640x360: a click outside it (the bands of a wide or tall window, where the bar and the Title button reach) would go
 	# to the blocker, which swallows it. So the blocker takes the mouse and hands it on in frame units; the child ignores it.
 	_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	(_ui.get_parent() as Control).gui_input.connect(_on_blocker_input)
-	if transitions and (p_from == "tree" or p_from == "faith" or p_from == "descend"):
+	if transitions and ChamberLayout.STATIONS.has(p_from):
 		_mode = Mode.BACK
 		_focus_key = p_from
 		_t = 0.0
+	_sync_canvas()
 	return self
 
 
@@ -141,32 +180,201 @@ func in_transition() -> bool:
 	return _mode != Mode.REST
 
 
-## Progress of the zoom in, 0 (at rest) to 1 (fully in): the zoom, the fade and the draw all read it.
-func _depth() -> float:
+## The depth of the zoom going in, 0..1, at u (0..1) of OUT_TIME: a strong (quartic) ease-out.
+static func out_depth(u: float) -> float:
+	u = clampf(u, 0.0, 1.0)
+	return 1.0 - pow(1.0 - u, 4.0)
+
+
+## The depth coming back, 1..0, at u of BACK_TIME: a soft (cubic) settle into rest, no overshoot.
+static func back_depth(u: float) -> float:
+	u = clampf(u, 0.0, 1.0)
+	return pow(1.0 - u, 3.0)
+
+
+## How far through its timed part the transition is, 0..1 (out: the zoom after the anticipation; back: the way back).
+func _u() -> float:
 	match _mode:
-		Mode.OUT: return clampf(_t / ZOOM_TIME, 0.0, 1.0)
-		Mode.BACK: return 1.0 - clampf(_t / ZOOM_TIME, 0.0, 1.0)
+		Mode.OUT: return clampf((_t - CUE_TIME) / OUT_TIME, 0.0, 1.0)
+		Mode.BACK: return clampf(_t / BACK_TIME, 0.0, 1.0)
 		Mode.HELD: return 1.0
 	return 0.0
 
 
-## The room's scale: 1 at rest, ZOOM_TO fully in.
+## Progress of the zoom in, 0 (at rest) to 1 (fully in): the zoom, the pan and the draw all read it.
+func _depth() -> float:
+	match _mode:
+		Mode.OUT: return out_depth(_u())
+		Mode.BACK: return back_depth(_u())
+		Mode.HELD: return 1.0
+	return 0.0
+
+
+## The room's scale (the station's own layer): 1 at rest, ZOOM_TO fully in, in log space.
 func zoom() -> float:
-	return lerpf(1.0, ZOOM_TO, _depth())
+	return pow(ZOOM_TO, _depth())
 
 
-## The black over the room and bar: 0 until FADE_FROM of the way in, then up to 1 at the end.
+## The layer of the station the zoom is about (the wall when none).
+func _focus_layer() -> String:
+	return ChamberLayout.STATIONS[_focus_key].layer if ChamberLayout.STATIONS.has(_focus_key) else "wall"
+
+
+## A layer's scale now (the depth dolly): its rate is ordered by its parallax factor, the station's own layer's is the zoom.
+func layer_scale(layer: String) -> float:
+	var rate := 1.0 + DOLLY * (float(ChamberLayout.LAYERS[layer]) - float(ChamberLayout.LAYERS[_focus_layer()]))
+	return pow(ZOOM_TO, _depth() * rate)
+
+
+## Where the station's focus is on screen now: where it is drawn at rest, panning with the depth to the frame's centre.
+func focus_screen() -> Vector2:
+	return _focus_point().lerp(ChamberLayout.FRAME.get_center(), _depth())
+
+
+## How a layer is drawn now: scaled by layer_scale() about the station's focus, which sits at focus_screen(). Identity at rest.
+func layer_transform(layer: String) -> Transform2D:
+	if _depth() <= 0.0:
+		return Transform2D.IDENTITY
+	var s := layer_scale(layer)
+	var f := _focus_point()
+	return Transform2D(Vector2(s, 0.0), Vector2(0.0, s), focus_screen() - f * s)
+
+
+## The cover over the room and bar: 0 until FADE_FROM of the zoom's time, then up to 1 at its end (a smoothstep); the way back lifts it
+## over its first (1 - FADE_FROM).
 func fade() -> float:
-	return clampf((_depth() - FADE_FROM) / (1.0 - FADE_FROM), 0.0, 1.0)
+	var k := 0.0
+	match _mode:
+		Mode.OUT: k = clampf((_u() - FADE_FROM) / (1.0 - FADE_FROM), 0.0, 1.0)
+		Mode.BACK: k = 1.0 - clampf(_u() / (1.0 - FADE_FROM), 0.0, 1.0)
+		Mode.HELD: k = 1.0
+	return k * k * (3.0 - 2.0 * k)
 
 
-## The colour of that cover (round 3): the station's own colour as it comes in, darkening to FADE_DARK by the end, so the room passes
-## through the station's light into the page; the way back is the same curve run backwards.
+## The colour of that cover: the station's own colour as it comes in, deepening to its end colour (round 3, step 8), so the room passes
+## through the station's light into the page; it depends on fade() alone, so the way back passes through the same colours.
 func fade_color() -> Color:
 	var k := fade()
 	var c: Color = FADE_COLORS.get(_focus_key, FADE_DARK)
-	var rgb := c.lerp(FADE_DARK, k * k)
+	var rgb := c.lerp(end_color(_focus_key), k * k)
 	return Color(rgb.r, rgb.g, rgb.b, k)
+
+
+## The colour a station's zoom ends in, opaque: the page fades in from it and out to it (ChamberPageFade).
+static func end_color(key: String) -> Color:
+	return END_COLORS.get(key, FADE_DARK)
+
+
+## The last frame of a station's zoom, for a page that would match its own opening to it (the World Table's match cut, later): the end
+## colour, the station's focus (room units, at rest) and the zoom it ends at, and the frame point the focus ends on.
+static func end_frame(key: String) -> Dictionary:
+	var focus: Vector2 = ChamberLayout.STATIONS[key].focus if ChamberLayout.STATIONS.has(key) else ChamberLayout.FRAME.get_center()
+	return {"key": key, "color": end_color(key), "focus": focus, "zoom": ZOOM_TO, "centre": ChamberLayout.FRAME.get_center()}
+
+
+## Where the veil over the dark sides ends now, in frame units: x = the left veil's inner edge (it covers the backdrop from its left side
+## to there), y = the right veil's. The safe part of the room is the painting's lit part (ChamberLayout.LIT) plus whatever the window
+## showed at rest; the zoom would carry anything else into the frame -- the dark sides beyond the Ability Tree and the Faith Altar, or
+## past the room's edge -- so from the moment it would enter, it is covered, opaque, in the station's end colour (the colour the cover
+## then rises to). Nothing at rest: (back.left, back.right).
+func veil_edges() -> Vector2:
+	var back := UiScale.backdrop(_ui) if _ui != null else ChamberLayout.FRAME
+	var out := Vector2(back.position.x, back.end.x)
+	if _depth() <= 0.0:
+		return out
+	var sh := ChamberLayout.shift("wall", _mouse01).x
+	var tr := layer_transform("wall")
+	var l := (tr * Vector2(minf(ChamberLayout.LIT.position.x, back.position.x - sh) + sh, 0.0)).x
+	var r := (tr * Vector2(maxf(ChamberLayout.LIT.end.x, back.end.x - sh) + sh, 0.0)).x
+	return Vector2(maxf(out.x, l), minf(out.y, r))
+
+
+## The veil's alpha: opaque whenever the room has moved at all (its width is what grows from nothing).
+func veil_alpha() -> float:
+	return 1.0 if _depth() > 0.0 else 0.0
+
+
+func veil_color() -> Color:
+	return end_color(_focus_key)
+
+
+## The dark sides a very wide window already shows at rest (beyond ChamberLayout.LIT, inside what veil_edges() leaves): covered too, in
+## the same colour, at veil_soft_alpha(), which rises with the depth (so nothing pops at either end). x, y as veil_edges(); at 16:9 they
+## lie inside the opaque veil and add nothing.
+func veil_soft_edges() -> Vector2:
+	var back := UiScale.backdrop(_ui) if _ui != null else ChamberLayout.FRAME
+	var out := Vector2(back.position.x, back.end.x)
+	if _depth() <= 0.0:
+		return out
+	var sh := ChamberLayout.shift("wall", _mouse01).x
+	var tr := layer_transform("wall")
+	var l := (tr * Vector2(ChamberLayout.LIT.position.x + sh, 0.0)).x
+	var r := (tr * Vector2(ChamberLayout.LIT.end.x + sh, 0.0)).x
+	return Vector2(clampf(l, out.x, out.y), clampf(r, out.x, out.y))
+
+
+func veil_soft_alpha() -> float:
+	var d := _depth()
+	return 0.0 if d <= 0.0 else smoothstep(0.0, VEIL_SOFT_D, d)
+
+
+func _draw_veil(back: Rect2) -> void:
+	if veil_alpha() <= 0.0:
+		return
+	var v := veil_edges()
+	var s := veil_soft_edges()
+	var c := veil_color()
+	var soft := Color(c.r, c.g, c.b, veil_soft_alpha())
+	var clear := Color(c.r, c.g, c.b, 0.0)
+	var ramp := VEIL_RAMP * _depth()
+	var top := back.position.y
+	var bottom := back.end.y
+	# Left: opaque where nothing showed at rest, the soft part over the dark side a wide window showed, then a ramp into the room.
+	if v.x > back.position.x:
+		_room.draw_rect(Rect2(back.position.x, top, v.x - back.position.x, back.size.y), c)
+	var inner := v.x
+	var edge := c
+	if s.x > v.x:
+		_room.draw_rect(Rect2(v.x, top, s.x - v.x, back.size.y), soft)
+		inner = s.x
+		edge = soft
+	if inner > back.position.x:
+		_room.draw_polygon(PackedVector2Array([Vector2(inner, top), Vector2(inner + ramp, top), Vector2(inner + ramp, bottom), Vector2(inner, bottom)]),
+			PackedColorArray([edge, clear, clear, edge]))
+	if v.y < back.end.x:
+		_room.draw_rect(Rect2(v.y, top, back.end.x - v.y, back.size.y), c)
+	inner = v.y
+	edge = c
+	if s.y < v.y:
+		_room.draw_rect(Rect2(s.y, top, v.y - s.y, back.size.y), soft)
+		inner = s.y
+		edge = soft
+	if inner < back.end.x:
+		_room.draw_polygon(PackedVector2Array([Vector2(inner - ramp, top), Vector2(inner, top), Vector2(inner, bottom), Vector2(inner - ramp, bottom)]),
+			PackedColorArray([clear, edge, edge, clear]))
+
+
+## The station's signature (step 8): 0 at rest; on a press one swell up to 1 at the end of the zoom (it starts with the anticipation);
+## coming back it only fades, to 0 at rest.
+func signature() -> float:
+	match _mode:
+		Mode.OUT:
+			var s := clampf(_t / (CUE_TIME + OUT_TIME), 0.0, 1.0)
+			return 1.0 - (1.0 - s) * (1.0 - s)
+		Mode.BACK:
+			var b := 1.0 - _u()
+			return b * b
+		Mode.HELD:
+			return 1.0
+	return 0.0
+
+
+## What the signature draws now (ChamberSignature.pieces(): masks, blooms, embers), on the wall's layer.
+func signature_pieces() -> Array:
+	var f := signature()
+	if f <= 0.0 or not ChamberLayout.STATIONS.has(_focus_key):
+		return []
+	return ChamberSignature.pieces(_focus_key, f, _t if _mode == Mode.OUT else -1.0)
 
 
 ## One step of a transition (public so tests drive it without the clock). The end of a zoom in sends the waiting action.
@@ -177,7 +385,7 @@ func advance(delta: float) -> void:
 	if _mode == Mode.HELD:
 		if _t >= HELD_TIME:
 			_mode = Mode.REST  # Game did not replace the room (the action was refused): show the stations again
-	elif _t >= ZOOM_TIME:
+	elif _t >= (CUE_TIME + OUT_TIME if _mode == Mode.OUT else BACK_TIME):
 		_finish()
 	_redraw()
 
@@ -189,7 +397,8 @@ func hold_hover(key: String) -> void:
 	_redraw()
 
 
-## Photographs only: hold the zoom into `key` (or back out of it) `t` seconds in; nothing is sent.
+## Photographs only: hold the zoom into `key` (or back out of it) `t` seconds in (going in, the anticipation is the first CUE_TIME); nothing
+## is sent.
 func pose_transition(key: String, back: bool, t: float) -> void:
 	_mode = Mode.BACK if back else Mode.OUT
 	_focus_key = key
@@ -328,14 +537,39 @@ func _press(what: String, from_key := false) -> void:
 		_t = 0.0
 		_focus_key = result.emit
 		_pending = result.emit
+		UiSound.play(WHOOSH)
+		UiSound.play(STATION_CUES[result.emit])
 		_redraw()
 		return
 	action.emit(result.emit)
 
 
 func _redraw() -> void:
+	_sync_canvas()
 	if _ui != null:
 		_ui.queue_redraw()
+	if _room != null:
+		_room.queue_redraw()
+
+
+## The room's canvas: through pixel_aa with linear sampling while it moves, plain (no material, the project's nearest) at rest.
+func _sync_canvas() -> void:
+	if _room == null:
+		return
+	if in_transition():
+		if _aa == null:
+			_aa = ShaderMaterial.new()
+			_aa.shader = PIXEL_AA
+		_room.material = _aa
+		_room.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	else:
+		_room.material = null
+		_room.texture_filter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
+
+
+## The room's canvas item (tests and photographs).
+func room_canvas() -> Control:
+	return _room
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -412,17 +646,12 @@ func _draw_station(key: String) -> void:
 	var at := menu_rect(key)
 	if st.has("art"):  # the picture is larger than the rect that is clicked
 		at = _layer_rect(st["art"], st["layer"])
-	ChamberArt.draw(_ui, key, at, state)
+	ChamberArt.draw(_room, key, at, state)
 
 
+## The bar, the lines and the cover, over the room (which is drawn by its own canvas item, behind this one).
 func _draw_ui() -> void:
 	var back := UiScale.backdrop(_ui)
-	var z := zoom()
-	if z != 1.0:
-		var f := _focus_point()
-		_ui.draw_set_transform_matrix(Transform2D(Vector2(z, 0.0), Vector2(0.0, z), f - f * z))
-	_draw_room(back)
-	_ui.draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_bar()
 	_draw_under_bar()
 	_draw_bottom()
@@ -430,24 +659,34 @@ func _draw_ui() -> void:
 		_ui.draw_rect(back, fade_color())
 
 
+func _draw_room_canvas() -> void:
+	_draw_room(UiScale.backdrop(_ui))
+	_room.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
 func _draw_room(back: Rect2) -> void:
-	_ui.draw_rect(back, ChamberArt.greybox_color("wall"))
-	# Back to front: wall, the stations on the wall, the stations layer, the table with its station, the desk.
+	var c := _room
+	c.draw_rect(back, ChamberArt.greybox_color("wall"))
+	# Back to front: wall, the stations on the wall, the stations layer, the table with its station, the desk. Each layer is drawn with
+	# its own camera transform (identity at rest; the depth dolly during a zoom).
+	c.draw_set_transform_matrix(layer_transform("wall"))
 	for piece: Dictionary in ChamberLayout.SCENERY:
 		if piece.name == "wall":
-			ChamberArt.draw(_ui, "wall", _layer_rect(piece.rect, piece.layer))
+			ChamberArt.draw(c, "wall", _layer_rect(piece.rect, piece.layer))
 			# The value hierarchy (round 3): corners and ceiling a little darker, the stations left alone.
 			_draw_piece("vignette", 1.0)
 	for layer in ["wall", "stations", "table"]:
+		c.draw_set_transform_matrix(layer_transform(layer))
 		if layer == "table":
 			for piece: Dictionary in ChamberLayout.SCENERY:
 				if piece.name == "table":
-					ChamberArt.draw(_ui, "table", _layer_rect(piece.rect, piece.layer))
+					ChamberArt.draw(c, "table", _layer_rect(piece.rect, piece.layer))
 		# The Rite Door first: the World Table stands in front of it, so the table's map is drawn over the door's dimmed or
 		# put-out light, never darkened by it.
 		for key: String in DRAW_ORDER:
 			if ChamberLayout.STATIONS[key].layer == layer:
 				_draw_station(key)
+	c.draw_set_transform_matrix(layer_transform("wall"))
 	var hover := hover_drawn()
 	if not hover.is_empty():
 		_draw_piece(hover.glow, HOVER_ALPHA, float(hover.tint))
@@ -457,13 +696,21 @@ func _draw_room(back: Rect2) -> void:
 		_draw_piece(hover.rim, 1.0)
 	for piece: Dictionary in ChamberLayout.SCENERY:
 		if piece.name == "desk":
+			c.draw_set_transform_matrix(layer_transform("desk"))
 			# The desk is wider than the frame so a wide window still meets it; extend it to the backdrop's edges.
 			var r := _layer_rect(piece.rect, piece.layer)
 			var left := minf(r.position.x, back.position.x)
 			var right := maxf(r.end.x, back.end.x)
 			var at := Rect2(left, r.position.y, right - left, r.size.y)
-			ChamberArt.draw(_ui, "desk", at)
+			ChamberArt.draw(c, "desk", at)
 			_draw_life(life, "desk", r, at)
+	# The station's signature (step 8) rides the wall and lights over the desk too.
+	c.draw_set_transform_matrix(layer_transform("wall"))
+	_draw_life(signature_pieces(), "wall")
+	c.draw_set_transform_matrix(Transform2D.IDENTITY)
+	_draw_veil(back)
+	if in_transition():
+		return  # the name plate and the badges belong to the room at rest: they do not ride the zoom
 	for key: String in ChamberLayout.ORDER:
 		if _hover == key and station_state(key) != "closed":
 			_draw_plate(key)
@@ -485,16 +732,19 @@ func _draw_life(pieces: Array, layer: String, desk := Rect2(), at := Rect2()) ->
 		var tex_name: String = p.tex
 		if tex_name == "":
 			var c: Color = p.color
-			_ui.draw_rect(r, Color(c.r, c.g, c.b, c.a * float(p.alpha)))
+			if p.get("kind", "") == "bloom":
+				_room.draw_texture_rect(ChamberSignature.bloom_texture(), r, false, Color(c.r, c.g, c.b, c.a * float(p.alpha)))
+			else:
+				_room.draw_rect(r, Color(c.r, c.g, c.b, c.a * float(p.alpha)))
 			continue
 		var tex := ChamberArt.texture(ChamberLife.DIR + tex_name)
 		if tex == null:
 			continue  # a missing mask or patch: that source is skipped
 		var mod := Color(1.0, 1.0, 1.0, float(p.alpha))
 		if p.has("src"):
-			_ui.draw_texture_rect_region(tex, r, p.src, mod)
+			_room.draw_texture_rect_region(tex, r, p.src, mod)
 		else:
-			_ui.draw_texture_rect(tex, r, false, mod)
+			_room.draw_texture_rect(tex, r, false, mod)
 
 
 ## A file of the life pass drawn whole at its room rect on its layer, `tint` darkening its colour (a dim station's hover).
@@ -503,7 +753,7 @@ func _draw_piece(name: String, alpha: float, tint := 1.0) -> void:
 	if tex == null or not ChamberLife.FILES.has(name):
 		return
 	var r := ChamberLife.placed(ChamberLife.FILES[name], _mouse01)
-	_ui.draw_texture_rect(tex, r, false, Color(tint, tint, tint, alpha))
+	_room.draw_texture_rect(tex, r, false, Color(tint, tint, tint, alpha))
 
 
 ## What hovering `key` draws (round 3): {"glow": its brightened picture, "rim": its warm rim, "tint": 1, or ChamberArt.DIM for a dim
@@ -532,14 +782,14 @@ func plate_rect(key: String) -> Rect2:
 
 func _draw_plate(key: String) -> void:
 	var plate := plate_rect(key)
-	_ui.draw_rect(plate, Color(0.02, 0.02, 0.03, 0.85))
-	UiTheme.text(_ui, Vector2(plate.position.x + 5.0, plate.position.y + 12.0), ChamberLayout.STATIONS[key].name, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	_room.draw_rect(plate, Color(0.02, 0.02, 0.03, 0.85))
+	UiTheme.text(_room, Vector2(plate.position.x + 5.0, plate.position.y + 12.0), ChamberLayout.STATIONS[key].name, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 
 
 func _draw_badge(r: Rect2) -> void:
 	var c := Vector2(r.end.x, r.position.y)
-	_ui.draw_circle(c, 6.0, UiTheme.COL_BAD)
-	UiTheme.text(_ui, c + Vector2(-2.0, 4.0), "!", UiTheme.SIZE_SMALL, Color.WHITE)
+	_room.draw_circle(c, 6.0, UiTheme.COL_BAD)
+	UiTheme.text(_room, c + Vector2(-2.0, 4.0), "!", UiTheme.SIZE_SMALL, Color.WHITE)
 
 
 ## Where the bar's parts sit, in the bar's own coordinates: text rects for the town, the Night, the Faith and the points, the Notice's

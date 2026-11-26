@@ -425,6 +425,15 @@ const CATALOG := {
 	&"chamber_chain": {"path": "res://assets/audio/chamber/chamber_chain_%d.wav", "variants": 2, "db": -17.0},
 	&"chamber_chime": {"path": "res://assets/audio/chamber/chamber_chime.wav", "db": -11.0},
 	&"chamber_swell": {"path": "res://assets/audio/chamber/chamber_swell.wav", "db": -10.0},
+	# The Chamber's transitions (step 8, GodChamber and ChamberPageFade play them through UiSound, the UI bus): a soft whoosh with the zoom
+	# into a station and each station's own sound with the press (the Ability Tree's page riffle, the altar's coin and chime, the World
+	# Table's map unrolling, the Rite Door's groan), and the reverse whoosh as a page's Back fades out.
+	&"chamber_whoosh": {"path": "res://assets/audio/chamber/chamber_whoosh.wav", "db": -8.0},
+	&"chamber_whoosh_back": {"path": "res://assets/audio/chamber/chamber_whoosh_back.wav", "db": -8.0},
+	&"chamber_riffle": {"path": "res://assets/audio/chamber/chamber_riffle.wav", "db": -9.0},
+	&"chamber_coin": {"path": "res://assets/audio/chamber/chamber_coin.wav", "db": -8.0},
+	&"chamber_unroll": {"path": "res://assets/audio/chamber/chamber_unroll.wav", "db": -8.0},
+	&"chamber_groan": {"path": "res://assets/audio/chamber/chamber_groan.wav", "db": -7.0},
 	# Music: real instrument samples (tools/audio/music/, rendered by tools/audio/music_render.py). Music plays these at its own level (Music.DB), so their db is not used.
 	&"music_theme": {"path": "res://assets/audio/music/music_theme.wav", "db": 0.0, "loop": true},
 	&"music_battle_base": {"path": "res://assets/audio/music/music_battle_base.wav", "db": 0.0, "loop": true},

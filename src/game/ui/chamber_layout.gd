@@ -9,6 +9,9 @@ const FRAME := Rect2(0.0, 0.0, 640.0, 360.0)
 const BAR_H := 22.0
 const PARALLAX_MAX := 6.0
 const LAYERS := {"wall": 0.25, "stations": 0.5, "table": 0.75, "desk": 1.0}
+## The painting's lit part (room units): beyond its sides the wall fades to black. A zoom that would show more of those sides than the
+## window showed at rest covers them in the station's colour (GodChamber.veil_edges()).
+const LIT := Rect2(-20.0, 0.0, 665.0, 360.0)
 const ORDER: Array[String] = ["descend", "tree", "faith", "awaken"]
 
 ## Front layer first: the order a click is tested in.

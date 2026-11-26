@@ -602,6 +602,12 @@ chamber_chain	res://assets/audio/chamber/chamber_chain_1.wav	-18.81	-0.62
 chamber_chain	res://assets/audio/chamber/chamber_chain_2.wav	-18.40	-1.18
 chamber_chime	res://assets/audio/chamber/chamber_chime.wav	-19.08	-1.26
 chamber_swell	res://assets/audio/chamber/chamber_swell.wav	-20.72	-4.99
+chamber_whoosh	res://assets/audio/chamber/chamber_whoosh.wav	-23.75	-10.54
+chamber_whoosh_back	res://assets/audio/chamber/chamber_whoosh_back.wav	-25.77	-11.54
+chamber_riffle	res://assets/audio/chamber/chamber_riffle.wav	-19.33	-1.86
+chamber_coin	res://assets/audio/chamber/chamber_coin.wav	-22.25	-0.69
+chamber_unroll	res://assets/audio/chamber/chamber_unroll.wav	-21.74	-4.93
+chamber_groan	res://assets/audio/chamber/chamber_groan.wav	-23.58	-9.03
 music_theme	res://assets/audio/music/music_theme.wav	-13.16	-0.37
 music_battle_base	res://assets/audio/music/music_battle_base.wav	-12.13	-0.34
 music_battle_drums	res://assets/audio/music/music_battle_drums.wav	-12.98	0.13

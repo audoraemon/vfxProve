@@ -137,6 +137,39 @@ static func _stars(t) -> void:
 	t.check(rules.finished and rules.won and rules.over_reason == "warning" and d.report().stopped == 3 and d.step_seconds() == 0.0,
 		"all three stopped: won at that instant, long before any clock (%s)" % rules.over_reason)
 	_done(s)
+	_win_waits_for_the_word(t)
+
+## Two warnings stopped and the third seen to die: a witness carries the word, so nothing is won until he is stopped too, and then at that instant.
+static func _win_waits_for_the_word(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
+	_run(s, 2.0)
+	for i in 2:
+		d.stars[i].warning_dead = true
+		d.stars[i].phase = WarningDirector.Phase.OVER
+	var last := d.stars[2]
+	var m := last.messenger
+	var witness: Person = null
+	for p in crowd.citizens:
+		if p != m and p != crowd.bell.keeper and p.profile != null and p.profile.role == CitizenProfile.Role.RESIDENT:
+			witness = p
+			break
+	_clear_round(s, m.ground_pos, [m, witness])
+	witness.ground_pos = m.ground_pos + Vector2(1.0, 0.0)
+	(s.field as EnemyField).kill(m, &"doom", m.ground_pos)  # (seen: the witness carries the warning on)
+	_run(s, 0.3)
+	t.check(not last.warning_dead and last.relays == 1 and last.messenger == witness and d.stopped() == 2 and not rules.finished,
+		"two stopped, the third passed on to a witness: the word lives, nothing is won (%d stopped, finished %s)" % [d.stopped(), rules.finished])
+	_run(s, 2.0)
+	t.check(not rules.finished, "and none is won while he still carries it")
+	_clear_round(s, witness.ground_pos, [witness])
+	(s.field as EnemyField).kill(witness, &"doom", witness.ground_pos)  # (unseen)
+	_run(s, 0.3)
+	t.check(last.warning_dead and rules.finished and rules.won and rules.over_reason == "warning", "the witness killed unseen: won at that instant (%s)" % rules.over_reason)
+	_done(s)
+
 
 ## The one star (W-R13: mission seconds): at OMEN_AT, one pair of banners and no star over each gate, each watchman looks up and keeps his post.
 static func _omen_once(t) -> void:
@@ -242,19 +275,24 @@ static func _main_gate_runs(t) -> void:
 		w.set_off()
 	var left := [false, false, false]
 	var y_top := [-INF, -INF, -INF]
+	var starts: Array[Vector2] = []
+	var far := [0.0, 0.0, 0.0]
+	for m in men:
+		starts.append(m.ground_pos)
 	for step in roundi(25.0 / DT):
 		crowd.advance(DT)
 		crowd.step_people(DT)
 		(s.rules as Rules).advance(DT)
 		for i in 3:
 			var w := d.stars[i]
-			if w.phase == WarningDirector.Phase.RUN and is_instance_valid(men[i]):
+			if (w.phase == WarningDirector.Phase.RUN or w.phase == WarningDirector.Phase.DELIVERED) and is_instance_valid(men[i]):
 				left[i] = left[i] or Walls.outside(men[i].ground_pos)
 				y_top[i] = maxf(y_top[i], men[i].ground_pos.y)
+				far[i] = maxf(far[i], men[i].ground_pos.distance_to(starts[i]))
 	for i in 3:
 		var w := d.stars[i]
-		t.check(not left[i] and w.stopped_how != "out", "W-R14: %s's runner never leaves the walls on his run to the keeper (his y reached %.1f, the post at %.1f; %s)"
-			% [StarfallDirector.STARS[i][2], y_top[i], w.gate_spot.y, w.stopped_how])
+		t.check(far[i] > 2.0 and not left[i] and w.stopped_how != "out", "W-R14: %s's runner really runs (%.1f from his post) and never leaves the walls (his y reached %.1f, the post at %.1f; %s)"
+			% [StarfallDirector.STARS[i][2], far[i], y_top[i], w.gate_spot.y, w.stopped_how])
 	_done(s)
 
 
@@ -324,6 +362,11 @@ static func _bell_why_all(t) -> void:
 	d.stars[0].phase = WarningDirector.Phase.OVER
 	Kit.arrive(d.stars[2].messenger, d.stars[2].lantern_door() + Vector2(0.0, 1.0))
 	t.check(d.why_not("blight", at) == WarningDirector.BELL_SOONER, "the first one stopped, another carrier near the door: HE RUNS SOONER (%s)" % d.why_not("blight", at))
+	# SOONER wins over TIME whichever star says which: the near-door carrier moves to the middle star, the last now says TIME after him.
+	Kit.arrive(d.stars[2].messenger, d.stars[2].gate_spot)
+	Kit.arrive(d.stars[1].messenger, d.stars[1].lantern_door() + Vector2(0.0, 1.0))
+	t.check(d.stars[1].bell_why("blight", at) == WarningDirector.BELL_SOONER and d.stars[2].bell_why("blight", at) == WarningDirector.BELL_TIME
+		and d.why_not("blight", at) == WarningDirector.BELL_SOONER, "SOONER from an earlier star beats a later star's TIME (%s)" % d.why_not("blight", at))
 	lw.tolled = true
 	t.check(d.why_not("blight", at) == WarningDirector.BELL_TOLLED, "tolled: THE BELL HAS TOLLED ALREADY first")
 	_done(s)

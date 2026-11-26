@@ -304,7 +304,7 @@ static func _omen_body(t) -> void:
 
 
 ## W-R15: a fold that finds no ground beyond the postern is tried again KEY_RETRIES times, then the whispered watchman is let go to his whisper's goal, not held at
-## the wall. (No real ground fails a fold at the postern -- the landing's nearest open ground may lie inside -- so the failed folds are counted in by hand.)
+## the wall. The ground is really blocked: his grid finds nothing to land on at the landing, so Person.fold() itself fails and `_led_fails += 1` runs.
 static func _key_fold_fails(t) -> void:
 	var s := _world({"holds_post": true, "lead_key": true}, true)
 	var w: WarningDirector = s.d
@@ -312,17 +312,25 @@ static func _key_fold_fails(t) -> void:
 	var man := w.watchman
 	s["to"] = BEYOND
 	ClarityKit.apply(s, "lead", man)
-	w._led_fails = WarningDirector.KEY_RETRIES + 1  # (the fold has found no ground the allowed number of times)
-	var at := man.ground_pos
-	_run(s, 0.3, false)
-	t.check(not w.warning_dead and man.mind == Person.Mind.WHISPERED and man.ground_pos.is_equal_approx(at) and w._led_to == Vector2.INF
-		and man.goal().distance_to(BEYOND) < 1.5, "K2 fold fails: after the retries he is let go to his whisper's goal, not held or folded (%s)" % str(man.goal()))
-	t.check(w.key_door() != Vector2.INF and w._led_fails == WarningDirector.KEY_RETRIES + 1, "K2 fold fails: and the count stands")
+	var door := w.key_door()
+	var stub := NoLanding.new()
+	stub.landing = door + (door - w.gate_spot).normalized() * WarningDirector.KEY_STEP
+	var real := man.grid
+	man.grid = stub
+	var banners_before := (s.banners as Array).size()
+	_run(s, 1.0, false)
+	t.check(stub.tries == WarningDirector.KEY_RETRIES + 1 and w._led_fails == WarningDirector.KEY_RETRIES + 1,
+		"K2 fold fails: the fold found no ground and was tried %d times, no more (tries %d, counted %d)" % [WarningDirector.KEY_RETRIES + 1, stub.tries, w._led_fails])
+	t.check(not w.warning_dead and man.mind == Person.Mind.WHISPERED and w._led_to == Vector2.INF and man.goal().distance_to(BEYOND) < 1.5
+		and (s.banners as Array).size() == banners_before, "K2 fold fails: then he is let go to his whisper's goal, not held at the wall (%s)" % str(man.goal()))
+	_run(s, 1.0, false)
+	t.check(stub.tries == WarningDirector.KEY_RETRIES + 1, "K2 fold fails: and the postern is not tried again (%d)" % stub.tries)
+	man.grid = real
 	man.mind = Person.Mind.CALM  # (the whisper wears off: the count starts over for the next one)
 	_run(s, 0.1, false)
 	t.check(w._led_fails == 0, "K2 fold fails: the count starts over once he is no longer whispered")
 	ClarityKit.done(s)
-	# One failed fold (the count at the retry limit, not past it) is tried again: the latch is made and the walk to the face is given.
+	# A count at the limit (not past it) still goes through.
 	s = _world({"holds_post": true, "lead_key": true}, true)
 	w = s.d
 	_run(s, 0.1, false)
@@ -333,6 +341,24 @@ static func _key_fold_fails(t) -> void:
 	_run(s, 0.2, false)
 	t.check(w.warning_dead and w.stopped_how == "out", "K2 fold fails: at the retry limit he is still taken through (%s)" % w.stopped_how)
 	ClarityKit.done(s)
+
+
+## A walk grid whose landing spot has no ground within the fold's reach (everything else is open); it counts the folds that looked for it.
+class NoLanding extends WalkGrid:
+	var landing := Vector2.INF
+	var tries := 0
+
+	func walkable(g: Vector2) -> bool:
+		return g.distance_to(landing) > 0.01
+
+	func nearest_walkable(g: Vector2, _max_cells := 4, _streets := false) -> Vector2:
+		if g.distance_to(landing) <= 0.01:
+			tries += 1
+			return Vector2.INF
+		return g
+
+	func path(_from: Vector2, to: Vector2) -> PackedVector2Array:
+		return PackedVector2Array([to])
 
 
 ## ---- T2: the broken bell buys time (spec 5, W-R3) --------------------------------------------------------------------------------------------

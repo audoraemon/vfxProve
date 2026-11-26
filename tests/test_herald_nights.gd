@@ -109,41 +109,34 @@ static func _omen_toll(t) -> void:
 	Kit.done(s)
 
 
-## Starfall's stars keep their time in mission seconds: at x2.0 from the start the first star is set up at half its real time, the next one
-## within STOP_WAIT mission seconds of the stop; the stare after a star falls (a reflex) is real.
 static func _stars_schedule(t) -> void:
 	var s := Kit.world(TierBook.board("warning"))
 	var r: Rules = s.rules
 	var d: StarfallDirector = s.d
 	r.clock_rate = 2.0
-	Kit.run_for(s, 3.8)
-	t.check(d.stars[0].rules == null and absf(d._clock - 7.6) < 0.2, "x2: at 3.8 s the first star is not yet set up (mission clock %.1f)" % d._clock)
 	Kit.run_for(s, 0.4)
-	t.check(d.stars[0].rules != null, "x2: its watchman is appointed at 4.2 s, half of the 8 s a normal night waits")
-	Kit.run_for(s, 1.6)
-	t.check(not d.stars[0].omen_fallen, "the star itself falls OMEN_AT (2 s) after, in real time -- a reflex, not the schedule")
+	t.check(d.stars[0].rules != null and not d.stars[0].omen_fallen and absf(d._clock - 0.8) < 0.2, "x2: all three are set up from the first step; the star has not fallen at 0.4 s (mission clock %.1f)" % d._clock)
+	Kit.run_for(s, 0.2)
+	t.check(d.stars[0].omen_fallen, "x2: the one star falls at OMEN_AT mission seconds: 0.5 s of play")
+	Kit.run_for(s, 9.0)
+	t.check(d.stars[0].at_post() and d._clock < float(StarfallDirector.STARS[0][0]), "x2: at 9.6 s of play the first watchman still holds his post (mission clock %.1f)" % d._clock)
 	Kit.run_for(s, 0.6)
-	t.check(d.stars[0].omen_fallen, "and it has fallen at 2.2 s after")
-	# A stop brings the next star no later than STOP_WAIT mission seconds on: 15 real seconds at x2.
-	var stopped_at := d._clock
+	t.check(d.stars[0].phase == WarningDirector.Phase.RUN, "x2: and sets off by 10.2 s, half of his 20 s")
+	# A stop does not move the later set-offs: the Main Gate's is still at 40 mission seconds, 20 real.
 	d.stars[0].warning_dead = true
 	d.stars[0].phase = WarningDirector.Phase.OVER
-	Kit.run_for(s, DT * 2.0)
-	t.check(is_equal_approx(d.fall_at(1), minf(float(StarfallDirector.STARS[1][0]), d._stopped_at[0] + StarfallDirector.STOP_WAIT))
-		and d._stopped_at[0] >= stopped_at and d._stopped_at[0] < stopped_at + 0.5,
-		"the stop is noted in mission seconds, and the next star falls STOP_WAIT of them later (%.1f)" % d.fall_at(1))
-	Kit.run_for(s, 12.0)
-	t.check(d.stars[1].rules == null, "x2: 12 s after the stop the second star is still to come")
-	Kit.run_for(s, 3.4)
-	t.check(d.stars[1].rules != null, "x2: and 15.4 s after (30 - 2 mission seconds, 14 real) its watchman is up")
+	Kit.run_for(s, 9.0)
+	t.check(d.stars[1].at_post(), "x2: 19 s into the night the Main Gate's watchman still holds his post")
+	Kit.run_for(s, 1.4)
+	t.check(d.stars[1].phase == WarningDirector.Phase.RUN, "x2: and sets off by 20.6 s")
 	Kit.done(s)
 
-	# At the normal rate nothing changed: 8 s to the first star, one for one.
+	# At the normal rate, one for one: the first watchman holds at 19.8 s and has set off by 20.2 s.
 	var n := Kit.world(TierBook.board("warning"))
-	Kit.run_for(n, 7.8)
-	t.check((n.d as StarfallDirector).stars[0].rules == null, "x1: not yet at 7.8 s")
+	Kit.run_for(n, 19.8)
+	t.check((n.d as StarfallDirector).stars[0].at_post(), "x1: not yet at 19.8 s")
 	Kit.run_for(n, 0.4)
-	t.check((n.d as StarfallDirector).stars[0].rules != null, "x1: set up at 8 s, as in v0.11.1")
+	t.check((n.d as StarfallDirector).stars[0].phase == WarningDirector.Phase.RUN, "x1: set off at 20 s")
 	Kit.done(n)
 
 

@@ -169,9 +169,11 @@ static func _star_world(i := 0, stared := false) -> Dictionary:
 
 static func _star_up(s: Dictionary, i: int, stared: bool) -> WarningDirector:
 	var d: StarfallDirector = s.d
-	d._clock = float(d.star_falls[i][0]) - WarningDirector.OMEN_AT - 0.05
 	_run(s, 0.1)
-	_run(s, WarningDirector.OMEN_AT + (0.5 if stared else WarningDirector.STARE + 0.2))
+	_run(s, StarfallDirector.OMEN_AT + 0.5)  # (every watchman set up at his post, the one star fallen)
+	if not stared:
+		d.stars[i].set_off()  # (the Warning rework: the watchman holds his post until his set-off)
+		_run(s, 0.3)
 	return d.stars[i]
 
 

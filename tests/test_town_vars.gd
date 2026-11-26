@@ -7,7 +7,7 @@ const Kit := preload("res://tests/test_tier2_groundwork.gd")
 
 ## The five scripts, and the consts each one now reads only through a var (its declaration and _init() excepted).
 const SCRIPTS := {
-	"res://src/game/mission/starfall_director.gd": ["STARS", "STOP_WAIT"],
+	"res://src/game/mission/starfall_director.gd": ["STARS"],
 	"res://src/game/mission/tax_collector_director.gd": ["COUNTING_TAG", "ROUNDS", "SET_OUT_AT", "GUARDS", "VISIT_SECONDS",
 		"HIDE_SECONDS", "ALARM_REACH", "GUARD_R", "CHAIN_WAIT", "FLUSH_GAP"],
 	"res://src/game/mission/harvest_director.gd": ["STORE_SPOTS", "STORE_NAMES", "GRAIN_AT", "CHAIN_AFTER", "LOADS"],
@@ -36,7 +36,7 @@ static func run(t) -> void:
 ## A fresh director of each of the five has every town var equal to its const (counting_spot INF until _plan()).
 static func _seeded(t) -> void:
 	var s := StarfallDirector.new()
-	t.check(s.star_falls == StarfallDirector.STARS and s.stop_wait == StarfallDirector.STOP_WAIT, "starfall seeded")
+	t.check(s.star_falls == StarfallDirector.STARS, "starfall seeded")
 	t.check(s.stars.is_empty(), "starfall's `stars` is still the list of warnings (empty before setup)")
 	var x := TaxCollectorDirector.new()
 	t.check(x.counting_tag == TaxCollectorDirector.COUNTING_TAG and x.counting_spot == Vector2.INF
@@ -108,8 +108,7 @@ static func _policies_read_vars(t) -> void:
 static func _override_survives_setup(t) -> void:
 	var star := StarfallDirector.new()
 	star.star_falls = [[5.0, Vector2(1.0, 2.0), "A"], [50.0, Vector2(3.0, 4.0), "B"]]
-	star.stop_wait = 12.0
-	t.check(star.fall_at(0) == 5.0 and star.star_falls.size() == 2, "starfall's override reads (fall_at, star_falls)")
+	t.check(star.star_falls.size() == 2 and float(star.star_falls[0][0]) == 5.0, "starfall's override reads (star_falls)")
 
 	var h := HarvestDirector.new()
 	h.grain_at = [30.0, 90.0, 150.0]

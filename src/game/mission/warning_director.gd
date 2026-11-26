@@ -49,6 +49,8 @@ const KEY_STEP := 1.2
 ## K2 (the Warning rework, spec 3.1; first guess): how near the postern's centre a whispered watchman of that gate must stand for his key to take
 ## him out, when his whisper leads beyond the wall -- farther than KEY_REACH, so he is first walked to the postern's inner face.
 const KEY_WALK := 4.0
+## K2 (W-R15): how many times a failed fold (no open ground beyond the postern) is tried again before the whispered watchman is let go to his whisper's goal.
+const KEY_RETRIES := 1
 ## Said when the watchman, confused at his post, decides he dreamt the star (`dreams_stop`).
 ## (the Warning rework, T2, W-R3) The share of a walker's pace kept on the farther, slower way to the Temple when the bell is broken (first guess; the
 ## gain test pins BROKEN_GAIN from every post, lower it in 0.05 steps if a post fails).
@@ -120,6 +122,8 @@ var _key_gate: Structure = null
 ## K2: the whisper's goal the postern's watchman is being walked through the key for (INF for none): latched, as `_drawn_to` is, because walking him to
 ## the inner face replaces his goal.
 var _led_to := Vector2.INF
+## K2: how many folds through the postern found no ground (see KEY_RETRIES).
+var _led_fails := 0
 ## The town's own bellkeeper, for the rope to go back to when a called bell is called off by the lie (D27; a Variant: he may be freed).
 var _town_keeper: Variant = null
 
@@ -186,7 +190,7 @@ func step(delta: float) -> void:
 			return
 	if not omen_fallen and _clock >= OMEN_AT:
 		_omen()
-	if bell_breaks and not broken_said and bell_broken():
+	if bell_breaks and not broken_said and herald_night() and bell_broken():
 		broken_said = true
 		rules.banner.emit(BROKEN_BANNER)
 	if gate_keeps:
@@ -328,6 +332,11 @@ func heralding() -> bool:
 	if rules == null or rules.lantern == null or rules.lantern.kind != LanternWatch.KIND_HERALD:
 		return false
 	return rules.lantern.tolled or rules.lantern.bell_silenced or bell_broken()
+
+
+## The night has a Herald Lantern (the toll and the broken bell send a carrier to the Temple; heralding() reads it first).
+func herald_night() -> bool:
+	return rules != null and rules.lantern != null and rules.lantern.kind == LanternWatch.KIND_HERALD
 
 
 ## (the Warning rework, T2, W-R3) The bell is broken: the rule is on, the tower is blighted or fallen, and the bell has not tolled. Only reads.
@@ -584,8 +593,11 @@ func _use_key() -> void:
 func _use_key_led(at: Vector2, out_dir: Vector2) -> bool:
 	if messenger.mind != Person.Mind.WHISPERED:
 		_led_to = Vector2.INF
+		_led_fails = 0
 		return false
 	if _led_to == Vector2.INF:
+		if _led_fails > KEY_RETRIES:
+			return false  # (W-R15) the postern found no ground twice: he goes on to his whisper's goal as it was, not held at the wall
 		var bound := messenger.goal()
 		if bound == Vector2.INF or City.current().town().has_point(bound) or messenger.ground_pos.distance_to(at) > KEY_WALK:
 			return false
@@ -601,6 +613,8 @@ func _use_key_led(at: Vector2, out_dir: Vector2) -> bool:
 	if messenger.fold(at + out_dir * KEY_STEP):
 		_sound(&"msn_unbar", at)
 		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
+	else:
+		_led_fails += 1
 	messenger.set_goal(to)  # on to where the whisper led him (kept, too, when the fold found no ground)
 	return true
 
@@ -689,19 +703,40 @@ func tags() -> Array[MapTag]:
 		return out
 	var bell := crowd.bell
 	var keeper: Person = bell.keeper if bell != null and _alive(bell.keeper) else null
+	var herald := herald_open()
+	out.append_array(carrier_tags())
+	if keeper != null and keeper != messenger and not keeper.inside and not herald:
+		out.append(MapTag.person(keeper, MARK_KEEPER, _keeper_label(), phase == Phase.RUN))
+	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed and not herald:
+		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
+	out.append_array(witness_tags())
+	return out
+
+
+## The carrier's own tag (the Warning rework, I7: StarfallDirector draws the keeper, the tower and the Temple once for its three warnings): whoever carries
+## the warning, pointed at from the edge, as tags() draws him. Empty when the warning is over or he is gone. Only reads.
+func carrier_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if phase == Phase.OVER or warning_dead or not _alive(messenger):
+		return out
+	var bell := crowd.bell
+	var keeper: Person = bell.keeper if bell != null and _alive(bell.keeper) else null
 	var label := "MESSENGER"
 	if messenger == keeper:
 		label = _keeper_label()
 	elif phase == Phase.OMEN or phase == Phase.STARE:
 		label = "WATCHMAN"
-	var herald := herald_open()
-	if herald:
+	if herald_open():
 		label = herald_label()  # v0.11.2: the bell has tolled: the keeper and the tower are no longer the errand
 	out.append(MapTag.person(messenger, MARK_MESSENGER, label, true))
-	if keeper != null and keeper != messenger and not keeper.inside and not herald:
-		out.append(MapTag.person(keeper, MARK_KEEPER, _keeper_label(), phase == Phase.RUN))
-	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed and not herald:
-		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
+	return out
+
+
+## From the run on, a red diamond on each person near enough to see the carrier die (none at a post: nobody runs yet). Only reads.
+func witness_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if phase == Phase.OVER or warning_dead or not _alive(messenger):
+		return out
 	if phase == Phase.RUN or phase == Phase.DELIVERED:
 		for p in witnesses():
 			out.append(MapTag.person(p, MARK_WATCHED))

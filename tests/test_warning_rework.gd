@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_reach_key(t)
 	_reach_walls_only(t)
 	_omen_body(t)
+	_key_fold_fails(t)
 	_broken_gain(t)
 	_broken_blight(t)
 	_broken_keeper(t)
@@ -240,10 +241,11 @@ static func _reach_off(t) -> void:
 
 ## K2's why_not: a whisper to ground beyond the postern from within KEY_WALK says nothing; from beyond KEY_WALK it keeps the warning.
 static func _reach_key(t) -> void:
-	var s := _world({"holds_post": true, "lead_key": true, "rework_reach": true}, true)
+	var s := _world({"holds_post": true, "lead_key": true, "rework_reach": true, "walls_stop": false}, true)  # (no walls rule: K2 alone makes it "")
 	var w: WarningDirector = s.d
 	_run(s, 0.1, false)
 	var man := w.watchman
+	t.check(man.ground_pos.distance_to(w.key_door()) <= WarningDirector.KEY_WALK, "K2 reach: he stands within KEY_WALK of the postern (%.1f)" % man.ground_pos.distance_to(w.key_door()))
 	s["to"] = BEYOND
 	ClarityKit.apply(s, "lead", man)
 	t.check(w.why_not("whisper", s.at) == "", "why_not: a whisper beyond the postern, within KEY_WALK, says nothing (K2)")
@@ -296,7 +298,40 @@ static func _omen_body(t) -> void:
 	var m := w.watchman
 	t.check(w._drawn_to != Vector2.INF and m.mind == Person.Mind.DUTY, "W3 early: he goes out to the body (%s)" % Person.Mind.keys()[m.mind])
 	_run(s, 1.5, false)
-	t.check(w.omen_fallen and m.mind == Person.Mind.DUTY and w._drawn_to != Vector2.INF, "W3 early: the omen's look-up leaves his walk alone (%s)" % Person.Mind.keys()[m.mind])
+	t.check(w.omen_fallen and m.mind == Person.Mind.DUTY and w._drawn_to != Vector2.INF and not m.look_up and w.phase == WarningDirector.Phase.STARE,
+		"W3 early: the omen's look-up leaves his walk alone (%s, look_up %s, %s)" % [Person.Mind.keys()[m.mind], m.look_up, WarningDirector.Phase.keys()[w.phase]])
+	ClarityKit.done(s)
+
+
+## W-R15: a fold that finds no ground beyond the postern is tried again KEY_RETRIES times, then the whispered watchman is let go to his whisper's goal, not held at
+## the wall. (No real ground fails a fold at the postern -- the landing's nearest open ground may lie inside -- so the failed folds are counted in by hand.)
+static func _key_fold_fails(t) -> void:
+	var s := _world({"holds_post": true, "lead_key": true}, true)
+	var w: WarningDirector = s.d
+	_run(s, 0.1, false)
+	var man := w.watchman
+	s["to"] = BEYOND
+	ClarityKit.apply(s, "lead", man)
+	w._led_fails = WarningDirector.KEY_RETRIES + 1  # (the fold has found no ground the allowed number of times)
+	var at := man.ground_pos
+	_run(s, 0.3, false)
+	t.check(not w.warning_dead and man.mind == Person.Mind.WHISPERED and man.ground_pos.is_equal_approx(at) and w._led_to == Vector2.INF
+		and man.goal().distance_to(BEYOND) < 1.5, "K2 fold fails: after the retries he is let go to his whisper's goal, not held or folded (%s)" % str(man.goal()))
+	t.check(w.key_door() != Vector2.INF and w._led_fails == WarningDirector.KEY_RETRIES + 1, "K2 fold fails: and the count stands")
+	man.mind = Person.Mind.CALM  # (the whisper wears off: the count starts over for the next one)
+	_run(s, 0.1, false)
+	t.check(w._led_fails == 0, "K2 fold fails: the count starts over once he is no longer whispered")
+	ClarityKit.done(s)
+	# One failed fold (the count at the retry limit, not past it) is tried again: the latch is made and the walk to the face is given.
+	s = _world({"holds_post": true, "lead_key": true}, true)
+	w = s.d
+	_run(s, 0.1, false)
+	man = w.watchman
+	s["to"] = BEYOND
+	ClarityKit.apply(s, "lead", man)
+	w._led_fails = WarningDirector.KEY_RETRIES
+	_run(s, 0.2, false)
+	t.check(w.warning_dead and w.stopped_how == "out", "K2 fold fails: at the retry limit he is still taken through (%s)" % w.stopped_how)
 	ClarityKit.done(s)
 
 

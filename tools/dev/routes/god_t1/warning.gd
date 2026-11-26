@@ -295,38 +295,9 @@ const MARK_NEAR := WarningDirector.GATE_SIGHT - 0.3
 
 
 ## Death Mark for the next star still to fall, cast DeathMarkFx.MARK_TIME - MARK_LANDS seconds before it: what was cast, or "".
-static func _gate_mark(ctx: Dictionary) -> String:
-	var d := ctx.d as StarfallDirector
-	if d == null:
-		return ""
-	var rules: Rules = ctx.rules
-	for i in d.stars.size():
-		var w := d.stars[i]
-		if w.warning_dead or w.omen_fallen:
-			continue
-		if i > 0 and not d.stars[i - 1].warning_dead:
-			return ""  # its time may still come sooner (stop_wait): wait for the warning before it
-		var key := "gate_mark_%d" % i
-		if ctx.memo.has(key):
-			return ""
-		if d.next_star() != i:
-			return ""
-		# What the NEXT STAR tag shows (D29): the policy times the mark by the countdown a player reads, no finer.
-		var left := d.next_fall_in() / maxf(rules.clock_rate, 0.001)
-		if left > DeathMarkFx.MARK_TIME - MARK_LANDS:
-			return ""
-		ctx.memo[key] = null
-		if left < DeathMarkFx.MARK_TIME - (WarningDirector.STARE - 1.0):
-			return ""  # too late: he would fall after the watchman has run
-		var crowd: Crowd = ctx.crowd
-		var post: Vector2 = d.star_falls[i][1]
-		var free := crowd._grid.nearest_walkable(post)
-		var guard := _outside_man(crowd, free if free != Vector2.INF else post)
-		if guard == null:
-			return ""
-		ctx.memo[key] = guard
-		rules.cast(ctx.slots.deathmark, guard.ground_pos)
-		return "deathmark the man outside %s, to fall as its star does (%.1f, %.1f)" % [w.post_name.to_lower(), guard.ground_pos.x, guard.ground_pos.y]
+## (The Warning rework, T3: the stars no longer fall one after another -- one star falls over the town and each watchman sets off at his time -- so this old
+## policy has nothing to time; T7 writes the new policies.)
+static func _gate_mark(_ctx: Dictionary) -> String:
 	return ""
 
 

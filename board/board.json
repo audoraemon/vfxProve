@@ -1,18 +1,18 @@
 {
- "hash": "7e9f5899ecbcd3c4",
- "updated": "2026-11-26T16:42:35+07:00",
+ "hash": "fee9f9b3965a29dd",
+ "updated": "2026-11-27T00:45:26+07:00",
  "changes": {
-  "date": "<t:1795686155:f>",
+  "date": "<t:1795715126:f>",
   "items": [
-   "New: Veil ability icons (Codex CLI)"
+   "New: Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups"
   ]
  },
  "snapshot": {
   "project": {
    "version": "v0.12",
-   "tag": "kak-soldier-duties",
-   "tests": 25520,
-   "updated": "2026-11-25"
+   "tag": "kak-fair-life",
+   "tests": 25628,
+   "updated": "2026-11-27"
   },
   "tasks": {
    "ability-icons-pixellab": {
@@ -348,6 +348,16 @@
     "needs_you": false,
     "updated": "2026-10-04",
     "order": 20
+   },
+   "fair-life": {
+    "title": "Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups",
+    "status": "done",
+    "area": "Crowd",
+    "version": "v0.12.x",
+    "needs_you": true,
+    "branch": "claude/natural-people",
+    "updated": "2026-11-27",
+    "order": 920
    },
    "flow-fix-1110": {
     "title": "FLOW test fixed (ending hitch, stale lock count, fade waits)",
@@ -2041,89 +2051,73 @@
   },
   "branches": [
    {
+    "name": "feat/god-chamber",
+    "ahead": 93,
+    "behind": 171,
+    "date": "2026-11-27",
+    "subject": "fix: the World Map's first frame is warmed while the god stands in the Chamber",
+    "pushed": true
+   },
+   {
+    "name": "feat/world-map-art",
+    "ahead": 93,
+    "behind": 171,
+    "date": "2026-11-27",
+    "subject": "fix: the World Map's first frame is warmed while the god stands in the Chamber",
+    "pushed": false
+   },
+   {
+    "name": "land/wish-clarity",
+    "ahead": 3,
+    "behind": 0,
+    "date": "2026-11-27",
+    "subject": "test: re-record 25 references the Develop-Main merge moved (same outcome as 0a293ea0); notes for merge 2",
+    "pushed": false
+   },
+   {
+    "name": "god/veil-land",
+    "ahead": 96,
+    "behind": 21,
+    "date": "2026-11-26",
+    "subject": "fix: the Veil's eight new skill-tree powers name their main cue and school (LevelSound.MAIN)",
+    "pushed": false
+   },
+   {
     "name": "god/veil-twists-2",
     "ahead": 91,
-    "behind": 150,
+    "behind": 171,
     "date": "2026-11-26",
     "subject": "fix: Veil twists 2 final-review wave (edge kind, craters end with the act, pull and eye fixes, docs)",
     "pushed": false
    },
    {
-    "name": "god/veil-icons",
-    "ahead": 85,
-    "behind": 150,
-    "date": "2026-11-26",
-    "subject": "feat: repaint Silent Doom, Blight and Unseen Hour to match the Veil's new icon set",
-    "pushed": true
-   },
-   {
     "name": "god/veil-levels",
     "ahead": 83,
-    "behind": 150,
+    "behind": 171,
     "date": "2026-11-26",
     "subject": "docs: the Swallowing Dark's bench note names its cause as a guess",
     "pushed": true
    },
    {
-    "name": "feat/god-chamber",
-    "ahead": 75,
-    "behind": 150,
+    "name": "feat/warning-rework",
+    "ahead": 8,
+    "behind": 21,
     "date": "2026-11-26",
-    "subject": "feat: God's Chamber step 7: the room's idle life, state objects and sound",
-    "pushed": true
-   },
-   {
-    "name": "feat/world-map-art",
-    "ahead": 75,
-    "behind": 150,
-    "date": "2026-11-26",
-    "subject": "feat: the World Map is a painted map: names on its ribbons, fog on what is out of reach, the god's faith on the land",
-    "pushed": false
-   },
-   {
-    "name": "claude/natural-people",
-    "ahead": 20,
-    "behind": 0,
-    "date": "2026-11-26",
-    "subject": "fix: a duty order (a goal) ends a soldier's flinch -- gate checker stepping out is not held for the stare",
+    "subject": "test: T3 fix round: real K2 fold failure, W-R14 moved pin, win waits for a live carrier, SOONER over TIME",
     "pushed": false
    },
    {
     "name": "feat/wish-clarity",
     "ahead": 3,
-    "behind": 0,
+    "behind": 21,
     "date": "2026-11-26",
     "subject": "fix: wish how-lines move from the TAB list to the hint plate (the first open wish), keeping the HUD stack's depth",
     "pushed": false
    },
    {
-    "name": "feat/warning-rework",
-    "ahead": 1,
-    "behind": 0,
-    "date": "2026-11-26",
-    "subject": "docs: The Warning rework spec and plan",
-    "pushed": false
-   },
-   {
-    "name": "warning/t6",
-    "ahead": 1,
-    "behind": 0,
-    "date": "2026-11-26",
-    "subject": "docs: The Warning rework spec and plan",
-    "pushed": false
-   },
-   {
-    "name": "land/wish-clarity",
-    "ahead": 2,
-    "behind": 0,
-    "date": "2026-11-25",
-    "subject": "docs: soldier duties rulings, reference flips, gate tables and landing checks",
-    "pushed": false
-   },
-   {
     "name": "god/veil-review",
     "ahead": 64,
-    "behind": 150,
+    "behind": 171,
     "date": "2026-11-22",
     "subject": "docs: the final review's corrections to the second pass's summary, rulings and spec",
     "pushed": true
@@ -2131,7 +2125,7 @@
    {
     "name": "god/veil-powers",
     "ahead": 33,
-    "behind": 150,
+    "behind": 171,
     "date": "2026-11-21",
     "subject": "test: re-record the 113 reference rows that cast a Veil power",
     "pushed": true
@@ -2139,7 +2133,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 250,
+    "behind": 271,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2147,7 +2141,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 625,
+    "behind": 646,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2155,7 +2149,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1123,
+    "behind": 1144,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2163,7 +2157,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 1081,
+    "behind": 1102,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -2171,8 +2165,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-25",
-   "subject": "docs: soldier duties rulings, reference flips, gate tables and landing checks"
+   "date": "2026-11-27",
+   "subject": "test: re-record 25 references the Develop-Main merge moved (same outcome as 0a293ea0); notes for merge 2"
   }
  }
 }

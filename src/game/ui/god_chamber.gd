@@ -26,6 +26,21 @@ const BAR_GAP := 8.0
 const HINT_Y := 350.0
 const STACK_GAP := 18.0
 
+## Hovering lights the object itself (round 3): its own picture brightened (hover_<key>) and a soft warm rim round its silhouette
+## (rim_<key>), both from the build pass; no gold box round the hit rect.
+const HOVER_BOX := false
+## How strongly the hovered object's brightened picture is laid over it.
+const HOVER_ALPHA := 0.9
+## The colour each station's zoom fades through before the page (round 3): the Ability Tree's purple, the altar's warm gold, the
+## World Table's blue, the Rite Door's warm white-gold; the fade ends at FADE_DARK, so the page cut is clean.
+const FADE_COLORS := {"descend": Color(0.24, 0.48, 0.88), "tree": Color(0.5, 0.24, 0.72), "faith": Color(0.9, 0.62, 0.22),
+	"awaken": Color(1.0, 0.88, 0.6)}
+const FADE_DARK := Color(0.02, 0.016, 0.02)
+## The keys hint's strip on the desk (round 3): dark parchment, translucent, edge to edge, with a worn edge above and the hint in ink.
+const HINT_STRIP := Color(0.25, 0.17, 0.1, 0.8)
+const HINT_EDGE := Color(0.46, 0.33, 0.16, 0.85)
+const HINT_INK := Color(0.93, 0.85, 0.68)
+const HINT_STRIP_H := 15.0
 ## The order the stations are drawn in, back to front (ChamberLayout.ORDER is the order they are listed and hit-tested in).
 const DRAW_ORDER: Array[String] = ["awaken", "descend", "tree", "faith"]
 ## Zoom and fade between the Chamber and a station's page. Off (false) in --flow-test, --capture and headless runs, where a press emits in the same call.
@@ -63,6 +78,9 @@ var _life := ChamberLife.new()
 var life_t := 0.0
 var life_hold := false
 var _sound: ChamberSound
+## Photographs only (Game's capture flags): a station shown hovered whatever the window's mouse does, and a transition held at a pose.
+var _hover_held := false
+var _pose_held := false
 
 
 func setup(slot: GodSlot, p_line := "", p_dev := false, p_from := "") -> GodChamber:
@@ -142,9 +160,18 @@ func fade() -> float:
 	return clampf((_depth() - FADE_FROM) / (1.0 - FADE_FROM), 0.0, 1.0)
 
 
+## The colour of that cover (round 3): the station's own colour as it comes in, darkening to FADE_DARK by the end, so the room passes
+## through the station's light into the page; the way back is the same curve run backwards.
+func fade_color() -> Color:
+	var k := fade()
+	var c: Color = FADE_COLORS.get(_focus_key, FADE_DARK)
+	var rgb := c.lerp(FADE_DARK, k * k)
+	return Color(rgb.r, rgb.g, rgb.b, k)
+
+
 ## One step of a transition (public so tests drive it without the clock). The end of a zoom in sends the waiting action.
 func advance(delta: float) -> void:
-	if is_queued_for_deletion() or not in_transition():
+	if is_queued_for_deletion() or not in_transition() or _pose_held:
 		return
 	_t += delta
 	if _mode == Mode.HELD:
@@ -152,6 +179,23 @@ func advance(delta: float) -> void:
 			_mode = Mode.REST  # Game did not replace the room (the action was refused): show the stations again
 	elif _t >= ZOOM_TIME:
 		_finish()
+	_redraw()
+
+
+## Photographs only: show `key` hovered, the mouse ignored from now on.
+func hold_hover(key: String) -> void:
+	_hover = key
+	_hover_held = true
+	_redraw()
+
+
+## Photographs only: hold the zoom into `key` (or back out of it) `t` seconds in; nothing is sent.
+func pose_transition(key: String, back: bool, t: float) -> void:
+	_mode = Mode.BACK if back else Mode.OUT
+	_focus_key = key
+	_t = t
+	_pending = ""
+	_pose_held = true
 	_redraw()
 
 
@@ -330,6 +374,8 @@ func _on_gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed:
 			skip()
 		return
+	if _hover_held:
+		return  # a photograph of a hover: the window's own mouse moves nothing
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		_follow_mouse(event.position)
 	if event is InputEventMouseMotion:
@@ -381,7 +427,7 @@ func _draw_ui() -> void:
 	_draw_under_bar()
 	_draw_bottom()
 	if fade() > 0.0:
-		_ui.draw_rect(back, Color(0.0, 0.0, 0.0, fade()))
+		_ui.draw_rect(back, fade_color())
 
 
 func _draw_room(back: Rect2) -> void:
@@ -390,6 +436,8 @@ func _draw_room(back: Rect2) -> void:
 	for piece: Dictionary in ChamberLayout.SCENERY:
 		if piece.name == "wall":
 			ChamberArt.draw(_ui, "wall", _layer_rect(piece.rect, piece.layer))
+			# The value hierarchy (round 3): corners and ceiling a little darker, the stations left alone.
+			_draw_piece("vignette", 1.0)
 	for layer in ["wall", "stations", "table"]:
 		if layer == "table":
 			for piece: Dictionary in ChamberLayout.SCENERY:
@@ -400,8 +448,13 @@ func _draw_room(back: Rect2) -> void:
 		for key: String in DRAW_ORDER:
 			if ChamberLayout.STATIONS[key].layer == layer:
 				_draw_station(key)
+	var hover := hover_drawn()
+	if not hover.is_empty():
+		_draw_piece(hover.glow, HOVER_ALPHA, float(hover.tint))
 	var life := _life.frame(life_t)
 	_draw_life(life, "wall")
+	if not hover.is_empty():
+		_draw_piece(hover.rim, 1.0)
 	for piece: Dictionary in ChamberLayout.SCENERY:
 		if piece.name == "desk":
 			# The desk is wider than the frame so a wide window still meets it; extend it to the backdrop's edges.
@@ -413,7 +466,7 @@ func _draw_room(back: Rect2) -> void:
 			_draw_life(life, "desk", r, at)
 	for key: String in ChamberLayout.ORDER:
 		if _hover == key and station_state(key) != "closed":
-			_draw_outline_and_plate(key)
+			_draw_plate(key)
 	for key: String in ChamberLayout.ORDER:
 		if badge(key):
 			_draw_badge(menu_rect(key))
@@ -444,14 +497,43 @@ func _draw_life(pieces: Array, layer: String, desk := Rect2(), at := Rect2()) ->
 			_ui.draw_texture_rect(tex, r, false, mod)
 
 
-func _draw_outline_and_plate(key: String) -> void:
+## A file of the life pass drawn whole at its room rect on its layer, `tint` darkening its colour (a dim station's hover).
+func _draw_piece(name: String, alpha: float, tint := 1.0) -> void:
+	var tex := ChamberArt.texture(ChamberLife.DIR + name)
+	if tex == null or not ChamberLife.FILES.has(name):
+		return
+	var r := ChamberLife.placed(ChamberLife.FILES[name], _mouse01)
+	_ui.draw_texture_rect(tex, r, false, Color(tint, tint, tint, alpha))
+
+
+## What hovering `key` draws (round 3): {"glow": its brightened picture, "rim": its warm rim, "tint": 1, or ChamberArt.DIM for a dim
+## door}; {} for a closed door.
+func hover_art(key: String) -> Dictionary:
+	if not ChamberLayout.STATIONS.has(key):
+		return {}
+	var state := "dim" if key == "awaken" and status.awaken_dim() else ""
+	if key == "awaken" and not status.awaken_shown():
+		return {}
+	return {"glow": "hover_" + key, "rim": "rim_" + key, "tint": ChamberArt.DIM if state == "dim" else 1.0}
+
+
+## What the hover draws now: hover_art() of the hovered station, or {}.
+func hover_drawn() -> Dictionary:
+	return hover_art(_hover) if _hover != "" else {}
+
+
+## The name plate under a hovered station.
+func plate_rect(key: String) -> Rect2:
 	var r := menu_rect(key)
-	_ui.draw_rect(r, UiTheme.COL_GOLD, false, 1.0)
 	var label: String = ChamberLayout.STATIONS[key].name
 	var w := UiTheme.width(label, UiTheme.SIZE_SMALL) + 10.0
-	var plate := Rect2(roundf(r.get_center().x - w * 0.5), r.end.y + 3.0, w, 15.0)
+	return Rect2(roundf(r.get_center().x - w * 0.5), r.end.y + 3.0, w, 15.0)
+
+
+func _draw_plate(key: String) -> void:
+	var plate := plate_rect(key)
 	_ui.draw_rect(plate, Color(0.02, 0.02, 0.03, 0.85))
-	UiTheme.text(_ui, Vector2(plate.position.x + 5.0, plate.position.y + 12.0), label, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
+	UiTheme.text(_ui, Vector2(plate.position.x + 5.0, plate.position.y + 12.0), ChamberLayout.STATIONS[key].name, UiTheme.SIZE_SMALL, UiTheme.COL_GOLD)
 
 
 func _draw_badge(r: Rect2) -> void:
@@ -597,7 +679,11 @@ func _stack() -> Dictionary:
 ## The bottom block, stacked upward from the keys hint: the blocked line, the stolen gifts, the one-off line (wrapped to 600).
 func _draw_bottom() -> void:
 	var hint := hint_text()
-	_centred(hint, HINT_Y, UiTheme.SIZE_SMALL, UiTheme.COL_DIM)
+	var strip := hint_strip_rect()
+	_ui.draw_rect(strip, HINT_STRIP)
+	_ui.draw_rect(Rect2(strip.position.x, strip.position.y, strip.size.x, 1.0), HINT_EDGE)
+	_ui.draw_rect(Rect2(strip.position.x, strip.end.y - 1.0, strip.size.x, 1.0), Color(0.0, 0.0, 0.0, 0.35))
+	UiTheme.text(_ui, Vector2(roundf(320.0 - UiTheme.width(hint, UiTheme.SIZE_SMALL) * 0.5), HINT_Y), hint, UiTheme.SIZE_SMALL, HINT_INK)
 	var at := _stack()
 	var blocked := status.blocked_line()
 	if blocked != "":
@@ -611,6 +697,12 @@ func _draw_bottom() -> void:
 		for i in range(wrapped.size() - 1, -1, -1):
 			_centred(wrapped[i], y, UiTheme.SIZE_BODY, UiTheme.COL_BAD_TEXT)
 			y -= UiTheme.LINE_BODY
+
+
+## The keys hint's strip (round 3): a band of dark parchment across the desk, the backdrop's width, round the hint's row.
+func hint_strip_rect() -> Rect2:
+	var back := UiScale.backdrop(_ui)
+	return Rect2(back.position.x, HINT_Y - 11.0, back.size.x, HINT_STRIP_H)
 
 
 ## The baseline of the one-off line's last row (a test checks it against the hint).

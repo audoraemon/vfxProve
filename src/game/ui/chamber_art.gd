@@ -4,7 +4,8 @@ extends RefCounted
 ## silhouette, so the room is playable before any art is painted and real art drops in by file name alone.
 
 const DIR := "res://assets/chamber/"
-const _DIM := 0.45
+## How dark a dim station is drawn (its picture times this).
+const DIM := 0.45
 
 static var _cache := {}
 
@@ -39,7 +40,7 @@ static func draw(canvas: CanvasItem, name: String, rect: Rect2, state := "") -> 
 	var tex := texture(piece)
 	var tint := Color.WHITE
 	if state == "dim":
-		tint = Color(_DIM, _DIM, _DIM, 1.0)
+		tint = Color(DIM, DIM, DIM, 1.0)
 	if tex != null:
 		canvas.draw_texture_rect(tex, rect, false, tint)
 		return

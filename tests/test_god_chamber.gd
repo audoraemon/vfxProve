@@ -19,7 +19,9 @@ static func run(t) -> void:
 	_badges(t)
 	_title(t)
 	_hover(t)
+	_hover_art(t)
 	_hint_and_lines(t)
+	_hint_strip(t)
 	_resolutions(t)
 	_bar_town(t)
 	_blocker(t)
@@ -30,6 +32,7 @@ static func run(t) -> void:
 	_transition_none(t)
 	_transition_back(t)
 	_transitions_off(t)
+	_fade_colours(t)
 	_parallax_mouse(t)
 	GodChamber.transitions = false
 	GodTree.dev_fill = false
@@ -255,6 +258,97 @@ static func _hover(t) -> void:
 	ch._on_gui_input(_motion(Vector2(320, 10)))
 	t.check(ch._hover == "", "leaving it clears the hover")
 	ch.free()
+
+
+## Round 3 (art direction): hovering lights the object itself -- its own picture brightened and a soft warm rim round its silhouette, no
+## box -- and keeps the name plate; the hit rects are the same.
+static func _hover_art(t) -> void:
+	t.check(not GodChamber.HOVER_BOX, "no gold box is drawn round a hovered station")
+	var made := _make(_capped(10))
+	var ch: GodChamber = made[0]
+	t.check(ch.hover_drawn().is_empty(), "nothing hovered: nothing drawn")
+	for key: String in ChamberLayout.ORDER:
+		ch._on_gui_input(_motion(ch.menu_rect(key).get_center()))
+		var art := ch.hover_drawn()
+		t.check(ch._hover == key and art.get("glow", "") == "hover_" + key and art.get("rim", "") == "rim_" + key,
+			"hovering %s draws its own light and rim (%s)" % [key, art])
+		for piece: String in [String(art.get("glow", "")), String(art.get("rim", ""))]:
+			var tex := ChamberArt.texture(ChamberLife.DIR + piece)
+			t.check(tex != null and ChamberLife.FILES.has(piece) and Vector2(tex.get_size()) == (ChamberLife.FILES[piece].rect as Rect2).size,
+				"%s exists and fits its rect" % piece)
+		var plate := ch.plate_rect(key)
+		var hit := ch.menu_rect(key)
+		t.check(plate.has_area() and absf(plate.get_center().x - hit.get_center().x) <= 1.0 and plate.position.y >= hit.end.y,
+			"%s keeps its name plate under it (%s, %s)" % [key, plate, hit])
+		t.check(float(art.get("tint", 0.0)) == 1.0, "%s at full light: the hover is not dimmed" % key)
+	ch.free()
+	# A dim door's hover is dimmed with it (its light copy darkened as the door is); a closed door shows none.
+	var dim := _make(_capped(20, 2))
+	var d: GodChamber = dim[0]
+	if d.station_state("awaken") == "dim":
+		d._on_gui_input(_motion(d.menu_rect("awaken").get_center()))
+		t.check(is_equal_approx(float(d.hover_drawn().get("tint", 0.0)), ChamberArt.DIM), "a dim door's hover is as dim as the door (%s)" % [d.hover_drawn()])
+	d.free()
+	var shut := _make(_slot())
+	var c: GodChamber = shut[0]
+	c._on_gui_input(_motion(c.menu_rect("awaken").get_center()))
+	t.check(c.hover_drawn().is_empty(), "a closed door shows no hover")
+	c.free()
+
+
+## Round 3: the keys hint sits on a dark parchment strip of the desk, edge to edge, at every window shape; the stack above still clears it.
+static func _hint_strip(t) -> void:
+	var col := GodChamber.HINT_STRIP
+	t.check((col.h < 0.15 or col.h > 0.95) and col.s > 0.2 and col.v < 0.45 and col.a >= 0.6 and col.a < 1.0,
+		"the strip is dark parchment, translucent (%s)" % col)
+	for area: Vector2i in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(2560, 1080), Vector2i(1024, 768)]:
+		UiScale.set_test_area(area)
+		var made := _make(_capped(10), true)
+		var ch: GodChamber = made[0]
+		var strip := ch.hint_strip_rect()
+		var back := UiScale.backdrop(ch._ui)
+		t.check(is_equal_approx(strip.position.x, back.position.x) and is_equal_approx(strip.end.x, back.end.x),
+			"%s: the strip runs the desk's width, edge to edge (%s vs %s)" % [area, strip, back])
+		t.check(strip.position.y >= ChamberLayout.SCENERY[1].rect.position.y and strip.end.y <= 360.0 and strip.size.y >= 13.0,
+			"%s: the strip lies on the desk, inside the frame (%s)" % [area, strip])
+		t.check(strip.has_point(Vector2(320.0, GodChamber.HINT_Y - 4.0)) and UiTheme.width(ch.hint_text(), UiTheme.SIZE_SMALL) <= strip.size.x - 8.0,
+			"%s: the hint's row is inside the strip and fits it" % area)
+		t.check(ch.one_off_baseline() <= strip.position.y - 4.0, "%s: the stack above stays clear of the strip" % area)
+		ch.free()
+		UiScale.clear_test_area()
+
+
+## Round 3: the zoom's fade passes through the station's own colour and ends dark; the way back mirrors it; the timings are the same.
+static func _fade_colours(t) -> void:
+	for key: String in ChamberLayout.ORDER:
+		GodChamber.transitions = true
+		var made := _make(_capped(10))
+		var ch: GodChamber = made[0]
+		ch._press(key)
+		var hue: Color = GodChamber.FADE_COLORS[key]
+		var mid := Color()
+		while ch.in_transition() and ch.fade() < 0.5:
+			ch.advance(1.0 / 120.0)
+			mid = ch.fade_color()
+		t.check(mid.v > 0.15 and absf(wrapf(mid.h - hue.h, -0.5, 0.5)) < 0.06, "%s: half way, the fade is the station's colour (%s vs %s)" % [key, mid, hue])
+		ch.advance(GodChamber.ZOOM_TIME)
+		var end := ch.fade_color()
+		t.check(ch.fade() == 1.0 and end.a == 1.0 and end.v < 0.06, "%s: it ends dark and opaque, so the page cut is clean (%s)" % [key, end])
+		ch.free()
+		var back := GodChamber.new()
+		(Engine.get_main_loop() as SceneTree).root.add_child(back)
+		back.setup(_capped(10), "", false, key)
+		if key == "descend" or key == "tree" or key == "faith":
+			back.advance(GodChamber.ZOOM_TIME * 0.5)
+			var out := _make(_capped(10))
+			var o: GodChamber = out[0]
+			o._press(key)
+			o.advance(GodChamber.ZOOM_TIME * 0.5)
+			t.check(o.fade_color().is_equal_approx(back.fade_color()) and is_equal_approx(o.fade(), back.fade()),
+				"%s: the way back passes through the same colours (%s vs %s)" % [key, back.fade_color(), o.fade_color()])
+			o.free()
+		back.free()
+	GodChamber.transitions = false
 
 
 static func _hint_and_lines(t) -> void:

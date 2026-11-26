@@ -13,6 +13,9 @@ static func run(t) -> void:
 	_clone(t)
 	_unlit(t)
 	_blood_moon(t)
+	_vignette(t)
+	_closed_door(t)
+	_rims(t)
 	_state(t)
 	_frames(t)
 	_comfort(t)
@@ -390,6 +393,117 @@ static func _blood_moon(t) -> void:
 	calm.st = _st(_slot(3, 0, 0, 40))
 	var fc := calm.frame(0.0)
 	t.check(not _has(fc, "window_horizon") and not _has(fc, "window_moon_red") and not _has(fc, "hourglass_sand_glow"), "no Hunt: no blood moon")
+
+
+# --- round 3: the vignette, the closed door's stone -----------------------------------------------------------------------------------
+
+static func _lum(c: Color) -> float:
+	return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+
+
+static func _vignette(t) -> void:
+	var v := _image("life/vignette")
+	t.check(v != null and v.get_size() == Vector2i(840, 360), "the vignette covers the room")
+	if v == null:
+		return
+	var a := func(x: int, y: int) -> float: return v.get_pixel(x + 100, y).a
+	# The frame's top corners, the side walls and the ceiling darken 15-20% (the bottom corners are the tree's stone, the altar and the
+	# desk); the room's middle not at all.
+	var corners: Array = [a.call(2, 24), a.call(637, 24), a.call(2, 100), a.call(637, 120)]
+	var ok := true
+	for c: float in corners:
+		ok = ok and c >= 0.15 and c <= 0.2001
+	t.check(ok, "the frame's corners and side walls darken by 15-20%% (%s)" % [corners])
+	t.check(a.call(320, 200) <= 0.01, "the room's middle is not darkened (%.3f)" % a.call(320, 200))
+	t.check(a.call(320, 30) >= 0.12 and a.call(320, 30) <= 0.2001, "the ceiling darkens (%.2f)" % a.call(320, 30))
+	var most := 0.0
+	for y in 360:
+		for x in 840:
+			most = maxf(most, v.get_pixel(x, y).a)
+	t.check(most <= 0.2001, "nowhere more than 20%% (%.3f)" % most)
+	# Not the four stations: their middles and most of their pictures are left alone.
+	for key: String in ChamberLayout.ORDER:
+		var r: Rect2 = ChamberLayout.STATIONS[key].rect
+		var c := r.get_center()
+		t.check(a.call(int(c.x), int(c.y)) <= 0.01, "%s is not darkened (%.3f)" % [key, a.call(int(c.x), int(c.y))])
+	# The map table stays the brightest object in the room after it.
+	var wall := _image("wall")
+	var mean := func(r: Rect2) -> float:
+		var sum := 0.0
+		for y in range(int(r.position.y), int(r.end.y)):
+			for x in range(int(r.position.x), int(r.end.x)):
+				sum += _lum(wall.get_pixel(x + 100, y)) * (1.0 - v.get_pixel(x + 100, y).a)
+		return sum / (r.size.x * r.size.y)
+	var map: float = mean.call(Rect2(222, 235, 186, 21))
+	var brightest := true
+	for r: Rect2 in [Rect2(122, 82, 112, 148), Rect2(553, 194, 87, 104), Rect2(2, 130, 56, 152), Rect2(282, 112, 70, 110), Rect2(302, 64, 25, 30)]:
+		brightest = brightest and mean.call(r) < map
+	t.check(brightest, "the map table stays the brightest object (%.3f)" % map)
+	var life := ChamberLife.new()
+	life.st = _st(_slot(2))
+	t.check(_has(life.frame(0.0), "vignette") == false, "the vignette is not a life piece (GodChamber draws it under the life)")
+
+
+static func _closed_door(t) -> void:
+	# The closed door's put-out light is cool stone like the wall's (red over green, blue highest), never green or teal: of the
+	# pixels the closed patch recolours, none has more green than red.
+	var img := ChamberArt.texture("awaken_closed").get_image()
+	var lit := ChamberArt.texture("awaken").get_image()
+	var green := 0
+	var changed := 0
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			if c.a <= 0.05 or c.is_equal_approx(lit.get_pixel(x, y)):
+				continue
+			changed += 1
+			if c.g > c.r + 0.01:
+				green += 1
+	t.check(changed > 500 and green == 0, "no green-dominant pixel in the closed door's stone (%d of %d recoloured)" % [green, changed])
+
+
+## Round 3b: the hover rims follow the painting, traced from its pixels. No rim has a straight horizontal or vertical run longer than
+## its station's pin, and a pin is long only where the painted object's edge is straight: the World Table's top and front edges, the
+## tree stone's right side (the dark seam that parts it from the wall), the altar's right side (the pillar at the painting's edge),
+## the Rite Door's step. [longest horizontal, longest vertical in the left half, longest vertical in the right half]
+const RIM_PINS := {
+	"descend": [224, 14, 14],
+	"tree": [16, 22, 110],
+	"faith": [10, 26, 62],
+	"awaken": [130, 28, 28],
+}
+
+
+static func _longest(img: Image, horizontal: bool, from: int, to: int) -> int:
+	var best := 0
+	var w := img.get_width()
+	var h := img.get_height()
+	if horizontal:
+		for y in h:
+			var n := 0
+			for x in w:
+				n = n + 1 if img.get_pixel(x, y).a > 0.5 else 0
+				best = maxi(best, n)
+	else:
+		for x in range(from, to):
+			var n := 0
+			for y in h:
+				n = n + 1 if img.get_pixel(x, y).a > 0.5 else 0
+				best = maxi(best, n)
+	return best
+
+
+static func _rims(t) -> void:
+	for key: String in RIM_PINS:
+		var img := _image("life/rim_" + key)
+		var pin: Array = RIM_PINS[key]
+		var half := img.get_width() / 2
+		var runs := [_longest(img, true, 0, 0), _longest(img, false, 0, half), _longest(img, false, half, img.get_width())]
+		t.check(runs[0] <= pin[0] and runs[1] <= pin[1] and runs[2] <= pin[2],
+			"%s's rim follows the painting: straight runs %s within its pins %s" % [key, runs, pin])
+	# The altar's left side, the one that read as a box edge, is no longer one long line.
+	var altar := _longest(_image("life/rim_faith"), false, 0, 50)
+	t.check(altar <= 26, "the altar's rim has no long straight left side (%d px)" % altar)
 
 
 # --- the room's sound (section 9) --------------------------------------------------------------------------------------------------------

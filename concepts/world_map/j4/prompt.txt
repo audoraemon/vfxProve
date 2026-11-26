@@ -1,0 +1,7 @@
+Use the $imagegen skill to generate ONE image and save it in the current directory as world_map_v4.png. Do not write code, do not edit any other file.
+
+Image 1 (world_map_concept_v3.png) is the previous version. Keep EVERYTHING the same: style, palette, vellum with burnt edges, wood and brass frame, candles, empty title cartouche, compass rose, calm plain vellum at the bottom centre, all six towns with their exact designs, sizes and positions, all six blank ribbons exactly where they are, rivers, coast, forests, mountains, marsh. Change only these three things:
+1. Remove the dashed road between the centre-left town and the big coastal city: paint plain grassy vellum land where it was. There must be no roads or paths anywhere on the map.
+2. Remove all chimney and forge smoke plumes (at the grey mining town lower left, at the bridge town upper right, at the market town). No smoke anywhere.
+3. Remove the two sailing ships from the harbour of the big coastal city: paint open sea water where they were. Keep the stone piers.
+16:9 landscape, crisp pixel art, limited palette. No text, no letters, no UI, no watermark.

@@ -325,3 +325,37 @@ static func _painted_map(t) -> void:
 	t.check(both.fog_of("capital") == 0.0, "an opened Capital has no fog")
 	both.free()
 	t.check(WorldMap.GOD_COL == GodSelectScreen.GOD_COL, "the map's god colours are the God's Paths screen's")
+	# The second round: painted pieces, the land-shaped faith, the coded road, the cloud banks.
+	for name: String in ["land", "note", "seal", "seal_off", "tag", "pointer", "ship_0", "ship_1", "cloud_0", "cloud_5"]:
+		t.check(ResourceLoader.exists("res://assets/chamber/map/%s.png" % name), "the map's %s is in the project" % name)
+	t.check(ResourceLoader.exists("res://src/game/ui/world_faith.gdshader"), "the faith shader is in the project")
+	t.check(WorldMap.faith_reach(0.0) == 0.0 and WorldMap.faith_reach(0.1) > 30.0 and WorldMap.faith_reach(1.0) > WorldMap.faith_reach(0.5),
+		"faith reaches nowhere at 0, some way at once, further as the people turn")
+	var page2 := Rect2(0.0, 0.0, 640.0, 360.0)
+	for id in WorldLayout.ids():
+		var full := WorldMap.cloud_bank(id)
+		var thin := WorldMap.cloud_bank(id, true)
+		t.check(full.size() >= 4 and thin.size() < full.size(), "%s: a sealed bank covers, a locked one is a ring (%d, %d)" % [id, full.size(), thin.size()])
+		var rib2 := WorldLayout.ribbon(id)
+		var clear := true
+		for c: Array in full:
+			var w: float = c[2]
+			clear = clear and not Rect2((c[1] as Vector2) - Vector2(w, w * 0.4) * 0.5, Vector2(w, w * 0.4)).grow(-6.0).intersects(rib2)
+		t.check(clear, "%s's clouds leave its ribbon to be read" % id)
+	for id: String in WorldLayout.ROAD_PATHS:
+		var path: Array = WorldLayout.ROAD_PATHS[id]
+		var on_page := true
+		for q: Vector2 in path:
+			on_page = on_page and WorldLayout.LAND.has_point(q)
+		t.check(WorldLayout.is_town(id) and path.size() >= 3 and on_page, "the road to %s runs over the vellum" % id)
+	for q: Vector2 in WorldLayout.SHIPS:
+		t.check(page2.has_point(q) and not WorldMap.PLATE.has_point(q), "a ship rides off the card (%s)" % q)
+	var m1: WorldMap = _make(_slot())[0]
+	t.check(m1.road_part("capital") < 1.0 and m1.road_part("capital") > 0.0, "the road to a locked Capital is inked part of the way")
+	t.check((m1.faith_colors()[0] as Color) != WorldMap.GOD_COL["ruin"], "Ruin's hold is an ember, not the vellum's own orange")
+	m1.free()
+	var m2: WorldMap = _make(_open_both())[0]
+	t.check(m2.road_part("capital") == 1.0, "the road to an open Capital is whole")
+	t.check(page2.encloses(m2.descend_rect()) and WorldMap.PLATE.encloses(m2.descend_rect()), "the Descend seal is on the card")
+	m2.free()
+

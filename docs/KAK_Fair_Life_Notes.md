@@ -193,3 +193,23 @@ Times (s), seeds 1 / 2 / 3, median in brackets:
 | prisoner B | 179.2, 238.7, 207.2 (207.2) | 270.2, 236.3, 207.8 (236.3) | 215.5, 201.4, 183.8 (201.4) |
 | panic A | 221.4, 197.3, 187.3 (197.3) | 197.3, 221.4, 187.3 (197.3) | 187.3, 216.1, 207.5 (207.5) |
 | panic B | 224.0, 222.4, 221.5 (222.4) | 204.6, 235.8, 241.1 (235.8) | 204.6, 221.6, 241.1 (221.6) |
+
+## Merged with Develop-Main 0a293ea0 (2026-11-27)
+Soldier duties (kak-soldier-duties), loss warnings for all missions, the soldiers' march sound removed, Decree/Dominion route fixes.
+- person.gd conflict: kept both. `panic()` keeps our order (absolute hold, then the fearless flinch unless burning), then the incoming
+  shelter-escort `steadied()` check. TSV conflicts (references, routes_t2, routes_t3): origin's lines taken.
+- Clash with the duties: duty soldiers (beats, cordon, sweep, gate check, escort, corpse duty) are Mind.POST. Walking = a goal, so `flinch()`
+  refuses and nothing freezes; standing at a spot they may turn and stare but never move. Duty orders run from the board tick, not `_think`.
+  One real clash: `send_to_post` gave a flinching soldier a goal but the stare held him up to 2 s (a gate checker stepping out was late).
+  `_flinch_overruled` now ends a soldier's flinch when he has a goal (test_flinch). No duty code calls panic()/observe() on fearless
+  soldiers (ShelterEscort panics REGROUP men, who are not fearless); sweep men's nerve (fearless_left) now only turns them when they stand.
+  A burning soldier takes no duty order (T1); the boards re-pick next tick, no stall. Market Panic has no loss-warning threat hook, so
+  the warnings read no panic/broken count there.
+- References: 25 checksums re-recorded, every outcome the same as on 0a293ea0 (soldier duties); cause is our flinch/fair life moving the
+  crowd: god_death_lamb_play_2, sermon_toll_1/2, sermon_play_1/3, panic_none_1-3, panic_play_1-3, panic_b_play_1-3, prisoner_play_1-3,
+  prisoner_b_play_1-3, armoury_play_1-3 (same time 220.2/214.1/214.1), night_b_play_1/3 (lost on timeout, same times). The "?" rows
+  (expel_inquisitor x6, heart_b_play_2) were load timeouts and reproduce.
+- Market Panic gate (3 / 2.0 / 0.6 unchanged): A 187.3, 197.3, 187.5 (median 187.5, idle 21/41/19); B 213.1, 232.6, 201.4 (median 213.1,
+  idle 20); none lost (market_closed). prisoner_b (s): pre-merge bef857f8 215.5, 202.2, 183.8 (202.2); origin 0a293ea0 203.2, 298.4, 210.7
+  (210.7); merged 247.5, 231.8, 188.3 (231.8). The duties alone move it +8, our flinch on top another +21; both contribute, no seed
+  moves the same way on both, and every seed wins.

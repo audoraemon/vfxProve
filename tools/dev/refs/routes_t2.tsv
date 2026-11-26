@@ -8,9 +8,9 @@ lanterns_b_play_3	--scenario=lanterns --case=play --route=b --seed=3 --board	660
 ringers_b_play_1	--scenario=ringers --case=play --route=b --seed=1	-437196962
 ringers_b_play_2	--scenario=ringers --case=play --route=b --seed=2	34454095
 ringers_b_play_3	--scenario=ringers --case=play --route=b --seed=3	-647313308
-panic_b_play_1	--scenario=panic --case=play --route=b --seed=1	-585567419
-panic_b_play_2	--scenario=panic --case=play --route=b --seed=2	-341465239
-panic_b_play_3	--scenario=panic --case=play --route=b --seed=3	-405034318
+panic_b_play_1	--scenario=panic --case=play --route=b --seed=1	-448058874
+panic_b_play_2	--scenario=panic --case=play --route=b --seed=2	-645301530
+panic_b_play_3	--scenario=panic --case=play --route=b --seed=3	-504956295
 informer_b_play_1	--scenario=informer --case=play --route=b --seed=1	-764014766
 informer_b_play_2	--scenario=informer --case=play --route=b --seed=2	126109034
 informer_b_play_3	--scenario=informer --case=play --route=b --seed=3	-820629054

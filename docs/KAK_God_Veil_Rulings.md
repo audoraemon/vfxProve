@@ -759,3 +759,70 @@ The bar is level 5 against the base at 1.55 or under.
 Every pair is under the bar. The closest is Evernight with Dread of the Dark: 1.51 on the means, 1.53 on its worst single
 pair (42.05 against 27.45). The Swallowing Dark runs faster than the base, most likely because the people it has taken are no
 longer drawn or stepped (cause not measured). No run logged a script error. A bench on a quiet machine is still owed.
+
+## Twists, second round (prefix VT)
+
+Branch `god/veil-twists-2`, cut from `god/veil-levels` `850e22de`; spec `docs/superpowers/specs/2026-11-26-kak-veil-twists-2-design.md`.
+Form: what -- why -- cost if wrong.
+
+### The controller's decisions
+
+- VT1 Dread's take kind is `&"void"` (the kind The Swallowing Dark uses: no body). -- the spec says "no body, gone for good"; a kind
+  outside `Remains.BODY_KINDS` is how a take leaves none -- if wrong, one constant changes and a body is left.
+- VT2 Crater numbers: radius 1.2 to 2.8, 9 craters at the light size, 20 at the dark size (the spec's guess was 9/15 and 0.8 to 2.2). --
+  the spec states "about a third of the circle" as the intent and marks its numbers as first guesses; 0.8 to 2.2 covered only about
+  15 percent; the tests pin a cover of 0.22 to 0.40 -- if wrong, the user wanted fewer, smaller pits: two constants.
+- VT3 A crater's hurt does not call `Person.hurt()`. It lowers `health` by `CRATER_HURT` (0.25) times the step, flashes, and at 0 or
+  less takes him with `VeilParts.take_out(crowd, p, &"void")`. A sleeper or a shadow's owner is hurt and not woken. -- `hurt()` emits
+  `enemy_struck`, wakes and kills as `&"frenzy"` leaving a body; the spec wants a silent hurt and no body -- if wrong, a later reader
+  expecting `hurt()`'s hooks (`struck_by`) sees none.
+- VT4 Evernight's level-5 torch colour is `FALSE_COLOR` (0.55, 0.75, 1.0). `END_R`, the shrink in `torch_r()` and `_shrink_lights()`
+  go, and every reader of the light's radius reads `TORCH_R`. -- the spec's "pale blue" and "the shrinking is removed" -- if wrong,
+  one colour constant; the shrink is back only by revert.
+
+### Task rulings and parked minors
+
+- VT5 The craters' placement is seeded from the cast (`hash(origin.round())`): the same click lays the same craters; there is no per-run
+  rng. -- the spec's anti-goal "a twist that needs luck" -- cost if wrong: none; a seed is cheaper to reason about than a random
+  stream.
+- VT6 Craters may lie where ordinary buildings stood; only gates, bridges, the postern, the dock, the fountain and buildings the
+  mission needs are kept clear. The fold takes the ordinary ones, so the ground is bare. -- the brief names the keep-out list --
+  if wrong, the keep-out list grows by one source.
+- VT7 The keep-out source is extracted (`_kept_structures()`, `_needed(s)` in The Swallowing Dark) and used by both the fold's
+  `_inside()` and the craters. -- one list for both, so they cannot drift -- none.
+- VT8 The craters are laid under `ctx.ground`, untracked, in the group `SolarisPit.GROUP`, so `clear_effects()` frees them; their eyes
+  are closed in `_exit_tree` and on predelete. -- they last the rest of the mission and the teardown contract needs
+  `held_by(fx_id) == 0` -- if wrong, an eye outlives a crater until the town clears.
+- VT9 A person indoors is passed over by the craters and by Evernight's flare. -- an indoor man is not on the ground the pit lies on, and
+  VL63 already passes the indoors over -- if wrong, one line per twist.
+- VT10 Dread's pull eye is open-ended and released with the cast. -- a timed eye is not closed by `PaleEye.release` (only open-ended
+  ones are), and the teardown contract needs none left open -- if wrong, a timed eye shows after the cast has ended.
+- VT11 The pull moves the man with `ground_pos` and `p._sync_position()`, a private method inherited from `DummyEnemy`. -- no public
+  per-frame move exists, and `fold()` re-paths -- cost if wrong: a rename breaks the pull; parked (see VT19).
+- VT12 The pull's saved alpha is always 1.0, never read from `modulate.a`, so overlapping casts cannot save a faded value; a man
+  dropped mid-pull (dead, or gone indoors and out again) has it restored. -- fix round 1 of Task 1 -- none.
+- VT13 A held or on-duty soldier is taken at Dread's edge like anyone. -- the spec: he is eaten, not turned; the duty rule of VL67 was
+  about Cloak re-posting him -- if wrong, one skip in the poll, and a soldier is eyed only.
+- VT14 Dread's spared are eyed once (timed), never taken, and use none of the 16. -- VL68 -- none.
+- VT15 Evernight's huddlers and bearers who are spared are left out of `huddle_of()`; they are never taken at the flare. -- the spec's
+  sparing -- if wrong, a believer is lost at the dawn.
+- VT16 Evernight's flare runs only from `_dawn()`; a teardown through `_end_night()` flares nothing and the eyes are released as they
+  were already. -- the spec: "if the mission ends before the dawn, nothing flares" -- none.
+- VT17 Two Evernights at once (one sky): a huddler near both torches is taken once; the second take returns false and nothing breaks.
+  -- review focus 2 -- none.
+- VT18 The shared sky is drawn with the false (blue) island if any sharing cast is level 5. This replaces VL66's shrunken island. -- one
+  uniform serves the whole sky -- cost if wrong: a level-1 night sharing the sky with a level-5 night looks blue (look only; parked).
+- VT19 Parked minors, none functional: Dread's pull calls the private `_sync_position()` and some of its comment lines are long; no
+  regression test for overlapping Dreads' alpha (VT12); the craters recompute their middle and reach on every tick instead of caching
+  them; an Evernight leaver who was eyed stays eyed until the dawn; the flare reuses its seed when the huddle is empty. -- polish only
+  -- cost if wrong: a tiny per-tick cost, or a misleading eye.
+- VT20 The look of the pull, the craters (and their swirl) and the black flare is unseen on a real screen. -- every check was headless;
+  the summary's "For your eye and ear (second round)" asks for it -- cost if wrong: a look the user has to ask to change.
+- VT21 Task 3 (Evernight) began while Task 2's review ran. -- the files are disjoint (evernight against the swallow) and a Task 2 fix
+  would touch only its own files -- cost if wrong: a fix commit lands between Task 3's commits; the reviews used explicit commit ids.
+- VT22 No new sound cue: the pull, the crater's hurt and the flare use no new sound, so `tests/test_sfx_catalog.gd`'s counts are
+  unchanged. -- the spec: a crater's hurt makes no sound the town hears -- if wrong, a cue with CC0 recipes is added and the counts rise.
+
+### Bench
+
+Bench: filled in by the controller.

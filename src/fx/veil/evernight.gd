@@ -927,7 +927,7 @@ class NightWash extends Node2D:
 	var strength := 0.0
 	var front := 0.0
 	var lit: Array = []
-	## The ring's radius (level 5 shrinks it).
+	## The ring's radius (always TORCH_R: the torchlight no longer shrinks).
 	var torch_r := EvernightFx.TORCH_R
 	## The pale moon (a child named "Moon"): drawn in code, freed with the wash.
 	var moon: NightMoon

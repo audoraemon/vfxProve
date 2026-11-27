@@ -5,10 +5,10 @@ capital_sermon_none_2	--scenario=sermon --case=none --seed=2 --city=capital	-610
 capital_sermon_none_3	--scenario=sermon --case=none --seed=3 --city=capital	-866848723
 # capital_sermon_play_1 omitted: seed 1 loses (sermon_over at 300 s with 6 believers of 8); the gate passes on seeds 2 and 3.
 capital_sermon_play_2	--scenario=sermon --case=play --seed=2 --city=capital	-170730719
-capital_sermon_play_3	--scenario=sermon --case=play --seed=3 --city=capital	-640380944
+capital_sermon_play_3	--scenario=sermon --case=play --seed=3 --city=capital	-944613324
 capital_sermon_b_play_1	--scenario=sermon --case=play --route=b --seed=1 --city=capital	-688562961
 capital_sermon_b_play_2	--scenario=sermon --case=play --route=b --seed=2 --city=capital	-886198255
 capital_sermon_b_play_3	--scenario=sermon --case=play --route=b --seed=3 --city=capital	-801176746
-capital_sermon_toll_1	--scenario=sermon --case=toll --seed=1 --city=capital	-220341544
-capital_sermon_toll_2	--scenario=sermon --case=toll --seed=2 --city=capital	-915544191
-capital_sermon_toll_3	--scenario=sermon --case=toll --seed=3 --city=capital	-804258988
+capital_sermon_toll_1	--scenario=sermon --case=toll --seed=1 --city=capital	-701910242
+capital_sermon_toll_2	--scenario=sermon --case=toll --seed=2 --city=capital	-88993626
+capital_sermon_toll_3	--scenario=sermon --case=toll --seed=3 --city=capital	-193716483

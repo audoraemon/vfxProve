@@ -6,6 +6,6 @@ capital_lanterns_none_3	--scenario=lanterns --case=none --seed=3 --city=capital	
 capital_lanterns_b_play_1	--scenario=lanterns --case=play --route=b --board --seed=1 --city=capital	-446875231
 capital_lanterns_b_play_2	--scenario=lanterns --case=play --route=b --board --seed=2 --city=capital	-460769823
 capital_lanterns_b_play_3	--scenario=lanterns --case=play --route=b --board --seed=3 --city=capital	-715346353
-capital_lanterns_toll_1	--scenario=lanterns --case=toll --seed=1 --city=capital	-857781814
-capital_lanterns_toll_2	--scenario=lanterns --case=toll --seed=2 --city=capital	94400673
-capital_lanterns_toll_3	--scenario=lanterns --case=toll --seed=3 --city=capital	-437914364
+capital_lanterns_toll_1	--scenario=lanterns --case=toll --seed=1 --city=capital	993659267
+capital_lanterns_toll_2	--scenario=lanterns --case=toll --seed=2 --city=capital	203148544
+capital_lanterns_toll_3	--scenario=lanterns --case=toll --seed=3 --city=capital	-976736555

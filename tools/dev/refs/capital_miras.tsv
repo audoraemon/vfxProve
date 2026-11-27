@@ -11,4 +11,4 @@ capital_miras_b_play_2	--scenario=miras --case=play --route=b --board --seed=2 -
 capital_miras_b_play_3	--scenario=miras --case=play --route=b --board --seed=3 --city=capital	-784059011
 capital_miras_toll_1	--scenario=miras --case=toll --seed=1 --city=capital	-951681876
 capital_miras_toll_2	--scenario=miras --case=toll --seed=2 --city=capital	-490857700
-capital_miras_toll_3	--scenario=miras --case=toll --seed=3 --city=capital	-276594173
+capital_miras_toll_3	--scenario=miras --case=toll --seed=3 --city=capital	-294682214

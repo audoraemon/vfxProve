@@ -3,9 +3,9 @@
 capital_armoury_none_1	--scenario=armoury --case=none --seed=1 --city=capital	-819971260
 capital_armoury_none_2	--scenario=armoury --case=none --seed=2 --city=capital	-644834565
 capital_armoury_none_3	--scenario=armoury --case=none --seed=3 --city=capital	-383481377
-capital_armoury_play_1	--scenario=armoury --case=play --seed=1 --city=capital	-290938771
-capital_armoury_play_2	--scenario=armoury --case=play --seed=2 --city=capital	667651634
-capital_armoury_play_3	--scenario=armoury --case=play --seed=3 --city=capital	-72753903
+capital_armoury_play_1	--scenario=armoury --case=play --seed=1 --city=capital	-162250658
+capital_armoury_play_2	--scenario=armoury --case=play --seed=2 --city=capital	743658228
+capital_armoury_play_3	--scenario=armoury --case=play --seed=3 --city=capital	-559089312
 capital_armoury_b_play_1	--scenario=armoury --case=play --route=b --seed=1 --city=capital	-677972122
 capital_armoury_b_play_2	--scenario=armoury --case=play --route=b --seed=2 --city=capital	-497049157
 capital_armoury_b_play_3	--scenario=armoury --case=play --route=b --seed=3 --city=capital	601647871

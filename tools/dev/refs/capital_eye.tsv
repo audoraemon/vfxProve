@@ -3,9 +3,9 @@
 capital_eye_none_1	--scenario=eye --case=none --seed=1 --city=capital	-468744026
 capital_eye_none_2	--scenario=eye --case=none --seed=2 --city=capital	-28788275
 capital_eye_none_3	--scenario=eye --case=none --seed=3 --city=capital	-515403350
-capital_eye_play_1	--scenario=eye --case=play --seed=1 --city=capital	-790429725
-capital_eye_play_2	--scenario=eye --case=play --seed=2 --city=capital	-476063681
-capital_eye_play_3	--scenario=eye --case=play --seed=3 --city=capital	-23758252
+capital_eye_play_1	--scenario=eye --case=play --seed=1 --city=capital	-716185774
+capital_eye_play_2	--scenario=eye --case=play --seed=2 --city=capital	-630972586
+capital_eye_play_3	--scenario=eye --case=play --seed=3 --city=capital	-914820620
 capital_eye_b_play_1	--scenario=eye --case=play --route=b --seed=1 --city=capital	-798939885
 capital_eye_b_play_2	--scenario=eye --case=play --route=b --seed=2 --city=capital	-230672758
 capital_eye_b_play_3	--scenario=eye --case=play --route=b --seed=3 --city=capital	-966860711

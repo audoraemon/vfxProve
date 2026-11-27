@@ -3,9 +3,9 @@
 capital_bishop_none_1	--scenario=bishop --case=none --seed=1 --city=capital	-974202749
 capital_bishop_none_2	--scenario=bishop --case=none --seed=2 --city=capital	-640984078
 capital_bishop_none_3	--scenario=bishop --case=none --seed=3 --city=capital	-692431020
-capital_bishop_play_1	--scenario=bishop --case=play --seed=1 --city=capital	-381049616
-capital_bishop_play_2	--scenario=bishop --case=play --seed=2 --city=capital	-629805742
-capital_bishop_play_3	--scenario=bishop --case=play --seed=3 --city=capital	-22128278
+capital_bishop_play_1	--scenario=bishop --case=play --seed=1 --city=capital	-745629845
+capital_bishop_play_2	--scenario=bishop --case=play --seed=2 --city=capital	-280016711
+capital_bishop_play_3	--scenario=bishop --case=play --seed=3 --city=capital	-597081176
 capital_bishop_b_play_1	--scenario=bishop --case=play --route=b --seed=1 --city=capital	387072566
 capital_bishop_b_play_2	--scenario=bishop --case=play --route=b --seed=2 --city=capital	-344940380
 capital_bishop_b_play_3	--scenario=bishop --case=play --route=b --seed=3 --city=capital	-289840582

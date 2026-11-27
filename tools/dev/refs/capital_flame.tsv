@@ -6,9 +6,9 @@ capital_flame_none_3	--scenario=flame --case=none --board --seed=3 --city=capita
 capital_flame_play_1	--scenario=flame --case=play --board --seed=1 --city=capital	-656023540
 capital_flame_play_2	--scenario=flame --case=play --board --seed=2 --city=capital	-687755859
 capital_flame_play_3	--scenario=flame --case=play --board --seed=3 --city=capital	-593022498
-capital_flame_b_play_1	--scenario=flame --case=play --route=b --board --seed=1 --city=capital	-673357717
+capital_flame_b_play_1	--scenario=flame --case=play --route=b --board --seed=1 --city=capital	-303709537
 capital_flame_b_play_2	--scenario=flame --case=play --route=b --board --seed=2 --city=capital	-871883745
-capital_flame_b_play_3	--scenario=flame --case=play --route=b --board --seed=3 --city=capital	-509194791
+capital_flame_b_play_3	--scenario=flame --case=play --route=b --board --seed=3 --city=capital	-513329855
 capital_flame_toll_1	--scenario=flame --case=toll --route=b --board --seed=1 --city=capital	-460497788
 capital_flame_toll_2	--scenario=flame --case=toll --route=b --board --seed=2 --city=capital	-191365524
 capital_flame_toll_3	--scenario=flame --case=toll --route=b --board --seed=3 --city=capital	-55824137

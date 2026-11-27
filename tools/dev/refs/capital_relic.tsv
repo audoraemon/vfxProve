@@ -3,11 +3,11 @@
 capital_relic_none_1	--scenario=relic --case=none --seed=1 --city=capital	-773748826
 capital_relic_none_2	--scenario=relic --case=none --seed=2 --city=capital	-8578631
 capital_relic_none_3	--scenario=relic --case=none --seed=3 --city=capital	-614813950
-capital_relic_play_1	--scenario=relic --case=play --seed=1 --city=capital	-606475645
+capital_relic_play_1	--scenario=relic --case=play --seed=1 --city=capital	-423333764
 capital_relic_play_2	--scenario=relic --case=play --seed=2 --city=capital	-637668488
 capital_relic_play_3	--scenario=relic --case=play --seed=3 --city=capital	-839925542
 capital_relic_b_play_1	--scenario=relic --case=play --route=b --seed=1 --city=capital	-629786558
 capital_relic_b_play_2	--scenario=relic --case=play --route=b --seed=2 --city=capital	-127687744
 capital_relic_b_play_3	--scenario=relic --case=play --route=b --seed=3 --city=capital	-985474587
 capital_relic_toll_1	--scenario=relic --case=toll --seed=1 --city=capital	-761617904
-capital_relic_toll_3	--scenario=relic --case=toll --seed=3 --city=capital	-797945742
+capital_relic_toll_3	--scenario=relic --case=toll --seed=3 --city=capital	-131468994

@@ -3,12 +3,12 @@
 capital_ringers_none_1	--scenario=ringers --case=none --seed=1 --city=capital	-866148970
 capital_ringers_none_2	--scenario=ringers --case=none --seed=2 --city=capital	-495464023
 capital_ringers_none_3	--scenario=ringers --case=none --seed=3 --city=capital	-154065568
-capital_ringers_play_1	--scenario=ringers --case=play --seed=1 --city=capital	-846785270
-capital_ringers_play_2	--scenario=ringers --case=play --seed=2 --city=capital	-706233151
-capital_ringers_play_3	--scenario=ringers --case=play --seed=3 --city=capital	-795676186
+capital_ringers_play_1	--scenario=ringers --case=play --seed=1 --city=capital	-918500727
+capital_ringers_play_2	--scenario=ringers --case=play --seed=2 --city=capital	-262753836
+capital_ringers_play_3	--scenario=ringers --case=play --seed=3 --city=capital	-390594279
 capital_ringers_b_play_1	--scenario=ringers --case=play --route=b --seed=1 --city=capital	-241051043
 capital_ringers_b_play_2	--scenario=ringers --case=play --route=b --seed=2 --city=capital	-737572993
 capital_ringers_b_play_3	--scenario=ringers --case=play --route=b --seed=3 --city=capital	-167214556
-capital_ringers_toll_1	--scenario=ringers --case=toll --seed=1 --city=capital	-539710479
-capital_ringers_toll_2	--scenario=ringers --case=toll --seed=2 --city=capital	-279149939
-capital_ringers_toll_3	--scenario=ringers --case=toll --seed=3 --city=capital	-866423275
+capital_ringers_toll_1	--scenario=ringers --case=toll --seed=1 --city=capital	-64840195
+capital_ringers_toll_2	--scenario=ringers --case=toll --seed=2 --city=capital	-26252092
+capital_ringers_toll_3	--scenario=ringers --case=toll --seed=3 --city=capital	-429305689

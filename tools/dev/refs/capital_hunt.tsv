@@ -3,9 +3,9 @@
 capital_hunt_none_1	--scenario=hunt --case=none --seed=1 --city=capital	-911742270
 capital_hunt_none_2	--scenario=hunt --case=none --seed=2 --city=capital	-110793029
 capital_hunt_none_3	--scenario=hunt --case=none --seed=3 --city=capital	-60004137
-capital_hunt_play_1	--scenario=hunt --case=play --seed=1 --city=capital	-743151770
-capital_hunt_play_2	--scenario=hunt --case=play --seed=2 --city=capital	-125102505
-capital_hunt_play_3	--scenario=hunt --case=play --seed=3 --city=capital	-310302309
+capital_hunt_play_1	--scenario=hunt --case=play --seed=1 --city=capital	-542059619
+capital_hunt_play_2	--scenario=hunt --case=play --seed=2 --city=capital	-514925350
+capital_hunt_play_3	--scenario=hunt --case=play --seed=3 --city=capital	-389287172
 capital_hunt_b_play_1	--scenario=hunt --case=play --route=b --seed=1 --city=capital	-994296346
 capital_hunt_b_play_2	--scenario=hunt --case=play --route=b --seed=2 --city=capital	-539646482
 capital_hunt_b_play_3	--scenario=hunt --case=play --route=b --seed=3 --city=capital	-132317291

@@ -3,9 +3,9 @@
 capital_procession_none_1	--scenario=feast --board --path=procession --case=none --seed=1 --city=capital	-227081243
 capital_procession_none_2	--scenario=feast --board --path=procession --case=none --seed=2 --city=capital	-87134769
 capital_procession_none_3	--scenario=feast --board --path=procession --case=none --seed=3 --city=capital	-165468968
-capital_procession_play_1	--scenario=feast --board --path=procession --case=play --seed=1 --city=capital	-150262907
-capital_procession_play_2	--scenario=feast --board --path=procession --case=play --seed=2 --city=capital	-961819959
-capital_procession_play_3	--scenario=feast --board --path=procession --case=play --seed=3 --city=capital	-821921809
+capital_procession_play_1	--scenario=feast --board --path=procession --case=play --seed=1 --city=capital	-464977522
+capital_procession_play_2	--scenario=feast --board --path=procession --case=play --seed=2 --city=capital	-348633193
+capital_procession_play_3	--scenario=feast --board --path=procession --case=play --seed=3 --city=capital	-346673767
 capital_procession_b_play_1	--scenario=feast --board --path=procession --case=play --route=b --seed=1 --city=capital	-752306703
 capital_procession_b_play_2	--scenario=feast --board --path=procession --case=play --route=b --seed=2 --city=capital	-231753480
 capital_procession_b_play_3	--scenario=feast --board --path=procession --case=play --route=b --seed=3 --city=capital	-135745555

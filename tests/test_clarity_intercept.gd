@@ -177,46 +177,119 @@ static func _star_up(s: Dictionary, i: int, stared: bool) -> WarningDirector:
 	return d.stars[i]
 
 
+## The people walk too (the kit leaves them standing): a led man must walk out of the walls to be stopped.
+static func _walk(s: Dictionary, seconds: float) -> void:
+	for i in roundi(seconds / Kit.DT):
+		(s.crowd as Crowd).advance(Kit.DT)
+		(s.crowd as Crowd).step_people(Kit.DT)
+		(s.rules as Rules).advance(Kit.DT)
+
+
+## A Herald night's board Warning, the bell tower blighted: every watchman holds his post, and the phase is "broken".
+static func _broken_world() -> Dictionary:
+	var s := ClarityKit.world(TierBook.board("warning"))
+	(s.rules as Rules).lantern = LanternWatch.new().setup(s.rules, s.crowd, s.town, null, LanternWatch.KIND_HERALD)
+	_star_up(s, 0, true)
+	(s.env as EnvironmentField).blight((s.crowd as Crowd).bell.tower)
+	_run(s, 0.5)
+	return s
+
+
+## The four verbs the plate names at a post (posts and broken: kill, banish, lead, confuse), each by a real cast on a watchman at his post;
+## `make` returns a world with every watchman at his post, in phase `phase`.
+static func _post_verbs(t, phase: String, make: Callable) -> void:
+	var s: Dictionary = make.call()
+	var d: StarfallDirector = s.d
+	t.check(d.hint_phase() == phase, "starfall: the %s phase (%s)" % [phase, d.hint_phase()])
+	_colours(t, s, ["warning"])
+	ClarityKit.assert_read_only(t, s, "starfall " + phase)
+	var w := d.stars[1]
+	var m := w.messenger
+	t.check(w.at_post() and m == w.watchman, "starfall %s: the Main Gate's watchman holds his post" % phase)
+	_isolate(s, m.ground_pos, [m])
+	ClarityKit.apply(s, "kill", m)
+	_run(s, 0.3)
+	_proved(t, w.warning_dead and w.stopped_how == "kill", "starfall %s: killed unseen at his post, the warning stops" % phase, ["warning"], [phase], "kill")
+	ClarityKit.done(s)
+	s = make.call()
+	d = s.d
+	w = d.stars[1]
+	ClarityKit.apply(s, "banish", w.messenger)
+	_run(s, 0.2)
+	_proved(t, w.warning_dead and w.stopped_how == "out", "starfall %s: set down outside the walls, it stops" % phase, ["warning"], [phase], "banish")
+	ClarityKit.done(s)
+	# lead: a whisper out of the walls, walked; the Main Gate's watchman by his road, the Postern's by its key (K2).
+	for i in [1, 0]:
+		s = make.call()
+		d = s.d
+		w = d.stars[i]
+		s["to"] = ClarityKit.outside_point(w.gate_spot)
+		ClarityKit.apply(s, "lead", w.messenger)
+		var took: bool = s.took
+		_walk(s, 8.0)
+		_proved(t, took and w.warning_dead and w.stopped_how == "out", "starfall %s: whispered out of the walls (%s), post %d, it stops (%s)" % [phase, took, i, w.stopped_how],
+			["warning"], [phase], "lead")
+		ClarityKit.done(s)
+	s = make.call()
+	d = s.d
+	w = d.stars[2]
+	ClarityKit.apply(s, "confuse", w.messenger)
+	_run(s, 0.3)
+	_proved(t, w.warning_dead and w.stopped_how == "dreamt" and d.report().dreamt == 1, "starfall %s: confused at his post, he dreams it (%s)" % [phase, w.stopped_how],
+		["warning"], [phase], "confuse")
+	ClarityKit.done(s)
+
+
 static func _starfall(t) -> void:
-	# stars (the stare) and running: kill unseen, banish, calm.
-	for stare in [true, false]:
-		var phase := "stars" if stare else "running"
-		var s := _star_world(0, stare)
-		var d: StarfallDirector = s.d
-		var w := d.stars[0]
-		t.check(d.hint_phase() == phase, "starfall: the %s phase (%s)" % [phase, d.hint_phase()])
-		_colours(t, s, ["warning"])
-		if stare:
-			ClarityKit.assert_read_only(t, s, "starfall")
-		var m := w.messenger
-		_isolate(s, m.ground_pos, [m])
-		ClarityKit.apply(s, "kill", m)
-		_run(s, 0.3)
-		_proved(t, w.warning_dead and w.stopped_how == "kill", "starfall %s: killed unseen, the warning stops" % phase, ["warning"], [phase], "kill")
-		ClarityKit.done(s)
-		s = _star_world(0, stare)
-		d = s.d
-		w = d.stars[0]
-		m = w.messenger
-		ClarityKit.apply(s, "banish", m)
-		_run(s, 0.2)
-		_proved(t, w.warning_dead and w.stopped_how == "out", "starfall %s: set down outside the walls, it stops" % phase, ["warning"], [phase],
-			"banish")
-		ClarityKit.done(s)
-		s = _star_world(0, stare)
-		d = s.d
-		w = d.stars[0]
-		m = w.messenger
-		ClarityKit.apply(s, "calm", m)
-		var keeper: Person = (s.crowd as Crowd).bell.keeper
-		m.ground_pos = keeper.ground_pos + Vector2(0.3, 0.0)
-		_run(s, 5.0 if stare else 0.7)
-		_proved(t, w.warning_dead and w.stopped_how == "lie", "starfall %s: told while the bell lies, he is sent home" % phase, ["warning"], [phase],
-			"calm")
-		ClarityKit.done(s)
-	# The why-not: a fright, Discord, a whisper or a lure on the carrier only stops him; it is true. (The Main Gate's: the Postern's watchman
-	# holds the postern's key, and a fright takes him out through it.)
-	for verb in ["scare", "confuse", "lead", "lure"]:
+	# posts: every watchman at his post. broken: the same, the bell tower blighted.
+	_post_verbs(t, "posts", func() -> Dictionary: return _star_world(0, true))
+	_post_verbs(t, "broken", _broken_world)
+	# running: a watchman set off: kill unseen, banish, lead out of the walls.
+	var s := _star_world(0, false)
+	var d: StarfallDirector = s.d
+	var w := d.stars[0]
+	t.check(d.hint_phase() == "running", "starfall: the running phase (%s)" % d.hint_phase())
+	_colours(t, s, ["warning"])
+	ClarityKit.assert_read_only(t, s, "starfall running")
+	var m := w.messenger
+	_isolate(s, m.ground_pos, [m])
+	ClarityKit.apply(s, "kill", m)
+	_run(s, 0.3)
+	_proved(t, w.warning_dead and w.stopped_how == "kill", "starfall running: killed unseen, the warning stops", ["warning"], ["running"], "kill")
+	ClarityKit.done(s)
+	s = _star_world(0, false)
+	w = (s.d as StarfallDirector).stars[0]
+	ClarityKit.apply(s, "banish", w.messenger)
+	_run(s, 0.2)
+	_proved(t, w.warning_dead and w.stopped_how == "out", "starfall running: set down outside the walls, it stops", ["warning"], ["running"], "banish")
+	ClarityKit.done(s)
+	s = _star_world(1, false)
+	w = (s.d as StarfallDirector).stars[1]
+	s["to"] = ClarityKit.outside_point(w.messenger.ground_pos)
+	ClarityKit.apply(s, "lead", w.messenger)
+	var took: bool = s.took
+	_walk(s, 10.0)
+	_proved(t, took and w.warning_dead and w.stopped_how == "out", "starfall running: whispered out of the walls (%s), it stops (%s)" % [took, w.stopped_how], ["warning"], ["running"], "lead")
+	ClarityKit.done(s)
+	_why_not_rows(t)
+
+
+## Spec 7, one case each: what a cast on a watchman at his post, on a carrier, or on the tower says; every cast through Rules.cast().
+static func _why_not_rows(t) -> void:
+	# A watchman at his post: a kill, a banish, a lead out, a confuse (he dreams it), a calm: nothing. A seal holds no one there: nothing.
+	var s := _star_world(0, true)
+	var d: StarfallDirector = s.d
+	var m := d.stars[1].messenger
+	_isolate(s, m.ground_pos, [m])
+	var at := m.ground_pos
+	for key: String in ["doom", "skylift", "discord", "belllies", "noleave"]:
+		t.check(d.why_not(key, at) == "", "why_not at his post: %s says nothing (%s)" % [key, d.why_not(key, at)])
+	s["to"] = ClarityKit.outside_point(d.stars[1].gate_spot)
+	ClarityKit.apply(s, "lead", m)
+	t.check(d.why_not("whisper", s.at) == "", "why_not at his post: a whisper out of the walls says nothing")
+	ClarityKit.done(s)
+	# A watchman who has set off (the Main Gate's): the rest only stop him.
+	for verb in ["scare", "confuse", "lead", "lure", "seal"]:
 		var s3 := _star_world(1, false)
 		var w3 := (s3.d as StarfallDirector).stars[1]
 		var m3 := w3.messenger
@@ -225,23 +298,42 @@ static func _starfall(t) -> void:
 		_run(s3, 0.5)
 		t.check(not w3.warning_dead and w3.messenger == m3, "starfall: the %s stops him, but he keeps the warning" % verb)
 		ClarityKit.done(s3)
+	# The postern's watchman holds its key: a fright may take him out through it.
 	var s4 := _star_world(0, false)
 	var m4 := (s4.d as StarfallDirector).stars[0].messenger
 	t.check((s4.d as StarfallDirector).stars[0].key_door() != Vector2.INF, "starfall: the postern's watchman holds its key")
 	t.check(s4.d.why_not("smite", m4.ground_pos + Vector2(1.1, 0.0)) == "", "starfall: a fright on the postern's watchman may take him out: nothing")
 	ClarityKit.done(s4)
+	# A kill, a calm and a banish on a carrier say nothing; a Smite far away says nothing.
 	var s2 := _star_world(1, false)
 	var d2: StarfallDirector = s2.d
 	var m2 := d2.stars[1].messenger
 	_isolate(s2, m2.ground_pos, [m2])
-	# What counts says nothing: a kill in reach, a calm, a banish where the walls stop it.
 	var at2 := m2.ground_pos
 	t.check(d2.why_not("doom", at2) == "" and d2.why_not("belllies", at2) == "" and d2.why_not("skylift", at2) == "",
 		"starfall: a kill, a calm and a banish on the carrier say nothing")
 	t.check(d2.why_not("smite", at2) == "", "starfall: a Smite on him kills him: nothing")
 	t.check(d2.why_not("smite", at2 + Vector2(Crowd._cast_radius("smite") + MissionDirector.WHY_MARGIN + 2.0, 0.0)) == "",
 		"starfall: a Smite far away says nothing")
+	t.check(d2.why_not("breath", at2) == "", "starfall: the breath on a carrier kills him: nothing (the seal is held back beside it)")
 	ClarityKit.done(s2)
+	# Blight on the tower, the three rot banners (a Herald night): TIME, SOONER (a carrier nearer the door), TOLLED.
+	for case: Array in [["time", WarningDirector.BELL_TIME], ["sooner", WarningDirector.BELL_SOONER], ["tolled", WarningDirector.BELL_TOLLED]]:
+		var s5 := ClarityKit.world(TierBook.board("warning"))
+		var lw := LanternWatch.new().setup(s5.rules, s5.crowd, s5.town, null, LanternWatch.KIND_HERALD)
+		(s5.rules as Rules).lantern = lw
+		_star_up(s5, 0, true)
+		var d5: StarfallDirector = s5.d
+		if case[0] == "sooner":
+			d5.stars[0].set_off()
+			_run(s5, 0.3)
+			Kit.arrive(d5.stars[0].messenger, d5.stars[0].lantern_door() + Vector2(0.0, 1.0))
+		if case[0] == "tolled":
+			lw.tolled = true
+		var tower: Structure = (s5.crowd as Crowd).bell.tower
+		ClarityKit.assert_read_only(t, s5, "starfall rot " + String(case[0]))
+		_says_verb(t, s5, "rot", tower, case[1], "starfall rot " + String(case[0]))
+		ClarityKit.done(s5)
 
 
 ## Review focus 3: two warnings out at once; a cast that stops one says nothing though it frightens the other.

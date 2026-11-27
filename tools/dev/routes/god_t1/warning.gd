@@ -1,8 +1,9 @@
 extends RefCounted
 ## The scripted player's per-type policies for The Warning (god T1R, spec 4.2 and 9): one act_<type>(bc, ctx) for each god type, playing only that
 ## type's two Tier 1 powers (GodTree.keys_for(type, 1)); behaviour_check --god=<type>:1 plays them through _scripted(). `bc` is the behaviour_check
-## script, ctx = {rules, slots, d (the director), crowd, memo, mission} as for tier1_b.gd. Each iterates StarfallDirector.stars as tier1_b's
-## act_warning does, and works the warning whose carrier is on the road (the stare counts: the watchman is the carrier already).
+## script, ctx = {rules, slots, d (the director), crowd, memo, mission} as for tier1_b.gd. The board's Warning (the Warning rework, spec 12): three watchmen
+## hold three quiet posts and set off at 20, 40 and 60 s, so each policy first works the watchmen still AT THEIR POSTS, the soonest set-off first
+## (_posted(): what the tags' countdowns tell a player), and then, for a watchman who has set off (a runner), the policy it always had.
 
 const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
 
@@ -41,14 +42,15 @@ const WHISPER_REACH := MindWhisperFx.REACH - 0.5
 const HOP := 8.0
 
 
-## Every warning that has a carrier to work: set up, not stopped, its carrier alive and out of doors and not yet out of the walls.
-static func _carriers(ctx: Dictionary) -> Array[WarningDirector]:
+## Every warning that has a carrier to work: set up, not stopped, its carrier alive and out of doors and not yet out of the walls. `posted` picks the
+## watchmen still at their posts (before their set-off); else the runners (set off, and any relay).
+static func _carriers(ctx: Dictionary, posted := false) -> Array[WarningDirector]:
 	var out: Array[WarningDirector] = []
 	var d := ctx.d as StarfallDirector
 	if d == null:
 		return out
 	for w: WarningDirector in d.stars:
-		if w.rules == null or w.warning_dead or w.phase == WarningDirector.Phase.OVER:
+		if w.rules == null or w.warning_dead or w.phase == WarningDirector.Phase.OVER or w.at_post() != posted:
 			continue
 		var m := w.messenger
 		if not WarningDirector._alive(m) or m.inside or Walls.outside(m.ground_pos):
@@ -122,9 +124,22 @@ static func _tower() -> Vector2:
 	return City.current().landmark(&"bell_tower").get_center()
 
 
-## One look for every type but those that hold the carrier: the first warning a move serves.
-static func _each(ctx: Dictionary, move: Callable) -> String:
-	for w in _carriers(ctx):
+## The watchmen still at their posts, the soonest set-off first: [{"w": the warning, "i": its star, "eta": mission seconds until he sets off}].
+static func _posted(ctx: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var d := ctx.d as StarfallDirector
+	if d == null:
+		return out
+	for w: WarningDirector in _carriers(ctx, true):
+		var i := d.stars.find(w)
+		out.append({"w": w, "i": i, "eta": d.sets_off_in(i)})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.eta) < float(b.eta))
+	return out
+
+
+## One look for every type but those that hold the carrier: the first warning a move serves. `posted` works the watchmen at their posts, else the runners.
+static func _each(ctx: Dictionary, move: Callable, posted := false) -> String:
+	for w in _carriers(ctx, posted):
 		var did := String(move.call(w))
 		if did != "":
 			return "%s [%s, phase %d]" % [did, w.post_name.to_lower(), w.phase]
@@ -139,17 +154,16 @@ static func _each(ctx: Dictionary, move: Callable) -> String:
 static func act_ruin(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var crowd: Crowd = ctx.crowd
+	# A watchman at his post stands still in his quiet ring: the bolt falls on him where he stands when nobody is near to see (the fright it throws
+	# reaches past the ring and frightens nobody into it), the soonest set-off first.
+	if bc._slot_ready(rules, ctx.slots, "smite"):
+		for row: Dictionary in _posted(ctx):
+			var at: Vector2 = (row.w as WarningDirector).messenger.ground_pos
+			if _seers(crowd, at, UNSEEN + MOVE_ROOM, (row.w as WarningDirector).messenger) == 0:
+				rules.cast(ctx.slots.smite, at)
+				return "smite the watchman at his post (%s, sets off in %.0f s)" % [(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
-		# W3: while the watchman stares at his star, a bolt on a man standing just outside his gate draws him out to the body (the postern's watchman
-		# through his barred postern, with its key); the man struck stands clear of the watchman, so the blow's fright does not reach him.
-		var gkey := "gate_smite_%d" % w.get_instance_id()
-		if w.phase == WarningDirector.Phase.STARE and m == w.watchman and bc._slot_ready(rules, ctx.slots, "smite") and not ctx.memo.has(gkey):
-			var man := _outside_man(crowd, w.gate_spot, m, SmiteFx.KILL_R + Person.THREAT_MARGIN + SMITE_CLEAR)
-			if man != null:
-				ctx.memo[gkey] = true
-				rules.cast(ctx.slots.smite, man.ground_pos)
-				return "smite the man outside the gate (%.1f, %.1f): the watchman goes out to him" % [man.ground_pos.x, man.ground_pos.y]
 		# At a gate whose way out is a few steps off, the bolt falls behind him on the side away from it: he bolts from it, out through the gate. The
 		# postern's watchman holds its key (W3), so his barred postern is a way out a step off; the fright waits for the star (the key turns only then).
 		var door := w.key_door()
@@ -266,75 +280,38 @@ static func _cluster_aim(crowd: Crowd, m: Person, radius: float, reach: float, m
 
 # --- Death: Death Mark, Raise the Dead ---
 
-## The gate mark (W3): Death Mark a man standing just outside the next star's gate -- a guard at his post outside it, who keeps still -- timed so he falls
-## MARK_LANDS seconds into the watchman's stare: the body draws the watchman out to it (the postern's goes through his barred postern with its key), and
-## the walls stop the warning. Only once the star's time is known (the warning before it stopped). When no gate mark is up for a carrier: Death Mark on
-## him. Raise the Dead has no work on this night: the gate marks stop every star before its carrier runs.
+## Death Mark on the watchman at his post with the soonest set-off that leaves the mark its MARK_TIME (and a hand's breadth) to fall in: the mark falls
+## on him where he stands, ten seconds on, before he sets off. When the soonest is too near his set-off, a later watchman is marked; else the policy works a
+## runner: Raise the Dead on a body near him (its zombies hunt, a bite kills), or Death Mark on him.
 static func act_death(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
+	var crowd: Crowd = ctx.crowd
 	if bc._slot_ready(rules, ctx.slots, "deathmark"):
-		var marked := _gate_mark(ctx)
-		if marked != "":
-			return marked
+		for row: Dictionary in _posted(ctx):
+			var m: Person = (row.w as WarningDirector).messenger
+			if m.statuses.has(&"frail") or float(row.eta) < DeathMarkFx.MARK_TIME + MARK_SLACK:
+				continue
+			rules.cast(ctx.slots.deathmark, m.ground_pos)
+			return "deathmark the watchman at his post (%s, sets off in %.0f s)" % [(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
-		if m.statuses.has(&"frail") or _mark_pending(ctx, w):
+		if m.statuses.has(&"frail"):
 			return ""
+		if bc._slot_ready(rules, ctx.slots, "raise"):
+			var body := GodT1.body_near(crowd, m.ground_pos, RAISE_NEAR)
+			if body != Vector2.INF:
+				rules.cast(ctx.slots.raise, body)
+				return "raise the dead beside the carrier"
 		if bc._slot_ready(rules, ctx.slots, "deathmark"):
 			rules.cast(ctx.slots.deathmark, m.ground_pos)
 			return "deathmark the carrier"
 		return "")
 
 
-## The gate mark falls this many seconds into the star's four-second stare (WarningDirector.STARE): time for the watchman to go out before he would run.
-const MARK_LANDS := 1.5
-## How far past the wall's ring a guard's post must lie for the gate mark: as far as a soldier shifts about his post.
-const POST_OUT := Person.POST_SPREAD
-## A man for the gate mark stands within this of the gate's post: inside W3's reach (WarningDirector.GATE_SIGHT) with room for him to shift on his post.
-const MARK_NEAR := WarningDirector.GATE_SIGHT - 0.3
-
-
-## Death Mark for the next star still to fall, cast DeathMarkFx.MARK_TIME - MARK_LANDS seconds before it: what was cast, or "".
-## (The Warning rework, T3: the stars no longer fall one after another -- one star falls over the town and each watchman sets off at his time -- so this old
-## policy has nothing to time; T7 writes the new policies.)
-static func _gate_mark(_ctx: Dictionary) -> String:
-	return ""
-
-
-## A guard standing at his post out of the walls within MARK_NEAR of `post` (a soldier at his post keeps still, and no citizen who might walk in and be
-## made the next watchman), the nearest the post; null for none. With `clear`, only one at least that far from `m` (a blow's fright must not reach the
-## watchman it is meant to draw out).
-static func _outside_man(crowd: Crowd, post: Vector2, m: Person = null, clear := 0.0) -> Person:
-	return outside_guard(crowd, post, m.ground_pos if m != null else Vector2.INF, clear)
-
-
-## The guard _outside_man() picks for the post `post`, clear by `clear` of the point `away` (INF for none). Public for the test that pins the board town's
-## gate guards (D29: tests/test_starfall.gd _gate_guards).
-static func outside_guard(crowd: Crowd, post: Vector2, away := Vector2.INF, clear := 0.0) -> Person:
-	var best: Person = null
-	var best_d := INF
-	for p in crowd.soldiers:
-		# Judged by his post (he shifts about it): a post past the wall's ring by POST_OUT (how far he shifts about it), so he cannot shift back inside it before he falls.
-		if not is_instance_valid(p) or not p.is_alive() or p.inside or p.mind != Person.Mind.POST or p.hurrying or p.statuses.has(&"frail") \
-				or City.current().town().grow(POST_OUT).has_point(p.anchor) or City.current().town().has_point(p.ground_pos):
-			continue
-		var dist := maxf(p.ground_pos.distance_to(post), p.anchor.distance_to(post))
-		if dist > MARK_NEAR or (away != Vector2.INF and p.ground_pos.distance_to(away) < clear):
-			continue
-		if dist < best_d:
-			best = p
-			best_d = dist
-	return best
-
-
-## A gate mark is up for this star: its man is marked and not yet fallen, or its watchman is on his way out to the body (W3).
-static func _mark_pending(ctx: Dictionary, w: WarningDirector) -> bool:
-	if w._drawn_to != Vector2.INF:
-		return true
-	var d := ctx.d as StarfallDirector
-	var i := d.stars.find(w)
-	var guard: Variant = ctx.memo.get("gate_mark_%d" % i, null)
-	return w.phase in [WarningDirector.Phase.OMEN, WarningDirector.Phase.STARE] and is_instance_valid(guard) and (guard as Person).is_alive() and (guard as Person).statuses.has(&"frail")
+## The mark must have this much more than MARK_TIME before his set-off.
+const MARK_SLACK := 0.5
+## A body this near a runner is worth a Raise the Dead (it takes bodies within 3).
+const RAISE_NEAR := 2.5
 
 
 # --- Veil: Silent Doom, Blight ---
@@ -347,6 +324,13 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 	var crowd: Crowd = ctx.crowd
 	if not bc._slot_ready(rules, ctx.slots, "doom"):
 		return ""
+	# A watchman at his post, the soonest set-off first: Silent Doom where he stands when the cluster aim is clean, else wait until it is.
+	for row: Dictionary in _posted(ctx):
+		var pm: Person = (row.w as WarningDirector).messenger
+		var at := _cluster_aim(crowd, pm, SilentDoom.RADIUS, SilentDoom.RADIUS - 0.1, CLUSTER_MARGIN)
+		if at != Vector2.INF:
+			rules.cast(ctx.slots.doom, at)
+			return "doom the watchman at his post (%s, sets off in %.0f s)" % [(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
 		var aim := _cluster_aim(crowd, m, SilentDoom.RADIUS, SilentDoom.RADIUS - 0.1, CLUSTER_MARGIN)
@@ -362,11 +346,36 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 
 # --- Dominion: Mind Whisper, Discord ---
 
+## A watchman is left for Discord only when it is ready this many seconds before his set-off.
+const DISCORD_SLACK := 2.0
+
 ## Mind Whisper sends him through his gate to ground outside the walls within its reach (the nearest by his walk); Discord holds him while the whisper
 ## cools or he is shaking one off.
 static func act_dominion(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var crowd: Crowd = ctx.crowd
+	# A watchman at his post, the soonest set-off first (W-R7): Discord on him when it is ready (he dreams he saw the star, and the warning stops).
+	# One that Discord will not be ready for before he sets off is led out instead: the whisper takes him through his gate to ground beyond the walls
+	# (the postern's by its key, K2) where W1 stops him. A watchman Discord will reach in time waits for it.
+	var posted := _posted(ctx)
+	if bc._slot_ready(rules, ctx.slots, "discord"):
+		for row: Dictionary in posted:
+			var pm: Person = (row.w as WarningDirector).messenger
+			if pm.mind != Person.Mind.CONFUSED:
+				rules.cast(ctx.slots.discord, pm.ground_pos)
+				return "discord the watchman at his post, he will think he dreamt it (%s, sets off in %.0f s)" % [(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
+	if bc._slot_ready(rules, ctx.slots, "whisper"):
+		var cools := float(bc._slot_wait(rules, ctx.slots, "discord"))
+		for row: Dictionary in posted:
+			var pm: Person = (row.w as WarningDirector).messenger
+			if pm.shaken() or (pm.mind == Person.Mind.WHISPERED and pm.has_goal()) or float(row.eta) - DISCORD_SLACK > cools:
+				continue  # he is led already, or Discord will be ready for him in time
+			var spot := _out_spot(bc, crowd, pm)
+			if spot != Vector2.INF:
+				var to := _hop(crowd, pm, spot)
+				rules.cast(ctx.slots.whisper, pm.ground_pos, {"target": pm, "to": to})
+				return "whisper the watchman at his post %s (%.1f, %.1f) (%s, sets off in %.0f s)" % ["out to" if to == spot else "a hop towards the gate:", to.x, to.y,
+					(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
 		if m.mind == Person.Mind.WHISPERED and m.has_goal():
@@ -418,6 +427,14 @@ static func _out_spot(bc, crowd: Crowd, m: Person) -> Vector2:
 static func act_passage(bc, ctx: Dictionary) -> String:
 	var rules: Rules = ctx.rules
 	var crowd: Crowd = ctx.crowd
+	# A watchman at his post, the soonest set-off first: the lift (its beam takes only him: the quiet ring is wider than its reach) sets him down beyond the wall.
+	if bc._slot_ready(rules, ctx.slots, "skylift"):
+		for row: Dictionary in _posted(ctx):
+			var pm: Person = (row.w as WarningDirector).messenger
+			var out := _beyond(bc, crowd, pm.ground_pos)
+			if out != Vector2.INF:
+				rules.cast(ctx.slots.skylift, pm.ground_pos, {"to": out})
+				return "skylift the watchman at his post out (%s, sets off in %.0f s)" % [(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
 		if bc._slot_ready(rules, ctx.slots, "skylift"):
@@ -472,6 +489,13 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 	var follow := GodT1.amber_breath(bc, ctx)
 	if follow != "" or GodT1.amber_pending(ctx):
 		return follow
+	# A watchman at his post (W-R10), the soonest set-off first: Leaving Is Prohibited, then Breathing Is Prohibited on him (breath alone never kills a
+	# standing man: he walks out of its circle). Three Might each, and the breath ready by the time the cell seals; he holds still, so the cell is laid on him.
+	if rules.might == null or rules.might.can_pay(DECREE_MIGHT):
+		for row: Dictionary in _posted(ctx):
+			var pm: Person = (row.w as WarningDirector).messenger
+			if GodT1.cast_amber(bc, ctx, pm.ground_pos, [pm]):
+				return "leaving is prohibited round the watchman at his post (%s, sets off in %.0f s): the breath follows" % [(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
 		var door := w.key_door()
@@ -493,6 +517,10 @@ static func act_decree(bc, ctx: Dictionary) -> String:
 		if GodT1.cast_amber(bc, ctx, aim.at, [m]):
 			return "leaving is prohibited round the carrier (%d others held, %d of them by him): the breath follows" % [int(aim.others), int(aim.doomed)]
 		return "")
+
+
+## The Might both of Decree's laws cost together (Leaving Is Prohibited 1, Breathing Is Prohibited 2).
+const DECREE_MIGHT := 3
 
 
 ## `w` is the last warning of the night: every other star's warning is stopped.
@@ -541,5 +569,5 @@ static func state(_bc, ctx: Dictionary) -> String:
 		return ""
 	var r := d.report()
 	var crowd: Crowd = ctx.crowd
-	return "stopped=%d relays=%d out=%d lies=%d alarm=%d bell=%s" % [d.stopped(), int(r.relays), int(r.out), int(r.lies), roundi(crowd.alarm),
+	return "stopped=%d relays=%d out=%d lies=%d dreamt=%d alarm=%d bell=%s" % [d.stopped(), int(r.relays), int(r.out), int(r.lies), int(r.dreamt), roundi(crowd.alarm),
 		BellNetwork.State.keys()[crowd.bell.state] if crowd.bell != null else "none"]

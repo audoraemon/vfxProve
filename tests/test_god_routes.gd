@@ -16,6 +16,15 @@ class FakeBc:
 	func _slot_ready(rules: Rules, slots: Dictionary, key: String) -> bool:
 		return slots.has(key) and rules.refusal(int(slots[key])) == ""
 
+	func _walk_len(crowd: Crowd, from: Vector2, to: Vector2) -> float:
+		var path := crowd._grid.path(from, to)
+		var n := 0.0
+		var at := from
+		for q in path:
+			n += at.distance_to(q)
+			at = q
+		return n if not path.is_empty() else INF
+
 	func _slot_wait(rules: Rules, slots: Dictionary, key: String) -> float:
 		return rules.cooldown_left(int(slots[key])) if slots.has(key) else INF
 
@@ -29,6 +38,7 @@ static func run(t) -> void:
 	_road_ahead(t)
 	_plague_aim(t)
 	_casts(t)
+	_warning_first_casts(t)
 	_fill_idle(t)
 
 
@@ -209,6 +219,80 @@ static func _casts(t) -> void:
 	t.check(not GodT1.cast_amber(bc, ctx, p.ground_pos, [p]) and calls.size() == 3, "and no cell again while the two cool")
 	cell.free()
 	_done(s)
+
+
+## The Warning rework (T7, spec 12): in the board's world, each type's policy at 0:01 casts at a watchman standing at his post, and only with its own two powers.
+static func _warning_first_casts(t) -> void:
+	for type: String in GodTree.RING:
+		var s := _board_world(GodT1.loadout(type), 3)
+		var d: StarfallDirector = s.d
+		var rules: Rules = s.rules
+		for k in 24:
+			_board_step(s)
+		t.check(d.posts_held().size() == 3 and d._clock >= 1.0, "%s: at 0:01 the three watchmen hold their posts" % type)
+		var calls: Array = s.calls
+		var did := GodT1.act("warning", type, FakeBc.new(), {"rules": rules, "slots": s.slots, "d": d, "crowd": s.crowd, "memo": {}, "mission": null})
+		t.check(did != "" and not GodT1.is_fill(did) and calls.size() >= 1, "%s: the policy's first look casts (%s)" % [type, did])
+		var aimed := false
+		for c: Dictionary in calls:
+			for i in d.stars.size():
+				var m: Person = d.stars[i].watchman
+				var target: Variant = (c.extra as Dictionary).get("target", null)
+				aimed = aimed or (c.at as Vector2).distance_to(m.ground_pos) <= 1.0 or target == m
+		t.check(aimed, "%s: the cast is aimed at a watchman at his post" % type)
+		_board_done(s)
+
+
+## The board Warning's world (as tests/test_warning_quiet.gd builds it), casting through a recorder.
+static func _board_world(loadout: PackedStringArray, seed_value: int) -> Dictionary:
+	var def := TierBook.board("warning")
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = TownLayout.MAP
+	var node := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, node, seed_value)
+	crowd.profile = def.response_profile(ResponseProfile.DEFAULT)
+	crowd.spawn()
+	var rules := Rules.new().setup(loadout, null, env, field, crowd, town, def)
+	var calls: Array = []
+	var cells: Array[FxTimeline] = []
+	rules.caster = func(sc: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
+		calls.append({"at": g, "extra": e})
+		if sc == NoLeaveFx:
+			var fx := NoLeaveFx.new()
+			fx.origin = g
+			cells.append(fx)
+			return fx
+		return null
+	var director := def.make_director()
+	var descent := Descent.new().setup(def, Descent.seed_for(seed_value, "warning"))
+	descent.reserve(rules, director)
+	director.setup(rules, crowd, town, null)
+	rules.director = director
+	var kept: Array = director.reserved.duplicate()
+	NightRules.apply(crowd, Town.Look.DAY, kept, seed_value, director)
+	var slots := {}
+	for i in loadout.size():
+		slots[loadout[i]] = i
+	return {"env": env, "town": town, "field": field, "world": node, "crowd": crowd, "rules": rules, "d": director, "descent": descent, "calls": calls, "cells": cells, "slots": slots}
+
+
+static func _board_step(s: Dictionary) -> void:
+	Person.frame_no += 1
+	(s.crowd as Crowd).advance(0.05)
+	(s.crowd as Crowd).step_people(0.05)
+	(s.rules as Rules).advance(0.05)
+
+
+static func _board_done(s: Dictionary) -> void:
+	for fx: FxTimeline in s.cells:
+		if is_instance_valid(fx):
+			fx.free()
+	preload("res://tests/clarity_kit.gd").done(s)
 
 
 ## D38 (final review I1): the gate's idle is the real wait. A filler cast ("fill: ..."), made only so the scripted player is not idle, is printed

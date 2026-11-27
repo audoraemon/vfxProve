@@ -3453,7 +3453,8 @@ func _prisoner(which: String) -> void:
 ## Silent Doom on him (beyond its reach of her), else Mind Whisper sends him off; bound, no gaoler near -- Ember the stocks; held --
 ## Discord on her seizer, or Doom him once she stands clear; free -- a watcher (the postern's watch aside) near her or her next
 ## stretch, whisper him off, else Doom, else Discord; Mind Whisper sends her along her road, stopping short of a watched postern; at
-## the postern, watched, its change more than PRISONER_SOON off -- whisper one of its watch off. Never a loud power.
+## the postern, watched, its change more than PRISONER_SOON off -- whisper one of its watch off. Never a loud power. Each Doom's
+## reach is sized by the ground under its aim (GOD_T1.doom_r(), ruling VE1: twice as wide in the dark), so it never takes her too.
 func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: Crowd) -> String:
 	var her := d.charge
 	if not WarningDirector._alive(her) or her.inside:
@@ -3463,7 +3464,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 			if not d._watching(v) or (v as Person).ground_pos.distance_to(her.ground_pos) > EscortDirector.SIGHT + PRISONER_WARN:
 				continue
 			var g := v as Person
-			if _slot_ready(rules, slots, "doom") and g.ground_pos.distance_to(her.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+			if _slot_ready(rules, slots, "doom") and g.ground_pos.distance_to(her.ground_pos) > GOD_T1.doom_r(crowd, g.ground_pos) + PRISONER_CLEAR:
 				rules.cast(slots.doom, g.ground_pos)
 				return "doom a gaoler"
 			if _slot_ready(rules, slots, "whisper") and not g.shaken():
@@ -3480,7 +3481,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 		if _slot_ready(rules, slots, "discord"):
 			rules.cast(slots.discord, s.ground_pos)
 			return "discord her seizer"
-		if _slot_ready(rules, slots, "doom") and her.ground_pos.distance_to(s.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+		if _slot_ready(rules, slots, "doom") and her.ground_pos.distance_to(s.ground_pos) > GOD_T1.doom_r(crowd, s.ground_pos) + PRISONER_CLEAR:
 			rules.cast(slots.doom, s.ground_pos)
 			return "doom her seizer"
 		return ""
@@ -3495,7 +3496,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 		if _slot_ready(rules, slots, "whisper") and not p.shaken():
 			rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": _prisoner_away(crowd, p, her.ground_pos)})
 			return "whisper a watcher off"
-		if _slot_ready(rules, slots, "doom") and p.ground_pos.distance_to(her.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+		if _slot_ready(rules, slots, "doom") and p.ground_pos.distance_to(her.ground_pos) > GOD_T1.doom_r(crowd, p.ground_pos) + PRISONER_CLEAR:
 			rules.cast(slots.doom, p.ground_pos)
 			return "doom a watcher"
 		if _slot_ready(rules, slots, "discord") and p.ground_pos.distance_to(her.ground_pos) > DiscordFx.DISCORD_R + PRISONER_CLEAR:

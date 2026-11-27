@@ -289,7 +289,7 @@ func _clear_spot(from: Vector2, used: Array[Vector2], setup: bool) -> Vector2:
 func _hold(p: Person, i: int, moved: bool, was: Vector2) -> void:
 	if _men.has(p):
 		return
-	_men[p] = {"post": i, "moved": moved, "was": was}
+	_men[p] = {"post": i, "moved": moved, "was": was, "far": p.watch_far}
 	p.watch_far = false
 
 
@@ -344,29 +344,47 @@ func _hush_step(delta: float) -> void:
 	var held := posts_held()
 	if held.is_empty():
 		return
-	for group: Array in [crowd.soldiers, crowd.citizens]:
-		for v: Variant in group:
-			if not _alive(v):
-				continue
-			var p := v as Person
-			# A wisher or wish target who is out walking his day is turned away too (I9): the wish is his, not the ring.
-			if p.inside or p.mind in HUSH_SKIP or (reserved.has(p) and (p.soldier or p.mind != Person.Mind.CALM)) or _is_watchman(p):
-				continue
-			if _men.has(p):
-				p.watch_far = false
-				continue
-			var r := maxf(QUIET_R + QUIET_MARGIN, Crowd.WATCH_SIGHT + 0.5) if p.watch_far else QUIET_R + QUIET_MARGIN  # turned on the ring's margin, so he is out before he can see
-			var i := _ring_of(p, held, r, Gap.HERE)
-			if i < 0 or _hush_clock - float(_turned.get(p, -INF)) < HUSH_EVERY:
-				continue
-			_turned[p] = _hush_clock
-			var used: Array[Vector2] = []
-			if p.soldier and (p.mind == Person.Mind.POST or p.mind == Person.Mind.HOLD) and p.corps == Person.Corps.NONE:
-				_move_soldier(p, i, used, false)
-				continue
-			var at := _out_spot(p.ground_pos, i, used, r + QUIET_MARGIN, false, p.ground_pos)  # a walker is turned back the way he came, even out through the gate
-			if at != Vector2.INF:
-				p.set_goal(at)
+	# Only the people near a held post can be turned: ask the field for each ring's patch (its widest turn radius is the far-seer's), never every soldier and citizen.
+	var reach := maxf(QUIET_R + QUIET_MARGIN, Crowd.WATCH_SIGHT + 0.5)
+	var patches: Array[Rect2] = []
+	for i in held:
+		patches.append(Rect2(_spots[i] - Vector2(reach, reach), Vector2(reach, reach) * 2.0))
+	var near := {}
+	for e in crowd._field.in_rects(patches):
+		if e is Person:
+			near[e] = true
+	# A held man who is not near still loses his far sight (as it was when everyone was scanned).
+	for v: Variant in _men.keys():
+		if _alive(v):
+			(v as Person).watch_far = false
+	var rows: Array = []
+	for v: Variant in near.keys():
+		rows.append(v)
+	rows.sort_custom(func(x: Person, y: Person) -> bool:
+		if x.soldier != y.soldier:
+			return x.soldier
+		return x.get_instance_id() < y.get_instance_id())
+	for v: Variant in rows:
+		if not _alive(v):
+			continue
+		var p := v as Person
+		# A wisher or wish target who is out walking his day is turned away too (I9): the wish is his, not the ring.
+		if p.inside or p.mind in HUSH_SKIP or (reserved.has(p) and (p.soldier or p.mind != Person.Mind.CALM)) or _is_watchman(p):
+			continue
+		if _men.has(p):
+			continue
+		var r := maxf(QUIET_R + QUIET_MARGIN, Crowd.WATCH_SIGHT + 0.5) if p.watch_far else QUIET_R + QUIET_MARGIN  # turned on the ring's margin, so he is out before he can see
+		var i := _ring_of(p, held, r, Gap.HERE)
+		if i < 0 or _hush_clock - float(_turned.get(p, -INF)) < HUSH_EVERY:
+			continue
+		_turned[p] = _hush_clock
+		var used: Array[Vector2] = []
+		if p.soldier and (p.mind == Person.Mind.POST or p.mind == Person.Mind.HOLD) and p.corps == Person.Corps.NONE:
+			_move_soldier(p, i, used, false)
+			continue
+		var at := _out_spot(p.ground_pos, i, used, r + QUIET_MARGIN, false, p.ground_pos)  # a walker is turned back the way he came, even out through the gate
+		if at != Vector2.INF:
+			p.set_goal(at)
 
 
 ## A post that stops being held (its warning stopped or its watchman set off) gives its men back: each moved soldier's `post` is restored and he goes
@@ -577,7 +595,12 @@ func why_not(key: String, at: Vector2) -> String:
 		if reach == WarningDirector.Reach.NOT and text == "":
 			text = WarningDirector.STOPS_BANNER
 	var bell := _bell_why(key, at)
-	return bell if bell != "" else text
+	if bell != "":
+		return bell
+	for w in stars:  # a spark that only lights a watchman: he runs burning (no cast that could stop a warning got here)
+		if w.rules != null and w.burn_why(key, at) != "":
+			return WarningDirector.BURN_BANNER
+	return text
 
 
 ## The honest banner for Blight on the tower, over every warning (each answers for its own carrier): TOLLED, else SOONER if any says so, else TIME; "" for none.
@@ -665,8 +688,18 @@ func report() -> Dictionary:
 
 func teardown() -> void:
 	for p: Variant in _men.keys():
-		_give_back(p, _men[p] as Dictionary)
+		var rec := _men[p] as Dictionary
+		_give_back(p, rec)
+		if _alive(p):
+			(p as Person).watch_far = bool(rec.get("far", false))  # his sight back, as a checker had it
 	_men.clear()
+	for p: Variant in _folk.keys():
+		if _alive(p):
+			(p as Person).anchor = (_folk[p] as Dictionary).was
+	_folk.clear()
+	_turned.clear()
+	if crowd != null:
+		crowd.wish_keepout = [] as Array[Vector3]
 	for w in stars:
 		if w.rules != null:
 			w.teardown()

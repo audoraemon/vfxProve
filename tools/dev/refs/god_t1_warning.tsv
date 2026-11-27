@@ -1,8 +1,8 @@
 # KAK exact references, god T1R Task 2: The Warning (the board's Starfall) played by each god type's own two Tier 1 powers (tools/dev/routes/god_t1/warning.gd), Aldermere, seeds 1-3. name<TAB>how<TAB>expected.
 # Recorded as the policies play at the commit that adds them; a row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
-god_ruin_warning_play_1	--scenario=warning --case=play --board --god=ruin:1 --seed=1	-365613221
-god_ruin_warning_play_2	--scenario=warning --case=play --board --god=ruin:1 --seed=2	-46985099
-god_ruin_warning_play_3	--scenario=warning --case=play --board --god=ruin:1 --seed=3	467227151
+god_ruin_warning_play_1	--scenario=warning --case=play --board --god=ruin:1 --seed=1	-556361629
+god_ruin_warning_play_2	--scenario=warning --case=play --board --god=ruin:1 --seed=2	-967412228
+god_ruin_warning_play_3	--scenario=warning --case=play --board --god=ruin:1 --seed=3	-743762826
 god_death_warning_play_1	--scenario=warning --case=play --board --god=death:1 --seed=1	849743447
 god_death_warning_play_2	--scenario=warning --case=play --board --god=death:1 --seed=2	-388904764
 god_death_warning_play_3	--scenario=warning --case=play --board --god=death:1 --seed=3	-656948787

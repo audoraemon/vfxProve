@@ -160,7 +160,7 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 		for row: Dictionary in _posted(ctx):
 			var at: Vector2 = (row.w as WarningDirector).messenger.ground_pos
 			if _seers(crowd, at, UNSEEN + MOVE_ROOM, (row.w as WarningDirector).messenger) == 0:
-				rules.cast(ctx.slots.smite, at)
+				rules.cast(ctx.slots.smite, _off_the_wall(crowd, at))
 				return "smite the watchman at his post (%s, sets off in %.0f s)" % [(row.w as WarningDirector).post_name.to_lower(), float(row.eta)]
 	return _each(ctx, func(w: WarningDirector) -> String:
 		var m := w.messenger
@@ -195,6 +195,31 @@ static func act_ruin(bc, ctx: Dictionary) -> String:
 			rules.cast(ctx.slots.smite, led)
 			return "smite the carrier (%d to see)" % seers
 		return "")
+
+
+## Where a bolt for the man at `at` falls: still within the bolt's kill radius of him (KILL_R, with a hand's margin), but past the blow's reach (SmiteFx.HIT_R) of every
+## building -- his post is 0.6 inside the gate's face, so a bolt on his feet hits the gate for 45 (preflight M4). The best of eight points round him, else `at`.
+static func _off_the_wall(crowd: Crowd, at: Vector2) -> Vector2:
+	var best := at
+	var best_gap := _wall_gap(crowd, at)
+	if best_gap > SmiteFx.HIT_R + 0.05:
+		return at
+	for k in 8:
+		var v := at + Vector2.RIGHT.rotated(TAU * float(k) / 8.0) * (SmiteFx.KILL_R - 0.15)
+		var gap := _wall_gap(crowd, v)
+		if gap > best_gap:
+			best_gap = gap
+			best = v
+	return best
+
+
+## How near the nearest standing building is to `at` (its footprint's edge).
+static func _wall_gap(crowd: Crowd, at: Vector2) -> float:
+	var gap := INF
+	for b in crowd._env._structures:
+		if is_instance_valid(b) and not b.destroyed:
+			gap = minf(gap, b.distance_to(at))
+	return gap
 
 
 ## The centre of the house within 3.5 of `at` that burns and is not burning yet; INF for none.

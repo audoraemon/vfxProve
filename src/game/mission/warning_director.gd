@@ -61,6 +61,7 @@ const BROKEN_BANNER := "THE BELL IS BROKEN"
 const BELL_TOLLED := "THE BELL HAS TOLLED ALREADY"
 const BELL_SOONER := "BROKEN BELL: HE RUNS SOONER"
 const BELL_TIME := "BROKEN BELL: IT ONLY BUYS TIME"
+const BURN_BANNER := "HE RUNS BURNING: WHOEVER SEES HIM DIE CARRIES IT"
 ## The keeper's walk from where the warning reaches him to the tower's foot, in the intact chain's estimate (spec 5, the gain test).
 const FOOT_WALK := 2.0
 const DREAMT_BANNER := "THE WATCHMAN THINKS HE DREAMT IT"
@@ -840,7 +841,21 @@ func why_not(key: String, at: Vector2) -> String:
 	var bell := bell_why(key, at)
 	if bell != "":
 		return bell
+	var burn := burn_why(key, at)
+	if burn != "":
+		return burn
 	return STOPS_BANNER if _carrier_reach(key, at) == Reach.NOT else ""
+
+
+## (final review) What a spark on the carrier does, honestly: Ember sets him alight (he runs burning, and whoever sees him die carries the word), so a kill
+## in reach of him is a possible kill and says nothing, while a spark that only lights him says BURN_BANNER. "" for any other key, a carrier it does not reach
+## (or one indoors, gone or guised), a cast that could kill him anyway, or with the rework's reach off. Only reads, no RNG.
+func burn_why(key: String, at: Vector2) -> String:
+	if not rework_reach or warning_dead or phase == Phase.OVER or not _alive(messenger) or messenger.inside or messenger.guised():
+		return ""
+	if not "burn" in MissionVerbs.verbs_of(key) or not _cast_reaches(key, at, messenger.ground_pos):
+		return ""
+	return "" if _carrier_reach(key, at) == Reach.MAYBE else BURN_BANNER
 
 
 ## (the Warning rework, T2, W-R3) What Blight on the bell tower does, honestly: TOLLED when the bell has tolled, SOONER when this warning's live carrier would reach
@@ -928,6 +943,8 @@ func report() -> Dictionary:
 
 
 func teardown() -> void:
+	if at_post():
+		watchman.stay_left = 0.0  # a night that ends with the post held lets him go (no 999 s stay left behind)
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
 		crowd._field.enemy_killed.disconnect(_on_killed)
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):

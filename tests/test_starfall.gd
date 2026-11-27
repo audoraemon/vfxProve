@@ -360,6 +360,9 @@ static func _bell_why_all(t) -> void:
 	_run(s, 1.0)
 	var at := (s.crowd as Crowd).bell.tower.center()
 	t.check(d.why_not("blight", at) == WarningDirector.BELL_TIME, "three watchmen at their posts: IT ONLY BUYS TIME (%s)" % d.why_not("blight", at))
+	var man: Vector2 = d.stars[1].messenger.ground_pos
+	t.check(d.why_not("ember", man) == WarningDirector.BURN_BANNER, "Ember on a watchman at his post: HE RUNS BURNING (%s)" % d.why_not("ember", man))
+	t.check(d.why_not("ember", Vector2(0.0, 0.0)) == "", "an Ember far from every post says nothing")
 	d.stars[0].warning_dead = true
 	d.stars[0].phase = WarningDirector.Phase.OVER
 	Kit.arrive(d.stars[2].messenger, d.stars[2].lantern_door() + Vector2(0.0, 1.0))

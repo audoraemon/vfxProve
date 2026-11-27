@@ -39,8 +39,8 @@ const STEPS := {
 	"warning": [
 		{"t": "Kill the messenger (gold) unseen"},
 		{"t": "Kill the witness (gold) unseen", "ph": ["relay"]},
-		{"t": "Kill or confuse watchmen (gold)", "ph": ["posts", "broken"], "c": "s"},
-		{"t": "Kill or banish him (gold) now", "ph": ["running"], "c": "n"},
+		{"t": "Kill, banish or confuse (gold)", "ph": ["posts", "broken"], "c": "s"},
+		{"t": "Kill, banish or lead him (gold)", "ph": ["running"], "c": "n"},
 		{"t": "Kill the ringer (gold) unseen", "ph": ["bell"], "c": "n"},
 	],
 	"omen": [

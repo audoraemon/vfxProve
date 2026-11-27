@@ -200,6 +200,11 @@ static func _reach(t) -> void:
 	t.check(w.why_not("discord", man.ground_pos) == "", "why_not: Discord at the post says nothing (he dreams it)")
 	t.check(w.why_not("noleave", man.ground_pos) == "", "why_not: a seal on a man at his post says nothing (no runner)")
 	t.check(w.why_not("discord", Vector2(0.0, 0.0)) == "", "why_not: far away says nothing")
+	# Ember lights him: he runs burning, and whoever sees him die carries the word. A kill in reach is a possible kill (nothing said).
+	t.check(w.why_not("ember", man.ground_pos) == WarningDirector.BURN_BANNER, "why_not: Ember on a man at his post says he runs burning (%s)" % w.why_not("ember", man.ground_pos))
+	t.check(w.why_not("ember", Vector2(0.0, 0.0)) == "", "why_not: an Ember far away says nothing")
+	t.check(w.why_not("smite", man.ground_pos) == "" and w.why_not("dragon", man.ground_pos) == "", "why_not: a kill that burns (Smite, Dragonfire) says nothing at his post")
+	ClarityKit.assert_read_only(t, s, "warning rework, Ember at the post")
 	# Whispered outside the walls: the walls stop him.
 	var out := ClarityKit.outside_point(man.ground_pos)
 	s["to"] = out
@@ -224,6 +229,7 @@ static func _reach(t) -> void:
 	man = w.messenger
 	t.check(w.why_not("discord", man.ground_pos) == WarningDirector.STOPS_BANNER, "why_not: Discord on a runner says STOPS_BANNER")
 	t.check(w.why_not("noleave", man.ground_pos) == WarningDirector.STOPS_BANNER, "why_not: a seal on a runner says STOPS_BANNER")
+	t.check(w.why_not("ember", man.ground_pos) == WarningDirector.BURN_BANNER, "why_not: Ember on a runner says he runs burning")
 	ClarityKit.assert_read_only(t, s, "warning rework, a runner")
 	ClarityKit.done(s)
 
@@ -236,6 +242,7 @@ static func _reach_off(t) -> void:
 	var man := w.watchman
 	t.check(w.why_not("discord", man.ground_pos) == WarningDirector.STOPS_BANNER, "flags off: Discord on him says STOPS_BANNER as ever")
 	t.check(w.why_not("noleave", man.ground_pos) == "", "flags off: a seal says nothing as ever")
+	t.check(w.why_not("ember", man.ground_pos) == "", "flags off: Ember says nothing as ever")
 	ClarityKit.done(s)
 
 

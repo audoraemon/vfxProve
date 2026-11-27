@@ -18,6 +18,7 @@ static func run(t) -> void:
 	_g3(t)
 	_g4(t)
 	_release(t)
+	_teardown_loss(t)
 	_wish_keepout(t)
 	_off_the_board(t)
 	Person.frame_no = -1
@@ -25,8 +26,11 @@ static func run(t) -> void:
 
 ## The board's Warning as the game builds it: the wishes heard first (their people and places reserved), the director set up, NightRules applied --
 ## all before the first step.
-static func _world(seed_value: int, look: int) -> Dictionary:
+static func _world(seed_value: int, look: int, city := &"aldermere") -> Dictionary:
+	City.use(city)
 	var def := TierBook.board("warning")
+	if city != &"aldermere":
+		def = MissionBook.in_city(def, city)  # the Capital's own posts, times and overrides (as test_capital_starfall builds it)
 	var env := EnvironmentField.new()
 	var town := Town.new()
 	town.build(env)
@@ -34,7 +38,7 @@ static func _world(seed_value: int, look: int) -> Dictionary:
 	var grid := WalkGrid.new().setup(env, town)
 	var field := EnemyField.new()
 	field.env = env
-	field.bounds = TownLayout.MAP
+	field.bounds = City.current().map()
 	var node := Node2D.new()
 	var crowd := Crowd.new().setup(field, env, town, grid, node, seed_value)
 	crowd.profile = def.response_profile(ResponseProfile.DEFAULT)
@@ -122,23 +126,29 @@ class DirectorWhy:
 static func _g3(t) -> void:
 	for look in [Town.Look.DAY, Town.Look.NIGHT]:
 		for seed_value in [1, 2, 3]:
-			var s := _world(seed_value, look)
-			var d: StarfallDirector = s.d
-			var steps := roundi((float(StarfallDirector.STARS[2][0]) + 0.5) / DT)
-			var seen: Array[String] = []
-			var held_all := true
-			var samples := 0
-			for k in steps:
-				_step(s)
-				if k % SAMPLE_EVERY == 0 and not d.posts_held().is_empty():
-					samples += 1
-					seen.append_array(_breaches(s, float(k) * DT))
-				if k == 2:
-					held_all = held_all and d.posts_held().size() == 3
-			var label := "seed %d, %s" % [seed_value, "DAY" if look == Town.Look.DAY else "NIGHT"]
-			t.check(held_all and samples > 100, "%s: the three posts were held from the first frames and sampled (%d samples)" % [label, samples])
-			t.check(seen.is_empty(), "%s: no one but the watchman within witness reach of a held post: %s" % [label, "; ".join(seen.slice(0, 6))])
-			_done(s)
+			_g3_world(t, _world(seed_value, look), "seed %d, %s" % [seed_value, "DAY" if look == Town.Look.DAY else "NIGHT"])
+	# The Capital's posts too (its own ground and walls): one seed, as the board plays it there.
+	_g3_world(t, _world(1, Town.Look.DAY, &"capital"), "Capital, seed 1, DAY")
+	City.use(&"aldermere")
+
+
+## One G3 world: the three posts held from the first frames, sampled every 0.25 s up to the last set-off, and no one within witness reach of a held watchman.
+static func _g3_world(t, s: Dictionary, label: String) -> void:
+	var d: StarfallDirector = s.d
+	var steps := roundi((float(StarfallDirector.STARS[2][0]) + 0.5) / DT)
+	var seen: Array[String] = []
+	var held_all := true
+	var samples := 0
+	for k in steps:
+		_step(s)
+		if k % SAMPLE_EVERY == 0 and not d.posts_held().is_empty():
+			samples += 1
+			seen.append_array(_breaches(s, float(k) * DT))
+		if k == 2:
+			held_all = held_all and d.posts_held().size() == 3
+	t.check(held_all and samples > 100, "%s: the three posts were held from the first frames and sampled (%d samples)" % [label, samples])
+	t.check(seen.is_empty(), "%s: no one but the watchman within witness reach of a held post: %s" % [label, "; ".join(seen.slice(0, 6))])
+	_done(s)
 
 
 ## G4: three kills at the posts stop all three unseen, at seeds 1-3 and through each kill's aftermath the later posts stay quiet. Smite, Death Mark and
@@ -259,6 +269,54 @@ static func _release(t) -> void:
 		for v in seen_at:
 			reach = maxf(reach, v.distance_to(seen_at[0]))
 		t.check(reach > 1.0, "a released patrol man walks his beat again (he went %.1f from where he stood over 40 s)" % reach)
+	_done(s)
+
+
+## A night lost while the posts are still held (the Lantern, say), then the director's teardown: every held man is let go -- each soldier has `post == town_post`
+## and his sight back, each re-anchored citizen his own anchor, no watchman still has a 999 s stay -- and the wishes' keep-out is cleared.
+static func _teardown_loss(t) -> void:
+	var s := _world(1, Town.Look.DAY)
+	var d: StarfallDirector = s.d
+	var crowd: Crowd = s.crowd
+	var rules: Rules = s.rules
+	for k in roundi(2.0 / DT):
+		_step(s)
+	var held := d.posts_held().size()
+	var men: Array = d._men.keys()
+	var folk := {}
+	for p: Variant in d._folk.keys():
+		folk[p] = (d._folk[p] as Dictionary).was
+	var far := {}
+	for p: Variant in men:
+		far[p] = bool((d._men[p] as Dictionary).get("far", false))
+	t.check(held == 3 and men.size() > 6 and not folk.is_empty(), "before the loss three posts are held with men (%d) and folk (%d) moved" % [men.size(), folk.size()])
+	var stays := 0
+	for w in d.stars:
+		stays += 1 if w.watchman.stay_left >= NightRules.HOLD_STAY else 0
+	t.check(stays == 3, "each watchman holds his post with a stay of %.0f s (%d)" % [NightRules.HOLD_STAY, stays])
+	rules.finished = true  # the night is lost with every post still held
+	rules.won = false
+	_step(s)
+	d.teardown()
+	var bad: Array[String] = []
+	for p: Variant in men:
+		if not is_instance_valid(p) or not (p as Person).is_alive():
+			continue
+		var m := p as Person
+		if m.town_post != Vector2.INF and not m.post.is_equal_approx(m.town_post):
+			bad.append("post %s != town_post %s" % [m.post, m.town_post])
+		if d.busy(m) or crowd.held_by_mission(m):
+			bad.append("still held")
+		if m.watch_far != bool(far[p]):
+			bad.append("sight %s, was %s" % [m.watch_far, far[p]])
+	for p: Variant in folk.keys():
+		if is_instance_valid(p) and (p as Person).is_alive() and not (p as Person).anchor.is_equal_approx(folk[p]):
+			bad.append("anchor %s, was %s" % [(p as Person).anchor, folk[p]])
+	for w in d.stars:
+		if w.watchman.stay_left >= NightRules.HOLD_STAY:
+			bad.append("a watchman's stay_left is %.0f" % w.watchman.stay_left)
+	t.check(bad.is_empty(), "after the teardown every held man is released (%d men, %d folk): %s" % [men.size(), folk.size(), "; ".join(bad.slice(0, 5))])
+	t.check(d._men.is_empty() and d._folk.is_empty() and d._turned.is_empty() and crowd.wish_keepout.is_empty(), "and the director keeps no man, no anchor, no turn and no keep-out")
 	_done(s)
 
 

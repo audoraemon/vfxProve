@@ -1,14 +1,11 @@
 {
- "hash": "66b46aa5a3931a75",
- "updated": "2026-11-27T18:12:36+07:00",
+ "hash": "8c65f07956f3cb6c",
+ "updated": "2026-11-28T03:07:38+07:00",
  "changes": {
-  "date": "<t:1795777956:f>",
+  "date": "<t:1795810058:f>",
   "items": [
-   "Done: Veil ability levels: the dark watches back",
-   "Done: Veil authority tree and powers",
-   "Done: Veil abilities review: previews, stronger effects, second pass",
-   "Done: Veil twists, second round: Dread, Swallowing Dark, Evernight",
-   "New: Veil landed in Develop-Main (powers, review, levels, twists 2, icons)"
+   "Done: God's Chamber (hub replacement)",
+   "New: Veil frame-rate bench on a quiet machine (in progress)"
   ]
  },
  "snapshot": {
@@ -384,11 +381,11 @@
    },
    "god-chamber": {
     "title": "God's Chamber (hub replacement)",
-    "status": "doing",
+    "status": "done",
     "area": "UI",
     "needs_you": true,
     "branch": "feat/god-chamber",
-    "updated": "2026-11-25",
+    "updated": "2026-11-28",
     "order": 1
    },
    "god-decree-powers": {
@@ -1772,6 +1769,15 @@
     "updated": "2026-11-27",
     "order": 7
    },
+   "veil-quiet-bench": {
+    "title": "Veil frame-rate bench on a quiet machine",
+    "status": "doing",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-27",
+    "order": 7
+   },
    "veil-review-adjust": {
     "title": "Veil abilities review: previews, stronger effects, second pass",
     "status": "done",
@@ -2064,49 +2070,25 @@
   },
   "branches": [
    {
-    "name": "land/god-chamber",
-    "ahead": 95,
-    "behind": 100,
-    "date": "2026-11-27",
-    "subject": "test: track the threat wiring suite's uid (made by --import after the merge)",
-    "pushed": false
-   },
-   {
-    "name": "feat/god-chamber",
-    "ahead": 93,
-    "behind": 271,
-    "date": "2026-11-27",
-    "subject": "fix: the World Map's first frame is warmed while the god stands in the Chamber",
-    "pushed": true
-   },
-   {
-    "name": "feat/warning-rework",
-    "ahead": 17,
-    "behind": 121,
-    "date": "2026-11-27",
-    "subject": "fix: final-review wave for The Warning rework (verb steps, cheaper hush, teardown, Ember banner, Smite aim, Capital G3)",
-    "pushed": false
-   },
-   {
     "name": "land/wish-clarity",
-    "ahead": 4,
-    "behind": 100,
-    "date": "2026-11-27",
-    "subject": "test: re-record the nine board route rows wish clarity moves",
+    "ahead": 28,
+    "behind": 0,
+    "date": "2026-11-28",
+    "subject": "test: re-record the 47 Capital references the Veil merge moved",
     "pushed": false
    },
    {
     "name": "feat/wish-clarity",
-    "ahead": 3,
-    "behind": 121,
-    "date": "2026-11-26",
-    "subject": "fix: wish how-lines move from the TAB list to the hint plate (the first open wish), keeping the HUD stack's depth",
+    "ahead": 4,
+    "behind": 98,
+    "date": "2026-11-27",
+    "subject": "test: re-record the 70 references the fair-life merge moves on the Veil landing",
     "pushed": false
    },
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 371,
+    "behind": 469,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2114,7 +2096,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 746,
+    "behind": 844,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2122,7 +2104,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1244,
+    "behind": 1342,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2130,7 +2112,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 1202,
+    "behind": 1300,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -2138,8 +2120,8 @@
   ],
   "main": {
    "name": "feat/Develop-Main",
-   "date": "2026-11-27",
-   "subject": "test: re-record the 70 references the fair-life merge moves on the Veil landing"
+   "date": "2026-11-28",
+   "subject": "test: re-record the 47 Capital references the Veil merge moved"
   }
  }
 }

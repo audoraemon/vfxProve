@@ -291,7 +291,7 @@ static func _later_star(t) -> void:
 		and w.messenger.goal().distance_to(_door(s)) < 0.6 and w.messenger.goal().distance_to(keeper.ground_pos) > 3.0
 		and is_equal_approx(float(w.messenger.statuses.get(&"slow", 1.0)), LanternWatch.HERALD_SLOW),
 		"the postern's watchman, after the toll, runs for the Temple (not the keeper), slowed")
-	t.check(d.herald_open() and d.claims_herald(w.messenger) and not d.claims_herald(keeper) and d.stars[1].rules == null,
+	t.check(d.herald_open() and d.claims_herald(w.messenger) and not d.claims_herald(keeper) and d.stars[1].at_post(),
 		"his director claims him; the keeper's report is the Lantern's own")
 	var heralds := 0
 	for tag in d.tags():

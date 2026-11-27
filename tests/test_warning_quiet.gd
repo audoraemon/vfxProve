@@ -176,7 +176,7 @@ static func _g4(t) -> void:
 
 
 ## The release (B2): after a set-off the moved soldiers are no longer held, their `post` is their town post again, no town job takes them for a mission
-## man, and they walk back; the two other posts stay held.
+## man; the two other posts stay held until their own set-offs.
 static func _release(t) -> void:
 	var s := _world(1, Town.Look.DAY)
 	var d: StarfallDirector = s.d
@@ -194,6 +194,7 @@ static func _release(t) -> void:
 	for p in moved:
 		if int(held_for[p]) <= 1:
 			first.append(p)
+	var all_men: Array = held_for.keys()  # every soldier held at setup, moved or not (a checker held where he stood who was moved later too)
 	var all_held := true
 	var off_town := true
 	for p in moved:
@@ -206,30 +207,30 @@ static func _release(t) -> void:
 	t.check(not d.stars[0].at_post() and not d.posts_held().has(0) and d.posts_held().has(1) and d.posts_held().has(2),
 		"after the first set-off post 0 is let go and the other two stay held (%s)" % [d.posts_held()])
 	var later := d._men.size()
-	var back := true
-	var free := true
-	for k in roundi((float(StarfallDirector.STARS[1][0]) - float(StarfallDirector.STARS[0][0])) / DT):
-		_step(s)
-	var plain := true
-	for p in first:
-		if not is_instance_valid(p) or not p.is_alive():
+	for k in roundi((float(StarfallDirector.STARS[2][0]) - float(StarfallDirector.STARS[0][0]) + 1.0) / DT):
+		_step(s)  # past the last set-off: every post is let go
+	t.check(d.posts_held().is_empty() and d._men.is_empty(), "after the last set-off no post is held and the director holds no soldier (%d held)" % d._men.size())
+	t.check(later > 0, "the other posts' men were still held after the first set-off")
+	# The release is about FIELDS (GateCheck and GuardJobs read `post == town_post`), never about where a man stands.
+	var bad: Array[String] = []
+	var bad_patrol: Array[String] = []
+	var counted := 0
+	for p: Variant in all_men:
+		if not is_instance_valid(p) or not (p as Person).is_alive():
 			continue
-		back = back and (p.town_post == Vector2.INF or p.post.is_equal_approx(p.town_post))
-		free = free and not d.busy(p) and not crowd.held_by_mission(p)
-		if p.post_group >= 0 and p.corps == Person.Corps.NONE:
-			plain = plain and not crowd.guard_jobs.mission_man(p)
-	t.check(back, "posts 0 and 1's soldiers have their `post` back (post == town_post)")
-	t.check(free and plain, "and they are no longer held, nor a mission man to the town's guard jobs")
-	t.check(later > 0, "the other posts' men are still held")
-	for k in roundi(40.0 / DT):
-		_step(s)
-	var home := 0
-	var alive := 0
-	for p in first:
-		if is_instance_valid(p) and p.is_alive():
-			alive += 1
-			home += 1 if p.ground_pos.distance_to(p.post) <= 2.5 else 0
-	t.check(alive > 0 and home == alive, "and walk back to their town posts (%d of %d)" % [home, alive])
+		var m := p as Person
+		counted += 1
+		var why := ""
+		if m.town_post != Vector2.INF and not m.post.is_equal_approx(m.town_post):
+			why += " post %s != town_post %s;" % [m.post, m.town_post]
+		if d.busy(m) or crowd.held_by_mission(m):
+			why += " still held;"
+		if m.post_group >= 0 and m.corps == Person.Corps.NONE and crowd.guard_jobs.mission_man(m):
+			why += " a mission man to GuardJobs;"
+		if why != "":
+			(bad_patrol if m.post_group == 3 else bad).append("%s (group %d, corps %d)%s" % [str(m.get_instance_id()), m.post_group, m.corps, why])
+	t.check(counted >= 6 and bad.is_empty(), "every held or moved soldier (%d) has `post == town_post` again and is no town job's mission man: %s" % [counted, "; ".join(bad)])
+	t.check(bad_patrol.is_empty(), "a patrol man has his loop back too (post == town_post, not held): %s" % "; ".join(bad_patrol))
 	_done(s)
 
 

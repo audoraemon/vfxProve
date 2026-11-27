@@ -232,19 +232,26 @@ func _gap(p: Person, i: int, how: Gap) -> float:
 
 
 ## A soldier out of a ring (B2): his `post` saved and set to the new spot, sent there and placed, `watch_far` off; held until the post is let go.
-func _move_soldier(p: Person, i: int, used: Array[Vector2]) -> void:
+func _move_soldier(p: Person, i: int, used: Array[Vector2], place := true) -> void:
 	var from := p.anchor if p.anchor.distance_to(_spots[i]) < p.ground_pos.distance_to(_spots[i]) else p.ground_pos
-	var at := _out_spot(from, i, used, QUIET_R + QUIET_MARGIN)
+	var at := _out_spot(from, i, used, QUIET_R + QUIET_MARGIN, true, Vector2.INF if place else p.ground_pos)  # in play he walks out: a way that never leads in
+	if at == Vector2.INF and not place:
+		at = p.ground_pos  # no way out that leads away: he stands where he is, held
 	if at == Vector2.INF:
 		_hold(p, i, false, p.post)
 		return
 	used.append(at)
-	_hold(p, i, true, p.post)
+	if _men.has(p):
+		# Already held (a gate checker held where he stood): now moved too, so his own `post` is given back with the rest.
+		(_men[p] as Dictionary).moved = true
+	else:
+		_hold(p, i, true, p.post)
 	p.post = at
-	p.ground_pos = at
 	p.send_to_post(at)
-	p._path = PackedVector2Array()
-	p._target = at
+	if place:  # only before the first frame; in play he is walked there
+		p.ground_pos = at
+		p._path = PackedVector2Array()
+		p._target = at
 
 
 ## Holds `p` for post `i` (busy): `moved` says his `post` was changed and must be given back, `was` what it was.
@@ -273,6 +280,8 @@ func _out_spot(from: Vector2, i: int, used: Array[Vector2], r: float, within_wal
 				continue
 			if walk_from != Vector2.INF and grid != null and not grid.clear_line(walk_from, v):
 				continue  # a walker is sent where he can walk, in a straight line
+			if walk_from != Vector2.INF and not _walks_out(walk_from, v, i):
+				continue  # and his walk never goes in towards the post (nor into another's ring)
 			var fits := true
 			for sp in _spots:
 				fits = fits and sp.distance_to(v) >= r - 0.01
@@ -281,6 +290,19 @@ func _out_spot(from: Vector2, i: int, used: Array[Vector2], r: float, within_wal
 			if fits:
 				return v
 	return Vector2.INF
+
+
+## Whether the straight walk `a` -> `b` only ever goes away from post `i` (no nearer than where it starts) and keeps clear of the other posts' rings.
+func _walks_out(a: Vector2, b: Vector2, i: int) -> bool:
+	var d0 := a.distance_to(_spots[i])
+	for k in range(1, 9):
+		var q := a.lerp(b, float(k) / 8.0)
+		if q.distance_to(_spots[i]) < d0 - 0.05:
+			return false
+		for j in _spots.size():
+			if j != i and q.distance_to(_spots[j]) < QUIET_R and q.distance_to(_spots[j]) < a.distance_to(_spots[j]):
+				return false
+	return true
 
 
 ## Spec 4: while a post is held, anyone else within its ring is turned away -- not a carrier, a reserved man, one the god holds or one in flight: a goal
@@ -308,8 +330,8 @@ func _hush_step(delta: float) -> void:
 				continue
 			_turned[p] = _hush_clock
 			var used: Array[Vector2] = []
-			if p.soldier and (p.mind == Person.Mind.POST or p.mind == Person.Mind.HOLD) and not p.has_goal() and p.corps == Person.Corps.NONE:
-				_move_soldier(p, i, used)
+			if p.soldier and (p.mind == Person.Mind.POST or p.mind == Person.Mind.HOLD) and p.corps == Person.Corps.NONE:
+				_move_soldier(p, i, used, false)
 				continue
 			var at := _out_spot(p.ground_pos, i, used, r + QUIET_MARGIN, false, p.ground_pos)  # a walker is turned back the way he came, even out through the gate
 			if at != Vector2.INF:
@@ -323,15 +345,34 @@ func _release_posts() -> void:
 		if _freed[i] or not _held_once[i] or (stars[i].rules != null and stars[i].at_post()):
 			continue
 		_freed[i] = true
+		var held := posts_held()
 		for p: Variant in _men.keys():
 			if int((_men[p] as Dictionary).post) == i:
-				_give_back(p, _men[p] as Dictionary)
+				var rec := _men[p] as Dictionary
+				var home := _home_ring(p, held)
+				if home >= 0:
+					rec.post = home  # his own post lies in a ring still held: he is let go with that one, never walked into it
+					continue
+				_give_back(p, rec)
 				_men.erase(p)
 		for p: Variant in _folk.keys():
 			if int((_folk[p] as Dictionary).post) == i:
 				if _alive(p):
 					(p as Person).anchor = (_folk[p] as Dictionary).was
 				_folk.erase(p)
+
+
+## The held post whose ring (with its margin) holds the town post of soldier `p`, or the straight way home to it, else -1.
+func _home_ring(p: Variant, held: Array[int]) -> int:
+	if not _alive(p) or (p as Person).town_post == Vector2.INF:
+		return -1
+	var from := (p as Person).ground_pos
+	var home := (p as Person).town_post
+	for j in held:
+		for k in range(0, 13):  # his own post, or any step of the straight way home, in the ring
+			if from.lerp(home, float(k) / 12.0).distance_to(_spots[j]) < QUIET_R + QUIET_MARGIN + 0.5:
+				return j
+	return -1
 
 
 ## One soldier given back: his own `post` again (so `post == town_post`: GateCheck and GuardJobs take him as before), and back to it.

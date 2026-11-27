@@ -1187,6 +1187,9 @@ static func _needed(d: HideFaithfulDirector) -> Array[Vector2]:
 ## lead and Skylift waits for the household to come out.
 ## (Mutations: Dominion's idle lead restored in act_dominion -- it whispers the watchman at the gate at once; Smite's lead for the gate's watch put back
 ## to P5-T9-R9's 70 s -- "ruin: ... casts nothing (6 casts)"; either fails the idle-night check.)
+## Veil's idle night has its Bell Tower already blighted (as it is by then in play): with the tower whole the spy's every look went to Blight and
+## the night proved nothing of Veil's Dooms (Veil review, Task 13a fix round 1). Mutation: Task 13a's "doom a watch, to break the watch" branch
+## (first household out, the second not, the watch standing, no seizer) put back in act_veil -- "veil: ... casts nothing (6 casts)" fails, run 2026-11-20.)
 static func _no_filler_casts(t) -> void:
 	GodTree.dev_fill = true
 	for type: String in TYPES:
@@ -1235,6 +1238,10 @@ static func _no_filler_casts(t) -> void:
 					Kit.free_body(s, v as Person)
 				Kit.run_for(s, 120.0)
 				ctx.memo["last_cast"] = d._clock - 31.0
+				if type == "veil":
+					# (The spy casts nothing, so the tower would never rot and every look would go to Veil's Blight on it: the night would
+					# say nothing of its Dooms. By 120 s of a real night the Bell Tower is long blighted -- the first look's set-piece.)
+					(s.crowd as Crowd).bell.tower.set_blighted(true)
 			var act := Callable(Hunts.FILES["hide_faithful"], "act_" + type)
 			for look in 6:
 				Kit.run_for(s, 0.5)

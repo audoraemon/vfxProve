@@ -1,0 +1,18 @@
+{"length": 5.0, "rms_db": -12.0, "reverb": {"rt60": 3.0, "mix": 0.12, "predelay_ms": 40, "damp": 3500}, "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v7_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 3.5, "pitch": -10, "lp": 180, "fade_out": 2500, "gain_db": 2},
+  {"src": "lib:oga/muffled-distant-explosion/NenadSimic - Muffled Distant Explosion.wav", "at": 0.0, "onset": true, "dur": 4.8, "pitch": -3, "hp": 22, "lp": 700, "fade_out": 2800, "gain_db": 1},
+  {"src": "lib:oga/chunky-explosion/Chunky Explosion.mp3", "at": 0.0, "onset": true, "dur": 4.0, "pitch": -6, "hp": 50, "lp": 3000, "fade_out": 2500, "gain_db": -5},
+  {"src": "lib:oga/dull-explosion/explosion_dull.flac", "at": 0.0, "onset": true, "pitch": -5, "hp": 30, "lp": 2500, "fade_out": 60, "gain_db": -2},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_004.ogg", "at": 0.0, "onset": true, "pitch": -10, "hp": 25, "lp": 900, "fade_out": 60, "gain_db": -2},
+  {"src": "lib:oga/breaking-rock/rock_break_0.ogg", "at": 0.0, "onset": true, "pitch": -4, "hp": 60, "lp": 7000, "fade_out": 200, "gain_db": -3},
+  {"src": "lib:oga/gravity-inverter/gravity_inverter.ogg", "at": 0.0, "from": 0.0, "reverse": true, "dur": 0.85, "pitch": -3, "lp": 3000, "fade_in": 100, "fade_out": 20, "gain_db": -9},
+  {"src": "lib:kenney/impact-sounds/Audio/impactPunch_heavy_004.ogg", "at": 0.85, "onset": true, "pitch": -12, "hp": 25, "lp": 600, "fade_out": 60, "gain_db": -3},
+  {"src": "lib:oga/breaking-rock/rock_break_0.ogg", "at": 0.85, "onset": true, "pitch": -6, "hp": 40, "lp": 6000, "fade_out": 200, "gain_db": -6},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "at": 0.15, "onset": true, "dur": 4.5, "pitch": -4, "hp": 80, "lp": 7000, "fade_in": 150, "fade_out": 1500, "gain_db": -3},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_01.ogg", "at": 0.4, "onset": true, "pitch": -6, "lp": 6000, "gain_db": -11},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_breaking_02.ogg", "at": 0.25, "onset": true, "pitch": -8, "lp": 6000, "gain_db": -11},
+  {"src": "lib:oga/earthquake-and-open-sesame/shake.flac", "at": 0.1, "from": 0.0, "dur": 4.8, "pitch": -5, "hp": 30, "lp": 1500, "fade_in": 250, "fade_out": 2500, "gain_db": -10},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongHit_fff.wav", "at": 0.02, "onset": true, "dur": 4.9, "pitch": -17, "hp": 30, "lp": 800, "fade_in": 100, "fade_out": 3000, "gain_db": -11},
+  {"src": "lib:wikimedia/Earthquake.wav", "at": 0.3, "from": 80.0, "dur": 4.6, "pitch": -5, "hp": 25, "lp": 500, "fade_in": 300, "fade_out": 3000, "gain_db": -9},
+  {"src": "lib:oga/cc0-deep-monster-roar/monster_roar.wav", "at": 0.5, "onset": true, "dur": 4.0, "pitch": -12, "hp": 40, "lp": 600, "fade_in": 600, "fade_out": 2000, "gain_db": -14}
+]}

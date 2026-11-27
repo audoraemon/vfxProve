@@ -48,6 +48,7 @@ static func run(t) -> void:
 	_hurrier_freed(t)
 	_empty_no_sets_out(t)
 	_next_not_twice(t)
+	_veil_blight_blocker(t)
 
 
 static func _world() -> Dictionary:
@@ -1082,3 +1083,105 @@ static func _next_not_twice(t) -> void:
 		p.mind = Person.Mind.CALM
 	t.check(going.size() == FirstPrayersDirector.NEED and d.next_walker() == null, "nobody is picked twice: the walker and those hurrying are never the next walker")
 	_done(s)
+
+
+## Rules that record each cast and hand back a live effect (the Veil policy's _cast() counts a cast only when Rules returns one).
+class CastSpy:
+	extends Rules
+	var casts: Array[Dictionary] = []
+	var fx := FxTimeline.new()
+
+	func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
+		casts.append({"slot": slot, "at": ground, "extra": extra})
+		return fx
+
+
+## behaviour_check's pieces the Veil policy reads: every slot ready, a Doom never judged unseen (so only the seen path, which still
+## refuses a Doom that takes anyone but the Faithful, can aim one), a walk measured straight.
+class VeilBc:
+	extends RefCounted
+
+	func _slot_ready(_rules, slots: Dictionary, key: String) -> bool:
+		return slots.has(key)
+
+	func _doom_unseen(_crowd, _at: Vector2, _spare: Array = [], _margin := 0.0, _r := 0.0) -> bool:
+		return false
+
+	func _walk_len(_crowd, a: Vector2, b: Vector2) -> float:
+		return a.distance_to(b)
+
+
+## Veil ruling VE2 (tools/dev/routes/god_t1/prayers.gd _blight_blocker() and act_veil): when Doom is ready and the one Faithful left has exactly
+## one other person within its reach -- a lay citizen on lit ground, not one of the grieving -- Blight sends that one home sick, cast on his spot;
+## a second bystander, a grieving one, one on dusk, or nobody at all: no Blight. Once he is gone the next look Dooms the Faithful alone.
+## (Mutations, each run once: `others.size() != 1` -> `others.is_empty()` in _blight_blocker -- "two bystanders: no Blight" fails; the Blight
+## branch removed from act_veil -- "act_veil Blights the one in the way" fails; both run 2026-11-20.)
+static func _veil_blight_blocker(t) -> void:
+	var policy := preload("res://tools/dev/routes/god_t1/prayers.gd")
+	var s := _world()
+	var d: FirstPrayersDirector = s.d
+	var crowd: Crowd = s.crowd
+	var env: EnvironmentField = s.env
+	_run(s, 9.0)  # (past the policy's first 8 s, when a Doom seen by the Faithful's own may be aimed)
+	var f: Person = null
+	for v in d.faithful:
+		if MissionDirector._alive(v):
+			if f == null:
+				f = v
+			else:
+				v.inside = true  # (out of the pool: one Faithful left to clear)
+	# An open, walkable spot well off any building (nothing under it, none within Blight's REACH), lit ground.
+	var spot := Vector2.INF
+	for rad: float in [6.0, 8.0, 10.0, 12.0, 14.0]:
+		for k in 24:
+			var g := d.door + Vector2.from_angle(TAU * float(k) / 24.0) * rad
+			if spot == Vector2.INF and crowd._grid.walkable(g) and crowd._grid.walkable(g + Vector2(0.4, 0.0)) \
+					and BlightFx.choose(env, null, null, g).kind == &"none" and BlightFx.choose(env, null, null, g + Vector2(0.4, 0.0)).kind == &"none":
+				spot = g
+	t.check(spot != Vector2.INF, "(an open spot by the shrine for the check: %s)" % spot)
+	var lay: Array[Person] = []
+	for p in crowd.citizens:
+		if MissionDirector._alive(p) and not p.inside and p != f and not d.faithful.has(p) and not d.grieving.has(p) and p != d.walker \
+				and BlightFx.ill_able(p):
+			lay.append(p)
+	var q: Person = lay[0]
+	var q2: Person = lay[1]
+	for p in crowd.citizens + crowd.soldiers:
+		if MissionDirector._alive(p) and p != f and p.ground_pos.distance_to(spot) < 6.0:
+			_arrive(p, spot + Vector2(40.0, 40.0))
+	_arrive(f, spot)
+	_arrive(q, spot + Vector2(0.4, 0.0))
+	var spy := CastSpy.new()
+	var slots := {"doom": 0, "blight": 1}
+	var ctx := {"rules": spy, "slots": slots, "d": d, "crowd": crowd, "memo": {}, "mission": null}
+	var bc := VeilBc.new()
+	t.check(policy._blight_blocker(ctx) == q, "one lay citizen beside the last Faithful, on lit ground: he is the one Blight sends home")
+	var did := String(policy.act_veil(bc, ctx))
+	t.check(did.begins_with("blight") and spy.casts.size() == 1 and int(spy.casts[0].slot) == 1 and (spy.casts[0].at as Vector2).is_equal_approx(q.ground_pos)
+		and BlightFx.choose(env, crowd, d, spy.casts[0].at).p == q,
+		"act_veil Blights the one in the way, on his spot, and Blight's own pick there is him (%s, %s)" % [did, spy.casts])
+	# What would make it wrong to Blight: a second bystander in the Doom's reach, a grieving one, the dusk, nobody.
+	_arrive(q2, spot + Vector2(-0.4, 0.0))
+	t.check(policy._blight_blocker(ctx) == null, "two bystanders in the Doom's reach: no Blight (it takes one alone)")
+	_arrive(q2, spot + Vector2(40.0, 40.0))
+	var g0: Person = d.grieving[0]
+	_arrive(q, spot + Vector2(40.0, 40.0))
+	_arrive(g0, spot + Vector2(0.4, 0.0))
+	t.check(policy._blight_blocker(ctx) == null, "a grieving one beside the Faithful: never Blighted (he is to be spared)")
+	_arrive(g0, spot + Vector2(40.0, 40.0))
+	_arrive(q, spot + Vector2(0.4, 0.0))
+	crowd.dusk.enabled = true
+	var patch := crowd.lay_dusk(q.ground_pos, VeilRules.DUSK_R, 20.0)
+	t.check(policy._blight_blocker(ctx) == null, "the one beside him on dusk: no Blight (in the dark it would make the Faithful ill too)")
+	crowd.dusk.end(patch)
+	_arrive(q, spot + Vector2(40.0, 40.0))
+	t.check(policy._blight_blocker(ctx) == null, "nobody beside the Faithful: nothing to Blight")
+	# He walked home: the Doom on the Faithful follows, alone.
+	spy.casts.clear()
+	did = String(policy.act_veil(bc, ctx))
+	t.check(did.begins_with("doom") and spy.casts.size() == 1 and int(spy.casts[0].slot) == 0 and (spy.casts[0].at as Vector2).is_equal_approx(f.ground_pos),
+		"the way clear, the next look Dooms the Faithful alone (%s, %s)" % [did, spy.casts])
+	spy.fx.free()
+	spy.free()
+	_done(s)
+

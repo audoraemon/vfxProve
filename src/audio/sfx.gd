@@ -26,7 +26,7 @@ const DUCKS := {
 	&"collapse_stone": -2.0, &"collapse_timber": -2.0, &"collapse_tree": -2.0, &"crowd_death_wave": -3.0,
 	&"smite_strike": -6.0, &"scatter_burst": -4.0, &"scatter_boom": -3.0, &"solar_blaze": -6.0, &"sky_clap": -6.0, &"sky_bolt": -5.0,
 	&"quake_open": -5.0, &"wf_land": -5.0, &"hg_doors": -3.0, &"hm_open": -4.0, &"deep_burst": -5.0, &"dead_door": -5.0,
-	&"hd_land": -8.0, &"hd_shut": -5.0,
+	&"hd_land": -8.0, &"hd_shut": -5.0, &"v_swallow_take": -6.0,
 	&"smite_crack": -6.0, &"mirror_shatter": -5.0, &"dr_burn": -4.0, &"wf_erupt": -5.0, &"wf_impact": -5.0, &"hm_erupt": -5.0, &"hg_roar": -4.0,
 }
 const DUCK_BUSES := [&"Music", &"Ambience"]
@@ -165,6 +165,26 @@ const CATALOG := {
 	&"q_sealed": {"path": "res://assets/audio/ability/quiet/q_sealed_%d.wav", "variants": 3, "db": 0.5, "voices": 2, "jitter": 0.05},
 	&"q_sealed_hit": {"path": "res://assets/audio/ability/quiet/q_sealed_hit_%d.wav", "variants": 3, "db": 2.0, "voices": 2, "jitter": 0.05},
 	&"q_unseen": {"path": "res://assets/audio/ability/quiet/q_unseen.wav", "db": 1.0},
+	# The Veil's seven (Veil authority powers spec 6; tools/audio/foley/ability/veil/): the silent god's cues are quiet, low and close --
+	# a breath, cloth, a held low note, a lamp guttering -- never a bang, a scream or an alarm. A cast cue v_<key> each, Evernight's held
+	# night (a loop) and Blight's sickness on a person. None ducks the music or has an aftermath; the Swallowing Dark's are below.
+	&"v_slumber": {"path": "res://assets/audio/ability/veil/v_slumber.wav", "db": 0.0},
+	&"v_cloak": {"path": "res://assets/audio/ability/veil/v_cloak.wav", "db": 1.6},
+	&"v_pale_eye": {"path": "res://assets/audio/ability/veil/v_pale_eye.wav", "db": 2.8, "voices": 1},
+	&"v_dreamless": {"path": "res://assets/audio/ability/veil/v_dreamless.wav", "db": 1.0},
+	&"v_dread": {"path": "res://assets/audio/ability/veil/v_dread.wav", "db": 0.9},
+	&"v_shadowplay": {"path": "res://assets/audio/ability/veil/v_shadowplay.wav", "db": -0.3},
+	# The Swallowing Dark (review pass 2, spec 4: "need more powerful sound effect"): the one Veil power the god hears as a doomsday. A
+	# deep opening (a sub drop, stone groaning open, a long in-drawn breath of the ground), a low rumble held while the circle grows
+	# (a loop the effect swells with the circle), a rising inward rush over the heave that ends on the fold, and the fold's hit (a sub
+	# boom, an implosion, earth collapsing in, a long dark tail; it ducks the music as the other doomsdays do). The town hears none of it.
+	&"v_swallow": {"path": "res://assets/audio/ability/veil/v_swallow.wav", "db": 0.9},
+	&"v_swallow_loop": {"path": "res://assets/audio/ability/veil/v_swallow_loop.wav", "db": 0.4, "loop": true, "voices": 1},
+	&"v_swallow_heave": {"path": "res://assets/audio/ability/veil/v_swallow_heave.wav", "db": 1.8, "voices": 1},
+	&"v_swallow_take": {"path": "res://assets/audio/ability/veil/v_swallow_take.wav", "db": 4.4},
+	&"v_evernight": {"path": "res://assets/audio/ability/veil/v_evernight.wav", "db": 1.6},
+	&"v_evernight_loop": {"path": "res://assets/audio/ability/veil/v_evernight_loop.wav", "db": 1.5, "loop": true, "voices": 1},
+	&"q_blight_ill": {"path": "res://assets/audio/ability/veil/q_blight_ill.wav", "db": 0.7},
 	&"q_clearmind": {"path": "res://assets/audio/ability/quiet/q_clearmind_%d.wav", "variants": 3, "db": 1.8},
 	&"q_anathema": {"path": "res://assets/audio/ability/quiet/q_anathema_%d.wav", "variants": 3, "db": 0.2},
 	&"q_sanctuary": {"path": "res://assets/audio/ability/quiet/q_sanctuary_%d.wav", "variants": 3, "db": 0.7},
@@ -700,6 +720,9 @@ static func bus_at(share: float) -> StringName:
 
 func fade_out(p: AudioStreamPlayer2D, seconds: float) -> void:
 	if p == null or not is_instance_valid(p) or not p.playing:
+		return
+	if not is_inside_tree():
+		p.stop()  # no tween off the tree (a stage being torn down): stopped at once
 		return
 	var tween := create_tween()
 	tween.tween_property(p, "volume_db", -60.0, seconds)

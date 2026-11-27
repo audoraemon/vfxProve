@@ -398,14 +398,23 @@ func _bench_cast(args: PackedStringArray) -> bool:
 		_bf.ctx.env.structure_destroyed.connect(count_fall)
 	var cast_out := false
 	if _rules != null:
-		var bench_level := bench_level_arg(args)
-		if bench_level > 1:
-			_rules.levels = _rules.levels.duplicate()
-			_rules.levels[key] = bench_level  # --bench-level=N: the cast power at level N (Death, Decree, ... tables)
-		for i in _rules.loadout.size():
-			if _rules.key(i) == key:
-				cast_out = _rules.cast(i, at) != null
-				break
+		# A comma list (`--bench-cast=evernight,unseen,dread`) casts each in turn at the same spot, 4 s apart (a stack's cost).
+		var keys := key.split(",", false)
+		for n in keys.size():
+			key = keys[n]
+			if n > 0:
+				await get_tree().create_timer(4.0).timeout
+			var bench_level := bench_level_arg(args)
+			if bench_level > 1:
+				_rules.levels = _rules.levels.duplicate()
+				_rules.levels[key] = bench_level  # --bench-level=N: the cast power at level N (Death, Decree, ... tables)
+			for i in _rules.loadout.size():
+				if _rules.key(i) == key:
+					var made := _rules.cast(i, at) != null
+					if not made:
+						push_warning("--bench-cast: %s was refused" % key)
+					cast_out = made if n == 0 else cast_out and made
+					break
 	if tally != "":
 		if not cast_out:
 			push_warning("--bench-tally: %s was not cast (refused, or not in the loadout); the tally counts the town alone" % key)

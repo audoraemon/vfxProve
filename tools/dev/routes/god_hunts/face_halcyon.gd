@@ -7,8 +7,8 @@ extends RefCounted
 ##            (GazeMeter.SEEN_DEATH) and the bell's toll another 40: _room(). Ember lights a house the escort walks past and nothing happens to him (measured).
 ##   death    Death Mark (frail at once, so counted unable at once; dead in 10 s), the rear of the file first, and nothing else: every wider Death power
 ##            would take the believer too (a believer the god kills counts as burned), and Corpse Guise would be laid on him.
-##   veil     Blight the Bell Tower early (no toll all night), Silent Doom on the escort, the rear of the file first, aimed where he stands; Tsunami Breaker is
-##            not used (its wave would take the believer on the same road).
+##   veil     Blight the Bell Tower early (no toll all night), Silent Doom on the escort, the rear of the file first, aimed where he stands; Slumber is drafted and
+##            never cast (Veil ruling VE4).
 ##   passage  Skylift one escort out past the walls (sent off), the rear of the file first, then the believer himself FH_GAP later (freed by the walls);
 ##            Mirrorfold Passage laid across the road ahead, its way out beyond the walls, as the finisher while the lift cools.
 ##   decree   Leaving Is Prohibited at the door of a house in the last moment before its procession forms up (those who come out are bound at once; the bars
@@ -24,7 +24,7 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 const LOADOUT := {
 	"ruin": ["smite", "ember"],
 	"death": ["deathmark"],
-	"veil": ["doom", "blight", "nova"],
+	"veil": ["doom", "blight", "slumber"],
 	"passage": ["skylift", "mirror"],
 	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "voice"],
@@ -347,11 +347,10 @@ static func act_death(bc, ctx: Dictionary) -> String:
 	return ""
 
 
-# --- Veil: Silent Doom, Blight, Tsunami Breaker ----------------------------------------------------------------------------------------
+# --- Veil: Silent Doom, Blight (Slumber drafted, never cast: ruling VE4) ---------------------------------------------------------------
 
 ## Blight the Bell Tower first (no toll all night: the toll adds 40 to the Gaze); then Silent Doom on an escort, aimed where he stands (the victims are fixed
-## at the cast), the rear of the file first, unseen at once and seen only after PATIENCE (_strike()). Tsunami Breaker's wave would take the believer on the
-## same road.
+## at the cast), the rear of the file first, unseen at once and seen only after PATIENCE (_strike()).
 static func act_veil(bc, ctx: Dictionary) -> String:
 	var d := _fh(ctx)
 	if d == null:

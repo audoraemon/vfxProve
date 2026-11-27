@@ -379,7 +379,7 @@ func blight_takes(at: Vector2) -> bool:
 
 
 ## Blight landed on the mirror at `at` (v0.11.1): an unguarded one's glass clouds and it shatters as after the last blow -- its drain
-## starts and its wrights come out (_shatter()); the town's alarm as any Blight (the base). False for a guarded one.
+## starts and its wrights come out (_shatter()); no alarm, as any Blight since the Veil rework (the base). False for a guarded one.
 func blighted(at: Vector2) -> bool:
 	var i := _mirror_near(at)
 	if i < 0 or not super(at):

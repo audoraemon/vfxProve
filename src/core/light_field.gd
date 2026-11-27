@@ -23,6 +23,8 @@ var ambient := 1.0
 var tint := Color.WHITE
 var _next_id := 1
 var _time := 0.0
+## mute(): the static lights with an id below this are the muted ones; -1 while nothing is muted.
+var _mute_below := -1
 
 
 ## Follow a QuadFx light pool: intensity is read from its shader each frame; position from
@@ -89,6 +91,24 @@ func _unbin(l: Dictionary) -> void:
 				list.remove_at(i)
 
 
+## Every static light (torches, lamps) the field held when the muting began burns at `share` of the intensity it was made with (Veil:
+## Evernight's lamps die street by street, a call a step; 1.0 gives them back as made and ends the muting). A light added after the
+## muting began (Evernight's torches) is never touched by it.
+func mute(share: float) -> void:
+	if _mute_below < 0:
+		_mute_below = _next_id
+	for l in _lights:
+		if not l.get("static", false) or int(l.id) >= _mute_below:
+			continue
+		if not l.has("made"):
+			l["made"] = l.base
+		var was: float = l.base
+		l.base = float(l.made) * share
+		l.intensity = l.base if was <= 0.0 else float(l.intensity) * l.base / was
+	if share >= 1.0:
+		_mute_below = -1
+
+
 func remove(id: int) -> void:
 	_lights = _lights.filter(func(l): return l.get("id", 0) != id)
 	for key in _cells:
@@ -99,6 +119,7 @@ func remove(id: int) -> void:
 
 
 func clear() -> void:
+	_mute_below = -1
 	_lights.clear()
 	_dynamic.clear()
 	_cells.clear()

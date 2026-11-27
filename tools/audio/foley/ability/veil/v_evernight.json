@@ -1,0 +1,6 @@
+{"length": 3.4, "rms_db": -21.0, "reverb": {"rt60": 2.4, "mix": 0.24, "predelay_ms": 16, "damp": 3200}, "eq": [["lowshelf", 180, -4.0], ["peak", 3600, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.0, "from": 0.4, "dur": 3.3, "pitch": -5, "lp": 700, "hp": 35, "fade_in": 1400, "fade_out": 1200, "gain_db": -1},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_134_rr1.wav", "at": 0.4, "from": 0.4, "dur": 2.8, "pitch": -19, "lp": 1000, "hp": 60, "fade_in": 1200, "fade_out": 1200, "gain_db": -9},
+  {"src": "lib:oga/fire-crackling/fire-1.wav", "at": 0.1, "from": 0.2, "dur": 1.2, "pitch": -3, "lp": 2400, "hp": 200, "fade_in": 30, "fade_out": 900, "gain_db": -14},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.6, "onset": true, "dur": 2.4, "pitch": -7, "lp": 2000, "hp": 150, "fade_in": 700, "fade_out": 1200, "gain_db": -6}
+]}

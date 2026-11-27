@@ -10,6 +10,7 @@ static func run(t) -> void:
 	_button(t)
 	_blurbs(t)
 	_death_decree(t)
+	_veil(t)
 
 
 static func _slot(type := "dominion", tier := 1, points := 0) -> GodSlot:
@@ -102,7 +103,7 @@ static func _blurbs(t) -> void:
 				var d := TreeDetail.description(key, TreeDetail.DESCRIPTION_W)
 				if PowerBook.blurb(key) == "" or d.size() > 3 or (d.size() > 0 and d[d.size() - 1].ends_with("...")):
 					bad.append(key)
-	t.check(n == 52 and bad.is_empty(), "all %d table keys have a blurb that fits three lines at %d px (%s)" % [n, int(TreeDetail.DESCRIPTION_W), bad])
+	t.check(n == 60 and bad.is_empty(), "all %d table keys have a blurb that fits three lines at %d px (%s)" % [n, int(TreeDetail.DESCRIPTION_W), bad])
 	t.check(PowerBook.blurb("nova") == "Huge circle", "a row with no blurb falls back to its shape, capitalised (%s)" % [PowerBook.blurb("nova")])
 
 
@@ -124,3 +125,19 @@ static func _death_decree(t) -> void:
 	fresh.learned.erase("deathmark")
 	t.check(TreeDetail.level_column(fresh, "deathmark").head == "LEARN" and PowerBook.level_change("deathmark", 2) != PowerBook.NO_LEVELS,
 		"an unlearned Death spot says LEARN; no row says Levels to come any more")
+
+
+## The Veil's ten have tables: Slumber at level 2 has its rows (radius, sleep, cooldown, dusk) and at level 4 shows its twist.
+static func _veil(t) -> void:
+	var slot := _slot("veil", 2, 0)
+	slot.learned["slumber"] = 2
+	var c := TreeDetail.level_column(slot, "slumber")
+	var labels: Array = []
+	for r: Dictionary in c.rows:
+		labels.append(String(r.label))
+	t.check(String(c.head) == "LEVEL 2 -> 3" and labels == ["radius", "sleep", "cooldown", "dusk"],
+		"Slumber at level 2 shows radius, sleep, cooldown and dusk (%s, %s)" % [c.head, labels])
+	slot.learned["slumber"] = 4
+	c = TreeDetail.level_column(slot, "slumber")
+	t.check(String(c.twist) == "Level 5 . " + PowerBook.twist("slumber") and PowerBook.twist("slumber") != "",
+		"and at level 4 its level 5 line is the twist (%s)" % [c.twist])

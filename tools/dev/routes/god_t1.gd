@@ -92,6 +92,12 @@ static func outside_spot(_bc, ctx: Dictionary, from: Vector2, reach: float) -> V
 	return best
 
 
+## The reach a Silent Doom cast at `at` gets (the law of the Veil, ruling VE1): the dark size where the ground under the click is dark
+## (Crowd.in_dark(), the same question Rules.cast() stamps), the light size otherwise. Only reads.
+static func doom_r(crowd: Crowd, at: Vector2) -> float:
+	return VeilRules.size("doom", "RADIUS", crowd != null and crowd.in_dark(at))
+
+
 ## Where `p` will be `seconds` from now, walking on the path he is on at the pace he walks now (his own place when he has no path).
 ## Only reads.
 static func road_ahead(p: Person, seconds: float) -> Vector2:

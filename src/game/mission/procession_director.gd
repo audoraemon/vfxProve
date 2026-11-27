@@ -467,3 +467,8 @@ func teardown() -> void:
 	if is_instance_valid(crowd) and crowd.escaped.is_connected(_on_escaped):
 		crowd.escaped.disconnect(_on_escaped)
 	timeline = null  # its banner and guard lambdas hold this director: let both go
+
+
+## Veil (spec 5.2): the prince -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and p == prince

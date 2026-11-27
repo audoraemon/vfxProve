@@ -933,6 +933,17 @@ func teardown() -> void:
 	timeline = null  # its banner and guard lambdas hold this director: let both go
 
 
+## Veil (spec 5.2): the quarries this night hunts -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	if p == null:
+		return false
+	for q in quarries:
+		var t: Variant = q.target  # (a Variant: a body may be freed after its death fade)
+		if is_instance_valid(t) and t == p:
+			return true
+	return false
+
+
 ## Music by situation: the chase while a quarry flees to his hideout.
 func music_mood() -> StringName:
 	for q: Quarry in quarries:

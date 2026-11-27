@@ -3,9 +3,9 @@
 capital_lamb_none_1	--scenario=lamb --case=none --seed=1 --city=capital	-543938037
 capital_lamb_none_2	--scenario=lamb --case=none --seed=2 --city=capital	-757723111
 capital_lamb_none_3	--scenario=lamb --case=none --seed=3 --city=capital	-492687615
-capital_lamb_play_1	--scenario=lamb --case=play --seed=1 --city=capital	-103745878
-capital_lamb_play_2	--scenario=lamb --case=play --seed=2 --city=capital	-470901345
-capital_lamb_play_3	--scenario=lamb --case=play --seed=3 --city=capital	-738546043
-capital_lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1 --city=capital	-97085777
+capital_lamb_play_1	--scenario=lamb --case=play --seed=1 --city=capital	-420233005
+capital_lamb_play_2	--scenario=lamb --case=play --seed=2 --city=capital	-89453914
+capital_lamb_play_3	--scenario=lamb --case=play --seed=3 --city=capital	-757701465
+capital_lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1 --city=capital	-41866509
 capital_lamb_b_play_2	--scenario=lamb --case=play --route=b --seed=2 --city=capital	-97261409
-capital_lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3 --city=capital	-840964194
+capital_lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3 --city=capital	-610946668

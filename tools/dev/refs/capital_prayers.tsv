@@ -6,9 +6,9 @@ capital_prayers_none_3	--scenario=prayers --case=none --seed=3 --city=capital	-2
 capital_prayers_play_1	--scenario=prayers --case=play --seed=1 --city=capital	-670630320
 capital_prayers_play_2	--scenario=prayers --case=play --seed=2 --city=capital	-833841290
 capital_prayers_play_3	--scenario=prayers --case=play --seed=3 --city=capital	-43873851
-capital_prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1 --city=capital	-128289272
-capital_prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2 --city=capital	-222297253
-capital_prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3 --city=capital	-471752188
+capital_prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1 --city=capital	-350857538
+capital_prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2 --city=capital	-571483954
+capital_prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3 --city=capital	-777097727
 capital_prayers_toll_1	--scenario=prayers --case=toll --seed=1 --city=capital	-232874714
 capital_prayers_toll_2	--scenario=prayers --case=toll --seed=2 --city=capital	-874511440
-capital_prayers_toll_3	--scenario=prayers --case=toll --seed=3 --city=capital	-108825463
+capital_prayers_toll_3	--scenario=prayers --case=toll --seed=3 --city=capital	-734789257

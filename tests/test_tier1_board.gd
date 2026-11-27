@@ -94,7 +94,7 @@ static func _actors(s: Dictionary) -> Dictionary:
 		var h := d as HarvestDirector
 		_run(s, float(HarvestDirector.GRAIN_AT[0]) + DT * 2.0)
 		places.append_array(h.targets)
-		for posts: Array in h.watches.values():
+		for posts: Array in h.watch_posts.values():
 			for w: HarvestDirector.Watch in posts:
 				if w.man != null:
 					people.append(w.man)

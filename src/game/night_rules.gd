@@ -62,6 +62,7 @@ static func pick_indoors(crowd: Crowd, reserved: Array, seed_value: int, directo
 ## Nothing at all for a look that is not NIGHT. Returns how many went indoors.
 static func apply(crowd: Crowd, look: int, reserved: Array, seed_value: int, director: MissionDirector = null) -> int:
 	crowd.sight_scale = sight_scale(look)
+	crowd.night_mission = is_night(look)  # the law of the Veil: a NIGHT mission is dark ground everywhere (Crowd.in_dark())
 	if not is_night(look):
 		return 0
 	if crowd.routine != null:

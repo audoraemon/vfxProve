@@ -397,3 +397,8 @@ func _takes_mate(key: String, at: Vector2, verbs: PackedStringArray) -> bool:
 ## No tour of its own: BellRingersDirector shows the posts (v0.11 M3).
 func tour() -> Array:
 	return []
+
+
+## Veil (spec 5.2): the warning's own (super) and the bell's own keeper -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return super(p) or (p != null and is_instance_valid(own_keeper) and own_keeper == p)

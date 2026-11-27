@@ -103,6 +103,16 @@ const POWER_KINDS := {
 	"sealed": [&"verdict"],
 	"magnify": [&"magnify"],
 	"unseen": [],
+	# The Veil's (Veil authority powers spec §5): taken, no body (void, night, dreamt, shadow); Dreamless's found body (dreamless).
+	# Blight sickens and Slumber and Cloak take nobody; Dread's level-5 edge pull takes with its own silent kind (edge).
+	"blight": [],
+	"slumber": [],
+	"cloak": [],
+	"dreamless": [&"dreamless", &"dreamt"],
+	"dread": [&"edge"],
+	"shadowplay": [&"shade"],
+	"swallow": [&"void"],
+	"evernight": [&"night"],
 	"clearmind": [],
 	"saint": [&"frenzy"],
 	"sanctuary": [&"frenzy"],
@@ -220,6 +230,15 @@ var _crowd: Crowd
 var _town: Town
 ## Seconds of cooldown left per slot.
 var _cooldowns := PackedFloat32Array()
+## The rate an authority's cooldown clocks run at (Veil: Evernight sets {"veil": 2.0} and erases it at dawn): authority -> rate, read by
+## advance() for a cooldown already running and a new one alike. Never for a once-a-descent power (cooldown_of() >= ONCE_COOLDOWN).
+var haste: Dictionary = {}
+## A cooldown this long or longer is once a descent (The Swallowing Dark, Evernight): haste never touches it.
+const ONCE_COOLDOWN := 999.0
+## A caster's own pace (scripted play only; empty in the game): key -> the least seconds its slot rests after a cast, where that is
+## longer than the power's cooldown. The scripted nights were recorded when Blight cooled for 36 s and keep that pace
+## (tools/dev/behaviour_check.gd BOT_PACE): a player may always wait. Never for a once-a-descent power.
+static var pace := {}
 ## The full cooldown of a slot whose last cast was in a mode with its own (cooldown_of() counts down from it): slot -> seconds.
 var _mode_cooldown := {}
 ## The power now playing; no other can be cast until it finishes (busy_left()).
@@ -255,6 +274,9 @@ func setup(powers: PackedStringArray, ctx: FxContext, env: EnvironmentField, fie
 	if crowd.remains != null:
 		crowd.remains.enabled = true
 		crowd.remains.always = true
+	# And the dusk ledger only when a Veil power is carried (the law of the Veil: the trigger is the power, not the god).
+	if crowd.dusk != null:
+		crowd.dusk.enabled = VeilRules.wants(loadout)
 	_escaped0 = crowd.escaped_count
 	_citizens0 = crowd.killed_citizens
 	_soldiers0 = crowd.killed_soldiers
@@ -287,7 +309,11 @@ func advance(delta: float) -> void:
 		return
 	for i in _cooldowns.size():
 		var was := _cooldowns[i]
-		_cooldowns[i] = maxf(0.0, was - delta)
+		# Evernight (Veil): an authority's cooldown clocks may run faster (haste), never a once-a-descent one. No haste: as before.
+		var step := delta
+		if not haste.is_empty() and cooldown_of(i) < ONCE_COOLDOWN:
+			step = delta * float(haste.get(PowerBook.authority_of(key(i)), 1.0))
+		_cooldowns[i] = maxf(0.0, was - step)
 		if was > 0.0 and _cooldowns[i] == 0.0:
 			recharged.emit(i)
 	if might != null:
@@ -406,7 +432,12 @@ func cooldown_of(slot: int) -> float:
 		return 0.0
 	if _mode_cooldown.has(slot):
 		return float(_mode_cooldown[slot])
-	return PowerBook.cooldown(String(p.key), level_of(slot))
+	return paced(String(p.key), PowerBook.cooldown(String(p.key), level_of(slot)))
+
+
+## `cooldown` for `key`, or the caster's own pace where that is longer (pace; the game sets none).
+static func paced(key: String, cooldown: float) -> float:
+	return cooldown if cooldown >= ONCE_COOLDOWN else maxf(cooldown, float(pace.get(key, 0.0)))
 
 
 func cooldown_left(slot: int) -> float:
@@ -487,6 +518,18 @@ func body_check(needs: String, ground: Vector2, hidden_too := false, r := Remain
 	return ""
 
 
+## Why a Veil cast of `key` at `ground` must be refused, else "" (ruling C2): Blight with neither a building nor a person in reach
+## ("no_blight", BlightFx.refusal()), Dread of the Dark with no dark ground in reach ("no_dark", DreadOfTheDarkFx.refusal()). cast() asks it
+## before any cooldown starts, so a refused cast spends none. The seam a test overrides to drive a refusal (ruling C17).
+func veil_refusal(key: String, ground: Vector2, extra: Dictionary) -> String:
+	if key == "blight":
+		return BlightFx.refusal(self, ground)
+	if key == "dread":
+		return DreadOfTheDarkFx.refusal(_crowd, ground, bool(extra.get("dark", _crowd != null and _crowd.in_dark(ground))),
+				int(extra.get("level", 1)))
+	return ""
+
+
 ## Start the slot's cooldown and put its effect in the world. Returns the running effect, or
 ## null when the cast was refused (and when a test's caster hands nothing back).
 func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
@@ -518,12 +561,21 @@ func cast(slot: int, ground: Vector2, extra := {}) -> FxTimeline:
 	var told := extra.duplicate()
 	if not told.has("level"):
 		told["level"] = level_of(slot)
+	# The law of the Veil: a Veil cast is told once, now, whether the ground under the click is dark -- its full size -- or lit (a key
+	# already given wins: tests).
+	if not told.has("dark") and _crowd != null and PowerBook.authority_of(String(p.key)) == "veil":
+		told["dark"] = _crowd.in_dark(ground)
+	# Whether a Veil cast is refused is judged on what the effect will be told: its dark ground and its level (Dread's light reach).
+	var veil_why := veil_refusal(String(p.key), ground, told)
+	if veil_why != "":
+		cast_refused.emit(slot, veil_why)  # refused: no cooldown starts
+		return null
 	if might != null and not free_play:
 		might.pay(PowerBook.might(String(p.key), int(told.level)))  # the level the cooldown below uses, as the cast is told it
 	if not cast_keys.has(String(p.key)):
 		cast_keys.append(String(p.key))
 	# The cooldown is the level's (a caller-set level counts); a row without a table keeps its own.
-	_cooldowns[slot] = PowerBook.cooldown(String(p.key), int(told.level))
+	_cooldowns[slot] = paced(String(p.key), PowerBook.cooldown(String(p.key), int(told.level)))
 	# A mode that carries its own cooldown (Will-o'-Wisp's ENTHRALL) waits that instead; no mode, or one without, changes nothing.
 	var own := PowerBook.mode_cooldown(String(p.key), String(told.get("mode", ""))) if told.has("mode") else -1.0
 	if own >= 0.0:

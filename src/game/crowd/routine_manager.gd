@@ -80,7 +80,7 @@ func visit(i: int, dt: float) -> void:
 	if not is_instance_valid(_crowd.citizens[i]):
 		return
 	var p: Person = _crowd.citizens[i]
-	if p.profile == null or p.night_indoors or p.state == DummyEnemy.State.DEAD or p.has_goal():
+	if p.profile == null or p.night_indoors or p.home_sick or p.state == DummyEnemy.State.DEAD or p.has_goal():
 		return
 	if p.mind != Person.Mind.CALM and p.mind != Person.Mind.RECOVER:
 		return

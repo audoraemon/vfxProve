@@ -1,0 +1,6 @@
+{"length": 2.2, "rms_db": -21.0, "reverb": {"rt60": 1.4, "mix": 0.18, "predelay_ms": 16, "damp": 3200}, "eq": [["lowshelf", 180, -4.0], ["peak", 3600, -1.5, 0.8]], "layers": [
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.0, "onset": true, "dur": 1.2, "pitch": -5, "reverse": true, "lp": 2400, "hp": 180, "fade_in": 400, "fade_out": 200, "gain_db": -3},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 0.85, "onset": true, "pitch": -5, "lp": 3000, "hp": 140, "fade_out": 150, "gain_db": 0},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 1.15, "onset": true, "pitch": -7, "lp": 2600, "hp": 140, "fade_out": 150, "gain_db": -3},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_Man3Quiet_134_rr1.wav", "at": 0.5, "from": 0.3, "dur": 1.6, "pitch": -24, "lp": 900, "hp": 50, "fade_in": 500, "fade_out": 800, "gain_db": -11}
+]}

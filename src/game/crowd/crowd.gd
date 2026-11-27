@@ -70,8 +70,8 @@ const PANIC_CAST := 7.0
 ## Alarm from events counts this share of its worth before the bell has rung (_hear_alarm()).
 const UNWARNED_ALARM := 0.5
 ## The quiet powers (v0.05). Silent Doom's deaths go unseen unless someone stands within DOOM_WITNESS of one: then
-## those near it panic, and the death counts like any other. Blight adds BLIGHT_ALARM, and jams a gate for GATE_JAM
-## seconds.
+## those near it panic, and the death counts like any other. Blight jams a gate for GATE_JAM seconds; it added
+## BLIGHT_ALARM until the Veil rework (spec 11.1: no Veil power raises alarm), which nothing adds now.
 const DOOM_WITNESS := 2.0
 const BLIGHT_ALARM := 1.0
 const GATE_JAM := 30.0
@@ -273,6 +273,32 @@ var _bed_level := 0.0
 var remains: Remains
 ## The withering (Withering, R36): laid by wither(), stepped after the remains, cleared with the town.
 var withering: Withering
+## The dusk ledger (the law of the Veil): made beside the remains, off until Rules.setup() finds a Veil power in the loadout
+## (VeilRules.wants()); stepped after the withering, cleared with the town. Empty, it changes nothing.
+var dusk: Dusk
+## A NIGHT mission (NightRules.apply() sets it): everywhere outdoors is dark for the Veil's powers (in_dark()). Sight at night is
+## sight_scale's, not this flag's.
+var night_mission := false
+## Dread of the Dark (Veil): the live dreads, {"id", "at", "r", "until"} (dread(), dreaded()). Person._step_blocked() reads only
+## whether it is empty, so the walk is unchanged with none.
+var dreads: Array[Dictionary] = []
+var _next_dread := 1
+## Evernight's town-wide veil (veil_all()): ids of the _veils entries it laid.
+var _next_veil_all := 1
+## Blight's lasting footholds (Veil, ruling C3): the blighted buildings that hold lasting dusk, oldest first. Filled by Blight,
+## read by Evernight's dawn; emptied with the crowd.
+var footholds: Array[Structure] = []
+## The kill kinds that take a person without a trace (Veil: The Swallowing Dark, Evernight, Dreamless on a sleeper, Shadow Play's
+## soldiers): no voice, no incident, no alarm, no remain (take()).
+const SILENT_KINDS: Array[StringName] = [&"void", &"night", &"dreamt", &"shade", &"edge"]
+## Who a mission's director keeps alive (MissionDirector.keeps_alive, registered by its setup()): spared() asks them.
+var mission_keeps: Array[Callable] = []
+## Who a mission's director counts as keeping watch beside the soldiers (MissionDirector.watches(), registered by its setup()): is_watch() asks.
+var mission_watch: Array[Callable] = []
+## The Veil's Pale Eye ledger (PaleEye.mark() makes it on first use); null until a level-5 twist eyes someone. Cleared with the town.
+var pale_eye: PaleEye
+## Silent Doom's victims whose witnesses a twist answers (answer_doom()): [victim, answer] pairs, forgotten when the settle has named them.
+var _doom_answers: Array = []
 ## The burning (Burning: Ember on a person): laid by burn(), stepped after the town's orders (_advance()), cleared with the town.
 var burning: Burning
 ## The trail fire (TrailFire: Ember's level 5 Fire Trail, short-lived burning ground that hurts who crosses it): null until the
@@ -427,6 +453,8 @@ func setup(field: EnemyField, env: EnvironmentField, town: Town, grid: WalkGrid,
 	remains = Remains.new().setup(field)
 	parent.add_child(remains)
 	withering = Withering.new(field)
+	dusk = Dusk.new()
+	parent.add_child(dusk)
 	burning = Burning.new(self)
 	field.enemy_killed.connect(_on_killed)
 	field.enemy_struck.connect(_on_struck)
@@ -1298,6 +1326,10 @@ func _advance(delta: float) -> void:
 		remains.step(delta)
 	if withering != null:
 		withering.step(delta)
+	if dusk != null:
+		dusk.step(delta)
+	if not dreads.is_empty():
+		_prune_dreads()  # (Veil) a spent dread is let go, so the walk's check is free again
 	threats.step(delta)
 	_land_held()
 	_spread_fright()
@@ -1613,6 +1645,8 @@ func _update_bed(delta: float) -> void:
 func _voice(p: Person, cue: StringName) -> void:
 	if is_hushed() or is_hushed_at(p.ground_pos):
 		return
+	if not p.statuses.is_empty() and (p.is_shadow() or p.is_dreaded()):
+		return  # (Veil) a shadow says nothing; the dreaded cannot shout
 	if _voice_tokens < 1.0:
 		return
 	_voice_tokens -= 1.0
@@ -1660,7 +1694,7 @@ func on_cast(ground: Vector2, dir := Vector2.ZERO, length := 0.0, key := "", lev
 	# who can see the build-up stop and look at it.
 	_held_dangers.append({"at": _clock + impact, "points": points, "radius": radius, "reach": reach, "key": key,
 		"ground": ground})
-	_look(points, float(reach[0]) * sight_scale)
+	_look(points, float(reach[0]))
 
 
 ## Danger held for the impact (on_cast()): how many casts are still building up.
@@ -1763,7 +1797,9 @@ func thought_tags() -> Array[MapTag]:
 
 ## The build-up of a loud power (v0.11.2): the calm citizens within its sight of a point turn to look at it. Soldiers stay at
 ## their posts; those the impact will reach are judged when it lands.
-func _look(points: Array[Vector2], sight: float) -> void:
+## Everyone calm enough to look whose nearest of `points` lies within `reach` times the sight scale of that line (sight_scale_at():
+## dusk at either end shortens it) stops and looks at it.
+func _look(points: Array[Vector2], reach: float) -> void:
 	for p in citizens:
 		if not is_instance_valid(p) or not p.is_alive() or p.inside:
 			continue
@@ -1774,7 +1810,7 @@ func _look(points: Array[Vector2], sight: float) -> void:
 			if d < best:
 				best = d
 				at = point
-		if best <= sight:
+		if best <= reach * sight_scale_at(p.ground_pos, at):
 			p.observe(at)
 
 
@@ -1836,8 +1872,8 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 				at = point
 		if p.inside:
 			continue
-		if p.mind == Person.Mind.ASLEEP and best <= sound:
-			p.wake()  # a loud blow wakes the sleeping (Curfew)
+		if p.mind == Person.Mind.ASLEEP and best <= sound and not p.is_deep_asleep():
+			p.wake()  # a loud blow wakes the sleeping (Curfew); not a deep sleep (Veil)
 		if best <= radius + Person.THREAT_MARGIN:
 			var was := p.mind
 			if fresh_only and was == Person.Mind.PANIC:
@@ -1849,7 +1885,7 @@ func _react(points: Array[Vector2], radius: float, sound: float, yelp_at: Vector
 		elif best <= sound:
 			p.observe(at)
 	for p in soldiers:
-		if not is_instance_valid(p) or p.mind != Person.Mind.ASLEEP or p.inside:
+		if not is_instance_valid(p) or p.mind != Person.Mind.ASLEEP or p.inside or p.is_deep_asleep():
 			continue
 		for point in points:
 			if p.ground_pos.distance_to(point) <= sound:
@@ -1951,11 +1987,126 @@ func veil(at: Vector2, r: float, seconds: float) -> void:
 	threats.blind = is_veiled
 
 
+## True when a live Unseen Hour veil's circle reaches into the circle of radius `r` about `at` (Evernight's town-wide veil too).
+func veil_reaches(at: Vector2, r: float) -> bool:
+	for v: Dictionary in _veils:
+		if _clock < float(v.until) and (v.at as Vector2).distance_to(at) <= r + float(v.r):
+			return true
+	return false
+
+
 func is_veiled(at: Vector2) -> bool:
 	for v: Dictionary in _veils:
 		if _clock < float(v.until) and (v.at as Vector2).distance_to(at) <= float(v.r):
 			return true
 	return false
+
+
+## The law of the Veil (VeilRules): is `at` dark ground -- a dusk patch covers it, Unseen Hour's veil covers it, the mission is a
+## NIGHT mission, or Evernight is up. Only the Veil's powers read it (their two sizes, the aim ring).
+func in_dark(at: Vector2) -> bool:
+	return (dusk != null and (dusk.everywhere or dusk.covers(at))) or is_veiled(at) or night_mission
+
+
+## Evernight (Veil): nothing anywhere in town is seen for `seconds` -- Unseen Hour's rule everywhere (is_veiled() is true at every
+## point) until it runs out or end_veil_all() lifts it. A veil laid meanwhile (veil()) keeps its own time. Returns its id.
+func veil_all(seconds: float) -> int:
+	var id := _next_veil_all
+	_next_veil_all += 1
+	_veils.append({"at": Vector2.ZERO, "r": INF, "until": _clock + seconds, "all": id})
+	threats.blind = is_veiled
+	return id
+
+
+func end_veil_all(id: int) -> void:
+	_veils = _veils.filter(func(v: Dictionary) -> bool: return int(v.get("all", 0)) != id)
+
+
+## Dread of the Dark (Veil): for `seconds`, every piece of dark ground (in_dark()) within `reach` of `at` is dreaded (dreaded()):
+## nobody outside steps into it (Person._step_blocked()). Returns its id for end_dread(). Quiet: no danger, no alarm, no fright.
+func dread(at: Vector2, reach: float, seconds: float) -> int:
+	_prune_dreads()
+	var id := _next_dread
+	_next_dread += 1
+	dreads.append({"id": id, "at": at, "r": reach, "until": _clock + seconds})
+	return id
+
+
+func end_dread(id: int) -> void:
+	dreads = dreads.filter(func(d: Dictionary) -> bool: return int(d.id) != id)
+
+
+## Lets the spent dreads go, so `dreads` is empty again once every one has run out (the crowd's step, and dreaded()).
+func _prune_dreads() -> void:
+	dreads = dreads.filter(func(d: Dictionary) -> bool: return _clock < float(d.until))
+
+
+## Whether `at` is dreaded now: a live dread reaches it and it is dark ground (in_dark()).
+func dreaded(at: Vector2) -> bool:
+	if dreads.is_empty():
+		return false
+	var spent := false
+	var hit := false
+	for d in dreads:
+		if _clock >= float(d.until):
+			spent = true
+		elif not hit and (d.at as Vector2).distance_to(at) <= float(d.r):
+			hit = true
+	if spent:
+		_prune_dreads()
+	return hit and in_dark(at)
+
+
+## Whether `p` is spared Evernight's automatic takes (Veil spec 5.9): the god's own believer (profile.faith BELIEVER; the church's
+## FAITHFUL are not), or one the mission's director keeps alive (MissionDirector.keeps_alive()).
+func spared(p: Person) -> bool:
+	if p == null or not is_instance_valid(p):
+		return false
+	if p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER:
+		return true
+	for c in mission_keeps:
+		if c.is_valid() and c.call(p):
+			return true
+	return false
+
+
+## Whether `p` keeps the town's watch (Veil, VL3): any soldier, or whoever a mission's director names (mission_watch).
+func is_watch(p: Person) -> bool:
+	if p == null or not is_instance_valid(p):
+		return false
+	if p.soldier:
+		return true
+	for c in mission_watch:
+		if c.is_valid() and c.call(p):
+			return true
+	return false
+
+
+## Takes `p` without a trace (Veil): killed with a silent kind (SILENT_KINDS: no body, no sound, no remain; _on_killed() lets it pass
+## unseen) and hidden at once. False when there is nobody to take (gone, dead, or spared by Corpse Guise's Deathless).
+func take(p: Person, kind: StringName) -> bool:
+	if p == null or not is_instance_valid(p) or not p.is_alive() or _field == null:
+		return false
+	if not _field.kill(p, kind):
+		return false
+	p.visible = false
+	return true
+
+
+## Lays a dusk patch (Dusk.lay()): its id, 0 with no ledger or the ledger off.
+func lay_dusk(at: Vector2, r: float, seconds: float) -> int:
+	return dusk.lay(at, r, seconds) if dusk != null else 0
+
+
+## The sight scale of a line from `viewer` to `seen`: sight_scale, shortened to NightRules.NIGHT_SIGHT when either end lies in a dusk
+## patch -- once, never twice (a NIGHT mission's 0.6 stays 0.6). Vector2.INF for an end means no such point. An empty ledger returns
+## sight_scale exactly.
+func sight_scale_at(viewer: Vector2, seen: Vector2) -> float:
+	if dusk == null or dusk.count() == 0:
+		return sight_scale
+	if (viewer != Vector2.INF and dusk.covers(viewer)) or (seen != Vector2.INF and dusk.covers(seen)):
+		return minf(sight_scale, NightRules.NIGHT_SIGHT)
+	return sight_scale
 
 
 ## Lays the withering on `p` for `seconds`, panicking him from `from` (Withering.lay()): false when nothing was laid
@@ -2526,6 +2677,8 @@ func route_points() -> Array[Vector2]:
 func clear_mission_hooks() -> void:
 	mission_holds.clear()
 	mission_points.clear()
+	mission_keeps.clear()
+	mission_watch.clear()
 
 
 ## Whether the soldiers were called up to the Citadel: rally() ran (a leaderless town's forgo_rally() alone is not a call-up).
@@ -2588,6 +2741,10 @@ func clear() -> void:
 		shelters.clear()
 	_households.clear()
 	_doomed.clear()
+	_doom_answers.clear()
+	if pale_eye != null and is_instance_valid(pale_eye):
+		pale_eye.queue_free()
+	pale_eye = null
 	_jams.clear()
 	_held.clear()
 	_thorn_alarm_at = -INF
@@ -2596,9 +2753,20 @@ func clear() -> void:
 	_bell_lies_until = -INF
 	_freeze_left = 0.0
 	_veils.clear()
+	dreads.clear()
+	footholds.clear()
 	_struct_marks.clear()
 	if withering != null:
 		withering.clear()
+	if dusk != null and is_instance_valid(dusk):
+		dusk.enabled = false
+		dusk.clear()
+		if dusk.is_inside_tree():
+			dusk.queue_free()
+		else:
+			dusk.free()
+	dusk = null
+	night_mission = false
 	if burning != null:
 		burning.clear()
 	if trail_fire != null:
@@ -2694,7 +2862,7 @@ func _on_structure_destroyed(s: Structure, _kind: StringName) -> void:
 				_investigate(at)
 			_send_keeper()
 		var radius := s.footprint.size.length() * 0.5 + COLLAPSE_RADIUS
-		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale, COLLAPSE_SOUND, &"collapse")
+		threats.register(at, radius, 0.4, COLLAPSE_SECONDS, COLLAPSE_SIGHT * sight_scale_at(Vector2.INF, at), COLLAPSE_SOUND, &"collapse")
 		var points: Array[Vector2] = [at]
 		_react(points, radius, COLLAPSE_SOUND, at, &"collapse")
 	if is_instance_valid(_town) and s in _town.bridges:
@@ -2739,15 +2907,15 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 		_refill(p)
 	else:
 		killed_citizens += 1
-	if kind == &"gone":
-		return  # walked through a door of stars (The Far Gate): no cry, no body, nothing for the town to find
+	if kind == &"gone" or SILENT_KINDS.has(kind):
+		return  # walked through a door of stars (The Far Gate), or taken by the Veil (take()): no cry, no body, nothing for the town to find
 	_voice_death(p, kind)
 	if kind == &"grave" or kind == &"borrowed":
 		return  # the Walker's quiet kill: a body, a slump, no alarm (Borrowed Life's is no body at all)
 	if is_veiled(p.ground_pos):
 		return  # a death nobody sees (Unseen Hour)
-	if kind == &"doom":
-		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too
+	if kind == &"doom" or kind == &"dreamless":
+		_doomed.append(p)  # seen or not, judged once the cast's other victims have fallen too (Dreamless's found body: the same rule)
 		return
 	var remain := remains.of_body(p) if remains != null else null
 	if remain != null:
@@ -2758,18 +2926,21 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	_send_keeper()
 
 
-## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night. The directors that read Crowd.DOOM_WITNESS
-## directly keep the day's distance.
-func doom_witness() -> float:
-	return DOOM_WITNESS * sight_scale
+## How near a death must be seen from (NightRules): DOOM_WITNESS by day, a share of it at night or (the law of the Veil) when the death
+## at `at` lies in dusk (sight_scale_at(); INF: no place, the town's own scale). The directors that read Crowd.DOOM_WITNESS directly keep
+## the day's distance.
+func doom_witness(at := Vector2.INF) -> float:
+	return DOOM_WITNESS * sight_scale_at(Vector2.INF, at)
 
 
 ## How far `p` sees a death or a power: a sweep man (`watch_far`) WATCH_SIGHT, scaled at night; anyone else DOOM_WITNESS, scaled at
 ## night (`day` true: the day's distance, as the directors that read Crowd.DOOM_WITNESS directly keep it). The one rule every witness
-## search asks; for a man who is not `watch_far` it is the reach the search had before.
-func witness_reach(p: Person, day := false) -> float:
-	var plain := DOOM_WITNESS if day else doom_witness()
-	return maxf(WATCH_SIGHT * sight_scale, plain) if p.watch_far else plain
+## search asks; for a man who is not `watch_far` it is the reach the search had before. `at` (the law of the Veil): the death's place, so
+## dusk at the witness or at it shortens the line (sight_scale_at()); INF, the town's own scale.
+func witness_reach(p: Person, day := false, at := Vector2.INF) -> float:
+	var scale := sight_scale if at == Vector2.INF else sight_scale_at(p.ground_pos, at)
+	var plain := DOOM_WITNESS if day else DOOM_WITNESS * scale
+	return maxf(WATCH_SIGHT * scale, plain) if p.watch_far else plain
 
 
 ## Whether the segment `a`-`b` crosses a live cordon's rope (false at once with none live): a lure through it fails.
@@ -2779,19 +2950,27 @@ func cordon_blocks(a: Vector2, b: Vector2) -> bool:
 
 ## The nearest living person -- citizen or soldier, not inside -- within DOOM_WITNESS of `at`, or null: who saw a death
 ## there (v0.08: Silent Doom's witness rule, and The Warning's relay). `exclude` is never chosen. TempleReport._witness() keeps a
-## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too. One passing as the
-## walking dead (Corpse Guise) is no witness.
-func nearest_witness(at: Vector2, exclude: Person = null) -> Person:
+## copy of this search that passes over its own skip list (v0.11 M5): a change to the rule here belongs there too. One hidden from the
+## watch (Corpse Guise, Cloak of Night: Person.hidden_from_watch()), a shadow, the dreaded and the blind (Veil: Person.veil_blind()) are no
+## witness; `skip` (instance ids) are never chosen either.
+func nearest_witness(at: Vector2, exclude: Person = null, skip: Dictionary = {}) -> Person:
 	var best: Person = null
 	var best_d := INF
+	# The law of the Veil: dusk at the witness or at the death shortens each line on its own (witness_reach() at `at`,
+	# sight_scale_at()); an empty ledger keeps the one reach for everyone.
+	var each := dusk != null and dusk.count() > 0
 	for group: Array[Person] in [citizens, soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p) or p.guised():
+			if not is_instance_valid(p) or p == exclude or not p.is_alive() or p.inside or LawMark.unseen_by_all(p):
+				continue
+			if not p.statuses.is_empty() and (p.hidden_from_watch() or p.veil_blind()):
+				continue
+			if not skip.is_empty() and skip.has(p.get_instance_id()):
 				continue
 			if cordon != null and cordon.crew_blind(p, at):
 				continue  # a cordon man looks outward: nothing inside his own rope is seen by him
 			var d := p.ground_pos.distance_to(at)
-			if d <= best_d and d <= witness_reach(p):  # a sweep man sees farther
+			if d <= best_d and d <= witness_reach(p, false, at if each else Vector2.INF):  # a sweep man sees farther
 				best = p
 				best_d = d
 	return best
@@ -2827,7 +3006,7 @@ func power_witness(points: Array[Vector2], radius: float, seen_at: Array[Vector2
 						in_d = d
 						in_pt = at
 					continue
-				if d > far or d > sight(p, at, witness_reach(p)):
+				if d > far or d > sight(p, at, witness_reach(p, false, at)):  # (the law of the Veil: dusk shortens the line)
 					continue
 				if d < out_d:
 					out_d = d
@@ -2859,6 +3038,8 @@ func _settle_doom() -> void:
 		return
 	var dead := _doomed
 	_doomed = []
+	if not _doom_answers.is_empty():
+		_answer_doomed(dead)
 	var seen_at: Array[Vector2] = []
 	for v in dead:
 		if not is_instance_valid(v):
@@ -2873,7 +3054,7 @@ func _settle_doom() -> void:
 		if sweep != null:
 			sweep.on_seen(at)
 			sweep.request(at)
-		threats.register(at, 0.6, 0.3, 3.0, doom_witness(), DOOM_WITNESS + 1.0, &"doom")
+		threats.register(at, 0.6, 0.3, 3.0, doom_witness(at), DOOM_WITNESS + 1.0, &"doom")
 		seen_at.append(at)
 		if alarms.incident(at):
 			_investigate(at)
@@ -2881,6 +3062,50 @@ func _settle_doom() -> void:
 	if not seen_at.is_empty():
 		_react(seen_at, 0.6, DOOM_WITNESS + 1.0, seen_at[0], &"doom")
 	_send_keeper()
+
+
+## A level-5 Silent Doom asks for its victim's witness (VL8): `answer` is called once with whoever the settle names as `victim`'s witness
+## (the answer may take him). Forgotten when the settle has named the witnesses, or by unanswer_doom().
+func answer_doom(victim: Person, answer: Callable) -> void:
+	if victim != null and answer.is_valid():
+		_doom_answers.append([victim, answer])
+
+
+## Takes back every victim `answer` was registered for (a cast ending before it struck).
+func unanswer_doom(answer: Callable) -> void:
+	var keep: Array = []
+	for e in _doom_answers:
+		if e[1] != answer:
+			keep.append(e)
+	_doom_answers = keep
+
+
+## _settle_doom(), before it judges: every registered victim among `dead` (in order) names his nearest witness first (nobody is
+## answered before all are named: a chain of deaths is one hop); then each distinct witness (first naming wins) is answered once.
+func _answered_witnesses(dead: Array[Person]) -> Array:
+	var named: Array = []  # [witness, answer], in the order named
+	var seen := {}
+	var rest: Array = []
+	for e in _doom_answers:
+		var v: Person = e[0] if is_instance_valid(e[0]) else null
+		if v == null or not dead.has(v):
+			if v != null:
+				rest.append(e)  # not dead (spared by a Deathless): keeps its place until its cast takes it back
+			continue
+		var w := nearest_witness(v.ground_pos)
+		if w != null and not seen.has(w.get_instance_id()):
+			seen[w.get_instance_id()] = true
+			named.append([w, e[1]])
+	_doom_answers = rest
+	return named
+
+
+func _answer_doomed(dead: Array[Person]) -> void:
+	for n in _answered_witnesses(dead):
+		var w: Person = n[0]
+		var answer: Callable = n[1]
+		if is_instance_valid(w) and answer.is_valid():
+			answer.call(w)
 
 
 ## Something built mid-mission (v0.06): the gate spots are found again round it; a thorn wall is noticed.
@@ -2896,9 +3121,9 @@ func _on_structure_added(s: Structure) -> void:
 			p.observe(s.center())
 
 
-## Blight (v0.05): one alarm, and a gate jams for GATE_JAM seconds.
+## Blight (v0.05): a gate jams for GATE_JAM seconds. (Veil, spec 11.1: Blight raises no alarm any more; BLIGHT_ALARM is no longer
+## added -- the jam is the gate's use gone, not an alarm.)
 func _on_blighted(s: Structure) -> void:
-	add_alarm(BLIGHT_ALARM)
 	if s.kind == Structure.Kind.GATE:
 		_jams[s] = _clock + GATE_JAM
 

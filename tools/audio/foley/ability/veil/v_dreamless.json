@@ -1,0 +1,5 @@
+{"length": 2.6, "rms_db": -21.0, "reverb": {"rt60": 1.6, "mix": 0.18, "predelay_ms": 16, "damp": 3200}, "eq": [["lowshelf", 180, -4.0], ["peak", 3600, -1.5, 0.8]], "layers": [
+  {"src": "lib:oga/breathing-tired/breathing tired.wav", "at": 0.0, "onset": true, "dur": 1.4, "pitch": -4, "lp": 2400, "hp": 150, "fade_in": 120, "fade_out": 700, "gain_db": 0},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_070_rr1.wav", "at": 0.2, "from": 0.3, "dur": 2.3, "pitch": -5, "lp": 700, "hp": 40, "fade_in": 400, "fade_out": 1400, "gain_db": -10},
+  {"src": "lib:oga/rpg-sound-pack/rpg_sound_pack/RPG Sound Pack/inventory/cloth.wav", "at": 0.9, "onset": true, "pitch": -6, "lp": 2000, "hp": 120, "fade_out": 200, "gain_db": -12}
+]}

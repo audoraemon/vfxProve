@@ -119,7 +119,7 @@ var loads := {}
 ## Structure -> its carters (v0.11 M2; untyped: a carter may be a freed body).
 var carters := {}
 ## Structure -> its Watch records (v0.11 M2).
-var watches := {}
+var watch_posts := {}
 ## Structure -> true once its grain has arrived (v0.11 M2).
 var grain := {}
 ## Structure -> how it was spoiled: "fire", "fall", "out", "plague", "blight", "seized", "held" or "dropped" (god T1R, for the report and the
@@ -184,7 +184,7 @@ func _begin() -> void:
 				w.man = crew[0]
 				_set_down(crew[0], w.post)
 			posts.append(w)
-		watches[s] = posts
+		watch_posts[s] = posts
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	for i in targets.size():
@@ -217,7 +217,7 @@ func _busy() -> Array:
 	var out: Array = []
 	for crew: Array in carters.values():
 		out.append_array(crew)
-	for posts: Array in watches.values():
+	for posts: Array in watch_posts.values():
 		for w: Watch in posts:
 			if w.man != null:
 				out.append(w.man)
@@ -428,7 +428,7 @@ func _seize_look() -> void:
 		return
 	var guard: Person = null
 	for sol in crowd.soldiers:
-		if is_instance_valid(sol) and sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL \
+		if is_instance_valid(sol) and sol.mind == Person.Mind.COMPELLED and sol.compel_glyph == DecreeParts.BELL and not _blind_veil(sol) \
 				and sol.anchor.distance_to(_guard_at) <= SEIZE_RING and sol.ground_pos.distance_to(sol.anchor) <= SEIZE_ARRIVE:
 			guard = sol
 			break
@@ -477,7 +477,7 @@ func _held_look(delta: float) -> void:
 
 
 ## A frightened carter drops his load (H7, the user's ruling 2026-11-14): every frame, a carter alive and carrying a load (`_hauling`) who is
-## frightened (_frightened()) spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
+## frightened (_frightened()) -- or sent home sick by Blight (Veil, Person.home_sick) -- spoils his granary at once ("dropped"), under DROP_BANNER; he is sent home as a seizure sends him (_on_razed). No luck:
 ## his mind decides it. One frightened at the Citadel's gate (within TAKE_REACH) has delivered it: his load is cleared, nothing spoils. Returns at
 ## once with no load on the road.
 func _dropped_look() -> void:
@@ -487,7 +487,7 @@ func _dropped_look() -> void:
 		if razed(s):
 			continue
 		for c: Variant in carters.get(s, []):
-			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and _frightened(c as Person):
+			if _alive(c) and _hauling.has((c as Person).get_instance_id()) and (_frightened(c as Person) or (c as Person).home_sick):
 				if (c as Person).ground_pos.distance_to(citadel_door) <= TAKE_REACH:
 					# At the Citadel's gate his load is delivered (as _cart() leaves it on its TICK, which may not have come yet).
 					_hauling.erase((c as Person).get_instance_id())
@@ -515,7 +515,7 @@ func _on_guard(s: Structure, w: Watch) -> bool:
 ## The watchmen of `s` on guard now (v0.11 M2).
 func guards(s: Structure) -> Array[Person]:
 	var out: Array[Person] = []
-	for w: Watch in watches.get(s, []):
+	for w: Watch in watch_posts.get(s, []):
 		if _on_guard(s, w):
 			out.append(w.man as Person)
 	return out
@@ -529,7 +529,7 @@ func guarding(s: Structure) -> bool:
 ## The watchmen of `s` alive and out of doors, on guard or not (v0.11 M2).
 func watchmen(s: Structure) -> Array[Person]:
 	var out: Array[Person] = []
-	for w: Watch in watches.get(s, []):
+	for w: Watch in watch_posts.get(s, []):
 		if _alive(w.man) and not (w.man as Person).inside:
 			out.append(w.man as Person)
 	return out
@@ -541,7 +541,7 @@ func watchmen(s: Structure) -> Array[Person]:
 ## after he fell.
 func _watch(s: Structure, delta: float, looking: bool) -> void:
 	var on_guard := false
-	for w: Watch in watches[s]:
+	for w: Watch in watch_posts[s]:
 		if _on_guard(s, w):
 			on_guard = true
 			w.away = 0.0
@@ -558,7 +558,7 @@ func _watch(s: Structure, delta: float, looking: bool) -> void:
 	if not (on_guard and has_grain(s) and burning(s)):
 		_alight[s] = 0.0
 		return
-	for w: Watch in watches[s]:
+	for w: Watch in watch_posts[s]:
 		if _on_guard(s, w):
 			var man := w.man as Person
 			man.fearless_left = maxf(man.fearless_left, HOLD_POST)
@@ -648,7 +648,7 @@ func _on_razed(s: Structure) -> void:
 			if p.mind == Person.Mind.DUTY:
 				crowd.off_duty(p)
 	carters[s] = []
-	for w: Watch in watches.get(s, []):
+	for w: Watch in watch_posts.get(s, []):
 		_release(w)
 
 
@@ -682,7 +682,7 @@ func blight_takes(at: Vector2) -> bool:
 	return i >= 0 and has_grain(targets[i]) and not guarding(targets[i])
 
 
-## Blight landed on a granary (god T1R, H3): taken, it is spoiled and the town's alarm rises (the base); not, only the banner shows.
+## Blight landed on a granary (god T1R, H3): taken, it is spoiled (no alarm since the Veil rework); not, only the banner shows.
 func blighted(at: Vector2) -> bool:
 	var i := _blight_granary(at)
 	_blight_said = _blight_words_now(at)
@@ -769,7 +769,7 @@ func tags() -> Array[MapTag]:
 	for s in targets:
 		if razed(s):
 			continue
-		for w: Watch in watches[s]:
+		for w: Watch in watch_posts[s]:
 			if not _alive(w.man) or (w.man as Person).inside:
 				continue
 			var p := w.man as Person
@@ -806,7 +806,7 @@ func hint_seconds() -> float:
 ## Every person of granary `s`'s watch and its carters, alive or fallen (Mission clarity). Only reads.
 func _men_of(s: Structure) -> Array:
 	var out: Array = []
-	for w: Watch in watches.get(s, []):
+	for w: Watch in watch_posts.get(s, []):
 		out.append(w.man)
 	out.append_array(carters.get(s, []))
 	return out
@@ -824,7 +824,7 @@ func why_not(key: String, at: Vector2) -> String:
 		if razed(s) or not is_instance_valid(s):
 			continue
 		if "lure" in verbs:
-			for w: Watch in watches[s]:
+			for w: Watch in watch_posts[s]:
 				if _alive(w.man) and (w.man as Person).lured() and _on_guard(s, w) 						and at.distance_to((w.man as Person).ground_pos) <= WillOWisp.LURE_REACH + WHY_MARGIN:
 					return "" if _kills_near(key, at, _men_of(s)) else "LURED, HE STILL WATCHES IT"
 		if "burn" in verbs and _reached(key, at, s):

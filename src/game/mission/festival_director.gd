@@ -380,6 +380,11 @@ func teardown() -> void:
 	_fires.clear()
 
 
+## Veil (spec 5.2): the mayor -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and p == mayor
+
+
 ## Music by situation: the festival's own dance.
 func music_mood() -> StringName:
 	return &"festival"

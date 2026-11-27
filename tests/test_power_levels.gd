@@ -31,16 +31,17 @@ static func _no_tables(t) -> void:
 		"whisper", "discord", "madness", "wisp", "clearmind", "saint", "sanctuary", "anathema", "voice", "schism",
 		"skylift", "windfall", "houndgate", "hellspark", "deep", "mirror", "allroads", "foldward", "deaddoors", "heavendoor",
 		"deathmark", "raise", "pestilence", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide",
-		"noleave", "breath", "redefine", "bound", "erase", "disorder", "eminent", "fenced", "cage", "sealed"]
+		"noleave", "breath", "redefine", "bound", "erase", "disorder", "eminent", "fenced", "cage", "sealed",
+		"doom", "blight", "unseen", "slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight"]
 	var stray := PackedStringArray()
 	for key in PowerBook.keys():
 		if PowerBook.has_levels(key) != ruin.has(key):
 			stray.append(key)
-	t.check(stray.is_empty(), "only Ruin's, Dominion's, Passage's, Death's and Decree's have a table (%s)" % [stray])
-	t.check(PowerBook.level_stat("doom", 5, "radius", 1.5) == 1.5, "without a table a stat is the effect's own number")
-	t.check(PowerBook.level_change("doom", 2) == PowerBook.NO_LEVELS and PowerBook.twist("doom") == "",
+	t.check(stray.is_empty(), "only Ruin's, Dominion's, Passage's, Death's, Decree's and the Veil's have a table (%s)" % [stray])
+	t.check(PowerBook.level_stat("nova", 5, "radius", 1.5) == 1.5, "without a table a stat is the effect's own number")
+	t.check(PowerBook.level_change("nova", 2) == PowerBook.NO_LEVELS and PowerBook.twist("nova") == "",
 		"without a table: level_change says so and there is no twist")
-	t.check(PowerBook.stat({"level": 5}, "doom", "radius", 2.5) == 2.5 and PowerBook.stat({}, "nosuch", "radius", 7) == 7,
+	t.check(PowerBook.stat({"level": 5}, "nova", "radius", 2.5) == 2.5 and PowerBook.stat({}, "nosuch", "radius", 7) == 7,
 		"PowerBook.stat() hands back base for a power with no table, or no power")
 
 

@@ -1,0 +1,4 @@
+{"length": 0.9, "rms_db": -24.0, "reverb": {"rt60": 1.0, "mix": 0.16, "predelay_ms": 14, "damp": 4200}, "eq": [["lowshelf", 220, -6.0], ["peak", 5200, 1.0, 0.8]], "layers": [
+  {"src": "lib:kenney/impact-sounds/Audio/impactGlass_light_002.ogg", "at": 0.0, "onset": true, "pitch": 5, "lp": 7000, "hp": 1800, "dur": 0.85, "fade_out": 520, "gain_db": 0},
+  {"src": "lib:oga/short-wind-sound/short wind sound.wav", "at": 0.04, "onset": true, "dur": 0.8, "pitch": 1, "hp": 1400, "lp": 5200, "fade_in": 220, "fade_out": 420, "gain_db": -11}
+]}

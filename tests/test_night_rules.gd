@@ -161,7 +161,7 @@ static func _harvest(t) -> void:
 	var men := 0
 	var out := true
 	if d != null:
-		for posts: Array in d.watches.values():
+		for posts: Array in d.watch_posts.values():
 			for w in posts:
 				if w.man != null:
 					men += 1

@@ -309,15 +309,16 @@ func _run(relay := false) -> void:
 	var keeper_alive := bell != null and _alive(bell.keeper)
 	var telling := keeper_alive and not _rings_himself()  # v0.11 M3: one who rings it himself tells no keeper
 	var ready := _resumable(messenger) or (relay and not messenger.mind in HELD and not (messenger.soldier and messenger.held_by_god()))
+	var acts := not messenger.veil_blind()  # (Veil C13) a shadow or a dreaded messenger tells no one and takes no rope; he walks on
 	if telling and messenger == bell.keeper:
 		# The keeper carries it (a relay to the keeper): they need no telling, only to be on their feet to go.
-		if messenger.mind == Person.Mind.DUTY or ready:
+		if acts and (messenger.mind == Person.Mind.DUTY or ready):
 			_deliver()
 		return
 	if messenger.mind == Person.Mind.DUTY and not relay:
-		if telling and messenger.ground_pos.distance_to(bell.keeper.ground_pos) <= DELIVER_REACH:
+		if acts and telling and messenger.ground_pos.distance_to(bell.keeper.ground_pos) <= DELIVER_REACH:
 			_deliver()
-		elif not telling and bell != null and not messenger.has_goal() \
+		elif acts and not telling and bell != null and not messenger.has_goal() \
 				and messenger.ground_pos.distance_to(bell.foot) <= BellNetwork.FOOT_REACH:
 			_take_rope()
 		elif messenger.anchor.distance_to(_goal()) > RETARGET_MOVE or not messenger.has_goal():
@@ -408,7 +409,8 @@ func _herald_tick(delta: float) -> void:
 		else:
 			_retarget_in = 0.0
 		return
-	if (phase == Phase.RUN or phase == Phase.DELIVERED) and messenger.ground_pos.distance_to(lantern_door()) <= TempleReport.REACH:
+	if (phase == Phase.RUN or phase == Phase.DELIVERED) and messenger.ground_pos.distance_to(lantern_door()) <= TempleReport.REACH \
+			and not messenger.veil_blind():  # (Veil C13: a shadow or a dreaded Herald has the Lantern hear nothing)
 		var was_heard := rules.lantern.heard
 		rules.lantern.hear()
 		if not was_heard and rules.lantern.heard:
@@ -958,6 +960,11 @@ func teardown() -> void:
 		if is_instance_valid(crowd) and (_slowed as Person).mind == Person.Mind.DUTY:
 			crowd.off_duty(_slowed as Person)
 	_slowed = null
+
+
+## Veil (spec 5.2): the watchman who saw the omen and the messenger who carries it -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and (p == watchman or p == messenger)
 
 
 ## Music by situation: the chase while the messenger runs.

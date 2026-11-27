@@ -224,6 +224,12 @@ func end_powers() -> void:
 	for c in ctx.overhead.get_children():
 		if c is FxTimeline:
 			(c as FxTimeline).end_now()
+	for layer in [ctx.world, ctx.ground]:
+		for c in layer.get_children():
+			if c is MoonCraters:
+				# The Moon's Face's craters are an act's cast too: they take nobody in the next act (VT5).
+				layer.remove_child(c)
+				c.queue_free()
 	ctx.impact.dim(0.0, 100.0)
 
 

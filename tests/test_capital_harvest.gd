@@ -147,7 +147,7 @@ static func _spots_land(t, cap: Dictionary) -> void:
 	t.check(on_spot, "each granary is the dwelling at its own spot (names and camera stay on the intended houses)")
 	var posts: Array[Vector2] = []
 	for st: Structure in d.targets:
-		for w: HarvestDirector.Watch in d.watches[st]:
+		for w: HarvestDirector.Watch in d.watch_posts[st]:
 			posts.append(w.post)
 	var apart := INF
 	var walk := true
@@ -158,7 +158,7 @@ static func _spots_land(t, cap: Dictionary) -> void:
 	t.check(posts.size() == 6 and walk and apart > 1.6, "six watchmen's posts on walkable ground, nearest pair %.2f apart (> 1.6)" % apart)
 	var manned := true
 	for st: Structure in d.targets:
-		for w: HarvestDirector.Watch in d.watches[st]:
+		for w: HarvestDirector.Watch in d.watch_posts[st]:
 			manned = manned and w.man != null
 	t.check(manned, "every post has a watchman")
 	t.check(d.citadel_door.distance_to(City.by_id(&"capital").place(&"citadel_gate")) < 0.6,
@@ -173,7 +173,7 @@ static func _camera_clear(t, cap: Dictionary) -> void:
 	var zone := Rect2(Kit.STACK.position, Kit.STACK.size + Vector2(Hud.STACK_PAD, Hud.STACK_PAD))
 	var first: Structure = d.targets[0]
 	var clear := Kit.clear_of_stack(first.center(), cam, zone) and Kit.clear_of_stack(d.doors[first], cam, zone)
-	for w: HarvestDirector.Watch in d.watches[first]:
+	for w: HarvestDirector.Watch in d.watch_posts[first]:
 		clear = clear and Kit.clear_of_stack(w.post, cam, zone)
 	t.check(clear, "the first granary, its door and its watchmen's posts show clear of the padded stack at the intro camera")
 	var others := ""
@@ -214,7 +214,7 @@ static func _routes_stay_in(t, cap: Dictionary) -> void:
 	var inside := not Walls.outside(d.citadel_door, capital)
 	for st: Structure in d.targets:
 		inside = inside and not Walls.outside(d.doors[st], capital)
-		for w: HarvestDirector.Watch in d.watches[st]:
+		for w: HarvestDirector.Watch in d.watch_posts[st]:
 			inside = inside and not Walls.outside(w.post, capital)
 		for pair in [[d.citadel_door, d.doors[st]], [d.doors[st], d.citadel_door]]:
 			var path := grid.path(pair[0], pair[1])

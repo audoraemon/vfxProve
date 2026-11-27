@@ -94,6 +94,10 @@ func _fx_process(delta: float) -> void:
 		_working += 0.25
 		if _working >= SABOTAGE_SECONDS:
 			ctx.env.blight(aim)
+			# What it does is seen: the alarm Crowd._on_blighted() raised for every blight until the Veil rework (spec 11.1 silenced
+			# only Blight's own).
+			if ctx.crowd != null:
+				ctx.crowd.add_alarm(Crowd.BLIGHT_ALARM)
 			ruined += 1
 			_working = 0.0
 			if DominionParts.staged(self):

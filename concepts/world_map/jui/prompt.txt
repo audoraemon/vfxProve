@@ -1,0 +1,10 @@
+Use the $imagegen skill to generate ONE image and save it in the current directory as ui_sheet.png. Do not write code, do not edit any other file.
+
+A sprite sheet of separate UI props for a pixel-art fantasy world map screen, in the same pixel-art style and warm candle-lit palette as image 1 (the map they belong to). Each prop is seen flat from straight above, well separated from the others with wide gaps, none touching each other or the image edge:
+1. Top left, large: a blank parchment note, a wide rectangle about 3:1, pinned at its top-left corner with a small brass pin, slightly worn edges, the bottom-right corner curled up, a soft darker rim. Completely blank, no writing.
+2. Top right: a round red wax seal, thick and glossy with an irregular melted edge, embossed in its centre with a simple downward-pointing arrow inside a ring. No letters.
+3. Middle right: the same round wax seal but dull grey-brown and cold (a disabled version), same emboss.
+4. Bottom left: a small blank hanging parchment tag, a narrow horizontal strip about 6:1 with two short strings at its top corners, blank.
+5. Bottom centre: two small medieval sailing ships seen from the side in three-quarter view, each with one square sail carrying a red lion emblem, dark wooden hulls; no water under them.
+6. Bottom right: a small ornate golden pointer: a downward-pointing gilded arrowhead hanging from a tiny golden eye ornament.
+Background: perfectly flat, pure magenta #FF00FF everywhere outside the props, with no gradient, no shadows on the background, no texture. No text, no letters, no watermark. 16:9 landscape, crisp pixel art.

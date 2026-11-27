@@ -678,9 +678,11 @@ func _route_main() -> void:
 		if pick < 0 and ids.size() > 1:
 			pick = 1
 		if pick >= 0:
-			await os_click_design(board._ui, MissionBoard.card_rect(pick, ids.size()).get_center(), "card " + ids[pick])
+			board.selected = pick  # the DEV tab pages its row: scroll the window to the card, then click its real rect
+			board._follow()
+			await os_click_design(board._ui, board.row1_rect(pick).get_center(), "card " + ids[pick])
 			if not await _until(func() -> bool: return _game._screen_node is PrepareScreen, 4.0):
-				await os_click_design(board._ui, MissionBoard.card_rect(pick, ids.size()).get_center(), "card again")
+				await os_click_design(board._ui, board.row1_rect(pick).get_center(), "card again")
 			if await _until(func() -> bool: return _game._screen_node is PrepareScreen, 5.0):
 				await _secs(0.8)
 				var prep = _game._screen_node
@@ -721,7 +723,7 @@ func _route_god() -> void:
 	await _capture("god-select")
 	var pick = _game._screen_node
 	await os_click_design(pick._ui, GodSelectScreen.CHOOSE_RECT.get_center(), "god select CHOOSE")
-	if not check(await _until(func() -> bool: return _screen_is("GodHub"), 5.0), "CHOOSE makes the god and opens the hub (OS click)"):
+	if not check(await _until(func() -> bool: return _screen_is("GodChamber"), 5.0), "CHOOSE makes the god and opens the hub (OS click)"):
 		return
 	await _secs(1.0)
 	await _capture("hub")
@@ -758,11 +760,15 @@ func _route_god() -> void:
 	tree = _game._screen_node
 	if _screen_is("SkillTreeScreen"):
 		await os_click_design(tree._ui, SkillTreeScreen.BACK_RECT.get_center(), "tree Back")
-		await _until(func() -> bool: return _screen_is("GodHub"), 5.0)
+		await _until(func() -> bool: return _screen_is("GodChamber"), 5.0)
 		await _secs(0.8)
-	if _screen_is("GodHub"):
+	if _screen_is("GodChamber"):
 		hub = _game._screen_node
 		await os_click_design(hub._ui, hub.menu_rect("descend").get_center(), "hub Descend")
+		if check(await _until(func() -> bool: return _screen_is("WorldMap"), 5.0), "the table opens the World Map (OS click)"):
+			await _secs(0.5)
+			var map = _game._screen_node
+			await os_click_design(map._ui, map.descend_rect().get_center(), "map Descend")
 		if check(await _until(func() -> bool: return _screen_is("PrepareScreen"), 5.0), "Descend opens the god's Prepare (OS click)"):
 			await _secs(1.0)
 			await _capture("god-prepare")
@@ -785,7 +791,7 @@ func _route_god() -> void:
 				var pm = _game._pause
 				if pm != null and is_instance_valid(pm):
 					await os_click_design(pm._ui, pm._menu.rect_of("abandon").get_center(), "confirm Abandon")
-				check(await _until(func() -> bool: return _screen_is("GodHub"), 8.0), "Abandon returns to the hub (OS clicks)")
+				check(await _until(func() -> bool: return _screen_is("GodChamber"), 8.0), "Abandon returns to the hub (OS clicks)")
 				await _secs(1.0)
 				await _capture("hub-after-abandon")
 

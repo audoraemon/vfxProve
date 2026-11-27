@@ -222,7 +222,7 @@ func refresh() -> void:
 		return
 	var on := (WorldView.of(self) != null or test_force) and hud != null and is_instance_valid(hud) and hud.tag_layer_on()
 	var none: Array[MapTag] = []
-	update(hud.all_tags() if on and SpriteArt.on() and PeopleArt.ready() else none)
+	update(hud.outline_tags() if on and SpriteArt.on() and PeopleArt.ready() else none)
 
 
 ## Who of `tags`' people is covered (wanted(), then occluders_of()), up to SLOTS in tag order; their masks (shared where nothing clashes),

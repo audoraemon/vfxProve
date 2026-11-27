@@ -847,6 +847,62 @@ static func lane_start(key: String, press: Vector2, dir: Vector2) -> Vector2:
 	return press
 
 
+## Whether the believer view (B) is on: the aim then counts the believers it covers.
+var believer_view := false
+
+
+## The ground point the preview is aimed at.
+func aim_at() -> Vector2:
+	return _press
+
+
+## Whether `point` lies in the area `a` aimed at `at` (a lane runs `run` along `dir` from `at`). Shapes that count it as a circle:
+## circle, pick, regions, gather; any other shape is false.
+static func in_shape(a: Dictionary, at: Vector2, dir: Vector2, run: float, point: Vector2) -> bool:
+	match String(a.get("shape", "")):
+		"circle", "pick", "regions", "gather":
+			return point.distance_to(at) <= float(a.get("r", 0.0))
+		"square":
+			return square(at, float(a.get("half", 0.0))).has_point(point)
+		"lane":
+			var end := at + dir * run
+			var seg := end - at
+			var l2 := seg.length_squared()
+			var t := clampf((point - at).dot(seg) / l2, 0.0, 1.0) if l2 > 0.0 else 0.0
+			return point.distance_to(at + seg * t) <= float(a.get("half", 0.0))
+		"cone":
+			var off := point - at
+			return off.length() <= float(a.get("r", 0.0)) \
+				and (off.length() < 0.0001 or absf(dir.angle_to(off)) <= deg_to_rad(float(a.get("arc", 0.0))) * 0.5)
+	return false
+
+
+## Living believers the focused power's preview covers now; 0 with the view off or no slot focused.
+func believers_in() -> int:
+	if not believer_view or slot < 0 or _crowd == null:
+		return 0
+	var a := area()
+	if a.is_empty():
+		return 0
+	var dir := aim_dir()
+	var run := lane_length()
+	var start := lane_start(_rules.key(slot), _press, dir) if String(a.get("shape", "")) == "lane" else _press
+	var n := 0
+	for p in _crowd.citizens:
+		if is_instance_valid(p) and p.is_alive() and p.profile != null and p.profile.faith == CitizenProfile.Faith.BELIEVER \
+				and in_shape(a, start, dir, run, p.ground_pos):
+			n += 1
+	return n
+
+
+## "1 believer" / "N believers" for the aim preview; "" for none.
+func believers_text() -> String:
+	var n := believers_in()
+	if n <= 0:
+		return ""
+	return "1 believer" if n == 1 else "%d believers" % n
+
+
 func _is_drag() -> bool:
 	return _aim_kind() == "drag"
 

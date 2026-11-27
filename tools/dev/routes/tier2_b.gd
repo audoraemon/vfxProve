@@ -373,7 +373,7 @@ static func _panic_look(bc, ctx: Dictionary, d: MarketPanicDirector, lull: bool)
 			return "whisper a stroller far from the fair"
 	if wardens.is_empty() or rules.cooldown_left(int(slots.ember)) > PANIC_EMBER_SOON:
 		return ""
-	if not lull and bc._panic_near(d, MarketPanicDirector.HEART, MarketPanicDirector.FAIR_R).size() < PANIC_B_PACK:
+	if not lull and bc._panic_near(d, d.heart, MarketPanicDirector.FAIR_R).size() < PANIC_B_PACK:
 		return ""
 	var warden: Person = wardens[0]
 	if bc._slot_ready(rules, slots, "discord") and wardens.size() >= 2:
@@ -381,7 +381,7 @@ static func _panic_look(bc, ctx: Dictionary, d: MarketPanicDirector, lull: bool)
 		rules.cast(slots.discord, warden.ground_pos)
 		return "discord a warden off guard"
 	if bc._slot_ready(rules, slots, "whisper") and not warden.shaken():
-		var away: Vector2 = d._walkable(warden.ground_pos + (warden.ground_pos - MarketPanicDirector.HEART).normalized() * PANIC_SEND)
+		var away: Vector2 = d._walkable(warden.ground_pos + (warden.ground_pos - d.heart).normalized() * PANIC_SEND)
 		rules.cast(slots.whisper, warden.ground_pos, {"target": warden, "to": away})
 		return "whisper a warden off his post"
 	return ""
@@ -408,8 +408,8 @@ static func _panic_ahead(d: MarketPanicDirector, crowd: Crowd, within := PANIC_A
 	var i := d.next_wave()
 	if i < 1 or d.wave_due(i) - d._clock > within:
 		return null
-	var from: Vector2 = MarketPanicDirector.SOURCES[i]
-	var line := MarketPanicDirector.HEART - from
+	var from: Vector2 = d.sources[i]
+	var line := d.heart - from
 	var best: Structure = null
 	var best_gap := PANIC_ROAD
 	for s: Structure in crowd._env.structures():
@@ -433,7 +433,7 @@ static func _panic_mark(d: MarketPanicDirector) -> Person:
 		var best: Person = null
 		for p in group:
 			if WarningDirector._alive(p) and not p.statuses.has(&"frail") and (best == null \
-					or p.ground_pos.distance_to(MarketPanicDirector.HEART) > best.ground_pos.distance_to(MarketPanicDirector.HEART)):
+					or p.ground_pos.distance_to(d.heart) > best.ground_pos.distance_to(d.heart)):
 				best = p
 		if best != null:
 			return best
@@ -444,7 +444,7 @@ static func _panic_mark(d: MarketPanicDirector) -> Person:
 static func _panic_far_citizen(d: MarketPanicDirector, crowd: Crowd) -> Person:
 	for p in crowd.citizens:
 		if is_instance_valid(p) and p.is_alive() and not p.inside and not p.shaken() and p.mind == Person.Mind.CALM \
-				and p.ground_pos.distance_to(MarketPanicDirector.HEART) >= 14.0 and not d.goers.has(p):
+				and p.ground_pos.distance_to(d.heart) >= 14.0 and not d.goers.has(p):
 			return p
 	return null
 

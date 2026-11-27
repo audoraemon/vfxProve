@@ -50,6 +50,9 @@ const NEED := 8
 const WAVE := 3
 const WAVES := 4
 const WAVE_AT := [0.0, 95.0, 185.0, 260.0]
+## The names a town's overrides may set (Overrides joins it to MirasHouseDirector's list): the well that is the pulpit (an index into City.wells()), the point the god's
+## house is the dwelling nearest, the later waves' sources and the waves' times.
+const SERMON_TOWN_VARS := ["pulpit_well", "house_spot", "sources", "wave_at"]
 const CHAIN := 45.0
 const VOICE := 5.0
 const RING := Vector2(2.5, 3.5)
@@ -95,6 +98,12 @@ const LOOK_SLACK := 0.0001
 const MARK_GOLD := Color("d8b23a")
 const MARK_GREY := Color("9a948a")
 const MARK_NEXT := Color("ff9a3a")
+
+## Town vars (Capital plan Task 17, spec 6.3.4), seeded from the consts above (copies, never shared).
+var pulpit_well := 2
+var house_spot: Vector2 = HOUSE_SPOT
+var sources: Array = SOURCES.duplicate()
+var wave_at: Array = WAVE_AT.duplicate()
 
 ## Where the preacher preaches (v0.11 M5).
 var pulpit := Vector2.INF
@@ -161,10 +170,10 @@ func _roof() -> void:
 ## The pulpit, and the god's house (v0.11 M5, Decision 143): the dwelling nearest HOUSE_SPOT, never set aside, whose door the street
 ## from the pulpit reaches beyond VOICE of it; it only shakes tonight (plan decision 184).
 func _find_house() -> Structure:
-	pulpit = _walkable(City.current().wells()[2].get_center() + Vector2(0.0, -0.8))
+	pulpit = _walkable(City.current().wells()[pulpit_well].get_center() + Vector2(0.0, -0.8))
 	var skip: Array = []
 	for i in HOUSE_TRIES:
-		var h := _house_near(HOUSE_SPOT, skip)
+		var h := _house_near(house_spot, skip)
 		if h == null:
 			return null
 		var d := _open_door(h, pulpit)
@@ -263,7 +272,7 @@ func _acolyte_spot() -> Vector2:
 
 ## Wave `w`'s source (v0.11 M5): round the pulpit for the first, SOURCES[w - 1] for the rest.
 func _wave_source(w: int) -> Vector2:
-	return pulpit if w == 0 else _walkable(SOURCES[w - 1])
+	return pulpit if w == 0 else _walkable(sources[w - 1])
 
 
 ## The `k`th place on the preacher's ring (v0.11 M5): on its northern arc, RING.x and RING.y from him by turns (outside his witnesses'
@@ -346,7 +355,7 @@ func busy(p: Person) -> bool:
 ## The strip (v0.11 M5): each later wave at its time, and the sermon's end.
 func _add_events() -> void:
 	for w in range(1, WAVES):
-		timeline.add(float(WAVE_AT[w]), "wave_%d" % w, "More come to hear him", _call_wave.bind(w), func() -> bool: return not called[w])
+		timeline.add(float(wave_at[w]), "wave_%d" % w, "More come to hear him", _call_wave.bind(w), func() -> bool: return not called[w])
 	timeline.add(SERMON_ENDS, "ends", "The sermon ends", Callable(), func() -> bool: return believers_outside() < need)
 
 
@@ -378,7 +387,7 @@ func spent(w: int) -> bool:
 
 ## The second of the night wave `w` walks in at the latest (v0.11 M5): its own time, or CHAIN after the wave before is spent if sooner.
 func wave_due(w: int) -> float:
-	var at := float(WAVE_AT[w]) * (timeline.stretch_factor() if timeline != null else 1.0)
+	var at := float(wave_at[w]) * (timeline.stretch_factor() if timeline != null else 1.0)
 	if w > 0 and spent_at[w - 1] >= 0.0:
 		at = minf(at, spent_at[w - 1] + CHAIN)
 	return at
@@ -822,7 +831,7 @@ func why_not(key: String, at: Vector2) -> String:
 
 ## The tour (v0.11 M5, mission spec §3): the preacher, the god's house, the Temple.
 func tour() -> Array:
-	return [[pulpit, "The preacher at the south-west well. While he preaches, his crowd hears only him."],
+	return [[pulpit, "The preacher at the well. While he preaches, his crowd hears only him."],
 		[door, "The god's house. Lead eight of his crowd here, unseen by the Faithful."],
 		[temple_door, "The Temple. A Faithful who sees you runs here. Four deaths in a district that no accident explains call the bell."]]
 

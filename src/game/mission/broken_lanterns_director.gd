@@ -17,6 +17,8 @@ extends MissionDirector
 ## standing there.
 const SHRINE_SPOTS := [Vector2(5.5, -4.8), Vector2(10.2, -8.8), Vector2(12.0, 9.2), Vector2(0.5, 13.0),
 	Vector2(-7.0, 10.0), Vector2(-7.5, -4.0)]
+## The names a town's overrides may set (Overrides, v0.12): the town var below, seeded from SHRINE_SPOTS; setup reads it and never assigns it.
+const TOWN_VARS := ["shrine_spots"]
 ## A shrine's footprint and height (a stone post, Structure.Kind.SHRINE), and its role. The role is not one of
 ## Rules.BUILDING_ROLES, so a shrine is never a building in the tally, the chain or the score.
 const SHRINE_SIZE := Vector2(0.4, 0.4)
@@ -71,6 +73,8 @@ const TICK := 0.5
 ## Minds a prayer is sent back from (back on their feet). A Faithful in one of these, or on a duty, can be called.
 const RESUMABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
 
+## Where this town's six shrines stand (a town var, SHRINE_SPOTS in Aldermere; the Vigil Flame still reads the const).
+var shrine_spots: Array = SHRINE_SPOTS
 var shrines: Array[Structure] = []
 var vigil: VigilRoute
 var temple_door := Vector2.INF
@@ -111,7 +115,7 @@ func _begin() -> void:
 
 
 func _place_shrines() -> void:
-	for spot: Vector2 in SHRINE_SPOTS:
+	for spot: Vector2 in shrine_spots:
 		var at := _walkable(spot)
 		var s := crowd._env.add_structure(Rect2(at - SHRINE_SIZE * 0.5, SHRINE_SIZE), SHRINE_H, Structure.Kind.SHRINE, ROLE)
 		s.damage_filter = _shield

@@ -33,6 +33,9 @@ class Crew:
 ## The targets' names on the tags and the banners, and in words (v0.11 M4), in order: granary, mill, bridge.
 const NAMES := ["GRANARY", "MILL", "BRIDGE"]
 const WORDS := ["granary", "mill", "bridge"]
+## The names a town's overrides may set (Overrides): the tags and spot that find the targets, and the words the player reads. A town sets
+## them and `_find_targets()` and the copy read them; setup never assigns them.
+const TOWN_VARS := ["granary_tag", "mill_tag", "bridge_at", "names", "words", "stage_labels", "stage_at"]
 ## The strip's and the banners' words as each comes into use (v0.11 M4, mission spec §1).
 const STAGE_LABELS := ["The grain carts fill the granary", "The mill grinds the Crown's flour", "The bread carts gather at the bridge"]
 ## Mission spec §1's numbers (v0.11 M4), tuned by Task 2's gate in this order: SHIFT (1-3), STAGE_AT[0] (30-60), CHAIN (30-45),
@@ -59,6 +62,20 @@ const WORK_AHEAD := 25.0
 const CAMERA_AT := Vector2(-5.0, 21.0)
 ## Seconds between looks at the crews' orders (v0.11 M4).
 const TICK := 0.5
+
+## Town vars (Capital plan Task 10, spec 5 item 6), seeded from the consts above (the arrays are copies, never shared): the art tag of the building that
+## is the first target and the second (empty: the first is the farmhouse of City.barns()[3], the second the art tag `watermill`), and where the third,
+## a bridge, is (INF: town.bridge; else the standing crossing nearest the spot). The targets' names on the tags and banners, in words, the strip's
+## labels and the times each comes into use at the latest.
+var granary_tag: StringName = &""
+var mill_tag: StringName = &""
+var bridge_at := Vector2.INF
+var names: Array = NAMES.duplicate()
+var words: Array = WORDS.duplicate()
+var stage_labels: Array = STAGE_LABELS.duplicate()
+var stage_at: Array = STAGE_AT.duplicate()
+## The bridge target `_find_targets()` chose, null before it ran (the town's own bridge then).
+var _bridge: Structure = null
 
 ## Each target's Crew records, in the order of `targets` (v0.11 M4).
 var crews: Array = []
@@ -94,7 +111,7 @@ func _begin() -> void:
 		rebuild_progress.append(0.0)
 		_alight.append(0.0)
 		faces.append(_face(s))
-		waiting_in.append(_gate_tower() if s == town.bridge else s)  # by identity: with a target missing, the bridge is not third
+		waiting_in.append(_gate_tower() if _is_bridge(s) else s)  # by identity: with a target missing, the bridge is not third
 		var list: Array = []
 		for k in NIGHT_CREW:
 			list.append(_appoint(i, _post(i, k, false, list), false, list))
@@ -104,7 +121,7 @@ func _begin() -> void:
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	for i in targets.size():
-		timeline.add(float(STAGE_AT[i]), "stage_%d" % i, String(STAGE_LABELS[i]), _open.bind(i),
+		timeline.add(float(stage_at[i]), "stage_%d" % i, String(stage_labels[i]), _open.bind(i),
 			func() -> bool: return not in_use[i] and not razed(targets[i]))
 	timeline.add(CARTS_AT, "carts", "The Crown's carts roll", Callable(), func() -> bool: return not all_razed())
 	rules.banner.emit("THE CROWN'S BREAD")
@@ -119,20 +136,38 @@ func _find_targets() -> Array[Structure]:
 	for s: Structure in town._built:
 		if not is_instance_valid(s):
 			continue
-		if s.role == &"farm" and s.kind == Structure.Kind.HOUSE and s.footprint.position.is_equal_approx(barn.position):
+		if (s.art_tag == granary_tag) if granary_tag != &"" else (s.role == &"farm" and s.kind == Structure.Kind.HOUSE
+				and s.footprint.position.is_equal_approx(barn.position)):
 			granary = s
-		elif s.art_tag == &"watermill":
+		elif s.art_tag == (mill_tag if mill_tag != &"" else &"watermill"):
 			mill = s
+	_bridge = _find_bridge()
 	var out: Array[Structure] = []
-	for s in [granary, mill, town.bridge]:
+	for s in [granary, mill, _bridge]:
 		if s != null and not reserved_places.has(s):
 			out.append(s)
 	return out
 
 
+## The bridge target: town.bridge, or with `bridge_at` set the standing crossing (Town.bridges) nearest it; null for none.
+func _find_bridge() -> Structure:
+	if bridge_at == Vector2.INF:
+		return town.bridge
+	var best: Structure = null
+	for b: Structure in town.bridges:
+		if is_instance_valid(b) and not b.destroyed and (best == null or b.center().distance_to(bridge_at) < best.center().distance_to(bridge_at)):
+			best = b
+	return best
+
+
+## `s` is the bridge target (by identity; before targets are found, the town's own bridge).
+func _is_bridge(s: Structure) -> bool:
+	return s != null and s == (_bridge if _bridge != null else town.bridge)
+
+
 ## Target `s`'s face (v0.11 M4, decision 99): a building's door the nearest town gate's street reaches; the bridge's town end.
 func _face(s: Structure) -> Vector2:
-	if s == town.bridge:
+	if _is_bridge(s):
 		return _walkable(s.center() - Vector2(0.0, s.footprint.size.y * 0.5 + 0.5))
 	var gate := Vector2.INF
 	for g: Structure in town.gates:
@@ -242,7 +277,7 @@ func _spoilable(s: Structure) -> bool:
 ## that is sooner. The one before still standing never brings it forward. v0.11 M5 (the final review's ruling): a target already down
 ## once the one before is razed comes into use at once, so a fast player never waits out a chain with nothing left to do.
 func stage_due(i: int) -> float:
-	var at := float(STAGE_AT[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
+	var at := float(stage_at[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
 	if i > 0 and razed_at[i - 1] >= 0.0:
 		at = minf(at, razed_at[i - 1] + (0.0 if _down(i) else CHAIN))
 	return at
@@ -262,7 +297,7 @@ func due_in(i: int) -> float:
 func _chain() -> void:
 	for i in range(1, targets.size()):
 		if not in_use[i] and not razed(targets[i]) and razed_at[i - 1] >= 0.0 and _clock >= stage_due(i):
-			rules.banner.emit(String(STAGE_LABELS[i]).to_upper())
+			rules.banner.emit(String(stage_labels[i]).to_upper())
 			_open(i)
 
 
@@ -271,7 +306,7 @@ func _open(i: int) -> void:
 	if in_use[i]:
 		return
 	in_use[i] = true
-	if targets[i] == town.bridge:
+	if _is_bridge(targets[i]):
 		_sound(&"msn_cart", faces[i])
 	else:
 		_sound(&"msn_grain", faces[i])
@@ -420,7 +455,7 @@ func _work(i: int, delta: float, looking: bool, evacuating := false) -> void:
 			s.restore()
 			_sound(&"msn_rebuild", s.center())
 			rebuilt += 1
-			rules.banner.emit("THE ENGINEERS REBUILD THE %s" % NAMES[i])
+			rules.banner.emit("THE ENGINEERS REBUILD THE %s" % names[i])
 		return
 	if on == 0:
 		_alight[i] = 0.0
@@ -457,14 +492,14 @@ func _relieve(i: int, c: Crew) -> void:
 	if crowd._fled_all:
 		_keep_from_flight(p, true)  # chosen once the town is running: never one of the flight
 	p.go_duty(c.post)
-	rules.banner.emit("A NEW ENGINEER TAKES THE %s" % NAMES[i])
+	rules.banner.emit("A NEW ENGINEER TAKES THE %s" % names[i])
 
 
 ## Razed (v0.11 M4): the chain starts for the next target and the strip shows its time; its crew and shift go home (a shift still
 ## indoors comes out first).
 func _on_razed(s: Structure) -> void:
 	var i := targets.find(s)
-	rules.banner.emit("THE %s IS RAZED" % NAMES[i])
+	rules.banner.emit("THE %s IS RAZED" % names[i])
 	razed_at[i] = _clock
 	if timeline != null and i + 1 < targets.size():
 		timeline.expect("stage_%d" % (i + 1), stage_due(i + 1))
@@ -497,7 +532,7 @@ func tags() -> Array[MapTag]:
 		var s := targets[i]
 		if razed(s) or not is_instance_valid(s):
 			continue
-		var name := String(NAMES[i])
+		var name := String(names[i])
 		if not in_use[i]:
 			var label := "%s - IN USE IN %s" % [name, UiTheme.clock(due_in(i))]
 			if s.destroyed:
@@ -577,11 +612,14 @@ func hint_phases() -> PackedStringArray:
 
 ## The tour (v0.11 M4, mission spec §1): the granary, the mill, the bridge, each with its time.
 func tour() -> Array:
-	var words := ["The granary by the east road. In use at %s. Its engineers mend and rebuild.",
+	var lines := ["The granary by the east road. In use at %s. Its engineers mend and rebuild.",
 		"The mill across the river. In use by %s.", "The bridge. The bread carts gather here by %s. It takes blows, not fire."]
+	if words != WORDS:  # a town with its own targets: the lines say what stands there
+		lines = ["The %s. In use at %%s. Its engineers mend and rebuild." % words[0], "The %s. In use by %%s." % words[1],
+			"The %s. The bread carts gather here by %%s. It takes blows, not fire." % words[2]]
 	var out := []
 	for i in targets.size():
-		out.append([faces[i], String(words[i]) % UiTheme.clock(float(STAGE_AT[i]))])
+		out.append([faces[i], String(lines[i]) % UiTheme.clock(float(stage_at[i]))])
 	return out
 
 

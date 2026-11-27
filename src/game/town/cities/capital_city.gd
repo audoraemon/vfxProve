@@ -550,6 +550,10 @@ func id() -> StringName:
 	return &"capital"
 
 
+func wishes() -> bool:
+	return true
+
+
 func map() -> Rect2:
 	return MAP
 
@@ -592,6 +596,14 @@ func road_lines() -> Array[Dictionary]:
 ## Where an escape ends: the south road and the west road at the map's edge, and the harbour's ferry landing.
 func exits() -> Array[Vector2]:
 	return [Vector2(7, 39.6), Vector2(-39.6, -13), FERRY_LANDING]
+
+
+## The towers of the old town's west river gate (INNER_GATES[1], the spec's decision: the Armoury's and the Crowns' Bread's
+## "gate towers"), west tower first. Read by the Armoury and the Crown's Bread.
+func gate_towers() -> Array[Rect2]:
+	if _gate_towers.is_empty():
+		_gate_towers = _gatehouses(INNER, [INNER_GATES[1]]).towers
+	return _gate_towers.duplicate()
 
 
 ## The gates out of the walls (the exits' gates of soldier_posts()): the old town's west gate, its harbour gate and the
@@ -1176,6 +1188,17 @@ func outcrops() -> Array:
 	return OUTCROPS.duplicate(true)
 
 
+## The ferry's ship lies moored beside the pier's end, drawn with the existing ship sprite (Aldermere's formula: the pier's middle,
+## 0.75 past its end); the Procession's Prince boards it, the river ferry sails it.
+func ship_at() -> Vector2:
+	return Vector2(DOCK.get_center().x, DOCK.end.y + 0.75)
+
+
+## Added to the decor last, so no other piece's seed (SEED + index * 7919) moves for it.
+func ship_last() -> bool:
+	return true
+
+
 func boats() -> Array[Vector2]:
 	return _vectors(BOATS)
 
@@ -1635,6 +1658,7 @@ static var _props_done := false
 static var _avenue: Array[Dictionary] = []
 static var _avenue_done := false
 static var _fans: Array[PackedVector2Array] = []
+static var _gate_towers: Array[Rect2] = []
 static var _posts := {}
 static var _outward := {}
 

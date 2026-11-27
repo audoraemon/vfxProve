@@ -364,6 +364,8 @@ const PRISONER_NEAR := 4.0
 const PRISONER_STRETCH := 6.0
 const PRISONER_AWAY := 8.0
 const PRISONER_WAIT := Vector2(0.0, -3.0)
+const PRISONER_BACK := 3.0
+const PRISONER_ON_ROAD := 1.0
 const PRISONER_SOON := 10.0
 ## The Heretic Hunt's policy (v0.11 M4): how near its time the next sweep's guards are cleared; how far a guard is whispered off; how
 ## far from a standard's centre, away from its guards, the Smite lands.
@@ -1901,10 +1903,25 @@ func _gates(hazard: bool, shots := false) -> void:
 
 
 ## The judgement scenario's targets, cast in turn (v0.08): a ring closing on the Citadel.
-const JUDGEMENT_TARGETS := [Vector2(-9.0, -11.0), Vector2(0.8, 2.2), Vector2(-12.0, 1.0), Vector2(-4.0, -6.0),
-	TownLayout.CITADEL_ORIGIN, Vector2(-6.0, -12.0), Vector2(4.0, -4.0), Vector2(-10.5, -8.0)]
+## The ring is a per-city table (Task 20 of the Capital plan; read by City.current().id()): Aldermere's list is v0.08's, unchanged; the Capital's eight
+## are the Keep's gate side first, then the old town's ring round the Citadel (each snapped to a real, hittable place, Task 20 report).
+const JUDGEMENT_TARGETS := {
+	&"aldermere": [Vector2(-9.0, -11.0), Vector2(0.8, 2.2), Vector2(-12.0, 1.0), Vector2(-4.0, -6.0),
+		TownLayout.CITADEL_ORIGIN, Vector2(-6.0, -12.0), Vector2(4.0, -4.0), Vector2(-10.5, -8.0)],
+	&"capital": [Vector2(0.0, -25.5), Vector2(-8.0, -12.0), Vector2(-7.5, -2.5), Vector2(6.0, -4.0),
+		Vector2(-18.0, -15.0), Vector2(10.0, -14.0), Vector2(-3.9, -17.7), Vector2(-20.0, -4.0)],
+}
 ## A cap on the judgement scenario's frames, so a run ends even if the mission does not: twice the mission's clock.
 const JUDGEMENT_MAX_FRAMES := int(Rules.MISSION_SECONDS * 2.0 * 60.0)
+
+
+## The next ring target of the active city (Aldermere's list if the city has none).
+func _judgement_target(next: int) -> Vector2:
+	var id := City.current().id()
+	if not JUDGEMENT_TARGETS.has(id):
+		push_error("behaviour_check: no judgement ring for city '%s'; using Aldermere's" % [id])
+	var list: Array = JUDGEMENT_TARGETS.get(id, JUDGEMENT_TARGETS[&"aldermere"])
+	return list[next % list.size()]
 
 
 ## Written only against what exists both before and after v0.08 M2 (refusal(), cast(), loadout, an optional `dp`),
@@ -1930,7 +1947,7 @@ func _judgement() -> void:
 		for slot in rules.loadout.size():
 			if rules.refusal(slot) == "":
 				var at: Vector2 = _richest(rules, mission._bf.ctx.env, mission._crowd) if rich \
-					else JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()]
+					else _judgement_target(next)
 				next += 1
 				rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()})
 				break
@@ -3135,13 +3152,13 @@ func _panic_act(rules: Rules, slots: Dictionary, d: MarketPanicDirector) -> Stri
 	if d.next_wave() < 0 and _slot_ready(rules, slots, "heaven"):
 		var best := -1
 		var best_dir := Vector2.RIGHT
-		if wardens.is_empty() and _panic_near(d, MarketPanicDirector.HEART, MarketPanicDirector.FAIR_R).size() >= PANIC_PACK:
+		if wardens.is_empty() and _panic_near(d, d.heart, MarketPanicDirector.FAIR_R).size() >= PANIC_PACK:
 			for dir: Vector2 in [Vector2.RIGHT, Vector2.DOWN]:
-				var n := _panic_lane(d, d.unbroken(), MarketPanicDirector.HEART, dir)
+				var n := _panic_lane(d, d.unbroken(), d.heart, dir)
 				if n > best:
 					best = n
 					best_dir = dir
-			rules.cast(slots.heaven, MarketPanicDirector.HEART, {"dir": best_dir})
+			rules.cast(slots.heaven, d.heart, {"dir": best_dir})
 			return "heaven through the fair (%d)" % best
 		var walkers := d.walkers()
 		if walkers.size() >= PANIC_WALKERS:
@@ -3166,7 +3183,7 @@ func _panic_act(rules: Rules, slots: Dictionary, d: MarketPanicDirector) -> Stri
 		var left := d.unbroken()
 		if not left.is_empty():
 			left.sort_custom(func(a: Person, b: Person) -> bool:
-				return a.ground_pos.distance_to(MarketPanicDirector.HEART) < b.ground_pos.distance_to(MarketPanicDirector.HEART))
+				return a.ground_pos.distance_to(d.heart) < b.ground_pos.distance_to(d.heart))
 			rules.cast(slots.smite, left[0].ground_pos)
 			return "smite a goer"
 	if _slot_ready(rules, slots, "doom") and not wardens.is_empty():
@@ -3378,10 +3395,10 @@ func _bread_act(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: 
 			if cur < 2 and not d.burning(s):
 				if _slot_ready(rules, slots, "ember"):
 					rules.cast(slots.ember, s.center())
-					return "ember the %s" % CrownsBreadDirector.WORDS[cur]
+					return "ember the %s" % d.words[cur]
 				if _slot_ready(rules, slots, "smite"):
 					rules.cast(slots.smite, s.center())
-					return "smite the %s" % CrownsBreadDirector.WORDS[cur]
+					return "smite the %s" % d.words[cur]
 			elif cur == 2 and _slot_ready(rules, slots, "smite"):
 				rules.cast(slots.smite, s.center())
 				return "smite the bridge"
@@ -3396,7 +3413,7 @@ func _bread_act(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: 
 		var walker := d.relief_walking(cur)
 		if walker != null and _slot_ready(rules, slots, "doom"):
 			rules.cast(slots.doom, walker.ground_pos)
-			return "doom a relief for the %s" % CrownsBreadDirector.WORDS[cur]
+			return "doom a relief for the %s" % d.words[cur]
 	return ""
 
 
@@ -3404,7 +3421,7 @@ func _bread_act(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: 
 ## else stands within its radius of (else the first); else Mind Whisper sends one not shaking a whisper off BREAD_AWAY from it.
 func _bread_clear(rules: Rules, slots: Dictionary, d: CrownsBreadDirector, crowd: Crowd, i: int, on: Array[Person], smite_ok: bool) -> String:
 	var s := d.targets[i]
-	var word := String(CrownsBreadDirector.WORDS[i])
+	var word := String(d.words[i])
 	if smite_ok and _slot_ready(rules, slots, "smite"):
 		for p in on:
 			if s.distance_to(p.ground_pos) <= SmiteFx.HIT_R:
@@ -3485,7 +3502,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 			rules.cast(slots.doom, s.ground_pos)
 			return "doom her seizer"
 		return ""
-	var road: Array = PrisonerDirector.ROAD
+	var road: Array = d.road
 	var ahead := _road_ahead(road, her.ground_pos, PRISONER_STRETCH)
 	for v: Variant in d._watchers():
 		if d.watch.has(v) or not d._watching(v):
@@ -3506,7 +3523,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 	var watched := not d.watch_away and d._watch_standing()
 	if _slot_ready(rules, slots, "whisper") and not her.shaken():
 		var to := _road_ahead(road, her.ground_pos, MindWhisperFx.REACH - 0.5)
-		var wait := d._walkable(d.gate_at + PRISONER_WAIT)
+		var wait := d._walkable(_prisoner_wait(d))
 		if watched and _road_progress(road, to) > _road_progress(road, wait):
 			to = wait
 		to = MindWhisperFx.clamp_to(crowd._grid, her.ground_pos, d._walkable(to))
@@ -3519,8 +3536,21 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 		for v: Variant in d.watch:
 			if d._watching(v) and not (v as Person).shaken():
 				rules.cast(slots.whisper, (v as Person).ground_pos, {"target": v, "to": _prisoner_away(crowd, v as Person, d.gate_at)})
-				return "whisper the postern's watch off"
+				return "whisper the gate's watch off"
 	return ""
+
+
+## Where she waits short of a watched gate (Task 11): the old offset from the gate's mouth where that lies on her road (Aldermere: the
+## postern's street comes down from the north, bit for bit as before), else the point on her road PRISONER_BACK units back from the gate
+## (the Capital's road reaches its harbour gate along the avenue from the west).
+func _prisoner_wait(d: PrisonerDirector) -> Vector2:
+	var old := d.gate_at + PRISONER_WAIT
+	var near := INF
+	for k in range(d.road.size() - 1):
+		near = minf(near, _seg_dist(old, d.road[k], d.road[k + 1]))
+	if near <= PRISONER_ON_ROAD:
+		return old
+	return _road_ahead(d.road, d.gate_at, -PRISONER_BACK)
 
 
 ## Where Mind Whisper sends `p` (v0.11 M4): PRISONER_AWAY straight away from `from`, on ground the whisper can reach.
@@ -3768,7 +3798,7 @@ func _armoury_act(rules: Rules, slots: Dictionary, d: ArmouryDirector, crowd: Cr
 	var cur := d.mustering_now()
 	if cur >= 0:
 		var s := d.targets[cur]
-		var word := String(ArmouryDirector.WORDS[cur])
+		var word := String(d.words[cur])
 		var on := d.guards(cur)
 		if not on.is_empty():
 			if _slot_ready(rules, slots, "smite"):
@@ -3847,7 +3877,7 @@ func _sermon_act(rules: Rules, slots: Dictionary, d: SermonDirector, crowd: Crow
 			rules.cast(slots.doom, keeper.ground_pos)
 			return "doom the bellkeeper"
 		if not crowd.is_bell_lying() and _slot_ready(rules, slots, "belllies"):
-			rules.cast(slots.belllies, TownLayout.BELL_TOWER.get_center(), {"mode": "well"})
+			rules.cast(slots.belllies, Places.at(&"bell_tower"), {"mode": "well"})
 			return "the bell lies"
 		if whisper and _whisperable(keeper):
 			var aside := _sermon_quiet(d, crowd, keeper)
@@ -4022,7 +4052,7 @@ func _relic_act(rules: Rules, slots: Dictionary, d: RelicRunDirector, crowd: Cro
 			rules.cast(slots.doom, keeper.ground_pos)
 			return "doom the bellkeeper"
 		if not crowd.is_bell_lying() and _slot_ready(rules, slots, "belllies"):
-			rules.cast(slots.belllies, TownLayout.BELL_TOWER.get_center(), {"mode": "well"})
+			rules.cast(slots.belllies, Places.at(&"bell_tower"), {"mode": "well"})
 			return "the bell lies"
 		if discord and not keeper.mind in MissionDirector.BLIND:
 			rules.cast(slots.discord, keeper.ground_pos)
@@ -5152,7 +5182,7 @@ func _night() -> void:
 					# world by the old act's caster: its Rules is over and refuses a cast, and the night has no Heaven.
 					Engine.time_scale = 0.3
 					var heaven := load(String(PowerBook.get_power("heaven").path)) as GDScript
-					mission._rules.caster.call(heaven, TownLayout.CITADEL_ORIGIN, {"dir": Vector2(1, 0)})
+					mission._rules.caster.call(heaven, City.current().citadel_origin(), {"dir": Vector2(1, 0)})
 				mission.next_act(_loadout_for_next(outcome, path), path)
 				if seen == 1:
 					var rules: Rules = mission._rules
@@ -5428,7 +5458,7 @@ func _play_judgement() -> void:
 			continue
 		for slot in rules.loadout.size():
 			if rules.refusal(slot) == "":
-				var at: Vector2 = JUDGEMENT_TARGETS[next % JUDGEMENT_TARGETS.size()] if fixed \
+				var at: Vector2 = _judgement_target(next) if fixed \
 					else _richest(rules, mission._bf.ctx.env, mission._crowd)
 				next += 1
 				if rules.cast(slot, at, {"dir": Vector2(0.2, 1.0).normalized()}) != null:
@@ -5476,7 +5506,7 @@ func _richest(rules: Rules, env: EnvironmentField, crowd: Crowd) -> Vector2:
 		if w > 0.0 and is_instance_valid(p) and p.is_alive() and not p.inside:
 			pts.append(p.ground_pos)
 			ws.append(w)
-	var best := TownLayout.CITADEL_ORIGIN
+	var best := City.current().citadel_origin()
 	var best_w := -1.0
 	for c in pts:
 		var sum := 0.0
@@ -5497,6 +5527,11 @@ func _stability(rules: Rules) -> String:
 		roundi(s.resources * 100.0)]
 
 
+## Where the capture aid looks: Aldermere's literal there, the square's centre in any other town (Task 9 of the Capital plan).
+func _festival_look_at() -> Vector2:
+	return FESTIVAL_LOOK_AT if City.current().id() == &"aldermere" else Places.at(&"market_square")
+
+
 ## Act II-A's capture aid (v0.09 Task 13): a frame of the market at FESTIVAL_SHOTS' marks of the act -- the bonfires lit
 ## and the crowd packing (0:30, 0:50), the Mayor on the fountain (1:35) -- and the festival's count at each.
 func _festival_shots() -> void:
@@ -5508,7 +5543,7 @@ func _festival_shots() -> void:
 		if not is_instance_valid(rules) or rules.finished:
 			return
 		bf.camera.zoom = Vector2.ONE * 1.5
-		bf.camera.position = Iso.ground_to_screen(FESTIVAL_LOOK_AT).round()
+		bf.camera.position = Iso.ground_to_screen(_festival_look_at()).round()
 		await _frames(3)
 		await bf.save_capture("behaviour_festival_%d.png" % roundi(mark))
 		var mayor := (rules.director as FestivalDirector).mayor

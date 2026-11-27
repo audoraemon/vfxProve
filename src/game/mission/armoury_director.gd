@@ -46,6 +46,8 @@ const HORN_LABELS := ["The muster horn: the north barracks turns out", "The must
 ## When each target musters at the latest (v0.11 M5, mission spec §2's numbers, tuned by the gate in this order: SQUAD (1-3),
 ## STAGE_AT[0] (30-45), CHAIN (30-45), REINFORCE, SPOIL_SECONDS (10-15)).
 const STAGE_AT := [40.0, 110.0, 180.0]
+## The names a town's overrides may set (Overrides): the targets in words, the strip's labels at each horn and the times the horns sound at the latest.
+const TOWN_VARS := ["words", "horn_labels", "stage_at"]
 ## How long after one target is razed the next musters, if sooner than its own time (v0.11 M5).
 const CHAIN := 40.0
 ## The armed men on each target's night watch from the start (v0.11 M5).
@@ -78,10 +80,16 @@ const ARMED_HOLD := 1.0
 const OFF_GUARD := [Person.Mind.PANIC, Person.Mind.FLEE, Person.Mind.SHELTER, Person.Mind.WHISPERED, Person.Mind.CONFUSED]
 ## Where the camera rests (v0.11 M5, Decision 159): the north barracks just above the centre, the other two pointed at from the bottom.
 const CAMERA_AT := Vector2(-5.5, -4.5)
-## The Citadel's gate (v0.11 M5, the controller's ruling): where the reserve waits and the reinforcements march from.
+## Aldermere's Citadel gate (v0.11 M5), kept as data for the tests: the director reads the place citadel_gate (the reserve waits there, the reinforcements march from it).
 const CITADEL_GATE := HarvestDirector.CITADEL_GATE
 ## Seconds between looks at the armed men (v0.11 M5).
 const TICK := 0.5
+
+## Town vars (Capital plan Task 16, spec 6.3.3), seeded from the consts above (copies, never shared): the targets in words (banners, tour, policies),
+## the strip's labels at each horn and when each target musters at the latest.
+var words: Array = WORDS.duplicate()
+var horn_labels: Array = HORN_LABELS.duplicate()
+var stage_at: Array = STAGE_AT.duplicate()
 
 ## Each target's Armed records, in the order of `targets` (v0.11 M5).
 var armed: Array = []
@@ -114,7 +122,7 @@ var _tick_in := 0.0
 func _begin() -> void:
 	targets.assign(_find_targets())
 	spoil_seconds = SPOIL_SECONDS
-	citadel_door = _walkable(CITADEL_GATE)
+	citadel_door = _walkable(Places.point(&"citadel_gate"))
 	if crowd.engineers != null:
 		crowd.engineers.hands_off.append_array(targets)
 	for i in targets.size():
@@ -138,7 +146,7 @@ func _begin() -> void:
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	for i in targets.size():
-		timeline.add(float(STAGE_AT[i]), "horn_%d" % i, String(HORN_LABELS[i]), _muster.bind(i),
+		timeline.add(float(stage_at[i]), "horn_%d" % i, String(horn_labels[i]), _muster.bind(i),
 			func() -> bool: return not mustering[i] and not razed(targets[i]))
 	timeline.add(MARCH_AT, "march", "The garrison marches", Callable(), func() -> bool: return not all_razed())
 	rules.banner.emit("THE ARMOURY")
@@ -259,7 +267,7 @@ func _spoilable(s: Structure) -> bool:
 ## A target already down once the one before is razed sounds its horn at once (the final review's ruling): a fast player who felled
 ## them all early never waits out a chain with nothing left to do.
 func stage_due(i: int) -> float:
-	var at := float(STAGE_AT[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
+	var at := float(stage_at[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
 	if i > 0 and razed_at[i - 1] >= 0.0:
 		at = minf(at, razed_at[i - 1] + (0.0 if _down(i) else CHAIN))
 	return at
@@ -279,7 +287,7 @@ func due_in(i: int) -> float:
 func _chain() -> void:
 	for i in range(1, targets.size()):
 		if not mustering[i] and not razed(targets[i]) and razed_at[i - 1] >= 0.0 and _clock >= stage_due(i):
-			rules.banner.emit(String(HORN_LABELS[i]).to_upper())
+			rules.banner.emit(String(horn_labels[i]).to_upper())
 			_muster(i)
 
 
@@ -500,7 +508,7 @@ func _back_inside(evacuating: bool) -> void:
 func _on_razed(s: Structure) -> void:
 	var i := targets.find(s)
 	unseal(s)
-	rules.banner.emit("THE %s IS RAZED" % String(WORDS[i]).to_upper())
+	rules.banner.emit("THE %s IS RAZED" % String(words[i]).to_upper())
 	razed_at[i] = _clock
 	if timeline != null and i + 1 < targets.size():
 		timeline.expect("horn_%d" % (i + 1), stage_due(i + 1))
@@ -660,11 +668,11 @@ func hint_phases() -> PackedStringArray:
 
 ## The tour (v0.11 M5, mission spec §2): the north barracks, the gate barracks, the armoury.
 func tour() -> Array:
-	var words := ["The north barracks. The muster horn calls it at %s.", "The gate barracks, by %s. It is stone: blows, not fire.",
-		"The armoury, last. It arms the garrison, faster each minute."]
+	var lines := ["The %s. The muster horn calls it at %s.", "The %s, by %s. It is stone: blows, not fire.",
+		"The %s, last. It arms the garrison, faster each minute."]
 	var out := []
 	for i in targets.size():
-		var line := String(words[i]) % UiTheme.clock(float(STAGE_AT[i])) if i < 2 else String(words[i])
+		var line := String(lines[i]) % [words[i], UiTheme.clock(float(stage_at[i]))] if i < 2 else String(lines[i]) % words[i]
 		out.append([faces[i], line])
 	return out
 

@@ -1,0 +1,11 @@
+# KAK The Prisoner in the Capital (plan "The Capital at every tier" Task 11): the scripted gate's runs with --city=capital (src/game/town/cities/capital_missions/prisoner.gd). name<TAB>how<TAB>expected
+# Route a none and play, route b play, seeds 1-3 (no --board, as Aldermere's prisoner rows). No toll case: the mission has none. A row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
+# capital_prisoner_play_1 is left out: that run LOSES (prisoner_taken at 80.8 s, checksum -421647446), and a loss row is not recorded (gate: wins 2 of 3).
+capital_prisoner_none_1	--scenario=prisoner --case=none --seed=1 --city=capital	-975085436
+capital_prisoner_none_2	--scenario=prisoner --case=none --seed=2 --city=capital	-307261604
+capital_prisoner_none_3	--scenario=prisoner --case=none --seed=3 --city=capital	-167877119
+capital_prisoner_play_2	--scenario=prisoner --case=play --seed=2 --city=capital	-672949817
+capital_prisoner_play_3	--scenario=prisoner --case=play --seed=3 --city=capital	-818655024
+capital_prisoner_b_play_1	--scenario=prisoner --case=play --route=b --seed=1 --city=capital	-52035502
+capital_prisoner_b_play_2	--scenario=prisoner --case=play --route=b --seed=2 --city=capital	-198537662
+capital_prisoner_b_play_3	--scenario=prisoner --case=play --route=b --seed=3 --city=capital	-665314438

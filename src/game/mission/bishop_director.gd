@@ -41,6 +41,9 @@ class Post:
 ## Knights stood 1.0 apart, inside one Doom.
 const REFUGE_SPOTS := [Vector2(12.0, -6.8), Vector2(7.9, -12.3)]
 const CITADEL_GATE := Vector2(-10.5, -7.6)
+## The names a town's overrides may set (Overrides): these vars and the base's `safe_at`, seeded in _init() (_plan() reads them and
+## never assigns them). The words, the numbers and the Knights' counts stay consts; `arrive_at` is the night's own clock, not a place.
+const TOWN_VARS := ["refuge_spots", "safe_at"]
 ## The refuges in words, for the banners and the strip (v0.11 M5).
 const REFUGE_WORDS := ["his house", "the chapter house", "the Temple"]
 ## Mission spec §1's numbers (v0.11 M5), tuned by Step 7's gate in this order: CHAIN (30-45; at 45 already), ARRIVE_AT (30-60) 45 -> 60,
@@ -83,6 +86,8 @@ var posts: Array = []
 var at_refuge := -1
 var in_flight := false
 var arrive_at := -1.0
+## Where his house and the chapter house are (a town's own: Aldermere's are REFUGE_SPOTS, copied so a town's list never shares the const).
+var refuge_spots: Array = REFUGE_SPOTS.duplicate()
 var driven := 0
 var in_square := false
 var reliefs := 0
@@ -100,17 +105,22 @@ var _guard_sealed: Structure
 var _guard_before := Callable()
 
 
+## AssassinateDirector's `safe_at` starts at the active town's Citadel gate (Places.point; Aldermere's is CITADEL_GATE, bit for bit): set
+## at .new(), so a town's override survives setup. Only this mission is seeded: the base's own `safe_at` stays unset for the others.
+func _init() -> void:
+	safe_at = Places.point(&"citadel_gate")
+
+
 ## The places and numbers (v0.11 M5): no hideout (no smoke-out, the Citadel's gate as the safe place), the guards' ring RING_R, and
 ## the bishop's three refuges as his stops; ESCORT guards (his escort, _appoint_guards()).
 func _plan() -> void:
 	hideout = null
-	safe_at = CITADEL_GATE
 	smoke_out = false
 	guard_r = RING_R
 	safe_label = "CITADEL"
-	var from := _walkable(CITADEL_GATE)
+	var from := _walkable(safe_at)
 	var stops: Array[Structure] = []
-	for spot: Vector2 in REFUGE_SPOTS:
+	for spot: Vector2 in refuge_spots:
 		var h := _house_reached(spot, from, stops)
 		if h != null:
 			stops.append(h)

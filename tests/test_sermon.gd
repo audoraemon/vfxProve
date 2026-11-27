@@ -506,7 +506,7 @@ static func _tagged(t) -> void:
 	d._report(d.acolytes[0] as Person, d.temple_door)
 	t.check(Kit.labels(d).has("TO THE TEMPLE") and Kit.labels(d).has("TEMPLE") and d.hint_phase() == "report", "a report runs: its runner and the Temple")
 	var tour := d.tour()
-	t.check(tour.size() == 3 and String(tour[0][1]).begins_with("The preacher at the south-west well.")
+	t.check(tour.size() == 3 and String(tour[0][1]).begins_with("The preacher at the well.")
 		and String(tour[1][1]).begins_with("The god's house."), "the tour: the preacher, the god's house, the Temple")
 	t.check(ResultsScreen.ACT_TITLES.get("sermon") == "THE CROWD BELIEVES" and ResultsScreen.ACT_TITLES.get("sermon_over") == "THE SERMON ENDS"
 		and ResultsScreen.ACT_TITLES.get("flock") == "THE FLOCK IS SCATTERED", "its results under its own keys")

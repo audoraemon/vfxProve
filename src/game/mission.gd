@@ -145,6 +145,12 @@ var board := false
 var descend: DescendState
 ## The seed the board night's wishes are drawn from (Descent.seed_for()): Game sets it, and an R restart keeps it.
 var wish_seed := 0
+## An Endless night (World Map + Conquer Progress): Game sets these before start(). `god_night` is any Endless night; `conquest` an
+## ordinary one (not a rite, not a Hunt), which carries `carried` believers marked with `believer_seed`. All off: today's night, untouched.
+var god_night := false
+var conquest := false
+var carried := 0
+var believer_seed := 0
 ## Each drafted power's ability level, 1-5 (god P1, spec §5.4): key -> level, absent = 1. Game sets it before start(); every act's
 ## Rules is given it, and an R restart or next_act() keeps it.
 var levels := {}
@@ -163,6 +169,8 @@ var night_def: Callable
 var look_override := -1
 ## True in Endless Night (god P1, Ruling P9): the R key does nothing, so a night cannot be restarted.
 var restart_locked := false
+## The believer view (B), kept across acts; off at every start().
+var believer_view := false
 ## The chain's aim is up (god P3, MS §2): C was pressed in a rite with the chain ready, and the next click on the map chains the marked victim under
 ## it. A slot key or click, Esc or a right-click ends it; a refused click keeps it. The HUD's plate turns gold while it is up.
 var chain_aim := false:
@@ -178,6 +186,8 @@ var report_on_decision := false
 var _drafted := PackedStringArray()
 ## The board night being played (v0.11 M1), or null off the board.
 var _descent: Descent
+## The night's carried believers (conquest nights only), or null.
+var _believers: BelieverRoll
 ## The mission being played, and its director (null for a mission without scripted actors).
 var _def: MissionDef
 var _director: MissionDirector
@@ -441,6 +451,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		return
 	_close_legend()
 	chain_aim = false
+	believer_view = false
 	if remembrance != "":
 		powers = PackedStringArray([remembrance])  # Remembrance plays its one power, whatever Game or an R restart passes
 	if powers.is_empty():
@@ -464,6 +475,9 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	if _descent != null:
 		_descent.release()
 		_descent = null
+	if _believers != null:
+		_believers.release()
+		_believers = null
 	_bf.reset(seed_value)
 	for n: Node in [_town, _crowd, _rules, _aim, _hud, _alert, _overlay, _memory]:
 		if is_instance_valid(n):
@@ -509,7 +523,7 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 		# A scripted run's --board (v0.11 M1): the night's seed is the first night's, as a fresh god's.
 		wish_seed = Descent.seed_for(descend.night if descend != null else 0, _def.id)
 	# A board night (v0.11 M1): its wishes, its Tier 5 Gaze and its ascent, handed to each act's Rules in _build_act().
-	_descent = Descent.new().setup(_def, wish_seed) if has_descent(_def, on_board) else null
+	_descent = Descent.new().setup(_def, wish_seed) if has_descent(_def, on_board, god_night) else null
 	_night = NightState.new() if _def.has_acts() else null
 	_cast_before = PackedStringArray()
 	if _night != null:
@@ -533,6 +547,10 @@ func start(powers: PackedStringArray, seed_value: int) -> void:
 	_wired.clear()
 	_build_act(powers if not powers.is_empty() else _loadout(OS.get_cmdline_user_args()))
 	_apply_night_rules(seed_value)
+	if conquest and _descent != null:
+		_believers = BelieverRoll.new().setup(_crowd, String(_def.city), believer_seed)
+		_believers.mark_carried(carried, _reserved())
+		_believers.attach(_rules)
 	_overlay = BehaviourOverlay.new().setup(_crowd, _bf)
 	_overlay.name = "BehaviourOverlay"
 	if "--behaviour" in OS.get_cmdline_user_args():
@@ -581,11 +599,16 @@ func set_memory_level(level: int) -> void:
 
 ## The look's rules (NightRules) once the director has appointed its people: nothing but at NIGHT. The wishes' people are kept out too.
 func _apply_night_rules(seed_value: int) -> void:
+	NightRules.apply(_crowd, _town.look, _reserved(), seed_value, _director)
+
+
+## The people no night rule and no believer mark may take: the director's reserved and every wish's people.
+func _reserved() -> Array:
 	var kept: Array = _director.reserved.duplicate() if _director != null else []
 	if _descent != null:
 		for w in _descent.wishes:
 			kept.append_array(w.people())
-	NightRules.apply(_crowd, _town.look, kept, seed_value, _director)
+	return kept
 
 
 ## The gauge and the seal of the act being played (Might gauge): the bots' tier pool, else the def's own when it is a gauge night. A
@@ -666,6 +689,8 @@ func _build_act(loadout: PackedStringArray) -> void:
 	_hud.bar_type = play.god_type
 	_hud.setup(_rules, _crowd, _town, _aim)
 	_hud.set_pause_hidden(_pause_hidden)
+	_hud.believer_view = believer_view
+	_aim.believer_view = believer_view
 	_alert = ThreatAlert.new()
 	_alert.name = "ThreatAlert"
 	_bf.ui_parent().add_child(_alert)
@@ -873,6 +898,8 @@ func next_act(powers: PackedStringArray, path := "") -> void:
 	_bf.ctx.impact.set_base_time_scale(1.0)
 	_ending = false
 	_build_act(powers if not powers.is_empty() else _act.default_loadout)
+	if _believers != null:
+		_believers.attach(_rules)
 	_restore_bar(bar_kept)
 	_begin_intro(_act)
 	_prayers_hold = 0.0
@@ -909,6 +936,16 @@ func act() -> ActDef:
 ## The board night being played (v0.11 M1), or null.
 func descent() -> Descent:
 	return _descent
+
+
+## The night's carried believers (World Map + Conquer Progress), or null off conquest nights.
+func believers() -> BelieverRoll:
+	return _believers
+
+
+## How many carried believers are still alive, or -1 with no roll.
+func carried_alive() -> int:
+	return _believers.carried_alive() if _believers != null else -1
 
 
 ## The god ascends (v0.11 M1, spec §6): once a board night's main objective is done, F (or the ASCEND plate) ends it, won.
@@ -1151,9 +1188,14 @@ static func wanted_city(args: PackedStringArray, autostart_run: bool) -> StringN
 
 ## Whether a night of `def` has a Descent (v0.12, D20): a board night in Aldermere only -- no wishes, believers, banking or tier
 ## progress in another town. A Lantern Hunt has one too (god P5, MS §1, R6, open issue 4: it hears the tier's wishes and banks believers, as
-## the stand-ins did); a rite does not.
-static func has_descent(def: MissionDef, on_board: bool) -> bool:
-	return on_board and (TierBook.has(def.id) or HuntBook.has(def.id)) and def.city == &"aldermere"
+## the stand-ins did); a rite does not. `any_town` (a god's Endless night, World Map + Conquer Progress): a board night in another town
+## has one too when that town hears wishes (CityDef.wishes()); the DEV tab's nights there still have none.
+static func has_descent(def: MissionDef, on_board: bool, any_town := false) -> bool:
+	if not on_board or not (TierBook.has(def.id) or HuntBook.has(def.id)):
+		return false
+	if def.city == &"aldermere":
+		return true
+	return any_town and City.has(def.city) and City.by_id(def.city).wishes()
 
 
 ## This is a board night (v0.11 M1): Game said so, or a standalone run was given --board.
@@ -1316,6 +1358,8 @@ func _final_result() -> Dictionary:
 func _with_descent(res: Dictionary) -> Dictionary:
 	if _descent != null:
 		res.merge(_descent.report(_rules))
+		if _believers != null:
+			res["conquest"] = _believers.report(_rules.main_done, _rules.ascended, _reserved())
 	return res
 
 
@@ -1350,6 +1394,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if legend_open():
 		return  # R, F, the slots and every cast wait for the legend to close
+	if toggles_believers(event) and started() and not _ending:
+		var bvp := get_viewport()
+		if bvp != null:
+			bvp.set_input_as_handled()
+		set_believer_view(not believer_view)
+		return
 	if in_intro() and not (event is InputEventKey and event.physical_keycode == KEY_ESCAPE):
 		if skips_tour(event):  # a sweep and the prayers' hold skip as a tour does (v0.11.1, spec §2)
 			if is_inside_tree():
@@ -1437,6 +1487,26 @@ func _unhandled_input(event: InputEvent) -> void:
 			_aim.release(_bf.mouse_ground())
 
 
+const BELIEVER_KEY := KEY_B
+
+
+## Whether `event` is B pressed: the believer view's key.
+static func toggles_believers(event: InputEvent) -> bool:
+	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == BELIEVER_KEY \
+			and not event.alt_pressed and not event.ctrl_pressed and not event.meta_pressed
+
+
+## Turns the believer view on or off: gold marks over believers and a count in the aim.
+func set_believer_view(on: bool) -> void:
+	believer_view = on
+	if is_instance_valid(_hud):
+		_hud.believer_view = on
+		_hud.queue_redraw()
+	if is_instance_valid(_aim):
+		_aim.believer_view = on
+		_aim.queue_redraw()
+
+
 ## Whether `event` is a Ctrl key pressed alone: it shows or hides the ability bar of a Might night.
 static func toggles_bar(event: InputEvent) -> bool:
 	return event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_CTRL \
@@ -1502,7 +1572,7 @@ func open_legend() -> void:
 		return
 	_pressing = false
 	_aim.cancel()
-	_legend = LegendPanel.new().setup(_hud.all_tags(), _rules.loadout)
+	_legend = LegendPanel.new().setup(_hud.legend_tags(), _rules.loadout)
 	_legend.name = "Legend"
 	_bf.hud_layer.add_child(_legend)
 	_legend.closed.connect(_on_legend_closed)

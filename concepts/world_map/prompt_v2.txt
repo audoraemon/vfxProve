@@ -1,0 +1,16 @@
+Use the $imagegen skill to generate ONE image and save it in the current directory as world_map_concept_v2.png. Do not write code, do not edit any other file.
+
+Image 1 (world_map_concept_v1.png) is the previous version: keep its style, palette, vellum ground with burnt edges, candle light from the upper left, the carved wood and brass frame, the candles in the upper-left corner, the empty title cartouche at the top centre, the compass rose at the lower right, the six town positions, and the calm plain vellum at the bottom centre. Image 2 is the game's painted room, for palette and pixel-art style only. Repaint the map with these changes:
+
+1. Every town must look clearly different, readable at a glance by silhouette, size and colour:
+ - THE CAPITAL (centre-right, on the coast): by far the largest. A great walled city with a tall royal keep on a rise, a big cathedral with twin spires, many red roofs, banners, a stone harbour with piers and two small ships. About twice the size of any other town.
+ - ALDERMERE (centre-left): a modest walled market town of timber-framed houses with warm thatch and tile roofs, one bell tower, a stone bridge over its river, fields and a mill outside the wall.
+ - THORNWICK (upper-left, in deep dark woods): a small dark timber stockade village of steep black-shingled roofs, a wooden palisade of sharpened logs, one crooked watchtower, thorn hedges; half hidden by trees.
+ - GREYHOLLOW (lower-left, in a grey hill valley): a grey stone mining town built into the hillside, slate roofs, a squat round stone tower, mine mouths with timber frames and a wooden crane, smoke from a forge.
+ - SALTMERE (lower-right, in the salt marsh by the sea): a low fishing village on wooden stilts and boardwalks over the marsh, pale weathered wood, drying racks and white salt pans, small boats, a little lighthouse; no stone wall.
+ - VAEL CROSSING (upper-right): NOT on the coast headland. Put it inland on both banks of a wide river at a shallow ford, joined by a long fortified stone bridge with a gate tower at each end, a toll house, a few inns; the river is clearly crossed here.
+2. Rivers: Aldermere's river must flow east and reach the sea south of the Capital (not run off the bottom edge). The river of Vael Crossing comes down from the mountains and reaches the sea in the north-east.
+3. One winding dashed road joins Aldermere and the Capital, as before.
+4. Names: above each town, a small parchment ribbon banner with the town's name lettered in clean dark medieval capitals, spelled exactly: "THE CAPITAL", "ALDERMERE", "THORNWICK", "GREYHOLLOW", "SALTMERE", "VAEL CROSSING". Each banner sits just above its own town and does not cover it. No other text anywhere; the top cartouche stays empty.
+
+16:9 landscape, crisp pixel art, limited palette. No UI boxes, no buttons, no watermark.

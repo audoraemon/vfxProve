@@ -164,6 +164,15 @@ func setup(def: MissionDef, preselect: PackedStringArray, tier := ResponseProfil
 	return self
 
 
+## What setup() reads, for ChamberPrewarm (the Rite Door's zoom opens this screen): every power's two icons and its preview clip.
+static func prewarm_paths() -> PackedStringArray:
+	var out := PackedStringArray()
+	for p: Dictionary in PowerBook.POWERS:
+		var key := String(p.key)
+		out.append_array([PowerBook.ICON_DIR + "hud/" + key + ".png", PowerBook.ICON_DIR + key + ".png", PowerBook.clip_path(key)])
+	return out
+
+
 ## Where the open tab's card `i` sits.
 static func cell_rect(i: int, count := 0) -> Rect2:
 	var col := i % COLUMNS

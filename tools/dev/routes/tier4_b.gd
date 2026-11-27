@@ -228,15 +228,15 @@ static func act_armoury(bc, ctx: Dictionary) -> String:
 				var to := MindWhisperFx.clamp_to(crowd._grid, p.ground_pos, p.ground_pos + (away.normalized() if away.length() > 0.01 else Vector2.RIGHT) * ARMOURY_SENT)
 				if bc._slot_ready(rules, slots, "whisper"):
 					rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": to})
-					return "whisper a night watchman off the %s" % String(ArmouryDirector.WORDS[nxt])
+					return "whisper a night watchman off the %s" % String(d.words[nxt])
 				if bc._slot_ready(rules, slots, "discord"):
 					rules.cast(slots.discord, p.ground_pos)
-					return "discord a night watchman at the %s" % String(ArmouryDirector.WORDS[nxt])
+					return "discord a night watchman at the %s" % String(d.words[nxt])
 		return ""
 	var s := d.targets[i]
 	if not is_instance_valid(s) or s.destroyed:
 		return ""
-	var word := String(ArmouryDirector.WORDS[i])
+	var word := String(d.words[i])
 	var memo: Dictionary = ctx.memo
 	var waiting: bool = d._clock - float(memo.get("verdict_%d" % i, -100.0)) < ARMOURY_VERDICT_WAIT
 	if waiting:

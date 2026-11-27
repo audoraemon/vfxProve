@@ -136,7 +136,7 @@ static func _unknown_and_counts(t) -> void:
 	for id: String in ["armoury", "crowns_bread", "heretic_hunt", "sermon"]:
 		t.check(Places.can_host(id, al), "Aldermere hosts %s (counts and all)" % id)
 	for id: String in ["armoury", "crowns_bread"]:
-		t.check(not Places.can_host(id, City.by_id(&"capital")), "the Capital models no gate towers, so it cannot host %s" % id)
+		t.check(Places.can_host(id, City.by_id(&"capital")), "the Capital has the places of %s (its west river gate's towers)" % id)
 
 
 ## MissionDef.camera(): the city's Citadel unless the mission sets one (an ActDef too).

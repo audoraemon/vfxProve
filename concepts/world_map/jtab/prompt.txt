@@ -1,0 +1,4 @@
+Use the $imagegen skill to generate ONE image and save it in the current directory as tab_sheet.png. Do not write code, do not edit any other file.
+
+One UI prop for a pixel-art fantasy world map screen, in exactly the same pixel-art style, outline weight and warm candle-lit palette as the props in image 1: a small blank engraved brass name plate, a wide horizontal rectangle about 3:1 with softly rounded corners, a raised bevelled rim, a darker recessed blank centre, and one small round rivet at its left and right ends. Seen flat from straight above. Completely blank, no letters, no symbols. It fills about half the image width, centred.
+Background: perfectly flat, pure magenta #FF00FF everywhere outside the plate, with no gradient, no shadow, no texture. No text, no watermark. 16:9 landscape, crisp pixel art.

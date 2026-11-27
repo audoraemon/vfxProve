@@ -24,6 +24,11 @@ static func run(t) -> void:
 	_respec(t)
 	_draftable(t)
 	_ensure_starting(t)
+	_conquest_round_trip(t)
+	_conquest_old_save(t)
+	_conquest_unknown_town(t)
+	_conquest_over_count(t)
+	_conquest_locked_last(t)
 	GodTree.dev_fill = false
 
 
@@ -339,3 +344,41 @@ static func _ensure_starting(t) -> void:
 	var real := _read_with("start_real", {"type": "ruin", "learned": {}})
 	t.check(real.learned == {"smite": 1, "ember": 1}, "with the dev fill off the real Tier 1 fill gives its two (%s)" % [real.learned])
 	GodTree.dev_fill = true
+
+
+static func _conquest_round_trip(t) -> void:
+	var s := _slot()
+	s.believers = {"aldermere": 40, "capital": 3}
+	s.opened = PackedStringArray(["aldermere", "capital"])
+	s.last_town = "capital"
+	var file := "user://test_god_conquest.cfg"
+	t.check(s.write(file) == OK, "a conquest god writes")
+	var back := GodSlot.read(file)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(file))
+	t.check(back != null and back.believers == {"aldermere": 40, "capital": 3} and back.opened == PackedStringArray(["aldermere", "capital"]) and back.last_town == "capital",
+		"believers, opened and last_town round-trip (%s)" % [back.believers if back else null])
+
+
+static func _conquest_old_save(t) -> void:
+	var s := _read_with("conquest_old", {"type": "ruin", "level": 3})
+	t.check(s != null and s.believers == {} and s.opened == PackedStringArray(["aldermere"]) and s.last_town == "aldermere",
+		"an old save reads no believers, Aldermere open, last town Aldermere")
+
+
+static func _conquest_unknown_town(t) -> void:
+	var s := _read_with("conquest_unk", {"type": "ruin", "believers": {"atlantis": 5, "aldermere": 2}, "opened": PackedStringArray(["atlantis"]), "last_town": "atlantis"})
+	t.check(s.believers == {"aldermere": 2}, "an unknown town's believers are dropped (%s)" % [s.believers])
+	t.check(s.opened == PackedStringArray(["aldermere"]), "an unknown opened town is dropped (%s)" % [s.opened])
+	t.check(s.last_town == "aldermere", "an unknown last town reads Aldermere")
+
+
+static func _conquest_over_count(t) -> void:
+	var hi := _read_with("conquest_hi", {"type": "ruin", "believers": {"aldermere": 9999}})
+	t.check(hi.believers == {"aldermere": Crowd.CITIZENS}, "an over-count reads the town's people (%s)" % [hi.believers])
+	var lo := _read_with("conquest_lo", {"type": "ruin", "believers": {"aldermere": -4}})
+	t.check(lo.believers == {"aldermere": 0}, "a negative count reads 0 (%s)" % [lo.believers])
+
+
+static func _conquest_locked_last(t) -> void:
+	var s := _read_with("conquest_lock", {"type": "ruin", "opened": PackedStringArray(["aldermere"]), "last_town": "capital"})
+	t.check(s.last_town == "aldermere", "a last town that is not open reads Aldermere (%s)" % [s.last_town])

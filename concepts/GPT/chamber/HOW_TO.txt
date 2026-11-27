@@ -1,0 +1,13 @@
+GOD'S CHAMBER ART: how to paint it (one ChatGPT chat, three paintings)
+
+Painting 1, the room:
+  attach chamber_1_room.png (image 1), ingame_buildings_4x.png (image 2), your Chamber concept image (image 3)
+  paste chamber_1_room.txt
+  repaint until you like the room: this one sets the look for the other two
+Painting 2, the empty room (same chat):
+  attach chamber_2_empty.png, paste chamber_2_empty.txt
+Painting 3, the pieces (same chat):
+  attach chamber_3_pieces.png, paste chamber_3_pieces.txt
+
+Save the three results to "KAK ChatGPT refs\Output\" as chamber_room.png, chamber_empty.png, chamber_pieces.png.
+Then tell Claude: it cuts them into the game's files (wall, desk, table, descend, tree, faith, awaken, awaken_closed).

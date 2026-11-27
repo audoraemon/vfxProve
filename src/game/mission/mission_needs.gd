@@ -23,12 +23,12 @@ const TABLE := {
 	"vigil_flame": ["temple"],
 	"festival": ["temple", "market_square", "fountain"],
 	"crowns_bread": ["temple", "barns:4", "gate_towers:2"],
-	"prisoner": ["temple"],
+	"prisoner": ["temple", "citadel_gate"],
 	"heretic_hunt": ["temple", "districts:8"],
 	# Tier 4: the Procession's route, the Armoury's two taverns, two gate towers and barracks, the Sermon's third well.
 	"procession": ["temple", "citadel", "citadel_court", "market_square", "dock", "dock_wait"],
-	"bishop": ["temple"],
-	"armoury": ["temple", "barracks", "taverns:2", "gate_towers:2"],
+	"bishop": ["temple", "citadel_gate"],
+	"armoury": ["temple", "barracks", "taverns:2", "gate_towers:2", "citadel_gate"],
 	"sermon": ["temple", "wells:3"],
 	"relic_run": ["temple"],
 	# Tier 5 and the three-act night (its acts: the Warning's, the Festival's, the Procession's and the Judgement's).
@@ -36,7 +36,7 @@ const TABLE := {
 	"long_night": ["temple", "bell_tower", "citadel", "citadel_court", "market_square", "fountain", "dock", "dock_wait"],
 	"lantern_eye": ["temple"],
 	"exodus": ["temple"],
-	"heart_of_faith": ["temple"],
+	"heart_of_faith": ["temple", "citadel_gate"],
 	# The campaign's Feast nights are the Long Night's acts as nights of their own.
 	"feast_festival": ["temple", "market_square", "fountain"],
 	"feast_procession": ["temple", "citadel", "citadel_court", "market_square", "dock", "dock_wait"],

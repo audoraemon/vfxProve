@@ -26,6 +26,9 @@ extends MissionDirector
 ## near Wren must bring the flame.
 const MIRA_SHRINE := Vector2(-17.6, 5.0)
 const SHRINE_REACH := 1.0
+## The names a town's overrides may set (Overrides, v0.12): the town vars below, seeded from their consts; setup reads them and never assigns them.
+## The Relic Run inherits both and reads neither.
+const TOWN_VARS := ["route_spots", "mira_shrine"]
 ## How many Faithful there are besides the clergy (spec §4.1: about 20 devout citizens).
 const FAITHFUL := 20
 ## The Vigil's solemn pace: the share of their own pace its three walk at. The bearer keeps BEARER_LEAD of his slowest
@@ -80,6 +83,9 @@ const PRAYER_SCALE := 0.5
 ## Casts the light does not hear: a Mind Whisper speaks in the mind. (v0.11.1: nor a Wisp cast within WillOWisp.CHARGE_LURE_R of Wren, which draws him.)
 const UNHEARD := ["whisper"]
 
+## Where the Vigil's route runs (a town var; Broken Lanterns' shrine spots in Aldermere), and where Mira's shrine stands (a town var; MIRA_SHRINE).
+var route_spots: Array = BrokenLanternsDirector.SHRINE_SPOTS
+var mira_shrine: Vector2 = MIRA_SHRINE
 var vigil: VigilRoute
 var temple_door := Vector2.INF
 ## Mira's shrine, on open ground.
@@ -122,7 +128,7 @@ var _walk_pace := {}
 func _begin() -> void:
 	gaze = FlameGaze.new()
 	temple_door = _walkable(Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6))
-	shrine = _walkable(MIRA_SHRINE)
+	shrine = _walkable(mira_shrine)
 	searchlight = Searchlight.new().setup(Places.at(&"temple"))
 	_choose_faithful(FAITHFUL)
 	_start_vigil()
@@ -144,7 +150,7 @@ func _start_vigil() -> void:
 	if walkers.is_empty():
 		return
 	var route := PackedVector2Array()
-	for spot: Vector2 in BrokenLanternsDirector.SHRINE_SPOTS:
+	for spot: Vector2 in route_spots:
 		route.append(_walkable(_walkable(spot) + BrokenLanternsDirector.RELIGHT_OFF))
 	var acolytes: Array[Person] = []
 	acolytes.assign(walkers.slice(1))

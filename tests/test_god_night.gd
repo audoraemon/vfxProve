@@ -19,6 +19,16 @@ static func run(t) -> void:
 	_wish_seed(t)
 	_bests(t)
 	_mission_hooks(t)
+	_bank_conquest(t)
+	_bank_no_conquest(t)
+	_fill_paid_to_the_clamp(t)
+	_faith_not_doubled(t)
+	_hunt_no_conquest(t)
+	_forfeit_alive(t)
+	_believer_seed(t)
+	_results_conquest_line(t)
+	_conquer_bonus(t)
+	_draw_town(t)
 	_gauge(t)
 	GodTree.dev_fill = false
 
@@ -228,3 +238,137 @@ static func _mission_hooks(t) -> void:
 	t.check(m.has_signal("clock_started"), "the mission announces its clock starting")
 	t.check(m.has_signal("decided") and m.report_on_decision == false, "the mission can report when a run is decided; off unless Endless sets it (review M1)")
 	m.free()
+
+
+static func _conquest_entry(alive: int, lost := 2) -> Dictionary:
+	return {"town": "aldermere", "carried_alive": alive, "named": 0, "fill": 0, "lost": lost}
+
+
+static func _bank_conquest(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	var out := _outcome(true, 0, 30)
+	out.descend["main"] = true
+	out["conquest"] = _conquest_entry(48)
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(int(s.believers.aldermere) == 48 and int(res.conquest.count) == 48, "the roll's 48 survivors become the town's count (%s)" % [s.believers])
+	t.check(int(res.faith) == 30 * GodSlot.FAITH_PER_BELIEVER and s.faith == int(res.faith), "Faith is still exactly what was earned (%s)" % [res.faith])
+
+
+static func _bank_no_conquest(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), _outcome(true, 0, 5))
+	t.check(int(s.believers.aldermere) == 50 and res.conquest == {}, "an outcome without a conquest leaves the counts alone and says {} (%s)" % [res.conquest])
+
+
+static func _hunt_no_conquest(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	s.notice = 100
+	t.check(GodNight.is_hunt(GodNight.draw(s)), "the Hunt is due")
+	var out := _outcome(true, 0, 5)
+	out["conquest"] = _conquest_entry(10)
+	var res := GodNight.bank(s, GodNight.draw(s), PackedStringArray(["smite"]), out)
+	t.check(int(s.believers.aldermere) == 50 and res.conquest == {}, "a Hunt changes no town count (%s)" % [s.believers])
+
+
+static func _forfeit_alive(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 50
+	s.last_town = "aldermere"
+	s.in_night = "tax_collector"
+	var out := GodNight.forfeit(s, 41)
+	t.check(int(s.believers.aldermere) == 41 and int(out.conquest.count) == 41 and out.conquest.town == "aldermere", "a forfeit keeps who was alive (%s)" % [s.believers])
+	var s2 := _slot()
+	s2.believers["aldermere"] = 50
+	s2.in_night = "tax_collector"
+	var out2 := GodNight.forfeit(s2)
+	t.check(int(s2.believers.aldermere) == 50 and int(out2.conquest.count) == 50, "no count given keeps the saved one (%s)" % [s2.believers])
+
+
+static func _believer_seed(t) -> void:
+	var s := _slot()
+	var a := GodNight.believer_seed(s, "warning")
+	t.check(a == GodNight.believer_seed(_slot(), "warning") and a != GodNight.wish_seed(s, "warning"), "the believer seed is stable and its own")
+	s.night += 1
+	t.check(a != GodNight.believer_seed(s, "warning"), "and differs by night")
+
+
+static func _results_conquest_line(t) -> void:
+	var base := {"god": {"divine_power": 5, "levels": [], "capped": false, "believers": 1, "faith": 1, "faith_total": 1, "notice": 0, "night": 2}}
+	var plain := ResultsScreen.god_lines(base)
+	var with_c := base.duplicate(true)
+	with_c.god["conquest"] = {"town": "aldermere", "percent": 12, "converts": 4, "lost": 1}
+	var got := ResultsScreen.god_lines(with_c)
+	t.check(got.size() == plain.size() + 1 and got[got.size() - 2] == "Aldermere 12%   converts +4   believers lost 1" and got[got.size() - 1] == "Night 2",
+		"the conquest line sits before the Night line (%s)" % [got])
+	t.check(ResultsScreen.god_lines(base) == plain, "without it the lines are as before")
+
+
+static func _faith_not_doubled(t) -> void:
+	var s := _slot()
+	s.believers["aldermere"] = 0
+	var out := _outcome(true, 0, 40)
+	out.descend["main"] = true
+	out["conquest"] = {"town": "aldermere", "carried_alive": 30, "named": 2, "fill": 6, "lost": 0}
+	var before := s.faith
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(int(res.faith) == 46 * GodSlot.FAITH_PER_BELIEVER and s.faith == before + int(res.faith), "Faith is the earned plus the fill (%s)" % [res.faith])
+	t.check(int(res.conquest.count) == 38 and int(res.conquest.converts) == 8, "the count is 38 (%s)" % [res.conquest])
+	var s2 := _slot()
+	var o2 := _outcome(true, 0, 40)
+	o2.descend["main"] = true
+	var r2 := GodNight.bank(s2, "tax_collector", PackedStringArray(["smite"]), o2)
+	t.check(int(r2.faith) == 40 * GodSlot.FAITH_PER_BELIEVER, "with no conquest entry, Faith is the earned alone (%s)" % [r2.faith])
+
+
+## Final review 6: Faith for a fill is paid for the converts actually banked beyond the named ones, not the fill asked for: a town one
+## short of full pays for one convert although three were asked.
+static func _fill_paid_to_the_clamp(t) -> void:
+	var pop := Conquest.population("aldermere")
+	var s := _slot()
+	var out := _outcome(true, 0, 30)
+	out.descend["main"] = true
+	out["conquest"] = {"town": "aldermere", "carried_alive": pop - 1, "named": 0, "fill": 3, "lost": 0}
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(int(res.conquest.count) == pop, "setup: the town is filled to its people (%s)" % [res.conquest])
+	t.check(int(res.faith) == (30 + 1) * GodSlot.FAITH_PER_BELIEVER + Conquest.CONQUER_FAITH,
+		"a fill of 3 into a town one short pays for 1 convert (%s)" % [res.faith])
+	var s2 := _slot()
+	var o2 := _outcome(true, 0, 30)
+	o2.descend["main"] = true
+	o2["conquest"] = {"town": "aldermere", "carried_alive": pop - 2, "named": 1, "fill": 3, "lost": 0}
+	var r2 := GodNight.bank(s2, "tax_collector", PackedStringArray(["smite"]), o2)
+	t.check(int(r2.faith) == (30 + 1) * GodSlot.FAITH_PER_BELIEVER + Conquest.CONQUER_FAITH,
+		"the named take their place first: pop-2 carried, 1 named, fill 3 pays 1 (%s)" % [r2.faith])
+
+
+## A conquered town pays Faith on a banked ordinary night, over what the night earned and the fill paid.
+static func _conquer_bonus(t) -> void:
+	var s := _slot()
+	var pop := Conquest.population("aldermere")
+	var out := _outcome(true, 0, 30)
+	out["conquest"] = {"town": "aldermere", "carried_alive": pop - 5, "named": 0, "fill": 5, "lost": 0}
+	var res := GodNight.bank(s, "tax_collector", PackedStringArray(["smite"]), out)
+	t.check(Conquest.conquered(s, "aldermere") and int(res.conquer_faith) == Conquest.CONQUER_FAITH, "the night fills the town: conquered, bonus 5 (%s)" % [res.get("conquer_faith")])
+	t.check(int(res.faith) == (30 + 5) * GodSlot.FAITH_PER_BELIEVER + Conquest.CONQUER_FAITH and s.faith == int(res.faith),
+		"the night pays earned + fill + the conquered bonus (%s)" % [res.faith])
+	var plain := _slot()
+	var res2 := GodNight.bank(plain, "tax_collector", PackedStringArray(["smite"]), _outcome(true, 0, 30))
+	t.check(int(res2.conquer_faith) == 0, "no conquered town: no bonus")
+	var lines := ResultsScreen.god_lines({"god": res})
+	t.check(lines.has("Conquered towns: Faith +5"), "the results say it (%s)" % [lines])
+
+
+## Aldermere's draw is as it was; the Capital's is proved in test_capital_god_night.
+static func _draw_town(t) -> void:
+	var same := true
+	for night in range(0, 31):
+		for sd in range(1, 21):
+			var s := _slot("ruin", sd)
+			s.night = night
+			same = same and GodNight.draw(s) == GodNight.draw(s, "aldermere")
+	t.check(same, "draw(slot) is draw(slot, aldermere) for nights 0..30 and seeds 1..20")
+	var cap := GodNight.draw(_slot(), "capital")
+	t.check(cap == "" or MissionBook.hostable(cap, City.by_id(&"capital")), "the Capital draws only what it hosts (%s)" % cap)

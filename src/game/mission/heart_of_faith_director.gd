@@ -67,6 +67,14 @@ const NEXT_WORDS := ["IN USE IN", "THE FLAME BLAZES IN"]
 ## the chain, the Knights standing and arriving, their spacing (wanted, and the least, beyond a witness's 2.0), their reach, each
 ## target's burning, reliefs, the blessing.
 const STAGE_AT := [45.0, 110.0]
+## The town's own oil-house point, Temple steps, lane foot, quiet faces and stage times (spec 6.4.5: town vars, seeded from OIL_AT, STEPS_AT, LANE_FOOT, QUIET_AT and STAGE_AT as
+## copies). `steps_at_spot` seeds `steps_at`, which _begin() snaps to walkable ground. The Citadel's gate is the place `citadel_gate` (bit-equal to CITADEL_GATE in Aldermere).
+const TOWN_VARS := ["oil_at", "steps_at_spot", "lane_foot", "quiet_at", "stage_at"]
+var oil_at: Vector2 = OIL_AT
+var steps_at_spot: Vector2 = STEPS_AT
+var lane_foot: Vector2 = LANE_FOOT
+var quiet_at: Array = QUIET_AT.duplicate()
+var stage_at: Array = STAGE_AT.duplicate()
 const CHAIN := 45.0
 const STANDING := 2
 const ARRIVING := 2
@@ -155,9 +163,10 @@ var _spare_win := false
 ## their posts and its arriving pair inside it; Odran inside the Citadel; the stages and the blessing on the strip.
 func _begin() -> void:
 	gaze = HeartGaze.new()
-	citadel_door = _walkable(CITADEL_GATE)
-	steps_at = _walkable(STEPS_AT)
-	for at: Vector2 in [CITADEL_GATE, LANE_FOOT, STEPS_AT]:
+	var citadel_gate := Places.point(&"citadel_gate")
+	citadel_door = _walkable(citadel_gate)
+	steps_at = _walkable(steps_at_spot)
+	for at: Vector2 in [citadel_gate, lane_foot, steps_at_spot]:
 		_road.append(_walkable(at))
 	for s: Structure in town._built:
 		if is_instance_valid(s) and s.role == &"temple" and not s.destroyed:
@@ -174,7 +183,7 @@ func _begin() -> void:
 	for i in targets.size():
 		in_use.append(false)
 		razed_at.append(-1.0)
-		doors.append(_face(targets[i], QUIET_AT[mini(i, QUIET_AT.size() - 1)]))
+		doors.append(_face(targets[i], quiet_at[mini(i, quiet_at.size() - 1)]))
 	var placed: Array = []  # the Temple's posts first, so the bigger target keeps its quiet yard; each apart from every one before
 	var spots := {}
 	for i in range(targets.size() - 1, -1, -1):
@@ -218,7 +227,7 @@ func _begin() -> void:
 	timeline = _new_timeline()
 	timeline.fired.connect(func(_id: String, label: String) -> void: rules.banner.emit(label.to_upper()))
 	for i in targets.size():
-		timeline.add(float(STAGE_AT[i]), "stage_%d" % i, String(STAGE_LABELS[i]), _open.bind(i),
+		timeline.add(float(stage_at[i]), "stage_%d" % i, String(STAGE_LABELS[i]), _open.bind(i),
 			func() -> bool: return not in_use[i] and not razed(targets[i]))
 	timeline.add(BLESSED_AT, "blessed", "The Great Flame is blessed", _bless, func() -> bool: return not flame_out)
 	rules.banner.emit("THE HEART OF FAITH")
@@ -242,7 +251,7 @@ func _face(s: Structure, quiet: Vector2) -> Vector2:
 func _oil_house() -> Structure:
 	var skip: Array = []
 	for k in HOUSE_TRIES:
-		var h := _house_near(OIL_AT, skip)
+		var h := _house_near(oil_at, skip)
 		if h == null:
 			return null
 		skip.append(h)
@@ -409,7 +418,7 @@ func _spoil_for(s: Structure) -> float:
 ## once for a target already down then (M5's horn rule, the controller's ruling: a fast player never waits out a chain with nothing left
 ## to do).
 func stage_due(i: int) -> float:
-	var at := float(STAGE_AT[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
+	var at := float(stage_at[i]) * (timeline.stretch_factor() if timeline != null else 1.0)
 	if i > 0 and razed_at[i - 1] >= 0.0:
 		at = minf(at, razed_at[i - 1] + (0.0 if _down(i) else CHAIN))
 	return at
@@ -1090,9 +1099,9 @@ func why_not(key: String, at: Vector2) -> String:
 func tour() -> Array:
 	var out := []
 	if oil_house != null:
-		out.append([oil_house.center(), "The oil-house. Its Knights guard it. It feeds the flame from %s: burn it." % UiTheme.clock(float(STAGE_AT[0]))])
+		out.append([oil_house.center(), "The oil-house. Its Knights guard it. It feeds the flame from %s: burn it." % UiTheme.clock(float(stage_at[0]))])
 	if temple != null:
-		out.append([temple.center(), "The Great Temple. The flame blazes here by %s. Burn it down to put the flame out." % UiTheme.clock(float(STAGE_AT[1]))])
+		out.append([temple.center(), "The Great Temple. The flame blazes here by %s. Burn it down to put the flame out." % UiTheme.clock(float(stage_at[1]))])
 	out.append([citadel_door, "The Citadel. High Priest Odran waits here. Once the flame is out he comes to rekindle it: kill him."])
 	return out
 

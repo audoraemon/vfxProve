@@ -4,8 +4,8 @@ extends RefCounted
 ## from CityDef.mission_overrides(). apply() sets each key with set() and reports every key it could not set, so an override
 ## can never be silent: an unknown key, a value of another type than the property holds, or a value the property did not take.
 
-## The two sections of an overrides dictionary.
-const KEYS := ["def", "director"]
+## The sections of an overrides dictionary: the mission's def and director, and (a night in acts, v0.12 Task 24) `acts`: act id -> {"def", "director"}.
+const KEYS := ["def", "director", "acts"]
 
 
 ## Sets each of `values` on `target`. Returns (and push_errors) the keys it did not set: no such property, a value whose type
@@ -53,12 +53,22 @@ static func apply(target: Object, values: Dictionary, allowed: Variant = null) -
 	return bad
 
 
-## The names a town may override on `director`: the TOWN_VARS its script declares (none: none).
+## The names a town may override on `director`: the TOWN_VARS its script declares and those of the scripts it extends (a subclass cannot
+## redeclare TOWN_VARS, so it names its own list <WHAT>_TOWN_VARS and the lists are joined); none: none.
+## A subclass inherits its base's town vars, so an override of an inherited var the subclass never reads is accepted silently (today: Sermon's
+## mira_spot, RelicRun's route_spots and mira_shrine, SilenceWitness's post_spots, FaceHalcyon's and HideFaithful's Exodus list; no file sets them).
 static func town_vars(director: Object) -> Array:
+	var out := []
 	var script := director.get_script() as Script
-	if script == null:
-		return []
-	return script.get_script_constant_map().get("TOWN_VARS", [])
+	while script != null:
+		var consts := script.get_script_constant_map()
+		for key: String in consts:
+			if key == "TOWN_VARS" or key.ends_with("_TOWN_VARS"):
+				for n: Variant in consts[key]:
+					if not out.has(n):
+						out.append(n)
+		script = script.get_base_script()
+	return out
 
 
 static func _name_of(target: Object) -> String:

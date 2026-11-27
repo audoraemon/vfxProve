@@ -90,6 +90,12 @@ var carried := {}
 var loadout := PackedStringArray()
 ## Made once at creation; the night draw reads it (Task 5).
 var seed := 0
+## Believers per town (World Map + Conquer Progress): town id String -> count; a missing town is 0 (see Conquest).
+var believers := {}
+## The towns the god may go to: always holds "aldermere"; a town joins when its opener reaches Conquest.UNLOCK_PERCENT.
+var opened := PackedStringArray(["aldermere"])
+## The town the god last played in (an opened town).
+var last_town := "aldermere"
 ## The file's format version.
 var version := VERSION
 
@@ -184,6 +190,16 @@ static func read(file: String) -> GodSlot:
 		for id: Variant in bests_in:
 			if TierBook.has(str(id)) and bests_in[id] is Dictionary:
 				s.bests[str(id)] = _best(bests_in[id])
+	var believers_in: Variant = cfg.get_value(SECTION, "believers", {})
+	if believers_in is Dictionary:
+		for town: Variant in believers_in:
+			if town is String and Conquest.is_town(town) and (believers_in[town] is int or believers_in[town] is float):
+				s.believers[town] = clampi(int(believers_in[town]), 0, Conquest.population(town))
+	for town in _strings(cfg.get_value(SECTION, "opened", PackedStringArray())):
+		if Conquest.is_town(town) and not s.opened.has(town):
+			s.opened.append(town)
+	var town_last := _string(cfg.get_value(SECTION, "last_town", Conquest.HOME))
+	s.last_town = town_last if Conquest.is_town(town_last) and s.opened.has(town_last) else Conquest.HOME
 	s.ensure_starting()
 	return s
 
@@ -214,6 +230,9 @@ func write(file: String) -> Error:
 	cfg.set_value(SECTION, "carried", carried)
 	cfg.set_value(SECTION, "loadout", loadout)
 	cfg.set_value(SECTION, "seed", seed)
+	cfg.set_value(SECTION, "believers", believers)
+	cfg.set_value(SECTION, "opened", opened)
+	cfg.set_value(SECTION, "last_town", last_town)
 	return cfg.save(file)
 
 

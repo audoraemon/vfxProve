@@ -157,18 +157,16 @@ static func _screens(t) -> void:
 	prep.draft.picks = PackedStringArray()
 	t.check(not prep.can_manifest(), "draft: nothing drafted cannot be confirmed")
 	prep.free()
-	var hub := GodHub.new().setup(god)
+	var hub := HubStatus.new(god)
 	t.check(hub.can_descend(), "draft hub: a god with a draftable key can descend")
-	hub.free()
 	var only := GodSlot.make(1, TYPE, 5)
 	only.learned = {}
 	only.learned[GodTree.keys_for(TYPE, 1)[0]] = 1
 	only.seal(only.in_tree()[0])
 	only.seal_nights = 2
-	var blocked := GodHub.new().setup(only)
-	t.check(not blocked.can_descend() and blocked.blocked_line() == GodHub.BLOCKED_DRAFT and GodHub.BLOCKED_DRAFT.begins_with("Nothing to draft"),
+	var blocked := HubStatus.new(only)
+	t.check(not blocked.can_descend() and blocked.blocked_line() == HubStatus.BLOCKED_DRAFT and HubStatus.BLOCKED_DRAFT.begins_with("Nothing to draft"),
 		"draft hub: only a sealed key blocks the descent, with the draft wording (%s)" % blocked.blocked_line())
-	blocked.free()
 	t.check(Game.awaken_target(only) == "", "draft: Awaken opens nothing with only a sealed key")
 	var card := InterludeScreen.new()
 	card.endless = true
@@ -180,12 +178,10 @@ static func _screens(t) -> void:
 	t.check(prep.read_only and prep.confirm_label == "DESCEND" and prep.can_manifest(), "gauge: Endless Prepare is the read-only briefing (%s)" % prep.confirm_label)
 	t.check(_row(prep, "TEMPLE") != "Its fall resets every cooldown, once" and prep.budget_text() == "" and prep.hint_text() == PrepareScreen.HINT_BRIEFING, "gauge: the briefing's rows, no meter")
 	prep.free()
-	hub = GodHub.new().setup(god)
+	hub = HubStatus.new(god)
 	t.check(hub.can_descend(), "gauge hub: descends")
-	hub.free()
-	blocked = GodHub.new().setup(only)
-	t.check(blocked.can_descend() and blocked.blocked_line() == "" and GodHub.BLOCKED.begins_with("Nothing to cast"), "gauge hub: a sealed key still descends (it shows locked)")
-	blocked.free()
+	blocked = HubStatus.new(only)
+	t.check(blocked.can_descend() and blocked.blocked_line() == "" and HubStatus.BLOCKED.begins_with("Nothing to cast"), "gauge hub: a sealed key still descends (it shows locked)")
 	card = InterludeScreen.new()
 	card.endless = true
 	card.setup({"mission": "omen", "won": true, "goal": {"label": "x", "done": true}, "bonuses": [], "time": 21.4}, [MissionBook.long_night().act("festival")], NightState.new())

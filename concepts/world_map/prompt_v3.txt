@@ -1,0 +1,10 @@
+Use the $imagegen skill to generate ONE image and save it in the current directory as world_map_concept_v3.png. Do not write code, do not edit any other file.
+
+Image 1 (world_map_concept_v2.png) is the previous version. Keep EVERYTHING about it the same: style, palette, vellum with burnt edges, the wood and brass frame, the candles, the empty title cartouche, the compass rose, the calm plain vellum at the bottom centre, and the six towns with their exact designs, sizes and positions (the Capital, Aldermere, Thornwick, Greyhollow, Saltmere and their surroundings unchanged). Change only these four things:
+
+1. Blank ribbons: every one of the six parchment ribbon banners stays in place above its town, same shape and size, but completely EMPTY: plain parchment, no letters, no marks. There must be no text anywhere in the image.
+2. Vael Crossing (the fortified bridge town, upper right): move it inland, away from the sea. It no longer stands on a coastal headland. Place it on a wide river in open grassland between the mountains and the coast, with land on all sides and green banks on both sides of the river; the long fortified stone bridge with a gate tower at each end spans that river, with the toll house and inns on both banks. Its river comes down from the mountains, passes under the bridge, and only then reaches the sea further to the north-east. The coastline near it becomes a simple shore with no town on it. Its blank ribbon sits just above it.
+3. Remove the stray river branch that runs off the bottom edge of the map near Greyhollow. There is only one river in the south: it starts in the hills near Greyhollow, flows east under Aldermere's stone bridge, and reaches the sea just south of the Capital. Nothing flows off the bottom edge.
+4. Saltmere's blank ribbon is centred directly above the stilt village, not to its left.
+
+16:9 landscape, crisp pixel art, limited palette. No text, no UI boxes, no buttons, no watermark.

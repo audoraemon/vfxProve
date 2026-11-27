@@ -1,0 +1,15 @@
+Image 1 = BLOCKOUT GUIDE of a room. Image 2 = my game's art style. Image 3 = my concept for this room.
+
+TASK: Paint image 1 as a finished room in the style of image 2 and the mood of image 3. Keep every block's position and size EXACTLY: trace over them. The grey numbers and the two thin vertical lines are guides only, do not draw them.
+
+STYLE: the pixel art of my game (image 2): chunky pixels, muted palette, dark warm outlines, no soft blur. A dark, quiet stone chamber where a god plans the night: deep blue-black shadow, warm candle and ember light, gold trim. Seen straight on, like a stage: flat front view, NOT isometric, no perspective tilt. Light from the upper LEFT.
+
+PIECES (by number):
+1 (left, purple) ABILITY TREE: a tall carved stone shrine holding a glowing tree of linked runes, violet light.
+2 (right, gold) FAITH ALTAR: a stone altar with a gold cloth, candles, a brazier and offerings, warm gold light.
+3 (back wall, grey) RITE DOOR: a heavy stone double door in the wall with rune carvings, open a crack with white-gold light behind it.
+4 (centre, brown) WORLD TABLE: a broad dark wooden war table; the blue area on top is a map of a small kingdom, softly lit, with tiny town markers.
+The dark band along the bottom is the near edge of the god's own desk, in shadow, with a few scrolls and a candle.
+The lighter band behind the pieces is the stone floor; above it the back wall with pillars and banners.
+
+OUTPUT: one image, same proportions as image 1 (7:3), no text, no numbers, no UI.

@@ -94,6 +94,9 @@ static func spots() -> Array[Dictionary]:
 		if d.has("scale"):
 			# (drawn at its own scale: Decor.scale_mul)
 			out[out.size() - 1].scale = float(d.scale)
+	# A city that adds its ship last (the capital's): every other piece keeps the seed it had before the ship existed.
+	if City.current().ship_at().is_finite() and City.current().ship_last():
+		_add(out, Decor.Kind.SHIP, City.current().ship_at())
 	var boxes := _screen_boxes(built)
 	for d in out:
 		d.bake = _bakeable(d, boxes)
@@ -353,7 +356,7 @@ static func _outside(out: Array[Dictionary], solid: Array[Rect2]) -> void:
 ## pastures with sheep and cows, and carts by the farms.
 static func _countryside(out: Array[Dictionary]) -> void:
 	# The dock itself is a structure since v0.05 (the city's &"dock" landmark); the ship lies moored beside it.
-	if City.current().ship_at().is_finite():
+	if City.current().ship_at().is_finite() and not City.current().ship_last():
 		_add(out, Decor.Kind.SHIP, City.current().ship_at())
 	for g in City.current().boats():
 		_add(out, Decor.Kind.BOAT, g)

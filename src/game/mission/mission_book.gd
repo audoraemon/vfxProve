@@ -146,14 +146,45 @@ static func in_city(m: MissionDef, city: StringName, from: CityDef = null) -> Mi
 	var def_ov: Dictionary = ov.get("def", {})
 	if not def_ov.is_empty():
 		Overrides.apply(m, def_ov)
-	var dir_ov: Dictionary = ov.get("director", {})
-	if not dir_ov.is_empty():
-		var board_tune := m.tune
-		m.tune = func(d: MissionDirector) -> void:
-			if board_tune.is_valid():
-				board_tune.call(d)
-			Overrides.apply(d, dir_ov.duplicate(true), Overrides.town_vars(d))
+	_chain_tune(m, ov.get("director", {}))
+	var acts_ov: Dictionary = ov.get("acts", {})
+	if not acts_ov.is_empty():
+		apply_acts(m, acts_ov)
 	return m
+
+
+## `def`'s tune chained so `dir_ov` (a town's director overrides) follows the board's own tuning, applied to each director it makes (R13).
+static func _chain_tune(def: MissionDef, dir_ov: Dictionary) -> void:
+	if dir_ov.is_empty():
+		return
+	var board_tune := def.tune
+	def.tune = func(d: MissionDirector) -> void:
+		if board_tune.is_valid():
+			board_tune.call(d)
+		Overrides.apply(d, dir_ov.duplicate(true), Overrides.town_vars(d))
+
+
+## A night's `acts` overrides (v0.12 Task 24): act id -> {"def": {...}, "director": {...}}, each applied to that act of `m` as the root's are (the act is put in
+## m's town; its director values chained onto its tune). An id `m` has no act for is reported and skipped, as is a def key the act refused. Returns what it did not apply.
+static func apply_acts(m: MissionDef, acts: Dictionary) -> PackedStringArray:
+	var bad := PackedStringArray()
+	for id: Variant in acts:
+		var act := m.act(String(id))
+		if act == null:
+			bad.append(String(id))
+			push_error("MissionBook.apply_acts: %s has no act '%s'" % [m.id, id])
+			continue
+		var sec: Dictionary = acts[id]
+		for key: Variant in sec:
+			if not String(key) in ["def", "director"]:
+				bad.append(String(key))
+				push_error("MissionBook.apply_acts: act '%s' of %s has an unknown section '%s'" % [id, m.id, key])
+		act.city = m.city
+		var def_ov: Dictionary = sec.get("def", {})
+		if not def_ov.is_empty():
+			bad.append_array(Overrides.apply(act, def_ov))
+		_chain_tune(act, sec.get("director", {}))
+	return bad
 
 
 ## Whether `city` offers mission `id` (v0.12, D13): it has every place the mission needs (Places.can_host()) and either is the
@@ -581,7 +612,7 @@ static func armoury() -> MissionDef:
 ## The Sermon (v0.11 M5, Tier 4, mission spec §3 and §8 row 19): silence a preacher who holds the poor quarter and lead eight of his
 ## crowd, in four waves, to the god's house unseen by the Faithful, before the sermon ends (SermonDirector, Mira's House's Convert).
 static func sermon() -> MissionDef:
-	var m := _tier4(SERMON, "The Sermon", PackedStringArray(["A preacher holds the poor quarter.", "Silence him. Turn eight of his crowd."]))
+	var m := _tier4(SERMON, "The Sermon", PackedStringArray(["A preacher holds a quarter of the town.", "Silence him. Turn eight of his crowd."]))
 	m.goal = "Silence the preacher and lead eight of his crowd to the god's house, unseen, before the sermon ends at %s" % UiTheme.clock(
 		SermonDirector.SERMON_ENDS)
 	m.goal_label = "The crowd believes"

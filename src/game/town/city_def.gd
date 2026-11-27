@@ -20,6 +20,8 @@ func anchors() -> Dictionary: return {}                    # as TownLayout.ancho
 func spawn_roles() -> Dictionary: return {}
 ## How many citizens and soldiers a crowd spawns by default (Crowd.spawn(), Mission, town_debug).
 func citizens() -> int: return Crowd.CITIZENS
+## Whether a god's night here hears wishes (World Map + Conquer Progress): off for a town whose wishes are not proved.
+func wishes() -> bool: return false
 func soldiers() -> int: return Crowd.SOLDIERS
 ## The soldiers' posts in the crowd's post order (Crowd._soldier_posts()), by group: {"yard", "walls", "citadel",
 ## "patrol"} -> Array of Vector2. The yard's first give the rescue squads, the walls' first the marshals, the Citadel's
@@ -114,6 +116,7 @@ func pastures() -> Array[Rect2]: return []
 func market_piles() -> Array[Rect2]: return []             # market clutter (Aldermere: TownLayout.MARKET_PILES)
 func torches() -> Array[Vector2]: return []                # torch posts; the first four are the market's corners
 func ship_at() -> Vector2: return Vector2.INF              # where the moored ship lies (INF = no ship)
+func ship_last() -> bool: return false                  # true: the ship is added to the decor after every other piece (the capital: no seed moves)
 func citadel_origin() -> Vector2: return Vector2.INF       # INF = this city has no Aldermere-style Citadel node
 func landmark(name: StringName) -> Rect2: return Rect2()   # empty Rect2 = unknown
 ## A named point missions read (v0.12): the Citadel's gate, the postern, the Citadel's origin. Vector2.INF = unknown. Missions

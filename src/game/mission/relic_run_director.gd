@@ -83,6 +83,14 @@ const MARK_CART := Color("d8b23a")
 const MARK_PIP := Color("8fb8e8")
 const MARK_PLACE := Color("ff9a3a")
 
+## The town's own cart route, halt words, drop-off and Pip's spot (v0.12, spec 6.3.5: town vars, seeded from ROUTE, CHECK_WORDS, DROP_SPOT and PIP_SPOT;
+## a subclass cannot redeclare TOWN_VARS, so the list is named for the mission, and `route` below stays the route on walkable ground that _begin builds
+## from `cart_route`). The Vigil Flame's `route_spots` and `mira_shrine` are inherited and not read here: this run's own `shrine` is its drop house's door.
+const RELIC_RUN_TOWN_VARS := ["cart_route", "check_words", "drop_spot", "pip_spot"]
+var cart_route: Array = ROUTE.duplicate()
+var check_words: Array = CHECK_WORDS.duplicate()
+var drop_spot: Vector2 = DROP_SPOT
+var pip_spot: Vector2 = PIP_SPOT
 ## The route on walkable ground, and its checkpoints (v0.11 M5).
 var route := PackedVector2Array()
 var checkpoints: Array[Vector2] = []
@@ -128,13 +136,13 @@ func _begin() -> void:
 	gaze = VigilFlameDirector.FlameGaze.new()
 	temple_door = _walkable(Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6))
 	searchlight = Searchlight.new().setup(Places.at(&"temple"))
-	for p: Vector2 in ROUTE:
+	for p: Vector2 in cart_route:
 		route.append(_walkable(p))
 	for k: int in HALT_LEGS:
 		checkpoints.append(route[k])
-	drop_house = _house_near(DROP_SPOT)
+	drop_house = _house_near(drop_spot)
 	var door := _open_door(drop_house, checkpoints[checkpoints.size() - 1]) if drop_house != null else Vector2.INF
-	shrine = door if door != Vector2.INF else (_front_of(drop_house) if drop_house != null else _walkable(DROP_SPOT))
+	shrine = door if door != Vector2.INF else (_front_of(drop_house) if drop_house != null else _walkable(drop_spot))
 	_choose_people()
 	_lantern = (carter as Person).ground_pos if _alive(carter) else temple_door
 	crowd._field.enemy_killed.connect(_on_killed)
@@ -150,13 +158,13 @@ func _begin() -> void:
 ## at each checkpoint; then every cleric and FAITHFUL_LAY of the rest are Faithful (never Pip or the carter).
 func _choose_people() -> void:
 	var taken: Array = []
-	var pip := _lay_near(_walkable(PIP_SPOT), 1, taken)
+	var pip := _lay_near(_walkable(pip_spot), 1, taken)
 	if pip.is_empty():
 		no_wren = true
 	else:
 		wren = pip[0]
 		taken.append(wren)
-		_set_down(wren, _walkable(PIP_SPOT))
+		_set_down(wren, _walkable(pip_spot))
 		wren.go_duty(wren.ground_pos)
 		appeared = true
 	var c := _citizen_near(temple_door, CitizenProfile.Role.RESIDENT, taken)
@@ -462,7 +470,7 @@ func _begin_halt(k: int) -> void:
 	halt_time = 0.0
 	counted = 0.0
 	unwatched_for = 0.0
-	rules.banner.emit("THE CART HALTS AT %s" % String(CHECK_WORDS[k]).to_upper())
+	rules.banner.emit("THE CART HALTS AT %s" % String(check_words[k]).to_upper())
 	_sound(&"msn_unbar", _lantern)
 	for w: Warden in wardens:
 		if w.checkpoint == k and _alive(w.man) and not (w.man as Person).inside:

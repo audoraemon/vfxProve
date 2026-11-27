@@ -6,7 +6,7 @@ extends Node
 ## building a single screen.
 
 ## The last five are Endless Night's (god P1, spec §14): the slot select, the god select, the hub, the skill tree and the Faith screen.
-enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING, UPGRADES, SLOTS, GOD_SELECT, HUB, TREE, FAITH}
+enum Screen {TITLE, BOARD, PREPARE, MISSION, RESULTS, INTERLUDE, CAMPAIGN, ENDING, UPGRADES, SLOTS, GOD_SELECT, HUB, TREE, FAITH, WORLD}
 
 ## Where every button leads (spec §1; v0.08 puts the mission board between the Title and Prepare, and Results and
 ## Pause go back to it). Pause is not a screen of its own: it sits over the mission, which is why "pause:resume"
@@ -58,7 +58,9 @@ const FLOW := {
 	"slots:title": Screen.TITLE,
 	"god:chosen": Screen.HUB,
 	"god:back": Screen.SLOTS,
-	"hub:descend": Screen.PREPARE,
+	"hub:descend": Screen.WORLD,
+	"world:descend": Screen.PREPARE,
+	"world:back": Screen.HUB,
 	"hub:awaken": Screen.PREPARE,
 	"hub:tree": Screen.TREE,
 	"hub:faith": Screen.FAITH,
@@ -289,6 +291,15 @@ var _in_endless := false
 var _endless_from := Screen.BOARD
 ## A line the next hub shows once (god P1, Ruling P9, P21): "Night 3 was abandoned: a lost night." after an Abandon or a slot found mid-night.
 var _hub_line := ""
+## The station page the god is returning from ("tree" or "faith"), for the Chamber's zoom back out; read once by the hub.
+var _hub_from := ""
+## God's Chamber step 8: the cover over a page as it fades in from (or out to) its station's colour (ChamberPageFade), the station whose
+## zoom brought the page up ("" for none), and a page Back whose fade out has finished, now going on to the room.
+var _page_fade: ChamberPageFade
+var _page_station := ""
+var _page_back_through := ""
+## The town the next night is played in (the World Map's choice; Aldermere for a rite or the Hunt).
+var night_town := "aldermere"
 ## Remembrance (Skill Tree wheel, Task 5): the power key being remembered ("" outside it), its level, whether the memory is at night, and
 ## the tree's state (centred Authority, selection) to give back when Leave returns to it. Never saved.
 var _remembering := ""
@@ -397,6 +408,9 @@ func _ready() -> void:
 	RenderingServer.set_default_clear_color(CLEAR)
 	var args := OS.get_cmdline_user_args()
 	dev = "--dev" in args
+	GodChamber.transitions = not ("--flow-test" in args or "--capture" in args or DisplayServer.get_name() == "headless")
+	ChamberLife.moving = GodChamber.transitions  # the room's life and sound (step 7) are off where its zoom is
+	ChamberSound.enabled = GodChamber.transitions
 	GodNight.draft = "--god-draft" in args  # the old Endless Night draft, hidden (Ruling R10)
 	if "--flow-test" in args:
 		save_path = FLOW_TEST_SAVE
@@ -565,7 +579,7 @@ func _ready() -> void:
 			mission_id = show.get_slice("-", 0)
 			loadout = MissionBook.get_mission(mission_id).default_loadout
 			go_to(Screen.MISSION)
-		"slots", "god-select", "hub", "hub-capped", "tree", "faith", "results-endless", "prepare-endless", "pause-endless", "remembrance":
+		"slots", "god-select", "hub", "hub-capped", "world", "tree", "faith", "results-endless", "prepare-endless", "pause-endless", "remembrance":
 			# Endless Night's screens (god P1), for the photographs: a fixture god on the dev fill, in the show's own slot files.
 			_show_endless(show)
 		"hub-hunt", "hub-sealed", "prepare-hunt", "prepare-sealed", "results-hunt-won", "results-hunt-lost", "pause-hunt":
@@ -752,7 +766,14 @@ func _ready() -> void:
 		if show == "upgrades" and _screen_node is UpgradesScreen and Battlefield.arg_value(args, "--hover") != "":
 			(_screen_node as UpgradesScreen).preview(Battlefield.arg_value(args, "--hover"))  # after the window's own mouse motion
 			await get_tree().process_frame
+		if show.begins_with("hub") and _screen_node is GodChamber and Battlefield.arg_value(args, "--chamber-hover") != "":
+			(_screen_node as GodChamber).hold_hover(Battlefield.arg_value(args, "--chamber-hover"))
+			await get_tree().process_frame
 		await _capture("screen_%s.png" % (show if show != "" else "start"))
+		if show.begins_with("hub") and _screen_node is GodChamber and Battlefield.arg_value(args, "--chamber-strip") != "":
+			await _capture_chamber_strip(int(Battlefield.arg_value(args, "--chamber-strip")))
+		if show.begins_with("hub") and _screen_node is GodChamber and Battlefield.arg_value(args, "--chamber-transitions") != "":
+			await _capture_chamber_transitions(int(Battlefield.arg_value(args, "--chamber-transitions")))
 		if god_base == SHOW_GOD:
 			_remove_gods()
 		await _quit_cleanly()
@@ -766,6 +787,8 @@ func _ready() -> void:
 ## Put up a screen, taking down whatever was there.
 func go_to(to: int) -> void:
 	_close_pause()
+	_drop_page_fade()
+	_page_station = ""
 	if to != Screen.MISSION:
 		_remembering = ""
 	var from := screen
@@ -782,7 +805,7 @@ func go_to(to: int) -> void:
 		god = null
 	elif to == Screen.CAMPAIGN:
 		_in_campaign = true
-	elif to in [Screen.SLOTS, Screen.GOD_SELECT, Screen.HUB, Screen.TREE, Screen.FAITH]:
+	elif to in [Screen.SLOTS, Screen.GOD_SELECT, Screen.HUB, Screen.TREE, Screen.FAITH, Screen.WORLD]:
 		_in_endless = true
 		if to == Screen.SLOTS:
 			god = null  # the slot select puts the god down; Continue or the god select picks one up
@@ -838,7 +861,7 @@ func go_to(to: int) -> void:
 				# Endless Night's night (god P1, spec §9.1): the drawn mission as this god plays it, drafting from what it has learned.
 				prep.god = god
 				prep.look = GodNight.look_for(god, mission_id)
-				prep.setup(GodNight.def_for(god, mission_id), loadout, save.difficulty)
+				prep.setup(GodNight.def_for(god, mission_id, night_town), loadout, save.difficulty)
 			elif _in_campaign and save.campaign != null:
 				prep.setup(save.campaign.mission(mission_id), loadout, save.difficulty)
 			else:
@@ -905,11 +928,12 @@ func go_to(to: int) -> void:
 			pick.action.connect(_on_god_select_action.bind(pick))
 			_screen_node = pick
 		Screen.HUB:
-			var hub := GodHub.new()
+			var hub := GodChamber.new()
 			hub.name = "Hub"
 			add_child(hub)
-			hub.setup(god, _hub_line, dev)
+			hub.setup(god, _hub_line, dev, _hub_from)
 			_hub_line = ""  # shown once
+			_hub_from = ""
 			hub.action.connect(_on_hub_action)
 			_screen_node = hub
 		Screen.TREE:
@@ -926,11 +950,18 @@ func go_to(to: int) -> void:
 			faith.setup(god)
 			faith.action.connect(_on_faith_action)
 			_screen_node = faith
+		Screen.WORLD:
+			var world := WorldMap.new()
+			world.name = "World"
+			add_child(world)
+			world.setup(god, dev)
+			world.action.connect(_on_world_action.bind(world))
+			_screen_node = world
 		_:
 			push_warning("KAK screen %d has nothing to show yet" % to)
 	match to:
 		Screen.TITLE, Screen.BOARD, Screen.PREPARE, Screen.CAMPAIGN, Screen.ENDING, Screen.UPGRADES, Screen.SLOTS, \
-				Screen.HUB, Screen.TREE, Screen.FAITH:
+				Screen.HUB, Screen.TREE, Screen.FAITH, Screen.WORLD:
 			Music.play(&"theme")
 		Screen.GOD_SELECT:
 			Music.play(&"paths")  # its own piece; GodSelectScreen names the picked god's school (Music.set_path)
@@ -955,8 +986,61 @@ func on_action(action: String) -> void:
 		else:
 			_faded_into_mission()
 		return
+	if _page_fades_out(action):
+		return  # the page fades out to its station's colour first; this runs again when it has
 	_mission_queued = false
+	_hub_from = "tree" if action == "tree:back" else ("faith" if action == "faith:back" else ("descend" if action == "world:back" else ""))
+	if action == "prepare:hub" and _page_station == "awaken":
+		_hub_from = "awaken"  # step 8: a Prepare the Rite Door opened goes back to the door
 	go_to(to)
+	var arrive := ChamberPageFade.arrival(action)
+	if arrive != "":
+		_page_fades_in(arrive)
+
+
+## God's Chamber step 8: a page brought up by a station's zoom fades in from the colour the zoom ended in. A page with a method
+## `chamber_arrival(frame: Dictionary) -> bool` (GodChamber.end_frame()) may play its own opening instead (the World Table's match cut,
+## later) by returning true. Only with transitions on (ChamberPageFade.arrival()).
+func _page_fades_in(key: String) -> void:
+	_page_station = key
+	if is_instance_valid(_screen_node) and _screen_node.has_method("chamber_arrival") and _screen_node.call("chamber_arrival", GodChamber.end_frame(key)):
+		return
+	_page_fade = ChamberPageFade.new()
+	_page_fade.name = "PageFade"
+	add_child(_page_fade)
+	_page_fade.fade_in(key)
+
+
+## A page's Back (step 8): the page fades out to its station's colour, then the action goes on (the room starts in that colour and pulls
+## back). True when the fade was started, or one is already under way (a second Back is dropped). A page with a method
+## `chamber_departure(frame: Dictionary, then: Callable) -> bool` may play its own leaving and call `then` itself.
+func _page_fades_out(action: String) -> bool:
+	if _page_back_through == action:
+		_page_back_through = ""
+		return false
+	var key := ChamberPageFade.departure(action, _page_station)
+	if key == "":
+		return false
+	if is_instance_valid(_page_fade) and _page_fade.phase == ChamberPageFade.Phase.OUT:
+		return true
+	var then := func() -> void:
+		_page_back_through = action
+		on_action(action)
+	if is_instance_valid(_screen_node) and _screen_node.has_method("chamber_departure") and _screen_node.call("chamber_departure", GodChamber.end_frame(key), then):
+		return true
+	_drop_page_fade()
+	_page_fade = ChamberPageFade.new()
+	_page_fade.name = "PageFade"
+	add_child(_page_fade)
+	_page_fade.fade_out(key, then)
+	return true
+
+
+## Takes the page's cover down (a new screen is going up; the room's own cover takes over from a fade out).
+func _drop_page_fade() -> void:
+	if is_instance_valid(_page_fade):
+		_page_fade.queue_free()
+	_page_fade = null
 
 
 ## Into a mission behind the fade. Not awaited by the caller: the button that asked for it has done its part.
@@ -1073,10 +1157,14 @@ func _build_mission() -> Mission:
 	if _in_endless and god != null:
 		# Endless Night's night (god P1, spec §9.1): the god's version of the drawn mission, its learned levels, wishes seeded by the
 		# god and its night (the same after a quit and a return), no restart, and the clock's start is written to the god's file (P9).
-		mission.night_def = func() -> MissionDef: return GodNight.def_for(god, mission_id)
+		mission.night_def = func() -> MissionDef: return GodNight.def_for(god, mission_id, night_town)
 		mission.levels = god.learned.duplicate()
 		mission.wish_seed = GodNight.wish_seed(god, mission_id)
 		mission.look_override = GodNight.look_for(god, mission_id)  # the night's roll: DAY or NIGHT (NightRules)
+		mission.god_night = true
+		mission.conquest = not GodNight.is_rite(mission_id) and not GodNight.is_hunt(mission_id)
+		mission.carried = Conquest.count_of(god, night_town)
+		mission.believer_seed = GodNight.believer_seed(god, mission_id)
 		mission.restart_locked = true
 		mission.report_on_decision = true  # the night banks when it is decided, not after its ending (review M1)
 		mission.clock_started.connect(_on_clock_started.bind(mission))
@@ -1300,15 +1388,12 @@ static func awaken_target(slot: GodSlot) -> String:
 func _on_hub_action(what: String) -> void:
 	match what:
 		"descend":
-			if GodNight.pool_for(god).is_empty():
-				return
-			mission_id = GodNight.draw(god)
-			loadout = GodNight.night_loadout(god)
-			on_action("hub:descend")
+			on_action("hub:descend")  # the World Map; it draws the night and says why one cannot be had
 		"awaken":
 			var target := awaken_target(god)
 			if target == "":
 				return
+			night_town = Conquest.HOME
 			mission_id = target
 			loadout = GodNight.night_loadout(god)
 			on_action("hub:awaken")
@@ -1351,6 +1436,25 @@ func _keep_tree_state(tree: SkillTreeScreen) -> void:
 	_tree_state_of = _tree_owner()
 
 
+## The World Map (World Map + Conquer Progress, Task 5): Descend draws the chosen town's night and opens its Prepare; Back returns to the Chamber.
+## The town is taken only once a night was drawn there: a refused Descend leaves `last_town`, `night_town` and `mission_id` alone.
+func _on_world_action(what: String, map: WorldMap) -> void:
+	match what:
+		"descend":
+			if GodNight.pool_for(god).is_empty():
+				return
+			var drawn := GodNight.draw(god, map.selected)
+			if drawn == "":
+				return
+			god.last_town = map.selected
+			night_town = map.selected
+			mission_id = drawn
+			loadout = GodNight.night_loadout(god)
+			on_action("world:descend")
+		"back":
+			on_action("world:back")
+
+
 ## The Faith screen: a purchase is written at once; Back is the hub.
 func _on_faith_action(what: String) -> void:
 	if what == "bought":
@@ -1372,7 +1476,7 @@ func _abandon_night() -> void:
 	_hub_line = ""
 	if god == null or god.in_night == "":
 		return
-	_hub_line = String(GodNight.forfeit(god).line)
+	_hub_line = String(GodNight.forfeit(god, _mission.carried_alive() if is_instance_valid(_mission) else -1).line)
 	_write_god()
 
 
@@ -1421,6 +1525,115 @@ func _show_god(level: int, tier := 1) -> GodSlot:
 	return g
 
 
+## Photographs of the God's Chamber's state objects (step 7; --show=hub* only): --god-tier=<1-5> (the candles), --god-faith=<n> (the
+## brazier), --god-notice=<n> (the hourglass), --god-conquer=<town,town> (the cups: those towns' people all believe).
+func _show_chamber_state(args: PackedStringArray) -> void:
+	if Battlefield.arg_value(args, "--god-tier") != "":
+		var capped := god.capped()
+		god.tier = clampi(int(Battlefield.arg_value(args, "--god-tier")), 1, 5)
+		god.level = god.cap() if capped else mini(god.level, god.cap())
+	if Battlefield.arg_value(args, "--god-faith") != "":
+		god.faith = int(Battlefield.arg_value(args, "--god-faith"))
+	if Battlefield.arg_value(args, "--god-notice") != "":
+		god.notice = clampi(int(Battlefield.arg_value(args, "--god-notice")), 0, GodSlot.NOTICE_MAX)
+	for town in Battlefield.arg_value(args, "--god-conquer").split(",", false):
+		god.believers[town] = Conquest.population(town)
+		if not god.opened.has(town):
+			god.opened.append(town)
+
+
+## --chamber-strip=<n> (capture only, with --show=hub*): n frames of the room's idle life at CHAMBER_STRIP_FPS, the clock held and set
+## frame by frame (screen_hub_strip_000.png ...), so the strip is the same on any machine.
+const CHAMBER_STRIP_FPS := 15.0
+
+
+func _capture_chamber_strip(frames: int) -> void:
+	var hub := _screen_node as GodChamber
+	ChamberLife.moving = true
+	hub.life_hold = true
+	for k in frames:
+		hub.life_t = k / CHAMBER_STRIP_FPS
+		hub._redraw()
+		await _capture("screen_hub_strip_%03d.png" % k)
+	ChamberLife.moving = false
+
+
+## --chamber-transitions=<fps> (capture only, with --show=hub*): each station's whole round trip at that many frames a second, held pose by
+## pose (screen_hub_rt_<station>_000.png ...): the room at rest, the anticipation and the zoom, the real page fading in from the station's
+## colour, the page held CHAMBER_RT_HOLD s, fading out to it, and the room pulling back to rest (step 8).
+const CHAMBER_RT_REST := 0.2
+const CHAMBER_RT_HOLD := 0.5
+
+
+func _capture_chamber_transitions(fps: int) -> void:
+	var dt := 1.0 / float(maxi(fps, 1))
+	for key: String in ChamberLayout.ORDER:
+		var k := [0]
+		var shot := func() -> void:
+			await _capture("screen_hub_rt_%s_%03d.png" % [key, k[0]])
+			k[0] += 1
+		var hub := _screen_node as GodChamber
+		for _i in _rt_times(CHAMBER_RT_REST, dt, false):
+			await shot.call()
+		for t in _rt_times(GodChamber.CUE_TIME + GodChamber.OUT_TIME, dt, true):
+			hub.pose_transition(key, false, t)
+			await shot.call()
+		if not _rt_page(key):
+			go_to(Screen.HUB)
+			continue
+		var cover := ChamberPageFade.new()
+		add_child(cover)
+		for t in _rt_times(ChamberPageFade.IN_TIME, dt, true):
+			cover.pose(key, false, t)
+			await shot.call()
+		for _i in _rt_times(CHAMBER_RT_HOLD, dt, false):
+			await shot.call()
+		for t in _rt_times(ChamberPageFade.OUT_TIME, dt, true):
+			cover.pose(key, true, t)
+			await shot.call()
+		_hub_from = ""
+		go_to(Screen.HUB)
+		cover.free()
+		hub = _screen_node as GodChamber
+		for t in _rt_times(GodChamber.BACK_TIME, dt, true):
+			hub.pose_transition(key, true, t)
+			await shot.call()
+		go_to(Screen.HUB)
+		for _i in _rt_times(CHAMBER_RT_REST, dt, false):
+			await shot.call()
+
+
+## The moments of a part `length` s long at `dt` apart: 0, dt, ... (and `length` itself when `last`).
+static func _rt_times(length: float, dt: float, last: bool) -> Array:
+	var out := []
+	var t := 0.0
+	while t < length - 1e-6:
+		out.append(t)
+		t += dt
+	if last:
+		out.append(length)
+	return out
+
+
+## Photographs only: the page `key`'s press brings up, as Game would put it up; false when there is none (a door with no rite).
+func _rt_page(key: String) -> bool:
+	match key:
+		"tree": go_to(Screen.TREE)
+		"faith": go_to(Screen.FAITH)
+		"descend": go_to(Screen.WORLD)
+		"awaken":
+			var target := awaken_target(god)
+			if target == "":
+				return false
+			night_town = Conquest.HOME
+			mission_id = target
+			loadout = GodNight.night_loadout(god)
+			go_to(Screen.PREPARE)
+		_:
+			return false
+	return true
+
+
 ## The god of a Might gauge photograph: a ruin god of tier 5 on its tenth level that has learned all ten abilities of its own type and the first three
 ## of each neighbouring type, every one at level 2.
 func _show_bar_god() -> GodSlot:
@@ -1460,6 +1673,8 @@ func _show_endless(show: String) -> void:
 		god = _show_god(10, int(HuntBook.row(hunt_id).tier))  # the god of the Hunt's tier (god P5)
 		god.notice = GodSlot.NOTICE_MAX
 		loadout = GodNight.night_loadout(god)
+	if show.begins_with("hub"):
+		_show_chamber_state(OS.get_cmdline_user_args())
 	_write_god()
 	match show:
 		"slots":
@@ -1473,6 +1688,13 @@ func _show_endless(show: String) -> void:
 		"hub", "hub-capped":
 			_hub_line = GodNight.ABANDONED % god.night if show == "hub" else ""
 			go_to(Screen.HUB)
+		"world":
+			# The World Map on a fixture god with 132 of Aldermere's people (60%): the Capital is open (World Map + Conquer Progress, Task 5).
+			god.believers["aldermere"] = 132
+			if not god.opened.has("capital"):
+				god.opened.append("capital")
+			_write_god()
+			go_to(Screen.WORLD)
 		"tree":
 			go_to(Screen.TREE)
 		"remembrance":
@@ -2194,6 +2416,7 @@ func _flow_test() -> void:
 	await _flow_tier5(step)
 	await _flow_dev_town(step)
 	await _flow_endless(step)
+	_flow_world(step)
 	await _flow_lantern(step)
 	await _flow_rite(step)
 	_veteran()
@@ -2806,6 +3029,107 @@ func _flow_mouse(at: Vector2) -> InputEventMouseButton:
 	return e
 
 
+## FLOW (World Map + Conquer Progress, Task 5): a click on the Chamber's table, then Descend on the map it opens. Returns the map, or null when
+## the table did not open one (the screen is whatever it is then, for the caller's own check).
+func _flow_descend(hub: GodChamber) -> WorldMap:
+	hub.click(hub.menu_rect("descend").get_center())
+	var map := _screen_node as WorldMap
+	if map == null:
+		return null
+	map.press_descend()
+	return map
+
+
+## FLOW (World Map + Conquer Progress, Task 5): the World Map by its real routes, on slot 1's god (in memory only: nothing here is written, so
+## the Lantern's walk finds the god as _flow_endless() left it).
+## 1. Continue on slot 1 and the table: the map, on Aldermere; the Capital is locked and says what opens it; Esc is the hub again.
+## 2. With 132 of Aldermere's people (the god's file untouched) the Capital shows open and hosts a night: a click on it selects it and Enter opens
+##    its Prepare (night_town "capital"); Prepare's back is the hub.
+## 3. Enter on Aldermere opens Prepare; Prepare's back is the hub. Ends on the board with `dev` restored.
+func _flow_world(step: Callable) -> void:
+	var was := dev
+	var out := func() -> void:
+		dev = was
+		GodTree.dev_fill = false
+		go_to(Screen.BOARD)
+	dev = true
+	go_to(Screen.BOARD)
+	var board := _screen_node as MissionBoard
+	board.click(MissionBoard.ENDLESS_RECT.get_center())
+	var slots := _screen_node as SlotScreen
+	if slots == null or slots.slot_line(0) == "Empty":
+		step.call(false, "the World Map walk finds slot 1 holding the endless walk's god")
+		out.call()
+		return
+	slots.click(slots.button_rect(0, "continue").get_center())
+	var hub := _screen_node as GodChamber
+	if hub == null or god == null:
+		step.call(false, "Continue on slot 1 opens the hub for the World Map walk")
+		out.call()
+		return
+	var held_believers := god.believers.duplicate()
+	var held_opened := god.opened.duplicate()
+	god.believers = {}
+	god.opened = PackedStringArray([Conquest.HOME])
+	hub.click(hub.menu_rect("descend").get_center())
+	var map := _screen_node as WorldMap
+	step.call(screen == Screen.WORLD and map != null and map.selected == "aldermere", "the hub's table opens the World Map on Aldermere")
+	if map == null:
+		out.call()
+		return
+	step.call(map.spot_state("capital") == "locked" and map.info_lines("capital")[1] == "Conquer 60% of Aldermere",
+		"the Capital is locked and says what opens it (%s)" % [map.info_lines("capital")])
+	map._unhandled_input(_flow_key(KEY_ESCAPE))
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null, "Esc on the map returns to the hub")
+	if hub == null:
+		out.call()
+		return
+	god.believers["aldermere"] = 132
+	god.opened.append("capital")
+	hub.click(hub.menu_rect("descend").get_center())
+	map = _screen_node as WorldMap
+	if map == null:
+		step.call(false, "the table opens the map with the Capital open")
+		out.call()
+		return
+	map.click(WorldLayout.spot("capital").place)
+	map._unhandled_input(_flow_key(KEY_ENTER))
+	var cap_prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and cap_prep != null and night_town == "capital" and god.last_town == "capital"
+		and mission_id == GodNight.draw(god, "capital") and mission_id != "",
+		"the open Capital hosts a night: a click selects it, Enter opens its Prepare (%s in %s)" % [mission_id, night_town])
+	if cap_prep == null:
+		out.call()
+		return
+	_on_prepare_action("back", cap_prep)
+	hub = _screen_node as GodChamber
+	if hub == null:
+		step.call(false, "the Capital's Prepare backs out to the hub")
+		out.call()
+		return
+	hub.click(hub.menu_rect("descend").get_center())
+	map = _screen_node as WorldMap
+	if map == null:
+		step.call(false, "the table opens the map again")
+		out.call()
+		return
+	map.click(WorldLayout.spot("aldermere").place)
+	map._unhandled_input(_flow_key(KEY_ENTER))
+	var prep := _screen_node as PrepareScreen
+	step.call(screen == Screen.PREPARE and prep != null and mission_id == GodNight.draw(god) and night_town == "aldermere",
+		"Enter on Aldermere opens Prepare with the night drawn (%s)" % mission_id)
+	if prep == null:
+		out.call()
+		return
+	_on_prepare_action("back", prep)
+	step.call(screen == Screen.HUB and _screen_node is GodChamber, "Prepare's back returns to the hub")
+	god.believers = held_believers
+	god.opened = held_opened
+	god.last_town = Conquest.HOME
+	out.call()
+
+
 ## Endless Night through the real screens (god P1, spec §9.1, §14 P1's "playable at its end"; rulings C2, C7, C9, P9, pre-flight B3, R1, R2).
 ## 1. With --dev the board's ENDLESS opens the slot select: three empty slots. New -> the god select -> Ruin -> the hub (Night 1, the dev
 ##    fill's two starting abilities at level 1, the slot file written). The Skill Tree refuses a point the god has not got.
@@ -2862,7 +3186,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 	pick.click(GodSelectScreen.ring_rect(0).get_center())
 	pick.click(GodSelectScreen.CHOOSE_RECT.get_center())
-	var hub := _screen_node as GodHub
+	var hub := _screen_node as GodChamber
 	var saved: GodSlot = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god != null and god.type == "ruin" and saved != null and saved.type == "ruin"
 		and god.level == 1 and god.tier == 1 and god.learned == {"smite": 1, "ember": 1} and hub.lines()[6] == "Night 1"
@@ -2884,7 +3208,7 @@ func _flow_endless(step: Callable) -> void:
 		and god.level_of("smite") == 1 and god.points == 0,
 		"the Skill Tree refuses a point the god has not got (%s, %d points)" % [why, god.points])
 	tree.click(SkillTreeScreen.BACK_RECT.get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null, "Back from the tree is the hub")
 	if hub == null:
 		out.call()
@@ -2898,7 +3222,7 @@ func _flow_endless(step: Callable) -> void:
 			break
 		s += 1
 	_write_god()
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	var prep := _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id == MissionBook.WARNING and prep.god == god
 		and prep.tabs() == PackedStringArray(["ruin"]) and prep.read_only and prep.confirm_label == "DESCEND"
@@ -2946,11 +3270,11 @@ func _flow_endless(step: Callable) -> void:
 		for item: Dictionary in res._menu.items:
 			menu.append(String(item.action))
 	step.call(up and res != null and res.endless and int(banked.get("divine_power", -1)) == 80 + 20 * kept and god.level >= 2 and god.points >= 1
-		and god.faith == int(d.get("earned", -1)) and god.night == 1 and god.in_night == "" and saved != null and saved.night == 1
+		and god.faith == int(d.get("earned", -1)) + int((banked.get("conquest", {}) as Dictionary).get("fill", 0)) and god.night == 1 and god.in_night == "" and saved != null and saved.night == 1
 		and saved.level == god.level and saved.points == god.points and saved.faith == god.faith and saved.divine_power == god.divine_power
 		and saved.in_night == "" and saved.last_mission == MissionBook.WARNING and menu == ["continue", "tree", "faith"],
-		"F ascends: banked to the god -- %d Divine Power (80 + 20 x %d wishes), level %d, %d points, Faith %d = the %s believers, Night 1 -- the file agrees; Continue / Skill Tree / Faith"
-		% [int(banked.get("divine_power", -1)), kept, god.level, god.points, god.faith, d.get("earned", "?")])
+		"F ascends: banked to the god -- %d Divine Power (80 + 20 x %d wishes), level %d, %d points, Faith %d = the %s believers + %d fill, Night 1 -- the file agrees; Continue / Skill Tree / Faith"
+		% [int(banked.get("divine_power", -1)), kept, god.level, god.points, god.faith, d.get("earned", "?"), int((banked.get("conquest", {}) as Dictionary).get("fill", 0))])
 	var cast: PackedStringArray = PackedStringArray(result.get("cast", PackedStringArray()))
 	var carried_ok := god.carried.size() == cast.size()
 	for key in cast:
@@ -2974,7 +3298,7 @@ func _flow_endless(step: Callable) -> void:
 		and saved.level_of("smite") == 2 and saved.points == points - 1,
 		"Skill Tree from the results: Smite to level 2 costs a point (%d -> %d), written at once" % [points, god.points])
 	tree.click(SkillTreeScreen.BACK_RECT.get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	if hub == null:
 		step.call(false, "Back from the tree is the hub")
 		out.call()
@@ -2991,7 +3315,7 @@ func _flow_endless(step: Callable) -> void:
 	step.call(screen == Screen.FAITH and bought and god.max_might() == 7 and saved != null and saved.max_might() == 7 and saved.faith == god.faith,
 		"Faith: +1 Might is bought (Might %d), the file agrees" % god.max_might())
 	faith.click(FaithScreen.BACK_RECT.get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null, "Back from Faith is the hub")
 	if hub == null:
 		out.call()
@@ -3001,7 +3325,7 @@ func _flow_endless(step: Callable) -> void:
 	var level := god.level
 	var dp := god.divine_power
 	var faith_held := god.faith
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id != MissionBook.WARNING and prep.gauge_text() == "Might 7  ·  full refill in 60 s",
 		"Descend draws another night than The Warning (%s) and the briefing says Might 7" % mission_id)
@@ -3027,7 +3351,7 @@ func _flow_endless(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god.night == 2 and god.level == level and god.divine_power == dp and god.faith == faith_held
 		and god.in_night == "" and saved != null and saved.night == 2 and saved.in_night == "" and hub.line == "Night 2 was abandoned: a lost night. Lantern Notice +25%.",
@@ -3037,7 +3361,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 
 	# The next night, abandoned during its intro -- free.
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	if prep == null:
 		step.call(false, "Descend opens Prepare again")
@@ -3056,7 +3380,7 @@ func _flow_endless(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god.night == 2 and hub.line == "" and saved != null and saved.night == 2
 		and saved.in_night == "" and god.level == level and god.faith == faith_held,
@@ -3066,7 +3390,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 
 	# The same night again, the game closed once its clock has run.
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	if prep == null:
 		step.call(false, "Descend opens Prepare once more")
@@ -3089,7 +3413,7 @@ func _flow_endless(step: Callable) -> void:
 		return
 	step.call(slots.slot_line(0) != "Empty", "the slot still holds the god (%s)" % slots.slot_line(0))
 	slots.click(slots.button_rect(0, "continue").get_center())
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	saved = god_file.call()
 	step.call(screen == Screen.HUB and hub != null and god != null and god.night == 3 and god.in_night == "" and god.level == level
 		and god.faith == faith_held and hub.line == "Night 3 was abandoned: a lost night. Lantern Notice +25%." and saved != null and saved.night == 3
@@ -3159,13 +3483,13 @@ func _flow_title_endless(step: Callable) -> void:
 		return
 	pick.click(GodSelectScreen.ring_rect(0).get_center())
 	pick.click(GodSelectScreen.CHOOSE_RECT.get_center())
-	var hub := _screen_node as GodHub
+	var hub := _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god != null and god.type == "ruin" and hub.lines()[6] == "Night 1",
 		"choosing Ruin opens the hub at Night 1")
 	if hub == null:
 		out.call()
 		return
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	var prep := _screen_node as PrepareScreen
 	var offered := PackedStringArray()
 	if prep != null:
@@ -3178,7 +3502,7 @@ func _flow_title_endless(step: Callable) -> void:
 		out.call()
 		return
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null, "Back from Prepare is the hub")
 	if hub == null:
 		out.call()
@@ -3219,9 +3543,9 @@ func _flow_lantern(step: Callable) -> void:
 		out.call()
 		return
 	slots.click(slots.button_rect(0, "continue").get_center())
-	var hub := _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and god != null and god.notice == 50 and hub.lines()[5] == "Lantern Notice 50%" and hub.hunt_line() == ""
-		and hub.notice_fill() == 0.5,
+	var hub := _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and god != null and god.notice == 50 and hub.lines()[5] == "Lantern Notice 50%" and hub.status.hunt_line() == ""
+		and hub.status.notice_fill() == 0.5,
 		"Continue on slot 1: the hub at Lantern Notice 50%%, no Hunt line (%s)" % [god.notice if god != null else -1])
 	if hub == null or god == null:
 		out.call()
@@ -3262,11 +3586,11 @@ func _flow_lantern(step: Callable) -> void:
 	god.seed = seed_used
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 
 	# Night 4 abandoned after the clock: a lost night, the Notice to 100%.
 	var level := god.level
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	var prep := _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id == picked and prep.header_text() == "PREPARE THE MANIFESTATION"
 		and target == pair[0],
@@ -3288,25 +3612,25 @@ func _flow_lantern(step: Callable) -> void:
 	if is_instance_valid(_pause):
 		_pause._on_gui_input(_flow_mouse(_pause._menu.rect_of("abandon").get_center()))
 	await _until(func() -> bool: return screen == Screen.HUB, 5.0)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	var saved: GodSlot = god_file.call()
-	step.call(screen == Screen.HUB and hub != null and god.night == night_now + 1 and god.notice == 100 and god.in_night == "" and hub.hunt_line() != ""
-		and hub.lines()[5] == "Lantern Notice 100%" and hub.notice_fill() == 1.0
+	step.call(screen == Screen.HUB and hub != null and god.night == night_now + 1 and god.notice == 100 and god.in_night == "" and hub.status.hunt_line() != ""
+		and hub.lines()[5] == "Lantern Notice 100%" and hub.status.notice_fill() == 1.0
 		and hub.line == "Night %d was abandoned: a lost night. Lantern Notice +25%%." % god.night
 		and saved != null and saved.notice == 100 and saved.night == god.night and saved.in_night == "",
-		"Abandon after the clock: a lost night, Lantern Notice 100%%, the hub says the Hunt is next, the file agrees (%s)" % [hub.hunt_line() if hub != null else ""])
+		"Abandon after the clock: a lost night, Lantern Notice 100%%, the hub says the Hunt is next, the file agrees (%s)" % [hub.status.hunt_line() if hub != null else ""])
 	if hub == null:
 		out.call()
 		return
 	hub._unhandled_input(_flow_key(KEY_A))
-	step.call(god.tier == 1 and hub.line == GodHub.AWAKEN_HUNT, "dev A while the Hunt is due is refused (tier %d, \"%s\")" % [god.tier, hub.line])
+	step.call(god.tier == 1 and hub.line == GodChamber.AWAKEN_HUNT, "dev A while the Hunt is due is refused (tier %d, \"%s\")" % [god.tier, hub.line])
 
 	# The Hunt: the real Tier 1 Hunt, its name, its stake.
 	var hunt_night := god.night
 	var faith_before := god.faith
 	var dp_before := god.divine_power
 	var name_target: String = PowerBook.get_power(target).name
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	var if_lost := ""
 	if prep != null:
@@ -3376,15 +3700,15 @@ func _flow_lantern(step: Callable) -> void:
 		out.call()
 		return
 	res.action.emit("continue")
-	hub = _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and hub.seal_line() == GodHub.SEALED % [name_target, "3 nights"] and hub.hunt_line() == "",
-		"Continue: the hub says \"%s\" and the Hunt is no longer next" % [hub.seal_line() if hub != null else ""])
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and hub.status.seal_line() == GodChamber.SEALED % [name_target, "3 nights"] and hub.status.hunt_line() == "",
+		"Continue: the hub says \"%s\" and the Hunt is no longer next" % [hub.status.seal_line() if hub != null else ""])
 	if hub == null:
 		out.call()
 		return
 
 	# The next night: the sealed card cannot be picked.
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	if prep == null:
 		step.call(false, "Descend opens Prepare after the Hunt")
@@ -3407,7 +3731,7 @@ func _flow_lantern(step: Callable) -> void:
 		"Descend after the Hunt is another night (%s); the sealed card says \"%s\" and a click on it does nothing (\"%s\")"
 		% [mission_id, prep.card_cost_text(target), prep.refused_reason])
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god.night == hunt_night + 1 and god.sealed == target,
 		"Back from Prepare is the hub, nothing counted (Night %d)" % [god.night + 1])
 	if hub == null:
@@ -3476,11 +3800,11 @@ func _flow_rite(step: Callable) -> void:
 	fx.loadout = pair.duplicate()
 	fx.write(GodSlot.path(god_slot, god_base))
 	slots.click(slots.button_rect(0, "continue").get_center())
-	var hub := _screen_node as GodHub
+	var hub := _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god != null and god.tier == 1 and god.level == 10 and god.capped() and god.divine_power == god.need()
 		and hub.lines()[2] == "AWAKEN TO GROW" and god.notice == 50 and god.seal_nights == 0 and god.gifts.is_empty(),
 		"Continue on the fixture: Tier 1, level 10, the bar full, Notice 50%%, nothing sealed (%s)" % [hub.lines() if hub != null else []])
-	step.call(hub != null and hub.awaken_shown() and not hub.awaken_dim() and hub.gifts_line() == "" and hub.hint_text().contains("A: Awaken"),
+	step.call(hub != null and hub.status.awaken_shown() and not hub.status.awaken_dim() and hub.status.gifts_line() == "" and hub.hint_text().contains("A: Awaken"),
 		"the hub shows Awaken (not dim), no gifts line, and the A hint")
 	if hub == null or god == null:
 		out.call()
@@ -3495,7 +3819,7 @@ func _flow_rite(step: Callable) -> void:
 	god.notice = 100
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	hub.click(hub.menu_rect("awaken").get_center())
 	var prep := _screen_node as PrepareScreen
 	step.call(screen == Screen.PREPARE and prep != null and mission_id == String(hunt0.id) and prep.header_text() == "THE LANTERN HUNT" and god.night == night0,
@@ -3504,12 +3828,12 @@ func _flow_rite(step: Callable) -> void:
 		out.call()
 		return
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god.night == night0 and god.in_night == "", "Back from the Hunt's Prepare is the hub, free")
 	god.notice = 50
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 
 	# 3. The rite: Prepare, the night, real input, the pause.
 	if not await _flow_enter_rite(step, hub):
@@ -3580,13 +3904,13 @@ func _flow_rite(step: Callable) -> void:
 
 	# 5. The hub after: no Awaken, the gift; a Tier 2 night carries it.
 	res.action.emit("continue")
-	hub = _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and not hub.awaken_shown() and hub.gifts_line() == GodHub.GIFTS_LINE % RiteBook.gift_name(RiteBook.WATCHFUL_BELL),
-		"Continue: the hub has no Awaken and says \"%s\"" % [hub.gifts_line() if hub != null else ""])
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and not hub.status.awaken_shown() and hub.status.gifts_line() == GodChamber.GIFTS_LINE % RiteBook.gift_name(RiteBook.WATCHFUL_BELL),
+		"Continue: the hub has no Awaken and says \"%s\"" % [hub.status.gifts_line() if hub != null else ""])
 	if hub == null:
 		out.call()
 		return
-	hub.click(hub.menu_rect("descend").get_center())
+	_flow_descend(hub)
 	prep = _screen_node as PrepareScreen
 	var gifts_row := ""
 	if prep != null:
@@ -3601,7 +3925,7 @@ func _flow_rite(step: Callable) -> void:
 		out.call()
 		return
 	_on_prepare_action("back", prep)
-	hub = _screen_node as GodHub
+	hub = _screen_node as GodChamber
 	step.call(screen == Screen.HUB and hub != null and god.night == night0 + 1, "Back from Prepare is the hub, nothing counted")
 
 	# 6. Lost the real way: the god put back at the cap with no gift.
@@ -3613,8 +3937,8 @@ func _flow_rite(step: Callable) -> void:
 	god.notice = 50
 	_write_god()
 	go_to(Screen.HUB)
-	hub = _screen_node as GodHub
-	step.call(hub != null and hub.awaken_shown() and god.capped() and god.gifts.is_empty(), "the fixture again: Tier 1 at the cap, Awaken offered")
+	hub = _screen_node as GodChamber
+	step.call(hub != null and hub.status.awaken_shown() and god.capped() and god.gifts.is_empty(), "the fixture again: Tier 1 at the cap, Awaken offered")
 	if hub == null or not await _flow_enter_rite(step, hub):
 		out.call()
 		return
@@ -3637,8 +3961,8 @@ func _flow_rite(step: Callable) -> void:
 		out.call()
 		return
 	res.action.emit("continue")
-	hub = _screen_node as GodHub
-	step.call(screen == Screen.HUB and hub != null and hub.awaken_shown() and god.notice == 75,
+	hub = _screen_node as GodChamber
+	step.call(screen == Screen.HUB and hub != null and hub.status.awaken_shown() and god.notice == 75,
 		"Continue: Awaken is offered again at Notice 75%")
 	if hub == null:
 		out.call()
@@ -3655,7 +3979,7 @@ func _flow_rite(step: Callable) -> void:
 
 ## Awaken from the hub, Prepare's rite page, MANIFEST and into the night past its intro (FLOW, god P3): the rite's header and rows are checked,
 ## nothing is drafted (the rite takes the whole tree). False (and a failed step) when the screens do not come up.
-func _flow_enter_rite(step: Callable, hub: GodHub) -> bool:
+func _flow_enter_rite(step: Callable, hub: GodChamber) -> bool:
 	hub.click(hub.menu_rect("awaken").get_center())
 	var prep := _screen_node as PrepareScreen
 	var labels := PackedStringArray()

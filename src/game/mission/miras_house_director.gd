@@ -11,6 +11,10 @@ extends MissionDirector
 
 ## Where Mira lived: her house is the one nearest this point (ground units).
 const MIRA_SPOT := Vector2(-12.0, 2.0)
+## The names a town's overrides may set (Overrides, v0.12): the town var below, seeded from MIRA_SPOT; setup reads it and never assigns it.
+## (SermonDirector inherits it and never reads it.) Convention: a subclass lists its own names in a `<NAME>_TOWN_VARS` const (it cannot redeclare
+## TOWN_VARS) and Overrides.town_vars joins them up the base chain (First Prayers: PRAYERS_TOWN_VARS).
+const TOWN_VARS := ["mira_spot"]
 ## How many grieving there are, and how many Faithful besides the clergy.
 const GRIEVING := 12
 const FAITHFUL := 12
@@ -55,6 +59,7 @@ const FIRE_LEVEL := 0.6
 ## Minds a searcher takes the search up again from.
 const RESUMABLE := [Person.Mind.CALM, Person.Mind.RECOVER, Person.Mind.OBSERVE, Person.Mind.REGROUP]
 
+var mira_spot: Vector2 = MIRA_SPOT
 var house: Structure
 var door := Vector2.INF
 var temple_door := Vector2.INF
@@ -91,7 +96,7 @@ var door_heard := true
 func _begin() -> void:
 	gaze = GazeMeter.new()
 	house = _find_house()
-	door = _door_of(house) if house != null else _walkable(MIRA_SPOT)
+	door = _door_of(house) if house != null else _walkable(mira_spot)
 	temple_door = _walkable(Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.6))
 	_choose_people()
 	crowd._field.enemy_killed.connect(_on_killed)
@@ -109,11 +114,19 @@ func _opening_banner() -> String:
 func _find_house() -> Structure:
 	var best: Structure = null
 	for s: Structure in town._built:
-		if s.kind != Structure.Kind.HOUSE or s.role != &"house" or s.destroyed:
+		if not _dwelling(s):
 			continue
-		if best == null or s.center().distance_to(MIRA_SPOT) < best.center().distance_to(MIRA_SPOT):
+		if best == null or s.center().distance_to(mira_spot) < best.center().distance_to(mira_spot):
 			best = s
 	return best
+
+
+## A dwelling still standing: an Aldermere house (role &"house"), or one of the sets people live in of a town of ChatGPT plots (the Capital's
+## patrician houses, CapitalPlots.HOMES). Aldermere has no plots: its houses are found as they were.
+func _dwelling(s: Structure) -> bool:
+	if s.kind != Structure.Kind.HOUSE or s.destroyed:
+		return false
+	return s.role == &"house" or (s.role == CapitalPlots.ROLE and s.art_tag in CapitalPlots.HOMES)
 
 
 ## A house's door: free ground just off its front (its +y face).
@@ -479,7 +492,7 @@ func _entered(p: Person) -> void:
 func _venn_starts() -> void:
 	var near: Array[Structure] = []
 	for s: Structure in town._built:
-		if s.kind == Structure.Kind.HOUSE and s.role == &"house" and not s.destroyed and s != house \
+		if _dwelling(s) and s != house \
 				and s.center().distance_to(door) <= 9.0:
 			near.append(s)
 	near.sort_custom(func(a: Structure, b: Structure) -> bool: return a.center().distance_to(door) > b.center().distance_to(door))

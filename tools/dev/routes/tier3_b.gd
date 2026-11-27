@@ -418,12 +418,12 @@ static func act_bread(bc, ctx: Dictionary) -> String:
 		memo["prep%d" % up] = true
 		if up != 1 and verdict_ready:
 			rules.cast(slots.wisp, _mob_centre(crowd, d.targets[up], true))
-			return "wisp a crowd to the %s ahead of its time" % CrownsBreadDirector.WORDS[up]
+			return "wisp a crowd to the %s ahead of its time" % d.words[up]
 		rules.cast(slots.wisp, _mob_centre(crowd, d.targets[up], false))
-		return "wisp the bystanders off the %s ahead of its time" % CrownsBreadDirector.WORDS[up]
+		return "wisp the bystanders off the %s ahead of its time" % d.words[up]
 	if cur < 0 and up >= 0 and (up == 1 or not verdict_ready) and d.due_in(up) <= BREAD_LEAD and bc._slot_ready(rules, slots, "heaven"):
 		rules.cast(slots.heaven, d.targets[up].center(), {"dir": Vector2(1, 0)})  # its strike falls as the stage opens
-		return "heaven the %s as it opens" % CrownsBreadDirector.WORDS[up]
+		return "heaven the %s as it opens" % d.words[up]
 	if cur < 0 or not is_instance_valid(d.targets[cur]) or d.targets[cur].destroyed:
 		return ""
 	var s := d.targets[cur]
@@ -432,10 +432,10 @@ static func act_bread(bc, ctx: Dictionary) -> String:
 		var to: Vector2 = _mob_centre(crowd, s, true)
 		memo["verdict_at"] = now
 		rules.cast(slots.verdict, s.center(), {"to": to})
-		return "verdict on the %s (%d near)" % [CrownsBreadDirector.WORDS[cur], _near_count(crowd, to)]
+		return "verdict on the %s (%d near)" % [d.words[cur], _near_count(crowd, to)]
 	if bc._slot_ready(rules, slots, "heaven") and (cur == 1 or not memo.has("verdict_at") or now >= float(memo.verdict_at) + BREAD_HEAVEN_AFTER):
 		rules.cast(slots.heaven, s.center(), {"dir": Vector2(1, 0)})
-		return "heaven the %s" % CrownsBreadDirector.WORDS[cur]
+		return "heaven the %s" % d.words[cur]
 	return ""
 
 
@@ -509,7 +509,7 @@ static func act_prisoner(bc, ctx: Dictionary) -> String:
 		return ""
 	if d.held and MissionDirector._alive(d.seizer):
 		return _prisoner_remove(bc, rules, slots, ctx, d, d.seizer as Person)
-	var road: Array = PrisonerDirector.ROAD
+	var road: Array = d.road
 	var ahead: Vector2 = bc._road_ahead(road, her.ground_pos, float(bc.PRISONER_STRETCH))
 	for v: Variant in d._watchers():
 		if not d._watching(v):
@@ -523,7 +523,7 @@ static func act_prisoner(bc, ctx: Dictionary) -> String:
 	if bc._slot_ready(rules, slots, "wisp") and her.mind == Person.Mind.DUTY and not d.held:
 		var watched := not d.watch_away and d._watch_standing()
 		var to: Vector2 = bc._road_ahead(road, her.ground_pos, PrisonerDirector.WISP_R - 0.8)
-		var wait: Vector2 = d._walkable(d.gate_at + bc.PRISONER_WAIT)
+		var wait: Vector2 = d._walkable(bc._prisoner_wait(d))
 		if watched and bc._road_progress(road, to) > bc._road_progress(road, wait):
 			to = wait
 		# the light within her reach (PrisonerDirector.WISP_R) of where she stands now, toward the road ahead

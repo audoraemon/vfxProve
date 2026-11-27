@@ -70,6 +70,16 @@ const CAMERA_AT := Vector2(10.0, -8.0)
 const MARK_WARDEN := Color("c8342a")
 const MARK_NEXT := Color("ff9a3a")
 
+## The names a town's overrides may set (Overrides, v0.12): the town vars below, each seeded from its const; setup reads them and never assigns them.
+const TOWN_VARS := ["heart", "sources", "source_names", "wave_at"]
+
+## This town's fair (town vars; Aldermere's consts): its heart, where each crowd comes from, the tour's words for each source, and the second each
+## crowd sets out at the latest. The four lists are paired by index and must be the same length.
+var heart: Vector2 = HEART
+var sources: Array = SOURCES
+var source_names: Array = SOURCE_NAMES
+var wave_at: Array = WAVE_AT
+
 ## Each crowd's people, appointed as the night begins and in the order of their crowds' set-out (v0.11 M3; Variants: any may be a
 ## body freed after its death fade). The ones of a crowd not yet set out wait on duty at their stands (is_waiting()).
 var waves: Array = []
@@ -95,21 +105,21 @@ var life: FairLife
 func _begin() -> void:
 	has_mayor = false
 	need = FAIR_NEED
-	life = FairLife.new(hash(crowd._rng.seed) ^ 0x7A1E, HEART, FAIR_R, _reaches, _walkable)
-	fire_spots = [_walkable(HEART + BONFIRE_OFF)]
-	for i in SOURCES.size():
+	life = FairLife.new(hash(crowd._rng.seed) ^ 0x7A1E, heart, FAIR_R, _reaches, _walkable)
+	fire_spots = [_walkable(heart + BONFIRE_OFF)]
+	for i in sources.size():
 		waves.append([])
 		wave_out.append(-1.0)
 		scattered_at.append(-1.0)
 	for k in WARDENS:
 		var w := Ward.new()
-		w.post = _ring_spot(HEART, WARD_SIDE, k, WARDENS)
+		w.post = _ring_spot(heart, WARD_SIDE, k, WARDENS)
 		var crew := _lay_near(w.post, 1, _busy())
 		if not crew.is_empty():
 			_make_warden(w, crew[0])
 			_set_down(crew[0], w.post)
 		wards.append(w)
-	for i in SOURCES.size():
+	for i in sources.size():
 		_appoint(i)
 	super()
 	rules.banner.emit("THE NIGHT FAIR")
@@ -122,14 +132,14 @@ func _gather() -> void:
 
 ## The crowds still to come and the market's close (v0.11 M3, Decisions 14, 17): the Festival's events, replaced.
 func _add_events() -> void:
-	for i in range(1, SOURCES.size()):
-		timeline.add(float(WAVE_AT[i]), "crowd_%d" % i, "More come to the fair", _send_wave.bind(i),
+	for i in range(1, sources.size()):
+		timeline.add(float(wave_at[i]), "crowd_%d" % i, "More come to the fair", _send_wave.bind(i),
 			func() -> bool: return wave_out[i] < 0.0)
 	timeline.add(MARKET_CLOSE, "close", "The guard closes the market", _close)
 
 
 func _close() -> void:
-	_sound(&"msn_shut", HEART)
+	_sound(&"msn_shut", heart)
 	life.close()  # the market is shut: no more talk, and no late goer joins a group
 	for v: Variant in goers:
 		if is_instance_valid(v):
@@ -142,15 +152,15 @@ func _close() -> void:
 ## town's regroup and evacuation pass the ones on duty by).
 func _appoint(i: int) -> void:
 	var k := 0
-	for p in _lay_near(SOURCES[i], crowd.citizens.size(), _busy()):
+	for p in _lay_near(sources[i], crowd.citizens.size(), _busy()):
 		if k >= WAVE:
 			break
-		if not p.mind in WarningDirector.RESUMABLE or not _reaches(p, _walkable(SOURCES[i])):
+		if not p.mind in WarningDirector.RESUMABLE or not _reaches(p, _walkable(sources[i])):
 			continue
 		goers.append(p)
 		(waves[i] as Array).append(p)
 		if i > 0:
-			var stand := _walkable(SOURCES[i] + Vector2.from_angle(float(k) * 2.4) * (WAIT_STEP * sqrt(float(k + 1))))
+			var stand := _walkable(sources[i] + Vector2.from_angle(float(k) * 2.4) * (WAIT_STEP * sqrt(float(k + 1))))
 			_stands[p.get_instance_id()] = stand
 			p.go_duty(stand)
 		k += 1
@@ -165,7 +175,7 @@ func _send_wave(i: int) -> void:
 		return
 	wave_out[i] = _clock
 	if i > 0:
-		_sound(&"msn_gather", _walkable(SOURCES[i]))
+		_sound(&"msn_gather", _walkable(sources[i]))
 	var out: Array = []
 	for v: Variant in waves[i]:
 		if is_instance_valid(v):
@@ -255,19 +265,19 @@ func step(delta: float) -> void:
 ## shows the next one's chained time; each crowd still to come whose chain time has come sets out (v0.11 M3). One wholly gone
 ## before its time (struck down where it waited) never sets out, and scatters at once.
 func _chain() -> void:
-	for i in SOURCES.size():
+	for i in sources.size():
 		var gone := mini(WAVE_NEED, (waves[i] as Array).size())
 		if scattered_at[i] < 0.0 and wave_count(i) + wave_left(i) >= gone:
 			scattered_at[i] = _clock
-			_sound(&"msn_scatter", HEART)
+			_sound(&"msn_scatter", heart)
 			if wave_out[i] < 0.0:
 				wave_out[i] = _clock
 				for v: Variant in waves[i]:
 					if is_instance_valid(v):
 						_stands.erase((v as Person).get_instance_id())
-			if i + 1 < SOURCES.size():
+			if i + 1 < sources.size():
 				timeline.expect("crowd_%d" % (i + 1), wave_due(i + 1))
-	for i in range(1, SOURCES.size()):
+	for i in range(1, sources.size()):
 		if wave_out[i] < 0.0 and scattered_at[i - 1] >= 0.0 and _clock >= wave_due(i):
 			rules.banner.emit("MORE COME TO THE FAIR")
 			_send_wave(i)
@@ -276,7 +286,7 @@ func _chain() -> void:
 ## The second into the night crowd `i` sets out at the latest (v0.11 M3): its own time, or CHAIN after the crowd before was
 ## scattered if that is sooner. One not yet scattered never brings it forward.
 func wave_due(i: int) -> float:
-	var at := float(WAVE_AT[i]) * timeline.stretch_factor()
+	var at := float(wave_at[i]) * timeline.stretch_factor()
 	if i > 0 and scattered_at[i - 1] >= 0.0:
 		at = minf(at, scattered_at[i - 1] + CHAIN)
 	return at
@@ -316,7 +326,7 @@ func on_guard() -> Array[Person]:
 	for w in wards:
 		if _on_guard(w):
 			out.append(w.man as Person)
-	out.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(HEART) < b.ground_pos.distance_to(HEART))
+	out.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(heart) < b.ground_pos.distance_to(heart))
 	return out
 
 
@@ -419,7 +429,7 @@ func _hold_fair(evacuating := false) -> void:
 			continue
 		var spot: Vector2 = _spots[id]
 		if not _arrived.has(id):
-			if p.ground_pos.distance_to(spot) <= ARRIVE or (not p.has_goal() and p.ground_pos.distance_to(HEART) <= FAIR_R + 1.0):
+			if p.ground_pos.distance_to(spot) <= ARRIVE or (not p.has_goal() and p.ground_pos.distance_to(heart) <= FAIR_R + 1.0):
 				_arrived[id] = true
 		if p.mind in WarningDirector.RESUMABLE or (p.mind == Person.Mind.DUTY and p.anchor.distance_to(spot) > 0.3):
 			p.go_duty(spot)
@@ -445,7 +455,7 @@ func _let_go() -> void:
 ## his stand by a whisper and back on his feet walks back, and none is let flee the town (`evacuating`: as _hold_fair()). A death
 ## still takes him.
 func _hold_waiting(evacuating := false) -> void:
-	for i in range(1, SOURCES.size()):
+	for i in range(1, sources.size()):
 		if wave_out[i] >= 0.0:
 			continue
 		for v: Variant in waves[i]:
@@ -491,7 +501,7 @@ func walkers() -> Array[Person]:
 
 ## The next crowd still to set out, by index; -1 once all have (v0.11 M3).
 func next_wave() -> int:
-	for i in SOURCES.size():
+	for i in sources.size():
 		if wave_out[i] < 0.0:
 			return i
 	return -1
@@ -505,7 +515,7 @@ func tags() -> Array[MapTag]:
 	var out: Array[MapTag] = []
 	if broken():
 		return out
-	out.append(MapTag.place(HEART, MARK_FEAST, "THE FAIR - %d / %d" % [count(), need], 0.0, true))
+	out.append(MapTag.place(heart, MARK_FEAST, "THE FAIR - %d / %d" % [count(), need], 0.0, true))
 	for w in wards:
 		if not _alive(w.man) or (w.man as Person).inside:
 			continue
@@ -516,7 +526,7 @@ func tags() -> Array[MapTag]:
 			out.append(MapTag.pip(p, MARK_WARDEN))
 	var next := next_wave()
 	if next >= 0:
-		out.append(MapTag.place(_walkable(SOURCES[next]), MARK_NEXT, next_label(next), 0.0, true))
+		out.append(MapTag.place(_walkable(sources[next]), MARK_NEXT, next_label(next), 0.0, true))
 	for p in unbroken():
 		out.append(MapTag.pip(p, MARK_GOER))
 	for p in waiting_goers():
@@ -534,7 +544,7 @@ func next_label(i: int) -> String:
 func hint_phase() -> String:
 	if broken():
 		return ""
-	for i in range(1, SOURCES.size()):
+	for i in range(1, sources.size()):
 		if wave_out[i] < 0.0:
 			continue
 		for v: Variant in waves[i]:
@@ -601,10 +611,11 @@ func why_not(key: String, at: Vector2) -> String:
 ## chain can bring them sooner), the last with the close.
 func tour() -> Array:
 	var out := []
-	out.append([HEART, "The night fair at the north-east fountain. Its wardens (red) keep the crowd calm."])
-	for i in range(1, SOURCES.size()):
-		var close := " The guard closes the market at %s." % UiTheme.clock(MARKET_CLOSE) if i == SOURCES.size() - 1 else ""
-		out.append([_walkable(SOURCES[i]), "More come from %s by %s.%s" % [SOURCE_NAMES[i], UiTheme.clock(float(WAVE_AT[i])), close]])
+	var place := "the north-east fountain" if heart == HEART else String(source_names[0])
+	out.append([heart, "The night fair at %s. Its wardens (red) keep the crowd calm." % place])
+	for i in range(1, sources.size()):
+		var close := " The guard closes the market at %s." % UiTheme.clock(MARKET_CLOSE) if i == sources.size() - 1 else ""
+		out.append([_walkable(sources[i]), "More come from %s by %s.%s" % [source_names[i], UiTheme.clock(float(wave_at[i])), close]])
 	return out
 
 

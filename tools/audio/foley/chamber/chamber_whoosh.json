@@ -1,0 +1,1 @@
+{"length": 0.95, "rms_db": -27.0, "reverb": {"rt60": 0.5, "mix": 0.1, "predelay_ms": 8}, "layers": [{"src": "lib:oga/air-whoosh/whoosh2_0.wav", "from": 0.78, "dur": 0.95, "pitch": 3, "hp": 180, "lp": 5500, "fade_in": 60, "fade_out": 420}]}

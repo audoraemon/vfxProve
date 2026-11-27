@@ -11,6 +11,9 @@ extends Node
 ## (god P1, spec §9.2) are "continue" (the hub), "tree" and "faith".
 signal action(name: String)
 
+## The conquer line of the god's results (World Map + Conquer Progress): town, its percent, converts made, believers lost.
+const CONQUER_LINE := "Conquered towns: Faith +%d"
+const CONQUEST_LINE := "%s %d%%   converts +%d   believers lost %d"
 const PANEL := Rect2(36.0, 20.0, 568.0, 320.0)
 ## The stat table's columns: label, value (right-aligned), points (right-aligned).
 const TABLE_X := 300.0
@@ -439,6 +442,12 @@ static func god_lines(result: Dictionary) -> PackedStringArray:
 		out.append("%s is no longer sealed" % PowerBook.get_power(unsealed).name)
 	if bool(g.get("hunt_next", false)):
 		out.append("THE LANTERN HUNTS: the next night is the Hunt")
+	var conquest: Variant = g.get("conquest", {})
+	if conquest is Dictionary and not (conquest as Dictionary).is_empty():
+		var c: Dictionary = conquest
+		out.append(CONQUEST_LINE % [Conquest.town_name(str(c.get("town", ""))), int(c.get("percent", 0)), int(c.get("converts", 0)), int(c.get("lost", 0))])
+	if int(g.get("conquer_faith", 0)) > 0:
+		out.append(CONQUER_LINE % int(g.get("conquer_faith", 0)))
 	out.append("Night %d" % int(g.get("night", 0)))
 	return out
 

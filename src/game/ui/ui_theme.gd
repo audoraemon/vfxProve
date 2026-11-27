@@ -58,10 +58,11 @@ const DIGITS_SMALL := {
 	"9": [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."],
 }
 ## The capitals Pixelify Sans draws so alike at 11 u that they read as each other: its B has the same round ink as an 8 or a G ("Barrage" read "Garrage",
-## "Breaker" "Greaker"), its G as a B, its E as a C with an open tail, its H as a W or N, and its Z as a 2. Drawn here with square shoulders, 5 x 7 like the digits
+## "Breaker" "Greaker"), its G as a B, its C as an O (a one-pixel mouth: "The Capital" read "The Oapital"), its E as a C with an open tail, its H as a W or N, and its Z as a 2. Drawn here with square shoulders, 5 x 7 like the digits
 ## and with the same advance (6) as the font's own, so no line changes width. They are in the small set only (11 u and its whole multiples); the legacy 13-21 sizes keep the font's.
 const LETTERS_SMALL := {
 	"B": ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+	"C": [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
 	"E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
 	"G": [".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".###."],
 	"H": ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],

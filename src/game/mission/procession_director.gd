@@ -52,6 +52,10 @@ const MARK_STEPS := Color("ff9a3a")
 const MARK_ESCORT := Color("8fb8e8")
 const MARK_WATCHED := Color("c8342a")
 
+## The names a town's overrides may set (Overrides): the route's five points. Empty: the landmarks' (Aldermere); each is
+## still snapped to walkable ground by `_ground()`. STEPS_LEG and DOCK_LEG keep their meaning, so a town's list has five points.
+const TOWN_VARS := ["route_spots"]
+var route_spots: Array = []
 var prince: Person
 ## Seconds (the act's) the Prince keeps to his carriage; 0: he walks from the start.
 var emerge_after := 0.0
@@ -113,9 +117,9 @@ func _emerge() -> void:
 
 
 ## The way to the ship, each point on walkable ground: out of the Citadel, the cathedral steps, the market's south
-## side, the dock's waiting ground and the boarding point.
+## side, the dock's waiting ground and the boarding point -- or the town's own five points (`route_spots`).
 func _route() -> PackedVector2Array:
-	var points := [
+	var points: Array = route_spots if not route_spots.is_empty() else [
 		Vector2(Places.rect(&"citadel_court").get_center().x, Places.rect(&"citadel_court").end.y + 0.6),
 		Vector2(Places.rect(&"temple").get_center().x, Places.rect(&"temple").end.y + 0.5),
 		Vector2(Places.rect(&"market_square").get_center().x, Places.rect(&"market_square").end.y - 0.5),

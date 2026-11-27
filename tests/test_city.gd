@@ -232,7 +232,7 @@ static func _capital_stub(t) -> void:
 	t.check(c is CapitalCity and c.id() == &"capital", "the capital's id")
 	t.check(not c.houses().is_empty() and not c.taverns().is_empty(), "the capital has its houses and taverns")
 	t.check(c.pastures().is_empty() and c.market_piles().is_empty(), "the capital has no pastures or market piles yet")
-	t.check(c.ship_at() == Vector2.INF, "the capital has no ship")
+	t.check(c.ship_at().is_equal_approx(Vector2(31.0, -0.65)), "the capital's ship lies at its pier (Task 14)")
 	t.check(c.landmark(&"royal_keep").has_point(c.citadel_origin()), "the capital's Citadel stands in the Royal Keep")
 	var a := c.floor_areas()
 	for k: StringName in [&"plazas", &"yards", &"gate_plazas", &"building_yards", &"farm"]:

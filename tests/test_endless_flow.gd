@@ -43,7 +43,7 @@ static func _flow_table(t) -> void:
 	var want := {
 		"board:endless": Game.Screen.SLOTS, "slots:continue": Game.Screen.HUB, "slots:new": Game.Screen.GOD_SELECT,
 		"slots:back": Game.Screen.BOARD, "god:chosen": Game.Screen.HUB, "god:back": Game.Screen.SLOTS,
-		"hub:descend": Game.Screen.PREPARE, "hub:awaken": Game.Screen.PREPARE, "hub:tree": Game.Screen.TREE, "hub:faith": Game.Screen.FAITH,
+		"hub:descend": Game.Screen.WORLD, "world:descend": Game.Screen.PREPARE, "world:back": Game.Screen.HUB, "hub:awaken": Game.Screen.PREPARE, "hub:tree": Game.Screen.TREE, "hub:faith": Game.Screen.FAITH,
 		"hub:title": Game.Screen.TITLE, "tree:back": Game.Screen.HUB, "faith:back": Game.Screen.HUB,
 		"prepare:hub": Game.Screen.HUB, "results:continue": Game.Screen.HUB, "results:tree": Game.Screen.TREE,
 		"results:faith": Game.Screen.FAITH, "pause:abandon": Game.Screen.HUB, "interlude:hub": Game.Screen.HUB,
@@ -54,7 +54,7 @@ static func _flow_table(t) -> void:
 			wrong.append("%s=%d" % [action, Game.next_screen(action)])
 	t.check(wrong.is_empty(), "every Endless Night action leads to its screen (wrong: %s)" % ", ".join(wrong))
 	t.check(Game.Screen.TITLE == 0 and Game.Screen.BOARD == 1 and Game.Screen.UPGRADES == 8 and Game.Screen.SLOTS == 9
-		and Game.Screen.FAITH == 13, "the old screens keep their values and the five new ones follow (SLOTS %d, FAITH %d)" % [
+		and Game.Screen.FAITH == 13 and Game.Screen.WORLD == 14, "the old screens keep their values and the five new ones follow (SLOTS %d, FAITH %d)" % [
 		Game.Screen.SLOTS, Game.Screen.FAITH])
 	t.check(Game.next_screen("title:play") == Game.Screen.BOARD and Game.next_screen("prepare:back") == Game.Screen.BOARD
 		and Game.next_screen("results:replay") == Game.Screen.MISSION and Game.next_screen("pause:restart") == Game.Screen.MISSION
@@ -111,9 +111,8 @@ static func _no_draft(t) -> void:
 	only.seal_nights = 2
 	t.check(only.draftable().is_empty() and Game.awaken_target(only) != "", "a god whose one key is sealed can still Awaken (%s)" % Game.awaken_target(only))
 	t.check(GodNight.night_loadout(only) == PackedStringArray(["smite"]), "and its night is the whole tree (%s)" % [GodNight.night_loadout(only)])
-	var hub := GodHub.new().setup(only)
+	var hub := HubStatus.new(only)
 	t.check(hub.can_descend(), "and the hub lets it Descend")
-	hub.free()
 	var text := FileAccess.get_file_as_string("res://src/game/game.gd")
 	t.check(not text.contains("loadout = god.loadout.duplicate()"), "game.gd starts no god's night or photograph from the god's old loadout")
 	t.check(not text.contains("slot.draftable().is_empty()") and not text.contains("god.draftable().is_empty()"),

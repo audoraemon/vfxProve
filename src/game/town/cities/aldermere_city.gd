@@ -26,6 +26,10 @@ func id() -> StringName:
 	return &"aldermere"
 
 
+func wishes() -> bool:
+	return true
+
+
 func map() -> Rect2:
 	return TownLayout.MAP
 

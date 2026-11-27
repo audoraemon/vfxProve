@@ -117,12 +117,12 @@ const STEPS := {
 		{"t": "Lead him through the gate now", "ph": ["clear"]},
 	],
 	"prisoner": [
-		{"t": "Lead her (blue) to the postern"},
+		{"t": "Lead her (blue) to the way out"},
 		{"t": "Kill or lead both gaolers (red)", "ph": ["bound"]},
 		{"t": "Lead or kill her captor (red)", "ph": ["caught"]},
 		{"t": "Lead or kill the hounds (red)", "ph": ["hounds"]},
-		{"t": "Lead the postern's watch (red)", "ph": ["gate"], "c": "s"},
-		{"t": "Lead her through the postern", "ph": ["clear"]},
+		{"t": "Lead the watch (red) away", "ph": ["gate"], "c": "s"},
+		{"t": "Lead her out", "ph": ["clear"]},
 	],
 	"exodus": [
 		{"t": "Lead each lamp (blue) to a gate", "c": "n"},

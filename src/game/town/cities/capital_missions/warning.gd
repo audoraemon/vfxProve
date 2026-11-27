@@ -18,9 +18,9 @@ static func overrides() -> Dictionary:
 		"def": {"camera_at": camera, "intro_from": camera + Vector2(0.0, 6.0)},
 		"director": {
 			"star_falls": [
-				[10.0, HARBOUR_POST, "THE HARBOUR GATE"],
-				[90.0, Vector2(-14.0, 0.6), "THE WEST RIVER GATE"],
-				[180.0, Vector2(-22.4, -13.0), "THE WEST GATE"],
+				[20.0, HARBOUR_POST, "THE HARBOUR GATE"],
+				[40.0, Vector2(-14.0, 0.6), "THE WEST RIVER GATE"],
+				[60.0, Vector2(-22.4, -13.0), "THE WEST GATE"],
 			],
 		},
 	}

@@ -79,7 +79,7 @@ static func _bailiff_for(crowd: Crowd, door: Vector2, taken: Array) -> Person:
 		if not MissionDirector._alive(v):
 			continue
 		var s := v as Person
-		if not s.inside and s.corps == Person.Corps.NONE and not taken.has(s) and s.ground_pos.distance_to(door) >= MIN_WALK:
+		if not s.inside and s.corps == Person.Corps.NONE and not taken.has(s) and not Wish.kept_out(crowd, s) and s.ground_pos.distance_to(door) >= MIN_WALK:
 			free.append(s)
 	free.sort_custom(func(a: Person, b: Person) -> bool: return a.ground_pos.distance_to(door) < b.ground_pos.distance_to(door))
 	for s in free:

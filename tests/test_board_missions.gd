@@ -81,12 +81,20 @@ static func _profiles(t) -> void:
 	t.check(ready.at_least(3) == ready, "a town above the floor stays as it is")
 
 
+## No board mission carries bonuses (the wishes take their place), except The Warning's Unseen (the Warning rework, W-R6: it only reports).
+static func _bonuses_ok(id: String, def: MissionDef) -> bool:
+	if id == "warning":
+		var bonuses := def.bonuses()
+		return bonuses.size() == 1 and bonuses[0] is UnseenObjective
+	return def.bonuses().is_empty()
+
+
 static func _defs(t) -> void:
 	for id in TierBook.all():
 		var def := TierBook.board(id)
 		var tier := TierBook.tier_of(id)
 		var ok := def != null and def.id == id and def.tier == tier and def.slots == TierBook.slots(tier)
-		ok = ok and def.dp_capacity == TierBook.dp(tier) and not def.chooses_difficulty() and def.bonuses().is_empty()
+		ok = ok and def.dp_capacity == TierBook.dp(tier) and not def.chooses_difficulty() and _bonuses_ok(id, def)
 		ok = ok and def.response_profile(ResponseProfile.Tier.UNPREPARED).level() >= TierBook.readiness(tier)
 		if not def.has_acts():
 			ok = ok and is_equal_approx(def.clock, TierBook.clock(tier))

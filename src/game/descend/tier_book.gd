@@ -134,7 +134,7 @@ static func believers(base: int, tier: int) -> int:
 ## - Its readiness as a floor.
 ## - The base slots and DP plus `state`'s upgrades (MAX_SLOTS at most).
 ## - Its event times stretched to the longer clock.
-## - No bonuses: the wishes take their place.
+## - No bonuses: the wishes take their place (The Warning alone gets its Unseen back from _warning(), W-R6).
 ## - Its mission tags, and at GAZE_TIER the Gaze objective.
 ## Null for an id not on the board. MissionBook's own missions are fresh copies each call, so nothing here reaches them.
 ## `at_tier` (god P2, spec §10.2, Ruling P2-5): a board mission played at the god's tier (P2's Lantern stand-ins; the Hunts replaced them in P5, so no god code passes it now) -- 1-5 builds it at that tier's
@@ -236,18 +236,22 @@ static func _festival(m: MissionDef) -> void:
 		return out
 
 
-## The board's Warning (spec §7.2): three stars, three runners (StarfallDirector), all three to stop. No stretch: the stars
+## The board's Warning (spec §7.2, reworked): one star, three watchmen (StarfallDirector), all three to stop. No stretch: the set-offs
 ## keep the spec's own times. v0.11.2: no mission narrows the draft, so the pool line v0.11.1 added (Death Mark) is gone.
 static func _warning(m: MissionDef) -> void:
 	m.director = StarfallDirector
 	m.lantern = LanternWatch.KIND_HERALD  # v0.11.2 (as MissionBook.warning())
 	m.stretch = 1.0
-	m.brief = PackedStringArray(["Three stars fall through the night.", "Each sends a runner to wake the bell."])
+	m.brief = PackedStringArray(["One star falls over the town.", "Three watchmen will run to wake the bell."])
 	m.goal = "Stop all three warnings before one reaches the Temple"
 	m.goal_label = "The warnings die"
 	m.lose = "A warning reaches the Temple, or dawn comes with a warning alive"
 	m.make_objectives = func() -> Array[Objective]:
 		var out: Array[Objective] = [StarsObjective.new(), HeraldObjective.new(), ClockObjective.new(false, "Dawn", "dawn")]
+		return out
+	# (the Warning rework, W-R6) Unseen stays a bonus here: board() clears every board mission's bonuses, and this one reports as it always did.
+	m.make_bonuses = func() -> Array[Objective]:
+		var out: Array[Objective] = [UnseenObjective.new()]
 		return out
 
 

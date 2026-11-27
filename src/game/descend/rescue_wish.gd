@@ -86,7 +86,7 @@ static func _child_of(p: Person, homes: Array[Person]) -> Person:
 static func _soldier_near(crowd: Crowd, at: Vector2, taken: Array) -> Person:
 	var best: Person = null
 	for s in crowd.soldiers:
-		if MissionDirector._alive(s) and not s.inside and s.corps == Person.Corps.NONE and not taken.has(s) \
+		if MissionDirector._alive(s) and not s.inside and s.corps == Person.Corps.NONE and not taken.has(s) and not Wish.kept_out(crowd, s) \
 				and (best == null or s.ground_pos.distance_to(at) < best.ground_pos.distance_to(at)):
 			best = s
 	return best

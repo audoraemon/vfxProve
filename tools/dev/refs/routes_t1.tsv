@@ -1,8 +1,8 @@
 # KAK second-route references, Tier 1 (v0.11.1 Task 8): loadout B played by tools/dev/routes/tier1_b.gd. name<TAB>how<TAB>expected Re-recorded for v0.11.2 awareness (Task 5).
 # The Warning is the board's (three stars, --board). A row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
-warning_b_play_1	--scenario=warning --case=play --route=b --board --seed=1	-337595944
-warning_b_play_2	--scenario=warning --case=play --route=b --board --seed=2	-649472461
-warning_b_play_3	--scenario=warning --case=play --route=b --board --seed=3	563708420
+warning_b_play_1	--scenario=warning --case=play --route=b --board --seed=1	654508239
+warning_b_play_2	--scenario=warning --case=play --route=b --board --seed=2	-905743650
+warning_b_play_3	--scenario=warning --case=play --route=b --board --seed=3	-347157486
 tax_b_play_1	--scenario=tax --case=play --route=b --seed=1	-687685318
 tax_b_play_2	--scenario=tax --case=play --route=b --seed=2	-754074164
 tax_b_play_3	--scenario=tax --case=play --route=b --seed=3	847853683

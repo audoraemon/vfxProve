@@ -70,13 +70,12 @@ static func _overrides_valid(t) -> void:
 	var shaped := sf.star_falls.size() == 3
 	for s: Array in sf.star_falls:
 		shaped = shaped and s.size() == 3 and s[0] is float and s[1] is Vector2 and s[2] is String
-	t.check(shaped and is_equal_approx(sf.stop_wait, StarfallDirector.STOP_WAIT),
-		"three stars [seconds, post, name]; the wait between stars is Aldermere's %.0f s" % StarfallDirector.STOP_WAIT)
+	t.check(shaped, "three stars [seconds, post, name]")
 	var times := PackedFloat32Array()
 	for s: Array in sf.star_falls:
 		times.append(float(s[0]))
-	t.check(times[0] >= 5.0 and times[1] - times[0] <= 90.0 and times[2] - times[1] <= 90.0 and times[2] < 200.0,
-		"the stars fall in order at %s (no gap over 90 s: each later star also follows the last stop by %.0f s)" % [times, StarfallDirector.STOP_WAIT])
+	t.check(times == PackedFloat32Array([20.0, 40.0, 60.0]),
+		"the watchmen set off in order at %s (Aldermere's times, 0:20, 0:40, 1:00)" % [times])
 
 
 static func _hostable(t) -> void:
@@ -176,17 +175,25 @@ static func _camera_clear(t) -> void:
 	t.check(cam.is_equal_approx(first.lerp(City.by_id(&"capital").landmark(&"bell_tower").get_center(), 0.35)), "the camera rests a third of the way from the first post to the tower")
 
 
-## A set-up director keeps the town's values and its tour names them.
 static func _tour_true(t, town: Dictionary) -> void:
 	var d: StarfallDirector = town.d
 	var stops := d.tour()
-	var want := ["The Harbour Gate. A star falls here at %s." % UiTheme.clock(10.0), "The West River Gate. A star falls here by %s." % UiTheme.clock(90.0),
-		"The West Gate. A star falls here by %s." % UiTheme.clock(180.0)]
-	var ok := stops.size() == 4
+	var want := ["The Harbour Gate's watchman. He sets off for the bellkeeper at %s." % UiTheme.clock(20.0),
+		"The West River Gate's watchman. He sets off for the bellkeeper at %s." % UiTheme.clock(40.0),
+		"The West Gate's watchman. He sets off for the bellkeeper at %s." % UiTheme.clock(60.0)]
+	var ok := stops.size() == 5
 	for i in 3:
 		ok = ok and String(stops[i][1]) == want[i] and (stops[i][0] as Vector2).is_equal_approx(d._walkable(d.star_falls[i][1]))
-	t.check(ok, "the tour names the Capital's three gates and times, then the bellkeeper (%s)" % [stops.map(func(x: Array) -> String: return String(x[1]))])
-	var next := d.tags().filter(func(m: MapTag) -> bool: return m.label == "NEXT STAR - FALLS IN 0:10")
-	t.check(next.size() == 1 and (next[0] as MapTag).at.is_equal_approx(d.star_falls[0][1]) and (next[0] as MapTag).edge,
-		"the first NEXT STAR tag points at the harbour gate")
+	t.check(ok, "the tour names the Capital's three gates and times, then the bellkeeper and the Temple (%s)" % [stops.map(func(x: Array) -> String: return String(x[1]))])
 	t.check(d.stars.size() == 3 and d.star_falls[0][2] == "THE HARBOUR GATE", "setup kept the town's stars")
+	# The first step sets the three watchmen up at their posts, each with his countdown (the Capital's quiet posts are reported, not binding).
+	City.use(&"capital")
+	(town.rules as Rules).advance(0.05)
+	var posted := true
+	for i in 3:
+		var w := d.stars[i]
+		posted = posted and w.rules != null and w.at_post() and w.watchman.ground_pos.distance_to(d._walkable(d.star_falls[i][1])) < 2.0
+	var first := d.tags().filter(func(m: MapTag) -> bool: return m.label == "WATCHMAN - SETS OFF IN 0:20")
+	t.check(posted and first.size() == 1 and (first[0] as MapTag).edge and (first[0] as MapTag).who == d.stars[0].watchman,
+		"the Capital's three watchmen stand at their posts from the first step, the first pointed at with his countdown")
+	City.use(&"aldermere")

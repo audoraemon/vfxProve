@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_advance(t)
 	_modes(t)
 	_layout(t)
+	_warning_lines(t)
 	Hud.reset_session()
 	UiScale.clear_test_area()
 
@@ -398,3 +399,14 @@ static func _layout(t) -> void:
 		t.check(checked == defs.size() * 2 and bad.is_empty(), "%dx%d: the task line meets no plate (%d checked; %s)" % [area.x, area.y, checked, "; ".join(bad)])
 		UiScale.clear_test_area()
 	Hud.reset_session()
+
+
+## The board Warning's two watchmen steps name the verbs that work on him and no power, in 32 characters (the plate's width).
+static func _warning_lines(t) -> void:
+	var seen := {}
+	for step: Dictionary in MissionSteps.steps("warning"):
+		for ph: String in step.get("ph", []):
+			seen[ph] = String(step["t"])
+	t.check(seen.get("posts", "") == "Kill, banish or confuse (gold)" and seen.get("broken", "") == "Kill, banish or confuse (gold)", "warning posts and broken: Kill, banish or confuse (%s)" % seen.get("posts", ""))
+	t.check(seen.get("running", "") == "Kill, banish or lead him (gold)", "warning running: Kill, banish or lead him (%s)" % seen.get("running", ""))
+	t.check(String(seen.get("posts", "")).length() <= MissionSteps.MAX_LABEL and String(seen.get("running", "")).length() <= MissionSteps.MAX_LABEL, "both fit the plate")

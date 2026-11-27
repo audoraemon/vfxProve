@@ -163,8 +163,9 @@ static func _starfall(t) -> void:
 	var own := lw.threats()
 	t.check(own.size() == 1 and String(own[0].id).begins_with("herald_keeper_") and float(own[0].eta) < INF and d.threats().is_empty(),
 		"the keeper rang with no warning: the Lantern's own Herald is a threat (%s)" % [own])
-	d._clock = 7.95
-	H._run(s, WarningDirector.OMEN_AT + WarningDirector.STARE + 2.5)
+	H._run(s, 2.0)
+	d.stars[0].set_off()  # (the Postern's watchman, held at his post until his time)
+	H._run(s, 2.5)
 	var th := _find(d.threats(), &"herald_0")
 	t.check(not th.is_empty() and absf(float(th.eta) - d.stars[0].herald_eta()) < 0.001, "the postern's Herald is herald_0, at its herald_eta() (%s)" % [th])
 	var soon := (s.rules as Rules).threat()

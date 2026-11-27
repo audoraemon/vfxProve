@@ -176,6 +176,9 @@ var sweep: SweepDuty
 var gate_check: GateCheck
 ## The shelter escort (soldier duties, slice f): two soldiers lead a household waiting at home to a shelter with room.
 var shelter_escort: ShelterEscort
+## Places the wishes may not pick a person from (the Warning rework, spec 4: the quiet posts' rings): each Vector3(x, y, radius). Empty everywhere
+## but the board Warning, whose director names them (MissionDirector.wish_keepout()) before the wishes are heard.
+var wish_keepout: Array[Vector3] = []
 ## Each `func(p: Person) -> bool`: true when a director holds `p` (reserved, busy), so no job may take him.
 var mission_holds: Array[Callable] = []
 ## Each `func() -> Array[Vector2]`: places a mission wants kept open (used from the piles).
@@ -1000,7 +1003,7 @@ func _walk_list(list: Array, reach: float, beats: bool) -> void:
 			continue
 		var p: Person = e[0]
 		if not p.is_alive() or (_rallied and not beats) or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST \
-				or guard_jobs.on_job(p) or (beats and (not p.on_beat() or held_by_mission(p))):
+				or guard_jobs.on_job(p) or p.post_held or (beats and (not p.on_beat() or held_by_mission(p))):  # (a wall loop never walks on a man the board Warning holds at a post)
 			if beats:
 				e[4] = -1.0
 				e[5] = _clock

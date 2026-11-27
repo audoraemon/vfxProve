@@ -1,14 +1,22 @@
 extends RefCounted
-## v0.11 M1 the board's Warning (spec §7.2): three stars over three gates at 0:10, 1:30 and 3:00, each a WarningDirector set
-## up 2 s before its star, so its watchman is appointed at its gate then; all three stopped wins, a bell rung loses; the
-## stars' tags, phases and tour. The campaign's Warning keeps one star over the Main Gate.
+## The board's Warning (v0.11 M1, reworked: spec 2, 6): three watchmen at three posts from 0:00 (each a WarningDirector set up on the first step),
+## one star over the town at OMEN_AT, each watchman sets off at 0:20, 0:40 and 1:00 (mission seconds); all three stopped wins, a Herald in loses; the
+## watchmen's tags, phases and tour. The campaign's Warning keeps one star over the Main Gate.
 
 const DT := 0.05
+const Kit := preload("res://tests/test_tier2_groundwork.gd")
 
 
 static func run(t) -> void:
 	_stars(t)
-	_chain(t)
+	_omen_once(t)
+	_set_offs(t)
+	_rate(t)
+	_phases(t)
+	_main_gate_runs(t)
+	_broken_mid_climb(t)
+	_broken_banner_once(t)
+	_bell_why_all(t)
 	_bell(t)
 	_forced(t)
 	_runners(t)
@@ -30,8 +38,7 @@ static func run(t) -> void:
 	_key_only_his(t)
 	_lie_calls_off(t)
 	_lie_tolled_stays(t)
-	_next_countdown(t)
-	_gate_guards(t)
+	_dreamt_report(t)
 	_key_other_goal(t)
 	_lie_calls_off_waiting(t)
 	_gate_body_far(t)
@@ -95,106 +102,292 @@ static func _stars(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
 	var rules: Rules = s.rules
-	t.check(d.stars.size() == 3 and d.stars[0].rules == null and d.stopped() == 0 and d.hint_phase() == "stars",
-		"three stars, none set up before its time; the board's own line (god T1R)")
-	var next := _labelled(d, "NEXT STAR - FALLS IN 0:10")
-	t.check(next.size() == 1 and next[0].at == StarfallDirector.STARS[0][1] and next[0].edge, "the first star's gate is pointed at")
+	t.check(d.stars.size() == 3 and d.stars[0].rules == null and d.stopped() == 0 and d.hint_phase() == "posts",
+		"three warnings, none set up before the first step; the board never says nothing")
 	var stops := d.tour()
-	t.check(stops.size() == 4 and String(stops[0][1]) == "The Postern. A star falls here at 0:10."
-		and String(stops[1][1]) == "The Main Gate. A star falls here by 1:30."
-		and String(stops[2][1]) == "The Side Gate. A star falls here by 3:00.",
-		"the tour: the three gates -- the later stars 'by' their time, as they may fall sooner (v0.11 M2) -- then the bellkeeper")
-	t.check(String(stops[3][1]) == "The bellkeeper. Warned, he rings the bell: the Lantern turns, and he runs for the Temple.",
-		"v0.11.2: the bellkeeper's stop says what the toll does now (%s)" % [stops[3][1]])
+	t.check(stops.size() == 5 and String(stops[0][1]) == "The Postern's watchman. He sets off for the bellkeeper at 0:20."
+		and String(stops[1][1]) == "The Main Gate's watchman. He sets off for the bellkeeper at 0:40."
+		and String(stops[2][1]) == "The Side Gate's watchman. He sets off for the bellkeeper at 1:00.",
+		"the tour: the three posts with their set-off times (%s)" % [stops.map(func(x: Array) -> String: return x[1])])
+	t.check(String(stops[3][1]) == "The bellkeeper. Warned, he rings the bell: the Lantern turns, and he runs for the Temple."
+		and String(stops[4][1]) == "The Temple. A warning that reaches it loses the night.", "then the bellkeeper and the Temple's door")
 	t.check(rules.objectives[0].hud_text(rules) == "Warnings stopped 0 / 3", "the HUD counts them")
-	d._clock = 7.95
-	_run(s, 0.1)
-	var first := d.stars[0]
-	t.check(first.rules != null and d.stars[1].rules == null and is_instance_valid(first.watchman)
-		and first.watchman.ground_pos.distance_to(StarfallDirector.STARS[0][1]) < 1.5,
-		"at 0:08 the postern's watchman is appointed at his gate")
-	_run(s, 2.2)
-	t.check((s.banners as Array).has("A STAR FALLS OVER THE POSTERN") and first.omen_fallen, "at 0:10 its star falls")
-	first.warning_dead = true
-	first.phase = WarningDirector.Phase.OVER
 	_run(s, DT)
-	t.check(d.stopped() == 1 and not rules.finished and d.hint_phase() == "waiting" and d.running() == null,
-		"one stopped: the night goes on, waiting for the next star")
-	d._clock = 87.95
-	_run(s, 2.3)
-	t.check(d.stars[1].rules != null and (s.banners as Array).has("A STAR FALLS OVER THE MAIN GATE") and d.running() == d.stars[1],
-		"at 1:30 the Main Gate's")
-	d.stars[1].warning_dead = true
-	d._clock = 177.95
-	_run(s, 2.3)
-	t.check((s.banners as Array).has("A STAR FALLS OVER THE SIDE GATE") and d.next_star() == -1, "at 3:00 the Side Gate's, the last")
-	d.stars[2].warning_dead = true
-	_run(s, DT)
-	t.check(rules.finished and rules.won and rules.over_reason == "warning" and d.report().stopped == 3,
-		"all three stopped: won (%s)" % rules.over_reason)
+	var men: Array[Person] = []
+	var at_posts := true
+	for i in 3:
+		var w := d.stars[i]
+		at_posts = at_posts and w.rules != null and is_instance_valid(w.watchman) and w.at_post() \
+			and w.watchman.ground_pos.distance_to(StarfallDirector.STARS[i][1]) < 1.5 and not men.has(w.watchman)
+		men.append(w.watchman)
+	t.check(at_posts, "from the first step all three watchmen are appointed, each at his own post, three different men")
+	t.check(_labelled(d, "WATCHMAN - SETS OFF IN 0:20").size() == 1 and _labelled(d, "WATCHMAN - SETS OFF IN 0:40").size() == 1
+		and _labelled(d, "WATCHMAN - SETS OFF IN 1:00").size() == 1, "the three countdown tags: 0:20, 0:40 and 1:00 (%s)" % [d.tags().map(func(m: MapTag) -> String: return m.label)])
+	var tag := _labelled(d, "WATCHMAN - SETS OFF IN 0:20")[0]
+	t.check(tag.edge and tag.who == d.stars[0].watchman and tag.color == WarningDirector.MARK_MESSENGER, "a gold edge arrow on the watchman himself")
+	_run(s, 3.5)
+	t.check(_labelled(d, "WATCHMAN - SETS OFF IN 0:17").size() == 1 and _labelled(d, "WATCHMAN - SETS OFF IN 0:57").size() == 1, "and they count down (0:17, 0:57)")
+	t.check(_labelled(d, "BELLKEEPER").size() == 1 and _labelled(d, "BELL TOWER").size() == 1 and _labelled(d, "TEMPLE").size() == 1,
+		"the bellkeeper, the bell tower and the Temple's door once each, not once per warning (%s)" % [d.tags().map(func(m: MapTag) -> String: return m.label)])
+	t.check(d.step_seconds() > 16.0 and d.step_seconds() <= 16.5, "step_seconds is the soonest set-off still to come (%.2f)" % d.step_seconds())
+	for i in 3:
+		d.stars[i].warning_dead = true
+		d.stars[i].phase = WarningDirector.Phase.OVER
+		_run(s, DT)
+	t.check(rules.finished and rules.won and rules.over_reason == "warning" and d.report().stopped == 3 and d.step_seconds() == 0.0,
+		"all three stopped: won at that instant, long before any clock (%s)" % rules.over_reason)
 	_done(s)
+	_win_waits_for_the_word(t)
 
-
-## Final review, item 3 (the user's rule: no wait over 60 s): a later star falls at its scheduled time or STOP_WAIT after the
-## previous warning was stopped, whichever is sooner -- its omen still first. A star not yet stopped never brings the next forward.
-static func _chain(t) -> void:
+## Two warnings stopped and the third seen to die: a witness carries the word, so nothing is won until he is stopped too, and then at that instant.
+static func _win_waits_for_the_word(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
-	d._clock = 7.95
-	_run(s, 0.1)
-	var first := d.stars[0]
-	d._clock = 19.9
-	first.warning_dead = true
-	first.phase = WarningDirector.Phase.OVER
-	_run(s, 0.2)  # (stopped at 0:20)
-	d._clock = 46.0
-	_run(s, 0.1)
-	t.check(d.stars[1].rules == null, "star 0 stopped at 0:20: star 1 is not set up at 0:46, its omen's lead (%s) not yet come" % [d.stars[1].rules])
-	_run(s, 2.5)
-	t.check(d.stars[1].rules != null and not d.stars[1].omen_fallen, "its watchman is appointed at 0:48 (the omen first)")
+	var rules: Rules = s.rules
+	var crowd: Crowd = s.crowd
 	_run(s, 2.0)
-	t.check(d.stars[1].omen_fallen and (s.banners as Array).has("A STAR FALLS OVER THE MAIN GATE"),
-		"and its star falls by 0:50, not 1:30")
-	var at: float = d._clock
-	d.stars[1].warning_dead = true
-	d.stars[1].phase = WarningDirector.Phase.OVER
-	_run(s, DT)  # (stopped just after 0:50)
-	d._clock = at + 26.0
-	_run(s, 0.2)
-	t.check(d.stars[2].rules == null, "star 1 stopped at once: star 2 is not set up before its lead")
-	_run(s, 2.5)
-	t.check(d.stars[2].rules != null and not d.stars[2].omen_fallen, "star 2's watchman is appointed 28 s after")
+	for i in 2:
+		d.stars[i].warning_dead = true
+		d.stars[i].phase = WarningDirector.Phase.OVER
+	var last := d.stars[2]
+	var m := last.messenger
+	var witness: Person = null
+	for p in crowd.citizens:
+		if p != m and p != crowd.bell.keeper and p.profile != null and p.profile.role == CitizenProfile.Role.RESIDENT:
+			witness = p
+			break
+	_clear_round(s, m.ground_pos, [m, witness])
+	witness.ground_pos = m.ground_pos + Vector2(1.0, 0.0)
+	(s.field as EnemyField).kill(m, &"doom", m.ground_pos)  # (seen: the witness carries the warning on)
+	_run(s, 0.3)
+	t.check(not last.warning_dead and last.relays == 1 and last.messenger == witness and d.stopped() == 2 and not rules.finished,
+		"two stopped, the third passed on to a witness: the word lives, nothing is won (%d stopped, finished %s)" % [d.stopped(), rules.finished])
 	_run(s, 2.0)
-	t.check(d.stars[2].omen_fallen and d._clock < at + 31.0 and (s.banners as Array).has("A STAR FALLS OVER THE SIDE GATE"),
-		"and its star falls within 30 s of the stop, not at 3:00 (%.1f s after)" % (d._clock - at))
+	t.check(not rules.finished, "and none is won while he still carries it")
+	_clear_round(s, witness.ground_pos, [witness])
+	(s.field as EnemyField).kill(witness, &"doom", witness.ground_pos)  # (unseen)
+	_run(s, 0.3)
+	t.check(last.warning_dead and rules.finished and rules.won and rules.over_reason == "warning", "the witness killed unseen: won at that instant (%s)" % rules.over_reason)
 	_done(s)
 
-	# A star running, not yet stopped, never brings the next forward.
-	var run := _world()
-	var e: StarfallDirector = run.d
-	e._clock = 7.95
-	_run(run, 0.1)
-	e._clock = 60.0
-	_run(run, 0.1)
-	t.check(e.stars[1].rules == null and not e.stars[0].warning_dead, "star 0 still running at 1:00: star 1 waits for its time")
-	e._clock = 87.9
-	_run(run, 0.2)
-	t.check(e.stars[1].rules != null, "and comes at 1:30 as scheduled")
-	_done(run)
 
-	# A stop late in the night does not push the next star past its schedule.
-	var late := _world()
-	var l: StarfallDirector = late.d
-	l._clock = 7.95
-	_run(late, 0.1)
-	l._clock = 79.9
-	l.stars[0].warning_dead = true
-	l.stars[0].phase = WarningDirector.Phase.OVER
-	_run(late, 0.2)
-	l._clock = 87.9
-	_run(late, 0.2)
-	t.check(l.stars[1].rules != null, "stopped at 1:20, star 1 falls at its scheduled 1:30, not 30 s after")
-	_done(late)
+## The one star (W-R13: mission seconds): at OMEN_AT, one pair of banners and no star over each gate, each watchman looks up and keeps his post.
+static func _omen_once(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	_run(s, 0.9)
+	t.check((s.banners as Array).is_empty() and not d.stars[0].omen_fallen, "before OMEN_AT no star has fallen")
+	_run(s, 0.3)
+	var said := s.banners as Array
+	t.check(said.count("A STAR FALLS OVER THE TOWN") == 1 and said.count("STOP THE WARNINGS") == 1 and said.size() == 2,
+		"at OMEN_AT one star: A STAR FALLS OVER THE TOWN, STOP THE WARNINGS (%s)" % [said])
+	var all := true
+	for w in d.stars:
+		all = all and w.omen_fallen and w.phase == WarningDirector.Phase.STARE and w.at_post() and w.watchman.look_up
+	t.check(all, "each watchman looks up at it and keeps his post")
+	_run(s, 5.0)
+	t.check((s.banners as Array).count("A STAR FALLS OVER THE TOWN") == 1 and d.stars[0].at_post() and d.stars[0].watchman.ground_pos.distance_to(d.stars[0].gate_spot) < 1.5,
+		"it falls once, and the stare ending sends nobody")
+	_done(s)
+
+
+## Each watchman sets off at his own time in mission seconds, with the others still holding; a stopped one never sets off.
+static func _set_offs(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	_run(s, DT)
+	t.check(is_equal_approx(d.sets_off_in(0), 19.95) and is_equal_approx(d.sets_off_in(2), 59.95), "sets_off_in reads the schedule (%.2f)" % d.sets_off_in(0))
+	d._clock = 19.9
+	_run(s, 0.2)
+	var w0 := d.stars[0]
+	t.check(w0.phase == WarningDirector.Phase.RUN and d.stars[1].at_post() and d.stars[2].at_post() and d.sets_off_in(0) == INF,
+		"at 0:20 the Postern's watchman sets off, the others hold (%s)" % WarningDirector.Phase.keys()[w0.phase])
+	t.check(d.hint_phase() == "running" and d.step_seconds() > 19.5 and d.step_seconds() <= 20.0, "the soonest set-off is the Main Gate's (%.2f)" % d.step_seconds())
+	t.check(_labelled(d, "MESSENGER").size() == 1 and _labelled(d, "WATCHMAN - SETS OFF IN 0:20").size() == 1
+		and _labelled(d, "WATCHMAN - SETS OFF IN 0:20")[0].who == d.stars[1].watchman, "his tag is MESSENGER now; the next countdown reads 0:20")
+	d.stars[1].warning_dead = true
+	d.stars[1].phase = WarningDirector.Phase.OVER
+	d._clock = 39.9
+	_run(s, 0.2)
+	t.check(d.stars[1].phase == WarningDirector.Phase.OVER and d.sets_off_in(1) == INF, "a watchman stopped before his time never sets off")
+	d._clock = 59.9
+	_run(s, 0.2)
+	t.check(d.stars[2].phase == WarningDirector.Phase.RUN and d.step_seconds() == 0.0, "at 1:00 the Side Gate's sets off: no set-off left, step_seconds 0")
+	_done(s)
+
+
+## The schedule is in mission seconds: at x2 the first watchman sets off at 10 s of play, the star falls at 0.5.
+static func _rate(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	(s.rules as Rules).clock_rate = 2.0
+	_run(s, 0.6)
+	t.check(d.stars[0].omen_fallen, "x2: the star falls at 0.5 s of play")
+	_run(s, 9.0)
+	t.check(d.stars[0].at_post() and d._clock < 20.0, "x2: at 9.6 s he still holds his post (mission clock %.1f)" % d._clock)
+	_run(s, 0.6)
+	t.check(d.stars[0].phase == WarningDirector.Phase.RUN, "x2: and has set off by 10.2 s")
+	_done(s)
+
+
+## hint_phase(): posts while all hold; running once one has set off; relay and bell as the chain goes; broken with the bell broken and only posts left; never "".
+static func _phases(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, LanternWatch.KIND_HERALD)
+	(s.rules as Rules).lantern = lw
+	_run(s, 2.0)
+	t.check(d.hint_phase() == "posts" and d.running() == null, "every live warning at its post: posts")
+	t.check(d.hint_phases() == PackedStringArray(["herald", "bell", "relay", "running", "broken", "posts"]), "the six phases of spec 6.2")
+	(s.env as EnvironmentField).blight((s.crowd as Crowd).bell.tower)
+	_run(s, 0.3)
+	t.check(d.hint_phase() == "broken", "the bell broken and only watchmen at their posts: broken (%s)" % d.hint_phase())
+	d.stars[0].set_off()
+	_run(s, 0.5)
+	t.check(d.hint_phase() == "herald", "a walker to the Temple is a Herald: herald (%s)" % d.hint_phase())
+	_done(s)
+	s = _world()
+	d = s.d
+	var w := _star_running(s, 0)
+	t.check(d.hint_phase() == "running" and d.running() == w, "one has set off: running")
+	w.messenger.ground_pos = (s.crowd as Crowd).bell.keeper.ground_pos + Vector2(0.3, 0.0)
+	_run(s, 0.7)
+	t.check(w.phase == WarningDirector.Phase.DELIVERED and d.hint_phase() == "bell", "the keeper carries it: bell (%s)" % d.hint_phase())
+	_done(s)
+	s = _world()
+	d = s.d
+	w = _star_running(s, 0)
+	w.relays = 1
+	t.check(d.hint_phase() == "relay", "a witness carries it on: relay (%s)" % d.hint_phase())
+	_done(s)
+
+
+## W-R14: the watchmen set off in a world where people walk: no run to the keeper may take a runner out of the walls (W1 would stop the warning the moment
+## he did). T1 saw the Main Gate's run path leave the walls in the kit's world; in the board's own world, stepped, none does (the post stands inside the gate).
+static func _main_gate_runs(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	var crowd: Crowd = s.crowd
+	_run(s, 2.0)
+	var men: Array[Person] = []
+	for w in d.stars:
+		men.append(w.messenger)
+		w.set_off()
+	var left := [false, false, false]
+	var y_top := [-INF, -INF, -INF]
+	var starts: Array[Vector2] = []
+	var far := [0.0, 0.0, 0.0]
+	for m in men:
+		starts.append(m.ground_pos)
+	for step in roundi(25.0 / DT):
+		Person.frame_no = step  # the frames advance as in play (the LOD staggers by them), not by this process's instance ids
+		crowd.advance(DT)
+		crowd.step_people(DT)
+		(s.rules as Rules).advance(DT)
+		for i in 3:
+			var w := d.stars[i]
+			if (w.phase == WarningDirector.Phase.RUN or w.phase == WarningDirector.Phase.DELIVERED) and is_instance_valid(men[i]):
+				left[i] = left[i] or Walls.outside(men[i].ground_pos)
+				y_top[i] = maxf(y_top[i], men[i].ground_pos.y)
+				far[i] = maxf(far[i], men[i].ground_pos.distance_to(starts[i]))
+	Person.frame_no = -1
+	for i in 3:
+		var w := d.stars[i]
+		t.check(far[i] > 2.0 and not left[i] and w.stopped_how != "out", "W-R14: %s's runner really runs (%.1f from his post) and never leaves the walls (his y reached %.1f, the post at %.1f; %s)"
+			% [StarfallDirector.STARS[i][2], far[i], y_top[i], w.gate_spot.y, w.stopped_how])
+	_done(s)
+
+
+## W-R16: the bell breaks while the keeper is mid-climb: the carrier turns to the Temple at BROKEN_PACE and nothing tolls.
+static func _broken_mid_climb(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	var crowd: Crowd = s.crowd
+	var bell := crowd.bell
+	var lw := LanternWatch.new().setup(s.rules, crowd, s.town, null, LanternWatch.KIND_HERALD)
+	(s.rules as Rules).lantern = lw
+	var w := _star_running(s, 0)
+	w.messenger.ground_pos = bell.keeper.ground_pos + Vector2(0.3, 0.0)
+	_run(s, 0.7)
+	var keeper := bell.keeper
+	t.check(w.phase == WarningDirector.Phase.DELIVERED and w.messenger == keeper and not w.bell_broken(), "the keeper carries it, the bell is called and intact")
+	bell.state = BellNetwork.State.CLIMBING
+	bell.progress = 3.0
+	(s.env as EnvironmentField).blight(bell.tower)
+	_run(s, 1.0)
+	t.check(w.bell_broken() and not lw.tolled and bell.state != BellNetwork.State.RUNG, "the tower is blighted mid-climb: the bell is broken, nothing tolls (%s)" % BellNetwork.State.keys()[bell.state])
+	t.check(w.herald_open() and w._descend == 0.0 and is_equal_approx(float(keeper.statuses.get(&"slow", 1.0)), WarningDirector.BROKEN_PACE)
+		and keeper.goal().distance_to(w.lantern_door()) < 1.5, "the keeper turns to the Temple's door at BROKEN_PACE, with no descent")
+	t.check(d.hint_phase() == "herald" and d.herald_open(), "the board names the Herald phase")
+	_done(s)
+
+
+## W-R16: THE BELL IS BROKEN is said once on the board, by the first warning, or by the director when that one is already stopped; never off a Herald night.
+static func _broken_banner_once(t) -> void:
+	var s := _world()
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, LanternWatch.KIND_HERALD)
+	(s.rules as Rules).lantern = lw
+	_run(s, 1.0)
+	(s.env as EnvironmentField).blight((s.crowd as Crowd).bell.tower)
+	_run(s, 1.0)
+	t.check((s.banners as Array).count(WarningDirector.BROKEN_BANNER) == 1, "THE BELL IS BROKEN shows once for three warnings (%d)" % (s.banners as Array).count(WarningDirector.BROKEN_BANNER))
+	_done(s)
+	s = _world()
+	var d: StarfallDirector = s.d
+	lw = LanternWatch.new().setup(s.rules, s.crowd, s.town, null, LanternWatch.KIND_HERALD)
+	(s.rules as Rules).lantern = lw
+	_run(s, 1.0)
+	d.stars[0].warning_dead = true
+	d.stars[0].phase = WarningDirector.Phase.OVER
+	(s.env as EnvironmentField).blight((s.crowd as Crowd).bell.tower)
+	_run(s, 1.0)
+	t.check((s.banners as Array).count(WarningDirector.BROKEN_BANNER) == 1, "the first warning stopped: the director says it, once")
+	_done(s)
+	s = _world()  # (no Lantern on this Rules: no Herald night, no banner)
+	_run(s, 1.0)
+	(s.env as EnvironmentField).blight((s.crowd as Crowd).bell.tower)
+	_run(s, 1.0)
+	t.check(not (s.banners as Array).has(WarningDirector.BROKEN_BANNER), "off a Herald night the broken bell says nothing")
+	_done(s)
+
+
+## Blight on the tower over three warnings (I6): TIME while all hold their posts, SOONER if any live carrier is nearer the door, TOLLED first of all.
+static func _bell_why_all(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	var lw := LanternWatch.new().setup(s.rules, s.crowd, s.town, null, LanternWatch.KIND_HERALD)
+	(s.rules as Rules).lantern = lw
+	_run(s, 1.0)
+	var at := (s.crowd as Crowd).bell.tower.center()
+	t.check(d.why_not("blight", at) == WarningDirector.BELL_TIME, "three watchmen at their posts: IT ONLY BUYS TIME (%s)" % d.why_not("blight", at))
+	var man: Vector2 = d.stars[1].messenger.ground_pos
+	t.check(d.why_not("ember", man) == WarningDirector.BURN_BANNER, "Ember on a watchman at his post: HE RUNS BURNING (%s)" % d.why_not("ember", man))
+	t.check(d.why_not("ember", Vector2(0.0, 0.0)) == "", "an Ember far from every post says nothing")
+	d.stars[0].warning_dead = true
+	d.stars[0].phase = WarningDirector.Phase.OVER
+	Kit.arrive(d.stars[2].messenger, d.stars[2].lantern_door() + Vector2(0.0, 1.0))
+	t.check(d.why_not("blight", at) == WarningDirector.BELL_SOONER, "the first one stopped, another carrier near the door: HE RUNS SOONER (%s)" % d.why_not("blight", at))
+	# SOONER wins over TIME whichever star says which: the near-door carrier moves to the middle star, the last now says TIME after him.
+	Kit.arrive(d.stars[2].messenger, d.stars[2].gate_spot)
+	Kit.arrive(d.stars[1].messenger, d.stars[1].lantern_door() + Vector2(0.0, 1.0))
+	t.check(d.stars[1].bell_why("blight", at) == WarningDirector.BELL_SOONER and d.stars[2].bell_why("blight", at) == WarningDirector.BELL_TIME
+		and d.why_not("blight", at) == WarningDirector.BELL_SOONER, "SOONER from an earlier star beats a later star's TIME (%s)" % d.why_not("blight", at))
+	lw.tolled = true
+	t.check(d.why_not("blight", at) == WarningDirector.BELL_TOLLED, "tolled: THE BELL HAS TOLLED ALREADY first")
+	_done(s)
+
+
+## The report counts a watchman who dreamt it.
+static func _dreamt_report(t) -> void:
+	var s := _world()
+	var d: StarfallDirector = s.d
+	_run(s, 2.0)
+	var w := d.stars[0]
+	w.watchman.confuse(5.0)
+	_run(s, 0.2)
+	t.check(w.warning_dead and w.stopped_how == "dreamt" and d.report().dreamt == 1 and d.report().stopped == 1 and d.stars[1].at_post(),
+		"a Discord on the Postern's watchman at his post: dreamt, counted, the others hold (%s)" % w.stopped_how)
+	_done(s)
 
 
 ## v0.11.2: the toll no longer loses the night (it turned the Lantern); a Herald who reaches the Temple does (tests/test_herald_nights.gd).
@@ -215,16 +408,14 @@ static func _bell(t) -> void:
 static func _forced(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
-	# A star already stopped is never set up.
+	# A warning already stopped is never set up.
 	d.stars[1].warning_dead = true
 	d.stars[2].warning_dead = true
-	d._clock = 200.0
 	_run(s, DT)
-	t.check(d.stars[1].rules == null and d.stars[2].rules == null, "a star already stopped is never set up")
-	# A star set up has its watchman on errand and the bell held for him; teardown lets the bell go.
+	t.check(d.stars[1].rules == null and d.stars[2].rules == null and d.stars[0].rules != null, "a star already stopped is never set up")
+	# A warning set up has its watchman at his post and the bell held for him; teardown lets the bell go.
 	var s2 := _world()
 	var d2: StarfallDirector = s2.d
-	d2._clock = 7.95
 	_run(s2, 0.1)
 	t.check(d2.stars[0].rules != null and is_instance_valid(d2.stars[0].watchman)
 		and (s2.crowd as Crowd).bell.hold_on_death == true, "a star set up holds the bell for its watchman")
@@ -234,23 +425,14 @@ static func _forced(t) -> void:
 	_done(s)
 
 
-## Earlier stars' runners are reserved (preflight ruling): star 0 still running at 88 s, with its watchman standing at star 1's
-## gate, does not lend him to star 1; and one kill stops only one warning.
 static func _runners(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
-	d._clock = 7.95
 	_run(s, 0.1)
 	var first := d.stars[0]
-	var lent := first.watchman
-	t.check(first.rules != null and is_instance_valid(lent) and not first.warning_dead, "star 0 is set up and running")
-	d._clock = 87.9
-	lent.ground_pos = StarfallDirector.STARS[1][1]
-	_run(s, 0.2)
 	var second := d.stars[1]
-	t.check(second.rules != null and is_instance_valid(second.watchman) and second.watchman != first.watchman
-		and second.watchman != first.messenger, "star 1's watchman is not star 0's watchman or messenger")
-	t.check(first.watchman == lent and first.messenger == lent, "and star 0 still has its own")
+	var third := d.stars[2]
+	t.check(first.watchman != second.watchman and second.watchman != third.watchman and first.watchman != third.watchman, "three watchmen, three different men")
 	var at := second.messenger.ground_pos
 	for group: Array[Person] in [(s.crowd as Crowd).citizens, (s.crowd as Crowd).soldiers]:
 		for p in group:
@@ -258,27 +440,25 @@ static func _runners(t) -> void:
 				p.ground_pos = at + Vector2(Crowd.DOOM_WITNESS + 6.0, 0.0)
 	(s.field as EnemyField).kill(second.messenger, &"doom")
 	_run(s, DT)
-	t.check(second.warning_dead and not first.warning_dead and d.stopped() == 1, "one kill stops only one warning")
+	t.check(second.warning_dead and not first.warning_dead and not third.warning_dead and d.stopped() == 1, "one kill stops only one warning")
 	_done(s)
 
 
-## A runner killed on an earlier star and freed after its fade is simply skipped when the next star is set up (and the log
-## stays clean: no freed body is put in a typed array).
 static func _runners_freed(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
-	d._clock = 7.95
 	_run(s, 0.1)
 	var first := d.stars[0]
 	var gone := first.watchman
 	t.check(first.rules != null and is_instance_valid(gone), "star 0 is set up with a watchman")
 	(s.crowd as Crowd).citizens.erase(gone)
 	gone.free()
-	t.check(not is_instance_valid(first.watchman), "its watchman is freed (a fade ended)")
-	d._clock = 87.9
+	t.check(not is_instance_valid(first.watchman), "his watchman is freed (a fade ended)")
+	_run(s, 0.5)
+	t.check(d.stars[1].at_post() and d.stars[2].at_post() and not first.at_post() and d.tags().size() >= 3 and d.hint_phase() != "", "the others carry on, the tags and phase still read")
+	d._clock = 19.9
 	_run(s, 0.2)
-	var second := d.stars[1]
-	t.check(second.rules != null and is_instance_valid(second.watchman), "star 1 is set up all the same, with a watchman of its own")
+	t.check(not first.warning_dead and d.sets_off_in(0) == INF, "a freed watchman is never sent off (no errors)")
 	_done(s)
 
 
@@ -297,12 +477,11 @@ static func _single(t) -> void:
 
 # --- god T1R, Task 2: out of the walls (W1) and the keeper who heard ALL IS WELL (W2), spec 4.1 ---
 
-## Star `i` set up and its stare over (its watchman runs): the board's clock put just before its omen, then run past the stare.
 static func _star_running(s: Dictionary, i: int) -> WarningDirector:
 	var d: StarfallDirector = s.d
-	d._clock = float(d.star_falls[i][0]) - WarningDirector.OMEN_AT - 0.05
-	_run(s, 0.1)
-	_run(s, WarningDirector.OMEN_AT + WarningDirector.STARE + 0.2)
+	_run(s, StarfallDirector.OMEN_AT + WarningDirector.STARE)
+	d.stars[i].set_off()
+	_run(s, 0.3)
 	return d.stars[i]
 
 
@@ -330,8 +509,7 @@ static func _out_stops(t) -> void:
 	t.check(w.warning_dead and w.stopped_how == "out" and w.phase == WarningDirector.Phase.OVER, "the next step: the warning is dead, stopped 'out' (%s)" % w.stopped_how)
 	t.check((s.banners as Array).has("THE WARNING LEAVES TOWN") and w.is_leaving(p) and p.mind == Person.Mind.DUTY and w.tags().is_empty(),
 		"the banner, and he is leaving the map, on duty for his way off, with no tag")
-	t.check(d.stopped() == 1 and d._stopped_at[0] >= 0.0 and is_equal_approx(d.fall_at(1), d._stopped_at[0] + d.stop_wait),
-		"star 1 falls stop_wait after the stop, as after a kill (%.1f)" % d.fall_at(1))
+	t.check(d.stopped() == 1 and d.sets_off_in(0) == INF and d.sets_off_in(1) < INF, "one stopped: the next watchman still sets off at his own time")
 	t.check(p in d._reserved_for(d.stars[1]), "and the next star's watchman is never him: a leaver is reserved")
 	# He is walked off after the warning is over (the warning steps its leaver before its OVER return), and counts no escape.
 	var escaped := crowd.escaped_count
@@ -345,15 +523,13 @@ static func _out_stops(t) -> void:
 static func _out_staring(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
-	d._clock = 7.95
-	_run(s, 0.1)
 	_run(s, 3.0)
 	var w := d.stars[0]
 	t.check(w.omen_fallen and w.phase == WarningDirector.Phase.STARE, "star 0 has fallen and its watchman stares")
 	var p := w.watchman
 	t.check(p.fold(Vector2(-5.75, 18.0)) and Walls.outside(p.ground_pos), "the postern's watchman is set down outside")
 	_run(s, DT * 2.0)
-	t.check(w.warning_dead and w.stopped_how == "out" and w.omen_fallen and (s.banners as Array).has("A STAR FALLS OVER THE POSTERN"),
+	t.check(w.warning_dead and w.stopped_how == "out" and w.omen_fallen and (s.banners as Array).has("A STAR FALLS OVER THE TOWN"),
 		"stopped in his stare, the star having fallen")
 	t.check(w.phase == WarningDirector.Phase.OVER and w.is_leaving(p), "and he never runs for the keeper: he walks off the map")
 	_done(s)
@@ -465,7 +641,7 @@ static func _lie_tag(t) -> void:
 	var w := _star_running(s, 0)
 	t.check(_labelled(w, "BELLKEEPER").size() == 1, "before the lie: BELLKEEPER")
 	crowd.bell_lies(45.0)
-	_run(s, 1.0)
+	_run(s, 1.1)
 	var tags := _labelled(w, "BELLKEEPER - ALL IS WELL 0:44")
 	t.check(tags.size() == 1 and tags[0].at == crowd.bell.keeper.ground_pos, "while it lies: BELLKEEPER - ALL IS WELL 0:44 (%s)" % [w.tags().map(func(m: MapTag) -> String: return m.label)])
 	_run(s, 10.0)
@@ -475,27 +651,25 @@ static func _lie_tag(t) -> void:
 	_done(s)
 
 
-## The board sets both flags on every warning; a lone WarningDirector (the campaign's) keeps them off; the report has the counts.
 static func _flags_and_report(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
 	var on := true
 	for w in d.stars:
-		on = on and w.walls_stop and w.lie_stops and w.stopped_how == ""
-	t.check(on, "each star's warning has both rules on before it is set up")
-	t.check(d.report().out == 0 and d.report().lies == 0 and d.report().has("stopped") and d.report().has("relays"), "the report has out and lies, beside stopped and relays")
+		on = on and w.walls_stop and w.lie_stops and w.gate_keeps and w.holds_post and w.quiet_omen and w.dreams_stop and w.lead_key and w.bell_breaks 			and w.rework_reach and w.stopped_how == ""
+	t.check(on, "each warning has every rework flag on before it is set up")
+	t.check(not d.stars[0].broken_said and d.stars[1].broken_said and d.stars[2].broken_said, "THE BELL IS BROKEN is said by one of three")
+	t.check(d.report().out == 0 and d.report().lies == 0 and d.report().dreamt == 0 and d.report().has("stopped") and d.report().has("relays"),
+		"the report has out, lies and dreamt, beside stopped and relays")
 	var lone := WarningDirector.new()
-	t.check(not lone.walls_stop and not lone.lie_stops and lone.stopped_how == "", "a lone WarningDirector has both rules off")
+	t.check(not lone.walls_stop and not lone.lie_stops and not lone.holds_post and not lone.quiet_omen and not lone.dreams_stop and not lone.lead_key and not lone.bell_breaks
+		and not lone.rework_reach and lone.stopped_how == "", "a lone WarningDirector has every rule off")
 	_done(s)
 
 
-## Star `i` set up, its star fallen, and its watchman a second into his stare (W3's window).
 static func _star_staring(s: Dictionary, i: int) -> WarningDirector:
-	var d: StarfallDirector = s.d
-	d._clock = float(d.star_falls[i][0]) - WarningDirector.OMEN_AT - 0.05
-	_run(s, 0.1)
-	_run(s, WarningDirector.OMEN_AT + 1.0)
-	return d.stars[i]
+	_run(s, StarfallDirector.OMEN_AT + 1.0)
+	return (s.d as StarfallDirector).stars[i]
 
 
 ## One of the town's soldiers, out of doors, moved to stand (and keep his post) at `at`, for a test to strike down.
@@ -524,8 +698,8 @@ static func _gate_body(t) -> void:
 		"he goes out to the body, on duty (%s)" % Person.Mind.keys()[m.mind])
 	t.check(Walls.outside(m.goal()), "his walk ends past the walls' margin (%s)" % m.goal())
 	_run(s, WarningDirector.STARE)
-	t.check(w.phase == WarningDirector.Phase.RUN and m.mind == Person.Mind.DUTY and m.goal() == w._drawn_to and not w.warning_dead,
-		"his stare runs out on the way: he goes on out, not to the keeper")
+	t.check(w.phase == WarningDirector.Phase.STARE and m.mind == Person.Mind.DUTY and m.goal() == w._drawn_to and not w.warning_dead,
+		"the stare's time runs out on the way: he goes on out, not to the keeper, and holds no post")
 	m.ground_pos = m.goal()  # (the test's people do not walk: he is set down where his walk ends)
 	_run(s, DT * 2.0)
 	t.check(w.warning_dead and w.stopped_how == "out" and w.is_leaving(m) and (s.banners as Array).has("THE WARNING LEAVES TOWN"),
@@ -542,7 +716,8 @@ static func _gate_body_not(t) -> void:
 	(s.field as EnemyField).kill(g, &"lightning", g.ground_pos)
 	t.check(w._drawn_to == Vector2.INF and m.mind != Person.Mind.DUTY and w.phase == WarningDirector.Phase.STARE,
 		"a man killed inside the walls: he stares on (%s)" % Person.Mind.keys()[m.mind])
-	_run(s, WarningDirector.STARE)
+	w.set_off()
+	_run(s, 0.3)
 	t.check(w.phase == WarningDirector.Phase.RUN and m.mind == Person.Mind.DUTY, "he runs for the keeper")
 	var g2 := _guard_at(s, Vector2(2.7, 17.2))
 	(s.field as EnemyField).kill(g2, &"lightning", g2.ground_pos)
@@ -585,7 +760,6 @@ static func _key_fright(t) -> void:
 static func _key_only_his(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
-	d._clock = 7.95
 	_run(s, 0.1)
 	var w := d.stars[0]
 	t.check(w.phase == WarningDirector.Phase.OMEN and w.key_door() != Vector2.INF, "set up, the star not yet fallen")
@@ -655,59 +829,6 @@ static func _lie_tolled_stays(t) -> void:
 	_done(s)
 
 
-## D29 (1): the NEXT STAR tag counts down to the fall in mission seconds -- from the schedule, and stop_wait after a stop.
-static func _next_countdown(t) -> void:
-	var s := _world()
-	var d: StarfallDirector = s.d
-	t.check(_labelled(d, "NEXT STAR - FALLS IN 0:10").size() == 1 and is_equal_approx(d.next_fall_in(), 10.0), "at dusk: NEXT STAR - FALLS IN 0:10")
-	_run(s, 3.5)
-	t.check(_labelled(d, "NEXT STAR - FALLS IN 0:07").size() == 1, "it counts down (0:07 at 0:03.5)")
-	var w := _star_running(s, 0)
-	t.check(d.next_star() == 1 and d.next_fall_in() < 90.0, "star 1 by its schedule while star 0 runs")
-	t.check(w.messenger.fold(Vector2(-5.75, 18.0)), "star 0's runner set down outside")
-	_run(s, DT * 2.0)
-	t.check(w.warning_dead and _labelled(d, "NEXT STAR - FALLS IN 0:30").size() == 1, "stopped: the next star's tag reads stop_wait, 0:30 (%s)"
-		% [d.tags().map(func(m: MapTag) -> String: return m.label)])
-	_done(s)
-
-
-## The policy file whose Ruin and Death routes stand on the gate guards (D29 (3)).
-const WARNING_POLICY := preload("res://tools/dev/routes/god_t1/warning.gd")
-
-
-## The board Warning's gates with no guard posted outside the walls for W3: none the gate mark can pick (a post past the ring by POST_SPREAD, within
-## GATE_SIGHT less a little of the watchman's post), or none clear of the watchman for Ruin's Smite. The names of the gates that lack one.
-static func _missing_gate_guards(s: Dictionary) -> PackedStringArray:
-	var d: StarfallDirector = s.d
-	var crowd: Crowd = s.crowd
-	var out := PackedStringArray()
-	for star: Array in d.star_falls:
-		var post: Vector2 = d._walkable(star[1])
-		var marked: Person = WARNING_POLICY.outside_guard(crowd, post)
-		var struck: Person = WARNING_POLICY.outside_guard(crowd, post, post, SmiteFx.KILL_R + Person.THREAT_MARGIN + WARNING_POLICY.SMITE_CLEAR)
-		if marked == null or struck == null or marked.ground_pos.distance_to(post) > WarningDirector.GATE_SIGHT:
-			out.append(String(star[2]))
-	return out
-
-
-## D29 (3), as D25 pins the Lamb's pocket: in Aldermere every star's gate has a guard posted outside the walls within W3's reach of its post. Ruin's and
-## Death's Warning policies win by striking or marking him; an art or layout round that moves the gate guards shows up here, not as a gate mystery.
-## The pin bites: with the Main Gate's outer guards moved inside, it names that gate.
-static func _gate_guards(t) -> void:
-	var s := _world()
-	var missing := _missing_gate_guards(s)
-	t.check(missing.is_empty(), ("W3 (D28/D29): no guard posted outside the walls within GATE_SIGHT of %s -- tools/dev/routes/god_t1/warning.gd's Ruin (Smite the man outside the "
-		+ "gate) and Death (the gate mark) Warning policies stand on one at each of the three gates") % ", ".join(missing))
-	var crowd: Crowd = s.crowd
-	var post: Vector2 = (s.d as StarfallDirector)._walkable(StarfallDirector.STARS[1][1])
-	for p in crowd.soldiers:
-		if is_instance_valid(p) and p.anchor.distance_to(post) <= WarningDirector.GATE_SIGHT + 1.0 and not City.current().town().has_point(p.anchor):
-			p.anchor = post + Vector2(0.0, -1.0)
-			p.ground_pos = p.anchor
-	t.check(Array(_missing_gate_guards(s)) == ["THE MAIN GATE"], "with the Main Gate's outer guards moved inside, the pin names that gate (%s)" % ", ".join(_missing_gate_guards(s)))
-	_done(s)
-
-
 ## Review M2 (D29): the key turns only for a way W3 or a fright gave him; any other walk beyond the wall goes round as ever.
 static func _key_other_goal(t) -> void:
 	var s := _world()
@@ -747,17 +868,14 @@ static func _gate_body_far(t) -> void:
 	_done(s)
 
 
-## Review M4, D30: while a warning has nothing of its own to say, the board's hint is its own line -- "stars" (W3's stare clause) while he stares,
-## "running" (no stare clause: W3 draws only in the stare) once he runs with no relay.
 static func _hint_running(t) -> void:
 	var s := _world()
 	var d: StarfallDirector = s.d
 	var w := _star_staring(s, 0)
-	t.check(d.running() == w and w.hint_phase() == "" and d.hint_phase() == "stars", "staring: the board's line (%s)" % d.hint_phase())
-	_run(s, WarningDirector.STARE)
-	t.check(w.phase == WarningDirector.Phase.RUN and w.relays == 0 and d.hint_phase() == "running", "running, no relay: the running line (%s)" % d.hint_phase())
-	t.check(not MissionHints.line("warning", "running").contains("stares") and MissionHints.line("warning", "stars").contains("stares"),
-		"the running line offers no stare clause; the stare's does")
+	t.check(d.running() == null and w.hint_phase() == "" and d.hint_phase() == "posts", "staring at the post: the posts' line (%s)" % d.hint_phase())
+	w.set_off()
+	_run(s, 0.3)
+	t.check(w.phase == WarningDirector.Phase.RUN and w.relays == 0 and d.hint_phase() == "running", "set off, no relay: the running line (%s)" % d.hint_phase())
 	_done(s)
 
 

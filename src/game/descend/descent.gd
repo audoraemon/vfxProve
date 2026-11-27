@@ -66,6 +66,8 @@ func reserve(rules: Rules, director: MissionDirector) -> void:
 	_crowd = rules.crowd()
 	if not _heard:
 		_heard = true
+		if director != null:
+			rules.crowd().wish_keepout = director.wish_keepout()
 		hear(rules.crowd(), rules.town(), rules.loadout)
 	if director != null:
 		for w in wishes:

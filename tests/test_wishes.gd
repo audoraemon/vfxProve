@@ -291,7 +291,6 @@ static func _reserved(t) -> void:
 	var starfall: StarfallDirector = s.d
 	var wisher: Person = d.wishes[0].wisher
 	wisher.ground_pos = StarfallDirector.STARS[0][1]
-	starfall._clock = StarfallDirector.STARS[0][0] - WarningDirector.OMEN_AT - 0.05
 	_run_rules(s.rules)
 	var watchman: Person = starfall.stars[0].watchman
 	t.check(starfall.stars[0].rules != null and watchman != null and not folk.has(watchman) and watchman != wisher,

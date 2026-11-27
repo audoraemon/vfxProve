@@ -108,6 +108,20 @@ func in_rect(r: Rect2) -> Array[DummyEnemy]:
 	return out
 
 
+## The living standing in any of `rects` (edges included), in one pass over the field and in its own order: the few patches around a mission's posts.
+func in_rects(rects: Array[Rect2]) -> Array[DummyEnemy]:
+	var out: Array[DummyEnemy] = []
+	for e in _enemies:
+		if not is_instance_valid(e) or not e.is_alive():
+			continue
+		var g := e.ground_pos
+		for r in rects:
+			if g.x >= r.position.x and g.x <= r.end.x and g.y >= r.position.y and g.y <= r.end.y:
+				out.append(e)
+				break
+	return out
+
+
 func in_lane(origin: Vector2, dir: Vector2, half_width: float, along_min: float, along_max: float) -> Array[DummyEnemy]:
 	var out: Array[DummyEnemy] = []
 	var side := dir.orthogonal()

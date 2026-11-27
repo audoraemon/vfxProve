@@ -46,6 +46,25 @@ const MARK_WATCHED := Color("c8342a")
 const GATE_SIGHT := 4.0
 const KEY_REACH := 1.5
 const KEY_STEP := 1.2
+## K2 (the Warning rework, spec 3.1; first guess): how near the postern's centre a whispered watchman of that gate must stand for his key to take
+## him out, when his whisper leads beyond the wall -- farther than KEY_REACH, so he is first walked to the postern's inner face.
+const KEY_WALK := 4.0
+## K2 (W-R15): how many times a failed fold (no open ground beyond the postern) is tried again before the whispered watchman is let go to his whisper's goal.
+const KEY_RETRIES := 1
+## Said when the watchman, confused at his post, decides he dreamt the star (`dreams_stop`).
+## (the Warning rework, T2, W-R3) The share of a walker's pace kept on the farther, slower way to the Temple when the bell is broken (first guess; the
+## gain test pins BROKEN_GAIN from every post, lower it in 0.05 steps if a post fails).
+const BROKEN_PACE := 0.25
+## Real seconds the broken way must cost over the intact bell, at every post (first guess; the test only).
+const BROKEN_GAIN := 10.0
+const BROKEN_BANNER := "THE BELL IS BROKEN"
+const BELL_TOLLED := "THE BELL HAS TOLLED ALREADY"
+const BELL_SOONER := "BROKEN BELL: HE RUNS SOONER"
+const BELL_TIME := "BROKEN BELL: IT ONLY BUYS TIME"
+const BURN_BANNER := "HE RUNS BURNING: WHOEVER SEES HIM DIE CARRIES IT"
+## The keeper's walk from where the warning reaches him to the tower's foot, in the intact chain's estimate (spec 5, the gain test).
+const FOOT_WALK := 2.0
+const DREAMT_BANNER := "THE WATCHMAN THINKS HE DREAMT IT"
 
 ## (god T1R, spec 4.1; both default off, so the campaign's Warning, the Omen and The Bell-Ringers play as ever -- StarfallDirector sets them.)
 ## W1 Out of the walls: the carrier, in any phase, who stands outside Walls (however he got there) stops the warning for the night; he
@@ -57,6 +76,20 @@ var lie_stops := false
 ## killed just outside his gate (out of the walls, within GATE_SIGHT of his post) draws him out to the body; and the watchman of a barred
 ## postern holds its key: whatever takes him beyond it (a fright, that body) takes him out through it. Either way W1 then stops the warning.
 var gate_keeps := false
+## (The Warning rework, spec 3, 3.1, 7; every one defaults off, so the campaign's Warning, the Omen and The Bell-Ringers play as ever -- StarfallDirector
+## sets them.) `holds_post`: the watchman stays at his post, phase OMEN then STARE, until set_off() starts the run. `quiet_omen`: _omen() plays no star and
+## no banners (the director plays the one star). `dreams_stop`: a Discord on the watchman at his post is a stop ("dreamt"). `lead_key` (K2, needs
+## gate_keeps): a whisper that leads the postern's watchman beyond the wall is let out through its key.
+var holds_post := false
+var quiet_omen := false
+var dreams_stop := false
+var lead_key := false
+## The rework's why_not reach (the lead, the seal): only StarfallDirector sets it (`walls_stop` is set elsewhere, e.g. by Silence the Witness, which must read as ever).
+var rework_reach := false
+## (the Warning rework, T2, W-R3) A blighted or fallen bell tower breaks the bell at once: every warning's errand is the Temple's door at BROKEN_PACE.
+var bell_breaks := false
+## THE BELL IS BROKEN has been shown (one night, one banner: StarfallDirector sets it on all but one of its warnings).
+var broken_said := false
 ## How the warning was stopped, once it is: "kill" (an unseen kill), "out" (W1) or "lie" (W2); "" while it lives.
 var stopped_how := ""
 
@@ -87,6 +120,11 @@ var _fell_at := Vector2.INF
 ## W3: where the body lies that the watchman goes out to (INF for none), and the barred postern whose key he holds (null for none).
 var _drawn_to := Vector2.INF
 var _key_gate: Structure = null
+## K2: the whisper's goal the postern's watchman is being walked through the key for (INF for none): latched, as `_drawn_to` is, because walking him to
+## the inner face replaces his goal.
+var _led_to := Vector2.INF
+## K2: how many folds through the postern found no ground (see KEY_RETRIES).
+var _led_fails := 0
 ## The town's own bellkeeper, for the rope to go back to when a called bell is called off by the lie (D27; a Variant: he may be freed).
 var _town_keeper: Variant = null
 
@@ -130,7 +168,7 @@ func _appoint_watchman() -> Person:
 	best._path = PackedVector2Array()
 	best._target = gate_spot
 	best.last_place = RoutineManager.Place.WORK
-	best.stay_left = 60.0
+	best.stay_left = NightRules.HOLD_STAY if holds_post else 60.0
 	return best
 
 
@@ -140,6 +178,11 @@ func step(delta: float) -> void:
 	if phase == Phase.OVER:
 		return
 	_clock += delta
+	if dreams_stop and at_post() and watchman.mind == Person.Mind.CONFUSED:
+		_dreamt()
+		return
+	if at_post():
+		watchman.stay_left = NightRules.HOLD_STAY  # kept at his post (RoutineManager would walk him off at 0)
 	# Judged once the crowd has judged its own doomed (Crowd._settle_doom()), so a cast's victims never witness each
 	# other and a witness the doom frightened is already frightened when the relay overrides it.
 	if _fell_at != Vector2.INF and crowd._doomed.is_empty():
@@ -148,6 +191,9 @@ func step(delta: float) -> void:
 			return
 	if not omen_fallen and _clock >= OMEN_AT:
 		_omen()
+	if bell_breaks and not broken_said and herald_night() and bell_broken():
+		broken_said = true
+		rules.banner.emit(BROKEN_BANNER)
 	if gate_keeps:
 		_use_key()
 	if walls_stop and _out_of_walls():
@@ -159,17 +205,45 @@ func step(delta: float) -> void:
 		_herald_tick(delta)
 	match phase:
 		Phase.STARE:
-			if _clock >= OMEN_AT + STARE:
-				phase = Phase.RUN
-				_retarget_in = RETARGET
-				if _alive(messenger):
-					_sound(&"msn_bolt", messenger.ground_pos)
-				_run()
+			if _clock >= OMEN_AT + STARE and not holds_post:
+				_start_run()
 		Phase.RUN:
 			_tick_run(delta)
 		Phase.DELIVERED:
 			if herald:
 				_tick_run(delta)  # the keeper who rang runs on as the Herald (v0.11.2)
+
+
+## The stare is over: the watchman runs.
+func _start_run() -> void:
+	phase = Phase.RUN
+	_retarget_in = RETARGET
+	if _alive(messenger):
+		_sound(&"msn_bolt", messenger.ground_pos)
+	_run()
+
+
+## The watchman, holding his post (`holds_post`), is sent: the run starts as the stare's end starts it. Nothing unless he holds his post and lives.
+func set_off() -> void:
+	if not at_post():
+		return
+	_led_to = Vector2.INF
+	watchman.stay_left = 0.0  # his post is no longer held
+	_start_run()
+
+
+## The watchman still holds his post: `holds_post`, alive, not stopped, before his set-off (phase OMEN or STARE). Only reads.
+func at_post() -> bool:
+	return holds_post and not warning_dead and (phase == Phase.OMEN or phase == Phase.STARE) and _alive(watchman) and messenger == watchman
+
+
+## Confused at his post: he decides he dreamt it (`dreams_stop`). The warning stops for good; his day resumes once the confusion wears off.
+func _dreamt() -> void:
+	var gone := watchman
+	_end("dreamt")
+	gone.stay_left = 0.0
+	crowd.off_duty(gone)  # (a confused man is not on duty: this is a no-op, his day resumes through Person._come_to())
+	rules.banner.emit(DREAMT_BANNER)
 
 
 func _tick_run(delta: float) -> void:
@@ -183,11 +257,12 @@ func _omen() -> void:
 	omen_fallen = true
 	if phase == Phase.OMEN:
 		phase = Phase.STARE
-	if ctx != null:
-		FxTimeline.cast(FallingStarFx, ctx, gate_spot + Vector2(0.0, 0.8))
-	rules.banner.emit("A STAR FALLS OVER %s" % post_name)
-	rules.banner.emit("STOP THE WARNING")
-	if phase == Phase.STARE and _alive(watchman):
+	if not quiet_omen:
+		if ctx != null:
+			FxTimeline.cast(FallingStarFx, ctx, gate_spot + Vector2(0.0, 0.8))
+		rules.banner.emit("A STAR FALLS OVER %s" % post_name)
+		rules.banner.emit("STOP THE WARNING")
+	if phase == Phase.STARE and _alive(watchman) and _drawn_to == Vector2.INF:  # (not over the walk W3 gave him out to a body)
 		watchman.observe(gate_spot + Vector2(0.0, 0.8), STARE)
 		watchman.look_up = true  # the star is up in the sky (people art phase 2)
 
@@ -258,7 +333,27 @@ func _run(relay := false) -> void:
 func heralding() -> bool:
 	if rules == null or rules.lantern == null or rules.lantern.kind != LanternWatch.KIND_HERALD:
 		return false
-	return rules.lantern.tolled or rules.lantern.bell_silenced
+	return rules.lantern.tolled or rules.lantern.bell_silenced or bell_broken()
+
+
+## The night has a Herald Lantern (the toll and the broken bell send a carrier to the Temple; heralding() reads it first).
+func herald_night() -> bool:
+	return rules != null and rules.lantern != null and rules.lantern.kind == LanternWatch.KIND_HERALD
+
+
+## (the Warning rework, T2, W-R3) The bell is broken: the rule is on, the tower is blighted or fallen, and the bell has not tolled. Only reads.
+func bell_broken() -> bool:
+	if not bell_breaks or crowd == null or crowd.bell == null or rules == null or rules.lantern == null:
+		return false
+	if rules.lantern.tolled:
+		return false
+	var tower := crowd.bell.tower
+	return not is_instance_valid(tower) or tower.blighted or tower.destroyed
+
+
+## The share of his pace a Herald keeps: BROKEN_PACE on the broken bell's way, HERALD_SLOW otherwise (so with bell_breaks off, as ever).
+func carrier_pace() -> float:
+	return BROKEN_PACE if bell_broken() else LanternWatch.HERALD_SLOW
 
 
 ## The Herald runs: not yet stopped, not yet in (spec 4.6). A warning still staring at its star is not a Herald yet.
@@ -270,7 +365,7 @@ func herald_open() -> bool:
 func herald_eta() -> float:
 	if not herald_open() or not _alive(messenger):
 		return INF
-	return (_descend + TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW)) * rules.clock_rate
+	return (_descend + TempleReport.walk_seconds(messenger, lantern_door(), carrier_pace())) * rules.clock_rate
 
 
 ## Loss warning: this warning's Herald while he runs for the Temple (HeraldObjective loses the night when he gets in), as herald_eta().
@@ -337,14 +432,14 @@ func _herald_run(relay: bool) -> void:
 	elif ready:
 		_herald_pace()
 		messenger.go_duty(door)
-	elif is_equal_approx(float(messenger.statuses.get(&"slow", 1.0)), LanternWatch.HERALD_SLOW):
+	elif is_equal_approx(float(messenger.statuses.get(&"slow", 1.0)), carrier_pace()):
 		messenger.statuses.erase(&"slow")  # frightened: he flees at his own pace; the Herald's is written again when he is sent (v0.11.2 review)
 
 
 ## The Herald's pace, written just before he is given the Temple's door (go_duty() reads it): never on a frightened one.
 func _herald_pace() -> void:
-	if float(messenger.statuses.get(&"slow", 1.0)) != LanternWatch.HERALD_SLOW:
-		messenger.statuses[&"slow"] = LanternWatch.HERALD_SLOW
+	if not is_equal_approx(float(messenger.statuses.get(&"slow", 1.0)), carrier_pace()):
+		messenger.statuses[&"slow"] = carrier_pace()
 
 
 ## The label on the Herald's tag (spec 5.2): while he comes down the tower, then the walk, each in mission seconds.
@@ -352,7 +447,9 @@ func herald_label() -> String:
 	var rate := rules.clock_rate if rules != null else 1.0
 	if _descend > 0.0:
 		return "HERALD - COMES DOWN IN %s" % UiTheme.clock(_descend * rate)
-	return "HERALD - AT THE TEMPLE IN %s" % UiTheme.clock(TempleReport.walk_seconds(messenger, lantern_door(), LanternWatch.HERALD_SLOW) * rate)
+	if bell_broken():
+		return "TO THE TEMPLE %s" % UiTheme.clock(TempleReport.walk_seconds(messenger, lantern_door(), carrier_pace()) * rate)
+	return "HERALD - AT THE TEMPLE IN %s" % UiTheme.clock(TempleReport.walk_seconds(messenger, lantern_door(), carrier_pace()) * rate)
 
 
 ## The keeper is told: the bell is called, and the warning is the keeper's to carry now. (A bell already called -- by
@@ -436,7 +533,7 @@ func _on_killed(e: DummyEnemy, kind: StringName) -> void:
 	if e == messenger and phase != Phase.OVER and _fell_at == Vector2.INF:
 		_fell_at = e.ground_pos
 		killed_by = rules.credited_key(kind)
-	elif gate_keeps and phase == Phase.STARE and _fell_at == Vector2.INF and _alive(messenger) and messenger == watchman \
+	elif gate_keeps and (phase == Phase.STARE or (holds_post and phase == Phase.OMEN)) and _fell_at == Vector2.INF and _alive(messenger) and messenger == watchman \
 			and not messenger.inside and not City.current().town().has_point(e.ground_pos) and e.ground_pos.distance_to(gate_spot) <= GATE_SIGHT:
 		_draw_out(e.ground_pos)
 
@@ -472,9 +569,14 @@ static func _beyond_walls(at: Vector2) -> Vector2:
 ## body he goes out to), he unbars it and steps out through it (set down just beyond; it is barred behind him). Only the gate's own watchman, while he carries the
 ## warning; anyone else goes round as ever.
 func _use_key() -> void:
-	if not omen_fallen or key_door() == Vector2.INF or messenger.inside or Walls.outside(messenger.ground_pos):
+	if key_door() == Vector2.INF or messenger.inside or Walls.outside(messenger.ground_pos):
 		return
 	var at := _key_gate.center()
+	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
+	if lead_key and _use_key_led(at, out_dir):
+		return
+	if not omen_fallen:
+		return
 	var bound := messenger.goal()
 	if messenger.ground_pos.distance_to(at) > KEY_REACH or bound == Vector2.INF or City.current().town().has_point(bound):
 		return
@@ -483,10 +585,41 @@ func _use_key() -> void:
 	var frightened := messenger.mind == Person.Mind.PANIC
 	if not frightened and not (_drawn_to != Vector2.INF and bound.distance_to(_drawn_to) <= RETARGET_MOVE):
 		return
-	var out_dir := (at - gate_spot).normalized() if at.distance_to(gate_spot) > 0.01 else Vector2.DOWN
 	if messenger.fold(at + out_dir * KEY_STEP):
 		_sound(&"msn_unbar", at)
 		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
+
+
+## K2 (the Warning rework, spec 3.1): the postern's watchman, WHISPERED to ground beyond the wall, within KEY_WALK of the postern, is walked to its inner
+## face (once: set_goal() keeps the whisper) and set down beyond it as W3's key does. It needs no star fallen. True when K2 holds him this frame (so the
+## W3 rules leave him alone); the walk is latched in `_led_to`, as the whisper's goal is replaced by the walk to the face.
+func _use_key_led(at: Vector2, out_dir: Vector2) -> bool:
+	if messenger.mind != Person.Mind.WHISPERED:
+		_led_to = Vector2.INF
+		_led_fails = 0
+		return false
+	if _led_to == Vector2.INF:
+		if _led_fails > KEY_RETRIES:
+			return false  # (W-R15) the postern found no ground twice: he goes on to his whisper's goal as it was, not held at the wall
+		var bound := messenger.goal()
+		if bound == Vector2.INF or City.current().town().has_point(bound) or messenger.ground_pos.distance_to(at) > KEY_WALK:
+			return false
+		_led_to = bound
+		if messenger.ground_pos.distance_to(at) > KEY_REACH:
+			messenger.set_goal(gate_spot)  # to the inner face first (the post is just inside it)
+	if messenger.ground_pos.distance_to(at) > KEY_REACH:
+		if not messenger.has_goal():
+			messenger.set_goal(gate_spot)
+		return true
+	var to := _led_to
+	_led_to = Vector2.INF
+	if messenger.fold(at + out_dir * KEY_STEP):
+		_sound(&"msn_unbar", at)
+		rules.banner.emit("THE WATCHMAN UNBARS %s" % post_name)
+	else:
+		_led_fails += 1
+	messenger.set_goal(to)  # on to where the whisper led him (kept, too, when the fold found no ground)
+	return true
 
 
 ## W3: the barred postern whose key the carrier holds -- its centre -- while he is this gate's own watchman, alive; Vector2.INF otherwise. Only reads
@@ -573,19 +706,40 @@ func tags() -> Array[MapTag]:
 		return out
 	var bell := crowd.bell
 	var keeper: Person = bell.keeper if bell != null and _alive(bell.keeper) else null
+	var herald := herald_open()
+	out.append_array(carrier_tags())
+	if keeper != null and keeper != messenger and not keeper.inside and not herald:
+		out.append(MapTag.person(keeper, MARK_KEEPER, _keeper_label(), phase == Phase.RUN))
+	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed and not herald:
+		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
+	out.append_array(witness_tags())
+	return out
+
+
+## The carrier's own tag (the Warning rework, I7: StarfallDirector draws the keeper, the tower and the Temple once for its three warnings): whoever carries
+## the warning, pointed at from the edge, as tags() draws him. Empty when the warning is over or he is gone. Only reads.
+func carrier_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if phase == Phase.OVER or warning_dead or not _alive(messenger):
+		return out
+	var bell := crowd.bell
+	var keeper: Person = bell.keeper if bell != null and _alive(bell.keeper) else null
 	var label := "MESSENGER"
 	if messenger == keeper:
 		label = _keeper_label()
 	elif phase == Phase.OMEN or phase == Phase.STARE:
 		label = "WATCHMAN"
-	var herald := herald_open()
-	if herald:
+	if herald_open():
 		label = herald_label()  # v0.11.2: the bell has tolled: the keeper and the tower are no longer the errand
 	out.append(MapTag.person(messenger, MARK_MESSENGER, label, true))
-	if keeper != null and keeper != messenger and not keeper.inside and not herald:
-		out.append(MapTag.person(keeper, MARK_KEEPER, _keeper_label(), phase == Phase.RUN))
-	if bell != null and is_instance_valid(bell.tower) and not bell.tower.destroyed and not herald:
-		out.append(MapTag.place(bell.tower.center(), MARK_WATCHED, "BELL TOWER", bell.tower.height, false))
+	return out
+
+
+## From the run on, a red diamond on each person near enough to see the carrier die (none at a post: nobody runs yet). Only reads.
+func witness_tags() -> Array[MapTag]:
+	var out: Array[MapTag] = []
+	if phase == Phase.OVER or warning_dead or not _alive(messenger):
+		return out
 	if phase == Phase.RUN or phase == Phase.DELIVERED:
 		for p in witnesses():
 			out.append(MapTag.person(p, MARK_WATCHED))
@@ -649,19 +803,120 @@ func _carrier_reach(key: String, at: Vector2) -> Reach:
 	var verbs := MissionVerbs.verbs_of(key)
 	if ("kill" in verbs and _may_kill(key, at, messenger.ground_pos)) or "calm" in verbs or ("banish" in verbs and walls_stop):
 		return Reach.MAYBE
+	var reworked := rework_reach  # the rework's rules: off, this reads as it always did (spec G9, W-R1)
+	if dreams_stop and at_post() and "confuse" in verbs:
+		return Reach.MAYBE  # he dreams it
+	if reworked and "seal" in verbs:
+		return Reach.NONE if at_post() else Reach.NOT  # a man at his post is no runner: only a runner, a relay or the keeper is held
 	for v: String in ["scare", "confuse", "lead", "lure"]:
 		# An ordinary loud cast does not frighten a soldier (pre-flight B1); every other hold takes him.
 		if v in verbs and not (v == "scare" and messenger.soldier):
 			# The watchman of a barred postern holds its key: a fright takes him out through it and the walls stop the warning (W3).
 			if v == "scare" and key_door() != Vector2.INF:
 				return Reach.MAYBE
+			if v == "lead" and reworked:
+				return _lead_reach(at)
 			return Reach.NOT
 	return Reach.NONE
 
 
+## A whisper's reach on the carrier (the Warning rework, spec 7): judged by the man it took (`_whispered_at()`). MAYBE when it is the carrier and his goal
+## lies outside the walls (W1), or when it is the postern's watchman led through his key (K2); NOT when it is the carrier and his goal lies inside;
+## NONE when it took another. Only reads.
+func _lead_reach(at: Vector2) -> Reach:
+	var led := _whispered_at(at)
+	if led == null or led != messenger:
+		return Reach.NONE
+	var goal := led.goal()
+	if goal == Vector2.INF:
+		return Reach.NONE
+	if walls_stop and Walls.outside(goal):
+		return Reach.MAYBE
+	if lead_key and key_door() != Vector2.INF and not City.current().town().has_point(goal) \
+			and led.ground_pos.distance_to(key_door()) <= KEY_WALK:
+		return Reach.MAYBE
+	return Reach.NOT
+
+
 ## Mission clarity (spec 5.1): a fright, Discord, a whisper or a lure on the carrier stops him only until he is back on his feet.
 func why_not(key: String, at: Vector2) -> String:
+	var bell := bell_why(key, at)
+	if bell != "":
+		return bell
+	var burn := burn_why(key, at)
+	if burn != "":
+		return burn
 	return STOPS_BANNER if _carrier_reach(key, at) == Reach.NOT else ""
+
+
+## (final review) What a spark on the carrier does, honestly: Ember sets him alight (he runs burning, and whoever sees him die carries the word), so a kill
+## in reach of him is a possible kill and says nothing, while a spark that only lights him says BURN_BANNER. "" for any other key, a carrier it does not reach
+## (or one indoors, gone or guised), a cast that could kill him anyway, or with the rework's reach off. Only reads, no RNG.
+func burn_why(key: String, at: Vector2) -> String:
+	if not rework_reach or warning_dead or phase == Phase.OVER or not _alive(messenger) or messenger.inside or messenger.guised():
+		return ""
+	if not "burn" in MissionVerbs.verbs_of(key) or not _cast_reaches(key, at, messenger.ground_pos):
+		return ""
+	return "" if _carrier_reach(key, at) == Reach.MAYBE else BURN_BANNER
+
+
+## (the Warning rework, T2, W-R3) What Blight on the bell tower does, honestly: TOLLED when the bell has tolled, SOONER when this warning's live carrier would reach
+## the Temple sooner by the broken bell than by the intact one, else TIME. "" for any other key, any other structure, or with bell_breaks off. Only reads, no RNG.
+## Each warning answers for its own carrier (StarfallDirector gathers them).
+func bell_why(key: String, at: Vector2) -> String:
+	if not bell_breaks or crowd == null or crowd.bell == null or not is_instance_valid(crowd.bell.tower):
+		return ""
+	if not "rot" in MissionVerbs.verbs_of(key) or BlightFx.target(crowd._env, at) != crowd.bell.tower:
+		return ""
+	if rules != null and rules.lantern != null and rules.lantern.tolled:
+		return BELL_TOLLED
+	return BELL_SOONER if _broken_sooner() else BELL_TIME
+
+
+## This warning's live carrier would be at the Temple's door sooner by the broken bell than by the intact one. Only reads.
+func _broken_sooner() -> bool:
+	if warning_dead or phase == Phase.OVER or not _alive(messenger):
+		return false
+	var bell := crowd.bell
+	var from := messenger.ground_pos
+	var is_keeper := _alive(bell.keeper) and messenger == bell.keeper
+	return _eta_broken(from, messenger.pace) < _eta_intact(from, messenger.pace, is_keeper)
+
+
+## Real seconds from `from` to the Temple's door by the intact bell (spec 5): the run to the keeper, FOOT_WALK to the tower's foot, the climb, the
+## descent, and the walk from the foot to the door at HERALD_SLOW. A keeper (`is_keeper`) needs no run, and one already climbing owes only what is left
+## of it. Over the grid's own road, uncached (why_not may not refresh a cache). Only reads.
+func _eta_intact(from: Vector2, pace := 1.0, is_keeper := false) -> float:
+	var bell := crowd.bell
+	var speed := maxf(Person.PANIC_SPEED * pace, 0.05)
+	var total := 0.0
+	if not is_keeper:
+		var keeper_at: Vector2 = bell.keeper.ground_pos if _alive(bell.keeper) else bell.foot
+		total += _road(from, keeper_at) / speed + FOOT_WALK
+	elif bell.state != BellNetwork.State.CLIMBING:
+		total += _road(from, bell.foot) / speed
+	total += maxf(bell.climb - (bell.progress if bell.state == BellNetwork.State.CLIMBING else 0.0), 0.0)
+	total += LanternWatch.HERALD_DESCEND
+	total += _road(bell.foot, lantern_door()) / maxf(Person.PANIC_SPEED * pace * LanternWatch.HERALD_SLOW, 0.05)
+	return total
+
+
+## Real seconds from `from` to the Temple's door by the broken bell: the road at BROKEN_PACE, no climb and no descent. Only reads.
+func _eta_broken(from: Vector2, pace := 1.0) -> float:
+	return _road(from, lantern_door()) / maxf(Person.PANIC_SPEED * pace * BROKEN_PACE, 0.05)
+
+
+## The length of the grid's road from `a` to `b`, straight where there is none; recomputed each time (MissionDirector.road_len() fills a cache). Only reads.
+func _road(a: Vector2, b: Vector2) -> float:
+	var grid: WalkGrid = crowd._grid if crowd != null else null
+	if grid == null:
+		return a.distance_to(b)
+	var total := 0.0
+	var at := a
+	for pt in grid.path(a, b):
+		total += at.distance_to(pt)
+		at = pt
+	return total + at.distance_to(b)
 
 
 ## The tour (board tags, spec §4): the watchman at the gate, then the bellkeeper.
@@ -690,6 +945,8 @@ func report() -> Dictionary:
 
 
 func teardown() -> void:
+	if at_post():
+		watchman.stay_left = 0.0  # a night that ends with the post held lets him go (no 999 s stay left behind)
 	if is_instance_valid(crowd) and crowd._field != null and crowd._field.enemy_killed.is_connected(_on_killed):
 		crowd._field.enemy_killed.disconnect(_on_killed)
 	if is_instance_valid(rules) and rules.cast_made.is_connected(_on_cast):

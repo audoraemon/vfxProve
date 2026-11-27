@@ -64,6 +64,12 @@ func _holds_soldier(p: Person) -> bool:
 	return reserved.has(p) or busy(p)
 
 
+## Virtual: the places the wishes may not pick a person from, each Vector3(x, y, radius) (the Warning's quiet posts). None by default.
+func wish_keepout() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	return out
+
+
 ## Virtual: the mission's setup, once the town and its people exist.
 func _begin() -> void:
 	pass

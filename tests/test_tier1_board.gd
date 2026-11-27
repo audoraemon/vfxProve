@@ -296,10 +296,11 @@ static func _deathmark_runner(t) -> void:
 		var crowd: Crowd = s.crowd
 		_run(s, 9.0)
 		var w: WarningDirector = d.stars[0]
+		w.set_off()  # (a runner: the Postern's watchman, held at his post until his time)
 		var m := w.messenger
 		var others: Array[Person] = []
 		for p in crowd.citizens + crowd.soldiers:
-			if p != m:
+			if p != m and p != d.stars[1].watchman and p != d.stars[2].watchman:  # (the other two watchmen stand at their own posts, far off)
 				others.append(p)
 		for k in others.size():
 			others[k].ground_pos = Vector2(-27.0 + float(k % 20) * 0.3, -27.0 + float(k / 20) * 0.3)

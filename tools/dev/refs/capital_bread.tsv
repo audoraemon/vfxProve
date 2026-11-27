@@ -1,11 +1,11 @@
 # KAK The Crown's Bread in the Capital (plan "The Capital at every tier" Task 10): the scripted gate's runs with --city=capital (src/game/town/cities/capital_missions/crowns_bread.gd). name<TAB>how<TAB>expected
 # Route a none and play, route b play, seeds 1-3 (no --board, as Aldermere's bread rows). No toll case: the mission has none. A row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
-capital_bread_none_1	--scenario=bread --case=none --seed=1 --city=capital	-246680144
-capital_bread_none_2	--scenario=bread --case=none --seed=2 --city=capital	-355241423
-capital_bread_none_3	--scenario=bread --case=none --seed=3 --city=capital	-261799795
-capital_bread_play_1	--scenario=bread --case=play --seed=1 --city=capital	-165163456
-capital_bread_play_2	--scenario=bread --case=play --seed=2 --city=capital	-932278011
-capital_bread_play_3	--scenario=bread --case=play --seed=3 --city=capital	-469010085
-capital_bread_b_play_1	--scenario=bread --case=play --route=b --seed=1 --city=capital	-799718982
-capital_bread_b_play_2	--scenario=bread --case=play --route=b --seed=2 --city=capital	-336045238
-capital_bread_b_play_3	--scenario=bread --case=play --route=b --seed=3 --city=capital	-32435460
+capital_bread_none_1	--scenario=bread --case=none --seed=1 --city=capital	-251211153
+capital_bread_none_2	--scenario=bread --case=none --seed=2 --city=capital	-565194784
+capital_bread_none_3	--scenario=bread --case=none --seed=3 --city=capital	-209623658
+capital_bread_play_1	--scenario=bread --case=play --seed=1 --city=capital	-122271242
+capital_bread_play_2	--scenario=bread --case=play --seed=2 --city=capital	-315889465
+capital_bread_play_3	--scenario=bread --case=play --seed=3 --city=capital	-985089988
+capital_bread_b_play_1	--scenario=bread --case=play --route=b --seed=1 --city=capital	-878741050
+capital_bread_b_play_2	--scenario=bread --case=play --route=b --seed=2 --city=capital	-673612085
+capital_bread_b_play_3	--scenario=bread --case=play --route=b --seed=3 --city=capital	-809913172

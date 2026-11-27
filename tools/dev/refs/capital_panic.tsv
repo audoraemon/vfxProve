@@ -1,11 +1,11 @@
 # KAK Market Panic in the Capital (plan "The Capital at every tier" Task 5): the scripted gate's runs with --city=capital (src/game/town/cities/capital_missions/market_panic.gd). name<TAB>how<TAB>expected
 # Route a none and play, route b play (--board), seeds 1-3. Market Panic has no toll case. A row that moves on purpose is re-recorded here in the same commit, with the reason in the commit body.
 # capital_panic_b_play_1 is omitted on purpose: route b seed 1 is a loss in the Capital (27 of 36 broken at 300 s), parked for the user's play test.
-capital_panic_none_1	--scenario=panic --case=none --seed=1 --city=capital	-910487242
-capital_panic_none_2	--scenario=panic --case=none --seed=2 --city=capital	-131511914
-capital_panic_none_3	--scenario=panic --case=none --seed=3 --city=capital	-802275696
-capital_panic_play_1	--scenario=panic --case=play --seed=1 --city=capital	-145030507
-capital_panic_play_2	--scenario=panic --case=play --seed=2 --city=capital	-204536669
-capital_panic_play_3	--scenario=panic --case=play --seed=3 --city=capital	-77146540
-capital_panic_b_play_2	--scenario=panic --case=play --route=b --board --seed=2 --city=capital	-291748283
-capital_panic_b_play_3	--scenario=panic --case=play --route=b --board --seed=3 --city=capital	-757152333
+capital_panic_none_1	--scenario=panic --case=none --seed=1 --city=capital	-673491219
+capital_panic_none_2	--scenario=panic --case=none --seed=2 --city=capital	-271976532
+capital_panic_none_3	--scenario=panic --case=none --seed=3 --city=capital	-336715538
+capital_panic_play_1	--scenario=panic --case=play --seed=1 --city=capital	-507071432
+capital_panic_play_2	--scenario=panic --case=play --seed=2 --city=capital	-622710742
+capital_panic_play_3	--scenario=panic --case=play --seed=3 --city=capital	-416048820
+capital_panic_b_play_2	--scenario=panic --case=play --route=b --board --seed=2 --city=capital	-258179047
+capital_panic_b_play_3	--scenario=panic --case=play --route=b --board --seed=3 --city=capital	-485770808

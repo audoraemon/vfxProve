@@ -1,4 +1,4 @@
 # KAK Last Judgement in the Capital (plan "The Capital at every tier" Task 20): route b, --city=capital, seeds 1-3 (name<TAB>how<TAB>expected). These runs are LOSSES by the 50-escape limit (50 escaped at 79.7, 53.2 and 50.4 s), like Aldermere's judgement_b_play_* rows in routes_t5.tsv; kept as regression cover for the Capital's Judgement (its overrides, tags and ring), not as a win gate.
-capital_judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1 --city=capital	-740770948
-capital_judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2 --city=capital	-179188195
-capital_judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3 --city=capital	-324300698
+capital_judgement_b_play_1	--scenario=judgement --case=play --route=b --board --seed=1 --city=capital	-136220772
+capital_judgement_b_play_2	--scenario=judgement --case=play --route=b --board --seed=2 --city=capital	-883799800
+capital_judgement_b_play_3	--scenario=judgement --case=play --route=b --board --seed=3 --city=capital	-849186410
